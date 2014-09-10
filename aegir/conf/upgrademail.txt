@@ -4,21 +4,32 @@ Your Aegir Hosting System has been upgraded to version BOA-2.3.0
 
   https://aegir.dragon.ny.host8.biz
 
-This new BOA Edition introduces latest Aegir 2.1 stable version with
-newest Drush 6 in the backend and with support for Drupal sites
-in subdirectories enabled by default, among many other improvements
-included in this version, like tasks list per site, ability to search
-in the sites list per domain name and/or profile, to schedule tasks
-in batches, to select any existing domain alias as a redirect target,
-but without the need to rename the site, etc.
+This new BOA Edition introduces many new features, changes and improvements:
 
-There are new features, changes, improvements and fixes you should
-read about in the release notes and changelog available at:
+  * BOA-2.3.0 comes with shiny Aegir 2.1 stable version, finally!
+  * Super-easy to use New Relic support with per Octopus license key
+  * Support for Drupal sites in subdirectories is enabled by default
+  * Latest Drush 6 version is used also in the Aegir backend by default
+  * The list of sites is searchable by name or installation profile
+  * You can schedule tasks against filtered sites in batches
+  * Scheduling tasks in batches is available also on the platform view
+  * Scheduling tasks in batches is available also on the profile view
+  * Each site has its own history of tasks available from the site view tab
+  * You can schedule tasks also against platforms in batches
+  * It is now possible to choose any existing alias or the main site name
+    as a redirect target, but without the need to rename the site --
+    it will just re-verify the site and create new vhost automatically
+
+There are also many other features, changes, improvements and fixes
+you should read about in the release notes and changelog available at:
 
   https://omega8.cc/boa-230-full-edition-332  ------- September 08
 
-It is always very important that you read extensive release notes
-and changelog posted on our website for all previous BOA Editions:
+It is always highly recommended that you read extensive release notes
+and changelog posted on our website for previous BOA Editions, so you
+could keep track on the progress and learn more about great features
+and improvements we have made over the last few years, no matter when
+you have started using Aegir powered by BOA:
 
   https://omega8.cc/updates
 
