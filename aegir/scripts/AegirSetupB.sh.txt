@@ -451,6 +451,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   fi
   rm -rf $_HOSTMASTER_ROOT/profiles/{default,standard,minimal,testing}
   cd $_HOSTMASTER_ROOT
+  mkdir -p sites/all/{modules,themes,libraries}
   mkdir -p sites/$_DOMAIN/files/{tmp,js,css}
   chmod 02775 -R sites/$_DOMAIN/files &> /dev/null
   chgrp -R $_WEBG sites/$_DOMAIN/files &> /dev/null
@@ -553,6 +554,8 @@ else
   else
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y &> /dev/null
   fi
+  cd $_HOSTMASTER_ROOT
+  mkdir -p sites/all/{modules,themes,libraries}
   export DEBIAN_FRONTEND=text
   mv -f $_ROOT/.drush/xts/security_review/foo.txt $_ROOT/.drush/xts/security_review/security_review.drush.inc  &> /dev/null
   rm -f $_ROOT/u/$_DOMAIN
