@@ -691,7 +691,7 @@ _RESTAURANT=7.x-1.0-beta9
 _SPARK=7.x-1.0-beta1
 _TOTEM=7.x-1.1
 _UBERCART6=2.13
-_UBERCART7=3.6
+_UBERCART7=3.7
 
 
 ###---### Functions
