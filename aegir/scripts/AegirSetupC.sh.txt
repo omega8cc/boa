@@ -2577,7 +2577,7 @@ fi
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform.php.txt ./
 mv -f make_platform.php.txt make_platform.php &> /dev/null
 
-if [ "$_LEGACY_RESULT" = "BOA-2.3.0" ] ; then
+if [ "$_LEGACY_RESULT" = "BOA-2.3" ] ; then
   _DRUSHRC_FILE="sites/all/drush/drushrc.php"
 else
   _DRUSHRC_FILE="drushrc.php"

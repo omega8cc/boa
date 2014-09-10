@@ -1790,7 +1790,6 @@ fi
 if [ -e "/var/log/barracuda_log.txt" ] ; then
   _LEGACY_TEST=`cat /var/log/barracuda_log.txt`
   if [[ "$_LEGACY_TEST" =~ "BOA-2.3." ]] ; then
-    _LEGACY_RESULT=BOA-2.3.0
     if [[ "$_INSTALLER_VERSION" =~ "BOA-2.2." ]] || [[ "$_INSTALLER_VERSION" =~ "BOA-2.1." ]] ; then
       msg "ERROR: Your system has been already upgraded to modern BOA-2.3.x series"
       msg "ERROR: You can not downgrade back to legacy or previous stable BOA version"
@@ -1798,6 +1797,12 @@ if [ -e "/var/log/barracuda_log.txt" ] ; then
       msg "Bye"
       exit 1
     fi
+  fi
+fi
+if [ -e "/data/disk/${_USER}/log/octopus_log.txt" ] ; then
+  _LEGACY_TEST=`cat /data/disk/${_USER}/log/octopus_log.txt`
+  if [[ "$_LEGACY_TEST" =~ "BOA-2.3.0" ]] || [[ "$_LEGACY_TEST" =~ "BOA-2.3.1" ]] || [[ "$_LEGACY_TEST" =~ "BOA-2.3.2" ]] ; then
+    _LEGACY_RESULT=BOA-2.3
   fi
 fi
 check_php_compatibility
