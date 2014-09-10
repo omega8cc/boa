@@ -632,13 +632,16 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   fi
   cd $_HOSTMASTER_ROOT/sites/$_DOMAIN
   if [ "$_CLIENT_CORES" -ge "1" ] ; then
-    _ALLOW_CIVICRM=YES
+    _ALLOW_CIVICRM=NO
   else
     _ALLOW_CIVICRM=NO
   fi
   if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
     $_DRUSHCMD @hostmaster en hosting_civicrm -y &> /dev/null
     $_DRUSHCMD @hostmaster en hosting_civicrm_cron -y &> /dev/null
+  else
+    $_DRUSHCMD @hostmaster dis hosting_civicrm_cron -y &> /dev/null
+    $_DRUSHCMD @hostmaster dis hosting_civicrm -y &> /dev/null
   fi
   if [ "$_STATUS" = "UPGRADE" ] ; then
     if [ "$_DEBUG_MODE" = "YES" ] ; then

@@ -644,7 +644,7 @@ chmod 0711 $_ROOT/distro/$_THIS_CORE &> /dev/null
 
 ###---###
 _ALLOW_ALL=YES
-_ALLOW_CIVICRM=YES
+_ALLOW_CIVICRM=NO
 if [ "$_CLIENT_CORES" -lt "1" ] ; then
   _ALLOW_ALL=NO
   _ALLOW_CIVICRM=NO
