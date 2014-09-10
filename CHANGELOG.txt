@@ -2,7 +2,7 @@
 ### Stable BOA-2.3.0 Release - Full Edition
 ### Date: Mon Sep  8 08:42:01 PDT 2014
 ### Includes Aegir 2.1 with improvements
-### Latest hotfix added on: Tue Sep  9 20:20:16 PDT 2014
+### Latest hotfix added on: Wed Sep 10 05:09:34 PDT 2014
 
 # Release Notes:
 
