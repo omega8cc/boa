@@ -13,6 +13,14 @@
 ### custom gems and bundles, with exact versions required by various themes
 ### which depend on Compass Tools.
 ###
+### Note that initial RVM install may take 15 minutes or longer, so remember
+### to wait until it is complete and then re-login. Once the initial install
+### is complete, you will be able to run 'rvm --version' command, but if it is
+### still not available, you just need to wait a bit longer. It may take even
+### longer if you have extra SSH sub-accounts, because the system needs to
+### install separate RVM along with some problematic gems in every sub-account,
+### so the effective wait time will be multiplied.
+###
 ### You can then install and update gems using standard rvm commands. Examples:
 ###
 ### rvm all do gem install compass
