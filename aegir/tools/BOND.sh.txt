@@ -144,7 +144,7 @@ _AEGIR_VERSION=HEAD
 ###----------------------------------------###
 
 _INSTALLER_VERSION=BOA-2.3.1-dev
-_BRANCH_BOA=2.3.x-dev
+_BRANCH_BOA=master
 _BRANCH_PROVISION=2.3.x-dev
 _NOW=`date +%y%m%d-%H%M`
 _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
