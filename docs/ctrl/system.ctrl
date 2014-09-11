@@ -47,6 +47,12 @@ by the BOA install and upgrade tools exclusively.
 
  ### All other (empty) .cnf control files
 
+   /root/.enable.newrelic.sysmond.cnf
+
+ This file, if exists, allows to run newrelic-sysmond service, otherwise
+ disabled for security reasons, because it exposes too much system level
+ information/details in the New Relic control panel.
+
    /root/.use.local.nameservers.cnf
 
  This file, if exists, allows to use original nameservers provided on the

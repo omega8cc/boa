@@ -101,7 +101,8 @@ if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis") &&
   elsif (-f "/etc/init.d/redis") { `/etc/init.d/redis start`; }
 }
 `/etc/init.d/newrelic-daemon restart` if (!$newrelicdaemonsumar && -f "/etc/init.d/newrelic-daemon" && !-f "/var/run/boa_run.pid");
-`/etc/init.d/newrelic-sysmond restart` if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/var/run/boa_run.pid");
+`/etc/init.d/newrelic-sysmond restart` if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/var/run/boa_run.pid" && -f "/root/.enable.newrelic.sysmond.cnf");
+`/etc/init.d/newrelic-sysmond stop` if ($newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/root/.enable.newrelic.sysmond.cnf");
 `/etc/init.d/postfix restart` if (!$postfixsumar && -f "/etc/init.d/postfix" && !-f "/var/run/boa_run.pid");
 if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/var/run/boa_run.pid") {
   system("killall -9 nginx");
