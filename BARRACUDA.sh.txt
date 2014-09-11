@@ -7675,7 +7675,7 @@ if [ -e "/opt/jetty9/start.d/http.ini" ] ; then
 else
   _PORT_CTRL="$_JETTY_CTRL"
 fi
-if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
+if [[ "$_XTRAS_LIST" =~ "SR4" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
   if [ ! -d "/opt/solr4" ] ; then
     if [[ "$_APT_XTRA" =~ "openjdk-7-jre-headless" ]] ; then
       _REAL_JETTY=9
@@ -7821,7 +7821,7 @@ fi
 ###--------------------###
 _JETTY_CTRL="/opt/jetty8/jetty-ctrl-$_JETTY_8_VERSION-version.txt"
 _SOLR_CTRL="/opt/jetty8/solr-$_SOLR_3_VERSION-version.txt"
-if [[ "$_XTRAS_LIST" =~ "SR3" ]] ; then
+if [[ "$_XTRAS_LIST" =~ "SR3" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
   if [ ! -d "/opt/solr3" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install MultiCore Apache Solr 3 with Jetty 8?" ; then
