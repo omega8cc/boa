@@ -726,11 +726,11 @@ switch_php()
         if [[ "$_CHECK_NEW_RELIC_KEY" =~ "$_LOC_NEW_RELIC_KEY" ]] ; then
           _NEW_RELIC_KEY_UPDATE=NO
         else
-          echo New Relic for ${_OWN} update with key $_LOC_NEW_RELIC_KEY
-          sed -i "s/^php_admin_value[newrelic.license].*/php_admin_value[newrelic.license] = \"$_LOC_NEW_RELIC_KEY\"/g" $_THIS_POOL_TPL &> /dev/null
-          sed -i "s/^php_admin_value[newrelic.enabled].*/php_admin_value[newrelic.enabled] = \"true\"/g" $_THIS_POOL_TPL &> /dev/null
+          echo New Relic for ${_OWN} update with key $_LOC_NEW_RELIC_KEY in php${_PHP_SV}
+          sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"$_LOC_NEW_RELIC_KEY\"/g" $_THIS_POOL_TPL
+          sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"true\"/g" $_THIS_POOL_TPL
           if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ] ; then
-            service php${_PHP_SV}-fpm reload &> /dev/null
+            service php${_PHP_SV}-fpm reload
           fi
         fi
       fi
@@ -744,10 +744,10 @@ switch_php()
         _CHECK_NEW_RELIC_KEY=`grep "newrelic.enabled.*true" $_THIS_POOL_TPL`
         if [[ "$_CHECK_NEW_RELIC_KEY" =~ "newrelic.enabled" ]] ; then
           echo New Relic for ${_OWN} will be disabled because newrelic.info does not exist
-          sed -i "s/^php_admin_value[newrelic.license].*/php_admin_value[newrelic.license] = \"\"/g" $_THIS_POOL_TPL &> /dev/null
-          sed -i "s/^php_admin_value[newrelic.enabled].*/php_admin_value[newrelic.enabled] = \"false\"/g" $_THIS_POOL_TPL &> /dev/null
+          sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"\"/g" $_THIS_POOL_TPL
+          sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"false\"/g" $_THIS_POOL_TPL
           if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ] ; then
-            service php${_PHP_SV}-fpm reload &> /dev/null
+            service php${_PHP_SV}-fpm reload
           fi
         fi
       fi
