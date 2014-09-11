@@ -235,6 +235,11 @@ fix_user_register_protection () {
   fi
 
   _DIR_CTRL_FILE="$Dir/modules/boa_site_control.ini"
+  if [ -e "/data/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+    cp -af /data/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
+    chown $_THIS_HM_USER:users $_DIR_CTRL_FILE
+    chmod 0664 $_DIR_CTRL_FILE
+  fi
 
   if [ -e "$_DIR_CTRL_FILE" ] ; then
     _DISABLE_USER_REGISTER_PROTECTION_TEST=$(grep "^disable_user_register_protection = TRUE" $_DIR_CTRL_FILE)
@@ -351,6 +356,183 @@ check_file_with_wildcard_path () {
   fi
 }
 
+write_solr_config () {
+  # $1 is module
+  # $2 is a path to solr.php
+  if [ ! -z $1 ] && [ ! -z $2 ] && [ -e "${Dir}" ] ; then
+    echo "Your SOLR core access details for ${Dom} site are as follows:"  > $2
+    echo                                                                 >> $2
+    echo "  Solr host ........: 127.0.0.1"                               >> $2
+    echo "  Solr port ........: 8099"                                    >> $2
+    echo "  Solr path ........: /solr/${_MD5H}.${Dom}.${_THIS_HM_USER}"  >> $2
+    echo                                                                 >> $2
+    echo "It has been auto-configured to work with latest version"       >> $2
+    echo "of $1 module, but you need to add the module to"               >> $2
+    echo "your site codebase before you will be able to use Solr."       >> $2
+    echo                                                                 >> $2
+    echo "To learn more please make sure to check the module docs at:"   >> $2
+    echo                                                                 >> $2
+    echo "https://drupal.org/project/$1"                                 >> $2
+    chown ${_THIS_HM_USER}:users $2
+    chmod 440 $2
+  fi
+}
+
+update_solr () {
+  # $1 is module
+  # $2 is solr core path
+  if [ ! -z $1 ] && [ ! -e "$2/conf/BOA-2.3.0.conf" ] && [ -e "/var/xdrago/conf/solr" ] && [ -e "$2/conf" ] ; then
+    if [ "$1" = "apachesolr" ] ; then
+      if [ -e "$Plr/modules/o_contrib_seven" ] ; then
+        cp -af /var/xdrago/conf/solr/apachesolr/7/schema.xml $2/conf/
+        cp -af /var/xdrago/conf/solr/apachesolr/7/solrconfig.xml $2/conf/
+        cp -af /var/xdrago/conf/solr/apachesolr/7/solrcore.properties $2/conf/
+        touch $2/conf/update-ok.txt
+      else
+        cp -af /var/xdrago/conf/solr/apachesolr/6/schema.xml $2/conf/
+        cp -af /var/xdrago/conf/solr/apachesolr/6/solrconfig.xml $2/conf/
+        cp -af /var/xdrago/conf/solr/apachesolr/6/solrcore.properties $2/conf/
+        touch $2/conf/update-ok.txt
+      fi
+    elif [ "$1" = "search_api_solr" ] && [ -e "$Plr/modules/o_contrib_seven" ] ; then
+      cp -af /var/xdrago/conf/solr/search_api_solr/7/schema.xml $2/conf/
+      cp -af /var/xdrago/conf/solr/search_api_solr/7/solrconfig.xml $2/conf/
+      cp -af /var/xdrago/conf/solr/search_api_solr/7/solrcore.properties $2/conf/
+      touch $2/conf/update-ok.txt
+    fi
+    if [ -e "$2/conf/update-ok.txt" ] ; then
+      write_solr_config $1 ${Dir}/solr.php
+      echo "Updated Solr with $1 for $2"
+      touch $2/conf/BOA-2.3.0.conf
+      if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] ; then
+        kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
+        service jetty9 start &> /dev/null
+      fi
+    fi
+  fi
+}
+
+add_solr () {
+  # $1 is module
+  # $2 is solr core path
+  if [ ! -z $1 ] && [ ! -z $2 ] && [ -e "/var/xdrago/conf/solr" ] ; then
+    if [ ! -e "$2" ] ; then
+      cp -a /opt/solr4/core0 $2
+      _REL_VERSION=`lsb_release -sc`
+      CHAR="[:alnum:]"
+      rkey=32
+      if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
+        _MD5H=`cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | openssl md5 | awk '{ print $2}' | tr -d "\n"`
+      else
+        _MD5H=`cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | openssl md5 | tr -d "\n"`
+      fi
+      sed -i "s/.*<core name=\"core0\" instanceDir=\"core0\" \/>.*/<core name=\"core0\" instanceDir=\"core0\" \/>\n<core name=\"${_MD5H}.${Dom}.${_THIS_HM_USER}\" instanceDir=\"${_THIS_HM_USER}.${Dom}\" \/>\n/g" /opt/solr4/solr.xml
+      update_solr $1 $2
+      echo "New Solr with $1 for $2 added"
+    fi
+  fi
+}
+
+delete_solr () {
+  # $1 is solr core path
+  if [ ! -z $1 ] && [ -e "/var/xdrago/conf/solr" ] && [ -e "$1/conf" ] ; then
+    sed -i "s/.*instanceDir=\"${_THIS_HM_USER}.${Dom}\".*//g" /opt/solr4/solr.xml
+    sed -i "/^$/d" /opt/solr4/solr.xml &> /dev/null
+    rm -f -r $1
+    rm -f ${Dir}/solr.php
+    if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] ; then
+      kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
+      service jetty9 start &> /dev/null
+    fi
+    echo "Deleted Solr for $1"
+  fi
+}
+
+check_solr () {
+  # $1 is module
+  # $2 is solr core path
+  if [ ! -z $1 ] && [ ! -z $2 ] && [ -e "/var/xdrago/conf/solr" ] ; then
+    echo "Checking Solr with $1 for $2"
+    if [ ! -e "$2" ] ; then
+      add_solr $1 $2
+    else
+      update_solr $1 $2
+    fi
+  fi
+}
+
+setup_solr () {
+
+  _DIR_CTRL_FILE="$Dir/modules/boa_site_control.ini"
+  _SOLR_DIR="/opt/solr4/${_THIS_HM_USER}.${Dom}"
+  if [ -e "/data/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+    cp -af /data/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
+    chown $_THIS_HM_USER:users $_DIR_CTRL_FILE
+    chmod 0664 $_DIR_CTRL_FILE
+  fi
+
+  ###
+  ### Support for solr_custom_config directive
+  ###
+  if [ -e "$_DIR_CTRL_FILE" ] ; then
+    _SOLR_CUSTOM_CONFIG_PRESENT=$(grep "solr_custom_config" $_DIR_CTRL_FILE)
+    if [[ "$_SOLR_CUSTOM_CONFIG_PRESENT" =~ "solr_custom_config" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo ";solr_custom_config = NO" >> $_DIR_CTRL_FILE
+    fi
+    _SOLR_CUSTOM_CONFIG_TEST=$(grep "^solr_custom_config = YES" $_DIR_CTRL_FILE)
+    if [[ "$_SOLR_CUSTOM_CONFIG_TEST" =~ "solr_custom_config = YES" ]] ; then
+      _SOLR_CUSTOM_CONFIG_RESULT=YES
+      echo "Solr config for ${_SOLR_DIR} is protected"
+    fi
+  fi
+  ###
+  ### Support for solr_integration_module directive
+  ###
+  if [ -e "$_DIR_CTRL_FILE" ] ; then
+    _SOLR_MODULE=""
+    _SOLR_INTEGRATION_MODULE_PRESENT=$(grep "solr_integration_module" $_DIR_CTRL_FILE)
+    if [[ "$_SOLR_INTEGRATION_MODULE_PRESENT" =~ "solr_integration_module" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo ";solr_integration_module = NO" >> $_DIR_CTRL_FILE
+    fi
+    _APACHESOLR_MODULE_TEST=$(grep "^solr_integration_module = apachesolr" $_DIR_CTRL_FILE)
+    if [[ "$_APACHESOLR_MODULE_TEST" =~ "solr_integration_module = apachesolr" ]] ; then
+      _SOLR_MODULE=apachesolr
+    fi
+    _SEARCH_API_SOLR_MODULE_TEST=$(grep "^solr_integration_module = search_api_solr" $_DIR_CTRL_FILE)
+    if [[ "$_SEARCH_API_SOLR_MODULE_TEST" =~ "solr_integration_module = search_api_solr" ]] ; then
+      _SOLR_MODULE=search_api_solr
+    fi
+    if [ ! -z "$_SOLR_MODULE" ] ; then
+      check_solr ${_SOLR_MODULE} ${_SOLR_DIR}
+    else
+      delete_solr ${_SOLR_DIR}
+    fi
+  fi
+  ###
+  ### Support for solr_update_config directive
+  ###
+  if [ -e "$_DIR_CTRL_FILE" ] ; then
+    _SOLR_UPDATE_CONFIG_PRESENT=$(grep "solr_update_config" $_DIR_CTRL_FILE)
+    if [[ "$_SOLR_UPDATE_CONFIG_PRESENT" =~ "solr_update_config" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo ";solr_update_config = NO" >> $_DIR_CTRL_FILE
+    fi
+    _SOLR_UPDATE_CONFIG_TEST=$(grep "^solr_update_config = YES" $_DIR_CTRL_FILE)
+    if [[ "$_SOLR_UPDATE_CONFIG_TEST" =~ "solr_update_config = YES" ]] ; then
+      if [ "$_SOLR_CUSTOM_CONFIG_RESULT" = "YES" ] || [ -e "${_SOLR_DIR}/conf/BOA-2.3.0.conf" ] ; then
+        _DO_NOTHING=YES
+      else
+        update_solr ${_SOLR_MODULE} ${_SOLR_DIR}
+      fi
+    fi
+  fi
+}
+
 fix_modules () {
   if [ "$_MODULES_FIX" = "YES" ] ; then
     searchStringA="pressflow-5.23.50"
@@ -362,6 +544,7 @@ fix_modules () {
         check_site_status
         if [ "$_STATUS" = "OK" ] ; then
 
+          setup_solr
           fix_user_register_protection
 
           _AUTO_CONFIG_ADVAGG=NO
@@ -979,7 +1162,7 @@ fix_permissions () {
   if [ -e "$Dir" ] ; then
     ### directory and settings files - site level
     chown $_THIS_HM_USER:users $Dir &> /dev/null
-    chown $_THIS_HM_USER:www-data $Dir/{local.settings.php,settings.php,civicrm.settings.php} &> /dev/null
+    chown $_THIS_HM_USER:www-data $Dir/{local.settings.php,settings.php,civicrm.settings.php,solr.php} &> /dev/null
     find $Dir/*.php -type f -exec chmod 0440 {} \; &> /dev/null
     chmod 0640 $Dir/civicrm.settings.php &> /dev/null
     ### modules,themes,libraries - site level
@@ -1244,9 +1427,6 @@ process () {
       Dir=`cat $User/.drush/$Dom.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       if [ -e "$Plr" ] ; then
-        if [ -e "$Dir" ] ; then
-          fix_site_control_files
-        fi
         fix_platform_control_files
         fix_o_contrib_symlink
         if [ -e "$Dir" ] ; then
@@ -1262,6 +1442,7 @@ process () {
           esac
           fix_boost_cache
           fix_clear_cache
+          fix_site_control_files
         fi
         if [ "$_DONT_TOUCH_PERMISSIONS" = "NO" ] && [ "$_PERMISSIONS_FIX" = "YES" ] ; then
           fix_permissions
