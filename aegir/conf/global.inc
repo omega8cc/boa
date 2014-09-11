@@ -886,10 +886,10 @@ if (extension_loaded('newrelic')) {
       if ($root) {
         $frags = explode("/", $root);
         if ($frags[1] == 'data') {
-          $this_instance = 'Site: ' . $uri . ';AAA Octopus ' . $frags[3] . ';AAA All Instances';
+          $this_instance = 'Site: ' . $uri . ';AAA Octopus ' . $frags[3];
         }
         elseif ($frags[2] == 'aegir') {
-          $this_instance = 'Site: ' . $uri . ';AAA Barracuda Master;AAA All Instances';
+          $this_instance = 'Site: ' . $uri . ';AAA Barracuda Master';
         }
       }
       // Build drush command
@@ -903,10 +903,10 @@ if (extension_loaded('newrelic')) {
     if (isset($_SERVER['DOCUMENT_ROOT']) && isset($_SERVER['SERVER_NAME'])) {
       $frags = explode("/", $_SERVER['DOCUMENT_ROOT']);
       if ($frags[1] == 'data') {
-        $this_instance = 'Site: ' . $_SERVER['SERVER_NAME'] . ';AAA Octopus ' . $frags[3] . ';AAA All Instances';
+        $this_instance = 'Site: ' . $_SERVER['SERVER_NAME'] . ';AAA Octopus ' . $frags[3];
       }
       elseif ($frags[2] == 'aegir') {
-        $this_instance = 'Site: ' . $_SERVER['SERVER_NAME'] . ';AAA Barracuda Master;AAA All Instances';
+        $this_instance = 'Site: ' . $_SERVER['SERVER_NAME'] . ';AAA Barracuda Master';
       }
     }
   }
