@@ -705,7 +705,7 @@ download_o_contrib_six () {
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/cache_backport
-    get_dev_contrib "cache_backport-6.x-1.0-rc1.tar.gz"
+    get_dev_contrib "cache_backport-6.x-1.0-rc2.tar.gz"
     sed -i "s/Cache Backand/D7 Cache Backport for D6/g" cache_backport/cache_backport.info &> /dev/null
     echo update > cache_backport/update-$_INSTALLER_VERSION.info
   fi
