@@ -306,6 +306,7 @@ sub cpu_count_load
   local($PROCS) = `grep -c processor /proc/cpuinfo`;
   chomp($PROCS);
   $MAXSQLCPU = $PROCS."00";
+  $MAXFPMCPU = $PROCS."00";
   if ($PROCS > 2)
   {
     $MAXSQLCPU = 200;
