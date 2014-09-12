@@ -11,6 +11,34 @@ if [[ "$_L_VM_TEST" =~ beng ]] ; then
   _L_VMFAMILY="VS"
 fi
 
+check_id () {
+  _USER=$1
+  _ID_EXISTS=$(getent passwd $_USER 2>&1)
+  if [ -z "$_ID_EXISTS" ] ; then
+    _DO_NOTHING=YES
+  elif [[ "$_ID_EXISTS" =~ "$_USER" ]] ; then
+    echo "ERROR: $_USER username is already taken"
+    echo "Please choose different username"
+    exit 1
+  else
+    echo "ERROR: $_USER username check failed"
+    echo "Please try different username"
+    exit 1
+  fi
+  if [ "$_USER" = "admin" ] || [ "$_USER" = "hostmaster" ] || [ "$_USER" = "barracuda" ] || [ "$_USER" = "octopus" ] || [ "$_USER" = "boa" ] ; then
+    echo "ERROR: $_USER is a restricted username, please choose different _USER"
+    exit 1
+  elif [[ "$_USER" =~ "aegir" ]] || [[ "$_USER" =~ "drupal" ]] || [[ "$_USER" =~ "drush" ]] || [[ "$_USER" =~ "sites" ]] || [[ "$_USER" =~ "default" ]] ; then
+    echo "ERROR: $_USER includes restricted keyword, please choose different _USER"
+    exit 1
+  fi
+  _REGEX="^[[:digit:]]"
+  if [[ "$_USER" =~ "$_REGEX" ]] ; then
+    echo "ERROR: $_USER is a wrong username, it should start with a letter, not digit"
+    exit 1
+  fi
+}
+
 fix_dns_settings () {
   mkdir -p /var/backups
   rm -f /var/backups/resolv.conf.tmp
@@ -250,6 +278,7 @@ init_setup ()
       user="o1"
     fi
   fi
+  check_id $user
   if [ "$cmmand" = "in-head" ] ; then
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
