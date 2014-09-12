@@ -189,8 +189,9 @@ enable_chattr () {
         touch /var/run/manage_rvm_users.pid
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative bluecloth"      &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative eventmachine"   &> /dev/null
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative http_parser.rb" &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative ffi"            &> /dev/null
+        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative hitimes"        &> /dev/null
+        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative http_parser.rb" &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative oily_png"       &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative yajl-ruby"      &> /dev/null
         touch /data/disk/${_OWN}/log/.gems.build.c.${UQ}.txt
