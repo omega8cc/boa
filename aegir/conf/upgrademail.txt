@@ -10,6 +10,7 @@ This new BOA Edition introduces many new features, changes and improvements:
   * Super-easy to use New Relic support with per Octopus license key
   * Support for Drupal sites in subdirectories is enabled by default
   * Latest Drush 6 version is used also in the Aegir backend by default
+  * DB credentials are no longer visible in settings.php, only in drushrc.php
   * The list of sites is searchable by name or installation profile
   * You can schedule tasks against filtered sites in batches
   * Scheduling tasks in batches is available also on the platform view
