@@ -2820,9 +2820,19 @@ EOF
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/boa.bashrc.txt /root/.bashrc
       set_xterm
     fi
-    locale-gen en_US en_US.UTF-8 &> /dev/null
-    update-locale &> /dev/null
-    localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
+    if [ "$_THIS_OS" = "Debian" ] ; then
+      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
+      if [[ ! "$_LOCALE_GEN_TEST" =~ "en_US.UTF-8 UTF-8" ]] ; then
+        echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+      fi
+      locale-gen &> /dev/null
+      update-locale LANG=en_US.UTF-8 &> /dev/null
+    else
+      locale-gen en_US en_US.UTF-8 &> /dev/null
+      update-locale &> /dev/null
+      localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
+      echo "LANG=en_US.UTF-8" > /etc/default/locale
+    fi
   fi
 }
 #
