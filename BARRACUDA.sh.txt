@@ -2832,7 +2832,7 @@ barracuda_cnf () {
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-        if [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
+        if [[ "$_CHECK_HOST" =~ ".dd.o8.io" ]] ; then
           _DO_NOTHING=YES
         else
           _DB_SERVER=MariaDB
@@ -2953,7 +2953,7 @@ barracuda_cnf () {
     _CHECK_HOST=`uname -n`
     sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g" /root/.barracuda.cnf &> /dev/null
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-      if [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
+      if [[ "$_CHECK_HOST" =~ ".dd.o8.io" ]] ; then
         _DO_NOTHING=YES
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 /root/.barracuda.cnf &> /dev/null
@@ -3418,7 +3418,7 @@ barracuda_cnf () {
     _CHECK_HOST=`uname -n`
     sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g" /root/.barracuda.cnf &> /dev/null
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-      if [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
+      if [[ "$_CHECK_HOST" =~ ".dd.o8.io" ]] ; then
         _DO_NOTHING=YES
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 /root/.barracuda.cnf &> /dev/null
@@ -3475,7 +3475,7 @@ barracuda_cnf () {
     _CHECK_HOST=`uname -n`
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-        if [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
+        if [[ "$_CHECK_HOST" =~ ".dd.o8.io" ]] ; then
           _DO_NOTHING=YES
         else
           _DB_SERVER=MariaDB
@@ -7179,7 +7179,7 @@ if [ -d "/var/xdrago/conf" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc
   chown root:crontab /var/spool/cron/crontabs/root
   chmod 600 /var/spool/cron/crontabs/root
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
+    if [[ "$_CHECK_HOST" =~ ".dd.o8.io" ]] ; then
       _DO_NOTHING=YES
     else
       if [ -e "/root/.high_load.cnf" ] && [ ! -e "/root/.big_db.cnf" ] && [ ! -e "/root/.tg.cnf" ] ; then
@@ -7238,7 +7238,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g" /var/xdrago/manage_ltd_users.sh &> /dev/null
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
+    if [[ "$_CHECK_HOST" =~ ".dd.o8.io" ]] ; then
       _DO_NOTHING=YES
     else
       if [ -e "/root/.high_load.cnf" ] && [ ! -e "/root/.big_db.cnf" ] && [ ! -e "/root/.tg.cnf" ] ; then
