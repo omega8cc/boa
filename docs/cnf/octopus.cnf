@@ -10,7 +10,6 @@
 _USER="o1" #-------------------- Aegir Instance system account name
 _MY_EMAIL="my@email" #---------- Aegir Instance owner e-mail
 _PLATFORMS_LIST=ALL #----------- Platforms to install - see docs/PLATFORMS.txt
-_ALLOW_UNSUPPORTED=NO #--------- Allows to install deprecated platforms when YES
 _AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
 _HM_ONLY=NO #------------------- Allows to upgrade Aegir only (deprecated)
 _O_CONTRIB_UP=NO #-------------- Allows to force o_contrib upgrade when YES

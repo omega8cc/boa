@@ -84,7 +84,6 @@ _UBERCART7=EDIT_UBERCART7
 #
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _ALL_DISTRO=EDIT_ALL_DISTRO
-_ALLOW_UNSUPPORTED=EDIT_ALLOW_UNSUPPORTED
 _AUTOPILOT=EDIT_AUTOPILOT
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
@@ -670,44 +669,6 @@ prepare_drupal6_core
 prepare_drupal7_core
 
 
-acquia_install () {
-###---### Acquia
-#
-_REAL_PRNAME="acquia"
-_SHRD_PLNAME="$_REAL_PRNAME-$_SMALLCORE6"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ AQ6 ]] ; then
-if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
-echo " "
-if prompt_yes_no "$_F_ACQUIA - http://bit.ly/acquiadrupal" ; then
-true
-msg "DISTRO: $_F_ACQUIA installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D6_CORE_DIR" ] ; then
-      prepare_drupal6_core
-    fi
-    cd $_CORE
-    get_distro_ext "vanilla-$_SHRD_PLNAME.tar.gz"
-    nocore_d6_dist_clean
-    rm -f -r $_SHRD_PLPATH/profiles/default
-  else
-    cd $_CORE
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
-  fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_ACQUIA installation completed"
-else
-  msg "DISTRO: $_F_ACQUIA installation skipped"
-fi
-fi
-fi
-}
-
-
 agov_install () {
 ###---### aGov
 #
@@ -744,148 +705,6 @@ init_this_distro_root
 msg "DISTRO: $_F_AGOV installation completed"
 else
   msg "DISTRO: $_F_AGOV installation skipped"
-fi
-fi
-fi
-fi
-}
-
-
-civicrm_m6_install () {
-###---### CiviCRM Modern D6
-#
-_REAL_PRNAME="default"
-_SHRD_PLNAME="civicrm-$_CIVICRM_M6-$_SMALLCORE6"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CM6 ]] ; then
-if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
-echo " "
-if prompt_yes_no "$_F_CIVICRM_M6 - http://civicrm.org" ; then
-true
-msg "DISTRO: $_F_CIVICRM_M6 installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D6_CORE_DIR" ] ; then
-      prepare_drupal6_core
-    fi
-    cd $_CORE
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm-4.1-d6.make ./
-    $_DRUSHCMD make civicrm-4.1-d6.make $_SHRD_PLNAME &> /dev/null
-    rm -f civicrm-4.1-d6.make
-    _CIVI_ENGAGE="$_SHRD_PLPATH/sites/all/modules/civicrm/drupal/modules/civicrm_engage"
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/civicrm_engage.install $_CIVI_ENGAGE/civicrm_engage.install &> /dev/null
-    if [ ! -d "$_SHRD_PLPATH/sites/all/modules/civicrm/l10n" ] && [ -d "$_SHRD_PLPATH/sites/all/modules/civicrm/civicrm_l10n/l10n" ] ; then
-      mv $_SHRD_PLPATH/sites/all/modules/civicrm/civicrm_l10n/l10n $_SHRD_PLPATH/sites/all/modules/civicrm/ &> /dev/null
-    fi
-    mkdir -p $_SHRD_PRPATH/modules
-    mv $_SHRD_PLPATH/sites/all/modules/civicrm $_SHRD_PRPATH/modules/ &> /dev/null
-    nocore_d6_dist_clean
-    else
-    cd $_CORE
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
-  fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_CIVICRM_M6 installation completed"
-else
-  msg "DISTRO: $_F_CIVICRM_M6 installation skipped"
-fi
-fi
-fi
-fi
-}
-
-
-civicrm_m7_install () {
-###---### CiviCRM Modern D7
-#
-_REAL_PRNAME="standard"
-_SHRD_PLNAME="civicrm-$_CIVICRM_M7-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CM7 ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_CIVICRM_M7 - http://civicrm.org" ; then
-true
-msg "DISTRO: $_F_CIVICRM_M7 installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
-    fi
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm-4.3-d7.make ./
-    $_DRUSHCMD make civicrm-4.3-d7.make $_SHRD_PLNAME &> /dev/null
-    rm -f civicrm-4.3-d7.make
-    if [ ! -d "$_SHRD_PLPATH/sites/all/modules/civicrm/l10n" ] && [ -d "$_SHRD_PLPATH/sites/all/modules/civicrm/civicrml10n/l10n" ] ; then
-      mv $_SHRD_PLPATH/sites/all/modules/civicrm/civicrml10n/l10n $_SHRD_PLPATH/sites/all/modules/civicrm/ &> /dev/null
-    fi
-    mkdir -p $_SHRD_PRPATH/modules
-    mv $_SHRD_PLPATH/sites/all/modules/civicrm $_SHRD_PRPATH/modules/ &> /dev/null
-    rm -f -r $_SHRD_PLPATH/profiles/testing
-    rm -f -r $_SHRD_PLPATH/profiles/minimal
-    nocore_d7_dist_clean
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
-  fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_CIVICRM_M7 installation completed"
-else
-  msg "DISTRO: $_F_CIVICRM_M7 installation skipped"
-fi
-fi
-fi
-fi
-}
-
-
-cod_install () {
-###---### Conference Organizing Distribution
-#
-_REAL_PRNAME="cod"
-_SHRD_PLNAME="$_REAL_PRNAME-$_COD-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ COD ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_COD - https://drupal.org/project/cod" ; then
-true
-msg "DISTRO: $_F_COD installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
-    fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_COD-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/$_REAL_PRNAME-$_COD" ] ; then
-      mv $_REAL_PRNAME-$_COD $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-    sed -i "s/Conference Organizing Distribution (COD)/Conference/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
-    if [ $_COD = "7.x-1.0-alpha3" ] ; then
-      cd $_SHRD_PRPATH/modules/contrib
-      upgrade_contrib_less
-    fi
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
-  fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_COD installation completed"
-else
-  msg "DISTRO: $_F_COD installation skipped"
 fi
 fi
 fi
@@ -1878,68 +1697,6 @@ fi
 }
 
 
-openpublish_install () {
-###---### OpenPublish
-#
-_REAL_PRNAME="openpublish"
-_SHRD_PLNAME="$_REAL_PRNAME-$_OPENPUBLISH-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OPH ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_OPENPUBLISH - http://openpublishapp.com" ; then
-true
-msg "DISTRO: $_F_OPENPUBLISH installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
-    fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENPUBLISH-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/$_REAL_PRNAME-$_OPENPUBLISH" ] ; then
-      mv $_REAL_PRNAME-$_OPENPUBLISH $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-    if [ $_OPENPUBLISH = "7.x-1.0-beta7" ] ; then
-      cd $_SHRD_PRPATH/modules/contrib
-      rm -f -r $_SHRD_PRPATH/modules/contrib/{boxes,context,diff,entity_autocomplete,features_override,filefield_sources,google_analytics,imce,link,plupload,recaptcha,references,token,xmlsitemap}
-      cd $_SHRD_PRPATH/modules/contrib
-      get_dev_contrib "boxes-7.x-1.1.tar.gz"
-      get_dev_contrib "context-7.x-3.2.tar.gz"
-      get_dev_contrib "diff-7.x-3.2.tar.gz"
-      get_dev_contrib "entity_autocomplete-7.x-1.0-beta3.tar.gz"
-      get_dev_contrib "features_override-7.x-2.0-beta2.tar.gz"
-      get_dev_contrib "filefield_sources-7.x-1.7.tar.gz"
-      get_dev_contrib "google_analytics-7.x-1.4.tar.gz"
-      get_dev_contrib "imce-7.x-1.7.tar.gz"
-      get_dev_contrib "link-7.x-1.1.tar.gz"
-      get_dev_contrib "plupload-7.x-1.6.tar.gz"
-      get_dev_contrib "recaptcha-7.x-1.9.tar.gz"
-      get_dev_contrib "references-7.x-2.1.tar.gz"
-      get_dev_contrib "token-7.x-1.5.tar.gz"
-      get_dev_contrib "xmlsitemap-7.x-2.0-rc2.tar.gz"
-      upgrade_contrib_less
-    fi
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
-  fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_OPENPUBLISH installation completed"
-else
-  msg "DISTRO: $_F_OPENPUBLISH installation skipped"
-fi
-fi
-fi
-fi
-}
-
-
 openscholar_install () {
 ###---### OpenScholar
 #
@@ -2040,54 +1797,6 @@ init_this_distro_root
 msg "DISTRO: $_F_PANOPOLY installation completed"
 else
   msg "DISTRO: $_F_PANOPOLY installation skipped"
-fi
-fi
-fi
-fi
-}
-
-
-prosepoint_install () {
-###---### Prosepoint
-#
-_REAL_PRNAME="prosepoint"
-_SHRD_PLNAME="$_REAL_PRNAME-$_PROSEPOINT-$_SMALLCORE6"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_CLIENT_CORES" -ge "1" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ PPT ]] ; then
-if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
-echo " "
-if prompt_yes_no "$_F_PROSEPOINT - http://prosepoint.org" ; then
-true
-msg "DISTRO: $_F_PROSEPOINT installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D6_CORE_DIR" ] ; then
-      prepare_drupal6_core
-    fi
-    cd $_CORE
-    if [ -d "$_CORE/$_REAL_PRNAME-$_PROSEPOINT" ] ; then
-      mv $_CORE/$_REAL_PRNAME-$_PROSEPOINT $_CORE/$_REAL_PRNAME-$_PROSEPOINT-old
-    fi
-    get_distro_ext "$_REAL_PRNAME-$_PROSEPOINT.tar.gz"
-    mv $_CORE/$_REAL_PRNAME-$_PROSEPOINT $_SHRD_PLPATH
-    if [ -d "$_CORE/$_REAL_PRNAME-$_PROSEPOINT-old" ] ; then
-      mv $_CORE/$_REAL_PRNAME-$_PROSEPOINT-old $_CORE/$_REAL_PRNAME-$_PROSEPOINT
-    fi
-    rm -f -r $_SHRD_PLPATH/profiles/default
-    nocore_d6_dist_clean
-    sed -i "s/'robotstxt', 'path_alias_cache'/'path_alias_cache'/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
-  else
-    cd $_CORE
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
-  fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_PROSEPOINT installation completed"
-else
-  msg "DISTRO: $_F_PROSEPOINT installation skipped"
 fi
 fi
 fi
@@ -2523,17 +2232,6 @@ totem_install
 ubercart6_install
 ubercart7_install
 ubercart7_testing_install
-
-if [ "$_ALLOW_UNSUPPORTED" = "YES" ] && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
-  acquia_install
-  civicrm_m6_install
-  civicrm_m7_install
-  cod_install
-  ### drupal_edge_8_install
-  ### drupal8_install
-  openpublish_install
-  prosepoint_install
-fi
 
 
 ###---### Remove some unused core files.

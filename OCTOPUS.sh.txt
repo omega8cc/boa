@@ -153,16 +153,10 @@ _PHP_CLI_VERSION=5.3
 ### control which platforms will be installed,
 ### using the symbols listed below.
 ###
-### D8D ----------- Drupal 8 dev-tested (off)
-### D8E ----------- Drupal 8 dev-edge (off)
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
 ### AGV ----------- aGov
-### AQ6 ----------- Acquia D6 (off)
-### CM6 ----------- CiviCRM 4.1.6 D6 (off)
-### CM7 ----------- CiviCRM 4.3.7 D7 (off)
 ### CME ----------- Commerce v.2
-### COD ----------- Conference (off)
 ### CS7 ----------- Commons 7
 ### DCE ----------- Commerce v.1
 ### DCS ----------- Commons 6
@@ -178,9 +172,7 @@ _PHP_CLI_VERSION=5.3
 ### ODS ----------- Open Deals
 ### OOH ----------- Open Outreach
 ### OPC ----------- OpenPublic
-### OPH ----------- OpenPublish (off)
 ### OSR ----------- OpenScholar
-### PPT ----------- ProsePoint (off)
 ### PPY ----------- Panopoly
 ### RER ----------- Recruiter
 ### RST ----------- Restaurant
@@ -195,20 +187,6 @@ _PHP_CLI_VERSION=5.3
 ### _PLATFORMS_LIST="D7P D6P PPY RST OOH"
 ###
 _PLATFORMS_LIST="D7P D7S D7D D6P D6S D6D"
-
-
-###----------------------------------------###
-### UNSUPPORTED (off) DISTROS INSTALL      ###
-###----------------------------------------###
-###
-### If you wish to install also distros listed
-### above as (off), change the option below
-### to: _ALLOW_UNSUPPORTED=YES
-###
-### Note that this option works only with BOA
-### HEAD and not stable version.
-###
-_ALLOW_UNSUPPORTED=NO
 
 
 ###----------------------------------------###
@@ -994,7 +972,6 @@ octopus_cnf () {
     echo "_USER=\"$_USER\"" >> /root/.${_USER}.octopus.cnf
     echo "_MY_EMAIL=\"$_MY_EMAIL\"" >> /root/.${_USER}.octopus.cnf
     echo "_PLATFORMS_LIST=\"$_PLATFORMS_LIST\"" >> /root/.${_USER}.octopus.cnf
-    echo "_ALLOW_UNSUPPORTED=$_ALLOW_UNSUPPORTED" >> /root/.${_USER}.octopus.cnf
     echo "_AUTOPILOT=$_AUTOPILOT" >> /root/.${_USER}.octopus.cnf
     echo "_HM_ONLY=$_HM_ONLY" >> /root/.${_USER}.octopus.cnf
     echo "_O_CONTRIB_UP=$_O_CONTRIB_UP" >> /root/.${_USER}.octopus.cnf
@@ -1142,11 +1119,11 @@ octopus_cnf () {
         fi
       fi
     fi
+
     _ALLOW_UNSUPPORTED_TEST=$(grep _ALLOW_UNSUPPORTED /root/.${_USER}.octopus.cnf)
     if [[ "$_ALLOW_UNSUPPORTED_TEST" =~ "_ALLOW_UNSUPPORTED" ]] ; then
-      _DO_NOTHING=YES
-    else
-      echo "_ALLOW_UNSUPPORTED=$_ALLOW_UNSUPPORTED" >> /root/.${_USER}.octopus.cnf
+      sed -i "s/.*_ALLOW_UNSUPPORTED.*//g" /root/.${_USER}.octopus.cnf &> /dev/null
+      sed -i "/^$/d" /root/.${_USER}.octopus.cnf &> /dev/null
     fi
 
     _USE_STOCK_TEST=$(grep _USE_STOCK /root/.${_USER}.octopus.cnf)
@@ -1167,18 +1144,21 @@ octopus_cnf () {
     else
       echo "_DEL_OLD_EMPTY_PLATFORMS=$_DEL_OLD_EMPTY_PLATFORMS" >> /root/.${_USER}.octopus.cnf
     fi
+
     _DEL_OLD_BACKUPS_TEST=$(grep _DEL_OLD_BACKUPS /root/.${_USER}.octopus.cnf)
     if [[ "$_DEL_OLD_BACKUPS_TEST" =~ "_DEL_OLD_BACKUPS" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_DEL_OLD_BACKUPS=$_DEL_OLD_BACKUPS" >> /root/.${_USER}.octopus.cnf
     fi
+
     _DEL_OLD_TMP_TEST=$(grep _DEL_OLD_TMP /root/.${_USER}.octopus.cnf)
     if [[ "$_DEL_OLD_TMP_TEST" =~ "_DEL_OLD_TMP" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_DEL_OLD_TMP=$_DEL_OLD_TMP" >> /root/.${_USER}.octopus.cnf
     fi
+
     if [ "$_LD_DOM" = "YES" ] ; then
       _STRONG_PASSWORDS=YES
     fi
@@ -1188,12 +1168,14 @@ octopus_cnf () {
     else
       echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.${_USER}.octopus.cnf
     fi
+
     _SQL_CONVERT_TEST=$(grep _SQL_CONVERT /root/.${_USER}.octopus.cnf)
     if [[ "$_SQL_CONVERT_TEST" =~ "_SQL_CONVERT" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_SQL_CONVERT=$_SQL_CONVERT" >> /root/.${_USER}.octopus.cnf
     fi
+
     msg "NOTE! Please review all config options displayed below"
     sleep 3
     echo " "
@@ -1417,7 +1399,6 @@ action () {
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files &> /dev/null
     sed -i "s/EDIT_AGOV/$_AGOV/g"                           $Files &> /dev/null
     sed -i "s/EDIT_ALL_DISTRO/$_ALL_DISTRO/g"               $Files &> /dev/null
-    sed -i "s/EDIT_ALLOW_UNSUPPORTED/$_ALLOW_UNSUPPORTED/g" $Files &> /dev/null
     sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files &> /dev/null
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files &> /dev/null
     sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files &> /dev/null
@@ -2024,7 +2005,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   * Your Aegir system user for this instance will be $_USER
   * This Octopus will use PHP-CLI $_PHP_CLI_VERSION for all sites
   * This Octopus will use PHP-FPM $_PHP_FPM_VERSION $_FPM_USED
-  * This Octopus includes platforms: $_PLATFORMS_LIST / Unsupported: $_ALLOW_UNSUPPORTED
+  * This Octopus includes platforms: $_PLATFORMS_LIST
   * This Octopus options are listed as $_CLIENT_OPTION / $_CLIENT_SUBSCR / $_CLIENT_CORES C
 
 EOF
@@ -2035,7 +2016,7 @@ else
   * Your Aegir system user for this instance is $_USER
   * This Octopus will use PHP-CLI $_PHP_CLI_VERSION for all sites
   * This Octopus will use PHP-FPM $_PHP_FPM_VERSION $_FPM_USED
-  * This Octopus includes platforms: $_PLATFORMS_LIST / Unsupported: $_ALLOW_UNSUPPORTED
+  * This Octopus includes platforms: $_PLATFORMS_LIST
   * This Octopus options are listed as $_CLIENT_OPTION / $_CLIENT_SUBSCR / $_CLIENT_CORES C
 
 EOF

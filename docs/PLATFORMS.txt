@@ -14,16 +14,10 @@
 ### control which platforms will be installed,
 ### using the symbols listed below.
 ###
-### D8D ----------- Drupal 8 dev-tested (off)
-### D8E ----------- Drupal 8 dev-edge (off)
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
 ### AGV ----------- aGov
-### AQ6 ----------- Acquia D6 (off)
-### CM6 ----------- CiviCRM 4.1.6 D6 (off)
-### CM7 ----------- CiviCRM 4.3.7 D7 (off)
 ### CME ----------- Commerce v.2
-### COD ----------- Conference (off)
 ### CS7 ----------- Commons 7
 ### DCE ----------- Commerce v.1
 ### DCS ----------- Commons 6
@@ -39,9 +33,7 @@
 ### ODS ----------- Open Deals
 ### OOH ----------- Open Outreach
 ### OPC ----------- OpenPublic
-### OPH ----------- OpenPublish (off)
 ### OSR ----------- OpenScholar
-### PPT ----------- ProsePoint (off)
 ### PPY ----------- Panopoly
 ### RER ----------- Recruiter
 ### RST ----------- Restaurant
@@ -56,17 +48,3 @@
 ### _PLATFORMS_LIST="D7P D6P PPY RST OOH"
 ###
 _PLATFORMS_LIST="D7P D7S D7D D6P D6S D6D"
-
-
-###----------------------------------------###
-### UNSUPPORTED (off) DISTROS INSTALL      ###
-###----------------------------------------###
-###
-### If you wish to install also distros listed
-### above as (off), change the option below
-### to: _ALLOW_UNSUPPORTED=YES
-###
-### Note that this option works only with BOA
-### head and is ignored in stable.
-###
-_ALLOW_UNSUPPORTED=NO
