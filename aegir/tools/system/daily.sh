@@ -1459,7 +1459,7 @@ delete_this_platform () {
 
 check_old_empty_platforms () {
   if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
-    if [[ "$_HOST_TEST" =~ "v189q.nyc." ]] || [[ "$_HOST_TEST" =~ ".dd.o8.io" ]] ; then
+    if [[ "$_HOST_TEST" =~ "v189q.nyc." ]] || [[ "$_HOST_TEST" =~ ".qq.o8.io" ]] ; then
       _DO_NOTHING=YES
     else
       if [ "$_DEL_OLD_EMPTY_PLATFORMS" -gt "0" ] && [ ! -z "$_DEL_OLD_EMPTY_PLATFORMS" ] ; then

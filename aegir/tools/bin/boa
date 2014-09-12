@@ -132,12 +132,12 @@ octopus_install ()
       sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   /var/backups/OCTOPUS.sh.$user
     elif [ "$mode" = "none" ] ; then
       sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.$user
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=/g"      /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  /var/backups/OCTOPUS.sh.$user
     else
       sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   /var/backups/OCTOPUS.sh.$user
     fi
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
-      if [[ "$_CHECK_HOST" =~ ".dd.o8.io" ]] ; then
+      if [[ "$_CHECK_HOST" =~ ".qq.o8.io" ]] ; then
         _DO_NOTHING=YES
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   /var/backups/OCTOPUS.sh.$user
