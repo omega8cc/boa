@@ -3554,7 +3554,7 @@ barracuda_cnf () {
 run_aptitude_full_upgrade () {
   msg "INFO: Running aptitude full-upgrade, please wait..."
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
     msg "WARN: Installed keyring is broken, forced reinstall required"
     if [ "$_THIS_OS" = "Debian" ] ; then
       st_runner "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
@@ -3582,7 +3582,7 @@ run_aptitude_full_upgrade () {
 run_silent_aptitude_full_upgrade () {
   msg "INFO: Running silent aptitude full-upgrade, please wait..."
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
     msg "WARN: Installed keyring is broken, forced reinstall required"
     if [ "$_THIS_OS" = "Debian" ] ; then
       mrun "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
@@ -5760,7 +5760,7 @@ echo " "
 if [ "$_STATUS" = "INIT" ] ; then
   msg "INFO: Installing some basic tools now, please wait..."
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
     msg "WARN: Installed keyring is broken, forced reinstall required"
     if [ "$_THIS_OS" = "Debian" ] ; then
       apt-get install debian-keyring -f -y --force-yes --reinstall &> /dev/null
@@ -6473,7 +6473,7 @@ else
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
 fi
 _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
   msg "WARN: Installed keyring is broken, forced reinstall required"
   if [ "$_THIS_OS" = "Debian" ] ; then
     st_runner "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
@@ -6576,7 +6576,7 @@ else
   fi
   _APT_ELSE="netcat"
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
     msg "WARN: Installed keyring is broken, forced reinstall required"
     if [ "$_THIS_OS" = "Debian" ] ; then
       st_runner "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
@@ -6675,7 +6675,7 @@ install_percona_sql () {
   echo "deb http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
   echo "deb-src http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
     msg "WARN: Installed keyring is broken, forced reinstall required"
     if [ "$_THIS_OS" = "Debian" ] ; then
       st_runner "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
@@ -6738,7 +6738,7 @@ install_mariadb_sql () {
   echo "deb http://$_DB_SERVER_SRC/pub/mariadb/repo/$_DB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   echo "deb-src http://$_DB_SERVER_SRC/pub/mariadb/repo/$_DB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
     msg "WARN: Installed keyring is broken, forced reinstall required"
     if [ "$_THIS_OS" = "Debian" ] ; then
       st_runner "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
@@ -6794,7 +6794,7 @@ else
   _POSTFIX_TEST=`grep "fatal: open lock file" /var/log/mail.log 2>&1`
   if [[ "$_POSTFIX_TEST" =~ "fatal: open lock file" ]] ; then
     _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-    if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+    if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
       msg "WARN: Installed keyring is broken, forced reinstall required"
       if [ "$_THIS_OS" = "Debian" ] ; then
         mrun "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
