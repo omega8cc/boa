@@ -20,6 +20,7 @@
   * Scheduling tasks in batches is available also on the profile view
   * Each site has its own history of tasks available from the site view tab
   * You can schedule tasks also against platforms in batches
+  * You can safely apply db updates via 'Run db updates' task on any site
   * It is now possible to choose any existing alias or the main site name
     as a redirect target, but without the need to rename the site --
     it will just re-verify the site and create new vhost automatically
@@ -176,6 +177,7 @@
   * Make firewall management faster with randomized schedule.
   * Procs monitor runs every 3 seconds.
   * Run mysql_proc_control every 5 seconds for better results.
+  * You can safely apply db updates via 'Run db updates' task on any site.
 
 # Changes in this release:
 
