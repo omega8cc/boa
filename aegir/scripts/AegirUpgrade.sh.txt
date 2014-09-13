@@ -278,6 +278,12 @@ hostmaster_mi_up () {
   else
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y &> /dev/null
   fi
+  if [ -e "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
+    _THIS_HM_ROOT=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+    if [ -e "$_THIS_HM_ROOT/sites/all" ] && [ ! -e "$_THIS_HM_ROOT/sites/all/libraries" ] ; then
+      mkdir -p $_THIS_HM_ROOT/sites/all/{modules,themes,libraries} &> /dev/null
+    fi
+  fi
   export DEBIAN_FRONTEND=text
   mv -f $_ROOT/.drush/xts/security_review/foo.txt $_ROOT/.drush/xts/security_review/security_review.drush.inc  &> /dev/null
   mkdir -p $_ROOT/backups/system/old_hostmaster

@@ -8175,6 +8175,12 @@ if [ "$_STATUS" = "INIT" ] ; then
     touch /opt/tmp/status-Barracuda-FAIL
     exit 1
   fi
+  if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
+    _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+    if [ -e "$_THIS_HM_ROOT/sites/all" ] && [ ! -e "$_THIS_HM_ROOT/sites/all/libraries" ] ; then
+      mkdir -p $_THIS_HM_ROOT/sites/all/{modules,themes,libraries} &> /dev/null
+    fi
+  fi
   _U_HD="/var/aegir/.drush"
   chattr +i $_U_HD/php.ini &> /dev/null
   su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
@@ -8186,8 +8192,12 @@ if [ "$_STATUS" = "INIT" ] ; then
   mrun "sleep 5"
   msg "INFO: Running hosting-dispatch (3/3)..."
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
-  _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-  mkdir -p $_THIS_HM_ROOT/sites/all/{modules,themes,libraries} &> /dev/null
+  if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
+    _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+    if [ -e "$_THIS_HM_ROOT/sites/all" ] && [ ! -e "$_THIS_HM_ROOT/sites/all/libraries" ] ; then
+      mkdir -p $_THIS_HM_ROOT/sites/all/{modules,themes,libraries} &> /dev/null
+    fi
+  fi
   chown -R aegir:aegir $_THIS_HM_ROOT/sites/all &> /dev/null
   rm -f /var/aegir/$_AEGIR_SCRIPT
 
