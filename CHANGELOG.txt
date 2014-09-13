@@ -6,13 +6,14 @@
 
 # Release Notes:
 
-  This new BOA Edition introduces many new features, changes and improvements:
+  This major BOA Edition introduces many new features, changes and improvements:
 
   * BOA-2.3.0 comes with shiny Aegir 2.1 stable version, finally!
   * Super-easy to use New Relic support with per Octopus license key
   * Support for Drupal sites in subdirectories is enabled by default
   * Latest Drush 6 version is used also in the Aegir backend by default
   * DB credentials are no longer visible in settings.php, only in drushrc.php
+  * All existing vhosts must use wildcard in the Nginx 'listen' directive
   * The list of sites is searchable by name or installation profile
   * You can schedule tasks against filtered sites in batches
   * Scheduling tasks in batches is available also on the platform view
@@ -22,6 +23,39 @@
   * It is now possible to choose any existing alias or the main site name
     as a redirect target, but without the need to rename the site --
     it will just re-verify the site and create new vhost automatically
+
+  But what if you are not ready for this major upgrade and you would like
+  to have more time for testing, but still be able to run system upgrades,
+  thus effectively still using previous version 2.2.9 ?
+
+#-### Legacy mode for Install and Upgrade moves to 2.2.x branch
+
+  From now on, the 'legacy' install and upgrade mode available in all meta-
+  installers will utilize branch 2.2.x instead of deprecated 2.1.x series.
+
+  This means that starting with meta installers updated to use BOA-2.3.0
+  version you can use commands like shown below to update Barracuda, Octopus
+  and also to install more Octopus instances, while still using version 2.2.9:
+
+  $ boa in-legacy public server.mydomain.org my@email o1
+  $ barracuda up-legacy system
+  $ octopus up-legacy o1
+  $ boa in-legacy public server.mydomain.org my@email o2 mini
+  etc.
+
+  Remember to update your meta-installers first!
+
+  $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+
+  Note also that if you will upgrade to current 'stable', it is not possible
+  to downgrade back to the 'old stable' with 'legacy' mode, so please proceed
+  with care!
+
+  Remember also that current legacy version will not receive any further
+  updates, even for security issues (besides those provided as packages by
+  your OS vendor - Debian or Ubuntu, which will still work), because it is
+  already different enough from current 2.3.0 stable, so we can't reliably
+  maintain both with working upgrade path.
 
 #-### Caveats: This upgrade will force wildcard in the Nginx 'listen' directive
 
@@ -123,11 +157,6 @@
   where '53' is related to PHP version defined via _PHP_FPM_VERSION in your
   /root/.barracuda.cnf file. Note that while variable has a dot, the socket
   name doesn't.
-
-#-### Legacy mode moves to 2.2.x branch
-
-  From now on, the 'legacy' install and upgrade mode available in all meta-
-  installers will utilize branch 2.2.x instead of deprecated 2.1.x series.
 
 # Updated Octopus platforms:
 
