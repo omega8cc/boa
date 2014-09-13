@@ -724,6 +724,9 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   $_DRUSHCMD @hostmaster cc all &> /dev/null
 fi
 
+###---### Make sure there are no ghost or disabled vhost which still listen on IP.
+#
+sed -i "s/listen .*/listen        \*:80;/g" $_ROOT/config/server_master/nginx/vhost.d/*
 
 ###---### Aegir global.inc file.
 #
