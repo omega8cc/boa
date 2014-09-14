@@ -9105,6 +9105,13 @@ else
   sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/pre.d/*.conf                                      &> /dev/null
   sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/vhost.d/*                                         &> /dev/null
 
+  ###
+  ### Nginx: Convert all vhosts to wildcard mode on Barracuda upgrade
+  ### to avoid extended downtime until all Octopus instances will receive
+  ### full upgrade, if IP based listen directive was used before.
+  ###
+  sed -i "s/listen .*/listen        \*:80;/g"  /data/disk/*/config/server_master/nginx/vhost.d/*                    &> /dev/null
+
   sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf &> /dev/null
   sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf   &> /dev/null
   sed -i "s/OctopusNCookie/AegirCookie/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf      &> /dev/null
