@@ -78,7 +78,7 @@ _CLIENT_CORES=8
 ### _PHP_FPM_VERSION=5.3
 ### _PHP_CLI_VERSION=5.3
 ### _DEBUG_MODE=NO
-### _AEGIR_VERSION=HEAD
+### _AEGIR_VERSION=BOA-2.3.1
 ### _DNS_SETUP_TEST=NO
 ### _THIS_DB_HOST=localhost
 ### _LOCAL_NETWORK_IP="127.0.1.1"
@@ -269,7 +269,7 @@ _MY_OWNIP=""
 ### The HEAD can be occasionally broken
 ### and should be used **only** for testing!
 ###
-_AEGIR_VERSION=HEAD
+_AEGIR_VERSION=BOA-2.3.1
 
 
 ###----------------------------------------###
@@ -604,7 +604,7 @@ _RESERVED_RAM=0
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.1-dev
+_INSTALLER_VERSION=BOA-2.3.1
 _BRANCH_BOA=2.3.x-dev
 _BRANCH_PROVISION=2.3.x-dev
 
@@ -1695,7 +1695,7 @@ _THIS_HOST=`uname -n`
 if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
   _PHP_FPM_VERSION=5.3
   _PHP_CLI_VERSION=5.3
-  _AEGIR_VERSION=HEAD
+  _AEGIR_VERSION=BOA-2.3.1
   _DEBUG_MODE=NO
   _DNS_SETUP_TEST=NO
   _THIS_DB_HOST=localhost
