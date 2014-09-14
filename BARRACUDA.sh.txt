@@ -9044,36 +9044,36 @@ if [ "$_STATUS" = "INIT" ] ; then
   mrun "sleep 8"
   mrun "service nginx restart" &> /dev/null
 else
-  if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-    sed -i "s/.*listen.*:80;/  listen                       \*:80;/g" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
-    sed -i "s/.*listen.*:80;/  listen                       \*:80;/g" /var/aegir/config/server_master/nginx/vhost.d/chive.*    &> /dev/null
-    sed -i "s/.*listen.*:80;/  listen                       \*:80;/g" /var/aegir/config/server_master/nginx/vhost.d/cgp.*      &> /dev/null
-    sed -i "s/.*listen.*:443/  listen                       \*:443/g" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
-    sed -i "s/.*listen.*:443/  listen                       \*:443/g" /var/aegir/config/server_master/nginx/vhost.d/chive.*    &> /dev/null
-    sed -i "s/.*listen.*:443/  listen                       \*:443/g" /var/aegir/config/server_master/nginx/vhost.d/cgp.*      &> /dev/null
-    sed -i "s/SSLv3 TLSv1;/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/HIGH:\!ADH:\!MD5;/RC4:HIGH:\!aNULL:\!MD5;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf                           &> /dev/null
-    sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_master/nginx/vhost.d/*                              &> /dev/null
-    sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf                   &> /dev/null
-    sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_master/nginx/vhost.d/*                      &> /dev/null
-    sed -i "s/.*proxy_buffers .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf                       &> /dev/null
-    sed -i "s/.*proxy_buffers .*//g" /var/aegir/config/server_master/nginx/vhost.d/*                          &> /dev/null
-    sed -i "s/.*proxy_busy_buffers_size .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf             &> /dev/null
-    sed -i "s/.*proxy_busy_buffers_size .*//g" /var/aegir/config/server_master/nginx/vhost.d/*                &> /dev/null
-    sed -i "s/.*proxy_temp_file_write_size .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf          &> /dev/null
-    sed -i "s/.*proxy_temp_file_write_size .*//g" /var/aegir/config/server_master/nginx/vhost.d/*             &> /dev/null
-    sed -i "s/.*proxy_buffering .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf                     &> /dev/null
-    sed -i "s/.*proxy_buffering .*//g" /var/aegir/config/server_master/nginx/vhost.d/*                        &> /dev/null
-    sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;\n    proxy_buffering            off;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;\n    proxy_buffering            off;/g" /var/aegir/config/server_master/nginx/vhost.d/*    &> /dev/null
-    sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/pre.d/*.conf                               &> /dev/null
-    sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/*                                  &> /dev/null
-    sed -i "s/add_header Vary .*//g" /var/aegir/config/server_master/nginx.conf                               &> /dev/null
+  if [ -e "/var/aegir/config" ] ; then
+    sed -i "s/.*listen.*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
+    sed -i "s/.*listen.*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/chive.*    &> /dev/null
+    sed -i "s/.*listen.*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
+    sed -i "s/.*listen.*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
+    sed -i "s/.*listen.*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/chive.*    &> /dev/null
+    sed -i "s/.*listen.*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
+    sed -i "s/SSLv3 TLSv1;/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+    sed -i "s/HIGH:\!ADH:\!MD5;/RC4:HIGH:\!aNULL:\!MD5;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+    sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                           &> /dev/null
+    sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/vhost.d/*                              &> /dev/null
+    sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                   &> /dev/null
+    sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_*/nginx/vhost.d/*                      &> /dev/null
+    sed -i "s/.*proxy_buffers .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                       &> /dev/null
+    sed -i "s/.*proxy_buffers .*//g" /var/aegir/config/server_*/nginx/vhost.d/*                          &> /dev/null
+    sed -i "s/.*proxy_busy_buffers_size .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf             &> /dev/null
+    sed -i "s/.*proxy_busy_buffers_size .*//g" /var/aegir/config/server_*/nginx/vhost.d/*                &> /dev/null
+    sed -i "s/.*proxy_temp_file_write_size .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf          &> /dev/null
+    sed -i "s/.*proxy_temp_file_write_size .*//g" /var/aegir/config/server_*/nginx/vhost.d/*             &> /dev/null
+    sed -i "s/.*proxy_buffering .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                     &> /dev/null
+    sed -i "s/.*proxy_buffering .*//g" /var/aegir/config/server_*/nginx/vhost.d/*                        &> /dev/null
+    sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;\n    proxy_buffering            off;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+    sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;\n    proxy_buffering            off;/g" /var/aegir/config/server_*/nginx/vhost.d/*    &> /dev/null
+    sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*.conf                               &> /dev/null
+    sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/vhost.d/*                                  &> /dev/null
+    sed -i "s/add_header Vary .*//g" /var/aegir/config/server_*/nginx.conf                               &> /dev/null
   fi
   if [ "$_NGINX_SPDY" = "YES" ] ; then
-    sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/vhost.d/*    &> /dev/null
+    sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+    sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/vhost.d/*    &> /dev/null
   fi
   _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] &&[ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
@@ -9084,34 +9084,38 @@ else
     _ALLOW_NGINX_FORWARD_SECRECY=NO
   fi
   if [ "$_ALLOW_NGINX_FORWARD_SECRECY" = "YES" ] ; then
-    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf  &> /dev/null
-    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/vhost.d/*     &> /dev/null
-    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf        &> /dev/null
-    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/vhost.d/*           &> /dev/null
+    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_*/nginx/pre.d/*.conf  &> /dev/null
+    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_*/nginx/vhost.d/*     &> /dev/null
+    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_*/nginx/pre.d/*.conf        &> /dev/null
+    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_*/nginx/vhost.d/*           &> /dev/null
   fi
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/xts/provision_cdn/Provision/Config/*.tpl.php                        &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php                 &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php             &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf                    &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/config/includes/*.conf                                                     &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/config/server_master/nginx.conf                                            &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/config/server_master/nginx/vhost.d/*                                       &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/*.tpl.php                          &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php                   &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php               &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf                      &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/config/includes/*.conf                                                       &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx.conf                                              &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/pre.d/*.conf                                      &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/vhost.d/*                                         &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/xts/provision_cdn/Provision/Config/*.tpl.php                   &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php            &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php        &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf               &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/config/includes/*.conf                                                &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/config/server_*/nginx.conf                                            &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/config/server_*/nginx/vhost.d/*                                       &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/*.tpl.php                     &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php              &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php          &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf                 &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/config/includes/*.conf                                                  &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/config/server_*/nginx.conf                                              &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/config/server_*/nginx/pre.d/*.conf                                      &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/config/server_*/nginx/vhost.d/*                                         &> /dev/null
 
   ###
   ### Nginx: Convert all vhosts to wildcard mode on Barracuda upgrade
   ### to avoid extended downtime until all Octopus instances will receive
   ### full upgrade, if IP based listen directive was used before.
   ###
-  sed -i "s/listen .*/listen        \*:80;/g"  /data/disk/*/config/server_master/nginx/vhost.d/*                    &> /dev/null
-  sed -i "s/listen .*/listen        \*:80;/g"  /var/aegir/config/*/nginx/vhost.d/*                                  &> /dev/null
+  sed -i "s/.*listen.*127.0.0.1:80;.*//g"      /var/aegir/config/server_*/nginx.conf              &> /dev/null
+  sed -i "s/listen .*/listen        \*:80;/g"  /var/aegir/config/server_*/nginx.conf              &> /dev/null
+  sed -i "s/.*listen.*127.0.0.1:80;.*//g"      /data/disk/*/config/server_*/nginx.conf            &> /dev/null
+  sed -i "s/listen .*/listen        \*:80;/g"  /data/disk/*/config/server_*/nginx.conf            &> /dev/null
+  sed -i "s/listen .*/listen        \*:80;/g"  /data/disk/*/config/server_*/nginx/vhost.d/*       &> /dev/null
+  sed -i "s/param db_port.*/param db_port   3306;/g" /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
 
   sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf &> /dev/null
   sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf   &> /dev/null
@@ -9119,8 +9123,8 @@ else
   sed -i "s/OctopusNCookie/AegirCookie/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
   sed -i "s/OctopusNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf      &> /dev/null
   sed -i "s/OctopusNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
-  sed -i "s/60/180/g" /var/aegir/config/server_master/nginx.conf  &> /dev/null
-  sed -i "s/300/180/g" /var/aegir/config/server_master/nginx.conf &> /dev/null
+  sed -i "s/60/180/g" /var/aegir/config/server_*/nginx.conf  &> /dev/null
+  sed -i "s/300/180/g" /var/aegir/config/server_*/nginx.conf &> /dev/null
   validate_public_ip &> /dev/null
   _CRON_IP=${_THISHTIP//[^0-9.]/}
   if [ ! -e "/root/.local.IP.list" ] ; then

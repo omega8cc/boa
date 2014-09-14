@@ -726,7 +726,10 @@ fi
 
 ###---### Make sure there are no ghost or disabled vhost which still listen on IP.
 #
-sed -i "s/listen .*/listen        \*:80;/g" $_ROOT/config/server_master/nginx/vhost.d/*
+sed -i "s/.*listen.*127.0.0.1:80;.*//g"            $_ROOT/config/server_*/nginx.conf
+sed -i "s/listen .*/listen        \*:80;/g"        $_ROOT/config/server_*/nginx.conf
+sed -i "s/param db_port.*/param db_port   3306;/g" $_ROOT/config/server_*/nginx/vhost.d/*
+sed -i "s/listen .*/listen        \*:80;/g"        $_ROOT/config/server_*/nginx/vhost.d/*
 
 ###---### Aegir global.inc file.
 #
