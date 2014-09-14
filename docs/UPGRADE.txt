@@ -7,6 +7,7 @@
     Edition yet, don't use any partial upgrade modes explained further below.
     Once new BOA Stable is released, you must run *full* upgrades with commands:
 
+    $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
     $ barracuda up-stable
     $ octopus up-stable all both
 
@@ -17,6 +18,7 @@
     will complete:
 
     $ screen
+    $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
     $ barracuda up-stable log
     $ octopus up-stable all both log
 
