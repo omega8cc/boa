@@ -2,7 +2,7 @@
 ### Stable BOA-2.3.1 Release - Full Edition
 ### Date: Sun Sep 14 15:53:25 SGT 2014
 ### Includes Aegir 2.1 with improvements
-### Latest hotfix added on: Mon Sep 15 01:06:55 SGT 2014
+### Latest hotfix added on: Mon Sep 15 01:51:51 SGT 2014
 
 # Release Notes:
 
@@ -377,11 +377,13 @@
   * Issue #405 - Installer hangs due to yes/no dialog - "Untrusted packages"
   * Issue #406 - Force keyring reinstall also upon 'GPG error'.
   * Issue #407 - Fix for 'username is already taken' error on a local VM install
+  * Issue #408 - Fix for multiple funny typos. Thanks ar-jan!
   * Make it clear that subdomain and subdirectory name must be identical.
   * Make sure that keys subdirectory exists to avoid active platforms cleanup.
   * Make the PHP-FPM processes monitor less aggressive by default.
   * Nginx: Add config symlinks only on legacy instances.
   * Nginx: Add cron access support for subdir sites.
+  * Nginx: Convert all vhosts to wildcard mode on Barracuda upgrade.
   * Nginx: Disable monitoring for POST requests related to cart/checkout URI.
   * Nginx: Do not touch nginx_wild_ssl.conf during this upgrade.
   * Nginx: Remove deprecated code and config templates.
