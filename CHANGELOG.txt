@@ -394,7 +394,6 @@
   * Switch branch on the fly and add support for Aegir vanilla mode.
   * Sync /tmp access restrictions.
   * The hosting_civicrm_cron is now a submodule and should be also auto-enabled.
-  * The hosting_civicrm_cron is now a submodule and should be also auto-enabled.
   * There is no need to force backend clone from GitHub on initial upgrade.
   * Update for the Hostmaster welcome page.
   * Update FPM monitoring settings.
