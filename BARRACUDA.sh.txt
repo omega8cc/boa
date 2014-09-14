@@ -9045,7 +9045,6 @@ if [ "$_STATUS" = "INIT" ] ; then
   mrun "service nginx restart" &> /dev/null
 else
   if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-    sed -i "s/.*server.*:80;/   server  localhost:80;/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf
     sed -i "s/.*listen.*:80;/  listen                       \*:80;/g" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
     sed -i "s/.*listen.*:80;/  listen                       \*:80;/g" /var/aegir/config/server_master/nginx/vhost.d/chive.*    &> /dev/null
     sed -i "s/.*listen.*:80;/  listen                       \*:80;/g" /var/aegir/config/server_master/nginx/vhost.d/cgp.*      &> /dev/null
