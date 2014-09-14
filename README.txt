@@ -128,6 +128,8 @@ NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
 * Limited Shell, SFTP and FTPS accounts per Aegir Client with per site access.
 * Drush access on command line in all shell accounts.
 * Drush Make access on command line for main shell account only.
+* Support for New Relic monitoring with per Octopus instance license key.
+* Solr 4 cores can be added/updated/deleted via site level INI settings.
 * HTTPS access with self-signed certificate for all hosted sites.
 * Magic Speed Booster cache, working like a Boost + AuthCache, but per user.
 * Entry level XSS built-in protection on the Nginx level.
