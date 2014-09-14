@@ -1,29 +1,44 @@
 
-### Stable BOA-2.3.0 Release - Full Edition
-### Date: Mon Sep  8 08:42:01 PDT 2014
+### Stable BOA-2.3.1 Release - Full Edition
+### Date: Sun Sep 14 15:53:25 SGT 2014
 ### Includes Aegir 2.1 with improvements
-### Latest hotfix added on: Wed Sep 10 05:09:34 PDT 2014
 
 # Release Notes:
 
-  This major BOA Edition introduces many new features, changes and improvements:
+  This major BOA Edition introduces many new features, changes and fixes.
 
-  * BOA-2.3.0 comes with shiny Aegir 2.1 stable version, finally!
-  * Super-easy to use New Relic support with per Octopus license key
+  You should carefully read about some caveats furter below **before** running
+  this major upgrade on your system. Please make a fresh system backup first.
+
+  @=> Key new features:
+
+  * BOA-2.3.1 comes with shiny Aegir 2.1 stable version, finally!
   * Support for Drupal sites in subdirectories is enabled by default
-  * Latest Drush 6 version is used also in the Aegir backend by default
-  * DB credentials are no longer visible in settings.php, only in drushrc.php
-  * All existing vhosts must use wildcard in the Nginx 'listen' directive
+  * Solr 4 cores can be added/updated/deleted via site level INI settings
+  * Super-easy to use New Relic support with per Octopus license key
+  * Ability to add new Octopus instances with new, simple command synatx
+
+  @=> Aegir control panel new features:
+
   * The list of sites is searchable by name or installation profile
   * You can schedule tasks against filtered sites in batches
   * Scheduling tasks in batches is available also on the platform view
   * Scheduling tasks in batches is available also on the profile view
-  * Each site has its own history of tasks available from the site view tab
+  * Each site has its own tasks list available from the site view tab
   * You can schedule tasks also against platforms in batches
   * You can safely apply db updates via 'Run db updates' task on any site
   * It is now possible to choose any existing alias or the main site name
     as a redirect target, but without the need to rename the site --
     it will just re-verify the site and create new vhost automatically
+
+  @=> Other important changes:
+
+  * Support for PHP 5.2 has been officially deprecated
+  * The www53 PHP-FPM pool has been switched from port to default socket mode
+  * All existing vhosts must use wildcard in the Nginx 'listen' directive
+  * Legacy mode for Install and Upgrade moves to 2.2.x branch
+  * DB credentials are no longer in settings.php, only in drushrc.php
+  * Latest Drush 6 version is used in the Aegir backend by default
 
   But what if you are not ready for this major upgrade and you would like
   to have more time for testing, but still be able to run system upgrades,
@@ -34,7 +49,7 @@
   From now on, the 'legacy' install and upgrade mode available in all meta-
   installers will utilize branch 2.2.x instead of deprecated 2.1.x series.
 
-  This means that starting with meta installers updated to use BOA-2.3.0
+  This means that starting with meta installers updated to use BOA-2.3.1
   version you can use commands like shown below to update Barracuda, Octopus
   and also to install more Octopus instances, while still using version 2.2.9:
 
@@ -55,7 +70,7 @@
   Remember also that current legacy version will not receive any further
   updates, even for security issues (besides those provided as packages by
   your OS vendor - Debian or Ubuntu, which will still work), because it is
-  already different enough from current 2.3.0 stable, so we can't reliably
+  already different enough from current 2.3.1 stable, so we can't reliably
   maintain both with working upgrade path.
 
 #-### Caveats: This upgrade will force wildcard in the Nginx 'listen' directive
@@ -82,15 +97,45 @@
     $ sed -i "s/.*listen.*:443/  listen  \*:443/g" /path/to/vhost.file
     $ service nginx reload
 
+#-### Ability to add new Octopus instances with new, simple command synatx
+
+  It is now possible to add stable Octopus instances w/o forcing Barracuda
+  upgrade, plus optionally with no platforms added by default -- usage:
+
+    $ boa {in-octopus} {email} {o2} {mini|max|none}
+
+#-### The www53 PHP-FPM pool has been switched from port to default socket mode.
+
+  Note that we are breaking backward compatibility here, so it will cause
+  downtime on upgrade from any too old BOA version, until you will upgrade also
+  Octopus instance(s) and update any other non-standard vhosts or includes
+  still using legacy port mode for 'fastcgi_pass' Nginx directive.
+
+  If you have 'fastcgi_pass 127.0.0.1:9090;' in any custom vhost or Nginx
+  include file on the Octopus instance, you should replace it with:
+
+    fastcgi_pass unix:/var/run/o1.fpm.socket;
+
+  where 'o1' is your corresponding Octopus system username.
+
+  Note that if you have custom vhosts or includes in the Aegir Master Instance,
+  you should instead replace 'fastcgi_pass 127.0.0.1:9090;' with:
+
+    fastcgi_pass unix:/var/run/www53.fpm.socket;
+
+  where '53' is related to PHP version defined via _PHP_FPM_VERSION in your
+  /root/.barracuda.cnf file. Note that while variable has a dot, the socket
+  name doesn't.
+
 #-### Support for PHP 5.2 has been officially deprecated
 
-  While Barracuda 2.3.0 can continue to run and even upgrade if needed also
+  While Barracuda 2.3.1 can continue to run and even upgrade if needed also
   the very old PHP 5.2 version, only Octopus instances running at least PHP 5.3
-  or newer in both FPM and CLI mode can be upgraded to Octopus 2.3.0 Edition.
+  or newer in both FPM and CLI mode can be upgraded to Octopus 2.3.1 Edition.
 
   If you are still using PHP 5.2 in your Octopus instance, you will not
   receive Aegir nor Drupal Platforms upgrade, but the Barracuda part of your
-  system will receive upgrade to 2.3.0 anyway, so it will be ready to support
+  system will receive upgrade to 2.3.1 anyway, so it will be ready to support
   your outdated Octopus instance upgrade as soon as you will switch it to
   modern and secure PHP version -- which is easy!
 
@@ -129,35 +174,76 @@
   not required on Omega8.cc hosted service, where New Relic agent is already
   pre-installed for you.
 
-#-### Ability to add new Octopus instances with new, simple command synatx
+#-### Solr 4 cores can be added/updated/deleted via site level INI settings
 
-  It is now possible to add stable Octopus instances w/o forcing Barracuda
-  upgrade, plus optionally with no platforms added by default -- usage:
+;;
+;;  This option allows to activate Solr 4 core configuration for the site.
+;;
+;;  Only Solr 4 powered by Jetty server is available. Supported integration
+;;  modules are limited to latest versions of either search_api_solr (D7 only)
+;;  or apachesolr (will use Drupal core specific version automatically).
+;;
+;;  Currently used versions are listed below:
+;;
+;;    http://ftp.drupal.org/files/projects/search_api_solr-7.x-1.6.tar.gz
+;;    http://ftp.drupal.org/files/projects/apachesolr-7.x-1.7.tar.gz
+;;    http://ftp.drupal.org/files/projects/apachesolr-6.x-3.0-rc2.tar.gz
+;;
+;;  Note that you still need to add preferred integration module along with
+;;  any its dependencies in your codebase since this feature doesn't modify
+;;  your platform or site - it only creates Solr core with configuration
+;;  files provided by integration module: schema.xml and solrconfig.xml
+;;
+;;  This setting affects only the running daily maintenance system behaviour,
+;;  so you need to wait until next morning to be able to use new Solr 4 core.
+;;
+;;  Once the Solr core is ready to use, you will find a special file in your
+;;  site directory: sites/foo.com/solr.php with details on how to access
+;;  your new Solr core with correct credentials.
+;;
+;;  The site with enabled Solr core can be safely migrated between platforms,
+;;  integration module can be moved within your codebase and even upgraded,
+;;  as long as it is using compatible schema.xml and solrconfig.xml files.
+;;
+;;  Supported values for the solr_integration_module variable:
+;;
+;;    apachesolr
+;;    search_api_solr
+;;
+;;  To delete existing Solr core simply comment out this line.
+;;  The system will cleanly delete existing Solr core next morning.
+;;
+;solr_integration_module = NO
 
-    $ boa {in-octopus} {email} {o2} {mini|max|none}
+;;
+;;  This option allows to auto-update your Solr 4 core configuration files:
+;;
+;;    schema.xml
+;;    solrconfig.xml
+;;
+;;  If there is new release for either apachesolr or search_api_solr, your
+;;  Solr core will not be automatically upgraded to use newer schema.xml and
+;;  solrconfig.xml, unless allowed by switching solr_update_config to YES.
+;;
+;;  This option will be ignored if you will set solr_custom_config to YES.
+;;
+;solr_update_config = NO
 
-#-### The www53 PHP-FPM pool has been switched from port to default socket mode.
+;;
+;;  This option allows to protect custom Solr 4 core configuration files:
+;;
+;;    schema.xml
+;;    solrconfig.xml
+;;
+;;  To use customized version of either schema.xml or solrconfig.xml, you need
+;;  to switch solr_custom_config to YES below and if you are using hosted
+;;  Aegir service, submit a support ticket to get these files updated with
+;;  your custom versions. On self-hosted BOA simply update these files directly.
+;;
+;;  Please remember to use Solr 4 compatible config files.
+;;
+;solr_custom_config = NO
 
-  Note that we are breaking backward compatibility here, so it will cause
-  downtime on upgrade from any too old BOA version, until you will upgrade also
-  Octopus instance(s) and update any other non-standard vhosts or includes
-  still using legacy port mode for 'fastcgi_pass' Nginx directive.
-
-  If you have 'fastcgi_pass 127.0.0.1:9090;' in any custom vhost or Nginx
-  include file on the Octopus instance, you should replace it with:
-
-    fastcgi_pass unix:/var/run/o1.fpm.socket;
-
-  where 'o1' is your corresponding Octopus system username.
-
-  Note that if you have custom vhosts or includes in the Aegir Master Instance,
-  you should instead replace 'fastcgi_pass 127.0.0.1:9090;' with:
-
-    fastcgi_pass unix:/var/run/www53.fpm.socket;
-
-  where '53' is related to PHP version defined via _PHP_FPM_VERSION in your
-  /root/.barracuda.cnf file. Note that while variable has a dot, the socket
-  name doesn't.
 
 # Updated Octopus platforms:
 
@@ -165,6 +251,7 @@
   Guardr 1.12 ------------------ https://drupal.org/project/guardr
   Open Academy 1.1 ------------- https://drupal.org/project/openacademy
   Restaurant 1.0-b9 ------------ https://drupal.org/project/restaurant
+  Ubercart 3.7 ----------------- https://drupal.org/project/ubercart
 
 # New features and enhancements in this release:
 
@@ -172,6 +259,7 @@
   * Add default aggressive php-fpm monitoring + /root/.no.fpm.cpu.limit.cnf
   * Allow to define always disabled modules via _MODULES_FORCE variable.
   * Better wait limits on connection testing for slow network / long distance.
+  * Issue #1927522 - Add support for easy Solr cores self-management.
   * Issue #362 - Add imageapi_optimize binaries via IMG in _XTRAS_LIST
   * Issue #376 - Add New Relic support with per Octopus instance license key.
   * Make firewall management faster with randomized schedule.
@@ -181,12 +269,18 @@
 
 # Changes in this release:
 
+  * DB credentials are no longer visible in settings.php, only in drushrc.php
   * Delete default profiles in the hostmaster platform.
   * Disable _DEBUG_MODE if not enabled on the fly.
-  * Drush: Upgrade command line version 6 to mini-6-06-09-2014
+  * Disable newrelic-sysmond unless /root/.enable.newrelic.sysmond.cnf exists.
+  * Drush: Upgrade command line version 6 to mini-6-14-09-2014
   * Nginx: Remove deprecated code - _HTTP_WILDCARD is already used by default.
   * Nginx: Use limit_conn protection only for known dynamic requests.
+  * Redis Integration Module (cache_backport): Update to version 6.x-1.0-rc2
+  * Redis Integration Module: Update to version mod-12-09-2014
+  * Remove _ALLOW_UNSUPPORTED legacy and no longer working properly feature.
   * Remove dependency on Update Manager globally.
+  * Remove deprecated multi-instance labels in the New Relic configuration.
   * Replace old hosting_civicrm_cron with newer hosting_civicrm module.
   * Set hosting_default_profile to 'minimal' to improve Ubercart 3 visibility.
   * The www53 PHP-FPM pool has been switched from port to default socket mode.
@@ -196,6 +290,9 @@
 
   * cURL 7.38.0 (if installed from sources)
   * Git 2.1.0 (if installed from sources)
+  * Jetty 7.6.16.v20140903
+  * Jetty 8.1.16.v20140903
+  * Jetty 9.2.3.v20140905
   * PHP 5.3.29 EOL! Please read: http://php.net/archive/2014.php#id2014-08-14-1
   * PHP 5.4.32
   * PHP 5.5.16
@@ -205,6 +302,7 @@
 
   * Add cleanup for _GIT_FORCE_REINSTALL if added in .barracuda.cnf
   * Add missing drush cache-clear drush to improve upgrade path.
+  * Add wheezy to the exceptions list where required.
   * Allow to clear drush cache without directory restrictions.
   * Always set correct TMP path for supported users.
   * Cleanup for cron pid files in user specific .tmp dirs.
@@ -215,10 +313,12 @@
   * Do not allow to install SSH from sources on Trusty to avoid problems.
   * Do not skip daily.sh during barracuda system only update.
   * Eldir theme: Use max width for buttons, if possible.
+  * Explain why installing RVM may take longer than expected.
   * Fix cleanup for drush aliases in sub-accounts.
   * Fix daily cleanup for user specific .tmp directories.
   * Fix docs/HINTS.txt
   * Fix for broken mariadb.list
+  * Fix for broken, way too aggressive PHP-FPM monitoring.
   * Fix for ghost dirs cleanup.
   * Fix for ghost vhosts cleanup.
   * Fix for missing symlinks to existing platforms.
@@ -231,7 +331,6 @@
   * Force cURL rebuild if installed with outdated OpenSSL version.
   * Guard against destructive or insecure tasks run on the hostmaster site.
   * Improve cleanup for empty platforms directories.
-  * Improve convert procs monitoring.
   * Improve monitoring to protect against convert trying to overload the system.
   * Issue #2330781 - Use Drush dt() wrapper instead of not always available t()
   * Issue #357 - Fix the logic for Git (re)install from sources.
@@ -243,10 +342,23 @@
   * Issue #373 - Too restrictive lshell forbidden list breaks drush sql-sync.
   * Issue #380 - Nameserver / pdnsd problem -- Fixes also Issue #2007990.
   * Issue #381 - Zend OPcache forced adds useless noise in the log.
+  * Issue #388 - Version 6.x-2.x of provision_civicrm requires hosting_civicrm
   * Issue #389 - hosting_civicrm breaks site install form with confusing error.
   * Issue #390 - Duplicate platforms nodes are created after upgrade to 2.3.0
+  * Issue #395 - Validate username isn't reserved before running install script.
+  * Issue #396 - Locale isn't getting set properly.
+  * Issue #397 - Not actually prompted for platforms during installation.
+  * Issue #398 - Make locales setup/fix for Debian always OS compatible.
+  * Issue #399 - The hitimes gem needs to be pre-installed to support Omega4.
+  * Issue #400 - CiviCRM is not installed on 2.3.0
+  * Issue #401 - Create sites/all/* subdirs in Hostmaster early enough.
+  * Issue #402 - Fix for ghost or disabled vhosts which still listen on IP.
+  * Issue #405 - Installer hangs due to yes/no dialog - "Untrusted packages"
+  * Issue #406 - Force keyring reinstall also upon 'GPG error'.
+  * Issue #407 - Fix for 'username is already taken' error on a local VM install
   * Make it clear that subdomain and subdirectory name must be identical.
   * Make sure that keys subdirectory exists to avoid active platforms cleanup.
+  * Make the PHP-FPM processes monitor less aggressive by default.
   * Nginx: Add config symlinks only on legacy instances.
   * Nginx: Add cron access support for subdir sites.
   * Nginx: Disable monitoring for POST requests related to cart/checkout URI.
@@ -256,6 +368,7 @@
   * Nginx: Update unified configuration templates in Provision to unfork BOA.
   * Nginx: Update vhosts templates to match BOA improvements.
   * PHP: Avoid unintended duplicate rebuilds.
+  * PHP: Sync disable_functions list.
   * Protect sites/all/drush
   * Provision: Backport provision_hosting_feature_enabled()
   * Provision: Remove legacy subdir code and update checks.
@@ -264,6 +377,7 @@
   * Remove no longer needed limreq global fixes.
   * Remove no longer needed/used contrib updates.
   * Remove redundant file_exists() if is_readable() is also used.
+  * Replace old hosting_civicrm_cron with newer hosting_civicrm module.
   * Restart pdnsd before running barracuda upgrade.
   * Restore BOA formatting for tasks log to improve readability.
   * Restore BOA naming convention and docs in Hostmaster.
@@ -280,10 +394,12 @@
   * Switch branch on the fly and add support for Aegir vanilla mode.
   * Sync /tmp access restrictions.
   * The hosting_civicrm_cron is now a submodule and should be also auto-enabled.
+  * The hosting_civicrm_cron is now a submodule and should be also auto-enabled.
   * There is no need to force backend clone from GitHub on initial upgrade.
   * Update for the Hostmaster welcome page.
   * Update FPM monitoring settings.
   * Use as short labels on the site node as possible.
+  * Use control files properly to not run redundant Jetty/Solr upgrade.
   * Use correct paths to platform level drushrc.php file.
   * Use correct Provision version on initial upgrade to 2.3.0
   * Use Drush6 with @hostmaster.
@@ -296,6 +412,15 @@
     version built from sources is detected.
   * Issue #2278847 - Derivatives can't be created on install with Drush and
     Aegir or when no vhost is available yet (Drupal Commons)
+
+
+### Stable BOA-2.3.0 Release - Full Edition
+### Date: Mon Sep  8 08:42:01 PDT 2014
+### Includes Aegir 2.1 with improvements
+
+  Release Notes and changelog for BOA-2.3.0 has been merged into BOA-2.3.1
+  above after several hotfixes and some great new features have beed added
+  shortly after 2.3.0 release to address all identified post-release issues.
 
 
 ### Stable BOA-2.2.9 Release - Full Edition
