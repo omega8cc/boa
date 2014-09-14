@@ -4,28 +4,38 @@ Your Aegir Hosting System has been upgraded to version BOA-2.3.0
 
   https://aegir.dragon.ny.host8.biz
 
-This new BOA Edition introduces many new features, changes and improvements:
+This new BOA Edition introduces many new features, changes and fixes.
 
-  * BOA-2.3.0 comes with shiny Aegir 2.1 stable version, finally!
-  * Super-easy to use New Relic support with per Octopus license key
-  * Support for Drupal sites in subdirectories is enabled by default
-  * Latest Drush 6 version is used also in the Aegir backend by default
-  * DB credentials are no longer visible in settings.php, only in drushrc.php
-  * The list of sites is searchable by name or installation profile
-  * You can schedule tasks against filtered sites in batches
-  * Scheduling tasks in batches is available also on the platform view
-  * Scheduling tasks in batches is available also on the profile view
-  * Each site has its own history of tasks available from the site view tab
-  * You can schedule tasks also against platforms in batches
-  * You can safely apply db updates via 'Run db updates' task on any site
-  * It is now possible to choose any existing alias or the main site name
-    as a redirect target, but without the need to rename the site --
-    it will just re-verify the site and create new vhost automatically
+@=> Key new features:
 
-There are also many other features, changes, improvements and fixes
-you should read about in the release notes and changelog available at:
+* BOA-2.3.1 comes with shiny Aegir 2.1 stable version, finally!
+* Support for Drupal sites in subdirectories is enabled by default
+* Solr 4 cores can be added/updated/deleted via site level INI settings
+* Super-easy to use New Relic support with per Octopus license key
 
-  https://omega8.cc/boa-230-full-edition-332  ------- September 08
+@=> Aegir control panel new features:
+
+* The list of sites is searchable by name or installation profile
+* You can schedule tasks against filtered sites in batches
+* Scheduling tasks in batches is available also on the platform view
+* Scheduling tasks in batches is available also on the profile view
+* Each site has its own tasks list available from the site view tab
+* You can schedule tasks also against platforms in batches
+* You can safely apply db updates via 'Run db updates' task on any site
+* It is now possible to choose any existing alias or the main site name
+  as a redirect target, but without the need to rename the site --
+  it will just re-verify the site and create new vhost automatically
+
+@=> Other important changes:
+
+* Support for PHP 5.2 has been officially deprecated
+* DB credentials are no longer in settings.php, only in drushrc.php
+* Latest Drush 6 version is used in the Aegir backend by default
+
+You can find all details on how to use new features, along with all
+other changes explained in the release notes and changelog available at:
+
+  https://omega8.cc/boa-231-full-edition-333  ------- September 14
 
 It is always highly recommended that you read extensive release notes
 and changelog posted on our website for previous BOA Editions, so you
