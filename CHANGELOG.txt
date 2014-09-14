@@ -2,7 +2,7 @@
 ### Stable BOA-2.3.1 Release - Full Edition
 ### Date: Sun Sep 14 15:53:25 SGT 2014
 ### Includes Aegir 2.1 with improvements
-### Latest hotfix added on: Mon Sep 15 01:51:51 SGT 2014
+### Latest hotfix added on: Mon Sep 15 05:30:37 SGT 2014
 
 # Release Notes:
 
@@ -386,6 +386,7 @@
   * Nginx: Convert all vhosts to wildcard mode on Barracuda upgrade.
   * Nginx: Disable monitoring for POST requests related to cart/checkout URI.
   * Nginx: Do not touch nginx_wild_ssl.conf during this upgrade.
+  * Nginx: Improve wildcard conversion procedure on some really old instances.
   * Nginx: Remove deprecated code and config templates.
   * Nginx: Sanitize aliases in vhost_disabled.tpl.php to avoid warnings.
   * Nginx: Update config includes to match optional BOA features improvements.
