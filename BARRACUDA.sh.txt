@@ -9111,6 +9111,7 @@ else
   ### full upgrade, if IP based listen directive was used before.
   ###
   sed -i "s/listen .*/listen        \*:80;/g"  /data/disk/*/config/server_master/nginx/vhost.d/*                    &> /dev/null
+  sed -i "s/listen .*/listen        \*:80;/g"  /var/aegir/config/*/nginx/vhost.d/*                                  &> /dev/null
 
   sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf &> /dev/null
   sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf   &> /dev/null
