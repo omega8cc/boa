@@ -966,7 +966,7 @@ octopus_cnf () {
     echo "### Configuration created on $_NOW with" >> /root/.${_USER}.octopus.cnf
     echo "### Octopus version $_INSTALLER_VERSION" >> /root/.${_USER}.octopus.cnf
     echo "###" >> /root/.${_USER}.octopus.cnf
-    echo "### NOTE: the group of settings displayed bellow" >> /root/.${_USER}.octopus.cnf
+    echo "### NOTE: the group of settings displayed below" >> /root/.${_USER}.octopus.cnf
     echo "### will *override* all listed settings in the Octopus script." >> /root/.${_USER}.octopus.cnf
     echo "###" >> /root/.${_USER}.octopus.cnf
     echo "_USER=\"$_USER\"" >> /root/.${_USER}.octopus.cnf
@@ -995,7 +995,7 @@ octopus_cnf () {
     echo "_SQL_CONVERT=$_SQL_CONVERT" >> /root/.${_USER}.octopus.cnf
     echo "_RESERVED_RAM=$_RESERVED_RAM" >> /root/.${_USER}.octopus.cnf
     echo "###" >> /root/.${_USER}.octopus.cnf
-    echo "### NOTE: the group of settings displayed bellow will be *overridden*" >> /root/.${_USER}.octopus.cnf
+    echo "### NOTE: the group of settings displayed below will be *overridden*" >> /root/.${_USER}.octopus.cnf
     echo "### by config files stored in the /data/disk/$_USER/log/ directory," >> /root/.${_USER}.octopus.cnf
     echo "### but only on upgrade." >> /root/.${_USER}.octopus.cnf
     echo "###" >> /root/.${_USER}.octopus.cnf
