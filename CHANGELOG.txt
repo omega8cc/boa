@@ -16,7 +16,7 @@
   * Support for Drupal sites in subdirectories is enabled by default
   * Solr 4 cores can be added/updated/deleted via site level INI settings
   * Super-easy to use New Relic support with per Octopus license key
-  * Ability to add new Octopus instances with new, simple command synatx
+  * Ability to add new Octopus instances with new, simple command syntax
 
   @=> Aegir control panel new features:
 
@@ -97,7 +97,7 @@
     $ sed -i "s/.*listen.*:443/  listen  \*:443/g" /path/to/vhost.file
     $ service nginx reload
 
-#-### Ability to add new Octopus instances with new, simple command synatx
+#-### Ability to add new Octopus instances with new, simple command syntax
 
   It is now possible to add stable Octopus instances w/o forcing Barracuda
   upgrade, plus optionally with no platforms added by default -- usage:
@@ -255,7 +255,7 @@
 
 # New features and enhancements in this release:
 
-  * Ability to add new Octopus instances with new, simple command synatx
+  * Ability to add new Octopus instances with new, simple command syntax
   * Add default aggressive php-fpm monitoring + /root/.no.fpm.cpu.limit.cnf
   * Allow to define always disabled modules via _MODULES_FORCE variable.
   * Better wait limits on connection testing for slow network / long distance.
