@@ -7,7 +7,7 @@
 
   This major BOA Edition introduces many new features, changes and fixes.
 
-  You should carefully read about some caveats furter below **before** running
+  You should carefully read about some caveats further below **before** running
   this major upgrade on your system. Please make a fresh system backup first.
 
   @=> Key new features:
@@ -418,7 +418,7 @@
 ### Includes Aegir 2.1 with improvements
 
   Release Notes and changelog for BOA-2.3.0 has been merged into BOA-2.3.1
-  above after several hotfixes and some great new features have beed added
+  above after several hotfixes and some great new features have been added
   shortly after 2.3.0 release to address all identified post-release issues.
 
 
