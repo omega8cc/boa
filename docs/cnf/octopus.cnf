@@ -4,7 +4,7 @@
 ### Configuration stored in the /root/.${_USER}.octopus.cnf file.
 ### This example is for public install mode - see docs/INSTALL.txt
 ###
-### NOTE: the group of settings displayed bellow
+### NOTE: the group of settings displayed below
 ### will *override* all listed here settings in the Octopus script.
 ###
 _USER="o1" #-------------------- Aegir Instance system account name
@@ -33,7 +33,7 @@ _STRONG_PASSWORDS=NO #---------- Allows to generate secure passwords when YES
 _SQL_CONVERT=NO #--------------- DB conversion when innodb (or YES), or myisam
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
 ###
-### NOTE: the group of settings displayed bellow will be *overridden*
+### NOTE: the group of settings displayed below will be *overridden*
 ### by config files stored in the /data/disk/o1/log/ directory,
 ### but only on upgrade.
 ###
@@ -53,7 +53,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ###
 ### Extra, special purpose control files are listed below.
 ###
-### NOTE: the group of control files listed bellow are intended to be used
+### NOTE: the group of control files listed below are intended to be used
 ### by the instance owner to *overwrite* some settings stored in the
 ### /root/.${_USER}.octopus.cnf file without system admin (root) assistance.
 ###
