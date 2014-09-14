@@ -2,6 +2,7 @@
 ### Stable BOA-2.3.1 Release - Full Edition
 ### Date: Sun Sep 14 15:53:25 SGT 2014
 ### Includes Aegir 2.1 with improvements
+### Latest hotfix added on: Mon Sep 15 01:06:55 SGT 2014
 
 # Release Notes:
 
@@ -321,6 +322,7 @@
 
   * Add cleanup for _GIT_FORCE_REINSTALL if added in .barracuda.cnf
   * Add missing drush cache-clear drush to improve upgrade path.
+  * Add new features in the README.txt
   * Add wheezy to the exceptions list where required.
   * Allow to clear drush cache without directory restrictions.
   * Always set correct TMP path for supported users.
@@ -381,6 +383,7 @@
   * Nginx: Add config symlinks only on legacy instances.
   * Nginx: Add cron access support for subdir sites.
   * Nginx: Disable monitoring for POST requests related to cart/checkout URI.
+  * Nginx: Do not touch nginx_wild_ssl.conf during this upgrade.
   * Nginx: Remove deprecated code and config templates.
   * Nginx: Sanitize aliases in vhost_disabled.tpl.php to avoid warnings.
   * Nginx: Update config includes to match optional BOA features improvements.
@@ -413,6 +416,7 @@
   * Switch branch on the fly and add support for Aegir vanilla mode.
   * Sync /tmp access restrictions.
   * The hosting_civicrm_cron is now a submodule and should be also auto-enabled.
+  * The wildcard transition **doesn't** affect vhosts for SSL enabled sites.
   * There is no need to force backend clone from GitHub on initial upgrade.
   * Update for the Hostmaster welcome page.
   * Update FPM monitoring settings.
