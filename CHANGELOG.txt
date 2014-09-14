@@ -81,21 +81,40 @@
   update directives only in vhosts known and controlled by BOA.
 
   If you have any other vhosts, located in standard or non-standard Nginx/BOA
-  directories for vhosts, including vhosts to support SSL enabled sites,
-  you have to update them manually after upgrade to BOA-2.3.0 or newer,
-  or they will take over all other vhosts on the system and cause redirects
-  to /install.php which results with Nginx error 403 or 404, depending on
-  the prior configuration.
+  directories for vhosts, you have to update them manually after upgrade to
+  BOA-2.3.0 or newer, or they will take over all other vhosts on the system
+  and cause redirects to /install.php which results with Nginx error 403 or 404,
+  depending on the prior configuration.
 
   It will happen because IP based 'listen' directive in Nginx has higher
   priority, and will mess things horribly if there are vhosts using wildcard
-  and some using IP address.
+  and some using the main system IP address.
 
   What and how to replace? Here are commands you need to run as root:
 
     $ sed -i "s/.*listen.*:80;/  listen  \*:80;/g" /path/to/vhost.file
     $ sed -i "s/.*listen.*:443/  listen  \*:443/g" /path/to/vhost.file
     $ service nginx reload
+
+  Note this **doesn't** affect special vhosts for SSL enabled sites, if used,
+  because they are designed to use IP based 'listen' directives to provide
+  separation between SSL enabled IPs and their associated certificates,
+  while their associated 'upstream' block may even point to either local or
+  remote IP address, so there is no wildcard to use in this case, and it will
+  not conflict with all other vhosts managed by Aegir, because all SSL enabled
+  vhosts listen on other IP addresses than the main system IP, which is
+  by default used by all vhosts with wildcard in the 'listen' directive.
+
+  The problem may happen only when you have vhosts using wildcard and also
+  some vhosts using **main** system IP address in the 'listen' directive,
+  which may happen also unintentionaly during upgrade to BOA-2.3.0 or never,
+  if there are either vhosts BOA doesn't control, or there are ghost vhosts
+  not yet purged if you didn't upgrade to BOA-2.2.9 before, or there are
+  some disabled sites, so their vhosts will not be re-created by Aegir
+  during this major upgrade (because only active sites can be re-verified).
+
+  While BOA will fix also any such ghost vhosts anyway, it will not be able
+  to detect and fix vhosts outside of the standard directories managed by Aegir.
 
 #-### Ability to add new Octopus instances with new, simple command syntax
 
