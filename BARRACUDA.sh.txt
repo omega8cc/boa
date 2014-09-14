@@ -2865,7 +2865,7 @@ barracuda_cnf () {
     echo "### Configuration created on $_NOW" >> /root/.barracuda.cnf
     echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
-    echo "### NOTE: the group of settings displayed bellow will *not* be overridden" >> /root/.barracuda.cnf
+    echo "### NOTE: the group of settings displayed below will *not* be overridden" >> /root/.barracuda.cnf
     echo "### on upgrade by the Barracuda script nor by this configuration file." >> /root/.barracuda.cnf
     echo "### They can be defined only on initial Barracuda install." >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
@@ -2878,7 +2878,7 @@ barracuda_cnf () {
     echo "_SMTP_RELAY_TEST=$_SMTP_RELAY_TEST" >> /root/.barracuda.cnf
     echo "_THIS_DB_HOST=$_THIS_DB_HOST" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
-    echo "### NOTE: the group of settings displayed bellow" >> /root/.barracuda.cnf
+    echo "### NOTE: the group of settings displayed below" >> /root/.barracuda.cnf
     echo "### will *override* all listed settings in the Barracuda script," >> /root/.barracuda.cnf
     echo "### both on initial install and upgrade." >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf

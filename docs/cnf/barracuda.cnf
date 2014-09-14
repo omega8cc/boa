@@ -4,7 +4,7 @@
 ### Configuration stored in the /root/.barracuda.cnf file.
 ### This example is for public install mode - see docs/INSTALL.txt
 ###
-### NOTE: the group of settings displayed bellow will *not* be overridden
+### NOTE: the group of settings displayed below will *not* be overridden
 ### on upgrade by the Barracuda script nor by this configuration file.
 ### They can be defined only on initial Barracuda install.
 ###
@@ -18,7 +18,7 @@ _SMTP_RELAY_HOST="" #----------- Allows to configure simple SMTP relay (w/o pwd)
 _SMTP_RELAY_TEST=YES #---------- Allows to skip SMTP availability tests when NO
 _THIS_DB_HOST=localhost #------- Allows to use hostname in DB grants when FQDN
 ###
-### NOTE: the group of settings displayed bellow
+### NOTE: the group of settings displayed below
 ### will *override* all listed settings in the Barracuda script,
 ### both on initial install and upgrade.
 ###
@@ -114,7 +114,7 @@ _SYSTEM_UPGRADE_ONLY=NO #------- Allows to skip Aegir on upgrade (deprecated)
 _BACKEND_ITEMS_LIST=
 
 ###
-### NOTE: the group of settings displayed bellow is never stored
+### NOTE: the group of settings displayed below is never stored
 ### permanently in this config file, since they are intended to be used
 ### only when required/useful for some reason, and while can be added
 ### manually before running barracuda up-{stable|head} command,
