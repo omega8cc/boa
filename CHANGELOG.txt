@@ -284,7 +284,7 @@
   * Replace old hosting_civicrm_cron with newer hosting_civicrm module.
   * Set hosting_default_profile to 'minimal' to improve Ubercart 3 visibility.
   * The www53 PHP-FPM pool has been switched from port to default socket mode.
-  * Use Provision CiviCRM boa-2.3.0-dev
+  * Use Provision CiviCRM boa-2.3.1-dev
 
 # System upgrades in this release:
 
