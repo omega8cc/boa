@@ -275,8 +275,8 @@ init_setup ()
       mode="$user"
       user="o1"
     fi
+    check_id $user
   fi
-  check_id $user
   init_start
   set_pin_priority
   if [ "$cmmand" = "in-head" ] ; then
