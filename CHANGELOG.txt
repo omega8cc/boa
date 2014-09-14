@@ -107,7 +107,7 @@
 
   The problem may happen only when you have vhosts using wildcard and also
   some vhosts using **main** system IP address in the 'listen' directive,
-  which may happen also unintentionaly during upgrade to BOA-2.3.0 or never,
+  which may happen also unintentionally during upgrade to BOA-2.3.0 or never,
   if there are either vhosts BOA doesn't control, or there are ghost vhosts
   not yet purged if you didn't upgrade to BOA-2.2.9 before, or there are
   some disabled sites, so their vhosts will not be re-created by Aegir
