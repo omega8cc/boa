@@ -550,6 +550,8 @@ else
   fi
   cd $_PREV_HOSTMASTER_ROOT
   $_DRUSHCMD cache-clear drush &> /dev/null
+  $_DRUSHCMD @hostmaster sqlq "DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'" &> /dev/null
+  $_DRUSHCMD @hostmaster sqlq "DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'" &> /dev/null
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y -d
   else
