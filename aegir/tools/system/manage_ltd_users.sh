@@ -723,13 +723,20 @@ switch_php()
       fi
       _THIS_POOL_TPL="/opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf"
       if [ ! -z "$_LOC_NEW_RELIC_KEY" ] && [ -e "$_THIS_POOL_TPL" ] ; then
+        _CHECK_NEW_RELIC_TPL=`grep "newrelic.license" $_THIS_POOL_TPL`
         _CHECK_NEW_RELIC_KEY=`grep "$_LOC_NEW_RELIC_KEY" $_THIS_POOL_TPL`
         if [[ "$_CHECK_NEW_RELIC_KEY" =~ "$_LOC_NEW_RELIC_KEY" ]] ; then
           _NEW_RELIC_KEY_UPDATE=NO
         else
-          echo New Relic for ${_OWN} update with key $_LOC_NEW_RELIC_KEY in php${_PHP_SV}
-          sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"$_LOC_NEW_RELIC_KEY\"/g" $_THIS_POOL_TPL
-          sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"true\"/g" $_THIS_POOL_TPL
+          if [[ "$_CHECK_NEW_RELIC_TPL" =~ "newrelic.license" ]] ; then
+            echo New Relic for ${_OWN} update with key $_LOC_NEW_RELIC_KEY in php${_PHP_SV}
+            sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"$_LOC_NEW_RELIC_KEY\"/g" $_THIS_POOL_TPL
+            sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"true\"/g" $_THIS_POOL_TPL
+          else
+            echo New Relic for ${_OWN} add with key $_LOC_NEW_RELIC_KEY in php${_PHP_SV}
+            echo "php_admin_value[newrelic.license] = \"$_LOC_NEW_RELIC_KEY\"" >> $_THIS_POOL_TPL
+            echo "php_admin_value[newrelic.enabled] = \"true\"" >> $_THIS_POOL_TPL
+          fi
           if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ] ; then
             service php${_PHP_SV}-fpm reload
           fi
