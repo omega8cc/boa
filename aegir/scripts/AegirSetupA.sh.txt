@@ -61,7 +61,8 @@ _OPENACADEMY=EDIT_OPENACADEMY
 _OPENATRIUM6=EDIT_OPENATRIUM6
 _OPENATRIUM7=EDIT_OPENATRIUM7
 _OPENBLOG=EDIT_OPENBLOG
-_OPENCHURCH=EDIT_OPENCHURCH
+_OPENCHURCH1=EDIT_OPENCHURCH1
+_OPENCHURCH2=EDIT_OPENCHURCH2
 _OPENDEALS=EDIT_OPENDEALS
 _OPENOUTREACH=EDIT_OPENOUTREACH
 _OPENPUBLIC=EDIT_OPENPUBLIC
@@ -1656,9 +1657,14 @@ msg "$_STATUS A: Creating ftp symlinks"
       ln -sf $_ROOT/distro/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7
+  if [ -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH1-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH1-$_SMALLCORE7" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH1-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH1-$_SMALLCORE7
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH2-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH2-$_SMALLCORE7" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH2-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH2-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7/sites" ] ; then

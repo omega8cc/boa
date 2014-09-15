@@ -168,7 +168,8 @@ _PHP_CLI_VERSION=5.3
 ### OAM ----------- Open Atrium D6
 ### OAY ----------- Open Academy
 ### OBG ----------- OpenBlog
-### OCH ----------- OpenChurch
+### OCH ----------- OpenChurch 1
+### CH2 ----------- OpenChurch 2
 ### ODS ----------- Open Deals
 ### OOH ----------- Open Outreach
 ### OPC ----------- OpenPublic
@@ -653,7 +654,8 @@ _OPENACADEMY=7.x-1.1
 _OPENATRIUM6=6.x-1.7
 _OPENATRIUM7=7.x-2.21
 _OPENBLOG=7.x-1.0-alpha3
-_OPENCHURCH=7.x-1.14
+_OPENCHURCH1=7.x-1.14
+_OPENCHURCH2=7.x-2.0-alpha3
 _OPENDEALS=7.x-1.33
 _OPENOUTREACH=7.x-1.10
 _OPENPUBLIC=7.x-1.0-rc4
@@ -1441,7 +1443,8 @@ action () {
     sed -i "s/EDIT_OPENATRIUM6/$_OPENATRIUM6/g"             $Files &> /dev/null
     sed -i "s/EDIT_OPENATRIUM7/$_OPENATRIUM7/g"             $Files &> /dev/null
     sed -i "s/EDIT_OPENBLOG/$_OPENBLOG/g"                   $Files &> /dev/null
-    sed -i "s/EDIT_OPENCHURCH/$_OPENCHURCH/g"               $Files &> /dev/null
+    sed -i "s/EDIT_OPENCHURCH1/$_OPENCHURCH1/g"             $Files &> /dev/null
+    sed -i "s/EDIT_OPENCHURCH2/$_OPENCHURCH2/g"             $Files &> /dev/null
     sed -i "s/EDIT_OPENDEALS/$_OPENDEALS/g"                 $Files &> /dev/null
     sed -i "s/EDIT_OPENOUTREACH/$_OPENOUTREACH/g"           $Files &> /dev/null
     sed -i "s/EDIT_OPENPUBLIC/$_OPENPUBLIC/g"               $Files &> /dev/null

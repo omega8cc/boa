@@ -29,7 +29,8 @@
 ### OAM ----------- Open Atrium D6
 ### OAY ----------- Open Academy
 ### OBG ----------- OpenBlog
-### OCH ----------- OpenChurch
+### OCH ----------- OpenChurch 1
+### CH2 ----------- OpenChurch 2
 ### ODS ----------- Open Deals
 ### OOH ----------- Open Outreach
 ### OPC ----------- OpenPublic
