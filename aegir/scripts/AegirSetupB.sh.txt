@@ -491,9 +491,9 @@ else
     fi
     $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y
   else
-    $_DRUSHCMD @hostmaster dis css_emimage -y          &> /dev/null
+    $_DRUSHCMD @hostmaster dis css_emimage -y &> /dev/null
     if [ "$_CLEAN_MODULES" = "YES" ] ; then
-      $_DRUSHCMD @hostmaster clean-modules -y          &> /dev/null
+      $_DRUSHCMD @hostmaster clean-modules -y &> /dev/null
     fi
     $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y &> /dev/null
   fi
@@ -656,8 +656,8 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
       $_DRUSHCMD @hostmaster clean-modules -y
       $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y
     else
-      $_DRUSHCMD @hostmaster dis css_emimage -y          &> /dev/null
-      $_DRUSHCMD @hostmaster clean-modules -y            &> /dev/null
+      $_DRUSHCMD @hostmaster dis css_emimage -y &> /dev/null
+      $_DRUSHCMD @hostmaster clean-modules -y &> /dev/null
       $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y &> /dev/null
     fi
   fi
