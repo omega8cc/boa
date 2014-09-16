@@ -8,12 +8,12 @@ This new BOA Edition introduces many new features, changes and fixes.
 
 @=> Key new features:
 
-* BOA-2.3.1 comes with shiny Aegir 2.1 stable version, finally!
+* BOA-2.3.1 comes with new, shiny Aegir 2.1 stable version!
 * Support for Drupal sites in subdirectories is enabled by default
 * Solr 4 cores can be added/updated/deleted via site level INI settings
 * Super-easy to use New Relic support with per Octopus license key
 
-@=> Aegir control panel new features:
+@=> Aegir control panel new features and changes:
 
 * The list of sites is searchable by name or installation profile
 * You can schedule tasks against filtered sites in batches
@@ -22,6 +22,11 @@ This new BOA Edition introduces many new features, changes and fixes.
 * Each site has its own tasks list available from the site view tab
 * You can schedule tasks also against platforms in batches
 * You can safely apply db updates via 'Run db updates' task on any site
+* The new 'Clients' menu item allows to list and manage sub-accounts
+* The hosting/signup form is still available but not included in the menu
+* The node/add/site form is no longer included in the main menu
+* Profiles are listed with both human-readable and machine names
+* The optional pseudo-CDN-aliases feature is now disabled by default
 * It is now possible to choose any existing alias or the main site name
   as a redirect target, but without the need to rename the site --
   it will just re-verify the site and create new vhost automatically
