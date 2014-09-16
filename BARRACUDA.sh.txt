@@ -9078,7 +9078,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   mrun "service nginx restart" &> /dev/null
 else
   if [ -e "/var/aegir/config" ] ; then
-    sed -i "s/listen .*/listen        \*:80;/g"                        /var/aegir/config/server_*/nginx/vhost.d/*          &> /dev/null
+    sed -i "s/.*listen .*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/*          &> /dev/null
     sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
     sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/chive.*    &> /dev/null
     sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
