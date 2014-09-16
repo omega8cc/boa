@@ -127,6 +127,14 @@ setup ()
     apt-get update -qq &> /dev/null
     apt-get install curl -y --force-yes --reinstall &> /dev/null
   fi
+  _LSB_TEST=$(which lsb_release 2> /dev/null)
+  if [[ "$_LSB_TEST" =~ "lsb_release" ]] ; then
+    _DO_NOTHING=YES
+  else
+    apt-get clean -qq &> /dev/null
+    apt-get update -qq &> /dev/null
+    apt-get install lsb-release -y --force-yes --reinstall &> /dev/null
+  fi
   _ADD_LEGACY_SYMLINK=NO
   _PATH_TEST=$(grep 'export PATH' /root/.bashrc)
   if [[ "$_PATH_TEST" =~ "export PATH" ]] ; then
