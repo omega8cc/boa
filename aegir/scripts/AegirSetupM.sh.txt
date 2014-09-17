@@ -292,6 +292,7 @@ fi
 
 msg "INFO: Installing the frontend"
 $_DRUSHCMD cache-clear drush >$_ROOT/install.log 2>&1
+rm -f -r $_ROOT/.tmp/cache
 _HOSTMASTER_ROOT="$_ROOT/hostmaster-$_AEGIR_VERSION"
 $_DRUSHCMD hostmaster-install --aegir_host=$_AEGIR_HOST --aegir_db_user=$_AEGIR_DB_USER --aegir_db_pass=$_ESC_APASS --aegir_root=$_ROOT --root=$_HOSTMASTER_ROOT --version=$_AEGIR_VERSION $@
 

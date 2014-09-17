@@ -1012,6 +1012,7 @@ provision_backend_dbpass_sync () {
   fi
   mysqladmin flush-privileges &> /dev/null
   su -s /bin/bash $_USER -c "$_DRUSHCMD cache-clear drush &> /dev/null"
+  rm -f -r $_ROOT/.tmp/cache
   if [ -e "$_ROOT/.drush/server_localhost.alias.drushrc.php" ] ; then
     su -s /bin/bash $_USER -c "$_DRUSHCMD @hostmaster hosting-task @server_localhost verify --force &> /dev/null"
   else

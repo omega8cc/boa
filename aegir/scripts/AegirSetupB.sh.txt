@@ -445,6 +445,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   _AEGIR_HOST=`uname -n`
   msg "$_STATUS B: Running hostmaster-install, please wait..."
   $_DRUSHCMD cache-clear drush >$_ROOT/log/install.log 2>&1
+  rm -f -r $_ROOT/.tmp/cache
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$_AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$_AGRPASWD --aegir_root=$_ROOT --root=$_HOSTMASTER_ROOT --http_service_type=nginx --aegir_db_host=$_THIS_DB_HOST --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION -y -d
   else
@@ -461,6 +462,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   rm -f /data/u/$_DOMAIN
   ln -sf $_HOSTMASTER_ROOT /data/u/$_DOMAIN
   $_DRUSHCMD cache-clear drush &> /dev/null
+  rm -f -r $_ROOT/.tmp/cache
   msg "$_STATUS B: Running hosting-dispatch (1/3)..."
   $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
   mrun "sleep 5"
@@ -472,6 +474,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
 else
   msg "$_STATUS B: Testing previous install..."
   $_DRUSHCMD cache-clear drush &> /dev/null
+  rm -f -r $_ROOT/.tmp/cache
   if $_DRUSHCMD help clean-modules > /dev/null ; then
     if [ "$_DEBUG_MODE" = "YES" ] ; then
       msg "$_STATUS B: Drush clean-modules is available"
@@ -499,6 +502,7 @@ else
   fi
   $_DRUSHCMD @hostmaster dis aegir_custom_settings -y &> /dev/null
   $_DRUSHCMD cache-clear drush &> /dev/null
+  rm -f -r $_ROOT/.tmp/cache
   if [ -d "$_HOSTMASTER_ROOT/modules/o_contrib" ] && [ ! -L "$_HOSTMASTER_ROOT/modules/o_contrib" ] ; then
     rm -f $_HOSTMASTER_ROOT/modules/o_contrib/{cache_backport,redis_edge,redis} &> /dev/null
   fi
@@ -550,6 +554,7 @@ else
   fi
   cd $_PREV_HOSTMASTER_ROOT
   $_DRUSHCMD cache-clear drush &> /dev/null
+  rm -f -r $_ROOT/.tmp/cache
   $_DRUSHCMD @hostmaster sqlq "DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'" &> /dev/null
   $_DRUSHCMD @hostmaster sqlq "DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'" &> /dev/null
   if [ "$_DEBUG_MODE" = "YES" ] ; then
@@ -665,6 +670,7 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   rm -f -r $_HOSTMASTER_ROOT/profiles/hostmaster/modules/hosting_backup_gc
   rm -f -r $_HOSTMASTER_ROOT/modules/cookie_cache_bypass
   $_DRUSHCMD cache-clear drush &> /dev/null
+  rm -f -r $_ROOT/.tmp/cache
   $_DRUSHCMD @hostmaster en hosting_client protect_critical_users userprotect -y &> /dev/null
   $_DRUSHCMD @hostmaster en hosting_advanced_cron revision_deletion hosting_task_gc hosting_tasks_extra -y &> /dev/null
   $_DRUSHCMD @hostmaster en hosting_site_backup_manager -y &> /dev/null
