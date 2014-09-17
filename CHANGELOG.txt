@@ -31,11 +31,8 @@
   @=> Aegir control panel new features:
 
   * The list of sites is searchable by name or installation profile
-
-  * Each site has its own tasks list available from the site view tab
-  * Each platform view has dedicated tabs to Add site, manage Clients acces,
-    review Task log, Edit and Packages list.
-
+  * Sites have dedicated tabs: Backups, Task log, Edit and Packages
+  * Platform have tabs: Add site, Clients, Task log, Edit and Packages
   * You can schedule tasks against filtered sites in batches
   * Scheduling tasks in batches is available also on the platform view
   * Scheduling tasks in batches is available also on the profile view
