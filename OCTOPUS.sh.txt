@@ -1370,6 +1370,30 @@ check_php_compatibility () {
   fi
 }
 #
+# Check CiviCRM compatibility.
+check_civicrm_compatibility () {
+  for Platform in `find /data/disk/${_USER}/.drush/platform_* -maxdepth 1 -mtime +${_DEL_OLD_EMPTY_PLATFORMS} -type f | sort`
+  do
+    _THIS_PLATFORM_ROOT=`cat $Platform | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+    if [ -e "${_THIS_PLATFORM_ROOT}/sites/all" ] && [ -e "${_THIS_PLATFORM_ROOT}/index.php" ] ; then
+      _CIVICRM_IF_A=`grep "profiles.*civicrm\.module" ${_THIS_PLATFORM_ROOT}/drushrc.php 2>&1`
+      _CIVICRM_IF_B=`grep "profiles.*civicrm\.module" ${_THIS_PLATFORM_ROOT}/sites/all/drush/drushrc.php 2>&1`
+      if [[ "$_CIVICRM_IF_A" =~ "civicrm" ]] || [[ "$_CIVICRM_IF_B" =~ "civicrm" ]] ; then
+        _CIVICRM_PROFILE=YES
+      fi
+    fi
+  done
+  if [ "$_CIVICRM_PROFILE" = "YES" ] ; then
+    msg "ERROR: This instance has CiviCRM in the installation profile tree"
+    msg "ERROR: which makes it incompatible with modern BOA-2.3.x series"
+    msg "ERROR: Please migrate your CiviCRM sites to new platforms with"
+    msg "ERROR: civicrm located in the standard sites/all/modules tree"
+    msg "ERROR: before trying to run this upgrade again"
+    msg "Bye"
+    exit 1
+  fi
+}
+#
 # Action.
 action () {
   _REL_VERSION=`lsb_release -sc`
@@ -1787,6 +1811,7 @@ if [ -e "/data/disk/${_USER}/log/octopus_log.txt" ] ; then
   fi
 fi
 check_php_compatibility
+check_civicrm_compatibility
 #
 #
 rm -f /var/run/aegir_upgrade.pid
