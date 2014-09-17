@@ -1372,7 +1372,7 @@ check_php_compatibility () {
 #
 # Check CiviCRM compatibility.
 check_civicrm_compatibility () {
-  for Platform in `find /data/disk/${_USER}/.drush/platform_* -maxdepth 1 -mtime +${_DEL_OLD_EMPTY_PLATFORMS} -type f | sort`
+  for Platform in `find /data/disk/${_USER}/.drush/platform_* -maxdepth 1 -type f | sort`
   do
     _THIS_PLATFORM_ROOT=`cat $Platform | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     if [ -e "${_THIS_PLATFORM_ROOT}/sites/all" ] && [ -e "${_THIS_PLATFORM_ROOT}/index.php" ] ; then
