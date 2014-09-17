@@ -5472,6 +5472,7 @@ finale () {
   rm -f -r /tmp/drush_make_tmp*
   rm -f -r /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
+  rm -f -r /var/aegir/.tmp/cache
   rm -f /var/run/boa_run.pid
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/manage_ltd_users.pid
