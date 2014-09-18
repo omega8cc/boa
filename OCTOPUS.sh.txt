@@ -1376,8 +1376,12 @@ check_civicrm_compatibility () {
   do
     _THIS_PLATFORM_ROOT=`cat $Platform | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     if [ -e "${_THIS_PLATFORM_ROOT}/sites/all" ] && [ -e "${_THIS_PLATFORM_ROOT}/index.php" ] ; then
-      _CIVICRM_IF_A=`grep "profiles.*civicrm\.module" ${_THIS_PLATFORM_ROOT}/drushrc.php 2>&1`
-      _CIVICRM_IF_B=`grep "profiles.*civicrm\.module" ${_THIS_PLATFORM_ROOT}/sites/all/drush/drushrc.php 2>&1`
+      if [ -e "${_THIS_PLATFORM_ROOT}/drushrc.php" ] ; then
+        _CIVICRM_IF_A=`grep "profiles.*civicrm\.module" ${_THIS_PLATFORM_ROOT}/drushrc.php 2>&1`
+      fi
+      if [ -e "${_THIS_PLATFORM_ROOT}/sites/all/drush/drushrc.php" ] ; then
+        _CIVICRM_IF_B=`grep "profiles.*civicrm\.module" ${_THIS_PLATFORM_ROOT}/sites/all/drush/drushrc.php 2>&1`
+      fi
       if [[ "$_CIVICRM_IF_A" =~ "civicrm" ]] || [[ "$_CIVICRM_IF_B" =~ "civicrm" ]] ; then
         _CIVICRM_PROFILE=YES
       fi
