@@ -1,4 +1,63 @@
 
+### Stable BOA-2.3.2 Release - Full Edition
+### Date: TBD
+### Includes Aegir 2.1 with improvements
+
+# Release Notes:
+
+  This BOA Edition includes important fixes to address some issues discovered
+  after BOA-2.3.1 release. Please read also the release notes for BOA-2.3.1
+  further below before running the upgrade!
+
+#-### Important details on CiviCRM versions compatibility and profiles support
+
+  * All BOA-2.3.x Editions fully support latest CiviCRM 4.5.0 for Drupal 7.
+  * CiviCRM for Drupal 6 is not supported, but we are working on it.
+  * CiviCRM support for Drupal 7 works great when added in sites/all/modules/
+  * CiviCRM support for Drupal 7 also works when added in profiles/foo/modules
+    but no CiviCRM cron is currently managed, until this known issue is fixed,
+    therefore BOA-2.3.2 will check all platforms on the Octopus instance and if
+    it will detect any with CiviCRM added in the installation profile directory
+    tree, it will refuse to upgrade such instance to not break things for those
+    using currently not fully supported CiviCRM codebase structure.
+
+# New Octopus platforms:
+
+  OpenChurch 2.0-b1 ------------ https://drupal.org/project/openchurch
+
+# Updated Octopus platforms:
+
+  OpenChurch 1.14 -------------- https://drupal.org/project/openchurch
+
+# New features and enhancements in this release:
+
+  * Add makefiles for CiviCRM 4.4.7
+  * Add makefiles for CiviCRM 4.5.0
+
+# System upgrades in this release:
+
+  * Nginx 1.7.5
+  * Redis 2.8.16
+
+# Fixes in this release:
+
+  * Add extra cleanup for Drush related caches.
+  * Fix for insufficient permissions on files/civicrm/ConfigAndLog
+  * Fix for insufficient permissions on files/civicrm/custom
+  * Fix for insufficient permissions on files/civicrm/dynamic
+  * Issue #411 - Unable to update Octopus Instance - Reports PHP on 5.2
+  * Make sure that lsb-release is installed properly.
+  * New Relic not enabled if no custom ~/static/control/{fpm|cli}.info exists.
+  * Nginx: Auto-Switch to wildcard all vhosts existing in the Master Instance.
+  * Nginx: Convert all Octopus vhosts to wildcard mode on Barracuda upgrade.
+  * Nginx: Do not touch nginx_wild_ssl.conf during this upgrade.
+  * Nginx: Improve wildcard conversion procedure on some really old instances.
+  * Purge all ghost delete tasks before running hostmaster-migrate / upgrade.
+  * Purge Drush related caches cleanly when needed.
+  * Update contrib in Open Atrium D7 to maintain upgrade path.
+  * Use strict regex in vhosts listen mode conversion to not break ports.
+
+
 ### Stable BOA-2.3.1 Release - Full Edition
 ### Date: Sun Sep 14 15:53:25 SGT 2014
 ### Includes Aegir 2.1 with improvements
