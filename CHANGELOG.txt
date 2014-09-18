@@ -13,9 +13,9 @@
 
   * All BOA-2.3.x Editions fully support latest CiviCRM 4.5.0 for Drupal 7.
   * CiviCRM for Drupal 6 is not supported, but we are working on it.
-  * CiviCRM support for Drupal 7 works great when added in sites/all/modules/
+  * CiviCRM support for Drupal 7 works great when added in sites/all/modules
   * CiviCRM support for Drupal 7 also works when added in profiles/foo/modules
-    but no CiviCRM cron is currently managed, until this known issue is fixed,
+    but no CiviCRM cron is currently managed until this known issue is fixed,
     therefore BOA-2.3.2 will check all platforms on the Octopus instance and if
     it will detect any with CiviCRM added in the installation profile directory
     tree, it will refuse to upgrade such instance to not break things for those
