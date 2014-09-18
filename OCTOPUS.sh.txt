@@ -1822,7 +1822,6 @@ if [ -e "/data/disk/${_USER}/log/octopus_log.txt" ] ; then
   fi
 fi
 check_php_compatibility
-check_civicrm_compatibility
 #
 #
 rm -f /var/run/aegir_upgrade.pid
@@ -1861,6 +1860,7 @@ _SILENT=/opt/tmp/silent.log
 #
 #
 if [ -d "$_ROOT" ] ; then
+  check_civicrm_compatibility
   msg "UPGRADE in progress..."
   if [ -d "$_ROOT/distro" ] ; then
     if [ -e "$_ROOT/log/domain.txt" ] ; then
