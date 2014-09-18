@@ -1383,19 +1383,17 @@ check_civicrm_compatibility () {
         _CIVICRM_IF_B=`grep "profiles.*civicrm\.module" ${_THIS_PLATFORM_ROOT}/sites/all/drush/drushrc.php 2>&1`
       fi
       if [[ "$_CIVICRM_IF_A" =~ "civicrm" ]] || [[ "$_CIVICRM_IF_B" =~ "civicrm" ]] ; then
-        _CIVICRM_PROFILE=YES
+         msg "ERROR: This instance has CiviCRM in the installation profile tree:"
+         msg "ERROR: $_CIVICRM_IF_A $_CIVICRM_IF_B"
+         msg "ERROR: which makes it incompatible with modern BOA-2.3.x series"
+         msg "ERROR: Please migrate your CiviCRM sites to new platforms with"
+         msg "ERROR: civicrm located in the standard sites/all/modules tree"
+         msg "ERROR: before trying to run this upgrade again"
+         msg "Bye"
+         exit 1
       fi
     fi
   done
-  if [ "$_CIVICRM_PROFILE" = "YES" ] ; then
-    msg "ERROR: This instance has CiviCRM in the installation profile tree"
-    msg "ERROR: which makes it incompatible with modern BOA-2.3.x series"
-    msg "ERROR: Please migrate your CiviCRM sites to new platforms with"
-    msg "ERROR: civicrm located in the standard sites/all/modules tree"
-    msg "ERROR: before trying to run this upgrade again"
-    msg "Bye"
-    exit 1
-  fi
 }
 #
 # Action.
