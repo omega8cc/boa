@@ -149,7 +149,7 @@ NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
 * MultiCore Apache Solr 1.4.1 with Jetty 7 - see docs/SOLR.txt for details.
 * MultiCore Apache Solr 3.6.2 with Jetty 8 - see docs/SOLR.txt for details.
 * MultiCore Apache Solr 4.2.0 with Jetty 8 or Jetty 9 on Precise and Wheezy.
-* New Relic Server and Apps Monitor with per Site/Instance/Server reporting.
+* New Relic Apps Monitor with per Octopus license and per Site reporting.
 * Image Optimize toolkit binaries.
 * FFmpeg support.
 * Bind9 DNS server.
