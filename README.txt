@@ -149,7 +149,7 @@ NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
 * MultiCore Apache Solr 1.4.1 with Jetty 7 - see docs/SOLR.txt for details.
 * MultiCore Apache Solr 3.6.2 with Jetty 8 - see docs/SOLR.txt for details.
 * MultiCore Apache Solr 4.2.0 with Jetty 8 or Jetty 9 on Precise and Wheezy.
-* New Relic Server and Apps Monitor with per Site/Instance/Server reporting.
+* New Relic Apps Monitor with per Octopus license and per Site reporting.
 * Image Optimize toolkit binaries.
 * FFmpeg support.
 * Bind9 DNS server.
@@ -179,7 +179,8 @@ Octopus can install the platforms listed below:
  Open Deals 1.33 -------------- https://drupal.org/project/opendeals
  Open Outreach 1.10 ----------- https://drupal.org/project/openoutreach
  OpenBlog 1.0-v3 -------------- https://drupal.org/project/openblog
- OpenChurch 1.12 -------------- https://drupal.org/project/openchurch
+ OpenChurch 1.14 -------------- https://drupal.org/project/openchurch
+ OpenChurch 2.0-b1 ------------ https://drupal.org/project/openchurch
  OpenPublic 1.0-rc4 ----------- https://drupal.org/project/openpublic
  OpenScholar 3.12.1 ----------- http://theopenscholar.org
  Panopoly 1.11 ---------------- https://drupal.org/project/panopoly

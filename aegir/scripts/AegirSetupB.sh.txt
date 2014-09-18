@@ -59,7 +59,8 @@ _OPENACADEMY=EDIT_OPENACADEMY
 _OPENATRIUM6=EDIT_OPENATRIUM6
 _OPENATRIUM7=EDIT_OPENATRIUM7
 _OPENBLOG=EDIT_OPENBLOG
-_OPENCHURCH=EDIT_OPENCHURCH
+_OPENCHURCH1=EDIT_OPENCHURCH1
+_OPENCHURCH2=EDIT_OPENCHURCH2
 _OPENDEALS=EDIT_OPENDEALS
 _OPENOUTREACH=EDIT_OPENOUTREACH
 _OPENPUBLIC=EDIT_OPENPUBLIC
@@ -444,6 +445,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   _AEGIR_HOST=`uname -n`
   msg "$_STATUS B: Running hostmaster-install, please wait..."
   $_DRUSHCMD cache-clear drush >$_ROOT/log/install.log 2>&1
+  rm -f -r $_ROOT/.tmp/cache
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$_AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$_AGRPASWD --aegir_root=$_ROOT --root=$_HOSTMASTER_ROOT --http_service_type=nginx --aegir_db_host=$_THIS_DB_HOST --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION -y -d
   else
@@ -460,6 +462,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   rm -f /data/u/$_DOMAIN
   ln -sf $_HOSTMASTER_ROOT /data/u/$_DOMAIN
   $_DRUSHCMD cache-clear drush &> /dev/null
+  rm -f -r $_ROOT/.tmp/cache
   msg "$_STATUS B: Running hosting-dispatch (1/3)..."
   $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
   mrun "sleep 5"
@@ -471,6 +474,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
 else
   msg "$_STATUS B: Testing previous install..."
   $_DRUSHCMD cache-clear drush &> /dev/null
+  rm -f -r $_ROOT/.tmp/cache
   if $_DRUSHCMD help clean-modules > /dev/null ; then
     if [ "$_DEBUG_MODE" = "YES" ] ; then
       msg "$_STATUS B: Drush clean-modules is available"
@@ -490,14 +494,15 @@ else
     fi
     $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y
   else
-    $_DRUSHCMD @hostmaster dis css_emimage -y          &> /dev/null
+    $_DRUSHCMD @hostmaster dis css_emimage -y &> /dev/null
     if [ "$_CLEAN_MODULES" = "YES" ] ; then
-      $_DRUSHCMD @hostmaster clean-modules -y          &> /dev/null
+      $_DRUSHCMD @hostmaster clean-modules -y &> /dev/null
     fi
     $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y &> /dev/null
   fi
   $_DRUSHCMD @hostmaster dis aegir_custom_settings -y &> /dev/null
   $_DRUSHCMD cache-clear drush &> /dev/null
+  rm -f -r $_ROOT/.tmp/cache
   if [ -d "$_HOSTMASTER_ROOT/modules/o_contrib" ] && [ ! -L "$_HOSTMASTER_ROOT/modules/o_contrib" ] ; then
     rm -f $_HOSTMASTER_ROOT/modules/o_contrib/{cache_backport,redis_edge,redis} &> /dev/null
   fi
@@ -549,6 +554,9 @@ else
   fi
   cd $_PREV_HOSTMASTER_ROOT
   $_DRUSHCMD cache-clear drush &> /dev/null
+  rm -f -r $_ROOT/.tmp/cache
+  $_DRUSHCMD @hostmaster sqlq "DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'" &> /dev/null
+  $_DRUSHCMD @hostmaster sqlq "DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'" &> /dev/null
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y -d
   else
@@ -589,7 +597,7 @@ fi
 msg "$_STATUS B: Enhancing Aegir UI, please wait..."
 mkdir -p $_HOSTMASTER_ROOT/sites/all/{modules,themes,libraries}
 cd $_HOSTMASTER_ROOT/profiles/hostmaster/modules
-get_dev_ext "aegir_custom_settings-6.x-3.7.tar.gz"
+get_dev_ext "aegir_custom_settings-6.x-3.8.tar.gz"
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_civicrm.git       &> /dev/null
   git clone --branch 6.x-1.x git://github.com/omega8cc/hosting_remote_import.git &> /dev/null
@@ -653,8 +661,8 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
       $_DRUSHCMD @hostmaster clean-modules -y
       $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y
     else
-      $_DRUSHCMD @hostmaster dis css_emimage -y          &> /dev/null
-      $_DRUSHCMD @hostmaster clean-modules -y            &> /dev/null
+      $_DRUSHCMD @hostmaster dis css_emimage -y &> /dev/null
+      $_DRUSHCMD @hostmaster clean-modules -y &> /dev/null
       $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y &> /dev/null
     fi
   fi
@@ -662,6 +670,7 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   rm -f -r $_HOSTMASTER_ROOT/profiles/hostmaster/modules/hosting_backup_gc
   rm -f -r $_HOSTMASTER_ROOT/modules/cookie_cache_bypass
   $_DRUSHCMD cache-clear drush &> /dev/null
+  rm -f -r $_ROOT/.tmp/cache
   $_DRUSHCMD @hostmaster en hosting_client protect_critical_users userprotect -y &> /dev/null
   $_DRUSHCMD @hostmaster en hosting_advanced_cron revision_deletion hosting_task_gc hosting_tasks_extra -y &> /dev/null
   $_DRUSHCMD @hostmaster en hosting_site_backup_manager -y &> /dev/null
@@ -726,10 +735,10 @@ fi
 
 ###---### Make sure there are no ghost or disabled vhost which still listen on IP.
 #
-sed -i "s/.*listen.*127.0.0.1:80;.*//g"            $_ROOT/config/server_*/nginx.conf
-sed -i "s/listen .*/listen        \*:80;/g"        $_ROOT/config/server_*/nginx.conf
+sed -i "s/.*listen .*127.0.0.1:80;.*//g"           $_ROOT/config/server_*/nginx.conf
+sed -i "s/listen .*:80;/listen        \*:80;/g"    $_ROOT/config/server_*/nginx.conf
 sed -i "s/param db_port.*/param db_port   3306;/g" $_ROOT/config/server_*/nginx/vhost.d/*
-sed -i "s/listen .*/listen        \*:80;/g"        $_ROOT/config/server_*/nginx/vhost.d/*
+sed -i "s/listen .*:80;/listen        \*:80;/g"    $_ROOT/config/server_*/nginx/vhost.d/*
 
 ###---### Aegir global.inc file.
 #

@@ -72,7 +72,7 @@ _MY_EMAIL="notify@omega8.cc"
 ### _XTRAS_LIST="CSF CHV FTP"
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
-### _AEGIR_VERSION=BOA-2.3.1
+### _AEGIR_VERSION=HEAD
 ### _DB_SERVER=MariaDB
 ### _SSH_PORT=22
 ### _DNS_SETUP_TEST=YES
@@ -127,7 +127,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### _XTRAS_LIST="CHV"
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
-### _AEGIR_VERSION=BOA-2.3.1
+### _AEGIR_VERSION=HEAD
 ### _DB_SERVER=MariaDB
 ### _SSH_PORT=22
 ### _DNS_SETUP_TEST=NO
@@ -404,7 +404,7 @@ _DEBUG_MODE=NO
 ### The HEAD can be occasionally broken
 ### and should be used **only** for testing!
 ###
-_AEGIR_VERSION=BOA-2.3.1
+_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
@@ -1045,8 +1045,8 @@ _SPEED_VALID_MAX=3600
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.1
-_BRANCH_BOA=2.3.x-dev
+_INSTALLER_VERSION=BOA-2.3.2-dev
+_BRANCH_BOA=master
 _BRANCH_PROVISION=2.3.x-dev
 
 ###
@@ -1057,7 +1057,7 @@ _CGP_VERSION=master-30-03-2014
 _CHIVE_VERSION=1.3
 _CURL_VERSION=7.38.0
 _DRUSH4_VERSION=mini-4-26-08-2014
-_DRUSH6_VERSION=mini-6-14-09-2014
+_DRUSH6_VERSION=mini-6-18-09-2014
 _DRUSH7_VERSION=head-7-10-03-2014
 _GEOS_VERSION=3.4.2
 _GIT_VERSION=2.1.0
@@ -1072,7 +1072,7 @@ _MARIADB_10_VERSION=10.0.13
 _MARIADB_5_VERSION=5.5.39
 _MONGO_VERSION=1.4.5
 _MSS_VERSION=1.33
-_NGINX_VERSION=1.7.4
+_NGINX_VERSION=1.7.5
 _OPENSSH_VERSION=6.6p1
 _OPENSSL_VERSION=1.0.1i
 _PERCONA_VERSION=5.5.36
@@ -1086,7 +1086,7 @@ _PHP55_API=20121212
 _PHP55_VERSION=5.5.16
 _PHPREDIS_VERSION=master-06-07-2014
 _PURE_FTPD_VERSION=1.0.36
-_REDIS_VERSION=2.8.14
+_REDIS_VERSION=2.8.16
 _RUBY_VERSION=2.1.2
 _SOLR_1_VERSION=1.4.1
 _SOLR_3_VERSION=3.6.2
@@ -4128,6 +4128,7 @@ provision_backend_dbpass_sync () {
   fi
   mysqladmin flush-privileges &> /dev/null
   su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
+  rm -f -r /var/aegir/.tmp/cache
   if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ] ; then
     su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_localhost verify --force &> /dev/null"
   else
@@ -5359,9 +5360,42 @@ fix_open_atrium () {
         get_dev_contrib "entityreference-7.x-1.1.tar.gz"
         get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz"
         get_dev_contrib "og-7.x-2.7.tar.gz"
+        if [ -e "views" ] ; then
+          cd views
+          # https://drupal.org/node/1766338#comment-6445882
+          patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+          # https://drupal.org/node/2037469
+          patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
+          cd ../
+        fi
       fi
     done
     touch /var/xdrago/log/open-atrium-og-fixed-001.log
+    cd
+  fi
+  if [ ! -e "/var/xdrago/log/open-atrium-og-fixed-002.log" ] ; then
+    REVISIONS="001 003 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+    for i in $REVISIONS; do
+      if [ -d "/data/all/$i/openatrium-7.x-2.21-7.31.1/profiles/openatrium/modules/contrib" ] ; then
+        cd /data/all/$i/openatrium-7.x-2.21-7.31.1/profiles/openatrium/modules/contrib/
+        rm -f -r {context,ctools,entity,entityreference,mimemail,og}
+        get_dev_contrib "context-7.x-3.2.tar.gz"
+        get_dev_contrib "ctools-7.x-1.4.tar.gz"
+        get_dev_contrib "entity-7.x-1.5.tar.gz"
+        get_dev_contrib "entityreference-7.x-1.1.tar.gz"
+        get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz"
+        get_dev_contrib "og-7.x-2.7.tar.gz"
+        if [ -e "views" ] ; then
+          cd views
+          # https://drupal.org/node/1766338#comment-6445882
+          patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+          # https://drupal.org/node/2037469
+          patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
+          cd ../
+        fi
+      fi
+    done
+    touch /var/xdrago/log/open-atrium-og-fixed-002.log
     cd
   fi
 }
@@ -5438,6 +5472,7 @@ finale () {
   rm -f -r /tmp/drush_make_tmp*
   rm -f -r /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
+  rm -f -r /var/aegir/.tmp/cache
   rm -f /var/run/boa_run.pid
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/manage_ltd_users.pid
@@ -5612,7 +5647,7 @@ else
     _XTRAS_LIST="CHV"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.3.1
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=NO
@@ -5625,7 +5660,7 @@ else
     _XTRAS_LIST="CSF CHV FTP"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.3.1
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=YES
@@ -8184,6 +8219,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   _U_HD="/var/aegir/.drush"
   chattr +i $_U_HD/php.ini &> /dev/null
   su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
+  rm -f -r /var/aegir/.tmp/cache
   msg "INFO: Running hosting-dispatch (1/3)..."
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
   mrun "sleep 5"
@@ -8352,7 +8388,7 @@ fi
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
   _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
-  if [ ! -d "/var/www/chive" ] || [ ! -f "$_CHIVE_VHOST" ] || [ ! -f "/var/xdrago/log/chive-$_CHIVE_VERSION.fix-params-vhost-force.log" ] ; then
+  if [ ! -d "/var/www/chive" ] || [ ! -f "$_CHIVE_VHOST" ] || [ ! -f "/var/xdrago/log/chive-$_CHIVE_VERSION.fix-ports-vhost-conversion.log" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install Chive $_DB_SERVER Manager?" ; then
       true
@@ -8366,7 +8402,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
       sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"         $_CHIVE_VHOST &> /dev/null
       sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"       $_CHIVE_VHOST &> /dev/null
       sed -i "s/chive_name/chive.$_THIS_FRONT $_THISHTIP/g" $_CHIVE_VHOST &> /dev/null
-      touch /var/xdrago/log/chive-$_CHIVE_VERSION.fix-params-vhost-force.log
+      touch /var/xdrago/log/chive-$_CHIVE_VERSION.fix-ports-vhost-conversion.log
       msg "INFO: Chive $_DB_SERVER Manager installation completed"
     else
       msg "INFO: Chive $_DB_SERVER Manager installation skipped"
@@ -8392,7 +8428,7 @@ fi
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
   _SQLBUDDY_VHOST="/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.$_THIS_FRONT"
-  if [ ! -d "/var/www/sqlbuddy" ] || [ ! -f "$_SQLBUDDY_VHOST" ] || [ ! -f "/var/xdrago/log/sqlbuddy.fix-params-vhost-force.log" ] ; then
+  if [ ! -d "/var/www/sqlbuddy" ] || [ ! -f "$_SQLBUDDY_VHOST" ] || [ ! -f "/var/xdrago/log/sqlbuddy.fix-ports-vhost-conversion.log" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install SQL Buddy $_DB_SERVER Manager?" ; then
       true
@@ -8406,7 +8442,7 @@ if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
       sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"   $_SQLBUDDY_VHOST &> /dev/null
       sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_SQLBUDDY_VHOST &> /dev/null
       sed -i "s/buddy_name/sqlbuddy.$_THIS_FRONT/g"   $_SQLBUDDY_VHOST &> /dev/null
-      touch /var/xdrago/log/sqlbuddy.fix-params-vhost-force.log
+      touch /var/xdrago/log/sqlbuddy.fix-ports-vhost-conversion.log
       msg "INFO: SQL Buddy $_DB_SERVER Manager installation completed"
     else
       msg "INFO: SQL Buddy $_DB_SERVER Manager installation skipped"
@@ -8433,7 +8469,7 @@ fi
 if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
   _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
   if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-    if [ ! -d "/var/www/cgp" ] || [ ! -f "$_CGP_VHOST" ] || [ ! -f "/var/xdrago/log/cgp-$_CGP_VERSION.fix-params-vhost-force.log" ] ; then
+    if [ ! -d "/var/www/cgp" ] || [ ! -f "$_CGP_VHOST" ] || [ ! -f "/var/xdrago/log/cgp-$_CGP_VERSION.fix-ports-vhost-conversion.log" ] ; then
       echo " "
       if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
         true
@@ -8454,7 +8490,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"  $_CGP_VHOST &> /dev/null
         sed -i "s/cgp_name/cgp.$_THIS_FRONT/g"           $_CGP_VHOST &> /dev/null
         st_runner "update-rc.d collectd defaults" &> /dev/null
-        echo collectd5 > /var/xdrago/log/cgp-$_CGP_VERSION.fix-params-vhost-force.log
+        echo collectd5 > /var/xdrago/log/cgp-$_CGP_VERSION.fix-ports-vhost-conversion.log
         msg "INFO: Collectd Graph Panel installation completed"
       else
         msg "INFO: Collectd Graph Panel installation skipped"
@@ -9045,12 +9081,10 @@ if [ "$_STATUS" = "INIT" ] ; then
   mrun "service nginx restart" &> /dev/null
 else
   if [ -e "/var/aegir/config" ] ; then
-    sed -i "s/.*listen.*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
-    sed -i "s/.*listen.*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/chive.*    &> /dev/null
-    sed -i "s/.*listen.*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
-    sed -i "s/.*listen.*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
-    sed -i "s/.*listen.*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/chive.*    &> /dev/null
-    sed -i "s/.*listen.*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
+    sed -i "s/.*listen .*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/*          &> /dev/null
+    sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
+    sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/chive.*    &> /dev/null
+    sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
     sed -i "s/SSLv3 TLSv1;/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
     sed -i "s/HIGH:\!ADH:\!MD5;/RC4:HIGH:\!aNULL:\!MD5;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
     sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                           &> /dev/null

@@ -78,7 +78,7 @@ _CLIENT_CORES=8
 ### _PHP_FPM_VERSION=5.3
 ### _PHP_CLI_VERSION=5.3
 ### _DEBUG_MODE=NO
-### _AEGIR_VERSION=BOA-2.3.1
+### _AEGIR_VERSION=HEAD
 ### _DNS_SETUP_TEST=NO
 ### _THIS_DB_HOST=localhost
 ### _LOCAL_NETWORK_IP="127.0.1.1"
@@ -168,7 +168,8 @@ _PHP_CLI_VERSION=5.3
 ### OAM ----------- Open Atrium D6
 ### OAY ----------- Open Academy
 ### OBG ----------- OpenBlog
-### OCH ----------- OpenChurch
+### OCH ----------- OpenChurch 1
+### CH2 ----------- OpenChurch 2
 ### ODS ----------- Open Deals
 ### OOH ----------- Open Outreach
 ### OPC ----------- OpenPublic
@@ -269,7 +270,7 @@ _MY_OWNIP=""
 ### The HEAD can be occasionally broken
 ### and should be used **only** for testing!
 ###
-_AEGIR_VERSION=BOA-2.3.1
+_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
@@ -604,14 +605,14 @@ _RESERVED_RAM=0
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.1
-_BRANCH_BOA=2.3.x-dev
+_INSTALLER_VERSION=BOA-2.3.2-dev
+_BRANCH_BOA=master
 _BRANCH_PROVISION=2.3.x-dev
 
 ###
 ### Variables
 ###
-_DRUSH_VERSION=mini-6-14-09-2014
+_DRUSH_VERSION=mini-6-18-09-2014
 _NOW=`date +%y%m%d-%H%M`
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
@@ -653,7 +654,8 @@ _OPENACADEMY=7.x-1.1
 _OPENATRIUM6=6.x-1.7
 _OPENATRIUM7=7.x-2.21
 _OPENBLOG=7.x-1.0-alpha3
-_OPENCHURCH=7.x-1.12
+_OPENCHURCH1=7.x-1.14
+_OPENCHURCH2=7.x-2.0-beta1
 _OPENDEALS=7.x-1.33
 _OPENOUTREACH=7.x-1.10
 _OPENPUBLIC=7.x-1.0-rc4
@@ -1368,6 +1370,41 @@ check_php_compatibility () {
   fi
 }
 #
+# Check CiviCRM compatibility.
+check_civicrm_compatibility () {
+  for Platform in `find /data/disk/${_USER}/.drush/platform_* -maxdepth 1 -type f | sort`
+  do
+    _SKIP_HM=NO
+    _THIS_PLATFORM_ROOT=`cat $Platform | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+    if [ -e "${_THIS_PLATFORM_ROOT}/sites/all" ] && [ -e "${_THIS_PLATFORM_ROOT}/index.php" ] ; then
+      if [ -e "${_THIS_PLATFORM_ROOT}/drushrc.php" ] ; then
+        _CIVICRM_IF_A=`grep "profiles.*civicrm\.module" ${_THIS_PLATFORM_ROOT}/drushrc.php 2>&1`
+        if [[ "$_CIVICRM_IF_A" =~ "hostmaster" ]] ; then
+          _SKIP_HM=YES
+        fi
+      fi
+      if [ -e "${_THIS_PLATFORM_ROOT}/sites/all/drush/drushrc.php" ] ; then
+        _CIVICRM_IF_B=`grep "profiles.*civicrm\.module" ${_THIS_PLATFORM_ROOT}/sites/all/drush/drushrc.php 2>&1`
+        if [[ "$_CIVICRM_IF_B" =~ "hostmaster" ]] ; then
+          _SKIP_HM=YES
+        fi
+      fi
+      if [ "$_SKIP_HM" = "NO" ] ; then
+        if [[ "$_CIVICRM_IF_A" =~ "civicrm" ]] || [[ "$_CIVICRM_IF_B" =~ "civicrm" ]] ; then
+           msg "ERROR: This instance has CiviCRM in the installation profile tree:"
+           msg "ERROR: $_CIVICRM_IF_A $_CIVICRM_IF_B"
+           msg "ERROR: which makes it incompatible with modern BOA-2.3.x series"
+           msg "ERROR: Please migrate your CiviCRM sites to new platforms with"
+           msg "ERROR: civicrm located in the standard sites/all/modules tree"
+           msg "ERROR: before trying to run this upgrade again"
+           msg "Bye"
+           exit 1
+        fi
+      fi
+    fi
+  done
+}
+#
 # Action.
 action () {
   _REL_VERSION=`lsb_release -sc`
@@ -1441,7 +1478,8 @@ action () {
     sed -i "s/EDIT_OPENATRIUM6/$_OPENATRIUM6/g"             $Files &> /dev/null
     sed -i "s/EDIT_OPENATRIUM7/$_OPENATRIUM7/g"             $Files &> /dev/null
     sed -i "s/EDIT_OPENBLOG/$_OPENBLOG/g"                   $Files &> /dev/null
-    sed -i "s/EDIT_OPENCHURCH/$_OPENCHURCH/g"               $Files &> /dev/null
+    sed -i "s/EDIT_OPENCHURCH1/$_OPENCHURCH1/g"             $Files &> /dev/null
+    sed -i "s/EDIT_OPENCHURCH2/$_OPENCHURCH2/g"             $Files &> /dev/null
     sed -i "s/EDIT_OPENDEALS/$_OPENDEALS/g"                 $Files &> /dev/null
     sed -i "s/EDIT_OPENOUTREACH/$_OPENOUTREACH/g"           $Files &> /dev/null
     sed -i "s/EDIT_OPENPUBLIC/$_OPENPUBLIC/g"               $Files &> /dev/null
@@ -1695,7 +1733,7 @@ _THIS_HOST=`uname -n`
 if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
   _PHP_FPM_VERSION=5.3
   _PHP_CLI_VERSION=5.3
-  _AEGIR_VERSION=BOA-2.3.1
+  _AEGIR_VERSION=HEAD
   _DEBUG_MODE=NO
   _DNS_SETUP_TEST=NO
   _THIS_DB_HOST=localhost
@@ -1784,6 +1822,7 @@ if [ -e "/data/disk/${_USER}/log/octopus_log.txt" ] ; then
   fi
 fi
 check_php_compatibility
+check_civicrm_compatibility
 #
 #
 rm -f /var/run/aegir_upgrade.pid
@@ -2092,6 +2131,7 @@ rm -f -r /tmp/drush_make_tmp*
 rm -f -r /tmp/make_tmp*
 rm -f /tmp/pm-updatecode*
 rm -f /var/run/boa_run.pid
+rm -f -r $_ROOT/.tmp/cache
 rm -f /var/run/manage_ltd_users.pid
 rm -f /var/run/manage_rvm_users.pid
 exit 0

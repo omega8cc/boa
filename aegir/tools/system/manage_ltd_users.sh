@@ -630,6 +630,7 @@ switch_php()
           update_php_cli_local_ini
           if [ -e "$_L_PHP_CLI" ] ; then
             sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_LOC_PHP_CLI_VERSION/g" /root/.${_OWN}.octopus.cnf &> /dev/null
+            echo $_LOC_PHP_CLI_VERSION > /data/disk/${_OWN}/log/cli.txt
           fi
         fi
       fi
@@ -670,6 +671,7 @@ switch_php()
             fi
           fi
           sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_LOC_PHP_FPM_VERSION/g" /root/.${_OWN}.octopus.cnf &> /dev/null
+          echo $_LOC_PHP_FPM_VERSION > /data/disk/${_OWN}/log/fpm.txt
           _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
           _PHP_SV=${_LOC_PHP_FPM_VERSION//[^0-9]/}
           if [ -z "$_PHP_SV" ] ; then
