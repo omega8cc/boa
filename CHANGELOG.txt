@@ -1,6 +1,6 @@
 
 ### Stable BOA-2.3.2 Release - Full Edition
-### Date: TBD
+### Date: Thu Sep 18 15:16:33 PDT 2014
 ### Includes Aegir 2.1 with improvements
 
 # Release Notes:
@@ -36,6 +36,7 @@
 
 # System upgrades in this release:
 
+  * Drush: Upgrade command line version 6 to mini-6-18-09-2014
   * Nginx 1.7.5
   * Redis 2.8.16
 
