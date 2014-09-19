@@ -169,7 +169,7 @@ enable_chattr () {
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
       fi
-      if [ ! -f "/data/disk/${_OWN}/log/.gems.build.c.${UQ}.txt" ] ; then
+      if [ ! -f "/data/disk/${_OWN}/log/.gems.build.d.${UQ}.txt" ] ; then
         rm -f /data/disk/${_OWN}/log/eventmachine*
         if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
           _WEB_SH=`readlink -n /bin/sh`
@@ -194,7 +194,7 @@ enable_chattr () {
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative http_parser.rb" &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative oily_png"       &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative yajl-ruby"      &> /dev/null
-        touch /data/disk/${_OWN}/log/.gems.build.c.${UQ}.txt
+        touch /data/disk/${_OWN}/log/.gems.build.d.${UQ}.txt
         rm -f /var/run/manage_rvm_users.pid
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
