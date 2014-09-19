@@ -39,6 +39,7 @@
 
   * Drush: Upgrade command line version 6 to mini-6-18-09-2014
   * Nginx 1.7.5
+  * PHPRedis: master-02-09-2014
   * Redis 2.8.16
 
 # Fixes in this release:
