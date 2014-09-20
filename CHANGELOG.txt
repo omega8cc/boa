@@ -102,6 +102,7 @@
   * You can schedule tasks against filtered sites in batches
   * Scheduling tasks in batches is available also on the platform view
   * Scheduling tasks in batches is available also on the profile view
+  * Scheduling tasks in batches is available also on the client view
   * You can schedule tasks also against platforms in batches
   * You can safely apply db updates via 'Run db updates' task on any site
   * The new 'Clients' menu item allows to list and manage sub-accounts
