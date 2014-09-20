@@ -617,7 +617,7 @@ _F_OPENDEALS="Open Deals $_OPEN_DEALS $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENOUTREACH="Open Outreach 1.11 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLIC="OpenPublic 1.0-rc4 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLISH="OpenPublish 3.0-b7 $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENSCHOLAR="OpenScholar 3.12.1 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENSCHOLAR="OpenScholar 3.15.1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PANOPOLY="Panopoly 1.11 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
 _F_RECRUITER="Recruiter 1.2 $_SMALLCORE7 P.$_THIS_CORE"
@@ -1771,13 +1771,13 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
     rm -f -r $_SHRD_PRPATH/modules/contrib/{entitycache,expire}
-    if [ $_OPENSCHOLAR = "7.x-3.12.1" ] ; then
+    if [ $_OPENSCHOLAR = "7.x-3.15.1" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
       rm -f -r {biblio,boxes,entityreference_prepopulate,restws}
       get_dev_contrib "biblio-7.x-1.0-rc7.tar.gz"
-      get_dev_contrib "boxes-7.x-1.1.tar.gz"
+      get_dev_contrib "boxes-7.x-1.2.tar.gz"
       get_dev_contrib "entityreference_prepopulate-7.x-1.5.tar.gz"
-      get_dev_contrib "restws-7.x-2.1.tar.gz"
+      get_dev_contrib "restws-7.x-2.2.tar.gz"
       upgrade_contrib_less
     fi
   else
