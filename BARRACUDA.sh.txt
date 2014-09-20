@@ -9151,6 +9151,12 @@ else
   sed -i "s/listen .*/listen        \*:80;/g"  /data/disk/*/config/server_*/nginx/vhost.d/*       &> /dev/null
   sed -i "s/param db_port.*/param db_port   3306;/g" /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
 
+  ###
+  ### Delete any ghost, outdated or broken config includes
+  ### in all Octopus instances which could break Nginx restart
+  ###
+  for File in `grep will_expire_in * /data/disk/*/config/includes/* | cut -d: -f1 | awk '{ print $1}'`; do rm -f $File ;done
+
   sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf &> /dev/null
   sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf   &> /dev/null
   sed -i "s/OctopusNCookie/AegirCookie/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf      &> /dev/null
