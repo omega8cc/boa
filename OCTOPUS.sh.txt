@@ -1361,6 +1361,9 @@ check_php_compatibility () {
     _PHP_LEGACY_FREE=NO
   fi
   if [ "$_PHP_LEGACY_FREE" = "NO" ] || [ "$_PHP_FPM_VERSION" = "5.2" ] ; then
+    if [ -x "/opt/php52/bin/php-cgi" ] && [ -x "/etc/init.d/php52-fpm" ] ; then
+      sed -i "s/127.0.0.1:9090/127.0.0.1:9000/g" $_ROOT/config/includes/*.conf
+    fi
     msg "ERROR: This instance still depends on the old PHP version 5.2"
     msg "ERROR: It is not possible to upgrade it to modern BOA-2.3.x series"
     msg "ERROR: Please switch both FPM and CLI on this instance to PHP 5.3 or newer"
