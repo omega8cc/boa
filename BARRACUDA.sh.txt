@@ -9156,7 +9156,7 @@ else
   ### in all Octopus instances which could break Nginx restart
   ###
   for File in `grep will_expire_in * /data/disk/*/config/includes/* | cut -d: -f1 | awk '{ print $1}'`; do rm -f $File ;done
-  for Vght in `ls /data/disk/*/log/CANCELLED | cut -d"/" -f4 | awk '{ print $1}'`; do rm -f /data/disk/$Vght/config/server_*/nginx/vhost.d/* ;done
+  for Vght in `ls /data/disk/*/log/CANCELLED 2> /dev/null | cut -d"/" -f4 | awk '{ print $1}'`; do rm -f /data/disk/$Vght/config/server_*/nginx/vhost.d/* ;done
 
   sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf &> /dev/null
   sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf   &> /dev/null
