@@ -1,5 +1,8 @@
 Hello,
 
+@=> NOTE: This is an extra upgrade to fix any remaining issues which
+@=> may affect some Aegir instances after initial upgrade to BOA-2.3.2
+
 Your Aegir Hosting System has been upgraded to version BOA-2.3.2
 
   https://aegir.dragon.ny.host8.biz
