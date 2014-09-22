@@ -223,7 +223,7 @@ up_action ()
             n=$((RANDOM%800+80))
           fi
         else
-           dn=8
+          n=8
         fi
         echo
         echo "Preparing the upgrade in silent mode..."
