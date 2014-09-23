@@ -2,7 +2,7 @@
 ### Stable BOA-2.3.2 Release - Full Edition
 ### Date: Thu Sep 18 15:16:33 PDT 2014
 ### Includes Aegir 2.1 with improvements
-### Latest hotfix added on: Mon Sep 22 15:51:33 PDT 2014
+### Latest hotfix added on: Tue Sep 23 07:13:59 PDT 2014
 
 # Release Notes:
 
@@ -49,6 +49,7 @@
 # Fixes in this release:
 
   * Add extra cleanup for Drush related caches.
+  * Always start cron before aborting on error.
   * Do not allow system only upgrades if Master Instance is still on 2.2.x
   * Fix for broken pdnsd configuration if wrong IPs are detected.
   * Fix for insufficient permissions on files/civicrm/ConfigAndLog
@@ -57,8 +58,10 @@
   * Force problematic gems install to add them on accounts with enabled RVM.
   * Hardcode files.aegir.cc DNS entry.
   * Improve docs/ctrl/system.ctrl readability.
+  * Install openjdk on CI instances by default.
   * Issue #411 - Unable to update Octopus Instance - Reports PHP on 5.2
   * Make sure that lsb-release is installed properly.
+  * Make the check_civicrm_compatibility more reliable to avoid false alarms.
   * New Relic not enabled if no custom ~/static/control/{fpm|cli}.info exists.
   * Nginx: Auto-Switch to wildcard all vhosts existing in the Master Instance.
   * Nginx: Convert all Octopus vhosts to wildcard mode on Barracuda upgrade.
