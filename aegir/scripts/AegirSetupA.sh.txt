@@ -857,6 +857,7 @@ else
   msg "$_STATUS A: FATAL ERROR: This script should be ran as a root user"
   msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
   touch /opt/tmp/status-AegirSetupA-FAIL
+  service cron start &> /dev/null
   exit 1
 fi
 
@@ -890,6 +891,7 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
     msg "ERROR: This OCTOPUS version is outdated and will not work correctly"
     msg "Bye"
     touch /opt/tmp/status-AegirSetupA-FAIL
+    service cron start &> /dev/null
     exit 1
   fi
 fi
@@ -974,6 +976,7 @@ provision_backend_dbpass_generate () {
     msg "$_STATUS A: FATAL ERROR: This server does not have a hostname that resolves to an IP address"
     msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
     touch /opt/tmp/status-AegirSetupA-FAIL
+    service cron start &> /dev/null
     exit 1
   fi
 _ESC="\`%\`.*"
@@ -1066,6 +1069,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     msg "$_STATUS A: FATAL ERROR: AegirSetupB installer failed"
     msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
     touch /opt/tmp/status-AegirSetupA-FAIL
+    service cron start &> /dev/null
     exit 1
   fi
   _U_HD="$_ROOT/.drush"
@@ -1113,6 +1117,7 @@ else
         msg "$_STATUS A: FATAL ERROR: AegirSetupB installer failed"
         msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
         touch /opt/tmp/status-AegirSetupA-FAIL
+        service cron start &> /dev/null
         exit 1
       else
         chattr +i $_U_HD/php.ini &> /dev/null
@@ -1219,6 +1224,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     msg "$_STATUS A: FATAL ERROR: AegirSetupC installer failed"
     msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
     touch /opt/tmp/status-AegirSetupA-FAIL
+    service cron start &> /dev/null
     exit 1
   fi
   msg "$_STATUS A: Platforms installation completed"
@@ -1243,6 +1249,7 @@ else
         msg "$_STATUS A: FATAL ERROR: AegirSetupC installer failed"
         msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
         touch /opt/tmp/status-AegirSetupA-FAIL
+        service cron start &> /dev/null
         exit 1
       fi
       msg "$_STATUS A: Platforms installation completed"
