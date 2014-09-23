@@ -1174,6 +1174,7 @@ fatal () {
   echo " "
   msg "Fatal Error Occurred: $1"
   msg "Cannot continue installation"
+  service cron start &> /dev/null
   exit 1
 }
 #
@@ -1450,6 +1451,7 @@ check_git_repos_status () {
     Bye.
 
 EOF
+    service cron start &> /dev/null
     exit 1
   fi
   _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
@@ -4112,6 +4114,7 @@ provision_backend_dbpass_generate () {
     msg "FATAL ERROR:: This server does not have a hostname that resolves to an IP address"
     msg "FATAL ERROR:: Aborting Barracuda installer NOW!"
     touch /opt/tmp/status-Barracuda-FAIL
+    service cron start &> /dev/null
     exit 1
   fi
 _ESC="\`%\`.*"
@@ -4239,6 +4242,7 @@ upgrade_aegir_master () {
       msg "FATAL ERROR: AegirUpgrade installer failed"
       msg "FATAL ERROR: Aborting Barracuda installer NOW!"
       touch /opt/tmp/status-Barracuda-FAIL
+      service cron start &> /dev/null
       exit 1
     else
       chattr +i $_U_HD/php.ini &> /dev/null
@@ -5657,6 +5661,7 @@ else
   rm -f /usr/bin/drush
   if [ "$_EASY_LOCALHOST" = "YES" ] && [ "$_EASY_PUBLIC" = "YES" ] ; then
     msg "FATAL ERROR: You must enable either _EASY_PUBLIC or _EASY_LOCALHOST mode, not both"
+    service cron start &> /dev/null
     exit 1
   fi
   if [ "$_EASY_PUBLIC" = "YES" ] ; then
@@ -5744,6 +5749,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
 
 EOF
   msg "EXIT on error due to not found file with your MySQL/$_DB_SERVER root password"
+  service cron start &> /dev/null
   exit 1
   fi
 fi
@@ -5890,6 +5896,7 @@ check_connection ()
           msg "You may want to check https://status.github.com/messages"
           msg "Also, make sure that the git port 9418 is open"
           msg "Bye"
+          service cron start &> /dev/null
           exit 1
         fi
       fi
@@ -5908,6 +5915,7 @@ if [ "$_SYSTEM_UPGRADE_ONLY" = "NO" ] && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
     rm -f -r /opt/tmp/test-*
+    service cron start &> /dev/null
     exit 1
   fi
   _GITHUB_TEST=`git clone git://github.com/omega8cc/hostmaster.git /opt/tmp/test-hostmaster 2>&1`
@@ -5918,6 +5926,7 @@ if [ "$_SYSTEM_UPGRADE_ONLY" = "NO" ] && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
     rm -f -r /opt/tmp/test-*
+    service cron start &> /dev/null
     exit 1
   fi
   rm -f -r /opt/tmp/test-*
@@ -5932,6 +5941,7 @@ if [[ "$_INSTALLER_VERSION" =~ "-dev" ]] ; then
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
     rm -f -r /opt/tmp/test-*
+    service cron start &> /dev/null
     exit 1
   fi
   rm -f -r /opt/tmp/test-*
@@ -5963,6 +5973,7 @@ if ! netcat -w 14 -z $_DB_SERVER_SRC 80 ; then
   msg "Please try to run this script again in a few minutes"
   msg "or better yet, hours"
   msg "Bye"
+  service cron start &> /dev/null
   exit 1
 fi
 
@@ -6006,6 +6017,7 @@ if [ ! -e "/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive" ] ; t
   msg "Please try to run this script again in a few minutes"
   msg "Also, make sure that the git port 9418 is open"
   msg "Bye"
+  service cron start &> /dev/null
   exit 1
 fi
 # Get apt helper
@@ -6064,6 +6076,7 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
   if [ "$_VERSIONS_TEST_RESULT" = "FAIL" ] ; then
     msg "ERROR: This BARRACUDA version is outdated and will not work correctly"
     msg "Bye"
+    service cron start &> /dev/null
     exit 1
   fi
 fi
@@ -6075,6 +6088,7 @@ if [ -e "/var/log/barracuda_log.txt" ] ; then
       msg "ERROR: You can not downgrade back to legacy or previous stable BOA version"
       msg "ERROR: Please use barracuda up-stable to upgrade this system"
       msg "Bye"
+      service cron start &> /dev/null
       exit 1
     fi
   fi
@@ -6258,6 +6272,7 @@ EOF
 
 EOF
     msg "EXIT on error due to invalid DNS setup"
+    service cron start &> /dev/null
     exit 1
   else
     echo "$_THISHOST" > /etc/hostname
@@ -7135,6 +7150,7 @@ if ! netcat -w 14 -z smtp.gmail.com 25 ; then
   Then run this script again.
 
 EOF
+  service cron start &> /dev/null
   exit 1
 else
   _DO_NOTHING=YES
@@ -8182,6 +8198,7 @@ else
 
 EOF
   msg "EXIT on error due to not found file with your MySQL/$_DB_SERVER root password"
+  service cron start &> /dev/null
   exit 1
 fi
 
@@ -8198,6 +8215,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     msg "Bye"
     rm -f /root/.my.pass.txt
     mkdir -p /var/aegir
+    service cron start &> /dev/null
     exit 1
   fi
   msg "INFO: Installing Aegir Master Instance, please wait..."
@@ -8231,6 +8249,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     msg "FATAL ERROR: Aborting Barracuda installer NOW!"
     msg "HINT: Please check /var/aegir/install.log for more information on errors occured"
     touch /opt/tmp/status-Barracuda-FAIL
+    service cron start &> /dev/null
     exit 1
   fi
   if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
@@ -8267,6 +8286,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   else
     msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed - exit now"
     msg "HINT: Please check /var/aegir/install.log for more information on errors occured"
+    service cron start &> /dev/null
     exit 1
   fi
 
@@ -8335,6 +8355,7 @@ else
       msg "HINT: Please check $_LOG for more information,"
       msg "HINT: (re)start $_DB_SERVER server and then run installer again"
       msg "Bye"
+      service cron start &> /dev/null
       exit 1
     fi
     echo " "

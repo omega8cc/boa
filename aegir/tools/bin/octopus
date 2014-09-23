@@ -300,6 +300,7 @@ up_one ()
       fi
     else
       echo "OCTOPUS.sh.txt installer not available - try again"
+      service cron start &> /dev/null
       exit 1
     fi
   fi
@@ -586,6 +587,7 @@ check_wrapper ()
         if [ ! -e "$_THIS_FILE" ] ; then
           echo "Sorry, I gave up."
           echo "Please check http://stats.pingdom.com/x0s6yrbopal6/801243 and try again later."
+          service cron start &> /dev/null
           exit 1
         fi
       fi

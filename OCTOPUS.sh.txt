@@ -944,6 +944,7 @@ check_git_repos_status () {
     Bye.
 
 EOF
+    service cron start &> /dev/null
     exit 1
   fi
   _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
@@ -1228,6 +1229,7 @@ octopus_cnf () {
       if [ ! -x "/opt/php53/bin/php" ] ; then
         msg "EXIT: You must specify already installed PHP version"
         msg "EXIT: in both _PHP_FPM_VERSION and _PHP_CLI_VERSION"
+        service cron start &> /dev/null
         exit 1
       fi
     fi
@@ -1369,6 +1371,7 @@ check_php_compatibility () {
     msg "ERROR: Please switch both FPM and CLI on this instance to PHP 5.3 or newer"
     msg "ERROR: Once the instance is switched away from 5.2 run the upgrade again"
     msg "Bye"
+    service cron start &> /dev/null
     exit 1
   fi
 }
@@ -1401,6 +1404,7 @@ check_civicrm_compatibility () {
            msg "ERROR: civicrm located in the standard sites/all/modules tree"
            msg "ERROR: before trying to run this upgrade again"
            msg "Bye"
+           service cron start &> /dev/null
            exit 1
         fi
       fi
@@ -1551,6 +1555,7 @@ action () {
     msg "FATAL ERROR: AegirSetupA installer failed"
     msg "FATAL ERROR: Aborting Octopus installer NOW!"
     touch /opt/tmp/status-Octopus-FAIL
+    service cron start &> /dev/null
     exit 1
   fi
   if [ ! -e "/data/disk/$_USER/log/email.txt" ] ; then
@@ -1617,6 +1622,7 @@ check_connection () {
           msg "You may want to check https://status.github.com/messages"
           msg "Also, make sure that the git port 9418 is open"
           msg "Bye"
+          service cron start &> /dev/null
           exit 1
         fi
       fi
@@ -1636,6 +1642,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
     rm -f -r /opt/tmp/test-*
+    service cron start &> /dev/null
     exit 1
   fi
   _GITHUB_TEST=`git clone git://github.com/omega8cc/hostmaster.git /opt/tmp/test-hostmaster 2>&1`
@@ -1646,6 +1653,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
     rm -f -r /opt/tmp/test-*
+    service cron start &> /dev/null
     exit 1
   fi
   rm -f -r /opt/tmp/test-*
@@ -1660,6 +1668,7 @@ if [[ "$_INSTALLER_VERSION" =~ "-dev" ]] ; then
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
     rm -f -r /opt/tmp/test-*
+    service cron start &> /dev/null
     exit 1
   fi
   rm -f -r /opt/tmp/test-*
@@ -1677,6 +1686,7 @@ if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock"
   msg "EXIT: We can't proceed and will exit now"
   msg "HINT: Please (re)start $_DB_SERVER server and then run installer again"
   msg "Bye"
+  service cron start &> /dev/null
   exit 1
 fi
 
@@ -1794,6 +1804,7 @@ if [ ! -f "/var/log/barracuda_log.txt" ] ; then
   msg "ERROR: This script should be used only when the same version of BARRACUDA was used before"
   msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first"
   msg "Bye"
+  service cron start &> /dev/null
   exit 1
 else
   _VERSIONS_TEST=`cat /var/log/barracuda_log.txt`
@@ -1803,6 +1814,7 @@ else
     msg "ERROR: This script should be used only when the same version of BARRACUDA was used before"
     msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first"
     msg "Bye"
+    service cron start &> /dev/null
     exit 1
   fi
 fi
@@ -1814,6 +1826,7 @@ if [ -e "/var/log/barracuda_log.txt" ] ; then
       msg "ERROR: You can not downgrade back to legacy or previous stable BOA version"
       msg "ERROR: Please use barracuda up-stable to upgrade this system"
       msg "Bye"
+      service cron start &> /dev/null
       exit 1
     fi
   fi
@@ -1846,6 +1859,7 @@ if [ ! -e "/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive" ] ; t
   msg "Please try to run this script again in a few minutes"
   msg "Also, make sure that the git port 9418 is open"
   msg "Bye"
+  service cron start &> /dev/null
   exit 1
 fi
 #
@@ -2016,6 +2030,7 @@ if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
     msg "Please make sure you have valid IN A or IN CNAME record in your DNS"
     msg "It's also possible, that your DNS change didn't propagate yet"
     msg "Bye"
+    service cron start &> /dev/null
     exit 1
   fi
 else
@@ -2068,6 +2083,7 @@ if prompt_yes_no "Do you want to proceed?" ; then
   true
 else
   echo "Installation/upgrade aborted by you"
+  service cron start &> /dev/null
   exit 1
 fi
 
