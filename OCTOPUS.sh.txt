@@ -1380,33 +1380,24 @@ check_php_compatibility () {
 check_civicrm_compatibility () {
   for Platform in `find /data/disk/${_USER}/.drush/platform_* -maxdepth 1 -type f | sort`
   do
-    _SKIP_HM=NO
     _THIS_PLATFORM_ROOT=`cat $Platform | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     if [ -e "${_THIS_PLATFORM_ROOT}/sites/all" ] && [ -e "${_THIS_PLATFORM_ROOT}/index.php" ] ; then
       if [ -e "${_THIS_PLATFORM_ROOT}/drushrc.php" ] ; then
-        _CIVICRM_IF_A=`grep "profiles.*civicrm\.module" ${_THIS_PLATFORM_ROOT}/drushrc.php 2>&1`
-        if [[ "$_CIVICRM_IF_A" =~ "hostmaster" ]] ; then
-          _SKIP_HM=YES
-        fi
+        _CIVICRM_IF_A=`grep "static.*profiles.*civicrm\.module" ${_THIS_PLATFORM_ROOT}/drushrc.php 2>&1`
       fi
       if [ -e "${_THIS_PLATFORM_ROOT}/sites/all/drush/drushrc.php" ] ; then
-        _CIVICRM_IF_B=`grep "profiles.*civicrm\.module" ${_THIS_PLATFORM_ROOT}/sites/all/drush/drushrc.php 2>&1`
-        if [[ "$_CIVICRM_IF_B" =~ "hostmaster" ]] ; then
-          _SKIP_HM=YES
-        fi
+        _CIVICRM_IF_B=`grep "static.*profiles.*civicrm\.module" ${_THIS_PLATFORM_ROOT}/sites/all/drush/drushrc.php 2>&1`
       fi
-      if [ "$_SKIP_HM" = "NO" ] ; then
-        if [[ "$_CIVICRM_IF_A" =~ "civicrm" ]] || [[ "$_CIVICRM_IF_B" =~ "civicrm" ]] ; then
-           msg "ERROR: This instance has CiviCRM in the installation profile tree:"
-           msg "ERROR: $_CIVICRM_IF_A $_CIVICRM_IF_B"
-           msg "ERROR: which makes it incompatible with modern BOA-2.3.x series"
-           msg "ERROR: Please migrate your CiviCRM sites to new platforms with"
-           msg "ERROR: civicrm located in the standard sites/all/modules tree"
-           msg "ERROR: before trying to run this upgrade again"
-           msg "Bye"
-           service cron start &> /dev/null
-           exit 1
-        fi
+      if [[ "$_CIVICRM_IF_A" =~ "civicrm" ]] || [[ "$_CIVICRM_IF_B" =~ "civicrm" ]] ; then
+        msg "ERROR: This instance has CiviCRM in the installation profile tree:"
+        msg "ERROR: $_CIVICRM_IF_A $_CIVICRM_IF_B"
+        msg "ERROR: which makes it incompatible with modern BOA-2.3.x series"
+        msg "ERROR: Please migrate your CiviCRM sites to new platforms with"
+        msg "ERROR: civicrm located in the standard sites/all/modules tree"
+        msg "ERROR: before trying to run this upgrade again"
+        msg "Bye"
+        service cron start &> /dev/null
+        exit 1
       fi
     fi
   done
