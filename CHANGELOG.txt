@@ -2,7 +2,7 @@
 ### Stable BOA-2.3.2 Release - Full Edition
 ### Date: Thu Sep 18 15:16:33 PDT 2014
 ### Includes Aegir 2.1 with improvements
-### Latest hotfix added on: Wed Sep 24 06:16:59 PDT 2014
+### Latest hotfix added on: Wed Sep 24 12:44:12 PDT 2014
 
 # Release Notes:
 
@@ -52,6 +52,7 @@
   * Always start cron before aborting on error.
   * Do not add duplicate cron entry for runner.sh
   * Do not allow system only upgrades if Master Instance is still on 2.2.x
+  * Do not disable _DNS_SETUP_TEST
   * Enable path_alias_cache by default also in the hostmaster site.
   * Fix for broken pdnsd configuration if wrong IPs are detected.
   * Fix for insufficient permissions on files/civicrm/ConfigAndLog
@@ -66,17 +67,19 @@
   * Make the check_civicrm_compatibility more reliable to avoid false alarms.
   * New Relic not enabled if no custom ~/static/control/{fpm|cli}.info exists.
   * Nginx: Auto-Switch to wildcard all vhosts existing in the Master Instance.
+  * Nginx: Convert all config templates to wildcard mode in legacy instances.
   * Nginx: Convert all Octopus vhosts to wildcard mode on Barracuda upgrade.
   * Nginx: Convert config to use PHP 5.2 if the instance still depends on it.
   * Nginx: Delete ghost, outdated or broken config includes in all instances.
   * Nginx: Delete ghost, outdated or broken vhosts in all instances.
-  * Nginx: Do not touch nginx_wild_ssl.conf during this upgrade.
   * Nginx: Improve wildcard conversion procedure on some really old instances.
   * Purge all ghost delete tasks before running hostmaster-migrate / upgrade.
   * Purge Drush related caches cleanly when needed.
+  * Recreate possibly broken vhosts.
   * Remove duplicate cron entry for runner.sh to avoid critical system load.
   * Run check_civicrm_compatibility only on upgrade.
   * Update contrib in Open Atrium D7 to maintain upgrade path.
+  * Update cron defaults and remove legacy code.
   * Update default SSL Wildcard Nginx Proxy to use wildcard listen mode.
   * Use strict regex in vhosts listen mode conversion to not break ports.
 
