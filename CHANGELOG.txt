@@ -2,7 +2,7 @@
 ### Stable BOA-2.3.2 Release - Full Edition
 ### Date: Thu Sep 18 15:16:33 PDT 2014
 ### Includes Aegir 2.1 with improvements
-### Latest hotfix added on: Tue Sep 23 07:13:59 PDT 2014
+### Latest hotfix added on: Wed Sep 24 06:16:59 PDT 2014
 
 # Release Notes:
 
@@ -50,7 +50,9 @@
 
   * Add extra cleanup for Drush related caches.
   * Always start cron before aborting on error.
+  * Do not add duplicate cron entry for runner.sh
   * Do not allow system only upgrades if Master Instance is still on 2.2.x
+  * Enable path_alias_cache by default also in the hostmaster site.
   * Fix for broken pdnsd configuration if wrong IPs are detected.
   * Fix for insufficient permissions on files/civicrm/ConfigAndLog
   * Fix for insufficient permissions on files/civicrm/custom
@@ -72,8 +74,10 @@
   * Nginx: Improve wildcard conversion procedure on some really old instances.
   * Purge all ghost delete tasks before running hostmaster-migrate / upgrade.
   * Purge Drush related caches cleanly when needed.
+  * Remove duplicate cron entry for runner.sh to avoid critical system load.
   * Run check_civicrm_compatibility only on upgrade.
   * Update contrib in Open Atrium D7 to maintain upgrade path.
+  * Update default SSL Wildcard Nginx Proxy to use wildcard listen mode.
   * Use strict regex in vhosts listen mode conversion to not break ports.
 
 
