@@ -178,7 +178,6 @@ up_action ()
       sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
     fi
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                       /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"             /var/backups/BARRACUDA.sh.txt
     sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"           /var/backups/BARRACUDA.sh.txt
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ ".qq.o8.io" ]] ; then
@@ -186,7 +185,7 @@ up_action ()
       else
         if [ -e "/root/.barracuda.cnf" ] ; then
           sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                           /root/.barracuda.cnf
-          sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"                  /root/.barracuda.cnf
+          sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=YES/g"                 /root/.barracuda.cnf
           sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"                /root/.barracuda.cnf
           sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"             /root/.barracuda.cnf
           if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
