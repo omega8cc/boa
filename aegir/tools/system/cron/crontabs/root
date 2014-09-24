@@ -4,11 +4,10 @@
 * * * * * bash /var/xdrago/second.sh >/dev/null 2>&1
 * * * * * bash /var/xdrago/minute.sh >/dev/null 2>&1
 * * * * * bash /var/xdrago/runner.sh >/dev/null 2>&1
-*/3 * * * * bash /var/xdrago/manage_ltd_users.sh >/dev/null 2>&1
+*/5 * * * * bash /var/xdrago/manage_ltd_users.sh >/dev/null 2>&1
 03 * * * * bash /var/xdrago/clear.sh >/dev/null 2>&1
 14 * * * * bash /var/xdrago/purge_binlogs.sh >/dev/null 2>&1
 01 0 * * * bash /var/xdrago/graceful.sh >/dev/null 2>&1
 08 0 * * * bash /var/xdrago/mysql_backup.sh >/dev/null 2>&1
 58 2 * * * bash /var/xdrago/daily.sh >/dev/null 2>&1
 58 5 * * * bash /var/xdrago/fetch-remote.sh >/dev/null 2>&1
-###EOF2014###
