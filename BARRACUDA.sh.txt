@@ -5536,6 +5536,9 @@ finale () {
     sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
     sed -i "/^$/d" /etc/crontab &> /dev/null
   fi
+  sed -i "s/.*runner.sh.*//gi" /var/spool/cron/crontabs/root &> /dev/null
+  echo -e "* * * * * bash /var/xdrago/runner.sh >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
+  sed -i "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
   killall -9 memcached     &> /dev/null
   chmod 0750 /sbin/audispd &> /dev/null
   service auditd restart   &> /dev/null
