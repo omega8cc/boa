@@ -8384,7 +8384,8 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
+_WILD_SSL_VHOST="/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf"
+if [ ! -e "$_WILD_SSL_VHOST" ] ; then
   msg "INFO: Installing default SSL Wildcard Nginx Proxy..."
   _HTTPS_TEST=`netstat -ln | grep :443 2>&1`
   if [[ "$_HTTPS_TEST" =~ "443" ]] ; then
@@ -8410,7 +8411,6 @@ EOF
     validate_public_ip &> /dev/null
     validate_xtras_ip &> /dev/null
     openssl req -x509 -nodes -days 7300 -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST" -newkey rsa:4096 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
-    _WILD_SSL_VHOST="/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf"
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_wild_ssl.conf $_WILD_SSL_VHOST
     sed -i "s/127.0.0.1:80/localhost:80/g" $_WILD_SSL_VHOST &> /dev/null
     sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_WILD_SSL_VHOST &> /dev/null
@@ -8425,6 +8425,17 @@ EOF
     update_redis_password
     killall -9 nginx &> /dev/null
     mrun "service nginx start" &> /dev/null
+  fi
+else
+  _WILDCARD_SSL_TEST=$(grep "localhost:80" $_WILD_SSL_VHOST)
+  if [[ "$_WILDCARD_SSL_TEST" =~ "localhost:80" ]] ; then
+    _DO_NOTHING=YES
+  else
+    validate_public_ip &> /dev/null
+    validate_xtras_ip &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_wild_ssl.conf $_WILD_SSL_VHOST
+    sed -i "s/127.0.0.1:80/localhost:80/g" $_WILD_SSL_VHOST &> /dev/null
+    sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_WILD_SSL_VHOST &> /dev/null
   fi
 fi
 
