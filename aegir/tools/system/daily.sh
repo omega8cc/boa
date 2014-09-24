@@ -821,7 +821,7 @@ fix_modules () {
             if [[ "$_VAR_IF_PRESENT" =~ "redis_flush_forced_mode" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";redis_flush_forced_mode = TRUE" >> $_PLR_CTRL_FILE
+              echo ";redis_flush_forced_mode = FALSE" >> $_PLR_CTRL_FILE
             fi
             _VAR_IF_PRESENT=$(grep "redis_lock_enable" $_PLR_CTRL_FILE)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_lock_enable" ]] ; then
@@ -895,7 +895,7 @@ fix_modules () {
             if [[ "$_VAR_IF_PRESENT" =~ "redis_flush_forced_mode" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";redis_flush_forced_mode = TRUE" >> $_DIR_CTRL_FILE
+              echo ";redis_flush_forced_mode = FALSE" >> $_DIR_CTRL_FILE
             fi
             _VAR_IF_PRESENT=$(grep "redis_lock_enable" $_DIR_CTRL_FILE)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_lock_enable" ]] ; then
