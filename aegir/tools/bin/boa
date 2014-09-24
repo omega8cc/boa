@@ -145,7 +145,6 @@ octopus_install ()
       sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"        /var/backups/OCTOPUS.sh.$user
     fi
     sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"$email\"/g"  /var/backups/OCTOPUS.sh.$user
-    sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"      /var/backups/OCTOPUS.sh.$user
     sed -i "s/^_USER=.*/_USER=$user/g"                       /var/backups/OCTOPUS.sh.$user
     if [ "$mode" = "mini" ] ; then
       sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.$user
