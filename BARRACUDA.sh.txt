@@ -9211,6 +9211,20 @@ else
   sed -i "s/listen .*/listen        \*:80;/g"  /data/disk/*/config/server_*/nginx/vhost.d/*       &> /dev/null
   sed -i "s/param db_port.*/param db_port   3306;/g" /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
 
+  for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort` ; do
+    if [ -e "$_OCT/.drush/sys/drush_make" ] ; then
+      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php         &> /dev/null
+      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/sys/provision/http/Provision/Config/Nginx/vhost.tpl.php          &> /dev/null
+      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/sys/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
+      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/xts/provision_cdn/Provision/Config/cdn.tpl.php                   &> /dev/null
+    elif [ -e "$_OCT/.drush/drush_make" ] ; then
+      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision/http/Provision/Config/Nginx/server.tpl.php             &> /dev/null
+      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php              &> /dev/null
+      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php     &> /dev/null
+      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision_cdn/Provision/Config/cdn.tpl.php                       &> /dev/null
+    fi
+  done
+
   ###
   ### Delete any ghost, outdated or broken config includes and vhosts
   ### in all Octopus instances which could break Nginx restart
