@@ -1292,18 +1292,13 @@ rm -f $_ROOT/AegirSetupB.sh.txt
 rm -f $_ROOT/*.sh.txt
 
 
-###---### Add cron task.
+###---### Cleanup cron tasks.
 #
 _LOCAL_STATUS="$_STATUS"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 rm -f /var/spool/cron/crontabs/$_USER
-if [ ! -e "/var/xdrago/log/cron_aegir_off.pid" ] ; then
-  sed -i "s/\*\/1 \* \* \* \* bash \/var\/xdrago\/run/#*\/1 * * * * bash \/var\/xdrago\/run/g" /var/spool/cron/crontabs/root &> /dev/null
-  echo -e "* * * * * bash /var/xdrago/runner.sh >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
-  touch /var/xdrago/log/cron_aegir_off.pid
-fi
 
 
 ###---### Add ftps/lshell access.
