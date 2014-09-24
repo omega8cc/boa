@@ -1364,7 +1364,19 @@ check_php_compatibility () {
   fi
   if [ "$_PHP_LEGACY_FREE" = "NO" ] || [ "$_PHP_FPM_VERSION" = "5.2" ] ; then
     if [ -x "/opt/php52/bin/php-cgi" ] && [ -x "/etc/init.d/php52-fpm" ] ; then
-      sed -i "s/127.0.0.1:9090/127.0.0.1:9000/g" $_ROOT/config/includes/*.conf
+      sed -i "s/127.0.0.1:9090/127.0.0.1:9000/g" $_ROOT/config/includes/*.conf                                     &> /dev/null
+      sed -i "s/127.0.0.1:9090/127.0.0.1:9000/g" $_ROOT/.drush/sys/provision/http/Provision/Service/http/*.conf    &> /dev/null
+    fi
+    if [ -e "$_ROOT/.drush/sys/drush_make" ] ; then
+      sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php         &> /dev/null
+      sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/vhost.tpl.php          &> /dev/null
+      sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
+      sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/xts/provision_cdn/Provision/Config/cdn.tpl.php                   &> /dev/null
+    elif [ -e "$_ROOT/.drush/drush_make" ] ; then
+      sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/server.tpl.php             &> /dev/null
+      sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php              &> /dev/null
+      sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php     &> /dev/null
+      sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision_cdn/Provision/Config/cdn.tpl.php                       &> /dev/null
     fi
     msg "ERROR: This instance still depends on the old PHP version 5.2"
     msg "ERROR: It is not possible to upgrade it to modern BOA-2.3.x series"
@@ -1389,6 +1401,17 @@ check_civicrm_compatibility () {
         _CIVICRM_IF_B=`grep "static.*profiles.*civicrm\.module" ${_THIS_PLATFORM_ROOT}/sites/all/drush/drushrc.php 2>&1`
       fi
       if [[ "$_CIVICRM_IF_A" =~ "civicrm" ]] || [[ "$_CIVICRM_IF_B" =~ "civicrm" ]] ; then
+        if [ -e "$_ROOT/.drush/sys/drush_make" ] ; then
+          sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php         &> /dev/null
+          sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/vhost.tpl.php          &> /dev/null
+          sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
+          sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/xts/provision_cdn/Provision/Config/cdn.tpl.php                   &> /dev/null
+        elif [ -e "$_ROOT/.drush/drush_make" ] ; then
+          sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/server.tpl.php             &> /dev/null
+          sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php              &> /dev/null
+          sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php     &> /dev/null
+          sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision_cdn/Provision/Config/cdn.tpl.php                       &> /dev/null
+        fi
         msg "ERROR: This instance has CiviCRM in the installation profile tree:"
         msg "ERROR: $_CIVICRM_IF_A $_CIVICRM_IF_B"
         msg "ERROR: which makes it incompatible with modern BOA-2.3.x series"
