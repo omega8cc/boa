@@ -666,7 +666,8 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
       $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y &> /dev/null
     fi
   fi
-  $_DRUSHCMD @hostmaster dis hosting_backup_gc path_alias_cache syslog dblog -y &> /dev/null
+  $_DRUSHCMD @hostmaster dis hosting_backup_gc syslog dblog -y &> /dev/null
+  $_DRUSHCMD @hostmaster en path_alias_cache -y &> /dev/null
   rm -f -r $_HOSTMASTER_ROOT/profiles/hostmaster/modules/hosting_backup_gc
   rm -f -r $_HOSTMASTER_ROOT/modules/cookie_cache_bypass
   $_DRUSHCMD cache-clear drush &> /dev/null
