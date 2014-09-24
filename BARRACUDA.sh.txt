@@ -5536,9 +5536,13 @@ finale () {
     sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
     sed -i "/^$/d" /etc/crontab &> /dev/null
   fi
-  sed -i "s/.*runner.sh.*//gi" /var/spool/cron/crontabs/root &> /dev/null
-  echo -e "* * * * * bash /var/xdrago/runner.sh >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
-  sed -i "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
+  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    sed -i "s/.*runner.sh.*//gi" /var/spool/cron/crontabs/root &> /dev/null
+    echo -e "*/3 * * * * bash /var/xdrago/runner.sh >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
+    sed -i "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
+    chown root:crontab /var/spool/cron/crontabs/root
+    chmod 600 /var/spool/cron/crontabs/root
+  fi
   killall -9 memcached     &> /dev/null
   chmod 0750 /sbin/audispd &> /dev/null
   service auditd restart   &> /dev/null
@@ -7271,7 +7275,6 @@ if [ -d "/var/xdrago/conf" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc
     else
       if [ -e "/root/.high_load.cnf" ] && [ ! -e "/root/.big_db.cnf" ] && [ ! -e "/root/.tg.cnf" ] ; then
         sed -i "s/3600/180/g" /var/xdrago/minute.sh &> /dev/null
-        sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/9 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root &> /dev/null
       elif [ -e "/root/.big_db.cnf" ] || [ -e "/root/.tg.cnf" ] ; then
         _DO_NOTHING=YES
       else
@@ -7330,7 +7333,6 @@ if [ "$_STATUS" = "INIT" ] ; then
     else
       if [ -e "/root/.high_load.cnf" ] && [ ! -e "/root/.big_db.cnf" ] && [ ! -e "/root/.tg.cnf" ] ; then
         sed -i "s/3600/180/g" /var/xdrago/minute.sh &> /dev/null
-        sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/9 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root &> /dev/null
       elif [ -e "/root/.big_db.cnf" ] || [ -e "/root/.tg.cnf" ] ; then
         _DO_NOTHING=YES
       else
@@ -9345,7 +9347,6 @@ csf_install () {
     if [ -e "/usr/etc/sshd_config" ] ; then
       sed -i "s/^Port.*/Port $_SSH_PORT/g" /usr/etc/sshd_config &> /dev/null
     fi
-    sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root &> /dev/null
     mrun "service ssh restart" &> /dev/null
     if [ "$_CSF_MODE" = "install" ] ; then
       msg "INFO: csf/lfd firewall installation completed"
@@ -9405,7 +9406,6 @@ if [ -e "/usr/sbin/csf" ] ; then
     sed -i "s/^USE_CONNTRACK .*/USE_CONNTRACK = \"0\"/g" /etc/csf/csf.conf &> /dev/null
   fi
   if [ -e "/var/xdrago/log/lastFire" ] ; then
-    sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root &> /dev/null
     rm -f /var/xdrago/log/lastFire
     mrun "csf -x" &> /dev/null
     mrun "csf -e" &> /dev/null
