@@ -9357,9 +9357,13 @@ csf_install () {
     sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" /etc/csf/csf.conf &> /dev/null
     sed -i "s/TCP_IN = \"20,21,22,/TCP_IN = \"20,21,$_SSH_PORT,/g" /etc/csf/csf.conf &> /dev/null
     chmod 600 /etc/csf/csf.conf &> /dev/null
-    sed -i "s/^Port.*/Port $_SSH_PORT/g" /etc/ssh/sshd_config &> /dev/null
+    if [ -e "/etc/ssh/sshd_config" ] ; then
+      sed -i "s/^Port.*/Port $_SSH_PORT/g"  /etc/ssh/sshd_config
+      sed -i "s/^#Port.*/Port $_SSH_PORT/g" /etc/ssh/sshd_config
+    fi
     if [ -e "/usr/etc/sshd_config" ] ; then
-      sed -i "s/^Port.*/Port $_SSH_PORT/g" /usr/etc/sshd_config &> /dev/null
+      sed -i "s/^Port.*/Port $_SSH_PORT/g"  /usr/etc/sshd_config
+      sed -i "s/^#Port.*/Port $_SSH_PORT/g" /usr/etc/sshd_config
     fi
     mrun "service ssh restart" &> /dev/null
     if [ "$_CSF_MODE" = "install" ] ; then
