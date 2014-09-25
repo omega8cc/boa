@@ -853,10 +853,8 @@ tune_sql_memory_limits () {
     msg "INFO: Running MySQLTuner check on all databases..."
     msg "NOTE! This step may take a LONG time, please wait..."
     rm -f /var/opt/mysqltuner*
-    ### curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl" -o /var/opt/mysqltuner.pl
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/mysqltuner.pl" -o /var/opt/mysqltuner.pl
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl" -o /var/opt/mysqltuner.pl
     if [ ! -e "/var/opt/mysqltuner.pl" ] ; then
-      mrun "sleep 60"
       curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/mysqltuner.pl" -o /var/opt/mysqltuner.pl
     fi
     if [ -e "/var/opt/mysqltuner.pl" ] ; then
