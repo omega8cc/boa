@@ -2,7 +2,7 @@
 ### Stable BOA-2.3.2 Release - Full Edition
 ### Date: Thu Sep 18 15:16:33 PDT 2014
 ### Includes Aegir 2.1 with improvements
-### Latest hotfix added on: Wed Sep 24 12:44:12 PDT 2014
+### Latest hotfix added on: Thu Sep 25 00:32:35 PDT 2014
 
 # Release Notes:
 
@@ -49,6 +49,7 @@
 # Fixes in this release:
 
   * Add extra cleanup for Drush related caches.
+  * Always respect _SSH_PORT if set.
   * Always start cron before aborting on error.
   * Do not add duplicate cron entry for runner.sh
   * Do not allow system only upgrades if Master Instance is still on 2.2.x
@@ -72,6 +73,7 @@
   * Nginx: Convert config to use PHP 5.2 if the instance still depends on it.
   * Nginx: Delete ghost, outdated or broken config includes in all instances.
   * Nginx: Delete ghost, outdated or broken vhosts in all instances.
+  * Nginx: Force special vhosts access rules rebuild hourly.
   * Nginx: Improve wildcard conversion procedure on some really old instances.
   * Purge all ghost delete tasks before running hostmaster-migrate / upgrade.
   * Purge Drush related caches cleanly when needed.
