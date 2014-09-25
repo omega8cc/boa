@@ -2,7 +2,7 @@
 ### Stable BOA-2.3.2 Release - Full Edition
 ### Date: Thu Sep 18 15:16:33 PDT 2014
 ### Includes Aegir 2.1 with improvements
-### Latest hotfix added on: Thu Sep 25 00:32:35 PDT 2014
+### Latest hotfix added on: Thu Sep 25 06:50:20 PDT 2014
 
 # Release Notes:
 
@@ -60,10 +60,12 @@
   * Fix for insufficient permissions on files/civicrm/custom
   * Fix for insufficient permissions on files/civicrm/dynamic
   * Force problematic gems install to add them on accounts with enabled RVM.
+  * Fox for Java version for Jetty 9 on newer systems.
   * Hardcode files.aegir.cc DNS entry.
   * Improve docs/ctrl/system.ctrl readability.
   * Install openjdk on CI instances by default.
   * Issue #411 - Unable to update Octopus Instance - Reports PHP on 5.2
+  * Issue #423 - Make sure that innodb_buffer_pool_size is not smaller than 64M
   * Make sure that lsb-release is installed properly.
   * Make the check_civicrm_compatibility more reliable to avoid false alarms.
   * New Relic not enabled if no custom ~/static/control/{fpm|cli}.info exists.
