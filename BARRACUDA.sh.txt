@@ -7760,7 +7760,7 @@ fi
 
 
 ###--------------------###
-if [[ "$_APT_XTRA" =~ "openjdk-7-jre-headless" ]] ; then
+if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
   _REAL_JETTY=9
   _JETTY_CTRL="/opt/jetty9/jetty-ctrl-$_JETTY_9_VERSION-version.txt"
 else
@@ -7775,7 +7775,7 @@ else
 fi
 if [[ "$_XTRAS_LIST" =~ "SR4" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
   if [ ! -d "/opt/solr4" ] ; then
-    if [[ "$_APT_XTRA" =~ "openjdk-7-jre-headless" ]] ; then
+    if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
       _REAL_JETTY=9
     else
       _REAL_JETTY=8
@@ -7789,7 +7789,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/ro
       rm -f -r /opt/solr4
       rm -f -r /opt/jetty9
       rm -f /etc/jetty.conf
-      if [[ "$_APT_XTRA" =~ "openjdk-7-jre-headless" ]] ; then
+      if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
         get_dev_arch "jetty-distribution-$_JETTY_9_VERSION.tar.gz"
         mv /var/opt/jetty-distribution-$_JETTY_9_VERSION /opt/jetty9
         echo $_JETTY_9_VERSION > $_JETTY_CTRL
@@ -7834,7 +7834,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/ro
       chown -R jetty9:jetty9 /opt/solr4
       chown -R jetty9:jetty9 /opt/jetty9
       chown -R jetty9:jetty9 /var/log/jetty9
-      if [[ "$_APT_XTRA" =~ "openjdk-7-jre-headless" ]] ; then
+      if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
         echo "JAVA=/usr/bin/java7 # Path to Java 1.7" > /etc/default/jetty9
         echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk/jre # Path to Java 1.7" >> /etc/default/jetty9
       else
@@ -7850,7 +7850,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/ro
       echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty9
       echo "JETTY_PID=\$JETTY_RUN/jetty9.pid # Pid file" >> /etc/default/jetty9
       echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty9
-      if [[ "$_APT_XTRA" =~ "openjdk-7-jre-headless" ]] ; then
+      if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
         _DO_NOTHING=YES
       else
         sed -i "s/8/9/g" /opt/jetty9/bin/jetty.sh &> /dev/null
@@ -7879,13 +7879,31 @@ if [ "$_UP_JDK" = "YES" ] && [ -e "/etc/init.d/jetty9" ] ; then
   msg "INFO: Jetty 9 restart completed"
 fi
 if [ -e "/opt/jetty9/VERSION.txt" ] ; then
+  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
+    _JETTY9_JAVA_TEST=$(grep "Path to Java 1.7" /etc/default/jetty9 2>&1)
+    if [[ "$_JETTY9_JAVA_TEST" =~ "Path to Java 1.7" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "JAVA=/usr/bin/java7 # Path to Java 1.7" > /etc/default/jetty9
+      echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk/jre # Path to Java 1.7" >> /etc/default/jetty9
+      echo "NO_START=0 # Start on boot" >> /etc/default/jetty9
+      echo "JETTY_HOST=127.0.0.1 # Listen on localhost" >> /etc/default/jetty9
+      echo "JETTY_PORT=8099 # Run on this port" >> /etc/default/jetty9
+      echo "JETTY_USER=jetty9 # Run as this user" >> /etc/default/jetty9
+      echo "JETTY_HOME=/opt/jetty9 # Home directory" >> /etc/default/jetty9
+      echo "JETTY_LOGS=/var/log/jetty9 # Logs directory" >> /etc/default/jetty9
+      echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty9
+      echo "JETTY_PID=\$JETTY_RUN/jetty9.pid # Pid file" >> /etc/default/jetty9
+      echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty9
+    fi
+  fi
   if [ ! -e "$_PORT_CTRL" ] || [ ! -e "$_JETTY_CTRL" ] || [ ! -e "$_SOLR_CTRL" ] ; then
     msg "INFO: Upgrading MultiCore Apache Solr 4 with Jetty $_REAL_JETTY..."
     cd /var/opt
     rm -f -r jetty-distribution-*
     kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
     mv -f /opt/jetty9 /var/backups/jetty9-$_INSTALLER_VERSION-$_NOW
-    if [[ "$_APT_XTRA" =~ "openjdk-7-jre-headless" ]] ; then
+    if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
       get_dev_arch "jetty-distribution-$_JETTY_9_VERSION.tar.gz"
       mv /var/opt/jetty-distribution-$_JETTY_9_VERSION /opt/jetty9
       echo $_JETTY_9_VERSION > $_JETTY_CTRL
