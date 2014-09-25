@@ -2523,6 +2523,9 @@ tune_sql_memory_limits () {
       if [ "$_INNODB_BPI" -gt "1" ] ; then
         sed -i "s/innodb_file_per_table   = 1/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = $_INNODB_BPI/g" /etc/mysql/my.cnf &> /dev/null
       fi
+      if [ "$_USE_INNODB_MEM" -lt "64" ] ; then
+        _USE_INNODB_MEM=64
+      fi
       _USE_INNODB_MEM="${_USE_INNODB_MEM}M"
       sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = $_USE_INNODB_MEM/g"  /etc/mysql/my.cnf &> /dev/null
     else
@@ -2530,6 +2533,9 @@ tune_sql_memory_limits () {
       sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = $_USE_INNODB_MEM/g"  /etc/mysql/my.cnf &> /dev/null
     fi
   else
+    if [ "$_USE_SQL" -lt "64" ] ; then
+      _USE_SQL=64
+    fi
     sed -i "s/= 181/= $_USE_SQL/g"  /etc/mysql/my.cnf &> /dev/null
   fi
 }
