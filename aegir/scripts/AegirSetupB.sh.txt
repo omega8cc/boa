@@ -703,6 +703,7 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   $_DRUSHCMD @hostmaster sqlq "DELETE FROM menu_links WHERE link_path='hosting/sites'" &> /dev/null
   $_DRUSHCMD @hostmaster en aegir_custom_settings -y &> /dev/null
   $_DRUSHCMD @hostmaster fr aegir_custom_settings -y &> /dev/null
+  $_DRUSHCMD @hostmaster cc all &> /dev/null
   $_DRUSHCMD @hostmaster updb -y &> /dev/null
   if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     $_DRUSHCMD @hostmaster vset --always-set site_name "Octopus System powered by Barracuda" &> /dev/null
@@ -731,6 +732,10 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
     rm -f make_home.php
   fi
   $_DRUSHCMD @hostmaster sqlq "REPLACE INTO userprotect VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),(1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" &> /dev/null
+  $_DRUSHCMD @hostmaster fr aegir_custom_settings -y &> /dev/null
+  $_DRUSHCMD @hostmaster cc all &> /dev/null
+  $_DRUSHCMD @hostmaster fr aegir_custom_settings -y &> /dev/null
+  $_DRUSHCMD @hostmaster cc all &> /dev/null
   $_DRUSHCMD @hostmaster fr aegir_custom_settings -y &> /dev/null
   $_DRUSHCMD @hostmaster cc all &> /dev/null
 fi
