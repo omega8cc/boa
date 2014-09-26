@@ -1671,6 +1671,10 @@ action () {
           run_drush6_hmr_cmd "@hostmaster en path_alias_cache -y"
           run_drush6_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
           run_drush6_hmr_cmd "@hostmaster cc all"
+          run_drush6_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
+          run_drush6_hmr_cmd "@hostmaster cc all"
+          run_drush6_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
+          run_drush6_hmr_cmd "@hostmaster cc all"
         fi
         run_drush6_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
         run_drush6_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
