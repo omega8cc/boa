@@ -1,8 +1,7 @@
 
-### Stable BOA-2.3.2 Release - Full Edition
-### Date: Thu Sep 18 15:16:33 PDT 2014
+### Stable BOA-2.3.3 Release - Full Edition
+### Date: Fri Sep 26 11:10:04 PDT 2014
 ### Includes Aegir 2.1 with improvements
-### Latest hotfix added on: Fri Sep 26 06:32:20 PDT 2014
 
 # Release Notes:
 
@@ -40,6 +39,7 @@
 # System upgrades in this release:
 
   * Drush: Upgrade command line version 6 to mini-6-22-09-2014
+  * MariaDB 10.0.14
   * Nginx 1.7.5
   * PHP 5.4.33
   * PHP 5.5.17
@@ -92,6 +92,15 @@
   * Update default SSL Wildcard Nginx Proxy to use wildcard listen mode.
   * Use aegir_custom_settings-6.x-3.9
   * Use strict regex in vhosts listen mode conversion to not break ports.
+
+
+### Stable BOA-2.3.2 Release - Full Edition
+### Date: Thu Sep 18 15:16:33 PDT 2014
+### Includes Aegir 2.1 with improvements
+
+  Release Notes and changelog for BOA-2.3.2 has been merged into BOA-2.3.3
+  above after several hotfixes and various updates have been added shortly
+  after 2.3.2 release to address all identified post-release issues.
 
 
 ### Stable BOA-2.3.1 Release - Full Edition
