@@ -52,6 +52,7 @@ run_drush4_nosilent_cmd () {
 
 run_drush6_nosilent_cmd () {
   su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush6 cc drush" &> /dev/null
+  rm -f -r $User/.tmp/cache
   su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush6 @${Dom} $1"
 }
 
@@ -273,14 +274,6 @@ fix_robots_txt () {
     if [ -e "$Dir/files/robots.txt" ] ; then
       echo >> $Dir/files/robots.txt
     fi
-  fi
-}
-
-fix_clear_cache () {
-  if [ -e "$Plr/profiles/hostmaster" ] ; then
-    run_drush6_hmr_cmd "@hostmaster en path_alias_cache -y"
-    run_drush6_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
-    run_drush6_hmr_cmd "@hostmaster cc all"
   fi
 }
 
@@ -1442,7 +1435,6 @@ process () {
           ;;
           esac
           fix_boost_cache
-          fix_clear_cache
           fix_site_control_files
         fi
         if [ "$_DONT_TOUCH_PERMISSIONS" = "NO" ] && [ "$_PERMISSIONS_FIX" = "YES" ] ; then
@@ -1656,6 +1648,7 @@ action () {
         echo load is $_O_LOAD while maxload is $_O_LOAD_MAX
         echo User $User
         su -s /bin/bash $_THIS_HM_USER -c "drush6 cc drush &> /dev/null"
+        rm -f -r $User/.tmp/cache
         _SQL_CONVERT=NO
         _DEL_OLD_EMPTY_PLATFORMS="0"
         if [ -e "/root/.${_THIS_HM_USER}.octopus.cnf" ] ; then
@@ -1667,12 +1660,17 @@ action () {
         process
         if [ -e "$_THIS_HM_SITE" ] ; then
           cd $_THIS_HM_SITE
+          su -s /bin/bash $_THIS_HM_USER -c "drush6 cc drush &> /dev/null"
+          rm -f -r $User/.tmp/cache
           run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_advanced_cron_default_interval 10800"
           run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1"
           run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_queue_cron_frequency 53222400"
           run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_cron_use_backend 0"
           run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_ignore_default_profiles 0"
           run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_queue_tasks_items 1"
+          run_drush6_hmr_cmd "@hostmaster en path_alias_cache -y"
+          run_drush6_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
+          run_drush6_hmr_cmd "@hostmaster cc all"
         fi
         run_drush6_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
         run_drush6_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
