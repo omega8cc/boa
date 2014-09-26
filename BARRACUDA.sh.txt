@@ -2342,14 +2342,17 @@ sub_force_advanced_nginx_config () {
     sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             $_THIS_NGX_INCL/nginx_vhost_common.conf &> /dev/null
     sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         $_THIS_NGX_INCL/nginx_vhost_common.conf &> /dev/null
     sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_INCL/nginx_vhost_common.conf &> /dev/null
+    sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"  $_THIS_NGX_INCL/nginx_vhost_common.conf &> /dev/null
 
     sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             $_THIS_NGX_TPLS/subdir.tpl.php &> /dev/null
     sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         $_THIS_NGX_TPLS/subdir.tpl.php &> /dev/null
     sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_TPLS/subdir.tpl.php &> /dev/null
+    sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"  $_THIS_NGX_TPLS/subdir.tpl.php &> /dev/null
 
     sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php &> /dev/null
     sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php &> /dev/null
     sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php &> /dev/null
+    sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"  $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php &> /dev/null
   fi
 }
 #
