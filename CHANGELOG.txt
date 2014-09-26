@@ -90,7 +90,7 @@
   * Update contrib in Open Atrium D7 to maintain upgrade path.
   * Update cron defaults and remove legacy code.
   * Update default SSL Wildcard Nginx Proxy to use wildcard listen mode.
-  * Use aegir_custom_settings-6.x-3.9
+  * Use aegir_custom_settings-6.x-3.8
   * Use strict regex in vhosts listen mode conversion to not break ports.
 
 
