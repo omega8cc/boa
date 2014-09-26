@@ -2,7 +2,7 @@
 ### Stable BOA-2.3.2 Release - Full Edition
 ### Date: Thu Sep 18 15:16:33 PDT 2014
 ### Includes Aegir 2.1 with improvements
-### Latest hotfix added on: Thu Sep 25 06:50:20 PDT 2014
+### Latest hotfix added on: Fri Sep 26 06:32:20 PDT 2014
 
 # Release Notes:
 
@@ -59,6 +59,8 @@
   * Fix for insufficient permissions on files/civicrm/ConfigAndLog
   * Fix for insufficient permissions on files/civicrm/custom
   * Fix for insufficient permissions on files/civicrm/dynamic
+  * Fix for missing cron entry for Scout, if _SCOUT_KEY is not empty.
+  * Fix the not working procedure to revert hostmaster features.
   * Force problematic gems install to add them on accounts with enabled RVM.
   * Fox for Java version for Jetty 9 on newer systems.
   * Hardcode files.aegir.cc DNS entry.
@@ -66,6 +68,7 @@
   * Install openjdk on CI instances by default.
   * Issue #411 - Unable to update Octopus Instance - Reports PHP on 5.2
   * Issue #423 - Make sure that innodb_buffer_pool_size is not smaller than 64M
+  * Issue #424 - Update mysqltuner.pl to support MariaDB 10.0
   * Make sure that lsb-release is installed properly.
   * Make the check_civicrm_compatibility more reliable to avoid false alarms.
   * New Relic not enabled if no custom ~/static/control/{fpm|cli}.info exists.
@@ -81,10 +84,13 @@
   * Purge Drush related caches cleanly when needed.
   * Recreate possibly broken vhosts.
   * Remove duplicate cron entry for runner.sh to avoid critical system load.
+  * Restart SSH hourly.
   * Run check_civicrm_compatibility only on upgrade.
+  * Single feature revert may not be enough.
   * Update contrib in Open Atrium D7 to maintain upgrade path.
   * Update cron defaults and remove legacy code.
   * Update default SSL Wildcard Nginx Proxy to use wildcard listen mode.
+  * Use aegir_custom_settings-6.x-3.9
   * Use strict regex in vhosts listen mode conversion to not break ports.
 
 
