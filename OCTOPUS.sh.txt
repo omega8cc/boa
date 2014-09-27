@@ -605,7 +605,7 @@ _RESERVED_RAM=0
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.3-dev
+_INSTALLER_VERSION=BOA-2.3.4-dev
 _BRANCH_BOA=master
 _BRANCH_PROVISION=2.3.x-dev
 
@@ -637,7 +637,7 @@ fi
 _AGOV=7.x-1.4
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
-_CIVICRM_PN=boa-2.3.3-dev
+_CIVICRM_PN=boa-2.3.4-dev
 _COD=7.x-1.0-alpha5
 _COMMERCE1=7.x-1.29
 _COMMERCE2=7.x-2.17
