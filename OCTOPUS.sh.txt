@@ -78,7 +78,7 @@ _CLIENT_CORES=8
 ### _PHP_FPM_VERSION=5.3
 ### _PHP_CLI_VERSION=5.3
 ### _DEBUG_MODE=NO
-### _AEGIR_VERSION=BOA-2.3.2
+### _AEGIR_VERSION=HEAD
 ### _DNS_SETUP_TEST=NO
 ### _THIS_DB_HOST=localhost
 ### _LOCAL_NETWORK_IP="127.0.1.1"
@@ -270,7 +270,7 @@ _MY_OWNIP=""
 ### The HEAD can be occasionally broken
 ### and should be used **only** for testing!
 ###
-_AEGIR_VERSION=BOA-2.3.2
+_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
@@ -605,14 +605,14 @@ _RESERVED_RAM=0
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.2
-_BRANCH_BOA=2.3.x-dev
+_INSTALLER_VERSION=BOA-2.3.3-dev
+_BRANCH_BOA=master
 _BRANCH_PROVISION=2.3.x-dev
 
 ###
 ### Variables
 ###
-_DRUSH_VERSION=mini-6-22-09-2014
+_DRUSH_VERSION=mini-6-27-09-2014
 _NOW=`date +%y%m%d-%H%M`
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
@@ -637,7 +637,7 @@ fi
 _AGOV=7.x-1.4
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
-_CIVICRM_PN=boa-2.3.2-dev
+_CIVICRM_PN=boa-2.3.3-dev
 _COD=7.x-1.0-alpha5
 _COMMERCE1=7.x-1.29
 _COMMERCE2=7.x-2.17
@@ -646,8 +646,8 @@ _COMMONS3=7.x-3.17
 _DRUPAL_EDGE_8="8.0-dev-$_TODAY-edge"
 _DRUPAL7="drupal-$_SMALLCORE7"
 _DRUPAL8="8.0-dev-120915"
-_ERPAL=7.x-2.0-beta5
-_GUARDR=7.x-1.12
+_ERPAL=7.x-2.0
+_GUARDR=7.x-1.13
 _MANAGINGNEWS=1.2.4
 _OPEN_DEALS=1.33
 _OPENACADEMY=7.x-1.1
@@ -658,7 +658,7 @@ _OPENCHURCH1=7.x-1.14
 _OPENCHURCH2=7.x-2.0-beta1
 _OPENDEALS=7.x-1.33
 _OPENOUTREACH=7.x-1.11
-_OPENPUBLIC=7.x-1.0-rc4
+_OPENPUBLIC=7.x-1.0-rc5
 _OPENPUBLISH=7.x-1.0-beta7
 _OPENSCHOLAR=7.x-3.15.1
 _PANOPOLY=7.x-1.11
@@ -1292,14 +1292,17 @@ sub_force_advanced_nginx_config () {
       sed -i "s/EDIT_USER/${_USER}/g"                                              $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php &> /dev/null
       sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g"             $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php &> /dev/null
       sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php &> /dev/null
+      sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g"  $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php &> /dev/null
 
       sed -i "s/EDIT_USER/${_USER}/g"                                              $_THIS_NGX_TPLS/subdir.tpl.php &> /dev/null
       sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g"             $_THIS_NGX_TPLS/subdir.tpl.php &> /dev/null
       sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_TPLS/subdir.tpl.php &> /dev/null
+      sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g"  $_THIS_NGX_TPLS/subdir.tpl.php &> /dev/null
 
       sed -i "s/EDIT_USER/${_USER}/g"                                              $_THIS_NGX_INCL/nginx_vhost_common.conf &> /dev/null
       sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g"             $_THIS_NGX_INCL/nginx_vhost_common.conf &> /dev/null
       sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_INCL/nginx_vhost_common.conf &> /dev/null
+      sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g"  $_THIS_NGX_INCL/nginx_vhost_common.conf &> /dev/null
     fi
     _CRON_IP=${_THISHTIP//[^0-9.]/}
     if [ ! -e "/root/.local.IP.list" ] ; then
@@ -1760,7 +1763,7 @@ _THIS_HOST=`uname -n`
 if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
   _PHP_FPM_VERSION=5.3
   _PHP_CLI_VERSION=5.3
-  _AEGIR_VERSION=BOA-2.3.2
+  _AEGIR_VERSION=HEAD
   _DEBUG_MODE=NO
   _DNS_SETUP_TEST=NO
   _THIS_DB_HOST=localhost

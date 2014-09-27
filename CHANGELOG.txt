@@ -1,8 +1,7 @@
 
-### Stable BOA-2.3.2 Release - Full Edition
-### Date: Thu Sep 18 15:16:33 PDT 2014
+### Stable BOA-2.3.3 Release - Full Edition
+### Date: Sat Sep 27 01:25:46 PDT 2014
 ### Includes Aegir 2.1 with improvements
-### Latest hotfix added on: Fri Sep 26 06:32:20 PDT 2014
 
 # Release Notes:
 
@@ -13,11 +12,11 @@
 #-### Important details on CiviCRM versions compatibility and profiles support
 
   * All BOA-2.3.x Editions fully support latest CiviCRM 4.5.0 for Drupal 7.
-  * CiviCRM for Drupal 6 is not supported, but we are working on it.
+  * CiviCRM for Drupal 6 is not supported because of known CiviCRM issues.
   * CiviCRM support for Drupal 7 works great when added in sites/all/modules
   * CiviCRM support for Drupal 7 also works when added in profiles/foo/modules
     but no CiviCRM cron is currently managed until this known issue is fixed,
-    therefore BOA-2.3.2 will check all platforms on the Octopus instance and if
+    therefore BOA-2.3.3 will check all platforms on the Octopus instance and if
     it will detect any with CiviCRM added in the installation profile directory
     tree, it will refuse to upgrade such instance to not break things for those
     using currently not fully supported CiviCRM codebase structure.
@@ -28,8 +27,11 @@
 
 # Updated Octopus platforms:
 
+  ERPAL 2.0 -------------------- https://drupal.org/project/erpal
+  Guardr 1.13 ------------------ https://drupal.org/project/guardr
   Open Outreach 1.11 ----------- https://drupal.org/project/openoutreach
   OpenChurch 1.14 -------------- https://drupal.org/project/openchurch
+  OpenPublic 1.0-rc5 ----------- https://drupal.org/project/openpublic
   OpenScholar 3.15.1 ----------- http://theopenscholar.org
 
 # New features and enhancements in this release:
@@ -37,9 +39,15 @@
   * Add makefiles for CiviCRM 4.4.7
   * Add makefiles for CiviCRM 4.5.0
 
+# Changes in this release:
+
+  * Drush: Upgrade command line version 6 to mini-6-27-09-2014
+  * Restart SSH hourly.
+  * Use Provision CiviCRM boa-2.3.3-dev
+
 # System upgrades in this release:
 
-  * Drush: Upgrade command line version 6 to mini-6-22-09-2014
+  * MariaDB 10.0.14
   * Nginx 1.7.5
   * PHP 5.4.33
   * PHP 5.5.17
@@ -73,6 +81,7 @@
   * Make the check_civicrm_compatibility more reliable to avoid false alarms.
   * New Relic not enabled if no custom ~/static/control/{fpm|cli}.info exists.
   * Nginx: Auto-Switch to wildcard all vhosts existing in the Master Instance.
+  * Nginx: Avoid any downtime on upgrade by using www53.fpm.socket temporarily.
   * Nginx: Convert all config templates to wildcard mode in legacy instances.
   * Nginx: Convert all Octopus vhosts to wildcard mode on Barracuda upgrade.
   * Nginx: Convert config to use PHP 5.2 if the instance still depends on it.
@@ -84,14 +93,22 @@
   * Purge Drush related caches cleanly when needed.
   * Recreate possibly broken vhosts.
   * Remove duplicate cron entry for runner.sh to avoid critical system load.
-  * Restart SSH hourly.
   * Run check_civicrm_compatibility only on upgrade.
   * Single feature revert may not be enough.
   * Update contrib in Open Atrium D7 to maintain upgrade path.
   * Update cron defaults and remove legacy code.
   * Update default SSL Wildcard Nginx Proxy to use wildcard listen mode.
-  * Use aegir_custom_settings-6.x-3.9
+  * Use aegir_custom_settings-6.x-3.8
   * Use strict regex in vhosts listen mode conversion to not break ports.
+
+
+### Stable BOA-2.3.2 Release - Full Edition
+### Date: Thu Sep 18 15:16:33 PDT 2014
+### Includes Aegir 2.1 with improvements
+
+  Release Notes and changelog for BOA-2.3.2 has been merged into BOA-2.3.3
+  above after several hotfixes and various updates have been added shortly
+  after 2.3.2 release to address all identified post-release issues.
 
 
 ### Stable BOA-2.3.1 Release - Full Edition

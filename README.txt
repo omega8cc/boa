@@ -106,7 +106,7 @@ NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
 * Wget must be installed.
 * The Git standard port 9418 must be open.
 * SMTP standard port 25 (or SMTP relay) must be open for outgoing connections.
-* Minimum 512 MB of RAM (1 GB for heavy distros, like Atrium 2, Commerce etc.)
+* Minimum 1 GB of RAM
 * Locales with UTF-8 support, otherwise en_US.UTF-8 (default) is forced.
 * Basic sysadmin skills and experience.
 * Willingness to accept BOA PI (paranoid idiosyncrasies).
@@ -172,8 +172,8 @@ Octopus can install the platforms listed below:
  Commerce 2.17 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.17 ----------------- https://drupal.org/project/commons
  Drupal 7.31.1 ---------------- https://drupal.org/drupal-7.31
- ERPAL 2.0-b5 ----------------- https://drupal.org/project/erpal
- Guardr 1.12 ------------------ https://drupal.org/project/guardr
+ ERPAL 2.0 -------------------- https://drupal.org/project/erpal
+ Guardr 1.13 ------------------ https://drupal.org/project/guardr
  Open Academy 1.1 ------------- https://drupal.org/project/openacademy
  Open Atrium 2.21 ------------- https://drupal.org/project/openatrium
  Open Deals 1.33 -------------- https://drupal.org/project/opendeals
@@ -181,7 +181,7 @@ Octopus can install the platforms listed below:
  OpenBlog 1.0-v3 -------------- https://drupal.org/project/openblog
  OpenChurch 1.14 -------------- https://drupal.org/project/openchurch
  OpenChurch 2.0-b1 ------------ https://drupal.org/project/openchurch
- OpenPublic 1.0-rc4 ----------- https://drupal.org/project/openpublic
+ OpenPublic 1.0-rc5 ----------- https://drupal.org/project/openpublic
  OpenScholar 3.15.1 ----------- http://theopenscholar.org
  Panopoly 1.11 ---------------- https://drupal.org/project/panopoly
  Recruiter 1.2 ---------------- https://drupal.org/project/recruiter

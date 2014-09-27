@@ -72,7 +72,7 @@ _MY_EMAIL="notify@omega8.cc"
 ### _XTRAS_LIST="CSF CHV FTP"
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
-### _AEGIR_VERSION=BOA-2.3.2
+### _AEGIR_VERSION=HEAD
 ### _DB_SERVER=MariaDB
 ### _SSH_PORT=22
 ### _DNS_SETUP_TEST=YES
@@ -127,7 +127,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### _XTRAS_LIST="CHV"
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
-### _AEGIR_VERSION=BOA-2.3.2
+### _AEGIR_VERSION=HEAD
 ### _DB_SERVER=MariaDB
 ### _SSH_PORT=22
 ### _DNS_SETUP_TEST=NO
@@ -404,7 +404,7 @@ _DEBUG_MODE=NO
 ### The HEAD can be occasionally broken
 ### and should be used **only** for testing!
 ###
-_AEGIR_VERSION=BOA-2.3.2
+_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
@@ -1045,8 +1045,8 @@ _SPEED_VALID_MAX=3600
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.2
-_BRANCH_BOA=2.3.x-dev
+_INSTALLER_VERSION=BOA-2.3.3-dev
+_BRANCH_BOA=master
 _BRANCH_PROVISION=2.3.x-dev
 
 ###
@@ -1057,7 +1057,7 @@ _CGP_VERSION=master-30-03-2014
 _CHIVE_VERSION=1.3
 _CURL_VERSION=7.38.0
 _DRUSH4_VERSION=mini-4-26-08-2014
-_DRUSH6_VERSION=mini-6-22-09-2014
+_DRUSH6_VERSION=mini-6-27-09-2014
 _DRUSH7_VERSION=head-7-10-03-2014
 _GEOS_VERSION=3.4.2
 _GIT_VERSION=2.1.0
@@ -1068,7 +1068,7 @@ _JETTY_8_VERSION=8.1.16.v20140903
 _JETTY_9_VERSION=9.2.3.v20140905
 _LSHELL_VERSION=0.9.16.5-om8
 _MAILPARSE_VERSION=2.1.6
-_MARIADB_10_VERSION=10.0.13
+_MARIADB_10_VERSION=10.0.14
 _MARIADB_5_VERSION=5.5.39
 _MONGO_VERSION=1.4.5
 _MSS_VERSION=1.33
@@ -2342,14 +2342,17 @@ sub_force_advanced_nginx_config () {
     sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             $_THIS_NGX_INCL/nginx_vhost_common.conf &> /dev/null
     sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         $_THIS_NGX_INCL/nginx_vhost_common.conf &> /dev/null
     sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_INCL/nginx_vhost_common.conf &> /dev/null
+    sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"  $_THIS_NGX_INCL/nginx_vhost_common.conf &> /dev/null
 
     sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             $_THIS_NGX_TPLS/subdir.tpl.php &> /dev/null
     sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         $_THIS_NGX_TPLS/subdir.tpl.php &> /dev/null
     sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_TPLS/subdir.tpl.php &> /dev/null
+    sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"  $_THIS_NGX_TPLS/subdir.tpl.php &> /dev/null
 
     sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php &> /dev/null
     sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php &> /dev/null
     sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php &> /dev/null
+    sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"  $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php &> /dev/null
   fi
 }
 #
@@ -5686,7 +5689,7 @@ else
     _XTRAS_LIST="CHV"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.3.2
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=NO
@@ -5699,7 +5702,7 @@ else
     _XTRAS_LIST="CSF CHV FTP"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.3.2
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=YES
