@@ -1,6 +1,6 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version BOA-2.3.2
+Your Aegir Hosting System has been upgraded to version BOA-2.3.3
 
   https://aegir.dragon.ny.host8.biz
 
@@ -8,7 +8,7 @@ This new BOA Edition introduces many new features, changes and fixes.
 
 @=> Key new features:
 
-* BOA-2.3.2 comes with new, shiny Aegir 2.1 stable version!
+* BOA-2.3.3 comes with new, shiny Aegir 2.1 stable version!
 * Support for Drupal sites in subdirectories is enabled by default
 * Solr 4 cores can be added/updated/deleted via site level INI settings
 * Super-easy to use New Relic support with per Octopus license key
@@ -45,11 +45,11 @@ This new BOA Edition introduces many new features, changes and fixes.
 @=> Important details on CiviCRM versions compatibility and profiles
 
 * All BOA-2.3.x Editions fully support latest CiviCRM 4.5.0 for Drupal 7.
-* CiviCRM for Drupal 6 is not supported, but we are working on it.
+* CiviCRM for Drupal 6 is not supported because of known CiviCRM issues.
 * CiviCRM for Drupal 7 works great when added in sites/all/modules
 * CiviCRM for Drupal 7 also works when added in profiles/foo/modules
   but no CiviCRM cron is currently managed until this known issue
-  is fixed, therefore BOA-2.3.2 will check all platforms on the Octopus
+  is fixed, therefore BOA-2.3.3 will check all platforms on the Octopus
   instance and if it will detect any with CiviCRM added in the
   installation profile directory tree, it will refuse to upgrade such
   instance to not break things for those using currently not fully
@@ -58,7 +58,7 @@ This new BOA Edition introduces many new features, changes and fixes.
 You can find all details on how to use new features, along with all
 other changes explained in the release notes and changelog available at:
 
-  https://omega8.cc/boa-232-full-edition-334  ------- September 18
+  https://omega8.cc/boa-233-full-edition-339  ------- September 27
   https://omega8.cc/boa-231-full-edition-333  ------- September 14
 
 It is always highly recommended that you read extensive release notes
