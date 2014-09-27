@@ -9216,21 +9216,6 @@ else
     sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_*/nginx/pre.d/*.conf        &> /dev/null
     sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_*/nginx/vhost.d/*           &> /dev/null
   fi
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/xts/provision_cdn/Provision/Config/*.tpl.php                   &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php            &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php        &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf               &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/config/includes/*.conf                                                &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/config/server_*/nginx.conf                                            &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/config/server_*/nginx/vhost.d/*                                       &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/*.tpl.php                     &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php              &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php          &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf                 &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/config/includes/*.conf                                                  &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/config/server_*/nginx.conf                                              &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/config/server_*/nginx/pre.d/*.conf                                      &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/config/server_*/nginx/vhost.d/*                                         &> /dev/null
 
   ###
   ### Nginx: Convert all vhosts to wildcard mode on Barracuda upgrade
