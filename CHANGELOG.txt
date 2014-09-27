@@ -27,8 +27,11 @@
 
 # Updated Octopus platforms:
 
+  ERPAL 2.0 -------------------- https://drupal.org/project/erpal
+  Guardr 1.13 ------------------ https://drupal.org/project/guardr
   Open Outreach 1.11 ----------- https://drupal.org/project/openoutreach
   OpenChurch 1.14 -------------- https://drupal.org/project/openchurch
+  OpenPublic 1.0-rc5 ----------- https://drupal.org/project/openpublic
   OpenScholar 3.15.1 ----------- http://theopenscholar.org
 
 # New features and enhancements in this release:
