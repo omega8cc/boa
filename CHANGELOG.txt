@@ -101,6 +101,12 @@
   * Use aegir_custom_settings-6.x-3.8
   * Use strict regex in vhosts listen mode conversion to not break ports.
 
+# Known Issues on systems upgraded from legacy BOA-2.2.x series
+
+  ==> Updated on Sat Sep 27 01:25:46 PDT 2014.
+
+  * Sites lists are not displayed on Platform, Profile and Client view.
+
 
 ### Stable BOA-2.3.2 Release - Full Edition
 ### Date: Thu Sep 18 15:16:33 PDT 2014
