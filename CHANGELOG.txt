@@ -12,11 +12,11 @@
 #-### Important details on CiviCRM versions compatibility and profiles support
 
   * All BOA-2.3.x Editions fully support latest CiviCRM 4.5.0 for Drupal 7.
-  * CiviCRM for Drupal 6 is not supported, but we are working on it.
+  * CiviCRM for Drupal 6 is not supported because of known CiviCRM issues.
   * CiviCRM support for Drupal 7 works great when added in sites/all/modules
   * CiviCRM support for Drupal 7 also works when added in profiles/foo/modules
     but no CiviCRM cron is currently managed until this known issue is fixed,
-    therefore BOA-2.3.2 will check all platforms on the Octopus instance and if
+    therefore BOA-2.3.3 will check all platforms on the Octopus instance and if
     it will detect any with CiviCRM added in the installation profile directory
     tree, it will refuse to upgrade such instance to not break things for those
     using currently not fully supported CiviCRM codebase structure.
@@ -36,9 +36,14 @@
   * Add makefiles for CiviCRM 4.4.7
   * Add makefiles for CiviCRM 4.5.0
 
-# System upgrades in this release:
+# Changes in this release:
 
   * Drush: Upgrade command line version 6 to mini-6-27-09-2014
+  * Restart SSH hourly.
+  * Use Provision CiviCRM boa-2.3.3-dev
+
+# System upgrades in this release:
+
   * MariaDB 10.0.14
   * Nginx 1.7.5
   * PHP 5.4.33
@@ -85,7 +90,6 @@
   * Purge Drush related caches cleanly when needed.
   * Recreate possibly broken vhosts.
   * Remove duplicate cron entry for runner.sh to avoid critical system load.
-  * Restart SSH hourly.
   * Run check_civicrm_compatibility only on upgrade.
   * Single feature revert may not be enough.
   * Update contrib in Open Atrium D7 to maintain upgrade path.
