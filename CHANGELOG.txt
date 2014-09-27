@@ -1,6 +1,6 @@
 
 ### Stable BOA-2.3.3 Release - Full Edition
-### Date: Fri Sep 26 11:10:04 PDT 2014
+### Date: Sat Sep 27 01:25:46 PDT 2014
 ### Includes Aegir 2.1 with improvements
 
 # Release Notes:
@@ -38,7 +38,7 @@
 
 # System upgrades in this release:
 
-  * Drush: Upgrade command line version 6 to mini-6-22-09-2014
+  * Drush: Upgrade command line version 6 to mini-6-27-09-2014
   * MariaDB 10.0.14
   * Nginx 1.7.5
   * PHP 5.4.33
@@ -73,6 +73,7 @@
   * Make the check_civicrm_compatibility more reliable to avoid false alarms.
   * New Relic not enabled if no custom ~/static/control/{fpm|cli}.info exists.
   * Nginx: Auto-Switch to wildcard all vhosts existing in the Master Instance.
+  * Nginx: Avoid any downtime on upgrade by using www53.fpm.socket temporarily.
   * Nginx: Convert all config templates to wildcard mode in legacy instances.
   * Nginx: Convert all Octopus vhosts to wildcard mode on Barracuda upgrade.
   * Nginx: Convert config to use PHP 5.2 if the instance still depends on it.
