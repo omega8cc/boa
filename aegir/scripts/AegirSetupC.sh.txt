@@ -1149,7 +1149,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
-    rm -f -r $_SHRD_PRPATH/modules/contrib/entitycache
+    sed -i "s/.*entitycache.*//g"  $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
