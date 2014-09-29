@@ -4,13 +4,13 @@ error_reporting(0); // Disable reporting errors by default - enable later only f
 
 // Fix for Mollom, CloudFlare and others running via Proxy
 if (isset($_SERVER['REMOTE_ADDR'])) {
-  if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+  if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) && $_SERVER['HTTP_X_FORWARDED_FOR'] != "127.0.0.1") {
     $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
   }
-  if (isset($_SERVER['HTTP_X_REAL_IP'])) {
+  if (isset($_SERVER['HTTP_X_REAL_IP']) && $_SERVER['HTTP_X_REAL_IP'] != "127.0.0.1") {
     $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_REAL_IP'];
   }
-  if (isset($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+  if (isset($_SERVER['HTTP_CF_CONNECTING_IP']) && $_SERVER['HTTP_CF_CONNECTING_IP'] != "127.0.0.1") {
     $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
   }
 }
