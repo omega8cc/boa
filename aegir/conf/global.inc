@@ -214,6 +214,7 @@ if (!$is_backend) {
     else {
       // Set sane default opcache TTL on non-dev sites
       ini_set('opcache.revalidate_freq', '60');
+      $conf['site_readonly'] = 0;
     }
   }
 }
