@@ -147,6 +147,8 @@ if [ -e "/vservers" ] && [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; 
   n=$((RANDOM%800+80))
   echo Waiting $n seconds...
   sleep $n
+  touch /var/run/water.pid
+  sleep 60
   local_ip_rg
   _HA=var/xdrago/monitor/hackcheck.archive.log
   _WA=var/xdrago/monitor/scan_nginx.archive.log
@@ -157,6 +159,7 @@ if [ -e "/vservers" ] && [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; 
   rm -f /vservers/*/var/xdrago/monitor/ftp.log
   csf -e
   csf -q
+  rm -f /var/run/water.pid
 fi
 ntpdate pool.ntp.org
 _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')

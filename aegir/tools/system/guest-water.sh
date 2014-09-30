@@ -142,6 +142,8 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; then
   n=$((RANDOM%800+80))
   echo Waiting $n seconds...
   sleep $n
+  touch /var/run/water.pid
+  sleep 60
   local_ip_rg
   _HA=/var/xdrago/monitor/hackcheck.archive.log
   _WA=/var/xdrago/monitor/scan_nginx.archive.log
@@ -153,6 +155,7 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; then
   ntpdate pool.ntp.org
   csf -e
   csf -q
+  rm -f /var/run/water.pid
 fi
 exit 0
 ###EOF2014###
