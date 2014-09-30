@@ -41,7 +41,7 @@
 
 # Changes in this release:
 
-  * Drush: Upgrade command line version 6 to mini-6-27-09-2014
+  * Drush: Upgrade command line version 6 to mini-6-14-09-2014
   * Restart SSH hourly.
   * The INI variable redis_flush_forced_mode is now disabled by default.
   * Use aegir_custom_settings-6.x-3.12
