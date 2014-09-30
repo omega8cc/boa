@@ -5,7 +5,7 @@ SHELL=/bin/bash
 
 guest_guard()
 {
-if [ ! -e "/var/run/fire.pid" ] ; then
+if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ] ; then
   touch /var/run/fire.pid
   if [ -e "/var/xdrago/monitor/ssh.log" ] ; then
     for _IP in `cat /var/xdrago/monitor/ssh.log | cut -d '#' -f1 | sort`
