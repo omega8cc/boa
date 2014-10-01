@@ -1508,11 +1508,18 @@ purge_cruft_machine () {
 
   find $User/distro/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
   find $User/distro/*/*/sites/*/private/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+
   find $User/static/*/*/*/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
   find $User/static/*/*/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
   find $User/static/*/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
   find $User/static/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
   find $User/static/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+
+  find $User/static/*/*/*/*/*/sites/*/private/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/*/sites/*/private/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/sites/*/private/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/sites/*/private/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/sites/*/private/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
 
   find $User/distro/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
   find $User/distro/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
