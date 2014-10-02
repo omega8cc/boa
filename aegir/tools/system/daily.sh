@@ -1163,6 +1163,13 @@ fix_permissions () {
     find $Dir/{modules,themes,libraries}/*{.tar,.tar.gz,.zip} -type f -exec rm -f {} \; &> /dev/null
     rm -f $Dir/modules/local-allow.info
     chown -R ${_THIS_HM_USER}.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
+    _DB_HOST_PRESENT=$(grep "^\$_SERVER\['db_host'\] = \$options\['db_host'\];" $Dir/drushrc.php)
+    if [[ "$_DB_HOST_PRESENT" =~ "db_host" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "\$_SERVER['db_host'] = \$options['db_host'];" >> $Dir/drushrc.php
+      run_drush6_hmr_cmd "@hostmaster hosting-task @${Dom} verify --force"
+    fi
     chown $_THIS_HM_USER:users $Dir/drushrc.php $Dir/{modules,themes,libraries} &> /dev/null
     find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
     find $Dir/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
@@ -1508,11 +1515,18 @@ purge_cruft_machine () {
 
   find $User/distro/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
   find $User/distro/*/*/sites/*/private/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+
   find $User/static/*/*/*/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
   find $User/static/*/*/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
   find $User/static/*/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
   find $User/static/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
   find $User/static/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+
+  find $User/static/*/*/*/*/*/sites/*/private/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/*/sites/*/private/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/sites/*/private/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/sites/*/private/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/sites/*/private/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
 
   find $User/distro/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
   find $User/distro/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null

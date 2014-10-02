@@ -103,7 +103,7 @@ if (function_exists('drush_get_command')) {
  */
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) && !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.7.5.1';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.7.6.1';
   }
 }
 
@@ -358,7 +358,7 @@ ini_set('session.gc_maxlifetime', $all_ini['session_gc_eol']);
  */
 if ($conf['install_profile'] == 'hostmaster') {
   $conf['hosting_require_disable_before_delete'] = 0;
-  unset($conf['cache']); // Disable hardcoded caching
+  $conf['cache'] = 1;
   if (!$is_backend && isset($_SERVER['HTTP_USER_AGENT'])) {
     ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
     header('X-Accel-Expires: 1');
