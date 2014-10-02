@@ -1168,6 +1168,7 @@ fix_permissions () {
       _DO_NOTHING=YES
     else
       echo "\$_SERVER['db_host'] = \$options['db_host'];" >> $Dir/drushrc.php
+      run_drush6_hmr_cmd "@hostmaster hosting-task @${Dom} verify --force"
     fi
     chown $_THIS_HM_USER:users $Dir/drushrc.php $Dir/{modules,themes,libraries} &> /dev/null
     find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
