@@ -612,7 +612,7 @@ _BRANCH_PROVISION=2.3.x-dev
 ###
 ### Variables
 ###
-_DRUSH_VERSION=mini-6-27-09-2014
+_DRUSH_VERSION=mini-6-02-10-2014
 _NOW=`date +%y%m%d-%H%M`
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
