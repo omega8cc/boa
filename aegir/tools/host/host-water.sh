@@ -149,7 +149,7 @@ if [ -e "/vservers" ] && [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; 
   echo Waiting $n seconds...
   sleep $n
   touch /var/run/water.pid
-  sleep 60
+  sleep 180
   local_ip_rg
   _HA=var/xdrago/monitor/hackcheck.archive.log
   _WA=var/xdrago/monitor/scan_nginx.archive.log
