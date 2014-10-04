@@ -2468,7 +2468,7 @@
   * Fix the check_if_required() logic in the Auto-Disable agent.
   * Improve all cURL based downloads with auto-continue mode.
   * Issue #1980250 - Fix for broken cache_page bin in Redis integration module.
-  * Issue #2127237 - NewRelic: Unable to initialize module on Debian Wheezy.
+  * Issue #2127237 - New Relic: Unable to initialize module on Debian Wheezy.
   * Issue #2128233 - Rsyslog is still installed and consumes all CPU on OpenVZ.
   * Issue #2128819 - Better exceptions in too aggressive process monitoring.
   * Make sure to never set any HTTP headers or redirects in the backend.
@@ -3095,7 +3095,7 @@
   * PHP: Properly uninstall all related packages when using source build.
   * PHP: Start more FPM workers on systems with enough RAM by default.
   * Purge bin logs before disabling them.
-  * Run NewRelic re-install early enough to avoid locking full-upgrade.
+  * Run New Relic re-install early enough to avoid locking full-upgrade.
   * Sync the load limits for spiders and backend tasks.
   * The Java/Jetty monitor should use higher allowed limits by default.
   * Update apticron message to recommend system mode instead of full upgrade.
@@ -3518,7 +3518,7 @@
   * Update csf.conf template.
   * Upgrade to ctools-6.x-1.10 in the hostmaster platform.
   * Use aliases in drush commands where possible.
-  * Use better name for non-web NewRelic app tracking.
+  * Use better name for non-web New Relic app tracking.
   * You must remove remote_import extension from the source server.
 
 
