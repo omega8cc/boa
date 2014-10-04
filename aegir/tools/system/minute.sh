@@ -68,7 +68,9 @@ perl /var/xdrago/monitor/check/escapecheck
 perl /var/xdrago/monitor/check/hackcheck
 perl /var/xdrago/monitor/check/hackftp
 perl /var/xdrago/monitor/check/scan_nginx
-perl /var/xdrago/monitor/check/locked
+if [ ! -e "/root/.high_traffic.cnf" ] ; then
+  perl /var/xdrago/monitor/check/locked
+fi
 perl /var/xdrago/monitor/check/sqlcheck
 echo DONE!
 exit 0
