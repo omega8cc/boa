@@ -5382,8 +5382,8 @@ strict_bin_permissions () {
   chmod 644 /etc/passwd
 }
 #
-# Fix for Open Atrium 2.18 7.28.1
-fix_open_atrium () {
+# Fix for broken platforms
+fix_broken_platforms () {
   if [ ! -e "/var/xdrago/log/open-atrium-og-fixed-001.log" ] ; then
     REVISIONS="001 003 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
     for i in $REVISIONS; do
@@ -5434,6 +5434,18 @@ fix_open_atrium () {
     touch /var/xdrago/log/open-atrium-og-fixed-002.log
     cd
   fi
+  if [ ! -e "/var/xdrago/log/erpal-fixed-001.log" ] ; then
+    REVISIONS="001 003 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+    for i in $REVISIONS; do
+      if [ -d "/data/all/$i/erpal-7.x-2.0-7.31.1/profiles/erpal/modules/contrib" ] ; then
+        if [ -d "/data/all/$i/o_contrib_seven/entitycache" ] && [ ! -d "/data/all/$i/erpal-7.x-2.0-7.31.1/profiles/erpal/modules/contrib/entitycache" ] ; then
+          cp -a /data/all/$i/o_contrib_seven/entitycache /data/all/$i/erpal-7.x-2.0-7.31.1/profiles/erpal/modules/contrib/
+        fi
+      fi
+    done
+    touch /var/xdrago/log/erpal-fixed-001.log
+    cd
+  fi
 }
 # Fix for Postfix configuration.
 fix_cnf_postfix () {
@@ -5481,7 +5493,7 @@ finale () {
     mrun "sleep 8"
   fi
   msg "Final post-$_L_ST cleaning, please wait a moment..."
-  fix_open_atrium
+  fix_broken_platforms
   mv -f /etc/motd /var/backups/dragon/t/motd-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   mv -f /etc/motd-pre-* /var/backups/dragon/t/ &> /dev/null
   echo > /etc/motd
