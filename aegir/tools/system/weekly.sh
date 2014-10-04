@@ -28,6 +28,11 @@ read_account_data () {
     _CLIENT_OPTION=`cat /data/disk/$_THIS_HM_USER/log/option.txt`
     _CLIENT_OPTION=`echo -n $_CLIENT_OPTION | tr -d "\n"`
   fi
+  if [ -e "/data/disk/$_THIS_HM_USER/log/extra.txt" ] && [ "$_CLIENT_OPTION" = "POWER" ] ; then
+    _EXTRA_ENGINE=`cat /data/disk/$_THIS_HM_USER/log/extra.txt`
+    _EXTRA_ENGINE=`echo -n $_EXTRA_ENGINE | tr -d "\n"`
+    _ENGINE_NR="$_ENGINE_NR + $_EXTRA_ENGINE x EDGE"
+  fi
 }
 
 send_notice_core () {
@@ -592,6 +597,17 @@ check_limits () {
   let "_DSK_MIN_LIMIT *= $_CLIENT_CORES"
   let "_SQL_MAX_LIMIT *= $_CLIENT_CORES"
   let "_DSK_MAX_LIMIT *= $_CLIENT_CORES"
+  if [ ! -z "$_EXTRA_ENGINE" ] ; then
+    _SQL_ADD_LIMIT=512
+    _DSK_ADD_LIMIT=15360
+    let "_SQL_ADD_LIMIT *= $_EXTRA_ENGINE"
+    let "_DSK_ADD_LIMIT *= $_EXTRA_ENGINE"
+    _SQL_MIN_LIMIT=$(($_SQL_MIN_LIMIT + $_SQL_ADD_LIMIT))
+    _DSK_MIN_LIMIT=$(($_DSK_MIN_LIMIT + $_DSK_ADD_LIMIT))
+    _SQL_MAX_LIMIT=$(($_SQL_MAX_LIMIT + $_SQL_ADD_LIMIT))
+    _DSK_MAX_LIMIT=$(($_DSK_MAX_LIMIT + $_DSK_ADD_LIMIT))
+    echo _EXTRA_ENGINE is $_EXTRA_ENGINE
+  fi
   echo _CLIENT_CORES is $_CLIENT_CORES
   echo _SQL_MIN_LIMIT is $_SQL_MIN_LIMIT
   echo _SQL_MAX_LIMIT is $_SQL_MAX_LIMIT
