@@ -2742,27 +2742,24 @@ tune_memory_limits () {
     sed -i "s/256/$_USE_FPM/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   fi
   if [ -e "/opt/php55/etc/php55.ini" ] ; then
-    sed -i "s/256/$_USE_FPM/g" /opt/php55/etc/php55.ini         &> /dev/null
-    sed -i "s/181/$_USE_OPC/g" /opt/php55/etc/php55.ini         &> /dev/null
-    sed -i "s/256/$_USE_PHP/g" /opt/php55/lib/php.ini           &> /dev/null
-    sed -i "s/256/$_USE_PHP/g" /opt/php55/etc/pool.d/www55.conf &> /dev/null
+    sed -i "s/256/$_USE_FPM/g" /opt/php55/etc/php55.ini &> /dev/null
+    sed -i "s/181/$_USE_OPC/g" /opt/php55/etc/php55.ini &> /dev/null
+    sed -i "s/256/$_USE_PHP/g" /opt/php55/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php54/etc/php54.ini" ] ; then
-    sed -i "s/256/$_USE_FPM/g" /opt/php54/etc/php54.ini         &> /dev/null
-    sed -i "s/181/$_USE_OPC/g" /opt/php54/etc/php54.ini         &> /dev/null
-    sed -i "s/256/$_USE_PHP/g" /opt/php54/lib/php.ini           &> /dev/null
-    sed -i "s/256/$_USE_PHP/g" /opt/php54/etc/pool.d/www54.conf &> /dev/null
+    sed -i "s/256/$_USE_FPM/g" /opt/php54/etc/php54.ini &> /dev/null
+    sed -i "s/181/$_USE_OPC/g" /opt/php54/etc/php54.ini &> /dev/null
+    sed -i "s/256/$_USE_PHP/g" /opt/php54/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php53/etc/php53.ini" ] ; then
-    sed -i "s/256/$_USE_FPM/g" /opt/php53/etc/php53.ini         &> /dev/null
-    sed -i "s/181/$_USE_OPC/g" /opt/php53/etc/php53.ini         &> /dev/null
-    sed -i "s/256/$_USE_PHP/g" /opt/php53/lib/php.ini           &> /dev/null
-    sed -i "s/256/$_USE_PHP/g" /opt/php53/etc/pool.d/www53.conf &> /dev/null
+    sed -i "s/256/$_USE_FPM/g" /opt/php53/etc/php53.ini &> /dev/null
+    sed -i "s/181/$_USE_OPC/g" /opt/php53/etc/php53.ini &> /dev/null
+    sed -i "s/256/$_USE_PHP/g" /opt/php53/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php52/etc/php52.ini" ] ; then
-    sed -i "s/256/$_USE_FPM/g" /opt/php52/etc/php52.ini         &> /dev/null
-    sed -i "s/181/$_USE_OPC/g" /opt/php52/etc/php52.ini         &> /dev/null
-    sed -i "s/256/$_USE_PHP/g" /opt/php52/lib/php.ini           &> /dev/null
+    sed -i "s/256/$_USE_FPM/g" /opt/php52/etc/php52.ini &> /dev/null
+    sed -i "s/181/$_USE_OPC/g" /opt/php52/etc/php52.ini &> /dev/null
+    sed -i "s/256/$_USE_PHP/g" /opt/php52/lib/php.ini   &> /dev/null
   fi
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
     tune_sql_memory_limits
