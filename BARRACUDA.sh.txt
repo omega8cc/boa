@@ -2599,9 +2599,9 @@ tune_memory_limits () {
   if [ "$_VMFAMILY" = "VS" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     if [ "$_VMFAMILY" = "VS" ] ; then
       if [ -e "/root/.tg.cnf" ] ; then
-        let "_USE_SQL = (($_RAM / 12))"
+        let "_USE_SQL = (($_RAM / 6))"
       else
-        let "_USE_SQL = (($_RAM / 24))"
+        let "_USE_SQL = (($_RAM / 12))"
       fi
     else
       let "_USE_SQL = (($_RAM / 8))"
@@ -2651,8 +2651,8 @@ tune_memory_limits () {
       if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
         _USE_PHP=1024
         _USE_OPC=1024
-        _PRC_SQL=50
-        _QCE_SQL=128M
+        _PRC_SQL=100
+        _QCE_SQL=256M
         _RND_SQL=8M
         _JBF_SQL=4M
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
@@ -2742,27 +2742,24 @@ tune_memory_limits () {
     sed -i "s/256/$_USE_FPM/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   fi
   if [ -e "/opt/php55/etc/php55.ini" ] ; then
-    sed -i "s/256/$_USE_FPM/g" /opt/php55/etc/php55.ini         &> /dev/null
-    sed -i "s/181/$_USE_OPC/g" /opt/php55/etc/php55.ini         &> /dev/null
-    sed -i "s/256/$_USE_PHP/g" /opt/php55/lib/php.ini           &> /dev/null
-    sed -i "s/256/$_USE_PHP/g" /opt/php55/etc/pool.d/www55.conf &> /dev/null
+    sed -i "s/256/$_USE_FPM/g" /opt/php55/etc/php55.ini &> /dev/null
+    sed -i "s/181/$_USE_OPC/g" /opt/php55/etc/php55.ini &> /dev/null
+    sed -i "s/256/$_USE_PHP/g" /opt/php55/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php54/etc/php54.ini" ] ; then
-    sed -i "s/256/$_USE_FPM/g" /opt/php54/etc/php54.ini         &> /dev/null
-    sed -i "s/181/$_USE_OPC/g" /opt/php54/etc/php54.ini         &> /dev/null
-    sed -i "s/256/$_USE_PHP/g" /opt/php54/lib/php.ini           &> /dev/null
-    sed -i "s/256/$_USE_PHP/g" /opt/php54/etc/pool.d/www54.conf &> /dev/null
+    sed -i "s/256/$_USE_FPM/g" /opt/php54/etc/php54.ini &> /dev/null
+    sed -i "s/181/$_USE_OPC/g" /opt/php54/etc/php54.ini &> /dev/null
+    sed -i "s/256/$_USE_PHP/g" /opt/php54/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php53/etc/php53.ini" ] ; then
-    sed -i "s/256/$_USE_FPM/g" /opt/php53/etc/php53.ini         &> /dev/null
-    sed -i "s/181/$_USE_OPC/g" /opt/php53/etc/php53.ini         &> /dev/null
-    sed -i "s/256/$_USE_PHP/g" /opt/php53/lib/php.ini           &> /dev/null
-    sed -i "s/256/$_USE_PHP/g" /opt/php53/etc/pool.d/www53.conf &> /dev/null
+    sed -i "s/256/$_USE_FPM/g" /opt/php53/etc/php53.ini &> /dev/null
+    sed -i "s/181/$_USE_OPC/g" /opt/php53/etc/php53.ini &> /dev/null
+    sed -i "s/256/$_USE_PHP/g" /opt/php53/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php52/etc/php52.ini" ] ; then
-    sed -i "s/256/$_USE_FPM/g" /opt/php52/etc/php52.ini         &> /dev/null
-    sed -i "s/181/$_USE_OPC/g" /opt/php52/etc/php52.ini         &> /dev/null
-    sed -i "s/256/$_USE_PHP/g" /opt/php52/lib/php.ini           &> /dev/null
+    sed -i "s/256/$_USE_FPM/g" /opt/php52/etc/php52.ini &> /dev/null
+    sed -i "s/181/$_USE_OPC/g" /opt/php52/etc/php52.ini &> /dev/null
+    sed -i "s/256/$_USE_PHP/g" /opt/php52/lib/php.ini   &> /dev/null
   fi
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
     tune_sql_memory_limits
@@ -5384,8 +5381,8 @@ strict_bin_permissions () {
 #
 # Fix for broken platforms
 fix_broken_platforms () {
-  if [ ! -e "/var/xdrago/log/open-atrium-og-fixed-001.log" ] ; then
-    REVISIONS="001 003 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+  if [ ! -e "/var/xdrago/log/open-atrium-og-fixed-c3.log" ] ; then
+    REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
     for i in $REVISIONS; do
       if [ -d "/data/all/$i/openatrium-7.x-2.18-7.28.1/profiles/openatrium/modules/contrib" ] ; then
         cd /data/all/$i/openatrium-7.x-2.18-7.28.1/profiles/openatrium/modules/contrib/
@@ -5406,11 +5403,11 @@ fix_broken_platforms () {
         fi
       fi
     done
-    touch /var/xdrago/log/open-atrium-og-fixed-001.log
+    touch /var/xdrago/log/open-atrium-og-fixed-c3.log
     cd
   fi
-  if [ ! -e "/var/xdrago/log/open-atrium-og-fixed-002.log" ] ; then
-    REVISIONS="001 003 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+  if [ ! -e "/var/xdrago/log/open-atrium-og-fixed-d4.log" ] ; then
+    REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
     for i in $REVISIONS; do
       if [ -d "/data/all/$i/openatrium-7.x-2.21-7.31.1/profiles/openatrium/modules/contrib" ] ; then
         cd /data/all/$i/openatrium-7.x-2.21-7.31.1/profiles/openatrium/modules/contrib/
@@ -5431,11 +5428,11 @@ fix_broken_platforms () {
         fi
       fi
     done
-    touch /var/xdrago/log/open-atrium-og-fixed-002.log
+    touch /var/xdrago/log/open-atrium-og-fixed-d4.log
     cd
   fi
-  if [ ! -e "/var/xdrago/log/erpal-fixed-001.log" ] ; then
-    REVISIONS="001 003 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+  if [ ! -e "/var/xdrago/log/erpal-fixed-e5.log" ] ; then
+    REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
     for i in $REVISIONS; do
       if [ -d "/data/all/$i/erpal-7.x-2.0-7.31.1/profiles/erpal/modules/contrib" ] ; then
         if [ -d "/data/all/$i/o_contrib_seven/entitycache" ] && [ ! -d "/data/all/$i/erpal-7.x-2.0-7.31.1/profiles/erpal/modules/contrib/entitycache" ] ; then
@@ -5443,7 +5440,7 @@ fix_broken_platforms () {
         fi
       fi
     done
-    touch /var/xdrago/log/erpal-fixed-001.log
+    touch /var/xdrago/log/erpal-fixed-e5.log
     cd
   fi
 }

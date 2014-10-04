@@ -282,7 +282,7 @@ create_shared_dirs () {
 # Fix for FServer broken due to required now strongarm.
 #
 feature_server_fix_002 () {
-  if [ ! -e "/var/xdrago/log/feature-server-fixed-002.log" ] ; then
+  if [ ! -e "/var/xdrago/log/feature-server-fixed-e5.log" ] ; then
     msg "$_STATUS A: Adding missing strongarm module to old FServer platforms"
     REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
     for i in $REVISIONS; do
@@ -304,7 +304,7 @@ feature_server_fix_002 () {
         fi
       fi
     done
-    touch /var/xdrago/log/feature-server-fixed-002.log
+    touch /var/xdrago/log/feature-server-fixed-e5.log
     cd
   fi
 }
@@ -312,9 +312,9 @@ feature_server_fix_002 () {
 # Fix for FServer broken due to incorrect context version downloaded in fserver-6.28.3.
 #
 feature_server_fix_004 () {
-  if [ ! -e "/var/xdrago/log/feature-server-fixed-004.log" ] ; then
+  if [ ! -e "/var/xdrago/log/feature-server-fixed-f6.log" ] ; then
     msg "$_STATUS A: Fixing context version in FServer platforms"
-    REVISIONS="001 003 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+    REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
     for i in $REVISIONS; do
       if [ -d "/data/all/$i/fserver-6.28.3" ] ; then
         _CONTEXT_TEST=`grep "7.x" /data/all/$i/fserver-6.28.3/profiles/feature_server/modules/context/context.info 2>&1`
@@ -334,7 +334,7 @@ feature_server_fix_004 () {
         fi
       fi
     done
-    touch /var/xdrago/log/feature-server-fixed-004.log
+    touch /var/xdrago/log/feature-server-fixed-f6.log
     cd
   fi
 }
