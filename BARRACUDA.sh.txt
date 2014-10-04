@@ -2599,9 +2599,9 @@ tune_memory_limits () {
   if [ "$_VMFAMILY" = "VS" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     if [ "$_VMFAMILY" = "VS" ] ; then
       if [ -e "/root/.tg.cnf" ] ; then
-        let "_USE_SQL = (($_RAM / 12))"
+        let "_USE_SQL = (($_RAM / 6))"
       else
-        let "_USE_SQL = (($_RAM / 24))"
+        let "_USE_SQL = (($_RAM / 12))"
       fi
     else
       let "_USE_SQL = (($_RAM / 8))"
@@ -2651,8 +2651,8 @@ tune_memory_limits () {
       if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
         _USE_PHP=1024
         _USE_OPC=1024
-        _PRC_SQL=50
-        _QCE_SQL=128M
+        _PRC_SQL=100
+        _QCE_SQL=256M
         _RND_SQL=8M
         _JBF_SQL=4M
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
