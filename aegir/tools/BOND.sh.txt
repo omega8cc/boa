@@ -867,7 +867,7 @@ tune_sql_memory_limits () {
     _REC_INNODB_MEM=`cat /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt | grep "data size:" | cut -d/ -f3 | awk '{ print $1}'`
     _MYSQLTUNER_TEST=$(cat /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt 2>&1)
     cp -a /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt /var/xdrago/log/
-    if [ -z "$_REC_INNODB_MEM" ] || [ -z "$_REC_MYISAM_MEM" ] || [[ "$_MYSQLTUNER_TEST" =~ "Cannot calculate MyISAM index" ]] || [[ "$_MYSQLTUNER_TEST" =~ "InnoDB is enabled but isn" ]] ; then
+    if [ -z "$_REC_INNODB_MEM" ] || [[ "$_MYSQLTUNER_TEST" =~ "Cannot calculate MyISAM index" ]] || [[ "$_MYSQLTUNER_TEST" =~ "InnoDB is enabled but isn" ]] ; then
       _MYSQLTUNER_TEST_RESULT=FAIL
       msg "ALRT! The MySQLTuner test failed!"
       msg "ALRT! Please review /var/xdrago/log/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt for details"
