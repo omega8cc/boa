@@ -2518,7 +2518,9 @@ tune_sql_memory_limits () {
       sed -i "s/^key_buffer_size.*/key_buffer_size         = $_USE_MYISAM_MEM/g"  /etc/mysql/my.cnf &> /dev/null
     else
       _USE_MYISAM_MEM="${_USE_SQL}M"
-      msg "ALRT! _USE_MYISAM_MEM is $_USE_MYISAM_MEM because _REC_MYISAM_MEM was empty!"
+      if [ "$_MYSQLTUNER_TEST_RESULT" = "FAIL" ] ; then
+        msg "ALRT! _USE_MYISAM_MEM is $_USE_MYISAM_MEM because _REC_MYISAM_MEM was empty!"
+      fi
       sed -i "s/^key_buffer_size.*/key_buffer_size         = $_USE_MYISAM_MEM/g"  /etc/mysql/my.cnf &> /dev/null
     fi
     ###--------------------###
@@ -2551,8 +2553,10 @@ tune_sql_memory_limits () {
     fi
   else
     _THIS_USE_MEM="${_USE_SQL}M"
-    msg "ALRT! _USE_MYISAM_MEM is $_THIS_USE_MEM because _REC_MYISAM_MEM was empty!"
-    msg "ALRT! _USE_INNODB_MEM is $_THIS_USE_MEM because _REC_INNODB_MEM was empty!"
+    if [ "$_MYSQLTUNER_TEST_RESULT" = "FAIL" ] ; then
+      msg "ALRT! _USE_MYISAM_MEM is $_THIS_USE_MEM because _REC_MYISAM_MEM was empty!"
+      msg "ALRT! _USE_INNODB_MEM is $_THIS_USE_MEM because _REC_INNODB_MEM was empty!"
+    fi
     sed -i "s/= 181/= $_USE_SQL/g"  /etc/mysql/my.cnf &> /dev/null
   fi
 }
