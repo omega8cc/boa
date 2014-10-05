@@ -162,8 +162,8 @@ check_report ()
   else
     _SEND_ALERT=YES
   fi
-  _RESULT_ALRT=$(grep "ALRT:" $_UP_LOG)
-  if [[ "$_RESULT_ALRT" =~ "ALRT:" ]] ; then
+  _RESULT_ALRT=$(grep "ALRT" $_UP_LOG)
+  if [[ "$_RESULT_ALRT" =~ "ALRT" ]] ; then
     _SEND_ALERT=YES
   fi
   _RESULT_ABORTING=$(grep "Aborting" $_UP_LOG)
