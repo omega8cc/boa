@@ -2848,10 +2848,10 @@ EOF
       fi
       sed -i "/^$/d" /etc/locale.gen
       locale-gen &> /dev/null
-      update-locale LANG=en_US.UTF-8 &> /dev/null
+      update-locale LANG=en_US.UTF-8 LC_CTYPE=en_US.UTF-8 LC_COLLATE=POSIX LC_ALL= &> /dev/null
     else
       locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
-      update-locale LANG=en_US.UTF-8 &> /dev/null
+      update-locale LANG=en_US.UTF-8 LC_CTYPE=en_US.UTF-8 LC_COLLATE=POSIX LC_ALL= &> /dev/null
     fi
     if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/boa.bashrc.txt" ] ; then
       cp -af /root/.bashrc /root/.bashrc.bak.$_NOW
@@ -2877,10 +2877,10 @@ EOF
       fi
       sed -i "/^$/d" /etc/locale.gen
       locale-gen &> /dev/null
-      update-locale LANG=en_US.UTF-8 &> /dev/null
+      update-locale LANG=en_US.UTF-8 LC_CTYPE=en_US.UTF-8 LC_COLLATE=POSIX LC_ALL= &> /dev/null
     else
       locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
-      update-locale LANG=en_US.UTF-8 &> /dev/null
+      update-locale LANG=en_US.UTF-8 LC_CTYPE=en_US.UTF-8 LC_COLLATE=POSIX LC_ALL= &> /dev/null
     fi
   fi
 }
