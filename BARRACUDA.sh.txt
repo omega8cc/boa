@@ -2877,6 +2877,7 @@ EOF
       if [[ ! "$_LOCALE_GEN_TEST" =~ "en_US.UTF-8 UTF-8" ]] ; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
       fi
+      sed -i "/^$/d" /etc/locale.gen
       locale-gen &> /dev/null
       update-locale LANG=en_US.UTF-8 &> /dev/null
     else
