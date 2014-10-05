@@ -2858,12 +2858,21 @@ EOF
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/boa.bashrc.txt /root/.bashrc
       set_xterm
     fi
-    echo "export LANG=en_US.UTF-8" >> /root/.bashrc
-    echo "export LANGUAGE=en_US.UTF-8" >> /root/.bashrc
-    echo "export LC_ALL=\"\"" >> /root/.bashrc
     export LANG=en_US.UTF-8
     export LANGUAGE=en_US.UTF-8
-    export LC_ALL=""
+    export LC_CTYPE=en_US.UTF-8
+    export LC_COLLATE=POSIX
+    export LC_NUMERIC=en_US.UTF-8
+    export LC_TIME=en_US.UTF-8
+    export LC_MONETARY=en_US.UTF-8
+    export LC_MESSAGES=en_US.UTF-8
+    export LC_PAPER=en_US.UTF-8
+    export LC_NAME=en_US.UTF-8
+    export LC_ADDRESS=en_US.UTF-8
+    export LC_TELEPHONE=en_US.UTF-8
+    export LC_MEASUREMENT=en_US.UTF-8
+    export LC_IDENTIFICATION=en_US.UTF-8
+    export LC_ALL=
   else
     if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/boa.bashrc.txt" ] ; then
       cp -af /root/.bashrc /root/.bashrc.bak.$_NOW
