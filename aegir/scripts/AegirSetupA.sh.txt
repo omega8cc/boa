@@ -1993,9 +1993,9 @@ if [ "$_STATUS" = "INIT" ] ; then
       msg "LINK: $_AEGIR_LOGIN_URL"
       echo " "
     else
-      msg "ALRT: Something went wrong"
-      msg "ALRT: Please check the install log for details:"
-      msg "ALRT: $_ROOT/log/install.log"
+      msg "ALRT! Something went wrong"
+      msg "ALRT! Please check the install log for details:"
+      msg "ALRT! $_ROOT/log/install.log"
     fi
   fi
 else

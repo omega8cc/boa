@@ -4312,8 +4312,8 @@ detect_cdorked_malware () {
       _DO_NOTHING=YES
       ### msg "INFO: No Linux/Cdorked.A malware traces found - system clean"
     else
-      msg "ALRT: Your system is probably infected by Linux/Cdorked.A malware!"
-      msg "ALRT: Please send /var/backups/httpd_cdorked_config.bin file to leveille@eset.com"
+      msg "ALRT! Your system is probably infected by Linux/Cdorked.A malware!"
+      msg "ALRT! Please send /var/backups/httpd_cdorked_config.bin file to leveille@eset.com"
       rm -f $(which nginx)
       _NGX_FORCE_REINSTALL=YES
       _C_DORKED=YES
@@ -5479,9 +5479,9 @@ finale () {
   msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
   echo " "
   if [ "$_UP_LNX" = "YES" ] ; then
-    msg "ALRT: Your OS kernel has been upgraded!"
+    msg "ALRT! Your OS kernel has been upgraded!"
     if [ ! -e "/usr/sbin/uptrack-upgrade" ] ; then
-      msg "ALRT: You *must* reboot immediately to stay secure!"
+      msg "ALRT! You *must* reboot immediately to stay secure!"
     else
       msg "NOTE: You have Ksplice rebootless kernel updates installed"
       msg "HINT: Run uptrack-upgrade -y to make sure that all upgrades are fully applied"
@@ -8249,7 +8249,7 @@ if [ "$_STATUS" = "INIT" ] ; then
 
 ###--------------------###
   if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock" ] ; then
-    msg "ALRT: $_DB_SERVER server not running properly!"
+    msg "ALRT! $_DB_SERVER server not running properly!"
     msg "EXIT: We can't proceed with installation and will exit now"
     msg "HINT: Please check $_LOG for more information,"
     msg "HINT: (re)start $_DB_SERVER server and then run installer again"
@@ -8391,7 +8391,7 @@ else
     msg "INFO: Upgrading $_DB_SERVER tables if necessary, please wait a minute..."
     mrun "sleep 60"
     if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock" ] ; then
-      msg "ALRT: $_DB_SERVER server not running properly!"
+      msg "ALRT! $_DB_SERVER server not running properly!"
       msg "EXIT: We can't proceed with upgrade and will exit now"
       msg "HINT: Please check $_LOG for more information,"
       msg "HINT: (re)start $_DB_SERVER server and then run installer again"
@@ -9156,9 +9156,9 @@ if [ "$_STATUS" = "INIT" ] ; then
       echo " "
       msg "LINK: $_AEGIR_LOGIN_URL"
     else
-      msg "ALRT: Something went wrong"
-      msg "ALRT: Please check the install log for details:"
-      msg "ALRT: /var/aegir/install.log"
+      msg "ALRT! Something went wrong"
+      msg "ALRT! Please check the install log for details:"
+      msg "ALRT! /var/aegir/install.log"
     fi
   fi
 fi
