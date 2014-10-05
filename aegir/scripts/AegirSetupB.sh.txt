@@ -600,7 +600,7 @@ cd $_HOSTMASTER_ROOT/profiles/hostmaster/modules
 get_dev_ext "aegir_custom_settings-6.x-3.12.tar.gz"
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_civicrm.git       &> /dev/null
-  git clone --branch 6.x-1.x git://github.com/omega8cc/hosting_remote_import.git &> /dev/null
+  git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_remote_import.git &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_cdn.git           &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_platform_git.git  &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_site_backup.git   &> /dev/null
