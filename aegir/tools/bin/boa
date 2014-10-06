@@ -11,6 +11,13 @@ if [[ "$_L_VM_TEST" =~ beng ]] ; then
   _L_VMFAMILY="VS"
 fi
 
+clean_pid_exit () {
+  rm -f /var/run/boa_wait.pid
+  rm -f /var/run/boa_run.pid
+  service cron start &> /dev/null
+  exit 1
+}
+
 check_id () {
   _USER=$1
   _ID_EXISTS=$(getent passwd $_USER 2>&1)
@@ -19,23 +26,23 @@ check_id () {
   elif [[ "$_ID_EXISTS" =~ "$_USER" ]] ; then
     echo "ERROR: $_USER username is already taken"
     echo "Please choose different username"
-    exit 1
+    clean_pid_exit
   else
     echo "ERROR: $_USER username check failed"
     echo "Please try different username"
-    exit 1
+    clean_pid_exit
   fi
   if [ "$_USER" = "admin" ] || [ "$_USER" = "hostmaster" ] || [ "$_USER" = "barracuda" ] || [ "$_USER" = "octopus" ] || [ "$_USER" = "boa" ] ; then
     echo "ERROR: $_USER is a restricted username, please choose different _USER"
-    exit 1
+    clean_pid_exit
   elif [[ "$_USER" =~ "aegir" ]] || [[ "$_USER" =~ "drupal" ]] || [[ "$_USER" =~ "drush" ]] || [[ "$_USER" =~ "sites" ]] || [[ "$_USER" =~ "default" ]] ; then
     echo "ERROR: $_USER includes restricted keyword, please choose different _USER"
-    exit 1
+    clean_pid_exit
   fi
   _REGEX="^[[:digit:]]"
   if [[ "$_USER" =~ "$_REGEX" ]] ; then
     echo "ERROR: $_USER is a wrong username, it should start with a letter, not digit"
-    exit 1
+    clean_pid_exit
   fi
 }
 
@@ -177,7 +184,7 @@ octopus_install ()
     sed -i "/^$/d" /etc/hosts
   else
     echo "OCTOPUS.sh.txt installer not available - try again"
-    exit 1
+    clean_pid_exit
   fi
 }
 
@@ -211,7 +218,7 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
   fi
 else
   echo "BARRACUDA.sh.txt installer not available - try again"
-  exit 1
+  clean_pid_exit
 fi
 }
 
@@ -350,7 +357,7 @@ check_wrapper ()
         if [ ! -e "$_THIS_FILE" ] ; then
           echo "Sorry, I gave up."
           echo "Please check http://stats.pingdom.com/x0s6yrbopal6/801243 and try again later."
-          exit 1
+          clean_pid_exit
         fi
       fi
     fi
@@ -411,13 +418,13 @@ check_root ()
     sed -i "/^$/d" /etc/hosts
   else
     echo "ERROR: This script should be ran as a root user - please `sudo -i` first"
-    exit 1
+    clean_pid_exit
   fi
   _DF_TEST=$(df -kTh / -l | grep '/'| sed 's/\%//g'| awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "$_DF_TEST" ] && [ "$_DF_TEST" -gt "90" ] ; then
     echo "ERROR: Your disk space is almost full - we can not proceed until it is below 90/100"
-    exit 1
+    clean_pid_exit
   fi
   _L_VM_TEST=`uname -a 2>&1`
   if [[ "$_L_VM_TEST" =~ beng ]] ; then
@@ -508,6 +515,6 @@ case "$1" in
   *)         echo
              echo "Usage: $(basename "$0") {in-stable|in-head|in-modern|in-legacy|in-vanilla|in-octopus} {local|public} {fqdn} {email} {o1} {ask|mini|max|none} {newrelickey}"
              echo
-             exit 1
+             clean_pid_exit
   ;;
 esac

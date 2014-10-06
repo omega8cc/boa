@@ -167,6 +167,14 @@ _PHP55_VERSION=5.5.17
 
 ###---### Functions
 #
+# Clean pid files on exit.
+clean_pid_exit () {
+  rm -f /var/run/boa_wait.pid
+  rm -f /var/run/boa_run.pid
+  service cron start &> /dev/null
+  exit 1
+}
+#
 # Noticeable messages.
 msg () {
   echo "Tuner [`date`] ==> $*"
@@ -1232,8 +1240,7 @@ check_git_repos_status () {
     Bye.
 
 EOF
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
   _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
 }
@@ -1263,7 +1270,7 @@ if [ `whoami` = "root" ] ; then
 else
   msg "ERROR: This script should be ran as a root user - please `sudo -i` first"
   msg "Bye"
-  exit 1
+  clean_pid_exit
 fi
 #
 #
@@ -1271,8 +1278,7 @@ if [ ! -f "/var/log/barracuda_log.txt" ] ; then
   msg "ERROR: This script should be used only when the same version of BARRACUDA was used before"
   msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first"
   msg "Bye"
-  service cron start &> /dev/null
-  exit 1
+  clean_pid_exit
 else
   _VERSIONS_TEST=`cat /var/log/barracuda_log.txt`
   if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
@@ -1281,8 +1287,7 @@ else
     msg "ERROR: This script should be used only when the same version of BARRACUDA was used before"
     msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first"
     msg "Bye"
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
 fi
 #
