@@ -673,6 +673,14 @@ _UBERCART7=3.7
 
 ###---### Functions
 #
+# Clean pid files on exit.
+clean_pid_exit () {
+  rm -f /var/run/boa_wait.pid
+  rm -f /var/run/boa_run.pid
+  service cron start &> /dev/null
+  exit 1
+}
+#
 # Noticeable messages.
 msg () {
   echo "Octopus [`date`] ==> $*"
@@ -870,23 +878,23 @@ check_id () {
   elif [[ "$_ID_EXISTS" =~ "$_USER" ]] ; then
     msg "ERROR: $_USER username is already taken"
     msg "Please choose different _USER"
-    exit 1
+    clean_pid_exit
   else
     msg "ERROR: $_USER username check failed"
     msg "Please try different _USER"
-    exit 1
+    clean_pid_exit
   fi
   if [ "$_USER" = "admin" ] || [ "$_USER" = "hostmaster" ] || [ "$_USER" = "barracuda" ] || [ "$_USER" = "octopus" ] || [ "$_USER" = "boa" ] ; then
     msg "ERROR: $_USER is a restricted username, please choose different _USER"
-    exit 1
+    clean_pid_exit
   elif [[ "$_USER" =~ "drupal" ]] || [[ "$_USER" =~ "drush" ]] || [[ "$_USER" =~ "sites" ]] || [[ "$_USER" =~ "default" ]] ; then
     msg "ERROR: $_USER includes restricted keyword, please choose different _USER"
-    exit 1
+    clean_pid_exit
   fi
   _REGEX="^[[:digit:]]"
   if [[ "$_USER" =~ "$_REGEX" ]] ; then
     msg "ERROR: $_USER is a wrong username, it should start with a letter, not digit"
-    exit 1
+    clean_pid_exit
   fi
 }
 #
@@ -944,8 +952,7 @@ check_git_repos_status () {
     Bye.
 
 EOF
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
   _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
 }
@@ -960,7 +967,7 @@ octopus_cnf () {
       else
         msg "EXIT: You must enter **your** valid e-mail address"
         msg "EXIT: in the _MY_EMAIL **and** _CLIENT_EMAIL variables"
-        exit 1
+        clean_pid_exit
       fi
     fi
     msg "INFO: Creating your /root/.${_USER}.octopus.cnf config file"
@@ -1206,7 +1213,7 @@ octopus_cnf () {
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _MY_EMAIL variable"
         msg "EXIT: stored in the /root/.${_USER}.octopus.cnf config file"
-        exit 1
+        clean_pid_exit
       fi
     fi
     if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
@@ -1229,8 +1236,7 @@ octopus_cnf () {
       if [ ! -x "/opt/php53/bin/php" ] ; then
         msg "EXIT: You must specify already installed PHP version"
         msg "EXIT: in both _PHP_FPM_VERSION and _PHP_CLI_VERSION"
-        service cron start &> /dev/null
-        exit 1
+        clean_pid_exit
       fi
     fi
     if [ "$_STATUS" = "INIT" ] ; then
@@ -1238,14 +1244,14 @@ octopus_cnf () {
         true
       else
         echo "Installation aborted by you"
-        exit 1
+        clean_pid_exit
       fi
     else
       if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
         true
       else
         echo "Upgrade aborted by you"
-        exit 1
+        clean_pid_exit
       fi
     fi
   fi
@@ -1386,8 +1392,7 @@ check_php_compatibility () {
     msg "ERROR: Please switch both FPM and CLI on this instance to PHP 5.3 or newer"
     msg "ERROR: Once the instance is switched away from 5.2 run the upgrade again"
     msg "Bye"
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
 }
 #
@@ -1422,8 +1427,7 @@ check_civicrm_compatibility () {
         msg "ERROR: civicrm located in the standard sites/all/modules tree"
         msg "ERROR: before trying to run this upgrade again"
         msg "Bye"
-        service cron start &> /dev/null
-        exit 1
+        clean_pid_exit
       fi
     fi
   done
@@ -1572,8 +1576,7 @@ action () {
     msg "FATAL ERROR: AegirSetupA installer failed"
     msg "FATAL ERROR: Aborting Octopus installer NOW!"
     touch /opt/tmp/status-Octopus-FAIL
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
   if [ ! -e "/data/disk/$_USER/log/email.txt" ] ; then
     echo $_CLIENT_EMAIL > /data/disk/$_USER/log/email.txt
@@ -1639,8 +1642,7 @@ check_connection () {
           msg "You may want to check https://status.github.com/messages"
           msg "Also, make sure that the git port 9418 is open"
           msg "Bye"
-          service cron start &> /dev/null
-          exit 1
+          clean_pid_exit
         fi
       fi
     fi
@@ -1659,8 +1661,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
     rm -f -r /opt/tmp/test-*
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
   _GITHUB_TEST=`git clone git://github.com/omega8cc/hostmaster.git /opt/tmp/test-hostmaster 2>&1`
   if [[ "$_GITHUB_TEST" =~ "fatal" ]] ; then
@@ -1670,8 +1671,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
     rm -f -r /opt/tmp/test-*
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
   rm -f -r /opt/tmp/test-*
 fi
@@ -1685,8 +1685,7 @@ if [[ "$_INSTALLER_VERSION" =~ "-dev" ]] ; then
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
     rm -f -r /opt/tmp/test-*
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
   rm -f -r /opt/tmp/test-*
 fi
@@ -1703,8 +1702,7 @@ if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock"
   msg "EXIT: We can't proceed and will exit now"
   msg "HINT: Please (re)start $_DB_SERVER server and then run installer again"
   msg "Bye"
-  service cron start &> /dev/null
-  exit 1
+  clean_pid_exit
 fi
 
 ###--------------------###
@@ -1730,7 +1728,7 @@ if [ `whoami` = "root" ] ; then
 else
   msg "ERROR: This script should be ran as a root user - please `sudo -i` first"
   msg "Bye"
-  exit 1
+  clean_pid_exit
 fi
 #
 # Restart pdnsd server
@@ -1821,8 +1819,7 @@ if [ ! -f "/var/log/barracuda_log.txt" ] ; then
   msg "ERROR: This script should be used only when the same version of BARRACUDA was used before"
   msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first"
   msg "Bye"
-  service cron start &> /dev/null
-  exit 1
+  clean_pid_exit
 else
   _VERSIONS_TEST=`cat /var/log/barracuda_log.txt`
   if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
@@ -1831,8 +1828,7 @@ else
     msg "ERROR: This script should be used only when the same version of BARRACUDA was used before"
     msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first"
     msg "Bye"
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
 fi
 if [ -e "/var/log/barracuda_log.txt" ] ; then
@@ -1843,8 +1839,7 @@ if [ -e "/var/log/barracuda_log.txt" ] ; then
       msg "ERROR: You can not downgrade back to legacy or previous stable BOA version"
       msg "ERROR: Please use barracuda up-stable to upgrade this system"
       msg "Bye"
-      service cron start &> /dev/null
-      exit 1
+      clean_pid_exit
     fi
   fi
 fi
@@ -1876,8 +1871,7 @@ if [ ! -e "/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive" ] ; t
   msg "Please try to run this script again in a few minutes"
   msg "Also, make sure that the git port 9418 is open"
   msg "Bye"
-  service cron start &> /dev/null
-  exit 1
+  clean_pid_exit
 fi
 #
 # Get spinner
@@ -1903,11 +1897,11 @@ if [ -d "$_ROOT" ] ; then
     fi
     if [ -z "$_DOMAIN" ] ; then
       msg "ALERT! _DOMAIN is e-m-p-t-y, exit now"
-      exit 1
+      clean_pid_exit
     fi
     if [ -z "$_USER" ] ; then
       msg "ALERT! _USER is e-m-p-t-y, exit now"
-      exit 1
+      clean_pid_exit
     fi
     _CHECK_HOST=`uname -n`
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
@@ -1945,7 +1939,7 @@ if [ -d "$_ROOT" ] ; then
         msg "EXIT: stored both in the /root/.${_USER}.octopus.cnf config file **and**"
         msg "EXIT: in the /data/disk/$_USER/log/email.txt file"
         msg "EXIT: Bye (1)"
-        exit 1
+        clean_pid_exit
       fi
       _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
     fi
@@ -1958,7 +1952,7 @@ if [ -d "$_ROOT" ] ; then
         msg "EXIT: stored both in the /root/.${_USER}.octopus.cnf config file **and**"
         msg "EXIT: in the /data/disk/$_USER/log/email.txt file"
         msg "EXIT: Bye (2)"
-        exit 1
+        clean_pid_exit
       fi
     fi
     #
@@ -2024,7 +2018,7 @@ else
   msg "ERROR: Your defined domain: $_DOMAIN is already used on the Aegir Master Instance"
   msg "Please change the value for _DOMAIN to make it unique"
   msg "Bye"
-  exit 1
+  clean_pid_exit
 fi
 #
 #
@@ -2047,8 +2041,7 @@ if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
     msg "Please make sure you have valid IN A or IN CNAME record in your DNS"
     msg "It's also possible, that your DNS change didn't propagate yet"
     msg "Bye"
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
 else
   if [ -z "$_MY_OWNIP" ] ; then
@@ -2100,8 +2093,7 @@ if prompt_yes_no "Do you want to proceed?" ; then
   true
 else
   echo "Installation/upgrade aborted by you"
-  service cron start &> /dev/null
-  exit 1
+  clean_pid_exit
 fi
 
 _MY_EMAIL=${_MY_EMAIL//\@/\\\@}

@@ -149,6 +149,14 @@ PATH=$_L_PHP_CLI:/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbi
 
 ###---### Functions.
 #
+# Clean pid files on exit.
+clean_pid_exit () {
+  rm -f /var/run/boa_wait.pid
+  rm -f /var/run/boa_run.pid
+  service cron start &> /dev/null
+  exit 1
+}
+#
 # Noticeable messages.
 msg () {
   echo "Octopus [`date`] ==> $*"
@@ -857,8 +865,7 @@ else
   msg "$_STATUS A: FATAL ERROR: This script should be ran as a root user"
   msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
   touch /opt/tmp/status-AegirSetupA-FAIL
-  service cron start &> /dev/null
-  exit 1
+  clean_pid_exit
 fi
 
 
@@ -891,8 +898,7 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
     msg "ERROR: This OCTOPUS version is outdated and will not work correctly"
     msg "Bye"
     touch /opt/tmp/status-AegirSetupA-FAIL
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
 fi
 
@@ -976,8 +982,7 @@ provision_backend_dbpass_generate () {
     msg "$_STATUS A: FATAL ERROR: This server does not have a hostname that resolves to an IP address"
     msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
     touch /opt/tmp/status-AegirSetupA-FAIL
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
 _ESC="\`%\`.*"
 mysqladmin flush-privileges &> /dev/null
@@ -1069,8 +1074,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     msg "$_STATUS A: FATAL ERROR: AegirSetupB installer failed"
     msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
     touch /opt/tmp/status-AegirSetupA-FAIL
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
   _U_HD="$_ROOT/.drush"
   chattr +i $_U_HD/php.ini &> /dev/null
@@ -1117,8 +1121,7 @@ else
         msg "$_STATUS A: FATAL ERROR: AegirSetupB installer failed"
         msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
         touch /opt/tmp/status-AegirSetupA-FAIL
-        service cron start &> /dev/null
-        exit 1
+        clean_pid_exit
       else
         chattr +i $_U_HD/php.ini &> /dev/null
         mkdir -p $_ROOT/backups/system/old_hostmaster
@@ -1224,8 +1227,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     msg "$_STATUS A: FATAL ERROR: AegirSetupC installer failed"
     msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
     touch /opt/tmp/status-AegirSetupA-FAIL
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
   msg "$_STATUS A: Platforms installation completed"
 else
@@ -1249,8 +1251,7 @@ else
         msg "$_STATUS A: FATAL ERROR: AegirSetupC installer failed"
         msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
         touch /opt/tmp/status-AegirSetupA-FAIL
-        service cron start &> /dev/null
-        exit 1
+        clean_pid_exit
       fi
       msg "$_STATUS A: Platforms installation completed"
     else

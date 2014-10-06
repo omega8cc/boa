@@ -14,6 +14,13 @@ if [[ "$_L_VM_TEST" =~ beng ]] ; then
   _L_VMFAMILY="VS"
 fi
 
+clean_pid_exit () {
+  rm -f /var/run/boa_wait.pid
+  rm -f /var/run/boa_run.pid
+  service cron start &> /dev/null
+  exit 1
+}
+
 fix_dns_settings () {
   mkdir -p /var/backups
   rm -f /var/backups/resolv.conf.tmp
@@ -275,8 +282,7 @@ up_action ()
     fi
   else
     echo "BARRACUDA.sh.txt installer not available - try again"
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
 }
 
@@ -437,8 +443,7 @@ check_wrapper ()
         if [ ! -e "$_THIS_FILE" ] ; then
           echo "Sorry, I gave up."
           echo "Please check http://stats.pingdom.com/x0s6yrbopal6/801243 and try again later."
-          service cron start &> /dev/null
-          exit 1
+          clean_pid_exit
         fi
       fi
     fi
@@ -499,13 +504,13 @@ check_root ()
     sed -i "/^$/d" /etc/hosts
   else
     echo "ERROR: This script should be ran as a root user - please `sudo -i` first"
-    exit 1
+    clean_pid_exit
   fi
   _DF_TEST=$(df -kTh / -l | grep '/'| sed 's/\%//g'| awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "$_DF_TEST" ] && [ "$_DF_TEST" -gt "90" ] ; then
     echo "ERROR: Your disk space is almost full - we can not proceed until it is below 90/100"
-    exit 1
+    clean_pid_exit
   fi
 }
 
@@ -561,7 +566,7 @@ case "$1" in
              echo "  Silent Mode Option: system == OS only upgrade"
              echo "  Silent Mode Option: log    == OS and Aegir Master Instance upgrade"
              echo
-             exit 1
+             clean_pid_exit
   ;;
 esac
 

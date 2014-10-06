@@ -1123,6 +1123,14 @@ fi
 #
 ###---### Functions
 #
+# Clean pid files on exit.
+clean_pid_exit () {
+  rm -f /var/run/boa_wait.pid
+  rm -f /var/run/boa_run.pid
+  service cron start &> /dev/null
+  exit 1
+}
+#
 # Noticeable messages.
 msg () {
   echo "Barracuda [`date`] ==> $*"
@@ -1174,8 +1182,7 @@ fatal () {
   echo " "
   msg "Fatal Error Occurred: $1"
   msg "Cannot continue installation"
-  service cron start &> /dev/null
-  exit 1
+  clean_pid_exit
 }
 #
 # Not supported OS.
@@ -1185,7 +1192,7 @@ not_supported_os () {
   msg "It is not any supported Debian or Ubuntu version"
   msg "You need Debian - Squeeze (recommended) or Wheezy"
   msg "or Ubuntu - Precise or Lucid"
-  exit 1
+  clean_pid_exit
 }
 #
 # Perform an action, log it, and run the spinner throughout.
@@ -1451,8 +1458,7 @@ check_git_repos_status () {
     Bye.
 
 EOF
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
   _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
 }
@@ -2227,7 +2233,7 @@ validate_public_ip () {
   if [ ! -z "$_LOCAL_NETWORK_IP" ] ; then
     if [ -z "$_LOCAL_NETWORK_HN" ] ; then
       msg "FATAL ERROR: you must specify also _LOCAL_NETWORK_HN"
-      exit 1
+      clean_pid_exit
     else
       _MY_OWNIP="$_LOCAL_NETWORK_IP"
       _MY_HOSTN="$_LOCAL_NETWORK_HN"
@@ -2902,7 +2908,7 @@ barracuda_cnf () {
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _MY_EMAIL variable"
         msg "EXIT: Bye (1)"
-        exit 1
+        clean_pid_exit
       fi
     fi
     if [ "$_DB_SERIES" = "10.0" ] ; then
@@ -3546,7 +3552,7 @@ barracuda_cnf () {
         msg "EXIT: You must enter **your** valid e-mail address in the _MY_EMAIL variable"
         msg "EXIT: stored in the /root/.barracuda.cnf config file"
         msg "EXIT: Bye (2)"
-        exit 1
+        clean_pid_exit
       fi
     fi
     _NGX_FORCE_REINSTALL_TEST=$(grep _NGX_FORCE_REINSTALL /root/.barracuda.cnf)
@@ -3589,14 +3595,14 @@ barracuda_cnf () {
         true
       else
         echo "Installation aborted by you"
-        exit 1
+        clean_pid_exit
       fi
     else
       if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
         true
       else
         echo "Upgrade aborted by you"
-        exit 1
+        clean_pid_exit
       fi
     fi
   fi
@@ -4141,8 +4147,7 @@ provision_backend_dbpass_generate () {
     msg "FATAL ERROR:: This server does not have a hostname that resolves to an IP address"
     msg "FATAL ERROR:: Aborting Barracuda installer NOW!"
     touch /opt/tmp/status-Barracuda-FAIL
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
 _ESC="\`%\`.*"
 mysqladmin flush-privileges &> /dev/null
@@ -4269,8 +4274,7 @@ upgrade_aegir_master () {
       msg "FATAL ERROR: AegirUpgrade installer failed"
       msg "FATAL ERROR: Aborting Barracuda installer NOW!"
       touch /opt/tmp/status-Barracuda-FAIL
-      service cron start &> /dev/null
-      exit 1
+      clean_pid_exit
     else
       chattr +i $_U_HD/php.ini &> /dev/null
       hostmaster_frontend_dbpass_sync
@@ -5651,7 +5655,7 @@ if [ `whoami` = "root" ] ; then
   sleep 1
 else
   msg "ERROR: This script should be ran as a root user - please `sudo -i` first"
-  exit 1
+  clean_pid_exit
 fi
 
 
@@ -5707,13 +5711,12 @@ else
   rm -f /usr/bin/drush
   if [ "$_EASY_LOCALHOST" = "YES" ] && [ "$_EASY_PUBLIC" = "YES" ] ; then
     msg "FATAL ERROR: You must enable either _EASY_PUBLIC or _EASY_LOCALHOST mode, not both"
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
   if [ "$_EASY_PUBLIC" = "YES" ] ; then
     if [ -z "$_EASY_HOSTNAME" ] || [ "$_EASY_HOSTNAME" = "wildcard-enabled-hostname" ] ; then
       msg "FATAL ERROR: You must define also _EASY_HOSTNAME when _EASY_PUBLIC mode is enabled"
-      exit 1
+      clean_pid_exit
     fi
   fi
   if [ "$_EASY_LOCALHOST" = "YES" ] ; then
@@ -5795,8 +5798,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
 
 EOF
   msg "EXIT on error due to not found file with your MySQL/$_DB_SERVER root password"
-  service cron start &> /dev/null
-  exit 1
+  clean_pid_exit
   fi
 fi
 
@@ -5942,8 +5944,7 @@ check_connection ()
           msg "You may want to check https://status.github.com/messages"
           msg "Also, make sure that the git port 9418 is open"
           msg "Bye"
-          service cron start &> /dev/null
-          exit 1
+          clean_pid_exit
         fi
       fi
     fi
@@ -5961,8 +5962,7 @@ if [ "$_SYSTEM_UPGRADE_ONLY" = "NO" ] && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
     rm -f -r /opt/tmp/test-*
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
   _GITHUB_TEST=`git clone git://github.com/omega8cc/hostmaster.git /opt/tmp/test-hostmaster 2>&1`
   if [[ "$_GITHUB_TEST" =~ "fatal" ]] ; then
@@ -5972,8 +5972,7 @@ if [ "$_SYSTEM_UPGRADE_ONLY" = "NO" ] && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
     rm -f -r /opt/tmp/test-*
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
   rm -f -r /opt/tmp/test-*
 fi
@@ -5987,8 +5986,7 @@ if [[ "$_INSTALLER_VERSION" =~ "-dev" ]] ; then
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
     rm -f -r /opt/tmp/test-*
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
   rm -f -r /opt/tmp/test-*
 fi
@@ -6019,8 +6017,7 @@ if ! netcat -w 14 -z $_DB_SERVER_SRC 80 ; then
   msg "Please try to run this script again in a few minutes"
   msg "or better yet, hours"
   msg "Bye"
-  service cron start &> /dev/null
-  exit 1
+  clean_pid_exit
 fi
 
 
@@ -6063,8 +6060,7 @@ if [ ! -e "/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive" ] ; t
   msg "Please try to run this script again in a few minutes"
   msg "Also, make sure that the git port 9418 is open"
   msg "Bye"
-  service cron start &> /dev/null
-  exit 1
+  clean_pid_exit
 fi
 # Get apt helper
 rm -f apt.conf.noninteractive*
@@ -6122,8 +6118,7 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
   if [ "$_VERSIONS_TEST_RESULT" = "FAIL" ] ; then
     msg "ERROR: This BARRACUDA version is outdated and will not work correctly"
     msg "Bye"
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
 fi
 if [ -e "/var/log/barracuda_log.txt" ] ; then
@@ -6134,8 +6129,7 @@ if [ -e "/var/log/barracuda_log.txt" ] ; then
       msg "ERROR: You can not downgrade back to legacy or previous stable BOA version"
       msg "ERROR: Please use barracuda up-stable to upgrade this system"
       msg "Bye"
-      service cron start &> /dev/null
-      exit 1
+      clean_pid_exit
     fi
   fi
 fi
@@ -6146,7 +6140,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   if [ ! -z "$_LOCAL_NETWORK_IP" ] ; then
     if [ -z "$_LOCAL_NETWORK_HN" ] ; then
       msg "FATAL ERROR: you must specify also _LOCAL_NETWORK_HN"
-      exit 1
+      clean_pid_exit
     else
       _DNS_SETUP_TEST=NO
       _SMTP_RELAY_TEST=NO
@@ -6285,7 +6279,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   if [ "$_THISHOST" = "localhost" ] ; then
     msg "FATAL ERROR: you can't use localhost as your FQDN hostname"
     msg "Please try something like: aegir.local"
-    exit 1
+    clean_pid_exit
   fi
   if [ "$_FQDNTEST" = "FALSE" ] ; then
     echo " "
@@ -6318,8 +6312,7 @@ EOF
 
 EOF
     msg "EXIT on error due to invalid DNS setup"
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   else
     echo "$_THISHOST" > /etc/hostname
     echo "$_THISHOST" > /etc/mailname
@@ -6339,7 +6332,7 @@ EOF
     true
   else
     echo "Installation aborted by you"
-    exit 1
+    clean_pid_exit
   fi
 else ### if [ "$_STATUS" = "UPGRADE" ] ; then
   _THISHOST=`cat /etc/hostname`
@@ -6353,7 +6346,7 @@ else ### if [ "$_STATUS" = "UPGRADE" ] ; then
   else
     msg "EXIT on error due to not found or not specified Aegir domain"
     msg "Please specify your previously working Aegir domain as a value of _MY_FRONT"
-    exit 1
+    clean_pid_exit
   fi
   echo " "
   msg "UPGRADE START -> checkpoint: "
@@ -6369,7 +6362,7 @@ EOF
     true
   else
     echo "Upgrade aborted by you"
-    exit 1
+    clean_pid_exit
   fi
 fi
 
@@ -7196,8 +7189,7 @@ if ! netcat -w 14 -z smtp.gmail.com 25 ; then
   Then run this script again.
 
 EOF
-  service cron start &> /dev/null
-  exit 1
+  clean_pid_exit
 else
   _DO_NOTHING=YES
 fi
@@ -8260,8 +8252,7 @@ else
 
 EOF
   msg "EXIT on error due to not found file with your MySQL/$_DB_SERVER root password"
-  service cron start &> /dev/null
-  exit 1
+  clean_pid_exit
 fi
 
 
@@ -8277,8 +8268,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     msg "Bye"
     rm -f /root/.my.pass.txt
     mkdir -p /var/aegir
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
   msg "INFO: Installing Aegir Master Instance, please wait..."
   adduser --system --group --home /var/aegir aegir &> /dev/null
@@ -8311,8 +8301,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     msg "FATAL ERROR: Aborting Barracuda installer NOW!"
     msg "HINT: Please check /var/aegir/install.log for more information on errors occured"
     touch /opt/tmp/status-Barracuda-FAIL
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
   if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
     _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
@@ -8348,8 +8337,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   else
     msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed - exit now"
     msg "HINT: Please check /var/aegir/install.log for more information on errors occured"
-    service cron start &> /dev/null
-    exit 1
+    clean_pid_exit
   fi
 
 
@@ -8417,8 +8405,7 @@ else
       msg "HINT: Please check $_LOG for more information,"
       msg "HINT: (re)start $_DB_SERVER server and then run installer again"
       msg "Bye"
-      service cron start &> /dev/null
-      exit 1
+      clean_pid_exit
     fi
     echo " "
     upgrade_aegir_master
