@@ -3,6 +3,7 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _WEBG=www-data
+_OPENSSL_VERSION=1.0.1i
 
 ###-------------SYSTEM-----------------###
 
@@ -413,9 +414,13 @@ add_solr () {
     if [ ! -e "$2" ] ; then
       cp -a /opt/solr4/core0 $2
       _REL_VERSION=`lsb_release -sc`
+      _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
+      if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] ; then
+        _NEW_SSL=YES
+      fi
       CHAR="[:alnum:]"
       rkey=32
-      if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
+      if [ "$_NEW_SSL" = "YES" ] || [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
         _MD5H=`cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | openssl md5 | awk '{ print $2}' | tr -d "\n"`
       else
         _MD5H=`cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | openssl md5 | tr -d "\n"`
