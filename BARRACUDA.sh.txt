@@ -2832,12 +2832,10 @@ fix_locales () {
   locales at all or don't use UTF-8 compatible locales
   during initial OS setup.
 
-  We will fix this problem for you now, so you shouldn't
-  use any tricks to change system/ssh settings before
-  running this installer.
-
-  You can experience problems if your SSH client
-  forces locales other than en_US.UTF-8 we are using by default.
+  We will fix this problem for you now by enforcing en_US.UTF-8
+  locale settings on the fly during install, and as system
+  defaults in /etc/default/locale for future sessions. This
+  overrides any locale settings passed by your SSH client.
 
   You should log out when this installer will finish all its tasks
   and display last line with "BYE!" and then log in again
@@ -2854,21 +2852,38 @@ EOF
       fi
       sed -i "/^$/d" /etc/locale.gen
       locale-gen &> /dev/null
-      update-locale LANG=en_US.UTF-8 LC_CTYPE=en_US.UTF-8 LC_COLLATE=POSIX LC_ALL= &> /dev/null
     else
       locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
-      update-locale LANG=en_US.UTF-8 LC_CTYPE=en_US.UTF-8 LC_COLLATE=POSIX LC_ALL= &> /dev/null
     fi
+    # Explicitly enforce all locale settings
+    update-locale \
+      LANG=en_US.UTF-8 \
+      LANGUAGE=en_US.UTF-8 \
+      LC_CTYPE=en_US.UTF-8 \
+      LC_COLLATE=POSIX \
+      LC_NUMERIC=POSIX \
+      LC_TIME=en_US.UTF-8 \
+      LC_MONETARY=en_US.UTF-8 \
+      LC_MESSAGES=en_US.UTF-8 \
+      LC_PAPER=en_US.UTF-8 \
+      LC_NAME=en_US.UTF-8 \
+      LC_ADDRESS=en_US.UTF-8 \
+      LC_TELEPHONE=en_US.UTF-8 \
+      LC_MEASUREMENT=en_US.UTF-8 \
+      LC_IDENTIFICATION=en_US.UTF-8 \
+      LC_ALL= &> /dev/null
     if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/boa.bashrc.txt" ] ; then
       cp -af /root/.bashrc /root/.bashrc.bak.$_NOW
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/boa.bashrc.txt /root/.bashrc
       set_xterm
     fi
+    # Define all locale settings on the fly to prevent unnecessary
+    # warnings during installation of packages.
     export LANG=en_US.UTF-8
     export LANGUAGE=en_US.UTF-8
     export LC_CTYPE=en_US.UTF-8
     export LC_COLLATE=POSIX
-    export LC_NUMERIC=en_US.UTF-8
+    export LC_NUMERIC=POSIX
     export LC_TIME=en_US.UTF-8
     export LC_MONETARY=en_US.UTF-8
     export LC_MESSAGES=en_US.UTF-8
@@ -2892,11 +2907,21 @@ EOF
       fi
       sed -i "/^$/d" /etc/locale.gen
       locale-gen &> /dev/null
-      update-locale LANG=en_US.UTF-8 LC_CTYPE=en_US.UTF-8 LC_COLLATE=POSIX LC_ALL= &> /dev/null
     else
       locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
-      update-locale LANG=en_US.UTF-8 LC_CTYPE=en_US.UTF-8 LC_COLLATE=POSIX LC_ALL= &> /dev/null
     fi
+    # Explicitly enforce locale settings required for consistency
+    update-locale \
+      LANG=en_US.UTF-8 \
+      LC_CTYPE=en_US.UTF-8 \
+      LC_COLLATE=POSIX \
+      LC_NUMERIC=POSIX \
+      LC_ALL= &> /dev/null
+    # Define locale settings required for consistency also on the fly
+    export LC_CTYPE=en_US.UTF-8
+    export LC_COLLATE=POSIX
+    export LC_NUMERIC=POSIX
+    export LC_ALL=
   fi
 }
 #
