@@ -1158,7 +1158,7 @@ fix_permissions () {
     chown $_THIS_HM_USER:users $Plr/sites/all/permissions-fix-$_NOW.info
     chmod 0664 $Plr/sites/all/permissions-fix-$_NOW.info
   fi
-  if [ -e "$Dir" ] ; then
+  if [ -e "$Dir" ] && [ -e "$Dir/drushrc.php" ] && [ -e "$Dir/files" ] && [ -e "$Dir/private" ] && [ -e "$Dir/modules" ] ; then
     ### directory and settings files - site level
     chown $_THIS_HM_USER:users $Dir &> /dev/null
     chown $_THIS_HM_USER:www-data $Dir/{local.settings.php,settings.php,civicrm.settings.php,solr.php} &> /dev/null
@@ -1410,13 +1410,17 @@ cleanup_ghost_drushrc () {
         echo GHOST drushrc and vhost for ${_THIS_SITE_NAME} detected and moved to $User/undo/
       else
         _THIS_SITE_FDIR=`cat $Alias | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-        if [ -d "$_THIS_SITE_FDIR" ] ; then
+        if [ -e "$_THIS_SITE_FDIR/drushrc.php" ] && [ -e "$_THIS_SITE_FDIR/files" ] && [ -e "$_THIS_SITE_FDIR/private" ] && [ -e "$_THIS_SITE_FDIR/modules" ] ; then
           _IS_SITE=YES
         else
           mkdir -p $User/undo
           mv -f $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php $User/undo/ &> /dev/null
-          mv -f $User/config/server_master/nginx/vhost.d/${_THIS_SITE_NAME} $User/undo/ &> /dev/null
+          mv -f $User/config/server_master/nginx/vhost.d/${_THIS_SITE_NAME} $User/undo/ghost-vhost-${_THIS_SITE_NAME} &> /dev/null
           echo GHOST drushrc and vhost for ${_THIS_SITE_NAME} detected and moved to $User/undo/
+          if [ -d "$_THIS_SITE_FDIR" ] ; then
+            mv -f ${_THIS_SITE_FDIR} $User/undo/ghost-site-${_THIS_SITE_FDIR} &> /dev/null
+            echo GHOST site dir for ${_THIS_SITE_NAME} detected and moved to $User/undo/
+          fi
         fi
       fi
     fi

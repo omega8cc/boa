@@ -200,11 +200,11 @@ count () {
       detect_vanilla_core
       fix_clear_cache
       #echo Dir is $Dir
-      if [ -e "$Dir/drushrc.php" ] ; then
+      if [ -e "$Dir/drushrc.php" ] && [ -e "$Dir/files" ] && [ -e "$Dir/private" ] && [ -e "$Dir/modules" ] ; then
         #echo "$_THIS_HM_USER,$Dom,sitedir-exists"
         Dat=`cat $Dir/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
         #echo Dat is $Dat
-        if [ -e "$Dir" ] ; then
+        if [ ! -z "$Dat" ] && [ -e "$Dir" ] ; then
           if [ -L "$Dir/files" ] || [ -L "$Dir/private" ] ; then
             DirSize=`du -L -s $Dir`
           else
@@ -218,7 +218,7 @@ count () {
             echo "$_THIS_HM_USER,$Dom,DirSize:$DirSize"
           fi
         fi
-        if [ -e "/var/lib/mysql/$Dat" ] ; then
+        if [ ! -z "$Dat" ] && [ -e "/var/lib/mysql/$Dat" ] ; then
           DatSize=`du -s /var/lib/mysql/$Dat`
           DatSize=`echo "$DatSize" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
           if [ "$_DEV_URL" = "YES" ] ; then
