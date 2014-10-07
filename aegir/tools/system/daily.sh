@@ -1418,8 +1418,8 @@ cleanup_ghost_drushrc () {
           mv -f $User/config/server_master/nginx/vhost.d/${_THIS_SITE_NAME} $User/undo/ghost-vhost-${_THIS_SITE_NAME} &> /dev/null
           echo GHOST drushrc and vhost for ${_THIS_SITE_NAME} detected and moved to $User/undo/
           if [ -d "$_THIS_SITE_FDIR" ] ; then
-            mv -f ${_THIS_SITE_FDIR} $User/undo/ghost-site-${_THIS_SITE_FDIR} &> /dev/null
-            echo GHOST site dir for ${_THIS_SITE_NAME} detected and moved to $User/undo/
+            mv -f ${_THIS_SITE_FDIR} $User/undo/ghost-site-${_THIS_SITE_NAME} &> /dev/null
+            echo GHOST site dir for ${_THIS_SITE_NAME} detected and moved from ${_THIS_SITE_FDIR} to $User/undo/
           fi
         fi
       fi
