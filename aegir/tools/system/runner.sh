@@ -61,7 +61,7 @@ done
 
 ###-------------SYSTEM-----------------###
 
-if [ -e "/var/run/boa_wait.pid" ] ; then
+if [ -e "/var/run/boa_wait.pid" ] || [ -e "/var/run/manage_rvm_users.pid" ] ; then
   touch /var/xdrago/log/wait-runner
   exit 0
 else
