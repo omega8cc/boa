@@ -261,7 +261,7 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
       if [ "$_THIS_RV" = "wheezy" ] || [ "$_THIS_RV" = "trusty" ] || [ "$_THIS_RV" = "precise" ] ; then
         _RUBY_VP=2.1.2
       else
-        _RUBY_VP=2.0.0-p481
+        _RUBY_VP=2.0.0-p576
       fi
       export PATH="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}/bin:/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}@global/bin:/home/${USER}/.rvm/rubies/ruby-${_RUBY_VP}/bin:/home/${USER}/.rvm/bin:$PATH"
       export GEM_HOME="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}"
