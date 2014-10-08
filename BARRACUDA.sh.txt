@@ -8756,6 +8756,11 @@ else
       if prompt_yes_no "Do you want to $_L_ST Compass Tools for root?" ; then
         true
         msg "INFO: Running Compass Tools ${_L_ST}..."
+        if [ ! -e "/var/xdrago/log/ruby-root-clean-reload.log" ] ; then
+          _RUBY_RELOAD=YES
+          rm -f -r /usr/local/rvm
+          touch /var/xdrago/log/ruby-root-clean-reload.log
+        fi
         curl -sSL https://get.rvm.io | bash -s stable &> /dev/null
         if [ -e "/etc/profile.d/rvm.sh" ] ; then
           source /etc/profile.d/rvm.sh
@@ -8763,7 +8768,7 @@ else
         if [ ! -x "/usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/gem" ] ; then
           _RUBY_UPGRADE=YES
         fi
-        if [ ! -e "/var/xdrago/log/gem-conservative-004.log" ] || [ "$_STATUS" = "INIT" ] || [ "$_RUBY_UPGRADE" = "YES" ] ; then
+        if [ "$_STATUS" = "INIT" ] || [ "$_RUBY_UPGRADE" = "YES" ] || [ "$_RUBY_RELOAD" = "YES" ] ; then
           mrun "apt-get update -y --force-yes"                                                   &> /dev/null
           mrun "apt-get remove rubygems ruby1.9.1-dev libruby1.9.1 ruby1.9.1 -y --force-yes -qq" &> /dev/null
           mrun "apt-get autoremove -y --force-yes -qq"                                           &> /dev/null
@@ -8771,7 +8776,6 @@ else
           mrun "rvm use $_RUBY_VERSION --default"                                                &> /dev/null
           mrun "rvm get stable"                                                                  2> /dev/null
           mrun "rvm @global do gem update -q"                                                    2> /dev/null
-          touch /var/xdrago/log/gem-conservative-004.log
         else
           mrun "rvm get stable"                                                                  2> /dev/null
           mrun "rvm @global do gem update -q"                                                    2> /dev/null
