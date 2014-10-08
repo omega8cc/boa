@@ -262,7 +262,7 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
         _RUBY_VP=2.1.2
       else
         _DETECTED_RUBY_VP=`grep 'RUBY_VERSION' /home/${USER}/.rvm/environments/default | cut -d= -f2 | awk '{ print $1}' | sed "s/'//g" | sed "s/ruby-//g"`
-        if [ ! -z "${_DETECTED_RUBY_VP}" ] ; then
+        if [ ! -z "${_DETECTED_RUBY_VP}" ] && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ] ; then
           _RUBY_VP="${_DETECTED_RUBY_VP}"
         else
           _RUBY_VP=2.0.0-p576
