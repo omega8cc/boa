@@ -204,7 +204,6 @@ proc_control()
     echo ...OK now running proc_num_ctrl...
     perl /var/xdrago/proc_num_ctrl.cgi
     touch /var/xdrago/log/proc_num_ctrl.done
-    manage_ip_auth_access
     echo CTL done
   fi
 }
@@ -335,6 +334,7 @@ sleep 3
 load_control
 sleep 3
 load_control
+manage_ip_auth_access
 echo Done !
 exit 0
 ###EOF2014###
