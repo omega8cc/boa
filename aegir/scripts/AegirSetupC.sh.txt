@@ -893,6 +893,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/commons_chicken_egg.patch &> /dev/null
     rm -f -r $_SHRD_PRPATH/modules/contrib/entitycache
     rm -f -r $_SHRD_PRPATH/modules/contrib/registry_rebuild
+    rm -f -r $_SHRD_PRPATH/modules/contrib/acquia_connector
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi

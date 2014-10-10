@@ -1069,7 +1069,7 @@ _JETTY_9_VERSION=9.2.3.v20140905
 _LSHELL_VERSION=0.9.16.5-om8
 _MAILPARSE_VERSION=2.1.6
 _MARIADB_10_VERSION=10.0.14
-_MARIADB_5_VERSION=5.5.39
+_MARIADB_5_VERSION=5.5.40
 _MONGO_VERSION=1.4.5
 _MSS_VERSION=1.33
 _NGINX_VERSION=1.7.6
@@ -5499,6 +5499,16 @@ fix_broken_platforms () {
     touch /var/xdrago/log/erpal-fixed-e5.log
     cd
   fi
+  if [ ! -e "/var/xdrago/log/commons-fixed-c5.log" ] ; then
+    REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+    for i in $REVISIONS; do
+      if [ -d "/data/all/$i/commons-7.x-3.17-7.31.1/profiles/commons/modules/contrib/acquia_connector" ] ; then
+        rm -f -r /data/all/$i/commons-7.x-3.17-7.31.1/profiles/commons/modules/contrib/acquia_connector
+      fi
+    done
+    touch /var/xdrago/log/commons-fixed-c5.log
+    cd
+  fi
 }
 # Fix for Postfix configuration.
 fix_cnf_postfix () {
@@ -7460,6 +7470,14 @@ switch_php_cli () {
     ln -s /opt/php$1/bin/php-config /usr/bin/php-config
   fi
 }
+
+_THIS_DB_VERSION=`mysql -V 2>&1 | tr -d "\n" | cut -d" " -f6 | awk '{ print $1}' | cut -d"-" -f1 | awk '{ print $1}' | sed "s/[\,']//g"`
+if [ "$_THIS_DB_VERSION" = "5.5.40" ] && [ ! -e "/var/xdrago/log/my_config-$_THIS_DB_VERSION-fixed.log" ] ; then
+  _PHP_FORCE_REINSTALL=YES
+  cd /usr/include/mysql/
+  patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/my_config.h.patch &> /dev/null
+  touch /var/xdrago/log/my_config-$_THIS_DB_VERSION-fixed.log
+fi
 
 if [[ "$_PHP_MULTI_INSTALL" =~ "5.2" ]] && [ ! -x "/opt/php52/bin/php" ] ; then
   _PHP_VERSION="$_PHP52_VERSION"

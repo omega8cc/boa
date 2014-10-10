@@ -738,6 +738,7 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   $_DRUSHCMD @hostmaster cc all &> /dev/null
   $_DRUSHCMD @hostmaster fr aegir_custom_settings -y &> /dev/null
   $_DRUSHCMD @hostmaster cc all &> /dev/null
+  $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
 fi
 
 ###---### Make sure there are no ghost or disabled vhost which still listen on IP.
