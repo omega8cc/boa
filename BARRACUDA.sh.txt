@@ -2923,6 +2923,11 @@ EOF
     export LC_NUMERIC=POSIX
     export LC_ALL=
   fi
+  # Make sure that LANGUAGE line in /etc/default/locale is active
+  _LOCALE_DEFAULT_TEST=$(grep -v "^#" /etc/default/locale 2>&1)
+  if [[ ! "$_LOCALE_DEFAULT_TEST" =~ "LANGUAGE=en_US.UTF-8" ]] ; then
+    echo "LANGUAGE=en_US.UTF-8" >> /etc/default/locale
+  fi
 }
 #
 # Read or create Barracuda cnf file.
@@ -4128,9 +4133,9 @@ check_apt_updates () {
   for Update in `/usr/bin/apt-get -q -y --force-yes --allow-unauthenticated -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`
   do
     case $Update in
-      *libcurl*)    _YP_PHP=YES ;;
+      *libcurl*)    _UP_CRL=YES ;;
       *libmysql*)   _UP_PHP=YES ;;
-      *libssl*)     _YP_PHP=YES ;;
+      *libssl*)     _UP_PHP=YES ;;
       *linux-*)     _UP_LNX=YES ;;
       *mariadb*)    _UP_PHP=YES ;;
       *newrelic*)   _UP_NRC=YES ;;
@@ -4150,6 +4155,9 @@ check_apt_updates () {
     else
       _UP_PHP=YES
     fi
+  fi
+  if [ "$_UP_CRL" = "YES" ] ; then
+    _UP_PHP=YES
   fi
 }
 #
@@ -5070,13 +5078,16 @@ install_curl_src () {
   fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ] ; then
     ###--------------------###
-    echo "libcurl3 install" | dpkg --set-selections &> /dev/null
-    echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
-    echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
+    if [ ! -e "/var/xdrago/log/libcurl-dpkg-fixed.log" ] ; then
+      echo "libcurl3 install" | dpkg --set-selections &> /dev/null
+      echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
+      echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
+      aptitude install libcurl3 -y &> /dev/null
+      aptitude install libcurl3-gnutls -y &> /dev/null
+      aptitude install libcurl4-openssl-dev -y &> /dev/null
+      touch /var/xdrago/log/libcurl-dpkg-fixed.log
+    fi
     echo "curl hold" | dpkg --set-selections &> /dev/null
-    aptitude install libcurl3 -y &> /dev/null
-    aptitude install libcurl3-gnutls -y &> /dev/null
-    aptitude install libcurl4-openssl-dev -y &> /dev/null
     aptitude hold curl &> /dev/null
     if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
       apt-mark hold curl &> /dev/null
@@ -5092,13 +5103,16 @@ install_curl_src () {
     _UP_PHP=YES
   else
     ###--------------------###
-    echo "libcurl3 install" | dpkg --set-selections &> /dev/null
-    echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
-    echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
+    if [ ! -e "/var/xdrago/log/libcurl-dpkg-fixed.log" ] ; then
+      echo "libcurl3 install" | dpkg --set-selections &> /dev/null
+      echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
+      echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
+      aptitude install libcurl3 -y &> /dev/null
+      aptitude install libcurl3-gnutls -y &> /dev/null
+      aptitude install libcurl4-openssl-dev -y &> /dev/null
+      touch /var/xdrago/log/libcurl-dpkg-fixed.log
+    fi
     echo "curl hold" | dpkg --set-selections &> /dev/null
-    aptitude install libcurl3 -y &> /dev/null
-    aptitude install libcurl3-gnutls -y &> /dev/null
-    aptitude install libcurl4-openssl-dev -y &> /dev/null
     aptitude hold curl &> /dev/null
     if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
       apt-mark hold curl &> /dev/null
@@ -6172,6 +6186,7 @@ if [ -e "/var/log/barracuda_log.txt" ] ; then
       msg "Bye"
       clean_pid_exit
     fi
+    touch /var/xdrago/log/libcurl-dpkg-fixed.log
   fi
 fi
 
@@ -7524,66 +7539,78 @@ if [[ "$_PHP_MULTI_INSTALL" =~ "5.5" ]] && [ ! -x "/opt/php55/bin/php" ] ; then
   _FRESH_PHP55_BUILD=55
 fi
 
-if [ -x "/opt/php52/bin/php" ] && [ -z "$_FRESH_PHP52_BUILD" ] ; then
-  _PHP_VERSION="$_PHP52_VERSION"
-  _PHP_BIN_BROKEN=NO
-  _BROKEN_LIBCURL_TEST=""
-  switch_php_cli "52"
-  check_php_broken "52"
-  check_php_rebuild "52"
-  update_php_multi "52"
-  _PHP_VERSION=""
-  _LOC_PHP_VERSION=""
-  _LOC_PHP_PATH=""
-  _THIS_LOC_PHP_PATH=""
-fi
-if [ -x "/opt/php53/bin/php" ] && [ -z "$_FRESH_PHP53_BUILD" ] ; then
-  _PHP_VERSION="$_PHP53_VERSION"
-  _PHP_BIN_BROKEN=NO
-  _BROKEN_LIBCURL_TEST=""
-  switch_php_cli "53"
-  check_php_broken "53"
-  check_php_rebuild "53"
-  update_php_multi "53"
-  _PHP_VERSION=""
-  _LOC_PHP_VERSION=""
-  _LOC_PHP_PATH=""
-  _THIS_LOC_PHP_PATH=""
-fi
-if [ -x "/opt/php54/bin/php" ] && [ -z "$_FRESH_PHP54_BUILD" ] ; then
-  _PHP_VERSION="$_PHP54_VERSION"
-  _PHP_BIN_BROKEN=NO
-  _BROKEN_LIBCURL_TEST=""
-  switch_php_cli "54"
-  check_php_broken "54"
-  check_php_rebuild "54"
-  update_php_multi "54"
-  _PHP_VERSION=""
-  _LOC_PHP_VERSION=""
-  _LOC_PHP_PATH=""
-  _THIS_LOC_PHP_PATH=""
-fi
-if [ -x "/opt/php55/bin/php" ] && [ -z "$_FRESH_PHP55_BUILD" ] ; then
-  _PHP_VERSION="$_PHP55_VERSION"
-  _PHP_BIN_BROKEN=NO
-  _BROKEN_LIBCURL_TEST=""
-  switch_php_cli "55"
-  check_php_broken "55"
-  check_php_rebuild "55"
-  update_php_multi "55"
-  _PHP_VERSION=""
-  _LOC_PHP_VERSION=""
-  _LOC_PHP_PATH=""
-  _THIS_LOC_PHP_PATH=""
-fi
-
-if [ ! -e "/var/xdrago/log/ioncube-$_IONCUBE_VERSION.log" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-  install_ioncube
-fi
+php_upgrade_all () {
+  if [ "$_UP_CRL" = "YES" ] ; then
+    install_curl_src
+  fi
+  if [ -x "/opt/php52/bin/php" ] && [ -z "$_FRESH_PHP52_BUILD" ] ; then
+    _PHP_VERSION="$_PHP52_VERSION"
+    _PHP_BIN_BROKEN=NO
+    _BROKEN_LIBCURL_TEST=""
+    switch_php_cli "52"
+    check_php_broken "52"
+    check_php_rebuild "52"
+    update_php_multi "52"
+    _PHP_VERSION=""
+    _LOC_PHP_VERSION=""
+    _LOC_PHP_PATH=""
+    _THIS_LOC_PHP_PATH=""
+  fi
+  if [ -x "/opt/php53/bin/php" ] && [ -z "$_FRESH_PHP53_BUILD" ] ; then
+    _PHP_VERSION="$_PHP53_VERSION"
+    _PHP_BIN_BROKEN=NO
+    _BROKEN_LIBCURL_TEST=""
+    switch_php_cli "53"
+    check_php_broken "53"
+    check_php_rebuild "53"
+    update_php_multi "53"
+    _PHP_VERSION=""
+    _LOC_PHP_VERSION=""
+    _LOC_PHP_PATH=""
+    _THIS_LOC_PHP_PATH=""
+  fi
+  if [ -x "/opt/php54/bin/php" ] && [ -z "$_FRESH_PHP54_BUILD" ] ; then
+    _PHP_VERSION="$_PHP54_VERSION"
+    _PHP_BIN_BROKEN=NO
+    _BROKEN_LIBCURL_TEST=""
+    switch_php_cli "54"
+    check_php_broken "54"
+    check_php_rebuild "54"
+    update_php_multi "54"
+    _PHP_VERSION=""
+    _LOC_PHP_VERSION=""
+    _LOC_PHP_PATH=""
+    _THIS_LOC_PHP_PATH=""
+  fi
+  if [ -x "/opt/php55/bin/php" ] && [ -z "$_FRESH_PHP55_BUILD" ] ; then
+    _PHP_VERSION="$_PHP55_VERSION"
+    _PHP_BIN_BROKEN=NO
+    _BROKEN_LIBCURL_TEST=""
+    switch_php_cli "55"
+    check_php_broken "55"
+    check_php_rebuild "55"
+    update_php_multi "55"
+    _PHP_VERSION=""
+    _LOC_PHP_VERSION=""
+    _LOC_PHP_PATH=""
+    _THIS_LOC_PHP_PATH=""
+  fi
+}
 
 
 ###--------------------###
+php_upgrade_all
 install_newrelic
+if [ ! -e "/var/xdrago/log/ioncube-$_IONCUBE_VERSION.log" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  install_ioncube
+fi
+_BROKEN_LIBCURL_TEST=$(php -v 2>&1)
+if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]] ; then
+  _PHP_BIN_BROKEN=YES
+  msg "INFO: PHP rebuild required to fix broken libcurl..."
+  install_curl_src
+  php_upgrade_all
+fi
 
 
 ###--------------------###
