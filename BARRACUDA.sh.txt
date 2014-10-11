@@ -5060,8 +5060,12 @@ install_curl_src () {
     if [ "$_CURL_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] ; then
       _CURL_INSTALL_REQUIRED=NO
     else
-      _CURL_INSTALL_REQUIRED=YES
-      msg "INFO: Installed cURL $_CURL_INSTALLED with OpenSSL $_CURL_SSL_INSTALLED, rebuild forced"
+      if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
+        _DO_NOTHING=YES
+      else
+        _CURL_INSTALL_REQUIRED=YES
+        msg "INFO: Installed cURL $_CURL_INSTALLED with OpenSSL $_CURL_SSL_INSTALLED, rebuild forced"
+      fi
     fi
   else
     _CURL_INSTALL_REQUIRED=YES
@@ -5080,17 +5084,18 @@ install_curl_src () {
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version $_CURL_INSTALLED, rebuild forced"
   fi
+  if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
+    _CURL_INSTALL_REQUIRED=NO
+  fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ] ; then
     ###--------------------###
-    if [ ! -e "/var/xdrago/log/libcurl-dpkg-fixed.log" ] ; then
-      echo "libcurl3 install" | dpkg --set-selections &> /dev/null
-      echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
-      echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
-      aptitude install libcurl3 -y &> /dev/null
-      aptitude install libcurl3-gnutls -y &> /dev/null
-      aptitude install libcurl4-openssl-dev -y &> /dev/null
-      touch /var/xdrago/log/libcurl-dpkg-fixed.log
-    fi
+    echo "libcurl3 install" | dpkg --set-selections &> /dev/null
+    echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
+    echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
+    aptitude install libcurl3 -y &> /dev/null
+    aptitude install libcurl3-gnutls -y &> /dev/null
+    aptitude install libcurl4-openssl-dev -y &> /dev/null
+    touch /var/xdrago/log/libcurl-dpkg-fixed.log
     echo "curl hold" | dpkg --set-selections &> /dev/null
     aptitude hold curl &> /dev/null
     if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
@@ -5108,7 +5113,7 @@ install_curl_src () {
     _UP_PHP=YES
   else
     ###--------------------###
-    if [ ! -e "/var/xdrago/log/libcurl-dpkg-fixed.log" ] ; then
+    if [ "$_THIS_OS" = "Debian" ] ; then
       echo "libcurl3 install" | dpkg --set-selections &> /dev/null
       echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
       echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
@@ -5116,11 +5121,11 @@ install_curl_src () {
       aptitude install libcurl3-gnutls -y &> /dev/null
       aptitude install libcurl4-openssl-dev -y &> /dev/null
       touch /var/xdrago/log/libcurl-dpkg-fixed.log
-    fi
-    echo "curl hold" | dpkg --set-selections &> /dev/null
-    aptitude hold curl &> /dev/null
-    if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
-      apt-mark hold curl &> /dev/null
+      echo "curl hold" | dpkg --set-selections &> /dev/null
+    else
+      apt-mark unhold curl &> /dev/null
+      echo "curl install" | dpkg --set-selections &> /dev/null
+      apt-get install curl -y --force-yes --reinstall &> /dev/null
     fi
   fi
 }
@@ -6196,7 +6201,6 @@ if [ -e "/var/log/barracuda_log.txt" ] ; then
       msg "Bye"
       clean_pid_exit
     fi
-    touch /var/xdrago/log/libcurl-dpkg-fixed.log
   fi
 fi
 
@@ -7550,9 +7554,6 @@ if [[ "$_PHP_MULTI_INSTALL" =~ "5.5" ]] && [ ! -x "/opt/php55/bin/php" ] ; then
 fi
 
 php_upgrade_all () {
-  if [ "$_UP_CRL" = "YES" ] ; then
-    install_curl_src
-  fi
   if [ -x "/opt/php52/bin/php" ] && [ -z "$_FRESH_PHP52_BUILD" ] ; then
     _PHP_VERSION="$_PHP52_VERSION"
     _PHP_BIN_BROKEN=NO
@@ -7609,16 +7610,17 @@ php_upgrade_all () {
 
 
 ###--------------------###
+install_curl_src
 php_upgrade_all
-install_newrelic
-if [ ! -e "/var/xdrago/log/ioncube-$_IONCUBE_VERSION.log" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-  install_ioncube
-fi
 _BROKEN_LIBCURL_TEST=$(php -v 2>&1)
 if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]] ; then
   msg "INFO: PHP rebuild required to fix broken libcurl..."
   install_curl_src
   php_upgrade_all
+fi
+install_newrelic
+if [ ! -e "/var/xdrago/log/ioncube-$_IONCUBE_VERSION.log" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  install_ioncube
 fi
 
 
