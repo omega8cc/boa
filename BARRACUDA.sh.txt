@@ -5072,7 +5072,11 @@ install_curl_src () {
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed libcurl is broken, cURL $_CURL_INSTALLED upgrade required"
   fi
-  if [ "$_PHP_BIN_BROKEN" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ "$_PHP_BIN_BROKEN" = "YES" ] && [ -z "$_CURL_ALREADY_REBUILT" ] ; then
+    _CURL_INSTALL_REQUIRED=YES
+    msg "INFO: Installed cURL version $_CURL_INSTALLED, rebuild forced"
+  fi
+  if [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version $_CURL_INSTALLED, rebuild forced"
   fi
@@ -5100,6 +5104,7 @@ install_curl_src () {
     st_runner "sh ./configure --prefix=/usr" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
+    _CURL_ALREADY_REBUILT=YES
     _UP_PHP=YES
   else
     ###--------------------###
@@ -5260,8 +5265,12 @@ check_php_rebuild () {
   else
     if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION" ]] ; then
       if [ "$_UP_PHP" = "YES" ] ; then
-        msg "INFO: PHP $_PHP_VERSION rebuild required to include upgraded libs"
-        install_php_multi "$1"
+        if [ ! -z "$_PHP_ALREADY_REBUILT" ] && [ "$_PHP_ALREADY_REBUILT" = "$1" ] ; then
+          _DO_NOTHING=YES
+        else
+          msg "INFO: PHP $_PHP_VERSION rebuild required to include upgraded libs"
+          install_php_multi "$1"
+        fi
       else
         msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
       fi
@@ -5296,6 +5305,7 @@ check_php_broken () {
     msg "INFO: PHP $_PHP_VERSION rebuild required to fix broken libcurl"
     install_curl_src
     install_php_multi "$1"
+    _PHP_ALREADY_REBUILT=$1
   fi
 }
 #
@@ -7606,7 +7616,6 @@ if [ ! -e "/var/xdrago/log/ioncube-$_IONCUBE_VERSION.log" ] || [ "$_PHP_FORCE_RE
 fi
 _BROKEN_LIBCURL_TEST=$(php -v 2>&1)
 if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]] ; then
-  _PHP_BIN_BROKEN=YES
   msg "INFO: PHP rebuild required to fix broken libcurl..."
   install_curl_src
   php_upgrade_all
