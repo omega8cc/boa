@@ -4132,7 +4132,7 @@ check_apt_updates () {
   for Update in `/usr/bin/apt-get -q -y --force-yes --allow-unauthenticated -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`
   do
     case $Update in
-      *libcurl*)    _UP_PHP=YES ;;
+      *libcurl*)    _UP_CRL=YES ;;
       *libmysql*)   _UP_PHP=YES ;;
       *libssl*)     _UP_PHP=YES ;;
       *linux-*)     _UP_LNX=YES ;;
@@ -4154,6 +4154,9 @@ check_apt_updates () {
     else
       _UP_PHP=YES
     fi
+  fi
+  if [ "$_UP_CRL" = "YES" ] ; then
+    _UP_PHP=YES
   fi
 }
 #
@@ -7529,6 +7532,9 @@ if [[ "$_PHP_MULTI_INSTALL" =~ "5.5" ]] && [ ! -x "/opt/php55/bin/php" ] ; then
 fi
 
 php_upgrade_all () {
+  if [ "$_UP_CRL" = "YES" ] ; then
+    install_curl_src
+  fi
   if [ -x "/opt/php52/bin/php" ] && [ -z "$_FRESH_PHP52_BUILD" ] ; then
     _PHP_VERSION="$_PHP52_VERSION"
     _PHP_BIN_BROKEN=NO
@@ -7582,16 +7588,14 @@ php_upgrade_all () {
     _THIS_LOC_PHP_PATH=""
   fi
 }
-php_upgrade_all
-
-if [ ! -e "/var/xdrago/log/ioncube-$_IONCUBE_VERSION.log" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-  install_ioncube
-fi
 
 
 ###--------------------###
 php_upgrade_all
 install_newrelic
+if [ ! -e "/var/xdrago/log/ioncube-$_IONCUBE_VERSION.log" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  install_ioncube
+fi
 
 
 ###--------------------###
