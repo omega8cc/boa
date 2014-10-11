@@ -5037,9 +5037,6 @@ install_ssh_src () {
     echo "openssh-server hold" | dpkg --set-selections &> /dev/null
     echo "openssh-client hold" | dpkg --set-selections &> /dev/null
     echo "ssh hold" | dpkg --set-selections &> /dev/null
-    if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
-      apt-mark hold openssh-server openssh-client ssh &> /dev/null
-    fi
   else
     aptitude hold openssh-server &> /dev/null
     aptitude hold openssh-client &> /dev/null
@@ -5095,12 +5092,8 @@ install_curl_src () {
     aptitude install libcurl3 -y &> /dev/null
     aptitude install libcurl3-gnutls -y &> /dev/null
     aptitude install libcurl4-openssl-dev -y &> /dev/null
-    touch /var/xdrago/log/libcurl-dpkg-fixed.log
     echo "curl hold" | dpkg --set-selections &> /dev/null
     aptitude hold curl &> /dev/null
-    if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
-      apt-mark hold curl &> /dev/null
-    fi
     msg "INFO: Installing cURL $_CURL_VERSION, please wait..."
     cd /var/opt
     rm -f -r curl*
@@ -5120,9 +5113,7 @@ install_curl_src () {
       aptitude install libcurl3 -y &> /dev/null
       aptitude install libcurl3-gnutls -y &> /dev/null
       aptitude install libcurl4-openssl-dev -y &> /dev/null
-      touch /var/xdrago/log/libcurl-dpkg-fixed.log
       echo "curl hold" | dpkg --set-selections &> /dev/null
-      aptitude hold curl &> /dev/null
     else
       apt-mark unhold curl &> /dev/null
       echo "curl install" | dpkg --set-selections &> /dev/null
@@ -5199,9 +5190,6 @@ install_ssl_src () {
     echo "zlibc hold" | dpkg --set-selections &> /dev/null
     echo "zlib1g hold" | dpkg --set-selections &> /dev/null
     echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
-    if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
-      apt-mark hold openssl zlibc zlib1g zlib1g-dev &> /dev/null
-    fi
   else
     aptitude install libssl-dev -y &> /dev/null
     aptitude hold openssl &> /dev/null
@@ -7012,7 +7000,7 @@ if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_
   fi
 fi
 if [ "$_SSH_FROM_SOURCES" = "YES" ] ; then
-  if [ "$_REL_VERSION" = "trusty" ] ; then
+  if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
     _DO_NOTHING=YES
   else
     install_ssh_src
