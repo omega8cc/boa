@@ -6755,7 +6755,7 @@ if [[ "$_ETH_TEST" =~ "venet0" ]] || [ -e "/proc/bean_counters" ] ; then
 else
   _IS_VZ="NO"
 fi
-if [ "$_IS_VZ" = "YES" ] || [ -e "/root/.use.sysklogd.cnf" ] ; then
+if [ "$_IS_VZ" = "YES" ] || [ -e "/root/.use.sysklogd.cnf" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
   _SYSLOGD=sysklogd
    mrun "apt-get purge rsyslog -y" &> /dev/null
    mrun "killall -9 rsyslogd" &> /dev/null
