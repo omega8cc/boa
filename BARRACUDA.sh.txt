@@ -5060,8 +5060,12 @@ install_curl_src () {
     if [ "$_CURL_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] ; then
       _CURL_INSTALL_REQUIRED=NO
     else
-      _CURL_INSTALL_REQUIRED=YES
-      msg "INFO: Installed cURL $_CURL_INSTALLED with OpenSSL $_CURL_SSL_INSTALLED, rebuild forced"
+      if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
+       _DO_NOTHING=YES
+      else
+        _CURL_INSTALL_REQUIRED=YES
+        msg "INFO: Installed cURL $_CURL_INSTALLED with OpenSSL $_CURL_SSL_INSTALLED, rebuild forced"
+      fi
     fi
   else
     _CURL_INSTALL_REQUIRED=YES
