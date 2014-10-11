@@ -4132,9 +4132,9 @@ check_apt_updates () {
   for Update in `/usr/bin/apt-get -q -y --force-yes --allow-unauthenticated -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`
   do
     case $Update in
-      *libcurl*)    _YP_PHP=YES ;;
+      *libcurl*)    _UP_PHP=YES ;;
       *libmysql*)   _UP_PHP=YES ;;
-      *libssl*)     _YP_PHP=YES ;;
+      *libssl*)     _UP_PHP=YES ;;
       *linux-*)     _UP_LNX=YES ;;
       *mariadb*)    _UP_PHP=YES ;;
       *newrelic*)   _UP_NRC=YES ;;
@@ -7528,58 +7528,61 @@ if [[ "$_PHP_MULTI_INSTALL" =~ "5.5" ]] && [ ! -x "/opt/php55/bin/php" ] ; then
   _FRESH_PHP55_BUILD=55
 fi
 
-if [ -x "/opt/php52/bin/php" ] && [ -z "$_FRESH_PHP52_BUILD" ] ; then
-  _PHP_VERSION="$_PHP52_VERSION"
-  _PHP_BIN_BROKEN=NO
-  _BROKEN_LIBCURL_TEST=""
-  switch_php_cli "52"
-  check_php_broken "52"
-  check_php_rebuild "52"
-  update_php_multi "52"
-  _PHP_VERSION=""
-  _LOC_PHP_VERSION=""
-  _LOC_PHP_PATH=""
-  _THIS_LOC_PHP_PATH=""
-fi
-if [ -x "/opt/php53/bin/php" ] && [ -z "$_FRESH_PHP53_BUILD" ] ; then
-  _PHP_VERSION="$_PHP53_VERSION"
-  _PHP_BIN_BROKEN=NO
-  _BROKEN_LIBCURL_TEST=""
-  switch_php_cli "53"
-  check_php_broken "53"
-  check_php_rebuild "53"
-  update_php_multi "53"
-  _PHP_VERSION=""
-  _LOC_PHP_VERSION=""
-  _LOC_PHP_PATH=""
-  _THIS_LOC_PHP_PATH=""
-fi
-if [ -x "/opt/php54/bin/php" ] && [ -z "$_FRESH_PHP54_BUILD" ] ; then
-  _PHP_VERSION="$_PHP54_VERSION"
-  _PHP_BIN_BROKEN=NO
-  _BROKEN_LIBCURL_TEST=""
-  switch_php_cli "54"
-  check_php_broken "54"
-  check_php_rebuild "54"
-  update_php_multi "54"
-  _PHP_VERSION=""
-  _LOC_PHP_VERSION=""
-  _LOC_PHP_PATH=""
-  _THIS_LOC_PHP_PATH=""
-fi
-if [ -x "/opt/php55/bin/php" ] && [ -z "$_FRESH_PHP55_BUILD" ] ; then
-  _PHP_VERSION="$_PHP55_VERSION"
-  _PHP_BIN_BROKEN=NO
-  _BROKEN_LIBCURL_TEST=""
-  switch_php_cli "55"
-  check_php_broken "55"
-  check_php_rebuild "55"
-  update_php_multi "55"
-  _PHP_VERSION=""
-  _LOC_PHP_VERSION=""
-  _LOC_PHP_PATH=""
-  _THIS_LOC_PHP_PATH=""
-fi
+php_upgrade_all () {
+  if [ -x "/opt/php52/bin/php" ] && [ -z "$_FRESH_PHP52_BUILD" ] ; then
+    _PHP_VERSION="$_PHP52_VERSION"
+    _PHP_BIN_BROKEN=NO
+    _BROKEN_LIBCURL_TEST=""
+    switch_php_cli "52"
+    check_php_broken "52"
+    check_php_rebuild "52"
+    update_php_multi "52"
+    _PHP_VERSION=""
+    _LOC_PHP_VERSION=""
+    _LOC_PHP_PATH=""
+    _THIS_LOC_PHP_PATH=""
+  fi
+  if [ -x "/opt/php53/bin/php" ] && [ -z "$_FRESH_PHP53_BUILD" ] ; then
+    _PHP_VERSION="$_PHP53_VERSION"
+    _PHP_BIN_BROKEN=NO
+    _BROKEN_LIBCURL_TEST=""
+    switch_php_cli "53"
+    check_php_broken "53"
+    check_php_rebuild "53"
+    update_php_multi "53"
+    _PHP_VERSION=""
+    _LOC_PHP_VERSION=""
+    _LOC_PHP_PATH=""
+    _THIS_LOC_PHP_PATH=""
+  fi
+  if [ -x "/opt/php54/bin/php" ] && [ -z "$_FRESH_PHP54_BUILD" ] ; then
+    _PHP_VERSION="$_PHP54_VERSION"
+    _PHP_BIN_BROKEN=NO
+    _BROKEN_LIBCURL_TEST=""
+    switch_php_cli "54"
+    check_php_broken "54"
+    check_php_rebuild "54"
+    update_php_multi "54"
+    _PHP_VERSION=""
+    _LOC_PHP_VERSION=""
+    _LOC_PHP_PATH=""
+    _THIS_LOC_PHP_PATH=""
+  fi
+  if [ -x "/opt/php55/bin/php" ] && [ -z "$_FRESH_PHP55_BUILD" ] ; then
+    _PHP_VERSION="$_PHP55_VERSION"
+    _PHP_BIN_BROKEN=NO
+    _BROKEN_LIBCURL_TEST=""
+    switch_php_cli "55"
+    check_php_broken "55"
+    check_php_rebuild "55"
+    update_php_multi "55"
+    _PHP_VERSION=""
+    _LOC_PHP_VERSION=""
+    _LOC_PHP_PATH=""
+    _THIS_LOC_PHP_PATH=""
+  fi
+}
+php_upgrade_all
 
 if [ ! -e "/var/xdrago/log/ioncube-$_IONCUBE_VERSION.log" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   install_ioncube
@@ -7587,6 +7590,7 @@ fi
 
 
 ###--------------------###
+php_upgrade_all
 install_newrelic
 
 
