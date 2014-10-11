@@ -5072,8 +5072,12 @@ install_curl_src () {
       fi
     fi
   else
-    _CURL_INSTALL_REQUIRED=YES
-    msg "INFO: Installed cURL version $_CURL_INSTALLED, upgrade required"
+    if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
+      _DO_NOTHING=YES
+    else
+      _CURL_INSTALL_REQUIRED=YES
+      msg "INFO: Installed cURL version $_CURL_INSTALLED, upgrade required"
+    fi
   fi
   _BROKEN_CURL_TEST=$(curl --version 2>&1)
   if [[ "$_BROKEN_CURL_TEST" =~ "libcurl.so.4" ]]; then
