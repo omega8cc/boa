@@ -1438,7 +1438,7 @@ action () {
   _REL_VERSION=`lsb_release -sc`
   _AWS_TEST_A=$(grep cloudimg /etc/fstab)
   _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
-  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
+  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
     _THIS_DB_HOST=localhost
   fi
   if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then

@@ -4002,7 +4002,7 @@ install_php_legacy () {
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 1/3"
   cd /var/opt/php-$_PHP_VERSION
   st_runner "sh ./buildconf --force" 2> /dev/null
-  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
+  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
   fi
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 2/3"
@@ -4043,7 +4043,7 @@ install_php_multi () {
     msg "INFO: Installing PHP-FPM $_PHP_VERSION part 1/3"
     cd /var/opt/php-$_PHP_VERSION
     st_runner "sh ./buildconf --force" 2> /dev/null
-    if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
+    if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
       patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
     fi
     ### cd sapi/fpm/fpm
@@ -5010,6 +5010,7 @@ update_sources_list () {
 #
 # Install OpenSSH from sources.
 install_ssh_src () {
+  _SSH_GET_DPKG=`dpkg --get-selections | grep ssh | grep hold`
   _SSH_INSTALL_REQUIRED=NO
   _SSH_INSTALLED=`ssh -V 2>&1 | tr -d "\n" | tr -d "," | cut -d"_" -f2 | awk '{ print $1}'`
   if [ "$_SSH_FORCE_REINSTALL" = "YES" ] ; then
@@ -5031,22 +5032,23 @@ install_ssh_src () {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     mrun "service ssh restart" &> /dev/null
-    aptitude hold openssh-server &> /dev/null
-    aptitude hold openssh-client &> /dev/null
-    aptitude hold ssh &> /dev/null
-    echo "openssh-server hold" | dpkg --set-selections &> /dev/null
-    echo "openssh-client hold" | dpkg --set-selections &> /dev/null
-    echo "ssh hold" | dpkg --set-selections &> /dev/null
-    if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
-      apt-mark hold openssh-server openssh-client ssh &> /dev/null
+    if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]] ; then
+      aptitude hold openssh-server &> /dev/null
+      aptitude hold openssh-client &> /dev/null
+      aptitude hold ssh &> /dev/null
+      echo "openssh-server hold" | dpkg --set-selections &> /dev/null
+      echo "openssh-client hold" | dpkg --set-selections &> /dev/null
+      echo "ssh hold" | dpkg --set-selections &> /dev/null
     fi
   else
-    aptitude hold openssh-server &> /dev/null
-    aptitude hold openssh-client &> /dev/null
-    aptitude hold ssh &> /dev/null
-    echo "openssh-server hold" | dpkg --set-selections &> /dev/null
-    echo "openssh-client hold" | dpkg --set-selections &> /dev/null
-    echo "ssh hold" | dpkg --set-selections &> /dev/null
+    if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]] ; then
+      aptitude hold openssh-server &> /dev/null
+      aptitude hold openssh-client &> /dev/null
+      aptitude hold ssh &> /dev/null
+      echo "openssh-server hold" | dpkg --set-selections &> /dev/null
+      echo "openssh-client hold" | dpkg --set-selections &> /dev/null
+      echo "ssh hold" | dpkg --set-selections &> /dev/null
+    fi
   fi
   _SSH_FORCE_REINSTALL=NO
 }
@@ -5054,8 +5056,10 @@ install_ssh_src () {
 # Install cURL from sources.
 install_curl_src () {
   _CURL_INSTALL_REQUIRED=NO
+  _CURL_GET_DPKG=`dpkg --get-selections | grep curl | grep hold`
   _CURL_INSTALLED=`curl --version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   _CURL_SSL_INSTALLED=`curl --version 2>&1 | tr -d "\n" | cut -d" " -f5 | awk '{ print $1}' | cut -d"/" -f2 | awk '{ print $1}'`
+  _CURL_LIB_INSTALLED=`curl --version 2>&1 | tr -d "\n" | cut -d" " -f4 | awk '{ print $1}' | cut -d"/" -f2 | awk '{ print $1}'`
   if [ "$_CURL_INSTALLED" = "$_CURL_VERSION" ] ; then
     if [ "$_CURL_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] ; then
       _CURL_INSTALL_REQUIRED=NO
@@ -5068,8 +5072,12 @@ install_curl_src () {
       fi
     fi
   else
-    _CURL_INSTALL_REQUIRED=YES
-    msg "INFO: Installed cURL version $_CURL_INSTALLED, upgrade required"
+    if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
+      _DO_NOTHING=YES
+    else
+      _CURL_INSTALL_REQUIRED=YES
+      msg "INFO: Installed cURL version $_CURL_INSTALLED, upgrade required"
+    fi
   fi
   _BROKEN_CURL_TEST=$(curl --version 2>&1)
   if [[ "$_BROKEN_CURL_TEST" =~ "libcurl.so.4" ]]; then
@@ -5084,22 +5092,20 @@ install_curl_src () {
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version $_CURL_INSTALLED, rebuild forced"
   fi
-  if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
     _CURL_INSTALL_REQUIRED=NO
   fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ] ; then
     ###--------------------###
-    echo "libcurl3 install" | dpkg --set-selections &> /dev/null
-    echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
-    echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
-    aptitude install libcurl3 -y &> /dev/null
-    aptitude install libcurl3-gnutls -y &> /dev/null
-    aptitude install libcurl4-openssl-dev -y &> /dev/null
-    touch /var/xdrago/log/libcurl-dpkg-fixed.log
-    echo "curl hold" | dpkg --set-selections &> /dev/null
-    aptitude hold curl &> /dev/null
-    if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
-      apt-mark hold curl &> /dev/null
+    if [[ ! "$_CURL_GET_DPKG" =~ "hold" ]] ; then
+      echo "libcurl3 install" | dpkg --set-selections &> /dev/null
+      echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
+      echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
+      aptitude install libcurl3 -y &> /dev/null
+      aptitude install libcurl3-gnutls -y &> /dev/null
+      aptitude install libcurl4-openssl-dev -y &> /dev/null
+      echo "curl hold" | dpkg --set-selections &> /dev/null
+      aptitude hold curl &> /dev/null
     fi
     msg "INFO: Installing cURL $_CURL_VERSION, please wait..."
     cd /var/opt
@@ -5113,19 +5119,29 @@ install_curl_src () {
     _UP_PHP=YES
   else
     ###--------------------###
-    if [ "$_THIS_OS" = "Debian" ] ; then
-      echo "libcurl3 install" | dpkg --set-selections &> /dev/null
-      echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
-      echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
-      aptitude install libcurl3 -y &> /dev/null
-      aptitude install libcurl3-gnutls -y &> /dev/null
-      aptitude install libcurl4-openssl-dev -y &> /dev/null
-      touch /var/xdrago/log/libcurl-dpkg-fixed.log
-      echo "curl hold" | dpkg --set-selections &> /dev/null
+    if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
+      if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
+        apt-mark unhold curl &> /dev/null
+      fi
+      if [ "$_CURL_INSTALLED" = "$_CURL_LIB_INSTALLED" ] ; then
+        _DO_NOTHING=YES
+      else
+        if [[ "$_CURL_GET_DPKG" =~ "hold" ]]; then
+          echo "curl install" | dpkg --set-selections &> /dev/null
+          apt-get install curl -y --force-yes --reinstall &> /dev/null
+        fi
+      fi
     else
-      apt-mark unhold curl &> /dev/null
-      echo "curl install" | dpkg --set-selections &> /dev/null
-      apt-get install curl -y --force-yes --reinstall &> /dev/null
+      if [[ ! "$_CURL_GET_DPKG" =~ "hold" ]] ; then
+        echo "libcurl3 install" | dpkg --set-selections &> /dev/null
+        echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
+        echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
+        aptitude install libcurl3 -y &> /dev/null
+        aptitude install libcurl3-gnutls -y &> /dev/null
+        aptitude install libcurl4-openssl-dev -y &> /dev/null
+        echo "curl hold" | dpkg --set-selections &> /dev/null
+        aptitude hold curl &> /dev/null
+      fi
     fi
   fi
 }
@@ -5133,6 +5149,7 @@ install_curl_src () {
 # Install OpenSSL from sources.
 install_ssl_src () {
   _SSL_INSTALL_REQUIRED=NO
+  _SSL_GET_DPKG=`dpkg --get-selections | grep openssl | grep hold`
   _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] ; then
     _SPDY_COMPATIBILITY_TEST=$(service nginx configtest 2>&1)
@@ -5188,30 +5205,31 @@ install_ssl_src () {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     ###--------------------###
-    aptitude install libssl-dev -y &> /dev/null
-    aptitude hold openssl &> /dev/null
-    aptitude hold zlibc &> /dev/null
-    aptitude hold zlib1g &> /dev/null
-    aptitude hold zlib1g-dev &> /dev/null
-    echo "libssl-dev install" | dpkg --set-selections &> /dev/null
-    echo "openssl hold" | dpkg --set-selections &> /dev/null
-    echo "zlibc hold" | dpkg --set-selections &> /dev/null
-    echo "zlib1g hold" | dpkg --set-selections &> /dev/null
-    echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
-    if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
-      apt-mark hold openssl zlibc zlib1g zlib1g-dev &> /dev/null
+    if [[ ! "$_SSL_GET_DPKG" =~ "hold" ]] ; then
+      aptitude install libssl-dev -y &> /dev/null
+      aptitude hold openssl &> /dev/null
+      aptitude hold zlibc &> /dev/null
+      aptitude hold zlib1g &> /dev/null
+      aptitude hold zlib1g-dev &> /dev/null
+      echo "libssl-dev install" | dpkg --set-selections &> /dev/null
+      echo "openssl hold" | dpkg --set-selections &> /dev/null
+      echo "zlibc hold" | dpkg --set-selections &> /dev/null
+      echo "zlib1g hold" | dpkg --set-selections &> /dev/null
+      echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
     fi
   else
-    aptitude install libssl-dev -y &> /dev/null
-    aptitude hold openssl &> /dev/null
-    aptitude hold zlibc &> /dev/null
-    aptitude hold zlib1g &> /dev/null
-    aptitude hold zlib1g-dev &> /dev/null
-    echo "libssl-dev install" | dpkg --set-selections &> /dev/null
-    echo "openssl hold" | dpkg --set-selections &> /dev/null
-    echo "zlibc hold" | dpkg --set-selections &> /dev/null
-    echo "zlib1g hold" | dpkg --set-selections &> /dev/null
-    echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
+    if [[ ! "$_SSL_GET_DPKG" =~ "hold" ]] ; then
+      aptitude install libssl-dev -y &> /dev/null
+      aptitude hold openssl &> /dev/null
+      aptitude hold zlibc &> /dev/null
+      aptitude hold zlib1g &> /dev/null
+      aptitude hold zlib1g-dev &> /dev/null
+      echo "libssl-dev install" | dpkg --set-selections &> /dev/null
+      echo "openssl hold" | dpkg --set-selections &> /dev/null
+      echo "zlibc hold" | dpkg --set-selections &> /dev/null
+      echo "zlib1g hold" | dpkg --set-selections &> /dev/null
+      echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
+    fi
   fi
 }
 #
@@ -5887,24 +5905,8 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
   elif [ "$_THIS_RV" = "precise" ] ; then
     _REL_VERSION="precise"
     _THIS_DB_HOST=localhost
-  elif [ "$_THIS_RV" = "oneiric" ] ; then
-    _REL_VERSION="oneiric"
-    _THIS_DB_HOST=localhost
-  elif [ "$_THIS_RV" = "natty" ] ; then
-    _REL_VERSION="natty"
-  elif [ "$_THIS_RV" = "maverick" ] ; then
-    _REL_VERSION="maverick"
   elif [ "$_THIS_RV" = "lucid" ] ; then
     _REL_VERSION="lucid"
-  elif [ "$_THIS_RV" = "karmic" ] ; then
-    _REL_VERSION="karmic"
-    _DB_SERVER=MariaDB
-  elif [ "$_THIS_RV" = "jaunty" ] ; then
-    _REL_VERSION="jaunty"
-    _DB_SERVER=MariaDB
-  elif [ "$_THIS_RV" = "hardy" ] ; then
-    _REL_VERSION="hardy"
-    _DB_SERVER=MariaDB
   else
     not_supported_os
   fi
@@ -5919,14 +5921,6 @@ elif [ "$_THIS_OS" = "Debian" ] ; then
     _DB_SERVER=MariaDB
     _DB_SERIES=5.3
     _MARIADB_VERSION=5.3.12
-  else
-    not_supported_os
-  fi
-elif [ "$_THIS_OS" = "Jolicloud" ] ; then
-  if [ "$_THIS_RV" = "robby" ] ; then
-    _THIS_OS=Ubuntu
-    _REL_VERSION=jaunty
-    _DB_SERVER=MariaDB
   else
     not_supported_os
   fi
@@ -6788,7 +6782,7 @@ if [[ "$_ETH_TEST" =~ "venet0" ]] || [ -e "/proc/bean_counters" ] ; then
 else
   _IS_VZ="NO"
 fi
-if [ "$_IS_VZ" = "YES" ] || [ -e "/root/.use.sysklogd.cnf" ] ; then
+if [ "$_IS_VZ" = "YES" ] || [ -e "/root/.use.sysklogd.cnf" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
   _SYSLOGD=sysklogd
    mrun "apt-get purge rsyslog -y" &> /dev/null
    mrun "killall -9 rsyslogd" &> /dev/null
@@ -6819,7 +6813,7 @@ if [[ "_XTRAS_LIST" =~ "IMG" ]] ; then
   _EXTRA_PACKAGES="advancecomp jpegoptim libjpeg-progs optipng pngcrush pngquant $_EXTRA_PACKAGES"
 fi
 
-if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] ; then
+if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "lucid" ] ; then
   _DEBDEPS="apticron aptitude auditd autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libhtml-template-perl libjpeg-dev libjpeg62 $_EXTRA_LIB_APT libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat ncurses-dev $_APT_XTRA postfix postfix-pcre pwgen python-dev cython re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc $_SYSLOGD libgmp3-dev symlinks libgeoip1 libgeoip-dev geoip-database libmagickwand-dev gettext ncurses-term udev libpam-unix2 libxcrypt1 s3cmd python-software-properties ldap-utils $_EXTRA_PACKAGES"
 elif [ "$_REL_VERSION" = "lenny" ] ; then
   _DEBDEPS="apticron aptitude auditd autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libhtml-template-perl libjpeg-dev libjpeg62 $_EXTRA_LIB_APT libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano $_APT_ELSE ncurses-dev openjdk-6-jre-headless postfix postfix-pcre pwgen python-dev cython re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc $_SYSLOGD libgmp3-dev symlinks libgeoip1 libgeoip-dev libmagick9-dev gettext ncurses-term udev ldap-utils $_EXTRA_PACKAGES"
@@ -6832,9 +6826,9 @@ install_with_aptitude_deps () {
   if [[ "$_XTRAS_LIST" =~ "FMG" ]] ; then
     if [ "$_REL_VERSION" = "squeeze" ] ; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec52"
-    elif [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] ; then
+    elif [ "$_REL_VERSION" = "lucid" ] ; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-52"
-    elif [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
+    elif [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-53"
     else
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec51"
@@ -7011,7 +7005,7 @@ if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_
   fi
 fi
 if [ "$_SSH_FROM_SOURCES" = "YES" ] ; then
-  if [ "$_REL_VERSION" = "trusty" ] ; then
+  if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
     _DO_NOTHING=YES
   else
     install_ssh_src
@@ -7162,7 +7156,7 @@ install_wkhtmltoimage
 
 
 ###--------------------###
-if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "natty" ] ; then
+if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
   if [ ! -L "/usr/lib/libXpm.so" ] ; then
     msg "INFO: Fix #1 for libs in $_THIS_OS $_REL_VERSION"
     _X86_64_TEST=`uname -m`
@@ -7192,7 +7186,7 @@ fi
 
 
 ###--------------------###
-if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
+if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
   _SSL_FIX_REQUIRED=YES
   if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
     if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
