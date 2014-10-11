@@ -7606,11 +7606,17 @@ php_upgrade_all () {
 
 
 ###--------------------###
+_BROKEN_LIBCURL_TEST=$(php -v 2>&1)
+if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]] ; then
+  msg "INFO: PHP rebuild required to fix broken libcurl A"
+  install_curl_src
+  php_upgrade_all
+fi
 install_curl_src
 php_upgrade_all
 _BROKEN_LIBCURL_TEST=$(php -v 2>&1)
 if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]] ; then
-  msg "INFO: PHP rebuild required to fix broken libcurl..."
+  msg "INFO: PHP rebuild required to fix broken libcurl B"
   install_curl_src
   php_upgrade_all
 fi
