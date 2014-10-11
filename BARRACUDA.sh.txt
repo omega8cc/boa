@@ -6186,6 +6186,7 @@ if [ -e "/var/log/barracuda_log.txt" ] ; then
       msg "Bye"
       clean_pid_exit
     fi
+    touch /var/xdrago/log/libcurl-dpkg-fixed.log
   fi
 fi
 
