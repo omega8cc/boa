@@ -5081,7 +5081,7 @@ install_curl_src () {
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version $_CURL_INSTALLED, rebuild forced"
   fi
-  if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
     _CURL_INSTALL_REQUIRED=NO
   fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ] ; then
@@ -5106,7 +5106,13 @@ install_curl_src () {
     _UP_PHP=YES
   else
     ###--------------------###
-    if [ "$_THIS_OS" = "Debian" ] ; then
+    if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
+      if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
+        apt-mark unhold curl &> /dev/null
+      fi
+      echo "curl install" | dpkg --set-selections &> /dev/null
+      apt-get install curl -y --force-yes --reinstall &> /dev/null
+    else
       echo "libcurl3 install" | dpkg --set-selections &> /dev/null
       echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
       echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
@@ -5114,10 +5120,6 @@ install_curl_src () {
       aptitude install libcurl3-gnutls -y &> /dev/null
       aptitude install libcurl4-openssl-dev -y &> /dev/null
       echo "curl hold" | dpkg --set-selections &> /dev/null
-    else
-      apt-mark unhold curl &> /dev/null
-      echo "curl install" | dpkg --set-selections &> /dev/null
-      apt-get install curl -y --force-yes --reinstall &> /dev/null
     fi
   fi
 }
