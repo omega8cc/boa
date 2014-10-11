@@ -420,7 +420,7 @@ add_solr () {
       fi
       CHAR="[:alnum:]"
       rkey=32
-      if [ "$_NEW_SSL" = "YES" ] || [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
+      if [ "$_NEW_SSL" = "YES" ] || [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
         _MD5H=`cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | openssl md5 | awk '{ print $2}' | tr -d "\n"`
       else
         _MD5H=`cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | openssl md5 | tr -d "\n"`

@@ -4002,7 +4002,7 @@ install_php_legacy () {
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 1/3"
   cd /var/opt/php-$_PHP_VERSION
   st_runner "sh ./buildconf --force" 2> /dev/null
-  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
+  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
   fi
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 2/3"
@@ -4043,7 +4043,7 @@ install_php_multi () {
     msg "INFO: Installing PHP-FPM $_PHP_VERSION part 1/3"
     cd /var/opt/php-$_PHP_VERSION
     st_runner "sh ./buildconf --force" 2> /dev/null
-    if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
+    if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
       patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
     fi
     ### cd sapi/fpm/fpm
@@ -5876,24 +5876,8 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
   elif [ "$_THIS_RV" = "precise" ] ; then
     _REL_VERSION="precise"
     _THIS_DB_HOST=localhost
-  elif [ "$_THIS_RV" = "oneiric" ] ; then
-    _REL_VERSION="oneiric"
-    _THIS_DB_HOST=localhost
-  elif [ "$_THIS_RV" = "natty" ] ; then
-    _REL_VERSION="natty"
-  elif [ "$_THIS_RV" = "maverick" ] ; then
-    _REL_VERSION="maverick"
   elif [ "$_THIS_RV" = "lucid" ] ; then
     _REL_VERSION="lucid"
-  elif [ "$_THIS_RV" = "karmic" ] ; then
-    _REL_VERSION="karmic"
-    _DB_SERVER=MariaDB
-  elif [ "$_THIS_RV" = "jaunty" ] ; then
-    _REL_VERSION="jaunty"
-    _DB_SERVER=MariaDB
-  elif [ "$_THIS_RV" = "hardy" ] ; then
-    _REL_VERSION="hardy"
-    _DB_SERVER=MariaDB
   else
     not_supported_os
   fi
@@ -5908,14 +5892,6 @@ elif [ "$_THIS_OS" = "Debian" ] ; then
     _DB_SERVER=MariaDB
     _DB_SERIES=5.3
     _MARIADB_VERSION=5.3.12
-  else
-    not_supported_os
-  fi
-elif [ "$_THIS_OS" = "Jolicloud" ] ; then
-  if [ "$_THIS_RV" = "robby" ] ; then
-    _THIS_OS=Ubuntu
-    _REL_VERSION=jaunty
-    _DB_SERVER=MariaDB
   else
     not_supported_os
   fi
@@ -6808,7 +6784,7 @@ if [[ "_XTRAS_LIST" =~ "IMG" ]] ; then
   _EXTRA_PACKAGES="advancecomp jpegoptim libjpeg-progs optipng pngcrush pngquant $_EXTRA_PACKAGES"
 fi
 
-if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] ; then
+if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "lucid" ] ; then
   _DEBDEPS="apticron aptitude auditd autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libhtml-template-perl libjpeg-dev libjpeg62 $_EXTRA_LIB_APT libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat ncurses-dev $_APT_XTRA postfix postfix-pcre pwgen python-dev cython re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc $_SYSLOGD libgmp3-dev symlinks libgeoip1 libgeoip-dev geoip-database libmagickwand-dev gettext ncurses-term udev libpam-unix2 libxcrypt1 s3cmd python-software-properties ldap-utils $_EXTRA_PACKAGES"
 elif [ "$_REL_VERSION" = "lenny" ] ; then
   _DEBDEPS="apticron aptitude auditd autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libhtml-template-perl libjpeg-dev libjpeg62 $_EXTRA_LIB_APT libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano $_APT_ELSE ncurses-dev openjdk-6-jre-headless postfix postfix-pcre pwgen python-dev cython re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc $_SYSLOGD libgmp3-dev symlinks libgeoip1 libgeoip-dev libmagick9-dev gettext ncurses-term udev ldap-utils $_EXTRA_PACKAGES"
@@ -6821,9 +6797,9 @@ install_with_aptitude_deps () {
   if [[ "$_XTRAS_LIST" =~ "FMG" ]] ; then
     if [ "$_REL_VERSION" = "squeeze" ] ; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec52"
-    elif [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] ; then
+    elif [ "$_REL_VERSION" = "lucid" ] ; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-52"
-    elif [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
+    elif [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-53"
     else
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec51"
@@ -7151,7 +7127,7 @@ install_wkhtmltoimage
 
 
 ###--------------------###
-if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "natty" ] ; then
+if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
   if [ ! -L "/usr/lib/libXpm.so" ] ; then
     msg "INFO: Fix #1 for libs in $_THIS_OS $_REL_VERSION"
     _X86_64_TEST=`uname -m`
@@ -7181,7 +7157,7 @@ fi
 
 
 ###--------------------###
-if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
+if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
   _SSL_FIX_REQUIRED=YES
   if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
     if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
