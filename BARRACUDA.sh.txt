@@ -5010,6 +5010,7 @@ update_sources_list () {
 #
 # Install OpenSSH from sources.
 install_ssh_src () {
+  _SSH_GET_DPKG=`dpkg --get-selections | grep ssh | grep hold`
   _SSH_INSTALL_REQUIRED=NO
   _SSH_INSTALLED=`ssh -V 2>&1 | tr -d "\n" | tr -d "," | cut -d"_" -f2 | awk '{ print $1}'`
   if [ "$_SSH_FORCE_REINSTALL" = "YES" ] ; then
@@ -5031,19 +5032,23 @@ install_ssh_src () {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     mrun "service ssh restart" &> /dev/null
-    aptitude hold openssh-server &> /dev/null
-    aptitude hold openssh-client &> /dev/null
-    aptitude hold ssh &> /dev/null
-    echo "openssh-server hold" | dpkg --set-selections &> /dev/null
-    echo "openssh-client hold" | dpkg --set-selections &> /dev/null
-    echo "ssh hold" | dpkg --set-selections &> /dev/null
+    if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]] ; then
+      aptitude hold openssh-server &> /dev/null
+      aptitude hold openssh-client &> /dev/null
+      aptitude hold ssh &> /dev/null
+      echo "openssh-server hold" | dpkg --set-selections &> /dev/null
+      echo "openssh-client hold" | dpkg --set-selections &> /dev/null
+      echo "ssh hold" | dpkg --set-selections &> /dev/null
+    fi
   else
-    aptitude hold openssh-server &> /dev/null
-    aptitude hold openssh-client &> /dev/null
-    aptitude hold ssh &> /dev/null
-    echo "openssh-server hold" | dpkg --set-selections &> /dev/null
-    echo "openssh-client hold" | dpkg --set-selections &> /dev/null
-    echo "ssh hold" | dpkg --set-selections &> /dev/null
+    if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]] ; then
+      aptitude hold openssh-server &> /dev/null
+      aptitude hold openssh-client &> /dev/null
+      aptitude hold ssh &> /dev/null
+      echo "openssh-server hold" | dpkg --set-selections &> /dev/null
+      echo "openssh-client hold" | dpkg --set-selections &> /dev/null
+      echo "ssh hold" | dpkg --set-selections &> /dev/null
+    fi
   fi
   _SSH_FORCE_REINSTALL=NO
 }
@@ -5051,8 +5056,10 @@ install_ssh_src () {
 # Install cURL from sources.
 install_curl_src () {
   _CURL_INSTALL_REQUIRED=NO
+  _CURL_GET_DPKG=`dpkg --get-selections | grep curl | grep hold`
   _CURL_INSTALLED=`curl --version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   _CURL_SSL_INSTALLED=`curl --version 2>&1 | tr -d "\n" | cut -d" " -f5 | awk '{ print $1}' | cut -d"/" -f2 | awk '{ print $1}'`
+  _CURL_LIB_INSTALLED=`curl --version 2>&1 | tr -d "\n" | cut -d" " -f4 | awk '{ print $1}' | cut -d"/" -f2 | awk '{ print $1}'`
   if [ "$_CURL_INSTALLED" = "$_CURL_VERSION" ] ; then
     if [ "$_CURL_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] ; then
       _CURL_INSTALL_REQUIRED=NO
@@ -5086,14 +5093,16 @@ install_curl_src () {
   fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ] ; then
     ###--------------------###
-    echo "libcurl3 install" | dpkg --set-selections &> /dev/null
-    echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
-    echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
-    aptitude install libcurl3 -y &> /dev/null
-    aptitude install libcurl3-gnutls -y &> /dev/null
-    aptitude install libcurl4-openssl-dev -y &> /dev/null
-    echo "curl hold" | dpkg --set-selections &> /dev/null
-    aptitude hold curl &> /dev/null
+    if [[ ! "$_CURL_GET_DPKG" =~ "hold" ]] ; then
+      echo "libcurl3 install" | dpkg --set-selections &> /dev/null
+      echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
+      echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
+      aptitude install libcurl3 -y &> /dev/null
+      aptitude install libcurl3-gnutls -y &> /dev/null
+      aptitude install libcurl4-openssl-dev -y &> /dev/null
+      echo "curl hold" | dpkg --set-selections &> /dev/null
+      aptitude hold curl &> /dev/null
+    fi
     msg "INFO: Installing cURL $_CURL_VERSION, please wait..."
     cd /var/opt
     rm -f -r curl*
@@ -5110,16 +5119,25 @@ install_curl_src () {
       if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
         apt-mark unhold curl &> /dev/null
       fi
-      echo "curl install" | dpkg --set-selections &> /dev/null
-      apt-get install curl -y --force-yes --reinstall &> /dev/null
+      if [ "$_CURL_INSTALLED" = "$_CURL_LIB_INSTALLED" ] ; then
+        _DO_NOTHING=YES
+      else
+        if [[ "$_CURL_GET_DPKG" =~ "hold" ]]; then
+          echo "curl install" | dpkg --set-selections &> /dev/null
+          apt-get install curl -y --force-yes --reinstall &> /dev/null
+        fi
+      fi
     else
-      echo "libcurl3 install" | dpkg --set-selections &> /dev/null
-      echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
-      echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
-      aptitude install libcurl3 -y &> /dev/null
-      aptitude install libcurl3-gnutls -y &> /dev/null
-      aptitude install libcurl4-openssl-dev -y &> /dev/null
-      echo "curl hold" | dpkg --set-selections &> /dev/null
+      if [[ ! "$_CURL_GET_DPKG" =~ "hold" ]] ; then
+        echo "libcurl3 install" | dpkg --set-selections &> /dev/null
+        echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
+        echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
+        aptitude install libcurl3 -y &> /dev/null
+        aptitude install libcurl3-gnutls -y &> /dev/null
+        aptitude install libcurl4-openssl-dev -y &> /dev/null
+        echo "curl hold" | dpkg --set-selections &> /dev/null
+        aptitude hold curl &> /dev/null
+      fi
     fi
   fi
 }
@@ -5127,6 +5145,7 @@ install_curl_src () {
 # Install OpenSSL from sources.
 install_ssl_src () {
   _SSL_INSTALL_REQUIRED=NO
+  _SSL_GET_DPKG=`dpkg --get-selections | grep openssl | grep hold`
   _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] ; then
     _SPDY_COMPATIBILITY_TEST=$(service nginx configtest 2>&1)
@@ -5182,27 +5201,31 @@ install_ssl_src () {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     ###--------------------###
-    aptitude install libssl-dev -y &> /dev/null
-    aptitude hold openssl &> /dev/null
-    aptitude hold zlibc &> /dev/null
-    aptitude hold zlib1g &> /dev/null
-    aptitude hold zlib1g-dev &> /dev/null
-    echo "libssl-dev install" | dpkg --set-selections &> /dev/null
-    echo "openssl hold" | dpkg --set-selections &> /dev/null
-    echo "zlibc hold" | dpkg --set-selections &> /dev/null
-    echo "zlib1g hold" | dpkg --set-selections &> /dev/null
-    echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
+    if [[ ! "$_SSL_GET_DPKG" =~ "hold" ]] ; then
+      aptitude install libssl-dev -y &> /dev/null
+      aptitude hold openssl &> /dev/null
+      aptitude hold zlibc &> /dev/null
+      aptitude hold zlib1g &> /dev/null
+      aptitude hold zlib1g-dev &> /dev/null
+      echo "libssl-dev install" | dpkg --set-selections &> /dev/null
+      echo "openssl hold" | dpkg --set-selections &> /dev/null
+      echo "zlibc hold" | dpkg --set-selections &> /dev/null
+      echo "zlib1g hold" | dpkg --set-selections &> /dev/null
+      echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
+    fi
   else
-    aptitude install libssl-dev -y &> /dev/null
-    aptitude hold openssl &> /dev/null
-    aptitude hold zlibc &> /dev/null
-    aptitude hold zlib1g &> /dev/null
-    aptitude hold zlib1g-dev &> /dev/null
-    echo "libssl-dev install" | dpkg --set-selections &> /dev/null
-    echo "openssl hold" | dpkg --set-selections &> /dev/null
-    echo "zlibc hold" | dpkg --set-selections &> /dev/null
-    echo "zlib1g hold" | dpkg --set-selections &> /dev/null
-    echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
+    if [[ ! "$_SSL_GET_DPKG" =~ "hold" ]] ; then
+      aptitude install libssl-dev -y &> /dev/null
+      aptitude hold openssl &> /dev/null
+      aptitude hold zlibc &> /dev/null
+      aptitude hold zlib1g &> /dev/null
+      aptitude hold zlib1g-dev &> /dev/null
+      echo "libssl-dev install" | dpkg --set-selections &> /dev/null
+      echo "openssl hold" | dpkg --set-selections &> /dev/null
+      echo "zlibc hold" | dpkg --set-selections &> /dev/null
+      echo "zlib1g hold" | dpkg --set-selections &> /dev/null
+      echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
+    fi
   fi
 }
 #
