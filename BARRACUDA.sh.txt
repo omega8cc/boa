@@ -2855,10 +2855,6 @@ EOF
     else
       locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
     fi
-    _LOCALE_DEFAULT_TEST=$(grep -v "^#" /etc/default/locale 2>&1)
-    if [[ ! "$_LOCALE_DEFAULT_TEST" =~ "LANGUAGE=en_US.UTF-8" ]] ; then
-      echo "LANGUAGE=en_US.UTF-8" >> /etc/default/locale
-    fi
     # Explicitly enforce all locale settings
     update-locale \
       LANG=en_US.UTF-8 \
@@ -2926,6 +2922,11 @@ EOF
     export LC_COLLATE=POSIX
     export LC_NUMERIC=POSIX
     export LC_ALL=
+  fi
+  # Make sure that LANGUAGE line in /etc/default/locale is active
+  _LOCALE_DEFAULT_TEST=$(grep -v "^#" /etc/default/locale 2>&1)
+  if [[ ! "$_LOCALE_DEFAULT_TEST" =~ "LANGUAGE=en_US.UTF-8" ]] ; then
+    echo "LANGUAGE=en_US.UTF-8" >> /etc/default/locale
   fi
 }
 #
