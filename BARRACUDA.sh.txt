@@ -5122,7 +5122,6 @@ install_curl_src () {
       aptitude install libcurl4-openssl-dev -y &> /dev/null
       touch /var/xdrago/log/libcurl-dpkg-fixed.log
       echo "curl hold" | dpkg --set-selections &> /dev/null
-      aptitude hold curl &> /dev/null
     else
       apt-mark unhold curl &> /dev/null
       echo "curl install" | dpkg --set-selections &> /dev/null
