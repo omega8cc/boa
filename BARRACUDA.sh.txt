@@ -7498,7 +7498,7 @@ switch_php_cli () {
 
 _THIS_DB_VERSION=`mysql -V 2>&1 | tr -d "\n" | cut -d" " -f6 | awk '{ print $1}' | cut -d"-" -f1 | awk '{ print $1}' | sed "s/[\,']//g"`
 if [ "$_THIS_DB_VERSION" = "5.5.40" ] && [ ! -e "/var/xdrago/log/my_config-$_THIS_DB_VERSION-fixed.log" ] ; then
-  _PHP_FORCE_REINSTALL=YES
+  _UP_PHP=YES
   cd /usr/include/mysql/
   patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/my_config.h.patch &> /dev/null
   touch /var/xdrago/log/my_config-$_THIS_DB_VERSION-fixed.log
