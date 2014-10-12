@@ -584,20 +584,13 @@ else
       $_DRUSHCMD cache-clear drush &> /dev/null
       rm -f -r $_ROOT/.tmp/cache
       $_DRUSHCMD @hostmaster hosting-task @server_localhost verify --force &> /dev/null
-      msg "$_STATUS B: Running hosting-dispatch (1/3)..."
-      $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
-      mrun "sleep 5"
-      msg "$_STATUS B: Running hosting-dispatch (2/3)..."
-      $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
-      mrun "sleep 5"
-      msg "$_STATUS B: Running hosting-dispatch (3/3)..."
       $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
       msg "$_STATUS B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 complete"
     fi
   fi
   ### Fix for old migrated/merged instances
 
-  msg "$_STATUS B: Running hostmaster-migrate, please wait..."
+  msg "$_STATUS B: Hostmaster STATUS: Running hostmaster-migrate, please wait..."
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y -d
   else
