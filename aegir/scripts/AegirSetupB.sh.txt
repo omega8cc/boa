@@ -557,6 +557,36 @@ else
   rm -f -r $_ROOT/.tmp/cache
   $_DRUSHCMD @hostmaster sqlq "DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'" &> /dev/null
   $_DRUSHCMD @hostmaster sqlq "DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'" &> /dev/null
+
+  ### Fix for migrated/merged instances
+  if [ -e "$_ROOT/log/imported.pid" ] || [ -e "$_ROOT/log/exported.pid" ] ; then
+    if [ ! -e "$_ROOT/log/post-merge-fix.pid" ] ; then
+      msg "$_STATUS B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 start"
+      _AEGIR_HOST=`uname -n`
+      $_DRUSHCMD @hostmaster sqlq "REPLACE INTO hosting_context (nid, name) VALUES ('4', 'server_localhost'), ('2', 'server_master')" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "REPLACE INTO hosting_package (vid, nid, package_type, short_name, old_short_name, description) VALUES ('6', '6', 'platform', 'drupal', '', '')" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "REPLACE INTO node_revisions (nid, vid, uid, title, body, teaser, log, timestamp, format) VALUES ('6', '6', '1', 'drupal', '', '', '', '1412168340', '0')" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "REPLACE INTO node (nid, vid, type, language, title, uid, status, created, changed, comment, promote, moderate, sticky, tnid, translate) VALUES ('6', '6', 'package', '', 'drupal', '1', '1', '1412168321', '1412168340', '0', '0', '0', '0', '0', '0')" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "DELETE FROM hosting_package WHERE nid='2' AND short_name='drupal'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "DELETE FROM hosting_package WHERE nid='4' AND short_name='drupal'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "DELETE FROM node WHERE nid='8' AND type='site'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "DELETE FROM node_revisions WHERE nid='8'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE node SET type='server' WHERE nid='2'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE node SET type='server' WHERE nid='4'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE node SET title='$_AEGIR_HOST' WHERE nid='2'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE node SET title='localhost' WHERE nid='4'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET type='server' WHERE nid='2'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET type='server' WHERE nid='4'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET title='$_AEGIR_HOST' WHERE nid='2'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET title='localhost' WHERE nid='4'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET db_server='4' WHERE db_server='2'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE users_roles SET rid='7' WHERE rid='5'" &> /dev/null
+      msg "$_STATUS B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 complete"
+    fi
+  fi
+  ### Fix for old migrated/merged instances
+
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y -d
   else
@@ -571,6 +601,23 @@ else
   rm -f /data/u/$_DOMAIN
   ln -sf $_HOSTMASTER_ROOT /data/u/$_DOMAIN
   rm -rf $_HOSTMASTER_ROOT/profiles/{default,standard,minimal,testing}
+
+  ### Fix for migrated/merged instances
+  if [ -e "$_ROOT/log/imported.pid" ] || [ -e "$_ROOT/log/exported.pid" ] ; then
+    if [ ! -e "$_ROOT/log/post-merge-fix.pid" ] ; then
+      msg "$_STATUS B: Hostmaster STATUS: Fix for migrated/merged instance 2/2 start"
+      $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE users_roles SET rid='7' WHERE rid='5'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='7'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='9'" &> /dev/null
+      echo FIXED > $_ROOT/log/post-merge-fix.pid
+      msg "$_STATUS B: Hostmaster STATUS: Fix for migrated/merged instance 2/2 complete"
+    fi
+    $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='7'" &> /dev/null
+    $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='9'" &> /dev/null
+  fi
+  ### Fix for migrated/merged instances
+
   msg "$_STATUS B: Hostmaster STATUS: upgrade completed"
 fi
 
