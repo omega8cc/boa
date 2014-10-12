@@ -5721,7 +5721,6 @@ if [ `whoami` = "root" ] ; then
   _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
   if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
     _VMFAMILY="AWS"
-    _THIS_DB_HOST=localhost
   fi
   _VM_TEST=`uname -a 2>&1`
   if [[ "$_VM_TEST" =~ beng ]] ; then
@@ -5816,7 +5815,6 @@ else
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=NO
-    _THIS_DB_HOST=localhost
     _SMTP_RELAY_TEST=NO
     _LOCAL_NETWORK_IP="127.0.1.1"
     _LOCAL_NETWORK_HN="aegir.local"
@@ -5829,7 +5827,6 @@ else
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=YES
-    _THIS_DB_HOST=localhost
     _SMTP_RELAY_TEST=YES
     _MY_HOSTN="$_EASY_HOSTNAME"
     _MY_FRONT="master.$_EASY_HOSTNAME"
@@ -5898,13 +5895,11 @@ _THIS_RV=`lsb_release -sc`
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
   if [ "$_THIS_RV" = "trusty" ] ; then
     _REL_VERSION="trusty"
-    _THIS_DB_HOST=localhost
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
     _MARIADB_VERSION="$_MARIADB_10_VERSION"
   elif [ "$_THIS_RV" = "precise" ] ; then
     _REL_VERSION="precise"
-    _THIS_DB_HOST=localhost
   elif [ "$_THIS_RV" = "lucid" ] ; then
     _REL_VERSION="lucid"
   else
