@@ -42,19 +42,6 @@ This new BOA Edition introduces many new features, changes and fixes.
 * DB credentials are no longer in settings.php, only in drushrc.php
 * Latest Drush 6 version is used in the Aegir backend by default
 
-@=> Important details on CiviCRM versions compatibility and profiles
-
-* All BOA-2.3.x Editions fully support latest CiviCRM 4.5.0 for Drupal 7.
-* CiviCRM for Drupal 6 is not supported because of known CiviCRM issues.
-* CiviCRM for Drupal 7 works great when added in sites/all/modules
-* CiviCRM for Drupal 7 also works when added in profiles/foo/modules
-  but no CiviCRM cron is currently managed until this known issue
-  is fixed, therefore BOA-2.3.3 will check all platforms on the Octopus
-  instance and if it will detect any with CiviCRM added in the
-  installation profile directory tree, it will refuse to upgrade such
-  instance to not break things for those using currently not fully
-  supported CiviCRM codebase structure.
-
 You can find all details on how to use new features, along with all
 other changes explained in the release notes and changelog available at:
 
@@ -68,72 +55,6 @@ and improvements we have made over the last few years, no matter when
 you have started using Aegir powered by BOA:
 
   https://omega8.cc/updates
-
-----------------------------------------
-#1 RESOURCES UPGRADE
-----------------------------------------
-
-Did you know that even single Aegir hosted Engine has built-in CPU
-power scalability which would cost you $640/month on Linode or
-DigitalOcean?
-
-Popular Edge Engines now have 50% more disk space for files in all
-hosted Aegir instances with active subscriptions. Older Classic/Mini
-and Power Engines are not eligible for this particular upgrade.
-
-  https://omega8.cc/edge
-
-Plus, now all hosted Aegir Edge and Power instances can auto-scale
-on demand, up to 48 PHP-FPM workers per Aegir Octopus Satellite
-Instance, free of charge.
-
-Did you know that even single Aegir hosted Engine has built-in
-RAM scalability which would cost you $320/month on Linode or
-DigitalOcean?
-
-----------------------------------------
-#2 BACKUPS ROTATION
-----------------------------------------
-
-We encourage you to review our backups rotation policy. It is the same
-for years but in case you are not aware it even exists, it is a good
-idea to learn how the available disk space for files should be used:
-
-  https://omega8.cc/backups#policy
-
-----------------------------------------
-#3 NEW DATACENTERS
-----------------------------------------
-
-In June 2014 we have added Chicago (Illinois), to our ever growing
-list of available 7 datacenters locations, with Tokyo (Japan) and
-Ashburn (Virginia) following later this year. There will be also
-next generation locations added in San Jose (California) and
-Amsterdam (The Netherlands).
-
-----------------------------------------
-#4 AEGIR EXPEDITION
-----------------------------------------
-
-New Aegir Expedition option will be introduced once the first new
-locations are available. It will allow you to request per-site
-migrations between all our new locations, so you will be able to
-easily and gracefully relocate some or all of sites hosted to provide
-even better experience and faster access to your sites target audience,
-with per-site precision, and without the need to multiply your
-subscriptions. This should open entirely new world of unique
-opportunities, cost-savings and efficiency, and any existing instance
-will be able to receive upgrade to Aegir Expedition, very easily.
-
-BTW: Did you know that even single Aegir Expedition Engine will have
-built-in RAM scalability 2x bigger than even the biggest options
-available at Linode and DigitalOcean, where it would cost you
-astonishing $1280/month or more?
-
-We are very excited to be able to introduce new options and services,
-thanks to innovations possible in all five new datacenters worldwide.
-
-Stay tuned for more news!
 
 
 Questions? Comments? Please contact us:
