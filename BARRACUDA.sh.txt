@@ -5120,12 +5120,12 @@ install_curl_src () {
   else
     ###--------------------###
     if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
-      if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
-        apt-mark unhold curl &> /dev/null
-      fi
       if [ "$_CURL_INSTALLED" = "$_CURL_LIB_INSTALLED" ] ; then
         _DO_NOTHING=YES
       else
+        if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
+          apt-mark unhold curl &> /dev/null
+        fi
         if [[ "$_CURL_GET_DPKG" =~ "hold" ]]; then
           echo "curl install" | dpkg --set-selections &> /dev/null
           apt-get install curl -y --force-yes --reinstall &> /dev/null
