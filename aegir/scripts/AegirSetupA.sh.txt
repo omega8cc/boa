@@ -132,6 +132,9 @@ _ROOT="/data/disk/$_USER"
 _HOSTMASTER_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
 _DISTRO_ROOT="$_ROOT/distro/$_DISTRO"
 #
+if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+  _THIS_DB_HOST=`uname -n`
+fi
 if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
   _L_PHP_CLI=/opt/php55/bin
 elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then

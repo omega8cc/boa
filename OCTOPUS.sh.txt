@@ -2096,9 +2096,6 @@ _RAW_CLIENT_EMAIL="$_CLIENT_EMAIL"
 _CLIENT_EMAIL=${_CLIENT_EMAIL//\@/\\\@}
 
 ###--------------------###
-if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-  _THIS_DB_HOST=`uname -n`
-fi
 if [ -f "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] ; then
   _PURGE_MODE=ON
 else
