@@ -5669,7 +5669,7 @@ finale () {
   fi
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     sed -i "s/.*runner.sh.*//gi" /var/spool/cron/crontabs/root &> /dev/null
-    echo -e "*/3 * * * * bash /var/xdrago/runner.sh >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
+    echo -e "*/2 * * * * bash /var/xdrago/runner.sh >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
     sed -i "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
     chown root:crontab /var/spool/cron/crontabs/root
     chmod 600 /var/spool/cron/crontabs/root
