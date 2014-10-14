@@ -4,7 +4,15 @@ Your Aegir Hosting System has been upgraded to version BOA-2.3.3
 
   https://aegir.dragon.ny.host8.biz
 
-This new BOA Edition introduces many new features, changes and fixes.
+This new BOA release introduces important updates and fixes:
+
+* All Drupal 7 platforms received Drupal core security upgrade
+
+You can find all details in the release notes and changelog:
+
+  https://omega8.cc/boa-234-full-edition-340  ------- October 15
+
+Note that BOA 2.3 Edition introduced many new features and changes.
 
 @=> Key new features:
 
