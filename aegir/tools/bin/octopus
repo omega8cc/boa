@@ -569,16 +569,6 @@ up_vanilla ()
   up_finish
 }
 
-download_wrapper ()
-{
-  if [ ! -e "$_THIS_FILE" ] ; then
-    echo "I can not connect to files.aegir.cc at the moment"
-    echo "I will try again in 15 seconds, please wait..."
-    sleep 15
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
-  fi
-}
-
 check_wrapper ()
 {
   mkdir -p /var/backups
@@ -586,18 +576,9 @@ check_wrapper ()
   _THIS_FILE="/var/backups/$(basename "$0")-now-$_NOW"
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
   if [ ! -e "$_THIS_FILE" ] ; then
-    download_wrapper
-    if [ ! -e "$_THIS_FILE" ] ; then
-      download_wrapper
-      if [ ! -e "$_THIS_FILE" ] ; then
-        download_wrapper
-        if [ ! -e "$_THIS_FILE" ] ; then
-          echo "Sorry, I gave up."
-          echo "Please check http://stats.pingdom.com/x0s6yrbopal6/801243 and try again later."
-          clean_pid_exit
-        fi
-      fi
-    fi
+    echo "I can not download required installers from files.aegir.cc at the moment."
+    echo "Please check http://stats.pingdom.com/x0s6yrbopal6/646562 and try again later."
+    clean_pid_exit
   fi
   _BIN_FILE="/usr/local/bin/$(basename "$0")"
   _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE)
