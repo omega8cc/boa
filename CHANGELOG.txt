@@ -92,7 +92,7 @@
   * Workaround for Drupal flood using 127.0.0.1 for all requests behind proxy.
 
 
-### Stable BOA-2.3.4 Release - Full Edition
+### Stable BOA-2.3.3 Release - Full Edition
 ### Date: Sat Sep 27 01:25:46 PDT 2014
 ### Includes Aegir 2.1 with improvements
 
@@ -109,7 +109,7 @@
   * CiviCRM support for Drupal 7 works great when added in sites/all/modules
   * CiviCRM support for Drupal 7 also works when added in profiles/foo/modules
     but no CiviCRM cron is currently managed until this known issue is fixed,
-    therefore BOA-2.3.4 will check all platforms on the Octopus instance and if
+    therefore BOA-2.3.3 will check all platforms on the Octopus instance and if
     it will detect any with CiviCRM added in the installation profile directory
     tree, it will refuse to upgrade such instance to not break things for those
     using currently not fully supported CiviCRM codebase structure.
@@ -138,7 +138,7 @@
   * Restart SSH hourly.
   * The INI variable redis_flush_forced_mode is now disabled by default.
   * Use aegir_custom_settings-6.x-3.12
-  * Use Provision CiviCRM boa-2.3.4-dev
+  * Use Provision CiviCRM boa-2.3.3-dev
 
 # System upgrades in this release:
 
@@ -201,7 +201,7 @@
 ### Date: Thu Sep 18 15:16:33 PDT 2014
 ### Includes Aegir 2.1 with improvements
 
-  Release Notes and changelog for BOA-2.3.2 has been merged into BOA-2.3.4
+  Release Notes and changelog for BOA-2.3.2 has been merged into BOA-2.3.3
   above after several hotfixes and various updates have been added shortly
   after 2.3.2 release to address all identified post-release issues.
 
