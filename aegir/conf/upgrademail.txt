@@ -1,6 +1,6 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version BOA-2.3.4
+Your Aegir Hosting System has been upgraded to version BOA-2.3.5
 
   https://aegir.dragon.ny.host8.biz
 
@@ -23,13 +23,13 @@ Please make sure to read and follow the safe upgrade workflow:
 
 You can find all details in the BOA release notes and changelog:
 
-  https://omega8.cc/boa-234-full-edition-340  ------- October 15
+  https://omega8.cc/boa-235-full-edition-341  ------- October 15
 
 Note that BOA 2.3 Edition introduced many new features and changes.
 
 @=> Key new features:
 
-* BOA-2.3.4 comes with new, shiny Aegir 2.1 stable version!
+* BOA-2.3.5 comes with new, shiny Aegir 2.1 stable version!
 * Support for Drupal sites in subdirectories is enabled by default
 * Solr 4 cores can be added/updated/deleted via site level INI settings
 * Super-easy to use New Relic support with per Octopus license key
