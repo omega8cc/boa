@@ -2375,7 +2375,7 @@ force_advanced_nginx_config () {
   _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] &&[ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
     _ALLOW_NGINX_FORWARD_SECRECY=YES
-    _SSL_PROTOCOLS="SSLv3 TLSv1 TLSv1.1 TLSv1.2;"
+    _SSL_PROTOCOLS="TLSv1 TLSv1.1 TLSv1.2;"
     _SSL_CIPHERS="EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH+aRSA+RC4:EECDH:EDH+aRSA:RC4:\!aNULL:\!eNULL:\!LOW:\!3DES:\!MD5:\!EXP:\!PSK:\!SRP:\!DSS:+RC4:RC4;"
   else
     _ALLOW_NGINX_FORWARD_SECRECY=NO
@@ -9293,7 +9293,8 @@ else
     sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
     sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/chive.*    &> /dev/null
     sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
-    sed -i "s/SSLv3 TLSv1;/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+    sed -i "s/SSLv3 TLSv1;/TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+    sed -i "s/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
     sed -i "s/HIGH:\!ADH:\!MD5;/RC4:HIGH:\!aNULL:\!MD5;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
     sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                           &> /dev/null
     sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/vhost.d/*                              &> /dev/null
@@ -9320,7 +9321,7 @@ else
   _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] &&[ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
     _ALLOW_NGINX_FORWARD_SECRECY=YES
-    _SSL_PROTOCOLS="SSLv3 TLSv1 TLSv1.1 TLSv1.2;"
+    _SSL_PROTOCOLS="TLSv1 TLSv1.1 TLSv1.2;"
     _SSL_CIPHERS="EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH+aRSA+RC4:EECDH:EDH+aRSA:RC4:\!aNULL:\!eNULL:\!LOW:\!3DES:\!MD5:\!EXP:\!PSK:\!SRP:\!DSS:+RC4:RC4;"
   else
     _ALLOW_NGINX_FORWARD_SECRECY=NO
