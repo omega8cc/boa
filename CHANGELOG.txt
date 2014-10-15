@@ -2,6 +2,7 @@
 ### Stable BOA-2.3.4 Release - Full Edition
 ### Date: Wed Oct 15 09:51:08 PDT 2014
 ### Includes Aegir 2.1 with improvements
+### Latest hotfix added on: Wed Oct 15 13:15:34 PDT 2014
 
 # Release Notes:
 
@@ -28,7 +29,9 @@
 
   Commerce 1.30 ---------------- https://drupal.org/project/commerce_kickstart
   Commerce 2.18 ---------------- https://drupal.org/project/commerce_kickstart
-  OpenPublic 1.1 --------------- https://drupal.org/project/openpublic
+  Guardr 1.14 ------------------ https://drupal.org/project/guardr
+  OpenPublic 1.2 --------------- https://drupal.org/project/openpublic
+  Panopoly 1.12 ---------------- https://drupal.org/project/panopoly
 
 # New features and enhancements in this release:
 
