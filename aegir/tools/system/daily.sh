@@ -376,7 +376,7 @@ write_solr_config () {
 update_solr () {
   # $1 is module
   # $2 is solr core path
-  if [ ! -z $1 ] && [ ! -e "$2/conf/BOA-2.3.3.conf" ] && [ -e "/var/xdrago/conf/solr" ] && [ -e "$2/conf" ] ; then
+  if [ ! -z $1 ] && [ ! -e "$2/conf/BOA-2.3.4.conf" ] && [ -e "/var/xdrago/conf/solr" ] && [ -e "$2/conf" ] ; then
     if [ "$1" = "apachesolr" ] ; then
       if [ -e "$Plr/modules/o_contrib_seven" ] ; then
         cp -af /var/xdrago/conf/solr/apachesolr/7/schema.xml $2/conf/
@@ -398,7 +398,7 @@ update_solr () {
     if [ -e "$2/conf/update-ok.txt" ] ; then
       write_solr_config $1 ${Dir}/solr.php
       echo "Updated Solr with $1 for $2"
-      touch $2/conf/BOA-2.3.3.conf
+      touch $2/conf/BOA-2.3.4.conf
       if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] ; then
         kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
         service jetty9 start &> /dev/null
@@ -523,7 +523,7 @@ setup_solr () {
     fi
     _SOLR_UPDATE_CONFIG_TEST=$(grep "^solr_update_config = YES" $_DIR_CTRL_FILE)
     if [[ "$_SOLR_UPDATE_CONFIG_TEST" =~ "solr_update_config = YES" ]] ; then
-      if [ "$_SOLR_CUSTOM_CONFIG_RESULT" = "YES" ] || [ -e "${_SOLR_DIR}/conf/BOA-2.3.3.conf" ] ; then
+      if [ "$_SOLR_CUSTOM_CONFIG_RESULT" = "YES" ] || [ -e "${_SOLR_DIR}/conf/BOA-2.3.4.conf" ] ; then
         _DO_NOTHING=YES
       else
         update_solr ${_SOLR_MODULE} ${_SOLR_DIR}
@@ -1294,7 +1294,7 @@ add_note_platform_ini () {
     echo ";;" >> $_CTRL_FILE
     echo ";;  Please review complete documentation included in this file TEMPLATE:"     >> $_CTRL_FILE
     echo ";;  default.boa_platform_control.ini, since this ACTIVE INI file"             >> $_CTRL_FILE
-    echo ";;  may not include all options available after upgrade to BOA-2.3.3"         >> $_CTRL_FILE
+    echo ";;  may not include all options available after upgrade to BOA-2.3.4"         >> $_CTRL_FILE
     echo ";;" >> $_CTRL_FILE
     echo ";;  Note that it takes ~60 seconds to see any modification results in action" >> $_CTRL_FILE
     echo ";;  due to opcode caching enabled in PHP-FPM for all non-dev sites."          >> $_CTRL_FILE
@@ -1311,7 +1311,7 @@ add_note_site_ini () {
     echo ";;" >> $_CTRL_FILE
     echo ";;  Please review complete documentation included in this file TEMPLATE:"     >> $_CTRL_FILE
     echo ";;  default.boa_site_control.ini, since this ACTIVE INI file"                 >> $_CTRL_FILE
-    echo ";;  may not include all options available after upgrade to BOA-2.3.3"         >> $_CTRL_FILE
+    echo ";;  may not include all options available after upgrade to BOA-2.3.4"         >> $_CTRL_FILE
     echo ";;" >> $_CTRL_FILE
     echo ";;  Note that it takes ~60 seconds to see any modification results in action" >> $_CTRL_FILE
     echo ";;  due to opcode caching enabled in PHP-FPM for all non-dev sites."          >> $_CTRL_FILE
@@ -1801,10 +1801,10 @@ else
     _MODULES_FIX=YES
   fi
   find /data/all/ -type f -name "*.info" -print0 | xargs -0 sed -i 's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
-  if [ ! -e "/data/all/permissions-fix-post-up-BOA-2.3.3.info" ] ; then
+  if [ ! -e "/data/all/permissions-fix-post-up-BOA-2.3.4.info" ] ; then
     find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} -type d -exec chmod 02775 {} \; &> /dev/null
     find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} -type f -exec chmod 0664 {} \; &> /dev/null
-    echo fixed > /data/all/permissions-fix-post-up-BOA-2.3.3.info
+    echo fixed > /data/all/permissions-fix-post-up-BOA-2.3.4.info
   fi
   action >/var/xdrago/log/daily/daily-$_NOW.log 2>&1
   if [ "$_PERMISSIONS_FIX" = "YES" ] ; then
@@ -1884,11 +1884,11 @@ if [ "$_PERMISSIONS_FIX" = "YES" ] && [ ! -z "$_INSTALLER_VERSION" ] && [ -e "/o
   chown -R root:users /data/all/000/core/*/sites
   echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-fixed-dz.info
 fi
-if [ ! -e "/var/backups/fix-sites-all-permsissions-2.3.3.txt" ] ; then
+if [ ! -e "/var/backups/fix-sites-all-permsissions-2.3.4.txt" ] ; then
   chmod 0751  /data/disk/*/distro/*/*/sites
   chmod 0751  /data/disk/*/distro/*/*/sites/all
   chmod 02775 /data/disk/*/distro/*/*/sites/all/{modules,libraries,themes}
-  echo FIXED > /var/backups/fix-sites-all-permsissions-2.3.3.txt
+  echo FIXED > /var/backups/fix-sites-all-permsissions-2.3.4.txt
   echo "Permissions in sites/all tree just fixed"
 fi
 if [ ! -e "/root/.upstart.cnf" ] ; then
