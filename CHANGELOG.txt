@@ -1,8 +1,7 @@
 
-### Stable BOA-2.3.4 Release - Full Edition
-### Date: Wed Oct 15 09:51:08 PDT 2014
+### Stable BOA-2.3.5 Release - Full Edition
+### Date: Wed Oct 15 16:28:25 PDT 2014
 ### Includes Aegir 2.1 with improvements
-### Latest hotfix added on: Wed Oct 15 13:15:34 PDT 2014
 
 # Release Notes:
 
@@ -27,9 +26,12 @@
 
 # Updated Octopus platforms:
 
+  aGov 1.5 --------------------- https://drupal.org/project/agov
   Commerce 1.30 ---------------- https://drupal.org/project/commerce_kickstart
   Commerce 2.18 ---------------- https://drupal.org/project/commerce_kickstart
   Guardr 1.14 ------------------ https://drupal.org/project/guardr
+  Open Atrium 2.22 ------------- https://drupal.org/project/openatrium
+  Open Outreach 1.12 ----------- https://drupal.org/project/openoutreach
   OpenPublic 1.2 --------------- https://drupal.org/project/openpublic
   Panopoly 1.12 ---------------- https://drupal.org/project/panopoly
 
@@ -41,6 +43,7 @@
 
 # Changes in this release:
 
+  * Security: Remove support for SSLv3 due to POODLE vulnerability.
   * Disable Redis in Hostmaster until we will fix the Views based pages/blocks.
   * Disable site_readonly for non-dev sites by default.
   * Drush: Upgrade command line version 6 to mini-6-04-10-2014
@@ -55,6 +58,7 @@
   * MariaDB 5.5.40
   * Nginx 1.7.6
   * PHPRedis: master-03-10-2014
+  * OpenSSL 1.0.1j (if installed from sources) - security upgrade.
 
 # Fixes in this release:
 
@@ -62,6 +66,7 @@
   * Add cleanup for ghost/broken sites dirs leftovers.
   * Add missing cleanup for backup_migrate leftovers.
   * Always cleanup pid files on exit/abort.
+  * Apply patch for SA-CORE-2014-005 in all shared D7 cores/built-in platforms.
   * Compass Tools: Install 1.9.3 ffi expected by older themes.
   * Fix db_port entry in all vhosts hourly.
   * Fix for broken erpal-7.x-2.0-7.31.1
@@ -93,6 +98,15 @@
   * Remove legacy replacement to avoid converting symlinked includes into files.
   * SQL: Use correct defaults if MySQLTuner test failed.
   * Workaround for Drupal flood using 127.0.0.1 for all requests behind proxy.
+
+
+### Stable BOA-2.3.4 Release - Full Edition
+### Date: Wed Oct 15 09:51:08 PDT 2014
+### Includes Aegir 2.1 with improvements
+
+  Release Notes and changelog for BOA-2.3.4 has been merged into BOA-2.3.5
+  above after security upgrades related to OpenSSL and SSLv3 have been added
+  shortly after 2.3.4 release.
 
 
 ### Stable BOA-2.3.3 Release - Full Edition
