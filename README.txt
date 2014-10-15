@@ -173,7 +173,7 @@ Octopus can install the platforms listed below:
  Commons 3.17 ----------------- https://drupal.org/project/commons
  Drupal 7.32.1 ---------------- https://drupal.org/drupal-7.32
  ERPAL 2.0 -------------------- https://drupal.org/project/erpal
- Guardr 1.13 ------------------ https://drupal.org/project/guardr
+ Guardr 1.14 ------------------ https://drupal.org/project/guardr
  Open Academy 1.1 ------------- https://drupal.org/project/openacademy
  Open Atrium 2.21 ------------- https://drupal.org/project/openatrium
  Open Deals 1.33 -------------- https://drupal.org/project/opendeals
@@ -181,9 +181,9 @@ Octopus can install the platforms listed below:
  OpenBlog 1.0-v3 -------------- https://drupal.org/project/openblog
  OpenChurch 1.14 -------------- https://drupal.org/project/openchurch
  OpenChurch 2.0-b1 ------------ https://drupal.org/project/openchurch
- OpenPublic 1.1 --------------- https://drupal.org/project/openpublic
+ OpenPublic 1.2 --------------- https://drupal.org/project/openpublic
  OpenScholar 3.15.1 ----------- http://theopenscholar.org
- Panopoly 1.11 ---------------- https://drupal.org/project/panopoly
+ Panopoly 1.12 ---------------- https://drupal.org/project/panopoly
  Recruiter 1.2 ---------------- https://drupal.org/project/recruiter
  Restaurant 1.0-b9 ------------ https://drupal.org/project/restaurant
  Spark 1.0-b1 ----------------- https://drupal.org/project/spark
