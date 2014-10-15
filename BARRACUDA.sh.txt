@@ -1045,7 +1045,7 @@ _SPEED_VALID_MAX=3600
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.4-dev
+_INSTALLER_VERSION=BOA-2.3.5-dev
 _BRANCH_BOA=master
 _BRANCH_PROVISION=2.3.x-dev
 
