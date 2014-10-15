@@ -224,6 +224,12 @@ up_one ()
     fi
     if [ "$cmmand" = "up-test" ] ; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=test/g"      /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    elif [ "$cmmand" = "up-head" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"    /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    elif [ "$cmmand" = "up-stable" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    else
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     fi
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER

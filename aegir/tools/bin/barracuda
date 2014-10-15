@@ -190,6 +190,12 @@ up_action ()
     fi
     if [ "$cmmand" = "up-test" ] ; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=test/g"                  /var/backups/BARRACUDA.sh.txt
+    elif [ "$cmmand" = "up-head" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"                /var/backups/BARRACUDA.sh.txt
+    elif [ "$cmmand" = "up-stable" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"             /var/backups/BARRACUDA.sh.txt
+    else
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"             /var/backups/BARRACUDA.sh.txt
     fi
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                       /var/backups/BARRACUDA.sh.txt
     sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"           /var/backups/BARRACUDA.sh.txt
