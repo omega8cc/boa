@@ -167,7 +167,7 @@ Octopus can install the platforms listed below:
 
  @ Drupal 7.32.1
 
- aGov 1.4 --------------------- https://drupal.org/project/agov
+ aGov 1.5 --------------------- https://drupal.org/project/agov
  Commerce 1.30 ---------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.18 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.17 ----------------- https://drupal.org/project/commons
@@ -175,9 +175,9 @@ Octopus can install the platforms listed below:
  ERPAL 2.0 -------------------- https://drupal.org/project/erpal
  Guardr 1.14 ------------------ https://drupal.org/project/guardr
  Open Academy 1.1 ------------- https://drupal.org/project/openacademy
- Open Atrium 2.21 ------------- https://drupal.org/project/openatrium
+ Open Atrium 2.22 ------------- https://drupal.org/project/openatrium
  Open Deals 1.33 -------------- https://drupal.org/project/opendeals
- Open Outreach 1.11 ----------- https://drupal.org/project/openoutreach
+ Open Outreach 1.12 ----------- https://drupal.org/project/openoutreach
  OpenBlog 1.0-v3 -------------- https://drupal.org/project/openblog
  OpenChurch 1.14 -------------- https://drupal.org/project/openchurch
  OpenChurch 2.0-b1 ------------ https://drupal.org/project/openchurch

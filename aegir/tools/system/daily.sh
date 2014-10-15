@@ -3,7 +3,7 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _WEBG=www-data
-_OPENSSL_VERSION=1.0.1i
+_OPENSSL_VERSION=1.0.1j
 
 ###-------------SYSTEM-----------------###
 
@@ -1476,7 +1476,11 @@ check_old_empty_platforms () {
       if [ "$_DEL_OLD_EMPTY_PLATFORMS" -gt "0" ] && [ ! -z "$_DEL_OLD_EMPTY_PLATFORMS" ] ; then
         _DO_NOTHING=YES
       else
-        _DEL_OLD_EMPTY_PLATFORMS="30"
+        if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+          _DEL_OLD_EMPTY_PLATFORMS="1"
+        else
+          _DEL_OLD_EMPTY_PLATFORMS="30"
+        fi
       fi
     fi
   fi
