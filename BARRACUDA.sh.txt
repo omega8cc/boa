@@ -5558,10 +5558,17 @@ fix_broken_platforms () {
   fi
   # https://www.drupal.org/SA-CORE-2014-005
   if [ ! -e "/var/xdrago/log/SA-CORE-2014-005-fixed-d7.log" ] ; then
-    for Core in `find /data/all/000/core/drupal-7* -maxdepth 0 -mindepth 0 | sort`; do
-      cd $Core
-      patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/7-core/SA-CORE-2014-005-D7.patch &> /dev/null
-    done
+    if [ -d "/data/all/000/core" ] ; then
+      for Core in `find /data/all/000/core/drupal-7* -maxdepth 0 -mindepth 0 | sort`; do
+        cd $Core
+        patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/7-core/SA-CORE-2014-005-D7.patch &> /dev/null
+      done
+    elif [ -d "/data/disk/all/000/core" ] ; then
+      for Core in `find /data/disk/all/000/core/drupal-7* -maxdepth 0 -mindepth 0 | sort`; do
+        cd $Core
+        patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/7-core/SA-CORE-2014-005-D7.patch &> /dev/null
+      done
+    fi
     touch /var/xdrago/log/SA-CORE-2014-005-fixed-d7.log
     cd
   fi
