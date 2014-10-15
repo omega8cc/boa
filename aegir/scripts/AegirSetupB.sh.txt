@@ -545,8 +545,7 @@ else
     touch /opt/tmp/status-AegirSetupB-FAIL
     exit 1
   fi
-  msg "$_STATUS B: Hostmaster STATUS: upgrade start"
-  msg "$_STATUS B: Running hostmaster-migrate, please wait..."
+  msg "$_STATUS B: Hostmaster STATUS: Upgrade start"
   mv -f $_ROOT/.drush/xts/security_review/security_review.drush.inc $_ROOT/.drush/xts/security_review/foo.txt  &> /dev/null
   export DEBIAN_FRONTEND=noninteractive
   if [ -z "${TERM+x}" ]; then
@@ -580,13 +579,22 @@ else
       $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET title='$_AEGIR_HOST' WHERE nid='2'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET title='localhost' WHERE nid='4'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET db_server='4' WHERE db_server='2'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET web_server='2' WHERE web_server='0'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE users_roles SET rid='7' WHERE rid='5'" &> /dev/null
+      $_DRUSHCMD cache-clear drush &> /dev/null
+      rm -f -r $_ROOT/.tmp/cache
+      $_DRUSHCMD @hostmaster hosting-task @server_localhost verify --force &> /dev/null
+      $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
       msg "$_STATUS B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 complete"
     fi
+    $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='7'" &> /dev/null
+    $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='9'" &> /dev/null
+    $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET web_server='2' WHERE web_server='0'" &> /dev/null
   fi
   ### Fix for old migrated/merged instances
 
+  msg "$_STATUS B: Hostmaster STATUS: Running hostmaster-migrate, please wait..."
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y -d
   else
@@ -615,10 +623,11 @@ else
     fi
     $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='7'" &> /dev/null
     $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='9'" &> /dev/null
+    $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET web_server='2' WHERE web_server='0'" &> /dev/null
   fi
   ### Fix for migrated/merged instances
 
-  msg "$_STATUS B: Hostmaster STATUS: upgrade completed"
+  msg "$_STATUS B: Hostmaster STATUS: Upgrade completed"
 fi
 
 

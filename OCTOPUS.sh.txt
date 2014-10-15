@@ -618,7 +618,7 @@ _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
 _REDIS_M_VERSION=mod-12-09-2014
 _SMALLCORE6=6.33.1
-_SMALLCORE7=7.31.1
+_SMALLCORE7=7.32.1
 _SMALLCORE8=8.0-alpha4
 _SPINNER=YES
 _T_BUILD=HEAD
@@ -1438,12 +1438,8 @@ action () {
   _REL_VERSION=`lsb_release -sc`
   _AWS_TEST_A=$(grep cloudimg /etc/fstab)
   _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
-  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
-    _THIS_DB_HOST=localhost
-  fi
   if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
     _VMFAMILY="AWS"
-    _THIS_DB_HOST=localhost
     _LOC_DOM="$_DOMAIN"
     if [ -z "$_MY_OWNIP" ] ; then
       find_correct_ip
@@ -1764,7 +1760,6 @@ if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
   _AEGIR_VERSION=BOA-2.3.3
   _DEBUG_MODE=NO
   _DNS_SETUP_TEST=NO
-  _THIS_DB_HOST=localhost
   _DOMAIN="$_USER.sub.aegir.local"
   _LOCAL_NETWORK_IP="127.0.1.1"
   _MY_OWNIP="$_LOCAL_NETWORK_IP"

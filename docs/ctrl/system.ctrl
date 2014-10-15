@@ -50,8 +50,8 @@ by the BOA install and upgrade tools exclusively.
  @=> /root/.force.sites.verify.cnf
 
   This file, if exists, will result with all sites hosted on all Octopus
-  instances on the same BOA system being re-verified daily. Note it works only
-  if _PERMISSIONS_FIX=YES is set in /root/.barracuda.cnf (default is NO)
+  instances on the same BOA system being re-verified daily. Note that it works
+  only if _PERMISSIONS_FIX=YES is set in /root/.barracuda.cnf (default is NO)
 
  @=> /root/.enable.newrelic.sysmond.cnf
 

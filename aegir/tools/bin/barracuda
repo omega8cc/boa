@@ -230,7 +230,7 @@ up_action ()
           if [[ "$_CHECK_HOST" =~ ".qq.o8.io" ]] ; then
             n=8
           else
-            n=$((RANDOM%800+80))
+            n=$((RANDOM%9+2))
           fi
         else
           n=8
