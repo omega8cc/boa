@@ -3,7 +3,7 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _WEBG=www-data
-_OPENSSL_VERSION=1.0.1i
+_OPENSSL_VERSION=1.0.1j
 
 ###-------------SYSTEM-----------------###
 
