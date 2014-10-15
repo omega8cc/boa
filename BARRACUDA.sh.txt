@@ -5556,6 +5556,15 @@ fix_broken_platforms () {
     touch /var/xdrago/log/commons-fixed-c5.log
     cd
   fi
+  # https://www.drupal.org/SA-CORE-2014-005
+  if [ ! -e "/var/xdrago/log/SA-CORE-2014-005-fixed-d7.log" ] ; then
+    for Core in `find /data/all/000/core/drupal-7* -maxdepth 0 -mindepth 0 | sort`; do
+      cd $Core
+      patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/7-core/SA-CORE-2014-005-D7.patch &> /dev/null
+    done
+    touch /var/xdrago/log/SA-CORE-2014-005-fixed-d7.log
+    cd
+  fi
 }
 # Fix for Postfix configuration.
 fix_cnf_postfix () {
