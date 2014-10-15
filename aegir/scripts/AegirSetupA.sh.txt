@@ -966,48 +966,74 @@ provision_backend_dbpass_generate () {
   _ESC_PASS=""
   _LEN_PASS=0
   if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-    _ESC_PASS=$(randpass 32 esc)
+    if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+      _ESC_PASS=$(randpass 32 esc)
+    else
+      if [ -e "/root/.my.pass.txt" ] ; then
+        _ESC_PASS=`cat /root/.my.pass.txt`
+      else
+        _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+      fi
+    fi
     _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
     _ENC_PASS=$(python -c "import urllib; print urllib.quote('''$_ESC_PASS''')")
     _LEN_PASS=$(echo ${#_ESC_PASS})
   fi
   if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
-    _ESC_PASS=`pwgen -v -s -1`
-    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
-    _ESC_PASS=`sanitize_string "$_ESC_PASS"`
+    if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+      _ESC_PASS=`pwgen -v -s -1`
+      _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
+      _ESC_PASS=`sanitize_string "$_ESC_PASS"`
+    else
+      if [ -e "/root/.my.pass.txt" ] ; then
+        _ESC_PASS=`cat /root/.my.pass.txt`
+      else
+        _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+      fi
+    fi
     _ENC_PASS="$_ESC_PASS"
   fi
   echo "$_ESC_PASS" > $_ROOT/.$_USER.pass.txt
   chown $_USER:$_USRG $_ROOT/.$_USER.pass.txt &> /dev/null
-  _AEGIR_HOST=`uname -n`
-  _RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
-  if [ -z "$_RESOLVEIP" ] ; then
-    msg "$_STATUS A: FATAL ERROR: This server does not have a hostname that resolves to an IP address"
+  _ESC="\`%\`.*"
+  mysqladmin flush-privileges &> /dev/null
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    _USE_AEGIR_HOST=`uname -n`
+    _SQL_CONNECT=localhost
+    _USE_DB_USER="$_USER"
+  else
+    _USE_AEGIR_HOST="$_THIS_DB_HOST"
+    _SQL_CONNECT="$_THIS_DB_HOST"
+    _USE_DB_USER=aegir_root
+  fi
+  _USE_RESOLVEIP=`echo $(getent ahostsv4 $_USE_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
+  if [ -z "$_USE_RESOLVEIP" ] ; then
+    msg "$_STATUS A: FATAL ERROR: DNS looks broken for $_USE_AEGIR_HOST"
     msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
     touch /opt/tmp/status-AegirSetupA-FAIL
     clean_pid_exit
   fi
-_ESC="\`%\`.*"
-mysqladmin flush-privileges &> /dev/null
-if [ "$_STATUS" = "INIT" ] ; then
-  mysql -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '$_USER'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_USER'@'$_RESOLVEIP' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_USER'@'localhost' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    if [ "$_STATUS" = "INIT" ] ; then
+      mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'$_USE_AEGIR_HOST' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'$_USE_RESOLVEIP' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'localhost' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
 EOFMYSQL
-else
-  mysql -uroot mysql<<EOFMYSQL
-DROP USER '$_USER'@'$_AEGIR_HOST';
-DROP USER '$_USER'@'$_RESOLVEIP';
-DROP USER '$_USER'@'localhost';
+    else
+      mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
+DROP USER '$_USE_DB_USER'@'$_USE_AEGIR_HOST';
+DROP USER '$_USE_DB_USER'@'$_USE_RESOLVEIP';
+DROP USER '$_USE_DB_USER'@'localhost';
 EOFMYSQL
-  mysql -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '$_USER'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_USER'@'$_RESOLVEIP' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_USER'@'localhost' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
+      mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'$_USE_AEGIR_HOST' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'$_USE_RESOLVEIP' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'localhost' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
 EOFMYSQL
-fi
-mysqladmin flush-privileges &> /dev/null
+    fi
+  fi
+  mysqladmin flush-privileges &> /dev/null
 }
 #
 # Sync provision backend db_passwd.

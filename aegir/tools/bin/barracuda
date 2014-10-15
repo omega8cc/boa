@@ -188,6 +188,9 @@ up_action ()
     else
       sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
     fi
+    if [ "$cmmand" = "up-test" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=test/g"                  /var/backups/BARRACUDA.sh.txt
+    fi
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                       /var/backups/BARRACUDA.sh.txt
     sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"           /var/backups/BARRACUDA.sh.txt
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
@@ -372,6 +375,14 @@ up_head ()
   up_finish
 }
 
+up_test ()
+{
+  up_start
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/test/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+  up_action
+  up_finish
+}
+
 up_modern ()
 {
   up_start
@@ -519,6 +530,15 @@ case "$1" in
              set_pin_priority
              up_head
   ;;
+  up-test)   cmmand="$1"
+             silent="$2"
+             ifauto="$3"
+             check_root
+             check_dns_curl
+             check_wrapper
+             set_pin_priority
+             up_test
+  ;;
   up-modern) cmmand="$1"
              silent="$2"
              ifauto="$3"
@@ -547,10 +567,10 @@ case "$1" in
              up_vanilla
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {up-stable|up-head|up-modern|up-legacy|up-vanilla} {system|log}"
+             echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log}"
              echo
              echo "  Silent Mode Option: system == OS only upgrade"
-             echo "  Silent Mode Option: log    == OS and Aegir Master Instance upgrade"
+             echo "  Silent Mode Option: log ===== OS and Aegir Master Instance upgrade"
              echo
              clean_pid_exit
   ;;

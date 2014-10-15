@@ -182,11 +182,17 @@ if [ `whoami` = "root" ] ; then
   exit 1
 fi
 
-_AEGIR_HOST=`uname -n`
-_RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
+if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+  _AEGIR_HOST=`uname -n`
+  _SQL_CONNECT=localhost
+else
+  _AEGIR_HOST="$_THIS_DB_HOST"
+  _SQL_CONNECT="$_THIS_DB_HOST"
+fi
 
+_RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
 if [ -z "$_RESOLVEIP" ] ; then
-  msg "FATAL ERROR: This server does not have a hostname that resolves to an IP address"
+  msg "FATAL ERROR: DNS looks broken for server $_AEGIR_HOST"
   msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
   touch /opt/tmp/status-AegirSetupM-FAIL
   exit 1
@@ -198,7 +204,6 @@ _MYSQLTEST=`mysql -h$_AEGIR_HOST_IP  -uINVALIDLOGIN  -pINVALIDPASS 2>&1 >/dev/nu
 
 if [ -z `echo $_MYSQLTEST | grep -q "ERROR \(2003\|1130\)"` ] ; then
   msg  "MySQL is listening on $_AEGIR_HOST_IP."
-  _DO_NOTHING=YES
 else
   msg "FATAL ERROR: MySQL is not configured to listen on $_AEGIR_HOST_IP"
   msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
@@ -213,15 +218,31 @@ _ESC_APASS=""
 _LEN_APASS=0
 
 if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-  _ESC_APASS=$(randpass 32 esc)
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    _ESC_APASS=$(randpass 32 esc)
+  else
+    if [ -e "/root/.my.pass.txt" ] ; then
+      _ESC_APASS=`cat /root/.my.pass.txt`
+    else
+      _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+    fi
+  fi
   _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
   _LEN_APASS=$(echo ${#_ESC_APASS})
 fi
 
 if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 19 ] ; then
-  _ESC_APASS=`pwgen -v -s -1`
-  _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
-  _ESC_APASS=`sanitize_string "$_ESC_APASS"`
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    _ESC_APASS=`pwgen -v -s -1`
+    _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
+    _ESC_APASS=`sanitize_string "$_ESC_APASS"`
+  else
+    if [ -e "/root/.my.pass.txt" ] ; then
+      _ESC_APASS=`cat /root/.my.pass.txt`
+    else
+      _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+    fi
+  fi
 fi
 
 cat <<EOF
@@ -231,11 +252,23 @@ cat <<EOF
 EOF
 
 _ESC="\`%\`.*"
-mysql -uroot mysql<<EOFMYSQL
+mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST_IP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'localhost' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 EOFMYSQL
+
+if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+  _EXTRA_GRANTS=NO
+else
+  _LOCAL_HOST=`uname -n`
+  _LOCAL_IP=`echo $(getent ahostsv4 $_LOCAL_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
+  mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_THIS_DB_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_LOCAL_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_LOCAL_IP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+EOFMYSQL
+fi
 
 msg "INFO: Installing drush in $_ROOT"
 cd $_ROOT

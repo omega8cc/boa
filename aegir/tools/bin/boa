@@ -179,6 +179,15 @@ octopus_install ()
     else
       sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$user
     fi
+
+    if [ "$cmmand" = "in-test" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=test/g" /var/backups/OCTOPUS.sh.$user
+    fi
+
+    if [ "$kind" = "web" ] && [ ! -z "$rkey" ] ; then
+      sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$rkey/g" /var/backups/OCTOPUS.sh.$user
+    fi
+
     bash /var/backups/OCTOPUS.sh.$user
     sed -i "s/^127.0.1.1.*//g" /etc/hosts
     sed -i "/^$/d" /etc/hosts
@@ -196,14 +205,32 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
   if [ "$kind" = "local" ] ; then
     sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=YES/g"   /var/backups/BARRACUDA.sh.txt
     sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"          /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_DB_HEAD=.*/_EASY_DB_HEAD=NO/g"        /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_WEB_HEAD=.*/_EASY_WEB_HEAD=NO/g"      /var/backups/BARRACUDA.sh.txt
     sed -i "s/^127.0.1.1.*//g" /etc/hosts
     echo "127.0.1.1 aegir.local o1.sub.aegir.local o2.sub.aegir.local o3.sub.aegir.local" >> /etc/hosts
-  elif [ "$kind" = "public" ] ; then
+  elif [ "$kind" = "public" ] && [ ! -z "$fqdn" ] ; then
     sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"    /var/backups/BARRACUDA.sh.txt
     sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"         /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_DB_HEAD=.*/_EASY_DB_HEAD=NO/g"        /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_WEB_HEAD=.*/_EASY_WEB_HEAD=NO/g"      /var/backups/BARRACUDA.sh.txt
     sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
+  elif [ "$kind" = "db" ] && [ ! -z "$fqdn" ] ; then
+    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"    /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"          /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_DB_HEAD=.*/_EASY_DB_HEAD=$fqdn/g"     /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_WEB_HEAD=.*/_EASY_WEB_HEAD=NO/g"      /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$fqdn/g"     /var/backups/BARRACUDA.sh.txt
+  elif [ "$kind" = "web" ] && [ ! -z "$fqdn" ] && [ ! -z "$rkey" ] ; then
+    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"    /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"          /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_DB_HEAD=.*/_EASY_DB_HEAD=NO/g"        /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_WEB_HEAD=.*/_EASY_WEB_HEAD=YES/g"     /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$rkey/g"     /var/backups/BARRACUDA.sh.txt
   fi
-  if [ ! -z "$rkey" ] ; then
+  if [ ! -z "$rkey" ] && [ "$kind" != "web" ] ; then
     sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g" /var/backups/BARRACUDA.sh.txt
   fi
   if [ "$cmmand" = "in-vanilla" ] ; then
@@ -212,6 +239,9 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
     sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
   else
     sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
+  fi
+  if [ "$cmmand" = "in-test" ] ; then
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=test/g" /var/backups/BARRACUDA.sh.txt
   fi
   if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
     bash /var/backups/BARRACUDA.sh.txt
@@ -297,8 +327,8 @@ init_setup ()
     mode="$email"
     email="$fqdn"
   fi
-  if [ "$kind" = "public" ] ; then
-    if [ "$user" = "ask" ] || [ "$user" = "mini" ] || [ "$user" = "max" ] ; then
+  if [ "$kind" = "public" ] || [ "$kind" = "web" ] ; then
+    if [ "$user" = "ask" ] || [ "$user" = "mini" ] || [ "$user" = "max" ] || [ "$user" = "none" ] ; then
       rkey="$mode"
       mode="$user"
       user="o1"
@@ -310,6 +340,9 @@ init_setup ()
   if [ "$cmmand" = "in-head" ] ; then
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  elif [ "$cmmand" = "in-test" ] ; then
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/test/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/test/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
   elif [ "$cmmand" = "in-stable" ] ; then
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
@@ -328,18 +361,10 @@ init_setup ()
   else
     barracuda_install
   fi
-  octopus_install
-  init_finish
-}
-
-download_wrapper ()
-{
-  if [ ! -e "$_THIS_FILE" ] ; then
-    echo "I can not connect to files.aegir.cc at the moment"
-    echo "I will try again in 15 seconds, please wait..."
-    sleep 15
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
+  if [ "$kind" != "db" ] ; then
+    octopus_install
   fi
+  init_finish
 }
 
 check_wrapper ()
@@ -349,18 +374,9 @@ check_wrapper ()
   _THIS_FILE="/var/backups/$(basename "$0")-now-$_NOW"
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
   if [ ! -e "$_THIS_FILE" ] ; then
-    download_wrapper
-    if [ ! -e "$_THIS_FILE" ] ; then
-      download_wrapper
-      if [ ! -e "$_THIS_FILE" ] ; then
-        download_wrapper
-        if [ ! -e "$_THIS_FILE" ] ; then
-          echo "Sorry, I gave up."
-          echo "Please check http://stats.pingdom.com/x0s6yrbopal6/801243 and try again later."
-          clean_pid_exit
-        fi
-      fi
-    fi
+    echo "I can not download required installers from files.aegir.cc at the moment."
+    echo "Please check http://stats.pingdom.com/x0s6yrbopal6/646562 and try again later."
+    clean_pid_exit
   fi
   _BIN_FILE="/usr/local/bin/$(basename "$0")"
   _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE)
@@ -466,6 +482,18 @@ case "$1" in
              check_wrapper
              init_setup
   ;;
+  in-test)   cmmand="$1"
+             kind="$2"
+             fqdn="$3"
+             email="$4"
+             user="$5"
+             mode="$6"
+             rkey="$7"
+             check_root
+             check_dns_curl
+             check_wrapper
+             init_setup
+  ;;
   in-modern) cmmand="$1"
              kind="$2"
              fqdn="$3"
@@ -513,7 +541,7 @@ case "$1" in
              init_setup
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {in-stable|in-head|in-modern|in-legacy|in-vanilla|in-octopus} {local|public} {fqdn} {email} {o1} {ask|mini|max|none} {newrelickey}"
+             echo "Usage: $(basename "$0") {in-stable|in-head|in-legacy|in-octopus} {local|public} {fqdn} {email} {o1} {ask|mini|max|none} {newrelickey}"
              echo
              clean_pid_exit
   ;;

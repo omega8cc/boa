@@ -48,14 +48,77 @@ _MY_EMAIL="notify@omega8.cc"
 
 
 ###----------------------------------------###
-### EASY SETUP                             ###
+### EASY SETUP OPTIONS                     ###
+###----------------------------------------###
+
+
+###----------------------------------------###
+### EASY DB HEAD SETUP MODE                ###
 ###----------------------------------------###
 ###
-### You can configure all options manually
-### or simply use 'EASY PUBLIC SETUP MODE' for
-### standard install or 'EASY LOCALHOST MODE'
-### for local install. See below for details.
+### Useful only during initial system setup.
 ###
+### It will skip all prompts and configure
+### Barracuda with only some options/services
+### enabled, as listed below:
+###
+### _XTRAS_LIST=""
+### _AUTOPILOT=YES
+### _DEBUG_MODE=NO
+### _AEGIR_VERSION=NONE
+### _DB_SERVER=MariaDB
+### _SSH_PORT=22
+### _DNS_SETUP_TEST=NO
+### _THIS_DB_HOST=$_EASY_HOSTNAME
+### _SMTP_RELAY_TEST=NO
+### _MY_OWNIP=automatically-discovered
+### _MY_HOSTN=$_EASY_HOSTNAME
+###
+### To enable, change this to YES below.
+###
+_EASY_DB_HEAD=NO
+
+###----------------------------------------###
+###
+### STOP! NO NEED TO CONFIGURE ANYTHING BELOW
+### IF _EASY_DB_HEAD MODE HAS BEEN ENABLED.
+###
+###----------------------------------------###
+
+
+###----------------------------------------###
+### EASY WEB HEAD SETUP MODE               ###
+###----------------------------------------###
+###
+### Useful only during initial system setup.
+###
+### It will skip all prompts and configure
+### Barracuda with only some options/services
+### enabled, as listed below:
+###
+### _XTRAS_LIST="CSF"
+### _AUTOPILOT=YES
+### _DEBUG_MODE=NO
+### _AEGIR_VERSION=HEAD
+### _DB_SERVER=MariaDB
+### _SSH_PORT=22
+### _DNS_SETUP_TEST=NO
+### _THIS_DB_HOST=$_THIS_DB_HOST (remote head)
+### _SMTP_RELAY_TEST=NO
+### _MY_OWNIP=automatically-discovered
+### _MY_HOSTN=$_EASY_HOSTNAME
+### _MY_FRONT=master.$_EASY_HOSTNAME
+###
+### To enable, change this to YES below.
+###
+_EASY_WEB_HEAD=NO
+
+###----------------------------------------###
+###
+### STOP! NO NEED TO CONFIGURE ANYTHING BELOW
+### IF _EASY_WEB_HEAD MODE HAS BEEN ENABLED.
+###
+###----------------------------------------###
 
 
 ###----------------------------------------###
@@ -604,24 +667,128 @@ _DNS_SETUP_TEST=YES
 
 
 ###----------------------------------------###
-### DATABASE CUSTOM HOST                   ###
+### DATABASE DEFAULT HOST                  ###
 ###----------------------------------------###
 ###
 ### If you prefer, you can set the database
 ### to be connected via FQDN pointing to your
-### public IP instead of default "localhost".
+### public IP instead of default "localhost",
+### but it will make it harder to migrate
+### sites with DB grants tied to the system
+### unique hostname.
 ###
-### Note: the "FQDN" is a keyword.
-### Don't replace it with a real hostname.
+### Note: the "FQDN" is a keyword. It will be
+### automatically replaced with your system
+### real hostname when used.
+###
+### NOTE: This distinction is very important,
+### because if you will specify your system
+### local hostname literally, BOA will use
+### the "Remote DB Server Mode" instead, as
+### explained further below.
 ###
 ### For local or Amazon based installs with
 ### local/dynamic IP address it is recommended
 ### to use default "localhost" option.
 ###
-### Available options:
+### Supported options:
 ###
 ### _THIS_DB_HOST=localhost
 ### _THIS_DB_HOST=FQDN
+###
+_THIS_DB_HOST=localhost
+
+
+###----------------------------------------###
+### REMOTE DB SERVER MODE                  ###
+###----------------------------------------###
+###
+### WARNING !!!
+###
+### THIS IS **HIGHLY EXPERIMENTAL** FEATURE.
+### EXPECT YOUR SYSTEM TO *EXPLODE* IF USED.
+###
+### Note: We may refer to the DB server
+###       also by using term 'DB head'
+###
+### If you will specify some remote DB server
+### name (not IP) or even local hostname, but
+### literally instead of via 'localhost' or
+### 'FQDN' keyword, it will turn on and use
+### the special REMOTE DB SERVER MODE.
+###
+### This mode will work only if the remote DB
+### server has been already configured with
+### the same default dummy mysql root password
+### as your Aegir system you are about to
+### install, and if the mysql port 3306 is
+### already open for incoming and outgoing
+### TCP connections on all servers expected
+### to communicate in this mode.
+###
+### HINT: you may want to add WEB head (Aegir)
+### IP as allowed on the DB head with standard
+### command: 'csf -a 12.34.56.789 my web head'
+###
+### Note that if the remote DB server defined
+### as hostname with a valid DNS entry will be
+### used, BOA will never change mysql root
+### password and also on initial install will
+### use this dummy password:
+###
+###   sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+###
+### The same password will be used for the
+### Aegir special DB user 'aegir_root'.
+###
+### Furthermore, BOA will not create separate
+### special DB users per Octopus instance
+### and all instances will use the same
+### 'aegir_root' DB user to manage databases
+### for hosted sites.
+###
+### You can later change this password for
+### both mysql 'root' and 'aegir_root' users
+### on the remote DB server, but you will
+### have to manually update them in every
+### Aegir instance (Master and Satellites)
+### db server node settings.
+###
+### However, BOA will always check and use
+### the password it will find in the special
+### file /root/.my.pass.txt during Master
+### and Satellite instances upgrade.
+###
+### If you will change the mysql root password
+### you **must** update it also in two files:
+###
+###   /root/.my.pass.txt
+###   /root/.my.cnf
+###
+### When installing BOA on a machine expected
+### to work as a remote DB server, you should
+### create a special file containing your
+### WEB head (Aegir) hostname:
+###
+###  /root/.remote.web.head.txt
+###
+### BOA will use this file to add required
+### DB GRANT for 'aegir_root' on the DB head
+### so the WEB head (Aegir) hosted on the
+### machine with hostname specified in this
+### file will be able to manage databases
+### remotely. Make sure that this file
+### is present only on the DB head, though.
+###
+### WARNING !!!
+###
+### Make sure that there is no remote, public,
+### unrestricted access via port 3306 to any
+### DB server used in this special mode!
+###
+### Available non-default option:
+###
+### _THIS_DB_HOST=remote.db.server.name
 ###
 _THIS_DB_HOST=localhost
 
@@ -4166,24 +4333,46 @@ provision_backend_dbpass_generate () {
   _ESC_APASS=""
   _LEN_APASS=0
   if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-    _ESC_APASS=$(randpass 32 esc)
+    if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+      _ESC_APASS=$(randpass 32 esc)
+    else
+      if [ -e "/root/.my.pass.txt" ] ; then
+        _ESC_APASS=`cat /root/.my.pass.txt`
+      else
+        _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+      fi
+    fi
     _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
     _ENC_APASS=$(python -c "import urllib; print urllib.quote('''$_ESC_APASS''')")
     _LEN_APASS=$(echo ${#_ESC_APASS})
   fi
   if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 19 ] ; then
-    _ESC_APASS=`pwgen -v -s -1`
-    _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
-    _ESC_APASS=`sanitize_string "$_ESC_APASS"`
+    if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+      _ESC_APASS=`pwgen -v -s -1`
+      _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
+      _ESC_APASS=`sanitize_string "$_ESC_APASS"`
+    else
+      if [ -e "/root/.my.pass.txt" ] ; then
+        _ESC_APASS=`cat /root/.my.pass.txt`
+      else
+        _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+      fi
+    fi
     _ENC_APASS="$_ESC_APASS"
   fi
   echo "$_ESC_APASS" > $_L_SYS
   chown aegir:aegir $_L_SYS &> /dev/null
   chmod 0600 $_L_SYS
-  _AEGIR_HOST=`uname -n`
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    _AEGIR_HOST=`uname -n`
+    _SQL_CONNECT=localhost
+  else
+    _AEGIR_HOST="$_THIS_DB_HOST"
+    _SQL_CONNECT="$_THIS_DB_HOST"
+  fi
   _RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
   if [ -z "$_RESOLVEIP" ] ; then
-    msg "FATAL ERROR:: This server does not have a hostname that resolves to an IP address"
+    msg "FATAL ERROR:: DNS looks broken for server $_AEGIR_HOST"
     msg "FATAL ERROR:: Aborting Barracuda installer NOW!"
     touch /opt/tmp/status-Barracuda-FAIL
     clean_pid_exit
@@ -4191,23 +4380,36 @@ provision_backend_dbpass_generate () {
 _ESC="\`%\`.*"
 mysqladmin flush-privileges &> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
-  mysql -uroot mysql<<EOFMYSQL
+  mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_RESOLVEIP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'localhost' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 EOFMYSQL
 else
-  mysql -uroot mysql<<EOFMYSQL
+  mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
 DROP USER '$_ADBU'@'$_AEGIR_HOST';
 DROP USER '$_ADBU'@'$_RESOLVEIP';
 DROP USER '$_ADBU'@'localhost';
 EOFMYSQL
-  mysql -uroot mysql<<EOFMYSQL
+  mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_RESOLVEIP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'localhost' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 EOFMYSQL
 fi
+
+if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+  _EXTRA_GRANTS=NO
+else
+  _LOCAL_HOST=`uname -n`
+  _LOCAL_IP=`echo $(getent ahostsv4 $_LOCAL_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
+  mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_THIS_DB_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_LOCAL_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_LOCAL_IP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+EOFMYSQL
+fi
+
 mysqladmin flush-privileges &> /dev/null
 }
 #
@@ -5796,13 +5998,9 @@ else
   sed -i "s/^aegir.*//g" /etc/sudoers &> /dev/null
   deluser aegir &> /dev/null
   rm -f /usr/bin/drush
-  if [ "$_EASY_LOCALHOST" = "YES" ] && [ "$_EASY_PUBLIC" = "YES" ] ; then
-    msg "FATAL ERROR: You must enable either _EASY_PUBLIC or _EASY_LOCALHOST mode, not both"
-    clean_pid_exit
-  fi
-  if [ "$_EASY_PUBLIC" = "YES" ] ; then
+  if [ "$_EASY_PUBLIC" = "YES" ] || [ "$_EASY_DB_HEAD" = "YES" ] || [ "$_EASY_WEB_HEAD" = "YES" ] ; then
     if [ -z "$_EASY_HOSTNAME" ] || [ "$_EASY_HOSTNAME" = "wildcard-enabled-hostname" ] ; then
-      msg "FATAL ERROR: You must define also _EASY_HOSTNAME when _EASY_PUBLIC mode is enabled"
+      msg "FATAL ERROR: You must define also _EASY_HOSTNAME"
       clean_pid_exit
     fi
   fi
@@ -5830,6 +6028,33 @@ else
     _SMTP_RELAY_TEST=YES
     _MY_HOSTN="$_EASY_HOSTNAME"
     _MY_FRONT="master.$_EASY_HOSTNAME"
+    validate_public_ip &> /dev/null
+    _MY_OWNIP="$_THISHTIP"
+  elif [ "$_EASY_WEB_HEAD" = "YES" ] ; then
+    msg "INFO: Easy WEB Head Setup Mode Active"
+    _XTRAS_LIST="CSF"
+    _AUTOPILOT=YES
+    _DEBUG_MODE=NO
+    _AEGIR_VERSION=HEAD
+    _DB_SERVER=MariaDB
+    _SSH_PORT=22
+    _DNS_SETUP_TEST=NO
+    _SMTP_RELAY_TEST=NO
+    _MY_HOSTN="$_EASY_HOSTNAME"
+    _MY_FRONT="master.$_EASY_HOSTNAME"
+    validate_public_ip &> /dev/null
+    _MY_OWNIP="$_THISHTIP"
+  elif [ "$_EASY_DB_HEAD" = "YES" ] ; then
+    msg "INFO: Easy DB Head Setup Mode Active"
+    _XTRAS_LIST=""
+    _AUTOPILOT=YES
+    _DEBUG_MODE=NO
+    _AEGIR_VERSION=NONE
+    _DB_SERVER=MariaDB
+    _SSH_PORT=22
+    _DNS_SETUP_TEST=NO
+    _SMTP_RELAY_TEST=NO
+    _MY_HOSTN="$_EASY_HOSTNAME"
     validate_public_ip &> /dev/null
     _MY_OWNIP="$_THISHTIP"
   fi
@@ -6423,12 +6648,6 @@ EOF
     echo "Upgrade aborted by you"
     clean_pid_exit
   fi
-fi
-
-
-###--------------------###
-if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-  _THIS_DB_HOST="$_THISHOST"
 fi
 
 
@@ -8278,20 +8497,28 @@ fi
 
 ###--------------------###
 if [ ! -e "/root/.my.pass.txt" ] ; then
-  msg "INFO: Generating random password for $_DB_SERVER"
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    msg "INFO: Generating random password for $_DB_SERVER"
+  else
+    msg "INFO: Using default dummy password for $_DB_SERVER"
+  fi
   touch /root/.my.pass.txt
   chmod 0600 /root/.my.pass.txt &> /dev/null
-  _ESC_PASS=""
-  _LEN_PASS=0
-  if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-    _ESC_PASS=$(randpass 32 esc)
-    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
-    _LEN_PASS=$(echo ${#_ESC_PASS})
-  fi
-  if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
-    _ESC_PASS=`pwgen -v -s -1`
-    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
-    _ESC_PASS=`sanitize_string "$_ESC_PASS"`
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    _ESC_PASS=""
+    _LEN_PASS=0
+    if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+      _ESC_PASS=$(randpass 32 esc)
+      _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
+      _LEN_PASS=$(echo ${#_ESC_PASS})
+    fi
+    if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
+      _ESC_PASS=`pwgen -v -s -1`
+      _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
+      _ESC_PASS=`sanitize_string "$_ESC_PASS"`
+    fi
+  else
+    _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
   fi
   echo "$_ESC_PASS" > /root/.my.pass.txt
 fi
@@ -8367,10 +8594,15 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files &> /dev/null
   done
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT ./
-  if [ "$_DEBUG_MODE" = "YES" ] ; then
-    su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
+  if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    _USE_DB_HOST=`uname -n`
   else
-    su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
+    _USE_DB_HOST="$_THIS_DB_HOST"
+  fi
+  if [ "$_DEBUG_MODE" = "YES" ] ; then
+    su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_USE_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
+  else
+    su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_USE_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
   fi
   if [ -e "/opt/tmp/status-AegirSetupM-FAIL" ] ; then
     msg "FATAL ERROR: AegirSetupM installer failed"
@@ -9145,8 +9377,10 @@ if [ ! -e "/root/.my.cnf" ] ; then
   msg "INFO: $_DB_SERVER setup completed"
   msg "INFO: You can now log in as root by typing only 'mysql' on the command line"
 else
-  if [ ! -e "/root/.mysql.no.new.password.cnf" ] ; then
-    forced_mysql_root_password_update
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    if [ ! -e "/root/.mysql.no.new.password.cnf" ] ; then
+      forced_mysql_root_password_update
+    fi
   fi
 fi
 
@@ -9157,8 +9391,10 @@ if [ -L "/var/aegir/config/includes/barracuda_log.txt" ] ; then
 fi
 if [ "$_THIS_DB_HOST" = "localhost" ] ; then
   _LOG_DB_HOST=localhost
-else
+elif [ "$_THIS_DB_HOST" = "FQDN" ] ; then
   _LOG_DB_HOST=FQDN
+else
+  _LOG_DB_HOST=REMOTE
 fi
 if [ ! -z "$_FORCE_GIT_MIRROR" ] ; then
   _LOG_GIT_MIRROR="-$_FORCE_GIT_MIRROR"

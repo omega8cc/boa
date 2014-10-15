@@ -222,6 +222,9 @@ up_one ()
     else
       sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     fi
+    if [ "$cmmand" = "up-test" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=test/g"      /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    fi
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     sed -i "s/^_USER=o1/_USER=$_THIS_HM_USER/g"          /var/backups/OCTOPUS.sh.$_THIS_HM_USER
@@ -533,6 +536,18 @@ up_head ()
   up_finish
 }
 
+up_test ()
+{
+  up_start
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/test/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  if [ "$second" = "all" ] ; then
+    up_action_all
+  else
+    up_action_one
+  fi
+  up_finish
+}
+
 up_modern ()
 {
   up_start
@@ -665,6 +680,15 @@ case "$1" in
              check_wrapper
              up_head
   ;;
+  up-test)   cmmand="$1"
+             second="$2"
+             cmmode="$3"
+             silent="$4"
+             check_root
+             check_dns_curl
+             check_wrapper
+             up_test
+  ;;
   up-modern) cmmand="$1"
              second="$2"
              cmmode="$3"
@@ -693,7 +717,7 @@ case "$1" in
              up_vanilla
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {up-stable|up-head|up-modern|up-legacy|up-vanilla} {all|o1} {aegir|platforms|both}"
+             echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {all|o1} {aegir|platforms|both}"
              echo
              clean_pid_exit
   ;;
