@@ -4,11 +4,24 @@ Your Aegir Hosting System has been upgraded to version BOA-2.3.3
 
   https://aegir.dragon.ny.host8.biz
 
-This new BOA release introduces important updates and fixes:
+This new BOA release includes important updates and bug fixes.
 
-* All Drupal 7 platforms received Drupal core security upgrade
+* All new Drupal 7 platforms received Drupal core security upgrade.
+  For details please read: https://www.drupal.org/SA-CORE-2014-005
 
-You can find all details in the release notes and changelog:
+* All existing Drupal 7 built-in platforms received a hot-fix for
+  this known vulnerability: https://www.drupal.org/SA-CORE-2014-005
+
+* None of your custom D7 platforms created in the ~/static directory
+  tree have been touched - you have to apply the patch in every
+  actively used D7 platform you have created or migrate your sites
+  to newer platform with latest D7 core.
+
+Please make sure to read and follow the safe upgrade workflow:
+
+  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
+You can find all details in the BOA release notes and changelog:
 
   https://omega8.cc/boa-234-full-edition-340  ------- October 15
 

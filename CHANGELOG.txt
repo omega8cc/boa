@@ -1,13 +1,28 @@
 
 ### Stable BOA-2.3.4 Release - Full Edition
-### Date: TBD
+### Date: Wed Oct 15 09:51:08 PDT 2014
 ### Includes Aegir 2.1 with improvements
 
 # Release Notes:
 
-  This release includes updated versions of all supported Drupal platforms to
-  provide latest Drupal 7 and Pressflow 6 core, plus many improvements, some
-  changes and numerous bug fixes.
+  This new BOA release includes important updates and bug fixes.
+
+  * All new Drupal 7 platforms received Drupal core security upgrade.
+    For details please read: https://www.drupal.org/SA-CORE-2014-005
+
+  * All existing Drupal 7 built-in platforms will receive a hot-fix for
+    this known vulnerability: https://www.drupal.org/SA-CORE-2014-005
+    once you will run 'barracuda up-stable' command on your server.
+    This procedure is automated on hosted and managed Aegir at Omega8.cc
+
+  * None of your custom D7 platforms created in the ~/static directory
+    tree have been touched - you have to apply the patch in every actively
+    used D7 platform you have created or migrate your sites to newer
+    platform with latest D7 core.
+
+  Please make sure to read and follow the safe upgrade workflow:
+
+    https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
 
 # Updated Octopus platforms:
 
