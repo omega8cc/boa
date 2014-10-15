@@ -1476,7 +1476,7 @@ check_old_empty_platforms () {
       if [ "$_DEL_OLD_EMPTY_PLATFORMS" -gt "0" ] && [ ! -z "$_DEL_OLD_EMPTY_PLATFORMS" ] ; then
         _DO_NOTHING=YES
       else
-        _DEL_OLD_EMPTY_PLATFORMS="1"
+        _DEL_OLD_EMPTY_PLATFORMS="30"
       fi
     fi
   fi
