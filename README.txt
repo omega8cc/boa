@@ -173,7 +173,7 @@ Octopus can install the platforms listed below:
  Commons 3.17 ----------------- https://drupal.org/project/commons
  Drupal 7.32.1 ---------------- https://drupal.org/drupal-7.32
  ERPAL 2.0 -------------------- https://drupal.org/project/erpal
- Guardr 1.13 ------------------ https://drupal.org/project/guardr
+ Guardr 1.14 ------------------ https://drupal.org/project/guardr
  Open Academy 1.1 ------------- https://drupal.org/project/openacademy
  Open Atrium 2.21 ------------- https://drupal.org/project/openatrium
  Open Deals 1.33 -------------- https://drupal.org/project/opendeals
