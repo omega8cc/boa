@@ -594,36 +594,36 @@ _D8_CORE_DIR="/data/all/000/core/drupal-$_SMALLCORE8"
 ###---### Distributions full names.
 #
 _F_ACQUIA="Acquia $_SMALLCORE6 P.$_THIS_CORE"
-_F_AGOV="aGov 1.4 $_SMALLCORE7 P.$_THIS_CORE"
+_F_AGOV="aGov 1.5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_CIVICRM_M6="CiviCRM $_CIVICRM_M6 $_SMALLCORE6 P.$_THIS_CORE"
 _F_CIVICRM_M7="CiviCRM $_CIVICRM_M7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COD="Conference 1.0-v5 $_SMALLCORE7 P.$_THIS_CORE"
-_F_COMMERCE1="Commerce 1.30 $_SMALLCORE7 P.$_THIS_CORE"
-_F_COMMERCE2="Commerce 2.18 $_SMALLCORE7 P.$_THIS_CORE"
+_F_COMMERCE1="Commerce 1.31 $_SMALLCORE7 P.$_THIS_CORE"
+_F_COMMERCE2="Commerce 2.19 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMONS2="Commons 2.20 $_SMALLCORE6 P.$_THIS_CORE"
 _F_COMMONS3="Commons 3.17 $_SMALLCORE7 P.$_THIS_CORE"
 _F_DRUPAL_EDGE_8="Drupal $_DRUPAL_EDGE_8"
 _F_DRUPAL6="Drupal $_SMALLCORE6 P.$_THIS_CORE"
 _F_DRUPAL7="Drupal $_SMALLCORE7 P.$_THIS_CORE"
 _F_DRUPAL8="Drupal $_SMALLCORE8 P.$_THIS_CORE"
-_F_ERPAL="ERPAL 2.0 $_SMALLCORE7 P.$_THIS_CORE"
+_F_ERPAL="ERPAL 2.1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_FSERVER="Feature Server 1.2 $_SMALLCORE6 P.$_THIS_CORE"
-_F_GUARDR="Guardr 1.13 $_SMALLCORE7 P.$_THIS_CORE"
+_F_GUARDR="Guardr 1.14 $_SMALLCORE7 P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENACADEMY="Open Academy 1.1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENATRIUM6="Open Atrium 1.7.2 $_SMALLCORE6 P.$_THIS_CORE"
-_F_OPENATRIUM7="Open Atrium 2.21 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENATRIUM7="Open Atrium 2.22 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENBLOG="OpenBlog 1.0-v3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENCHURCH1="OpenChurch 1.14 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENCHURCH2="OpenChurch 2.0-b1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals $_OPEN_DEALS $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENOUTREACH="Open Outreach 1.11 $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENPUBLIC="OpenPublic 1.1 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENOUTREACH="Open Outreach 1.12 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENPUBLIC="OpenPublic 1.2 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLISH="OpenPublish 3.0-b7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENSCHOLAR="OpenScholar 3.15.1 $_SMALLCORE7 P.$_THIS_CORE"
-_F_PANOPOLY="Panopoly 1.11 $_SMALLCORE7 P.$_THIS_CORE"
+_F_PANOPOLY="Panopoly 1.12 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
-_F_RECRUITER="Recruiter 1.2 $_SMALLCORE7 P.$_THIS_CORE"
+_F_RECRUITER="Recruiter 1.3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_RESTAURANT="Restaurant 1.0-b9 $_SMALLCORE7 P.$_THIS_CORE"
 _F_SPARK="Spark 1.0-b1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_TOTEM="Totem 1.1.2 $_SMALLCORE7 P.$_THIS_CORE"
@@ -1003,7 +1003,7 @@ drupal7_install () {
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7D ]] || [[ $_PLATFORMS_LIST =~ D7S ]] || [[ $_PLATFORMS_LIST =~ D7P ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
 echo " "
-if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/drupal-7.31" ; then
+if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/drupal-7.32" ; then
 true
 
 ###---### Drupal 7 Development
@@ -1836,7 +1836,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
         mv -f $_SHRD_PLPATH/sites/all/modules/panopoly_demo $_SHRD_PRPATH/modules/panopoly/ &> /dev/null
       else
         cd $_SHRD_PRPATH/modules/panopoly
-        get_dev_contrib "panopoly_demo-7.x-1.11.tar.gz"
+        get_dev_contrib "panopoly_demo-7.x-1.12.tar.gz"
       fi
     fi
   else
@@ -1881,7 +1881,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
-    if [ $_RECRUITER = "7.x-1.2" ] ; then
+    if [ $_RECRUITER = "7.x-1.3" ] ; then
       cd $_SHRD_PRPATH/modules
       rm -f -r {i18n,rules}
       get_dev_contrib "i18n-7.x-1.11.tar.gz"

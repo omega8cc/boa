@@ -165,26 +165,26 @@ NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
 
 Octopus can install the platforms listed below:
 
- @ Drupal 7.31.1
+ @ Drupal 7.32.1
 
- aGov 1.4 --------------------- https://drupal.org/project/agov
- Commerce 1.30 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.18 ---------------- https://drupal.org/project/commerce_kickstart
+ aGov 1.5 --------------------- https://drupal.org/project/agov
+ Commerce 1.31 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 2.19 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.17 ----------------- https://drupal.org/project/commons
- Drupal 7.31.1 ---------------- https://drupal.org/drupal-7.31
- ERPAL 2.0 -------------------- https://drupal.org/project/erpal
- Guardr 1.13 ------------------ https://drupal.org/project/guardr
+ Drupal 7.32.1 ---------------- https://drupal.org/drupal-7.32
+ ERPAL 2.1 -------------------- https://drupal.org/project/erpal
+ Guardr 1.14 ------------------ https://drupal.org/project/guardr
  Open Academy 1.1 ------------- https://drupal.org/project/openacademy
- Open Atrium 2.21 ------------- https://drupal.org/project/openatrium
+ Open Atrium 2.22 ------------- https://drupal.org/project/openatrium
  Open Deals 1.33 -------------- https://drupal.org/project/opendeals
- Open Outreach 1.11 ----------- https://drupal.org/project/openoutreach
+ Open Outreach 1.12 ----------- https://drupal.org/project/openoutreach
  OpenBlog 1.0-v3 -------------- https://drupal.org/project/openblog
  OpenChurch 1.14 -------------- https://drupal.org/project/openchurch
  OpenChurch 2.0-b1 ------------ https://drupal.org/project/openchurch
- OpenPublic 1.1 --------------- https://drupal.org/project/openpublic
+ OpenPublic 1.2 --------------- https://drupal.org/project/openpublic
  OpenScholar 3.15.1 ----------- http://theopenscholar.org
- Panopoly 1.11 ---------------- https://drupal.org/project/panopoly
- Recruiter 1.2 ---------------- https://drupal.org/project/recruiter
+ Panopoly 1.12 ---------------- https://drupal.org/project/panopoly
+ Recruiter 1.3 ---------------- https://drupal.org/project/recruiter
  Restaurant 1.0-b9 ------------ https://drupal.org/project/restaurant
  Spark 1.0-b1 ----------------- https://drupal.org/project/spark
  Totem 1.1.2 ------------------ https://drupal.org/project/totem
@@ -199,7 +199,7 @@ Octopus can install the platforms listed below:
  Pressflow 6.33.1 ------------- http://pressflow.org
  Ubercart 2.13 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.31.1 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.32.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
 * All D6 platforms have been enhanced using Pressflow 6.33.1 +Extra core:

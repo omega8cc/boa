@@ -1212,7 +1212,7 @@ _SPEED_VALID_MAX=3600
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.4-dev
+_INSTALLER_VERSION=BOA-2.3.5-dev
 _BRANCH_BOA=master
 _BRANCH_PROVISION=2.3.x-dev
 
@@ -1240,8 +1240,8 @@ _MARIADB_5_VERSION=5.5.40
 _MONGO_VERSION=1.4.5
 _MSS_VERSION=1.33
 _NGINX_VERSION=1.7.6
-_OPENSSH_VERSION=6.6p1
-_OPENSSL_VERSION=1.0.1i
+_OPENSSH_VERSION=6.7p1
+_OPENSSL_VERSION=1.0.1j
 _PERCONA_VERSION=5.5.36
 _PHP52_API=20060613
 _PHP52_VERSION=5.2.17
@@ -1250,7 +1250,7 @@ _PHP53_VERSION=5.3.29
 _PHP54_API=20100525
 _PHP54_VERSION=5.4.33
 _PHP55_API=20121212
-_PHP55_VERSION=5.5.17
+_PHP55_VERSION=5.5.18
 _PHPREDIS_VERSION=master-03-10-2014
 _PURE_FTPD_VERSION=1.0.36
 _REDIS_VERSION=2.8.17
@@ -2542,7 +2542,7 @@ force_advanced_nginx_config () {
   _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] &&[ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
     _ALLOW_NGINX_FORWARD_SECRECY=YES
-    _SSL_PROTOCOLS="SSLv3 TLSv1 TLSv1.1 TLSv1.2;"
+    _SSL_PROTOCOLS="TLSv1 TLSv1.1 TLSv1.2;"
     _SSL_CIPHERS="EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH+aRSA+RC4:EECDH:EDH+aRSA:RC4:\!aNULL:\!eNULL:\!LOW:\!3DES:\!MD5:\!EXP:\!PSK:\!SRP:\!DSS:+RC4:RC4;"
   else
     _ALLOW_NGINX_FORWARD_SECRECY=NO
@@ -5491,7 +5491,7 @@ check_php_rebuild () {
     if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION" ]] ; then
       if [ "$_UP_PHP" = "YES" ] ; then
         if [ ! -z "$_PHP_ALREADY_REBUILT" ] && [ "$_PHP_ALREADY_REBUILT" = "$1" ] ; then
-          _DO_NOTHING=YES
+          msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
         else
           msg "INFO: PHP $_PHP_VERSION rebuild required to include upgraded libs"
           install_php_multi "$1"
@@ -5530,6 +5530,8 @@ check_php_broken () {
     msg "INFO: PHP $_PHP_VERSION rebuild required to fix broken libcurl"
     install_curl_src
     install_php_multi "$1"
+    _PHP_ALREADY_REBUILT=$1
+  else
     _PHP_ALREADY_REBUILT=$1
   fi
 }
@@ -5756,6 +5758,22 @@ fix_broken_platforms () {
       fi
     done
     touch /var/xdrago/log/commons-fixed-c5.log
+    cd
+  fi
+  # https://www.drupal.org/SA-CORE-2014-005
+  if [ ! -e "/var/xdrago/log/SA-CORE-2014-005-fixed-d7.log" ] ; then
+    if [ -d "/data/all/000/core" ] ; then
+      for Core in `find /data/all/000/core/drupal-7* -maxdepth 0 -mindepth 0 | sort`; do
+        cd $Core
+        patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/7-core/SA-CORE-2014-005-D7.patch &> /dev/null
+      done
+    elif [ -d "/data/disk/all/000/core" ] ; then
+      for Core in `find /data/disk/all/000/core/drupal-7* -maxdepth 0 -mindepth 0 | sort`; do
+        cd $Core
+        patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/7-core/SA-CORE-2014-005-D7.patch &> /dev/null
+      done
+    fi
+    touch /var/xdrago/log/SA-CORE-2014-005-fixed-d7.log
     cd
   fi
 }
@@ -9513,7 +9531,8 @@ else
     sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
     sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/chive.*    &> /dev/null
     sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
-    sed -i "s/SSLv3 TLSv1;/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+    sed -i "s/SSLv3 TLSv1;/TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+    sed -i "s/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
     sed -i "s/HIGH:\!ADH:\!MD5;/RC4:HIGH:\!aNULL:\!MD5;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
     sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                           &> /dev/null
     sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/vhost.d/*                              &> /dev/null
@@ -9540,7 +9559,7 @@ else
   _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] &&[ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
     _ALLOW_NGINX_FORWARD_SECRECY=YES
-    _SSL_PROTOCOLS="SSLv3 TLSv1 TLSv1.1 TLSv1.2;"
+    _SSL_PROTOCOLS="TLSv1 TLSv1.1 TLSv1.2;"
     _SSL_CIPHERS="EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH+aRSA+RC4:EECDH:EDH+aRSA:RC4:\!aNULL:\!eNULL:\!LOW:\!3DES:\!MD5:\!EXP:\!PSK:\!SRP:\!DSS:+RC4:RC4;"
   else
     _ALLOW_NGINX_FORWARD_SECRECY=NO

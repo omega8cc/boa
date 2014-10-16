@@ -605,7 +605,7 @@ _RESERVED_RAM=0
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.4-dev
+_INSTALLER_VERSION=BOA-2.3.5-dev
 _BRANCH_BOA=master
 _BRANCH_PROVISION=2.3.x-dev
 
@@ -618,7 +618,7 @@ _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
 _REDIS_M_VERSION=mod-12-09-2014
 _SMALLCORE6=6.33.1
-_SMALLCORE7=7.31.1
+_SMALLCORE7=7.32.1
 _SMALLCORE8=8.0-alpha4
 _SPINNER=YES
 _T_BUILD=HEAD
@@ -634,36 +634,36 @@ fi
 ###
 ### Distributions
 ###
-_AGOV=7.x-1.4
+_AGOV=7.x-1.5
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
-_CIVICRM_PN=boa-2.3.4-dev
+_CIVICRM_PN=boa-2.3.5-dev
 _COD=7.x-1.0-alpha5
-_COMMERCE1=7.x-1.30
-_COMMERCE2=7.x-2.18
+_COMMERCE1=7.x-1.31
+_COMMERCE2=7.x-2.19
 _COMMONS2=6.x-2.20
 _COMMONS3=7.x-3.17
 _DRUPAL_EDGE_8="8.0-dev-$_TODAY-edge"
 _DRUPAL7="drupal-$_SMALLCORE7"
 _DRUPAL8="8.0-dev-120915"
-_ERPAL=7.x-2.0
-_GUARDR=7.x-1.13
+_ERPAL=7.x-2.1
+_GUARDR=7.x-1.14
 _MANAGINGNEWS=1.2.4
 _OPEN_DEALS=1.33
 _OPENACADEMY=7.x-1.1
 _OPENATRIUM6=6.x-1.7
-_OPENATRIUM7=7.x-2.21
+_OPENATRIUM7=7.x-2.22
 _OPENBLOG=7.x-1.0-alpha3
 _OPENCHURCH1=7.x-1.14
 _OPENCHURCH2=7.x-2.0-beta1
 _OPENDEALS=7.x-1.33
-_OPENOUTREACH=7.x-1.11
-_OPENPUBLIC=7.x-1.1
+_OPENOUTREACH=7.x-1.12
+_OPENPUBLIC=7.x-1.2
 _OPENPUBLISH=7.x-1.0-beta7
 _OPENSCHOLAR=7.x-3.15.1
-_PANOPOLY=7.x-1.11
+_PANOPOLY=7.x-1.12
 _PROSEPOINT=0.46
-_RECRUITER=7.x-1.2
+_RECRUITER=7.x-1.3
 _RESTAURANT=7.x-1.0-beta9
 _SPARK=7.x-1.0-beta1
 _TOTEM=7.x-1.1
@@ -1840,7 +1840,7 @@ if [ -e "/var/log/barracuda_log.txt" ] ; then
 fi
 if [ -e "/data/disk/${_USER}/log/octopus_log.txt" ] ; then
   _LEGACY_TEST=`cat /data/disk/${_USER}/log/octopus_log.txt`
-  if [[ "$_LEGACY_TEST" =~ "BOA-2.3.0" ]] || [[ "$_LEGACY_TEST" =~ "BOA-2.3.1" ]] || [[ "$_LEGACY_TEST" =~ "BOA-2.3.2" ]] || [[ "$_LEGACY_TEST" =~ "BOA-2.3.3" ]] ; then
+  if [[ "$_LEGACY_TEST" =~ "BOA-2.3." ]] ; then
     _LEGACY_RESULT=BOA-2.3
   fi
 fi
