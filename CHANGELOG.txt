@@ -2,7 +2,7 @@
 ### Stable BOA-2.3.5 Release - Full Edition
 ### Date: Wed Oct 15 16:28:25 PDT 2014
 ### Includes Aegir 2.1 with improvements
-### Latest hotfix added on: Wed Oct 15 18:19:16 PDT 2014
+### Latest hotfix added on: Wed Oct 15 19:10:21 PDT 2014
 
 # Release Notes:
 
@@ -97,6 +97,7 @@
   * Make sure that firewall monitoring scripts never run simultaneously.
   * Make sure that standard caching is enabled in hostmaster.
   * Pause hostmaster tasks when RVM install for any user is running.
+  * PHP: Do not run rebuilds if not needed.
   * PHP: Fix for broken upgrade logic on libcurl or libssl packages upgrade.
   * Remove acquia_connector from latest Commons to avoid broken installs.
   * Remove all legacy gems and re-install RVM/Ruby for root from scratch.
