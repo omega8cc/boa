@@ -2,6 +2,7 @@
 ### Stable BOA-2.3.5 Release - Full Edition
 ### Date: Wed Oct 15 16:28:25 PDT 2014
 ### Includes Aegir 2.1 with improvements
+### Latest hotfix added on: Wed Oct 15 18:19:16 PDT 2014
 
 # Release Notes:
 
@@ -15,12 +16,16 @@
     once you will run 'barracuda up-stable' command on your server.
     This procedure is automated on hosted and managed Aegir at Omega8.cc
 
-  * None of your custom D7 platforms created in the ~/static directory
-    tree have been touched - you have to apply the patch in every actively
-    used D7 platform you have created or migrate your sites to newer
-    platform with latest D7 core.
+  * Your custom D7 platforms created in the ~/static directory tree
+    will be checked in the next 12 hours after the upgrade, and if you
+    have not applied this patch yet, it will be applied automatically
+    for you - but only if there is at least one active site present
+    in the given custom D7 platform. Note that while this procedure is
+    automated on hosted and managed Aegir at Omega8.cc, on self-hosted
+    BOA systems it will work only if you will set _PERMISSIONS_FIX=YES
+    in /root/.barracuda.cnf (default is NO)
 
-  Please make sure to read and follow the safe upgrade workflow:
+  We recommend that you upgrade your D7 sites using safe workflow:
 
     https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
 
