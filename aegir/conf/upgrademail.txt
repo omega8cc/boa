@@ -24,7 +24,7 @@ We recommend that you upgrade your D7 sites using safe workflow:
 
 You can find all details in the BOA release notes and changelog:
 
-  https://omega8.cc/boa-234-full-edition-340  ------- October 15
+  https://omega8.cc/boa-235-full-edition-341  ------- October 15
 
 Note that BOA 2.3 Edition introduced many new features and changes.
 
