@@ -33,7 +33,7 @@
 
   aGov 1.5 --------------------- https://drupal.org/project/agov
   Commerce 1.31 ---------------- https://drupal.org/project/commerce_kickstart
-  Commerce 2.18 ---------------- https://drupal.org/project/commerce_kickstart
+  Commerce 2.19 ---------------- https://drupal.org/project/commerce_kickstart
   Guardr 1.14 ------------------ https://drupal.org/project/guardr
   Open Atrium 2.22 ------------- https://drupal.org/project/openatrium
   Open Outreach 1.12 ----------- https://drupal.org/project/openoutreach
