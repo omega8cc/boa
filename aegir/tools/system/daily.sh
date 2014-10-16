@@ -1096,9 +1096,27 @@ cleanup_ghost_platforms () {
   fi
 }
 
+fix_seven_core_patch () {
+  if [ ! -f "$Plr/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
+    _PATCH_TEST=$(grep "foreach (array_values(\$data)" $Plr/includes/database/database.inc)
+    if [[ "$_PATCH_TEST" =~ "array_values" ]] ; then
+      echo fixed > $Plr/profiles/SA-CORE-2014-005-D7-fix.info
+    else
+      cd $Plr
+      patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch
+      echo fixed > $Plr/profiles/SA-CORE-2014-005-D7-fix.info
+    fi
+    chown $_THIS_HM_USER:users $Plr/profiles/SA-CORE-2014-005-D7-fix.info
+    chmod 0664 $Plr/profiles/SA-CORE-2014-005-D7-fix.info
+  fi
+}
+
 fix_static_permissions () {
   cleanup_ghost_platforms
   if [ -e "$Plr/profiles" ] ; then
+    if [ -e "$Plr/web.config" ] ; then
+      fix_seven_core_patch
+    fi
     rm -f $Plr/profiles/permissions-fix.info
     rm -f $Plr/profiles/core-permissions-fix.info
     if [ ! -f "$Plr/profiles/permissions-update-fix.info" ] ; then
