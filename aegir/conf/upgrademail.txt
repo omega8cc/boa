@@ -12,12 +12,13 @@ This new BOA release includes important updates and bug fixes.
 * All existing Drupal 7 built-in platforms received a hot-fix for
   this known vulnerability: https://www.drupal.org/SA-CORE-2014-005
 
-* None of your custom D7 platforms created in the ~/static directory
-  tree have been touched - you have to apply the patch in every
-  actively used D7 platform you have created or migrate your sites
-  to newer platform with latest D7 core.
+* Your custom D7 platforms created in the ~/static directory tree
+  will be checked in the next 12 hours after this upgrade, and if you
+  have not applied this patch yet, it will be applied automatically
+  for you - but only if there is at least one active site present
+  in the given custom D7 platform.
 
-Please make sure to read and follow the safe upgrade workflow:
+We recommend that you upgrade your D7 sites using safe workflow:
 
   https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
 
