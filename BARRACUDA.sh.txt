@@ -5289,7 +5289,7 @@ check_php_rebuild () {
     if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION" ]] ; then
       if [ "$_UP_PHP" = "YES" ] ; then
         if [ ! -z "$_PHP_ALREADY_REBUILT" ] && [ "$_PHP_ALREADY_REBUILT" = "$1" ] ; then
-          _DO_NOTHING=YES
+          msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
         else
           msg "INFO: PHP $_PHP_VERSION rebuild required to include upgraded libs"
           install_php_multi "$1"
