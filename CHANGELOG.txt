@@ -2,7 +2,7 @@
 ### Stable BOA-2.3.5 Release - Full Edition
 ### Date: Wed Oct 15 16:28:25 PDT 2014
 ### Includes Aegir 2.1 with improvements
-### Latest hotfix added on: Wed Oct 15 20:09:52 PDT 2014
+### Latest hotfix added on: Thu Oct 16 08:44:24 PDT 2014
 
 # Release Notes:
 
@@ -64,6 +64,7 @@
   * Nginx 1.7.6
   * OpenSSH 6.7p1 (if installed from sources)
   * OpenSSL 1.0.1j (if installed from sources) - security upgrade.
+  * PHP 5.5.18
   * PHPRedis: master-03-10-2014
 
 # Fixes in this release:
