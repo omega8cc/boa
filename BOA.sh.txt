@@ -131,6 +131,9 @@ check_dns_settings () {
 
 setup ()
 {
+  sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
+  echo >>/etc/hosts
+  sed -i "/^$/d" /etc/hosts
   if [ ! -e "/etc/resolv.conf" ] ; then
     if [ -e "/var/backups/resolv.conf.vanilla" ] ; then
       cat /var/backups/resolv.conf.vanilla >/etc/resolv.conf
