@@ -439,7 +439,6 @@ check_root ()
     sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
     echo >>/etc/hosts
-    echo "72.251.241.251 files.aegir.cc" >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
   else
     echo "ERROR: This script should be ran as a root user - please `sudo -i` first"
