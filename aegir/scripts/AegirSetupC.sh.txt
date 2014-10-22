@@ -2164,7 +2164,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "pathauto-7.x-1.2.tar.gz"
     get_dev_contrib "rules-7.x-2.7.tar.gz"
     get_dev_contrib "token-7.x-1.5.tar.gz"
-    get_dev_contrib "ubercart-7.x-3.7.tar.gz"
+    get_dev_contrib "ubercart-7.x-$_UBERCART7.tar.gz"
     get_dev_contrib "views-7.x-3.8.tar.gz"
     cd $_SHRD_PRPATH/modules/views
     # https://drupal.org/node/1766338#comment-6445882
@@ -2229,7 +2229,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "pathauto-7.x-1.2.tar.gz"
     get_dev_contrib "rules-7.x-2.7.tar.gz"
     get_dev_contrib "token-7.x-1.5.tar.gz"
-    get_dev_contrib "ubercart-7.x-3.7.tar.gz"
+    get_dev_contrib "ubercart-7.x-$_UBERCART7.tar.gz"
     get_dev_contrib "views-7.x-3.8.tar.gz"
     cd $_SHRD_PRPATH/modules/views
     # https://drupal.org/node/1766338#comment-6445882
