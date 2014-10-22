@@ -197,7 +197,7 @@ Octopus can install the platforms listed below:
  Managing News 1.2.4 ---------- https://drupal.org/project/managingnews
  Open Atrium 1.7.2 ------------ https://drupal.org/project/openatrium
  Pressflow 6.33.1 ------------- http://pressflow.org
- Ubercart 2.13 ---------------- https://drupal.org/project/ubercart
+ Ubercart 2.14 ---------------- https://drupal.org/project/ubercart
 
 * All D7 platforms have been enhanced using Drupal 7.32.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
