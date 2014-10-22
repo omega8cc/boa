@@ -1104,10 +1104,20 @@ fix_seven_core_patch () {
     else
       cd $Plr
       patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch
+      chown $_THIS_HM_USER:users $Plr/includes/database/*.inc
+      chmod 0664 $Plr/includes/database/*.inc
+      echo fixed > $Plr/profiles/post-patch-permissions-fix.info
       echo fixed > $Plr/profiles/SA-CORE-2014-005-D7-fix.info
     fi
-    chown $_THIS_HM_USER:users $Plr/profiles/SA-CORE-2014-005-D7-fix.info
-    chmod 0664 $Plr/profiles/SA-CORE-2014-005-D7-fix.info
+    chown $_THIS_HM_USER:users $Plr/profiles/*-fix.info
+    chmod 0664 $Plr/profiles/*-fix.info
+  fi
+  if [ ! -f "$Plr/profiles/post-patch-permissions-fix.info" ] ; then
+    chown $_THIS_HM_USER:users $Plr/includes/database/*.inc
+    chmod 0664 $Plr/includes/database/*.inc
+    echo fixed > $Plr/profiles/post-patch-permissions-fix.info
+    chown $_THIS_HM_USER:users $Plr/profiles/*-fix.info
+    chmod 0664 $Plr/profiles/*-fix.info
   fi
 }
 
@@ -1495,9 +1505,9 @@ check_old_empty_platforms () {
         _DO_NOTHING=YES
       else
         if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-          _DEL_OLD_EMPTY_PLATFORMS="1"
-        else
           _DEL_OLD_EMPTY_PLATFORMS="30"
+        else
+          _DEL_OLD_EMPTY_PLATFORMS="60"
         fi
       fi
     fi
