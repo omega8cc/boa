@@ -2967,6 +2967,8 @@ EOF
   _LOCALE_DEFAULT_TEST=$(grep -v "^#" /etc/default/locale 2>&1)
   if [[ ! "$_LOCALE_DEFAULT_TEST" =~ "LANGUAGE=en_US.UTF-8" ]] ; then
     echo "LANGUAGE=en_US.UTF-8" >> /etc/default/locale
+    sed -i "s/^#LANGUAGE=en_US.UTF-8//g" /etc/default/locale &> /dev/null
+    sed -i "/^$/d" /etc/default/locale &> /dev/null
   fi
 }
 #
