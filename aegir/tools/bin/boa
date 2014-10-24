@@ -253,7 +253,7 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
     if [ "$kind" = "mstr" ] || [ "$kind" = "dbhd" ] || [ "$kind" = "wbhd" ] ; then
       sed -i "s/.*${loip}.*${fqdn}.*//g" /etc/hosts
       echo >>/etc/hosts
-      echo "${loip} ${fqdn}" >>/etc/hosts
+      ### echo "${loip} ${fqdn}" >>/etc/hosts
       sed -i "/^$/d" /etc/hosts
     fi
   fi
