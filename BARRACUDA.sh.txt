@@ -8052,7 +8052,7 @@ else
   _PORT_CTRL="$_JETTY_CTRL"
 fi
 if [[ "$_XTRAS_LIST" =~ "SR4" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
-  if [ ! -d "/opt/solr4" ] ; then
+  if [ ! -d "/opt/solr4" ] && [ ! -e "/root/.mstr.clstr.cnf" ] && [ ! -e "/root/.wbhd.clstr.cnf" ] && [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
     if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
       _REAL_JETTY=9
     else
