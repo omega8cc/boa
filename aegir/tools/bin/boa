@@ -255,7 +255,7 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
       echo >>/etc/hosts
       echo "${loip} ${fqdn}" >>/etc/hosts
       sed -i "/^$/d" /etc/hosts
-    else
+    fi
   fi
 
   if [ ! -z "$rkey" ] ; then
