@@ -9314,7 +9314,7 @@ if [ ! -e "/root/.my.cnf" ] ; then
     if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
       _DO_NOTHING=YES
     else
-      if [ -e "/var/xdrago/log/sysctl.conf-$_INSTALLER_VERSION-$_NOW.log" ] ; then
+      if [ -e "/etc/mysql/debian.cnf" ] ; then
         _DUMMY_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
         mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_DUMMY_PASS') WHERE User='debian-sys-maint';" &> /dev/null
         mkdir -p /var/backups
