@@ -1006,6 +1006,10 @@ provision_backend_dbpass_generate () {
     _SQL_CONNECT="$_THIS_DB_HOST"
     _USE_DB_USER=aegir_root
   fi
+  if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
+    _USE_AEGIR_HOST=`uname -n`
+    _SQL_CONNECT=localhost
+  fi
   _USE_RESOLVEIP=`echo $(getent ahostsv4 $_USE_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
   if [ -z "$_USE_RESOLVEIP" ] ; then
     msg "$_STATUS A: FATAL ERROR: DNS looks broken for $_USE_AEGIR_HOST"
@@ -1021,16 +1025,18 @@ GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'$_USE_RESOLVEIP' IDENTIFIED BY
 GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'localhost' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
 EOFMYSQL
     else
-      mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
+      if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+        mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
 DROP USER '$_USE_DB_USER'@'$_USE_AEGIR_HOST';
 DROP USER '$_USE_DB_USER'@'$_USE_RESOLVEIP';
 DROP USER '$_USE_DB_USER'@'localhost';
 EOFMYSQL
-      mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
+        mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'$_USE_AEGIR_HOST' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'$_USE_RESOLVEIP' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'localhost' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
 EOFMYSQL
+      fi
     fi
   fi
   mysqladmin flush-privileges &> /dev/null
