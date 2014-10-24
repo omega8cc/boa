@@ -85,7 +85,7 @@ if (-e "/usr/sbin/pdnsd" && !$pdnsdsumar && !-f "/var/run/boa_run.pid") {
 }
 
 if (-f "/root/.mstr.clstr.cnf" || -f "/root/.wbhd.clstr.cnf") {
-  if ($mysqlives) {
+  if ($mysqlives && -f "/root/.remote.db.cnf") {
     system("/etc/init.d/mysql stop");
   }
 }
