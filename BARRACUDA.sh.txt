@@ -7089,14 +7089,14 @@ install_mariadb_sql () {
 install_with_aptitude_sql () {
   if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "lucid" ] ; then
     _PERCONA_READY=YES
-    if [ "$_EASY_SETUP" = "DBHD" ] || [ -e "/etc/mysql/conf.d/galera.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    if [ "$_EASY_SETUP" = "MSTR" ] || [ "$_EASY_SETUP" = "DBHD" ] || [ "$_EASY_SETUP" = "WBHD" ] || [ -e "/etc/mysql/conf.d/galera.cnf" ] || [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] ; then
       msg "INFO: Installing MariaDB Galera Cluster, please wait..."
     else
       msg "INFO: Installing $_DB_SERVER, please wait..."
     fi
   else
     _PERCONA_READY=NO
-    if [ "$_EASY_SETUP" = "DBHD" ] || [ -e "/etc/mysql/conf.d/galera.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    if [ "$_EASY_SETUP" = "MSTR" ] || [ "$_EASY_SETUP" = "DBHD" ] || [ "$_EASY_SETUP" = "WBHD" ] || [ -e "/etc/mysql/conf.d/galera.cnf" ] || [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] ; then
       msg "INFO: Installing MariaDB Galera Cluster, please wait..."
     else
       msg "INFO: Installing MariaDB, please wait..."
