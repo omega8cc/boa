@@ -93,7 +93,7 @@ if (function_exists('drush_get_command')) {
   if ($command && !preg_match("/^help/", $command[0])) {
     $is_backend = TRUE;
   }
-  if (preg_match("/^(provision-install|provision-backup|php-eval)/", $command[0])) {
+  if (preg_match("/^(provision-install|provision-save|provision-backup|php-eval)/", $command[0])) {
     $is_install = TRUE;
   }
 }
