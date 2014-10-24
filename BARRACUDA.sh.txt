@@ -48,106 +48,23 @@ _MY_EMAIL="notify@omega8.cc"
 
 
 ###----------------------------------------###
-### EASY SETUP OPTIONS                     ###
-###----------------------------------------###
-
-
-###----------------------------------------###
-### EASY DB HEAD SETUP MODE                ###
+### EASY SETUP MODE                        ###
 ###----------------------------------------###
 ###
-### Useful only during initial system setup.
+### Active only during initial system setup.
 ###
 ### It will skip all prompts and configure
 ### Barracuda with only some options/services
-### enabled, as listed below:
+### enabled, as listed below. Supported
+### options and associated settings:
 ###
-### _XTRAS_LIST=""
-### _AUTOPILOT=YES
-### _DEBUG_MODE=NO
-### _AEGIR_VERSION=NONE
-### _DB_SERVER=MariaDB
-### _SSH_PORT=22
-### _DNS_SETUP_TEST=NO
-### _THIS_DB_HOST=$_EASY_HOSTNAME
-### _SMTP_RELAY_TEST=NO
-### _MY_OWNIP=automatically-discovered
-### _MY_HOSTN=$_EASY_HOSTNAME
+###  NO (requires manual configuration)
+###  WBHD (experimental for web heads)
+###  DBHD (experimental for db heads)
+###  LOCAL (experimental for local testing)
+###  PUBLIC (default)
 ###
-### To enable, change this to YES below.
-###
-_EASY_DB_HEAD=NO
-
-###----------------------------------------###
-###
-### STOP! NO NEED TO CONFIGURE ANYTHING BELOW
-### IF _EASY_DB_HEAD MODE HAS BEEN ENABLED.
-###
-###----------------------------------------###
-
-
-###----------------------------------------###
-### EASY WEB HEAD SETUP MODE               ###
-###----------------------------------------###
-###
-### Useful only during initial system setup.
-###
-### It will skip all prompts and configure
-### Barracuda with only some options/services
-### enabled, as listed below:
-###
-### _XTRAS_LIST="CSF"
-### _AUTOPILOT=YES
-### _DEBUG_MODE=NO
-### _AEGIR_VERSION=HEAD
-### _DB_SERVER=MariaDB
-### _SSH_PORT=22
-### _DNS_SETUP_TEST=NO
-### _THIS_DB_HOST=$_THIS_DB_HOST (remote head)
-### _SMTP_RELAY_TEST=NO
-### _MY_OWNIP=automatically-discovered
-### _MY_HOSTN=$_EASY_HOSTNAME
-### _MY_FRONT=master.$_EASY_HOSTNAME
-###
-### To enable, change this to YES below.
-###
-_EASY_WEB_HEAD=NO
-
-###----------------------------------------###
-###
-### STOP! NO NEED TO CONFIGURE ANYTHING BELOW
-### IF _EASY_WEB_HEAD MODE HAS BEEN ENABLED.
-###
-###----------------------------------------###
-
-
-###----------------------------------------###
-### EASY PUBLIC SETUP MODE                 ###
-###----------------------------------------###
-###
-### Useful only during initial system setup.
-### Enabled by default since BOA-2.0.3
-###
-### It will skip all prompts and configure
-### Barracuda with only some options/services
-### enabled, as listed below:
-###
-### _XTRAS_LIST="CSF CHV FTP"
-### _AUTOPILOT=YES
-### _DEBUG_MODE=NO
-### _AEGIR_VERSION=HEAD
-### _DB_SERVER=MariaDB
-### _SSH_PORT=22
-### _DNS_SETUP_TEST=YES
-### _THIS_DB_HOST=localhost
-### _SMTP_RELAY_TEST=YES
-### _MY_OWNIP=automatically-discovered
-### _MY_HOSTN=$_EASY_HOSTNAME
-### _MY_FRONT=master.$_EASY_HOSTNAME
-###
-### To disable, change this to NO below.
-###
-_EASY_PUBLIC=YES
+_EASY_SETUP=PUBLIC
 
 ###
 ### Please enter your FQDN hostname below.
@@ -172,56 +89,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ###----------------------------------------###
 ###
 ### STOP! NO NEED TO CONFIGURE ANYTHING BELOW
-### IF _EASY_PUBLIC MODE HAS BEEN ENABLED.
-###
-###----------------------------------------###
-
-
-###----------------------------------------###
-### EASY LOCALHOST SETUP MODE              ###
-###----------------------------------------###
-###
-### Useful only during initial system setup.
-###
-### It will skip all prompts and configure
-### Barracuda with only safe options/services
-### enabled, as listed below:
-###
-### _XTRAS_LIST="CHV"
-### _AUTOPILOT=YES
-### _DEBUG_MODE=NO
-### _AEGIR_VERSION=HEAD
-### _DB_SERVER=MariaDB
-### _SSH_PORT=22
-### _DNS_SETUP_TEST=NO
-### _THIS_DB_HOST=localhost
-### _SMTP_RELAY_TEST=NO
-### _LOCAL_NETWORK_IP="127.0.1.1"
-### _LOCAL_NETWORK_HN="aegir.local"
-### _MY_OWNIP="127.0.1.1"
-### _MY_HOSTN="aegir.local"
-### _MY_FRONT="aegir.local"
-###
-### Thanks to local DNS wildcard, you will be
-### able to use many levels of subdomains for
-### created sites, for example:
-### site.aegir.local, abc.xyz.site.aegir.local
-### This wildcard will rely only on the local,
-### basic DNS system, without any need to use
-### external DNS.
-###
-### To enable, change this to YES below
-### and make sure that _EASY_PUBLIC option
-### above is set to NO (it's YES by default).
-###
-_EASY_LOCALHOST=NO
-
-
-###----------------------------------------###
-###
-### STOP! NO NEED TO CONFIGURE ANYTHING BELOW
-### IF EITHER _EASY_LOCALHOST OR _EASY_PUBLIC
-### MODE HAS BEEN ENABLED.
+### IF _EASY_SETUP MODE HAS BEEN ENABLED.
 ###
 ###----------------------------------------###
 
@@ -231,8 +99,7 @@ _EASY_LOCALHOST=NO
 ###----------------------------------------###
 ###
 ### You can configure all options manually
-### below when both 'EASY PUBLIC SETUP MODE'
-### and 'EASY LOCALHOST MODE' are *disabled*
+### below when _EASY_SETUP=NO above.
 ###
 
 
@@ -1226,6 +1093,8 @@ _CURL_VERSION=7.38.0
 _DRUSH4_VERSION=mini-4-26-08-2014
 _DRUSH6_VERSION=mini-6-04-10-2014
 _DRUSH7_VERSION=head-7-10-03-2014
+_GALERA_10_VERSION=10.0.14
+_GALERA_5_VERSION=5.5.40
 _GEOS_VERSION=3.4.2
 _GIT_VERSION=2.1.0
 _IMAGICK_VERSION=3.1.2
@@ -6016,14 +5885,14 @@ else
   sed -i "s/^aegir.*//g" /etc/sudoers &> /dev/null
   deluser aegir &> /dev/null
   rm -f /usr/bin/drush
-  if [ "$_EASY_PUBLIC" = "YES" ] || [ "$_EASY_DB_HEAD" = "YES" ] || [ "$_EASY_WEB_HEAD" = "YES" ] ; then
+  if [ ! -z "$_EASY_SETUP" ] && [[ ! "$_EASY_SETUP" =~ "NO" ]] ; then
     if [ -z "$_EASY_HOSTNAME" ] || [ "$_EASY_HOSTNAME" = "wildcard-enabled-hostname" ] ; then
       msg "FATAL ERROR: You must define also _EASY_HOSTNAME"
       clean_pid_exit
     fi
   fi
-  if [ "$_EASY_LOCALHOST" = "YES" ] ; then
-    msg "INFO: Easy Localhost Setup Mode Active"
+  if [ "$_EASY_SETUP" = "LOCAL" ] ; then
+    msg "INFO: Localhost Setup Mode Active"
     _XTRAS_LIST="CHV"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
@@ -6034,8 +5903,8 @@ else
     _SMTP_RELAY_TEST=NO
     _LOCAL_NETWORK_IP="127.0.1.1"
     _LOCAL_NETWORK_HN="aegir.local"
-  elif [ "$_EASY_PUBLIC" = "YES" ] ; then
-    msg "INFO: Easy Public Setup Mode Active"
+  elif [ "$_EASY_SETUP" = "PUBLIC" ] ; then
+    msg "INFO: Public Setup Mode Active"
     _XTRAS_LIST="CSF CHV FTP"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
@@ -6048,13 +5917,14 @@ else
     _MY_FRONT="master.$_EASY_HOSTNAME"
     validate_public_ip &> /dev/null
     _MY_OWNIP="$_THISHTIP"
-  elif [ "$_EASY_WEB_HEAD" = "YES" ] ; then
-    msg "INFO: Easy WEB Head Setup Mode Active"
+  elif [ "$_EASY_SETUP" = "MSTR" ] ; then
+    msg "INFO: Cluster Master Mode Active"
     _XTRAS_LIST="CSF"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
     _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
+    _DB_SERIES=10.0
     _SSH_PORT=22
     _DNS_SETUP_TEST=NO
     _SMTP_RELAY_TEST=NO
@@ -6062,19 +5932,57 @@ else
     _MY_FRONT="master.$_EASY_HOSTNAME"
     validate_public_ip &> /dev/null
     _MY_OWNIP="$_THISHTIP"
-  elif [ "$_EASY_DB_HEAD" = "YES" ] ; then
-    msg "INFO: Easy DB Head Setup Mode Active"
-    _XTRAS_LIST=""
+    if [ ! -e "/root/.mstr.clstr.cnf" ] ; then
+      touch /root/.mstr.clstr.cnf
+    fi
+  elif [ "$_EASY_SETUP" = "WBHD" ] ; then
+    msg "INFO: Cluster WEB Head Mode Active"
+    _XTRAS_LIST="CSF"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=NONE
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
+    _DB_SERIES=10.0
     _SSH_PORT=22
     _DNS_SETUP_TEST=NO
     _SMTP_RELAY_TEST=NO
     _MY_HOSTN="$_EASY_HOSTNAME"
+    _MY_FRONT="master.$_EASY_HOSTNAME"
     validate_public_ip &> /dev/null
     _MY_OWNIP="$_THISHTIP"
+    if [ ! -e "/root/.wbhd.clstr.cnf" ] ; then
+      touch /root/.wbhd.clstr.cnf
+    fi
+  elif [ "$_EASY_SETUP" = "DBHD" ] ; then
+    msg "INFO: Cluster DB Head Mode Active"
+    _XTRAS_LIST=""
+    _AUTOPILOT=YES
+    _DEBUG_MODE=NO
+    _AEGIR_VERSION=HEAD
+    _DB_SERVER=MariaDB
+    _DB_SERIES=10.0
+    _SSH_PORT=22
+    _DNS_SETUP_TEST=NO
+    _SMTP_RELAY_TEST=NO
+    _MY_HOSTN="$_EASY_HOSTNAME"
+    _MY_FRONT="master.$_EASY_HOSTNAME"
+    validate_public_ip &> /dev/null
+    _MY_OWNIP="$_THISHTIP"
+    if [ -e "/etc/mysql/conf.d" ] && [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/galera.cnf" ] && [ ! -e "/etc/mysql/conf.d/galera.cnf" ] ; then
+      cp -af cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/galera.cnf /etc/mysql/conf.d/.galera.tpl.cnf
+      ###
+      ### You must configure /etc/mysql/conf.d/.galera.tpl.cnf
+      ### properly on every node in the Galera cluster before
+      ### renaming it to /etc/mysql/conf.d/galera.cnf
+      ###
+      ### For details and hints please check this how-to:
+      ### https://blog.mariadb.org/installing-mariadb-galera-cluster-on-debian-ubuntu/
+      ### You can ignore everything before/above the 'Configuring Galera' section.
+      ###
+    fi
+    if [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
+      touch /root/.dbhd.clstr.cnf
+    fi
   fi
   barracuda_cnf
 fi
@@ -6480,7 +6388,7 @@ if [ "$_STATUS" = "INIT" ] ; then
       _S_Q=${_S_N%%${_S_T}}
       _S_E=${_S_Q%*.*}
       if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
-        if [ "$_EASY_LOCALHOST" = "YES" ] ; then
+        if [ "$_EASY_SETUP" = "LOCAL" ] ; then
           _DO_NOTHING=YES
         else
           sed -i "s/^$_MY_OWNIP.*//g" /etc/hosts &> /dev/null
@@ -7165,16 +7073,28 @@ install_mariadb_sql () {
   st_runner "apt-get purge percona-server-common-5.5 -y"   &> /dev/null
   st_runner "apt-get autoremove -y --force-yes -qq"        &> /dev/null
   st_runner "apt-get update -y --force-yes"                &> /dev/null
-  SQLDEB="mariadb-server-$_DB_SERIES mariadb-client-$_DB_SERIES mariadb-common"
+  if [ "$_EASY_SETUP" = "DBHD" ] || [ -e "/etc/mysql/conf.d/galera.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    SQLDEB="galera mariadb-galera-server"
+  else
+    SQLDEB="mariadb-server-$_DB_SERIES mariadb-client-$_DB_SERIES mariadb-common"
+  fi
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
 install_with_aptitude_sql () {
   if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "lucid" ] ; then
     _PERCONA_READY=YES
-    msg "INFO: Installing $_DB_SERVER, please wait..."
+    if [ "$_EASY_SETUP" = "DBHD" ] || [ -e "/etc/mysql/conf.d/galera.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+      msg "INFO: Installing MariaDB Galera Cluster, please wait..."
+    else
+      msg "INFO: Installing $_DB_SERVER, please wait..."
+    fi
   else
     _PERCONA_READY=NO
-    msg "INFO: Installing MariaDB, please wait..."
+    if [ "$_EASY_SETUP" = "DBHD" ] || [ -e "/etc/mysql/conf.d/galera.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+      msg "INFO: Installing MariaDB Galera Cluster, please wait..."
+    else
+      msg "INFO: Installing MariaDB, please wait..."
+    fi
   fi
   if [ "$_PERCONA_READY" = "YES" ] && [ "$_DB_SERVER" = "Percona" ] ; then
     install_percona_sql
@@ -7187,6 +7107,14 @@ install_with_aptitude_sql () {
   st_runner "$_INSTAPP $SQLDEB" 2> /dev/null
   st_runner "$_INSTAPP $SQLADD" 2> /dev/null
   st_runner "$_INSTAPP $SQLDEB" 2> /dev/null
+  if [ "$_EASY_SETUP" = "DBHD" ] || [ -e "/etc/mysql/conf.d/galera.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    msg "INFO: Running MariaDB system tables upgrade, please wait..."
+    if [ -x "/usr/bin/mariadb_upgrade" ] ; then
+      st_runner "mariadb_upgrade --force" &> /dev/null
+    elif [ -x "/usr/bin/mysql_upgrade" ] ; then
+      st_runner "mysql_upgrade --force" &> /dev/null
+    fi
+  fi
 }
 
 
@@ -9377,6 +9305,18 @@ if [ ! -e "/root/.my.cnf" ] ; then
     mysql -u root -e "DROP DATABASE test;" &> /dev/null
     mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" &> /dev/null
     mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$PASWD') WHERE User='root';" &> /dev/null
+    if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+      _DO_NOTHING=YES
+    else
+      if [ -e "/var/xdrago/log/sysctl.conf-$_INSTALLER_VERSION-$_NOW.log" ] ; then
+        _DUMMY_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+        mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_DUMMY_PASS') WHERE User='debian-sys-maint';" &> /dev/null
+        mkdir -p /var/backups
+        cp -af /etc/mysql/debian.cnf /var/backups/debian.cnf-pre-$_INSTALLER_VERSION-$_NOW.txt
+        chmod 400 /var/backups/debian.cnf-pre-$_INSTALLER_VERSION-$_NOW.txt
+        sed -i "s/^password =.*/password = ${_DUMMY_PASS}/g" /etc/mysql/debian.cnf &> /dev/null
+      fi
+    fi
     mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
   fi
   echo "[client]" > /root/.my.cnf
@@ -9484,7 +9424,7 @@ if [ -e "/usr/sbin/apticron" ] ; then
   fi
 fi
 if [ "$_STATUS" = "INIT" ] ; then
-  if [ "$_EASY_LOCALHOST" = "NO" ] && [ "$_EASY_PUBLIC" = "YES" ] ; then
+  if [ "$_EASY_SETUP" != "LOCAL" ] ; then
     mrun "bash /usr/sbin/apticron" &> /dev/null
   fi
   if [ "$_DEBUG_MODE" = "YES" ] ; then
@@ -9517,7 +9457,7 @@ if [ "$_FORCE_REDIS_RESTART" = "YES" ] ; then
 fi
 if [ "$_STATUS" = "INIT" ] ; then
   service cron start &> /dev/null
-  if [ "$_EASY_LOCALHOST" = "NO" ] && [ "$_EASY_PUBLIC" = "NO" ] ; then
+  if [ "$_EASY_SETUP" = "NO" ] ; then
     echo " "
     msg "Now waiting 2 minutes before restarting Nginx..."
     mrun "sleep 111"

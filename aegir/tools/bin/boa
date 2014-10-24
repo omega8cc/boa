@@ -179,8 +179,8 @@ octopus_install ()
     else
       sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$user
     fi
-    if [ "$cmmand" = "in-test" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=test/g"                  /var/backups/OCTOPUS.sh.$user
+    if [ "$cmmand" = "in-cluster" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"               /var/backups/OCTOPUS.sh.$user
     elif [ "$cmmand" = "in-head" ] ; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"                /var/backups/OCTOPUS.sh.$user
     elif [ "$cmmand" = "in-stable" ] ; then
@@ -188,9 +188,14 @@ octopus_install ()
     else
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"             /var/backups/OCTOPUS.sh.$user
     fi
-    if [ "$kind" = "web" ] && [ ! -z "$rkey" ] ; then
-      sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$rkey/g" /var/backups/OCTOPUS.sh.$user
+
+    if [ ! -z "$dbip" ] && [ "$cmmand" = "in-cluster" ] ; then
+      if [ "$kind" = "mstr" ] || [ "$kind" = "wbhd" ] ; then
+        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"           /var/backups/OCTOPUS.sh.$user
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   /var/backups/OCTOPUS.sh.$user
+      fi
     fi
+
     bash /var/backups/OCTOPUS.sh.$user
     sed -i "s/^127.0.1.1.*//g" /etc/hosts
     sed -i "/^$/d" /etc/hosts
@@ -206,36 +211,57 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
   sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"          /var/backups/BARRACUDA.sh.txt
   sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               /var/backups/BARRACUDA.sh.txt
   if [ "$kind" = "local" ] ; then
-    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=YES/g"   /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"          /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_DB_HEAD=.*/_EASY_DB_HEAD=NO/g"        /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_WEB_HEAD=.*/_EASY_WEB_HEAD=NO/g"      /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g"         /var/backups/BARRACUDA.sh.txt
     sed -i "s/^127.0.1.1.*//g" /etc/hosts
     echo "127.0.1.1 aegir.local o1.sub.aegir.local o2.sub.aegir.local o3.sub.aegir.local" >> /etc/hosts
+    ### Legacy variables
+    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=YES/g"   /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"          /var/backups/BARRACUDA.sh.txt
   elif [ "$kind" = "public" ] && [ ! -z "$fqdn" ] ; then
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
+    ### Legacy variables
     sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"    /var/backups/BARRACUDA.sh.txt
     sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"         /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_DB_HEAD=.*/_EASY_DB_HEAD=NO/g"        /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_WEB_HEAD=.*/_EASY_WEB_HEAD=NO/g"      /var/backups/BARRACUDA.sh.txt
+  elif [ "$kind" = "mstr" ] && [ ! -z "$fqdn" ] && [ ! -z "$dbip" ] && [ ! -z "$loip" ] && [ "$cmmand" = "in-cluster" ] ; then
+    touch /root/.mstr.clstr.cnf
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=MSTR/g"          /var/backups/BARRACUDA.sh.txt
     sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
-  elif [ "$kind" = "db" ] && [ ! -z "$fqdn" ] ; then
+    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             /var/backups/BARRACUDA.sh.txt
+  elif [ "$kind" = "dbhd" ] && [ ! -z "$fqdn" ] && [ ! -z "$dbip" ] && [ ! -z "$loip" ] && [ "$cmmand" = "in-cluster" ] ; then
+    touch /root/.dbhd.clstr.cnf
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=DBHD/g"          /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             /var/backups/BARRACUDA.sh.txt
+  elif [ "$kind" = "wbhd" ] && [ ! -z "$fqdn" ] && [ ! -z "$dbip" ] && [ ! -z "$loip" ] && [ "$cmmand" = "in-cluster" ] ; then
+    touch /root/.wbhd.clstr.cnf
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=WBHD/g"          /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             /var/backups/BARRACUDA.sh.txt
+  else
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
+    ### Legacy variables
     sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"    /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"          /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_DB_HEAD=.*/_EASY_DB_HEAD=$fqdn/g"     /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_WEB_HEAD=.*/_EASY_WEB_HEAD=NO/g"      /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$fqdn/g"     /var/backups/BARRACUDA.sh.txt
-  elif [ "$kind" = "web" ] && [ ! -z "$fqdn" ] && [ ! -z "$rkey" ] ; then
-    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"    /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"          /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_DB_HEAD=.*/_EASY_DB_HEAD=NO/g"        /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_WEB_HEAD=.*/_EASY_WEB_HEAD=YES/g"     /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$rkey/g"     /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"         /var/backups/BARRACUDA.sh.txt
   fi
-  if [ ! -z "$rkey" ] && [ "$kind" != "web" ] ; then
+
+  if [ ! -z "$fqdn" ] && [ ! -z "$loip" ] && [ "$cmmand" = "in-cluster" ] ; then
+    if [ "$kind" = "mstr" ] || [ "$kind" = "dbhd" ] || [ "$kind" = "wbhd" ] ; then
+      sed -i "s/.*${loip}.*${fqdn}.*//g" /etc/hosts
+      echo >>/etc/hosts
+      echo "${loip} ${fqdn}" >>/etc/hosts
+      sed -i "/^$/d" /etc/hosts
+    else
+  fi
+
+  if [ ! -z "$rkey" ] ; then
     sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g" /var/backups/BARRACUDA.sh.txt
   fi
+
   if [ "$cmmand" = "in-vanilla" ] ; then
     sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=6.x-2.x/g"   /var/backups/BARRACUDA.sh.txt
   elif [ "$cmmand" = "in-modern" ] ; then
@@ -243,8 +269,8 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
   else
     sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
   fi
-  if [ "$cmmand" = "in-test" ] ; then
-    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=test/g"          /var/backups/BARRACUDA.sh.txt
+  if [ "$cmmand" = "in-cluster" ] ; then
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"       /var/backups/BARRACUDA.sh.txt
   elif [ "$cmmand" = "in-head" ] ; then
     sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"        /var/backups/BARRACUDA.sh.txt
   elif [ "$cmmand" = "in-stable" ] ; then
@@ -349,9 +375,9 @@ init_setup ()
   if [ "$cmmand" = "in-head" ] ; then
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
-  elif [ "$cmmand" = "in-test" ] ; then
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/test/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/test/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  elif [ "$cmmand" = "in-cluster" ] ; then
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/cluster/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/cluster/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
   elif [ "$cmmand" = "in-stable" ] ; then
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
@@ -370,7 +396,7 @@ init_setup ()
   else
     barracuda_install
   fi
-  if [ "$kind" != "db" ] ; then
+  if [ "$kind" != "dbhd" ] ; then
     octopus_install
   fi
   init_finish
@@ -490,13 +516,14 @@ case "$1" in
              check_wrapper
              init_setup
   ;;
-  in-test)   cmmand="$1"
+  in-cluster) cmmand="$1"
              kind="$2"
              fqdn="$3"
              email="$4"
              user="$5"
              mode="$6"
-             rkey="$7"
+             dbip="$7"
+             loip="$8"
              check_root
              check_dns_curl
              check_wrapper

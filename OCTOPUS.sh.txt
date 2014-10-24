@@ -64,37 +64,6 @@ _CLIENT_CORES=8
 
 
 ###----------------------------------------###
-### EASY LOCALHOST MODE                    ###
-###----------------------------------------###
-###
-### This option is available and enabled
-### automatically only when Barracuda has been
-### installed with option _EASY_LOCALHOST=YES
-###
-### It will automate/force only some of other
-### Octopus configuration options, as listed
-### below:
-###
-### _PHP_FPM_VERSION=5.3
-### _PHP_CLI_VERSION=5.3
-### _DEBUG_MODE=NO
-### _AEGIR_VERSION=HEAD
-### _DNS_SETUP_TEST=NO
-### _THIS_DB_HOST=localhost
-### _LOCAL_NETWORK_IP="127.0.1.1"
-### _DOMAIN=$_USER.sub.aegir.local
-###
-### Thanks to local DNS wildcard, you will be
-### able to use many levels of subdomains for
-### created sites, for example:
-### site.aegir.local, abc.xyz.site.aegir.local
-### This wildcard will rely only on the local,
-### basic DNS system, without any need to use
-### external DNS.
-###
-
-
-###----------------------------------------###
 ### PHP-FPM VERSION                        ###
 ###----------------------------------------###
 ###
@@ -312,24 +281,128 @@ _DNS_SETUP_TEST=YES
 
 
 ###----------------------------------------###
-### DATABASE CUSTOM HOST                   ###
+### DATABASE DEFAULT HOST                  ###
 ###----------------------------------------###
 ###
 ### If you prefer, you can set the database
 ### to be connected via FQDN pointing to your
-### public IP instead of default "localhost".
+### public IP instead of default "localhost",
+### but it will make it harder to migrate
+### sites with DB grants tied to the system
+### unique hostname.
 ###
-### Note: the "FQDN" is a keyword.
-### Don't replace it with a real hostname.
+### Note: the "FQDN" is a keyword. It will be
+### automatically replaced with your system
+### real hostname when used.
+###
+### NOTE: This distinction is very important,
+### because if you will specify your system
+### local hostname literally, BOA will use
+### the "Remote DB Server Mode" instead, as
+### explained further below.
 ###
 ### For local or Amazon based installs with
 ### local/dynamic IP address it is recommended
 ### to use default "localhost" option.
 ###
-### Available options:
+### Supported options:
 ###
 ### _THIS_DB_HOST=localhost
 ### _THIS_DB_HOST=FQDN
+###
+_THIS_DB_HOST=localhost
+
+
+###----------------------------------------###
+### REMOTE DB SERVER MODE                  ###
+###----------------------------------------###
+###
+### WARNING !!!
+###
+### THIS IS **HIGHLY EXPERIMENTAL** FEATURE.
+### EXPECT YOUR SYSTEM TO *EXPLODE* IF USED.
+###
+### Note: We may refer to the DB server
+###       also by using term 'DB head'
+###
+### If you will specify some remote DB server
+### name (not IP) or even local hostname, but
+### literally instead of via 'localhost' or
+### 'FQDN' keyword, it will turn on and use
+### the special REMOTE DB SERVER MODE.
+###
+### This mode will work only if the remote DB
+### server has been already configured with
+### the same default dummy mysql root password
+### as your Aegir system you are about to
+### install, and if the mysql port 3306 is
+### already open for incoming and outgoing
+### TCP connections on all servers expected
+### to communicate in this mode.
+###
+### HINT: you may want to add WEB head (Aegir)
+### IP as allowed on the DB head with standard
+### command: 'csf -a 12.34.56.789 my web head'
+###
+### Note that if the remote DB server defined
+### as hostname with a valid DNS entry will be
+### used, BOA will never change mysql root
+### password and also on initial install will
+### use this dummy password:
+###
+###   sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+###
+### The same password will be used for the
+### Aegir special DB user 'aegir_root'.
+###
+### Furthermore, BOA will not create separate
+### special DB users per Octopus instance
+### and all instances will use the same
+### 'aegir_root' DB user to manage databases
+### for hosted sites.
+###
+### You can later change this password for
+### both mysql 'root' and 'aegir_root' users
+### on the remote DB server, but you will
+### have to manually update them in every
+### Aegir instance (Master and Satellites)
+### db server node settings.
+###
+### However, BOA will always check and use
+### the password it will find in the special
+### file /root/.my.pass.txt during Master
+### and Satellite instances upgrade.
+###
+### If you will change the mysql root password
+### you **must** update it also in two files:
+###
+###   /root/.my.pass.txt
+###   /root/.my.cnf
+###
+### When installing BOA on a machine expected
+### to work as a remote DB server, you should
+### create a special file containing your
+### WEB head (Aegir) hostname:
+###
+###  /root/.remote.web.head.txt
+###
+### BOA will use this file to add required
+### DB GRANT for 'aegir_root' on the DB head
+### so the WEB head (Aegir) hosted on the
+### machine with hostname specified in this
+### file will be able to manage databases
+### remotely. Make sure that this file
+### is present only on the DB head, though.
+###
+### WARNING !!!
+###
+### Make sure that there is no remote, public,
+### unrestricted access via port 3306 to any
+### DB server used in this special mode!
+###
+### Available non-default option:
+###
+### _THIS_DB_HOST=remote.db.server.name
 ###
 _THIS_DB_HOST=localhost
 

@@ -36,14 +36,14 @@
   * Configuration file template: docs/cnf/barracuda.cnf
 
 
-# Notes related to Barracuda install on public server with or w/o _EASY_PUBLIC option
+# Notes related to Barracuda install on public server with or w/o _EASY_SETUP=PUBLIC
 
   NOTE: 123.45.67.89 below is a placeholder for your server public, real IP address.
 
   NOTE: f-q-d-n below is a placeholder for your real wildcard-enabled-hostname.
         See our DNS wildcard configuration example for reference: http://bit.ly/UM2nRb
 
-  NOTE: With _EASY_PUBLIC=YES option (default) Barracuda will install automatically
+  NOTE: With _EASY_SETUP=PUBLIC option (default) Barracuda will install automatically
         only services listed below:
 
   * Your Aegir Master Instance control panel will be available at https://master.f-q-d-n
@@ -51,7 +51,7 @@
   * Your Chive MariaDB Manager will be available at https://chive.master.f-q-d-n
   * Your CSF/LFD Firewall will support integrated Nginx Abuse Guard.
 
-  NOTE: With _EASY_PUBLIC=NO option (default is YES) Barracuda will offer installation
+  NOTE: With _EASY_SETUP=NO option (default is PUBLIC) Barracuda will offer installation
         of services listed below:
 
   * Your Aegir Master Instance control panel will be available at https://master.f-q-d-n
@@ -75,12 +75,12 @@
         Only system hostname must have proper DNS configuration before installing Barracuda.
 
 
-# Notes related to Barracuda install on localhost with option _EASY_LOCALHOST=YES
+# Notes related to Barracuda install on localhost with _EASY_SETUP=LOCAL
 
-  NOTE: With _EASY_LOCALHOST=YES option (not enabled by default) Barracuda will configure
+  NOTE: With _EASY_SETUP=LOCAL option (not enabled by default) Barracuda will configure
         your local DNS and hostname automatically. No external DNS configuration needed.
 
-  NOTE: With _EASY_LOCALHOST=YES option (not enabled by default) Barracuda will install
+  NOTE: With _EASY_SETUP=LOCAL option (not enabled by default) Barracuda will install
         automatically only services listed below:
 
   * Your Aegir Master Instance control panel will be available at https://aegir.local
