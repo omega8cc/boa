@@ -2954,7 +2954,11 @@ EOF
       LC_NUMERIC=POSIX \
       LC_ALL= &> /dev/null
     # Define locale settings required for consistency also on the fly
-    export LC_CTYPE=en_US.UTF-8
+    if [ "$_STATUS" != "INIT" ] ; then
+      # On initial install it causes warning on Wheezy:
+      # setlocale: LC_CTYPE: cannot change locale (en_US.UTF-8): No such file or directory
+      export LC_CTYPE=en_US.UTF-8
+    fi
     export LC_COLLATE=POSIX
     export LC_NUMERIC=POSIX
     export LC_ALL=
