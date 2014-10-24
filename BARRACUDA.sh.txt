@@ -7079,7 +7079,7 @@ install_mariadb_sql () {
   st_runner "apt-get purge percona-server-common-5.5 -y"   &> /dev/null
   st_runner "apt-get autoremove -y --force-yes -qq"        &> /dev/null
   st_runner "apt-get update -y --force-yes"                &> /dev/null
-  if [ "$_EASY_SETUP" = "DBHD" ] || [ -e "/etc/mysql/conf.d/galera.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+  if [ "$_EASY_SETUP" = "MSTR" ] || [ "$_EASY_SETUP" = "DBHD" ] || [ "$_EASY_SETUP" = "WBHD" ] || [ -e "/etc/mysql/conf.d/galera.cnf" ] || [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] ; then
     SQLDEB="galera mariadb-galera-server"
   else
     SQLDEB="mariadb-server-$_DB_SERIES mariadb-client-$_DB_SERIES mariadb-common"
