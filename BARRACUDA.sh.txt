@@ -4246,6 +4246,11 @@ provision_backend_dbpass_generate () {
   else
     _AEGIR_HOST=`uname -n`
     _SQL_CONNECT="$_THIS_DB_HOST"
+    if [ "$_THIS_DB_HOST" != "$_MY_OWNIP" ] ; then
+      if [ -e "/root/.my.cnf" ] ; then
+        mv -f /root/.my.cnf /root/.off.my.cnf
+      fi
+    fi
   fi
   if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
     _AEGIR_HOST=`uname -n`
@@ -8547,6 +8552,11 @@ if [ "$_STATUS" = "INIT" ] ; then
   else
     _AEGIR_HOST=`uname -n`
     _SQL_CONNECT="$_THIS_DB_HOST"
+    if [ "$_THIS_DB_HOST" != "$_MY_OWNIP" ] ; then
+      if [ -e "/root/.my.cnf" ] ; then
+        mv -f /root/.my.cnf /root/.off.my.cnf
+      fi
+    fi
   fi
   if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
     _AEGIR_HOST=`uname -n`
@@ -9381,7 +9391,7 @@ forced_mysql_root_password_update () {
 }
 
 ###--------------------###
-if [ ! -e "/root/.my.cnf" ] ; then
+if [ ! -e "/root/.my.cnf" ] && [ ! -e "/root/.off.my.cnf" ] ; then
   msg "INFO: $_DB_SERVER final setup"
   #
   # Let's just do what mysql_secure_installation does, so we can do it non-interactively:
