@@ -4264,16 +4264,6 @@ GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_AP
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_RESOLVEIP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'localhost' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 EOFMYSQL
-  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-    _DO_NOTHING=YES
-  else
-    if [ -e "/root/.remote.IP.list" ] ; then
-      for _IP in `cat /root/.remote.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`; do
-        mysql -h$_SQL_CONNECT -u root -e "GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_IP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;" &> /dev/null
-        mysql -h$_SQL_CONNECT -u root -e "GRANT ALL ON $_ESC TO 'root'@'$_IP';" &> /dev/null
-      done
-    fi
-  fi
 else
   if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
     mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
@@ -9422,6 +9412,13 @@ if [ ! -e "/root/.my.cnf" ] ; then
         cp -af /etc/mysql/debian.cnf /var/backups/debian.cnf-pre-$_INSTALLER_VERSION-$_NOW.txt
         chmod 400 /var/backups/debian.cnf-pre-$_INSTALLER_VERSION-$_NOW.txt
         sed -i "s/^password =.*/password = ${PASWD}/g" /etc/mysql/debian.cnf &> /dev/null
+      fi
+      if [ -e "/root/.remote.IP.list" ] ; then
+        _ESC="\`%\`.*"
+        for _IP in `cat /root/.remote.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`; do
+          mysql -u root -e "GRANT ALL PRIVILEGES ON $_ESC TO 'aegir_root'@'$_IP' IDENTIFIED BY '${PASWD}' WITH GRANT OPTION;" &> /dev/null
+          mysql -u root -e "GRANT ALL ON $_ESC TO 'root'@'$_IP';" &> /dev/null
+        done
       fi
     fi
     mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
