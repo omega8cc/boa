@@ -5987,18 +5987,6 @@ else
     _MY_FRONT="master.$_EASY_HOSTNAME"
     validate_public_ip &> /dev/null
     _MY_OWNIP="$_THISHTIP"
-    if [ -e "/etc/mysql/conf.d" ] && [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/galera.cnf" ] && [ ! -e "/etc/mysql/conf.d/galera.cnf" ] ; then
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/galera.cnf /etc/mysql/conf.d/.galera.tpl.cnf
-      ###
-      ### You must configure /etc/mysql/conf.d/.galera.tpl.cnf
-      ### properly on every node in the Galera cluster before
-      ### renaming it to /etc/mysql/conf.d/galera.cnf
-      ###
-      ### For details and hints please check this how-to:
-      ### https://blog.mariadb.org/installing-mariadb-galera-cluster-on-debian-ubuntu/
-      ### You can ignore everything before/above the 'Configuring Galera' section.
-      ###
-    fi
     if [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
       touch /root/.dbhd.clstr.cnf
     fi
