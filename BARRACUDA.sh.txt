@@ -5983,7 +5983,7 @@ else
     validate_public_ip &> /dev/null
     _MY_OWNIP="$_THISHTIP"
     if [ -e "/etc/mysql/conf.d" ] && [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/galera.cnf" ] && [ ! -e "/etc/mysql/conf.d/galera.cnf" ] ; then
-      cp -af cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/galera.cnf /etc/mysql/conf.d/.galera.tpl.cnf
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/galera.cnf /etc/mysql/conf.d/.galera.tpl.cnf
       ###
       ### You must configure /etc/mysql/conf.d/.galera.tpl.cnf
       ### properly on every node in the Galera cluster before
