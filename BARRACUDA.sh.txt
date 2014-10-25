@@ -9642,42 +9642,51 @@ else
   ### to avoid extended downtime until all Octopus instances will receive
   ### full upgrade, if IP based listen directive was used before.
   ###
-  sed -i "s/.*listen.*127.0.0.1:80;.*//g"      /var/aegir/config/server_*/nginx.conf              &> /dev/null
-  sed -i "s/listen .*/listen        \*:80;/g"  /var/aegir/config/server_*/nginx.conf              &> /dev/null
-  sed -i "s/.*listen.*127.0.0.1:80;.*//g"      /data/disk/*/config/server_*/nginx.conf            &> /dev/null
-  sed -i "s/listen .*/listen        \*:80;/g"  /data/disk/*/config/server_*/nginx.conf            &> /dev/null
-  sed -i "s/listen .*/listen        \*:80;/g"  /data/disk/*/config/server_*/nginx/vhost.d/*       &> /dev/null
-  sed -i "s/param db_port.*/param db_port   3306;/g" /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
+  if [ -e "/var/aegir" ] ; then
+    sed -i "s/.*listen.*127.0.0.1:80;.*//g"      /var/aegir/config/server_*/nginx.conf              &> /dev/null
+    sed -i "s/listen .*/listen        \*:80;/g"  /var/aegir/config/server_*/nginx.conf              &> /dev/null
+  fi
+  if [ -e "/data/disk" ] ; then
+    sed -i "s/.*listen.*127.0.0.1:80;.*//g"      /data/disk/*/config/server_*/nginx.conf            &> /dev/null
+    sed -i "s/listen .*/listen        \*:80;/g"  /data/disk/*/config/server_*/nginx.conf            &> /dev/null
+    sed -i "s/listen .*/listen        \*:80;/g"  /data/disk/*/config/server_*/nginx/vhost.d/*       &> /dev/null
+    sed -i "s/param db_port.*/param db_port   3306;/g" /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
+  fi
 
-  for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort` ; do
-    if [ -e "$_OCT/.drush/sys/drush_make" ] ; then
-      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php         &> /dev/null
-      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/sys/provision/http/Provision/Config/Nginx/vhost.tpl.php          &> /dev/null
-      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/sys/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
-      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/xts/provision_cdn/Provision/Config/cdn.tpl.php                   &> /dev/null
-    elif [ -e "$_OCT/.drush/drush_make" ] ; then
-      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision/http/Provision/Config/Nginx/server.tpl.php             &> /dev/null
-      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php              &> /dev/null
-      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php     &> /dev/null
-      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision_cdn/Provision/Config/cdn.tpl.php                       &> /dev/null
-    fi
-  done
+  if [ -e "/data/disk" ] ; then
+    for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort` ; do
+      if [ -e "$_OCT/.drush/sys/drush_make" ] ; then
+        sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php         &> /dev/null
+        sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/sys/provision/http/Provision/Config/Nginx/vhost.tpl.php          &> /dev/null
+        sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/sys/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
+        sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/xts/provision_cdn/Provision/Config/cdn.tpl.php                   &> /dev/null
+      elif [ -e "$_OCT/.drush/drush_make" ] ; then
+        sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision/http/Provision/Config/Nginx/server.tpl.php             &> /dev/null
+        sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php              &> /dev/null
+        sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php     &> /dev/null
+        sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision_cdn/Provision/Config/cdn.tpl.php                       &> /dev/null
+      fi
+    done
+  fi
 
   ###
   ### Delete any ghost, outdated or broken config includes and vhosts
   ### in all Octopus instances which could break Nginx restart
   ###
-  for File in `grep will_expire_in /data/disk/*/config/includes/* | cut -d: -f1 | awk '{ print $1}'`; do rm -f $File ;done
-  for Vght in `ls /data/disk/*/log/CANCELLED 2> /dev/null | cut -d"/" -f4 | awk '{ print $1}'`; do rm -f /data/disk/$Vght/config/server_*/nginx/vhost.d/* ;done
-
-  sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf &> /dev/null
-  sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf   &> /dev/null
-  sed -i "s/OctopusNCookie/AegirCookie/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf      &> /dev/null
-  sed -i "s/OctopusNCookie/AegirCookie/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
-  sed -i "s/OctopusNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf      &> /dev/null
-  sed -i "s/OctopusNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
-  sed -i "s/60/180/g" /var/aegir/config/server_*/nginx.conf  &> /dev/null
-  sed -i "s/300/180/g" /var/aegir/config/server_*/nginx.conf &> /dev/null
+  if [ -e "/data/disk" ] ; then
+    for File in `grep will_expire_in /data/disk/*/config/includes/* | cut -d: -f1 | awk '{ print $1}'`; do rm -f $File ;done
+    for Vght in `ls /data/disk/*/log/CANCELLED 2> /dev/null | cut -d"/" -f4 | awk '{ print $1}'`; do rm -f /data/disk/$Vght/config/server_*/nginx/vhost.d/* ;done
+    sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf &> /dev/null
+    sed -i "s/OctopusNCookie/AegirCookie/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf      &> /dev/null
+    sed -i "s/OctopusNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf      &> /dev/null
+  fi
+  if [ -e "/var/aegir" ] ; then
+    sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf   &> /dev/null
+    sed -i "s/OctopusNCookie/AegirCookie/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
+    sed -i "s/OctopusNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
+    sed -i "s/60/180/g" /var/aegir/config/server_*/nginx.conf  &> /dev/null
+    sed -i "s/300/180/g" /var/aegir/config/server_*/nginx.conf &> /dev/null
+  fi
   validate_public_ip &> /dev/null
   _CRON_IP=${_THISHTIP//[^0-9.]/}
   if [ ! -e "/root/.local.IP.list" ] ; then
