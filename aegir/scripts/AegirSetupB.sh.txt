@@ -117,9 +117,6 @@ _ROOT="/data/disk/$_USER"
 _HOSTMASTER_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
 _PREV_HOSTMASTER_ROOT="$_ROOT/aegir/distro/$_LAST_HMR"
 #
-if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-  _THIS_DB_HOST=`uname -n`
-fi
 if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
   _L_PHP_CLI=/opt/php55/bin
 elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
@@ -446,24 +443,31 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   cd $_ROOT
   _AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
   _AGRPASWD=`echo -n $_AGRPXSWD | tr -d "\n"`
-  _AEGIR_HOST=`uname -n`
 
   if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-    _AEGIR_HOST=`uname -n`
+    if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+      _THIS_DB_HOST=`uname -n`
+    else
+      _THIS_DB_HOST=localhost
+    fi
+    _USE_AEGIR_HOST=`uname -n`
+    _USE_DB_USER="$_USER"
   else
-    _AEGIR_HOST="$_THIS_DB_HOST"
+    _USE_AEGIR_HOST=`uname -n`
+    _USE_DB_USER=aegir_root
   fi
   if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
-    _AEGIR_HOST=`uname -n`
+    _USE_AEGIR_HOST=`uname -n`
+    _THIS_DB_HOST=`uname -n`
   fi
 
   msg "$_STATUS B: Running hostmaster-install, please wait..."
   $_DRUSHCMD cache-clear drush >$_ROOT/log/install.log 2>&1
   rm -f -r $_ROOT/.tmp/cache
   if [ "$_DEBUG_MODE" = "YES" ] ; then
-    $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$_AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$_AGRPASWD --aegir_root=$_ROOT --root=$_HOSTMASTER_ROOT --http_service_type=nginx --aegir_db_host=$_THIS_DB_HOST --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION -y -d
+    $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$_USE_AEGIR_HOST --aegir_db_user=$_USE_DB_USER --aegir_db_pass=$_AGRPASWD --aegir_root=$_ROOT --root=$_HOSTMASTER_ROOT --http_service_type=nginx --aegir_db_host=$_THIS_DB_HOST --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION -y -d
   else
-    $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$_AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$_AGRPASWD --aegir_root=$_ROOT --root=$_HOSTMASTER_ROOT --http_service_type=nginx --aegir_db_host=$_THIS_DB_HOST --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION -y >$_ROOT/log/install.log 2>&1
+    $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$_USE_AEGIR_HOST --aegir_db_user=$_USE_DB_USER --aegir_db_pass=$_AGRPASWD --aegir_root=$_ROOT --root=$_HOSTMASTER_ROOT --http_service_type=nginx --aegir_db_host=$_THIS_DB_HOST --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION -y >$_ROOT/log/install.log 2>&1
   fi
   rm -rf $_HOSTMASTER_ROOT/profiles/{default,standard,minimal,testing}
   cd $_HOSTMASTER_ROOT
@@ -575,7 +579,7 @@ else
   if [ -e "$_ROOT/log/imported.pid" ] || [ -e "$_ROOT/log/exported.pid" ] ; then
     if [ ! -e "$_ROOT/log/post-merge-fix.pid" ] ; then
       msg "$_STATUS B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 start"
-      _AEGIR_HOST=`uname -n`
+      _USE_AEGIR_HOST=`uname -n`
       $_DRUSHCMD @hostmaster sqlq "REPLACE INTO hosting_context (nid, name) VALUES ('4', 'server_localhost'), ('2', 'server_master')" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "REPLACE INTO hosting_package (vid, nid, package_type, short_name, old_short_name, description) VALUES ('6', '6', 'platform', 'drupal', '', '')" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "REPLACE INTO node_revisions (nid, vid, uid, title, body, teaser, log, timestamp, format) VALUES ('6', '6', '1', 'drupal', '', '', '', '1412168340', '0')" &> /dev/null
@@ -586,11 +590,11 @@ else
       $_DRUSHCMD @hostmaster sqlq "DELETE FROM node_revisions WHERE nid='8'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE node SET type='server' WHERE nid='2'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE node SET type='server' WHERE nid='4'" &> /dev/null
-      $_DRUSHCMD @hostmaster sqlq "UPDATE node SET title='$_AEGIR_HOST' WHERE nid='2'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE node SET title='$_USE_AEGIR_HOST' WHERE nid='2'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE node SET title='localhost' WHERE nid='4'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET type='server' WHERE nid='2'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET type='server' WHERE nid='4'" &> /dev/null
-      $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET title='$_AEGIR_HOST' WHERE nid='2'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET title='$_USE_AEGIR_HOST' WHERE nid='2'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET title='localhost' WHERE nid='4'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET db_server='4' WHERE db_server='2'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET web_server='2' WHERE web_server='0'" &> /dev/null

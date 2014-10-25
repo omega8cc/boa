@@ -4242,7 +4242,7 @@ provision_backend_dbpass_generate () {
     _AEGIR_HOST=`uname -n`
     _SQL_CONNECT=localhost
   else
-    _AEGIR_HOST="$_THIS_DB_HOST"
+    _AEGIR_HOST=`uname -n`
     _SQL_CONNECT="$_THIS_DB_HOST"
   fi
   if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
@@ -8553,7 +8553,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     _AEGIR_HOST=`uname -n`
     _SQL_CONNECT=localhost
   else
-    _AEGIR_HOST="$_THIS_DB_HOST"
+    _AEGIR_HOST=`uname -n`
     _SQL_CONNECT="$_THIS_DB_HOST"
   fi
   if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
@@ -8648,7 +8648,6 @@ EOFMYSQL
     sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files &> /dev/null
     sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"    $Files &> /dev/null
     sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"  $Files &> /dev/null
-    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files &> /dev/null
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files &> /dev/null
   done
 

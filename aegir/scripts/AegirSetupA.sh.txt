@@ -133,9 +133,6 @@ _ROOT="/data/disk/$_USER"
 _HOSTMASTER_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
 _DISTRO_ROOT="$_ROOT/distro/$_DISTRO"
 #
-if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-  _THIS_DB_HOST=`uname -n`
-fi
 if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
   _L_PHP_CLI=/opt/php55/bin
 elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
@@ -998,12 +995,13 @@ provision_backend_dbpass_generate () {
   chown $_USER:$_USRG $_ROOT/.$_USER.pass.txt &> /dev/null
   _ESC="\`%\`.*"
   mysqladmin flush-privileges &> /dev/null
+
   if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
     _USE_AEGIR_HOST=`uname -n`
     _SQL_CONNECT=localhost
     _USE_DB_USER="$_USER"
   else
-    _USE_AEGIR_HOST="$_THIS_DB_HOST"
+    _USE_AEGIR_HOST=`uname -n`
     _SQL_CONNECT="$_THIS_DB_HOST"
     _USE_DB_USER=aegir_root
   fi
