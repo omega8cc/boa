@@ -446,6 +446,16 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   _AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
   _AGRPASWD=`echo -n $_AGRPXSWD | tr -d "\n"`
   _AEGIR_HOST=`uname -n`
+
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    _AEGIR_HOST=`uname -n`
+  else
+    _AEGIR_HOST="$_THIS_DB_HOST"
+  fi
+  if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
+    _AEGIR_HOST=`uname -n`
+  fi
+
   msg "$_STATUS B: Running hostmaster-install, please wait..."
   $_DRUSHCMD cache-clear drush >$_ROOT/log/install.log 2>&1
   rm -f -r $_ROOT/.tmp/cache

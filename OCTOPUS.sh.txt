@@ -1568,6 +1568,7 @@ action () {
     sed -i "s/EDIT_LEGACY_RESULT/$_LEGACY_RESULT/g"         $Files &> /dev/null
     sed -i "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files &> /dev/null
     sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_MY_OWNIP/$_MY_OWNIP/g"                   $Files &> /dev/null
     sed -i "s/EDIT_NOW/$_NOW/g"                             $Files &> /dev/null
     sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files &> /dev/null
     sed -i "s/EDIT_OPEN_DEALS/$_OPEN_DEALS/g"               $Files &> /dev/null
