@@ -959,7 +959,7 @@ else
     _WEB_SH=`readlink -n /bin/sh`
     _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
     if [ -x "/bin/websh" ] ; then
-      if [ "$_WEB_SH" != "/bin/websh" ] ; then
+      if [ "$_WEB_SH" != "/bin/websh" ] && [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
       fi

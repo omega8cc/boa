@@ -5779,6 +5779,9 @@ finale () {
     chown root:crontab /var/spool/cron/crontabs/root
     chmod 600 /var/spool/cron/crontabs/root
   fi
+  if [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    service clean-boa-env stop &> /dev/null
+  fi
   killall -9 memcached     &> /dev/null
   chmod 0750 /sbin/audispd &> /dev/null
   service auditd restart   &> /dev/null
@@ -9986,6 +9989,7 @@ fix_cnf_postfix
 if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
   usermod -aG users aegir &> /dev/null
   usermod -aG users man &> /dev/null
+  usermod -aG users mysql &> /dev/null
   if [ -x "/bin/dash" ] ; then
     switch_to_dash
   else
