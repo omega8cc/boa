@@ -193,6 +193,7 @@ octopus_install ()
       if [ "$kind" = "mstr" ] || [ "$kind" = "wbhd" ] ; then
         sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"           /var/backups/OCTOPUS.sh.$user
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   /var/backups/OCTOPUS.sh.$user
+        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"     /var/backups/OCTOPUS.sh.$user
       fi
     fi
 
