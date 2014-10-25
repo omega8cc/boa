@@ -9825,8 +9825,11 @@ csf_install () {
     msg "TEST: csf/lfd firewall can not be installed on this system"
   fi
 }
+if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+  _CSF_COMPATIBILITY=NO
+fi
 if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
-  if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
+  if [ ! -e "/var/run/cloud_vhost.pid" ] && [ "$_CSF_COMPATIBILITY" != "NO" ] ; then
     if [ ! -e "/usr/sbin/csf" ] ; then
       echo " "
       if prompt_yes_no "Do you want to install csf/lfd firewall?" ; then
@@ -9847,9 +9850,6 @@ if [ -e "/usr/sbin/csf" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/grub.
   rm -f /usr/sbin/{csf,lfd}
   rm -f /etc/init.d/{csf,lfd}
   rm -f -r /etc/csf
-fi
-if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
-  _CSF_COMPATIBILITY=NO
 fi
 if [ "$_CSF_COMPATIBILITY" = "NO" ] ; then
   csf -x &> /dev/null
