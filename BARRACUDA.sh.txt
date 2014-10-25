@@ -5938,7 +5938,7 @@ else
     _MY_OWNIP="$_THISHTIP"
   elif [ "$_EASY_SETUP" = "MSTR" ] ; then
     msg "INFO: Cluster Master Mode Active"
-    _XTRAS_LIST="CSF"
+    _XTRAS_LIST=""
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
     _AEGIR_VERSION=HEAD
@@ -5956,7 +5956,7 @@ else
     fi
   elif [ "$_EASY_SETUP" = "WBHD" ] ; then
     msg "INFO: Cluster WEB Head Mode Active"
-    _XTRAS_LIST="CSF"
+    _XTRAS_LIST=""
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
     _AEGIR_VERSION=HEAD
@@ -9847,6 +9847,9 @@ if [ -e "/usr/sbin/csf" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/grub.
   rm -f /usr/sbin/{csf,lfd}
   rm -f /etc/init.d/{csf,lfd}
   rm -f -r /etc/csf
+fi
+if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+  _CSF_COMPATIBILITY=NO
 fi
 if [ "$_CSF_COMPATIBILITY" = "NO" ] ; then
   csf -x &> /dev/null
