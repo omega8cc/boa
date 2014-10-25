@@ -5938,7 +5938,7 @@ else
     _MY_OWNIP="$_THISHTIP"
   elif [ "$_EASY_SETUP" = "MSTR" ] ; then
     msg "INFO: Cluster Master Mode Active"
-    _XTRAS_LIST="CSF"
+    _XTRAS_LIST="CSF CSS"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
     _AEGIR_VERSION=HEAD
@@ -5956,7 +5956,7 @@ else
     fi
   elif [ "$_EASY_SETUP" = "WBHD" ] ; then
     msg "INFO: Cluster WEB Head Mode Active"
-    _XTRAS_LIST="CSF"
+    _XTRAS_LIST="CSF CSS"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
     _AEGIR_VERSION=HEAD
@@ -5974,7 +5974,7 @@ else
     fi
   elif [ "$_EASY_SETUP" = "DBHD" ] ; then
     msg "INFO: Cluster DB Head Mode Active"
-    _XTRAS_LIST=""
+    _XTRAS_LIST="CSS"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
     _AEGIR_VERSION=HEAD
