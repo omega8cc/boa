@@ -9134,12 +9134,14 @@ else
         if [[ "$_VAR_IF_PRESENT" =~ "scout" ]] ; then
           if [ ! -e "$_GEM_FILE" ] && [ ! -z "$_SCOUT_KEY" ] ; then
             st_runner "rvm @global do gem install --conservative scout" 2> /dev/null
+            adduser --system --group --home /var/scout scout &> /dev/null
             usermod -aG users scout &> /dev/null
             sed -i "s/\* \* \* \* \* scout .*/* * * * * scout $_GEM_PATH $_SCOUT_KEY/g" $_GEM_CRON &> /dev/null
           fi
         else
           if [ ! -z "$_SCOUT_KEY" ] ; then
             st_runner "rvm @global do gem install --conservative scout" 2> /dev/null
+            adduser --system --group --home /var/scout scout &> /dev/null
             usermod -aG users scout &> /dev/null
             echo -e "* * * * * scout $_GEM_FILE $_SCOUT_KEY" | tee -a $_GEM_CRON >/dev/null 2>&1
           fi
