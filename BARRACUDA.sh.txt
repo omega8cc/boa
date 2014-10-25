@@ -4245,7 +4245,9 @@ provision_backend_dbpass_generate () {
     _SQL_CONNECT=localhost
   else
     _AEGIR_HOST=`uname -n`
-    _SQL_CONNECT="$_THIS_DB_HOST"
+    ### _SQL_CONNECT="$_THIS_DB_HOST"
+    ### Master Instance will use local DB server
+    _SQL_CONNECT=localhost
   fi
   if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
     _AEGIR_HOST=`uname -n`
@@ -8546,7 +8548,9 @@ if [ "$_STATUS" = "INIT" ] ; then
     _SQL_CONNECT=localhost
   else
     _AEGIR_HOST=`uname -n`
-    _SQL_CONNECT="$_THIS_DB_HOST"
+    ### _SQL_CONNECT="$_THIS_DB_HOST"
+    ### Master Instance will use local DB server
+    _SQL_CONNECT=localhost
   fi
   if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
     _AEGIR_HOST=`uname -n`
