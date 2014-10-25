@@ -934,9 +934,6 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ] ; then
   exit 0
 else
   touch /var/run/manage_ltd_users.pid
-  if [ ! -e "/root/.my.cnf" ] && [ -e "/root/.off.my.cnf" ] ; then
-    mv -f /root/.off.my.cnf /root/.my.cnf
-  fi
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   cat /var/xdrago/conf/lshell.conf > $_THIS_LTD_CONF
   _THISHTNM=`hostname --fqdn`
