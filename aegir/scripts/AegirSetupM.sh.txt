@@ -40,13 +40,17 @@ _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _BRANCH_BOA=EDIT_BRANCH_BOA
 _BRANCH_PROVISION=EDIT_BRANCH_PROVISION
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
+_LOCAL_NETWORK_IP=EDIT_LOCAL_NETWORK_IP
+_MY_OWNIP=EDIT_MY_OWNIP
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
 _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
 _REL_VERSION=`lsb_release -sc`
+_ROOT="$HOME"
 _STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
-_LOCAL_NETWORK_IP=EDIT_LOCAL_NETWORK_IP
-_ROOT="$HOME"
+_AEGIR_DB_USER=EDIT_AEGIR_DB_USER
+_ESC_APASS=EDIT_ESC_APASS
+_AEGIR_HOST=EDIT_AEGIR_HOST
 #
 if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
   _THIS_DB_HOST=`uname -n`
@@ -184,94 +188,11 @@ fi
 
 if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
   _AEGIR_HOST=`uname -n`
-  _SQL_CONNECT=localhost
 else
   _AEGIR_HOST="$_THIS_DB_HOST"
-  _SQL_CONNECT="$_THIS_DB_HOST"
 fi
 if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
   _AEGIR_HOST=`uname -n`
-  _SQL_CONNECT=localhost
-fi
-
-_RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
-if [ -z "$_RESOLVEIP" ] ; then
-  msg "FATAL ERROR: DNS looks broken for server $_AEGIR_HOST"
-  msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
-  touch /opt/tmp/status-AegirSetupM-FAIL
-  exit 1
-else
-  _AEGIR_HOST_IP="$_RESOLVEIP"
-fi
-
-_MYSQLTEST=`mysql -h$_AEGIR_HOST_IP  -uINVALIDLOGIN  -pINVALIDPASS 2>&1 >/dev/null | cat`
-
-if [ -z `echo $_MYSQLTEST | grep -q "ERROR \(2003\|1130\)"` ] ; then
-  msg  "MySQL is listening on $_AEGIR_HOST_IP."
-else
-  msg "FATAL ERROR: MySQL is not configured to listen on $_AEGIR_HOST_IP"
-  msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
-  touch /opt/tmp/status-AegirSetupM-FAIL
-  exit 1
-fi
-
-msg "INFO: Barracuda will now generate a mysql super user password for you: "
-
-_AEGIR_DB_USER=aegir_root
-_ESC_APASS=""
-_LEN_APASS=0
-
-if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-    _ESC_APASS=$(randpass 32 esc)
-  else
-    if [ -e "/root/.my.pass.txt" ] ; then
-      _ESC_APASS=`cat /root/.my.pass.txt`
-    else
-      _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
-    fi
-  fi
-  _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
-  _LEN_APASS=$(echo ${#_ESC_APASS})
-fi
-
-if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 19 ] ; then
-  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-    _ESC_APASS=`pwgen -v -s -1`
-    _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
-    _ESC_APASS=`sanitize_string "$_ESC_APASS"`
-  else
-    if [ -e "/root/.my.pass.txt" ] ; then
-      _ESC_APASS=`cat /root/.my.pass.txt`
-    else
-      _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
-    fi
-  fi
-fi
-
-cat <<EOF
-  Username : $_AEGIR_DB_USER
-  Password : $_ESC_APASS
-  Hostname : $_AEGIR_HOST ($_AEGIR_HOST_IP)
-EOF
-
-_ESC="\`%\`.*"
-mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST_IP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'localhost' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
-EOFMYSQL
-
-if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-  _EXTRA_GRANTS=NO
-else
-  _LOCAL_HOST=`uname -n`
-  _LOCAL_IP=`echo $(getent ahostsv4 $_LOCAL_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
-  mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_THIS_DB_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_LOCAL_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_LOCAL_IP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
-EOFMYSQL
 fi
 
 msg "INFO: Installing drush in $_ROOT"

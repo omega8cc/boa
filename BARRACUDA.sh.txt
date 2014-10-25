@@ -8548,29 +8548,116 @@ if [ "$_STATUS" = "INIT" ] ; then
   echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
   ln -sf /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf &> /dev/null
   update_nginx_conf
+
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    _AEGIR_HOST=`uname -n`
+    _SQL_CONNECT=localhost
+  else
+    _AEGIR_HOST="$_THIS_DB_HOST"
+    _SQL_CONNECT="$_THIS_DB_HOST"
+  fi
+  if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
+    _AEGIR_HOST=`uname -n`
+    _SQL_CONNECT=localhost
+  fi
+
+  _RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
+  if [ -z "$_RESOLVEIP" ] ; then
+    msg "FATAL ERROR: DNS looks broken for server $_AEGIR_HOST"
+    exit 1
+  else
+    _AEGIR_HOST_IP="$_RESOLVEIP"
+  fi
+
+  _MYSQLTEST=`mysql -h$_AEGIR_HOST_IP  -uINVALIDLOGIN  -pINVALIDPASS 2>&1 >/dev/null | cat`
+
+  if [ -z `echo $_MYSQLTEST | grep -q "ERROR \(2003\|1130\)"` ] ; then
+    msg "INFO: MySQL is listening on $_AEGIR_HOST_IP."
+  else
+    msg "FATAL ERROR: MySQL is not configured to listen on $_AEGIR_HOST_IP"
+    exit 1
+  fi
+
+  _AEGIR_DB_USER=aegir_root
+  _ESC_APASS=""
+  _LEN_APASS=0
+
+  if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+    if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+      _ESC_APASS=$(randpass 32 esc)
+    else
+      if [ -e "/root/.my.pass.txt" ] ; then
+        _ESC_APASS=`cat /root/.my.pass.txt`
+      else
+        _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+      fi
+    fi
+    _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
+    _LEN_APASS=$(echo ${#_ESC_APASS})
+  fi
+
+  if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 19 ] ; then
+    if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+      _ESC_APASS=`pwgen -v -s -1`
+      _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
+      _ESC_APASS=`sanitize_string "$_ESC_APASS"`
+    else
+      if [ -e "/root/.my.pass.txt" ] ; then
+        _ESC_APASS=`cat /root/.my.pass.txt`
+      else
+        _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+      fi
+    fi
+  fi
+
+  _ESC="\`%\`.*"
+  mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST_IP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'localhost' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+EOFMYSQL
+
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    _EXTRA_GRANTS=NO
+  else
+    _LOCAL_HOST=`uname -n`
+    _LOCAL_IP=`echo $(getent ahostsv4 $_LOCAL_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
+    mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_THIS_DB_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_LOCAL_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_LOCAL_IP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+EOFMYSQL
+  fi
+
   cd /var/aegir
   _AEGIR_SCRIPT="AegirSetupM.sh.txt"
   for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f` ; do
+    sed -i "s/EDIT_AEGIR_DB_USER/$_AEGIR_DB_USER/g"        $Files &> /dev/null
+    sed -i "s/EDIT_AEGIR_HOST/$_AEGIR_HOST/g"              $Files &> /dev/null
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"        $Files &> /dev/null
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files &> /dev/null
     sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files &> /dev/null
     sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"              $Files &> /dev/null
     sed -i "s/EDIT_BRANCH_PROVISION/$_BRANCH_PROVISION/g"  $Files &> /dev/null
+    sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"              $Files &> /dev/null
+    sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                  $Files &> /dev/null
     sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files &> /dev/null
+    sed -i "s/EDIT_ESC_APASS/$_ESC_APASS/g"                $Files &> /dev/null
     sed -i "s/EDIT_LOCAL_NETWORK_IP/$_LOCAL_NETWORK_IP/g"  $Files &> /dev/null
+    sed -i "s/EDIT_MY_OWNIP/$_MY_OWNIP/g"                  $Files &> /dev/null
     sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files &> /dev/null
+    sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"    $Files &> /dev/null
+    sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"  $Files &> /dev/null
+    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files &> /dev/null
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files &> /dev/null
   done
+
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT ./
-  if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-    _USE_DB_HOST=`uname -n`
-  else
-    _USE_DB_HOST="$_THIS_DB_HOST"
-  fi
+
   if [ "$_DEBUG_MODE" = "YES" ] ; then
-    su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_USE_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
+    su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_AEGIR_HOST' --client_email='$_MY_EMAIL' -y -d"
   else
-    su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_USE_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
+    su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_AEGIR_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
   fi
   if [ -e "/opt/tmp/status-AegirSetupM-FAIL" ] ; then
     msg "FATAL ERROR: AegirSetupM installer failed"
