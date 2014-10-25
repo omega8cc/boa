@@ -6908,13 +6908,15 @@ else
       st_runner "apt-get install ubuntu-keyring -f -y --force-yes --reinstall" 2> /dev/null
     fi
   fi
-  st_runner "aptitude remove nginx-extras -y"       &> /dev/null
-  st_runner "aptitude remove nginx -y"              &> /dev/null
-  st_runner "aptitude remove nginx-common -y"       &> /dev/null
-  st_runner "aptitude remove nginx-full -y"         &> /dev/null
-  st_runner "aptitude remove redis-server -y"       &> /dev/null
-  st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
-  st_runner "apt-get update -y --force-yes"         &> /dev/null
+  mrun "apt-get -f install -qq"                         &> /dev/null
+  mrun "service nginx start"                            &> /dev/null
+  mrun "apt-get remove nginx-extras -y --force-yes -qq" &> /dev/null
+  mrun "apt-get remove nginx -y --force-yes -qq"        &> /dev/null
+  mrun "apt-get remove nginx-common -y --force-yes -qq" &> /dev/null
+  mrun "apt-get remove nginx-full -y --force-yes -qq"   &> /dev/null
+  mrun "apt-get remove redis-server -y --force-yes -qq" &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes -qq"     &> /dev/null
+  st_runner "apt-get update -y --force-yes"             &> /dev/null
 fi
 _EXTRA_LIB_APT="libmcrypt-dev"
 if [ ! -z "$_EXTRA_PACKAGES" ] ; then
