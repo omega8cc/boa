@@ -9414,9 +9414,15 @@ if [ ! -e "/root/.my.cnf" ] ; then
         _ESC="\`%\`.*"
         for _IP in `cat /root/.remote.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`; do
           mysql -u root -e "GRANT ALL PRIVILEGES ON $_ESC TO 'aegir_root'@'$_IP' IDENTIFIED BY '${PASWD}' WITH GRANT OPTION;" &> /dev/null
-          mysql -u root -e "GRANT ALL ON $_ESC TO 'root'@'$_IP';" &> /dev/null
         done
       fi
+      if [ -e "/root/.cluster.IP.list" ] ; then
+        for _IP in `cat /root/.cluster.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`; do
+          mysql -u root -e "GRANT ALL ON *.* TO 'root'@'$_IP';" &> /dev/null
+        done
+        mysql -u root -e "GRANT ALL ON *.* TO 'wsrep'@'%' IDENTIFIED BY '${PASWD}';" &> /dev/null
+      fi
+      touch /var/xdrago/log/fixed-cluster-ip-grants.log
     fi
     mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
   fi
@@ -9436,6 +9442,23 @@ if [ ! -e "/root/.my.cnf" ] ; then
   msg "INFO: $_DB_SERVER setup completed"
   msg "INFO: You can now log in as root by typing only 'mysql' on the command line"
 else
+  if [ ! -e "/var/xdrago/log/fixed-cluster-ip-grants.log" ] && [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    PXSWD=`cat /root/.my.pass.txt`
+    PASWD=`echo -n $PXSWD | tr -d "\n"`
+    if [ -e "/root/.remote.IP.list" ] ; then
+      _ESC="\`%\`.*"
+      for _IP in `cat /root/.remote.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`; do
+        mysql -u root -e "GRANT ALL PRIVILEGES ON $_ESC TO 'aegir_root'@'$_IP' IDENTIFIED BY '${PASWD}' WITH GRANT OPTION;" &> /dev/null
+      done
+    fi
+    if [ -e "/root/.cluster.IP.list" ] ; then
+      for _IP in `cat /root/.cluster.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`; do
+        mysql -u root -e "GRANT ALL ON *.* TO 'root'@'$_IP';" &> /dev/null
+      done
+      mysql -u root -e "GRANT ALL ON *.* TO 'wsrep'@'%' IDENTIFIED BY '${PASWD}';" &> /dev/null
+    fi
+    touch /var/xdrago/log/fixed-cluster-ip-grants.log
+  fi
   if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
     if [ ! -e "/root/.mysql.no.new.password.cnf" ] ; then
       forced_mysql_root_password_update
