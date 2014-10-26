@@ -365,54 +365,6 @@ up_finish ()
   exit 0
 }
 
-up_stable ()
-{
-  up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-  up_action
-  up_finish
-}
-
-up_head ()
-{
-  up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-  up_action
-  up_finish
-}
-
-up_cluster ()
-{
-  up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/cluster/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-  up_action
-  up_finish
-}
-
-up_modern ()
-{
-  up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.3.x-dev/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-  up_action
-  up_finish
-}
-
-up_legacy ()
-{
-  up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/legacy/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-  up_action
-  up_finish
-}
-
-up_vanilla ()
-{
-  up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.3.x-dev/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-  up_action
-  up_finish
-}
-
 set_pin_priority ()
 {
   if [ ! -e "/etc/apt/preferences" ] && [ -e "/etc/issue.net" ] ; then
@@ -432,12 +384,6 @@ set_pin_priority ()
     elif [ "$_THIS_OS" = "Ubuntu" ] ; then
       curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
     fi
-  fi
-  _THIS_DO=$(grep "Ubuntu 12.04" /etc/issue.net)
-  if [[ "$_THIS_DO" =~ "Ubuntu 12.04" ]] ; then
-    _THIS_DO=YesPrecise
-  else
-    _THIS_DO=Other
   fi
 }
 
@@ -516,68 +462,43 @@ check_root ()
   fi
 }
 
-case "$1" in
-  up-stable) cmmand="$1"
-             silent="$2"
-             ifauto="$3"
-             check_root
-             check_dns_curl
-             check_wrapper
-             set_pin_priority
-             up_stable
-  ;;
-  up-head)   cmmand="$1"
-             silent="$2"
-             ifauto="$3"
-             check_root
-             check_dns_curl
-             check_wrapper
-             set_pin_priority
-             up_head
-  ;;
-  up-cluster) cmmand="$1"
-             silent="$2"
-             ifauto="$3"
-             check_root
-             check_dns_curl
-             check_wrapper
-             set_pin_priority
-             up_cluster
-  ;;
-  up-modern) cmmand="$1"
-             silent="$2"
-             ifauto="$3"
-             check_root
-             check_dns_curl
-             check_wrapper
-             set_pin_priority
-             up_modern
-  ;;
-  up-legacy) cmmand="$1"
-             silent="$2"
-             ifauto="$3"
-             check_root
-             check_dns_curl
-             check_wrapper
-             set_pin_priority
-             up_legacy
-  ;;
-  up-vanilla) cmmand="$1"
-             silent="$2"
-             ifauto="$3"
-             check_root
-             check_dns_curl
-             check_wrapper
-             set_pin_priority
-             up_vanilla
-  ;;
-  *)         echo
-             echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log}"
-             echo
-             echo "  Silent Mode Option: system == OS only upgrade"
-             echo "  Silent Mode Option: log ===== OS and Aegir Master Instance upgrade"
-             echo
-             clean_pid_exit
-  ;;
-esac
+proceed ()
+{
+  check_root
+  check_dns_curl
+  check_wrapper
+  set_pin_priority
+  up_start
+  if [ "$cmmand" = "up-stable" ] ; then
+    _SCRIPT_URL="http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt"
+  elif [ "$cmmand" = "up-head" ] ; then
+    _SCRIPT_URL="https://raw.githubusercontent.com/omega8cc/boa/master/BARRACUDA.sh.txt"
+  elif [ "$cmmand" = "up-cluster" ] ; then
+    _SCRIPT_URL="https://raw.githubusercontent.com/omega8cc/boa/cluster/BARRACUDA.sh.txt"
+  elif [ "$cmmand" = "up-modern" ] ; then
+    _SCRIPT_URL="https://raw.githubusercontent.com/omega8cc/boa/2.3.x-dev/BARRACUDA.sh.txt"
+  elif [ "$cmmand" = "up-legacy" ] ; then
+    _SCRIPT_URL="http://files.aegir.cc/versions/legacy/txt/BARRACUDA.sh.txt"
+  elif [ "$cmmand" = "up-vanilla" ] ; then
+    _SCRIPT_URL="https://raw.githubusercontent.com/omega8cc/boa/2.3.x-dev/BARRACUDA.sh.txt"
+  else
+    echo
+    echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log}"
+    echo
+    echo "  Silent Mode Option: system == OS only upgrade"
+    echo "  Silent Mode Option: log ===== OS and Aegir Master Instance upgrade"
+    echo
+    clean_pid_exit
+  fi
+  if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    _SCRIPT_URL="https://raw.githubusercontent.com/omega8cc/boa/cluster/BARRACUDA.sh.txt"
+  fi
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab $_SCRIPT_URL -o BARRACUDA.sh.txt
+  up_action
+  up_finish
+}
 
+cmmand="$1"
+silent="$2"
+ifauto="$3"
+proceed
