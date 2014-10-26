@@ -327,12 +327,6 @@ set_pin_priority ()
     fi
     rm -f /var/backups/etc-apt-preferences-*
   fi
-  _THIS_DO=$(grep "Ubuntu 12.04" /etc/issue.net)
-  if [[ "$_THIS_DO" =~ "Ubuntu 12.04" ]] ; then
-    _THIS_DO=YesPrecise
-  else
-    _THIS_DO=Other
-  fi
 }
 
 init_finish ()
