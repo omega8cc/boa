@@ -9829,10 +9829,14 @@ csf_install () {
   fi
 }
 if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
-  _CSF_COMPATIBILITY=NO
+  if [ "$_USE_CSF_ON_CLSTR" = "YES" ] ; then
+    _CSF_CLSTR=YES
+  else
+    _CSF_CLSTR=NO
+  fi
 fi
-if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
-  if [ ! -e "/var/run/cloud_vhost.pid" ] && [ "$_CSF_COMPATIBILITY" != "NO" ] ; then
+if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSF" ]] || [ "$_CSF_CLSTR" = "YES" ] ; then
+  if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     if [ ! -e "/usr/sbin/csf" ] ; then
       echo " "
       if prompt_yes_no "Do you want to install csf/lfd firewall?" ; then
@@ -9845,44 +9849,41 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
     fi
   fi
 fi
-if [ -e "/usr/sbin/csf" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
-  csf -x &> /dev/null
-  update-rc.d -f csf remove &> /dev/null
-  update-rc.d -f lfd remove &> /dev/null
-  rm -f /etc/cron.d/{csf,lfd}*
-  rm -f /usr/sbin/{csf,lfd}
-  rm -f /etc/init.d/{csf,lfd}
-  rm -f -r /etc/csf
-fi
-if [ "$_CSF_COMPATIBILITY" = "NO" ] ; then
-  csf -x &> /dev/null
-  update-rc.d -f csf remove &> /dev/null
-  update-rc.d -f lfd remove &> /dev/null
-  rm -f /etc/cron.d/{csf,lfd}*
-  rm -f /usr/sbin/{csf,lfd}
-  rm -f /etc/init.d/{csf,lfd}
-  rm -f -r /etc/csf
-fi
-if [ -e "/usr/sbin/csf" ] ; then
-  if [ "$_CUSTOM_CONFIG_CSF" = "YES" ] ; then
-    _DO_NOTHING=YES
+if [ -e "/usr/sbin/csf" ] || [ -e "/usr/sbin/lfd" ] || [ -e "/etc/cron.d/lfd" ] ; then
+  if [ "$_CSF_COMPATIBILITY" = "NO" ] || [ "$_CSF_CLSTR" = "NO" ] ; then
+    _REMOVE_CSF=YES
+  elif [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
+    _REMOVE_CSF=YES
+  fi
+  if [ "$_REMOVE_CSF" = "YES" ] ; then
+    csf -x &> /dev/null
+    update-rc.d -f csf remove &> /dev/null
+    update-rc.d -f lfd remove &> /dev/null
+    rm -f /etc/cron.d/{csf,lfd}*
+    rm -f /usr/sbin/{csf,lfd}
+    rm -f /etc/init.d/{csf,lfd}
+    rm -f -r /etc/csf
   else
-    _CSF_MODE=upgrade
-    csf_install
-  fi
-  if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-    sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"1\"/g" /etc/csf/csf.conf &> /dev/null
-  fi
-  if [ "$_VMFAMILY" = "VZ" ] ; then
-    sed -i "s/^PORTFLOOD .*/PORTFLOOD = \"\"/g" /etc/csf/csf.conf &> /dev/null
-    sed -i "s/^CONNLIMIT .*/CONNLIMIT = \"\"/g" /etc/csf/csf.conf &> /dev/null
-    sed -i "s/^USE_CONNTRACK .*/USE_CONNTRACK = \"0\"/g" /etc/csf/csf.conf &> /dev/null
-  fi
-  if [ -e "/var/xdrago/log/lastFire" ] ; then
-    rm -f /var/xdrago/log/lastFire
-    mrun "csf -x" &> /dev/null
-    mrun "csf -e" &> /dev/null
-    mrun "csf -q" &> /dev/null
+    if [ "$_CUSTOM_CONFIG_CSF" = "YES" ] ; then
+      _DO_NOTHING=YES
+    else
+      _CSF_MODE=upgrade
+      csf_install
+    fi
+    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+      sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"1\"/g" /etc/csf/csf.conf &> /dev/null
+    fi
+    if [ "$_VMFAMILY" = "VZ" ] ; then
+      sed -i "s/^PORTFLOOD .*/PORTFLOOD = \"\"/g" /etc/csf/csf.conf &> /dev/null
+      sed -i "s/^CONNLIMIT .*/CONNLIMIT = \"\"/g" /etc/csf/csf.conf &> /dev/null
+      sed -i "s/^USE_CONNTRACK .*/USE_CONNTRACK = \"0\"/g" /etc/csf/csf.conf &> /dev/null
+    fi
+    if [ -e "/var/xdrago/log/lastFire" ] ; then
+      rm -f /var/xdrago/log/lastFire
+      mrun "csf -x" &> /dev/null
+      mrun "csf -e" &> /dev/null
+      mrun "csf -q" &> /dev/null
+    fi
   fi
 fi
 
