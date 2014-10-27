@@ -597,6 +597,8 @@ else
   ### Fix for old migrated/merged instances
 
   msg "$_STATUS B: Hostmaster STATUS: Running hostmaster-migrate, please wait..."
+  $_DRUSHCMD cache-clear drush &> /dev/null
+  rm -f -r $_ROOT/.tmp/cache
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y -d
   else
