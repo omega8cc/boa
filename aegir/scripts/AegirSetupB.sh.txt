@@ -608,7 +608,10 @@ else
     fi
     $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='7'" &> /dev/null
     $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='9'" &> /dev/null
+    $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE client='0'" &> /dev/null
     $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET web_server='2' WHERE web_server='0'" &> /dev/null
+    $_DRUSHCMD @hostmaster sqlq "UPDATE node SET uid='1' WHERE uid='0'" &> /dev/null
+    $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET uid='1' WHERE uid='0'" &> /dev/null
   fi
   ### Fix for old migrated/merged instances
 
@@ -641,7 +644,10 @@ else
     fi
     $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='7'" &> /dev/null
     $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='9'" &> /dev/null
+    $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE client='0'" &> /dev/null
     $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET web_server='2' WHERE web_server='0'" &> /dev/null
+    $_DRUSHCMD @hostmaster sqlq "UPDATE node SET uid='1' WHERE uid='0'" &> /dev/null
+    $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET uid='1' WHERE uid='0'" &> /dev/null
   fi
   ### Fix for migrated/merged instances
 
