@@ -598,7 +598,6 @@ else
       $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET title='localhost' WHERE nid='4'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET db_server='4' WHERE db_server='2'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET web_server='2' WHERE web_server='0'" &> /dev/null
-      $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE users_roles SET rid='7' WHERE rid='5'" &> /dev/null
       $_DRUSHCMD cache-clear drush &> /dev/null
       rm -f -r $_ROOT/.tmp/cache
@@ -616,6 +615,8 @@ else
   ### Fix for old migrated/merged instances
 
   msg "$_STATUS B: Hostmaster STATUS: Running hostmaster-migrate, please wait..."
+  $_DRUSHCMD cache-clear drush &> /dev/null
+  rm -f -r $_ROOT/.tmp/cache
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y -d
   else
@@ -635,10 +636,7 @@ else
   if [ -e "$_ROOT/log/imported.pid" ] || [ -e "$_ROOT/log/exported.pid" ] ; then
     if [ ! -e "$_ROOT/log/post-merge-fix.pid" ] ; then
       msg "$_STATUS B: Hostmaster STATUS: Fix for migrated/merged instance 2/2 start"
-      $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE users_roles SET rid='7' WHERE rid='5'" &> /dev/null
-      $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='7'" &> /dev/null
-      $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='9'" &> /dev/null
       echo FIXED > $_ROOT/log/post-merge-fix.pid
       msg "$_STATUS B: Hostmaster STATUS: Fix for migrated/merged instance 2/2 complete"
     fi
