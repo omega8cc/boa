@@ -992,6 +992,13 @@ else
   chmod 0710 /var/aegir/.drush &> /dev/null
   find /var/aegir/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
   find /var/aegir/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
+  if [ -e "/var/scout" ] ; then
+    _SCOUT_CRON_OFF=$(grep "OFFscoutOFF" /etc/crontab)
+    if [[ "$_SCOUT_CRON_OFF" =~ "OFFscoutOFF" ]] ; then
+      sleep 5
+      sed -i "s/OFFscoutOFF/scout/g" /etc/crontab &> /dev/null
+    fi
+  fi
   if [ -e "/var/backups/reports/up/barracuda" ] ; then
     if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
       if [ -e "/var/spool/cron/crontabs/aegir" ] ; then

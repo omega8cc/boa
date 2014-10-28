@@ -9162,6 +9162,14 @@ else
   fi
 fi
 
+###--------------------###
+if [ -e "/var/scout" ] ; then
+  _SCOUT_CRON_OFF=$(grep "OFFscoutOFF" /etc/crontab)
+  _SCOUT_CRON=$(grep "scout" /etc/crontab)
+  if [[ ! "$_SCOUT_CRON_OFF" =~ "OFFscoutOFF" ]] && [[ "$_SCOUT_CRON" =~ "scout" ]] ; then
+    sed -i "s/scout/OFFscoutOFF/g" /etc/crontab &> /dev/null
+  fi
+fi
 
 ###--------------------###
 if [ "$_STATUS" = "INIT" ] ; then
