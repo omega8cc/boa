@@ -267,6 +267,15 @@ fix_user_register_protection () {
       drush4 vset --always-set user_email_verification 1 &> /dev/null
     fi
   fi
+
+  if [ -e "$User/log/imported.pid" ] || [ -e "$User/log/exported.pid" ] ; then
+    if [ ! -e "$Dir/modules/readonlymode_fix.info" ] ; then
+      drush4 vset --always-set site_readonly 0 &> /dev/null
+      echo OK > $Dir/modules/readonlymode_fix.info
+      chown $_THIS_HM_USER:users $Dir/modules/readonlymode_fix.info
+      chmod 0664 $Dir/modules/readonlymode_fix.info
+    fi
+  fi
 }
 
 fix_robots_txt () {
