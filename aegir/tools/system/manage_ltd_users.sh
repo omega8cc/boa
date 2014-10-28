@@ -992,6 +992,25 @@ else
   chmod 0710 /var/aegir/.drush &> /dev/null
   find /var/aegir/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
   find /var/aegir/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
+  if [ -e "/var/backups/reports/up/barracuda" ] ; then
+    if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+      if [ -e "/var/spool/cron/crontabs/aegir" ] ; then
+        sleep 180
+        rm -f /var/spool/cron/crontabs/aegir
+        service cron reload &> /dev/null
+      fi
+    fi
+    if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] ; then
+      if [ -e "/var/run/mysqld/mysqld.pid" ] && [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
+        service cron stop &> /dev/null
+        sleep 180
+        touch /root/.remote.db.cnf
+        service mysql stop &> /dev/null
+        sleep 5
+        service cron start &> /dev/null
+      fi
+    fi
+  fi
   rm -f /var/run/manage_ltd_users.pid
   exit 0
 fi

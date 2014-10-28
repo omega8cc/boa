@@ -234,6 +234,13 @@ up_action ()
       fi
     fi
     if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
+      if [ "$cmmand" = "up-cluster" ] ; then
+        if [ ! -e "/var/run/mysqld/mysqld.pid" ] && [ ! -e "/root/.dbhd.clstr.cnf" ] && [ -e "/etc/init.d/mysql" ] ; then
+          rm -f /root/.remote.db.cnf
+          sleep 5
+          service mysql start &> /dev/null
+        fi
+      fi
       if [ "$silent" = "log" ] || [ "$silent" = "system" ] ; then
         if [ "$_L_VMFAMILY" = "VS" ] ; then
           if [[ "$_CHECK_HOST" =~ ".qq.o8.io" ]] ; then
