@@ -23,6 +23,8 @@ action()
   if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
     rm -f /tmp/*
   fi
+  rm -f /root/ksplice-archive.asc
+  rm -f /root/install-uptrack
   find /tmp/{.ICE-unix,.X11-unix,.webmin} -mtime +0 -type f -exec rm -rf {} \;
   rm -f -r /tmp/{google*,Google*,drush*,mapshape*,mc-*,hsperfdata*,tmp*,.sass-cache,pear,jetty*}
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
