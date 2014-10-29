@@ -601,10 +601,10 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'
   }
 
   if ($all_ini['server_name_cookie_domain'] || $site_subdir) {
-    $domain = '.'. preg_replace('`^www.`', '', $_SERVER['SERVER_NAME']);
+    $domain = '.'. preg_replace('`^www\.`', '', $_SERVER['SERVER_NAME']);
   }
   else {
-    $domain = '.'. preg_replace('`^www.`', '', $_SERVER['HTTP_HOST']);
+    $domain = '.'. preg_replace('`^www\.`', '', $_SERVER['HTTP_HOST']);
   }
   $domain = str_replace('..', '.', $domain);
   if (count(explode('.', $domain)) > 2 && !is_numeric(str_replace('.', '', $domain))) {
@@ -613,7 +613,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'
     header("X-Cookie-Domain: " . $cookie_domain);
   }
 
-  $this_prefix = preg_replace('`^www.`', '', $_SERVER['SERVER_NAME']) . '_y_';
+  $this_prefix = preg_replace('`^www\.`', '', $_SERVER['SERVER_NAME']) . '_y_';
   if ($is_dev) {
     header("X-Redis-Prefix: " . $this_prefix);
   }
