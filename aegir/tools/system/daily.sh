@@ -1823,6 +1823,8 @@ if [ -e "/var/run/boa_wait.pid" ] && [ ! -e "/var/run/boa_system_wait.pid" ] ; t
 elif [ -e "/var/run/daily-fix.pid" ] ; then
   touch /var/xdrago/log/wait-for-daily
   exit 1
+elif [ -e "/root/.wbhd.clstr.cnf" ] ; then
+  exit 1
 else
   touch /var/run/daily-fix.pid
   if [ -e "/root/.barracuda.cnf" ] ; then
