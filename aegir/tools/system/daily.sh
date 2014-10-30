@@ -19,6 +19,7 @@ enable_chattr () {
       chattr +i /home/$1/.bazaar     &> /dev/null
     fi
     chattr +i /home/$1/.drush        &> /dev/null
+    chattr +i /home/$1/.drush/usr    &> /dev/null
     chattr +i /home/$1/.drush/*.ini  &> /dev/null
   fi
 }
@@ -35,6 +36,7 @@ disable_chattr () {
       chattr -i /home/$1/.bazaar     &> /dev/null
     fi
     chattr -i /home/$1/.drush        &> /dev/null
+    chattr -i /home/$1/.drush/usr    &> /dev/null
     chattr -i /home/$1/.drush/*.ini  &> /dev/null
   fi
 }
