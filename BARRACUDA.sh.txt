@@ -5574,6 +5574,18 @@ fix_broken_platforms () {
     touch /var/xdrago/log/SA-CORE-2014-005-fixed-d7.log
     cd
   fi
+  # https://www.drupal.org/SA-CORE-2014-005 for ancient platforms
+  if [ ! -e "/var/xdrago/log/legacy-SA-CORE-2014-005-fixed-d7.log" ] ; then
+    for File in `find /data/all/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+      Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+      if [ -d "$Core" ] ; then
+        cd $Core
+        patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+      fi
+    done
+    touch /var/xdrago/log/legacy-SA-CORE-2014-005-fixed-d7.log
+    cd
+  fi
 }
 # Fix for Postfix configuration.
 fix_cnf_postfix () {
