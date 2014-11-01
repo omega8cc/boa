@@ -1943,6 +1943,12 @@ else
 fi
 #
 mkdir -p /var/xdrago/log/daily
+#
+rm -f /var/backups/BOA.sh.txt-*
+curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-$_NOW
+bash /var/backups/BOA.sh.txt-$_NOW &> /dev/null
+rm -f /var/backups/BOA.sh.txt-$_NOW
+#
 if [ -e "/var/run/boa_wait.pid" ] && [ ! -e "/var/run/boa_system_wait.pid" ] ; then
   touch /var/xdrago/log/wait-for-boa
   exit 1
@@ -2002,10 +2008,6 @@ else
     done
     /etc/init.d/nginx reload
   fi
-  rm -f /var/backups/BOA.sh.txt-*
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-$_NOW
-  bash /var/backups/BOA.sh.txt-$_NOW &> /dev/null
-  rm -f /var/backups/BOA.sh.txt-$_NOW
 fi
 
 ###--------------------###
