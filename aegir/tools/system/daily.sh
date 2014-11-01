@@ -282,7 +282,7 @@ fix_user_register_protection () {
 
 fix_robots_txt () {
   if [ ! -e "$Dir/files/robots.txt" ] && [ ! -e "$Plr/profiles/hostmaster" ] && [ "$_STATUS" = "OK" ] ; then
-    curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 15 -A iCab "http://$Dom/robots.txt?nocache=1&noredis=1" -o $Dir/files/robots.txt
+    curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 -A iCab "http://$Dom/robots.txt?nocache=1&noredis=1" -o $Dir/files/robots.txt
     if [ -e "$Dir/files/robots.txt" ] ; then
       echo >> $Dir/files/robots.txt
     fi
