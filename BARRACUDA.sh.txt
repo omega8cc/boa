@@ -5766,6 +5766,7 @@ finale () {
   echo " "
   if [ "$_STATUS" = "INIT" ] ; then
     _L_ST="install"
+    touch /var/xdrago/log/SA-CORE-2014-005-fixed-d7.log
   else
     _L_ST="upgrade"
   fi
