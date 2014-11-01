@@ -332,6 +332,112 @@ sql_convert () {
   sudo -u ${_THIS_HM_USER}.ftp -H /opt/local/bin/sqlmagic convert to-${_SQL_CONVERT}
 }
 
+send_hacked_alert () {
+  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  if [ ! -z "$_CLIENT_EMAIL" ] && [[ ! "$_CLIENT_EMAIL" =~ "$_MY_EMAIL" ]] ; then
+    _CLIENT_EMAIL="$_MY_EMAIL"
+  else
+    _CLIENT_EMAIL="$_MY_EMAIL"
+  fi
+  _BCC_EMAIL="omega8cc@gmail.com"
+  _MAILX_TEST=`mail -V 2>&1`
+  if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
+  cat <<EOF | mail -e -a "From: $_MY_EMAIL" -a "Bcc: $_BCC_EMAIL" -s "URGENT: The $Dom site on $_HOST_TEST has been HACKED!" $_CLIENT_EMAIL
+Hello,
+
+Our system detected that the site $Dom has been hacked!
+
+Common signatures of an attack which triggered this alert:
+
+  $_DETECTED
+
+The platform root directory for this site is:
+
+  $Plr
+
+The system hostname is:
+
+  $_HOST_TEST
+
+To learn more on what happened, how it was possible and
+how to survive #Drupageddon, please read:
+
+  https://omega8.cc/drupageddon-psa-2014-003-342
+  https://www.drupal.org/PSA-2014-003
+  https://www.drupal.org/SA-CORE-2014-005
+  https://www.drupal.org/node/2365547
+  https://github.com/greggles/cracking-drupal/blob/master/after-an-exploit.md
+
+--
+This e-mail has been sent by your Aegir system monitor.
+
+EOF
+  elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
+  cat <<EOF | mail -a "From: $_MY_EMAIL" -e -b $_BCC_EMAIL -s "URGENT: The $Dom site on $_HOST_TEST has been HACKED!" $_CLIENT_EMAIL
+Hello,
+
+Our system detected that your site $Dom has been hacked!
+
+Common signatures of an attack which triggered this alert:
+
+  $_DETECTED
+
+The platform root directory for this site is:
+
+  $Plr
+
+The system hostname is:
+
+  $_HOST_TEST
+
+To learn more on what happened, how it was possible and
+how to survive #Drupageddon, please read:
+
+  https://omega8.cc/drupageddon-psa-2014-003-342
+  https://www.drupal.org/PSA-2014-003
+  https://www.drupal.org/SA-CORE-2014-005
+  https://www.drupal.org/node/2365547
+  https://github.com/greggles/cracking-drupal/blob/master/after-an-exploit.md
+
+--
+This e-mail has been sent by your Aegir system monitor.
+
+EOF
+  else
+  cat <<EOF | mail -r $_MY_EMAIL -e -b $_BCC_EMAIL -s "URGENT: The $Dom site on $_HOST_TEST has been HACKED!" $_CLIENT_EMAIL
+Hello,
+
+Our system detected that your site $Dom has been hacked!
+
+Common signatures of an attack which triggered this alert:
+
+  $_DETECTED
+
+The platform root directory for this site is:
+
+  $Plr
+
+The system hostname is:
+
+  $_HOST_TEST
+
+To learn more on what happened, how it was possible and
+how to survive #Drupageddon, please read:
+
+  https://omega8.cc/drupageddon-psa-2014-003-342
+  https://www.drupal.org/PSA-2014-003
+  https://www.drupal.org/SA-CORE-2014-005
+  https://www.drupal.org/node/2365547
+  https://github.com/greggles/cracking-drupal/blob/master/after-an-exploit.md
+
+--
+This e-mail has been sent by your Aegir system monitor.
+
+EOF
+  fi
+  echo "ALERT: HACKED notice sent to $_CLIENT_EMAIL [$_THIS_HM_USER]: OK"
+}
+
 check_site_status () {
   _SITE_TEST=$(drush4 status 2>&1)
   if [[ "$_SITE_TEST" =~ "Error:" ]] || [[ "$_SITE_TEST" =~ "Drush was attempting to connect" ]] ; then
@@ -343,6 +449,24 @@ check_site_status () {
     _STATUS_TEST=$(run_drush4_nosilent_cmd "status | grep 'Drupal bootstrap.*:.*Successful'")
     if [[ "$_STATUS_TEST" =~ "Successful" ]] ; then
       _STATUS=OK
+      if [ -e "$Plr/modules/o_contrib_seven" ] ; then
+        _DGMR_TEST=$(run_drush4_nosilent_cmd "sqlq \"SELECT * FROM menu_router WHERE access_callback = 'file_put_contents'\" | grep 'file_put_contents'")
+        if [[ "$_DGMR_TEST" =~ "file_put_contents" ]] ; then
+          echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
+          _DETECTED="file_put_contents as access_callback detected in menu_router table"
+          if [ ! -z "$_MY_EMAIL" ] ; then
+            send_hacked_alert
+          fi
+        fi
+        _DGMR_TEST=$(run_drush4_nosilent_cmd "sqlq \"SELECT * FROM menu_router WHERE access_callback = 'assert'\" | grep 'assert'")
+        if [[ "$_DGMR_TEST" =~ "assert" ]] ; then
+          echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
+          _DETECTED="assert as access_callback detected in menu_router table"
+          if [ ! -z "$_MY_EMAIL" ] ; then
+            send_hacked_alert
+          fi
+        fi
+      fi
     else
       _STATUS=BROKEN
       echo "WARNING: THIS SITE IS BROKEN! $Dir"
