@@ -143,6 +143,17 @@ fix_core ()
       mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
     fi
   fi
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/mysql_backup.fixed.001.patch" ] ; then
+    mv -f /var/xdrago/mysql_backup.sh /var/xdrago/mysql_backup.sh.old
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/system/mysql_backup.sh" -o /var/xdrago/mysql_backup.sh
+    if [ -e "/var/xdrago/mysql_backup.sh" ] ; then
+      chmod 700 /var/xdrago/mysql_backup.sh
+      chown root:root /var/xdrago/mysql_backup.sh
+      touch /var/xdrago/log/mysql_backup.fixed.001.patch
+    else
+      mv -f /var/xdrago/mysql_backup.sh.old /var/xdrago/mysql_backup.sh
+    fi
+  fi
   if [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] ; then
     mkdir -p /var/xdrago/conf
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/patches/7-core/SA-CORE-2014-005-D7.patch" -o /var/xdrago/conf/SA-CORE-2014-005-D7.patch
