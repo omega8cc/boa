@@ -129,6 +129,111 @@ check_dns_settings () {
   fi
 }
 
+fix_core ()
+{
+  # https://www.drupal.org/SA-CORE-2014-005
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/daily.fixed.001.patch" ] ; then
+    mv -f /var/backups/daily.sh /var/backups/daily.sh.old
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/system/daily.sh" -o /var/backups/daily.sh
+    if [ -e "/var/backups/daily.sh" ] ; then
+      chmod 700 /var/backups/daily.sh
+      chown root:root /var/backups/daily.sh
+      touch /var/xdrago/log/daily.fixed.001.patch
+    else
+      mv -f /var/backups/daily.sh.old /var/backups/daily.sh
+    fi
+  fi
+  if [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] ; then
+    mkdir -p /var/xdrago/conf
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/patches/7-core/SA-CORE-2014-005-D7.patch" -o /var/xdrago/conf/SA-CORE-2014-005-D7.patch
+  fi
+  if [ -e "/var/xdrago" ] && [ -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] && [ ! -e "/var/xdrago/log/SA-CORE-2014-005-fixed-d7.log" ] ; then
+    if [ -d "/data/all/000/core" ] ; then
+      for Core in `find /data/all/000/core/drupal-7* -maxdepth 0 -mindepth 0 | sort`; do
+        cd $Core
+        patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+      done
+    elif [ -d "/data/disk/all/000/core" ] ; then
+      for Core in `find /data/disk/all/000/core/drupal-7* -maxdepth 0 -mindepth 0 | sort`; do
+        cd $Core
+        patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+      done
+    fi
+    touch /var/xdrago/log/SA-CORE-2014-005-fixed-d7.log
+    cd
+  fi
+  # https://www.drupal.org/SA-CORE-2014-005 for ancient platforms
+  if [ -e "/var/xdrago" ] && [ -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] ; then
+    if [ -d "/data/all" ] && [ ! -e "/var/xdrago/log/legacy-SA-CORE-2014-005-fixed-d7.log" ] ; then
+      for File in `find /data/all/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+        fi
+      done
+      touch /var/xdrago/log/legacy-SA-CORE-2014-005-fixed-d7.log
+    elif [ -d "/data/disk/all" ] && [ ! -e "/var/xdrago/log/legacy-SA-CORE-2014-005-fixed-d7eee.log" ] ; then
+      for File in `find /data/disk/all/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+        fi
+      done
+      touch /var/xdrago/log/legacy-SA-CORE-2014-005-fixed-d7eee.log
+    fi
+    cd
+  fi
+  # https://www.drupal.org/SA-CORE-2014-005 for custom platforms
+  if [ -e "/var/xdrago" ] && [ -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] ; then
+    if [ -d "/data/disk" ] && [ ! -e "/var/xdrago/log/batch-custom-SA-CORE-2014-005-fixed-d7.log" ] ; then
+      for File in `find /data/disk/*/static/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/*/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+        fi
+      done
+    fi
+    cd
+    touch /var/xdrago/log/batch-custom-SA-CORE-2014-005-fixed-d7.log
+  fi
+}
+
 setup ()
 {
   sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
@@ -216,6 +321,7 @@ if [ `whoami` = "root" ] ; then
     fi
   fi
   setup
+  fix_core
   exit 0
 else
   msg "ERROR: This script should be ran as a root user - please `sudo -i` first"
