@@ -106,22 +106,12 @@ chmod 700 /data/disk/arch/sql
 chmod 700 /data/disk/arch
 echo "Permissions fixed"
 
-touch /var/run/boa_wait.pid
-sleep 300
-/etc/init.d/redis-server stop
-killall -9 redis-server
-rm -f /var/run/redis.pid
-rm -f /var/lib/redis/*
-rm -f /var/log/redis/redis-server.log
-/etc/init.d/redis-server start
+rm -f /var/run/boa_run.pid
+rm -f /var/run/boa_sql_backup.pid
 rm -f /var/run/boa_wait.pid
 rm -f /var/run/daily-fix.pid
-echo "Redis server restarted"
-
-rm -f /var/run/boa_run.pid
 rm -f /var/run/manage_ltd_users.pid
 rm -f /var/run/manage_rvm_users.pid
-rm -f /var/run/boa_sql_backup.pid
 touch /var/xdrago/log/last-run-backup
 echo "COMPLETED ALL"
 exit 0

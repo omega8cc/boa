@@ -2079,6 +2079,19 @@ rm -f /tmp/.cron.*.pid
 rm -f /tmp/.busy.*.pid
 rm -f /data/disk/*/.tmp/.cron.*.pid
 rm -f /data/disk/*/.tmp/.busy.*.pid
+
+echo "INFO: Redis server will be restarted in 5 minutes"
+touch /var/run/boa_wait.pid
+sleep 300
+/etc/init.d/redis-server stop
+killall -9 redis-server
+rm -f /var/run/redis.pid
+rm -f /var/lib/redis/*
+rm -f /var/log/redis/redis-server.log
+/etc/init.d/redis-server start
+rm -f /var/run/boa_wait.pid
+echo "INFO: Redis server restarted OK"
+
 rm -f /var/run/daily-fix.pid
 echo "INFO: Daily maintenance complete"
 exit 0
