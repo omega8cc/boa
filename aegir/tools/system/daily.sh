@@ -1618,6 +1618,14 @@ process () {
           fix_boost_cache
           fix_site_control_files
         fi
+        if [ -e "$Plr/profiles" ] && [ -e "$Plr/web.config" ] && [ ! -f "$Plr/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
+          _PATCH_TEST=$(grep "foreach (array_values(\$data)" $Plr/includes/database/database.inc)
+          if [[ "$_PATCH_TEST" =~ "array_values" ]] ; then
+            _DONT_TOUCH_PERMISSIONS="$_DONT_TOUCH_PERMISSIONS"
+          else
+            _DONT_TOUCH_PERMISSIONS=NO
+          fi
+        fi
         if [ "$_DONT_TOUCH_PERMISSIONS" = "NO" ] && [ "$_PERMISSIONS_FIX" = "YES" ] ; then
           fix_permissions
         fi

@@ -29,7 +29,7 @@ _XTRAS_LIST="" #---------------- See docs/NOTES.txt for details on add-ons
 ###
 _MODULES_FIX=YES #-------------- Will skip modules enabling/disabling when NO
 _MODULES_SKIP="" #-------------- Modules (machine names) to never auto-disable
-_PERMISSIONS_FIX=NO #----------- Allows to fix permissions daily when YES
+_PERMISSIONS_FIX=YES #---------- Allows to skip daily permissions fix when NO
 ###
 _CPU_CRIT_RATIO=9 #------------- Max load per CPU core before killing PHP/Drush
 _CPU_MAX_RATIO=6 #-------------- Max load per CPU core before disabling Nginx
