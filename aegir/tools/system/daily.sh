@@ -335,14 +335,18 @@ sql_convert () {
 send_hacked_alert () {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   if [ ! -z "$_CLIENT_EMAIL" ] && [[ ! "$_CLIENT_EMAIL" =~ "$_MY_EMAIL" ]] ; then
-    _CLIENT_EMAIL="$_MY_EMAIL"
+    _ALRT_EMAIL="$_CLIENT_EMAIL"
   else
-    _CLIENT_EMAIL="$_MY_EMAIL"
+    _ALRT_EMAIL="$_MY_EMAIL"
   fi
-  _BCC_EMAIL="omega8cc@gmail.com"
+  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
+    _BCC_EMAIL="omega8cc@gmail.com"
+  else
+    _BCC_EMAIL="$_MY_EMAIL"
+  fi
   _MAILX_TEST=`mail -V 2>&1`
   if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
-  cat <<EOF | mail -e -a "From: $_MY_EMAIL" -a "Bcc: $_BCC_EMAIL" -s "URGENT: The $Dom site on $_HOST_TEST has been HACKED!" $_CLIENT_EMAIL
+  cat <<EOF | mail -e -a "From: $_MY_EMAIL" -a "Bcc: $_BCC_EMAIL" -s "URGENT: The $Dom site on $_HOST_TEST has been HACKED!" $_ALRT_EMAIL
 Hello,
 
 Our system detected that the site $Dom has been hacked!
@@ -373,7 +377,7 @@ This e-mail has been sent by your Aegir system monitor.
 
 EOF
   elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
-  cat <<EOF | mail -a "From: $_MY_EMAIL" -e -b $_BCC_EMAIL -s "URGENT: The $Dom site on $_HOST_TEST has been HACKED!" $_CLIENT_EMAIL
+  cat <<EOF | mail -a "From: $_MY_EMAIL" -e -b $_BCC_EMAIL -s "URGENT: The $Dom site on $_HOST_TEST has been HACKED!" $_ALRT_EMAIL
 Hello,
 
 Our system detected that your site $Dom has been hacked!
@@ -404,7 +408,7 @@ This e-mail has been sent by your Aegir system monitor.
 
 EOF
   else
-  cat <<EOF | mail -r $_MY_EMAIL -e -b $_BCC_EMAIL -s "URGENT: The $Dom site on $_HOST_TEST has been HACKED!" $_CLIENT_EMAIL
+  cat <<EOF | mail -r $_MY_EMAIL -e -b $_BCC_EMAIL -s "URGENT: The $Dom site on $_HOST_TEST has been HACKED!" $_ALRT_EMAIL
 Hello,
 
 Our system detected that your site $Dom has been hacked!
