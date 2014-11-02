@@ -538,7 +538,7 @@ for i in $REVISIONS; do
     if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
       cd /data/all/$i/o_contrib_seven
       if [ ! -d "/data/all/$i/o_contrib_seven/expire" ] ; then
-        get_dev_contrib "expire-7.x-2.0-rc3.tar.gz"
+        get_dev_contrib "expire-7.x-2.0-rc4.tar.gz"
       fi
       if [ ! -d "/data/all/$i/o_contrib_seven/purge" ] ; then
         get_dev_contrib "purge-7.x-1.6.tar.gz"
@@ -615,7 +615,7 @@ download_o_contrib_seven () {
   if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
     rm -f -r expire*
     rm -f -r purge*
-    get_dev_contrib "expire-7.x-2.0-rc3.tar.gz"
+    get_dev_contrib "expire-7.x-2.0-rc4.tar.gz"
     get_dev_contrib "purge-7.x-1.6.tar.gz"
   else
     rm -f -r nginx_accel_redirect*
