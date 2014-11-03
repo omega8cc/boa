@@ -380,7 +380,7 @@ EOF
   cat <<EOF | mail -a "From: $_MY_EMAIL" -e -b $_BCC_EMAIL -s "URGENT: The $Dom site on $_HOST_TEST has been HACKED!" $_ALRT_EMAIL
 Hello,
 
-Our system detected that your site $Dom has been hacked!
+Our system detected that the site $Dom has been hacked!
 
 Common signatures of an attack which triggered this alert:
 
@@ -411,7 +411,7 @@ EOF
   cat <<EOF | mail -r $_MY_EMAIL -e -b $_BCC_EMAIL -s "URGENT: The $Dom site on $_HOST_TEST has been HACKED!" $_ALRT_EMAIL
 Hello,
 
-Our system detected that your site $Dom has been hacked!
+Our system detected that the site $Dom has been hacked!
 
 Common signatures of an attack which triggered this alert:
 
