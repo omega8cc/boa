@@ -367,10 +367,6 @@ To learn more on what happened, how it was possible and
 how to survive #Drupageddon, please read:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
-  https://www.drupal.org/PSA-2014-003
-  https://www.drupal.org/SA-CORE-2014-005
-  https://www.drupal.org/node/2365547
-  https://github.com/greggles/cracking-drupal/blob/master/after-an-exploit.md
 
 --
 This e-mail has been sent by your Aegir system monitor.
@@ -398,10 +394,6 @@ To learn more on what happened, how it was possible and
 how to survive #Drupageddon, please read:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
-  https://www.drupal.org/PSA-2014-003
-  https://www.drupal.org/SA-CORE-2014-005
-  https://www.drupal.org/node/2365547
-  https://github.com/greggles/cracking-drupal/blob/master/after-an-exploit.md
 
 --
 This e-mail has been sent by your Aegir system monitor.
@@ -429,10 +421,6 @@ To learn more on what happened, how it was possible and
 how to survive #Drupageddon, please read:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
-  https://www.drupal.org/PSA-2014-003
-  https://www.drupal.org/SA-CORE-2014-005
-  https://www.drupal.org/node/2365547
-  https://github.com/greggles/cracking-drupal/blob/master/after-an-exploit.md
 
 --
 This e-mail has been sent by your Aegir system monitor.
