@@ -334,6 +334,7 @@ sql_convert () {
 
 send_hacked_alert () {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
   if [ ! -z "$_CLIENT_EMAIL" ] && [[ ! "$_CLIENT_EMAIL" =~ "$_MY_EMAIL" ]] ; then
     _ALRT_EMAIL="$_CLIENT_EMAIL"
   else
@@ -1846,6 +1847,22 @@ action () {
         if [ -e "/root/.${_THIS_HM_USER}.octopus.cnf" ] ; then
           source /root/.${_THIS_HM_USER}.octopus.cnf
           _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}
+          _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+          _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+          if [ -e "/data/disk/${_THIS_HM_USER}/log/email.txt" ] ; then
+            _F_CLIENT_EMAIL=`cat /data/disk/${_THIS_HM_USER}/log/email.txt`
+            _F_CLIENT_EMAIL=`echo -n $_F_CLIENT_EMAIL | tr -d "\n"`
+            _F_CLIENT_EMAIL=${_F_CLIENT_EMAIL//\\\@/\@}
+          fi
+          if [ ! -z "${_F_CLIENT_EMAIL}" ] ; then
+            _CLIENT_EMAIL_TEST=$(grep "^_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"" /root/.${_THIS_HM_USER}.octopus.cnf)
+            if [[ "$_CLIENT_EMAIL_TEST" =~ "${_F_CLIENT_EMAIL}" ]] ; then
+              _DO_NOTHING=YES
+            else
+              sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"/g" /root/.${_THIS_HM_USER}.octopus.cnf
+              _CLIENT_EMAIL=${_F_CLIENT_EMAIL}
+            fi
+          fi
         fi
         disable_chattr ${_THIS_HM_USER}.ftp
         rm -f -r /home/${_THIS_HM_USER}.ftp/drush-backups
