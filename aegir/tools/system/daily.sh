@@ -392,7 +392,7 @@ Our system detected that the site $Dom has been hacked!
 
 Common signatures of an attack which triggered this alert:
 
-  $_DETECTED
+  ${_DETECTED}
 
 The platform root directory for this site is:
 
@@ -419,7 +419,7 @@ Our system detected that the site $Dom has been hacked!
 
 Common signatures of an attack which triggered this alert:
 
-  $_DETECTED
+  ${_DETECTED}
 
 The platform root directory for this site is:
 
@@ -446,7 +446,7 @@ Our system detected that the site $Dom has been hacked!
 
 Common signatures of an attack which triggered this alert:
 
-  $_DETECTED
+  ${_DETECTED}
 
 The platform root directory for this site is:
 
@@ -481,20 +481,33 @@ check_site_status () {
     if [[ "$_STATUS_TEST" =~ "Successful" ]] ; then
       _STATUS=OK
       if [ -e "$Plr/modules/o_contrib_seven" ] ; then
-        _DGMR_TEST=$(run_drush4_nosilent_cmd "sqlq \"SELECT * FROM menu_router WHERE access_callback = 'file_put_contents'\" | grep 'file_put_contents'")
-        if [[ "$_DGMR_TEST" =~ "file_put_contents" ]] ; then
-          echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
-          _DETECTED="file_put_contents as access_callback detected in menu_router table"
-          if [ ! -z "$_MY_EMAIL" ] ; then
-            send_hacked_alert
+        if [ -L "/home/${_THIS_HM_USER}.ftp/.drush/usr/drupalgeddon" ] ; then
+          _DGDD_TEST=$(run_drush4_nosilent_cmd "drupalgeddon-test")
+          if [[ "$_DGDD_TEST" =~ "No evidence of known Drupalgeddon exploits found" ]] ; then
+            _DO_NOTHING=YES
+          else
+            echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
+            _DETECTED="${_DGDD_TEST}"
+            if [ ! -z "$_MY_EMAIL" ] ; then
+              send_hacked_alert
+            fi
           fi
-        fi
-        _DGMR_TEST=$(run_drush4_nosilent_cmd "sqlq \"SELECT * FROM menu_router WHERE access_callback = 'assert'\" | grep 'assert'")
-        if [[ "$_DGMR_TEST" =~ "assert" ]] ; then
-          echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
-          _DETECTED="assert as access_callback detected in menu_router table"
-          if [ ! -z "$_MY_EMAIL" ] ; then
-            send_hacked_alert
+        else
+          _DGMR_TEST=$(run_drush4_nosilent_cmd "sqlq \"SELECT * FROM menu_router WHERE access_callback = 'file_put_contents'\" | grep 'file_put_contents'")
+          if [[ "$_DGMR_TEST" =~ "file_put_contents" ]] ; then
+            echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
+            _DETECTED="file_put_contents as access_callback detected in menu_router table"
+            if [ ! -z "$_MY_EMAIL" ] ; then
+              send_hacked_alert
+            fi
+          fi
+          _DGMR_TEST=$(run_drush4_nosilent_cmd "sqlq \"SELECT * FROM menu_router WHERE access_callback = 'assert'\" | grep 'assert'")
+          if [[ "$_DGMR_TEST" =~ "assert" ]] ; then
+            echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
+            _DETECTED="assert as access_callback detected in menu_router table"
+            if [ ! -z "$_MY_EMAIL" ] ; then
+              send_hacked_alert
+            fi
           fi
         fi
       fi
