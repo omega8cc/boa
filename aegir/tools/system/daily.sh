@@ -66,14 +66,21 @@ disable_chattr () {
     chattr -i /home/$1/.drush/usr    &> /dev/null
     chattr -i /home/$1/.drush/*.ini  &> /dev/null
     if [ "$1" != "${_THIS_HM_USER}.ftp" ] ; then
-      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] ; then
+      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] && [ -d "/data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon" ] ; then
         ln -sf /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
       fi
     else
-      if [ ! -d "/home/$1/.drush/usr/drupalgeddon" ] ; then
-        rm -f /home/$1/.drush/usr/drupalgeddon &> /dev/null
-        cd /home/$1/.drush/usr/
+      if [ ! -d "/data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon" ] ; then
+        rm -f /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon &> /dev/null
+        cd /data/disk/${_THIS_HM_USER}/.drush/usr
         get_dev_ext "drupalgeddon.tar.gz"
+        find /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon -type d -exec chmod 0750 {} \; &> /dev/null
+        find /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon -type f -exec chmod 0640 {} \; &> /dev/null
+        chown -R ${_THIS_HM_USER}:users /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon
+      fi
+      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] && [ -d "/data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon" ] ; then
+        rm -f -r /home/$1/.drush/usr/drupalgeddon
+        ln -sf /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
       fi
     fi
   fi
@@ -482,7 +489,7 @@ check_site_status () {
       _STATUS=OK
       if [ -e "$Plr/modules/o_contrib_seven" ] ; then
         if [ -L "/home/${_THIS_HM_USER}.ftp/.drush/usr/drupalgeddon" ] ; then
-          _DGDD_TEST=$(run_drush4_nosilent_cmd "drupalgeddon-test")
+          _DGDD_TEST=$(run_drush4_nosilent_cmd "drupalgeddon-test" 2>&1)
           if [[ "$_DGDD_TEST" =~ "No evidence of known Drupalgeddon exploits found" ]] ; then
             _DO_NOTHING=YES
           else
