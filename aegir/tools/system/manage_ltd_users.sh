@@ -280,14 +280,22 @@ disable_chattr () {
     chattr -i /home/$1/.drush/usr    &> /dev/null
     chattr -i /home/$1/.drush/*.ini  &> /dev/null
     if [ "$1" != "${_OWN}.ftp" ] ; then
-      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] ; then
+      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] && [ -d "/data/disk/${_OWN}/.drush/usr/drupalgeddon" ] ; then
         ln -sf /data/disk/${_OWN}/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
       fi
     else
-      if [ ! -d "/home/$1/.drush/usr/drupalgeddon" ] ; then
-        rm -f /home/$1/.drush/usr/drupalgeddon &> /dev/null
-        cd /home/$1/.drush/usr/
+      if [ ! -d "/data/disk/${_OWN}/.drush/usr/drupalgeddon" ] || [ ! -e "/data/disk/${_OWN}/static/control/.drupalgeddon.in.pid" ] ; then
+        rm -f /data/disk/${_OWN}/.drush/usr/drupalgeddon &> /dev/null
+        cd /data/disk/${_OWN}/.drush/usr
         get_dev_ext "drupalgeddon.tar.gz"
+        find /data/disk/${_OWN}/.drush/usr/drupalgeddon -type d -exec chmod 0750 {} \; &> /dev/null
+        find /data/disk/${_OWN}/.drush/usr/drupalgeddon -type f -exec chmod 0640 {} \; &> /dev/null
+        chown -R ${_OWN}:users /data/disk/${_OWN}/.drush/usr/drupalgeddon
+        touch /data/disk/${_OWN}/static/control/.drupalgeddon.in.pid
+      fi
+      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] && [ -d "/data/disk/${_OWN}/.drush/usr/drupalgeddon" ] ; then
+        rm -f -r /home/$1/.drush/usr/drupalgeddon
+        ln -sf /data/disk/${_OWN}/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
       fi
     fi
   fi
