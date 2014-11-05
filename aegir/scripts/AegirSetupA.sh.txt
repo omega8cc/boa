@@ -1232,9 +1232,7 @@ find $_ROOT/aegir/distro/*/sites/all/* -type d -exec chmod 0755 {} \; &> /dev/nu
 find $_ROOT/aegir/distro/*/sites/all/* -type f -exec chmod 0644 {} \; &> /dev/null
 chown -R $_USER:$_USRG $_ROOT/.drush &> /dev/null
 find $_ROOT/.drush -type d -exec chmod 0710 {} \; &> /dev/null
-find $_ROOT/.drush/usr/registry_rebuild -type d -exec chmod 0750 {} \; &> /dev/null
-find $_ROOT/.drush/usr/drush_ecl -type d -exec chmod 0750 {} \; &> /dev/null
-find $_ROOT/.drush/usr/clean_missing_modules -type d -exec chmod 0750 {} \; &> /dev/null
+find $_ROOT/.drush/usr -type d -exec chmod 0750 {} \; &> /dev/null
 find $_ROOT/.drush -type f -exec chmod 0640 {} \; &> /dev/null
 chmod 0440 $_ROOT/.drush/*.php &> /dev/null
 chmod 0400 $_ROOT/.drush/server_*.php &> /dev/null
@@ -1436,6 +1434,18 @@ if [ ! -L "$_USER_DS/usr/clean_missing_modules" ] ; then
   chown $_USERFTP:$_USRG $_USER_DS/usr
   chmod 700 $_USER_DS
   ln -sf /data/disk/${_USER}/.drush/usr/clean_missing_modules $_USER_DS/usr/clean_missing_modules
+fi
+
+
+###---### Add symlink to the system drupalgeddon.
+#
+if [ ! -L "$_USER_DS/usr/drupalgeddon" ] ; then
+  msg "$_STATUS A: Adding symlink to the system drupalgeddon"
+  mkdir -p $_USER_DS/usr
+  chown $_USERFTP:$_USRG $_USER_DS
+  chown $_USERFTP:$_USRG $_USER_DS/usr
+  chmod 700 $_USER_DS
+  ln -sf /data/disk/${_USER}/.drush/usr/drupalgeddon $_USER_DS/usr/drupalgeddon
 fi
 
 
@@ -1992,6 +2002,7 @@ chmod 0755 /data/all /data/all/000 &> /dev/null
 chmod 0700 /data/u &> /dev/null
 chown root:root /data/u &> /dev/null
 rm -f /data/u/*host8* &> /dev/null
+mv -f $_ROOT/backups/drupalgeddon-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/drush_make-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/provision_boost-pre* $_ROOT/backups/system/ &> /dev/null

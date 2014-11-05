@@ -19,6 +19,35 @@ else
   _VMFAMILY="XEN"
 fi
 
+###-------------SYSTEM-----------------###
+
+extract_archive () {
+  if [ ! -z $1 ] ; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1    ;;
+      *.tar.gz)    tar xzf $1    ;;
+      *.bz2)       bunzip2 $1    ;;
+      *.rar)       unrar x $1    ;;
+      *.gz)        gunzip -q $1  ;;
+      *.tar)       tar xf $1     ;;
+      *.tbz2)      tar xjf $1    ;;
+      *.tgz)       tar xzf $1    ;;
+      *.zip)       unzip -qq $1  ;;
+      *.Z)         uncompress $1 ;;
+      *.7z)        7z x $1       ;;
+      *)           echo "'$1' cannot be extracted via >extract<" ;;
+    esac
+    rm -f $1
+  fi
+}
+
+get_dev_ext () {
+  if [ ! -z $1 ] ; then
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/HEAD/$1"
+    extract_archive "$1"
+  fi
+}
+
 ###----------------------------###
 ##    Manage ltd shell users    ##
 ###----------------------------###
@@ -48,8 +77,8 @@ enable_chattr () {
         rm -f -r $_U_HD/*
         rm -f -r $_U_HD/.*
       else
-        rm -f $_U_HD/{drush_make,registry_rebuild,clean_missing_modules,drush_ecl}
-        rm -f $_U_HD/usr/{drush_make,registry_rebuild,clean_missing_modules,drush_ecl}
+        rm -f $_U_HD/{drush_make,registry_rebuild,clean_missing_modules,drupalgeddon,drush_ecl}
+        rm -f $_U_HD/usr/{drush_make,registry_rebuild,clean_missing_modules,drupalgeddon,drush_ecl}
         rm -f $_U_HD/.ctrl*
         rm -f -r $_U_HD/{cache,drush.ini,*drushrc*,*.inc}
       fi
@@ -65,6 +94,9 @@ enable_chattr () {
       fi
       if [ ! -L "$_U_HD/usr/clean_missing_modules" ] ; then
         ln -sf /data/disk/${_OWN}/.drush/usr/clean_missing_modules $_U_HD/usr/clean_missing_modules
+      fi
+      if [ ! -L "$_U_HD/usr/drupalgeddon" ] ; then
+        ln -sf /data/disk/${_OWN}/.drush/usr/drupalgeddon $_U_HD/usr/drupalgeddon
       fi
       if [ ! -L "$_U_HD/usr/drush_ecl" ] ; then
         ln -sf /data/disk/${_OWN}/.drush/usr/drush_ecl $_U_HD/usr/drush_ecl
@@ -247,6 +279,17 @@ disable_chattr () {
     chattr -i /home/$1/.drush        &> /dev/null
     chattr -i /home/$1/.drush/usr    &> /dev/null
     chattr -i /home/$1/.drush/*.ini  &> /dev/null
+    if [ "$1" != "${_OWN}.ftp" ] ; then
+      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] ; then
+        ln -sf /data/disk/${_OWN}/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
+      fi
+    else
+      if [ ! -d "/home/$1/.drush/usr/drupalgeddon" ] ; then
+        rm -f /home/$1/.drush/usr/drupalgeddon &> /dev/null
+        cd /home/$1/.drush/usr/
+        get_dev_ext "drupalgeddon.tar.gz"
+      fi
+    fi
   fi
 }
 #

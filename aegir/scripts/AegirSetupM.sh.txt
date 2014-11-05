@@ -219,10 +219,11 @@ else
     mkdir -p $_ROOT/.drush/{sys,xts,usr}
     git clone --branch $_BRANCH_PROVISION git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision    &> /dev/null
     git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/xts/provision_cdn       &> /dev/null
+    git clone --branch 7.x-1.x git://github.com/omega8cc/drupalgeddon.git $_ROOT/.drush/usr/drupalgeddon         &> /dev/null
     git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/usr/drush_ecl               &> /dev/null
-    git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/usr/registry_rebuild &> /dev/null
     git clone --branch 7.x-1.x git://github.com/omega8cc/security_review.git $_ROOT/.drush/xts/security_review   &> /dev/null
     git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/xts/provision_boost   &> /dev/null
+    git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/usr/registry_rebuild &> /dev/null
     rm -f -r $_ROOT/.drush/*/.git
     rm -f -r $_ROOT/.drush/*/*/.git
     cd $_ROOT/.drush/usr
@@ -233,6 +234,7 @@ else
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
     cd $_ROOT/.drush/usr
     get_dev_ext "clean_missing_modules.tar.gz"
+    get_dev_ext "drupalgeddon.tar.gz"
     get_dev_ext "drush_ecl.tar.gz"
     get_dev_ext "registry_rebuild.tar.gz"
     cd $_ROOT/.drush/xts

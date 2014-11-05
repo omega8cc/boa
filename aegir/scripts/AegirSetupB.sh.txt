@@ -362,7 +362,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
   mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
-  _B_EXT="provision clean_missing_modules drush_ecl provision_boost provision_cdn provision_civicrm provision_platform_git provision_site_backup provision_tasks_extra registry_rebuild security_check security_review remote_import"
+  _B_EXT="provision clean_missing_modules drupalgeddon drush_ecl provision_boost provision_cdn provision_civicrm provision_platform_git provision_site_backup provision_tasks_extra registry_rebuild security_check security_review remote_import"
   for e in $_B_EXT; do
     if [ -e "$_ROOT/.drush/$e" ] ; then
       mv -f $_ROOT/.drush/$e $_ROOT/backups/system/$e-pre-$_DISTRO-$_NOW &> /dev/null
@@ -406,10 +406,11 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone --branch 6.x-2.x git://github.com/omega8cc/provision_site_backup.git $_ROOT/.drush/xts/provision_site_backup   &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/remote_import.git $_ROOT/.drush/sys/provision/remote_import         &> /dev/null
   git clone --branch 6.x-3.x git://github.com/omega8cc/provision_tasks_extra.git $_ROOT/.drush/xts/provision_tasks_extra   &> /dev/null
+  git clone --branch 7.x-1.x git://github.com/omega8cc/drupalgeddon.git $_ROOT/.drush/usr/drupalgeddon                     &> /dev/null
   git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/usr/drush_ecl                           &> /dev/null
-  git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/usr/registry_rebuild             &> /dev/null
   git clone --branch 7.x-1.x git://github.com/omega8cc/security_review.git $_ROOT/.drush/xts/security_review               &> /dev/null
   git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/xts/provision_boost               &> /dev/null
+  git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/usr/registry_rebuild             &> /dev/null
   rm -f -r $_ROOT/.drush/*/.git
   rm -f -r $_ROOT/.drush/*/*/.git
   cd $_ROOT/.drush/usr
@@ -424,7 +425,7 @@ else
     get_dev_ext "$e.tar.gz"
   done
   cd $_ROOT/.drush/usr
-  _G_EXT="clean_missing_modules drush_ecl registry_rebuild "
+  _G_EXT="clean_missing_modules drupalgeddon drush_ecl registry_rebuild "
   for e in $_G_EXT; do
     get_dev_ext "$e.tar.gz"
   done
