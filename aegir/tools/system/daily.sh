@@ -400,7 +400,7 @@ Our system detected that the site $Dom has been hacked!
 
 Common signatures of an attack which triggered this alert:
 
-  ${_DETECTED}
+${_DETECTED}
 
 The platform root directory for this site is:
 
@@ -427,7 +427,7 @@ Our system detected that the site $Dom has been hacked!
 
 Common signatures of an attack which triggered this alert:
 
-  ${_DETECTED}
+${_DETECTED}
 
 The platform root directory for this site is:
 
@@ -454,7 +454,7 @@ Our system detected that the site $Dom has been hacked!
 
 Common signatures of an attack which triggered this alert:
 
-  ${_DETECTED}
+${_DETECTED}
 
 The platform root directory for this site is:
 
