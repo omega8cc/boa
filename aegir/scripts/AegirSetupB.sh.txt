@@ -406,7 +406,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone --branch 6.x-2.x git://github.com/omega8cc/provision_site_backup.git $_ROOT/.drush/xts/provision_site_backup   &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/remote_import.git $_ROOT/.drush/sys/provision/remote_import         &> /dev/null
   git clone --branch 6.x-3.x git://github.com/omega8cc/provision_tasks_extra.git $_ROOT/.drush/xts/provision_tasks_extra   &> /dev/null
-  git clone --branch 7.x-1.x git://github.com/omega8cc/drupalgeddon.git $_ROOT/.drush/usr/drupalgeddon                     &> /dev/null
+  git clone --branch 7.x-1.x-dev git://github.com/omega8cc/drupalgeddon.git $_ROOT/.drush/usr/drupalgeddon                 &> /dev/null
   git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/usr/drush_ecl                           &> /dev/null
   git clone --branch 7.x-1.x git://github.com/omega8cc/security_review.git $_ROOT/.drush/xts/security_review               &> /dev/null
   git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/xts/provision_boost               &> /dev/null
