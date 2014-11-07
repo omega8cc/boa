@@ -1653,7 +1653,13 @@ process () {
   do
     #echo Counting Site $Site
     Dom=`echo $Site | cut -d'/' -f9 | awk '{ print $1}'`
-    if [ -e "$User/.drush/$Dom.alias.drushrc.php" ] ; then
+    _STATUS_DISABLED=NO
+    _STATUS_TEST=$(grep "Do not reveal Aegir front-end URL here" $User/config/server_master/nginx/vhost.d/$Dom)
+    if [[ "$_STATUS_TEST" =~ "Do not reveal Aegir front-end URL here" ]] ; then
+      _STATUS_DISABLED=YES
+      echo $Dom site is DISABLED
+    fi
+    if [ -e "$User/.drush/$Dom.alias.drushrc.php" ] && [ "$_STATUS_DISABLED" = "NO" ] ; then
       echo Dom is $Dom
       Dir=`cat $User/.drush/$Dom.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
