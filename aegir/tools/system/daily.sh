@@ -494,6 +494,9 @@ check_site_status () {
           _DGDD_TEST=$(run_drush4_nosilent_cmd "drupalgeddon-test" 2>&1)
           if [[ "$_DGDD_TEST" =~ "No evidence of known Drupalgeddon exploits found" ]] ; then
             _DO_NOTHING=YES
+          elif [[ "$_DGDD_TEST" =~ "Drush command terminated abnormally" ]] ; then
+            echo "ALERT: THIS SITE IS PROBABLY BROKEN! $Dir"
+            echo "${_DGDD_TEST}"
           else
             echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
             _DETECTED="${_DGDD_TEST}"
