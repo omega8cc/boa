@@ -9548,6 +9548,8 @@ if [ ! -e "/root/.my.cnf" ] ; then
   chmod 0600 /root/.mytop
   if [ "$_THIS_DB_HOST" = "localhost" ] ; then
     echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
+  elif [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
   else
     sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf &> /dev/null
   fi
