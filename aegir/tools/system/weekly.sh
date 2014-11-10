@@ -200,7 +200,7 @@ count () {
       detect_vanilla_core
       fix_clear_cache
       #echo Dir is $Dir
-      if [ -e "$Dir/drushrc.php" ] && [ -e "$Dir/files" ] && [ -e "$Dir/private" ] && [ -e "$Dir/modules" ] ; then
+      if [ -e "$Dir/drushrc.php" ] && [ -e "$Dir/files" ] && [ -e "$Dir/private" ] && [ -e "$Dir/modules" ] && [ ! -e "$Plr/profiles/hostmaster" ] ; then
         #echo "$_THIS_HM_USER,$Dom,sitedir-exists"
         Dat=`cat $Dir/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
         #echo Dat is $Dat
