@@ -161,6 +161,19 @@ manage_ip_auth_access()
       fi
     fi
   fi
+  if [ -e "/root/.wbhd.clstr.cnf" ] && [ -L "/var/backups/.vhost.d.mstr" ] ; then
+    if [ ! -d "/var/backups/.vhost.d.wbhd" ] ; then
+      mkdir -p /var/backups/.vhost.d.wbhd
+      cp -af /var/backups/.vhost.d.mstr/* /var/backups/.vhost.d.wbhd/
+    fi
+    _DIFF_CLSTR_TEST=$(diff /var/backups/.vhost.d.wbhd /var/backups/.vhost.d.mstr)
+    if [ ! -z "$_DIFF_CLSTR_TEST" ] ; then
+      service nginx reload &> /dev/null
+      rm -f -r /var/backups/.vhost.d.wbhd
+      mkdir -p /var/backups/.vhost.d.wbhd
+      cp -af /var/backups/.vhost.d.mstr/* /var/backups/.vhost.d.wbhd/
+    fi
+  fi
   if [[ "$_ALLOW_TEST_TMP" =~ "allow" ]] ; then
     _VHOST_STATUS_CHIVE=TRUE
     _VHOST_STATUS_CGP=TRUE
