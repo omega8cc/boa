@@ -491,6 +491,13 @@ up_start ()
       ln -s /opt/php53/bin/php /opt/local/bin/php &> /dev/null
     fi
   fi
+  if [ "$cmmand" = "up-cluster" ] ; then
+    if [ ! -e "/var/run/mysqld/mysqld.pid" ] && [ ! -e "/root/.dbhd.clstr.cnf" ] && [ -e "/etc/init.d/mysql" ] ; then
+      rm -f /root/.remote.db.cnf
+      sleep 5
+      service mysql start &> /dev/null
+    fi
+  fi
 }
 
 up_finish ()
