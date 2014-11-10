@@ -164,6 +164,7 @@ manage_ip_auth_access()
   if [ -e "/root/.wbhd.clstr.cnf" ] && [ -L "/var/backups/.vhost.d.mstr" ] ; then
     if [ ! -d "/var/backups/.vhost.d.wbhd" ] ; then
       mkdir -p /var/backups/.vhost.d.wbhd
+      chmod 700 /var/backups/.vhost.d.wbhd
       cp -af /var/backups/.vhost.d.mstr/* /var/backups/.vhost.d.wbhd/
     fi
     _DIFF_CLSTR_TEST=$(diff /var/backups/.vhost.d.wbhd /var/backups/.vhost.d.mstr)
@@ -171,6 +172,7 @@ manage_ip_auth_access()
       service nginx reload &> /dev/null
       rm -f -r /var/backups/.vhost.d.wbhd
       mkdir -p /var/backups/.vhost.d.wbhd
+      chmod 700 /var/backups/.vhost.d.wbhd
       cp -af /var/backups/.vhost.d.mstr/* /var/backups/.vhost.d.wbhd/
     fi
   fi
