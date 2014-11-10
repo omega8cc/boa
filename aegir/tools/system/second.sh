@@ -161,7 +161,7 @@ manage_ip_auth_access()
       fi
     fi
   fi
-  if [ -e "/root/.wbhd.clstr.cnf" ] && [ -L "/var/backups/.vhost.d.mstr" ] ; then
+  if [ -L "/var/backups/.vhost.d.mstr" ] ; then
     if [ ! -d "/var/backups/.vhost.d.wbhd" ] ; then
       mkdir -p /var/backups/.vhost.d.wbhd
       chmod 700 /var/backups/.vhost.d.wbhd
