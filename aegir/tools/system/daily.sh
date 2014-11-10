@@ -379,6 +379,129 @@ sql_convert () {
   sudo -u ${_THIS_HM_USER}.ftp -H /opt/local/bin/sqlmagic convert to-${_SQL_CONVERT}
 }
 
+send_shutdown_notice () {
+  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+  if [ ! -z "$_CLIENT_EMAIL" ] && [[ ! "$_CLIENT_EMAIL" =~ "$_MY_EMAIL" ]] ; then
+    _ALRT_EMAIL="$_CLIENT_EMAIL"
+  else
+    _ALRT_EMAIL="$_MY_EMAIL"
+  fi
+  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
+    _BCC_EMAIL="omega8cc@gmail.com"
+  else
+    _BCC_EMAIL="$_MY_EMAIL"
+  fi
+  _MAILX_TEST=`mail -V 2>&1`
+  if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
+  cat <<EOF | mail -e -a "From: $_MY_EMAIL" -a "Bcc: $_BCC_EMAIL" -s "ALERT! Shutdown of Hacked $Dom Site on $_HOST_TEST" $_ALRT_EMAIL
+Hello,
+
+Because you have not fixed this site despite several alerts
+sent before, this site is scheduled for automated shutdown
+to prevent further damage for the site owner and visitors.
+
+Once the site is disabled, the only way to re-enable it again
+is to run the Verify task in your Aegir control panel.
+
+But if you will enable the site and not fix it immediately,
+it will be shut down automatically again.
+
+Common signatures of an attack which triggered this alert:
+
+${_DETECTED}
+
+The platform root directory for this site is:
+
+  $Plr
+
+The system hostname is:
+
+  $_HOST_TEST
+
+To learn more on what happened, how it was possible and
+how to survive #Drupageddon, please read:
+
+  https://omega8.cc/drupageddon-psa-2014-003-342
+
+--
+This e-mail has been sent by your Aegir system monitor.
+
+EOF
+  elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
+  cat <<EOF | mail -a "From: $_MY_EMAIL" -e -b $_BCC_EMAIL -s "ALERT! Shutdown of Hacked $Dom Site on $_HOST_TEST" $_ALRT_EMAIL
+Hello,
+
+Because you have not fixed this site despite several alerts
+sent before, this site is scheduled for automated shutdown
+to prevent further damage for the site owner and visitors.
+
+Once the site is disabled, the only way to re-enable it again
+is to run the Verify task in your Aegir control panel.
+
+But if you will enable the site and not fix it immediately,
+it will be shut down automatically again.
+
+Common signatures of an attack which triggered this alert:
+
+${_DETECTED}
+
+The platform root directory for this site is:
+
+  $Plr
+
+The system hostname is:
+
+  $_HOST_TEST
+
+To learn more on what happened, how it was possible and
+how to survive #Drupageddon, please read:
+
+  https://omega8.cc/drupageddon-psa-2014-003-342
+
+--
+This e-mail has been sent by your Aegir system monitor.
+
+EOF
+  else
+  cat <<EOF | mail -r $_MY_EMAIL -e -b $_BCC_EMAIL -s "ALERT! Shutdown of Hacked $Dom Site on $_HOST_TEST" $_ALRT_EMAIL
+Hello,
+
+Because you have not fixed this site despite several alerts
+sent before, this site is scheduled for automated shutdown
+to prevent further damage for the site owner and visitors.
+
+Once the site is disabled, the only way to re-enable it again
+is to run the Verify task in your Aegir control panel.
+
+But if you will enable the site and not fix it immediately,
+it will be shut down automatically again.
+
+Common signatures of an attack which triggered this alert:
+
+${_DETECTED}
+
+The platform root directory for this site is:
+
+  $Plr
+
+The system hostname is:
+
+  $_HOST_TEST
+
+To learn more on what happened, how it was possible and
+how to survive #Drupageddon, please read:
+
+  https://omega8.cc/drupageddon-psa-2014-003-342
+
+--
+This e-mail has been sent by your Aegir system monitor.
+
+EOF
+  fi
+  echo "ALERT: HACKED notice sent to $_CLIENT_EMAIL [$_THIS_HM_USER]: OK"
+}
+
 send_hacked_alert () {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
@@ -501,7 +624,14 @@ check_site_status () {
             echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
             _DETECTED="${_DGDD_TEST}"
             if [ ! -z "$_MY_EMAIL" ] ; then
-              send_hacked_alert
+              if [[ "$_DGDD_TEST" =~ "Role \"megauser\" discovered" ]] || [[ "$_DGDD_TEST" =~ "User \"drupaldev\" discovered" ]] ; then
+                if [ -e "$User/config/server_master/nginx/vhost.d/${Dom}" ] && [ ! -e "$User/config/server_master/nginx/vhost.d/.${Dom}" ] ; then
+                  mv -f $User/config/server_master/nginx/vhost.d/${Dom} $User/config/server_master/nginx/vhost.d/.${Dom}
+                  send_shutdown_notice
+                fi
+              else
+                send_hacked_alert
+              fi
             fi
           fi
         else
@@ -2169,6 +2299,7 @@ rm -f /data/disk/*/.tmp/.busy.*.pid
 echo "INFO: Redis server will be restarted in 5 minutes"
 touch /var/run/boa_wait.pid
 sleep 300
+/etc/init.d/nginx reload
 /etc/init.d/redis-server stop
 killall -9 redis-server
 rm -f /var/run/redis.pid
