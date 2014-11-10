@@ -625,7 +625,7 @@ check_site_status () {
             _DETECTED="${_DGDD_TEST}"
             if [ ! -z "$_MY_EMAIL" ] ; then
               if [[ "$_DGDD_TEST" =~ "Role \"megauser\" discovered" ]] || [[ "$_DGDD_TEST" =~ "User \"drupaldev\" discovered" ]] ; then
-                if [ -e "$User/config/server_master/nginx/vhost.d/${Dom}" ] && [ ! -e "$User/config/server_master/nginx/vhost.d/.${Dom}" ] ; then
+                if [ -e "$User/config/server_master/nginx/vhost.d/${Dom}" ] ; then
                   mv -f $User/config/server_master/nginx/vhost.d/${Dom} $User/config/server_master/nginx/vhost.d/.${Dom}
                   send_shutdown_notice
                 fi
