@@ -151,6 +151,7 @@ install() {
   if [ "$_DUPLICITY_INSTALLED" = "$_DUPLICITY_VERSION" ] ; then
     echo "Latest duplicity version $_DUPLICITY_VERSION already installed"
   else
+    echo "Installing duplicity dependencies, please wait..."
     cd
     apt-get clean -qq                    &> /dev/null
     apt-get update -qq                   &> /dev/null
@@ -159,18 +160,19 @@ install() {
     apt-get install python-dev -y        &> /dev/null
     apt-get install python-lockfile -y   &> /dev/null
     apt-get install python-setuptools -y &> /dev/null
-    apt-get install python-urllib3       &> /dev/null
     apt-get install s3cmd -y             &> /dev/null
     mkdir -p /var/opt
     rm -f -r /var/opt/{boto*,duplicity*}
     cd /var/opt
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/src/boto-$_BOTO_VERSION.tar.gz"
-    cd boto-$_BOTO_VERSION
+    tar xzf boto-$_BOTO_VERSION.tar.gz &> /dev/null
+    cd /var/opt/boto-$_BOTO_VERSION
     python setup.py install &> /dev/null
+    echo "Installing duplicity version $_DUPLICITY_VERSION, please wait..."
     cd /var/opt
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/src/duplicity-$_DUPLICITY_VERSION.tar.gz"
     tar xzf duplicity-$_DUPLICITY_VERSION.tar.gz &> /dev/null
-    cd duplicity-$_DUPLICITY_VERSION
+    cd /var/opt/duplicity-$_DUPLICITY_VERSION
     python setup.py build &> /dev/null
     python setup.py install &> /dev/null
     cd
