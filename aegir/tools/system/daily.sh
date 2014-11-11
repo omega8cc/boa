@@ -70,7 +70,7 @@ disable_chattr () {
         ln -sf /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
       fi
     else
-      if [ ! -d "/data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon" ] || [ ! -e "/data/disk/${_THIS_HM_USER}/static/control/.drupalgeddon.in.012.pid" ] ; then
+      if [ ! -d "/data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon" ] || [ ! -e "/data/disk/${_THIS_HM_USER}/static/control/.drupalgeddon.in.013.pid" ] ; then
         rm -f /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon &> /dev/null
         cd /data/disk/${_THIS_HM_USER}/.drush/usr
         get_dev_ext "drupalgeddon.tar.gz"
@@ -78,7 +78,7 @@ disable_chattr () {
         find /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon -type f -exec chmod 0640 {} \; &> /dev/null
         chown -R ${_THIS_HM_USER}:users /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon
         rm -f /data/disk/${_THIS_HM_USER}/static/control/.drupalgeddon.in.00*.pid
-        touch /data/disk/${_THIS_HM_USER}/static/control/.drupalgeddon.in.012.pid
+        touch /data/disk/${_THIS_HM_USER}/static/control/.drupalgeddon.in.013.pid
       fi
       if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] && [ -d "/data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon" ] ; then
         rm -f -r /home/$1/.drush/usr/drupalgeddon
