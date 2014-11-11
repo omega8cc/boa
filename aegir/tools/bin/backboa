@@ -37,11 +37,11 @@ if [ -z "$_AWS_KEY" ] || [ -z "$_AWS_SEC" ] || [ -z "$_AWS_PWD" ] ; then
 
   Add these five (5) lines to your /root/.barracuda.cnf file:
 
-    _AWS_KEY="Your AWS Access Key ID"     ### From your AWS S3 settings
-    _AWS_SEC="Your AWS Secret Access Key" ### From your AWS S3 settings
-    _AWS_PWD="Your Secret Password"       ### Generate with 'openssl rand -base64 32'
-    _AWS_REG="Your AWS Region ID"         ### By default 'us-east-1'
-    _AWS_TTL="Your Backup Rotation"       ### By default '30D'
+    _AWS_KEY='Your AWS Access Key ID'     ### From your AWS S3 settings
+    _AWS_SEC='Your AWS Secret Access Key' ### From your AWS S3 settings
+    _AWS_PWD='Your Secret Password'       ### Generate with 'openssl rand -base64 32'
+    _AWS_REG='Your AWS Region ID'         ### By default 'us-east-1'
+    _AWS_TTL='Your Backup Rotation'       ### By default '30D'
 
     Supported values to use as _AWS_REG:
 
@@ -221,11 +221,11 @@ else
 
   Add these five (5) lines to your /root/.barracuda.cnf file:
 
-    _AWS_KEY="Your AWS Access Key ID"     ### From your AWS S3 settings
-    _AWS_SEC="Your AWS Secret Access Key" ### From your AWS S3 settings
-    _AWS_PWD="Your Secret Password"       ### Generate with 'openssl rand -base64 32'
-    _AWS_REG="Your AWS Region ID"         ### By default 'us-east-1'
-    _AWS_TTL="Your Backup Rotation"       ### By default '30D'
+    _AWS_KEY='Your AWS Access Key ID'     ### From your AWS S3 settings
+    _AWS_SEC='Your AWS Secret Access Key' ### From your AWS S3 settings
+    _AWS_PWD='Your Secret Password'       ### Generate with 'openssl rand -base64 32'
+    _AWS_REG='Your AWS Region ID'         ### By default 'us-east-1'
+    _AWS_TTL='Your Backup Rotation'       ### By default '30D'
 
     Supported values to use as _AWS_REG:
 
