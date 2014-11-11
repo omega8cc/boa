@@ -5557,7 +5557,7 @@ strict_bin_permissions () {
     fi
   done
 
-  _PROTECTED_ITEMS="barracuda boa octopus syncpass sftp-admin sftp-kill sftp-state named redis-cli redis-benchmark redis-check-dump redis-check-aof"
+  _PROTECTED_ITEMS="backboa barracuda boa octopus syncpass sftp-admin sftp-kill sftp-state named redis-cli redis-benchmark redis-check-dump redis-check-aof"
   for i in $_PROTECTED_ITEMS; do
     _BIN_ITEM=$(which $i)
     if [ -e "$_BIN_ITEM" ] ; then
