@@ -145,11 +145,11 @@ restore() {
 
 retrieve() {
   if [ $# = 3 ]; then
-    BUCKET="${3}_daily_boa"
+    BUCKET="daily.boa.${3}"
     TARGET="s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}"
     duplicity restore --file-to-restore $1 $TARGET $2
   elif [ $# = 4 ]; then
-    BUCKET="${4}_daily_boa"
+    BUCKET="daily.boa.${4}"
     TARGET="s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}"
     duplicity restore --file-to-restore $1 --time $2 $TARGET $3
   fi
