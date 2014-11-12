@@ -12,6 +12,9 @@
 ### http://www.nongnu.org/duplicity/index.html
 ###
 
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
+
 _DUPLICITY_VERSION=0.7.0
 _BOTO_VERSION=2.34.0
 
