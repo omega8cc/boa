@@ -228,30 +228,6 @@ elif [ "$1" = "status" ]; then
 else
   echo "
 
-  CONFIGURATION:
-
-  Add these five (5) lines to your /root/.barracuda.cnf file:
-
-    _AWS_KEY='Your AWS Access Key ID'     ### From your AWS S3 settings
-    _AWS_SEC='Your AWS Secret Access Key' ### From your AWS S3 settings
-    _AWS_PWD='Your Secret Password'       ### Generate with 'openssl rand -base64 32'
-    _AWS_REG='Your AWS Region ID'         ### By default 'us-east-1'
-    _AWS_TTL='Your Backup Rotation'       ### By default '30D'
-
-    Supported values to use as _AWS_REG:
-
-      us-east-1
-      us-west-2
-      us-west-1
-      eu-west-1
-      eu-central-1
-      ap-southeast-1
-      ap-southeast-2
-      ap-northeast-1
-      sa-east-1
-
-    Source: http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
-
   INSTALLATION:
 
   $ backboa install
