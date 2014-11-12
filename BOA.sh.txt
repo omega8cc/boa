@@ -133,24 +133,24 @@ fix_core ()
 {
   # https://www.drupal.org/SA-CORE-2014-005
   sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf &> /dev/null
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/daily.fixed.b88.pid" ] ; then
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/daily.fixed.c88.pid" ] ; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/system/daily.sh" -o /var/xdrago/daily.sh
     if [ -e "/var/xdrago/daily.sh" ] ; then
       chmod 700 /var/xdrago/daily.sh
       chown root:root /var/xdrago/daily.sh
-      touch /var/xdrago/log/daily.fixed.b88.pid
+      touch /var/xdrago/log/daily.fixed.c88.pid
     else
       mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
     fi
   fi
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/mysql_backup.fixed.b88.pid" ] ; then
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/mysql_backup.fixed.c88.pid" ] ; then
     mv -f /var/xdrago/mysql_backup.sh /var/xdrago/mysql_backup.sh.old
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/system/mysql_backup.sh" -o /var/xdrago/mysql_backup.sh
     if [ -e "/var/xdrago/mysql_backup.sh" ] ; then
       chmod 700 /var/xdrago/mysql_backup.sh
       chown root:root /var/xdrago/mysql_backup.sh
-      touch /var/xdrago/log/mysql_backup.fixed.b88.pid
+      touch /var/xdrago/log/mysql_backup.fixed.c88.pid
     else
       mv -f /var/xdrago/mysql_backup.sh.old /var/xdrago/mysql_backup.sh
     fi
