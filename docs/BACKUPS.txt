@@ -24,11 +24,11 @@
 
   Add these five (5) lines to your /root/.barracuda.cnf file:
 
-    _AWS_KEY="Your AWS Access Key ID"     ### From your AWS S3 settings
-    _AWS_SEC="Your AWS Secret Access Key" ### From your AWS S3 settings
-    _AWS_PWD="Your Secret Password"       ### Generate with 'openssl rand -base64 32'
-    _AWS_REG="Your AWS Region ID"         ### By default 'us-east-1'
-    _AWS_TTL="Your Backup Rotation"       ### By default '30D'
+    _AWS_KEY='Your AWS Access Key ID'     ### From your AWS S3 settings
+    _AWS_SEC='Your AWS Secret Access Key' ### From your AWS S3 settings
+    _AWS_PWD='Your Secret Password'       ### Generate with 'openssl rand -base64 32'
+    _AWS_REG='Your AWS Region ID'         ### By default 'us-east-1'
+    _AWS_TTL='Your Backup Rotation'       ### By default '30D'
 
     Supported values to use as _AWS_REG:
 
@@ -77,4 +77,3 @@
         current system /root/.barracuda.cnf file - so make sure to edit
         this file to set temporarily _AWS_REG used for the backup host your are
         retrieving data from, if they are not the same on both systems!
-
