@@ -44,6 +44,18 @@
 
     Source: http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
 
+    You have to use S3 Console at https://console.aws.amazon.com/s3/home
+    (before attempting to run initial backup!) to create S3 bucket in the
+    desired region with correct name as shown below.
+
+    Replace only the srv.foo.bar part after daily.boa. static prefix with
+    your system hostname, typically displayed when you type 'uname -n'
+
+      daily.boa.srv.foo.bar
+
+    While duplicity should be able to create new bucket on demand, in practice
+    it almost never works due to typical delays between various AWS regions.
+
   INSTALLATION:
 
   $ backboa install

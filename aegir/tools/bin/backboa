@@ -57,6 +57,15 @@ if [ -z "$_AWS_KEY" ] || [ -z "$_AWS_SEC" ] || [ -z "$_AWS_PWD" ] ; then
 
     Source: http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
 
+    You have to use S3 Console at https://console.aws.amazon.com/s3/home
+    (before attempting to run initial backup!) to create S3 bucket in the
+    desired region with correct name as shown below:
+
+      daily.boa.${_HST}
+
+    While duplicity should be able to create new bucket on demand, in practice
+    it almost never works due to typical delays between various AWS regions.
+
   "
   exit 1
 fi
