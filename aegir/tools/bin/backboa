@@ -87,8 +87,8 @@ export PASSPHRASE="${_AWS_PWD}"
 
 SOURCE="/etc /var/aegir /var/www /home /data"
 EXCLUDE="--exclude /data/conf/arch"
-BUCKET="${_HST}_daily_boa"
-TARGET="s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}"
+BUCKET=daily.boa.${_HST}
+TARGET=s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}
 LOGFILE=/var/xdrago/log/$BUCKET.log
 
 backup() {
