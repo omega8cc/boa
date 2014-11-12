@@ -85,7 +85,8 @@
   $ backboa retrieve data/disk/o1/backups 2014/11/11 tmp/backups srv.foo.bar
 
   Note: The srv.foo.bar is a hostname of the BOA system backed up before.
-        In the 'retrieve' mode it will use the AWS Region configured in the
-        current system /root/.barracuda.cnf file - so make sure to edit
-        this file to set temporarily _AWS_REG used for the backup host your are
-        retrieving data from, if they are not the same on both systems!
+        In the 'retrieve' mode it will use the _AWS_* variables configured
+        in the current system /root/.barracuda.cnf file - so make sure to edit
+        this file to set/replace temporarily *all* five _AWS_* variables used
+        originally on the host you are retrieving data from! You should
+        keep them secret and manage in your offline password manager app.
