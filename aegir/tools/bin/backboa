@@ -113,7 +113,7 @@ backup() {
   duplicity -v 1 --volsize 100 \
             --full-if-older-than 1M \
             --s3-use-new-style \
-	        --asynchronous-upload \
+            --asynchronous-upload \
             $INCLUDE $EXCLUDE --exclude '**' / $TARGET > $LOGFILE
   if [ -e "/var/xdrago/log/$BUCKET.archive.log" ] ; then
     duplicity -v 1 remove-older-than ${_AWS_TTL} --force $TARGET >> $LOGFILE

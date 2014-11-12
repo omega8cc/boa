@@ -1312,7 +1312,7 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _PLATF_IMP=$(ls -la /data/u | grep $_USER | cut -d'>' -f2 | sort | uniq | awk '{ print $1}')
   for _PLATF in $_PLATF_IMP ; do
     if [[ "$_PLATF" =~ "aegir" ]] ; then
-	  _FOUND_HM=YES
+      _FOUND_HM=YES
     else
       chown -R $_USER:www-data $_PLATF/sites/*/files &> /dev/null
       chmod -R 02775 $_PLATF/sites/*/files &> /dev/null
