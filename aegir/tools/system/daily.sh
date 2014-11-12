@@ -628,7 +628,7 @@ check_site_status () {
             echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
             _DETECTED="${_DGDD_TEST}"
             if [ ! -z "$_MY_EMAIL" ] ; then
-              if [[ "$_DGDD_TEST" =~ "Role \"megauser\" discovered" ]] || [[ "$_DGDD_TEST" =~ "User \"drupaldev\" discovered" ]] || [[ "$_DGDD_TEST" =~ "User \"OWNED\" discovered" ]] || [[ "$_DGDD_TEST" =~ "User \"system\" discovered" ]]; then
+              if [[ "$_DGDD_TEST" =~ "Role \"megauser\" discovered" ]] || [[ "$_DGDD_TEST" =~ "User \"drupaldev\" discovered" ]] || [[ "$_DGDD_TEST" =~ "User \"OWNED\" discovered" ]] || [[ "$_DGDD_TEST" =~ "User \"system\" discovered" ]] || [[ "$_DGDD_TEST" =~ "User \"configure\" discovered" ]] || [[ "$_DGDD_TEST" =~ "User \"drplsys\" discovered" ]] ; then
                 if [ -e "$User/config/server_master/nginx/vhost.d/${Dom}" ] ; then
                   mv -f $User/config/server_master/nginx/vhost.d/${Dom} $User/config/server_master/nginx/vhost.d/.${Dom}
                   send_shutdown_notice
