@@ -107,15 +107,18 @@ backup() {
     TMP=" --include  ${CDIR}"
     INCLUDE=${INCLUDE}${TMP}
   done
-  duplicity cleanup --force $TARGET
-  duplicity --volsize 100 \
+  if [ -e "/var/xdrago/log/$BUCKET.archive.log" ] ; then
+    duplicity -v 1 cleanup --force $TARGET
+  fi
+  duplicity -v 1 --volsize 100 \
             --full-if-older-than 1M \
             --s3-use-new-style \
-	        --allow-source-mismatch \
 	        --asynchronous-upload \
             $INCLUDE $EXCLUDE --exclude '**' / $TARGET > $LOGFILE
-  duplicity remove-older-than ${_AWS_TTL} --force $TARGET >> $LOGFILE
-  duplicity collection-status $TARGET >> $LOGFILE
+  if [ -e "/var/xdrago/log/$BUCKET.archive.log" ] ; then
+    duplicity -v 1 remove-older-than ${_AWS_TTL} --force $TARGET >> $LOGFILE
+    duplicity -v 1 collection-status $TARGET >> $LOGFILE
+  fi
   if [ -n "$_MY_EMAIL" ]; then
     mail -s "Daily backup: ${_HST} `date`" $_MY_EMAIL < $LOGFILE
   fi
@@ -123,23 +126,23 @@ backup() {
 }
 
 status() {
-  duplicity collection-status $TARGET
+  duplicity -v 1 collection-status $TARGET
 }
 
 cleanup() {
-  duplicity cleanup --force $TARGET
-  duplicity collection-status $TARGET
+  duplicity -v 1 cleanup --force $TARGET
+  duplicity -v 1 collection-status $TARGET
 }
 
 list() {
-  duplicity list-current-files $TARGET
+  duplicity -v 1 list-current-files $TARGET
 }
 
 restore() {
   if [ $# = 2 ]; then
-    duplicity restore --file-to-restore $1 $TARGET $2
+    duplicity -v 1 restore --file-to-restore $1 $TARGET $2
   else
-    duplicity restore --file-to-restore $1 --time $2 $TARGET $3
+    duplicity -v 1 restore --file-to-restore $1 --time $2 $TARGET $3
   fi
 }
 
@@ -165,6 +168,10 @@ install() {
     apt-get clean -qq                    &> /dev/null
     apt-get update -qq                   &> /dev/null
     aptitude purge duplicity -y          &> /dev/null
+    rm -f -r /usr/local/lib/python2.7/dist-packages/boto*
+    rm -f -r /usr/local/lib/python2.6/dist-packages/boto*
+    rm -f -r /usr/local/lib/python2.7/dist-packages/duplicity*
+    rm -f -r /usr/local/lib/python2.6/dist-packages/duplicity*
     apt-get install librsync-dev -y      &> /dev/null
     apt-get install python-dev -y        &> /dev/null
     apt-get install python-lockfile -y   &> /dev/null
@@ -197,8 +204,9 @@ if [ "$1" = "backup" ]; then
     exit 1
   else
     touch /var/run/${_HST}_backup.pid
-    echo "The duplicity backup is starting now"
+    echo "The duplicity backup is starting now..."
     backup
+    echo "The duplicity backup is complete!"
     touch /var/xdrago/log/run_${_HST}_backup.log
     rm -f /var/run/${_HST}_backup.pid
   fi
