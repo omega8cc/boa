@@ -9214,6 +9214,8 @@ else
           rm -f -r /usr/local/rvm
           touch /var/xdrago/log/ruby-root-clean-reload.log
         fi
+        gpg --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3 &> /dev/null
+        curl -sSL https://rvm.io/mpapis.asc | gpg --import - &> /dev/null
         curl -sSL https://get.rvm.io | bash -s stable &> /dev/null
         if [ -e "/etc/profile.d/rvm.sh" ] ; then
           source /etc/profile.d/rvm.sh
