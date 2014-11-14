@@ -175,7 +175,7 @@ enable_chattr () {
       if [ ! -x "/home/${UQ}/.rvm/bin/rvm" ] ; then
         touch /var/run/manage_rvm_users.pid
         su -s /bin/bash ${UQ} -c "gpg --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3" &> /dev/null
-        su -s /bin/bash ${UQ} -c "curl -sSL https://rvm.io/mpapis.asc | gpg --import" &> /dev/null
+        su -s /bin/bash ${UQ} -c "\curl -sSL https://rvm.io/mpapis.asc | gpg --import" &> /dev/null
         su -s /bin/bash ${UQ} -c "\curl -sSL https://get.rvm.io | bash -s stable" &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles" &> /dev/null
         rm -f /var/run/manage_rvm_users.pid
