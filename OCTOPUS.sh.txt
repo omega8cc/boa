@@ -739,7 +739,6 @@ _PROSEPOINT=0.46
 _RECRUITER=7.x-1.3
 _RESTAURANT=7.x-1.0-beta10
 _SPARK=7.x-1.0-beta1
-_TOTEM=7.x-1.1
 _UBERCART6=2.14
 _UBERCART7=3.8
 
@@ -1603,7 +1602,6 @@ action () {
     sed -i "s/EDIT_T_BUILD/$_T_BUILD/g"                     $Files &> /dev/null
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files &> /dev/null
     sed -i "s/EDIT_THISHTIP/$_THISHTIP/g"                   $Files &> /dev/null
-    sed -i "s/EDIT_TOTEM/$_TOTEM/g"                         $Files &> /dev/null
     sed -i "s/EDIT_UBERCART6/$_UBERCART6/g"                 $Files &> /dev/null
     sed -i "s/EDIT_UBERCART7/$_UBERCART7/g"                 $Files &> /dev/null
     sed -i "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files &> /dev/null
