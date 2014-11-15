@@ -122,7 +122,6 @@
 ### RER ----------- Recruiter
 ### RST ----------- Restaurant
 ### SRK ----------- Spark
-### TTM ----------- Totem
 ### UC7 ----------- Ubercart D7
 ### UCT ----------- Ubercart D6
 ###

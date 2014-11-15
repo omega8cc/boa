@@ -335,12 +335,7 @@ if (!$is_bot && isset($_SERVER['REQUEST_URI']) && preg_match("/nocache=1/", $_SE
  * created to the cookie expires, i.e. when the browser is expected to discard
  * the cookie. The value 0 means "until the browser is closed".
  */
-if ($conf['install_profile'] == 'totem') {
-  ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
-}
-else {
-  ini_set('session.cookie_lifetime', $all_ini['session_cookie_ttl']);
-}
+ini_set('session.cookie_lifetime', $all_ini['session_cookie_ttl']);
 
 /**
  * Session Garbage Collector EOL settings
