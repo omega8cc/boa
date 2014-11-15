@@ -107,7 +107,6 @@
 ### ERP ----------- ERPAL
 ### FSR ----------- Feature Server
 ### GDR ----------- Guardr
-### MNS ----------- Managing News
 ### OA7 ----------- Open Atrium D7
 ### OAM ----------- Open Atrium D6
 ### OAY ----------- Open Academy

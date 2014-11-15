@@ -132,7 +132,6 @@ _PHP_CLI_VERSION=5.3
 ### ERP ----------- ERPAL
 ### FSR ----------- Feature Server
 ### GDR ----------- Guardr
-### MNS ----------- Managing News
 ### OA7 ----------- Open Atrium D7
 ### OAM ----------- Open Atrium D6
 ### OAY ----------- Open Academy
@@ -719,7 +718,6 @@ _DRUPAL7="drupal-$_SMALLCORE7"
 _DRUPAL8="8.0-dev-120915"
 _ERPAL=7.x-2.1
 _GUARDR=7.x-1.14
-_MANAGINGNEWS=1.2.4
 _OPEN_DEALS=1.35
 _OPENACADEMY=7.x-1.1
 _OPENATRIUM6=6.x-1.7
@@ -1562,7 +1560,6 @@ action () {
     sed -i "s/EDIT_LAST_HMR/$_LAST_HMR/g"                   $Files &> /dev/null
     sed -i "s/EDIT_LASTNUM/$_LASTNUM/g"                     $Files &> /dev/null
     sed -i "s/EDIT_LEGACY_RESULT/$_LEGACY_RESULT/g"         $Files &> /dev/null
-    sed -i "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files &> /dev/null
     sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files &> /dev/null
     sed -i "s/EDIT_MY_OWNIP/$_MY_OWNIP/g"                   $Files &> /dev/null
     sed -i "s/EDIT_NOW/$_NOW/g"                             $Files &> /dev/null
