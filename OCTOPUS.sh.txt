@@ -133,7 +133,6 @@ _PHP_CLI_VERSION=5.3
 ### FSR ----------- Feature Server
 ### GDR ----------- Guardr
 ### OA7 ----------- Open Atrium D7
-### OAM ----------- Open Atrium D6
 ### OAY ----------- Open Academy
 ### OBG ----------- OpenBlog
 ### OCH ----------- OpenChurch 1
@@ -720,7 +719,6 @@ _ERPAL=7.x-2.1
 _GUARDR=7.x-1.14
 _OPEN_DEALS=1.35
 _OPENACADEMY=7.x-1.1
-_OPENATRIUM6=6.x-1.7
 _OPENATRIUM7=7.x-2.24
 _OPENBLOG=7.x-1.0-alpha3
 _OPENCHURCH1=7.x-1.15
@@ -1566,7 +1564,6 @@ action () {
     sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files &> /dev/null
     sed -i "s/EDIT_OPEN_DEALS/$_OPEN_DEALS/g"               $Files &> /dev/null
     sed -i "s/EDIT_OPENACADEMY/$_OPENACADEMY/g"             $Files &> /dev/null
-    sed -i "s/EDIT_OPENATRIUM6/$_OPENATRIUM6/g"             $Files &> /dev/null
     sed -i "s/EDIT_OPENATRIUM7/$_OPENATRIUM7/g"             $Files &> /dev/null
     sed -i "s/EDIT_OPENBLOG/$_OPENBLOG/g"                   $Files &> /dev/null
     sed -i "s/EDIT_OPENCHURCH1/$_OPENCHURCH1/g"             $Files &> /dev/null

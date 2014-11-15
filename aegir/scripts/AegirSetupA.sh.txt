@@ -57,7 +57,6 @@ _ERPAL=EDIT_ERPAL
 _GUARDR=EDIT_GUARDR
 _OPEN_DEALS=EDIT_OPEN_DEALS
 _OPENACADEMY=EDIT_OPENACADEMY
-_OPENATRIUM6=EDIT_OPENATRIUM6
 _OPENATRIUM7=EDIT_OPENATRIUM7
 _OPENBLOG=EDIT_OPENBLOG
 _OPENCHURCH1=EDIT_OPENCHURCH1
@@ -1683,11 +1682,6 @@ msg "$_STATUS A: Creating ftp symlinks"
   if [ -d "$_ROOT/distro/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7" ] ; then
       ln -sf $_ROOT/distro/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7
-    fi
-  fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM6-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openatrium-$_OPENATRIUM6-$_SMALLCORE6" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM6-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/openatrium-$_OPENATRIUM6-$_SMALLCORE6
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7/sites" ] ; then

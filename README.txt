@@ -192,7 +192,6 @@ Octopus can install the platforms listed below:
 
  Commons 2.20 ----------------- https://drupal.org/project/commons
  Feature Server 1.2 ----------- http://bit.ly/fserver
- Open Atrium 1.7.2 ------------ https://drupal.org/project/openatrium
  Pressflow 6.33.1 ------------- http://pressflow.org
  Ubercart 2.14 ---------------- https://drupal.org/project/ubercart
 
