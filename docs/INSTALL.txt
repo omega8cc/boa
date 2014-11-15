@@ -52,7 +52,7 @@
    # Stable on public server - prompt for every platform install
    $ boa in-stable public server.mydomain.org my@email o1
 
-   # Stable on public server - no prompt with 3xD6 + 3xD7 + Atrium only
+   # Stable on public server - no prompt with 3xD6 + 3xD7 only
    $ boa in-stable public server.mydomain.org my@email o1 mini
 
    # Stable on public server - no prompt with all platforms and New Relic
@@ -93,7 +93,7 @@
    # Stable on localhost - prompt for every platform install
    $ boa in-stable local my@email
 
-   # Stable on localhost - no prompt with 3xD6 + 3xD7 + Atrium only
+   # Stable on localhost - no prompt with 3xD6 + 3xD7 only
    $ boa in-stable local my@email mini
 
    # Stable on localhost - no prompt with all platforms installed
