@@ -15,8 +15,23 @@ check_generate () {
   else
     echo "INFO: Expected file $_L_SYS does not exist"
     if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-      echo "INFO: We will generate new random secure strong password"
-      _ESC_APASS=$(randpass 32 esc)
+      _PWD_CHARS=32
+    elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+      _PWD_CHARS=8
+    else
+      _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+      if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
+        _PWD_CHARS="$_STRONG_PASSWORDS"
+      else
+        _PWD_CHARS=8
+      fi
+      if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+        _PWD_CHARS=128
+      fi
+    fi
+    if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
+      echo "INFO: We will generate new random strong password ($_PWD_CHARS)"
+      _ESC_APASS=$(randpass $_PWD_CHARS esc)
       _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
       _ENC_APASS=$(python -c "import urllib; print urllib.quote('''$_ESC_APASS''')")
       echo "$_ESC_APASS" > $_L_SYS
@@ -31,7 +46,7 @@ check_generate () {
     fi
   fi
   _LEN_APASS=$(echo ${#_ESC_APASS})
-  if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 19 ] ; then
+  if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 9 ] ; then
      echo "WARN: The random password=$_ESC_APASS does not look good"
      echo "INFO: We will generate new random password using pwgen tool"
     _ESC_APASS=`pwgen -v -s -1`

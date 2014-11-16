@@ -789,8 +789,8 @@ _MODULES_SKIP=""
 ### a sign of unreliable /dev/urandom.
 ### See: https://drupal.org/node/1952042
 ###
-### By default new passwords are generated
-### with "pwgen -v -s -1" command.
+### Configurable length: 8-128 or automatic
+### with keywords: YES (32), NO (8).
 ###
 _STRONG_PASSWORDS=NO
 
@@ -1552,11 +1552,26 @@ forced_redis_password_update () {
   _ESC_RPASS=""
   _LEN_RPASS=0
   if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-    _ESC_RPASS=$(randpass 32 alnum)
+    _PWD_CHARS=32
+  elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+    _PWD_CHARS=8
+  else
+    _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+    if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
+      _PWD_CHARS="$_STRONG_PASSWORDS"
+    else
+      _PWD_CHARS=8
+    fi
+    if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+      _PWD_CHARS=128
+    fi
+  fi
+  if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
+    _ESC_RPASS=$(randpass $_PWD_CHARS alnum)
     _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
     _LEN_RPASS=$(echo ${#_ESC_RPASS})
   fi
-  if [ -z "$_ESC_RPASS" ] || [ $_LEN_RPASS -lt 19 ] ; then
+  if [ -z "$_ESC_RPASS" ] || [ $_LEN_RPASS -lt 9 ] ; then
     _ESC_RPASS=`pwgen -v -s -1`
     _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
     _ESC_RPASS=`sanitize_string "$_ESC_RPASS"`
@@ -4179,8 +4194,23 @@ provision_backend_dbpass_generate () {
   _ESC_APASS=""
   _LEN_APASS=0
   if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+    _PWD_CHARS=32
+  elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+    _PWD_CHARS=8
+  else
+    _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+    if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
+      _PWD_CHARS="$_STRONG_PASSWORDS"
+    else
+      _PWD_CHARS=8
+    fi
+    if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+      _PWD_CHARS=128
+    fi
+  fi
+  if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
     if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-      _ESC_APASS=$(randpass 32 esc)
+      _ESC_APASS=$(randpass $_PWD_CHARS esc)
     else
       if [ -e "/root/.my.pass.txt" ] ; then
         _ESC_APASS=`cat /root/.my.pass.txt`
@@ -4192,7 +4222,7 @@ provision_backend_dbpass_generate () {
     _ENC_APASS=$(python -c "import urllib; print urllib.quote('''$_ESC_APASS''')")
     _LEN_APASS=$(echo ${#_ESC_APASS})
   fi
-  if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 19 ] ; then
+  if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 9 ] ; then
     if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
       _ESC_APASS=`pwgen -v -s -1`
       _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
@@ -7594,7 +7624,6 @@ if [ -d "/var/xdrago/conf" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc
       sed -i "s/foobar/$_NGINX_DOS_KEYWORDS/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
     fi
   fi
-  sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g" /var/xdrago/manage_ltd_users.sh &> /dev/null
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
   if [ -e "/var/xdrago/cron/custom.txt" ] ; then
@@ -7658,7 +7687,6 @@ if [ "$_STATUS" = "INIT" ] ; then
       sed -i "s/foobar/$_NGINX_DOS_KEYWORDS/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
     fi
   fi
-  sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g" /var/xdrago/manage_ltd_users.sh &> /dev/null
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_CHECK_HOST" =~ ".qq.o8.io" ]] ; then
@@ -8532,11 +8560,26 @@ if [ ! -e "/root/.my.pass.txt" ] ; then
     _ESC_PASS=""
     _LEN_PASS=0
     if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-      _ESC_PASS=$(randpass 32 esc)
+      _PWD_CHARS=32
+    elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+      _PWD_CHARS=8
+    else
+      _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+      if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
+        _PWD_CHARS="$_STRONG_PASSWORDS"
+      else
+        _PWD_CHARS=8
+      fi
+      if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+        _PWD_CHARS=128
+      fi
+    fi
+    if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
+      _ESC_PASS=$(randpass $_PWD_CHARS esc)
       _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
       _LEN_PASS=$(echo ${#_ESC_PASS})
     fi
-    if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
+    if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 9 ] ; then
       _ESC_PASS=`pwgen -v -s -1`
       _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
       _ESC_PASS=`sanitize_string "$_ESC_PASS"`
@@ -8644,8 +8687,24 @@ if [ "$_STATUS" = "INIT" ] ; then
   _LEN_APASS=0
 
   if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+    _PWD_CHARS=32
+  elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+    _PWD_CHARS=8
+  else
+    _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+    if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
+      _PWD_CHARS="$_STRONG_PASSWORDS"
+    else
+      _PWD_CHARS=8
+    fi
+    if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+      _PWD_CHARS=128
+    fi
+  fi
+
+  if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
     if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-      _ESC_APASS=$(randpass 32 esc)
+      _ESC_APASS=$(randpass $_PWD_CHARS esc)
     else
       if [ -e "/root/.my.pass.txt" ] ; then
         _ESC_APASS=`cat /root/.my.pass.txt`
@@ -8657,7 +8716,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     _LEN_APASS=$(echo ${#_ESC_APASS})
   fi
 
-  if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 19 ] ; then
+  if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 9 ] ; then
     if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
       _ESC_APASS=`pwgen -v -s -1`
       _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
@@ -9430,11 +9489,26 @@ forced_mysql_root_password_update () {
   _ESC_PASS=""
   _LEN_PASS=0
   if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-    _ESC_PASS=$(randpass 32 esc)
+    _PWD_CHARS=32
+  elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+    _PWD_CHARS=8
+  else
+    _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+    if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
+      _PWD_CHARS="$_STRONG_PASSWORDS"
+    else
+      _PWD_CHARS=8
+    fi
+    if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+      _PWD_CHARS=128
+    fi
+  fi
+  if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
+    _ESC_PASS=$(randpass $_PWD_CHARS esc)
     _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
     _LEN_PASS=$(echo ${#_ESC_PASS})
   fi
-  if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
+  if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 9 ] ; then
     _ESC_PASS=`pwgen -v -s -1`
     _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
     _ESC_PASS=`sanitize_string "$_ESC_PASS"`

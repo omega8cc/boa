@@ -963,8 +963,23 @@ provision_backend_dbpass_generate () {
   _ESC_PASS=""
   _LEN_PASS=0
   if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+    _PWD_CHARS=32
+  elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+    _PWD_CHARS=8
+  else
+    _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+    if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
+      _PWD_CHARS="$_STRONG_PASSWORDS"
+    else
+      _PWD_CHARS=8
+    fi
+    if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+      _PWD_CHARS=128
+    fi
+  fi
+  if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
     if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-      _ESC_PASS=$(randpass 32 esc)
+      _ESC_PASS=$(randpass $_PWD_CHARS esc)
     else
       if [ -e "/root/.my.pass.txt" ] ; then
         _ESC_PASS=`cat /root/.my.pass.txt`
@@ -976,7 +991,7 @@ provision_backend_dbpass_generate () {
     _ENC_PASS=$(python -c "import urllib; print urllib.quote('''$_ESC_PASS''')")
     _LEN_PASS=$(echo ${#_ESC_PASS})
   fi
-  if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
+  if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 9 ] ; then
     if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
       _ESC_PASS=`pwgen -v -s -1`
       _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
@@ -1361,11 +1376,26 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     _ESC_LUPASS=""
     _LEN_LUPASS=0
     if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-      _ESC_LUPASS=$(randpass 32 alnum)
+      _PWD_CHARS=32
+    elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+      _PWD_CHARS=8
+    else
+      _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+      if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
+        _PWD_CHARS="$_STRONG_PASSWORDS"
+      else
+        _PWD_CHARS=8
+      fi
+      if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+        _PWD_CHARS=128
+      fi
+    fi
+    if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
+      _ESC_LUPASS=$(randpass $_PWD_CHARS alnum)
       _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
     fi
-    if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 19 ] ; then
+    if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 9 ] ; then
       _ESC_LUPASS=`pwgen -v -s -1`
       _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
       _ESC_LUPASS=`sanitize_string "$_ESC_LUPASS"`
@@ -1535,11 +1565,26 @@ else
     _ESC_LUPASS=""
     _LEN_LUPASS=0
     if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-      _ESC_LUPASS=$(randpass 32 alnum)
+      _PWD_CHARS=32
+    elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+      _PWD_CHARS=8
+    else
+      _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+      if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
+        _PWD_CHARS="$_STRONG_PASSWORDS"
+      else
+        _PWD_CHARS=8
+      fi
+      if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+        _PWD_CHARS=128
+      fi
+    fi
+    if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
+      _ESC_LUPASS=$(randpass $_PWD_CHARS alnum)
       _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
     fi
-    if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 19 ] ; then
+    if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 9 ] ; then
       _ESC_LUPASS=`pwgen -v -s -1`
       _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
       _ESC_LUPASS=`sanitize_string "$_ESC_LUPASS"`

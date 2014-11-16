@@ -555,8 +555,8 @@ _LOCAL_NETWORK_IP=""
 ### a sign of unreliable /dev/urandom.
 ### See: https://drupal.org/node/1952042
 ###
-### By default new passwords are generated
-### with "pwgen -v -s -1" command.
+### Configurable length: 8-128 or automatic
+### with keywords: YES (32), NO (8).
 ###
 _STRONG_PASSWORDS=NO
 

@@ -2,7 +2,6 @@
 
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-_STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
 _HOST_TEST=`uname -n 2>&1`
 _VM_TEST=`uname -a 2>&1`
 _USRG=users
@@ -410,12 +409,27 @@ ok_create_user()
     adduser $_USER_LTD $_WEBG
     _ESC_LUPASS=""
     _LEN_LUPASS=0
-    if [ "$_STRONG_PASSWORDS" = "YES" ] || [ "$_STRONG_PASSWORDS" = "EDIT_STRONG_PASSWORDS" ] ; then
-      _ESC_LUPASS=$(randpass 32 alnum)
+    if [ "$_STRONG_PASSWORDS" = "YES" ]  ; then
+      _PWD_CHARS=32
+    elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+      _PWD_CHARS=8
+    else
+      _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+      if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
+        _PWD_CHARS="$_STRONG_PASSWORDS"
+      else
+        _PWD_CHARS=8
+      fi
+      if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+        _PWD_CHARS=128
+      fi
+    fi
+    if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
+      _ESC_LUPASS=$(randpass $_PWD_CHARS alnum)
       _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
     fi
-    if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 19 ] ; then
+    if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 9 ] ; then
       _ESC_LUPASS=`pwgen -v -s -1`
       _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
       _ESC_LUPASS=`sanitize_string "$_ESC_LUPASS"`
