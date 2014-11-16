@@ -1846,24 +1846,13 @@ fix_php_ini_newrelic_all () {
 # Fix FMP php.ini file to add opcache.so
 fix_php_ini_opcache () {
   if [ -e "$_THIS_FILE" ] ; then
-    if [ "$1" = "55" ] ; then
-      if [[ "$_ZEND_OPCACHE_VERSION" =~ "master" ]] ; then
-        _OPCACHE_SRC=YES
-      else
-        _OPCACHE_SRC=NO
-      fi
-    fi
     _OPCACHE_INI_TEST=$(grep "opcache.so" $_THIS_FILE)
     if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]] ; then
       _DO_NOTHING=YES
     else
       echo ";"                                   >> $_THIS_FILE
       echo "; Zend OPcache"                      >> $_THIS_FILE
-      if [ "$1" = "55" ] && [ "$_OPCACHE_SRC" = "NO" ] ; then
-        echo "extension=opcache.so"              >> $_THIS_FILE
-      else
-        echo "zend_extension=\"$_OPCACHE_SO\""   >> $_THIS_FILE
-      fi
+      echo "zend_extension=\"$_OPCACHE_SO\""     >> $_THIS_FILE
       echo "opcache.enable=1"                    >> $_THIS_FILE
       echo "opcache.memory_consumption=181"      >> $_THIS_FILE
       echo "opcache.interned_strings_buffer=8"   >> $_THIS_FILE
@@ -3764,27 +3753,16 @@ install_ioncube () {
 # Install PHP extensions.
 install_php_extensions () {
   ###--------------------###
-  if [ "$1" = "55" ] ; then
-    if [[ "$_ZEND_OPCACHE_VERSION" =~ "master" ]] ; then
-      _OPCACHE_SRC=YES
-    else
-      _OPCACHE_SRC=NO
-    fi
-  fi
-  if [ "$1" = "55" ] && [ "$_OPCACHE_SRC" = "NO" ] ; then
-    _DO_NOTHING=YES
-  else
-    msg "INFO: Installing Zend OPcache for PHP-FPM $_LOC_PHP_VERSION..."
-    cd /var/opt
-    rm -f -r zendopcache*
-    get_dev_src "zendopcache-$_ZEND_OPCACHE_VERSION.tar.gz"
-    cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
-    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
-  fi
+  msg "INFO: Installing Zend OPcache for PHP-FPM $_LOC_PHP_VERSION..."
+  cd /var/opt
+  rm -f -r zendopcache*
+  get_dev_src "zendopcache-$_ZEND_OPCACHE_VERSION.tar.gz"
+  cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
+  st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
   ###--------------------###
   msg "INFO: Installing PhpRedis for PHP-FPM $_LOC_PHP_VERSION..."
   cd /var/opt
@@ -3895,27 +3873,16 @@ install_php_extensions () {
 update_php_extensions () {
   ###--------------------###
   if [ ! -e "/var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log" ] ; then
-    if [ "$1" = "55" ] ; then
-      if [[ "$_ZEND_OPCACHE_VERSION" =~ "master" ]] ; then
-        _OPCACHE_SRC=YES
-      else
-        _OPCACHE_SRC=NO
-      fi
-    fi
-    if [ "$1" = "55" ] && [ "$_OPCACHE_SRC" = "NO" ] ; then
-      _DO_NOTHING=YES
-    else
-      msg "INFO: Installing Zend OPcache upgrade for PHP-FPM $_LOC_PHP_VERSION..."
-      cd /var/opt
-      rm -f -r zendopcache*
-      get_dev_src "zendopcache-$_ZEND_OPCACHE_VERSION.tar.gz"
-      cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
-      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
-      echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
-    fi
+    msg "INFO: Installing Zend OPcache upgrade for PHP-FPM $_LOC_PHP_VERSION..."
+    cd /var/opt
+    rm -f -r zendopcache*
+    get_dev_src "zendopcache-$_ZEND_OPCACHE_VERSION.tar.gz"
+    cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
+    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
   fi
   ###--------------------###
   if [ ! -e "/var/xdrago/log/phpredis-$_PHPREDIS_VERSION-$_LOC_PHP_VERSION.log" ] ; then
