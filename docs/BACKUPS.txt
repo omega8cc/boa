@@ -1,9 +1,11 @@
 
   BOA supports automated, encrypted daily backups to your Amazon S3 bucket.
 
-  Note that provided 'backboa' tool uses symmetric password-only encryption.
+  * This new feature is available on self-hosted BOA and hosted Power Engines.
+  * Note that provided 'backboa' tool uses symmetric password-only encryption.
+  * You can configure AWS Region you prefer to use and Backup Rotation policy.
 
-  It will include all directories required to restore your data (sites files,
+  It will archive all directories required to restore your data (sites files,
   databases archives, Nginx configuration and more) on a freshly installed BOA:
 
     /etc /var/aegir /var/www /home /data
@@ -11,8 +13,6 @@
   It will start to run nightly at 2:08 AM (server time) only once you will add
   five required _AWS_* variables in the /root/.barracuda.cnf file and run the
   special command 'backboa install' while logged in as root.
-
-  You can configure AWS Region you prefer to use and Backup Rotation policy.
 
   To restore any file from backups created with 'backboa' tool, you can use
   the same script on the same or any other BOA server.
