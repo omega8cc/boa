@@ -43,7 +43,6 @@
 
 # Updated Octopus platforms:
 
-  Commons 3.18 ----------------- https://drupal.org/project/commons
   Commons 3.19 ----------------- https://drupal.org/project/commons
   Open Atrium 2.24 ------------- https://drupal.org/project/openatrium
   Open Deals 1.35 -------------- https://drupal.org/project/opendeals
