@@ -129,8 +129,139 @@ check_dns_settings () {
   fi
 }
 
+fix_core ()
+{
+  # https://www.drupal.org/SA-CORE-2014-005
+  sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf &> /dev/null
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/clear.fixed.d88.pid" ] ; then
+    mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/system/clear.sh" -o /var/xdrago/clear.sh
+    if [ -e "/var/xdrago/clear.sh" ] ; then
+      chmod 700 /var/xdrago/clear.sh
+      chown root:root /var/xdrago/clear.sh
+      touch /var/xdrago/log/clear.fixed.d88.pid
+    else
+      mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
+    fi
+  fi
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/daily.fixed.d88.pid" ] ; then
+    mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/system/daily.sh" -o /var/xdrago/daily.sh
+    if [ -e "/var/xdrago/daily.sh" ] ; then
+      chmod 700 /var/xdrago/daily.sh
+      chown root:root /var/xdrago/daily.sh
+      touch /var/xdrago/log/daily.fixed.d88.pid
+    else
+      mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
+    fi
+  fi
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/manage_ltd_users.fixed.d88.pid" ] ; then
+    mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/system/manage_ltd_users.sh" -o /var/xdrago/manage_ltd_users.sh
+    if [ -e "/var/xdrago/manage_ltd_users.sh" ] ; then
+      chmod 700 /var/xdrago/manage_ltd_users.sh
+      chown root:root /var/xdrago/manage_ltd_users.sh
+      touch /var/xdrago/log/manage_ltd_users.fixed.d88.pid
+    else
+      mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
+    fi
+  fi
+  if [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] ; then
+    mkdir -p /var/xdrago/conf
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/patches/7-core/SA-CORE-2014-005-D7.patch" -o /var/xdrago/conf/SA-CORE-2014-005-D7.patch
+  fi
+  if [ -e "/var/xdrago" ] && [ -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] && [ ! -e "/var/xdrago/log/SA-CORE-2014-005-fixed-d7.log" ] ; then
+    if [ -d "/data/all/000/core" ] ; then
+      for Core in `find /data/all/000/core/drupal-7* -maxdepth 0 -mindepth 0 | sort`; do
+        cd $Core
+        patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+      done
+    elif [ -d "/data/disk/all/000/core" ] ; then
+      for Core in `find /data/disk/all/000/core/drupal-7* -maxdepth 0 -mindepth 0 | sort`; do
+        cd $Core
+        patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+      done
+    fi
+    touch /var/xdrago/log/SA-CORE-2014-005-fixed-d7.log
+    cd
+  fi
+  # https://www.drupal.org/SA-CORE-2014-005 for ancient platforms
+  if [ -e "/var/xdrago" ] && [ -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] ; then
+    if [ -d "/data/all" ] && [ ! -e "/var/xdrago/log/legacy-SA-CORE-2014-005-fixed-d7.log" ] ; then
+      for File in `find /data/all/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+        fi
+      done
+      touch /var/xdrago/log/legacy-SA-CORE-2014-005-fixed-d7.log
+    elif [ -d "/data/disk/all" ] && [ ! -e "/var/xdrago/log/legacy-SA-CORE-2014-005-fixed-d7eee.log" ] ; then
+      for File in `find /data/disk/all/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+        fi
+      done
+      touch /var/xdrago/log/legacy-SA-CORE-2014-005-fixed-d7eee.log
+    fi
+    cd
+  fi
+  # https://www.drupal.org/SA-CORE-2014-005 for custom platforms
+  if [ -e "/var/xdrago" ] && [ -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] ; then
+    if [ -d "/data/disk" ] && [ ! -e "/var/xdrago/log/batch-custom-SA-CORE-2014-005-fixed-d7.log" ] ; then
+      for File in `find /data/disk/*/static/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] && [ ! -e "$Core/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] && [ ! -e "$Core/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] && [ ! -e "$Core/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] && [ ! -e "$Core/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/*/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] && [ ! -e "$Core/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+        fi
+      done
+    fi
+    cd
+    touch /var/xdrago/log/batch-custom-SA-CORE-2014-005-fixed-d7.log
+  fi
+}
+
 setup ()
 {
+  sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
+  echo >>/etc/hosts
+  sed -i "/^$/d" /etc/hosts
   if [ ! -e "/etc/resolv.conf" ] ; then
     if [ -e "/var/backups/resolv.conf.vanilla" ] ; then
       cat /var/backups/resolv.conf.vanilla >/etc/resolv.conf
@@ -175,7 +306,7 @@ setup ()
   mkdir -p /usr/local/bin
   mkdir -p /opt/local/bin
   rm -f /opt/local/bin/.{boa*,fix*}
-  rm -f /usr/local/bin/{barracuda*,boa*,drushextra*,octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
+  rm -f /usr/local/bin/{backboa*,barracuda*,boa*,drushextra*,octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   if [ ! -e "/data/disk" ] ; then
     ln -s /opt/local/bin/boa /usr/local/bin/boa
   fi
@@ -183,7 +314,8 @@ setup ()
     ln -s /opt/local/bin/barracuda /usr/local/bin/barracuda
     ln -s /opt/local/bin/octopus /usr/local/bin/octopus
   fi
-  rm -f /opt/local/bin/{barracuda*,boa*,drushextra*,octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
+  rm -f /opt/local/bin/{backboa*,barracuda*,boa*,drushextra*,octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/backboa"        -o /opt/local/bin/backboa
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/barracuda"      -o /opt/local/bin/barracuda
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/boa"            -o /opt/local/bin/boa
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/octopus"        -o /opt/local/bin/octopus
@@ -194,7 +326,7 @@ setup ()
   echo "### $_TODAY ###" >> /opt/local/bin/boa
   echo "### $_TODAY ###" >> /opt/local/bin/barracuda
   echo "### $_TODAY ###" >> /opt/local/bin/octopus
-  chmod 700 /opt/local/bin/{boa,barracuda,octopus,syncpass}
+  chmod 700 /opt/local/bin/{backboa,barracuda,boa,octopus,syncpass}
   chmod 755 /opt/local/bin/{randpass,sqlmagic,thinkdifferent}
   echo
   echo "BOA Meta Installer setup completed"
@@ -213,6 +345,7 @@ if [ `whoami` = "root" ] ; then
     fi
   fi
   setup
+  fix_core
   exit 0
 else
   msg "ERROR: This script should be ran as a root user - please `sudo -i` first"

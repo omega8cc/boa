@@ -3,22 +3,10 @@
 ###
 ### System Services Monitor running every 5 seconds
 ###
-local(@RSARR) = system("grep -e redis_client_socket /data/conf/global.inc");
-foreach $line (@RSARR) {
-  if ($line =~ /redis_client_socket/) {$redissocket = "YES";}
-  print "\n Redis socket mode detected...\n";
-}
-if (!-d "/var/run/redis") {
-  system("mkdir -p /var/run/redis");
-  system("chown -R redis:redis /var/run/redis");
-}
 if (!-d "/var/run/mysqld") {
   system("mkdir -p /var/run/mysqld");
   system("chown -R mysql:root /var/run/mysqld");
 }
-system("service redis-server restart") if (!-e "/var/run/redis/redis.sock" && $redissocket);
-sleep(2);
-system("service redis-server restart") if (!-f "/var/run/redis/redis.pid");
 &cpu_count_load;
 &global_action;
 foreach $USER (sort keys %li_cnt) {
@@ -87,40 +75,94 @@ print "\n $tomcatsumar Tomcat procs\t\tGLOBAL" if ($tomcatlives);
 print "\n $rsyslogdsumar Syslog procs\t\tGLOBAL" if ($rsyslogdlives);
 print "\n $sysklogdsumar Syslog procs\t\tGLOBAL" if ($sysklogdlives);
 print "\n $convertsumar Convert procs\t\tGLOBAL" if ($convertlives);
+
 `/etc/init.d/bind9 restart` if (!$namedsumar && -f "/etc/init.d/bind9");
+
 if (-e "/usr/sbin/pdnsd" && !$pdnsdsumar && !-f "/var/run/boa_run.pid") {
   system("/etc/init.d/pdnsd stop");
   system("rm -f /var/cache/pdnsd/pdnsd.cache");
   system("/etc/init.d/pdnsd start");
 }
-if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid") {
+
+if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid" && !-f "/root/.remote.db.cnf") {
   `bash /var/xdrago/move_sql.sh`;
 }
-if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis") && !-f "/var/run/boa_run.pid") {
-  if (-f "/etc/init.d/redis-server") { `/etc/init.d/redis-server start`; }
-  elsif (-f "/etc/init.d/redis") { `/etc/init.d/redis start`; }
+
+if (-f "/root/.mstr.clstr.cnf" || -f "/root/.wbhd.clstr.cnf") {
+  if ($mysqlives && -f "/root/.remote.db.cnf") {
+    system("/etc/init.d/mysql stop");
+  }
 }
+
+if (!-f "/root/.dbhd.clstr.cnf") {
+  if (!-d "/var/run/redis") {
+    system("mkdir -p /var/run/redis");
+    system("chown -R redis:redis /var/run/redis");
+  }
+  if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis") && !-f "/var/run/boa_run.pid") {
+    if (-f "/etc/init.d/redis-server") { `/etc/init.d/redis-server start`; }
+    elsif (-f "/etc/init.d/redis") { `/etc/init.d/redis start`; }
+  }
+  local(@RSARR) = system("grep -e redis_client_socket /data/conf/global.inc");
+  foreach $line (@RSARR) {
+    if ($line =~ /redis_client_socket/) {$redissocket = "YES";}
+  }
+  system("service redis-server restart") if (!-e "/var/run/redis/redis.sock" && $redissocket);
+  sleep(2);
+  system("service redis-server restart") if (!-f "/var/run/redis/redis.pid");
+}
+
 `/etc/init.d/newrelic-daemon restart` if (!$newrelicdaemonsumar && -f "/etc/init.d/newrelic-daemon" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/newrelic-sysmond restart` if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/var/run/boa_run.pid" && -f "/root/.enable.newrelic.sysmond.cnf");
 `/etc/init.d/newrelic-sysmond stop` if ($newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/root/.enable.newrelic.sysmond.cnf");
 `/etc/init.d/postfix restart` if (!$postfixsumar && -f "/etc/init.d/postfix" && !-f "/var/run/boa_run.pid");
-if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/var/run/boa_run.pid") {
+
+if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/var/run/boa_run.pid" && !-f "/root/.dbhd.clstr.cnf") {
   system("killall -9 nginx");
   system("/etc/init.d/nginx start");
 }
-`/etc/init.d/php55-fpm restart` if ((!$php55lives || !$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php55-fpm.pid") && -f "/etc/init.d/php55-fpm" && !-f "/var/run/boa_run.pid");
-`/etc/init.d/php54-fpm restart` if ((!$php54lives || !$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php54-fpm.pid") && -f "/etc/init.d/php54-fpm" && !-f "/var/run/boa_run.pid");
-`/etc/init.d/php53-fpm restart` if ((!$php53lives || !$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php53-fpm.pid") && -f "/etc/init.d/php53-fpm" && !-f "/var/run/boa_run.pid");
-`/etc/init.d/php52-fpm restart` if ((!$php52lives || !$phpsumar || !-f "/var/run/php52-fpm.pid") && -f "/etc/init.d/php52-fpm" && !-f "/var/run/boa_run.pid");
+
+if ($nginxsumar) {
+  if (-f "/root/.dbhd.clstr.cnf") {
+    if (!-f "/root/.mstr.clstr.cnf" && !-f "/root/.wbhd.clstr.cnf") {
+      system("killall -9 nginx");
+    }
+  }
+}
+
+if (-f "/root/.dbhd.clstr.cnf") {
+  if ($php55lives || $php54lives || $php53lives) {
+    system("killall -9 php-fpm");
+  }
+  if ($redislives) {
+    system("killall -9 redis-server");
+  }
+}
+else {
+  `/etc/init.d/php55-fpm restart` if ((!$php55lives || !$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php55-fpm.pid") && -f "/etc/init.d/php55-fpm" && !-f "/var/run/boa_run.pid");
+  `/etc/init.d/php54-fpm restart` if ((!$php54lives || !$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php54-fpm.pid") && -f "/etc/init.d/php54-fpm" && !-f "/var/run/boa_run.pid");
+  `/etc/init.d/php53-fpm restart` if ((!$php53lives || !$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php53-fpm.pid") && -f "/etc/init.d/php53-fpm" && !-f "/var/run/boa_run.pid");
+  `/etc/init.d/php52-fpm restart` if ((!$php52lives || !$phpsumar || !-f "/var/run/php52-fpm.pid") && -f "/etc/init.d/php52-fpm" && !-f "/var/run/boa_run.pid");
+}
+
 `/etc/init.d/jetty7 start` if (!$jetty7sumar && -f "/etc/init.d/jetty7" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/jetty8 start` if (!$jetty8sumar && -f "/etc/init.d/jetty8" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/jetty9 start` if (!$jetty9sumar && -f "/etc/init.d/jetty9" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/tomcat start` if (!$tomcatsumar && -f "/etc/init.d/tomcat" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/collectd start` if (!$collectdsumar && -f "/etc/init.d/collectd" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/postfix restart` if (!-f "/var/spool/postfix/pid/master.pid");
+
 if (-f "/usr/local/sbin/pure-config.pl") {
-  `/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf` if (!$ftpsumar && !-f "/var/run/boa_run.pid");
+  if (-f "/root/.mstr.clstr.cnf" || -f "/root/.wbhd.clstr.cnf" || -f "/root/.dbhd.clstr.cnf") {
+    if ($ftpsumar) {
+      system("killall -9 pure-ftpd");
+    }
+  }
+  else {
+    `/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf` if (!$ftpsumar && !-f "/var/run/boa_run.pid");
+  }
 }
+
 if ($mysqlsumar > 0) {
   $resultmysql5 = `mysqladmin flush-hosts 2>&1`;
   print "\n MySQL hosts flushed...\n";

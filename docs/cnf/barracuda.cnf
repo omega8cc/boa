@@ -8,7 +8,7 @@
 ### on upgrade by the Barracuda script nor by this configuration file.
 ### They can be defined only on initial Barracuda install.
 ###
-_EASY_HOSTNAME="f-q-d-n" #------ Hostname auto-configured via _EASY_PUBLIC
+_EASY_HOSTNAME="f-q-d-n" #------ Hostname auto-configured via _EASY_SETUP
 _LOCAL_NETWORK_HN="" #---------- Hostname if in localhost mode - auto-conf
 _LOCAL_NETWORK_IP="" #---------- Web server IP if in localhost mode - auto-conf
 _MY_FRONT="master.f-q-d-n" #---- URL of the Aegir Master Instance control panel
@@ -29,7 +29,7 @@ _XTRAS_LIST="" #---------------- See docs/NOTES.txt for details on add-ons
 ###
 _MODULES_FIX=YES #-------------- Will skip modules enabling/disabling when NO
 _MODULES_SKIP="" #-------------- Modules (machine names) to never auto-disable
-_PERMISSIONS_FIX=NO #----------- Allows to fix permissions daily when YES
+_PERMISSIONS_FIX=YES #---------- Allows to skip daily permissions fix when NO
 ###
 _CPU_CRIT_RATIO=9 #------------- Max load per CPU core before killing PHP/Drush
 _CPU_MAX_RATIO=6 #-------------- Max load per CPU core before disabling Nginx
@@ -73,7 +73,7 @@ _SSH_FROM_SOURCES=NO #---------- Allows to force OpenSSH build from sources
 _SSH_PORT=22 #------------------ Allows to configure non-standard SSH port
 _SSL_FROM_SOURCES=NO #---------- Allows to force OpenSSL build from sources
 _STRICT_BIN_PERMISSIONS=YES #--- Aggressively protect all binaries when YES
-_STRONG_PASSWORDS=NO #---------- Allows to generate secure passwords when YES
+_STRONG_PASSWORDS=NO #---------- Configurable length: 8-128, YES (32), NO (8)
 ###
 _CUSTOM_CONFIG_CSF=NO #--------- Protects custom CSF config when YES
 _CUSTOM_CONFIG_LSHELL=NO #------ Protects custom Limited Shell config when YES

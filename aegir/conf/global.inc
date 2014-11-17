@@ -93,7 +93,7 @@ if (function_exists('drush_get_command')) {
   if ($command && !preg_match("/^help/", $command[0])) {
     $is_backend = TRUE;
   }
-  if (preg_match("/^(provision-install|provision-backup|php-eval)/", $command[0])) {
+  if (preg_match("/^(provision-install|provision-save|provision-backup|php-eval)/", $command[0])) {
     $is_install = TRUE;
   }
 }
@@ -103,7 +103,7 @@ if (function_exists('drush_get_command')) {
  */
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) && !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.7.6.1';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.7.7.1';
   }
 }
 
@@ -214,7 +214,6 @@ if (!$is_backend) {
     else {
       // Set sane default opcache TTL on non-dev sites
       ini_set('opcache.revalidate_freq', '60');
-      $conf['site_readonly'] = 0;
     }
   }
 }
@@ -336,12 +335,7 @@ if (!$is_bot && isset($_SERVER['REQUEST_URI']) && preg_match("/nocache=1/", $_SE
  * created to the cookie expires, i.e. when the browser is expected to discard
  * the cookie. The value 0 means "until the browser is closed".
  */
-if ($conf['install_profile'] == 'totem') {
-  ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
-}
-else {
-  ini_set('session.cookie_lifetime', $all_ini['session_cookie_ttl']);
-}
+ini_set('session.cookie_lifetime', $all_ini['session_cookie_ttl']);
 
 /**
  * Session Garbage Collector EOL settings
@@ -372,7 +366,7 @@ if ($conf['install_profile'] == 'hostmaster') {
         exit;
       }
     }
-    if (isset($_SERVER['HTTP_HOST']) && preg_match("/\.(?:host8|aegir|boa|o8)\.(?:biz|cc|io)$/i", $_SERVER['HTTP_HOST'])) {
+    if (isset($_SERVER['HTTP_HOST']) && preg_match("/\.(?:host8|aegir|boa)\.(?:biz|cc|io)$/i", $_SERVER['HTTP_HOST'])) {
       if (preg_match("/^\/admin\/user\/user\/create/", $_SERVER['REQUEST_URI']) ||
           preg_match("/^\/node\/add\/server/", $_SERVER['REQUEST_URI']) ||
           preg_match("/^\/node\/(?:1|2|4|5|7|8|10)\/(?:edit|delete)/", $_SERVER['REQUEST_URI'])) {
@@ -601,10 +595,10 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'
   }
 
   if ($all_ini['server_name_cookie_domain'] || $site_subdir) {
-    $domain = '.'. preg_replace('`^www.`', '', $_SERVER['SERVER_NAME']);
+    $domain = '.'. preg_replace('`^www\.`', '', $_SERVER['SERVER_NAME']);
   }
   else {
-    $domain = '.'. preg_replace('`^www.`', '', $_SERVER['HTTP_HOST']);
+    $domain = '.'. preg_replace('`^www\.`', '', $_SERVER['HTTP_HOST']);
   }
   $domain = str_replace('..', '.', $domain);
   if (count(explode('.', $domain)) > 2 && !is_numeric(str_replace('.', '', $domain))) {
@@ -613,7 +607,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'
     header("X-Cookie-Domain: " . $cookie_domain);
   }
 
-  $this_prefix = preg_replace('`^www.`', '', $_SERVER['SERVER_NAME']) . '_y_';
+  $this_prefix = preg_replace('`^www\.`', '', $_SERVER['SERVER_NAME']) . '_y_';
   if ($is_dev) {
     header("X-Redis-Prefix: " . $this_prefix);
   }

@@ -179,6 +179,24 @@ octopus_install ()
     else
       sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$user
     fi
+    if [ "$cmmand" = "in-cluster" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"               /var/backups/OCTOPUS.sh.$user
+    elif [ "$cmmand" = "in-head" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"                /var/backups/OCTOPUS.sh.$user
+    elif [ "$cmmand" = "in-stable" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"             /var/backups/OCTOPUS.sh.$user
+    else
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"             /var/backups/OCTOPUS.sh.$user
+    fi
+
+    if [ ! -z "$dbip" ] && [ "$cmmand" = "in-cluster" ] ; then
+      if [ "$kind" = "mstr" ] || [ "$kind" = "wbhd" ] ; then
+        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"           /var/backups/OCTOPUS.sh.$user
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   /var/backups/OCTOPUS.sh.$user
+        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"     /var/backups/OCTOPUS.sh.$user
+      fi
+    fi
+
     bash /var/backups/OCTOPUS.sh.$user
     sed -i "s/^127.0.1.1.*//g" /etc/hosts
     sed -i "/^$/d" /etc/hosts
@@ -193,25 +211,73 @@ barracuda_install ()
 if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
   sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"          /var/backups/BARRACUDA.sh.txt
   sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               /var/backups/BARRACUDA.sh.txt
+  sed -i "s/^127.0.1.1.*//g" /etc/hosts
   if [ "$kind" = "local" ] ; then
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g"         /var/backups/BARRACUDA.sh.txt
+    echo "127.0.1.1 aegir.local o1.sub.aegir.local o2.sub.aegir.local o3.sub.aegir.local" >> /etc/hosts
+    ### Legacy variables
     sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=YES/g"   /var/backups/BARRACUDA.sh.txt
     sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"          /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^127.0.1.1.*//g" /etc/hosts
-    echo "127.0.1.1 aegir.local o1.sub.aegir.local o2.sub.aegir.local o3.sub.aegir.local" >> /etc/hosts
-  elif [ "$kind" = "public" ] ; then
+  elif [ "$kind" = "public" ] && [ ! -z "$fqdn" ] ; then
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
+    ### Legacy variables
     sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"    /var/backups/BARRACUDA.sh.txt
     sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"         /var/backups/BARRACUDA.sh.txt
+  elif [ "$kind" = "mstr" ] && [ ! -z "$fqdn" ] && [ ! -z "$dbip" ] && [ ! -z "$loip" ] && [ "$cmmand" = "in-cluster" ] ; then
+    touch /root/.mstr.clstr.cnf
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=MSTR/g"          /var/backups/BARRACUDA.sh.txt
     sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             /var/backups/BARRACUDA.sh.txt
+  elif [ "$kind" = "dbhd" ] && [ ! -z "$fqdn" ] && [ ! -z "$dbip" ] && [ ! -z "$loip" ] && [ "$cmmand" = "in-cluster" ] ; then
+    touch /root/.dbhd.clstr.cnf
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=DBHD/g"          /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             /var/backups/BARRACUDA.sh.txt
+  elif [ "$kind" = "wbhd" ] && [ ! -z "$fqdn" ] && [ ! -z "$dbip" ] && [ ! -z "$loip" ] && [ "$cmmand" = "in-cluster" ] ; then
+    touch /root/.wbhd.clstr.cnf
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=WBHD/g"          /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             /var/backups/BARRACUDA.sh.txt
+  else
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
+    ### Legacy variables
+    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"    /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"         /var/backups/BARRACUDA.sh.txt
   fi
+
+  if [ ! -z "$fqdn" ] && [ ! -z "$loip" ] && [ "$cmmand" = "in-cluster" ] ; then
+    if [ "$kind" = "mstr" ] || [ "$kind" = "dbhd" ] || [ "$kind" = "wbhd" ] ; then
+      sed -i "s/.*${loip}.*${fqdn}.*//g" /etc/hosts
+      echo >>/etc/hosts
+      ### echo "${loip} ${fqdn}" >>/etc/hosts
+      sed -i "/^$/d" /etc/hosts
+    fi
+  fi
+
   if [ ! -z "$rkey" ] ; then
     sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g" /var/backups/BARRACUDA.sh.txt
   fi
+
   if [ "$cmmand" = "in-vanilla" ] ; then
     sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=6.x-2.x/g"   /var/backups/BARRACUDA.sh.txt
   elif [ "$cmmand" = "in-modern" ] ; then
     sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
   else
     sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
+  fi
+  if [ "$cmmand" = "in-cluster" ] ; then
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"       /var/backups/BARRACUDA.sh.txt
+  elif [ "$cmmand" = "in-head" ] ; then
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"        /var/backups/BARRACUDA.sh.txt
+  elif [ "$cmmand" = "in-stable" ] ; then
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"     /var/backups/BARRACUDA.sh.txt
+  else
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"     /var/backups/BARRACUDA.sh.txt
   fi
   if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
     bash /var/backups/BARRACUDA.sh.txt
@@ -261,12 +327,6 @@ set_pin_priority ()
     fi
     rm -f /var/backups/etc-apt-preferences-*
   fi
-  _THIS_DO=$(grep "Ubuntu 12.04" /etc/issue.net)
-  if [[ "$_THIS_DO" =~ "Ubuntu 12.04" ]] ; then
-    _THIS_DO=YesPrecise
-  else
-    _THIS_DO=Other
-  fi
 }
 
 init_finish ()
@@ -297,8 +357,8 @@ init_setup ()
     mode="$email"
     email="$fqdn"
   fi
-  if [ "$kind" = "public" ] ; then
-    if [ "$user" = "ask" ] || [ "$user" = "mini" ] || [ "$user" = "max" ] ; then
+  if [ "$kind" = "public" ] || [ "$kind" = "web" ] ; then
+    if [ "$user" = "ask" ] || [ "$user" = "mini" ] || [ "$user" = "max" ] || [ "$user" = "none" ] ; then
       rkey="$mode"
       mode="$user"
       user="o1"
@@ -310,6 +370,9 @@ init_setup ()
   if [ "$cmmand" = "in-head" ] ; then
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  elif [ "$cmmand" = "in-cluster" ] ; then
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/cluster/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/cluster/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
   elif [ "$cmmand" = "in-stable" ] ; then
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
@@ -328,18 +391,10 @@ init_setup ()
   else
     barracuda_install
   fi
-  octopus_install
-  init_finish
-}
-
-download_wrapper ()
-{
-  if [ ! -e "$_THIS_FILE" ] ; then
-    echo "I can not connect to files.aegir.cc at the moment"
-    echo "I will try again in 15 seconds, please wait..."
-    sleep 15
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
+  if [ "$kind" != "dbhd" ] ; then
+    octopus_install
   fi
+  init_finish
 }
 
 check_wrapper ()
@@ -349,18 +404,9 @@ check_wrapper ()
   _THIS_FILE="/var/backups/$(basename "$0")-now-$_NOW"
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
   if [ ! -e "$_THIS_FILE" ] ; then
-    download_wrapper
-    if [ ! -e "$_THIS_FILE" ] ; then
-      download_wrapper
-      if [ ! -e "$_THIS_FILE" ] ; then
-        download_wrapper
-        if [ ! -e "$_THIS_FILE" ] ; then
-          echo "Sorry, I gave up."
-          echo "Please check http://stats.pingdom.com/x0s6yrbopal6/801243 and try again later."
-          clean_pid_exit
-        fi
-      fi
-    fi
+    echo "I can not download required installers from files.aegir.cc at the moment."
+    echo "Please check http://stats.pingdom.com/x0s6yrbopal6/646562 and try again later."
+    clean_pid_exit
   fi
   _BIN_FILE="/usr/local/bin/$(basename "$0")"
   _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE)
@@ -414,7 +460,6 @@ check_root ()
     sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
     echo >>/etc/hosts
-    echo "72.251.241.251 files.aegir.cc" >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
   else
     echo "ERROR: This script should be ran as a root user - please `sudo -i` first"
@@ -461,6 +506,19 @@ case "$1" in
              user="$5"
              mode="$6"
              rkey="$7"
+             check_root
+             check_dns_curl
+             check_wrapper
+             init_setup
+  ;;
+  in-cluster) cmmand="$1"
+             kind="$2"
+             fqdn="$3"
+             email="$4"
+             user="$5"
+             mode="$6"
+             dbip="$7"
+             loip="$8"
              check_root
              check_dns_curl
              check_wrapper
@@ -513,7 +571,7 @@ case "$1" in
              init_setup
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {in-stable|in-head|in-modern|in-legacy|in-vanilla|in-octopus} {local|public} {fqdn} {email} {o1} {ask|mini|max|none} {newrelickey}"
+             echo "Usage: $(basename "$0") {in-stable|in-head|in-legacy|in-octopus} {local|public} {fqdn} {email} {o1} {ask|mini|max|none} {newrelickey}"
              echo
              clean_pid_exit
   ;;

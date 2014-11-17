@@ -29,7 +29,7 @@ _PHP_CLI_VERSION=5.3 #---------- PHP-CLI used by Satellite Instance: 5.{3,4,5}
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_FPM_TIMEOUT=AUTO #--------- Allows to override default 180 when 60-180
 _PHP_FPM_DENY="" #-------------- Modify the disable_functions list per instance
-_STRONG_PASSWORDS=NO #---------- Allows to generate secure passwords when YES
+_STRONG_PASSWORDS=NO #---------- Configurable length: 8-128, YES (32), NO (8)
 _SQL_CONVERT=NO #--------------- DB conversion when innodb (or YES), or myisam
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
 ###
@@ -135,9 +135,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### ERP ----------- ERPAL
 ### FSR ----------- Feature Server
 ### GDR ----------- Guardr
-### MNS ----------- Managing News
 ### OA7 ----------- Open Atrium D7
-### OAM ----------- Open Atrium D6
 ### OAY ----------- Open Academy
 ### OBG ----------- OpenBlog
 ### OCH ----------- OpenChurch 1
@@ -149,8 +147,6 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### PPY ----------- Panopoly
 ### RER ----------- Recruiter
 ### RST ----------- Restaurant
-### SRK ----------- Spark
-### TTM ----------- Totem
 ### UC7 ----------- Ubercart D7
 ### UCT ----------- Ubercart D6
 ###

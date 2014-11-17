@@ -222,6 +222,15 @@ up_one ()
     else
       sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     fi
+    if [ "$cmmand" = "up-cluster" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"   /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    elif [ "$cmmand" = "up-head" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"    /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    elif [ "$cmmand" = "up-stable" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    else
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    fi
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     sed -i "s/^_USER=o1/_USER=$_THIS_HM_USER/g"          /var/backups/OCTOPUS.sh.$_THIS_HM_USER
@@ -482,6 +491,13 @@ up_start ()
       ln -s /opt/php53/bin/php /opt/local/bin/php &> /dev/null
     fi
   fi
+  if [ "$cmmand" = "up-cluster" ] ; then
+    if [ ! -e "/var/run/mysqld/mysqld.pid" ] && [ ! -e "/root/.dbhd.clstr.cnf" ] && [ -e "/etc/init.d/mysql" ] ; then
+      rm -f /root/.remote.db.cnf
+      sleep 5
+      service mysql start &> /dev/null
+    fi
+  fi
 }
 
 up_finish ()
@@ -533,6 +549,18 @@ up_head ()
   up_finish
 }
 
+up_cluster ()
+{
+  up_start
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/cluster/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  if [ "$second" = "all" ] ; then
+    up_action_all
+  else
+    up_action_one
+  fi
+  up_finish
+}
+
 up_modern ()
 {
   up_start
@@ -569,16 +597,6 @@ up_vanilla ()
   up_finish
 }
 
-download_wrapper ()
-{
-  if [ ! -e "$_THIS_FILE" ] ; then
-    echo "I can not connect to files.aegir.cc at the moment"
-    echo "I will try again in 15 seconds, please wait..."
-    sleep 15
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
-  fi
-}
-
 check_wrapper ()
 {
   mkdir -p /var/backups
@@ -586,18 +604,9 @@ check_wrapper ()
   _THIS_FILE="/var/backups/$(basename "$0")-now-$_NOW"
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
   if [ ! -e "$_THIS_FILE" ] ; then
-    download_wrapper
-    if [ ! -e "$_THIS_FILE" ] ; then
-      download_wrapper
-      if [ ! -e "$_THIS_FILE" ] ; then
-        download_wrapper
-        if [ ! -e "$_THIS_FILE" ] ; then
-          echo "Sorry, I gave up."
-          echo "Please check http://stats.pingdom.com/x0s6yrbopal6/801243 and try again later."
-          clean_pid_exit
-        fi
-      fi
-    fi
+    echo "I can not download required installers from files.aegir.cc at the moment."
+    echo "Please check http://stats.pingdom.com/x0s6yrbopal6/646562 and try again later."
+    clean_pid_exit
   fi
   _BIN_FILE="/usr/local/bin/$(basename "$0")"
   _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE)
@@ -651,7 +660,6 @@ check_root ()
     sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
     echo >>/etc/hosts
-    echo "72.251.241.251 files.aegir.cc" >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
   else
     echo "ERROR: This script should be ran as a root user - please `sudo -i` first"
@@ -684,6 +692,15 @@ case "$1" in
              check_wrapper
              up_head
   ;;
+  up-cluster) cmmand="$1"
+             second="$2"
+             cmmode="$3"
+             silent="$4"
+             check_root
+             check_dns_curl
+             check_wrapper
+             up_cluster
+  ;;
   up-modern) cmmand="$1"
              second="$2"
              cmmode="$3"
@@ -712,7 +729,7 @@ case "$1" in
              up_vanilla
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {up-stable|up-head|up-modern|up-legacy|up-vanilla} {all|o1} {aegir|platforms|both}"
+             echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {all|o1} {aegir|platforms|both}"
              echo
              clean_pid_exit
   ;;

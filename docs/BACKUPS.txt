@@ -1,0 +1,92 @@
+
+  BOA supports automated, encrypted daily backups to your Amazon S3 bucket.
+
+  Note that provided 'backboa' tool uses symmetric password-only encryption.
+
+  It will include all directories required to restore your data (sites files,
+  databases archives, Nginx configuration and more) on a freshly installed BOA:
+
+    /etc /var/aegir /var/www /home /data
+
+  It will start to run nightly at 2:08 AM (server time) only once you will add
+  five required _AWS_* variables in the /root/.barracuda.cnf file and run the
+  special command 'backboa install' while logged in as root.
+
+  You can configure AWS Region you prefer to use and Backup Rotation policy.
+
+  To restore any file from backups created with 'backboa' tool, you can use
+  the same script on the same or any other BOA server.
+
+  Please read below for details.
+
+
+  CONFIGURATION:
+
+  Add these five (5) lines to your /root/.barracuda.cnf file:
+
+    _AWS_KEY='Your AWS Access Key ID'     ### From your AWS S3 settings
+    _AWS_SEC='Your AWS Secret Access Key' ### From your AWS S3 settings
+    _AWS_PWD='Your Secret Password'       ### Generate with 'openssl rand -base64 32'
+    _AWS_REG='Your AWS Region ID'         ### By default 'us-east-1'
+    _AWS_TTL='Your Backup Rotation'       ### By default '30D'
+
+    Supported values to use as _AWS_REG:
+
+      us-east-1
+      us-west-2
+      us-west-1
+      eu-west-1
+      eu-central-1
+      ap-southeast-1
+      ap-southeast-2
+      ap-northeast-1
+      sa-east-1
+
+    Source: http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
+
+    You have to use S3 Console at https://console.aws.amazon.com/s3/home
+    (before attempting to run initial backup!) to create S3 bucket in the
+    desired region with correct name as shown below.
+
+    Replace only the srv.foo.bar part after daily.boa. static prefix with
+    your system hostname, typically displayed when you type 'uname -n'
+
+      daily.boa.srv.foo.bar
+
+    While duplicity should be able to create new bucket on demand, in practice
+    it almost never works due to typical delays between various AWS regions.
+
+  INSTALLATION:
+
+  $ backboa install
+
+  USAGE:
+
+  $ backboa backup
+  $ backboa cleanup
+  $ backboa list
+  $ backboa status
+  $ backboa restore file [time] destination
+  $ backboa retrieve file [time] destination hostname
+
+  RESTORE EXAMPLES:
+
+  Note: Be careful while restoring not to prepend a slash to the path!
+
+  Restoring a single file to tmp/
+  $ backboa restore data/disk/o1/backups/foo.tar.gz tmp/foo.tar.gz
+
+  Restoring an older version of a directory to tmp/ - interval or full date
+  $ backboa restore data/disk/o1/backups 7D8h8s tmp/backups
+  $ backboa restore data/disk/o1/backups 2014/11/11 tmp/backups
+
+  Restoring data on a different server
+  $ backboa retrieve data/disk/o1/backups/foo.tar.gz tmp/foo.tar.gz srv.foo.bar
+  $ backboa retrieve data/disk/o1/backups 2014/11/11 tmp/backups srv.foo.bar
+
+  Note: The srv.foo.bar is a hostname of the BOA system backed up before.
+        In the 'retrieve' mode it will use the _AWS_* variables configured
+        in the current system /root/.barracuda.cnf file - so make sure to edit
+        this file to set/replace temporarily *all* five _AWS_* variables used
+        originally on the host you are retrieving data from! You should
+        keep them secret and manage in your offline password manager app.

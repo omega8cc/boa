@@ -107,9 +107,7 @@
 ### ERP ----------- ERPAL
 ### FSR ----------- Feature Server
 ### GDR ----------- Guardr
-### MNS ----------- Managing News
 ### OA7 ----------- Open Atrium D7
-### OAM ----------- Open Atrium D6
 ### OAY ----------- Open Academy
 ### OBG ----------- OpenBlog
 ### OCH ----------- OpenChurch 1
@@ -121,8 +119,6 @@
 ### PPY ----------- Panopoly
 ### RER ----------- Recruiter
 ### RST ----------- Restaurant
-### SRK ----------- Spark
-### TTM ----------- Totem
 ### UC7 ----------- Ubercart D7
 ### UCT ----------- Ubercart D6
 ###

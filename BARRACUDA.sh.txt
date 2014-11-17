@@ -48,43 +48,23 @@ _MY_EMAIL="notify@omega8.cc"
 
 
 ###----------------------------------------###
-### EASY SETUP                             ###
+### EASY SETUP MODE                        ###
 ###----------------------------------------###
 ###
-### You can configure all options manually
-### or simply use 'EASY PUBLIC SETUP MODE' for
-### standard install or 'EASY LOCALHOST MODE'
-### for local install. See below for details.
-###
-
-
-###----------------------------------------###
-### EASY PUBLIC SETUP MODE                 ###
-###----------------------------------------###
-###
-### Useful only during initial system setup.
-### Enabled by default since BOA-2.0.3
+### Active only during initial system setup.
 ###
 ### It will skip all prompts and configure
 ### Barracuda with only some options/services
-### enabled, as listed below:
+### enabled, as listed below. Supported
+### options and associated settings:
 ###
-### _XTRAS_LIST="CSF CHV FTP"
-### _AUTOPILOT=YES
-### _DEBUG_MODE=NO
-### _AEGIR_VERSION=BOA-2.3.5
-### _DB_SERVER=MariaDB
-### _SSH_PORT=22
-### _DNS_SETUP_TEST=YES
-### _THIS_DB_HOST=localhost
-### _SMTP_RELAY_TEST=YES
-### _MY_OWNIP=automatically-discovered
-### _MY_HOSTN=$_EASY_HOSTNAME
-### _MY_FRONT=master.$_EASY_HOSTNAME
+###  NO (requires manual configuration)
+###  WBHD (experimental for web heads)
+###  DBHD (experimental for db heads)
+###  LOCAL (experimental for local testing)
+###  PUBLIC (default)
 ###
-### To disable, change this to NO below.
-###
-_EASY_PUBLIC=YES
+_EASY_SETUP=PUBLIC
 
 ###
 ### Please enter your FQDN hostname below.
@@ -109,56 +89,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ###----------------------------------------###
 ###
 ### STOP! NO NEED TO CONFIGURE ANYTHING BELOW
-### IF _EASY_PUBLIC MODE HAS BEEN ENABLED.
-###
-###----------------------------------------###
-
-
-###----------------------------------------###
-### EASY LOCALHOST SETUP MODE              ###
-###----------------------------------------###
-###
-### Useful only during initial system setup.
-###
-### It will skip all prompts and configure
-### Barracuda with only safe options/services
-### enabled, as listed below:
-###
-### _XTRAS_LIST="CHV"
-### _AUTOPILOT=YES
-### _DEBUG_MODE=NO
-### _AEGIR_VERSION=BOA-2.3.5
-### _DB_SERVER=MariaDB
-### _SSH_PORT=22
-### _DNS_SETUP_TEST=NO
-### _THIS_DB_HOST=localhost
-### _SMTP_RELAY_TEST=NO
-### _LOCAL_NETWORK_IP="127.0.1.1"
-### _LOCAL_NETWORK_HN="aegir.local"
-### _MY_OWNIP="127.0.1.1"
-### _MY_HOSTN="aegir.local"
-### _MY_FRONT="aegir.local"
-###
-### Thanks to local DNS wildcard, you will be
-### able to use many levels of subdomains for
-### created sites, for example:
-### site.aegir.local, abc.xyz.site.aegir.local
-### This wildcard will rely only on the local,
-### basic DNS system, without any need to use
-### external DNS.
-###
-### To enable, change this to YES below
-### and make sure that _EASY_PUBLIC option
-### above is set to NO (it's YES by default).
-###
-_EASY_LOCALHOST=NO
-
-
-###----------------------------------------###
-###
-### STOP! NO NEED TO CONFIGURE ANYTHING BELOW
-### IF EITHER _EASY_LOCALHOST OR _EASY_PUBLIC
-### MODE HAS BEEN ENABLED.
+### IF _EASY_SETUP MODE HAS BEEN ENABLED.
 ###
 ###----------------------------------------###
 
@@ -168,8 +99,7 @@ _EASY_LOCALHOST=NO
 ###----------------------------------------###
 ###
 ### You can configure all options manually
-### below when both 'EASY PUBLIC SETUP MODE'
-### and 'EASY LOCALHOST MODE' are *disabled*
+### below when _EASY_SETUP=NO above.
 ###
 
 
@@ -404,7 +334,7 @@ _DEBUG_MODE=NO
 ### The HEAD can be occasionally broken
 ### and should be used **only** for testing!
 ###
-_AEGIR_VERSION=BOA-2.3.5
+_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
@@ -604,24 +534,128 @@ _DNS_SETUP_TEST=YES
 
 
 ###----------------------------------------###
-### DATABASE CUSTOM HOST                   ###
+### DATABASE DEFAULT HOST                  ###
 ###----------------------------------------###
 ###
 ### If you prefer, you can set the database
 ### to be connected via FQDN pointing to your
-### public IP instead of default "localhost".
+### public IP instead of default "localhost",
+### but it will make it harder to migrate
+### sites with DB grants tied to the system
+### unique hostname.
 ###
-### Note: the "FQDN" is a keyword.
-### Don't replace it with a real hostname.
+### Note: the "FQDN" is a keyword. It will be
+### automatically replaced with your system
+### real hostname when used.
+###
+### NOTE: This distinction is very important,
+### because if you will specify your system
+### local hostname literally, BOA will use
+### the "Remote DB Server Mode" instead, as
+### explained further below.
 ###
 ### For local or Amazon based installs with
 ### local/dynamic IP address it is recommended
 ### to use default "localhost" option.
 ###
-### Available options:
+### Supported options:
 ###
 ### _THIS_DB_HOST=localhost
 ### _THIS_DB_HOST=FQDN
+###
+_THIS_DB_HOST=localhost
+
+
+###----------------------------------------###
+### REMOTE DB SERVER MODE                  ###
+###----------------------------------------###
+###
+### WARNING !!!
+###
+### THIS IS **HIGHLY EXPERIMENTAL** FEATURE.
+### EXPECT YOUR SYSTEM TO *EXPLODE* IF USED.
+###
+### Note: We may refer to the DB server
+###       also by using term 'DB head'
+###
+### If you will specify some remote DB server
+### name (not IP) or even local hostname, but
+### literally instead of via 'localhost' or
+### 'FQDN' keyword, it will turn on and use
+### the special REMOTE DB SERVER MODE.
+###
+### This mode will work only if the remote DB
+### server has been already configured with
+### the same default dummy mysql root password
+### as your Aegir system you are about to
+### install, and if the mysql port 3306 is
+### already open for incoming and outgoing
+### TCP connections on all servers expected
+### to communicate in this mode.
+###
+### HINT: you may want to add WEB head (Aegir)
+### IP as allowed on the DB head with standard
+### command: 'csf -a 12.34.56.789 my web head'
+###
+### Note that if the remote DB server defined
+### as hostname with a valid DNS entry will be
+### used, BOA will never change mysql root
+### password and also on initial install will
+### use this dummy password:
+###
+###   sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+###
+### The same password will be used for the
+### Aegir special DB user 'aegir_root'.
+###
+### Furthermore, BOA will not create separate
+### special DB users per Octopus instance
+### and all instances will use the same
+### 'aegir_root' DB user to manage databases
+### for hosted sites.
+###
+### You can later change this password for
+### both mysql 'root' and 'aegir_root' users
+### on the remote DB server, but you will
+### have to manually update them in every
+### Aegir instance (Master and Satellites)
+### db server node settings.
+###
+### However, BOA will always check and use
+### the password it will find in the special
+### file /root/.my.pass.txt during Master
+### and Satellite instances upgrade.
+###
+### If you will change the mysql root password
+### you **must** update it also in two files:
+###
+###   /root/.my.pass.txt
+###   /root/.my.cnf
+###
+### When installing BOA on a machine expected
+### to work as a remote DB server, you should
+### create a special file containing your
+### WEB head (Aegir) hostname:
+###
+###  /root/.remote.web.head.txt
+###
+### BOA will use this file to add required
+### DB GRANT for 'aegir_root' on the DB head
+### so the WEB head (Aegir) hosted on the
+### machine with hostname specified in this
+### file will be able to manage databases
+### remotely. Make sure that this file
+### is present only on the DB head, though.
+###
+### WARNING !!!
+###
+### Make sure that there is no remote, public,
+### unrestricted access via port 3306 to any
+### DB server used in this special mode!
+###
+### Available non-default option:
+###
+### _THIS_DB_HOST=remote.db.server.name
 ###
 _THIS_DB_HOST=localhost
 
@@ -697,17 +731,16 @@ _LOCAL_NETWORK_HN=""
 ###----------------------------------------###
 
 ###
-### Change to YES if you want the running
+### Change to NO if you don't want the running
 ### daily script to fix permissions on all
 ### files belonging to hosted sites an their
 ### platforms (and any shared code).
 ###
-### Note that this feature is no longer
-### enabled by default, because it may cause
-### load spikes if you host many sites on
-### some weak VPS with disk I/O shortages.
+### Note that this feature is again enabled
+### by default, because critically important
+### security fixes/procedures depend on it.
 ###
-_PERMISSIONS_FIX=NO
+_PERMISSIONS_FIX=YES
 
 ###
 ### Change to NO if you don't want the running
@@ -756,8 +789,8 @@ _MODULES_SKIP=""
 ### a sign of unreliable /dev/urandom.
 ### See: https://drupal.org/node/1952042
 ###
-### By default new passwords are generated
-### with "pwgen -v -s -1" command.
+### Configurable length: 8-128 or automatic
+### with keywords: YES (32), NO (8).
 ###
 _STRONG_PASSWORDS=NO
 
@@ -1045,8 +1078,8 @@ _SPEED_VALID_MAX=3600
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.5
-_BRANCH_BOA=2.3.x-dev
+_INSTALLER_VERSION=BOA-2.3.5-dev
+_BRANCH_BOA=master
 _BRANCH_PROVISION=2.3.x-dev
 
 ###
@@ -1055,10 +1088,12 @@ _BRANCH_PROVISION=2.3.x-dev
 _BZR_VERSION=2.6.0
 _CGP_VERSION=master-30-03-2014
 _CHIVE_VERSION=1.3
-_CURL_VERSION=7.38.0
+_CURL_VERSION=7.39.0
 _DRUSH4_VERSION=mini-4-26-08-2014
-_DRUSH6_VERSION=mini-6-04-10-2014
+_DRUSH6_VERSION=mini-6-30-10-2014
 _DRUSH7_VERSION=head-7-10-03-2014
+_GALERA_10_VERSION=10.0.14
+_GALERA_5_VERSION=5.5.40
 _GEOS_VERSION=3.4.2
 _GIT_VERSION=2.1.0
 _IMAGICK_VERSION=3.1.2
@@ -1072,7 +1107,7 @@ _MARIADB_10_VERSION=10.0.14
 _MARIADB_5_VERSION=5.5.40
 _MONGO_VERSION=1.4.5
 _MSS_VERSION=1.33
-_NGINX_VERSION=1.7.6
+_NGINX_VERSION=1.7.7
 _OPENSSH_VERSION=6.7p1
 _OPENSSL_VERSION=1.0.1j
 _PERCONA_VERSION=5.5.36
@@ -1081,9 +1116,9 @@ _PHP52_VERSION=5.2.17
 _PHP53_API=20090626
 _PHP53_VERSION=5.3.29
 _PHP54_API=20100525
-_PHP54_VERSION=5.4.33
+_PHP54_VERSION=5.4.35
 _PHP55_API=20121212
-_PHP55_VERSION=5.5.18
+_PHP55_VERSION=5.5.19
 _PHPREDIS_VERSION=master-03-10-2014
 _PURE_FTPD_VERSION=1.0.36
 _REDIS_VERSION=2.8.17
@@ -1093,7 +1128,7 @@ _SOLR_3_VERSION=3.6.2
 _SOLR_4_VERSION=4.2.0
 _UPLOADPROGRESS_VERSION=1.0.3.1
 _VNSTAT_VERSION=1.11
-_ZEND_OPCACHE_VERSION=master-30-07-2014
+_ZEND_OPCACHE_VERSION=master-08-11-2014
 _ZLIB_VERSION=1.2.8
 
 ###
@@ -1517,11 +1552,26 @@ forced_redis_password_update () {
   _ESC_RPASS=""
   _LEN_RPASS=0
   if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-    _ESC_RPASS=$(randpass 32 alnum)
+    _PWD_CHARS=32
+  elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+    _PWD_CHARS=8
+  else
+    _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+    if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
+      _PWD_CHARS="$_STRONG_PASSWORDS"
+    else
+      _PWD_CHARS=8
+    fi
+    if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+      _PWD_CHARS=128
+    fi
+  fi
+  if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
+    _ESC_RPASS=$(randpass $_PWD_CHARS alnum)
     _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
     _LEN_RPASS=$(echo ${#_ESC_RPASS})
   fi
-  if [ -z "$_ESC_RPASS" ] || [ $_LEN_RPASS -lt 19 ] ; then
+  if [ -z "$_ESC_RPASS" ] || [ $_LEN_RPASS -lt 9 ] ; then
     _ESC_RPASS=`pwgen -v -s -1`
     _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
     _ESC_RPASS=`sanitize_string "$_ESC_RPASS"`
@@ -1811,24 +1861,13 @@ fix_php_ini_newrelic_all () {
 # Fix FMP php.ini file to add opcache.so
 fix_php_ini_opcache () {
   if [ -e "$_THIS_FILE" ] ; then
-    if [ "$1" = "55" ] ; then
-      if [[ "$_ZEND_OPCACHE_VERSION" =~ "master" ]] ; then
-        _OPCACHE_SRC=YES
-      else
-        _OPCACHE_SRC=NO
-      fi
-    fi
     _OPCACHE_INI_TEST=$(grep "opcache.so" $_THIS_FILE)
     if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]] ; then
       _DO_NOTHING=YES
     else
       echo ";"                                   >> $_THIS_FILE
       echo "; Zend OPcache"                      >> $_THIS_FILE
-      if [ "$1" = "55" ] && [ "$_OPCACHE_SRC" = "NO" ] ; then
-        echo "extension=opcache.so"              >> $_THIS_FILE
-      else
-        echo "zend_extension=\"$_OPCACHE_SO\""   >> $_THIS_FILE
-      fi
+      echo "zend_extension=\"$_OPCACHE_SO\""     >> $_THIS_FILE
       echo "opcache.enable=1"                    >> $_THIS_FILE
       echo "opcache.memory_consumption=181"      >> $_THIS_FILE
       echo "opcache.interned_strings_buffer=8"   >> $_THIS_FILE
@@ -2482,7 +2521,10 @@ tune_web_server_config () {
 #
 # Tune memory limits for SQL server.
 tune_sql_memory_limits () {
-  if [ ! -e "/var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt" ] ; then
+  if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    _GALERA_COMP=NO
+  fi
+  if [ ! -e "/var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt" ] && [ "$_STATUS" = "UPGRADE" ] && [ -z "$_GALERA_COMP" ] ; then
     msg "INFO: Running MySQLTuner check on all databases..."
     msg "NOTE! This step may take a LONG time, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
@@ -2495,7 +2537,7 @@ tune_sql_memory_limits () {
       perl /var/opt/mysqltuner.pl > /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt 2>&1
     fi
   fi
-  if [ -e "/var/opt/mysqltuner.pl" ] && [ -e "/var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt" ] ; then
+  if [ -e "/var/opt/mysqltuner.pl" ] && [ -e "/var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt" ] && [ "$_STATUS" = "UPGRADE" ] ; then
     _REC_MYISAM_MEM=`cat /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt | grep "Data in MyISAM tables" | cut -d: -f2 | awk '{ print $1}'`
     _REC_INNODB_MEM=`cat /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt | grep "data size:" | cut -d/ -f3 | awk '{ print $1}'`
     _MYSQLTUNER_TEST=$(cat /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt 2>&1)
@@ -2559,7 +2601,7 @@ tune_sql_memory_limits () {
     fi
   else
     _THIS_USE_MEM="${_USE_SQL}M"
-    if [ "$_MYSQLTUNER_TEST_RESULT" = "FAIL" ] ; then
+    if [ "$_MYSQLTUNER_TEST_RESULT" = "FAIL" ] && [ "$_STATUS" = "UPGRADE" ] && [ -z "$_GALERA_COMP" ] ; then
       msg "ALRT! _USE_MYISAM_MEM is $_THIS_USE_MEM because _REC_MYISAM_MEM was empty!"
       msg "ALRT! _USE_INNODB_MEM is $_THIS_USE_MEM because _REC_INNODB_MEM was empty!"
     fi
@@ -2918,7 +2960,11 @@ EOF
       LC_NUMERIC=POSIX \
       LC_ALL= &> /dev/null
     # Define locale settings required for consistency also on the fly
-    export LC_CTYPE=en_US.UTF-8
+    if [ "$_STATUS" != "INIT" ] ; then
+      # On initial install it causes warning on Wheezy:
+      # setlocale: LC_CTYPE: cannot change locale (en_US.UTF-8): No such file or directory
+      export LC_CTYPE=en_US.UTF-8
+    fi
     export LC_COLLATE=POSIX
     export LC_NUMERIC=POSIX
     export LC_ALL=
@@ -2927,6 +2973,8 @@ EOF
   _LOCALE_DEFAULT_TEST=$(grep -v "^#" /etc/default/locale 2>&1)
   if [[ ! "$_LOCALE_DEFAULT_TEST" =~ "LANGUAGE=en_US.UTF-8" ]] ; then
     echo "LANGUAGE=en_US.UTF-8" >> /etc/default/locale
+    sed -i "s/^#LANGUAGE=en_US.UTF-8//g" /etc/default/locale &> /dev/null
+    sed -i "/^$/d" /etc/default/locale &> /dev/null
   fi
 }
 #
@@ -3192,7 +3240,9 @@ barracuda_cnf () {
       _DO_NOTHING=YES
     else
       if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
-        _PHP_MULTI_INSTALL="5.5 5.4 5.3"
+        if [ ! -e "/root/.mstr.clstr.cnf" ] && [ ! -e "/root/.wbhd.clstr.cnf" ] && [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
+          _PHP_MULTI_INSTALL="5.5 5.4 5.3"
+        fi
       fi
       if [ "$_PHP_LEGACY_FREE" = "NO" ] && [ -x "/usr/local/bin/php52" ] ; then
         if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "5.2" ]] ; then
@@ -3718,27 +3768,16 @@ install_ioncube () {
 # Install PHP extensions.
 install_php_extensions () {
   ###--------------------###
-  if [ "$1" = "55" ] ; then
-    if [[ "$_ZEND_OPCACHE_VERSION" =~ "master" ]] ; then
-      _OPCACHE_SRC=YES
-    else
-      _OPCACHE_SRC=NO
-    fi
-  fi
-  if [ "$1" = "55" ] && [ "$_OPCACHE_SRC" = "NO" ] ; then
-    _DO_NOTHING=YES
-  else
-    msg "INFO: Installing Zend OPcache for PHP-FPM $_LOC_PHP_VERSION..."
-    cd /var/opt
-    rm -f -r zendopcache*
-    get_dev_src "zendopcache-$_ZEND_OPCACHE_VERSION.tar.gz"
-    cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
-    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
-  fi
+  msg "INFO: Installing Zend OPcache for PHP-FPM $_LOC_PHP_VERSION..."
+  cd /var/opt
+  rm -f -r zendopcache*
+  get_dev_src "zendopcache-$_ZEND_OPCACHE_VERSION.tar.gz"
+  cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
+  st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
   ###--------------------###
   msg "INFO: Installing PhpRedis for PHP-FPM $_LOC_PHP_VERSION..."
   cd /var/opt
@@ -3849,27 +3888,16 @@ install_php_extensions () {
 update_php_extensions () {
   ###--------------------###
   if [ ! -e "/var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log" ] ; then
-    if [ "$1" = "55" ] ; then
-      if [[ "$_ZEND_OPCACHE_VERSION" =~ "master" ]] ; then
-        _OPCACHE_SRC=YES
-      else
-        _OPCACHE_SRC=NO
-      fi
-    fi
-    if [ "$1" = "55" ] && [ "$_OPCACHE_SRC" = "NO" ] ; then
-      _DO_NOTHING=YES
-    else
-      msg "INFO: Installing Zend OPcache upgrade for PHP-FPM $_LOC_PHP_VERSION..."
-      cd /var/opt
-      rm -f -r zendopcache*
-      get_dev_src "zendopcache-$_ZEND_OPCACHE_VERSION.tar.gz"
-      cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
-      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
-      echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
-    fi
+    msg "INFO: Installing Zend OPcache upgrade for PHP-FPM $_LOC_PHP_VERSION..."
+    cd /var/opt
+    rm -f -r zendopcache*
+    get_dev_src "zendopcache-$_ZEND_OPCACHE_VERSION.tar.gz"
+    cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
+    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
   fi
   ###--------------------###
   if [ ! -e "/var/xdrago/log/phpredis-$_PHPREDIS_VERSION-$_LOC_PHP_VERSION.log" ] ; then
@@ -4166,24 +4194,67 @@ provision_backend_dbpass_generate () {
   _ESC_APASS=""
   _LEN_APASS=0
   if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-    _ESC_APASS=$(randpass 32 esc)
+    _PWD_CHARS=32
+  elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+    _PWD_CHARS=8
+  else
+    _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+    if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
+      _PWD_CHARS="$_STRONG_PASSWORDS"
+    else
+      _PWD_CHARS=8
+    fi
+    if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+      _PWD_CHARS=128
+    fi
+  fi
+  if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
+    if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+      _ESC_APASS=$(randpass $_PWD_CHARS esc)
+    else
+      if [ -e "/root/.my.pass.txt" ] ; then
+        _ESC_APASS=`cat /root/.my.pass.txt`
+      else
+        _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+      fi
+    fi
     _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
     _ENC_APASS=$(python -c "import urllib; print urllib.quote('''$_ESC_APASS''')")
     _LEN_APASS=$(echo ${#_ESC_APASS})
   fi
-  if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 19 ] ; then
-    _ESC_APASS=`pwgen -v -s -1`
-    _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
-    _ESC_APASS=`sanitize_string "$_ESC_APASS"`
+  if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 9 ] ; then
+    if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+      _ESC_APASS=`pwgen -v -s -1`
+      _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
+      _ESC_APASS=`sanitize_string "$_ESC_APASS"`
+    else
+      if [ -e "/root/.my.pass.txt" ] ; then
+        _ESC_APASS=`cat /root/.my.pass.txt`
+      else
+        _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+      fi
+    fi
     _ENC_APASS="$_ESC_APASS"
   fi
   echo "$_ESC_APASS" > $_L_SYS
   chown aegir:aegir $_L_SYS &> /dev/null
   chmod 0600 $_L_SYS
-  _AEGIR_HOST=`uname -n`
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    _AEGIR_HOST=`uname -n`
+    _SQL_CONNECT=localhost
+  else
+    _AEGIR_HOST=`uname -n`
+    ### _SQL_CONNECT="$_THIS_DB_HOST"
+    ### Master Instance will use local DB server
+    _SQL_CONNECT=localhost
+  fi
+  if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
+    _AEGIR_HOST=`uname -n`
+    _SQL_CONNECT=localhost
+  fi
   _RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
   if [ -z "$_RESOLVEIP" ] ; then
-    msg "FATAL ERROR:: This server does not have a hostname that resolves to an IP address"
+    msg "FATAL ERROR:: DNS looks broken for server $_AEGIR_HOST"
     msg "FATAL ERROR:: Aborting Barracuda installer NOW!"
     touch /opt/tmp/status-Barracuda-FAIL
     clean_pid_exit
@@ -4191,23 +4262,38 @@ provision_backend_dbpass_generate () {
 _ESC="\`%\`.*"
 mysqladmin flush-privileges &> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
-  mysql -uroot mysql<<EOFMYSQL
+  mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_RESOLVEIP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'localhost' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 EOFMYSQL
 else
-  mysql -uroot mysql<<EOFMYSQL
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
 DROP USER '$_ADBU'@'$_AEGIR_HOST';
 DROP USER '$_ADBU'@'$_RESOLVEIP';
 DROP USER '$_ADBU'@'localhost';
 EOFMYSQL
-  mysql -uroot mysql<<EOFMYSQL
+    mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_RESOLVEIP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'localhost' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 EOFMYSQL
+  fi
 fi
+
+if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+  _EXTRA_GRANTS=NO
+else
+  _LOCAL_HOST=`uname -n`
+  _LOCAL_IP=`echo $(getent ahostsv4 $_LOCAL_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
+  mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_THIS_DB_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_LOCAL_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_LOCAL_IP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+EOFMYSQL
+fi
+
 mysqladmin flush-privileges &> /dev/null
 }
 #
@@ -5398,7 +5484,7 @@ switch_to_bash () {
   fi
 }
 #
-# Optional Strict Permissions on All Binaries.
+# Strict Permissions on All Binaries.
 strict_bin_permissions () {
 
   chown root:root /usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives /opt/php55/bin /opt/php54/bin /opt/php53/bin /opt/php52/bin &> /dev/null
@@ -5468,7 +5554,7 @@ strict_bin_permissions () {
     fi
   done
 
-  _PROTECTED_ITEMS="barracuda boa octopus syncpass sftp-admin sftp-kill sftp-state named redis-cli redis-benchmark redis-check-dump redis-check-aof"
+  _PROTECTED_ITEMS="backboa barracuda boa octopus syncpass sftp-admin sftp-kill sftp-state named redis-cli redis-benchmark redis-check-dump redis-check-aof"
   for i in $_PROTECTED_ITEMS; do
     _BIN_ITEM=$(which $i)
     if [ -e "$_BIN_ITEM" ] ; then
@@ -5536,6 +5622,31 @@ fix_broken_platforms () {
     touch /var/xdrago/log/open-atrium-og-fixed-d4.log
     cd
   fi
+  if [ ! -e "/var/xdrago/log/open-atrium-og-fixed-d5.log" ] ; then
+    REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+    for i in $REVISIONS; do
+      if [ -d "/data/all/$i/openatrium-7.x-2.22-7.32.1/profiles/openatrium/modules/contrib" ] ; then
+        cd /data/all/$i/openatrium-7.x-2.22-7.32.1/profiles/openatrium/modules/contrib/
+        rm -f -r {context,ctools,entity,entityreference,mimemail,og}
+        get_dev_contrib "context-7.x-3.2.tar.gz"
+        get_dev_contrib "ctools-7.x-1.4.tar.gz"
+        get_dev_contrib "entity-7.x-1.5.tar.gz"
+        get_dev_contrib "entityreference-7.x-1.1.tar.gz"
+        get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz"
+        get_dev_contrib "og-7.x-2.7.tar.gz"
+        if [ -e "views" ] ; then
+          cd views
+          # https://drupal.org/node/1766338#comment-6445882
+          patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+          # https://drupal.org/node/2037469
+          patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
+          cd ../
+        fi
+      fi
+    done
+    touch /var/xdrago/log/open-atrium-og-fixed-d5.log
+    cd
+  fi
   if [ ! -e "/var/xdrago/log/erpal-fixed-e5.log" ] ; then
     REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
     for i in $REVISIONS; do
@@ -5559,20 +5670,94 @@ fix_broken_platforms () {
     cd
   fi
   # https://www.drupal.org/SA-CORE-2014-005
-  if [ ! -e "/var/xdrago/log/SA-CORE-2014-005-fixed-d7.log" ] ; then
+  if [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] && [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/patches/7-core/SA-CORE-2014-005-D7.patch" ] ; then
+    mkdir -p /var/xdrago/conf
+    cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/patches/7-core/SA-CORE-2014-005-D7.patch /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+  fi
+  if [ -e "/var/xdrago" ] && [ -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] && [ ! -e "/var/xdrago/log/SA-CORE-2014-005-fixed-d7.log" ] ; then
     if [ -d "/data/all/000/core" ] ; then
       for Core in `find /data/all/000/core/drupal-7* -maxdepth 0 -mindepth 0 | sort`; do
         cd $Core
-        patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/7-core/SA-CORE-2014-005-D7.patch &> /dev/null
+        patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
       done
     elif [ -d "/data/disk/all/000/core" ] ; then
       for Core in `find /data/disk/all/000/core/drupal-7* -maxdepth 0 -mindepth 0 | sort`; do
         cd $Core
-        patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/7-core/SA-CORE-2014-005-D7.patch &> /dev/null
+        patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
       done
     fi
     touch /var/xdrago/log/SA-CORE-2014-005-fixed-d7.log
     cd
+  fi
+  # https://www.drupal.org/SA-CORE-2014-005 for ancient platforms
+  if [ -e "/var/xdrago" ] && [ -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] ; then
+    if [ -d "/data/all" ] && [ ! -e "/var/xdrago/log/legacy-SA-CORE-2014-005-fixed-d7.log" ] ; then
+      for File in `find /data/all/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+        fi
+      done
+      touch /var/xdrago/log/legacy-SA-CORE-2014-005-fixed-d7.log
+    elif [ -d "/data/disk/all" ] && [ ! -e "/var/xdrago/log/legacy-SA-CORE-2014-005-fixed-d7eee.log" ] ; then
+      for File in `find /data/disk/all/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+        fi
+      done
+      touch /var/xdrago/log/legacy-SA-CORE-2014-005-fixed-d7eee.log
+    fi
+    cd
+  fi
+  # https://www.drupal.org/SA-CORE-2014-005 for custom platforms
+  if [ -e "/var/xdrago" ] && [ -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] ; then
+    if [ -d "/data/disk" ] && [ ! -e "/var/xdrago/log/batch-custom-SA-CORE-2014-005-fixed-d7.log" ] ; then
+      for File in `find /data/disk/*/static/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] && [ ! -e "$Core/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] && [ ! -e "$Core/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] && [ ! -e "$Core/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] && [ ! -e "$Core/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/*/*/*/includes/database/database.inc -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2> /dev/null)
+        if [ -d "$Core" ] && [ ! -e "$Core/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
+          cd $Core
+          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+        fi
+      done
+    fi
+    cd
+    touch /var/xdrago/log/batch-custom-SA-CORE-2014-005-fixed-d7.log
   fi
 }
 # Fix for Postfix configuration.
@@ -5602,6 +5787,7 @@ finale () {
   echo " "
   if [ "$_STATUS" = "INIT" ] ; then
     _L_ST="install"
+    touch /var/xdrago/log/SA-CORE-2014-005-fixed-d7.log
   else
     _L_ST="upgrade"
   fi
@@ -5691,6 +5877,9 @@ finale () {
     sed -i "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
     chown root:crontab /var/spool/cron/crontabs/root
     chmod 600 /var/spool/cron/crontabs/root
+  fi
+  if [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    service clean-boa-env stop &> /dev/null
   fi
   killall -9 memcached     &> /dev/null
   chmod 0750 /sbin/audispd &> /dev/null
@@ -5814,34 +6003,30 @@ else
   sed -i "s/^aegir.*//g" /etc/sudoers &> /dev/null
   deluser aegir &> /dev/null
   rm -f /usr/bin/drush
-  if [ "$_EASY_LOCALHOST" = "YES" ] && [ "$_EASY_PUBLIC" = "YES" ] ; then
-    msg "FATAL ERROR: You must enable either _EASY_PUBLIC or _EASY_LOCALHOST mode, not both"
-    clean_pid_exit
-  fi
-  if [ "$_EASY_PUBLIC" = "YES" ] ; then
+  if [ ! -z "$_EASY_SETUP" ] && [[ ! "$_EASY_SETUP" =~ "NO" ]] ; then
     if [ -z "$_EASY_HOSTNAME" ] || [ "$_EASY_HOSTNAME" = "wildcard-enabled-hostname" ] ; then
-      msg "FATAL ERROR: You must define also _EASY_HOSTNAME when _EASY_PUBLIC mode is enabled"
+      msg "FATAL ERROR: You must define also _EASY_HOSTNAME"
       clean_pid_exit
     fi
   fi
-  if [ "$_EASY_LOCALHOST" = "YES" ] ; then
-    msg "INFO: Easy Localhost Setup Mode Active"
+  if [ "$_EASY_SETUP" = "LOCAL" ] ; then
+    msg "INFO: Localhost Setup Mode Active"
     _XTRAS_LIST="CHV"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.3.5
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=NO
     _SMTP_RELAY_TEST=NO
     _LOCAL_NETWORK_IP="127.0.1.1"
     _LOCAL_NETWORK_HN="aegir.local"
-  elif [ "$_EASY_PUBLIC" = "YES" ] ; then
-    msg "INFO: Easy Public Setup Mode Active"
+  elif [ "$_EASY_SETUP" = "PUBLIC" ] ; then
+    msg "INFO: Public Setup Mode Active"
     _XTRAS_LIST="CSF CHV FTP"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.3.5
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=YES
@@ -5850,6 +6035,60 @@ else
     _MY_FRONT="master.$_EASY_HOSTNAME"
     validate_public_ip &> /dev/null
     _MY_OWNIP="$_THISHTIP"
+  elif [ "$_EASY_SETUP" = "MSTR" ] ; then
+    msg "INFO: Cluster Master Mode Active"
+    _XTRAS_LIST=""
+    _AUTOPILOT=YES
+    _DEBUG_MODE=NO
+    _AEGIR_VERSION=HEAD
+    _DB_SERVER=MariaDB
+    _DB_SERIES=10.0
+    _SSH_PORT=22
+    _DNS_SETUP_TEST=NO
+    _SMTP_RELAY_TEST=NO
+    _MY_HOSTN="$_EASY_HOSTNAME"
+    _MY_FRONT="master.$_EASY_HOSTNAME"
+    validate_public_ip &> /dev/null
+    _MY_OWNIP="$_THISHTIP"
+    if [ ! -e "/root/.mstr.clstr.cnf" ] ; then
+      touch /root/.mstr.clstr.cnf
+    fi
+  elif [ "$_EASY_SETUP" = "WBHD" ] ; then
+    msg "INFO: Cluster WEB Head Mode Active"
+    _XTRAS_LIST=""
+    _AUTOPILOT=YES
+    _DEBUG_MODE=NO
+    _AEGIR_VERSION=HEAD
+    _DB_SERVER=MariaDB
+    _DB_SERIES=10.0
+    _SSH_PORT=22
+    _DNS_SETUP_TEST=NO
+    _SMTP_RELAY_TEST=NO
+    _MY_HOSTN="$_EASY_HOSTNAME"
+    _MY_FRONT="master.$_EASY_HOSTNAME"
+    validate_public_ip &> /dev/null
+    _MY_OWNIP="$_THISHTIP"
+    if [ ! -e "/root/.wbhd.clstr.cnf" ] ; then
+      touch /root/.wbhd.clstr.cnf
+    fi
+  elif [ "$_EASY_SETUP" = "DBHD" ] ; then
+    msg "INFO: Cluster DB Head Mode Active"
+    _XTRAS_LIST=""
+    _AUTOPILOT=YES
+    _DEBUG_MODE=NO
+    _AEGIR_VERSION=HEAD
+    _DB_SERVER=MariaDB
+    _DB_SERIES=10.0
+    _SSH_PORT=22
+    _DNS_SETUP_TEST=NO
+    _SMTP_RELAY_TEST=NO
+    _MY_HOSTN="$_EASY_HOSTNAME"
+    _MY_FRONT="master.$_EASY_HOSTNAME"
+    validate_public_ip &> /dev/null
+    _MY_OWNIP="$_THISHTIP"
+    if [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
+      touch /root/.dbhd.clstr.cnf
+    fi
   fi
   barracuda_cnf
 fi
@@ -6255,7 +6494,7 @@ if [ "$_STATUS" = "INIT" ] ; then
       _S_Q=${_S_N%%${_S_T}}
       _S_E=${_S_Q%*.*}
       if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
-        if [ "$_EASY_LOCALHOST" = "YES" ] ; then
+        if [ "$_EASY_SETUP" = "LOCAL" ] ; then
           _DO_NOTHING=YES
         else
           sed -i "s/^$_MY_OWNIP.*//g" /etc/hosts &> /dev/null
@@ -6441,12 +6680,6 @@ EOF
     echo "Upgrade aborted by you"
     clean_pid_exit
   fi
-fi
-
-
-###--------------------###
-if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-  _THIS_DB_HOST="$_THISHOST"
 fi
 
 
@@ -6774,13 +7007,15 @@ else
       st_runner "apt-get install ubuntu-keyring -f -y --force-yes --reinstall" 2> /dev/null
     fi
   fi
-  st_runner "aptitude remove nginx-extras -y"       &> /dev/null
-  st_runner "aptitude remove nginx -y"              &> /dev/null
-  st_runner "aptitude remove nginx-common -y"       &> /dev/null
-  st_runner "aptitude remove nginx-full -y"         &> /dev/null
-  st_runner "aptitude remove redis-server -y"       &> /dev/null
-  st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
-  st_runner "apt-get update -y --force-yes"         &> /dev/null
+  mrun "apt-get -f install -qq"                         &> /dev/null
+  mrun "service nginx start"                            &> /dev/null
+  mrun "apt-get remove nginx-extras -y --force-yes -qq" &> /dev/null
+  mrun "apt-get remove nginx -y --force-yes -qq"        &> /dev/null
+  mrun "apt-get remove nginx-common -y --force-yes -qq" &> /dev/null
+  mrun "apt-get remove nginx-full -y --force-yes -qq"   &> /dev/null
+  mrun "apt-get remove redis-server -y --force-yes -qq" &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes -qq"     &> /dev/null
+  st_runner "apt-get update -y --force-yes"             &> /dev/null
 fi
 _EXTRA_LIB_APT="libmcrypt-dev"
 if [ ! -z "$_EXTRA_PACKAGES" ] ; then
@@ -6946,16 +7181,28 @@ install_mariadb_sql () {
   st_runner "apt-get purge percona-server-common-5.5 -y"   &> /dev/null
   st_runner "apt-get autoremove -y --force-yes -qq"        &> /dev/null
   st_runner "apt-get update -y --force-yes"                &> /dev/null
-  SQLDEB="mariadb-server-$_DB_SERIES mariadb-client-$_DB_SERIES mariadb-common"
+  if [ "$_EASY_SETUP" = "MSTR" ] || [ "$_EASY_SETUP" = "DBHD" ] || [ "$_EASY_SETUP" = "WBHD" ] || [ -e "/etc/mysql/conf.d/galera.cnf" ] || [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] ; then
+    SQLDEB="galera mariadb-galera-server"
+  else
+    SQLDEB="mariadb-server-$_DB_SERIES mariadb-client-$_DB_SERIES mariadb-common"
+  fi
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
 install_with_aptitude_sql () {
   if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "lucid" ] ; then
     _PERCONA_READY=YES
-    msg "INFO: Installing $_DB_SERVER, please wait..."
+    if [ "$_EASY_SETUP" = "MSTR" ] || [ "$_EASY_SETUP" = "DBHD" ] || [ "$_EASY_SETUP" = "WBHD" ] || [ -e "/etc/mysql/conf.d/galera.cnf" ] || [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] ; then
+      msg "INFO: Installing MariaDB Galera Cluster, please wait..."
+    else
+      msg "INFO: Installing $_DB_SERVER, please wait..."
+    fi
   else
     _PERCONA_READY=NO
-    msg "INFO: Installing MariaDB, please wait..."
+    if [ "$_EASY_SETUP" = "MSTR" ] || [ "$_EASY_SETUP" = "DBHD" ] || [ "$_EASY_SETUP" = "WBHD" ] || [ -e "/etc/mysql/conf.d/galera.cnf" ] || [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] ; then
+      msg "INFO: Installing MariaDB Galera Cluster, please wait..."
+    else
+      msg "INFO: Installing MariaDB, please wait..."
+    fi
   fi
   if [ "$_PERCONA_READY" = "YES" ] && [ "$_DB_SERVER" = "Percona" ] ; then
     install_percona_sql
@@ -6968,6 +7215,14 @@ install_with_aptitude_sql () {
   st_runner "$_INSTAPP $SQLDEB" 2> /dev/null
   st_runner "$_INSTAPP $SQLADD" 2> /dev/null
   st_runner "$_INSTAPP $SQLDEB" 2> /dev/null
+  if [ "$_EASY_SETUP" = "DBHD" ] || [ -e "/etc/mysql/conf.d/galera.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    msg "INFO: Running MariaDB system tables upgrade, please wait..."
+    if [ -x "/usr/bin/mariadb_upgrade" ] ; then
+      st_runner "mariadb_upgrade --force" &> /dev/null
+    elif [ -x "/usr/bin/mysql_upgrade" ] ; then
+      st_runner "mysql_upgrade --force" &> /dev/null
+    fi
+  fi
 }
 
 
@@ -7369,7 +7624,6 @@ if [ -d "/var/xdrago/conf" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc
       sed -i "s/foobar/$_NGINX_DOS_KEYWORDS/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
     fi
   fi
-  sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g" /var/xdrago/manage_ltd_users.sh &> /dev/null
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
   if [ -e "/var/xdrago/cron/custom.txt" ] ; then
@@ -7433,7 +7687,6 @@ if [ "$_STATUS" = "INIT" ] ; then
       sed -i "s/foobar/$_NGINX_DOS_KEYWORDS/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
     fi
   fi
-  sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g" /var/xdrago/manage_ltd_users.sh &> /dev/null
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_CHECK_HOST" =~ ".qq.o8.io" ]] ; then
@@ -7507,12 +7760,15 @@ switch_php_cli () {
   fi
 }
 
-_THIS_DB_VERSION=`mysql -V 2>&1 | tr -d "\n" | cut -d" " -f6 | awk '{ print $1}' | cut -d"-" -f1 | awk '{ print $1}' | sed "s/[\,']//g"`
-if [ "$_THIS_DB_VERSION" = "5.5.40" ] && [ ! -e "/var/xdrago/log/my_config-$_THIS_DB_VERSION-fixed.log" ] ; then
-  _UP_PHP=YES
-  cd /usr/include/mysql/
-  patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/my_config.h.patch &> /dev/null
-  touch /var/xdrago/log/my_config-$_THIS_DB_VERSION-fixed.log
+if [ -d "/usr/include/mysql" ] ; then
+  _THIS_DB_VERSION=`mysql -V 2>&1 | tr -d "\n" | cut -d" " -f6 | awk '{ print $1}' | cut -d"-" -f1 | awk '{ print $1}' | sed "s/[\,']//g"`
+  if [ ! -e "/var/xdrago/log/my_config-$_THIS_DB_VERSION-fixed.log" ] ; then
+    _UP_PHP=YES
+    cd /usr/include/mysql/
+    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/my_config.h.patch &> /dev/null
+    touch /usr/include/mysql/.my_config-$_THIS_DB_VERSION-fixed.log
+    touch /var/xdrago/log/my_config-$_THIS_DB_VERSION-fixed.log
+  fi
 fi
 
 if [[ "$_PHP_MULTI_INSTALL" =~ "5.2" ]] && [ ! -x "/opt/php52/bin/php" ] ; then
@@ -7899,7 +8155,7 @@ else
   _PORT_CTRL="$_JETTY_CTRL"
 fi
 if [[ "$_XTRAS_LIST" =~ "SR4" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
-  if [ ! -d "/opt/solr4" ] ; then
+  if [ ! -d "/opt/solr4" ] && [ ! -e "/root/.mstr.clstr.cnf" ] && [ ! -e "/root/.wbhd.clstr.cnf" ] && [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
     if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
       _REAL_JETTY=9
     else
@@ -8296,20 +8552,43 @@ fi
 
 ###--------------------###
 if [ ! -e "/root/.my.pass.txt" ] ; then
-  msg "INFO: Generating random password for $_DB_SERVER"
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    msg "INFO: Generating random password for $_DB_SERVER"
+  else
+    msg "INFO: Using default dummy password for $_DB_SERVER"
+  fi
   touch /root/.my.pass.txt
   chmod 0600 /root/.my.pass.txt &> /dev/null
-  _ESC_PASS=""
-  _LEN_PASS=0
-  if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-    _ESC_PASS=$(randpass 32 esc)
-    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
-    _LEN_PASS=$(echo ${#_ESC_PASS})
-  fi
-  if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
-    _ESC_PASS=`pwgen -v -s -1`
-    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
-    _ESC_PASS=`sanitize_string "$_ESC_PASS"`
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    _ESC_PASS=""
+    _LEN_PASS=0
+    if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+      _PWD_CHARS=32
+    elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+      _PWD_CHARS=8
+    else
+      _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+      if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
+        _PWD_CHARS="$_STRONG_PASSWORDS"
+      else
+        _PWD_CHARS=8
+      fi
+      if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+        _PWD_CHARS=128
+      fi
+    fi
+    if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
+      _ESC_PASS=$(randpass $_PWD_CHARS esc)
+      _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
+      _LEN_PASS=$(echo ${#_ESC_PASS})
+    fi
+    if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 9 ] ; then
+      _ESC_PASS=`pwgen -v -s -1`
+      _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
+      _ESC_PASS=`sanitize_string "$_ESC_PASS"`
+    fi
+  else
+    _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
   fi
   echo "$_ESC_PASS" > /root/.my.pass.txt
 fi
@@ -8365,30 +8644,142 @@ if [ "$_STATUS" = "INIT" ] ; then
     clean_pid_exit
   fi
   msg "INFO: Installing Aegir Master Instance, please wait..."
+  if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    touch /data/conf/clstr.cnf &> /dev/null
+  fi
   adduser --system --group --home /var/aegir aegir &> /dev/null
   usermod -aG www-data aegir &> /dev/null
   usermod -aG users aegir &> /dev/null
   echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
   ln -sf /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf &> /dev/null
   update_nginx_conf
+
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    _AEGIR_HOST=`uname -n`
+    _SQL_CONNECT=localhost
+  else
+    _AEGIR_HOST=`uname -n`
+    ### _SQL_CONNECT="$_THIS_DB_HOST"
+    ### Master Instance will use local DB server
+    _SQL_CONNECT=localhost
+  fi
+  if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
+    _AEGIR_HOST=`uname -n`
+    _SQL_CONNECT=localhost
+  fi
+
+  _RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
+  if [ -z "$_RESOLVEIP" ] ; then
+    msg "FATAL ERROR: DNS looks broken for server $_AEGIR_HOST"
+    exit 1
+  else
+    _AEGIR_HOST_IP="$_RESOLVEIP"
+  fi
+
+  _MYSQLTEST=`mysql -h$_AEGIR_HOST_IP  -uINVALIDLOGIN  -pINVALIDPASS 2>&1 >/dev/null | cat`
+
+  if [ -z `echo $_MYSQLTEST | grep -q "ERROR \(2003\|1130\)"` ] ; then
+    msg "INFO: MySQL is listening on $_AEGIR_HOST_IP."
+  else
+    msg "FATAL ERROR: MySQL is not configured to listen on $_AEGIR_HOST_IP"
+    exit 1
+  fi
+
+  _AEGIR_DB_USER=aegir_root
+  _ESC_APASS=""
+  _LEN_APASS=0
+
+  if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+    _PWD_CHARS=32
+  elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+    _PWD_CHARS=8
+  else
+    _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+    if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
+      _PWD_CHARS="$_STRONG_PASSWORDS"
+    else
+      _PWD_CHARS=8
+    fi
+    if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+      _PWD_CHARS=128
+    fi
+  fi
+
+  if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
+    if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+      _ESC_APASS=$(randpass $_PWD_CHARS esc)
+    else
+      if [ -e "/root/.my.pass.txt" ] ; then
+        _ESC_APASS=`cat /root/.my.pass.txt`
+      else
+        _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+      fi
+    fi
+    _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
+    _LEN_APASS=$(echo ${#_ESC_APASS})
+  fi
+
+  if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 9 ] ; then
+    if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+      _ESC_APASS=`pwgen -v -s -1`
+      _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
+      _ESC_APASS=`sanitize_string "$_ESC_APASS"`
+    else
+      if [ -e "/root/.my.pass.txt" ] ; then
+        _ESC_APASS=`cat /root/.my.pass.txt`
+      else
+        _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+      fi
+    fi
+  fi
+
+  _ESC="\`%\`.*"
+  mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST_IP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'localhost' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+EOFMYSQL
+
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    _EXTRA_GRANTS=NO
+  else
+    _LOCAL_HOST=`uname -n`
+    _LOCAL_IP=`echo $(getent ahostsv4 $_LOCAL_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
+    mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_THIS_DB_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_LOCAL_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_LOCAL_IP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+EOFMYSQL
+  fi
+
   cd /var/aegir
   _AEGIR_SCRIPT="AegirSetupM.sh.txt"
   for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f` ; do
+    sed -i "s/EDIT_AEGIR_DB_USER/$_AEGIR_DB_USER/g"        $Files &> /dev/null
+    sed -i "s/EDIT_AEGIR_HOST/$_AEGIR_HOST/g"              $Files &> /dev/null
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"        $Files &> /dev/null
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files &> /dev/null
     sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files &> /dev/null
     sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"              $Files &> /dev/null
     sed -i "s/EDIT_BRANCH_PROVISION/$_BRANCH_PROVISION/g"  $Files &> /dev/null
+    sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"              $Files &> /dev/null
+    sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                  $Files &> /dev/null
     sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files &> /dev/null
+    sed -i "s/EDIT_ESC_APASS/$_ESC_APASS/g"                $Files &> /dev/null
     sed -i "s/EDIT_LOCAL_NETWORK_IP/$_LOCAL_NETWORK_IP/g"  $Files &> /dev/null
+    sed -i "s/EDIT_MY_OWNIP/$_MY_OWNIP/g"                  $Files &> /dev/null
     sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files &> /dev/null
+    sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"    $Files &> /dev/null
+    sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"  $Files &> /dev/null
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files &> /dev/null
   done
+
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT ./
+
   if [ "$_DEBUG_MODE" = "YES" ] ; then
-    su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
+    su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_AEGIR_HOST' --client_email='$_MY_EMAIL' -y -d"
   else
-    su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
+    su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_AEGIR_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
   fi
   if [ -e "/opt/tmp/status-AegirSetupM-FAIL" ] ; then
     msg "FATAL ERROR: AegirSetupM installer failed"
@@ -8502,6 +8893,9 @@ else
       clean_pid_exit
     fi
     echo " "
+    if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+      touch /data/conf/clstr.cnf &> /dev/null
+    fi
     upgrade_aegir_master
   fi
 fi
@@ -8833,7 +9227,7 @@ fi
 if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
   _DO_NOTHING=YES
 else
-  if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSS" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] || [ "$_VMFAMILY" = "VS" ] ; then
+  if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSS" ]] || [ ! -z "$_SCOUT_KEY" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] || [ "$_VMFAMILY" = "VS" ] ; then
     if [ "$_STATUS" = "INIT" ] ; then
       _L_ST="install"
     else
@@ -8849,7 +9243,10 @@ else
           rm -f -r /usr/local/rvm
           touch /var/xdrago/log/ruby-root-clean-reload.log
         fi
+        gpg --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3 &> /dev/null
+        curl -sSL https://rvm.io/mpapis.asc | gpg --import - &> /dev/null
         curl -sSL https://get.rvm.io | bash -s stable &> /dev/null
+        echo rvm_autoupdate_flag=0 > ~/.rvmrc
         if [ -e "/etc/profile.d/rvm.sh" ] ; then
           source /etc/profile.d/rvm.sh
         fi
@@ -8877,12 +9274,14 @@ else
         if [[ "$_VAR_IF_PRESENT" =~ "scout" ]] ; then
           if [ ! -e "$_GEM_FILE" ] && [ ! -z "$_SCOUT_KEY" ] ; then
             st_runner "rvm @global do gem install --conservative scout" 2> /dev/null
+            adduser --system --group --home /var/scout scout &> /dev/null
             usermod -aG users scout &> /dev/null
             sed -i "s/\* \* \* \* \* scout .*/* * * * * scout $_GEM_PATH $_SCOUT_KEY/g" $_GEM_CRON &> /dev/null
           fi
         else
           if [ ! -z "$_SCOUT_KEY" ] ; then
             st_runner "rvm @global do gem install --conservative scout" 2> /dev/null
+            adduser --system --group --home /var/scout scout &> /dev/null
             usermod -aG users scout &> /dev/null
             echo -e "* * * * * scout $_GEM_FILE $_SCOUT_KEY" | tee -a $_GEM_CRON >/dev/null 2>&1
           fi
@@ -8900,6 +9299,14 @@ else
   fi
 fi
 
+###--------------------###
+if [ -e "/var/scout" ] ; then
+  _SCOUT_CRON_OFF=$(grep "OFFscoutOFF" /etc/crontab)
+  _SCOUT_CRON=$(grep "scout" /etc/crontab)
+  if [[ ! "$_SCOUT_CRON_OFF" =~ "OFFscoutOFF" ]] && [[ "$_SCOUT_CRON" =~ "scout" ]] ; then
+    sed -i "s/scout/OFFscoutOFF/g" /etc/crontab &> /dev/null
+  fi
+fi
 
 ###--------------------###
 if [ "$_STATUS" = "INIT" ] ; then
@@ -9085,11 +9492,26 @@ forced_mysql_root_password_update () {
   _ESC_PASS=""
   _LEN_PASS=0
   if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-    _ESC_PASS=$(randpass 32 esc)
+    _PWD_CHARS=32
+  elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+    _PWD_CHARS=8
+  else
+    _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+    if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
+      _PWD_CHARS="$_STRONG_PASSWORDS"
+    else
+      _PWD_CHARS=8
+    fi
+    if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+      _PWD_CHARS=128
+    fi
+  fi
+  if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
+    _ESC_PASS=$(randpass $_PWD_CHARS esc)
     _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
     _LEN_PASS=$(echo ${#_ESC_PASS})
   fi
-  if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
+  if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 9 ] ; then
     _ESC_PASS=`pwgen -v -s -1`
     _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
     _ESC_PASS=`sanitize_string "$_ESC_PASS"`
@@ -9145,6 +9567,30 @@ if [ ! -e "/root/.my.cnf" ] ; then
     mysql -u root -e "DROP DATABASE test;" &> /dev/null
     mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" &> /dev/null
     mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$PASWD') WHERE User='root';" &> /dev/null
+    if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+      _DO_NOTHING=YES
+    else
+      if [ -e "/etc/mysql/debian.cnf" ] && [ "$_STATUS" = "INIT" ] ; then
+        mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${PASWD}') WHERE User='debian-sys-maint';" &> /dev/null
+        mkdir -p /var/backups
+        cp -af /etc/mysql/debian.cnf /var/backups/debian.cnf-pre-$_INSTALLER_VERSION-$_NOW.txt
+        chmod 400 /var/backups/debian.cnf-pre-$_INSTALLER_VERSION-$_NOW.txt
+        sed -i "s/^password =.*/password = ${PASWD}/g" /etc/mysql/debian.cnf &> /dev/null
+      fi
+      if [ -e "/root/.remote.IP.list" ] ; then
+        _ESC="\`%\`.*"
+        for _IP in `cat /root/.remote.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`; do
+          mysql -u root -e "GRANT ALL PRIVILEGES ON $_ESC TO 'aegir_root'@'$_IP' IDENTIFIED BY '${PASWD}' WITH GRANT OPTION;" &> /dev/null
+        done
+      fi
+      if [ -e "/root/.cluster.IP.list" ] ; then
+        for _IP in `cat /root/.cluster.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`; do
+          mysql -u root -e "GRANT ALL ON *.* TO 'root'@'$_IP';" &> /dev/null
+        done
+        mysql -u root -e "GRANT ALL ON *.* TO 'wsrep'@'%' IDENTIFIED BY '${PASWD}';" &> /dev/null
+      fi
+      touch /var/xdrago/log/fixed-cluster-ip-grants.log
+    fi
     mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
   fi
   echo "[client]" > /root/.my.cnf
@@ -9155,6 +9601,8 @@ if [ ! -e "/root/.my.cnf" ] ; then
   chmod 0600 /root/.mytop
   if [ "$_THIS_DB_HOST" = "localhost" ] ; then
     echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
+  elif [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
   else
     sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf &> /dev/null
   fi
@@ -9163,8 +9611,27 @@ if [ ! -e "/root/.my.cnf" ] ; then
   msg "INFO: $_DB_SERVER setup completed"
   msg "INFO: You can now log in as root by typing only 'mysql' on the command line"
 else
-  if [ ! -e "/root/.mysql.no.new.password.cnf" ] ; then
-    forced_mysql_root_password_update
+  if [ ! -e "/var/xdrago/log/fixed-cluster-ip-grants.log" ] && [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    PXSWD=`cat /root/.my.pass.txt`
+    PASWD=`echo -n $PXSWD | tr -d "\n"`
+    if [ -e "/root/.remote.IP.list" ] ; then
+      _ESC="\`%\`.*"
+      for _IP in `cat /root/.remote.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`; do
+        mysql -u root -e "GRANT ALL PRIVILEGES ON $_ESC TO 'aegir_root'@'$_IP' IDENTIFIED BY '${PASWD}' WITH GRANT OPTION;" &> /dev/null
+      done
+    fi
+    if [ -e "/root/.cluster.IP.list" ] ; then
+      for _IP in `cat /root/.cluster.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`; do
+        mysql -u root -e "GRANT ALL ON *.* TO 'root'@'$_IP';" &> /dev/null
+      done
+      mysql -u root -e "GRANT ALL ON *.* TO 'wsrep'@'%' IDENTIFIED BY '${PASWD}';" &> /dev/null
+    fi
+    touch /var/xdrago/log/fixed-cluster-ip-grants.log
+  fi
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    if [ ! -e "/root/.mysql.no.new.password.cnf" ] ; then
+      forced_mysql_root_password_update
+    fi
   fi
 fi
 
@@ -9175,8 +9642,10 @@ if [ -L "/var/aegir/config/includes/barracuda_log.txt" ] ; then
 fi
 if [ "$_THIS_DB_HOST" = "localhost" ] ; then
   _LOG_DB_HOST=localhost
-else
+elif [ "$_THIS_DB_HOST" = "FQDN" ] ; then
   _LOG_DB_HOST=FQDN
+else
+  _LOG_DB_HOST=REMOTE
 fi
 if [ ! -z "$_FORCE_GIT_MIRROR" ] ; then
   _LOG_GIT_MIRROR="-$_FORCE_GIT_MIRROR"
@@ -9248,7 +9717,7 @@ if [ -e "/usr/sbin/apticron" ] ; then
   fi
 fi
 if [ "$_STATUS" = "INIT" ] ; then
-  if [ "$_EASY_LOCALHOST" = "NO" ] && [ "$_EASY_PUBLIC" = "YES" ] ; then
+  if [ "$_EASY_SETUP" != "LOCAL" ] ; then
     mrun "bash /usr/sbin/apticron" &> /dev/null
   fi
   if [ "$_DEBUG_MODE" = "YES" ] ; then
@@ -9281,7 +9750,7 @@ if [ "$_FORCE_REDIS_RESTART" = "YES" ] ; then
 fi
 if [ "$_STATUS" = "INIT" ] ; then
   service cron start &> /dev/null
-  if [ "$_EASY_LOCALHOST" = "NO" ] && [ "$_EASY_PUBLIC" = "NO" ] ; then
+  if [ "$_EASY_SETUP" = "NO" ] ; then
     echo " "
     msg "Now waiting 2 minutes before restarting Nginx..."
     mrun "sleep 111"
@@ -9340,42 +9809,51 @@ else
   ### to avoid extended downtime until all Octopus instances will receive
   ### full upgrade, if IP based listen directive was used before.
   ###
-  sed -i "s/.*listen.*127.0.0.1:80;.*//g"      /var/aegir/config/server_*/nginx.conf              &> /dev/null
-  sed -i "s/listen .*/listen        \*:80;/g"  /var/aegir/config/server_*/nginx.conf              &> /dev/null
-  sed -i "s/.*listen.*127.0.0.1:80;.*//g"      /data/disk/*/config/server_*/nginx.conf            &> /dev/null
-  sed -i "s/listen .*/listen        \*:80;/g"  /data/disk/*/config/server_*/nginx.conf            &> /dev/null
-  sed -i "s/listen .*/listen        \*:80;/g"  /data/disk/*/config/server_*/nginx/vhost.d/*       &> /dev/null
-  sed -i "s/param db_port.*/param db_port   3306;/g" /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
+  if [ -e "/var/aegir" ] ; then
+    sed -i "s/.*listen.*127.0.0.1:80;.*//g"      /var/aegir/config/server_*/nginx.conf              &> /dev/null
+    sed -i "s/listen .*/listen        \*:80;/g"  /var/aegir/config/server_*/nginx.conf              &> /dev/null
+  fi
+  if [ -e "/data/disk" ] ; then
+    sed -i "s/.*listen.*127.0.0.1:80;.*//g"      /data/disk/*/config/server_*/nginx.conf            &> /dev/null
+    sed -i "s/listen .*/listen        \*:80;/g"  /data/disk/*/config/server_*/nginx.conf            &> /dev/null
+    sed -i "s/listen .*/listen        \*:80;/g"  /data/disk/*/config/server_*/nginx/vhost.d/*       &> /dev/null
+    sed -i "s/param db_port.*/param db_port   3306;/g" /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
+  fi
 
-  for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort` ; do
-    if [ -e "$_OCT/.drush/sys/drush_make" ] ; then
-      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php         &> /dev/null
-      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/sys/provision/http/Provision/Config/Nginx/vhost.tpl.php          &> /dev/null
-      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/sys/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
-      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/xts/provision_cdn/Provision/Config/cdn.tpl.php                   &> /dev/null
-    elif [ -e "$_OCT/.drush/drush_make" ] ; then
-      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision/http/Provision/Config/Nginx/server.tpl.php             &> /dev/null
-      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php              &> /dev/null
-      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php     &> /dev/null
-      sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision_cdn/Provision/Config/cdn.tpl.php                       &> /dev/null
-    fi
-  done
+  if [ -e "/data/disk" ] ; then
+    for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort` ; do
+      if [ -e "$_OCT/.drush/sys/drush_make" ] ; then
+        sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php         &> /dev/null
+        sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/sys/provision/http/Provision/Config/Nginx/vhost.tpl.php          &> /dev/null
+        sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/sys/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
+        sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/xts/provision_cdn/Provision/Config/cdn.tpl.php                   &> /dev/null
+      elif [ -e "$_OCT/.drush/drush_make" ] ; then
+        sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision/http/Provision/Config/Nginx/server.tpl.php             &> /dev/null
+        sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php              &> /dev/null
+        sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php     &> /dev/null
+        sed -i "s/\!empty.*';/'*';/g" $_OCT/.drush/provision_cdn/Provision/Config/cdn.tpl.php                       &> /dev/null
+      fi
+    done
+  fi
 
   ###
   ### Delete any ghost, outdated or broken config includes and vhosts
   ### in all Octopus instances which could break Nginx restart
   ###
-  for File in `grep will_expire_in /data/disk/*/config/includes/* | cut -d: -f1 | awk '{ print $1}'`; do rm -f $File ;done
-  for Vght in `ls /data/disk/*/log/CANCELLED 2> /dev/null | cut -d"/" -f4 | awk '{ print $1}'`; do rm -f /data/disk/$Vght/config/server_*/nginx/vhost.d/* ;done
-
-  sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf &> /dev/null
-  sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf   &> /dev/null
-  sed -i "s/OctopusNCookie/AegirCookie/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf      &> /dev/null
-  sed -i "s/OctopusNCookie/AegirCookie/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
-  sed -i "s/OctopusNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf      &> /dev/null
-  sed -i "s/OctopusNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
-  sed -i "s/60/180/g" /var/aegir/config/server_*/nginx.conf  &> /dev/null
-  sed -i "s/300/180/g" /var/aegir/config/server_*/nginx.conf &> /dev/null
+  if [ -e "/data/disk" ] ; then
+    for File in `grep will_expire_in /data/disk/*/config/includes/* | cut -d: -f1 | awk '{ print $1}'`; do rm -f $File ;done
+    for Vght in `ls /data/disk/*/log/CANCELLED 2> /dev/null | cut -d"/" -f4 | awk '{ print $1}'`; do rm -f /data/disk/$Vght/config/server_*/nginx/vhost.d/* ;done
+    sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf &> /dev/null
+    sed -i "s/OctopusNCookie/AegirCookie/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf      &> /dev/null
+    sed -i "s/OctopusNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf      &> /dev/null
+  fi
+  if [ -e "/var/aegir" ] ; then
+    sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf   &> /dev/null
+    sed -i "s/OctopusNCookie/AegirCookie/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
+    sed -i "s/OctopusNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
+    sed -i "s/60/180/g" /var/aegir/config/server_*/nginx.conf  &> /dev/null
+    sed -i "s/300/180/g" /var/aegir/config/server_*/nginx.conf &> /dev/null
+  fi
   validate_public_ip &> /dev/null
   _CRON_IP=${_THISHTIP//[^0-9.]/}
   if [ ! -e "/root/.local.IP.list" ] ; then
@@ -9512,7 +9990,14 @@ csf_install () {
     msg "TEST: csf/lfd firewall can not be installed on this system"
   fi
 }
-if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
+if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+  if [ "$_USE_CSF_ON_CLSTR" = "YES" ] ; then
+    _CSF_CLSTR=YES
+  else
+    _CSF_CLSTR=NO
+  fi
+fi
+if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSF" ]] || [ "$_CSF_CLSTR" = "YES" ] ; then
   if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     if [ ! -e "/usr/sbin/csf" ] ; then
       echo " "
@@ -9526,44 +10011,41 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
     fi
   fi
 fi
-if [ -e "/usr/sbin/csf" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
-  csf -x &> /dev/null
-  update-rc.d -f csf remove &> /dev/null
-  update-rc.d -f lfd remove &> /dev/null
-  rm -f /etc/cron.d/{csf,lfd}*
-  rm -f /usr/sbin/{csf,lfd}
-  rm -f /etc/init.d/{csf,lfd}
-  rm -f -r /etc/csf
-fi
-if [ "$_CSF_COMPATIBILITY" = "NO" ] ; then
-  csf -x &> /dev/null
-  update-rc.d -f csf remove &> /dev/null
-  update-rc.d -f lfd remove &> /dev/null
-  rm -f /etc/cron.d/{csf,lfd}*
-  rm -f /usr/sbin/{csf,lfd}
-  rm -f /etc/init.d/{csf,lfd}
-  rm -f -r /etc/csf
-fi
-if [ -e "/usr/sbin/csf" ] ; then
-  if [ "$_CUSTOM_CONFIG_CSF" = "YES" ] ; then
-    _DO_NOTHING=YES
+if [ -e "/usr/sbin/csf" ] || [ -e "/usr/sbin/lfd" ] || [ -e "/etc/cron.d/lfd" ] ; then
+  if [ "$_CSF_COMPATIBILITY" = "NO" ] || [ "$_CSF_CLSTR" = "NO" ] ; then
+    _REMOVE_CSF=YES
+  elif [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
+    _REMOVE_CSF=YES
+  fi
+  if [ "$_REMOVE_CSF" = "YES" ] ; then
+    csf -x &> /dev/null
+    update-rc.d -f csf remove &> /dev/null
+    update-rc.d -f lfd remove &> /dev/null
+    rm -f /etc/cron.d/{csf,lfd}*
+    rm -f /usr/sbin/{csf,lfd}
+    rm -f /etc/init.d/{csf,lfd}
+    rm -f -r /etc/csf
   else
-    _CSF_MODE=upgrade
-    csf_install
-  fi
-  if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-    sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"1\"/g" /etc/csf/csf.conf &> /dev/null
-  fi
-  if [ "$_VMFAMILY" = "VZ" ] ; then
-    sed -i "s/^PORTFLOOD .*/PORTFLOOD = \"\"/g" /etc/csf/csf.conf &> /dev/null
-    sed -i "s/^CONNLIMIT .*/CONNLIMIT = \"\"/g" /etc/csf/csf.conf &> /dev/null
-    sed -i "s/^USE_CONNTRACK .*/USE_CONNTRACK = \"0\"/g" /etc/csf/csf.conf &> /dev/null
-  fi
-  if [ -e "/var/xdrago/log/lastFire" ] ; then
-    rm -f /var/xdrago/log/lastFire
-    mrun "csf -x" &> /dev/null
-    mrun "csf -e" &> /dev/null
-    mrun "csf -q" &> /dev/null
+    if [ "$_CUSTOM_CONFIG_CSF" = "YES" ] ; then
+      _DO_NOTHING=YES
+    else
+      _CSF_MODE=upgrade
+      csf_install
+    fi
+    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+      sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"1\"/g" /etc/csf/csf.conf &> /dev/null
+    fi
+    if [ "$_VMFAMILY" = "VZ" ] ; then
+      sed -i "s/^PORTFLOOD .*/PORTFLOOD = \"\"/g" /etc/csf/csf.conf &> /dev/null
+      sed -i "s/^CONNLIMIT .*/CONNLIMIT = \"\"/g" /etc/csf/csf.conf &> /dev/null
+      sed -i "s/^USE_CONNTRACK .*/USE_CONNTRACK = \"0\"/g" /etc/csf/csf.conf &> /dev/null
+    fi
+    if [ -e "/var/xdrago/log/lastFire" ] ; then
+      rm -f /var/xdrago/log/lastFire
+      mrun "csf -x" &> /dev/null
+      mrun "csf -e" &> /dev/null
+      mrun "csf -q" &> /dev/null
+    fi
   fi
 fi
 
@@ -9700,6 +10182,7 @@ fix_cnf_postfix
 if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
   usermod -aG users aegir &> /dev/null
   usermod -aG users man &> /dev/null
+  usermod -aG users mysql &> /dev/null
   if [ -x "/bin/dash" ] ; then
     switch_to_dash
   else

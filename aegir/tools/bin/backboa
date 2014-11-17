@@ -1,0 +1,285 @@
+#!/bin/bash
+
+###
+### Acknowledgements
+###
+### Thomas Sileo @ http://thomassileo.com
+### Original recipe: http://bit.ly/Zi9mZX
+###
+### Extended by Barracuda Team for BOA project
+###
+### See also:
+### http://www.nongnu.org/duplicity/index.html
+###
+
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
+
+_DUPLICITY_VERSION=0.7.0
+_BOTO_VERSION=2.34.0
+
+_NOW=`date +%y%m%d-%H%M`
+_DOW=`date +%w`
+_HST=`uname -n 2>&1`
+_HST=${_HST//[^a-zA-Z0-9-.]/}
+_HST=`echo -n $_HST | tr A-Z a-z`
+
+if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
+  echo "The duplicity backup is already running!"
+  exit 1
+fi
+
+if [ -e "/root/.barracuda.cnf" ] ; then
+  source /root/.barracuda.cnf
+fi
+
+if [ -z "$_AWS_KEY" ] || [ -z "$_AWS_SEC" ] || [ -z "$_AWS_PWD" ] ; then
+  echo "
+
+  CONFIGURATION REQUIRED!
+
+  Add these five (5) lines to your /root/.barracuda.cnf file:
+
+    _AWS_KEY='Your AWS Access Key ID'     ### From your AWS S3 settings
+    _AWS_SEC='Your AWS Secret Access Key' ### From your AWS S3 settings
+    _AWS_PWD='Your Secret Password'       ### Generate with 'openssl rand -base64 32'
+    _AWS_REG='Your AWS Region ID'         ### By default 'us-east-1'
+    _AWS_TTL='Your Backup Rotation'       ### By default '30D'
+
+    Supported values to use as _AWS_REG:
+
+      us-east-1
+      us-west-2
+      us-west-1
+      eu-west-1
+      eu-central-1
+      ap-southeast-1
+      ap-southeast-2
+      ap-northeast-1
+      sa-east-1
+
+    Source: http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
+
+    You have to use S3 Console at https://console.aws.amazon.com/s3/home
+    (before attempting to run initial backup!) to create S3 bucket in the
+    desired region with correct name as shown below:
+
+      daily.boa.${_HST}
+
+    While duplicity should be able to create new bucket on demand, in practice
+    it almost never works due to typical delays between various AWS regions.
+
+  "
+  exit 1
+fi
+
+if [ -z "$_AWS_REG" ] ; then
+  _AWS_REG="us-east-1"
+fi
+
+if [ "$_AWS_REG" = "us-east-1" ] || [ "$_AWS_REG" = "us-west-2" ] || [ "$_AWS_REG" = "us-west-1" ] ; then
+  _GOOD_AWS_REG=YES
+elif [ "$_AWS_REG" = "eu-west-1" ] || [ "$_AWS_REG" = "eu-central-1" ] || [ "$_AWS_REG" = "ap-southeast-1" ] ; then
+  _GOOD_AWS_REG=YES
+elif [ "$_AWS_REG" = "ap-southeast-2" ] || [ "$_AWS_REG" = "ap-northeast-1" ] || [ "$_AWS_REG" = "sa-east-1" ] ; then
+  _GOOD_AWS_REG=YES
+else
+  _AWS_REG="us-east-1"
+fi
+
+_AWS_TTL=${_AWS_TTL//[^A-Z0-9]/}
+
+if [ -z "$_AWS_TTL" ] ; then
+  _AWS_TTL="30D"
+fi
+
+export AWS_ACCESS_KEY_ID="${_AWS_KEY}"
+export AWS_SECRET_ACCESS_KEY="${_AWS_SEC}"
+export PASSPHRASE="${_AWS_PWD}"
+
+SOURCE="/etc /var/aegir /var/www /home /data"
+EXCLUDE="--exclude /data/conf/arch"
+BUCKET=daily.boa.${_HST}
+TARGET=s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}
+LOGFILE=/var/xdrago/log/$BUCKET.log
+
+backup() {
+  INCLUDE=""
+  for CDIR in $SOURCE
+  do
+    TMP=" --include  ${CDIR}"
+    INCLUDE=${INCLUDE}${TMP}
+  done
+  if [ -e "/var/xdrago/log/$BUCKET.archive.log" ] ; then
+    duplicity -v 1 cleanup --force $TARGET
+  fi
+  duplicity -v 1 --volsize 100 \
+            --full-if-older-than 1M \
+            --s3-use-new-style \
+            --asynchronous-upload \
+            $INCLUDE $EXCLUDE --exclude '**' / $TARGET > $LOGFILE
+  if [ -e "/var/xdrago/log/$BUCKET.archive.log" ] ; then
+    duplicity -v 1 remove-older-than ${_AWS_TTL} --force $TARGET >> $LOGFILE
+    duplicity -v 1 collection-status $TARGET >> $LOGFILE
+  fi
+  if [ -n "$_MY_EMAIL" ]; then
+    mail -s "Daily backup: ${_HST} `date`" $_MY_EMAIL < $LOGFILE
+  fi
+  cat /var/xdrago/log/$BUCKET.log >> /var/xdrago/log/$BUCKET.archive.log
+}
+
+status() {
+  duplicity -v 1 collection-status $TARGET
+}
+
+cleanup() {
+  duplicity -v 1 cleanup --force $TARGET
+  duplicity -v 1 collection-status $TARGET
+}
+
+list() {
+  duplicity -v 1 list-current-files $TARGET
+}
+
+restore() {
+  if [ $# = 2 ]; then
+    duplicity -v 1 restore --file-to-restore $1 $TARGET $2
+  else
+    duplicity -v 1 restore --file-to-restore $1 --time $2 $TARGET $3
+  fi
+}
+
+retrieve() {
+  if [ $# = 3 ]; then
+    BUCKET=daily.boa.$3
+    TARGET=s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}
+    duplicity restore --file-to-restore $1 $TARGET $2
+  elif [ $# = 4 ]; then
+    BUCKET=daily.boa.$4
+    TARGET=s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}
+    duplicity restore --file-to-restore $1 --time $2 $TARGET $3
+  fi
+}
+
+install() {
+  _DUPLICITY_INSTALLED=`duplicity --version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
+  if [ "$_DUPLICITY_INSTALLED" = "$_DUPLICITY_VERSION" ] ; then
+    echo "Latest duplicity version $_DUPLICITY_VERSION already installed"
+  else
+    echo "Installing duplicity dependencies, please wait..."
+    cd
+    apt-get clean -qq                    &> /dev/null
+    apt-get update -qq                   &> /dev/null
+    aptitude purge duplicity -y          &> /dev/null
+    rm -f -r /usr/local/lib/python2.7/dist-packages/boto*
+    rm -f -r /usr/local/lib/python2.6/dist-packages/boto*
+    rm -f -r /usr/local/lib/python2.7/dist-packages/duplicity*
+    rm -f -r /usr/local/lib/python2.6/dist-packages/duplicity*
+    apt-get install librsync-dev -y      &> /dev/null
+    apt-get install python-dev -y        &> /dev/null
+    apt-get install python-lockfile -y   &> /dev/null
+    apt-get install python-setuptools -y &> /dev/null
+    apt-get install s3cmd -y             &> /dev/null
+    mkdir -p /var/opt
+    rm -f -r /var/opt/{boto*,duplicity*}
+    cd /var/opt
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/src/boto-$_BOTO_VERSION.tar.gz"
+    tar xzf boto-$_BOTO_VERSION.tar.gz &> /dev/null
+    cd /var/opt/boto-$_BOTO_VERSION
+    python setup.py install &> /dev/null
+    echo "Installing duplicity version $_DUPLICITY_VERSION, please wait..."
+    cd /var/opt
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/src/duplicity-$_DUPLICITY_VERSION.tar.gz"
+    tar xzf duplicity-$_DUPLICITY_VERSION.tar.gz &> /dev/null
+    cd /var/opt/duplicity-$_DUPLICITY_VERSION
+    python setup.py build &> /dev/null
+    python setup.py install &> /dev/null
+    cd
+    rm -f -r /var/opt/{boto*,duplicity*}
+    echo "Installation complete!"
+  fi
+}
+
+if [ "$1" = "backup" ]; then
+  if test -f /var/run/${_HST}_backup.pid ; then
+    touch /var/xdrago/log/wait_${_HST}_backup.log
+    echo "The duplicity backup is already running!"
+    exit 1
+  else
+    touch /var/run/${_HST}_backup.pid
+    echo "The duplicity backup is starting now..."
+    backup
+    echo "The duplicity backup is complete!"
+    touch /var/xdrago/log/run_${_HST}_backup.log
+    rm -f /var/run/${_HST}_backup.pid
+  fi
+elif [ "$1" = "install" ]; then
+  install
+elif [ "$1" = "cleanup" ]; then
+  cleanup
+elif [ "$1" = "list" ]; then
+  list
+elif [ "$1" = "restore" ]; then
+  if [ $# = 3 ]; then
+    restore $2 $3
+  else
+    restore $2 $3 $4
+  fi
+elif [ "$1" = "retrieve" ]; then
+  if [ $# = 4 ]; then
+    restore $2 $3 $4
+  elif [ $# = 5 ]; then
+    restore $2 $3 $4 $5
+  else
+    echo "You have to specify also hostname of the backed up system"
+    exit 1
+  fi
+elif [ "$1" = "status" ]; then
+  status
+else
+  echo "
+
+  INSTALLATION:
+
+  $ backboa install
+
+  USAGE:
+
+  $ backboa backup
+  $ backboa cleanup
+  $ backboa list
+  $ backboa status
+  $ backboa restore file [time] destination
+  $ backboa retrieve file [time] destination hostname
+
+  RESTORE EXAMPLES:
+
+  Note: Be careful while restoring not to prepend a slash to the path!
+
+  Restoring a single file to tmp/
+  $ backboa restore data/disk/o1/backups/foo.tar.gz tmp/foo.tar.gz
+
+  Restoring an older version of a directory to tmp/ - interval or full date
+  $ backboa restore data/disk/o1/backups 7D8h8s tmp/backups
+  $ backboa restore data/disk/o1/backups 2014/11/11 tmp/backups
+
+  Restoring data on a different server
+  $ backboa retrieve data/disk/o1/backups/foo.tar.gz tmp/foo.tar.gz srv.foo.bar
+  $ backboa retrieve data/disk/o1/backups 2014/11/11 tmp/backups srv.foo.bar
+
+  Note: The srv.foo.bar is a hostname of the BOA system backed up before.
+        In the 'retrieve' mode it will use the _AWS_* variables configured
+        in the current system /root/.barracuda.cnf file - so make sure to edit
+        this file to set/replace temporarily *all* five _AWS_* variables used
+        originally on the host you are retrieving data from! You should
+        keep them secret and manage in your offline password manager app.
+
+  "
+  exit 1
+fi
+
+export AWS_ACCESS_KEY_ID=
+export AWS_SECRET_ACCESS_KEY=
+export PASSPHRASE=
+
+exit 0

@@ -17,10 +17,14 @@ fi
 if [ -e "/root/.high_traffic.cnf" ] ; then
   echo rotate > /var/log/nginx/access.log
 fi
-if [ -e "/var/run/boa_run.pid" ] ; then
+if [ -e "/var/run/boa_run.pid" ] || [ -e "/var/run/daily-fix.pid" ] ; then
   sleep 1
 else
   rm -f /tmp/*error*
+  rm -f /var/backups/BOA.sh.txt.hourly*
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt.hourly
+  bash /var/backups/BOA.sh.txt.hourly &> /dev/null
+  rm -f /var/backups/BOA.sh.txt.hourly*
 fi
 if [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ] ; then
   rm -f /etc/resolvconf/run/interface/eth*

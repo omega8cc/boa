@@ -7,6 +7,33 @@ _OPENSSL_VERSION=1.0.1j
 
 ###-------------SYSTEM-----------------###
 
+extract_archive () {
+  if [ ! -z $1 ] ; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1    ;;
+      *.tar.gz)    tar xzf $1    ;;
+      *.bz2)       bunzip2 $1    ;;
+      *.rar)       unrar x $1    ;;
+      *.gz)        gunzip -q $1  ;;
+      *.tar)       tar xf $1     ;;
+      *.tbz2)      tar xjf $1    ;;
+      *.tgz)       tar xzf $1    ;;
+      *.zip)       unzip -qq $1  ;;
+      *.Z)         uncompress $1 ;;
+      *.7z)        7z x $1       ;;
+      *)           echo "'$1' cannot be extracted via >extract<" ;;
+    esac
+    rm -f $1
+  fi
+}
+
+get_dev_ext () {
+  if [ ! -z $1 ] ; then
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/HEAD/$1"
+    extract_archive "$1"
+  fi
+}
+
 enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     if [ "$1" != "${_THIS_HM_USER}.ftp" ] ; then
@@ -19,6 +46,7 @@ enable_chattr () {
       chattr +i /home/$1/.bazaar     &> /dev/null
     fi
     chattr +i /home/$1/.drush        &> /dev/null
+    chattr +i /home/$1/.drush/usr    &> /dev/null
     chattr +i /home/$1/.drush/*.ini  &> /dev/null
   fi
 }
@@ -35,7 +63,28 @@ disable_chattr () {
       chattr -i /home/$1/.bazaar     &> /dev/null
     fi
     chattr -i /home/$1/.drush        &> /dev/null
+    chattr -i /home/$1/.drush/usr    &> /dev/null
     chattr -i /home/$1/.drush/*.ini  &> /dev/null
+    if [ "$1" != "${_THIS_HM_USER}.ftp" ] ; then
+      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] && [ -d "/data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon" ] ; then
+        ln -sf /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
+      fi
+    else
+      if [ ! -d "/data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon" ] || [ ! -e "/data/disk/${_THIS_HM_USER}/static/control/.drupalgeddon.in.013.pid" ] ; then
+        rm -f /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon &> /dev/null
+        cd /data/disk/${_THIS_HM_USER}/.drush/usr
+        get_dev_ext "drupalgeddon.tar.gz"
+        find /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon -type d -exec chmod 0750 {} \; &> /dev/null
+        find /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon -type f -exec chmod 0640 {} \; &> /dev/null
+        chown -R ${_THIS_HM_USER}:users /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon
+        rm -f /data/disk/${_THIS_HM_USER}/static/control/.drupalgeddon.in.00*.pid
+        touch /data/disk/${_THIS_HM_USER}/static/control/.drupalgeddon.in.013.pid
+      fi
+      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] && [ -d "/data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon" ] ; then
+        rm -f -r /home/$1/.drush/usr/drupalgeddon
+        ln -sf /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
+      fi
+    fi
   fi
 }
 
@@ -267,11 +316,20 @@ fix_user_register_protection () {
       drush4 vset --always-set user_email_verification 1 &> /dev/null
     fi
   fi
+
+  if [ -e "$User/log/imported.pid" ] || [ -e "$User/log/exported.pid" ] ; then
+    if [ ! -e "$Dir/modules/readonlymode_fix.info" ] ; then
+      drush4 vset --always-set site_readonly 0 &> /dev/null
+      echo OK > $Dir/modules/readonlymode_fix.info
+      chown $_THIS_HM_USER:users $Dir/modules/readonlymode_fix.info
+      chmod 0664 $Dir/modules/readonlymode_fix.info
+    fi
+  fi
 }
 
 fix_robots_txt () {
   if [ ! -e "$Dir/files/robots.txt" ] && [ ! -e "$Plr/profiles/hostmaster" ] && [ "$_STATUS" = "OK" ] ; then
-    curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 15 -A iCab "http://$Dom/robots.txt?nocache=1&noredis=1" -o $Dir/files/robots.txt
+    curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 -A iCab "http://$Dom/robots.txt?nocache=1&noredis=1" -o $Dir/files/robots.txt
     if [ -e "$Dir/files/robots.txt" ] ; then
       echo >> $Dir/files/robots.txt
     fi
@@ -321,6 +379,228 @@ sql_convert () {
   sudo -u ${_THIS_HM_USER}.ftp -H /opt/local/bin/sqlmagic convert to-${_SQL_CONVERT}
 }
 
+send_shutdown_notice () {
+  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+  if [ ! -z "$_CLIENT_EMAIL" ] && [[ ! "$_CLIENT_EMAIL" =~ "$_MY_EMAIL" ]] ; then
+    _ALRT_EMAIL="$_CLIENT_EMAIL"
+  else
+    _ALRT_EMAIL="$_MY_EMAIL"
+  fi
+  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
+    _BCC_EMAIL="omega8cc@gmail.com"
+  else
+    _BCC_EMAIL="$_MY_EMAIL"
+  fi
+  _MAILX_TEST=`mail -V 2>&1`
+  if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
+  cat <<EOF | mail -e -a "From: $_MY_EMAIL" -a "Bcc: $_BCC_EMAIL" -s "ALERT! Shutdown of Hacked $Dom Site on $_HOST_TEST" $_ALRT_EMAIL
+Hello,
+
+Because you have not fixed this site despite several alerts
+sent before, this site is scheduled for automated shutdown
+to prevent further damage for the site owner and visitors.
+
+Once the site is disabled, the only way to re-enable it again
+is to run the Verify task in your Aegir control panel.
+
+But if you will enable the site and not fix it immediately,
+it will be shut down automatically again.
+
+Common signatures of an attack which triggered this alert:
+
+${_DETECTED}
+
+The platform root directory for this site is:
+
+  $Plr
+
+The system hostname is:
+
+  $_HOST_TEST
+
+To learn more on what happened, how it was possible and
+how to survive #Drupageddon, please read:
+
+  https://omega8.cc/drupageddon-psa-2014-003-342
+
+--
+This e-mail has been sent by your Aegir system monitor.
+
+EOF
+  elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
+  cat <<EOF | mail -a "From: $_MY_EMAIL" -e -b $_BCC_EMAIL -s "ALERT! Shutdown of Hacked $Dom Site on $_HOST_TEST" $_ALRT_EMAIL
+Hello,
+
+Because you have not fixed this site despite several alerts
+sent before, this site is scheduled for automated shutdown
+to prevent further damage for the site owner and visitors.
+
+Once the site is disabled, the only way to re-enable it again
+is to run the Verify task in your Aegir control panel.
+
+But if you will enable the site and not fix it immediately,
+it will be shut down automatically again.
+
+Common signatures of an attack which triggered this alert:
+
+${_DETECTED}
+
+The platform root directory for this site is:
+
+  $Plr
+
+The system hostname is:
+
+  $_HOST_TEST
+
+To learn more on what happened, how it was possible and
+how to survive #Drupageddon, please read:
+
+  https://omega8.cc/drupageddon-psa-2014-003-342
+
+--
+This e-mail has been sent by your Aegir system monitor.
+
+EOF
+  else
+  cat <<EOF | mail -r $_MY_EMAIL -e -b $_BCC_EMAIL -s "ALERT! Shutdown of Hacked $Dom Site on $_HOST_TEST" $_ALRT_EMAIL
+Hello,
+
+Because you have not fixed this site despite several alerts
+sent before, this site is scheduled for automated shutdown
+to prevent further damage for the site owner and visitors.
+
+Once the site is disabled, the only way to re-enable it again
+is to run the Verify task in your Aegir control panel.
+
+But if you will enable the site and not fix it immediately,
+it will be shut down automatically again.
+
+Common signatures of an attack which triggered this alert:
+
+${_DETECTED}
+
+The platform root directory for this site is:
+
+  $Plr
+
+The system hostname is:
+
+  $_HOST_TEST
+
+To learn more on what happened, how it was possible and
+how to survive #Drupageddon, please read:
+
+  https://omega8.cc/drupageddon-psa-2014-003-342
+
+--
+This e-mail has been sent by your Aegir system monitor.
+
+EOF
+  fi
+  echo "ALERT: HACKED notice sent to $_CLIENT_EMAIL [$_THIS_HM_USER]: OK"
+}
+
+send_hacked_alert () {
+  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+  if [ ! -z "$_CLIENT_EMAIL" ] && [[ ! "$_CLIENT_EMAIL" =~ "$_MY_EMAIL" ]] ; then
+    _ALRT_EMAIL="$_CLIENT_EMAIL"
+  else
+    _ALRT_EMAIL="$_MY_EMAIL"
+  fi
+  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
+    _BCC_EMAIL="omega8cc@gmail.com"
+  else
+    _BCC_EMAIL="$_MY_EMAIL"
+  fi
+  _MAILX_TEST=`mail -V 2>&1`
+  if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
+  cat <<EOF | mail -e -a "From: $_MY_EMAIL" -a "Bcc: $_BCC_EMAIL" -s "URGENT: The $Dom site on $_HOST_TEST has been HACKED!" $_ALRT_EMAIL
+Hello,
+
+Our system detected that the site $Dom has been hacked!
+
+Common signatures of an attack which triggered this alert:
+
+${_DETECTED}
+
+The platform root directory for this site is:
+
+  $Plr
+
+The system hostname is:
+
+  $_HOST_TEST
+
+To learn more on what happened, how it was possible and
+how to survive #Drupageddon, please read:
+
+  https://omega8.cc/drupageddon-psa-2014-003-342
+
+--
+This e-mail has been sent by your Aegir system monitor.
+
+EOF
+  elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
+  cat <<EOF | mail -a "From: $_MY_EMAIL" -e -b $_BCC_EMAIL -s "URGENT: The $Dom site on $_HOST_TEST has been HACKED!" $_ALRT_EMAIL
+Hello,
+
+Our system detected that the site $Dom has been hacked!
+
+Common signatures of an attack which triggered this alert:
+
+${_DETECTED}
+
+The platform root directory for this site is:
+
+  $Plr
+
+The system hostname is:
+
+  $_HOST_TEST
+
+To learn more on what happened, how it was possible and
+how to survive #Drupageddon, please read:
+
+  https://omega8.cc/drupageddon-psa-2014-003-342
+
+--
+This e-mail has been sent by your Aegir system monitor.
+
+EOF
+  else
+  cat <<EOF | mail -r $_MY_EMAIL -e -b $_BCC_EMAIL -s "URGENT: The $Dom site on $_HOST_TEST has been HACKED!" $_ALRT_EMAIL
+Hello,
+
+Our system detected that the site $Dom has been hacked!
+
+Common signatures of an attack which triggered this alert:
+
+${_DETECTED}
+
+The platform root directory for this site is:
+
+  $Plr
+
+The system hostname is:
+
+  $_HOST_TEST
+
+To learn more on what happened, how it was possible and
+how to survive #Drupageddon, please read:
+
+  https://omega8.cc/drupageddon-psa-2014-003-342
+
+--
+This e-mail has been sent by your Aegir system monitor.
+
+EOF
+  fi
+  echo "ALERT: HACKED notice sent to $_CLIENT_EMAIL [$_THIS_HM_USER]: OK"
+}
+
 check_site_status () {
   _SITE_TEST=$(drush4 status 2>&1)
   if [[ "$_SITE_TEST" =~ "Error:" ]] || [[ "$_SITE_TEST" =~ "Drush was attempting to connect" ]] ; then
@@ -332,6 +612,51 @@ check_site_status () {
     _STATUS_TEST=$(run_drush4_nosilent_cmd "status | grep 'Drupal bootstrap.*:.*Successful'")
     if [[ "$_STATUS_TEST" =~ "Successful" ]] ; then
       _STATUS=OK
+      if [ -e "$Plr/modules/o_contrib_seven" ] ; then
+        if [ -L "/home/${_THIS_HM_USER}.ftp/.drush/usr/drupalgeddon" ] ; then
+          _DGDD_TEST=$(run_drush4_nosilent_cmd "drupalgeddon-test" 2>&1)
+          if [[ "$_DGDD_TEST" =~ "No evidence of known Drupalgeddon exploits found" ]] ; then
+            _DO_NOTHING=YES
+          elif [[ "$_DGDD_TEST" =~ "The drush command" ]] && [[ "$_DGDD_TEST" =~ "could not be found" ]]; then
+            _DO_NOTHING=YES
+          elif [ -z "$_DGDD_TEST" ] ; then
+            _DO_NOTHING=YES
+          elif [[ "$_DGDD_TEST" =~ "Drush command terminated abnormally" ]] ; then
+            echo "ALERT: THIS SITE IS PROBABLY BROKEN! $Dir"
+            echo "${_DGDD_TEST}"
+          else
+            echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
+            _DETECTED="${_DGDD_TEST}"
+            if [ ! -z "$_MY_EMAIL" ] ; then
+              if [[ "$_DGDD_TEST" =~ "Role \"megauser\" discovered" ]] || [[ "$_DGDD_TEST" =~ "User \"drupaldev\" discovered" ]] || [[ "$_DGDD_TEST" =~ "User \"owned\" discovered" ]] || [[ "$_DGDD_TEST" =~ "User \"system\" discovered" ]] || [[ "$_DGDD_TEST" =~ "User \"configure\" discovered" ]] || [[ "$_DGDD_TEST" =~ "User \"drplsys\" discovered" ]] ; then
+                if [ -e "$User/config/server_master/nginx/vhost.d/${Dom}" ] ; then
+                  mv -f $User/config/server_master/nginx/vhost.d/${Dom} $User/config/server_master/nginx/vhost.d/.${Dom}
+                  send_shutdown_notice
+                fi
+              else
+                send_hacked_alert
+              fi
+            fi
+          fi
+        else
+          _DGMR_TEST=$(run_drush4_nosilent_cmd "sqlq \"SELECT * FROM menu_router WHERE access_callback = 'file_put_contents'\" | grep 'file_put_contents'")
+          if [[ "$_DGMR_TEST" =~ "file_put_contents" ]] ; then
+            echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
+            _DETECTED="file_put_contents as access_callback detected in menu_router table"
+            if [ ! -z "$_MY_EMAIL" ] ; then
+              send_hacked_alert
+            fi
+          fi
+          _DGMR_TEST=$(run_drush4_nosilent_cmd "sqlq \"SELECT * FROM menu_router WHERE access_callback = 'assert'\" | grep 'assert'")
+          if [[ "$_DGMR_TEST" =~ "assert" ]] ; then
+            echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
+            _DETECTED="assert as access_callback detected in menu_router table"
+            if [ ! -z "$_MY_EMAIL" ] ; then
+              send_hacked_alert
+            fi
+          fi
+        fi
+      fi
     else
       _STATUS=BROKEN
       echo "WARNING: THIS SITE IS BROKEN! $Dir"
@@ -1104,10 +1429,20 @@ fix_seven_core_patch () {
     else
       cd $Plr
       patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch
+      chown $_THIS_HM_USER:users $Plr/includes/database/*.inc
+      chmod 0664 $Plr/includes/database/*.inc
+      echo fixed > $Plr/profiles/post-patch-permissions-fix.info
       echo fixed > $Plr/profiles/SA-CORE-2014-005-D7-fix.info
     fi
-    chown $_THIS_HM_USER:users $Plr/profiles/SA-CORE-2014-005-D7-fix.info
-    chmod 0664 $Plr/profiles/SA-CORE-2014-005-D7-fix.info
+    chown $_THIS_HM_USER:users $Plr/profiles/*-fix.info
+    chmod 0664 $Plr/profiles/*-fix.info
+  fi
+  if [ ! -f "$Plr/profiles/post-patch-permissions-fix.info" ] ; then
+    chown $_THIS_HM_USER:users $Plr/includes/database/*.inc
+    chmod 0664 $Plr/includes/database/*.inc
+    echo fixed > $Plr/profiles/post-patch-permissions-fix.info
+    chown $_THIS_HM_USER:users $Plr/profiles/*-fix.info
+    chmod 0664 $Plr/profiles/*-fix.info
   fi
 }
 
@@ -1452,7 +1787,13 @@ process () {
   do
     #echo Counting Site $Site
     Dom=`echo $Site | cut -d'/' -f9 | awk '{ print $1}'`
-    if [ -e "$User/.drush/$Dom.alias.drushrc.php" ] ; then
+    _STATUS_DISABLED=NO
+    _STATUS_TEST=$(grep "Do not reveal Aegir front-end URL here" $User/config/server_master/nginx/vhost.d/$Dom)
+    if [[ "$_STATUS_TEST" =~ "Do not reveal Aegir front-end URL here" ]] ; then
+      _STATUS_DISABLED=YES
+      echo $Dom site is DISABLED
+    fi
+    if [ -e "$User/.drush/$Dom.alias.drushrc.php" ] && [ "$_STATUS_DISABLED" = "NO" ] ; then
       echo Dom is $Dom
       Dir=`cat $User/.drush/$Dom.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
@@ -1472,6 +1813,14 @@ process () {
           esac
           fix_boost_cache
           fix_site_control_files
+        fi
+        if [ -e "$Plr/profiles" ] && [ -e "$Plr/web.config" ] && [ ! -f "$Plr/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
+          _PATCH_TEST=$(grep "foreach (array_values(\$data)" $Plr/includes/database/database.inc)
+          if [[ "$_PATCH_TEST" =~ "array_values" ]] ; then
+            _DONT_TOUCH_PERMISSIONS="$_DONT_TOUCH_PERMISSIONS"
+          else
+            _DONT_TOUCH_PERMISSIONS=NO
+          fi
         fi
         if [ "$_DONT_TOUCH_PERMISSIONS" = "NO" ] && [ "$_PERMISSIONS_FIX" = "YES" ] ; then
           fix_permissions
@@ -1701,6 +2050,22 @@ action () {
         if [ -e "/root/.${_THIS_HM_USER}.octopus.cnf" ] ; then
           source /root/.${_THIS_HM_USER}.octopus.cnf
           _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}
+          _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+          _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+          if [ -e "/data/disk/${_THIS_HM_USER}/log/email.txt" ] ; then
+            _F_CLIENT_EMAIL=`cat /data/disk/${_THIS_HM_USER}/log/email.txt`
+            _F_CLIENT_EMAIL=`echo -n $_F_CLIENT_EMAIL | tr -d "\n"`
+            _F_CLIENT_EMAIL=${_F_CLIENT_EMAIL//\\\@/\@}
+          fi
+          if [ ! -z "${_F_CLIENT_EMAIL}" ] ; then
+            _CLIENT_EMAIL_TEST=$(grep "^_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"" /root/.${_THIS_HM_USER}.octopus.cnf)
+            if [[ "$_CLIENT_EMAIL_TEST" =~ "${_F_CLIENT_EMAIL}" ]] ; then
+              _DO_NOTHING=YES
+            else
+              sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"/g" /root/.${_THIS_HM_USER}.octopus.cnf
+              _CLIENT_EMAIL=${_F_CLIENT_EMAIL}
+            fi
+          fi
         fi
         disable_chattr ${_THIS_HM_USER}.ftp
         rm -f -r /home/${_THIS_HM_USER}.ftp/drush-backups
@@ -1798,11 +2163,19 @@ else
 fi
 #
 mkdir -p /var/xdrago/log/daily
+#
+rm -f /var/backups/BOA.sh.txt-*
+curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-$_NOW
+bash /var/backups/BOA.sh.txt-$_NOW &> /dev/null
+rm -f /var/backups/BOA.sh.txt-$_NOW
+#
 if [ -e "/var/run/boa_wait.pid" ] && [ ! -e "/var/run/boa_system_wait.pid" ] ; then
   touch /var/xdrago/log/wait-for-boa
   exit 1
 elif [ -e "/var/run/daily-fix.pid" ] ; then
   touch /var/xdrago/log/wait-for-daily
+  exit 1
+elif [ -e "/root/.wbhd.clstr.cnf" ] ; then
   exit 1
 else
   touch /var/run/daily-fix.pid
@@ -1855,10 +2228,6 @@ else
     done
     /etc/init.d/nginx reload
   fi
-  rm -f /var/backups/BOA.sh.txt-*
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-$_NOW
-  bash /var/backups/BOA.sh.txt-$_NOW &> /dev/null
-  rm -f /var/backups/BOA.sh.txt-$_NOW
 fi
 
 ###--------------------###
@@ -1930,6 +2299,20 @@ rm -f /tmp/.cron.*.pid
 rm -f /tmp/.busy.*.pid
 rm -f /data/disk/*/.tmp/.cron.*.pid
 rm -f /data/disk/*/.tmp/.busy.*.pid
+
+echo "INFO: Redis server will be restarted in 5 minutes"
+touch /var/run/boa_wait.pid
+sleep 300
+/etc/init.d/nginx reload
+/etc/init.d/redis-server stop
+killall -9 redis-server
+rm -f /var/run/redis.pid
+rm -f /var/lib/redis/*
+rm -f /var/log/redis/redis-server.log
+/etc/init.d/redis-server start
+rm -f /var/run/boa_wait.pid
+echo "INFO: Redis server restarted OK"
+
 rm -f /var/run/daily-fix.pid
 echo "INFO: Daily maintenance complete"
 exit 0

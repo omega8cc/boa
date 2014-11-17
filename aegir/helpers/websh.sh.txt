@@ -20,6 +20,17 @@ if [ -d "/home/${USER}/.tmp" ] ; then
   export TMP="/home/${USER}/.tmp"
   export TMPDIR="/home/${USER}/.tmp"
   export TEMP="/home/${USER}/.tmp"
+  if [[ "$_ARGS" =~ (^)"bash" ]] || [[ "$_ARGS" =~ (^)"dash" ]] ; then
+    exit 1
+  elif [[ "$_ARGS" =~ (^)"id" ]] || [[ "$_ARGS" =~ (^)"which" ]] ; then
+    exit 1
+  elif [[ "$_ARGS" =~ (^)"java" ]] || [[ "$_ARGS" =~ (^)"sendmail" ]] ; then
+    exit 1
+  elif [[ "$_ARGS" =~ (^)"env" ]] || [[ "$_ARGS" =~ (^)"logger" ]] ; then
+    exit 1
+  elif [[ "$_ARGS" =~ (^)"newrelic" ]] || [[ "$_ARGS" =~ (^)"nrsysmond" ]] ; then
+    exit 1
+  fi
 elif [ -d "/data/disk/${_Y_USR}/.tmp" ] ; then
   export TMP="/data/disk/${_Y_USR}/.tmp"
   export TMPDIR="/data/disk/${_Y_USR}/.tmp"

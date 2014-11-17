@@ -100,3 +100,14 @@ It will migrate all cores as-is, so they will be available on the same port 8080
 previously used by Tomcat. It will also automatically install Jetty 7 with
 Solr 1.4.1 for you, even if you forgot to add required SR1 in the _XTRAS_LIST.
 
+
+NOTE ON RELATED ERRORS:
+
+ "Apache Solr Attachments Java executable not found
+  Could not execute a java command. You may need to set the path of
+  the correct java executable as the variable 'apachesolr_attachments_java'
+  in settings.php."
+
+To fix add in the site's local.settings.php file this line:
+
+  $conf['apachesolr_attachments_java'] = '/usr/bin/java7 -Xms32m -Xmx64m';

@@ -64,37 +64,6 @@ _CLIENT_CORES=8
 
 
 ###----------------------------------------###
-### EASY LOCALHOST MODE                    ###
-###----------------------------------------###
-###
-### This option is available and enabled
-### automatically only when Barracuda has been
-### installed with option _EASY_LOCALHOST=YES
-###
-### It will automate/force only some of other
-### Octopus configuration options, as listed
-### below:
-###
-### _PHP_FPM_VERSION=5.3
-### _PHP_CLI_VERSION=5.3
-### _DEBUG_MODE=NO
-### _AEGIR_VERSION=BOA-2.3.5
-### _DNS_SETUP_TEST=NO
-### _THIS_DB_HOST=localhost
-### _LOCAL_NETWORK_IP="127.0.1.1"
-### _DOMAIN=$_USER.sub.aegir.local
-###
-### Thanks to local DNS wildcard, you will be
-### able to use many levels of subdomains for
-### created sites, for example:
-### site.aegir.local, abc.xyz.site.aegir.local
-### This wildcard will rely only on the local,
-### basic DNS system, without any need to use
-### external DNS.
-###
-
-
-###----------------------------------------###
 ### PHP-FPM VERSION                        ###
 ###----------------------------------------###
 ###
@@ -163,9 +132,7 @@ _PHP_CLI_VERSION=5.3
 ### ERP ----------- ERPAL
 ### FSR ----------- Feature Server
 ### GDR ----------- Guardr
-### MNS ----------- Managing News
 ### OA7 ----------- Open Atrium D7
-### OAM ----------- Open Atrium D6
 ### OAY ----------- Open Academy
 ### OBG ----------- OpenBlog
 ### OCH ----------- OpenChurch 1
@@ -177,8 +144,6 @@ _PHP_CLI_VERSION=5.3
 ### PPY ----------- Panopoly
 ### RER ----------- Recruiter
 ### RST ----------- Restaurant
-### SRK ----------- Spark
-### TTM ----------- Totem
 ### UC7 ----------- Ubercart D7
 ### UCT ----------- Ubercart D6
 ###
@@ -270,7 +235,7 @@ _MY_OWNIP=""
 ### The HEAD can be occasionally broken
 ### and should be used **only** for testing!
 ###
-_AEGIR_VERSION=BOA-2.3.5
+_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
@@ -312,24 +277,128 @@ _DNS_SETUP_TEST=YES
 
 
 ###----------------------------------------###
-### DATABASE CUSTOM HOST                   ###
+### DATABASE DEFAULT HOST                  ###
 ###----------------------------------------###
 ###
 ### If you prefer, you can set the database
 ### to be connected via FQDN pointing to your
-### public IP instead of default "localhost".
+### public IP instead of default "localhost",
+### but it will make it harder to migrate
+### sites with DB grants tied to the system
+### unique hostname.
 ###
-### Note: the "FQDN" is a keyword.
-### Don't replace it with a real hostname.
+### Note: the "FQDN" is a keyword. It will be
+### automatically replaced with your system
+### real hostname when used.
+###
+### NOTE: This distinction is very important,
+### because if you will specify your system
+### local hostname literally, BOA will use
+### the "Remote DB Server Mode" instead, as
+### explained further below.
 ###
 ### For local or Amazon based installs with
 ### local/dynamic IP address it is recommended
 ### to use default "localhost" option.
 ###
-### Available options:
+### Supported options:
 ###
 ### _THIS_DB_HOST=localhost
 ### _THIS_DB_HOST=FQDN
+###
+_THIS_DB_HOST=localhost
+
+
+###----------------------------------------###
+### REMOTE DB SERVER MODE                  ###
+###----------------------------------------###
+###
+### WARNING !!!
+###
+### THIS IS **HIGHLY EXPERIMENTAL** FEATURE.
+### EXPECT YOUR SYSTEM TO *EXPLODE* IF USED.
+###
+### Note: We may refer to the DB server
+###       also by using term 'DB head'
+###
+### If you will specify some remote DB server
+### name (not IP) or even local hostname, but
+### literally instead of via 'localhost' or
+### 'FQDN' keyword, it will turn on and use
+### the special REMOTE DB SERVER MODE.
+###
+### This mode will work only if the remote DB
+### server has been already configured with
+### the same default dummy mysql root password
+### as your Aegir system you are about to
+### install, and if the mysql port 3306 is
+### already open for incoming and outgoing
+### TCP connections on all servers expected
+### to communicate in this mode.
+###
+### HINT: you may want to add WEB head (Aegir)
+### IP as allowed on the DB head with standard
+### command: 'csf -a 12.34.56.789 my web head'
+###
+### Note that if the remote DB server defined
+### as hostname with a valid DNS entry will be
+### used, BOA will never change mysql root
+### password and also on initial install will
+### use this dummy password:
+###
+###   sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+###
+### The same password will be used for the
+### Aegir special DB user 'aegir_root'.
+###
+### Furthermore, BOA will not create separate
+### special DB users per Octopus instance
+### and all instances will use the same
+### 'aegir_root' DB user to manage databases
+### for hosted sites.
+###
+### You can later change this password for
+### both mysql 'root' and 'aegir_root' users
+### on the remote DB server, but you will
+### have to manually update them in every
+### Aegir instance (Master and Satellites)
+### db server node settings.
+###
+### However, BOA will always check and use
+### the password it will find in the special
+### file /root/.my.pass.txt during Master
+### and Satellite instances upgrade.
+###
+### If you will change the mysql root password
+### you **must** update it also in two files:
+###
+###   /root/.my.pass.txt
+###   /root/.my.cnf
+###
+### When installing BOA on a machine expected
+### to work as a remote DB server, you should
+### create a special file containing your
+### WEB head (Aegir) hostname:
+###
+###  /root/.remote.web.head.txt
+###
+### BOA will use this file to add required
+### DB GRANT for 'aegir_root' on the DB head
+### so the WEB head (Aegir) hosted on the
+### machine with hostname specified in this
+### file will be able to manage databases
+### remotely. Make sure that this file
+### is present only on the DB head, though.
+###
+### WARNING !!!
+###
+### Make sure that there is no remote, public,
+### unrestricted access via port 3306 to any
+### DB server used in this special mode!
+###
+### Available non-default option:
+###
+### _THIS_DB_HOST=remote.db.server.name
 ###
 _THIS_DB_HOST=localhost
 
@@ -486,8 +555,8 @@ _LOCAL_NETWORK_IP=""
 ### a sign of unreliable /dev/urandom.
 ### See: https://drupal.org/node/1952042
 ###
-### By default new passwords are generated
-### with "pwgen -v -s -1" command.
+### Configurable length: 8-128 or automatic
+### with keywords: YES (32), NO (8).
 ###
 _STRONG_PASSWORDS=NO
 
@@ -605,20 +674,20 @@ _RESERVED_RAM=0
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.5
-_BRANCH_BOA=2.3.x-dev
+_INSTALLER_VERSION=BOA-2.3.5-dev
+_BRANCH_BOA=master
 _BRANCH_PROVISION=2.3.x-dev
 
 ###
 ### Variables
 ###
-_DRUSH_VERSION=mini-6-04-10-2014
+_DRUSH_VERSION=mini-6-30-10-2014
 _NOW=`date +%y%m%d-%H%M`
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
 _REDIS_M_VERSION=mod-12-09-2014
 _SMALLCORE6=6.33.1
-_SMALLCORE7=7.32.1
+_SMALLCORE7=7.33.1
 _SMALLCORE8=8.0-alpha4
 _SPINNER=YES
 _T_BUILD=HEAD
@@ -642,33 +711,29 @@ _COD=7.x-1.0-alpha5
 _COMMERCE1=7.x-1.31
 _COMMERCE2=7.x-2.19
 _COMMONS2=6.x-2.20
-_COMMONS3=7.x-3.17
+_COMMONS3=7.x-3.19
 _DRUPAL_EDGE_8="8.0-dev-$_TODAY-edge"
 _DRUPAL7="drupal-$_SMALLCORE7"
 _DRUPAL8="8.0-dev-120915"
 _ERPAL=7.x-2.1
 _GUARDR=7.x-1.14
-_MANAGINGNEWS=1.2.4
-_OPEN_DEALS=1.33
+_OPEN_DEALS=1.35
 _OPENACADEMY=7.x-1.1
-_OPENATRIUM6=6.x-1.7
-_OPENATRIUM7=7.x-2.22
+_OPENATRIUM7=7.x-2.24
 _OPENBLOG=7.x-1.0-alpha3
-_OPENCHURCH1=7.x-1.14
-_OPENCHURCH2=7.x-2.0-beta1
-_OPENDEALS=7.x-1.33
+_OPENCHURCH1=7.x-1.15
+_OPENCHURCH2=7.x-2.0-beta2
+_OPENDEALS=7.x-1.35
 _OPENOUTREACH=7.x-1.12
 _OPENPUBLIC=7.x-1.2
 _OPENPUBLISH=7.x-1.0-beta7
-_OPENSCHOLAR=7.x-3.15.1
-_PANOPOLY=7.x-1.12
+_OPENSCHOLAR=7.x-3.16.0
+_PANOPOLY=7.x-1.13
 _PROSEPOINT=0.46
 _RECRUITER=7.x-1.3
-_RESTAURANT=7.x-1.0-beta9
-_SPARK=7.x-1.0-beta1
-_TOTEM=7.x-1.1
-_UBERCART6=2.13
-_UBERCART7=3.7
+_RESTAURANT=7.x-1.0-beta10
+_UBERCART6=2.14
+_UBERCART7=3.8
 
 
 ###---### Functions
@@ -1493,13 +1558,12 @@ action () {
     sed -i "s/EDIT_LAST_HMR/$_LAST_HMR/g"                   $Files &> /dev/null
     sed -i "s/EDIT_LASTNUM/$_LASTNUM/g"                     $Files &> /dev/null
     sed -i "s/EDIT_LEGACY_RESULT/$_LEGACY_RESULT/g"         $Files &> /dev/null
-    sed -i "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files &> /dev/null
     sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_MY_OWNIP/$_MY_OWNIP/g"                   $Files &> /dev/null
     sed -i "s/EDIT_NOW/$_NOW/g"                             $Files &> /dev/null
     sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files &> /dev/null
     sed -i "s/EDIT_OPEN_DEALS/$_OPEN_DEALS/g"               $Files &> /dev/null
     sed -i "s/EDIT_OPENACADEMY/$_OPENACADEMY/g"             $Files &> /dev/null
-    sed -i "s/EDIT_OPENATRIUM6/$_OPENATRIUM6/g"             $Files &> /dev/null
     sed -i "s/EDIT_OPENATRIUM7/$_OPENATRIUM7/g"             $Files &> /dev/null
     sed -i "s/EDIT_OPENBLOG/$_OPENBLOG/g"                   $Files &> /dev/null
     sed -i "s/EDIT_OPENCHURCH1/$_OPENCHURCH1/g"             $Files &> /dev/null
@@ -1523,13 +1587,11 @@ action () {
     sed -i "s/EDIT_SMALLCORE6/$_SMALLCORE6/g"               $Files &> /dev/null
     sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files &> /dev/null
     sed -i "s/EDIT_SMALLCORE8/$_SMALLCORE8/g"               $Files &> /dev/null
-    sed -i "s/EDIT_SPARK/$_SPARK/g"                         $Files &> /dev/null
     sed -i "s/EDIT_SPINNER/$_SPINNER/g"                     $Files &> /dev/null
     sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"   $Files &> /dev/null
     sed -i "s/EDIT_T_BUILD/$_T_BUILD/g"                     $Files &> /dev/null
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files &> /dev/null
     sed -i "s/EDIT_THISHTIP/$_THISHTIP/g"                   $Files &> /dev/null
-    sed -i "s/EDIT_TOTEM/$_TOTEM/g"                         $Files &> /dev/null
     sed -i "s/EDIT_UBERCART6/$_UBERCART6/g"                 $Files &> /dev/null
     sed -i "s/EDIT_UBERCART7/$_UBERCART7/g"                 $Files &> /dev/null
     sed -i "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files &> /dev/null
@@ -1757,7 +1819,7 @@ _THIS_HOST=`uname -n`
 if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
   _PHP_FPM_VERSION=5.3
   _PHP_CLI_VERSION=5.3
-  _AEGIR_VERSION=BOA-2.3.5
+  _AEGIR_VERSION=HEAD
   _DEBUG_MODE=NO
   _DNS_SETUP_TEST=NO
   _DOMAIN="$_USER.sub.aegir.local"
@@ -2096,9 +2158,6 @@ _RAW_CLIENT_EMAIL="$_CLIENT_EMAIL"
 _CLIENT_EMAIL=${_CLIENT_EMAIL//\@/\\\@}
 
 ###--------------------###
-if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-  _THIS_DB_HOST=`uname -n`
-fi
 if [ -f "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] ; then
   _PURGE_MODE=ON
 else
@@ -2115,6 +2174,7 @@ enable_chattr () {
       chattr +i /home/$1/.bazaar    &> /dev/null
     fi
     chattr +i /home/$1/.drush       &> /dev/null
+    chattr +i /home/$1/.drush/usr   &> /dev/null
     chattr +i /home/$1/.drush/*.ini &> /dev/null
   fi
 }
@@ -2128,6 +2188,7 @@ disable_chattr () {
       chattr -i /home/$1/.bazaar    &> /dev/null
     fi
     chattr -i /home/$1/.drush       &> /dev/null
+    chattr -i /home/$1/.drush/usr   &> /dev/null
     chattr -i /home/$1/.drush/*.ini &> /dev/null
   fi
 }

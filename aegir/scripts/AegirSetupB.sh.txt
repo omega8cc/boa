@@ -53,10 +53,8 @@ _DRUPAL7=EDIT_DRUPAL7
 _DRUPAL8=EDIT_DRUPAL8
 _ERPAL=EDIT_ERPAL
 _GUARDR=EDIT_GUARDR
-_MANAGINGNEWS=EDIT_MANAGINGNEWS
 _OPEN_DEALS=EDIT_OPEN_DEALS
 _OPENACADEMY=EDIT_OPENACADEMY
-_OPENATRIUM6=EDIT_OPENATRIUM6
 _OPENATRIUM7=EDIT_OPENATRIUM7
 _OPENBLOG=EDIT_OPENBLOG
 _OPENCHURCH1=EDIT_OPENCHURCH1
@@ -73,8 +71,6 @@ _RESTAURANT=EDIT_RESTAURANT
 _SMALLCORE6=EDIT_SMALLCORE6
 _SMALLCORE7=EDIT_SMALLCORE7
 _SMALLCORE8=EDIT_SMALLCORE8
-_SPARK=EDIT_SPARK
-_TOTEM=EDIT_TOTEM
 _UBERCART6=EDIT_UBERCART6
 _UBERCART7=EDIT_UBERCART7
 
@@ -100,6 +96,7 @@ _HM_ONLY=EDIT_HM_ONLY
 _LAST_HMR=EDIT_LAST_HMR
 _LASTNUM=EDIT_LASTNUM
 _LEGACY_RESULT=EDIT_LEGACY_RESULT
+_MY_OWNIP=EDIT_MY_OWNIP
 _NOW=EDIT_NOW
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
 _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
@@ -361,7 +358,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
   mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
-  _B_EXT="provision clean_missing_modules drush_ecl provision_boost provision_cdn provision_civicrm provision_platform_git provision_site_backup provision_tasks_extra registry_rebuild security_check security_review remote_import"
+  _B_EXT="provision clean_missing_modules drupalgeddon drush_ecl provision_boost provision_cdn provision_civicrm provision_platform_git provision_site_backup provision_tasks_extra registry_rebuild security_check security_review remote_import"
   for e in $_B_EXT; do
     if [ -e "$_ROOT/.drush/$e" ] ; then
       mv -f $_ROOT/.drush/$e $_ROOT/backups/system/$e-pre-$_DISTRO-$_NOW &> /dev/null
@@ -405,10 +402,11 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone --branch 6.x-2.x git://github.com/omega8cc/provision_site_backup.git $_ROOT/.drush/xts/provision_site_backup   &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/remote_import.git $_ROOT/.drush/sys/provision/remote_import         &> /dev/null
   git clone --branch 6.x-3.x git://github.com/omega8cc/provision_tasks_extra.git $_ROOT/.drush/xts/provision_tasks_extra   &> /dev/null
+  git clone --branch 7.x-1.x-dev git://github.com/omega8cc/drupalgeddon.git $_ROOT/.drush/usr/drupalgeddon                 &> /dev/null
   git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/usr/drush_ecl                           &> /dev/null
-  git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/usr/registry_rebuild             &> /dev/null
   git clone --branch 7.x-1.x git://github.com/omega8cc/security_review.git $_ROOT/.drush/xts/security_review               &> /dev/null
   git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/xts/provision_boost               &> /dev/null
+  git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/usr/registry_rebuild             &> /dev/null
   rm -f -r $_ROOT/.drush/*/.git
   rm -f -r $_ROOT/.drush/*/*/.git
   cd $_ROOT/.drush/usr
@@ -423,7 +421,7 @@ else
     get_dev_ext "$e.tar.gz"
   done
   cd $_ROOT/.drush/usr
-  _G_EXT="clean_missing_modules drush_ecl registry_rebuild "
+  _G_EXT="clean_missing_modules drupalgeddon drush_ecl registry_rebuild "
   for e in $_G_EXT; do
     get_dev_ext "$e.tar.gz"
   done
@@ -442,14 +440,31 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   cd $_ROOT
   _AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
   _AGRPASWD=`echo -n $_AGRPXSWD | tr -d "\n"`
-  _AEGIR_HOST=`uname -n`
+
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+      _THIS_DB_HOST=`uname -n`
+    else
+      _THIS_DB_HOST=localhost
+    fi
+    _USE_AEGIR_HOST=`uname -n`
+    _USE_DB_USER="$_USER"
+  else
+    _USE_AEGIR_HOST=`uname -n`
+    _USE_DB_USER=aegir_root
+  fi
+  if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
+    _USE_AEGIR_HOST=`uname -n`
+    _THIS_DB_HOST=`uname -n`
+  fi
+
   msg "$_STATUS B: Running hostmaster-install, please wait..."
   $_DRUSHCMD cache-clear drush >$_ROOT/log/install.log 2>&1
   rm -f -r $_ROOT/.tmp/cache
   if [ "$_DEBUG_MODE" = "YES" ] ; then
-    $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$_AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$_AGRPASWD --aegir_root=$_ROOT --root=$_HOSTMASTER_ROOT --http_service_type=nginx --aegir_db_host=$_THIS_DB_HOST --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION -y -d
+    $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$_USE_AEGIR_HOST --aegir_db_user=$_USE_DB_USER --aegir_db_pass=$_AGRPASWD --aegir_root=$_ROOT --root=$_HOSTMASTER_ROOT --http_service_type=nginx --aegir_db_host=$_THIS_DB_HOST --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION -y -d
   else
-    $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$_AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$_AGRPASWD --aegir_root=$_ROOT --root=$_HOSTMASTER_ROOT --http_service_type=nginx --aegir_db_host=$_THIS_DB_HOST --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION -y >$_ROOT/log/install.log 2>&1
+    $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$_USE_AEGIR_HOST --aegir_db_user=$_USE_DB_USER --aegir_db_pass=$_AGRPASWD --aegir_root=$_ROOT --root=$_HOSTMASTER_ROOT --http_service_type=nginx --aegir_db_host=$_THIS_DB_HOST --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION -y >$_ROOT/log/install.log 2>&1
   fi
   rm -rf $_HOSTMASTER_ROOT/profiles/{default,standard,minimal,testing}
   cd $_HOSTMASTER_ROOT
@@ -561,7 +576,7 @@ else
   if [ -e "$_ROOT/log/imported.pid" ] || [ -e "$_ROOT/log/exported.pid" ] ; then
     if [ ! -e "$_ROOT/log/post-merge-fix.pid" ] ; then
       msg "$_STATUS B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 start"
-      _AEGIR_HOST=`uname -n`
+      _USE_AEGIR_HOST=`uname -n`
       $_DRUSHCMD @hostmaster sqlq "REPLACE INTO hosting_context (nid, name) VALUES ('4', 'server_localhost'), ('2', 'server_master')" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "REPLACE INTO hosting_package (vid, nid, package_type, short_name, old_short_name, description) VALUES ('6', '6', 'platform', 'drupal', '', '')" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "REPLACE INTO node_revisions (nid, vid, uid, title, body, teaser, log, timestamp, format) VALUES ('6', '6', '1', 'drupal', '', '', '', '1412168340', '0')" &> /dev/null
@@ -572,15 +587,14 @@ else
       $_DRUSHCMD @hostmaster sqlq "DELETE FROM node_revisions WHERE nid='8'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE node SET type='server' WHERE nid='2'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE node SET type='server' WHERE nid='4'" &> /dev/null
-      $_DRUSHCMD @hostmaster sqlq "UPDATE node SET title='$_AEGIR_HOST' WHERE nid='2'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE node SET title='$_USE_AEGIR_HOST' WHERE nid='2'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE node SET title='localhost' WHERE nid='4'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET type='server' WHERE nid='2'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET type='server' WHERE nid='4'" &> /dev/null
-      $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET title='$_AEGIR_HOST' WHERE nid='2'" &> /dev/null
+      $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET title='$_USE_AEGIR_HOST' WHERE nid='2'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET title='localhost' WHERE nid='4'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET db_server='4' WHERE db_server='2'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET web_server='2' WHERE web_server='0'" &> /dev/null
-      $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE users_roles SET rid='7' WHERE rid='5'" &> /dev/null
       $_DRUSHCMD cache-clear drush &> /dev/null
       rm -f -r $_ROOT/.tmp/cache
@@ -590,11 +604,16 @@ else
     fi
     $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='7'" &> /dev/null
     $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='9'" &> /dev/null
+    $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE client='0'" &> /dev/null
     $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET web_server='2' WHERE web_server='0'" &> /dev/null
+    $_DRUSHCMD @hostmaster sqlq "UPDATE node SET uid='1' WHERE uid='0'" &> /dev/null
+    $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET uid='1' WHERE uid='0'" &> /dev/null
   fi
   ### Fix for old migrated/merged instances
 
   msg "$_STATUS B: Hostmaster STATUS: Running hostmaster-migrate, please wait..."
+  $_DRUSHCMD cache-clear drush &> /dev/null
+  rm -f -r $_ROOT/.tmp/cache
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y -d
   else
@@ -614,16 +633,16 @@ else
   if [ -e "$_ROOT/log/imported.pid" ] || [ -e "$_ROOT/log/exported.pid" ] ; then
     if [ ! -e "$_ROOT/log/post-merge-fix.pid" ] ; then
       msg "$_STATUS B: Hostmaster STATUS: Fix for migrated/merged instance 2/2 start"
-      $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "UPDATE users_roles SET rid='7' WHERE rid='5'" &> /dev/null
-      $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='7'" &> /dev/null
-      $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='9'" &> /dev/null
       echo FIXED > $_ROOT/log/post-merge-fix.pid
       msg "$_STATUS B: Hostmaster STATUS: Fix for migrated/merged instance 2/2 complete"
     fi
     $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='7'" &> /dev/null
     $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE profile='9'" &> /dev/null
+    $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_site SET client='1' WHERE client='0'" &> /dev/null
     $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET web_server='2' WHERE web_server='0'" &> /dev/null
+    $_DRUSHCMD @hostmaster sqlq "UPDATE node SET uid='1' WHERE uid='0'" &> /dev/null
+    $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET uid='1' WHERE uid='0'" &> /dev/null
   fi
   ### Fix for migrated/merged instances
 

@@ -40,14 +40,21 @@ _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _BRANCH_BOA=EDIT_BRANCH_BOA
 _BRANCH_PROVISION=EDIT_BRANCH_PROVISION
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
+_LOCAL_NETWORK_IP=EDIT_LOCAL_NETWORK_IP
+_MY_OWNIP=EDIT_MY_OWNIP
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
 _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
 _REL_VERSION=`lsb_release -sc`
+_ROOT="$HOME"
 _STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
-_LOCAL_NETWORK_IP=EDIT_LOCAL_NETWORK_IP
-_ROOT="$HOME"
+_AEGIR_DB_USER=EDIT_AEGIR_DB_USER
+_ESC_APASS=EDIT_ESC_APASS
+_AEGIR_HOST=EDIT_AEGIR_HOST
 #
+if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+  _THIS_DB_HOST=`uname -n`
+fi
 if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
   _L_PHP_CLI=/opt/php55/bin
 elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
@@ -179,61 +186,6 @@ if [ `whoami` = "root" ] ; then
   exit 1
 fi
 
-_AEGIR_HOST=`uname -n`
-_RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
-
-if [ -z "$_RESOLVEIP" ] ; then
-  msg "FATAL ERROR: This server does not have a hostname that resolves to an IP address"
-  msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
-  touch /opt/tmp/status-AegirSetupM-FAIL
-  exit 1
-else
-  _AEGIR_HOST_IP="$_RESOLVEIP"
-fi
-
-_MYSQLTEST=`mysql -h$_AEGIR_HOST_IP  -uINVALIDLOGIN  -pINVALIDPASS 2>&1 >/dev/null | cat`
-
-if [ -z `echo $_MYSQLTEST | grep -q "ERROR \(2003\|1130\)"` ] ; then
-  msg  "MySQL is listening on $_AEGIR_HOST_IP."
-  _DO_NOTHING=YES
-else
-  msg "FATAL ERROR: MySQL is not configured to listen on $_AEGIR_HOST_IP"
-  msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
-  touch /opt/tmp/status-AegirSetupM-FAIL
-  exit 1
-fi
-
-msg "INFO: Barracuda will now generate a mysql super user password for you: "
-
-_AEGIR_DB_USER=aegir_root
-_ESC_APASS=""
-_LEN_APASS=0
-
-if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-  _ESC_APASS=$(randpass 32 esc)
-  _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
-  _LEN_APASS=$(echo ${#_ESC_APASS})
-fi
-
-if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 19 ] ; then
-  _ESC_APASS=`pwgen -v -s -1`
-  _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
-  _ESC_APASS=`sanitize_string "$_ESC_APASS"`
-fi
-
-cat <<EOF
-  Username : $_AEGIR_DB_USER
-  Password : $_ESC_APASS
-  Hostname : $_AEGIR_HOST ($_AEGIR_HOST_IP)
-EOF
-
-_ESC="\`%\`.*"
-mysql -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST_IP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_AEGIR_DB_USER'@'localhost' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
-EOFMYSQL
-
 msg "INFO: Installing drush in $_ROOT"
 cd $_ROOT
 get_dev_ext "drush-$_DRUSH_VERSION.tar.gz"
@@ -267,10 +219,11 @@ else
     mkdir -p $_ROOT/.drush/{sys,xts,usr}
     git clone --branch $_BRANCH_PROVISION git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision    &> /dev/null
     git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/xts/provision_cdn       &> /dev/null
+    git clone --branch 7.x-1.x-dev git://github.com/omega8cc/drupalgeddon.git $_ROOT/.drush/usr/drupalgeddon     &> /dev/null
     git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/usr/drush_ecl               &> /dev/null
-    git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/usr/registry_rebuild &> /dev/null
     git clone --branch 7.x-1.x git://github.com/omega8cc/security_review.git $_ROOT/.drush/xts/security_review   &> /dev/null
     git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/xts/provision_boost   &> /dev/null
+    git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/usr/registry_rebuild &> /dev/null
     rm -f -r $_ROOT/.drush/*/.git
     rm -f -r $_ROOT/.drush/*/*/.git
     cd $_ROOT/.drush/usr
@@ -281,6 +234,7 @@ else
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
     cd $_ROOT/.drush/usr
     get_dev_ext "clean_missing_modules.tar.gz"
+    get_dev_ext "drupalgeddon.tar.gz"
     get_dev_ext "drush_ecl.tar.gz"
     get_dev_ext "registry_rebuild.tar.gz"
     cd $_ROOT/.drush/xts

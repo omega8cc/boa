@@ -157,6 +157,10 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; then
   csf -e
   csf -q
   rm -f /var/run/water.pid
+else
+  if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    ntpdate pool.ntp.org
+  fi
 fi
 exit 0
 ###EOF2014###

@@ -2,7 +2,6 @@
 
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-_STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
 _HOST_TEST=`uname -n 2>&1`
 _VM_TEST=`uname -a 2>&1`
 _USRG=users
@@ -18,6 +17,35 @@ if [[ "$_VM_TEST" =~ beng ]] ; then
 else
   _VMFAMILY="XEN"
 fi
+
+###-------------SYSTEM-----------------###
+
+extract_archive () {
+  if [ ! -z $1 ] ; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1    ;;
+      *.tar.gz)    tar xzf $1    ;;
+      *.bz2)       bunzip2 $1    ;;
+      *.rar)       unrar x $1    ;;
+      *.gz)        gunzip -q $1  ;;
+      *.tar)       tar xf $1     ;;
+      *.tbz2)      tar xjf $1    ;;
+      *.tgz)       tar xzf $1    ;;
+      *.zip)       unzip -qq $1  ;;
+      *.Z)         uncompress $1 ;;
+      *.7z)        7z x $1       ;;
+      *)           echo "'$1' cannot be extracted via >extract<" ;;
+    esac
+    rm -f $1
+  fi
+}
+
+get_dev_ext () {
+  if [ ! -z $1 ] ; then
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/HEAD/$1"
+    extract_archive "$1"
+  fi
+}
 
 ###----------------------------###
 ##    Manage ltd shell users    ##
@@ -48,8 +76,8 @@ enable_chattr () {
         rm -f -r $_U_HD/*
         rm -f -r $_U_HD/.*
       else
-        rm -f $_U_HD/{drush_make,registry_rebuild,clean_missing_modules,drush_ecl}
-        rm -f $_U_HD/usr/{drush_make,registry_rebuild,clean_missing_modules,drush_ecl}
+        rm -f $_U_HD/{drush_make,registry_rebuild,clean_missing_modules,drupalgeddon,drush_ecl}
+        rm -f $_U_HD/usr/{drush_make,registry_rebuild,clean_missing_modules,drupalgeddon,drush_ecl}
         rm -f $_U_HD/.ctrl*
         rm -f -r $_U_HD/{cache,drush.ini,*drushrc*,*.inc}
       fi
@@ -65,6 +93,9 @@ enable_chattr () {
       fi
       if [ ! -L "$_U_HD/usr/clean_missing_modules" ] ; then
         ln -sf /data/disk/${_OWN}/.drush/usr/clean_missing_modules $_U_HD/usr/clean_missing_modules
+      fi
+      if [ ! -L "$_U_HD/usr/drupalgeddon" ] ; then
+        ln -sf /data/disk/${_OWN}/.drush/usr/drupalgeddon $_U_HD/usr/drupalgeddon
       fi
       if [ ! -L "$_U_HD/usr/drush_ecl" ] ; then
         ln -sf /data/disk/${_OWN}/.drush/usr/drush_ecl $_U_HD/usr/drush_ecl
@@ -142,10 +173,14 @@ enable_chattr () {
       fi
       if [ ! -x "/home/${UQ}/.rvm/bin/rvm" ] ; then
         touch /var/run/manage_rvm_users.pid
+        su -s /bin/bash ${UQ} -c "gpg --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3" &> /dev/null
+        su -s /bin/bash ${UQ} -c "\curl -sSL https://rvm.io/mpapis.asc | gpg --import" &> /dev/null
         su -s /bin/bash ${UQ} -c "\curl -sSL https://get.rvm.io | bash -s stable" &> /dev/null
-        su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles"               &> /dev/null
+        su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles" &> /dev/null
+        su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc" &> /dev/null
         rm -f /var/run/manage_rvm_users.pid
       fi
+      su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc" &> /dev/null
       if [ ! -e "/home/${UQ}/.rvm/rubies/default" ] ; then
         if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
           _WEB_SH=`readlink -n /bin/sh`
@@ -163,7 +198,7 @@ enable_chattr () {
           fi
         fi
         touch /var/run/manage_rvm_users.pid
-        su -s /bin/bash - ${UQ} -c "rvm install ${_RUBY_VERSION}"       &> /dev/null
+        su -s /bin/bash - ${UQ} -c "rvm install ${_RUBY_VERSION}" &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm use ${_RUBY_VERSION} --default" &> /dev/null
         rm -f /var/run/manage_rvm_users.pid
         rm -f /bin/sh
@@ -227,6 +262,7 @@ enable_chattr () {
       chattr +i /home/$1/.bazaar     &> /dev/null
     fi
     chattr +i /home/$1/.drush        &> /dev/null
+    chattr +i /home/$1/.drush/usr    &> /dev/null
     chattr +i /home/$1/.drush/*.ini  &> /dev/null
   fi
 }
@@ -244,7 +280,28 @@ disable_chattr () {
       chattr -i /home/$1/.bazaar     &> /dev/null
     fi
     chattr -i /home/$1/.drush        &> /dev/null
+    chattr -i /home/$1/.drush/usr    &> /dev/null
     chattr -i /home/$1/.drush/*.ini  &> /dev/null
+    if [ "$1" != "${_OWN}.ftp" ] ; then
+      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] && [ -d "/data/disk/${_OWN}/.drush/usr/drupalgeddon" ] ; then
+        ln -sf /data/disk/${_OWN}/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
+      fi
+    else
+      if [ ! -d "/data/disk/${_OWN}/.drush/usr/drupalgeddon" ] || [ ! -e "/data/disk/${_OWN}/static/control/.drupalgeddon.in.013.pid" ] ; then
+        rm -f /data/disk/${_OWN}/.drush/usr/drupalgeddon &> /dev/null
+        cd /data/disk/${_OWN}/.drush/usr
+        get_dev_ext "drupalgeddon.tar.gz"
+        find /data/disk/${_OWN}/.drush/usr/drupalgeddon -type d -exec chmod 0750 {} \; &> /dev/null
+        find /data/disk/${_OWN}/.drush/usr/drupalgeddon -type f -exec chmod 0640 {} \; &> /dev/null
+        chown -R ${_OWN}:users /data/disk/${_OWN}/.drush/usr/drupalgeddon
+        rm -f /data/disk/${_OWN}/static/control/.drupalgeddon.in.00*.pid
+        touch /data/disk/${_OWN}/static/control/.drupalgeddon.in.013.pid
+      fi
+      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] && [ -d "/data/disk/${_OWN}/.drush/usr/drupalgeddon" ] ; then
+        rm -f -r /home/$1/.drush/usr/drupalgeddon
+        ln -sf /data/disk/${_OWN}/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
+      fi
+    fi
   fi
 }
 #
@@ -352,12 +409,27 @@ ok_create_user()
     adduser $_USER_LTD $_WEBG
     _ESC_LUPASS=""
     _LEN_LUPASS=0
-    if [ "$_STRONG_PASSWORDS" = "YES" ] || [ "$_STRONG_PASSWORDS" = "EDIT_STRONG_PASSWORDS" ] ; then
-      _ESC_LUPASS=$(randpass 32 alnum)
+    if [ "$_STRONG_PASSWORDS" = "YES" ]  ; then
+      _PWD_CHARS=32
+    elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+      _PWD_CHARS=8
+    else
+      _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+      if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
+        _PWD_CHARS="$_STRONG_PASSWORDS"
+      else
+        _PWD_CHARS=8
+      fi
+      if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+        _PWD_CHARS=128
+      fi
+    fi
+    if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
+      _ESC_LUPASS=$(randpass $_PWD_CHARS alnum)
       _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
     fi
-    if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 19 ] ; then
+    if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 9 ] ; then
       _ESC_LUPASS=`pwgen -v -s -1`
       _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
       _ESC_LUPASS=`sanitize_string "$_ESC_LUPASS"`
@@ -959,7 +1031,7 @@ else
     _WEB_SH=`readlink -n /bin/sh`
     _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
     if [ -x "/bin/websh" ] ; then
-      if [ "$_WEB_SH" != "/bin/websh" ] ; then
+      if [ "$_WEB_SH" != "/bin/websh" ] && [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
       fi
@@ -992,6 +1064,32 @@ else
   chmod 0710 /var/aegir/.drush &> /dev/null
   find /var/aegir/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
   find /var/aegir/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
+  if [ -e "/var/scout" ] ; then
+    _SCOUT_CRON_OFF=$(grep "OFFscoutOFF" /etc/crontab)
+    if [[ "$_SCOUT_CRON_OFF" =~ "OFFscoutOFF" ]] ; then
+      sleep 5
+      sed -i "s/OFFscoutOFF/scout/g" /etc/crontab &> /dev/null
+    fi
+  fi
+  if [ -e "/var/backups/reports/up/barracuda" ] ; then
+    if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+      if [ -e "/var/spool/cron/crontabs/aegir" ] ; then
+        sleep 180
+        rm -f /var/spool/cron/crontabs/aegir
+        service cron reload &> /dev/null
+      fi
+    fi
+    if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] ; then
+      if [ -e "/var/run/mysqld/mysqld.pid" ] && [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
+        service cron stop &> /dev/null
+        sleep 180
+        touch /root/.remote.db.cnf
+        service mysql stop &> /dev/null
+        sleep 5
+        service cron start &> /dev/null
+      fi
+    fi
+  fi
   rm -f /var/run/manage_ltd_users.pid
   exit 0
 fi

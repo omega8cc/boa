@@ -65,6 +65,9 @@ if [ -e "/var/run/boa_wait.pid" ] || [ -e "/var/run/manage_rvm_users.pid" ] ; th
   touch /var/xdrago/log/wait-runner
   exit 0
 else
+  if [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    exit 0
+  fi
   action
   exit 0
 fi
