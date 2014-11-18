@@ -266,6 +266,9 @@ up_action ()
         else
           n=8
         fi
+        if [ -e "/root/.dbhd.clstr.cnf" ] ; then
+          n=$((RANDOM%1800+80))
+        fi
         echo
         echo "Preparing the upgrade in silent mode..."
         echo
@@ -514,6 +517,7 @@ proceed ()
   fi
   if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
     _SCRIPT_URL="https://raw.githubusercontent.com/omega8cc/boa/cluster/BARRACUDA.sh.txt"
+    cmmand="up-cluster"
   fi
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab $_SCRIPT_URL -o BARRACUDA.sh.txt
   up_action
