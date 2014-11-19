@@ -5,7 +5,7 @@ Your Aegir Hosting System has been upgraded to version BOA-2.3.6
   https://aegir.dragon.ny.host8.biz
 
 This new BOA release includes updated versions of all supported Drupal
-platforms to provide latest Drupal 7.33 core, plus great new features,
+platforms to provide latest Drupal 7.34 core, plus great new features,
 improvements and bug fixes.
 
 We recommend that you upgrade your D7 sites using this safe workflow:

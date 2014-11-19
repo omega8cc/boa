@@ -165,13 +165,13 @@ NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
 
 Octopus can install the platforms listed below:
 
- @ Drupal 7.33.1
+ @ Drupal 7.34.1
 
  aGov 1.5 --------------------- https://drupal.org/project/agov
  Commerce 1.31 ---------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.19 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.19 ----------------- https://drupal.org/project/commons
- Drupal 7.33.1 ---------------- https://drupal.org/drupal-7.33
+ Drupal 7.34.1 ---------------- https://drupal.org/drupal-7.34
  ERPAL 2.1 -------------------- https://drupal.org/project/erpal
  Guardr 1.14 ------------------ https://drupal.org/project/guardr
  Open Academy 1.1 ------------- https://drupal.org/project/openacademy
@@ -195,7 +195,7 @@ Octopus can install the platforms listed below:
  Pressflow 6.34.1 ------------- http://pressflow.org
  Ubercart 2.14 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.33.1 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.34.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
 * All D6 platforms have been enhanced using Pressflow 6.34.1 +Extra core:
