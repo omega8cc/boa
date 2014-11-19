@@ -1765,6 +1765,8 @@ cleanup_ghost_drushrc () {
         _THIS_SITE_FDIR=`cat $Alias | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
         if [ -e "$_THIS_SITE_FDIR/drushrc.php" ] && [ -e "$_THIS_SITE_FDIR/files" ] && [ -e "$_THIS_SITE_FDIR/private" ] && [ -e "$_THIS_SITE_FDIR/modules" ] ; then
           _IS_SITE=YES
+        elif [[ "$_THIS_SITE_FDIR" =~ "aegir/distro" ]] ; then
+          _IS_SITE=YES
         else
           mkdir -p $User/undo
           mv -f $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php $User/undo/ &> /dev/null
