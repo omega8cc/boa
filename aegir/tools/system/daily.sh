@@ -2094,7 +2094,7 @@ action () {
               _HM_NID=${_HM_NID//[^0-9]/}
               if [ ! -z "$_HM_NID" ] ; then
                 run_drush6_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context SET name='hostmaster' WHERE nid='$_HM_NID'\""
-                touch $User/log/hosting_context.pid
+                echo $_HM_NID > $User/log/hosting_context.pid
               fi
             fi
           fi

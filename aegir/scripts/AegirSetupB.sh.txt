@@ -611,10 +611,10 @@ else
     _HM_NID=$($_DRUSHCMD @hostmaster sqlq "SELECT site.nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'" 2>&1)
     _HM_NID=${_HM_NID//[^0-9]/}
     if [ ! -z "$_HM_NID" ] ; then
-      msg "$_STATUS B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 hosting_context $_HM_NID"
+      msg "$_STATUS B: Hostmaster STATUS: Fix 1/2 hosting_context $_HM_NID"
       $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid='$_HM_NID'" &> /dev/null
     else
-      msg "$_STATUS B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 hosting_context $_HM_NID empty"
+      msg "$_STATUS B: Hostmaster STATUS: Fix 1/2 hosting_context $_HM_NID empty!"
     fi
   fi
   ### Fix for old migrated/merged instances
@@ -654,10 +654,10 @@ else
     _HM_NID=$($_DRUSHCMD @hostmaster sqlq "SELECT site.nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'" 2>&1)
     _HM_NID=${_HM_NID//[^0-9]/}
     if [ ! -z "$_HM_NID" ] ; then
-      msg "$_STATUS B: Hostmaster STATUS: Fix for migrated/merged instance 2/2 hosting_context $_HM_NID"
+      msg "$_STATUS B: Hostmaster STATUS: Fix 2/2 hosting_context $_HM_NID"
       $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid='$_HM_NID'" &> /dev/null
     else
-      msg "$_STATUS B: Hostmaster STATUS: Fix for migrated/merged instance 2/2 hosting_context $_HM_NID empty"
+      msg "$_STATUS B: Hostmaster STATUS: Fix 2/2 hosting_context $_HM_NID empty!"
     fi
   fi
   ### Fix for migrated/merged instances
