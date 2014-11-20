@@ -5579,7 +5579,7 @@ fix_broken_platforms () {
         cd /data/all/$i/openatrium-7.x-2.18-7.28.1/profiles/openatrium/modules/contrib/
         rm -f -r {context,ctools,entity,entityreference,mimemail,og}
         get_dev_contrib "context-7.x-3.2.tar.gz"
-        get_dev_contrib "ctools-7.x-1.4.tar.gz"
+        get_dev_contrib "ctools-7.x-1.5.tar.gz"
         get_dev_contrib "entity-7.x-1.5.tar.gz"
         get_dev_contrib "entityreference-7.x-1.1.tar.gz"
         get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz"
@@ -5604,7 +5604,7 @@ fix_broken_platforms () {
         cd /data/all/$i/openatrium-7.x-2.21-7.31.1/profiles/openatrium/modules/contrib/
         rm -f -r {context,ctools,entity,entityreference,mimemail,og}
         get_dev_contrib "context-7.x-3.2.tar.gz"
-        get_dev_contrib "ctools-7.x-1.4.tar.gz"
+        get_dev_contrib "ctools-7.x-1.5.tar.gz"
         get_dev_contrib "entity-7.x-1.5.tar.gz"
         get_dev_contrib "entityreference-7.x-1.1.tar.gz"
         get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz"
@@ -5629,7 +5629,7 @@ fix_broken_platforms () {
         cd /data/all/$i/openatrium-7.x-2.22-7.32.1/profiles/openatrium/modules/contrib/
         rm -f -r {context,ctools,entity,entityreference,mimemail,og}
         get_dev_contrib "context-7.x-3.2.tar.gz"
-        get_dev_contrib "ctools-7.x-1.4.tar.gz"
+        get_dev_contrib "ctools-7.x-1.5.tar.gz"
         get_dev_contrib "entity-7.x-1.5.tar.gz"
         get_dev_contrib "entityreference-7.x-1.1.tar.gz"
         get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz"
