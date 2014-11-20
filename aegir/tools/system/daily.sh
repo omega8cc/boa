@@ -679,7 +679,7 @@ check_file_with_wildcard_path () {
 write_solr_config () {
   # $1 is module
   # $2 is a path to solr.php
-  if [ ! -z $1 ] && [ ! -z $2 ] && [ -e "${Dir}" ] ; then
+  if [ ! -z $1 ] && [ ! -z $2 ] && [ ! -z "${_MD5H}" ] && [ -e "${Dir}" ] ; then
     echo "Your SOLR core access details for ${Dom} site are as follows:"  > $2
     echo                                                                 >> $2
     echo "  Solr host ........: 127.0.0.1"                               >> $2
