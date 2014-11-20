@@ -2071,7 +2071,6 @@ action () {
         fi
         disable_chattr ${_THIS_HM_USER}.ftp
         rm -f -r /home/${_THIS_HM_USER}.ftp/drush-backups
-        process
         if [ -e "$_THIS_HM_SITE" ] ; then
           cd $_THIS_HM_SITE
           su -s /bin/bash $_THIS_HM_USER -c "drush6 cc drush &> /dev/null"
@@ -2089,7 +2088,18 @@ action () {
           run_drush6_hmr_cmd "@hostmaster cc all"
           run_drush6_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
           run_drush6_hmr_cmd "@hostmaster cc all"
+          if [ -e "$User/log/imported.pid" ] || [ -e "$User/log/exported.pid" ] ; then
+            if [ ! -e "$User/log/hosting_context.pid" ] ; then
+              _HM_NID=$(run_drush6_hmr_cmd "@hostmaster sqlq \"SELECT site.nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'\" 2>&1")
+              _HM_NID=${_HM_NID//[^0-9]/}
+              if [ ! -z "$_HM_NID" ] ; then
+                run_drush6_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context SET name='hostmaster' WHERE nid='$_HM_NID'\""
+                touch $User/log/hosting_context.pid
+              fi
+            fi
+          fi
         fi
+        process
         run_drush6_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
         run_drush6_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
         check_old_empty_platforms
