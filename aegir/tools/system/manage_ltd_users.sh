@@ -245,6 +245,7 @@ enable_chattr () {
         rm -f -r /home/${UQ}/.rvm/log/*
       fi
       rm -f /home/${UQ}/{.profile,.bash_logout,.bash_profile,.bashrc,.zlogin,.zshrc}
+      rm -f /home/${UQ}/.rvm/scripts/notes
     else
       if [ -d "/home/${UQ}/.rvm" ] || [ -d "/home/${UQ}/.gem" ] ; then
         rm -f /data/disk/${_OWN}/log/.gems.build*
