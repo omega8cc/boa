@@ -62,7 +62,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### /data/disk/${_USER}/static/control/fpm.info
 ###
 ### This file, if exists and contains supported and installed PHP version
-### will be used by running every 5 minutes /var/xdrago/manage_ltd_users.sh
+### will be used by running every minute /var/xdrago/manage_ltd_users.sh
 ### maintenance script to switch PHP-FPM version for this Octopus instance,
 ### if different than defined in the /root/.${_USER}.octopus.cnf file, in the
 ### _PHP_FPM_VERSION variable. It will also overwrite _PHP_FPM_VERSION value
@@ -87,7 +87,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### /data/disk/${_USER}/static/control/cli.info
 ###
 ### This file, if exists and contains supported and installed PHP version
-### will be used by running every 5 minutes /var/xdrago/manage_ltd_users.sh
+### will be used by running every minute /var/xdrago/manage_ltd_users.sh
 ### maintenance script to switch PHP-CLI version for this Octopus instance,
 ### if different than defined in the /root/.${_USER}.octopus.cnf file, in the
 ### _PHP_CLI_VERSION variable. It will also overwrite _PHP_CLI_VERSION value
