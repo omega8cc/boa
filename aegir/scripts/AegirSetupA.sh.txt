@@ -979,7 +979,7 @@ provision_backend_dbpass_generate () {
   fi
   if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
     if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-      _ESC_PASS=$(randpass $_PWD_CHARS esc)
+      _ESC_PASS=$(randpass $_PWD_CHARS esc 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ] ; then
         _ESC_PASS=`cat /root/.my.pass.txt`
@@ -1391,7 +1391,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
       fi
     fi
     if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
-      _ESC_LUPASS=$(randpass $_PWD_CHARS alnum)
+      _ESC_LUPASS=$(randpass $_PWD_CHARS alnum 2>&1)
       _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
     fi
@@ -1580,7 +1580,7 @@ else
       fi
     fi
     if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
-      _ESC_LUPASS=$(randpass $_PWD_CHARS alnum)
+      _ESC_LUPASS=$(randpass $_PWD_CHARS alnum 2>&1)
       _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
     fi

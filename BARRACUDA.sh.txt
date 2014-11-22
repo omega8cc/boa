@@ -1567,7 +1567,7 @@ forced_redis_password_update () {
     fi
   fi
   if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
-    _ESC_RPASS=$(randpass $_PWD_CHARS alnum)
+    _ESC_RPASS=$(randpass $_PWD_CHARS alnum 2>&1)
     _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
     _LEN_RPASS=$(echo ${#_ESC_RPASS})
   fi
@@ -4210,7 +4210,7 @@ provision_backend_dbpass_generate () {
   fi
   if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
     if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-      _ESC_APASS=$(randpass $_PWD_CHARS esc)
+      _ESC_APASS=$(randpass $_PWD_CHARS esc 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ] ; then
         _ESC_APASS=`cat /root/.my.pass.txt`
@@ -8578,7 +8578,7 @@ if [ ! -e "/root/.my.pass.txt" ] ; then
       fi
     fi
     if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
-      _ESC_PASS=$(randpass $_PWD_CHARS esc)
+      _ESC_PASS=$(randpass $_PWD_CHARS esc 2>&1)
       _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
       _LEN_PASS=$(echo ${#_ESC_PASS})
     fi
@@ -8707,7 +8707,7 @@ if [ "$_STATUS" = "INIT" ] ; then
 
   if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
     if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-      _ESC_APASS=$(randpass $_PWD_CHARS esc)
+      _ESC_APASS=$(randpass $_PWD_CHARS esc 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ] ; then
         _ESC_APASS=`cat /root/.my.pass.txt`
@@ -9507,7 +9507,7 @@ forced_mysql_root_password_update () {
     fi
   fi
   if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
-    _ESC_PASS=$(randpass $_PWD_CHARS esc)
+    _ESC_PASS=$(randpass $_PWD_CHARS esc 2>&1)
     _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
     _LEN_PASS=$(echo ${#_ESC_PASS})
   fi
