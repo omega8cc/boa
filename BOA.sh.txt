@@ -165,6 +165,17 @@ update_agents ()
       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
     fi
   fi
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/websh.fixed.e88.pid" ] ; then
+    mv -f /bin/websh /var/xdrago/websh.sh.old
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/helpers/websh.sh.txt" -o /bin/websh
+    if [ -e "/bin/websh" ] ; then
+      chmod 755 /bin/websh
+      chown root:root /bin/websh
+      touch /var/xdrago/log/websh.fixed.e88.pid
+    else
+      mv -f /var/xdrago/websh.sh.old /bin/websh
+    fi
+  fi
 }
 
 fix_core ()
