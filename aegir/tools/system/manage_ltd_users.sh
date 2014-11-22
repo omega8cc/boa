@@ -173,14 +173,14 @@ enable_chattr () {
       fi
       if [ ! -x "/home/${UQ}/.rvm/bin/rvm" ] ; then
         touch /var/run/manage_rvm_users.pid
-        su -s /bin/bash ${UQ} -c "gpg --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3" &> /dev/null
-        su -s /bin/bash ${UQ} -c "\curl -sSL https://rvm.io/mpapis.asc | gpg --import" &> /dev/null
-        su -s /bin/bash ${UQ} -c "\curl -sSL https://get.rvm.io | bash -s stable" &> /dev/null
-        su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles" &> /dev/null
-        su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc" &> /dev/null
+        su -s /bin/bash ${UQ} -c "gpg --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3"
+        su -s /bin/bash ${UQ} -c "\curl -sSL https://rvm.io/mpapis.asc | gpg --import"
+        su -s /bin/bash ${UQ} -c "\curl -sSL https://get.rvm.io | bash -s stable"
+        su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles"
+        su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
         rm -f /var/run/manage_rvm_users.pid
       fi
-      su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc" &> /dev/null
+      su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
       if [ ! -e "/home/${UQ}/.rvm/rubies/default" ] ; then
         if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
           _WEB_SH=`readlink -n /bin/sh`
@@ -198,8 +198,8 @@ enable_chattr () {
           fi
         fi
         touch /var/run/manage_rvm_users.pid
-        su -s /bin/bash - ${UQ} -c "rvm install ${_RUBY_VERSION}" &> /dev/null
-        su -s /bin/bash - ${UQ} -c "rvm use ${_RUBY_VERSION} --default" &> /dev/null
+        su -s /bin/bash - ${UQ} -c "rvm install ${_RUBY_VERSION}"
+        su -s /bin/bash - ${UQ} -c "rvm use ${_RUBY_VERSION} --default"
         rm -f /var/run/manage_rvm_users.pid
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
