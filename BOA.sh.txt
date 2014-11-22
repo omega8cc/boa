@@ -44,6 +44,7 @@
 export PATH=$PATH:/opt/local/bin
 SHELL=/bin/bash
 _TODAY=`date +%y%m%d`
+_INSTALLER_VERSION=BOA-2.3.6-dev
 
 fix_dns_settings () {
   mkdir -p /var/backups
@@ -129,10 +130,8 @@ check_dns_settings () {
   fi
 }
 
-fix_core ()
+update_agents ()
 {
-  # https://www.drupal.org/SA-CORE-2014-005
-  sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf &> /dev/null
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/clear.fixed.e88.pid" ] ; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/system/clear.sh" -o /var/xdrago/clear.sh
@@ -166,6 +165,12 @@ fix_core ()
       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
     fi
   fi
+}
+
+fix_core ()
+{
+  # https://www.drupal.org/SA-CORE-2014-005
+  sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf &> /dev/null
   if [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] ; then
     mkdir -p /var/xdrago/conf
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/patches/7-core/SA-CORE-2014-005-D7.patch" -o /var/xdrago/conf/SA-CORE-2014-005-D7.patch
@@ -345,7 +350,15 @@ if [ `whoami` = "root" ] ; then
     fi
   fi
   setup
-  fix_core
+  if [ -e "/var/log/barracuda_log.txt" ] ; then
+    _VERSIONS_TEST=`cat /var/log/barracuda_log.txt`
+    if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
+      _VERSIONS_TEST_RESULT=OK
+    else
+      update_agents
+      fix_core
+    fi
+  fi
   exit 0
 else
   msg "ERROR: This script should be ran as a root user - please `sudo -i` first"
