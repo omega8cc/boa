@@ -1148,6 +1148,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
     sed -i "s/.*entitycache.*//g"  $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
+    sed -i "s/\$options +=/\/\/\$options +=/g" $_SHRD_PRPATH/modules/contrib/flag/includes/flag/flag_flag.inc &> /dev/null
     sed -i "s/\$options +=/\/\/\$options +=/g" $_SHRD_PRPATH/modules/contrib/flag/flag_flag.inc &> /dev/null
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz"
