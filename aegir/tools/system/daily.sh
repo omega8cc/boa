@@ -2046,7 +2046,7 @@ action () {
         _THIS_HM_SITE=`cat $User/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
         echo load is $_O_LOAD while maxload is $_O_LOAD_MAX
         echo User $User
-        su -s /bin/bash - $_THIS_HM_USER -c "drush6 cc drush &> /dev/null"
+        su -s /bin/bash $_THIS_HM_USER -c "drush6 cc drush &> /dev/null"
         rm -f -r $User/.tmp/cache
         _SQL_CONVERT=NO
         _DEL_OLD_EMPTY_PLATFORMS="0"
@@ -2074,7 +2074,7 @@ action () {
         rm -f -r /home/${_THIS_HM_USER}.ftp/drush-backups
         if [ -e "$_THIS_HM_SITE" ] ; then
           cd $_THIS_HM_SITE
-          su -s /bin/bash - $_THIS_HM_USER -c "drush6 cc drush &> /dev/null"
+          su -s /bin/bash $_THIS_HM_USER -c "drush6 cc drush &> /dev/null"
           rm -f -r $User/.tmp/cache
           run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_advanced_cron_default_interval 10800"
           run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1"
