@@ -2684,7 +2684,7 @@ tune_memory_limits () {
   if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
     _USE_PHP=512
     _USE_OPC=512
-    _PRC_SQL=20
+    _MXC_SQL=20
     _QCE_SQL=128M
     _RND_SQL=8M
     _JBF_SQL=4M
@@ -2702,7 +2702,7 @@ tune_memory_limits () {
     if [ "$_VMFAMILY" = "XEN" ] || [ "$_VMFAMILY" = "AWS" ] ; then
       _USE_PHP=512
       _USE_OPC=1024
-      _PRC_SQL=30
+      _MXC_SQL=30
       _QCE_SQL=128M
       _RND_SQL=8M
       _JBF_SQL=4M
@@ -2720,7 +2720,7 @@ tune_memory_limits () {
       if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
         _USE_PHP=1024
         _USE_OPC=1024
-        _PRC_SQL=100
+        _MXC_SQL=100
         _QCE_SQL=256M
         _RND_SQL=8M
         _JBF_SQL=4M
@@ -2741,7 +2741,7 @@ tune_memory_limits () {
       else
         _USE_PHP=1024
         _USE_OPC=1024
-        _PRC_SQL=25
+        _MXC_SQL=30
         _QCE_SQL=64M
         _RND_SQL=2M
         _JBF_SQL=2M
@@ -2759,7 +2759,7 @@ tune_memory_limits () {
     else
       _USE_PHP=256
       _USE_OPC=256
-      _PRC_SQL=10
+      _MXC_SQL=10
       _QCE_SQL=32M
       _RND_SQL=2M
       _JBF_SQL=2M
@@ -2777,7 +2777,7 @@ tune_memory_limits () {
   else
     _USE_PHP="$_USE"
     _USE_OPC="$_USE"
-    _PRC_SQL=10
+    _MXC_SQL=10
     _QCE_SQL=32M
     _RND_SQL=1M
     _JBF_SQL=1M
@@ -2832,7 +2832,10 @@ tune_memory_limits () {
   fi
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
     tune_sql_memory_limits
-    sed -i "s/= 191/= $_PRC_SQL/g"                                               /etc/mysql/my.cnf &> /dev/null
+    _UXC_SQL=$_MXC_SQL
+    let "_UXC_SQL = (($_MXC_SQL / 2))"
+    sed -i "s/= 191/= $_UXC_SQL/g"                                               /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/= 292/= $_MXC_SQL/g"                                               /etc/mysql/my.cnf &> /dev/null
     sed -i "s/^tmp_table_size.*/tmp_table_size          = $_TMP_SQL/g"           /etc/mysql/my.cnf &> /dev/null
     sed -i "s/^max_heap_table_size.*/max_heap_table_size     = $_TMP_SQL/g"      /etc/mysql/my.cnf &> /dev/null
     sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = $_SRT_SQL/g"  /etc/mysql/my.cnf &> /dev/null
