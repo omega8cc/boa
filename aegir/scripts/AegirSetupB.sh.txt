@@ -709,8 +709,6 @@ else
 fi
 cd $_HOSTMASTER_ROOT/sites/$_DOMAIN
 if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
-  mkdir -p $_ROOT/backups/system/off
-  mv -f $_HOSTMASTER_ROOT/sites/$_DOMAIN/modules/* $_ROOT/backups/system/off/ &> /dev/null
   sed -i "s/backup_delete/backup-delete/g" $_HOSTMASTER_ROOT/profiles/hostmaster/modules/hosting_backup_gc/hosting_backup_gc.module &> /dev/null
   sed -i "s/Platform pathauto settings/Platform pathauto/g" $_HOSTMASTER_ROOT/profiles/hostmaster/modules/hosting_platform_pathauto/hosting_platform_pathauto.module &> /dev/null
   sed -i "s/Backup schedule settings/Backup schedule/g" $_HOSTMASTER_ROOT/profiles/hostmaster/modules/hosting_backup_queue/hosting_backup_queue.module &> /dev/null
