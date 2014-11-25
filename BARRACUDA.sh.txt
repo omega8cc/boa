@@ -2999,7 +2999,11 @@ barracuda_cnf () {
       fi
     fi
     if [ "$_DB_SERIES" = "10.0" ] ; then
-      _MARIADB_VERSION="$_MARIADB_10_VERSION"
+      if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+        _MARIADB_VERSION="$_GALERA_10_VERSION"
+      else
+        _MARIADB_VERSION="$_MARIADB_10_VERSION"
+      fi
     else
       _DB_SERIES=5.5
       _MARIADB_VERSION="$_MARIADB_5_VERSION"
@@ -3624,7 +3628,11 @@ barracuda_cnf () {
       sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"    /root/.barracuda.cnf &> /dev/null
     fi
     if [ "$_DB_SERIES" = "10.0" ] ; then
-      _MARIADB_VERSION="$_MARIADB_10_VERSION"
+      if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+        _MARIADB_VERSION="$_GALERA_10_VERSION"
+      else
+        _MARIADB_VERSION="$_MARIADB_10_VERSION"
+      fi
     else
       _DB_SERIES=5.5
       _MARIADB_VERSION="$_MARIADB_5_VERSION"
@@ -6157,7 +6165,11 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
     _REL_VERSION="trusty"
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
-    _MARIADB_VERSION="$_MARIADB_10_VERSION"
+    if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+      _MARIADB_VERSION="$_GALERA_10_VERSION"
+    else
+      _MARIADB_VERSION="$_MARIADB_10_VERSION"
+    fi
   elif [ "$_THIS_RV" = "precise" ] ; then
     _REL_VERSION="precise"
   elif [ "$_THIS_RV" = "lucid" ] ; then
@@ -7140,7 +7152,11 @@ install_mariadb_sql () {
   fi
   if [ "$_REL_VERSION" = "trusty" ] ; then
     _DB_SERIES=10.0
-    _MARIADB_VERSION="$_MARIADB_10_VERSION"
+    if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+      _MARIADB_VERSION="$_GALERA_10_VERSION"
+    else
+      _MARIADB_VERSION="$_MARIADB_10_VERSION"
+    fi
     msg "INFO: Forced MariaDB $_MARIADB_VERSION in $_THIS_OS/$_REL_VERSION"
   elif [ "$_REL_VERSION" = "lenny" ] ; then
     _DB_SERIES=5.3
