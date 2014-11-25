@@ -17,6 +17,11 @@ if [[ "$_VM_TEST" =~ beng ]] ; then
 else
   _VMFAMILY="XEN"
 fi
+if [ -x "/usr/bin/gpg2" ] ; then
+  _GPG=gpg2
+else
+  _GPG=gpg
+fi
 
 ###-------------SYSTEM-----------------###
 
@@ -173,9 +178,9 @@ enable_chattr () {
       fi
       if [ ! -x "/home/${UQ}/.rvm/bin/rvm" ] ; then
         touch /var/run/manage_rvm_users.pid
-        su -s /bin/bash ${UQ} -c "gpg --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3"
-        su -s /bin/bash ${UQ} -c "\curl -sSL https://rvm.io/mpapis.asc | gpg --import"
-        su -s /bin/bash ${UQ} -c "\curl -sSL https://get.rvm.io | bash -s stable"
+        su -s /bin/bash - ${UQ} -c "$_GPG --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3"
+        su -s /bin/bash - ${UQ} -c "\curl -sSL https://rvm.io/mpapis.asc | $_GPG --import"
+        su -s /bin/bash   ${UQ} -c "\curl -sSL https://get.rvm.io | bash -s stable"
         su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles"
         su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
         rm -f /var/run/manage_rvm_users.pid
