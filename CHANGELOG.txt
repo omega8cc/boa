@@ -1,4 +1,119 @@
 
+### Stable BOA-2.3.7 Release - Full Edition
+### Date: Tue Nov 25 15:44:48 PST 2014
+### Includes Aegir 2.x-head with improvements
+
+# Release Notes:
+
+  This new BOA release includes updated versions of all supported Drupal
+  platforms to provide latest Drupal 7.34 and Pressflow 6.34 cores, plus
+  new features, improvements and bug fixes.
+
+  We recommend that you upgrade your D7 sites using this safe workflow:
+
+    https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
+  For up-to-date information on #Drupageddon please check:
+
+    https://omega8.cc/drupageddon-psa-2014-003-342
+
+#-### Support for locking/unlocking web server write access in all codebases
+
+  This new, auto-enabled by default protection will enhance your system
+  security, especially for sites in custom platforms you maintain
+  in the ~/static directory tree.
+
+  It is important to understand that your web server / PHP-FPM runs as your
+  shell/ftps user, although with a different group. This allows to maintain
+  virtual chroot for Octopus instances, which significantly improves security.
+
+  However, it had a serious drawback: the web server had write access in all
+  your platforms codebases located in the ~/static directory tree, because
+  all files you have uploaded there have the same owner.
+
+  While it allows you to use code management which requires web hooks, it also
+  opens a door for possible attack vectors, like for the infamous #drupageddon
+  disaster, where Drupal allowed attackers to create .php files intended
+  to be used as backdoors in future attacks - inside your codebase.
+
+  Even if it could affect only custom platforms you maintain in the ~/static
+  directory tree, since all built-in Octopus platforms always had Drupal core
+  completely write-protected, plus, even if created by attacking bot, these
+  extra .php files are completely useless for attackers, because BOA default
+  restricted configuration doesn't allow to execute not whitelisted, unknown
+  .php files, having codebase writable by your web server is still dangerous,
+  because at least theoretically it may open a possibility to overwrite valid
+  .php files, so they could be used as an entry point in a future attack.
+
+  BOA now protects all your codebases by reverting (daily) ownership on all
+  files and directories in your codebase (modules and themes) so they are
+  owned by the Aegir backend user and not your shell/ftps user.
+
+  While this new default procedure protects all your codebases in the ~/static
+  directory tree, and even in the sites/all directory tree, and even in the
+  sites/foo.com/modules|themes tree in all your built-in Octopus platforms,
+  you can still manage the code and themes with your main and extra shell
+  accounts as usual, because your codebase is still group writable, and your
+  shell accounts are members of the group not available for the web server.
+
+  You can easily disable this default daily procedure with a single switch:
+
+    ~/static/control/unlock.info
+
+  You can also exclude any custom platform you maintain in the ~/static
+  directory tree from this global procedure by adding an empty skip.info
+  control file in the given platform root directory, so all other platforms
+  are still protected, and only excluded platform is open for write access
+  also for the web server. But normally you should never need this unlock!
+
+  Please note that this procedure will not affect any platform if you have
+  the non-default _PERMISSIONS_FIX=NO setting in your /root/.barracuda.cnf
+  file. It will also skip any platform with fix_files_permissions_daily
+  variable set to FALSE in the given platform active INI file.
+
+# Updated Octopus platforms:
+
+  Commerce 1.32 ---------------- https://drupal.org/project/commerce_kickstart
+  Commerce 2.20 ---------------- https://drupal.org/project/commerce_kickstart
+  Commons 2.21 ----------------- https://drupal.org/project/commons
+  Commons 3.20 ----------------- https://drupal.org/project/commons
+  Guardr 2.5 ------------------- https://drupal.org/project/guardr
+  Open Atrium 2.25 ------------- https://drupal.org/project/openatrium
+  Open Outreach 1.13 ----------- https://drupal.org/project/openoutreach
+  Panopoly 1.14 ---------------- https://drupal.org/project/panopoly
+
+# New features and enhancements in this release:
+
+  * Support for locking/unlocking web server write access in all codebases.
+
+# Changes in this release:
+
+  * Do not force site_readonly to be disabled on non-dev sites.
+
+# System upgrades in this release:
+
+  * MariaDB 10.0.15
+
+# Fixes in this release:
+
+  * Allow any single site to use 1/2 of available SQL connections max.
+  * Clean up dot files after installing or updating RVM.
+  * Do not run extra updates on systems running latest head version.
+  * Improve ghost sites cleanup.
+  * Issue #467 - Centralize control files outside of codebases tree.
+  * Issue #498 - ERPAL: Fatal error: Unsupported operand types.
+  * Issue #499 - RVM: Add oily_png gem version 1.1.1
+  * Issue #504 - Add docs/RVM.txt
+  * Issue #504 - Remove ~/.rvm/scripts/notes script breaking lshell.
+  * Issue #509 - Do not delete anything from hostmaster site level modules.
+  * It is safe to run manage_ltd_users every minute.
+  * Never touch hostmaster aliases and vhosts even they appear broken.
+  * Nginx: Fix for possible problem with files/imagecache in legacy D6 sites.
+  * Use gnupg2 by default.
+  * Use latest Ruby 2.1.x or 2.0.x available.
+  * Use verbose RVM install mode to improve debugging.
+
+
 ### Stable BOA-2.3.6 Release - Full Edition
 ### Date: Mon Nov 17 08:11:17 SGT 2014
 ### Includes Aegir 2.x-head with improvements
