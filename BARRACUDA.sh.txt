@@ -334,7 +334,7 @@ _DEBUG_MODE=NO
 ### The HEAD can be occasionally broken
 ### and should be used **only** for testing!
 ###
-_AEGIR_VERSION=BOA-2.3.6
+_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
@@ -1078,8 +1078,8 @@ _SPEED_VALID_MAX=3600
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.6
-_BRANCH_BOA=2.3.x-dev
+_INSTALLER_VERSION=BOA-2.3.7-dev
+_BRANCH_BOA=master
 _BRANCH_PROVISION=2.3.x-dev
 
 ###
@@ -1103,7 +1103,7 @@ _JETTY_8_VERSION=8.1.16.v20140903
 _JETTY_9_VERSION=9.2.3.v20140905
 _LSHELL_VERSION=0.9.16.5-om8
 _MAILPARSE_VERSION=2.1.6
-_MARIADB_10_VERSION=10.0.14
+_MARIADB_10_VERSION=10.0.15
 _MARIADB_5_VERSION=5.5.40
 _MONGO_VERSION=1.4.5
 _MSS_VERSION=1.33
@@ -1122,7 +1122,7 @@ _PHP55_VERSION=5.5.19
 _PHPREDIS_VERSION=master-03-10-2014
 _PURE_FTPD_VERSION=1.0.36
 _REDIS_VERSION=2.8.17
-_RUBY_VERSION=2.1.2
+_RUBY_VERSION=2.1.5
 _SOLR_1_VERSION=1.4.1
 _SOLR_3_VERSION=3.6.2
 _SOLR_4_VERSION=4.2.0
@@ -1567,7 +1567,7 @@ forced_redis_password_update () {
     fi
   fi
   if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
-    _ESC_RPASS=$(randpass $_PWD_CHARS alnum)
+    _ESC_RPASS=$(randpass $_PWD_CHARS alnum 2>&1)
     _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
     _LEN_RPASS=$(echo ${#_ESC_RPASS})
   fi
@@ -2684,7 +2684,7 @@ tune_memory_limits () {
   if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
     _USE_PHP=512
     _USE_OPC=512
-    _PRC_SQL=20
+    _MXC_SQL=20
     _QCE_SQL=128M
     _RND_SQL=8M
     _JBF_SQL=4M
@@ -2702,7 +2702,7 @@ tune_memory_limits () {
     if [ "$_VMFAMILY" = "XEN" ] || [ "$_VMFAMILY" = "AWS" ] ; then
       _USE_PHP=512
       _USE_OPC=1024
-      _PRC_SQL=30
+      _MXC_SQL=30
       _QCE_SQL=128M
       _RND_SQL=8M
       _JBF_SQL=4M
@@ -2720,7 +2720,7 @@ tune_memory_limits () {
       if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
         _USE_PHP=1024
         _USE_OPC=1024
-        _PRC_SQL=100
+        _MXC_SQL=100
         _QCE_SQL=256M
         _RND_SQL=8M
         _JBF_SQL=4M
@@ -2741,7 +2741,7 @@ tune_memory_limits () {
       else
         _USE_PHP=1024
         _USE_OPC=1024
-        _PRC_SQL=25
+        _MXC_SQL=30
         _QCE_SQL=64M
         _RND_SQL=2M
         _JBF_SQL=2M
@@ -2759,7 +2759,7 @@ tune_memory_limits () {
     else
       _USE_PHP=256
       _USE_OPC=256
-      _PRC_SQL=10
+      _MXC_SQL=10
       _QCE_SQL=32M
       _RND_SQL=2M
       _JBF_SQL=2M
@@ -2777,7 +2777,7 @@ tune_memory_limits () {
   else
     _USE_PHP="$_USE"
     _USE_OPC="$_USE"
-    _PRC_SQL=10
+    _MXC_SQL=10
     _QCE_SQL=32M
     _RND_SQL=1M
     _JBF_SQL=1M
@@ -2832,7 +2832,10 @@ tune_memory_limits () {
   fi
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
     tune_sql_memory_limits
-    sed -i "s/= 191/= $_PRC_SQL/g"                                               /etc/mysql/my.cnf &> /dev/null
+    _UXC_SQL=$_MXC_SQL
+    let "_UXC_SQL = (($_MXC_SQL / 2))"
+    sed -i "s/= 191/= $_UXC_SQL/g"                                               /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/= 292/= $_MXC_SQL/g"                                               /etc/mysql/my.cnf &> /dev/null
     sed -i "s/^tmp_table_size.*/tmp_table_size          = $_TMP_SQL/g"           /etc/mysql/my.cnf &> /dev/null
     sed -i "s/^max_heap_table_size.*/max_heap_table_size     = $_TMP_SQL/g"      /etc/mysql/my.cnf &> /dev/null
     sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = $_SRT_SQL/g"  /etc/mysql/my.cnf &> /dev/null
@@ -2996,7 +2999,11 @@ barracuda_cnf () {
       fi
     fi
     if [ "$_DB_SERIES" = "10.0" ] ; then
-      _MARIADB_VERSION="$_MARIADB_10_VERSION"
+      if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+        _MARIADB_VERSION="$_GALERA_10_VERSION"
+      else
+        _MARIADB_VERSION="$_MARIADB_10_VERSION"
+      fi
     else
       _DB_SERIES=5.5
       _MARIADB_VERSION="$_MARIADB_5_VERSION"
@@ -3621,7 +3628,11 @@ barracuda_cnf () {
       sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"    /root/.barracuda.cnf &> /dev/null
     fi
     if [ "$_DB_SERIES" = "10.0" ] ; then
-      _MARIADB_VERSION="$_MARIADB_10_VERSION"
+      if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+        _MARIADB_VERSION="$_GALERA_10_VERSION"
+      else
+        _MARIADB_VERSION="$_MARIADB_10_VERSION"
+      fi
     else
       _DB_SERIES=5.5
       _MARIADB_VERSION="$_MARIADB_5_VERSION"
@@ -4210,7 +4221,7 @@ provision_backend_dbpass_generate () {
   fi
   if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
     if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-      _ESC_APASS=$(randpass $_PWD_CHARS esc)
+      _ESC_APASS=$(randpass $_PWD_CHARS esc 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ] ; then
         _ESC_APASS=`cat /root/.my.pass.txt`
@@ -5579,7 +5590,7 @@ fix_broken_platforms () {
         cd /data/all/$i/openatrium-7.x-2.18-7.28.1/profiles/openatrium/modules/contrib/
         rm -f -r {context,ctools,entity,entityreference,mimemail,og}
         get_dev_contrib "context-7.x-3.2.tar.gz"
-        get_dev_contrib "ctools-7.x-1.4.tar.gz"
+        get_dev_contrib "ctools-7.x-1.5.tar.gz"
         get_dev_contrib "entity-7.x-1.5.tar.gz"
         get_dev_contrib "entityreference-7.x-1.1.tar.gz"
         get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz"
@@ -5604,7 +5615,7 @@ fix_broken_platforms () {
         cd /data/all/$i/openatrium-7.x-2.21-7.31.1/profiles/openatrium/modules/contrib/
         rm -f -r {context,ctools,entity,entityreference,mimemail,og}
         get_dev_contrib "context-7.x-3.2.tar.gz"
-        get_dev_contrib "ctools-7.x-1.4.tar.gz"
+        get_dev_contrib "ctools-7.x-1.5.tar.gz"
         get_dev_contrib "entity-7.x-1.5.tar.gz"
         get_dev_contrib "entityreference-7.x-1.1.tar.gz"
         get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz"
@@ -5629,7 +5640,7 @@ fix_broken_platforms () {
         cd /data/all/$i/openatrium-7.x-2.22-7.32.1/profiles/openatrium/modules/contrib/
         rm -f -r {context,ctools,entity,entityreference,mimemail,og}
         get_dev_contrib "context-7.x-3.2.tar.gz"
-        get_dev_contrib "ctools-7.x-1.4.tar.gz"
+        get_dev_contrib "ctools-7.x-1.5.tar.gz"
         get_dev_contrib "entity-7.x-1.5.tar.gz"
         get_dev_contrib "entityreference-7.x-1.1.tar.gz"
         get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz"
@@ -6014,7 +6025,7 @@ else
     _XTRAS_LIST="CHV"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.3.6
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=NO
@@ -6026,7 +6037,7 @@ else
     _XTRAS_LIST="CSF CHV FTP"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.3.6
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=YES
@@ -6040,7 +6051,7 @@ else
     _XTRAS_LIST=""
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.3.6
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
     _SSH_PORT=22
@@ -6058,7 +6069,7 @@ else
     _XTRAS_LIST=""
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.3.6
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
     _SSH_PORT=22
@@ -6076,7 +6087,7 @@ else
     _XTRAS_LIST=""
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.3.6
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
     _SSH_PORT=22
@@ -6154,7 +6165,11 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
     _REL_VERSION="trusty"
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
-    _MARIADB_VERSION="$_MARIADB_10_VERSION"
+    if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+      _MARIADB_VERSION="$_GALERA_10_VERSION"
+    else
+      _MARIADB_VERSION="$_MARIADB_10_VERSION"
+    fi
   elif [ "$_THIS_RV" = "precise" ] ; then
     _REL_VERSION="precise"
   elif [ "$_THIS_RV" = "lucid" ] ; then
@@ -7062,15 +7077,20 @@ if [[ "_XTRAS_LIST" =~ "IMG" ]] ; then
 fi
 
 if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "lucid" ] ; then
-  _DEBDEPS="apticron aptitude auditd autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libhtml-template-perl libjpeg-dev libjpeg62 $_EXTRA_LIB_APT libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat ncurses-dev $_APT_XTRA postfix postfix-pcre pwgen python-dev cython re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc $_SYSLOGD libgmp3-dev symlinks libgeoip1 libgeoip-dev geoip-database libmagickwand-dev gettext ncurses-term udev libpam-unix2 libxcrypt1 s3cmd python-software-properties ldap-utils $_EXTRA_PACKAGES"
+  _DEBDEPS="apticron aptitude auditd autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libhtml-template-perl libjpeg-dev libjpeg62 $_EXTRA_LIB_APT libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat ncurses-dev $_APT_XTRA postfix postfix-pcre pwgen python-dev cython re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc $_SYSLOGD libgmp3-dev symlinks libgeoip1 libgeoip-dev geoip-database libmagickwand-dev gettext ncurses-term udev libpam-unix2 libxcrypt1 s3cmd python-software-properties ldap-utils gnupg2 gnupg-curl $_EXTRA_PACKAGES"
 elif [ "$_REL_VERSION" = "lenny" ] ; then
-  _DEBDEPS="apticron aptitude auditd autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libhtml-template-perl libjpeg-dev libjpeg62 $_EXTRA_LIB_APT libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano $_APT_ELSE ncurses-dev openjdk-6-jre-headless postfix postfix-pcre pwgen python-dev cython re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc $_SYSLOGD libgmp3-dev symlinks libgeoip1 libgeoip-dev libmagick9-dev gettext ncurses-term udev ldap-utils $_EXTRA_PACKAGES"
+  _DEBDEPS="apticron aptitude auditd autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libhtml-template-perl libjpeg-dev libjpeg62 $_EXTRA_LIB_APT libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano $_APT_ELSE ncurses-dev openjdk-6-jre-headless postfix postfix-pcre pwgen python-dev cython re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc $_SYSLOGD libgmp3-dev symlinks libgeoip1 libgeoip-dev libmagick9-dev gettext ncurses-term udev ldap-utils gnupg2 gnupg-curl $_EXTRA_PACKAGES"
 else
-  _DEBDEPS="apticron aptitude auditd autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libhtml-template-perl libjpeg-dev libjpeg62 $_EXTRA_LIB_APT libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano $_APT_ELSE ncurses-dev openjdk-6-jre-headless postfix postfix-pcre pwgen python-dev cython re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc $_SYSLOGD libgmp3-dev symlinks libgeoip1 libgeoip-dev libmagick9-dev gettext ncurses-term udev ldap-utils $_EXTRA_PACKAGES"
+  _DEBDEPS="apticron aptitude auditd autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libhtml-template-perl libjpeg-dev libjpeg62 $_EXTRA_LIB_APT libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano $_APT_ELSE ncurses-dev openjdk-6-jre-headless postfix postfix-pcre pwgen python-dev cython re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc $_SYSLOGD libgmp3-dev symlinks libgeoip1 libgeoip-dev libmagick9-dev gettext ncurses-term udev ldap-utils gnupg2 gnupg-curl $_EXTRA_PACKAGES"
 fi
 
 install_with_aptitude_deps () {
   st_runner "$_INSTAPP $_DEBDEPS" 2> /dev/null
+  if [ -x "/usr/bin/gpg2" ] ; then
+    _GPG=gpg2
+  else
+    _GPG=gpg
+  fi
   if [[ "$_XTRAS_LIST" =~ "FMG" ]] ; then
     if [ "$_REL_VERSION" = "squeeze" ] ; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec52"
@@ -7090,10 +7110,10 @@ install_percona_sql () {
   cd /var/opt
   _KEYS_SERVER_TEST=FALSE
   until [[ "$_KEYS_SERVER_TEST" =~ "Percona" ]] ; do
-    _KEYS_SERVER_TEST=`gpg --keyserver hkp://keys.gnupg.net --recv-keys 1C4CBDCDCD2EFD2A 2>&1`
+    _KEYS_SERVER_TEST=`$_GPG --keyserver hkp://keys.gnupg.net --recv-keys 1C4CBDCDCD2EFD2A 2>&1`
     sleep 2
   done
-  gpg -a --export CD2EFD2A | apt-key add - &> /dev/null
+  $_GPG -a --export CD2EFD2A | apt-key add - &> /dev/null
   _THIS_REL_VERSION="$_REL_VERSION"
   echo "## Percona APT Repository" > /etc/apt/sources.list.d/percona.list
   echo "deb http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
@@ -7137,7 +7157,11 @@ install_mariadb_sql () {
   fi
   if [ "$_REL_VERSION" = "trusty" ] ; then
     _DB_SERIES=10.0
-    _MARIADB_VERSION="$_MARIADB_10_VERSION"
+    if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+      _MARIADB_VERSION="$_GALERA_10_VERSION"
+    else
+      _MARIADB_VERSION="$_MARIADB_10_VERSION"
+    fi
     msg "INFO: Forced MariaDB $_MARIADB_VERSION in $_THIS_OS/$_REL_VERSION"
   elif [ "$_REL_VERSION" = "lenny" ] ; then
     _DB_SERIES=5.3
@@ -8578,7 +8602,7 @@ if [ ! -e "/root/.my.pass.txt" ] ; then
       fi
     fi
     if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
-      _ESC_PASS=$(randpass $_PWD_CHARS esc)
+      _ESC_PASS=$(randpass $_PWD_CHARS esc 2>&1)
       _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
       _LEN_PASS=$(echo ${#_ESC_PASS})
     fi
@@ -8707,7 +8731,7 @@ if [ "$_STATUS" = "INIT" ] ; then
 
   if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
     if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-      _ESC_APASS=$(randpass $_PWD_CHARS esc)
+      _ESC_APASS=$(randpass $_PWD_CHARS esc 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ] ; then
         _ESC_APASS=`cat /root/.my.pass.txt`
@@ -9243,8 +9267,8 @@ else
           rm -f -r /usr/local/rvm
           touch /var/xdrago/log/ruby-root-clean-reload.log
         fi
-        gpg --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3 &> /dev/null
-        curl -sSL https://rvm.io/mpapis.asc | gpg --import - &> /dev/null
+        $_GPG --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3 &> /dev/null
+        curl -sSL https://rvm.io/mpapis.asc | $_GPG --import - &> /dev/null
         curl -sSL https://get.rvm.io | bash -s stable &> /dev/null
         echo rvm_autoupdate_flag=0 > ~/.rvmrc
         if [ -e "/etc/profile.d/rvm.sh" ] ; then
@@ -9507,7 +9531,7 @@ forced_mysql_root_password_update () {
     fi
   fi
   if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
-    _ESC_PASS=$(randpass $_PWD_CHARS esc)
+    _ESC_PASS=$(randpass $_PWD_CHARS esc 2>&1)
     _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
     _LEN_PASS=$(echo ${#_ESC_PASS})
   fi

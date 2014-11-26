@@ -5,8 +5,8 @@ Your Aegir Hosting System has been upgraded to version BOA-2.3.6
   https://aegir.dragon.ny.host8.biz
 
 This new BOA release includes updated versions of all supported Drupal
-platforms to provide latest Drupal 7.33 core, plus great new features,
-improvements and bug fixes.
+platforms to provide latest Drupal 7.34 and Pressflow 6.34 cores, plus
+new features, improvements and bug fixes.
 
 We recommend that you upgrade your D7 sites using this safe workflow:
 
@@ -19,7 +19,7 @@ For up-to-date information on #Drupageddon please check:
 You can find all details on how to use new features, along with all
 other changes explained in the release notes and changelog available at:
 
-  https://omega8.cc/boa-236-full-edition-343
+  https://omega8.cc/boa-237-full-edition-344
 
 It is always highly recommended that you read extensive release notes
 and changelog posted on our website for previous BOA Editions, so you

@@ -608,6 +608,14 @@ else
     $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET web_server='2' WHERE web_server='0'" &> /dev/null
     $_DRUSHCMD @hostmaster sqlq "UPDATE node SET uid='1' WHERE uid='0'" &> /dev/null
     $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET uid='1' WHERE uid='0'" &> /dev/null
+    _HM_NID=$($_DRUSHCMD @hostmaster sqlq "SELECT site.nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'" 2>&1)
+    _HM_NID=${_HM_NID//[^0-9]/}
+    if [ ! -z "$_HM_NID" ] ; then
+      msg "$_STATUS B: Hostmaster STATUS: Fix 1/2 hosting_context $_HM_NID"
+      $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid='$_HM_NID'" &> /dev/null
+    else
+      msg "$_STATUS B: Hostmaster STATUS: Fix 1/2 hosting_context $_HM_NID empty!"
+    fi
   fi
   ### Fix for old migrated/merged instances
 
@@ -643,6 +651,14 @@ else
     $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET web_server='2' WHERE web_server='0'" &> /dev/null
     $_DRUSHCMD @hostmaster sqlq "UPDATE node SET uid='1' WHERE uid='0'" &> /dev/null
     $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET uid='1' WHERE uid='0'" &> /dev/null
+    _HM_NID=$($_DRUSHCMD @hostmaster sqlq "SELECT site.nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'" 2>&1)
+    _HM_NID=${_HM_NID//[^0-9]/}
+    if [ ! -z "$_HM_NID" ] ; then
+      msg "$_STATUS B: Hostmaster STATUS: Fix 2/2 hosting_context $_HM_NID"
+      $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid='$_HM_NID'" &> /dev/null
+    else
+      msg "$_STATUS B: Hostmaster STATUS: Fix 2/2 hosting_context $_HM_NID empty!"
+    fi
   fi
   ### Fix for migrated/merged instances
 
@@ -693,8 +709,6 @@ else
 fi
 cd $_HOSTMASTER_ROOT/sites/$_DOMAIN
 if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
-  mkdir -p $_ROOT/backups/system/off
-  mv -f $_HOSTMASTER_ROOT/sites/$_DOMAIN/modules/* $_ROOT/backups/system/off/ &> /dev/null
   sed -i "s/backup_delete/backup-delete/g" $_HOSTMASTER_ROOT/profiles/hostmaster/modules/hosting_backup_gc/hosting_backup_gc.module &> /dev/null
   sed -i "s/Platform pathauto settings/Platform pathauto/g" $_HOSTMASTER_ROOT/profiles/hostmaster/modules/hosting_platform_pathauto/hosting_platform_pathauto.module &> /dev/null
   sed -i "s/Backup schedule settings/Backup schedule/g" $_HOSTMASTER_ROOT/profiles/hostmaster/modules/hosting_backup_queue/hosting_backup_queue.module &> /dev/null

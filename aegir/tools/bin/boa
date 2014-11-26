@@ -32,7 +32,7 @@ check_id () {
     echo "Please try different username"
     clean_pid_exit
   fi
-  if [ "$_USER" = "admin" ] || [ "$_USER" = "hostmaster" ] || [ "$_USER" = "barracuda" ] || [ "$_USER" = "octopus" ] || [ "$_USER" = "boa" ] ; then
+  if [ "$_USER" = "admin" ] || [ "$_USER" = "hostmaster" ] || [ "$_USER" = "barracuda" ] || [ "$_USER" = "octopus" ] || [ "$_USER" = "boa" ] || [ "$_USER" = "all" ] ; then
     echo "ERROR: $_USER is a restricted username, please choose different _USER"
     clean_pid_exit
   elif [[ "$_USER" =~ "aegir" ]] || [[ "$_USER" =~ "drupal" ]] || [[ "$_USER" =~ "drush" ]] || [[ "$_USER" =~ "sites" ]] || [[ "$_USER" =~ "default" ]] ; then

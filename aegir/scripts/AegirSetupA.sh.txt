@@ -517,7 +517,7 @@ for i in $REVISIONS; do
       get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
     fi
     if [ ! -d "/data/all/$i/o_contrib_seven/speedy" ] ; then
-      get_dev_contrib "speedy-7.x-1.14.tar.gz"
+      get_dev_contrib "speedy-7.x-1.15.tar.gz"
     fi
     if [ ! -d "/data/all/$i/o_contrib_seven/taxonomy_edge" ] ; then
       get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
@@ -599,7 +599,7 @@ download_o_contrib_seven () {
   get_dev_contrib "securesite-7.x-2.x-dev.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
   get_dev_contrib "site_verify-7.x-1.1.tar.gz"
-  get_dev_contrib "speedy-7.x-1.14.tar.gz"
+  get_dev_contrib "speedy-7.x-1.15.tar.gz"
   get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
   get_dev_contrib "textile-7.x-2.0-rc11.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
@@ -979,7 +979,7 @@ provision_backend_dbpass_generate () {
   fi
   if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
     if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-      _ESC_PASS=$(randpass $_PWD_CHARS esc)
+      _ESC_PASS=$(randpass $_PWD_CHARS esc 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ] ; then
         _ESC_PASS=`cat /root/.my.pass.txt`
@@ -1391,7 +1391,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
       fi
     fi
     if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
-      _ESC_LUPASS=$(randpass $_PWD_CHARS alnum)
+      _ESC_LUPASS=$(randpass $_PWD_CHARS alnum 2>&1)
       _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
     fi
@@ -1580,7 +1580,7 @@ else
       fi
     fi
     if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
-      _ESC_LUPASS=$(randpass $_PWD_CHARS alnum)
+      _ESC_LUPASS=$(randpass $_PWD_CHARS alnum 2>&1)
       _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
     fi
@@ -2000,29 +2000,55 @@ msg "$_STATUS A: Final cleaning, please wait a moment..."
 cd /
 chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt opt sbin selinux srv sys usr var share run &> /dev/null
 chmod 700 root &> /dev/null
-if [ ! -f "/data/all/permissions-fix-$_INSTALLER_VERSION-$_TODAY.info" ] ; then
-  find /data/all/000 -type d -exec chmod 0755 {} \; &> /dev/null
-  find /data/all/000 -type f -exec chmod 0644 {} \; &> /dev/null
-  st_runner "chmod 755 /data/all/*/*/profiles" &> /dev/null
-  st_runner "chmod 02775 /data/all/*/*/sites/all/{modules,libraries,themes}" &> /dev/null
-  st_runner "chmod 02775 /data/all/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
-  st_runner "chown -R root:root /data/all" &> /dev/null
-  st_runner "chown -R root:users /data/all/*/*/sites" &> /dev/null
-  echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-$_TODAY.info
+if [ -e "/data/all" ] ; then
+  if [ ! -f "/data/all/permissions-fix-$_INSTALLER_VERSION-$_TODAY.info" ] ; then
+    find /data/all/000 -type d -exec chmod 0755 {} \; &> /dev/null
+    find /data/all/000 -type f -exec chmod 0644 {} \; &> /dev/null
+    st_runner "chmod 755 /data/all/*/*/profiles" &> /dev/null
+    st_runner "chmod 02775 /data/all/*/*/sites/all/{modules,libraries,themes}" &> /dev/null
+    st_runner "chmod 02775 /data/all/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
+    st_runner "chown -R root:root /data/all" &> /dev/null
+    st_runner "chown -R root:users /data/all/*/*/sites" &> /dev/null
+    echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-$_TODAY.info
+  fi
+  chown root:root /data/all &> /dev/null
+  chown root:root $_CORE &> /dev/null
+  st_runner "chown -R root:root /data/conf" &> /dev/null
+  st_runner "chown -R root:root $_CORE/o_contrib" &> /dev/null
+  st_runner "chown -R root:root $_CORE/o_contrib_seven" &> /dev/null
+  st_runner "chown -R root:root /data/all/$_LAST_ALL/o_contrib" &> /dev/null
+  st_runner "chown -R root:root /data/all/$_LAST_ALL/o_contrib_seven" &> /dev/null
+  st_runner "chown -R root:root /data/all/000" &> /dev/null
+  find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
+  find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
+  chown root:root /opt/tmp &> /dev/null
+  chmod 0711 /data /data/all/* /data/disk /data/conf &> /dev/null
+  chmod 0755 /data/all /data/all/000 &> /dev/null
+elif [ -e "/data/disk/all" ] ; then
+  if [ ! -f "/data/disk/all/permissions-fix-$_INSTALLER_VERSION-$_TODAY.info" ] ; then
+    find /data/disk/all/000 -type d -exec chmod 0755 {} \; &> /dev/null
+    find /data/disk/all/000 -type f -exec chmod 0644 {} \; &> /dev/null
+    st_runner "chmod 755 /data/disk/all/*/*/profiles" &> /dev/null
+    st_runner "chmod 02775 /data/disk/all/*/*/sites/all/{modules,libraries,themes}" &> /dev/null
+    st_runner "chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
+    st_runner "chown -R root:root /data/disk/all" &> /dev/null
+    st_runner "chown -R root:users /data/disk/all/*/*/sites" &> /dev/null
+    echo fixed > /data/disk/all/permissions-fix-$_INSTALLER_VERSION-$_TODAY.info
+  fi
+  chown root:root /data/disk/all &> /dev/null
+  chown root:root $_CORE &> /dev/null
+  st_runner "chown -R root:root /data/conf" &> /dev/null
+  st_runner "chown -R root:root $_CORE/o_contrib" &> /dev/null
+  st_runner "chown -R root:root $_CORE/o_contrib_seven" &> /dev/null
+  st_runner "chown -R root:root /data/disk/all/$_LAST_ALL/o_contrib" &> /dev/null
+  st_runner "chown -R root:root /data/disk/all/$_LAST_ALL/o_contrib_seven" &> /dev/null
+  st_runner "chown -R root:root /data/disk/all/000" &> /dev/null
+  find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
+  find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
+  chown root:root /opt/tmp &> /dev/null
+  chmod 0711 /data /data/disk/all/* /data/disk /data/conf &> /dev/null
+  chmod 0755 /data/disk/all /data/disk/all/000 &> /dev/null
 fi
-chown root:root /data/all &> /dev/null
-chown root:root $_CORE &> /dev/null
-st_runner "chown -R root:root /data/conf" &> /dev/null
-st_runner "chown -R root:root $_CORE/o_contrib" &> /dev/null
-st_runner "chown -R root:root $_CORE/o_contrib_seven" &> /dev/null
-st_runner "chown -R root:root /data/all/$_LAST_ALL/o_contrib" &> /dev/null
-st_runner "chown -R root:root /data/all/$_LAST_ALL/o_contrib_seven" &> /dev/null
-st_runner "chown -R root:root /data/all/000" &> /dev/null
-find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
-find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
-chown root:root /opt/tmp &> /dev/null
-chmod 0711 /data /data/all/* /data/disk /data/conf &> /dev/null
-chmod 0755 /data/all /data/all/000 &> /dev/null
 chmod 0700 /data/u &> /dev/null
 chown root:root /data/u &> /dev/null
 rm -f /data/u/*host8* &> /dev/null

@@ -4,6 +4,11 @@ SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _WEBG=www-data
 _OPENSSL_VERSION=1.0.1j
+_REL_VERSION=`lsb_release -sc`
+_SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
+if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] ; then
+  _NEW_SSL=YES
+fi
 
 ###-------------SYSTEM-----------------###
 
@@ -318,11 +323,13 @@ fix_user_register_protection () {
   fi
 
   if [ -e "$User/log/imported.pid" ] || [ -e "$User/log/exported.pid" ] ; then
-    if [ ! -e "$Dir/modules/readonlymode_fix.info" ] ; then
+    if [ -e "$Dir/modules/readonlymode_fix.info" ] ; then
+      touch $User/log/ctrl/site.${Dom}.rom-fix.info
+      rm -f $Dir/modules/readonlymode_fix.info
+    fi
+    if [ ! -e "$User/log/ctrl/site.${Dom}.rom-fix.info" ] ; then
       drush4 vset --always-set site_readonly 0 &> /dev/null
-      echo OK > $Dir/modules/readonlymode_fix.info
-      chown $_THIS_HM_USER:users $Dir/modules/readonlymode_fix.info
-      chmod 0664 $Dir/modules/readonlymode_fix.info
+      touch $User/log/ctrl/site.${Dom}.rom-fix.info
     fi
   fi
 }
@@ -679,7 +686,7 @@ check_file_with_wildcard_path () {
 write_solr_config () {
   # $1 is module
   # $2 is a path to solr.php
-  if [ ! -z $1 ] && [ ! -z $2 ] && [ -e "${Dir}" ] ; then
+  if [ ! -z $1 ] && [ ! -z $2 ] && [ ! -z "${_MD5H}" ] && [ -e "${Dir}" ] ; then
     echo "Your SOLR core access details for ${Dom} site are as follows:"  > $2
     echo                                                                 >> $2
     echo "  Solr host ........: 127.0.0.1"                               >> $2
@@ -738,11 +745,6 @@ add_solr () {
   if [ ! -z $1 ] && [ ! -z $2 ] && [ -e "/var/xdrago/conf/solr" ] ; then
     if [ ! -e "$2" ] ; then
       cp -a /opt/solr4/core0 $2
-      _REL_VERSION=`lsb_release -sc`
-      _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
-      if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] ; then
-        _NEW_SSL=YES
-      fi
       CHAR="[:alnum:]"
       rkey=32
       if [ "$_NEW_SSL" = "YES" ] || [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
@@ -1286,10 +1288,9 @@ fix_modules () {
             _VIEWS_CONTENT_CACHE_DONT_ENABLE=NO
           fi
 
-          if [ -e "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.info" ] ; then
+          if [ -e "$Plr/profiles/hostmaster" ] && [ ! -f "$User/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info" ] ; then
             run_drush6_hmr_cmd "@hostmaster dis cache syslog dblog -y"
-            echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fix.info
-            chown $_THIS_HM_USER:users $Plr/profiles/hostmaster/modules-fix.info
+            touch $User/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
           elif [ -e "$Plr/modules/o_contrib" ] ; then
             if [ ! -e "$Plr/modules/user" ] || [ ! -e "$Plr/sites/all/modules" ] || [ ! -e "$Plr/profiles" ] ; then
               echo "WARNING: THIS PLATFORM IS BROKEN! $Plr"
@@ -1311,15 +1312,17 @@ fix_modules () {
               enable_modules "$_MODULES_ON_SEVEN"
             fi
           fi
-          if [ ! -e "$Dir/modules/commerce_ubercart_check.info" ] ; then
+          if [ -e "$Dir/modules/commerce_ubercart_check.info" ] ; then
+            touch $User/log/ctrl/site.${Dom}.cart-check.info
+            rm -f $Dir/modules/commerce_ubercart_check.info
+          fi
+          if [ ! -e "$User/log/ctrl/site.${Dom}.cart-check.info" ] ; then
             _COMMERCE_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --no-core --type=module | grep \(commerce\)")
             _UBERCART_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --no-core --type=module | grep \(uc_cart\)")
             if [[ "$_COMMERCE_TEST" =~ "Commerce" ]] || [[ "$_UBERCART_TEST" =~ "Ubercart" ]] ; then
               disable_modules "views_cache_bully"
             fi
-            echo OK > $Dir/modules/commerce_ubercart_check.info
-            chown $_THIS_HM_USER:users $Dir/modules/commerce_ubercart_check.info
-            chmod 0664 $Dir/modules/commerce_ubercart_check.info
+            touch $User/log/ctrl/site.${Dom}.cart-check.info
           fi
           if [ -e "$User/static/control/enable_views_cache_bully.info" ] || [ -e "$User/static/control/enable_views_content_cache.info" ] ; then
             _VIEWS_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --no-core --type=module | grep \(views\)")
@@ -1431,16 +1434,8 @@ fix_seven_core_patch () {
       patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch
       chown $_THIS_HM_USER:users $Plr/includes/database/*.inc
       chmod 0664 $Plr/includes/database/*.inc
-      echo fixed > $Plr/profiles/post-patch-permissions-fix.info
       echo fixed > $Plr/profiles/SA-CORE-2014-005-D7-fix.info
     fi
-    chown $_THIS_HM_USER:users $Plr/profiles/*-fix.info
-    chmod 0664 $Plr/profiles/*-fix.info
-  fi
-  if [ ! -f "$Plr/profiles/post-patch-permissions-fix.info" ] ; then
-    chown $_THIS_HM_USER:users $Plr/includes/database/*.inc
-    chmod 0664 $Plr/includes/database/*.inc
-    echo fixed > $Plr/profiles/post-patch-permissions-fix.info
     chown $_THIS_HM_USER:users $Plr/profiles/*-fix.info
     chmod 0664 $Plr/profiles/*-fix.info
   fi
@@ -1452,22 +1447,21 @@ fix_static_permissions () {
     if [ -e "$Plr/web.config" ] ; then
       fix_seven_core_patch
     fi
-    rm -f $Plr/profiles/permissions-fix.info
-    rm -f $Plr/profiles/core-permissions-fix.info
-    if [ ! -f "$Plr/profiles/permissions-update-fix.info" ] ; then
-      find $Plr/profiles -type f -name "*.info" -print0 | xargs -0 sed -i 's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
-      chown -R ${_THIS_HM_USER}.ftp:users $Plr/profiles &> /dev/null
-      find $Plr/profiles -type d -exec chmod 02775 {} \; &> /dev/null
-      find $Plr/profiles -type f -exec chmod 0664 {} \; &> /dev/null
-      echo fixed > $Plr/profiles/permissions-update-fix.info
-      chown $_THIS_HM_USER:users $Plr/profiles/permissions-update-fix.info
-      chmod 0664 $Plr/profiles/permissions-update-fix.info
+    if [ ! -e "$User/static/control/unlock.info" ] && [ ! -e "$Plr/skip.info" ] ; then
+      if [ ! -e "$User/log/ctrl/plr.${PlrID}.ctm-lock-${_NOW}.info" ] ; then
+        chown -R ${_THIS_HM_USER} $Plr &> /dev/null
+        touch $User/log/ctrl/plr.${PlrID}.ctm-lock-${_NOW}.info
+      fi
+    elif [ -e "$User/static/control/unlock.info" ] && [ ! -e "$Plr/skip.info" ] ; then
+      if [ ! -e "$User/log/ctrl/plr.${PlrID}.ctm-unlock-${_NOW}.info" ] ; then
+        chown -R ${_THIS_HM_USER}.ftp $Plr &> /dev/null
+        touch $User/log/ctrl/plr.${PlrID}.ctm-unlock-${_NOW}.info
+      fi
     fi
-    if [ ! -f "$Plr/profiles/core-permissions-update-fix.info" ] ; then
-      chmod 775 $Plr/modules &> /dev/null
-      echo fixed > $Plr/profiles/core-permissions-update-fix.info
-      chown $_THIS_HM_USER:users $Plr/profiles/core-permissions-update-fix.info
-      chmod 0664 $Plr/profiles/core-permissions-update-fix.info
+    if [ ! -f "$User/log/ctrl/plr.${PlrID}.perm-fix-${_NOW}.info" ] ; then
+      find $Plr/profiles -type f -name "*.info" -print0 | xargs -0 sed -i 's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
+      find $Plr -type d -exec chmod 0775 {} \; &> /dev/null
+      find $Plr -type f -exec chmod 0664 {} \; &> /dev/null
     fi
   fi
 }
@@ -1491,11 +1485,25 @@ fix_permissions () {
   ;;
   esac
   ### modules,themes,libraries - platform level
-  if [ ! -f "$Plr/sites/all/permissions-fix-$_NOW.info" ] && [ -e "$Plr" ] ; then
+  if [ -f "$Plr/profiles/core-permissions-update-fix.info" ] ; then
+    rm -f $Plr/profiles/*permissions*.info
+    rm -f $Plr/sites/all/permissions-fix*
+  fi
+  if [ ! -f "$User/log/ctrl/plr.${PlrID}.perm-fix-${_NOW}.info" ] && [ -e "$Plr" ] ; then
     mkdir -p $Plr/sites/all/{modules,themes,libraries,drush}
     find $Plr/sites/all/modules -type f -name "*.info" -print0 | xargs -0 sed -i 's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries,drush}/*{.tar,.tar.gz,.zip} -type f -exec rm -f {} \; &> /dev/null
-    chown -R ${_THIS_HM_USER}.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
+    if [ ! -e "$User/static/control/unlock.info" ] && [ ! -e "$Plr/skip.info" ] ; then
+      if [ ! -e "$User/log/ctrl/plr.${PlrID}.lock-${_NOW}.info" ] ; then
+        chown -R ${_THIS_HM_USER}:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
+        touch $User/log/ctrl/plr.${PlrID}.lock-${_NOW}.info
+      fi
+    elif [ -e "$User/static/control/unlock.info" ] && [ ! -e "$Plr/skip.info" ] ; then
+      if [ ! -e "$User/log/ctrl/plr.${PlrID}.unlock-${_NOW}.info" ] ; then
+        chown -R ${_THIS_HM_USER}.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
+        touch $User/log/ctrl/plr.${PlrID}.unlock-${_NOW}.info
+      fi
+    fi
     chown $_THIS_HM_USER:users $Plr/sites/all/drush/drushrc.php $Plr/sites $Plr/sites/sites.php $Plr/sites/all $Plr/sites/all/{modules,themes,libraries,drush} &> /dev/null
     chmod 0751 $Plr/sites &> /dev/null
     chmod 0751 $Plr/sites/all &> /dev/null
@@ -1506,10 +1514,8 @@ fix_permissions () {
     fix_expected_symlinks
     ### known exceptions
     chmod -R 775 $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
-    chown -R www-data:www-data $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
-    echo fixed > $Plr/sites/all/permissions-fix-$_NOW.info
-    chown $_THIS_HM_USER:users $Plr/sites/all/permissions-fix-$_NOW.info
-    chmod 0664 $Plr/sites/all/permissions-fix-$_NOW.info
+    chown -R ${_THIS_HM_USER}.ftp:www-data $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
+    touch $User/log/ctrl/plr.${PlrID}.perm-fix-${_NOW}.info
   fi
   if [ -e "$Dir" ] && [ -e "$Dir/drushrc.php" ] && [ -e "$Dir/files" ] && [ -e "$Dir/private" ] && [ -e "$Dir/modules" ] ; then
     ### directory and settings files - site level
@@ -1520,7 +1526,11 @@ fix_permissions () {
     ### modules,themes,libraries - site level
     find $Dir/{modules,themes,libraries}/*{.tar,.tar.gz,.zip} -type f -exec rm -f {} \; &> /dev/null
     rm -f $Dir/modules/local-allow.info
-    chown -R ${_THIS_HM_USER}.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
+    if [ ! -e "$User/static/control/unlock.info" ] && [ ! -e "$Plr/skip.info" ] ; then
+      chown -R ${_THIS_HM_USER}:users $Dir/{modules,themes,libraries}/* &> /dev/null
+    elif [ -e "$User/static/control/unlock.info" ] && [ ! -e "$Plr/skip.info" ] ; then
+      chown -R ${_THIS_HM_USER}.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
+    fi
     chown $_THIS_HM_USER:users $Dir/drushrc.php $Dir/{modules,themes,libraries} &> /dev/null
     find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
     find $Dir/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
@@ -1768,8 +1778,11 @@ cleanup_ghost_drushrc () {
         else
           mkdir -p $User/undo
           mv -f $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php $User/undo/ &> /dev/null
-          mv -f $User/config/server_master/nginx/vhost.d/${_THIS_SITE_NAME} $User/undo/ghost-vhost-${_THIS_SITE_NAME} &> /dev/null
-          echo GHOST drushrc and vhost for ${_THIS_SITE_NAME} detected and moved to $User/undo/
+          echo GHOST drushrc for ${_THIS_SITE_NAME} detected and moved to $User/undo/
+          if [[ ! "$_THIS_SITE_FDIR" =~ "aegir/distro" ]] ; then
+            mv -f $User/config/server_master/nginx/vhost.d/${_THIS_SITE_NAME} $User/undo/ghost-vhost-${_THIS_SITE_NAME} &> /dev/null
+            echo GHOST vhost for ${_THIS_SITE_NAME} detected and moved to $User/undo/
+          fi
           if [ -d "$_THIS_SITE_FDIR" ] ; then
             mv -f ${_THIS_SITE_FDIR} $User/undo/ghost-site-${_THIS_SITE_NAME} &> /dev/null
             echo GHOST site dir for ${_THIS_SITE_NAME} detected and moved from ${_THIS_SITE_FDIR} to $User/undo/
@@ -1798,6 +1811,11 @@ process () {
       Dir=`cat $User/.drush/$Dom.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       if [ -e "$Plr" ] ; then
+        if [ "$_NEW_SSL" = "YES" ] || [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
+          PlrID=`echo $Plr | openssl md5 | awk '{ print $2}' | tr -d "\n"`
+        else
+          PlrID=`echo $Plr | openssl md5 | tr -d "\n"`
+        fi
         fix_platform_control_files
         fix_o_contrib_symlink
         if [ -e "$Dir" ] ; then
@@ -2043,6 +2061,7 @@ action () {
         _THIS_HM_SITE=`cat $User/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
         echo load is $_O_LOAD while maxload is $_O_LOAD_MAX
         echo User $User
+        mkdir -p $User/log/ctrl
         su -s /bin/bash $_THIS_HM_USER -c "drush6 cc drush &> /dev/null"
         rm -f -r $User/.tmp/cache
         _SQL_CONVERT=NO
@@ -2069,7 +2088,6 @@ action () {
         fi
         disable_chattr ${_THIS_HM_USER}.ftp
         rm -f -r /home/${_THIS_HM_USER}.ftp/drush-backups
-        process
         if [ -e "$_THIS_HM_SITE" ] ; then
           cd $_THIS_HM_SITE
           su -s /bin/bash $_THIS_HM_USER -c "drush6 cc drush &> /dev/null"
@@ -2087,7 +2105,18 @@ action () {
           run_drush6_hmr_cmd "@hostmaster cc all"
           run_drush6_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
           run_drush6_hmr_cmd "@hostmaster cc all"
+          if [ -e "$User/log/imported.pid" ] || [ -e "$User/log/exported.pid" ] ; then
+            if [ ! -e "$User/log/hosting_context.pid" ] ; then
+              _HM_NID=$(run_drush6_hmr_cmd "@hostmaster sqlq \"SELECT site.nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'\" 2>&1")
+              _HM_NID=${_HM_NID//[^0-9]/}
+              if [ ! -z "$_HM_NID" ] ; then
+                run_drush6_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context SET name='hostmaster' WHERE nid='$_HM_NID'\""
+                echo $_HM_NID > $User/log/hosting_context.pid
+              fi
+            fi
+          fi
         fi
+        process
         run_drush6_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
         run_drush6_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
         check_old_empty_platforms
@@ -2157,6 +2186,12 @@ if [ -e "/data/all" ] ; then
   _LAST_ALL=${listl[@]: -1}
   _O_CONTRIB="/data/all/$_LAST_ALL/o_contrib"
   _O_CONTRIB_SEVEN="/data/all/$_LAST_ALL/o_contrib_seven"
+elif [ -e "/data/disk/all" ] ; then
+  cd /data/disk/all
+  listl=([0-9]*)
+  _LAST_ALL=${listl[@]: -1}
+  _O_CONTRIB="/data/disk/all/$_LAST_ALL/o_contrib"
+  _O_CONTRIB_SEVEN="/data/disk/all/$_LAST_ALL/o_contrib_seven"
 else
   _O_CONTRIB=NO
   _O_CONTRIB_SEVEN=NO
@@ -2195,19 +2230,27 @@ else
   if [ -z "$_MODULES_FIX" ] ; then
     _MODULES_FIX=YES
   fi
-  find /data/all/ -type f -name "*.info" -print0 | xargs -0 sed -i 's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
-  if [ ! -e "/data/all/permissions-fix-post-up-BOA-2.3.6.info" ] ; then
-    find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} -type d -exec chmod 02775 {} \; &> /dev/null
-    find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} -type f -exec chmod 0664 {} \; &> /dev/null
-    echo fixed > /data/all/permissions-fix-post-up-BOA-2.3.6.info
+  if [ -e "/data/all" ] ; then
+    find /data/all -type f -name "*.info" -print0 | xargs -0 sed -i 's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
+    if [ ! -e "/data/all/permissions-fix-post-up-BOA-2.3.6.info" ] ; then
+      rm -f /data/all/permissions-fix*
+      find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} -type d -exec chmod 02775 {} \; &> /dev/null
+      find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} -type f -exec chmod 0664 {} \; &> /dev/null
+      echo fixed > /data/all/permissions-fix-post-up-BOA-2.3.6.info
+    fi
+  elif [ -e "/data/disk/all" ] ; then
+    find /data/disk/all -type f -name "*.info" -print0 | xargs -0 sed -i 's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
+    if [ ! -e "/data/disk/all/permissions-fix-post-up-BOA-2.3.6.info" ] ; then
+      rm -f /data/disk/all/permissions-fix*
+      find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} -type d -exec chmod 02775 {} \; &> /dev/null
+      find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} -type f -exec chmod 0664 {} \; &> /dev/null
+      echo fixed > /data/disk/all/permissions-fix-post-up-BOA-2.3.6.info
+    fi
   fi
   action >/var/xdrago/log/daily/daily-$_NOW.log 2>&1
   if [ "$_PERMISSIONS_FIX" = "YES" ] ; then
-    echo "INFO: Removing old permissions-fix-* files"
-    find /data/disk/*/distro/*/*/sites/all/permissions-fix-* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
-    find /data/disk/*/static/*/sites/all/permissions-fix-* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
-    find /data/disk/*/static/*/*/sites/all/permissions-fix-* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
-    find /data/disk/*/static/*/*/*/sites/all/permissions-fix-* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
+    echo "INFO: Removing old ctrl files"
+    find $User/log/ctrl/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
   fi
   if [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
     for File in `find /etc/ssl/private/*.key -type f` ; do
@@ -2262,17 +2305,27 @@ fi
 #
 if [ "$_PERMISSIONS_FIX" = "YES" ] && [ ! -z "$_INSTALLER_VERSION" ] && [ -e "/opt/tmp/barracuda-version.txt" ] && [ ! -e "/data/all/permissions-fix-$_INSTALLER_VERSION-fixed-dz.info" ] ; then
   echo "INFO: Fixing permissions in the /data/all tree..."
-  find /data/all -type d -exec chmod 0755 {} \; &> /dev/null
-  find /data/all -type f -exec chmod 0644 {} \; &> /dev/null
   find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
   find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
   chown -R root:root /data/conf
-  chmod 02775 /data/all/*/*/sites/all/{modules,libraries,themes} &> /dev/null
-  chmod 02775 /data/all/000/core/*/sites/all/{modules,libraries,themes} &> /dev/null
+  if [ -e "/data/all" ] ; then
+    find /data/all -type d -exec chmod 0755 {} \; &> /dev/null
+    find /data/all -type f -exec chmod 0644 {} \; &> /dev/null
+    chmod 02775 /data/all/*/*/sites/all/{modules,libraries,themes} &> /dev/null
+    chmod 02775 /data/all/000/core/*/sites/all/{modules,libraries,themes} &> /dev/null
+    chown -R root:root /data/all
+    chown -R root:users /data/all/*/*/sites
+    chown -R root:users /data/all/000/core/*/sites
+  elif [ -e "/data/disk/all" ] ; then
+    find /data/disk/all -type d -exec chmod 0755 {} \; &> /dev/null
+    find /data/disk/all -type f -exec chmod 0644 {} \; &> /dev/null
+    chmod 02775 /data/disk/all/*/*/sites/all/{modules,libraries,themes} &> /dev/null
+    chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes} &> /dev/null
+    chown -R root:root /data/disk/all
+    chown -R root:users /data/disk/all/*/*/sites
+    chown -R root:users /data/disk/all/000/core/*/sites
+  fi
   chmod 02775 /data/disk/*/distro/*/*/sites/all/{modules,libraries,themes} &> /dev/null
-  chown -R root:root /data/all
-  chown -R root:users /data/all/*/*/sites
-  chown -R root:users /data/all/000/core/*/sites
   echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-fixed-dz.info
 fi
 if [ ! -e "/var/backups/fix-sites-all-permsissions-2.3.6.txt" ] ; then

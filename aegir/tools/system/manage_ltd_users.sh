@@ -8,7 +8,7 @@ _USRG=users
 _WEBG=www-data
 _THIS_RV=`lsb_release -sc`
 if [ "$_THIS_RV" = "wheezy" ] || [ "$_THIS_RV" = "trusty" ] || [ "$_THIS_RV" = "precise" ] ; then
-  _RUBY_VERSION=2.1.2
+  _RUBY_VERSION=2.1.5
 else
   _RUBY_VERSION=2.0.0
 fi
@@ -16,6 +16,11 @@ if [[ "$_VM_TEST" =~ beng ]] ; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
+fi
+if [ -x "/usr/bin/gpg2" ] ; then
+  _GPG=gpg2
+else
+  _GPG=gpg
 fi
 
 ###-------------SYSTEM-----------------###
@@ -173,14 +178,14 @@ enable_chattr () {
       fi
       if [ ! -x "/home/${UQ}/.rvm/bin/rvm" ] ; then
         touch /var/run/manage_rvm_users.pid
-        su -s /bin/bash ${UQ} -c "gpg --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3" &> /dev/null
-        su -s /bin/bash ${UQ} -c "\curl -sSL https://rvm.io/mpapis.asc | gpg --import" &> /dev/null
-        su -s /bin/bash ${UQ} -c "\curl -sSL https://get.rvm.io | bash -s stable" &> /dev/null
-        su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles" &> /dev/null
-        su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc" &> /dev/null
+        su -s /bin/bash - ${UQ} -c "$_GPG --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3"
+        su -s /bin/bash - ${UQ} -c "\curl -sSL https://rvm.io/mpapis.asc | $_GPG --import"
+        su -s /bin/bash   ${UQ} -c "\curl -sSL https://get.rvm.io | bash -s stable"
+        su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles"
+        su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
         rm -f /var/run/manage_rvm_users.pid
       fi
-      su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc" &> /dev/null
+      su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
       if [ ! -e "/home/${UQ}/.rvm/rubies/default" ] ; then
         if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
           _WEB_SH=`readlink -n /bin/sh`
@@ -198,8 +203,8 @@ enable_chattr () {
           fi
         fi
         touch /var/run/manage_rvm_users.pid
-        su -s /bin/bash - ${UQ} -c "rvm install ${_RUBY_VERSION}" &> /dev/null
-        su -s /bin/bash - ${UQ} -c "rvm use ${_RUBY_VERSION} --default" &> /dev/null
+        su -s /bin/bash - ${UQ} -c "rvm install ${_RUBY_VERSION}"
+        su -s /bin/bash - ${UQ} -c "rvm use ${_RUBY_VERSION} --default"
         rm -f /var/run/manage_rvm_users.pid
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
@@ -229,6 +234,7 @@ enable_chattr () {
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative hitimes"        &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative http_parser.rb" &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative oily_png"       &> /dev/null
+        su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.1.1 oily_png"      &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative yajl-ruby"      &> /dev/null
         touch /data/disk/${_OWN}/log/.gems.build.d.${UQ}.txt
         rm -f /var/run/manage_rvm_users.pid
@@ -244,6 +250,8 @@ enable_chattr () {
       if [ -d "/home/${UQ}/.rvm/log" ] ; then
         rm -f -r /home/${UQ}/.rvm/log/*
       fi
+      rm -f /home/${UQ}/{.profile,.bash_logout,.bash_profile,.bashrc,.zlogin,.zshrc}
+      rm -f /home/${UQ}/.rvm/scripts/notes
     else
       if [ -d "/home/${UQ}/.rvm" ] || [ -d "/home/${UQ}/.gem" ] ; then
         rm -f /data/disk/${_OWN}/log/.gems.build*
@@ -425,7 +433,7 @@ ok_create_user()
       fi
     fi
     if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
-      _ESC_LUPASS=$(randpass $_PWD_CHARS alnum)
+      _ESC_LUPASS=$(randpass $_PWD_CHARS alnum 2>&1)
       _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
     fi
