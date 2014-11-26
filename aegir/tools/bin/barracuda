@@ -206,7 +206,7 @@ up_action ()
     if [ "$cmmand" = "up-cluster" ] ; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"               /var/backups/BARRACUDA.sh.txt
     elif [ "$cmmand" = "up-head" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"                /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"                /var/backups/BARRACUDA.sh.txt
     elif [ "$cmmand" = "up-stable" ] ; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"             /var/backups/BARRACUDA.sh.txt
     else
