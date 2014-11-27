@@ -71,23 +71,23 @@ disable_chattr () {
     chattr -i /home/$1/.drush/usr    &> /dev/null
     chattr -i /home/$1/.drush/*.ini  &> /dev/null
     if [ "$1" != "${_THIS_HM_USER}.ftp" ] ; then
-      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] && [ -d "/data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon" ] ; then
-        ln -sf /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
+      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] && [ -d "$User/.drush/usr/drupalgeddon" ] ; then
+        ln -sf $User/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
       fi
     else
-      if [ ! -d "/data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon" ] || [ ! -e "/data/disk/${_THIS_HM_USER}/static/control/.drupalgeddon.in.013.pid" ] ; then
-        rm -f /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon &> /dev/null
-        cd /data/disk/${_THIS_HM_USER}/.drush/usr
+      if [ ! -d "$User/.drush/usr/drupalgeddon" ] || [ ! -e "$User/static/control/.drupalgeddon.in.014.pid" ] ; then
+        rm -f $User/.drush/usr/drupalgeddon &> /dev/null
+        cd $User/.drush/usr
         get_dev_ext "drupalgeddon.tar.gz"
-        find /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon -type d -exec chmod 0750 {} \; &> /dev/null
-        find /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon -type f -exec chmod 0640 {} \; &> /dev/null
-        chown -R ${_THIS_HM_USER}:users /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon
-        rm -f /data/disk/${_THIS_HM_USER}/static/control/.drupalgeddon.in.00*.pid
-        touch /data/disk/${_THIS_HM_USER}/static/control/.drupalgeddon.in.013.pid
+        find $User/.drush/usr/drupalgeddon -type d -exec chmod 0750 {} \; &> /dev/null
+        find $User/.drush/usr/drupalgeddon -type f -exec chmod 0640 {} \; &> /dev/null
+        chown -R ${_THIS_HM_USER}:users $User/.drush/usr/drupalgeddon
+        rm -f $User/static/control/.drupalgeddon.in.00*.pid
+        touch $User/static/control/.drupalgeddon.in.014.pid
       fi
-      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] && [ -d "/data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon" ] ; then
+      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] && [ -d "$User/.drush/usr/drupalgeddon" ] ; then
         rm -f -r /home/$1/.drush/usr/drupalgeddon
-        ln -sf /data/disk/${_THIS_HM_USER}/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
+        ln -sf $User/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
       fi
     fi
   fi
@@ -619,8 +619,9 @@ check_site_status () {
     _STATUS_TEST=$(run_drush4_nosilent_cmd "status | grep 'Drupal bootstrap.*:.*Successful'")
     if [[ "$_STATUS_TEST" =~ "Successful" ]] ; then
       _STATUS=OK
-      if [ -e "$Plr/modules/o_contrib_seven" ] ; then
+      if [ -e "$Plr/modules/o_contrib_seven" ] && [ -e "$User/static/control/drupalgeddon.info" ] ; then
         if [ -L "/home/${_THIS_HM_USER}.ftp/.drush/usr/drupalgeddon" ] ; then
+          run_drush4_cmd "en update -y"
           _DGDD_TEST=$(run_drush4_nosilent_cmd "drupalgeddon-test" 2>&1)
           if [[ "$_DGDD_TEST" =~ "No evidence of known Drupalgeddon exploits found" ]] ; then
             _DO_NOTHING=YES
@@ -1975,15 +1976,15 @@ purge_cruft_machine () {
   done
 
   for i in $REVISIONS; do
-    if [ -e "/data/disk/${_THIS_HM_USER}/distro/$i" ] && [ ! -e "/home/${_THIS_HM_USER}.ftp/platforms/$i" ] ; then
+    if [ -e "$User/distro/$i" ] && [ ! -e "/home/${_THIS_HM_USER}.ftp/platforms/$i" ] ; then
       chattr -i /home/${_THIS_HM_USER}.ftp/platforms   &> /dev/null
       chattr -i /home/${_THIS_HM_USER}.ftp/platforms/* &> /dev/null
       mkdir -p /home/${_THIS_HM_USER}.ftp/platforms/$i
-      mkdir -p /data/disk/${_THIS_HM_USER}/distro/$i/keys
-      chown ${_THIS_HM_USER}.ftp:$_WEBG /data/disk/${_THIS_HM_USER}/distro/$i/keys
-      chmod 02775 /data/disk/${_THIS_HM_USER}/distro/$i/keys
-      ln -sf /data/disk/${_THIS_HM_USER}/distro/$i/keys /home/${_THIS_HM_USER}.ftp/platforms/$i/keys
-      for Codebase in `find /data/disk/${_THIS_HM_USER}/distro/$i/* -maxdepth 1 -mindepth 1 -type d | grep "/sites$" 2>&1`; do
+      mkdir -p $User/distro/$i/keys
+      chown ${_THIS_HM_USER}.ftp:$_WEBG $User/distro/$i/keys
+      chmod 02775 $User/distro/$i/keys
+      ln -sf $User/distro/$i/keys /home/${_THIS_HM_USER}.ftp/platforms/$i/keys
+      for Codebase in `find $User/distro/$i/* -maxdepth 1 -mindepth 1 -type d | grep "/sites$" 2>&1`; do
         CodebaseName=$(echo $Codebase | cut -d'/' -f7 | awk '{ print $1}' 2> /dev/null)
         ln -sf ${Codebase} /home/${_THIS_HM_USER}.ftp/platforms/$i/${CodebaseName}
         echo Fixed symlink to ${Codebase} for ${_THIS_HM_USER}.ftp
@@ -2071,8 +2072,8 @@ action () {
           _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}
           _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
           _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
-          if [ -e "/data/disk/${_THIS_HM_USER}/log/email.txt" ] ; then
-            _F_CLIENT_EMAIL=`cat /data/disk/${_THIS_HM_USER}/log/email.txt`
+          if [ -e "$User/log/email.txt" ] ; then
+            _F_CLIENT_EMAIL=`cat $User/log/email.txt`
             _F_CLIENT_EMAIL=`echo -n $_F_CLIENT_EMAIL | tr -d "\n"`
             _F_CLIENT_EMAIL=${_F_CLIENT_EMAIL//\\\@/\@}
           fi
