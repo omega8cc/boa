@@ -619,13 +619,11 @@ check_site_status () {
     _STATUS_TEST=$(run_drush4_nosilent_cmd "status | grep 'Drupal bootstrap.*:.*Successful'")
     if [[ "$_STATUS_TEST" =~ "Successful" ]] ; then
       _STATUS=OK
-      if [ -e "$Plr/modules/o_contrib_seven" ] ; then
+      if [ -e "$Plr/modules/o_contrib_seven" ] && [ -e "$User/static/control/drupalgeddon.info" ] ; then
         if [ -L "/home/${_THIS_HM_USER}.ftp/.drush/usr/drupalgeddon" ] ; then
           run_drush4_cmd "en update -y"
           _DGDD_TEST=$(run_drush4_nosilent_cmd "drupalgeddon-test" 2>&1)
           if [[ "$_DGDD_TEST" =~ "No evidence of known Drupalgeddon exploits found" ]] ; then
-            _DO_NOTHING=YES
-          elif [[ "$_DGDD_TEST" =~ "has security vulnerabilities" ]] ; then
             _DO_NOTHING=YES
           elif [[ "$_DGDD_TEST" =~ "The drush command" ]] && [[ "$_DGDD_TEST" =~ "could not be found" ]]; then
             _DO_NOTHING=YES
