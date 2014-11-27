@@ -132,46 +132,46 @@ check_dns_settings () {
 
 update_agents ()
 {
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/clear.fixed.f88.pid" ] ; then
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/clear.fixed.g88.pid" ] ; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/system/clear.sh" -o /var/xdrago/clear.sh
     if [ -e "/var/xdrago/clear.sh" ] ; then
       chmod 700 /var/xdrago/clear.sh
       chown root:root /var/xdrago/clear.sh
-      touch /var/xdrago/log/clear.fixed.f88.pid
+      touch /var/xdrago/log/clear.fixed.g88.pid
     else
       mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
     fi
   fi
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/daily.fixed.f88.pid" ] ; then
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/daily.fixed.g88.pid" ] ; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/system/daily.sh" -o /var/xdrago/daily.sh
     if [ -e "/var/xdrago/daily.sh" ] ; then
       chmod 700 /var/xdrago/daily.sh
       chown root:root /var/xdrago/daily.sh
-      touch /var/xdrago/log/daily.fixed.f88.pid
+      touch /var/xdrago/log/daily.fixed.g88.pid
     else
       mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
     fi
   fi
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/manage_ltd_users.fixed.f88.pid" ] ; then
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/manage_ltd_users.fixed.g88.pid" ] ; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/system/manage_ltd_users.sh" -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ] ; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch /var/xdrago/log/manage_ltd_users.fixed.f88.pid
+      touch /var/xdrago/log/manage_ltd_users.fixed.g88.pid
     else
       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
     fi
   fi
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/websh.fixed.f88.pid" ] ; then
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/websh.fixed.g88.pid" ] ; then
     mv -f /bin/websh /var/xdrago/websh.sh.old
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/helpers/websh.sh.txt" -o /bin/websh
     if [ -e "/bin/websh" ] ; then
       chmod 755 /bin/websh
       chown root:root /bin/websh
-      touch /var/xdrago/log/websh.fixed.f88.pid
+      touch /var/xdrago/log/websh.fixed.g88.pid
     else
       mv -f /var/xdrago/websh.sh.old /bin/websh
     fi
