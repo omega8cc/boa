@@ -625,6 +625,8 @@ check_site_status () {
           _DGDD_TEST=$(run_drush4_nosilent_cmd "drupalgeddon-test" 2>&1)
           if [[ "$_DGDD_TEST" =~ "No evidence of known Drupalgeddon exploits found" ]] ; then
             _DO_NOTHING=YES
+          elif [[ "$_DGDD_TEST" =~ "has security vulnerabilities" ]] ; then
+            _DO_NOTHING=YES
           elif [[ "$_DGDD_TEST" =~ "The drush command" ]] && [[ "$_DGDD_TEST" =~ "could not be found" ]]; then
             _DO_NOTHING=YES
           elif [ -z "$_DGDD_TEST" ] ; then
