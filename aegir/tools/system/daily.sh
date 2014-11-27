@@ -621,6 +621,7 @@ check_site_status () {
       _STATUS=OK
       if [ -e "$Plr/modules/o_contrib_seven" ] ; then
         if [ -L "/home/${_THIS_HM_USER}.ftp/.drush/usr/drupalgeddon" ] ; then
+          run_drush4_cmd "en update -y"
           _DGDD_TEST=$(run_drush4_nosilent_cmd "drupalgeddon-test" 2>&1)
           if [[ "$_DGDD_TEST" =~ "No evidence of known Drupalgeddon exploits found" ]] ; then
             _DO_NOTHING=YES
