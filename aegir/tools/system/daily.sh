@@ -619,7 +619,15 @@ check_site_status () {
     _STATUS_TEST=$(run_drush4_nosilent_cmd "status | grep 'Drupal bootstrap.*:.*Successful'")
     if [[ "$_STATUS_TEST" =~ "Successful" ]] ; then
       _STATUS=OK
-      if [ -e "$Plr/modules/o_contrib_seven" ] && [ -e "$User/static/control/drupalgeddon.info" ] ; then
+      _RUN_DGN=NO
+      if [ -e "$User/static/control/drupalgeddon.info" ] ; then
+        _RUN_DGN=YES
+      else
+        if [ -e "/root/.force.drupalgeddon.cnf" ] ; then
+          _RUN_DGN=YES
+        fi
+      fi
+      if [ -e "$Plr/modules/o_contrib_seven" ] && [ "$_RUN_DGN" = "YES" ] ; then
         if [ -L "/home/${_THIS_HM_USER}.ftp/.drush/usr/drupalgeddon" ] ; then
           run_drush4_cmd "en update -y"
           _DGDD_TEST=$(run_drush4_nosilent_cmd "drupalgeddon-test" 2>&1)
