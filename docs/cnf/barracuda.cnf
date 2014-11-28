@@ -99,6 +99,21 @@ _SYSTEM_UPGRADE_ONLY=NO #------- Allows to skip Aegir on upgrade (deprecated)
 ###
 
 ###
+### You can configure BOA to run automated upgrades to latest stable version
+### for both Barracuda and all Octopus instances with three variables, empty
+### by default. All three variables must be defined to enable auto-upgrade.
+### You can set _AUTO_UP_MONTH and _AUTO_UP_DAY to some past date if you wish
+### to enable only weekly system upgrades.
+###
+### Remember that one-time upgrades will include complete upgrade to latest BOA
+### stable for Barracuda and all Octopus instances, while weekly upgrade is
+### designed to run only 'barracuda up-stable system' upgrade.
+###
+_AUTO_UP_WEEKLY= #-------------- Day of week (1-7) for weekly system upgrades
+_AUTO_UP_MONTH= #--------------- Month (1-12) to define date of one-time upgrade
+_AUTO_UP_DAY= #----------------- Day (1-31) to define date of one-time upgrade
+
+###
 ### You can whitelist extra binaries to make them available for web server
 ### requests, in addition to already whitelisted, known as safe binaries.
 ###

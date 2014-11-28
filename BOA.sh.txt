@@ -322,7 +322,7 @@ setup ()
   mkdir -p /usr/local/bin
   mkdir -p /opt/local/bin
   rm -f /opt/local/bin/.{boa*,fix*}
-  rm -f /usr/local/bin/{backboa*,barracuda*,boa*,drushextra*,octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
+  rm -f /usr/local/bin/{autoupboa*,backboa*,barracuda*,boa*,drushextra*,octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   if [ ! -e "/data/disk" ] ; then
     ln -s /opt/local/bin/boa /usr/local/bin/boa
   fi
@@ -330,7 +330,8 @@ setup ()
     ln -s /opt/local/bin/barracuda /usr/local/bin/barracuda
     ln -s /opt/local/bin/octopus /usr/local/bin/octopus
   fi
-  rm -f /opt/local/bin/{backboa*,barracuda*,boa*,drushextra*,octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
+  rm -f /opt/local/bin/{autoupboa*,backboa*,barracuda*,boa*,drushextra*,octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/autoupboa"      -o /opt/local/bin/autoupboa
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/backboa"        -o /opt/local/bin/backboa
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/barracuda"      -o /opt/local/bin/barracuda
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/boa"            -o /opt/local/bin/boa
@@ -342,7 +343,7 @@ setup ()
   echo "### $_TODAY ###" >> /opt/local/bin/boa
   echo "### $_TODAY ###" >> /opt/local/bin/barracuda
   echo "### $_TODAY ###" >> /opt/local/bin/octopus
-  chmod 700 /opt/local/bin/{backboa,barracuda,boa,octopus,syncpass}
+  chmod 700 /opt/local/bin/{autoupboa,backboa,barracuda,boa,octopus,syncpass}
   chmod 755 /opt/local/bin/{randpass,sqlmagic,thinkdifferent}
   echo
   echo "BOA Meta Installer setup completed"
