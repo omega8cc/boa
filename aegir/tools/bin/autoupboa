@@ -32,9 +32,9 @@ crontab_update()
       _OCTO_FULL="up-stable all both log"
     fi
     echo "# Barracuda weekly system only upgrade" >> /etc/crontab
-    echo "30 2  * * $_AUTO_UP_WEEKLY   root    cd;rm -f BOA.sh.txt*; wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt >/dev/null 2>&1" >> /etc/crontab
-    echo "35 2  * * $_AUTO_UP_WEEKLY   root    /opt/local/bin/barracuda $_BCDA_SYST" >> /etc/crontab
-    echo "40 2  * * $_AUTO_UP_WEEKLY   root    /opt/local/bin/barracuda $_BCDA_SYST" >> /etc/crontab
+    echo "30 2    * * $_AUTO_UP_WEEKLY   root    cd;rm -f BOA.sh.txt*; wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt >/dev/null 2>&1" >> /etc/crontab
+    echo "35 2    * * $_AUTO_UP_WEEKLY   root    /opt/local/bin/barracuda $_BCDA_SYST" >> /etc/crontab
+    echo "40 2    * * $_AUTO_UP_WEEKLY   root    /opt/local/bin/barracuda $_BCDA_SYST" >> /etc/crontab
     echo "# Barracuda stable full upgrade" >> /etc/crontab
     echo "45 2  $_AUTO_UP_DAY $_AUTO_UP_MONTH *   root    cd;rm -f BOA.sh.txt*; wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt >/dev/null 2>&1" >> /etc/crontab
     echo "50 2  $_AUTO_UP_DAY $_AUTO_UP_MONTH *   root    /opt/local/bin/barracuda $_BCDA_FULL" >> /etc/crontab
