@@ -1863,7 +1863,7 @@ check_old_empty_platforms () {
         _DO_NOTHING=YES
       else
         if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-          _DEL_OLD_EMPTY_PLATFORMS="30"
+          _DEL_OLD_EMPTY_PLATFORMS="5"
         else
           _DEL_OLD_EMPTY_PLATFORMS="60"
         fi
