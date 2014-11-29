@@ -273,6 +273,16 @@ fix_core ()
   fi
 }
 
+fix_alt ()
+{
+  if [ -x "/usr/lib/jvm/java-6-openjdk/jre/bin/java" ] ; then
+    if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ] ; then
+      ln -sf /usr/lib/jvm/java-6-openjdk/jre/bin/java /etc/alternatives/java
+      ln -sf /etc/alternatives/java /usr/bin/java
+    fi
+  fi
+}
+
 setup ()
 {
   sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
@@ -362,6 +372,7 @@ if [ `whoami` = "root" ] ; then
     fi
   fi
   setup
+  fix_alt
   if [ -e "/var/log/barracuda_log.txt" ] ; then
     _VERSIONS_TEST=`cat /var/log/barracuda_log.txt`
     if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
