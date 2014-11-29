@@ -44,6 +44,8 @@
   _AUTO_UP_MONTH= #------- Month (1-12) to define date of one-time upgrade
   _AUTO_UP_DAY= #--------- Day (1-31) to define date of one-time upgrade
 
+  All three variables should be added in your /root/.barracuda.cnf file.
+
 # Updated Octopus platforms:
 
   ERPAL 2.2 -------------------- https://drupal.org/project/erpal
@@ -59,7 +61,7 @@
 # Fixes in this release:
 
   * Issue #508 - The _EASY_HOSTNAME is not required in local install mode.
-  * Issue #516 - Do not break binaries detection with which.
+  * Issue #516 - Do not break binaries detection with 'which'.
 
 
 ### Stable BOA-2.3.7 Release - Full Edition
