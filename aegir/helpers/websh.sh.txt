@@ -22,7 +22,7 @@ if [ -d "/home/${USER}/.tmp" ] ; then
   export TEMP="/home/${USER}/.tmp"
   if [[ "$_ARGS" =~ (^)"bash" ]] || [[ "$_ARGS" =~ (^)"dash" ]] ; then
     exit 1
-  elif [[ "$_ARGS" =~ (^)"id" ]] || [[ "$_ARGS" =~ (^)"which" ]] ; then
+  elif [[ "$_ARGS" =~ (^)"id" ]] || [[ "$_ARGS" =~ (^)"xwhich" ]] ; then
     exit 1
   elif [[ "$_ARGS" =~ (^)"java" ]] || [[ "$_ARGS" =~ (^)"sendmail" ]] ; then
     exit 1
