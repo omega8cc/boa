@@ -6015,9 +6015,11 @@ else
   deluser aegir &> /dev/null
   rm -f /usr/bin/drush
   if [ ! -z "$_EASY_SETUP" ] && [[ ! "$_EASY_SETUP" =~ "NO" ]] ; then
-    if [ -z "$_EASY_HOSTNAME" ] || [ "$_EASY_HOSTNAME" = "wildcard-enabled-hostname" ] ; then
-      msg "FATAL ERROR: You must define also _EASY_HOSTNAME"
-      clean_pid_exit
+    if [ "$_EASY_SETUP" != "LOCAL" ] ; then
+      if [ -z "$_EASY_HOSTNAME" ] || [ "$_EASY_HOSTNAME" = "wildcard-enabled-hostname" ] ; then
+        msg "FATAL ERROR: You must define also _EASY_HOSTNAME"
+        clean_pid_exit
+      fi
     fi
   fi
   if [ "$_EASY_SETUP" = "LOCAL" ] ; then
