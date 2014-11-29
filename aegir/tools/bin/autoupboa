@@ -6,14 +6,20 @@ SHELL=/bin/bash
 crontab_update()
 {
   if [ -e "/etc/crontab" ] ; then
-    sed -i "s/.*xdrago.*//gi"     /etc/crontab &> /dev/null
     sed -i "s/.*barracuda.*//gi"  /etc/crontab &> /dev/null
-    sed -i "s/.*octopus.*//gi"    /etc/crontab &> /dev/null
     sed -i "s/.*BOA.sh.txt.*//gi" /etc/crontab &> /dev/null
     sed -i "s/.*daily.sh.*//gi"   /etc/crontab &> /dev/null
+    sed -i "s/.*fire.*//gi"       /etc/crontab &> /dev/null
+    sed -i "s/.*octopus.*//gi"    /etc/crontab &> /dev/null
+    sed -i "s/.*water.*//gi"      /etc/crontab &> /dev/null
+    sed -i "s/.*weekly.sh.*//gi"  /etc/crontab &> /dev/null
+    sed -i "s/.*xdrago.*//gi"     /etc/crontab &> /dev/null
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
       echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
+    fi
+    if [ "$_VMFAMILY" = "VS" ] ; then
+      echo "28 6    * * 7   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d"                /etc/crontab &> /dev/null
     if [ -f "/root/.mstr.clstr.cnf" ] && [ ! -f "/root/.wbhd.clstr.cnf" ] && [ ! -f "/root/.dbhd.clstr.cnf" ] ; then
