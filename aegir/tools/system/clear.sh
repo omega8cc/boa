@@ -25,6 +25,7 @@ else
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt.hourly
   bash /var/backups/BOA.sh.txt.hourly &> /dev/null
   rm -f /var/backups/BOA.sh.txt.hourly*
+  /opt/local/bin/autoupboa
 fi
 if [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ] ; then
   rm -f /etc/resolvconf/run/interface/eth*
