@@ -47,6 +47,12 @@ by the BOA install and upgrade tools exclusively.
 
  ### All other (empty) .cnf control files
 
+ @=> /root/.force.drupalgeddon.cnf
+
+  This file, if exists, allows to force running drupalgeddon checks daily
+  on all Octopus instances, even if they are not enabled with instance level
+  control file ~/static/control/drupalgeddon.info
+
  @=> /root/.force.sites.verify.cnf
 
   This file, if exists, will result with all sites hosted on all Octopus

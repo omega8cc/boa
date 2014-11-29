@@ -1,5 +1,5 @@
 ###
-### Barracuda version BOA-2.3.7
+### Barracuda version BOA-2.3.8
 ###
 ### Configuration stored in the /root/.barracuda.cnf file.
 ### This example is for public install mode - see docs/INSTALL.txt
@@ -87,7 +87,7 @@ _CUSTOM_CONFIG_SQL=NO #--------- Protects custom SQL config when YES
 _AEGIR_UPGRADE_ONLY=NO #-------- Allows to skip system on Aegir upgrade when YES
 _SYSTEM_UPGRADE_ONLY=NO #------- Allows to skip Aegir on upgrade (deprecated)
 ###
-### Barracuda version BOA-2.3.7
+### Barracuda version BOA-2.3.8
 ###
 
 ###
@@ -97,6 +97,21 @@ _SYSTEM_UPGRADE_ONLY=NO #------- Allows to skip Aegir on upgrade (deprecated)
 ###
 ### Extra, special purpose settings are listed below.
 ###
+
+###
+### You can configure BOA to run automated upgrades to latest stable version
+### for both Barracuda and all Octopus instances with three variables, empty
+### by default. All three variables must be defined to enable auto-upgrade.
+### You can set _AUTO_UP_MONTH and _AUTO_UP_DAY to some past date if you wish
+### to enable only weekly system upgrades.
+###
+### Remember that one-time upgrades will include complete upgrade to latest BOA
+### stable for Barracuda and all Octopus instances, while weekly upgrade is
+### designed to run only 'barracuda up-stable system' upgrade.
+###
+_AUTO_UP_WEEKLY= #-------------- Day of week (1-7) for weekly system upgrades
+_AUTO_UP_MONTH= #--------------- Month (1-12) to define date of one-time upgrade
+_AUTO_UP_DAY= #----------------- Day (1-31) to define date of one-time upgrade
 
 ###
 ### You can whitelist extra binaries to make them available for web server

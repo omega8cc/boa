@@ -235,7 +235,7 @@ _MY_OWNIP=""
 ### The HEAD can be occasionally broken
 ### and should be used **only** for testing!
 ###
-_AEGIR_VERSION=BOA-2.3.7
+_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
@@ -674,8 +674,8 @@ _RESERVED_RAM=0
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.7
-_BRANCH_BOA=2.3.x-dev
+_INSTALLER_VERSION=BOA-2.3.8-dev
+_BRANCH_BOA=master
 _BRANCH_PROVISION=2.3.x-dev
 
 ###
@@ -706,7 +706,7 @@ fi
 _AGOV=7.x-1.5
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
-_CIVICRM_PN=boa-2.3.7-dev
+_CIVICRM_PN=boa-2.3.8-dev
 _COD=7.x-1.0-alpha5
 _COMMERCE1=7.x-1.32
 _COMMERCE2=7.x-2.20
@@ -715,7 +715,7 @@ _COMMONS3=7.x-3.20
 _DRUPAL_EDGE_8="8.0-dev-$_TODAY-edge"
 _DRUPAL7="drupal-$_SMALLCORE7"
 _DRUPAL8="8.0-dev-120915"
-_ERPAL=7.x-2.1
+_ERPAL=7.x-2.2
 _GUARDR=7.x-2.5
 _OPEN_DEALS=1.35
 _OPENACADEMY=7.x-1.1
@@ -1753,13 +1753,15 @@ if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock"
   _DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
     _DB_SERVER=MariaDB
+    msg "ALRT! $_DB_SERVER server not running properly!"
+    msg "EXIT: We can't proceed and will exit now"
+    msg "HINT: Please (re)start $_DB_SERVER server and then run installer again"
+    msg "Bye"
   else
-    _DB_SERVER=Percona
+    msg "ALRT! $_DB_SERVER server not installed properly!"
+    msg "EXIT: We can't proceed and will exit now"
+    msg "Bye"
   fi
-  msg "ALRT! $_DB_SERVER server not running properly!"
-  msg "EXIT: We can't proceed and will exit now"
-  msg "HINT: Please (re)start $_DB_SERVER server and then run installer again"
-  msg "Bye"
   clean_pid_exit
 fi
 
@@ -1819,7 +1821,7 @@ _THIS_HOST=`uname -n`
 if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
   _PHP_FPM_VERSION=5.3
   _PHP_CLI_VERSION=5.3
-  _AEGIR_VERSION=BOA-2.3.7
+  _AEGIR_VERSION=HEAD
   _DEBUG_MODE=NO
   _DNS_SETUP_TEST=NO
   _DOMAIN="$_USER.sub.aegir.local"

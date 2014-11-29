@@ -334,7 +334,7 @@ _DEBUG_MODE=NO
 ### The HEAD can be occasionally broken
 ### and should be used **only** for testing!
 ###
-_AEGIR_VERSION=BOA-2.3.7
+_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
@@ -1078,8 +1078,8 @@ _SPEED_VALID_MAX=3600
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.7
-_BRANCH_BOA=2.3.x-dev
+_INSTALLER_VERSION=BOA-2.3.8-dev
+_BRANCH_BOA=master
 _BRANCH_PROVISION=2.3.x-dev
 
 ###
@@ -6015,9 +6015,11 @@ else
   deluser aegir &> /dev/null
   rm -f /usr/bin/drush
   if [ ! -z "$_EASY_SETUP" ] && [[ ! "$_EASY_SETUP" =~ "NO" ]] ; then
-    if [ -z "$_EASY_HOSTNAME" ] || [ "$_EASY_HOSTNAME" = "wildcard-enabled-hostname" ] ; then
-      msg "FATAL ERROR: You must define also _EASY_HOSTNAME"
-      clean_pid_exit
+    if [ "$_EASY_SETUP" != "LOCAL" ] ; then
+      if [ -z "$_EASY_HOSTNAME" ] || [ "$_EASY_HOSTNAME" = "wildcard-enabled-hostname" ] ; then
+        msg "FATAL ERROR: You must define also _EASY_HOSTNAME"
+        clean_pid_exit
+      fi
     fi
   fi
   if [ "$_EASY_SETUP" = "LOCAL" ] ; then
@@ -6025,7 +6027,7 @@ else
     _XTRAS_LIST="CHV"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.3.7
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=NO
@@ -6037,7 +6039,7 @@ else
     _XTRAS_LIST="CSF CHV FTP"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.3.7
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=YES
@@ -6051,7 +6053,7 @@ else
     _XTRAS_LIST=""
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.3.7
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
     _SSH_PORT=22
@@ -6069,7 +6071,7 @@ else
     _XTRAS_LIST=""
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.3.7
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
     _SSH_PORT=22
@@ -6087,7 +6089,7 @@ else
     _XTRAS_LIST=""
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.3.7
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
     _SSH_PORT=22
@@ -8658,15 +8660,25 @@ if [ "$_STATUS" = "INIT" ] ; then
 
 ###--------------------###
   if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock" ] ; then
-    msg "ALRT! $_DB_SERVER server not running properly!"
-    msg "EXIT: We can't proceed with installation and will exit now"
-    msg "HINT: Please check $_LOG for more information,"
-    msg "HINT: (re)start $_DB_SERVER server and then run installer again"
-    msg "Bye"
+    _DB_SERVER_TEST=`mysql -V 2>&1`
+    if [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
+      _DB_SERVER=MariaDB
+      msg "ALRT! $_DB_SERVER server not running properly!"
+      msg "EXIT: We can't proceed with installation and will exit now"
+      msg "HINT: Please check $_LOG for more information,"
+      msg "HINT: (re)start $_DB_SERVER server and then run installer again"
+      msg "Bye"
+    else
+      msg "ALRT! $_DB_SERVER server not installed properly!"
+      msg "EXIT: We can't proceed and will exit now"
+      msg "Bye"
+    fi
     rm -f /root/.my.pass.txt
     mkdir -p /var/aegir
     clean_pid_exit
   fi
+
+###--------------------###
   msg "INFO: Installing Aegir Master Instance, please wait..."
   if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
     touch /data/conf/clstr.cnf &> /dev/null
@@ -8909,11 +8921,19 @@ else
     msg "INFO: Upgrading $_DB_SERVER tables if necessary, please wait a minute..."
     mrun "sleep 60"
     if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock" ] ; then
-      msg "ALRT! $_DB_SERVER server not running properly!"
-      msg "EXIT: We can't proceed with upgrade and will exit now"
-      msg "HINT: Please check $_LOG for more information,"
-      msg "HINT: (re)start $_DB_SERVER server and then run installer again"
-      msg "Bye"
+      _DB_SERVER_TEST=`mysql -V 2>&1`
+      if [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
+        _DB_SERVER=MariaDB
+        msg "ALRT! $_DB_SERVER server not running properly!"
+        msg "EXIT: We can't proceed with upgrade and will exit now"
+        msg "HINT: Please check $_LOG for more information,"
+        msg "HINT: (re)start $_DB_SERVER server and then run installer again"
+        msg "Bye"
+      else
+        msg "ALRT! $_DB_SERVER server not installed properly!"
+        msg "EXIT: We can't proceed and will exit now"
+        msg "Bye"
+      fi
       clean_pid_exit
     fi
     echo " "
