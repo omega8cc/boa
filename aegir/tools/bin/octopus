@@ -225,7 +225,7 @@ up_one ()
     if [ "$cmmand" = "up-cluster" ] ; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"   /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     elif [ "$cmmand" = "up-head" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"    /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"    /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     elif [ "$cmmand" = "up-stable" ] ; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     else

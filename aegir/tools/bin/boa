@@ -182,7 +182,7 @@ octopus_install ()
     if [ "$cmmand" = "in-cluster" ] ; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"               /var/backups/OCTOPUS.sh.$user
     elif [ "$cmmand" = "in-head" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"                /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"                /var/backups/OCTOPUS.sh.$user
     elif [ "$cmmand" = "in-stable" ] ; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"             /var/backups/OCTOPUS.sh.$user
     else
@@ -273,7 +273,7 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
   if [ "$cmmand" = "in-cluster" ] ; then
     sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"       /var/backups/BARRACUDA.sh.txt
   elif [ "$cmmand" = "in-head" ] ; then
-    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"        /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"        /var/backups/BARRACUDA.sh.txt
   elif [ "$cmmand" = "in-stable" ] ; then
     sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"     /var/backups/BARRACUDA.sh.txt
   else
