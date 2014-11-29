@@ -136,14 +136,14 @@ _TUNE_PHP_CLI_TIMEOUT=7200
 ### TUNER VERSION                          ###
 ###----------------------------------------###
 ###
-_AEGIR_VERSION=BOA-2.3.7
+_AEGIR_VERSION=BOA-2.3.8
 
 
 ###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.7
+_INSTALLER_VERSION=BOA-2.3.8
 _BRANCH_BOA=2.3.x-dev
 _BRANCH_PROVISION=2.3.x-dev
 _NOW=`date +%y%m%d-%H%M`
