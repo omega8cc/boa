@@ -334,7 +334,7 @@ _DEBUG_MODE=NO
 ### The HEAD can be occasionally broken
 ### and should be used **only** for testing!
 ###
-_AEGIR_VERSION=HEAD
+_AEGIR_VERSION=BOA-2.3.8
 
 
 ###----------------------------------------###
@@ -6027,7 +6027,7 @@ else
     _XTRAS_LIST="CHV"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
+    _AEGIR_VERSION=BOA-2.3.8
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=NO
@@ -6039,7 +6039,7 @@ else
     _XTRAS_LIST="CSF CHV FTP"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
+    _AEGIR_VERSION=BOA-2.3.8
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=YES
@@ -6053,7 +6053,7 @@ else
     _XTRAS_LIST=""
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
+    _AEGIR_VERSION=BOA-2.3.8
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
     _SSH_PORT=22
@@ -6071,7 +6071,7 @@ else
     _XTRAS_LIST=""
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
+    _AEGIR_VERSION=BOA-2.3.8
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
     _SSH_PORT=22
@@ -6089,7 +6089,7 @@ else
     _XTRAS_LIST=""
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
+    _AEGIR_VERSION=BOA-2.3.8
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
     _SSH_PORT=22
