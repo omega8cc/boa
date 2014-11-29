@@ -19,6 +19,7 @@ For up-to-date information on #Drupageddon please check:
 You can find all details on how to use new features, along with all
 other changes explained in the release notes and changelog available at:
 
+  https://omega8.cc/boa-238-full-edition-345
   https://omega8.cc/boa-237-full-edition-344
 
 It is always highly recommended that you read extensive release notes
