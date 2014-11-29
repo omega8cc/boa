@@ -95,7 +95,7 @@ fix_dns_settings () {
     if [[ "$_CUSTOM_DNS_TEST" =~ "8.8.8.8" ]] || [[ "$_BROKEN_DNS_CONF" =~ "Dynamic" ]] ; then
       if [ -e "/root/.use.local.nameservers.cnf" ] ; then
         echo "        label = \"google-servers\";" > /root/.local.dns.IP.list
-        for _IP in `cat /etc/resolv.conf | cut -d ' ' -f2 | sort | uniq`;do echo "        ip=$_IP;" >> /root/.local.dns.IP.list;done
+        for _IP in `cat /etc/resolv.conf | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' | cut -d ' ' -f2 | sort | uniq`;do echo "        ip=$_IP;" >> /root/.local.dns.IP.list;done
         sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
         sed -i "s/ip=127.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
         sed -i "s/ip=Dyn.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
@@ -279,6 +279,7 @@ fix_alt ()
     if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ] ; then
       ln -sf /usr/lib/jvm/java-6-openjdk/jre/bin/java /etc/alternatives/java
       ln -sf /etc/alternatives/java /usr/bin/java
+      echo fixed java symlinks
     fi
   fi
 }
