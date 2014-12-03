@@ -102,3 +102,35 @@ location = /about_us.php {
   }
   return 403;
 }
+
+###
+### Helper locations to avoid 404 on legacy images paths
+###
+if ($main_site_name = '') {
+  set $main_site_name "$server_name";
+}
+location ^~ /sites/default/files {
+  location ~* ^/sites/default/files/imagecache {
+    access_log off;
+    log_not_found off;
+    expires 30d;
+    set $nocache_details "Skip";
+    rewrite ^/sites/default/files/imagecache/(.*)$ /sites/$main_site_name/files/imagecache/$1 last;
+    try_files $uri @drupal;
+  }
+  location ~* ^/sites/default/files/styles {
+    access_log off;
+    log_not_found off;
+    expires 30d;
+    set $nocache_details "Skip";
+    rewrite ^/sites/default/files/styles/(.*)$ /sites/$main_site_name/files/styles/$1 last;
+    try_files $uri @drupal;
+  }
+  location ~* ^/sites/default/files {
+    access_log off;
+    log_not_found off;
+    expires 30d;
+    rewrite ^/sites/default/files/(.*)$ /sites/$main_site_name/files/$1 last;
+    try_files $uri =404;
+  }
+}
