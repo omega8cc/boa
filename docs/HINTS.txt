@@ -11,7 +11,8 @@
 # Note that some locations will require using parent literal location
 # to stop searching for / using other regex based locations.
 #
-# To learn more please read: http://nginx.org/en/docs/http/ngx_http_core_module.html#location
+# To learn more please read:
+# http://nginx.org/en/docs/http/ngx_http_core_module.html#location
 #
 # Your custom include file should have filename: nginx_vhost_include.conf
 # for standard overrides and/or nginx_force_include.conf for high level
