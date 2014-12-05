@@ -2362,6 +2362,11 @@ rm -f /tmp/.busy.*.pid
 rm -f /data/disk/*/.tmp/.cron.*.pid
 rm -f /data/disk/*/.tmp/.busy.*.pid
 
+###
+### Delete duplicity ghost pid file if older than 2 days
+###
+find /var/run/*_backup.pid -mtime +1 -exec rm -rf {} \;
+
 echo "INFO: Redis server will be restarted in 5 minutes"
 touch /var/run/boa_wait.pid
 sleep 300
