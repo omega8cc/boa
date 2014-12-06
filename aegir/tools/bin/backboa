@@ -130,7 +130,15 @@ backup() {
     TMP=" --include  ${CDIR}"
     INCLUDE=${INCLUDE}${TMP}
   done
-  if [ -e "/var/xdrago/log/$BUCKET.archive.log" ] ; then
+  if [ -e "/root/.cache/duplicity" ] ; then
+    CacheTest=$(find /root/.cache/duplicity/* -maxdepth 1 -mindepth 1 -type f | sort 2>&1)
+    if [[ "$CacheTest" =~ "No such file or directory" ]] || [ -z "$CacheTest" ] ; then
+      _DO_CLEANUP=NO
+    else
+      _DO_CLEANUP=YES
+    fi
+  fi
+  if [ -e "/var/xdrago/log/$BUCKET.archive.log" ] && [ "$_DO_CLEANUP" = "YES" ] ; then
     duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} $TARGET
   fi
   duplicity -v ${_AWS_VLV} --volsize 100 \
