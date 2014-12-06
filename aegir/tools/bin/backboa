@@ -222,8 +222,9 @@ install() {
 if [ "$1" = "backup" ]; then
   if test -f /var/run/${_HST}_backup.pid ; then
     touch /var/xdrago/log/wait_${_HST}_backup.log
-    echo "The duplicity backup is running probably"
+    echo "The duplicity backup is running already?"
     echo "Existing /var/run/${_HST}_backup.pid found..."
+    echo "But no active duplicity process detected..."
     exit 1
   else
     touch /var/run/${_HST}_backup.pid
