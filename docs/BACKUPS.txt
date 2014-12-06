@@ -22,13 +22,16 @@
 
   CONFIGURATION:
 
-  Add these five (5) lines to your /root/.barracuda.cnf file:
+  Add these eight (8) lines to your /root/.barracuda.cnf file:
 
     _AWS_KEY='Your AWS Access Key ID'     ### From your AWS S3 settings
     _AWS_SEC='Your AWS Secret Access Key' ### From your AWS S3 settings
     _AWS_PWD='Your Secret Password'       ### Generate with 'openssl rand -base64 32'
     _AWS_REG='Your AWS Region ID'         ### By default 'us-east-1'
     _AWS_TTL='Your Backup Rotation'       ### By default '30D'
+    _AWS_FLC='Your Backup Full Cycle'     ### By default '7D'
+    _AWS_VLV='Your Backup Log Verbosity'  ### By default '1'
+    _AWS_PRG='Your Backup Progress'       ### By default 'NO' -- can be YES/NO
 
     Supported values to use as _AWS_REG:
 
