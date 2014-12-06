@@ -26,6 +26,7 @@ _HST=`echo -n $_HST | tr A-Z a-z`
 
 if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
   echo "The duplicity backup is already running!"
+  echo "Active duplicity process detected..."
   exit 1
 fi
 
@@ -221,7 +222,8 @@ install() {
 if [ "$1" = "backup" ]; then
   if test -f /var/run/${_HST}_backup.pid ; then
     touch /var/xdrago/log/wait_${_HST}_backup.log
-    echo "The duplicity backup is already running!"
+    echo "The duplicity backup is running probably"
+    echo "Existing /var/run/${_HST}_backup.pid found..."
     exit 1
   else
     touch /var/run/${_HST}_backup.pid
