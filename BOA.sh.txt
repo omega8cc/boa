@@ -44,7 +44,7 @@
 export PATH=$PATH:/opt/local/bin
 SHELL=/bin/bash
 _TODAY=`date +%y%m%d`
-_INSTALLER_VERSION=BOA-2.3.8-dev
+_INSTALLER_VERSION=BOA-2.3.9-dev
 
 fix_dns_settings () {
   mkdir -p /var/backups

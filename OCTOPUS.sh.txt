@@ -674,7 +674,7 @@ _RESERVED_RAM=0
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.8-dev
+_INSTALLER_VERSION=BOA-2.3.9-dev
 _BRANCH_BOA=master
 _BRANCH_PROVISION=2.3.x-dev
 
