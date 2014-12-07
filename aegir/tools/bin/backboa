@@ -107,11 +107,7 @@ if [ -z "$_AWS_VLV" ] ; then
 fi
 
 _AWS_PRG=${_AWS_PRG//[^A-Z]/}
-if [ ! -z "$_AWS_PRG" ] && [ "$_AWS_PRG" = "YES" ] ; then
-  _AWS_OPX="--s3-use-new-style --progress"
-else
-  _AWS_OPX="--s3-use-new-style"
-fi
+_AWS_OPX="--s3-use-new-style"
 
 export AWS_ACCESS_KEY_ID="${_AWS_KEY}"
 export AWS_SECRET_ACCESS_KEY="${_AWS_SEC}"
@@ -121,9 +117,12 @@ SOURCE="/etc /var/aegir /var/www /home /data"
 EXCLUDE="--exclude /data/conf/arch"
 BUCKET=daily.boa.${_HST}
 TARGET=s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}
-LOGFILE=/var/xdrago/log/$BUCKET.log
+LOGFILE=/var/xdrago/log/${BUCKET}.log
 
 backup() {
+  if [ ! -z "$_AWS_PRG" ] && [ "$_AWS_PRG" = "YES" ] ; then
+    _AWS_OPX="--s3-use-new-style --progress"
+  fi
   INCLUDE=""
   for CDIR in $SOURCE
   do
@@ -138,41 +137,58 @@ backup() {
       _DO_CLEANUP=YES
     fi
   fi
-  if [ -e "/var/xdrago/log/$BUCKET.archive.log" ] && [ "$_DO_CLEANUP" = "YES" ] ; then
-    duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} $TARGET
+  if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] && [ "$_DO_CLEANUP" = "YES" ] ; then
+    duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
   fi
   duplicity -v ${_AWS_VLV} --volsize 100 \
             --full-if-older-than ${_AWS_FLC} \
             --asynchronous-upload ${_AWS_OPX} \
-            $INCLUDE $EXCLUDE --exclude '**' / $TARGET > $LOGFILE
-  if [ -e "/var/xdrago/log/$BUCKET.archive.log" ] && [ "$_DO_CLEANUP" = "YES" ] ; then
-    duplicity -v ${_AWS_VLV} remove-older-than ${_AWS_TTL} --force ${_AWS_OPX} $TARGET >> $LOGFILE
-    duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} $TARGET >> $LOGFILE
+            ${INCLUDE} ${EXCLUDE} --exclude '**' / ${TARGET} > $LOGFILE
+  if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] && [ "$_DO_CLEANUP" = "YES" ] ; then
+    duplicity -v ${_AWS_VLV} remove-older-than ${_AWS_TTL} --force ${_AWS_OPX} ${TARGET} >> $LOGFILE
+    duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET} >> $LOGFILE
   fi
   if [ -n "$_MY_EMAIL" ] && [ "$_AWS_VLV" -lt "3" ] ; then
     mail -s "Daily backup: ${_HST} `date`" $_MY_EMAIL < $LOGFILE
   fi
-  cat /var/xdrago/log/$BUCKET.log >> /var/xdrago/log/$BUCKET.archive.log
+  cat /var/xdrago/log/${BUCKET}.log >> /var/xdrago/log/${BUCKET}.archive.log
+}
+
+conn_test() {
+  echo "Running AWS connection test, please wait..."
+  ConnTest=$(duplicity -v 2 cleanup --dry-run --timeout 1 ${_AWS_OPX} ${TARGET} 2>&1)
+  if [[ "$ConnTest" =~ "No connection to backend" ]] ; then
+    echo
+    echo "  Sorry, I can't connect to ${TARGET}"
+    echo "  Please check if the bucket has expected name: ${BUCKET}"
+    echo "  This bucket must already exist in the ${_AWS_REG} AWS region"
+    echo "  http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region"
+    echo "  Bye"
+    echo
+    exit 1
+  else
+    echo "OK, I can connect to ${TARGET}"
+  fi
 }
 
 status() {
-  duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} $TARGET
+  duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET}
 }
 
 cleanup() {
-  duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} $TARGET
-  duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} $TARGET
+  duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
+  duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET}
 }
 
 list() {
-  duplicity -v ${_AWS_VLV} list-current-files ${_AWS_OPX} $TARGET
+  duplicity -v ${_AWS_VLV} list-current-files ${_AWS_OPX} ${TARGET}
 }
 
 restore() {
   if [ $# = 2 ]; then
-    duplicity -v ${_AWS_VLV} restore --file-to-restore $1 ${_AWS_OPX} $TARGET $2
+    duplicity -v ${_AWS_VLV} restore --file-to-restore $1 ${_AWS_OPX} ${TARGET} $2
   else
-    duplicity -v ${_AWS_VLV} restore --file-to-restore $1 --time $2 ${_AWS_OPX} $TARGET $3
+    duplicity -v ${_AWS_VLV} restore --file-to-restore $1 --time $2 ${_AWS_OPX} ${TARGET} $3
   fi
 }
 
@@ -180,11 +196,11 @@ retrieve() {
   if [ $# = 3 ]; then
     BUCKET=daily.boa.$3
     TARGET=s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}
-    duplicity restore --file-to-restore $1 ${_AWS_OPX} $TARGET $2
+    duplicity restore --file-to-restore $1 ${_AWS_OPX} ${TARGET} $2
   elif [ $# = 4 ]; then
     BUCKET=daily.boa.$4
     TARGET=s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}
-    duplicity restore --file-to-restore $1 --time $2 ${_AWS_OPX} $TARGET $3
+    duplicity restore --file-to-restore $1 --time $2 ${_AWS_OPX} ${TARGET} $3
   fi
 }
 
@@ -228,6 +244,7 @@ install() {
 }
 
 if [ "$1" = "backup" ]; then
+  conn_test
   if test -f /var/run/${_HST}_backup.pid ; then
     touch /var/xdrago/log/wait_${_HST}_backup.log
     echo "The duplicity backup is running already?"
@@ -245,16 +262,20 @@ if [ "$1" = "backup" ]; then
 elif [ "$1" = "install" ]; then
   install
 elif [ "$1" = "cleanup" ]; then
+  conn_test
   cleanup
 elif [ "$1" = "list" ]; then
+  conn_test
   list
 elif [ "$1" = "restore" ]; then
+  conn_test
   if [ $# = 3 ]; then
     restore $2 $3
   else
     restore $2 $3 $4
   fi
 elif [ "$1" = "retrieve" ]; then
+  conn_test
   if [ $# = 4 ]; then
     restore $2 $3 $4
   elif [ $# = 5 ]; then
@@ -264,7 +285,10 @@ elif [ "$1" = "retrieve" ]; then
     exit 1
   fi
 elif [ "$1" = "status" ]; then
+  conn_test
   status
+elif [ "$1" = "test" ]; then
+  conn_test
 else
   echo "
 
@@ -278,6 +302,7 @@ else
   $ backboa cleanup
   $ backboa list
   $ backboa status
+  $ backboa test
   $ backboa restore file [time] destination
   $ backboa retrieve file [time] destination hostname
 
