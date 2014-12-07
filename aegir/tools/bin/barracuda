@@ -135,6 +135,10 @@ send_alert ()
 
 check_report ()
 {
+  sed -i "s/^_AWS_.*//g"         $_UP_LOG
+  sed -i "s/^_NEWRELIC_KEY.*//g" $_UP_LOG
+  sed -i "s/^_SCOUT_KEY.*//g"    $_UP_LOG
+  sed -i "/^$/d"                 $_UP_LOG
   _SEND_ALERT=NO
   _RESULT_TEST_OK=$(grep "INFO: Test OK" $_UP_LOG)
   if [[ "$_RESULT_TEST_OK" =~ "INFO: Test OK" ]] ; then
