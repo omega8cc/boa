@@ -73,7 +73,7 @@ if [ -e "/data/disk/arch" ] ; then
     _AUTO_UP_MONTH=11
     _AUTO_UP_DAY=30
   fi
-  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
+  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] || [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
     _AUTO_UP_WEEKLY=1
     _AUTO_UP_MONTH=11
     _AUTO_UP_DAY=30
