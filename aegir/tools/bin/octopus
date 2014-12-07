@@ -136,7 +136,7 @@ send_report ()
 {
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
-    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
+    if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "$_MY_EMAIL" ] ; then
@@ -150,7 +150,7 @@ send_alert ()
 {
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
-    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
+    if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "$_MY_EMAIL" ] ; then
@@ -234,7 +234,7 @@ up_one ()
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     sed -i "s/^_USER=o1/_USER=$_THIS_HM_USER/g"          /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
+    if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ ".qq.o8.io" ]] ; then
         _DO_NOTHING=YES
       else

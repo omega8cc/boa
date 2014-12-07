@@ -1027,7 +1027,7 @@ octopus_cnf () {
   if [ ! -e "/root/.${_USER}.octopus.cnf" ] ; then
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] || [[ "$_CLIENT_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
-      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+      if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         _DO_NOTHING=YES
       else
         msg "EXIT: You must enter **your** valid e-mail address"
@@ -1273,7 +1273,7 @@ octopus_cnf () {
       fi
     fi
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
-      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+      if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         _DO_NOTHING=YES
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _MY_EMAIL variable"
@@ -1963,7 +1963,7 @@ if [ -d "$_ROOT" ] ; then
       clean_pid_exit
     fi
     _CHECK_HOST=`uname -n`
-    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       if [ -e "/data/disk/$_USER/log/amazing_upgrade.txt" ] && [ ! -e "/data/disk/$_USER/log/amazing_upgrade_complete.txt" ] ; then
         if [ -e "/data/disk/$_USER/log/original_option.txt" ] ; then
           cp -af /data/disk/$_USER/log/option.txt /data/disk/$_USER/log/prev_option.txt
@@ -2004,7 +2004,7 @@ if [ -d "$_ROOT" ] ; then
     fi
     if [[ "$_CLIENT_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
-      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+      if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         _DO_NOTHING=YES
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _CLIENT_EMAIL variable"

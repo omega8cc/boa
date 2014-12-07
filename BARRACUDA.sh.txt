@@ -2986,7 +2986,7 @@ barracuda_cnf () {
   if [ ! -e "/root/.barracuda.cnf" ] ; then
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
-      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+      if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         if [[ "$_CHECK_HOST" =~ ".qq.o8.io" ]] ; then
           _DO_NOTHING=YES
         else
@@ -3111,7 +3111,7 @@ barracuda_cnf () {
     echo "###" >> /root/.barracuda.cnf
     _CHECK_HOST=`uname -n`
     sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g" /root/.barracuda.cnf &> /dev/null
-    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ ".qq.o8.io" ]] ; then
         _DO_NOTHING=YES
       else
@@ -3237,7 +3237,7 @@ barracuda_cnf () {
     if [[ "$_L_VM_TEST" =~ beng ]] ; then
       _L_VMFAMILY="VS"
     fi
-    if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
+    if [ -e "/root/.auto.up.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
       sed -i "s/.*_PHP_MULTI_INSTALL.*//g" /root/.barracuda.cnf &> /dev/null
       sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
       _PHP_MULTI_INSTALL=""
@@ -3246,7 +3246,7 @@ barracuda_cnf () {
     if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "_PHP_MULTI_INSTALL" ]] && [ ! -z "$_PHP_MULTI_INSTALL" ] ; then
       _DO_NOTHING=YES
     else
-      if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
+      if [ -e "/root/.auto.up.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
         if [ ! -e "/root/.mstr.clstr.cnf" ] && [ ! -e "/root/.wbhd.clstr.cnf" ] && [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
           _PHP_MULTI_INSTALL="5.5 5.4 5.3"
         fi
@@ -3578,7 +3578,7 @@ barracuda_cnf () {
     sleep 1
     _CHECK_HOST=`uname -n`
     sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g" /root/.barracuda.cnf &> /dev/null
-    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ ".qq.o8.io" ]] ; then
         _DO_NOTHING=YES
       else
@@ -3639,7 +3639,7 @@ barracuda_cnf () {
     fi
     _CHECK_HOST=`uname -n`
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
-      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+      if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         if [[ "$_CHECK_HOST" =~ ".qq.o8.io" ]] ; then
           _DO_NOTHING=YES
         else
@@ -6981,7 +6981,7 @@ else
 fi
 msg "NOTE! This step may take a few minutes, please wait..."
 if [ "$_STATUS" = "INIT" ] ; then
-  if [[ "$_XTRAS_LIST" =~ "SR" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
+  if [[ "$_XTRAS_LIST" =~ "SR" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] ; then
     if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
       _APT_XTRA="openjdk-7-jre-headless openjdk-6-jre-headless nginx"
     else
@@ -7004,7 +7004,7 @@ else
     mrun "apt-get purge openjdk-7-jdk -y --force-yes -qq" &> /dev/null
     mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
   fi
-  if [[ "$_XTRAS_LIST" =~ "SR" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
+  if [[ "$_XTRAS_LIST" =~ "SR" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] ; then
     if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
       _APT_XTRA="openjdk-7-jre-headless openjdk-6-jre-headless"
     else
@@ -7628,7 +7628,7 @@ if [ -d "/var/xdrago/conf" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc
     find_correct_ip
     _THISHTIP="$_LOC_IP"
   fi
-  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
+  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] ; then
     if [[ "$_THISHOST" =~ "v251a.ams." ]]; then
       _NGINX_DOS_LIMIT=888
     else
@@ -7691,7 +7691,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     find_correct_ip
     _THISHTIP="$_LOC_IP"
   fi
-  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
+  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] ; then
     if [[ "$_THISHOST" =~ "v251a.ams." ]]; then
       _NGINX_DOS_LIMIT=888
     else
@@ -8180,7 +8180,7 @@ if [ -e "/opt/jetty9/start.d/http.ini" ] ; then
 else
   _PORT_CTRL="$_JETTY_CTRL"
 fi
-if [[ "$_XTRAS_LIST" =~ "SR4" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
+if [[ "$_XTRAS_LIST" =~ "SR4" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] ; then
   if [ ! -d "/opt/solr4" ] && [ ! -e "/root/.mstr.clstr.cnf" ] && [ ! -e "/root/.wbhd.clstr.cnf" ] && [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
     if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
       _REAL_JETTY=9
@@ -10076,7 +10076,7 @@ if [ -e "/usr/sbin/csf" ] || [ -e "/usr/sbin/lfd" ] || [ -e "/etc/cron.d/lfd" ] 
       _CSF_MODE=upgrade
       csf_install
     fi
-    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+    if [ -e "/root/.host8.cnf" ] || [ -e "/root/.auto.up.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
       sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"1\"/g" /etc/csf/csf.conf &> /dev/null
     fi
     if [ "$_VMFAMILY" = "VZ" ] ; then

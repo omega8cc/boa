@@ -68,12 +68,24 @@ if [ -e "/data/disk/arch" ] ; then
   _AUTO_UP_WEEKLY=${_AUTO_UP_WEEKLY//[^0-9]/}
   _AUTO_UP_MONTH=${_AUTO_UP_MONTH//[^0-9]/}
   _AUTO_UP_DAY=${_CPU_INFO//[^0-9]/}
+  if [[ "$_MY_EMAIL" =~ "omega8" ]] ; then
+    _AUTO_UP=YES
+  fi
+  if [ -e "/etc/apticron/apticron.conf" ] ; then
+    _APTICRON_TEST=$(grep "omega8" /etc/apticron/apticron.conf)
+    if [[ "$_APTICRON_TEST" =~ "omega8" ]] ; then
+      _AUTO_UP=YES
+    fi
+  fi
+  if [ ! -e "/root/.auto.up.cnf" ] && [ "$_AUTO_UP" = "YES" ] ; then
+    touch /root/.auto.up.cnf
+  fi
   if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
     _AUTO_UP_WEEKLY=1
     _AUTO_UP_MONTH=11
     _AUTO_UP_DAY=30
   fi
-  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] || [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
+  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] || [ "$_AUTO_UP" = "YES" ] ; then
     _AUTO_UP_WEEKLY=1
     _AUTO_UP_MONTH=11
     _AUTO_UP_DAY=30
