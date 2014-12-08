@@ -2367,18 +2367,20 @@ rm -f /data/disk/*/.tmp/.busy.*.pid
 ###
 find /var/run/*_backup.pid -mtime +1 -exec rm -rf {} \;
 
-echo "INFO: Redis server will be restarted in 5 minutes"
-touch /var/run/boa_wait.pid
-sleep 300
-/etc/init.d/nginx reload
-/etc/init.d/redis-server stop
-killall -9 redis-server
-rm -f /var/run/redis.pid
-rm -f /var/lib/redis/*
-rm -f /var/log/redis/redis-server.log
-/etc/init.d/redis-server start
-rm -f /var/run/boa_wait.pid
-echo "INFO: Redis server restarted OK"
+if [ ! -e "/root/.high_traffic.cnf" ] ; then
+  echo "INFO: Redis server will be restarted in 5 minutes"
+  touch /var/run/boa_wait.pid
+  sleep 300
+  /etc/init.d/nginx reload
+  /etc/init.d/redis-server stop
+  killall -9 redis-server
+  rm -f /var/run/redis.pid
+  rm -f /var/lib/redis/*
+  rm -f /var/log/redis/redis-server.log
+  /etc/init.d/redis-server start
+  rm -f /var/run/boa_wait.pid
+  echo "INFO: Redis server restarted OK"
+fi
 
 rm -f /var/run/daily-fix.pid
 echo "INFO: Daily maintenance complete"

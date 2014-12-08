@@ -120,6 +120,7 @@ by the BOA install and upgrade tools exclusively.
   Recommended if you have a very busy site(s) hosted. It also prevents
   the daily Speed Booster cache forced cleanup, which happens at midnight.
   Furthermore, it prevents PHP-FPM restarts when the system detects segfault.
+  It also allows to skip daily Redis restarts.
 
  @=> /root/.home.no.wildcard.chmod.cnf
 
