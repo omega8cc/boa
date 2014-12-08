@@ -154,13 +154,13 @@ update_agents ()
       mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
     fi
   fi
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/daily.fixed.p88.pid" ] ; then
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/daily.fixed.a10z.pid" ] ; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/system/daily.sh" -o /var/xdrago/daily.sh
     if [ -e "/var/xdrago/daily.sh" ] ; then
       chmod 700 /var/xdrago/daily.sh
       chown root:root /var/xdrago/daily.sh
-      touch /var/xdrago/log/daily.fixed.p88.pid
+      touch /var/xdrago/log/daily.fixed.a10z.pid
     else
       mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
     fi
