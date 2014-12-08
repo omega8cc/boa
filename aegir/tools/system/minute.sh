@@ -3,7 +3,7 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt 4 ]; then
+if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt 3 ]; then
   killall php-fpm
   echo "`date` Too many PHP-FPM master processes killed" >> /var/xdrago/log/php-fpm-master-count.kill.log
 fi
