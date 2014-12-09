@@ -1959,6 +1959,8 @@ purge_cruft_machine () {
   chown ${_THIS_HM_USER}.ftp:users $User/static/trash
   find $User/static/trash/* -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
 
+  find $User/log/ctrl/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
+
   REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
 
   for i in $REVISIONS; do
@@ -2257,10 +2259,6 @@ else
     fi
   fi
   action >/var/xdrago/log/daily/daily-$_NOW.log 2>&1
-  if [ "$_PERMISSIONS_FIX" = "YES" ] ; then
-    echo "INFO: Removing old ctrl files"
-    find $User/log/ctrl/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
-  fi
   if [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
     for File in `find /etc/ssl/private/*.key -type f` ; do
       _PFS_TEST=$(grep "DH PARAMETERS" $File)
