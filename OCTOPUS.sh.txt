@@ -2085,6 +2085,15 @@ fi
 #
 #
 if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
+  if [ "$_VMFAMILY" = "AWS" ] ; then
+    _LOC_DOM="$_DOMAIN"
+    if [ -z "$_MY_OWNIP" ] ; then
+      find_correct_ip
+      _MY_OWNIP="$_LOC_IP"
+    else
+      _LOC_IP="$_MY_OWNIP"
+    fi
+  fi
   if [ -z "$_MY_OWNIP" ] ; then
     _THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
     if [[ "$_THISHTIP" =~ "127.0.0." ]] ; then
