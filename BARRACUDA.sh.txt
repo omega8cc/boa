@@ -6493,6 +6493,7 @@ fi
 ###--------------------###
 if [ "$_STATUS" = "INIT" ] ; then
   if [ "$_VMFAMILY" = "AWS" ] ; then
+    _THIS_DB_HOST=localhost
     _LOC_DOM="$_MY_HOSTN"
     if [ -z "$_MY_OWNIP" ] ; then
       find_correct_ip
