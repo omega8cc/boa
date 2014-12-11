@@ -80,6 +80,13 @@ production settings.
 
 * Xen, VServer, Linux KVM or VMware based VPS or a dedicated box.
 
+NOTE: By VMware we mean the system, not the company or its hosted service,
+      the vCloud Air, which is known to cause serious issues for Drupal
+      in general, which are not related to anything in BOA. The vCloud Air
+      has a major flaw which breaks many Drupal features, including
+      images derivatives, AdvAgg and any other module which requires
+      that the site can connect to itself via its public IP address.
+
 * VirtualBox VM for localhost install - check the (old) how-to for:
   Ubuntu Precise desktop image install: http://bit.ly/boa-precise
   Debian Squeeze desktop image install: http://bit.ly/boa-squeeze
