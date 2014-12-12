@@ -703,7 +703,7 @@ fi
 ###
 ### Distributions
 ###
-_AGOV=7.x-1.5
+_AGOV=7.x-1.6
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
 _CIVICRM_PN=boa-2.3.8-dev
