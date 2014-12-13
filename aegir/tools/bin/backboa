@@ -45,7 +45,7 @@ if [ -z "$_AWS_KEY" ] || [ -z "$_AWS_SEC" ] || [ -z "$_AWS_PWD" ] ; then
     _AWS_KEY='Your AWS Access Key ID'     ### [R] From your AWS S3 settings
     _AWS_SEC='Your AWS Secret Access Key' ### [R] From your AWS S3 settings
     _AWS_PWD='Your Secret Password'       ### [R] Generate with 'openssl rand -base64 32'
-    _AWS_REG='Your AWS Region ID'         ### [O] By default 'us-east-1'
+    _AWS_REG='Your AWS Region ID'         ### [R] By default 'us-east-1'
     _AWS_TTL='Your Backup Rotation'       ### [O] By default '30D'
     _AWS_FLC='Your Backup Full Cycle'     ### [O] By default '7D'
     _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default '1'
@@ -327,8 +327,8 @@ else
   Note: The srv.foo.bar is a hostname of the BOA system backed up before.
         In the 'retrieve' mode it will use the _AWS_* variables configured
         in the current system /root/.barracuda.cnf file - so make sure to edit
-        this file to set/replace temporarily *all* five _AWS_* variables used
-        originally on the host you are retrieving data from! You should
+        this file to set/replace temporarily all four required _AWS_* variables
+        used originally on the host you are retrieving data from! You should
         keep them secret and manage in your offline password manager app.
 
   "
