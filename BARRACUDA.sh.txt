@@ -1608,7 +1608,7 @@ fix_redis_mode () {
           sed -i "s/^bind 127.0.0.1/bind $_REDIS_LISTEN_MODE/g"        /etc/redis/redis.conf &> /dev/null
           sed -i "s/'127.0.0.1'/'$_REDIS_LISTEN_MODE'/g"               /data/conf/global.inc &> /dev/null
         else
-          sed -i "s/'127.0.0.1'/'$_REDIS_LISTEN_MODE'/g"               /data/conf/global.inc &> /dev/null
+          sed -i "s/'127.0.0.1'/'$_REDIS_LISTEN_MODE'/g" /data/conf/global.inc &> /dev/null
           service redis-server stop &> /dev/null
           update-rc.d -f redis-server remove &> /dev/null
           service redis stop &> /dev/null
@@ -3242,8 +3242,8 @@ barracuda_cnf () {
       _L_VMFAMILY="VS"
     fi
     if [ -e "/root/.auto.up.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
-      sed -i "s/.*_PHP_MULTI_INSTALL.*//g" /root/.barracuda.cnf &> /dev/null
-      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
+      sed -i "s/.*_PHP_MULTI_INSTALL.*//g" /root/.barracuda.cnf
+      sed -i "/^$/d" /root/.barracuda.cnf
       _PHP_MULTI_INSTALL=""
     fi
 
