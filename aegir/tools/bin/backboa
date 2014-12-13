@@ -39,16 +39,17 @@ if [ -z "$_AWS_KEY" ] || [ -z "$_AWS_SEC" ] || [ -z "$_AWS_PWD" ] ; then
 
   CONFIGURATION REQUIRED!
 
-  Add these eight (8) lines to your /root/.barracuda.cnf file:
+  Add listed below eight (8) lines to your /root/.barracuda.cnf file.
+  Required lines are marked with [R] and optional with [O]:
 
-    _AWS_KEY='Your AWS Access Key ID'     ### From your AWS S3 settings
-    _AWS_SEC='Your AWS Secret Access Key' ### From your AWS S3 settings
-    _AWS_PWD='Your Secret Password'       ### Generate with 'openssl rand -base64 32'
-    _AWS_REG='Your AWS Region ID'         ### By default 'us-east-1'
-    _AWS_TTL='Your Backup Rotation'       ### By default '30D'
-    _AWS_FLC='Your Backup Full Cycle'     ### By default '7D'
-    _AWS_VLV='Your Backup Log Verbosity'  ### By default '1'
-    _AWS_PRG='Your Backup Progress'       ### By default 'NO' -- can be YES/NO
+    _AWS_KEY='Your AWS Access Key ID'     ### [R] From your AWS S3 settings
+    _AWS_SEC='Your AWS Secret Access Key' ### [R] From your AWS S3 settings
+    _AWS_PWD='Your Secret Password'       ### [R] Generate with 'openssl rand -base64 32'
+    _AWS_REG='Your AWS Region ID'         ### [O] By default 'us-east-1'
+    _AWS_TTL='Your Backup Rotation'       ### [O] By default '30D'
+    _AWS_FLC='Your Backup Full Cycle'     ### [O] By default '7D'
+    _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default '1'
+    _AWS_PRG='Your Backup Progress'       ### [O] By default 'NO' -- can be YES/NO
 
     Supported values to use as _AWS_REG:
 
