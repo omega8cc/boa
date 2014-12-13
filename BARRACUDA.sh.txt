@@ -1546,43 +1546,56 @@ fix_php_ini_redis () {
 #
 # Forced Redis password update.
 forced_redis_password_update () {
-  msg "INFO: Generating random password for Redis server"
-  touch /root/.redis.pass.txt
-  chmod 0600 /root/.redis.pass.txt &> /dev/null
-  _ESC_RPASS=""
-  _LEN_RPASS=0
-  if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-    _PWD_CHARS=32
-  elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
-    _PWD_CHARS=8
-  else
-    _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
-    if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
-      _PWD_CHARS="$_STRONG_PASSWORDS"
-    else
+  if [ "$_REDIS_LISTEN_MODE" = "SOCKET" ] || [ "$_REDIS_LISTEN_MODE" = "PORT" ] || [ "$_REDIS_LISTEN_MODE" = "127.0.0.1" ] ; then
+    msg "INFO: Generating random password for local Redis server"
+    _ESC_RPASS=""
+    _LEN_RPASS=0
+    if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+      _PWD_CHARS=32
+    elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
       _PWD_CHARS=8
+    else
+      _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+      if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
+        _PWD_CHARS="$_STRONG_PASSWORDS"
+      else
+        _PWD_CHARS=8
+      fi
+      if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+        _PWD_CHARS=128
+      fi
     fi
-    if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
-      _PWD_CHARS=128
+    if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
+      _ESC_RPASS=$(randpass $_PWD_CHARS alnum 2>&1)
+      _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
+      _LEN_RPASS=$(echo ${#_ESC_RPASS})
     fi
-  fi
-  if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
-    _ESC_RPASS=$(randpass $_PWD_CHARS alnum 2>&1)
-    _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
-    _LEN_RPASS=$(echo ${#_ESC_RPASS})
-  fi
-  if [ -z "$_ESC_RPASS" ] || [ $_LEN_RPASS -lt 9 ] ; then
-    _ESC_RPASS=`pwgen -v -s -1`
-    _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
-    _ESC_RPASS=`sanitize_string "$_ESC_RPASS"`
+    if [ -z "$_ESC_RPASS" ] || [ $_LEN_RPASS -lt 9 ] ; then
+      _ESC_RPASS=`pwgen -v -s -1`
+      _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
+      _ESC_RPASS=`sanitize_string "$_ESC_RPASS"`
+    fi
+  else
+    msg "INFO: Managing password for remote Redis server"
+    if [ -e "/root/.redis.pass.txt" ] && [ -e "/var/xdrago/log/remote-redis-passwd.log" ] ; then
+      _ESC_RPASS=`cat /root/.redis.pass.txt`
+      _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
+      _ESC_RPASS=`sanitize_string "$_ESC_RPASS"`
+    else
+      _ESC_RPASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+      touch /var/xdrago/log/remote-redis-passwd.log
+    fi
   fi
   echo "$_ESC_RPASS" > /root/.redis.pass.txt
-  touch /var/xdrago/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW-new-a.log
-  _FORCE_REDIS_RESTART=YES
-  sed -i "s/^# requirepass /requirepass /g" /etc/redis/redis.conf &> /dev/null
-  sed -i "s/^requirepass.*/requirepass $_ESC_RPASS/g" /etc/redis/redis.conf &> /dev/null
-  chown redis:redis /etc/redis/redis.conf
-  chmod 0600 /etc/redis/redis.conf
+  chmod 0600 /root/.redis.pass.txt &> /dev/null
+  touch /var/xdrago/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW.log
+  if [ -e "/etc/redis/redis.conf" ] ; then
+    _FORCE_REDIS_RESTART=YES
+    sed -i "s/^# requirepass /requirepass /g" /etc/redis/redis.conf &> /dev/null
+    sed -i "s/^requirepass.*/requirepass $_ESC_RPASS/g" /etc/redis/redis.conf &> /dev/null
+    chown redis:redis /etc/redis/redis.conf
+    chmod 0600 /etc/redis/redis.conf
+  fi
 }
 #
 # Fix Redis mode.
@@ -1591,7 +1604,11 @@ fix_redis_mode () {
   chown redis:redis /var/run/redis
   if [ "$_CUSTOM_CONFIG_REDIS" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-      _REDIS_LISTEN_MODE=SOCKET
+      if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] || [ -e "/root/.test.clstr.cnf" ] ; then
+        _DO_NOTHING=YES
+      else
+        _REDIS_LISTEN_MODE=SOCKET
+      fi
     fi
     if [ "$_REDIS_LISTEN_MODE" = "SOCKET" ] ; then
       sed -i "s/redis_client_host/redis_client_socket/g"               /data/conf/global.inc &> /dev/null
@@ -1604,9 +1621,30 @@ fix_redis_mode () {
     else
       _REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE//[^0-9.]/}
       if [ ! -z "$_REDIS_LISTEN_MODE" ] ; then
-        if [[ "$_REDIS_LISTEN_MODE" =~ "192.168." ]] || [[ "$_REDIS_LISTEN_MODE" =~ "172.16." ]] || [[ "$_REDIS_LISTEN_MODE" =~ "127.0." ]] ; then
-          sed -i "s/^bind 127.0.0.1/bind $_REDIS_LISTEN_MODE/g"        /etc/redis/redis.conf &> /dev/null
-          sed -i "s/'127.0.0.1'/'$_REDIS_LISTEN_MODE'/g"               /data/conf/global.inc &> /dev/null
+        _LOCAL_REDIS_PORT_TEST=$(ifconfig | grep "inet addr:$_REDIS_LISTEN_MODE " 2>&1)
+        if [[ "$_LOCAL_REDIS_PORT_TEST" =~ "inet addr:$_REDIS_LISTEN_MODE" ]] ; then
+          _REDIS_HOST=LOCAL
+        else
+          _REDIS_HOST=REMOTE
+        fi
+        if [[ "$_REDIS_LISTEN_MODE" =~ (^)"10." ]] || [[ "$_REDIS_LISTEN_MODE" =~ (^)"192.168." ]] || [[ "$_REDIS_LISTEN_MODE" =~ (^)"172.16." ]] || [[ "$_REDIS_LISTEN_MODE" =~ (^)"127.0." ]] ; then
+          if [ "$_REDIS_HOST" = "LOCAL" ] ; then
+            sed -i "s/^bind 127.0.0.1/bind $_REDIS_LISTEN_MODE/g" /etc/redis/redis.conf &> /dev/null
+            sed -i "s/'127.0.0.1'/'$_REDIS_LISTEN_MODE'/g" /data/conf/global.inc &> /dev/null
+          else
+            sed -i "s/'127.0.0.1'/'$_REDIS_LISTEN_MODE'/g" /data/conf/global.inc &> /dev/null
+            service redis-server stop &> /dev/null
+            update-rc.d -f redis-server remove &> /dev/null
+            service redis stop &> /dev/null
+            update-rc.d -f redis remove &> /dev/null
+            mv -f /etc/init.d/redis /etc/init.d/redis-off &> /dev/null
+            mv -f /etc/init.d/redis-server /etc/init.d/redis-server-off &> /dev/null
+            killall -9 redis-server &> /dev/null
+            rm -f /var/run/redis/redis.pid
+            rm -f /var/xdrago/memcache.sh* &> /dev/null
+            killall -9 memcached &> /dev/null
+            msg "INFO: Remote Redis IP set to $_REDIS_LISTEN_MODE with local instance disabled"
+          fi
         else
           sed -i "s/'127.0.0.1'/'$_REDIS_LISTEN_MODE'/g" /data/conf/global.inc &> /dev/null
           service redis-server stop &> /dev/null
@@ -1629,7 +1667,7 @@ fix_redis_mode () {
 # Set or update Redis password.
 update_redis_password () {
   if [ -e "/etc/redis/redis.conf" ] ; then
-    if [ ! -e "/var/xdrago/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW-new-a.log" ] ; then
+    if [ ! -e "/var/xdrago/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW.log" ] ; then
       if [ ! -e "/root/.redis.no.new.password.cnf" ] || [ ! -e "/root/.redis.pass.txt" ] ; then
          forced_redis_password_update
       fi
@@ -8135,7 +8173,9 @@ else
   fi
 fi
 if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/xdrago/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-one.log" ] || [ ! -d "/var/run/redis" ] || [ ! -x "/usr/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-  install_redis_src
+  if [ "$_REDIS_HOST" = "LOCAL" ] || [ -z "$_REDIS_HOST" ] ; then
+    install_redis_src
+  fi
 fi
 
 
