@@ -225,15 +225,29 @@ up_action ()
         if [ -e "/root/.barracuda.cnf" ] ; then
           sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                           /root/.barracuda.cnf
           sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=YES/g"                 /root/.barracuda.cnf
+          sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"   /root/.barracuda.cnf
+          sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                         /root/.barracuda.cnf
           sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"                /root/.barracuda.cnf
+          sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"             /root/.barracuda.cnf
           sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"             /root/.barracuda.cnf
-          if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
-            sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                     /root/.barracuda.cnf
-            sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g" /root/.barracuda.cnf
-            sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                       /root/.barracuda.cnf
-            sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"             /root/.barracuda.cnf
-            sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"           /root/.barracuda.cnf
+          if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] || [ -e "/root/.test.clstr.cnf" ] ; then
+            _DO_NOTHING=YES
+          else
             sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"      /root/.barracuda.cnf
+          fi
+          if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
+            if [ "$_VMFAMILY" = "VS" ] ; then
+              sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"               /root/.barracuda.cnf
+              sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                 /root/.barracuda.cnf
+              sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"           /root/.barracuda.cnf
+            fi
+            sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                     /root/.barracuda.cnf
+            sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"             /root/.barracuda.cnf
+            sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g"                      /root/.*.octopus.cnf &> /dev/null
+            if [ -x "/opt/php55/bin/php" ] ; then
+              sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"           /root/.barracuda.cnf
+              sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"           /root/.barracuda.cnf
+            fi
           fi
         fi
       fi
