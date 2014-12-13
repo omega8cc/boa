@@ -74,6 +74,8 @@ if [ -z "$_AWS_KEY" ] || [ -z "$_AWS_SEC" ] || [ -z "$_AWS_PWD" ] ; then
     While duplicity should be able to create new bucket on demand, in practice
     it almost never works due to typical delays between various AWS regions.
 
+    Please run: 'backboa test' to make sure that the connection works.
+
   "
   exit 1
 fi
