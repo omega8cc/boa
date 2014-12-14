@@ -2959,7 +2959,6 @@ EOF
     # Explicitly enforce all locale settings
     update-locale \
       LANG=en_US.UTF-8 \
-      LANGUAGE=en_US.UTF-8 \
       LC_CTYPE=en_US.UTF-8 \
       LC_COLLATE=POSIX \
       LC_NUMERIC=POSIX \
@@ -2981,7 +2980,6 @@ EOF
     # Define all locale settings on the fly to prevent unnecessary
     # warnings during installation of packages.
     export LANG=en_US.UTF-8
-    export LANGUAGE=en_US.UTF-8
     export LC_CTYPE=en_US.UTF-8
     export LC_COLLATE=POSIX
     export LC_NUMERIC=POSIX
@@ -3027,13 +3025,6 @@ EOF
     export LC_COLLATE=POSIX
     export LC_NUMERIC=POSIX
     export LC_ALL=
-  fi
-  # Make sure that LANGUAGE line in /etc/default/locale is active
-  _LOCALE_DEFAULT_TEST=$(grep -v "^#" /etc/default/locale 2>&1)
-  if [[ ! "$_LOCALE_DEFAULT_TEST" =~ "LANGUAGE=en_US.UTF-8" ]] ; then
-    echo "LANGUAGE=en_US.UTF-8" >> /etc/default/locale
-    sed -i "s/^#LANGUAGE=en_US.UTF-8//g" /etc/default/locale &> /dev/null
-    sed -i "/^$/d" /etc/default/locale &> /dev/null
   fi
 }
 #
