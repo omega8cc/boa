@@ -258,7 +258,7 @@ fix_user_register_protection () {
   fi
 
   if [ -e "$_PLR_CTRL_FILE" ] ; then
-    _ENABLE_USER_REGISTER_PROTECTION_TEST=$(grep "^enable_user_register_protection = TRUE" $_PLR_CTRL_FILE)
+    _ENABLE_USER_REGISTER_PROTECTION_TEST=$(grep "^enable_user_register_protection = TRUE" $_PLR_CTRL_FILE 2>&1)
     if [[ "$_ENABLE_USER_REGISTER_PROTECTION_TEST" =~ "enable_user_register_protection = TRUE" ]] ; then
       _ENABLE_USER_REGISTER_PROTECTION=YES
     else
@@ -266,7 +266,7 @@ fix_user_register_protection () {
     fi
     if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       if [ "$_CLIENT_OPTION" = "POWER" ] ; then
-        _DISABLE_USER_REGISTER_PROTECTION_TEST=$(grep "^disable_user_register_protection = TRUE" $_PLR_CTRL_FILE)
+        _DISABLE_USER_REGISTER_PROTECTION_TEST=$(grep "^disable_user_register_protection = TRUE" $_PLR_CTRL_FILE 2>&1)
         if [[ "$_DISABLE_USER_REGISTER_PROTECTION_TEST" =~ "disable_user_register_protection = TRUE" ]] ; then
           _DISABLE_USER_REGISTER_PROTECTION=YES
         else
@@ -274,7 +274,7 @@ fix_user_register_protection () {
         fi
       fi
     else
-      _DISABLE_USER_REGISTER_PROTECTION_TEST=$(grep "^disable_user_register_protection = TRUE" $_PLR_CTRL_FILE)
+      _DISABLE_USER_REGISTER_PROTECTION_TEST=$(grep "^disable_user_register_protection = TRUE" $_PLR_CTRL_FILE 2>&1)
       if [[ "$_DISABLE_USER_REGISTER_PROTECTION_TEST" =~ "disable_user_register_protection = TRUE" ]] ; then
         _DISABLE_USER_REGISTER_PROTECTION=YES
       else
@@ -298,7 +298,7 @@ fix_user_register_protection () {
   fi
 
   if [ -e "$_DIR_CTRL_FILE" ] ; then
-    _DISABLE_USER_REGISTER_PROTECTION_TEST=$(grep "^disable_user_register_protection = TRUE" $_DIR_CTRL_FILE)
+    _DISABLE_USER_REGISTER_PROTECTION_TEST=$(grep "^disable_user_register_protection = TRUE" $_DIR_CTRL_FILE 2>&1)
     if [[ "$_DISABLE_USER_REGISTER_PROTECTION_TEST" =~ "disable_user_register_protection = TRUE" ]] ; then
       _DISABLE_USER_REGISTER_PROTECTION=YES
     else
@@ -810,13 +810,13 @@ setup_solr () {
   ### Support for solr_custom_config directive
   ###
   if [ -e "$_DIR_CTRL_FILE" ] ; then
-    _SOLR_CUSTOM_CONFIG_PRESENT=$(grep "solr_custom_config" $_DIR_CTRL_FILE)
+    _SOLR_CUSTOM_CONFIG_PRESENT=$(grep "solr_custom_config" $_DIR_CTRL_FILE 2>&1)
     if [[ "$_SOLR_CUSTOM_CONFIG_PRESENT" =~ "solr_custom_config" ]] ; then
       _DO_NOTHING=YES
     else
       echo ";solr_custom_config = NO" >> $_DIR_CTRL_FILE
     fi
-    _SOLR_CUSTOM_CONFIG_TEST=$(grep "^solr_custom_config = YES" $_DIR_CTRL_FILE)
+    _SOLR_CUSTOM_CONFIG_TEST=$(grep "^solr_custom_config = YES" $_DIR_CTRL_FILE 2>&1)
     if [[ "$_SOLR_CUSTOM_CONFIG_TEST" =~ "solr_custom_config = YES" ]] ; then
       _SOLR_CUSTOM_CONFIG_RESULT=YES
       echo "Solr config for ${_SOLR_DIR} is protected"
@@ -827,17 +827,17 @@ setup_solr () {
   ###
   if [ -e "$_DIR_CTRL_FILE" ] ; then
     _SOLR_MODULE=""
-    _SOLR_INTEGRATION_MODULE_PRESENT=$(grep "solr_integration_module" $_DIR_CTRL_FILE)
+    _SOLR_INTEGRATION_MODULE_PRESENT=$(grep "solr_integration_module" $_DIR_CTRL_FILE 2>&1)
     if [[ "$_SOLR_INTEGRATION_MODULE_PRESENT" =~ "solr_integration_module" ]] ; then
       _DO_NOTHING=YES
     else
       echo ";solr_integration_module = NO" >> $_DIR_CTRL_FILE
     fi
-    _APACHESOLR_MODULE_TEST=$(grep "^solr_integration_module = apachesolr" $_DIR_CTRL_FILE)
+    _APACHESOLR_MODULE_TEST=$(grep "^solr_integration_module = apachesolr" $_DIR_CTRL_FILE 2>&1)
     if [[ "$_APACHESOLR_MODULE_TEST" =~ "solr_integration_module = apachesolr" ]] ; then
       _SOLR_MODULE=apachesolr
     fi
-    _SEARCH_API_SOLR_MODULE_TEST=$(grep "^solr_integration_module = search_api_solr" $_DIR_CTRL_FILE)
+    _SEARCH_API_SOLR_MODULE_TEST=$(grep "^solr_integration_module = search_api_solr" $_DIR_CTRL_FILE 2>&1)
     if [[ "$_SEARCH_API_SOLR_MODULE_TEST" =~ "solr_integration_module = search_api_solr" ]] ; then
       _SOLR_MODULE=search_api_solr
     fi
@@ -851,13 +851,13 @@ setup_solr () {
   ### Support for solr_update_config directive
   ###
   if [ -e "$_DIR_CTRL_FILE" ] ; then
-    _SOLR_UPDATE_CONFIG_PRESENT=$(grep "solr_update_config" $_DIR_CTRL_FILE)
+    _SOLR_UPDATE_CONFIG_PRESENT=$(grep "solr_update_config" $_DIR_CTRL_FILE 2>&1)
     if [[ "$_SOLR_UPDATE_CONFIG_PRESENT" =~ "solr_update_config" ]] ; then
       _DO_NOTHING=YES
     else
       echo ";solr_update_config = NO" >> $_DIR_CTRL_FILE
     fi
-    _SOLR_UPDATE_CONFIG_TEST=$(grep "^solr_update_config = YES" $_DIR_CTRL_FILE)
+    _SOLR_UPDATE_CONFIG_TEST=$(grep "^solr_update_config = YES" $_DIR_CTRL_FILE 2>&1)
     if [[ "$_SOLR_UPDATE_CONFIG_TEST" =~ "solr_update_config = YES" ]] ; then
       if [ "$_SOLR_CUSTOM_CONFIG_RESULT" = "YES" ] || [ -e "${_SOLR_DIR}/conf/BOA-2.3.8.conf" ] ; then
         _DO_NOTHING=YES
@@ -896,8 +896,8 @@ fix_modules () {
               chmod 0664 $_DIR_CTRL_FILE
             fi
             if [ -e "$_DIR_CTRL_FILE" ] ; then
-              _AUTO_CONFIG_ADVAGG_PRESENT=$(grep "advagg_auto_configuration" $_DIR_CTRL_FILE)
-              _AUTO_CONFIG_ADVAGG_TEST=$(grep "^advagg_auto_configuration = TRUE" $_DIR_CTRL_FILE)
+              _AUTO_CONFIG_ADVAGG_PRESENT=$(grep "advagg_auto_configuration" $_DIR_CTRL_FILE 2>&1)
+              _AUTO_CONFIG_ADVAGG_TEST=$(grep "^advagg_auto_configuration = TRUE" $_DIR_CTRL_FILE 2>&1)
               if [[ "$_AUTO_CONFIG_ADVAGG_TEST" =~ "advagg_auto_configuration = TRUE" ]] ; then
                 _DO_NOTHING=YES
               else
@@ -918,8 +918,8 @@ fix_modules () {
               chmod 0664 $_DIR_CTRL_FILE
             fi
             if [ -e "$_DIR_CTRL_FILE" ] ; then
-              _AUTO_CONFIG_ADVAGG_PRESENT=$(grep "advagg_auto_configuration" $_DIR_CTRL_FILE)
-              _AUTO_CONFIG_ADVAGG_TEST=$(grep "^advagg_auto_configuration = FALSE" $_DIR_CTRL_FILE)
+              _AUTO_CONFIG_ADVAGG_PRESENT=$(grep "advagg_auto_configuration" $_DIR_CTRL_FILE 2>&1)
+              _AUTO_CONFIG_ADVAGG_TEST=$(grep "^advagg_auto_configuration = FALSE" $_DIR_CTRL_FILE 2>&1)
               if [[ "$_AUTO_CONFIG_ADVAGG_TEST" =~ "advagg_auto_configuration = FALSE" ]] ; then
                 _DO_NOTHING=YES
               else
@@ -946,8 +946,8 @@ fix_modules () {
               chmod 0664 $_DIR_CTRL_FILE
             fi
             if [ -e "$_DIR_CTRL_FILE" ] ; then
-              _AUTO_CONFIG_PURGE_EXPIRE_PRESENT=$(grep "purge_expire_auto_configuration" $_DIR_CTRL_FILE)
-              _AUTO_CONFIG_PURGE_EXPIRE_TEST=$(grep "^purge_expire_auto_configuration = TRUE" $_DIR_CTRL_FILE)
+              _AUTO_CONFIG_PURGE_EXPIRE_PRESENT=$(grep "purge_expire_auto_configuration" $_DIR_CTRL_FILE 2>&1)
+              _AUTO_CONFIG_PURGE_EXPIRE_TEST=$(grep "^purge_expire_auto_configuration = TRUE" $_DIR_CTRL_FILE 2>&1)
               if [[ "$_AUTO_CONFIG_PURGE_EXPIRE_TEST" =~ "purge_expire_auto_configuration = TRUE" ]] ; then
                 _DO_NOTHING=YES
               else
@@ -968,8 +968,8 @@ fix_modules () {
               chmod 0664 $_DIR_CTRL_FILE
             fi
             if [ -e "$_DIR_CTRL_FILE" ] ; then
-              _AUTO_CONFIG_PURGE_EXPIRE_PRESENT=$(grep "purge_expire_auto_configuration" $_DIR_CTRL_FILE)
-              _AUTO_CONFIG_PURGE_EXPIRE_TEST=$(grep "^purge_expire_auto_configuration = FALSE" $_DIR_CTRL_FILE)
+              _AUTO_CONFIG_PURGE_EXPIRE_PRESENT=$(grep "purge_expire_auto_configuration" $_DIR_CTRL_FILE 2>&1)
+              _AUTO_CONFIG_PURGE_EXPIRE_TEST=$(grep "^purge_expire_auto_configuration = FALSE" $_DIR_CTRL_FILE 2>&1)
               if [[ "$_AUTO_CONFIG_PURGE_EXPIRE_TEST" =~ "purge_expire_auto_configuration = FALSE" ]] ; then
                 _DO_NOTHING=YES
               else
@@ -1007,7 +1007,7 @@ fix_modules () {
                 chmod 0664 $_DIR_CTRL_FILE
               fi
               if [ -e "$_DIR_CTRL_FILE" ] ; then
-                _AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS_TEST=$(grep "^allow_private_file_downloads = TRUE" $_DIR_CTRL_FILE)
+                _AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS_TEST=$(grep "^allow_private_file_downloads = TRUE" $_DIR_CTRL_FILE 2>&1)
                 if [[ "$_AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS_TEST" =~ "allow_private_file_downloads = TRUE" ]] ; then
                   _DO_NOTHING=YES
                 else
@@ -1024,7 +1024,7 @@ fix_modules () {
                 chmod 0664 $_DIR_CTRL_FILE
               fi
               if [ -e "$_DIR_CTRL_FILE" ] ; then
-                _AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS_TEST=$(grep "^allow_private_file_downloads = FALSE" $_DIR_CTRL_FILE)
+                _AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS_TEST=$(grep "^allow_private_file_downloads = FALSE" $_DIR_CTRL_FILE 2>&1)
                 if [[ "$_AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS_TEST" =~ "allow_private_file_downloads = FALSE" ]] ; then
                   _DO_NOTHING=YES
                 else
@@ -1055,7 +1055,7 @@ fix_modules () {
               chmod 0664 $_PLR_CTRL_FILE
             fi
             if [ -e "$_PLR_CTRL_FILE" ] ; then
-              _AUTO_DETECT_FACEBOOK_INTEGRATION_TEST=$(grep "^auto_detect_facebook_integration = TRUE" $_PLR_CTRL_FILE)
+              _AUTO_DETECT_FACEBOOK_INTEGRATION_TEST=$(grep "^auto_detect_facebook_integration = TRUE" $_PLR_CTRL_FILE 2>&1)
               if [[ "$_AUTO_DETECT_FACEBOOK_INTEGRATION_TEST" =~ "auto_detect_facebook_integration = TRUE" ]] ; then
                 _DO_NOTHING=YES
               else
@@ -1073,7 +1073,7 @@ fix_modules () {
               chmod 0664 $_PLR_CTRL_FILE
             fi
             if [ -e "$_PLR_CTRL_FILE" ] ; then
-              _AUTO_DETECT_FACEBOOK_INTEGRATION_TEST=$(grep "^auto_detect_facebook_integration = FALSE" $_PLR_CTRL_FILE)
+              _AUTO_DETECT_FACEBOOK_INTEGRATION_TEST=$(grep "^auto_detect_facebook_integration = FALSE" $_PLR_CTRL_FILE 2>&1)
               if [[ "$_AUTO_DETECT_FACEBOOK_INTEGRATION_TEST" =~ "auto_detect_facebook_integration = FALSE" ]] ; then
                 _DO_NOTHING=YES
               else
@@ -1103,7 +1103,7 @@ fix_modules () {
               chmod 0664 $_PLR_CTRL_FILE
             fi
             if [ -e "$_PLR_CTRL_FILE" ] ; then
-              _AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION_TEST=$(grep "^auto_detect_domain_access_integration = TRUE" $_PLR_CTRL_FILE)
+              _AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION_TEST=$(grep "^auto_detect_domain_access_integration = TRUE" $_PLR_CTRL_FILE 2>&1)
               if [[ "$_AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION_TEST" =~ "auto_detect_domain_access_integration = TRUE" ]] ; then
                 _DO_NOTHING=YES
               else
@@ -1121,7 +1121,7 @@ fix_modules () {
               chmod 0664 $_PLR_CTRL_FILE
             fi
             if [ -e "$_PLR_CTRL_FILE" ] ; then
-              _AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION_TEST=$(grep "^auto_detect_domain_access_integration = FALSE" $_PLR_CTRL_FILE)
+              _AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION_TEST=$(grep "^auto_detect_domain_access_integration = FALSE" $_PLR_CTRL_FILE 2>&1)
               if [[ "$_AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION_TEST" =~ "auto_detect_domain_access_integration = FALSE" ]] ; then
                 _DO_NOTHING=YES
               else
@@ -1134,73 +1134,73 @@ fix_modules () {
           ### Add new INI variables if missing
           ###
           if [ -e "$_PLR_CTRL_FILE" ] ; then
-            _VAR_IF_PRESENT=$(grep "session_cookie_ttl" $_PLR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "session_cookie_ttl" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "session_cookie_ttl" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";session_cookie_ttl = 86400" >> $_PLR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "session_gc_eol" $_PLR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "session_gc_eol" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "session_gc_eol" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";session_gc_eol = 86400" >> $_PLR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "redis_use_modern" $_PLR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "redis_use_modern" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_use_modern" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";redis_use_modern = TRUE" >> $_PLR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "redis_flush_forced_mode" $_PLR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "redis_flush_forced_mode" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_flush_forced_mode" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";redis_flush_forced_mode = TRUE" >> $_PLR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "redis_lock_enable" $_PLR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "redis_lock_enable" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_lock_enable" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";redis_lock_enable = TRUE" >> $_PLR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "redis_exclude_bins" $_PLR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "redis_exclude_bins" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_exclude_bins" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";redis_exclude_bins = FALSE" >> $_PLR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "speed_booster_anon_cache_ttl" $_PLR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "speed_booster_anon_cache_ttl" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "speed_booster_anon_cache_ttl" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";speed_booster_anon_cache_ttl = 10" >> $_PLR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "disable_drupal_page_cache" $_PLR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "disable_drupal_page_cache" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "disable_drupal_page_cache" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";disable_drupal_page_cache = FALSE" >> $_PLR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "allow_private_file_downloads" $_PLR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "allow_private_file_downloads" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "allow_private_file_downloads" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";allow_private_file_downloads = FALSE" >> $_PLR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "entitycache_dont_enable" $_PLR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "entitycache_dont_enable" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "entitycache_dont_enable" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";entitycache_dont_enable = FALSE" >> $_PLR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "views_cache_bully_dont_enable" $_PLR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "views_cache_bully_dont_enable" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "views_cache_bully_dont_enable" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";views_cache_bully_dont_enable = FALSE" >> $_PLR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "views_content_cache_dont_enable" $_PLR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "views_content_cache_dont_enable" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "views_content_cache_dont_enable" ]] ; then
               _DO_NOTHING=YES
             else
@@ -1208,55 +1208,55 @@ fix_modules () {
             fi
           fi
           if [ -e "$_DIR_CTRL_FILE" ] ; then
-             _VAR_IF_PRESENT=$(grep "session_cookie_ttl" $_DIR_CTRL_FILE)
+             _VAR_IF_PRESENT=$(grep "session_cookie_ttl" $_DIR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "session_cookie_ttl" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";session_cookie_ttl = 86400" >> $_DIR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "session_gc_eol" $_DIR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "session_gc_eol" $_DIR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "session_gc_eol" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";session_gc_eol = 86400" >> $_DIR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "redis_use_modern" $_DIR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "redis_use_modern" $_DIR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_use_modern" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";redis_use_modern = TRUE" >> $_DIR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "redis_flush_forced_mode" $_DIR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "redis_flush_forced_mode" $_DIR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_flush_forced_mode" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";redis_flush_forced_mode = TRUE" >> $_DIR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "redis_lock_enable" $_DIR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "redis_lock_enable" $_DIR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_lock_enable" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";redis_lock_enable = TRUE" >> $_DIR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "redis_exclude_bins" $_DIR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "redis_exclude_bins" $_DIR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_exclude_bins" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";redis_exclude_bins = FALSE" >> $_DIR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "speed_booster_anon_cache_ttl" $_DIR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "speed_booster_anon_cache_ttl" $_DIR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "speed_booster_anon_cache_ttl" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";speed_booster_anon_cache_ttl = 10" >> $_DIR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "disable_drupal_page_cache" $_DIR_CTRL_FILE)
+            _VAR_IF_PRESENT=$(grep "disable_drupal_page_cache" $_DIR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "disable_drupal_page_cache" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";disable_drupal_page_cache = FALSE" >> $_DIR_CTRL_FILE
             fi
-             _VAR_IF_PRESENT=$(grep "allow_private_file_downloads" $_DIR_CTRL_FILE)
+             _VAR_IF_PRESENT=$(grep "allow_private_file_downloads" $_DIR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "allow_private_file_downloads" ]] ; then
               _DO_NOTHING=YES
             else
@@ -1265,7 +1265,7 @@ fix_modules () {
           fi
 
           if [ -e "$_PLR_CTRL_FILE" ] ; then
-            _ENTITYCACHE_DONT_ENABLE_TEST=$(grep "^entitycache_dont_enable = TRUE" $_PLR_CTRL_FILE)
+            _ENTITYCACHE_DONT_ENABLE_TEST=$(grep "^entitycache_dont_enable = TRUE" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_ENTITYCACHE_DONT_ENABLE_TEST" =~ "entitycache_dont_enable = TRUE" ]] ; then
               _ENTITYCACHE_DONT_ENABLE=YES
             else
@@ -1276,7 +1276,7 @@ fix_modules () {
           fi
 
           if [ -e "$_PLR_CTRL_FILE" ] ; then
-            _VIEWS_CACHE_BULLY_DONT_ENABLE_TEST=$(grep "^views_cache_bully_dont_enable = TRUE" $_PLR_CTRL_FILE)
+            _VIEWS_CACHE_BULLY_DONT_ENABLE_TEST=$(grep "^views_cache_bully_dont_enable = TRUE" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_VIEWS_CACHE_BULLY_DONT_ENABLE_TEST" =~ "views_cache_bully_dont_enable = TRUE" ]] ; then
               _VIEWS_CACHE_BULLY_DONT_ENABLE=YES
             else
@@ -1287,7 +1287,7 @@ fix_modules () {
           fi
 
           if [ -e "$_PLR_CTRL_FILE" ] ; then
-            _VIEWS_CONTENT_CACHE_DONT_ENABLE_TEST=$(grep "^views_content_cache_dont_enable = TRUE" $_PLR_CTRL_FILE)
+            _VIEWS_CONTENT_CACHE_DONT_ENABLE_TEST=$(grep "^views_content_cache_dont_enable = TRUE" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_VIEWS_CONTENT_CACHE_DONT_ENABLE_TEST" =~ "views_content_cache_dont_enable = TRUE" ]] ; then
               _VIEWS_CONTENT_CACHE_DONT_ENABLE=YES
             else
@@ -1357,13 +1357,13 @@ fix_modules () {
           ###
           _DONT_TOUCH_PERMISSIONS=NO
           if [ -e "$_PLR_CTRL_FILE" ] ; then
-            _FIX_PERMISSIONS_PRESENT=$(grep "fix_files_permissions_daily" $_PLR_CTRL_FILE)
+            _FIX_PERMISSIONS_PRESENT=$(grep "fix_files_permissions_daily" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_FIX_PERMISSIONS_PRESENT" =~ "fix_files_permissions_daily" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";fix_files_permissions_daily = TRUE" >> $_PLR_CTRL_FILE
             fi
-            _FIX_PERMISSIONS_TEST=$(grep "^fix_files_permissions_daily = FALSE" $_PLR_CTRL_FILE)
+            _FIX_PERMISSIONS_TEST=$(grep "^fix_files_permissions_daily = FALSE" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_FIX_PERMISSIONS_TEST" =~ "fix_files_permissions_daily = FALSE" ]] ; then
               _DONT_TOUCH_PERMISSIONS=YES
             fi
@@ -1373,33 +1373,33 @@ fix_modules () {
           ### Detect db conversion mode, if set per platform or per site.
           ###
           if [ -e "$_PLR_CTRL_FILE" ] ; then
-            _SQL_INNODB_CONVERSION_PRESENT=$(grep "sql_conversion_mode" $_PLR_CTRL_FILE)
+            _SQL_INNODB_CONVERSION_PRESENT=$(grep "sql_conversion_mode" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_SQL_INNODB_CONVERSION_PRESENT" =~ "sql_conversion_mode" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";sql_conversion_mode = NO" >> $_PLR_CTRL_FILE
             fi
-            _SQL_INNODB_CONVERSION_TEST=$(grep "^sql_conversion_mode = innodb" $_PLR_CTRL_FILE)
+            _SQL_INNODB_CONVERSION_TEST=$(grep "^sql_conversion_mode = innodb" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_SQL_INNODB_CONVERSION_TEST" =~ "sql_conversion_mode = innodb" ]] ; then
               _SQL_CONVERT=innodb
             fi
-            _SQL_MYISAM_CONVERSION_TEST=$(grep "^sql_conversion_mode = myisam" $_PLR_CTRL_FILE)
+            _SQL_MYISAM_CONVERSION_TEST=$(grep "^sql_conversion_mode = myisam" $_PLR_CTRL_FILE 2>&1)
             if [[ "$_SQL_MYISAM_CONVERSION_TEST" =~ "sql_conversion_mode = myisam" ]] ; then
               _SQL_CONVERT=myisam
             fi
           fi
           if [ -e "$_DIR_CTRL_FILE" ] ; then
-            _SQL_INNODB_CONVERSION_PRESENT=$(grep "sql_conversion_mode" $_DIR_CTRL_FILE)
+            _SQL_INNODB_CONVERSION_PRESENT=$(grep "sql_conversion_mode" $_DIR_CTRL_FILE 2>&1)
             if [[ "$_SQL_INNODB_CONVERSION_PRESENT" =~ "sql_conversion_mode" ]] ; then
               _DO_NOTHING=YES
             else
               echo ";sql_conversion_mode = NO" >> $_DIR_CTRL_FILE
             fi
-            _SQL_INNODB_CONVERSION_TEST=$(grep "^sql_conversion_mode = innodb" $_DIR_CTRL_FILE)
+            _SQL_INNODB_CONVERSION_TEST=$(grep "^sql_conversion_mode = innodb" $_DIR_CTRL_FILE 2>&1)
             if [[ "$_SQL_INNODB_CONVERSION_TEST" =~ "sql_conversion_mode = innodb" ]] ; then
               _SQL_CONVERT=innodb
             fi
-            _SQL_MYISAM_CONVERSION_TEST=$(grep "^sql_conversion_mode = myisam" $_DIR_CTRL_FILE)
+            _SQL_MYISAM_CONVERSION_TEST=$(grep "^sql_conversion_mode = myisam" $_DIR_CTRL_FILE 2>&1)
             if [[ "$_SQL_MYISAM_CONVERSION_TEST" =~ "sql_conversion_mode = myisam" ]] ; then
               _SQL_CONVERT=myisam
             fi
@@ -1435,7 +1435,7 @@ cleanup_ghost_platforms () {
 
 fix_seven_core_patch () {
   if [ ! -f "$Plr/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
-    _PATCH_TEST=$(grep "foreach (array_values(\$data)" $Plr/includes/database/database.inc)
+    _PATCH_TEST=$(grep "foreach (array_values(\$data)" $Plr/includes/database/database.inc 2>&1)
     if [[ "$_PATCH_TEST" =~ "array_values" ]] ; then
       echo fixed > $Plr/profiles/SA-CORE-2014-005-D7-fix.info
     else
@@ -1559,7 +1559,7 @@ fix_permissions () {
     chown $_THIS_HM_USER:www-data $Dir/private/files/backup_migrate &> /dev/null
     chown $_THIS_HM_USER:www-data $Dir/private/files/backup_migrate/{manual,scheduled} &> /dev/null
     chown -L -R $_THIS_HM_USER:www-data $Dir/private/config &> /dev/null
-    _DB_HOST_PRESENT=$(grep "^\$_SERVER\['db_host'\] = \$options\['db_host'\];" $Dir/drushrc.php)
+    _DB_HOST_PRESENT=$(grep "^\$_SERVER\['db_host'\] = \$options\['db_host'\];" $Dir/drushrc.php 2>&1)
     if [[ "$_DB_HOST_PRESENT" =~ "db_host" ]] ; then
       if [ "$_FORCE_SITES_VERIFY" = "YES" ] ; then
         run_drush6_hmr_cmd "@hostmaster hosting-task @${Dom} verify --force"
@@ -1810,7 +1810,7 @@ process () {
     #echo Counting Site $Site
     Dom=`echo $Site | cut -d'/' -f9 | awk '{ print $1}'`
     _STATUS_DISABLED=NO
-    _STATUS_TEST=$(grep "Do not reveal Aegir front-end URL here" $User/config/server_master/nginx/vhost.d/$Dom)
+    _STATUS_TEST=$(grep "Do not reveal Aegir front-end URL here" $User/config/server_master/nginx/vhost.d/$Dom 2>&1)
     if [[ "$_STATUS_TEST" =~ "Do not reveal Aegir front-end URL here" ]] ; then
       _STATUS_DISABLED=YES
       echo $Dom site is DISABLED
@@ -1842,7 +1842,7 @@ process () {
           fix_site_control_files
         fi
         if [ -e "$Plr/profiles" ] && [ -e "$Plr/web.config" ] && [ ! -f "$Plr/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
-          _PATCH_TEST=$(grep "foreach (array_values(\$data)" $Plr/includes/database/database.inc)
+          _PATCH_TEST=$(grep "foreach (array_values(\$data)" $Plr/includes/database/database.inc 2>&1)
           if [[ "$_PATCH_TEST" =~ "array_values" ]] ; then
             _DONT_TOUCH_PERMISSIONS="$_DONT_TOUCH_PERMISSIONS"
           else
@@ -2088,7 +2088,7 @@ action () {
             _F_CLIENT_EMAIL=${_F_CLIENT_EMAIL//\\\@/\@}
           fi
           if [ ! -z "${_F_CLIENT_EMAIL}" ] ; then
-            _CLIENT_EMAIL_TEST=$(grep "^_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"" /root/.${_THIS_HM_USER}.octopus.cnf)
+            _CLIENT_EMAIL_TEST=$(grep "^_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"" /root/.${_THIS_HM_USER}.octopus.cnf 2>&1)
             if [[ "$_CLIENT_EMAIL_TEST" =~ "${_F_CLIENT_EMAIL}" ]] ; then
               _DO_NOTHING=YES
             else
@@ -2261,7 +2261,7 @@ else
   action >/var/xdrago/log/daily/daily-$_NOW.log 2>&1
   if [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
     for File in `find /etc/ssl/private/*.key -type f` ; do
-      _PFS_TEST=$(grep "DH PARAMETERS" $File)
+      _PFS_TEST=$(grep "DH PARAMETERS" $File 2>&1)
       if [[ "$_PFS_TEST" =~ "DH PARAMETERS" ]] ; then
         _DO_NOTHING=YES
       else
@@ -2269,7 +2269,7 @@ else
       fi
     done
     for File in `find /etc/ssl/private/*.crt -type f` ; do
-      _PFS_TEST=$(grep "DH PARAMETERS" $File)
+      _PFS_TEST=$(grep "DH PARAMETERS" $File 2>&1)
       if [[ "$_PFS_TEST" =~ "DH PARAMETERS" ]] ; then
         _DO_NOTHING=YES
       else

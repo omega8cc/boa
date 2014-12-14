@@ -1073,7 +1073,7 @@ else
   find /var/aegir/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
   find /var/aegir/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
   if [ -e "/var/scout" ] ; then
-    _SCOUT_CRON_OFF=$(grep "OFFscoutOFF" /etc/crontab)
+    _SCOUT_CRON_OFF=$(grep "OFFscoutOFF" /etc/crontab 2>&1)
     if [[ "$_SCOUT_CRON_OFF" =~ "OFFscoutOFF" ]] ; then
       sleep 5
       sed -i "s/OFFscoutOFF/scout/g" /etc/crontab &> /dev/null

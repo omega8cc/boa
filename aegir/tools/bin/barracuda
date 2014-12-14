@@ -140,7 +140,7 @@ check_report ()
   sed -i "s/^_SCOUT_KEY.*//g"    $_UP_LOG
   sed -i "/^$/d"                 $_UP_LOG
   _SEND_ALERT=NO
-  _RESULT_TEST_OK=$(grep "INFO: Test OK" $_UP_LOG)
+  _RESULT_TEST_OK=$(grep "INFO: Test OK" $_UP_LOG 2>&1)
   if [[ "$_RESULT_TEST_OK" =~ "INFO: Test OK" ]] ; then
     _DO_NOTHING=YES
   else
@@ -151,23 +151,23 @@ check_report ()
       _ALERT_MSG="ALERT: Failed Barracuda upgrade"
     fi
   fi
-  _RESULT_APT_FAIL=$(grep "Displaying the last 15 lines" $_UP_LOG)
+  _RESULT_APT_FAIL=$(grep "Displaying the last 15 lines" $_UP_LOG 2>&1)
   if [[ "$_RESULT_APT_FAIL" =~ "Displaying the last 15 lines" ]] ; then
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed Barracuda upgrade"
   fi
-  _RESULT_ENJOY=$(grep "Enjoy your Aegir Hosting System" $_UP_LOG)
+  _RESULT_ENJOY=$(grep "Enjoy your Aegir Hosting System" $_UP_LOG 2>&1)
   if [[ "$_RESULT_ENJOY" =~ "Enjoy your Aegir Hosting System" ]] ; then
     _DO_NOTHING=YES
   else
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed Barracuda upgrade"
   fi
-  _RESULT_ALRT=$(grep "ALRT" $_UP_LOG)
+  _RESULT_ALRT=$(grep "ALRT" $_UP_LOG 2>&1)
   if [[ "$_RESULT_ALRT" =~ "ALRT" ]] ; then
     _SEND_ALERT=YES
-    _CHECK_KERNEL=$(grep "Your OS kernel has been upgraded" $_UP_LOG)
-    _CHECK_KSPLICE=$(grep "Ksplice rebootless kernel" $_UP_LOG)
+    _CHECK_KERNEL=$(grep "Your OS kernel has been upgraded" $_UP_LOG 2>&1)
+    _CHECK_KSPLICE=$(grep "Ksplice rebootless kernel" $_UP_LOG 2>&1)
     if [[ "$_CHECK_KERNEL" =~ "OS kernel" ]] ; then
       if [[ "$_CHECK_KSPLICE" =~ "rebootless" ]] ; then
         _ALERT_MSG="REPORT: Your OS kernel has been upgraded"
@@ -178,7 +178,7 @@ check_report ()
       _ALERT_MSG="ALERT: Failed Barracuda upgrade"
     fi
   fi
-  _RESULT_ABORTING=$(grep "Aborting" $_UP_LOG)
+  _RESULT_ABORTING=$(grep "Aborting" $_UP_LOG 2>&1)
   if [[ "$_RESULT_ABORTING" =~ "Aborting" ]] ; then
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed Barracuda upgrade"
@@ -411,14 +411,14 @@ up_finish ()
 set_pin_priority ()
 {
   if [ ! -e "/etc/apt/preferences" ] && [ -e "/etc/issue.net" ] ; then
-    _THIS_OS=$(grep "Debian" /etc/issue.net)
+    _THIS_OS=$(grep "Debian" /etc/issue.net 2>&1)
     if [[ "$_THIS_OS" =~ "Debian" ]] ; then
       _THIS_OS=Debian
     else
       _THIS_OS=Ubuntu
     fi
     if [ "$_THIS_OS" = "Debian" ] ; then
-      _THIS_RV=$(grep "6.0" /etc/issue.net)
+      _THIS_RV=$(grep "6.0" /etc/issue.net 2>&1)
       if [[ "$_THIS_RV" =~ "6.0" ]] ; then
         curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
       else
@@ -441,7 +441,7 @@ check_wrapper ()
     clean_pid_exit
   fi
   _BIN_FILE="/usr/local/bin/$(basename "$0")"
-  _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE)
+  _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE 2>&1)
   if [[ "$_DATE_TEST" =~ "### $_TODAY ###" ]] ; then
     _NEEDS_UPDATE=NO
   else

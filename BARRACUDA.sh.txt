@@ -1501,7 +1501,7 @@ EOF
 # Fix php.ini files to remove suhosin.so
 fix_php_ini_suhosin () {
   if [ -e "$_THIS_FILE" ] ; then
-    _SUHOSIN_INI_TEST=$(grep "extension=suhosin.so" $_THIS_FILE)
+    _SUHOSIN_INI_TEST=$(grep "extension=suhosin.so" $_THIS_FILE 2>&1)
     if [[ "$_SUHOSIN_INI_TEST" =~ "extension=suhosin.so" ]] ; then
       sed -i "s/.*suhosin.*//g" $_THIS_FILE &> /dev/null
     fi
@@ -1511,7 +1511,7 @@ fix_php_ini_suhosin () {
 # Fix php.ini files to add mailparse.so
 fix_php_ini_mailparse () {
   if [ -e "$_THIS_FILE" ] ; then
-    _MAILPARSE_INI_TEST=$(grep "extension=mailparse.so" $_THIS_FILE)
+    _MAILPARSE_INI_TEST=$(grep "extension=mailparse.so" $_THIS_FILE 2>&1)
     if [[ "$_MAILPARSE_INI_TEST" =~ "extension=mailparse.so" ]] ; then
       _DO_NOTHING=YES
     else
@@ -1523,7 +1523,7 @@ fix_php_ini_mailparse () {
 # Fix php.ini files to add jsmin.so
 fix_php_ini_jsmin () {
   if [ -e "$_THIS_FILE" ] ; then
-    _JSMIN_INI_TEST=$(grep "extension=jsmin.so" $_THIS_FILE)
+    _JSMIN_INI_TEST=$(grep "extension=jsmin.so" $_THIS_FILE 2>&1)
     if [[ "$_JSMIN_INI_TEST" =~ "extension=jsmin.so" ]] ; then
       _DO_NOTHING=YES
     else
@@ -1535,7 +1535,7 @@ fix_php_ini_jsmin () {
 # Fix php.ini files to add redis.so
 fix_php_ini_redis () {
   if [ -e "$_THIS_FILE" ] ; then
-    _REDIS_INI_TEST=$(grep "extension=redis.so" $_THIS_FILE)
+    _REDIS_INI_TEST=$(grep "extension=redis.so" $_THIS_FILE 2>&1)
     if [[ "$_REDIS_INI_TEST" =~ "extension=redis.so" ]] ; then
       _DO_NOTHING=YES
     else
@@ -1788,7 +1788,7 @@ fix_ftps_pam () {
 # Fix FTPS and SFTP access on modern systems.
 fix_sftp_ftps_modern () {
   if [ "$_REL_VERSION" != "lenny" ] ; then
-    _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells)
+    _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells 2>&1)
     if [[ "$_LSHELL_PATH_TEST" =~ "/usr/bin/lshell" ]] ; then
       _DO_NOTHING=YES
     else
@@ -1811,12 +1811,12 @@ fix_sftp_ftps_modern () {
     mrun "service ssh restart" &> /dev/null
   fi
   if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ] ; then
-    _MSS_TEST=$(grep "lshell" /etc/passwd)
+    _MSS_TEST=$(grep "lshell" /etc/passwd 2>&1)
     if [[ "$_MSS_TEST" =~ "lshell" ]] ; then
       sed -i "s/usr\/.*\/lshell/usr\/bin\/MySecureShell/g" /etc/passwd &> /dev/null
     fi
   fi
-  _MSS_PATH_TEST=$(grep "/usr/bin/MySecureShell" /etc/shells)
+  _MSS_PATH_TEST=$(grep "/usr/bin/MySecureShell" /etc/shells 2>&1)
   if [[ "$_MSS_PATH_TEST" =~ "/usr/bin/MySecureShell" ]] ; then
     _DO_NOTHING=YES
   else
@@ -1850,13 +1850,13 @@ enable_weekly_usage_monitor () {
 fix_php_ini_newrelic () {
   _NR_TPL="/opt/tmp/$_BOA_REPO_NAME/aegir/conf/newrelic.ini"
   if [ -e "$_THIS_FILE" ] ; then
-    _NEWRELIC_INI_TEST_A=$(grep "extension=newrelic.so" $_THIS_FILE)
+    _NEWRELIC_INI_TEST_A=$(grep "extension=newrelic.so" $_THIS_FILE 2>&1)
     if [[ "$_NEWRELIC_INI_TEST_A" =~ "extension=newrelic.so" ]] ; then
       _DO_NOTHING=YES
     else
       cat $_NR_TPL >> $_THIS_FILE
     fi
-    _NEWRELIC_INI_TEST_B=$(grep "newrelic.framework.drupal.modules" $_THIS_FILE)
+    _NEWRELIC_INI_TEST_B=$(grep "newrelic.framework.drupal.modules" $_THIS_FILE 2>&1)
     if [[ "$_NEWRELIC_INI_TEST_B" =~ "newrelic.framework.drupal.modules" ]] ; then
       _DO_NOTHING=YES
     else
@@ -1899,7 +1899,7 @@ fix_php_ini_newrelic_all () {
 # Fix FMP php.ini file to add opcache.so
 fix_php_ini_opcache () {
   if [ -e "$_THIS_FILE" ] ; then
-    _OPCACHE_INI_TEST=$(grep "opcache.so" $_THIS_FILE)
+    _OPCACHE_INI_TEST=$(grep "opcache.so" $_THIS_FILE 2>&1)
     if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]] ; then
       _DO_NOTHING=YES
     else
@@ -1945,7 +1945,7 @@ fix_php_ini_opcache_all () {
 # Fix php.ini file to add geos.so
 fix_php_ini_geos () {
   if [ -e "$_THIS_FILE" ] ; then
-    _GEOS_INI_TEST=$(grep "extension=geos.so" $_THIS_FILE)
+    _GEOS_INI_TEST=$(grep "extension=geos.so" $_THIS_FILE 2>&1)
     if [[ "$_GEOS_INI_TEST" =~ "extension=geos.so" ]] ; then
       _DO_NOTHING=YES
     else
@@ -1967,7 +1967,7 @@ fix_php_ini_geos_all () {
 # Fix php.ini file to add mongo.so
 fix_php_ini_mongo () {
   if [ -e "$_THIS_FILE" ] ; then
-    _MONGODB_INI_TEST=$(grep "extension=mongo.so" $_THIS_FILE)
+    _MONGODB_INI_TEST=$(grep "extension=mongo.so" $_THIS_FILE 2>&1)
     if [[ "$_MONGODB_INI_TEST" =~ "extension=mongo.so" ]] ; then
       _DO_NOTHING=YES
     else
@@ -2175,7 +2175,7 @@ update_sql_conf () {
       if [ ! -z "$_INNODB_LOG_FILE_SIZE" ] ; then
         if [ "$_INNODB_LOG_FILE_SIZE" -ge "10" ] && [ "$_INNODB_LOG_FILE_SIZE" -lt "501" ] ; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
-          _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW)
+          _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW 2>&1)
           if [[ "$_INNODB_LOG_FILE_SIZE_TEST" =~ "= $_INNODB_LOG_FILE_SIZE_MB" ]] ; then
             _INNODB_LOG_FILE_SIZE_SAME=YES
           else
@@ -2223,7 +2223,7 @@ update_sql_conf () {
     if [ ! -z "$_INNODB_LOG_FILE_SIZE" ] ; then
       if [ "$_INNODB_LOG_FILE_SIZE" -ge "10" ] && [ "$_INNODB_LOG_FILE_SIZE" -lt "501" ] ; then
         _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
-        _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" /etc/mysql/my.cnf)
+        _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" /etc/mysql/my.cnf 2>&1)
         if [[ "$_INNODB_LOG_FILE_SIZE_TEST" =~ "= $_INNODB_LOG_FILE_SIZE_MB" ]] ; then
           _DO_NOTHING=YES
         else
@@ -2534,7 +2534,7 @@ tune_web_server_config () {
   sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /var/xdrago/conf/fpm-pool-foo.conf  &> /dev/null
   sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /opt/php*/etc/pool.d/*.conf         &> /dev/null
   sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /var/xdrago/conf/fpm-pool-foo.conf  &> /dev/null
-  _ZOP_INI_TEST=$(grep "^opcache.enable=1" /opt/php*/etc/php*.ini)
+  _ZOP_INI_TEST=$(grep "^opcache.enable=1" /opt/php*/etc/php*.ini 2>&1)
   if [[ "$_ZOP_INI_TEST" =~ "opcache.enable=1" ]] ; then
     _DO_NOTHING=YES
   else
@@ -4991,19 +4991,19 @@ update_sources_list () {
       _APT_SOURCES_REWRITE=YES
     fi
     if [ "$_REL_VERSION" = "squeeze" ] ; then
-      _LTS_TEST=$(grep "DEBIAN LTS UPDATES" /etc/apt/sources.list)
+      _LTS_TEST=$(grep "DEBIAN LTS UPDATES" /etc/apt/sources.list 2>&1)
       if [[ "$_LTS_TEST" =~ "DEBIAN LTS UPDATES" ]] ; then
         _DO_NOTHING=YES
       else
         _APT_SOURCES_REWRITE=YES
       fi
-      _PROPOSED_TEST=$(grep "DEBIAN PROPOSED UPDATES" /etc/apt/sources.list)
+      _PROPOSED_TEST=$(grep "DEBIAN PROPOSED UPDATES" /etc/apt/sources.list 2>&1)
       if [[ "$_PROPOSED_TEST" =~ "DEBIAN PROPOSED UPDATES" ]] ; then
         _DO_NOTHING=YES
       else
         _APT_SOURCES_REWRITE=YES
       fi
-      _VOLATILE_TEST=$(grep "MAJOR BUG FIX UPDATES" /etc/apt/sources.list)
+      _VOLATILE_TEST=$(grep "MAJOR BUG FIX UPDATES" /etc/apt/sources.list 2>&1)
       if [[ "$_VOLATILE_TEST" =~ "MAJOR BUG FIX UPDATES" ]] ; then
         _DO_NOTHING=YES
       else
@@ -8200,7 +8200,7 @@ fi
 ###--------------------###
 _NEWRELIC_APP_CFG="/etc/newrelic/newrelic.cfg"
 if [ -e "$_NEWRELIC_APP_CFG" ] ; then
-  _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" $_NEWRELIC_APP_CFG)
+  _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" $_NEWRELIC_APP_CFG 2>&1)
   if [[ "$_NEWRELIC_KEY_TEST" =~ "REPLACE_WITH_REAL_KEY" ]] && [ ! -z "$_NEWRELIC_KEY" ] ; then
     sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" $_NEWRELIC_APP_CFG &> /dev/null
   fi
@@ -8212,7 +8212,7 @@ fi
 ###--------------------###
 _NEWRELIC_SYS_CFG="/etc/newrelic/nrsysmond.cfg"
 if [ -e "$_NEWRELIC_SYS_CFG" ] ; then
-  _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" $_NEWRELIC_SYS_CFG)
+  _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" $_NEWRELIC_SYS_CFG 2>&1)
   if [[ "$_NEWRELIC_KEY_TEST" =~ "REPLACE_WITH_REAL_KEY" ]] && [ ! -z "$_NEWRELIC_KEY" ] ; then
     sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" $_NEWRELIC_SYS_CFG &> /dev/null
   fi
@@ -9095,7 +9095,7 @@ EOF
     mrun "service nginx start" &> /dev/null
   fi
 else
-  _WILDCARD_SSL_TEST=$(grep "localhost:80" $_WILD_SSL_VHOST)
+  _WILDCARD_SSL_TEST=$(grep "localhost:80" $_WILD_SSL_VHOST 2>&1)
   if [[ "$_WILDCARD_SSL_TEST" =~ "localhost:80" ]] ; then
     _DO_NOTHING=YES
   else
@@ -9227,7 +9227,7 @@ fi
 fix_collectd_rrd_syslog_flood () {
   _COLLECTD_CNF="/etc/collectd/collectd.conf"
   if [ -e "$_COLLECTD_CNF" ] ; then
-    _COLLECTD_CNF_TEST=$(grep "rootfs" $_COLLECTD_CNF)
+    _COLLECTD_CNF_TEST=$(grep "rootfs" $_COLLECTD_CNF 2>&1)
     if [[ "$_COLLECTD_CNF_TEST" =~ "rootfs" ]] ; then
       _DO_NOTHING=YES
     else
@@ -9246,7 +9246,7 @@ fix_collectd_rrd_syslog_flood () {
 fix_collectd_nginx () {
   _COLLECTD_CNF="/etc/collectd/collectd.conf"
   if [ -e "$_COLLECTD_CNF" ] ; then
-    _COLLECTD_CNF_TEST=$(grep "^LoadPlugin nginx" $_COLLECTD_CNF)
+    _COLLECTD_CNF_TEST=$(grep "^LoadPlugin nginx" $_COLLECTD_CNF 2>&1)
     if [[ "$_COLLECTD_CNF_TEST" =~ "LoadPlugin nginx" ]] ; then
       _DO_NOTHING=YES
     else
@@ -9320,7 +9320,7 @@ fi
 
 
 ###--------------------###
-_CHECK_OS=$(grep "Ubuntu.*LTS" /etc/issue.net)
+_CHECK_OS=$(grep "Ubuntu.*LTS" /etc/issue.net 2>&1)
 if [[ "$_CHECK_OS" =~ "Ubuntu" ]] ; then
   _CHECK_OS=ULTS
 else
@@ -9401,7 +9401,7 @@ else
         _GEM_FILE="/usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/scout"
         _GEM_PATH=${_GEM_FILE//\//\\\/}
         _GEM_CRON="/etc/crontab"
-        _VAR_IF_PRESENT=$(grep "scout" $_GEM_CRON)
+        _VAR_IF_PRESENT=$(grep "scout" $_GEM_CRON 2>&1)
         if [[ "$_VAR_IF_PRESENT" =~ "scout" ]] ; then
           if [ ! -e "$_GEM_FILE" ] && [ ! -z "$_SCOUT_KEY" ] ; then
             st_runner "rvm @global do gem install --conservative scout" 2> /dev/null
@@ -9432,8 +9432,8 @@ fi
 
 ###--------------------###
 if [ -e "/var/scout" ] ; then
-  _SCOUT_CRON_OFF=$(grep "OFFscoutOFF" /etc/crontab)
-  _SCOUT_CRON=$(grep "scout" /etc/crontab)
+  _SCOUT_CRON_OFF=$(grep "OFFscoutOFF" /etc/crontab 2>&1)
+  _SCOUT_CRON=$(grep "scout" /etc/crontab 2>&1)
   if [[ ! "$_SCOUT_CRON_OFF" =~ "OFFscoutOFF" ]] && [[ "$_SCOUT_CRON" =~ "scout" ]] ; then
     sed -i "s/scout/OFFscoutOFF/g" /etc/crontab &> /dev/null
   fi
@@ -9445,7 +9445,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
   st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
-  _SSH_USEDNS_TEST=$(grep "UseDNS" /etc/ssh/sshd_config)
+  _SSH_USEDNS_TEST=$(grep "UseDNS" /etc/ssh/sshd_config 2>&1)
   if [[ "$_SSH_USEDNS_TEST" =~ (^)"UseDNS no" ]] ; then
     _DO_NOTHING=YES
   elif [[ "$_SSH_USEDNS_TEST" =~ "UseDNS" ]] ; then
@@ -9455,7 +9455,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     echo "UseDNS no" >> /etc/ssh/sshd_config
   fi
   if [ -e "/usr/etc/sshd_config" ] ; then
-    _SSH_USEDNS_TEST=$(grep "UseDNS" /usr/etc/sshd_config)
+    _SSH_USEDNS_TEST=$(grep "UseDNS" /usr/etc/sshd_config 2>&1)
     if [[ "$_SSH_USEDNS_TEST" =~ (^)"UseDNS no" ]] ; then
       _DO_NOTHING=YES
     elif [[ "$_SSH_USEDNS_TEST" =~ "UseDNS" ]] ; then
@@ -9538,14 +9538,14 @@ else
     fi
     mrun "service ssh reload" &> /dev/null
   else
-    _SSH_USEDNS_TEST=$(grep "^UseDNS no" /etc/ssh/sshd_config)
+    _SSH_USEDNS_TEST=$(grep "^UseDNS no" /etc/ssh/sshd_config 2>&1)
     if [[ "$_SSH_USEDNS_TEST" =~ "UseDNS no" ]] ; then
       _DO_NOTHING=YES
     else
       sed -i "s/.*UseDNS.*/UseDNS no/g" /etc/ssh/sshd_config &> /dev/null
     fi
     if [ -e "/usr/etc/sshd_config" ] ; then
-      _SSH_USEDNS_TEST=$(grep "^UseDNS no" /usr/etc/sshd_config)
+      _SSH_USEDNS_TEST=$(grep "^UseDNS no" /usr/etc/sshd_config 2>&1)
       if [[ "$_SSH_USEDNS_TEST" =~ "UseDNS no" ]] ; then
         _DO_NOTHING=YES
       else
@@ -9823,7 +9823,7 @@ sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/monitor/check/segfault_al
 sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/monitor/check/escapecheck    &> /dev/null
 if [ -e "/usr/sbin/apticron" ] ; then
   if [ -e "/etc/apticron/apticron.conf" ] ; then
-    _APTICRON_TEST=$(grep "NOTIFY_HOLDS" /etc/apticron/apticron.conf)
+    _APTICRON_TEST=$(grep "NOTIFY_HOLDS" /etc/apticron/apticron.conf 2>&1)
     if [[ "$_APTICRON_TEST" =~ "NOTIFY_HOLDS" ]] ; then
       sed -i "s/^# NOTIFY_HOLDS=\"0\"/NOTIFY_HOLDS=\"0\"/g" /etc/apticron/apticron.conf &> /dev/null
       sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g"             /etc/apticron/apticron.conf &> /dev/null
@@ -9994,7 +9994,7 @@ else
     for _IP in `cat /root/.tmp.IP.list | sort | uniq`;do echo "$_IP # local IP address" >> /root/.local.IP.list;done
     rm -f /root/.tmp.IP.list*
   fi
-  _IP_IF_PRESENT=$(grep "$_CRON_IP" /root/.local.IP.list)
+  _IP_IF_PRESENT=$(grep "$_CRON_IP" /root/.local.IP.list 2>&1)
   if [[ "$_IP_IF_PRESENT" =~ "$_CRON_IP" ]] ; then
     _IP_PRESENT=YES
   else
@@ -10013,7 +10013,7 @@ fi
 fix_lfd_uidignore () {
   _THIS_FILE=/etc/csf/csf.uidignore
   if [ -e "$_THIS_FILE" ] ; then
-    _CSF_UIDIGNORE_TEST=$(grep "pdnsd" $_THIS_FILE)
+    _CSF_UIDIGNORE_TEST=$(grep "pdnsd" $_THIS_FILE 2>&1)
     if [[ "$_CSF_UIDIGNORE_TEST" =~ "pdnsd" ]] ; then
       _DO_NOTHING=YES
     else
@@ -10027,7 +10027,7 @@ fix_lfd_uidignore () {
       echo `id -u www-data` >> /etc/csf/csf.uidignore &> /dev/null
     fi
     if [ -e "/usr/sbin/named" ] ; then
-      _CSF_UIDIGNORE_TEST=$(grep "bind" $_THIS_FILE)
+      _CSF_UIDIGNORE_TEST=$(grep "bind" $_THIS_FILE 2>&1)
       if [[ "$_CSF_UIDIGNORE_TEST" =~ "bind" ]] ; then
         _DO_NOTHING=YES
       else
@@ -10043,7 +10043,7 @@ fix_lfd_uidignore () {
 fix_lfd_whitelist () {
   _THIS_FILE=/etc/csf/csf.fignore
   if [ -e "$_THIS_FILE" ] ; then
-    _CSF_WHITELIST_TEST=$(grep "jetty" $_THIS_FILE)
+    _CSF_WHITELIST_TEST=$(grep "jetty" $_THIS_FILE 2>&1)
     if [[ "$_CSF_WHITELIST_TEST" =~ "jetty" ]] ; then
       _DO_NOTHING=YES
     else
@@ -10264,7 +10264,7 @@ d;};' /etc/pdnsd.conf
     cat /var/backups/resolv.conf.vanilla > /etc/resolvconf/resolv.conf.d/base
   fi
   resolvconf -u &> /dev/null
-  _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf)
+  _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
   if [[ "$_RESOLV_TEST" =~ "nameserver 127.0.0.1" ]] && [ "$_USE_PROVIDER_DNS" = "NO" ] ; then
     _DO_NOTHING=YES
   else

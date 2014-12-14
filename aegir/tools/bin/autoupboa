@@ -72,7 +72,7 @@ if [ -e "/data/disk/arch" ] ; then
     _AUTO_UP=YES
   fi
   if [ -e "/etc/apticron/apticron.conf" ] ; then
-    _APTICRON_TEST=$(grep "omega8" /etc/apticron/apticron.conf)
+    _APTICRON_TEST=$(grep "omega8" /etc/apticron/apticron.conf 2>&1)
     if [[ "$_APTICRON_TEST" =~ "omega8" ]] ; then
       _AUTO_UP=YES
     fi

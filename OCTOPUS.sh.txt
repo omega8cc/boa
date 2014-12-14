@@ -1383,7 +1383,7 @@ sub_force_advanced_nginx_config () {
       for _IP in `cat /root/.tmp.IP.list | sort | uniq`;do echo "$_IP # local IP address" >> /root/.local.IP.list;done
       rm -f /root/.tmp.IP.list*
     fi
-    _IP_IF_PRESENT=$(grep "$_CRON_IP" /root/.local.IP.list)
+    _IP_IF_PRESENT=$(grep "$_CRON_IP" /root/.local.IP.list 2>&1)
     if [[ "$_IP_IF_PRESENT" =~ "$_CRON_IP" ]] ; then
       _IP_PRESENT=YES
     else

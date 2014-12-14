@@ -309,14 +309,14 @@ init_start ()
 set_pin_priority ()
 {
   if [ ! -e "/etc/apt/preferences" ] && [ -e "/etc/issue.net" ] ; then
-    _THIS_OS=$(grep "Debian" /etc/issue.net)
+    _THIS_OS=$(grep "Debian" /etc/issue.net 2>&1)
     if [[ "$_THIS_OS" =~ "Debian" ]] ; then
       _THIS_OS=Debian
     else
       _THIS_OS=Ubuntu
     fi
     if [ "$_THIS_OS" = "Debian" ] ; then
-      _THIS_RV=$(grep "6.0" /etc/issue.net)
+      _THIS_RV=$(grep "6.0" /etc/issue.net 2>&1)
       if [[ "$_THIS_RV" =~ "6.0" ]] ; then
         curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
       else
@@ -409,7 +409,7 @@ check_wrapper ()
     clean_pid_exit
   fi
   _BIN_FILE="/usr/local/bin/$(basename "$0")"
-  _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE)
+  _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE 2>&1)
   if [[ "$_DATE_TEST" =~ "### $_TODAY ###" ]] ; then
     _NEEDS_UPDATE=NO
   else

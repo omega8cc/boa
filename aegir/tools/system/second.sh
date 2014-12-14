@@ -52,9 +52,9 @@ check_vhost_health()
 {
   if [ -e "$1"* ] ; then
     echo vhost $1 exists
-    _VHOST_TEST_PLACEHOLDER=$(grep "### access" $1*)
-    _VHOST_TEST_ALLOW=$(grep "allow .*;" $1*)
-    _VHOST_TEST_DENY=$(grep "deny .*;" $1*)
+    _VHOST_TEST_PLACEHOLDER=$(grep "### access" $1* 2>&1)
+    _VHOST_TEST_ALLOW=$(grep "allow .*;" $1* 2>&1)
+    _VHOST_TEST_DENY=$(grep "deny .*;" $1* 2>&1)
     if [[ "$_VHOST_TEST_PLACEHOLDER" =~ "access" ]] && [[ "$_VHOST_TEST_DENY" =~ "deny" ]] ; then
       if [[ "$_VHOST_TEST_ALLOW" =~ "allow" ]] ; then
         _VHOST_HEALTH=YES
