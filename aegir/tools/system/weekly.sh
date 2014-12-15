@@ -63,8 +63,9 @@ for your Drupal sites and we appreciate your efforts
 to meet the requirements, which are an integral part
 of the quality you can expect from Omega8.cc.
 
-If you have any questions, please don't respond to this message, since
-it was sent from our default system address. Instead please use the form at:
+If you have any questions, please don't respond to this message,
+since it was sent from our default system address -- please use
+our support contact form instead:
 
   https://omega8.cc/support
 
@@ -97,8 +98,9 @@ for your Drupal sites and we appreciate your efforts
 to meet the requirements, which are an integral part
 of the quality you can expect from Omega8.cc.
 
-If you have any questions, please don't respond to this message, since
-it was sent from our default system address. Instead please use the form at:
+If you have any questions, please don't respond to this message,
+since it was sent from our default system address -- please use
+our support contact form instead:
 
   https://omega8.cc/support
 
@@ -131,8 +133,9 @@ for your Drupal sites and we appreciate your efforts
 to meet the requirements, which are an integral part
 of the quality you can expect from Omega8.cc.
 
-If you have any questions, please don't respond to this message, since
-it was sent from our default system address. Instead please use the form at:
+If you have any questions, please don't respond to this message,
+since it was sent from our default system address -- please use
+our support contact form instead:
 
   https://omega8.cc/support
 
@@ -289,8 +292,9 @@ We provide very generous soft-limits and we allow free-of-charge overages
 between weekly checks which happen every Monday, but in return we expect
 that you will use this allowance responsibly and sparingly.
 
-If you have any questions, please don't respond to this message, since
-it was sent from our default system address. Instead please use the form at:
+If you have any questions, please don't respond to this message,
+since it was sent from our default system address -- please use
+our billing contact form instead:
 
   https://omega8.cc/billing
 
@@ -464,8 +468,9 @@ We provide very generous soft-limits and we allow free-of-charge overages
 between weekly checks which happen every Monday, but in return we expect
 that you will use this allowance responsibly and sparingly.
 
-If you have any questions, please don't respond to this message, since
-it was sent from our default system address. Instead please use the form at:
+If you have any questions, please don't respond to this message,
+since it was sent from our default system address -- please use
+our billing contact form instead:
 
   https://omega8.cc/billing
 
