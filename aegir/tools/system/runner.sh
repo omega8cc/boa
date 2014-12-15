@@ -49,26 +49,30 @@ do
     n=$((RANDOM%9+2))
     echo waiting $n sec
     sleep $n
-    echo running $Runner
-    bash $Runner
-    echo CTL done
+    if [ ! -e "/var/run/boa_wait.pid" ] && [ ! -e "/var/run/manage_rvm_users.pid" ] ; then
+      echo running $Runner
+      bash $Runner
+    fi
   else
     echo load is $_O_LOAD while maxload is $_O_LOAD_MAX
-    echo ...we have to wait...
   fi
 done
 }
 
 ###-------------SYSTEM-----------------###
 
-if [ -e "/var/run/boa_wait.pid" ] || [ -e "/var/run/manage_rvm_users.pid" ] ; then
+if [ -e "/var/run/task_runner.pid" ] || [ -e "/var/run/boa_wait.pid" ] || [ -e "/var/run/manage_rvm_users.pid" ] ; then
   touch /var/xdrago/log/wait-runner
   exit 0
 else
   if [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
     exit 0
   fi
+  touch /var/run/task_runner.pid
+  sleep 5
   action
+  sleep 5
+  rm -f /var/run/task_runner.pid
   exit 0
 fi
 ###EOF2014###

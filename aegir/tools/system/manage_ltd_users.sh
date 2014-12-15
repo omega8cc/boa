@@ -1098,6 +1098,7 @@ else
       fi
     fi
   fi
+  sleep 60
   rm -f /var/run/manage_ltd_users.pid
   exit 0
 fi

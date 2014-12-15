@@ -5919,6 +5919,7 @@ finale () {
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/manage_ltd_users.pid
   rm -f /var/run/manage_rvm_users.pid
+  rm -f /var/run/task_runner.pid
   rm -f /var/aegir/.drush/.alias.drushrc.php
   rm -f /data/disk/*/.drush/.alias.drushrc.php
   rm -f /var/xdrago/log/protected-vhosts-clean.log
@@ -5950,13 +5951,6 @@ finale () {
     sed -i "s/.*fire.*//g" /etc/crontab &> /dev/null
     sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
     sed -i "/^$/d" /etc/crontab &> /dev/null
-  fi
-  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    sed -i "s/.*runner.sh.*//gi" /var/spool/cron/crontabs/root &> /dev/null
-    echo -e "*/2 * * * * bash /var/xdrago/runner.sh >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
-    sed -i "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
-    chown root:crontab /var/spool/cron/crontabs/root
-    chmod 600 /var/spool/cron/crontabs/root
   fi
   if [ -e "/root/.dbhd.clstr.cnf" ] ; then
     service clean-boa-env stop &> /dev/null

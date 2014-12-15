@@ -2232,6 +2232,7 @@ rm -f /var/run/boa_run.pid
 rm -f -r $_ROOT/.tmp/cache
 rm -f /var/run/manage_ltd_users.pid
 rm -f /var/run/manage_rvm_users.pid
+rm -f /var/run/task_runner.pid
 exit 0
 
 
