@@ -46,13 +46,13 @@ do
   load_control
   if [ $_O_LOAD -lt $_O_LOAD_MAX ] ; then
     echo load is $_O_LOAD while maxload is $_O_LOAD_MAX
-    n=$((RANDOM%9+2))
-    echo waiting $n sec
-    sleep $n
     if [ ! -e "/var/run/boa_wait.pid" ] && [ ! -e "/var/run/manage_rvm_users.pid" ] ; then
       echo running $Runner
       bash $Runner
     fi
+    n=$((RANDOM%9+2))
+    echo waiting $n sec
+    sleep $n
   else
     echo load is $_O_LOAD while maxload is $_O_LOAD_MAX
   fi
