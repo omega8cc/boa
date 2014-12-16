@@ -706,7 +706,7 @@ fi
 _AGOV=7.x-1.6
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
-_CIVICRM_PN=boa-2.3.8-dev
+_BRANCH_CIVI=2.3.x-dev
 _COD=7.x-1.0-alpha5
 _COMMERCE1=7.x-1.32
 _COMMERCE2=7.x-2.20
@@ -1520,7 +1520,7 @@ action () {
     sed -i "s/EDIT_BRANCH_PROVISION/$_BRANCH_PROVISION/g"   $Files &> /dev/null
     sed -i "s/EDIT_CIVICRM_M6/$_CIVICRM_M6/g"               $Files &> /dev/null
     sed -i "s/EDIT_CIVICRM_M7/$_CIVICRM_M7/g"               $Files &> /dev/null
-    sed -i "s/EDIT_CIVICRM_PN/$_CIVICRM_PN/g"               $Files &> /dev/null
+    sed -i "s/EDIT_BRANCH_CIVI/$_BRANCH_CIVI/g"             $Files &> /dev/null
     sed -i "s/EDIT_CLIENT_CORES/$_CLIENT_CORES/g"           $Files &> /dev/null
     sed -i "s/EDIT_CLIENT_EMAIL/$_CLIENT_EMAIL/g"           $Files &> /dev/null
     sed -i "s/EDIT_CLIENT_OPTION/$_CLIENT_OPTION/g"         $Files &> /dev/null

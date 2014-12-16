@@ -42,7 +42,7 @@ _INSTALLER_VERSION=EDIT_INSTALLER_VERSION
 _AGOV=EDIT_AGOV
 _CIVICRM_M6=EDIT_CIVICRM_M6
 _CIVICRM_M7=EDIT_CIVICRM_M7
-_CIVICRM_PN=EDIT_CIVICRM_PN
+_BRANCH_CIVI=EDIT_BRANCH_CIVI
 _COD=EDIT_COD
 _COMMERCE1=EDIT_COMMERCE1
 _COMMERCE2=EDIT_COMMERCE2
@@ -396,7 +396,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   rm -f -r $_ROOT/.drush/{provision,drush_make}
   mkdir -p $_ROOT/.drush/{sys,xts,usr}
   git clone --branch $_BRANCH_PROVISION git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision                &> /dev/null
-  git clone --branch $_CIVICRM_PN git://github.com/omega8cc/provision_civicrm.git $_ROOT/.drush/xts/provision_civicrm      &> /dev/null
+  git clone --branch 6.x-2.x git://github.com/omega8cc/provision_civicrm.git $_ROOT/.drush/xts/provision_civicrm           &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/xts/provision_cdn                   &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/provision_platform_git.git $_ROOT/.drush/xts/provision_platform_git &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/provision_site_backup.git $_ROOT/.drush/xts/provision_site_backup   &> /dev/null
