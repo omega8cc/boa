@@ -35,6 +35,8 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /nrsysmond/) {$newrelicsysmondlives = "YES"; $newrelicsysmondsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /rsyslogd/) {$rsyslogdlives = "YES"; $rsyslogdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /sbin\/syslogd/) {$sysklogdlives = "YES"; $sysklogdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /xinetd/) {$xinetdlives = "YES"; $xinetdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /lsyncd/) {$lsyncdlives = "YES"; $lsyncdsumar = $li_cnt{$COMMAND};}
 }
 foreach $X (sort keys %li_cnt) {
   if ($X =~ /php55/) {$php55lives = "YES";}
@@ -75,6 +77,8 @@ print "\n $tomcatsumar Tomcat procs\t\tGLOBAL" if ($tomcatlives);
 print "\n $rsyslogdsumar Syslog procs\t\tGLOBAL" if ($rsyslogdlives);
 print "\n $sysklogdsumar Syslog procs\t\tGLOBAL" if ($sysklogdlives);
 print "\n $convertsumar Convert procs\t\tGLOBAL" if ($convertlives);
+print "\n $xinetdsumar Xinetd procs\t\tGLOBAL" if ($xinetdlives);
+print "\n $lsyncdsumar Lsyncd procs\t\tGLOBAL" if ($lsyncdlives);
 
 `/etc/init.d/bind9 restart` if (!$namedsumar && -f "/etc/init.d/bind9");
 
@@ -150,6 +154,8 @@ else {
 `/etc/init.d/jetty9 start` if (!$jetty9sumar && -f "/etc/init.d/jetty9" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/tomcat start` if (!$tomcatsumar && -f "/etc/init.d/tomcat" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/collectd start` if (!$collectdsumar && -f "/etc/init.d/collectd" && !-f "/var/run/boa_run.pid");
+`/etc/init.d/xinetd start` if (!$xinetdsumar && -f "/etc/init.d/xinetd" && !-f "/var/run/boa_run.pid");
+`/etc/init.d/lsyncd start` if (!$lsyncdsumar && -f "/etc/init.d/lsyncd" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/postfix restart` if (!-f "/var/spool/postfix/pid/master.pid");
 
 if (-f "/usr/local/sbin/pure-config.pl") {
