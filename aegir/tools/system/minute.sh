@@ -47,6 +47,43 @@ do
 done
 }
 
+lsyncd_proc_control()
+{
+if [ -e "/var/log/lsyncd.log" ] ; then
+  if [ `tail --lines=100 /var/log/lsyncd.log | grep --count "Error: Terminating"` -gt "0" ]; then
+    echo "`date` TRM lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
+  fi
+  if [ `tail --lines=100 /var/log/lsyncd.log | grep --count "ERROR: Auto-resolving failed"` -gt "0" ]; then
+    echo "`date` ERR lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
+  fi
+  if [ `tail --lines=100 /var/log/lsyncd.log | grep --count "Normal: Finished events list = 0"` -lt "1" ]; then
+    echo "`date` NRM lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
+  fi
+fi
+if [ -e "/var/xdrago/log/lsyncd.monitor.log" ] ; then
+  if [ -e "/root/.barracuda.cnf" ] ; then
+    source /root/.barracuda.cnf
+  fi
+  if [ `tail --lines=100 /var/xdrago/log/lsyncd.monitor.log | grep --count "TRM lsyncd"` -gt "3" ] && [ -n "$_MY_EMAIL" ] ; then
+    mail -s "ALERT! lsyncd TRM failure on `uname -n`" $_MY_EMAIL < /var/xdrago/log/lsyncd.monitor.log
+    _ARCHIVE_LOG=YES
+  fi
+  if [ `tail --lines=100 /var/xdrago/log/lsyncd.monitor.log | grep --count "ERR lsyncd"` -gt "3" ] && [ -n "$_MY_EMAIL" ] ; then
+    mail -s "ALERT! lsyncd ERR failure on `uname -n`" $_MY_EMAIL < /var/xdrago/log/lsyncd.monitor.log
+    _ARCHIVE_LOG=YES
+  fi
+  if [ `tail --lines=100 /var/xdrago/log/lsyncd.monitor.log | grep --count "NRM lsyncd"` -gt "3" ] && [ -n "$_MY_EMAIL" ] ; then
+    mail -s "NOTICE: lsyncd NRM problem on `uname -n`" $_MY_EMAIL < /var/xdrago/log/lsyncd.monitor.log
+    _ARCHIVE_LOG=YES
+  fi
+  if [ "$_ARCHIVE_LOG" = "YES" ] ; then
+    cat /var/xdrago/log/lsyncd.monitor.log >> /var/xdrago/log/lsyncd.warn.archive.log
+    rm -f /var/xdrago/log/lsyncd.monitor.log
+  fi
+fi
+}
+
+lsyncd_proc_control
 mysql_proc_control
 sleep 5
 mysql_proc_control
