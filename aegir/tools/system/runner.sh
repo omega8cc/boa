@@ -61,18 +61,27 @@ done
 
 ###-------------SYSTEM-----------------###
 
-if [ -e "/var/run/task_runner.pid" ] || [ -e "/var/run/boa_wait.pid" ] || [ -e "/var/run/manage_rvm_users.pid" ] ; then
+if [ -e "/var/run/boa_wait.pid" ] || [ -e "/var/run/manage_rvm_users.pid" ] ; then
+  touch /var/xdrago/log/wait-runner
+  exit 0
+elif [ `ps aux | grep -v "grep" | grep --count "c bash.*runner"` -gt 2 ]; then
   touch /var/xdrago/log/wait-runner
   exit 0
 else
   if [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
     exit 0
   fi
-  touch /var/run/task_runner.pid
-  sleep 5
   action
-  sleep 5
-  rm -f /var/run/task_runner.pid
+  sleep 10
+  action
+  sleep 10
+  action
+  sleep 10
+  action
+  sleep 10
+  action
+  sleep 10
+  action
   exit 0
 fi
 ###EOF2014###

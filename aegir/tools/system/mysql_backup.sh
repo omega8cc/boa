@@ -112,7 +112,6 @@ rm -f /var/run/boa_wait.pid
 rm -f /var/run/daily-fix.pid
 rm -f /var/run/manage_ltd_users.pid
 rm -f /var/run/manage_rvm_users.pid
-rm -f /var/run/task_runner.pid
 touch /var/xdrago/log/last-run-backup
 echo "COMPLETED ALL"
 exit 0

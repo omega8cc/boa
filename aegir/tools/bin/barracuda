@@ -384,7 +384,6 @@ up_finish ()
   rm -f /var/run/boa_system_wait.pid
   rm -f /var/run/manage_ltd_users.pid
   rm -f /var/run/manage_rvm_users.pid
-  rm -f /var/run/task_runner.pid
   rm -f /var/backups/BARRACUDA.sh*
   rm -f /root/BOA.sh*
   rm -f /root/.bashrc.bak*
