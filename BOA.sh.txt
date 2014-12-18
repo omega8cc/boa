@@ -404,6 +404,9 @@ if [ `whoami` = "root" ] ; then
     _VERSIONS_TEST=`cat /var/log/barracuda_log.txt`
     if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
       _VERSIONS_TEST_RESULT=OK
+      if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+        update_agents
+      fi
     else
       update_agents
       fix_core
