@@ -56,7 +56,7 @@ if [ -e "/var/log/lsyncd.log" ] ; then
   if [ `tail --lines=100 /var/log/lsyncd.log | grep --count "ERROR: Auto-resolving failed"` -gt "0" ]; then
     echo "`date` ERR lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
   fi
-  if [ `tail --lines=300 /var/log/lsyncd.log | grep --count "Normal: Finished events list = 0"` -lt "1" ]; then
+  if [ `tail --lines=600 /var/log/lsyncd.log | grep --count "Normal: Finished events list = 0"` -lt "1" ]; then
     echo "`date` NRM lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
   fi
 fi
