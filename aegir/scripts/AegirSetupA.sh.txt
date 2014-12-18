@@ -55,7 +55,6 @@ _DRUPAL7S="EDIT_DRUPAL7-stage"
 _DRUPAL8=EDIT_DRUPAL8
 _ERPAL=EDIT_ERPAL
 _GUARDR=EDIT_GUARDR
-_OPEN_DEALS=EDIT_OPEN_DEALS
 _OPENACADEMY=EDIT_OPENACADEMY
 _OPENATRIUM7=EDIT_OPENATRIUM7
 _OPENBLOG=EDIT_OPENBLOG
@@ -67,7 +66,6 @@ _OPENPUBLIC=EDIT_OPENPUBLIC
 _OPENPUBLISH=EDIT_OPENPUBLISH
 _OPENSCHOLAR=EDIT_OPENSCHOLAR
 _PANOPOLY=EDIT_PANOPOLY
-_PROSEPOINT=EDIT_PROSEPOINT
 _RECRUITER=EDIT_RECRUITER
 _RESTAURANT=EDIT_RESTAURANT
 _SMALLCORE6=EDIT_SMALLCORE6
@@ -1607,12 +1605,7 @@ msg "$_STATUS A: Creating ftp symlinks"
   fi
   chown -R $_USER:$_USRG /home/$_USERFTP/platforms &> /dev/null
   chmod 700 /home/$_USERFTP &> /dev/null
-  rm -f /home/$_USERFTP/platforms/$_THIS_CORE/{cod,commerce,commons,openatrium,openscholar,prosepoint,drupal6,drupal7}
-  if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_SMALLCORE6" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_SMALLCORE6
-    fi
-  fi
+  rm -f /home/$_USERFTP/platforms/$_THIS_CORE/{cod,commerce,commons,openatrium,openscholar,drupal6,drupal7}
   if [ -d "$_ROOT/distro/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7" ] ; then
       ln -sf $_ROOT/distro/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7
@@ -1749,9 +1742,9 @@ msg "$_STATUS A: Creating ftp symlinks"
       ln -sf $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH2-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH2-$_SMALLCORE7
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7
+  if [ -d "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/sites" ] ; then
@@ -1777,11 +1770,6 @@ msg "$_STATUS A: Creating ftp symlinks"
   if [ -d "$_ROOT/distro/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7" ] ; then
       ln -sf $_ROOT/distro/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7
-    fi
-  fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7/sites" ] ; then

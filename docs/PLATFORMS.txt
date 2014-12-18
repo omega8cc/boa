@@ -24,13 +24,13 @@
 ### ERP ----------- ERPAL
 ### FSR ----------- Feature Server
 ### GDR ----------- Guardr
-### OA7 ----------- Open Atrium D7
-### OAY ----------- Open Academy
+### OA7 ----------- OpenAtrium D7
+### OAY ----------- OpenAcademy
 ### OBG ----------- OpenBlog
 ### OCH ----------- OpenChurch 1
 ### CH2 ----------- OpenChurch 2
-### ODS ----------- Open Deals
-### OOH ----------- Open Outreach
+### ODS ----------- OpenDeals
+### OOH ----------- OpenOutreach
 ### OPC ----------- OpenPublic
 ### OSR ----------- OpenScholar
 ### PPY ----------- Panopoly
