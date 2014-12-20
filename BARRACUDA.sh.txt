@@ -3815,6 +3815,7 @@ run_silent_aptitude_full_upgrade () {
   mrun "dpkg --configure --force-all -a" 2> /dev/null
   mrun "apt-get install aptitude -f -y --force-yes --reinstall" 2> /dev/null
   mrun "apt-get install util-linux -f -y --force-yes --reinstall" 2> /dev/null
+  mrun "apt-get install libmagickwand-dev -f -y --force-yes --reinstall" 2> /dev/null
   mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
 }
 #
@@ -3940,6 +3941,10 @@ install_php_extensions () {
   fi
   ###--------------------###
   msg "INFO: Installing Imagick for PHP-FPM $_LOC_PHP_VERSION..."
+  if [ ! -e "/var/xdrago/log/libmagickwand-dev-$_IMAGICK_VERSION-rebuild.log" ] ; then
+    mrun "apt-get install libmagickwand-dev -f -y --force-yes --reinstall" 2> /dev/null
+    touch /var/xdrago/log/libmagickwand-dev-$_IMAGICK_VERSION-rebuild.log
+  fi
   cd /var/opt
   rm -f -r imagick*
   get_dev_src "imagick-$_IMAGICK_VERSION.tgz"
@@ -4068,6 +4073,10 @@ update_php_extensions () {
   ###--------------------###
   if [ ! -e "/var/xdrago/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log" ] ; then
     msg "INFO: Installing Imagick upgrade for PHP-FPM $_LOC_PHP_VERSION..."
+    if [ ! -e "/var/xdrago/log/libmagickwand-dev-$_IMAGICK_VERSION-rebuild.log" ] ; then
+      mrun "apt-get install libmagickwand-dev -f -y --force-yes --reinstall" 2> /dev/null
+      touch /var/xdrago/log/libmagickwand-dev-$_IMAGICK_VERSION-rebuild.log
+    fi
     cd /var/opt
     rm -f -r imagick*
     get_dev_src "imagick-$_IMAGICK_VERSION.tgz"
