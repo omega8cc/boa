@@ -3791,7 +3791,7 @@ run_aptitude_full_upgrade () {
     rm -f /usr/bin/mytop
     echo "fixed-mytop-mariadb" > /var/xdrago/log/fixed-mytop-mariadb.log
   fi
-  st_runner "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold" 2> /dev/null
+  st_runner "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] && [ -e "/var/xdrago/log/fixed-mytop-mariadb.log" ] ; then
     st_runner "$_INSTAPP mytop" 2> /dev/null
   fi
@@ -3811,7 +3811,10 @@ run_silent_aptitude_full_upgrade () {
     fi
   fi
   mrun "dpkg --configure --force-all -a" 2> /dev/null
-  mrun "aptitude update -y" &> /dev/null
+  mrun "apt-get update -y" 2> /dev/null
+  mrun "dpkg --configure --force-all -a" 2> /dev/null
+  mrun "apt-get install aptitude -f -y --force-yes --reinstall" 2> /dev/null
+  mrun "apt-get install util-linux -f -y --force-yes --reinstall" 2> /dev/null
   mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
 }
 #
@@ -6834,6 +6837,15 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
     mv /etc/init.d/tomcat /etc/init.d/offtomcat
     kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
   fi
+  echo "curl install" | dpkg --set-selections &> /dev/null
+  echo "libssl-dev install" | dpkg --set-selections &> /dev/null
+  echo "openssh-client install" | dpkg --set-selections &> /dev/null
+  echo "openssh-server install" | dpkg --set-selections &> /dev/null
+  echo "openssl install" | dpkg --set-selections &> /dev/null
+  echo "ssh install" | dpkg --set-selections &> /dev/null
+  echo "zlib1g install" | dpkg --set-selections &> /dev/null
+  echo "zlib1g-dev install" | dpkg --set-selections &> /dev/null
+  echo "zlibc install" | dpkg --set-selections &> /dev/null
   mrun "apt-get remove collectd -y --force-yes -qq" &> /dev/null
   touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   mrun "aptitude remove php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl -y" &> /dev/null
@@ -6864,9 +6876,12 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
       update-rc.d -f $link remove &> /dev/null
     done
   fi
-  mrun "aptitude update -y" &> /dev/null
   mrun "dpkg --configure --force-all -a" 2> /dev/null
-  mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold" 2> /dev/null
+  mrun "apt-get update -y" 2> /dev/null
+  mrun "dpkg --configure --force-all -a" 2> /dev/null
+  mrun "apt-get install aptitude -f -y --force-yes --reinstall" 2> /dev/null
+  mrun "apt-get install util-linux -f -y --force-yes --reinstall" 2> /dev/null
+  mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
   echo rotate > /var/log/syslog &> /dev/null
   mv -f /var/xdrago_wait /var/xdrago &> /dev/null
   msg "INFO: No errors? Then Squeeze to Wheezy upgrade was successful - congrats!"
@@ -6987,9 +7002,9 @@ fi
 st_runner "aptitude update -y" &> /dev/null
 _DB_SERVER_TEST=`mysql -V 2>&1`
 if [ "$_STATUS" = "INIT" ] ; then
-  st_runner "aptitude safe-upgrade -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold" 2> /dev/null
+  st_runner "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
   st_runner "aptitude update -y" &> /dev/null
-  st_runner "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold" 2> /dev/null
+  st_runner "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
   st_runner "aptitude autoclean -y" &> /dev/null
 else
   echo "gnupg-curl install" | dpkg --set-selections &> /dev/null
