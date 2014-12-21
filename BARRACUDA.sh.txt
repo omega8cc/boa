@@ -8002,6 +8002,7 @@ if [ -x "/opt/php54/bin/php" ] ; then
 fi
 if [ "$_CURLWRAPPERS_REBUILD" = "YES" ] && [[ ! "$_PHP_EXTRA_CONF" =~ "--with-curlwrappers" ]] ; then
   msg "INFO: PHP rebuild required to remove --with-curlwrappers option..."
+  _PHP_FORCE_REINSTALL=YES
   php_upgrade_all
 fi
 _BROKEN_LIBCURL_TEST=$(php -v 2>&1)
