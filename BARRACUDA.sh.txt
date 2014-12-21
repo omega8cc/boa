@@ -4147,7 +4147,7 @@ install_php_multi () {
     install_php_legacy "$1"
   else
     if [ "$1" != "55" ] ; then
-      _PHP_EXTRA="$_PHP_EXTRA --with-curlwrappers"
+      _PHP_EXTRA="$_PHP_EXTRA"
     fi
     ###--------------------###
     msg "INFO: Installing PHP-FPM $_PHP_VERSION"
