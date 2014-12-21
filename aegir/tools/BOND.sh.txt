@@ -143,9 +143,9 @@ _AEGIR_VERSION=HEAD
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.9-dev
+_INSTALLER_VERSION=BOA-2.4.0-dev
 _BRANCH_BOA=master
-_BRANCH_PROVISION=2.3.x-dev
+_BRANCH_PROVISION=2.4.x-dev
 _NOW=`date +%y%m%d-%H%M`
 _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
 _THISHOST=`uname -n`
