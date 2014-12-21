@@ -218,7 +218,7 @@ up_one ()
     if [ "$cmmand" = "up-vanilla" ] ; then
       sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=6.x-2.x/g"   /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     elif [ "$cmmand" = "up-modern" ] ; then
-      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.4.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     else
       sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     fi
@@ -228,6 +228,8 @@ up_one ()
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"    /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     elif [ "$cmmand" = "up-stable" ] ; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    elif [ "$cmmand" = "up-modern" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     else
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     fi
@@ -279,7 +281,7 @@ up_one ()
           rm -f -r $User/.drush/{provision,drush_make}
           mkdir -p $User/.drush/{sys,xts,usr}
           if [ "$cmmand" = "up-modern" ] ; then
-            git clone --branch 2.3.x-dev git://github.com/omega8cc/provision.git $User/.drush/sys/provision &> /dev/null
+            git clone --branch 2.4.x-dev git://github.com/omega8cc/provision.git $User/.drush/sys/provision &> /dev/null
           elif [ "$cmmand" = "up-vanilla" ] ; then
             git clone --branch 6.x-2.x git://github.com/omega8cc/provision.git $User/.drush/sys/provision &> /dev/null
           else
