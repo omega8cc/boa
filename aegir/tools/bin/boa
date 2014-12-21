@@ -175,7 +175,7 @@ octopus_install ()
     if [ "$cmmand" = "in-vanilla" ] ; then
       sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=6.x-2.x/g"   /var/backups/OCTOPUS.sh.$user
     elif [ "$cmmand" = "in-modern" ] ; then
-      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.4.x-dev/g" /var/backups/OCTOPUS.sh.$user
     else
       sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$user
     fi
@@ -185,6 +185,8 @@ octopus_install ()
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"                /var/backups/OCTOPUS.sh.$user
     elif [ "$cmmand" = "in-stable" ] ; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"             /var/backups/OCTOPUS.sh.$user
+    elif [ "$cmmand" = "in-modern" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g"             /var/backups/OCTOPUS.sh.$user
     else
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"             /var/backups/OCTOPUS.sh.$user
     fi
@@ -266,7 +268,7 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
   if [ "$cmmand" = "in-vanilla" ] ; then
     sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=6.x-2.x/g"   /var/backups/BARRACUDA.sh.txt
   elif [ "$cmmand" = "in-modern" ] ; then
-    sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.4.x-dev/g" /var/backups/BARRACUDA.sh.txt
   else
     sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
   fi
@@ -276,6 +278,8 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
     sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"        /var/backups/BARRACUDA.sh.txt
   elif [ "$cmmand" = "in-stable" ] ; then
     sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"     /var/backups/BARRACUDA.sh.txt
+  elif [ "$cmmand" = "in-modern" ] ; then
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g"     /var/backups/BARRACUDA.sh.txt
   else
     sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"     /var/backups/BARRACUDA.sh.txt
   fi
@@ -376,9 +380,12 @@ init_setup ()
   elif [ "$cmmand" = "in-stable" ] ; then
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
-  elif [ "$cmmand" = "in-modern" ] || [ "$cmmand" = "in-vanilla" ] ; then
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.3.x-dev/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.3.x-dev/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  elif [ "$cmmand" = "in-modern" ] ; then
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.4.x-dev/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.4.x-dev/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  elif [ "$cmmand" = "in-vanilla" ] ; then
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
   elif [ "$cmmand" = "in-legacy" ] ; then
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/legacy/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/legacy/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
