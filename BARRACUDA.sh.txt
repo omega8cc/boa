@@ -4934,6 +4934,17 @@ get_drush_versions () {
   get_dev_ext "drush-$_DRUSH7_VERSION.tar.gz"
   cd /opt/tools/drush/7/drush/lib
   get_dev_ext "Console_Table-1.1.6.tgz"
+  if [ ! -x "/usr/local/bin/composer" ] ; then
+    rm -f /usr/local/bin/composer
+    rm -f /usr/bin/composer
+    mkdir -p /var/opt
+    cd /var/opt
+    curl -sS https://getcomposer.org/installer | php &> /dev/null
+    mv composer.phar /usr/local/bin/composer
+    ln -s /usr/local/bin/composer /usr/bin/composer
+    cd /opt/tools/drush/7/drush
+    composer install --no-dev &> /dev/null
+  fi
   msg "INFO: Drush $_DRUSH7_VERSION installation complete"
   find /opt/tools -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tools -type f -exec chmod 0644 {} \; &> /dev/null
