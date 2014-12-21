@@ -97,23 +97,23 @@ run_drush4_cmd () {
   su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush4 @${Dom} $1" &> /dev/null
 }
 
-run_drush6_hmr_cmd () {
-  su -s /bin/bash - $_THIS_HM_USER -c "drush6 $1" &> /dev/null
+run_drush7_hmr_cmd () {
+  su -s /bin/bash - $_THIS_HM_USER -c "drush7 $1" &> /dev/null
 }
 
 run_drush4_nosilent_cmd () {
   su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush4 @${Dom} $1"
 }
 
-run_drush6_nosilent_cmd () {
-  su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush6 cc drush" &> /dev/null
+run_drush7_nosilent_cmd () {
+  su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush7 cc drush" &> /dev/null
   rm -f -r $User/.tmp/cache
-  su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush6 @${Dom} $1"
+  su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush7 @${Dom} $1"
 }
 
 check_if_required () {
   _REQ=YES
-  _REI_TEST=$(run_drush6_nosilent_cmd "pmi $1 --fields=required_by")
+  _REI_TEST=$(run_drush7_nosilent_cmd "pmi $1 --fields=required_by")
   _REL_TEST=$(echo "$_REI_TEST" | grep "Required by")
   if [[ "$_REL_TEST" =~ "was not found" ]] ; then
     _REQ=NULL
@@ -1298,7 +1298,7 @@ fix_modules () {
           fi
 
           if [ -e "$Plr/profiles/hostmaster" ] && [ ! -f "$User/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info" ] ; then
-            run_drush6_hmr_cmd "@hostmaster dis cache syslog dblog -y"
+            run_drush7_hmr_cmd "@hostmaster dis cache syslog dblog -y"
             touch $User/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
           elif [ -e "$Plr/modules/o_contrib" ] ; then
             if [ ! -e "$Plr/modules/user" ] || [ ! -e "$Plr/sites/all/modules" ] || [ ! -e "$Plr/profiles" ] ; then
@@ -1562,11 +1562,11 @@ fix_permissions () {
     _DB_HOST_PRESENT=$(grep "^\$_SERVER\['db_host'\] = \$options\['db_host'\];" $Dir/drushrc.php 2>&1)
     if [[ "$_DB_HOST_PRESENT" =~ "db_host" ]] ; then
       if [ "$_FORCE_SITES_VERIFY" = "YES" ] ; then
-        run_drush6_hmr_cmd "@hostmaster hosting-task @${Dom} verify --force"
+        run_drush7_hmr_cmd "@hostmaster hosting-task @${Dom} verify --force"
       fi
     else
       echo "\$_SERVER['db_host'] = \$options['db_host'];" >> $Dir/drushrc.php
-      run_drush6_hmr_cmd "@hostmaster hosting-task @${Dom} verify --force"
+      run_drush7_hmr_cmd "@hostmaster hosting-task @${Dom} verify --force"
     fi
   fi
 }
@@ -1858,7 +1858,7 @@ process () {
 }
 
 delete_this_platform () {
-  run_drush6_hmr_cmd "@hostmaster hosting-task @platform_${_THIS_PLATFORM_NAME} delete --force"
+  run_drush7_hmr_cmd "@hostmaster hosting-task @platform_${_THIS_PLATFORM_NAME} delete --force"
   echo "Old empty platform_${_THIS_PLATFORM_NAME} will be deleted"
 }
 
@@ -2073,7 +2073,7 @@ action () {
         echo load is $_O_LOAD while maxload is $_O_LOAD_MAX
         echo User $User
         mkdir -p $User/log/ctrl
-        su -s /bin/bash $_THIS_HM_USER -c "drush6 cc drush &> /dev/null"
+        su -s /bin/bash $_THIS_HM_USER -c "drush7 cc drush &> /dev/null"
         rm -f -r $User/.tmp/cache
         _SQL_CONVERT=NO
         _DEL_OLD_EMPTY_PLATFORMS="0"
@@ -2101,35 +2101,35 @@ action () {
         rm -f -r /home/${_THIS_HM_USER}.ftp/drush-backups
         if [ -e "$_THIS_HM_SITE" ] ; then
           cd $_THIS_HM_SITE
-          su -s /bin/bash $_THIS_HM_USER -c "drush6 cc drush &> /dev/null"
+          su -s /bin/bash $_THIS_HM_USER -c "drush7 cc drush &> /dev/null"
           rm -f -r $User/.tmp/cache
-          run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_advanced_cron_default_interval 10800"
-          run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1"
-          run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_queue_cron_frequency 53222400"
-          run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_cron_use_backend 0"
-          run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_ignore_default_profiles 0"
-          run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_queue_tasks_items 1"
-          run_drush6_hmr_cmd "@hostmaster en path_alias_cache -y"
-          run_drush6_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
-          run_drush6_hmr_cmd "@hostmaster cc all"
-          run_drush6_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
-          run_drush6_hmr_cmd "@hostmaster cc all"
-          run_drush6_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
-          run_drush6_hmr_cmd "@hostmaster cc all"
+          run_drush7_hmr_cmd "@hostmaster vset --always-set hosting_advanced_cron_default_interval 10800"
+          run_drush7_hmr_cmd "@hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1"
+          run_drush7_hmr_cmd "@hostmaster vset --always-set hosting_queue_cron_frequency 53222400"
+          run_drush7_hmr_cmd "@hostmaster vset --always-set hosting_cron_use_backend 0"
+          run_drush7_hmr_cmd "@hostmaster vset --always-set hosting_ignore_default_profiles 0"
+          run_drush7_hmr_cmd "@hostmaster vset --always-set hosting_queue_tasks_items 1"
+          run_drush7_hmr_cmd "@hostmaster en path_alias_cache -y"
+          run_drush7_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
+          run_drush7_hmr_cmd "@hostmaster cc all"
+          run_drush7_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
+          run_drush7_hmr_cmd "@hostmaster cc all"
+          run_drush7_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
+          run_drush7_hmr_cmd "@hostmaster cc all"
           if [ -e "$User/log/imported.pid" ] || [ -e "$User/log/exported.pid" ] ; then
             if [ ! -e "$User/log/hosting_context.pid" ] ; then
-              _HM_NID=$(run_drush6_hmr_cmd "@hostmaster sqlq \"SELECT site.nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'\" 2>&1")
+              _HM_NID=$(run_drush7_hmr_cmd "@hostmaster sqlq \"SELECT site.nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'\" 2>&1")
               _HM_NID=${_HM_NID//[^0-9]/}
               if [ ! -z "$_HM_NID" ] ; then
-                run_drush6_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context SET name='hostmaster' WHERE nid='$_HM_NID'\""
+                run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context SET name='hostmaster' WHERE nid='$_HM_NID'\""
                 echo $_HM_NID > $User/log/hosting_context.pid
               fi
             fi
           fi
         fi
         process
-        run_drush6_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
-        run_drush6_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
+        run_drush7_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
+        run_drush7_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
         check_old_empty_platforms
         purge_cruft_machine
         if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
