@@ -423,6 +423,7 @@ if [ `whoami` = "root" ] ; then
       fix_core
     fi
   fi
+  service cron reload
   exit 0
 else
   msg "ERROR: This script should be ran as a root user - please `sudo -i` first"
