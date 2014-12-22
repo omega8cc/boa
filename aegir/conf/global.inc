@@ -31,8 +31,8 @@ $conf['preprocess_js'] = 1;       // Enable hardcoded js aggregation
 $conf['file_downloads'] = 1;      // Force public downloads by default
 $conf['error_level'] = 0;         // Disable errors on screen
 $conf['statistics_enable_access_log'] = 0;   // Disable access log stats
-$conf['allow_authorize_operations'] = false; // Disable insecure plugin manager
-$conf['admin_menu_cache_client'] = false;    // Disable caching in admin_menu #442560
+$conf['allow_authorize_operations'] = FALSE; // Disable insecure plugin manager
+$conf['admin_menu_cache_client'] = FALSE;    // Disable caching in admin_menu #442560
 $conf['boost_ignore_htaccess_warning'] = 1;  // Silence false alarm in boost
 $conf['expire_flush_front'] = 1;             // Default settings for expire module
 $conf['expire_flush_node_terms'] = 1;        // Default settings for expire module
@@ -42,11 +42,11 @@ $conf['expire_include_base_url'] = 1;        // Default settings for expire modu
 $conf['js_server_software'] = "other";       // Set JS Callback handler server software
 $conf['video_ffmpeg_instances'] = 1;         // Force safe default for ffmpeg
 $conf['securepages_enable'] = 1;             // Force to avoid issues with ssl proxy
-$conf['less_devel'] = false;                 // Prevent CSS regeneration on every page load
-$conf['drupal_http_request_fails'] = false;  // Avoid false alarm
-$conf['image_allow_insecure_derivatives'] = true; // Enable to avoid known issues: https://drupal.org/drupal-7.20-release-notes
-$conf['theme_cloudy_settings']['omega_rebuild_aggregates'] = false;     // Do not allow to turn it on by default
-$conf['theme_cloudy_settings']['omega_rebuild_theme_registry'] = false; // Do not allow to turn it on by default
+$conf['less_devel'] = FALSE;                 // Prevent CSS regeneration on every page load
+$conf['drupal_http_request_fails'] = FALSE;  // Avoid false alarm
+$conf['image_allow_insecure_derivatives'] = TRUE; // Enable to avoid known issues: https://drupal.org/drupal-7.20-release-notes
+$conf['theme_cloudy_settings']['omega_rebuild_aggregates'] = FALSE;     // Do not allow to turn it on by default
+$conf['theme_cloudy_settings']['omega_rebuild_theme_registry'] = FALSE; // Do not allow to turn it on by default
 $update_free_access = FALSE;
 
 /**
