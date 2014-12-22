@@ -881,7 +881,7 @@ tune_fpm_config () {
   fi
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "$_PHP_SV" ] ; then
-    _PHP_SV=53
+    _PHP_SV=55
   fi
   if [ -e "/opt/php55/etc/pool.d/${_USER}.conf" ] ; then
     _PHP_OLD_SV=55
@@ -1164,13 +1164,13 @@ octopus_cnf () {
       _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
       if [ "$_PHP_CLI_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.2" ]; then
         if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
-          _PHP_CLI_VERSION=5.3
+          _PHP_CLI_VERSION=5.5
         elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
-          _PHP_CLI_VERSION=5.3
+          _PHP_CLI_VERSION=5.5
         elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
-          _PHP_CLI_VERSION=5.3
+          _PHP_CLI_VERSION=5.5
         elif [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
-          _PHP_CLI_VERSION=5.3
+          _PHP_CLI_VERSION=5.5
         fi
         sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
       fi
@@ -1180,13 +1180,13 @@ octopus_cnf () {
         _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
         if [ "$_PHP_CLI_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.2" ]; then
           if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
-            _PHP_CLI_VERSION=5.3
+            _PHP_CLI_VERSION=5.5
           elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
-            _PHP_CLI_VERSION=5.3
+            _PHP_CLI_VERSION=5.5
           elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
-            _PHP_CLI_VERSION=5.3
+            _PHP_CLI_VERSION=5.5
           elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ ! -x "/opt/php52/bin/php" ] ; then
-            _PHP_CLI_VERSION=5.3
+            _PHP_CLI_VERSION=5.5
           fi
           sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
         fi
@@ -1355,7 +1355,7 @@ sub_force_advanced_nginx_config () {
   if [ -d "$_THIS_NGX_INCL" ] ; then
     _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
     if [ -z "$_PHP_SV" ] ; then
-      _PHP_SV=53
+      _PHP_SV=55
     fi
     if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ] ; then
       sed -i "s/EDIT_USER/${_USER}/g"                                              $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php &> /dev/null

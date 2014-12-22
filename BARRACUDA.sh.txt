@@ -128,7 +128,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### which are used to define version to be
 ### used by Master or Satellite Instance.
 ###
-_PHP_MULTI_INSTALL="5.3"
+_PHP_MULTI_INSTALL="5.5"
 
 
 ###----------------------------------------###
@@ -3305,7 +3305,7 @@ barracuda_cnf () {
           if [ ! -z "$_CLSTR_PHP_MULTI_INSTALL" ] ; then
             _PHP_MULTI_INSTALL="$_CLSTR_PHP_MULTI_INSTALL"
           else
-            _PHP_MULTI_INSTALL="5.3"
+            _PHP_MULTI_INSTALL="5.5"
           fi
         else
           _PHP_MULTI_INSTALL="5.5 5.4 5.3"
@@ -3330,6 +3330,10 @@ barracuda_cnf () {
       else
         _PHP_MULTI_INSTALL="$_PHP_MULTI_INSTALL 5.2"
       fi
+    fi
+
+    if [[ ! "$_PHP_MULTI_INSTALL_TEST" =~ "5.5" ]] ; then
+      _PHP_MULTI_INSTALL="$_PHP_MULTI_INSTALL 5.5"
     fi
 
     _PHP_MODERN_ONLY_TEST=$(grep _PHP_MODERN_ONLY /root/.barracuda.cnf)
@@ -6220,7 +6224,7 @@ if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
 fi
 _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
 if [ -z "$_PHP_SV" ] || [ "$_PHP_SV" = "52" ] ; then
-  _PHP_SV=53
+  _PHP_SV=55
 fi
 _PHP_CN="www${_PHP_SV}"
 

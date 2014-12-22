@@ -694,7 +694,7 @@ tune_fpm_workers () {
 disable_newrelic () {
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "$_PHP_SV" ] ; then
-    _PHP_SV=53
+    _PHP_SV=55
   fi
   _THIS_POOL_TPL="/opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf"
   if [ -e "$_THIS_POOL_TPL" ] ; then
@@ -720,7 +720,7 @@ enable_newrelic () {
   else
     _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
     if [ -z "$_PHP_SV" ] ; then
-      _PHP_SV=53
+      _PHP_SV=55
     fi
     _THIS_POOL_TPL="/opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf"
     if [ -e "$_THIS_POOL_TPL" ] ; then
@@ -821,7 +821,7 @@ switch_php()
           _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
           _PHP_SV=${_LOC_PHP_FPM_VERSION//[^0-9]/}
           if [ -z "$_PHP_SV" ] ; then
-            _PHP_SV=53
+            _PHP_SV=55
           fi
           rm -f /opt/php*/etc/pool.d/${_OWN}.conf
           cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf
