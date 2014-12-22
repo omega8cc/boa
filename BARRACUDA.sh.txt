@@ -4449,6 +4449,9 @@ upgrade_aegir_master () {
       rm -f -r /var/aegir/drush
       cd /var/aegir
       get_dev_ext "drush-$_DRUSH_VERSION.tar.gz"
+      cd /var/aegir/drush/
+      rm -f -r /var/aegir/drush/vendor
+      get_dev_ext "vendor-$_DRUSH_VERSION.tar.gz"
       find /var/aegir/drush -type d -exec chmod 0755 {} \; &> /dev/null
       find /var/aegir/drush -type f -exec chmod 0644 {} \; &> /dev/null
       chmod 755 /var/aegir/drush/drush
@@ -4932,18 +4935,18 @@ get_drush_versions () {
   rm -f -r /opt/tools/drush/7/*
   cd /opt/tools/drush/7/
   get_dev_ext "drush-$_DRUSH7_VERSION.tar.gz"
-  cd /opt/tools/drush/7/drush/lib
-  get_dev_ext "Console_Table-1.1.6.tgz"
-  if [ ! -x "/usr/local/bin/composer" ] ; then
+  cd /opt/tools/drush/7/drush/
+  rm -f -r /opt/tools/drush/7/drush/vendor
+  get_dev_ext "vendor-$_DRUSH7_VERSION.tar.gz"
+  if [ ! -x "/usr/local/bin/composer" ] || [ ! -L "/usr/bin/composer" ] ; then
     rm -f /usr/local/bin/composer
     rm -f /usr/bin/composer
+    rm -f -r /root/.composer
     mkdir -p /var/opt
     cd /var/opt
     curl -sS https://getcomposer.org/installer | php &> /dev/null
     mv composer.phar /usr/local/bin/composer
     ln -s /usr/local/bin/composer /usr/bin/composer
-    cd /opt/tools/drush/7/drush
-    composer install --no-dev &> /dev/null
   fi
   msg "INFO: Drush $_DRUSH7_VERSION installation complete"
   find /opt/tools -type d -exec chmod 0755 {} \; &> /dev/null

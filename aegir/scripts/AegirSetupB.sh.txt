@@ -344,6 +344,9 @@ fi
 cd $_ROOT/tools
 msg "$_STATUS B: Downloading drush..."
 get_dev_ext "drush-$_DRUSH_VERSION.tar.gz"
+cd $_ROOT/tools/drush/
+rm -f -r $_ROOT/tools/drush/vendor
+get_dev_ext "vendor-$_DRUSH_VERSION.tar.gz"
 find $_ROOT/tools -type d -exec chmod 0755 {} \; &> /dev/null
 find $_ROOT/tools -type f -exec chmod 0644 {} \; &> /dev/null
 chmod 755 $_ROOT/tools/drush/drush

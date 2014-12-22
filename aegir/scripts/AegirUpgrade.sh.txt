@@ -208,6 +208,9 @@ hostmaster_dr_up () {
   cd $_ROOT
   mv -f drush $_ROOT/backups/system/drush-pre-$_DISTRO-$_NOW &> /dev/null
   get_dev_ext "drush-$_DRUSH_VERSION.tar.gz"
+  cd $_ROOT/drush/
+  rm -f -r $_ROOT/drush/vendor
+  get_dev_ext "vendor-$_DRUSH_VERSION.tar.gz"
   find $_ROOT/drush -type d -exec chmod 0755 {} \; &> /dev/null
   find $_ROOT/drush -type f -exec chmod 0644 {} \; &> /dev/null
   chmod 755 $_ROOT/drush/drush
