@@ -202,7 +202,7 @@ hostmaster_mv_up () {
 }
 #
 hostmaster_dr_up () {
-  msg "INFO: Downloading drush..."
+  msg "INFO: Downloading drush $_DRUSH_VERSION..."
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
   cd $_ROOT

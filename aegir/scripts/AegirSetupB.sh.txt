@@ -342,7 +342,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   fi
 fi
 cd $_ROOT/tools
-msg "$_STATUS B: Downloading drush..."
+msg "$_STATUS B: Downloading drush $_DRUSH_VERSION..."
 get_dev_ext "drush-$_DRUSH_VERSION.tar.gz"
 cd $_ROOT/tools/drush/
 rm -f -r $_ROOT/tools/drush/vendor
