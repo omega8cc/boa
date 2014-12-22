@@ -4121,7 +4121,7 @@ install_php_legacy () {
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
   fi
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 2/3"
-  st_runner "sh ./configure --quiet --prefix=/opt/php$1 --enable-fpm --enable-fastcgi --with-mysql=/usr --with-mysql-sock=/var/run/mysqld/mysqld.sock --with-mysqli=/usr/bin/mysql_config --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql=/usr --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc $_PHP_EXTRA" 2> /dev/null
+  st_runner "sh ./configure --quiet --prefix=/opt/php$1 --enable-fpm --enable-fastcgi --with-mysql=/usr --with-mysql-sock=/var/run/mysqld/mysqld.sock --with-mysqli=/usr/bin/mysql_config --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql=/usr --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc $_PHP_EXTRA" 2> /dev/null
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 3/3"
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
@@ -4146,8 +4146,8 @@ install_php_multi () {
   if [ "$1" = "52" ] ; then
     install_php_legacy "$1"
   else
-    if [ "$1" != "55" ] ; then
-      _PHP_EXTRA="$_PHP_EXTRA"
+    if [ "$1" = "55" ] ; then
+      _PHP_EXTRA=`echo "$_PHP_EXTRA" | sed "s/--with-curlwrappers//g"`
     fi
     ###--------------------###
     msg "INFO: Installing PHP-FPM $_PHP_VERSION"
@@ -8003,18 +8003,18 @@ php_upgrade_all () {
 install_curl_src
 php_upgrade_all
 if [ -x "/opt/php53/bin/php" ] ; then
-  _CURLWRAPPERS_TEST=$(/opt/php53/bin/php -i | grep "--with-curlwrappers" 2>&1)
-  if [[ "$_CURLWRAPPERS_TEST" =~ "--with-curlwrappers" ]] ; then
+  _CURLWRAPPERS_TEST=$(/opt/php53/bin/php -i | grep "with-curlwrappers" 2>&1)
+  if [[ "$_CURLWRAPPERS_TEST" =~ "with-curlwrappers" ]] ; then
     _CURLWRAPPERS_REBUILD=YES
   fi
 fi
 if [ -x "/opt/php54/bin/php" ] ; then
-  _CURLWRAPPERS_TEST=$(/opt/php54/bin/php -i | grep "--with-curlwrappers" 2>&1)
-  if [[ "$_CURLWRAPPERS_TEST" =~ "--with-curlwrappers" ]] ; then
+  _CURLWRAPPERS_TEST=$(/opt/php54/bin/php -i | grep "with-curlwrappers" 2>&1)
+  if [[ "$_CURLWRAPPERS_TEST" =~ "with-curlwrappers" ]] ; then
     _CURLWRAPPERS_REBUILD=YES
   fi
 fi
-if [ "$_CURLWRAPPERS_REBUILD" = "YES" ] && [[ ! "$_PHP_EXTRA_CONF" =~ "--with-curlwrappers" ]] ; then
+if [ "$_CURLWRAPPERS_REBUILD" = "YES" ] && [[ ! "$_PHP_EXTRA_CONF" =~ "with-curlwrappers" ]] ; then
   msg "INFO: PHP rebuild required to remove --with-curlwrappers option..."
   _PHP_FORCE_REINSTALL=YES
   php_upgrade_all
