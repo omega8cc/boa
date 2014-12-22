@@ -230,6 +230,8 @@ up_one ()
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     elif [ "$cmmand" = "up-modern" ] ; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    elif [ "$cmmand" = "up-vanilla" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"    /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     else
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     fi
@@ -566,7 +568,7 @@ up_cluster ()
 up_modern ()
 {
   up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.3.x-dev/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.4.x-dev/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
   if [ "$second" = "all" ] ; then
     up_action_all
   else
@@ -590,7 +592,7 @@ up_legacy ()
 up_vanilla ()
 {
   up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.3.x-dev/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
   if [ "$second" = "all" ] ; then
     up_action_all
   else

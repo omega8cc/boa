@@ -187,6 +187,8 @@ octopus_install ()
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"             /var/backups/OCTOPUS.sh.$user
     elif [ "$cmmand" = "in-modern" ] ; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g"             /var/backups/OCTOPUS.sh.$user
+    elif [ "$cmmand" = "in-vanilla" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"                /var/backups/OCTOPUS.sh.$user
     else
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"             /var/backups/OCTOPUS.sh.$user
     fi
@@ -280,6 +282,8 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
     sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"     /var/backups/BARRACUDA.sh.txt
   elif [ "$cmmand" = "in-modern" ] ; then
     sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g"     /var/backups/BARRACUDA.sh.txt
+  elif [ "$cmmand" = "in-vanilla" ] ; then
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"        /var/backups/BARRACUDA.sh.txt
   else
     sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"     /var/backups/BARRACUDA.sh.txt
   fi
