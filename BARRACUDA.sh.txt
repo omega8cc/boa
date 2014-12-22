@@ -146,11 +146,11 @@ _PHP_MULTI_INSTALL="5.5"
 ### _PHP_FPM_VERSION=5.3
 ### _PHP_FPM_VERSION=5.2
 ###
-### Note that 5.3 will be set automatically
+### Note that 5.5 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_FPM_VERSION=5.3
+_PHP_FPM_VERSION=5.5
 
 
 ###----------------------------------------###
@@ -167,11 +167,11 @@ _PHP_FPM_VERSION=5.3
 ### _PHP_CLI_VERSION=5.4
 ### _PHP_CLI_VERSION=5.3
 ###
-### Note that 5.3 will be set automatically
+### Note that 5.5 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_CLI_VERSION=5.3
+_PHP_CLI_VERSION=5.5
 
 
 ###----------------------------------------###

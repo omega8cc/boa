@@ -768,7 +768,7 @@ switch_php()
       _LOC_PHP_CLI_VERSION=`echo -n $_LOC_PHP_CLI_VERSION | tr -d "\n"`
       if [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.4" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.3" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.2" ]; then
         if [ "$_LOC_PHP_CLI_VERSION" = "5.2" ]; then
-          _LOC_PHP_CLI_VERSION=5.3
+          _LOC_PHP_CLI_VERSION=5.5
         fi
         if [ "$_LOC_PHP_CLI_VERSION" != "$_PHP_CLI_VERSION" ] ; then
           _PHP_CLI_UPDATE=YES
@@ -786,14 +786,12 @@ switch_php()
       _LOC_PHP_FPM_VERSION=${_LOC_PHP_FPM_VERSION//[^0-9.]/}
       _LOC_PHP_FPM_VERSION=`echo -n $_LOC_PHP_FPM_VERSION | tr -d "\n"`
       if [ "$_LOC_PHP_FPM_VERSION" = "5.5" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.4" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.3" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.2" ]; then
-        if [ "$_LOC_PHP_FPM_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
-          _LOC_PHP_FPM_VERSION=5.3
-        elif [ "$_LOC_PHP_FPM_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
-          _LOC_PHP_FPM_VERSION=5.3
+        if [ "$_LOC_PHP_FPM_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
+          _LOC_PHP_FPM_VERSION=5.5
         elif [ "$_LOC_PHP_FPM_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
-          _LOC_PHP_FPM_VERSION=5.3
+          _LOC_PHP_FPM_VERSION=5.5
         elif [ "$_LOC_PHP_FPM_VERSION" = "5.2" ] ; then
-          _LOC_PHP_FPM_VERSION=5.3
+          _LOC_PHP_FPM_VERSION=5.5
         fi
         if [ "$_LOC_PHP_FPM_VERSION" != "$_PHP_FPM_VERSION" ] ; then
           tune_fpm_workers

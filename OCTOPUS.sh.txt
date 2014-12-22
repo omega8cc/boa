@@ -78,11 +78,11 @@ _CLIENT_CORES=8
 ### _PHP_FPM_VERSION=5.3
 ### _PHP_FPM_VERSION=5.2
 ###
-### Note that 5.3 will be set automatically
+### Note that 5.5 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_FPM_VERSION=5.3
+_PHP_FPM_VERSION=5.5
 
 
 ###----------------------------------------###
@@ -99,11 +99,11 @@ _PHP_FPM_VERSION=5.3
 ### _PHP_CLI_VERSION=5.4
 ### _PHP_CLI_VERSION=5.3
 ###
-### Note that 5.3 will be set automatically
+### Note that 5.5 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_CLI_VERSION=5.3
+_PHP_CLI_VERSION=5.5
 
 
 ###----------------------------------------###
@@ -1130,14 +1130,12 @@ octopus_cnf () {
       _PHP_FPM_VERSION=`cat /data/disk/$_USER/static/control/fpm.info`
       _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
       if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_FPM_VERSION" = "5.2" ]; then
-        if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
-          _PHP_FPM_VERSION=5.3
-        elif [ "$_PHP_FPM_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
-          _PHP_FPM_VERSION=5.3
+        if [ "$_PHP_FPM_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
+          _PHP_FPM_VERSION=5.5
         elif [ "$_PHP_FPM_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
-          _PHP_FPM_VERSION=5.3
+          _PHP_FPM_VERSION=5.5
         elif [ "$_PHP_FPM_VERSION" = "5.2" ] ; then
-          _PHP_FPM_VERSION=5.3
+          _PHP_FPM_VERSION=5.5
         fi
         sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
       fi
@@ -1146,14 +1144,12 @@ octopus_cnf () {
         _PHP_FPM_VERSION=`cat /data/disk/$_USER/log/fpm.txt`
         _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
         if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_FPM_VERSION" = "5.2" ]; then
-          if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
-            _PHP_FPM_VERSION=5.3
-          elif [ "$_PHP_FPM_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
-            _PHP_FPM_VERSION=5.3
+          if [ "$_PHP_FPM_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.5
           elif [ "$_PHP_FPM_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
-            _PHP_FPM_VERSION=5.3
+            _PHP_FPM_VERSION=5.5
           elif [ "$_PHP_FPM_VERSION" = "5.2" ] && [ ! -x "/opt/php52/bin/php" ] ; then
-            _PHP_FPM_VERSION=5.3
+            _PHP_FPM_VERSION=5.5
           fi
           sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
         fi
@@ -1163,9 +1159,7 @@ octopus_cnf () {
       _PHP_CLI_VERSION=`cat /data/disk/$_USER/static/control/cli.info`
       _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
       if [ "$_PHP_CLI_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.2" ]; then
-        if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
-          _PHP_CLI_VERSION=5.5
-        elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
+        if [ "$_PHP_CLI_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
           _PHP_CLI_VERSION=5.5
         elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
           _PHP_CLI_VERSION=5.5
@@ -1179,9 +1173,7 @@ octopus_cnf () {
         _PHP_CLI_VERSION=`cat /data/disk/$_USER/log/cli.txt`
         _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
         if [ "$_PHP_CLI_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.2" ]; then
-          if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
-            _PHP_CLI_VERSION=5.5
-          elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
+          if [ "$_PHP_CLI_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
             _PHP_CLI_VERSION=5.5
           elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
             _PHP_CLI_VERSION=5.5
@@ -1279,24 +1271,25 @@ octopus_cnf () {
         clean_pid_exit
       fi
     fi
-    if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
-      if [ ! -x "/opt/php55/bin/php" ] && [ -x "/opt/php53/bin/php" ] ; then
-        _PHP_FPM_VERSION=5.3
-        _PHP_CLI_VERSION=5.3
+    if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
+      if [ ! -x "/opt/php54/bin/php" ] && [ -x "/opt/php55/bin/php" ] ; then
+        _PHP_FPM_VERSION=5.5
+        _PHP_CLI_VERSION=5.5
       fi
-    elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
-      if [ ! -x "/opt/php54/bin/php" ] && [ -x "/opt/php53/bin/php" ] ; then
-        _PHP_FPM_VERSION=5.3
-        _PHP_CLI_VERSION=5.3
-      fi
-    elif [ "$_PHP_FPM_VERSION" = "5.2" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
-      if [ -x "/opt/php53/bin/php" ] ; then
-        _PHP_FPM_VERSION=5.3
-        _PHP_CLI_VERSION=5.3
+    elif [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
+      if [ ! -x "/opt/php53/bin/php" ] && [ -x "/opt/php55/bin/php" ] ; then
+        _PHP_FPM_VERSION=5.5
+        _PHP_CLI_VERSION=5.5
       fi
     fi
-    if [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
-      if [ ! -x "/opt/php53/bin/php" ] ; then
+    elif [ "$_PHP_FPM_VERSION" = "5.2" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
+      if [ -x "/opt/php55/bin/php" ] ; then
+        _PHP_FPM_VERSION=5.5
+        _PHP_CLI_VERSION=5.5
+      fi
+    fi
+    if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+      if [ ! -x "/opt/php55/bin/php" ] ; then
         msg "EXIT: You must specify already installed PHP version"
         msg "EXIT: in both _PHP_FPM_VERSION and _PHP_CLI_VERSION"
         clean_pid_exit
@@ -1803,8 +1796,8 @@ fi
 # Some auto-magic for localhost install
 _THIS_HOST=`uname -n`
 if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
-  _PHP_FPM_VERSION=5.3
-  _PHP_CLI_VERSION=5.3
+  _PHP_FPM_VERSION=5.5
+  _PHP_CLI_VERSION=5.5
   _AEGIR_VERSION=HEAD
   _DEBUG_MODE=NO
   _DNS_SETUP_TEST=NO
