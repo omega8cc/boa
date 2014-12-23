@@ -216,7 +216,7 @@ up_one ()
   if [ -e "/var/backups/OCTOPUS.sh.txt" ] ; then
     cp -af /var/backups/OCTOPUS.sh.txt /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     if [ "$cmmand" = "up-vanilla" ] ; then
-      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=6.x-2.x/g"   /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=7.x-2.x/g"   /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     elif [ "$cmmand" = "up-modern" ] ; then
       sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.4.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     else
@@ -231,7 +231,7 @@ up_one ()
     elif [ "$cmmand" = "up-modern" ] ; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     elif [ "$cmmand" = "up-vanilla" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"    /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     else
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     fi
@@ -285,7 +285,7 @@ up_one ()
           if [ "$cmmand" = "up-modern" ] ; then
             git clone --branch 2.4.x-dev git://github.com/omega8cc/provision.git $User/.drush/sys/provision &> /dev/null
           elif [ "$cmmand" = "up-vanilla" ] ; then
-            git clone --branch 6.x-2.x git://github.com/omega8cc/provision.git $User/.drush/sys/provision &> /dev/null
+            git clone --branch 7.x-2.x git://github.com/omega8cc/provision.git $User/.drush/sys/provision &> /dev/null
           else
             cd $User/.drush/sys
             curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-HEAD.tar.gz" | tar -xzf -
