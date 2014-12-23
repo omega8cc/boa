@@ -315,7 +315,13 @@ create_d7_symlinks () {
 # Create D8 symlinks.
 create_d8_symlinks () {
   if [ ! -L "core" ] ; then
+    ln -sf $_D8_CORE_DIR/.csslintrc .csslintrc
+    ln -sf $_D8_CORE_DIR/.editorconfig .editorconfig
+    ln -sf $_D8_CORE_DIR/.eslintignore .eslintignore
+    ln -sf $_D8_CORE_DIR/.eslintrc .eslintrc
     ln -sf $_D8_CORE_DIR/.htaccess .htaccess
+    ln -sf $_D8_CORE_DIR/composer.json composer.json
+    ln -sf $_D8_CORE_DIR/composer.lock composer.lock
     ln -sf $_D8_CORE_DIR/core core
     ln -sf $_D8_CORE_DIR/crossdomain.xml crossdomain.xml
     ln -sf $_D8_CORE_DIR/index.php index.php
