@@ -256,7 +256,7 @@ fix_dirs_files () {
   echo empty > ./sites/all/libraries/EMPTY.txt
   echo empty > ./sites/all/themes/EMPTY.txt
   chmod 0755 ./profiles &> /dev/null
-  chmod 0751 ./sites
+  chmod 0755 ./sites
   chmod 0755 ./sites/all
   chmod 02775 ./sites/all/{modules,libraries,themes}
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/get.htaccess.txt ./.htaccess
