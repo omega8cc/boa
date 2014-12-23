@@ -70,7 +70,7 @@ do_syncpass () {
         mysqladmin flush-hosts &> /dev/null
         su -s /bin/bash - $uname -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='aegir_root'\" &> /dev/null"
         mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_APASS') WHERE User='$uname';" &> /dev/null
-        sed -i "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:$_ENC_APASS@localhost',/g" /var/aegir/.drush/server_*.alias.drushrc.php &> /dev/null
+        sed -i "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:$_ENC_APASS@$_SQL_CONNECT',/g" /var/aegir/.drush/server_*.alias.drushrc.php &> /dev/null
         mysqladmin flush-privileges &> /dev/null
       else
         echo "ERROR: Auto-generated password for $uname system user did not work as expected, please try again."
@@ -90,7 +90,7 @@ do_syncpass () {
           mysqladmin flush-hosts &> /dev/null
           su -s /bin/bash - $uname -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='$uname'\" &> /dev/null"
           mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_APASS') WHERE User='$uname';" &> /dev/null
-          sed -i "s/mysql:\/\/$uname:.*/mysql:\/\/$uname:$_ENC_APASS@localhost',/g" /data/disk/$uname/.drush/server_*.alias.drushrc.php &> /dev/null
+          sed -i "s/mysql:\/\/$uname:.*/mysql:\/\/$uname:$_ENC_APASS@$_SQL_CONNECT',/g" /data/disk/$uname/.drush/server_*.alias.drushrc.php &> /dev/null
           mysqladmin flush-privileges &> /dev/null
         else
           echo "ERROR: Auto-generated password for $uname system user did not work as expected, please try again."
@@ -135,6 +135,14 @@ check_root ()
 check_root
 if [ -e "/root/.barracuda.cnf" ] ; then
   source /root/.barracuda.cnf
+  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    _SQL_CONNECT=localhost
+  else
+    _SQL_CONNECT="$_THIS_DB_HOST"
+  fi
+  if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
+    _SQL_CONNECT=localhost
+  fi
 fi
 
 case "$1" in
