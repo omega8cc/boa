@@ -1692,9 +1692,9 @@ msg "$_STATUS A: Creating ftp symlinks"
       fi
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_DRUPAL8" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_DRUPAL8
+  if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_SMALLCORE8/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_SMALLCORE8" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/drupal-$_SMALLCORE8/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_SMALLCORE8
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8/sites" ] ; then

@@ -133,7 +133,9 @@ elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/opt/php52/bin/php" ] ; then
 fi
 _DRUSHCMD="$_L_PHP_CLI/php $_ROOT/tools/drush/drush.php"
 #
-if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ "$_PHP_CLI_VERSION" != "5.2" ] ; then
+if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+  _D_8_ALLOW=YES
+elif [ "$_PHP_FPM_VERSION" = "5.4" ] && [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
   _D_8_ALLOW=YES
 else
   _D_8_ALLOW=NO
@@ -341,9 +343,9 @@ rename_drupal7_profiles () {
 rename_drupal8_profiles () {
   for Files in `find ./core/profiles -type f`
   do
-    sed -i "s/name = Minimal/name = Vanilla Minimal/g"   $Files &> /dev/null
-    sed -i "s/name = Standard/name = Vanilla Standard/g" $Files &> /dev/null
-    sed -i "s/name = Testing/name = Vanilla Testing/g"   $Files &> /dev/null
+    sed -i "s/name: Minimal/name: Vanilla Minimal/g"   $Files &> /dev/null
+    sed -i "s/name: Standard/name: Vanilla Standard/g" $Files &> /dev/null
+    sed -i "s/name: Testing/name: Vanilla Testing/g"   $Files &> /dev/null
   done
 }
 #
@@ -445,7 +447,7 @@ nocore_d7_dist_clean () {
   rm -f -r $_SHRD_PLPATH/sites
   rm -f -r $_SHRD_PLPATH/scripts
   rm -f -r $_SHRD_PLPATH/themes
-  _REVISIONS="10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26"
+  _REVISIONS="34 35 36 37 38 39"
   for i in $_REVISIONS; do
     if [ -d "$_CORE/drupal-7.$i" ] && [ ! -e "$_SHRD_PLPATH" ] ; then
       mv $_CORE/drupal-7.$i $_SHRD_PLPATH
@@ -646,13 +648,6 @@ if [[ "$_VM_TEST" =~ beng ]] ; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
-fi
-if [[ "$_DOMAIN" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-  if [[ "$_DOMAIN" =~ ".qq.o8.io" ]] ; then
-    _D_8_ALLOW=YES
-  else
-    _D_8_ALLOW=NO
-  fi
 fi
 
 
@@ -1084,9 +1079,7 @@ fi
 
 drupal_edge_8_install () {
 ###---### Drupal Edge 8
-#
-#_DRUPAL_EDGE_8="8.0-dev-$_TODAY"
-#
+_DRUPAL_EDGE_8="8.0-dev-$_TODAY"
 _REAL_PRNAME="standard"
 _SHRD_PLNAME="drupal-$_DRUPAL_EDGE_8"
 _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
@@ -1101,7 +1094,7 @@ true
 msg "DISTRO: $_F_DRUPAL_EDGE_8 installation in progress..."
 if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
-  get_dev_contrib "drupal-8.x-dev.tar.gz"
+  get_distro_ext "drupal-8.x-dev.tar.gz"
   tar -xzf drupal-8.x-dev.tar.gz
   rm -f drupal-8.x-dev.tar.gz
   mv drupal-8.x-dev $_SHRD_PLNAME
@@ -2012,6 +2005,7 @@ fi
 
 drupal6_install
 drupal7_install
+drupal8_install
 
 agov_install
 commerce_7_1_install
@@ -2148,9 +2142,9 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS3-$_SMALLCORE7" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_COMMONS3" commons $_ROOT/distro/$_THIS_CORE/commons-$_COMMONS3-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_DRUPAL8" standard $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8 &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_SMALLCORE8" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/drupal-$_SMALLCORE8/$_DRUSHRC_FILE" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_DRUPAL8" standard $_ROOT/distro/$_THIS_CORE/drupal-$_SMALLCORE8 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8" ] ; then

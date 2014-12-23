@@ -122,6 +122,7 @@ _PHP_CLI_VERSION=5.5
 ### control which platforms will be installed,
 ### using the symbols listed below.
 ###
+### D8D ----------- Drupal 8
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
 ### AGV ----------- aGov
@@ -688,7 +689,7 @@ _PURGE_FOR_SEVEN=YES
 _REDIS_M_VERSION=mod-14-12-2014
 _SMALLCORE6=6.34.1
 _SMALLCORE7=7.34.1
-_SMALLCORE8=8.0-alpha4
+_SMALLCORE8=8.0.0-beta4
 _SPINNER=YES
 _T_BUILD=HEAD
 _TODAY=`date +%y%m%d`
