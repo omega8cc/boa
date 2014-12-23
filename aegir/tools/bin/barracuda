@@ -201,7 +201,7 @@ up_action ()
       rm -f /var/xdrago/monitor/* &> /dev/null
     fi
     if [ "$cmmand" = "up-vanilla" ] ; then
-      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=6.x-2.x/g"   /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=7.x-2.x/g"   /var/backups/BARRACUDA.sh.txt
     elif [ "$cmmand" = "up-modern" ] ; then
       sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.4.x-dev/g" /var/backups/BARRACUDA.sh.txt
     else
@@ -214,6 +214,8 @@ up_action ()
     elif [ "$cmmand" = "up-stable" ] ; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"             /var/backups/BARRACUDA.sh.txt
     elif [ "$cmmand" = "up-modern" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g"             /var/backups/BARRACUDA.sh.txt
+    elif [ "$cmmand" = "up-vanilla" ] ; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g"             /var/backups/BARRACUDA.sh.txt
     else
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"             /var/backups/BARRACUDA.sh.txt
@@ -525,7 +527,7 @@ proceed ()
   elif [ "$cmmand" = "up-legacy" ] ; then
     _SCRIPT_URL="http://files.aegir.cc/versions/legacy/txt/BARRACUDA.sh.txt"
   elif [ "$cmmand" = "up-vanilla" ] ; then
-    _SCRIPT_URL="https://raw.githubusercontent.com/omega8cc/boa/master/BARRACUDA.sh.txt"
+    _SCRIPT_URL="https://raw.githubusercontent.com/omega8cc/boa/2.4.x-dev/BARRACUDA.sh.txt"
   else
     echo
     echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log}"
