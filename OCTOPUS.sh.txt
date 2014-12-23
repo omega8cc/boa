@@ -1281,7 +1281,6 @@ octopus_cnf () {
         _PHP_FPM_VERSION=5.5
         _PHP_CLI_VERSION=5.5
       fi
-    fi
     elif [ "$_PHP_FPM_VERSION" = "5.2" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
       if [ -x "/opt/php55/bin/php" ] ; then
         _PHP_FPM_VERSION=5.5
