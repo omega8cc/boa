@@ -1515,7 +1515,7 @@ fix_permissions () {
     fi
     chown $_THIS_HM_USER:users $Plr/sites/all/drush/drushrc.php $Plr/sites $Plr/sites/sites.php $Plr/sites/all $Plr/sites/all/{modules,themes,libraries,drush} &> /dev/null
     chmod 0751 $Plr/sites &> /dev/null
-    chmod 0751 $Plr/sites/all &> /dev/null
+    chmod 0755 $Plr/sites/all &> /dev/null
     chmod 0700 $Plr/sites/all/drush &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
@@ -2337,7 +2337,7 @@ if [ "$_PERMISSIONS_FIX" = "YES" ] && [ ! -z "$_INSTALLER_VERSION" ] && [ -e "/o
 fi
 if [ ! -e "/var/backups/fix-sites-all-permsissions-2.3.8.txt" ] ; then
   chmod 0751  /data/disk/*/distro/*/*/sites
-  chmod 0751  /data/disk/*/distro/*/*/sites/all
+  chmod 0755  /data/disk/*/distro/*/*/sites/all
   chmod 02775 /data/disk/*/distro/*/*/sites/all/{modules,libraries,themes}
   echo FIXED > /var/backups/fix-sites-all-permsissions-2.3.8.txt
   echo "Permissions in sites/all tree just fixed"
