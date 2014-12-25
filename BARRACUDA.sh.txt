@@ -107,7 +107,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### PHP MULTI INSTALL                      ###
 ###----------------------------------------###
 ###
-### By default Barracuda installs only PHP 5.3
+### By default Barracuda installs only PHP 5.5
 ### but this option allows you to install also
 ### other experimental PHP versions and then
 ### choose different version for PHP-FPM and
@@ -129,6 +129,24 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### used by Master or Satellite Instance.
 ###
 _PHP_MULTI_INSTALL="5.3"
+
+
+###----------------------------------------###
+### PHP SINGLE INSTALL                     ###
+###----------------------------------------###
+###
+### Note that this variable, if used, will
+### override all other related variables:
+###
+### _PHP_FPM_VERSION
+### _PHP_CLI_VERSION
+### _PHP_MULTI_INSTALL
+###
+### Available options: 5.5, 5.4 or 5.3
+###
+### Example: _PHP_SINGLE_INSTALL=5.5
+###
+_PHP_SINGLE_INSTALL=
 
 
 ###----------------------------------------###
@@ -3309,6 +3327,13 @@ barracuda_cnf () {
           fi
         else
           _PHP_MULTI_INSTALL="5.5 5.4 5.3"
+        fi
+      fi
+      if [ ! -z "$_PHP_SINGLE_INSTALL" ] ; then
+        if [ "$_PHP_SINGLE_INSTALL" = "5.5" ] || [ "$_PHP_SINGLE_INSTALL" = "5.4" ] || [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
+          _PHP_MULTI_INSTALL="$_PHP_SINGLE_INSTALL"
+          _PHP_CLI_VERSION="$_PHP_SINGLE_INSTALL"
+          _PHP_FPM_VERSION="$_PHP_SINGLE_INSTALL"
         fi
       fi
       if [ "$_PHP_LEGACY_FREE" = "NO" ] && [ -x "/usr/local/bin/php52" ] ; then

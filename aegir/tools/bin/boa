@@ -264,7 +264,23 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
   fi
 
   if [ ! -z "$rkey" ] ; then
-    sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g" /var/backups/BARRACUDA.sh.txt
+    if [ "$rkey" = "php-55" ] ; then
+      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.5/g" /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.5/g"   /var/backups/BARRACUDA.sh.txt
+    elif [ "$rkey" = "php-54" ] ; then
+      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.4/g" /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.4/g"   /var/backups/BARRACUDA.sh.txt
+    elif [ "$rkey" = "php-53" ] ; then
+      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.3/g" /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.3/g"   /var/backups/BARRACUDA.sh.txt
+    elif [ "$rkey" = "php-all" ] ; then
+      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"    /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"5.5 5.4 5.3\"/g" /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       /var/backups/BARRACUDA.sh.txt
+    else
+      sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g"       /var/backups/BARRACUDA.sh.txt
+    fi
   fi
 
   if [ "$cmmand" = "in-vanilla" ] ; then
@@ -582,7 +598,7 @@ case "$1" in
              init_setup
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {in-stable|in-head|in-legacy|in-octopus} {local|public} {fqdn} {email} {o1} {ask|mini|max|none} {newrelickey}"
+             echo "Usage: $(basename "$0") {in-stable|in-head|in-legacy|in-octopus} {local|public} {fqdn} {email} {o1} {ask|mini|max|none} {newrelickey|php-55|php-54|php-53|php-all}"
              echo
              clean_pid_exit
   ;;
