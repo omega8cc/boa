@@ -267,12 +267,18 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
     if [ "$rkey" = "php-55" ] ; then
       sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.5/g" /var/backups/BARRACUDA.sh.txt
       sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.5/g"   /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       /var/backups/OCTOPUS.sh.txt
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       /var/backups/OCTOPUS.sh.txt
     elif [ "$rkey" = "php-54" ] ; then
       sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.4/g" /var/backups/BARRACUDA.sh.txt
       sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.4/g"   /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g"       /var/backups/OCTOPUS.sh.txt
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g"       /var/backups/OCTOPUS.sh.txt
     elif [ "$rkey" = "php-53" ] ; then
       sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.3/g" /var/backups/BARRACUDA.sh.txt
       sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.3/g"   /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g"       /var/backups/OCTOPUS.sh.txt
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"       /var/backups/OCTOPUS.sh.txt
     elif [ "$rkey" = "php-all" ] ; then
       sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"    /var/backups/BARRACUDA.sh.txt
       sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"5.5 5.4 5.3\"/g" /var/backups/BARRACUDA.sh.txt
