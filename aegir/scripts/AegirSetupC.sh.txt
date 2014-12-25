@@ -47,7 +47,8 @@ _COMMERCE1=EDIT_COMMERCE1
 _COMMERCE2=EDIT_COMMERCE2
 _COMMONS2=EDIT_COMMONS2
 _COMMONS3=EDIT_COMMONS3
-_DRUPAL_EDGE_8=EDIT_DRUPAL_EDGE_8
+_D8_DEV_COMMIT=EDIT_D8_DEV_COMMIT
+_D8_DEV_LABEL=EDIT_D8_DEV_LABEL
 _DRUPAL7=EDIT_DRUPAL7
 _DRUPAL7D="EDIT_DRUPAL7-dev"
 _DRUPAL7P="EDIT_DRUPAL7-prod"
@@ -420,8 +421,25 @@ prepare_drupal8_core () {
     cd $_D8_CORE_DIR/
     fix_dirs_files
     rename_drupal8_profiles
-    rm -f modules/o_contrib_eight
-    ln -s $_CORE/o_contrib_eight modules/o_contrib_eight
+    ### rm -f modules/o_contrib_eight
+    ### ln -s $_CORE/o_contrib_eight modules/o_contrib_eight
+    cd $_CORE
+  fi
+}
+#
+# Prepare D8 dev core.
+prepare_dr8_dev_core () {
+  if [ ! -e "$_D8_DEV_CORE_DIR" ] ; then
+    rm -f -r $_D8_DEV_CORE_DIR
+    cd /data/all/000/core
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/core/drupal-$_D8_DEV_COMMIT.tar.gz" | tar -xzf -
+    find $_D8_DEV_CORE_DIR -type d -exec chmod 0755 {} \; &> /dev/null
+    find $_D8_DEV_CORE_DIR -type f -exec chmod 0644 {} \; &> /dev/null
+    cd $_D8_DEV_CORE_DIR/
+    fix_dirs_files
+    rename_drupal8_profiles
+    ### rm -f modules/o_contrib_eight
+    ### ln -s $_CORE/o_contrib_eight modules/o_contrib_eight
     cd $_CORE
   fi
 }
@@ -600,6 +618,7 @@ fi
 _D6_CORE_DIR="/data/all/000/core/pressflow-$_SMALLCORE6"
 _D7_CORE_DIR="/data/all/000/core/drupal-$_SMALLCORE7"
 _D8_CORE_DIR="/data/all/000/core/drupal-$_SMALLCORE8"
+_D8_DEV_CORE_DIR="/data/all/000/core/drupal-$_D8_DEV_COMMIT"
 
 
 ###---### Distributions full names.
@@ -612,10 +631,10 @@ _F_COMMERCE1="Commerce $_COMMERCE1 $_SMALLCORE7 [$_THIS_CORE]"
 _F_COMMERCE2="Commerce $_COMMERCE2 $_SMALLCORE7 [$_THIS_CORE]"
 _F_COMMONS2="Commons $_COMMONS2 $_SMALLCORE6 [$_THIS_CORE]"
 _F_COMMONS3="Commons $_COMMONS3 $_SMALLCORE7 [$_THIS_CORE]"
-_F_DRUPAL_EDGE_8="Drupal $_DRUPAL_EDGE_8"
+_F_D8_DEV_LABEL="Drupal $_D8_DEV_LABEL"
 _F_DRUPAL6="Drupal $_SMALLCORE6 [$_THIS_CORE]"
 _F_DRUPAL7="Drupal $_SMALLCORE7 [$_THIS_CORE]"
-_F_DRUPAL8="Drupal $_DRUPAL8 [$_THIS_CORE]"
+_F_DRUPAL8="Drupal $_SMALLCORE8 [$_THIS_CORE]"
 _F_ERPAL="ERPAL $_ERPAL $_SMALLCORE7 [$_THIS_CORE]"
 _F_FSERVER="Feature Server 1.2 $_SMALLCORE6 [$_THIS_CORE]"
 _F_GUARDR="Guardr $_GUARDR $_SMALLCORE7 [$_THIS_CORE]"
@@ -1069,7 +1088,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_D_8_ALLOW" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D8D ]] ; then
+if [[ $_PLATFORMS_LIST =~ D8B ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL8 - http://drupal.org" ; then
@@ -1092,36 +1111,31 @@ fi
 }
 
 
-drupal_edge_8_install () {
+dr8_dev_install () {
 ###---### Drupal Edge 8
-_DRUPAL_EDGE_8="8.0-dev-$_TODAY"
+### _D8_DEV_LABEL="8-dev-$_TODAY"
 _REAL_PRNAME="standard"
-_SHRD_PLNAME="drupal-$_DRUPAL_EDGE_8"
+_SHRD_PLNAME="drupal-$_D8_DEV_LABEL"
 _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_D_8_ALLOW" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D8E ]] ; then
+if [[ $_PLATFORMS_LIST =~ D8D ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
-if prompt_yes_no "$_F_DRUPAL_EDGE_8 - http://drupal.org" ; then
+if prompt_yes_no "$_F_D8_DEV_LABEL - http://drupal.org" ; then
 true
-msg "DISTRO: $_F_DRUPAL_EDGE_8 installation in progress..."
+msg "DISTRO: $_F_D8_DEV_LABEL installation in progress..."
 if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
-  get_distro_ext "drupal-8.x-dev.tar.gz"
-  tar -xzf drupal-8.x-dev.tar.gz
-  rm -f drupal-8.x-dev.tar.gz
-  mv drupal-8.x-dev $_SHRD_PLNAME
-  rm -f -r $_SHRD_PLPATH/.git
-  rm -f $_SHRD_PLPATH/*.txt
-  rm -f $_SHRD_PLPATH/core/*.txt
-  cd $_SHRD_PLPATH
+  if [ ! -e "$_D8_DEV_CORE_DIR" ] ; then
+    prepare_dr8_dev_core
+  fi
 fi
 init_this_distro_root
-msg "DISTRO: $_F_DRUPAL_EDGE_8 installation completed"
+msg "DISTRO: $_F_D8_DEV_LABEL installation completed"
 else
-  msg "DISTRO: $_F_DRUPAL_EDGE_8 installation skipped"
+  msg "DISTRO: $_F_D8_DEV_LABEL installation skipped"
 fi
 fi
 fi
@@ -2021,6 +2035,7 @@ fi
 drupal6_install
 drupal7_install
 drupal8_install
+dr8_dev_install
 
 agov_install
 commerce_7_1_install
@@ -2162,9 +2177,9 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_SMALLCORE8" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_DRUPAL8" standard $_ROOT/distro/$_THIS_CORE/drupal-$_SMALLCORE8 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_DRUPAL_EDGE_8" standard $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8 &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_D8_DEV_LABEL" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/drupal-$_D8_DEV_LABEL/$_DRUSHRC_FILE" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_D8_DEV_LABEL" standard $_ROOT/distro/$_THIS_CORE/drupal-$_D8_DEV_LABEL &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/erpal-$_ERPAL-$_SMALLCORE7" ] ; then

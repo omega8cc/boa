@@ -47,7 +47,8 @@ _COMMERCE1=EDIT_COMMERCE1
 _COMMERCE2=EDIT_COMMERCE2
 _COMMONS2=EDIT_COMMONS2
 _COMMONS3=EDIT_COMMONS3
-_DRUPAL_EDGE_8=EDIT_DRUPAL_EDGE_8
+_D8_DEV_COMMIT=EDIT_D8_DEV_COMMIT
+_D8_DEV_LABEL=EDIT_D8_DEV_LABEL
 _DRUPAL7=EDIT_DRUPAL7
 _DRUPAL7D="EDIT_DRUPAL7-dev"
 _DRUPAL7P="EDIT_DRUPAL7-prod"
@@ -1697,9 +1698,9 @@ msg "$_STATUS A: Creating ftp symlinks"
       ln -sf $_ROOT/distro/$_THIS_CORE/drupal-$_SMALLCORE8/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_SMALLCORE8
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8
+  if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_D8_DEV_LABEL/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_D8_DEV_LABEL" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/drupal-$_D8_DEV_LABEL/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_D8_DEV_LABEL
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/erpal-$_ERPAL-$_SMALLCORE7/sites" ] ; then
