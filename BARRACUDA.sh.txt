@@ -3327,7 +3327,15 @@ barracuda_cnf () {
             _PHP_MULTI_INSTALL="5.5"
           fi
         else
-          _PHP_MULTI_INSTALL="5.5 5.4 5.3"
+          if [ ! -z "$_PHP_SINGLE_INSTALL" ] ; then
+            if [ "$_PHP_SINGLE_INSTALL" = "5.5" ] || [ "$_PHP_SINGLE_INSTALL" = "5.4" ] || [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
+              _PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL
+              _PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL
+              _PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL
+            fi
+          else
+            _PHP_MULTI_INSTALL="5.5 5.4 5.3"
+          fi
         fi
       fi
       if [ ! -z "$_PHP_SINGLE_INSTALL" ] ; then
@@ -3350,6 +3358,7 @@ barracuda_cnf () {
       echo "_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"" >> /root/.barracuda.cnf
     fi
 
+    ### Backward compatibility with PHP 5.2 if still used for some reason
     if [ "$_PHP_LEGACY_FREE" = "NO" ] && [ -x "/usr/local/bin/php52" ] ; then
       if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "5.2" ]] ; then
         _DO_NOTHING=YES
@@ -3358,6 +3367,19 @@ barracuda_cnf () {
       fi
     fi
 
+    ### Make sure that _PHP_SINGLE_INSTALL takes precedence
+    if [ ! -z "$_PHP_SINGLE_INSTALL" ] ; then
+      if [ "$_PHP_SINGLE_INSTALL" = "5.5" ] || [ "$_PHP_SINGLE_INSTALL" = "5.4" ] || [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
+        _PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL
+        _PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL
+        _PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL/g" /root/.barracuda.cnf
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g" /root/.barracuda.cnf
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g" /root/.barracuda.cnf
+      fi
+    fi
+
+    ### But force installation of PHP 5.5 because it is used as a fallback
     if [[ ! "$_PHP_MULTI_INSTALL_TEST" =~ "5.5" ]] ; then
       _PHP_MULTI_INSTALL="$_PHP_MULTI_INSTALL 5.5"
     fi
