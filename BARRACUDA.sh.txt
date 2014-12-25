@@ -3376,8 +3376,16 @@ barracuda_cnf () {
         sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL/g" /root/.barracuda.cnf
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.barracuda.cnf
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.barracuda.cnf
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g"         /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g"         /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.*.octopus.cnf &> /dev/null
+        if [ -e "/data/disk" ] && [ -e "/data/conf/global.inc" ] ; then
+          for Ctrl in `find /data/disk/*/log/fpm.txt -maxdepth 0 -mindepth 0 | sort`; do
+            echo $_PHP_SINGLE_INSTALL > $Ctrl &> /dev/null
+          done
+          for Ctrl in `find /data/disk/*/log/cli.txt -maxdepth 0 -mindepth 0 | sort`; do
+            echo $_PHP_SINGLE_INSTALL > $Ctrl &> /dev/null
+          done
+        fi
       fi
     fi
 
