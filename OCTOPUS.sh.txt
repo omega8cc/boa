@@ -1131,28 +1131,71 @@ octopus_cnf () {
       _PHP_FPM_VERSION=`cat /data/disk/$_USER/static/control/fpm.info`
       _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
       if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_FPM_VERSION" = "5.2" ]; then
-        if [ "$_PHP_FPM_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
-          _PHP_FPM_VERSION=5.5
+        if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
+          if [ -x "/opt/php54/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.4
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.3
+          fi
+        elif [ "$_PHP_FPM_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.5
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.3
+          fi
         elif [ "$_PHP_FPM_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
-          _PHP_FPM_VERSION=5.5
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.5
+          elif [ -x "/opt/php54/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.4
+          fi
         elif [ "$_PHP_FPM_VERSION" = "5.2" ] ; then
-          _PHP_FPM_VERSION=5.5
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.5
+          elif [ -x "/opt/php54/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.4
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.3
+          fi
         fi
-        sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
+        echo $_PHP_FPM_VERSION > /data/disk/${_USER}/log/fpm.txt
+        echo $_PHP_FPM_VERSION > /data/disk/${_USER}/static/control/fpm.info
+        chown ${_USER}.ftp:users /data/disk/${_USER}/static/control/fpm.info
       fi
     else
       if [ -e "/data/disk/$_USER/log/fpm.txt" ] && [ "$_LD_DOM" = "YES" ] ; then
         _PHP_FPM_VERSION=`cat /data/disk/$_USER/log/fpm.txt`
         _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
         if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_FPM_VERSION" = "5.2" ]; then
-          if [ "$_PHP_FPM_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
-            _PHP_FPM_VERSION=5.5
+          if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
+            if [ -x "/opt/php54/bin/php" ] ; then
+              _PHP_FPM_VERSION=5.4
+            elif [ -x "/opt/php53/bin/php" ] ; then
+              _PHP_FPM_VERSION=5.3
+            fi
+          elif [ "$_PHP_FPM_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
+            if [ -x "/opt/php55/bin/php" ] ; then
+              _PHP_FPM_VERSION=5.5
+            elif [ -x "/opt/php53/bin/php" ] ; then
+              _PHP_FPM_VERSION=5.3
+            fi
           elif [ "$_PHP_FPM_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
-            _PHP_FPM_VERSION=5.5
-          elif [ "$_PHP_FPM_VERSION" = "5.2" ] && [ ! -x "/opt/php52/bin/php" ] ; then
-            _PHP_FPM_VERSION=5.5
+            if [ -x "/opt/php55/bin/php" ] ; then
+              _PHP_FPM_VERSION=5.5
+            elif [ -x "/opt/php54/bin/php" ] ; then
+              _PHP_FPM_VERSION=5.4
+            fi
+          elif [ "$_PHP_FPM_VERSION" = "5.2" ] ; then
+            if [ -x "/opt/php55/bin/php" ] ; then
+              _PHP_FPM_VERSION=5.5
+            elif [ -x "/opt/php54/bin/php" ] ; then
+              _PHP_FPM_VERSION=5.4
+            elif [ -x "/opt/php53/bin/php" ] ; then
+              _PHP_FPM_VERSION=5.3
+            fi
           fi
-          sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
+          sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
         fi
       fi
     fi
@@ -1160,47 +1203,90 @@ octopus_cnf () {
       _PHP_CLI_VERSION=`cat /data/disk/$_USER/static/control/cli.info`
       _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
       if [ "$_PHP_CLI_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.2" ]; then
-        if [ "$_PHP_CLI_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
-          _PHP_CLI_VERSION=5.5
+        if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
+          if [ -x "/opt/php54/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.4
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.3
+          fi
+        elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.5
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.3
+          fi
         elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
-          _PHP_CLI_VERSION=5.5
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.5
+          elif [ -x "/opt/php54/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.4
+          fi
         elif [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
-          _PHP_CLI_VERSION=5.5
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.5
+          elif [ -x "/opt/php54/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.4
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.3
+          fi
         fi
-        sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
+        echo $_PHP_CLI_VERSION > /data/disk/${_USER}/log/cli.txt
+        echo $_PHP_CLI_VERSION > /data/disk/${_USER}/static/control/cli.info
+        chown ${_USER}.ftp:users /data/disk/${_USER}/static/control/cli.info
       fi
     else
       if [ -e "/data/disk/$_USER/log/cli.txt" ] && [ "$_LD_DOM" = "YES" ] ; then
         _PHP_CLI_VERSION=`cat /data/disk/$_USER/log/cli.txt`
         _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
         if [ "$_PHP_CLI_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.2" ]; then
-          if [ "$_PHP_CLI_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
-            _PHP_CLI_VERSION=5.5
+          if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
+            if [ -x "/opt/php54/bin/php" ] ; then
+              _PHP_CLI_VERSION=5.4
+            elif [ -x "/opt/php53/bin/php" ] ; then
+              _PHP_CLI_VERSION=5.3
+            fi
+          elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
+            if [ -x "/opt/php55/bin/php" ] ; then
+              _PHP_CLI_VERSION=5.5
+            elif [ -x "/opt/php53/bin/php" ] ; then
+              _PHP_CLI_VERSION=5.3
+            fi
           elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
-            _PHP_CLI_VERSION=5.5
-          elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ ! -x "/opt/php52/bin/php" ] ; then
-            _PHP_CLI_VERSION=5.5
+            if [ -x "/opt/php55/bin/php" ] ; then
+              _PHP_CLI_VERSION=5.5
+            elif [ -x "/opt/php54/bin/php" ] ; then
+              _PHP_CLI_VERSION=5.4
+            fi
+          elif [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
+            if [ -x "/opt/php55/bin/php" ] ; then
+              _PHP_CLI_VERSION=5.5
+            elif [ -x "/opt/php54/bin/php" ] ; then
+              _PHP_CLI_VERSION=5.4
+            elif [ -x "/opt/php53/bin/php" ] ; then
+              _PHP_CLI_VERSION=5.3
+            fi
           fi
-          sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
+          sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
         fi
       fi
     fi
 
     _ALLOW_UNSUPPORTED_TEST=$(grep _ALLOW_UNSUPPORTED /root/.${_USER}.octopus.cnf)
     if [[ "$_ALLOW_UNSUPPORTED_TEST" =~ "_ALLOW_UNSUPPORTED" ]] ; then
-      sed -i "s/.*_ALLOW_UNSUPPORTED.*//g" /root/.${_USER}.octopus.cnf &> /dev/null
+      sed -i "s/^_ALLOW_UNSUPPORTED.*//g" /root/.${_USER}.octopus.cnf &> /dev/null
       sed -i "/^$/d" /root/.${_USER}.octopus.cnf &> /dev/null
     fi
 
     _USE_STOCK_TEST=$(grep _USE_STOCK /root/.${_USER}.octopus.cnf)
     if [[ "$_USE_STOCK_TEST" =~ "_USE_STOCK" ]] ; then
-      sed -i "s/.*_USE_STOCK.*//g" /root/.${_USER}.octopus.cnf &> /dev/null
+      sed -i "s/^_USE_STOCK.*//g" /root/.${_USER}.octopus.cnf &> /dev/null
       sed -i "/^$/d" /root/.${_USER}.octopus.cnf &> /dev/null
     fi
 
     _HTTP_WILDCARD_TEST=$(grep _HTTP_WILDCARD /root/.${_USER}.octopus.cnf)
     if [[ "$_HTTP_WILDCARD_TEST" =~ "_HTTP_WILDCARD" ]] ; then
-      sed -i "s/.*_HTTP_WILDCARD.*//g" /root/.${_USER}.octopus.cnf &> /dev/null
+      sed -i "s/^_HTTP_WILDCARD.*//g" /root/.${_USER}.octopus.cnf &> /dev/null
       sed -i "/^$/d" /root/.${_USER}.octopus.cnf &> /dev/null
     fi
 
@@ -1273,27 +1359,50 @@ octopus_cnf () {
       fi
     fi
     if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
-      if [ ! -x "/opt/php54/bin/php" ] && [ -x "/opt/php55/bin/php" ] ; then
-        _PHP_FPM_VERSION=5.5
-        _PHP_CLI_VERSION=5.5
+      if [ ! -x "/opt/php54/bin/php" ] ; then
+        if [ -x "/opt/php55/bin/php" ] ; then
+          _PHP_FPM_VERSION=5.5
+          _PHP_CLI_VERSION=5.5
+        elif [ -x "/opt/php53/bin/php" ] ; then
+          _PHP_FPM_VERSION=5.3
+          _PHP_CLI_VERSION=5.3
+        else
+          _PHP_FPM_VERSION=
+          _PHP_CLI_VERSION=
+        fi
       fi
     elif [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
-      if [ ! -x "/opt/php53/bin/php" ] && [ -x "/opt/php55/bin/php" ] ; then
-        _PHP_FPM_VERSION=5.5
-        _PHP_CLI_VERSION=5.5
+      if [ ! -x "/opt/php53/bin/php" ] ; then
+        if [ -x "/opt/php55/bin/php" ] ; then
+          _PHP_FPM_VERSION=5.5
+          _PHP_CLI_VERSION=5.5
+        elif [ -x "/opt/php54/bin/php" ] ; then
+          _PHP_FPM_VERSION=5.4
+          _PHP_CLI_VERSION=5.4
+        else
+          _PHP_FPM_VERSION=
+          _PHP_CLI_VERSION=
+        fi
       fi
     elif [ "$_PHP_FPM_VERSION" = "5.2" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
       if [ -x "/opt/php55/bin/php" ] ; then
         _PHP_FPM_VERSION=5.5
         _PHP_CLI_VERSION=5.5
+      elif [ -x "/opt/php54/bin/php" ] ; then
+        _PHP_FPM_VERSION=5.4
+        _PHP_CLI_VERSION=5.4
+      elif [ -x "/opt/php53/bin/php" ] ; then
+        _PHP_FPM_VERSION=5.3
+        _PHP_CLI_VERSION=5.3
+      else
+        _PHP_FPM_VERSION=
+        _PHP_CLI_VERSION=
       fi
     fi
-    if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
-      if [ ! -x "/opt/php55/bin/php" ] ; then
-        msg "EXIT: You must specify already installed PHP version"
-        msg "EXIT: in both _PHP_FPM_VERSION and _PHP_CLI_VERSION"
-        clean_pid_exit
-      fi
+    if [ -z "$_PHP_FPM_VERSION" ] || [ -z "$_PHP_CLI_VERSION" ] ; then
+      msg "EXIT: You must specify already installed PHP version"
+      msg "EXIT: in both _PHP_FPM_VERSION and _PHP_CLI_VERSION"
+      clean_pid_exit
     fi
     if [ "$_STATUS" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
@@ -1796,8 +1905,6 @@ fi
 # Some auto-magic for localhost install
 _THIS_HOST=`uname -n`
 if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
-  _PHP_FPM_VERSION=5.5
-  _PHP_CLI_VERSION=5.5
   _AEGIR_VERSION=HEAD
   _DEBUG_MODE=NO
   _DNS_SETUP_TEST=NO
