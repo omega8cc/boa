@@ -3381,11 +3381,6 @@ barracuda_cnf () {
       fi
     fi
 
-    ### But force installation of PHP 5.5 because it is used as a fallback
-    if [[ ! "$_PHP_MULTI_INSTALL_TEST" =~ "5.5" ]] ; then
-      _PHP_MULTI_INSTALL="$_PHP_MULTI_INSTALL 5.5"
-    fi
-
     _PHP_MODERN_ONLY_TEST=$(grep _PHP_MODERN_ONLY /root/.barracuda.cnf)
     if [[ "$_PHP_MODERN_ONLY_TEST" =~ "_PHP_MODERN_ONLY" ]] ; then
       sed -i "s/^_PHP_MODERN_ONLY.*//g" /root/.barracuda.cnf
