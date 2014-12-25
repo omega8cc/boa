@@ -96,7 +96,7 @@ _HOT_SAUCE=EDIT_HOT_SAUCE
 _LAST_ALL=EDIT_LAST_ALL
 _LAST_HMR=EDIT_LAST_HMR
 _LASTNUM=EDIT_LASTNUM
-_LEGACY_RESULT=EDIT_LEGACY_RESULT
+_SERIES_RESULT=EDIT_SERIES_RESULT
 _NOW=EDIT_NOW
 _O_CONTRIB_UP=EDIT_O_CONTRIB_UP
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
@@ -2088,7 +2088,7 @@ fi
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform.php.txt ./
 mv -f make_platform.php.txt make_platform.php &> /dev/null
 
-if [ "$_LEGACY_RESULT" = "BOA-2.3" ] ; then
+if [ "$_SERIES_RESULT" = "OK" ] ; then
   _DRUSHRC_FILE="sites/all/drush/drushrc.php"
 else
   _DRUSHRC_FILE="drushrc.php"

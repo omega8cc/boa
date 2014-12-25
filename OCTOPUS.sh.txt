@@ -1536,7 +1536,7 @@ action () {
     sed -i "s/EDIT_LAST_ALL/$_LAST_ALL/g"                   $Files &> /dev/null
     sed -i "s/EDIT_LAST_HMR/$_LAST_HMR/g"                   $Files &> /dev/null
     sed -i "s/EDIT_LASTNUM/$_LASTNUM/g"                     $Files &> /dev/null
-    sed -i "s/EDIT_LEGACY_RESULT/$_LEGACY_RESULT/g"         $Files &> /dev/null
+    sed -i "s/EDIT_SERIES_RESULT/$_SERIES_RESULT/g"         $Files &> /dev/null
     sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files &> /dev/null
     sed -i "s/EDIT_MY_OWNIP/$_MY_OWNIP/g"                   $Files &> /dev/null
     sed -i "s/EDIT_NOW/$_NOW/g"                             $Files &> /dev/null
@@ -1883,8 +1883,8 @@ else
   fi
 fi
 if [ -e "/var/log/barracuda_log.txt" ] ; then
-  _LEGACY_TEST=`cat /var/log/barracuda_log.txt`
-  if [[ "$_LEGACY_TEST" =~ "BOA-2.3." ]] ; then
+  _SERIES_TEST=`cat /var/log/barracuda_log.txt`
+  if [[ "$_SERIES_TEST" =~ "BOA-2.3." ]] ; then
     if [[ "$_INSTALLER_VERSION" =~ "BOA-2.2." ]] || [[ "$_INSTALLER_VERSION" =~ "BOA-2.1." ]] ; then
       msg "ERROR: Your system has been already upgraded to modern BOA-2.3.x series"
       msg "ERROR: You can not downgrade back to legacy or previous stable BOA version"
@@ -1895,9 +1895,9 @@ if [ -e "/var/log/barracuda_log.txt" ] ; then
   fi
 fi
 if [ -e "/data/disk/${_USER}/log/octopus_log.txt" ] ; then
-  _LEGACY_TEST=`cat /data/disk/${_USER}/log/octopus_log.txt`
-  if [[ "$_LEGACY_TEST" =~ "BOA-2.3." ]] ; then
-    _LEGACY_RESULT=BOA-2.3
+  _SERIES_TEST=`cat /data/disk/${_USER}/log/octopus_log.txt`
+  if [[ "$_SERIES_TEST" =~ "BOA-2.3." ]] || [[ "$_SERIES_TEST" =~ "BOA-2.4." ]] ; then
+    _SERIES_RESULT=OK
   fi
 fi
 check_php_compatibility

@@ -6569,8 +6569,8 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
   fi
 fi
 if [ -e "/var/log/barracuda_log.txt" ] ; then
-  _LEGACY_TEST=`cat /var/log/barracuda_log.txt`
-  if [[ "$_LEGACY_TEST" =~ "BOA-2.3." ]] ; then
+  _SERIES_TEST=`cat /var/log/barracuda_log.txt`
+  if [[ "$_SERIES_TEST" =~ "BOA-2.3." ]] ; then
     if [[ "$_INSTALLER_VERSION" =~ "BOA-2.2." ]] || [[ "$_INSTALLER_VERSION" =~ "BOA-2.1." ]] ; then
       msg "ERROR: Your system has been already upgraded to modern BOA-2.3.x series"
       msg "ERROR: You can not downgrade back to legacy or previous stable BOA version"
