@@ -3367,28 +3367,6 @@ barracuda_cnf () {
       fi
     fi
 
-    ### Make sure that _PHP_SINGLE_INSTALL takes precedence
-    if [ ! -z "$_PHP_SINGLE_INSTALL" ] ; then
-      if [ "$_PHP_SINGLE_INSTALL" = "5.5" ] || [ "$_PHP_SINGLE_INSTALL" = "5.4" ] || [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
-        _PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL
-        _PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL
-        _PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL
-        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL/g" /root/.barracuda.cnf
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.barracuda.cnf
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.barracuda.cnf
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.*.octopus.cnf &> /dev/null
-        if [ -e "/data/disk" ] && [ -e "/data/conf/global.inc" ] ; then
-          for Ctrl in `find /data/disk/*/log/fpm.txt -maxdepth 0 -mindepth 0 | sort`; do
-            echo $_PHP_SINGLE_INSTALL > $Ctrl &> /dev/null
-          done
-          for Ctrl in `find /data/disk/*/log/cli.txt -maxdepth 0 -mindepth 0 | sort`; do
-            echo $_PHP_SINGLE_INSTALL > $Ctrl &> /dev/null
-          done
-        fi
-      fi
-    fi
-
     _PHP_MODERN_ONLY_TEST=$(grep _PHP_MODERN_ONLY /root/.barracuda.cnf)
     if [[ "$_PHP_MODERN_ONLY_TEST" =~ "_PHP_MODERN_ONLY" ]] ; then
       sed -i "s/^_PHP_MODERN_ONLY.*//g" /root/.barracuda.cnf
@@ -3779,6 +3757,29 @@ barracuda_cnf () {
         clean_pid_exit
       fi
     fi
+
+    ### Make sure that _PHP_SINGLE_INSTALL takes precedence
+    if [ ! -z "$_PHP_SINGLE_INSTALL" ] ; then
+      if [ "$_PHP_SINGLE_INSTALL" = "5.5" ] || [ "$_PHP_SINGLE_INSTALL" = "5.4" ] || [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
+        _PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL
+        _PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL
+        _PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL/g" /root/.barracuda.cnf
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.barracuda.cnf
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.barracuda.cnf
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.*.octopus.cnf &> /dev/null
+        if [ -e "/data/disk" ] && [ -e "/data/conf/global.inc" ] ; then
+          for Ctrl in `find /data/disk/*/log/fpm.txt -maxdepth 0 -mindepth 0 | sort`; do
+            echo $_PHP_SINGLE_INSTALL > $Ctrl &> /dev/null
+          done
+          for Ctrl in `find /data/disk/*/log/cli.txt -maxdepth 0 -mindepth 0 | sort`; do
+            echo $_PHP_SINGLE_INSTALL > $Ctrl &> /dev/null
+          done
+        fi
+      fi
+    fi
+
     _NGX_FORCE_REINSTALL_TEST=$(grep _NGX_FORCE_REINSTALL /root/.barracuda.cnf)
     if [[ "$_NGX_FORCE_REINSTALL_TEST" =~ "_NGX_FORCE_REINSTALL" ]] ; then
       sed -i "s/^_NGX_FORCE_REINSTALL.*//g" /root/.barracuda.cnf
