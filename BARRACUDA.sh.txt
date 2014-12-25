@@ -3145,6 +3145,7 @@ barracuda_cnf () {
     echo "_PHP_GEOS=$_PHP_GEOS" >> /root/.barracuda.cnf
     echo "_PHP_MONGODB=$_PHP_MONGODB" >> /root/.barracuda.cnf
     echo "_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"" >> /root/.barracuda.cnf
+    echo "_PHP_SINGLE_INSTALL=$_PHP_SINGLE_INSTALL" >> /root/.barracuda.cnf
 
     echo "###" >> /root/.barracuda.cnf
     echo "_REDIS_LISTEN_MODE=$_REDIS_LISTEN_MODE" >> /root/.barracuda.cnf
@@ -3331,9 +3332,9 @@ barracuda_cnf () {
       fi
       if [ ! -z "$_PHP_SINGLE_INSTALL" ] ; then
         if [ "$_PHP_SINGLE_INSTALL" = "5.5" ] || [ "$_PHP_SINGLE_INSTALL" = "5.4" ] || [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
-          _PHP_MULTI_INSTALL="$_PHP_SINGLE_INSTALL"
-          _PHP_CLI_VERSION="$_PHP_SINGLE_INSTALL"
-          _PHP_FPM_VERSION="$_PHP_SINGLE_INSTALL"
+          _PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL
+          _PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL
+          _PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL
         fi
       fi
       if [ "$_PHP_LEGACY_FREE" = "NO" ] && [ -x "/usr/local/bin/php52" ] ; then
@@ -3377,6 +3378,12 @@ barracuda_cnf () {
       _DO_NOTHING=YES
     else
       echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
+    fi
+    _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL /root/.barracuda.cnf)
+    if [[ "$_PHP_SINGLE_INSTALL_TEST" =~ "_PHP_SINGLE_INSTALL" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "_PHP_SINGLE_INSTALL=$_PHP_SINGLE_INSTALL" >> /root/.barracuda.cnf
     fi
     _LOAD_LIMIT_ONE_TEST=$(grep _LOAD_LIMIT_ONE /root/.barracuda.cnf)
     if [[ "$_LOAD_LIMIT_ONE_TEST" =~ "_LOAD_LIMIT_ONE" ]] ; then
