@@ -40,14 +40,20 @@
 
    Specifying Octopus username is optional. It will use "o1" if empty.
 
-   The one before last part {ask|mini|max} is optional, if you wish
+   The one before last part {ask|mini|max|none} is optional, if you wish
    to control Octopus platforms install mode, as explained below.
-   Note that none === "ask" which is default.
+   Note that "none" is a special option you can use to not install any
+   built-in platform, while "ask" is a default mode if you don't specify
+   this option at all.
 
-   The last {newrelickey} part is optional, if you wish to install
-   and auto-magically enable both New Relic Apps and Server Monitor.
-   It must be a valid New Relic license key - even if it is their
-   free Lite option.
+   The last {newrelickey|php-55|php-54|php-53|php-all} part is optional and
+   can be used either to install New Relic Apps Monitor (replace the newrelickey
+   keyword with a valid license key), or to define single PHP version to install
+   and use both for Master and Satellite instances. When "php-all" is defined,
+   then all available versions will be installed but 5.5 used by default.
+   You can later install or modify PHP version used via _PHP_MULTI_INSTALL,
+   _PHP_CLI_VERSION and _PHP_FPM_VERSION, but _PHP_SINGLE_INSTALL variable
+   must be set empty to not override other related variables.
 
    # Stable on public server - prompt for every platform install
    $ boa in-stable public server.mydomain.org my@email o1
