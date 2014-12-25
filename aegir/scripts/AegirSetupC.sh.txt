@@ -364,6 +364,8 @@ prepare_drupal6_core () {
     rm -f -r $_D6_CORE_DIR
     cd /data/all/000/core
     curl -L --max-redirs 10 -k -s -A iCab "http://files.aegir.cc/core/pressflow-$_SMALLCORE6.tar.gz" | tar -xzf -
+    find $_D6_CORE_DIR -type d -exec chmod 0755 {} \; &> /dev/null
+    find $_D6_CORE_DIR -type f -exec chmod 0644 {} \; &> /dev/null
     cd $_D6_CORE_DIR/
     fix_dirs_files
     patch -p0 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-6.26.patch &> /dev/null
@@ -389,6 +391,8 @@ prepare_drupal7_core () {
     rm -f -r $_D7_CORE_DIR
     cd /data/all/000/core
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/core/drupal-$_SMALLCORE7.tar.gz" | tar -xzf -
+    find $_D7_CORE_DIR -type d -exec chmod 0755 {} \; &> /dev/null
+    find $_D7_CORE_DIR -type f -exec chmod 0644 {} \; &> /dev/null
     cd $_D7_CORE_DIR/
     fix_dirs_files
     rename_drupal7_profiles
@@ -411,6 +415,8 @@ prepare_drupal8_core () {
     rm -f -r $_D8_CORE_DIR
     cd /data/all/000/core
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/core/drupal-$_SMALLCORE8.tar.gz" | tar -xzf -
+    find $_D8_CORE_DIR -type d -exec chmod 0755 {} \; &> /dev/null
+    find $_D8_CORE_DIR -type f -exec chmod 0644 {} \; &> /dev/null
     cd $_D8_CORE_DIR/
     fix_dirs_files
     rename_drupal8_profiles
