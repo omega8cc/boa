@@ -3210,7 +3210,7 @@ barracuda_cnf () {
           sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g"                            /root/.*.octopus.cnf &> /dev/null
           sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                           /root/.barracuda.cnf
           sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                   /root/.barracuda.cnf
-          if [ -x "/opt/php55/bin/php" ] ; then
+          if [ -x "/opt/php55/bin/php" ] && [ -z "$_PHP_SINGLE_INSTALL" ] ; then
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"                 /root/.barracuda.cnf
             sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                 /root/.barracuda.cnf
           fi
@@ -3703,7 +3703,7 @@ barracuda_cnf () {
           sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                           /root/.barracuda.cnf
           sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                   /root/.barracuda.cnf
           sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g"                            /root/.*.octopus.cnf &> /dev/null
-          if [ -x "/opt/php55/bin/php" ] ; then
+          if [ -x "/opt/php55/bin/php" ] && [ -z "$_PHP_SINGLE_INSTALL" ] ; then
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"                 /root/.barracuda.cnf
             sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                 /root/.barracuda.cnf
           fi
