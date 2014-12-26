@@ -286,6 +286,10 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
       sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       /var/backups/BARRACUDA.sh.txt
       sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       /var/backups/OCTOPUS.sh.txt
       sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       /var/backups/OCTOPUS.sh.txt
+    elif [ "$rkey" = "nodns" ] ; then
+      sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"        /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"          /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"          /var/backups/OCTOPUS.sh.txt
     else
       sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g"       /var/backups/BARRACUDA.sh.txt
     fi
@@ -606,7 +610,7 @@ case "$1" in
              init_setup
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {in-stable|in-head|in-legacy|in-octopus} {local|public} {fqdn} {email} {o1} {ask|mini|max|none} {newrelickey|php-55|php-54|php-53|php-all}"
+             echo "Usage: $(basename "$0") {in-stable|in-head|in-legacy|in-octopus} {local|public} {fqdn} {email} {o1} {ask|mini|max|none} {newrelickey|php-55|php-54|php-53|php-all|nodns}"
              echo
              clean_pid_exit
   ;;
