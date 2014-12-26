@@ -284,6 +284,8 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
       sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"5.5 5.4 5.3\"/g" /var/backups/BARRACUDA.sh.txt
       sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       /var/backups/BARRACUDA.sh.txt
       sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       /var/backups/OCTOPUS.sh.txt
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       /var/backups/OCTOPUS.sh.txt
     else
       sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g"       /var/backups/BARRACUDA.sh.txt
     fi
