@@ -180,7 +180,7 @@ if (!$is_backend) {
       header("Connection: close");
       exit;
     }
-    elseif (preg_match("/\.(?:host8|aegir|boa|o8)\.(?:biz|cc|io)$/i", $_SERVER['HTTP_HOST'])) {
+    elseif (preg_match("/\.(?:host8|boa)\.(?:biz|io)$/i", $_SERVER['HTTP_HOST'])) {
       // Deny known search bots on some protected CI subdomains
       header('X-Accel-Expires: 60');
       header("HTTP/1.1 301 Moved Permanently");
@@ -366,7 +366,7 @@ if ($conf['install_profile'] == 'hostmaster') {
         exit;
       }
     }
-    if (isset($_SERVER['HTTP_HOST']) && preg_match("/\.(?:host8|aegir|boa)\.(?:biz|cc|io)$/i", $_SERVER['HTTP_HOST'])) {
+    if (isset($_SERVER['HTTP_HOST']) && preg_match("/\.(?:host8|boa)\.(?:biz|io)$/i", $_SERVER['HTTP_HOST'])) {
       if (preg_match("/^\/admin\/user\/user\/create/", $_SERVER['REQUEST_URI']) ||
           preg_match("/^\/node\/add\/server/", $_SERVER['REQUEST_URI']) ||
           preg_match("/^\/node\/(?:1|2|4|5|7|8|10)\/(?:edit|delete)/", $_SERVER['REQUEST_URI'])) {
