@@ -225,6 +225,9 @@ up_action ()
     if [ ! -z "$_PHP_SINGLE_INSTALL" ] ; then
       if [ "$_PHP_SINGLE_INSTALL" = "5.5" ] || [ "$_PHP_SINGLE_INSTALL" = "5.4" ] || [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
         _PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL/g" /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"     /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"     /var/backups/BARRACUDA.sh.txt
         sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL/g" /root/.barracuda.cnf
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.barracuda.cnf
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.barracuda.cnf
@@ -241,6 +244,10 @@ up_action ()
       elif [ "$_PHP_SINGLE_INSTALL" = "ALL" ] ; then
         _PHP_MULTI_INSTALL="5.5 5.4 5.3"
         _PHP_SINGLE_INSTALL=5.5
+        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"                      /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"/g" /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"        /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"        /var/backups/BARRACUDA.sh.txt
         sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"                      /root/.barracuda.cnf
         sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"/g" /root/.barracuda.cnf
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"        /root/.barracuda.cnf
@@ -312,7 +319,7 @@ up_action ()
             sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                     /root/.barracuda.cnf
             sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"             /root/.barracuda.cnf
             sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g"                      /root/.*.octopus.cnf &> /dev/null
-            if [ -x "/opt/php55/bin/php" ] ; then
+            if [ -x "/opt/php55/bin/php" ] && [ -z "$_PHP_SINGLE_INSTALL" ] ; then
               sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"           /root/.barracuda.cnf
               sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"           /root/.barracuda.cnf
             fi
