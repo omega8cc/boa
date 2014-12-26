@@ -683,7 +683,7 @@ _BRANCH_PROVISION=2.4.x-dev
 ###
 ### Variables
 ###
-_D8_DEV_COMMIT=8x_eaaeb26e71e7
+_D8_DEV_COMMIT=8x_3f8018453a83
 _DRUSH_VERSION=mini-7-22-12-2014
 _NOW=`date +%y%m%d-%H%M`
 _PLATFORMS_ONLY=NO
