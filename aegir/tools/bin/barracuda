@@ -211,6 +211,15 @@ up_action ()
         sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g"       /var/backups/BARRACUDA.sh.txt
         sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g"       /root/.barracuda.cnf
       fi
+
+      ### Debugging
+      if [ "$debug" = "debug" ] ; then
+        echo rkey is $rkey
+        echo waiting 8 seconds...
+        sleep 8
+      fi
+      ### Debugging
+
     fi
     ### Make sure that _PHP_SINGLE_INSTALL is set in /root/.barracuda.cnf
     if [ "$_PHP_SINGLE_INSTALL" = "5.5" ] || [ "$_PHP_SINGLE_INSTALL" = "5.4" ] || [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
@@ -224,7 +233,17 @@ up_action ()
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "$_PHP_SINGLE_INSTALL" ] ; then
       if [ "$_PHP_SINGLE_INSTALL" = "5.5" ] || [ "$_PHP_SINGLE_INSTALL" = "5.4" ] || [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
-        _PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL
+
+        ### Debugging
+        if [ "$debug" = "debug" ] ; then
+          echo _PHP_MULTI_INSTALL is $_PHP_SINGLE_INSTALL
+          echo _PHP_SINGLE_INSTALL is $_PHP_SINGLE_INSTALL
+          echo waiting 8 seconds...
+          sleep 8
+        fi
+        ###
+
+        sleep 3
         sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL/g" /var/backups/BARRACUDA.sh.txt
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"     /var/backups/BARRACUDA.sh.txt
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"     /var/backups/BARRACUDA.sh.txt
@@ -233,6 +252,17 @@ up_action ()
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.barracuda.cnf
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.*.octopus.cnf &> /dev/null
+        sleep 3
+
+        ### Debugging
+        if [ "$debug" = "debug" ] ; then
+          cat /root/.barracuda.cnf
+          echo
+          echo test fin!
+          clean_pid_exit
+        fi
+        ### Debugging
+
         if [ -e "/data/disk" ] && [ -e "/data/conf/global.inc" ] ; then
           for Ctrl in `find /data/disk/*/log/fpm.txt -maxdepth 0 -mindepth 0 | sort`; do
             echo $_PHP_SINGLE_INSTALL > $Ctrl &> /dev/null
@@ -244,6 +274,17 @@ up_action ()
       elif [ "$_PHP_SINGLE_INSTALL" = "ALL" ] ; then
         _PHP_MULTI_INSTALL="5.5 5.4 5.3"
         _PHP_SINGLE_INSTALL=5.5
+
+        ### Debugging
+        if [ "$debug" = "debug" ] ; then
+          echo _PHP_MULTI_INSTALL is $_PHP_MULTI_INSTALL
+          echo _PHP_SINGLE_INSTALL is $_PHP_SINGLE_INSTALL
+          echo waiting 8 seconds...
+          sleep 8
+        fi
+        ###
+
+        sleep 3
         sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"                      /var/backups/BARRACUDA.sh.txt
         sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"/g" /var/backups/BARRACUDA.sh.txt
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"        /var/backups/BARRACUDA.sh.txt
@@ -254,6 +295,17 @@ up_action ()
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"        /root/.barracuda.cnf
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"        /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"        /root/.*.octopus.cnf &> /dev/null
+        sleep 3
+
+        ### Debugging
+        if [ "$debug" = "debug" ] ; then
+          cat /root/.barracuda.cnf
+          echo
+          echo test fin!
+          clean_pid_exit
+        fi
+        ### Debugging
+
         if [ -e "/data/disk" ] && [ -e "/data/conf/global.inc" ] ; then
           for Ctrl in `find /data/disk/*/log/fpm.txt -maxdepth 0 -mindepth 0 | sort`; do
             echo $_PHP_SINGLE_INSTALL > $Ctrl &> /dev/null
@@ -623,13 +675,17 @@ proceed ()
 cmmand="$1"
 silent="$2"
 rkey="$3"
-if [ ! -z "$silent" ] && [ -z "$rkey" ] ; then
+debug="$4"
+if [ ! -z "$silent" ] ; then
   if [ "$silent" = "log" ] || [ "$silent" = "system" ] ; then
     silent="$2"
     rkey=
+    debug=
   else
     silent=
     rkey="$2"
+    debug="$3"
   fi
 fi
 proceed
+### 141226 ###
