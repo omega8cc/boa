@@ -192,7 +192,55 @@ check_report ()
 
 up_action ()
 {
-  if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
+  if [ -e "/var/backups/BARRACUDA.sh.txt" ] && [ -e "/root/.barracuda.cnf" ] ; then
+    if [ ! -z "$rkey" ] ; then
+      if [ "$rkey" = "php-55" ] ; then
+        _PHP_SINGLE_INSTALL=5.5
+        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.5/g" /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.5/g"   /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.5/g" /root/.barracuda.cnf
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.5/g"   /root/.barracuda.cnf
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       /root/.barracuda.cnf
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       /root/.barracuda.cnf
+      elif [ "$rkey" = "php-54" ] ; then
+        _PHP_SINGLE_INSTALL=5.4
+        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.4/g" /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.4/g"   /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.4/g" /root/.barracuda.cnf
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.4/g"   /root/.barracuda.cnf
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g"       /root/.barracuda.cnf
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g"       /root/.barracuda.cnf
+      elif [ "$rkey" = "php-53" ] ; then
+        _PHP_SINGLE_INSTALL=5.3
+        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.3/g" /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.3/g"   /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.3/g" /root/.barracuda.cnf
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.3/g"   /root/.barracuda.cnf
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g"       /root/.barracuda.cnf
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"       /root/.barracuda.cnf
+      elif [ "$rkey" = "php-all" ] ; then
+        _PHP_SINGLE_INSTALL=
+        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"    /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"5.5 5.4 5.3\"/g" /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"    /root/.barracuda.cnf
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"5.5 5.4 5.3\"/g" /root/.barracuda.cnf
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       /root/.barracuda.cnf
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       /root/.barracuda.cnf
+      elif [ "$rkey" = "nodns" ] ; then
+        sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"        /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"          /var/backups/BARRACUDA.sh.txt
+      else
+        sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g"       /var/backups/BARRACUDA.sh.txt
+      fi
+    fi
+    _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL /root/.barracuda.cnf)
+    if [[ "$_PHP_SINGLE_INSTALL_TEST" =~ "_PHP_SINGLE_INSTALL" ]] ; then
+      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=YES/g" /root/.barracuda.cnf
+    else
+      echo "_PHP_SINGLE_INSTALL=$_PHP_SINGLE_INSTALL" >> /root/.barracuda.cnf
+    fi
     if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       _DO_NOTHING=YES
     else
@@ -342,7 +390,10 @@ up_action ()
       fi
     fi
   else
-    echo "BARRACUDA.sh.txt installer not available - try again"
+    echo
+    echo "  BARRACUDA.sh.txt installer not available - try again later"
+    echo "  Make sure that required /root/.barracuda.cnf file also exists"
+    echo
     clean_pid_exit
   fi
 }
@@ -403,7 +454,7 @@ up_finish ()
   echo BARRACUDA upgrade completed
   echo Bye
   echo
-  if [ "$ifauto" = "auto" ] || [ "$_NEEDS_UPDATE" = "YES" ] ; then
+  if [ "$rkey" = "auto" ] || [ "$_NEEDS_UPDATE" = "YES" ] ; then
     rm -f /var/backups/BOA.sh.txt-*
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-$_NOW
     exec bash /var/backups/BOA.sh.txt-$_NOW &> /dev/null
@@ -530,7 +581,7 @@ proceed ()
     _SCRIPT_URL="https://raw.githubusercontent.com/omega8cc/boa/2.4.x-dev/BARRACUDA.sh.txt"
   else
     echo
-    echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log}"
+    echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log} {newrelickey|php-55|php-54|php-53|php-all|nodns}"
     echo
     echo "  Silent Mode Option: system == OS only upgrade"
     echo "  Silent Mode Option: log ===== OS and Aegir Master Instance upgrade"
@@ -548,5 +599,5 @@ proceed ()
 
 cmmand="$1"
 silent="$2"
-ifauto="$3"
+rkey="$3"
 proceed
