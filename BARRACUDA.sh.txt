@@ -9634,6 +9634,91 @@ else
     mrun "service redis-server restart" &> /dev/null
     st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
     mrun "service nginx stop" &> /dev/null
+    if [ ! -z "$_PHP_SINGLE_INSTALL" ] ; then
+      rm -f /opt/local/bin/php
+      rm -f /usr/local/bin/php
+      if [ "$_PHP_SINGLE_INSTALL" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
+        ln -sf /opt/php55/bin/php /usr/bin/php
+        if [ -e "/etc/init.d/php54-fpm" ] ; then
+          mrun "service php54-fpm stop" &> /dev/null
+          update-rc.d -f php54-fpm remove &> /dev/null
+          rm -f /etc/init.d/php54-fpm
+          if [ -x "/opt/php54/bin/php" ] ; then
+            mv -f /opt/php54/bin/php /var/backups/php54-bin
+          fi
+        fi
+        if [ -e "/etc/init.d/php53-fpm" ] ; then
+          mrun "service php53-fpm stop" &> /dev/null
+          update-rc.d -f php53-fpm remove &> /dev/null
+          rm -f /etc/init.d/php53-fpm
+          if [ -x "/opt/php53/bin/php" ] ; then
+            mv -f /opt/php53/bin/php /var/backups/php53-bin
+          fi
+        fi
+        if [ -e "/etc/init.d/php52-fpm" ] ; then
+          mrun "service php52-fpm stop" &> /dev/null
+          update-rc.d -f php52-fpm remove &> /dev/null
+          rm -f /etc/init.d/php52-fpm
+          if [ -x "/opt/php52/bin/php" ] ; then
+            mv -f /opt/php52/bin/php /var/backups/php52-bin
+          fi
+        fi
+      fi
+      if [ "$_PHP_SINGLE_INSTALL" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
+        ln -sf /opt/php54/bin/php /usr/bin/php
+        if [ -e "/etc/init.d/php55-fpm" ] ; then
+          mrun "service php55-fpm stop" &> /dev/null
+          update-rc.d -f php55-fpm remove &> /dev/null
+          rm -f /etc/init.d/php55-fpm
+          if [ -x "/opt/php55/bin/php" ] ; then
+            mv -f /opt/php55/bin/php /var/backups/php55-bin
+          fi
+        fi
+        if [ -e "/etc/init.d/php53-fpm" ] ; then
+          mrun "service php53-fpm stop" &> /dev/null
+          update-rc.d -f php53-fpm remove &> /dev/null
+          rm -f /etc/init.d/php53-fpm
+          if [ -x "/opt/php53/bin/php" ] ; then
+            mv -f /opt/php53/bin/php /var/backups/php53-bin
+          fi
+        fi
+        if [ -e "/etc/init.d/php52-fpm" ] ; then
+          mrun "service php52-fpm stop" &> /dev/null
+          update-rc.d -f php52-fpm remove &> /dev/null
+          rm -f /etc/init.d/php52-fpm
+          if [ -x "/opt/php52/bin/php" ] ; then
+            mv -f /opt/php52/bin/php /var/backups/php52-bin
+          fi
+        fi
+      fi
+      if [ "$_PHP_SINGLE_INSTALL" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
+        ln -sf /opt/php53/bin/php /usr/bin/php
+        if [ -e "/etc/init.d/php55-fpm" ] ; then
+          mrun "service php55-fpm stop" &> /dev/null
+          update-rc.d -f php55-fpm remove &> /dev/null
+          rm -f /etc/init.d/php55-fpm
+          if [ -x "/opt/php55/bin/php" ] ; then
+            mv -f /opt/php55/bin/php /var/backups/php55-bin
+          fi
+        fi
+        if [ -e "/etc/init.d/php54-fpm" ] ; then
+          mrun "service php54-fpm stop" &> /dev/null
+          update-rc.d -f php54-fpm remove &> /dev/null
+          rm -f /etc/init.d/php54-fpm
+          if [ -x "/opt/php54/bin/php" ] ; then
+            mv -f /opt/php54/bin/php /var/backups/php54-bin
+          fi
+        fi
+        if [ -e "/etc/init.d/php52-fpm" ] ; then
+          mrun "service php52-fpm stop" &> /dev/null
+          update-rc.d -f php52-fpm remove &> /dev/null
+          rm -f /etc/init.d/php52-fpm
+          if [ -x "/opt/php52/bin/php" ] ; then
+            mv -f /opt/php52/bin/php /var/backups/php52-bin
+          fi
+        fi
+      fi
+    fi
     if [ -e "/etc/init.d/php55-fpm" ] ; then
       st_runner "update-rc.d php55-fpm defaults" &> /dev/null
       mrun "service php55-fpm stop" &> /dev/null
