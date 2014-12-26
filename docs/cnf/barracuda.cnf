@@ -65,6 +65,7 @@ _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_GEOS=NO #------------------ Installs GEOS for PHP when YES - experimental
 _PHP_MONGODB=NO #--------------- Installs MONGODB for PHP when YES
 _PHP_MULTI_INSTALL="5.5" #------ Lists PHP versions to install: 5.3 5.4 5.5
+_PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 5.5
 ###
 _REDIS_LISTEN_MODE=PORT #------- Redis listen mode: PORT or SOCKET (recommended)
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
