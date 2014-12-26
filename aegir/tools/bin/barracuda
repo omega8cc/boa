@@ -244,14 +244,16 @@ up_action ()
         ###
 
         sleep 3
-        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL/g" /var/backups/BARRACUDA.sh.txt
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"     /var/backups/BARRACUDA.sh.txt
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"     /var/backups/BARRACUDA.sh.txt
-        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL/g" /root/.barracuda.cnf
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.barracuda.cnf
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.barracuda.cnf
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=$_PHP_SINGLE_INSTALL/g" /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL/g"   /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"       /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"       /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=$_PHP_SINGLE_INSTALL/g" /root/.barracuda.cnf
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL/g"   /root/.barracuda.cnf
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"       /root/.barracuda.cnf
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"       /root/.barracuda.cnf
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"       /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"       /root/.*.octopus.cnf &> /dev/null
         sleep 3
 
         ### Debugging
