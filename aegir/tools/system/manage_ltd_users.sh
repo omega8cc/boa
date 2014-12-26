@@ -925,11 +925,13 @@ manage_site_drush_alias_mirror () {
     fi
   done
 
+  rm -f /home/${_OWN}.ftp/.drush/hm.alias.drushrc.php
+
   for Alias in `find $User/.drush/*.alias.drushrc.php -maxdepth 1 -type f | sort`
   do
     AliasName=`echo "$Alias" | cut -d'/' -f6 | awk '{ print $1}'`
     AliasName=`echo "$AliasName" | sed "s/.alias.drushrc.php//g" | awk '{ print $1}'`
-    if [[ "$AliasName" =~ (^)"platform_" ]] || [[ "$AliasName" =~ (^)"server_" ]] || [[ "$AliasName" =~ (^)"hostmaster" ]] ; then
+    if [ "$AliasName" = "hm" ] || [[ "$AliasName" =~ (^)"platform_" ]] || [[ "$AliasName" =~ (^)"server_" ]] || [[ "$AliasName" =~ (^)"hostmaster" ]] ; then
       _IS_SITE=NO
     else
       _THIS_SITE_NAME="$AliasName"
@@ -971,10 +973,11 @@ do
     echo "_OWN is == $_OWN == at manage_own"
     rm -f /data/disk/${_OWN}/*.php* &> /dev/null
     chmod 0440 /data/disk/${_OWN}/.drush/*.php &> /dev/null
+    chmod 0400 /data/disk/${_OWN}/.drush/drushrc.php &> /dev/null
+    chmod 0400 /data/disk/${_OWN}/.drush/hm.alias.drushrc.php &> /dev/null
     chmod 0400 /data/disk/${_OWN}/.drush/hostmaster*.php &> /dev/null
     chmod 0400 /data/disk/${_OWN}/.drush/platform_*.php &> /dev/null
     chmod 0400 /data/disk/${_OWN}/.drush/server_*.php &> /dev/null
-    chmod 0400 /data/disk/${_OWN}/.drush/drushrc.php &> /dev/null
     chmod 0710 /data/disk/${_OWN}/.drush &> /dev/null
     find /data/disk/${_OWN}/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
     find /data/disk/${_OWN}/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
@@ -1115,10 +1118,11 @@ else
   fi
   chmod 0600 /var/log/lsh/*
   chmod 0440 /var/aegir/.drush/*.php &> /dev/null
-  chmod 0400 /var/aegir/.drush/server_*.php &> /dev/null
-  chmod 0400 /var/aegir/.drush/platform_*.php &> /dev/null
-  chmod 0400 /var/aegir/.drush/hostmaster*.php &> /dev/null
   chmod 0400 /var/aegir/.drush/drushrc.php &> /dev/null
+  chmod 0400 /var/aegir/.drush/hm.alias.drushrc.php &> /dev/null
+  chmod 0400 /var/aegir/.drush/hostmaster*.php &> /dev/null
+  chmod 0400 /var/aegir/.drush/platform_*.php &> /dev/null
+  chmod 0400 /var/aegir/.drush/server_*.php &> /dev/null
   chmod 0710 /var/aegir/.drush &> /dev/null
   find /var/aegir/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
   find /var/aegir/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
