@@ -1128,7 +1128,8 @@ true
 msg "DISTRO: $_F_D8_DEV_LABEL installation in progress..."
 if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
-  if [ ! -e "$_D8_DEV_CORE_DIR" ] ; then
+  _D8_CORE_DIR="$_D8_DEV_CORE_DIR"
+  if [ ! -e "$_D8_CORE_DIR" ] ; then
     prepare_dr8_dev_core
   fi
 fi
