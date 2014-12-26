@@ -3311,9 +3311,11 @@ barracuda_cnf () {
       if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
         _CLSTR_PHP_MULTI_INSTALL="$_PHP_MULTI_INSTALL"
       fi
-      sed -i "s/.*_PHP_MULTI_INSTALL.*//g" /root/.barracuda.cnf
-      sed -i "/^$/d" /root/.barracuda.cnf
-      _PHP_MULTI_INSTALL=""
+      if [ -z "$_PHP_SINGLE_INSTALL" ] ; then
+        sed -i "s/.*_PHP_MULTI_INSTALL.*//g" /root/.barracuda.cnf
+        sed -i "/^$/d" /root/.barracuda.cnf
+        _PHP_MULTI_INSTALL=""
+      fi
     fi
 
     if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "_PHP_MULTI_INSTALL" ]] && [ ! -z "$_PHP_MULTI_INSTALL" ] ; then
