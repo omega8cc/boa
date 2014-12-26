@@ -621,7 +621,7 @@ update_php_cli_drush ()
     echo -e "#!/bin/bash\n\nPATH=.:$_L_PHP_CLI:/usr/sbin:/usr/bin:/sbin:/bin\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch /data/disk/${_OWN}/${_OWN}-task.done" | tee -a /data/disk/${_OWN}/aegir.sh >/dev/null 2>&1
     chown ${_OWN}:users /data/disk/${_OWN}/aegir.sh &> /dev/null
     chmod 0700 /data/disk/${_OWN}/aegir.sh &> /dev/null
-  }
+  fi
 }
 #
 # Tune FPM workers.
