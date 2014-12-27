@@ -718,7 +718,7 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
     _VMFAMILY="XEN"
   fi
   if [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_CHECK_HOST" =~ ".qq.o8.io" ]] ; then
+    if [ -e "/root/.debug.cnf" ] ; then
       _DO_NOTHING=YES
     else
       $_DRUSHCMD @hostmaster dis hosting_cdn -y &> /dev/null
