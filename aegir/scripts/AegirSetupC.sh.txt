@@ -700,7 +700,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ AGV ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "AGV" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_AGOV - https://drupal.org/project/agov" ; then
@@ -745,7 +745,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ DCE ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "DCE" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMERCE1 - http://drupalcommerce.org" ; then
@@ -792,7 +792,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CME ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "CME" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMERCE2 - http://drupalcommerce.org" ; then
@@ -838,7 +838,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ DCS ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "DCS" ]] ; then
 if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMONS2 - http://acquia.com/drupalcommons" ; then
@@ -894,7 +894,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CS7 ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "CS7" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMONS3 - http://acquia.com/drupalcommons" ; then
@@ -936,7 +936,7 @@ fi
 drupal6_install () {
 ###---### Drupal 6 Pressflow
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6D ]] || [[ $_PLATFORMS_LIST =~ D6S ]] || [[ $_PLATFORMS_LIST =~ D6P ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "D6D" ]] || [[ "$_PLATFORMS_LIST" =~ "D6S" ]] || [[ "$_PLATFORMS_LIST" =~ "D6P" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL6 - http://pressflow.org" ; then
@@ -950,7 +950,7 @@ _SHRD_PLNAME="$_VIRT_PRNAME-$_SMALLCORE6-dev"
 _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6D ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "D6D" ]] ; then
 msg "DISTRO: $_F_DRUPAL6_D installation in progress..."
 if [ ! -d "$_SHRD_PLPATH" ] ; then
   if [ ! -e "$_D6_CORE_DIR" ] ; then
@@ -974,7 +974,7 @@ _SHRD_PLNAME="$_VIRT_PRNAME-$_SMALLCORE6-stage"
 _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6S ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "D6S" ]] ; then
 msg "DISTRO: $_F_DRUPAL6_S installation in progress..."
 if [ ! -d "$_SHRD_PLPATH" ] ; then
   if [ ! -e "$_D6_CORE_DIR" ] ; then
@@ -998,7 +998,7 @@ _SHRD_PLNAME="$_VIRT_PRNAME-$_SMALLCORE6-prod"
 _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6P ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "D6P" ]] ; then
 msg "DISTRO: $_F_DRUPAL6 installation in progress..."
 if [ ! -d "$_SHRD_PLPATH" ] ; then
   if [ ! -e "$_D6_CORE_DIR" ] ; then
@@ -1024,7 +1024,7 @@ fi
 drupal7_install () {
 ###---### Drupal 7
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7D ]] || [[ $_PLATFORMS_LIST =~ D7S ]] || [[ $_PLATFORMS_LIST =~ D7P ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "D7D" ]] || [[ "$_PLATFORMS_LIST" =~ "D7S" ]] || [[ "$_PLATFORMS_LIST" =~ "D7P" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/drupal-7.34" ; then
@@ -1037,7 +1037,7 @@ _SHRD_PLNAME="$_DRUPAL7D"
 _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7D ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "D7D" ]] ; then
   msg "DISTRO: $_F_DRUPAL7_D installation in progress..."
   create_drupal7_basic
   msg "DISTRO: $_F_DRUPAL7_D installation completed"
@@ -1051,7 +1051,7 @@ _SHRD_PLNAME="$_DRUPAL7S"
 _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7S ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "D7S" ]] ; then
   msg "DISTRO: $_F_DRUPAL7_S installation in progress..."
   create_drupal7_basic
   msg "DISTRO: $_F_DRUPAL7_S installation completed"
@@ -1065,7 +1065,7 @@ _SHRD_PLNAME="$_DRUPAL7P"
 _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7P ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "D7P" ]] ; then
   msg "DISTRO: $_F_DRUPAL7_P installation in progress..."
   create_drupal7_basic
   msg "DISTRO: $_F_DRUPAL7_P installation completed"
@@ -1088,7 +1088,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_D_8_ALLOW" = "YES" ] ; then
-if [[ $_PLATFORMS_LIST =~ D8B ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "D8B" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL8 - http://drupal.org" ; then
@@ -1120,7 +1120,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_D_8_ALLOW" = "YES" ] ; then
-if [[ $_PLATFORMS_LIST =~ D8D ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "D8D" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_D8_DEV_LABEL - http://drupal.org" ; then
@@ -1153,7 +1153,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ ERP ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "ERP" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_ERPAL - https://drupal.org/project/erpal" ; then
@@ -1198,7 +1198,7 @@ _SHRD_PLNAME="$_VIRT_PRNAME-$_SMALLCORE6"
 _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ FSR ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "FSR" ]] ; then
 if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_FSERVER - http://bit.ly/fservermore" ; then
@@ -1249,7 +1249,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ GDR ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "GDR" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_GUARDR - https://drupal.org/project/guardr" ; then
@@ -1293,7 +1293,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OAY ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "OAY" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENACADEMY - https://drupal.org/project/openacademy" ; then
@@ -1341,7 +1341,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OA7 ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "OA7" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENATRIUM7 - http://openatrium.com" ; then
@@ -1385,7 +1385,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OBG ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "OBG" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENBLOG - https://drupal.org/project/openblog" ; then
@@ -1427,7 +1427,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OCH ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "OCH" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENCHURCH1 - http://openchurchsite.com" ; then
@@ -1470,7 +1470,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CH2 ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "CH2" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENCHURCH2 - http://openchurchsite.com" ; then
@@ -1513,7 +1513,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ ODS ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "ODS" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENDEALS - http://opendealsapp.com" ; then
@@ -1555,7 +1555,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OOH ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "OOH" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENOUTREACH - http://openoutreach.org" ; then
@@ -1597,7 +1597,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OPC ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "OPC" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENPUBLIC - http://openpublicapp.com" ; then
@@ -1639,7 +1639,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OSR ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "OSR" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENSCHOLAR - http://theopenscholar.org" ; then
@@ -1692,7 +1692,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ PPY ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "PPY" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_PANOPOLY - https://drupal.org/project/panopoly" ; then
@@ -1747,7 +1747,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ RER ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "RER" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_RECRUITER - https://drupal.org/project/recruiter" ; then
@@ -1796,7 +1796,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ RST ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "RST" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_RESTAURANT - https://drupal.org/project/restaurant" ; then
@@ -1840,7 +1840,7 @@ _SHRD_PLNAME="$_VIRT_PRNAME-$_UBERCART6-$_SMALLCORE6"
 _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ UCT ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "UCT" ]] ; then
 if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_UBERCART6 - http://ubercart.org" ; then
@@ -1914,7 +1914,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ UC7 ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "UC7" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_UBERCART7 - http://ubercart.org" ; then
@@ -1979,7 +1979,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ UC7 ]] ; then
+if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "UC7" ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_UBER_CART_TESTING - http://ubercart.org" ; then
@@ -2304,7 +2304,7 @@ fi
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _PLATF_IMP=$(ls -la /data/u | grep $_USER | cut -d'>' -f2 | sort | uniq | awk '{ print $1}')
   for _PLATF in $_PLATF_IMP ; do
-    if [[ $_PLATF =~ aegir ]] ; then
+    if [[ $_PLATF =~ aegir" ]] ; then
       _FOUND_HM=YES
     else
       _PLATF_NAME=${_PLATF##*/}
