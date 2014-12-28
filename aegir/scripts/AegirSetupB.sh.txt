@@ -776,7 +776,7 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   if [ ! -e "$_ROOT/log/custom_cron" ] ; then
     _DO_NOTHING=YES
   fi
-  $_DRUSHCMD @hostmaster vset --always-set hosting_advanced_cron_default_interval 10800 &> /dev/null
+  $_DRUSHCMD @hostmaster vset --always-set hosting_advanced_cron_default_interval 86400 &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1 &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_queue_cron_frequency 53222400 &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_cron_use_backend 0 &> /dev/null
