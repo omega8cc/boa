@@ -343,19 +343,6 @@ _DEBUG_MODE=NO
 
 
 ###----------------------------------------###
-### AEGIR BARRACUDA VERSION                ###
-###----------------------------------------###
-###
-### By default latest release version will
-### be installed. Please never use HEAD (dev)
-### version on any production server.
-### The HEAD can be occasionally broken
-### and should be used **only** for testing!
-###
-_AEGIR_VERSION=HEAD
-
-
-###----------------------------------------###
 ### DB SERVER                              ###
 ###----------------------------------------###
 ###
@@ -1096,9 +1083,11 @@ _SPEED_VALID_MAX=3600
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.4.0-dev
+_AEGIR_EXT_VERSION=BOA-2.4.0
+_AEGIR_VERSION=HEAD
 _BRANCH_BOA=master
 _BRANCH_PROVISION=2.4.x-dev
+_INSTALLER_VERSION=BOA-2.4.0-dev
 
 ###
 ### Software versions
@@ -1355,7 +1344,7 @@ get_dev_arch () {
 # Download and extract from dev/version mirror.
 get_dev_ext () {
   if [ ! -z $1 ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_EXT_VERSION/$1"
     extract_archive "$1"
   fi
 }
@@ -4537,6 +4526,7 @@ upgrade_aegir_master () {
     chmod -R 02775 $_THIS_HM_SITE/files
     cd /var/aegir
     cp /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirUpgrade.sh.txt ./
+    sed -i "s/EDIT_AEGIR_EXT_VERSION/$_AEGIR_EXT_VERSION/g" /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
@@ -6169,7 +6159,6 @@ else
     _XTRAS_LIST="CHV"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=NO
@@ -6181,7 +6170,6 @@ else
     _XTRAS_LIST="CSF CHV FTP"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=YES
@@ -6195,7 +6183,6 @@ else
     _XTRAS_LIST=""
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
     _SSH_PORT=22
@@ -6213,7 +6200,6 @@ else
     _XTRAS_LIST=""
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
     _SSH_PORT=22
@@ -6231,7 +6217,6 @@ else
     _XTRAS_LIST=""
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
     _SSH_PORT=22
@@ -8984,23 +8969,24 @@ EOFMYSQL
   cd /var/aegir
   _AEGIR_SCRIPT="AegirSetupM.sh.txt"
   for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f` ; do
-    sed -i "s/EDIT_AEGIR_DB_USER/$_AEGIR_DB_USER/g"        $Files &> /dev/null
-    sed -i "s/EDIT_AEGIR_HOST/$_AEGIR_HOST/g"              $Files &> /dev/null
-    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"        $Files &> /dev/null
-    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files &> /dev/null
-    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files &> /dev/null
-    sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"              $Files &> /dev/null
-    sed -i "s/EDIT_BRANCH_PROVISION/$_BRANCH_PROVISION/g"  $Files &> /dev/null
-    sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"              $Files &> /dev/null
-    sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                  $Files &> /dev/null
-    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files &> /dev/null
-    sed -i "s/EDIT_ESC_APASS/$_ESC_APASS/g"                $Files &> /dev/null
-    sed -i "s/EDIT_LOCAL_NETWORK_IP/$_LOCAL_NETWORK_IP/g"  $Files &> /dev/null
-    sed -i "s/EDIT_MY_OWNIP/$_MY_OWNIP/g"                  $Files &> /dev/null
-    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files &> /dev/null
-    sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"    $Files &> /dev/null
-    sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"  $Files &> /dev/null
-    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files &> /dev/null
+    sed -i "s/EDIT_AEGIR_DB_USER/$_AEGIR_DB_USER/g"         $Files &> /dev/null
+    sed -i "s/EDIT_AEGIR_HOST/$_AEGIR_HOST/g"               $Files &> /dev/null
+    sed -i "s/EDIT_AEGIR_EXT_VERSION/$_AEGIR_EXT_VERSION/g" $Files &> /dev/null
+    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files &> /dev/null
+    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files &> /dev/null
+    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files &> /dev/null
+    sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"               $Files &> /dev/null
+    sed -i "s/EDIT_BRANCH_PROVISION/$_BRANCH_PROVISION/g"   $Files &> /dev/null
+    sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               $Files &> /dev/null
+    sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files &> /dev/null
+    sed -i "s/EDIT_ESC_APASS/$_ESC_APASS/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_LOCAL_NETWORK_IP/$_LOCAL_NETWORK_IP/g"   $Files &> /dev/null
+    sed -i "s/EDIT_MY_OWNIP/$_MY_OWNIP/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     $Files &> /dev/null
+    sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     $Files &> /dev/null
+    sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"   $Files &> /dev/null
+    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files &> /dev/null
   done
 
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT ./

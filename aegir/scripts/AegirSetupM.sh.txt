@@ -34,6 +34,7 @@
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
+_AEGIR_EXT_VERSION=EDIT_AEGIR_EXT_VERSION
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
@@ -167,7 +168,7 @@ extract_archive () {
 # Download and extract from dev.
 get_dev_ext () {
   if [ ! -z $1 ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_EXT_VERSION/$1"
     extract_archive "$1"
   fi
 }

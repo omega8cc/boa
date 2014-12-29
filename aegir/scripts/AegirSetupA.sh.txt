@@ -79,6 +79,7 @@ _UBERCART7=EDIT_UBERCART7
 ###---### Main config.
 #
 _ADM_EMAIL="EDIT_MY_EMAIL"
+_AEGIR_EXT_VERSION=EDIT_AEGIR_EXT_VERSION
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _ALL_DISTRO=EDIT_ALL_DISTRO
 _AUTOPILOT=EDIT_AUTOPILOT
@@ -258,7 +259,7 @@ get_dev_contrib () {
 # Download and extract from dev.
 get_dev_ext () {
   if [ ! -z $1 ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_EXT_VERSION/$1"
     extract_archive "$1"
   fi
 }

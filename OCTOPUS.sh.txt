@@ -228,19 +228,6 @@ _MY_OWNIP=""
 
 
 ###----------------------------------------###
-### AEGIR BARRACUDA VERSION                ###
-###----------------------------------------###
-###
-### By default latest release version will
-### be installed. Please never use HEAD (dev)
-### version on any production server.
-### The HEAD can be occasionally broken
-### and should be used **only** for testing!
-###
-_AEGIR_VERSION=HEAD
-
-
-###----------------------------------------###
 ### FORCE PREFERRED GIT REPOSITORY         ###
 ###----------------------------------------###
 ###
@@ -676,9 +663,11 @@ _RESERVED_RAM=0
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.4.0-dev
+_AEGIR_EXT_VERSION=BOA-2.4.0
+_AEGIR_VERSION=HEAD
 _BRANCH_BOA=master
 _BRANCH_PROVISION=2.4.x-dev
+_INSTALLER_VERSION=BOA-2.4.0-dev
 
 ###
 ### Variables
@@ -1612,6 +1601,7 @@ action () {
   fi
   for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
   do
+    sed -i "s/EDIT_AEGIR_EXT_VERSION/$_AEGIR_EXT_VERSION/g" $Files &> /dev/null
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files &> /dev/null
     sed -i "s/EDIT_AGOV/$_AGOV/g"                           $Files &> /dev/null
     sed -i "s/EDIT_ALL_DISTRO/$_ALL_DISTRO/g"               $Files &> /dev/null
@@ -1908,7 +1898,6 @@ fi
 # Some auto-magic for localhost install
 _THIS_HOST=`uname -n`
 if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
-  _AEGIR_VERSION=HEAD
   _DEBUG_MODE=NO
   _DNS_SETUP_TEST=NO
   _DOMAIN="$_USER.sub.aegir.local"

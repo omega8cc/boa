@@ -133,19 +133,15 @@ _TUNE_PHP_CLI_TIMEOUT=7200
 
 
 ###----------------------------------------###
-### TUNER VERSION                          ###
-###----------------------------------------###
-###
-_AEGIR_VERSION=HEAD
-
-
-###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.4.0-dev
+_AEGIR_EXT_VERSION=BOA-2.4.0
+_AEGIR_VERSION=HEAD
 _BRANCH_BOA=master
 _BRANCH_PROVISION=2.4.x-dev
+_INSTALLER_VERSION=BOA-2.4.0-dev
+
 _NOW=`date +%y%m%d-%H%M`
 _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
 _THISHOST=`uname -n`
