@@ -83,7 +83,7 @@ _AUTOPILOT=EDIT_AUTOPILOT
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _BRANCH_BOA=EDIT_BRANCH_BOA
-_BRANCH_PROVISION=EDIT_BRANCH_PROVISION
+_BRANCH_PRN=EDIT_BRANCH_PRN
 _CLIENT_CORES=EDIT_CLIENT_CORES
 _CLIENT_EMAIL="EDIT_CLIENT_EMAIL"
 _CLIENT_OPTION=EDIT_CLIENT_OPTION
@@ -398,18 +398,18 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   rm -f -r $_ROOT/.drush/{sys,xts,usr}
   rm -f -r $_ROOT/.drush/{provision,drush_make}
   mkdir -p $_ROOT/.drush/{sys,xts,usr}
-  git clone --branch $_BRANCH_PROVISION git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision                &> /dev/null
-  git clone --branch 6.x-2.x git://github.com/omega8cc/provision_civicrm.git $_ROOT/.drush/xts/provision_civicrm           &> /dev/null
-  git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/xts/provision_cdn                   &> /dev/null
-  git clone --branch 6.x-2.x git://github.com/omega8cc/provision_platform_git.git $_ROOT/.drush/xts/provision_platform_git &> /dev/null
-  git clone --branch 6.x-2.x git://github.com/omega8cc/provision_site_backup.git $_ROOT/.drush/xts/provision_site_backup   &> /dev/null
-  git clone --branch 6.x-2.x git://github.com/omega8cc/remote_import.git $_ROOT/.drush/sys/provision/remote_import         &> /dev/null
-  git clone --branch 6.x-3.x git://github.com/omega8cc/provision_tasks_extra.git $_ROOT/.drush/xts/provision_tasks_extra   &> /dev/null
-  git clone --branch 7.x-1.x-dev git://github.com/omega8cc/drupalgeddon.git $_ROOT/.drush/usr/drupalgeddon                 &> /dev/null
-  git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/usr/drush_ecl                           &> /dev/null
-  git clone --branch 7.x-1.x git://github.com/omega8cc/security_review.git $_ROOT/.drush/xts/security_review               &> /dev/null
-  git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/xts/provision_boost               &> /dev/null
-  git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/usr/registry_rebuild             &> /dev/null
+  git clone --branch $_BRANCH_PRN git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision                         &> /dev/null
+  git clone --branch 6.x-2.x git://github.com/omega8cc/provision_civicrm.git $_ROOT/.drush/xts/provision_civicrm              &> /dev/null
+  git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/xts/provision_cdn                      &> /dev/null
+  git clone --branch 6.x-2.x git://github.com/omega8cc/provision_platform_git.git $_ROOT/.drush/xts/provision_platform_git    &> /dev/null
+  git clone --branch 6.x-2.x git://github.com/omega8cc/provision_site_backup.git $_ROOT/.drush/xts/provision_site_backup      &> /dev/null
+  git clone --branch 6.x-2.x git://github.com/omega8cc/remote_import.git $_ROOT/.drush/sys/provision/remote_import            &> /dev/null
+  git clone --branch $_BRANCH_PRN git://github.com/omega8cc/provision_tasks_extra.git $_ROOT/.drush/xts/provision_tasks_extra &> /dev/null
+  git clone --branch 7.x-1.x-dev git://github.com/omega8cc/drupalgeddon.git $_ROOT/.drush/usr/drupalgeddon                    &> /dev/null
+  git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/usr/drush_ecl                              &> /dev/null
+  git clone --branch 7.x-1.x git://github.com/omega8cc/security_review.git $_ROOT/.drush/xts/security_review                  &> /dev/null
+  git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/xts/provision_boost                  &> /dev/null
+  git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/usr/registry_rebuild                &> /dev/null
   rm -f -r $_ROOT/.drush/*/.git
   rm -f -r $_ROOT/.drush/*/*/.git
   cd $_ROOT/.drush/usr

@@ -326,27 +326,27 @@ up_action ()
       rm -f /var/xdrago/monitor/* &> /dev/null
     fi
     if [ "$cmmand" = "up-vanilla" ] ; then
-      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=7.x-2.x/g"   /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=7.x-2.x/g"      /var/backups/BARRACUDA.sh.txt
     elif [ "$cmmand" = "up-modern" ] ; then
-      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.4.x-dev/g" /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=2.4.x-dev/g"    /var/backups/BARRACUDA.sh.txt
     else
-      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=2.3.x-dev/g"    /var/backups/BARRACUDA.sh.txt
     fi
     if [ "$cmmand" = "up-cluster" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"               /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"      /var/backups/BARRACUDA.sh.txt
     elif [ "$cmmand" = "up-head" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"                /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"       /var/backups/BARRACUDA.sh.txt
     elif [ "$cmmand" = "up-stable" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"             /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"    /var/backups/BARRACUDA.sh.txt
     elif [ "$cmmand" = "up-modern" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g"             /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g"    /var/backups/BARRACUDA.sh.txt
     elif [ "$cmmand" = "up-vanilla" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g"             /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g"    /var/backups/BARRACUDA.sh.txt
     else
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"             /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"    /var/backups/BARRACUDA.sh.txt
     fi
-    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                       /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"           /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"              /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"  /var/backups/BARRACUDA.sh.txt
     if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       if [ -e "/root/.debug.cnf" ] ; then
         _DO_NOTHING=YES

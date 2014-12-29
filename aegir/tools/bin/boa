@@ -168,36 +168,36 @@ octopus_install ()
       if [ -e "/root/.debug.cnf" ] ; then
         _DO_NOTHING=YES
       else
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   /var/backups/OCTOPUS.sh.$user
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"     /var/backups/OCTOPUS.sh.$user
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               /var/backups/OCTOPUS.sh.$user
+        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g" /var/backups/OCTOPUS.sh.$user
       fi
     fi
     if [ "$cmmand" = "in-vanilla" ] ; then
-      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=7.x-2.x/g"   /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=7.x-2.x/g"   /var/backups/OCTOPUS.sh.$user
     elif [ "$cmmand" = "in-modern" ] ; then
-      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.4.x-dev/g" /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=2.4.x-dev/g" /var/backups/OCTOPUS.sh.$user
     else
-      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$user
     fi
     if [ "$cmmand" = "in-cluster" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"               /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"   /var/backups/OCTOPUS.sh.$user
     elif [ "$cmmand" = "in-head" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"                /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"    /var/backups/OCTOPUS.sh.$user
     elif [ "$cmmand" = "in-stable" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"             /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$user
     elif [ "$cmmand" = "in-modern" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g"             /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g" /var/backups/OCTOPUS.sh.$user
     elif [ "$cmmand" = "in-vanilla" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g"             /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g" /var/backups/OCTOPUS.sh.$user
     else
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"             /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$user
     fi
 
     if [ ! -z "$dbip" ] && [ "$cmmand" = "in-cluster" ] ; then
       if [ "$kind" = "mstr" ] || [ "$kind" = "wbhd" ] ; then
-        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"           /var/backups/OCTOPUS.sh.$user
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   /var/backups/OCTOPUS.sh.$user
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"     /var/backups/OCTOPUS.sh.$user
+        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"       /var/backups/OCTOPUS.sh.$user
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               /var/backups/OCTOPUS.sh.$user
+        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g" /var/backups/OCTOPUS.sh.$user
       fi
     fi
 
@@ -296,24 +296,24 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
   fi
 
   if [ "$cmmand" = "in-vanilla" ] ; then
-    sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=7.x-2.x/g"   /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=7.x-2.x/g"   /var/backups/BARRACUDA.sh.txt
   elif [ "$cmmand" = "in-modern" ] ; then
-    sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.4.x-dev/g" /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=2.4.x-dev/g" /var/backups/BARRACUDA.sh.txt
   else
-    sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
   fi
   if [ "$cmmand" = "in-cluster" ] ; then
-    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"       /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"   /var/backups/BARRACUDA.sh.txt
   elif [ "$cmmand" = "in-head" ] ; then
-    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"        /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"    /var/backups/BARRACUDA.sh.txt
   elif [ "$cmmand" = "in-stable" ] ; then
-    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"     /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
   elif [ "$cmmand" = "in-modern" ] ; then
-    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g"     /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g" /var/backups/BARRACUDA.sh.txt
   elif [ "$cmmand" = "in-vanilla" ] ; then
-    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g"     /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g" /var/backups/BARRACUDA.sh.txt
   else
-    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g"     /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
   fi
   if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
     bash /var/backups/BARRACUDA.sh.txt

@@ -1085,8 +1085,8 @@ _SPEED_VALID_MAX=3600
 
 _AEGIR_EXT_VERSION=BOA-2.4.0
 _AEGIR_VERSION=HEAD
-_BRANCH_BOA=master
-_BRANCH_PROVISION=2.4.x-dev
+_BRANCH_BOA=2.4.x-dev
+_BRANCH_PRN=2.4.x-dev
 _INSTALLER_VERSION=BOA-2.4.0-dev
 
 ###
@@ -4498,7 +4498,7 @@ upgrade_aegir_master () {
       rm -f -r /var/aegir/.drush/{sys,xts,usr}
       rm -f -r /var/aegir/.drush/{provision,drush_make}
       mkdir -p /var/aegir/.drush/{sys,xts,usr}
-      git clone --branch $_BRANCH_PROVISION git://github.com/omega8cc/provision.git /var/aegir/.drush/sys/provision &> /dev/null
+      git clone --branch $_BRANCH_PRN git://github.com/omega8cc/provision.git /var/aegir/.drush/sys/provision &> /dev/null
       rm -f -r /var/aegir/drush
       cd /var/aegir
       get_dev_ext "drush-$_DRUSH_VERSION.tar.gz"
@@ -4531,7 +4531,7 @@ upgrade_aegir_master () {
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"               /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_BRANCH_PROVISION/$_BRANCH_PROVISION/g"   /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_BRANCH_PRN/$_BRANCH_PRN/g"               /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
@@ -8976,7 +8976,7 @@ EOFMYSQL
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files &> /dev/null
     sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files &> /dev/null
     sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"               $Files &> /dev/null
-    sed -i "s/EDIT_BRANCH_PROVISION/$_BRANCH_PROVISION/g"   $Files &> /dev/null
+    sed -i "s/EDIT_BRANCH_PRN/$_BRANCH_PRN/g"               $Files &> /dev/null
     sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               $Files &> /dev/null
     sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   $Files &> /dev/null
     sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files &> /dev/null
