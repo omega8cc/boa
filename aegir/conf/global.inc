@@ -1,53 +1,5 @@
 <?php # global settings.php
 
-error_reporting(0); // Disable reporting errors by default - enable later only for foo.dev.domain subdomains
-
-// Fix for Mollom, CloudFlare and others running via Proxy
-if (isset($_SERVER['REMOTE_ADDR'])) {
-  if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) && $_SERVER['HTTP_X_FORWARDED_FOR'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
-  }
-  if (isset($_SERVER['HTTP_X_REAL_IP']) && $_SERVER['HTTP_X_REAL_IP'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_REAL_IP'];
-  }
-  if (isset($_SERVER['HTTP_CF_CONNECTING_IP']) && $_SERVER['HTTP_CF_CONNECTING_IP'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
-  }
-}
-
-// Required for proper Redis support on command line / via Drush
-if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
-  $_SERVER['SERVER_NAME'] = $_SERVER['HTTP_HOST'];
-}
-
-/**
- * Forced defaults
- */
-$conf['page_compression'] = 0;    // Required in Nginx, since it already compresses everything
-$conf['boost_crawl_on_cron'] = 0; // Deny Boost crawler
-$conf['cron_safe_threshold'] = 0; // Disable poormanscron
-$conf['preprocess_css'] = 1;      // Enable hardcoded css aggregation
-$conf['preprocess_js'] = 1;       // Enable hardcoded js aggregation
-$conf['file_downloads'] = 1;      // Force public downloads by default
-$conf['error_level'] = 0;         // Disable errors on screen
-$conf['statistics_enable_access_log'] = 0;   // Disable access log stats
-$conf['allow_authorize_operations'] = FALSE; // Disable insecure plugin manager
-$conf['admin_menu_cache_client'] = FALSE;    // Disable caching in admin_menu #442560
-$conf['boost_ignore_htaccess_warning'] = 1;  // Silence false alarm in boost
-$conf['expire_flush_front'] = 1;             // Default settings for expire module
-$conf['expire_flush_node_terms'] = 1;        // Default settings for expire module
-$conf['expire_flush_menu_items'] = 0;        // Default settings for expire module
-$conf['expire_flush_cck_references'] = 0;    // Default settings for expire module
-$conf['expire_include_base_url'] = 1;        // Default settings for expire module
-$conf['js_server_software'] = "other";       // Set JS Callback handler server software
-$conf['video_ffmpeg_instances'] = 1;         // Force safe default for ffmpeg
-$conf['securepages_enable'] = 1;             // Force to avoid issues with ssl proxy
-$conf['less_devel'] = FALSE;                 // Prevent CSS regeneration on every page load
-$conf['drupal_http_request_fails'] = FALSE;  // Avoid false alarm
-$conf['image_allow_insecure_derivatives'] = TRUE; // Enable to avoid known issues: https://drupal.org/drupal-7.20-release-notes
-$conf['theme_cloudy_settings']['omega_rebuild_aggregates'] = FALSE;     // Do not allow to turn it on by default
-$conf['theme_cloudy_settings']['omega_rebuild_theme_registry'] = FALSE; // Do not allow to turn it on by default
-$update_free_access = FALSE;
 
 /**
  * Vars init
@@ -76,13 +28,17 @@ $use_redis    = FALSE;
 $usr_loc_ini  = FALSE;
 $usr_plr_ini  = FALSE;
 
-// Detecting subdirectory mode
+
+/**
+ * Detecting subdirectory mode
+ */
 if (isset($_SERVER['SITE_SUBDIR'])) {
   $site_subdir = $_SERVER['SITE_SUBDIR'];
 }
 if (isset($_SERVER['RAW_HOST'])) {
   $raw_host = $_SERVER['RAW_HOST'];
 }
+
 
 /**
  * Backend and task detection
@@ -98,6 +54,7 @@ if (function_exists('drush_get_command')) {
   }
 }
 
+
 /**
  * Force backward compatible SERVER_SOFTWARE
  */
@@ -107,12 +64,14 @@ if (!$is_backend) {
   }
 }
 
+
 /**
  * Bots detection
  */
 if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:crawl|bot|spider|tracker|click|parser|google|yahoo|yandex|baidu|bing)/i", $_SERVER['HTTP_USER_AGENT'])) {
   $is_bot = TRUE;
 }
+
 
 /**
  * Dev mode detection and URLs protection
@@ -129,8 +88,9 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i"
   }
 }
 
+
 /**
- * Core detection
+ * Core version detection
  */
 if (file_exists('web.config')) {
   if (file_exists('core')) {
@@ -167,6 +127,85 @@ else {
   }
 }
 
+
+/**
+ * Fix for Mollom, CloudFlare and others running via Proxy
+ */
+if (isset($_SERVER['REMOTE_ADDR'])) {
+  if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) && $_SERVER['HTTP_X_FORWARDED_FOR'] != "127.0.0.1") {
+    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
+  }
+  if (isset($_SERVER['HTTP_X_REAL_IP']) && $_SERVER['HTTP_X_REAL_IP'] != "127.0.0.1") {
+    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_REAL_IP'];
+  }
+  if (isset($_SERVER['HTTP_CF_CONNECTING_IP']) && $_SERVER['HTTP_CF_CONNECTING_IP'] != "127.0.0.1") {
+    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
+  }
+}
+
+
+/**
+ * Required for proper Redis support on command line / via Drush
+ */
+if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
+  $_SERVER['SERVER_NAME'] = $_SERVER['HTTP_HOST'];
+}
+
+
+/**
+ * Disable reporting errors by default - enable later only for foo.dev.domain
+ */
+error_reporting(0);
+
+
+/**
+ * Forced default settings
+ */
+if ($drupal_eight) {
+  //
+  // Drupal 8 behaviour is confusing, because while it is possible
+  // to force settings listed below, they will not be shown in the
+  // site admin area. For example, CSS/JS aggregation checkboxes
+  // will accept on/off changes on form submit, while being silently
+  // overriden here.
+  //
+  $config['image.settings']['allow_insecure_derivatives'] = TRUE;  // Not sure if it's a good idea
+  $config['image.settings']['suppress_itok_output'] = TRUE;        // Not sure if it's a good idea
+  $config['system.cron']['threshold.autorun'] = FALSE;             // Disable poormanscron
+  $config['system.logging']['error_level'] = 'hide';               // Disable errors on screen
+  $config['system.performance']['css']['preprocess'] = TRUE;       // Enable hardcoded CSS aggregation
+  $config['system.performance']['js']['preprocess'] = TRUE;        // Enable hardcoded JS aggregation
+  $config['system.performance']['response.gzip'] = FALSE;
+}
+else {
+  $conf['page_compression'] = 0;    // Required in Nginx, since it already compresses everything
+  $conf['boost_crawl_on_cron'] = 0; // Deny Boost crawler
+  $conf['cron_safe_threshold'] = 0; // Disable poormanscron
+  $conf['preprocess_css'] = 1;      // Enable hardcoded CSS aggregation
+  $conf['preprocess_js'] = 1;       // Enable hardcoded JS aggregation
+  $conf['file_downloads'] = 1;      // Force public downloads by default
+  $conf['error_level'] = 0;         // Disable errors on screen
+  $conf['statistics_enable_access_log'] = 0;   // Disable access log stats
+  $conf['allow_authorize_operations'] = FALSE; // Disable insecure plugin manager
+  $conf['admin_menu_cache_client'] = FALSE;    // Disable caching in admin_menu #442560
+  $conf['boost_ignore_htaccess_warning'] = 1;  // Silence false alarm in boost
+  $conf['expire_flush_front'] = 1;             // Default settings for expire module
+  $conf['expire_flush_node_terms'] = 1;        // Default settings for expire module
+  $conf['expire_flush_menu_items'] = 0;        // Default settings for expire module
+  $conf['expire_flush_cck_references'] = 0;    // Default settings for expire module
+  $conf['expire_include_base_url'] = 1;        // Default settings for expire module
+  $conf['js_server_software'] = "other";       // Set JS Callback handler server software
+  $conf['video_ffmpeg_instances'] = 1;         // Force safe default for ffmpeg
+  $conf['securepages_enable'] = 1;             // Force to avoid issues with ssl proxy
+  $conf['less_devel'] = FALSE;                 // Prevent CSS regeneration on every page load
+  $conf['drupal_http_request_fails'] = FALSE;  // Avoid false alarm
+  $conf['image_allow_insecure_derivatives'] = TRUE; // Enable to avoid known issues: https://drupal.org/drupal-7.20-release-notes
+  $conf['theme_cloudy_settings']['omega_rebuild_aggregates'] = FALSE;     // Do not allow to turn it on by default
+  $conf['theme_cloudy_settings']['omega_rebuild_theme_registry'] = FALSE; // Do not allow to turn it on by default
+  $update_free_access = FALSE;
+}
+
+
 /**
  * Logic for the front-end only
  */
@@ -196,18 +235,26 @@ if (!$is_backend) {
     ini_set('display_errors', TRUE);
     ini_set('display_startup_errors', TRUE);
     ini_set('opcache.revalidate_freq', '1');
-    unset($conf['cache']);          // Stop hardcoding caching
-    unset($conf['preprocess_css']); // Stop hardcoding css aggregation
-    unset($conf['preprocess_js']);  // Stop hardcoding js aggregation
-    unset($conf['less_devel']);     // Stop hardcoding CSS regeneration on every page load
-    unset($conf['theme_cloudy_settings']['omega_rebuild_aggregates']);     // Do not force on dev URLs
-    unset($conf['theme_cloudy_settings']['omega_rebuild_theme_registry']); // Do not force on dev URLs
-    unset($conf['error_level']);    // Stop hardcoding no errors on screen
-    $conf['xmlsitemap_submit'] = 0; // Disable XML Sitemap for foo.dev.domain
-    $conf['xmlsitemap_update'] = 0; // Disable XML Sitemap for foo.dev.domain
+    if ($drupal_eight) {
+      unset($config['system.logging']['error_level']);                 // Stop hardcoding no errors on screen
+      unset($config['system.performance']['cache.page.use_internal']); // Stop hardcoding internal page cache
+      unset($config['system.performance']['css']['preprocess']);       // Stop hardcoding CSS aggregation
+      unset($config['system.performance']['js']['preprocess']);        // Stop hardcoding JS aggregation
+    }
+    else {
+      $conf['xmlsitemap_submit'] = 0; // Disable XML Sitemap for foo.dev.domain
+      $conf['xmlsitemap_update'] = 0; // Disable XML Sitemap for foo.dev.domain
+      unset($conf['cache']);          // Stop hardcoding internal page cache
+      unset($conf['error_level']);    // Stop hardcoding no errors on screen
+      unset($conf['less_devel']);     // Stop hardcoding CSS regeneration on every page load
+      unset($conf['preprocess_css']); // Stop hardcoding CSS aggregation
+      unset($conf['preprocess_js']);  // Stop hardcoding JS aggregation
+      unset($conf['theme_cloudy_settings']['omega_rebuild_aggregates']);     // Do not force on dev URLs
+      unset($conf['theme_cloudy_settings']['omega_rebuild_theme_registry']); // Do not force on dev URLs
+    }
   }
   else {
-    if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) || preg_match("/^\/core\/cron\.php/", $_SERVER['REQUEST_URI'])) {
+    if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI'])) {
       // Set longer opcache TTL for web based cron
       ini_set('opcache.revalidate_freq', '300');
     }
@@ -217,6 +264,7 @@ if (!$is_backend) {
     }
   }
 }
+
 
 /**
  * BOA INI defaults
@@ -241,12 +289,14 @@ $boa_ini = array(
   'disable_drupal_page_cache' => FALSE,            // It is set to FALSE for backward compatibility and max performance
 );
 
+
 /**
  * Optional system level early overrides
  */
 if (is_readable('/data/conf/settings.global.inc')) {
   require_once "/data/conf/settings.global.inc";
 }
+
 
 /**
  * Optional site and platform level settings defined in the ini files
@@ -308,25 +358,43 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Disable-Drupal-Page-Cache: " . $all_ini['disable_drupal_page_cache']);
 }
 
+
 /**
  * Enable page caching if disable_drupal_page_cache is not set to TRUE,
  * but only on non-dev URLs and only for the front-end.
  */
 if (!$is_backend && !$is_dev) {
   if (!$is_bot && $all_ini['disable_drupal_page_cache']) {
-    $conf['cache'] = 0;
+    if ($drupal_eight) {
+      $config['system.performance']['cache.page.use_internal'] = FALSE;
+    }
+    else {
+      $conf['cache'] = 0;
+    }
   }
   else {
-    $conf['cache'] = 1;
+    if ($drupal_eight) {
+      $config['system.performance']['cache.page.use_internal'] = TRUE;
+    }
+    else {
+      $conf['cache'] = 1;
+    }
   }
 }
+
 
 /**
  * Disable page caching when Speed Booster is disabled on the fly
  */
 if (!$is_bot && isset($_SERVER['REQUEST_URI']) && preg_match("/nocache=1/", $_SERVER['REQUEST_URI'])) {
-  $conf['cache'] = 0;
+  if ($drupal_eight) {
+    $config['system.performance']['cache.page.use_internal'] = FALSE;
+  }
+  else {
+    $conf['cache'] = 0;
+  }
 }
+
 
 /**
  * Session Cookie TTL settings
@@ -337,6 +405,7 @@ if (!$is_bot && isset($_SERVER['REQUEST_URI']) && preg_match("/nocache=1/", $_SE
  */
 ini_set('session.cookie_lifetime', $all_ini['session_cookie_ttl']);
 
+
 /**
  * Session Garbage Collector EOL settings
  *
@@ -346,6 +415,7 @@ ini_set('session.cookie_lifetime', $all_ini['session_cookie_ttl']);
  * of the user's $_SESSION variable is discarded.
  */
 ini_set('session.gc_maxlifetime', $all_ini['session_gc_eol']);
+
 
 /**
  * Hostmaster specific settings
@@ -379,6 +449,7 @@ if ($conf['install_profile'] == 'hostmaster') {
     }
   }
 }
+
 
 /**
  * Main section starts here
@@ -449,8 +520,9 @@ else {
   $this_device = 'normal';
 }
 
+
 /**
- * Logic for no-dev URLs only
+ * Logic for non-dev URLs only
  */
 if (!$is_dev) {
   if ($all_ini['advagg_auto_configuration']) {
@@ -458,8 +530,8 @@ if (!$is_dev) {
     if ($drupal_six) {
       if (is_readable('modules/o_contrib/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')) {
-        $conf['preprocess_css'] = 0; // css aggregation disabled
-        $conf['preprocess_js'] = 0;  // js aggregation disabled
+        $conf['preprocess_css'] = 0; // CSS aggregation disabled
+        $conf['preprocess_js'] = 0;  // JS aggregation disabled
         $conf['advagg_aggregate_mode'] = 1;
         $conf['advagg_async_generation'] = 0;
         $conf['advagg_checksum_mode'] = "md5";
@@ -545,6 +617,7 @@ else {
     header('X-Purge-Level: none');
   }
 }
+
 
 /**
  * More logic for the front-end only
@@ -705,6 +778,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'
   }
 }
 
+
 /**
  * Optional system level overrides
  */
@@ -712,7 +786,9 @@ if (is_readable('/data/conf/override.global.inc')) {
   require_once "/data/conf/override.global.inc";
 }
 
-// Use Redis caching and lock support only for d6 and d7 profiles
+/**
+ * Use Redis caching and lock support only for d6 and d7 profiles
+ */
 if ($redis_up && $use_redis && !$custom_cache) {
   $cache_backport = FALSE;
   $cache_redis = FALSE;
@@ -810,6 +886,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
   }
 }
 
+
 /**
  * Drupal for Facebook (fb)
  *
@@ -841,6 +918,7 @@ if (!$custom_fb && $all_ini['auto_detect_facebook_integration']) {
   }
 }
 
+
 /**
  * Domain module
  */
@@ -849,6 +927,7 @@ if (!$custom_da) {
     require_once($da_inc);
   }
 }
+
 
 /**
  * New Relic - see: https://newrelic.com/docs/php/per-directory-settings#perdir-rollup
@@ -910,6 +989,7 @@ if (extension_loaded('newrelic')) {
     newrelic_set_appname($this_instance);
   }
 }
+
 
 /**
  * Unset config arrays on non-dev URLs
