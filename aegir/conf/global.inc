@@ -4,6 +4,7 @@
 /**
  * Vars init
  */
+$backdropcms  = FALSE;
 $custom_cache = FALSE;
 $custom_da    = FALSE;
 $custom_fb    = FALSE;
@@ -94,16 +95,24 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i"
  */
 if (file_exists('web.config')) {
   if (file_exists('core')) {
-    $drupal_eight = TRUE;
-    if ($is_dev && !$is_backend) {
-      header('X-Backend: A');
+    if (file_exists('core/vendor/symfony')) {
+      $drupal_eight = TRUE;
+      if ($is_dev && !$is_backend) {
+        header('X-Backend: A');
+      }
+    }
+    else {
+      $backdropcms = TRUE;
+      if ($is_dev && !$is_backend) {
+        header('X-Backend: B');
+      }
     }
   }
   else {
     $drupal_seven = TRUE;
     $use_redis = TRUE;
     if ($is_dev && !$is_backend) {
-      header('X-Backend: B');
+      header('X-Backend: C');
     }
   }
 }
@@ -111,19 +120,19 @@ elseif (file_exists('modules/path_alias_cache')) {
   $drupal_six = TRUE;
   $use_redis = TRUE;
   if ($is_dev && !$is_backend) {
-    header('X-Backend: C');
+    header('X-Backend: D');
   }
 }
 elseif (file_exists('modules/watchdog')) {
   $drupal_five = TRUE;
   if ($is_dev && !$is_backend) {
-    header('X-Backend: D');
+    header('X-Backend: E');
   }
 }
 else {
   $drupal_unknown = TRUE;
   if ($is_dev && !$is_backend) {
-    header('X-Backend: E');
+    header('X-Backend: U');
   }
 }
 
@@ -169,16 +178,21 @@ if ($drupal_eight) {
   // will accept on/off changes on form submit, while being silently
   // overriden here.
   //
-  $config['image.settings']['allow_insecure_derivatives'] = TRUE;  // Not sure if it's a good idea
-  $config['image.settings']['suppress_itok_output'] = TRUE;        // Not sure if it's a good idea
+  $config['image.settings']['allow_insecure_derivatives'] = TRUE;  // Not sure if it's a good idea in D8
+  $config['image.settings']['suppress_itok_output'] = TRUE;        // Not sure if it's a good idea in D8
   $config['system.cron']['threshold.autorun'] = FALSE;             // Disable poormanscron
   $config['system.logging']['error_level'] = 'hide';               // Disable errors on screen
   $config['system.performance']['css']['preprocess'] = TRUE;       // Enable hardcoded CSS aggregation
   $config['system.performance']['js']['preprocess'] = TRUE;        // Enable hardcoded JS aggregation
-  $config['system.performance']['response.gzip'] = FALSE;
+  $config['system.performance']['response.gzip'] = FALSE;          // Nginx already compresses everything
 }
 else {
-  $conf['page_compression'] = 0;    // Required in Nginx, since it already compresses everything
+  if ($backdropcms) {
+    $conf['css_gzip_compression'] = FALSE; // Nginx already compresses everything
+    $conf['js_gzip_compression'] = FALSE;  // Nginx already compresses everything
+    $settings['backdrop_drupal_compatibility'] = TRUE; // Enable Drupal backwards compatibility
+  }
+  $conf['page_compression'] = 0;    // Nginx already compresses everything
   $conf['boost_crawl_on_cron'] = 0; // Deny Boost crawler
   $conf['cron_safe_threshold'] = 0; // Disable poormanscron
   $conf['preprocess_css'] = 1;      // Enable hardcoded CSS aggregation
