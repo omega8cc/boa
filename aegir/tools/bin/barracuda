@@ -203,13 +203,15 @@ up_action ()
       elif [ "$rkey" = "php-all" ] ; then
         _PHP_SINGLE_INSTALL=ALL
       elif [ "$rkey" = "nodns" ] ; then
-        sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"        /var/backups/BARRACUDA.sh.txt
-        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"          /var/backups/BARRACUDA.sh.txt
-        sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"        /root/.barracuda.cnf
-        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"          /root/.barracuda.cnf
+        sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"    /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"      /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"    /root/.barracuda.cnf
+        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"      /root/.barracuda.cnf
       else
-        sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g"       /var/backups/BARRACUDA.sh.txt
-        sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g"       /root/.barracuda.cnf
+        if [ "$rkey" != "debug" ] ; then
+          sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g" /var/backups/BARRACUDA.sh.txt
+          sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g" /root/.barracuda.cnf
+        fi
       fi
 
       ### Debugging
@@ -688,4 +690,3 @@ if [ ! -z "$silent" ] ; then
   fi
 fi
 proceed
-### 141226 ###
