@@ -128,7 +128,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### which are used to define version to be
 ### used by Master or Satellite Instance.
 ###
-_PHP_MULTI_INSTALL="5.3"
+_PHP_MULTI_INSTALL="5.5"
 
 
 ###----------------------------------------###
@@ -164,11 +164,11 @@ _PHP_SINGLE_INSTALL=
 ### _PHP_FPM_VERSION=5.3
 ### _PHP_FPM_VERSION=5.2
 ###
-### Note that 5.3 will be set automatically
+### Note that 5.5 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_FPM_VERSION=5.3
+_PHP_FPM_VERSION=5.5
 
 
 ###----------------------------------------###
@@ -185,11 +185,11 @@ _PHP_FPM_VERSION=5.3
 ### _PHP_CLI_VERSION=5.4
 ### _PHP_CLI_VERSION=5.3
 ###
-### Note that 5.3 will be set automatically
+### Note that 5.5 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_CLI_VERSION=5.3
+_PHP_CLI_VERSION=5.5
 
 
 ###----------------------------------------###
@@ -340,19 +340,6 @@ _TOMCAT_TO_JETTY=NO
 ### _DEBUG_MODE=YES
 ###
 _DEBUG_MODE=NO
-
-
-###----------------------------------------###
-### AEGIR BARRACUDA VERSION                ###
-###----------------------------------------###
-###
-### By default latest release version will
-### be installed. Please never use HEAD (dev)
-### version on any production server.
-### The HEAD can be occasionally broken
-### and should be used **only** for testing!
-###
-_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
@@ -1096,9 +1083,11 @@ _SPEED_VALID_MAX=3600
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.9-dev
-_BRANCH_BOA=master
-_BRANCH_PROVISION=2.3.x-dev
+_AEGIR_XTS_VERSION=BOA-2.4.0
+_AEGIR_VERSION=HEAD
+_BRANCH_BOA=2.4.x-dev
+_BRANCH_PRN=2.4.x-dev
+_INSTALLER_VERSION=BOA-2.4.0-dev
 
 ###
 ### Software versions
@@ -1109,7 +1098,7 @@ _CHIVE_VERSION=1.3
 _CURL_VERSION=7.39.0
 _DRUSH4_VERSION=mini-4-26-08-2014
 _DRUSH6_VERSION=mini-6-30-10-2014
-_DRUSH7_VERSION=head-7-10-03-2014
+_DRUSH7_VERSION=mini-7-22-12-2014
 _GALERA_10_VERSION=10.0.15
 _GALERA_5_VERSION=5.5.40
 _GEOS_VERSION=3.4.2
@@ -1153,7 +1142,7 @@ _ZLIB_VERSION=1.2.8
 ### Variables
 ###
 _CUSTOM_NAME=nginx
-_DRUSH_VERSION="$_DRUSH6_VERSION"
+_DRUSH_VERSION="$_DRUSH7_VERSION"
 _FORCE_REDIS_RESTART=NO
 _LOC_REL_VERSION=""
 _NOW=`date +%y%m%d-%H%M`
@@ -1355,7 +1344,7 @@ get_dev_arch () {
 # Download and extract from dev/version mirror.
 get_dev_ext () {
   if [ ! -z $1 ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_XTS_VERSION/$1"
     extract_archive "$1"
   fi
 }
@@ -3229,7 +3218,7 @@ barracuda_cnf () {
     sed -i "s/_SPEED_VALID_MAX=300/_SPEED_VALID_MAX=3600/g" /root/.barracuda.cnf
     _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER /root/.barracuda.cnf)
     if [[ "$_USE_SPEED_BOOSTER_TEST" =~ "_USE_SPEED_BOOSTER" ]] ; then
-      sed -i "s/.*_USE_SPEED_BOOSTER.*//g" /root/.barracuda.cnf
+      sed -i "s/^_USE_SPEED_BOOSTER.*//g" /root/.barracuda.cnf
       sed -i "/^$/d" /root/.barracuda.cnf
     fi
     _NGINX_WORKERS_TEST=$(grep _NGINX_WORKERS /root/.barracuda.cnf)
@@ -3246,7 +3235,7 @@ barracuda_cnf () {
     fi
     _PHP_INSTALL_NEW_TEST=$(grep _PHP_INSTALL_NEW /root/.barracuda.cnf)
     if [[ "$_PHP_INSTALL_NEW_TEST" =~ "_PHP_INSTALL_NEW" ]] ; then
-      sed -i "s/.*_PHP_INSTALL_NEW.*//g" /root/.barracuda.cnf
+      sed -i "s/^_PHP_INSTALL_NEW.*//g" /root/.barracuda.cnf
       sed -i "/^$/d" /root/.barracuda.cnf
     fi
 
@@ -3284,7 +3273,7 @@ barracuda_cnf () {
       if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "5.2" ]] ; then
         _R_M=5.2
         _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
-        sed -i "s/.*_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"/g" /root/.barracuda.cnf
+        sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"/g" /root/.barracuda.cnf
         sed -i "/^$/d" /root/.barracuda.cnf
       else
         if [ -e "/etc/init.d/php-fpm" ] ; then
@@ -3311,11 +3300,9 @@ barracuda_cnf () {
       if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
         _CLSTR_PHP_MULTI_INSTALL="$_PHP_MULTI_INSTALL"
       fi
-      if [ -z "$_PHP_SINGLE_INSTALL" ] ; then
-        sed -i "s/.*_PHP_MULTI_INSTALL.*//g" /root/.barracuda.cnf
-        sed -i "/^$/d" /root/.barracuda.cnf
-        _PHP_MULTI_INSTALL=""
-      fi
+      sed -i "s/^_PHP_MULTI_INSTALL.*//g" /root/.barracuda.cnf
+      sed -i "/^$/d" /root/.barracuda.cnf
+      _PHP_MULTI_INSTALL=""
     fi
 
     if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "_PHP_MULTI_INSTALL" ]] && [ ! -z "$_PHP_MULTI_INSTALL" ] ; then
@@ -3326,10 +3313,18 @@ barracuda_cnf () {
           if [ ! -z "$_CLSTR_PHP_MULTI_INSTALL" ] ; then
             _PHP_MULTI_INSTALL="$_CLSTR_PHP_MULTI_INSTALL"
           else
-            _PHP_MULTI_INSTALL="5.3"
+            _PHP_MULTI_INSTALL="5.5"
           fi
         else
-          _PHP_MULTI_INSTALL="5.5 5.4 5.3"
+          if [ ! -z "$_PHP_SINGLE_INSTALL" ] ; then
+            if [ "$_PHP_SINGLE_INSTALL" = "5.5" ] || [ "$_PHP_SINGLE_INSTALL" = "5.4" ] || [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
+              _PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL
+              _PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL
+              _PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL
+            fi
+          else
+            _PHP_MULTI_INSTALL="5.5 5.4 5.3"
+          fi
         fi
       fi
       if [ ! -z "$_PHP_SINGLE_INSTALL" ] ; then
@@ -3352,6 +3347,7 @@ barracuda_cnf () {
       echo "_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"" >> /root/.barracuda.cnf
     fi
 
+    ### Backward compatibility with PHP 5.2 if still used for some reason
     if [ "$_PHP_LEGACY_FREE" = "NO" ] && [ -x "/usr/local/bin/php52" ] ; then
       if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "5.2" ]] ; then
         _DO_NOTHING=YES
@@ -3362,7 +3358,7 @@ barracuda_cnf () {
 
     _PHP_MODERN_ONLY_TEST=$(grep _PHP_MODERN_ONLY /root/.barracuda.cnf)
     if [[ "$_PHP_MODERN_ONLY_TEST" =~ "_PHP_MODERN_ONLY" ]] ; then
-      sed -i "s/.*_PHP_MODERN_ONLY.*//g" /root/.barracuda.cnf
+      sed -i "s/^_PHP_MODERN_ONLY.*//g" /root/.barracuda.cnf
       sed -i "/^$/d" /root/.barracuda.cnf
     fi
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.barracuda.cnf)
@@ -3385,12 +3381,12 @@ barracuda_cnf () {
     fi
     _LOAD_LIMIT_ONE_TEST=$(grep _LOAD_LIMIT_ONE /root/.barracuda.cnf)
     if [[ "$_LOAD_LIMIT_ONE_TEST" =~ "_LOAD_LIMIT_ONE" ]] ; then
-      sed -i "s/.*_LOAD_LIMIT_ONE.*//g" /root/.barracuda.cnf
+      sed -i "s/^_LOAD_LIMIT_ONE.*//g" /root/.barracuda.cnf
       sed -i "/^$/d" /root/.barracuda.cnf
     fi
     _LOAD_LIMIT_TWO_TEST=$(grep _LOAD_LIMIT_TWO /root/.barracuda.cnf)
     if [[ "$_LOAD_LIMIT_TWO_TEST" =~ "_LOAD_LIMIT_TWO" ]] ; then
-      sed -i "s/.*_LOAD_LIMIT_TWO.*//g" /root/.barracuda.cnf
+      sed -i "s/^_LOAD_LIMIT_TWO.*//g" /root/.barracuda.cnf
       sed -i "/^$/d" /root/.barracuda.cnf
     fi
     _CUSTOM_CONFIG_LSHELL_TEST=$(grep _CUSTOM_CONFIG_LSHELL /root/.barracuda.cnf)
@@ -3479,7 +3475,7 @@ barracuda_cnf () {
     fi
     _USE_MEMCACHED_TEST=$(grep _USE_MEMCACHED /root/.barracuda.cnf)
     if [[ "$_USE_MEMCACHED_TEST" =~ "_USE_MEMCACHED" ]] ; then
-      sed -i "s/.*_USE_MEMCACHED.*//g" /root/.barracuda.cnf
+      sed -i "s/^_USE_MEMCACHED.*//g" /root/.barracuda.cnf
       sed -i "/^$/d" /root/.barracuda.cnf
     fi
     _CUSTOM_CONFIG_REDIS_TEST=$(grep _CUSTOM_CONFIG_REDIS /root/.barracuda.cnf)
@@ -3490,12 +3486,12 @@ barracuda_cnf () {
     fi
     _BUILD_FROM_SRC_TEST=$(grep _BUILD_FROM_SRC /root/.barracuda.cnf)
     if [[ "$_BUILD_FROM_SRC_TEST" =~ "_BUILD_FROM_SRC" ]] ; then
-      sed -i "s/.*_BUILD_FROM_SRC.*//g" /root/.barracuda.cnf
+      sed -i "s/^_BUILD_FROM_SRC.*//g" /root/.barracuda.cnf
       sed -i "/^$/d" /root/.barracuda.cnf
     fi
     _USE_RESTRICTED_WWW_SHELL_TEST=$(grep _USE_RESTRICTED_WWW_SHELL /root/.barracuda.cnf)
     if [[ "$_USE_RESTRICTED_WWW_SHELL_TEST" =~ "_USE_RESTRICTED_WWW_SHELL" ]] ; then
-      sed -i "s/.*_USE_RESTRICTED_WWW_SHELL.*//g" /root/.barracuda.cnf
+      sed -i "s/^_USE_RESTRICTED_WWW_SHELL.*//g" /root/.barracuda.cnf
       sed -i "/^$/d" /root/.barracuda.cnf
     fi
     _NEWRELIC_KEY_TEST=$(grep _NEWRELIC_KEY /root/.barracuda.cnf)
@@ -3522,13 +3518,13 @@ barracuda_cnf () {
 
     _USE_STOCK_TEST=$(grep _USE_STOCK /root/.barracuda.cnf)
     if [[ "$_USE_STOCK_TEST" =~ "_USE_STOCK" ]] ; then
-      sed -i "s/.*_USE_STOCK.*//g" /root/.barracuda.cnf
+      sed -i "s/^_USE_STOCK.*//g" /root/.barracuda.cnf
       sed -i "/^$/d" /root/.barracuda.cnf
     fi
 
     _HTTP_WILDCARD_TEST=$(grep _HTTP_WILDCARD /root/.barracuda.cnf)
     if [[ "$_HTTP_WILDCARD_TEST" =~ "_HTTP_WILDCARD" ]] ; then
-      sed -i "s/.*_HTTP_WILDCARD.*//g" /root/.barracuda.cnf
+      sed -i "s/^_HTTP_WILDCARD.*//g" /root/.barracuda.cnf
       sed -i "/^$/d" /root/.barracuda.cnf
     fi
 
@@ -3618,7 +3614,7 @@ barracuda_cnf () {
     fi
     _PHP_ZEND_OPCACHE_TEST=$(grep _PHP_ZEND_OPCACHE /root/.barracuda.cnf)
     if [[ "$_PHP_ZEND_OPCACHE_TEST" =~ "_PHP_ZEND_OPCACHE" ]] ; then
-      sed -i "s/.*_PHP_ZEND_OPCACHE.*//g" /root/.barracuda.cnf
+      sed -i "s/^_PHP_ZEND_OPCACHE.*//g" /root/.barracuda.cnf
       sed -i "/^$/d" /root/.barracuda.cnf
     fi
     _PERMISSIONS_FIX_TEST=$(grep _PERMISSIONS_FIX /root/.barracuda.cnf)
@@ -3750,39 +3746,62 @@ barracuda_cnf () {
         clean_pid_exit
       fi
     fi
+
+    ### Make sure that _PHP_SINGLE_INSTALL takes precedence
+    if [ ! -z "$_PHP_SINGLE_INSTALL" ] ; then
+      if [ "$_PHP_SINGLE_INSTALL" = "5.5" ] || [ "$_PHP_SINGLE_INSTALL" = "5.4" ] || [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
+        _PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL
+        _PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL
+        _PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL/g" /root/.barracuda.cnf
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.barracuda.cnf
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.barracuda.cnf
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"     /root/.*.octopus.cnf &> /dev/null
+        if [ -e "/data/disk" ] && [ -e "/data/conf/global.inc" ] ; then
+          for Ctrl in `find /data/disk/*/log/fpm.txt -maxdepth 0 -mindepth 0 | sort`; do
+            echo $_PHP_SINGLE_INSTALL > $Ctrl &> /dev/null
+          done
+          for Ctrl in `find /data/disk/*/log/cli.txt -maxdepth 0 -mindepth 0 | sort`; do
+            echo $_PHP_SINGLE_INSTALL > $Ctrl &> /dev/null
+          done
+        fi
+      fi
+    fi
+
     _NGX_FORCE_REINSTALL_TEST=$(grep _NGX_FORCE_REINSTALL /root/.barracuda.cnf)
     if [[ "$_NGX_FORCE_REINSTALL_TEST" =~ "_NGX_FORCE_REINSTALL" ]] ; then
-      sed -i "s/.*_NGX_FORCE_REINSTALL.*//g" /root/.barracuda.cnf
+      sed -i "s/^_NGX_FORCE_REINSTALL.*//g" /root/.barracuda.cnf
       sed -i "/^$/d" /root/.barracuda.cnf
     fi
     _PHP_FORCE_REINSTALL_TEST=$(grep _PHP_FORCE_REINSTALL /root/.barracuda.cnf)
     if [[ "$_PHP_FORCE_REINSTALL_TEST" =~ "_PHP_FORCE_REINSTALL" ]] ; then
-      sed -i "s/.*_PHP_FORCE_REINSTALL.*//g" /root/.barracuda.cnf
+      sed -i "s/^_PHP_FORCE_REINSTALL.*//g" /root/.barracuda.cnf
       sed -i "/^$/d" /root/.barracuda.cnf
     fi
     _SQL_FORCE_REINSTALL_TEST=$(grep _SQL_FORCE_REINSTALL /root/.barracuda.cnf)
     if [[ "$_SQL_FORCE_REINSTALL_TEST" =~ "_SQL_FORCE_REINSTALL" ]] ; then
-      sed -i "s/.*_SQL_FORCE_REINSTALL.*//g" /root/.barracuda.cnf
+      sed -i "s/^_SQL_FORCE_REINSTALL.*//g" /root/.barracuda.cnf
       sed -i "/^$/d" /root/.barracuda.cnf
     fi
     _SSL_FORCE_REINSTALL_TEST=$(grep _SSL_FORCE_REINSTALL /root/.barracuda.cnf)
     if [[ "$_SSL_FORCE_REINSTALL_TEST" =~ "_SSL_FORCE_REINSTALL" ]] ; then
-      sed -i "s/.*_SSL_FORCE_REINSTALL.*//g" /root/.barracuda.cnf
+      sed -i "s/^_SSL_FORCE_REINSTALL.*//g" /root/.barracuda.cnf
       sed -i "/^$/d" /root/.barracuda.cnf
     fi
     _SSH_FORCE_REINSTALL_TEST=$(grep _SSH_FORCE_REINSTALL /root/.barracuda.cnf)
     if [[ "$_SSH_FORCE_REINSTALL_TEST" =~ "_SSH_FORCE_REINSTALL" ]] ; then
-      sed -i "s/.*_SSH_FORCE_REINSTALL.*//g" /root/.barracuda.cnf
+      sed -i "s/^_SSH_FORCE_REINSTALL.*//g" /root/.barracuda.cnf
       sed -i "/^$/d" /root/.barracuda.cnf
     fi
     _GIT_FORCE_REINSTALL_TEST=$(grep _GIT_FORCE_REINSTALL /root/.barracuda.cnf)
     if [[ "$_GIT_FORCE_REINSTALL_TEST" =~ "_GIT_FORCE_REINSTALL" ]] ; then
-      sed -i "s/.*_GIT_FORCE_REINSTALL.*//g" /root/.barracuda.cnf
+      sed -i "s/^_GIT_FORCE_REINSTALL.*//g" /root/.barracuda.cnf
       sed -i "/^$/d" /root/.barracuda.cnf
     fi
     _FULL_FORCE_REINSTALL_TEST=$(grep _FULL_FORCE_REINSTALL /root/.barracuda.cnf)
     if [[ "$_FULL_FORCE_REINSTALL_TEST" =~ "_FULL_FORCE_REINSTALL" ]] ; then
-      sed -i "s/.*_FULL_FORCE_REINSTALL.*//g" /root/.barracuda.cnf
+      sed -i "s/^_FULL_FORCE_REINSTALL.*//g" /root/.barracuda.cnf
       sed -i "/^$/d" /root/.barracuda.cnf
     fi
     if [ "$_STATUS" = "INIT" ] ; then
@@ -4479,10 +4498,13 @@ upgrade_aegir_master () {
       rm -f -r /var/aegir/.drush/{sys,xts,usr}
       rm -f -r /var/aegir/.drush/{provision,drush_make}
       mkdir -p /var/aegir/.drush/{sys,xts,usr}
-      git clone --branch $_BRANCH_PROVISION git://github.com/omega8cc/provision.git /var/aegir/.drush/sys/provision &> /dev/null
+      git clone --branch $_BRANCH_PRN git://github.com/omega8cc/provision.git /var/aegir/.drush/sys/provision &> /dev/null
       rm -f -r /var/aegir/drush
       cd /var/aegir
       get_dev_ext "drush-$_DRUSH_VERSION.tar.gz"
+      cd /var/aegir/drush/
+      rm -f -r /var/aegir/drush/vendor
+      get_dev_ext "vendor-$_DRUSH_VERSION.tar.gz"
       find /var/aegir/drush -type d -exec chmod 0755 {} \; &> /dev/null
       find /var/aegir/drush -type f -exec chmod 0644 {} \; &> /dev/null
       chmod 755 /var/aegir/drush/drush
@@ -4505,10 +4527,11 @@ upgrade_aegir_master () {
     cd /var/aegir
     cp /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirUpgrade.sh.txt ./
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_AEGIR_XTS_VERSION/$_AEGIR_XTS_VERSION/g" /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"               /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_BRANCH_PROVISION/$_BRANCH_PROVISION/g"   /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_BRANCH_PRN/$_BRANCH_PRN/g"               /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
@@ -4964,11 +4987,12 @@ get_drush_versions () {
   get_dev_ext "Console_Table-1.1.3.tgz"
   msg "INFO: Drush $_DRUSH6_VERSION installation complete"
   rm -f -r /opt/tools/drush/7/*
-#   cd /opt/tools/drush/7/
-#   get_dev_ext "drush-$_DRUSH7_VERSION.tar.gz"
-#   cd /opt/tools/drush/7/drush/lib
-#   get_dev_ext "Console_Table-1.1.6.tgz"
-#   msg "INFO: Drush $_DRUSH7_VERSION installation complete"
+  cd /opt/tools/drush/7/
+  get_dev_ext "drush-$_DRUSH7_VERSION.tar.gz"
+  cd /opt/tools/drush/7/drush/
+  rm -f -r /opt/tools/drush/7/drush/vendor
+  get_dev_ext "vendor-$_DRUSH7_VERSION.tar.gz"
+  msg "INFO: Drush $_DRUSH7_VERSION installation complete"
   find /opt/tools -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tools -type f -exec chmod 0644 {} \; &> /dev/null
   chmod 755 /opt/tools/drush/*/drush/drush
@@ -4979,13 +5003,13 @@ get_drush_versions () {
   fi
   if [ -x "/opt/tools/drush/6/drush/drush" ] ; then
     rm -f /usr/bin/drush6
-    rm -f /usr/bin/drush
     ln -s /opt/tools/drush/6/drush/drush /usr/bin/drush6
-    ln -s /opt/tools/drush/6/drush/drush /usr/bin/drush
   fi
   if [ -x "/opt/tools/drush/7/drush/drush" ] ; then
     rm -f /usr/bin/drush7
+    rm -f /usr/bin/drush
     ln -s /opt/tools/drush/7/drush/drush /usr/bin/drush7
+    ln -s /opt/tools/drush/7/drush/drush /usr/bin/drush
   else
     rm -f /usr/bin/drush7
     if [ -x "/opt/tools/drush/6/drush/drush" ] ; then
@@ -6135,7 +6159,6 @@ else
     _XTRAS_LIST="CHV"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=NO
@@ -6147,7 +6170,6 @@ else
     _XTRAS_LIST="CSF CHV FTP"
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=YES
@@ -6161,7 +6183,6 @@ else
     _XTRAS_LIST=""
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
     _SSH_PORT=22
@@ -6179,7 +6200,6 @@ else
     _XTRAS_LIST=""
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
     _SSH_PORT=22
@@ -6197,7 +6217,6 @@ else
     _XTRAS_LIST=""
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
     _SSH_PORT=22
@@ -6240,7 +6259,7 @@ if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
 fi
 _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
 if [ -z "$_PHP_SV" ] || [ "$_PHP_SV" = "52" ] ; then
-  _PHP_SV=53
+  _PHP_SV=55
 fi
 _PHP_CN="www${_PHP_SV}"
 
@@ -6563,8 +6582,8 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
   fi
 fi
 if [ -e "/var/log/barracuda_log.txt" ] ; then
-  _LEGACY_TEST=`cat /var/log/barracuda_log.txt`
-  if [[ "$_LEGACY_TEST" =~ "BOA-2.3." ]] ; then
+  _SERIES_TEST=`cat /var/log/barracuda_log.txt`
+  if [[ "$_SERIES_TEST" =~ "BOA-2.3." ]] ; then
     if [[ "$_INSTALLER_VERSION" =~ "BOA-2.2." ]] || [[ "$_INSTALLER_VERSION" =~ "BOA-2.1." ]] ; then
       msg "ERROR: Your system has been already upgraded to modern BOA-2.3.x series"
       msg "ERROR: You can not downgrade back to legacy or previous stable BOA version"
@@ -8052,6 +8071,19 @@ fi
 
 
 ###--------------------###
+if [ ! -x "/usr/local/bin/composer" ] || [ ! -L "/usr/bin/composer" ] ; then
+  rm -f /usr/local/bin/composer
+  rm -f /usr/bin/composer
+  rm -f -r /root/.composer
+  mkdir -p /var/opt
+  cd /var/opt
+  curl -sS https://getcomposer.org/installer | php &> /dev/null
+  mv composer.phar /usr/local/bin/composer
+  ln -sf /usr/local/bin/composer /usr/bin/composer
+fi
+
+
+###--------------------###
 if [[ "$_XTRAS_LIST" =~ "BZR" ]] ; then
   if [ "$_REL_VERSION" = "lenny" ] ; then
     _DO_NOTHING=YES
@@ -8687,7 +8719,7 @@ if [ "$_TOMCAT_TO_JETTY" = "YES" ] && [ -e "/etc/init.d/jetty7" ] && [ -e "/etc/
   msg "INFO: Jetty 7 restart in progress - required after migration from Tomcat"
   kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
   mrun "service jetty7 start" &> /dev/null
-  sed -i "s/.*_TOMCAT_TO_JETTY.*//g" /root/.barracuda.cnf
+  sed -i "s/^_TOMCAT_TO_JETTY.*//g" /root/.barracuda.cnf
   sed -i "/^$/d" /root/.barracuda.cnf
   msg "INFO: Tomcat 6 to Jetty 7 migration for Apache Solr 1 completed"
 fi
@@ -8937,23 +8969,24 @@ EOFMYSQL
   cd /var/aegir
   _AEGIR_SCRIPT="AegirSetupM.sh.txt"
   for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f` ; do
-    sed -i "s/EDIT_AEGIR_DB_USER/$_AEGIR_DB_USER/g"        $Files &> /dev/null
-    sed -i "s/EDIT_AEGIR_HOST/$_AEGIR_HOST/g"              $Files &> /dev/null
-    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"        $Files &> /dev/null
-    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files &> /dev/null
-    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files &> /dev/null
-    sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"              $Files &> /dev/null
-    sed -i "s/EDIT_BRANCH_PROVISION/$_BRANCH_PROVISION/g"  $Files &> /dev/null
-    sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"              $Files &> /dev/null
-    sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                  $Files &> /dev/null
-    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files &> /dev/null
-    sed -i "s/EDIT_ESC_APASS/$_ESC_APASS/g"                $Files &> /dev/null
-    sed -i "s/EDIT_LOCAL_NETWORK_IP/$_LOCAL_NETWORK_IP/g"  $Files &> /dev/null
-    sed -i "s/EDIT_MY_OWNIP/$_MY_OWNIP/g"                  $Files &> /dev/null
-    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files &> /dev/null
-    sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"    $Files &> /dev/null
-    sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"  $Files &> /dev/null
-    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files &> /dev/null
+    sed -i "s/EDIT_AEGIR_DB_USER/$_AEGIR_DB_USER/g"         $Files &> /dev/null
+    sed -i "s/EDIT_AEGIR_HOST/$_AEGIR_HOST/g"               $Files &> /dev/null
+    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files &> /dev/null
+    sed -i "s/EDIT_AEGIR_XTS_VERSION/$_AEGIR_XTS_VERSION/g" $Files &> /dev/null
+    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files &> /dev/null
+    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files &> /dev/null
+    sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"               $Files &> /dev/null
+    sed -i "s/EDIT_BRANCH_PRN/$_BRANCH_PRN/g"               $Files &> /dev/null
+    sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               $Files &> /dev/null
+    sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files &> /dev/null
+    sed -i "s/EDIT_ESC_APASS/$_ESC_APASS/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_LOCAL_NETWORK_IP/$_LOCAL_NETWORK_IP/g"   $Files &> /dev/null
+    sed -i "s/EDIT_MY_OWNIP/$_MY_OWNIP/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     $Files &> /dev/null
+    sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     $Files &> /dev/null
+    sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"   $Files &> /dev/null
+    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files &> /dev/null
   done
 
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT ./
@@ -9634,91 +9667,6 @@ else
     mrun "service redis-server restart" &> /dev/null
     st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
     mrun "service nginx stop" &> /dev/null
-    if [ ! -z "$_PHP_SINGLE_INSTALL" ] ; then
-      rm -f /opt/local/bin/php
-      rm -f /usr/local/bin/php
-      if [ "$_PHP_SINGLE_INSTALL" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
-        ln -sf /opt/php55/bin/php /usr/bin/php
-        if [ -e "/etc/init.d/php54-fpm" ] ; then
-          mrun "service php54-fpm stop" &> /dev/null
-          update-rc.d -f php54-fpm remove &> /dev/null
-          rm -f /etc/init.d/php54-fpm
-          if [ -x "/opt/php54/bin/php" ] ; then
-            mv -f /opt/php54/bin/php /var/backups/php54-bin
-          fi
-        fi
-        if [ -e "/etc/init.d/php53-fpm" ] ; then
-          mrun "service php53-fpm stop" &> /dev/null
-          update-rc.d -f php53-fpm remove &> /dev/null
-          rm -f /etc/init.d/php53-fpm
-          if [ -x "/opt/php53/bin/php" ] ; then
-            mv -f /opt/php53/bin/php /var/backups/php53-bin
-          fi
-        fi
-        if [ -e "/etc/init.d/php52-fpm" ] ; then
-          mrun "service php52-fpm stop" &> /dev/null
-          update-rc.d -f php52-fpm remove &> /dev/null
-          rm -f /etc/init.d/php52-fpm
-          if [ -x "/opt/php52/bin/php" ] ; then
-            mv -f /opt/php52/bin/php /var/backups/php52-bin
-          fi
-        fi
-      fi
-      if [ "$_PHP_SINGLE_INSTALL" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
-        ln -sf /opt/php54/bin/php /usr/bin/php
-        if [ -e "/etc/init.d/php55-fpm" ] ; then
-          mrun "service php55-fpm stop" &> /dev/null
-          update-rc.d -f php55-fpm remove &> /dev/null
-          rm -f /etc/init.d/php55-fpm
-          if [ -x "/opt/php55/bin/php" ] ; then
-            mv -f /opt/php55/bin/php /var/backups/php55-bin
-          fi
-        fi
-        if [ -e "/etc/init.d/php53-fpm" ] ; then
-          mrun "service php53-fpm stop" &> /dev/null
-          update-rc.d -f php53-fpm remove &> /dev/null
-          rm -f /etc/init.d/php53-fpm
-          if [ -x "/opt/php53/bin/php" ] ; then
-            mv -f /opt/php53/bin/php /var/backups/php53-bin
-          fi
-        fi
-        if [ -e "/etc/init.d/php52-fpm" ] ; then
-          mrun "service php52-fpm stop" &> /dev/null
-          update-rc.d -f php52-fpm remove &> /dev/null
-          rm -f /etc/init.d/php52-fpm
-          if [ -x "/opt/php52/bin/php" ] ; then
-            mv -f /opt/php52/bin/php /var/backups/php52-bin
-          fi
-        fi
-      fi
-      if [ "$_PHP_SINGLE_INSTALL" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
-        ln -sf /opt/php53/bin/php /usr/bin/php
-        if [ -e "/etc/init.d/php55-fpm" ] ; then
-          mrun "service php55-fpm stop" &> /dev/null
-          update-rc.d -f php55-fpm remove &> /dev/null
-          rm -f /etc/init.d/php55-fpm
-          if [ -x "/opt/php55/bin/php" ] ; then
-            mv -f /opt/php55/bin/php /var/backups/php55-bin
-          fi
-        fi
-        if [ -e "/etc/init.d/php54-fpm" ] ; then
-          mrun "service php54-fpm stop" &> /dev/null
-          update-rc.d -f php54-fpm remove &> /dev/null
-          rm -f /etc/init.d/php54-fpm
-          if [ -x "/opt/php54/bin/php" ] ; then
-            mv -f /opt/php54/bin/php /var/backups/php54-bin
-          fi
-        fi
-        if [ -e "/etc/init.d/php52-fpm" ] ; then
-          mrun "service php52-fpm stop" &> /dev/null
-          update-rc.d -f php52-fpm remove &> /dev/null
-          rm -f /etc/init.d/php52-fpm
-          if [ -x "/opt/php52/bin/php" ] ; then
-            mv -f /opt/php52/bin/php /var/backups/php52-bin
-          fi
-        fi
-      fi
-    fi
     if [ -e "/etc/init.d/php55-fpm" ] ; then
       st_runner "update-rc.d php55-fpm defaults" &> /dev/null
       mrun "service php55-fpm stop" &> /dev/null

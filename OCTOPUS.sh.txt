@@ -78,11 +78,11 @@ _CLIENT_CORES=8
 ### _PHP_FPM_VERSION=5.3
 ### _PHP_FPM_VERSION=5.2
 ###
-### Note that 5.3 will be set automatically
+### Note that 5.5 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_FPM_VERSION=5.3
+_PHP_FPM_VERSION=5.5
 
 
 ###----------------------------------------###
@@ -99,11 +99,11 @@ _PHP_FPM_VERSION=5.3
 ### _PHP_CLI_VERSION=5.4
 ### _PHP_CLI_VERSION=5.3
 ###
-### Note that 5.3 will be set automatically
+### Note that 5.5 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_CLI_VERSION=5.3
+_PHP_CLI_VERSION=5.5
 
 
 ###----------------------------------------###
@@ -122,6 +122,8 @@ _PHP_CLI_VERSION=5.3
 ### control which platforms will be installed,
 ### using the symbols listed below.
 ###
+### D8B ----------- Drupal 8-beta
+### D8D ----------- Drupal 8-dev
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
 ### AGV ----------- aGov
@@ -223,19 +225,6 @@ _DEBUG_MODE=NO
 ### _MY_OWNIP=123.45.67.89
 ###
 _MY_OWNIP=""
-
-
-###----------------------------------------###
-### AEGIR BARRACUDA VERSION                ###
-###----------------------------------------###
-###
-### By default latest release version will
-### be installed. Please never use HEAD (dev)
-### version on any production server.
-### The HEAD can be occasionally broken
-### and should be used **only** for testing!
-###
-_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
@@ -674,21 +663,24 @@ _RESERVED_RAM=0
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.9-dev
-_BRANCH_BOA=master
-_BRANCH_PROVISION=2.3.x-dev
+_AEGIR_VERSION=HEAD
+_AEGIR_XTS_VERSION=BOA-2.4.0
+_BRANCH_BOA=2.4.x-dev
+_BRANCH_PRN=2.4.x-dev
+_INSTALLER_VERSION=BOA-2.4.0-dev
 
 ###
 ### Variables
 ###
-_DRUSH_VERSION=mini-6-30-10-2014
+_D8_DEV_COMMIT=8x_b963477999fd
+_DRUSH_VERSION=mini-7-22-12-2014
 _NOW=`date +%y%m%d-%H%M`
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
 _REDIS_M_VERSION=mod-14-12-2014
 _SMALLCORE6=6.34.1
 _SMALLCORE7=7.34.1
-_SMALLCORE8=8.0-alpha4
+_SMALLCORE8=8.0.0-beta4
 _SPINNER=YES
 _T_BUILD=HEAD
 _TODAY=`date +%y%m%d`
@@ -712,9 +704,9 @@ _COMMERCE1=1.32
 _COMMERCE2=2.20
 _COMMONS2=2.21
 _COMMONS3=3.20
-_DRUPAL_EDGE_8="8.0-dev-$_TODAY-edge"
+_D8_DEV_LABEL="8-dev-$_TODAY"
 _DRUPAL7="drupal-$_SMALLCORE7"
-_DRUPAL8="8.0-dev-120915"
+_DRUPAL8="drupal-$_SMALLCORE8"
 _ERPAL=2.2
 _GUARDR=2.5
 _OPENACADEMY=1.1
@@ -881,7 +873,7 @@ tune_fpm_config () {
   fi
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "$_PHP_SV" ] ; then
-    _PHP_SV=53
+    _PHP_SV=55
   fi
   if [ -e "/opt/php55/etc/pool.d/${_USER}.conf" ] ; then
     _PHP_OLD_SV=55
@@ -1131,15 +1123,36 @@ octopus_cnf () {
       _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
       if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_FPM_VERSION" = "5.2" ]; then
         if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
-          _PHP_FPM_VERSION=5.3
+          if [ -x "/opt/php54/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.4
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.3
+          fi
         elif [ "$_PHP_FPM_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
-          _PHP_FPM_VERSION=5.3
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.5
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.3
+          fi
         elif [ "$_PHP_FPM_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
-          _PHP_FPM_VERSION=5.3
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.5
+          elif [ -x "/opt/php54/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.4
+          fi
         elif [ "$_PHP_FPM_VERSION" = "5.2" ] ; then
-          _PHP_FPM_VERSION=5.3
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.5
+          elif [ -x "/opt/php54/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.4
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.3
+          fi
         fi
-        sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
+        echo $_PHP_FPM_VERSION > /data/disk/${_USER}/log/fpm.txt
+        echo $_PHP_FPM_VERSION > /data/disk/${_USER}/static/control/fpm.info
+        chown ${_USER}.ftp:users /data/disk/${_USER}/static/control/fpm.info
       fi
     else
       if [ -e "/data/disk/$_USER/log/fpm.txt" ] && [ "$_LD_DOM" = "YES" ] ; then
@@ -1147,15 +1160,33 @@ octopus_cnf () {
         _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
         if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_FPM_VERSION" = "5.2" ]; then
           if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
-            _PHP_FPM_VERSION=5.3
+            if [ -x "/opt/php54/bin/php" ] ; then
+              _PHP_FPM_VERSION=5.4
+            elif [ -x "/opt/php53/bin/php" ] ; then
+              _PHP_FPM_VERSION=5.3
+            fi
           elif [ "$_PHP_FPM_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
-            _PHP_FPM_VERSION=5.3
+            if [ -x "/opt/php55/bin/php" ] ; then
+              _PHP_FPM_VERSION=5.5
+            elif [ -x "/opt/php53/bin/php" ] ; then
+              _PHP_FPM_VERSION=5.3
+            fi
           elif [ "$_PHP_FPM_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
-            _PHP_FPM_VERSION=5.3
-          elif [ "$_PHP_FPM_VERSION" = "5.2" ] && [ ! -x "/opt/php52/bin/php" ] ; then
-            _PHP_FPM_VERSION=5.3
+            if [ -x "/opt/php55/bin/php" ] ; then
+              _PHP_FPM_VERSION=5.5
+            elif [ -x "/opt/php54/bin/php" ] ; then
+              _PHP_FPM_VERSION=5.4
+            fi
+          elif [ "$_PHP_FPM_VERSION" = "5.2" ] ; then
+            if [ -x "/opt/php55/bin/php" ] ; then
+              _PHP_FPM_VERSION=5.5
+            elif [ -x "/opt/php54/bin/php" ] ; then
+              _PHP_FPM_VERSION=5.4
+            elif [ -x "/opt/php53/bin/php" ] ; then
+              _PHP_FPM_VERSION=5.3
+            fi
           fi
-          sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
+          sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
         fi
       fi
     fi
@@ -1164,15 +1195,36 @@ octopus_cnf () {
       _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
       if [ "$_PHP_CLI_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.2" ]; then
         if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
-          _PHP_CLI_VERSION=5.3
+          if [ -x "/opt/php54/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.4
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.3
+          fi
         elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
-          _PHP_CLI_VERSION=5.3
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.5
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.3
+          fi
         elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
-          _PHP_CLI_VERSION=5.3
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.5
+          elif [ -x "/opt/php54/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.4
+          fi
         elif [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
-          _PHP_CLI_VERSION=5.3
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.5
+          elif [ -x "/opt/php54/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.4
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.3
+          fi
         fi
-        sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
+        echo $_PHP_CLI_VERSION > /data/disk/${_USER}/log/cli.txt
+        echo $_PHP_CLI_VERSION > /data/disk/${_USER}/static/control/cli.info
+        chown ${_USER}.ftp:users /data/disk/${_USER}/static/control/cli.info
       fi
     else
       if [ -e "/data/disk/$_USER/log/cli.txt" ] && [ "$_LD_DOM" = "YES" ] ; then
@@ -1180,34 +1232,52 @@ octopus_cnf () {
         _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
         if [ "$_PHP_CLI_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.2" ]; then
           if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
-            _PHP_CLI_VERSION=5.3
+            if [ -x "/opt/php54/bin/php" ] ; then
+              _PHP_CLI_VERSION=5.4
+            elif [ -x "/opt/php53/bin/php" ] ; then
+              _PHP_CLI_VERSION=5.3
+            fi
           elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
-            _PHP_CLI_VERSION=5.3
+            if [ -x "/opt/php55/bin/php" ] ; then
+              _PHP_CLI_VERSION=5.5
+            elif [ -x "/opt/php53/bin/php" ] ; then
+              _PHP_CLI_VERSION=5.3
+            fi
           elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
-            _PHP_CLI_VERSION=5.3
-          elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ ! -x "/opt/php52/bin/php" ] ; then
-            _PHP_CLI_VERSION=5.3
+            if [ -x "/opt/php55/bin/php" ] ; then
+              _PHP_CLI_VERSION=5.5
+            elif [ -x "/opt/php54/bin/php" ] ; then
+              _PHP_CLI_VERSION=5.4
+            fi
+          elif [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
+            if [ -x "/opt/php55/bin/php" ] ; then
+              _PHP_CLI_VERSION=5.5
+            elif [ -x "/opt/php54/bin/php" ] ; then
+              _PHP_CLI_VERSION=5.4
+            elif [ -x "/opt/php53/bin/php" ] ; then
+              _PHP_CLI_VERSION=5.3
+            fi
           fi
-          sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
+          sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
         fi
       fi
     fi
 
     _ALLOW_UNSUPPORTED_TEST=$(grep _ALLOW_UNSUPPORTED /root/.${_USER}.octopus.cnf)
     if [[ "$_ALLOW_UNSUPPORTED_TEST" =~ "_ALLOW_UNSUPPORTED" ]] ; then
-      sed -i "s/.*_ALLOW_UNSUPPORTED.*//g" /root/.${_USER}.octopus.cnf &> /dev/null
+      sed -i "s/^_ALLOW_UNSUPPORTED.*//g" /root/.${_USER}.octopus.cnf &> /dev/null
       sed -i "/^$/d" /root/.${_USER}.octopus.cnf &> /dev/null
     fi
 
     _USE_STOCK_TEST=$(grep _USE_STOCK /root/.${_USER}.octopus.cnf)
     if [[ "$_USE_STOCK_TEST" =~ "_USE_STOCK" ]] ; then
-      sed -i "s/.*_USE_STOCK.*//g" /root/.${_USER}.octopus.cnf &> /dev/null
+      sed -i "s/^_USE_STOCK.*//g" /root/.${_USER}.octopus.cnf &> /dev/null
       sed -i "/^$/d" /root/.${_USER}.octopus.cnf &> /dev/null
     fi
 
     _HTTP_WILDCARD_TEST=$(grep _HTTP_WILDCARD /root/.${_USER}.octopus.cnf)
     if [[ "$_HTTP_WILDCARD_TEST" =~ "_HTTP_WILDCARD" ]] ; then
-      sed -i "s/.*_HTTP_WILDCARD.*//g" /root/.${_USER}.octopus.cnf &> /dev/null
+      sed -i "s/^_HTTP_WILDCARD.*//g" /root/.${_USER}.octopus.cnf &> /dev/null
       sed -i "/^$/d" /root/.${_USER}.octopus.cnf &> /dev/null
     fi
 
@@ -1279,28 +1349,51 @@ octopus_cnf () {
         clean_pid_exit
       fi
     fi
-    if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
-      if [ ! -x "/opt/php55/bin/php" ] && [ -x "/opt/php53/bin/php" ] ; then
-        _PHP_FPM_VERSION=5.3
-        _PHP_CLI_VERSION=5.3
+    if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
+      if [ ! -x "/opt/php54/bin/php" ] ; then
+        if [ -x "/opt/php55/bin/php" ] ; then
+          _PHP_FPM_VERSION=5.5
+          _PHP_CLI_VERSION=5.5
+        elif [ -x "/opt/php53/bin/php" ] ; then
+          _PHP_FPM_VERSION=5.3
+          _PHP_CLI_VERSION=5.3
+        else
+          _PHP_FPM_VERSION=
+          _PHP_CLI_VERSION=
+        fi
       fi
-    elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
-      if [ ! -x "/opt/php54/bin/php" ] && [ -x "/opt/php53/bin/php" ] ; then
-        _PHP_FPM_VERSION=5.3
-        _PHP_CLI_VERSION=5.3
+    elif [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
+      if [ ! -x "/opt/php53/bin/php" ] ; then
+        if [ -x "/opt/php55/bin/php" ] ; then
+          _PHP_FPM_VERSION=5.5
+          _PHP_CLI_VERSION=5.5
+        elif [ -x "/opt/php54/bin/php" ] ; then
+          _PHP_FPM_VERSION=5.4
+          _PHP_CLI_VERSION=5.4
+        else
+          _PHP_FPM_VERSION=
+          _PHP_CLI_VERSION=
+        fi
       fi
     elif [ "$_PHP_FPM_VERSION" = "5.2" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
-      if [ -x "/opt/php53/bin/php" ] ; then
+      if [ -x "/opt/php55/bin/php" ] ; then
+        _PHP_FPM_VERSION=5.5
+        _PHP_CLI_VERSION=5.5
+      elif [ -x "/opt/php54/bin/php" ] ; then
+        _PHP_FPM_VERSION=5.4
+        _PHP_CLI_VERSION=5.4
+      elif [ -x "/opt/php53/bin/php" ] ; then
         _PHP_FPM_VERSION=5.3
         _PHP_CLI_VERSION=5.3
+      else
+        _PHP_FPM_VERSION=
+        _PHP_CLI_VERSION=
       fi
     fi
-    if [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
-      if [ ! -x "/opt/php53/bin/php" ] ; then
-        msg "EXIT: You must specify already installed PHP version"
-        msg "EXIT: in both _PHP_FPM_VERSION and _PHP_CLI_VERSION"
-        clean_pid_exit
-      fi
+    if [ -z "$_PHP_FPM_VERSION" ] || [ -z "$_PHP_CLI_VERSION" ] ; then
+      msg "EXIT: You must specify already installed PHP version"
+      msg "EXIT: in both _PHP_FPM_VERSION and _PHP_CLI_VERSION"
+      clean_pid_exit
     fi
     if [ "$_STATUS" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
@@ -1355,7 +1448,7 @@ sub_force_advanced_nginx_config () {
   if [ -d "$_THIS_NGX_INCL" ] ; then
     _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
     if [ -z "$_PHP_SV" ] ; then
-      _PHP_SV=53
+      _PHP_SV=55
     fi
     if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ] ; then
       sed -i "s/EDIT_USER/${_USER}/g"                                              $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php &> /dev/null
@@ -1509,16 +1602,17 @@ action () {
   for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
   do
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files &> /dev/null
+    sed -i "s/EDIT_AEGIR_XTS_VERSION/$_AEGIR_XTS_VERSION/g" $Files &> /dev/null
     sed -i "s/EDIT_AGOV/$_AGOV/g"                           $Files &> /dev/null
     sed -i "s/EDIT_ALL_DISTRO/$_ALL_DISTRO/g"               $Files &> /dev/null
     sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files &> /dev/null
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files &> /dev/null
     sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files &> /dev/null
     sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"               $Files &> /dev/null
-    sed -i "s/EDIT_BRANCH_PROVISION/$_BRANCH_PROVISION/g"   $Files &> /dev/null
+    sed -i "s/EDIT_BRANCH_CIVI/$_BRANCH_CIVI/g"             $Files &> /dev/null
+    sed -i "s/EDIT_BRANCH_PRN/$_BRANCH_PRN/g"               $Files &> /dev/null
     sed -i "s/EDIT_CIVICRM_M6/$_CIVICRM_M6/g"               $Files &> /dev/null
     sed -i "s/EDIT_CIVICRM_M7/$_CIVICRM_M7/g"               $Files &> /dev/null
-    sed -i "s/EDIT_BRANCH_CIVI/$_BRANCH_CIVI/g"             $Files &> /dev/null
     sed -i "s/EDIT_CLIENT_CORES/$_CLIENT_CORES/g"           $Files &> /dev/null
     sed -i "s/EDIT_CLIENT_EMAIL/$_CLIENT_EMAIL/g"           $Files &> /dev/null
     sed -i "s/EDIT_CLIENT_OPTION/$_CLIENT_OPTION/g"         $Files &> /dev/null
@@ -1527,10 +1621,11 @@ action () {
     sed -i "s/EDIT_COMMERCE2/$_COMMERCE2/g"                 $Files &> /dev/null
     sed -i "s/EDIT_COMMONS2/$_COMMONS2/g"                   $Files &> /dev/null
     sed -i "s/EDIT_COMMONS3/$_COMMONS3/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_D8_DEV_COMMIT/$_D8_DEV_COMMIT/g"         $Files &> /dev/null
+    sed -i "s/EDIT_D8_DEV_LABEL/$_D8_DEV_LABEL/g"           $Files &> /dev/null
     sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               $Files &> /dev/null
     sed -i "s/EDIT_DISTRO/$_DISTRO/g"                       $Files &> /dev/null
     sed -i "s/EDIT_DOMAIN/$_DOMAIN/g"                       $Files &> /dev/null
-    sed -i "s/EDIT_DRUPAL_EDGE_8/$_DRUPAL_EDGE_8/g"         $Files &> /dev/null
     sed -i "s/EDIT_DRUPAL7/$_DRUPAL7/g"                     $Files &> /dev/null
     sed -i "s/EDIT_DRUPAL8/$_DRUPAL8/g"                     $Files &> /dev/null
     sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files &> /dev/null
@@ -1543,7 +1638,6 @@ action () {
     sed -i "s/EDIT_LAST_ALL/$_LAST_ALL/g"                   $Files &> /dev/null
     sed -i "s/EDIT_LAST_HMR/$_LAST_HMR/g"                   $Files &> /dev/null
     sed -i "s/EDIT_LASTNUM/$_LASTNUM/g"                     $Files &> /dev/null
-    sed -i "s/EDIT_LEGACY_RESULT/$_LEGACY_RESULT/g"         $Files &> /dev/null
     sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files &> /dev/null
     sed -i "s/EDIT_MY_OWNIP/$_MY_OWNIP/g"                   $Files &> /dev/null
     sed -i "s/EDIT_NOW/$_NOW/g"                             $Files &> /dev/null
@@ -1568,6 +1662,7 @@ action () {
     sed -i "s/EDIT_RECRUITER/$_RECRUITER/g"                 $Files &> /dev/null
     sed -i "s/EDIT_REDIS_M_VERSION/$_REDIS_M_VERSION/g"     $Files &> /dev/null
     sed -i "s/EDIT_RESTAURANT/$_RESTAURANT/g"               $Files &> /dev/null
+    sed -i "s/EDIT_SERIES_RESULT/$_SERIES_RESULT/g"         $Files &> /dev/null
     sed -i "s/EDIT_SMALLCORE6/$_SMALLCORE6/g"               $Files &> /dev/null
     sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files &> /dev/null
     sed -i "s/EDIT_SMALLCORE8/$_SMALLCORE8/g"               $Files &> /dev/null
@@ -1803,9 +1898,6 @@ fi
 # Some auto-magic for localhost install
 _THIS_HOST=`uname -n`
 if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
-  _PHP_FPM_VERSION=5.3
-  _PHP_CLI_VERSION=5.3
-  _AEGIR_VERSION=HEAD
   _DEBUG_MODE=NO
   _DNS_SETUP_TEST=NO
   _DOMAIN="$_USER.sub.aegir.local"
@@ -1890,8 +1982,8 @@ else
   fi
 fi
 if [ -e "/var/log/barracuda_log.txt" ] ; then
-  _LEGACY_TEST=`cat /var/log/barracuda_log.txt`
-  if [[ "$_LEGACY_TEST" =~ "BOA-2.3." ]] ; then
+  _SERIES_TEST=`cat /var/log/barracuda_log.txt`
+  if [[ "$_SERIES_TEST" =~ "BOA-2.3." ]] ; then
     if [[ "$_INSTALLER_VERSION" =~ "BOA-2.2." ]] || [[ "$_INSTALLER_VERSION" =~ "BOA-2.1." ]] ; then
       msg "ERROR: Your system has been already upgraded to modern BOA-2.3.x series"
       msg "ERROR: You can not downgrade back to legacy or previous stable BOA version"
@@ -1902,9 +1994,9 @@ if [ -e "/var/log/barracuda_log.txt" ] ; then
   fi
 fi
 if [ -e "/data/disk/${_USER}/log/octopus_log.txt" ] ; then
-  _LEGACY_TEST=`cat /data/disk/${_USER}/log/octopus_log.txt`
-  if [[ "$_LEGACY_TEST" =~ "BOA-2.3." ]] ; then
-    _LEGACY_RESULT=BOA-2.3
+  _SERIES_TEST=`cat /data/disk/${_USER}/log/octopus_log.txt`
+  if [[ "$_SERIES_TEST" =~ "BOA-2.3." ]] || [[ "$_SERIES_TEST" =~ "BOA-2.4." ]] ; then
+    _SERIES_RESULT=OK
   fi
 fi
 check_php_compatibility

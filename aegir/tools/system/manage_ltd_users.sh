@@ -609,15 +609,19 @@ update_php_cli_drush ()
   elif [ "$_LOC_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php53\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
     _L_PHP_CLI=/opt/php53/bin
+  else
+    _L_PHP_CLI=/foo/bar
   fi
-  _DRUSHCMD="$_L_PHP_CLI/php /data/disk/${_OWN}/tools/drush/drush.php"
-  if [ -e "/data/disk/${_OWN}/aegir.sh" ] ; then
-    rm -f /data/disk/${_OWN}/aegir.sh
+  if [ -x "$_L_PHP_CLI/php" ] ; then
+    _DRUSHCMD="$_L_PHP_CLI/php /data/disk/${_OWN}/tools/drush/drush.php"
+    if [ -e "/data/disk/${_OWN}/aegir.sh" ] ; then
+      rm -f /data/disk/${_OWN}/aegir.sh
+    fi
+    touch /data/disk/${_OWN}/aegir.sh
+    echo -e "#!/bin/bash\n\nPATH=.:$_L_PHP_CLI:/usr/sbin:/usr/bin:/sbin:/bin\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch /data/disk/${_OWN}/${_OWN}-task.done" | tee -a /data/disk/${_OWN}/aegir.sh >/dev/null 2>&1
+    chown ${_OWN}:users /data/disk/${_OWN}/aegir.sh &> /dev/null
+    chmod 0700 /data/disk/${_OWN}/aegir.sh &> /dev/null
   fi
-  touch /data/disk/${_OWN}/aegir.sh
-  echo -e "#!/bin/bash\n\nPATH=.:$_L_PHP_CLI:/usr/sbin:/usr/bin:/sbin:/bin\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch /data/disk/${_OWN}/${_OWN}-task.done" | tee -a /data/disk/${_OWN}/aegir.sh >/dev/null 2>&1
-  chown ${_OWN}:users /data/disk/${_OWN}/aegir.sh &> /dev/null
-  chmod 0700 /data/disk/${_OWN}/aegir.sh &> /dev/null
 }
 #
 # Tune FPM workers.
@@ -694,7 +698,7 @@ tune_fpm_workers () {
 disable_newrelic () {
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "$_PHP_SV" ] ; then
-    _PHP_SV=53
+    _PHP_SV=55
   fi
   _THIS_POOL_TPL="/opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf"
   if [ -e "$_THIS_POOL_TPL" ] ; then
@@ -720,7 +724,7 @@ enable_newrelic () {
   else
     _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
     if [ -z "$_PHP_SV" ] ; then
-      _PHP_SV=53
+      _PHP_SV=55
     fi
     _THIS_POOL_TPL="/opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf"
     if [ -e "$_THIS_POOL_TPL" ] ; then
@@ -767,16 +771,42 @@ switch_php()
       _LOC_PHP_CLI_VERSION=${_LOC_PHP_CLI_VERSION//[^0-9.]/}
       _LOC_PHP_CLI_VERSION=`echo -n $_LOC_PHP_CLI_VERSION | tr -d "\n"`
       if [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.4" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.3" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.2" ]; then
-        if [ "$_LOC_PHP_CLI_VERSION" = "5.2" ]; then
-          _LOC_PHP_CLI_VERSION=5.3
+        if [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
+          if [ -x "/opt/php54/bin/php" ] ; then
+            _LOC_PHP_CLI_VERSION=5.4
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _LOC_PHP_CLI_VERSION=5.3
+          fi
+        elif [ "$_LOC_PHP_CLI_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _LOC_PHP_CLI_VERSION=5.5
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _LOC_PHP_CLI_VERSION=5.3
+          fi
+        elif [ "$_LOC_PHP_CLI_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _LOC_PHP_CLI_VERSION=5.5
+          elif [ -x "/opt/php54/bin/php" ] ; then
+            _LOC_PHP_CLI_VERSION=5.4
+          fi
+        elif [ "$_LOC_PHP_CLI_VERSION" = "5.2" ] ; then
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _LOC_PHP_CLI_VERSION=5.5
+          elif [ -x "/opt/php54/bin/php" ] ; then
+            _LOC_PHP_CLI_VERSION=5.4
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _LOC_PHP_CLI_VERSION=5.3
+          fi
         fi
         if [ "$_LOC_PHP_CLI_VERSION" != "$_PHP_CLI_VERSION" ] ; then
           _PHP_CLI_UPDATE=YES
           update_php_cli_drush
-          update_php_cli_local_ini
-          if [ -e "$_L_PHP_CLI" ] ; then
-            sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_LOC_PHP_CLI_VERSION/g" /root/.${_OWN}.octopus.cnf &> /dev/null
+          if [ -x "$_L_PHP_CLI/php" ] ; then
+            update_php_cli_local_ini
+            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_LOC_PHP_CLI_VERSION/g" /root/.${_OWN}.octopus.cnf &> /dev/null
             echo $_LOC_PHP_CLI_VERSION > /data/disk/${_OWN}/log/cli.txt
+            echo $_LOC_PHP_CLI_VERSION > /data/disk/${_OWN}/static/control/cli.info
+            chown ${_OWN}.ftp:users /data/disk/${_OWN}/static/control/cli.info
           fi
         fi
       fi
@@ -787,15 +817,33 @@ switch_php()
       _LOC_PHP_FPM_VERSION=`echo -n $_LOC_PHP_FPM_VERSION | tr -d "\n"`
       if [ "$_LOC_PHP_FPM_VERSION" = "5.5" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.4" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.3" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.2" ]; then
         if [ "$_LOC_PHP_FPM_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
-          _LOC_PHP_FPM_VERSION=5.3
+          if [ -x "/opt/php54/bin/php" ] ; then
+            _LOC_PHP_FPM_VERSION=5.4
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _LOC_PHP_FPM_VERSION=5.3
+          fi
         elif [ "$_LOC_PHP_FPM_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
-          _LOC_PHP_FPM_VERSION=5.3
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _LOC_PHP_FPM_VERSION=5.5
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _LOC_PHP_FPM_VERSION=5.3
+          fi
         elif [ "$_LOC_PHP_FPM_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
-          _LOC_PHP_FPM_VERSION=5.3
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _LOC_PHP_FPM_VERSION=5.5
+          elif [ -x "/opt/php54/bin/php" ] ; then
+            _LOC_PHP_FPM_VERSION=5.4
+          fi
         elif [ "$_LOC_PHP_FPM_VERSION" = "5.2" ] ; then
-          _LOC_PHP_FPM_VERSION=5.3
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _LOC_PHP_FPM_VERSION=5.5
+          elif [ -x "/opt/php54/bin/php" ] ; then
+            _LOC_PHP_FPM_VERSION=5.4
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _LOC_PHP_FPM_VERSION=5.3
+          fi
         fi
-        if [ "$_LOC_PHP_FPM_VERSION" != "$_PHP_FPM_VERSION" ] ; then
+        if [ ! -z "$_LOC_PHP_FPM_VERSION" ] && [ "$_LOC_PHP_FPM_VERSION" != "$_PHP_FPM_VERSION" ] ; then
           tune_fpm_workers
           _LIM_FPM="$_L_PHP_FPM_WORKERS"
           if [ "$_LIM_FPM" -lt "24" ] ; then
@@ -816,12 +864,14 @@ switch_php()
               _CHILD_MAX_FPM="$_PHP_FPM_WORKERS"
             fi
           fi
-          sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_LOC_PHP_FPM_VERSION/g" /root/.${_OWN}.octopus.cnf &> /dev/null
+          sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_LOC_PHP_FPM_VERSION/g" /root/.${_OWN}.octopus.cnf &> /dev/null
           echo $_LOC_PHP_FPM_VERSION > /data/disk/${_OWN}/log/fpm.txt
+          echo $_LOC_PHP_FPM_VERSION > /data/disk/${_OWN}/static/control/fpm.info
+          chown ${_OWN}.ftp:users /data/disk/${_OWN}/static/control/fpm.info
           _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
           _PHP_SV=${_LOC_PHP_FPM_VERSION//[^0-9]/}
           if [ -z "$_PHP_SV" ] ; then
-            _PHP_SV=53
+            _PHP_SV=55
           fi
           rm -f /opt/php*/etc/pool.d/${_OWN}.conf
           cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf
@@ -875,11 +925,13 @@ manage_site_drush_alias_mirror () {
     fi
   done
 
+  rm -f /home/${_OWN}.ftp/.drush/hm.alias.drushrc.php
+
   for Alias in `find $User/.drush/*.alias.drushrc.php -maxdepth 1 -type f | sort`
   do
     AliasName=`echo "$Alias" | cut -d'/' -f6 | awk '{ print $1}'`
     AliasName=`echo "$AliasName" | sed "s/.alias.drushrc.php//g" | awk '{ print $1}'`
-    if [[ "$AliasName" =~ (^)"platform_" ]] || [[ "$AliasName" =~ (^)"server_" ]] || [[ "$AliasName" =~ (^)"hostmaster" ]] ; then
+    if [ "$AliasName" = "hm" ] || [[ "$AliasName" =~ (^)"platform_" ]] || [[ "$AliasName" =~ (^)"server_" ]] || [[ "$AliasName" =~ (^)"hostmaster" ]] ; then
       _IS_SITE=NO
     else
       _THIS_SITE_NAME="$AliasName"
@@ -921,10 +973,11 @@ do
     echo "_OWN is == $_OWN == at manage_own"
     rm -f /data/disk/${_OWN}/*.php* &> /dev/null
     chmod 0440 /data/disk/${_OWN}/.drush/*.php &> /dev/null
+    chmod 0400 /data/disk/${_OWN}/.drush/drushrc.php &> /dev/null
+    chmod 0400 /data/disk/${_OWN}/.drush/hm.alias.drushrc.php &> /dev/null
     chmod 0400 /data/disk/${_OWN}/.drush/hostmaster*.php &> /dev/null
     chmod 0400 /data/disk/${_OWN}/.drush/platform_*.php &> /dev/null
     chmod 0400 /data/disk/${_OWN}/.drush/server_*.php &> /dev/null
-    chmod 0400 /data/disk/${_OWN}/.drush/drushrc.php &> /dev/null
     chmod 0710 /data/disk/${_OWN}/.drush &> /dev/null
     find /data/disk/${_OWN}/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
     find /data/disk/${_OWN}/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
@@ -1065,10 +1118,11 @@ else
   fi
   chmod 0600 /var/log/lsh/*
   chmod 0440 /var/aegir/.drush/*.php &> /dev/null
-  chmod 0400 /var/aegir/.drush/server_*.php &> /dev/null
-  chmod 0400 /var/aegir/.drush/platform_*.php &> /dev/null
-  chmod 0400 /var/aegir/.drush/hostmaster*.php &> /dev/null
   chmod 0400 /var/aegir/.drush/drushrc.php &> /dev/null
+  chmod 0400 /var/aegir/.drush/hm.alias.drushrc.php &> /dev/null
+  chmod 0400 /var/aegir/.drush/hostmaster*.php &> /dev/null
+  chmod 0400 /var/aegir/.drush/platform_*.php &> /dev/null
+  chmod 0400 /var/aegir/.drush/server_*.php &> /dev/null
   chmod 0710 /var/aegir/.drush &> /dev/null
   find /var/aegir/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
   find /var/aegir/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null

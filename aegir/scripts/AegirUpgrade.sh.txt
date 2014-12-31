@@ -35,10 +35,11 @@
 ###----------------------------------------###
 
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
+_AEGIR_XTS_VERSION=EDIT_AEGIR_XTS_VERSION
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _BRANCH_BOA=EDIT_BRANCH_BOA
-_BRANCH_PROVISION=EDIT_BRANCH_PROVISION
+_BRANCH_PRN=EDIT_BRANCH_PRN
 _DEBUG_MODE=EDIT_DEBUG_MODE
 _DOMAIN=EDIT_DOMAIN
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
@@ -170,7 +171,7 @@ extract_archive () {
 #
 get_dev_ext () {
   if [ ! -z $1 ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_XTS_VERSION/$1"
     extract_archive "$1"
   fi
 }
@@ -202,12 +203,15 @@ hostmaster_mv_up () {
 }
 #
 hostmaster_dr_up () {
-  msg "INFO: Downloading drush..."
+  msg "INFO: Downloading drush $_DRUSH_VERSION..."
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
   cd $_ROOT
   mv -f drush $_ROOT/backups/system/drush-pre-$_DISTRO-$_NOW &> /dev/null
   get_dev_ext "drush-$_DRUSH_VERSION.tar.gz"
+  cd $_ROOT/drush/
+  rm -f -r $_ROOT/drush/vendor
+  get_dev_ext "vendor-$_DRUSH_VERSION.tar.gz"
   find $_ROOT/drush -type d -exec chmod 0755 {} \; &> /dev/null
   find $_ROOT/drush -type f -exec chmod 0644 {} \; &> /dev/null
   chmod 755 $_ROOT/drush/drush
@@ -239,7 +243,7 @@ hostmaster_go_up () {
       rm -f -r $_ROOT/.drush/{sys,xts,usr}
       rm -f -r $_ROOT/.drush/{provision,drush_make}
       mkdir -p $_ROOT/.drush/{sys,xts,usr}
-      git clone --branch $_BRANCH_PROVISION git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision    &> /dev/null
+      git clone --branch $_BRANCH_PRN git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision          &> /dev/null
       git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/xts/provision_cdn       &> /dev/null
       git clone --branch 7.x-1.x-dev git://github.com/omega8cc/drupalgeddon.git $_ROOT/.drush/usr/drupalgeddon     &> /dev/null
       git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/usr/drush_ecl               &> /dev/null

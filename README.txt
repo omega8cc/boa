@@ -172,6 +172,10 @@ NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
 
 Octopus can install the platforms listed below:
 
+ @ Drupal 8.0.0
+
+ Drupal 8.0.0-b4 -------------- https://drupal.org/drupal-8.0
+
  @ Drupal 7.34.1
 
  aGov 1.6 --------------------- https://drupal.org/project/agov

@@ -47,7 +47,8 @@ _COMMERCE1=EDIT_COMMERCE1
 _COMMERCE2=EDIT_COMMERCE2
 _COMMONS2=EDIT_COMMONS2
 _COMMONS3=EDIT_COMMONS3
-_DRUPAL_EDGE_8=EDIT_DRUPAL_EDGE_8
+_D8_DEV_COMMIT=EDIT_D8_DEV_COMMIT
+_D8_DEV_LABEL=EDIT_D8_DEV_LABEL
 _DRUPAL7=EDIT_DRUPAL7
 _DRUPAL7D="EDIT_DRUPAL7-dev"
 _DRUPAL7P="EDIT_DRUPAL7-prod"
@@ -79,12 +80,13 @@ _UBERCART7=EDIT_UBERCART7
 #
 _ADM_EMAIL="EDIT_MY_EMAIL"
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
+_AEGIR_XTS_VERSION=EDIT_AEGIR_XTS_VERSION
 _ALL_DISTRO=EDIT_ALL_DISTRO
 _AUTOPILOT=EDIT_AUTOPILOT
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _BRANCH_BOA=EDIT_BRANCH_BOA
-_BRANCH_PROVISION=EDIT_BRANCH_PROVISION
+_BRANCH_PRN=EDIT_BRANCH_PRN
 _CLIENT_CORES=EDIT_CLIENT_CORES
 _CLIENT_EMAIL="EDIT_CLIENT_EMAIL"
 _CLIENT_OPTION=EDIT_CLIENT_OPTION
@@ -99,7 +101,7 @@ _HOT_SAUCE=EDIT_HOT_SAUCE
 _LAST_ALL=EDIT_LAST_ALL
 _LAST_HMR=EDIT_LAST_HMR
 _LASTNUM=EDIT_LASTNUM
-_LEGACY_RESULT=EDIT_LEGACY_RESULT
+_SERIES_RESULT=EDIT_SERIES_RESULT
 _MY_OWNIP=EDIT_MY_OWNIP
 _NOW=EDIT_NOW
 _O_CONTRIB_UP=EDIT_O_CONTRIB_UP
@@ -257,7 +259,7 @@ get_dev_contrib () {
 # Download and extract from dev.
 get_dev_ext () {
   if [ ! -z $1 ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_XTS_VERSION/$1"
     extract_archive "$1"
   fi
 }
@@ -1138,7 +1140,7 @@ else
         mkdir -p $_ROOT/.drush/{sys,xts,usr}
         rm -f -r $_ROOT/.drush/provision
         rm -f -r $_ROOT/.drush/sys/provision
-        git clone --branch $_BRANCH_PROVISION git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision &> /dev/null
+        git clone --branch $_BRANCH_PRN git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision &> /dev/null
       fi
       rm -f -r $_ROOT/.drush/drush_make
       rm -f -r $_ROOT/.drush/sys/drush_make
@@ -1692,14 +1694,14 @@ msg "$_STATUS A: Creating ftp symlinks"
       fi
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_DRUPAL8" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_DRUPAL8
+  if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_SMALLCORE8/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_SMALLCORE8" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/drupal-$_SMALLCORE8/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_SMALLCORE8
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8
+  if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_D8_DEV_LABEL/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_D8_DEV_LABEL" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/drupal-$_D8_DEV_LABEL/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_D8_DEV_LABEL
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/erpal-$_ERPAL-$_SMALLCORE7/sites" ] ; then

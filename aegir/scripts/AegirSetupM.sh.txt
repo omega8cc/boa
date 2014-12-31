@@ -35,10 +35,11 @@
 ###----------------------------------------###
 
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
+_AEGIR_XTS_VERSION=EDIT_AEGIR_XTS_VERSION
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _BRANCH_BOA=EDIT_BRANCH_BOA
-_BRANCH_PROVISION=EDIT_BRANCH_PROVISION
+_BRANCH_PRN=EDIT_BRANCH_PRN
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _LOCAL_NETWORK_IP=EDIT_LOCAL_NETWORK_IP
 _MY_OWNIP=EDIT_MY_OWNIP
@@ -167,7 +168,7 @@ extract_archive () {
 # Download and extract from dev.
 get_dev_ext () {
   if [ ! -z $1 ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_XTS_VERSION/$1"
     extract_archive "$1"
   fi
 }
@@ -189,6 +190,9 @@ fi
 msg "INFO: Installing drush in $_ROOT"
 cd $_ROOT
 get_dev_ext "drush-$_DRUSH_VERSION.tar.gz"
+cd $_ROOT/drush/
+rm -f -r $_ROOT/drush/vendor
+get_dev_ext "vendor-$_DRUSH_VERSION.tar.gz"
 find $_ROOT/drush -type d -exec chmod 0755 {} \; &> /dev/null
 find $_ROOT/drush -type f -exec chmod 0644 {} \; &> /dev/null
 chmod 755 $_ROOT/drush/drush
@@ -217,7 +221,7 @@ else
     rm -f -r $_ROOT/.drush/{sys,xts,usr}
     rm -f -r $_ROOT/.drush/{provision,drush_make}
     mkdir -p $_ROOT/.drush/{sys,xts,usr}
-    git clone --branch $_BRANCH_PROVISION git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision    &> /dev/null
+    git clone --branch $_BRANCH_PRN git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision          &> /dev/null
     git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/xts/provision_cdn       &> /dev/null
     git clone --branch 7.x-1.x-dev git://github.com/omega8cc/drupalgeddon.git $_ROOT/.drush/usr/drupalgeddon     &> /dev/null
     git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/usr/drush_ecl               &> /dev/null
