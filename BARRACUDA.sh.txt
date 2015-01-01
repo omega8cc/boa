@@ -5932,6 +5932,66 @@ fix_cnf_postfix () {
   fi
 }
 #
+# Fix init.d to disable not used PHP-FPM versions
+php_single_initd_cleanup () {
+  if [ ! -z "$_PHP_SINGLE_INSTALL" ] ; then
+    if [ "$_PHP_SINGLE_INSTALL" = "5.5" ] ; then
+      if [ -e "/etc/init.d/php54-fpm" ] ; then
+        update-rc.d -f php54-fpm remove &> /dev/null
+        mv -f /etc/init.d/php54-fpm /var/backups/initd-php54-fpm
+        _FPM_INITD_CLEANUP=YES
+      fi
+      if [ -e "/etc/init.d/php53-fpm" ] ; then
+        update-rc.d -f php53-fpm remove &> /dev/null
+        mv -f /etc/init.d/php53-fpm /var/backups/initd-php53-fpm
+        _FPM_INITD_CLEANUP=YES
+      fi
+      if [ -e "/etc/init.d/php52-fpm" ] ; then
+        update-rc.d -f php52-fpm remove &> /dev/null
+        mv -f /etc/init.d/php52-fpm /var/backups/initd-php52-fpm
+        _FPM_INITD_CLEANUP=YES
+      fi
+    fi
+    elif [ "$_PHP_SINGLE_INSTALL" = "5.4" ] ; then
+      if [ -e "/etc/init.d/php55-fpm" ] ; then
+        update-rc.d -f php55-fpm remove &> /dev/null
+        mv -f /etc/init.d/php55-fpm /var/backups/initd-php55-fpm
+        _FPM_INITD_CLEANUP=YES
+      fi
+      if [ -e "/etc/init.d/php53-fpm" ] ; then
+        update-rc.d -f php53-fpm remove &> /dev/null
+        mv -f /etc/init.d/php53-fpm /var/backups/initd-php53-fpm
+        _FPM_INITD_CLEANUP=YES
+      fi
+      if [ -e "/etc/init.d/php52-fpm" ] ; then
+        update-rc.d -f php52-fpm remove &> /dev/null
+        mv -f /etc/init.d/php52-fpm /var/backups/initd-php52-fpm
+        _FPM_INITD_CLEANUP=YES
+      fi
+    fi
+    elif [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
+      if [ -e "/etc/init.d/php55-fpm" ] ; then
+        update-rc.d -f php55-fpm remove &> /dev/null
+        mv -f /etc/init.d/php55-fpm /var/backups/initd-php55-fpm
+        _FPM_INITD_CLEANUP=YES
+      fi
+      if [ -e "/etc/init.d/php54-fpm" ] ; then
+        update-rc.d -f php54-fpm remove &> /dev/null
+        mv -f /etc/init.d/php54-fpm /var/backups/initd-php54-fpm
+        _FPM_INITD_CLEANUP=YES
+      fi
+      if [ -e "/etc/init.d/php52-fpm" ] ; then
+        update-rc.d -f php52-fpm remove &> /dev/null
+        mv -f /etc/init.d/php52-fpm /var/backups/initd-php52-fpm
+        _FPM_INITD_CLEANUP=YES
+      fi
+    fi
+    if [ "$_FPM_INITD_CLEANUP" = "YES" ] ; then
+      killall php-fpm &> /dev/null
+    fi
+  fi
+}
+#
 # Final cleanup.
 finale () {
   ###--------------------###
@@ -6028,6 +6088,7 @@ finale () {
   killall -9 memcached     &> /dev/null
   chmod 0750 /sbin/audispd &> /dev/null
   service auditd restart   &> /dev/null
+  php_single_initd_cleanup
   if [ ! -e "/root/.upstart.cnf" ] ; then
     service cron start     &> /dev/null
   fi
