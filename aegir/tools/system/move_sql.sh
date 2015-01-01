@@ -20,4 +20,4 @@ else
   touch /var/xdrago/log/last-mysql-restart-done
   exit 0
 fi
-###EOF2014###
+###EOF2015###

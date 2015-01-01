@@ -169,4 +169,4 @@ if [ -z "$_IF_CDP" ] && [ ! -e "/root/.no.swap.clear.cnf" ] ; then
   swapon -a
 fi
 exit 0
-###EOF2014###
+###EOF2015###
