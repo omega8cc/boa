@@ -5951,7 +5951,6 @@ php_single_initd_cleanup () {
         mv -f /etc/init.d/php52-fpm /var/backups/initd-php52-fpm
         _FPM_INITD_CLEANUP=YES
       fi
-    fi
     elif [ "$_PHP_SINGLE_INSTALL" = "5.4" ] ; then
       if [ -e "/etc/init.d/php55-fpm" ] ; then
         update-rc.d -f php55-fpm remove &> /dev/null
@@ -5968,7 +5967,6 @@ php_single_initd_cleanup () {
         mv -f /etc/init.d/php52-fpm /var/backups/initd-php52-fpm
         _FPM_INITD_CLEANUP=YES
       fi
-    fi
     elif [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
       if [ -e "/etc/init.d/php55-fpm" ] ; then
         update-rc.d -f php55-fpm remove &> /dev/null
