@@ -3247,7 +3247,6 @@ barracuda_cnf () {
       msg "Legacy PHP-CLI 5.2 is used on this system"
     else
       _PHP_CLI_LEGACY_FREE=YES
-      msg "Legacy PHP-CLI 5.2 is not used on this system"
     fi
 
     _PHP_FPM_LEGACY_IF_USED_A=`grep "5\.2" /data/disk/*/log/fpm.txt 2>&1`
@@ -3258,7 +3257,6 @@ barracuda_cnf () {
       msg "Legacy PHP-FPM 5.2 is used on this system"
     else
       _PHP_FPM_LEGACY_FREE=YES
-      msg "Legacy PHP-FPM 5.2 is not used on this system"
     fi
 
     if [ "$_PHP_CLI_LEGACY_FREE" = "YES" ] && [ "$_PHP_FPM_LEGACY_FREE" = "YES" ] ; then
