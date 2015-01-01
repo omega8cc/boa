@@ -3300,9 +3300,11 @@ barracuda_cnf () {
       if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
         _CLSTR_PHP_MULTI_INSTALL="$_PHP_MULTI_INSTALL"
       fi
-      sed -i "s/^_PHP_MULTI_INSTALL.*//g" /root/.barracuda.cnf
-      sed -i "/^$/d" /root/.barracuda.cnf
-      _PHP_MULTI_INSTALL=""
+      if [ ! -e "/root/.debug.cnf" ] ; then
+        sed -i "s/^_PHP_MULTI_INSTALL.*//g" /root/.barracuda.cnf
+        sed -i "/^$/d" /root/.barracuda.cnf
+        _PHP_MULTI_INSTALL=""
+      fi
     fi
 
     if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "_PHP_MULTI_INSTALL" ]] && [ ! -z "$_PHP_MULTI_INSTALL" ] ; then
@@ -3323,7 +3325,9 @@ barracuda_cnf () {
               _PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL
             fi
           else
-            _PHP_MULTI_INSTALL="5.5 5.4 5.3"
+            if [ ! -e "/root/.debug.cnf" ] ; then
+              _PHP_MULTI_INSTALL="5.5 5.4 5.3"
+            fi
           fi
         fi
       fi
