@@ -3,10 +3,12 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
+master=master
 stable=BOA-2.3.8
+cluster=BOA-2.3.8
 legacy=BOA-2.2.9
-devel=2.4.x-dev
 branch=2.3.x-dev
+devel=2.4.x-dev
 rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
 varPath=/var/backups
 barName=BARRACUDA.sh.txt
@@ -337,28 +339,22 @@ up_action ()
       mv -f /var/xdrago/monitor/*.log $varPath/old-firewall-monitor/$_NOW/ &> /dev/null
       rm -f /var/xdrago/monitor/* &> /dev/null
     fi
-    if [ "$cmmand" = "up-vanilla" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=7.x-2.x/g" $varPath/$barName
+    if [ "$cmmand" = "up-head" ] ; then
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"   $varPath/$barName
     elif [ "$cmmand" = "up-modern" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"  $varPath/$barName
-    elif [ "$cmmand" = "up-head" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"  $varPath/$barName
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"   $varPath/$barName
     else
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$branch/g" $varPath/$barName
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$branch/g"  $varPath/$barName
       sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=$branch/g" $varPath/$barName
     fi
-    if [ "$cmmand" = "up-cluster" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g" $varPath/$barName
-    elif [ "$cmmand" = "up-head" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"  $varPath/$barName
-    elif [ "$cmmand" = "up-stable" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$branch/g" $varPath/$barName
+    if [ "$cmmand" = "up-head" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$master/g"  $varPath/$barName
     elif [ "$cmmand" = "up-modern" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$devel/g"  $varPath/$barName
-    elif [ "$cmmand" = "up-vanilla" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$devel/g"  $varPath/$barName
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$devel/g"   $varPath/$barName
+    elif [ "$cmmand" = "up-cluster" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$cluster/g" $varPath/$barName
     else
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$branch/g" $varPath/$barName
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$branch/g"  $varPath/$barName
     fi
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"              $varPath/$barName
     sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"  $varPath/$barName
@@ -451,12 +447,12 @@ up_action ()
         if [ "$silent" = "system" ] ; then
           touch /var/run/boa_system_wait.pid
           if [ "$cmmand" = "up-legacy" ] ; then
-            sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"   $varPath/$barName
-            sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"   $barCnf
+            sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"     $varPath/$barName
+            sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"     $barCnf
           else
             if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] && [ -d "/var/aegir/config/server_master/nginx/subdir.d" ] ; then
-              sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" $varPath/$barName
-              sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" $barCnf
+              sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"   $varPath/$barName
+              sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"   $barCnf
             else
               if [[ "$_CHECK_HOST" =~ "v55.lon." ]] || [[ "$_CHECK_HOST" =~ ".lon1.h" ]] ; then
                 sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" $varPath/$barName
@@ -467,17 +463,17 @@ up_action ()
               fi
             fi
           fi
-          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"        $barCnf
+          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"   $barCnf
         elif [ "$silent" = "log" ] ; then
-          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"      $barCnf
-          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"        $barCnf
+          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" $barCnf
+          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"   $barCnf
         fi
         bash $varPath/$barName >$_UP_LOG 2>&1
         check_report
       else
-        sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"        $barCnf
-        sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"          $barCnf
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                            $barCnf
+        sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" $barCnf
+        sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"   $barCnf
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                     $barCnf
         bash $varPath/$barName
       fi
     fi
@@ -659,18 +655,16 @@ proceed ()
   check_wrapper
   set_pin_priority
   up_start
-  if [ "$cmmand" = "up-stable" ] ; then
-    _SCRIPT_URL="http://files.aegir.cc/versions/stable/txt/$barName"
-  elif [ "$cmmand" = "up-head" ] ; then
-    _SCRIPT_URL="$rgUrl/master/$barName"
-  elif [ "$cmmand" = "up-cluster" ] ; then
-    _SCRIPT_URL="$rgUrl/cluster/$barName"
+  if [ "$cmmand" = "up-head" ] ; then
+    _SCRIPT_URL="$rgUrl/$master/$barName"
   elif [ "$cmmand" = "up-modern" ] ; then
     _SCRIPT_URL="$rgUrl/$devel/$barName"
+  elif [ "$cmmand" = "up-cluster" ] ; then
+    _SCRIPT_URL="$rgUrl/$cluster/$barName"
+  elif [ "$cmmand" = "up-stable" ] ; then
+    _SCRIPT_URL="$rgUrl/$stable/$barName"
   elif [ "$cmmand" = "up-legacy" ] ; then
-    _SCRIPT_URL="http://files.aegir.cc/versions/legacy/txt/$barName"
-  elif [ "$cmmand" = "up-vanilla" ] ; then
-    _SCRIPT_URL="$rgUrl/$devel/$barName"
+    _SCRIPT_URL="$rgUrl/$legacy/$barName"
   else
     echo
     echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log} {newrelickey|php-55|php-54|php-53|php-all|nodns}"

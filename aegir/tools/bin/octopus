@@ -3,10 +3,12 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
+master=master
 stable=BOA-2.3.8
+cluster=BOA-2.3.8
 legacy=BOA-2.2.9
-devel=2.4.x-dev
 branch=2.3.x-dev
+devel=2.4.x-dev
 rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
 varPath=/var/backups
 barName=BARRACUDA.sh.txt
@@ -225,26 +227,20 @@ up_one ()
 {
   if [ -e "$varPath/$octName" ] ; then
     cp -af $varPath/$octName $varPath/$octName-$octUsr
-    if [ "$cmmand" = "up-vanilla" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=7.x-2.x/g"   $varPath/$octName-$octUsr
-    elif [ "$cmmand" = "up-modern" ] ; then
+    if [ "$cmmand" = "up-head" ] ; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"    $varPath/$octName-$octUsr
-    elif [ "$cmmand" = "up-head" ] ; then
+    elif [ "$cmmand" = "up-modern" ] ; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"    $varPath/$octName-$octUsr
     else
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$branch/g"   $varPath/$octName-$octUsr
-      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=$branch/g"   $varPath/$octName-$octUsr
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=$branch/g" $varPath/$octName-$octUsr
     fi
-    if [ "$cmmand" = "up-cluster" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"   $varPath/$octName-$octUsr
-    elif [ "$cmmand" = "up-head" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"    $varPath/$octName-$octUsr
-    elif [ "$cmmand" = "up-stable" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$branch/g"   $varPath/$octName-$octUsr
+    if [ "$cmmand" = "up-head" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$master/g"   $varPath/$octName-$octUsr
     elif [ "$cmmand" = "up-modern" ] ; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$devel/g"    $varPath/$octName-$octUsr
-    elif [ "$cmmand" = "up-vanilla" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$devel/g"    $varPath/$octName-$octUsr
+    elif [ "$cmmand" = "up-cluster" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$cluster/g"  $varPath/$octName-$octUsr
     else
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$branch/g"   $varPath/$octName-$octUsr
     fi
@@ -295,15 +291,7 @@ up_one ()
           rm -f -r $User/.drush/{sys,xts,usr}
           rm -f -r $User/.drush/{provision,drush_make}
           mkdir -p $User/.drush/{sys,xts,usr}
-          if [ "$cmmand" = "up-modern" ] ; then
-            git clone --branch $devel git://github.com/omega8cc/provision.git $User/.drush/sys/provision &> /dev/null
-          elif [ "$cmmand" = "up-vanilla" ] ; then
-            git clone --branch 7.x-2.x git://github.com/omega8cc/provision.git $User/.drush/sys/provision &> /dev/null
-          else
-            cd $User/.drush/sys
-            curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-HEAD.tar.gz" | tar -xzf -
-            get_dev_ext "drush_make.tar.gz"
-          fi
+          git clone --branch $devel git://github.com/omega8cc/provision.git $User/.drush/sys/provision &> /dev/null
           chown -R $octUsr:users $User/.drush/sys
         fi
       fi
@@ -544,34 +532,10 @@ up_finish ()
   exit 0
 }
 
-up_stable ()
-{
-  up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/$octName" -o $octName
-  if [ "$second" = "all" ] ; then
-    up_action_all
-  else
-    up_action_one
-  fi
-  up_finish
-}
-
 up_head ()
 {
   up_start
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/master/$octName" -o $octName
-  if [ "$second" = "all" ] ; then
-    up_action_all
-  else
-    up_action_one
-  fi
-  up_finish
-}
-
-up_cluster ()
-{
-  up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/cluster/$octName" -o $octName
   if [ "$second" = "all" ] ; then
     up_action_all
   else
@@ -592,10 +556,10 @@ up_modern ()
   up_finish
 }
 
-up_legacy ()
+up_cluster ()
 {
   up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$legacy/$octName" -o $octName
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/$octName" -o $octName
   if [ "$second" = "all" ] ; then
     up_action_all
   else
@@ -604,10 +568,22 @@ up_legacy ()
   up_finish
 }
 
-up_vanilla ()
+up_stable ()
 {
   up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/master/$octName" -o $octName
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/$octName" -o $octName
+  if [ "$second" = "all" ] ; then
+    up_action_all
+  else
+    up_action_one
+  fi
+  up_finish
+}
+
+up_legacy ()
+{
+  up_start
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$legacy/$octName" -o $octName
   if [ "$second" = "all" ] ; then
     up_action_all
   else
@@ -693,15 +669,6 @@ check_root ()
 }
 
 case "$1" in
-  up-stable) cmmand="$1"
-             second="$2"
-             cmmode="$3"
-             silent="$4"
-             check_root
-             check_dns_curl
-             check_wrapper
-             up_stable
-  ;;
   up-head)   cmmand="$1"
              second="$2"
              cmmode="$3"
@@ -710,15 +677,6 @@ case "$1" in
              check_dns_curl
              check_wrapper
              up_head
-  ;;
-  up-cluster) cmmand="$1"
-             second="$2"
-             cmmode="$3"
-             silent="$4"
-             check_root
-             check_dns_curl
-             check_wrapper
-             up_cluster
   ;;
   up-modern) cmmand="$1"
              second="$2"
@@ -729,6 +687,24 @@ case "$1" in
              check_wrapper
              up_modern
   ;;
+  up-cluster) cmmand="$1"
+             second="$2"
+             cmmode="$3"
+             silent="$4"
+             check_root
+             check_dns_curl
+             check_wrapper
+             up_cluster
+  ;;
+  up-stable) cmmand="$1"
+             second="$2"
+             cmmode="$3"
+             silent="$4"
+             check_root
+             check_dns_curl
+             check_wrapper
+             up_stable
+  ;;
   up-legacy) cmmand="$1"
              second="$2"
              cmmode="$3"
@@ -737,15 +713,6 @@ case "$1" in
              check_dns_curl
              check_wrapper
              up_legacy
-  ;;
-  up-vanilla) cmmand="$1"
-             second="$2"
-             cmmode="$3"
-             silent="$4"
-             check_root
-             check_dns_curl
-             check_wrapper
-             up_vanilla
   ;;
   *)         echo
              echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {all|o1} {aegir|platforms|both}"
