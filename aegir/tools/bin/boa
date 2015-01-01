@@ -3,6 +3,16 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
+stable=BOA-2.3.8
+legacy=BOA-2.2.9
+devel=2.4.x-dev
+branch=2.3.x-dev
+rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
+varPath=/var/backups
+barName=BARRACUDA.sh.txt
+octName=OCTOPUS.sh.txt
+barCnf=/root/.barracuda.cnf
+
 _TODAY=`date +%y%m%d`
 _NOW=`date +%y%m%d-%H%M`
 _L_VMFAMILY=XEN
@@ -47,37 +57,37 @@ check_id () {
 }
 
 fix_dns_settings () {
-  mkdir -p /var/backups
-  rm -f /var/backups/resolv.conf.tmp
+  mkdir -p $varPath
+  rm -f $varPath/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ] ; then
-    cp -a /etc/resolv.conf /var/backups/resolv.conf.tmp
+    cp -a /etc/resolv.conf $varPath/resolv.conf.tmp
   fi
-  if [ ! -e "/var/backups/resolv.conf.vanilla" ] ; then
-    for Pre in `ls -la /var/backups/resolv.conf.pre-*` ; do
+  if [ ! -e "$varPath/resolv.conf.vanilla" ] ; then
+    for Pre in `ls -la $varPath/resolv.conf.pre-*` ; do
       if [ -e "$Pre" ] && [ -f "$Pre" ] && [ ! -L "$Pre" ] ; then
-        cp -a $Pre /var/backups/resolv.conf.vanilla
+        cp -a $Pre $varPath/resolv.conf.vanilla
       fi
     done
   fi
-  if [ ! -e "/var/backups/resolv.conf.vanilla" ] ; then
+  if [ ! -e "$varPath/resolv.conf.vanilla" ] ; then
     rm -f /etc/resolv.conf
-    cp -a /var/backups/resolv.conf.tmp /etc/resolv.conf
-    cp -a /var/backups/resolv.conf.tmp /var/backups/resolv.conf.vanilla
+    cp -a $varPath/resolv.conf.tmp /etc/resolv.conf
+    cp -a $varPath/resolv.conf.tmp $varPath/resolv.conf.vanilla
   fi
-  sed -i "/^$/d" /var/backups/resolv.conf.vanilla &> /dev/null
+  sed -i "/^$/d" $varPath/resolv.conf.vanilla &> /dev/null
   rm -f /etc/resolv.conf
   echo "nameserver 8.8.8.8" > /etc/resolv.conf
   echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] && [ -e "/var/backups/resolv.conf.vanilla" ] ; then
+  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] && [ -e "$varPath/resolv.conf.vanilla" ] ; then
     touch /root/.use.local.nameservers.cnf
     rm -f /etc/resolv.conf
-    cp -a /var/backups/resolv.conf.vanilla /etc/resolv.conf
+    cp -a $varPath/resolv.conf.vanilla /etc/resolv.conf
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   else
     rm -f /etc/resolv.conf
-    cp -a /var/backups/resolv.conf.tmp /etc/resolv.conf
+    cp -a $varPath/resolv.conf.tmp /etc/resolv.conf
   fi
   if [ -e "/etc/pdnsd.conf" ] ; then
     if [ -e "/root/.local.dns.IP.list" ] ; then
@@ -132,126 +142,125 @@ check_dns_settings () {
 
 octopus_install ()
 {
-  if [ -e "/var/backups/OCTOPUS.sh.txt" ] ; then
+  if [ -e "$varPath/$octName" ] ; then
     if [ -z "$user" ] ; then
       user="o1"
     fi
-    cp -af /var/backups/OCTOPUS.sh.txt /var/backups/OCTOPUS.sh.$user
     _CHECK_HOST=`uname -n`
     if [ "$cmmand" = "in-octopus" ] ; then
       if [ ! -z "$copt" ] ; then
-        sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=$copt/g" /var/backups/OCTOPUS.sh.$user
+        sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=$copt/g" $varPath/$octName
       fi
       if [ ! -z "$csub" ] ; then
-        sed -i "s/^_CLIENT_SUBSCR=.*/_CLIENT_SUBSCR=$csub/g" /var/backups/OCTOPUS.sh.$user
+        sed -i "s/^_CLIENT_SUBSCR=.*/_CLIENT_SUBSCR=$csub/g" $varPath/$octName
       fi
       if [ ! -z "$ccor" ] ; then
-        sed -i "s/^_CLIENT_CORES=.*/_CLIENT_CORES=$ccor/g"   /var/backups/OCTOPUS.sh.$user
+        sed -i "s/^_CLIENT_CORES=.*/_CLIENT_CORES=$ccor/g"   $varPath/$octName
       fi
     else
-      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"        /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"        $varPath/$octName
     fi
-    sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"$email\"/g"  /var/backups/OCTOPUS.sh.$user
-    sed -i "s/^_USER=.*/_USER=$user/g"                       /var/backups/OCTOPUS.sh.$user
+    sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"$email\"/g"  $varPath/$octName
+    sed -i "s/^_USER=.*/_USER=$user/g"                       $varPath/$octName
     if [ "$mode" = "mini" ] ; then
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             $varPath/$octName
     elif [ "$mode" = "max" ] ; then
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.$user
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             $varPath/$octName
+      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   $varPath/$octName
     elif [ "$mode" = "none" ] ; then
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.$user
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             $varPath/$octName
+      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  $varPath/$octName
     else
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   $varPath/$octName
     fi
     if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
-      if [ -e "/root/.debug.cnf" ] ; then
-        _DO_NOTHING=YES
-      else
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               /var/backups/OCTOPUS.sh.$user
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g" /var/backups/OCTOPUS.sh.$user
+      if [ ! -e "/root/.debug.cnf" ] ; then
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               $varPath/$octName
+        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g" $varPath/$octName
       fi
     fi
     if [ "$cmmand" = "in-vanilla" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=7.x-2.x/g"   /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=7.x-2.x/g" $varPath/$octName
     elif [ "$cmmand" = "in-modern" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=2.4.x-dev/g" /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"  $varPath/$octName
+    elif [ "$cmmand" = "in-head" ] ; then
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"  $varPath/$octName
     else
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$branch/g" $varPath/$octName
     fi
     if [ "$cmmand" = "in-cluster" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"   /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g" $varPath/$octName
     elif [ "$cmmand" = "in-head" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"    /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"  $varPath/$octName
     elif [ "$cmmand" = "in-stable" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$branch/g" $varPath/$octName
     elif [ "$cmmand" = "in-modern" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g" /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$devel/g"  $varPath/$octName
     elif [ "$cmmand" = "in-vanilla" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g" /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$devel/g"  $varPath/$octName
     else
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$branch/g" $varPath/$octName
     fi
 
     if [ ! -z "$dbip" ] && [ "$cmmand" = "in-cluster" ] ; then
       if [ "$kind" = "mstr" ] || [ "$kind" = "wbhd" ] ; then
-        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"       /var/backups/OCTOPUS.sh.$user
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               /var/backups/OCTOPUS.sh.$user
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g" /var/backups/OCTOPUS.sh.$user
+        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"       $varPath/$octName
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               $varPath/$octName
+        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g" $varPath/$octName
       fi
     fi
 
-    bash /var/backups/OCTOPUS.sh.$user
+    bash $varPath/$octName
     sed -i "s/^127.0.1.1.*//g" /etc/hosts
     sed -i "/^$/d" /etc/hosts
   else
-    echo "OCTOPUS.sh.txt installer not available - try again"
+    echo "$octName installer not available - try again"
     clean_pid_exit
   fi
 }
 
 barracuda_install ()
 {
-if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
-  sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"          /var/backups/BARRACUDA.sh.txt
-  sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               /var/backups/BARRACUDA.sh.txt
+if [ -e "$varPath/$barName" ] ; then
+  sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"          $varPath/$barName
+  sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               $varPath/$barName
   sed -i "s/^127.0.1.1.*//g" /etc/hosts
   if [ "$kind" = "local" ] ; then
-    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g"         /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g"         $varPath/$barName
     echo "127.0.1.1 aegir.local o1.sub.aegir.local o2.sub.aegir.local o3.sub.aegir.local" >> /etc/hosts
     ### Legacy variables
-    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=YES/g"   /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"          /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=YES/g"   $varPath/$barName
+    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"          $varPath/$barName
   elif [ "$kind" = "public" ] && [ ! -z "$fqdn" ] ; then
-    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        $varPath/$barName
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   $varPath/$barName
     ### Legacy variables
-    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"    /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"         /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"    $varPath/$barName
+    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"         $varPath/$barName
   elif [ "$kind" = "mstr" ] && [ ! -z "$fqdn" ] && [ ! -z "$dbip" ] && [ ! -z "$loip" ] && [ "$cmmand" = "in-cluster" ] ; then
     touch /root/.mstr.clstr.cnf
-    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=MSTR/g"          /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=MSTR/g"          $varPath/$barName
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   $varPath/$barName
+    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     $varPath/$barName
+    sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             $varPath/$barName
   elif [ "$kind" = "dbhd" ] && [ ! -z "$fqdn" ] && [ ! -z "$dbip" ] && [ ! -z "$loip" ] && [ "$cmmand" = "in-cluster" ] ; then
     touch /root/.dbhd.clstr.cnf
-    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=DBHD/g"          /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=DBHD/g"          $varPath/$barName
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   $varPath/$barName
+    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     $varPath/$barName
+    sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             $varPath/$barName
   elif [ "$kind" = "wbhd" ] && [ ! -z "$fqdn" ] && [ ! -z "$dbip" ] && [ ! -z "$loip" ] && [ "$cmmand" = "in-cluster" ] ; then
     touch /root/.wbhd.clstr.cnf
-    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=WBHD/g"          /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=WBHD/g"          $varPath/$barName
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   $varPath/$barName
+    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     $varPath/$barName
+    sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             $varPath/$barName
   else
-    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        $varPath/$barName
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   $varPath/$barName
     ### Legacy variables
-    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"    /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"         /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"    $varPath/$barName
+    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"         $varPath/$barName
   fi
 
   if [ ! -z "$fqdn" ] && [ ! -z "$loip" ] && [ "$cmmand" = "in-cluster" ] ; then
@@ -265,61 +274,63 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
 
   if [ ! -z "$rkey" ] ; then
     if [ "$rkey" = "php-55" ] ; then
-      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.5/g" /var/backups/BARRACUDA.sh.txt
-      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.5/g"   /var/backups/BARRACUDA.sh.txt
-      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       /var/backups/OCTOPUS.sh.txt
-      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       /var/backups/OCTOPUS.sh.txt
+      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.5/g" $varPath/$barName
+      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.5/g"   $varPath/$barName
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       $varPath/$octName
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       $varPath/$octName
     elif [ "$rkey" = "php-54" ] ; then
-      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.4/g" /var/backups/BARRACUDA.sh.txt
-      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.4/g"   /var/backups/BARRACUDA.sh.txt
-      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g"       /var/backups/OCTOPUS.sh.txt
-      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g"       /var/backups/OCTOPUS.sh.txt
+      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.4/g" $varPath/$barName
+      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.4/g"   $varPath/$barName
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g"       $varPath/$octName
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g"       $varPath/$octName
     elif [ "$rkey" = "php-53" ] ; then
-      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.3/g" /var/backups/BARRACUDA.sh.txt
-      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.3/g"   /var/backups/BARRACUDA.sh.txt
-      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g"       /var/backups/OCTOPUS.sh.txt
-      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"       /var/backups/OCTOPUS.sh.txt
+      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.3/g" $varPath/$barName
+      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.3/g"   $varPath/$barName
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g"       $varPath/$octName
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"       $varPath/$octName
     elif [ "$rkey" = "php-all" ] ; then
-      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"    /var/backups/BARRACUDA.sh.txt
-      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"5.5 5.4 5.3\"/g" /var/backups/BARRACUDA.sh.txt
-      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       /var/backups/BARRACUDA.sh.txt
-      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       /var/backups/BARRACUDA.sh.txt
-      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       /var/backups/OCTOPUS.sh.txt
-      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       /var/backups/OCTOPUS.sh.txt
+      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"    $varPath/$barName
+      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"5.5 5.4 5.3\"/g" $varPath/$barName
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       $varPath/$barName
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       $varPath/$barName
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       $varPath/$octName
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       $varPath/$octName
     elif [ "$rkey" = "nodns" ] ; then
-      sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"        /var/backups/BARRACUDA.sh.txt
-      sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"          /var/backups/BARRACUDA.sh.txt
-      sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"          /var/backups/OCTOPUS.sh.txt
+      sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"        $varPath/$barName
+      sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"          $varPath/$barName
+      sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"          $varPath/$octName
     else
-      sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g"       /var/backups/BARRACUDA.sh.txt
+      sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g"       $varPath/$barName
     fi
   fi
 
   if [ "$cmmand" = "in-vanilla" ] ; then
-    sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=7.x-2.x/g"   /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=7.x-2.x/g" $varPath/$barName
   elif [ "$cmmand" = "in-modern" ] ; then
-    sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=2.4.x-dev/g" /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"  $varPath/$barName
+  elif [ "$cmmand" = "in-head" ] ; then
+    sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"  $varPath/$barName
   else
-    sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$branch/g" $varPath/$barName
   fi
   if [ "$cmmand" = "in-cluster" ] ; then
-    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"   /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g" $varPath/$barName
   elif [ "$cmmand" = "in-head" ] ; then
-    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"    /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"  $varPath/$barName
   elif [ "$cmmand" = "in-stable" ] ; then
-    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$branch/g" $varPath/$barName
   elif [ "$cmmand" = "in-modern" ] ; then
-    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g" /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$devel/g"  $varPath/$barName
   elif [ "$cmmand" = "in-vanilla" ] ; then
-    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g" /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$devel/g"  $varPath/$barName
   else
-    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$branch/g" $varPath/$barName
   fi
-  if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
-    bash /var/backups/BARRACUDA.sh.txt
+  if [ -e "$varPath/$barName" ] ; then
+    bash $varPath/$barName
   fi
 else
-  echo "BARRACUDA.sh.txt installer not available - try again"
+  echo "$barName installer not available - try again"
   clean_pid_exit
 fi
 }
@@ -335,10 +346,10 @@ init_start ()
   else
     touch /var/run/boa_run.pid
     touch /var/run/boa_wait.pid
-    mkdir -p /var/backups
-    cd /var/backups
-    rm -f /var/backups/BARRACUDA.sh*
-    rm -f /var/backups/OCTOPUS.sh*
+    mkdir -p $varPath
+    cd $varPath
+    rm -f $varPath/BARRACUDA.sh*
+    rm -f $varPath/OCTOPUS.sh*
   fi
 }
 
@@ -361,7 +372,7 @@ set_pin_priority ()
     elif [ "$_THIS_OS" = "Ubuntu" ] ; then
       curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
     fi
-    rm -f /var/backups/etc-apt-preferences-*
+    rm -f $varPath/etc-apt-preferences-*
   fi
 }
 
@@ -371,18 +382,18 @@ init_finish ()
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/manage_ltd_users.pid
   rm -f /var/run/manage_rvm_users.pid
-  rm -f /var/backups/BARRACUDA.sh*
-  rm -f /var/backups/OCTOPUS.sh*
+  rm -f $varPath/BARRACUDA.sh*
+  rm -f $varPath/OCTOPUS.sh*
   rm -f /root/BOA.sh*
   echo
   echo BOA $cmmand completed
   echo Bye
   echo
   if [ "$_NEEDS_UPDATE" = "YES" ] ; then
-    rm -f /var/backups/BOA.sh.txt-*
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-$_NOW
-    exec bash /var/backups/BOA.sh.txt-$_NOW &> /dev/null
-    rm -f /var/backups/BOA.sh.txt-$_NOW
+    rm -f $varPath/BOA.sh.txt-*
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o $varPath/BOA.sh.txt-$_NOW
+    exec bash $varPath/BOA.sh.txt-$_NOW &> /dev/null
+    rm -f $varPath/BOA.sh.txt-$_NOW
   fi
   exit 0
 }
@@ -401,29 +412,50 @@ init_setup ()
     fi
     check_id $user
   fi
+
+  if [ ! -z "$rkey" ] ; then
+    if [ "$rkey" = "2.4" ] ; then
+      vn=BOA-2.4.0
+      branch=2.4.x-dev
+    elif [ "$rkey" = "2.3" ] ; then
+      vn=BOA-2.3.8
+      branch=2.3.x-dev
+    elif [ "$rkey" = "2.2" ] ; then
+      vn=BOA-2.2.9
+      branch=2.2.x-legacy
+    else
+      vn=
+    fi
+  fi
+
   init_start
   set_pin_priority
-  if [ "$cmmand" = "in-head" ] ; then
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
-  elif [ "$cmmand" = "in-cluster" ] ; then
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/cluster/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/cluster/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
-  elif [ "$cmmand" = "in-stable" ] ; then
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
-  elif [ "$cmmand" = "in-modern" ] ; then
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.4.x-dev/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.4.x-dev/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
-  elif [ "$cmmand" = "in-vanilla" ] ; then
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.4.x-dev/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.4.x-dev/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
-  elif [ "$cmmand" = "in-legacy" ] ; then
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/legacy/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/legacy/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
-  elif [ "$cmmand" = "in-octopus" ] ; then
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  if [ ! -z "$vn" ] ; then
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$vn/$barName"       -o $varPath/$barName
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$vn/$octName"       -o $varPath/$octName
+  else
+    if [ "$cmmand" = "in-head" ] ; then
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/master/$barName"  -o $varPath/$barName
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/master/$octName"  -o $varPath/$octName
+    elif [ "$cmmand" = "in-cluster" ] ; then
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/$barName" -o $varPath/$barName
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/$octName" -o $varPath/$octName
+    elif [ "$cmmand" = "in-stable" ] ; then
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/$barName" -o $varPath/$barName
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/$octName" -o $varPath/$octName
+    elif [ "$cmmand" = "in-modern" ] ; then
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$devel/$barName"  -o $varPath/$barName
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$devel/$octName"  -o $varPath/$octName
+    elif [ "$cmmand" = "in-vanilla" ] ; then
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$devel/$barName"  -o $varPath/$barName
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$devel/$octName"  -o $varPath/$octName
+    elif [ "$cmmand" = "in-legacy" ] ; then
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$legacy/$barName" -o $varPath/$barName
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$legacy/$octName" -o $varPath/$octName
+    elif [ "$cmmand" = "in-octopus" ] ; then
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/$barName" -o $varPath/$barName
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/$octName" -o $varPath/$octName
+    fi
   fi
   if [ "$cmmand" = "in-octopus" ] ; then
     _OCTOPUS_ONLY=YES
@@ -438,9 +470,9 @@ init_setup ()
 
 check_wrapper ()
 {
-  mkdir -p /var/backups
-  rm -f /var/backups/$(basename "$0")-now-*
-  _THIS_FILE="/var/backups/$(basename "$0")-now-$_NOW"
+  mkdir -p $varPath
+  rm -f $varPath/$(basename "$0")-now-*
+  _THIS_FILE="$varPath/$(basename "$0")-now-$_NOW"
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
   if [ ! -e "$_THIS_FILE" ] ; then
     echo "I can not download required installers from files.aegir.cc at the moment."
@@ -459,8 +491,8 @@ check_wrapper ()
 check_dns_curl ()
 {
   if [ ! -e "/etc/resolv.conf" ] ; then
-    if [ -e "/var/backups/resolv.conf.vanilla" ] ; then
-      cat /var/backups/resolv.conf.vanilla >/etc/resolv.conf
+    if [ -e "$varPath/resolv.conf.vanilla" ] ; then
+      cat $varPath/resolv.conf.vanilla >/etc/resolv.conf
     fi
     echo "nameserver 8.8.8.8" >>/etc/resolv.conf
     echo "nameserver 8.8.4.4" >>/etc/resolv.conf
@@ -610,8 +642,50 @@ case "$1" in
              init_setup
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {in-stable|in-head|in-legacy|in-octopus} {local|public} {fqdn} {email} {o1} {ask|mini|max|none} {newrelickey|php-55|php-54|php-53|php-all|nodns}"
+             echo "Usage: $(basename "$0") {version} {mode} {fqdn} {email} {user} {platforms} {extra}"
              echo
+             cat <<EOF
+
+  Accepted keywords and values in every option:
+
+  {version}
+      in-stable <---- install current BOA stable release
+      in-head <------ install BOA HEAD for testing
+      in-legacy <---- install old stable, not recommended
+      in-octopus <--- install extra Octopus instance
+
+  {mode}
+      public <------- recommended for general use
+      local <-------- experimental
+
+  {fqdn}
+      my.fqdn <------ valid subdomain to use as a hostname
+
+  {email}
+      my@email <----- your valid e-mail address
+
+  {user}
+      o1 <----------- default Octopus system account
+
+  {platforms}
+      ask <---------- say y/n to every prompt in install, default
+      mini <--------- install only basic Drupal platforms w/o prompt
+      max <---------- install all currently supported distros
+      none <--------- do not install platforms, just Aegir
+
+  {extra}
+      license <------ valid new relic license key
+      php-55 <------- single PHP version to install and use
+      php-54 <------- single PHP version to install and use
+      php-53 <------- single PHP version to install and use
+      php-all <------ all PHP versions to install, use 5.5 by default
+      nodns <-------- disable DNS checks on the fly
+      2.2 <---------- legacy BOA version to install, overrides {version}
+      2.3 <---------- legacy BOA version to install, overrides {version}
+
+  See docs/INSTALL.txt for more details.
+
+EOF
              clean_pid_exit
   ;;
 esac

@@ -3,10 +3,20 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
+stable=BOA-2.3.8
+legacy=BOA-2.2.9
+devel=2.4.x-dev
+branch=2.3.x-dev
+rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
+varPath=/var/backups
+barName=BARRACUDA.sh.txt
+octName=OCTOPUS.sh.txt
+barCnf=/root/.barracuda.cnf
+
 _TODAY=`date +%y%m%d`
 _NOW=`date +%y%m%d-%H%M`
 _CHECK_HOST=`uname -n`
-_LOG_DIR="/var/backups/reports/up/$(basename "$0")/$_TODAY"
+_LOG_DIR="$varPath/reports/up/$(basename "$0")/$_TODAY"
 _UP_CONTRIB_PID="$_LOG_DIR/$(basename "$0")-contrib-up.pid"
 _L_VMFAMILY=XEN
 _L_VM_TEST=`uname -a 2>&1`
@@ -22,37 +32,37 @@ clean_pid_exit () {
 }
 
 fix_dns_settings () {
-  mkdir -p /var/backups
-  rm -f /var/backups/resolv.conf.tmp
+  mkdir -p $varPath
+  rm -f $varPath/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ] ; then
-    cp -a /etc/resolv.conf /var/backups/resolv.conf.tmp
+    cp -a /etc/resolv.conf $varPath/resolv.conf.tmp
   fi
-  if [ ! -e "/var/backups/resolv.conf.vanilla" ] ; then
-    for Pre in `ls -la /var/backups/resolv.conf.pre-*` ; do
+  if [ ! -e "$varPath/resolv.conf.vanilla" ] ; then
+    for Pre in `ls -la $varPath/resolv.conf.pre-*` ; do
       if [ -e "$Pre" ] && [ -f "$Pre" ] && [ ! -L "$Pre" ] ; then
-        cp -a $Pre /var/backups/resolv.conf.vanilla
+        cp -a $Pre $varPath/resolv.conf.vanilla
       fi
     done
   fi
-  if [ ! -e "/var/backups/resolv.conf.vanilla" ] ; then
+  if [ ! -e "$varPath/resolv.conf.vanilla" ] ; then
     rm -f /etc/resolv.conf
-    cp -a /var/backups/resolv.conf.tmp /etc/resolv.conf
-    cp -a /var/backups/resolv.conf.tmp /var/backups/resolv.conf.vanilla
+    cp -a $varPath/resolv.conf.tmp /etc/resolv.conf
+    cp -a $varPath/resolv.conf.tmp $varPath/resolv.conf.vanilla
   fi
-  sed -i "/^$/d" /var/backups/resolv.conf.vanilla &> /dev/null
+  sed -i "/^$/d" $varPath/resolv.conf.vanilla &> /dev/null
   rm -f /etc/resolv.conf
   echo "nameserver 8.8.8.8" > /etc/resolv.conf
   echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] && [ -e "/var/backups/resolv.conf.vanilla" ] ; then
+  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] && [ -e "$varPath/resolv.conf.vanilla" ] ; then
     touch /root/.use.local.nameservers.cnf
     rm -f /etc/resolv.conf
-    cp -a /var/backups/resolv.conf.vanilla /etc/resolv.conf
+    cp -a $varPath/resolv.conf.vanilla /etc/resolv.conf
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   else
     rm -f /etc/resolv.conf
-    cp -a /var/backups/resolv.conf.tmp /etc/resolv.conf
+    cp -a $varPath/resolv.conf.tmp /etc/resolv.conf
   fi
   if [ -e "/etc/pdnsd.conf" ] ; then
     if [ -e "/root/.local.dns.IP.list" ] ; then
@@ -134,28 +144,28 @@ get_dev_ext () {
 
 send_report ()
 {
-  if [ -e "/root/.barracuda.cnf" ] ; then
-    source /root/.barracuda.cnf
+  if [ -e "$barCnf" ] ; then
+    source $barCnf
     if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "$_MY_EMAIL" ] ; then
-      cat $_UP_LOG | mail -e -s "REPORT: Successful Octopus upgrade for $_THIS_HM_USER on $_CHECK_HOST at $_NOW" $_MY_EMAIL
-      echo "REPORT: Successful Octopus upgrade for $_THIS_HM_USER on $_CHECK_HOST sent to $_MY_EMAIL"
+      cat $_UP_LOG | mail -e -s "REPORT: Successful Octopus upgrade for $octUsr on $_CHECK_HOST at $_NOW" $_MY_EMAIL
+      echo "REPORT: Successful Octopus upgrade for $octUsr on $_CHECK_HOST sent to $_MY_EMAIL"
     fi
   fi
 }
 
 send_alert ()
 {
-  if [ -e "/root/.barracuda.cnf" ] ; then
-    source /root/.barracuda.cnf
+  if [ -e "$barCnf" ] ; then
+    source $barCnf
     if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "$_MY_EMAIL" ] ; then
-      cat $_UP_LOG | mail -e -s "ALERT: Failed Octopus upgrade for $_THIS_HM_USER on $_CHECK_HOST at $_NOW" $_MY_EMAIL
-      echo "ALERT: Failed Octopus upgrade for $_THIS_HM_USER on $_CHECK_HOST sent to $_MY_EMAIL"
+      cat $_UP_LOG | mail -e -s "ALERT: Failed Octopus upgrade for $octUsr on $_CHECK_HOST at $_NOW" $_MY_EMAIL
+      echo "ALERT: Failed Octopus upgrade for $octUsr on $_CHECK_HOST sent to $_MY_EMAIL"
     fi
   fi
 }
@@ -191,73 +201,75 @@ check_report ()
 up_mode ()
 {
   if [ "$mcmode" = "aegir" ] ; then
-    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-    bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g" $varPath/$octName-$octUsr
+    bash $varPath/$octName-$octUsr
     touch $User/log/up-$_TODAY
   elif [ "$mcmode" = "platforms" ] ; then
-    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-    bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" $varPath/$octName-$octUsr
+    bash $varPath/$octName-$octUsr
     touch $User/log/up-$_TODAY
   elif [ "$mcmode" = "both" ] ; then
-    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" /root/.$_THIS_HM_USER.octopus.cnf
-    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" /root/.$_THIS_HM_USER.octopus.cnf
-    bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" $varPath/$octName-$octUsr
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" $octCnf
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" $varPath/$octName-$octUsr
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" $octCnf
+    bash $varPath/$octName-$octUsr
     touch $User/log/up-$_TODAY
   else
-    bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    bash $varPath/$octName-$octUsr
     touch $User/log/up-$_TODAY
   fi
 }
 
 up_one ()
 {
-  if [ -e "/var/backups/OCTOPUS.sh.txt" ] ; then
-    cp -af /var/backups/OCTOPUS.sh.txt /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+  if [ -e "$varPath/$octName" ] ; then
+    cp -af $varPath/$octName $varPath/$octName-$octUsr
     if [ "$cmmand" = "up-vanilla" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=7.x-2.x/g"   /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=7.x-2.x/g"   $varPath/$octName-$octUsr
     elif [ "$cmmand" = "up-modern" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=2.4.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"    $varPath/$octName-$octUsr
+    elif [ "$cmmand" = "up-head" ] ; then
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"    $varPath/$octName-$octUsr
     else
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$branch/g"   $varPath/$octName-$octUsr
     fi
     if [ "$cmmand" = "up-cluster" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"   /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"   $varPath/$octName-$octUsr
     elif [ "$cmmand" = "up-head" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"    /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=master/g"    $varPath/$octName-$octUsr
     elif [ "$cmmand" = "up-stable" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$branch/g"   $varPath/$octName-$octUsr
     elif [ "$cmmand" = "up-modern" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$devel/g"    $varPath/$octName-$octUsr
     elif [ "$cmmand" = "up-vanilla" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.4.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$devel/g"    $varPath/$octName-$octUsr
     else
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$branch/g"   $varPath/$octName-$octUsr
     fi
-    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-    sed -i "s/^_USER=o1/_USER=$_THIS_HM_USER/g"          /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           $varPath/$octName-$octUsr
+    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" $varPath/$octName-$octUsr
+    sed -i "s/^_USER=o1/_USER=$octUsr/g"                 $varPath/$octName-$octUsr
     if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       if [ -e "/root/.debug.cnf" ] ; then
         _DO_NOTHING=YES
       else
-        sed -i "s/^_STRONG_PASSWORDS=NO/_STRONG_PASSWORDS=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     /root/.$_THIS_HM_USER.octopus.cnf
-        sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               /root/.$_THIS_HM_USER.octopus.cnf
-        sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"     /root/.$_THIS_HM_USER.octopus.cnf
-        sed -i "s/^_STRONG_PASSWORDS=NO/_STRONG_PASSWORDS=YES/g" /root/.$_THIS_HM_USER.octopus.cnf
+        sed -i "s/^_STRONG_PASSWORDS=NO/_STRONG_PASSWORDS=YES/g" $varPath/$octName-$octUsr
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     $varPath/$octName-$octUsr
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     $octCnf
+        sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               $octCnf
+        sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"     $octCnf
+        sed -i "s/^_STRONG_PASSWORDS=NO/_STRONG_PASSWORDS=YES/g" $octCnf
       fi
     fi
     if [ ! -e "$_UP_CONTRIB_PID" ] ; then
-      sed -i "s/^_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-      sed -i "s/^_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g" /root/.$_THIS_HM_USER.octopus.cnf
+      sed -i "s/^_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g" $varPath/$octName-$octUsr
+      sed -i "s/^_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g" $octCnf
     else
-      sed -i "s/^_O_CONTRIB_UP=YES/_O_CONTRIB_UP=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-      sed -i "s/^_O_CONTRIB_UP=YES/_O_CONTRIB_UP=NO/g" /root/.$_THIS_HM_USER.octopus.cnf
+      sed -i "s/^_O_CONTRIB_UP=YES/_O_CONTRIB_UP=NO/g" $varPath/$octName-$octUsr
+      sed -i "s/^_O_CONTRIB_UP=YES/_O_CONTRIB_UP=NO/g" $octCnf
     fi
-    if [ -e "/var/backups/OCTOPUS.sh.$_THIS_HM_USER" ] ; then
+    if [ -e "$varPath/$octName-$octUsr" ] ; then
       if [ -e "$User/.drush/sys/provision" ] ; then
         _IS_OLD=`find $User/.drush/sys/provision/ -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example`
       elif [ -e "$User/.drush/provision" ] ; then
@@ -283,7 +295,7 @@ up_one ()
           rm -f -r $User/.drush/{provision,drush_make}
           mkdir -p $User/.drush/{sys,xts,usr}
           if [ "$cmmand" = "up-modern" ] ; then
-            git clone --branch 2.4.x-dev git://github.com/omega8cc/provision.git $User/.drush/sys/provision &> /dev/null
+            git clone --branch $devel git://github.com/omega8cc/provision.git $User/.drush/sys/provision &> /dev/null
           elif [ "$cmmand" = "up-vanilla" ] ; then
             git clone --branch 7.x-2.x git://github.com/omega8cc/provision.git $User/.drush/sys/provision &> /dev/null
           else
@@ -291,7 +303,7 @@ up_one ()
             curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-HEAD.tar.gz" | tar -xzf -
             get_dev_ext "drush_make.tar.gz"
           fi
-          chown -R $_THIS_HM_USER:users $User/.drush/sys
+          chown -R $octUsr:users $User/.drush/sys
         fi
       fi
       if [ -e "$User/log/cores.txt" ] && [ ! -e "$User/log/CANCELLED" ] ; then
@@ -316,10 +328,10 @@ up_one ()
           cd $User/.drush/sys
           patch -p1 < uberdrupal.patch &> /dev/null
         fi
-        cd /var/backups
+        cd $varPath
       fi
     else
-      echo "OCTOPUS.sh.txt installer not available - try again"
+      echo "$octName installer not available - try again"
       service cron start &> /dev/null
       exit 1
     fi
@@ -347,8 +359,8 @@ count_cpu()
 
 load_control()
 {
-  if [ -e "/root/.barracuda.cnf" ] ; then
-    source /root/.barracuda.cnf
+  if [ -e "$barCnf" ] ; then
+    source $barCnf
     _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
   fi
   if [ -z "$_CPU_MAX_RATIO" ] ; then
@@ -367,14 +379,14 @@ up_action_all ()
     load_control
     if [ -d "$User/config/server_master/nginx/vhost.d" ] && [ -e "$User/log/cores.txt" ] && [ ! -e "$User/log/CANCELLED" ] ; then
       if [ $_O_LOAD -lt $_O_LOAD_MAX ] ; then
-        _THIS_HM_USER=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
+        octUsr=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
         echo load is $_O_LOAD while maxload is $_O_LOAD_MAX
         echo Octopus upgrade for User $User
         n=$((RANDOM%9+2))
         echo Waiting $n seconds...
         sleep $n
         if [ "$silent" = "log" ] ; then
-          _UP_LOG="$_LOG_DIR/$(basename "$0")-up-$_THIS_HM_USER-$_NOW.log"
+          _UP_LOG="$_LOG_DIR/$(basename "$0")-up-$octUsr-$_NOW.log"
           echo
           echo "Preparing the upgrade in silent mode..."
           echo
@@ -388,7 +400,7 @@ up_action_all ()
           echo
           echo "Starting the upgrade in silent mode now..."
           echo
-          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/OCTOPUS.sh.txt &> /dev/null
+          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" $varPath/$octName &> /dev/null
           up_one >>$_UP_LOG 2>&1
           check_report
         else
@@ -397,7 +409,7 @@ up_action_all ()
         n=$((RANDOM%9+2))
         echo Waiting $n seconds...
         sleep $n
-        rm -f /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+        rm -f $varPath/$octName-$octUsr
         echo Done for $User
         if [ ! -e "$_UP_CONTRIB_PID" ] ; then
           touch $_UP_CONTRIB_PID
@@ -419,12 +431,14 @@ up_action_one ()
   load_control
   if [ -d "$User/config/server_master/nginx/vhost.d" ] && [ -e "$User/log/cores.txt" ] && [ ! -e "$User/log/CANCELLED" ] ; then
     if [ $_O_LOAD -lt $_O_LOAD_MAX ] ; then
-      _THIS_HM_USER=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
+      octUsr=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
+      toctName=$octName.$octUsr
+      octCnf=/root/.$octUsr.octopus.cnf
       echo load is $_O_LOAD while maxload is $_O_LOAD_MAX
       echo Octopus upgrade for User $User
       sleep 3
       if [ "$silent" = "log" ] ; then
-        _UP_LOG="$_LOG_DIR/$(basename "$0")-up-$_THIS_HM_USER-$_NOW.log"
+        _UP_LOG="$_LOG_DIR/$(basename "$0")-up-$octUsr-$_NOW.log"
         echo
         echo "Preparing the upgrade in silent mode..."
         echo
@@ -438,14 +452,14 @@ up_action_one ()
         echo
         echo "Starting the upgrade in silent mode now..."
         echo
-        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/OCTOPUS.sh.txt &> /dev/null
+        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" $varPath/$octName &> /dev/null
         up_one >>$_UP_LOG 2>&1
         check_report
       else
         up_one
       fi
       sleep 3
-      rm -f /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      rm -f $varPath/$octName-$octUsr
       echo Done for $User
       if [ ! -e "$_UP_CONTRIB_PID" ] ; then
         touch $_UP_CONTRIB_PID
@@ -471,8 +485,8 @@ up_start ()
     touch /var/run/boa_run.pid
     touch /var/run/boa_wait.pid
     mkdir -p $_LOG_DIR
-    cd /var/backups
-    rm -f /var/backups/OCTOPUS.sh*
+    cd $varPath
+    rm -f $varPath/OCTOPUS.sh*
   fi
   if [ "$cmmode" = "log" ] ; then
     silent="$cmmode"
@@ -510,7 +524,7 @@ up_finish ()
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/manage_ltd_users.pid
   rm -f /var/run/manage_rvm_users.pid
-  rm -f /var/backups/OCTOPUS.sh*
+  rm -f $varPath/OCTOPUS.sh*
   rm -f /root/BOA.sh*
   if [ -e "/opt/local/bin/php" ] || [ -e "/usr/local/bin/php" ] ; then
     rm -f /opt/local/bin/php
@@ -521,10 +535,10 @@ up_finish ()
   echo Bye
   echo
   if [ "$_NEEDS_UPDATE" = "YES" ] ; then
-    rm -f /var/backups/BOA.sh.txt-*
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-$_NOW
-    exec bash /var/backups/BOA.sh.txt-$_NOW &> /dev/null
-    rm -f /var/backups/BOA.sh.txt-$_NOW
+    rm -f $varPath/BOA.sh.txt-*
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o $varPath/BOA.sh.txt-$_NOW
+    exec bash $varPath/BOA.sh.txt-$_NOW &> /dev/null
+    rm -f $varPath/BOA.sh.txt-$_NOW
   fi
   exit 0
 }
@@ -532,7 +546,7 @@ up_finish ()
 up_stable ()
 {
   up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/$octName" -o $octName
   if [ "$second" = "all" ] ; then
     up_action_all
   else
@@ -544,7 +558,7 @@ up_stable ()
 up_head ()
 {
   up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/master/$octName" -o $octName
   if [ "$second" = "all" ] ; then
     up_action_all
   else
@@ -556,7 +570,7 @@ up_head ()
 up_cluster ()
 {
   up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/cluster/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/cluster/$octName" -o $octName
   if [ "$second" = "all" ] ; then
     up_action_all
   else
@@ -568,7 +582,7 @@ up_cluster ()
 up_modern ()
 {
   up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.4.x-dev/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$devel/$octName" -o $octName
   if [ "$second" = "all" ] ; then
     up_action_all
   else
@@ -580,7 +594,7 @@ up_modern ()
 up_legacy ()
 {
   up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/legacy/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$legacy/$octName" -o $octName
   if [ "$second" = "all" ] ; then
     up_action_all
   else
@@ -592,7 +606,7 @@ up_legacy ()
 up_vanilla ()
 {
   up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/master/$octName" -o $octName
   if [ "$second" = "all" ] ; then
     up_action_all
   else
@@ -603,9 +617,9 @@ up_vanilla ()
 
 check_wrapper ()
 {
-  mkdir -p /var/backups
-  rm -f /var/backups/$(basename "$0")-now-*
-  _THIS_FILE="/var/backups/$(basename "$0")-now-$_NOW"
+  mkdir -p $varPath
+  rm -f $varPath/$(basename "$0")-now-*
+  _THIS_FILE="$varPath/$(basename "$0")-now-$_NOW"
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
   if [ ! -e "$_THIS_FILE" ] ; then
     echo "I can not download required installers from files.aegir.cc at the moment."
@@ -624,8 +638,8 @@ check_wrapper ()
 check_dns_curl ()
 {
   if [ ! -e "/etc/resolv.conf" ] ; then
-    if [ -e "/var/backups/resolv.conf.vanilla" ] ; then
-      cat /var/backups/resolv.conf.vanilla >/etc/resolv.conf
+    if [ -e "$varPath/resolv.conf.vanilla" ] ; then
+      cat $varPath/resolv.conf.vanilla >/etc/resolv.conf
     fi
     echo "nameserver 8.8.8.8" >>/etc/resolv.conf
     echo "nameserver 8.8.4.4" >>/etc/resolv.conf
