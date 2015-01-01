@@ -7926,17 +7926,6 @@ switch_php_cli () {
   fi
 }
 
-if [ -d "/usr/include/mysql" ] ; then
-  _THIS_DB_VERSION=`mysql -V 2>&1 | tr -d "\n" | cut -d" " -f6 | awk '{ print $1}' | cut -d"-" -f1 | awk '{ print $1}' | sed "s/[\,']//g"`
-  if [ ! -e "/var/xdrago/log/my_config-$_THIS_DB_VERSION-fixed.log" ] ; then
-    _UP_PHP=YES
-    cd /usr/include/mysql/
-    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/my_config.h.patch &> /dev/null
-    touch /usr/include/mysql/.my_config-$_THIS_DB_VERSION-fixed.log
-    touch /var/xdrago/log/my_config-$_THIS_DB_VERSION-fixed.log
-  fi
-fi
-
 if [[ "$_PHP_MULTI_INSTALL" =~ "5.2" ]] && [ ! -x "/opt/php52/bin/php" ] ; then
   _PHP_VERSION="$_PHP52_VERSION"
   msg "INFO: PHP $_PHP_VERSION will be installed now"
