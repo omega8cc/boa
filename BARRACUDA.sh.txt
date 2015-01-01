@@ -5324,7 +5324,6 @@ install_curl_src () {
   fi
   if [ "$_PHP_BIN_BROKEN" = "YES" ] && [ -z "$_CURL_ALREADY_REBUILT" ] ; then
     _CURL_INSTALL_REQUIRED=YES
-    msg "INFO: Installed cURL version $_CURL_INSTALLED, rebuild forced"
   fi
   if [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     _CURL_INSTALL_REQUIRED=YES
