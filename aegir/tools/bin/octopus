@@ -233,6 +233,7 @@ up_one ()
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"    $varPath/$octName-$octUsr
     else
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$branch/g"   $varPath/$octName-$octUsr
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=$branch/g"   $varPath/$octName-$octUsr
     fi
     if [ "$cmmand" = "up-cluster" ] ; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=cluster/g"   $varPath/$octName-$octUsr
