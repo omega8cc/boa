@@ -369,6 +369,8 @@ up_action_all ()
     if [ -d "$User/config/server_master/nginx/vhost.d" ] && [ -e "$User/log/cores.txt" ] && [ ! -e "$User/log/CANCELLED" ] ; then
       if [ $_O_LOAD -lt $_O_LOAD_MAX ] ; then
         octUsr=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
+        toctName=$octName.$octUsr
+        octCnf=/root/.$octUsr.octopus.cnf
         echo load is $_O_LOAD while maxload is $_O_LOAD_MAX
         echo Octopus upgrade for User $User
         n=$((RANDOM%9+2))
