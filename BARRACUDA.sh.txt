@@ -9449,12 +9449,12 @@ if [[ "$_XTRAS_LIST" =~ "HVM" ]] ; then
           rm -f /var/opt/hhvm.gpg.key*
           cd /var/opt
           wget -q -U iCab http://dl.hhvm.com/conf/hhvm.gpg.key
-          _KEYS_SERVER_TEST=`grep GnuPG hhvm.gpg.key 2> /dev/null`
+          _KEYS_SERVER_TEST=`grep GnuPG /var/opt/hhvm.gpg.key 2> /dev/null`
           sleep 2
         done
-        cat hhvm.gpg.key | apt-key add - &> /dev/null
+        cat /var/opt/hhvm.gpg.key | apt-key add - &> /dev/null
         st_runner "apt-get update -y --force-yes" &> /dev/null
-        st_runner "$_INSTAPP hhvm" 2> /dev/null
+        st_runner "apt-get install hhvm -f -y --force-yes --reinstall" 2> /dev/null
         msg "INFO: HHVM Engine installation completed"
       else
         msg "INFO: HHVM Engine installation skipped"
