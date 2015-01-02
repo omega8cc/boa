@@ -836,6 +836,9 @@ switch_php()
               service php${e}-fpm reload &> /dev/null
             fi
           done
+          ### update nginx configuration
+          sed -i "s/\/var\/run\/${_OWN}.fpm.socket/\/var\/run\/hhvm\/${_OWN}\/hhvm.socket/g" /data/disk/${_OWN}/config/includes/nginx_vhost_common.conf
+          sed -i "s/\/var\/run\/${_OWN}.fpm.socket/\/var\/run\/hhvm\/${_OWN}\/hhvm.socket/g" /data/disk/${_OWN}/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php
           ### start custom hhvm server
           service hhvm.${_OWN} start &> /dev/null
           ### remove fpm control file to avoid confusion
@@ -854,6 +857,9 @@ switch_php()
         rm -f /opt/hhvm/server.${_OWN}.ini
         rm -f -r /var/run/hhvm/${_OWN}
         rm -f -r /var/log/hhvm/${_OWN}
+        ### update nginx configuration
+        sed -i "s/\/var\/run\/hhvm\/${_OWN}\/hhvm.socket/\/var\/run\/${_OWN}.fpm.socket/g" /data/disk/${_OWN}/config/includes/nginx_vhost_common.conf
+        sed -i "s/\/var\/run\/hhvm\/${_OWN}\/hhvm.socket/\/var\/run\/${_OWN}.fpm.socket/g" /data/disk/${_OWN}/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php
         ### create control file to enable PHP-FPM again
         echo 5.5 > /data/disk/${_OWN}/static/control/fpm.info
         chown ${_OWN}.ftp:users /data/disk/${_OWN}/static/control/fpm.info
