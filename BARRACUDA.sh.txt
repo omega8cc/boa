@@ -2852,6 +2852,7 @@ tune_memory_limits () {
     mkdir -p /var/xdrago/conf
   fi
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/hhvm /var/xdrago/conf/
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] ; then
     sed -i "s/256/$_USE_FPM/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   fi
@@ -9425,6 +9426,41 @@ if [ -d "/var/www/cgp" ] ; then
   find /var/www/cgp -type f -exec chmod 0664 {} \; &> /dev/null
   fix_collectd_rrd_syslog_flood
   fix_collectd_nginx
+fi
+
+
+###--------------------###
+if [[ "$_XTRAS_LIST" =~ "HVM" ]] ; then
+  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] ; then
+    if [ ! -x "/usr/bin/hhvm" ] ; then
+      echo " "
+      if prompt_yes_no "Do you want to install HHVM Engine?" ; then
+        true
+        msg "INFO: Installing HHVM Engine..."
+        cd /var/opt
+        echo "## HHVM APT Repository" > /etc/apt/sources.list.d/hhvm.list
+        if [ "$_REL_VERSION" = "wheezy" ] ; then
+          echo "deb http://dl.hhvm.com/debian wheezy main" >> /etc/apt/sources.list.d/hhvm.list
+        elif [ "$_REL_VERSION" = "trusty" ] ; then
+          echo "deb http://dl.hhvm.com/ubuntu trusty main" >> /etc/apt/sources.list.d/hhvm.list
+        fi
+        _KEYS_SERVER_TEST=FALSE
+        until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]] ; do
+          rm -f /var/opt/hhvm.gpg.key*
+          cd /var/opt
+          wget -q -U iCab http://dl.hhvm.com/conf/hhvm.gpg.key
+          _KEYS_SERVER_TEST=`grep GnuPG hhvm.gpg.key 2> /dev/null`
+          sleep 2
+        done
+        cat hhvm.gpg.key | apt-key add - &> /dev/null
+        st_runner "apt-get update -y --force-yes" &> /dev/null
+        st_runner "$_INSTAPP hhvm" 2> /dev/null
+        msg "INFO: HHVM Engine installation completed"
+      else
+        msg "INFO: HHVM Engine installation skipped"
+      fi
+    fi
+  fi
 fi
 
 
