@@ -854,6 +854,9 @@ switch_php()
         rm -f /opt/hhvm/server.${_OWN}.ini
         rm -f -r /var/run/hhvm/${_OWN}
         rm -f -r /var/log/hhvm/${_OWN}
+        ### create control file to enable PHP-FPM again
+        echo 5.5 > /data/disk/${_OWN}/static/control/fpm.info
+        chown ${_OWN}.ftp:users /data/disk/${_OWN}/static/control/fpm.info
       fi
     fi
     if [ ! -e "/data/disk/${_OWN}/static/control/hhvm.info" ] && [ -e "/data/disk/${_OWN}/static/control/fpm.info" ] && [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
