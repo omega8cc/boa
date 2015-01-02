@@ -154,6 +154,14 @@ if (isset($_SERVER['REMOTE_ADDR'])) {
 
 
 /**
+ * Use Aegir/BOA specific variable as a fallback
+ */
+if (isset($_SERVER['MAIN_SITE_NAME']) && !isset($_SERVER['SERVER_NAME'])) {
+  $_SERVER['SERVER_NAME'] = $_SERVER['MAIN_SITE_NAME'];
+}
+
+
+/**
  * Required for proper Redis support on command line / via Drush
  */
 if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
