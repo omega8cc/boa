@@ -873,6 +873,7 @@ switch_php()
         ### create dummy control file to enable PHP-FPM again
         echo 5.2 > /data/disk/${_OWN}/static/control/fpm.info
         chown ${_OWN}.ftp:users /data/disk/${_OWN}/static/control/fpm.info
+        _FORCE_FPM_SETUP=YES
       fi
     fi
     sleep 5
@@ -908,7 +909,12 @@ switch_php()
             _LOC_PHP_FPM_VERSION=5.3
           fi
         fi
-        if [ ! -z "$_LOC_PHP_FPM_VERSION" ] && [ "$_LOC_PHP_FPM_VERSION" != "$_PHP_FPM_VERSION" ] ; then
+        if [ "$_LOC_PHP_FPM_VERSION" != "$_PHP_FPM_VERSION" ] || [ "$_FORCE_FPM_SETUP" = "YES" ] ; then
+          _NEW_FPM_SETUP=YES
+          _FORCE_FPM_SETUP=NO
+        fi
+        if [ ! -z "$_LOC_PHP_FPM_VERSION" ] && [ "$_NEW_FPM_SETUP" = "YES" ] ; then
+          _NEW_FPM_SETUP=NO
           tune_fpm_workers
           _LIM_FPM="$_L_PHP_FPM_WORKERS"
           if [ "$_LIM_FPM" -lt "24" ] ; then
