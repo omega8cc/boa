@@ -870,8 +870,8 @@ switch_php()
         sed -i "s/\/var\/run\/hhvm\/${_OWN}\/hhvm.socket/\/var\/run\/${_OWN}.fpm.socket/g" /data/disk/${_OWN}/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php
         ### reload nginx
         service nginx reload &> /dev/null
-        ### create control file to enable PHP-FPM again
-        echo 5.5 > /data/disk/${_OWN}/static/control/fpm.info
+        ### create dummy control file to enable PHP-FPM again
+        echo 5.2 > /data/disk/${_OWN}/static/control/fpm.info
         chown ${_OWN}.ftp:users /data/disk/${_OWN}/static/control/fpm.info
       fi
     fi
