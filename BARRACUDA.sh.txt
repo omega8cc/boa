@@ -5937,6 +5937,15 @@ fix_cnf_postfix () {
 php_single_initd_cleanup () {
   if [ ! -z "$_PHP_SINGLE_INSTALL" ] ; then
     if [ "$_PHP_SINGLE_INSTALL" = "5.5" ] ; then
+      if [ -e "/opt/php54/bin/php" ] ; then
+        mv -f /opt/php54/bin/php /var/backups/bin-php54-cli
+      fi
+      if [ -e "/opt/php53/bin/php" ] ; then
+        mv -f /opt/php53/bin/php /var/backups/bin-php53-cli
+      fi
+      if [ -e "/opt/php52/bin/php" ] ; then
+        mv -f /opt/php52/bin/php /var/backups/bin-php52-cli
+      fi
       if [ -e "/etc/init.d/php54-fpm" ] ; then
         update-rc.d -f php54-fpm remove &> /dev/null
         mv -f /etc/init.d/php54-fpm /var/backups/initd-php54-fpm
@@ -5953,6 +5962,15 @@ php_single_initd_cleanup () {
         _FPM_INITD_CLEANUP=YES
       fi
     elif [ "$_PHP_SINGLE_INSTALL" = "5.4" ] ; then
+      if [ -e "/opt/php55/bin/php" ] ; then
+        mv -f /opt/php55/bin/php /var/backups/bin-php55-cli
+      fi
+      if [ -e "/opt/php53/bin/php" ] ; then
+        mv -f /opt/php53/bin/php /var/backups/bin-php53-cli
+      fi
+      if [ -e "/opt/php52/bin/php" ] ; then
+        mv -f /opt/php52/bin/php /var/backups/bin-php52-cli
+      fi
       if [ -e "/etc/init.d/php55-fpm" ] ; then
         update-rc.d -f php55-fpm remove &> /dev/null
         mv -f /etc/init.d/php55-fpm /var/backups/initd-php55-fpm
@@ -5969,6 +5987,15 @@ php_single_initd_cleanup () {
         _FPM_INITD_CLEANUP=YES
       fi
     elif [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
+      if [ -e "/opt/php55/bin/php" ] ; then
+        mv -f /opt/php55/bin/php /var/backups/bin-php55-cli
+      fi
+      if [ -e "/opt/php54/bin/php" ] ; then
+        mv -f /opt/php54/bin/php /var/backups/bin-php54-cli
+      fi
+      if [ -e "/opt/php52/bin/php" ] ; then
+        mv -f /opt/php52/bin/php /var/backups/bin-php52-cli
+      fi
       if [ -e "/etc/init.d/php55-fpm" ] ; then
         update-rc.d -f php55-fpm remove &> /dev/null
         mv -f /etc/init.d/php55-fpm /var/backups/initd-php55-fpm
