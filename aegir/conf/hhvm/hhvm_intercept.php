@@ -23,7 +23,7 @@ fb_intercept('link', '__forbidden_function');
 fb_intercept('pfsockopen', '__forbidden_function');
 fb_intercept('posix_getlogin', '__forbidden_function');
 fb_intercept('posix_getpwnam', '__forbidden_function');
-fb_intercept('posix_getpwuid', '__forbidden_function');
+fb_intercept('posix_getpwuid', '__forbidden_function'); // for debugging only
 fb_intercept('posix_getrlimit', '__forbidden_function');
 fb_intercept('posix_kill', '__forbidden_function');
 fb_intercept('posix_mkfifo', '__forbidden_function');
