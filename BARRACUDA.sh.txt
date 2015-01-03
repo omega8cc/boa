@@ -6020,6 +6020,7 @@ php_single_initd_cleanup () {
     if [ "$_FPM_INITD_CLEANUP" = "YES" ] ; then
       killall php-fpm &> /dev/null
     fi
+    rm -f /opt/local/bin/php
   fi
 }
 #

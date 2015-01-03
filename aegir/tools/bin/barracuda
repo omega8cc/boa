@@ -506,17 +506,7 @@ up_start ()
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/pear
     rm -f /usr/local/bin/php
-  fi
-  if [ -d "/opt/local/bin" ] ; then
-    if [ -x "/opt/php53/bin/php" ] ; then
-      ln -s /opt/php53/bin/php /opt/local/bin/php
-    elif [ -x "/opt/php54/bin/php" ] ; then
-      ln -s /opt/php54/bin/php /opt/local/bin/php
-    elif [ -x "/opt/php55/bin/php" ] ; then
-      ln -s /opt/php55/bin/php /opt/local/bin/php
-    else
-      ln -s /opt/php53/bin/php /opt/local/bin/php &> /dev/null
-    fi
+    ln -s /usr/bin/php /opt/local/bin/php
   fi
 }
 
