@@ -814,9 +814,17 @@ switch_php()
     if [ -e "/data/disk/${_OWN}/static/control/hhvm.info" ] ; then
       if [ -x "/usr/bin/hhvm" ] && [ -e "/var/xdrago/conf/hhvm/init.d/hhvm.foo" ] && [ -e "/var/xdrago/conf/hhvm/server.foo.ini" ] ; then
         if [ ! -e "/opt/hhvm/server.${_OWN}.ini" ] || [ ! -e "/etc/init.d/hhvm.${_OWN}" ] || [ ! -e "/var/run/hhvm/${_OWN}" ]  ; then
+          ### add special system user if needed
+          if [ ! -e "/home/${_OWN}.web/.tmp" ] ; then
+            adduser --force-badname --system --ingroup www-data ${_OWN}.web &> /dev/null
+            mkdir -p /home/${_OWN}.web/.tmp &> /dev/null
+            chmod 700 /home/${_OWN}.web/.tmp &> /dev/null
+            chown ${_OWN}.web:www-data /home/${_OWN}.web/.tmp &> /dev/null
+          fi
           ### configure custom hhvm server init.d script
           cp -af /var/xdrago/conf/hhvm/init.d/hhvm.foo /etc/init.d/hhvm.${_OWN}
           sed -i "s/foo/${_OWN}/g" /etc/init.d/hhvm.${_OWN} &> /dev/null
+          sed -i "s/.ftp/.web/g" /etc/init.d/hhvm.${_OWN} &> /dev/null
           chmod 755 /etc/init.d/hhvm.${_OWN}
           chown root:root /etc/init.d/hhvm.${_OWN}
           update-rc.d hhvm.${_OWN} defaults &> /dev/null
@@ -824,10 +832,11 @@ switch_php()
           mkdir -p /opt/hhvm
           cp -af /var/xdrago/conf/hhvm/server.foo.ini /opt/hhvm/server.${_OWN}.ini
           sed -i "s/foo/${_OWN}/g" /opt/hhvm/server.${_OWN}.ini &> /dev/null
+          sed -i "s/.ftp/.web/g" /opt/hhvm/server.${_OWN}.ini &> /dev/null
           chmod 755 /opt/hhvm/server.${_OWN}.ini
           chown root:root /opt/hhvm/server.${_OWN}.ini
           mkdir -p /var/log/hhvm/${_OWN}
-          chown ${_OWN}.ftp:www-data /var/log/hhvm/${_OWN}
+          chown ${_OWN}.web:www-data /var/log/hhvm/${_OWN}
           ### disable no longer used fpm pool to make socket available
           _PHP_V="56 55 54 53 52"
           for e in $_PHP_V; do
@@ -854,6 +863,11 @@ switch_php()
           service hhvm.${_OWN} stop &> /dev/null
           update-rc.d -f hhvm.${_OWN} remove &> /dev/null
           rm -f /etc/init.d/hhvm.${_OWN}
+        fi
+        ### delete special system user no longer needed
+        if [ -e "/home/${_OWN}.web/.tmp" ] ; then
+          deluser ${_OWN}.web &> /dev/null
+          rm -f -r /home/${_OWN}.web &> /dev/null
         fi
         ### delete leftovers
         rm -f /opt/hhvm/server.${_OWN}.ini

@@ -2851,8 +2851,13 @@ tune_memory_limits () {
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
     mkdir -p /var/xdrago/conf
   fi
+  if [ ! -e "/data/conf" ] ; then
+    mkdir -p /data/conf
+  fi
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/hhvm /var/xdrago/conf/
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/hhvm/hhvm_intercept.php /data/conf/hhvm_intercept.php
+  chmod 644 /data/conf/hhvm_intercept.php
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] ; then
     sed -i "s/256/$_USE_FPM/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   fi
@@ -5694,7 +5699,7 @@ strict_bin_permissions () {
     done
   done
 
-  _BACKEND_ITEMS="advdef advpng jpegoptim jpegtran pngcrush pngquant wkhtmltopdf wkhtmltoimage convert compass curl sass sass-convert scss wget redis-server logger sendmail java java7 java6 rrdtool bash dash ffmpeg flvtool2 id which env nrsysmond newrelic-daemon avconv gs git"
+  _BACKEND_ITEMS="advdef advpng jpegoptim jpegtran pngcrush pngquant wkhtmltopdf wkhtmltoimage convert compass curl sass sass-convert scss wget redis-server logger sendmail java java7 java6 rrdtool bash dash ffmpeg flvtool2 id which env nrsysmond newrelic-daemon avconv gs git hhvm"
   if [ ! -z "$_BACKEND_ITEMS_LIST" ] ; then
     _BACKEND_ITEMS="$_BACKEND_ITEMS $_BACKEND_ITEMS_LIST"
   fi

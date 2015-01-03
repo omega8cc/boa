@@ -2,13 +2,25 @@
 
 export PATH=$PATH:/opt/local/bin
 _ALL="$@"
-_LTD_GID=$(id -nG $USER)
 _INTERNAL=NO
+_LTD_GID=$(id -nG $USER)
+_LTD_UID=$(id -nu $USER)
+if [ -z "$USER" ] ; then
+  USER=$(id -nu $USER)
+  _LTD_QQQ=YES
+fi
 _X_USR=".*"
 if [ "$USER" = "aegir" ] || [ "$HOME" = "/var/aegir" ] ; then
   _Y_USR=aegir
 else
   _Y_USR=${USER%${_X_USR}}
+fi
+if [ -z "$HOME" ] ; then
+  if [ -d "/home/${USER}/.tmp" ] ; then
+    HOME="/home/${USER}"
+  elif [ -d "/data/disk/${_Y_USR}/.tmp" ] ; then
+    HOME="/data/disk/${_Y_USR}"
+  fi
 fi
 if [ "$1" = "-c" ] ; then
   _ARGS="$2"
@@ -20,13 +32,7 @@ if [ -d "/home/${USER}/.tmp" ] ; then
   export TMP="/home/${USER}/.tmp"
   export TMPDIR="/home/${USER}/.tmp"
   export TEMP="/home/${USER}/.tmp"
-  if [[ "$_ARGS" =~ (^)"bash" ]] || [[ "$_ARGS" =~ (^)"dash" ]] ; then
-    exit 1
-  elif [[ "$_ARGS" =~ (^)"id" ]] || [[ "$_ARGS" =~ (^)"xwhich" ]] ; then
-    exit 1
-  elif [[ "$_ARGS" =~ (^)"java" ]] || [[ "$_ARGS" =~ (^)"sendmail" ]] ; then
-    exit 1
-  elif [[ "$_ARGS" =~ (^)"env" ]] || [[ "$_ARGS" =~ (^)"logger" ]] ; then
+  if [[ "$_ARGS" =~ (^)"xbash" ]] || [[ "$_ARGS" =~ (^)"xdash" ]] ; then
     exit 1
   elif [[ "$_ARGS" =~ (^)"newrelic" ]] || [[ "$_ARGS" =~ (^)"nrsysmond" ]] ; then
     exit 1
@@ -41,13 +47,17 @@ elif [ -d "/var/aegir/.tmp" ] ; then
   export TEMP="/var/aegir/.tmp"
 fi
 
-# echo USER is ${USER}
 # echo HOME is ${HOME}
 # echo TEMP is ${TEMP}
-# echo _Y_USR is $_Y_USR
-# echo _LTD_GID is $_LTD_GID
+# echo USER is ${USER}
+#
 # echo _ALL is $_ALL
 # echo _ARGS is $_ARGS
+# echo _LTD_GID is $_LTD_GID
+# echo _LTD_QQQ is $_LTD_QQQ
+# echo _LTD_UID is $_LTD_UID
+# echo _Y_USR is $_Y_USR
+#
 # echo 0 is $0
 # echo 1 is $1
 # echo 2 is $2
@@ -88,7 +98,7 @@ check_php_cli_version () {
   fi
 }
 
-if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "$_LTD_GID" =~ "lshellg"($) ]] || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] || [[ "$_LTD_GID" =~ (^)"users www-data"($) ]] || [[ "$_LTD_GID" =~ (^)"aegir www-data users"($) ]] ; then
+if [ "$_LTD_GID" = "www-data users" ] || [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "$_LTD_GID" =~ "lshellg"($) ]] || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] || [[ "$_LTD_GID" =~ (^)"users www-data"($) ]] || [[ "$_LTD_GID" =~ (^)"aegir www-data users"($) ]] ; then
   if [ "$1" = "-c" ] ; then
     if [[ "$2" =~ "set -m;" ]] && [ "$0" = "/bin/sh" ] ; then
       _IN_PATH=YES
