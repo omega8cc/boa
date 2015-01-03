@@ -32,7 +32,7 @@ if [ -d "/home/${USER}/.tmp" ] ; then
   export TMP="/home/${USER}/.tmp"
   export TMPDIR="/home/${USER}/.tmp"
   export TEMP="/home/${USER}/.tmp"
-  if [[ "$_ARGS" =~ (^)"xbash" ]] || [[ "$_ARGS" =~ (^)"xdash" ]] ; then
+  if [[ "$_ARGS" =~ (^)"xwhich" ]] || [[ "$_ARGS" =~ (^)"id " ]] ; then
     exit 1
   elif [[ "$_ARGS" =~ (^)"newrelic" ]] || [[ "$_ARGS" =~ (^)"nrsysmond" ]] ; then
     exit 1
