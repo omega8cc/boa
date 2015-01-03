@@ -837,14 +837,6 @@ switch_php()
           chown root:root /opt/hhvm/server.${_OWN}.ini
           mkdir -p /var/log/hhvm/${_OWN}
           chown ${_OWN}.web:www-data /var/log/hhvm/${_OWN}
-          ### disable no longer used fpm pool to make socket available
-          _PHP_V="56 55 54 53 52"
-          for e in $_PHP_V; do
-            if [ -e "/opt/php${e}/etc/pool.d/${_OWN}.conf" ] ; then
-              rm -f /opt/php${e}/etc/pool.d/${_OWN}.conf
-              service php${e}-fpm reload &> /dev/null
-            fi
-          done
           ### start custom hhvm server
           service hhvm.${_OWN} start &> /dev/null
           ### remove fpm control file to avoid confusion
@@ -858,7 +850,7 @@ switch_php()
       fi
     else
       if [ -e "/opt/hhvm/server.${_OWN}.ini" ] || [ -e "/etc/init.d/hhvm.${_OWN}" ] || [ -e "/var/run/hhvm/${_OWN}" ]  ; then
-        ### disable no longer used custom hhvm server to make socket available
+        ### disable no longer used custom hhvm server instance
         if [ -e "/etc/init.d/hhvm.${_OWN}" ] ; then
           service hhvm.${_OWN} stop &> /dev/null
           update-rc.d -f hhvm.${_OWN} remove &> /dev/null
@@ -883,6 +875,7 @@ switch_php()
         chown ${_OWN}.ftp:users /data/disk/${_OWN}/static/control/fpm.info
       fi
     fi
+    sleep 5
     if [ ! -e "/data/disk/${_OWN}/static/control/hhvm.info" ] && [ -e "/data/disk/${_OWN}/static/control/fpm.info" ] && [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
       _LOC_PHP_FPM_VERSION=`cat /data/disk/${_OWN}/static/control/fpm.info`
       _LOC_PHP_FPM_VERSION=${_LOC_PHP_FPM_VERSION//[^0-9.]/}
