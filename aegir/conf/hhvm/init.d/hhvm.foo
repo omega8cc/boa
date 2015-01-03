@@ -27,10 +27,10 @@ SCRIPTNAME=/etc/init.d/$NAME
 [ -x "$DAEMON" ] || exit 0
 
 # Default values. This values can be overwritten in '/etc/default/hhvm'
-CONFIG_FILE="/opt/hhvm/server.foo.ini"
-SYSTEM_CONFIG_FILE="/opt/php55/lib/php.ini"
 RUN_AS_USER="foo.web"
 RUN_AS_GROUP="www-data"
+CONFIG_FILE="/opt/hhvm/server.foo.ini"
+SYSTEM_CONFIG_FILE="/home/${RUN_AS_USER}/.drush/php.ini"
 ADDITIONAL_ARGS=""
 
 # Read configuration variable file if it is present

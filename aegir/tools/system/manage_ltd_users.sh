@@ -816,10 +816,35 @@ switch_php()
         if [ ! -e "/opt/hhvm/server.${_OWN}.ini" ] || [ ! -e "/etc/init.d/hhvm.${_OWN}" ] || [ ! -e "/var/run/hhvm/${_OWN}" ]  ; then
           ### add special system user if needed
           if [ ! -e "/home/${_OWN}.web/.tmp" ] ; then
+            _U_HD="/home/${_OWN}.web/.drush"
+            _U_TP="/home/${_OWN}.web/.tmp"
             adduser --force-badname --system --ingroup www-data ${_OWN}.web &> /dev/null
-            mkdir -p /home/${_OWN}.web/.tmp &> /dev/null
-            chmod 700 /home/${_OWN}.web/.tmp &> /dev/null
-            chown ${_OWN}.web:www-data /home/${_OWN}.web/.tmp &> /dev/null
+            mkdir -p /home/${_OWN}.web/.{tmp,drush}
+            if [ -e "/opt/php55/etc/php55.ini" ] ; then
+              cp -af /opt/php55/etc/php55.ini $_U_HD/php.ini
+            elif [ -e "/opt/php54/etc/php54.ini" ] ; then
+              cp -af /opt/php54/etc/php54.ini $_U_HD/php.ini
+            elif [ -e "/opt/php53/etc/php53.ini" ] ; then
+              cp -af /opt/php53/etc/php53.ini $_U_HD/php.ini
+            fi
+            if [ -e "$_U_HD/php.ini" ] ; then
+              _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/home:/data/disk/${_OWN}/.drush/usr:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55\""
+              _INI=${_INI//\//\\\/}
+              _QTP=${_U_TP//\//\\\/}
+              sed -i "s/.*open_basedir =.*/$_INI/g"                              $_U_HD/php.ini &> /dev/null
+              sed -i "s/.*session.save_path =.*/session.save_path = $_QTP/g"     $_U_HD/php.ini &> /dev/null
+              sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = $_QTP/g" $_U_HD/php.ini &> /dev/null
+              sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               $_U_HD/php.ini &> /dev/null
+              sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           $_U_HD/php.ini &> /dev/null
+              echo > $_U_HD/.ctrl.php${_U_INI}.txt
+              echo > $_U_HD/.ctrl.cqi.txt
+            fi
+            chmod 700 /home/${_OWN}.web
+            chown -R ${_OWN}.web:www-data /home/${_OWN}.web
+            chmod 550 /home/${_OWN}.web/.drush
+            chmod 440 /home/${_OWN}.web/.drush/php.ini
+            chattr +i /home/${_OWN}.web &> /dev/null
+            chattr +i /home/${_OWN}.web/.drush &> /dev/null
           fi
           ### configure custom hhvm server init.d script
           cp -af /var/xdrago/conf/hhvm/init.d/hhvm.foo /etc/init.d/hhvm.${_OWN}
@@ -858,6 +883,8 @@ switch_php()
         fi
         ### delete special system user no longer needed
         if [ -e "/home/${_OWN}.web/.tmp" ] ; then
+          chattr -i /home/${_OWN}.web &> /dev/null
+          chattr -i /home/${_OWN}.web/.drush &> /dev/null
           deluser ${_OWN}.web &> /dev/null
           rm -f -r /home/${_OWN}.web &> /dev/null
         fi
