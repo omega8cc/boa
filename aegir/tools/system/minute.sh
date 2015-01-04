@@ -25,30 +25,45 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]] ; then
   echo php logs rotated
 fi
 
+oom_restart()
+{
+  touch /var/run/boa_run.pid
+  echo "`date` OOM $1 detected" >> /var/xdrago/log/oom.incident.log
+  sleep 5
+  echo "`date` OOM incident response started" >> /var/xdrago/log/oom.incident.log
+  mv -f /var/log/nginx/error.log /var/log/nginx/`date +%y%m%d-%H%M`-error.log
+  kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
+  echo "`date` OOM nginx stopped" >> /var/xdrago/log/oom.incident.log
+  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+  echo "`date` OOM php-fpm stopped" >> /var/xdrago/log/oom.incident.log
+  kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
+  echo "`date` OOM jetty stopped" >> /var/xdrago/log/oom.incident.log
+  kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}') &> /dev/null
+  echo "`date` OOM newrelic-daemon stopped" >> /var/xdrago/log/oom.incident.log
+  kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}') &> /dev/null
+  echo "`date` OOM redis-server stopped" >> /var/xdrago/log/oom.incident.log
+  bash /var/xdrago/move_sql.sh
+  echo "`date` OOM mysql restarted" >> /var/xdrago/log/oom.incident.log
+  echo "`date` OOM incident response completed" >> /var/xdrago/log/oom.incident.log
+  echo >> /var/xdrago/log/oom.incident.log
+  sleep 5
+  rm -f /var/run/boa_run.pid
+  exit 0
+}
+
 if [ -e "/var/log/nginx/error.log" ] ; then
   if [ `tail --lines=500 /var/log/nginx/error.log | grep --count "Cannot allocate memory"` -gt "0" ]; then
-    touch /var/run/boa_run.pid
-    echo "`date` OOM nginx detected" >> /var/xdrago/log/oom.nginx.log
-    sleep 5
-    echo "`date` OOM incident response started" >> /var/xdrago/log/oom.nginx.log
-    mv -f /var/log/nginx/error.log /var/log/nginx/`date +%y%m%d-%H%M`-error.log
-    kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
-    echo "`date` OOM nginx stopped" >> /var/xdrago/log/oom.nginx.log
-    kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
-    echo "`date` OOM php-fpm stopped" >> /var/xdrago/log/oom.nginx.log
-    kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
-    echo "`date` OOM jetty stopped" >> /var/xdrago/log/oom.nginx.log
-    kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}') &> /dev/null
-    echo "`date` OOM newrelic-daemon stopped" >> /var/xdrago/log/oom.nginx.log
-    kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}') &> /dev/null
-    echo "`date` OOM redis-server stopped" >> /var/xdrago/log/oom.nginx.log
-    bash /var/xdrago/move_sql.sh
-    echo "`date` OOM mysql restarted" >> /var/xdrago/log/oom.nginx.log
-    echo "`date` OOM incident response completed" >> /var/xdrago/log/oom.nginx.log
-    sleep 5
-    rm -f /var/run/boa_run.pid
-    exit 0
+    oom_restart "nginx"
   fi
+fi
+
+_RAM_TOTAL=$(free -m | grep Mem: | cut -d: -f2 | awk '{ print $1}')
+_RAM_FREE=$(free -m | grep /+ | cut -d: -f2 | awk '{ print $2}')
+_RAM_PCT_FREE=$(echo "scale=0; $(bc -l <<< "$_RAM_FREE / $_RAM_TOTAL * 100")/1" | bc)
+_RAM_PCT_FREE=${_RAM_PCT_FREE//[^0-9]/}
+
+if [ ! -z "$_RAM_PCT_FREE" ] && [ $_RAM_PCT_FREE -lt 10 ] ; then
+  oom_restart "ram"
 fi
 
 if [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ] ; then
