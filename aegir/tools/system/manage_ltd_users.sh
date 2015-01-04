@@ -8,7 +8,7 @@ _USRG=users
 _WEBG=www-data
 _THIS_RV=`lsb_release -sc`
 if [ "$_THIS_RV" = "wheezy" ] || [ "$_THIS_RV" = "trusty" ] || [ "$_THIS_RV" = "precise" ] ; then
-  _RUBY_VERSION=2.1.5
+  _RUBY_VERSION=2.2.0
 else
   _RUBY_VERSION=2.0.0
 fi
