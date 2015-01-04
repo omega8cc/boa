@@ -3,11 +3,6 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-if [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ] ; then
-  resolvconf -u &> /dev/null
-  service pdnsd restart &> /dev/null
-fi
-
 _PHPLOG_SIZE_TEST=$(du -s -h /var/log/php 2>&1)
 if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]] ; then
   echo $_PHPLOG_SIZE_TEST too big
@@ -30,8 +25,39 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]] ; then
   echo php logs rotated
 fi
 
+if [ -e "/var/log/nginx/error.log" ] ; then
+  if [ `tail --lines=500 /var/log/nginx/error.log | grep --count "Cannot allocate memory"` -gt "0" ]; then
+    touch /var/run/boa_run.pid
+    echo "`date` OOM nginx detected" >> /var/xdrago/log/oom.nginx.log
+    sleep 5
+    echo "`date` OOM incident response started" >> /var/xdrago/log/oom.nginx.log
+    mv -f /var/log/nginx/error.log /var/log/nginx/`date +%y%m%d-%H%M`-error.log
+    kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
+    echo "`date` OOM nginx stopped" >> /var/xdrago/log/oom.nginx.log
+    kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+    echo "`date` OOM php-fpm stopped" >> /var/xdrago/log/oom.nginx.log
+    kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
+    echo "`date` OOM jetty stopped" >> /var/xdrago/log/oom.nginx.log
+    kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}') &> /dev/null
+    echo "`date` OOM newrelic-daemon stopped" >> /var/xdrago/log/oom.nginx.log
+    kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}') &> /dev/null
+    echo "`date` OOM redis-server stopped" >> /var/xdrago/log/oom.nginx.log
+    bash /var/xdrago/move_sql.sh
+    echo "`date` OOM mysql restarted" >> /var/xdrago/log/oom.nginx.log
+    echo "`date` OOM incident response completed" >> /var/xdrago/log/oom.nginx.log
+    sleep 5
+    rm -f /var/run/boa_run.pid
+    exit 0
+  fi
+fi
+
+if [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ] ; then
+  resolvconf -u &> /dev/null
+  service pdnsd restart &> /dev/null
+fi
+
 if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt 3 ]; then
-  killall php-fpm
+  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
   echo "`date` Too many PHP-FPM master processes killed" >> /var/xdrago/log/php-fpm-master-count.kill.log
 fi
 
