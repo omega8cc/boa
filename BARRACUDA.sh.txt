@@ -3969,7 +3969,7 @@ install_ioncube () {
 # Install PHP extensions.
 install_php_extensions () {
   ###--------------------###
-  if [ "$1" != "56" ] ; then
+  if [ "$1" != "56" ] || [ -e "/root/.debug.cnf" ] ; then
     msg "INFO: Installing Zend OPcache for PHP-FPM $_LOC_PHP_VERSION..."
     cd /var/opt
     rm -f -r zendopcache*
@@ -4096,17 +4096,19 @@ install_php_extensions () {
 # Update extensions for PHP built from sources.
 update_php_extensions () {
   ###--------------------###
-  if [ ! -e "/var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log" ] && [ "$1" != "56" ] ; then
-    msg "INFO: Installing Zend OPcache upgrade for PHP-FPM $_LOC_PHP_VERSION..."
-    cd /var/opt
-    rm -f -r zendopcache*
-    get_dev_src "zendopcache-$_ZEND_OPCACHE_VERSION.tar.gz"
-    cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
-    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
+  if [ ! -e "/var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log" ] ; then
+    if [ "$1" != "56" ] || [ -e "/root/.debug.cnf" ] ; then
+      msg "INFO: Installing Zend OPcache upgrade for PHP-FPM $_LOC_PHP_VERSION..."
+      cd /var/opt
+      rm -f -r zendopcache*
+      get_dev_src "zendopcache-$_ZEND_OPCACHE_VERSION.tar.gz"
+      cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
+      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
+    fi
   fi
   ###--------------------###
   if [ ! -e "/var/xdrago/log/phpredis-$_PHPREDIS_VERSION-$_LOC_PHP_VERSION.log" ] ; then
