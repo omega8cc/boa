@@ -3831,12 +3831,12 @@ barracuda_cnf () {
           for Ctrl in `find /data/disk/*/log -maxdepth 0 -mindepth 0 | sort`; do
             echo $_PHP_SINGLE_INSTALL > $Ctrl/fpm.txt
             echo $_PHP_SINGLE_INSTALL > $Ctrl/cli.txt
-            msg "INFO: Forced PHP $_PHP_SINGLE_INSTALL in $Ctrl"
+            ### msg "INFO: Forced PHP $_PHP_SINGLE_INSTALL in $Ctrl"
           done
           for Ctrl in `find /data/disk/*/static/control -maxdepth 0 -mindepth 0 | sort`; do
             echo $_PHP_SINGLE_INSTALL > $Ctrl/fpm.info
             echo $_PHP_SINGLE_INSTALL > $Ctrl/cli.info
-            msg "INFO: Forced PHP $_PHP_SINGLE_INSTALL in $Ctrl"
+            ### msg "INFO: Forced PHP $_PHP_SINGLE_INSTALL in $Ctrl"
           done
         fi
       fi
