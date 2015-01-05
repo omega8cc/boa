@@ -108,7 +108,7 @@ enable_chattr () {
     fi
 
     _CHECK_USE_PHP_CLI=`grep "/opt/php" /data/disk/${_OWN}/tools/drush/drush.php`
-    _PHP_V="55 54 53 52"
+    _PHP_V="56 55 54 53 52"
     for e in $_PHP_V; do
       if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] && [ ! -e "$_U_HD/.ctrl.php${e}.txt" ] ; then
         _PHP_CLI_UPDATE=YES
@@ -128,6 +128,8 @@ enable_chattr () {
         echo _CHECK_USE_PHP_CLI is $_CHECK_USE_PHP_CLI for $1 at ${_OWN}
         if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]] ; then
           _USE_PHP_CLI=5.5
+        elif [[ "$_CHECK_USE_PHP_CLI" =~ "php56" ]] ; then
+          _USE_PHP_CLI=5.6
         elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]] ; then
           _USE_PHP_CLI=5.4
         elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]] ; then
@@ -140,6 +142,9 @@ enable_chattr () {
       if [ "$_USE_PHP_CLI" = "5.5" ] ; then
         cp -af /opt/php55/lib/php.ini $_U_HD/php.ini
         _U_INI=55
+      elif [ "$_USE_PHP_CLI" = "5.6" ] ; then
+        cp -af /opt/php56/lib/php.ini $_U_HD/php.ini
+        _U_INI=56
       elif [ "$_USE_PHP_CLI" = "5.4" ] ; then
         cp -af /opt/php54/lib/php.ini $_U_HD/php.ini
         _U_INI=54
@@ -151,7 +156,7 @@ enable_chattr () {
         _U_INI=52
       fi
       if [ -e "$_U_HD/php.ini" ] ; then
-        _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/home:/data/disk/${_OWN}/.drush/usr:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55\""
+        _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/home:/data/disk/${_OWN}/.drush/usr:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55:/opt/php56\""
         _INI=${_INI//\//\\\/}
         _QTP=${_U_TP//\//\\\/}
         sed -i "s/.*open_basedir =.*/$_INI/g"                              $_U_HD/php.ini &> /dev/null
@@ -552,7 +557,7 @@ update_php_cli_local_ini () {
   _U_TP="/data/disk/${_OWN}/.tmp"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=`grep "/opt/php" $_DRUSH_FILE`
-  _PHP_V="55 54 53 52"
+  _PHP_V="56 55 54 53 52"
   for e in $_PHP_V; do
     if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] && [ ! -e "$_U_HD/.ctrl.php${e}.txt" ] ; then
       _PHP_CLI_UPDATE=YES
@@ -569,6 +574,9 @@ update_php_cli_local_ini () {
     if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]] ; then
       cp -af /opt/php55/lib/php.ini $_U_HD/php.ini
       _U_INI=55
+    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php56" ]] ; then
+      cp -af /opt/php56/lib/php.ini $_U_HD/php.ini
+      _U_INI=56
     elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]] ; then
       cp -af /opt/php54/lib/php.ini $_U_HD/php.ini
       _U_INI=54
@@ -580,7 +588,7 @@ update_php_cli_local_ini () {
       _U_INI=52
     fi
     if [ -e "$_U_HD/php.ini" ] ; then
-      _INI="open_basedir = \".:/data/disk/${_OWN}:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55\""
+      _INI="open_basedir = \".:/data/disk/${_OWN}:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55:/opt/php56\""
       _INI=${_INI//\//\\\/}
       _QTP=${_U_TP//\//\\\/}
       sed -i "s/.*open_basedir =.*/$_INI/g"                              $_U_HD/php.ini &> /dev/null
@@ -603,6 +611,9 @@ update_php_cli_drush ()
   if [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
     _L_PHP_CLI=/opt/php55/bin
+  elif [ "$_LOC_PHP_CLI_VERSION" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
+    _L_PHP_CLI=/opt/php56/bin
   elif [ "$_LOC_PHP_CLI_VERSION" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php54\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
     _L_PHP_CLI=/opt/php54/bin
@@ -770,9 +781,19 @@ switch_php()
       _LOC_PHP_CLI_VERSION=`cat /data/disk/${_OWN}/static/control/cli.info`
       _LOC_PHP_CLI_VERSION=${_LOC_PHP_CLI_VERSION//[^0-9.]/}
       _LOC_PHP_CLI_VERSION=`echo -n $_LOC_PHP_CLI_VERSION | tr -d "\n"`
-      if [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.4" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.3" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.2" ]; then
+      if [ "$_LOC_PHP_CLI_VERSION" = "5.6" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.4" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.3" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.2" ]; then
         if [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
-          if [ -x "/opt/php54/bin/php" ] ; then
+          if [ -x "/opt/php56/bin/php" ] ; then
+            _LOC_PHP_CLI_VERSION=5.6
+          elif [ -x "/opt/php54/bin/php" ] ; then
+            _LOC_PHP_CLI_VERSION=5.4
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _LOC_PHP_CLI_VERSION=5.3
+          fi
+        elif [ "$_LOC_PHP_CLI_VERSION" = "5.6" ] && [ ! -x "/opt/php56/bin/php" ] ; then
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _LOC_PHP_CLI_VERSION=5.5
+          elif [ -x "/opt/php54/bin/php" ] ; then
             _LOC_PHP_CLI_VERSION=5.4
           elif [ -x "/opt/php53/bin/php" ] ; then
             _LOC_PHP_CLI_VERSION=5.3
@@ -780,18 +801,24 @@ switch_php()
         elif [ "$_LOC_PHP_CLI_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
             _LOC_PHP_CLI_VERSION=5.5
+          elif [ -x "/opt/php56/bin/php" ] ; then
+            _LOC_PHP_CLI_VERSION=5.6
           elif [ -x "/opt/php53/bin/php" ] ; then
             _LOC_PHP_CLI_VERSION=5.3
           fi
         elif [ "$_LOC_PHP_CLI_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
             _LOC_PHP_CLI_VERSION=5.5
+          elif [ -x "/opt/php56/bin/php" ] ; then
+            _LOC_PHP_CLI_VERSION=5.6
           elif [ -x "/opt/php54/bin/php" ] ; then
             _LOC_PHP_CLI_VERSION=5.4
           fi
         elif [ "$_LOC_PHP_CLI_VERSION" = "5.2" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
             _LOC_PHP_CLI_VERSION=5.5
+          elif [ -x "/opt/php56/bin/php" ] ; then
+            _LOC_PHP_CLI_VERSION=5.6
           elif [ -x "/opt/php54/bin/php" ] ; then
             _LOC_PHP_CLI_VERSION=5.4
           elif [ -x "/opt/php53/bin/php" ] ; then
@@ -822,13 +849,15 @@ switch_php()
             mkdir -p /home/${_OWN}.web/.{tmp,drush}
             if [ -e "/opt/php55/etc/php55.ini" ] ; then
               cp -af /opt/php55/etc/php55.ini $_U_HD/php.ini
+            elif [ -e "/opt/php56/etc/php56.ini" ] ; then
+              cp -af /opt/php56/etc/php56.ini $_U_HD/php.ini
             elif [ -e "/opt/php54/etc/php54.ini" ] ; then
               cp -af /opt/php54/etc/php54.ini $_U_HD/php.ini
             elif [ -e "/opt/php53/etc/php53.ini" ] ; then
               cp -af /opt/php53/etc/php53.ini $_U_HD/php.ini
             fi
             if [ -e "$_U_HD/php.ini" ] ; then
-              _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/home:/data/disk/${_OWN}/.drush/usr:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55\""
+              _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/home:/data/disk/${_OWN}/.drush/usr:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55:/opt/php56\""
               _INI=${_INI//\//\\\/}
               _QTP=${_U_TP//\//\\\/}
               sed -i "s/.*open_basedir =.*/$_INI/g"                              $_U_HD/php.ini &> /dev/null
@@ -908,9 +937,19 @@ switch_php()
       _LOC_PHP_FPM_VERSION=`cat /data/disk/${_OWN}/static/control/fpm.info`
       _LOC_PHP_FPM_VERSION=${_LOC_PHP_FPM_VERSION//[^0-9.]/}
       _LOC_PHP_FPM_VERSION=`echo -n $_LOC_PHP_FPM_VERSION | tr -d "\n"`
-      if [ "$_LOC_PHP_FPM_VERSION" = "5.5" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.4" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.3" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.2" ]; then
+      if [ "$_LOC_PHP_FPM_VERSION" = "5.6" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.5" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.4" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.3" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.2" ]; then
         if [ "$_LOC_PHP_FPM_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
-          if [ -x "/opt/php54/bin/php" ] ; then
+          if [ -x "/opt/php56/bin/php" ] ; then
+            _LOC_PHP_FPM_VERSION=5.6
+          elif [ -x "/opt/php54/bin/php" ] ; then
+            _LOC_PHP_FPM_VERSION=5.4
+          elif [ -x "/opt/php53/bin/php" ] ; then
+            _LOC_PHP_FPM_VERSION=5.3
+          fi
+        elif [ "$_LOC_PHP_FPM_VERSION" = "5.6" ] && [ ! -x "/opt/php56/bin/php" ] ; then
+          if [ -x "/opt/php55/bin/php" ] ; then
+            _LOC_PHP_FPM_VERSION=5.5
+          elif [ -x "/opt/php54/bin/php" ] ; then
             _LOC_PHP_FPM_VERSION=5.4
           elif [ -x "/opt/php53/bin/php" ] ; then
             _LOC_PHP_FPM_VERSION=5.3
@@ -918,18 +957,24 @@ switch_php()
         elif [ "$_LOC_PHP_FPM_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
             _LOC_PHP_FPM_VERSION=5.5
+          elif [ -x "/opt/php56/bin/php" ] ; then
+            _LOC_PHP_FPM_VERSION=5.6
           elif [ -x "/opt/php53/bin/php" ] ; then
             _LOC_PHP_FPM_VERSION=5.3
           fi
         elif [ "$_LOC_PHP_FPM_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
             _LOC_PHP_FPM_VERSION=5.5
+          elif [ -x "/opt/php56/bin/php" ] ; then
+            _LOC_PHP_FPM_VERSION=5.6
           elif [ -x "/opt/php54/bin/php" ] ; then
             _LOC_PHP_FPM_VERSION=5.4
           fi
         elif [ "$_LOC_PHP_FPM_VERSION" = "5.2" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
             _LOC_PHP_FPM_VERSION=5.5
+          elif [ -x "/opt/php56/bin/php" ] ; then
+            _LOC_PHP_FPM_VERSION=5.6
           elif [ -x "/opt/php54/bin/php" ] ; then
             _LOC_PHP_FPM_VERSION=5.4
           elif [ -x "/opt/php53/bin/php" ] ; then

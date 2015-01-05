@@ -11,6 +11,9 @@ chomp($now_is);
 if ($fpm_status ne "CLEAN") {
   `kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')`;
   `kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}')`;
+  if (-f "/etc/init.d/php56-fpm") {
+    `/etc/init.d/php56-fpm restart`;
+  }
   if (-f "/etc/init.d/php55-fpm") {
     `/etc/init.d/php55-fpm restart`;
   }

@@ -46,6 +46,9 @@ action()
   touch /var/run/fmp_wait.pid
   rm -f /var/log/php/*
   rm -f /var/log/mysql/sql-slow-query.log
+  if [ -e "/etc/init.d/php56-fpm" ] ; then
+    /etc/init.d/php56-fpm reload
+  fi
   if [ -e "/etc/init.d/php55-fpm" ] ; then
     /etc/init.d/php55-fpm reload
   fi

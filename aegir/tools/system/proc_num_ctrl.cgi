@@ -39,6 +39,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /lsyncd/) {$lsyncdlives = "YES"; $lsyncdsumar = $li_cnt{$COMMAND};}
 }
 foreach $X (sort keys %li_cnt) {
+  if ($X =~ /php56/) {$php56lives = "YES";}
   if ($X =~ /php55/) {$php55lives = "YES";}
   if ($X =~ /php54/) {$php54lives = "YES";}
   if ($X =~ /php53/) {$php53lives = "YES";}
@@ -57,6 +58,7 @@ print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
 print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
 print "\n $dhcpcdsumar dhcpcd procs\t\tGLOBAL" if ($dhcpcdlives);
 print "\n $fpmsumar FPM procs\t\tGLOBAL" if ($fpmlives);
+print "\n 1 FPM56 procs\t\tGLOBAL" if ($php56lives);
 print "\n 1 FPM55 procs\t\tGLOBAL" if ($php55lives);
 print "\n 1 FPM54 procs\t\tGLOBAL" if ($php54lives);
 print "\n 1 FPM53 procs\t\tGLOBAL" if ($php53lives);
@@ -135,7 +137,7 @@ if ($nginxsumar) {
 }
 
 if (-f "/root/.dbhd.clstr.cnf") {
-  if ($php55lives || $php54lives || $php53lives) {
+  if ($php56lives || $php55lives || $php54lives || $php53lives) {
     system("killall -9 php-fpm");
   }
   if ($redislives) {
@@ -143,6 +145,7 @@ if (-f "/root/.dbhd.clstr.cnf") {
   }
 }
 else {
+  system("service php56-fpm restart") if ((!$php56lives || !$fpmsumar || $fpmsumar > 6 || !-f "/var/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm" && !-f "/var/run/boa_run.pid");
   system("service php55-fpm restart") if ((!$php55lives || !$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php55-fpm.pid") && -f "/etc/init.d/php55-fpm" && !-f "/var/run/boa_run.pid");
   system("service php54-fpm restart") if ((!$php54lives || !$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php54-fpm.pid") && -f "/etc/init.d/php54-fpm" && !-f "/var/run/boa_run.pid");
   system("service php53-fpm restart") if ((!$php53lives || !$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php53-fpm.pid") && -f "/etc/init.d/php53-fpm" && !-f "/var/run/boa_run.pid");

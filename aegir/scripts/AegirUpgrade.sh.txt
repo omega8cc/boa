@@ -56,6 +56,8 @@ if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
 fi
 if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
   _L_PHP_CLI=/opt/php55/bin
+elif [ "$_PHP_CLI_VERSION" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
+  _L_PHP_CLI=/opt/php56/bin
 elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
   _L_PHP_CLI=/opt/php54/bin
 elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
@@ -87,7 +89,7 @@ update_php_cli_local_ini () {
   _U_TP="/var/aegir/.tmp"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=`grep "/opt/php" $_DRUSH_FILE`
-  _PHP_V="55 54 53 52"
+  _PHP_V="56 55 54 53 52"
   for e in $_PHP_V; do
     if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] && [ ! -e "$_U_HD/.ctrl.php${e}.txt" ] ; then
       _PHP_CLI_UPDATE=YES
@@ -103,6 +105,9 @@ update_php_cli_local_ini () {
     if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]] ; then
       cp -af /opt/php55/lib/php.ini $_U_HD/php.ini
       _U_INI=55
+    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php56" ]] ; then
+      cp -af /opt/php56/lib/php.ini $_U_HD/php.ini
+      _U_INI=56
     elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]] ; then
       cp -af /opt/php54/lib/php.ini $_U_HD/php.ini
       _U_INI=54
@@ -114,7 +119,7 @@ update_php_cli_local_ini () {
       _U_INI=52
     fi
     if [ -e "$_U_HD/php.ini" ] ; then
-      _INI="open_basedir = \".:/var/aegir:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55\""
+      _INI="open_basedir = \".:/var/aegir:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55:/opt/php56\""
       _INI=${_INI//\//\\\/}
       _QTP=${_U_TP//\//\\\/}
       sed -i "s/.*open_basedir =.*/$_INI/g"                              $_U_HD/php.ini &> /dev/null
@@ -134,6 +139,8 @@ update_php_cli_drush () {
   _DRUSH_FILE="$_ROOT/drush/drush.php"
   if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
+  elif [ "$_PHP_CLI_VERSION" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
   elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php54\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
   elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then

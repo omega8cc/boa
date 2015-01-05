@@ -8,6 +8,9 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]] ; then
   echo $_PHPLOG_SIZE_TEST too big
   touch /var/run/fmp_wait.pid
   rm -f /var/log/php/*
+  if [ -e "/etc/init.d/php56-fpm" ] ; then
+    /etc/init.d/php56-fpm reload
+  fi
   if [ -e "/etc/init.d/php55-fpm" ] ; then
     /etc/init.d/php55-fpm reload
   fi
@@ -71,7 +74,7 @@ if [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ] ; then
   service pdnsd restart &> /dev/null
 fi
 
-if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt 3 ]; then
+if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt 4 ]; then
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
   echo "`date` Too many PHP-FPM master processes killed" >> /var/xdrago/log/php-fpm-master-count.kill.log
 fi

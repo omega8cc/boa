@@ -159,7 +159,8 @@ _PHP54_API=20100525
 _PHP54_VERSION=5.4.36
 _PHP55_API=20121212
 _PHP55_VERSION=5.5.20
-
+_PHP56_API=20131226
+_PHP56_VERSION=5.6.4
 
 ###---### Functions
 #
@@ -338,6 +339,11 @@ fix_php_ini_newrelic_all () {
     fix_php_ini_newrelic
     _THIS_FILE=/opt/php55/lib/php.ini
     fix_php_ini_newrelic
+
+    _THIS_FILE=/opt/php56/etc/php56.ini
+    fix_php_ini_newrelic
+    _THIS_FILE=/opt/php56/lib/php.ini
+    fix_php_ini_newrelic
   fi
 }
 #
@@ -384,6 +390,10 @@ fix_php_ini_opcache_all () {
   _THIS_FILE=/opt/php55/etc/php55.ini
   _OPCACHE_SO="/opt/php55/lib/php/extensions/no-debug-non-zts-$_PHP55_API/opcache.so"
   fix_php_ini_opcache "55"
+
+  _THIS_FILE=/opt/php56/etc/php56.ini
+  _OPCACHE_SO="/opt/php56/lib/php/extensions/no-debug-non-zts-$_PHP56_API/opcache.so"
+  fix_php_ini_opcache "56"
 
 }
 #
@@ -453,6 +463,16 @@ update_php_conf () {
   fi
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm55-pool-www.conf /opt/php55/etc/pool.d/www55.conf
 
+  if [ ! -e "/var/www/www56" ] ; then
+    adduser --system --group --home /var/www/www56 www56 &> /dev/null
+    usermod -aG www-data www56 &> /dev/null
+  fi
+  if [ ! -e "/opt/php56/etc/php56.ini" ] || [ ! -e "/opt/php56/etc/pool.d/www56.conf" ] ; then
+    mkdir -p /opt/php56/etc/pool.d
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php56.ini /opt/php56/etc/php56.ini
+  fi
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm56-pool-www.conf /opt/php56/etc/pool.d/www56.conf
+
   if [ ! -e "/var/www/www54" ] ; then
     adduser --system --group --home /var/www/www54 www54 &> /dev/null
     usermod -aG www-data www54 &> /dev/null
@@ -477,6 +497,10 @@ update_php_conf () {
     mkdir -p /opt/php52/etc
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52.ini /opt/php52/etc/php52.ini
   fi
+  if [ ! -e "/opt/php56/lib/php.ini" ] ; then
+    mkdir -p /opt/php56/lib
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php56-cli.ini /opt/php56/lib/php.ini
+  fi
   if [ ! -e "/opt/php55/lib/php.ini" ] ; then
     mkdir -p /opt/php55/lib
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55-cli.ini /opt/php55/lib/php.ini
@@ -492,6 +516,12 @@ update_php_conf () {
   if [ ! -e "/opt/php52/lib/php.ini" ] ; then
     mkdir -p /opt/php52/lib
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52-cli.ini /opt/php52/lib/php.ini
+  fi
+  if [ "$_CUSTOM_CONFIG_PHP56" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    cp -af /opt/php56/etc/php56.ini /var/backups/dragon/t/etc-php56.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php56.ini /opt/php56/etc/php56.ini                     &> /dev/null
+    cp -af /opt/php56/lib/php.ini /var/backups/dragon/t/lib-php56.ini-pre-$_INSTALLER_VERSION-$_NOW   &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php56-cli.ini /opt/php56/lib/php.ini                   &> /dev/null
   fi
   if [ "$_CUSTOM_CONFIG_PHP55" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     cp -af /opt/php55/etc/php55.ini /var/backups/dragon/t/etc-php55.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
@@ -518,6 +548,7 @@ update_php_conf () {
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52-cli.ini /opt/php52/lib/php.ini                   &> /dev/null
   fi
   ###
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php56-fpm.conf /opt/php56/etc/php56-fpm.conf &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55-fpm.conf /opt/php55/etc/php55-fpm.conf &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54-fpm.conf /opt/php54/etc/php54-fpm.conf &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/php53/etc/php53-fpm.conf &> /dev/null
@@ -527,6 +558,17 @@ update_php_conf () {
   sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g"  /opt/php52/etc/php52-fpm.conf &> /dev/null
   sed -i "s/listen.mode =.*/listen.mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   ###
+
+  _THIS_FILE=/opt/php56/etc/php56.ini
+  fix_php_ini_redis
+  fix_php_ini_jsmin
+  fix_php_ini_suhosin
+  fix_php_ini_mailparse
+  _THIS_FILE=/opt/php56/lib/php.ini
+  fix_php_ini_redis
+  fix_php_ini_jsmin
+  fix_php_ini_suhosin
+  fix_php_ini_mailparse
 
   _THIS_FILE=/opt/php55/etc/php55.ini
   fix_php_ini_redis
@@ -599,6 +641,8 @@ restore_default_php () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54.ini /opt/php54/etc/php54.ini   &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55-cli.ini /opt/php55/lib/php.ini &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55.ini /opt/php55/etc/php55.ini   &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php56-cli.ini /opt/php56/lib/php.ini &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php56.ini /opt/php56/etc/php56.ini   &> /dev/null
 }
 #
 tune_php () {
@@ -752,6 +796,9 @@ tune_nginx () {
 #
 restart_services () {
   msg "INFO: Reloading services"
+  if [ -e "/etc/init.d/php56-fpm" ] ; then
+    mrun "service php56-fpm reload" &> /dev/null
+  fi
   if [ -e "/etc/init.d/php55-fpm" ] ; then
     mrun "service php55-fpm reload" &> /dev/null
   fi
@@ -793,14 +840,17 @@ tune_web_server_config () {
   if [ "$_START_LEGACY_FPM" -lt "3" ] ; then
     _START_LEGACY_FPM=3
   fi
+  sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php56/etc/php56-fpm.conf    &> /dev/null
   sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php55/etc/php55-fpm.conf    &> /dev/null
   sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php54/etc/php54-fpm.conf    &> /dev/null
   sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php53/etc/php53-fpm.conf    &> /dev/null
+  sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php56/etc/pool.d/www56.conf &> /dev/null
   sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php55/etc/pool.d/www55.conf &> /dev/null
   sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php54/etc/pool.d/www54.conf &> /dev/null
   sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php53/etc/pool.d/www53.conf &> /dev/null
   sed -i "s/max_children\">.*</max_children\">$_START_LEGACY_FPM</g" /opt/php52/etc/php52-fpm.conf    &> /dev/null
   if [ ! -z "$_PHP_FPM_DENY" ] ; then
+    sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php56/etc/pool.d/www56.conf &> /dev/null
     sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php55/etc/pool.d/www55.conf &> /dev/null
     sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php54/etc/pool.d/www54.conf &> /dev/null
     sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php53/etc/pool.d/www53.conf &> /dev/null
@@ -814,10 +864,10 @@ tune_web_server_config () {
   sed -i "s/assert,//g"            /opt/php*/etc/php*.ini             &> /dev/null
   sed -i "s/,assert,/,/g"          /opt/php*/etc/pool.d/*.conf        &> /dev/null
   sed -i "s/,assert,/,/g"          /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
-  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /opt/php*/etc/pool.d/*.conf        &> /dev/null
-  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
-  sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /opt/php*/etc/pool.d/*.conf        &> /dev/null
-  sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
+  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g"       /opt/php*/etc/pool.d/*.conf        &> /dev/null
+  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g"       /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
+  sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55:\/opt\/php56\"/g" /opt/php*/etc/pool.d/*.conf        &> /dev/null
+  sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55:\/opt\/php56\"/g" /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
   _ZOP_INI_TEST=$(grep "^opcache.enable=1" /opt/php*/etc/php*.ini 2>&1)
   if [[ "$_ZOP_INI_TEST" =~ "opcache.enable=1" ]] ; then
     _DO_NOTHING=YES
@@ -1057,8 +1107,9 @@ tune_memory_limits () {
         else
           _L_NGINX_WORKERS=$_NGINX_WORKERS
         fi
-        sed -i "s/64000/128000/g"  /opt/php53/etc/php55.ini &> /dev/null
-        sed -i "s/64000/128000/g"  /opt/php53/etc/php54.ini &> /dev/null
+        sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini &> /dev/null
+        sed -i "s/64000/128000/g"  /opt/php55/etc/php55.ini &> /dev/null
+        sed -i "s/64000/128000/g"  /opt/php54/etc/php54.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php53/etc/php53.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php52/etc/php52.ini &> /dev/null
       else
@@ -1132,6 +1183,11 @@ tune_memory_limits () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] ; then
     sed -i "s/256/$_USE_FPM/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
+  fi
+  if [ -e "/opt/php56/etc/php56.ini" ] ; then
+    sed -i "s/256/$_USE_FPM/g" /opt/php56/etc/php56.ini &> /dev/null
+    sed -i "s/181/$_USE_OPC/g" /opt/php56/etc/php56.ini &> /dev/null
+    sed -i "s/256/$_USE_PHP/g" /opt/php56/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php55/etc/php55.ini" ] ; then
     sed -i "s/256/$_USE_FPM/g" /opt/php55/etc/php55.ini &> /dev/null

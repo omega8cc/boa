@@ -81,6 +81,9 @@ check_php_cli_version () {
   if [[ "$_PHP_CLI" =~ "php55" ]] ; then
     DRUSH_PHP="/opt/php55/bin/php"
     PHP_INI="/opt/php55/lib/php.ini"
+  elif [[ "$_PHP_CLI" =~ "php56" ]] ; then
+    DRUSH_PHP="/opt/php56/bin/php"
+    PHP_INI="/opt/php56/lib/php.ini"
   elif [[ "$_PHP_CLI" =~ "php54" ]] ; then
     DRUSH_PHP="/opt/php54/bin/php"
     PHP_INI="/opt/php54/lib/php.ini"
@@ -113,6 +116,8 @@ if [ "$_LTD_GID" = "www-data users" ] || [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ 
           _PHP_DEFAULT=`/usr/bin/php-cli -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
           if [[ "$_PHP_DEFAULT" =~ "5.5." ]] ; then
             PHP_INI="/opt/php55/lib/php.ini"
+          elif [[ "$_PHP_DEFAULT" =~ "5.6." ]] ; then
+            PHP_INI="/opt/php56/lib/php.ini"
           elif [[ "$_PHP_DEFAULT" =~ "5.4." ]] ; then
             PHP_INI="/opt/php54/lib/php.ini"
           elif [[ "$_PHP_DEFAULT" =~ "5.3." ]] ; then

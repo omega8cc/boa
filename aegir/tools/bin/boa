@@ -275,6 +275,11 @@ if [ -e "$varPath/$barName" ] ; then
       sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.5/g"   $varPath/$barName
       sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       $varPath/$octName
       sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       $varPath/$octName
+    elif [ "$rkey" = "php-56" ] ; then
+      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.6/g" $varPath/$barName
+      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.6/g"   $varPath/$barName
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g"       $varPath/$octName
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g"       $varPath/$octName
     elif [ "$rkey" = "php-54" ] ; then
       sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.4/g" $varPath/$barName
       sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.4/g"   $varPath/$barName
@@ -287,7 +292,7 @@ if [ -e "$varPath/$barName" ] ; then
       sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"       $varPath/$octName
     elif [ "$rkey" = "php-all" ] ; then
       sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"    $varPath/$barName
-      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"5.5 5.4 5.3\"/g" $varPath/$barName
+      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"5.6 5.5 5.4 5.3\"/g" $varPath/$barName
       sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       $varPath/$barName
       sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       $varPath/$barName
       sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       $varPath/$octName
@@ -652,6 +657,7 @@ case "$1" in
 
   {extra}
       license <------ valid new relic license key
+      php-56 <------- single PHP version to install and use
       php-55 <------- single PHP version to install and use
       php-54 <------- single PHP version to install and use
       php-53 <------- single PHP version to install and use

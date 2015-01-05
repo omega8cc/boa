@@ -208,6 +208,8 @@ up_action ()
     if [ ! -z "$rkey" ] ; then
       if [ "$rkey" = "php-55" ] ; then
         _PHP_SINGLE_INSTALL=5.5
+      elif [ "$rkey" = "php-56" ] ; then
+        _PHP_SINGLE_INSTALL=5.6
       elif [ "$rkey" = "php-54" ] ; then
         _PHP_SINGLE_INSTALL=5.4
       elif [ "$rkey" = "php-53" ] ; then
@@ -236,7 +238,7 @@ up_action ()
 
     fi
     ### Make sure that _PHP_SINGLE_INSTALL is set in $barCnf
-    if [ "$_PHP_SINGLE_INSTALL" = "5.5" ] || [ "$_PHP_SINGLE_INSTALL" = "5.4" ] || [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
+    if [ "$_PHP_SINGLE_INSTALL" = "5.6" ] || [ "$_PHP_SINGLE_INSTALL" = "5.5" ] || [ "$_PHP_SINGLE_INSTALL" = "5.4" ] || [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
       _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL $barCnf)
       if [[ "$_PHP_SINGLE_INSTALL_TEST" =~ "_PHP_SINGLE_INSTALL" ]] ; then
         sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=$_PHP_SINGLE_INSTALL/g" $barCnf
@@ -246,7 +248,7 @@ up_action ()
     fi
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "$_PHP_SINGLE_INSTALL" ] ; then
-      if [ "$_PHP_SINGLE_INSTALL" = "5.5" ] || [ "$_PHP_SINGLE_INSTALL" = "5.4" ] || [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
+      if [ "$_PHP_SINGLE_INSTALL" = "5.6" ] || [ "$_PHP_SINGLE_INSTALL" = "5.5" ] || [ "$_PHP_SINGLE_INSTALL" = "5.4" ] || [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
 
         ### Debugging
         if [ "$debug" = "debug" ] ; then
@@ -288,7 +290,7 @@ up_action ()
           done
         fi
       elif [ "$_PHP_SINGLE_INSTALL" = "ALL" ] ; then
-        _PHP_MULTI_INSTALL="5.5 5.4 5.3"
+        _PHP_MULTI_INSTALL="5.6 5.5 5.4 5.3"
         _PHP_SINGLE_INSTALL=5.5
 
         ### Debugging
@@ -657,7 +659,7 @@ proceed ()
     _SCRIPT_URL="$rgUrl/$legacy/$barName"
   else
     echo
-    echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log} {newrelickey|php-55|php-54|php-53|php-all|nodns}"
+    echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log} {newrelickey|php-56|php-55|php-54|php-53|php-all|nodns}"
     echo
     echo "  Silent Mode Option: system == OS only upgrade"
     echo "  Silent Mode Option: log ===== OS and Aegir Master Instance upgrade"

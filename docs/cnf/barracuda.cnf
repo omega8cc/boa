@@ -57,14 +57,14 @@ _NGINX_NAXSI=NO #--------------- Installs NAXSI WAF when YES - experimental
 _NGINX_SPDY=NO #---------------- Installs SPDY Nginx support when YES
 _NGINX_WORKERS=AUTO #----------- Allows to override AUTO with a valid integer
 ###
-_PHP_CLI_VERSION=5.5 #---------- PHP-CLI used by Master Instance: 5.{3,4,5}
+_PHP_CLI_VERSION=5.5 #---------- PHP-CLI used by Master Instance: 5.{3,4,5,6}
 _PHP_EXTRA_CONF="" #------------ Allows to add custom options to PHP build
 _PHP_FPM_DENY="" #-------------- Modify disable_functions -- see info below
-_PHP_FPM_VERSION=5.5 #---------- PHP-FPM used by Master Instance: 5.{2,3,4,5}
+_PHP_FPM_VERSION=5.5 #---------- PHP-FPM used by Master Instance: 5.{3,4,5,6}
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_GEOS=NO #------------------ Installs GEOS for PHP when YES - experimental
 _PHP_MONGODB=NO #--------------- Installs MONGODB for PHP when YES
-_PHP_MULTI_INSTALL="5.5" #------ Lists PHP versions to install: 5.3 5.4 5.5
+_PHP_MULTI_INSTALL="5.5" #------ Lists PHP versions to install: 5.3 5.4 5.5 5.6
 _PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 5.5
 ###
 _REDIS_LISTEN_MODE=PORT #------- Redis listen mode: PORT or SOCKET (recommended)
@@ -82,6 +82,7 @@ _CUSTOM_CONFIG_PHP52=NO #------- Protects custom PHP 5.2 ini files when YES
 _CUSTOM_CONFIG_PHP53=NO #------- Protects custom PHP 5.3 ini files when YES
 _CUSTOM_CONFIG_PHP54=NO #------- Protects custom PHP 5.4 ini files when YES
 _CUSTOM_CONFIG_PHP55=NO #------- Protects custom PHP 5.5 ini files when YES
+_CUSTOM_CONFIG_PHP56=NO #------- Protects custom PHP 5.6 ini files when YES
 _CUSTOM_CONFIG_REDIS=NO #------- Protects custom Redis config when YES
 _CUSTOM_CONFIG_SQL=NO #--------- Protects custom SQL config when YES
 ###

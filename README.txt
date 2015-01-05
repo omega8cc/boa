@@ -126,7 +126,7 @@ NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
 * All libraries & tools required to install and run Nginx based Aegir system.
 * Latest release of MariaDB 5.5 or 10.0 database server with Chive manager.
 * Latest version of Nginx web server.
-* PHP-FPM 5.5, 5.4, 5.3 - multi-install mode, configurable per Octopus instance.
+* PHP-FPM 5.6, 5.5, 5.4, 5.3 - multi-install mode, configurable per Octopus instance.
 * PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse and ionCube.
 * Fast Redis Cache with DB auto-failover for all 6.x and 7.x platforms.
 * Fast Redis Lock support with DB auto-failover for all 6.x and 7.x platforms.
@@ -153,6 +153,7 @@ NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
 * Compass Tools.
 * SPDY Nginx support.
 * PFS (Perfect Forward Secrecy) support in Nginx.
+* HHVM support - see docs/HHVM.txt for details.
 * MultiCore Apache Solr 1.4.1 with Jetty 7 - see docs/SOLR.txt for details.
 * MultiCore Apache Solr 3.6.2 with Jetty 8 - see docs/SOLR.txt for details.
 * MultiCore Apache Solr 4.2.0 with Jetty 8 or Jetty 9 on Precise and Wheezy.

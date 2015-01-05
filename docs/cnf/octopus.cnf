@@ -24,8 +24,8 @@ _DEL_OLD_EMPTY_PLATFORMS="0" #-- Delete empty platforms if verified > X-days-ago
 _DEL_OLD_BACKUPS=0 #------------ Delete Aegir/b-migrate backups if > X-days-ago
 _DEL_OLD_TMP=0 #---------------- Delete sites temp files if > X-days-ago
 _LOCAL_NETWORK_IP= #------------ Web server IP if in localhost mode - auto-conf
-_PHP_FPM_VERSION=5.5 #---------- PHP-FPM used by Satellite Instance: 5.{3,4,5}
-_PHP_CLI_VERSION=5.5 #---------- PHP-CLI used by Satellite Instance: 5.{3,4,5}
+_PHP_FPM_VERSION=5.5 #---------- PHP-FPM used by Satellite Instance: 5.{3,4,5,6}
+_PHP_CLI_VERSION=5.5 #---------- PHP-CLI used by Satellite Instance: 5.{3,4,5,6}
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_FPM_TIMEOUT=AUTO #--------- Allows to override default 180 when 60-180
 _PHP_FPM_DENY="" #-------------- Modify the disable_functions list per instance
@@ -73,12 +73,13 @@ _CLIENT_CORES="8" #------------- Currently not used
 ###
 ### Supported values which can be written in this file:
 ###
+### 5.6
 ### 5.5
 ### 5.4
 ### 5.3
 ###
 ### There must be only one line and one value in this control file. Otherwise
-### it will be ignored. If you will enter 5.2 it will force 5.3, so this file
+### it will be ignored. If you will enter 5.2 it will force 5.5, so this file
 ### should not exist if you have 5.2 defined in the /root/.${_USER}.octopus.cnf
 ### file for some reason.
 ###
@@ -99,12 +100,13 @@ _CLIENT_CORES="8" #------------- Currently not used
 ###
 ### Supported values which can be written in this file:
 ###
+### 5.6
 ### 5.5
 ### 5.4
 ### 5.3
 ###
 ### There must be only one line and one value in this control file. Otherwise
-### it will be ignored. If you will enter 5.2 it will force 5.3, so this file
+### it will be ignored. If you will enter 5.2 it will force 5.5, so this file
 ### should not exist if you have 5.2 defined in the /root/.${_USER}.octopus.cnf
 ### file for some reason.
 ###

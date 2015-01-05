@@ -146,7 +146,8 @@
 ### This allows to easily switch PHP version by the instance owner w/o system
 ### admin (root) help. All you need to do is to create ~/static/control/fpm.info
 ### and ~/static/control/cli.info file with a single line telling the system
-### which available PHP version should be used (if installed): 5.5 or 5.4 or 5.3
+### which available PHP version should be used (if installed): 5.5 or 5.6 or
+### 5.4 or 5.3
 ###
 ### Only one of them can be set, but you can use separate versions for web
 ### access (fpm.info) and the Aegir backend (cli.info). The system will switch
