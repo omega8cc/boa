@@ -3838,6 +3838,10 @@ barracuda_cnf () {
             echo $_PHP_SINGLE_INSTALL > $Ctrl/cli.info
             ### msg "INFO: Forced PHP $_PHP_SINGLE_INSTALL in $Ctrl"
           done
+          for Ctrl in `find /data/disk/*/.drush -maxdepth 0 -mindepth 0 | sort`; do
+            rm -f $Ctrl/.ctrl.php*
+            ### msg "INFO: Forced PHP $_PHP_SINGLE_INSTALL in $Ctrl"
+          done
         fi
       fi
     fi
