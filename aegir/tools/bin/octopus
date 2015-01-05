@@ -488,7 +488,6 @@ up_start ()
   if [ -e "/opt/local/bin/php" ] || [ -e "/usr/local/bin/php" ] ; then
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
-    ln -s /usr/bin/php /opt/local/bin/php
   fi
   if [ "$cmmand" = "up-cluster" ] ; then
     if [ ! -e "/var/run/mysqld/mysqld.pid" ] && [ ! -e "/root/.dbhd.clstr.cnf" ] && [ -e "/etc/init.d/mysql" ] ; then

@@ -6163,6 +6163,46 @@ php_single_initd_cleanup () {
   fi
 }
 #
+# Fix path to PHP-CLI if needed.
+check_php_cli () {
+  _PHP_CHECK=`readlink -n /usr/bin/php`
+  if [ ! -x "$_PHP_CHECK" ] ; then
+    if [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+      _PHP_CLI_PATH="/opt/php55/bin/php"
+    elif [ "$_PHP_CLI_VERSION" = "5.6" ] ; then
+      _PHP_CLI_PATH="/opt/php56/bin/php"
+    elif [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
+      _PHP_CLI_PATH="/opt/php54/bin/php"
+    elif [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
+      _PHP_CLI_PATH="/opt/php53/bin/php"
+    elif [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
+      _PHP_CLI_PATH="/opt/php52/bin/php"
+    else
+      _PHP_CLI_PATH=""
+    fi
+    if [ -x "$_PHP_CLI_PATH" ] ; then
+      _USE_PHP_CLI_PATH=$_PHP_CLI_PATH
+    else
+      if  [ -x "/opt/php55/bin/php" ] ; then
+        _USE_PHP_CLI_PATH=/opt/php55/bin/php
+      elif  [ -x "/opt/php56/bin/php" ] ; then
+        _USE_PHP_CLI_PATH=/opt/php56/bin/php
+      elif  [ -x "/opt/php54/bin/php" ] ; then
+        _USE_PHP_CLI_PATH=/opt/php54/bin/php
+      elif [ -x "/opt/php53/bin/php" ] ; then
+        _USE_PHP_CLI_PATH=/opt/php53/bin/php
+      elif [ -x "/opt/php52/bin/php" ] ; then
+        _USE_PHP_CLI_PATH=/opt/php52/bin/php
+      fi
+    fi
+    if [ -x "$_USE_PHP_CLI_PATH" ] ; then
+      ln -sf $_USE_PHP_CLI_PATH /usr/bin/php
+    else
+      msg "WAIT: I can not find PHP-CLI anywhere!"
+    fi
+  fi
+}
+#
 # Final cleanup.
 finale () {
   ###--------------------###
@@ -10679,6 +10719,7 @@ if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
   fi
   strict_bin_permissions
 fi
+check_php_cli
 finale
 exit 0
 

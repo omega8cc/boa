@@ -120,7 +120,6 @@ check_dns_settings () {
 send_report ()
 {
   if [ -e "$barCnf" ] ; then
-    source $barCnf
     if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
@@ -134,7 +133,6 @@ send_report ()
 send_alert ()
 {
   if [ -e "$barCnf" ] ; then
-    source $barCnf
     if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
@@ -199,6 +197,47 @@ check_report ()
     send_alert
   else
     send_report
+  fi
+}
+
+check_php_cli ()
+{
+  _PHP_CHECK=`readlink -n /usr/bin/php`
+  if [ ! -x "$_PHP_CHECK" ] ; then
+    if [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+      _PHP_CLI_PATH="/opt/php55/bin/php"
+    elif [ "$_PHP_CLI_VERSION" = "5.6" ] ; then
+      _PHP_CLI_PATH="/opt/php56/bin/php"
+    elif [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
+      _PHP_CLI_PATH="/opt/php54/bin/php"
+    elif [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
+      _PHP_CLI_PATH="/opt/php53/bin/php"
+    elif [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
+      _PHP_CLI_PATH="/opt/php52/bin/php"
+    else
+      _PHP_CLI_PATH=""
+    fi
+    if [ -x "$_PHP_CLI_PATH" ] ; then
+      _USE_PHP_CLI_PATH=$_PHP_CLI_PATH
+    else
+      if  [ -x "/opt/php55/bin/php" ] ; then
+        _USE_PHP_CLI_PATH=/opt/php55/bin/php
+      elif  [ -x "/opt/php56/bin/php" ] ; then
+        _USE_PHP_CLI_PATH=/opt/php56/bin/php
+      elif  [ -x "/opt/php54/bin/php" ] ; then
+        _USE_PHP_CLI_PATH=/opt/php54/bin/php
+      elif [ -x "/opt/php53/bin/php" ] ; then
+        _USE_PHP_CLI_PATH=/opt/php53/bin/php
+      elif [ -x "/opt/php52/bin/php" ] ; then
+        _USE_PHP_CLI_PATH=/opt/php52/bin/php
+      fi
+    fi
+    if [ -x "$_USE_PHP_CLI_PATH" ] ; then
+      ln -sf $_USE_PHP_CLI_PATH /usr/bin/php
+    else
+      echo "ERROR: I can not find PHP-CLI anywhere!"
+      clean_pid_exit
+    fi
   fi
 }
 
@@ -508,7 +547,6 @@ up_start ()
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/pear
     rm -f /usr/local/bin/php
-    ln -s /usr/bin/php /opt/local/bin/php
   fi
 }
 
@@ -645,6 +683,7 @@ proceed ()
   check_root
   check_dns_curl
   check_wrapper
+  check_php_cli
   set_pin_priority
   up_start
   if [ "$cmmand" = "up-head" ] ; then
@@ -689,5 +728,8 @@ if [ ! -z "$silent" ] ; then
     rkey="$2"
     debug="$3"
   fi
+fi
+if [ -e "$barCnf" ] ; then
+  source $barCnf
 fi
 proceed
