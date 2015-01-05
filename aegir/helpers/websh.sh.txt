@@ -43,10 +43,14 @@ elif [ -d "/data/disk/${_Y_USR}/.tmp" ] ; then
   export TMP="/data/disk/${_Y_USR}/.tmp"
   export TMPDIR="/data/disk/${_Y_USR}/.tmp"
   export TEMP="/data/disk/${_Y_USR}/.tmp"
-elif [ -d "/var/aegir/.tmp" ] ; then
-  export TMP="/var/aegir/.tmp"
-  export TMPDIR="/var/aegir/.tmp"
-  export TEMP="/var/aegir/.tmp"
+elif [ -d "/var/${_Y_USR}/.tmp" ] ; then
+  export TMP="/var/${_Y_USR}/.tmp"
+  export TMPDIR="/var/${_Y_USR}/.tmp"
+  export TEMP="/var/${_Y_USR}/.tmp"
+else
+  export TMP="/tmp"
+  export TMPDIR="/tmp"
+  export TEMP="/tmp"
 fi
 
 # echo HOME is ${HOME}
