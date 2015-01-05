@@ -43,6 +43,7 @@
 
 export PATH=$PATH:/opt/local/bin
 SHELL=/bin/bash
+barCnf=/root/.barracuda.cnf
 _TODAY=`date +%y%m%d`
 _INSTALLER_VERSION=BOA-2.4.0-dev
 
@@ -402,6 +403,21 @@ setup ()
 
 ###--------------------###
 if [ `whoami` = "root" ] ; then
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] ; then
+    if [ -e "$barCnf" ] ; then
+      source $barCnf
+    fi
+    if [ ! -z "$_SKYNET_MODE" ] && [ "$_SKYNET_MODE" = "OFF" ] ; then
+      echo "STATUS: Skynet Agent is Inactive!"
+      echo "STATUS: Please remove the _SKYNET_MODE=OFF line from"
+      echo "STATUS: $barCnf file to enable me again."
+      exit 0
+    else
+      echo "STATUS: Skynet Agent is Active, OK!"
+      echo "STATUS: You can add the _SKYNET_MODE=OFF line to"
+      echo "STATUS: $barCnf file to disable me, if needed."
+    fi
+  fi
   chmod a+w /dev/null
   if [ ! -e "/dev/fd" ] ; then
     if [ -e "/proc/self/fd" ] ; then
@@ -426,7 +442,7 @@ if [ `whoami` = "root" ] ; then
   service cron reload
   exit 0
 else
-  msg "ERROR: This script should be ran as a root user - please `sudo -i` first"
+  echo "ERROR: This script should be ran as a root user - please `sudo -i` first"
   exit 1
 fi
 

@@ -131,6 +131,50 @@ _AUTO_UP_DAY= #----------------- Day (1-31) to define date of one-time upgrade
 _BACKEND_ITEMS_LIST=
 
 ###
+### The BOA Skynet auto-updates were initially limited to checking for new BOA
+### release and notifying the system admin daily, until the system has been
+### upgraded to latest stable release.
+###
+### Next, since people tend to forget about running meta-installers update
+### before running barracuda or octopus upgrade, and it generated a ton of
+### unneeded tickets, confusion and frustration, we have automated these
+### updates, so all your meta-installers were updated daily.
+###
+### Then #drupageddon happened, and we realized that we could make all existing
+### BOA systems secure, auto-magically, in the first 60 minutes after the
+### #drupageddon alert was published. Only if we could have a running mechanism
+### in place to apply very trivial but how important patch to all your D7 sites/
+### /codebases while you were on vacation, out of town, or just AFK anywhere.
+###
+### So we have added Drupal core monitoring and auto-patching to make sure you
+### never run vulnerable codebase again. To make it effective, we have scheduled
+### to run these checks hourly.
+###
+### Then we have added also hourly updates for a few key scripts responsible
+### for your system security, self-monitoring and self-healing.
+###
+### Gradually it grew into its current incarnation, so at the moment BOA Skynet
+### auto-updates do these things for you, while you sleep:
+###
+### * Daily version/release check and notification
+### * Hourly update for all meta-installers and related tools
+### * Hourly check for D7 core vulnerability and patching if detected
+### * Hourly update for key BOA tools, monitors and self-healing agents
+### * Hourly check if your DNS resolver works as expected and repair if not
+###
+### While it is a very convenient to have all this work done for you, and we
+### believe that it should be still enabled by default, we should make it
+### possible to opt-out from all those auto-updates, if you prefer that your
+### BOA system never calls home, and whatever happens, is totally under
+### your control.
+###
+### Now you can disable this convenient magic completely by adding the line:
+###
+###   _SKYNET_MODE=OFF
+###
+_SKYNET_MODE=
+
+###
 ### NOTE: the group of settings displayed below is never stored
 ### permanently in this config file, since they are intended to be used
 ### only when required/useful for some reason, and while can be added

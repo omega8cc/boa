@@ -676,6 +676,9 @@ check_root ()
     echo "ERROR: Your disk space is almost full - we can not proceed until it is below 90/100"
     clean_pid_exit
   fi
+  if [ -e "$barCnf" ] ; then
+    source $barCnf
+  fi
 }
 
 proceed ()
@@ -728,8 +731,5 @@ if [ ! -z "$silent" ] ; then
     rkey="$2"
     debug="$3"
   fi
-fi
-if [ -e "$barCnf" ] ; then
-  source $barCnf
 fi
 proceed

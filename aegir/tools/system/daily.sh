@@ -2210,10 +2210,15 @@ fi
 #
 mkdir -p /var/xdrago/log/daily
 #
-rm -f /var/backups/BOA.sh.txt-*
-curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-$_NOW
-bash /var/backups/BOA.sh.txt-$_NOW &> /dev/null
-rm -f /var/backups/BOA.sh.txt-$_NOW
+if [ -e "/root/.barracuda.cnf" ] ; then
+  source /root/.barracuda.cnf
+fi
+if [ -z "$_SKYNET_MODE" ] || [ "$_SKYNET_MODE" = "ON" ] ; then
+  rm -f /var/backups/BOA.sh.txt-*
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-$_NOW
+  bash /var/backups/BOA.sh.txt-$_NOW &> /dev/null
+  rm -f /var/backups/BOA.sh.txt-$_NOW
+fi
 #
 if [ -e "/var/run/boa_wait.pid" ] && [ ! -e "/var/run/boa_system_wait.pid" ] ; then
   touch /var/xdrago/log/wait-for-boa
@@ -2225,9 +2230,6 @@ elif [ -e "/root/.wbhd.clstr.cnf" ] ; then
   exit 1
 else
   touch /var/run/daily-fix.pid
-  if [ -e "/root/.barracuda.cnf" ] ; then
-    source /root/.barracuda.cnf
-  fi
   if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     _PERMISSIONS_FIX=YES
     _MODULES_FIX=YES
@@ -2281,9 +2283,13 @@ else
 fi
 
 ###--------------------###
-echo "INFO: Checking BARRACUDA version"
-rm -f /opt/tmp/barracuda-version.txt*
-curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/master/aegir/conf/barracuda-version.txt" -o /opt/tmp/barracuda-version.txt
+if [ -z "$_SKYNET_MODE" ] || [ "$_SKYNET_MODE" = "ON" ] ; then
+  echo "INFO: Checking BARRACUDA version"
+  rm -f /opt/tmp/barracuda-version.txt*
+  curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/master/aegir/conf/barracuda-version.txt" -o /opt/tmp/barracuda-version.txt
+else
+  rm -f /opt/tmp/barracuda-version.txt*
+fi
 if [ -e "/opt/tmp/barracuda-version.txt" ] ; then
   _INSTALLER_VERSION=`cat /opt/tmp/barracuda-version.txt`
   _VERSIONS_TEST=`cat /var/log/barracuda_log.txt`
