@@ -12,7 +12,6 @@ _MY_EMAIL="my@email" #---------- Aegir Instance owner e-mail
 _PLATFORMS_LIST=ALL #----------- Platforms to install - see docs/PLATFORMS.txt
 _AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
 _HM_ONLY=NO #------------------- Allows to upgrade Aegir only (deprecated)
-_O_CONTRIB_UP=NO #-------------- Allows to force o_contrib upgrade when YES
 _DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
 _MY_OWNIP= #-------------------- Allows to specify web server IP if not default
 _FORCE_GIT_MIRROR="" #---------- Allows to use different mirror (deprecated)

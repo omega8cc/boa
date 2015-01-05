@@ -185,22 +185,6 @@ _HM_ONLY=NO
 
 
 ###----------------------------------------###
-### O_CONTRIB UPGRADE                      ###
-###----------------------------------------###
-###
-### To upgrade o_contrib modules in the latest
-### and one previous platforms series 00x
-### change this to YES.
-###
-### This option is available only on Aegir
-### Satellite Instance upgrade.
-###
-### _O_CONTRIB_UP=YES
-###
-_O_CONTRIB_UP=NO
-
-
-###----------------------------------------###
 ### DRUSH DEBUG MODE                       ###
 ###----------------------------------------###
 ###
@@ -1041,7 +1025,6 @@ octopus_cnf () {
     echo "_PLATFORMS_LIST=\"$_PLATFORMS_LIST\"" >> /root/.${_USER}.octopus.cnf
     echo "_AUTOPILOT=$_AUTOPILOT" >> /root/.${_USER}.octopus.cnf
     echo "_HM_ONLY=$_HM_ONLY" >> /root/.${_USER}.octopus.cnf
-    echo "_O_CONTRIB_UP=$_O_CONTRIB_UP" >> /root/.${_USER}.octopus.cnf
     echo "_DEBUG_MODE=$_DEBUG_MODE" >> /root/.${_USER}.octopus.cnf
     echo "_MY_OWNIP=$_MY_OWNIP" >> /root/.${_USER}.octopus.cnf
     echo "_FORCE_GIT_MIRROR=\"$_FORCE_GIT_MIRROR\"" >> /root/.${_USER}.octopus.cnf
@@ -1327,6 +1310,12 @@ octopus_cnf () {
           sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
         fi
       fi
+    fi
+
+    _O_CONTRIB_UP_TEST=$(grep _O_CONTRIB_UP /root/.${_USER}.octopus.cnf)
+    if [[ "$_O_CONTRIB_UP_TEST" =~ "_O_CONTRIB_UP" ]] ; then
+      sed -i "s/^_O_CONTRIB_UP.*//g" /root/.${_USER}.octopus.cnf &> /dev/null
+      sed -i "/^$/d" /root/.${_USER}.octopus.cnf &> /dev/null
     fi
 
     _ALLOW_UNSUPPORTED_TEST=$(grep _ALLOW_UNSUPPORTED /root/.${_USER}.octopus.cnf)
@@ -1731,7 +1720,6 @@ action () {
     sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files &> /dev/null
     sed -i "s/EDIT_MY_OWNIP/$_MY_OWNIP/g"                   $Files &> /dev/null
     sed -i "s/EDIT_NOW/$_NOW/g"                             $Files &> /dev/null
-    sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files &> /dev/null
     sed -i "s/EDIT_OPENACADEMY/$_OPENACADEMY/g"             $Files &> /dev/null
     sed -i "s/EDIT_OPENATRIUM7/$_OPENATRIUM7/g"             $Files &> /dev/null
     sed -i "s/EDIT_OPENBLOG/$_OPENBLOG/g"                   $Files &> /dev/null

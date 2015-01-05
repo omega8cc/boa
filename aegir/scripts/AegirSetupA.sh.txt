@@ -104,7 +104,6 @@ _LASTNUM=EDIT_LASTNUM
 _SERIES_RESULT=EDIT_SERIES_RESULT
 _MY_OWNIP=EDIT_MY_OWNIP
 _NOW=EDIT_NOW
-_O_CONTRIB_UP=EDIT_O_CONTRIB_UP
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
 _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
 _PLATFORMS_LIST="EDIT_PLATFORMS_LIST"
@@ -597,7 +596,7 @@ download_o_contrib_seven () {
   get_dev_contrib "print-7.x-2.0.tar.gz"
   get_dev_contrib "readonlymode-7.x-1.2.tar.gz"
   get_dev_contrib "reroute_email-7.x-1.2.tar.gz"
-  get_dev_contrib "robotstxt-7.x-1.2.tar.gz"
+  get_dev_contrib "robotstxt-7.x-1.3.tar.gz"
   get_dev_contrib "securesite-7.x-2.x-dev.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
   get_dev_contrib "site_verify-7.x-1.1.tar.gz"
@@ -676,7 +675,7 @@ download_o_contrib_six () {
   get_dev_contrib "private_upload-6.x-1.x-dev.tar.gz"
   get_dev_contrib "readonlymode-6.x-1.2.tar.gz"
   get_dev_contrib "reroute_email-6.x-1.3.tar.gz"
-  get_dev_contrib "robotstxt-6.x-1.3.tar.gz"
+  get_dev_contrib "robotstxt-6.x-1.4.tar.gz"
   get_dev_contrib "securesite-6.x-2.4.tar.gz"
   get_dev_contrib "session_expire-6.x-1.x-dev.tar.gz"
   get_dev_contrib "site_verify-6.x-1.0.tar.gz"
@@ -738,86 +737,61 @@ download_o_contrib_six () {
 }
 #
 # Upgrade o_contrib.
-upgrade_o_contrib () {
-if [ -e "$_CORE/o_contrib/ctrl-$_INSTALLER_VERSION" ] && [ -e "$_CORE/o_contrib_seven/ctrl-$_INSTALLER_VERSION" ] ; then
-  _O_CONTRIB_UP=NO
-fi
-if [ -e "/data/all/$_LAST_ALL/o_contrib/ctrl-$_INSTALLER_VERSION" ] && [ -e "/data/all/$_LAST_ALL/o_contrib_seven/ctrl-$_INSTALLER_VERSION" ] ; then
-  _O_CONTRIB_UP=NO
-fi
-if [ -e "$_CORE/o_contrib" ] ; then
-  if [ ! -e "$_CORE/o_contrib/textile/include/classTextile.php" ] ; then
-    _O_CONTRIB_UP=YES
+check_fix_o_contrib () {
+  if [ -e "$_CORE/o_contrib" ] ; then
+    if [ ! -e "$_CORE/o_contrib/textile/include/classTextile.php" ] ; then
+      _O_CONTRIB_FORCED_UP=YES
+    fi
   fi
-fi
-if [ -e "$_CORE/o_contrib_seven" ] ; then
-  if [ ! -e "$_CORE/o_contrib_seven/textile/include/classTextile.php" ] ; then
-    _O_CONTRIB_UP=YES
+  if [ -e "$_CORE/o_contrib_seven" ] ; then
+    if [ ! -e "$_CORE/o_contrib_seven/textile/include/classTextile.php" ] ; then
+      _O_CONTRIB_FORCED_UP=YES
+    fi
   fi
-fi
-if [ -e "/data/all/$_LAST_ALL/o_contrib" ] ; then
-  if [ ! -e "/data/all/$_LAST_ALL/o_contrib/textile/include/classTextile.php" ] ; then
-    _O_CONTRIB_UP=YES
+  if [ -e "$_CORE/o_contrib" ] ; then
+    if [ ! -d "$_CORE/o_contrib/robotstxt" ] || [ "$_O_CONTRIB_FORCED_UP" = "YES" ] ; then
+      msg "$_STATUS A: Running o_contrib forced upgrade, please wait..."
+      cd $_CORE/o_contrib
+      rm -f -r *
+      download_o_contrib_six
+      cd $_CORE/o_contrib
+    fi
   fi
-  if [ ! -e "/data/all/$_LAST_ALL/o_contrib/redis" ] || [ ! -e "/data/all/$_LAST_ALL/o_contrib/redis_edge" ] ; then
-    _O_CONTRIB_UP=YES
+  if [ -e "$_CORE/o_contrib_seven" ] ; then
+    if [ ! -d "$_CORE/o_contrib_seven/robotstxt" ] || [ "$_O_CONTRIB_FORCED_UP" = "YES" ] ; then
+      msg "$_STATUS A: Running o_contrib_seven forced upgrade, please wait..."
+      cd $_CORE/o_contrib_seven
+      rm -f -r *
+      download_o_contrib_seven
+      cd $_CORE/o_contrib_seven
+    fi
   fi
-fi
-if [ -e "/data/all/$_LAST_ALL/o_contrib_seven" ] ; then
-  if [ ! -e "/data/all/$_LAST_ALL/o_contrib_seven/textile/include/classTextile.php" ] ; then
-    _O_CONTRIB_UP=YES
+  if [ ! -e "/data/all/000/modules/cache_backport/update-$_INSTALLER_VERSION.info" ] ; then
+    mkdir -p /data/all/000/modules
+    cd /data/all/000/modules
+    rm -f -r /data/all/000/modules/cache_backport
+    get_dev_contrib "cache_backport-6.x-1.0-rc2.tar.gz"
+    sed -i "s/Cache Backand/D7 Cache Backport for D6/g" cache_backport/cache_backport.info &> /dev/null
+    echo update > cache_backport/update-$_INSTALLER_VERSION.info
   fi
-  if [ ! -e "/data/all/$_LAST_ALL/o_contrib_seven/redis" ] || [ ! -e "/data/all/$_LAST_ALL/o_contrib_seven/redis_edge" ] ; then
-    _O_CONTRIB_UP=YES
+  if [ ! -e "/data/all/000/modules/redis/update-$_INSTALLER_VERSION.info" ] ; then
+    mkdir -p /data/all/000/modules
+    cd /data/all/000/modules
+    rm -f -r /data/all/000/modules/redis
+    get_dev_contrib "redis-7.x-2.x-o8-revert-A.tar.gz"
+    rm -f redis/redis.info
+    echo update > redis/update-$_INSTALLER_VERSION.info
   fi
-fi
-if [ ! -e "$_THIS_CTRL" ] ; then
-  _O_CONTRIB_UP=YES
-fi
-if [ ! -e "/data/all/000/modules/redis/update-$_INSTALLER_VERSION.info" ] || [ ! -e "/data/all/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
-  _O_CONTRIB_UP=YES
-fi
-if [ "$_PURGE_MODE" = "ON" ] ; then
-  _TEST_MODULE=purge
-else
-  _TEST_MODULE=textile
-fi
-if [ -e "/data/all/$_LAST_ALL/o_contrib" ] ; then
- if [ ! -d "/data/all/$_LAST_ALL/o_contrib/$_TEST_MODULE" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
-  #msg "$_STATUS A: Running o_contrib upgrade #1, please wait..."
-  cd /data/all/$_LAST_ALL/o_contrib
-  rm -f -r *
-  download_o_contrib_six
-  cd /data/all/$_LAST_ALL/o_contrib
- fi
-fi
-if [ -e "$_CORE/o_contrib" ] ; then
- if [ ! -d "$_CORE/o_contrib/$_TEST_MODULE" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
-  #msg "$_STATUS A: Running o_contrib upgrade #2, please wait..."
-  cd $_CORE/o_contrib
-  rm -f -r *
-  download_o_contrib_six
-  cd $_CORE/o_contrib
- fi
-fi
-if [ -e "/data/all/$_LAST_ALL/o_contrib_seven" ] ; then
- if [ ! -d "/data/all/$_LAST_ALL/o_contrib_seven/robotstxt" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
-  #msg "$_STATUS A: Running o_contrib_seven upgrade #1, please wait..."
-  cd /data/all/$_LAST_ALL/o_contrib_seven
-  rm -f -r *
-  download_o_contrib_seven
-  cd /data/all/$_LAST_ALL/o_contrib_seven
- fi
-fi
-if [ -e "$_CORE/o_contrib_seven" ] ; then
- if [ ! -d "$_CORE/o_contrib_seven/robotstxt" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
-  #msg "$_STATUS A: Running o_contrib_seven upgrade #2, please wait..."
-  cd $_CORE/o_contrib_seven
-  rm -f -r *
-  download_o_contrib_seven
-  cd $_CORE/o_contrib_seven
- fi
-fi
+  if [ ! -e "/data/all/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
+    mkdir -p /data/all/000/modules
+    cd /data/all/000/modules
+    rm -f -r /data/all/000/modules/redis_edge
+    get_dev_contrib "redis_edge-$_REDIS_M_VERSION.tar.gz"
+    rm -f redis_edge/redis.info
+    echo update > redis_edge/$_REDIS_M_VERSION.info
+  fi
+  find /data/all/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
+  find /data/all/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
 }
 #
 # Manage o_contrib.
@@ -840,8 +814,7 @@ manage_o_contrib () {
   rm -f /data/all/000/modules/o_contrib
   ln -s $_CORE/o_contrib /data/all/000/modules/o_contrib
   if [ $_STATUS != "INIT" ] ; then
-    msg "$_STATUS A: Running o_contrib modules check and upgrade..."
-    upgrade_o_contrib
+    check_fix_o_contrib
   fi
 }
 
@@ -922,7 +895,6 @@ else
   _THIS_CORE="$_ALL_DISTRO"
   msg "$_STATUS A: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
 fi
-_THIS_CTRL="$_CORE/o_contrib/ctrl-$_INSTALLER_VERSION"
 
 
 ###---### Add required users and create directories.
@@ -1875,10 +1847,6 @@ else
     fi
   fi
   rm -f $_ROOT/distro/$_THIS_CORE/*/robots.txt &> /dev/null
-  if [ ! -e "/data/all/$_LAST_ALL/javascript_aggregator.out.txt" ] ; then
-    sed -i "s/, 'javascript_aggregator'//g" /data/all/$_LAST_ALL/*/profiles/*/*.profile &> /dev/null
-    touch /data/all/$_LAST_ALL/javascript_aggregator.out.txt
-  fi
   if [ ! -e "$_CORE/javascript_aggregator.out.txt" ] ; then
     sed -i "s/, 'javascript_aggregator'//g" $_CORE/*/profiles/*/*.profile &> /dev/null
     touch $_CORE/javascript_aggregator.out.txt
@@ -2008,8 +1976,6 @@ if [ -e "/data/all" ] ; then
   st_runner "chown -R root:root /data/conf" &> /dev/null
   st_runner "chown -R root:root $_CORE/o_contrib" &> /dev/null
   st_runner "chown -R root:root $_CORE/o_contrib_seven" &> /dev/null
-  st_runner "chown -R root:root /data/all/$_LAST_ALL/o_contrib" &> /dev/null
-  st_runner "chown -R root:root /data/all/$_LAST_ALL/o_contrib_seven" &> /dev/null
   st_runner "chown -R root:root /data/all/000" &> /dev/null
   find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
   find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
@@ -2032,8 +1998,6 @@ elif [ -e "/data/disk/all" ] ; then
   st_runner "chown -R root:root /data/conf" &> /dev/null
   st_runner "chown -R root:root $_CORE/o_contrib" &> /dev/null
   st_runner "chown -R root:root $_CORE/o_contrib_seven" &> /dev/null
-  st_runner "chown -R root:root /data/disk/all/$_LAST_ALL/o_contrib" &> /dev/null
-  st_runner "chown -R root:root /data/disk/all/$_LAST_ALL/o_contrib_seven" &> /dev/null
   st_runner "chown -R root:root /data/disk/all/000" &> /dev/null
   find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
   find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
