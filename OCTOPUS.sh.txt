@@ -833,6 +833,86 @@ tune_fpm_workers () {
   fi
 }
 #
+# Update web user.
+update_web_user () {
+  _T_HD="/home/${_USER}.web/.drush"
+  _T_TP="/home/${_USER}.web/.tmp"
+  if [ -e "/home/${_USER}.web" ] ; then
+    mkdir -p /home/${_USER}.web/.{tmp,drush}
+    if [ ! -z "$1" ] ; then
+      if [ "$1" = "hhvm" ] ; then
+        if [ -e "/opt/php56/etc/php56.ini" ] ; then
+          _T_PV=56
+        elif [ -e "/opt/php55/etc/php55.ini" ] ; then
+          _T_PV=55
+        fi
+      else
+        _T_PV=$1
+      fi
+    fi
+    if [ ! -z "$_T_PV" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ] ; then
+      cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini $_T_HD/php.ini
+    else
+      if [ -e "/opt/php55/etc/php55.ini" ] ; then
+        cp -af /opt/php55/etc/php55.ini $_T_HD/php.ini
+        _T_PV=55
+      elif [ -e "/opt/php56/etc/php56.ini" ] ; then
+        cp -af /opt/php56/etc/php56.ini $_T_HD/php.ini
+        _T_PV=56
+      elif [ -e "/opt/php54/etc/php54.ini" ] ; then
+        cp -af /opt/php54/etc/php54.ini $_T_HD/php.ini
+        _T_PV=54
+      elif [ -e "/opt/php53/etc/php53.ini" ] ; then
+        cp -af /opt/php53/etc/php53.ini $_T_HD/php.ini
+        _T_PV=53
+      fi
+    fi
+    if [ -e "$_T_HD/php.ini" ] ; then
+      _INI="open_basedir = \".:/data/disk/${_USER}/distro:/data/disk/${_USER}/static:/data/disk/${_USER}/aegir:/data/disk/${_USER}/platforms:/data/disk/${_USER}/backup-exports:${_T_TP}:/data/all:/data/disk/all:/data/conf:/var/second/${_USER}:/mnt:/srv:/usr/bin:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55:/opt/php56\""
+      _INI=${_INI//\//\\\/}
+      _QTP=${_T_TP//\//\\\/}
+      sed -i "s/.*open_basedir =.*/$_INI/g"                              $_T_HD/php.ini &> /dev/null
+      sed -i "s/.*session.save_path =.*/session.save_path = $_QTP/g"     $_T_HD/php.ini &> /dev/null
+      sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = $_QTP/g" $_T_HD/php.ini &> /dev/null
+      sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               $_T_HD/php.ini &> /dev/null
+      sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           $_T_HD/php.ini &> /dev/null
+      rm -f $_T_HD/.ctrl.php*
+      echo > $_T_HD/.ctrl.php${_T_PV}.txt
+    fi
+    chmod 700 /home/${_USER}.web
+    chown -R ${_USER}.web:www-data /home/${_USER}.web
+    chmod 550 /home/${_USER}.web/.drush
+    chmod 440 /home/${_USER}.web/.drush/php.ini
+    chattr +i /home/${_USER}.web &> /dev/null
+    chattr +i /home/${_USER}.web/.drush &> /dev/null
+  fi
+}
+#
+# Remove web user.
+remove_web_user () {
+  if [ -e "/home/${_USER}.web/.tmp" ] || [ "$1" = "clean" ] ; then
+    chattr -i /home/${_USER}.web &> /dev/null
+    chattr -i /home/${_USER}.web/.drush &> /dev/null
+    deluser --remove-home --backup-to /var/backups/zombie/deleted ${_USER}.web
+    if [ -e "/home/${_USER}.web" ] ; then
+      rm -f -r /home/${_USER}.web &> /dev/null
+    fi
+  fi
+}
+#
+# Add web user.
+create_web_user () {
+  _T_HD="/home/${_USER}.web/.drush"
+  _T_TP="/home/${_USER}.web/.tmp"
+  _T_ID_EXISTS=$(getent passwd ${_USER}.web 2>&1)
+  if [ ! -z "$_T_ID_EXISTS" ] && [ -e "$_T_HD/php.ini" ] ; then
+    update_web_user "$1"
+  elif [ -z "$_T_ID_EXISTS" ] || [ ! -e "$_T_HD/php.ini" ] ; then
+    remove_web_user "clean"
+    adduser --force-badname --system --ingroup www-data ${_USER}.web &> /dev/null
+  fi
+}
+#
 # Tune FPM configuration.
 tune_fpm_config () {
   tune_fpm_workers
@@ -887,6 +967,23 @@ tune_fpm_config () {
       cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
     fi
     if [ -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ] ; then
+      ### create or update special system user if needed
+      if [ -e "/home/${_USER}.web/.drush/php.ini" ] ; then
+        _OLD_PHP_IN_USE=`grep "/lib/php" /home/${_USER}.web/.drush/php.ini`
+        _PHP_V="56 55 54 53 52"
+        for e in $_PHP_V; do
+          if [[ "$_OLD_PHP_IN_USE" =~ "php${e}" ]] ; then
+            if [ "${e}" != "${_PHP_SV}" ]] || [ ! -e "/home/${_USER}.web/.drush/.ctrl.php${_PHP_SV}.txt" ] ; then
+              update_web_user "$_PHP_SV"
+            fi
+          fi
+        done
+      else
+        create_web_user "$_PHP_SV"
+      fi
+      ### create or update special system user if needed
+      sed -i "s/.ftp/.web/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      sed -i "s/\/data\/disk\/foo\/.tmp/\/home\/foo.web\/.tmp/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       sed -i "s/foo/$_USER/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       if [ ! -z "$_PHP_FPM_DENY" ] ; then
         sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
