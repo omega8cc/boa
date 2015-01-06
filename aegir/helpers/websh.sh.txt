@@ -36,7 +36,7 @@ if [ -d "/home/${USER}/.tmp" ] ; then
   export TEMP="/home/${USER}/.tmp"
   if [[ "$_ARGS" =~ (^)"xwhich" ]] || [[ "$_ARGS" =~ (^)"id " ]] ; then
     exit 1
-  elif [[ "$_ARGS" =~ (^)"newrelic" ]] || [[ "$_ARGS" =~ (^)"nrsysmond" ]] ; then
+  elif [[ "$_ARGS" =~ (^)"newrelic" ]] || [[ "$_ARGS" =~ (^)"nrsysm" ]] ; then
     exit 1
   fi
 elif [ -d "/data/disk/${_Y_USR}/.tmp" ] ; then
@@ -107,7 +107,13 @@ check_php_cli_version () {
   fi
 }
 
-if [ "$_LTD_GID" = "www-data users" ] || [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "$_LTD_GID" =~ "lshellg"($) ]] || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] || [[ "$_LTD_GID" =~ (^)"users www-data"($) ]] || [[ "$_LTD_GID" =~ (^)"aegir www-data users"($) ]] ; then
+if [ "$_LTD_GID" = "www-data users" ] \
+  || [[ "$HOME" =~ (^)"/var/aegir" ]] \
+  || [[ "$HOME" =~ (^)"/data/disk/" ]] \
+  || [[ "$_LTD_GID" =~ "lshellg"($) ]] \
+  || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] \
+  || [[ "$_LTD_GID" =~ (^)"users www-data"($) ]] \
+  || [[ "$_LTD_GID" =~ (^)"aegir www-data users"($) ]] ; then
   if [ "$1" = "-c" ] ; then
     if [[ "$2" =~ "set -m;" ]] && [ "$0" = "/bin/sh" ] ; then
       _IN_PATH=YES
@@ -117,7 +123,8 @@ if [ "$_LTD_GID" = "www-data users" ] || [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ 
         check_php_cli_version
         if [[ "$2" =~ "pm-update" ]] ; then
           DRUSH_PHP=""
-          _PHP_DEFAULT=`/usr/bin/php-cli -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
+          _PHP_DEFAULT=`/usr/bin/php-cli -v | grep 'PHP 5' \
+            | cut -d: -f1 | awk '{ print $2}'`
           if [[ "$_PHP_DEFAULT" =~ "5.5." ]] ; then
             PHP_INI="/opt/php55/lib/php.ini"
           elif [[ "$_PHP_DEFAULT" =~ "5.6." ]] ; then
@@ -140,19 +147,26 @@ if [ "$_LTD_GID" = "www-data users" ] || [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ 
         fi
         # echo 1 DRUSH_PHP is $DRUSH_PHP
         # echo 1 PHP_INI is $PHP_INI
-        if [[ "$_ALL" =~ "drush make" ]] || [[ "$_ALL" =~ "drush7 make" ]] || [[ "$_ALL" =~ "drush7 cc drush" ]] || [[ "$_ALL" =~ "drush6 make" ]] || [[ "$_ALL" =~ "drush6 cc drush" ]] ; then
-          if [[ "$_PWD" =~ "/static" ]] || [[ "$_ALL" =~ "drush7 cc drush" ]] || [[ "$_ALL" =~ "drush6 cc drush" ]] ; then
+        if [[ "$_ALL" =~ "drush make" ]] \
+          || [[ "$_ALL" =~ "drush7 make" ]] \
+          || [[ "$_ALL" =~ "drush7 cc drush" ]] \
+          || [[ "$_ALL" =~ "drush6 make" ]] \
+          || [[ "$_ALL" =~ "drush6 cc drush" ]] ; then
+          if [[ "$_PWD" =~ "/static" ]] \
+            || [[ "$_ALL" =~ "drush7 cc drush" ]] \
+            || [[ "$_ALL" =~ "drush6 cc drush" ]] ; then
             _CORRECT=YES
           else
-            if [[ "$_ALL" =~ "make-generate" ]] && [ -f "$_PWD/settings.php" ] ; then
+            if [[ "$_ALL" =~ "make-generate" ]] \
+              && [ -f "$_PWD/settings.php" ] ; then
               _CORRECT=YES
             else
               echo
               echo " This drush command can not be run in $_PWD"
               if [[ "$2" =~ "make-generate" ]] ; then
                 echo " Please cd to the valid sites/foo.com directory first"
-                echo " or use a valid @alias, for example: drush @foo.com status"
-                echo " Hint: Use 'drush aliases' command to see all available aliases"
+                echo " or use a valid @alias, like: drush @foo.com status"
+                echo " Hint: Use 'drush aliases' to display all aliases"
               else
                 echo " Please cd ~/static first"
               fi
@@ -161,8 +175,30 @@ if [ "$_LTD_GID" = "www-data users" ] || [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ 
             fi
           fi
         else
-          if [[ "$_ALL" =~ "drush @" ]] || [[ "$_ALL" =~ "drush7 @" ]] || [[ "$_ALL" =~ "drush6 @" ]] ; then
-            if [[ "$3" =~ "restore"($) ]] || [[ "$3" =~ "arr"($) ]] || [[ "$3" =~ "cli"($) ]] || [[ "$3" =~ "conf"($) ]] || [[ "$3" =~ "config"($) ]] || [[ "$3" =~ "execute"($) ]] || [[ "$3" =~ "core-quick-drupal"($) ]] || [[ "$3" =~ "exec"($) ]] || [[ "$3" =~ (^)"ev"($) ]] || [[ "$3" =~ "eval"($) ]] || [[ "$3" =~ "xstatus"($) ]] || [[ "$3" =~ (^)"qd"($) ]] || [[ "$3" =~ (^)"rs"($) ]] || [[ "$3" =~ "runserver"($) ]] || [[ "$3" =~ (^)"scr"($) ]] || [[ "$3" =~ (^)"sha"($) ]] || [[ "$3" =~ "shell-alias"($) ]] || [[ "$3" =~ (^)"si"($) ]] || [[ "$3" =~ "sql-create"($) ]] || [[ "$3" =~ (^)"ssh"($) ]] || [[ "$3" =~ (^)"sup"($) ]] ; then
+          if [[ "$_ALL" =~ "drush @" ]] \
+            || [[ "$_ALL" =~ "drush7 @" ]] \
+            || [[ "$_ALL" =~ "drush6 @" ]] ; then
+            if [[ "$3" =~ "restore"($) ]] \
+              || [[ "$3" =~ "arr"($) ]] \
+              || [[ "$3" =~ "cli"($) ]] \
+              || [[ "$3" =~ "conf"($) ]] \
+              || [[ "$3" =~ "config"($) ]] \
+              || [[ "$3" =~ "execute"($) ]] \
+              || [[ "$3" =~ "core-quick-drupal"($) ]] \
+              || [[ "$3" =~ "exec"($) ]] \
+              || [[ "$3" =~ (^)"ev"($) ]] \
+              || [[ "$3" =~ "eval"($) ]] \
+              || [[ "$3" =~ "xstatus"($) ]] \
+              || [[ "$3" =~ (^)"qd"($) ]] \
+              || [[ "$3" =~ (^)"rs"($) ]] \
+              || [[ "$3" =~ "runserver"($) ]] \
+              || [[ "$3" =~ (^)"scr"($) ]] \
+              || [[ "$3" =~ (^)"sha"($) ]] \
+              || [[ "$3" =~ "shell-alias"($) ]] \
+              || [[ "$3" =~ (^)"si"($) ]] \
+              || [[ "$3" =~ "sql-create"($) ]] \
+              || [[ "$3" =~ (^)"ssh"($) ]] \
+              || [[ "$3" =~ (^)"sup"($) ]] ; then
               echo
               echo " This drush command is not available (A)"
               echo
@@ -170,15 +206,27 @@ if [ "$_LTD_GID" = "www-data users" ] || [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ 
             else
               _CORRECT=YES
             fi
-          elif [[ "$_ALL" =~ "cache-clear drush" ]] || [[ "$_ALL" =~ "drush4 site-alias" ]] || [[ "$_ALL" =~ "-c set -m; drush7 --version" ]] || [[ "$_ALL" =~ "-c set -m; drush7 help" ]] || [[ "$_ALL" =~ "drush7 dl" ]] || [[ "$_ALL" =~ "drush7 pm-download" ]] || [[ "$_ALL" =~ "drush7 sa" ]] || [[ "$_ALL" =~ "-c set -m; drush6 --version" ]] || [[ "$_ALL" =~ "-c set -m; drush6 help" ]] || [[ "$_ALL" =~ "drush6 dl" ]] || [[ "$_ALL" =~ "drush6 pm-download" ]] || [[ "$_ALL" =~ "drush6 sa" ]] ; then
+          elif [[ "$_ALL" =~ "cache-clear drush" ]] \
+            || [[ "$_ALL" =~ "drush4 site-alias" ]] \
+            || [[ "$_ALL" =~ "-c set -m; drush7 --version" ]] \
+            || [[ "$_ALL" =~ "-c set -m; drush7 help" ]] \
+            || [[ "$_ALL" =~ "drush7 dl" ]] \
+            || [[ "$_ALL" =~ "drush7 pm-download" ]] \
+            || [[ "$_ALL" =~ "drush7 sa" ]] \
+            || [[ "$_ALL" =~ "-c set -m; drush6 --version" ]] \
+            || [[ "$_ALL" =~ "-c set -m; drush6 help" ]] \
+            || [[ "$_ALL" =~ "drush6 dl" ]] \
+            || [[ "$_ALL" =~ "drush6 pm-download" ]] \
+            || [[ "$_ALL" =~ "drush6 sa" ]] ; then
             _CORRECT=YES
           else
-            if [[ "$_ALL" =~ "-c set -m; drush" ]] && [ ! -f "$_PWD/settings.php" ] ; then
+            if [[ "$_ALL" =~ "-c set -m; drush" ]] \
+              && [ ! -f "$_PWD/settings.php" ] ; then
               echo
               echo " This drush command can not be run in $_PWD"
               echo " Please cd to the valid sites/foo.com directory first"
-              echo " or use a valid @alias, for example: drush @foo.com status"
-              echo " Hint: Use 'drush aliases' command to see all available aliases"
+              echo " or use a valid @alias, like: drush @foo.com status"
+              echo " Hint: Use 'drush aliases' to display all aliases"
               echo
               exit 0
             elif [[ "$_ALL" =~ "drush" ]] && [ -f "$_PWD/settings.php" ] ; then
@@ -188,8 +236,30 @@ if [ "$_LTD_GID" = "www-data users" ] || [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ 
         fi
       fi
     else
-      if [[ "$_ALL" =~ "drush @" ]] || [[ "$_ALL" =~ "drush7 @" ]] || [[ "$_ALL" =~ "drush6 @" ]] ; then
-        if [[ "$3" =~ "restore"($) ]] || [[ "$3" =~ "arr"($) ]] || [[ "$3" =~ "cli"($) ]] || [[ "$3" =~ "conf"($) ]] || [[ "$3" =~ "config"($) ]] || [[ "$3" =~ "execute"($) ]] || [[ "$3" =~ "core-quick-drupal"($) ]] || [[ "$3" =~ "exec"($) ]] || [[ "$3" =~ (^)"ev"($) ]] || [[ "$3" =~ "eval"($) ]] || [[ "$3" =~ "xstatus"($) ]] || [[ "$3" =~ (^)"qd"($) ]] || [[ "$3" =~ (^)"rs"($) ]] || [[ "$3" =~ "runserver"($) ]] || [[ "$3" =~ (^)"scr"($) ]] || [[ "$3" =~ (^)"sha"($) ]] || [[ "$3" =~ "shell-alias"($) ]] || [[ "$3" =~ (^)"si"($) ]] || [[ "$3" =~ "sql-create"($) ]] || [[ "$3" =~ (^)"ssh"($) ]] || [[ "$3" =~ (^)"sup"($) ]] ; then
+      if [[ "$_ALL" =~ "drush @" ]] \
+        || [[ "$_ALL" =~ "drush7 @" ]] \
+        || [[ "$_ALL" =~ "drush6 @" ]] ; then
+        if [[ "$3" =~ "restore"($) ]] \
+          || [[ "$3" =~ "arr"($) ]] \
+          || [[ "$3" =~ "cli"($) ]] \
+          || [[ "$3" =~ "conf"($) ]] \
+          || [[ "$3" =~ "config"($) ]] \
+          || [[ "$3" =~ "execute"($) ]] \
+          || [[ "$3" =~ "core-quick-drupal"($) ]] \
+          || [[ "$3" =~ "exec"($) ]] \
+          || [[ "$3" =~ (^)"ev"($) ]] \
+          || [[ "$3" =~ "eval"($) ]] \
+          || [[ "$3" =~ "xstatus"($) ]] \
+          || [[ "$3" =~ (^)"qd"($) ]] \
+          || [[ "$3" =~ (^)"rs"($) ]] \
+          || [[ "$3" =~ "runserver"($) ]] \
+          || [[ "$3" =~ (^)"scr"($) ]] \
+          || [[ "$3" =~ (^)"sha"($) ]] \
+          || [[ "$3" =~ "shell-alias"($) ]] \
+          || [[ "$3" =~ (^)"si"($) ]] \
+          || [[ "$3" =~ "sql-create"($) ]] \
+          || [[ "$3" =~ (^)"ssh"($) ]] \
+          || [[ "$3" =~ (^)"sup"($) ]] ; then
           echo
           echo " This drush command is not available (B)"
           echo
@@ -197,7 +267,9 @@ if [ "$_LTD_GID" = "www-data users" ] || [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ 
         fi
       fi
       _RAW_IN_PATH=${2//[^a-z/]/}
-      if [[ "$2" =~ (^)"/usr/" ]] || [[ "$2" =~ (^)"/bin/" ]] || [[ "$2" =~ (^)"/opt/" ]] ; then
+      if [[ "$2" =~ (^)"/usr/" ]] \
+        || [[ "$2" =~ (^)"/bin/" ]] \
+        || [[ "$2" =~ (^)"/opt/" ]] ; then
         _IN_PATH=YES
       elif [[ "$2" =~ (^)"/data/disk/$_Y_USR/tools/drush/drush.php" ]] ; then
         _IN_PATH=YES
@@ -215,13 +287,17 @@ if [ "$_LTD_GID" = "www-data users" ] || [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ 
         _IN_PATH=YES
       elif [[ "$_RAW_IN_PATH" =~ "/usr/bin/gs" ]] ; then
         _IN_PATH=YES
-      elif [[ "$2" =~ (^)"/home/" ]] || [[ "$2" =~ (^)"/data/" ]] || [[ "$2" =~ (^)"/tmp/" ]]; then
+      elif [[ "$2" =~ (^)"/home/" ]] \
+        || [[ "$2" =~ (^)"/data/" ]] \
+        || [[ "$2" =~ (^)"/tmp/" ]]; then
         if [ -e "$2" ] ; then
           _IN_PATH=NO
         fi
       else
         _WHICH_TEST=$(which $2)
-        if [[ "$_WHICH_TEST" =~ (^)"/usr/" ]] || [[ "$_WHICH_TEST" =~ (^)"/bin/" ]] || [[ "$_WHICH_TEST" =~ (^)"/opt/" ]] ; then
+        if [[ "$_WHICH_TEST" =~ (^)"/usr/" ]] \
+          || [[ "$_WHICH_TEST" =~ (^)"/bin/" ]] \
+          || [[ "$_WHICH_TEST" =~ (^)"/opt/" ]] ; then
           _IN_PATH=YES
         else
           _IN_PATH=NO
@@ -229,15 +305,39 @@ if [ "$_LTD_GID" = "www-data users" ] || [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ 
       fi
     fi
   else
-    if [[ "$_ALL" =~ "drush @" ]] || [[ "$_ALL" =~ "drush7 @" ]] || [[ "$_ALL" =~ "drush6 @" ]] ; then
-      if [[ "$3" =~ "restore"($) ]] || [[ "$3" =~ "arr"($) ]] || [[ "$3" =~ "cli"($) ]] || [[ "$3" =~ "conf"($) ]] || [[ "$3" =~ "config"($) ]] || [[ "$3" =~ "execute"($) ]] || [[ "$3" =~ "core-quick-drupal"($) ]] || [[ "$3" =~ "exec"($) ]] || [[ "$3" =~ (^)"ev"($) ]] || [[ "$3" =~ "eval"($) ]] || [[ "$3" =~ "xstatus"($) ]] || [[ "$3" =~ (^)"qd"($) ]] || [[ "$3" =~ (^)"rs"($) ]] || [[ "$3" =~ "runserver"($) ]] || [[ "$3" =~ (^)"scr"($) ]] || [[ "$3" =~ (^)"sha"($) ]] || [[ "$3" =~ "shell-alias"($) ]] || [[ "$3" =~ (^)"si"($) ]] || [[ "$3" =~ "sql-create"($) ]] || [[ "$3" =~ (^)"ssh"($) ]] || [[ "$3" =~ (^)"sup"($) ]] ; then
+    if [[ "$_ALL" =~ "drush @" ]] \
+      || [[ "$_ALL" =~ "drush7 @" ]] \
+      || [[ "$_ALL" =~ "drush6 @" ]] ; then
+      if [[ "$3" =~ "restore"($) ]] \
+        || [[ "$3" =~ "arr"($) ]] \
+        || [[ "$3" =~ "cli"($) ]] \
+        || [[ "$3" =~ "conf"($) ]] \
+        || [[ "$3" =~ "config"($) ]] \
+        || [[ "$3" =~ "execute"($) ]] \
+        || [[ "$3" =~ "core-quick-drupal"($) ]] \
+        || [[ "$3" =~ "exec"($) ]] \
+        || [[ "$3" =~ (^)"ev"($) ]] \
+        || [[ "$3" =~ "eval"($) ]] \
+        || [[ "$3" =~ "xstatus"($) ]] \
+        || [[ "$3" =~ (^)"qd"($) ]] \
+        || [[ "$3" =~ (^)"rs"($) ]] \
+        || [[ "$3" =~ "runserver"($) ]] \
+        || [[ "$3" =~ (^)"scr"($) ]] \
+        || [[ "$3" =~ (^)"sha"($) ]] \
+        || [[ "$3" =~ "shell-alias"($) ]] \
+        || [[ "$3" =~ (^)"si"($) ]] \
+        || [[ "$3" =~ "sql-create"($) ]] \
+        || [[ "$3" =~ (^)"ssh"($) ]] \
+        || [[ "$3" =~ (^)"sup"($) ]] ; then
         echo
         echo " This drush command is not available (C)"
         echo
         exit 0
       fi
     fi
-    if [[ "$1" =~ (^)"/usr/" ]] || [[ "$1" =~ (^)"/bin/" ]] || [[ "$1" =~ (^)"/opt/" ]] ; then
+    if [[ "$1" =~ (^)"/usr/" ]] \
+      || [[ "$1" =~ (^)"/bin/" ]] \
+      || [[ "$1" =~ (^)"/opt/" ]] ; then
       _IN_PATH=YES
       if [ -z "$PHP_INI" ] && [[ "$1" =~ "drush" ]] ; then
         check_php_cli_version
@@ -259,13 +359,17 @@ if [ "$_LTD_GID" = "www-data users" ] || [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ 
       _IN_PATH=YES
     elif [[ "$1" =~ (^)"(/var/$_Y_USR/drush/drush.php" ]] ; then
       _IN_PATH=YES
-    elif [[ "$1" =~ (^)"/home/" ]] || [[ "$1" =~ (^)"/data/" ]] || [[ "$1" =~ (^)"/tmp/" ]] ; then
+    elif [[ "$1" =~ (^)"/home/" ]] \
+      || [[ "$1" =~ (^)"/data/" ]] \
+      || [[ "$1" =~ (^)"/tmp/" ]] ; then
       if [ -e "$1" ] ; then
         _IN_PATH=NO
       fi
     else
       _WHICH_TEST=$(which $1)
-      if [[ "$_WHICH_TEST" =~ (^)"/usr/" ]] || [[ "$_WHICH_TEST" =~ (^)"/bin/" ]] || [[ "$_WHICH_TEST" =~ (^)"/opt/" ]] ; then
+      if [[ "$_WHICH_TEST" =~ (^)"/usr/" ]] \
+        || [[ "$_WHICH_TEST" =~ (^)"/bin/" ]] \
+        || [[ "$_WHICH_TEST" =~ (^)"/opt/" ]] ; then
         _IN_PATH=YES
         if [ -z "$PHP_INI" ] && [[ "$1" =~ "drush" ]] ; then
           check_php_cli_version
@@ -284,12 +388,42 @@ if [ "$_LTD_GID" = "www-data users" ] || [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ 
       fi
     fi
   fi
-  if [[ "$_LTD_GID" =~ "lshellg"($) ]] || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] ; then
+  if [[ "$_LTD_GID" =~ "lshellg"($) ]] \
+    || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] ; then
     if [[ "$_ALL" =~ "*" ]] ; then
       if [[ "$_ALL" =~ "-c set -m; " ]] ; then
         _SILENT=YES
       else
-        if [[ "$_ALL" =~ "ssh" ]] || [[ "$_ALL" =~ "rsync" ]] || [[ "$_ALL" =~ "scp" ]] || [[ "$_ALL" =~ "drush" ]] || [[ "$_ALL" =~ "php " ]] || [[ "$_ALL" =~ ".tmp" ]] || [[ "$_ALL" =~ "_tmp_" ]] || [[ "$_ALL" =~ "__build__" ]] || [[ "$_ALL" =~ "is_" ]] || [[ "$_ALL" =~ "rename" ]] || [[ "$_ALL" =~ "chdir" ]] || [[ "$_ALL" =~ "svn " ]] || [[ "$_ALL" =~ "bzr " ]] || [[ "$_ALL" =~ "tar " ]] || [[ "$_ALL" =~ "wget " ]] || [[ "$_ALL" =~ "curl " ]] || [[ "$_ALL" =~ "git" ]] || [[ "$_ALL" =~ "wkhtmltopdf" ]] || [[ "$_ALL" =~ "wkhtmltoimage" ]] || [[ "$_ALL" =~ "convert" ]] || [[ "$_ALL" =~ "compass" ]] || [[ "$_ALL" =~ "sass" ]] || [[ "$_ALL" =~ "scss" ]] || [[ "$_ALL" =~ "logger" ]] || [[ "$_ALL" =~ "sendmail" ]] || [[ "$_ALL" =~ "java" ]] || [[ "$_ALL" =~ "rrdtool" ]] || [[ "$_ALL" =~ "ffmpeg" ]] || [[ "$_ALL" =~ "flvtool" ]] || [[ "$_ALL" =~ "avconv" ]] ; then
+        if [[ "$_ALL" =~ "ssh" ]] \
+          || [[ "$_ALL" =~ "rsync" ]] \
+          || [[ "$_ALL" =~ "scp" ]] \
+          || [[ "$_ALL" =~ "drush" ]] \
+          || [[ "$_ALL" =~ "php " ]] \
+          || [[ "$_ALL" =~ ".tmp" ]] \
+          || [[ "$_ALL" =~ "_tmp_" ]] \
+          || [[ "$_ALL" =~ "__build__" ]] \
+          || [[ "$_ALL" =~ "is_" ]] \
+          || [[ "$_ALL" =~ "rename" ]] \
+          || [[ "$_ALL" =~ "chdir" ]] \
+          || [[ "$_ALL" =~ "svn " ]] \
+          || [[ "$_ALL" =~ "bzr " ]] \
+          || [[ "$_ALL" =~ "tar " ]] \
+          || [[ "$_ALL" =~ "wget " ]] \
+          || [[ "$_ALL" =~ "curl " ]] \
+          || [[ "$_ALL" =~ "git" ]] \
+          || [[ "$_ALL" =~ "wkhtmltopdf" ]] \
+          || [[ "$_ALL" =~ "wkhtmltoimage" ]] \
+          || [[ "$_ALL" =~ "convert" ]] \
+          || [[ "$_ALL" =~ "compass" ]] \
+          || [[ "$_ALL" =~ "sass" ]] \
+          || [[ "$_ALL" =~ "scss" ]] \
+          || [[ "$_ALL" =~ "logger" ]] \
+          || [[ "$_ALL" =~ "sendmail" ]] \
+          || [[ "$_ALL" =~ "java" ]] \
+          || [[ "$_ALL" =~ "rrdtool" ]] \
+          || [[ "$_ALL" =~ "ffmpeg" ]] \
+          || [[ "$_ALL" =~ "flvtool" ]] \
+          || [[ "$_ALL" =~ "avconv" ]] ; then
           _SILENT=YES
         else
           echo
@@ -298,26 +432,41 @@ if [ "$_LTD_GID" = "www-data users" ] || [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ 
     fi
   fi
   if [ "$_IN_PATH" = "YES" ] ; then
-    if [[ "$_ALL" =~ "-c set -m; " ]] && [ -x "/home/${USER}/.rvm/bin/rvm" ] ; then
+    if [[ "$_ALL" =~ "-c set -m; " ]] \
+      && [ -x "/home/${USER}/.rvm/bin/rvm" ] ; then
       _THIS_RV=`lsb_release -sc`
-      if [ "$_THIS_RV" = "wheezy" ] || [ "$_THIS_RV" = "trusty" ] || [ "$_THIS_RV" = "precise" ] ; then
-        _DETECTED_RUBY_VP=`grep 'RUBY_VERSION' /home/${USER}/.rvm/environments/default | cut -d= -f2 | awk '{ print $1}' | sed "s/'//g" | sed "s/ruby-//g"`
-        if [ ! -z "${_DETECTED_RUBY_VP}" ] && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ] ; then
+      if [ "$_THIS_RV" = "wheezy" ] \
+        || [ "$_THIS_RV" = "trusty" ] \
+        || [ "$_THIS_RV" = "precise" ] ; then
+        _DETECTED_RUBY_VP=`grep 'RUBY_VERSION' \
+          /home/${USER}/.rvm/environments/default \
+          | cut -d= -f2 | awk '{ print $1}' | sed "s/'//g" | sed "s/ruby-//g"`
+        if [ ! -z "${_DETECTED_RUBY_VP}" ] \
+          && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ] ; then
           _RUBY_VP="${_DETECTED_RUBY_VP}"
         else
           _RUBY_VP=2.2.0
         fi
       else
-        _DETECTED_RUBY_VP=`grep 'RUBY_VERSION' /home/${USER}/.rvm/environments/default | cut -d= -f2 | awk '{ print $1}' | sed "s/'//g" | sed "s/ruby-//g"`
-        if [ ! -z "${_DETECTED_RUBY_VP}" ] && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ] ; then
+        _DETECTED_RUBY_VP=`grep 'RUBY_VERSION' \
+          /home/${USER}/.rvm/environments/default \
+          | cut -d= -f2 | awk '{ print $1}' | sed "s/'//g" | sed "s/ruby-//g"`
+        if [ ! -z "${_DETECTED_RUBY_VP}" ] \
+          && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ] ; then
           _RUBY_VP="${_DETECTED_RUBY_VP}"
         else
           _RUBY_VP=2.0.0-p598
         fi
       fi
-      export PATH="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}/bin:/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}@global/bin:/home/${USER}/.rvm/rubies/ruby-${_RUBY_VP}/bin:/home/${USER}/.rvm/bin:$PATH"
+      _SP_A="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}/bin"
+      _SP_B="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}@global/bin"
+      _SP_C="/home/${USER}/.rvm/rubies/ruby-${_RUBY_VP}/bin"
+      _SP_D="/home/${USER}/.rvm/bin"
+      export PATH="${_SP_A}:${_SP_B}:${_SP_C}:${_SP_D}:${PATH}"
       export GEM_HOME="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}"
-      export GEM_PATH="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}:/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}@global"
+      _GP_A="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}"
+      _GP_B="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}@global"
+      export GEM_PATH="${_GP_A}:${_GP_B}"
       export MY_RUBY_HOME="/home/${USER}/.rvm/rubies/ruby-${_RUBY_VP}"
       export IRBRC="/home/${USER}/.rvm/rubies/ruby-${_RUBY_VP}/.irbrc"
       unset MAGLEV_HOME
@@ -339,8 +488,12 @@ if [ "$_LTD_GID" = "www-data users" ] || [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ 
   fi
 else
   if [ "$USER" = "root" ] ; then
-    if [[ "$1" =~ "drush" ]] || [[ "$2" =~ "drush" ]] ; then
-      if [[ "$2" =~ "uli" ]] || [[ "$2" =~ "vget" ]] || [[ "$2" =~ "vset" ]] || [[ "$2" =~ "status" ]] ; then
+    if [[ "$1" =~ "drush" ]] \
+      || [[ "$2" =~ "drush" ]] ; then
+      if [[ "$2" =~ "uli" ]] \
+        || [[ "$2" =~ "vget" ]] \
+        || [[ "$2" =~ "vset" ]] \
+        || [[ "$2" =~ "status" ]] ; then
         _ALLOW=YES
       else
         echo
