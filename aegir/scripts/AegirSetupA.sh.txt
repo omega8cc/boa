@@ -252,7 +252,8 @@ extract_archive () {
 # Download and extract from dev/contrib mirror.
 get_dev_contrib () {
   if [ ! -z $1 ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/contrib/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 \
+      -A iCab "http://files.aegir.cc/dev/contrib/$1"
     extract_archive "$1"
   fi
 }
@@ -260,7 +261,8 @@ get_dev_contrib () {
 # Download and extract from dev.
 get_dev_ext () {
   if [ ! -z $1 ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_XTS_VERSION/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 \
+      -A iCab "http://files.aegir.cc/dev/$_AEGIR_XTS_VERSION/$1"
     extract_archive "$1"
   fi
 }
@@ -271,178 +273,133 @@ _LOG=/var/backups/octopus-$_USER-$_NOW.log
 # Create shared dirs.
 create_shared_dirs () {
   msg "$_STATUS A: Creating shared directories..."
-  mkdir -p /data/all/000/{core,modules}
+  mkdir -p $_D/000/{core,modules}
   rm -f -r /data/src
   if [ ! -d "$_CORE" ] ; then
     mkdir -p $_CORE
   fi
   chown -R $_USER:$_USRG /data/conf      &> /dev/null
   chown -R $_USER:$_USRG /opt/tmp        &> /dev/null
-  chown $_USER:$_USRG /data/all          &> /dev/null
-  chown $_USER:$_USRG /data/all/000      &> /dev/null
-  chown $_USER:$_USRG /data/all/000/core &> /dev/null
+  chown $_USER:$_USRG $_D          &> /dev/null
+  chown $_USER:$_USRG $_D/000      &> /dev/null
+  chown $_USER:$_USRG $_D/000/core &> /dev/null
   chown $_USER:$_USRG $_CORE             &> /dev/null
-  chmod 777 $_CORE /data/all /data /data/disk /data/conf &> /dev/null
-}
-#
-# Fix for FServer broken due to required now strongarm.
-#
-feature_server_fix_002 () {
-  if [ ! -e "/var/xdrago/log/feature-server-fixed-e5.log" ] ; then
-    msg "$_STATUS A: Adding missing strongarm module to old FServer platforms"
-    REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
-    for i in $REVISIONS; do
-      if [ -d "/data/all/$i/fserver" ] ; then
-        if [ ! -d "/data/all/$i/fserver/profiles/feature_server/modules/strongarm" ] ; then
-          cd /data/all/$i/fserver/profiles/feature_server/modules/
-          get_dev_contrib "strongarm-6.x-2.2.tar.gz"
-          cd /data/all/$i/fserver/profiles/feature_server
-          rm -f feature_server.make
-          rm -f feature_server.profile
-          cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/feature_server.make ./
-          cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/feature_server.profile ./
-          if [ -e "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
-            _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-            cd _THIS_HOSTMASTER &> /dev/null
-            su -s /bin/bash - $_USER -c "$_DRUSHCMD --root=$_ROOT/distro/$i/fserver provision-save @platform_FeatureServerPF$i &> /dev/null"
-          fi
-          msg "$_STATUS A: Missing strongarm added to /data/all/$i/fserver"
-        fi
-      fi
-    done
-    touch /var/xdrago/log/feature-server-fixed-e5.log
-    cd
-  fi
-}
-#
-# Fix for FServer broken due to incorrect context version downloaded in fserver-6.28.3.
-#
-feature_server_fix_004 () {
-  if [ ! -e "/var/xdrago/log/feature-server-fixed-f6.log" ] ; then
-    msg "$_STATUS A: Fixing context version in FServer platforms"
-    REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
-    for i in $REVISIONS; do
-      if [ -d "/data/all/$i/fserver-6.28.3" ] ; then
-        _CONTEXT_TEST=`grep "7.x" /data/all/$i/fserver-6.28.3/profiles/feature_server/modules/context/context.info 2>&1`
-        if [[ "$_CONTEXT_TEST" =~ "7.x" ]] ; then
-          cd /data/all/$i/fserver-6.28.3/profiles/feature_server/modules/
-          rm -f -r context
-          get_dev_contrib "context-6.x-3.3.tar.gz"
-          msg "$_STATUS A: Correct context version added to /data/all/$i/fserver-6.28.3"
-        fi
-      elif [ -d "/data/all/$i/fserver-6.28.2" ] ; then
-        _CONTEXT_TEST=`grep "7.x" /data/all/$i/fserver-6.28.2/profiles/feature_server/modules/context/context.info 2>&1`
-        if [[ "$_CONTEXT_TEST" =~ "7.x" ]] ; then
-          cd /data/all/$i/fserver-6.28.2/profiles/feature_server/modules/
-          rm -f -r context
-          get_dev_contrib "context-6.x-3.3.tar.gz"
-          msg "$_STATUS A: Correct context version added to /data/all/$i/fserver-6.28.2"
-        fi
-      fi
-    done
-    touch /var/xdrago/log/feature-server-fixed-f6.log
-    cd
-  fi
+  chmod 777 $_CORE $_D /data /data/disk /data/conf &> /dev/null
 }
 #
 # Update o_contrib.
 #
 o_contrib_update_global () {
-REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
-RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports imageinfo_cache"
+
+REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 \
+  017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 \
+  035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+
+RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 \
+  cookie_cache_bypass_adv module_supports imageinfo_cache"
+
+_D="/data/all"
+
 for i in $REVISIONS; do
-  if [ -e "/data/all/$i/o_contrib" ] && [ ! -e "/data/all/$i/o_contrib/update-$_INSTALLER_VERSION.info" ] ; then
+  if [ -e "$_D/$i/o_contrib" ] \
+    && [ ! -e "$_D/$i/o_contrib/update-$_INSTALLER_VERSION.info" ] ; then
     _FORCE_UP_SIX=YES
-  elif [ -e "/data/all/$i/o_contrib" ] && [ ! -e "/data/all/000/modules/redis_edge" ] ; then
+  elif [ -e "$_D/$i/o_contrib" ] \
+    && [ ! -e "$_D/000/modules/redis_edge" ] ; then
     _FORCE_UP_SIX=YES
-  elif [ -e "/data/all/$i/o_contrib" ] && [ ! -L "/data/all/$i/o_contrib/redis_edge" ] ; then
+  elif [ -e "$_D/$i/o_contrib" ] \
+    && [ ! -L "$_D/$i/o_contrib/redis_edge" ] ; then
     _FORCE_UP_SIX=YES
-  elif [ -e "/data/all/$i/o_contrib" ] && [ ! -L "/data/all/$i/o_contrib/redis" ] ; then
+  elif [ -e "$_D/$i/o_contrib" ] \
+    && [ ! -L "$_D/$i/o_contrib/redis" ] ; then
     _FORCE_UP_SIX=YES
   else
     _FORCE_UP_SIX=NO
   fi
-  if [ "$_FORCE_UP_SIX" = "YES" ] && [ -e "/data/all/$i/o_contrib" ] ; then
+  if [ "$_FORCE_UP_SIX" = "YES" ] && [ -e "$_D/$i/o_contrib" ] ; then
     for m in $RMMODULES; do
-      if [ -d "/data/all/$i/o_contrib/$m" ] ; then
-        rm -f -r /data/all/$i/o_contrib/$m
+      if [ -d "$_D/$i/o_contrib/$m" ] ; then
+        rm -f -r $_D/$i/o_contrib/$m
       fi
     done
-    cd /data/all/$i/o_contrib
-    if [ ! -d "/data/all/$i/o_contrib/advagg" ] ; then
+    cd $_D/$i/o_contrib
+    if [ ! -d "$_D/$i/o_contrib/advagg" ] ; then
       get_dev_contrib "advagg-6.x-1.x-dev.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib/boost" ] ; then
+    if [ ! -d "$_D/$i/o_contrib/boost" ] ; then
       get_dev_contrib "boost-6.x-1.x.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib/cdn" ] ; then
+    if [ ! -d "$_D/$i/o_contrib/cdn" ] ; then
       get_dev_contrib "cdn-6.x-2.x-dev.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib/force_password_change" ] ; then
+    if [ ! -d "$_D/$i/o_contrib/force_password_change" ] ; then
       get_dev_contrib "force_password_change-6.x-3.4.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib/fpa" ] ; then
+    if [ ! -d "$_D/$i/o_contrib/fpa" ] ; then
       get_dev_contrib "fpa-6.x-2.5.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib/httprl" ] ; then
+    if [ ! -d "$_D/$i/o_contrib/httprl" ] ; then
       get_dev_contrib "httprl-6.x-1.14.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib/js" ] ; then
+    if [ ! -d "$_D/$i/o_contrib/js" ] ; then
       get_dev_contrib "js-6.x-1.3.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib/panels_content_cache" ] ; then
+    if [ ! -d "$_D/$i/o_contrib/panels_content_cache" ] ; then
       get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib/phpass" ] ; then
+    if [ ! -d "$_D/$i/o_contrib/phpass" ] ; then
       get_dev_contrib "phpass-6.x-2.1.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib/print" ] ; then
+    if [ ! -d "$_D/$i/o_contrib/print" ] ; then
       get_dev_contrib "print-6.x-1.19.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib/session_expire" ] ; then
+    if [ ! -d "$_D/$i/o_contrib/session_expire" ] ; then
       get_dev_contrib "session_expire-6.x-1.x-dev.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib/taxonomy_edge" ] ; then
+    if [ ! -d "$_D/$i/o_contrib/taxonomy_edge" ] ; then
       get_dev_contrib "taxonomy_edge-6.x-1.7.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib/views_cache_bully" ] ; then
+    if [ ! -d "$_D/$i/o_contrib/views_cache_bully" ] ; then
       get_dev_contrib "views_cache_bully-6.x-3.1.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib/views_content_cache" ] ; then
+    if [ ! -d "$_D/$i/o_contrib/views_content_cache" ] ; then
       get_dev_contrib "views_content_cache-6.x-2.x-dev.tar.gz"
     fi
     if [ "$_PURGE_MODE" = "ON" ] ; then
-      if [ ! -d "/data/all/$i/o_contrib/expire" ] ; then
+      if [ ! -d "$_D/$i/o_contrib/expire" ] ; then
         get_dev_contrib "expire-6.x-1.x-dev.tar.gz"
       fi
-      if [ ! -d "/data/all/$i/o_contrib/purge" ] ; then
+      if [ ! -d "$_D/$i/o_contrib/purge" ] ; then
         get_dev_contrib "purge-6.x-1.6.tar.gz"
       fi
     fi
-    if [ -d "/data/all/$i/o_contrib/cache_backport" ] ; then
-      rm -f -r /data/all/$i/o_contrib/cache_backport
+    if [ -d "$_D/$i/o_contrib/cache_backport" ] ; then
+      rm -f -r $_D/$i/o_contrib/cache_backport
     fi
-    if [ -d "/data/all/$i/o_contrib/redis" ] ; then
-      rm -f -r /data/all/$i/o_contrib/redis
+    if [ -d "$_D/$i/o_contrib/redis" ] ; then
+      rm -f -r $_D/$i/o_contrib/redis
     fi
-    if [ -d "/data/all/$i/o_contrib/redis_edge" ] ; then
-      rm -f -r /data/all/$i/o_contrib/redis_edge
+    if [ -d "$_D/$i/o_contrib/redis_edge" ] ; then
+      rm -f -r $_D/$i/o_contrib/redis_edge
     fi
-    if [ -e "/data/all/000/modules/cache_backport" ] && [ ! -L "/data/all/$i/o_contrib/cache_backport" ] ; then
-      ln -sf /data/all/000/modules/cache_backport /data/all/$i/o_contrib/cache_backport
+    if [ -e "$_D/000/modules/cache_backport" ] \
+      && [ ! -L "$_D/$i/o_contrib/cache_backport" ] ; then
+      ln -sf $_D/000/modules/cache_backport $_D/$i/o_contrib/cache_backport
     fi
-    if [ -e "/data/all/000/modules/redis" ] && [ ! -L "/data/all/$i/o_contrib/redis" ] ; then
-      ln -sf /data/all/000/modules/redis /data/all/$i/o_contrib/redis
+    if [ -e "$_D/000/modules/redis" ] \
+      && [ ! -L "$_D/$i/o_contrib/redis" ] ; then
+      ln -sf $_D/000/modules/redis $_D/$i/o_contrib/redis
     fi
-    if [ -e "/data/all/000/modules/redis_edge" ] && [ ! -L "/data/all/$i/o_contrib/redis_edge" ] ; then
-      ln -sf /data/all/000/modules/redis_edge /data/all/$i/o_contrib/redis_edge
+    if [ -e "$_D/000/modules/redis_edge" ] \
+      && [ ! -L "$_D/$i/o_contrib/redis_edge" ] ; then
+      ln -sf $_D/000/modules/redis_edge $_D/$i/o_contrib/redis_edge
     fi
-    touch /data/all/$i/o_contrib/update-$_INSTALLER_VERSION.info
-    find /data/all/$i/o_contrib -type d -exec chmod 0755 {} \; &> /dev/null
-    find /data/all/$i/o_contrib -type f -exec chmod 0644 {} \; &> /dev/null
+    touch $_D/$i/o_contrib/update-$_INSTALLER_VERSION.info
+    find $_D/$i/o_contrib -type d -exec chmod 0755 {} \; &> /dev/null
+    find $_D/$i/o_contrib -type f -exec chmod 0644 {} \; &> /dev/null
   fi
-  if [ -d "/data/all/$i" ] ; then
-    for p in `find /data/all/$i/ -maxdepth 1 -mindepth 1 -type d | sort`; do
+  if [ -d "$_D/$i" ] ; then
+    for p in `find $_D/$i/ -maxdepth 1 -mindepth 1 -type d | sort`; do
       if [ -d "$p/modules/cookie_cache_bypass" ] ; then
         rm -f -r $p/modules/cookie_cache_bypass
       fi
@@ -455,107 +412,117 @@ cd
 # Update o_contrib_seven.
 #
 o_contrib_seven_update_global () {
-REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 \
+  017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 \
+  035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
 RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy"
 for i in $REVISIONS; do
-  if [ -e "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/update-$_INSTALLER_VERSION.info" ] ; then
+  if [ -e "$_D/$i/o_contrib_seven" ] \
+    && [ ! -e "$_D/$i/o_contrib_seven/update-$_INSTALLER_VERSION.info" ] ; then
     _FORCE_UP_SEVEN=YES
-  elif [ -e "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/views_accelerator" ] ; then
+  elif [ -e "$_D/$i/o_contrib_seven" ] \
+    && [ ! -e "$_D/$i/o_contrib_seven/views_accelerator" ] ; then
     _FORCE_UP_SEVEN=YES
-  elif [ -e "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/000/modules/redis_edge" ] ; then
+  elif [ -e "$_D/$i/o_contrib_seven" ] \
+    && [ ! -e "$_D/000/modules/redis_edge" ] ; then
     _FORCE_UP_SEVEN=YES
-  elif [ -e "/data/all/$i/o_contrib_seven" ] && [ ! -L "/data/all/$i/o_contrib_seven/redis_edge" ] ; then
+  elif [ -e "$_D/$i/o_contrib_seven" ] \
+    && [ ! -L "$_D/$i/o_contrib_seven/redis_edge" ] ; then
     _FORCE_UP_SEVEN=YES
-  elif [ -e "/data/all/$i/o_contrib_seven" ] && [ ! -L "/data/all/$i/o_contrib_seven/redis" ] ; then
+  elif [ -e "$_D/$i/o_contrib_seven" ] \
+    && [ ! -L "$_D/$i/o_contrib_seven/redis" ] ; then
     _FORCE_UP_SEVEN=YES
   else
     _FORCE_UP_SEVEN=NO
   fi
-  if [ "$_FORCE_UP_SEVEN" = "YES" ] && [ -e "/data/all/$i/o_contrib_seven" ] ; then
+  if [ "$_FORCE_UP_SEVEN" = "YES" ] \
+    && [ -e "$_D/$i/o_contrib_seven" ] ; then
     for m in $RMMODULES; do
-      if [ -d "/data/all/$i/o_contrib_seven/$m" ] ; then
-        rm -f -r /data/all/$i/o_contrib_seven/$m
+      if [ -d "$_D/$i/o_contrib_seven/$m" ] ; then
+        rm -f -r $_D/$i/o_contrib_seven/$m
       fi
     done
-    cd /data/all/$i/o_contrib_seven
-    if [ ! -d "/data/all/$i/o_contrib_seven/advagg" ] ; then
+    cd $_D/$i/o_contrib_seven
+    if [ ! -d "$_D/$i/o_contrib_seven/advagg" ] ; then
       get_dev_contrib "advagg-7.x-2.7.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib_seven/boost" ] ; then
+    if [ ! -d "$_D/$i/o_contrib_seven/boost" ] ; then
       get_dev_contrib "boost-7.x-1.0.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib_seven/cdn" ] ; then
+    if [ ! -d "$_D/$i/o_contrib_seven/cdn" ] ; then
       get_dev_contrib "cdn-7.x-2.x-dev.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib_seven/display_cache" ] ; then
+    if [ ! -d "$_D/$i/o_contrib_seven/display_cache" ] ; then
       get_dev_contrib "display_cache-7.x-1.0.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib_seven/entitycache" ] ; then
+    if [ ! -d "$_D/$i/o_contrib_seven/entitycache" ] ; then
       get_dev_contrib "entitycache-7.x-1.2.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib_seven/filefield_nginx_progress" ] ; then
+    if [ ! -d "$_D/$i/o_contrib_seven/filefield_nginx_progress" ] ; then
       get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib_seven/force_password_change" ] ; then
+    if [ ! -d "$_D/$i/o_contrib_seven/force_password_change" ] ; then
       get_dev_contrib "force_password_change-7.x-1.0-rc2.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib_seven/fpa" ] ; then
+    if [ ! -d "$_D/$i/o_contrib_seven/fpa" ] ; then
       get_dev_contrib "fpa-7.x-2.6.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib_seven/httprl" ] ; then
+    if [ ! -d "$_D/$i/o_contrib_seven/httprl" ] ; then
       get_dev_contrib "httprl-7.x-1.14.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib_seven/js" ] ; then
+    if [ ! -d "$_D/$i/o_contrib_seven/js" ] ; then
       get_dev_contrib "js-7.x-1.x-dev.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib_seven/panels_content_cache" ] ; then
+    if [ ! -d "$_D/$i/o_contrib_seven/panels_content_cache" ] ; then
       get_dev_contrib "panels_content_cache-7.x-1.0.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib_seven/print" ] ; then
+    if [ ! -d "$_D/$i/o_contrib_seven/print" ] ; then
       get_dev_contrib "print-7.x-2.0.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib_seven/session_expire" ] ; then
+    if [ ! -d "$_D/$i/o_contrib_seven/session_expire" ] ; then
       get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib_seven/speedy" ] ; then
+    if [ ! -d "$_D/$i/o_contrib_seven/speedy" ] ; then
       get_dev_contrib "speedy-7.x-1.15.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib_seven/taxonomy_edge" ] ; then
+    if [ ! -d "$_D/$i/o_contrib_seven/taxonomy_edge" ] ; then
       get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib_seven/views_accelerator" ] ; then
+    if [ ! -d "$_D/$i/o_contrib_seven/views_accelerator" ] ; then
       get_dev_contrib "views_accelerator-7.x-1.0-alpha2.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib_seven/views_cache_bully" ] ; then
+    if [ ! -d "$_D/$i/o_contrib_seven/views_cache_bully" ] ; then
       get_dev_contrib "views_cache_bully-7.x-3.1.tar.gz"
     fi
-    if [ ! -d "/data/all/$i/o_contrib_seven/views_content_cache" ] ; then
+    if [ ! -d "$_D/$i/o_contrib_seven/views_content_cache" ] ; then
       get_dev_contrib "views_content_cache-7.x-3.0-alpha3.tar.gz"
     fi
     if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
-      cd /data/all/$i/o_contrib_seven
-      if [ ! -d "/data/all/$i/o_contrib_seven/expire" ] ; then
+      cd $_D/$i/o_contrib_seven
+      if [ ! -d "$_D/$i/o_contrib_seven/expire" ] ; then
         get_dev_contrib "expire-7.x-2.0-rc4.tar.gz"
       fi
-      if [ ! -d "/data/all/$i/o_contrib_seven/purge" ] ; then
+      if [ ! -d "$_D/$i/o_contrib_seven/purge" ] ; then
         get_dev_contrib "purge-7.x-1.6.tar.gz"
       fi
     fi
-    if [ -d "/data/all/$i/o_contrib_seven/redis" ] ; then
-      rm -f -r /data/all/$i/o_contrib_seven/redis
+    if [ -d "$_D/$i/o_contrib_seven/redis" ] ; then
+      rm -f -r $_D/$i/o_contrib_seven/redis
     fi
-    if [ -d "/data/all/$i/o_contrib_seven/redis_edge" ] ; then
-      rm -f -r /data/all/$i/o_contrib_seven/redis_edge
+    if [ -d "$_D/$i/o_contrib_seven/redis_edge" ] ; then
+      rm -f -r $_D/$i/o_contrib_seven/redis_edge
     fi
-    if [ -e "/data/all/000/modules/redis" ] && [ ! -L "/data/all/$i/o_contrib_seven/redis" ] ; then
-      ln -sf /data/all/000/modules/redis /data/all/$i/o_contrib_seven/redis
+    if [ -e "$_D/000/modules/redis" ] \
+      && [ ! -L "$_D/$i/o_contrib_seven/redis" ] ; then
+      ln -sf $_D/000/modules/redis $_D/$i/o_contrib_seven/redis
     fi
-    if [ -e "/data/all/000/modules/redis_edge" ] && [ ! -L "/data/all/$i/o_contrib_seven/redis_edge" ] ; then
-      ln -sf /data/all/000/modules/redis_edge /data/all/$i/o_contrib_seven/redis_edge
+    if [ -e "$_D/000/modules/redis_edge" ] \
+      && [ ! -L "$_D/$i/o_contrib_seven/redis_edge" ] ; then
+      ln -sf $_D/000/modules/redis_edge $_D/$i/o_contrib_seven/redis_edge
     fi
-    find /data/all/$i/o_contrib_seven -type d -exec chmod 0755 {} \; &> /dev/null
-    find /data/all/$i/o_contrib_seven -type f -exec chmod 0644 {} \; &> /dev/null
-    touch /data/all/$i/o_contrib_seven/update-$_INSTALLER_VERSION.info
+    find $_D/$i/o_contrib_seven -type d -exec chmod 0755 {} \; &> /dev/null
+    find $_D/$i/o_contrib_seven -type f -exec chmod 0644 {} \; &> /dev/null
+    touch $_D/$i/o_contrib_seven/update-$_INSTALLER_VERSION.info
   fi
 done
 cd
@@ -564,7 +531,7 @@ cd
 # Download Textile.
 download_textile () {
   cd textile
-  svn export http://textpattern.googlecode.com/svn/development/4.x/textpattern/lib/classTextile.php &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/classTextile.php ./
   cp -af classTextile.php include/ &> /dev/null
   cd ../
   patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/textile.patch &> /dev/null
@@ -623,30 +590,30 @@ download_o_contrib_seven () {
   find ./ -type f -exec chmod 0644 {} \; &> /dev/null
   touch ctrl-$_INSTALLER_VERSION
   if [ ! -L "./redis" ] ; then
-    ln -sf /data/all/000/modules/redis redis
+    ln -sf $_D/000/modules/redis redis
   fi
   if [ ! -L "./redis_edge" ] ; then
-    ln -sf /data/all/000/modules/redis_edge redis_edge
+    ln -sf $_D/000/modules/redis_edge redis_edge
   fi
   download_textile
-  if [ ! -e "/data/all/000/modules/redis/update-$_INSTALLER_VERSION.info" ] ; then
-    mkdir -p /data/all/000/modules
-    cd /data/all/000/modules
-    rm -f -r /data/all/000/modules/redis
+  if [ ! -e "$_D/000/modules/redis/update-$_INSTALLER_VERSION.info" ] ; then
+    mkdir -p $_D/000/modules
+    cd $_D/000/modules
+    rm -f -r $_D/000/modules/redis
     get_dev_contrib "redis-7.x-2.x-o8-revert-A.tar.gz"
     rm -f redis/redis.info
     echo update > redis/update-$_INSTALLER_VERSION.info
   fi
-  if [ ! -e "/data/all/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
-    mkdir -p /data/all/000/modules
-    cd /data/all/000/modules
-    rm -f -r /data/all/000/modules/redis_edge
+  if [ ! -e "$_D/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
+    mkdir -p $_D/000/modules
+    cd $_D/000/modules
+    rm -f -r $_D/000/modules/redis_edge
     get_dev_contrib "redis_edge-$_REDIS_M_VERSION.tar.gz"
     rm -f redis_edge/redis.info
     echo update > redis_edge/$_REDIS_M_VERSION.info
   fi
-  find /data/all/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
-  find /data/all/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+  find $_D/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
+  find $_D/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
 }
 #
 # Download o_contrib_six.
@@ -699,41 +666,40 @@ download_o_contrib_six () {
   find ./ -type f -exec chmod 0644 {} \; &> /dev/null
   touch ctrl-$_INSTALLER_VERSION
   if [ ! -L "./redis" ] ; then
-    ln -sf /data/all/000/modules/redis redis
+    ln -sf $_D/000/modules/redis redis
   fi
   if [ ! -L "./redis_edge" ] ; then
-    ln -sf /data/all/000/modules/redis_edge redis_edge
+    ln -sf $_D/000/modules/redis_edge redis_edge
   fi
   if [ ! -L "./cache_backport" ] ; then
-    ln -sf /data/all/000/modules/cache_backport cache_backport
+    ln -sf $_D/000/modules/cache_backport cache_backport
   fi
   download_textile
-  if [ ! -e "/data/all/000/modules/cache_backport/update-$_INSTALLER_VERSION.info" ] ; then
-    mkdir -p /data/all/000/modules
-    cd /data/all/000/modules
-    rm -f -r /data/all/000/modules/cache_backport
+  if [ ! -e "$_D/000/modules/cache_backport/update-$_INSTALLER_VERSION.info" ] ; then
+    mkdir -p $_D/000/modules
+    cd $_D/000/modules
+    rm -f -r $_D/000/modules/cache_backport
     get_dev_contrib "cache_backport-6.x-1.0-rc2.tar.gz"
-    sed -i "s/Cache Backand/D7 Cache Backport for D6/g" cache_backport/cache_backport.info &> /dev/null
     echo update > cache_backport/update-$_INSTALLER_VERSION.info
   fi
-  if [ ! -e "/data/all/000/modules/redis/update-$_INSTALLER_VERSION.info" ] ; then
-    mkdir -p /data/all/000/modules
-    cd /data/all/000/modules
-    rm -f -r /data/all/000/modules/redis
+  if [ ! -e "$_D/000/modules/redis/update-$_INSTALLER_VERSION.info" ] ; then
+    mkdir -p $_D/000/modules
+    cd $_D/000/modules
+    rm -f -r $_D/000/modules/redis
     get_dev_contrib "redis-7.x-2.x-o8-revert-A.tar.gz"
     rm -f redis/redis.info
     echo update > redis/update-$_INSTALLER_VERSION.info
   fi
-  if [ ! -e "/data/all/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
-    mkdir -p /data/all/000/modules
-    cd /data/all/000/modules
-    rm -f -r /data/all/000/modules/redis_edge
+  if [ ! -e "$_D/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
+    mkdir -p $_D/000/modules
+    cd $_D/000/modules
+    rm -f -r $_D/000/modules/redis_edge
     get_dev_contrib "redis_edge-$_REDIS_M_VERSION.tar.gz"
     rm -f redis_edge/redis.info
     echo update > redis_edge/$_REDIS_M_VERSION.info
   fi
-  find /data/all/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
-  find /data/all/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+  find $_D/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
+  find $_D/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
 }
 #
 # Upgrade o_contrib.
@@ -749,7 +715,8 @@ check_fix_o_contrib () {
     fi
   fi
   if [ -e "$_CORE/o_contrib" ] ; then
-    if [ ! -d "$_CORE/o_contrib/robotstxt" ] || [ "$_O_CONTRIB_FORCED_UP" = "YES" ] ; then
+    if [ ! -d "$_CORE/o_contrib/robotstxt" ] \
+      || [ "$_O_CONTRIB_FORCED_UP" = "YES" ] ; then
       msg "$_STATUS A: Running o_contrib forced upgrade, please wait..."
       cd $_CORE/o_contrib
       rm -f -r *
@@ -758,7 +725,8 @@ check_fix_o_contrib () {
     fi
   fi
   if [ -e "$_CORE/o_contrib_seven" ] ; then
-    if [ ! -d "$_CORE/o_contrib_seven/robotstxt" ] || [ "$_O_CONTRIB_FORCED_UP" = "YES" ] ; then
+    if [ ! -d "$_CORE/o_contrib_seven/robotstxt" ] \
+      || [ "$_O_CONTRIB_FORCED_UP" = "YES" ] ; then
       msg "$_STATUS A: Running o_contrib_seven forced upgrade, please wait..."
       cd $_CORE/o_contrib_seven
       rm -f -r *
@@ -766,32 +734,31 @@ check_fix_o_contrib () {
       cd $_CORE/o_contrib_seven
     fi
   fi
-  if [ ! -e "/data/all/000/modules/cache_backport/update-$_INSTALLER_VERSION.info" ] ; then
-    mkdir -p /data/all/000/modules
-    cd /data/all/000/modules
-    rm -f -r /data/all/000/modules/cache_backport
+  if [ ! -e "$_D/000/modules/cache_backport/update-$_INSTALLER_VERSION.info" ] ; then
+    mkdir -p $_D/000/modules
+    cd $_D/000/modules
+    rm -f -r $_D/000/modules/cache_backport
     get_dev_contrib "cache_backport-6.x-1.0-rc2.tar.gz"
-    sed -i "s/Cache Backand/D7 Cache Backport for D6/g" cache_backport/cache_backport.info &> /dev/null
     echo update > cache_backport/update-$_INSTALLER_VERSION.info
   fi
-  if [ ! -e "/data/all/000/modules/redis/update-$_INSTALLER_VERSION.info" ] ; then
-    mkdir -p /data/all/000/modules
-    cd /data/all/000/modules
-    rm -f -r /data/all/000/modules/redis
+  if [ ! -e "$_D/000/modules/redis/update-$_INSTALLER_VERSION.info" ] ; then
+    mkdir -p $_D/000/modules
+    cd $_D/000/modules
+    rm -f -r $_D/000/modules/redis
     get_dev_contrib "redis-7.x-2.x-o8-revert-A.tar.gz"
     rm -f redis/redis.info
     echo update > redis/update-$_INSTALLER_VERSION.info
   fi
-  if [ ! -e "/data/all/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
-    mkdir -p /data/all/000/modules
-    cd /data/all/000/modules
-    rm -f -r /data/all/000/modules/redis_edge
+  if [ ! -e "$_D/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
+    mkdir -p $_D/000/modules
+    cd $_D/000/modules
+    rm -f -r $_D/000/modules/redis_edge
     get_dev_contrib "redis_edge-$_REDIS_M_VERSION.tar.gz"
     rm -f redis_edge/redis.info
     echo update > redis_edge/$_REDIS_M_VERSION.info
   fi
-  find /data/all/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
-  find /data/all/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+  find $_D/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
+  find $_D/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
 }
 #
 # Manage o_contrib.
@@ -808,11 +775,11 @@ manage_o_contrib () {
     download_o_contrib_six
     cd $_CORE/o_contrib
   fi
-  mkdir -p /data/all/000/modules
-  rm -f /data/all/000/modules/o_contrib_seven
-  ln -s $_CORE/o_contrib_seven /data/all/000/modules/o_contrib_seven
-  rm -f /data/all/000/modules/o_contrib
-  ln -s $_CORE/o_contrib /data/all/000/modules/o_contrib
+  mkdir -p $_D/000/modules
+  rm -f $_D/000/modules/o_contrib_seven
+  ln -s $_CORE/o_contrib_seven $_D/000/modules/o_contrib_seven
+  rm -f $_D/000/modules/o_contrib
+  ln -s $_CORE/o_contrib $_D/000/modules/o_contrib
   if [ $_STATUS != "INIT" ] ; then
     check_fix_o_contrib
   fi
@@ -852,14 +819,16 @@ fi
 if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
   _VERSIONS_TEST=`cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION`
   if [[ "$_VERSIONS_TEST" =~ "-dev" ]] ; then
-    if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
+    if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] \
+      && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
       _VERSIONS_TEST_RESULT=OK
       msg "$_STATUS A: OCTOPUS version test: OK"
     else
       _VERSIONS_TEST_RESULT=FAIL
     fi
   else
-    if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] && [[ "$_AEGIR_VERSION" =~ "BOA" ]] ; then
+    if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] \
+      && [[ "$_AEGIR_VERSION" =~ "BOA" ]] ; then
       _VERSIONS_TEST_RESULT=OK
       msg "$_STATUS A: OCTOPUS version test: OK"
     else
@@ -878,12 +847,16 @@ fi
 ###---### Hot Sauce check.
 #
 if [ "$_HOT_SAUCE" = "NO" ] ; then
-  _CORE="/data/all/$_LAST_ALL"
+  _CORE="$_D/$_LAST_ALL"
   _THIS_CORE="$_LAST_ALL"
-  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] && [ -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
+  if [ "$_USE_CURRENT" = "YES" ] \
+    && [ -e "$_D/000/core-v-$_SMALLCORE6.txt" ] \
+    && [ -e "$_D/000/core-v-$_SMALLCORE7.txt" ] ; then
     msg "$_STATUS A: Shared platforms code v.$_LAST_ALL (latest available) will be used"
-  elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
-    _CORE="/data/all/$_ALL_DISTRO"
+  elif [ "$_USE_CURRENT" = "NO" ] \
+    || [ ! -e "$_D/000/core-v-$_SMALLCORE6.txt" ] \
+    || [ ! -e "$_D/000/core-v-$_SMALLCORE7.txt" ] ; then
+    _CORE="$_D/$_ALL_DISTRO"
     _THIS_CORE="$_ALL_DISTRO"
     msg "$_STATUS A: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
     sed -i "s/^_USE_CURRENT=.*/_USE_CURRENT=NO/g" /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirSetupC.sh.txt &> /dev/null
@@ -891,7 +864,7 @@ if [ "$_HOT_SAUCE" = "NO" ] ; then
     msg "$_STATUS A: Shared platforms code v.$_LAST_ALL (latest available) will be used"
   fi
 else
-  _CORE="/data/all/$_ALL_DISTRO"
+  _CORE="$_D/$_ALL_DISTRO"
   _THIS_CORE="$_ALL_DISTRO"
   msg "$_STATUS A: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
 fi
@@ -903,7 +876,9 @@ msg "$_STATUS A: Creating directories with correct permissions..."
 mkdir -p /data/u
 mkdir -p /data/disk
 mkdir -p /data/conf
-if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+if [ -e "/root/.mstr.clstr.cnf" ] \
+  || [ -e "/root/.wbhd.clstr.cnf" ] \
+  || [ -e "/root/.dbhd.clstr.cnf" ] ; then
   touch /data/conf/clstr.cnf &> /dev/null
 fi
 chown root:root /data &> /dev/null
@@ -997,7 +972,8 @@ provision_backend_dbpass_generate () {
     _USE_AEGIR_HOST=`uname -n`
     _SQL_CONNECT=localhost
   fi
-  _USE_RESOLVEIP=`echo $(getent ahostsv4 $_USE_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
+  _USE_RESOLVEIP=`echo $(getent ahostsv4 $_USE_AEGIR_HOST) \
+    | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
   if [ -z "$_USE_RESOLVEIP" ] ; then
     msg "$_STATUS A: FATAL ERROR: DNS looks broken for $_USE_AEGIR_HOST"
     msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
@@ -1294,7 +1270,8 @@ fi
 ###---### Fix files permissions.
 #
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
-  _PLATF_IMP=$(ls -la /data/u | grep $_USER | cut -d'>' -f2 | sort | uniq | awk '{ print $1}')
+  _PLATF_IMP=$(ls -la /data/u | grep $_USER | cut -d'>' -f2 | sort \
+    | uniq | awk '{ print $1}')
   for _PLATF in $_PLATF_IMP ; do
     if [[ "$_PLATF" =~ "aegir" ]] ; then
       _FOUND_HM=YES
@@ -1376,7 +1353,8 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     fi
     echo "$_ESC_LUPASS" > $_ROOT/log/pass.txt
     # get the password hash
-    ph=$(mkpasswd -m sha-512 $_ESC_LUPASS $(openssl rand -base64 16 | tr -d '+=' | head -c 16))
+    ph=$(mkpasswd -m sha-512 $_ESC_LUPASS $(openssl rand -base64 16 \
+      | tr -d '+=' | head -c 16))
     # Set the password
     usermod -p $ph $_USERFTP &> /dev/null
     passwd -w 7 -x 90 $_USERFTP &> /dev/null
@@ -1564,7 +1542,8 @@ else
       _ESC_LUPASS=`sanitize_string "$_ESC_LUPASS"`
     fi
     echo "$_ESC_LUPASS" > $_ROOT/log/pass.txt
-    ph=$(mkpasswd -m sha-512 $_ESC_LUPASS $(openssl rand -base64 16 | tr -d '+=' | head -c 16))
+    ph=$(mkpasswd -m sha-512 $_ESC_LUPASS $(openssl rand -base64 16 \
+      | tr -d '+=' | head -c 16))
     usermod -p $ph $_USERFTP &> /dev/null
     _PASWD=`cat $_ROOT/log/pass.txt`
     _PASWD=`echo -n $_PASWD | tr -d "\n"`
@@ -1576,201 +1555,279 @@ fi
 #
 if [ "$_DIST_INSTALL" = "YES" ] ; then
 msg "$_STATUS A: Creating ftp symlinks"
-  if [ ! -d "/home/$_USERFTP/platforms/$_THIS_CORE" ] ; then
-    mkdir -p /home/$_USERFTP/platforms/$_THIS_CORE
+  if [ ! -d "${_QH}" ] ; then
+    mkdir -p ${_QH}
   fi
   chown -R $_USER:$_USRG /home/$_USERFTP/platforms &> /dev/null
   chmod 700 /home/$_USERFTP &> /dev/null
-  rm -f /home/$_USERFTP/platforms/$_THIS_CORE/{cod,commerce,commons,openatrium,openscholar,drupal6,drupal7}
-  if [ -d "$_ROOT/distro/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7
+  rm -f ${_QH}/{cod,commerce,commons,openatrium,openscholar,drupal6,drupal7}
+
+  _QR="$_ROOT/distro/$_THIS_CORE"
+  _QH="/home/$_USERFTP/platforms/$_THIS_CORE"
+
+  if [ -d "${_QR}/agov-$_AGOV-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/agov-$_AGOV-$_SMALLCORE7" ] ; then
+      _A="${_QR}/agov-$_AGOV-$_SMALLCORE7/sites"
+      _B="${_QH}/agov-$_AGOV-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M6-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM_M6-$_SMALLCORE6" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M6-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM_M6-$_SMALLCORE6
+  if [ -d "${_QR}/civicrm-$_CIVICRM_M6-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "${_QH}/civicrm-$_CIVICRM_M6-$_SMALLCORE6" ] ; then
+      _A="${_QR}/civicrm-$_CIVICRM_M6-$_SMALLCORE6/sites"
+      _B="${_QH}/civicrm-$_CIVICRM_M6-$_SMALLCORE6"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M7-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM_M7-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M7-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM_M7-$_SMALLCORE7
+  if [ -d "${_QR}/civicrm-$_CIVICRM_M7-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/civicrm-$_CIVICRM_M7-$_SMALLCORE7" ] ; then
+      _A="${_QR}/civicrm-$_CIVICRM_M7-$_SMALLCORE7/sites"
+      _B="${_QH}/civicrm-$_CIVICRM_M7-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/cod-$_COD-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/cod-$_COD-$_SMALLCORE7
+  if [ -d "${_QR}/cod-$_COD-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/cod-$_COD-$_SMALLCORE7" ] ; then
+      _A="${_QR}/cod-$_COD-$_SMALLCORE7/sites"
+      _B="${_QH}/cod-$_COD-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE1-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE1-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE1-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE1-$_SMALLCORE7
+  if [ -d "${_QR}/commerce-$_COMMERCE1-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/commerce-$_COMMERCE1-$_SMALLCORE7" ] ; then
+      _A="${_QR}/commerce-$_COMMERCE1-$_SMALLCORE7/sites"
+      _B="${_QH}/commerce-$_COMMERCE1-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE2-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE2-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE2-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE2-$_SMALLCORE7
+  if [ -d "${_QR}/commerce-$_COMMERCE2-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/commerce-$_COMMERCE2-$_SMALLCORE7" ] ; then
+      _A="${_QR}/commerce-$_COMMERCE2-$_SMALLCORE7/sites"
+      _B="${_QH}/commerce-$_COMMERCE2-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6
+  if [ -d "${_QR}/commons-$_COMMONS2-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "${_QH}/commons-$_COMMONS2-$_SMALLCORE6" ] ; then
+      _A="${_QR}/commons-$_COMMONS2-$_SMALLCORE6/sites"
+      _B="${_QH}/commons-$_COMMONS2-$_SMALLCORE6"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS3-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commons-$_COMMONS3-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/commons-$_COMMONS3-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/commons-$_COMMONS3-$_SMALLCORE7
+  if [ -d "${_QR}/commons-$_COMMONS3-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/commons-$_COMMONS3-$_SMALLCORE7" ] ; then
+      _A="${_QR}/commons-$_COMMONS3-$_SMALLCORE7/sites"
+      _B="${_QH}/commons-$_COMMONS3-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/pressflow-$_SMALLCORE6-dev" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev/sites /home/$_USERFTP/platforms/$_THIS_CORE/pressflow-$_SMALLCORE6-dev
+  if [ -d "${_QR}/pressflow-$_SMALLCORE6-dev/sites" ] ; then
+    if [ ! -L "${_QH}/pressflow-$_SMALLCORE6-dev" ] ; then
+      _A="${_QR}/pressflow-$_SMALLCORE6-dev/sites"
+      _B="${_QH}/pressflow-$_SMALLCORE6-dev"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/pressflow-$_SMALLCORE6-stage" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage/sites /home/$_USERFTP/platforms/$_THIS_CORE/pressflow-$_SMALLCORE6-stage
+  if [ -d "${_QR}/pressflow-$_SMALLCORE6-stage/sites" ] ; then
+    if [ ! -L "${_QH}/pressflow-$_SMALLCORE6-stage" ] ; then
+      _A="${_QR}/pressflow-$_SMALLCORE6-stage/sites"
+      _B="${_QH}/pressflow-$_SMALLCORE6-stage"
+      ln -sf $_A $_B
     fi
   fi
-  if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
-    if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod/sites" ] ; then
-      if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/pressflow-$_SMALLCORE6-prod" ] ; then
-        ln -sf $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod/sites /home/$_USERFTP/platforms/$_THIS_CORE/pressflow-$_SMALLCORE6-prod
+  if [ ! -d "${_QR}/pressflow" ] ; then
+    if [ -d "${_QR}/pressflow-$_SMALLCORE6-prod/sites" ] ; then
+      if [ ! -L "${_QH}/pressflow-$_SMALLCORE6-prod" ] ; then
+        _A="${_QR}/pressflow-$_SMALLCORE6-prod/sites"
+        _B="${_QH}/pressflow-$_SMALLCORE6-prod"
+        ln -sf $_A $_B
       fi
     fi
-  elif [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod" ] ; then
-    if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow/sites" ] ; then
-      if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/pressflow-$_SMALLCORE6-prod" ] ; then
-        ln -sf $_ROOT/distro/$_THIS_CORE/pressflow/sites /home/$_USERFTP/platforms/$_THIS_CORE/pressflow-$_SMALLCORE6-prod
+  elif [ ! -d "${_QR}/pressflow-$_SMALLCORE6-prod" ] ; then
+    if [ -d "${_QR}/pressflow/sites" ] ; then
+      if [ ! -L "${_QH}/pressflow-$_SMALLCORE6-prod" ] ; then
+        _A="${_QR}/pressflow/sites"
+        _B="${_QH}/pressflow-$_SMALLCORE6-prod"
+        ln -sf $_A $_B
       fi
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/$_DRUPAL7-dev" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/$_DRUPAL7D/sites /home/$_USERFTP/platforms/$_THIS_CORE/$_DRUPAL7-dev
+  if [ -d "${_QR}/$_DRUPAL7D/sites" ] ; then
+    if [ ! -L "${_QH}/$_DRUPAL7-dev" ] ; then
+      _A="${_QR}/$_DRUPAL7D/sites"
+      _B="${_QH}/$_DRUPAL7-dev"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7S/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/$_DRUPAL7-stage" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/$_DRUPAL7S/sites /home/$_USERFTP/platforms/$_THIS_CORE/$_DRUPAL7-stage
+  if [ -d "${_QR}/$_DRUPAL7S/sites" ] ; then
+    if [ ! -L "${_QH}/$_DRUPAL7-stage" ] ; then
+      _A="${_QR}/$_DRUPAL7S/sites"
+      _B="${_QH}/$_DRUPAL7-stage"
+      ln -sf $_A $_B
     fi
   fi
-  if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
-    if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P/sites" ] ; then
-      if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/$_DRUPAL7-prod" ] ; then
-        ln -sf $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P/sites /home/$_USERFTP/platforms/$_THIS_CORE/$_DRUPAL7-prod
+  if [ ! -d "${_QR}/$_DRUPAL7" ] ; then
+    if [ -d "${_QR}/$_DRUPAL7P/sites" ] ; then
+      if [ ! -L "${_QH}/$_DRUPAL7-prod" ] ; then
+        _A="${_QR}/$_DRUPAL7P/sites"
+        _B="${_QH}/$_DRUPAL7-prod"
+        ln -sf $_A $_B
       fi
     fi
-  elif [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
-    if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7/sites" ] ; then
-      if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/$_DRUPAL7-prod" ] ; then
-        ln -sf $_ROOT/distro/$_THIS_CORE/$_DRUPAL7/sites /home/$_USERFTP/platforms/$_THIS_CORE/$_DRUPAL7-prod
+  elif [ ! -d "${_QR}/$_DRUPAL7P" ] ; then
+    if [ -d "${_QR}/$_DRUPAL7/sites" ] ; then
+      if [ ! -L "${_QH}/$_DRUPAL7-prod" ] ; then
+        _A="${_QR}/$_DRUPAL7/sites"
+        _B="${_QH}/$_DRUPAL7-prod"
+        ln -sf $_A $_B
       fi
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_SMALLCORE8/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_SMALLCORE8" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/drupal-$_SMALLCORE8/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_SMALLCORE8
+  if [ -d "${_QR}/drupal-$_SMALLCORE8/sites" ] ; then
+    if [ ! -L "${_QH}/drupal-$_SMALLCORE8" ] ; then
+      _A="${_QR}/drupal-$_SMALLCORE8/sites"
+      _B="${_QH}/drupal-$_SMALLCORE8"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_D8_DEV_LABEL/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_D8_DEV_LABEL" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/drupal-$_D8_DEV_LABEL/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_D8_DEV_LABEL
+  if [ -d "${_QR}/drupal-$_D8_DEV_LABEL/sites" ] ; then
+    if [ ! -L "${_QH}/drupal-$_D8_DEV_LABEL" ] ; then
+      _A="${_QR}/drupal-$_D8_DEV_LABEL/sites"
+      _B="${_QH}/drupal-$_D8_DEV_LABEL"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/erpal-$_ERPAL-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/erpal-$_ERPAL-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/erpal-$_ERPAL-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/erpal-$_ERPAL-$_SMALLCORE7
+  if [ -d "${_QR}/erpal-$_ERPAL-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/erpal-$_ERPAL-$_SMALLCORE7" ] ; then
+      _A="${_QR}/erpal-$_ERPAL-$_SMALLCORE7/sites"
+      _B="${_QH}/erpal-$_ERPAL-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/fserver-$_SMALLCORE6" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/fserver-$_SMALLCORE6
+  if [ -d "${_QR}/fserver-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "${_QH}/fserver-$_SMALLCORE6" ] ; then
+      _A="${_QR}/fserver-$_SMALLCORE6/sites"
+      _B="${_QH}/fserver-$_SMALLCORE6"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/guardr-$_GUARDR-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/guardr-$_GUARDR-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/guardr-$_GUARDR-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/guardr-$_GUARDR-$_SMALLCORE7
+  if [ -d "${_QR}/guardr-$_GUARDR-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/guardr-$_GUARDR-$_SMALLCORE7" ] ; then
+      _A="${_QR}/guardr-$_GUARDR-$_SMALLCORE7/sites"
+      _B="${_QH}/guardr-$_GUARDR-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7
+  if [ -d "${_QR}/openacademy-$_OPENACADEMY-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/openacademy-$_OPENACADEMY-$_SMALLCORE7" ] ; then
+      _A="${_QR}/openacademy-$_OPENACADEMY-$_SMALLCORE7/sites"
+      _B="${_QH}/openacademy-$_OPENACADEMY-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7
+  if [ -d "${_QR}/openatrium-$_OPENATRIUM7-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/openatrium-$_OPENATRIUM7-$_SMALLCORE7" ] ; then
+      _A="${_QR}/openatrium-$_OPENATRIUM7-$_SMALLCORE7/sites"
+      _B="${_QH}/openatrium-$_OPENATRIUM7-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7
+  if [ -d "${_QR}/openblog-$_OPENBLOG-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/openblog-$_OPENBLOG-$_SMALLCORE7" ] ; then
+      _A="${_QR}/openblog-$_OPENBLOG-$_SMALLCORE7/sites"
+      _B="${_QH}/openblog-$_OPENBLOG-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH1-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH1-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH1-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH1-$_SMALLCORE7
+  if [ -d "${_QR}/openchurch-$_OPENCHURCH1-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/openchurch-$_OPENCHURCH1-$_SMALLCORE7" ] ; then
+      _A="${_QR}/openchurch-$_OPENCHURCH1-$_SMALLCORE7/sites"
+      _B="${_QH}/openchurch-$_OPENCHURCH1-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH2-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH2-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH2-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH2-$_SMALLCORE7
+  if [ -d "${_QR}/openchurch-$_OPENCHURCH2-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/openchurch-$_OPENCHURCH2-$_SMALLCORE7" ] ; then
+      _A="${_QR}/openchurch-$_OPENCHURCH2-$_SMALLCORE7/sites"
+      _B="${_QH}/openchurch-$_OPENCHURCH2-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7
+  if [ -d "${_QR}/opendeals-$_OPENDEALS-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/opendeals-$_OPENDEALS-$_SMALLCORE7" ] ; then
+      _A="${_QR}/opendeals-$_OPENDEALS-$_SMALLCORE7/sites"
+      _B="${_QH}/opendeals-$_OPENDEALS-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7
+  if [ -d "${_QR}/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/openoutreach-$_OPENOUTREACH-$_SMALLCORE7" ] ; then
+      _A="${_QR}/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/sites"
+      _B="${_QH}/openoutreach-$_OPENOUTREACH-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7
+  if [ -d "${_QR}/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/openpublic-$_OPENPUBLIC-$_SMALLCORE7" ] ; then
+      _A="${_QR}/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites"
+      _B="${_QH}/openpublic-$_OPENPUBLIC-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7
+  if [ -d "${_QR}/openpublish-$_OPENPUBLISH-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/openpublish-$_OPENPUBLISH-$_SMALLCORE7" ] ; then
+      _A="${_QR}/openpublish-$_OPENPUBLISH-$_SMALLCORE7/sites"
+      _B="${_QH}/openpublish-$_OPENPUBLISH-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE7
+  if [ -d "${_QR}/openscholar-$_OPENSCHOLAR-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/openscholar-$_OPENSCHOLAR-$_SMALLCORE7" ] ; then
+      _A="${_QR}/openscholar-$_OPENSCHOLAR-$_SMALLCORE7/sites"
+      _B="${_QH}/openscholar-$_OPENSCHOLAR-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7
+  if [ -d "${_QR}/panopoly-$_PANOPOLY-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/panopoly-$_PANOPOLY-$_SMALLCORE7" ] ; then
+      _A="${_QR}/panopoly-$_PANOPOLY-$_SMALLCORE7/sites"
+      _B="${_QH}/panopoly-$_PANOPOLY-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7
+  if [ -d "${_QR}/recruiter-$_RECRUITER-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/recruiter-$_RECRUITER-$_SMALLCORE7" ] ; then
+      _A="${_QR}/recruiter-$_RECRUITER-$_SMALLCORE7/sites"
+      _B="${_QH}/recruiter-$_RECRUITER-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/restaurant-$_RESTAURANT-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/restaurant-$_RESTAURANT-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/restaurant-$_RESTAURANT-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/restaurant-$_RESTAURANT-$_SMALLCORE7
+  if [ -d "${_QR}/restaurant-$_RESTAURANT-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/restaurant-$_RESTAURANT-$_SMALLCORE7" ] ; then
+      _A="${_QR}/restaurant-$_RESTAURANT-$_SMALLCORE7/sites"
+      _B="${_QH}/restaurant-$_RESTAURANT-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART6-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBERCART6-$_SMALLCORE6" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART6-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBERCART6-$_SMALLCORE6
+  if [ -d "${_QR}/ubercart-$_UBERCART6-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "${_QH}/ubercart-$_UBERCART6-$_SMALLCORE6" ] ; then
+      _A="${_QR}/ubercart-$_UBERCART6-$_SMALLCORE6/sites"
+      _B="${_QH}/ubercart-$_UBERCART6-$_SMALLCORE6"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART7-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBERCART7-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART7-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBERCART7-$_SMALLCORE7
+  if [ -d "${_QR}/ubercart-$_UBERCART7-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/ubercart-$_UBERCART7-$_SMALLCORE7" ] ; then
+      _A="${_QR}/ubercart-$_UBERCART7-$_SMALLCORE7/sites"
+      _B="${_QH}/ubercart-$_UBERCART7-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBERCART7-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-testing-$_UBERCART7-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBERCART7-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-testing-$_UBERCART7-$_SMALLCORE7
+  if [ -d "${_QR}/ubercart-testing-$_UBERCART7-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "${_QH}/ubercart-testing-$_UBERCART7-$_SMALLCORE7" ] ; then
+      _A="${_QR}/ubercart-testing-$_UBERCART7-$_SMALLCORE7/sites"
+      _B="${_QH}/ubercart-testing-$_UBERCART7-$_SMALLCORE7"
+      ln -sf $_A $_B
     fi
   fi
 fi
@@ -1836,17 +1893,17 @@ fi
 if [ "$_HM_ONLY" = "YES" ] ; then
   _DO_NOTHING=YES
 else
-  if [ ! -d "$_ROOT/distro/$_THIS_CORE/keys" ] ; then
-    mkdir -p $_ROOT/distro/$_THIS_CORE/keys
-    chown $_USERFTP:$_WEBG $_ROOT/distro/$_THIS_CORE/keys &> /dev/null
-    chmod 02775 $_ROOT/distro/$_THIS_CORE/keys
+  if [ ! -d "${_QR}/keys" ] ; then
+    mkdir -p ${_QR}/keys
+    chown $_USERFTP:$_WEBG ${_QR}/keys &> /dev/null
+    chmod 02775 ${_QR}/keys
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/keys" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/keys" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/keys /home/$_USERFTP/platforms/$_THIS_CORE/keys
+  if [ -d "${_QR}/keys" ] ; then
+    if [ ! -L "${_QH}/keys" ] ; then
+      ln -sf ${_QR}/keys ${_QH}/keys
     fi
   fi
-  rm -f $_ROOT/distro/$_THIS_CORE/*/robots.txt &> /dev/null
+  rm -f ${_QR}/*/robots.txt &> /dev/null
   if [ ! -e "$_CORE/javascript_aggregator.out.txt" ] ; then
     sed -i "s/, 'javascript_aggregator'//g" $_CORE/*/profiles/*/*.profile &> /dev/null
     touch $_CORE/javascript_aggregator.out.txt
@@ -1856,11 +1913,11 @@ fi
 
 ###---### Remove not used cache module.
 #
-if [ ! -e "/data/all/000/old_cache.out2.txt" ] && [ -e "/data/all/000" ] ; then
-  sed -i "s/, 'cache'//g" /data/all/*/*/profiles/*/*.profile &> /dev/null
-  sed -i "s/'cache', //g" /data/all/*/*/profiles/*/*.profile &> /dev/null
-  rm -f -r /data/all/*/o_contrib/cache
-  touch /data/all/000/old_cache.out2.txt
+if [ ! -e "$_D/000/old_cache.out2.txt" ] && [ -e "$_D/000" ] ; then
+  sed -i "s/, 'cache'//g" $_D/*/*/profiles/*/*.profile &> /dev/null
+  sed -i "s/'cache', //g" $_D/*/*/profiles/*/*.profile &> /dev/null
+  rm -f -r $_D/*/o_contrib/cache
+  touch $_D/000/old_cache.out2.txt
 fi
 
 
@@ -1904,36 +1961,59 @@ _MAILX_TEST=`mail -V 2>&1`
 if [ "$_STATUS" = "INIT" ] ; then
   msg "$_STATUS A: Sending setup e-mail on init..."
   TIME=`date`
+  _Q="Your Aegir Install on $TIME [$_USER]"
   echo $TIME > $_ROOT/log/date-init.txt
   if [ -e "$_ROOT/log/setupmail.txt" ] ; then
     if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
-      cat $_ROOT/log/setupmail.txt | sed "s/[\~]//g" | mail -a "From: $_A_DM_EMAIL" -a "Bcc: $_A_DM_EMAIL" -e -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+      cat $_ROOT/log/setupmail.txt \
+        | sed "s/[\~]//g" \
+        | mail -a "From: $_A_DM_EMAIL" \
+        -a "Bcc: $_A_DM_EMAIL" -e -s "$_Q" $_AT_CLIENT_EMAIL
     elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
-      cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+      cat $_ROOT/log/setupmail.txt \
+        | mail -a "From: $_A_DM_EMAIL" \
+        -e -b $_A_DM_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
     else
-      cat $_ROOT/log/setupmail.txt | mail -r $_A_DM_EMAIL -e -b $_A_DM_EMAIL -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+      cat $_ROOT/log/setupmail.txt \
+        | mail -r $_A_DM_EMAIL \
+        -e -b $_A_DM_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
     fi
   fi
 else
   if [ "$_DIST_INSTALL" = "YES" ] && [ "$_PLATFORMS_ONLY" = "NO" ] ; then
     msg "$_STATUS A: Resending setup e-mail on upgrade..."
     TIME=`date`
+    _Q="Your Aegir Upgrade on $TIME [$_USER]"
     echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
     if [ -e "$_ROOT/log/upgrademail.txt" ] ; then
       if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
-        cat $_ROOT/log/upgrademail.txt | sed "s/[\~]//g" | mail -a "From: $_A_DM_EMAIL" -a "Bcc: $_A_DM_EMAIL" -e -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+        cat $_ROOT/log/upgrademail.txt \
+          | sed "s/[\~]//g" \
+          | mail -a "From: $_A_DM_EMAIL" \
+          -a "Bcc: $_A_DM_EMAIL" -e -s "$_Q" $_AT_CLIENT_EMAIL
       elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
-        cat $_ROOT/log/upgrademail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+        cat $_ROOT/log/upgrademail.txt \
+          | mail -a "From: $_A_DM_EMAIL" \
+          -e -b $_A_DM_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
       else
-        cat $_ROOT/log/upgrademail.txt | mail -r $_A_DM_EMAIL -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+        cat $_ROOT/log/upgrademail.txt \
+          | mail -r $_A_DM_EMAIL \
+          -e -b $_A_DM_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
       fi
     else
       if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
-        cat $_ROOT/log/setupmail.txt | sed "s/[\~]//g" | mail -a "From: $_A_DM_EMAIL" -a "Bcc: $_A_DM_EMAIL" -e -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+        cat $_ROOT/log/setupmail.txt \
+          | sed "s/[\~]//g" \
+          | mail -a "From: $_A_DM_EMAIL" \
+          -a "Bcc: $_A_DM_EMAIL" -e -s "$_Q" $_AT_CLIENT_EMAIL
       elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
-        cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+        cat $_ROOT/log/setupmail.txt \
+          | mail -a "From: $_A_DM_EMAIL" \
+          -e -b $_A_DM_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
       else
-        cat $_ROOT/log/setupmail.txt | mail -r $_A_DM_EMAIL -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+        cat $_ROOT/log/setupmail.txt \
+          | mail -r $_A_DM_EMAIL \
+          -e -b $_A_DM_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
       fi
     fi
   else
@@ -1950,7 +2030,10 @@ if [ "$_STATUS" = "INIT" ] ; then
 else
  echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
 fi
-echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Octopus $_INSTALLER_VERSION / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION" >> $_ROOT/log/octopus_log.txt
+echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` \
+  / Aegir $_AEGIR_VERSION / Octopus $_INSTALLER_VERSION \
+  / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION" \
+  >> $_ROOT/log/octopus_log.txt
 msg "$_STATUS A: New entry added to $_ROOT/log/octopus_log.txt"
 
 
@@ -1958,30 +2041,31 @@ msg "$_STATUS A: New entry added to $_ROOT/log/octopus_log.txt"
 #
 msg "$_STATUS A: Final cleaning, please wait a moment..."
 cd /
-chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt opt sbin selinux srv sys usr var share run &> /dev/null
+chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt &> /dev/null
+chmod 711 opt sbin selinux srv sys usr var share run &> /dev/null
 chmod 700 root &> /dev/null
-if [ -e "/data/all" ] ; then
-  if [ ! -f "/data/all/permissions-fix-$_INSTALLER_VERSION-$_TODAY.info" ] ; then
-    find /data/all/000 -type d -exec chmod 0755 {} \; &> /dev/null
-    find /data/all/000 -type f -exec chmod 0644 {} \; &> /dev/null
-    st_runner "chmod 755 /data/all/*/*/profiles" &> /dev/null
-    st_runner "chmod 02775 /data/all/*/*/sites/all/{modules,libraries,themes}" &> /dev/null
-    st_runner "chmod 02775 /data/all/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
-    st_runner "chown -R root:root /data/all" &> /dev/null
-    st_runner "chown -R root:users /data/all/*/*/sites" &> /dev/null
-    echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-$_TODAY.info
+if [ -e "$_D" ] ; then
+  if [ ! -f "$_D/permissions-fix-$_INSTALLER_VERSION-$_TODAY.info" ] ; then
+    find $_D/000 -type d -exec chmod 0755 {} \; &> /dev/null
+    find $_D/000 -type f -exec chmod 0644 {} \; &> /dev/null
+    st_runner "chmod 755 $_D/*/*/profiles" &> /dev/null
+    st_runner "chmod 02775 $_D/*/*/sites/all/{modules,libraries,themes}" &> /dev/null
+    st_runner "chmod 02775 $_D/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
+    st_runner "chown -R root:root $_D" &> /dev/null
+    st_runner "chown -R root:users $_D/*/*/sites" &> /dev/null
+    echo fixed > $_D/permissions-fix-$_INSTALLER_VERSION-$_TODAY.info
   fi
-  chown root:root /data/all &> /dev/null
+  chown root:root $_D &> /dev/null
   chown root:root $_CORE &> /dev/null
   st_runner "chown -R root:root /data/conf" &> /dev/null
   st_runner "chown -R root:root $_CORE/o_contrib" &> /dev/null
   st_runner "chown -R root:root $_CORE/o_contrib_seven" &> /dev/null
-  st_runner "chown -R root:root /data/all/000" &> /dev/null
+  st_runner "chown -R root:root $_D/000" &> /dev/null
   find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
   find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
   chown root:root /opt/tmp &> /dev/null
-  chmod 0711 /data /data/all/* /data/disk /data/conf &> /dev/null
-  chmod 0755 /data/all /data/all/000 &> /dev/null
+  chmod 0711 /data $_D/* /data/disk /data/conf &> /dev/null
+  chmod 0755 $_D $_D/000 &> /dev/null
 elif [ -e "/data/disk/all" ] ; then
   if [ ! -f "/data/disk/all/permissions-fix-$_INSTALLER_VERSION-$_TODAY.info" ] ; then
     find /data/disk/all/000 -type d -exec chmod 0755 {} \; &> /dev/null
@@ -2051,8 +2135,6 @@ if [ "$_STATUS" = "INIT" ] ; then
     fi
   fi
 else
-  feature_server_fix_002
-  feature_server_fix_004
   o_contrib_update_global
   o_contrib_seven_update_global
 fi
