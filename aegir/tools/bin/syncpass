@@ -111,8 +111,7 @@ do_syncpass () {
   fi
 }
 
-check_root ()
-{
+check_root () {
   if [ `whoami` = "root" ] ; then
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ] ; then

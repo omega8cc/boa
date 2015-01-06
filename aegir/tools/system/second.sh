@@ -3,8 +3,7 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-hold()
-{
+hold () {
   /etc/init.d/nginx stop
   killall -9 nginx
   sleep 1
@@ -29,8 +28,7 @@ hold()
   echo load is $_O_LOAD:$_F_LOAD while maxload is $_O_LOAD_MAX:$_F_LOAD_MAX
 }
 
-terminate()
-{
+terminate () {
   if [ -e "/var/run/boa_run.pid" ] ; then
     sleep 1
   else
@@ -39,20 +37,17 @@ terminate()
   fi
 }
 
-nginx_high_load_on()
-{
+nginx_high_load_on () {
   mv -f /data/conf/nginx_high_load_off.conf /data/conf/nginx_high_load.conf
   /etc/init.d/nginx reload
 }
 
-nginx_high_load_off()
-{
+nginx_high_load_off () {
   mv -f /data/conf/nginx_high_load.conf /data/conf/nginx_high_load_off.conf
   /etc/init.d/nginx reload
 }
 
-check_vhost_health()
-{
+check_vhost_health () {
   if [ -e "$1"* ] ; then
     echo vhost $1 exists
     _VHOST_TEST_PLACEHOLDER=$(grep "### access" $1* 2>&1)
@@ -74,8 +69,7 @@ check_vhost_health()
   fi
 }
 
-update_ip_auth_access()
-{
+update_ip_auth_access () {
   touch /var/run/.auth.IP.list.pid
   if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
     if [ -e "/var/aegir/config/server_master/nginx/vhost.d/chive."* ] ; then
@@ -135,8 +129,7 @@ d;};' /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
   rm -f /var/run/.auth.IP.list.pid
 }
 
-manage_ip_auth_access()
-{
+manage_ip_auth_access () {
   for _IP in `who --ips | sed 's/.*tty.*//g; s/.*root.*hvc.*//g' | cut -d: -f2 | cut -d' ' -f2 | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' | tr -d "\s" | sort | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" >> /var/backups/.auth.IP.list.tmp;done
   if [ -e "/root/.ip.protected.vhost.whitelist.cnf" ] ; then
     for _IP in `cat /root/.ip.protected.vhost.whitelist.cnf | sort | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" >> /var/backups/.auth.IP.list.tmp;done
@@ -211,8 +204,7 @@ manage_ip_auth_access()
   rm -f /var/backups/.auth.IP.list.tmp
 }
 
-proc_control()
-{
+proc_control () {
   if [ $_O_LOAD -ge $_O_LOAD_MAX ] ; then
     hold
   elif [ $_F_LOAD -ge $_F_LOAD_MAX ] ; then
@@ -226,8 +218,7 @@ proc_control()
   fi
 }
 
-load_control()
-{
+load_control () {
   _O_LOAD=`awk '{print $1*100}' /proc/loadavg`
   echo _O_LOAD is $_O_LOAD
   let "_O_LOAD = (($_O_LOAD / $_CPU_NR))"
@@ -276,8 +267,7 @@ load_control()
   proc_control
 }
 
-count_cpu()
-{
+count_cpu () {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc)

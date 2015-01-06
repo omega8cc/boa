@@ -28,8 +28,7 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]] ; then
   echo php logs rotated
 fi
 
-oom_restart()
-{
+oom_restart () {
   touch /var/run/boa_run.pid
   echo "`date` OOM $1 detected" >> /var/xdrago/log/oom.incident.log
   sleep 5
@@ -85,8 +84,7 @@ else
   perl /var/xdrago/monitor/check/segfault_alert
 fi
 
-mysql_proc_kill()
-{
+mysql_proc_kill () {
   if [ "$xtime" != "Time" ] && [ "$xuser" != "root" ] && [ "$xtime" != "|" ] && [[ "$xtime" -gt "$limit" ]] ; then
     xkill=`mysqladmin kill $each`
     times=`date`
@@ -95,8 +93,7 @@ mysql_proc_kill()
   fi
 }
 
-mysql_proc_control()
-{
+mysql_proc_control () {
 limit=3600
 xkill=null
 for each in `mysqladmin proc | awk '{print $2, $4, $8, $12}' | awk '{print $1}'`;
@@ -118,8 +115,7 @@ do
 done
 }
 
-lsyncd_proc_control()
-{
+lsyncd_proc_control () {
 if [ -e "/var/log/lsyncd.log" ] ; then
   if [ `tail --lines=100 /var/log/lsyncd.log | grep --count "Error: Terminating"` -gt "0" ]; then
     echo "`date` TRM lsyncd" >> /var/xdrago/log/lsyncd.monitor.log

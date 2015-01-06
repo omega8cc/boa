@@ -8,7 +8,7 @@ if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] ; then
   _NEW_SSL=YES
 fi
 
-randpass() {
+randpass () {
   if [ $integer -ge 8 ] ; then
     rkey="$integer"
   else

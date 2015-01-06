@@ -37,8 +37,7 @@ SCRIPTNAME=/etc/init.d/$NAME
 #
 # Function to check the correctness of the config file
 #
-do_check()
-{
+do_check () {
     [ "$1" != "no" ] && $DAEMON $DAEMON_ARGS -t 2>&1 | grep -v "\[ERROR\]"
     FPM_ERROR=$($DAEMON $DAEMON_ARGS -t 2>&1 | grep "\[ERROR\]")
 
@@ -53,8 +52,7 @@ do_check()
 #
 # Function that starts the daemon/service
 #
-do_start()
-{
+do_start () {
 	# Return
 	#   0 if daemon has been started
 	#   1 if daemon was already running
@@ -72,8 +70,7 @@ do_start()
 #
 # Function that stops the daemon/service
 #
-do_stop()
-{
+do_stop () {
 	# Return
 	#   0 if daemon has been stopped
 	#   1 if daemon was already stopped
@@ -98,7 +95,7 @@ do_stop()
 #
 # Function that sends a SIGHUP to the daemon/service
 #
-do_reload() {
+do_reload () {
 	#
 	# If the daemon can reload its configuration without
 	# restarting (for example, when it is sent a SIGHUP),

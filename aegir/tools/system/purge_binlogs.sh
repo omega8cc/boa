@@ -3,8 +3,7 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-count_cpu()
-{
+count_cpu () {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc)
@@ -22,8 +21,7 @@ count_cpu()
   fi
 }
 
-load_control()
-{
+load_control () {
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
     _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
@@ -36,8 +34,7 @@ load_control()
   let "_O_LOAD_MAX = ((100 * $_CPU_MAX_RATIO))"
 }
 
-action()
-{
+action () {
   count_cpu
   load_control
   if [ $_O_LOAD -lt $_O_LOAD_MAX ] ; then

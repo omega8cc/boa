@@ -341,8 +341,7 @@ done
 }
 #
 # Fix dot dirs.
-fix_dot_dirs()
-{
+fix_dot_dirs () {
   _USER_DRUSH="/home/$_USER_LTD/.drush"
   if [ ! -d "$_USER_DRUSH" ] ; then
     mkdir -p $_USER_DRUSH
@@ -371,8 +370,7 @@ fix_dot_dirs()
 }
 #
 # Manage Drush Aliases.
-manage_sec_user_drush_aliases()
-{
+manage_sec_user_drush_aliases () {
   rm -f $_USER_LTD_ROOT/sites
   ln -sf $Client $_USER_LTD_ROOT/sites
   mkdir -p $_USER_LTD_ROOT/.drush
@@ -401,8 +399,7 @@ manage_sec_user_drush_aliases()
 }
 #
 # OK, create user.
-ok_create_user()
-{
+ok_create_user () {
   _ADMIN="${_OWN}.ftp"
   echo "_ADMIN is == $_ADMIN == at ok_create_user"
   _USER_LTD_ROOT="/home/$_USER_LTD"
@@ -471,8 +468,7 @@ ok_create_user()
 }
 #
 # OK, update user.
-ok_update_user()
-{
+ok_update_user () {
   _ADMIN="${_OWN}.ftp"
   _USER_LTD_ROOT="/home/$_USER_LTD"
   if [ -e "/home/$_ADMIN/users/$_USER_LTD" ] ; then
@@ -508,8 +504,7 @@ add_user_if_not_exists () {
 }
 #
 # Manage Access Paths.
-manage_sec_access_paths()
-{
+manage_sec_access_paths () {
 #for Domain in `find $Client/ -maxdepth 1 -mindepth 1 -type l -printf %P\\n | sort`
 for Domain in `find $Client/ -maxdepth 1 -mindepth 1 -type l | sort`
 do
@@ -524,8 +519,7 @@ done
 }
 #
 # Manage Secondary Users.
-manage_sec()
-{
+manage_sec () {
 for Client in `find $User/clients/ -maxdepth 1 -mindepth 1 -type d | sort`
 do
   _USER_LTD=`echo $Client | cut -d'/' -f6 | awk '{ print $1}'`
@@ -605,8 +599,7 @@ update_php_cli_local_ini () {
 }
 #
 # Update PHP-CLI for Drush.
-update_php_cli_drush ()
-{
+update_php_cli_drush () {
   _DRUSH_FILE="/data/disk/${_OWN}/tools/drush/drush.php"
   if [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
@@ -1168,8 +1161,7 @@ manage_site_drush_alias_mirror () {
 }
 #
 # Manage Primary Users.
-manage_own()
-{
+manage_own () {
 for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
 do
   if [ -e "$User/config/server_master/nginx/vhost.d" ] && [ -e "$User/log/fpm.txt" ] && [ ! -e "$User/log/CANCELLED" ] ; then

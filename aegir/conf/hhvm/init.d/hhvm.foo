@@ -54,7 +54,7 @@ ${ADDITIONAL_ARGS}"
 #
 # Function that starts the daemon/service
 #
-check_run_dir() {
+check_run_dir () {
     # Only perform folder creation, if the PIDFILE location was not modified
     PIDFILE_BASEDIR=$(dirname ${PIDFILE})
     # We might have a tmpfs /var/run.
@@ -64,8 +64,7 @@ check_run_dir() {
     fi
 }
 
-do_start()
-{
+do_start () {
         # Return
         #   0 if daemon has been started
         #   1 if daemon was already running
@@ -85,8 +84,7 @@ do_start()
 #
 # Function that stops the daemon/service
 #
-do_stop()
-{
+do_stop () {
         # Return
         #   0 if daemon has been stopped
         #   1 if daemon was already stopped
@@ -111,7 +109,7 @@ do_stop()
 #
 # Function that sends a SIGHUP to the daemon/service
 #
-do_reload() {
+do_reload () {
         #
         # If the daemon can reload its configuration without
         # restarting (for example, when it is sent a SIGHUP),

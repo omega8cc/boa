@@ -5,8 +5,7 @@ PATH=/usr/sbin:/usr/bin:/sbin:/bin
 
 ###-------------SYSTEM-----------------###
 
-count_cpu()
-{
+count_cpu () {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc)
@@ -24,8 +23,7 @@ count_cpu()
   fi
 }
 
-load_control()
-{
+load_control () {
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
     _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
@@ -38,8 +36,7 @@ load_control()
   let "_O_LOAD_MAX = ((100 * $_CPU_MAX_RATIO))"
 }
 
-action()
-{
+action () {
 for Runner in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f | grep run- | uniq | sort`
 do
   count_cpu

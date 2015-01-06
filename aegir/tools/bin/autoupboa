@@ -3,8 +3,7 @@
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
 
-crontab_update()
-{
+crontab_update () {
   if [ -e "/etc/crontab" ] ; then
     sed -i "s/.*barracuda.*//gi"  /etc/crontab &> /dev/null
     sed -i "s/.*BOA.sh.txt.*//gi" /etc/crontab &> /dev/null

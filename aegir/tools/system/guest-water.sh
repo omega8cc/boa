@@ -3,8 +3,7 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-local_ip_rg()
-{
+local_ip_rg () {
   if [ -e "/root/.local.IP.list" ] ; then
     echo "the file /root/.local.IP.list already exists"
     for _IP in `hostname -I`
@@ -40,8 +39,7 @@ local_ip_rg()
   sed -i "/^$/d" /etc/csf/csf.allow &> /dev/null
 }
 
-guard_stats()
-{
+guard_stats () {
   if [ -e "$_HA" ] ; then
     for _IP in `cat $_HA | cut -d '#' -f1 | sort | uniq`
     do

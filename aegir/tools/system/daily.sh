@@ -2003,8 +2003,7 @@ purge_cruft_machine () {
   done
 }
 
-count_cpu()
-{
+count_cpu () {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc)
@@ -2024,8 +2023,7 @@ count_cpu()
   chmod 644 /data/all/cpuinfo
 }
 
-load_control()
-{
+load_control () {
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
     _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
