@@ -68,6 +68,41 @@ if [ ! -z "$_RAM_PCT_FREE" ] && [ $_RAM_PCT_FREE -lt 10 ] ; then
   oom_restart "ram"
 fi
 
+jetty_restart () {
+  kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
+  rm -f /var/log/jetty{7,8,9}/*
+  if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] ; then
+    /etc/init.d/jetty9 start
+  fi
+  if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ] ; then
+    /etc/init.d/jetty8 start
+  fi
+  if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ] ; then
+    /etc/init.d/jetty7 start
+  fi
+}
+
+if [ -e "/var/log/jetty9" ] ; then
+  if [ `tail --lines=500 /var/log/jetty9/*stderrout.log | grep --count "Address already in use"` -gt "0" ]; then
+    jetty_restart "zombie"
+    echo "`date` Address already in use for jetty9" >> /var/xdrago/log/jetty.zombie.incident.log
+  fi
+fi
+
+if [ -e "/var/log/jetty8" ] ; then
+  if [ `tail --lines=500 /var/log/jetty8/*stderrout.log | grep --count "Address already in use"` -gt "0" ]; then
+    jetty_restart "zombie"
+    echo "`date` Address already in use for jetty8" >> /var/xdrago/log/jetty.zombie.incident.log
+  fi
+fi
+
+if [ -e "/var/log/jetty7" ] ; then
+  if [ `tail --lines=500 /var/log/jetty7/*stderrout.log | grep --count "Address already in use"` -gt "0" ]; then
+    jetty_restart "zombie"
+    echo "`date` Address already in use for jetty7" >> /var/xdrago/log/jetty.zombie.incident.log
+  fi
+fi
+
 if [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ] ; then
   resolvconf -u &> /dev/null
   service pdnsd restart &> /dev/null
