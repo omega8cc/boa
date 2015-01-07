@@ -122,7 +122,7 @@ BUCKET=daily.boa.${_HST}
 TARGET=s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}
 LOGFILE=/var/xdrago/log/${BUCKET}.log
 
-backup () {
+backup() {
   if [ ! -z "$_AWS_PRG" ] && [ "$_AWS_PRG" = "YES" ] ; then
     _AWS_OPX="--s3-use-new-style --progress"
   fi
@@ -157,7 +157,7 @@ backup () {
   cat /var/xdrago/log/${BUCKET}.log >> /var/xdrago/log/${BUCKET}.archive.log
 }
 
-conn_test () {
+conn_test() {
   echo "Running AWS connection test, please wait..."
   ConnTest=$(duplicity -v 2 cleanup --dry-run --timeout 1 ${_AWS_OPX} ${TARGET} 2>&1)
   if [[ "$ConnTest" =~ "No connection to backend" ]] ; then
@@ -174,20 +174,20 @@ conn_test () {
   fi
 }
 
-status () {
+status() {
   duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET}
 }
 
-cleanup () {
+cleanup() {
   duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
   duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET}
 }
 
-list () {
+list() {
   duplicity -v ${_AWS_VLV} list-current-files ${_AWS_OPX} ${TARGET}
 }
 
-restore () {
+restore() {
   if [ $# = 2 ]; then
     duplicity -v ${_AWS_VLV} restore --file-to-restore $1 ${_AWS_OPX} ${TARGET} $2
   else
@@ -195,7 +195,7 @@ restore () {
   fi
 }
 
-retrieve () {
+retrieve() {
   if [ $# = 3 ]; then
     BUCKET=daily.boa.$3
     TARGET=s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}
@@ -207,7 +207,7 @@ retrieve () {
   fi
 }
 
-install () {
+install() {
   _DUPLICITY_INSTALLED=`duplicity --version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   if [ "$_DUPLICITY_INSTALLED" = "$_DUPLICITY_VERSION" ] ; then
     echo "Latest duplicity version $_DUPLICITY_VERSION already installed"

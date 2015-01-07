@@ -26,14 +26,14 @@ if [[ "$_L_VM_TEST" =~ beng ]] ; then
   _L_VMFAMILY="VS"
 fi
 
-clean_pid_exit () {
+clean_pid_exit() {
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
   exit 1
 }
 
-fix_dns_settings () {
+fix_dns_settings() {
   mkdir -p $varPath
   rm -f $varPath/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ] ; then
@@ -107,7 +107,7 @@ d;};' /etc/pdnsd.conf
   fi
 }
 
-check_dns_settings () {
+check_dns_settings() {
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
   if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] || [ -e "/root/.use.local.nameservers.cnf" ] ; then
     _USE_PROVIDER_DNS=YES
@@ -117,8 +117,8 @@ check_dns_settings () {
   fi
 }
 
-send_report () {
   if [ -e "$barCnf" ] ; then
+send_report() {
     if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
@@ -129,8 +129,8 @@ send_report () {
   fi
 }
 
-send_alert () {
   if [ -e "$barCnf" ] ; then
+send_alert() {
     if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
@@ -141,7 +141,7 @@ send_alert () {
   fi
 }
 
-check_report () {
+check_report() {
   sed -i "s/^_AWS_.*//g"         $_UP_LOG
   sed -i "s/^_NEWRELIC_KEY.*//g" $_UP_LOG
   sed -i "s/^_SCOUT_KEY.*//g"    $_UP_LOG
@@ -197,7 +197,7 @@ check_report () {
   fi
 }
 
-check_php_cli () {
+check_php_cli() {
   _PHP_CHECK=`readlink -n /usr/bin/php`
   if [ ! -x "$_PHP_CHECK" ] ; then
     if [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
@@ -237,8 +237,8 @@ check_php_cli () {
   fi
 }
 
-up_action () {
   if [ -e "$varPath/$barName" ] && [ -e "$barCnf" ] ; then
+up_action() {
     if [ ! -z "$rkey" ] ; then
       if [ "$rkey" = "php-55" ] ; then
         _PHP_SINGLE_INSTALL=5.5
@@ -522,7 +522,7 @@ up_action () {
   fi
 }
 
-up_start () {
+up_start() {
   if [ -e "/var/run/boa_run.pid" ] ; then
     echo Another BOA installer is running probably - /var/run/boa_run.pid exists
     exit 1
@@ -544,7 +544,7 @@ up_start () {
   fi
 }
 
-up_finish () {
+up_finish() {
   rm -f /var/run/boa_run.pid
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/boa_system_wait.pid
@@ -574,7 +574,7 @@ up_finish () {
   exit 0
 }
 
-set_pin_priority () {
+set_pin_priority() {
   if [ ! -e "/etc/apt/preferences" ] && [ -e "/etc/issue.net" ] ; then
     _THIS_OS=$(grep "Debian" /etc/issue.net 2>&1)
     if [[ "$_THIS_OS" =~ "Debian" ]] ; then
@@ -595,7 +595,7 @@ set_pin_priority () {
   fi
 }
 
-check_wrapper () {
+check_wrapper() {
   rm -f $varPath/$(basename "$0")-now-*
   _THIS_FILE="$varPath/$(basename "$0")-now-$_NOW"
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
@@ -613,7 +613,7 @@ check_wrapper () {
   fi
 }
 
-check_dns_curl () {
+check_dns_curl() {
   if [ ! -e "/etc/resolv.conf" ] ; then
     if [ -e "$varPath/resolv.conf.vanilla" ] ; then
       cat $varPath/resolv.conf.vanilla >/etc/resolv.conf
@@ -641,7 +641,7 @@ check_dns_curl () {
   fi
 }
 
-check_root () {
+check_root() {
   if [ `whoami` = "root" ] ; then
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ] ; then
@@ -670,7 +670,7 @@ check_root () {
   fi
 }
 
-proceed () {
+proceed() {
   check_root
   check_dns_curl
   check_wrapper

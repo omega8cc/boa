@@ -19,7 +19,7 @@ else
 fi
 touch /var/run/boa_sql_backup.pid
 
-truncate_cache_tables () {
+truncate_cache_tables() {
   TABLES=`mysql $DB -e "show tables" -s | grep ^cache | uniq | sort`
   for C in $TABLES; do
 mysql --default-character-set=utf8 $DB<<EOFMYSQL
@@ -28,7 +28,7 @@ EOFMYSQL
   done
 }
 
-truncate_accesslog_tables () {
+truncate_accesslog_tables() {
   TABLES=`mysql $DB -e "show tables" -s | grep ^accesslog$`
   for A in $TABLES; do
 mysql --default-character-set=utf8 $DB<<EOFMYSQL
@@ -37,7 +37,7 @@ EOFMYSQL
   done
 }
 
-truncate_queue_tables () {
+truncate_queue_tables() {
   TABLES=`mysql $DB -e "show tables" -s | grep ^queue$`
   for A in $TABLES; do
 mysql --default-character-set=utf8 $DB<<EOFMYSQL
@@ -46,7 +46,7 @@ EOFMYSQL
   done
 }
 
-optimize_this_database () {
+optimize_this_database() {
   TABLES=`mysql $DB -e "show tables" -s | uniq | sort`
   for T in $TABLES; do
 mysql --default-character-set=utf8 $DB<<EOFMYSQL
@@ -55,7 +55,7 @@ EOFMYSQL
   done
 }
 
-backup_this_database () {
+backup_this_database() {
   n=$((RANDOM%15+5))
   echo waiting $n sec
   sleep $n

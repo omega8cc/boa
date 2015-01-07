@@ -3,7 +3,7 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-guest_guard () {
+guest_guard() {
 if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ] ; then
   touch /var/run/fire.pid
   for i in `dir -d /vservers/*` ; do

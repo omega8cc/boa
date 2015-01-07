@@ -713,7 +713,7 @@ _UBERCART7=3.8
 ###---### Functions
 #
 # Clean pid files on exit.
-clean_pid_exit () {
+clean_pid_exit() {
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
@@ -721,11 +721,11 @@ clean_pid_exit () {
 }
 #
 # Noticeable messages.
-msg () {
+msg() {
   echo "Octopus [`date`] ==> $*"
 }
 # Simple prompt.
-prompt_yes_no () {
+prompt_yes_no() {
 if [ "$_AUTOPILOT" = "YES" ] ; then
   return 0
 else
@@ -751,7 +751,7 @@ fi
 }
 #
 # Small spinner.
-mrun () {
+mrun() {
   CMD="$1"
   touch busy
   if [ "$_SPINNER" = "YES" ] ; then
@@ -765,7 +765,7 @@ mrun () {
 }
 #
 # Tune FPM workers.
-tune_fpm_workers () {
+tune_fpm_workers() {
   _ETH_TEST=`ifconfig 2>&1`
   _VM_TEST=`uname -a 2>&1`
   if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
@@ -834,7 +834,7 @@ tune_fpm_workers () {
 }
 #
 # Update web user.
-update_web_user () {
+update_web_user() {
   _T_HD="/home/${_USER}.web/.drush"
   _T_TP="/home/${_USER}.web/.tmp"
   if [ -e "/home/${_USER}.web" ] ; then
@@ -889,7 +889,7 @@ update_web_user () {
 }
 #
 # Remove web user.
-remove_web_user () {
+remove_web_user() {
   if [ -e "/home/${_USER}.web/.tmp" ] || [ "$1" = "clean" ] ; then
     chattr -i /home/${_USER}.web &> /dev/null
     chattr -i /home/${_USER}.web/.drush &> /dev/null
@@ -901,7 +901,7 @@ remove_web_user () {
 }
 #
 # Add web user.
-create_web_user () {
+create_web_user() {
   _T_HD="/home/${_USER}.web/.drush"
   _T_TP="/home/${_USER}.web/.tmp"
   _T_ID_EXISTS=$(getent passwd ${_USER}.web 2>&1)
@@ -914,7 +914,7 @@ create_web_user () {
 }
 #
 # Tune FPM configuration.
-tune_fpm_config () {
+tune_fpm_config() {
   tune_fpm_workers
   _LIM_FPM="$_L_PHP_FPM_WORKERS"
   if [ "$_LIM_FPM" -lt "24" ] ; then
@@ -1009,7 +1009,7 @@ tune_fpm_config () {
 }
 #
 # Make sure that username is unique and not restricted.
-check_id () {
+check_id() {
   _ID_EXISTS=$(getent passwd $_USER 2>&1)
   if [ -z "$_ID_EXISTS" ] ; then
     _DO_NOTHING=YES
@@ -1037,12 +1037,12 @@ check_id () {
 }
 #
 # Find correct IP.
-find_correct_ip () {
+find_correct_ip() {
   _LOC_IP=`echo $(getent ahostsv4 $_LOC_DOM) | cut -d: -f2 | awk '{ print $1}'`
 }
 #
 # Check repo status.
-check_git_repos_status () {
+check_git_repos_status() {
   _GITHUB_WORKS=NO
   _GITORIOUS_WORKS=NO
   if [ "$_FORCE_GIT_MIRROR" = "drupal" ] ; then
@@ -1096,7 +1096,7 @@ EOF
 }
 #
 # Read or create Octopus cnf file.
-octopus_cnf () {
+octopus_cnf() {
   if [ ! -e "/root/.${_USER}.octopus.cnf" ] ; then
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] || [[ "$_CLIENT_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
@@ -1591,7 +1591,7 @@ octopus_cnf () {
 }
 #
 # Fix advanced cron IP for cURL requests.
-fix_advanced_cron_curl () {
+fix_advanced_cron_curl() {
   if [ -e "/data/disk/$_USER/.drush/hostmaster.alias.drushrc.php" ] ; then
     _THIS_HM_ROOT=`cat /data/disk/$_USER/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     if [ -e "$_THIS_HM_ROOT/profiles/hostmaster/modules/hosting_advanced_cron" ] ; then
@@ -1601,7 +1601,7 @@ fix_advanced_cron_curl () {
 }
 #
 # Fix multi-IP cron access.
-fix_multi_ip_cron_access () {
+fix_multi_ip_cron_access() {
   rm -f /root/.local.IP.list.allow
   for _IP in `cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`;do echo "  allow        $_IP;" >> /root/.local.IP.list.allow;done
   echo "  allow        127.0.0.1;" >> /root/.local.IP.list.allow
@@ -1621,7 +1621,7 @@ d;};' $_THIS_NGX_INCL/nginx_vhost_common.conf
 }
 #
 # Sub Force advanced Nginx configuration.
-sub_force_advanced_nginx_config () {
+sub_force_advanced_nginx_config() {
   if [ -d "$_THIS_NGX_INCL" ] ; then
     _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
     if [ -z "$_PHP_SV" ] ; then
@@ -1665,7 +1665,7 @@ sub_force_advanced_nginx_config () {
 }
 #
 # Force advanced Nginx configuration.
-force_advanced_nginx_config () {
+force_advanced_nginx_config() {
   sub_force_advanced_nginx_config
   if [ -e "/data/disk/$_USER/config/includes/nginx_vhost_common.conf" ] ; then
     rm -f /data/disk/$_USER/config/includes/nginx_advanced_include.conf
@@ -1767,7 +1767,7 @@ check_civicrm_compatibility () {
 }
 #
 # Action.
-action () {
+action() {
   _REL_VERSION=`lsb_release -sc`
   if [ -d "/data/all/000" ] ; then
     if [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
@@ -1932,14 +1932,14 @@ action () {
 }
 #
 # Test connection.
-wait_for_connection () {
+wait_for_connection() {
   echo " "
   msg "I can not connect to github.com on port 9418 at the moment"
   msg "I will try again in 60 seconds, please wait..."
   msg "Waiting for attempt $1..."
   sleep 60
 }
-check_connection () {
+check_connection() {
   if ! netcat -w 14 -z github.com 9418 ; then
     wait_for_connection "2/4"
     if ! netcat -w 14 -z github.com 9418 ; then
@@ -2438,7 +2438,7 @@ fi
 
 #
 # Enable chattr.
-enable_chattr () {
+enable_chattr() {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     chattr +i /home/$1/platforms    &> /dev/null
     chattr +i /home/$1/platforms/*  &> /dev/null
@@ -2452,7 +2452,7 @@ enable_chattr () {
 }
 #
 # Disable chattr.
-disable_chattr () {
+disable_chattr() {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     chattr -i /home/$1/platforms    &> /dev/null
     chattr -i /home/$1/platforms/*  &> /dev/null

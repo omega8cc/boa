@@ -125,15 +125,15 @@ setFilePerms(){
     fi
 }
 
-configtest () {
+configtest() {
     $DAEMON -t -c $NGINX_CONF_FILE
 }
 
-getPSCount () {
+getPSCount() {
     return `pgrep -f $PS | wc -l`
 }
 
-isRunning () {
+isRunning() {
     if [ $1 ] ; then
         pidof_daemon $1
         PID=$?
@@ -156,7 +156,7 @@ isRunning () {
 }
 
 #courtesy of php-fpm
-wait_for_pid () {
+wait_for_pid() {
     try=0
 
     while test $try -lt 35 ; do
@@ -209,7 +209,7 @@ removePIDFile(){
     fi
 }
 
-start () {
+start() {
     log_daemon_msg "Starting $DESCRIPTION"
 
     isRunning
@@ -230,7 +230,7 @@ start () {
     return
 }
 
-stop () {
+stop() {
     log_daemon_msg "Stopping $DESCRIPTION"
 
     isRunning
@@ -257,7 +257,7 @@ stop () {
     return
 }
 
-reload () {
+reload() {
     configtest || return $?
 
     log_daemon_msg "Reloading (via HUP) $DESCRIPTION"
@@ -276,7 +276,7 @@ reload () {
     return
 }
 
-quietupgrade () {
+quietupgrade() {
     log_daemon_msg "Peforming Quiet Upgrade $DESCRIPTION"
 
     isRunning
@@ -319,7 +319,7 @@ quietupgrade () {
     return
 }
 
-terminate () {
+terminate() {
     log_daemon_msg "Force terminating (via KILL) $DESCRIPTION"
 
     PIDS=`pidof $PS` || true
@@ -338,14 +338,14 @@ terminate () {
     rc=0
 }
 
-destroy () {
+destroy() {
     log_daemon_msg "Force terminating and may include self (via KILLALL) $DESCRIPTION"
     killall $PS -q >> /dev/null 2>&1
     log_end_msg $SCRIPT_OK
     rc=0
 }
 
-pidof_daemon () {
+pidof_daemon() {
     PIDS=`pidof $PS` || true
 
     [ -e $PIDSPATH/$PIDFILE ] && PIDS2=`cat $PIDSPATH/$PIDFILE`

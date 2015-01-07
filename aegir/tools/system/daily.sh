@@ -12,7 +12,7 @@ fi
 
 ###-------------SYSTEM-----------------###
 
-extract_archive () {
+extract_archive() {
   if [ ! -z $1 ] ; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
@@ -32,14 +32,14 @@ extract_archive () {
   fi
 }
 
-get_dev_ext () {
+get_dev_ext() {
   if [ ! -z $1 ] ; then
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/HEAD/$1"
     extract_archive "$1"
   fi
 }
 
-enable_chattr () {
+enable_chattr() {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     if [ "$1" != "${_THIS_HM_USER}.ftp" ] ; then
       chattr +i /home/$1             &> /dev/null
@@ -56,7 +56,7 @@ enable_chattr () {
   fi
 }
 
-disable_chattr () {
+disable_chattr() {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     if [ "$1" != "${_THIS_HM_USER}.ftp" ] ; then
       chattr -i /home/$1             &> /dev/null
@@ -93,25 +93,25 @@ disable_chattr () {
   fi
 }
 
-run_drush4_cmd () {
+run_drush4_cmd() {
   su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush4 @${Dom} $1" &> /dev/null
 }
 
-run_drush7_hmr_cmd () {
+run_drush7_hmr_cmd() {
   su -s /bin/bash - $_THIS_HM_USER -c "drush7 $1" &> /dev/null
 }
 
-run_drush4_nosilent_cmd () {
+run_drush4_nosilent_cmd() {
   su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush4 @${Dom} $1"
 }
 
-run_drush7_nosilent_cmd () {
+run_drush7_nosilent_cmd() {
   su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush7 cc drush" &> /dev/null
   rm -f -r $User/.tmp/cache
   su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush7 @${Dom} $1"
 }
 
-check_if_required () {
+check_if_required() {
   _REQ=YES
   _REI_TEST=$(run_drush7_nosilent_cmd "pmi $1 --fields=required_by")
   _REL_TEST=$(echo "$_REI_TEST" | grep "Required by")
@@ -182,7 +182,7 @@ check_if_required () {
   fi
 }
 
-check_if_skip () {
+check_if_skip() {
   for s in $_MODULES_SKIP; do
     if [ ! -z "$1" ] && [ "$s" = "$1" ] ; then
       _SKIP=YES
@@ -191,7 +191,7 @@ check_if_skip () {
   done
 }
 
-check_if_force () {
+check_if_force() {
   for s in $_MODULES_FORCE; do
     if [ ! -z "$1" ] && [ "$s" = "$1" ] ; then
       _FORCE=YES
@@ -200,7 +200,7 @@ check_if_force () {
   done
 }
 
-disable_modules () {
+disable_modules() {
   for m in $1; do
     _SKIP=NO
     _FORCE=NO
@@ -235,7 +235,7 @@ disable_modules () {
   done
 }
 
-enable_modules () {
+enable_modules() {
   for m in $1; do
     _MODULE_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --type=module | grep \($m\)")
     if [[ "$_MODULE_TEST" =~ "($m)" ]] ; then
@@ -247,7 +247,7 @@ enable_modules () {
   done
 }
 
-fix_user_register_protection () {
+fix_user_register_protection() {
 
   _PLR_CTRL_FILE="$Plr/sites/all/modules/boa_platform_control.ini"
 
@@ -334,7 +334,7 @@ fix_user_register_protection () {
   fi
 }
 
-fix_robots_txt () {
+fix_robots_txt() {
   if [ ! -e "$Dir/files/robots.txt" ] && [ ! -e "$Plr/profiles/hostmaster" ] && [ "$_STATUS" = "OK" ] ; then
     curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 -A iCab "http://$Dom/robots.txt?nocache=1&noredis=1" -o $Dir/files/robots.txt
     if [ -e "$Dir/files/robots.txt" ] ; then
@@ -343,7 +343,7 @@ fix_robots_txt () {
   fi
 }
 
-fix_boost_cache () {
+fix_boost_cache() {
   if [ -e "$Plr/cache" ] ; then
     rm -f -r $Plr/cache/*
     rm -f $Plr/cache/{.boost,.htaccess}
@@ -361,7 +361,7 @@ fix_boost_cache () {
   fi
 }
 
-fix_o_contrib_symlink () {
+fix_o_contrib_symlink() {
   if [ "$_O_CONTRIB" != "NO" ] && [ ! -e "$Plr/core" ] ; then
     symlinks -d $Plr/modules &> /dev/null
     if [ -e "$Plr/web.config" ] ; then
@@ -382,11 +382,11 @@ fix_o_contrib_symlink () {
   fi
 }
 
-sql_convert () {
+sql_convert() {
   sudo -u ${_THIS_HM_USER}.ftp -H /opt/local/bin/sqlmagic convert to-${_SQL_CONVERT}
 }
 
-send_shutdown_notice () {
+send_shutdown_notice() {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
   if [ ! -z "$_CLIENT_EMAIL" ] && [[ ! "$_CLIENT_EMAIL" =~ "$_MY_EMAIL" ]] ; then
@@ -509,7 +509,7 @@ EOF
   echo "ALERT: HACKED notice sent to $_CLIENT_EMAIL [$_THIS_HM_USER]: OK"
 }
 
-send_hacked_alert () {
+send_hacked_alert() {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
   if [ ! -z "$_CLIENT_EMAIL" ] && [[ ! "$_CLIENT_EMAIL" =~ "$_MY_EMAIL" ]] ; then
@@ -608,7 +608,7 @@ EOF
   echo "ALERT: HACKED notice sent to $_CLIENT_EMAIL [$_THIS_HM_USER]: OK"
 }
 
-check_site_status () {
+check_site_status() {
   _SITE_TEST=$(drush4 status 2>&1)
   if [[ "$_SITE_TEST" =~ "Error:" ]] || [[ "$_SITE_TEST" =~ "Drush was attempting to connect" ]] ; then
     _SITE_TEST_RESULT=ERROR
@@ -683,7 +683,7 @@ check_site_status () {
   fi
 }
 
-check_file_with_wildcard_path () {
+check_file_with_wildcard_path() {
   _WILDCARD_TEST=$(ls $1 2> /dev/null)
   if [ -z "$_WILDCARD_TEST" ] ; then
     _FILE_EXISTS=NO
@@ -692,7 +692,7 @@ check_file_with_wildcard_path () {
   fi
 }
 
-write_solr_config () {
+write_solr_config() {
   # $1 is module
   # $2 is a path to solr.php
   if [ ! -z $1 ] && [ ! -z $2 ] && [ ! -z "${_MD5H}" ] && [ -e "${Dir}" ] ; then
@@ -714,7 +714,7 @@ write_solr_config () {
   fi
 }
 
-update_solr () {
+update_solr() {
   # $1 is module
   # $2 is solr core path
   if [ ! -z $1 ] && [ ! -e "$2/conf/BOA-2.4.0.conf" ] && [ -e "/var/xdrago/conf/solr" ] && [ -e "$2/conf" ] ; then
@@ -748,7 +748,7 @@ update_solr () {
   fi
 }
 
-add_solr () {
+add_solr() {
   # $1 is module
   # $2 is solr core path
   if [ ! -z $1 ] && [ ! -z $2 ] && [ -e "/var/xdrago/conf/solr" ] ; then
@@ -768,7 +768,7 @@ add_solr () {
   fi
 }
 
-delete_solr () {
+delete_solr() {
   # $1 is solr core path
   if [ ! -z $1 ] && [ -e "/var/xdrago/conf/solr" ] && [ -e "$1/conf" ] ; then
     sed -i "s/.*instanceDir=\"${_THIS_HM_USER}.${Dom}\".*//g" /opt/solr4/solr.xml
@@ -783,7 +783,7 @@ delete_solr () {
   fi
 }
 
-check_solr () {
+check_solr() {
   # $1 is module
   # $2 is solr core path
   if [ ! -z $1 ] && [ ! -z $2 ] && [ -e "/var/xdrago/conf/solr" ] ; then
@@ -796,7 +796,7 @@ check_solr () {
   fi
 }
 
-setup_solr () {
+setup_solr() {
 
   _DIR_CTRL_FILE="$Dir/modules/boa_site_control.ini"
   _SOLR_DIR="/opt/solr4/${_THIS_HM_USER}.${Dom}"
@@ -868,7 +868,7 @@ setup_solr () {
   fi
 }
 
-fix_modules () {
+fix_modules() {
   if [ "$_MODULES_FIX" = "YES" ] ; then
     searchStringA="pressflow-5.23.50"
     case $Dir in
@@ -1423,7 +1423,7 @@ fix_modules () {
   fi
 }
 
-cleanup_ghost_platforms () {
+cleanup_ghost_platforms() {
   if [ -e "$Plr" ] ; then
     if [ ! -e "$Plr/index.php" ] || [ ! -e "$Plr/profiles" ] ; then
       mkdir -p $User/undo
@@ -1433,7 +1433,7 @@ cleanup_ghost_platforms () {
   fi
 }
 
-fix_seven_core_patch () {
+fix_seven_core_patch() {
   if [ ! -f "$Plr/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
     _PATCH_TEST=$(grep "foreach (array_values(\$data)" $Plr/includes/database/database.inc 2>&1)
     if [[ "$_PATCH_TEST" =~ "array_values" ]] ; then
@@ -1450,7 +1450,7 @@ fix_seven_core_patch () {
   fi
 }
 
-fix_static_permissions () {
+fix_static_permissions() {
   cleanup_ghost_platforms
   if [ -e "$Plr/profiles" ] ; then
     if [ -e "$Plr/web.config" ] ; then
@@ -1475,7 +1475,7 @@ fix_static_permissions () {
   fi
 }
 
-fix_expected_symlinks () {
+fix_expected_symlinks() {
   if [ ! -e "$Plr/js.php" ] && [ -e "$Plr" ] ; then
     if [ -e "$Plr/modules/o_contrib_seven" ] && [ -e "$_O_CONTRIB_SEVEN/js/js.php" ] ; then
       ln -s $_O_CONTRIB_SEVEN/js/js.php $Plr/js.php &> /dev/null
@@ -1485,7 +1485,7 @@ fix_expected_symlinks () {
   fi
 }
 
-fix_permissions () {
+fix_permissions() {
   ### modules,themes,libraries - profile level in ~/static
   searchStringG="/static/"
   case $Plr in
@@ -1571,7 +1571,7 @@ fix_permissions () {
   fi
 }
 
-convert_controls_orig () {
+convert_controls_orig() {
   if [ -e "$_CTRL_DIR/$1.info" ] || [ -e "$User/static/control/$1.info" ] ; then
     if [ ! -e "$_CTRL_FILE" ] && [ -e "$_CTRL_FILE_TPL" ] ; then
       cp -af $_CTRL_FILE_TPL $_CTRL_FILE
@@ -1581,7 +1581,7 @@ convert_controls_orig () {
   fi
 }
 
-convert_controls_orig_no_global () {
+convert_controls_orig_no_global() {
   if [ -e "$_CTRL_DIR/$1.info" ] ; then
     if [ ! -e "$_CTRL_FILE" ] && [ -e "$_CTRL_FILE_TPL" ] ; then
       cp -af $_CTRL_FILE_TPL $_CTRL_FILE
@@ -1591,7 +1591,7 @@ convert_controls_orig_no_global () {
   fi
 }
 
-convert_controls_value () {
+convert_controls_value() {
   if [ -e "$_CTRL_DIR/$1.info" ] || [ -e "$User/static/control/$1.info" ] ; then
     if [ ! -e "$_CTRL_FILE" ] && [ -e "$_CTRL_FILE_TPL" ] ; then
       cp -af $_CTRL_FILE_TPL $_CTRL_FILE
@@ -1608,7 +1608,7 @@ convert_controls_value () {
   fi
 }
 
-convert_controls_renamed () {
+convert_controls_renamed() {
   if [ -e "$_CTRL_DIR/$1.info" ] ; then
     if [ ! -e "$_CTRL_FILE" ] && [ -e "$_CTRL_FILE_TPL" ] ; then
       cp -af $_CTRL_FILE_TPL $_CTRL_FILE
@@ -1620,7 +1620,7 @@ convert_controls_renamed () {
   fi
 }
 
-fix_control_settings () {
+fix_control_settings() {
   _CTRL_NAME_ORIG="redis_lock_enable redis_cache_disable disable_admin_dos_protection allow_anon_node_add allow_private_file_downloads"
   _CTRL_NAME_VALUE="nginx_cache_day nginx_cache_hour nginx_cache_quarter"
   _CTRL_NAME_RENAMED="cookie_domain"
@@ -1635,21 +1635,21 @@ fix_control_settings () {
   done
 }
 
-fix_platform_system_control_settings () {
+fix_platform_system_control_settings() {
   _CTRL_NAME_ORIG="enable_user_register_protection entitycache_dont_enable views_cache_bully_dont_enable views_content_cache_dont_enable"
   for ctrl in $_CTRL_NAME_ORIG; do
     convert_controls_orig "$ctrl"
   done
 }
 
-fix_site_system_control_settings () {
+fix_site_system_control_settings() {
   _CTRL_NAME_ORIG="disable_user_register_protection"
   for ctrl in $_CTRL_NAME_ORIG; do
     convert_controls_orig_no_global "$ctrl"
   done
 }
 
-cleanup_ini () {
+cleanup_ini() {
   if [ -e "$_CTRL_FILE" ] ; then
     sed -i "s/^;;.*//g" $_CTRL_FILE &> /dev/null
     sed -i "/^$/d" $_CTRL_FILE &> /dev/null
@@ -1657,7 +1657,7 @@ cleanup_ini () {
   fi
 }
 
-add_note_platform_ini () {
+add_note_platform_ini() {
   if [ -e "$_CTRL_FILE" ] ; then
     echo "" >> $_CTRL_FILE
     echo ";;" >> $_CTRL_FILE
@@ -1674,7 +1674,7 @@ add_note_platform_ini () {
   fi
 }
 
-add_note_site_ini () {
+add_note_site_ini() {
   if [ -e "$_CTRL_FILE" ] ; then
     echo "" >> $_CTRL_FILE
     echo ";;" >> $_CTRL_FILE
@@ -1691,7 +1691,7 @@ add_note_site_ini () {
   fi
 }
 
-fix_platform_control_files () {
+fix_platform_control_files() {
   if [ -e "/data/conf/default.boa_platform_control.ini" ] ; then
     if [ ! -e "$Plr/sites/all/modules/default.boa_platform_control.ini" ] || [ "$_CTRL_TPL_FORCE_UPDATE" = "YES" ] ; then
       cp -af /data/conf/default.boa_platform_control.ini $Plr/sites/all/modules/ &> /dev/null
@@ -1708,7 +1708,7 @@ fix_platform_control_files () {
   fi
 }
 
-fix_site_control_files () {
+fix_site_control_files() {
   if [ -e "/data/conf/default.boa_site_control.ini" ] ; then
     if [ ! -e "$Dir/modules/default.boa_site_control.ini" ] || [ "$_CTRL_TPL_FORCE_UPDATE" = "YES" ] ; then
       cp -af /data/conf/default.boa_site_control.ini $Dir/modules/ &> /dev/null
@@ -1725,7 +1725,7 @@ fix_site_control_files () {
   fi
 }
 
-cleanup_ghost_vhosts () {
+cleanup_ghost_vhosts() {
   for Site in `find $User/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
   do
     Dom=`echo $Site | cut -d'/' -f9 | awk '{ print $1}'`
@@ -1750,7 +1750,7 @@ cleanup_ghost_vhosts () {
   done
 }
 
-cleanup_ghost_drushrc () {
+cleanup_ghost_drushrc() {
   for Alias in `find $User/.drush/*.alias.drushrc.php -maxdepth 1 -type f | sort`
   do
     AliasName=`echo "$Alias" | cut -d'/' -f6 | awk '{ print $1}'`
@@ -1802,7 +1802,7 @@ cleanup_ghost_drushrc () {
   done
 }
 
-process () {
+process() {
   cleanup_ghost_vhosts
   cleanup_ghost_drushrc
   for Site in `find $User/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
@@ -1857,12 +1857,12 @@ process () {
   done
 }
 
-delete_this_platform () {
+delete_this_platform() {
   run_drush7_hmr_cmd "@hostmaster hosting-task @platform_${_THIS_PLATFORM_NAME} delete --force"
   echo "Old empty platform_${_THIS_PLATFORM_NAME} will be deleted"
 }
 
-check_old_empty_platforms () {
+check_old_empty_platforms() {
   if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
     if [[ "$_HOST_TEST" =~ "v189q.nyc." ]] || [ -e "/root/.debug.cnf" ] ; then
       _DO_NOTHING=YES
@@ -1902,7 +1902,7 @@ check_old_empty_platforms () {
   fi
 }
 
-purge_cruft_machine () {
+purge_cruft_machine() {
   if [ ! -z "$_DEL_OLD_BACKUPS" ] && [ "$_DEL_OLD_BACKUPS" -gt "0" ] ; then
     _PURGE_BACKUPS="$_DEL_OLD_BACKUPS"
   else
@@ -2003,7 +2003,7 @@ purge_cruft_machine () {
   done
 }
 
-count_cpu () {
+count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc)
@@ -2023,7 +2023,7 @@ count_cpu () {
   chmod 644 /data/all/cpuinfo
 }
 
-load_control () {
+load_control() {
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
     _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
@@ -2036,7 +2036,7 @@ load_control () {
   let "_O_LOAD_MAX = ((100 * $_CPU_MAX_RATIO))"
 }
 
-shared_codebases_cleanup () {
+shared_codebases_cleanup() {
   if [ -L "/data/all" ] ; then
     _CLD="/data/disk/codebases-cleanup"
   else
@@ -2059,7 +2059,7 @@ shared_codebases_cleanup () {
   done
 }
 
-action () {
+action() {
   for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
   do
     count_cpu

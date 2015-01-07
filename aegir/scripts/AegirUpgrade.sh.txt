@@ -74,7 +74,7 @@ PATH=$_L_PHP_CLI:/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbi
 ###---### Functions
 #
 # Noticeable messages.
-msg () {
+msg() {
   echo "Barracuda [`date`] ==> $*"
 }
 #
@@ -84,7 +84,7 @@ if [ -z "${TERM+x}" ]; then
 fi
 #
 # Update local INI for PHP CLI on the Aegir Master Instance.
-update_php_cli_local_ini () {
+update_php_cli_local_ini() {
   _U_HD="/var/aegir/.drush"
   _U_TP="/var/aegir/.tmp"
   _PHP_CLI_UPDATE=NO
@@ -135,7 +135,7 @@ update_php_cli_local_ini () {
 }
 #
 # Update php-cli for Drush.
-update_php_cli_drush () {
+update_php_cli_drush() {
   _DRUSH_FILE="$_ROOT/drush/drush.php"
   if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
@@ -156,7 +156,7 @@ update_php_cli_drush () {
 }
 #
 #
-extract_archive () {
+extract_archive() {
   if [ ! -z $1 ] ; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
@@ -176,14 +176,14 @@ extract_archive () {
   fi
 }
 #
-get_dev_ext () {
+get_dev_ext() {
   if [ ! -z $1 ] ; then
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_XTS_VERSION/$1"
     extract_archive "$1"
   fi
 }
 #
-hostmaster_mv_up () {
+hostmaster_mv_up() {
   msg "INFO: Moving old directories"
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
@@ -209,7 +209,7 @@ hostmaster_mv_up () {
   done
 }
 #
-hostmaster_dr_up () {
+hostmaster_dr_up() {
   msg "INFO: Downloading drush $_DRUSH_VERSION..."
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
@@ -235,7 +235,7 @@ hostmaster_dr_up () {
   fi
 }
 #
-hostmaster_go_up () {
+hostmaster_go_up() {
   if $_DRUSHCMD help | grep "^ provision-install" > /dev/null ; then
     msg "INFO: Provision seems to be installed already"
   else
@@ -280,7 +280,7 @@ hostmaster_go_up () {
   cd $_PREV_HOSTMASTER_ROOT
 }
 #
-hostmaster_mi_up () {
+hostmaster_mi_up() {
   msg "INFO: Running hostmaster-migrate, please wait..."
   mv -f $_ROOT/.drush/xts/security_review/security_review.drush.inc $_ROOT/.drush/xts/security_review/foo.txt  &> /dev/null
   export DEBIAN_FRONTEND=noninteractive

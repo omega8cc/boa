@@ -47,7 +47,7 @@ barCnf=/root/.barracuda.cnf
 _TODAY=`date +%y%m%d`
 _INSTALLER_VERSION=BOA-2.4.0-dev
 
-fix_dns_settings () {
+fix_dns_settings() {
   mkdir -p /var/backups
   rm -f /var/backups/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ] ; then
@@ -121,7 +121,7 @@ d;};' /etc/pdnsd.conf
   fi
 }
 
-check_dns_settings () {
+check_dns_settings() {
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
   if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] || [ -e "/root/.use.local.nameservers.cnf" ] ; then
     _USE_PROVIDER_DNS=YES
@@ -131,7 +131,7 @@ check_dns_settings () {
   fi
 }
 
-update_agents () {
+update_agents() {
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/log/runner.fixed.a19z.pid" ] ; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/system/runner.sh" -o /var/xdrago/runner.sh
@@ -211,7 +211,7 @@ update_agents () {
   fi
 }
 
-fix_core () {
+fix_core() {
   # https://www.drupal.org/SA-CORE-2014-005
   sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf
   if [ -e "/var/xdrago" ] && [ ! -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] ; then
@@ -305,7 +305,7 @@ fix_core () {
   fi
 }
 
-fix_alt () {
+fix_alt() {
   if [ -x "/usr/lib/jvm/java-6-openjdk/jre/bin/java" ] ; then
     if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ] ; then
       ln -sf /usr/lib/jvm/java-6-openjdk/jre/bin/java /etc/alternatives/java
@@ -315,7 +315,7 @@ fix_alt () {
   fi
 }
 
-setup () {
+setup() {
   sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
   echo >>/etc/hosts
   sed -i "/^$/d" /etc/hosts

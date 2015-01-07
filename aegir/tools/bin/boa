@@ -23,14 +23,14 @@ if [[ "$_L_VM_TEST" =~ beng ]] ; then
   _L_VMFAMILY="VS"
 fi
 
-clean_pid_exit () {
+clean_pid_exit() {
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
   exit 1
 }
 
-check_id () {
+check_id() {
   _USER=$1
   _ID_EXISTS=$(getent passwd $_USER 2>&1)
   if [ -z "$_ID_EXISTS" ] ; then
@@ -58,7 +58,7 @@ check_id () {
   fi
 }
 
-fix_dns_settings () {
+fix_dns_settings() {
   mkdir -p $varPath
   rm -f $varPath/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ] ; then
@@ -132,7 +132,7 @@ d;};' /etc/pdnsd.conf
   fi
 }
 
-check_dns_settings () {
+check_dns_settings() {
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
   if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] || [ -e "/root/.use.local.nameservers.cnf" ] ; then
     _USE_PROVIDER_DNS=YES
@@ -142,7 +142,7 @@ check_dns_settings () {
   fi
 }
 
-octopus_install () {
+octopus_install() {
   if [ -e "$varPath/$octName" ] ; then
     if [ -z "$user" ] ; then
       user="o1"
@@ -215,7 +215,7 @@ octopus_install () {
   fi
 }
 
-barracuda_install () {
+barracuda_install() {
 if [ -e "$varPath/$barName" ] ; then
   sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"          $varPath/$barName
   sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               $varPath/$barName
@@ -330,7 +330,7 @@ else
 fi
 }
 
-init_start () {
+init_start() {
   if [ -e "/var/run/boa_run.pid" ] ; then
     echo Another BOA installer is running probably - /var/run/boa_run.pid exists
     exit 1
@@ -347,7 +347,7 @@ init_start () {
   fi
 }
 
-set_pin_priority () {
+set_pin_priority() {
   if [ ! -e "/etc/apt/preferences" ] && [ -e "/etc/issue.net" ] ; then
     _THIS_OS=$(grep "Debian" /etc/issue.net 2>&1)
     if [[ "$_THIS_OS" =~ "Debian" ]] ; then
@@ -369,7 +369,7 @@ set_pin_priority () {
   fi
 }
 
-init_finish () {
+init_finish() {
   rm -f /var/run/boa_run.pid
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/manage_ltd_users.pid
@@ -390,7 +390,7 @@ init_finish () {
   exit 0
 }
 
-init_setup () {
+init_setup() {
   if [ "$kind" = "local" ] ; then
     mode="$email"
     email="$fqdn"
@@ -456,7 +456,7 @@ init_setup () {
   init_finish
 }
 
-check_wrapper () {
+check_wrapper() {
   mkdir -p $varPath
   rm -f $varPath/$(basename "$0")-now-*
   _THIS_FILE="$varPath/$(basename "$0")-now-$_NOW"
@@ -475,7 +475,7 @@ check_wrapper () {
   fi
 }
 
-check_dns_curl () {
+check_dns_curl() {
   if [ ! -e "/etc/resolv.conf" ] ; then
     if [ -e "$varPath/resolv.conf.vanilla" ] ; then
       cat $varPath/resolv.conf.vanilla >/etc/resolv.conf
@@ -503,7 +503,7 @@ check_dns_curl () {
   fi
 }
 
-check_root () {
+check_root() {
   if [ `whoami` = "root" ] ; then
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ] ; then

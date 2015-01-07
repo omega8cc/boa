@@ -3,7 +3,7 @@
 SHELL=/bin/bash
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 
-count_cpu () {
+count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc)
@@ -21,7 +21,7 @@ count_cpu () {
   fi
 }
 
-load_control () {
+load_control() {
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
     _CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO//[^0-9]/}
@@ -34,7 +34,7 @@ load_control () {
   let "_O_LOAD_SPR = ((100 * $_CPU_SPIDER_RATIO))"
 }
 
-action () {
+action() {
   if [ $_O_LOAD -lt $_O_LOAD_SPR ] ; then
     echo load is $_O_LOAD while maxload is $_O_LOAD_SPR
     echo ...now doing CTL...

@@ -3,7 +3,7 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-action () {
+action() {
   mkdir -p /usr/share/GeoIP
   chmod 755 /usr/share/GeoIP
   cd /tmp

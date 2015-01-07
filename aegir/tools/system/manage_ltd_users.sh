@@ -25,7 +25,7 @@ fi
 
 ###-------------SYSTEM-----------------###
 
-extract_archive () {
+extract_archive() {
   if [ ! -z $1 ] ; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
@@ -45,7 +45,7 @@ extract_archive () {
   fi
 }
 
-get_dev_ext () {
+get_dev_ext() {
   if [ ! -z $1 ] ; then
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/HEAD/$1"
     extract_archive "$1"
@@ -57,12 +57,12 @@ get_dev_ext () {
 ###----------------------------###
 #
 # Remove dangerous stuff from the string.
-sanitize_string () {
+sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
 }
 #
 # Add ltd-shell group if not exists.
-add_ltd_group_if_not_exists () {
+add_ltd_group_if_not_exists() {
   _LTD_EXISTS=$(getent group ltd-shell 2>&1)
   if [[ "$_LTD_EXISTS" =~ "ltd-shell" ]] ; then
     _DO_NOTHING=YES
@@ -72,7 +72,7 @@ add_ltd_group_if_not_exists () {
 }
 #
 # Enable chattr.
-enable_chattr () {
+enable_chattr() {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
@@ -281,7 +281,7 @@ enable_chattr () {
 }
 #
 # Disable chattr.
-disable_chattr () {
+disable_chattr() {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     if [ "$1" != "${_OWN}.ftp" ] ; then
       chattr -i /home/$1             &> /dev/null
@@ -319,7 +319,7 @@ disable_chattr () {
 }
 #
 # Kill zombies.
-kill_zombies () {
+kill_zombies() {
 for Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`
 do
   _SEC_IDY=$(id -nG $Existing 2>&1)
@@ -341,7 +341,7 @@ done
 }
 #
 # Fix dot dirs.
-fix_dot_dirs () {
+fix_dot_dirs() {
   _USER_DRUSH="/home/$_USER_LTD/.drush"
   if [ ! -d "$_USER_DRUSH" ] ; then
     mkdir -p $_USER_DRUSH
@@ -370,7 +370,7 @@ fix_dot_dirs () {
 }
 #
 # Manage Drush Aliases.
-manage_sec_user_drush_aliases () {
+manage_sec_user_drush_aliases() {
   rm -f $_USER_LTD_ROOT/sites
   ln -sf $Client $_USER_LTD_ROOT/sites
   mkdir -p $_USER_LTD_ROOT/.drush
@@ -399,7 +399,7 @@ manage_sec_user_drush_aliases () {
 }
 #
 # OK, create user.
-ok_create_user () {
+ok_create_user() {
   _ADMIN="${_OWN}.ftp"
   echo "_ADMIN is == $_ADMIN == at ok_create_user"
   _USER_LTD_ROOT="/home/$_USER_LTD"
@@ -468,7 +468,7 @@ ok_create_user () {
 }
 #
 # OK, update user.
-ok_update_user () {
+ok_update_user() {
   _ADMIN="${_OWN}.ftp"
   _USER_LTD_ROOT="/home/$_USER_LTD"
   if [ -e "/home/$_ADMIN/users/$_USER_LTD" ] ; then
@@ -483,7 +483,7 @@ ok_update_user () {
 }
 #
 # Add user if not exists.
-add_user_if_not_exists () {
+add_user_if_not_exists() {
   _ID_EXISTS=$(getent passwd $_USER_LTD 2>&1)
   _ID_SHELLS=$(id -nG $_USER_LTD 2>&1)
   echo "_ID_EXISTS is == $_ID_EXISTS == at add_user_if_not_exists"
@@ -504,7 +504,7 @@ add_user_if_not_exists () {
 }
 #
 # Manage Access Paths.
-manage_sec_access_paths () {
+manage_sec_access_paths() {
 #for Domain in `find $Client/ -maxdepth 1 -mindepth 1 -type l -printf %P\\n | sort`
 for Domain in `find $Client/ -maxdepth 1 -mindepth 1 -type l | sort`
 do
@@ -519,7 +519,7 @@ done
 }
 #
 # Manage Secondary Users.
-manage_sec () {
+manage_sec() {
 for Client in `find $User/clients/ -maxdepth 1 -mindepth 1 -type d | sort`
 do
   _USER_LTD=`echo $Client | cut -d'/' -f6 | awk '{ print $1}'`
@@ -546,7 +546,7 @@ done
 }
 #
 # Update local INI for PHP CLI on the Aegir Satellite Instance.
-update_php_cli_local_ini () {
+update_php_cli_local_ini() {
   _U_HD="/data/disk/${_OWN}/.drush"
   _U_TP="/data/disk/${_OWN}/.tmp"
   _PHP_CLI_UPDATE=NO
@@ -599,7 +599,7 @@ update_php_cli_local_ini () {
 }
 #
 # Update PHP-CLI for Drush.
-update_php_cli_drush () {
+update_php_cli_drush() {
   _DRUSH_FILE="/data/disk/${_OWN}/tools/drush/drush.php"
   if [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
@@ -629,7 +629,7 @@ update_php_cli_drush () {
 }
 #
 # Tune FPM workers.
-tune_fpm_workers () {
+tune_fpm_workers() {
   _ETH_TEST=`ifconfig 2>&1`
   _AWS_TEST_A=$(grep cloudimg /etc/fstab)
   _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
@@ -699,7 +699,7 @@ tune_fpm_workers () {
 }
 #
 # Disable New Relic per Octopus instance.
-disable_newrelic () {
+disable_newrelic() {
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "$_PHP_SV" ] ; then
     _PHP_SV=55
@@ -719,7 +719,7 @@ disable_newrelic () {
 }
 #
 # Enable New Relic per Octopus instance.
-enable_newrelic () {
+enable_newrelic() {
   _LOC_NEW_RELIC_KEY=`cat /data/disk/${_OWN}/static/control/newrelic.info`
   _LOC_NEW_RELIC_KEY=${_LOC_NEW_RELIC_KEY//[^0-9a-zA-Z]/}
   _LOC_NEW_RELIC_KEY=`echo -n $_LOC_NEW_RELIC_KEY | tr -d "\n"`
@@ -755,7 +755,7 @@ enable_newrelic () {
 }
 #
 # Switch New Relic on or off per Octopus instance.
-switch_newrelic () {
+switch_newrelic() {
   if [ -e "/data/disk/${_OWN}/static/control/newrelic.info" ] ; then
     enable_newrelic
   else
@@ -764,7 +764,7 @@ switch_newrelic () {
 }
 #
 # Update web user.
-update_web_user () {
+update_web_user() {
   _T_HD="/home/${_OWN}.web/.drush"
   _T_TP="/home/${_OWN}.web/.tmp"
   if [ -e "/home/${_OWN}.web" ] ; then
@@ -819,7 +819,7 @@ update_web_user () {
 }
 #
 # Remove web user.
-remove_web_user () {
+remove_web_user() {
   if [ -e "/home/${_OWN}.web/.tmp" ] || [ "$1" = "clean" ] ; then
     chattr -i /home/${_OWN}.web &> /dev/null
     chattr -i /home/${_OWN}.web/.drush &> /dev/null
@@ -831,7 +831,7 @@ remove_web_user () {
 }
 #
 # Add web user.
-create_web_user () {
+create_web_user() {
   _T_HD="/home/${_OWN}.web/.drush"
   _T_TP="/home/${_OWN}.web/.tmp"
   _T_ID_EXISTS=$(getent passwd ${_OWN}.web 2>&1)
@@ -844,7 +844,7 @@ create_web_user () {
 }
 #
 # Switch PHP Version.
-switch_php () {
+switch_php() {
   _PHP_CLI_UPDATE=NO
   _LOC_PHP_CLI_VERSION=""
   if [ -e "/data/disk/${_OWN}/static/control/fpm.info" ] || [ -e "/data/disk/${_OWN}/static/control/cli.info" ] || [ -e "/data/disk/${_OWN}/static/control/hhvm.info" ] ; then
@@ -1113,7 +1113,7 @@ switch_php () {
 }
 #
 # Manage mirroring of drush aliases.
-manage_site_drush_alias_mirror () {
+manage_site_drush_alias_mirror() {
 
   for Alias in `find /home/${_OWN}.ftp/.drush/*.alias.drushrc.php -maxdepth 1 -type f | sort`
   do
@@ -1161,7 +1161,7 @@ manage_site_drush_alias_mirror () {
 }
 #
 # Manage Primary Users.
-manage_own () {
+manage_own() {
 for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
 do
   if [ -e "$User/config/server_master/nginx/vhost.d" ] && [ -e "$User/log/fpm.txt" ] && [ ! -e "$User/log/CANCELLED" ] ; then

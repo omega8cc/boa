@@ -165,7 +165,7 @@ _PHP56_VERSION=5.6.4
 ###---### Functions
 #
 # Clean pid files on exit.
-clean_pid_exit () {
+clean_pid_exit() {
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
@@ -173,11 +173,11 @@ clean_pid_exit () {
 }
 #
 # Noticeable messages.
-msg () {
+msg() {
   echo "Tuner [`date`] ==> $*"
 }
 # Simple prompt.
-prompt_yes_no () {
+prompt_yes_no() {
 if [ "$_AUTOPILOT" = "YES" ] ; then
   return 0
 else
@@ -203,7 +203,7 @@ fi
 }
 #
 # Silent runner.
-st_runner () {
+st_runner() {
   CMD="$1"
   touch busy
   if [ "$_SPINNER" = "YES" ] ; then
@@ -228,7 +228,7 @@ st_runner () {
 }
 #
 # Small spinner.
-mrun () {
+mrun() {
   CMD="$1"
   touch busy
   if [ "$_SPINNER" = "YES" ] ; then
@@ -242,12 +242,12 @@ mrun () {
 }
 #
 # Find correct IP.
-find_correct_ip () {
   _LOC_IP=`echo $(getent ahostsv4 $_LOC_DOM) | cut -d: -f2 | awk '{ print $1}'`
+find_correct_ip() {
 }
 #
 # Fix php.ini files to remove suhosin.so
-fix_php_ini_suhosin () {
+fix_php_ini_suhosin() {
   if [ -e "$_THIS_FILE" ] ; then
     _SUHOSIN_INI_TEST=$(grep "extension=suhosin.so" $_THIS_FILE 2>&1)
     if [[ "$_SUHOSIN_INI_TEST" =~ "extension=suhosin.so" ]] ; then
@@ -257,7 +257,7 @@ fix_php_ini_suhosin () {
 }
 #
 # Fix php.ini files to add mailparse.so
-fix_php_ini_mailparse () {
+fix_php_ini_mailparse() {
   if [ -e "$_THIS_FILE" ] ; then
     _MAILPARSE_INI_TEST=$(grep "extension=mailparse.so" $_THIS_FILE 2>&1)
     if [[ "$_MAILPARSE_INI_TEST" =~ "extension=mailparse.so" ]] ; then
@@ -269,7 +269,7 @@ fix_php_ini_mailparse () {
 }
 #
 # Fix php.ini files to add jsmin.so
-fix_php_ini_jsmin () {
+fix_php_ini_jsmin() {
   if [ -e "$_THIS_FILE" ] ; then
     _JSMIN_INI_TEST=$(grep "extension=jsmin.so" $_THIS_FILE 2>&1)
     if [[ "$_JSMIN_INI_TEST" =~ "extension=jsmin.so" ]] ; then
@@ -281,7 +281,7 @@ fix_php_ini_jsmin () {
 }
 #
 # Fix php.ini files to add redis.so
-fix_php_ini_redis () {
+fix_php_ini_redis() {
   if [ -e "$_THIS_FILE" ] ; then
     _REDIS_INI_TEST=$(grep "extension=redis.so" $_THIS_FILE 2>&1)
     if [[ "$_REDIS_INI_TEST" =~ "extension=redis.so" ]] ; then
@@ -293,8 +293,8 @@ fix_php_ini_redis () {
 }
 #
 # Fix php.ini file to add newrelic.ini
-fix_php_ini_newrelic () {
   _NR_TPL="/opt/tmp/$_BOA_REPO_NAME/aegir/conf/newrelic.ini"
+fix_php_ini_newrelic() {
   if [ -e "$_THIS_FILE" ] ; then
     _NEWRELIC_INI_TEST_A=$(grep "extension=newrelic.so" $_THIS_FILE 2>&1)
     if [[ "$_NEWRELIC_INI_TEST_A" =~ "extension=newrelic.so" ]] ; then
@@ -314,7 +314,7 @@ fix_php_ini_newrelic () {
 }
 #
 # Fix all php.ini files to add newrelic.ini
-fix_php_ini_newrelic_all () {
+fix_php_ini_newrelic_all() {
   if [ -e "/etc/newrelic/newrelic.cfg" ] ; then
     if [ -z "$_NEWRELIC_KEY" ] ; then
       _NEWRELIC_KEY=`grep license_key /etc/newrelic/newrelic.cfg`
@@ -348,7 +348,7 @@ fix_php_ini_newrelic_all () {
 }
 #
 # Fix FMP php.ini file to add opcache.so
-fix_php_ini_opcache () {
+fix_php_ini_opcache() {
   if [ -e "$_THIS_FILE" ] ; then
     _OPCACHE_INI_TEST=$(grep "opcache.so" $_THIS_FILE 2>&1)
     if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]] ; then
@@ -373,11 +373,11 @@ fix_php_ini_opcache () {
 }
 #
 # Fix all FMP php.ini files to add Zend OPcache
-fix_php_ini_opcache_all () {
 
   _THIS_FILE=/opt/php52/etc/php52.ini
   _OPCACHE_SO="/opt/php52/lib/php/extensions/no-debug-non-zts-$_PHP52_API/opcache.so"
   fix_php_ini_opcache "52"
+fix_php_ini_opcache_all() {
 
   _THIS_FILE=/opt/php53/etc/php53.ini
   _OPCACHE_SO="/opt/php53/lib/php/extensions/no-debug-non-zts-$_PHP53_API/opcache.so"
@@ -398,7 +398,7 @@ fix_php_ini_opcache_all () {
 }
 #
 # Fix php.ini file to add geos.so
-fix_php_ini_geos () {
+fix_php_ini_geos() {
   if [ -e "$_THIS_FILE" ] ; then
     _GEOS_INI_TEST=$(grep "extension=geos.so" $_THIS_FILE 2>&1)
     if [[ "$_GEOS_INI_TEST" =~ "extension=geos.so" ]] ; then
@@ -410,7 +410,7 @@ fix_php_ini_geos () {
 }
 #
 # Fix 5.3 php.ini files to add geos.so
-fix_php_ini_geos_all () {
+fix_php_ini_geos_all() {
   if [ "$_PHP_GEOS" = "YES" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
     _THIS_FILE=/opt/php53/etc/php53.ini
     fix_php_ini_geos
@@ -420,7 +420,7 @@ fix_php_ini_geos_all () {
 }
 #
 # Fix php.ini file to add mongo.so
-fix_php_ini_mongo () {
+fix_php_ini_mongo() {
   if [ -e "$_THIS_FILE" ] ; then
     _MONGODB_INI_TEST=$(grep "extension=mongo.so" $_THIS_FILE 2>&1)
     if [[ "$_MONGODB_INI_TEST" =~ "extension=mongo.so" ]] ; then
@@ -432,7 +432,7 @@ fix_php_ini_mongo () {
 }
 #
 # Fix 5.3 php.ini files to add mongo.so
-fix_php_ini_mongo_all () {
+fix_php_ini_mongo_all() {
   if [ "$_PHP_MONGODB" = "YES" ] || [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
     _THIS_FILE=/opt/php53/etc/php53.ini
     fix_php_ini_mongo
@@ -442,7 +442,7 @@ fix_php_ini_mongo_all () {
 }
 #
 # Update PHP Config.
-update_php_conf () {
+update_php_conf() {
   if [ -z "$_THISHTIP" ] ; then
     _LOC_DOM="$_THISHOST"
     find_correct_ip
@@ -633,7 +633,7 @@ update_php_conf () {
   ###
 }
 #
-restore_default_php () {
+restore_default_php() {
   msg "INFO: Restoring default PHP configuration"
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/php53/etc/php53.ini   &> /dev/null
@@ -645,7 +645,7 @@ restore_default_php () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php56.ini /opt/php56/etc/php56.ini   &> /dev/null
 }
 #
-tune_php () {
+tune_php() {
   msg "INFO: Tuning PHP configuration"
   if [ "$_TUNE_PHP_FPM_TIMEOUT" -lt "60" ] ; then
     _TUNE_PHP_FPM_TIMEOUT=60
@@ -666,7 +666,7 @@ tune_php () {
   sed -i "s/^timeout .*/timeout $_TUNE_PHP_CLI_TIMEOUT/g" /etc/redis/redis.conf                                   &> /dev/null
 }
 #
-update_innodb_log_file_size () {
+update_innodb_log_file_size() {
   msg "INFO: InnoDB log file will be set to $_INNODB_LOG_FILE_SIZE_MB, please wait..."
   mrun "service mysql stop" &> /dev/null
   mrun "sleep 5"
@@ -681,7 +681,7 @@ update_innodb_log_file_size () {
   mrun "service mysql start" &> /dev/null
 }
 #
-restore_default_sql () {
+restore_default_sql() {
   msg "INFO: Restoring default SQL configuration"
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
@@ -757,13 +757,13 @@ restore_default_sql () {
   fi
 }
 #
-tune_sql () {
+tune_sql() {
   msg "INFO: Tuning SQL configuration"
   sed -i "s/3600/$_TUNE_SQL_TIMEOUT/g" /etc/mysql/my.cnf     &> /dev/null
   sed -i "s/3600/$_TUNE_SQL_TIMEOUT/g" /var/xdrago/minute.sh &> /dev/null
 }
 #
-restore_default_nginx () {
+restore_default_nginx() {
   msg "INFO: Restoring default Nginx configuration"
   cd /var/xdrago/monitor/check
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/monitor/check/scan_nginx ./
@@ -777,7 +777,7 @@ restore_default_nginx () {
   mrun "sleep 8"
 }
 #
-tune_nginx () {
+tune_nginx() {
   msg "INFO: Tuning Nginx configuration"
   sed -i "s/ = 300/ = $_TUNE_NGINX_FIREWALL/g" /var/xdrago/monitor/check/scan_nginx  &> /dev/null
   sed -i "s/60/$_TUNE_NGINX_TIMEOUT/g" /var/aegir/config/server_master/nginx.conf    &> /dev/null
@@ -794,7 +794,7 @@ tune_nginx () {
   fi
 }
 #
-restart_services () {
+restart_services() {
   msg "INFO: Reloading services"
   if [ -e "/etc/init.d/php56-fpm" ] ; then
     mrun "service php56-fpm reload" &> /dev/null
@@ -819,7 +819,7 @@ restart_services () {
   fi
 }
 #
-tune_web_server_config () {
+tune_web_server_config() {
   _LIM_FPM="$_L_PHP_FPM_WORKERS"
   if [ "$_LIM_FPM" -lt "24" ] ; then
     if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
@@ -891,7 +891,7 @@ tune_web_server_config () {
   fi
 }
 #
-tune_sql_memory_limits () {
+tune_sql_memory_limits() {
   if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
     _GALERA_COMP=NO
   fi
@@ -980,7 +980,7 @@ tune_sql_memory_limits () {
   fi
 }
 #
-tune_memory_limits () {
+tune_memory_limits() {
   msg "INFO: Default Memory Tuning"
   _AWS_TEST_A=$(grep cloudimg /etc/fstab)
   _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
@@ -1236,7 +1236,7 @@ tune_memory_limits () {
   tune_web_server_config
 }
 #
-check_git_repos_status () {
+check_git_repos_status() {
   _GITHUB_WORKS=NO
   _GITORIOUS_WORKS=NO
   if [ "$_FORCE_GIT_MIRROR" = "drupal" ] ; then

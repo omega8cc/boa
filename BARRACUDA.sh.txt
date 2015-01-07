@@ -1170,7 +1170,7 @@ fi
 ###---### Functions
 #
 # Clean pid files on exit.
-clean_pid_exit () {
+clean_pid_exit() {
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
@@ -1178,11 +1178,11 @@ clean_pid_exit () {
 }
 #
 # Noticeable messages.
-msg () {
+msg() {
   echo "Barracuda [`date`] ==> $*"
 }
 # Simple prompt.
-prompt_yes_no () {
+prompt_yes_no() {
 if [ "$_AUTOPILOT" = "YES" ] ; then
   return 0
 else
@@ -1208,7 +1208,7 @@ fi
 }
 #
 # Prompt to confirm choice.
-prompt_confirm_choice () {
+prompt_confirm_choice() {
   read -p "$1 [$2]:" _CONFIRMED_ANSWER
   if [ -z "$_CONFIRMED_ANSWER" ] ; then
     _CONFIRMED_ANSWER=$2
@@ -1219,12 +1219,12 @@ prompt_confirm_choice () {
 # set -e ### disable this for debugging
 #
 # Success msg.
-success () {
+success() {
   msg "$1 Succeeded"
 }
 #
 # Error msg.
-fatal () {
+fatal() {
   echo " "
   msg "Fatal Error Occurred: $1"
   msg "Cannot continue installation"
@@ -1232,7 +1232,7 @@ fatal () {
 }
 #
 # Not supported OS.
-not_supported_os () {
+not_supported_os() {
   msg "== FATAL ERROR =="
   msg "Invalid install script or OS used"
   msg "It is not any supported Debian or Ubuntu version"
@@ -1242,7 +1242,7 @@ not_supported_os () {
 }
 #
 # Perform an action, log it, and run the spinner throughout.
-runner () {
+runner() {
   CMD="$1"
   touch busy
   if [ "$_SPINNER" = "YES" ] ; then
@@ -1268,7 +1268,7 @@ runner () {
 }
 #
 # Small spinner.
-mrun () {
+mrun() {
   CMD="$1"
   touch busy
   if [ "$_SPINNER" = "YES" ] ; then
@@ -1282,7 +1282,7 @@ mrun () {
 }
 #
 # Silent runner.
-st_runner () {
+st_runner() {
   CMD="$1"
   touch busy
   if [ "$_SPINNER" = "YES" ] ; then
@@ -1307,17 +1307,17 @@ st_runner () {
 }
 #
 # Remove dangerous stuff from the string.
-sanitize_string () {
+sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
 }
 #
 # Find correct IP.
-find_correct_ip () {
   _LOC_IP=`echo $(getent ahostsv4 $_LOC_DOM) | cut -d: -f2 | awk '{ print $1}'`
+find_correct_ip() {
 }
 #
 # Extract archive.
-extract_archive () {
+extract_archive() {
   if [ ! -z $1 ] ; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
@@ -1338,7 +1338,7 @@ extract_archive () {
 }
 #
 # Download and extract archive from dev mirror.
-get_dev_arch () {
+get_dev_arch() {
   if [ ! -z $1 ] ; then
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$1"
     extract_archive "$1"
@@ -1346,7 +1346,7 @@ get_dev_arch () {
 }
 #
 # Download and extract from dev/version mirror.
-get_dev_ext () {
+get_dev_ext() {
   if [ ! -z $1 ] ; then
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_XTS_VERSION/$1"
     extract_archive "$1"
@@ -1354,7 +1354,7 @@ get_dev_ext () {
 }
 #
 # Download and extract from dev/contrib mirror.
-get_dev_contrib () {
+get_dev_contrib() {
   if [ ! -z $1 ] ; then
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/contrib/$1"
     extract_archive "$1"
@@ -1362,7 +1362,7 @@ get_dev_contrib () {
 }
 #
 # Download and extract archive from dev/src mirror.
-get_dev_src () {
+get_dev_src() {
   if [ ! -z $1 ] ; then
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/src/$1"
     extract_archive "$1"
@@ -1370,7 +1370,7 @@ get_dev_src () {
 }
 #
 # Fix DNS settings.
-fix_dns_settings () {
+fix_dns_settings() {
   mkdir -p /var/backups
   rm -f /var/backups/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ] ; then
@@ -1445,7 +1445,7 @@ d;};' /etc/pdnsd.conf
 }
 #
 # Check DNS settings.
-check_dns_settings () {
+check_dns_settings() {
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
   if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] || [ -e "/root/.use.local.nameservers.cnf" ] ; then
     _USE_PROVIDER_DNS=YES
@@ -1456,7 +1456,7 @@ check_dns_settings () {
 }
 #
 # Check repo status.
-check_git_repos_status () {
+check_git_repos_status() {
   _GITHUB_WORKS=NO
   _GITORIOUS_WORKS=NO
   if [ "$_FORCE_GIT_MIRROR" = "drupal" ] ; then
@@ -1510,7 +1510,7 @@ EOF
 }
 #
 # Fix php.ini files to remove suhosin.so
-fix_php_ini_suhosin () {
+fix_php_ini_suhosin() {
   if [ -e "$_THIS_FILE" ] ; then
     _SUHOSIN_INI_TEST=$(grep "extension=suhosin.so" $_THIS_FILE 2>&1)
     if [[ "$_SUHOSIN_INI_TEST" =~ "extension=suhosin.so" ]] ; then
@@ -1520,7 +1520,7 @@ fix_php_ini_suhosin () {
 }
 #
 # Fix php.ini files to add mailparse.so
-fix_php_ini_mailparse () {
+fix_php_ini_mailparse() {
   if [ -e "$_THIS_FILE" ] ; then
     _MAILPARSE_INI_TEST=$(grep "extension=mailparse.so" $_THIS_FILE 2>&1)
     if [[ "$_MAILPARSE_INI_TEST" =~ "extension=mailparse.so" ]] ; then
@@ -1532,7 +1532,7 @@ fix_php_ini_mailparse () {
 }
 #
 # Fix php.ini files to add jsmin.so
-fix_php_ini_jsmin () {
+fix_php_ini_jsmin() {
   if [ -e "$_THIS_FILE" ] ; then
     _JSMIN_INI_TEST=$(grep "extension=jsmin.so" $_THIS_FILE 2>&1)
     if [[ "$_JSMIN_INI_TEST" =~ "extension=jsmin.so" ]] ; then
@@ -1544,7 +1544,7 @@ fix_php_ini_jsmin () {
 }
 #
 # Fix php.ini files to add redis.so
-fix_php_ini_redis () {
+fix_php_ini_redis() {
   if [ -e "$_THIS_FILE" ] ; then
     _REDIS_INI_TEST=$(grep "extension=redis.so" $_THIS_FILE 2>&1)
     if [[ "$_REDIS_INI_TEST" =~ "extension=redis.so" ]] ; then
@@ -1556,8 +1556,8 @@ fix_php_ini_redis () {
 }
 #
 # Forced Redis password update.
-forced_redis_password_update () {
   if [ "$_REDIS_LISTEN_MODE" = "SOCKET" ] || [ "$_REDIS_LISTEN_MODE" = "PORT" ] || [ "$_REDIS_LISTEN_MODE" = "127.0.0.1" ] ; then
+forced_redis_password_update() {
     msg "INFO: Generating random password for local Redis server"
     _ESC_RPASS=""
     _LEN_RPASS=0
@@ -1610,7 +1610,7 @@ forced_redis_password_update () {
 }
 #
 # Fix Redis mode.
-fix_redis_mode () {
+fix_redis_mode() {
   mkdir -p /var/run/redis
   chown redis:redis /var/run/redis
   if [ "$_CUSTOM_CONFIG_REDIS" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
@@ -1676,7 +1676,7 @@ fix_redis_mode () {
 }
 #
 # Set or update Redis password.
-update_redis_password () {
+update_redis_password() {
   if [ -e "/etc/redis/redis.conf" ] ; then
     if [ ! -e "/var/xdrago/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW.log" ] ; then
       if [ ! -e "/root/.redis.no.new.password.cnf" ] || [ ! -e "/root/.redis.pass.txt" ] ; then
@@ -1709,7 +1709,7 @@ update_redis_password () {
 }
 #
 # Install Redis from sources.
-install_redis_src () {
+install_redis_src() {
   msg "INFO: Installing Redis update for $_THIS_OS/$_THIS_RV..."
   if [ ! -e "/var/lib/redis" ] ; then
     st_runner "adduser --system --group redis" 2> /dev/null
@@ -1757,16 +1757,16 @@ install_redis_src () {
 }
 #
 # Set xterm.
-set_xterm () {
   _XTERM_TEST=$(grep $_INSTALLER_VERSION /root/.bashrc)
   if [[ "$_XTERM_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
     sed -i "s/^export TERM=.*/export TERM=xterm-color/g" /root/.bashrc &> /dev/null
+set_xterm() {
   fi
 }
 #
 # Kill nash-hotplug.
-kill_nash () {
   _L_VM_TEST=`uname -a 2>&1`
+kill_nash() {
   if [[ "$_L_VM_TEST" =~ beng ]] ; then
     _DO_NOTHING=YES
   else
@@ -1784,7 +1784,7 @@ kill_nash () {
 }
 #
 # Fix FTPS PAM where required.
-fix_ftps_pam () {
+fix_ftps_pam() {
   if [ ! -e "/etc/ftpusers" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/ftpusers /etc/ftpusers
   fi
@@ -1797,7 +1797,7 @@ fix_ftps_pam () {
 }
 #
 # Fix FTPS and SFTP access on modern systems.
-fix_sftp_ftps_modern () {
+fix_sftp_ftps_modern() {
   if [ "$_REL_VERSION" != "lenny" ] ; then
     _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells 2>&1)
     if [[ "$_LSHELL_PATH_TEST" =~ "/usr/bin/lshell" ]] ; then
@@ -1841,16 +1841,16 @@ fix_sftp_ftps_modern () {
 }
 #
 # Disable Old Purge Cruft Machine.
-disable_old_purge_cruft_machine () {
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
+disable_old_purge_cruft_machine() {
     sed -i "s/.*purge_cruft.*//g" /etc/crontab &> /dev/null
     sed -i "/^$/d" /etc/crontab &> /dev/null
   fi
 }
 #
 # Enable Weekly Usage Monitor (Monday).
-enable_weekly_usage_monitor () {
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+enable_weekly_usage_monitor() {
     sed -i "s/.*weekly.sh.*//g" /etc/crontab &> /dev/null
     sed -i "/^$/d" /etc/crontab &> /dev/null
     echo "28 6    * * 7   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
@@ -1858,8 +1858,8 @@ enable_weekly_usage_monitor () {
 }
 #
 # Fix php.ini file to add newrelic.ini
-fix_php_ini_newrelic () {
   _NR_TPL="/opt/tmp/$_BOA_REPO_NAME/aegir/conf/newrelic.ini"
+fix_php_ini_newrelic() {
   if [ -e "$_THIS_FILE" ] ; then
     _NEWRELIC_INI_TEST_A=$(grep "extension=newrelic.so" $_THIS_FILE 2>&1)
     if [[ "$_NEWRELIC_INI_TEST_A" =~ "extension=newrelic.so" ]] ; then
@@ -1879,7 +1879,7 @@ fix_php_ini_newrelic () {
 }
 #
 # Fix all php.ini files to add newrelic.ini
-fix_php_ini_newrelic_all () {
+fix_php_ini_newrelic_all() {
   if [ -e "/etc/newrelic/newrelic.cfg" ] ; then
     if [ -z "$_NEWRELIC_KEY" ] ; then
       _NEWRELIC_KEY=`grep license_key /etc/newrelic/newrelic.cfg`
@@ -1913,7 +1913,7 @@ fix_php_ini_newrelic_all () {
 }
 #
 # Fix FMP php.ini file to add opcache.so
-fix_php_ini_opcache () {
+fix_php_ini_opcache() {
   if [ -e "$_THIS_FILE" ] ; then
     _OPCACHE_INI_TEST=$(grep "opcache.so" $_THIS_FILE 2>&1)
     if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]] ; then
@@ -1938,7 +1938,6 @@ fix_php_ini_opcache () {
 }
 #
 # Fix all FMP php.ini files to add Zend OPcache
-fix_php_ini_opcache_all () {
 
   _THIS_FILE=/opt/php52/etc/php52.ini
   _OPCACHE_SO="/opt/php52/lib/php/extensions/no-debug-non-zts-$_PHP52_API/opcache.so"
@@ -1960,10 +1959,11 @@ fix_php_ini_opcache_all () {
   _OPCACHE_SO="/opt/php56/lib/php/extensions/no-debug-non-zts-$_PHP56_API/opcache.so"
   fix_php_ini_opcache "56"
 
+fix_php_ini_opcache_all() {
 }
 #
 # Fix php.ini file to add geos.so
-fix_php_ini_geos () {
+fix_php_ini_geos() {
   if [ -e "$_THIS_FILE" ] ; then
     _GEOS_INI_TEST=$(grep "extension=geos.so" $_THIS_FILE 2>&1)
     if [[ "$_GEOS_INI_TEST" =~ "extension=geos.so" ]] ; then
@@ -1975,7 +1975,7 @@ fix_php_ini_geos () {
 }
 #
 # Fix 5.3 php.ini files to add geos.so
-fix_php_ini_geos_all () {
+fix_php_ini_geos_all() {
   if [ "$_PHP_GEOS" = "YES" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
     _THIS_FILE=/opt/php53/etc/php53.ini
     fix_php_ini_geos
@@ -1985,7 +1985,7 @@ fix_php_ini_geos_all () {
 }
 #
 # Fix php.ini file to add mongo.so
-fix_php_ini_mongo () {
+fix_php_ini_mongo() {
   if [ -e "$_THIS_FILE" ] ; then
     _MONGODB_INI_TEST=$(grep "extension=mongo.so" $_THIS_FILE 2>&1)
     if [[ "$_MONGODB_INI_TEST" =~ "extension=mongo.so" ]] ; then
@@ -1997,7 +1997,7 @@ fix_php_ini_mongo () {
 }
 #
 # Fix 5.3 php.ini files to add mongo.so
-fix_php_ini_mongo_all () {
+fix_php_ini_mongo_all() {
   if [ "$_PHP_MONGODB" = "YES" ] || [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
     _THIS_FILE=/opt/php53/etc/php53.ini
     fix_php_ini_mongo
@@ -2007,7 +2007,7 @@ fix_php_ini_mongo_all () {
 }
 #
 # Update PHP Config.
-update_php_conf () {
+update_php_conf() {
   if [ -z "$_THISHTIP" ] ; then
     _LOC_DOM="$_THISHOST"
     find_correct_ip
@@ -2199,7 +2199,7 @@ update_php_conf () {
 }
 #
 # Update innodb_log_file_size.
-update_innodb_log_file_size () {
+update_innodb_log_file_size() {
   msg "INFO: InnoDB log file will be set to $_INNODB_LOG_FILE_SIZE_MB, please wait..."
   mrun "service mysql stop" &> /dev/null
   mrun "sleep 5"
@@ -2215,9 +2215,9 @@ update_innodb_log_file_size () {
 }
 #
 # Update SQL Config.
-update_sql_conf () {
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+update_sql_conf() {
     if [ "$_CUSTOM_CONFIG_SQL" = "YES" ] ; then
       _DO_NOTHING=YES
     else
@@ -2291,9 +2291,9 @@ update_sql_conf () {
 }
 #
 # Update Nginx Config.
-update_nginx_conf () {
   if [ ! -e "/var/xdrago/log/nginx-config-fixed-$_INSTALLER_VERSION" ] && [ -d "/var/aegir" ] ; then
     if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf" ] && [ -e "/etc/nginx/nginx.conf" ] ; then
+update_nginx_conf() {
       mv -f /etc/nginx/nginx.conf-* /var/backups/dragon/t/ &> /dev/null
       mv -f /etc/nginx/mime.types-pre-* /var/backups/dragon/t/ &> /dev/null
       mv -f /etc/nginx/nginx.conf /var/backups/dragon/t/nginx.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
@@ -2307,7 +2307,7 @@ update_nginx_conf () {
 }
 #
 # Update INI templates.
-update_ini_tpl () {
+update_ini_tpl() {
   mkdir -p /data/conf
   if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/default.boa_platform_control.ini" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/default.boa_platform_control.ini /data/conf/default.boa_platform_control.ini
@@ -2320,7 +2320,7 @@ update_ini_tpl () {
 }
 #
 # Update global.inc Config.
-update_global_inc_conf () {
+update_global_inc_conf() {
   if [ -e "/data/conf/global.inc" ] ; then
     mv -f /data/conf/global.inc /data/conf/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc /data/conf/global.inc
@@ -2329,7 +2329,7 @@ update_global_inc_conf () {
 }
 #
 # Fix this on upgrade.
-fix_on_upgrade () {
+fix_on_upgrade() {
   sed -i "s/loglevel.*/loglevel warning/g" /etc/redis/redis.conf &> /dev/null
   sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
@@ -2349,7 +2349,7 @@ fix_on_upgrade () {
 }
 #
 # Validate server public IP.
-validate_public_ip () {
+validate_public_ip() {
   if [ "$_VMFAMILY" = "AWS" ] ; then
     _LOC_DOM="$_MY_HOSTN"
     if [ -z "$_MY_OWNIP" ] ; then
@@ -2400,7 +2400,7 @@ validate_public_ip () {
 }
 #
 # Validate server IP for xtras.
-validate_xtras_ip () {
+validate_xtras_ip() {
   if [ "$_VMFAMILY" = "AWS" ] ; then
     _LOC_DOM="$_MY_HOSTN"
     if [ -z "$_MY_OWNIP" ] ; then
@@ -2414,7 +2414,7 @@ validate_xtras_ip () {
 }
 #
 # Validate server IP for purge vhost.
-validate_purge_ip () {
+validate_purge_ip() {
   if [ "$_PURGE_ALL_THISHTIP" = "YES" ] ; then
     _PURGE_THISHTIP="0.0.0.0/0"
   else
@@ -2465,7 +2465,7 @@ validate_purge_ip () {
 }
 #
 # Validate local server IP.
-validate_local_ip () {
+validate_local_ip() {
   _LOCAL_THISHTIP=all
 }
 #
@@ -2492,8 +2492,8 @@ sub_force_advanced_nginx_config () {
 }
 #
 # Force advanced Nginx configuration.
-force_advanced_nginx_config () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf /var/aegir/config/includes/nginx_compact_include.conf
+force_advanced_nginx_config() {
   validate_local_ip &> /dev/null
   sub_force_advanced_nginx_config
   sed -i "s/ 90;/ 180;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
@@ -2540,7 +2540,7 @@ force_advanced_nginx_config () {
 }
 #
 # Tune Web Sever configuration.
-tune_web_server_config () {
+tune_web_server_config() {
   _LIM_FPM="$_L_PHP_FPM_WORKERS"
   if [ "$_LIM_FPM" -lt "24" ] ; then
     if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
@@ -2613,8 +2613,8 @@ tune_web_server_config () {
 }
 #
 # Tune memory limits for SQL server.
-tune_sql_memory_limits () {
   if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+tune_sql_memory_limits() {
     _GALERA_COMP=NO
   fi
   if [ ! -e "/var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt" ] && [ "$_STATUS" = "UPGRADE" ] && [ -z "$_GALERA_COMP" ] ; then
@@ -2703,9 +2703,9 @@ tune_sql_memory_limits () {
 }
 #
 # Tune memory limits for PHP-FPM, Nginx and MariaDB.
-tune_memory_limits () {
   _ETH_TEST=`ifconfig 2>&1`
   _VM_TEST=`uname -a 2>&1`
+tune_memory_limits() {
   if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
     _VMFAMILY="VZ"
   elif [ -e "/proc/bean_counters" ] ; then
@@ -2963,7 +2963,7 @@ tune_memory_limits () {
 }
 #
 # Fix locales.
-fix_locales () {
+fix_locales() {
   if [ -e "/etc/ssh/sshd_config" ] ; then
     _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /etc/ssh/sshd_config 2>&1)
     if [[ "$_SSH_LC_TEST" =~ "AcceptEnv LANG LC_" ]] ; then
@@ -3096,8 +3096,8 @@ EOF
 }
 #
 # Read or create Barracuda cnf file.
-barracuda_cnf () {
   if [ ! -e "/root/.barracuda.cnf" ] ; then
+barracuda_cnf() {
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
       if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
@@ -3900,7 +3900,7 @@ barracuda_cnf () {
 }
 #
 # Running aptitude full-upgrade.
-run_aptitude_full_upgrade () {
+run_aptitude_full_upgrade() {
   msg "INFO: Running aptitude full-upgrade, please wait..."
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
@@ -3928,7 +3928,7 @@ run_aptitude_full_upgrade () {
 }
 #
 # Running silent aptitude full-upgrade.
-run_silent_aptitude_full_upgrade () {
+run_silent_aptitude_full_upgrade() {
   msg "INFO: Running silent aptitude full-upgrade, please wait..."
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
@@ -3950,7 +3950,7 @@ run_silent_aptitude_full_upgrade () {
 }
 #
 # Install IonCube.
-install_ioncube () {
+install_ioncube() {
   ###--------------------###
   if [ ! -e "/var/xdrago/log/ioncube-$_IONCUBE_VERSION.log" ] || [ ! -e "/usr/local/ioncube" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     mkdir -p /usr/local/ioncube
@@ -3975,7 +3975,7 @@ install_ioncube () {
 }
 #
 # Install PHP extensions.
-install_php_extensions () {
+install_php_extensions() {
   ###--------------------###
   if [ "$1" != "56" ] && [ "$1" != "55" ] ; then
     msg "INFO: Installing Zend OPcache for PHP-FPM $_LOC_PHP_VERSION..."
@@ -4102,7 +4102,7 @@ install_php_extensions () {
 }
 #
 # Update extensions for PHP built from sources.
-update_php_extensions () {
+update_php_extensions() {
   ###--------------------###
   if [ ! -e "/var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log" ] ; then
     if [ "$1" != "56" ] && [ "$1" != "55" ] ; then
@@ -4336,16 +4336,16 @@ install_php_multi () {
 }
 #
 # Update PHP extensions
-update_php_multi () {
   _LOC_PHP_VERSION="$_PHP_VERSION"
   _LOC_PHP_PATH="/opt/php$1/bin"
+update_php_multi() {
   update_php_extensions "$1"
 }
 #
 # Install latest Git.
-do_install_latest_git () {
   if [ ! -e "/var/xdrago/log/git-$_GIT_VERSION-$_INSTALLER_VERSION-$_NOW.log" ] ; then
     msg "INFO: Installing Git $_GIT_VERSION from sources, please wait..."
+do_install_latest_git() {
     cd /var/opt
     rm -f -r git*
     get_dev_src "git-$_GIT_VERSION.tar.gz"
@@ -4364,8 +4364,8 @@ do_install_latest_git () {
 }
 #
 # Check if latest Git should be installed.
-check_install_latest_git () {
   _GIT_INSTALLED=$(git --version)
+check_install_latest_git() {
   if [[ "$_GIT_INSTALLED" =~ "git version 1.9.1" ]] ; then
     _GIT_FORCE_REINSTALL=YES
   fi
@@ -4382,7 +4382,7 @@ check_install_latest_git () {
 }
 #
 # Check apt updates.
-check_apt_updates () {
+check_apt_updates() {
   for Update in `/usr/bin/apt-get -q -y --force-yes --allow-unauthenticated -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`
   do
     case $Update in
@@ -4415,7 +4415,7 @@ check_apt_updates () {
 }
 #
 # Generate provision backend db_passwd.
-provision_backend_dbpass_generate () {
+provision_backend_dbpass_generate() {
   _ESC_APASS=""
   _LEN_APASS=0
   if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
@@ -4528,7 +4528,7 @@ mysqladmin flush-privileges &> /dev/null
 }
 #
 # Sync provision backend db_passwd.
-provision_backend_dbpass_sync () {
+provision_backend_dbpass_sync() {
   msg "INFO: Syncing provision backend db_passwd..."
   _ADBU=aegir_root
   _L_SYS="/var/aegir/backups/system/.$_ADBU.pass.txt"
@@ -4558,7 +4558,7 @@ provision_backend_dbpass_sync () {
 }
 #
 # Sync hostmaster frontend db_passwd.
-hostmaster_frontend_dbpass_sync () {
+hostmaster_frontend_dbpass_sync() {
   msg "INFO: Syncing hostmaster frontend db_passwd..."
   _THIS_HM_SPTH=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
   _THIS_HM_DBUR=`cat $_THIS_HM_SPTH/drushrc.php | grep "options\['db_user'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
@@ -4570,7 +4570,7 @@ hostmaster_frontend_dbpass_sync () {
 }
 #
 # Upgrade Aegir Master Instance.
-upgrade_aegir_master () {
+upgrade_aegir_master() {
   if prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
     true
     msg "INFO: Running Aegir Master Instance upgrade"
@@ -4682,7 +4682,7 @@ upgrade_aegir_master () {
 }
 #
 # Check for Linux/Cdorked.A malware and delete if discovered.
-detect_cdorked_malware () {
+detect_cdorked_malware() {
   _C_DORKED=NO
   _C_FILE=/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/dump_cdorked_config.c
   if [ -e "$_C_FILE" ] ; then
@@ -4706,7 +4706,7 @@ detect_cdorked_malware () {
 }
 #
 # Install or upgrade Nginx.
-install_upgrade_nginx () {
+install_upgrade_nginx() {
   msg "INFO: Testing Nginx version..."
   if [ "$_STATUS" = "UPGRADE" ] ; then
     _NGINX_INSTALL_REQUIRED=NO
@@ -4851,7 +4851,7 @@ install_upgrade_nginx () {
 }
 #
 # Install wkhtmltopdf.
-install_wkhtmltopdf () {
+install_wkhtmltopdf() {
   ###--------------------###
   if [ ! -e "/var/xdrago/log/wkhtmltopdf-fix10" ] || [ ! -x "/usr/bin/wkhtmltopdf" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     _X86_64_TEST=`uname -m`
@@ -4879,7 +4879,7 @@ install_wkhtmltopdf () {
 }
 #
 # Install wkhtmltoimage.
-install_wkhtmltoimage () {
+install_wkhtmltoimage() {
   ###--------------------###
   if [ ! -e "/var/xdrago/log/wkhtmltoimage-fix10" ] || [ ! -x "/usr/bin/wkhtmltoimage" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     _X86_64_TEST=`uname -m`
@@ -4907,7 +4907,7 @@ install_wkhtmltoimage () {
 }
 #
 # Update php-cli in the cron entry.
-update_php_cli_cron () {
+update_php_cli_cron() {
   if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
     sed -i "s/^PATH=.*/PATH=\/opt\/php55\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
   elif [ "$_PHP_CLI_VERSION" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
@@ -4923,7 +4923,7 @@ update_php_cli_cron () {
 }
 #
 # Update New Relic.
-update_newrelic () {
+update_newrelic() {
   ###--------------------###
   if [ ! -z "$_NEWRELIC_KEY" ] ; then
     if [ -e "/etc/newrelic/newrelic.cfg" ] || [ -e "/etc/apt/sources.list.d/newrelic.list" ] ; then
@@ -4989,7 +4989,7 @@ update_newrelic () {
 }
 #
 # Install New Relic.
-install_newrelic () {
+install_newrelic() {
   ###--------------------###
   if [ ! -z "$_NEWRELIC_KEY" ] ; then
     _MULTI_NR=NO
@@ -5070,7 +5070,7 @@ install_newrelic () {
 }
 #
 # Install or update Drush versions.
-get_drush_versions () {
+get_drush_versions() {
   ###--------------------###
   mkdir -p /opt/tools/drush/{4,6,7}
   chown -R root:root /opt/tools
@@ -5123,7 +5123,7 @@ get_drush_versions () {
 }
 #
 # Update packages sources list.
-update_sources_list () {
+update_sources_list() {
   ###--------------------###
   if [ -e "/var/xdrago/log/apt-fast-install-log.txt" ] || [ -e "/var/log/apt-fast-install-log.txt" ] ; then
     _APT_SOURCES_REWRITE=NO
@@ -5343,8 +5343,8 @@ update_sources_list () {
 }
 #
 # Install OpenSSH from sources.
-install_ssh_src () {
   _SSH_GET_DPKG=`dpkg --get-selections | grep ssh | grep hold`
+install_ssh_src() {
   _SSH_INSTALL_REQUIRED=NO
   _SSH_INSTALLED=`ssh -V 2>&1 | tr -d "\n" | tr -d "," | cut -d"_" -f2 | awk '{ print $1}'`
   if [ "$_SSH_FORCE_REINSTALL" = "YES" ] ; then
@@ -5388,7 +5388,7 @@ install_ssh_src () {
 }
 #
 # Install cURL from sources.
-install_curl_src () {
+install_curl_src() {
   _CURL_INSTALL_REQUIRED=NO
   _CURL_GET_DPKG=`dpkg --get-selections | grep curl | grep hold`
   _CURL_INSTALLED=`curl --version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
@@ -5480,7 +5480,7 @@ install_curl_src () {
 }
 #
 # Install OpenSSL from sources.
-install_ssl_src () {
+install_ssl_src() {
   _SSL_INSTALL_REQUIRED=NO
   _SSL_GET_DPKG=`dpkg --get-selections | grep openssl | grep hold`
   _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
@@ -5567,7 +5567,7 @@ install_ssl_src () {
 }
 #
 # Fix multi-IP cron access.
-fix_multi_ip_cron_access () {
+fix_multi_ip_cron_access() {
   rm -f /root/.local.IP.list.allow
   for _IP in `cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`;do echo "  allow        $_IP;" >> /root/.local.IP.list.allow;done
   echo "  allow        127.0.0.1;" >> /root/.local.IP.list.allow
@@ -5591,7 +5591,7 @@ d;};' /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
 }
 #
 # Check if the PHP rebuild is required.
-check_php_rebuild () {
+check_php_rebuild() {
   if [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
     _PHP_INSTALLED=5.x
     if [ "$1" = "55" ] ; then
@@ -5658,7 +5658,7 @@ check_php_rebuild () {
 }
 #
 # Check if the PHP build is broken.
-check_php_broken () {
+check_php_broken() {
   _BROKEN_LIBCURL_TEST=$(/opt/php$1/bin/php -v 2>&1)
   if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]] ; then
     _PHP_BIN_BROKEN=YES
@@ -5672,7 +5672,7 @@ check_php_broken () {
 }
 #
 # Symlink to dash.
-symlink_to_dash () {
+symlink_to_dash() {
   if [ -x "/bin/dash" ] ; then
     rm -f /bin/sh
     ln -s /bin/dash /bin/sh
@@ -5680,7 +5680,7 @@ symlink_to_dash () {
 }
 #
 # Symlink to bash.
-symlink_to_bash () {
+symlink_to_bash() {
   if [ -x "/bin/bash" ] ; then
     rm -f /bin/sh
     ln -s /bin/bash /bin/sh
@@ -5688,7 +5688,7 @@ symlink_to_bash () {
 }
 #
 # Switch to dash.
-switch_to_dash () {
+switch_to_dash() {
   if [ -x "/bin/dash" ] ; then
     sed -i "s/:\/bin\/sh/:\/bin\/dash/g"  /etc/passwd &> /dev/null
     sed -i "s/\/bin\/sh/\/bin\/dash/g" /etc/crontab &> /dev/null
@@ -5712,7 +5712,7 @@ switch_to_dash () {
 }
 #
 # Switch to bash.
-switch_to_bash () {
+switch_to_bash() {
   if [ -x "/bin/bash" ] ; then
     sed -i "s/:\/bin\/sh/:\/bin\/bash/g"  /etc/passwd &> /dev/null
     sed -i "s/\/bin\/sh/\/bin\/bash/g" /etc/crontab &> /dev/null
@@ -5736,7 +5736,7 @@ switch_to_bash () {
 }
 #
 # Strict Permissions on All Binaries.
-strict_bin_permissions () {
+strict_bin_permissions() {
 
   chown root:root /usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives /opt/php56/bin /opt/php55/bin /opt/php54/bin /opt/php53/bin /opt/php52/bin &> /dev/null
   chmod 711 /usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives /opt/php56/bin /opt/php55/bin /opt/php54/bin /opt/php53/bin /opt/php52/bin &> /dev/null
@@ -5822,8 +5822,8 @@ strict_bin_permissions () {
 }
 #
 # Fix for broken platforms
-fix_broken_platforms () {
   if [ ! -e "/var/xdrago/log/open-atrium-og-fixed-c3.log" ] ; then
+fix_broken_platforms() {
     REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
     for i in $REVISIONS; do
       if [ -d "/data/all/$i/openatrium-7.x-2.18-7.28.1/profiles/openatrium/modules/contrib" ] ; then
@@ -6012,7 +6012,7 @@ fix_broken_platforms () {
   fi
 }
 # Fix for Postfix configuration.
-fix_cnf_postfix () {
+fix_cnf_postfix() {
   _RELOAD_POSTFIX=NO
   _INET_TEST=$(grep 'inet_protocols' /etc/postfix/main.cf)
   if [[ "$_INET_TEST" =~ "inet_protocols" ]] ; then
@@ -6033,7 +6033,7 @@ fix_cnf_postfix () {
 }
 #
 # Fix init.d to disable not used PHP-FPM versions
-php_single_initd_cleanup () {
+php_single_initd_cleanup() {
   if [ ! -z "$_PHP_SINGLE_INSTALL" ] ; then
     if [ "$_PHP_SINGLE_INSTALL" = "5.5" ] ; then
       if [ -e "/opt/php56/bin/php" ] ; then
@@ -6216,7 +6216,7 @@ check_php_cli () {
 }
 #
 # Final cleanup.
-finale () {
+finale() {
   ###--------------------###
   echo " "
   if [ "$_STATUS" = "INIT" ] ; then
@@ -6665,14 +6665,14 @@ fi
 
 
 ###--------------------###
-wait_for_connection () {
+wait_for_connection() {
   echo " "
   msg "I can not connect to github.com on port 9418 at the moment"
   msg "I will try again in 60 seconds, please wait..."
   msg "Waiting for attempt $1..."
   sleep 60
 }
-check_connection () {
+check_connection() {
   if ! netcat -w 14 -z github.com 9418 ; then
     wait_for_connection "2/4"
     if ! netcat -w 14 -z github.com 9418 ; then
@@ -7565,7 +7565,7 @@ install_percona_sql () {
     SQLADD="libmysqlclient-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
   fi
 }
-install_mariadb_sql () {
+install_mariadb_sql() {
   cd /var/opt
   _KEYS_SERVER_TEST=FALSE
   until [[ "$_KEYS_SERVER_TEST" =~ "MariaDB" ]] ; do
@@ -7637,10 +7637,10 @@ install_mariadb_sql () {
   fi
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
-install_with_aptitude_sql () {
   if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "lucid" ] ; then
     _PERCONA_READY=YES
     if [ "$_EASY_SETUP" = "MSTR" ] || [ "$_EASY_SETUP" = "DBHD" ] || [ "$_EASY_SETUP" = "WBHD" ] || [ -e "/etc/mysql/conf.d/galera.cnf" ] || [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] ; then
+install_with_aptitude_sql() {
       msg "INFO: Installing MariaDB Galera Cluster, please wait..."
     else
       msg "INFO: Installing $_DB_SERVER, please wait..."
@@ -8198,7 +8198,7 @@ fi
 
 #
 # Install OpenSSH from sources.
-switch_php_cli () {
+switch_php_cli() {
   if [ ! -z $1 ] ; then
     rm -f /usr/bin/php-cli
     ln -s /opt/php$1/bin/php /usr/bin/php-cli
@@ -9612,7 +9612,7 @@ fi
 
 
 ###--------------------###
-fix_collectd_rrd_syslog_flood () {
+fix_collectd_rrd_syslog_flood() {
   _COLLECTD_CNF="/etc/collectd/collectd.conf"
   if [ -e "$_COLLECTD_CNF" ] ; then
     _COLLECTD_CNF_TEST=$(grep "rootfs" $_COLLECTD_CNF 2>&1)
@@ -9631,7 +9631,7 @@ fix_collectd_rrd_syslog_flood () {
 
 
 ###--------------------###
-fix_collectd_nginx () {
+fix_collectd_nginx() {
   _COLLECTD_CNF="/etc/collectd/collectd.conf"
   if [ -e "$_COLLECTD_CNF" ] ; then
     _COLLECTD_CNF_TEST=$(grep "^LoadPlugin nginx" $_COLLECTD_CNF 2>&1)
@@ -10049,7 +10049,7 @@ fi
 
 #
 # Forced MySQL root password update.
-forced_mysql_root_password_update () {
+forced_mysql_root_password_update() {
   mv -f /root/.my.cnf-pre-* /var/backups/ &> /dev/null
   mv -f /root/.my.pass.txt-pre-* /var/backups/ &> /dev/null
   touch /root/.my.pass.txt
@@ -10444,7 +10444,7 @@ fi
 ###--------------------###
 #
 # Fix csf.uidignore file to whitelist important system uids when UID_INTERVAL != 0
-fix_lfd_uidignore () {
+fix_lfd_uidignore() {
   _THIS_FILE=/etc/csf/csf.uidignore
   if [ -e "$_THIS_FILE" ] ; then
     _CSF_UIDIGNORE_TEST=$(grep "pdnsd" $_THIS_FILE 2>&1)
@@ -10474,7 +10474,7 @@ fix_lfd_uidignore () {
 }
 #
 # Fix csf.fignore file to whitelist /tmp/drush_*
-fix_lfd_whitelist () {
+fix_lfd_whitelist() {
   _THIS_FILE=/etc/csf/csf.fignore
   if [ -e "$_THIS_FILE" ] ; then
     _CSF_WHITELIST_TEST=$(grep "jetty" $_THIS_FILE 2>&1)
@@ -10492,7 +10492,7 @@ fix_lfd_whitelist () {
   fi
 }
 #
-csf_install () {
+csf_install() {
   if [ "$_CSF_MODE" = "install" ] ; then
     msg "INFO: Installing csf/lfd firewall..."
   else
@@ -10616,7 +10616,7 @@ fi
 
 
 ###--------------------###
-install_pdnsd_cache () {
+install_pdnsd_cache() {
   msg "INFO: Installing DNS cache pdnsd server..."
   cp -af /etc/resolv.conf /var/backups/resolv.conf.pre-$_INSTALLER_VERSION-$_NOW
   if [ "$_USE_PROVIDER_DNS" = "NO" ] ; then

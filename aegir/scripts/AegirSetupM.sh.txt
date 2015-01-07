@@ -75,12 +75,12 @@ PATH=$_L_PHP_CLI:/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbi
 ###---### Functions.
 #
 # Noticeable messages.
-msg () {
+msg() {
   echo "Barracuda [`date`] ==> $*"
 }
 #
 # Update local INI for PHP CLI on the Aegir Master Instance.
-update_php_cli_local_ini () {
+update_php_cli_local_ini() {
   _U_HD="/var/aegir/.drush"
   _U_TP="/var/aegir/.tmp"
   _PHP_CLI_UPDATE=NO
@@ -131,7 +131,7 @@ update_php_cli_local_ini () {
 }
 #
 # Update php-cli for Drush.
-update_php_cli_drush () {
+update_php_cli_drush() {
   _DRUSH_FILE="$_ROOT/drush/drush.php"
   if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
@@ -152,7 +152,7 @@ update_php_cli_drush () {
 }
 #
 # Extract archive.
-extract_archive () {
+extract_archive() {
   if [ ! -z $1 ] ; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
@@ -173,7 +173,7 @@ extract_archive () {
 }
 #
 # Download and extract from dev.
-get_dev_ext () {
+get_dev_ext() {
   if [ ! -z $1 ] ; then
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_XTS_VERSION/$1"
     extract_archive "$1"
@@ -181,7 +181,7 @@ get_dev_ext () {
 }
 #
 # Remove dangerous stuff from the string.
-sanitize_string () {
+sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
 }
 

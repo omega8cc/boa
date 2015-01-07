@@ -4,11 +4,11 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _NOW=`date +%y%m%d-%H%M`
 
 # Remove dangerous stuff from the string.
-sanitize_string () {
+sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
 }
 
-check_generate () {
+check_generate() {
   rm -f $_L_SYS
   if [ -e "$_L_SYS" ] ; then
     _ESC_APASS=`cat $_L_SYS`
@@ -58,7 +58,7 @@ check_generate () {
   fi
 }
 
-do_syncpass () {
+do_syncpass() {
   if [ ! -z "$uname" ] ; then
     if [ "$uname" = "aegir" ] && [ -e "/var/aegir/backups" ] ; then
       _L_SYS="/var/aegir/backups/system/.aegir_root.pass.txt"
@@ -111,7 +111,7 @@ do_syncpass () {
   fi
 }
 
-check_root () {
+check_root() {
   if [ `whoami` = "root" ] ; then
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ] ; then

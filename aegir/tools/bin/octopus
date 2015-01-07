@@ -25,14 +25,14 @@ if [[ "$_L_VM_TEST" =~ beng ]] ; then
   _L_VMFAMILY="VS"
 fi
 
-clean_pid_exit () {
+clean_pid_exit() {
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
   exit 1
 }
 
-fix_dns_settings () {
+fix_dns_settings() {
   mkdir -p $varPath
   rm -f $varPath/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ] ; then
@@ -106,7 +106,7 @@ d;};' /etc/pdnsd.conf
   fi
 }
 
-check_dns_settings () {
+check_dns_settings() {
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
   if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] || [ -e "/root/.use.local.nameservers.cnf" ] ; then
     _USE_PROVIDER_DNS=YES
@@ -116,7 +116,7 @@ check_dns_settings () {
   fi
 }
 
-extract_archive () {
+extract_archive() {
   if [ ! -z $1 ] ; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
@@ -136,16 +136,16 @@ extract_archive () {
   fi
 }
 
-get_dev_ext () {
+get_dev_ext() {
   if [ ! -z $1 ] ; then
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/HEAD/$1"
     extract_archive "$1"
   fi
 }
 
-send_report () {
   if [ -e "$barCnf" ] ; then
     source $barCnf
+send_report() {
     if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
@@ -156,9 +156,9 @@ send_report () {
   fi
 }
 
-send_alert () {
   if [ -e "$barCnf" ] ; then
     source $barCnf
+send_alert() {
     if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
@@ -169,7 +169,7 @@ send_alert () {
   fi
 }
 
-check_report () {
+check_report() {
   _SEND_ALERT=NO
   _RESULT_BYE=$(grep "BYE" $_UP_LOG 2>&1)
   if [[ "$_RESULT_BYE" =~ "BYE" ]] ; then
@@ -196,7 +196,7 @@ check_report () {
   fi
 }
 
-up_mode () {
+up_mode() {
   if [ "$mcmode" = "aegir" ] ; then
     sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g" $varPath/$toctName
     bash $varPath/$toctName
@@ -218,7 +218,7 @@ up_mode () {
   fi
 }
 
-up_one () {
+up_one() {
   if [ -e "$varPath/$octName" ] ; then
     cp -af $varPath/$octName $varPath/$toctName
     if [ "$cmmand" = "up-head" ] ; then
@@ -314,7 +314,7 @@ up_one () {
   fi
 }
 
-count_cpu () {
+count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc)
@@ -332,9 +332,9 @@ count_cpu () {
   fi
 }
 
-load_control () {
   if [ -e "$barCnf" ] ; then
     source $barCnf
+load_control() {
     _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
   fi
   if [ -z "$_CPU_MAX_RATIO" ] ; then
@@ -345,7 +345,7 @@ load_control () {
   let "_O_LOAD_MAX = ((100 * $_CPU_MAX_RATIO))"
 }
 
-up_action_all () {
+up_action_all() {
   for User in `find /data/disk/ -maxdepth 1 | sort`
   do
     count_cpu
@@ -396,7 +396,7 @@ up_action_all () {
   done
 }
 
-up_action_one () {
+up_action_one() {
   User="/data/disk/$second"
   count_cpu
   load_control
@@ -441,7 +441,7 @@ up_action_one () {
   fi
 }
 
-up_start () {
+up_start() {
   if [ -e "/var/run/boa_run.pid" ] ; then
     echo Another BOA installer is running probably - /var/run/boa_run.pid exists
     exit 1
@@ -474,7 +474,7 @@ up_start () {
   fi
 }
 
-up_finish () {
+up_finish() {
   rm -f /var/run/boa_run.pid
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/manage_ltd_users.pid
@@ -498,7 +498,7 @@ up_finish () {
   exit 0
 }
 
-up_head () {
+up_head() {
   up_start
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$master/$octName" -o $octName
   if [ "$second" = "all" ] ; then
@@ -509,7 +509,7 @@ up_head () {
   up_finish
 }
 
-up_modern () {
+up_modern() {
   up_start
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$devel/$octName" -o $octName
   if [ "$second" = "all" ] ; then
@@ -520,7 +520,7 @@ up_modern () {
   up_finish
 }
 
-up_cluster () {
+up_cluster() {
   up_start
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/$octName" -o $octName
   if [ "$second" = "all" ] ; then
@@ -531,7 +531,7 @@ up_cluster () {
   up_finish
 }
 
-up_stable () {
+up_stable() {
   up_start
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/$octName" -o $octName
   if [ "$second" = "all" ] ; then
@@ -542,7 +542,7 @@ up_stable () {
   up_finish
 }
 
-up_legacy () {
+up_legacy() {
   up_start
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$legacy/$octName" -o $octName
   if [ "$second" = "all" ] ; then
@@ -553,7 +553,7 @@ up_legacy () {
   up_finish
 }
 
-check_wrapper () {
+check_wrapper() {
   mkdir -p $varPath
   rm -f $varPath/$(basename "$0")-now-*
   _THIS_FILE="$varPath/$(basename "$0")-now-$_NOW"
@@ -572,7 +572,7 @@ check_wrapper () {
   fi
 }
 
-check_dns_curl () {
+check_dns_curl() {
   if [ ! -e "/etc/resolv.conf" ] ; then
     if [ -e "$varPath/resolv.conf.vanilla" ] ; then
       cat $varPath/resolv.conf.vanilla >/etc/resolv.conf
@@ -600,7 +600,7 @@ check_dns_curl () {
   fi
 }
 
-check_root () {
+check_root() {
   if [ `whoami` = "root" ] ; then
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ] ; then

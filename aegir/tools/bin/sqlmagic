@@ -2,7 +2,7 @@
 
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-sqlmagic_fix () {
+sqlmagic_fix() {
   if [ -f "$source" ] ; then
     cat $source | sed 's|/\\*!50001 CREATE ALGORITHM=UNDEFINED \\*/|/\\*!50001 CREATE \\*/|g; s|/\\*!50017 DEFINER=`[^`]*`@`[^`]*`\s*\\*/||g' | sed '/\\*!50013 DEFINER=.*/ d' > $target
     sed -i "s/^INSERT INTO/INSERT IGNORE INTO/g" $target
@@ -14,7 +14,7 @@ sqlmagic_fix () {
   fi
 }
 
-sqlmagic_convert () {
+sqlmagic_convert() {
   if [ ! -L "$HOME/static" ] ; then
     echo "ERROR: you must be logged in as a limited shell main user, typically o1.ftp"
     exit 1

@@ -153,12 +153,12 @@ PATH=$_L_PHP_CLI:/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbi
 ###---### Functions.
 #
 # Noticeable messages.
-msg () {
+msg() {
   echo "Octopus [`date`] ==> $*"
 }
 #
 # Simple prompt.
-prompt_yes_no () {
+prompt_yes_no() {
 if [ "$_AUTOPILOT" = "YES" ]; then
   return 0
 else
@@ -184,7 +184,7 @@ fi
 }
 #
 # Small spinner.
-mrun () {
+mrun() {
   CMD="$1"
   touch busy
   if [ "$_SPINNER" = "YES" ] ; then
@@ -198,7 +198,7 @@ mrun () {
 }
 #
 # Extract archive.
-extract_archive () {
+extract_archive() {
   if [ ! -z $1 ] ; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
@@ -219,7 +219,7 @@ extract_archive () {
 }
 #
 # Download and extract from dev/contrib mirror.
-get_dev_contrib () {
+get_dev_contrib() {
   if [ ! -z $1 ] ; then
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/contrib/$1"
     extract_archive "$1"
@@ -227,7 +227,7 @@ get_dev_contrib () {
 }
 #
 # Download and extract from distro.
-get_distro_ext () {
+get_distro_ext() {
   if [ ! -z $1 ] ; then
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/distro/$1"
     extract_archive "$1"
@@ -235,7 +235,7 @@ get_distro_ext () {
 }
 #
 # Create standard directories.
-fix_dirs_files () {
+fix_dirs_files() {
   rm -f ./*.txt
   rm -f ./modules/*.txt
   rm -f ./themes/*.txt
@@ -269,7 +269,7 @@ fix_dirs_files () {
 }
 #
 # Create D6 symlinks.
-create_d6_symlinks () {
+create_d6_symlinks() {
   if [ ! -L "includes" ] ; then
     ln -sf $_D6_CORE_DIR/.htaccess .htaccess
     ln -sf $_D6_CORE_DIR/boost_stats.php boost_stats.php
@@ -293,7 +293,7 @@ create_d6_symlinks () {
 }
 #
 # Create D7 symlinks.
-create_d7_symlinks () {
+create_d7_symlinks() {
   if [ ! -L "web.config" ] ; then
     ln -sf $_D7_CORE_DIR/.htaccess .htaccess
     ln -sf $_D7_CORE_DIR/authorize.php authorize.php
@@ -318,7 +318,7 @@ create_d7_symlinks () {
 }
 #
 # Create D8 symlinks.
-create_d8_symlinks () {
+create_d8_symlinks() {
   if [ ! -L "core" ] ; then
     ln -sf $_D8_CORE_DIR/.csslintrc .csslintrc
     ln -sf $_D8_CORE_DIR/.editorconfig .editorconfig
@@ -343,7 +343,7 @@ create_d8_symlinks () {
 }
 #
 # Rename D7 profiles.
-rename_drupal7_profiles () {
+rename_drupal7_profiles() {
   for Files in `find ./profiles -type f`
   do
     sed -i "s/name = Minimal/name = Vanilla Minimal/g"   $Files &> /dev/null
@@ -354,7 +354,7 @@ rename_drupal7_profiles () {
 }
 #
 # Rename D8 profiles.
-rename_drupal8_profiles () {
+rename_drupal8_profiles() {
   for Files in `find ./core/profiles -type f`
   do
     sed -i "s/name: Minimal/name: Vanilla Minimal/g"   $Files &> /dev/null
@@ -364,7 +364,7 @@ rename_drupal8_profiles () {
 }
 #
 # Prepare D6 core.
-prepare_drupal6_core () {
+prepare_drupal6_core() {
   if [ ! -e "$_D6_CORE_DIR" ] ; then
     rm -f -r $_D6_CORE_DIR
     cd /data/all/000/core
@@ -391,7 +391,7 @@ prepare_drupal6_core () {
 }
 #
 # Prepare D7 core.
-prepare_drupal7_core () {
+prepare_drupal7_core() {
   if [ ! -e "$_D7_CORE_DIR" ] ; then
     rm -f -r $_D7_CORE_DIR
     cd /data/all/000/core
@@ -415,7 +415,7 @@ prepare_drupal7_core () {
 }
 #
 # Prepare D8 core.
-prepare_drupal8_core () {
+prepare_drupal8_core() {
   if [ ! -e "$_D8_CORE_DIR" ] ; then
     rm -f -r $_D8_CORE_DIR
     cd /data/all/000/core
@@ -432,7 +432,7 @@ prepare_drupal8_core () {
 }
 #
 # Prepare D8 dev core.
-prepare_dr8_dev_core () {
+prepare_dr8_dev_core() {
   if [ ! -e "$_D8_DEV_CORE_DIR" ] ; then
     rm -f -r $_D8_DEV_CORE_DIR
     cd /data/all/000/core
@@ -449,7 +449,7 @@ prepare_dr8_dev_core () {
 }
 #
 # Remove D6 core from distro directory.
-nocore_d6_dist_clean () {
+nocore_d6_dist_clean() {
   rm -f $_SHRD_PLPATH/.gitignore
   rm -f $_SHRD_PLPATH/.htaccess
   rm -f $_SHRD_PLPATH/*.php
@@ -470,7 +470,7 @@ nocore_d6_dist_clean () {
 }
 #
 # Remove D7 core from distro directory.
-nocore_d7_dist_clean () {
+nocore_d7_dist_clean() {
   rm -f $_SHRD_PLPATH/.gitignore
   rm -f $_SHRD_PLPATH/.htaccess
   rm -f $_SHRD_PLPATH/*.php
@@ -497,7 +497,7 @@ nocore_d7_dist_clean () {
 }
 #
 # Remove D8 core from distro directory.
-nocore_d8_dist_clean () {
+nocore_d8_dist_clean() {
   rm -f $_SHRD_PLPATH/.gitignore
   rm -f $_SHRD_PLPATH/.htaccess
   rm -f $_SHRD_PLPATH/*.php
@@ -519,19 +519,19 @@ nocore_d8_dist_clean () {
 }
 #
 # Enable D6 admin.
-enable_drupal6_admin () {
+enable_drupal6_admin() {
   sed -i "s/'path_alias_cache'/'path_alias_cache', 'admin'/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
 }
 #
 # Remove default core seven profiles.
-remove_default_core_seven_profiles () {
+remove_default_core_seven_profiles() {
   rm -f -r $_SHRD_PLPATH/profiles/minimal
   rm -f -r $_SHRD_PLPATH/profiles/standard
   rm -f -r $_SHRD_PLPATH/profiles/testing
 }
 #
 # Init this distro root.
-init_this_distro_root () {
+init_this_distro_root() {
   mkdir -p $_OCTO_PLPATH
   cd $_OCTO_PLPATH
   if [[ "$_SHRD_PLNAME" =~ "-$_SMALLCORE6" ]] ; then
@@ -544,7 +544,7 @@ init_this_distro_root () {
 }
 #
 # Upgrade contrib less.
-upgrade_contrib_less () {
+upgrade_contrib_less() {
   rm -f -r {context,ctools,entity,entityreference,mimemail,og}
   get_dev_contrib "context-7.x-3.2.tar.gz"
   get_dev_contrib "ctools-7.x-1.5.tar.gz"
@@ -569,7 +569,7 @@ upgrade_contrib_less () {
 }
 #
 # Create D7 basic platform.
-create_drupal7_basic () {
+create_drupal7_basic() {
   if [ ! -d "$_SHRD_PLPATH" ] ; then
     mkdir -p $_SHRD_PLPATH
     if [ ! -e "$_D7_CORE_DIR" ] ; then
@@ -695,7 +695,7 @@ prepare_drupal6_core
 prepare_drupal7_core
 
 
-agov_install () {
+agov_install() {
 ###---### aGov
 #
 _REAL_PRNAME="agov"
@@ -739,7 +739,7 @@ fi
 }
 
 
-commerce_7_1_install () {
+commerce_7_1_install() {
 ###---### Commerce 7.x-1.x
 #
 _REAL_PRNAME="commerce_kickstart"
@@ -786,7 +786,7 @@ fi
 }
 
 
-commerce_7_2_install () {
+commerce_7_2_install() {
 ###---### Commerce 7.x-2.x
 #
 _REAL_PRNAME="commerce_kickstart"
@@ -833,7 +833,7 @@ fi
 }
 
 
-commons_6_install () {
+commons_6_install() {
 ###---### Commons 6.x
 #
 _REAL_PRNAME="commons"
@@ -889,7 +889,7 @@ fi
 }
 
 
-commons_7_install () {
+commons_7_install() {
 ###---### Commons 7.x
 #
 _REAL_PRNAME="commons"
@@ -937,7 +937,7 @@ fi
 }
 
 
-drupal6_install () {
+drupal6_install() {
 ###---### Drupal 6 Pressflow
 #
 if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "D6D" ]] || [[ "$_PLATFORMS_LIST" =~ "D6S" ]] || [[ "$_PLATFORMS_LIST" =~ "D6P" ]] ; then
@@ -1025,7 +1025,7 @@ fi
 }
 
 
-drupal7_install () {
+drupal7_install() {
 ###---### Drupal 7
 #
 if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "D7D" ]] || [[ "$_PLATFORMS_LIST" =~ "D7S" ]] || [[ "$_PLATFORMS_LIST" =~ "D7P" ]] ; then
@@ -1083,7 +1083,7 @@ fi
 }
 
 
-drupal8_install () {
+drupal8_install() {
 ###---### Drupal 8
 #
 _REAL_PRNAME="standard"
@@ -1115,7 +1115,7 @@ fi
 }
 
 
-dr8_dev_install () {
+dr8_dev_install() {
 ###---### Drupal Edge 8
 ### _D8_DEV_LABEL="8-dev-$_TODAY"
 _REAL_PRNAME="standard"
@@ -1148,7 +1148,7 @@ fi
 }
 
 
-erpal_install () {
+erpal_install() {
 ###---### ERPAL
 #
 _REAL_PRNAME="erpal"
@@ -1193,7 +1193,7 @@ fi
 }
 
 
-fserver_install () {
+fserver_install() {
 ###---### Feature Server Make
 #
 _REAL_PRNAME="feature_server"
@@ -1244,7 +1244,7 @@ fi
 }
 
 
-guardr_install () {
+guardr_install() {
 ###---### Guardr
 #
 _REAL_PRNAME="guardr"
@@ -1288,7 +1288,7 @@ fi
 }
 
 
-openacademy_install () {
+openacademy_install() {
 ###---### OpenAcademy
 #
 _REAL_PRNAME="openacademy"
@@ -1336,7 +1336,7 @@ fi
 }
 
 
-openatrium7_install () {
+openatrium7_install() {
 ###---### OpenAtrium D7
 #
 _REAL_PRNAME="openatrium"
@@ -1380,7 +1380,7 @@ fi
 }
 
 
-openblog_install () {
+openblog_install() {
 ###---### OpenBlog
 #
 _REAL_PRNAME="openblog"
@@ -1422,7 +1422,7 @@ fi
 }
 
 
-openchurch1_install () {
+openchurch1_install() {
 ###---### OpenChurch
 #
 _REAL_PRNAME="openchurch"
@@ -1465,7 +1465,7 @@ fi
 }
 
 
-openchurch2_install () {
+openchurch2_install() {
 ###---### OpenChurch
 #
 _REAL_PRNAME="openchurch"
@@ -1508,7 +1508,7 @@ fi
 }
 
 
-opendeals_install () {
+opendeals_install() {
 ###---### OpenDeals
 #
 _REAL_PRNAME="opendeals"
@@ -1550,7 +1550,7 @@ fi
 }
 
 
-openoutreach_install () {
+openoutreach_install() {
 ###---### OpenOutreach
 #
 _REAL_PRNAME="openoutreach"
@@ -1592,7 +1592,7 @@ fi
 }
 
 
-openpublic_install () {
+openpublic_install() {
 ###---### OpenPublic
 #
 _REAL_PRNAME="openpublic"
@@ -1634,7 +1634,7 @@ fi
 }
 
 
-openscholar_install () {
+openscholar_install() {
 ###---### OpenScholar
 #
 _REAL_PRNAME="openscholar"
@@ -1687,7 +1687,7 @@ fi
 }
 
 
-panopoly_install () {
+panopoly_install() {
 ###---### Panopoly
 #
 _REAL_PRNAME="panopoly"
@@ -1742,7 +1742,7 @@ fi
 }
 
 
-recruiter_install () {
+recruiter_install() {
 ###---### Recruiter
 #
 _REAL_PRNAME="recruiter"
@@ -1791,7 +1791,7 @@ fi
 }
 
 
-restaurant_install () {
+restaurant_install() {
 ###---### Restaurant
 #
 _REAL_PRNAME="restaurant"
@@ -1835,7 +1835,7 @@ fi
 }
 
 
-ubercart6_install () {
+ubercart6_install() {
 ###---### Ubercart 2
 #
 _REAL_PRNAME="uberdrupal"
@@ -1908,7 +1908,7 @@ fi
 }
 
 
-ubercart7_install () {
+ubercart7_install() {
 ###---### Ubercart 3
 #
 _REAL_PRNAME="minimal"
@@ -1973,7 +1973,7 @@ fi
 }
 
 
-ubercart7_testing_install () {
+ubercart7_testing_install() {
 ###---### Ubercart 3 with testing profile
 #
 _REAL_PRNAME="testing"

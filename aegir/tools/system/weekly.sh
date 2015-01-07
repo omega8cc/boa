@@ -4,13 +4,13 @@ SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 ###-------------SYSTEM-----------------###
-fix_clear_cache () {
+fix_clear_cache() {
   if [ -e "$Plr/profiles/hostmaster" ] ; then
     su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster cc all &> /dev/null"
   fi
 }
 
-read_account_data () {
+read_account_data() {
   if [ -e "/data/disk/$_THIS_HM_USER/log/email.txt" ] ; then
     _CLIENT_EMAIL=`cat /data/disk/$_THIS_HM_USER/log/email.txt`
     _CLIENT_EMAIL=`echo -n $_CLIENT_EMAIL | tr -d "\n"`
@@ -35,7 +35,7 @@ read_account_data () {
   fi
 }
 
-send_notice_core () {
+send_notice_core() {
   _ADM_EMAIL="notify@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
@@ -149,7 +149,7 @@ EOF
   echo "INFO: Pressflow notice sent to $_CLIENT_EMAIL [$_THIS_HM_USER]: OK"
 }
 
-detect_vanilla_core () {
+detect_vanilla_core() {
   if [ ! -e "$Plr/core" ] ; then
     if [ -e "$Plr/web.config" ] ; then
       _DO_NOTHING=YES
@@ -177,7 +177,7 @@ detect_vanilla_core () {
   fi
 }
 
-count () {
+count() {
   for Site in `find $User/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
   do
     #echo Counting Site $Site
@@ -238,7 +238,7 @@ count () {
   done
 }
 
-send_notice_sql () {
+send_notice_sql() {
   _ADM_EMAIL="notify@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
@@ -418,7 +418,7 @@ EOF
   echo "INFO: Notice sent to $_CLIENT_EMAIL [$_THIS_HM_USER]: OK"
 }
 
-send_notice_disk () {
+send_notice_disk() {
   _ADM_EMAIL="notify@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
@@ -574,7 +574,7 @@ EOF
   echo "INFO: Notice sent to $_CLIENT_EMAIL [$_THIS_HM_USER]: OK"
 }
 
-check_limits () {
+check_limits() {
   read_account_data
   if [ "$_CLIENT_OPTION" = "POWER" ] ; then
     _SQL_MIN_LIMIT=5120
@@ -636,8 +636,8 @@ check_limits () {
   fi
 }
 
-count_cpu () {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo)
+count_cpu() {
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc)
   if [ -z "$_NPROC_TEST" ] ; then
@@ -654,7 +654,7 @@ count_cpu () {
   fi
 }
 
-load_control () {
+load_control() {
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
     _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
@@ -667,7 +667,7 @@ load_control () {
   let "_O_LOAD_MAX = ((100 * $_CPU_MAX_RATIO))"
 }
 
-action () {
+action() {
   for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
   do
     count_cpu
