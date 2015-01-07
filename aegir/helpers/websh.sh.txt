@@ -34,7 +34,7 @@ if [ -d "/home/${USER}/.tmp" ] ; then
   export TMP="/home/${USER}/.tmp"
   export TMPDIR="/home/${USER}/.tmp"
   export TEMP="/home/${USER}/.tmp"
-  if [[ "$_ARGS" =~ (^)"xwhich" ]] || [[ "$_ARGS" =~ (^)"id " ]] ; then
+  if [[ "$_ARGS" =~ " id " ]] || [[ "$_ARGS" =~ (^)"id " ]] ; then
     exit 1
   elif [[ "$_ARGS" =~ (^)"newrelic" ]] || [[ "$_ARGS" =~ (^)"nrsysm" ]] ; then
     exit 1
