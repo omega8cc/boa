@@ -868,7 +868,7 @@ update_web_user() {
       fi
     fi
     if [ -e "$_T_HD/php.ini" ] ; then
-      _INI="open_basedir = \".:/data/disk/${_USER}/distro:/data/disk/${_USER}/static:/data/disk/${_USER}/aegir:/data/disk/${_USER}/platforms:/data/disk/${_USER}/backup-exports:${_T_TP}:/data/all:/data/disk/all:/data/conf:/var/second/${_USER}:/mnt:/srv:/usr/bin:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55:/opt/php56\""
+      _INI="open_basedir = \".:/data/disk/${_USER}/distro:/data/disk/${_USER}/static:/data/disk/${_USER}/aegir:/data/disk/${_USER}/platforms:/data/disk/${_USER}/backup-exports:${_T_TP}:/data/all:/data/disk/all:/data/conf:/var/second/${_USER}:/mnt:/srv:/usr/bin:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php53:/opt/php54:/opt/php55:/opt/php56\""
       _INI=${_INI//\//\\\/}
       _QTP=${_T_TP//\//\\\/}
       sed -i "s/.*open_basedir =.*/$_INI/g"                              $_T_HD/php.ini &> /dev/null
@@ -970,7 +970,7 @@ tune_fpm_config() {
       ### create or update special system user if needed
       if [ -e "/home/${_USER}.web/.drush/php.ini" ] ; then
         _OLD_PHP_IN_USE=`grep "/lib/php" /home/${_USER}.web/.drush/php.ini`
-        _PHP_V="56 55 54 53 52"
+        _PHP_V="56 55 54 53"
         for e in $_PHP_V; do
           if [[ "$_OLD_PHP_IN_USE" =~ "php${e}" ]] ; then
             if [ "${e}" != "${_PHP_SV}" ]] || [ ! -e "/home/${_USER}.web/.drush/.ctrl.php${_PHP_SV}.txt" ] ; then

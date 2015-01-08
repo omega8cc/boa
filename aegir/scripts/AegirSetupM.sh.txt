@@ -64,8 +64,6 @@ elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
   _L_PHP_CLI=/opt/php54/bin
 elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
   _L_PHP_CLI=/opt/php53/bin
-elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/opt/php52/bin/php" ] ; then
-  _L_PHP_CLI=/opt/php52/bin
 fi
 _DRUSHCMD="$_L_PHP_CLI/php $_ROOT/drush/drush.php"
 #
@@ -85,7 +83,7 @@ update_php_cli_local_ini() {
   _U_TP="/var/aegir/.tmp"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=`grep "/opt/php" $_DRUSH_FILE`
-  _PHP_V="56 55 54 53 52"
+  _PHP_V="56 55 54 53"
   for e in $_PHP_V; do
     if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] && [ ! -e "$_U_HD/.ctrl.php${e}.txt" ] ; then
       _PHP_CLI_UPDATE=YES
@@ -110,12 +108,9 @@ update_php_cli_local_ini() {
     elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]] ; then
       cp -af /opt/php53/lib/php.ini $_U_HD/php.ini
       _U_INI=53
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php52" ]] ; then
-      cp -af /opt/php52/lib/php.ini $_U_HD/php.ini
-      _U_INI=52
     fi
     if [ -e "$_U_HD/php.ini" ] ; then
-      _INI="open_basedir = \".:/var/aegir:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55:/opt/php56\""
+      _INI="open_basedir = \".:/var/aegir:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php53:/opt/php54:/opt/php55:/opt/php56\""
       _INI=${_INI//\//\\\/}
       _QTP=${_U_TP//\//\\\/}
       sed -i "s/.*open_basedir =.*/$_INI/g"                              $_U_HD/php.ini &> /dev/null
@@ -141,8 +136,6 @@ update_php_cli_drush() {
     sed -i "s/^#\!\/.*/#\!\/opt\/php54\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
   elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php53\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
-  elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/opt/php52/bin/php" ] ; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php52\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
   else
     msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported values"
     msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"

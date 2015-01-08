@@ -23,9 +23,6 @@ if ($fpm_status ne "CLEAN") {
   if (-f "/etc/init.d/php53-fpm") {
     `/etc/init.d/php53-fpm restart`;
   }
-  if (-f "/etc/init.d/php52-fpm") {
-    `/etc/init.d/php52-fpm restart`;
-  }
   sleep(2);
 }
 if ($java_status ne "CLEAN") {

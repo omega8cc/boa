@@ -208,8 +208,6 @@ check_php_cli() {
       _PHP_CLI_PATH="/opt/php54/bin/php"
     elif [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
       _PHP_CLI_PATH="/opt/php53/bin/php"
-    elif [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
-      _PHP_CLI_PATH="/opt/php52/bin/php"
     else
       _PHP_CLI_PATH=""
     fi
@@ -224,8 +222,6 @@ check_php_cli() {
         _USE_PHP_CLI_PATH=/opt/php54/bin/php
       elif [ -x "/opt/php53/bin/php" ] ; then
         _USE_PHP_CLI_PATH=/opt/php53/bin/php
-      elif [ -x "/opt/php52/bin/php" ] ; then
-        _USE_PHP_CLI_PATH=/opt/php52/bin/php
       fi
     fi
     if [ -x "$_USE_PHP_CLI_PATH" ] ; then

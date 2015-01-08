@@ -94,9 +94,6 @@ check_php_cli_version () {
   elif [[ "$_PHP_CLI" =~ "php53" ]] ; then
     DRUSH_PHP="/opt/php53/bin/php"
     PHP_INI="/opt/php53/lib/php.ini"
-  elif [[ "$_PHP_CLI" =~ "php52" ]] ; then
-    DRUSH_PHP="/opt/php52/bin/php"
-    PHP_INI="/opt/php52/lib/php.ini"
   else
     DRUSH_PHP=""
     PHP_INI=""
@@ -133,8 +130,6 @@ if [ "$_LTD_GID" = "www-data users" ] \
             PHP_INI="/opt/php54/lib/php.ini"
           elif [[ "$_PHP_DEFAULT" =~ "5.3." ]] ; then
             PHP_INI="/opt/php53/lib/php.ini"
-          elif [[ "$_PHP_DEFAULT" =~ "5.2." ]] ; then
-            PHP_INI="/opt/php52/lib/php.ini"
           fi
         else
           if [ -f "$HOME/.drush/php.ini" ] ; then

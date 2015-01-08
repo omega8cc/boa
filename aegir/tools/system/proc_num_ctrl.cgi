@@ -43,7 +43,6 @@ foreach $X (sort keys %li_cnt) {
   if ($X =~ /php55/) {$php55lives = "YES";}
   if ($X =~ /php54/) {$php54lives = "YES";}
   if ($X =~ /php53/) {$php53lives = "YES";}
-  if ($X =~ /php52/) {$php52lives = "YES";}
 }
 foreach $K (sort keys %li_cnt) {
   if ($K =~ /convert/) {$convertlives = "YES"; $convertsumar = $li_cnt{$K};}
@@ -62,7 +61,6 @@ print "\n 1 FPM56 procs\t\tGLOBAL" if ($php56lives);
 print "\n 1 FPM55 procs\t\tGLOBAL" if ($php55lives);
 print "\n 1 FPM54 procs\t\tGLOBAL" if ($php54lives);
 print "\n 1 FPM53 procs\t\tGLOBAL" if ($php53lives);
-print "\n 1 FPM52 procs\t\tGLOBAL" if ($php52lives);
 print "\n $ftpsumar FTP procs\t\tGLOBAL" if ($ftplives);
 print "\n $mysqlsumar MySQL procs\t\tGLOBAL" if ($mysqlives);
 print "\n $nginxsumar Nginx procs\t\tGLOBAL" if ($nginxlives);
@@ -149,7 +147,6 @@ else {
   system("service php55-fpm restart") if ((!$php55lives || !$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php55-fpm.pid") && -f "/etc/init.d/php55-fpm" && !-f "/var/run/boa_run.pid");
   system("service php54-fpm restart") if ((!$php54lives || !$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php54-fpm.pid") && -f "/etc/init.d/php54-fpm" && !-f "/var/run/boa_run.pid");
   system("service php53-fpm restart") if ((!$php53lives || !$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php53-fpm.pid") && -f "/etc/init.d/php53-fpm" && !-f "/var/run/boa_run.pid");
-  system("service php52-fpm restart") if ((!$php52lives || !$phpsumar || !-f "/var/run/php52-fpm.pid") && -f "/etc/init.d/php52-fpm" && !-f "/var/run/boa_run.pid");
 }
 
 system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7" && !-f "/var/run/boa_run.pid");

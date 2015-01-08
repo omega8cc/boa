@@ -77,10 +77,8 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### 5.4
 ### 5.3
 ###
-### There must be only one line and one value in this control file. Otherwise
-### it will be ignored. If you will enter 5.2 it will force 5.5, so this file
-### should not exist if you have 5.2 defined in the /root/.${_USER}.octopus.cnf
-### file for some reason.
+### There must be only one line and one value in this control file.
+### Otherwise it will be ignored.
 ###
 
 ###
@@ -104,10 +102,8 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### 5.4
 ### 5.3
 ###
-### There must be only one line and one value in this control file. Otherwise
-### it will be ignored. If you will enter 5.2 it will force 5.5, so this file
-### should not exist if you have 5.2 defined in the /root/.${_USER}.octopus.cnf
-### file for some reason.
+### There must be only one line and one value in this control file.
+### Otherwise it will be ignored.
 ###
 
 ###

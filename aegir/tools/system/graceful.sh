@@ -57,9 +57,6 @@ action() {
   if [ -e "/etc/init.d/php53-fpm" ] ; then
     /etc/init.d/php53-fpm reload
   fi
-  if [ -e "/etc/init.d/php52-fpm" ] ; then
-    /etc/init.d/php52-fpm reload
-  fi
   sleep 8
   rm -f /var/run/fmp_wait.pid
   if [ -e "/root/.high_traffic.cnf" ] ; then

@@ -108,7 +108,7 @@ enable_chattr() {
     fi
 
     _CHECK_USE_PHP_CLI=`grep "/opt/php" /data/disk/${_OWN}/tools/drush/drush.php`
-    _PHP_V="56 55 54 53 52"
+    _PHP_V="56 55 54 53"
     for e in $_PHP_V; do
       if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] && [ ! -e "$_U_HD/.ctrl.php${e}.txt" ] ; then
         _PHP_CLI_UPDATE=YES
@@ -134,8 +134,6 @@ enable_chattr() {
           _USE_PHP_CLI=5.4
         elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]] ; then
           _USE_PHP_CLI=5.3
-        elif [[ "$_CHECK_USE_PHP_CLI" =~ "php52" ]] ; then
-          _USE_PHP_CLI=5.2
         fi
       fi
       echo _USE_PHP_CLI is $_USE_PHP_CLI for $1
@@ -151,12 +149,9 @@ enable_chattr() {
       elif [ "$_USE_PHP_CLI" = "5.3" ] ; then
         cp -af /opt/php53/lib/php.ini $_U_HD/php.ini
         _U_INI=53
-      elif [ "$_USE_PHP_CLI" = "5.2" ] ; then
-        cp -af /opt/php52/lib/php.ini $_U_HD/php.ini
-        _U_INI=52
       fi
       if [ -e "$_U_HD/php.ini" ] ; then
-        _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/home:/data/disk/${_OWN}/.drush/usr:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55:/opt/php56\""
+        _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/home:/data/disk/${_OWN}/.drush/usr:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php53:/opt/php54:/opt/php55:/opt/php56\""
         _INI=${_INI//\//\\\/}
         _QTP=${_U_TP//\//\\\/}
         sed -i "s/.*open_basedir =.*/$_INI/g"                              $_U_HD/php.ini &> /dev/null
@@ -551,7 +546,7 @@ update_php_cli_local_ini() {
   _U_TP="/data/disk/${_OWN}/.tmp"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=`grep "/opt/php" $_DRUSH_FILE`
-  _PHP_V="56 55 54 53 52"
+  _PHP_V="56 55 54 53"
   for e in $_PHP_V; do
     if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] && [ ! -e "$_U_HD/.ctrl.php${e}.txt" ] ; then
       _PHP_CLI_UPDATE=YES
@@ -577,12 +572,9 @@ update_php_cli_local_ini() {
     elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]] ; then
       cp -af /opt/php53/lib/php.ini $_U_HD/php.ini
       _U_INI=53
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php52" ]] ; then
-      cp -af /opt/php52/lib/php.ini $_U_HD/php.ini
-      _U_INI=52
     fi
     if [ -e "$_U_HD/php.ini" ] ; then
-      _INI="open_basedir = \".:/data/disk/${_OWN}:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55:/opt/php56\""
+      _INI="open_basedir = \".:/data/disk/${_OWN}:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php53:/opt/php54:/opt/php55:/opt/php56\""
       _INI=${_INI//\//\\\/}
       _QTP=${_U_TP//\//\\\/}
       sed -i "s/.*open_basedir =.*/$_INI/g"                              $_U_HD/php.ini &> /dev/null
@@ -798,7 +790,7 @@ update_web_user() {
       fi
     fi
     if [ -e "$_T_HD/php.ini" ] ; then
-      _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/aegir:/data/disk/${_OWN}/platforms:/data/disk/${_OWN}/backup-exports:${_T_TP}:/data/all:/data/disk/all:/data/conf:/var/second/${_OWN}:/mnt:/srv:/usr/bin:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55:/opt/php56\""
+      _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/aegir:/data/disk/${_OWN}/platforms:/data/disk/${_OWN}/backup-exports:${_T_TP}:/data/all:/data/disk/all:/data/conf:/var/second/${_OWN}:/mnt:/srv:/usr/bin:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php53:/opt/php54:/opt/php55:/opt/php56\""
       _INI=${_INI//\//\\\/}
       _QTP=${_T_TP//\//\\\/}
       sed -i "s/.*open_basedir =.*/$_INI/g"                              $_T_HD/php.ini &> /dev/null
@@ -1054,7 +1046,7 @@ switch_php() {
           ### create or update special system user if needed
           if [ -e "/home/${_OWN}.web/.drush/php.ini" ] ; then
             _OLD_PHP_IN_USE=`grep "/lib/php" /home/${_OWN}.web/.drush/php.ini`
-            _PHP_V="56 55 54 53 52"
+            _PHP_V="56 55 54 53"
             for e in $_PHP_V; do
               if [[ "$_OLD_PHP_IN_USE" =~ "php${e}" ]] ; then
                 if [ "${e}" != "${_PHP_SV}" ]] || [ ! -e "/home/${_OWN}.web/.drush/.ctrl.php${_PHP_SV}.txt" ] ; then

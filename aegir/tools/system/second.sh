@@ -20,9 +20,6 @@ hold() {
   if [ -e "/etc/init.d/php53-fpm" ] ; then
     /etc/init.d/php53-fpm stop
   fi
-  if [ -e "/etc/init.d/php52-fpm" ] ; then
-    /etc/init.d/php52-fpm stop
-  fi
   killall -9 php-fpm php-cgi
   echo `date` >> /var/xdrago/log/second.hold.log
   echo load is $_O_LOAD:$_F_LOAD while maxload is $_O_LOAD_MAX:$_F_LOAD_MAX
