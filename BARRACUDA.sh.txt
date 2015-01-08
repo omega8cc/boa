@@ -6019,9 +6019,6 @@ php_single_initd_cleanup() {
       if [ -e "/opt/php53/bin/php" ] ; then
         mv -f /opt/php53/bin/php /var/backups/bin-php53-cli
       fi
-      if [ -e "/opt/php52/bin/php" ] ; then
-        mv -f /opt/php52/bin/php /var/backups/bin-php52-cli
-      fi
       if [ -e "/etc/init.d/php56-fpm" ] ; then
         update-rc.d -f php56-fpm remove &> /dev/null
         mv -f /etc/init.d/php56-fpm /var/backups/initd-php56-fpm
@@ -6035,11 +6032,6 @@ php_single_initd_cleanup() {
       if [ -e "/etc/init.d/php53-fpm" ] ; then
         update-rc.d -f php53-fpm remove &> /dev/null
         mv -f /etc/init.d/php53-fpm /var/backups/initd-php53-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php52-fpm" ] ; then
-        update-rc.d -f php52-fpm remove &> /dev/null
-        mv -f /etc/init.d/php52-fpm /var/backups/initd-php52-fpm
         _FPM_INITD_CLEANUP=YES
       fi
     elif [ "$_PHP_SINGLE_INSTALL" = "5.6" ] ; then
@@ -6052,9 +6044,6 @@ php_single_initd_cleanup() {
       if [ -e "/opt/php53/bin/php" ] ; then
         mv -f /opt/php53/bin/php /var/backups/bin-php53-cli
       fi
-      if [ -e "/opt/php52/bin/php" ] ; then
-        mv -f /opt/php52/bin/php /var/backups/bin-php52-cli
-      fi
       if [ -e "/etc/init.d/php55-fpm" ] ; then
         update-rc.d -f php55-fpm remove &> /dev/null
         mv -f /etc/init.d/php55-fpm /var/backups/initd-php55-fpm
@@ -6070,11 +6059,6 @@ php_single_initd_cleanup() {
         mv -f /etc/init.d/php53-fpm /var/backups/initd-php53-fpm
         _FPM_INITD_CLEANUP=YES
       fi
-      if [ -e "/etc/init.d/php52-fpm" ] ; then
-        update-rc.d -f php52-fpm remove &> /dev/null
-        mv -f /etc/init.d/php52-fpm /var/backups/initd-php52-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
     elif [ "$_PHP_SINGLE_INSTALL" = "5.4" ] ; then
       if [ -e "/opt/php56/bin/php" ] ; then
         mv -f /opt/php56/bin/php /var/backups/bin-php56-cli
@@ -6084,9 +6068,6 @@ php_single_initd_cleanup() {
       fi
       if [ -e "/opt/php53/bin/php" ] ; then
         mv -f /opt/php53/bin/php /var/backups/bin-php53-cli
-      fi
-      if [ -e "/opt/php52/bin/php" ] ; then
-        mv -f /opt/php52/bin/php /var/backups/bin-php52-cli
       fi
       if [ -e "/etc/init.d/php56-fpm" ] ; then
         update-rc.d -f php56-fpm remove &> /dev/null
@@ -6101,11 +6082,6 @@ php_single_initd_cleanup() {
       if [ -e "/etc/init.d/php53-fpm" ] ; then
         update-rc.d -f php53-fpm remove &> /dev/null
         mv -f /etc/init.d/php53-fpm /var/backups/initd-php53-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php52-fpm" ] ; then
-        update-rc.d -f php52-fpm remove &> /dev/null
-        mv -f /etc/init.d/php52-fpm /var/backups/initd-php52-fpm
         _FPM_INITD_CLEANUP=YES
       fi
     elif [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
@@ -9900,10 +9876,6 @@ if [ "$_STATUS" = "INIT" ] ; then
       st_runner "update-rc.d php53-fpm defaults" &> /dev/null
       mrun "service php53-fpm start" &> /dev/null
     fi
-    if [ -e "/etc/init.d/php52-fpm" ] ; then
-      st_runner "update-rc.d php52-fpm defaults" &> /dev/null
-      mrun "service php52-fpm start" &> /dev/null
-    fi
     st_runner "update-rc.d nginx defaults" &> /dev/null
     mrun "service nginx start" &> /dev/null
   fi
@@ -9992,10 +9964,6 @@ else
       st_runner "update-rc.d php53-fpm defaults" &> /dev/null
       mrun "service php53-fpm stop" &> /dev/null
     fi
-    if [ -e "/etc/init.d/php52-fpm" ] ; then
-      st_runner "update-rc.d php52-fpm defaults" &> /dev/null
-      mrun "service php52-fpm stop" &> /dev/null
-    fi
     killall -9 php-fpm &> /dev/null
     killall -9 php-cgi &> /dev/null
     killall -9 pure-ftpd &> /dev/null
@@ -10012,9 +9980,6 @@ else
     fi
     if [ -e "/etc/init.d/php53-fpm" ] ; then
       mrun "service php53-fpm start" &> /dev/null
-    fi
-    if [ -e "/etc/init.d/php52-fpm" ] ; then
-      mrun "service php52-fpm start" &> /dev/null
     fi
     mrun "service nginx start" &> /dev/null
   fi
