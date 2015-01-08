@@ -68,17 +68,21 @@ else
   if [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
     exit 0
   fi
-  action
-  sleep 10
-  action
-  sleep 10
-  action
-  sleep 10
-  action
-  sleep 10
-  action
-  sleep 10
-  action
+  if [ -e "/root/.fast.cron.cnf" ] ; then
+    action
+    sleep 10
+    action
+    sleep 10
+    action
+    sleep 10
+    action
+    sleep 10
+    action
+    sleep 10
+    action
+  else
+    action
+  fi
   exit 0
 fi
 ###EOF2015###
