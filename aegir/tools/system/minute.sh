@@ -22,7 +22,7 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]] ; then
   fi
   sleep 8
   rm -f /var/run/fmp_wait.pid
-  echo php logs rotated
+  echo "`date` Too big PHP error logs deleted: $_PHPLOG_SIZE_TEST" >> /var/xdrago/log/php.giant.logs.incident.log
 fi
 
 oom_restart() {
@@ -66,6 +66,8 @@ if [ ! -z "$_RAM_PCT_FREE" ] && [ $_RAM_PCT_FREE -lt 10 ] ; then
 fi
 
 jetty_restart() {
+  touch /var/run/boa_run.pid
+  sleep 5
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
   rm -f /var/log/jetty{7,8,9}/*
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] ; then
@@ -77,6 +79,8 @@ jetty_restart() {
   if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ] ; then
     /etc/init.d/jetty7 start
   fi
+  sleep 5
+  rm -f /var/run/boa_run.pid
 }
 
 if [ -e "/var/log/jetty9" ] ; then
