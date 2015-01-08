@@ -115,7 +115,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### Instance with variables: _PHP_FPM_VERSION
 ### and _PHP_CLI_VERSION.
 ###
-### Available options: 5.6, 5.5, 5.4, 5.3, 5.2
+### Available options: 5.6, 5.5, 5.4, 5.3
 ###
 ### Example: _PHP_MULTI_INSTALL="5.3 5.5"
 ###
@@ -815,7 +815,6 @@ _EXTRA_PACKAGES=""
 ###
 _CUSTOM_CONFIG_CSF=NO
 _CUSTOM_CONFIG_LSHELL=NO
-_CUSTOM_CONFIG_PHP52=NO
 _CUSTOM_CONFIG_PHP53=NO
 _CUSTOM_CONFIG_PHP54=NO
 _CUSTOM_CONFIG_PHP55=NO
@@ -1120,8 +1119,6 @@ _NGINX_VERSION=1.7.9
 _OPENSSH_VERSION=6.7p1
 _OPENSSL_VERSION=1.0.1j
 _PERCONA_VERSION=5.5.36
-_PHP52_API=20060613
-_PHP52_VERSION=5.2.17
 _PHP53_API=20090626
 _PHP53_VERSION=5.3.29
 _PHP54_API=20100525
@@ -1882,33 +1879,16 @@ fix_php_ini_newrelic() {
 fix_php_ini_newrelic_all() {
   if [ -e "/etc/newrelic/newrelic.cfg" ] ; then
     if [ -z "$_NEWRELIC_KEY" ] ; then
-      _NEWRELIC_KEY=`grep license_key /etc/newrelic/newrelic.cfg`
-      _NEWRELIC_KEY=`echo -n $_NEWRELIC_KEY | tr -d "\n"`
+      _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
+      _NEWRELIC_KEY=$(echo -n $_NEWRELIC_KEY | tr -d "\n" 2>&1)
     fi
-    _THIS_FILE=/opt/php52/etc/php52.ini
-    fix_php_ini_newrelic
-    _THIS_FILE=/opt/php52/lib/php.ini
-    fix_php_ini_newrelic
-
-    _THIS_FILE=/opt/php53/etc/php53.ini
-    fix_php_ini_newrelic
-    _THIS_FILE=/opt/php53/lib/php.ini
-    fix_php_ini_newrelic
-
-    _THIS_FILE=/opt/php54/etc/php54.ini
-    fix_php_ini_newrelic
-    _THIS_FILE=/opt/php54/lib/php.ini
-    fix_php_ini_newrelic
-
-    _THIS_FILE=/opt/php55/etc/php55.ini
-    fix_php_ini_newrelic
-    _THIS_FILE=/opt/php55/lib/php.ini
-    fix_php_ini_newrelic
-
-    _THIS_FILE=/opt/php56/etc/php56.ini
-    fix_php_ini_newrelic
-    _THIS_FILE=/opt/php56/lib/php.ini
-    fix_php_ini_newrelic
+    _PHP_V="56 55 54 53"
+    for e in $_PHP_V; do
+      _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+      fix_php_ini_newrelic
+      _THIS_FILE=/opt/php${e}/lib/php.ini
+      fix_php_ini_newrelic
+    done
   fi
 }
 #
@@ -1938,28 +1918,22 @@ fix_php_ini_opcache() {
 }
 #
 # Fix all FMP php.ini files to add Zend OPcache
-
-  _THIS_FILE=/opt/php52/etc/php52.ini
-  _OPCACHE_SO="/opt/php52/lib/php/extensions/no-debug-non-zts-$_PHP52_API/opcache.so"
-  fix_php_ini_opcache "52"
-
-  _THIS_FILE=/opt/php53/etc/php53.ini
-  _OPCACHE_SO="/opt/php53/lib/php/extensions/no-debug-non-zts-$_PHP53_API/opcache.so"
-  fix_php_ini_opcache "53"
-
-  _THIS_FILE=/opt/php54/etc/php54.ini
-  _OPCACHE_SO="/opt/php54/lib/php/extensions/no-debug-non-zts-$_PHP54_API/opcache.so"
-  fix_php_ini_opcache "54"
-
-  _THIS_FILE=/opt/php55/etc/php55.ini
-  _OPCACHE_SO="/opt/php55/lib/php/extensions/no-debug-non-zts-$_PHP55_API/opcache.so"
-  fix_php_ini_opcache "55"
-
-  _THIS_FILE=/opt/php56/etc/php56.ini
-  _OPCACHE_SO="/opt/php56/lib/php/extensions/no-debug-non-zts-$_PHP56_API/opcache.so"
-  fix_php_ini_opcache "56"
-
 fix_php_ini_opcache_all() {
+  _PHP_V="56 55 54 53"
+  for e in $_PHP_V; do
+    case "${e}" in
+      56) _P_API="${_PHP56_API}" ;;
+      55) _P_API="${_PHP55_API}" ;;
+      54) _P_API="${_PHP54_API}" ;;
+      53) _P_API="${_PHP53_API}" ;;
+      *)  msg "WARN: Unknown PHP API version for PHP ${e}"
+      ;;
+    esac
+    _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+    _OPCACHE_LP="/opt/php${e}/lib/php/extensions/no-debug-non-zts"
+    _OPCACHE_SO="${_OPCACHE_LP}-${_P_API}/opcache.so"
+    fix_php_ini_opcache "${e}"
+  done
 }
 #
 # Fix php.ini file to add geos.so
