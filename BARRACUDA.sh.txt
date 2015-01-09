@@ -2460,11 +2460,6 @@ force_advanced_nginx_config() {
     rm -f ${mtrInc}/nginx_modern_include.conf
     rm -f ${mtrInc}/nginx_octopus_include.conf
     rm -f ${mtrInc}/nginx_simple_include.conf
-    ln -s ${mtrInc}/nginx_vhost_common.conf ${mtrInc}/nginx_advanced_include.conf
-    ln -s ${mtrInc}/nginx_vhost_common.conf ${mtrInc}/nginx_legacy_include.conf
-    ln -s ${mtrInc}/nginx_vhost_common.conf ${mtrInc}/nginx_modern_include.conf
-    ln -s ${mtrInc}/nginx_vhost_common.conf ${mtrInc}/nginx_octopus_include.conf
-    ln -s ${mtrInc}/nginx_vhost_common.conf ${mtrInc}/nginx_simple_include.conf
   fi
   chown aegir:aegir ${mtrInc}/*
   chown aegir:aegir /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*
@@ -2508,25 +2503,6 @@ tune_web_server_config() {
       sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
     fi
   done
-  sed -i "s/,getenv,/,/g" /opt/php*/etc/php*.ini                      &> /dev/null
-  sed -i "s/,getenv,/,/g" /opt/php*/etc/pool.d/*.conf                 &> /dev/null
-  sed -i "s/,getenv,/,/g" /var/xdrago/conf/fpm-pool-foo.conf          &> /dev/null
-  sed -i "s/,create_function,/,/g" /opt/php*/etc/php*.ini             &> /dev/null
-  sed -i "s/,create_function,/,/g" /opt/php*/etc/pool.d/*.conf        &> /dev/null
-  sed -i "s/,create_function,/,/g" /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
-  sed -i "s/assert,//g"            /opt/php*/etc/php*.ini             &> /dev/null
-  sed -i "s/,assert,/,/g"          /opt/php*/etc/pool.d/*.conf        &> /dev/null
-  sed -i "s/,assert,/,/g"          /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
-  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /opt/php*/etc/pool.d/*.conf         &> /dev/null
-  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /var/xdrago/conf/fpm-pool-foo.conf  &> /dev/null
-  sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php53:\/opt\/php54:\/opt\/php55:\/opt\/php56\"/g"        /opt/php*/etc/pool.d/*.conf         &> /dev/null
-  sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php53:\/opt\/php54:\/opt\/php55:\/opt\/php56\"/g"        /var/xdrago/conf/fpm-pool-foo.conf  &> /dev/null
-  _ZOP_INI_TEST=$(grep "^opcache.enable=1" /opt/php*/etc/php*.ini 2>&1)
-  if [[ "$_ZOP_INI_TEST" =~ "opcache.enable=1" ]] ; then
-    _DO_NOTHING=YES
-  else
-    sed -i "s/opcache.fast_shutdown=1/opcache.fast_shutdown=1\nopcache.enable=1/g" /opt/php*/etc/php*.ini &> /dev/null
-  fi
   # PHP-FPM INI
   sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 180/g" /opt/php*/etc/php*.ini &> /dev/null
   sed -i "s/^max_execution_time =.*/max_execution_time = 180/g" /opt/php*/etc/php*.ini         &> /dev/null
