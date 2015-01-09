@@ -4655,8 +4655,7 @@ detect_cdorked_malware() {
     rm -f -r /var/opt/foo_bar*
     gcc -o /var/opt/foo_bar ${pthBld}/aegir/helpers/dump_cdorked_config.c &> /dev/null
     _C_DORKED_TEST=$(/var/opt/foo_bar 2>&1)
-    if [[ "$_C_DORKED_TEST" =~ "No shared memory matching \
-      Cdorked signature was found" ]] ; then
+    if [[ "$_C_DORKED_TEST" =~ "No shared memory matching Cdorked signature" ]] ; then
       _DO_NOTHING=YES
       ### msg "INFO: No Linux/Cdorked.A malware traces found - system clean"
     else
