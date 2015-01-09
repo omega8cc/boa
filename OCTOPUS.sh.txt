@@ -1753,12 +1753,13 @@ force_advanced_nginx_config() {
 action() {
   _REL_VERSION=$(lsb_release -sc 2>&1)
   if [ -d "/data/all/000" ] ; then
-    if [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] \
-      || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
+    if [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
       _USE_CURRENT=NO
       _HOT_SAUCE=YES
       _HM_ONLY=NO
     fi
+    msg "DEBUG: _USE_CURRENT is $_USE_CURRENT in action A"
+    msg "DEBUG: _HOT_SAUCE is $_HOT_SAUCE in action A"
   fi
   for Files in `find ${pthBld}/aegir/scripts -type f`
   do
