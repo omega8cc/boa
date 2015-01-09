@@ -22,7 +22,7 @@ action() {
   chmod 777 /opt/tmp
   rm -f /opt/tmp/sess*
   if [[ "$_HOST_TEST" =~ ".host8." ]] \
-    || [ "$_VMFAMILY" = "VS" ] \
+    || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] ; then
     rm -f /tmp/*
   fi
@@ -82,7 +82,7 @@ action() {
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _HOST_TEST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
-if [[ "$_VM_TEST" =~ beng ]] ; then
+if [[ "${_VM_TEST}" =~ beng ]] ; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"

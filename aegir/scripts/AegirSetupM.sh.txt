@@ -53,22 +53,22 @@ _AEGIR_DB_USER=EDIT_AEGIR_DB_USER
 _ESC_APASS="EDIT_ESC_APASS"
 _AEGIR_HOST=EDIT_AEGIR_HOST
 #
-if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+if [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
   _THIS_DB_HOST=$(uname -n 2>&1)
 fi
-if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
+if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
   _L_PHP_CLI=/opt/php55/bin
-elif [ "$_PHP_CLI_VERSION" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
+elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
   _L_PHP_CLI=/opt/php56/bin
-elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
+elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
   _L_PHP_CLI=/opt/php54/bin
-elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
+elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
   _L_PHP_CLI=/opt/php53/bin
 fi
-_DRUSHCMD="$_L_PHP_CLI/php $_ROOT/drush/drush.php"
+_DRUSHCMD="${_L_PHP_CLI}/php ${_ROOT}/drush/drush.php"
 #
 SHELL=/bin/bash
-PATH=$_L_PHP_CLI:/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+PATH=${_L_PHP_CLI}:/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 urlStb="http://files.aegir.cc/versions/stable"
 
 
@@ -85,23 +85,23 @@ update_php_cli_local_ini() {
   _U_TP="/var/aegir/.tmp"
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
-  _CHECK_USE_PHP_CLI=`grep "/opt/php" $_DRUSH_FILE`
+  _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
   _PHP_V="56 55 54 53"
   for e in $_PHP_V; do
     if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] \
-      && [ ! -e "$_U_HD/.ctrl.php${e}.txt" ] ; then
+      && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ] ; then
       _PHP_CLI_UPDATE=YES
     fi
   done
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
-    || [ ! -d "$_U_TP" ] \
-    || [ ! -e "$_U_HD/.ctrl.240dev.txt" ] ; then
-    rm -f -r $_U_TP
-    mkdir -p $_U_TP
-    chmod 700 $_U_TP
-    mkdir -p $_U_HD
-    rm -f $_U_HD/.ctrl.php*
+    || [ ! -d "${_U_TP}" ] \
+    || [ ! -e "${_U_HD}/.ctrl.240dev.txt" ] ; then
+    rm -f -r ${_U_TP}
+    mkdir -p ${_U_TP}
+    chmod 700 ${_U_TP}
+    mkdir -p ${_U_HD}
+    rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
     if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]] ; then
       cp -af /opt/php55/lib/php.ini ${_U_II}
@@ -137,29 +137,29 @@ update_php_cli_local_ini() {
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
       _INI=${_INI//\//\\\/}
       _QTP=${_U_TP//\//\\\/}
-      sed -i "s/.*open_basedir =.*/$_INI/g"                              ${_U_II}
+      sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_U_II}
       sed -i "s/.*error_reporting =.*/error_reporting = 1/g"             ${_U_II}
       sed -i "s/.*session.save_path =.*/session.save_path = $_QTP/g"     ${_U_II}
       sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = $_QTP/g" ${_U_II}
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               ${_U_II}
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           ${_U_II}
-      echo > $_U_HD/.ctrl.php${_U_INI}.txt
-      echo > $_U_HD/.ctrl.240dev.txt
+      echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
+      echo > ${_U_HD}/.ctrl.240dev.txt
     fi
   fi
 }
 #
 # Update php-cli for Drush.
 update_php_cli_drush() {
-  _DRUSH_FILE="$_ROOT/drush/drush.php"
-  if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
-  elif [ "$_PHP_CLI_VERSION" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
-  elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php54\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
-  elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php53\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
+  _DRUSH_FILE="${_ROOT}/drush/drush.php"
+  if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php54\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php53\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   else
     msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported values"
     msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
@@ -193,7 +193,7 @@ extract_archive() {
 get_dev_ext() {
   if [ ! -z $1 ] ; then
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab \
-      "http://files.aegir.cc/dev/$_AEGIR_XTS_VERSION/$1"
+      "http://files.aegir.cc/dev/${_AEGIR_XTS_VERSION}/$1"
     extract_archive "$1"
   fi
 }
@@ -212,62 +212,62 @@ if [ `whoami` = "root" ] ; then
   exit 1
 fi
 
-msg "INFO: Installing drush in $_ROOT"
-cd $_ROOT
-get_dev_ext "drush-$_DRUSH_VERSION.tar.gz"
-cd $_ROOT/drush/
-rm -f -r $_ROOT/drush/vendor
-get_dev_ext "vendor-$_DRUSH_VERSION.tar.gz"
-find $_ROOT/drush -type d -exec chmod 0755 {} \; &> /dev/null
-find $_ROOT/drush -type f -exec chmod 0644 {} \; &> /dev/null
-chmod 755 $_ROOT/drush/drush
-chmod 755 $_ROOT/drush/drush.php
+msg "INFO: Installing drush in ${_ROOT}"
+cd ${_ROOT}
+get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
+cd ${_ROOT}/drush/
+rm -f -r ${_ROOT}/drush/vendor
+get_dev_ext "vendor-${_DRUSH_VERSION}.tar.gz"
+find ${_ROOT}/drush -type d -exec chmod 0755 {} \; &> /dev/null
+find ${_ROOT}/drush -type f -exec chmod 0644 {} \; &> /dev/null
+chmod 755 ${_ROOT}/drush/drush
+chmod 755 ${_ROOT}/drush/drush.php
 
 update_php_cli_drush
 update_php_cli_local_ini
 
-if $_DRUSHCMD help > /dev/null ; then
+if ${_DRUSHCMD} help > /dev/null ; then
   msg "INFO: Drush seems to be functioning properly"
 else
-  msg "FATAL ERROR: Drush is broken ($_DRUSH help failed)"
+  msg "FATAL ERROR: Drush is broken (${_D}RUSH help failed)"
   msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
   touch /opt/tmp/status-AegirSetupM-FAIL
   exit 1
 fi
 
-if $_DRUSHCMD help | grep "^ provision-install" > /dev/null ; then
+if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
   msg "INFO: Provision already seems to be installed"
 else
-  msg "INFO: Installing provision backend in $_ROOT/.drush"
-  mkdir -p $_ROOT/.drush/{sys,xts,usr}
-  if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
-    cd $_ROOT/.drush
+  msg "INFO: Installing provision backend in ${_ROOT}/.drush"
+  mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
+  if [ "${_AEGIR_VERSION}" = "HEAD" ] ; then
+    cd ${_ROOT}/.drush
     msg "INFO: Downloading Drush and Provision extensions..."
-    rm -f -r $_ROOT/.drush/{sys,xts,usr}
-    rm -f -r $_ROOT/.drush/{provision,drush_make}
-    mkdir -p $_ROOT/.drush/{sys,xts,usr}
-    git clone --branch $_BRANCH_PRN git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision          &> /dev/null
-    git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/xts/provision_cdn       &> /dev/null
-    git clone --branch 7.x-1.x-dev git://github.com/omega8cc/drupalgeddon.git $_ROOT/.drush/usr/drupalgeddon     &> /dev/null
-    git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/usr/drush_ecl               &> /dev/null
-    git clone --branch 7.x-1.x git://github.com/omega8cc/security_review.git $_ROOT/.drush/xts/security_review   &> /dev/null
-    git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/xts/provision_boost   &> /dev/null
-    git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/usr/registry_rebuild &> /dev/null
-    rm -f -r $_ROOT/.drush/*/.git
-    rm -f -r $_ROOT/.drush/*/*/.git
-    cd $_ROOT/.drush/usr
+    rm -f -r ${_ROOT}/.drush/{sys,xts,usr}
+    rm -f -r ${_ROOT}/.drush/{provision,drush_make}
+    mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
+    git clone --branch ${_BRANCH_PRN} git://github.com/omega8cc/provision.git ${_ROOT}/.drush/sys/provision        &> /dev/null
+    git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git ${_ROOT}/.drush/xts/provision_cdn       &> /dev/null
+    git clone --branch 7.x-1.x-dev git://github.com/omega8cc/drupalgeddon.git ${_ROOT}/.drush/usr/drupalgeddon     &> /dev/null
+    git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git ${_ROOT}/.drush/usr/drush_ecl               &> /dev/null
+    git clone --branch 7.x-1.x git://github.com/omega8cc/security_review.git ${_ROOT}/.drush/xts/security_review   &> /dev/null
+    git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git ${_ROOT}/.drush/xts/provision_boost   &> /dev/null
+    git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git ${_ROOT}/.drush/usr/registry_rebuild &> /dev/null
+    rm -f -r ${_ROOT}/.drush/*/.git
+    rm -f -r ${_ROOT}/.drush/*/*/.git
+    cd ${_ROOT}/.drush/usr
     get_dev_ext "clean_missing_modules.tar.gz"
   else
     msg "INFO: Downloading Drush and Provision extensions..."
-    cd $_ROOT/.drush/sys
+    cd ${_ROOT}/.drush/sys
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-      "${urlStb}/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
-    cd $_ROOT/.drush/usr
+      "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
+    cd ${_ROOT}/.drush/usr
     get_dev_ext "clean_missing_modules.tar.gz"
     get_dev_ext "drupalgeddon.tar.gz"
     get_dev_ext "drush_ecl.tar.gz"
     get_dev_ext "registry_rebuild.tar.gz"
-    cd $_ROOT/.drush/xts
+    cd ${_ROOT}/.drush/xts
     get_dev_ext "provision_boost.tar.gz"
     get_dev_ext "provision_cdn.tar.gz"
     get_dev_ext "security_review.tar.gz"
@@ -275,22 +275,22 @@ else
 fi
 
 msg "INFO: Installing the frontend"
-$_DRUSHCMD cache-clear drush >$_ROOT/install.log 2>&1
-rm -f -r $_ROOT/.tmp/cache
-_HOSTMASTER_ROOT="$_ROOT/hostmaster-$_AEGIR_VERSION"
+${_DRUSHCMD} cache-clear drush >${_ROOT}/install.log 2>&1
+rm -f -r ${_ROOT}/.tmp/cache
+_HOSTMASTER_ROOT="${_ROOT}/hostmaster-${_AEGIR_VERSION}"
 
-$_DRUSHCMD hostmaster-install \
-  --aegir_host=$_AEGIR_HOST \
-  --aegir_db_user=$_AEGIR_DB_USER \
-  --aegir_db_pass=$_ESC_APASS \
-  --aegir_root=$_ROOT \
+${_DRUSHCMD} hostmaster-install \
+  --aegir_host=${_AEGIR_HOST} \
+  --aegir_db_user=${_AEGIR_DB_USER} \
+  --aegir_db_pass=${_ESC_APASS} \
+  --aegir_root=${_ROOT} \
   --root=$_HOSTMASTER_ROOT \
-  --version=$_AEGIR_VERSION $@
+  --version=${_AEGIR_VERSION} $@
 
 mkdir -p /var/aegir/backups/system
 chmod 700 /var/aegir/backups/system
-_L_SYS="/var/aegir/backups/system/.$_AEGIR_DB_USER.pass.txt"
-echo "$_ESC_APASS" > $_L_SYS
+_L_SYS="/var/aegir/backups/system/.${_AEGIR_DB_USER}.pass.txt"
+echo "${_ESC_APASS}" > $_L_SYS
 chmod 0600 $_L_SYS
 
 ###----------------------------------------###

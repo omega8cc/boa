@@ -77,27 +77,27 @@ disable_chattr() {
     chattr -i /home/$1/.drush/*.ini  &> /dev/null
     if [ "$1" != "${_HM_U}.ftp" ] ; then
       if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] \
-        && [ -d "$User/.drush/usr/drupalgeddon" ] ; then
-        ln -sf $User/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
+        && [ -d "${User}/.drush/usr/drupalgeddon" ] ; then
+        ln -sf ${User}/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
       fi
     else
-      if [ ! -d "$User/.drush/usr/drupalgeddon" ] \
-        || [ ! -e "$User/static/control/.drupalgeddon.in.015.pid" ] ; then
-        rm -f $User/.drush/usr/drupalgeddon &> /dev/null
-        cd $User/.drush/usr
+      if [ ! -d "${User}/.drush/usr/drupalgeddon" ] \
+        || [ ! -e "${User}/static/control/.drupalgeddon.in.015.pid" ] ; then
+        rm -f ${User}/.drush/usr/drupalgeddon &> /dev/null
+        cd ${User}/.drush/usr
         get_dev_ext "drupalgeddon.tar.gz"
-        find $User/.drush/usr/drupalgeddon -type d \
+        find ${User}/.drush/usr/drupalgeddon -type d \
           -exec chmod 0750 {} \; &> /dev/null
-        find $User/.drush/usr/drupalgeddon -type f \
+        find ${User}/.drush/usr/drupalgeddon -type f \
           -exec chmod 0640 {} \; &> /dev/null
-        chown -R ${_HM_U}:users $User/.drush/usr/drupalgeddon
-        rm -f $User/static/control/.drupalgeddon.in.00*.pid
-        touch $User/static/control/.drupalgeddon.in.015.pid
+        chown -R ${_HM_U}:users ${User}/.drush/usr/drupalgeddon
+        rm -f ${User}/static/control/.drupalgeddon.in.00*.pid
+        touch ${User}/static/control/.drupalgeddon.in.015.pid
       fi
       if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] \
-        && [ -d "$User/.drush/usr/drupalgeddon" ] ; then
+        && [ -d "${User}/.drush/usr/drupalgeddon" ] ; then
         rm -f -r /home/$1/.drush/usr/drupalgeddon
-        ln -sf $User/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
+        ln -sf ${User}/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
       fi
     fi
   fi
@@ -117,7 +117,7 @@ run_drush4_nosilent_cmd() {
 
 run_drush7_nosilent_cmd() {
   su -s /bin/bash - ${_HM_U}.ftp -c "drush7 cc drush" &> /dev/null
-  rm -f -r $User/.tmp/cache
+  rm -f -r ${User}/.tmp/cache
   su -s /bin/bash - ${_HM_U}.ftp -c "drush7 @${Dom} $1"
 }
 
@@ -197,7 +197,7 @@ check_if_required() {
 }
 
 check_if_skip() {
-  for s in $_MODULES_SKIP; do
+  for s in ${_MODULES_SKIP}; do
     if [ ! -z "$1" ] && [ "$s" = "$1" ] ; then
       _SKIP=YES
       #echo $1 is whitelisted and will not be disabled in $Dom
@@ -218,7 +218,7 @@ disable_modules() {
   for m in $1; do
     _SKIP=NO
     _FORCE=NO
-    if [ ! -z "$_MODULES_SKIP" ] ; then
+    if [ ! -z "${_MODULES_SKIP}" ] ; then
       check_if_skip "$m"
     fi
     if [ ! -z "$_MODULES_FORCE" ] ; then
@@ -267,7 +267,7 @@ fix_user_register_protection() {
 
   _PLR_CTRL_FILE="$Plr/sites/all/modules/boa_platform_control.ini"
 
-  if [ -e "$User/static/control/enable_user_register_protection.info" ] \
+  if [ -e "${User}/static/control/enable_user_register_protection.info" ] \
     && [ -e "/data/conf/default.boa_platform_control.ini" ] \
     && [ ! -e "$_PLR_CTRL_FILE" ] ; then
     cp -af /data/conf/default.boa_platform_control.ini \
@@ -284,11 +284,11 @@ fix_user_register_protection() {
     else
       _ENABLE_USER_REGISTER_PROTECTION=NO
     fi
-    if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-      if [ "$_CLIENT_OPTION" = "POWER" ] ; then
+    if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ] ; then
+      if [ "${_CLIENT_OPTION}" = "POWER" ] ; then
         _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
           $_PLR_CTRL_FILE 2>&1)
-        if [[ "$_DIS_URP_T" =~ "disable_user_register_protection = TRUE" ]] ; then
+        if [[ "${_D}IS_URP_T" =~ "disable_user_register_protection = TRUE" ]] ; then
           _DISABLE_USER_REGISTER_PROTECTION=YES
         else
           _DISABLE_USER_REGISTER_PROTECTION=NO
@@ -297,7 +297,7 @@ fix_user_register_protection() {
     else
       _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
         $_PLR_CTRL_FILE 2>&1)
-      if [[ "$_DIS_URP_T" =~ "disable_user_register_protection = TRUE" ]] ; then
+      if [[ "${_D}IS_URP_T" =~ "disable_user_register_protection = TRUE" ]] ; then
         _DISABLE_USER_REGISTER_PROTECTION=YES
       else
         _DISABLE_USER_REGISTER_PROTECTION=NO
@@ -308,7 +308,7 @@ fix_user_register_protection() {
   fi
 
   if [ "$_ENABLE_USER_REGISTER_PROTECTION" = "NO" ] \
-    && [ -e "$User/static/control/enable_user_register_protection.info" ] ; then
+    && [ -e "${User}/static/control/enable_user_register_protection.info" ] ; then
     sed -i "s/.*enable_user_register_protection.*/enable_user_register_protection = TRUE/g" \
       $_PLR_CTRL_FILE &> /dev/null
     _ENABLE_USER_REGISTER_PROTECTION=YES
@@ -316,16 +316,16 @@ fix_user_register_protection() {
 
   _DIR_CTRL_FILE="$Dir/modules/boa_site_control.ini"
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
-    && [ ! -e "$_DIR_CTRL_FILE" ] ; then
-    cp -af /data/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
-    chown $_HM_U:users $_DIR_CTRL_FILE
-    chmod 0664 $_DIR_CTRL_FILE
+    && [ ! -e "${_D}IR_CTRL_FILE" ] ; then
+    cp -af /data/conf/default.boa_site_control.ini ${_D}IR_CTRL_FILE &> /dev/null
+    chown $_HM_U:users ${_D}IR_CTRL_FILE
+    chmod 0664 ${_D}IR_CTRL_FILE
   fi
 
-  if [ -e "$_DIR_CTRL_FILE" ] ; then
+  if [ -e "${_D}IR_CTRL_FILE" ] ; then
     _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
-      $_DIR_CTRL_FILE 2>&1)
-    if [[ "$_DIS_URP_T" =~ "disable_user_register_protection = TRUE" ]] ; then
+      ${_D}IR_CTRL_FILE 2>&1)
+    if [[ "${_D}IS_URP_T" =~ "disable_user_register_protection = TRUE" ]] ; then
       _DISABLE_USER_REGISTER_PROTECTION=YES
     else
       _DISABLE_USER_REGISTER_PROTECTION=NO
@@ -334,7 +334,7 @@ fix_user_register_protection() {
     _DISABLE_USER_REGISTER_PROTECTION=NO
   fi
 
-  if [ "$_DISABLE_USER_REGISTER_PROTECTION" = "NO" ] ; then
+  if [ "${_D}ISABLE_USER_REGISTER_PROTECTION" = "NO" ] ; then
     Prm=$(drush4 vget ^user_register$ \
       | cut -d: -f2 \
       | awk '{ print $1}' \
@@ -352,14 +352,14 @@ fix_user_register_protection() {
     fi
   fi
 
-  if [ -e "$User/log/imported.pid" ] || [ -e "$User/log/exported.pid" ] ; then
+  if [ -e "${User}/log/imported.pid" ] || [ -e "${User}/log/exported.pid" ] ; then
     if [ -e "$Dir/modules/readonlymode_fix.info" ] ; then
-      touch $User/log/ctrl/site.${Dom}.rom-fix.info
+      touch ${User}/log/ctrl/site.${Dom}.rom-fix.info
       rm -f $Dir/modules/readonlymode_fix.info
     fi
-    if [ ! -e "$User/log/ctrl/site.${Dom}.rom-fix.info" ] ; then
+    if [ ! -e "${User}/log/ctrl/site.${Dom}.rom-fix.info" ] ; then
       drush4 vset --always-set site_readonly 0 &> /dev/null
-      touch $User/log/ctrl/site.${Dom}.rom-fix.info
+      touch ${User}/log/ctrl/site.${Dom}.rom-fix.info
     fi
   fi
 }
@@ -367,7 +367,7 @@ fix_user_register_protection() {
 fix_robots_txt() {
   if [ ! -e "$Dir/files/robots.txt" ] \
     && [ ! -e "$Plr/profiles/hostmaster" ] \
-    && [ "$_STATUS" = "OK" ] ; then
+    && [ "${_STATUS}" = "OK" ] ; then
     curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 \
       -A iCab "http://$Dom/robots.txt?nocache=1&noredis=1" \
       -o $Dir/files/robots.txt
@@ -423,21 +423,21 @@ sql_convert() {
 send_shutdown_notice() {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
-  if [ ! -z "$_CLIENT_EMAIL" ] && [[ ! "$_CLIENT_EMAIL" =~ "$_MY_EMAIL" ]] ; then
-    _ALRT_EMAIL="$_CLIENT_EMAIL"
+  if [ ! -z "${_CLIENT_EMAIL}" ] && [[ ! "${_CLIENT_EMAIL}" =~ "${_MY_EMAIL}" ]] ; then
+    _ALRT_EMAIL="${_CLIENT_EMAIL}"
   else
-    _ALRT_EMAIL="$_MY_EMAIL"
+    _ALRT_EMAIL="${_MY_EMAIL}"
   fi
   if [[ "$_HOST_TEST" =~ ".host8." ]] \
-    || [ "$_VMFAMILY" = "VS" ] \
+    || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] ; then
     _BCC_EMAIL="omega8cc@gmail.com"
   else
-    _BCC_EMAIL="$_MY_EMAIL"
+    _BCC_EMAIL="${_MY_EMAIL}"
   fi
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
-  cat <<EOF | mail -e -a "From: $_MY_EMAIL" -a "Bcc: $_BCC_EMAIL" \
+  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: $_BCC_EMAIL" \
     -s "ALERT! Shutdown of Hacked $Dom Site on $_HOST_TEST" $_ALRT_EMAIL
 Hello,
 
@@ -473,7 +473,7 @@ This e-mail has been sent by your Aegir system monitor.
 
 EOF
   elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
-  cat <<EOF | mail -a "From: $_MY_EMAIL" -e -b $_BCC_EMAIL \
+  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b $_BCC_EMAIL \
     -s "ALERT! Shutdown of Hacked $Dom Site on $_HOST_TEST" $_ALRT_EMAIL
 Hello,
 
@@ -509,7 +509,7 @@ This e-mail has been sent by your Aegir system monitor.
 
 EOF
   else
-  cat <<EOF | mail -r $_MY_EMAIL -e -b $_BCC_EMAIL \
+  cat <<EOF | mail -r ${_MY_EMAIL} -e -b $_BCC_EMAIL \
     -s "ALERT! Shutdown of Hacked $Dom Site on $_HOST_TEST" $_ALRT_EMAIL
 Hello,
 
@@ -545,28 +545,28 @@ This e-mail has been sent by your Aegir system monitor.
 
 EOF
   fi
-  echo "ALERT: HACKED notice sent to $_CLIENT_EMAIL [$_HM_U]: OK"
+  echo "ALERT: HACKED notice sent to ${_CLIENT_EMAIL} [$_HM_U]: OK"
 }
 
 send_hacked_alert() {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
-  if [ ! -z "$_CLIENT_EMAIL" ] \
-    && [[ ! "$_CLIENT_EMAIL" =~ "$_MY_EMAIL" ]] ; then
-    _ALRT_EMAIL="$_CLIENT_EMAIL"
+  if [ ! -z "${_CLIENT_EMAIL}" ] \
+    && [[ ! "${_CLIENT_EMAIL}" =~ "${_MY_EMAIL}" ]] ; then
+    _ALRT_EMAIL="${_CLIENT_EMAIL}"
   else
-    _ALRT_EMAIL="$_MY_EMAIL"
+    _ALRT_EMAIL="${_MY_EMAIL}"
   fi
   if [[ "$_HOST_TEST" =~ ".host8." ]] \
-    || [ "$_VMFAMILY" = "VS" ] \
+    || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] ; then
     _BCC_EMAIL="omega8cc@gmail.com"
   else
-    _BCC_EMAIL="$_MY_EMAIL"
+    _BCC_EMAIL="${_MY_EMAIL}"
   fi
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
-  cat <<EOF | mail -e -a "From: $_MY_EMAIL" -a "Bcc: $_BCC_EMAIL" \
+  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: $_BCC_EMAIL" \
     -s "URGENT: The $Dom site on $_HOST_TEST has been HACKED!" $_ALRT_EMAIL
 Hello,
 
@@ -594,7 +594,7 @@ This e-mail has been sent by your Aegir system monitor.
 
 EOF
   elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
-  cat <<EOF | mail -a "From: $_MY_EMAIL" -e -b $_BCC_EMAIL \
+  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b $_BCC_EMAIL \
     -s "URGENT: The $Dom site on $_HOST_TEST has been HACKED!" $_ALRT_EMAIL
 Hello,
 
@@ -622,7 +622,7 @@ This e-mail has been sent by your Aegir system monitor.
 
 EOF
   else
-  cat <<EOF | mail -r $_MY_EMAIL -e -b $_BCC_EMAIL \
+  cat <<EOF | mail -r ${_MY_EMAIL} -e -b $_BCC_EMAIL \
     -s "URGENT: The $Dom site on $_HOST_TEST has been HACKED!" $_ALRT_EMAIL
 Hello,
 
@@ -650,7 +650,7 @@ This e-mail has been sent by your Aegir system monitor.
 
 EOF
   fi
-  echo "ALERT: HACKED notice sent to $_CLIENT_EMAIL [$_HM_U]: OK"
+  echo "ALERT: HACKED notice sent to ${_CLIENT_EMAIL} [$_HM_U]: OK"
 }
 
 check_site_status() {
@@ -664,10 +664,10 @@ check_site_status() {
   if [ "$_SITE_TEST_RESULT" = "OK" ] ; then
     _STATUS_TEST=$(run_drush4_nosilent_cmd "status \
       | grep 'Drupal bootstrap.*:.*Successful'" 2>&1)
-    if [[ "$_STATUS_TEST" =~ "Successful" ]] ; then
+    if [[ "${_STATUS_TEST}" =~ "Successful" ]] ; then
       _STATUS=OK
       _RUN_DGN=NO
-      if [ -e "$User/static/control/drupalgeddon.info" ] ; then
+      if [ -e "${User}/static/control/drupalgeddon.info" ] ; then
         _RUN_DGN=YES
       else
         if [ -e "/root/.force.drupalgeddon.cnf" ] ; then
@@ -679,29 +679,29 @@ check_site_status() {
         if [ -L "/home/${_HM_U}.ftp/.drush/usr/drupalgeddon" ] ; then
           run_drush4_cmd "en update -y"
           _DGDD_TEST=$(run_drush4_nosilent_cmd "drupalgeddon-test" 2>&1)
-          if [[ "$_DGDD_TEST" =~ "No evidence of known Drupalgeddon exploits" ]] ; then
+          if [[ "${_D}GDD_TEST" =~ "No evidence of known Drupalgeddon exploits" ]] ; then
             _DO_NOTHING=YES
-          elif [[ "$_DGDD_TEST" =~ "The drush command" ]] \
-            && [[ "$_DGDD_TEST" =~ "could not be found" ]]; then
+          elif [[ "${_D}GDD_TEST" =~ "The drush command" ]] \
+            && [[ "${_D}GDD_TEST" =~ "could not be found" ]]; then
             _DO_NOTHING=YES
-          elif [ -z "$_DGDD_TEST" ] ; then
+          elif [ -z "${_D}GDD_TEST" ] ; then
             _DO_NOTHING=YES
-          elif [[ "$_DGDD_TEST" =~ "Drush command terminated" ]] ; then
+          elif [[ "${_D}GDD_TEST" =~ "Drush command terminated" ]] ; then
             echo "ALERT: THIS SITE IS PROBABLY BROKEN! $Dir"
             echo "${_DGDD_TEST}"
           else
             echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
             _DETECTED="${_DGDD_TEST}"
-            if [ ! -z "$_MY_EMAIL" ] ; then
-              if [[ "$_DGDD_TEST" =~ "Role \"megauser\" discovered" ]] \
-                || [[ "$_DGDD_TEST" =~ "User \"drupaldev\" discovered" ]] \
-                || [[ "$_DGDD_TEST" =~ "User \"owned\" discovered" ]] \
-                || [[ "$_DGDD_TEST" =~ "User \"system\" discovered" ]] \
-                || [[ "$_DGDD_TEST" =~ "User \"configure\" discovered" ]] \
-                || [[ "$_DGDD_TEST" =~ "User \"drplsys\" discovered" ]] ; then
-                if [ -e "$User/config/server_master/nginx/vhost.d/${Dom}" ] ; then
-                  mv -f $User/config/server_master/nginx/vhost.d/${Dom} \
-                    $User/config/server_master/nginx/vhost.d/.${Dom}
+            if [ ! -z "${_MY_EMAIL}" ] ; then
+              if [[ "${_D}GDD_TEST" =~ "Role \"megauser\" discovered" ]] \
+                || [[ "${_D}GDD_TEST" =~ "User \"drupaldev\" discovered" ]] \
+                || [[ "${_D}GDD_TEST" =~ "User \"owned\" discovered" ]] \
+                || [[ "${_D}GDD_TEST" =~ "User \"system\" discovered" ]] \
+                || [[ "${_D}GDD_TEST" =~ "User \"configure\" discovered" ]] \
+                || [[ "${_D}GDD_TEST" =~ "User \"drplsys\" discovered" ]] ; then
+                if [ -e "${User}/config/server_master/nginx/vhost.d/${Dom}" ] ; then
+                  mv -f ${User}/config/server_master/nginx/vhost.d/${Dom} \
+                    ${User}/config/server_master/nginx/vhost.d/.${Dom}
                   send_shutdown_notice
                 fi
               else
@@ -713,20 +713,20 @@ check_site_status() {
           _DGMR_TEST=$(run_drush4_nosilent_cmd \
             "sqlq \"SELECT * FROM menu_router WHERE access_callback \
             = 'file_put_contents'\" | grep 'file_put_contents'" 2>&1)
-          if [[ "$_DGMR_TEST" =~ "file_put_contents" ]] ; then
+          if [[ "${_D}GMR_TEST" =~ "file_put_contents" ]] ; then
             echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
             _DETECTED="file_put_contents as access_callback detected in menu_router table"
-            if [ ! -z "$_MY_EMAIL" ] ; then
+            if [ ! -z "${_MY_EMAIL}" ] ; then
               send_hacked_alert
             fi
           fi
           _DGMR_TEST=$(run_drush4_nosilent_cmd \
             "sqlq \"SELECT * FROM menu_router WHERE access_callback \
             = 'assert'\" | grep 'assert'" 2>&1)
-          if [[ "$_DGMR_TEST" =~ "assert" ]] ; then
+          if [[ "${_D}GMR_TEST" =~ "assert" ]] ; then
             echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
             _DETECTED="assert as access_callback detected in menu_router table"
-            if [ ! -z "$_MY_EMAIL" ] ; then
+            if [ ! -z "${_MY_EMAIL}" ] ; then
               send_hacked_alert
             fi
           fi
@@ -881,25 +881,25 @@ setup_solr() {
   _DIR_CTRL_FILE="$Dir/modules/boa_site_control.ini"
   _SOLR_DIR="/opt/solr4/${_HM_U}.${Dom}"
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
-    && [ ! -e "$_DIR_CTRL_FILE" ] ; then
-    cp -af /data/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
-    chown $_HM_U:users $_DIR_CTRL_FILE
-    chmod 0664 $_DIR_CTRL_FILE
+    && [ ! -e "${_D}IR_CTRL_FILE" ] ; then
+    cp -af /data/conf/default.boa_site_control.ini ${_D}IR_CTRL_FILE &> /dev/null
+    chown $_HM_U:users ${_D}IR_CTRL_FILE
+    chmod 0664 ${_D}IR_CTRL_FILE
   fi
 
   ###
   ### Support for solr_custom_config directive
   ###
-  if [ -e "$_DIR_CTRL_FILE" ] ; then
+  if [ -e "${_D}IR_CTRL_FILE" ] ; then
     _SOLR_CUSTOM_CONFIG_PRESENT=$(grep "solr_custom_config" \
-      $_DIR_CTRL_FILE 2>&1)
+      ${_D}IR_CTRL_FILE 2>&1)
     if [[ "$_SOLR_CUSTOM_CONFIG_PRESENT" =~ "solr_custom_config" ]] ; then
       _DO_NOTHING=YES
     else
-      echo ";solr_custom_config = NO" >> $_DIR_CTRL_FILE
+      echo ";solr_custom_config = NO" >> ${_D}IR_CTRL_FILE
     fi
     _SOLR_CUSTOM_CONFIG_TEST=$(grep "^solr_custom_config = YES" \
-      $_DIR_CTRL_FILE 2>&1)
+      ${_D}IR_CTRL_FILE 2>&1)
     if [[ "$_SOLR_CUSTOM_CONFIG_TEST" =~ "solr_custom_config = YES" ]] ; then
       _SOLR_CUSTOM_CONFIG_RESULT=YES
       echo "Solr config for ${_SOLR_DIR} is protected"
@@ -908,22 +908,22 @@ setup_solr() {
   ###
   ### Support for solr_integration_module directive
   ###
-  if [ -e "$_DIR_CTRL_FILE" ] ; then
+  if [ -e "${_D}IR_CTRL_FILE" ] ; then
     _SOLR_MODULE=""
     _SOLR_IM_PRESENT=$(grep "solr_integration_module" \
-      $_DIR_CTRL_FILE 2>&1)
+      ${_D}IR_CTRL_FILE 2>&1)
     if [[ "$_SOLR_IM_PRESENT" =~ "solr_integration_module" ]] ; then
       _DO_NOTHING=YES
     else
-      echo ";solr_integration_module = NO" >> $_DIR_CTRL_FILE
+      echo ";solr_integration_module = NO" >> ${_D}IR_CTRL_FILE
     fi
     _ASOLR_T=$(grep "^solr_integration_module = apachesolr" \
-      $_DIR_CTRL_FILE 2>&1)
+      ${_D}IR_CTRL_FILE 2>&1)
     if [[ "$_ASOLR_T" =~ "apachesolr" ]] ; then
       _SOLR_MODULE=apachesolr
     fi
     _SAPI_SOLR_T=$(grep \
-      "^solr_integration_module = search_api_solr" $_DIR_CTRL_FILE 2>&1)
+      "^solr_integration_module = search_api_solr" ${_D}IR_CTRL_FILE 2>&1)
     if [[ "$_SAPI_SOLR_T" =~ "search_api_solr" ]] ; then
       _SOLR_MODULE=search_api_solr
     fi
@@ -936,16 +936,16 @@ setup_solr() {
   ###
   ### Support for solr_update_config directive
   ###
-  if [ -e "$_DIR_CTRL_FILE" ] ; then
+  if [ -e "${_D}IR_CTRL_FILE" ] ; then
     _SOLR_UPDATE_CONFIG_PRESENT=$(grep "solr_update_config" \
-      $_DIR_CTRL_FILE 2>&1)
+      ${_D}IR_CTRL_FILE 2>&1)
     if [[ "$_SOLR_UPDATE_CONFIG_PRESENT" =~ "solr_update_config" ]] ; then
       _DO_NOTHING=YES
     else
-      echo ";solr_update_config = NO" >> $_DIR_CTRL_FILE
+      echo ";solr_update_config = NO" >> ${_D}IR_CTRL_FILE
     fi
     _SOLR_UPDATE_CONFIG_TEST=$(grep "^solr_update_config = YES" \
-      $_DIR_CTRL_FILE 2>&1)
+      ${_D}IR_CTRL_FILE 2>&1)
     if [[ "$_SOLR_UPDATE_CONFIG_TEST" =~ "solr_update_config = YES" ]] ; then
       if [ "$_SOLR_CUSTOM_CONFIG_RESULT" = "YES" ] \
         || [ -e "${_SOLR_DIR}/conf/BOA-2.4.0.conf" ] ; then
@@ -958,7 +958,7 @@ setup_solr() {
 }
 
 fix_modules() {
-  if [ "$_MODULES_FIX" = "YES" ] ; then
+  if [ "${_MODULES_FIX}" = "YES" ] ; then
     searchStringA="pressflow-5.23.50"
     case $Dir in
       *"$searchStringA"*) ;;
@@ -966,7 +966,7 @@ fix_modules() {
       if [ -e "$Dir/drushrc.php" ] ; then
         cd $Dir
         check_site_status
-        if [ "$_STATUS" = "OK" ] ; then
+        if [ "${_STATUS}" = "OK" ] ; then
 
           setup_solr
           fix_user_register_protection
@@ -983,16 +983,16 @@ fix_modules() {
           fi
           if [ "$_AUTO_CONFIG_ADVAGG" = "YES" ] ; then
             if [ -e "/data/conf/default.boa_site_control.ini" ] \
-              && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+              && [ ! -e "${_D}IR_CTRL_FILE" ] ; then
               cp -af /data/conf/default.boa_site_control.ini \
-                $_DIR_CTRL_FILE &> /dev/null
-              chown $_HM_U:users $_DIR_CTRL_FILE
-              chmod 0664 $_DIR_CTRL_FILE
+                ${_D}IR_CTRL_FILE &> /dev/null
+              chown $_HM_U:users ${_D}IR_CTRL_FILE
+              chmod 0664 ${_D}IR_CTRL_FILE
             fi
-            if [ -e "$_DIR_CTRL_FILE" ] ; then
-              _ADVAGG_P=$(grep "advagg_auto_configuration" $_DIR_CTRL_FILE 2>&1)
+            if [ -e "${_D}IR_CTRL_FILE" ] ; then
+              _ADVAGG_P=$(grep "advagg_auto_configuration" ${_D}IR_CTRL_FILE 2>&1)
               _ADVAGG_T=$(grep \
-                "^advagg_auto_configuration = TRUE" $_DIR_CTRL_FILE 2>&1)
+                "^advagg_auto_configuration = TRUE" ${_D}IR_CTRL_FILE 2>&1)
               if [[ "$_ADVAGG_T" =~ "advagg_auto_configuration = TRUE" ]] ; then
                 _DO_NOTHING=YES
               else
@@ -1001,32 +1001,32 @@ fix_modules() {
                 ###
                 if [[ "$_ADVAGG_P" =~ "advagg_auto_configuration" ]] ; then
                   sed -i "s/.*advagg_auto_c.*/advagg_auto_configuration = TRUE/g" \
-                    $_DIR_CTRL_FILE &> /dev/null
+                    ${_D}IR_CTRL_FILE &> /dev/null
                 else
-                  echo "advagg_auto_configuration = TRUE" >> $_DIR_CTRL_FILE
+                  echo "advagg_auto_configuration = TRUE" >> ${_D}IR_CTRL_FILE
                 fi
               fi
             fi
           else
             if [ -e "/data/conf/default.boa_site_control.ini" ] \
-              && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+              && [ ! -e "${_D}IR_CTRL_FILE" ] ; then
               cp -af /data/conf/default.boa_site_control.ini \
-                $_DIR_CTRL_FILE &> /dev/null
-              chown $_HM_U:users $_DIR_CTRL_FILE
-              chmod 0664 $_DIR_CTRL_FILE
+                ${_D}IR_CTRL_FILE &> /dev/null
+              chown $_HM_U:users ${_D}IR_CTRL_FILE
+              chmod 0664 ${_D}IR_CTRL_FILE
             fi
-            if [ -e "$_DIR_CTRL_FILE" ] ; then
-              _ADVAGG_P=$(grep "advagg_auto_configuration" $_DIR_CTRL_FILE 2>&1)
+            if [ -e "${_D}IR_CTRL_FILE" ] ; then
+              _ADVAGG_P=$(grep "advagg_auto_configuration" ${_D}IR_CTRL_FILE 2>&1)
               _ADVAGG_T=$(grep "^advagg_auto_configuration = FALSE" \
-                $_DIR_CTRL_FILE 2>&1)
+                ${_D}IR_CTRL_FILE 2>&1)
               if [[ "$_ADVAGG_T" =~ "advagg_auto_configuration = FALSE" ]] ; then
                 _DO_NOTHING=YES
               else
                 if [[ "$_ADVAGG_P" =~ "advagg_auto_configuration" ]] ; then
                   sed -i "s/.*advagg_auto_c.*/advagg_auto_configuration = FALSE/g" \
-                    $_DIR_CTRL_FILE &> /dev/null
+                    ${_D}IR_CTRL_FILE &> /dev/null
                 else
-                  echo ";advagg_auto_configuration = FALSE" >> $_DIR_CTRL_FILE
+                  echo ";advagg_auto_configuration = FALSE" >> ${_D}IR_CTRL_FILE
                 fi
               fi
             fi
@@ -1043,17 +1043,17 @@ fix_modules() {
           fi
           if [ "$_AUTO_CONFIG_PURGE_EXPIRE" = "YES" ] ; then
             if [ -e "/data/conf/default.boa_site_control.ini" ] \
-              && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+              && [ ! -e "${_D}IR_CTRL_FILE" ] ; then
               cp -af /data/conf/default.boa_site_control.ini \
-                $_DIR_CTRL_FILE &> /dev/null
-              chown $_HM_U:users $_DIR_CTRL_FILE
-              chmod 0664 $_DIR_CTRL_FILE
+                ${_D}IR_CTRL_FILE &> /dev/null
+              chown $_HM_U:users ${_D}IR_CTRL_FILE
+              chmod 0664 ${_D}IR_CTRL_FILE
             fi
-            if [ -e "$_DIR_CTRL_FILE" ] ; then
+            if [ -e "${_D}IR_CTRL_FILE" ] ; then
               _AC_PE_P=$(grep \
-                "purge_expire_auto_configuration" $_DIR_CTRL_FILE 2>&1)
+                "purge_expire_auto_configuration" ${_D}IR_CTRL_FILE 2>&1)
               _AC_PE_T=$(grep \
-                "^purge_expire_auto_configuration = TRUE" $_DIR_CTRL_FILE 2>&1)
+                "^purge_expire_auto_configuration = TRUE" ${_D}IR_CTRL_FILE 2>&1)
               if [[ "$_AC_PE_T" =~ "purge_expire_auto_configuration = TRUE" ]] ; then
                 _DO_NOTHING=YES
               else
@@ -1062,34 +1062,34 @@ fix_modules() {
                 ###
                 if [[ "$_AC_PE_P" =~ "purge_expire_auto_configuration" ]] ; then
                   sed -i "s/.*purge_expire_a.*/purge_expire_auto_configuration = TRUE/g" \
-                    $_DIR_CTRL_FILE &> /dev/null
+                    ${_D}IR_CTRL_FILE &> /dev/null
                 else
-                  echo "purge_expire_auto_configuration = TRUE" >> $_DIR_CTRL_FILE
+                  echo "purge_expire_auto_configuration = TRUE" >> ${_D}IR_CTRL_FILE
                 fi
               fi
             fi
           else
             if [ -e "/data/conf/default.boa_site_control.ini" ] \
-              && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+              && [ ! -e "${_D}IR_CTRL_FILE" ] ; then
               cp -af /data/conf/default.boa_site_control.ini \
-                $_DIR_CTRL_FILE &> /dev/null
-              chown $_HM_U:users $_DIR_CTRL_FILE
-              chmod 0664 $_DIR_CTRL_FILE
+                ${_D}IR_CTRL_FILE &> /dev/null
+              chown $_HM_U:users ${_D}IR_CTRL_FILE
+              chmod 0664 ${_D}IR_CTRL_FILE
             fi
-            if [ -e "$_DIR_CTRL_FILE" ] ; then
+            if [ -e "${_D}IR_CTRL_FILE" ] ; then
               _AC_PE_P=$(grep "purge_expire_auto_configuration" \
-                $_DIR_CTRL_FILE 2>&1)
+                ${_D}IR_CTRL_FILE 2>&1)
               _AC_PE_T=$(grep "^purge_expire_auto_configuration = FALSE" \
-                $_DIR_CTRL_FILE 2>&1)
+                ${_D}IR_CTRL_FILE 2>&1)
               if [[ "$_AC_PE_T" =~ "purge_expire_auto_configuration = FALSE" ]] ; then
                 _DO_NOTHING=YES
               else
                 if [[ "$_AC_PE_P" =~ "purge_expire_auto_configuration" ]] ; then
                   sed -i "s/.*purge_expire_a.*/purge_expire_auto_configuration = FALSE/g" \
-                    $_DIR_CTRL_FILE &> /dev/null
+                    ${_D}IR_CTRL_FILE &> /dev/null
                 else
                   echo ";purge_expire_auto_configuration = FALSE" >> \
-                    $_DIR_CTRL_FILE
+                    ${_D}IR_CTRL_FILE
                 fi
               fi
             fi
@@ -1119,15 +1119,15 @@ fix_modules() {
             fi
             if [ "$_AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS" = "YES" ] ; then
               if [ -e "/data/conf/default.boa_site_control.ini" ] \
-                && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+                && [ ! -e "${_D}IR_CTRL_FILE" ] ; then
                 cp -af /data/conf/default.boa_site_control.ini \
-                  $_DIR_CTRL_FILE &> /dev/null
-                chown $_HM_U:users $_DIR_CTRL_FILE
-                chmod 0664 $_DIR_CTRL_FILE
+                  ${_D}IR_CTRL_FILE &> /dev/null
+                chown $_HM_U:users ${_D}IR_CTRL_FILE
+                chmod 0664 ${_D}IR_CTRL_FILE
               fi
-              if [ -e "$_DIR_CTRL_FILE" ] ; then
+              if [ -e "${_D}IR_CTRL_FILE" ] ; then
                 _AC_PFD_T=$(grep "^allow_private_file_downloads = TRUE" \
-                  $_DIR_CTRL_FILE 2>&1)
+                  ${_D}IR_CTRL_FILE 2>&1)
                 if [[ "$_AC_PFD_T" =~ "allow_private_file_downloads = TRUE" ]] ; then
                   _DO_NOTHING=YES
                 else
@@ -1135,25 +1135,25 @@ fix_modules() {
                   ### Do this only for the site level ini file.
                   ###
                   sed -i "s/.*allow_private_f.*/allow_private_file_downloads = TRUE/g" \
-                    $_DIR_CTRL_FILE &> /dev/null
+                    ${_D}IR_CTRL_FILE &> /dev/null
                 fi
               fi
             else
               if [ -e "/data/conf/default.boa_site_control.ini" ] \
-                && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+                && [ ! -e "${_D}IR_CTRL_FILE" ] ; then
                 cp -af /data/conf/default.boa_site_control.ini \
-                  $_DIR_CTRL_FILE &> /dev/null
-                chown $_HM_U:users $_DIR_CTRL_FILE
-                chmod 0664 $_DIR_CTRL_FILE
+                  ${_D}IR_CTRL_FILE &> /dev/null
+                chown $_HM_U:users ${_D}IR_CTRL_FILE
+                chmod 0664 ${_D}IR_CTRL_FILE
               fi
-              if [ -e "$_DIR_CTRL_FILE" ] ; then
+              if [ -e "${_D}IR_CTRL_FILE" ] ; then
                 _AC_PFD_T=$(grep "^allow_private_file_downloads = FALSE" \
-                  $_DIR_CTRL_FILE 2>&1)
+                  ${_D}IR_CTRL_FILE 2>&1)
                 if [[ "$_AC_PFD_T" =~ "allow_private_file_downloads = FALSE" ]] ; then
                   _DO_NOTHING=YES
                 else
                   sed -i "s/.*allow_private_f.*/allow_private_file_downloads = FALSE/g" \
-                    $_DIR_CTRL_FILE &> /dev/null
+                    ${_D}IR_CTRL_FILE &> /dev/null
                 fi
               fi
             fi
@@ -1352,60 +1352,60 @@ fix_modules() {
               echo ";views_content_cache_dont_enable = FALSE" >> $_PLR_CTRL_FILE
             fi
           fi
-          if [ -e "$_DIR_CTRL_FILE" ] ; then
-             _VAR_IF_PRESENT=$(grep "session_cookie_ttl" $_DIR_CTRL_FILE 2>&1)
+          if [ -e "${_D}IR_CTRL_FILE" ] ; then
+             _VAR_IF_PRESENT=$(grep "session_cookie_ttl" ${_D}IR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "session_cookie_ttl" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";session_cookie_ttl = 86400" >> $_DIR_CTRL_FILE
+              echo ";session_cookie_ttl = 86400" >> ${_D}IR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "session_gc_eol" $_DIR_CTRL_FILE 2>&1)
+            _VAR_IF_PRESENT=$(grep "session_gc_eol" ${_D}IR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "session_gc_eol" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";session_gc_eol = 86400" >> $_DIR_CTRL_FILE
+              echo ";session_gc_eol = 86400" >> ${_D}IR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "redis_use_modern" $_DIR_CTRL_FILE 2>&1)
+            _VAR_IF_PRESENT=$(grep "redis_use_modern" ${_D}IR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_use_modern" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";redis_use_modern = TRUE" >> $_DIR_CTRL_FILE
+              echo ";redis_use_modern = TRUE" >> ${_D}IR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "redis_flush_forced_mode" $_DIR_CTRL_FILE 2>&1)
+            _VAR_IF_PRESENT=$(grep "redis_flush_forced_mode" ${_D}IR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_flush_forced_mode" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";redis_flush_forced_mode = TRUE" >> $_DIR_CTRL_FILE
+              echo ";redis_flush_forced_mode = TRUE" >> ${_D}IR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "redis_lock_enable" $_DIR_CTRL_FILE 2>&1)
+            _VAR_IF_PRESENT=$(grep "redis_lock_enable" ${_D}IR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_lock_enable" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";redis_lock_enable = TRUE" >> $_DIR_CTRL_FILE
+              echo ";redis_lock_enable = TRUE" >> ${_D}IR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "redis_exclude_bins" $_DIR_CTRL_FILE 2>&1)
+            _VAR_IF_PRESENT=$(grep "redis_exclude_bins" ${_D}IR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_exclude_bins" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";redis_exclude_bins = FALSE" >> $_DIR_CTRL_FILE
+              echo ";redis_exclude_bins = FALSE" >> ${_D}IR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "speed_booster_anon_cache_ttl" $_DIR_CTRL_FILE 2>&1)
+            _VAR_IF_PRESENT=$(grep "speed_booster_anon_cache_ttl" ${_D}IR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "speed_booster_anon_cache_ttl" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";speed_booster_anon_cache_ttl = 10" >> $_DIR_CTRL_FILE
+              echo ";speed_booster_anon_cache_ttl = 10" >> ${_D}IR_CTRL_FILE
             fi
-            _VAR_IF_PRESENT=$(grep "disable_drupal_page_cache" $_DIR_CTRL_FILE 2>&1)
+            _VAR_IF_PRESENT=$(grep "disable_drupal_page_cache" ${_D}IR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "disable_drupal_page_cache" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";disable_drupal_page_cache = FALSE" >> $_DIR_CTRL_FILE
+              echo ";disable_drupal_page_cache = FALSE" >> ${_D}IR_CTRL_FILE
             fi
-             _VAR_IF_PRESENT=$(grep "allow_private_file_downloads" $_DIR_CTRL_FILE 2>&1)
+             _VAR_IF_PRESENT=$(grep "allow_private_file_downloads" ${_D}IR_CTRL_FILE 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "allow_private_file_downloads" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";allow_private_file_downloads = FALSE" >> $_DIR_CTRL_FILE
+              echo ";allow_private_file_downloads = FALSE" >> ${_D}IR_CTRL_FILE
             fi
           fi
 
@@ -1446,9 +1446,9 @@ fix_modules() {
           fi
 
           if [ -e "$Plr/profiles/hostmaster" ] \
-            && [ ! -f "$User/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info" ] ; then
+            && [ ! -f "${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info" ] ; then
             run_drush7_hmr_cmd "@hostmaster dis cache syslog dblog -y"
-            touch $User/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
+            touch ${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
           elif [ -e "$Plr/modules/o_contrib" ] ; then
             if [ ! -e "$Plr/modules/user" ] \
               || [ ! -e "$Plr/sites/all/modules" ] \
@@ -1477,10 +1477,10 @@ fix_modules() {
             fi
           fi
           if [ -e "$Dir/modules/commerce_ubercart_check.info" ] ; then
-            touch $User/log/ctrl/site.${Dom}.cart-check.info
+            touch ${User}/log/ctrl/site.${Dom}.cart-check.info
             rm -f $Dir/modules/commerce_ubercart_check.info
           fi
-          if [ ! -e "$User/log/ctrl/site.${Dom}.cart-check.info" ] ; then
+          if [ ! -e "${User}/log/ctrl/site.${Dom}.cart-check.info" ] ; then
             _COMMERCE_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled \
               --no-core --type=module | grep \(commerce\)" 2>&1)
             _UBERCART_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled \
@@ -1489,20 +1489,20 @@ fix_modules() {
               || [[ "$_UBERCART_TEST" =~ "Ubercart" ]] ; then
               disable_modules "views_cache_bully"
             fi
-            touch $User/log/ctrl/site.${Dom}.cart-check.info
+            touch ${User}/log/ctrl/site.${Dom}.cart-check.info
           fi
-          if [ -e "$User/static/control/enable_views_cache_bully.info" ] \
-            || [ -e "$User/static/control/enable_views_content_cache.info" ] ; then
+          if [ -e "${User}/static/control/enable_views_cache_bully.info" ] \
+            || [ -e "${User}/static/control/enable_views_content_cache.info" ] ; then
             _VIEWS_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled \
               --no-core --type=module | grep \(views\)" 2>&1)
-            if [ -e "$User/static/control/enable_views_content_cache.info" ] ; then
+            if [ -e "${User}/static/control/enable_views_content_cache.info" ] ; then
               _CTOOLS_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled \
                 --no-core --type=module | grep \(ctools\)" 2>&1)
             fi
             if [[ "$_VIEWS_TEST" =~ "Views" ]] \
               && [ ! -e "$Plr/profiles/hostmaster" ] ; then
               if [ "$_VIEWS_CACHE_BULLY_DONT_ENABLE" = "NO" ] \
-                && [ -e "$User/static/control/enable_views_cache_bully.info" ] ; then
+                && [ -e "${User}/static/control/enable_views_cache_bully.info" ] ; then
                 if [ -e "$Plr/modules/o_contrib_seven/views_cache_bully" ] \
                   || [ -e "$Plr/modules/o_contrib/views_cache_bully" ] ; then
                   enable_modules "views_cache_bully"
@@ -1510,7 +1510,7 @@ fix_modules() {
               fi
               if [[ "$_CTOOLS_TEST" =~ "Chaos" ]] \
                 && [ "$_VIEWS_CONTENT_CACHE_DONT_ENABLE" = "NO" ] \
-                && [ -e "$User/static/control/enable_views_content_cache.info" ] ; then
+                && [ -e "${User}/static/control/enable_views_content_cache.info" ] ; then
                 if [ -e "$Plr/modules/o_contrib_seven/views_content_cache" ] \
                   || [ -e "$Plr/modules/o_contrib/views_content_cache" ] ; then
                   enable_modules "views_content_cache"
@@ -1560,31 +1560,31 @@ fix_modules() {
               _SQL_CONVERT=myisam
             fi
           fi
-          if [ -e "$_DIR_CTRL_FILE" ] ; then
+          if [ -e "${_D}IR_CTRL_FILE" ] ; then
             _SQL_INDB_P=$(grep "sql_conversion_mode" \
-              $_DIR_CTRL_FILE 2>&1)
+              ${_D}IR_CTRL_FILE 2>&1)
             if [[ "$_SQL_INDB_P" =~ "sql_conversion_mode" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";sql_conversion_mode = NO" >> $_DIR_CTRL_FILE
+              echo ";sql_conversion_mode = NO" >> ${_D}IR_CTRL_FILE
             fi
             _SQL_INDB_T=$(grep "^sql_conversion_mode = innodb" \
-              $_DIR_CTRL_FILE 2>&1)
+              ${_D}IR_CTRL_FILE 2>&1)
             if [[ "$_SQL_INDB_T" =~ "sql_conversion_mode = innodb" ]] ; then
               _SQL_CONVERT=innodb
             fi
             _SQL_MYSM_T=$(grep "^sql_conversion_mode = myisam" \
-              $_DIR_CTRL_FILE 2>&1)
+              ${_D}IR_CTRL_FILE 2>&1)
             if [[ "$_SQL_MYSM_T" =~ "sql_conversion_mode = myisam" ]] ; then
               _SQL_CONVERT=myisam
             fi
           fi
-          if [ ! -z "$_SQL_CONVERT" ] ; then
-            if [ "$_SQL_CONVERT" = "YES" ] ; then
+          if [ ! -z "${_SQL_CONVERT}" ] ; then
+            if [ "${_SQL_CONVERT}" = "YES" ] ; then
               _SQL_CONVERT=innodb
             fi
-            if [ "$_SQL_CONVERT" = "myisam" ] \
-              || [ "$_SQL_CONVERT" = "innodb" ] ; then
+            if [ "${_SQL_CONVERT}" = "myisam" ] \
+              || [ "${_SQL_CONVERT}" = "innodb" ] ; then
               _TIMESTAMP=$(date +%y%m%d-%H%M 2>&1)
               echo "$_TIMESTAMP sql conversion to-${_SQL_CONVERT} \
                 for $Dom started"
@@ -1604,9 +1604,9 @@ fix_modules() {
 cleanup_ghost_platforms() {
   if [ -e "$Plr" ] ; then
     if [ ! -e "$Plr/index.php" ] || [ ! -e "$Plr/profiles" ] ; then
-      mkdir -p $User/undo
-      mv -f $Plr $User/undo/ &> /dev/null
-      echo GHOST platform $Plr detected and moved to $User/undo/
+      mkdir -p ${User}/undo
+      mv -f $Plr ${User}/undo/ &> /dev/null
+      echo GHOST platform $Plr detected and moved to ${User}/undo/
     fi
   fi
 }
@@ -1635,20 +1635,20 @@ fix_static_permissions() {
     if [ -e "$Plr/web.config" ] ; then
       fix_seven_core_patch
     fi
-    if [ ! -e "$User/static/control/unlock.info" ] \
+    if [ ! -e "${User}/static/control/unlock.info" ] \
       && [ ! -e "$Plr/skip.info" ] ; then
-      if [ ! -e "$User/log/ctrl/plr.${PlrID}.ctm-lock-${_NOW}.info" ] ; then
+      if [ ! -e "${User}/log/ctrl/plr.${PlrID}.ctm-lock-${_NOW}.info" ] ; then
         chown -R ${_HM_U} $Plr &> /dev/null
-        touch $User/log/ctrl/plr.${PlrID}.ctm-lock-${_NOW}.info
+        touch ${User}/log/ctrl/plr.${PlrID}.ctm-lock-${_NOW}.info
       fi
-    elif [ -e "$User/static/control/unlock.info" ] \
+    elif [ -e "${User}/static/control/unlock.info" ] \
       && [ ! -e "$Plr/skip.info" ] ; then
-      if [ ! -e "$User/log/ctrl/plr.${PlrID}.ctm-unlock-${_NOW}.info" ] ; then
+      if [ ! -e "${User}/log/ctrl/plr.${PlrID}.ctm-unlock-${_NOW}.info" ] ; then
         chown -R ${_HM_U}.ftp $Plr &> /dev/null
-        touch $User/log/ctrl/plr.${PlrID}.ctm-unlock-${_NOW}.info
+        touch ${User}/log/ctrl/plr.${PlrID}.ctm-unlock-${_NOW}.info
       fi
     fi
-    if [ ! -f "$User/log/ctrl/plr.${PlrID}.perm-fix-${_NOW}.info" ] ; then
+    if [ ! -f "${User}/log/ctrl/plr.${PlrID}.perm-fix-${_NOW}.info" ] ; then
       find $Plr/profiles -type f -name "*.info" -print0 | xargs -0 sed -i \
         's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
       find $Plr -type d -exec chmod 0775 {} \; &> /dev/null
@@ -1682,26 +1682,26 @@ fix_permissions() {
     rm -f $Plr/profiles/*permissions*.info
     rm -f $Plr/sites/all/permissions-fix*
   fi
-  if [ ! -f "$User/log/ctrl/plr.${PlrID}.perm-fix-${_NOW}.info" ] \
+  if [ ! -f "${User}/log/ctrl/plr.${PlrID}.perm-fix-${_NOW}.info" ] \
     && [ -e "$Plr" ] ; then
     mkdir -p $Plr/sites/all/{modules,themes,libraries,drush}
     find $Plr/sites/all/modules -type f -name "*.info" -print0 | xargs -0 sed -i \
       's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries,drush}/*{.tar,.tar.gz,.zip} \
       -type f -exec rm -f {} \; &> /dev/null
-    if [ ! -e "$User/static/control/unlock.info" ] \
+    if [ ! -e "${User}/static/control/unlock.info" ] \
       && [ ! -e "$Plr/skip.info" ] ; then
-      if [ ! -e "$User/log/ctrl/plr.${PlrID}.lock-${_NOW}.info" ] ; then
+      if [ ! -e "${User}/log/ctrl/plr.${PlrID}.lock-${_NOW}.info" ] ; then
         chown -R ${_HM_U}:users \
           $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
-        touch $User/log/ctrl/plr.${PlrID}.lock-${_NOW}.info
+        touch ${User}/log/ctrl/plr.${PlrID}.lock-${_NOW}.info
       fi
-    elif [ -e "$User/static/control/unlock.info" ] \
+    elif [ -e "${User}/static/control/unlock.info" ] \
       && [ ! -e "$Plr/skip.info" ] ; then
-      if [ ! -e "$User/log/ctrl/plr.${PlrID}.unlock-${_NOW}.info" ] ; then
+      if [ ! -e "${User}/log/ctrl/plr.${PlrID}.unlock-${_NOW}.info" ] ; then
         chown -R ${_HM_U}.ftp:users \
           $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
-        touch $User/log/ctrl/plr.${PlrID}.unlock-${_NOW}.info
+        touch ${User}/log/ctrl/plr.${PlrID}.unlock-${_NOW}.info
       fi
     fi
     chown $_HM_U:users \
@@ -1723,7 +1723,7 @@ fix_permissions() {
     chmod -R 775 $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
     chown -R ${_HM_U}.ftp:www-data \
       $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
-    touch $User/log/ctrl/plr.${PlrID}.perm-fix-${_NOW}.info
+    touch ${User}/log/ctrl/plr.${PlrID}.perm-fix-${_NOW}.info
   fi
   if [ -e "$Dir" ] \
     && [ -e "$Dir/drushrc.php" ] \
@@ -1740,11 +1740,11 @@ fix_permissions() {
     find $Dir/{modules,themes,libraries}/*{.tar,.tar.gz,.zip} -type f -exec \
       rm -f {} \; &> /dev/null
     rm -f $Dir/modules/local-allow.info
-    if [ ! -e "$User/static/control/unlock.info" ] \
+    if [ ! -e "${User}/static/control/unlock.info" ] \
       && [ ! -e "$Plr/skip.info" ] ; then
       chown -R ${_HM_U}:users \
         $Dir/{modules,themes,libraries}/* &> /dev/null
-    elif [ -e "$User/static/control/unlock.info" ] \
+    elif [ -e "${User}/static/control/unlock.info" ] \
       && [ ! -e "$Plr/skip.info" ] ; then
       chown -R ${_HM_U}.ftp:users \
         $Dir/{modules,themes,libraries}/* &> /dev/null
@@ -1780,7 +1780,7 @@ fix_permissions() {
     chown -L -R $_HM_U:www-data $Dir/private/config &> /dev/null
     _DB_HOST_PRESENT=$(grep "^\$_SERVER\['db_host'\] = \$options\['db_host'\];" \
       $Dir/drushrc.php 2>&1)
-    if [[ "$_DB_HOST_PRESENT" =~ "db_host" ]] ; then
+    if [[ "${_D}B_HOST_PRESENT" =~ "db_host" ]] ; then
       if [ "$_FORCE_SITES_VERIFY" = "YES" ] ; then
         run_drush7_hmr_cmd "@hostmaster hosting-task @${Dom} verify --force"
       fi
@@ -1792,7 +1792,7 @@ fix_permissions() {
 }
 
 convert_controls_orig() {
-  if [ -e "$_CTRL_DIR/$1.info" ] || [ -e "$User/static/control/$1.info" ] ; then
+  if [ -e "$_CTRL_DIR/$1.info" ] || [ -e "${User}/static/control/$1.info" ] ; then
     if [ ! -e "$_CTRL_FILE" ] && [ -e "$_CTRL_FILE_TPL" ] ; then
       cp -af $_CTRL_FILE_TPL $_CTRL_FILE
     fi
@@ -1812,7 +1812,7 @@ convert_controls_orig_no_global() {
 }
 
 convert_controls_value() {
-  if [ -e "$_CTRL_DIR/$1.info" ] || [ -e "$User/static/control/$1.info" ] ; then
+  if [ -e "$_CTRL_DIR/$1.info" ] || [ -e "${User}/static/control/$1.info" ] ; then
     if [ ! -e "$_CTRL_FILE" ] && [ -e "$_CTRL_FILE_TPL" ] ; then
       cp -af $_CTRL_FILE_TPL $_CTRL_FILE
     fi
@@ -1960,18 +1960,18 @@ fix_site_control_files() {
 }
 
 cleanup_ghost_vhosts() {
-  for Site in `find $User/config/server_master/nginx/vhost.d -maxdepth 1 \
+  for Site in `find ${User}/config/server_master/nginx/vhost.d -maxdepth 1 \
     -mindepth 1 -type f | sort`; do
     Dom=$(echo $Site | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
     if [[ "$Dom" =~ ".restore"($) ]] ; then
-      mkdir -p $User/undo
-      mv -f $User/.drush/${Dom}.alias.drushrc.php $User/undo/ &> /dev/null
-      mv -f $User/config/server_master/nginx/vhost.d/${Dom} \
-        $User/undo/ &> /dev/null
-      echo GHOST vhost for $Dom detected and moved to $User/undo/
+      mkdir -p ${User}/undo
+      mv -f ${User}/.drush/${Dom}.alias.drushrc.php ${User}/undo/ &> /dev/null
+      mv -f ${User}/config/server_master/nginx/vhost.d/${Dom} \
+        ${User}/undo/ &> /dev/null
+      echo GHOST vhost for $Dom detected and moved to ${User}/undo/
     fi
-    if [ -e "$User/config/server_master/nginx/vhost.d/$Dom" ] ; then
-      Plx=$(cat $User/config/server_master/nginx/vhost.d/$Dom \
+    if [ -e "${User}/config/server_master/nginx/vhost.d/$Dom" ] ; then
+      Plx=$(cat ${User}/config/server_master/nginx/vhost.d/$Dom \
         | grep "root " \
         | cut -d: -f2 \
         | awk '{ print $2}' \
@@ -1979,11 +1979,11 @@ cleanup_ghost_vhosts() {
       if [[ "$Plx" =~ "aegir/distro" ]] || [[ "$Dom" =~ "--CDN"($) ]] ; then
         _SKIP_VHOST=YES
       else
-        if [ ! -e "$User/.drush/$Dom.alias.drushrc.php" ] ; then
-          mkdir -p $User/undo
-          mv -f $Site $User/undo/ &> /dev/null
+        if [ ! -e "${User}/.drush/$Dom.alias.drushrc.php" ] ; then
+          mkdir -p ${User}/undo
+          mv -f $Site ${User}/undo/ &> /dev/null
           echo "GHOST vhost for $Dom with no drushrc detected \
-            and moved to $User/undo/"
+            and moved to ${User}/undo/"
         fi
       fi
     fi
@@ -1991,7 +1991,7 @@ cleanup_ghost_vhosts() {
 }
 
 cleanup_ghost_drushrc() {
-  for Alias in `find $User/.drush/*.alias.drushrc.php -maxdepth 1 -type f \
+  for Alias in `find ${User}/.drush/*.alias.drushrc.php -maxdepth 1 -type f \
     | sort`; do
     AliasName=$(echo "$Alias" | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
     AliasName=$(echo "$AliasName" \
@@ -2008,31 +2008,31 @@ cleanup_ghost_drushrc() {
         | sed "s/[\,']//g" 2>&1)
       if [ -d "$Plm" ] ; then
         if [ ! -e "$Plm/index.php" ] || [ ! -e "$Plm/profiles" ] ; then
-          mkdir -p $User/undo
-          mv -f $Plm $User/undo/ &> /dev/null
+          mkdir -p ${User}/undo
+          mv -f $Plm ${User}/undo/ &> /dev/null
           echo "GHOST broken platform dir $Plm detected \
-            and moved to $User/undo/"
-          mv -f $Alias $User/undo/ &> /dev/null
+            and moved to ${User}/undo/"
+          mv -f $Alias ${User}/undo/ &> /dev/null
           echo "GHOST broken platform alias $Alias detected \
-            and moved to $User/undo/"
+            and moved to ${User}/undo/"
         fi
       else
-        mkdir -p $User/undo
-        mv -f $Alias $User/undo/ &> /dev/null
+        mkdir -p ${User}/undo
+        mv -f $Alias ${User}/undo/ &> /dev/null
         echo "GHOST nodir platform alias $Alias detected \
-          and moved to $User/undo/"
+          and moved to ${User}/undo/"
       fi
     else
       _THIS_SITE_NAME="$AliasName"
       if [[ "$_THIS_SITE_NAME" =~ ".restore"($) ]] ; then
         _IS_SITE=NO
-        mkdir -p $User/undo
-        mv -f $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
-          $User/undo/ &> /dev/null
-        mv -f $User/config/server_master/nginx/vhost.d/${_THIS_SITE_NAME} \
-          $User/undo/ &> /dev/null
+        mkdir -p ${User}/undo
+        mv -f ${User}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
+          ${User}/undo/ &> /dev/null
+        mv -f ${User}/config/server_master/nginx/vhost.d/${_THIS_SITE_NAME} \
+          ${User}/undo/ &> /dev/null
         echo "GHOST drushrc and vhost for ${_THIS_SITE_NAME} detected \
-          and moved to $User/undo/"
+          and moved to ${User}/undo/"
       else
         _THIS_SITE_FDIR=$(cat $Alias \
           | grep "site_path'" \
@@ -2045,22 +2045,22 @@ cleanup_ghost_drushrc() {
           && [ -e "$_THIS_SITE_FDIR/modules" ] ; then
           _IS_SITE=YES
         else
-          mkdir -p $User/undo
-          mv -f $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
-            $User/undo/ &> /dev/null
+          mkdir -p ${User}/undo
+          mv -f ${User}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
+            ${User}/undo/ &> /dev/null
           echo "GHOST drushrc for ${_THIS_SITE_NAME} detected \
-            and moved to $User/undo/"
+            and moved to ${User}/undo/"
           if [[ ! "$_THIS_SITE_FDIR" =~ "aegir/distro" ]] ; then
-            mv -f $User/config/server_master/nginx/vhost.d/${_THIS_SITE_NAME} \
-              $User/undo/ghost-vhost-${_THIS_SITE_NAME} &> /dev/null
+            mv -f ${User}/config/server_master/nginx/vhost.d/${_THIS_SITE_NAME} \
+              ${User}/undo/ghost-vhost-${_THIS_SITE_NAME} &> /dev/null
             echo "GHOST vhost for ${_THIS_SITE_NAME} detected \
-              and moved to $User/undo/"
+              and moved to ${User}/undo/"
           fi
           if [ -d "$_THIS_SITE_FDIR" ] ; then
             mv -f ${_THIS_SITE_FDIR} \
-              $User/undo/ghost-site-${_THIS_SITE_NAME} &> /dev/null
+              ${User}/undo/ghost-site-${_THIS_SITE_NAME} &> /dev/null
             echo "GHOST site dir for ${_THIS_SITE_NAME} detected \
-              and moved from ${_THIS_SITE_FDIR} to $User/undo/"
+              and moved from ${_THIS_SITE_FDIR} to ${User}/undo/"
           fi
         fi
       fi
@@ -2071,26 +2071,26 @@ cleanup_ghost_drushrc() {
 process() {
   cleanup_ghost_vhosts
   cleanup_ghost_drushrc
-  for Site in `find $User/config/server_master/nginx/vhost.d \
+  for Site in `find ${User}/config/server_master/nginx/vhost.d \
     -maxdepth 1 -mindepth 1 -type f | sort`; do
     #echo Counting Site $Site
     Dom=$(echo $Site | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
     _STATUS_DISABLED=NO
     _STATUS_TEST=$(grep "Do not reveal Aegir front-end URL here" \
-      $User/config/server_master/nginx/vhost.d/$Dom 2>&1)
-    if [[ "$_STATUS_TEST" =~ "Do not reveal Aegir front-end URL here" ]] ; then
+      ${User}/config/server_master/nginx/vhost.d/$Dom 2>&1)
+    if [[ "${_STATUS_TEST}" =~ "Do not reveal Aegir front-end URL here" ]] ; then
       _STATUS_DISABLED=YES
       echo $Dom site is DISABLED
     fi
-    if [ -e "$User/.drush/$Dom.alias.drushrc.php" ] \
-      && [ "$_STATUS_DISABLED" = "NO" ] ; then
+    if [ -e "${User}/.drush/$Dom.alias.drushrc.php" ] \
+      && [ "${_STATUS_DISABLED}" = "NO" ] ; then
       echo Dom is $Dom
-      Dir=$(cat $User/.drush/$Dom.alias.drushrc.php \
+      Dir=$(cat ${User}/.drush/$Dom.alias.drushrc.php \
         | grep "site_path'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
-      Plr=$(cat $User/.drush/$Dom.alias.drushrc.php \
+      Plr=$(cat ${User}/.drush/$Dom.alias.drushrc.php \
         | grep "root'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
@@ -2126,13 +2126,13 @@ process() {
           _PATCH_TEST=$(grep "foreach (array_values(\$data)" \
             $Plr/includes/database/database.inc 2>&1)
           if [[ "$_PATCH_TEST" =~ "array_values" ]] ; then
-            _DONT_TOUCH_PERMISSIONS="$_DONT_TOUCH_PERMISSIONS"
+            _DONT_TOUCH_PERMISSIONS="${_D}ONT_TOUCH_PERMISSIONS"
           else
             _DONT_TOUCH_PERMISSIONS=NO
           fi
         fi
-        if [ "$_DONT_TOUCH_PERMISSIONS" = "NO" ] \
-          && [ "$_PERMISSIONS_FIX" = "YES" ] ; then
+        if [ "${_D}ONT_TOUCH_PERMISSIONS" = "NO" ] \
+          && [ "${_PERMISSIONS_FIX}" = "YES" ] ; then
           fix_permissions
         fi
       fi
@@ -2148,16 +2148,16 @@ delete_this_platform() {
 
 check_old_empty_platforms() {
   if [[ "$_HOST_TEST" =~ ".host8." ]] \
-    || [ "$_VMFAMILY" = "VS" ] \
+    || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] ; then
     if [[ "$_HOST_TEST" =~ "v189q.nyc." ]] || [ -e "/root/.debug.cnf" ] ; then
       _DO_NOTHING=YES
     else
-      if [ "$_DEL_OLD_EMPTY_PLATFORMS" -gt "0" ] \
-        && [ ! -z "$_DEL_OLD_EMPTY_PLATFORMS" ] ; then
+      if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ] \
+        && [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ] ; then
         _DO_NOTHING=YES
       else
-        if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+        if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ] ; then
           _DEL_OLD_EMPTY_PLATFORMS="30"
         else
           _DEL_OLD_EMPTY_PLATFORMS="60"
@@ -2165,11 +2165,11 @@ check_old_empty_platforms() {
       fi
     fi
   fi
-  if [ ! -z "$_DEL_OLD_EMPTY_PLATFORMS" ] ; then
-    if [ "$_DEL_OLD_EMPTY_PLATFORMS" -gt "0" ] ; then
+  if [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ] ; then
+    if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ] ; then
       echo "_DEL_OLD_EMPTY_PLATFORMS is set to \
         ${_DEL_OLD_EMPTY_PLATFORMS} days on ${_HM_U} instance"
-      for Platform in `find $User/.drush/platform_* -maxdepth 1 -mtime \
+      for Platform in `find ${User}/.drush/platform_* -maxdepth 1 -mtime \
         +${_DEL_OLD_EMPTY_PLATFORMS} -type f | sort`; do
         _THIS_PLATFORM_NAME=$(echo "$Platform" \
           | sed "s/.*platform_//g; s/.alias.drushrc.php//g" \
@@ -2180,15 +2180,15 @@ check_old_empty_platforms() {
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
         _THIS_PLATFORM_SITE=$(grep "${_THIS_PLATFORM_ROOT}/sites/" \
-          $User/.drush/*.drushrc.php \
+          ${User}/.drush/*.drushrc.php \
           | grep site_path 2>&1)
         if [ ! -e "${_THIS_PLATFORM_ROOT}/sites/all" ] \
           || [ ! -e "${_THIS_PLATFORM_ROOT}/index.php" ] ; then
-          mkdir -p $User/undo
-          mv -f $User/.drush/platform_${_THIS_PLATFORM_NAME}.alias.drushrc.php \
-            $User/undo/ &> /dev/null
+          mkdir -p ${User}/undo
+          mv -f ${User}/.drush/platform_${_THIS_PLATFORM_NAME}.alias.drushrc.php \
+            ${User}/undo/ &> /dev/null
           echo "GHOST platform $_THIS_PLATFORM_ROOT detected \
-            and moved to $User/undo/"
+            and moved to ${User}/undo/"
         fi
         if [[ "$_THIS_PLATFORM_SITE" =~ ".restore" ]] ; then
           echo "WARNING: ghost site leftover found: $_THIS_PLATFORM_SITE"
@@ -2203,95 +2203,95 @@ check_old_empty_platforms() {
 }
 
 purge_cruft_machine() {
-  if [ ! -z "$_DEL_OLD_BACKUPS" ] && [ "$_DEL_OLD_BACKUPS" -gt "0" ] ; then
-    _PURGE_BACKUPS="$_DEL_OLD_BACKUPS"
+  if [ ! -z "${_DEL_OLD_BACKUPS}" ] && [ "${_DEL_OLD_BACKUPS}" -gt "0" ] ; then
+    _PURGE_BACKUPS="${_DEL_OLD_BACKUPS}"
   else
     _PURGE_BACKUPS="30"
   fi
 
-  if [ ! -z "$_DEL_OLD_TMP" ] && [ "$_DEL_OLD_TMP" -gt "0" ] ; then
-    _PURGE_TMP="$_DEL_OLD_TMP"
+  if [ ! -z "${_DEL_OLD_TMP}" ] && [ "${_DEL_OLD_TMP}" -gt "0" ] ; then
+    _PURGE_TMP="${_DEL_OLD_TMP}"
   else
     _PURGE_TMP="0"
   fi
 
   if [[ "$_HOST_TEST" =~ ".host8." ]] \
-    || [ "$_VMFAMILY" = "VS" ] \
+    || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] ; then
     _PURGE_BACKUPS="8"
     _PURGE_TMP="0"
   fi
 
-  find $User/backups/* -mtime +${_PURGE_BACKUPS} -type f -exec \
+  find ${User}/backups/* -mtime +${_PURGE_BACKUPS} -type f -exec \
     rm -rf {} \; &> /dev/null
 
-  find $User/distro/*/*/sites/*/files/backup_migrate/*/* \
+  find ${User}/distro/*/*/sites/*/files/backup_migrate/*/* \
     -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/distro/*/*/sites/*/private/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
-
-  find $User/static/*/*/*/*/*/sites/*/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/static/*/*/*/*/sites/*/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/static/*/*/*/sites/*/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/static/*/*/sites/*/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/static/*/sites/*/files/backup_migrate/*/* \
+  find ${User}/distro/*/*/sites/*/private/files/backup_migrate/*/* \
     -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
 
-  find $User/static/*/*/*/*/*/sites/*/private/files/backup_migrate/*/* \
+  find ${User}/static/*/*/*/*/*/sites/*/files/backup_migrate/*/* \
     -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/static/*/*/*/*/sites/*/private/files/backup_migrate/*/* \
+  find ${User}/static/*/*/*/*/sites/*/files/backup_migrate/*/* \
     -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/static/*/*/*/sites/*/private/files/backup_migrate/*/* \
+  find ${User}/static/*/*/*/sites/*/files/backup_migrate/*/* \
     -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/static/*/*/sites/*/private/files/backup_migrate/*/* \
+  find ${User}/static/*/*/sites/*/files/backup_migrate/*/* \
     -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/static/*/sites/*/private/files/backup_migrate/*/* \
+  find ${User}/static/*/sites/*/files/backup_migrate/*/* \
     -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
 
-  find $User/distro/*/*/sites/*/files/tmp/* \
+  find ${User}/static/*/*/*/*/*/sites/*/private/files/backup_migrate/*/* \
+    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find ${User}/static/*/*/*/*/sites/*/private/files/backup_migrate/*/* \
+    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find ${User}/static/*/*/*/sites/*/private/files/backup_migrate/*/* \
+    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find ${User}/static/*/*/sites/*/private/files/backup_migrate/*/* \
+    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find ${User}/static/*/sites/*/private/files/backup_migrate/*/* \
+    -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+
+  find ${User}/distro/*/*/sites/*/files/tmp/* \
     -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/distro/*/*/sites/*/private/temp/* \
+  find ${User}/distro/*/*/sites/*/private/temp/* \
     -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/static/*/*/*/*/*/sites/*/files/tmp/* \
+  find ${User}/static/*/*/*/*/*/sites/*/files/tmp/* \
     -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/static/*/*/*/*/*/sites/*/private/temp/* \
+  find ${User}/static/*/*/*/*/*/sites/*/private/temp/* \
     -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/static/*/*/*/*/sites/*/files/tmp/* \
+  find ${User}/static/*/*/*/*/sites/*/files/tmp/* \
     -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/static/*/*/*/*/sites/*/private/temp/* \
+  find ${User}/static/*/*/*/*/sites/*/private/temp/* \
     -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/static/*/*/*/sites/*/files/tmp/* \
+  find ${User}/static/*/*/*/sites/*/files/tmp/* \
     -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/static/*/*/*/sites/*/private/temp/* \
+  find ${User}/static/*/*/*/sites/*/private/temp/* \
     -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/static/*/*/sites/*/files/tmp/* \
+  find ${User}/static/*/*/sites/*/files/tmp/* \
     -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/static/*/*/sites/*/private/temp/* \
+  find ${User}/static/*/*/sites/*/private/temp/* \
     -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/static/*/sites/*/files/tmp/* \
+  find ${User}/static/*/sites/*/files/tmp/* \
     -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
-  find $User/static/*/sites/*/private/temp/* \
+  find ${User}/static/*/sites/*/private/temp/* \
     -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
 
   find /home/${_HM_U}.ftp/.tmp/* \
     -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
   find /home/${_HM_U}.ftp/tmp/* \
     -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
-  find $User/.tmp/* \
+  find ${User}/.tmp/* \
     -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
-  find $User/tmp/* \
-    -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
-
-  mkdir -p $User/static/trash
-  chown ${_HM_U}.ftp:users $User/static/trash
-  find $User/static/trash/* \
+  find ${User}/tmp/* \
     -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
 
-  find $User/log/ctrl/* \
+  mkdir -p ${User}/static/trash
+  chown ${_HM_U}.ftp:users ${User}/static/trash
+  find ${User}/static/trash/* \
+    -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
+
+  find ${User}/log/ctrl/* \
     -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 
   REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
@@ -2309,30 +2309,30 @@ purge_cruft_machine() {
         rm -f -r /home/${_HM_U}.ftp/platforms/$i
       fi
     fi
-    if [ -d "$User/distro/$i" ] ; then
-      if [ ! -d "$User/distro/$i/keys" ] ; then
-        mkdir -p $User/distro/$i/keys
+    if [ -d "${User}/distro/$i" ] ; then
+      if [ ! -d "${User}/distro/$i/keys" ] ; then
+        mkdir -p ${User}/distro/$i/keys
       fi
-      RevisionTest=$(ls $User/distro/$i | wc -l | tr -d "\n" 2>&1)
+      RevisionTest=$(ls ${User}/distro/$i | wc -l | tr -d "\n" 2>&1)
       if [ "$RevisionTest" -lt "2" ] && [ ! -z "$RevisionTest" ] ; then
-        mkdir -p $User/undo
-        mv -f $User/distro/$i $User/undo/ &> /dev/null
-        echo GHOST revision $User/distro/$i detected and moved to $User/undo/
+        mkdir -p ${User}/undo
+        mv -f ${User}/distro/$i ${User}/undo/ &> /dev/null
+        echo GHOST revision ${User}/distro/$i detected and moved to ${User}/undo/
       fi
     fi
   done
 
   for i in $REVISIONS; do
-    if [ -e "$User/distro/$i" ] \
+    if [ -e "${User}/distro/$i" ] \
       && [ ! -e "/home/${_HM_U}.ftp/platforms/$i" ] ; then
       chattr -i /home/${_HM_U}.ftp/platforms   &> /dev/null
       chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
       mkdir -p /home/${_HM_U}.ftp/platforms/$i
-      mkdir -p $User/distro/$i/keys
-      chown ${_HM_U}.ftp:$_WEBG $User/distro/$i/keys
-      chmod 02775 $User/distro/$i/keys
-      ln -sf $User/distro/$i/keys /home/${_HM_U}.ftp/platforms/$i/keys
-      for Codebase in `find $User/distro/$i/* -maxdepth 1 -mindepth 1 -type d \
+      mkdir -p ${User}/distro/$i/keys
+      chown ${_HM_U}.ftp:${_WEBG} ${User}/distro/$i/keys
+      chmod 02775 ${User}/distro/$i/keys
+      ln -sf ${User}/distro/$i/keys /home/${_HM_U}.ftp/platforms/$i/keys
+      for Codebase in `find ${User}/distro/$i/* -maxdepth 1 -mindepth 1 -type d \
         | grep "/sites$" 2>&1`; do
         CodebaseName=$(echo $Codebase \
           | cut -d'/' -f7 \
@@ -2415,20 +2415,20 @@ action() {
   do
     count_cpu
     load_control
-    if [ -e "$User/config/server_master/nginx/vhost.d" ] \
-      && [ ! -e "$User/log/CANCELLED" ] ; then
+    if [ -e "${User}/config/server_master/nginx/vhost.d" ] \
+      && [ ! -e "${User}/log/CANCELLED" ] ; then
       if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ] ; then
-        _HM_U=$(echo $User | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-        _THIS_HM_SITE=$(cat $User/.drush/hostmaster.alias.drushrc.php \
+        _HM_U=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+        _THIS_HM_SITE=$(cat ${User}/.drush/hostmaster.alias.drushrc.php \
           | grep "site_path'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
-        echo User $User
-        mkdir -p $User/log/ctrl
+        echo User ${User}
+        mkdir -p ${User}/log/ctrl
         su -s /bin/bash $_HM_U -c "drush7 cc drush &> /dev/null"
-        rm -f -r $User/.tmp/cache
+        rm -f -r ${User}/.tmp/cache
         _SQL_CONVERT=NO
         _DEL_OLD_EMPTY_PLATFORMS="0"
         if [ -e "/root/.${_HM_U}.octopus.cnf" ] ; then
@@ -2436,15 +2436,15 @@ action() {
           _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}
           _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
           _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
-          if [ -e "$User/log/email.txt" ] ; then
-            _F_CLIENT_EMAIL=$(cat $User/log/email.txt 2>&1)
+          if [ -e "${User}/log/email.txt" ] ; then
+            _F_CLIENT_EMAIL=$(cat ${User}/log/email.txt 2>&1)
             _F_CLIENT_EMAIL=$(echo -n $_F_CLIENT_EMAIL | tr -d "\n" 2>&1)
             _F_CLIENT_EMAIL=${_F_CLIENT_EMAIL//\\\@/\@}
           fi
           if [ ! -z "${_F_CLIENT_EMAIL}" ] ; then
             _CLIENT_EMAIL_TEST=$(grep "^_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"" \
               /root/.${_HM_U}.octopus.cnf 2>&1)
-            if [[ "$_CLIENT_EMAIL_TEST" =~ "${_F_CLIENT_EMAIL}" ]] ; then
+            if [[ "${_CLIENT_EMAIL_TEST}" =~ "${_F_CLIENT_EMAIL}" ]] ; then
               _DO_NOTHING=YES
             else
               sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"/g" \
@@ -2458,7 +2458,7 @@ action() {
         if [ -e "$_THIS_HM_SITE" ] ; then
           cd $_THIS_HM_SITE
           su -s /bin/bash $_HM_U -c "drush7 cc drush &> /dev/null"
-          rm -f -r $User/.tmp/cache
+          rm -f -r ${User}/.tmp/cache
           run_drush7_hmr_cmd "@hostmaster vset \
             --always-set hosting_advanced_cron_default_interval 86400"
           run_drush7_hmr_cmd "@hostmaster vset \
@@ -2478,9 +2478,9 @@ action() {
           run_drush7_hmr_cmd "@hostmaster cc all"
           run_drush7_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
           run_drush7_hmr_cmd "@hostmaster cc all"
-          if [ -e "$User/log/imported.pid" ] \
-            || [ -e "$User/log/exported.pid" ] ; then
-            if [ ! -e "$User/log/hosting_context.pid" ] ; then
+          if [ -e "${User}/log/imported.pid" ] \
+            || [ -e "${User}/log/exported.pid" ] ; then
+            if [ ! -e "${User}/log/hosting_context.pid" ] ; then
               _HM_NID=$(run_drush7_hmr_cmd "@hostmaster \
                 sqlq \"SELECT site.nid FROM hosting_site site JOIN \
                 hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN \
@@ -2490,7 +2490,7 @@ action() {
               if [ ! -z "$_HM_NID" ] ; then
                 run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context \
                   SET name='hostmaster' WHERE nid='$_HM_NID'\""
-                echo $_HM_NID > $User/log/hosting_context.pid
+                echo $_HM_NID > ${User}/log/hosting_context.pid
               fi
             fi
           fi
@@ -2502,18 +2502,18 @@ action() {
           task_type='delete' AND task_status='0' AND executed='0'\""
         check_old_empty_platforms
         purge_cruft_machine
-        if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-          rm -f -r $User/clients/admin &> /dev/null
-          rm -f -r $User/clients/omega8ccgmailcom &> /dev/null
-          rm -f -r $User/clients/nocomega8cc &> /dev/null
+        if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ] ; then
+          rm -f -r ${User}/clients/admin &> /dev/null
+          rm -f -r ${User}/clients/omega8ccgmailcom &> /dev/null
+          rm -f -r ${User}/clients/nocomega8cc &> /dev/null
         fi
-        rm -f -r $User/clients/*/backups &> /dev/null
-        symlinks -dr $User/clients &> /dev/null
+        rm -f -r ${User}/clients/*/backups &> /dev/null
+        symlinks -dr ${User}/clients &> /dev/null
         if [ -e "/home/${_HM_U}.ftp" ] ; then
           symlinks -dr /home/${_HM_U}.ftp &> /dev/null
           rm -f /home/${_HM_U}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
         fi
-        echo Done for $User
+        echo Done for ${User}
         enable_chattr ${_HM_U}.ftp
       else
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
@@ -2539,7 +2539,7 @@ else
   _FORCE_SITES_VERIFY=NO
 fi
 #
-if [[ "$_VM_TEST" =~ beng ]] ; then
+if [[ "${_VM_TEST}" =~ beng ]] ; then
   _VMFAMILY="VS"
   _MODULES_FORCE="background_process coder cookie_cache_bypass css_gzip hacked \
     javascript_aggregator memcache memcache_admin poormanscron search_krumo \
@@ -2549,7 +2549,7 @@ else
   _VMFAMILY="XEN"
 fi
 #
-if [ "$_DOW" = "6" ] ; then
+if [ "${_D}OW" = "6" ] ; then
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
   _MODULES_OFF_SEVEN="background_process coder dblog devel hacked l10n_update \
@@ -2574,14 +2574,14 @@ if [ -e "/data/all" ] ; then
   cd /data/all
   listl=([0-9]*)
   _LAST_ALL=${listl[@]: -1}
-  _O_CONTRIB="/data/all/$_LAST_ALL/o_contrib"
-  _O_CONTRIB_SEVEN="/data/all/$_LAST_ALL/o_contrib_seven"
+  _O_CONTRIB="/data/all/${_LAST_ALL}/o_contrib"
+  _O_CONTRIB_SEVEN="/data/all/${_LAST_ALL}/o_contrib_seven"
 elif [ -e "/data/disk/all" ] ; then
   cd /data/disk/all
   listl=([0-9]*)
   _LAST_ALL=${listl[@]: -1}
-  _O_CONTRIB="/data/disk/all/$_LAST_ALL/o_contrib"
-  _O_CONTRIB_SEVEN="/data/disk/all/$_LAST_ALL/o_contrib_seven"
+  _O_CONTRIB="/data/disk/all/${_LAST_ALL}/o_contrib"
+  _O_CONTRIB_SEVEN="/data/disk/all/${_LAST_ALL}/o_contrib_seven"
 else
   _O_CONTRIB=NO
   _O_CONTRIB_SEVEN=NO
@@ -2611,17 +2611,17 @@ elif [ -e "/root/.wbhd.clstr.cnf" ] ; then
   exit 1
 else
   touch /var/run/daily-fix.pid
-  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ] ; then
     _PERMISSIONS_FIX=YES
     _MODULES_FIX=YES
     n=$((RANDOM%800+80))
     echo waiting $n sec
     sleep $n
   fi
-  if [ -z "$_PERMISSIONS_FIX" ] ; then
+  if [ -z "${_PERMISSIONS_FIX}" ] ; then
     _PERMISSIONS_FIX=YES
   fi
-  if [ -z "$_MODULES_FIX" ] ; then
+  if [ -z "${_MODULES_FIX}" ] ; then
     _MODULES_FIX=YES
   fi
   if [ -e "/data/all" ] ; then
@@ -2648,7 +2648,7 @@ else
     fi
   fi
   action >/var/xdrago/log/daily/daily-${_NOW}.log 2>&1
-  if [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
+  if [ "${_NGINX_FORWARD_SECRECY}" = "YES" ] ; then
     for File in `find /etc/ssl/private/*.key -type f` ; do
       _PFS_TEST=$(grep "DH PARAMETERS" $File 2>&1)
       if [[ "$_PFS_TEST" =~ "DH PARAMETERS" ]] ; then
@@ -2683,7 +2683,7 @@ if [ -e "/opt/tmp/barracuda-version.txt" ] ; then
   _X_VERSION=$(cat /opt/tmp/barracuda-version.txt 2>&1)
   _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
   if [ ! -z "${_X_VERSION}" ] ; then
-    if [[ "$_VERSIONS_TEST" =~ "${_X_VERSION}" ]] ; then
+    if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] ; then
       _VERSIONS_TEST_RESULT=OK
       echo "INFO: Version test result: OK"
     else
@@ -2705,7 +2705,7 @@ EOF
   fi
 fi
 #
-if [ "$_PERMISSIONS_FIX" = "YES" ] \
+if [ "${_PERMISSIONS_FIX}" = "YES" ] \
   && [ ! -z "${_X_VERSION}" ] \
   && [ -e "/opt/tmp/barracuda-version.txt" ] \
   && [ ! -e "/data/all/permissions-fix-${_X_VERSION}-fixed-dz.info" ] ; then
@@ -2747,7 +2747,7 @@ find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -rf {} \;
 find /var/backups/jetty* -mtime +0 -exec rm -rf {} \;
 find /var/backups/dragon/* -mtime +7 -exec rm -rf {} \;
 if [[ "$_HOST_TEST" =~ ".host8." ]] \
-  || [ "$_VMFAMILY" = "VS" ] \
+  || [ "${_VMFAMILY}" = "VS" ] \
   || [ -e "/root/.host8.cnf" ] ; then
   if [ -d "/var/backups/codebases-cleanup" ] ; then
     find /var/backups/codebases-cleanup/* -mtime +7 -exec rm -rf {} \;

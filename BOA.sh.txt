@@ -45,7 +45,7 @@ export PATH=$PATH:/opt/local/bin
 SHELL=/bin/bash
 barCnf=/root/.barracuda.cnf
 _TODAY=$(date +%y%m%d 2>&1)
-_X_VERSION=BOA-2.4.0-dev
+_X_VERSION="BOA-2.4.0-dev"
 urlHmr="http://files.aegir.cc/versions/master/aegir"
 
 fix_dns_settings() {
@@ -56,8 +56,8 @@ fix_dns_settings() {
   fi
   if [ ! -e "/var/backups/resolv.conf.vanilla" ] ; then
     for Pre in `ls -la /var/backups/resolv.conf.pre-*` ; do
-      if [ -e "$Pre" ] && [ -f "$Pre" ] && [ ! -L "$Pre" ] ; then
-        cp -a $Pre /var/backups/resolv.conf.vanilla
+      if [ -e "${Pre}" ] && [ -f "${Pre}" ] && [ ! -L "${Pre}" ] ; then
+        cp -a ${Pre} /var/backups/resolv.conf.vanilla
       fi
     done
   fi
@@ -71,7 +71,7 @@ fix_dns_settings() {
   echo "nameserver 8.8.8.8" > /etc/resolv.conf
   echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] \
+  if [[ "${_BROKEN_DNS_TEST}" =~ "no servers could be reached" ]] \
     && [ -e "/var/backups/resolv.conf.vanilla" ] ; then
     touch /root/.use.local.nameservers.cnf
     rm -f /etc/resolv.conf
@@ -87,7 +87,7 @@ fix_dns_settings() {
       sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" /root/.local.dns.IP.list
       sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   /root/.local.dns.IP.list
       _BROKEN_DNS_TEST=$(grep "\." /root/.local.dns.IP.list 2>&1)
-      if [ -z "$_BROKEN_DNS_TEST" ] ; then
+      if [ -z "${_BROKEN_DNS_TEST}" ] ; then
         echo "        label = \"google-servers\";" > /root/.local.dns.IP.list
         echo "        ip=8.8.8.8;" >> /root/.local.dns.IP.list
         echo "        ip=8.8.4.4;" >> /root/.local.dns.IP.list
@@ -95,8 +95,8 @@ fix_dns_settings() {
     fi
     _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
     _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
-    if [[ "$_CUSTOM_DNS_TEST" =~ "8.8.8.8" ]] \
-      || [[ "$_BROKEN_DNS_CONF" =~ "Dynamic" ]] ; then
+    if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
+      || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]] ; then
       if [ -e "/root/.use.local.nameservers.cnf" ] ; then
         echo "        label = \"google-servers\";" > /root/.local.dns.IP.list
         for _IP in `cat /etc/resolv.conf \
@@ -110,7 +110,7 @@ fix_dns_settings() {
         sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" /root/.local.dns.IP.list
         sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   /root/.local.dns.IP.list
         _BROKEN_DNS_TEST=$(grep "\." /root/.local.dns.IP.list 2>&1)
-        if [ -z "$_BROKEN_DNS_TEST" ] ; then
+        if [ -z "${_BROKEN_DNS_TEST}" ] ; then
            echo "        ip=8.8.8.8;" >> /root/.local.dns.IP.list
            echo "        ip=8.8.4.4;" >> /root/.local.dns.IP.list
         fi
@@ -130,7 +130,7 @@ d;};' /etc/pdnsd.conf
 
 check_dns_settings() {
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] \
+  if [[ "${_BROKEN_DNS_TEST}" =~ "no servers could be reached" ]] \
     || [ -e "/root/.use.local.nameservers.cnf" ] ; then
     _USE_PROVIDER_DNS=YES
     fix_dns_settings
@@ -457,9 +457,9 @@ setup() {
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "${urlHmr}/tools/bin/sqlmagic"       -o /opt/local/bin/sqlmagic
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "${urlHmr}/tools/bin/syncpass"       -o /opt/local/bin/syncpass
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "${urlHmr}/tools/bin/thinkdifferent" -o /opt/local/bin/thinkdifferent
-  echo "### $_TODAY ###" >> /opt/local/bin/boa
-  echo "### $_TODAY ###" >> /opt/local/bin/barracuda
-  echo "### $_TODAY ###" >> /opt/local/bin/octopus
+  echo "### ${_TODAY} ###" >> /opt/local/bin/boa
+  echo "### ${_TODAY} ###" >> /opt/local/bin/barracuda
+  echo "### ${_TODAY} ###" >> /opt/local/bin/octopus
   chmod 700 /opt/local/bin/{autoupboa,backboa,barracuda,boa,octopus,syncpass}
   chmod 755 /opt/local/bin/{randpass,sqlmagic,thinkdifferent}
   echo
@@ -496,8 +496,8 @@ if [ `whoami` = "root" ] ; then
   setup
   fix_alt
   if [ -e "/var/log/barracuda_log.txt" ] ; then
-    _VERSIONS_TEST=`cat /var/log/barracuda_log.txt`
-    if [[ "$_VERSIONS_TEST" =~ "${_X_VERSION}" ]] ; then
+    _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+    if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] ; then
       _VERSIONS_TEST_RESULT=OK
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \

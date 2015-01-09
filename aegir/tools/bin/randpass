@@ -7,7 +7,7 @@ _SSL_INSTALLED=$(openssl version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
   | awk '{ print $1}')
-if [ "$_SSL_INSTALLED" = "$_OPENSSL_VRN" ] ; then
+if [ "${_SSL_INSTALLED}" = "${_OPENSSL_VRN}" ] ; then
   _NEW_SSL=YES
 fi
 

@@ -17,7 +17,7 @@ crontab_update() {
       echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    if [ "$_VMFAMILY" = "VS" ] ; then
+    if [ "${_VMFAMILY}" = "VS" ] ; then
       echo "28 6    * * 7   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d"                /etc/crontab &> /dev/null
@@ -60,7 +60,7 @@ crontab_update() {
 if [ -e "/data/disk/arch" ] ; then
   _HOST_TEST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "$_VM_TEST" =~ beng ]] ; then
+  if [[ "${_VM_TEST}" =~ beng ]] ; then
     _VMFAMILY="VS"
   fi
   if [ -e "/root/.barracuda.cnf" ] ; then
@@ -69,7 +69,7 @@ if [ -e "/data/disk/arch" ] ; then
   _AUTO_UP_WEEKLY=${_AUTO_UP_WEEKLY//[^0-9]/}
   _AUTO_UP_MONTH=${_AUTO_UP_MONTH//[^0-9]/}
   _AUTO_UP_DAY=${_CPU_INFO//[^0-9]/}
-  if [[ "$_MY_EMAIL" =~ "omega8" ]] ; then
+  if [[ "${_MY_EMAIL}" =~ "omega8" ]] ; then
     _AUTO_UP=YES
   fi
   if [ -e "/etc/apticron/apticron.conf" ] ; then
@@ -89,7 +89,7 @@ if [ -e "/data/disk/arch" ] ; then
     _AUTO_UP_DAY=30
   fi
   if [[ "$_HOST_TEST" =~ ".host8." ]] \
-    || [ "$_VMFAMILY" = "VS" ] \
+    || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] \
     || [ "$_AUTO_UP" = "YES" ] ; then
     _AUTO_UP_WEEKLY=1

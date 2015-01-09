@@ -759,7 +759,7 @@ action() {
           if [ -e "${_THIS_HM_SITE}" ] ; then
             su -s /bin/bash - ${_THIS_U} -c "drush @hostmaster \
               vset --always-set site_footer 'Weekly Usage Monitor \
-              | $_DATE \
+              | ${_D}ATE \
               | Disk <strong>${HomSizH}</strong> MB \
               | Databases <strong>${SumDatH}</strong> MB \
               | <strong>${_CLIENT_CORES}</strong> \
@@ -793,7 +793,7 @@ _NOW=$(date +%y%m%d-%H%M 2>&1)
 _DATE=$(date 2>&1)
 _HOST_TEST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
-if [[ "$_VM_TEST" =~ beng ]] ; then
+if [[ "${_VM_TEST}" =~ beng ]] ; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"

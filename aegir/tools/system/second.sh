@@ -189,7 +189,7 @@ manage_ip_auth_access() {
       if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
         _DIFF_TEST=$(diff /var/backups/.auth.IP.list.tmp \
           /var/backups/.auth.IP.list)
-        if [ ! -z "$_DIFF_TEST" ] ; then
+        if [ ! -z "${_D}IFF_TEST" ] ; then
           update_ip_auth_access
         fi
       fi
@@ -202,7 +202,7 @@ manage_ip_auth_access() {
       cp -af /var/backups/.vhost.d.mstr/* /var/backups/.vhost.d.wbhd/
     fi
     _DIFF_CLSTR_TEST=$(diff /var/backups/.vhost.d.wbhd /var/backups/.vhost.d.mstr)
-    if [ ! -z "$_DIFF_CLSTR_TEST" ] ; then
+    if [ ! -z "${_D}IFF_CLSTR_TEST" ] ; then
       service nginx reload &> /dev/null
       rm -f -r /var/backups/.vhost.d.wbhd
       mkdir -p /var/backups/.vhost.d.wbhd

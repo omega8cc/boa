@@ -4,7 +4,7 @@ SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 BACKUPDIR=/data/disk/arch/sql
 HOST=$(uname -n 2>&1)
-DATE=`date +%y%m%d-%H%M`
+DATE=$(date +%y%m%d-%H%M 2>&1)
 SAVELOCATION=$BACKUPDIR/$HOST-$DATE
 if [ -e "/root/.my.optimize.cnf" ] ; then
   OPTIM=YES
@@ -12,7 +12,7 @@ else
   OPTIM=NO
 fi
 _VM_TEST=$(uname -a 2>&1)
-if [[ "$_VM_TEST" =~ beng ]] ; then
+if [[ "${_VM_TEST}" =~ beng ]] ; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
@@ -20,7 +20,7 @@ fi
 touch /var/run/boa_sql_backup.pid
 
 truncate_cache_tables() {
-  TABLES=`mysql $DB -e "show tables" -s | grep ^cache | uniq | sort`
+  TABLES=$(mysql $DB -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
   for C in $TABLES; do
 mysql --default-character-set=utf8 $DB<<EOFMYSQL
 TRUNCATE $C;
@@ -29,7 +29,7 @@ EOFMYSQL
 }
 
 truncate_accesslog_tables() {
-  TABLES=`mysql $DB -e "show tables" -s | grep ^accesslog$`
+  TABLES=$(mysql $DB -e "show tables" -s | grep ^accesslog$ 2>&1)
   for A in $TABLES; do
 mysql --default-character-set=utf8 $DB<<EOFMYSQL
 TRUNCATE $A;
@@ -38,7 +38,7 @@ EOFMYSQL
 }
 
 truncate_queue_tables() {
-  TABLES=`mysql $DB -e "show tables" -s | grep ^queue$`
+  TABLES=$(mysql $DB -e "show tables" -s | grep ^queue$ 2>&1)
   for A in $TABLES; do
 mysql --default-character-set=utf8 $DB<<EOFMYSQL
 TRUNCATE $A;
@@ -47,7 +47,7 @@ EOFMYSQL
 }
 
 optimize_this_database() {
-  TABLES=`mysql $DB -e "show tables" -s | uniq | sort`
+  TABLES=$(mysql $DB -e "show tables" -s | uniq | sort 2>&1)
   for T in $TABLES; do
 mysql --default-character-set=utf8 $DB<<EOFMYSQL
 OPTIMIZE TABLE $T;
@@ -76,7 +76,7 @@ for DB in `mysql -e "show databases" -s | uniq | sort`; do
     && [ "$DB" != "performance_schema" ] ; then
     if [ "$DB" != "mysql" ] ; then
       truncate_cache_tables &> /dev/null
-      if [[ "$HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+      if [[ "$HOST" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ] ; then
         truncate_accesslog_tables &> /dev/null
         echo "Truncated not used accesslog for $DB"
         truncate_queue_tables &> /dev/null

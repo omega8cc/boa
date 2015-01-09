@@ -55,7 +55,7 @@
 ### in the /root/.${_USER}.octopus.cnf file.
 ###
 _USER=o1
-_DOMAIN=$_USER.$(uname -n 2>&1)
+_DOMAIN="${_USER}.$(uname -n 2>&1)"
 _MY_EMAIL="noc@omega8.cc"
 _CLIENT_EMAIL="notify@omega8.cc"
 _CLIENT_OPTION=SSD
@@ -637,7 +637,7 @@ _PHP_FPM_DENY=""
 ### reserved for other services installed which
 ### are not controlled by BOA, so it will
 ### assume that available RAM is the value of
-### $_RAM - $_RESERVED_RAM (in MB).
+### ${_RAM} - ${_RESERVED_RAM} (in MB).
 ###
 ### Example for 256MB: _RESERVED_RAM=256
 ###
@@ -648,11 +648,11 @@ _RESERVED_RAM=0
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_AEGIR_VERSION=HEAD
-_AEGIR_XTS_VERSION=BOA-2.4.0
-_BRANCH_BOA=2.4.x-dev
-_BRANCH_PRN=2.4.x-dev
-_X_VERSION=BOA-2.4.0-dev
+_AEGIR_VERSION="HEAD"
+_AEGIR_XTS_VERSION="BOA-2.4.0"
+_BRANCH_BOA="2.4.x-dev"
+_BRANCH_PRN="2.4.x-dev"
+_X_VERSION="BOA-2.4.0-dev"
 
 ###
 ### Variables
@@ -731,7 +731,7 @@ msg() {
 }
 # Simple prompt.
 prompt_yes_no() {
-if [ "$_AUTOPILOT" = "YES" ] ; then
+if [ "${_AUTOPILOT}" = "YES" ] ; then
   return 0
 else
   while true ; do
@@ -759,10 +759,10 @@ fi
 mrun() {
   CMD="$1"
   touch busy
-  if [ "$_SPINNER" = "YES" ] ; then
-    bash $_SRCDIR/spinner busy &
+  if [ "${_SPINNER}" = "YES" ] ; then
+    bash ${_SRCDIR}/spinner busy &
   fi
-  if $CMD >> $_LOG; then
+  if ${CMD} >> ${_LOG}; then
     rm busy
     sleep 1
     return 0
@@ -773,70 +773,70 @@ mrun() {
 tune_fpm_workers() {
   _ETH_TEST=$(ifconfig 2>&1)
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
+  if [[ "${_ETH_TEST}" =~ "venet0" ]] ; then
     _VMFAMILY="VZ"
   elif [ -e "/proc/bean_counters" ] ; then
     _VMFAMILY="VZ"
-  elif [[ "$_THISHOST" =~ ".host8." ]] && [ -e "/boot/grub/menu.lst" ] ; then
+  elif [[ "${_THISHOST}" =~ ".host8." ]] && [ -e "/boot/grub/menu.lst" ] ; then
     _VMFAMILY="TG"
-  elif [[ "$_THISHOST" =~ ".host8." ]] && [ -e "/boot/grub/grub.cfg" ] ; then
+  elif [[ "${_THISHOST}" =~ ".host8." ]] && [ -e "/boot/grub/grub.cfg" ] ; then
     _VMFAMILY="TG"
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "$_VM_TEST" =~ beng ]] ; then
+  if [[ "${_VM_TEST}" =~ beng ]] ; then
     _VMFAMILY="VS"
   fi
-  if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] \
-    || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
+  if [[ "${_AWS_TEST_A}" =~ "cloudimg" ]] \
+    || [[ "${_AWS_TEST_B}" =~ "cloudconfig" ]] ; then
     _VMFAMILY="AWS"
   fi
-  _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
-  if [ "$_RESERVED_RAM" -gt "0" ] ; then
+  _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
+  if [ "${_RESERVED_RAM}" -gt "0" ] ; then
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   _USE=$(( _RAM / 4 ))
   if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
-    if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+    if [ "${_PHP_FPM_WORKERS}" = "AUTO" ] ; then
       _L_PHP_FPM_WORKERS=12
     else
-      _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+      _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
   elif [ "$_USE" -ge "1024" ] ; then
-    if [ "$_VMFAMILY" = "XEN" ] || [ "$_VMFAMILY" = "AWS" ] ; then
-      if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+    if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ] ; then
+      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ] ; then
         _L_PHP_FPM_WORKERS=24
       else
-        _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+        _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
-    elif [ "$_VMFAMILY" = "VS" ] || [ "$_VMFAMILY" = "TG" ] ; then
+    elif [ "${_VMFAMILY}" = "VS" ] || [ "${_VMFAMILY}" = "TG" ] ; then
       if [ -e "/boot/grub/grub.cfg" ] \
         || [ -e "/boot/grub/menu.lst" ] \
         || [ -e "/root/.tg.cnf" ] ; then
-        if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+        if [ "${_PHP_FPM_WORKERS}" = "AUTO" ] ; then
           _L_PHP_FPM_WORKERS=24
         else
-          _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+          _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
       else
-        if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+        if [ "${_PHP_FPM_WORKERS}" = "AUTO" ] ; then
           _L_PHP_FPM_WORKERS=6
         else
-          _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+          _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
       fi
     else
-      if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ] ; then
         _L_PHP_FPM_WORKERS=12
       else
-        _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+        _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
     fi
   else
-    if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+    if [ "${_PHP_FPM_WORKERS}" = "AUTO" ] ; then
       _L_PHP_FPM_WORKERS=6
     else
-      _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+      _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
   fi
 }
@@ -863,7 +863,7 @@ update_web_user() {
         ### msg "DEBUG: _T_PV is ${_T_PV} in update_web_user C"
       fi
     fi
-    if [ ! -z "$_T_PV" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ] ; then
+    if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ] ; then
       cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
       ### msg "DEBUG: _T_PV is ${_T_PV} in update_web_user D"
     else
@@ -909,13 +909,13 @@ update_web_user() {
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
       _INI=${_INI//\//\\\/}
       _QTP=${_T_TP//\//\\\/}
-      sed -i "s/.*open_basedir =.*/$_INI/g"                              ${_T_II}
+      sed -i "s/.*open_basedir =.*/${_INI}/g"                            ${_T_II}
       sed -i "s/.*session.save_path =.*/session.save_path = $_QTP/g"     ${_T_II}
       sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = $_QTP/g" ${_T_II}
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               ${_T_II}
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           ${_T_II}
-      rm -f $_T_HD/.ctrl.php*
-      echo > $_T_HD/.ctrl.php${_T_PV}.txt
+      rm -f ${_T_HD}/.ctrl.php*
+      echo > ${_T_HD}/.ctrl.php${_T_PV}.txt
     fi
     chmod 700 /home/${_WEB}
     chown -R ${_WEB}:www-data /home/${_WEB}
@@ -943,10 +943,10 @@ create_web_user() {
   _T_HD="/home/${_WEB}/.drush"
   _T_II="${_T_HD}/php.ini"
   _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
-  if [ ! -z "$_T_ID_EXISTS" ] && [ -e "${_T_II}" ] ; then
+  if [ ! -z "${_T_ID_EXISTS}" ] && [ -e "${_T_II}" ] ; then
     ### msg "DEBUG: ARG1 is $1 in create_web_user B"
     update_web_user "$1"
-  elif [ -z "$_T_ID_EXISTS" ] || [ ! -e "${_T_II}" ] ; then
+  elif [ -z "${_T_ID_EXISTS}" ] || [ ! -e "${_T_II}" ] ; then
     ### msg "DEBUG: ARG1 is $1 in create_web_user C"
     remove_web_user "clean"
     adduser --force-badname --system --ingroup www-data ${_WEB} &> /dev/null
@@ -957,27 +957,27 @@ create_web_user() {
 # Tune FPM configuration.
 tune_fpm_config() {
   tune_fpm_workers
-  _LIM_FPM="$_L_PHP_FPM_WORKERS"
+  _LIM_FPM="${_L_PHP_FPM_WORKERS}"
   if [ "$_LIM_FPM" -lt "24" ] ; then
-    if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    if [[ "${_THISHOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ] ; then
       _LIM_FPM=24
     fi
   fi
-  if [ "$_CLIENT_OPTION" = "MICRO" ] ; then
+  if [ "${_CLIENT_OPTION}" = "MICRO" ] ; then
     _LIM_FPM=2
     _PHP_FPM_WORKERS=4
   fi
   _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
-  if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+  if [ "${_PHP_FPM_WORKERS}" = "AUTO" ] ; then
     _DO_NOTHING=YES
   else
     _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
-    if [ ! -z "$_PHP_FPM_WORKERS" ] && [ "$_PHP_FPM_WORKERS" -gt "0" ] ; then
-      _CHILD_MAX_FPM="$_PHP_FPM_WORKERS"
+    if [ ! -z "${_PHP_FPM_WORKERS}" ] && [ "${_PHP_FPM_WORKERS}" -gt "0" ] ; then
+      _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
     fi
   fi
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
-  if [ -z "$_PHP_SV" ] ; then
+  if [ -z "${_PHP_SV}" ] ; then
     _PHP_SV=55
   fi
   if [ -e "/opt/php55/etc/pool.d/${_USER}.conf" ] ; then
@@ -991,11 +991,11 @@ tune_fpm_config() {
   else
     _PHP_OLD_SV=""
   fi
-  if [ "$_PHP_FPM_TIMEOUT" = "AUTO" ] || [ -z "$_PHP_FPM_TIMEOUT" ] ; then
+  if [ "${_PHP_FPM_TIMEOUT}" = "AUTO" ] || [ -z "${_PHP_FPM_TIMEOUT}" ] ; then
     _PHP_FPM_TIMEOUT=180
   fi
   _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
-  if [ "$_PHP_FPM_TIMEOUT" -lt "60" ] ; then
+  if [ "${_PHP_FPM_TIMEOUT}" -lt "60" ] ; then
     _PHP_FPM_TIMEOUT=60
   fi
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
@@ -1003,7 +1003,7 @@ tune_fpm_config() {
   fi
   cp -af ${pthBld}/aegir/conf/fpm-pool-foo.conf \
     /var/xdrago/conf/fpm-pool-foo.conf
-  if [ ! -z "$_PHP_FPM_TIMEOUT" ] && [ ! -z "$_PHP_SV" ] ; then
+  if [ ! -z "${_PHP_FPM_TIMEOUT}" ] && [ ! -z "${_PHP_SV}" ] ; then
     if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
       rm -f /opt/php*/etc/pool.d/${_USER}.conf
       cp -af /var/xdrago/conf/fpm-pool-foo.conf \
@@ -1012,45 +1012,45 @@ tune_fpm_config() {
     if [ -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ] ; then
       ### create or update special system user if needed
       if [ -e "/home/${_WEB}/.drush/php.ini" ] ; then
-        _OLD_PHP_IN_USE=`grep "/lib/php" /home/${_WEB}/.drush/php.ini`
+        _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
         _PHP_V="56 55 54 53"
         for e in $_PHP_V; do
-          if [[ "$_OLD_PHP_IN_USE" =~ "php${e}" ]] ; then
+          if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]] ; then
             if [ "${e}" != "${_PHP_SV}" ] \
               || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.txt" ] ; then
-              update_web_user "$_PHP_SV"
+              update_web_user "${_PHP_SV}"
             fi
           fi
         done
       else
         ### msg "DEBUG: _PHP_SV is ${_PHP_SV} in create_web_user A"
-        create_web_user "$_PHP_SV"
+        create_web_user "${_PHP_SV}"
       fi
       ### create or update special system user if needed
       sed -i "s/.ftp/.web/g" \
         /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       sed -i "s/\/data\/disk\/foo\/.tmp/\/home\/foo.web\/.tmp/g" \
         /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-      sed -i "s/foo/$_USER/g" \
+      sed -i "s/foo/${_USER}/g" \
         /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-      if [ ! -z "$_PHP_FPM_DENY" ] ; then
-        sed -i "s/passthru,/$_PHP_FPM_DENY,/g" \
+      if [ ! -z "${_PHP_FPM_DENY}" ] ; then
+        sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
           /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       fi
     fi
     _PHP_TO="${_PHP_FPM_TIMEOUT}s"
-    sed -i "s/180s/$_PHP_TO/g" \
+    sed -i "s/180s/${_PHP_TO}/g" \
       /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-    if [ ! -z "$_CHILD_MAX_FPM" ] ; then
-      sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" \
+    if [ ! -z "${_CHILD_MAX_FPM}" ] ; then
+      sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
         /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
     fi
-    if [ ! -d "/data/disk/$_USER/tmp" ] ; then
-      rm -f -r /data/disk/$_USER/tmp
-      mkdir -p /data/disk/$_USER/tmp
-      chown $_USER:www-data /data/disk/$_USER/tmp &> /dev/null
+    if [ ! -d "/data/disk/${_USER}/tmp" ] ; then
+      rm -f -r /data/disk/${_USER}/tmp
+      mkdir -p /data/disk/${_USER}/tmp
+      chown ${_USER}:www-data /data/disk/${_USER}/tmp &> /dev/null
     fi
-    if [ ! -z "$_PHP_OLD_SV" ] \
+    if [ ! -z "${_PHP_OLD_SV}" ] \
       && [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ] ; then
       mrun "service php${_PHP_OLD_SV}-fpm reload" &> /dev/null
     fi
@@ -1062,58 +1062,63 @@ tune_fpm_config() {
 #
 # Make sure that username is unique and not restricted.
 check_id() {
-  _ID_EXISTS=$(getent passwd $_USER 2>&1)
-  if [ -z "$_ID_EXISTS" ] ; then
+  _ID_EXISTS=$(getent passwd ${_USER} 2>&1)
+  if [ -z "${_ID_EXISTS}" ] ; then
     _DO_NOTHING=YES
-  elif [[ "$_ID_EXISTS" =~ "$_USER" ]] ; then
-    msg "ERROR: $_USER username is already taken"
+  elif [[ "${_ID_EXISTS}" =~ "${_USER}" ]] ; then
+    msg "ERROR: ${_USER} username is already taken"
     msg "Please choose different _USER"
     clean_pid_exit
   else
-    msg "ERROR: $_USER username check failed"
+    msg "ERROR: ${_USER} username check failed"
     msg "Please try different _USER"
     clean_pid_exit
   fi
-  if [ "$_USER" = "admin" ] \
-    || [ "$_USER" = "hostmaster" ] \
-    || [ "$_USER" = "barracuda" ] \
-    || [ "$_USER" = "octopus" ] \
-    || [ "$_USER" = "boa" ] \
-    || [ "$_USER" = "all" ] ; then
-    msg "ERROR: $_USER is a restricted username, please choose different _USER"
+  if [ "${_USER}" = "admin" ] \
+    || [ "${_USER}" = "hostmaster" ] \
+    || [ "${_USER}" = "barracuda" ] \
+    || [ "${_USER}" = "octopus" ] \
+    || [ "${_USER}" = "boa" ] \
+    || [ "${_USER}" = "all" ] ; then
+    msg "ERROR: ${_USER} is a restricted username, \
+      please choose different _USER"
     clean_pid_exit
-  elif [[ "$_USER" =~ "drupal" ]] \
-    || [[ "$_USER" =~ "drush" ]] \
-    || [[ "$_USER" =~ "sites" ]] \
-    || [[ "$_USER" =~ "default" ]] ; then
-    msg "ERROR: $_USER includes restricted keyword, please choose different _USER"
+  elif [[ "${_USER}" =~ "drupal" ]] \
+    || [[ "${_USER}" =~ "drush" ]] \
+    || [[ "${_USER}" =~ "sites" ]] \
+    || [[ "${_USER}" =~ "default" ]] ; then
+    msg "ERROR: ${_USER} includes restricted keyword, \
+      please choose different _USER"
     clean_pid_exit
   fi
   _REGEX="^[[:digit:]]"
-  if [[ "$_USER" =~ "$_REGEX" ]] ; then
-    msg "ERROR: $_USER is a wrong username, it should start with a letter, not digit"
+  if [[ "${_USER}" =~ "$_REGEX" ]] ; then
+    msg "ERROR: ${_USER} is a wrong username, \
+      it should start with a letter, not digit"
     clean_pid_exit
   fi
 }
 #
 # Find correct IP.
 find_correct_ip() {
-  _LOC_IP=`echo $(getent ahostsv4 $_LOC_DOM) | cut -d: -f2 | awk '{ print $1}'`
+  _LOC_IP=$(echo $(getent ahostsv4 $_LOC_DOM) \
+    | cut -d: -f2 \
+    | awk '{ print $1}' 2>&1)
 }
 #
 # Check repo status.
 check_git_repos_status() {
   _GITHUB_WORKS=NO
   _GITORIOUS_WORKS=NO
-  if [ "$_FORCE_GIT_MIRROR" = "drupal" ] ; then
+  if [ "${_FORCE_GIT_MIRROR}" = "drupal" ] ; then
     _FORCE_GIT_MIRROR=github
   fi
-  if [ "$_FORCE_GIT_MIRROR" = "github" ] ; then
+  if [ "${_FORCE_GIT_MIRROR}" = "github" ] ; then
     msg "INFO: We will use forced GitHub repository without testing connection"
     _GITHUB_WORKS=YES
     _GITORIOUS_WORKS=NO
     sleep 1
-  elif [ "$_FORCE_GIT_MIRROR" = "gitorious" ] ; then
+  elif [ "${_FORCE_GIT_MIRROR}" = "gitorious" ] ; then
     msg "INFO: We will use forced Gitorious mirror without testing connection"
     _GITHUB_WORKS=NO
     _GITORIOUS_WORKS=YES
@@ -1158,13 +1163,13 @@ EOF
 # Read or create Octopus cnf file.
 octopus_cnf() {
   if [ ! -e "${octCnf}" ] ; then
-    if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] \
-      || [[ "$_CLIENT_EMAIL" =~ "omega8.cc" ]] ; then
+    if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]] \
+      || [[ "${_CLIENT_EMAIL}" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=$(uname -n 2>&1)
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
-        || [[ "$_CHECK_HOST" =~ ".host8." ]] \
-        || [ "$_VMFAMILY" = "VS" ] ; then
+        || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+        || [ "${_VMFAMILY}" = "VS" ] ; then
         _DO_NOTHING=YES
       else
         msg "EXIT: You must enter **your** valid e-mail address"
@@ -1174,94 +1179,94 @@ octopus_cnf() {
     fi
     msg "INFO: Creating your ${octCnf} config file"
     sleep 1
-    echo "###"                                                 > ${octCnf}
-    echo "### Configuration created on ${_NOW} with"          >> ${octCnf}
-    echo "### Octopus version ${_X_VERSION}"                  >> ${octCnf}
-    echo "###"                                                >> ${octCnf}
-    echo "_USER=\"$_USER\""                                   >> ${octCnf}
-    echo "_MY_EMAIL=\"$_MY_EMAIL\""                           >> ${octCnf}
-    echo "_PLATFORMS_LIST=\"$_PLATFORMS_LIST\""               >> ${octCnf}
-    echo "_AUTOPILOT=$_AUTOPILOT"                             >> ${octCnf}
-    echo "_HM_ONLY=$_HM_ONLY"                                 >> ${octCnf}
-    echo "_DEBUG_MODE=$_DEBUG_MODE"                           >> ${octCnf}
-    echo "_MY_OWNIP=$_MY_OWNIP"                               >> ${octCnf}
-    echo "_FORCE_GIT_MIRROR=\"$_FORCE_GIT_MIRROR\""           >> ${octCnf}
-    echo "_THIS_DB_HOST=$_THIS_DB_HOST"                       >> ${octCnf}
-    echo "_DNS_SETUP_TEST=$_DNS_SETUP_TEST"                   >> ${octCnf}
-    echo "_HOT_SAUCE=$_HOT_SAUCE"                             >> ${octCnf}
-    echo "_USE_CURRENT=$_USE_CURRENT"                         >> ${octCnf}
-    echo "_DEL_OLD_EMPTY_PLATFORMS=$_DEL_OLD_EMPTY_PLATFORMS" >> ${octCnf}
-    echo "_DEL_OLD_BACKUPS=$_DEL_OLD_BACKUPS"                 >> ${octCnf}
-    echo "_DEL_OLD_TMP=$_DEL_OLD_TMP"                         >> ${octCnf}
-    echo "_LOCAL_NETWORK_IP=$_LOCAL_NETWORK_IP"               >> ${octCnf}
-    echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION"                 >> ${octCnf}
-    echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION"                 >> ${octCnf}
-    echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS"                 >> ${octCnf}
-    echo "_PHP_FPM_TIMEOUT=$_PHP_FPM_TIMEOUT"                 >> ${octCnf}
-    echo "_PHP_FPM_DENY=\"$_PHP_FPM_DENY\""                   >> ${octCnf}
-    echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS"               >> ${octCnf}
-    echo "_SQL_CONVERT=$_SQL_CONVERT"                         >> ${octCnf}
-    echo "_RESERVED_RAM=$_RESERVED_RAM"                       >> ${octCnf}
-    echo "###"                                                >> ${octCnf}
-    echo "_DOMAIN=\"$_DOMAIN\""                               >> ${octCnf}
-    echo "_CLIENT_EMAIL=\"$_CLIENT_EMAIL\""                   >> ${octCnf}
-    echo "_CLIENT_OPTION=\"$_CLIENT_OPTION\""                 >> ${octCnf}
-    echo "_CLIENT_SUBSCR=\"$_CLIENT_SUBSCR\""                 >> ${octCnf}
-    echo "_CLIENT_CORES=\"$_CLIENT_CORES\""                   >> ${octCnf}
-    echo "###"                                                >> ${octCnf}
+    echo "###"                                                   > ${octCnf}
+    echo "### Configuration created on ${_NOW} with"            >> ${octCnf}
+    echo "### Octopus version ${_X_VERSION}"                    >> ${octCnf}
+    echo "###"                                                  >> ${octCnf}
+    echo "_USER=\"${_USER}\""                                   >> ${octCnf}
+    echo "_MY_EMAIL=\"${_MY_EMAIL}\""                           >> ${octCnf}
+    echo "_PLATFORMS_LIST=\"${_PLATFORMS_LIST}\""               >> ${octCnf}
+    echo "_AUTOPILOT=${_AUTOPILOT}"                             >> ${octCnf}
+    echo "_HM_ONLY=${_HM_ONLY}"                                 >> ${octCnf}
+    echo "_DEBUG_MODE=${_DEBUG_MODE}"                           >> ${octCnf}
+    echo "_MY_OWNIP=${_MY_OWNIP}"                               >> ${octCnf}
+    echo "_FORCE_GIT_MIRROR=\"${_FORCE_GIT_MIRROR}\""           >> ${octCnf}
+    echo "_THIS_DB_HOST=${_THIS_DB_HOST}"                       >> ${octCnf}
+    echo "_DNS_SETUP_TEST=${_DNS_SETUP_TEST}"                   >> ${octCnf}
+    echo "_HOT_SAUCE=${_HOT_SAUCE}"                             >> ${octCnf}
+    echo "_USE_CURRENT=${_USE_CURRENT}"                         >> ${octCnf}
+    echo "_DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS}" >> ${octCnf}
+    echo "_DEL_OLD_BACKUPS=${_DEL_OLD_BACKUPS}"                 >> ${octCnf}
+    echo "_DEL_OLD_TMP=${_DEL_OLD_TMP}"                         >> ${octCnf}
+    echo "_LOCAL_NETWORK_IP=${_LOCAL_NETWORK_IP}"               >> ${octCnf}
+    echo "_PHP_FPM_VERSION=${_PHP_FPM_VERSION}"                 >> ${octCnf}
+    echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}"                 >> ${octCnf}
+    echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}"                 >> ${octCnf}
+    echo "_PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT}"                 >> ${octCnf}
+    echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\""                   >> ${octCnf}
+    echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}"               >> ${octCnf}
+    echo "_SQL_CONVERT=${_SQL_CONVERT}"                         >> ${octCnf}
+    echo "_RESERVED_RAM=${_RESERVED_RAM}"                       >> ${octCnf}
+    echo "###"                                                  >> ${octCnf}
+    echo "_DOMAIN=\"${_DOMAIN}\""                               >> ${octCnf}
+    echo "_CLIENT_EMAIL=\"${_CLIENT_EMAIL}\""                   >> ${octCnf}
+    echo "_CLIENT_OPTION=\"${_CLIENT_OPTION}\""                 >> ${octCnf}
+    echo "_CLIENT_SUBSCR=\"${_CLIENT_SUBSCR}\""                 >> ${octCnf}
+    echo "_CLIENT_CORES=\"${_CLIENT_CORES}\""                   >> ${octCnf}
+    echo "###"                                                  >> ${octCnf}
   else
     msg "INFO: Reading your ${octCnf} config file"
     sleep 1
-    _PHP_FPM_WORKERS_TEST=$(grep _PHP_FPM_WORKERS ${octCnf})
-    if [[ "$_PHP_FPM_WORKERS_TEST" =~ "_PHP_FPM_WORKERS" ]] ; then
+    _PHP_FPM_WORKERS_TEST=$(grep _PHP_FPM_WORKERS ${octCnf} 2>&1)
+    if [[ "${_PHP_FPM_WORKERS_TEST}" =~ "_PHP_FPM_WORKERS" ]] ; then
       _DO_NOTHING=YES
     else
-      echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> ${octCnf}
+      echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}" >> ${octCnf}
     fi
-    _PHP_FPM_TIMEOUT_TEST=$(grep _PHP_FPM_TIMEOUT ${octCnf})
-    if [[ "$_PHP_FPM_TIMEOUT_TEST" =~ "_PHP_FPM_TIMEOUT" ]] ; then
+    _PHP_FPM_TIMEOUT_TEST=$(grep _PHP_FPM_TIMEOUT ${octCnf} 2>&1)
+    if [[ "${_PHP_FPM_TIMEOUT_TEST}" =~ "_PHP_FPM_TIMEOUT" ]] ; then
       _DO_NOTHING=YES
     else
-      echo "_PHP_FPM_TIMEOUT=$_PHP_FPM_TIMEOUT" >> ${octCnf}
+      echo "_PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT}" >> ${octCnf}
     fi
-    _PHP_FPM_DENY_TEST=$(grep _PHP_FPM_DENY ${octCnf})
-    if [[ "$_PHP_FPM_DENY_TEST" =~ "_PHP_FPM_DENY" ]] ; then
+    _PHP_FPM_DENY_TEST=$(grep _PHP_FPM_DENY ${octCnf} 2>&1)
+    if [[ "${_PHP_FPM_DENY_TEST}" =~ "_PHP_FPM_DENY" ]] ; then
       _DO_NOTHING=YES
     else
-      echo "_PHP_FPM_DENY=\"$_PHP_FPM_DENY\"" >> ${octCnf}
+      echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\"" >> ${octCnf}
     fi
-     _RESERVED_RAM_TEST=$(grep _RESERVED_RAM ${octCnf})
-    if [[ "$_RESERVED_RAM_TEST" =~ "_RESERVED_RAM" ]] ; then
+     _RESERVED_RAM_TEST=$(grep _RESERVED_RAM ${octCnf} 2>&1)
+    if [[ "${_RESERVED_RAM_TEST}" =~ "_RESERVED_RAM" ]] ; then
       _DO_NOTHING=YES
     else
-      echo "_RESERVED_RAM=$_RESERVED_RAM" >> ${octCnf}
+      echo "_RESERVED_RAM=${_RESERVED_RAM}" >> ${octCnf}
     fi
-    _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION ${octCnf})
-    if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
+    _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION ${octCnf} 2>&1)
+    if [[ "${_PHP_FPM_VERSION_TEST}" =~ "_PHP_FPM_VERSION" ]] ; then
       _DO_NOTHING=YES
     else
-      echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> ${octCnf}
+      echo "_PHP_FPM_VERSION=${_PHP_FPM_VERSION}" >> ${octCnf}
     fi
-    _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION ${octCnf})
-    if [[ "$_PHP_CLI_VERSION_TEST" =~ "_PHP_CLI_VERSION" ]] ; then
+    _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION ${octCnf} 2>&1)
+    if [[ "${_PHP_CLI_VERSION_TEST}" =~ "_PHP_CLI_VERSION" ]] ; then
       _DO_NOTHING=YES
     else
-      echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> ${octCnf}
+      echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}" >> ${octCnf}
     fi
     _CHECK_HOST=$(uname -n 2>&1)
-    if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    if [[ "${_CHECK_HOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ] ; then
       _LD_DOM=YES
     else
       _LD_DOM=NO
     fi
-    if [ -e "/data/disk/$_USER/static/control/fpm.info" ] ; then
-      _PHP_FPM_VERSION=`cat /data/disk/$_USER/static/control/fpm.info`
-      _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
-      if [ "$_PHP_FPM_VERSION" = "5.6" ] \
-        || [ "$_PHP_FPM_VERSION" = "5.5" ] \
-        || [ "$_PHP_FPM_VERSION" = "5.4" ] \
-        || [ "$_PHP_FPM_VERSION" = "5.3" ]; then
-        if [ "$_PHP_FPM_VERSION" = "5.5" ] \
+    if [ -e "/data/disk/${_USER}/static/control/fpm.info" ] ; then
+      _PHP_FPM_VERSION=$(cat /data/disk/${_USER}/static/control/fpm.info 2>&1)
+      _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
+      if [ "${_PHP_FPM_VERSION}" = "5.6" ] \
+        || [ "${_PHP_FPM_VERSION}" = "5.5" ] \
+        || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
+        || [ "${_PHP_FPM_VERSION}" = "5.3" ]; then
+        if [ "${_PHP_FPM_VERSION}" = "5.5" ] \
           && [ ! -x "/opt/php55/bin/php" ] ; then
           if [ -x "/opt/php56/bin/php" ] ; then
             _PHP_FPM_VERSION=5.6
@@ -1270,7 +1275,7 @@ octopus_cnf() {
           elif [ -x "/opt/php53/bin/php" ] ; then
             _PHP_FPM_VERSION=5.3
           fi
-        elif [ "$_PHP_FPM_VERSION" = "5.6" ] \
+        elif [ "${_PHP_FPM_VERSION}" = "5.6" ] \
           && [ ! -x "/opt/php56/bin/php" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
             _PHP_FPM_VERSION=5.5
@@ -1279,7 +1284,7 @@ octopus_cnf() {
           elif [ -x "/opt/php53/bin/php" ] ; then
             _PHP_FPM_VERSION=5.3
           fi
-        elif [ "$_PHP_FPM_VERSION" = "5.4" ] \
+        elif [ "${_PHP_FPM_VERSION}" = "5.4" ] \
           && [ ! -x "/opt/php54/bin/php" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
             _PHP_FPM_VERSION=5.5
@@ -1288,7 +1293,7 @@ octopus_cnf() {
           elif [ -x "/opt/php53/bin/php" ] ; then
             _PHP_FPM_VERSION=5.3
           fi
-        elif [ "$_PHP_FPM_VERSION" = "5.3" ] \
+        elif [ "${_PHP_FPM_VERSION}" = "5.3" ] \
           && [ ! -x "/opt/php53/bin/php" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
             _PHP_FPM_VERSION=5.5
@@ -1298,21 +1303,22 @@ octopus_cnf() {
             _PHP_FPM_VERSION=5.4
           fi
         fi
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" \
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_FPM_VERSION}/g" \
           ${octCnf} &> /dev/null
-        echo $_PHP_FPM_VERSION > /data/disk/${_USER}/log/fpm.txt
-        echo $_PHP_FPM_VERSION > /data/disk/${_USER}/static/control/fpm.info
+        echo ${_PHP_FPM_VERSION} > /data/disk/${_USER}/log/fpm.txt
+        echo ${_PHP_FPM_VERSION} > /data/disk/${_USER}/static/control/fpm.info
         chown ${_USER}.ftp:users /data/disk/${_USER}/static/control/fpm.info
       fi
     else
-      if [ -e "/data/disk/$_USER/log/fpm.txt" ] && [ "$_LD_DOM" = "YES" ] ; then
-        _PHP_FPM_VERSION=`cat /data/disk/$_USER/log/fpm.txt`
-        _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
-        if [ "$_PHP_FPM_VERSION" = "5.6" ] \
-          || [ "$_PHP_FPM_VERSION" = "5.5" ] \
-          || [ "$_PHP_FPM_VERSION" = "5.4" ] \
-          || [ "$_PHP_FPM_VERSION" = "5.3" ]; then
-          if [ "$_PHP_FPM_VERSION" = "5.5" ] \
+      if [ -e "/data/disk/${_USER}/log/fpm.txt" ] \
+        && [ "${_LD_DOM}" = "YES" ] ; then
+        _PHP_FPM_VERSION=$(cat /data/disk/${_USER}/log/fpm.txt 2>&1)
+        _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
+        if [ "${_PHP_FPM_VERSION}" = "5.6" ] \
+          || [ "${_PHP_FPM_VERSION}" = "5.5" ] \
+          || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
+          || [ "${_PHP_FPM_VERSION}" = "5.3" ]; then
+          if [ "${_PHP_FPM_VERSION}" = "5.5" ] \
             && [ ! -x "/opt/php55/bin/php" ] ; then
             if [ -x "/opt/php56/bin/php" ] ; then
               _PHP_FPM_VERSION=5.6
@@ -1321,7 +1327,7 @@ octopus_cnf() {
             elif [ -x "/opt/php53/bin/php" ] ; then
               _PHP_FPM_VERSION=5.3
             fi
-          elif [ "$_PHP_FPM_VERSION" = "5.6" ] \
+          elif [ "${_PHP_FPM_VERSION}" = "5.6" ] \
             && [ ! -x "/opt/php56/bin/php" ] ; then
             if [ -x "/opt/php55/bin/php" ] ; then
               _PHP_FPM_VERSION=5.5
@@ -1330,7 +1336,7 @@ octopus_cnf() {
             elif [ -x "/opt/php53/bin/php" ] ; then
               _PHP_FPM_VERSION=5.3
             fi
-          elif [ "$_PHP_FPM_VERSION" = "5.4" ] \
+          elif [ "${_PHP_FPM_VERSION}" = "5.4" ] \
             && [ ! -x "/opt/php54/bin/php" ] ; then
             if [ -x "/opt/php55/bin/php" ] ; then
               _PHP_FPM_VERSION=5.5
@@ -1339,7 +1345,7 @@ octopus_cnf() {
             elif [ -x "/opt/php53/bin/php" ] ; then
               _PHP_FPM_VERSION=5.3
             fi
-          elif [ "$_PHP_FPM_VERSION" = "5.3" ] \
+          elif [ "${_PHP_FPM_VERSION}" = "5.3" ] \
             && [ ! -x "/opt/php53/bin/php" ] ; then
             if [ -x "/opt/php55/bin/php" ] ; then
               _PHP_FPM_VERSION=5.5
@@ -1349,19 +1355,19 @@ octopus_cnf() {
               _PHP_FPM_VERSION=5.4
             fi
           fi
-          sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" \
+          sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_FPM_VERSION}/g" \
             ${octCnf} &> /dev/null
         fi
       fi
     fi
-    if [ -e "/data/disk/$_USER/static/control/cli.info" ] ; then
-      _PHP_CLI_VERSION=`cat /data/disk/$_USER/static/control/cli.info`
-      _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
-      if [ "$_PHP_CLI_VERSION" = "5.6" ] \
-        || [ "$_PHP_CLI_VERSION" = "5.5" ] \
-        || [ "$_PHP_CLI_VERSION" = "5.4" ] \
-        || [ "$_PHP_CLI_VERSION" = "5.3" ]; then
-        if [ "$_PHP_CLI_VERSION" = "5.5" ] \
+    if [ -e "/data/disk/${_USER}/static/control/cli.info" ] ; then
+      _PHP_CLI_VERSION=$(cat /data/disk/${_USER}/static/control/cli.info 2>&1)
+      _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
+      if [ "${_PHP_CLI_VERSION}" = "5.6" ] \
+        || [ "${_PHP_CLI_VERSION}" = "5.5" ] \
+        || [ "${_PHP_CLI_VERSION}" = "5.4" ] \
+        || [ "${_PHP_CLI_VERSION}" = "5.3" ]; then
+        if [ "${_PHP_CLI_VERSION}" = "5.5" ] \
           && [ ! -x "/opt/php55/bin/php" ] ; then
           if [ -x "/opt/php56/bin/php" ] ; then
             _PHP_CLI_VERSION=5.6
@@ -1370,7 +1376,7 @@ octopus_cnf() {
           elif [ -x "/opt/php53/bin/php" ] ; then
             _PHP_CLI_VERSION=5.3
           fi
-        elif [ "$_PHP_CLI_VERSION" = "5.6" ] \
+        elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
           && [ ! -x "/opt/php56/bin/php" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
             _PHP_CLI_VERSION=5.5
@@ -1379,7 +1385,7 @@ octopus_cnf() {
           elif [ -x "/opt/php53/bin/php" ] ; then
             _PHP_CLI_VERSION=5.3
           fi
-        elif [ "$_PHP_CLI_VERSION" = "5.4" ] \
+        elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
           && [ ! -x "/opt/php54/bin/php" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
             _PHP_CLI_VERSION=5.5
@@ -1388,7 +1394,7 @@ octopus_cnf() {
           elif [ -x "/opt/php53/bin/php" ] ; then
             _PHP_CLI_VERSION=5.3
           fi
-        elif [ "$_PHP_CLI_VERSION" = "5.3" ] \
+        elif [ "${_PHP_CLI_VERSION}" = "5.3" ] \
           && [ ! -x "/opt/php53/bin/php" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
             _PHP_CLI_VERSION=5.5
@@ -1398,21 +1404,22 @@ octopus_cnf() {
             _PHP_CLI_VERSION=5.4
           fi
         fi
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" \
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_CLI_VERSION}/g" \
           ${octCnf} &> /dev/null
-        echo $_PHP_CLI_VERSION > /data/disk/${_USER}/log/cli.txt
-        echo $_PHP_CLI_VERSION > /data/disk/${_USER}/static/control/cli.info
+        echo ${_PHP_CLI_VERSION} > /data/disk/${_USER}/log/cli.txt
+        echo ${_PHP_CLI_VERSION} > /data/disk/${_USER}/static/control/cli.info
         chown ${_USER}.ftp:users /data/disk/${_USER}/static/control/cli.info
       fi
     else
-      if [ -e "/data/disk/$_USER/log/cli.txt" ] && [ "$_LD_DOM" = "YES" ] ; then
-        _PHP_CLI_VERSION=`cat /data/disk/$_USER/log/cli.txt`
-        _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
-        if [ "$_PHP_CLI_VERSION" = "5.6" ] \
-          || [ "$_PHP_CLI_VERSION" = "5.5" ] \
-          || [ "$_PHP_CLI_VERSION" = "5.4" ] \
-          || [ "$_PHP_CLI_VERSION" = "5.3" ]; then
-          if [ "$_PHP_CLI_VERSION" = "5.5" ] \
+      if [ -e "/data/disk/${_USER}/log/cli.txt" ] \
+        && [ "${_LD_DOM}" = "YES" ] ; then
+        _PHP_CLI_VERSION=$(cat /data/disk/${_USER}/log/cli.txt 2>&1)
+        _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
+        if [ "${_PHP_CLI_VERSION}" = "5.6" ] \
+          || [ "${_PHP_CLI_VERSION}" = "5.5" ] \
+          || [ "${_PHP_CLI_VERSION}" = "5.4" ] \
+          || [ "${_PHP_CLI_VERSION}" = "5.3" ]; then
+          if [ "${_PHP_CLI_VERSION}" = "5.5" ] \
             && [ ! -x "/opt/php55/bin/php" ] ; then
             if [ -x "/opt/php56/bin/php" ] ; then
               _PHP_CLI_VERSION=5.6
@@ -1421,7 +1428,7 @@ octopus_cnf() {
             elif [ -x "/opt/php53/bin/php" ] ; then
               _PHP_CLI_VERSION=5.3
             fi
-          elif [ "$_PHP_CLI_VERSION" = "5.6" ] \
+          elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
             && [ ! -x "/opt/php56/bin/php" ] ; then
             if [ -x "/opt/php55/bin/php" ] ; then
               _PHP_CLI_VERSION=5.5
@@ -1430,7 +1437,7 @@ octopus_cnf() {
             elif [ -x "/opt/php53/bin/php" ] ; then
               _PHP_CLI_VERSION=5.3
             fi
-          elif [ "$_PHP_CLI_VERSION" = "5.4" ] \
+          elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
             && [ ! -x "/opt/php54/bin/php" ] ; then
             if [ -x "/opt/php55/bin/php" ] ; then
               _PHP_CLI_VERSION=5.5
@@ -1439,7 +1446,7 @@ octopus_cnf() {
             elif [ -x "/opt/php53/bin/php" ] ; then
               _PHP_CLI_VERSION=5.3
             fi
-          elif [ "$_PHP_CLI_VERSION" = "5.3" ] \
+          elif [ "${_PHP_CLI_VERSION}" = "5.3" ] \
             && [ ! -x "/opt/php53/bin/php" ] ; then
             if [ -x "/opt/php55/bin/php" ] ; then
               _PHP_CLI_VERSION=5.5
@@ -1449,72 +1456,72 @@ octopus_cnf() {
               _PHP_CLI_VERSION=5.4
             fi
           fi
-          sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" \
+          sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_CLI_VERSION}/g" \
             ${octCnf} &> /dev/null
         fi
       fi
     fi
 
-    _O_CONTRIB_UP_TEST=$(grep _O_CONTRIB_UP ${octCnf})
+    _O_CONTRIB_UP_TEST=$(grep _O_CONTRIB_UP ${octCnf} 2>&1)
     if [[ "$_O_CONTRIB_UP_TEST" =~ "_O_CONTRIB_UP" ]] ; then
       sed -i "s/^_O_CONTRIB_UP.*//g" ${octCnf} &> /dev/null
       sed -i "/^$/d" ${octCnf} &> /dev/null
     fi
 
-    _ALLOW_UNSUPPORTED_TEST=$(grep _ALLOW_UNSUPPORTED ${octCnf})
+    _ALLOW_UNSUPPORTED_TEST=$(grep _ALLOW_UNSUPPORTED ${octCnf} 2>&1)
     if [[ "$_ALLOW_UNSUPPORTED_TEST" =~ "_ALLOW_UNSUPPORTED" ]] ; then
       sed -i "s/^_ALLOW_UNSUPPORTED.*//g" ${octCnf} &> /dev/null
       sed -i "/^$/d" ${octCnf} &> /dev/null
     fi
 
-    _USE_STOCK_TEST=$(grep _USE_STOCK ${octCnf})
+    _USE_STOCK_TEST=$(grep _USE_STOCK ${octCnf} 2>&1)
     if [[ "$_USE_STOCK_TEST" =~ "_USE_STOCK" ]] ; then
       sed -i "s/^_USE_STOCK.*//g" ${octCnf} &> /dev/null
       sed -i "/^$/d" ${octCnf} &> /dev/null
     fi
 
-    _HTTP_WILDCARD_TEST=$(grep _HTTP_WILDCARD ${octCnf})
+    _HTTP_WILDCARD_TEST=$(grep _HTTP_WILDCARD ${octCnf} 2>&1)
     if [[ "$_HTTP_WILDCARD_TEST" =~ "_HTTP_WILDCARD" ]] ; then
       sed -i "s/^_HTTP_WILDCARD.*//g" ${octCnf} &> /dev/null
       sed -i "/^$/d" ${octCnf} &> /dev/null
     fi
 
-    _DEL_OLD_EMPTY_PLATFORMS_TEST=$(grep _DEL_OLD_EMPTY_PLATFORMS ${octCnf})
-    if [[ "$_DEL_OLD_EMPTY_PLATFORMS_TEST" =~ "_DEL_OLD_EMPTY_PLATFORMS" ]] ; then
+    _DEL_OLD_EMPTY_PLATFORMS_TEST=$(grep _DEL_OLD_EMPTY_PLATFORMS ${octCnf} 2>&1)
+    if [[ "${_DEL_OLD_EMPTY_PLATFORMS_TEST}" =~ "_DEL_OLD_EMPTY_PLATFORMS" ]] ; then
       _DO_NOTHING=YES
     else
-      echo "_DEL_OLD_EMPTY_PLATFORMS=$_DEL_OLD_EMPTY_PLATFORMS" >> ${octCnf}
+      echo "_DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS}" >> ${octCnf}
     fi
 
-    _DEL_OLD_BACKUPS_TEST=$(grep _DEL_OLD_BACKUPS ${octCnf})
-    if [[ "$_DEL_OLD_BACKUPS_TEST" =~ "_DEL_OLD_BACKUPS" ]] ; then
+    _DEL_OLD_BACKUPS_TEST=$(grep _DEL_OLD_BACKUPS ${octCnf} 2>&1)
+    if [[ "${_DEL_OLD_BACKUPS_TEST}" =~ "_DEL_OLD_BACKUPS" ]] ; then
       _DO_NOTHING=YES
     else
-      echo "_DEL_OLD_BACKUPS=$_DEL_OLD_BACKUPS" >> ${octCnf}
+      echo "_DEL_OLD_BACKUPS=${_DEL_OLD_BACKUPS}" >> ${octCnf}
     fi
 
-    _DEL_OLD_TMP_TEST=$(grep _DEL_OLD_TMP ${octCnf})
-    if [[ "$_DEL_OLD_TMP_TEST" =~ "_DEL_OLD_TMP" ]] ; then
+    _DEL_OLD_TMP_TEST=$(grep _DEL_OLD_TMP ${octCnf} 2>&1)
+    if [[ "${_DEL_OLD_TMP_TEST}" =~ "_DEL_OLD_TMP" ]] ; then
       _DO_NOTHING=YES
     else
-      echo "_DEL_OLD_TMP=$_DEL_OLD_TMP" >> ${octCnf}
+      echo "_DEL_OLD_TMP=${_DEL_OLD_TMP}" >> ${octCnf}
     fi
 
-    if [ "$_LD_DOM" = "YES" ] ; then
+    if [ "${_LD_DOM}" = "YES" ] ; then
       _STRONG_PASSWORDS=YES
     fi
-    _STRONG_PASSWORDS_TEST=$(grep _STRONG_PASSWORDS ${octCnf})
-    if [[ "$_STRONG_PASSWORDS_TEST" =~ "_STRONG_PASSWORDS" ]] ; then
+    _STRONG_PASSWORDS_TEST=$(grep _STRONG_PASSWORDS ${octCnf} 2>&1)
+    if [[ "${_STRONG_PASSWORDS_TEST}" =~ "_STRONG_PASSWORDS" ]] ; then
       _DO_NOTHING=YES
     else
-      echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> ${octCnf}
+      echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}" >> ${octCnf}
     fi
 
-    _SQL_CONVERT_TEST=$(grep _SQL_CONVERT ${octCnf})
-    if [[ "$_SQL_CONVERT_TEST" =~ "_SQL_CONVERT" ]] ; then
+    _SQL_CONVERT_TEST=$(grep _SQL_CONVERT ${octCnf} 2>&1)
+    if [[ "${_SQL_CONVERT_TEST}" =~ "_SQL_CONVERT" ]] ; then
       _DO_NOTHING=YES
     else
-      echo "_SQL_CONVERT=$_SQL_CONVERT" >> ${octCnf}
+      echo "_SQL_CONVERT=${_SQL_CONVERT}" >> ${octCnf}
     fi
 
     msg "NOTE! Please review all config options displayed below"
@@ -1527,22 +1534,22 @@ octopus_cnf() {
     if [ -e "${octCnf}" ] ; then
       source ${octCnf}
     fi
-    _PRE_PLATFORMS_LIST="$_PLATFORMS_LIST"
+    _PRE_PLATFORMS_LIST="${_PLATFORMS_LIST}"
     if [ -e "/data/disk/${_USER}/static/control/platforms.info" ] ; then
-      _PLATFORMS_LIST=`cat /data/disk/${_USER}/static/control/platforms.info`
-      _PLATFORMS_LIST=`echo -n $_PLATFORMS_LIST | tr -d "\n"`
+      _PLATFORMS_LIST=$(cat /data/disk/${_USER}/static/control/platforms.info 2>&1)
+      _PLATFORMS_LIST=$(echo -n ${_PLATFORMS_LIST} | tr -d "\n" 2>&1)
       _PLATFORMS_LIST=${_PLATFORMS_LIST//[^ 0-9A-Z]/}
-      msg "NOTE! Custom Platforms List: $_PLATFORMS_LIST"
-      if [ -z "$_PLATFORMS_LIST" ] ; then
-        _PLATFORMS_LIST="$_PRE_PLATFORMS_LIST"
-        msg "NOTE! Default Platforms List: $_PLATFORMS_LIST"
+      msg "NOTE! Custom Platforms List: ${_PLATFORMS_LIST}"
+      if [ -z "${_PLATFORMS_LIST}" ] ; then
+        _PLATFORMS_LIST="${_PRE_PLATFORMS_LIST}"
+        msg "NOTE! Default Platforms List: ${_PLATFORMS_LIST}"
       fi
     fi
-    if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
+    if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]] ; then
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
-        || [[ "$_CHECK_HOST" =~ ".host8." ]] \
-        || [ "$_VMFAMILY" = "VS" ] ; then
+        || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+        || [ "${_VMFAMILY}" = "VS" ] ; then
         _DO_NOTHING=YES
       else
         msg "EXIT: You must enter **your** valid e-mail address in the"
@@ -1550,8 +1557,8 @@ octopus_cnf() {
         clean_pid_exit
       fi
     fi
-    if [ "$_PHP_FPM_VERSION" = "5.6" ] \
-      || [ "$_PHP_CLI_VERSION" = "5.6" ] ; then
+    if [ "${_PHP_FPM_VERSION}" = "5.6" ] \
+      || [ "${_PHP_CLI_VERSION}" = "5.6" ] ; then
       if [ ! -x "/opt/php56/bin/php" ] ; then
         if [ -x "/opt/php55/bin/php" ] ; then
           _PHP_FPM_VERSION=5.5
@@ -1567,8 +1574,8 @@ octopus_cnf() {
           _PHP_CLI_VERSION=
         fi
       fi
-    elif [ "$_PHP_FPM_VERSION" = "5.5" ] \
-      || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+    elif [ "${_PHP_FPM_VERSION}" = "5.5" ] \
+      || [ "${_PHP_CLI_VERSION}" = "5.5" ] ; then
       if [ ! -x "/opt/php55/bin/php" ] ; then
         if [ -x "/opt/php56/bin/php" ] ; then
           _PHP_FPM_VERSION=5.6
@@ -1584,8 +1591,8 @@ octopus_cnf() {
           _PHP_CLI_VERSION=
         fi
       fi
-    elif [ "$_PHP_FPM_VERSION" = "5.4" ] \
-      || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
+    elif [ "${_PHP_FPM_VERSION}" = "5.4" ] \
+      || [ "${_PHP_CLI_VERSION}" = "5.4" ] ; then
       if [ ! -x "/opt/php54/bin/php" ] ; then
         if [ -x "/opt/php55/bin/php" ] ; then
           _PHP_FPM_VERSION=5.5
@@ -1601,8 +1608,8 @@ octopus_cnf() {
           _PHP_CLI_VERSION=
         fi
       fi
-    elif [ "$_PHP_FPM_VERSION" = "5.3" ] \
-      || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
+    elif [ "${_PHP_FPM_VERSION}" = "5.3" ] \
+      || [ "${_PHP_CLI_VERSION}" = "5.3" ] ; then
       if [ ! -x "/opt/php53/bin/php" ] ; then
         if [ -x "/opt/php55/bin/php" ] ; then
           _PHP_FPM_VERSION=5.5
@@ -1622,12 +1629,12 @@ octopus_cnf() {
       _PHP_FPM_VERSION=
       _PHP_CLI_VERSION=
     fi
-    if [ -z "$_PHP_FPM_VERSION" ] || [ -z "$_PHP_CLI_VERSION" ] ; then
+    if [ -z "${_PHP_FPM_VERSION}" ] || [ -z "${_PHP_CLI_VERSION}" ] ; then
       msg "EXIT: You must specify already installed PHP version"
       msg "EXIT: in both _PHP_FPM_VERSION and _PHP_CLI_VERSION"
       clean_pid_exit
     fi
-    if [ "$_STATUS" = "INIT" ] ; then
+    if [ "${_STATUS}" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
         true
       else
@@ -1647,16 +1654,16 @@ octopus_cnf() {
 #
 # Fix advanced cron IP for cURL requests.
 fix_advanced_cron_curl() {
-  if [ -e "/data/disk/$_USER/.drush/hostmaster.alias.drushrc.php" ] ; then
-    _THIS_HM_ROOT=`cat /data/disk/$_USER/.drush/hostmaster.alias.drushrc.php \
+  if [ -e "/data/disk/${_USER}/.drush/hostmaster.alias.drushrc.php" ] ; then
+    _THIS_HM_ROOT=$(cat /data/disk/${_USER}/.drush/hostmaster.alias.drushrc.php \
       | grep "root'" \
       | cut -d: -f2 \
       | awk '{ print $3}' \
-      | sed "s/[\,']//g"`
+      | sed "s/[\,']//g" 2>&1)
     pthA="profiles/hostmaster/modules/hosting_advanced_cron"
     pthB="hosting_advanced_cron.module"
-    if [ -e "$_THIS_HM_ROOT/${pthA}/${pthB}" ] ; then
-      sed -i "s/127.0.0.1/$_CRON_IP/g" $_THIS_HM_ROOT/${pthA}/${pthB}
+    if [ -e "${_THIS_HM_ROOT}/${pthA}/${pthB}" ] ; then
+      sed -i "s/127.0.0.1/${_CRON_IP}/g" ${_THIS_HM_ROOT}/${pthA}/${pthB}
     fi
   fi
 }
@@ -1693,7 +1700,7 @@ d;};' ${octInc}/nginx_vhost_common.conf
 sub_force_advanced_nginx_config() {
   if [ -d "${octInc}" ] ; then
     _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
-    if [ -z "$_PHP_SV" ] ; then
+    if [ -z "${_PHP_SV}" ] ; then
       _PHP_SV=55
     fi
     if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ] ; then
@@ -1722,13 +1729,13 @@ sub_force_advanced_nginx_config() {
         | uniq`;do echo "$_IP # local IP address" >> /root/.local.IP.list;done
       rm -f /root/.tmp.IP.list*
     fi
-    _IP_IF_PRESENT=$(grep "$_CRON_IP" /root/.local.IP.list 2>&1)
-    if [[ "$_IP_IF_PRESENT" =~ "$_CRON_IP" ]] ; then
+    _IP_IF_PRESENT=$(grep "${_CRON_IP}" /root/.local.IP.list 2>&1)
+    if [[ "${_IP_IF_PRESENT}" =~ "${_CRON_IP}" ]] ; then
       _IP_PRESENT=YES
     else
       _IP_PRESENT=NO
     fi
-    if [ ! -z "$_CRON_IP" ] \
+    if [ ! -z "${_CRON_IP}" ] \
       && [ "$_IP_PRESENT" = "YES" ] \
       && [ -e "/root/.local.IP.list" ] ; then
       fix_multi_ip_cron_access
@@ -1740,12 +1747,12 @@ sub_force_advanced_nginx_config() {
 # Force advanced Nginx configuration.
 force_advanced_nginx_config() {
   sub_force_advanced_nginx_config
-  if [ -e "/data/disk/$_USER/config/includes/nginx_vhost_common.conf" ] ; then
-    rm -f /data/disk/$_USER/config/includes/nginx_advanced_include.conf
-    rm -f /data/disk/$_USER/config/includes/nginx_legacy_include.conf
-    rm -f /data/disk/$_USER/config/includes/nginx_modern_include.conf
-    rm -f /data/disk/$_USER/config/includes/nginx_octopus_include.conf
-    rm -f /data/disk/$_USER/config/includes/nginx_simple_include.conf
+  if [ -e "/data/disk/${_USER}/config/includes/nginx_vhost_common.conf" ] ; then
+    rm -f /data/disk/${_USER}/config/includes/nginx_advanced_include.conf
+    rm -f /data/disk/${_USER}/config/includes/nginx_legacy_include.conf
+    rm -f /data/disk/${_USER}/config/includes/nginx_modern_include.conf
+    rm -f /data/disk/${_USER}/config/includes/nginx_octopus_include.conf
+    rm -f /data/disk/${_USER}/config/includes/nginx_simple_include.conf
   fi
 }
 #
@@ -1753,8 +1760,8 @@ force_advanced_nginx_config() {
 action() {
   _REL_VERSION=$(lsb_release -sc 2>&1)
   if [ -d "/data/all/000" ] ; then
-    if [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] \
-      || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
+    if [ ! -e "/data/all/000/core-v-${_SMALLCORE6}.txt" ] \
+      || [ ! -e "/data/all/000/core-v-${_SMALLCORE7}.txt" ] ; then
       _USE_CURRENT=NO
       _HOT_SAUCE=YES
       _HM_ONLY=NO
@@ -1762,111 +1769,111 @@ action() {
   fi
   for Files in `find ${pthBld}/aegir/scripts -type f`
   do
-    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files &> /dev/null
-    sed -i "s/EDIT_AEGIR_XTS_VERSION/$_AEGIR_XTS_VERSION/g" $Files &> /dev/null
-    sed -i "s/EDIT_AGOV/$_AGOV/g"                           $Files &> /dev/null
-    sed -i "s/EDIT_ALL_DISTRO/$_ALL_DISTRO/g"               $Files &> /dev/null
-    sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files &> /dev/null
-    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files &> /dev/null
-    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files &> /dev/null
-    sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"               $Files &> /dev/null
-    sed -i "s/EDIT_BRANCH_PRN/$_BRANCH_PRN/g"               $Files &> /dev/null
-    sed -i "s/EDIT_CIVICRM_M6/$_CIVICRM_M6/g"               $Files &> /dev/null
-    sed -i "s/EDIT_CIVICRM_M7/$_CIVICRM_M7/g"               $Files &> /dev/null
-    sed -i "s/EDIT_CLIENT_CORES/$_CLIENT_CORES/g"           $Files &> /dev/null
-    sed -i "s/EDIT_CLIENT_EMAIL/$_CLIENT_EMAIL/g"           $Files &> /dev/null
-    sed -i "s/EDIT_CLIENT_OPTION/$_CLIENT_OPTION/g"         $Files &> /dev/null
-    sed -i "s/EDIT_COD/$_COD/g"                             $Files &> /dev/null
-    sed -i "s/EDIT_COMMERCE1/$_COMMERCE1/g"                 $Files &> /dev/null
-    sed -i "s/EDIT_COMMERCE2/$_COMMERCE2/g"                 $Files &> /dev/null
-    sed -i "s/EDIT_COMMONS2/$_COMMONS2/g"                   $Files &> /dev/null
-    sed -i "s/EDIT_COMMONS3/$_COMMONS3/g"                   $Files &> /dev/null
-    sed -i "s/EDIT_D8_DEV_COMMIT/$_D8_DEV_COMMIT/g"         $Files &> /dev/null
-    sed -i "s/EDIT_D8_DEV_LABEL/$_D8_DEV_LABEL/g"           $Files &> /dev/null
-    sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               $Files &> /dev/null
-    sed -i "s/EDIT_DISTRO/$_DISTRO/g"                       $Files &> /dev/null
-    sed -i "s/EDIT_DOMAIN/$_DOMAIN/g"                       $Files &> /dev/null
-    sed -i "s/EDIT_DRUPAL7/$_DRUPAL7/g"                     $Files &> /dev/null
-    sed -i "s/EDIT_DRUPAL8/$_DRUPAL8/g"                     $Files &> /dev/null
-    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files &> /dev/null
-    sed -i "s/EDIT_ERPAL/$_ERPAL/g"                         $Files &> /dev/null
-    sed -i "s/EDIT_GUARDR/$_GUARDR/g"                       $Files &> /dev/null
-    sed -i "s/EDIT_HM_DISTRO/$_HM_DISTRO/g"                 $Files &> /dev/null
-    sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files &> /dev/null
-    sed -i "s/EDIT_HOT_SAUCE/$_HOT_SAUCE/g"                 $Files &> /dev/null
-    sed -i "s/EDIT_X_VERSION/${_X_VERSION}/g"               $Files &> /dev/null
-    sed -i "s/EDIT_LAST_ALL/$_LAST_ALL/g"                   $Files &> /dev/null
-    sed -i "s/EDIT_LAST_HMR/$_LAST_HMR/g"                   $Files &> /dev/null
-    sed -i "s/EDIT_LASTNUM/$_LASTNUM/g"                     $Files &> /dev/null
-    sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files &> /dev/null
-    sed -i "s/EDIT_MY_OWNIP/$_MY_OWNIP/g"                   $Files &> /dev/null
-    sed -i "s/EDIT_NOW/${_NOW}/g"                           $Files &> /dev/null
-    sed -i "s/EDIT_OPENACADEMY/$_OPENACADEMY/g"             $Files &> /dev/null
-    sed -i "s/EDIT_OPENATRIUM7/$_OPENATRIUM7/g"             $Files &> /dev/null
-    sed -i "s/EDIT_OPENBLOG/$_OPENBLOG/g"                   $Files &> /dev/null
-    sed -i "s/EDIT_OPENCHURCH1/$_OPENCHURCH1/g"             $Files &> /dev/null
-    sed -i "s/EDIT_OPENCHURCH2/$_OPENCHURCH2/g"             $Files &> /dev/null
-    sed -i "s/EDIT_OPENDEALS/$_OPENDEALS/g"                 $Files &> /dev/null
-    sed -i "s/EDIT_OPENOUTREACH/$_OPENOUTREACH/g"           $Files &> /dev/null
-    sed -i "s/EDIT_OPENPUBLIC/$_OPENPUBLIC/g"               $Files &> /dev/null
-    sed -i "s/EDIT_OPENPUBLISH/$_OPENPUBLISH/g"             $Files &> /dev/null
-    sed -i "s/EDIT_OPENSCHOLAR/$_OPENSCHOLAR/g"             $Files &> /dev/null
-    sed -i "s/EDIT_PANOPOLY/$_PANOPOLY/g"                   $Files &> /dev/null
-    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     $Files &> /dev/null
-    sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     $Files &> /dev/null
-    sed -i "s/EDIT_PLATFORMS_LIST/$_PLATFORMS_LIST/g"       $Files &> /dev/null
-    sed -i "s/EDIT_PLATFORMS_ONLY/$_PLATFORMS_ONLY/g"       $Files &> /dev/null
-    sed -i "s/EDIT_PURGE_FOR_SEVEN/$_PURGE_FOR_SEVEN/g"     $Files &> /dev/null
-    sed -i "s/EDIT_PURGE_MODE/$_PURGE_MODE/g"               $Files &> /dev/null
-    sed -i "s/EDIT_RECRUITER/$_RECRUITER/g"                 $Files &> /dev/null
-    sed -i "s/EDIT_REDIS_M_VERSION/$_REDIS_M_VERSION/g"     $Files &> /dev/null
-    sed -i "s/EDIT_RESTAURANT/$_RESTAURANT/g"               $Files &> /dev/null
-    sed -i "s/EDIT_SERIES_RESULT/$_SERIES_RESULT/g"         $Files &> /dev/null
-    sed -i "s/EDIT_SMALLCORE6/$_SMALLCORE6/g"               $Files &> /dev/null
-    sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files &> /dev/null
-    sed -i "s/EDIT_SMALLCORE8/$_SMALLCORE8/g"               $Files &> /dev/null
-    sed -i "s/EDIT_SPINNER/$_SPINNER/g"                     $Files &> /dev/null
-    sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"   $Files &> /dev/null
-    sed -i "s/EDIT_T_BUILD/$_T_BUILD/g"                     $Files &> /dev/null
-    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files &> /dev/null
-    sed -i "s/EDIT_THISHTIP/$_THISHTIP/g"                   $Files &> /dev/null
-    sed -i "s/EDIT_UBERCART6/$_UBERCART6/g"                 $Files &> /dev/null
-    sed -i "s/EDIT_UBERCART7/$_UBERCART7/g"                 $Files &> /dev/null
-    sed -i "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files &> /dev/null
-    sed -i "s/EDIT_USER/$_USER/g"                           $Files &> /dev/null
-    sed -i "s/EDIT_USRG/$_USRG/g"                           $Files &> /dev/null
-    sed -i "s/EDIT_WEBG/$_WEBG/g"                           $Files &> /dev/null
+    sed -i "s/EDIT_AEGIR_VERSION/${_AEGIR_VERSION}/g"         $Files &> /dev/null
+    sed -i "s/EDIT_AEGIR_XTS_VERSION/${_AEGIR_XTS_VERSION}/g" $Files &> /dev/null
+    sed -i "s/EDIT_AGOV/${_AGOV}/g"                           $Files &> /dev/null
+    sed -i "s/EDIT_ALL_DISTRO/${_ALL_DISTRO}/g"               $Files &> /dev/null
+    sed -i "s/EDIT_AUTOPILOT/${_AUTOPILOT}/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_BOA_REPO_GIT_URL/${_BOA_REPO_GIT_URLX}/g"  $Files &> /dev/null
+    sed -i "s/EDIT_BOA_REPO_NAME/${_BOA_REPO_NAME}/g"         $Files &> /dev/null
+    sed -i "s/EDIT_BRANCH_BOA/${_BRANCH_BOA}/g"               $Files &> /dev/null
+    sed -i "s/EDIT_BRANCH_PRN/${_BRANCH_PRN}/g"               $Files &> /dev/null
+    sed -i "s/EDIT_CIVICRM_M6/${_CIVICRM_M6}/g"               $Files &> /dev/null
+    sed -i "s/EDIT_CIVICRM_M7/${_CIVICRM_M7}/g"               $Files &> /dev/null
+    sed -i "s/EDIT_CLIENT_CORES/${_CLIENT_CORES}/g"           $Files &> /dev/null
+    sed -i "s/EDIT_CLIENT_EMAIL/${_CLIENT_EMAIL}/g"           $Files &> /dev/null
+    sed -i "s/EDIT_CLIENT_OPTION/${_CLIENT_OPTION}/g"         $Files &> /dev/null
+    sed -i "s/EDIT_COD/${_COD}/g"                             $Files &> /dev/null
+    sed -i "s/EDIT_COMMERCE1/${_COMMERCE1}/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_COMMERCE2/${_COMMERCE2}/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_COMMONS2/${_COMMONS2}/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_COMMONS3/${_COMMONS3}/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_D8_DEV_COMMIT/${_D8_DEV_COMMIT}/g"         $Files &> /dev/null
+    sed -i "s/EDIT_D8_DEV_LABEL/${_D8_DEV_LABEL}/g"           $Files &> /dev/null
+    sed -i "s/EDIT_DEBUG_MODE/${_DEBUG_MODE}/g"               $Files &> /dev/null
+    sed -i "s/EDIT_DISTRO/${_DISTRO}/g"                       $Files &> /dev/null
+    sed -i "s/EDIT_DOMAIN/${_DOMAIN}/g"                       $Files &> /dev/null
+    sed -i "s/EDIT_DRUPAL7/${_DRUPAL7}/g"                     $Files &> /dev/null
+    sed -i "s/EDIT_DRUPAL8/${_DRUPAL8}/g"                     $Files &> /dev/null
+    sed -i "s/EDIT_DRUSH_VERSION/${_DRUSH_VERSION}/g"         $Files &> /dev/null
+    sed -i "s/EDIT_ERPAL/${_ERPAL}/g"                         $Files &> /dev/null
+    sed -i "s/EDIT_GUARDR/${_GUARDR}/g"                       $Files &> /dev/null
+    sed -i "s/EDIT_HM_DISTRO/${_HM_DISTRO}/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_HM_ONLY/${_HM_ONLY}/g"                     $Files &> /dev/null
+    sed -i "s/EDIT_HOT_SAUCE/${_HOT_SAUCE}/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_X_VERSION/${_X_VERSION}/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_LAST_ALL/${_LAST_ALL}/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_LAST_HMR/${_LAST_HMR}/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_LASTNUM/${_LASTNUM}/g"                     $Files &> /dev/null
+    sed -i "s/EDIT_MY_EMAIL/${_MY_EMAIL}/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_MY_OWNIP/${_MY_OWNIP}/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_NOW/${_NOW}/g"                             $Files &> /dev/null
+    sed -i "s/EDIT_OPENACADEMY/${_OPENACADEMY}/g"             $Files &> /dev/null
+    sed -i "s/EDIT_OPENATRIUM7/${_OPENATRIUM7}/g"             $Files &> /dev/null
+    sed -i "s/EDIT_OPENBLOG/${_OPENBLOG}/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_OPENCHURCH1/${_OPENCHURCH1}/g"             $Files &> /dev/null
+    sed -i "s/EDIT_OPENCHURCH2/${_OPENCHURCH2}/g"             $Files &> /dev/null
+    sed -i "s/EDIT_OPENDEALS/${_OPENDEALS}/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_OPENOUTREACH/${_OPENOUTREACH}/g"           $Files &> /dev/null
+    sed -i "s/EDIT_OPENPUBLIC/${_OPENPUBLIC}/g"               $Files &> /dev/null
+    sed -i "s/EDIT_OPENPUBLISH/${_OPENPUBLISH}/g"             $Files &> /dev/null
+    sed -i "s/EDIT_OPENSCHOLAR/${_OPENSCHOLAR}/g"             $Files &> /dev/null
+    sed -i "s/EDIT_PANOPOLY/${_PANOPOLY}/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_PHP_CLI_VERSION/${_PHP_CLI_VERSION}/g"     $Files &> /dev/null
+    sed -i "s/EDIT_PHP_FPM_VERSION/${_PHP_FPM_VERSION}/g"     $Files &> /dev/null
+    sed -i "s/EDIT_PLATFORMS_LIST/${_PLATFORMS_LIST}/g"       $Files &> /dev/null
+    sed -i "s/EDIT_PLATFORMS_ONLY/${_PLATFORMS_ONLY}/g"       $Files &> /dev/null
+    sed -i "s/EDIT_PURGE_FOR_SEVEN/${_PURGE_FOR_SEVEN}/g"     $Files &> /dev/null
+    sed -i "s/EDIT_PURGE_MODE/${_PURGE_MODE}/g"               $Files &> /dev/null
+    sed -i "s/EDIT_RECRUITER/${_RECRUITER}/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_REDIS_M_VERSION/${_REDIS_M_VERSION}/g"     $Files &> /dev/null
+    sed -i "s/EDIT_RESTAURANT/${_RESTAURANT}/g"               $Files &> /dev/null
+    sed -i "s/EDIT_SERIES_RESULT/${_SERIES_RESULT}/g"         $Files &> /dev/null
+    sed -i "s/EDIT_SMALLCORE6/${_SMALLCORE6}/g"               $Files &> /dev/null
+    sed -i "s/EDIT_SMALLCORE7/${_SMALLCORE7}/g"               $Files &> /dev/null
+    sed -i "s/EDIT_SMALLCORE8/${_SMALLCORE8}/g"               $Files &> /dev/null
+    sed -i "s/EDIT_SPINNER/${_SPINNER}/g"                     $Files &> /dev/null
+    sed -i "s/EDIT_STRONG_PASSWORDS/${_STRONG_PASSWORDS}/g"   $Files &> /dev/null
+    sed -i "s/EDIT_T_BUILD/${_T_BUILD}/g"                     $Files &> /dev/null
+    sed -i "s/EDIT_THIS_DB_HOST/${_THIS_DB_HOST}/g"           $Files &> /dev/null
+    sed -i "s/EDIT_THISHTIP/${_THISHTIP}/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_UBERCART6/${_UBERCART6}/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_UBERCART7/${_UBERCART7}/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_USE_CURRENT/${_USE_CURRENT}/g"             $Files &> /dev/null
+    sed -i "s/EDIT_USER/${_USER}/g"                           $Files &> /dev/null
+    sed -i "s/EDIT_USRG/${_USRG}/g"                           $Files &> /dev/null
+    sed -i "s/EDIT_WEBG/${_WEBG}/g"                           $Files &> /dev/null
   done
-  _THISHOST=`cat /etc/hostname`
-  _THISHOST=`echo -n $_THISHOST | tr -d "\n"`
+  _THISHOST=$(cat /etc/hostname 2>&1)
+  _THISHOST=$(echo -n ${_THISHOST} | tr -d "\n" 2>&1)
   if [ -e "/usr/bin/sipcalc" ] ; then
-    if [ -z "$_THISHTIP" ] ; then
-      _LOC_DOM="$_THISHOST"
+    if [ -z "${_THISHTIP}" ] ; then
+      _LOC_DOM="${_THISHOST}"
       find_correct_ip
-      _THISHTIP="$_LOC_IP"
+      _THISHTIP="${_LOC_IP}"
     fi
-    _IP_TEST=`sipcalc $_THISHTIP 2>&1`
-    if [[ "$_IP_TEST" =~ "ERR" ]] ; then
+    _IP_TEST=$(sipcalc ${_THISHTIP} 2>&1)
+    if [[ "${_IP_TEST}" =~ "ERR" ]] ; then
       _IP_TEST_RESULT=FAIL
       _LOCAL_THISHTIP=all
     else
       _IP_TEST_RESULT=OK
-      _LOCAL_THISHTIP="$_THISHTIP"
+      _LOCAL_THISHTIP="${_THISHTIP}"
     fi
   else
-    _LOCAL_THISHTIP="$_THISHTIP"
+    _LOCAL_THISHTIP="${_THISHTIP}"
   fi
-  if [ -z "$_LOCAL_THISHTIP" ] ; then
-    _LOC_DOM="$_THISHOST"
+  if [ -z "${_LOCAL_THISHTIP}" ] ; then
+    _LOC_DOM="${_THISHOST}"
     find_correct_ip
-    _LOCAL_THISHTIP="$_LOC_IP"
+    _LOCAL_THISHTIP="${_LOC_IP}"
   fi
-  if [ -z "$_LOCAL_THISHTIP" ] ; then
+  if [ -z "${_LOCAL_THISHTIP}" ] ; then
     _LOCAL_THISHTIP=all
   fi
   cp -af ${pthBld}/aegir/scripts/run-xdrago \
-    /var/xdrago/run-$_USER &> /dev/null
-  chmod 700 /var/xdrago/run-$_USER &> /dev/null
+    /var/xdrago/run-${_USER} &> /dev/null
+  chmod 700 /var/xdrago/run-${_USER} &> /dev/null
   chmod 700 ${pthBld}/aegir/scripts/* &> /dev/null
   bash ${pthBld}/aegir/scripts/AegirSetupA.sh.txt
   if [ -e "/opt/tmp/status-AegirSetupA-FAIL" ] ; then
@@ -1875,23 +1882,23 @@ action() {
     touch /opt/tmp/status-Octopus-FAIL
     clean_pid_exit
   fi
-  if [ ! -e "/data/disk/$_USER/log/email.txt" ] ; then
-    echo $_CLIENT_EMAIL > /data/disk/$_USER/log/email.txt
+  if [ ! -e "/data/disk/${_USER}/log/email.txt" ] ; then
+    echo ${_CLIENT_EMAIL} > /data/disk/${_USER}/log/email.txt
   fi
-  if [ ! -e "/data/disk/$_USER/log/option.txt" ] ; then
-    echo $_CLIENT_OPTION > /data/disk/$_USER/log/option.txt
+  if [ ! -e "/data/disk/${_USER}/log/option.txt" ] ; then
+    echo ${_CLIENT_OPTION} > /data/disk/${_USER}/log/option.txt
   fi
-  if [ ! -e "/data/disk/$_USER/log/cores.txt" ] ; then
-    echo $_CLIENT_CORES > /data/disk/$_USER/log/cores.txt
+  if [ ! -e "/data/disk/${_USER}/log/cores.txt" ] ; then
+    echo ${_CLIENT_CORES} > /data/disk/${_USER}/log/cores.txt
   fi
-  if [ ! -e "/data/disk/$_USER/log/subscr.txt" ] ; then
-    echo $_CLIENT_SUBSCR > /data/disk/$_USER/log/subscr.txt
+  if [ ! -e "/data/disk/${_USER}/log/subscr.txt" ] ; then
+    echo ${_CLIENT_SUBSCR} > /data/disk/${_USER}/log/subscr.txt
   fi
-  if [ ! -e "/data/disk/$_USER/log/fpm.txt" ] ; then
-    echo $_PHP_FPM_VERSION > /data/disk/$_USER/log/fpm.txt
+  if [ ! -e "/data/disk/${_USER}/log/fpm.txt" ] ; then
+    echo ${_PHP_FPM_VERSION} > /data/disk/${_USER}/log/fpm.txt
   fi
-  if [ ! -e "/data/disk/$_USER/log/cli.txt" ] ; then
-    echo $_PHP_CLI_VERSION > /data/disk/$_USER/log/cli.txt
+  if [ ! -e "/data/disk/${_USER}/log/cli.txt" ] ; then
+    echo ${_PHP_CLI_VERSION} > /data/disk/${_USER}/log/cli.txt
   fi
   if [ ! -e "/data/disk/${_USER}/static/control/.ctrl.240dev.txt" ] \
     || [ ! -e "/data/disk/${_USER}/static/control/README.txt" ] ; then
@@ -1902,18 +1909,19 @@ action() {
         /data/disk/${_USER}/static/control/README.txt &> /dev/null
       chmod 0644 /data/disk/${_USER}/static/control/README.txt
     fi
-    chown -R ${_USER}.ftp:$_USRG /data/disk/${_USER}/static/control &> /dev/null
+    chown -R ${_USER}.ftp:${_USRG} \
+      /data/disk/${_USER}/static/control &> /dev/null
     rm -f /data/disk/${_USER}/static/control/.ctrl.*
     echo OK > /data/disk/${_USER}/static/control/.ctrl.240dev.txt
   fi
   if [ -d "/data/all/000" ] ; then
-    if [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] \
-      || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
-      echo "$_SMALLCORE6" > /data/all/000/core-v-$_SMALLCORE6.txt
-      echo "$_SMALLCORE7" > /data/all/000/core-v-$_SMALLCORE7.txt
+    if [ ! -e "/data/all/000/core-v-${_SMALLCORE6}.txt" ] \
+      || [ ! -e "/data/all/000/core-v-${_SMALLCORE7}.txt" ] ; then
+      echo "${_SMALLCORE6}" > /data/all/000/core-v-${_SMALLCORE6}.txt
+      echo "${_SMALLCORE7}" > /data/all/000/core-v-${_SMALLCORE7}.txt
     fi
   fi
-  if [ -e "/data/disk/$_USER/log/email.txt" ] ; then
+  if [ -e "/data/disk/${_USER}/log/email.txt" ] ; then
     tune_fpm_config
     force_advanced_nginx_config
     mrun "service nginx reload" &> /dev/null
@@ -1951,12 +1959,12 @@ check_connection() {
 }
 
 ###--------------------###
-if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
+if [ "${_AEGIR_VERSION}" = "HEAD" ] ; then
   rm -f -r /opt/tmp/test-*
   check_connection
-  _GITHUB_TEST=`git clone git://github.com/omega8cc/provision.git \
-    /opt/tmp/test-provision 2>&1`
-  if [[ "$_GITHUB_TEST" =~ "fatal" ]] ; then
+  _GITHUB_TEST=$(git clone git://github.com/omega8cc/provision.git \
+    /opt/tmp/test-provision 2>&1)
+  if [[ "${_GITHUB_TEST}" =~ "fatal" ]] ; then
     echo " "
     msg "EXIT on error (provision) due to GitHub downtime"
     msg "Please try to run this script again in a few minutes"
@@ -1965,9 +1973,9 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     rm -f -r /opt/tmp/test-*
     clean_pid_exit
   fi
-  _GITHUB_TEST=`git clone git://github.com/omega8cc/hostmaster.git \
-    /opt/tmp/test-hostmaster 2>&1`
-  if [[ "$_GITHUB_TEST" =~ "fatal" ]] ; then
+  _GITHUB_TEST=$(git clone git://github.com/omega8cc/hostmaster.git \
+    /opt/tmp/test-hostmaster 2>&1)
+  if [[ "${_GITHUB_TEST}" =~ "fatal" ]] ; then
     echo " "
     msg "EXIT on error (hostmaster) due to GitHub downtime"
     msg "Please try to run this script again in a few minutes"
@@ -1980,9 +1988,9 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
 fi
 if [[ "${_X_VERSION}" =~ "-dev" ]] ; then
   rm -f -r /opt/tmp/test-*
-  _GITHUB_TEST=`git clone git://github.com/omega8cc/boa.git \
-    /opt/tmp/test-boa 2>&1`
-  if [[ "$_GITHUB_TEST" =~ "fatal" ]] ; then
+  _GITHUB_TEST=$(git clone git://github.com/omega8cc/boa.git \
+    /opt/tmp/test-boa 2>&1)
+  if [[ "${_GITHUB_TEST}" =~ "fatal" ]] ; then
     echo " "
     msg "EXIT on error (boa) due to GitHub downtime"
     msg "Please try to run this script again in a few minutes"
@@ -1997,15 +2005,15 @@ fi
 ###--------------------###
 if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
   || [ ! -e "/var/run/mysqld/mysqld.sock" ] ; then
-  _DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
+  _DB_SERVER_TEST=$(mysql -V 2>&1)
+  if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]] ; then
     _DB_SERVER=MariaDB
-    msg "ALRT! $_DB_SERVER server not running properly!"
+    msg "ALRT! ${_DB_SERVER} server not running properly!"
     msg "EXIT: We can't proceed and will exit now"
-    msg "HINT: Please (re)start $_DB_SERVER server and then run installer again"
+    msg "HINT: Please (re)start ${_DB_SERVER} server and then run installer again"
     msg "Bye"
   else
-    msg "ALRT! $_DB_SERVER server not installed properly!"
+    msg "ALRT! ${_DB_SERVER} server not installed properly!"
     msg "EXIT: We can't proceed and will exit now"
     msg "Bye"
   fi
@@ -2050,12 +2058,12 @@ fi
 #
 # Sanitize _USER and check the status
   _USER=${_USER//[^a-zA-Z0-9-.]/}
-  _USER=`echo -n $_USER | tr A-Z a-z`
-  _ROOT="/data/disk/$_USER"
-  if [ -d "$_ROOT" ] ; then
+  _USER=$(echo -n ${_USER} | tr A-Z a-z 2>&1)
+  _ROOT="/data/disk/${_USER}"
+  if [ -d "${_ROOT}" ] ; then
     _STATUS=UPGRADE
   fi
-  if [ "$_STATUS" = "INIT" ] ; then
+  if [ "${_STATUS}" = "INIT" ] ; then
     check_id
   fi
   echo " "
@@ -2065,22 +2073,22 @@ fi
 #
 # Some auto-magic for localhost install
 _THIS_HOST=$(uname -n 2>&1)
-if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
+if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "${_ROOT}" ] ; then
   _DEBUG_MODE=NO
   _DNS_SETUP_TEST=NO
-  _DOMAIN="$_USER.sub.aegir.local"
+  _DOMAIN="${_USER}.sub.aegir.local"
   _LOCAL_NETWORK_IP="127.0.1.1"
-  _MY_OWNIP="$_LOCAL_NETWORK_IP"
-  msg "_LOCAL_NETWORK_IP is $_LOCAL_NETWORK_IP"
+  _MY_OWNIP="${_LOCAL_NETWORK_IP}"
+  msg "_LOCAL_NETWORK_IP is ${_LOCAL_NETWORK_IP}"
 fi
 #
 # Sanitize _DOMAIN
   _DOMAIN=${_DOMAIN//[^a-zA-Z0-9-.]/}
-  _DOMAIN=`echo -n $_DOMAIN | tr A-Z a-z`
+  _DOMAIN=$(echo -n ${_DOMAIN} | tr A-Z a-z 2>&1)
 #
 # Detect VM family
 _ETH_TEST=$(ifconfig 2>&1)
-if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
+if [[ "${_ETH_TEST}" =~ "venet0" ]] ; then
   _IFCONFIG="venet0"
 elif [ -e "/proc/bean_counters" ] ; then
   _IFCONFIG="venet0"
@@ -2088,46 +2096,46 @@ else
   _IFCONFIG="eth0"
 fi
 _VM_TEST=$(uname -a 2>&1)
-if [[ "$_VM_TEST" =~ beng ]] ; then
+if [[ "${_VM_TEST}" =~ beng ]] ; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
 fi
-_AWS_TEST_A=$(grep cloudimg /etc/fstab)
-_AWS_TEST_B=$(grep cloudconfig /etc/fstab)
-if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] \
-  || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
+_AWS_TEST_A=$(grep cloudimg /etc/fstab 2>&1)
+_AWS_TEST_B=$(grep cloudconfig /etc/fstab 2>&1)
+if [[ "${_AWS_TEST_A}" =~ "cloudimg" ]] \
+  || [[ "${_AWS_TEST_B}" =~ "cloudconfig" ]] ; then
   _VMFAMILY="AWS"
-  if [ "$_STATUS" = "INIT" ] ; then
+  if [ "${_STATUS}" = "INIT" ] ; then
     _THIS_DB_HOST=localhost
   fi
-  _LOC_DOM="$_DOMAIN"
-  if [ -z "$_MY_OWNIP" ] ; then
+  _LOC_DOM="${_DOMAIN}"
+  if [ -z "${_MY_OWNIP}" ] ; then
     find_correct_ip
-    _MY_OWNIP="$_LOC_IP"
+    _MY_OWNIP="${_LOC_IP}"
   else
-    _LOC_IP="$_MY_OWNIP"
+    _LOC_IP="${_MY_OWNIP}"
   fi
 fi
 #
 #
-if [[ "$_DOMAIN" =~ ".xhost8." ]] ; then
+if [[ "${_DOMAIN}" =~ ".xhost8." ]] ; then
   _DO_NOTHING=YES
 else
   octopus_cnf
 fi
 #
 #
-if [ ! -z "$_LOCAL_NETWORK_IP" ] && [ $_THIS_HOST != "aegir.local" ] ; then
+if [ ! -z "${_LOCAL_NETWORK_IP}" ] && [ $_THIS_HOST != "aegir.local" ] ; then
   _DNS_SETUP_TEST=NO
-  _MY_OWNIP="$_LOCAL_NETWORK_IP"
+  _MY_OWNIP="${_LOCAL_NETWORK_IP}"
 fi
 #
 #
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="git://github.com/omega8cc"
 _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
-if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
+if [ "${_AEGIR_VERSION}" = "HEAD" ] ; then
   check_git_repos_status
 fi
 octInc="/data/disk/${_USER}/config/includes"
@@ -2141,8 +2149,8 @@ if [ ! -f "/var/log/barracuda_log.txt" ] ; then
   msg "Bye"
   clean_pid_exit
 else
-  _VERSIONS_TEST=`cat /var/log/barracuda_log.txt`
-  if [[ "$_VERSIONS_TEST" =~ "${_X_VERSION}" ]] ; then
+  _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+  if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] ; then
     _VERSIONS_TEST_RESULT=OK
   else
     msg "ERROR: This script should be used only when the same version of BARRACUDA"
@@ -2153,8 +2161,8 @@ else
   fi
 fi
 if [ -e "/var/log/barracuda_log.txt" ] ; then
-  _SERIES_TEST=`cat /var/log/barracuda_log.txt`
-  if [[ "$_SERIES_TEST" =~ "BOA-2.4." ]] ; then
+  _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+  if [[ "${_SERIES_TEST}" =~ "BOA-2.4." ]] ; then
     if [[ ! "${_X_VERSION}" =~ "BOA-2.4." ]] ; then
       msg "ERROR: Your system has been already upgraded to modern BOA-2.4.x series"
       msg "ERROR: You can not downgrade back to legacy or previous stable BOA version"
@@ -2165,9 +2173,9 @@ if [ -e "/var/log/barracuda_log.txt" ] ; then
   fi
 fi
 if [ -e "/data/disk/${_USER}/log/octopus_log.txt" ] ; then
-  _SERIES_TEST=`cat /data/disk/${_USER}/log/octopus_log.txt`
-  if [[ "$_SERIES_TEST" =~ "BOA-2.3." ]] \
-    || [[ "$_SERIES_TEST" =~ "BOA-2.4." ]] ; then
+  _SERIES_TEST=$(cat /data/disk/${_USER}/log/octopus_log.txt 2>&1)
+  if [[ "${_SERIES_TEST}" =~ "BOA-2.3." ]] \
+    || [[ "${_SERIES_TEST}" =~ "BOA-2.4." ]] ; then
     _SERIES_RESULT=OK
   fi
 fi
@@ -2176,13 +2184,13 @@ fi
 rm -f /var/run/aegir_upgrade.pid
 rm -f /opt/tmp/testecho*
 _SRCDIR=/opt/tmp/files
-mkdir -p $_SRCDIR
+mkdir -p ${_SRCDIR}
 chmod -R 777 /opt/tmp &> /dev/null
 cd /opt/tmp
 rm -f -r ${pthBld}
-if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
-  git clone --branch $_BRANCH_BOA \
-    $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
+if [ "${_AEGIR_VERSION}" = "HEAD" ] ; then
+  git clone --branch ${_BRANCH_BOA} \
+    $_BOA_REPO_GIT_URL/${_BOA_REPO_NAME}.git &> /dev/null
 else
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 \
     -A iCab "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" \
@@ -2199,102 +2207,102 @@ if [ ! -e "${pthBld}/aegir/helpers/apt.conf.noninteractive" ] ; then
 fi
 #
 # Get spinner
-cd $_SRCDIR
+cd ${_SRCDIR}
 rm -f spinner*
 cp -af ${pthBld}/aegir/helpers/spinner ./
 chmod +x spinner &> /dev/null
 #
 # Create tmp stuff
-_LOG=/var/backups/octopus-$_USER-${_NOW}.log
-touch $_LOG
-chmod 646 $_LOG
+_LOG=/var/backups/octopus-${_USER}-${_NOW}.log
+touch ${_LOG}
+chmod 646 ${_LOG}
 _SILENT=/opt/tmp/silent.log
 #
 #
-if [ -d "$_ROOT" ] ; then
+if [ -d "${_ROOT}" ] ; then
   msg "UPGRADE in progress..."
-  if [ -d "$_ROOT/distro" ] ; then
-    if [ -e "$_ROOT/log/domain.txt" ] ; then
-      _DOMAIN=`cat $_ROOT/log/domain.txt`
-      _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
+  if [ -d "${_ROOT}/distro" ] ; then
+    if [ -e "${_ROOT}/log/domain.txt" ] ; then
+      _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>&1)
+      _DOMAIN=$(echo -n ${_DOMAIN} | tr -d "\n" 2>&1)
     fi
-    if [ -z "$_DOMAIN" ] ; then
+    if [ -z "${_DOMAIN}" ] ; then
       msg "ALERT! _DOMAIN is e-m-p-t-y, exit now"
       clean_pid_exit
     fi
-    if [ -z "$_USER" ] ; then
+    if [ -z "${_USER}" ] ; then
       msg "ALERT! _USER is e-m-p-t-y, exit now"
       clean_pid_exit
     fi
     _CHECK_HOST=$(uname -n 2>&1)
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
-      || [[ "$_CHECK_HOST" =~ ".host8." ]] \
-      || [ "$_VMFAMILY" = "VS" ] ; then
-      if [ -e "/data/disk/$_USER/log/amazing_upgrade.txt" ] \
-        && [ ! -e "/data/disk/$_USER/log/amazing_upgrade_complete.txt" ] ; then
-        if [ -e "/data/disk/$_USER/log/original_option.txt" ] ; then
-          cp -af /data/disk/$_USER/log/option.txt \
-            /data/disk/$_USER/log/prev_option.txt
-          cp -af /data/disk/$_USER/log/original_option.txt \
-            /data/disk/$_USER/log/option.txt
+      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+      || [ "${_VMFAMILY}" = "VS" ] ; then
+      if [ -e "/data/disk/${_USER}/log/amazing_upgrade.txt" ] \
+        && [ ! -e "/data/disk/${_USER}/log/amazing_upgrade_complete.txt" ] ; then
+        if [ -e "/data/disk/${_USER}/log/original_option.txt" ] ; then
+          cp -af /data/disk/${_USER}/log/option.txt \
+            /data/disk/${_USER}/log/prev_option.txt
+          cp -af /data/disk/${_USER}/log/original_option.txt \
+            /data/disk/${_USER}/log/option.txt
         fi
-        if [ -e "/data/disk/$_USER/log/original_cores.txt" ] ; then
-          cp -af /data/disk/$_USER/log/cores.txt \
-            /data/disk/$_USER/log/prev_cores.txt
-          cp -af /data/disk/$_USER/log/original_cores.txt \
-            /data/disk/$_USER/log/cores.txt
+        if [ -e "/data/disk/${_USER}/log/original_cores.txt" ] ; then
+          cp -af /data/disk/${_USER}/log/cores.txt \
+            /data/disk/${_USER}/log/prev_cores.txt
+          cp -af /data/disk/${_USER}/log/original_cores.txt \
+            /data/disk/${_USER}/log/cores.txt
         fi
-        echo completed > /data/disk/$_USER/log/amazing_upgrade_complete.txt
+        echo completed > /data/disk/${_USER}/log/amazing_upgrade_complete.txt
       fi
     fi
-    if [ -e "/data/disk/$_USER/log/option.txt" ] ; then
-      _CLIENT_OPTION=`cat /data/disk/$_USER/log/option.txt`
-      _CLIENT_OPTION=`echo -n $_CLIENT_OPTION | tr -d "\n"`
+    if [ -e "/data/disk/${_USER}/log/option.txt" ] ; then
+      _CLIENT_OPTION=$(cat /data/disk/${_USER}/log/option.txt 2>&1)
+      _CLIENT_OPTION=$(echo -n ${_CLIENT_OPTION} | tr -d "\n" 2>&1)
     fi
-    if [ -e "/data/disk/$_USER/log/cores.txt" ] ; then
-      _CLIENT_CORES=`cat /data/disk/$_USER/log/cores.txt`
-      _CLIENT_CORES=`echo -n $_CLIENT_CORES | tr -d "\n"`
+    if [ -e "/data/disk/${_USER}/log/cores.txt" ] ; then
+      _CLIENT_CORES=$(cat /data/disk/${_USER}/log/cores.txt 2>&1)
+      _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
     fi
-    if [ -e "/data/disk/$_USER/log/subscr.txt" ] ; then
-      _CLIENT_SUBSCR=`cat /data/disk/$_USER/log/subscr.txt`
-      _CLIENT_SUBSCR=`echo -n $_CLIENT_SUBSCR | tr -d "\n"`
+    if [ -e "/data/disk/${_USER}/log/subscr.txt" ] ; then
+      _CLIENT_SUBSCR=$(cat /data/disk/${_USER}/log/subscr.txt 2>&1)
+      _CLIENT_SUBSCR=$(echo -n ${_CLIENT_SUBSCR} | tr -d "\n" 2>&1)
     fi
-    if [ -e "/data/disk/$_USER/log/email.txt" ] ; then
-      _CLIENT_EMAIL=`cat /data/disk/$_USER/log/email.txt`
-      _CLIENT_EMAIL=`echo -n $_CLIENT_EMAIL | tr -d "\n"`
-      if [[ "$_CLIENT_EMAIL" =~ "@" ]] ; then
+    if [ -e "/data/disk/${_USER}/log/email.txt" ] ; then
+      _CLIENT_EMAIL=$(cat /data/disk/${_USER}/log/email.txt 2>&1)
+      _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
+      if [[ "${_CLIENT_EMAIL}" =~ "@" ]] ; then
         _DO_NOTHING=YES
       else
         msg "EXIT: You must enter your valid e-mail address in the"
         msg "EXIT: _CLIENT_EMAIL variable written both in the"
         msg "EXIT: ${octCnf} file and in the"
-        msg "EXIT: /data/disk/$_USER/log/email.txt file"
+        msg "EXIT: /data/disk/${_USER}/log/email.txt file"
         msg "EXIT: Bye (1)"
         clean_pid_exit
       fi
       _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
     fi
-    if [[ "$_CLIENT_EMAIL" =~ "omega8.cc" ]] ; then
+    if [[ "${_CLIENT_EMAIL}" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=$(uname -n 2>&1)
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
-        || [[ "$_CHECK_HOST" =~ ".host8." ]] \
-        || [ "$_VMFAMILY" = "VS" ] ; then
+        || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+        || [ "${_VMFAMILY}" = "VS" ] ; then
         _DO_NOTHING=YES
       else
         msg "EXIT: You must enter your valid e-mail address in the"
         msg "EXIT: _CLIENT_EMAIL variable written both in the"
         msg "EXIT: ${octCnf} file and in the"
-        msg "EXIT: /data/disk/$_USER/log/email.txt file"
+        msg "EXIT: /data/disk/${_USER}/log/email.txt file"
         msg "EXIT: Bye (2)"
         clean_pid_exit
       fi
     fi
     #
     # Check for last distro nr
-    if [ -d "$_ROOT/distro" ] ; then
-      cd $_ROOT/distro
+    if [ -d "${_ROOT}/distro" ] ; then
+      cd ${_ROOT}/distro
       list=([0-9]*)
       last=${list[@]: -1}
       _LASTNUM=$last
@@ -2304,8 +2312,8 @@ if [ -d "$_ROOT" ] ; then
     fi
     #
     # Check for last hm nr
-    if [ -d "$_ROOT/aegir/distro" ] ; then
-      cd $_ROOT/aegir/distro
+    if [ -d "${_ROOT}/aegir/distro" ] ; then
+      cd ${_ROOT}/aegir/distro
       listx=([0-9]*)
       lastx=${listx[@]: -1}
       _LAST_HMR=$lastx
@@ -2326,10 +2334,10 @@ if [ -d "$_ROOT" ] ; then
     fi
   #
   #
-  elif [ ! -d "$_ROOT/distro" ] ; then
-    if [ -e "$_ROOT/log/domain.txt" ] ; then
-      _DOMAIN=`cat $_ROOT/log/domain.txt`
-      _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
+  elif [ ! -d "${_ROOT}/distro" ] ; then
+    if [ -e "${_ROOT}/log/domain.txt" ] ; then
+      _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>&1)
+      _DOMAIN=$(echo -n ${_DOMAIN} | tr -d "\n" 2>&1)
     fi
   fi
 else
@@ -2348,89 +2356,89 @@ else
 fi
 #
 #
-if [ ! -f "/var/aegir/config/server_master/nginx/vhost.d/$_DOMAIN" ] ; then
+if [ ! -f "/var/aegir/config/server_master/nginx/vhost.d/${_DOMAIN}" ] ; then
   _DO_NOTHING=YES
 else
-  msg "ERROR: $_DOMAIN is already used on the Aegir Master Instance"
+  msg "ERROR: ${_DOMAIN} is already used on the Aegir Master Instance"
   msg "Please change the value for _DOMAIN to make it unique"
   msg "Bye"
   clean_pid_exit
 fi
 #
 #
-if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
-  if [ "$_VMFAMILY" = "AWS" ] ; then
-    _LOC_DOM="$_DOMAIN"
-    if [ -z "$_MY_OWNIP" ] ; then
+if [ "${_DNS_SETUP_TEST}" = "YES" ] ; then
+  if [ "${_VMFAMILY}" = "AWS" ] ; then
+    _LOC_DOM="${_DOMAIN}"
+    if [ -z "${_MY_OWNIP}" ] ; then
       find_correct_ip
-      _MY_OWNIP="$_LOC_IP"
+      _MY_OWNIP="${_LOC_IP}"
     else
-      _LOC_IP="$_MY_OWNIP"
+      _LOC_IP="${_MY_OWNIP}"
     fi
   fi
-  if [ -z "$_MY_OWNIP" ] ; then
-    _THISHTIP=`ifconfig $_IFCONFIG \
+  if [ -z "${_MY_OWNIP}" ] ; then
+    _THISHTIP=$(ifconfig ${_IFCONFIG} \
       | grep 'inet addr:' \
       | cut -d: -f2 \
-      | awk '{ print $1}'`
-    if [[ "$_THISHTIP" =~ "127.0.0." ]] ; then
-      _THISHTIP=`ifconfig ${_IFCONFIG}:0 \
+      | awk '{ print $1}' 2>&1)
+    if [[ "${_THISHTIP}" =~ "127.0.0." ]] ; then
+      _THISHTIP=$(ifconfig ${_IFCONFIG}:0 \
         | grep 'inet addr:' \
         | cut -d: -f2 \
-        | awk '{ print $1}'`
+        | awk '{ print $1}' 2>&1)
     fi
   else
-    _THISHTIP="$_MY_OWNIP"
+    _THISHTIP="${_MY_OWNIP}"
   fi
-  _LOC_DOM="$_DOMAIN"
+  _LOC_DOM="${_DOMAIN}"
   find_correct_ip
-  _THISRDIP="$_LOC_IP"
-  if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
+  _THISRDIP="${_LOC_IP}"
+  if [ "$_THISRDIP" = "${_THISHTIP}" ] ; then
     _DO_NOTHING=YES
   else
-    msg "ERROR: $_DOMAIN doesn't point to your IP: $_THISHTIP"
+    msg "ERROR: ${_DOMAIN} doesn't point to your IP: ${_THISHTIP}"
     msg "Please make sure you have a valid A record in your DNS"
     msg "It is also possible that DNS change didn't propagate yet"
     msg "Bye"
     clean_pid_exit
   fi
 else
-  if [ -z "$_MY_OWNIP" ] ; then
-    _LOC_DOM="$_DOMAIN"
+  if [ -z "${_MY_OWNIP}" ] ; then
+    _LOC_DOM="${_DOMAIN}"
     find_correct_ip
-    _THISHTIP="$_LOC_IP"
-    _THISRDIP="$_LOC_IP"
+    _THISHTIP="${_LOC_IP}"
+    _THISRDIP="${_LOC_IP}"
   else
-    _THISHTIP="$_MY_OWNIP"
-    _THISRDIP="$_MY_OWNIP"
+    _THISHTIP="${_MY_OWNIP}"
+    _THISRDIP="${_MY_OWNIP}"
   fi
 fi
 #
 #
 echo " "
 msg "START -> checkpoint: "
-if [ "$_STATUS" = "INIT" ] ; then
+if [ "${_STATUS}" = "INIT" ] ; then
   cat <<EOF
 
-  * Your e-mail address is $_MY_EMAIL
-  * Your client e-mail address is $_CLIENT_EMAIL
-  * Your Aegir control panel for this instance will be available at https://$_DOMAIN
-  * Your Aegir system user for this instance will be $_USER
-  * This Octopus will use PHP-CLI $_PHP_CLI_VERSION for all sites
-  * This Octopus will use PHP-FPM $_PHP_FPM_VERSION for all sites
-  * This Octopus includes platforms: $_PLATFORMS_LIST
-  * This Octopus options are listed as $_CLIENT_OPTION / $_CLIENT_SUBSCR / $_CLIENT_CORES C
+  * Your e-mail address is ${_MY_EMAIL}
+  * Your client e-mail address is ${_CLIENT_EMAIL}
+  * Your Aegir control panel for this instance will be available at https://${_DOMAIN}
+  * Your Aegir system user for this instance will be ${_USER}
+  * This Octopus will use PHP-CLI ${_PHP_CLI_VERSION} for all sites
+  * This Octopus will use PHP-FPM ${_PHP_FPM_VERSION} for all sites
+  * This Octopus includes platforms: ${_PLATFORMS_LIST}
+  * This Octopus options are listed as ${_CLIENT_OPTION} / ${_CLIENT_SUBSCR} / ${_CLIENT_CORES} C
 
 EOF
 else
   cat <<EOF
 
-  * Your Aegir control panel for this instance is available at https://$_DOMAIN
-  * Your Aegir system user for this instance is $_USER
-  * This Octopus will use PHP-CLI $_PHP_CLI_VERSION for all sites
-  * This Octopus will use PHP-FPM $_PHP_FPM_VERSION for all sites
-  * This Octopus includes platforms: $_PLATFORMS_LIST
-  * This Octopus options are listed as $_CLIENT_OPTION / $_CLIENT_SUBSCR / $_CLIENT_CORES C
+  * Your Aegir control panel for this instance is available at https://${_DOMAIN}
+  * Your Aegir system user for this instance is ${_USER}
+  * This Octopus will use PHP-CLI ${_PHP_CLI_VERSION} for all sites
+  * This Octopus will use PHP-FPM ${_PHP_FPM_VERSION} for all sites
+  * This Octopus includes platforms: ${_PLATFORMS_LIST}
+  * This Octopus options are listed as ${_CLIENT_OPTION} / ${_CLIENT_SUBSCR} / ${_CLIENT_CORES} C
 
 EOF
 fi
@@ -2443,7 +2451,7 @@ else
 fi
 
 _MY_EMAIL=${_MY_EMAIL//\@/\\\@}
-_RAW_CLIENT_EMAIL="$_CLIENT_EMAIL"
+_RAW_CLIENT_EMAIL="${_CLIENT_EMAIL}"
 _CLIENT_EMAIL=${_CLIENT_EMAIL//\@/\\\@}
 
 ###--------------------###
@@ -2504,7 +2512,7 @@ rm -f -r /tmp/drush_make_tmp*
 rm -f -r /tmp/make_tmp*
 rm -f /tmp/pm-updatecode*
 rm -f /var/run/boa_run.pid
-rm -f -r $_ROOT/.tmp/cache
+rm -f -r ${_ROOT}/.tmp/cache
 rm -f /var/run/manage_ltd_users.pid
 rm -f /var/run/manage_rvm_users.pid
 exit 0

@@ -3,26 +3,26 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-master=master
-stable=BOA-2.3.8
-cluster=BOA-2.3.8
-legacy=BOA-2.2.9
-branch=2.3.x-dev
-devel=2.4.x-dev
+master="master"
+stable="BOA-2.3.8"
+cluster="BOA-2.3.8"
+legacy="BOA-2.2.9"
+branch="2.3.x-dev"
+devel="2.4.x-dev"
 rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
-varPath=/var/backups
-barName=BARRACUDA.sh.txt
-octName=OCTOPUS.sh.txt
-barCnf=/root/.barracuda.cnf
+varPath="/var/backups"
+barName="BARRACUDA.sh.txt"
+octName="OCTOPUS.sh.txt"
+barCnf="/root/.barracuda.cnf"
 urlHmr="http://files.aegir.cc/versions/master/aegir"
 
 _TODAY=$(date +%y%m%d 2>&1)
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _CHECK_HOST=$(uname -n 2>&1)
-_LOG_DIR="$varPath/reports/up/$(basename "$0")/$_TODAY"
+_LOG_DIR="${varPath}/reports/up/$(basename "$0")/${_TODAY}"
 _L_VMFAMILY=XEN
 _L_VM_TEST=$(uname -a 2>&1)
-if [[ "$_L_VM_TEST" =~ beng ]] ; then
+if [[ "${_L_VM_TEST}" =~ beng ]] ; then
   _L_VMFAMILY="VS"
 fi
 
@@ -34,45 +34,45 @@ clean_pid_exit() {
 }
 
 fix_dns_settings() {
-  mkdir -p $varPath
-  rm -f $varPath/resolv.conf.tmp
+  mkdir -p ${varPath}
+  rm -f ${varPath}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ] ; then
-    cp -a /etc/resolv.conf $varPath/resolv.conf.tmp
+    cp -a /etc/resolv.conf ${varPath}/resolv.conf.tmp
   fi
-  if [ ! -e "$varPath/resolv.conf.vanilla" ] ; then
-    for Pre in `ls -la $varPath/resolv.conf.pre-*` ; do
-      if [ -e "$Pre" ] && [ -f "$Pre" ] && [ ! -L "$Pre" ] ; then
-        cp -a $Pre $varPath/resolv.conf.vanilla
+  if [ ! -e "${varPath}/resolv.conf.vanilla" ] ; then
+    for Pre in `ls -la ${varPath}/resolv.conf.pre-*` ; do
+      if [ -e "${Pre}" ] && [ -f "${Pre}" ] && [ ! -L "${Pre}" ] ; then
+        cp -a ${Pre} ${varPath}/resolv.conf.vanilla
       fi
     done
   fi
-  if [ ! -e "$varPath/resolv.conf.vanilla" ] ; then
+  if [ ! -e "${varPath}/resolv.conf.vanilla" ] ; then
     rm -f /etc/resolv.conf
-    cp -a $varPath/resolv.conf.tmp /etc/resolv.conf
-    cp -a $varPath/resolv.conf.tmp $varPath/resolv.conf.vanilla
+    cp -a ${varPath}/resolv.conf.tmp /etc/resolv.conf
+    cp -a ${varPath}/resolv.conf.tmp ${varPath}/resolv.conf.vanilla
   fi
-  sed -i "/^$/d" $varPath/resolv.conf.vanilla &> /dev/null
+  sed -i "/^$/d" ${varPath}/resolv.conf.vanilla &> /dev/null
   rm -f /etc/resolv.conf
   echo "nameserver 8.8.8.8" > /etc/resolv.conf
   echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] \
-    && [ -e "$varPath/resolv.conf.vanilla" ] ; then
+  if [[ "${_BROKEN_DNS_TEST}" =~ "no servers could be reached" ]] \
+    && [ -e "${varPath}/resolv.conf.vanilla" ] ; then
     touch /root/.use.local.nameservers.cnf
     rm -f /etc/resolv.conf
-    cp -a $varPath/resolv.conf.vanilla /etc/resolv.conf
+    cp -a ${varPath}/resolv.conf.vanilla /etc/resolv.conf
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   else
     rm -f /etc/resolv.conf
-    cp -a $varPath/resolv.conf.tmp /etc/resolv.conf
+    cp -a ${varPath}/resolv.conf.tmp /etc/resolv.conf
   fi
   if [ -e "/etc/pdnsd.conf" ] ; then
     if [ -e "/root/.local.dns.IP.list" ] ; then
       sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" /root/.local.dns.IP.list
       sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   /root/.local.dns.IP.list
       _BROKEN_DNS_TEST=$(grep "\." /root/.local.dns.IP.list 2>&1)
-      if [ -z "$_BROKEN_DNS_TEST" ] ; then
+      if [ -z "${_BROKEN_DNS_TEST}" ] ; then
         echo "        label = \"google-servers\";" > /root/.local.dns.IP.list
         echo "        ip=8.8.8.8;" >> /root/.local.dns.IP.list
         echo "        ip=8.8.4.4;" >> /root/.local.dns.IP.list
@@ -80,8 +80,8 @@ fix_dns_settings() {
     fi
     _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
     _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
-    if [[ "$_CUSTOM_DNS_TEST" =~ "8.8.8.8" ]] \
-      || [[ "$_BROKEN_DNS_CONF" =~ "Dynamic" ]] ; then
+    if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
+      || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]] ; then
       if [ -e "/root/.use.local.nameservers.cnf" ] ; then
         echo "        label = \"google-servers\";" > /root/.local.dns.IP.list
         for _IP in `cat /etc/resolv.conf \
@@ -95,7 +95,7 @@ fix_dns_settings() {
         sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" /root/.local.dns.IP.list
         sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   /root/.local.dns.IP.list
         _BROKEN_DNS_TEST=$(grep "\." /root/.local.dns.IP.list 2>&1)
-        if [ -z "$_BROKEN_DNS_TEST" ] ; then
+        if [ -z "${_BROKEN_DNS_TEST}" ] ; then
            echo "        ip=8.8.8.8;" >> /root/.local.dns.IP.list
            echo "        ip=8.8.4.4;" >> /root/.local.dns.IP.list
         fi
@@ -115,7 +115,7 @@ d;};' /etc/pdnsd.conf
 
 check_dns_settings() {
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] \
+  if [[ "${_BROKEN_DNS_TEST}" =~ "no servers could be reached" ]] \
     || [ -e "/root/.use.local.nameservers.cnf" ] ; then
     _USE_PROVIDER_DNS=YES
     fix_dns_settings
@@ -157,15 +157,15 @@ send_report() {
     source ${barCnf}
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
-      || [[ "$_CHECK_HOST" =~ ".host8." ]] \
-      || [ "$_L_VMFAMILY" = "VS" ] ; then
+      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+      || [ "${_L_VMFAMILY}" = "VS" ] ; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
-    if [ ! -z "$_MY_EMAIL" ] ; then
-      cat $_UP_LOG | mail -e -s "REPORT: Successful Octopus upgrade for \
-        ${octUsr} on $_CHECK_HOST at ${_NOW}" $_MY_EMAIL
+    if [ ! -z "${_MY_EMAIL}" ] ; then
+      cat ${_UP_LOG} | mail -e -s "REPORT: Successful Octopus upgrade for \
+        ${octUsr} on ${_CHECK_HOST} at ${_NOW}" ${_MY_EMAIL}
       echo "REPORT: Successful Octopus upgrade for \
-        ${octUsr} on $_CHECK_HOST sent to $_MY_EMAIL"
+        ${octUsr} on ${_CHECK_HOST} sent to ${_MY_EMAIL}"
     fi
   fi
 }
@@ -175,40 +175,40 @@ send_alert() {
     source ${barCnf}
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
-      || [[ "$_CHECK_HOST" =~ ".host8." ]] \
-      || [ "$_L_VMFAMILY" = "VS" ] ; then
+      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+      || [ "${_L_VMFAMILY}" = "VS" ] ; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
-    if [ ! -z "$_MY_EMAIL" ] ; then
-      cat $_UP_LOG | mail -e -s "ALERT: Failed Octopus upgrade for \
-        ${octUsr} on $_CHECK_HOST at ${_NOW}" $_MY_EMAIL
+    if [ ! -z "${_MY_EMAIL}" ] ; then
+      cat ${_UP_LOG} | mail -e -s "ALERT: Failed Octopus upgrade for \
+        ${octUsr} on ${_CHECK_HOST} at ${_NOW}" ${_MY_EMAIL}
       echo "ALERT: Failed Octopus upgrade for \
-        ${octUsr} on $_CHECK_HOST sent to $_MY_EMAIL"
+        ${octUsr} on ${_CHECK_HOST} sent to ${_MY_EMAIL}"
     fi
   fi
 }
 
 check_report() {
   _SEND_ALERT=NO
-  _RESULT_BYE=$(grep "BYE" $_UP_LOG 2>&1)
-  if [[ "$_RESULT_BYE" =~ "BYE" ]] ; then
+  _RESULT_BYE=$(grep "BYE" ${_UP_LOG} 2>&1)
+  if [[ "${_RESULT_BYE}" =~ "BYE" ]] ; then
     _DO_NOTHING=YES
   else
     _SEND_ALERT=YES
   fi
-  _RESULT_ALRT=$(grep "ALRT" $_UP_LOG 2>&1)
-  if [[ "$_RESULT_ALRT" =~ "ALRT" ]] ; then
+  _RESULT_ALRT=$(grep "ALRT" ${_UP_LOG} 2>&1)
+  if [[ "${_RESULT_ALRT}" =~ "ALRT" ]] ; then
     _SEND_ALERT=YES
   fi
-  _RESULT_ABORTING=$(grep "Aborting" $_UP_LOG 2>&1)
-  if [[ "$_RESULT_ABORTING" =~ "Aborting" ]] ; then
+  _RESULT_ABORTING=$(grep "Aborting" ${_UP_LOG} 2>&1)
+  if [[ "${_RESULT_ABORTING}" =~ "Aborting" ]] ; then
     _SEND_ALERT=YES
   fi
-  _RESULT_ALREADY=$(grep "This Aegir Instance is already up" $_UP_LOG 2>&1)
-  if [[ "$_RESULT_ALREADY" =~ "This Aegir Instance is already up" ]] ; then
+  _RESULT_ALREADY=$(grep "This Aegir Instance is already up" ${_UP_LOG} 2>&1)
+  if [[ "${_RESULT_ALREADY}" =~ "This Aegir Instance is already up" ]] ; then
     _SEND_ALERT=NO
   fi
-  if [ "$_SEND_ALERT" = "YES" ] ; then
+  if [ "${_SEND_ALERT}" = "YES" ] ; then
     send_alert
   else
     send_report
@@ -216,132 +216,135 @@ check_report() {
 }
 
 up_mode() {
-  if [ "$mcmode" = "aegir" ] ; then
-    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g" $varPath/$toctName
-    bash $varPath/$toctName
-    touch $User/log/up-$_TODAY
-  elif [ "$mcmode" = "platforms" ] ; then
-    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" $varPath/$toctName
-    bash $varPath/$toctName
-    touch $User/log/up-$_TODAY
-  elif [ "$mcmode" = "both" ] ; then
-    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" $varPath/$toctName
-    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" $octCnf
-    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" $varPath/$toctName
-    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" $octCnf
-    bash $varPath/$toctName
-    touch $User/log/up-$_TODAY
+  if [ "${mcmode}" = "aegir" ] ; then
+    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g" ${varPath}/${toctName}
+    bash ${varPath}/${toctName}
+    touch ${User}/log/up-${_TODAY}
+  elif [ "${mcmode}" = "platforms" ] ; then
+    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" ${varPath}/${toctName}
+    bash ${varPath}/${toctName}
+    touch ${User}/log/up-${_TODAY}
+  elif [ "${mcmode}" = "both" ] ; then
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" ${varPath}/${toctName}
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" ${octCnf}
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" ${varPath}/${toctName}
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" ${octCnf}
+    bash ${varPath}/${toctName}
+    touch ${User}/log/up-${_TODAY}
   else
-    bash $varPath/$toctName
-    touch $User/log/up-$_TODAY
+    bash ${varPath}/${toctName}
+    touch ${User}/log/up-${_TODAY}
   fi
 }
 
 up_one() {
-  if [ -e "$varPath/$octName" ] ; then
-    cp -af $varPath/$octName $varPath/$toctName
-    if [ "$cmmand" = "up-head" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"    $varPath/$toctName
-    elif [ "$cmmand" = "up-modern" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"    $varPath/$toctName
+  if [ -e "${varPath}/${octName}" ] ; then
+    cp -af ${varPath}/${octName} ${varPath}/${toctName}
+    if [ "${cmmand}" = "up-head" ] ; then
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"    ${varPath}/${toctName}
+    elif [ "${cmmand}" = "up-modern" ] ; then
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"    ${varPath}/${toctName}
     else
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$branch/g"   $varPath/$toctName
-      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=$branch/g" $varPath/$toctName
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"   ${varPath}/${toctName}
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=${branch}/g" ${varPath}/${toctName}
     fi
-    if [ "$cmmand" = "up-head" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$master/g"   $varPath/$toctName
-    elif [ "$cmmand" = "up-modern" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$devel/g"    $varPath/$toctName
-    elif [ "$cmmand" = "up-cluster" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$cluster/g"  $varPath/$toctName
+    if [ "${cmmand}" = "up-head" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"   ${varPath}/${toctName}
+    elif [ "${cmmand}" = "up-modern" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"    ${varPath}/${toctName}
+    elif [ "${cmmand}" = "up-cluster" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"  ${varPath}/${toctName}
     else
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$branch/g"   $varPath/$toctName
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"   ${varPath}/${toctName}
     fi
-    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           $varPath/$toctName
-    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" $varPath/$toctName
-    sed -i "s/^_USER=o1/_USER=${octUsr}/g"                 $varPath/$toctName
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           ${varPath}/${toctName}
+    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" ${varPath}/${toctName}
+    sed -i "s/^_USER=o1/_USER=${octUsr}/g"                 ${varPath}/${toctName}
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
-      || [[ "$_CHECK_HOST" =~ ".host8." ]] \
-      || [ "$_L_VMFAMILY" = "VS" ] ; then
+      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+      || [ "${_L_VMFAMILY}" = "VS" ] ; then
       if [ -e "/root/.debug.cnf" ] ; then
         _DO_NOTHING=YES
       else
-        sed -i "s/^_STRONG_PASSWORDS=NO/_STRONG_PASSWORDS=YES/g" $varPath/$toctName
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     $varPath/$toctName
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     $octCnf
-        sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               $octCnf
-        sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"     $octCnf
-        sed -i "s/^_STRONG_PASSWORDS=NO/_STRONG_PASSWORDS=YES/g" $octCnf
+        sed -i "s/^_STRONG_PASSWORDS=NO/_STRONG_PASSWORDS=YES/g" ${varPath}/${toctName}
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     ${varPath}/${toctName}
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     ${octCnf}
+        sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               ${octCnf}
+        sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"     ${octCnf}
+        sed -i "s/^_STRONG_PASSWORDS=NO/_STRONG_PASSWORDS=YES/g" ${octCnf}
       fi
     fi
-    if [ -e "$varPath/$toctName" ] ; then
-      if [ -e "$User/.drush/sys/provision" ] ; then
-        _IS_OLD=$(find $User/.drush/sys/provision/ \
+    if [ -e "${varPath}/${toctName}" ] ; then
+      if [ -e "${User}/.drush/sys/provision" ] ; then
+        _IS_OLD=$(find ${User}/.drush/sys/provision/ \
           -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
-      elif [ -e "$User/.drush/provision" ] ; then
-        _IS_OLD=$(find $User/.drush/provision/ \
+      elif [ -e "${User}/.drush/provision" ] ; then
+        _IS_OLD=$(find ${User}/.drush/provision/ \
           -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
       fi
-      if [ -z "$_IS_OLD" ] \
-        && [ -z "$mcmode" ] \
-        && [ -e "$User/.drush/sys/provision" ] ; then
+      if [ -z "${_IS_OLD}" ] \
+        && [ -z "${mcmode}" ] \
+        && [ -e "${User}/.drush/sys/provision" ] ; then
         echo
         echo "This Aegir Instance is already up to date!"
         echo "If you wish to run/force the upgrade again,"
         echo "please specify desired upgrade mode:"
         echo "aegir, platforms or both - as shown below"
         echo
-        echo "Usage: $(basename "$0") $cmmand $second {aegir|platforms|both}"
+        echo "Usage: $(basename "$0") ${cmmand} ${second} {aegir|platforms|both}"
         echo
       else
-        if [ -e "$User/.drush/sys/provision" ] ; then
+        if [ -e "${User}/.drush/sys/provision" ] ; then
           up_mode
-        elif [ -e "$User/.drush/provision" ] ; then
+        elif [ -e "${User}/.drush/provision" ] ; then
           up_mode
         else
-          echo "$User/.drush/sys/provision does not exist!"
-          rm -f -r $User/.drush/{sys,xts,usr}
-          rm -f -r $User/.drush/{provision,drush_make}
-          mkdir -p $User/.drush/{sys,xts,usr}
-          git clone --branch $devel git://github.com/omega8cc/provision.git \
-            $User/.drush/sys/provision &> /dev/null
-          chown -R ${octUsr}:users $User/.drush/sys
+          echo "${User}/.drush/sys/provision does not exist!"
+          rm -f -r ${User}/.drush/{sys,xts,usr}
+          rm -f -r ${User}/.drush/{provision,drush_make}
+          mkdir -p ${User}/.drush/{sys,xts,usr}
+          git clone --branch ${devel} git://github.com/omega8cc/provision.git \
+            ${User}/.drush/sys/provision &> /dev/null
+          chown -R ${octUsr}:users ${User}/.drush/sys
         fi
       fi
-      if [ -e "$User/log/cores.txt" ] \
-        && [ ! -e "$User/log/CANCELLED" ] ; then
-        if [ -e "$User/.drush/bm.patch" ] \
-          && [ ! -e "$User/.drush/sys/bm.patch" ] \
-          && [ -e "$User/.drush/sys" ] ; then
-          mv -f $User/.drush/bm.patch $User/.drush/sys/bm.patch
+      if [ -e "${User}/log/cores.txt" ] \
+        && [ ! -e "${User}/log/CANCELLED" ] ; then
+        if [ -e "${User}/.drush/bm.patch" ] \
+          && [ ! -e "${User}/.drush/sys/bm.patch" ] \
+          && [ -e "${User}/.drush/sys" ] ; then
+          mv -f ${User}/.drush/bm.patch \
+            ${User}/.drush/sys/bm.patch
         fi
-        if [ -e "$User/.drush/sys/bm.patch" ] ; then
-          cd $User/.drush/sys
+        if [ -e "${User}/.drush/sys/bm.patch" ] ; then
+          cd ${User}/.drush/sys
           patch -p1 < bm.patch &> /dev/null
         fi
-        if [ -e "$User/.drush/custom.patch" ] \
-          && [ ! -e "$User/.drush/sys/custom.patch" ] \
-          && [ -e "$User/.drush/sys" ] ; then
-          mv -f $User/.drush/custom.patch $User/.drush/sys/custom.patch
+        if [ -e "${User}/.drush/custom.patch" ] \
+          && [ ! -e "${User}/.drush/sys/custom.patch" ] \
+          && [ -e "${User}/.drush/sys" ] ; then
+          mv -f ${User}/.drush/custom.patch \
+            ${User}/.drush/sys/custom.patch
         fi
-        if [ -e "$User/.drush/sys/custom.patch" ] ; then
-          cd $User/.drush/sys
+        if [ -e "${User}/.drush/sys/custom.patch" ] ; then
+          cd ${User}/.drush/sys
           patch -p1 < custom.patch &> /dev/null
         fi
-        if [ -e "$User/.drush/uberdrupal.patch" ] \
-          && [ ! -e "$User/.drush/sys/uberdrupal.patch" ] \
-          && [ -e "$User/.drush/sys" ] ; then
-          mv -f $User/.drush/uberdrupal.patch $User/.drush/sys/uberdrupal.patch
+        if [ -e "${User}/.drush/uberdrupal.patch" ] \
+          && [ ! -e "${User}/.drush/sys/uberdrupal.patch" ] \
+          && [ -e "${User}/.drush/sys" ] ; then
+          mv -f ${User}/.drush/uberdrupal.patch \
+            ${User}/.drush/sys/uberdrupal.patch
         fi
-        if [ -e "$User/.drush/sys/uberdrupal.patch" ] ; then
-          cd $User/.drush/sys
+        if [ -e "${User}/.drush/sys/uberdrupal.patch" ] ; then
+          cd ${User}/.drush/sys
           patch -p1 < uberdrupal.patch &> /dev/null
         fi
-        cd $varPath
+        cd ${varPath}
       fi
     else
-      echo "$octName installer not available - try again"
+      echo "${octName} installer not available - try again"
       service cron start &> /dev/null
       exit 1
     fi
@@ -387,20 +390,20 @@ up_action_all() {
   do
     count_cpu
     load_control
-    if [ -d "$User/config/server_master/nginx/vhost.d" ] \
-      && [ -e "$User/log/cores.txt" ] \
-      && [ ! -e "$User/log/CANCELLED" ] ; then
+    if [ -d "${User}/config/server_master/nginx/vhost.d" ] \
+      && [ -e "${User}/log/cores.txt" ] \
+      && [ ! -e "${User}/log/CANCELLED" ] ; then
       if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ] ; then
-        octUsr=$(echo $User | cut -d'/' -f4 | awk '{ print $1}')
-        toctName=$octName.${octUsr}
+        octUsr=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}')
+        toctName=${octName}.${octUsr}
         octCnf=/root/.${octUsr}.octopus.cnf
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
-        echo Octopus upgrade for User $User
+        echo Octopus upgrade for User ${User}
         n=$((RANDOM%9+2))
         echo Waiting $n seconds...
         sleep $n
-        if [ "$silent" = "log" ] ; then
-          _UP_LOG="$_LOG_DIR/$(basename "$0")-up-${octUsr}-${_NOW}.log"
+        if [ "${silent}" = "log" ] ; then
+          _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${octUsr}-${_NOW}.log"
           echo
           echo "Preparing the upgrade in silent mode..."
           echo
@@ -409,13 +412,13 @@ up_action_all() {
           echo
           sleep 5
           echo "You could watch the progress in another window with command:"
-          echo "  tail -f $_UP_LOG"
+          echo "  tail -f ${_UP_LOG}"
           echo "or wait until you will see the line: OCTOPUS upgrade completed"
           echo
           echo "Starting the upgrade in silent mode now..."
           echo
-          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" $varPath/$octName &> /dev/null
-          up_one >>$_UP_LOG 2>&1
+          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" ${varPath}/${octName} &> /dev/null
+          up_one >>${_UP_LOG} 2>&1
           check_report
         else
           up_one
@@ -423,8 +426,8 @@ up_action_all() {
         n=$((RANDOM%9+2))
         echo Waiting $n seconds...
         sleep $n
-        rm -f $varPath/$toctName
-        echo Done for $User
+        rm -f ${varPath}/${toctName}
+        echo Done for ${User}
       else
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
         echo ...we have to wait...
@@ -436,21 +439,21 @@ up_action_all() {
 }
 
 up_action_one() {
-  User="/data/disk/$second"
+  User="/data/disk/${second}"
   count_cpu
   load_control
-  if [ -d "$User/config/server_master/nginx/vhost.d" ] \
-    && [ -e "$User/log/cores.txt" ] \
-    && [ ! -e "$User/log/CANCELLED" ] ; then
+  if [ -d "${User}/config/server_master/nginx/vhost.d" ] \
+    && [ -e "${User}/log/cores.txt" ] \
+    && [ ! -e "${User}/log/CANCELLED" ] ; then
     if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ] ; then
-      octUsr=$(echo $User | cut -d'/' -f4 | awk '{ print $1}')
-      toctName=$octName.${octUsr}
+      octUsr=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}')
+      toctName=${octName}.${octUsr}
       octCnf=/root/.${octUsr}.octopus.cnf
       echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
-      echo Octopus upgrade for User $User
+      echo Octopus upgrade for User ${User}
       sleep 3
-      if [ "$silent" = "log" ] ; then
-        _UP_LOG="$_LOG_DIR/$(basename "$0")-up-${octUsr}-${_NOW}.log"
+      if [ "${silent}" = "log" ] ; then
+        _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${octUsr}-${_NOW}.log"
         echo
         echo "Preparing the upgrade in silent mode..."
         echo
@@ -459,20 +462,20 @@ up_action_one() {
         echo
         sleep 5
         echo "You could watch the progress in another window with command:"
-        echo "  tail -f $_UP_LOG"
+        echo "  tail -f ${_UP_LOG}"
         echo "or wait until you will see the line: OCTOPUS upgrade completed"
         echo
         echo "Starting the upgrade in silent mode now..."
         echo
-        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" $varPath/$octName &> /dev/null
-        up_one >>$_UP_LOG 2>&1
+        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" ${varPath}/${octName} &> /dev/null
+        up_one >>${_UP_LOG} 2>&1
         check_report
       else
         up_one
       fi
       sleep 3
-      rm -f $varPath/$toctName
-      echo Done for $User
+      rm -f ${varPath}/${toctName}
+      echo Done for ${User}
     else
       echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
       echo try again later
@@ -484,29 +487,31 @@ up_action_one() {
 
 up_start() {
   if [ -e "/var/run/boa_run.pid" ] ; then
-    echo Another BOA installer is running probably - /var/run/boa_run.pid exists
+    echo Another BOA installer is running probably - \
+      /var/run/boa_run.pid exists
     exit 1
   elif [ -e "/var/run/boa_wait.pid" ] ; then
-    echo Some important system task is running probably - /var/run/boa_wait.pid exists
+    echo Some important system task is running probably - \
+      /var/run/boa_wait.pid exists
     exit 1
   else
     touch /var/run/boa_run.pid
     touch /var/run/boa_wait.pid
-    mkdir -p $_LOG_DIR
-    cd $varPath
-    rm -f $varPath/OCTOPUS.sh*
+    mkdir -p ${_LOG_DIR}
+    cd ${varPath}
+    rm -f ${varPath}/OCTOPUS.sh*
   fi
-  if [ "$cmmode" = "log" ] ; then
-    silent="$cmmode"
+  if [ "${cmmode}" = "log" ] ; then
+    silent="${cmmode}"
   fi
-  if [ ! -z "$cmmode" ] && [ "$cmmode" != "log" ] ; then
-    mcmode="$cmmode"
+  if [ ! -z "${cmmode}" ] && [ "${cmmode}" != "log" ] ; then
+    mcmode="${cmmode}"
   fi
   if [ -e "/opt/local/bin/php" ] || [ -e "/usr/local/bin/php" ] ; then
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
   fi
-  if [ "$cmmand" = "up-cluster" ] ; then
+  if [ "${cmmand}" = "up-cluster" ] ; then
     if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
       && [ ! -e "/root/.dbhd.clstr.cnf" ] \
       && [ -e "/etc/init.d/mysql" ] ; then
@@ -522,7 +527,7 @@ up_finish() {
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/manage_ltd_users.pid
   rm -f /var/run/manage_rvm_users.pid
-  rm -f $varPath/OCTOPUS.sh*
+  rm -f ${varPath}/OCTOPUS.sh*
   rm -f /root/BOA.sh*
   if [ -e "/opt/local/bin/php" ] || [ -e "/usr/local/bin/php" ] ; then
     rm -f /opt/local/bin/php
@@ -532,12 +537,12 @@ up_finish() {
   echo OCTOPUS upgrade completed
   echo Bye
   echo
-  if [ "$_NEEDS_UPDATE" = "YES" ] ; then
-    rm -f $varPath/BOA.sh.txt-*
+  if [ "${_NEEDS_UPDATE}" = "YES" ] ; then
+    rm -f ${varPath}/BOA.sh.txt-*
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-      "http://files.aegir.cc/BOA.sh.txt" -o $varPath/BOA.sh.txt-${_NOW}
-    exec bash $varPath/BOA.sh.txt-${_NOW} &> /dev/null
-    rm -f $varPath/BOA.sh.txt-${_NOW}
+      "http://files.aegir.cc/BOA.sh.txt" -o ${varPath}/BOA.sh.txt-${_NOW}
+    exec bash ${varPath}/BOA.sh.txt-${_NOW} &> /dev/null
+    rm -f ${varPath}/BOA.sh.txt-${_NOW}
   fi
   exit 0
 }
@@ -545,8 +550,8 @@ up_finish() {
 up_head() {
   up_start
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-    "$rgUrl/$master/$octName" -o $octName
-  if [ "$second" = "all" ] ; then
+    "$rgUrl/${master}/${octName}" -o ${octName}
+  if [ "${second}" = "all" ] ; then
     up_action_all
   else
     up_action_one
@@ -557,8 +562,8 @@ up_head() {
 up_modern() {
   up_start
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-    "$rgUrl/$devel/$octName" -o $octName
-  if [ "$second" = "all" ] ; then
+    "$rgUrl/${devel}/${octName}" -o ${octName}
+  if [ "${second}" = "all" ] ; then
     up_action_all
   else
     up_action_one
@@ -569,8 +574,8 @@ up_modern() {
 up_cluster() {
   up_start
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-    "$rgUrl/$stable/$octName" -o $octName
-  if [ "$second" = "all" ] ; then
+    "$rgUrl/$stable/${octName}" -o ${octName}
+  if [ "${second}" = "all" ] ; then
     up_action_all
   else
     up_action_one
@@ -581,8 +586,8 @@ up_cluster() {
 up_stable() {
   up_start
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-    "$rgUrl/$stable/$octName" -o $octName
-  if [ "$second" = "all" ] ; then
+    "$rgUrl/$stable/${octName}" -o ${octName}
+  if [ "${second}" = "all" ] ; then
     up_action_all
   else
     up_action_one
@@ -593,8 +598,8 @@ up_stable() {
 up_legacy() {
   up_start
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-    "$rgUrl/$legacy/$octName" -o $octName
-  if [ "$second" = "all" ] ; then
+    "$rgUrl/$legacy/${octName}" -o ${octName}
+  if [ "${second}" = "all" ] ; then
     up_action_all
   else
     up_action_one
@@ -603,19 +608,19 @@ up_legacy() {
 }
 
 check_wrapper() {
-  mkdir -p $varPath
-  rm -f $varPath/$(basename "$0")-now-*
-  _THIS_FILE="$varPath/$(basename "$0")-now-${_NOW}"
+  mkdir -p ${varPath}
+  rm -f ${varPath}/$(basename "$0")-now-*
+  _THIS_FILE="${varPath}/$(basename "$0")-now-${_NOW}"
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-    "${urlHmr}/tools/bin/$(basename "$0")" -o $_THIS_FILE
-  if [ ! -e "$_THIS_FILE" ] ; then
+    "${urlHmr}/tools/bin/$(basename "$0")" -o ${_THIS_FILE}
+  if [ ! -e "${_THIS_FILE}" ] ; then
     echo "I can not download required installers from files.aegir.cc at the moment."
     echo "Please check http://stats.pingdom.com/x0s6yrbopal6/646562 and try again later."
     clean_pid_exit
   fi
   _BIN_FILE="/usr/local/bin/$(basename "$0")"
-  _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE 2>&1)
-  if [[ "$_DATE_TEST" =~ "### $_TODAY ###" ]] ; then
+  _DATE_TEST=$(grep "### ${_TODAY} ###" ${_THIS_FILE} 2>&1)
+  if [[ "${_D}ATE_TEST" =~ "### ${_TODAY} ###" ]] ; then
     _NEEDS_UPDATE=NO
   else
     _NEEDS_UPDATE=YES
@@ -624,8 +629,8 @@ check_wrapper() {
 
 check_dns_curl() {
   if [ ! -e "/etc/resolv.conf" ] ; then
-    if [ -e "$varPath/resolv.conf.vanilla" ] ; then
-      cat $varPath/resolv.conf.vanilla >/etc/resolv.conf
+    if [ -e "${varPath}/resolv.conf.vanilla" ] ; then
+      cat ${varPath}/resolv.conf.vanilla >/etc/resolv.conf
     fi
     echo "nameserver 8.8.8.8" >>/etc/resolv.conf
     echo "nameserver 8.8.4.4" >>/etc/resolv.conf
@@ -674,7 +679,7 @@ check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "$_DF_TEST" ] && [ "$_DF_TEST" -gt "90" ] ; then
+  if [ ! -z "${_D}F_TEST" ] && [ "${_D}F_TEST" -gt "90" ] ; then
     echo "ERROR: Your disk space is almost full - \
       we can not proceed until it is below 90/100"
     clean_pid_exit

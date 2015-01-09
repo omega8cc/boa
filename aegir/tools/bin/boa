@@ -3,24 +3,24 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-master=master
-stable=BOA-2.3.8
-cluster=BOA-2.3.8
-legacy=BOA-2.2.9
-branch=2.3.x-dev
-devel=2.4.x-dev
+master="master"
+stable="BOA-2.3.8"
+cluster="BOA-2.3.8"
+legacy="BOA-2.2.9"
+branch="2.3.x-dev"
+devel="2.4.x-dev"
 rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
-varPath=/var/backups
-barName=BARRACUDA.sh.txt
-octName=OCTOPUS.sh.txt
-barCnf=/root/.barracuda.cnf
+varPath="/var/backups"
+barName="BARRACUDA.sh.txt"
+octName="OCTOPUS.sh.txt"
+barCnf="/root/.barracuda.cnf"
 urlHmr="http://files.aegir.cc/versions/master/aegir"
 
 _TODAY=$(date +%y%m%d 2>&1)
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _L_VMFAMILY=XEN
 _L_VM_TEST=$(uname -a 2>&1)
-if [[ "$_L_VM_TEST" =~ beng ]] ; then
+if [[ "${_L_VM_TEST}" =~ beng ]] ; then
   _L_VMFAMILY="VS"
 fi
 
@@ -33,81 +33,84 @@ clean_pid_exit() {
 
 check_id() {
   _USER=$1
-  _ID_EXISTS=$(getent passwd $_USER 2>&1)
-  if [ -z "$_ID_EXISTS" ] ; then
+  _ID_EXISTS=$(getent passwd ${_USER} 2>&1)
+  if [ -z "${_ID_EXISTS}" ] ; then
     _DO_NOTHING=YES
-  elif [[ "$_ID_EXISTS" =~ "$_USER" ]] ; then
-    echo "ERROR: $_USER username is already taken"
+  elif [[ "${_ID_EXISTS}" =~ "${_USER}" ]] ; then
+    echo "ERROR: ${_USER} username is already taken"
     echo "Please choose different username"
     clean_pid_exit
   else
-    echo "ERROR: $_USER username check failed"
+    echo "ERROR: ${_USER} username check failed"
     echo "Please try different username"
     clean_pid_exit
   fi
-  if [ "$_USER" = "admin" ] \
-    || [ "$_USER" = "hostmaster" ] \
-    || [ "$_USER" = "barracuda" ] \
-    || [ "$_USER" = "octopus" ] \
-    || [ "$_USER" = "boa" ] \
-    || [ "$_USER" = "all" ] ; then
-    echo "ERROR: $_USER is a restricted username, please choose different _USER"
+  if [ "${_USER}" = "admin" ] \
+    || [ "${_USER}" = "hostmaster" ] \
+    || [ "${_USER}" = "barracuda" ] \
+    || [ "${_USER}" = "octopus" ] \
+    || [ "${_USER}" = "boa" ] \
+    || [ "${_USER}" = "all" ] ; then
+    echo "ERROR: ${_USER} is a restricted username, \
+      please choose different _USER"
     clean_pid_exit
-  elif [[ "$_USER" =~ "aegir" ]] \
-    || [[ "$_USER" =~ "drupal" ]] \
-    || [[ "$_USER" =~ "drush" ]] \
-    || [[ "$_USER" =~ "sites" ]] \
-    || [[ "$_USER" =~ "default" ]] ; then
-    echo "ERROR: $_USER includes restricted keyword, please choose different _USER"
+  elif [[ "${_USER}" =~ "aegir" ]] \
+    || [[ "${_USER}" =~ "drupal" ]] \
+    || [[ "${_USER}" =~ "drush" ]] \
+    || [[ "${_USER}" =~ "sites" ]] \
+    || [[ "${_USER}" =~ "default" ]] ; then
+    echo "ERROR: ${_USER} includes restricted keyword, \
+      please choose different _USER"
     clean_pid_exit
   fi
   _REGEX="^[[:digit:]]"
-  if [[ "$_USER" =~ "$_REGEX" ]] ; then
-    echo "ERROR: $_USER is a wrong username, it should start with a letter, not digit"
+  if [[ "${_USER}" =~ "$_REGEX" ]] ; then
+    echo "ERROR: ${_USER} is a wrong username, \
+      it should start with a letter, not digit"
     clean_pid_exit
   fi
 }
 
 fix_dns_settings() {
-  mkdir -p $varPath
-  rm -f $varPath/resolv.conf.tmp
+  mkdir -p ${varPath}
+  rm -f ${varPath}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ] ; then
-    cp -a /etc/resolv.conf $varPath/resolv.conf.tmp
+    cp -a /etc/resolv.conf ${varPath}/resolv.conf.tmp
   fi
-  if [ ! -e "$varPath/resolv.conf.vanilla" ] ; then
-    for Pre in `ls -la $varPath/resolv.conf.pre-*` ; do
-      if [ -e "$Pre" ] && [ -f "$Pre" ] && [ ! -L "$Pre" ] ; then
-        cp -a $Pre $varPath/resolv.conf.vanilla
+  if [ ! -e "${varPath}/resolv.conf.vanilla" ] ; then
+    for Pre in `ls -la ${varPath}/resolv.conf.pre-*` ; do
+      if [ -e "${Pre}" ] && [ -f "${Pre}" ] && [ ! -L "${Pre}" ] ; then
+        cp -a ${Pre} ${varPath}/resolv.conf.vanilla
       fi
     done
   fi
-  if [ ! -e "$varPath/resolv.conf.vanilla" ] ; then
+  if [ ! -e "${varPath}/resolv.conf.vanilla" ] ; then
     rm -f /etc/resolv.conf
-    cp -a $varPath/resolv.conf.tmp /etc/resolv.conf
-    cp -a $varPath/resolv.conf.tmp $varPath/resolv.conf.vanilla
+    cp -a ${varPath}/resolv.conf.tmp /etc/resolv.conf
+    cp -a ${varPath}/resolv.conf.tmp ${varPath}/resolv.conf.vanilla
   fi
-  sed -i "/^$/d" $varPath/resolv.conf.vanilla &> /dev/null
+  sed -i "/^$/d" ${varPath}/resolv.conf.vanilla &> /dev/null
   rm -f /etc/resolv.conf
   echo "nameserver 8.8.8.8" > /etc/resolv.conf
   echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] \
-    && [ -e "$varPath/resolv.conf.vanilla" ] ; then
+  if [[ "${_BROKEN_DNS_TEST}" =~ "no servers could be reached" ]] \
+    && [ -e "${varPath}/resolv.conf.vanilla" ] ; then
     touch /root/.use.local.nameservers.cnf
     rm -f /etc/resolv.conf
-    cp -a $varPath/resolv.conf.vanilla /etc/resolv.conf
+    cp -a ${varPath}/resolv.conf.vanilla /etc/resolv.conf
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   else
     rm -f /etc/resolv.conf
-    cp -a $varPath/resolv.conf.tmp /etc/resolv.conf
+    cp -a ${varPath}/resolv.conf.tmp /etc/resolv.conf
   fi
   if [ -e "/etc/pdnsd.conf" ] ; then
     if [ -e "/root/.local.dns.IP.list" ] ; then
       sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" /root/.local.dns.IP.list
       sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   /root/.local.dns.IP.list
       _BROKEN_DNS_TEST=$(grep "\." /root/.local.dns.IP.list 2>&1)
-      if [ -z "$_BROKEN_DNS_TEST" ] ; then
+      if [ -z "${_BROKEN_DNS_TEST}" ] ; then
         echo "        label = \"google-servers\";" > /root/.local.dns.IP.list
         echo "        ip=8.8.8.8;" >> /root/.local.dns.IP.list
         echo "        ip=8.8.4.4;" >> /root/.local.dns.IP.list
@@ -115,8 +118,8 @@ fix_dns_settings() {
     fi
     _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
     _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
-    if [[ "$_CUSTOM_DNS_TEST" =~ "8.8.8.8" ]] \
-      || [[ "$_BROKEN_DNS_CONF" =~ "Dynamic" ]] ; then
+    if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
+      || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]] ; then
       if [ -e "/root/.use.local.nameservers.cnf" ] ; then
         echo "        label = \"google-servers\";" > /root/.local.dns.IP.list
         for _IP in `cat /etc/resolv.conf \
@@ -130,7 +133,7 @@ fix_dns_settings() {
         sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" /root/.local.dns.IP.list
         sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   /root/.local.dns.IP.list
         _BROKEN_DNS_TEST=$(grep "\." /root/.local.dns.IP.list 2>&1)
-        if [ -z "$_BROKEN_DNS_TEST" ] ; then
+        if [ -z "${_BROKEN_DNS_TEST}" ] ; then
            echo "        ip=8.8.8.8;" >> /root/.local.dns.IP.list
            echo "        ip=8.8.4.4;" >> /root/.local.dns.IP.list
         fi
@@ -150,7 +153,7 @@ d;};' /etc/pdnsd.conf
 
 check_dns_settings() {
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] \
+  if [[ "${_BROKEN_DNS_TEST}" =~ "no servers could be reached" ]] \
     || [ -e "/root/.use.local.nameservers.cnf" ] ; then
     _USE_PROVIDER_DNS=YES
     fix_dns_settings
@@ -160,139 +163,140 @@ check_dns_settings() {
 }
 
 octopus_install() {
-  if [ -e "$varPath/$octName" ] ; then
+  if [ -e "${varPath}/${octName}" ] ; then
     if [ -z "$user" ] ; then
       user="o1"
     fi
     _CHECK_HOST=$(uname -n 2>&1)
-    if [ "$cmmand" = "in-octopus" ] ; then
+    if [ "${cmmand}" = "in-octopus" ] ; then
       if [ ! -z "$copt" ] ; then
-        sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=$copt/g" $varPath/$octName
+        sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=$copt/g" ${varPath}/${octName}
       fi
       if [ ! -z "$csub" ] ; then
-        sed -i "s/^_CLIENT_SUBSCR=.*/_CLIENT_SUBSCR=$csub/g" $varPath/$octName
+        sed -i "s/^_CLIENT_SUBSCR=.*/_CLIENT_SUBSCR=$csub/g" ${varPath}/${octName}
       fi
       if [ ! -z "$ccor" ] ; then
-        sed -i "s/^_CLIENT_CORES=.*/_CLIENT_CORES=$ccor/g"   $varPath/$octName
+        sed -i "s/^_CLIENT_CORES=.*/_CLIENT_CORES=$ccor/g"   ${varPath}/${octName}
       fi
     else
-      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"        $varPath/$octName
+      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"        ${varPath}/${octName}
     fi
-    sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"$email\"/g"  $varPath/$octName
-    sed -i "s/^_USER=.*/_USER=$user/g"                       $varPath/$octName
+    sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"$email\"/g"  ${varPath}/${octName}
+    sed -i "s/^_USER=.*/_USER=$user/g"                       ${varPath}/${octName}
     if [ "$mode" = "mini" ] ; then
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             $varPath/$octName
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${varPath}/${octName}
     elif [ "$mode" = "max" ] ; then
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             $varPath/$octName
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   $varPath/$octName
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${varPath}/${octName}
+      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${varPath}/${octName}
     elif [ "$mode" = "none" ] ; then
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             $varPath/$octName
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  $varPath/$octName
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${varPath}/${octName}
+      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  ${varPath}/${octName}
     else
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   $varPath/$octName
+      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${varPath}/${octName}
     fi
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
-      || [[ "$_CHECK_HOST" =~ ".host8." ]] \
-      || [ "$_L_VMFAMILY" = "VS" ] ; then
+      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+      || [ "${_L_VMFAMILY}" = "VS" ] ; then
       if [ ! -e "/root/.debug.cnf" ] ; then
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               $varPath/$octName
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g" $varPath/$octName
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${varPath}/${octName}
+        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g" ${varPath}/${octName}
       fi
     fi
-    if [ "$cmmand" = "in-head" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"   $varPath/$octName
-    elif [ "$cmmand" = "in-modern" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"   $varPath/$octName
+    if [ "${cmmand}" = "in-head" ] ; then
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"   ${varPath}/${octName}
+    elif [ "${cmmand}" = "in-modern" ] ; then
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"   ${varPath}/${octName}
     else
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$branch/g"  $varPath/$octName
-      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=$branch/g" $varPath/$octName
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"  ${varPath}/${octName}
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=${branch}/g" \
+        ${varPath}/${octName}
     fi
-    if [ "$cmmand" = "in-head" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$master/g"  $varPath/$octName
-    elif [ "$cmmand" = "in-modern" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$devel/g"   $varPath/$octName
-    elif [ "$cmmand" = "in-cluster" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$cluster/g" $varPath/$octName
+    if [ "${cmmand}" = "in-head" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"  ${varPath}/${octName}
+    elif [ "${cmmand}" = "in-modern" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"   ${varPath}/${octName}
+    elif [ "${cmmand}" = "in-cluster" ] ; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g" ${varPath}/${octName}
     else
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$branch/g"  $varPath/$octName
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"  ${varPath}/${octName}
     fi
 
-    if [ ! -z "$dbip" ] && [ "$cmmand" = "in-cluster" ] ; then
+    if [ ! -z "$dbip" ] && [ "${cmmand}" = "in-cluster" ] ; then
       if [ "$kind" = "mstr" ] || [ "$kind" = "wbhd" ] ; then
-        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"       $varPath/$octName
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               $varPath/$octName
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g" $varPath/$octName
+        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"       ${varPath}/${octName}
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${varPath}/${octName}
+        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g" ${varPath}/${octName}
       fi
     fi
 
-    bash $varPath/$octName
+    bash ${varPath}/${octName}
     sed -i "s/^127.0.1.1.*//g" /etc/hosts
     sed -i "/^$/d" /etc/hosts
   else
-    echo "$octName installer not available - try again"
+    echo "${octName} installer not available - try again"
     clean_pid_exit
   fi
 }
 
 barracuda_install() {
-if [ -e "$varPath/$barName" ] ; then
-  sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"          $varPath/$barName
-  sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               $varPath/$barName
+if [ -e "${varPath}/${barName}" ] ; then
+  sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"          ${varPath}/${barName}
+  sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${varPath}/${barName}
   sed -i "s/^127.0.1.1.*//g" /etc/hosts
   if [ "$kind" = "local" ] ; then
-    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g"         $varPath/$barName
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g"         ${varPath}/${barName}
     echo "127.0.1.1 aegir.local o1.sub.aegir.local o2.sub.aegir.local o3.sub.aegir.local" >> /etc/hosts
     ### Legacy variables
-    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=YES/g"   $varPath/$barName
-    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"          $varPath/$barName
+    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=YES/g"   ${varPath}/${barName}
+    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"          ${varPath}/${barName}
   elif [ "$kind" = "public" ] && [ ! -z "$fqdn" ] ; then
-    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        $varPath/$barName
-    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   $varPath/$barName
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        ${varPath}/${barName}
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   ${varPath}/${barName}
     ### Legacy variables
-    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"    $varPath/$barName
-    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"         $varPath/$barName
+    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"    ${varPath}/${barName}
+    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"         ${varPath}/${barName}
   elif [ "$kind" = "mstr" ] \
     && [ ! -z "$fqdn" ] \
     && [ ! -z "$dbip" ] \
     && [ ! -z "$loip" ] \
-    && [ "$cmmand" = "in-cluster" ] ; then
+    && [ "${cmmand}" = "in-cluster" ] ; then
     touch /root/.mstr.clstr.cnf
-    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=MSTR/g"          $varPath/$barName
-    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   $varPath/$barName
-    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     $varPath/$barName
-    sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             $varPath/$barName
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=MSTR/g"          ${varPath}/${barName}
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   ${varPath}/${barName}
+    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     ${varPath}/${barName}
+    sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             ${varPath}/${barName}
   elif [ "$kind" = "dbhd" ] \
     && [ ! -z "$fqdn" ] \
     && [ ! -z "$dbip" ] \
     && [ ! -z "$loip" ] \
-    && [ "$cmmand" = "in-cluster" ] ; then
+    && [ "${cmmand}" = "in-cluster" ] ; then
     touch /root/.dbhd.clstr.cnf
-    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=DBHD/g"          $varPath/$barName
-    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   $varPath/$barName
-    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     $varPath/$barName
-    sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             $varPath/$barName
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=DBHD/g"          ${varPath}/${barName}
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   ${varPath}/${barName}
+    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     ${varPath}/${barName}
+    sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             ${varPath}/${barName}
   elif [ "$kind" = "wbhd" ] \
     && [ ! -z "$fqdn" ] \
     && [ ! -z "$dbip" ] \
     && [ ! -z "$loip" ] \
-    && [ "$cmmand" = "in-cluster" ] ; then
+    && [ "${cmmand}" = "in-cluster" ] ; then
     touch /root/.wbhd.clstr.cnf
-    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=WBHD/g"          $varPath/$barName
-    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   $varPath/$barName
-    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     $varPath/$barName
-    sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             $varPath/$barName
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=WBHD/g"          ${varPath}/${barName}
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   ${varPath}/${barName}
+    sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     ${varPath}/${barName}
+    sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             ${varPath}/${barName}
   else
-    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        $varPath/$barName
-    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   $varPath/$barName
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        ${varPath}/${barName}
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   ${varPath}/${barName}
     ### Legacy variables
-    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"    $varPath/$barName
-    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"         $varPath/$barName
+    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"    ${varPath}/${barName}
+    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"         ${varPath}/${barName}
   fi
 
   if [ ! -z "$fqdn" ] \
     && [ ! -z "$loip" ] \
-    && [ "$cmmand" = "in-cluster" ] ; then
+    && [ "${cmmand}" = "in-cluster" ] ; then
     if [ "$kind" = "mstr" ] \
       || [ "$kind" = "dbhd" ] \
       || [ "$kind" = "wbhd" ] ; then
@@ -305,81 +309,84 @@ if [ -e "$varPath/$barName" ] ; then
 
   if [ ! -z "$rkey" ] ; then
     if [ "$rkey" = "php-55" ] ; then
-      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.5/g" $varPath/$barName
-      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.5/g"   $varPath/$barName
-      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       $varPath/$octName
-      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       $varPath/$octName
+      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.5/g" ${varPath}/${barName}
+      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.5/g"   ${varPath}/${barName}
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       ${varPath}/${octName}
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       ${varPath}/${octName}
     elif [ "$rkey" = "php-56" ] ; then
-      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.6/g" $varPath/$barName
-      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.6/g"   $varPath/$barName
-      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g"       $varPath/$octName
-      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g"       $varPath/$octName
+      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.6/g" ${varPath}/${barName}
+      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.6/g"   ${varPath}/${barName}
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g"       ${varPath}/${octName}
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g"       ${varPath}/${octName}
     elif [ "$rkey" = "php-54" ] ; then
-      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.4/g" $varPath/$barName
-      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.4/g"   $varPath/$barName
-      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g"       $varPath/$octName
-      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g"       $varPath/$octName
+      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.4/g" ${varPath}/${barName}
+      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.4/g"   ${varPath}/${barName}
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g"       ${varPath}/${octName}
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g"       ${varPath}/${octName}
     elif [ "$rkey" = "php-53" ] ; then
-      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.3/g" $varPath/$barName
-      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.3/g"   $varPath/$barName
-      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g"       $varPath/$octName
-      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"       $varPath/$octName
+      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=5.3/g" ${varPath}/${barName}
+      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.3/g"   ${varPath}/${barName}
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g"       ${varPath}/${octName}
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"       ${varPath}/${octName}
     elif [ "$rkey" = "php-all" ] ; then
-      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"    $varPath/$barName
-      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"5.6 5.5 5.4 5.3\"/g" $varPath/$barName
-      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       $varPath/$barName
-      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       $varPath/$barName
-      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       $varPath/$octName
-      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       $varPath/$octName
+      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"    ${varPath}/${barName}
+      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"5.6 5.5 5.4 5.3\"/g" ${varPath}/${barName}
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       ${varPath}/${barName}
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       ${varPath}/${barName}
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"       ${varPath}/${octName}
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"       ${varPath}/${octName}
     elif [ "$rkey" = "nodns" ] ; then
-      sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"        $varPath/$barName
-      sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"          $varPath/$barName
-      sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"          $varPath/$octName
+      sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"        ${varPath}/${barName}
+      sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"          ${varPath}/${barName}
+      sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"          ${varPath}/${octName}
     else
-      sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g"       $varPath/$barName
+      sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g"       ${varPath}/${barName}
     fi
   fi
 
-  if [ "$cmmand" = "in-head" ] ; then
-    sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"  $varPath/$barName
-  elif [ "$cmmand" = "in-modern" ] ; then
-    sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$devel/g"  $varPath/$barName
+  if [ "${cmmand}" = "in-head" ] ; then
+    sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"  ${varPath}/${barName}
+  elif [ "${cmmand}" = "in-modern" ] ; then
+    sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"  ${varPath}/${barName}
   else
-    sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=$branch/g" $varPath/$barName
-    sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=$branch/g" $varPath/$barName
+    sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g" ${varPath}/${barName}
+    sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=${branch}/g" \
+      ${varPath}/${barName}
   fi
-  if [ "$cmmand" = "in-head" ] ; then
-    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$master/g"  $varPath/$barName
-  elif [ "$cmmand" = "in-modern" ] ; then
-    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$devel/g"   $varPath/$barName
-  elif [ "$cmmand" = "in-cluster" ] ; then
-    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$cluster/g" $varPath/$barName
+  if [ "${cmmand}" = "in-head" ] ; then
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"  ${varPath}/${barName}
+  elif [ "${cmmand}" = "in-modern" ] ; then
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"   ${varPath}/${barName}
+  elif [ "${cmmand}" = "in-cluster" ] ; then
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g" ${varPath}/${barName}
   else
-    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=$branch/g"  $varPath/$barName
+    sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"  ${varPath}/${barName}
   fi
-  if [ -e "$varPath/$barName" ] ; then
-    bash $varPath/$barName
+  if [ -e "${varPath}/${barName}" ] ; then
+    bash ${varPath}/${barName}
   fi
 else
-  echo "$barName installer not available - try again"
+  echo "${barName} installer not available - try again"
   clean_pid_exit
 fi
 }
 
 init_start() {
   if [ -e "/var/run/boa_run.pid" ] ; then
-    echo Another BOA installer is running probably - /var/run/boa_run.pid exists
+    echo Another BOA installer is running probably - \
+      /var/run/boa_run.pid exists
     exit 1
   elif [ -e "/var/run/boa_wait.pid" ] ; then
-    echo Some important system task is running probably - /var/run/boa_wait.pid exists
+    echo Some important system task is running probably - \
+      /var/run/boa_wait.pid exists
     exit 1
   else
     touch /var/run/boa_run.pid
     touch /var/run/boa_wait.pid
-    mkdir -p $varPath
-    cd $varPath
-    rm -f $varPath/BARRACUDA.sh*
-    rm -f $varPath/OCTOPUS.sh*
+    mkdir -p ${varPath}
+    cd ${varPath}
+    rm -f ${varPath}/BARRACUDA.sh*
+    rm -f ${varPath}/OCTOPUS.sh*
   fi
 }
 
@@ -404,7 +411,7 @@ set_pin_priority() {
       curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
         "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
     fi
-    rm -f $varPath/etc-apt-preferences-*
+    rm -f ${varPath}/etc-apt-preferences-*
   fi
 }
 
@@ -413,19 +420,19 @@ init_finish() {
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/manage_ltd_users.pid
   rm -f /var/run/manage_rvm_users.pid
-  rm -f $varPath/BARRACUDA.sh*
-  rm -f $varPath/OCTOPUS.sh*
+  rm -f ${varPath}/BARRACUDA.sh*
+  rm -f ${varPath}/OCTOPUS.sh*
   rm -f /root/BOA.sh*
   echo
-  echo BOA $cmmand completed
+  echo BOA ${cmmand} completed
   echo Bye
   echo
-  if [ "$_NEEDS_UPDATE" = "YES" ] ; then
-    rm -f $varPath/BOA.sh.txt-*
+  if [ "${_NEEDS_UPDATE}" = "YES" ] ; then
+    rm -f ${varPath}/BOA.sh.txt-*
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-      "http://files.aegir.cc/BOA.sh.txt" -o $varPath/BOA.sh.txt-${_NOW}
-    exec bash $varPath/BOA.sh.txt-${_NOW} &> /dev/null
-    rm -f $varPath/BOA.sh.txt-${_NOW}
+      "http://files.aegir.cc/BOA.sh.txt" -o ${varPath}/BOA.sh.txt-${_NOW}
+    exec bash ${varPath}/BOA.sh.txt-${_NOW} &> /dev/null
+    rm -f ${varPath}/BOA.sh.txt-${_NOW}
   fi
   exit 0
 }
@@ -465,30 +472,30 @@ init_setup() {
   init_start
   set_pin_priority
   if [ ! -z "$vn" ] ; then
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$vn/$barName"        -o $varPath/$barName
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$vn/$octName"        -o $varPath/$octName
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$vn/${barName}"        -o ${varPath}/${barName}
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$vn/${octName}"        -o ${varPath}/${octName}
   else
-    if [ "$cmmand" = "in-head" ] ; then
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$master/$barName"  -o $varPath/$barName
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$master/$octName"  -o $varPath/$octName
-    elif [ "$cmmand" = "in-modern" ] ; then
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$devel/$barName"   -o $varPath/$barName
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$devel/$octName"   -o $varPath/$octName
-    elif [ "$cmmand" = "in-cluster" ] ; then
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$cluster/$barName" -o $varPath/$barName
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$cluster/$octName" -o $varPath/$octName
-    elif [ "$cmmand" = "in-stable" ] ; then
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/$barName"  -o $varPath/$barName
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/$octName"  -o $varPath/$octName
-    elif [ "$cmmand" = "in-legacy" ] ; then
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$legacy/$barName"  -o $varPath/$barName
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$legacy/$octName"  -o $varPath/$octName
-    elif [ "$cmmand" = "in-octopus" ] ; then
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/$barName"  -o $varPath/$barName
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/$octName"  -o $varPath/$octName
+    if [ "${cmmand}" = "in-head" ] ; then
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/${master}/${barName}"  -o ${varPath}/${barName}
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/${master}/${octName}"  -o ${varPath}/${octName}
+    elif [ "${cmmand}" = "in-modern" ] ; then
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/${devel}/${barName}"   -o ${varPath}/${barName}
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/${devel}/${octName}"   -o ${varPath}/${octName}
+    elif [ "${cmmand}" = "in-cluster" ] ; then
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/${cluster}/${barName}" -o ${varPath}/${barName}
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/${cluster}/${octName}" -o ${varPath}/${octName}
+    elif [ "${cmmand}" = "in-stable" ] ; then
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/${barName}"  -o ${varPath}/${barName}
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/${octName}"  -o ${varPath}/${octName}
+    elif [ "${cmmand}" = "in-legacy" ] ; then
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$legacy/${barName}"  -o ${varPath}/${barName}
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$legacy/${octName}"  -o ${varPath}/${octName}
+    elif [ "${cmmand}" = "in-octopus" ] ; then
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/${barName}"  -o ${varPath}/${barName}
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/${octName}"  -o ${varPath}/${octName}
     fi
   fi
-  if [ "$cmmand" = "in-octopus" ] ; then
+  if [ "${cmmand}" = "in-octopus" ] ; then
     _OCTOPUS_ONLY=YES
   else
     barracuda_install
@@ -500,19 +507,19 @@ init_setup() {
 }
 
 check_wrapper() {
-  mkdir -p $varPath
-  rm -f $varPath/$(basename "$0")-now-*
-  _THIS_FILE="$varPath/$(basename "$0")-now-${_NOW}"
+  mkdir -p ${varPath}
+  rm -f ${varPath}/$(basename "$0")-now-*
+  _THIS_FILE="${varPath}/$(basename "$0")-now-${_NOW}"
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-    "${urlHmr}/tools/bin/$(basename "$0")" -o $_THIS_FILE
-  if [ ! -e "$_THIS_FILE" ] ; then
+    "${urlHmr}/tools/bin/$(basename "$0")" -o ${_THIS_FILE}
+  if [ ! -e "${_THIS_FILE}" ] ; then
     echo "I can not download required installers from files.aegir.cc at the moment."
     echo "Please check http://stats.pingdom.com/x0s6yrbopal6/646562 and try again later."
     clean_pid_exit
   fi
   _BIN_FILE="/usr/local/bin/$(basename "$0")"
-  _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE 2>&1)
-  if [[ "$_DATE_TEST" =~ "### $_TODAY ###" ]] ; then
+  _DATE_TEST=$(grep "### ${_TODAY} ###" ${_THIS_FILE} 2>&1)
+  if [[ "${_D}ATE_TEST" =~ "### ${_TODAY} ###" ]] ; then
     _NEEDS_UPDATE=NO
   else
     _NEEDS_UPDATE=YES
@@ -521,8 +528,8 @@ check_wrapper() {
 
 check_dns_curl() {
   if [ ! -e "/etc/resolv.conf" ] ; then
-    if [ -e "$varPath/resolv.conf.vanilla" ] ; then
-      cat $varPath/resolv.conf.vanilla >/etc/resolv.conf
+    if [ -e "${varPath}/resolv.conf.vanilla" ] ; then
+      cat ${varPath}/resolv.conf.vanilla >/etc/resolv.conf
     fi
     echo "nameserver 8.8.8.8" >>/etc/resolv.conf
     echo "nameserver 8.8.4.4" >>/etc/resolv.conf
@@ -571,13 +578,13 @@ check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "$_DF_TEST" ] && [ "$_DF_TEST" -gt "90" ] ; then
+  if [ ! -z "${_D}F_TEST" ] && [ "${_D}F_TEST" -gt "90" ] ; then
     echo "ERROR: Your disk space is almost full - \
       we can not proceed until it is below 90/100"
     clean_pid_exit
   fi
   _L_VM_TEST=$(uname -a 2>&1)
-  if [[ "$_L_VM_TEST" =~ beng ]] ; then
+  if [[ "${_L_VM_TEST}" =~ beng ]] ; then
     if [ -e "/sbin/hdparm" ] ; then
       apt-get remove hdparm -y --force-yes -qq &> /dev/null
       apt-get purge hdparm -y --force-yes -qq &> /dev/null

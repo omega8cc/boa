@@ -14,14 +14,14 @@ check_generate() {
     _ESC_APASS=$(cat $_L_SYS 2>&1)
   else
     echo "INFO: Expected file $_L_SYS does not exist"
-    if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] ; then
       _PWD_CHARS=32
-    elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+    elif [ "${_STRONG_PASSWORDS}" = "NO" ] ; then
       _PWD_CHARS=8
     else
       _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
-      if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
-        _PWD_CHARS="$_STRONG_PASSWORDS"
+      if [ ! -z "${_STRONG_PASSWORDS}" ] && [ ${_STRONG_PASSWORDS} -gt "8" ] ; then
+        _PWD_CHARS="${_STRONG_PASSWORDS}"
       else
         _PWD_CHARS=8
       fi
@@ -29,31 +29,31 @@ check_generate() {
         _PWD_CHARS=128
       fi
     fi
-    if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
       echo "INFO: We will generate new random strong password ($_PWD_CHARS)"
       _ESC_APASS=$(randpass $_PWD_CHARS esc 2>&1)
-      _ESC_APASS=$(echo -n $_ESC_APASS | tr -d "\n" 2>&1)
-      _ENC_APASS=$(python -c "import urllib; print urllib.quote('''$_ESC_APASS''')")
-      echo "$_ESC_APASS" > $_L_SYS
+      _ESC_APASS=$(echo -n ${_ESC_APASS} | tr -d "\n" 2>&1)
+      _ENC_APASS=$(python -c "import urllib; print urllib.quote('''${_ESC_APASS}''')")
+      echo "${_ESC_APASS}" > $_L_SYS
     else
        echo "INFO: We will generate new random password using pwgen tool"
       _ESC_APASS=$(pwgen -v -s -1 2>&1)
-      _ESC_APASS=$(echo -n $_ESC_APASS | tr -d "\n" 2>&1)
-      _ESC_APASS=$(sanitize_string "$_ESC_APASS" 2>&1)
-      _ENC_APASS="$_ESC_APASS"
-      echo "$_ESC_APASS" > $_L_SYS
+      _ESC_APASS=$(echo -n ${_ESC_APASS} | tr -d "\n" 2>&1)
+      _ESC_APASS=$(sanitize_string "${_ESC_APASS}" 2>&1)
+      _ENC_APASS="${_ESC_APASS}"
+      echo "${_ESC_APASS}" > $_L_SYS
       chmod 0600 $_L_SYS
     fi
   fi
   _LEN_APASS=$(echo ${#_ESC_APASS} 2>&1)
-  if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 9 ] ; then
-     echo "WARN: The random password=$_ESC_APASS does not look good"
+  if [ -z "${_ESC_APASS}" ] || [ $_LEN_APASS -lt 9 ] ; then
+     echo "WARN: The random password=${_ESC_APASS} does not look good"
      echo "INFO: We will generate new random password using pwgen tool"
     _ESC_APASS=$(pwgen -v -s -1 2>&1)
-    _ESC_APASS=$(echo -n $_ESC_APASS | tr -d "\n" 2>&1)
-    _ESC_APASS=$(sanitize_string "$_ESC_APASS" 2>&1)
-    _ENC_APASS="$_ESC_APASS"
-    echo "$_ESC_APASS" > $_L_SYS
+    _ESC_APASS=$(echo -n ${_ESC_APASS} | tr -d "\n" 2>&1)
+    _ESC_APASS=$(sanitize_string "${_ESC_APASS}" 2>&1)
+    _ENC_APASS="${_ESC_APASS}"
+    echo "${_ESC_APASS}" > $_L_SYS
     chmod 0600 $_L_SYS
   fi
 }
@@ -68,15 +68,15 @@ do_syncpass() {
         /var/backups/server_master.alias.drushrc.php.$uname-bak-${_NOW} &> /dev/null
       check_generate
       chown $uname:$uname $_L_SYS &> /dev/null
-      if [ ! -z "$_ESC_APASS" ] && [ ! -z "$_ENC_APASS" ] ; then
+      if [ ! -z "${_ESC_APASS}" ] && [ ! -z "${_ENC_APASS}" ] ; then
         mysqladmin flush-hosts &> /dev/null
         su -s /bin/bash - $uname -c "drush @hostmaster \
-          sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE \
+          sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_APASS}' WHERE \
           db_user='aegir_root'\" &> /dev/null"
         mysql -u root -e "UPDATE mysql.user SET \
-          Password=PASSWORD('$_ESC_APASS') WHERE User='$uname';" &> /dev/null
+          Password=PASSWORD('${_ESC_APASS}') WHERE User='$uname';" &> /dev/null
         sed -i \
-          "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:$_ENC_APASS@$_SQL_CONNECT',/g" \
+          "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
           /var/aegir/.drush/server_*.alias.drushrc.php &> /dev/null
         mysqladmin flush-privileges &> /dev/null
       else
@@ -85,7 +85,7 @@ do_syncpass() {
         exit 1
       fi
       echo "INFO: Fixed Aegir Master Instance system user=aegir_root"
-      echo "INFO: New system password=$_ESC_APASS encoded=$_ENC_APASS"
+      echo "INFO: New system password=${_ESC_APASS} encoded=${_ENC_APASS}"
       echo "BYE!"
     else
       if [ -e "/data/disk/$uname" ] ; then
@@ -96,15 +96,15 @@ do_syncpass() {
           /var/backups/server_master.alias.drushrc.php.$uname-bak-${_NOW} &> /dev/null
         check_generate
         chown $uname:users $_L_SYS &> /dev/null
-        if [ ! -z "$_ESC_APASS" ] && [ ! -z "$_ENC_APASS" ] ; then
+        if [ ! -z "${_ESC_APASS}" ] && [ ! -z "${_ENC_APASS}" ] ; then
           mysqladmin flush-hosts &> /dev/null
           su -s /bin/bash - $uname -c "drush @hostmaster sqlq \"UPDATE \
-            hosting_db_server SET db_passwd='$_ESC_APASS' \
+            hosting_db_server SET db_passwd='${_ESC_APASS}' \
             WHERE db_user='$uname'\" &> /dev/null"
           mysql -u root -e "UPDATE mysql.user SET \
-            Password=PASSWORD('$_ESC_APASS') WHERE User='$uname';" &> /dev/null
+            Password=PASSWORD('${_ESC_APASS}') WHERE User='$uname';" &> /dev/null
           sed -i \
-            "s/mysql:\/\/$uname:.*/mysql:\/\/$uname:$_ENC_APASS@$_SQL_CONNECT',/g" \
+            "s/mysql:\/\/$uname:.*/mysql:\/\/$uname:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
             /data/disk/$uname/.drush/server_*.alias.drushrc.php &> /dev/null
           mysqladmin flush-privileges &> /dev/null
         else
@@ -113,7 +113,7 @@ do_syncpass() {
           exit 1
         fi
         echo "INFO: Fixed Aegir Satellite Instance system user=$uname"
-        echo "INFO: New system password=$_ESC_APASS encoded=$_ENC_APASS"
+        echo "INFO: New system password=${_ESC_APASS} encoded=${_ENC_APASS}"
         echo "BYE!"
       else
         echo "ERROR: You must specify the existing Aegir instance username to fix"
@@ -150,12 +150,12 @@ check_root() {
 check_root
 if [ -e "/root/.barracuda.cnf" ] ; then
   source /root/.barracuda.cnf
-  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+  if [ "${_THIS_DB_HOST}" = "localhost" ] || [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
     _SQL_CONNECT=localhost
   else
-    _SQL_CONNECT="$_THIS_DB_HOST"
+    _SQL_CONNECT="${_THIS_DB_HOST}"
   fi
-  if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
+  if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ] ; then
     _SQL_CONNECT=localhost
   fi
 fi

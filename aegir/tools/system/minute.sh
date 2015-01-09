@@ -62,10 +62,10 @@ fi
 
 _RAM_TOTAL=$(free -m | grep Mem: | cut -d: -f2 | awk '{ print $1}' 2>&1)
 _RAM_FREE=$(free -m | grep /+ | cut -d: -f2 | awk '{ print $2}' 2>&1)
-_RAM_PCT_FREE=$(echo "scale=0; $(bc -l <<< "$_RAM_FREE / $_RAM_TOTAL * 100")/1" | bc 2>&1)
+_RAM_PCT_FREE=$(echo "scale=0; $(bc -l <<< "${_RAM_FREE} / ${_RAM_TOTAL} * 100")/1" | bc 2>&1)
 _RAM_PCT_FREE=${_RAM_PCT_FREE//[^0-9]/}
 
-if [ ! -z "$_RAM_PCT_FREE" ] && [ $_RAM_PCT_FREE -lt 10 ] ; then
+if [ ! -z "${_RAM_PCT_FREE}" ] && [ ${_RAM_PCT_FREE} -lt 10 ] ; then
   oom_restart "ram"
 fi
 
@@ -136,7 +136,7 @@ mysql_proc_kill() {
     && [ "$xuser" != "root" ] \
     && [ "$xtime" != "|" ] \
     && [[ "$xtime" -gt "$limit" ]] ; then
-    xkill=`mysqladmin kill $each`
+    xkill=$(mysqladmin kill $each 2>&1)
     times=$(date 2>&1)
     echo $times $each $xuser $xtime $xkill
     echo "$times $each $xuser $xtime $xkill" >> /var/xdrago/log/sql_watch.log
@@ -149,20 +149,20 @@ xkill=null
 for each in `mysqladmin proc \
   | awk '{print $2, $4, $8, $12}' \
   | awk '{print $1}'`; do
-  xtime=`mysqladmin proc \
+  xtime=$(mysqladmin proc \
     | awk '{print $2, $4, $8, $12}' \
     | grep $each \
-    | awk '{print $4}'`
+    | awk '{print $4}' 2>&1)
   if [ "$xtime" = "|" ] ; then
-    xtime=`mysqladmin proc \
+    xtime=$(mysqladmin proc \
       | awk '{print $2, $4, $8, $11}' \
       | grep $each \
-      | awk '{print $4}'`
+      | awk '{print $4}' 2>&1)
   fi
-  xuser=`mysqladmin proc \
+  xuser=$(mysqladmin proc \
     | awk '{print $2, $4, $8, $12}' \
     | grep $each \
-    | awk '{print $2}'`
+    | awk '{print $2}' 2>&1)
   if [ "$xtime" != "Time" ] ; then
     if [ "$xuser" = "xabuse" ] ; then
       limit=60
@@ -195,20 +195,20 @@ if [ -e "/var/xdrago/log/lsyncd.monitor.log" ] ; then
     source /root/.barracuda.cnf
   fi
   if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log \
-    | grep --count "TRM lsyncd"` -gt "3" ] && [ -n "$_MY_EMAIL" ] ; then
-    mail -s "ALERT! lsyncd TRM failure on $(uname -n 2>&1)" $_MY_EMAIL < \
+    | grep --count "TRM lsyncd"` -gt "3" ] && [ -n "${_MY_EMAIL}" ] ; then
+    mail -s "ALERT! lsyncd TRM failure on $(uname -n 2>&1)" ${_MY_EMAIL} < \
       /var/xdrago/log/lsyncd.monitor.log
     _ARCHIVE_LOG=YES
   fi
   if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log \
-    | grep --count "ERR lsyncd"` -gt "3" ] && [ -n "$_MY_EMAIL" ] ; then
-    mail -s "ALERT! lsyncd ERR failure on $(uname -n 2>&1)" $_MY_EMAIL < \
+    | grep --count "ERR lsyncd"` -gt "3" ] && [ -n "${_MY_EMAIL}" ] ; then
+    mail -s "ALERT! lsyncd ERR failure on $(uname -n 2>&1)" ${_MY_EMAIL} < \
       /var/xdrago/log/lsyncd.monitor.log
     _ARCHIVE_LOG=YES
   fi
   if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log \
-    | grep --count "NRM lsyncd"` -gt "3" ] && [ -n "$_MY_EMAIL" ] ; then
-    mail -s "NOTICE: lsyncd NRM problem on $(uname -n 2>&1)" $_MY_EMAIL < \
+    | grep --count "NRM lsyncd"` -gt "3" ] && [ -n "${_MY_EMAIL}" ] ; then
+    mail -s "NOTICE: lsyncd NRM problem on $(uname -n 2>&1)" ${_MY_EMAIL} < \
       /var/xdrago/log/lsyncd.monitor.log
     _ARCHIVE_LOG=YES
   fi

@@ -124,23 +124,23 @@ _USRG=EDIT_USRG
 _WEBG=EDIT_WEBG
 #
 _USER=EDIT_USER
-_ROOT="/data/disk/$_USER"
-_HOSTMASTER_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
-_DISTRO_ROOT="$_ROOT/distro/$_DISTRO"
+_ROOT="/data/disk/${_USER}"
+_HOSTMASTER_ROOT="${_ROOT}/aegir/distro/${_HM_DISTRO}"
+_DISTRO_ROOT="${_ROOT}/distro/${_DISTRO}"
 #
-if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
+if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
   _L_PHP_CLI=/opt/php55/bin
-elif [ "$_PHP_CLI_VERSION" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
+elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
   _L_PHP_CLI=/opt/php56/bin
-elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
+elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
   _L_PHP_CLI=/opt/php54/bin
-elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
+elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
   _L_PHP_CLI=/opt/php53/bin
 fi
-_DRUSHCMD="$_L_PHP_CLI/php $_ROOT/tools/drush/drush.php"
+_DRUSHCMD="${_L_PHP_CLI}/php ${_ROOT}/tools/drush/drush.php"
 #
 SHELL=/bin/bash
-PATH=$_L_PHP_CLI:/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+PATH=${_L_PHP_CLI}:/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _D="/data/all"
 
 
@@ -163,21 +163,21 @@ msg() {
 st_runner() {
   CMD="$1"
   touch busy
-  if [ "$_SPINNER" = "YES" ] ; then
-    bash $_SRCDIR/spinner busy &
+  if [ "${_SPINNER}" = "YES" ] ; then
+    bash ${_SRCDIR}/spinner busy &
   fi
-  if $CMD >> $_LOG; then
+  if ${CMD} >> ${_LOG}; then
     rm busy
     sleep 1
     return 0
   else
     rm busy
     sleep 1
-    echo "$CMD failed.  Error (if any): $?"
+    echo "${CMD} failed.  Error (if any): $?"
     echo " "
-    echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem"
+    echo "Displaying the last 15 lines of ${_LOG} to help troubleshoot this problem"
     echo " "
-    tail -15 $_LOG
+    tail -15 ${_LOG}
     return 1
   fi
 }
@@ -186,10 +186,10 @@ st_runner() {
 mrun() {
   CMD="$1"
   touch busy
-  if [ "$_SPINNER" = "YES" ] ; then
-    bash $_SRCDIR/spinner busy &
+  if [ "${_SPINNER}" = "YES" ] ; then
+    bash ${_SRCDIR}/spinner busy &
   fi
-  if $CMD >> $_LOG; then
+  if ${CMD} >> ${_LOG}; then
     rm busy
     sleep 1
     return 0
@@ -198,7 +198,7 @@ mrun() {
 #
 # Simple prompt.
 prompt_yes_no() {
-if [ "$_AUTOPILOT" = "YES" ] ; then
+if [ "${_AUTOPILOT}" = "YES" ] ; then
   return 0
 else
   while true ; do
@@ -261,29 +261,29 @@ get_dev_contrib() {
 get_dev_ext() {
   if [ ! -z $1 ] ; then
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 \
-      -A iCab "http://files.aegir.cc/dev/$_AEGIR_XTS_VERSION/$1"
+      -A iCab "http://files.aegir.cc/dev/${_AEGIR_XTS_VERSION}/$1"
     extract_archive "$1"
   fi
 }
 #
 _SRCDIR=/opt/tmp/files
-_LOG=/var/backups/octopus-$_USER-${_NOW}.log
+_LOG=/var/backups/octopus-${_USER}-${_NOW}.log
 #
 # Create shared dirs.
 create_shared_dirs() {
-  msg "$_STATUS A: Creating shared directories..."
-  mkdir -p $_D/000/{core,modules}
+  msg "${_STATUS} A: Creating shared directories..."
+  mkdir -p ${_D}/000/{core,modules}
   rm -f -r /data/src
   if [ ! -d "$_CORE" ] ; then
     mkdir -p $_CORE
   fi
-  chown -R $_USER:$_USRG /data/conf      &> /dev/null
-  chown -R $_USER:$_USRG /opt/tmp        &> /dev/null
-  chown $_USER:$_USRG $_D          &> /dev/null
-  chown $_USER:$_USRG $_D/000      &> /dev/null
-  chown $_USER:$_USRG $_D/000/core &> /dev/null
-  chown $_USER:$_USRG $_CORE             &> /dev/null
-  chmod 777 $_CORE $_D /data /data/disk /data/conf &> /dev/null
+  chown -R ${_USER}:${_USRG} /data/conf      &> /dev/null
+  chown -R ${_USER}:${_USRG} /opt/tmp        &> /dev/null
+  chown ${_USER}:${_USRG} ${_D}          &> /dev/null
+  chown ${_USER}:${_USRG} ${_D}/000      &> /dev/null
+  chown ${_USER}:${_USRG} ${_D}/000/core &> /dev/null
+  chown ${_USER}:${_USRG} $_CORE             &> /dev/null
+  chmod 777 $_CORE ${_D} /data /data/disk /data/conf &> /dev/null
 }
 #
 # Update o_contrib.
@@ -298,105 +298,105 @@ o_contrib_update_global() {
     cookie_cache_bypass_adv module_supports imageinfo_cache"
 
   for i in $REVISIONS; do
-    if [ -e "$_D/$i/o_contrib" ] \
-      && [ ! -e "$_D/$i/o_contrib/update-${_X_VERSION}.info" ] ; then
+    if [ -e "${_D}/$i/o_contrib" ] \
+      && [ ! -e "${_D}/$i/o_contrib/update-${_X_VERSION}.info" ] ; then
       _FORCE_UP_SIX=YES
-    elif [ -e "$_D/$i/o_contrib" ] \
-      && [ ! -e "$_D/000/modules/redis_edge" ] ; then
+    elif [ -e "${_D}/$i/o_contrib" ] \
+      && [ ! -e "${_D}/000/modules/redis_edge" ] ; then
       _FORCE_UP_SIX=YES
-    elif [ -e "$_D/$i/o_contrib" ] \
-      && [ ! -L "$_D/$i/o_contrib/redis_edge" ] ; then
+    elif [ -e "${_D}/$i/o_contrib" ] \
+      && [ ! -L "${_D}/$i/o_contrib/redis_edge" ] ; then
       _FORCE_UP_SIX=YES
-    elif [ -e "$_D/$i/o_contrib" ] \
-      && [ ! -L "$_D/$i/o_contrib/redis" ] ; then
+    elif [ -e "${_D}/$i/o_contrib" ] \
+      && [ ! -L "${_D}/$i/o_contrib/redis" ] ; then
       _FORCE_UP_SIX=YES
     else
       _FORCE_UP_SIX=NO
     fi
-    if [ "$_FORCE_UP_SIX" = "YES" ] && [ -e "$_D/$i/o_contrib" ] ; then
+    if [ "$_FORCE_UP_SIX" = "YES" ] && [ -e "${_D}/$i/o_contrib" ] ; then
       for m in $RMMODULES; do
-        if [ -d "$_D/$i/o_contrib/$m" ] ; then
-          rm -f -r $_D/$i/o_contrib/$m
+        if [ -d "${_D}/$i/o_contrib/$m" ] ; then
+          rm -f -r ${_D}/$i/o_contrib/$m
         fi
       done
-      cd $_D/$i/o_contrib
-      if [ ! -d "$_D/$i/o_contrib/advagg" ] ; then
+      cd ${_D}/$i/o_contrib
+      if [ ! -d "${_D}/$i/o_contrib/advagg" ] ; then
         get_dev_contrib "advagg-6.x-1.x-dev.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib/boost" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib/boost" ] ; then
         get_dev_contrib "boost-6.x-1.x.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib/cdn" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib/cdn" ] ; then
         get_dev_contrib "cdn-6.x-2.x-dev.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib/force_password_change" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib/force_password_change" ] ; then
         get_dev_contrib "force_password_change-6.x-3.4.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib/fpa" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib/fpa" ] ; then
         get_dev_contrib "fpa-6.x-2.5.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib/httprl" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib/httprl" ] ; then
         get_dev_contrib "httprl-6.x-1.14.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib/js" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib/js" ] ; then
         get_dev_contrib "js-6.x-1.3.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib/panels_content_cache" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib/panels_content_cache" ] ; then
         get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib/phpass" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib/phpass" ] ; then
         get_dev_contrib "phpass-6.x-2.1.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib/print" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib/print" ] ; then
         get_dev_contrib "print-6.x-1.19.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib/session_expire" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib/session_expire" ] ; then
         get_dev_contrib "session_expire-6.x-1.x-dev.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib/taxonomy_edge" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib/taxonomy_edge" ] ; then
         get_dev_contrib "taxonomy_edge-6.x-1.7.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib/views_cache_bully" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib/views_cache_bully" ] ; then
         get_dev_contrib "views_cache_bully-6.x-3.1.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib/views_content_cache" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib/views_content_cache" ] ; then
         get_dev_contrib "views_content_cache-6.x-2.x-dev.tar.gz"
       fi
-      if [ "$_PURGE_MODE" = "ON" ] ; then
-        if [ ! -d "$_D/$i/o_contrib/expire" ] ; then
+      if [ "${_PURGE_MODE}" = "ON" ] ; then
+        if [ ! -d "${_D}/$i/o_contrib/expire" ] ; then
           get_dev_contrib "expire-6.x-1.x-dev.tar.gz"
         fi
-        if [ ! -d "$_D/$i/o_contrib/purge" ] ; then
+        if [ ! -d "${_D}/$i/o_contrib/purge" ] ; then
           get_dev_contrib "purge-6.x-1.6.tar.gz"
         fi
       fi
-      if [ -d "$_D/$i/o_contrib/cache_backport" ] ; then
-        rm -f -r $_D/$i/o_contrib/cache_backport
+      if [ -d "${_D}/$i/o_contrib/cache_backport" ] ; then
+        rm -f -r ${_D}/$i/o_contrib/cache_backport
       fi
-      if [ -d "$_D/$i/o_contrib/redis" ] ; then
-        rm -f -r $_D/$i/o_contrib/redis
+      if [ -d "${_D}/$i/o_contrib/redis" ] ; then
+        rm -f -r ${_D}/$i/o_contrib/redis
       fi
-      if [ -d "$_D/$i/o_contrib/redis_edge" ] ; then
-        rm -f -r $_D/$i/o_contrib/redis_edge
+      if [ -d "${_D}/$i/o_contrib/redis_edge" ] ; then
+        rm -f -r ${_D}/$i/o_contrib/redis_edge
       fi
-      if [ -e "$_D/000/modules/cache_backport" ] \
-        && [ ! -L "$_D/$i/o_contrib/cache_backport" ] ; then
-        ln -sf $_D/000/modules/cache_backport $_D/$i/o_contrib/cache_backport
+      if [ -e "${_D}/000/modules/cache_backport" ] \
+        && [ ! -L "${_D}/$i/o_contrib/cache_backport" ] ; then
+        ln -sf ${_D}/000/modules/cache_backport ${_D}/$i/o_contrib/cache_backport
       fi
-      if [ -e "$_D/000/modules/redis" ] \
-        && [ ! -L "$_D/$i/o_contrib/redis" ] ; then
-        ln -sf $_D/000/modules/redis $_D/$i/o_contrib/redis
+      if [ -e "${_D}/000/modules/redis" ] \
+        && [ ! -L "${_D}/$i/o_contrib/redis" ] ; then
+        ln -sf ${_D}/000/modules/redis ${_D}/$i/o_contrib/redis
       fi
-      if [ -e "$_D/000/modules/redis_edge" ] \
-        && [ ! -L "$_D/$i/o_contrib/redis_edge" ] ; then
-        ln -sf $_D/000/modules/redis_edge $_D/$i/o_contrib/redis_edge
+      if [ -e "${_D}/000/modules/redis_edge" ] \
+        && [ ! -L "${_D}/$i/o_contrib/redis_edge" ] ; then
+        ln -sf ${_D}/000/modules/redis_edge ${_D}/$i/o_contrib/redis_edge
       fi
-      touch $_D/$i/o_contrib/update-${_X_VERSION}.info
-      find $_D/$i/o_contrib -type d -exec chmod 0755 {} \; &> /dev/null
-      find $_D/$i/o_contrib -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${_D}/$i/o_contrib/update-${_X_VERSION}.info
+      find ${_D}/$i/o_contrib -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${_D}/$i/o_contrib -type f -exec chmod 0644 {} \; &> /dev/null
     fi
-    if [ -d "$_D/$i" ] ; then
-      for p in `find $_D/$i/ -maxdepth 1 -mindepth 1 -type d | sort`; do
+    if [ -d "${_D}/$i" ] ; then
+      for p in `find ${_D}/$i/ -maxdepth 1 -mindepth 1 -type d | sort`; do
         if [ -d "$p/modules/cookie_cache_bypass" ] ; then
           rm -f -r $p/modules/cookie_cache_bypass
         fi
@@ -417,112 +417,112 @@ o_contrib_seven_update_global() {
   RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy"
 
   for i in $REVISIONS; do
-    if [ -e "$_D/$i/o_contrib_seven" ] \
-      && [ ! -e "$_D/$i/o_contrib_seven/update-${_X_VERSION}.info" ] ; then
+    if [ -e "${_D}/$i/o_contrib_seven" ] \
+      && [ ! -e "${_D}/$i/o_contrib_seven/update-${_X_VERSION}.info" ] ; then
       _FORCE_UP_SEVEN=YES
-    elif [ -e "$_D/$i/o_contrib_seven" ] \
-      && [ ! -e "$_D/$i/o_contrib_seven/views_accelerator" ] ; then
+    elif [ -e "${_D}/$i/o_contrib_seven" ] \
+      && [ ! -e "${_D}/$i/o_contrib_seven/views_accelerator" ] ; then
       _FORCE_UP_SEVEN=YES
-    elif [ -e "$_D/$i/o_contrib_seven" ] \
-      && [ ! -e "$_D/000/modules/redis_edge" ] ; then
+    elif [ -e "${_D}/$i/o_contrib_seven" ] \
+      && [ ! -e "${_D}/000/modules/redis_edge" ] ; then
       _FORCE_UP_SEVEN=YES
-    elif [ -e "$_D/$i/o_contrib_seven" ] \
-      && [ ! -L "$_D/$i/o_contrib_seven/redis_edge" ] ; then
+    elif [ -e "${_D}/$i/o_contrib_seven" ] \
+      && [ ! -L "${_D}/$i/o_contrib_seven/redis_edge" ] ; then
       _FORCE_UP_SEVEN=YES
-    elif [ -e "$_D/$i/o_contrib_seven" ] \
-      && [ ! -L "$_D/$i/o_contrib_seven/redis" ] ; then
+    elif [ -e "${_D}/$i/o_contrib_seven" ] \
+      && [ ! -L "${_D}/$i/o_contrib_seven/redis" ] ; then
       _FORCE_UP_SEVEN=YES
     else
       _FORCE_UP_SEVEN=NO
     fi
     if [ "$_FORCE_UP_SEVEN" = "YES" ] \
-      && [ -e "$_D/$i/o_contrib_seven" ] ; then
+      && [ -e "${_D}/$i/o_contrib_seven" ] ; then
       for m in $RMMODULES; do
-        if [ -d "$_D/$i/o_contrib_seven/$m" ] ; then
-          rm -f -r $_D/$i/o_contrib_seven/$m
+        if [ -d "${_D}/$i/o_contrib_seven/$m" ] ; then
+          rm -f -r ${_D}/$i/o_contrib_seven/$m
         fi
       done
-      cd $_D/$i/o_contrib_seven
-      if [ ! -d "$_D/$i/o_contrib_seven/advagg" ] ; then
+      cd ${_D}/$i/o_contrib_seven
+      if [ ! -d "${_D}/$i/o_contrib_seven/advagg" ] ; then
         get_dev_contrib "advagg-7.x-2.7.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib_seven/boost" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib_seven/boost" ] ; then
         get_dev_contrib "boost-7.x-1.0.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib_seven/cdn" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib_seven/cdn" ] ; then
         get_dev_contrib "cdn-7.x-2.x-dev.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib_seven/display_cache" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib_seven/display_cache" ] ; then
         get_dev_contrib "display_cache-7.x-1.0.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib_seven/entitycache" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib_seven/entitycache" ] ; then
         get_dev_contrib "entitycache-7.x-1.2.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib_seven/filefield_nginx_progress" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib_seven/filefield_nginx_progress" ] ; then
         get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib_seven/force_password_change" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib_seven/force_password_change" ] ; then
         get_dev_contrib "force_password_change-7.x-1.0-rc2.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib_seven/fpa" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib_seven/fpa" ] ; then
         get_dev_contrib "fpa-7.x-2.6.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib_seven/httprl" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib_seven/httprl" ] ; then
         get_dev_contrib "httprl-7.x-1.14.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib_seven/js" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib_seven/js" ] ; then
         get_dev_contrib "js-7.x-1.x-dev.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib_seven/panels_content_cache" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib_seven/panels_content_cache" ] ; then
         get_dev_contrib "panels_content_cache-7.x-1.0.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib_seven/print" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib_seven/print" ] ; then
         get_dev_contrib "print-7.x-2.0.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib_seven/session_expire" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib_seven/session_expire" ] ; then
         get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib_seven/speedy" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib_seven/speedy" ] ; then
         get_dev_contrib "speedy-7.x-1.15.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib_seven/taxonomy_edge" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib_seven/taxonomy_edge" ] ; then
         get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib_seven/views_accelerator" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib_seven/views_accelerator" ] ; then
         get_dev_contrib "views_accelerator-7.x-1.0-alpha2.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib_seven/views_cache_bully" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib_seven/views_cache_bully" ] ; then
         get_dev_contrib "views_cache_bully-7.x-3.1.tar.gz"
       fi
-      if [ ! -d "$_D/$i/o_contrib_seven/views_content_cache" ] ; then
+      if [ ! -d "${_D}/$i/o_contrib_seven/views_content_cache" ] ; then
         get_dev_contrib "views_content_cache-7.x-3.0-alpha3.tar.gz"
       fi
-      if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
-        cd $_D/$i/o_contrib_seven
-        if [ ! -d "$_D/$i/o_contrib_seven/expire" ] ; then
+      if [ "${_PURGE_MODE}" = "ON" ] && [ "${_PURGE_FOR_SEVEN}" = "YES" ] ; then
+        cd ${_D}/$i/o_contrib_seven
+        if [ ! -d "${_D}/$i/o_contrib_seven/expire" ] ; then
           get_dev_contrib "expire-7.x-2.0-rc4.tar.gz"
         fi
-        if [ ! -d "$_D/$i/o_contrib_seven/purge" ] ; then
+        if [ ! -d "${_D}/$i/o_contrib_seven/purge" ] ; then
           get_dev_contrib "purge-7.x-1.6.tar.gz"
         fi
       fi
-      if [ -d "$_D/$i/o_contrib_seven/redis" ] ; then
-        rm -f -r $_D/$i/o_contrib_seven/redis
+      if [ -d "${_D}/$i/o_contrib_seven/redis" ] ; then
+        rm -f -r ${_D}/$i/o_contrib_seven/redis
       fi
-      if [ -d "$_D/$i/o_contrib_seven/redis_edge" ] ; then
-        rm -f -r $_D/$i/o_contrib_seven/redis_edge
+      if [ -d "${_D}/$i/o_contrib_seven/redis_edge" ] ; then
+        rm -f -r ${_D}/$i/o_contrib_seven/redis_edge
       fi
-      if [ -e "$_D/000/modules/redis" ] \
-        && [ ! -L "$_D/$i/o_contrib_seven/redis" ] ; then
-        ln -sf $_D/000/modules/redis $_D/$i/o_contrib_seven/redis
+      if [ -e "${_D}/000/modules/redis" ] \
+        && [ ! -L "${_D}/$i/o_contrib_seven/redis" ] ; then
+        ln -sf ${_D}/000/modules/redis ${_D}/$i/o_contrib_seven/redis
       fi
-      if [ -e "$_D/000/modules/redis_edge" ] \
-        && [ ! -L "$_D/$i/o_contrib_seven/redis_edge" ] ; then
-        ln -sf $_D/000/modules/redis_edge $_D/$i/o_contrib_seven/redis_edge
+      if [ -e "${_D}/000/modules/redis_edge" ] \
+        && [ ! -L "${_D}/$i/o_contrib_seven/redis_edge" ] ; then
+        ln -sf ${_D}/000/modules/redis_edge ${_D}/$i/o_contrib_seven/redis_edge
       fi
-      find $_D/$i/o_contrib_seven -type d -exec chmod 0755 {} \; &> /dev/null
-      find $_D/$i/o_contrib_seven -type f -exec chmod 0644 {} \; &> /dev/null
-      touch $_D/$i/o_contrib_seven/update-${_X_VERSION}.info
+      find ${_D}/$i/o_contrib_seven -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${_D}/$i/o_contrib_seven -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${_D}/$i/o_contrib_seven/update-${_X_VERSION}.info
     fi
   done
   cd
@@ -540,7 +540,7 @@ download_textile() {
 # Download o_contrib_seven.
 download_o_contrib_seven() {
   touch update-${_X_VERSION}.info
-  #msg "$_STATUS A: Downloading o_contrib_seven modules, please wait..."
+  #msg "${_STATUS} A: Downloading o_contrib_seven modules, please wait..."
   get_dev_contrib "admin-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "advagg-7.x-2.7.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.x-dev.tar.gz"
@@ -576,7 +576,7 @@ download_o_contrib_seven() {
   get_dev_contrib "views_cache_bully-7.x-3.1.tar.gz"
   get_dev_contrib "views_content_cache-7.x-3.0-alpha3.tar.gz"
   get_dev_contrib "views404-7.x-1.x-dev.tar.gz"
-  if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
+  if [ "${_PURGE_MODE}" = "ON" ] && [ "${_PURGE_FOR_SEVEN}" = "YES" ] ; then
     rm -f -r expire*
     rm -f -r purge*
     get_dev_contrib "expire-7.x-2.0-rc4.tar.gz"
@@ -590,36 +590,36 @@ download_o_contrib_seven() {
   find ./ -type f -exec chmod 0644 {} \; &> /dev/null
   touch ctrl-${_X_VERSION}
   if [ ! -L "./redis" ] ; then
-    ln -sf $_D/000/modules/redis redis
+    ln -sf ${_D}/000/modules/redis redis
   fi
   if [ ! -L "./redis_edge" ] ; then
-    ln -sf $_D/000/modules/redis_edge redis_edge
+    ln -sf ${_D}/000/modules/redis_edge redis_edge
   fi
   download_textile
-  if [ ! -e "$_D/000/modules/redis/update-${_X_VERSION}.info" ] ; then
-    mkdir -p $_D/000/modules
-    cd $_D/000/modules
-    rm -f -r $_D/000/modules/redis
+  if [ ! -e "${_D}/000/modules/redis/update-${_X_VERSION}.info" ] ; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -f -r ${_D}/000/modules/redis
     get_dev_contrib "redis-7.x-2.x-o8-revert-A.tar.gz"
     rm -f redis/redis.info
     echo update > redis/update-${_X_VERSION}.info
   fi
-  if [ ! -e "$_D/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
-    mkdir -p $_D/000/modules
-    cd $_D/000/modules
-    rm -f -r $_D/000/modules/redis_edge
-    get_dev_contrib "redis_edge-$_REDIS_M_VERSION.tar.gz"
+  if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_M_VERSION}.info" ] ; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -f -r ${_D}/000/modules/redis_edge
+    get_dev_contrib "redis_edge-${_REDIS_M_VERSION}.tar.gz"
     rm -f redis_edge/redis.info
-    echo update > redis_edge/$_REDIS_M_VERSION.info
+    echo update > redis_edge/${_REDIS_M_VERSION}.info
   fi
-  find $_D/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
-  find $_D/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
 }
 #
 # Download o_contrib_six.
 download_o_contrib_six() {
   touch update-${_X_VERSION}.info
-  #msg "$_STATUS A: Downloading o_contrib modules, please wait..."
+  #msg "${_STATUS} A: Downloading o_contrib modules, please wait..."
   get_dev_contrib "admin-6.x-2.0.tar.gz"
   get_dev_contrib "advagg-6.x-1.x-dev.tar.gz"
   get_dev_contrib "blockcache_alter-6.x-1.6.tar.gz"
@@ -652,7 +652,7 @@ download_o_contrib_six() {
   get_dev_contrib "views_cache_bully-6.x-3.1.tar.gz"
   get_dev_contrib "views_content_cache-6.x-2.x-dev.tar.gz"
   get_dev_contrib "views404-6.x-1.x-dev.tar.gz"
-  if [ "$_PURGE_MODE" = "ON" ] ; then
+  if [ "${_PURGE_MODE}" = "ON" ] ; then
     rm -f -r purge*
     rm -f -r expire*
     get_dev_contrib "purge-6.x-1.6.tar.gz"
@@ -666,40 +666,40 @@ download_o_contrib_six() {
   find ./ -type f -exec chmod 0644 {} \; &> /dev/null
   touch ctrl-${_X_VERSION}
   if [ ! -L "./redis" ] ; then
-    ln -sf $_D/000/modules/redis redis
+    ln -sf ${_D}/000/modules/redis redis
   fi
   if [ ! -L "./redis_edge" ] ; then
-    ln -sf $_D/000/modules/redis_edge redis_edge
+    ln -sf ${_D}/000/modules/redis_edge redis_edge
   fi
   if [ ! -L "./cache_backport" ] ; then
-    ln -sf $_D/000/modules/cache_backport cache_backport
+    ln -sf ${_D}/000/modules/cache_backport cache_backport
   fi
   download_textile
-  if [ ! -e "$_D/000/modules/cache_backport/update-${_X_VERSION}.info" ] ; then
-    mkdir -p $_D/000/modules
-    cd $_D/000/modules
-    rm -f -r $_D/000/modules/cache_backport
+  if [ ! -e "${_D}/000/modules/cache_backport/update-${_X_VERSION}.info" ] ; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -f -r ${_D}/000/modules/cache_backport
     get_dev_contrib "cache_backport-6.x-1.0-rc2.tar.gz"
     echo update > cache_backport/update-${_X_VERSION}.info
   fi
-  if [ ! -e "$_D/000/modules/redis/update-${_X_VERSION}.info" ] ; then
-    mkdir -p $_D/000/modules
-    cd $_D/000/modules
-    rm -f -r $_D/000/modules/redis
+  if [ ! -e "${_D}/000/modules/redis/update-${_X_VERSION}.info" ] ; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -f -r ${_D}/000/modules/redis
     get_dev_contrib "redis-7.x-2.x-o8-revert-A.tar.gz"
     rm -f redis/redis.info
     echo update > redis/update-${_X_VERSION}.info
   fi
-  if [ ! -e "$_D/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
-    mkdir -p $_D/000/modules
-    cd $_D/000/modules
-    rm -f -r $_D/000/modules/redis_edge
-    get_dev_contrib "redis_edge-$_REDIS_M_VERSION.tar.gz"
+  if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_M_VERSION}.info" ] ; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -f -r ${_D}/000/modules/redis_edge
+    get_dev_contrib "redis_edge-${_REDIS_M_VERSION}.tar.gz"
     rm -f redis_edge/redis.info
-    echo update > redis_edge/$_REDIS_M_VERSION.info
+    echo update > redis_edge/${_REDIS_M_VERSION}.info
   fi
-  find $_D/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
-  find $_D/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
 }
 #
 # Upgrade o_contrib.
@@ -717,7 +717,7 @@ check_fix_o_contrib() {
   if [ -e "$_CORE/o_contrib" ] ; then
     if [ ! -d "$_CORE/o_contrib/robotstxt" ] \
       || [ "$_O_CONTRIB_FORCED_UP" = "YES" ] ; then
-      msg "$_STATUS A: Running o_contrib forced upgrade, please wait..."
+      msg "${_STATUS} A: Running o_contrib forced upgrade, please wait..."
       cd $_CORE/o_contrib
       rm -f -r *
       download_o_contrib_six
@@ -727,38 +727,38 @@ check_fix_o_contrib() {
   if [ -e "$_CORE/o_contrib_seven" ] ; then
     if [ ! -d "$_CORE/o_contrib_seven/robotstxt" ] \
       || [ "$_O_CONTRIB_FORCED_UP" = "YES" ] ; then
-      msg "$_STATUS A: Running o_contrib_seven forced upgrade, please wait..."
+      msg "${_STATUS} A: Running o_contrib_seven forced upgrade, please wait..."
       cd $_CORE/o_contrib_seven
       rm -f -r *
       download_o_contrib_seven
       cd $_CORE/o_contrib_seven
     fi
   fi
-  if [ ! -e "$_D/000/modules/cache_backport/update-${_X_VERSION}.info" ] ; then
-    mkdir -p $_D/000/modules
-    cd $_D/000/modules
-    rm -f -r $_D/000/modules/cache_backport
+  if [ ! -e "${_D}/000/modules/cache_backport/update-${_X_VERSION}.info" ] ; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -f -r ${_D}/000/modules/cache_backport
     get_dev_contrib "cache_backport-6.x-1.0-rc2.tar.gz"
     echo update > cache_backport/update-${_X_VERSION}.info
   fi
-  if [ ! -e "$_D/000/modules/redis/update-${_X_VERSION}.info" ] ; then
-    mkdir -p $_D/000/modules
-    cd $_D/000/modules
-    rm -f -r $_D/000/modules/redis
+  if [ ! -e "${_D}/000/modules/redis/update-${_X_VERSION}.info" ] ; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -f -r ${_D}/000/modules/redis
     get_dev_contrib "redis-7.x-2.x-o8-revert-A.tar.gz"
     rm -f redis/redis.info
     echo update > redis/update-${_X_VERSION}.info
   fi
-  if [ ! -e "$_D/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
-    mkdir -p $_D/000/modules
-    cd $_D/000/modules
-    rm -f -r $_D/000/modules/redis_edge
-    get_dev_contrib "redis_edge-$_REDIS_M_VERSION.tar.gz"
+  if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_M_VERSION}.info" ] ; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -f -r ${_D}/000/modules/redis_edge
+    get_dev_contrib "redis_edge-${_REDIS_M_VERSION}.tar.gz"
     rm -f redis_edge/redis.info
-    echo update > redis_edge/$_REDIS_M_VERSION.info
+    echo update > redis_edge/${_REDIS_M_VERSION}.info
   fi
-  find $_D/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
-  find $_D/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
 }
 #
 # Manage o_contrib.
@@ -775,12 +775,12 @@ manage_o_contrib() {
     download_o_contrib_six
     cd $_CORE/o_contrib
   fi
-  mkdir -p $_D/000/modules
-  rm -f $_D/000/modules/o_contrib_seven
-  ln -s $_CORE/o_contrib_seven $_D/000/modules/o_contrib_seven
-  rm -f $_D/000/modules/o_contrib
-  ln -s $_CORE/o_contrib $_D/000/modules/o_contrib
-  if [ $_STATUS != "INIT" ] ; then
+  mkdir -p ${_D}/000/modules
+  rm -f ${_D}/000/modules/o_contrib_seven
+  ln -s $_CORE/o_contrib_seven ${_D}/000/modules/o_contrib_seven
+  rm -f ${_D}/000/modules/o_contrib
+  ln -s $_CORE/o_contrib ${_D}/000/modules/o_contrib
+  if [ ${_STATUS} != "INIT" ] ; then
     check_fix_o_contrib
   fi
 }
@@ -788,21 +788,21 @@ manage_o_contrib() {
 
 ###---### Checking status.
 #
-if [ -d "$_ROOT" ] ; then
+if [ -d "${_ROOT}" ] ; then
   _STATUS=UPGRADE
-  cd $_ROOT
-  rm -f $_ROOT/AegirSetupC.sh.txt
-  rm -f $_ROOT/AegirSetupB.sh.txt
+  cd ${_ROOT}
+  rm -f ${_ROOT}/AegirSetupC.sh.txt
+  rm -f ${_ROOT}/AegirSetupB.sh.txt
 fi
 
 
 ###---### User check.
 #
 if [ `whoami` = "root" ] ; then
-  msg "$_STATUS A: Aegir automated install script part A"
+  msg "${_STATUS} A: Aegir automated install script part A"
 else
-  msg "$_STATUS A: FATAL ERROR: This script should be ran as a root user"
-  msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+  msg "${_STATUS} A: FATAL ERROR: This script should be ran as a root user"
+  msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
   touch /opt/tmp/status-AegirSetupA-FAIL
   clean_pid_exit
 fi
@@ -810,32 +810,32 @@ fi
 
 ###---### Checking version.
 #
-msg "$_STATUS A: Checking OCTOPUS version..."
-if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
+msg "${_STATUS} A: Checking OCTOPUS version..."
+if [ "${_AEGIR_VERSION}" = "HEAD" ] ; then
   _FILE_VERSION=octopus-release.txt
 else
   _FILE_VERSION=octopus-version.txt
 fi
 if [ -e "/opt/tmp/boa/aegir/conf/$_FILE_VERSION" ] ; then
   _VERSIONS_TEST=$(cat /opt/tmp/boa/aegir/conf/$_FILE_VERSION 2>&1)
-  if [[ "$_VERSIONS_TEST" =~ "-dev" ]] ; then
-    if [[ "$_VERSIONS_TEST" =~ "${_X_VERSION}" ]] \
-      && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
+  if [[ "${_VERSIONS_TEST}" =~ "-dev" ]] ; then
+    if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
+      && [ "${_AEGIR_VERSION}" = "HEAD" ] ; then
       _VERSIONS_TEST_RESULT=OK
-      msg "$_STATUS A: OCTOPUS version test: OK"
+      msg "${_STATUS} A: OCTOPUS version test: OK"
     else
       _VERSIONS_TEST_RESULT=FAIL
     fi
   else
-    if [[ "$_VERSIONS_TEST" =~ "${_X_VERSION}" ]] \
-      && [[ "$_AEGIR_VERSION" =~ "BOA" ]] ; then
+    if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
+      && [[ "${_AEGIR_VERSION}" =~ "BOA" ]] ; then
       _VERSIONS_TEST_RESULT=OK
-      msg "$_STATUS A: OCTOPUS version test: OK"
+      msg "${_STATUS} A: OCTOPUS version test: OK"
     else
       _VERSIONS_TEST_RESULT=FAIL
     fi
   fi
-  if [ "$_VERSIONS_TEST_RESULT" = "FAIL" ] ; then
+  if [ "${_VERSIONS_TEST_RESULT}" = "FAIL" ] ; then
     msg "ERROR: This OCTOPUS version is outdated and will not work correctly"
     msg "Bye"
     touch /opt/tmp/status-AegirSetupA-FAIL
@@ -846,34 +846,34 @@ fi
 
 ###---### Hot Sauce check.
 #
-if [ "$_HOT_SAUCE" = "NO" ] ; then
-  _CORE="$_D/$_LAST_ALL"
-  _THIS_CORE="$_LAST_ALL"
-  if [ "$_USE_CURRENT" = "YES" ] \
-    && [ -e "$_D/000/core-v-$_SMALLCORE6.txt" ] \
-    && [ -e "$_D/000/core-v-$_SMALLCORE7.txt" ] ; then
-    msg "$_STATUS A: Shared platforms code v.$_LAST_ALL (latest available) will be used"
-  elif [ "$_USE_CURRENT" = "NO" ] \
-    || [ ! -e "$_D/000/core-v-$_SMALLCORE6.txt" ] \
-    || [ ! -e "$_D/000/core-v-$_SMALLCORE7.txt" ] ; then
-    _CORE="$_D/$_ALL_DISTRO"
-    _THIS_CORE="$_ALL_DISTRO"
-    msg "$_STATUS A: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
+if [ "${_HOT_SAUCE}" = "NO" ] ; then
+  _CORE="${_D}/${_LAST_ALL}"
+  _THIS_CORE="${_LAST_ALL}"
+  if [ "${_USE_CURRENT}" = "YES" ] \
+    && [ -e "${_D}/000/core-v-${_SMALLCORE6}.txt" ] \
+    && [ -e "${_D}/000/core-v-${_SMALLCORE7}.txt" ] ; then
+    msg "${_STATUS} A: Shared platforms code v.${_LAST_ALL} (latest available) will be used"
+  elif [ "${_USE_CURRENT}" = "NO" ] \
+    || [ ! -e "${_D}/000/core-v-${_SMALLCORE6}.txt" ] \
+    || [ ! -e "${_D}/000/core-v-${_SMALLCORE7}.txt" ] ; then
+    _CORE="${_D}/${_ALL_DISTRO}"
+    _THIS_CORE="${_ALL_DISTRO}"
+    msg "${_STATUS} A: Shared platforms code v.${_ALL_DISTRO} (hot new) will be created"
     sed -i "s/^_USE_CURRENT=.*/_USE_CURRENT=NO/g" \
       /opt/tmp/boa/aegir/scripts/AegirSetupC.sh.txt &> /dev/null
   else
-    msg "$_STATUS A: Shared platforms code v.$_LAST_ALL (latest available) will be used"
+    msg "${_STATUS} A: Shared platforms code v.${_LAST_ALL} (latest available) will be used"
   fi
 else
-  _CORE="$_D/$_ALL_DISTRO"
-  _THIS_CORE="$_ALL_DISTRO"
-  msg "$_STATUS A: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
+  _CORE="${_D}/${_ALL_DISTRO}"
+  _THIS_CORE="${_ALL_DISTRO}"
+  msg "${_STATUS} A: Shared platforms code v.${_ALL_DISTRO} (hot new) will be created"
 fi
 
 
 ###---### Add required users and create directories.
 #
-msg "$_STATUS A: Creating directories with correct permissions..."
+msg "${_STATUS} A: Creating directories with correct permissions..."
 mkdir -p /data/u
 mkdir -p /data/disk
 mkdir -p /data/conf
@@ -884,42 +884,42 @@ if [ -e "/root/.mstr.clstr.cnf" ] \
 fi
 chown root:root /data &> /dev/null
 chown root:root /data/disk &> /dev/null
-if [ ! -d "$_ROOT" ] ; then
-  msg "$_STATUS A: Adding user..."
+if [ ! -d "${_ROOT}" ] ; then
+  msg "${_STATUS} A: Adding user..."
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
-  adduser --system --home $_ROOT --ingroup $_USRG $_USER &> /dev/null
-  adduser $_USER $_WEBG &> /dev/null
+  adduser --system --home ${_ROOT} --ingroup ${_USRG} ${_USER} &> /dev/null
+  adduser ${_USER} ${_WEBG} &> /dev/null
 fi
-chown -R $_USER:$_USRG /opt/tmp &> /dev/null
-chown -R $_USER:$_USRG /data/conf &> /dev/null
+chown -R ${_USER}:${_USRG} /opt/tmp &> /dev/null
+chown -R ${_USER}:${_USRG} /data/conf &> /dev/null
 
 
 ###---### Prepare scripts.
 #
-chmod 0711 $_ROOT
-cd $_ROOT
+chmod 0711 ${_ROOT}
+cd ${_ROOT}
 cp -af /opt/tmp/boa/aegir/scripts/AegirSetupB.sh.txt ./
 cp -af /opt/tmp/boa/aegir/scripts/AegirSetupC.sh.txt ./
-chown $_USER:$_USRG $_ROOT/AegirSetupB.sh.txt &> /dev/null
-chown $_USER:$_USRG $_ROOT/AegirSetupC.sh.txt &> /dev/null
+chown ${_USER}:${_USRG} ${_ROOT}/AegirSetupB.sh.txt &> /dev/null
+chown ${_USER}:${_USRG} ${_ROOT}/AegirSetupC.sh.txt &> /dev/null
 
 
 ###---### Run standard pre-install.
 #
 # Generate provision backend db_passwd.
 provision_backend_dbpass_generate() {
-  touch $_ROOT/.$_USER.pass.txt
-  chmod 0600 $_ROOT/.$_USER.pass.txt
+  touch ${_ROOT}/.${_USER}.pass.txt
+  chmod 0600 ${_ROOT}/.${_USER}.pass.txt
   _ESC_PASS=""
   _LEN_PASS=0
-  if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+  if [ "${_STRONG_PASSWORDS}" = "YES" ] ; then
     _PWD_CHARS=32
-  elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+  elif [ "${_STRONG_PASSWORDS}" = "NO" ] ; then
     _PWD_CHARS=8
   else
     _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
-    if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
-      _PWD_CHARS="$_STRONG_PASSWORDS"
+    if [ ! -z "${_STRONG_PASSWORDS}" ] && [ ${_STRONG_PASSWORDS} -gt "8" ] ; then
+      _PWD_CHARS="${_STRONG_PASSWORDS}"
     else
       _PWD_CHARS=8
     fi
@@ -927,8 +927,8 @@ provision_backend_dbpass_generate() {
       _PWD_CHARS=128
     fi
   fi
-  if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
-    if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+  if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
+    if [ "${_THIS_DB_HOST}" = "localhost" ] || [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
       _ESC_PASS=$(randpass $_PWD_CHARS esc 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ] ; then
@@ -942,7 +942,7 @@ provision_backend_dbpass_generate() {
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
   if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 9 ] ; then
-    if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+    if [ "${_THIS_DB_HOST}" = "localhost" ] || [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
       _ESC_PASS=$(pwgen -v -s -1 2>&1)
       _ESC_PASS=$(echo -n $_ESC_PASS | tr -d "\n" 2>&1)
       _ESC_PASS=$(sanitize_string "$_ESC_PASS" 2>&1)
@@ -955,47 +955,47 @@ provision_backend_dbpass_generate() {
     fi
     _ENC_PASS="$_ESC_PASS"
   fi
-  echo "$_ESC_PASS" > $_ROOT/.$_USER.pass.txt
-  chown $_USER:$_USRG $_ROOT/.$_USER.pass.txt &> /dev/null
+  echo "$_ESC_PASS" > ${_ROOT}/.${_USER}.pass.txt
+  chown ${_USER}:${_USRG} ${_ROOT}/.${_USER}.pass.txt &> /dev/null
   _ESC="\`%\`.*"
   mysqladmin flush-privileges &> /dev/null
 
-  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
+  if [ "${_THIS_DB_HOST}" = "localhost" ] || [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
     _USE_AEGIR_HOST=$(uname -n 2>&1)
     _SQL_CONNECT=localhost
-    _USE_DB_USER="$_USER"
+    _USE_DB_USER="${_USER}"
   else
     _USE_AEGIR_HOST=$(uname -n 2>&1)
-    _SQL_CONNECT="$_THIS_DB_HOST"
+    _SQL_CONNECT="${_THIS_DB_HOST}"
     _USE_DB_USER=aegir_root
   fi
-  if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
+  if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ] ; then
     _USE_AEGIR_HOST=$(uname -n 2>&1)
     _SQL_CONNECT=localhost
   fi
   _USE_RESOLVEIP=$(echo $(getent ahostsv4 $_USE_AEGIR_HOST) \
     | cut -d: -f2 | awk '{ print $1}' 2>&1)
   if [ -z "$_USE_RESOLVEIP" ] ; then
-    msg "$_STATUS A: FATAL ERROR: DNS looks broken for $_USE_AEGIR_HOST"
-    msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+    msg "${_STATUS} A: FATAL ERROR: DNS looks broken for $_USE_AEGIR_HOST"
+    msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
     touch /opt/tmp/status-AegirSetupA-FAIL
     clean_pid_exit
   fi
-  if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-    if [ "$_STATUS" = "INIT" ] ; then
-      mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
+  if [ "${_THIS_DB_HOST}" = "localhost" ] || [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
+    if [ "${_STATUS}" = "INIT" ] ; then
+      mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'$_USE_AEGIR_HOST' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'$_USE_RESOLVEIP' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'localhost' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
 EOFMYSQL
     else
-      if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-        mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
+      if [ "${_THIS_DB_HOST}" = "localhost" ] || [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
+        mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
 DROP USER '$_USE_DB_USER'@'$_USE_AEGIR_HOST';
 DROP USER '$_USE_DB_USER'@'$_USE_RESOLVEIP';
 DROP USER '$_USE_DB_USER'@'localhost';
 EOFMYSQL
-        mysql -h$_SQL_CONNECT -uroot mysql<<EOFMYSQL
+        mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'$_USE_AEGIR_HOST' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'$_USE_RESOLVEIP' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'localhost' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
@@ -1008,47 +1008,47 @@ EOFMYSQL
 #
 # Sync provision backend db_passwd.
 provision_backend_dbpass_sync() {
-  msg "$_STATUS A: Syncing provision backend db_passwd..."
-  _L_SYS="$_ROOT/.$_USER.pass.txt"
+  msg "${_STATUS} A: Syncing provision backend db_passwd..."
+  _L_SYS="${_ROOT}/.${_USER}.pass.txt"
   mv -f $_L_SYS $_L_SYS-pre-${_X_VERSION}-${_NOW} &> /dev/null
   provision_backend_dbpass_generate
   if [ ! -z "$_ESC_PASS" ] && [ ! -z "$_ENC_PASS" ] ; then
-    su -s /bin/bash - $_USER -c "$_DRUSHCMD @hostmaster \
+    su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_PASS' WHERE \
-      db_user='$_USER'\" &> /dev/null"
+      db_user='${_USER}'\" &> /dev/null"
     mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_PASS') \
-      WHERE User='$_USER';" &> /dev/null
+      WHERE User='${_USER}';" &> /dev/null
     sed -i \
-      "s/mysql:\/\/$_USER:.*/mysql:\/\/$_USER:$_ENC_PASS@$_SQL_CONNECT',/g" \
-      $_ROOT/.drush/server_*.alias.drushrc.php &> /dev/null
+      "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:$_ENC_PASS@${_SQL_CONNECT}',/g" \
+      ${_ROOT}/.drush/server_*.alias.drushrc.php &> /dev/null
   fi
   mysqladmin flush-privileges &> /dev/null
-  su -s /bin/bash $_USER -c "$_DRUSHCMD cache-clear drush &> /dev/null"
-  rm -f -r $_ROOT/.tmp/cache
-  if [ -e "$_ROOT/.drush/server_localhost.alias.drushrc.php" ] ; then
-    su -s /bin/bash $_USER -c "$_DRUSHCMD @hostmaster \
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cache-clear drush &> /dev/null"
+  rm -f -r ${_ROOT}/.tmp/cache
+  if [ -e "${_ROOT}/.drush/server_localhost.alias.drushrc.php" ] ; then
+    su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
       hosting-task @server_localhost verify --force &> /dev/null"
   else
-    su -s /bin/bash $_USER -c "$_DRUSHCMD @hostmaster \
+    su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
       hosting-task @server_master verify --force &> /dev/null"
   fi
-  msg "$_STATUS A: Running hosting-dispatch (1/3)..."
-  su -s /bin/bash $_USER -c "$_DRUSHCMD '@hostmaster' \
+  msg "${_STATUS} A: Running hosting-dispatch (1/3)..."
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} '@hostmaster' \
     hosting-dispatch &> /dev/null"
   mrun "sleep 5"
-  msg "$_STATUS A: Running hosting-dispatch (2/3)..."
-  su -s /bin/bash $_USER -c "$_DRUSHCMD '@hostmaster' \
+  msg "${_STATUS} A: Running hosting-dispatch (2/3)..."
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} '@hostmaster' \
     hosting-dispatch &> /dev/null"
   mrun "sleep 5"
-  msg "$_STATUS A: Running hosting-dispatch (3/3)..."
-  su -s /bin/bash $_USER -c "$_DRUSHCMD '@hostmaster' \
+  msg "${_STATUS} A: Running hosting-dispatch (3/3)..."
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} '@hostmaster' \
     hosting-dispatch &> /dev/null"
 }
 #
 # Sync hostmaster frontend db_passwd.
 hostmaster_frontend_dbpass_sync() {
-  msg "$_STATUS A: Syncing hostmaster frontend db_passwd..."
-  _THIS_HM_SPTH=$(cat $_ROOT/.drush/hostmaster.alias.drushrc.php \
+  msg "${_STATUS} A: Syncing hostmaster frontend db_passwd..."
+  _THIS_HM_SPTH=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
     | grep "site_path'" \
     | cut -d: -f2 \
     | awk '{ print $3}' \
@@ -1072,142 +1072,142 @@ hostmaster_frontend_dbpass_sync() {
   fi
   mysqladmin flush-privileges &> /dev/null
 }
-if [ "$_STATUS" = "INIT" ] ; then
+if [ "${_STATUS}" = "INIT" ] ; then
   mysqladmin flush-hosts &> /dev/null
   provision_backend_dbpass_generate
-  echo "$_USER ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+  echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
 else
   mysqladmin flush-hosts &> /dev/null
   provision_backend_dbpass_sync
 fi
-cd $_ROOT
+cd ${_ROOT}
 
 
 ###---### Install or upgrade Aegir Satellite Instance [Y/n]
 #
-_LOCAL_STATUS="$_STATUS"
+_LOCAL_STATUS="${_STATUS}"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
-  msg "$_STATUS A: Switching user and running AegirSetupB..."
+  msg "${_STATUS} A: Switching user and running AegirSetupB..."
   rm -f /opt/tmp/testecho*
-  chown root:$_USRG /data/u &> /dev/null
+  chown root:${_USRG} /data/u &> /dev/null
   chmod 0771 /data/u &> /dev/null
-  su -s /bin/bash - $_USER -c "/bin/bash AegirSetupB.sh.txt"
+  su -s /bin/bash - ${_USER} -c "/bin/bash AegirSetupB.sh.txt"
   if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ] ; then
-    msg "$_STATUS A: FATAL ERROR: AegirSetupB installer failed"
-    msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+    msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
+    msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
     touch /opt/tmp/status-AegirSetupA-FAIL
     clean_pid_exit
   fi
-  _U_HD="$_ROOT/.drush"
-  chattr +i $_U_HD/php.ini &> /dev/null
+  _U_HD="${_ROOT}/.drush"
+  chattr +i ${_U_HD}/php.ini &> /dev/null
   chmod 0700 /data/u &> /dev/null
   chown root:root /data/u &> /dev/null
-  msg "$_STATUS A: Aegir Satellite Instance installation completed"
+  msg "${_STATUS} A: Aegir Satellite Instance installation completed"
 else
   echo " "
   if prompt_yes_no "Do you want to upgrade this Aegir Satellite Instance?" ; then
     true
-    if [ "$_PLATFORMS_ONLY" = "YES" ] ; then
-      msg "$_STATUS A: Aegir Satellite Instance upgrade skipped - platforms only"
+    if [ "${_PLATFORMS_ONLY}" = "YES" ] ; then
+      msg "${_STATUS} A: Aegir Satellite Instance upgrade skipped - platforms only"
     else
-      if [ ! -d "$_ROOT/.drush/sys/provision/http" ] ; then
-        mkdir -p $_ROOT/.drush/{sys,xts,usr}
-        rm -f -r $_ROOT/.drush/provision
-        rm -f -r $_ROOT/.drush/sys/provision
-        git clone --branch $_BRANCH_PRN \
+      if [ ! -d "${_ROOT}/.drush/sys/provision/http" ] ; then
+        mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
+        rm -f -r ${_ROOT}/.drush/provision
+        rm -f -r ${_ROOT}/.drush/sys/provision
+        git clone --branch ${_BRANCH_PRN} \
           git://github.com/omega8cc/provision.git \
-          $_ROOT/.drush/sys/provision &> /dev/null
+          ${_ROOT}/.drush/sys/provision &> /dev/null
       fi
-      rm -f -r $_ROOT/.drush/drush_make
-      rm -f -r $_ROOT/.drush/sys/drush_make
+      rm -f -r ${_ROOT}/.drush/drush_make
+      rm -f -r ${_ROOT}/.drush/sys/drush_make
       hostmaster_frontend_dbpass_sync
-      msg "$_STATUS A: Switching user and running AegirSetupB..."
+      msg "${_STATUS} A: Switching user and running AegirSetupB..."
       rm -f /opt/tmp/testecho*
       if [ ! -e "/root/.upstart.cnf" ] ; then
         service cron stop &> /dev/null
       fi
-      _THIS_HM_ROOT=$(cat $_ROOT/.drush/hostmaster.alias.drushrc.php \
+      _THIS_HM_ROOT=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
         | grep "root'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
-      _THIS_HM_SITE=$(cat $_ROOT/.drush/hostmaster.alias.drushrc.php \
+      _THIS_HM_SITE=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
         | grep "site_path'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
-      _U_HD="$_ROOT/.drush"
-      chattr -i $_U_HD/php.ini &> /dev/null
-      chown -R $_USER:$_USRG $_ROOT/.drush
-      chown -R $_USER:$_USRG $_ROOT/backups
-      chown -R $_USER:$_USRG $_ROOT/clients
-      chown -R $_USER:$_USRG $_ROOT/config
-      chown -R $_USER:$_USRG $_ROOT/tools
-      chown -R $_USER $_THIS_HM_ROOT
-      chown -R $_USER:$_WEBG $_THIS_HM_SITE/files
+      _U_HD="${_ROOT}/.drush"
+      chattr -i ${_U_HD}/php.ini &> /dev/null
+      chown -R ${_USER}:${_USRG} ${_ROOT}/.drush
+      chown -R ${_USER}:${_USRG} ${_ROOT}/backups
+      chown -R ${_USER}:${_USRG} ${_ROOT}/clients
+      chown -R ${_USER}:${_USRG} ${_ROOT}/config
+      chown -R ${_USER}:${_USRG} ${_ROOT}/tools
+      chown -R ${_USER} ${_THIS_HM_ROOT}
+      chown -R ${_USER}:${_WEBG} $_THIS_HM_SITE/files
       chmod -R 02775 $_THIS_HM_SITE/files
-      chown root:$_USRG /data/u &> /dev/null
+      chown root:${_USRG} /data/u &> /dev/null
       chmod 0771 /data/u &> /dev/null
-      su -s /bin/bash - $_USER -c "/bin/bash AegirSetupB.sh.txt"
+      su -s /bin/bash - ${_USER} -c "/bin/bash AegirSetupB.sh.txt"
       if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ] ; then
-        msg "$_STATUS A: FATAL ERROR: AegirSetupB installer failed"
-        msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+        msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
+        msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
         touch /opt/tmp/status-AegirSetupA-FAIL
         clean_pid_exit
       else
-        chattr +i $_U_HD/php.ini &> /dev/null
-        mkdir -p $_ROOT/backups/system/old_hostmaster
-        chmod 700 $_ROOT/backups/system/old_hostmaster
-        chmod 700 $_ROOT/backups/system
-        mv -f $_ROOT/backups/*host8* \
-          $_ROOT/backups/system/old_hostmaster/ &> /dev/null
-        mv -f $_ROOT/backups/*o8.io* \
-          $_ROOT/backups/system/old_hostmaster/ &> /dev/null
-        chmod 600 $_ROOT/backups/system/old_hostmaster/* &> /dev/null
+        chattr +i ${_U_HD}/php.ini &> /dev/null
+        mkdir -p ${_ROOT}/backups/system/old_hostmaster
+        chmod 700 ${_ROOT}/backups/system/old_hostmaster
+        chmod 700 ${_ROOT}/backups/system
+        mv -f ${_ROOT}/backups/*host8* \
+          ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
+        mv -f ${_ROOT}/backups/*o8.io* \
+          ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
+        chmod 600 ${_ROOT}/backups/system/old_hostmaster/* &> /dev/null
         hostmaster_frontend_dbpass_sync
       fi
       chmod 0700 /data/u &> /dev/null
       chown root:root /data/u &> /dev/null
-      msg "$_STATUS A: Aegir Satellite Instance upgrade completed"
+      msg "${_STATUS} A: Aegir Satellite Instance upgrade completed"
     fi
   else
-    msg "$_STATUS A: Aegir Satellite Instance not upgraded this time"
+    msg "${_STATUS} A: Aegir Satellite Instance not upgraded this time"
   fi
 fi
 
 
 ###---### Create ~/bin dir if not exists.
 #
-_L_BIN="$_ROOT/bin"
+_L_BIN="${_ROOT}/bin"
 if [ ! -d "$_L_BIN" ] ; then
   mkdir -p $_L_BIN
-  chown $_USER:$_USRG $_L_BIN
+  chown ${_USER}:${_USRG} $_L_BIN
   chmod 700 $_L_BIN
 fi
 if [ ! -L "$_L_BIN/drush" ] ; then
-  ln -sf $_ROOT/tools/drush/drush $_L_BIN/drush
+  ln -sf ${_ROOT}/tools/drush/drush $_L_BIN/drush
 fi
 
 
 ###---### Run standard post-install.
 #
-_LOCAL_STATUS="$_STATUS"
+_LOCAL_STATUS="${_STATUS}"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
-  if [ ! -e "$_ROOT/config/$_USER.nginx.conf" ] ; then
-    rm -f /var/aegir/config/server_master/nginx/platform.d/$_USER.conf
-    echo "include $_ROOT/config/server_master/nginx/vhost.d/*;" > \
-      $_ROOT/config/$_USER.nginx.conf
-    ln -sf $_ROOT/config/$_USER.nginx.conf \
-      /var/aegir/config/server_master/nginx/platform.d/$_USER.conf
+  if [ ! -e "${_ROOT}/config/${_USER}.nginx.conf" ] ; then
+    rm -f /var/aegir/config/server_master/nginx/platform.d/${_USER}.conf
+    echo "include ${_ROOT}/config/server_master/nginx/vhost.d/*;" > \
+      ${_ROOT}/config/${_USER}.nginx.conf
+    ln -sf ${_ROOT}/config/${_USER}.nginx.conf \
+      /var/aegir/config/server_master/nginx/platform.d/${_USER}.conf
   fi
-  chgrp -R $_WEBG $_HOSTMASTER_ROOT/sites/$_DOMAIN/files
-  chgrp $_WEBG $_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php
+  chgrp -R ${_WEBG} $_HOSTMASTER_ROOT/sites/${_DOMAIN}/files
+  chgrp ${_WEBG} $_HOSTMASTER_ROOT/sites/${_DOMAIN}/settings.php
   rm -f -r $_HOSTMASTER_ROOT/profiles/default
   rm -f -r $_HOSTMASTER_ROOT/themes/bluemarine
   rm -f -r $_HOSTMASTER_ROOT/themes/chameleon
@@ -1218,37 +1218,37 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   mrun "service nginx reload" &> /dev/null
   cd $_HOSTMASTER_ROOT
   cp -af /opt/tmp/boa/aegir/conf/robots.txt ./
-  cd $_ROOT
+  cd ${_ROOT}
 fi
 
 
 ###---### Set permissions for all.
 #
 chmod 0755 $_HOSTMASTER_ROOT &> /dev/null
-find $_ROOT/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
-find $_ROOT/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
-chmod 0711 $_ROOT/config &> /dev/null
-chmod 0711 $_ROOT/config/includes &> /dev/null
-chmod 0750 $_ROOT/backups &> /dev/null
-chmod 0750 $_ROOT/clients &> /dev/null
-find $_ROOT/aegir/distro/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
-find $_ROOT/aegir/distro/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
-find $_ROOT/aegir/distro/*/sites/all/* -type d -exec chmod 0755 {} \; &> /dev/null
-find $_ROOT/aegir/distro/*/sites/all/* -type f -exec chmod 0644 {} \; &> /dev/null
-chown -R $_USER:$_USRG $_ROOT/.drush &> /dev/null
-find $_ROOT/.drush -type d -exec chmod 0710 {} \; &> /dev/null
-find $_ROOT/.drush/usr -type d -exec chmod 0750 {} \; &> /dev/null
-find $_ROOT/.drush -type f -exec chmod 0640 {} \; &> /dev/null
-chmod 0440 $_ROOT/.drush/*.php &> /dev/null
-chmod 0400 $_ROOT/.drush/server_*.php &> /dev/null
-chmod 0400 $_ROOT/.drush/platform_*.php &> /dev/null
-chmod 0400 $_ROOT/.drush/hostmaster*.php &> /dev/null
-chmod 0710 $_ROOT/.drush &> /dev/null
+find ${_ROOT}/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
+find ${_ROOT}/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
+chmod 0711 ${_ROOT}/config &> /dev/null
+chmod 0711 ${_ROOT}/config/includes &> /dev/null
+chmod 0750 ${_ROOT}/backups &> /dev/null
+chmod 0750 ${_ROOT}/clients &> /dev/null
+find ${_ROOT}/aegir/distro/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
+find ${_ROOT}/aegir/distro/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
+find ${_ROOT}/aegir/distro/*/sites/all/* -type d -exec chmod 0755 {} \; &> /dev/null
+find ${_ROOT}/aegir/distro/*/sites/all/* -type f -exec chmod 0644 {} \; &> /dev/null
+chown -R ${_USER}:${_USRG} ${_ROOT}/.drush &> /dev/null
+find ${_ROOT}/.drush -type d -exec chmod 0710 {} \; &> /dev/null
+find ${_ROOT}/.drush/usr -type d -exec chmod 0750 {} \; &> /dev/null
+find ${_ROOT}/.drush -type f -exec chmod 0640 {} \; &> /dev/null
+chmod 0440 ${_ROOT}/.drush/*.php &> /dev/null
+chmod 0400 ${_ROOT}/.drush/server_*.php &> /dev/null
+chmod 0400 ${_ROOT}/.drush/platform_*.php &> /dev/null
+chmod 0400 ${_ROOT}/.drush/hostmaster*.php &> /dev/null
+chmod 0710 ${_ROOT}/.drush &> /dev/null
 
 
 ###---### Platforms [Y/n]
 #
-_LOCAL_STATUS="$_STATUS"
+_LOCAL_STATUS="${_STATUS}"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
@@ -1257,18 +1257,18 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   rm -f /opt/tmp/testecho*
   create_shared_dirs
   manage_o_contrib
-  msg "$_STATUS A: Switching user and running Platforms build"
-  cd $_ROOT
-  su -s /bin/bash - $_USER -c "/bin/bash $_ROOT/AegirSetupC.sh.txt"
+  msg "${_STATUS} A: Switching user and running Platforms build"
+  cd ${_ROOT}
+  su -s /bin/bash - ${_USER} -c "/bin/bash ${_ROOT}/AegirSetupC.sh.txt"
   if [ -e "/opt/tmp/status-AegirSetupC-FAIL" ] ; then
-    msg "$_STATUS A: FATAL ERROR: AegirSetupC installer failed"
-    msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+    msg "${_STATUS} A: FATAL ERROR: AegirSetupC installer failed"
+    msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
     touch /opt/tmp/status-AegirSetupA-FAIL
     clean_pid_exit
   fi
-  msg "$_STATUS A: Platforms installation completed"
+  msg "${_STATUS} A: Platforms installation completed"
 else
-  if [ "$_HM_ONLY" = "YES" ] ; then
+  if [ "${_HM_ONLY}" = "YES" ] ; then
     _DIST_INSTALL=NO
   else
     echo " "
@@ -1281,23 +1281,23 @@ else
       rm -f /opt/tmp/testecho*
       create_shared_dirs
       manage_o_contrib
-      msg "$_STATUS A: Switching user and running Platforms build"
-      cd $_ROOT
-      su -s /bin/bash - $_USER -c "/bin/bash $_ROOT/AegirSetupC.sh.txt"
+      msg "${_STATUS} A: Switching user and running Platforms build"
+      cd ${_ROOT}
+      su -s /bin/bash - ${_USER} -c "/bin/bash ${_ROOT}/AegirSetupC.sh.txt"
       if [ -e "/opt/tmp/status-AegirSetupC-FAIL" ] ; then
-        msg "$_STATUS A: FATAL ERROR: AegirSetupC installer failed"
-        msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+        msg "${_STATUS} A: FATAL ERROR: AegirSetupC installer failed"
+        msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
         touch /opt/tmp/status-AegirSetupA-FAIL
         clean_pid_exit
       fi
-      msg "$_STATUS A: Platforms installation completed"
+      msg "${_STATUS} A: Platforms installation completed"
     else
-      msg "$_STATUS A: No new platforms added this time"
+      msg "${_STATUS} A: No new platforms added this time"
     fi
   fi
 fi
 if [ ! -e "$_CORE/dot-files-ctrl-${_X_VERSION}" ] ; then
-  msg "$_STATUS A: Cleaning up various dot files..."
+  msg "${_STATUS} A: Cleaning up various dot files..."
   cd $_CORE
   st_runner "find . -name .svn -exec rm -rf {} \;" &> /dev/null
   st_runner "find . -name .bzr -exec rm -rf {} \;" &> /dev/null
@@ -1312,7 +1312,7 @@ fi
 #
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _PLATF_IMP=$(ls -la /data/u \
-    | grep $_USER \
+    | grep ${_USER} \
     | cut -d'>' -f2 \
     | sort \
     | uniq \
@@ -1321,7 +1321,7 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
     if [[ "$_PLATF" =~ "aegir" ]] ; then
       _FOUND_HM=YES
     else
-      chown -R $_USER:www-data $_PLATF/sites/*/files &> /dev/null
+      chown -R ${_USER}:www-data $_PLATF/sites/*/files &> /dev/null
       chmod -R 02775 $_PLATF/sites/*/files &> /dev/null
     fi
   done
@@ -1330,55 +1330,55 @@ fi
 
 ###---### Clean up old and install files.
 #
-rm -f $_ROOT/AegirSetupC.sh.txt
-rm -f $_ROOT/AegirSetupB.sh.txt
-rm -f $_ROOT/*.sh.txt
+rm -f ${_ROOT}/AegirSetupC.sh.txt
+rm -f ${_ROOT}/AegirSetupB.sh.txt
+rm -f ${_ROOT}/*.sh.txt
 
 
 ###---### Cleanup cron tasks.
 #
-_LOCAL_STATUS="$_STATUS"
+_LOCAL_STATUS="${_STATUS}"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
-rm -f /var/spool/cron/crontabs/$_USER
+rm -f /var/spool/cron/crontabs/${_USER}
 
 
 ###---### Add ftps/lshell access.
 #
-_LOCAL_STATUS="$_STATUS"
+_LOCAL_STATUS="${_STATUS}"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   _USERFTP="${_USER}.ftp"
-  _USERFTP_ROOT="/home/$_USERFTP"
+  _USERFTP_ROOT="/home/${_USERFTP}"
   if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ] ; then
     _PATH_LSHELL="/usr/bin/MySecureShell"
   else
     _PATH_LSHELL="/usr/bin/lshell"
   fi
-  if [ ! -d "$_USERFTP_ROOT" ] ; then
-    msg "$_STATUS A: Adding ftps/lshell user"
+  if [ ! -d "${_USERFTP_ROOT}" ] ; then
+    msg "${_STATUS} A: Adding ftps/lshell user"
     # add user
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
-    useradd -d /home/$_USERFTP -s $_PATH_LSHELL -m -N -r $_USERFTP &> /dev/null
-    adduser $_USERFTP $_WEBG &> /dev/null
+    useradd -d /home/${_USERFTP} -s $_PATH_LSHELL -m -N -r ${_USERFTP} &> /dev/null
+    adduser ${_USERFTP} ${_WEBG} &> /dev/null
     # Make sure new file which contains password is private
-    cd $_ROOT/log
-    touch $_ROOT/log/pass.txt
-    chmod 0600 $_ROOT/log/pass.txt
+    cd ${_ROOT}/log
+    touch ${_ROOT}/log/pass.txt
+    chmod 0600 ${_ROOT}/log/pass.txt
     # generate a nice secure password and put it in a file
     _ESC_LUPASS=""
     _LEN_LUPASS=0
-    if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] ; then
       _PWD_CHARS=32
-    elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+    elif [ "${_STRONG_PASSWORDS}" = "NO" ] ; then
       _PWD_CHARS=8
     else
       _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
-      if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
-        _PWD_CHARS="$_STRONG_PASSWORDS"
+      if [ ! -z "${_STRONG_PASSWORDS}" ] && [ ${_STRONG_PASSWORDS} -gt "8" ] ; then
+        _PWD_CHARS="${_STRONG_PASSWORDS}"
       else
         _PWD_CHARS=8
       fi
@@ -1386,7 +1386,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
         _PWD_CHARS=128
       fi
     fi
-    if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
       _ESC_LUPASS=$(randpass $_PWD_CHARS alnum 2>&1)
       _ESC_LUPASS=$(echo -n $_ESC_LUPASS | tr -d "\n" 2>&1)
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
@@ -1396,183 +1396,183 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
       _ESC_LUPASS=$(echo -n $_ESC_LUPASS | tr -d "\n" 2>&1)
       _ESC_LUPASS=$(sanitize_string "$_ESC_LUPASS" 2>&1)
     fi
-    echo "$_ESC_LUPASS" > $_ROOT/log/pass.txt
+    echo "$_ESC_LUPASS" > ${_ROOT}/log/pass.txt
     # get the password hash
     ph=$(mkpasswd -m sha-512 $_ESC_LUPASS $(openssl rand -base64 16 \
       | tr -d '+=' | head -c 16))
     # Set the password
-    usermod -p $ph $_USERFTP &> /dev/null
-    passwd -w 7 -x 90 $_USERFTP &> /dev/null
+    usermod -p $ph ${_USERFTP} &> /dev/null
+    passwd -w 7 -x 90 ${_USERFTP} &> /dev/null
   fi
-  usermod -aG lshellg $_USERFTP &> /dev/null
-  chsh -s $_PATH_LSHELL $_USERFTP &> /dev/null
+  usermod -aG lshellg ${_USERFTP} &> /dev/null
+  chsh -s $_PATH_LSHELL ${_USERFTP} &> /dev/null
   echo >> /etc/lshell.conf
-  echo "[$_USERFTP]" >> /etc/lshell.conf
-  echo "path : ['$_ROOT/distro', '$_ROOT/static', '$_ROOT/backups', '$_ROOT/clients']" >> /etc/lshell.conf
+  echo "[${_USERFTP}]" >> /etc/lshell.conf
+  echo "path : ['${_ROOT}/distro', '${_ROOT}/static', '${_ROOT}/backups', '${_ROOT}/clients']" >> /etc/lshell.conf
 fi
 
 
 ###---### Add symlink to the sites backups.
 #
 _USERFTP="${_USER}.ftp"
-_USER_HD="/home/$_USERFTP"
-_USER_DS="$_USER_HD/.drush"
-if [ ! -L "$_USER_HD/backups" ] ; then
-  msg "$_STATUS A: Adding symlink to the sites backups"
-  ln -sf $_ROOT/backups $_USER_HD/backups
+_USER_HD="/home/${_USERFTP}"
+_USER_DS="${_USER_HD}/.drush"
+if [ ! -L "${_USER_HD}/backups" ] ; then
+  msg "${_STATUS} A: Adding symlink to the sites backups"
+  ln -sf ${_ROOT}/backups ${_USER_HD}/backups
 fi
 
 
 ###---### Remove legacy symlinks.
 #
-if [ -e "$_USER_DS/drush_make" ] ; then
-  rm -f $_USER_DS/drush_make
+if [ -e "${_USER_DS}/drush_make" ] ; then
+  rm -f ${_USER_DS}/drush_make
 fi
-if [ -e "$_USER_DS/registry_rebuild" ] ; then
-  rm -f $_USER_DS/registry_rebuild
+if [ -e "${_USER_DS}/registry_rebuild" ] ; then
+  rm -f ${_USER_DS}/registry_rebuild
 fi
-if [ -e "$_USER_DS/clean_missing_modules" ] ; then
-  rm -f $_USER_DS/clean_missing_modules
+if [ -e "${_USER_DS}/clean_missing_modules" ] ; then
+  rm -f ${_USER_DS}/clean_missing_modules
 fi
-if [ -e "$_USER_DS/drush_ecl" ] ; then
-  rm -f $_USER_DS/drush_ecl
+if [ -e "${_USER_DS}/drush_ecl" ] ; then
+  rm -f ${_USER_DS}/drush_ecl
 fi
 
 
 ###---### Add symlink to the system registry_rebuild.
 #
-if [ ! -L "$_USER_DS/usr/registry_rebuild" ] ; then
-  msg "$_STATUS A: Adding symlink to the system registry_rebuild"
-  mkdir -p $_USER_DS/usr
-  chown $_USERFTP:$_USRG $_USER_DS
-  chown $_USERFTP:$_USRG $_USER_DS/usr
-  chmod 700 $_USER_DS
+if [ ! -L "${_USER_DS}/usr/registry_rebuild" ] ; then
+  msg "${_STATUS} A: Adding symlink to the system registry_rebuild"
+  mkdir -p ${_USER_DS}/usr
+  chown ${_USERFTP}:${_USRG} ${_USER_DS}
+  chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
+  chmod 700 ${_USER_DS}
   ln -sf /data/disk/${_USER}/.drush/usr/registry_rebuild \
-    $_USER_DS/usr/registry_rebuild
+    ${_USER_DS}/usr/registry_rebuild
 fi
 
 
 ###---### Add symlink to the system clean_missing_modules.
 #
-if [ ! -L "$_USER_DS/usr/clean_missing_modules" ] ; then
-  msg "$_STATUS A: Adding symlink to the system clean_missing_modules"
-  mkdir -p $_USER_DS/usr
-  chown $_USERFTP:$_USRG $_USER_DS
-  chown $_USERFTP:$_USRG $_USER_DS/usr
-  chmod 700 $_USER_DS
+if [ ! -L "${_USER_DS}/usr/clean_missing_modules" ] ; then
+  msg "${_STATUS} A: Adding symlink to the system clean_missing_modules"
+  mkdir -p ${_USER_DS}/usr
+  chown ${_USERFTP}:${_USRG} ${_USER_DS}
+  chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
+  chmod 700 ${_USER_DS}
   ln -sf /data/disk/${_USER}/.drush/usr/clean_missing_modules \
-    $_USER_DS/usr/clean_missing_modules
+    ${_USER_DS}/usr/clean_missing_modules
 fi
 
 
 ###---### Add symlink to the system drupalgeddon.
 #
-if [ ! -L "$_USER_DS/usr/drupalgeddon" ] ; then
-  msg "$_STATUS A: Adding symlink to the system drupalgeddon"
-  mkdir -p $_USER_DS/usr
-  chown $_USERFTP:$_USRG $_USER_DS
-  chown $_USERFTP:$_USRG $_USER_DS/usr
-  chmod 700 $_USER_DS
+if [ ! -L "${_USER_DS}/usr/drupalgeddon" ] ; then
+  msg "${_STATUS} A: Adding symlink to the system drupalgeddon"
+  mkdir -p ${_USER_DS}/usr
+  chown ${_USERFTP}:${_USRG} ${_USER_DS}
+  chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
+  chmod 700 ${_USER_DS}
   ln -sf /data/disk/${_USER}/.drush/usr/drupalgeddon \
-    $_USER_DS/usr/drupalgeddon
+    ${_USER_DS}/usr/drupalgeddon
 fi
 
 
 ###---### Add symlink to the system drush_ecl.
 #
-if [ ! -L "$_USER_DS/usr/drush_ecl" ] ; then
-  msg "$_STATUS A: Adding symlink to the system drush_ecl"
-  mkdir -p $_USER_DS/usr
-  chown $_USERFTP:$_USRG $_USER_DS
-  chown $_USERFTP:$_USRG $_USER_DS/usr
-  chmod 700 $_USER_DS
+if [ ! -L "${_USER_DS}/usr/drush_ecl" ] ; then
+  msg "${_STATUS} A: Adding symlink to the system drush_ecl"
+  mkdir -p ${_USER_DS}/usr
+  chown ${_USERFTP}:${_USRG} ${_USER_DS}
+  chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
+  chmod 700 ${_USER_DS}
   ln -sf /data/disk/${_USER}/.drush/usr/drush_ecl \
-    $_USER_DS/usr/drush_ecl
+    ${_USER_DS}/usr/drush_ecl
 fi
 
 
 ###---### Create .ssh dir if not exists.
 #
-_USER_SSH="$_USER_HD/.ssh"
-if [ ! -d "$_USER_SSH" ] ; then
-  mkdir -p $_USER_SSH
-  chown -R $_USERFTP:$_USRG $_USER_SSH
-  chmod 700 $_USER_SSH
+_USER_SSH="${_USER_HD}/.ssh"
+if [ ! -d "${_USER_SSH}" ] ; then
+  mkdir -p ${_USER_SSH}
+  chown -R ${_USERFTP}:${_USRG} ${_USER_SSH}
+  chmod 700 ${_USER_SSH}
 fi
-chmod 600 $_USER_SSH/id_{r,d}sa &> /dev/null
+chmod 600 ${_USER_SSH}/id_{r,d}sa &> /dev/null
 
 
 ###---### Create .bazaar dir and conf file if not exist.
 #
-_USER_BZR="$_USER_HD/.bazaar"
+_USER_BZR="${_USER_HD}/.bazaar"
 if [ -x "/usr/local/bin/bzr" ] ; then
-  if [ ! -e "$_USER_BZR/bazaar.conf" ] ; then
-    mkdir -p $_USER_BZR
-    echo ignore_missing_extensions=True > $_USER_BZR/bazaar.conf
-    chown -R $_USERFTP:$_USRG $_USER_BZR
-    chmod 700 $_USER_BZR
+  if [ ! -e "${_USER_BZR}/bazaar.conf" ] ; then
+    mkdir -p ${_USER_BZR}
+    echo ignore_missing_extensions=True > ${_USER_BZR}/bazaar.conf
+    chown -R ${_USERFTP}:${_USRG} ${_USER_BZR}
+    chmod 700 ${_USER_BZR}
   fi
 else
-  rm -f -r $_USER_BZR
+  rm -f -r ${_USER_BZR}
 fi
 
 
 ###---### Add symlink to the clients directory.
 #
-if [ ! -L "$_USER_HD/clients" ] ; then
-  msg "$_STATUS A: Adding symlink to the clients directory"
-  ln -sf $_ROOT/clients $_USER_HD/clients
+if [ ! -L "${_USER_HD}/clients" ] ; then
+  msg "${_STATUS} A: Adding symlink to the clients directory"
+  ln -sf ${_ROOT}/clients ${_USER_HD}/clients
 fi
-rm -f -r $_ROOT/clients/admin &> /dev/null
-rm -f -r $_ROOT/clients/omega8ccgmailcom &> /dev/null
-rm -f -r $_ROOT/clients/nocomega8cc &> /dev/null
-rm -f -r $_ROOT/clients/*/backups &> /dev/null
-symlinks -dr $_ROOT/clients &> /dev/null
+rm -f -r ${_ROOT}/clients/admin &> /dev/null
+rm -f -r ${_ROOT}/clients/omega8ccgmailcom &> /dev/null
+rm -f -r ${_ROOT}/clients/nocomega8cc &> /dev/null
+rm -f -r ${_ROOT}/clients/*/backups &> /dev/null
+symlinks -dr ${_ROOT}/clients &> /dev/null
 
 
 ###---### Create .tmp dir if not exists.
 #
-_USER_TMP="$_USER_HD/.tmp"
-if [ ! -d "$_USER_TMP" ] ; then
-  rm -f $_USER_TMP
-  mkdir -p $_USER_TMP
-  chown -R $_USERFTP:$_USRG $_USER_TMP
-  chmod 700 $_USER_TMP
+_USER_TMP="${_USER_HD}/.tmp"
+if [ ! -d "${_USER_TMP}" ] ; then
+  rm -f ${_USER_TMP}
+  mkdir -p ${_USER_TMP}
+  chown -R ${_USERFTP}:${_USRG} ${_USER_TMP}
+  chmod 700 ${_USER_TMP}
 fi
 
 
 ###---### Remove not used dot files.
 #
-rm -f $_USER_HD/{.profile,.bash_logout,.bash_profile,.bashrc}
+rm -f ${_USER_HD}/{.profile,.bash_logout,.bash_profile,.bashrc}
 
 
 ###---### Reading or creating pass.txt.
 #
-if [ "$_HM_ONLY" = "YES" ] ; then
+if [ "${_HM_ONLY}" = "YES" ] ; then
   _DO_NOTHING=YES
 else
-  if [ -e "$_ROOT/pass.txt" ] ; then
-    _PASWD=$(cat $_ROOT/pass.txt 2>&1)
+  if [ -e "${_ROOT}/pass.txt" ] ; then
+    _PASWD=$(cat ${_ROOT}/pass.txt 2>&1)
     _PASWD=$(echo -n $_PASWD | tr -d "\n" 2>&1)
-    mv -f $_ROOT/pass.txt $_ROOT/log/pass.txt &> /dev/null
-  elif [ -e "$_ROOT/log/pass.txt" ] ; then
-    _PASWD=$(cat $_ROOT/log/pass.txt 2>&1)
+    mv -f ${_ROOT}/pass.txt ${_ROOT}/log/pass.txt &> /dev/null
+  elif [ -e "${_ROOT}/log/pass.txt" ] ; then
+    _PASWD=$(cat ${_ROOT}/log/pass.txt 2>&1)
     _PASWD=$(echo -n $_PASWD | tr -d "\n" 2>&1)
-    rm -f $_ROOT/pass.txt
+    rm -f ${_ROOT}/pass.txt
   else
-    cd $_ROOT/log
-    touch $_ROOT/log/pass.txt
-    chmod 0600 $_ROOT/log/pass.txt
+    cd ${_ROOT}/log
+    touch ${_ROOT}/log/pass.txt
+    chmod 0600 ${_ROOT}/log/pass.txt
     _ESC_LUPASS=""
     _LEN_LUPASS=0
-    if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] ; then
       _PWD_CHARS=32
-    elif [ "$_STRONG_PASSWORDS" = "NO" ] ; then
+    elif [ "${_STRONG_PASSWORDS}" = "NO" ] ; then
       _PWD_CHARS=8
     else
       _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
-      if [ ! -z "$_STRONG_PASSWORDS" ] && [ $_STRONG_PASSWORDS -gt "8" ] ; then
-        _PWD_CHARS="$_STRONG_PASSWORDS"
+      if [ ! -z "${_STRONG_PASSWORDS}" ] && [ ${_STRONG_PASSWORDS} -gt "8" ] ; then
+        _PWD_CHARS="${_STRONG_PASSWORDS}"
       else
         _PWD_CHARS=8
       fi
@@ -1580,7 +1580,7 @@ else
         _PWD_CHARS=128
       fi
     fi
-    if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
       _ESC_LUPASS=$(randpass $_PWD_CHARS alnum 2>&1)
       _ESC_LUPASS=$(echo -n $_ESC_LUPASS | tr -d "\n" 2>&1)
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
@@ -1590,11 +1590,11 @@ else
       _ESC_LUPASS=$(echo -n $_ESC_LUPASS | tr -d "\n" 2>&1)
       _ESC_LUPASS=$(sanitize_string "$_ESC_LUPASS" 2>&1)
     fi
-    echo "$_ESC_LUPASS" > $_ROOT/log/pass.txt
+    echo "$_ESC_LUPASS" > ${_ROOT}/log/pass.txt
     ph=$(mkpasswd -m sha-512 $_ESC_LUPASS $(openssl rand -base64 16 \
       | tr -d '+=' | head -c 16))
-    usermod -p $ph $_USERFTP &> /dev/null
-    _PASWD=$(cat $_ROOT/log/pass.txt 2>&1)
+    usermod -p $ph ${_USERFTP} &> /dev/null
+    _PASWD=$(cat ${_ROOT}/log/pass.txt 2>&1)
     _PASWD=$(echo -n $_PASWD | tr -d "\n" 2>&1)
   fi
 fi
@@ -1602,284 +1602,284 @@ fi
 
 ###---### Creating ftp symlinks.
 #
-if [ "$_DIST_INSTALL" = "YES" ] ; then
-msg "$_STATUS A: Creating ftp symlinks"
+if [ "${_D}IST_INSTALL" = "YES" ] ; then
+msg "${_STATUS} A: Creating ftp symlinks"
 
-  _QR="$_ROOT/distro/$_THIS_CORE"
-  _QH="/home/$_USERFTP/platforms/$_THIS_CORE"
+  _QR="${_ROOT}/distro/$_THIS_CORE"
+  _QH="/home/${_USERFTP}/platforms/$_THIS_CORE"
 
   if [ ! -d "${_QH}" ] ; then
     mkdir -p ${_QH}
     ### msg "DEBUG: _QH is $_QH in action symlinks 1"
   fi
   ### msg "DEBUG: _QH is $_QH in action symlinks 2"
-  chown -R $_USER:$_USRG /home/$_USERFTP/platforms &> /dev/null
-  chmod 700 /home/$_USERFTP &> /dev/null
+  chown -R ${_USER}:${_USRG} /home/${_USERFTP}/platforms &> /dev/null
+  chmod 700 /home/${_USERFTP} &> /dev/null
   rm -f ${_QH}/{cod,commerce,commons,openatrium,openscholar,drupal6,drupal7}
 
-  if [ -d "${_QR}/agov-$_AGOV-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/agov-$_AGOV-$_SMALLCORE7" ] ; then
-      _A="${_QR}/agov-$_AGOV-$_SMALLCORE7/sites"
-      _B="${_QH}/agov-$_AGOV-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/agov-${_AGOV}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/agov-${_AGOV}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/agov-${_AGOV}-${_SMALLCORE7}/sites"
+      _B="${_QH}/agov-${_AGOV}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/civicrm-$_CIVICRM_M6-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "${_QH}/civicrm-$_CIVICRM_M6-$_SMALLCORE6" ] ; then
-      _A="${_QR}/civicrm-$_CIVICRM_M6-$_SMALLCORE6/sites"
-      _B="${_QH}/civicrm-$_CIVICRM_M6-$_SMALLCORE6"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6}/sites" ] ; then
+    if [ ! -L "${_QH}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6}" ] ; then
+      _A="${_QR}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6}/sites"
+      _B="${_QH}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/civicrm-$_CIVICRM_M7-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/civicrm-$_CIVICRM_M7-$_SMALLCORE7" ] ; then
-      _A="${_QR}/civicrm-$_CIVICRM_M7-$_SMALLCORE7/sites"
-      _B="${_QH}/civicrm-$_CIVICRM_M7-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7}/sites"
+      _B="${_QH}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/cod-$_COD-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/cod-$_COD-$_SMALLCORE7" ] ; then
-      _A="${_QR}/cod-$_COD-$_SMALLCORE7/sites"
-      _B="${_QH}/cod-$_COD-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/cod-${_COD}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/cod-${_COD}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/cod-${_COD}-${_SMALLCORE7}/sites"
+      _B="${_QH}/cod-${_COD}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/commerce-$_COMMERCE1-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/commerce-$_COMMERCE1-$_SMALLCORE7" ] ; then
-      _A="${_QR}/commerce-$_COMMERCE1-$_SMALLCORE7/sites"
-      _B="${_QH}/commerce-$_COMMERCE1-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/commerce-${_COMMERCE1}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/commerce-${_COMMERCE1}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/commerce-${_COMMERCE1}-${_SMALLCORE7}/sites"
+      _B="${_QH}/commerce-${_COMMERCE1}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/commerce-$_COMMERCE2-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/commerce-$_COMMERCE2-$_SMALLCORE7" ] ; then
-      _A="${_QR}/commerce-$_COMMERCE2-$_SMALLCORE7/sites"
-      _B="${_QH}/commerce-$_COMMERCE2-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/commerce-${_COMMERCE2}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/commerce-${_COMMERCE2}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/commerce-${_COMMERCE2}-${_SMALLCORE7}/sites"
+      _B="${_QH}/commerce-${_COMMERCE2}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/commons-$_COMMONS2-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "${_QH}/commons-$_COMMONS2-$_SMALLCORE6" ] ; then
-      _A="${_QR}/commons-$_COMMONS2-$_SMALLCORE6/sites"
-      _B="${_QH}/commons-$_COMMONS2-$_SMALLCORE6"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/commons-${_COMMONS2}-${_SMALLCORE6}/sites" ] ; then
+    if [ ! -L "${_QH}/commons-${_COMMONS2}-${_SMALLCORE6}" ] ; then
+      _A="${_QR}/commons-${_COMMONS2}-${_SMALLCORE6}/sites"
+      _B="${_QH}/commons-${_COMMONS2}-${_SMALLCORE6}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/commons-$_COMMONS3-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/commons-$_COMMONS3-$_SMALLCORE7" ] ; then
-      _A="${_QR}/commons-$_COMMONS3-$_SMALLCORE7/sites"
-      _B="${_QH}/commons-$_COMMONS3-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/commons-${_COMMONS3}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/commons-${_COMMONS3}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/commons-${_COMMONS3}-${_SMALLCORE7}/sites"
+      _B="${_QH}/commons-${_COMMONS3}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/pressflow-$_SMALLCORE6-dev/sites" ] ; then
-    if [ ! -L "${_QH}/pressflow-$_SMALLCORE6-dev" ] ; then
-      _A="${_QR}/pressflow-$_SMALLCORE6-dev/sites"
-      _B="${_QH}/pressflow-$_SMALLCORE6-dev"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/pressflow-${_SMALLCORE6}-dev/sites" ] ; then
+    if [ ! -L "${_QH}/pressflow-${_SMALLCORE6}-dev" ] ; then
+      _A="${_QR}/pressflow-${_SMALLCORE6}-dev/sites"
+      _B="${_QH}/pressflow-${_SMALLCORE6}-dev"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/pressflow-$_SMALLCORE6-stage/sites" ] ; then
-    if [ ! -L "${_QH}/pressflow-$_SMALLCORE6-stage" ] ; then
-      _A="${_QR}/pressflow-$_SMALLCORE6-stage/sites"
-      _B="${_QH}/pressflow-$_SMALLCORE6-stage"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/pressflow-${_SMALLCORE6}-stage/sites" ] ; then
+    if [ ! -L "${_QH}/pressflow-${_SMALLCORE6}-stage" ] ; then
+      _A="${_QR}/pressflow-${_SMALLCORE6}-stage/sites"
+      _B="${_QH}/pressflow-${_SMALLCORE6}-stage"
+      ln -sf ${_A} ${_B}
     fi
   fi
   if [ ! -d "${_QR}/pressflow" ] ; then
-    if [ -d "${_QR}/pressflow-$_SMALLCORE6-prod/sites" ] ; then
-      if [ ! -L "${_QH}/pressflow-$_SMALLCORE6-prod" ] ; then
-        _A="${_QR}/pressflow-$_SMALLCORE6-prod/sites"
-        _B="${_QH}/pressflow-$_SMALLCORE6-prod"
-        ln -sf $_A $_B
+    if [ -d "${_QR}/pressflow-${_SMALLCORE6}-prod/sites" ] ; then
+      if [ ! -L "${_QH}/pressflow-${_SMALLCORE6}-prod" ] ; then
+        _A="${_QR}/pressflow-${_SMALLCORE6}-prod/sites"
+        _B="${_QH}/pressflow-${_SMALLCORE6}-prod"
+        ln -sf ${_A} ${_B}
       fi
     fi
-  elif [ ! -d "${_QR}/pressflow-$_SMALLCORE6-prod" ] ; then
+  elif [ ! -d "${_QR}/pressflow-${_SMALLCORE6}-prod" ] ; then
     if [ -d "${_QR}/pressflow/sites" ] ; then
-      if [ ! -L "${_QH}/pressflow-$_SMALLCORE6-prod" ] ; then
+      if [ ! -L "${_QH}/pressflow-${_SMALLCORE6}-prod" ] ; then
         _A="${_QR}/pressflow/sites"
-        _B="${_QH}/pressflow-$_SMALLCORE6-prod"
-        ln -sf $_A $_B
+        _B="${_QH}/pressflow-${_SMALLCORE6}-prod"
+        ln -sf ${_A} ${_B}
       fi
     fi
   fi
-  if [ -d "${_QR}/$_DRUPAL7D/sites" ] ; then
-    if [ ! -L "${_QH}/$_DRUPAL7-dev" ] ; then
-      _A="${_QR}/$_DRUPAL7D/sites"
-      _B="${_QH}/$_DRUPAL7-dev"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/${_DRUPAL7}D/sites" ] ; then
+    if [ ! -L "${_QH}/${_DRUPAL7}-dev" ] ; then
+      _A="${_QR}/${_DRUPAL7}D/sites"
+      _B="${_QH}/${_DRUPAL7}-dev"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/$_DRUPAL7S/sites" ] ; then
-    if [ ! -L "${_QH}/$_DRUPAL7-stage" ] ; then
-      _A="${_QR}/$_DRUPAL7S/sites"
-      _B="${_QH}/$_DRUPAL7-stage"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/${_DRUPAL7}S/sites" ] ; then
+    if [ ! -L "${_QH}/${_DRUPAL7}-stage" ] ; then
+      _A="${_QR}/${_DRUPAL7}S/sites"
+      _B="${_QH}/${_DRUPAL7}-stage"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ ! -d "${_QR}/$_DRUPAL7" ] ; then
-    if [ -d "${_QR}/$_DRUPAL7P/sites" ] ; then
-      if [ ! -L "${_QH}/$_DRUPAL7-prod" ] ; then
-        _A="${_QR}/$_DRUPAL7P/sites"
-        _B="${_QH}/$_DRUPAL7-prod"
-        ln -sf $_A $_B
+  if [ ! -d "${_QR}/${_DRUPAL7}" ] ; then
+    if [ -d "${_QR}/${_DRUPAL7}P/sites" ] ; then
+      if [ ! -L "${_QH}/${_DRUPAL7}-prod" ] ; then
+        _A="${_QR}/${_DRUPAL7}P/sites"
+        _B="${_QH}/${_DRUPAL7}-prod"
+        ln -sf ${_A} ${_B}
       fi
     fi
-  elif [ ! -d "${_QR}/$_DRUPAL7P" ] ; then
-    if [ -d "${_QR}/$_DRUPAL7/sites" ] ; then
-      if [ ! -L "${_QH}/$_DRUPAL7-prod" ] ; then
-        _A="${_QR}/$_DRUPAL7/sites"
-        _B="${_QH}/$_DRUPAL7-prod"
-        ln -sf $_A $_B
+  elif [ ! -d "${_QR}/${_DRUPAL7}P" ] ; then
+    if [ -d "${_QR}/${_DRUPAL7}/sites" ] ; then
+      if [ ! -L "${_QH}/${_DRUPAL7}-prod" ] ; then
+        _A="${_QR}/${_DRUPAL7}/sites"
+        _B="${_QH}/${_DRUPAL7}-prod"
+        ln -sf ${_A} ${_B}
       fi
     fi
   fi
-  if [ -d "${_QR}/drupal-$_SMALLCORE8/sites" ] ; then
-    if [ ! -L "${_QH}/drupal-$_SMALLCORE8" ] ; then
-      _A="${_QR}/drupal-$_SMALLCORE8/sites"
-      _B="${_QH}/drupal-$_SMALLCORE8"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/drupal-${_SMALLCORE8}/sites" ] ; then
+    if [ ! -L "${_QH}/drupal-${_SMALLCORE8}" ] ; then
+      _A="${_QR}/drupal-${_SMALLCORE8}/sites"
+      _B="${_QH}/drupal-${_SMALLCORE8}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/drupal-$_D8_DEV_LABEL/sites" ] ; then
-    if [ ! -L "${_QH}/drupal-$_D8_DEV_LABEL" ] ; then
-      _A="${_QR}/drupal-$_D8_DEV_LABEL/sites"
-      _B="${_QH}/drupal-$_D8_DEV_LABEL"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/drupal-${_D8_DEV_LABEL}/sites" ] ; then
+    if [ ! -L "${_QH}/drupal-${_D8_DEV_LABEL}" ] ; then
+      _A="${_QR}/drupal-${_D8_DEV_LABEL}/sites"
+      _B="${_QH}/drupal-${_D8_DEV_LABEL}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/erpal-$_ERPAL-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/erpal-$_ERPAL-$_SMALLCORE7" ] ; then
-      _A="${_QR}/erpal-$_ERPAL-$_SMALLCORE7/sites"
-      _B="${_QH}/erpal-$_ERPAL-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/erpal-${_ERPAL}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/erpal-${_ERPAL}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/erpal-${_ERPAL}-${_SMALLCORE7}/sites"
+      _B="${_QH}/erpal-${_ERPAL}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/fserver-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "${_QH}/fserver-$_SMALLCORE6" ] ; then
-      _A="${_QR}/fserver-$_SMALLCORE6/sites"
-      _B="${_QH}/fserver-$_SMALLCORE6"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/fserver-${_SMALLCORE6}/sites" ] ; then
+    if [ ! -L "${_QH}/fserver-${_SMALLCORE6}" ] ; then
+      _A="${_QR}/fserver-${_SMALLCORE6}/sites"
+      _B="${_QH}/fserver-${_SMALLCORE6}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/guardr-$_GUARDR-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/guardr-$_GUARDR-$_SMALLCORE7" ] ; then
-      _A="${_QR}/guardr-$_GUARDR-$_SMALLCORE7/sites"
-      _B="${_QH}/guardr-$_GUARDR-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/guardr-${_GUARDR}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/guardr-${_GUARDR}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/guardr-${_GUARDR}-${_SMALLCORE7}/sites"
+      _B="${_QH}/guardr-${_GUARDR}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/openacademy-$_OPENACADEMY-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/openacademy-$_OPENACADEMY-$_SMALLCORE7" ] ; then
-      _A="${_QR}/openacademy-$_OPENACADEMY-$_SMALLCORE7/sites"
-      _B="${_QH}/openacademy-$_OPENACADEMY-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}/sites"
+      _B="${_QH}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/openatrium-$_OPENATRIUM7-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/openatrium-$_OPENATRIUM7-$_SMALLCORE7" ] ; then
-      _A="${_QR}/openatrium-$_OPENATRIUM7-$_SMALLCORE7/sites"
-      _B="${_QH}/openatrium-$_OPENATRIUM7-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7}/sites"
+      _B="${_QH}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/openblog-$_OPENBLOG-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/openblog-$_OPENBLOG-$_SMALLCORE7" ] ; then
-      _A="${_QR}/openblog-$_OPENBLOG-$_SMALLCORE7/sites"
-      _B="${_QH}/openblog-$_OPENBLOG-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/openblog-${_OPENBLOG}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/openblog-${_OPENBLOG}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/openblog-${_OPENBLOG}-${_SMALLCORE7}/sites"
+      _B="${_QH}/openblog-${_OPENBLOG}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/openchurch-$_OPENCHURCH1-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/openchurch-$_OPENCHURCH1-$_SMALLCORE7" ] ; then
-      _A="${_QR}/openchurch-$_OPENCHURCH1-$_SMALLCORE7/sites"
-      _B="${_QH}/openchurch-$_OPENCHURCH1-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7}/sites"
+      _B="${_QH}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/openchurch-$_OPENCHURCH2-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/openchurch-$_OPENCHURCH2-$_SMALLCORE7" ] ; then
-      _A="${_QR}/openchurch-$_OPENCHURCH2-$_SMALLCORE7/sites"
-      _B="${_QH}/openchurch-$_OPENCHURCH2-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7}/sites"
+      _B="${_QH}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/opendeals-$_OPENDEALS-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/opendeals-$_OPENDEALS-$_SMALLCORE7" ] ; then
-      _A="${_QR}/opendeals-$_OPENDEALS-$_SMALLCORE7/sites"
-      _B="${_QH}/opendeals-$_OPENDEALS-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/opendeals-${_OPENDEALS}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/opendeals-${_OPENDEALS}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/opendeals-${_OPENDEALS}-${_SMALLCORE7}/sites"
+      _B="${_QH}/opendeals-${_OPENDEALS}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/openoutreach-$_OPENOUTREACH-$_SMALLCORE7" ] ; then
-      _A="${_QR}/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/sites"
-      _B="${_QH}/openoutreach-$_OPENOUTREACH-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7}/sites"
+      _B="${_QH}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/openpublic-$_OPENPUBLIC-$_SMALLCORE7" ] ; then
-      _A="${_QR}/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites"
-      _B="${_QH}/openpublic-$_OPENPUBLIC-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7}/sites"
+      _B="${_QH}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/openpublish-$_OPENPUBLISH-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/openpublish-$_OPENPUBLISH-$_SMALLCORE7" ] ; then
-      _A="${_QR}/openpublish-$_OPENPUBLISH-$_SMALLCORE7/sites"
-      _B="${_QH}/openpublish-$_OPENPUBLISH-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7}/sites"
+      _B="${_QH}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/openscholar-$_OPENSCHOLAR-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/openscholar-$_OPENSCHOLAR-$_SMALLCORE7" ] ; then
-      _A="${_QR}/openscholar-$_OPENSCHOLAR-$_SMALLCORE7/sites"
-      _B="${_QH}/openscholar-$_OPENSCHOLAR-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7}/sites"
+      _B="${_QH}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/panopoly-$_PANOPOLY-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/panopoly-$_PANOPOLY-$_SMALLCORE7" ] ; then
-      _A="${_QR}/panopoly-$_PANOPOLY-$_SMALLCORE7/sites"
-      _B="${_QH}/panopoly-$_PANOPOLY-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/panopoly-${_PANOPOLY}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/panopoly-${_PANOPOLY}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/panopoly-${_PANOPOLY}-${_SMALLCORE7}/sites"
+      _B="${_QH}/panopoly-${_PANOPOLY}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/recruiter-$_RECRUITER-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/recruiter-$_RECRUITER-$_SMALLCORE7" ] ; then
-      _A="${_QR}/recruiter-$_RECRUITER-$_SMALLCORE7/sites"
-      _B="${_QH}/recruiter-$_RECRUITER-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/recruiter-${_RECRUITER}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/recruiter-${_RECRUITER}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/recruiter-${_RECRUITER}-${_SMALLCORE7}/sites"
+      _B="${_QH}/recruiter-${_RECRUITER}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/restaurant-$_RESTAURANT-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/restaurant-$_RESTAURANT-$_SMALLCORE7" ] ; then
-      _A="${_QR}/restaurant-$_RESTAURANT-$_SMALLCORE7/sites"
-      _B="${_QH}/restaurant-$_RESTAURANT-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/restaurant-${_RESTAURANT}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/restaurant-${_RESTAURANT}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/restaurant-${_RESTAURANT}-${_SMALLCORE7}/sites"
+      _B="${_QH}/restaurant-${_RESTAURANT}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/ubercart-$_UBERCART6-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "${_QH}/ubercart-$_UBERCART6-$_SMALLCORE6" ] ; then
-      _A="${_QR}/ubercart-$_UBERCART6-$_SMALLCORE6/sites"
-      _B="${_QH}/ubercart-$_UBERCART6-$_SMALLCORE6"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/ubercart-${_UBERCART6}-${_SMALLCORE6}/sites" ] ; then
+    if [ ! -L "${_QH}/ubercart-${_UBERCART6}-${_SMALLCORE6}" ] ; then
+      _A="${_QR}/ubercart-${_UBERCART6}-${_SMALLCORE6}/sites"
+      _B="${_QH}/ubercart-${_UBERCART6}-${_SMALLCORE6}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/ubercart-$_UBERCART7-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/ubercart-$_UBERCART7-$_SMALLCORE7" ] ; then
-      _A="${_QR}/ubercart-$_UBERCART7-$_SMALLCORE7/sites"
-      _B="${_QH}/ubercart-$_UBERCART7-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/ubercart-${_UBERCART7}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/ubercart-${_UBERCART7}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/ubercart-${_UBERCART7}-${_SMALLCORE7}/sites"
+      _B="${_QH}/ubercart-${_UBERCART7}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/ubercart-testing-$_UBERCART7-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "${_QH}/ubercart-testing-$_UBERCART7-$_SMALLCORE7" ] ; then
-      _A="${_QR}/ubercart-testing-$_UBERCART7-$_SMALLCORE7/sites"
-      _B="${_QH}/ubercart-testing-$_UBERCART7-$_SMALLCORE7"
-      ln -sf $_A $_B
+  if [ -d "${_QR}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}/sites" ] ; then
+    if [ ! -L "${_QH}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}" ] ; then
+      _A="${_QR}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}/sites"
+      _B="${_QH}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}"
+      ln -sf ${_A} ${_B}
     fi
   fi
 fi
@@ -1887,52 +1887,52 @@ fi
 
 ###---### Create ~/static dir if not exists.
 #
-if [ ! -d "$_ROOT/static" ] ; then
-  mkdir -p $_ROOT/static
-  ln -sf $_ROOT/static /home/$_USERFTP/static
+if [ ! -d "${_ROOT}/static" ] ; then
+  mkdir -p ${_ROOT}/static
+  ln -sf ${_ROOT}/static /home/${_USERFTP}/static
 fi
-chown $_USER:$_USRG $_ROOT/static &> /dev/null
-chmod 02775 $_ROOT/static &> /dev/null
-echo empty > $_ROOT/static/EMPTY.txt
+chown ${_USER}:${_USRG} ${_ROOT}/static &> /dev/null
+chmod 02775 ${_ROOT}/static &> /dev/null
+echo empty > ${_ROOT}/static/EMPTY.txt
 
 
 ###---### Create ~/.tmp dir if not exists.
 #
-if [ ! -d "$_ROOT/.tmp" ] ; then
-  rm -f -r $_ROOT/.tmp
-  mkdir -p $_ROOT/.tmp
+if [ ! -d "${_ROOT}/.tmp" ] ; then
+  rm -f -r ${_ROOT}/.tmp
+  mkdir -p ${_ROOT}/.tmp
 fi
-chown $_USERFTP:www-data $_ROOT/.tmp
-chmod 02775 $_ROOT/.tmp
+chown ${_USERFTP}:www-data ${_ROOT}/.tmp
+chmod 02775 ${_ROOT}/.tmp
 
 
 ###---### Create .ssh dir and keys if not exist, plus some known_hosts for system user.
 #
-if [ ! -e "$_ROOT/.ssh/id_rsa.pub" ] ; then
-  su -s /bin/bash - $_USER -c "ssh-keygen -b 4096 -t rsa -N \"\" -f ~/.ssh/id_rsa" &> /dev/null
-  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H $_USER.beanstalkapp.com >> ~/.ssh/known_hosts" &> /dev/null
-  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H $_USER.unfuddle.com >> ~/.ssh/known_hosts" &> /dev/null
-  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H beanstalkapp.com >> ~/.ssh/known_hosts" &> /dev/null
-  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H bitbucket.org >> ~/.ssh/known_hosts" &> /dev/null
-  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H codebasehq.com >> ~/.ssh/known_hosts" &> /dev/null
-  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H drupal.org >> ~/.ssh/known_hosts" &> /dev/null
-  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H git.drupal.org >> ~/.ssh/known_hosts" &> /dev/null
-  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H github.com >> ~/.ssh/known_hosts" &> /dev/null
-  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H gitorious.org >> ~/.ssh/known_hosts" &> /dev/null
-  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H unfuddle.com >> ~/.ssh/known_hosts" &> /dev/null
-  cp -af $_ROOT/.ssh/id_rsa.pub $_ROOT/static/$_USER.id_rsa.pub
-  chmod 644 $_ROOT/static/$_USER.id_rsa.pub
+if [ ! -e "${_ROOT}/.ssh/id_rsa.pub" ] ; then
+  su -s /bin/bash - ${_USER} -c "ssh-keygen -b 4096 -t rsa -N \"\" -f ~/.ssh/id_rsa" &> /dev/null
+  su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H ${_USER}.beanstalkapp.com >> ~/.ssh/known_hosts" &> /dev/null
+  su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H ${_USER}.unfuddle.com >> ~/.ssh/known_hosts" &> /dev/null
+  su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H beanstalkapp.com >> ~/.ssh/known_hosts" &> /dev/null
+  su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H bitbucket.org >> ~/.ssh/known_hosts" &> /dev/null
+  su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H codebasehq.com >> ~/.ssh/known_hosts" &> /dev/null
+  su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H drupal.org >> ~/.ssh/known_hosts" &> /dev/null
+  su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H git.drupal.org >> ~/.ssh/known_hosts" &> /dev/null
+  su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H github.com >> ~/.ssh/known_hosts" &> /dev/null
+  su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H gitorious.org >> ~/.ssh/known_hosts" &> /dev/null
+  su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H unfuddle.com >> ~/.ssh/known_hosts" &> /dev/null
+  cp -af ${_ROOT}/.ssh/id_rsa.pub ${_ROOT}/static/${_USER}.id_rsa.pub
+  chmod 644 ${_ROOT}/static/${_USER}.id_rsa.pub
 fi
 
 
 ###---### Create .bazaar dir and conf file if not exist for system user.
 #
-_SYSTEM_USER_BZR="$_ROOT/.bazaar"
+_SYSTEM_USER_BZR="${_ROOT}/.bazaar"
 if [ -x "/usr/local/bin/bzr" ] ; then
   if [ ! -e "$_SYSTEM_USER_BZR/bazaar.conf" ] ; then
     mkdir -p $_SYSTEM_USER_BZR
     echo ignore_missing_extensions=True > $_SYSTEM_USER_BZR/bazaar.conf
-    chown -R $_USER:$_USRG $_SYSTEM_USER_BZR
+    chown -R ${_USER}:${_USRG} $_SYSTEM_USER_BZR
     chmod 700 $_SYSTEM_USER_BZR
   fi
 else
@@ -1942,12 +1942,12 @@ fi
 
 ###---### Create other dirs and symlinks if not exist.
 #
-if [ "$_HM_ONLY" = "YES" ] ; then
+if [ "${_HM_ONLY}" = "YES" ] ; then
   _DO_NOTHING=YES
 else
   if [ ! -d "${_QR}/keys" ] ; then
     mkdir -p ${_QR}/keys
-    chown $_USERFTP:$_WEBG ${_QR}/keys &> /dev/null
+    chown ${_USERFTP}:${_WEBG} ${_QR}/keys &> /dev/null
     chmod 02775 ${_QR}/keys
   fi
   if [ -d "${_QR}/keys" ] ; then
@@ -1966,45 +1966,45 @@ fi
 
 ###---### Remove not used cache module.
 #
-if [ ! -e "$_D/000/old_cache.out2.txt" ] && [ -e "$_D/000" ] ; then
-  sed -i "s/, 'cache'//g" $_D/*/*/profiles/*/*.profile &> /dev/null
-  sed -i "s/'cache', //g" $_D/*/*/profiles/*/*.profile &> /dev/null
-  rm -f -r $_D/*/o_contrib/cache
-  touch $_D/000/old_cache.out2.txt
+if [ ! -e "${_D}/000/old_cache.out2.txt" ] && [ -e "${_D}/000" ] ; then
+  sed -i "s/, 'cache'//g" ${_D}/*/*/profiles/*/*.profile &> /dev/null
+  sed -i "s/'cache', //g" ${_D}/*/*/profiles/*/*.profile &> /dev/null
+  rm -f -r ${_D}/*/o_contrib/cache
+  touch ${_D}/000/old_cache.out2.txt
 fi
 
 
 ###---### Preparing setupmail.txt.
 #
-if [ "$_HM_ONLY" = "YES" ] ; then
+if [ "${_HM_ONLY}" = "YES" ] ; then
   _DO_NOTHING=YES
 else
-  msg "$_STATUS A: Preparing setupmail.txt"
+  msg "${_STATUS} A: Preparing setupmail.txt"
   _AT_CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _A_DM_EMAIL=${_ADM_EMAIL//\\\@/\@}
   # rm -f /opt/tmp/.admemail.txt
-  if [ -e "$_ROOT/log/setupmail.txt" ] ; then
-    if [ "$_DIST_INSTALL" = "YES" ] ; then
-      cd $_ROOT/log
-      if [ -e "$_ROOT/log/upgrademail.txt" ] ; then
-        mv -f $_ROOT/log/upgrademail.txt \
-          $_ROOT/log/upgrademail-pre-$_THIS_CORE.txt
+  if [ -e "${_ROOT}/log/setupmail.txt" ] ; then
+    if [ "${_D}IST_INSTALL" = "YES" ] ; then
+      cd ${_ROOT}/log
+      if [ -e "${_ROOT}/log/upgrademail.txt" ] ; then
+        mv -f ${_ROOT}/log/upgrademail.txt \
+          ${_ROOT}/log/upgrademail-pre-$_THIS_CORE.txt
       fi
       cp -af /opt/tmp/boa/aegir/conf/upgrademail.txt ./
-      sed -i "s/aegir.dragon.ny.host8.biz/$_DOMAIN/g" $_ROOT/log/upgrademail.txt
-      sed -i "s/dragon/$_USER/g" $_ROOT/log/upgrademail.txt
-      sed -i "s/FN8rXcQn/$_PASWD/g" $_ROOT/log/upgrademail.txt
-      sed -i "s/166.84.6.231/$_THISHTIP/g" $_ROOT/log/upgrademail.txt
+      sed -i "s/aegir.dragon.ny.host8.biz/${_DOMAIN}/g" ${_ROOT}/log/upgrademail.txt
+      sed -i "s/dragon/${_USER}/g" ${_ROOT}/log/upgrademail.txt
+      sed -i "s/FN8rXcQn/$_PASWD/g" ${_ROOT}/log/upgrademail.txt
+      sed -i "s/166.84.6.231/${_THISHTIP}/g" ${_ROOT}/log/upgrademail.txt
     else
       _SEND_UPGRADE_EMAIL=NO
     fi
-  elif [ "$_STATUS" = "INIT" ] ; then
-   cd $_ROOT/log
+  elif [ "${_STATUS}" = "INIT" ] ; then
+   cd ${_ROOT}/log
    cp -af /opt/tmp/boa/aegir/conf/setupmail.txt ./
-   sed -i "s/aegir.dragon.ny.host8.biz/$_DOMAIN/g" $_ROOT/log/setupmail.txt
-   sed -i "s/dragon/$_USER/g" $_ROOT/log/setupmail.txt
-   sed -i "s/FN8rXcQn/$_PASWD/g" $_ROOT/log/setupmail.txt
-   sed -i "s/166.84.6.231/$_THISHTIP/g" $_ROOT/log/setupmail.txt
+   sed -i "s/aegir.dragon.ny.host8.biz/${_DOMAIN}/g" ${_ROOT}/log/setupmail.txt
+   sed -i "s/dragon/${_USER}/g" ${_ROOT}/log/setupmail.txt
+   sed -i "s/FN8rXcQn/$_PASWD/g" ${_ROOT}/log/setupmail.txt
+   sed -i "s/166.84.6.231/${_THISHTIP}/g" ${_ROOT}/log/setupmail.txt
   fi
 fi
 
@@ -2012,60 +2012,60 @@ fi
 ###---### Sending setup e-mail.
 #
 _MAILX_TEST=$(mail -V 2>&1)
-if [ "$_STATUS" = "INIT" ] ; then
-  msg "$_STATUS A: Sending setup e-mail on init..."
+if [ "${_STATUS}" = "INIT" ] ; then
+  msg "${_STATUS} A: Sending setup e-mail on init..."
   TIME=$(date 2>&1)
-  _Q="Your Aegir Install on $TIME [$_USER]"
-  echo $TIME > $_ROOT/log/date-init.txt
-  if [ -e "$_ROOT/log/setupmail.txt" ] ; then
+  _Q="Your Aegir Install on $TIME [${_USER}]"
+  echo $TIME > ${_ROOT}/log/date-init.txt
+  if [ -e "${_ROOT}/log/setupmail.txt" ] ; then
     if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
-      cat $_ROOT/log/setupmail.txt \
+      cat ${_ROOT}/log/setupmail.txt \
         | sed "s/[\~]//g" \
         | mail -a "From: $_A_DM_EMAIL" \
         -a "Bcc: $_A_DM_EMAIL" -e -s "$_Q" $_AT_CLIENT_EMAIL
     elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
-      cat $_ROOT/log/setupmail.txt \
+      cat ${_ROOT}/log/setupmail.txt \
         | mail -a "From: $_A_DM_EMAIL" \
         -e -b $_A_DM_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
     else
-      cat $_ROOT/log/setupmail.txt \
+      cat ${_ROOT}/log/setupmail.txt \
         | mail -r $_A_DM_EMAIL \
         -e -b $_A_DM_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
     fi
   fi
 else
-  if [ "$_DIST_INSTALL" = "YES" ] && [ "$_PLATFORMS_ONLY" = "NO" ] ; then
-    msg "$_STATUS A: Resending setup e-mail on upgrade..."
+  if [ "${_D}IST_INSTALL" = "YES" ] && [ "${_PLATFORMS_ONLY}" = "NO" ] ; then
+    msg "${_STATUS} A: Resending setup e-mail on upgrade..."
     TIME=$(date 2>&1)
-    _Q="Your Aegir Upgrade on $TIME [$_USER]"
-    echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
-    if [ -e "$_ROOT/log/upgrademail.txt" ] ; then
+    _Q="Your Aegir Upgrade on $TIME [${_USER}]"
+    echo $TIME > ${_ROOT}/log/date-upgrade-$_THIS_CORE.txt
+    if [ -e "${_ROOT}/log/upgrademail.txt" ] ; then
       if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
-        cat $_ROOT/log/upgrademail.txt \
+        cat ${_ROOT}/log/upgrademail.txt \
           | sed "s/[\~]//g" \
           | mail -a "From: $_A_DM_EMAIL" \
           -a "Bcc: $_A_DM_EMAIL" -e -s "$_Q" $_AT_CLIENT_EMAIL
       elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
-        cat $_ROOT/log/upgrademail.txt \
+        cat ${_ROOT}/log/upgrademail.txt \
           | mail -a "From: $_A_DM_EMAIL" \
           -e -b $_A_DM_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
       else
-        cat $_ROOT/log/upgrademail.txt \
+        cat ${_ROOT}/log/upgrademail.txt \
           | mail -r $_A_DM_EMAIL \
           -e -b $_A_DM_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
       fi
     else
       if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
-        cat $_ROOT/log/setupmail.txt \
+        cat ${_ROOT}/log/setupmail.txt \
           | sed "s/[\~]//g" \
           | mail -a "From: $_A_DM_EMAIL" \
           -a "Bcc: $_A_DM_EMAIL" -e -s "$_Q" $_AT_CLIENT_EMAIL
       elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
-        cat $_ROOT/log/setupmail.txt \
+        cat ${_ROOT}/log/setupmail.txt \
           | mail -a "From: $_A_DM_EMAIL" \
           -e -b $_A_DM_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
       else
-        cat $_ROOT/log/setupmail.txt \
+        cat ${_ROOT}/log/setupmail.txt \
           | mail -r $_A_DM_EMAIL \
           -e -b $_A_DM_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
       fi
@@ -2079,49 +2079,49 @@ fi
 ###---### Touch install logs.
 #
 TIME=$(date 2>&1)
-if [ "$_STATUS" = "INIT" ] ; then
- echo $TIME > $_ROOT/log/date-init.txt
+if [ "${_STATUS}" = "INIT" ] ; then
+ echo $TIME > ${_ROOT}/log/date-init.txt
 else
- echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
+ echo $TIME > ${_ROOT}/log/date-upgrade-$_THIS_CORE.txt
 fi
 echo "$(date 2>&1) / $(lsb_release -si 2>&1).$(lsb_release -sc 2>&1) $(uname -m 2>&1) \
-  / Aegir $_AEGIR_VERSION / Octopus ${_X_VERSION} \
-  / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION" \
-  >> $_ROOT/log/octopus_log.txt
-msg "$_STATUS A: New entry added to $_ROOT/log/octopus_log.txt"
+  / Aegir ${_AEGIR_VERSION} / Octopus ${_X_VERSION} \
+  / FPM ${_PHP_FPM_VERSION} / CLI ${_PHP_CLI_VERSION}" \
+  >> ${_ROOT}/log/octopus_log.txt
+msg "${_STATUS} A: New entry added to ${_ROOT}/log/octopus_log.txt"
 
 
 ###---### Final cleaning.
 #
-msg "$_STATUS A: Final cleaning, please wait a moment..."
+msg "${_STATUS} A: Final cleaning, please wait a moment..."
 cd /
 chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt &> /dev/null
 chmod 711 opt sbin selinux srv sys usr var share run &> /dev/null
 chmod 700 root &> /dev/null
-if [ -e "$_D" ] ; then
-  if [ ! -f "$_D/permissions-fix-${_X_VERSION}-$_TODAY.info" ] ; then
-    find $_D/000 -type d -exec chmod 0755 {} \; &> /dev/null
-    find $_D/000 -type f -exec chmod 0644 {} \; &> /dev/null
-    st_runner "chmod 755 $_D/*/*/profiles" &> /dev/null
-    st_runner "chmod 02775 $_D/*/*/sites/all/{modules,libraries,themes}" &> /dev/null
-    st_runner "chmod 02775 $_D/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
-    st_runner "chown -R root:root $_D" &> /dev/null
-    st_runner "chown -R root:users $_D/*/*/sites" &> /dev/null
-    echo fixed > $_D/permissions-fix-${_X_VERSION}-$_TODAY.info
+if [ -e "${_D}" ] ; then
+  if [ ! -f "${_D}/permissions-fix-${_X_VERSION}-${_TODAY}.info" ] ; then
+    find ${_D}/000 -type d -exec chmod 0755 {} \; &> /dev/null
+    find ${_D}/000 -type f -exec chmod 0644 {} \; &> /dev/null
+    st_runner "chmod 755 ${_D}/*/*/profiles" &> /dev/null
+    st_runner "chmod 02775 ${_D}/*/*/sites/all/{modules,libraries,themes}" &> /dev/null
+    st_runner "chmod 02775 ${_D}/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
+    st_runner "chown -R root:root ${_D}" &> /dev/null
+    st_runner "chown -R root:users ${_D}/*/*/sites" &> /dev/null
+    echo fixed > ${_D}/permissions-fix-${_X_VERSION}-${_TODAY}.info
   fi
-  chown root:root $_D &> /dev/null
+  chown root:root ${_D} &> /dev/null
   chown root:root $_CORE &> /dev/null
   st_runner "chown -R root:root /data/conf" &> /dev/null
   st_runner "chown -R root:root $_CORE/o_contrib" &> /dev/null
   st_runner "chown -R root:root $_CORE/o_contrib_seven" &> /dev/null
-  st_runner "chown -R root:root $_D/000" &> /dev/null
+  st_runner "chown -R root:root ${_D}/000" &> /dev/null
   find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
   find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
   chown root:root /opt/tmp &> /dev/null
-  chmod 0711 /data $_D/* /data/disk /data/conf &> /dev/null
-  chmod 0755 $_D $_D/000 &> /dev/null
+  chmod 0711 /data ${_D}/* /data/disk /data/conf &> /dev/null
+  chmod 0755 ${_D} ${_D}/000 &> /dev/null
 elif [ -e "/data/disk/all" ] ; then
-  if [ ! -f "/data/disk/all/permissions-fix-${_X_VERSION}-$_TODAY.info" ] ; then
+  if [ ! -f "/data/disk/all/permissions-fix-${_X_VERSION}-${_TODAY}.info" ] ; then
     find /data/disk/all/000 -type d -exec chmod 0755 {} \; &> /dev/null
     find /data/disk/all/000 -type f -exec chmod 0644 {} \; &> /dev/null
     st_runner "chmod 755 /data/disk/all/*/*/profiles" &> /dev/null
@@ -2129,7 +2129,7 @@ elif [ -e "/data/disk/all" ] ; then
     st_runner "chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
     st_runner "chown -R root:root /data/disk/all" &> /dev/null
     st_runner "chown -R root:users /data/disk/all/*/*/sites" &> /dev/null
-    echo fixed > /data/disk/all/permissions-fix-${_X_VERSION}-$_TODAY.info
+    echo fixed > /data/disk/all/permissions-fix-${_X_VERSION}-${_TODAY}.info
   fi
   chown root:root /data/disk/all &> /dev/null
   chown root:root $_CORE &> /dev/null
@@ -2146,35 +2146,35 @@ fi
 chmod 0700 /data/u &> /dev/null
 chown root:root /data/u &> /dev/null
 rm -f /data/u/*host8* &> /dev/null
-mv -f $_ROOT/backups/drupalgeddon-pre* $_ROOT/backups/system/ &> /dev/null
-mv -f $_ROOT/backups/drush_make-pre* $_ROOT/backups/system/ &> /dev/null
-mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
-mv -f $_ROOT/backups/provision_boost-pre* $_ROOT/backups/system/ &> /dev/null
-mv -f $_ROOT/backups/provision_cdn-pre* $_ROOT/backups/system/ &> /dev/null
-mv -f $_ROOT/backups/provision_civicrm-pre* $_ROOT/backups/system/ &> /dev/null
-mv -f $_ROOT/backups/provision_platform_git-pre* $_ROOT/backups/system/ &> /dev/null
-mv -f $_ROOT/backups/provision_site_backup-pre* $_ROOT/backups/system/ &> /dev/null
-mv -f $_ROOT/backups/provision_tasks_extra-pre* $_ROOT/backups/system/ &> /dev/null
-mv -f $_ROOT/backups/provision-pre* $_ROOT/backups/system/ &> /dev/null
-mv -f $_ROOT/backups/registry_rebuild-pre* $_ROOT/backups/system/ &> /dev/null
+mv -f ${_ROOT}/backups/drupalgeddon-pre* ${_ROOT}/backups/system/ &> /dev/null
+mv -f ${_ROOT}/backups/drush_make-pre* ${_ROOT}/backups/system/ &> /dev/null
+mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/ &> /dev/null
+mv -f ${_ROOT}/backups/provision_boost-pre* ${_ROOT}/backups/system/ &> /dev/null
+mv -f ${_ROOT}/backups/provision_cdn-pre* ${_ROOT}/backups/system/ &> /dev/null
+mv -f ${_ROOT}/backups/provision_civicrm-pre* ${_ROOT}/backups/system/ &> /dev/null
+mv -f ${_ROOT}/backups/provision_platform_git-pre* ${_ROOT}/backups/system/ &> /dev/null
+mv -f ${_ROOT}/backups/provision_site_backup-pre* ${_ROOT}/backups/system/ &> /dev/null
+mv -f ${_ROOT}/backups/provision_tasks_extra-pre* ${_ROOT}/backups/system/ &> /dev/null
+mv -f ${_ROOT}/backups/provision-pre* ${_ROOT}/backups/system/ &> /dev/null
+mv -f ${_ROOT}/backups/registry_rebuild-pre* ${_ROOT}/backups/system/ &> /dev/null
 mkdir -p /data/conf/arch
 mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
 mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
 mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
-find $_ROOT/static/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
-find $_ROOT/static/*/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
-find $_ROOT/static/*/*/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
-find $_ROOT/static/*/*/*/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
-if [ -d "$_CORE/$_DRUPAL7" ] ; then
+find ${_ROOT}/static/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
+find ${_ROOT}/static/*/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
+find ${_ROOT}/static/*/*/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
+find ${_ROOT}/static/*/*/*/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
+if [ -d "$_CORE/${_DRUPAL7}" ] ; then
   mkdir -p /var/backups/trash
   rm -f -r /var/backups/trash/*
-  mv -f $_CORE/$_DRUPAL7 /var/backups/trash/ &> /dev/null
+  mv -f $_CORE/${_DRUPAL7} /var/backups/trash/ &> /dev/null
 fi
-if [ "$_STATUS" = "INIT" ] ; then
-  if [ "$_DEBUG_MODE" = "YES" ] ; then
+if [ "${_STATUS}" = "INIT" ] ; then
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
     _DO_NOTHING=YES
   else
-    _AEGIR_LOGIN_URL=$(grep --text "^http://$_DOMAIN" $_ROOT/log/install.log 2>&1)
+    _AEGIR_LOGIN_URL=$(grep --text "^http://${_DOMAIN}" ${_ROOT}/log/install.log 2>&1)
     if [ ! -z "$_AEGIR_LOGIN_URL" ] ; then
       echo " "
       msg "INFO: Congratulations, Aegir backend and frontend have been installed successfully"
@@ -2185,7 +2185,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     else
       msg "ALRT! Something went wrong"
       msg "ALRT! Please check the install log for details:"
-      msg "ALRT! $_ROOT/log/install.log"
+      msg "ALRT! ${_ROOT}/log/install.log"
     fi
   fi
 else
@@ -2193,10 +2193,10 @@ else
   o_contrib_seven_update_global
 fi
 if [ ! -e "/root/.upstart.cnf" ] ; then
-  msg "$_STATUS A: Starting the cron now"
+  msg "${_STATUS} A: Starting the cron now"
   service cron start &> /dev/null
 fi
-msg "$_STATUS A: All done!"
+msg "${_STATUS} A: All done!"
 msg "BYE!"
 
 touch /opt/tmp/status-AegirSetupA-OK
