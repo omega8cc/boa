@@ -843,9 +843,9 @@ switch_newrelic() {
 #
 # Update web user.
 update_web_user() {
-  local _T_HD="/home/${_WEB}/.drush"
-  local _T_TP="/home/${_WEB}/.tmp"
-  local _T_II="${_T_HD}/php.ini"
+  _T_HD="/home/${_WEB}/.drush"
+  _T_TP="/home/${_WEB}/.tmp"
+  _T_II="${_T_HD}/php.ini"
   if [ -e "/home/${_WEB}" ] ; then
     mkdir -p /home/${_WEB}/.{tmp,drush}
     if [ ! -z "$1" ] ; then
@@ -935,9 +935,9 @@ remove_web_user() {
 #
 # Add web user.
 create_web_user() {
-  local _T_HD="/home/${_WEB}/.drush"
-  local _T_II="${_T_HD}/php.ini"
-  local _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
+  _T_HD="/home/${_WEB}/.drush"
+  _T_II="${_T_HD}/php.ini"
+  _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
   if [ ! -z "$_T_ID_EXISTS" ] && [ -e "${_T_II}" ] ; then
     update_web_user "$1"
   elif [ -z "$_T_ID_EXISTS" ] || [ ! -e "${_T_II}" ] ; then

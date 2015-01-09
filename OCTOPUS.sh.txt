@@ -843,9 +843,9 @@ tune_fpm_workers() {
 #
 # Update web user.
 update_web_user() {
-  local _T_HD="/home/${_WEB}/.drush"
-  local _T_TP="/home/${_WEB}/.tmp"
-  local _T_II="${_T_HD}/php.ini"
+  _T_HD="/home/${_WEB}/.drush"
+  _T_TP="/home/${_WEB}/.tmp"
+  _T_II="${_T_HD}/php.ini"
   if [ -e "/home/${_WEB}" ] ; then
     mkdir -p /home/${_WEB}/.{tmp,drush}
     if [ ! -z "$1" ] ; then
@@ -935,9 +935,9 @@ remove_web_user() {
 #
 # Add web user.
 create_web_user() {
-  local _T_HD="/home/${_WEB}/.drush"
-  local _T_II="${_T_HD}/php.ini"
-  local _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
+  _T_HD="/home/${_WEB}/.drush"
+  _T_II="${_T_HD}/php.ini"
+  _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
   if [ ! -z "$_T_ID_EXISTS" ] && [ -e "${_T_II}" ] ; then
     update_web_user "$1"
   elif [ -z "$_T_ID_EXISTS" ] || [ ! -e "${_T_II}" ] ; then
@@ -1644,8 +1644,8 @@ fix_advanced_cron_curl() {
       | cut -d: -f2 \
       | awk '{ print $3}' \
       | sed "s/[\,']//g"`
-    local pthA="profiles/hostmaster/modules/hosting_advanced_cron"
-    local pthB="hosting_advanced_cron.module"
+    pthA="profiles/hostmaster/modules/hosting_advanced_cron"
+    pthB="hosting_advanced_cron.module"
     if [ -e "$_THIS_HM_ROOT/${pthA}/${pthB}" ] ; then
       sed -i "s/127.0.0.1/$_CRON_IP/g" $_THIS_HM_ROOT/${pthA}/${pthB}
     fi

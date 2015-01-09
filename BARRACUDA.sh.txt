@@ -2522,9 +2522,9 @@ tune_web_server_config() {
 #
 # Tune memory limits for SQL server.
 tune_sql_memory_limits() {
-  local urlDld="https://raw.githubusercontent.com/major/MySQLTuner-perl/master"
-  local pthTun="/var/opt/mysqltuner.pl"
-  local outTun="/var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt"
+  urlDld="https://raw.githubusercontent.com/major/MySQLTuner-perl/master"
+  pthTun="/var/opt/mysqltuner.pl"
+  outTun="/var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt"
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ] ; then
@@ -4182,7 +4182,7 @@ install_php_multi() {
   if [ "$_REL_VERSION" = "wheezy" ] \
     || [ "$_REL_VERSION" = "trusty" ] \
     || [ "$_REL_VERSION" = "precise" ] ; then
-    local patchFile="disable_SSLv2_for_openssl_1_0_0.patch"
+    patchFile="disable_SSLv2_for_openssl_1_0_0.patch"
     patch -p1 < ${pthBld}/aegir/patches/${patchFile} &> /dev/null
   fi
   ### cd sapi/fpm/fpm
@@ -4570,7 +4570,7 @@ upgrade_aegir_master() {
     chmod -R 02775 $_THIS_HM_SITE/files
     cd /var/aegir
     cp ${pthBld}/aegir/scripts/AegirUpgrade.sh.txt ./
-    local pthAue="/var/aegir/AegirUpgrade.sh.txt"
+    pthAue="/var/aegir/AegirUpgrade.sh.txt"
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         ${pthAue}
     sed -i "s/EDIT_AEGIR_XTS_VERSION/$_AEGIR_XTS_VERSION/g" ${pthAue}
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  ${pthAue}
@@ -4957,7 +4957,7 @@ update_newrelic() {
       mkdir -p /var/backups/nr
       mv -f /etc/newrelic \
         /var/backups/nr/etc-newrelic-pre-${_X_VERSION}-${_NOW} &> /dev/null
-      local pthNrx="lib/php/extensions/no-debug-non-zts"
+      pthNrx="lib/php/extensions/no-debug-non-zts"
       _PHP_EXT_DIR_56="/opt/php56/${pthNrx}-$_PHP56_API"
       _PHP_EXT_DIR_55="/opt/php55/${pthNrx}-$_PHP55_API"
       _PHP_EXT_DIR_54="/opt/php54/${pthNrx}-$_PHP54_API"
@@ -4981,7 +4981,7 @@ update_newrelic() {
       else
         _SYSTEM_ARCH="x32"
       fi
-      local pthNra="/usr/lib/newrelic-php5/agent"
+      pthNra="/usr/lib/newrelic-php5/agent"
       if [ -e "$_PHP_EXT_DIR_56" ] && [ ! -e "$_PHP_EXT_DIR_56/newrelic.so" ] \
         && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-$_PHP56_API.so" ] ; then
         ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-$_PHP56_API.so \
@@ -5084,7 +5084,7 @@ install_newrelic() {
         else
           _SYSTEM_ARCH="x32"
         fi
-        local pthNra="/usr/lib/newrelic-php5/agent"
+        pthNra="/usr/lib/newrelic-php5/agent"
         if [ -e "$_PHP_EXT_DIR_56" ] && [ ! -e "$_PHP_EXT_DIR_56/newrelic.so" ] \
           && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-$_PHP56_API.so" ] ; then
           ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-$_PHP56_API.so \
