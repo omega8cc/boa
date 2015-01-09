@@ -10,7 +10,7 @@ $mailx_test = `mail -V 2>&1`;
 $status="CLEAN";
 $fixfile = "/var/xdrago/acrashsql.sh";
 system("rm -f $fixfile");
-$server=$(uname -n 2>&1);
+$server=`uname -n`;
 chomp($server);
 $timedate=`date +%y%m%d-%H%M`;
 chomp($timedate);
