@@ -1610,9 +1610,9 @@ msg "$_STATUS A: Creating ftp symlinks"
 
   if [ ! -d "${_QH}" ] ; then
     mkdir -p ${_QH}
-    msg "DEBUG: _QH is $_QH in action symlinks 1"
+    ### msg "DEBUG: _QH is $_QH in action symlinks 1"
   fi
-  msg "DEBUG: _QH is $_QH in action symlinks 2"
+  ### msg "DEBUG: _QH is $_QH in action symlinks 2"
   chown -R $_USER:$_USRG /home/$_USERFTP/platforms &> /dev/null
   chmod 700 /home/$_USERFTP &> /dev/null
   rm -f ${_QH}/{cod,commerce,commons,openatrium,openscholar,drupal6,drupal7}
