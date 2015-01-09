@@ -3,10 +3,10 @@
 export PATH=$PATH:/opt/local/bin
 _ALL="$@"
 _INTERNAL=NO
-_LTD_GID=$(id -nG $USER)
-_LTD_UID=$(id -nu $USER)
+_LTD_GID=$(id -nG $USER 2>&1)
+_LTD_UID=$(id -nu $USER 2>&1)
 if [ -z "$USER" ] ; then
-  USER=$(id -nu $USER)
+  USER=$(id -nu $USER 2>&1)
   _LTD_QQQ=YES
 fi
 _X_USR=".*"
@@ -72,14 +72,14 @@ fi
 # echo 5 is $5
 
 # Check PHP CLI version defined.
-check_php_cli_version () {
+check_php_cli_version() {
   if [ "$HOME" = "/var/aegir" ] ; then
-    _PHP_CLI=`grep "/opt/php" /var/aegir/drush/drush.php`
+    _PHP_CLI=$(grep "/opt/php" /var/aegir/drush/drush.php 2>&1)
   elif [[ "$HOME" =~ "/data/disk/" ]] ; then
-    _PHP_CLI=`grep "/opt/php" /data/disk/$_Y_USR/tools/drush/drush.php`
+    _PHP_CLI=$(grep "/opt/php" /data/disk/$_Y_USR/tools/drush/drush.php 2>&1)
   else
     if [ -f "/data/disk/$_Y_USR/tools/drush/drush.php" ] ; then
-      _PHP_CLI=`grep "/opt/php" /data/disk/$_Y_USR/tools/drush/drush.php`
+      _PHP_CLI=$(grep "/opt/php" /data/disk/$_Y_USR/tools/drush/drush.php 2>&1)
     fi
   fi
   if [[ "$_PHP_CLI" =~ "php55" ]] ; then
@@ -116,12 +116,12 @@ if [ "$_LTD_GID" = "www-data users" ] \
       _IN_PATH=YES
       _INTERNAL=YES
       if [[ "$_ALL" =~ "drush" ]] ; then
-        _PWD=$(pwd)
+        _PWD=$(pwd 2>&1)
         check_php_cli_version
         if [[ "$2" =~ "pm-update" ]] ; then
           DRUSH_PHP=""
-          _PHP_DEFAULT=`/usr/bin/php-cli -v | grep 'PHP 5' \
-            | cut -d: -f1 | awk '{ print $2}'`
+          _PHP_DEFAULT=$(/usr/bin/php-cli -v | grep 'PHP 5' \
+            | cut -d: -f1 | awk '{ print $2}' 2>&1)
           if [[ "$_PHP_DEFAULT" =~ "5.5." ]] ; then
             PHP_INI="/opt/php55/lib/php.ini"
           elif [[ "$_PHP_DEFAULT" =~ "5.6." ]] ; then
@@ -289,7 +289,7 @@ if [ "$_LTD_GID" = "www-data users" ] \
           _IN_PATH=NO
         fi
       else
-        _WHICH_TEST=$(which $2)
+        _WHICH_TEST=$(which $2 2>&1)
         if [[ "$_WHICH_TEST" =~ (^)"/usr/" ]] \
           || [[ "$_WHICH_TEST" =~ (^)"/bin/" ]] \
           || [[ "$_WHICH_TEST" =~ (^)"/opt/" ]] ; then
@@ -361,7 +361,7 @@ if [ "$_LTD_GID" = "www-data users" ] \
         _IN_PATH=NO
       fi
     else
-      _WHICH_TEST=$(which $1)
+      _WHICH_TEST=$(which $1 2>&1)
       if [[ "$_WHICH_TEST" =~ (^)"/usr/" ]] \
         || [[ "$_WHICH_TEST" =~ (^)"/bin/" ]] \
         || [[ "$_WHICH_TEST" =~ (^)"/opt/" ]] ; then
@@ -389,36 +389,36 @@ if [ "$_LTD_GID" = "www-data users" ] \
       if [[ "$_ALL" =~ "-c set -m; " ]] ; then
         _SILENT=YES
       else
-        if [[ "$_ALL" =~ "ssh" ]] \
-          || [[ "$_ALL" =~ "rsync" ]] \
-          || [[ "$_ALL" =~ "scp" ]] \
-          || [[ "$_ALL" =~ "drush" ]] \
-          || [[ "$_ALL" =~ "php " ]] \
-          || [[ "$_ALL" =~ ".tmp" ]] \
+        if [[ "$_ALL" =~ "__build__" ]] \
           || [[ "$_ALL" =~ "_tmp_" ]] \
-          || [[ "$_ALL" =~ "__build__" ]] \
-          || [[ "$_ALL" =~ "is_" ]] \
-          || [[ "$_ALL" =~ "rename" ]] \
-          || [[ "$_ALL" =~ "chdir" ]] \
-          || [[ "$_ALL" =~ "svn " ]] \
+          || [[ "$_ALL" =~ ".tmp" ]] \
+          || [[ "$_ALL" =~ "avconv" ]] \
           || [[ "$_ALL" =~ "bzr " ]] \
-          || [[ "$_ALL" =~ "tar " ]] \
-          || [[ "$_ALL" =~ "wget " ]] \
-          || [[ "$_ALL" =~ "curl " ]] \
-          || [[ "$_ALL" =~ "git" ]] \
-          || [[ "$_ALL" =~ "wkhtmltopdf" ]] \
-          || [[ "$_ALL" =~ "wkhtmltoimage" ]] \
-          || [[ "$_ALL" =~ "convert" ]] \
+          || [[ "$_ALL" =~ "chdir" ]] \
           || [[ "$_ALL" =~ "compass" ]] \
-          || [[ "$_ALL" =~ "sass" ]] \
-          || [[ "$_ALL" =~ "scss" ]] \
-          || [[ "$_ALL" =~ "logger" ]] \
-          || [[ "$_ALL" =~ "sendmail" ]] \
-          || [[ "$_ALL" =~ "java" ]] \
-          || [[ "$_ALL" =~ "rrdtool" ]] \
+          || [[ "$_ALL" =~ "convert" ]] \
+          || [[ "$_ALL" =~ "curl " ]] \
+          || [[ "$_ALL" =~ "drush" ]] \
           || [[ "$_ALL" =~ "ffmpeg" ]] \
           || [[ "$_ALL" =~ "flvtool" ]] \
-          || [[ "$_ALL" =~ "avconv" ]] ; then
+          || [[ "$_ALL" =~ "git" ]] \
+          || [[ "$_ALL" =~ "is_" ]] \
+          || [[ "$_ALL" =~ "java" ]] \
+          || [[ "$_ALL" =~ "logger" ]] \
+          || [[ "$_ALL" =~ "php " ]] \
+          || [[ "$_ALL" =~ "rename" ]] \
+          || [[ "$_ALL" =~ "rrdtool" ]] \
+          || [[ "$_ALL" =~ "rsync" ]] \
+          || [[ "$_ALL" =~ "sass" ]] \
+          || [[ "$_ALL" =~ "scp" ]] \
+          || [[ "$_ALL" =~ "scss" ]] \
+          || [[ "$_ALL" =~ "sendmail" ]] \
+          || [[ "$_ALL" =~ "ssh" ]] \
+          || [[ "$_ALL" =~ "svn " ]] \
+          || [[ "$_ALL" =~ "tar " ]] \
+          || [[ "$_ALL" =~ "wget " ]] \
+          || [[ "$_ALL" =~ "wkhtmltoimage" ]] \
+          || [[ "$_ALL" =~ "wkhtmltopdf" ]] ; then
           _SILENT=YES
         else
           echo
@@ -429,13 +429,16 @@ if [ "$_LTD_GID" = "www-data users" ] \
   if [ "$_IN_PATH" = "YES" ] ; then
     if [[ "$_ALL" =~ "-c set -m; " ]] \
       && [ -x "/home/${USER}/.rvm/bin/rvm" ] ; then
-      _THIS_RV=`lsb_release -sc`
+      _THIS_RV=$(lsb_release -sc 2>&1)
       if [ "$_THIS_RV" = "wheezy" ] \
         || [ "$_THIS_RV" = "trusty" ] \
         || [ "$_THIS_RV" = "precise" ] ; then
-        _DETECTED_RUBY_VP=`grep 'RUBY_VERSION' \
+        _DETECTED_RUBY_VP=$(grep 'RUBY_VERSION' \
           /home/${USER}/.rvm/environments/default \
-          | cut -d= -f2 | awk '{ print $1}' | sed "s/'//g" | sed "s/ruby-//g"`
+          | cut -d= -f2 \
+          | awk '{ print $1}' \
+          | sed "s/'//g" \
+          | sed "s/ruby-//g" 2>&1)
         if [ ! -z "${_DETECTED_RUBY_VP}" ] \
           && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ] ; then
           _RUBY_VP="${_DETECTED_RUBY_VP}"
@@ -443,9 +446,12 @@ if [ "$_LTD_GID" = "www-data users" ] \
           _RUBY_VP=2.2.0
         fi
       else
-        _DETECTED_RUBY_VP=`grep 'RUBY_VERSION' \
+        _DETECTED_RUBY_VP=$(grep 'RUBY_VERSION' \
           /home/${USER}/.rvm/environments/default \
-          | cut -d= -f2 | awk '{ print $1}' | sed "s/'//g" | sed "s/ruby-//g"`
+          | cut -d= -f2 \
+          | awk '{ print $1}' \
+          | sed "s/'//g" \
+          | sed "s/ruby-//g" 2>&1)
         if [ ! -z "${_DETECTED_RUBY_VP}" ] \
           && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ] ; then
           _RUBY_VP="${_DETECTED_RUBY_VP}"
