@@ -12,6 +12,7 @@ _SSL_INSTALLED=$(openssl version 2>&1 \
 if [ "${_SSL_INSTALLED}" = "${_OPENSSL_VRN}" ] ; then
   _NEW_SSL=YES
 fi
+urlHmr="http://files.aegir.cc/versions/master/aegir"
 
 ###-------------SYSTEM-----------------###
 
@@ -2673,7 +2674,7 @@ if [ -z "$_SKYNET_MODE" ] || [ "$_SKYNET_MODE" = "ON" ] ; then
   echo "INFO: Checking BARRACUDA version"
   rm -f /opt/tmp/barracuda-version.txt*
   curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 15 -A iCab \
-    "http://files.aegir.cc/versions/master/aegir/conf/barracuda-version.txt" \
+    "${urlHmr}/conf/barracuda-version.txt" \
     -o /opt/tmp/barracuda-version.txt
 else
   rm -f /opt/tmp/barracuda-version.txt*

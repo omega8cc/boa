@@ -22,36 +22,40 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]] ; then
   fi
   sleep 8
   rm -f /var/run/fmp_wait.pid
-  echo "`date` Too big PHP error logs deleted: $_PHPLOG_SIZE_TEST" >> /var/xdrago/log/php.giant.logs.incident.log
+  echo "$(date 2>&1) Too big PHP error logs deleted: $_PHPLOG_SIZE_TEST" >> \
+    /var/xdrago/log/php.giant.logs.incident.log
 fi
+
+pthOml="/var/xdrago/log/oom.incident.log"
 
 oom_restart() {
   touch /var/run/boa_run.pid
-  echo "`date` OOM $1 detected" >> /var/xdrago/log/oom.incident.log
+  echo "$(date 2>&1) OOM $1 detected"                               >> ${pthOml}
   sleep 5
-  echo "`date` OOM incident response started" >> /var/xdrago/log/oom.incident.log
+  echo "$(date 2>&1) OOM incident response started"                 >> ${pthOml}
   mv -f /var/log/nginx/error.log /var/log/nginx/`date +%y%m%d-%H%M`-error.log
-  kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
-  echo "`date` OOM nginx stopped" >> /var/xdrago/log/oom.incident.log
-  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
-  echo "`date` OOM php-fpm stopped" >> /var/xdrago/log/oom.incident.log
-  kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
-  echo "`date` OOM jetty stopped" >> /var/xdrago/log/oom.incident.log
-  kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}') &> /dev/null
-  echo "`date` OOM newrelic-daemon stopped" >> /var/xdrago/log/oom.incident.log
-  kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}') &> /dev/null
-  echo "`date` OOM redis-server stopped" >> /var/xdrago/log/oom.incident.log
+  kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}')
+  echo "$(date 2>&1) OOM nginx stopped"                             >> ${pthOml}
+  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
+  echo "$(date 2>&1) OOM php-fpm stopped"                           >> ${pthOml}
+  kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')
+  echo "$(date 2>&1) OOM jetty stopped"                             >> ${pthOml}
+  kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}')
+  echo "$(date 2>&1) OOM newrelic-daemon stopped"                   >> ${pthOml}
+  kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}')
+  echo "$(date 2>&1) OOM redis-server stopped"                      >> ${pthOml}
   bash /var/xdrago/move_sql.sh
-  echo "`date` OOM mysql restarted" >> /var/xdrago/log/oom.incident.log
-  echo "`date` OOM incident response completed" >> /var/xdrago/log/oom.incident.log
-  echo >> /var/xdrago/log/oom.incident.log
+  echo "$(date 2>&1) OOM mysql restarted"                           >> ${pthOml}
+  echo "$(date 2>&1) OOM incident response completed"               >> ${pthOml}
+  echo                                                              >> ${pthOml}
   sleep 5
   rm -f /var/run/boa_run.pid
   exit 0
 }
 
 if [ -e "/var/log/nginx/error.log" ] ; then
-  if [ `tail --lines=500 /var/log/nginx/error.log | grep --count "Cannot allocate memory"` -gt "0" ]; then
+  if [ `tail --lines=500 /var/log/nginx/error.log \
+    | grep --count "Cannot allocate memory"` -gt "0" ]; then
     oom_restart "nginx"
   fi
 fi
@@ -84,23 +88,29 @@ jetty_restart() {
 }
 
 if [ -e "/var/log/jetty9" ] ; then
-  if [ `tail --lines=500 /var/log/jetty9/*stderrout.log | grep --count "Address already in use"` -gt "0" ]; then
+  if [ `tail --lines=500 /var/log/jetty9/*stderrout.log \
+    | grep --count "Address already in use"` -gt "0" ]; then
     jetty_restart "zombie"
-    echo "`date` Address already in use for jetty9" >> /var/xdrago/log/jetty.zombie.incident.log
+    echo "$(date 2>&1) Address already in use for jetty9" >> \
+      /var/xdrago/log/jetty.zombie.incident.log
   fi
 fi
 
 if [ -e "/var/log/jetty8" ] ; then
-  if [ `tail --lines=500 /var/log/jetty8/*stderrout.log | grep --count "Address already in use"` -gt "0" ]; then
+  if [ `tail --lines=500 /var/log/jetty8/*stderrout.log \
+    | grep --count "Address already in use"` -gt "0" ]; then
     jetty_restart "zombie"
-    echo "`date` Address already in use for jetty8" >> /var/xdrago/log/jetty.zombie.incident.log
+    echo "$(date 2>&1) Address already in use for jetty8" >> \
+      /var/xdrago/log/jetty.zombie.incident.log
   fi
 fi
 
 if [ -e "/var/log/jetty7" ] ; then
-  if [ `tail --lines=500 /var/log/jetty7/*stderrout.log | grep --count "Address already in use"` -gt "0" ]; then
+  if [ `tail --lines=500 /var/log/jetty7/*stderrout.log \
+    | grep --count "Address already in use"` -gt "0" ]; then
     jetty_restart "zombie"
-    echo "`date` Address already in use for jetty7" >> /var/xdrago/log/jetty.zombie.incident.log
+    echo "$(date 2>&1) Address already in use for jetty7" >> \
+      /var/xdrago/log/jetty.zombie.incident.log
   fi
 fi
 
@@ -111,7 +121,8 @@ fi
 
 if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt 4 ]; then
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
-  echo "`date` Too many PHP-FPM master processes killed" >> /var/xdrago/log/php-fpm-master-count.kill.log
+  echo "$(date 2>&1) Too many PHP-FPM master processes killed" >> \
+    /var/xdrago/log/php-fpm-master-count.kill.log
 fi
 
 if [ -e "/root/.high_traffic.cnf" ] ; then
@@ -121,9 +132,12 @@ else
 fi
 
 mysql_proc_kill() {
-  if [ "$xtime" != "Time" ] && [ "$xuser" != "root" ] && [ "$xtime" != "|" ] && [[ "$xtime" -gt "$limit" ]] ; then
+  if [ "$xtime" != "Time" ] \
+    && [ "$xuser" != "root" ] \
+    && [ "$xtime" != "|" ] \
+    && [[ "$xtime" -gt "$limit" ]] ; then
     xkill=`mysqladmin kill $each`
-    times=`date`
+    times=$(date 2>&1)
     echo $times $each $xuser $xtime $xkill
     echo "$times $each $xuser $xtime $xkill" >> /var/xdrago/log/sql_watch.log
   fi
@@ -132,13 +146,23 @@ mysql_proc_kill() {
 mysql_proc_control() {
 limit=3600
 xkill=null
-for each in `mysqladmin proc | awk '{print $2, $4, $8, $12}' | awk '{print $1}'`;
-do
-  xtime=`mysqladmin proc | awk '{print $2, $4, $8, $12}' | grep $each | awk '{print $4}'`
+for each in `mysqladmin proc \
+  | awk '{print $2, $4, $8, $12}' \
+  | awk '{print $1}'`; do
+  xtime=`mysqladmin proc \
+    | awk '{print $2, $4, $8, $12}' \
+    | grep $each \
+    | awk '{print $4}'`
   if [ "$xtime" = "|" ] ; then
-    xtime=`mysqladmin proc | awk '{print $2, $4, $8, $11}' | grep $each | awk '{print $4}'`
+    xtime=`mysqladmin proc \
+      | awk '{print $2, $4, $8, $11}' \
+      | grep $each \
+      | awk '{print $4}'`
   fi
-  xuser=`mysqladmin proc | awk '{print $2, $4, $8, $12}' | grep $each | awk '{print $2}'`
+  xuser=`mysqladmin proc \
+    | awk '{print $2, $4, $8, $12}' \
+    | grep $each \
+    | awk '{print $2}'`
   if [ "$xtime" != "Time" ] ; then
     if [ "$xuser" = "xabuse" ] ; then
       limit=60
@@ -153,34 +177,44 @@ done
 
 lsyncd_proc_control() {
 if [ -e "/var/log/lsyncd.log" ] ; then
-  if [ `tail --lines=100 /var/log/lsyncd.log | grep --count "Error: Terminating"` -gt "0" ]; then
-    echo "`date` TRM lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
+  if [ `tail --lines=100 /var/log/lsyncd.log \
+    | grep --count "Error: Terminating"` -gt "0" ]; then
+    echo "$(date 2>&1) TRM lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
   fi
-  if [ `tail --lines=100 /var/log/lsyncd.log | grep --count "ERROR: Auto-resolving failed"` -gt "5" ]; then
-    echo "`date` ERR lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
+  if [ `tail --lines=100 /var/log/lsyncd.log \
+    | grep --count "ERROR: Auto-resolving failed"` -gt "5" ]; then
+    echo "$(date 2>&1) ERR lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
   fi
-  if [ `tail --lines=5000 /var/log/lsyncd.log | grep --count "Normal: Finished events list = 0"` -lt "1" ]; then
-    echo "`date` NRM lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
+  if [ `tail --lines=5000 /var/log/lsyncd.log \
+    | grep --count "Normal: Finished events list = 0"` -lt "1" ]; then
+    echo "$(date 2>&1) NRM lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
   fi
 fi
 if [ -e "/var/xdrago/log/lsyncd.monitor.log" ] ; then
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
   fi
-  if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log | grep --count "TRM lsyncd"` -gt "3" ] && [ -n "$_MY_EMAIL" ] ; then
-    mail -s "ALERT! lsyncd TRM failure on `uname -n`" $_MY_EMAIL < /var/xdrago/log/lsyncd.monitor.log
+  if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log \
+    | grep --count "TRM lsyncd"` -gt "3" ] && [ -n "$_MY_EMAIL" ] ; then
+    mail -s "ALERT! lsyncd TRM failure on $(uname -n 2>&1)" $_MY_EMAIL < \
+      /var/xdrago/log/lsyncd.monitor.log
     _ARCHIVE_LOG=YES
   fi
-  if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log | grep --count "ERR lsyncd"` -gt "3" ] && [ -n "$_MY_EMAIL" ] ; then
-    mail -s "ALERT! lsyncd ERR failure on `uname -n`" $_MY_EMAIL < /var/xdrago/log/lsyncd.monitor.log
+  if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log \
+    | grep --count "ERR lsyncd"` -gt "3" ] && [ -n "$_MY_EMAIL" ] ; then
+    mail -s "ALERT! lsyncd ERR failure on $(uname -n 2>&1)" $_MY_EMAIL < \
+      /var/xdrago/log/lsyncd.monitor.log
     _ARCHIVE_LOG=YES
   fi
-  if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log | grep --count "NRM lsyncd"` -gt "3" ] && [ -n "$_MY_EMAIL" ] ; then
-    mail -s "NOTICE: lsyncd NRM problem on `uname -n`" $_MY_EMAIL < /var/xdrago/log/lsyncd.monitor.log
+  if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log \
+    | grep --count "NRM lsyncd"` -gt "3" ] && [ -n "$_MY_EMAIL" ] ; then
+    mail -s "NOTICE: lsyncd NRM problem on $(uname -n 2>&1)" $_MY_EMAIL < \
+      /var/xdrago/log/lsyncd.monitor.log
     _ARCHIVE_LOG=YES
   fi
   if [ "$_ARCHIVE_LOG" = "YES" ] ; then
-    cat /var/xdrago/log/lsyncd.monitor.log >> /var/xdrago/log/lsyncd.warn.archive.log
+    cat /var/xdrago/log/lsyncd.monitor.log >> \
+      /var/xdrago/log/lsyncd.warn.archive.log
     rm -f /var/xdrago/log/lsyncd.monitor.log
   fi
 fi

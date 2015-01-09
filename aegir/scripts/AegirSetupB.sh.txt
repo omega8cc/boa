@@ -132,7 +132,7 @@ urlStb="http://files.aegir.cc/versions/stable"
 #
 # Noticeable messages.
 msg() {
-  echo "Octopus [`date`] ==> $*"
+  echo "Octopus [$(date 2>&1)] ==> $*"
 }
 #
 # Small spinner.
@@ -482,19 +482,19 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
 
   if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
     if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-      _THIS_DB_HOST=`uname -n`
+      _THIS_DB_HOST=$(uname -n 2>&1)
     else
       _THIS_DB_HOST=localhost
     fi
-    _USE_AEGIR_HOST=`uname -n`
+    _USE_AEGIR_HOST=$(uname -n 2>&1)
     _USE_DB_USER="$_USER"
   else
-    _USE_AEGIR_HOST=`uname -n`
+    _USE_AEGIR_HOST=$(uname -n 2>&1)
     _USE_DB_USER=aegir_root
   fi
   if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
-    _USE_AEGIR_HOST=`uname -n`
-    _THIS_DB_HOST=`uname -n`
+    _USE_AEGIR_HOST=$(uname -n 2>&1)
+    _THIS_DB_HOST=$(uname -n 2>&1)
   fi
 
   msg "$_STATUS B: Running hostmaster-install, please wait..."
@@ -645,7 +645,7 @@ else
   if [ -e "$_ROOT/log/imported.pid" ] || [ -e "$_ROOT/log/exported.pid" ] ; then
     if [ ! -e "$_ROOT/log/post-merge-fix.pid" ] ; then
       msg "$_STATUS B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 start"
-      _USE_AEGIR_HOST=`uname -n`
+      _USE_AEGIR_HOST=$(uname -n 2>&1)
       $_DRUSHCMD @hostmaster sqlq "REPLACE INTO hosting_context (nid, name) VALUES ('4', 'server_localhost'), ('2', 'server_master')" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "REPLACE INTO hosting_package (vid, nid, package_type, short_name, old_short_name, description) VALUES ('6', '6', 'platform', 'drupal', '', '')" &> /dev/null
       $_DRUSHCMD @hostmaster sqlq "REPLACE INTO node_revisions (nid, vid, uid, title, body, teaser, log, timestamp, format) VALUES ('6', '6', '1', 'drupal', '', '', '', '1412168340', '0')" &> /dev/null
@@ -784,7 +784,7 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   sed -i "s/Platform pathauto settings/Platform pathauto/g" $_HOSTMASTER_ROOT/profiles/hostmaster/modules/hosting_platform_pathauto/hosting_platform_pathauto.module &> /dev/null
   sed -i "s/Backup schedule settings/Backup schedule/g" $_HOSTMASTER_ROOT/profiles/hostmaster/modules/hosting_backup_queue/hosting_backup_queue.module &> /dev/null
   sed -i "s/Base path/Platforms path/g" $_HOSTMASTER_ROOT/profiles/hostmaster/modules/hosting_platform_pathauto/hosting_platform_pathauto.module &> /dev/null
-  _VM_TEST=`uname -a 2>&1`
+  _VM_TEST=$(uname -a 2>&1)
   if [[ "$_VM_TEST" =~ beng ]] ; then
     _VMFAMILY="VS"
   else

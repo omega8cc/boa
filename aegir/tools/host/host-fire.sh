@@ -6,10 +6,9 @@ SHELL=/bin/bash
 guest_guard() {
 if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ] ; then
   touch /var/run/fire.pid
-  for i in `dir -d /vservers/*` ; do
+  for i in `dir -d /vservers/*`; do
     if [ -e "$i/var/xdrago/monitor/ssh.log" ] ; then
-      for _IP in `cat $i/var/xdrago/monitor/ssh.log | cut -d '#' -f1 | sort`
-      do
+      for _IP in `cat $i/var/xdrago/monitor/ssh.log | cut -d '#' -f1 | sort`; do
         _FW_TEST=$(iptables --list -n | grep $_IP 2>&1)
         if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
           echo "$_IP already denied or allowed on port 22"
@@ -23,8 +22,7 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ] ; then
       done
     fi
     if [ -e "$i/var/xdrago/monitor/web.log" ] ; then
-      for _IP in `cat $i/var/xdrago/monitor/web.log | cut -d '#' -f1 | sort`
-      do
+      for _IP in `cat $i/var/xdrago/monitor/web.log | cut -d '#' -f1 | sort`; do
         _FW_TEST=$(iptables --list -n | grep $_IP 2>&1)
         if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
           echo "$_IP already denied or allowed on port 80"
@@ -38,8 +36,7 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ] ; then
       done
     fi
     if [ -e "$i/var/xdrago/monitor/ftp.log" ] ; then
-      for _IP in `cat $i/var/xdrago/monitor/ftp.log | cut -d '#' -f1 | sort`
-      do
+      for _IP in `cat $i/var/xdrago/monitor/ftp.log | cut -d '#' -f1 | sort`; do
         _FW_TEST=$(iptables --list -n | grep $_IP 2>&1)
         if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
           echo "$_IP already denied or allowed on port 21"
@@ -58,7 +55,9 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ] ; then
 fi
 }
 
-if [ -e "/vservers" ] && [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; then
+if [ -e "/vservers" ] \
+  && [ -e "/etc/csf/csf.deny" ] \
+  && [ -e "/usr/sbin/csf" ] ; then
   guest_guard
   sleep 5
   guest_guard

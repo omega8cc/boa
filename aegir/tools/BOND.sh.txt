@@ -173,7 +173,7 @@ clean_pid_exit() {
 #
 # Noticeable messages.
 msg() {
-  echo "Tuner [`date`] ==> $*"
+  echo "Tuner [$(date 2>&1)] ==> $*"
 }
 # Simple prompt.
 prompt_yes_no() {
@@ -293,7 +293,7 @@ fix_php_ini_redis() {
 #
 # Fix php.ini file to add newrelic.ini
 fix_php_ini_newrelic() {
-  _NR_TPL="/opt/tmp/boa/aegir/conf/newrelic.ini"
+  _NR_TPL="${locCnf}/newrelic.ini"
   if [ -e "$_THIS_FILE" ] ; then
     _NEWRELIC_INI_TEST_A=$(grep "extension=newrelic.so" $_THIS_FILE 2>&1)
     if [[ "$_NEWRELIC_INI_TEST_A" =~ "extension=newrelic.so" ]] ; then
@@ -307,7 +307,7 @@ fix_php_ini_newrelic() {
     else
       echo "newrelic.framework.drupal.modules = 1" >> $_THIS_FILE
     fi
-    sed -i "s/REPLACE_WITH_REAL_KEY//g" $_THIS_FILE &> /dev/null
+    sed -i "/REPLACE_WITH_REAL_KEY//g" $_THIS_FILE &> /dev/null
     sed -i "s/license_key=//g" $_THIS_FILE &> /dev/null
   fi
 }
@@ -319,25 +319,13 @@ fix_php_ini_newrelic_all() {
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
       _NEWRELIC_KEY=$(echo -n $_NEWRELIC_KEY | tr -d "\n" 2>&1)
     fi
-    _THIS_FILE=/opt/php53/etc/php53.ini
-    fix_php_ini_newrelic
-    _THIS_FILE=/opt/php53/lib/php.ini
-    fix_php_ini_newrelic
-
-    _THIS_FILE=/opt/php54/etc/php54.ini
-    fix_php_ini_newrelic
-    _THIS_FILE=/opt/php54/lib/php.ini
-    fix_php_ini_newrelic
-
-    _THIS_FILE=/opt/php55/etc/php55.ini
-    fix_php_ini_newrelic
-    _THIS_FILE=/opt/php55/lib/php.ini
-    fix_php_ini_newrelic
-
-    _THIS_FILE=/opt/php56/etc/php56.ini
-    fix_php_ini_newrelic
-    _THIS_FILE=/opt/php56/lib/php.ini
-    fix_php_ini_newrelic
+    _PHP_V="56 55 54 53"
+    for e in $_PHP_V; do
+      _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+      fix_php_ini_newrelic
+      _THIS_FILE=/opt/php${e}/lib/php.ini
+      fix_php_ini_newrelic
+    done
   fi
 }
 #
@@ -368,23 +356,21 @@ fix_php_ini_opcache() {
 #
 # Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all() {
-
-  _THIS_FILE=/opt/php53/etc/php53.ini
-  _OPCACHE_SO="/opt/php53/lib/php/extensions/no-debug-non-zts-$_PHP53_API/opcache.so"
-  fix_php_ini_opcache "53"
-
-  _THIS_FILE=/opt/php54/etc/php54.ini
-  _OPCACHE_SO="/opt/php54/lib/php/extensions/no-debug-non-zts-$_PHP54_API/opcache.so"
-  fix_php_ini_opcache "54"
-
-  _THIS_FILE=/opt/php55/etc/php55.ini
-  _OPCACHE_SO="/opt/php55/lib/php/extensions/no-debug-non-zts-$_PHP55_API/opcache.so"
-  fix_php_ini_opcache "55"
-
-  _THIS_FILE=/opt/php56/etc/php56.ini
-  _OPCACHE_SO="/opt/php56/lib/php/extensions/no-debug-non-zts-$_PHP56_API/opcache.so"
-  fix_php_ini_opcache "56"
-
+  _PHP_V="56 55 54 53"
+  for e in $_PHP_V; do
+    case "${e}" in
+      56) _P_API="${_PHP56_API}" ;;
+      55) _P_API="${_PHP55_API}" ;;
+      54) _P_API="${_PHP54_API}" ;;
+      53) _P_API="${_PHP53_API}" ;;
+      *)  msg "WARN: Unknown PHP API version for PHP ${e}"
+      ;;
+    esac
+    _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+    _OPCACHE_LP="/opt/php${e}/lib/php/extensions/no-debug-non-zts"
+    _OPCACHE_SO="${_OPCACHE_LP}-${_P_API}/opcache.so"
+    fix_php_ini_opcache "${e}"
+  done
 }
 #
 # Fix php.ini file to add geos.so
@@ -438,158 +424,61 @@ update_php_conf() {
     find_correct_ip
     _THISHTIP="$_LOC_IP"
   fi
-  if [ ! -e "/opt/etc/fpm" ] || [ ! -e "/opt/etc/fpm/fpm-pool-common.conf" ] ; then
+  if [ ! -e "/opt/etc/fpm" ] \
+    || [ ! -e "/opt/etc/fpm/fpm-pool-common.conf" ] ; then
     mkdir -p /opt/etc/fpm
   fi
-  cp -af /opt/tmp/boa/aegir/conf/fpm-pool-common.conf /opt/etc/fpm/fpm-pool-common.conf
-
-  if [ ! -e "/var/www/www55" ] ; then
-    adduser --system --group --home /var/www/www55 www55 &> /dev/null
-    usermod -aG www-data www55 &> /dev/null
-  fi
-  if [ ! -e "/opt/php55/etc/php55.ini" ] || [ ! -e "/opt/php55/etc/pool.d/www55.conf" ]  ; then
-    mkdir -p /opt/php55/etc/pool.d
-    cp -af /opt/tmp/boa/aegir/conf/php55.ini /opt/php55/etc/php55.ini
-  fi
-  cp -af /opt/tmp/boa/aegir/conf/fpm55-pool-www.conf /opt/php55/etc/pool.d/www55.conf
-
-  if [ ! -e "/var/www/www56" ] ; then
-    adduser --system --group --home /var/www/www56 www56 &> /dev/null
-    usermod -aG www-data www56 &> /dev/null
-  fi
-  if [ ! -e "/opt/php56/etc/php56.ini" ] || [ ! -e "/opt/php56/etc/pool.d/www56.conf" ] ; then
-    mkdir -p /opt/php56/etc/pool.d
-    cp -af /opt/tmp/boa/aegir/conf/php56.ini /opt/php56/etc/php56.ini
-  fi
-  cp -af /opt/tmp/boa/aegir/conf/fpm56-pool-www.conf /opt/php56/etc/pool.d/www56.conf
-
-  if [ ! -e "/var/www/www54" ] ; then
-    adduser --system --group --home /var/www/www54 www54 &> /dev/null
-    usermod -aG www-data www54 &> /dev/null
-  fi
-  if [ ! -e "/opt/php54/etc/php54.ini" ] || [ ! -e "/opt/php54/etc/pool.d/www54.conf" ] ; then
-    mkdir -p /opt/php54/etc/pool.d
-    cp -af /opt/tmp/boa/aegir/conf/php54.ini /opt/php54/etc/php54.ini
-  fi
-  cp -af /opt/tmp/boa/aegir/conf/fpm54-pool-www.conf /opt/php54/etc/pool.d/www54.conf
-
-  if [ ! -e "/var/www/www53" ] ; then
-    adduser --system --group --home /var/www/www53 www53 &> /dev/null
-    usermod -aG www-data www53 &> /dev/null
-  fi
-  if [ ! -e "/opt/php53/etc/php53.ini" ] || [ ! -e "/opt/php53/etc/pool.d/www53.conf" ] ; then
-    mkdir -p /opt/php53/etc/pool.d
-    cp -af /opt/tmp/boa/aegir/conf/php53.ini /opt/php53/etc/php53.ini
-  fi
-  cp -af /opt/tmp/boa/aegir/conf/fpm53-pool-www.conf /opt/php53/etc/pool.d/www53.conf
-
-  if [ ! -e "/opt/php56/lib/php.ini" ] ; then
-    mkdir -p /opt/php56/lib
-    cp -af /opt/tmp/boa/aegir/conf/php56-cli.ini /opt/php56/lib/php.ini
-  fi
-  if [ ! -e "/opt/php55/lib/php.ini" ] ; then
-    mkdir -p /opt/php55/lib
-    cp -af /opt/tmp/boa/aegir/conf/php55-cli.ini /opt/php55/lib/php.ini
-  fi
-  if [ ! -e "/opt/php54/lib/php.ini" ] ; then
-    mkdir -p /opt/php54/lib
-    cp -af /opt/tmp/boa/aegir/conf/php54-cli.ini /opt/php54/lib/php.ini
-  fi
-  if [ ! -e "/opt/php53/lib/php.ini" ] ; then
-    mkdir -p /opt/php53/lib
-    cp -af /opt/tmp/boa/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini
-  fi
-  if [ "$_CUSTOM_CONFIG_PHP56" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    cp -af /opt/php56/etc/php56.ini /var/backups/dragon/t/etc-php56.ini-pre-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af /opt/tmp/boa/aegir/conf/php56.ini /opt/php56/etc/php56.ini                     &> /dev/null
-    cp -af /opt/php56/lib/php.ini /var/backups/dragon/t/lib-php56.ini-pre-${_X_VERSION}-${_NOW}   &> /dev/null
-    cp -af /opt/tmp/boa/aegir/conf/php56-cli.ini /opt/php56/lib/php.ini                   &> /dev/null
-  fi
-  if [ "$_CUSTOM_CONFIG_PHP55" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    cp -af /opt/php55/etc/php55.ini /var/backups/dragon/t/etc-php55.ini-pre-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af /opt/tmp/boa/aegir/conf/php55.ini /opt/php55/etc/php55.ini                     &> /dev/null
-    cp -af /opt/php55/lib/php.ini /var/backups/dragon/t/lib-php55.ini-pre-${_X_VERSION}-${_NOW}   &> /dev/null
-    cp -af /opt/tmp/boa/aegir/conf/php55-cli.ini /opt/php55/lib/php.ini                   &> /dev/null
-  fi
-  if [ "$_CUSTOM_CONFIG_PHP54" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    cp -af /opt/php54/etc/php54.ini /var/backups/dragon/t/etc-php54.ini-pre-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af /opt/tmp/boa/aegir/conf/php54.ini /opt/php54/etc/php54.ini                     &> /dev/null
-    cp -af /opt/php54/lib/php.ini /var/backups/dragon/t/lib-php54.ini-pre-${_X_VERSION}-${_NOW}   &> /dev/null
-    cp -af /opt/tmp/boa/aegir/conf/php54-cli.ini /opt/php54/lib/php.ini                   &> /dev/null
-  fi
-  if [ "$_CUSTOM_CONFIG_PHP53" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    cp -af /opt/php53/etc/php53.ini /var/backups/dragon/t/etc-php53.ini-pre-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af /opt/tmp/boa/aegir/conf/php53.ini /opt/php53/etc/php53.ini                     &> /dev/null
-    cp -af /opt/php53/lib/php.ini /var/backups/dragon/t/lib-php53.ini-pre-${_X_VERSION}-${_NOW}   &> /dev/null
-    cp -af /opt/tmp/boa/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini                   &> /dev/null
-  fi
-  ###
-  cp -af /opt/tmp/boa/aegir/conf/php56-fpm.conf /opt/php56/etc/php56-fpm.conf &> /dev/null
-  cp -af /opt/tmp/boa/aegir/conf/php55-fpm.conf /opt/php55/etc/php55-fpm.conf &> /dev/null
-  cp -af /opt/tmp/boa/aegir/conf/php54-fpm.conf /opt/php54/etc/php54-fpm.conf &> /dev/null
-  cp -af /opt/tmp/boa/aegir/conf/php53-fpm.conf /opt/php53/etc/php53-fpm.conf &> /dev/null
-  ###
-  sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
-  sed -i "s/listen.mode =.*/listen.mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
-  ###
-
-  _THIS_FILE=/opt/php56/etc/php56.ini
-  fix_php_ini_redis
-  fix_php_ini_jsmin
-  fix_php_ini_suhosin
-  fix_php_ini_mailparse
-  _THIS_FILE=/opt/php56/lib/php.ini
-  fix_php_ini_redis
-  fix_php_ini_jsmin
-  fix_php_ini_suhosin
-  fix_php_ini_mailparse
-
-  _THIS_FILE=/opt/php55/etc/php55.ini
-  fix_php_ini_redis
-  fix_php_ini_jsmin
-  fix_php_ini_suhosin
-  fix_php_ini_mailparse
-  _THIS_FILE=/opt/php55/lib/php.ini
-  fix_php_ini_redis
-  fix_php_ini_jsmin
-  fix_php_ini_suhosin
-  fix_php_ini_mailparse
-
-  _THIS_FILE=/opt/php54/etc/php54.ini
-  fix_php_ini_redis
-  fix_php_ini_jsmin
-  fix_php_ini_suhosin
-  fix_php_ini_mailparse
-  _THIS_FILE=/opt/php54/lib/php.ini
-  fix_php_ini_redis
-  fix_php_ini_jsmin
-  fix_php_ini_suhosin
-  fix_php_ini_mailparse
-
-  _THIS_FILE=/opt/php53/etc/php53.ini
-  fix_php_ini_redis
-  fix_php_ini_jsmin
-  fix_php_ini_suhosin
-  fix_php_ini_mailparse
-  _THIS_FILE=/opt/php53/lib/php.ini
-  fix_php_ini_redis
-  fix_php_ini_jsmin
-  fix_php_ini_suhosin
-  fix_php_ini_mailparse
-
-  rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
+  cp -af ${locCnf}/fpm-pool-common.conf /opt/etc/fpm/fpm-pool-common.conf
+  sed -i "s/127.0.0.1/127.0.0.1,$_THISHTIP/g" /opt/etc/fpm/fpm-pool-common.conf
+  sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
+  _PHP_V="56 55 54 53"
+  for e in $_PHP_V; do
+    if [ ! -e "/var/www/www${e}" ] ; then
+      adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
+      usermod -aG www-data www${e} &> /dev/null
+    fi
+    if [ ! -e "/opt/php${e}/etc/php${e}.ini" ] \
+      || [ ! -e "/opt/php${e}/etc/pool.d/www${e}.conf" ] ; then
+      mkdir -p /opt/php${e}/etc/pool.d
+      cp -af ${locCnf}/php${e}.ini /opt/php${e}/etc/php${e}.ini
+    fi
+    cp -af ${locCnf}/fpm${e}-pool-www.conf /opt/php${e}/etc/pool.d/www${e}.conf
+    if [ ! -e "/opt/php${e}/lib/php.ini" ] ; then
+      mkdir -p /opt/php${e}/lib
+      cp -af ${locCnf}/php${e}-cli.ini /opt/php${e}/lib/php.ini
+    fi
+    if [ "$_CUSTOM_CONFIG_PHP${e}" = "NO" ] \
+      || [[ "$_THISHOST" =~ ".host8." ]] \
+      || [ "$_VMFAMILY" = "VS" ] ; then
+      cp -af ${locCnf}/php${e}.ini /opt/php${e}/etc/php${e}.ini
+      cp -af ${locCnf}/php${e}-cli.ini /opt/php${e}/lib/php.ini
+    fi
+    cp -af ${locCnf}/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
+    _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+    fix_php_ini_redis
+    fix_php_ini_jsmin
+    fix_php_ini_suhosin
+    fix_php_ini_mailparse
+    _THIS_FILE=/opt/php${e}/lib/php.ini
+    fix_php_ini_redis
+    fix_php_ini_jsmin
+    fix_php_ini_suhosin
+    fix_php_ini_mailparse
+    if [ -e "/opt/php${e}/etc/php${e}.ini" ] ; then
+      sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g"       /opt/php${e}/etc/php${e}.ini
+      sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php${e}/etc/php${e}.ini
+    fi
+    if [ -e "/opt/php${e}/lib/php.ini" ] ; then
+      sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g"       /opt/php${e}/lib/php.ini
+      sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php${e}/lib/php.ini
+    fi
+  done
+  rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
+  rm -f /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
   fix_php_ini_newrelic_all
   fix_php_ini_geos_all
   fix_php_ini_mongo_all
   fix_php_ini_opcache_all
-
-  ###
-  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/php53/etc/php53.ini &> /dev/null
-  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/php53/lib/php.ini   &> /dev/null
-  ###
-  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php53/etc/php53.ini &> /dev/null
-  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php53/lib/php.ini   &> /dev/null
-  ###
 }
 #
 restore_default_php() {
@@ -625,16 +514,18 @@ tune_php() {
   sed -i "s/^timeout .*/timeout $_TUNE_PHP_CLI_TIMEOUT/g" /etc/redis/redis.conf                                   &> /dev/null
 }
 #
+# Update innodb_log_file_size.
 update_innodb_log_file_size() {
   msg "INFO: InnoDB log file will be set to $_INNODB_LOG_FILE_SIZE_MB, please wait..."
   mrun "service mysql stop" &> /dev/null
   mrun "sleep 5"
-  if [ ! -e "/var/run/mysqld/mysqld.sock" ] && [ ! -e "/var/run/mysqld/mysqld.pid" ] ; then
+  if [ ! -e "/var/run/mysqld/mysqld.sock" ] \
+    && [ ! -e "/var/run/mysqld/mysqld.pid" ] ; then
     mkdir -p /var/backups/old-sql-ib-log-${_NOW}
     mrun "sleep 5"
     mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-sql-ib-log-${_NOW}/ &> /dev/null
-    sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = $_INNODB_LOG_FILE_SIZE_MB/g" /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = $_INNODB_LOG_FILE_SIZE_MB/g" /etc/mysql/my.cnf
     mrun "sleep 5"
   fi
   mrun "service mysql start" &> /dev/null
@@ -775,6 +666,7 @@ restart_services() {
   fi
 }
 #
+# Tune Web Sever configuration.
 tune_web_server_config() {
   _LIM_FPM="$_L_PHP_FPM_WORKERS"
   if [ "$_LIM_FPM" -lt "24" ] ; then
@@ -792,39 +684,18 @@ tune_web_server_config() {
       _CHILD_MAX_FPM="$_PHP_FPM_WORKERS"
     fi
   fi
-  sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php56/etc/php56-fpm.conf    &> /dev/null
-  sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php55/etc/php55-fpm.conf    &> /dev/null
-  sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php54/etc/php54-fpm.conf    &> /dev/null
-  sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php53/etc/php53-fpm.conf    &> /dev/null
-  sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php56/etc/pool.d/www56.conf &> /dev/null
-  sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php55/etc/pool.d/www55.conf &> /dev/null
-  sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php54/etc/pool.d/www54.conf &> /dev/null
-  sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php53/etc/pool.d/www53.conf &> /dev/null
-  if [ ! -z "$_PHP_FPM_DENY" ] ; then
-    sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php56/etc/pool.d/www56.conf &> /dev/null
-    sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php55/etc/pool.d/www55.conf &> /dev/null
-    sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php54/etc/pool.d/www54.conf &> /dev/null
-    sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php53/etc/pool.d/www53.conf &> /dev/null
+  _START_LEGACY_FPM=$(( _LIM_FPM - 21 ))
+  if [ "$_START_LEGACY_FPM" -lt "3" ] ; then
+    _START_LEGACY_FPM=3
   fi
-  sed -i "s/,getenv,/,/g" /opt/php*/etc/php*.ini             &> /dev/null
-  sed -i "s/,getenv,/,/g" /opt/php*/etc/pool.d/*.conf        &> /dev/null
-  sed -i "s/,getenv,/,/g" /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
-  sed -i "s/,create_function,/,/g" /opt/php*/etc/php*.ini             &> /dev/null
-  sed -i "s/,create_function,/,/g" /opt/php*/etc/pool.d/*.conf        &> /dev/null
-  sed -i "s/,create_function,/,/g" /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
-  sed -i "s/assert,//g"            /opt/php*/etc/php*.ini             &> /dev/null
-  sed -i "s/,assert,/,/g"          /opt/php*/etc/pool.d/*.conf        &> /dev/null
-  sed -i "s/,assert,/,/g"          /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
-  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g"       /opt/php*/etc/pool.d/*.conf        &> /dev/null
-  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g"       /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
-  sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php53:\/opt\/php54:\/opt\/php55:\/opt\/php56\"/g" /opt/php*/etc/pool.d/*.conf        &> /dev/null
-  sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php53:\/opt\/php54:\/opt\/php55:\/opt\/php56\"/g" /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
-  _ZOP_INI_TEST=$(grep "^opcache.enable=1" /opt/php*/etc/php*.ini 2>&1)
-  if [[ "$_ZOP_INI_TEST" =~ "opcache.enable=1" ]] ; then
-    _DO_NOTHING=YES
-  else
-    sed -i "s/opcache.fast_shutdown=1/opcache.fast_shutdown=1\nopcache.enable=1/g" /opt/php*/etc/php*.ini &> /dev/null
-  fi
+  _PHP_V="56 55 54 53"
+  for e in $_PHP_V; do
+    sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php${e}/etc/php${e}-fpm.conf    &> /dev/null
+    sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
+    if [ ! -z "$_PHP_FPM_DENY" ] ; then
+      sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
+    fi
+  done
   # PHP-FPM INI
   sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 180/g" /opt/php*/etc/php*.ini &> /dev/null
   sed -i "s/^max_execution_time =.*/max_execution_time = 180/g" /opt/php*/etc/php*.ini         &> /dev/null
@@ -834,7 +705,7 @@ tune_web_server_config() {
   sed -i "s/^max_execution_time =.*/max_execution_time = 3600/g" /opt/php*/lib/php.ini         &> /dev/null
   sed -i "s/^max_input_time =.*/max_input_time = 3600/g" /opt/php*/lib/php.ini                 &> /dev/null
   # Redis config should sync with PHP-CLI
-  sed -i "s/^timeout .*/timeout $_TUNE_PHP_CLI_TIMEOUT/g" /etc/redis/redis.conf                                   &> /dev/null
+  sed -i "s/^timeout .*/timeout 3600/g" /etc/redis/redis.conf                                  &> /dev/null
   if [ ! -z "$_L_NGINX_WORKERS" ] ; then
     sed -i "s/worker_processes.*/worker_processes  $_L_NGINX_WORKERS;/g" /etc/nginx/nginx.conf &> /dev/null
   else
@@ -842,36 +713,55 @@ tune_web_server_config() {
   fi
 }
 #
+# Tune memory limits for SQL server.
 tune_sql_memory_limits() {
-  if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+  local urlDld="https://raw.githubusercontent.com/major/MySQLTuner-perl/master"
+  local pthTun="/var/opt/mysqltuner.pl"
+  local outTun="/var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt"
+  if [ -e "/root/.mstr.clstr.cnf" ] \
+    || [ -e "/root/.wbhd.clstr.cnf" ] \
+    || [ -e "/root/.dbhd.clstr.cnf" ] ; then
     _GALERA_COMP=NO
   fi
-  if [ ! -e "/var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt" ] && [ -z "$_GALERA_COMP" ] ; then
+  if [ ! -e "${outTun}" ] \
+    && [ "$_STATUS" = "UPGRADE" ] \
+    && [ -z "$_GALERA_COMP" ] ; then
     msg "INFO: Running MySQLTuner check on all databases..."
     msg "NOTE! This step may take a LONG time, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
     rm -f /var/opt/mysqltuner*
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl" -o /var/opt/mysqltuner.pl
-    if [ ! -e "/var/opt/mysqltuner.pl" ] ; then
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/mysqltuner.pl" -o /var/opt/mysqltuner.pl
+    ${crlGet} "${urlDld}/mysqltuner.pl" -o ${pthTun}
+    if [ ! -e "${pthTun}" ] ; then
+      ${crlGet} "${urlDev}/mysqltuner.pl" -o ${pthTun}
     fi
-    if [ -e "/var/opt/mysqltuner.pl" ] ; then
-      perl /var/opt/mysqltuner.pl > /var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt 2>&1
+    if [ -e "${pthTun}" ] ; then
+      perl ${pthTun} > ${outTun} 2>&1
     fi
   fi
-  if [ -e "/var/opt/mysqltuner.pl" ] && [ -e "/var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt" ] ; then
-    _REC_MYISAM_MEM=$(cat /var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt | grep "Data in MyISAM tables" | cut -d: -f2 | awk '{ print $1}' 2>&1)
-    _REC_INNODB_MEM=$(cat /var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt | grep "data size:" | cut -d/ -f3 | awk '{ print $1}' 2>&1)
-    _MYSQLTUNER_TEST=$(cat /var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt 2>&1)
-    cp -a /var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt /var/xdrago/log/
-    if [ -z "$_REC_INNODB_MEM" ] || [[ "$_MYSQLTUNER_TEST" =~ "Cannot calculate MyISAM index" ]] || [[ "$_MYSQLTUNER_TEST" =~ "InnoDB is enabled but isn" ]] ; then
+  if [ -e "${pthTun}" ] \
+    && [ -e "${outTun}" ] \
+    && [ "$_STATUS" = "UPGRADE" ] ; then
+    _REC_MYISAM_MEM=$(cat ${outTun} \
+      | grep "Data in MyISAM tables" \
+      | cut -d: -f2 \
+      | awk '{ print $1}' 2>&1)
+    _REC_INNODB_MEM=$(cat ${outTun} \
+      | grep "data size:" \
+      | cut -d/ -f3 \
+      | awk '{ print $1}' 2>&1)
+    _MYSQLTUNER_TEST=$(cat ${outTun} 2>&1)
+    cp -a ${outTun} ${pthLog}/
+    if [ -z "$_REC_INNODB_MEM" ] \
+      || [[ "$_MYSQLTUNER_TEST" =~ "Cannot calculate MyISAM index" ]] \
+      || [[ "$_MYSQLTUNER_TEST" =~ "InnoDB is enabled but isn" ]] ; then
       _MYSQLTUNER_TEST_RESULT=FAIL
       msg "ALRT! The MySQLTuner test failed!"
-      msg "ALRT! Please review /var/xdrago/log/mysqltuner-${_X_VERSION}-${_NOW}.txt for details"
+      msg "ALRT! Please review ${outTun}"
       msg "ALRT! We will use some sane SQL defaults instead, do not worry!"
     fi
     ###--------------------###
-    if [ ! -z "$_REC_MYISAM_MEM" ] && [ "$_MYSQLTUNER_TEST_RESULT" = "OK" ] ; then
+    if [ ! -z "$_REC_MYISAM_MEM" ] \
+      && [ "$_MYSQLTUNER_TEST_RESULT" = "OK" ] ; then
       _RAW_MYISAM_MEM=$(echo $_REC_MYISAM_MEM | sed "s/[A-Z]//g" 2>&1)
       if [[ "$_REC_MYISAM_MEM" =~ "G" ]] ; then
         _RAW_MYISAM_MEM=$(( _RAW_MYISAM_MEM * 1024 ))
@@ -885,13 +775,13 @@ tune_sql_memory_limits() {
         _USE_MYISAM_MEM="$_USE_SQL"
       fi
       _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
-      sed -i "s/^key_buffer_size.*/key_buffer_size         = $_USE_MYISAM_MEM/g"  /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^key_buffer_size.*/key_buffer_size         = $_USE_MYISAM_MEM/g"  /etc/mysql/my.cnf
     else
       _USE_MYISAM_MEM="${_USE_SQL}M"
       if [ "$_MYSQLTUNER_TEST_RESULT" = "FAIL" ] ; then
         msg "ALRT! _USE_MYISAM_MEM is $_USE_MYISAM_MEM because _REC_MYISAM_MEM was empty!"
       fi
-      sed -i "s/^key_buffer_size.*/key_buffer_size         = $_USE_MYISAM_MEM/g"  /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^key_buffer_size.*/key_buffer_size         = $_USE_MYISAM_MEM/g"  /etc/mysql/my.cnf
     fi
     ###--------------------###
     if [ ! -z "$_REC_INNODB_MEM" ] && [ "$_MYSQLTUNER_TEST_RESULT" = "OK" ] ; then
@@ -909,25 +799,27 @@ tune_sql_memory_limits() {
       _INNODB_BPI="0"
       _INNODB_BPI=$(echo "scale=0; $_USE_INNODB_MEM/1024" | bc 2>&1)
       if [ "$_INNODB_BPI" -gt "1" ] ; then
-        sed -i "s/innodb_file_per_table   = 1/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = $_INNODB_BPI/g" /etc/mysql/my.cnf &> /dev/null
+        sed -i "s/innodb_file_per_table   = 1/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = $_INNODB_BPI/g" /etc/mysql/my.cnf
       fi
       if [ "$_USE_INNODB_MEM" -lt "256" ] || [ -z "$_USE_INNODB_MEM" ] ; then
         _USE_INNODB_MEM="$_USE_SQL"
       fi
       _USE_INNODB_MEM="${_USE_INNODB_MEM}M"
-      sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = $_USE_INNODB_MEM/g"  /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = $_USE_INNODB_MEM/g"  /etc/mysql/my.cnf
     else
       _USE_INNODB_MEM="${_USE_SQL}M"
       msg "ALRT! _USE_INNODB_MEM is $_USE_INNODB_MEM because _REC_INNODB_MEM was empty!"
-      sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = $_USE_INNODB_MEM/g"  /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = $_USE_INNODB_MEM/g"  /etc/mysql/my.cnf
     fi
   else
     _THIS_USE_MEM="${_USE_SQL}M"
-    if [ "$_MYSQLTUNER_TEST_RESULT" = "FAIL" ] && [ -z "$_GALERA_COMP" ] ; then
+    if [ "$_MYSQLTUNER_TEST_RESULT" = "FAIL" ] \
+      && [ "$_STATUS" = "UPGRADE" ] \
+      && [ -z "$_GALERA_COMP" ] ; then
       msg "ALRT! _USE_MYISAM_MEM is $_THIS_USE_MEM because _REC_MYISAM_MEM was empty!"
       msg "ALRT! _USE_INNODB_MEM is $_THIS_USE_MEM because _REC_INNODB_MEM was empty!"
     fi
-    sed -i "s/= 181/= $_USE_SQL/g"  /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/= 181/= $_USE_SQL/g"  /etc/mysql/my.cnf
   fi
 }
 #
@@ -951,7 +843,8 @@ tune_memory_limits() {
   if [[ "$_VM_TEST" =~ beng ]] ; then
     _VMFAMILY="VS"
   fi
-  if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
+  if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] \
+    || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
     _VMFAMILY="AWS"
   fi
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
@@ -963,7 +856,8 @@ tune_memory_limits() {
     _CPU_NR=$(nproc 2>&1)
   fi
   _CPU_NR=${_CPU_NR//[^0-9]/}
-  if [ ! -z "${_CPU_NR}" ] && [ ! -z "${_CPU_INFO}" ] && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt "0" ] ; then
+  if [ ! -z "${_CPU_NR}" ] && [ ! -z "${_CPU_INFO}" ] \
+    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt "0" ] ; then
     _CPU_NR="${_CPU_INFO}"
   fi
   if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ] ; then
@@ -1041,7 +935,9 @@ tune_memory_limits() {
         _L_NGINX_WORKERS=$_NGINX_WORKERS
       fi
     elif [ "$_VMFAMILY" = "VS" ] || [ "$_VMFAMILY" = "TG" ] ; then
-      if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
+      if [ -e "/boot/grub/grub.cfg" ] \
+        || [ -e "/boot/grub/menu.lst" ] \
+        || [ -e "/root/.tg.cnf" ] ; then
         _USE_PHP=1024
         _USE_OPC=1024
         _MXC_SQL=100
@@ -1130,7 +1026,13 @@ tune_memory_limits() {
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
     mkdir -p /var/xdrago/conf
   fi
-  cp -af /opt/tmp/boa/aegir/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf
+  if [ ! -e "/data/conf" ] ; then
+    mkdir -p /data/conf
+  fi
+  cp -af ${locCnf}/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf
+  cp -af ${locCnf}/hhvm /var/xdrago/conf/
+  cp -af ${locCnf}/hhvm/hhvm_intercept.php /data/conf/hhvm_intercept.php
+  chmod 644 /data/conf/hhvm_intercept.php
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] ; then
     sed -i "s/256/$_USE_FPM/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   fi
@@ -1158,25 +1060,35 @@ tune_memory_limits() {
     tune_sql_memory_limits
     _UXC_SQL=$_MXC_SQL
     _UXC_SQL=$(( _MXC_SQL / 2 ))
-    sed -i "s/= 191/= $_UXC_SQL/g"                                               /etc/mysql/my.cnf &> /dev/null
-    sed -i "s/= 292/= $_MXC_SQL/g"                                               /etc/mysql/my.cnf &> /dev/null
-    sed -i "s/^tmp_table_size.*/tmp_table_size          = $_TMP_SQL/g"           /etc/mysql/my.cnf &> /dev/null
-    sed -i "s/^max_heap_table_size.*/max_heap_table_size     = $_TMP_SQL/g"      /etc/mysql/my.cnf &> /dev/null
-    sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = $_SRT_SQL/g"  /etc/mysql/my.cnf &> /dev/null
-    sed -i "s/^query_cache_size.*/query_cache_size        = $_QCE_SQL/g"         /etc/mysql/my.cnf &> /dev/null
-    sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = $_RND_SQL/g"     /etc/mysql/my.cnf &> /dev/null
-    sed -i "s/^join_buffer_size.*/join_buffer_size        = $_JBF_SQL/g"         /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/= 191/= $_UXC_SQL/g"                                               /etc/mysql/my.cnf
+    sed -i "s/= 292/= $_MXC_SQL/g"                                               /etc/mysql/my.cnf
+    sed -i "s/^tmp_table_size.*/tmp_table_size          = $_TMP_SQL/g"           /etc/mysql/my.cnf
+    sed -i "s/^max_heap_table_size.*/max_heap_table_size     = $_TMP_SQL/g"      /etc/mysql/my.cnf
+    sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = $_SRT_SQL/g"  /etc/mysql/my.cnf
+    sed -i "s/^query_cache_size.*/query_cache_size        = $_QCE_SQL/g"         /etc/mysql/my.cnf
+    sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = $_RND_SQL/g"     /etc/mysql/my.cnf
+    sed -i "s/^join_buffer_size.*/join_buffer_size        = $_JBF_SQL/g"         /etc/mysql/my.cnf
   fi
   _MAX_MEM_REDIS="${_USE_OPC}MB"
-  sed -i "s/^maxmemory .*/maxmemory $_MAX_MEM_REDIS/g"  /etc/redis/redis.conf &> /dev/null
+  sed -i "s/^maxmemory .*/maxmemory $_MAX_MEM_REDIS/g" \
+    /etc/redis/redis.conf &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ] ; then
-    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m $_USE_JETTY -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9 &> /dev/null
+    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m $_USE_JETTY \
+      -Djava.awt.headless=true \
+      -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" \
+      # Options/g" /etc/default/jetty9
   fi
   if [ -e "/etc/default/jetty8" ] && [ -e "/opt/solr3" ] ; then
-    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m $_USE_JETTY -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr3 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty8 &> /dev/null
+    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m $_USE_JETTY \
+      -Djava.awt.headless=true \
+      -Dsolr.solr.home=\/opt\/solr3 \$JAVA_OPTIONS\" \
+      # Options/g" /etc/default/jetty8
   fi
   if [ -e "/etc/default/jetty7" ] && [ -e "/opt/solr1" ] ; then
-    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m $_USE_JETTY -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr1 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty7 &> /dev/null
+    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m $_USE_JETTY \
+      -Djava.awt.headless=true \
+      -Dsolr.solr.home=\/opt\/solr1 \$JAVA_OPTIONS\" \
+      # Options/g" /etc/default/jetty7
   fi
   tune_web_server_config
 }
@@ -1291,7 +1203,8 @@ rm -f -r /opt/tmp/boa
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone --branch $_BRANCH_BOA $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
 else
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+    "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"
 fi
 #

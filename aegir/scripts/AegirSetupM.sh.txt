@@ -45,7 +45,7 @@ _LOCAL_NETWORK_IP=EDIT_LOCAL_NETWORK_IP
 _MY_OWNIP=EDIT_MY_OWNIP
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
 _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
-_REL_VERSION=`lsb_release -sc`
+_REL_VERSION=$(lsb_release -sc 2>&1)
 _ROOT="$HOME"
 _STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
@@ -54,7 +54,7 @@ _ESC_APASS="EDIT_ESC_APASS"
 _AEGIR_HOST=EDIT_AEGIR_HOST
 #
 if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-  _THIS_DB_HOST=`uname -n`
+  _THIS_DB_HOST=$(uname -n 2>&1)
 fi
 if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
   _L_PHP_CLI=/opt/php55/bin
@@ -76,7 +76,7 @@ urlStb="http://files.aegir.cc/versions/stable"
 #
 # Noticeable messages.
 msg() {
-  echo "Barracuda [`date`] ==> $*"
+  echo "Barracuda [$(date 2>&1)] ==> $*"
 }
 #
 # Update local INI for PHP CLI on the Aegir Master Instance.
@@ -88,11 +88,15 @@ update_php_cli_local_ini() {
   _CHECK_USE_PHP_CLI=`grep "/opt/php" $_DRUSH_FILE`
   _PHP_V="56 55 54 53"
   for e in $_PHP_V; do
-    if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] && [ ! -e "$_U_HD/.ctrl.php${e}.txt" ] ; then
+    if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] \
+      && [ ! -e "$_U_HD/.ctrl.php${e}.txt" ] ; then
       _PHP_CLI_UPDATE=YES
     fi
   done
-  if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "${_U_II}" ] || [ ! -d "$_U_TP" ] || [ ! -e "$_U_HD/.ctrl.240dev.txt" ] ; then
+  if [ "$_PHP_CLI_UPDATE" = "YES" ] \
+    || [ ! -e "${_U_II}" ] \
+    || [ ! -d "$_U_TP" ] \
+    || [ ! -e "$_U_HD/.ctrl.240dev.txt" ] ; then
     rm -f -r $_U_TP
     mkdir -p $_U_TP
     chmod 700 $_U_TP
@@ -188,7 +192,8 @@ extract_archive() {
 # Download and extract from dev.
 get_dev_ext() {
   if [ ! -z $1 ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_XTS_VERSION/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab \
+      "http://files.aegir.cc/dev/$_AEGIR_XTS_VERSION/$1"
     extract_archive "$1"
   fi
 }
@@ -255,7 +260,8 @@ else
   else
     msg "INFO: Downloading Drush and Provision extensions..."
     cd $_ROOT/.drush/sys
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "${urlStb}/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+      "${urlStb}/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
     cd $_ROOT/.drush/usr
     get_dev_ext "clean_missing_modules.tar.gz"
     get_dev_ext "drupalgeddon.tar.gz"
@@ -272,7 +278,14 @@ msg "INFO: Installing the frontend"
 $_DRUSHCMD cache-clear drush >$_ROOT/install.log 2>&1
 rm -f -r $_ROOT/.tmp/cache
 _HOSTMASTER_ROOT="$_ROOT/hostmaster-$_AEGIR_VERSION"
-$_DRUSHCMD hostmaster-install --aegir_host=$_AEGIR_HOST --aegir_db_user=$_AEGIR_DB_USER --aegir_db_pass=$_ESC_APASS --aegir_root=$_ROOT --root=$_HOSTMASTER_ROOT --version=$_AEGIR_VERSION $@
+
+$_DRUSHCMD hostmaster-install \
+  --aegir_host=$_AEGIR_HOST \
+  --aegir_db_user=$_AEGIR_DB_USER \
+  --aegir_db_pass=$_ESC_APASS \
+  --aegir_root=$_ROOT \
+  --root=$_HOSTMASTER_ROOT \
+  --version=$_AEGIR_VERSION $@
 
 mkdir -p /var/aegir/backups/system
 chmod 700 /var/aegir/backups/system

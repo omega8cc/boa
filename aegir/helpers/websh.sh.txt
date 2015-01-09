@@ -10,7 +10,8 @@ if [ -z "$USER" ] ; then
   _LTD_QQQ=YES
 fi
 _X_USR=".*"
-if [ "$USER" = "aegir" ] || [ "$HOME" = "/var/aegir" ] ; then
+if [ "$USER" = "aegir" ] \
+  || [ "$HOME" = "/var/aegir" ] ; then
   _Y_USR=aegir
 else
   _Y_USR=${USER%${_X_USR}}
@@ -34,9 +35,11 @@ if [ -d "/home/${USER}/.tmp" ] ; then
   export TMP="/home/${USER}/.tmp"
   export TMPDIR="/home/${USER}/.tmp"
   export TEMP="/home/${USER}/.tmp"
-  if [[ "$_ARGS" =~ " id " ]] || [[ "$_ARGS" =~ (^)"id " ]] ; then
+  if [[ "$_ARGS" =~ " id " ]] \
+    || [[ "$_ARGS" =~ (^)"id " ]] ; then
     exit 1
-  elif [[ "$_ARGS" =~ (^)"newrelic" ]] || [[ "$_ARGS" =~ (^)"nrsysm" ]] ; then
+  elif [[ "$_ARGS" =~ (^)"newrelic" ]] \
+    || [[ "$_ARGS" =~ (^)"nrsysm" ]] ; then
     exit 1
   fi
 elif [ -d "/data/disk/${_Y_USR}/.tmp" ] ; then
@@ -135,7 +138,8 @@ if [ "$_LTD_GID" = "www-data users" ] \
           if [ -f "$HOME/.drush/php.ini" ] ; then
             PHP_INI="$HOME/.drush/php.ini"
           fi
-          if [ ! -z "$PHP_OPTIONS" ] && [ -f "$HOME/.drush/rphp.ini" ] ; then
+          if [ ! -z "$PHP_OPTIONS" ] \
+            && [ -f "$HOME/.drush/rphp.ini" ] ; then
             PHP_INI="$HOME/.drush/rphp.ini"
             # echo 2 PHP_OPTIONS is $PHP_OPTIONS
           fi

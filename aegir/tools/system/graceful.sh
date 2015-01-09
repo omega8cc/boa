@@ -7,10 +7,12 @@ action() {
   mkdir -p /usr/share/GeoIP
   chmod 755 /usr/share/GeoIP
   cd /tmp
-  wget -q -U iCab http://geolite.maxmind.com/download/geoip/database/GeoLiteCountry/GeoIP.dat.gz
+  wget -q -U iCab \
+    http://geolite.maxmind.com/download/geoip/database/GeoLiteCountry/GeoIP.dat.gz
   gunzip GeoIP.dat.gz &> /dev/null
   cp -af GeoIP.dat /usr/share/GeoIP/
-  wget -q -U iCab http://geolite.maxmind.com/download/geoip/database/GeoIPv6.dat.gz
+  wget -q -U iCab \
+    http://geolite.maxmind.com/download/geoip/database/GeoIPv6.dat.gz
   gunzip GeoIPv6.dat.gz &> /dev/null
   cp -af GeoIPv6.dat /usr/share/GeoIP/
   chmod 644 /usr/share/GeoIP/*
@@ -19,15 +21,17 @@ action() {
   mkdir -p /opt/tmp
   chmod 777 /opt/tmp
   rm -f /opt/tmp/sess*
-  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
+  if [[ "$_HOST_TEST" =~ ".host8." ]] \
+    || [ "$_VMFAMILY" = "VS" ] \
+    || [ -e "/root/.host8.cnf" ] ; then
     rm -f /tmp/*
   fi
   rm -f /root/ksplice-archive.asc
   rm -f /root/install-uptrack
   find /tmp/{.ICE-unix,.X11-unix,.webmin} -mtime +0 -type f -exec rm -rf {} \;
-  rm -f -r /tmp/{google*,Google*,drush*,mapshape*,mc-*,hsperfdata*,tmp*,.sass-cache,pear,jetty*}
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
   kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
+  rm -f -r /tmp/{drush*,pear,jetty*}
   rm -f /opt/tomcat6/logs/*
   rm -f /var/log/jetty{7,8,9}/*
   if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ] ; then
@@ -76,8 +80,8 @@ action() {
 
 ###--------------------###
 _NOW=$(date +%y%m%d-%H%M 2>&1)
-_HOST_TEST=`uname -n 2>&1`
-_VM_TEST=`uname -a 2>&1`
+_HOST_TEST=$(uname -n 2>&1)
+_VM_TEST=$(uname -a 2>&1)
 if [[ "$_VM_TEST" =~ beng ]] ; then
   _VMFAMILY="VS"
 else

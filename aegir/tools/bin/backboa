@@ -19,10 +19,10 @@ _DUPLICITY_VERSION=0.7.0
 _BOTO_VERSION=2.34.0
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
-_DOW=`date +%w`
-_HST=`uname -n 2>&1`
+_DOW=$(date +%w 2>&1)
+_HST=$(uname -n 2>&1)
 _HST=${_HST//[^a-zA-Z0-9-.]/}
-_HST=`echo -n $_HST | tr A-Z a-z`
+_HST=$(echo -n $_HST | tr A-Z a-z 2>&1)
 
 if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
   echo "The duplicity backup is already running!"
@@ -84,11 +84,17 @@ if [ -z "$_AWS_REG" ] ; then
   _AWS_REG="us-east-1"
 fi
 
-if [ "$_AWS_REG" = "us-east-1" ] || [ "$_AWS_REG" = "us-west-2" ] || [ "$_AWS_REG" = "us-west-1" ] ; then
+if [ "$_AWS_REG" = "us-east-1" ] \
+  || [ "$_AWS_REG" = "us-west-2" ] \
+  || [ "$_AWS_REG" = "us-west-1" ] ; then
   _GOOD_AWS_REG=YES
-elif [ "$_AWS_REG" = "eu-west-1" ] || [ "$_AWS_REG" = "eu-central-1" ] || [ "$_AWS_REG" = "ap-southeast-1" ] ; then
+elif [ "$_AWS_REG" = "eu-west-1" ] \
+  || [ "$_AWS_REG" = "eu-central-1" ] \
+  || [ "$_AWS_REG" = "ap-southeast-1" ] ; then
   _GOOD_AWS_REG=YES
-elif [ "$_AWS_REG" = "ap-southeast-2" ] || [ "$_AWS_REG" = "ap-northeast-1" ] || [ "$_AWS_REG" = "sa-east-1" ] ; then
+elif [ "$_AWS_REG" = "ap-southeast-2" ] \
+  || [ "$_AWS_REG" = "ap-northeast-1" ] \
+  || [ "$_AWS_REG" = "sa-east-1" ] ; then
   _GOOD_AWS_REG=YES
 else
   _AWS_REG="us-east-1"
@@ -133,33 +139,42 @@ backup() {
     INCLUDE=${INCLUDE}${TMP}
   done
   if [ -e "/root/.cache/duplicity" ] ; then
-    CacheTest=$(find /root/.cache/duplicity/* -maxdepth 1 -mindepth 1 -type f | sort 2>&1)
-    if [[ "$CacheTest" =~ "No such file or directory" ]] || [ -z "$CacheTest" ] ; then
+    CacheTest=$(find /root/.cache/duplicity/* \
+      -maxdepth 1 \
+      -mindepth 1 \
+      -type f \
+      | sort 2>&1)
+    if [[ "$CacheTest" =~ "No such file or directory" ]] \
+      || [ -z "$CacheTest" ] ; then
       _DO_CLEANUP=NO
     else
       _DO_CLEANUP=YES
     fi
   fi
-  if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] && [ "$_DO_CLEANUP" = "YES" ] ; then
+  if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
+    && [ "$_DO_CLEANUP" = "YES" ] ; then
     duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
   fi
   duplicity -v ${_AWS_VLV} --volsize 100 \
-            --full-if-older-than ${_AWS_FLC} \
-            --asynchronous-upload ${_AWS_OPX} \
-            ${INCLUDE} ${EXCLUDE} --exclude '**' / ${TARGET} > $LOGFILE
-  if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] && [ "$_DO_CLEANUP" = "YES" ] ; then
-    duplicity -v ${_AWS_VLV} remove-older-than ${_AWS_TTL} --force ${_AWS_OPX} ${TARGET} >> $LOGFILE
+    --full-if-older-than ${_AWS_FLC} \
+    --asynchronous-upload ${_AWS_OPX} \
+    ${INCLUDE} ${EXCLUDE} --exclude '**' / ${TARGET} > $LOGFILE
+  if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
+    && [ "$_DO_CLEANUP" = "YES" ] ; then
+    duplicity -v ${_AWS_VLV} remove-older-than ${_AWS_TTL} \
+      --force ${_AWS_OPX} ${TARGET} >> $LOGFILE
     duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET} >> $LOGFILE
   fi
   if [ -n "$_MY_EMAIL" ] && [ "$_AWS_VLV" -lt "3" ] ; then
-    mail -s "Daily backup: ${_HST} `date`" $_MY_EMAIL < $LOGFILE
+    mail -s "Daily backup: ${_HST} $(date 2>&1)" $_MY_EMAIL < $LOGFILE
   fi
   cat /var/xdrago/log/${BUCKET}.log >> /var/xdrago/log/${BUCKET}.archive.log
 }
 
 conn_test() {
   echo "Running AWS connection test, please wait..."
-  ConnTest=$(duplicity -v 2 cleanup --dry-run --timeout 1 ${_AWS_OPX} ${TARGET} 2>&1)
+  ConnTest=$(duplicity -v 2 cleanup --dry-run \
+    --timeout 1 ${_AWS_OPX} ${TARGET} 2>&1)
   if [[ "$ConnTest" =~ "No connection to backend" ]] ; then
     echo
     echo "  Sorry, I can't connect to ${TARGET}"
@@ -189,9 +204,11 @@ list() {
 
 restore() {
   if [ $# = 2 ]; then
-    duplicity -v ${_AWS_VLV} restore --file-to-restore $1 ${_AWS_OPX} ${TARGET} $2
+    duplicity -v ${_AWS_VLV} restore \
+      --file-to-restore $1 ${_AWS_OPX} ${TARGET} $2
   else
-    duplicity -v ${_AWS_VLV} restore --file-to-restore $1 --time $2 ${_AWS_OPX} ${TARGET} $3
+    duplicity -v ${_AWS_VLV} restore \
+      --file-to-restore $1 --time $2 ${_AWS_OPX} ${TARGET} $3
   fi
 }
 
@@ -208,7 +225,10 @@ retrieve() {
 }
 
 install() {
-  _DUPLICITY_INSTALLED=`duplicity --version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
+  _DUPLICITY_INSTALLED=$(duplicity --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}')
   if [ "$_DUPLICITY_INSTALLED" = "$_DUPLICITY_VERSION" ] ; then
     echo "Latest duplicity version $_DUPLICITY_VERSION already installed"
   else
@@ -229,13 +249,15 @@ install() {
     mkdir -p /var/opt
     rm -f -r /var/opt/{boto*,duplicity*}
     cd /var/opt
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/src/boto-$_BOTO_VERSION.tar.gz"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab \
+      "http://files.aegir.cc/dev/src/boto-$_BOTO_VERSION.tar.gz"
     tar xzf boto-$_BOTO_VERSION.tar.gz &> /dev/null
     cd /var/opt/boto-$_BOTO_VERSION
     python setup.py install &> /dev/null
     echo "Installing duplicity version $_DUPLICITY_VERSION, please wait..."
     cd /var/opt
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/src/duplicity-$_DUPLICITY_VERSION.tar.gz"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab \
+      "http://files.aegir.cc/dev/src/duplicity-$_DUPLICITY_VERSION.tar.gz"
     tar xzf duplicity-$_DUPLICITY_VERSION.tar.gz &> /dev/null
     cd /var/opt/duplicity-$_DUPLICITY_VERSION
     python setup.py build &> /dev/null

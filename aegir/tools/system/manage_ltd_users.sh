@@ -2,11 +2,11 @@
 
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-_HOST_TEST=`uname -n 2>&1`
-_VM_TEST=`uname -a 2>&1`
+_HOST_TEST=$(uname -n 2>&1)
+_VM_TEST=$(uname -a 2>&1)
 _USRG=users
 _WEBG=www-data
-_THIS_RV=`lsb_release -sc`
+_THIS_RV=$(lsb_release -sc 2>&1)
 if [ "$_THIS_RV" = "wheezy" ] \
   || [ "$_THIS_RV" = "trusty" ] \
   || [ "$_THIS_RV" = "precise" ] ; then
@@ -24,6 +24,7 @@ if [ -x "/usr/bin/gpg2" ] ; then
 else
   _GPG=gpg
 fi
+urlHmr="http://files.aegir.cc/versions/master/aegir"
 
 ###-------------SYSTEM-----------------###
 
@@ -327,11 +328,14 @@ disable_chattr() {
     chattr -i /home/$1/.drush/usr    &> /dev/null
     chattr -i /home/$1/.drush/*.ini  &> /dev/null
     if [ "$1" != "${_USER}.ftp" ] ; then
-      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] && [ -d "/data/disk/${_USER}/.drush/usr/drupalgeddon" ] ; then
-        ln -sf /data/disk/${_USER}/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
+      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] \
+        && [ -d "/data/disk/${_USER}/.drush/usr/drupalgeddon" ] ; then
+        ln -sf /data/disk/${_USER}/.drush/usr/drupalgeddon \
+          /home/$1/.drush/usr/drupalgeddon
       fi
     else
-      if [ ! -d "/data/disk/${_USER}/.drush/usr/drupalgeddon" ] || [ ! -e "/data/disk/${_USER}/static/control/.drupalgeddon.in.015.pid" ] ; then
+      if [ ! -d "/data/disk/${_USER}/.drush/usr/drupalgeddon" ] \
+        || [ ! -e "/data/disk/${_USER}/static/control/.drupalgeddon.in.015.pid" ] ; then
         rm -f /data/disk/${_USER}/.drush/usr/drupalgeddon &> /dev/null
         cd /data/disk/${_USER}/.drush/usr
         get_dev_ext "drupalgeddon.tar.gz"
@@ -341,9 +345,11 @@ disable_chattr() {
         rm -f /data/disk/${_USER}/static/control/.drupalgeddon.in.00*.pid
         touch /data/disk/${_USER}/static/control/.drupalgeddon.in.015.pid
       fi
-      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] && [ -d "/data/disk/${_USER}/.drush/usr/drupalgeddon" ] ; then
+      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] \
+        && [ -d "/data/disk/${_USER}/.drush/usr/drupalgeddon" ] ; then
         rm -f -r /home/$1/.drush/usr/drupalgeddon
-        ln -sf /data/disk/${_USER}/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
+        ln -sf /data/disk/${_USER}/.drush/usr/drupalgeddon \
+          /home/$1/.drush/usr/drupalgeddon
       fi
     fi
   fi
@@ -360,7 +366,8 @@ do
     _SEC_SYM="/home/${Existing}/sites"
     _SEC_DIR=`readlink -n ${_SEC_SYM}`
     _SEC_DIR=`echo -n ${_SEC_DIR} | tr -d "\n"`
-    if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] || [ ! -e "/home/${_PAR_OWN}.ftp/users/${Existing}" ] ; then
+    if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
+      || [ ! -e "/home/${_PAR_OWN}.ftp/users/${Existing}" ] ; then
       disable_chattr ${Existing}
       deluser --remove-home --backup-to /var/backups/zombie/deleted ${Existing}
       rm -f /home/${_PAR_OWN}.ftp/users/${Existing}
@@ -405,24 +412,34 @@ manage_sec_user_drush_aliases() {
   rm -f ${_USER_LTD_ROOT}/sites
   ln -sf $Client ${_USER_LTD_ROOT}/sites
   mkdir -p ${_USER_LTD_ROOT}/.drush
-  for Alias in `find ${_USER_LTD_ROOT}/.drush/*.alias.drushrc.php -maxdepth 1 -type f | sort`
-  do
+  for Alias in `find ${_USER_LTD_ROOT}/.drush/*.alias.drushrc.php \
+    -maxdepth 1 -type f | sort`; do
     AliasName=`echo "$Alias" | cut -d'/' -f5 | awk '{ print $1}'`
-    AliasName=`echo "${AliasName}" | sed "s/.alias.drushrc.php//g" | awk '{ print $1}'`
-    if [ ! -z "${AliasName}" ] && [ ! -e "${_USER_LTD_ROOT}/sites/${AliasName}" ] ; then
+    AliasName=`echo "${AliasName}" \
+      | sed "s/.alias.drushrc.php//g" \
+      | awk '{ print $1}'`
+    if [ ! -z "${AliasName}" ] \
+      && [ ! -e "${_USER_LTD_ROOT}/sites/${AliasName}" ] ; then
       rm -f ${_USER_LTD_ROOT}/.drush/${AliasName}.alias.drushrc.php
     fi
   done
-  for Symlink in `find ${_USER_LTD_ROOT}/sites/ -maxdepth 1 -mindepth 1 | sort`
-  do
-    _THIS_SITE_NAME=`echo $Symlink | cut -d'/' -f5 | awk '{ print $1}'`
-    if [ ! -z "$_THIS_SITE_NAME" ] && [ ! -e "${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php" ] ; then
-      cp -af $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php ${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+  for Symlink in `find ${_USER_LTD_ROOT}/sites/ \
+    -maxdepth 1 -mindepth 1 | sort`; do
+    _THIS_SITE_NAME=`echo $Symlink \
+      | cut -d'/' -f5 \
+      | awk '{ print $1}'`
+    if [ ! -z "$_THIS_SITE_NAME" ] \
+      && [ ! -e "${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php" ] ; then
+      cp -af $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
+        ${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
       chmod 440 ${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
-    elif [ ! -z "$_THIS_SITE_NAME" ] && [ -e "${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php" ] ; then
-      _DIFF_TEST=$(diff ${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php  $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php)
+    elif [ ! -z "$_THIS_SITE_NAME" ] \
+      && [ -e "${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php" ] ; then
+      _DIFF_TEST=$(diff ${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
+        $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php)
       if [ ! -z "$_DIFF_TEST" ] ; then
-        cp -af $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php ${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+        cp -af $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
+          ${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
         chmod 440 ${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
       fi
     fi
@@ -456,7 +473,8 @@ ok_create_user() {
       _PWD_CHARS=8
     else
       _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
-      if [ ! -z "${_STRONG_PASSWORDS}" ] && [ "${_STRONG_PASSWORDS}" -gt "8" ] ; then
+      if [ ! -z "${_STRONG_PASSWORDS}" ] \
+        && [ "${_STRONG_PASSWORDS}" -gt "8" ] ; then
         _PWD_CHARS="${_STRONG_PASSWORDS}"
       else
         _PWD_CHARS=8
@@ -481,8 +499,10 @@ ok_create_user() {
     usermod -aG lshellg ${_USER_LTD}
     usermod -aG ltd-shell ${_USER_LTD}
   fi
-  if [ ! -e "/home/${_ADMIN}/users/${_USER_LTD}" ] && [ ! -z "${_ESC_LUPASS}" ] ; then
-    if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ] ; then
+  if [ ! -e "/home/${_ADMIN}/users/${_USER_LTD}" ] \
+    && [ ! -z "${_ESC_LUPASS}" ] ; then
+    if [ -e "/usr/bin/MySecureShell" ] \
+      && [ -e "/etc/ssh/sftp_config" ] ; then
       chsh -s /usr/bin/MySecureShell ${_USER_LTD}
     else
       chsh -s /usr/bin/lshell ${_USER_LTD}
@@ -524,7 +544,8 @@ add_user_if_not_exists() {
     ok_create_user
     manage_sec_user_drush_aliases
     enable_chattr ${_USER_LTD}
-  elif [[ "${_ID_EXISTS}" =~ "${_USER_LTD}" ]] && [[ "$_ID_SHELLS" =~ "ltd-shell" ]] ; then
+  elif [[ "${_ID_EXISTS}" =~ "${_USER_LTD}" ]] \
+    && [[ "$_ID_SHELLS" =~ "ltd-shell" ]] ; then
     echo "We will update user == ${_USER_LTD} =="
     disable_chattr ${_USER_LTD}
     rm -f -r /home/${_USER_LTD}/drush-backups
@@ -537,8 +558,7 @@ add_user_if_not_exists() {
 # Manage Access Paths.
 manage_sec_access_paths() {
 #for Domain in `find $Client/ -maxdepth 1 -mindepth 1 -type l -printf %P\\n | sort`
-for Domain in `find $Client/ -maxdepth 1 -mindepth 1 -type l | sort`
-do
+for Domain in `find $Client/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _PATH_DOM=`readlink -n ${Domain}`
   _PATH_DOM=`echo -n ${_PATH_DOM} | tr -d "\n"`
   _ALLD_DIR="${_ALLD_DIR}, '${_PATH_DOM}'"
@@ -551,8 +571,7 @@ done
 #
 # Manage Secondary Users.
 manage_sec() {
-for Client in `find $User/clients/ -maxdepth 1 -mindepth 1 -type d | sort`
-do
+for Client in `find $User/clients/ -maxdepth 1 -mindepth 1 -type d | sort`; do
   _USER_LTD=`echo $Client | cut -d'/' -f6 | awk '{ print $1}'`
   _USER_LTD=${_USER_LTD//[^a-zA-Z0-9]/}
   _USER_LTD=`echo -n ${_USER_LTD} | tr A-Z a-z`
@@ -585,11 +604,15 @@ update_php_cli_local_ini() {
   _CHECK_USE_PHP_CLI=`grep "/opt/php" $_DRUSH_FILE`
   _PHP_V="56 55 54 53"
   for e in $_PHP_V; do
-    if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] && [ ! -e "$_U_HD/.ctrl.php${e}.txt" ] ; then
+    if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] \
+      && [ ! -e "$_U_HD/.ctrl.php${e}.txt" ] ; then
       _PHP_CLI_UPDATE=YES
     fi
   done
-  if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "${_U_II}" ] || [ ! -d "$_U_TP" ] || [ ! -e "$_U_HD/.ctrl.240dev.txt" ] ; then
+  if [ "$_PHP_CLI_UPDATE" = "YES" ] \
+    || [ ! -e "${_U_II}" ] \
+    || [ ! -d "$_U_TP" ] \
+    || [ ! -e "$_U_HD/.ctrl.240dev.txt" ] ; then
     rm -f -r $_U_TP
     mkdir -p $_U_TP
     chmod 700 $_U_TP
@@ -667,7 +690,9 @@ update_php_cli_drush() {
       rm -f /data/disk/${_USER}/aegir.sh
     fi
     touch /data/disk/${_USER}/aegir.sh
-    echo -e "#!/bin/bash\n\nPATH=.:$_L_PHP_CLI:/usr/sbin:/usr/bin:/sbin:/bin\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch /data/disk/${_USER}/${_USER}-task.done" | tee -a /data/disk/${_USER}/aegir.sh >/dev/null 2>&1
+    echo -e "#!/bin/bash\n\nPATH=.:$_L_PHP_CLI:/usr/sbin:/usr/bin:/sbin:/bin\n$_DRUSHCMD \
+      '@hostmaster' hosting-dispatch\ntouch /data/disk/${_USER}/${_USER}-task.done" \
+      | tee -a /data/disk/${_USER}/aegir.sh >/dev/null 2>&1
     chown ${_USER}:users /data/disk/${_USER}/aegir.sh &> /dev/null
     chmod 0700 /data/disk/${_USER}/aegir.sh &> /dev/null
   fi
@@ -675,7 +700,7 @@ update_php_cli_drush() {
 #
 # Tune FPM workers.
 tune_fpm_workers() {
-  _ETH_TEST=`ifconfig 2>&1`
+  _ETH_TEST=$(ifconfig 2>&1)
   _AWS_TEST_A=$(grep cloudimg /etc/fstab)
   _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
   if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
@@ -692,7 +717,8 @@ tune_fpm_workers() {
   if [[ "$_VM_TEST" =~ beng ]] ; then
     _VMFAMILY="VS"
   fi
-  if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
+  if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] \
+    || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
     _VMFAMILY="AWS"
   fi
   _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
@@ -714,7 +740,9 @@ tune_fpm_workers() {
         _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
       fi
     elif [ "$_VMFAMILY" = "VS" ] || [ "$_VMFAMILY" = "TG" ] ; then
-      if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
+      if [ -e "/boot/grub/grub.cfg" ] \
+        || [ -e "/boot/grub/menu.lst" ] \
+        || [ -e "/root/.tg.cnf" ] ; then
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
           _L_PHP_FPM_WORKERS=24
         else
@@ -754,8 +782,10 @@ disable_newrelic() {
     _CHECK_NEW_RELIC_KEY=`grep "newrelic.enabled.*true" $_THIS_POOL_TPL`
     if [[ "$_CHECK_NEW_RELIC_KEY" =~ "newrelic.enabled" ]] ; then
       echo New Relic for ${_USER} will be disabled because newrelic.info does not exist
-      sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"\"/g" $_THIS_POOL_TPL
-      sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"false\"/g" $_THIS_POOL_TPL
+      sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] \
+        = \"\"/g" $_THIS_POOL_TPL
+      sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] \
+        = \"false\"/g" $_THIS_POOL_TPL
       if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ] ; then
         service php${_PHP_SV}-fpm reload
       fi
@@ -783,9 +813,12 @@ enable_newrelic() {
         echo "New Relic integration is already active for ${_USER}"
       else
         if [[ "$_CHECK_NEW_RELIC_TPL" =~ "newrelic.license" ]] ; then
-          echo New Relic for ${_USER} update with key $_LOC_NEW_RELIC_KEY in php${_PHP_SV}
-          sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"$_LOC_NEW_RELIC_KEY\"/g" $_THIS_POOL_TPL
-          sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"true\"/g" $_THIS_POOL_TPL
+          echo "New Relic for ${_USER} update with key \
+            $_LOC_NEW_RELIC_KEY in php${_PHP_SV}"
+          sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] \
+            = \"$_LOC_NEW_RELIC_KEY\"/g" $_THIS_POOL_TPL
+          sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] \
+            = \"true\"/g" $_THIS_POOL_TPL
         else
           echo New Relic for ${_USER} setup with key $_LOC_NEW_RELIC_KEY in php${_PHP_SV}
           echo "php_admin_value[newrelic.license] = \"$_LOC_NEW_RELIC_KEY\"" >> $_THIS_POOL_TPL
@@ -920,7 +953,8 @@ switch_php() {
   if [ -e "/data/disk/${_USER}/static/control/fpm.info" ] \
     || [ -e "/data/disk/${_USER}/static/control/cli.info" ] \
     || [ -e "/data/disk/${_USER}/static/control/hhvm.info" ] ; then
-    echo "Custom FPM, HHVM or CLI settings for $_OWN exist, running switch_php checks"
+    echo "Custom FPM, HHVM or CLI settings for $_OWN exist, \
+      running switch_php checks"
     if [ -e "/data/disk/${_USER}/static/control/cli.info" ] ; then
       _LOC_PHP_CLI_VERSION=`cat /data/disk/${_USER}/static/control/cli.info`
       _LOC_PHP_CLI_VERSION=${_LOC_PHP_CLI_VERSION//[^0-9.]/}
@@ -1261,22 +1295,29 @@ manage_site_drush_alias_mirror() {
         _IS_SITE=NO
         rm -f $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
       else
-        _THIS_SITE_FDIR=`cat $Alias | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+        _THIS_SITE_FDIR=`cat $Alias \
+          | grep "site_path'" \
+          | cut -d: -f2 \
+          | awk '{ print $3}' \
+          | sed "s/[\,']//g"`
         if [ -d "$_THIS_SITE_FDIR" ] ; then
           echo _THIS_SITE_FDIR is $_THIS_SITE_FDIR
           if [ ! -e "/home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php" ] ; then
-            cp -af $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php /home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+            cp -af $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
+              /home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
             chmod 440 /home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
           else
-            _DIFF_TEST=$(diff /home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php  $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php)
+            _DIFF_TEST=$(diff /home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
+              $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php)
             if [ ! -z "$_DIFF_TEST" ] ; then
-              cp -af $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php /home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+              cp -af $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
+                /home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
               chmod 440 /home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
             fi
           fi
         else
           rm -f /home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
-          echo ZOMBIE $_THIS_SITE_FDIR IN $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+          echo "ZOMBIE $_THIS_SITE_FDIR IN $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php"
         fi
       fi
     fi
@@ -1287,7 +1328,9 @@ manage_site_drush_alias_mirror() {
 manage_user() {
 for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
 do
-  if [ -e "$User/config/server_master/nginx/vhost.d" ] && [ -e "$User/log/fpm.txt" ] && [ ! -e "$User/log/CANCELLED" ] ; then
+  if [ -e "$User/config/server_master/nginx/vhost.d" ] \
+    && [ -e "$User/log/fpm.txt" ] \
+    && [ ! -e "$User/log/CANCELLED" ] ; then
     _USER=""
     _USER=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
     echo "_USER is == $_USER == at manage_user"
@@ -1316,7 +1359,8 @@ do
       mkdir -p /data/disk/${_USER}/static/control
       chmod 755 /data/disk/${_USER}/static/control
       if [ -e "/var/xdrago/conf/control-readme.txt" ] ; then
-        cp -af /var/xdrago/conf/control-readme.txt /data/disk/${_USER}/static/control/README.txt &> /dev/null
+        cp -af /var/xdrago/conf/control-readme.txt \
+          /data/disk/${_USER}/static/control/README.txt &> /dev/null
         chmod 0644 /data/disk/${_USER}/static/control/README.txt
       fi
       chown -R ${_USER}.ftp:$_USRG /data/disk/${_USER}/static/control &> /dev/null
@@ -1340,7 +1384,9 @@ do
         symlinks -dr /home/${_USER}.ftp &> /dev/null
         echo >> ${_THIS_LTD_CONF}
         echo "[${_USER}.ftp]" >> ${_THIS_LTD_CONF}
-        echo "path : ['/data/disk/$_OWN/distro', '/data/disk/$_OWN/static', '/data/disk/$_OWN/backups', '/data/disk/$_OWN/clients']" >> ${_THIS_LTD_CONF}
+        echo "path : ['/data/disk/$_OWN/distro', '/data/disk/$_OWN/static', \
+          '/data/disk/$_OWN/backups', '/data/disk/$_OWN/clients']" \
+          >> ${_THIS_LTD_CONF}
         manage_site_drush_alias_mirror
         manage_sec
         if [ -e "/home/${_USER}.ftp/users" ] ; then
@@ -1382,7 +1428,10 @@ _NOW=$(date +%y%m%d-%H%M 2>&1)
 mkdir -p /var/backups/ltd/{conf,log,old}
 mkdir -p /var/backups/zombie/deleted
 _THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.${_NOW}"
-if [ -e "/var/run/manage_rvm_users.pid" ] || [ -e "/var/run/manage_ltd_users.pid" ] || [ -e "/var/run/boa_run.pid" ] || [ -e "/var/run/boa_wait.pid" ] ; then
+if [ -e "/var/run/manage_rvm_users.pid" ] \
+  || [ -e "/var/run/manage_ltd_users.pid" ] \
+  || [ -e "/var/run/boa_run.pid" ] \
+  || [ -e "/var/run/boa_wait.pid" ] ; then
   touch /var/xdrago/log/wait-manage-ltd-users
   echo Another BOA task is running, we have to wait
   exit 0
@@ -1393,8 +1442,10 @@ else
   touch /var/run/manage_ltd_users.pid
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   cat /var/xdrago/conf/lshell.conf > ${_THIS_LTD_CONF}
-  _THISHTNM=`hostname --fqdn`
-  _THISHTIP=`echo $(getent ahostsv4 $_THISHTNM) | cut -d: -f2 | awk '{ print $1}'`
+  _THISHTNM=$(hostname --fqdn 2>&1)
+  _THISHTIP=$(echo $(getent ahostsv4 $_THISHTNM) \
+    | cut -d: -f2 \
+    | awk '{ print $1}' 2>&1)
   sed -i "s/8.8.8.8/$_THISHTIP/g" ${_THIS_LTD_CONF}
   if [ ! -e "/root/.allow.mc.cnf" ] ; then
     sed -i "s/'mc', //g" ${_THIS_LTD_CONF}
@@ -1413,10 +1464,11 @@ else
     fi
   fi
   if [ -L "/bin/sh" ] ; then
-    _WEB_SH=`readlink -n /bin/sh`
-    _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
+    _WEB_SH=$(readlink -n /bin/sh 2>&1)
+    _WEB_SH=$(echo -n $_WEB_SH | tr -d "\n" 2>&1)
     if [ -x "/bin/websh" ] ; then
-      if [ "$_WEB_SH" != "/bin/websh" ] && [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
+      if [ "$_WEB_SH" != "/bin/websh" ] \
+        && [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
       fi
@@ -1432,7 +1484,7 @@ else
           ln -s /bin/bash /bin/sh
         fi
       fi
-      curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/helpers/websh.sh.txt" -o /bin/websh
+      curl -s -A iCab "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh
       chmod 755 /bin/websh
     fi
   fi
@@ -1458,15 +1510,19 @@ else
     fi
   fi
   if [ -e "/var/backups/reports/up/barracuda" ] ; then
-    if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    if [ -e "/root/.mstr.clstr.cnf" ] \
+      || [ -e "/root/.wbhd.clstr.cnf" ] \
+      || [ -e "/root/.dbhd.clstr.cnf" ] ; then
       if [ -e "/var/spool/cron/crontabs/aegir" ] ; then
         sleep 180
         rm -f /var/spool/cron/crontabs/aegir
         service cron reload &> /dev/null
       fi
     fi
-    if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] ; then
-      if [ -e "/var/run/mysqld/mysqld.pid" ] && [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
+    if [ -e "/root/.mstr.clstr.cnf" ] \
+      || [ -e "/root/.wbhd.clstr.cnf" ] ; then
+      if [ -e "/var/run/mysqld/mysqld.pid" ] \
+        && [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
         service cron stop &> /dev/null
         sleep 180
         touch /root/.remote.db.cnf

@@ -55,7 +55,7 @@
 ### in the /root/.${_USER}.octopus.cnf file.
 ###
 _USER=o1
-_DOMAIN=$_USER.`uname -n`
+_DOMAIN=$_USER.$(uname -n 2>&1)
 _MY_EMAIL="noc@omega8.cc"
 _CLIENT_EMAIL="notify@omega8.cc"
 _CLIENT_OPTION=SSD
@@ -727,7 +727,7 @@ clean_pid_exit() {
 #
 # Noticeable messages.
 msg() {
-  echo "Octopus [`date`] ==> $*"
+  echo "Octopus [$(date 2>&1)] ==> $*"
 }
 # Simple prompt.
 prompt_yes_no() {
@@ -771,8 +771,8 @@ mrun() {
 #
 # Tune FPM workers.
 tune_fpm_workers() {
-  _ETH_TEST=`ifconfig 2>&1`
-  _VM_TEST=`uname -a 2>&1`
+  _ETH_TEST=$(ifconfig 2>&1)
+  _VM_TEST=$(uname -a 2>&1)
   if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
     _VMFAMILY="VZ"
   elif [ -e "/proc/bean_counters" ] ; then
@@ -1151,7 +1151,7 @@ octopus_cnf() {
   if [ ! -e "${octCnf}" ] ; then
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] \
       || [[ "$_CLIENT_EMAIL" =~ "omega8.cc" ]] ; then
-      _CHECK_HOST=`uname -n`
+      _CHECK_HOST=$(uname -n 2>&1)
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [[ "$_CHECK_HOST" =~ ".host8." ]] \
@@ -1239,7 +1239,7 @@ octopus_cnf() {
     else
       echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> ${octCnf}
     fi
-    _CHECK_HOST=`uname -n`
+    _CHECK_HOST=$(uname -n 2>&1)
     if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       _LD_DOM=YES
     else
@@ -1742,7 +1742,7 @@ force_advanced_nginx_config() {
 #
 # Action.
 action() {
-  _REL_VERSION=`lsb_release -sc`
+  _REL_VERSION=$(lsb_release -sc 2>&1)
   if [ -d "/data/all/000" ] ; then
     if [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] \
       || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
@@ -2055,7 +2055,7 @@ fi
   sleep 3
 #
 # Some auto-magic for localhost install
-_THIS_HOST=`uname -n`
+_THIS_HOST=$(uname -n 2>&1)
 if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
   _DEBUG_MODE=NO
   _DNS_SETUP_TEST=NO
@@ -2070,7 +2070,7 @@ fi
   _DOMAIN=`echo -n $_DOMAIN | tr A-Z a-z`
 #
 # Detect VM family
-_ETH_TEST=`ifconfig 2>&1`
+_ETH_TEST=$(ifconfig 2>&1)
 if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
   _IFCONFIG="venet0"
 elif [ -e "/proc/bean_counters" ] ; then
@@ -2078,7 +2078,7 @@ elif [ -e "/proc/bean_counters" ] ; then
 else
   _IFCONFIG="eth0"
 fi
-_VM_TEST=`uname -a 2>&1`
+_VM_TEST=$(uname -a 2>&1)
 if [[ "$_VM_TEST" =~ beng ]] ; then
   _VMFAMILY="VS"
 else
@@ -2217,7 +2217,7 @@ if [ -d "$_ROOT" ] ; then
       msg "ALERT! _USER is e-m-p-t-y, exit now"
       clean_pid_exit
     fi
-    _CHECK_HOST=`uname -n`
+    _CHECK_HOST=$(uname -n 2>&1)
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "$_CHECK_HOST" =~ ".host8." ]] \
@@ -2267,7 +2267,7 @@ if [ -d "$_ROOT" ] ; then
       _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
     fi
     if [[ "$_CLIENT_EMAIL" =~ "omega8.cc" ]] ; then
-      _CHECK_HOST=`uname -n`
+      _CHECK_HOST=$(uname -n 2>&1)
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [[ "$_CHECK_HOST" =~ ".host8." ]] \

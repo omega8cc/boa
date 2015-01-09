@@ -47,12 +47,12 @@ _X_VERSION=EDIT_X_VERSION
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
 _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
 _PURGE_MODE=EDIT_PURGE_MODE
-_REL_VERSION=`lsb_release -sc`
+_REL_VERSION=$(lsb_release -sc 2>&1)
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _ROOT="$HOME"
 #
 if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-  _THIS_DB_HOST=`uname -n`
+  _THIS_DB_HOST=$(uname -n 2>&1)
 fi
 if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
   _L_PHP_CLI=/opt/php55/bin
@@ -74,7 +74,7 @@ urlStb="http://files.aegir.cc/versions/stable"
 #
 # Noticeable messages.
 msg() {
-  echo "Barracuda [`date`] ==> $*"
+  echo "Barracuda [$(date 2>&1)] ==> $*"
 }
 #
 export DEBIAN_FRONTEND=noninteractive
@@ -194,7 +194,8 @@ extract_archive() {
 #
 get_dev_ext() {
   if [ ! -z $1 ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_XTS_VERSION/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab \
+      "http://files.aegir.cc/dev/$_AEGIR_XTS_VERSION/$1"
     extract_archive "$1"
   fi
 }
@@ -204,22 +205,29 @@ hostmaster_mv_up() {
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
   mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
-  _D_EXT="provision clean_missing_modules drupalgeddon drush_ecl provision_boost provision_cdn provision_civicrm provision_site_backup provision_tasks_extra registry_rebuild security_check security_review remote_import"
+  _D_EXT="provision clean_missing_modules drupalgeddon drush_ecl \
+    provision_boost provision_cdn provision_civicrm provision_site_backup \
+    provision_tasks_extra registry_rebuild security_check \
+    security_review remote_import"
   for e in $_D_EXT; do
     if [ -e "$_ROOT/.drush/$e" ] ; then
-      mv -f $_ROOT/.drush/$e $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
+      mv -f $_ROOT/.drush/$e \
+        $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
       mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/ &> /dev/null
     fi
     if [ -e "$_ROOT/.drush/xts/$e" ] ; then
-      mv -f $_ROOT/.drush/xts/$e $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
+      mv -f $_ROOT/.drush/xts/$e \
+        $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
       mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/ &> /dev/null
     fi
     if [ -e "$_ROOT/.drush/usr/$e" ] ; then
-      mv -f $_ROOT/.drush/usr/$e $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
+      mv -f $_ROOT/.drush/usr/$e \
+        $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
       mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/ &> /dev/null
     fi
     if [ -e "$_ROOT/.drush/sys/$e" ] ; then
-      mv -f $_ROOT/.drush/sys/$e $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
+      mv -f $_ROOT/.drush/sys/$e \
+        $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
       mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/ &> /dev/null
     fi
   done
@@ -275,7 +283,8 @@ hostmaster_go_up() {
       git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/usr/registry_rebuild &> /dev/null
     else
       cd $_ROOT/.drush/sys
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "${urlStb}/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+        "${urlStb}/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
       msg "INFO: Downloading Drush and Provision extensions..."
       cd $_ROOT/.drush/xts
       _G_EXT="provision_boost provision_cdn security_review"
@@ -298,28 +307,37 @@ hostmaster_go_up() {
 #
 hostmaster_mi_up() {
   msg "INFO: Running hostmaster-migrate, please wait..."
-  mv -f $_ROOT/.drush/xts/security_review/security_review.drush.inc $_ROOT/.drush/xts/security_review/foo.txt  &> /dev/null
+  mv -f $_ROOT/.drush/xts/security_review/security_review.drush.inc \
+    $_ROOT/.drush/xts/security_review/foo.txt  &> /dev/null
   export DEBIAN_FRONTEND=noninteractive
   if [ -z "${TERM+x}" ]; then
     export TERM=vt100
   fi
   $_DRUSHCMD cache-clear drush &> /dev/null
   rm -f -r $_ROOT/.tmp/cache
-  $_DRUSHCMD @hostmaster sqlq "DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'" &> /dev/null
-  $_DRUSHCMD @hostmaster sqlq "DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'" &> /dev/null
+  $_DRUSHCMD @hostmaster sqlq "DELETE FROM hosting_task WHERE \
+    task_type='delete' AND task_status='-1'" &> /dev/null
+  $_DRUSHCMD @hostmaster sqlq "DELETE FROM hosting_task WHERE \
+    task_type='delete' AND task_status='0' AND executed='0'" &> /dev/null
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y -d
   else
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y &> /dev/null
   fi
   if [ -e "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
-    _THIS_HM_ROOT=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-    if [ -e "$_THIS_HM_ROOT/sites/all" ] && [ ! -e "$_THIS_HM_ROOT/sites/all/libraries" ] ; then
+    _THIS_HM_ROOT=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php \
+      | grep "root'" \
+      | cut -d: -f2 \
+      | awk '{ print $3}' \
+      | sed "s/[\,']//g"`
+    if [ -e "$_THIS_HM_ROOT/sites/all" ] \
+      && [ ! -e "$_THIS_HM_ROOT/sites/all/libraries" ] ; then
       mkdir -p $_THIS_HM_ROOT/sites/all/{modules,themes,libraries} &> /dev/null
     fi
   fi
   export DEBIAN_FRONTEND=text
-  mv -f $_ROOT/.drush/xts/security_review/foo.txt $_ROOT/.drush/xts/security_review/security_review.drush.inc  &> /dev/null
+  mv -f $_ROOT/.drush/xts/security_review/foo.txt \
+    $_ROOT/.drush/xts/security_review/security_review.drush.inc  &> /dev/null
   mkdir -p $_ROOT/backups/system/old_hostmaster
   chmod 700 $_ROOT/backups/system/old_hostmaster
   chmod 700 $_ROOT/backups/system
@@ -356,9 +374,11 @@ if [ -d "$_ROOT/host_master/000" ] ; then
     _PREV_HOSTMASTER_ROOT="$_ROOT/host_master/$_LASTNUM"
   else
     _DEBUG_MODE=YES
-    msg "INFO: Testing previous install... OPS, zombie found, moving it to backups..."
+    msg "INFO: Testing previous install... OPS, \
+      zombie found, moving it to backups..."
     sleep 1
-    mv -f $_PREV_HOSTMASTER_ROOT_TEST $_ROOT/backups/system/empty-host-master-$_LASTNUM-${_NOW} &> /dev/null
+    mv -f $_PREV_HOSTMASTER_ROOT_TEST \
+      $_ROOT/backups/system/empty-host-master-$_LASTNUM-${_NOW} &> /dev/null
     cd $_ROOT/host_master
     list=([0-9]*)
     last=${list[@]: -1}
@@ -374,9 +394,11 @@ if [ -d "$_ROOT/host_master/000" ] ; then
       _PREV_HOSTMASTER_ROOT="$_ROOT/host_master/$_LASTNUM"
     else
       _DEBUG_MODE=YES
-      msg "INFO: Testing previous install... OPS, another zombie found, moving it to backups..."
+      msg "INFO: Testing previous install... OPS, \
+        another zombie found, moving it to backups..."
       sleep 1
-      mv -f $_PREV_HOSTMASTER_ROOT_TEST $_ROOT/backups/system/empty-host-master-$_LASTNUM-${_NOW}-sec &> /dev/null
+      mv -f $_PREV_HOSTMASTER_ROOT_TEST \
+        $_ROOT/backups/system/empty-host-master-$_LASTNUM-${_NOW}-sec &> /dev/null
       cd $_ROOT/host_master
       list=([0-9]*)
       last=${list[@]: -1}
@@ -397,7 +419,8 @@ fi
 
 _HOSTMASTER_ROOT="$_ROOT/host_master/$_DISTRO"
 if [ -d "$_HOSTMASTER_ROOT" ] ; then
-  msg "FATAL ERROR: $_HOSTMASTER_ROOT already exists - too many zombies to delete!"
+  msg "FATAL ERROR: $_HOSTMASTER_ROOT already exists - \
+    too many zombies to delete!"
   msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
   touch /opt/tmp/status-AegirUpgrade-FAIL
   exit 1
@@ -406,7 +429,8 @@ fi
 mkdir -p $_ROOT/host_master
 chmod 711 $_ROOT/host_master &> /dev/null
 if [ ! -d "/var/aegir/.drush/sys/provision/http" ] ; then
-  msg "FATAL ERROR: Required directory /var/aegir/.drush/sys/provision/http does not exist"
+  msg "FATAL ERROR: Required directory \
+    /var/aegir/.drush/sys/provision/http does not exist"
   msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
   touch /opt/tmp/status-AegirUpgrade-FAIL
   exit 1

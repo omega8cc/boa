@@ -14,11 +14,12 @@ varPath=/var/backups
 barName=BARRACUDA.sh.txt
 octName=OCTOPUS.sh.txt
 barCnf=/root/.barracuda.cnf
+urlHmr="http://files.aegir.cc/versions/master/aegir"
 
 _TODAY=$(date +%y%m%d 2>&1)
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _L_VMFAMILY=XEN
-_L_VM_TEST=`uname -a 2>&1`
+_L_VM_TEST=$(uname -a 2>&1)
 if [[ "$_L_VM_TEST" =~ beng ]] ; then
   _L_VMFAMILY="VS"
 fi
@@ -44,10 +45,19 @@ check_id() {
     echo "Please try different username"
     clean_pid_exit
   fi
-  if [ "$_USER" = "admin" ] || [ "$_USER" = "hostmaster" ] || [ "$_USER" = "barracuda" ] || [ "$_USER" = "octopus" ] || [ "$_USER" = "boa" ] || [ "$_USER" = "all" ] ; then
+  if [ "$_USER" = "admin" ] \
+    || [ "$_USER" = "hostmaster" ] \
+    || [ "$_USER" = "barracuda" ] \
+    || [ "$_USER" = "octopus" ] \
+    || [ "$_USER" = "boa" ] \
+    || [ "$_USER" = "all" ] ; then
     echo "ERROR: $_USER is a restricted username, please choose different _USER"
     clean_pid_exit
-  elif [[ "$_USER" =~ "aegir" ]] || [[ "$_USER" =~ "drupal" ]] || [[ "$_USER" =~ "drush" ]] || [[ "$_USER" =~ "sites" ]] || [[ "$_USER" =~ "default" ]] ; then
+  elif [[ "$_USER" =~ "aegir" ]] \
+    || [[ "$_USER" =~ "drupal" ]] \
+    || [[ "$_USER" =~ "drush" ]] \
+    || [[ "$_USER" =~ "sites" ]] \
+    || [[ "$_USER" =~ "default" ]] ; then
     echo "ERROR: $_USER includes restricted keyword, please choose different _USER"
     clean_pid_exit
   fi
@@ -81,7 +91,8 @@ fix_dns_settings() {
   echo "nameserver 8.8.8.8" > /etc/resolv.conf
   echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] && [ -e "$varPath/resolv.conf.vanilla" ] ; then
+  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] \
+    && [ -e "$varPath/resolv.conf.vanilla" ] ; then
     touch /root/.use.local.nameservers.cnf
     rm -f /etc/resolv.conf
     cp -a $varPath/resolv.conf.vanilla /etc/resolv.conf
@@ -104,10 +115,15 @@ fix_dns_settings() {
     fi
     _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
     _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
-    if [[ "$_CUSTOM_DNS_TEST" =~ "8.8.8.8" ]] || [[ "$_BROKEN_DNS_CONF" =~ "Dynamic" ]] ; then
+    if [[ "$_CUSTOM_DNS_TEST" =~ "8.8.8.8" ]] \
+      || [[ "$_BROKEN_DNS_CONF" =~ "Dynamic" ]] ; then
       if [ -e "/root/.use.local.nameservers.cnf" ] ; then
         echo "        label = \"google-servers\";" > /root/.local.dns.IP.list
-        for _IP in `cat /etc/resolv.conf | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' | cut -d ' ' -f2 | sort | uniq`;do echo "        ip=$_IP;" >> /root/.local.dns.IP.list;done
+        for _IP in `cat /etc/resolv.conf \
+          | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
+          | cut -d ' ' -f2 \
+          | sort \
+          | uniq`;do echo "        ip=$_IP;" >> /root/.local.dns.IP.list;done
         sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
         sed -i "s/ip=127.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
         sed -i "s/ip=Dyn.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
@@ -134,7 +150,8 @@ d;};' /etc/pdnsd.conf
 
 check_dns_settings() {
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] || [ -e "/root/.use.local.nameservers.cnf" ] ; then
+  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] \
+    || [ -e "/root/.use.local.nameservers.cnf" ] ; then
     _USE_PROVIDER_DNS=YES
     fix_dns_settings
   else
@@ -147,7 +164,7 @@ octopus_install() {
     if [ -z "$user" ] ; then
       user="o1"
     fi
-    _CHECK_HOST=`uname -n`
+    _CHECK_HOST=$(uname -n 2>&1)
     if [ "$cmmand" = "in-octopus" ] ; then
       if [ ! -z "$copt" ] ; then
         sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=$copt/g" $varPath/$octName
@@ -174,7 +191,10 @@ octopus_install() {
     else
       sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   $varPath/$octName
     fi
-    if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
+    if [ -e "/root/.auto.up.cnf" ] \
+      || [ -e "/root/.host8.cnf" ] \
+      || [[ "$_CHECK_HOST" =~ ".host8." ]] \
+      || [ "$_L_VMFAMILY" = "VS" ] ; then
       if [ ! -e "/root/.debug.cnf" ] ; then
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               $varPath/$octName
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g" $varPath/$octName
@@ -232,19 +252,31 @@ if [ -e "$varPath/$barName" ] ; then
     ### Legacy variables
     sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"    $varPath/$barName
     sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"         $varPath/$barName
-  elif [ "$kind" = "mstr" ] && [ ! -z "$fqdn" ] && [ ! -z "$dbip" ] && [ ! -z "$loip" ] && [ "$cmmand" = "in-cluster" ] ; then
+  elif [ "$kind" = "mstr" ] \
+    && [ ! -z "$fqdn" ] \
+    && [ ! -z "$dbip" ] \
+    && [ ! -z "$loip" ] \
+    && [ "$cmmand" = "in-cluster" ] ; then
     touch /root/.mstr.clstr.cnf
     sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=MSTR/g"          $varPath/$barName
     sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   $varPath/$barName
     sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     $varPath/$barName
     sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             $varPath/$barName
-  elif [ "$kind" = "dbhd" ] && [ ! -z "$fqdn" ] && [ ! -z "$dbip" ] && [ ! -z "$loip" ] && [ "$cmmand" = "in-cluster" ] ; then
+  elif [ "$kind" = "dbhd" ] \
+    && [ ! -z "$fqdn" ] \
+    && [ ! -z "$dbip" ] \
+    && [ ! -z "$loip" ] \
+    && [ "$cmmand" = "in-cluster" ] ; then
     touch /root/.dbhd.clstr.cnf
     sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=DBHD/g"          $varPath/$barName
     sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   $varPath/$barName
     sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=$dbip/g"     $varPath/$barName
     sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=$loip/g"             $varPath/$barName
-  elif [ "$kind" = "wbhd" ] && [ ! -z "$fqdn" ] && [ ! -z "$dbip" ] && [ ! -z "$loip" ] && [ "$cmmand" = "in-cluster" ] ; then
+  elif [ "$kind" = "wbhd" ] \
+    && [ ! -z "$fqdn" ] \
+    && [ ! -z "$dbip" ] \
+    && [ ! -z "$loip" ] \
+    && [ "$cmmand" = "in-cluster" ] ; then
     touch /root/.wbhd.clstr.cnf
     sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=WBHD/g"          $varPath/$barName
     sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   $varPath/$barName
@@ -258,8 +290,12 @@ if [ -e "$varPath/$barName" ] ; then
     sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"         $varPath/$barName
   fi
 
-  if [ ! -z "$fqdn" ] && [ ! -z "$loip" ] && [ "$cmmand" = "in-cluster" ] ; then
-    if [ "$kind" = "mstr" ] || [ "$kind" = "dbhd" ] || [ "$kind" = "wbhd" ] ; then
+  if [ ! -z "$fqdn" ] \
+    && [ ! -z "$loip" ] \
+    && [ "$cmmand" = "in-cluster" ] ; then
+    if [ "$kind" = "mstr" ] \
+      || [ "$kind" = "dbhd" ] \
+      || [ "$kind" = "wbhd" ] ; then
       sed -i "s/.*${loip}.*${fqdn}.*//g" /etc/hosts
       echo >>/etc/hosts
       ### echo "${loip} ${fqdn}" >>/etc/hosts
@@ -358,12 +394,15 @@ set_pin_priority() {
     if [ "$_THIS_OS" = "Debian" ] ; then
       _THIS_RV=$(grep "6.0" /etc/issue.net 2>&1)
       if [[ "$_THIS_RV" =~ "6.0" ]] ; then
-        curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
+        curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
+          "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
       else
-        curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
+        curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
+          "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
       fi
     elif [ "$_THIS_OS" = "Ubuntu" ] ; then
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
+        "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
     fi
     rm -f $varPath/etc-apt-preferences-*
   fi
@@ -383,7 +422,8 @@ init_finish() {
   echo
   if [ "$_NEEDS_UPDATE" = "YES" ] ; then
     rm -f $varPath/BOA.sh.txt-*
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o $varPath/BOA.sh.txt-${_NOW}
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
+      "http://files.aegir.cc/BOA.sh.txt" -o $varPath/BOA.sh.txt-${_NOW}
     exec bash $varPath/BOA.sh.txt-${_NOW} &> /dev/null
     rm -f $varPath/BOA.sh.txt-${_NOW}
   fi
@@ -396,7 +436,10 @@ init_setup() {
     email="$fqdn"
   fi
   if [ "$kind" = "public" ] || [ "$kind" = "web" ] ; then
-    if [ "$user" = "ask" ] || [ "$user" = "mini" ] || [ "$user" = "max" ] || [ "$user" = "none" ] ; then
+    if [ "$user" = "ask" ] \
+      || [ "$user" = "mini" ] \
+      || [ "$user" = "max" ] \
+      || [ "$user" = "none" ] ; then
       rkey="$mode"
       mode="$user"
       user="o1"
@@ -460,7 +503,8 @@ check_wrapper() {
   mkdir -p $varPath
   rm -f $varPath/$(basename "$0")-now-*
   _THIS_FILE="$varPath/$(basename "$0")-now-${_NOW}"
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
+    "${urlHmr}/tools/bin/$(basename "$0")" -o $_THIS_FILE
   if [ ! -e "$_THIS_FILE" ] ; then
     echo "I can not download required installers from files.aegir.cc at the moment."
     echo "Please check http://stats.pingdom.com/x0s6yrbopal6/646562 and try again later."
@@ -493,7 +537,8 @@ check_dns_curl() {
     sleep 1
     service pdnsd start &> /dev/null
   fi
-  _CURL_TEST=$(curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 10 -I "http://files.aegir.cc" 2> /dev/null)
+  _CURL_TEST=$(curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 10 -I \
+    "http://files.aegir.cc" 2> /dev/null)
   if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
     _DO_NOTHING=YES
   else
@@ -518,23 +563,31 @@ check_root() {
     echo >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
   else
-    echo "ERROR: This script should be ran as a root user - please `sudo -i` first"
+    echo "ERROR: This script should be ran as a root user!"
     clean_pid_exit
   fi
-  _DF_TEST=$(df -kTh / -l | grep '/'| sed 's/\%//g'| awk '{print $6}' 2> /dev/null)
+  _DF_TEST=$(df -kTh / -l \
+    | grep '/' \
+    | sed 's/\%//g' \
+    | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "$_DF_TEST" ] && [ "$_DF_TEST" -gt "90" ] ; then
-    echo "ERROR: Your disk space is almost full - we can not proceed until it is below 90/100"
+    echo "ERROR: Your disk space is almost full - \
+      we can not proceed until it is below 90/100"
     clean_pid_exit
   fi
-  _L_VM_TEST=`uname -a 2>&1`
+  _L_VM_TEST=$(uname -a 2>&1)
   if [[ "$_L_VM_TEST" =~ beng ]] ; then
     if [ -e "/sbin/hdparm" ] ; then
       apt-get remove hdparm -y --force-yes -qq &> /dev/null
       apt-get purge hdparm -y --force-yes -qq &> /dev/null
       apt-get autoremove -y --force-yes -qq &> /dev/null
     fi
-    _REMOVE_LINKS="vnstat buagent svscan kerneloops halt hwclock.sh hwclockfirst.sh ifupdown ifupdown-clean klogd mountall-bootclean.sh mountall.sh mountdevsubfs.sh mountkernfs.sh mountnfs-bootclean.sh mountnfs.sh mountoverflowtmp mountvirtfs mtab.sh networking reboot setserial sysstat umountfs umountnfs.sh umountroot urandom"
+    _REMOVE_LINKS="vnstat buagent svscan kerneloops halt hwclock.sh \
+      hwclockfirst.sh ifupdown ifupdown-clean klogd mountall-bootclean.sh \
+      mountall.sh mountdevsubfs.sh mountkernfs.sh mountnfs-bootclean.sh \
+      mountnfs.sh mountoverflowtmp mountvirtfs mtab.sh networking reboot \
+      setserial sysstat umountfs umountnfs.sh umountroot urandom"
     for link in $_REMOVE_LINKS
     do
       update-rc.d -f $link remove &> /dev/null

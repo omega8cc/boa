@@ -14,13 +14,14 @@ varPath=/var/backups
 barName=BARRACUDA.sh.txt
 octName=OCTOPUS.sh.txt
 barCnf=/root/.barracuda.cnf
+urlHmr="http://files.aegir.cc/versions/master/aegir"
 
 _TODAY=$(date +%y%m%d 2>&1)
 _NOW=$(date +%y%m%d-%H%M 2>&1)
-_CHECK_HOST=`uname -n`
+_CHECK_HOST=$(uname -n 2>&1)
 _LOG_DIR="$varPath/reports/up/$(basename "$0")/$_TODAY"
 _L_VMFAMILY=XEN
-_L_VM_TEST=`uname -a 2>&1`
+_L_VM_TEST=$(uname -a 2>&1)
 if [[ "$_L_VM_TEST" =~ beng ]] ; then
   _L_VMFAMILY="VS"
 fi
@@ -55,7 +56,8 @@ fix_dns_settings() {
   echo "nameserver 8.8.8.8" > /etc/resolv.conf
   echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] && [ -e "$varPath/resolv.conf.vanilla" ] ; then
+  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] \
+    && [ -e "$varPath/resolv.conf.vanilla" ] ; then
     touch /root/.use.local.nameservers.cnf
     rm -f /etc/resolv.conf
     cp -a $varPath/resolv.conf.vanilla /etc/resolv.conf
@@ -78,10 +80,15 @@ fix_dns_settings() {
     fi
     _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
     _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
-    if [[ "$_CUSTOM_DNS_TEST" =~ "8.8.8.8" ]] || [[ "$_BROKEN_DNS_CONF" =~ "Dynamic" ]] ; then
+    if [[ "$_CUSTOM_DNS_TEST" =~ "8.8.8.8" ]] \
+      || [[ "$_BROKEN_DNS_CONF" =~ "Dynamic" ]] ; then
       if [ -e "/root/.use.local.nameservers.cnf" ] ; then
         echo "        label = \"google-servers\";" > /root/.local.dns.IP.list
-        for _IP in `cat /etc/resolv.conf | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' | cut -d ' ' -f2 | sort | uniq`;do echo "        ip=$_IP;" >> /root/.local.dns.IP.list;done
+        for _IP in `cat /etc/resolv.conf \
+          | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
+          | cut -d ' ' -f2 \
+          | sort \
+          | uniq`;do echo "        ip=$_IP;" >> /root/.local.dns.IP.list;done
         sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
         sed -i "s/ip=127.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
         sed -i "s/ip=Dyn.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
@@ -108,7 +115,8 @@ d;};' /etc/pdnsd.conf
 
 check_dns_settings() {
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] || [ -e "/root/.use.local.nameservers.cnf" ] ; then
+  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] \
+    || [ -e "/root/.use.local.nameservers.cnf" ] ; then
     _USE_PROVIDER_DNS=YES
     fix_dns_settings
   else
@@ -138,7 +146,8 @@ extract_archive() {
 
 get_dev_ext() {
   if [ ! -z $1 ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/HEAD/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab \
+      "http://files.aegir.cc/dev/HEAD/$1"
     extract_archive "$1"
   fi
 }
@@ -146,12 +155,17 @@ get_dev_ext() {
 send_report() {
   if [ -e "${barCnf}" ] ; then
     source ${barCnf}
-    if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
+    if [ -e "/root/.auto.up.cnf" ] \
+      || [ -e "/root/.host8.cnf" ] \
+      || [[ "$_CHECK_HOST" =~ ".host8." ]] \
+      || [ "$_L_VMFAMILY" = "VS" ] ; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "$_MY_EMAIL" ] ; then
-      cat $_UP_LOG | mail -e -s "REPORT: Successful Octopus upgrade for ${octUsr} on $_CHECK_HOST at ${_NOW}" $_MY_EMAIL
-      echo "REPORT: Successful Octopus upgrade for ${octUsr} on $_CHECK_HOST sent to $_MY_EMAIL"
+      cat $_UP_LOG | mail -e -s "REPORT: Successful Octopus upgrade for \
+        ${octUsr} on $_CHECK_HOST at ${_NOW}" $_MY_EMAIL
+      echo "REPORT: Successful Octopus upgrade for \
+        ${octUsr} on $_CHECK_HOST sent to $_MY_EMAIL"
     fi
   fi
 }
@@ -159,12 +173,17 @@ send_report() {
 send_alert() {
   if [ -e "${barCnf}" ] ; then
     source ${barCnf}
-    if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
+    if [ -e "/root/.auto.up.cnf" ] \
+      || [ -e "/root/.host8.cnf" ] \
+      || [[ "$_CHECK_HOST" =~ ".host8." ]] \
+      || [ "$_L_VMFAMILY" = "VS" ] ; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "$_MY_EMAIL" ] ; then
-      cat $_UP_LOG | mail -e -s "ALERT: Failed Octopus upgrade for ${octUsr} on $_CHECK_HOST at ${_NOW}" $_MY_EMAIL
-      echo "ALERT: Failed Octopus upgrade for ${octUsr} on $_CHECK_HOST sent to $_MY_EMAIL"
+      cat $_UP_LOG | mail -e -s "ALERT: Failed Octopus upgrade for \
+        ${octUsr} on $_CHECK_HOST at ${_NOW}" $_MY_EMAIL
+      echo "ALERT: Failed Octopus upgrade for \
+        ${octUsr} on $_CHECK_HOST sent to $_MY_EMAIL"
     fi
   fi
 }
@@ -185,8 +204,8 @@ check_report() {
   if [[ "$_RESULT_ABORTING" =~ "Aborting" ]] ; then
     _SEND_ALERT=YES
   fi
-  _RESULT_ALREADY=$(grep "This Aegir Instance is already up to date" $_UP_LOG 2>&1)
-  if [[ "$_RESULT_ALREADY" =~ "This Aegir Instance is already up to date" ]] ; then
+  _RESULT_ALREADY=$(grep "This Aegir Instance is already up" $_UP_LOG 2>&1)
+  if [[ "$_RESULT_ALREADY" =~ "This Aegir Instance is already up" ]] ; then
     _SEND_ALERT=NO
   fi
   if [ "$_SEND_ALERT" = "YES" ] ; then
@@ -241,7 +260,10 @@ up_one() {
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           $varPath/$toctName
     sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" $varPath/$toctName
     sed -i "s/^_USER=o1/_USER=${octUsr}/g"                 $varPath/$toctName
-    if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
+    if [ -e "/root/.auto.up.cnf" ] \
+      || [ -e "/root/.host8.cnf" ] \
+      || [[ "$_CHECK_HOST" =~ ".host8." ]] \
+      || [ "$_L_VMFAMILY" = "VS" ] ; then
       if [ -e "/root/.debug.cnf" ] ; then
         _DO_NOTHING=YES
       else
@@ -255,11 +277,15 @@ up_one() {
     fi
     if [ -e "$varPath/$toctName" ] ; then
       if [ -e "$User/.drush/sys/provision" ] ; then
-        _IS_OLD=`find $User/.drush/sys/provision/ -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example`
+        _IS_OLD=$(find $User/.drush/sys/provision/ \
+          -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
       elif [ -e "$User/.drush/provision" ] ; then
-        _IS_OLD=`find $User/.drush/provision/ -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example`
+        _IS_OLD=$(find $User/.drush/provision/ \
+          -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
       fi
-      if [ -z "$_IS_OLD" ] && [ -z "$mcmode" ] && [ -e "$User/.drush/sys/provision" ] ; then
+      if [ -z "$_IS_OLD" ] \
+        && [ -z "$mcmode" ] \
+        && [ -e "$User/.drush/sys/provision" ] ; then
         echo
         echo "This Aegir Instance is already up to date!"
         echo "If you wish to run/force the upgrade again,"
@@ -278,26 +304,34 @@ up_one() {
           rm -f -r $User/.drush/{sys,xts,usr}
           rm -f -r $User/.drush/{provision,drush_make}
           mkdir -p $User/.drush/{sys,xts,usr}
-          git clone --branch $devel git://github.com/omega8cc/provision.git $User/.drush/sys/provision &> /dev/null
+          git clone --branch $devel git://github.com/omega8cc/provision.git \
+            $User/.drush/sys/provision &> /dev/null
           chown -R ${octUsr}:users $User/.drush/sys
         fi
       fi
-      if [ -e "$User/log/cores.txt" ] && [ ! -e "$User/log/CANCELLED" ] ; then
-        if [ -e "$User/.drush/bm.patch" ] && [ ! -e "$User/.drush/sys/bm.patch" ] && [ -e "$User/.drush/sys" ] ; then
+      if [ -e "$User/log/cores.txt" ] \
+        && [ ! -e "$User/log/CANCELLED" ] ; then
+        if [ -e "$User/.drush/bm.patch" ] \
+          && [ ! -e "$User/.drush/sys/bm.patch" ] \
+          && [ -e "$User/.drush/sys" ] ; then
           mv -f $User/.drush/bm.patch $User/.drush/sys/bm.patch
         fi
         if [ -e "$User/.drush/sys/bm.patch" ] ; then
           cd $User/.drush/sys
           patch -p1 < bm.patch &> /dev/null
         fi
-        if [ -e "$User/.drush/custom.patch" ] && [ ! -e "$User/.drush/sys/custom.patch" ] && [ -e "$User/.drush/sys" ] ; then
+        if [ -e "$User/.drush/custom.patch" ] \
+          && [ ! -e "$User/.drush/sys/custom.patch" ] \
+          && [ -e "$User/.drush/sys" ] ; then
           mv -f $User/.drush/custom.patch $User/.drush/sys/custom.patch
         fi
         if [ -e "$User/.drush/sys/custom.patch" ] ; then
           cd $User/.drush/sys
           patch -p1 < custom.patch &> /dev/null
         fi
-        if [ -e "$User/.drush/uberdrupal.patch" ] && [ ! -e "$User/.drush/sys/uberdrupal.patch" ] && [ -e "$User/.drush/sys" ] ; then
+        if [ -e "$User/.drush/uberdrupal.patch" ] \
+          && [ ! -e "$User/.drush/sys/uberdrupal.patch" ] \
+          && [ -e "$User/.drush/sys" ] ; then
           mv -f $User/.drush/uberdrupal.patch $User/.drush/sys/uberdrupal.patch
         fi
         if [ -e "$User/.drush/sys/uberdrupal.patch" ] ; then
@@ -357,7 +391,7 @@ up_action_all() {
       && [ -e "$User/log/cores.txt" ] \
       && [ ! -e "$User/log/CANCELLED" ] ; then
       if [ ${_O_LOAD} -lt ${_O_LOAD_MAX} ] ; then
-        octUsr=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
+        octUsr=$(echo $User | cut -d'/' -f4 | awk '{ print $1}')
         toctName=$octName.${octUsr}
         octCnf=/root/.${octUsr}.octopus.cnf
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
@@ -405,9 +439,11 @@ up_action_one() {
   User="/data/disk/$second"
   count_cpu
   load_control
-  if [ -d "$User/config/server_master/nginx/vhost.d" ] && [ -e "$User/log/cores.txt" ] && [ ! -e "$User/log/CANCELLED" ] ; then
+  if [ -d "$User/config/server_master/nginx/vhost.d" ] \
+    && [ -e "$User/log/cores.txt" ] \
+    && [ ! -e "$User/log/CANCELLED" ] ; then
     if [ ${_O_LOAD} -lt ${_O_LOAD_MAX} ] ; then
-      octUsr=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
+      octUsr=$(echo $User | cut -d'/' -f4 | awk '{ print $1}')
       toctName=$octName.${octUsr}
       octCnf=/root/.${octUsr}.octopus.cnf
       echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
@@ -471,7 +507,9 @@ up_start() {
     rm -f /usr/local/bin/php
   fi
   if [ "$cmmand" = "up-cluster" ] ; then
-    if [ ! -e "/var/run/mysqld/mysqld.pid" ] && [ ! -e "/root/.dbhd.clstr.cnf" ] && [ -e "/etc/init.d/mysql" ] ; then
+    if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
+      && [ ! -e "/root/.dbhd.clstr.cnf" ] \
+      && [ -e "/etc/init.d/mysql" ] ; then
       rm -f /root/.remote.db.cnf
       sleep 5
       service mysql start &> /dev/null
@@ -496,7 +534,8 @@ up_finish() {
   echo
   if [ "$_NEEDS_UPDATE" = "YES" ] ; then
     rm -f $varPath/BOA.sh.txt-*
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o $varPath/BOA.sh.txt-${_NOW}
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
+      "http://files.aegir.cc/BOA.sh.txt" -o $varPath/BOA.sh.txt-${_NOW}
     exec bash $varPath/BOA.sh.txt-${_NOW} &> /dev/null
     rm -f $varPath/BOA.sh.txt-${_NOW}
   fi
@@ -505,7 +544,8 @@ up_finish() {
 
 up_head() {
   up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$master/$octName" -o $octName
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
+    "$rgUrl/$master/$octName" -o $octName
   if [ "$second" = "all" ] ; then
     up_action_all
   else
@@ -516,7 +556,8 @@ up_head() {
 
 up_modern() {
   up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$devel/$octName" -o $octName
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
+    "$rgUrl/$devel/$octName" -o $octName
   if [ "$second" = "all" ] ; then
     up_action_all
   else
@@ -527,7 +568,8 @@ up_modern() {
 
 up_cluster() {
   up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/$octName" -o $octName
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
+    "$rgUrl/$stable/$octName" -o $octName
   if [ "$second" = "all" ] ; then
     up_action_all
   else
@@ -538,7 +580,8 @@ up_cluster() {
 
 up_stable() {
   up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$stable/$octName" -o $octName
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
+    "$rgUrl/$stable/$octName" -o $octName
   if [ "$second" = "all" ] ; then
     up_action_all
   else
@@ -549,7 +592,8 @@ up_stable() {
 
 up_legacy() {
   up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "$rgUrl/$legacy/$octName" -o $octName
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
+    "$rgUrl/$legacy/$octName" -o $octName
   if [ "$second" = "all" ] ; then
     up_action_all
   else
@@ -562,7 +606,8 @@ check_wrapper() {
   mkdir -p $varPath
   rm -f $varPath/$(basename "$0")-now-*
   _THIS_FILE="$varPath/$(basename "$0")-now-${_NOW}"
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
+    "${urlHmr}/tools/bin/$(basename "$0")" -o $_THIS_FILE
   if [ ! -e "$_THIS_FILE" ] ; then
     echo "I can not download required installers from files.aegir.cc at the moment."
     echo "Please check http://stats.pingdom.com/x0s6yrbopal6/646562 and try again later."
@@ -595,7 +640,8 @@ check_dns_curl() {
     sleep 1
     service pdnsd start &> /dev/null
   fi
-  _CURL_TEST=$(curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 10 -I "http://files.aegir.cc" 2> /dev/null)
+  _CURL_TEST=$(curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 10 -I \
+    "http://files.aegir.cc" 2> /dev/null)
   if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
     _DO_NOTHING=YES
   else
@@ -620,13 +666,17 @@ check_root() {
     echo >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
   else
-    echo "ERROR: This script should be ran as a root user - please `sudo -i` first"
+    echo "ERROR: This script should be ran as a root user!"
     clean_pid_exit
   fi
-  _DF_TEST=$(df -kTh / -l | grep '/'| sed 's/\%//g'| awk '{print $6}' 2> /dev/null)
+  _DF_TEST=$(df -kTh / -l \
+    | grep '/' \
+    | sed 's/\%//g' \
+    | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "$_DF_TEST" ] && [ "$_DF_TEST" -gt "90" ] ; then
-    echo "ERROR: Your disk space is almost full - we can not proceed until it is below 90/100"
+    echo "ERROR: Your disk space is almost full - \
+      we can not proceed until it is below 90/100"
     clean_pid_exit
   fi
 }

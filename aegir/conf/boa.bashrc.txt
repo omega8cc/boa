@@ -72,7 +72,7 @@ function xtitle() {
   esac
 }
 
-_L_HOST=`uname -n`
+_L_HOST=$(uname -n 2>&1)
 alias top='xtitle $_L_HOST System Monitor && top'
 alias htop='xtitle $_L_HOST System Monitor && htop'
 alias mytop='xtitle $_L_HOST SQL Monitor && mytop'

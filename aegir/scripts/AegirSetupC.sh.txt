@@ -121,7 +121,7 @@ _PREV_HOSTMASTER_ROOT="$_ROOT/aegir/distro/$_LAST_HMR"
 _LOG=/var/backups/octopus-$_USER-${_NOW}.log
 #
 if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-  _THIS_DB_HOST=`uname -n`
+  _THIS_DB_HOST=$(uname -n 2>&1)
 fi
 if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
   _L_PHP_CLI=/opt/php55/bin
@@ -154,7 +154,7 @@ urlPrt="https://drupal.org/project"
 #
 # Noticeable messages.
 msg() {
-  echo "Octopus [`date`] ==> $*"
+  echo "Octopus [$(date 2>&1)] ==> $*"
 }
 #
 # Simple prompt.

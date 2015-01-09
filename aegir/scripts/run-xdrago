@@ -13,7 +13,10 @@ count_cpu() {
     _CPU_NR=$(nproc 2>&1)
   fi
   _CPU_NR=${_CPU_NR//[^0-9]/}
-  if [ ! -z "${_CPU_NR}" ] && [ ! -z "${_CPU_INFO}" ] && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt "0" ] ; then
+  if [ ! -z "${_CPU_NR}" ] \
+    && [ ! -z "${_CPU_INFO}" ] \
+    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
+    && [ "${_CPU_INFO}" -gt "0" ] ; then
     _CPU_NR="${_CPU_INFO}"
   fi
   if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ] ; then
@@ -36,18 +39,14 @@ load_control() {
 
 action() {
   if [ ${_O_LOAD} -lt ${_O_LOAD_SPR} ] ; then
-    echo load is ${_O_LOAD} while maxload is ${_O_LOAD_SPR}
-    echo ...now doing CTL...
+    ### echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_SPR}"
     su -s /bin/bash - EDIT_USER -c "bash /data/disk/EDIT_USER/aegir.sh"
     touch /var/xdrago/log/last-run-EDIT_USER
-    echo CTL done
-  else
-    echo load is ${_O_LOAD} while maxload is ${_O_LOAD_SPR}
-    echo ...we have to wait...
   fi
 }
 
-if [ -e "/var/run/boa_wait.pid" ] || [ -e "/var/run/manage_rvm_users.pid" ] ; then
+if [ -e "/var/run/boa_wait.pid" ] \
+  || [ -e "/var/run/manage_rvm_users.pid" ] ; then
   touch /var/xdrago/log/wait-EDIT_USER
   exit 0
 else

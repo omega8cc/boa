@@ -111,12 +111,12 @@ _PLATFORMS_ONLY=EDIT_PLATFORMS_ONLY
 _PURGE_FOR_SEVEN=EDIT_PURGE_FOR_SEVEN
 _PURGE_MODE=EDIT_PURGE_MODE
 _REDIS_M_VERSION=EDIT_REDIS_M_VERSION
-_REL_VERSION=`lsb_release -sc`
+_REL_VERSION=$(lsb_release -sc 2>&1)
 _SPINNER=EDIT_SPINNER
 _STATUS=INIT
 _STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
-_THIS_OS=`lsb_release -si`
+_THIS_OS=$(lsb_release -si 2>&1)
 _THISHTIP=EDIT_THISHTIP
 _TODAY=$(date +%y%m%d 2>&1)
 _USE_CURRENT=EDIT_USE_CURRENT
@@ -155,7 +155,7 @@ clean_pid_exit() {
 #
 # Noticeable messages.
 msg() {
-  echo "Octopus [`date`] ==> $*"
+  echo "Octopus [$(date 2>&1)] ==> $*"
 }
 #
 # Silent runner.
@@ -962,16 +962,16 @@ provision_backend_dbpass_generate() {
   mysqladmin flush-privileges &> /dev/null
 
   if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-    _USE_AEGIR_HOST=`uname -n`
+    _USE_AEGIR_HOST=$(uname -n 2>&1)
     _SQL_CONNECT=localhost
     _USE_DB_USER="$_USER"
   else
-    _USE_AEGIR_HOST=`uname -n`
+    _USE_AEGIR_HOST=$(uname -n 2>&1)
     _SQL_CONNECT="$_THIS_DB_HOST"
     _USE_DB_USER=aegir_root
   fi
   if [ "$_THIS_DB_HOST" = "$_MY_OWNIP" ] ; then
-    _USE_AEGIR_HOST=`uname -n`
+    _USE_AEGIR_HOST=$(uname -n 2>&1)
     _SQL_CONNECT=localhost
   fi
   _USE_RESOLVEIP=`echo $(getent ahostsv4 $_USE_AEGIR_HOST) \
@@ -2008,7 +2008,7 @@ fi
 _MAILX_TEST=`mail -V 2>&1`
 if [ "$_STATUS" = "INIT" ] ; then
   msg "$_STATUS A: Sending setup e-mail on init..."
-  TIME=`date`
+  TIME=$(date 2>&1)
   _Q="Your Aegir Install on $TIME [$_USER]"
   echo $TIME > $_ROOT/log/date-init.txt
   if [ -e "$_ROOT/log/setupmail.txt" ] ; then
@@ -2030,7 +2030,7 @@ if [ "$_STATUS" = "INIT" ] ; then
 else
   if [ "$_DIST_INSTALL" = "YES" ] && [ "$_PLATFORMS_ONLY" = "NO" ] ; then
     msg "$_STATUS A: Resending setup e-mail on upgrade..."
-    TIME=`date`
+    TIME=$(date 2>&1)
     _Q="Your Aegir Upgrade on $TIME [$_USER]"
     echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
     if [ -e "$_ROOT/log/upgrademail.txt" ] ; then
@@ -2072,13 +2072,13 @@ fi
 
 ###---### Touch install logs.
 #
-TIME=`date`
+TIME=$(date 2>&1)
 if [ "$_STATUS" = "INIT" ] ; then
  echo $TIME > $_ROOT/log/date-init.txt
 else
  echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
 fi
-echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` \
+echo "$(date 2>&1) / $(lsb_release -si 2>&1).$(lsb_release -sc 2>&1) $(uname -m 2>&1) \
   / Aegir $_AEGIR_VERSION / Octopus ${_X_VERSION} \
   / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION" \
   >> $_ROOT/log/octopus_log.txt

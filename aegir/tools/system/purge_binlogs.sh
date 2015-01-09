@@ -13,10 +13,14 @@ count_cpu() {
     _CPU_NR=$(nproc 2>&1)
   fi
   _CPU_NR=${_CPU_NR//[^0-9]/}
-  if [ ! -z "${_CPU_NR}" ] && [ ! -z "${_CPU_INFO}" ] && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt "0" ] ; then
+  if [ ! -z "${_CPU_NR}" ] \
+    && [ ! -z "${_CPU_INFO}" ] \
+    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
+    && [ "${_CPU_INFO}" -gt "0" ] ; then
     _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ] ; then
+  if [ -z "${_CPU_NR}" ] \
+    || [ "${_CPU_NR}" -lt "1" ] ; then
     _CPU_NR=1
   fi
 }
@@ -39,15 +43,10 @@ action() {
   load_control
   if [ ${_O_LOAD} -lt ${_O_LOAD_MAX} ] ; then
     echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
-    echo ...now doing CTL...
 /usr/bin/mysql --default-character-set=utf8 mysql<<EOFMYSQL
 PURGE MASTER LOGS BEFORE DATE_SUB( NOW( ), INTERVAL 1 HOUR);
 EOFMYSQL
     touch /var/xdrago/log/purge_binlogs.done
-    echo CTL done
-  else
-    echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
-    echo ...we have to wait...
   fi
 }
 

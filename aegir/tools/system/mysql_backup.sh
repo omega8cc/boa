@@ -3,7 +3,7 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 BACKUPDIR=/data/disk/arch/sql
-HOST=`uname -n`
+HOST=$(uname -n 2>&1)
 DATE=`date +%y%m%d-%H%M`
 SAVELOCATION=$BACKUPDIR/$HOST-$DATE
 if [ -e "/root/.my.optimize.cnf" ] ; then
@@ -11,7 +11,7 @@ if [ -e "/root/.my.optimize.cnf" ] ; then
 else
   OPTIM=NO
 fi
-_VM_TEST=`uname -a 2>&1`
+_VM_TEST=$(uname -a 2>&1)
 if [[ "$_VM_TEST" =~ beng ]] ; then
   _VMFAMILY="VS"
 else
@@ -59,14 +59,21 @@ backup_this_database() {
   n=$((RANDOM%15+5))
   echo waiting $n sec
   sleep $n
-  mysqldump --opt --skip-lock-tables --order-by-primary --single-transaction --default-character-set=utf8 -Q --hex-blob $DB | gzip -c > $SAVELOCATION/$DB.sql.gz
+  mysqldump \
+    --opt \
+    --skip-lock-tables \
+    --order-by-primary \
+    --single-transaction \
+    --default-character-set=utf8 \
+    -Q --hex-blob $DB | gzip -c > $SAVELOCATION/$DB.sql.gz
 }
 
 [ ! -a $SAVELOCATION ] && mkdir -p $SAVELOCATION ;
 
-for DB in `mysql -e "show databases" -s | uniq | sort`
-do
-  if [ "$DB" != "Database" ] && [ "$DB" != "information_schema" ] && [ "$DB" != "performance_schema" ] ; then
+for DB in `mysql -e "show databases" -s | uniq | sort`; do
+  if [ "$DB" != "Database" ] \
+    && [ "$DB" != "information_schema" ] \
+    && [ "$DB" != "performance_schema" ] ; then
     if [ "$DB" != "mysql" ] ; then
       truncate_cache_tables &> /dev/null
       if [[ "$HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then

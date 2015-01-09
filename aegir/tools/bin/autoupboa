@@ -21,7 +21,9 @@ crontab_update() {
       echo "28 6    * * 7   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d"                /etc/crontab &> /dev/null
-    if [ -f "/root/.mstr.clstr.cnf" ] && [ ! -f "/root/.wbhd.clstr.cnf" ] && [ ! -f "/root/.dbhd.clstr.cnf" ] ; then
+    if [ -f "/root/.mstr.clstr.cnf" ] \
+      && [ ! -f "/root/.wbhd.clstr.cnf" ] \
+      && [ ! -f "/root/.dbhd.clstr.cnf" ] ; then
       _BCDA_FULL="up-cluster log"
       _BCDA_SYST="up-cluster system"
       _OCTO_FULL="up-cluster all both log"
@@ -56,8 +58,8 @@ crontab_update() {
 }
 
 if [ -e "/data/disk/arch" ] ; then
-  _HOST_TEST=`uname -n 2>&1`
-  _VM_TEST=`uname -a 2>&1`
+  _HOST_TEST=$(uname -n 2>&1)
+  _VM_TEST=$(uname -a 2>&1)
   if [[ "$_VM_TEST" =~ beng ]] ; then
     _VMFAMILY="VS"
   fi
@@ -79,24 +81,31 @@ if [ -e "/data/disk/arch" ] ; then
   if [ ! -e "/root/.auto.up.cnf" ] && [ "$_AUTO_UP" = "YES" ] ; then
     touch /root/.auto.up.cnf
   fi
-  if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+  if [ -e "/root/.mstr.clstr.cnf" ] \
+    || [ -e "/root/.wbhd.clstr.cnf" ] \
+    || [ -e "/root/.dbhd.clstr.cnf" ] ; then
     _AUTO_UP_WEEKLY=1
     _AUTO_UP_MONTH=11
     _AUTO_UP_DAY=30
   fi
-  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] || [ "$_AUTO_UP" = "YES" ] ; then
+  if [[ "$_HOST_TEST" =~ ".host8." ]] \
+    || [ "$_VMFAMILY" = "VS" ] \
+    || [ -e "/root/.host8.cnf" ] \
+    || [ "$_AUTO_UP" = "YES" ] ; then
     _AUTO_UP_WEEKLY=1
     _AUTO_UP_MONTH=11
     _AUTO_UP_DAY=30
   fi
-  if [[ $_HOST_TEST =~ "v251a.a" ]] || [[ $_HOST_TEST =~ "v55.l" ]] ; then
+  if [[ $_HOST_TEST =~ "v251a.a" ]] \
+    || [[ $_HOST_TEST =~ "v55.l" ]] ; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
   fi
-  if [ ! -z "$_AUTO_UP_WEEKLY" ] && [ ! -z "$_AUTO_UP_MONTH" ] && [ ! -z "$_AUTO_UP_DAY" ] ; then
+  if [ ! -z "$_AUTO_UP_WEEKLY" ] \
+    && [ ! -z "$_AUTO_UP_MONTH" ] \
+    && [ ! -z "$_AUTO_UP_DAY" ] ; then
     crontab_update
   fi
 fi
-
 ###EOF2015###
