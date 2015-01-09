@@ -10,7 +10,7 @@ $mailx_test = `mail -V 2>&1`;
 $status="CLEAN";
 $fixfile = "/var/xdrago/acrashsql.sh";
 system("rm -f $fixfile");
-$server=`uname -n`;
+$server = system("uname -n 2>&1");
 chomp($server);
 $timedate=`date +%y%m%d-%H%M`;
 chomp($timedate);
@@ -23,26 +23,20 @@ system("rm -f /var/run/boa_wait.pid");
 system("touch /var/xdrago/log/last-run-acrashsql");
 if ($mailx_test =~ /(invalid)/i || $mailx_test =~ /(GNU Mailutils)/i) {
   if ($status ne "CLEAN") {
-    system("cat $logfile | mail -a \"From: notify\@omega8.cc\" \
-      -e -s \"SQL check ERROR [$server] $timedate\" notify\@omega8.cc");
-    system("bash $fixfile | mail -a \"From: notify\@omega8.cc\" \
-      -e -s \"SQL REPAIR done [$server] $timedate\" notify\@omega8.cc");
+    system("cat $logfile | mail -a \"From: notify\@omega8.cc\" -e -s \"SQL check ERROR [$server] $timedate\" notify\@omega8.cc");
+    system("bash $fixfile | mail -a \"From: notify\@omega8.cc\" -e -s \"SQL REPAIR done [$server] $timedate\" notify\@omega8.cc");
   }
   if ($status ne "ERROR") {
-    system("cat $logfile | mail -e -a \"From: notify\@omega8.cc\" \
-      -s \"SQL check CLEAN [$server] $timedate\" notify\@omega8.cc");
+    system("cat $logfile | mail -e -a \"From: notify\@omega8.cc\" -s \"SQL check CLEAN [$server] $timedate\" notify\@omega8.cc");
   }
 }
 else {
   if ($status ne "CLEAN") {
-    system("cat $logfile | mail -r notify\@omega8.cc -e \
-      -s \"SQL check ERROR [$server] $timedate\" notify\@omega8.cc");
-    system("bash $fixfile | mail -r notify\@omega8.cc -e \
-      -s \"SQL REPAIR done [$server] $timedate\" notify\@omega8.cc");
+    system("cat $logfile | mail -r notify\@omega8.cc -e -s \"SQL check ERROR [$server] $timedate\" notify\@omega8.cc");
+    system("bash $fixfile | mail -r notify\@omega8.cc -e -s \"SQL REPAIR done [$server] $timedate\" notify\@omega8.cc");
   }
   if ($status ne "ERROR") {
-    system("cat $logfile | mail -e -r notify\@omega8.cc \
-      -s \"SQL check CLEAN [$server] $timedate\" notify\@omega8.cc");
+    system("cat $logfile | mail -e -r notify\@omega8.cc -s \"SQL check CLEAN [$server] $timedate\" notify\@omega8.cc");
   }
 }
 system("rm -f $logfile");

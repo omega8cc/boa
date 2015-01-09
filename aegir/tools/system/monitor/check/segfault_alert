@@ -8,7 +8,7 @@
 
 $| = 1;
 $this_filename = "segfault_alert";
-$s=`uname -n`
+$s = system("uname -n 2>&1");
 chomp($s);
 &makeactions;
 print " CONTROL 1 done_______________________\n ...\n";
