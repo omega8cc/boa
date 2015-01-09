@@ -11193,7 +11193,7 @@ if [ ! -e "${pthLog}/sysctl.conf-${_X_VERSION}-${_NOW}.log" ] ; then
 fi
 XPTEMAIL=${_MY_EMAIL//\@/\\\\\@}
 sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g"  \
-  /etc/csf/csf.conf
+  /etc/csf/csf.conf &> /dev/null
 sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
   /var/xdrago/checksql.cgi
 sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
