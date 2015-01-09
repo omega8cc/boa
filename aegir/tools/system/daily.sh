@@ -1585,11 +1585,11 @@ fix_modules() {
             fi
             if [ "$_SQL_CONVERT" = "myisam" ] \
               || [ "$_SQL_CONVERT" = "innodb" ] ; then
-              _TIMESTAMP=$(date +%y%m%d-%H%M`
+              _TIMESTAMP=$(date +%y%m%d-%H%M 2>&1)
               echo "$_TIMESTAMP sql conversion to-${_SQL_CONVERT} \
                 for $Dom started"
               sql_convert
-              _TIMESTAMP=$(date +%y%m%d-%H%M`
+              _TIMESTAMP=$(date +%y%m%d-%H%M 2>&1)
               echo "$_TIMESTAMP sql conversion to-${_SQL_CONVERT} \
                 for $Dom completed"
             fi
