@@ -717,7 +717,7 @@ action() {
     count_cpu
     load_control
     if [ -e "${User}/config/server_master/nginx/vhost.d" ] ; then
-      if [ ${_O_LOAD} -lt ${_O_LOAD_MAX} ] ; then
+      if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ] ; then
         SumDir=0
         SumDat=0
         HomSiz=0

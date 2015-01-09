@@ -38,7 +38,7 @@ load_control() {
 }
 
 action() {
-  if [ ${_O_LOAD} -lt ${_O_LOAD_SPR} ] ; then
+  if [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ] ; then
     ### echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_SPR}"
     su -s /bin/bash - EDIT_USER -c "bash /data/disk/EDIT_USER/aegir.sh"
     touch /var/xdrago/log/last-run-EDIT_USER

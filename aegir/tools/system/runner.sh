@@ -47,7 +47,7 @@ for Runner in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f \
 do
   count_cpu
   load_control
-  if [ ${_O_LOAD} -lt ${_O_LOAD_MAX} ] ; then
+  if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ] ; then
     echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
     if [ ! -e "/var/run/boa_wait.pid" ] \
       && [ ! -e "/var/run/manage_rvm_users.pid" ] ; then

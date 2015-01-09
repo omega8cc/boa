@@ -248,9 +248,9 @@ manage_ip_auth_access() {
 }
 
 proc_control() {
-  if [ ${_O_LOAD} -ge ${_O_LOAD_MAX} ] ; then
+  if [ "${_O_LOAD}" -ge "${_O_LOAD_MAX}" ] ; then
     hold
-  elif [ ${_F_LOAD} -ge ${_F_LOAD_MAX} ] ; then
+  elif [ "${_F_LOAD}" -ge "${_F_LOAD_MAX}" ] ; then
     hold
   else
     echo load is ${_O_LOAD}:${_F_LOAD} while maxload is ${_O_LOAD_MAX}:${_F_LOAD_MAX}
@@ -267,7 +267,7 @@ load_control() {
   _O_LOAD=$(( _O_LOAD / _CPU_NR ))
   echo _O_LOAD per CPU is ${_O_LOAD}
 
-  _F_LOAD=`awk '{print $2*100}' /proc/loadavg`
+  _F_LOAD=$(awk '{print $2*100}' /proc/loadavg 2>&1)
   echo _F_LOAD is ${_F_LOAD}
   _F_LOAD=$(( _F_LOAD / _CPU_NR ))
   echo _F_LOAD per CPU is ${_F_LOAD}
@@ -293,7 +293,7 @@ load_control() {
   _F_LOAD_CRT=$(( _F_LOAD_CRT * 7 ))
   echo _F_LOAD_CRT is ${_F_LOAD_CRT}
 
-  if [ ${_O_LOAD} -ge ${_O_LOAD_SPR} ] \
+  if [ "${_O_LOAD}" -ge "${_O_LOAD_SPR}" ] \
     && [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ] \
     && [ -e "/data/conf/nginx_high_load_off.conf" ] ; then
     nginx_high_load_on

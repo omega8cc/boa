@@ -2417,7 +2417,7 @@ action() {
     load_control
     if [ -e "$User/config/server_master/nginx/vhost.d" ] \
       && [ ! -e "$User/log/CANCELLED" ] ; then
-      if [ ${_O_LOAD} -lt ${_O_LOAD_MAX} ] ; then
+      if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ] ; then
         _HM_U=$(echo $User | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         _THIS_HM_SITE=$(cat $User/.drush/hostmaster.alias.drushrc.php \
           | grep "site_path'" \
