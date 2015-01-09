@@ -846,8 +846,11 @@ update_web_user() {
   _T_HD="/home/${_WEB}/.drush"
   _T_TP="/home/${_WEB}/.tmp"
   _T_II="${_T_HD}/php.ini"
+  msg "DEBUG: ${_WEB} in update_web_user A"
   if [ -e "/home/${_WEB}" ] ; then
     mkdir -p /home/${_WEB}/.{tmp,drush}
+    msg "DEBUG: ${_WEB} in update_web_user B"
+    msg "DEBUG: ARG1 is $1 in update_web_user B"
     if [ ! -z "$1" ] ; then
       if [ "$1" = "hhvm" ] ; then
         if [ -e "/opt/php56/etc/php56.ini" ] ; then
@@ -857,10 +860,12 @@ update_web_user() {
         fi
       else
         _T_PV=$1
+        msg "DEBUG: _T_PV is ${_T_PV} in update_web_user C"
       fi
     fi
     if [ ! -z "$_T_PV" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ] ; then
       cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
+      msg "DEBUG: _T_PV is ${_T_PV} in update_web_user D"
     else
       if [ -e "/opt/php55/etc/php55.ini" ] ; then
         cp -af /opt/php55/etc/php55.ini ${_T_II}
