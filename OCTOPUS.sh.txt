@@ -1016,7 +1016,7 @@ tune_fpm_config() {
         _PHP_V="56 55 54 53"
         for e in $_PHP_V; do
           if [[ "$_OLD_PHP_IN_USE" =~ "php${e}" ]] ; then
-            if [ "${e}" != "${_PHP_SV}" ]] \
+            if [ "${e}" != "${_PHP_SV}" ] \
               || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.txt" ] ; then
               update_web_user "$_PHP_SV"
             fi

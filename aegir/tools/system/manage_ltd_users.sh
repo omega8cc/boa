@@ -943,6 +943,7 @@ create_web_user() {
   elif [ -z "$_T_ID_EXISTS" ] || [ ! -e "${_T_II}" ] ; then
     remove_web_user "clean"
     adduser --force-badname --system --ingroup www-data ${_WEB} &> /dev/null
+    update_web_user "$1"
   fi
 }
 #
@@ -1197,7 +1198,7 @@ switch_php() {
             _PHP_V="56 55 54 53"
             for e in $_PHP_V; do
               if [[ "$_OLD_PHP_IN_USE" =~ "php${e}" ]] ; then
-                if [ "${e}" != "${_PHP_SV}" ]] \
+                if [ "${e}" != "${_PHP_SV}" ] \
                   || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.txt" ] ; then
                   echo _OLD_PHP_IN_USE is $_OLD_PHP_IN_USE for ${_WEB} update
                   echo _NEW_PHP_TO_USE is $_PHP_SV for ${_WEB} update
