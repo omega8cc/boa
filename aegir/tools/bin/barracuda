@@ -15,11 +15,11 @@ barName=BARRACUDA.sh.txt
 octName=OCTOPUS.sh.txt
 barCnf=/root/.barracuda.cnf
 
-_TODAY=`date +%y%m%d`
-_NOW=`date +%y%m%d-%H%M`
+_TODAY=$(date +%y%m%d 2>&1)
+_NOW=$(date +%y%m%d-%H%M 2>&1)
 _CHECK_HOST=`uname -n`
 _LOG_DIR="$varPath/reports/up/$(basename "$0")/$_TODAY"
-_UP_LOG="$_LOG_DIR/$(basename "$0")-up-$_NOW.log"
+_UP_LOG="$_LOG_DIR/$(basename "$0")-up-${_NOW}.log"
 _L_VMFAMILY=XEN
 _L_VM_TEST=`uname -a 2>&1`
 if [[ "$_L_VM_TEST" =~ beng ]] ; then
@@ -117,25 +117,25 @@ check_dns_settings() {
   fi
 }
 
-  if [ -e "$barCnf" ] ; then
 send_report() {
+  if [ -e "${barCnf}" ] ; then
     if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "$_MY_EMAIL" ] ; then
-      cat $_UP_LOG | mail -e -s "REPORT: Successful Barracuda upgrade on $_CHECK_HOST at $_NOW" $_MY_EMAIL
+      cat $_UP_LOG | mail -e -s "REPORT: Successful Barracuda upgrade on $_CHECK_HOST at ${_NOW}" $_MY_EMAIL
       echo "REPORT: Successful Barracuda upgrade on $_CHECK_HOST sent to $_MY_EMAIL"
     fi
   fi
 }
 
-  if [ -e "$barCnf" ] ; then
 send_alert() {
+  if [ -e "${barCnf}" ] ; then
     if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "$_MY_EMAIL" ] ; then
-      cat $_UP_LOG | mail -e -s "$_ALERT_MSG on $_CHECK_HOST at $_NOW" $_MY_EMAIL
+      cat $_UP_LOG | mail -e -s "$_ALERT_MSG on $_CHECK_HOST at ${_NOW}" $_MY_EMAIL
       echo "$_ALERT_MSG on $_CHECK_HOST sent to $_MY_EMAIL"
     fi
   fi
@@ -233,8 +233,8 @@ check_php_cli() {
   fi
 }
 
-  if [ -e "$varPath/$barName" ] && [ -e "$barCnf" ] ; then
 up_action() {
+  if [ -e "$varPath/$barName" ] && [ -e "${barCnf}" ] ; then
     if [ ! -z "$rkey" ] ; then
       if [ "$rkey" = "php-55" ] ; then
         _PHP_SINGLE_INSTALL=5.5
@@ -249,12 +249,12 @@ up_action() {
       elif [ "$rkey" = "nodns" ] ; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"    $varPath/$barName
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"      $varPath/$barName
-        sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"    $barCnf
-        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"      $barCnf
+        sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"    ${barCnf}
+        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"      ${barCnf}
       else
         if [ "$rkey" != "debug" ] ; then
           sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g" $varPath/$barName
-          sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g" $barCnf
+          sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g" ${barCnf}
         fi
       fi
 
@@ -267,13 +267,13 @@ up_action() {
       ### Debugging
 
     fi
-    ### Make sure that _PHP_SINGLE_INSTALL is set in $barCnf
+    ### Make sure that _PHP_SINGLE_INSTALL is set in ${barCnf}
     if [ "$_PHP_SINGLE_INSTALL" = "5.6" ] || [ "$_PHP_SINGLE_INSTALL" = "5.5" ] || [ "$_PHP_SINGLE_INSTALL" = "5.4" ] || [ "$_PHP_SINGLE_INSTALL" = "5.3" ] ; then
-      _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL $barCnf)
+      _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL ${barCnf})
       if [[ "$_PHP_SINGLE_INSTALL_TEST" =~ "_PHP_SINGLE_INSTALL" ]] ; then
-        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=$_PHP_SINGLE_INSTALL/g" $barCnf
+        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=$_PHP_SINGLE_INSTALL/g" ${barCnf}
       else
-        echo "_PHP_SINGLE_INSTALL=$_PHP_SINGLE_INSTALL" >> $barCnf
+        echo "_PHP_SINGLE_INSTALL=$_PHP_SINGLE_INSTALL" >> ${barCnf}
       fi
     fi
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
@@ -294,17 +294,17 @@ up_action() {
         sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL/g"   $varPath/$barName
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"       $varPath/$barName
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"       $varPath/$barName
-        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=$_PHP_SINGLE_INSTALL/g" $barCnf
-        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL/g"   $barCnf
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"       $barCnf
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"       $barCnf
+        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=$_PHP_SINGLE_INSTALL/g" ${barCnf}
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=$_PHP_SINGLE_INSTALL/g"   ${barCnf}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"       ${barCnf}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"       ${barCnf}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"       /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"       /root/.*.octopus.cnf &> /dev/null
         sleep 3
 
         ### Debugging
         if [ "$debug" = "debug" ] ; then
-          cat $barCnf
+          cat ${barCnf}
           echo
           echo test fin!
           clean_pid_exit
@@ -337,17 +337,17 @@ up_action() {
         sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"/g" $varPath/$barName
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"        $varPath/$barName
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"        $varPath/$barName
-        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"                      $barCnf
-        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"/g" $barCnf
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"        $barCnf
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"        $barCnf
+        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"                      ${barCnf}
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"/g" ${barCnf}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"        ${barCnf}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"        ${barCnf}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_PHP_SINGLE_INSTALL/g"        /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_PHP_SINGLE_INSTALL/g"        /root/.*.octopus.cnf &> /dev/null
         sleep 3
 
         ### Debugging
         if [ "$debug" = "debug" ] ; then
-          cat $barCnf
+          cat ${barCnf}
           echo
           echo test fin!
           clean_pid_exit
@@ -367,8 +367,8 @@ up_action() {
     if [ -e "/root/.auto.up.cnf" ] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       _DO_NOTHING=YES
     else
-      mkdir -p $varPath/old-firewall-monitor/$_NOW
-      mv -f /var/xdrago/monitor/*.log $varPath/old-firewall-monitor/$_NOW/ &> /dev/null
+      mkdir -p $varPath/old-firewall-monitor/${_NOW}
+      mv -f /var/xdrago/monitor/*.log $varPath/old-firewall-monitor/${_NOW}/ &> /dev/null
       rm -f /var/xdrago/monitor/* &> /dev/null
     fi
     if [ "$cmmand" = "up-head" ] ; then
@@ -394,48 +394,48 @@ up_action() {
       if [ -e "/root/.debug.cnf" ] ; then
         _DO_NOTHING=YES
       else
-        if [ -e "$barCnf" ] ; then
-          sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                           $barCnf
-          sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=YES/g"                 $barCnf
-          sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"   $barCnf
-          sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                         $barCnf
-          sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"                $barCnf
-          sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"             $barCnf
-          sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"             $barCnf
+        if [ -e "${barCnf}" ] ; then
+          sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                           ${barCnf}
+          sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=YES/g"                 ${barCnf}
+          sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"   ${barCnf}
+          sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                         ${barCnf}
+          sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"                ${barCnf}
+          sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"             ${barCnf}
+          sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"             ${barCnf}
           if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] || [ -e "/root/.test.clstr.cnf" ] ; then
             _DO_NOTHING=YES
           else
-            sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"      $barCnf
+            sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"      ${barCnf}
           fi
           if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
             if [ "$_VMFAMILY" = "VS" ] ; then
-              sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"               $barCnf
-              sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                 $barCnf
-              sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"           $barCnf
+              sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"               ${barCnf}
+              sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                 ${barCnf}
+              sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"           ${barCnf}
             fi
-            sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                     $barCnf
-            sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"             $barCnf
+            sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                     ${barCnf}
+            sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"             ${barCnf}
             sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g"                      /root/.*.octopus.cnf &> /dev/null
             if [ -x "/opt/php55/bin/php" ] && [ -z "$_PHP_SINGLE_INSTALL" ] ; then
-              sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"           $barCnf
-              sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"           $barCnf
+              sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"           ${barCnf}
+              sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"           ${barCnf}
             fi
           fi
         fi
       fi
-      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" $barCnf
+      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${barCnf}
       _THIS_RV=`lsb_release -sc`
-      if [ "$_THIS_RV" = "lenny" ] && [ -e "$barCnf" ] ; then
+      if [ "$_THIS_RV" = "lenny" ] && [ -e "${barCnf}" ] ; then
         sed -i "s/^_LENNY_TO_SQUEEZE=.*/_LENNY_TO_SQUEEZE=YES/g" $varPath/$barName
-        sed -i "s/^_LENNY_TO_SQUEEZE.*//g" $barCnf
-        sed -i "/^$/d" $barCnf
-        echo "_LENNY_TO_SQUEEZE=YES" >> $barCnf
+        sed -i "s/^_LENNY_TO_SQUEEZE.*//g" ${barCnf}
+        sed -i "/^$/d" ${barCnf}
+        echo "_LENNY_TO_SQUEEZE=YES" >> ${barCnf}
       fi
-      if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ] && [ -e "$barCnf" ] ; then
+      if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ] && [ -e "${barCnf}" ] ; then
         sed -i "s/^_TOMCAT_TO_JETTY=.*/_TOMCAT_TO_JETTY=YES/g" $varPath/$barName
-        sed -i "s/^_TOMCAT_TO_JETTY.*//g" $barCnf
-        sed -i "/^$/d" $barCnf
-        echo "_TOMCAT_TO_JETTY=YES" >> $barCnf
+        sed -i "s/^_TOMCAT_TO_JETTY.*//g" ${barCnf}
+        sed -i "/^$/d" ${barCnf}
+        echo "_TOMCAT_TO_JETTY=YES" >> ${barCnf}
       fi
     fi
     if [ -e "$varPath/$barName" ] ; then
@@ -474,45 +474,45 @@ up_action() {
         sleep $n
         echo "Starting the upgrade in silent mode now..."
         echo
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g" $barCnf
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g" ${barCnf}
         sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" $varPath/$barName
         if [ "$silent" = "system" ] ; then
           touch /var/run/boa_system_wait.pid
           if [ "$cmmand" = "up-legacy" ] ; then
             sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"     $varPath/$barName
-            sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"     $barCnf
+            sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"     ${barCnf}
           else
             if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] && [ -d "/var/aegir/config/server_master/nginx/subdir.d" ] ; then
               sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"   $varPath/$barName
-              sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"   $barCnf
+              sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"   ${barCnf}
             else
               if [[ "$_CHECK_HOST" =~ "v55.lon." ]] || [[ "$_CHECK_HOST" =~ ".lon1.h" ]] ; then
                 sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" $varPath/$barName
-                sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" $barCnf
+                sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" ${barCnf}
               else
                 sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"  $varPath/$barName
-                sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"  $barCnf
+                sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"  ${barCnf}
               fi
             fi
           fi
-          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"   $barCnf
+          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"   ${barCnf}
         elif [ "$silent" = "log" ] ; then
-          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" $barCnf
-          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"   $barCnf
+          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" ${barCnf}
+          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"   ${barCnf}
         fi
         bash $varPath/$barName >$_UP_LOG 2>&1
         check_report
       else
-        sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" $barCnf
-        sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"   $barCnf
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                     $barCnf
+        sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" ${barCnf}
+        sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"   ${barCnf}
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                     ${barCnf}
         bash $varPath/$barName
       fi
     fi
   else
     echo
     echo "  $barName installer not available - try again later"
-    echo "  Make sure that required $barCnf file also exists"
+    echo "  Make sure that required ${barCnf} file also exists"
     echo
     clean_pid_exit
   fi
@@ -563,9 +563,9 @@ up_finish() {
   echo
   if [ "$rkey" = "auto" ] || [ "$_NEEDS_UPDATE" = "YES" ] ; then
     rm -f $varPath/BOA.sh.txt-*
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o $varPath/BOA.sh.txt-$_NOW
-    exec bash $varPath/BOA.sh.txt-$_NOW &> /dev/null
-    rm -f $varPath/BOA.sh.txt-$_NOW
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o $varPath/BOA.sh.txt-${_NOW}
+    exec bash $varPath/BOA.sh.txt-${_NOW} &> /dev/null
+    rm -f $varPath/BOA.sh.txt-${_NOW}
   fi
   exit 0
 }
@@ -593,7 +593,7 @@ set_pin_priority() {
 
 check_wrapper() {
   rm -f $varPath/$(basename "$0")-now-*
-  _THIS_FILE="$varPath/$(basename "$0")-now-$_NOW"
+  _THIS_FILE="$varPath/$(basename "$0")-now-${_NOW}"
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
   if [ ! -e "$_THIS_FILE" ] ; then
     echo "I can not download required installers from files.aegir.cc at the moment."
@@ -661,8 +661,8 @@ check_root() {
     echo "ERROR: Your disk space is almost full - we can not proceed until it is below 90/100"
     clean_pid_exit
   fi
-  if [ -e "$barCnf" ] ; then
-    source $barCnf
+  if [ -e "${barCnf}" ] ; then
+    source ${barCnf}
   fi
 }
 

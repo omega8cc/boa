@@ -44,8 +44,8 @@
 export PATH=$PATH:/opt/local/bin
 SHELL=/bin/bash
 barCnf=/root/.barracuda.cnf
-_TODAY=`date +%y%m%d`
-_INSTALLER_VERSION=BOA-2.4.0-dev
+_TODAY=$(date +%y%m%d 2>&1)
+_X_VERSION=BOA-2.4.0-dev
 
 fix_dns_settings() {
   mkdir -p /var/backups
@@ -400,18 +400,18 @@ setup() {
 ###--------------------###
 if [ `whoami` = "root" ] ; then
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] ; then
-    if [ -e "$barCnf" ] ; then
-      source $barCnf
+    if [ -e "${barCnf}" ] ; then
+      source ${barCnf}
     fi
     if [ ! -z "$_SKYNET_MODE" ] && [ "$_SKYNET_MODE" = "OFF" ] ; then
       echo "STATUS: Skynet Agent is Inactive!"
       echo "STATUS: Please remove the _SKYNET_MODE=OFF line from"
-      echo "STATUS: $barCnf file to enable me again."
+      echo "STATUS: ${barCnf} file to enable me again."
       exit 0
     else
       echo "STATUS: Skynet Agent is Active, OK!"
       echo "STATUS: You can add the _SKYNET_MODE=OFF line to"
-      echo "STATUS: $barCnf file to disable me, if needed."
+      echo "STATUS: ${barCnf} file to disable me, if needed."
     fi
   fi
   chmod a+w /dev/null
@@ -425,7 +425,7 @@ if [ `whoami` = "root" ] ; then
   fix_alt
   if [ -e "/var/log/barracuda_log.txt" ] ; then
     _VERSIONS_TEST=`cat /var/log/barracuda_log.txt`
-    if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
+    if [[ "$_VERSIONS_TEST" =~ "${_X_VERSION}" ]] ; then
       _VERSIONS_TEST_RESULT=OK
       if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
         update_agents

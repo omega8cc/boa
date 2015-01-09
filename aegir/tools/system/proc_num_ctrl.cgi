@@ -1,5 +1,7 @@
 #!/usr/bin/perl
 
+### TODO - rewrite this legacy script in bash
+
 ###
 ### System Services Monitor running every 5 seconds
 ###

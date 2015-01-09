@@ -75,7 +75,7 @@ action() {
 }
 
 ###--------------------###
-_NOW=`date +%y%m%d-%H%M`
+_NOW=$(date +%y%m%d-%H%M 2>&1)
 _HOST_TEST=`uname -n 2>&1`
 _VM_TEST=`uname -a 2>&1`
 if [[ "$_VM_TEST" =~ beng ]] ; then

@@ -8,8 +8,8 @@ rm -f /var/backups/.auth.IP.list*
 find /var/xdrago/log/*.pid -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 if [ -e "/etc/cron.daily/logrotate" ] ; then
   _SYSLOG_SIZE_TEST=$(du -s -h /var/log/syslog)
-  if [[ "$_SYSLOG_SIZE_TEST" =~ "G" ]] ; then
-    echo $_SYSLOG_SIZE_TEST too big
+  if [[ "${_SYSLOG_SIZE_TEST}" =~ "G" ]] ; then
+    echo ${_SYSLOG_SIZE_TEST} too big
     bash /etc/cron.daily/logrotate
     echo system logs rotated
   fi
@@ -23,10 +23,12 @@ else
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
   fi
-  if [ -z "$_SKYNET_MODE" ] || [ "$_SKYNET_MODE" = "ON" ] ; then
+  if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ] ; then
     rm -f /tmp/*error*
     rm -f /var/backups/BOA.sh.txt.hourly*
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt.hourly
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 \
+      -A iCab "http://files.aegir.cc/BOA.sh.txt" \
+      -o /var/backups/BOA.sh.txt.hourly
     bash /var/backups/BOA.sh.txt.hourly &> /dev/null
     rm -f /var/backups/BOA.sh.txt.hourly*
   fi
@@ -38,7 +40,7 @@ if [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ] ; then
 fi
 if [ -d "/dev/disk" ] ; then
   _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')
-  if [ -z "$_IF_CDP" ] && [ ! -e "/root/.no.swap.clear.cnf" ] ; then
+  if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ] ; then
     swapoff -a
     swapon -a
   fi

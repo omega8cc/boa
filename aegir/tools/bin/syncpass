@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-_NOW=`date +%y%m%d-%H%M`
+_NOW=$(date +%y%m%d-%H%M 2>&1)
 
 # Remove dangerous stuff from the string.
 sanitize_string() {
@@ -45,7 +45,7 @@ check_generate() {
       chmod 0600 $_L_SYS
     fi
   fi
-  _LEN_APASS=$(echo ${#_ESC_APASS})
+  _LEN_APASS=$(echo ${#_ESC_APASS} 2>&1)
   if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 9 ] ; then
      echo "WARN: The random password=$_ESC_APASS does not look good"
      echo "INFO: We will generate new random password using pwgen tool"
@@ -62,8 +62,8 @@ do_syncpass() {
   if [ ! -z "$uname" ] ; then
     if [ "$uname" = "aegir" ] && [ -e "/var/aegir/backups" ] ; then
       _L_SYS="/var/aegir/backups/system/.aegir_root.pass.txt"
-      cp /var/aegir/.drush/server_localhost.alias.drushrc.php /var/backups/server_localhost.alias.drushrc.php.$uname-bak-$_NOW &> /dev/null
-      cp /var/aegir/.drush/server_master.alias.drushrc.php /var/backups/server_master.alias.drushrc.php.$uname-bak-$_NOW &> /dev/null
+      cp /var/aegir/.drush/server_localhost.alias.drushrc.php /var/backups/server_localhost.alias.drushrc.php.$uname-bak-${_NOW} &> /dev/null
+      cp /var/aegir/.drush/server_master.alias.drushrc.php /var/backups/server_master.alias.drushrc.php.$uname-bak-${_NOW} &> /dev/null
       check_generate
       chown $uname:$uname $_L_SYS &> /dev/null
       if [ ! -z "$_ESC_APASS" ] && [ ! -z "$_ENC_APASS" ] ; then
@@ -82,8 +82,8 @@ do_syncpass() {
     else
       if [ -e "/data/disk/$uname" ] ; then
         _L_SYS="/data/disk/$uname/.$uname.pass.txt"
-        cp /data/disk/$uname/.drush/server_localhost.alias.drushrc.php /var/backups/server_localhost.alias.drushrc.php.$uname-bak-$_NOW &> /dev/null
-        cp /data/disk/$uname/.drush/server_master.alias.drushrc.php /var/backups/server_master.alias.drushrc.php.$uname-bak-$_NOW &> /dev/null
+        cp /data/disk/$uname/.drush/server_localhost.alias.drushrc.php /var/backups/server_localhost.alias.drushrc.php.$uname-bak-${_NOW} &> /dev/null
+        cp /data/disk/$uname/.drush/server_master.alias.drushrc.php /var/backups/server_master.alias.drushrc.php.$uname-bak-${_NOW} &> /dev/null
         check_generate
         chown $uname:users $_L_SYS &> /dev/null
         if [ ! -z "$_ESC_APASS" ] && [ ! -z "$_ENC_APASS" ] ; then

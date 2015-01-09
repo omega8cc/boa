@@ -34,7 +34,7 @@
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=EDIT_INSTALLER_VERSION
+_X_VERSION=EDIT_X_VERSION
 
 
 ###---### Distro config.
@@ -118,7 +118,7 @@ _STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _THIS_OS=`lsb_release -si`
 _THISHTIP=EDIT_THISHTIP
-_TODAY=`date +%y%m%d`
+_TODAY=$(date +%y%m%d 2>&1)
 _USE_CURRENT=EDIT_USE_CURRENT
 _USRG=EDIT_USRG
 _WEBG=EDIT_WEBG
@@ -266,7 +266,7 @@ get_dev_ext() {
 }
 #
 _SRCDIR=/opt/tmp/files
-_LOG=/var/backups/octopus-$_USER-$_NOW.log
+_LOG=/var/backups/octopus-$_USER-${_NOW}.log
 #
 # Create shared dirs.
 create_shared_dirs() {
@@ -300,7 +300,7 @@ _D="/data/all"
 
 for i in $REVISIONS; do
   if [ -e "$_D/$i/o_contrib" ] \
-    && [ ! -e "$_D/$i/o_contrib/update-$_INSTALLER_VERSION.info" ] ; then
+    && [ ! -e "$_D/$i/o_contrib/update-${_X_VERSION}.info" ] ; then
     _FORCE_UP_SIX=YES
   elif [ -e "$_D/$i/o_contrib" ] \
     && [ ! -e "$_D/000/modules/redis_edge" ] ; then
@@ -392,7 +392,7 @@ for i in $REVISIONS; do
       && [ ! -L "$_D/$i/o_contrib/redis_edge" ] ; then
       ln -sf $_D/000/modules/redis_edge $_D/$i/o_contrib/redis_edge
     fi
-    touch $_D/$i/o_contrib/update-$_INSTALLER_VERSION.info
+    touch $_D/$i/o_contrib/update-${_X_VERSION}.info
     find $_D/$i/o_contrib -type d -exec chmod 0755 {} \; &> /dev/null
     find $_D/$i/o_contrib -type f -exec chmod 0644 {} \; &> /dev/null
   fi
@@ -416,7 +416,7 @@ REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 \
 RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy"
 for i in $REVISIONS; do
   if [ -e "$_D/$i/o_contrib_seven" ] \
-    && [ ! -e "$_D/$i/o_contrib_seven/update-$_INSTALLER_VERSION.info" ] ; then
+    && [ ! -e "$_D/$i/o_contrib_seven/update-${_X_VERSION}.info" ] ; then
     _FORCE_UP_SEVEN=YES
   elif [ -e "$_D/$i/o_contrib_seven" ] \
     && [ ! -e "$_D/$i/o_contrib_seven/views_accelerator" ] ; then
@@ -520,7 +520,7 @@ for i in $REVISIONS; do
     fi
     find $_D/$i/o_contrib_seven -type d -exec chmod 0755 {} \; &> /dev/null
     find $_D/$i/o_contrib_seven -type f -exec chmod 0644 {} \; &> /dev/null
-    touch $_D/$i/o_contrib_seven/update-$_INSTALLER_VERSION.info
+    touch $_D/$i/o_contrib_seven/update-${_X_VERSION}.info
   fi
 done
 cd
@@ -529,15 +529,15 @@ cd
 # Download Textile.
 download_textile() {
   cd textile
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/classTextile.php ./
+  cp -af /opt/tmp/boa/aegir/helpers/classTextile.php ./
   cp -af classTextile.php include/ &> /dev/null
   cd ../
-  patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/textile.patch &> /dev/null
+  patch -p1 < /opt/tmp/boa/aegir/patches/textile.patch &> /dev/null
 }
 #
 # Download o_contrib_seven.
-  touch update-$_INSTALLER_VERSION.info
 download_o_contrib_seven() {
+  touch update-${_X_VERSION}.info
   #msg "$_STATUS A: Downloading o_contrib_seven modules, please wait..."
   get_dev_contrib "admin-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "advagg-7.x-2.7.tar.gz"
@@ -586,7 +586,7 @@ download_o_contrib_seven() {
   fi
   find ./ -type d -exec chmod 0755 {} \; &> /dev/null
   find ./ -type f -exec chmod 0644 {} \; &> /dev/null
-  touch ctrl-$_INSTALLER_VERSION
+  touch ctrl-${_X_VERSION}
   if [ ! -L "./redis" ] ; then
     ln -sf $_D/000/modules/redis redis
   fi
@@ -594,13 +594,13 @@ download_o_contrib_seven() {
     ln -sf $_D/000/modules/redis_edge redis_edge
   fi
   download_textile
-  if [ ! -e "$_D/000/modules/redis/update-$_INSTALLER_VERSION.info" ] ; then
+  if [ ! -e "$_D/000/modules/redis/update-${_X_VERSION}.info" ] ; then
     mkdir -p $_D/000/modules
     cd $_D/000/modules
     rm -f -r $_D/000/modules/redis
     get_dev_contrib "redis-7.x-2.x-o8-revert-A.tar.gz"
     rm -f redis/redis.info
-    echo update > redis/update-$_INSTALLER_VERSION.info
+    echo update > redis/update-${_X_VERSION}.info
   fi
   if [ ! -e "$_D/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
     mkdir -p $_D/000/modules
@@ -615,8 +615,8 @@ download_o_contrib_seven() {
 }
 #
 # Download o_contrib_six.
-  touch update-$_INSTALLER_VERSION.info
 download_o_contrib_six() {
+  touch update-${_X_VERSION}.info
   #msg "$_STATUS A: Downloading o_contrib modules, please wait..."
   get_dev_contrib "admin-6.x-2.0.tar.gz"
   get_dev_contrib "advagg-6.x-1.x-dev.tar.gz"
@@ -662,7 +662,7 @@ download_o_contrib_six() {
   fi
   find ./ -type d -exec chmod 0755 {} \; &> /dev/null
   find ./ -type f -exec chmod 0644 {} \; &> /dev/null
-  touch ctrl-$_INSTALLER_VERSION
+  touch ctrl-${_X_VERSION}
   if [ ! -L "./redis" ] ; then
     ln -sf $_D/000/modules/redis redis
   fi
@@ -673,20 +673,20 @@ download_o_contrib_six() {
     ln -sf $_D/000/modules/cache_backport cache_backport
   fi
   download_textile
-  if [ ! -e "$_D/000/modules/cache_backport/update-$_INSTALLER_VERSION.info" ] ; then
+  if [ ! -e "$_D/000/modules/cache_backport/update-${_X_VERSION}.info" ] ; then
     mkdir -p $_D/000/modules
     cd $_D/000/modules
     rm -f -r $_D/000/modules/cache_backport
     get_dev_contrib "cache_backport-6.x-1.0-rc2.tar.gz"
-    echo update > cache_backport/update-$_INSTALLER_VERSION.info
+    echo update > cache_backport/update-${_X_VERSION}.info
   fi
-  if [ ! -e "$_D/000/modules/redis/update-$_INSTALLER_VERSION.info" ] ; then
+  if [ ! -e "$_D/000/modules/redis/update-${_X_VERSION}.info" ] ; then
     mkdir -p $_D/000/modules
     cd $_D/000/modules
     rm -f -r $_D/000/modules/redis
     get_dev_contrib "redis-7.x-2.x-o8-revert-A.tar.gz"
     rm -f redis/redis.info
-    echo update > redis/update-$_INSTALLER_VERSION.info
+    echo update > redis/update-${_X_VERSION}.info
   fi
   if [ ! -e "$_D/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
     mkdir -p $_D/000/modules
@@ -732,20 +732,20 @@ check_fix_o_contrib() {
       cd $_CORE/o_contrib_seven
     fi
   fi
-  if [ ! -e "$_D/000/modules/cache_backport/update-$_INSTALLER_VERSION.info" ] ; then
+  if [ ! -e "$_D/000/modules/cache_backport/update-${_X_VERSION}.info" ] ; then
     mkdir -p $_D/000/modules
     cd $_D/000/modules
     rm -f -r $_D/000/modules/cache_backport
     get_dev_contrib "cache_backport-6.x-1.0-rc2.tar.gz"
-    echo update > cache_backport/update-$_INSTALLER_VERSION.info
+    echo update > cache_backport/update-${_X_VERSION}.info
   fi
-  if [ ! -e "$_D/000/modules/redis/update-$_INSTALLER_VERSION.info" ] ; then
+  if [ ! -e "$_D/000/modules/redis/update-${_X_VERSION}.info" ] ; then
     mkdir -p $_D/000/modules
     cd $_D/000/modules
     rm -f -r $_D/000/modules/redis
     get_dev_contrib "redis-7.x-2.x-o8-revert-A.tar.gz"
     rm -f redis/redis.info
-    echo update > redis/update-$_INSTALLER_VERSION.info
+    echo update > redis/update-${_X_VERSION}.info
   fi
   if [ ! -e "$_D/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
     mkdir -p $_D/000/modules
@@ -814,10 +814,10 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
 else
   _FILE_VERSION=octopus-version.txt
 fi
-if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
-  _VERSIONS_TEST=`cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION`
+if [ -e "/opt/tmp/boa/aegir/conf/$_FILE_VERSION" ] ; then
+  _VERSIONS_TEST=`cat /opt/tmp/boa/aegir/conf/$_FILE_VERSION`
   if [[ "$_VERSIONS_TEST" =~ "-dev" ]] ; then
-    if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] \
+    if [[ "$_VERSIONS_TEST" =~ "${_X_VERSION}" ]] \
       && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
       _VERSIONS_TEST_RESULT=OK
       msg "$_STATUS A: OCTOPUS version test: OK"
@@ -825,7 +825,7 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
       _VERSIONS_TEST_RESULT=FAIL
     fi
   else
-    if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] \
+    if [[ "$_VERSIONS_TEST" =~ "${_X_VERSION}" ]] \
       && [[ "$_AEGIR_VERSION" =~ "BOA" ]] ; then
       _VERSIONS_TEST_RESULT=OK
       msg "$_STATUS A: OCTOPUS version test: OK"
@@ -857,7 +857,7 @@ if [ "$_HOT_SAUCE" = "NO" ] ; then
     _CORE="$_D/$_ALL_DISTRO"
     _THIS_CORE="$_ALL_DISTRO"
     msg "$_STATUS A: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
-    sed -i "s/^_USE_CURRENT=.*/_USE_CURRENT=NO/g" /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirSetupC.sh.txt &> /dev/null
+    sed -i "s/^_USE_CURRENT=.*/_USE_CURRENT=NO/g" /opt/tmp/boa/aegir/scripts/AegirSetupC.sh.txt &> /dev/null
   else
     msg "$_STATUS A: Shared platforms code v.$_LAST_ALL (latest available) will be used"
   fi
@@ -895,8 +895,8 @@ chown -R $_USER:$_USRG /data/conf &> /dev/null
 #
 chmod 0711 $_ROOT
 cd $_ROOT
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirSetupB.sh.txt ./
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirSetupC.sh.txt ./
+cp -af /opt/tmp/boa/aegir/scripts/AegirSetupB.sh.txt ./
+cp -af /opt/tmp/boa/aegir/scripts/AegirSetupC.sh.txt ./
 chown $_USER:$_USRG $_ROOT/AegirSetupB.sh.txt &> /dev/null
 chown $_USER:$_USRG $_ROOT/AegirSetupC.sh.txt &> /dev/null
 
@@ -936,7 +936,7 @@ provision_backend_dbpass_generate() {
     fi
     _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
     _ENC_PASS=$(python -c "import urllib; print urllib.quote('''$_ESC_PASS''')")
-    _LEN_PASS=$(echo ${#_ESC_PASS})
+    _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
   if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 9 ] ; then
     if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
@@ -1007,7 +1007,7 @@ EOFMYSQL
 provision_backend_dbpass_sync() {
   msg "$_STATUS A: Syncing provision backend db_passwd..."
   _L_SYS="$_ROOT/.$_USER.pass.txt"
-  mv -f $_L_SYS $_L_SYS-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  mv -f $_L_SYS $_L_SYS-pre-${_X_VERSION}-${_NOW} &> /dev/null
   provision_backend_dbpass_generate
   if [ ! -z "$_ESC_PASS" ] && [ ! -z "$_ENC_PASS" ] ; then
     su -s /bin/bash - $_USER -c "$_DRUSHCMD @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_PASS' WHERE db_user='$_USER'\" &> /dev/null"
@@ -1098,8 +1098,16 @@ else
       if [ ! -e "/root/.upstart.cnf" ] ; then
         service cron stop &> /dev/null
       fi
-      _THIS_HM_ROOT=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-      _THIS_HM_SITE=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+      _THIS_HM_ROOT=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php \
+        | grep "root'" \
+        | cut -d: -f2 \
+        | awk '{ print $3}' \
+        | sed "s/[\,']//g"`
+      _THIS_HM_SITE=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php \
+        | grep "site_path'" \
+        | cut -d: -f2 \
+        | awk '{ print $3}' \
+        | sed "s/[\,']//g"`
       _U_HD="$_ROOT/.drush"
       chattr -i $_U_HD/php.ini &> /dev/null
       chown -R $_USER:$_USRG $_ROOT/.drush
@@ -1123,8 +1131,10 @@ else
         mkdir -p $_ROOT/backups/system/old_hostmaster
         chmod 700 $_ROOT/backups/system/old_hostmaster
         chmod 700 $_ROOT/backups/system
-        mv -f $_ROOT/backups/*host8* $_ROOT/backups/system/old_hostmaster/ &> /dev/null
-        mv -f $_ROOT/backups/*o8.io* $_ROOT/backups/system/old_hostmaster/ &> /dev/null
+        mv -f $_ROOT/backups/*host8* \
+          $_ROOT/backups/system/old_hostmaster/ &> /dev/null
+        mv -f $_ROOT/backups/*o8.io* \
+          $_ROOT/backups/system/old_hostmaster/ &> /dev/null
         chmod 600 $_ROOT/backups/system/old_hostmaster/* &> /dev/null
         hostmaster_frontend_dbpass_sync
       fi
@@ -1174,7 +1184,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   rm -f $_HOSTMASTER_ROOT/*.txt
   mrun "service nginx reload" &> /dev/null
   cd $_HOSTMASTER_ROOT
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
+  cp -af /opt/tmp/boa/aegir/conf/robots.txt ./
   cd $_ROOT
 fi
 
@@ -1253,7 +1263,7 @@ else
     fi
   fi
 fi
-if [ ! -e "$_CORE/dot-files-ctrl-$_INSTALLER_VERSION" ] ; then
+if [ ! -e "$_CORE/dot-files-ctrl-${_X_VERSION}" ] ; then
   msg "$_STATUS A: Cleaning up various dot files..."
   cd $_CORE
   st_runner "find . -name .svn -exec rm -rf {} \;" &> /dev/null
@@ -1261,7 +1271,7 @@ if [ ! -e "$_CORE/dot-files-ctrl-$_INSTALLER_VERSION" ] ; then
   st_runner "find . -name .git -exec rm -rf {} \;" &> /dev/null
   st_runner "find . -name .DS_Store -exec rm -rf {} \;" &> /dev/null
   st_runner "find . -name "._*" -type f | xargs rm -rf" &> /dev/null
-  touch $_CORE/dot-files-ctrl-$_INSTALLER_VERSION
+  touch $_CORE/dot-files-ctrl-${_X_VERSION}
 fi
 
 
@@ -1342,7 +1352,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
       _ESC_LUPASS=$(randpass $_PWD_CHARS alnum 2>&1)
       _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
-      _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
+      _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
     fi
     if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 9 ] ; then
       _ESC_LUPASS=`pwgen -v -s -1`
@@ -1532,7 +1542,7 @@ else
     if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
       _ESC_LUPASS=$(randpass $_PWD_CHARS alnum 2>&1)
       _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
-      _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
+      _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
     fi
     if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 9 ] ; then
       _ESC_LUPASS=`pwgen -v -s -1`
@@ -1934,7 +1944,7 @@ if [ -e "$_ROOT/log/setupmail.txt" ] ; then
     if [ -e "$_ROOT/log/upgrademail.txt" ] ; then
       mv -f $_ROOT/log/upgrademail.txt $_ROOT/log/upgrademail-pre-$_THIS_CORE.txt &> /dev/null
     fi
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/upgrademail.txt ./
+    cp -af /opt/tmp/boa/aegir/conf/upgrademail.txt ./
     sed -i "s/aegir.dragon.ny.host8.biz/$_DOMAIN/g" $_ROOT/log/upgrademail.txt &> /dev/null
     sed -i "s/dragon/$_USER/g" $_ROOT/log/upgrademail.txt &> /dev/null
     sed -i "s/FN8rXcQn/$_PASWD/g" $_ROOT/log/upgrademail.txt &> /dev/null
@@ -1944,7 +1954,7 @@ if [ -e "$_ROOT/log/setupmail.txt" ] ; then
   fi
 elif [ "$_STATUS" = "INIT" ] ; then
  cd $_ROOT/log
- cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/setupmail.txt ./
+ cp -af /opt/tmp/boa/aegir/conf/setupmail.txt ./
  sed -i "s/aegir.dragon.ny.host8.biz/$_DOMAIN/g" $_ROOT/log/setupmail.txt &> /dev/null
  sed -i "s/dragon/$_USER/g" $_ROOT/log/setupmail.txt &> /dev/null
  sed -i "s/FN8rXcQn/$_PASWD/g" $_ROOT/log/setupmail.txt &> /dev/null
@@ -2029,7 +2039,7 @@ else
  echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
 fi
 echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` \
-  / Aegir $_AEGIR_VERSION / Octopus $_INSTALLER_VERSION \
+  / Aegir $_AEGIR_VERSION / Octopus ${_X_VERSION} \
   / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION" \
   >> $_ROOT/log/octopus_log.txt
 msg "$_STATUS A: New entry added to $_ROOT/log/octopus_log.txt"
@@ -2043,7 +2053,7 @@ chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt &> /dev/null
 chmod 711 opt sbin selinux srv sys usr var share run &> /dev/null
 chmod 700 root &> /dev/null
 if [ -e "$_D" ] ; then
-  if [ ! -f "$_D/permissions-fix-$_INSTALLER_VERSION-$_TODAY.info" ] ; then
+  if [ ! -f "$_D/permissions-fix-${_X_VERSION}-$_TODAY.info" ] ; then
     find $_D/000 -type d -exec chmod 0755 {} \; &> /dev/null
     find $_D/000 -type f -exec chmod 0644 {} \; &> /dev/null
     st_runner "chmod 755 $_D/*/*/profiles" &> /dev/null
@@ -2051,7 +2061,7 @@ if [ -e "$_D" ] ; then
     st_runner "chmod 02775 $_D/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
     st_runner "chown -R root:root $_D" &> /dev/null
     st_runner "chown -R root:users $_D/*/*/sites" &> /dev/null
-    echo fixed > $_D/permissions-fix-$_INSTALLER_VERSION-$_TODAY.info
+    echo fixed > $_D/permissions-fix-${_X_VERSION}-$_TODAY.info
   fi
   chown root:root $_D &> /dev/null
   chown root:root $_CORE &> /dev/null
@@ -2065,7 +2075,7 @@ if [ -e "$_D" ] ; then
   chmod 0711 /data $_D/* /data/disk /data/conf &> /dev/null
   chmod 0755 $_D $_D/000 &> /dev/null
 elif [ -e "/data/disk/all" ] ; then
-  if [ ! -f "/data/disk/all/permissions-fix-$_INSTALLER_VERSION-$_TODAY.info" ] ; then
+  if [ ! -f "/data/disk/all/permissions-fix-${_X_VERSION}-$_TODAY.info" ] ; then
     find /data/disk/all/000 -type d -exec chmod 0755 {} \; &> /dev/null
     find /data/disk/all/000 -type f -exec chmod 0644 {} \; &> /dev/null
     st_runner "chmod 755 /data/disk/all/*/*/profiles" &> /dev/null
@@ -2073,7 +2083,7 @@ elif [ -e "/data/disk/all" ] ; then
     st_runner "chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
     st_runner "chown -R root:root /data/disk/all" &> /dev/null
     st_runner "chown -R root:users /data/disk/all/*/*/sites" &> /dev/null
-    echo fixed > /data/disk/all/permissions-fix-$_INSTALLER_VERSION-$_TODAY.info
+    echo fixed > /data/disk/all/permissions-fix-${_X_VERSION}-$_TODAY.info
   fi
   chown root:root /data/disk/all &> /dev/null
   chown root:root $_CORE &> /dev/null

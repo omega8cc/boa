@@ -56,9 +56,9 @@ if [ -e "/var/log/nginx/error.log" ] ; then
   fi
 fi
 
-_RAM_TOTAL=$(free -m | grep Mem: | cut -d: -f2 | awk '{ print $1}')
-_RAM_FREE=$(free -m | grep /+ | cut -d: -f2 | awk '{ print $2}')
-_RAM_PCT_FREE=$(echo "scale=0; $(bc -l <<< "$_RAM_FREE / $_RAM_TOTAL * 100")/1" | bc)
+_RAM_TOTAL=$(free -m | grep Mem: | cut -d: -f2 | awk '{ print $1}' 2>&1)
+_RAM_FREE=$(free -m | grep /+ | cut -d: -f2 | awk '{ print $2}' 2>&1)
+_RAM_PCT_FREE=$(echo "scale=0; $(bc -l <<< "$_RAM_FREE / $_RAM_TOTAL * 100")/1" | bc 2>&1)
 _RAM_PCT_FREE=${_RAM_PCT_FREE//[^0-9]/}
 
 if [ ! -z "$_RAM_PCT_FREE" ] && [ $_RAM_PCT_FREE -lt 10 ] ; then

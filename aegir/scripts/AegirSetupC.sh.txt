@@ -34,7 +34,7 @@
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=EDIT_INSTALLER_VERSION
+_X_VERSION=EDIT_X_VERSION
 
 
 ###---### Distro config.
@@ -110,7 +110,7 @@ _SRCDIR=/opt/tmp/files
 _STATUS=INIT
 _T_BUILD=EDIT_T_BUILD
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
-_TODAY=`date +%y%m%d`
+_TODAY=$(date +%y%m%d 2>&1)
 _USE_CURRENT=EDIT_USE_CURRENT
 _WEBG=EDIT_WEBG
 #
@@ -118,7 +118,7 @@ _USER=EDIT_USER
 _ROOT="/data/disk/$_USER"
 _HOSTMASTER_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
 _PREV_HOSTMASTER_ROOT="$_ROOT/aegir/distro/$_LAST_HMR"
-_LOG=/var/backups/octopus-$_USER-$_NOW.log
+_LOG=/var/backups/octopus-$_USER-${_NOW}.log
 #
 if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
   _THIS_DB_HOST=`uname -n`
@@ -262,8 +262,8 @@ fix_dirs_files() {
   chmod 0755 ./sites
   chmod 0755 ./sites/all
   chmod 02775 ./sites/all/{modules,libraries,themes}
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/get.htaccess.txt ./.htaccess
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/crossdomain.xml ./
+  cp -af /opt/tmp/boa/aegir/conf/get.htaccess.txt ./.htaccess
+  cp -af /opt/tmp/boa/aegir/conf/crossdomain.xml ./
 }
 #
 # Create D6 symlinks.
@@ -371,7 +371,7 @@ prepare_drupal6_core() {
     find $_D6_CORE_DIR -type f -exec chmod 0644 {} \; &> /dev/null
     cd $_D6_CORE_DIR/
     fix_dirs_files
-    patch -p0 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-6.26.patch &> /dev/null
+    patch -p0 < /opt/tmp/boa/aegir/patches/taxonomy-6.26.patch &> /dev/null
     rm -f $_D6_CORE_DIR/modules/taxonomy/taxonomy.module.orig
     rm -f modules/o_contrib
     ln -s $_CORE/o_contrib modules/o_contrib
@@ -399,7 +399,7 @@ prepare_drupal7_core() {
     cd $_D7_CORE_DIR/
     fix_dirs_files
     rename_drupal7_profiles
-    patch -p0 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-7.12.patch &> /dev/null
+    patch -p0 < /opt/tmp/boa/aegir/patches/taxonomy-7.12.patch &> /dev/null
     rm -f $_D7_CORE_DIR/modules/taxonomy/taxonomy.module.orig
     rm -f modules/o_contrib_seven
     ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
@@ -553,14 +553,14 @@ upgrade_contrib_less() {
   if [ -e "views" ] ; then
     cd views
     # https://drupal.org/node/1766338#comment-6445882
-    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+    patch -p1 < /opt/tmp/boa/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
     # https://drupal.org/node/2037469
-    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
+    patch -p1 < /opt/tmp/boa/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
     cd ../
   fi
   if [ -e "apps" ] ; then
     cd apps
-    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/apps_msg.patch &> /dev/null
+    patch -p1 < /opt/tmp/boa/aegir/patches/apps_msg.patch &> /dev/null
     cd ../
   fi
   cd $_CORE
@@ -768,7 +768,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
     cd $_SHRD_PRPATH
-    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_REAL_PRNAME.patch &> /dev/null
+    patch -p1 < /opt/tmp/boa/aegir/patches/$_REAL_PRNAME.patch &> /dev/null
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
@@ -815,7 +815,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
     cd $_SHRD_PRPATH
-    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_REAL_PRNAME.patch &> /dev/null
+    patch -p1 < /opt/tmp/boa/aegir/patches/$_REAL_PRNAME.patch &> /dev/null
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
@@ -915,7 +915,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
     cd $_SHRD_PRPATH
-    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/commons_chicken_egg.patch &> /dev/null
+    patch -p1 < /opt/tmp/boa/aegir/patches/commons_chicken_egg.patch &> /dev/null
     sed -i "s/.*entitycache.*//g"  $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
     rm -f -r $_SHRD_PRPATH/modules/contrib/entitycache
     rm -f -r $_SHRD_PRPATH/modules/contrib/registry_rebuild
@@ -1225,8 +1225,8 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     rm -f fserver.make
     rm -f -r $_SHRD_PLPATH/profiles/default
     cd $_SHRD_PLPATH/profiles/$_REAL_PRNAME/themes
-    patch -p0 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/singular.patch &> /dev/null
-    patch -p0 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/singular.mft.patch &> /dev/null
+    patch -p0 < /opt/tmp/boa/aegir/patches/singular.patch &> /dev/null
+    patch -p0 < /opt/tmp/boa/aegir/patches/singular.mft.patch &> /dev/null
   else
     cd $_CORE
     get_distro_ext "$_SHRD_PLNAME.tar.gz"
@@ -1817,7 +1817,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
     cd $_SHRD_PRPATH/modules/restaurant/restaurant_demo/import
-    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/restaurant_demo.patch &> /dev/null
+    patch -p1 < /opt/tmp/boa/aegir/patches/restaurant_demo.patch &> /dev/null
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
@@ -1884,10 +1884,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "webform-6.x-3.20.tar.gz"
     ### https://drupal.org/node/1167276#comment-5138248
     cd $_SHRD_PRPATH/modules/$_VIRT_PRNAME
-    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_VIRT_PRNAME-1167276-reroll.patch &> /dev/null
+    patch -p1 < /opt/tmp/boa/aegir/patches/$_VIRT_PRNAME-1167276-reroll.patch &> /dev/null
     cd $_SHRD_PRPATH/modules/imagecache
     # https://drupal.org/node/1243258#comment-4850634
-    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/imagecache-1243258-5.patch &> /dev/null
+    patch -p1 < /opt/tmp/boa/aegir/patches/imagecache-1243258-5.patch &> /dev/null
     cd $_SHRD_PRPATH/themes
     get_dev_contrib "fusion-6.x-1.x-dev.tar.gz"
     get_dev_contrib "acquia_prosper-6.x-1.1.tar.gz"
@@ -1953,9 +1953,9 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "views-7.x-3.8.tar.gz"
     cd $_SHRD_PRPATH/modules/views
     # https://drupal.org/node/1766338#comment-6445882
-    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+    patch -p1 < /opt/tmp/boa/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
     # https://drupal.org/node/2037469
-    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
+    patch -p1 < /opt/tmp/boa/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
@@ -2018,9 +2018,9 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "views-7.x-3.8.tar.gz"
     cd $_SHRD_PRPATH/modules/views
     # https://drupal.org/node/1766338#comment-6445882
-    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+    patch -p1 < /opt/tmp/boa/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
     # https://drupal.org/node/2037469
-    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
+    patch -p1 < /opt/tmp/boa/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
@@ -2103,7 +2103,7 @@ else
   #msg "_THIS_HOSTMASTER is $_THIS_HOSTMASTER (2)"
   cd $_THIS_HOSTMASTER
 fi
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform.php.txt ./
+cp -af /opt/tmp/boa/aegir/helpers/make_platform.php.txt ./
 mv -f make_platform.php.txt make_platform.php &> /dev/null
 
 if [ "$_SERIES_RESULT" = "OK" ] ; then

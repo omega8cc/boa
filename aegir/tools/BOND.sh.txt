@@ -140,11 +140,11 @@ _AEGIR_VERSION=HEAD
 _AEGIR_XTS_VERSION=BOA-2.4.0
 _BRANCH_BOA=2.4.x-dev
 _BRANCH_PRN=2.4.x-dev
-_INSTALLER_VERSION=BOA-2.4.0-dev
+_X_VERSION=BOA-2.4.0-dev
 
-_NOW=`date +%y%m%d-%H%M`
-_RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
-_THISHOST=`uname -n`
+_NOW=$(date +%y%m%d-%H%M 2>&1)
+_RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
+_THISHOST=$(uname -n 2>&1)
 _SPINNER=YES
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
@@ -152,13 +152,13 @@ if [ -n "${STY+x}" ]; then
   _SPINNER=NO
 fi
 _PHP53_API=20090626
-_PHP53_VERSION=5.3.29
+_PHP53_VRN=5.3.29
 _PHP54_API=20100525
-_PHP54_VERSION=5.4.36
+_PHP54_VRN=5.4.36
 _PHP55_API=20121212
-_PHP55_VERSION=5.5.20
+_PHP55_VRN=5.5.20
 _PHP56_API=20131226
-_PHP56_VERSION=5.6.4
+_PHP56_VRN=5.6.4
 
 ###---### Functions
 #
@@ -240,8 +240,8 @@ mrun() {
 }
 #
 # Find correct IP.
-  _LOC_IP=`echo $(getent ahostsv4 $_LOC_DOM) | cut -d: -f2 | awk '{ print $1}'`
 find_correct_ip() {
+  _LOC_IP=$(echo $(getent ahostsv4 $_LOC_DOM) | cut -d: -f2 | awk '{ print $1}' 2>&1)
 }
 #
 # Fix php.ini files to remove suhosin.so
@@ -291,8 +291,8 @@ fix_php_ini_redis() {
 }
 #
 # Fix php.ini file to add newrelic.ini
-  _NR_TPL="/opt/tmp/$_BOA_REPO_NAME/aegir/conf/newrelic.ini"
 fix_php_ini_newrelic() {
+  _NR_TPL="/opt/tmp/boa/aegir/conf/newrelic.ini"
   if [ -e "$_THIS_FILE" ] ; then
     _NEWRELIC_INI_TEST_A=$(grep "extension=newrelic.so" $_THIS_FILE 2>&1)
     if [[ "$_NEWRELIC_INI_TEST_A" =~ "extension=newrelic.so" ]] ; then
@@ -315,8 +315,8 @@ fix_php_ini_newrelic() {
 fix_php_ini_newrelic_all() {
   if [ -e "/etc/newrelic/newrelic.cfg" ] ; then
     if [ -z "$_NEWRELIC_KEY" ] ; then
-      _NEWRELIC_KEY=`grep license_key /etc/newrelic/newrelic.cfg`
-      _NEWRELIC_KEY=`echo -n $_NEWRELIC_KEY | tr -d "\n"`
+      _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
+      _NEWRELIC_KEY=$(echo -n $_NEWRELIC_KEY | tr -d "\n" 2>&1)
     fi
     _THIS_FILE=/opt/php53/etc/php53.ini
     fix_php_ini_newrelic
@@ -440,7 +440,7 @@ update_php_conf() {
   if [ ! -e "/opt/etc/fpm" ] || [ ! -e "/opt/etc/fpm/fpm-pool-common.conf" ] ; then
     mkdir -p /opt/etc/fpm
   fi
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-common.conf /opt/etc/fpm/fpm-pool-common.conf
+  cp -af /opt/tmp/boa/aegir/conf/fpm-pool-common.conf /opt/etc/fpm/fpm-pool-common.conf
 
   if [ ! -e "/var/www/www55" ] ; then
     adduser --system --group --home /var/www/www55 www55 &> /dev/null
@@ -448,9 +448,9 @@ update_php_conf() {
   fi
   if [ ! -e "/opt/php55/etc/php55.ini" ] || [ ! -e "/opt/php55/etc/pool.d/www55.conf" ]  ; then
     mkdir -p /opt/php55/etc/pool.d
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55.ini /opt/php55/etc/php55.ini
+    cp -af /opt/tmp/boa/aegir/conf/php55.ini /opt/php55/etc/php55.ini
   fi
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm55-pool-www.conf /opt/php55/etc/pool.d/www55.conf
+  cp -af /opt/tmp/boa/aegir/conf/fpm55-pool-www.conf /opt/php55/etc/pool.d/www55.conf
 
   if [ ! -e "/var/www/www56" ] ; then
     adduser --system --group --home /var/www/www56 www56 &> /dev/null
@@ -458,9 +458,9 @@ update_php_conf() {
   fi
   if [ ! -e "/opt/php56/etc/php56.ini" ] || [ ! -e "/opt/php56/etc/pool.d/www56.conf" ] ; then
     mkdir -p /opt/php56/etc/pool.d
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php56.ini /opt/php56/etc/php56.ini
+    cp -af /opt/tmp/boa/aegir/conf/php56.ini /opt/php56/etc/php56.ini
   fi
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm56-pool-www.conf /opt/php56/etc/pool.d/www56.conf
+  cp -af /opt/tmp/boa/aegir/conf/fpm56-pool-www.conf /opt/php56/etc/pool.d/www56.conf
 
   if [ ! -e "/var/www/www54" ] ; then
     adduser --system --group --home /var/www/www54 www54 &> /dev/null
@@ -468,9 +468,9 @@ update_php_conf() {
   fi
   if [ ! -e "/opt/php54/etc/php54.ini" ] || [ ! -e "/opt/php54/etc/pool.d/www54.conf" ] ; then
     mkdir -p /opt/php54/etc/pool.d
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54.ini /opt/php54/etc/php54.ini
+    cp -af /opt/tmp/boa/aegir/conf/php54.ini /opt/php54/etc/php54.ini
   fi
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm54-pool-www.conf /opt/php54/etc/pool.d/www54.conf
+  cp -af /opt/tmp/boa/aegir/conf/fpm54-pool-www.conf /opt/php54/etc/pool.d/www54.conf
 
   if [ ! -e "/var/www/www53" ] ; then
     adduser --system --group --home /var/www/www53 www53 &> /dev/null
@@ -478,56 +478,55 @@ update_php_conf() {
   fi
   if [ ! -e "/opt/php53/etc/php53.ini" ] || [ ! -e "/opt/php53/etc/pool.d/www53.conf" ] ; then
     mkdir -p /opt/php53/etc/pool.d
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/php53/etc/php53.ini
+    cp -af /opt/tmp/boa/aegir/conf/php53.ini /opt/php53/etc/php53.ini
   fi
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm53-pool-www.conf /opt/php53/etc/pool.d/www53.conf
+  cp -af /opt/tmp/boa/aegir/conf/fpm53-pool-www.conf /opt/php53/etc/pool.d/www53.conf
 
   if [ ! -e "/opt/php56/lib/php.ini" ] ; then
     mkdir -p /opt/php56/lib
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php56-cli.ini /opt/php56/lib/php.ini
+    cp -af /opt/tmp/boa/aegir/conf/php56-cli.ini /opt/php56/lib/php.ini
   fi
   if [ ! -e "/opt/php55/lib/php.ini" ] ; then
     mkdir -p /opt/php55/lib
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55-cli.ini /opt/php55/lib/php.ini
+    cp -af /opt/tmp/boa/aegir/conf/php55-cli.ini /opt/php55/lib/php.ini
   fi
   if [ ! -e "/opt/php54/lib/php.ini" ] ; then
     mkdir -p /opt/php54/lib
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54-cli.ini /opt/php54/lib/php.ini
+    cp -af /opt/tmp/boa/aegir/conf/php54-cli.ini /opt/php54/lib/php.ini
   fi
   if [ ! -e "/opt/php53/lib/php.ini" ] ; then
     mkdir -p /opt/php53/lib
     cp -af /opt/tmp/boa/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini
   fi
   if [ "$_CUSTOM_CONFIG_PHP56" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    cp -af /opt/php56/etc/php56.ini /var/backups/dragon/t/etc-php56.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php56.ini /opt/php56/etc/php56.ini                     &> /dev/null
-    cp -af /opt/php56/lib/php.ini /var/backups/dragon/t/lib-php56.ini-pre-$_INSTALLER_VERSION-$_NOW   &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php56-cli.ini /opt/php56/lib/php.ini                   &> /dev/null
+    cp -af /opt/php56/etc/php56.ini /var/backups/dragon/t/etc-php56.ini-pre-${_X_VERSION}-${_NOW} &> /dev/null
+    cp -af /opt/tmp/boa/aegir/conf/php56.ini /opt/php56/etc/php56.ini                     &> /dev/null
+    cp -af /opt/php56/lib/php.ini /var/backups/dragon/t/lib-php56.ini-pre-${_X_VERSION}-${_NOW}   &> /dev/null
+    cp -af /opt/tmp/boa/aegir/conf/php56-cli.ini /opt/php56/lib/php.ini                   &> /dev/null
   fi
   if [ "$_CUSTOM_CONFIG_PHP55" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    cp -af /opt/php55/etc/php55.ini /var/backups/dragon/t/etc-php55.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55.ini /opt/php55/etc/php55.ini                     &> /dev/null
-    cp -af /opt/php55/lib/php.ini /var/backups/dragon/t/lib-php55.ini-pre-$_INSTALLER_VERSION-$_NOW   &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55-cli.ini /opt/php55/lib/php.ini                   &> /dev/null
+    cp -af /opt/php55/etc/php55.ini /var/backups/dragon/t/etc-php55.ini-pre-${_X_VERSION}-${_NOW} &> /dev/null
+    cp -af /opt/tmp/boa/aegir/conf/php55.ini /opt/php55/etc/php55.ini                     &> /dev/null
+    cp -af /opt/php55/lib/php.ini /var/backups/dragon/t/lib-php55.ini-pre-${_X_VERSION}-${_NOW}   &> /dev/null
+    cp -af /opt/tmp/boa/aegir/conf/php55-cli.ini /opt/php55/lib/php.ini                   &> /dev/null
   fi
   if [ "$_CUSTOM_CONFIG_PHP54" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    cp -af /opt/php54/etc/php54.ini /var/backups/dragon/t/etc-php54.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54.ini /opt/php54/etc/php54.ini                     &> /dev/null
-    cp -af /opt/php54/lib/php.ini /var/backups/dragon/t/lib-php54.ini-pre-$_INSTALLER_VERSION-$_NOW   &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54-cli.ini /opt/php54/lib/php.ini                   &> /dev/null
+    cp -af /opt/php54/etc/php54.ini /var/backups/dragon/t/etc-php54.ini-pre-${_X_VERSION}-${_NOW} &> /dev/null
+    cp -af /opt/tmp/boa/aegir/conf/php54.ini /opt/php54/etc/php54.ini                     &> /dev/null
+    cp -af /opt/php54/lib/php.ini /var/backups/dragon/t/lib-php54.ini-pre-${_X_VERSION}-${_NOW}   &> /dev/null
+    cp -af /opt/tmp/boa/aegir/conf/php54-cli.ini /opt/php54/lib/php.ini                   &> /dev/null
   fi
   if [ "$_CUSTOM_CONFIG_PHP53" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    cp -af /opt/php53/etc/php53.ini /var/backups/dragon/t/etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/php53/etc/php53.ini                     &> /dev/null
-    cp -af /opt/php53/lib/php.ini /var/backups/dragon/t/lib-php53.ini-pre-$_INSTALLER_VERSION-$_NOW   &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini                   &> /dev/null
-  fi
+    cp -af /opt/php53/etc/php53.ini /var/backups/dragon/t/etc-php53.ini-pre-${_X_VERSION}-${_NOW} &> /dev/null
+    cp -af /opt/tmp/boa/aegir/conf/php53.ini /opt/php53/etc/php53.ini                     &> /dev/null
+    cp -af /opt/php53/lib/php.ini /var/backups/dragon/t/lib-php53.ini-pre-${_X_VERSION}-${_NOW}   &> /dev/null
+    cp -af /opt/tmp/boa/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini                   &> /dev/null
   fi
   ###
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php56-fpm.conf /opt/php56/etc/php56-fpm.conf &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55-fpm.conf /opt/php55/etc/php55-fpm.conf &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54-fpm.conf /opt/php54/etc/php54-fpm.conf &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/php53/etc/php53-fpm.conf &> /dev/null
+  cp -af /opt/tmp/boa/aegir/conf/php56-fpm.conf /opt/php56/etc/php56-fpm.conf &> /dev/null
+  cp -af /opt/tmp/boa/aegir/conf/php55-fpm.conf /opt/php55/etc/php55-fpm.conf &> /dev/null
+  cp -af /opt/tmp/boa/aegir/conf/php54-fpm.conf /opt/php54/etc/php54-fpm.conf &> /dev/null
+  cp -af /opt/tmp/boa/aegir/conf/php53-fpm.conf /opt/php53/etc/php53-fpm.conf &> /dev/null
   ###
   sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   sed -i "s/listen.mode =.*/listen.mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
@@ -594,14 +593,14 @@ update_php_conf() {
 #
 restore_default_php() {
   msg "INFO: Restoring default PHP configuration"
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/php53/etc/php53.ini   &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54-cli.ini /opt/php54/lib/php.ini &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54.ini /opt/php54/etc/php54.ini   &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55-cli.ini /opt/php55/lib/php.ini &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55.ini /opt/php55/etc/php55.ini   &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php56-cli.ini /opt/php56/lib/php.ini &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php56.ini /opt/php56/etc/php56.ini   &> /dev/null
+  cp -af /opt/tmp/boa/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini &> /dev/null
+  cp -af /opt/tmp/boa/aegir/conf/php53.ini /opt/php53/etc/php53.ini   &> /dev/null
+  cp -af /opt/tmp/boa/aegir/conf/php54-cli.ini /opt/php54/lib/php.ini &> /dev/null
+  cp -af /opt/tmp/boa/aegir/conf/php54.ini /opt/php54/etc/php54.ini   &> /dev/null
+  cp -af /opt/tmp/boa/aegir/conf/php55-cli.ini /opt/php55/lib/php.ini &> /dev/null
+  cp -af /opt/tmp/boa/aegir/conf/php55.ini /opt/php55/etc/php55.ini   &> /dev/null
+  cp -af /opt/tmp/boa/aegir/conf/php56-cli.ini /opt/php56/lib/php.ini &> /dev/null
+  cp -af /opt/tmp/boa/aegir/conf/php56.ini /opt/php56/etc/php56.ini   &> /dev/null
 }
 #
 tune_php() {
@@ -630,10 +629,10 @@ update_innodb_log_file_size() {
   mrun "service mysql stop" &> /dev/null
   mrun "sleep 5"
   if [ ! -e "/var/run/mysqld/mysqld.sock" ] && [ ! -e "/var/run/mysqld/mysqld.pid" ] ; then
-    mkdir -p /var/backups/old-sql-ib-log-$_NOW
+    mkdir -p /var/backups/old-sql-ib-log-${_NOW}
     mrun "sleep 5"
-    mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-sql-ib-log-$_NOW/ &> /dev/null
-    mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-sql-ib-log-$_NOW/ &> /dev/null
+    mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-sql-ib-log-${_NOW}/ &> /dev/null
+    mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-sql-ib-log-${_NOW}/ &> /dev/null
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = $_INNODB_LOG_FILE_SIZE_MB/g" /etc/mysql/my.cnf &> /dev/null
     mrun "sleep 5"
   fi
@@ -647,13 +646,13 @@ restore_default_sql() {
     if [ "$_CUSTOM_CONFIG_SQL" = "YES" ] ; then
       _DO_NOTHING=YES
     else
-      cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
+      cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      cp -af /opt/tmp/boa/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
       _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
       if [ ! -z "$_INNODB_LOG_FILE_SIZE" ] ; then
         if [ "$_INNODB_LOG_FILE_SIZE" -ge "10" ] && [ "$_INNODB_LOG_FILE_SIZE" -lt "501" ] ; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
-          _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW 2>&1)
+          _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" /var/backups/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW} 2>&1)
           if [[ "$_INNODB_LOG_FILE_SIZE_TEST" =~ "= $_INNODB_LOG_FILE_SIZE_MB" ]] ; then
             _INNODB_LOG_FILE_SIZE_SAME=YES
           else
@@ -672,7 +671,7 @@ restore_default_sql() {
   mv -f /etc/mysql/my.cnf-pre* /var/backups/dragon/t/ &> /dev/null
   sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
   sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
-  _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
+  _THIS_DB_SERVER_TEST=$(mysql -V 2>&1)
   if [[ "$_THIS_DB_SERVER_TEST" =~ "5.5." ]] || [[ "$_THIS_DB_SERVER_TEST" =~ "10.0" ]] ; then
     _DO_NOTHING=YES
   else
@@ -725,7 +724,7 @@ tune_sql() {
 restore_default_nginx() {
   msg "INFO: Restoring default Nginx configuration"
   cd /var/xdrago/monitor/check
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/monitor/check/scan_nginx ./
+  cp -af /opt/tmp/boa/aegir/tools/system/monitor/check/scan_nginx ./
   if [ -d "$_TUNE_HOSTMASTER" ] ; then
     for Files in `find $_TUNE_HOSTMASTER/config/server_master/nginx/vhost.d -type f`
     do
@@ -782,8 +781,8 @@ tune_web_server_config() {
       _LIM_FPM=24
     fi
   fi
-  let "_PROCESS_MAX_FPM = (($_LIM_FPM * 5))"
-  let "_CHILD_MAX_FPM = (($_LIM_FPM * 2))"
+  _PROCESS_MAX_FPM=$(( _LIM_FPM * 5 ))
+  _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
   if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
     _DO_NOTHING=YES
   else
@@ -791,10 +790,6 @@ tune_web_server_config() {
     if [ ! -z "$_PHP_FPM_WORKERS" ] && [ "$_PHP_FPM_WORKERS" -gt "0" ] ; then
       _CHILD_MAX_FPM="$_PHP_FPM_WORKERS"
     fi
-  fi
-  let "_START_LEGACY_FPM = (($_LIM_FPM - 21))"
-  if [ "$_START_LEGACY_FPM" -lt "3" ] ; then
-    _START_LEGACY_FPM=3
   fi
   sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php56/etc/php56-fpm.conf    &> /dev/null
   sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php55/etc/php55-fpm.conf    &> /dev/null
@@ -850,7 +845,7 @@ tune_sql_memory_limits() {
   if [ -e "/root/.mstr.clstr.cnf" ] || [ -e "/root/.wbhd.clstr.cnf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
     _GALERA_COMP=NO
   fi
-  if [ ! -e "/var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt" ] && [ -z "$_GALERA_COMP" ] ; then
+  if [ ! -e "/var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt" ] && [ -z "$_GALERA_COMP" ] ; then
     msg "INFO: Running MySQLTuner check on all databases..."
     msg "NOTE! This step may take a LONG time, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
@@ -860,25 +855,25 @@ tune_sql_memory_limits() {
       curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/mysqltuner.pl" -o /var/opt/mysqltuner.pl
     fi
     if [ -e "/var/opt/mysqltuner.pl" ] ; then
-      perl /var/opt/mysqltuner.pl > /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt 2>&1
+      perl /var/opt/mysqltuner.pl > /var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt 2>&1
     fi
   fi
-  if [ -e "/var/opt/mysqltuner.pl" ] && [ -e "/var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt" ] ; then
-    _REC_MYISAM_MEM=`cat /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt | grep "Data in MyISAM tables" | cut -d: -f2 | awk '{ print $1}'`
-    _REC_INNODB_MEM=`cat /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt | grep "data size:" | cut -d/ -f3 | awk '{ print $1}'`
-    _MYSQLTUNER_TEST=$(cat /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt 2>&1)
-    cp -a /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt /var/xdrago/log/
+  if [ -e "/var/opt/mysqltuner.pl" ] && [ -e "/var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt" ] ; then
+    _REC_MYISAM_MEM=$(cat /var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt | grep "Data in MyISAM tables" | cut -d: -f2 | awk '{ print $1}' 2>&1)
+    _REC_INNODB_MEM=$(cat /var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt | grep "data size:" | cut -d/ -f3 | awk '{ print $1}' 2>&1)
+    _MYSQLTUNER_TEST=$(cat /var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt 2>&1)
+    cp -a /var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt /var/xdrago/log/
     if [ -z "$_REC_INNODB_MEM" ] || [[ "$_MYSQLTUNER_TEST" =~ "Cannot calculate MyISAM index" ]] || [[ "$_MYSQLTUNER_TEST" =~ "InnoDB is enabled but isn" ]] ; then
       _MYSQLTUNER_TEST_RESULT=FAIL
       msg "ALRT! The MySQLTuner test failed!"
-      msg "ALRT! Please review /var/xdrago/log/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt for details"
+      msg "ALRT! Please review /var/xdrago/log/mysqltuner-${_X_VERSION}-${_NOW}.txt for details"
       msg "ALRT! We will use some sane SQL defaults instead, do not worry!"
     fi
     ###--------------------###
     if [ ! -z "$_REC_MYISAM_MEM" ] && [ "$_MYSQLTUNER_TEST_RESULT" = "OK" ] ; then
-      _RAW_MYISAM_MEM=`echo $_REC_MYISAM_MEM | sed "s/[A-Z]//g"`
+      _RAW_MYISAM_MEM=$(echo $_REC_MYISAM_MEM | sed "s/[A-Z]//g" 2>&1)
       if [[ "$_REC_MYISAM_MEM" =~ "G" ]] ; then
-        let "_RAW_MYISAM_MEM = (($_RAW_MYISAM_MEM * 1024))"
+        _RAW_MYISAM_MEM=$(( _RAW_MYISAM_MEM * 1024 ))
       fi
       if [ "$_RAW_MYISAM_MEM" -gt "$_USE_SQL" ] ; then
         _USE_MYISAM_MEM="$_USE_SQL"
@@ -899,19 +894,19 @@ tune_sql_memory_limits() {
     fi
     ###--------------------###
     if [ ! -z "$_REC_INNODB_MEM" ] && [ "$_MYSQLTUNER_TEST_RESULT" = "OK" ] ; then
-      _RAW_INNODB_MEM=`echo $_REC_INNODB_MEM | sed "s/[A-Z]//g"`
+      _RAW_INNODB_MEM=$(echo $_REC_INNODB_MEM | sed "s/[A-Z]//g" 2>&1)
       if [[ "$_REC_INNODB_MEM" =~ "G" ]] ; then
-        _RAW_INNODB_MEM=`echo "$_RAW_INNODB_MEM * 1024" | bc -l`
+        _RAW_INNODB_MEM=$(echo "$_RAW_INNODB_MEM * 1024" | bc -l 2>&1)
       fi
-      _RAW_INNODB_MEM=$(echo "($_RAW_INNODB_MEM+0.5)/1" | bc)
+      _RAW_INNODB_MEM=$(echo "($_RAW_INNODB_MEM+0.5)/1" | bc 2>&1)
       if [ "$_RAW_INNODB_MEM" -gt "$_USE_SQL" ] ; then
         _USE_INNODB_MEM="$_USE_SQL"
       else
-        _RAW_INNODB_MEM=$(echo "scale=2; ($_RAW_INNODB_MEM * 1.1)" | bc)
-        _USE_INNODB_MEM=$(echo "($_RAW_INNODB_MEM+0.5)/1" | bc)
+        _RAW_INNODB_MEM=$(echo "scale=2; ($_RAW_INNODB_MEM * 1.1)" | bc 2>&1)
+        _USE_INNODB_MEM=$(echo "($_RAW_INNODB_MEM+0.5)/1" | bc 2>&1)
       fi
       _INNODB_BPI="0"
-      _INNODB_BPI=`echo "scale=0; $_USE_INNODB_MEM/1024" | bc`;
+      _INNODB_BPI=$(echo "scale=0; $_USE_INNODB_MEM/1024" | bc 2>&1)
       if [ "$_INNODB_BPI" -gt "1" ] ; then
         sed -i "s/innodb_file_per_table   = 1/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = $_INNODB_BPI/g" /etc/mysql/my.cnf &> /dev/null
       fi
@@ -937,10 +932,10 @@ tune_sql_memory_limits() {
 #
 tune_memory_limits() {
   msg "INFO: Default Memory Tuning"
-  _AWS_TEST_A=$(grep cloudimg /etc/fstab)
-  _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
-  _ETH_TEST=`ifconfig 2>&1`
-  _VM_TEST=`uname -a 2>&1`
+  _AWS_TEST_A=$(grep cloudimg /etc/fstab 2>&1)
+  _AWS_TEST_B=$(grep cloudconfig /etc/fstab 2>&1)
+  _ETH_TEST=$(ifconfig 2>&1)
+  _VM_TEST=$(uname -a 2>&1)
   if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
     _VMFAMILY="VZ"
   elif [ -e "/proc/bean_counters" ] ; then
@@ -958,56 +953,56 @@ tune_memory_limits() {
   if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
     _VMFAMILY="AWS"
   fi
-  _CPU_INFO=$(grep -c processor /proc/cpuinfo)
+  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
-  _NPROC_TEST=$(which nproc)
-  if [ -z "$_NPROC_TEST" ] ; then
-    _CPU_NR="$_CPU_INFO"
+  _NPROC_TEST=$(which nproc 2>&1)
+  if [ -z "${_NPROC_TEST}" ] ; then
+    _CPU_NR="${_CPU_INFO}"
   else
-    _CPU_NR=`nproc`
+    _CPU_NR=$(nproc 2>&1)
   fi
   _CPU_NR=${_CPU_NR//[^0-9]/}
-  if [ ! -z "$_CPU_NR" ] && [ ! -z "$_CPU_INFO" ] && [ "$_CPU_NR" -gt "$_CPU_INFO" ] && [ "$_CPU_INFO" -gt "0" ] ; then
-    _CPU_NR="$_CPU_INFO"
+  if [ ! -z "${_CPU_NR}" ] && [ ! -z "${_CPU_INFO}" ] && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt "0" ] ; then
+    _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "$_CPU_NR" ] || [ "$_CPU_NR" -lt "1" ] ; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ] ; then
     _CPU_NR=1
   fi
-  let "_CPU_MX = (($_CPU_NR * 2))"
+  _CPU_MX=$(( _CPU_NR * 2 ))
   if [ "$_CPU_MX" -lt "4" ] ; then
     _CPU_MX=4
   fi
-  let "_CPU_TG = (($_CPU_NR / 2))"
+  _CPU_TG=$(( _CPU_NR / 2 ))
   if [ "$_CPU_TG" -lt "4" ] ; then
     _CPU_TG=4
   fi
-  let "_CPU_VS = (($_CPU_NR / 12))"
+  _CPU_VS=$(( _CPU_NR / 12 ))
   if [ "$_CPU_VS" -lt "2" ] ; then
     _CPU_VS=2
   fi
-  _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
+  _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
   if [ "$_RESERVED_RAM" -gt "0" ] ; then
-    let "_RAM = (($_RAM - $_RESERVED_RAM))"
+    _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
-  let "_USE = (($_RAM / 4))"
+  _USE=$(( _RAM / 4 ))
   if [ "$_VMFAMILY" = "VS" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     if [ "$_VMFAMILY" = "VS" ] ; then
       if [ -e "/root/.tg.cnf" ] ; then
-        let "_USE_SQL = (($_RAM / 8))"
+        _USE_SQL=$(( _RAM / 8 ))
       else
-        let "_USE_SQL = (($_RAM / 18))"
+        _USE_SQL=$(( _RAM / 18 ))
       fi
     else
-      let "_USE_SQL = (($_RAM / 8))"
+      _USE_SQL=$(( _RAM / 8 ))
     fi
   else
-    let "_USE_SQL = (($_RAM / 8))"
+    _USE_SQL=$(( _RAM / 8 ))
   fi
   if [ "$_USE_SQL" -lt "256" ] ; then
     _USE_SQL=256
   fi
   _TMP_SQL="${_USE_SQL}M"
-  let "_SRT_SQL = (($_USE_SQL * 2))"
+  _SRT_SQL=$(( _USE_SQL * 2 ))
   _SRT_SQL="${_SRT_SQL}K"
   if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
     _USE_PHP=512
@@ -1124,7 +1119,7 @@ tune_memory_limits() {
   if [ "$_VMFAMILY" = "VZ" ] ; then
     _USE_OPC=64
   fi
-  let "_USE_FPM = (($_USE_PHP / 2))"
+  _USE_FPM=$(( _USE_PHP / 2 ))
   if [ "$_USE_FPM" -lt "196" ] ; then
     _USE_FPM=196
   fi
@@ -1134,7 +1129,7 @@ tune_memory_limits() {
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
     mkdir -p /var/xdrago/conf
   fi
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf
+  cp -af /opt/tmp/boa/aegir/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] ; then
     sed -i "s/256/$_USE_FPM/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   fi
@@ -1161,7 +1156,7 @@ tune_memory_limits() {
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
     tune_sql_memory_limits
     _UXC_SQL=$_MXC_SQL
-    let "_UXC_SQL = (($_MXC_SQL / 2))"
+    _UXC_SQL=$(( _MXC_SQL / 2 ))
     sed -i "s/= 191/= $_UXC_SQL/g"                                               /etc/mysql/my.cnf &> /dev/null
     sed -i "s/= 292/= $_MXC_SQL/g"                                               /etc/mysql/my.cnf &> /dev/null
     sed -i "s/^tmp_table_size.*/tmp_table_size          = $_TMP_SQL/g"           /etc/mysql/my.cnf &> /dev/null
@@ -1269,16 +1264,16 @@ fi
 #
 if [ ! -f "/var/log/barracuda_log.txt" ] ; then
   msg "ERROR: This script should be used only when the same version of BARRACUDA was used before"
-  msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first"
+  msg "Your system has to be configured/upgraded by BARRACUDA version ${_X_VERSION} first"
   msg "Bye"
   clean_pid_exit
 else
-  _VERSIONS_TEST=`cat /var/log/barracuda_log.txt`
-  if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
+  _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+  if [[ "$_VERSIONS_TEST" =~ "${_X_VERSION}" ]] ; then
     _VERSIONS_TEST_RESULT=OK
   else
     msg "ERROR: This script should be used only when the same version of BARRACUDA was used before"
-    msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first"
+    msg "Your system has to be configured/upgraded by BARRACUDA version ${_X_VERSION} first"
     msg "Bye"
     clean_pid_exit
   fi
@@ -1291,22 +1286,22 @@ _SRCDIR=/opt/tmp/files
 mkdir -p $_SRCDIR
 chmod -R 777 /opt/tmp &> /dev/null
 cd /opt/tmp
-rm -f -r /opt/tmp/$_BOA_REPO_NAME
+rm -f -r /opt/tmp/boa
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone --branch $_BRANCH_BOA $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
 else
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/boa-$_INSTALLER_VERSION.tar.gz" | tar -xzf -
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"
 fi
 #
 # Get spinner
 cd $_SRCDIR
 rm -f spinner*
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/spinner ./
+cp -af /opt/tmp/boa/aegir/helpers/spinner ./
 chmod +x spinner &> /dev/null
 #
 # Create tmp stuff
-_LOG=/var/backups/bond-$_NOW.log
+_LOG=/var/backups/bond-${_NOW}.log
 _SILENT=/opt/tmp/silent.log
 #
 #

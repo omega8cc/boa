@@ -15,8 +15,8 @@ barName=BARRACUDA.sh.txt
 octName=OCTOPUS.sh.txt
 barCnf=/root/.barracuda.cnf
 
-_TODAY=`date +%y%m%d`
-_NOW=`date +%y%m%d-%H%M`
+_TODAY=$(date +%y%m%d 2>&1)
+_NOW=$(date +%y%m%d-%H%M 2>&1)
 _L_VMFAMILY=XEN
 _L_VM_TEST=`uname -a 2>&1`
 if [[ "$_L_VM_TEST" =~ beng ]] ; then
@@ -383,9 +383,9 @@ init_finish() {
   echo
   if [ "$_NEEDS_UPDATE" = "YES" ] ; then
     rm -f $varPath/BOA.sh.txt-*
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o $varPath/BOA.sh.txt-$_NOW
-    exec bash $varPath/BOA.sh.txt-$_NOW &> /dev/null
-    rm -f $varPath/BOA.sh.txt-$_NOW
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o $varPath/BOA.sh.txt-${_NOW}
+    exec bash $varPath/BOA.sh.txt-${_NOW} &> /dev/null
+    rm -f $varPath/BOA.sh.txt-${_NOW}
   fi
   exit 0
 }
@@ -459,7 +459,7 @@ init_setup() {
 check_wrapper() {
   mkdir -p $varPath
   rm -f $varPath/$(basename "$0")-now-*
-  _THIS_FILE="$varPath/$(basename "$0")-now-$_NOW"
+  _THIS_FILE="$varPath/$(basename "$0")-now-${_NOW}"
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
   if [ ! -e "$_THIS_FILE" ] ; then
     echo "I can not download required installers from files.aegir.cc at the moment."

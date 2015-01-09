@@ -18,7 +18,7 @@ SHELL=/bin/bash
 _DUPLICITY_VERSION=0.7.0
 _BOTO_VERSION=2.34.0
 
-_NOW=`date +%y%m%d-%H%M`
+_NOW=$(date +%y%m%d-%H%M 2>&1)
 _DOW=`date +%w`
 _HST=`uname -n 2>&1`
 _HST=${_HST//[^a-zA-Z0-9-.]/}

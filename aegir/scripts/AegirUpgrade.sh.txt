@@ -43,7 +43,7 @@ _BRANCH_PRN=EDIT_BRANCH_PRN
 _DEBUG_MODE=EDIT_DEBUG_MODE
 _DOMAIN=EDIT_DOMAIN
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
-_INSTALLER_VERSION=EDIT_INSTALLER_VERSION
+_X_VERSION=EDIT_X_VERSION
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
 _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
 _PURGE_MODE=EDIT_PURGE_MODE
@@ -85,44 +85,66 @@ fi
 update_php_cli_local_ini() {
   _U_HD="/var/aegir/.drush"
   _U_TP="/var/aegir/.tmp"
+  _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=`grep "/opt/php" $_DRUSH_FILE`
   _PHP_V="56 55 54 53"
   for e in $_PHP_V; do
-    if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] && [ ! -e "$_U_HD/.ctrl.php${e}.txt" ] ; then
+    if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] \
+      && [ ! -e "$_U_HD/.ctrl.php${e}.txt" ] ; then
       _PHP_CLI_UPDATE=YES
     fi
   done
-  if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -d "$_U_TP" ] || [ ! -e "$_U_HD/.ctrl.240dev.txt" ] ; then
+  if [ "$_PHP_CLI_UPDATE" = "YES" ] \
+    || [ ! -e "${_U_II}" ] \
+    || [ ! -d "$_U_TP" ] \
+    || [ ! -e "$_U_HD/.ctrl.240dev.txt" ] ; then
     rm -f -r $_U_TP
     mkdir -p $_U_TP
     chmod 700 $_U_TP
     mkdir -p $_U_HD
     rm -f $_U_HD/.ctrl.php*
-    rm -f $_U_HD/php.ini
+    rm -f ${_U_II}
     if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]] ; then
-      cp -af /opt/php55/lib/php.ini $_U_HD/php.ini
+      cp -af /opt/php55/lib/php.ini ${_U_II}
       _U_INI=55
     elif [[ "$_CHECK_USE_PHP_CLI" =~ "php56" ]] ; then
-      cp -af /opt/php56/lib/php.ini $_U_HD/php.ini
+      cp -af /opt/php56/lib/php.ini ${_U_II}
       _U_INI=56
     elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]] ; then
-      cp -af /opt/php54/lib/php.ini $_U_HD/php.ini
+      cp -af /opt/php54/lib/php.ini ${_U_II}
       _U_INI=54
     elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]] ; then
-      cp -af /opt/php53/lib/php.ini $_U_HD/php.ini
+      cp -af /opt/php53/lib/php.ini ${_U_II}
       _U_INI=53
     fi
-    if [ -e "$_U_HD/php.ini" ] ; then
-      _INI="open_basedir = \".:/var/aegir:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php53:/opt/php54:/opt/php55:/opt/php56\""
+    if [ -e "${_U_II}" ] ; then
+      _INI="open_basedir = \".: \
+        /data/all:        \
+        /data/conf:       \
+        /data/disk/all:   \
+        /opt/php53:       \
+        /opt/php54:       \
+        /opt/php55:       \
+        /opt/php56:       \
+        /opt/tika:        \
+        /opt/tika7:       \
+        /opt/tika8:       \
+        /opt/tika9:       \
+        /opt/tools/drush: \
+        /tmp:             \
+        /usr/bin:         \
+        /var/aegir\""
+      _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
+      _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
       _INI=${_INI//\//\\\/}
       _QTP=${_U_TP//\//\\\/}
-      sed -i "s/.*open_basedir =.*/$_INI/g"                              $_U_HD/php.ini &> /dev/null
-      sed -i "s/.*error_reporting =.*/error_reporting = 1/g"             $_U_HD/php.ini &> /dev/null
-      sed -i "s/.*session.save_path =.*/session.save_path = $_QTP/g"     $_U_HD/php.ini &> /dev/null
-      sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = $_QTP/g" $_U_HD/php.ini &> /dev/null
-      sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               $_U_HD/php.ini &> /dev/null
-      sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           $_U_HD/php.ini &> /dev/null
+      sed -i "s/.*open_basedir =.*/$_INI/g"                              ${_U_II}
+      sed -i "s/.*error_reporting =.*/error_reporting = 1/g"             ${_U_II}
+      sed -i "s/.*session.save_path =.*/session.save_path = $_QTP/g"     ${_U_II}
+      sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = $_QTP/g" ${_U_II}
+      sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               ${_U_II}
+      sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           ${_U_II}
       echo > $_U_HD/.ctrl.php${_U_INI}.txt
       echo > $_U_HD/.ctrl.240dev.txt
     fi
@@ -184,19 +206,19 @@ hostmaster_mv_up() {
   _D_EXT="provision clean_missing_modules drupalgeddon drush_ecl provision_boost provision_cdn provision_civicrm provision_site_backup provision_tasks_extra registry_rebuild security_check security_review remote_import"
   for e in $_D_EXT; do
     if [ -e "$_ROOT/.drush/$e" ] ; then
-      mv -f $_ROOT/.drush/$e $_ROOT/backups/system/$e-pre-$_DISTRO-$_NOW &> /dev/null
+      mv -f $_ROOT/.drush/$e $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
       mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/ &> /dev/null
     fi
     if [ -e "$_ROOT/.drush/xts/$e" ] ; then
-      mv -f $_ROOT/.drush/xts/$e $_ROOT/backups/system/$e-pre-$_DISTRO-$_NOW &> /dev/null
+      mv -f $_ROOT/.drush/xts/$e $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
       mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/ &> /dev/null
     fi
     if [ -e "$_ROOT/.drush/usr/$e" ] ; then
-      mv -f $_ROOT/.drush/usr/$e $_ROOT/backups/system/$e-pre-$_DISTRO-$_NOW &> /dev/null
+      mv -f $_ROOT/.drush/usr/$e $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
       mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/ &> /dev/null
     fi
     if [ -e "$_ROOT/.drush/sys/$e" ] ; then
-      mv -f $_ROOT/.drush/sys/$e $_ROOT/backups/system/$e-pre-$_DISTRO-$_NOW &> /dev/null
+      mv -f $_ROOT/.drush/sys/$e $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
       mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/ &> /dev/null
     fi
   done
@@ -207,7 +229,7 @@ hostmaster_dr_up() {
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
   cd $_ROOT
-  mv -f drush $_ROOT/backups/system/drush-pre-$_DISTRO-$_NOW &> /dev/null
+  mv -f drush $_ROOT/backups/system/drush-pre-$_DISTRO-${_NOW} &> /dev/null
   get_dev_ext "drush-$_DRUSH_VERSION.tar.gz"
   cd $_ROOT/drush/
   rm -f -r $_ROOT/drush/vendor
@@ -307,7 +329,7 @@ hostmaster_mi_up() {
 
 ###--------------------###
 
-_NOW=`date +%y%m%d-%H%M`
+_NOW=$(date +%y%m%d-%H%M 2>&1)
 _LASTNUM=001
 _DISTRO=001
 _PREV_HOSTMASTER_ROOT=`find $_ROOT -maxdepth 1 -type d | grep hostmaster`
@@ -335,7 +357,7 @@ if [ -d "$_ROOT/host_master/000" ] ; then
     _DEBUG_MODE=YES
     msg "INFO: Testing previous install... OPS, zombie found, moving it to backups..."
     sleep 1
-    mv -f $_PREV_HOSTMASTER_ROOT_TEST $_ROOT/backups/system/empty-host-master-$_LASTNUM-$_NOW &> /dev/null
+    mv -f $_PREV_HOSTMASTER_ROOT_TEST $_ROOT/backups/system/empty-host-master-$_LASTNUM-${_NOW} &> /dev/null
     cd $_ROOT/host_master
     list=([0-9]*)
     last=${list[@]: -1}
@@ -353,7 +375,7 @@ if [ -d "$_ROOT/host_master/000" ] ; then
       _DEBUG_MODE=YES
       msg "INFO: Testing previous install... OPS, another zombie found, moving it to backups..."
       sleep 1
-      mv -f $_PREV_HOSTMASTER_ROOT_TEST $_ROOT/backups/system/empty-host-master-$_LASTNUM-$_NOW-sec &> /dev/null
+      mv -f $_PREV_HOSTMASTER_ROOT_TEST $_ROOT/backups/system/empty-host-master-$_LASTNUM-${_NOW}-sec &> /dev/null
       cd $_ROOT/host_master
       list=([0-9]*)
       last=${list[@]: -1}
