@@ -944,10 +944,13 @@ create_web_user() {
   _T_II="${_T_HD}/php.ini"
   _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
   if [ ! -z "$_T_ID_EXISTS" ] && [ -e "${_T_II}" ] ; then
+    msg "DEBUG: ARG1 is $1 in create_web_user B"
     update_web_user "$1"
   elif [ -z "$_T_ID_EXISTS" ] || [ ! -e "${_T_II}" ] ; then
+    msg "DEBUG: ARG1 is $1 in create_web_user C"
     remove_web_user "clean"
     adduser --force-badname --system --ingroup www-data ${_WEB} &> /dev/null
+    update_web_user "$1"
   fi
 }
 #
@@ -1020,6 +1023,7 @@ tune_fpm_config() {
           fi
         done
       else
+        msg "DEBUG: _PHP_SV is ${_PHP_SV} in create_web_user A"
         create_web_user "$_PHP_SV"
       fi
       ### create or update special system user if needed
