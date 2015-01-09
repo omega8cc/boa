@@ -159,6 +159,7 @@ _PHP55_API=20121212
 _PHP55_VRN=5.5.20
 _PHP56_API=20131226
 _PHP56_VRN=5.6.4
+urlStb="http://files.aegir.cc/versions/stable"
 
 ###---### Functions
 #
@@ -1290,7 +1291,7 @@ rm -f -r /opt/tmp/boa
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone --branch $_BRANCH_BOA $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
 else
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"
 fi
 #

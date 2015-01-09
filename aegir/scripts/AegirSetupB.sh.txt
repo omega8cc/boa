@@ -125,6 +125,7 @@ _DRUSHCMD="$_L_PHP_CLI/php $_ROOT/tools/drush/drush.php"
 #
 SHELL=/bin/bash
 PATH=$_L_PHP_CLI:/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+urlStb="http://files.aegir.cc/versions/stable"
 
 
 ###---### Functions.
@@ -306,7 +307,10 @@ if [ -e "$_ROOT/aegir.sh" ] ; then
 fi
 touch $_ROOT/aegir.sh
 chmod 0700 $_ROOT/aegir.sh &> /dev/null
-echo -e "#!/bin/bash\n\nPATH=.:$_L_PHP_CLI:/usr/sbin:/usr/bin:/sbin:/bin\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch $_ROOT/$_USER-task.done" | tee -a $_ROOT/aegir.sh >/dev/null 2>&1
+echo -e \
+  "#!/bin/bash\n\nPATH=.:$_L_PHP_CLI:/usr/sbin:/usr/bin:/sbin:/bin\n$_DRUSHCMD \
+  '@hostmaster' hosting-dispatch\ntouch $_ROOT/$_USER-task.done" \
+  | tee -a $_ROOT/aegir.sh >/dev/null 2>&1
 
 mkdir -p $_ROOT/aegir/distro
 mkdir -p $_ROOT/distro/$_DISTRO
@@ -321,28 +325,28 @@ chmod 0711 $_ROOT/distro/$_DISTRO &> /dev/null
 chmod 0750 $_ROOT/{backups,clients} &> /dev/null
 
 if [ "$_STATUS" = "UPGRADE" ] ; then
- #msg "$_STATUS B: UPGRADE in progress..."
- if [ -d "$_ROOT/distro" ] ; then
-  #msg "$_STATUS B: UPGRADE v.2 in progress..."
-  if [ -e "$_ROOT/log/domain.txt" ] ; then
-   _DOMAIN=`cat $_ROOT/log/domain.txt`
-   _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
+  #msg "$_STATUS B: UPGRADE in progress..."
+  if [ -d "$_ROOT/distro" ] ; then
+   #msg "$_STATUS B: UPGRADE v.2 in progress..."
+   if [ -e "$_ROOT/log/domain.txt" ] ; then
+    _DOMAIN=`cat $_ROOT/log/domain.txt`
+    _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
+   fi
+   #msg "$_STATUS B: _DOMAIN is $_DOMAIN"
+  elif [ ! -d "$_ROOT/distro" ] ; then
+   #msg "$_STATUS B: UPGRADE v.1 in progress..."
+   #msg "$_STATUS B: _DISTRO is $_DISTRO"
+   if [ -e "$_ROOT/log/domain.txt" ] ; then
+    _DOMAIN=`cat $_ROOT/log/domain.txt`
+    _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
+   fi
+   #msg "$_STATUS B: _DOMAIN is $_DOMAIN"
   fi
-  #msg "$_STATUS B: _DOMAIN is $_DOMAIN"
- elif [ ! -d "$_ROOT/distro" ] ; then
-  #msg "$_STATUS B: UPGRADE v.1 in progress..."
-  #msg "$_STATUS B: _DISTRO is $_DISTRO"
-  if [ -e "$_ROOT/log/domain.txt" ] ; then
-   _DOMAIN=`cat $_ROOT/log/domain.txt`
-   _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
-  fi
-  #msg "$_STATUS B: _DOMAIN is $_DOMAIN"
- fi
 else
- true
- #msg "$_STATUS B: NEW AEGIR setup in progress..."
- #msg "$_STATUS B: _DISTRO is $_DISTRO"
- #msg "$_STATUS B: _DOMAIN is $_DOMAIN"
+  true
+  #msg "$_STATUS B: NEW AEGIR setup in progress..."
+  #msg "$_STATUS B: _DISTRO is $_DISTRO"
+  #msg "$_STATUS B: _DOMAIN is $_DOMAIN"
 fi
 echo $_DOMAIN > $_ROOT/log/domain.txt
 
@@ -383,22 +387,29 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
   mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
-  _B_EXT="provision clean_missing_modules drupalgeddon drush_ecl provision_boost provision_cdn provision_civicrm provision_platform_git provision_site_backup provision_tasks_extra registry_rebuild security_check security_review remote_import"
+  _B_EXT="provision clean_missing_modules drupalgeddon drush_ecl \
+    provision_boost provision_cdn provision_civicrm provision_platform_git \
+    provision_site_backup provision_tasks_extra registry_rebuild \
+    security_check security_review remote_import"
   for e in $_B_EXT; do
     if [ -e "$_ROOT/.drush/$e" ] ; then
-      mv -f $_ROOT/.drush/$e $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
+      mv -f $_ROOT/.drush/$e \
+        $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
       mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/ &> /dev/null
     fi
     if [ -e "$_ROOT/.drush/xts/$e" ] ; then
-      mv -f $_ROOT/.drush/xts/$e $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
+      mv -f $_ROOT/.drush/xts/$e \
+        $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
       mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/ &> /dev/null
     fi
     if [ -e "$_ROOT/.drush/usr/$e" ] ; then
-      mv -f $_ROOT/.drush/usr/$e $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
+      mv -f $_ROOT/.drush/usr/$e \
+        $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
       mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/ &> /dev/null
     fi
     if [ -e "$_ROOT/.drush/sys/$e" ] ; then
-      mv -f $_ROOT/.drush/sys/$e $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
+      mv -f $_ROOT/.drush/sys/$e \
+        $_ROOT/backups/system/$e-pre-$_DISTRO-${_NOW} &> /dev/null
       mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/ &> /dev/null
     fi
   done
@@ -438,10 +449,13 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   get_dev_ext "clean_missing_modules.tar.gz"
 else
   cd $_ROOT/.drush/sys
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+    "${urlStb}/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
   msg "$_STATUS B: Downloading Drush and Provision extensions..."
   cd $_ROOT/.drush/xts
-  _G_EXT="provision_boost provision_cdn provision_civicrm provision_platform_git provision_site_backup provision_tasks_extra security_review"
+  _G_EXT="provision_boost provision_cdn provision_civicrm \
+    provision_platform_git provision_site_backup \
+    provision_tasks_extra security_review"
   for e in $_G_EXT; do
     get_dev_ext "$e.tar.gz"
   done
@@ -487,9 +501,31 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   $_DRUSHCMD cache-clear drush >$_ROOT/log/install.log 2>&1
   rm -f -r $_ROOT/.tmp/cache
   if [ "$_DEBUG_MODE" = "YES" ] ; then
-    $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$_USE_AEGIR_HOST --aegir_db_user=$_USE_DB_USER --aegir_db_pass=$_AGRPASWD --aegir_root=$_ROOT --root=$_HOSTMASTER_ROOT --http_service_type=nginx --aegir_db_host=$_THIS_DB_HOST --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION -y -d
+    $_DRUSHCMD hostmaster-install $_DOMAIN \
+      --aegir_host=$_USE_AEGIR_HOST \
+      --aegir_db_user=$_USE_DB_USER \
+      --aegir_db_pass=$_AGRPASWD \
+      --aegir_root=$_ROOT \
+      --root=$_HOSTMASTER_ROOT \
+      --http_service_type=nginx \
+      --aegir_db_host=$_THIS_DB_HOST \
+      --client_email=$_ADM_EMAIL \
+      --script_user=$_USER \
+      --web_group=$_WEBG \
+      --version=$_AEGIR_VERSION -y -d
   else
-    $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$_USE_AEGIR_HOST --aegir_db_user=$_USE_DB_USER --aegir_db_pass=$_AGRPASWD --aegir_root=$_ROOT --root=$_HOSTMASTER_ROOT --http_service_type=nginx --aegir_db_host=$_THIS_DB_HOST --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION -y >$_ROOT/log/install.log 2>&1
+    $_DRUSHCMD hostmaster-install $_DOMAIN \
+      --aegir_host=$_USE_AEGIR_HOST \
+      --aegir_db_user=$_USE_DB_USER \
+      --aegir_db_pass=$_AGRPASWD \
+      --aegir_root=$_ROOT \
+      --root=$_HOSTMASTER_ROOT \
+      --http_service_type=nginx \
+      --aegir_db_host=$_THIS_DB_HOST \
+      --client_email=$_ADM_EMAIL \
+      --script_user=$_USER \
+      --web_group=$_WEBG \
+      --version=$_AEGIR_VERSION -y >$_ROOT/log/install.log 2>&1
   fi
   rm -rf $_HOSTMASTER_ROOT/profiles/{default,standard,minimal,testing}
   cd $_HOSTMASTER_ROOT
@@ -543,16 +579,20 @@ else
   $_DRUSHCMD @hostmaster dis aegir_custom_settings -y &> /dev/null
   $_DRUSHCMD cache-clear drush &> /dev/null
   rm -f -r $_ROOT/.tmp/cache
-  if [ -d "$_HOSTMASTER_ROOT/modules/o_contrib" ] && [ ! -L "$_HOSTMASTER_ROOT/modules/o_contrib" ] ; then
-    rm -f $_HOSTMASTER_ROOT/modules/o_contrib/{cache_backport,redis_edge,redis} &> /dev/null
+  if [ -d "$_HOSTMASTER_ROOT/modules/o_contrib" ] \
+    && [ ! -L "$_HOSTMASTER_ROOT/modules/o_contrib" ] ; then
+    rm -f $_HOSTMASTER_ROOT/modules/o_contrib/{cache_backport,redis_edge,redis}
   fi
-  if [ -d "$_PREV_HOSTMASTER_ROOT/modules/o_contrib" ] && [ ! -L "$_PREV_HOSTMASTER_ROOT/modules/o_contrib" ] ; then
-    rm -f $_PREV_HOSTMASTER_ROOT/modules/o_contrib/{cache_backport,redis_edge,redis} &> /dev/null
+  if [ -d "$_PREV_HOSTMASTER_ROOT/modules/o_contrib" ] \
+    && [ ! -L "$_PREV_HOSTMASTER_ROOT/modules/o_contrib" ] ; then
+    rm -f $_PREV_HOSTMASTER_ROOT/modules/o_contrib/{cache_backport,redis_edge,redis}
   fi
   if [ ! -e "$_PREV_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
     _DEBUG_MODE=YES
-    msg "$_STATUS B: Testing previous install... OPS, zombie found, moving it to backups..."
-    mv -f $_PREV_HOSTMASTER_ROOT $_ROOT/backups/system/empty-host-master-$_LAST_HMR-${_NOW} &> /dev/null
+    msg "$_STATUS B: Testing previous install... \
+      OPS, zombie found, moving it to backups..."
+    mv -f $_PREV_HOSTMASTER_ROOT \
+      $_ROOT/backups/system/empty-host-master-$_LAST_HMR-${_NOW}
     cd $_ROOT/aegir/distro
     list=([0-9]*)
     last=${list[@]: -1}
@@ -565,8 +605,10 @@ else
     msg "$_STATUS B: Testing previous install again after removing zombie..."
     if [ ! -e "$_PREV_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
       _DEBUG_MODE=YES
-      msg "$_STATUS B: Testing previous install... OPS, another zombie found, moving it to backups..."
-      mv -f $_PREV_HOSTMASTER_ROOT $_ROOT/backups/system/empty-host-master-$_L_HM_DISTRO-${_NOW}-sec &> /dev/null
+      msg "$_STATUS B: Testing previous install... \
+        OPS, another zombie found, moving it to backups..."
+      mv -f $_PREV_HOSTMASTER_ROOT \
+        $_ROOT/backups/system/empty-host-master-$_L_HM_DISTRO-${_NOW}-sec
       cd $_ROOT/aegir/distro
       list=([0-9]*)
       last=${list[@]: -1}
@@ -580,13 +622,15 @@ else
     fi
   fi
   if [ -d "$_HOSTMASTER_ROOT" ] ; then
-    msg "$_STATUS B: FATAL ERROR: $_HOSTMASTER_ROOT already exists - too many zombies to delete!"
+    msg "$_STATUS B: FATAL ERROR: $_HOSTMASTER_ROOT already exists - \
+      too many zombies to delete!"
     msg "$_STATUS B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
     touch /opt/tmp/status-AegirSetupB-FAIL
     exit 1
   fi
   msg "$_STATUS B: Hostmaster STATUS: Upgrade start"
-  mv -f $_ROOT/.drush/xts/security_review/security_review.drush.inc $_ROOT/.drush/xts/security_review/foo.txt  &> /dev/null
+  mv -f $_ROOT/.drush/xts/security_review/security_review.drush.inc \
+    $_ROOT/.drush/xts/security_review/foo.txt  &> /dev/null
   export DEBIAN_FRONTEND=noninteractive
   if [ -z "${TERM+x}" ]; then
     export TERM=vt100
@@ -655,7 +699,8 @@ else
   cd $_HOSTMASTER_ROOT
   mkdir -p sites/all/{modules,themes,libraries}
   export DEBIAN_FRONTEND=text
-  mv -f $_ROOT/.drush/xts/security_review/foo.txt $_ROOT/.drush/xts/security_review/security_review.drush.inc  &> /dev/null
+  mv -f $_ROOT/.drush/xts/security_review/foo.txt \
+    $_ROOT/.drush/xts/security_review/security_review.drush.inc  &> /dev/null
   rm -f $_ROOT/u/$_DOMAIN
   ln -sf $_HOSTMASTER_ROOT $_ROOT/u/$_DOMAIN
   rm -f /data/u/$_DOMAIN
@@ -701,7 +746,8 @@ msg "$_STATUS B: Simple check if Aegir $_MSG_STATUS is successful"
 if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   msg "$_STATUS B: Aegir $_MSG_STATUS test result: OK"
 else
-  msg "$_STATUS B: FATAL ERROR: Required file $_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php does not exist"
+  msg "$_STATUS B: FATAL ERROR: Required file \
+    $_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php does not exist"
   msg "$_STATUS B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
   touch /opt/tmp/status-AegirSetupB-FAIL
   exit 1
@@ -871,12 +917,16 @@ fi
 
 ###---### Redis integration.
 #
-if [ ! -e "$_HOSTMASTER_ROOT/modules/o_contrib/redis_edge" ] || [ ! -e "$_HOSTMASTER_ROOT/modules/o_contrib/cache_backport" ] ; then
-  if [ -e "/data/all/000/modules/redis_edge" ] && [ -e "/data/all/000/modules/cache_backport" ] ; then
+if [ ! -e "$_HOSTMASTER_ROOT/modules/o_contrib/redis_edge" ] \
+  || [ ! -e "$_HOSTMASTER_ROOT/modules/o_contrib/cache_backport" ] ; then
+  if [ -e "/data/all/000/modules/redis_edge" ] \
+    && [ -e "/data/all/000/modules/cache_backport" ] ; then
     mkdir -p $_HOSTMASTER_ROOT/modules/o_contrib
-    rm -f $_HOSTMASTER_ROOT/modules/o_contrib/{cache_backport,redis_edge,redis} &> /dev/null
-    ln -s /data/all/000/modules/redis_edge $_HOSTMASTER_ROOT/modules/o_contrib/redis_edge &> /dev/null
-    ln -s /data/all/000/modules/cache_backport $_HOSTMASTER_ROOT/modules/o_contrib/cache_backport &> /dev/null
+    rm -f $_HOSTMASTER_ROOT/modules/o_contrib/{cache_backport,redis_edge,redis}
+    ln -s /data/all/000/modules/redis_edge \
+      $_HOSTMASTER_ROOT/modules/o_contrib/redis_edge
+    ln -s /data/all/000/modules/cache_backport \
+      $_HOSTMASTER_ROOT/modules/o_contrib/cache_backport
   fi
 fi
 

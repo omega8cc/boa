@@ -146,7 +146,9 @@ fi
 #
 SHELL=/bin/bash
 PATH=$_L_PHP_CLI:/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-
+urlDrp="http://ftp.drupal.org/files/projects"
+pthPch="/opt/tmp/boa/aegir/patches"
+urlPrt="https://drupal.org/project"
 
 ###---### Functions.
 #
@@ -219,7 +221,8 @@ extract_archive() {
 # Download and extract from dev/contrib mirror.
 get_dev_contrib() {
   if [ ! -z $1 ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/contrib/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab \
+      "http://files.aegir.cc/dev/contrib/$1"
     extract_archive "$1"
   fi
 }
@@ -227,7 +230,8 @@ get_dev_contrib() {
 # Download and extract from distro.
 get_distro_ext() {
   if [ ! -z $1 ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/distro/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab \
+      "http://files.aegir.cc/distro/$1"
     extract_archive "$1"
   fi
 }
@@ -366,12 +370,13 @@ prepare_drupal6_core() {
   if [ ! -e "$_D6_CORE_DIR" ] ; then
     rm -f -r $_D6_CORE_DIR
     cd /data/all/000/core
-    curl -L --max-redirs 10 -k -s -A iCab "http://files.aegir.cc/core/pressflow-$_SMALLCORE6.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s -A iCab \
+      "http://files.aegir.cc/core/pressflow-$_SMALLCORE6.tar.gz" | tar -xzf -
     find $_D6_CORE_DIR -type d -exec chmod 0755 {} \; &> /dev/null
     find $_D6_CORE_DIR -type f -exec chmod 0644 {} \; &> /dev/null
     cd $_D6_CORE_DIR/
     fix_dirs_files
-    patch -p0 < /opt/tmp/boa/aegir/patches/taxonomy-6.26.patch &> /dev/null
+    patch -p0 < ${pthPch}/taxonomy-6.26.patch &> /dev/null
     rm -f $_D6_CORE_DIR/modules/taxonomy/taxonomy.module.orig
     rm -f modules/o_contrib
     ln -s $_CORE/o_contrib modules/o_contrib
@@ -393,13 +398,14 @@ prepare_drupal7_core() {
   if [ ! -e "$_D7_CORE_DIR" ] ; then
     rm -f -r $_D7_CORE_DIR
     cd /data/all/000/core
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/core/drupal-$_SMALLCORE7.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+      "http://files.aegir.cc/core/drupal-$_SMALLCORE7.tar.gz" | tar -xzf -
     find $_D7_CORE_DIR -type d -exec chmod 0755 {} \; &> /dev/null
     find $_D7_CORE_DIR -type f -exec chmod 0644 {} \; &> /dev/null
     cd $_D7_CORE_DIR/
     fix_dirs_files
     rename_drupal7_profiles
-    patch -p0 < /opt/tmp/boa/aegir/patches/taxonomy-7.12.patch &> /dev/null
+    patch -p0 < ${pthPch}/taxonomy-7.12.patch &> /dev/null
     rm -f $_D7_CORE_DIR/modules/taxonomy/taxonomy.module.orig
     rm -f modules/o_contrib_seven
     ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
@@ -417,7 +423,8 @@ prepare_drupal8_core() {
   if [ ! -e "$_D8_CORE_DIR" ] ; then
     rm -f -r $_D8_CORE_DIR
     cd /data/all/000/core
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/core/drupal-$_SMALLCORE8.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+      "http://files.aegir.cc/core/drupal-$_SMALLCORE8.tar.gz" | tar -xzf -
     find $_D8_CORE_DIR -type d -exec chmod 0755 {} \; &> /dev/null
     find $_D8_CORE_DIR -type f -exec chmod 0644 {} \; &> /dev/null
     cd $_D8_CORE_DIR/
@@ -434,7 +441,8 @@ prepare_dr8_dev_core() {
   if [ ! -e "$_D8_DEV_CORE_DIR" ] ; then
     rm -f -r $_D8_DEV_CORE_DIR
     cd /data/all/000/core
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/core/drupal-$_D8_DEV_COMMIT.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+      "http://files.aegir.cc/core/drupal-$_D8_DEV_COMMIT.tar.gz" | tar -xzf -
     find $_D8_DEV_CORE_DIR -type d -exec chmod 0755 {} \; &> /dev/null
     find $_D8_DEV_CORE_DIR -type f -exec chmod 0644 {} \; &> /dev/null
     cd $_D8_DEV_CORE_DIR/
@@ -464,7 +472,8 @@ nocore_d6_dist_clean() {
     rm -f -r $_SHRD_PLPATH/profiles
     cp -af $_D6_CORE_DIR/profiles $_SHRD_PLPATH/
   fi
-  sed -i "s/'dblog'/'robotstxt', 'path_alias_cache'/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
+  sed -i "s/'dblog'/'robotstxt', 'path_alias_cache'/g" \
+    $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
 }
 #
 # Remove D7 core from distro directory.
@@ -518,7 +527,8 @@ nocore_d8_dist_clean() {
 #
 # Enable D6 admin.
 enable_drupal6_admin() {
-  sed -i "s/'path_alias_cache'/'path_alias_cache', 'admin'/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
+  sed -i "s/'path_alias_cache'/'path_alias_cache', 'admin'/g" \
+    $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
 }
 #
 # Remove default core seven profiles.
@@ -553,14 +563,15 @@ upgrade_contrib_less() {
   if [ -e "views" ] ; then
     cd views
     # https://drupal.org/node/1766338#comment-6445882
-    patch -p1 < /opt/tmp/boa/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+    patch -p1 < \
+      ${pthPch}/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
     # https://drupal.org/node/2037469
-    patch -p1 < /opt/tmp/boa/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
+    patch -p1 < ${pthPch}/views-exposed-sorts-2037469-1.patch &> /dev/null
     cd ../
   fi
   if [ -e "apps" ] ; then
     cd apps
-    patch -p1 < /opt/tmp/boa/aegir/patches/apps_msg.patch &> /dev/null
+    patch -p1 < ${pthPch}/apps_msg.patch &> /dev/null
     cd ../
   fi
   cd $_CORE
@@ -603,9 +614,13 @@ fi
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
   _THIS_CORE="$_LAST_ALL"
-  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] && [ -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
+  if [ "$_USE_CURRENT" = "YES" ] \
+    && [ -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] \
+    && [ -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
     msg "$_STATUS C: Shared platforms code v.$_LAST_ALL (latest available) will be used"
-  elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
+  elif [ "$_USE_CURRENT" = "NO" ] \
+    || [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] \
+    || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
     _CORE="/data/all/$_ALL_DISTRO"
     _THIS_CORE="$_ALL_DISTRO"
     msg "$_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
@@ -696,1343 +711,1440 @@ prepare_drupal7_core
 agov_install() {
 ###---### aGov
 #
-_REAL_PRNAME="agov"
-_SHRD_PLNAME="$_REAL_PRNAME-$_AGOV-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "AGV" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_AGOV - https://drupal.org/project/agov" ; then
-true
-msg "DISTRO: $_F_AGOV installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="agov"
+  _SHRD_PLNAME="$_REAL_PRNAME-$_AGOV-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "AGV" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_AGOV - ${urlPrt}/agov" ; then
+          true
+          msg "DISTRO: $_F_AGOV installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+                "${urlDrp}/$_REAL_PRNAME-7.x-$_AGOV-core.tar.gz" | tar -xzf -
+              if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_AGOV" ] ; then
+                mv $_REAL_PRNAME-7.x-$_AGOV $_SHRD_PLNAME
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+              sed -i "s/.*entitycache.*//g"  \
+                $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
+              rm -f -r $_SHRD_PRPATH/modules/contrib/entitycache
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_AGOV installation completed"
+        else
+          msg "DISTRO: $_F_AGOV installation skipped"
+        fi
+      fi
     fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-7.x-$_AGOV-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_AGOV" ] ; then
-      mv $_REAL_PRNAME-7.x-$_AGOV $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-    sed -i "s/.*entitycache.*//g"  $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
-    rm -f -r $_SHRD_PRPATH/modules/contrib/entitycache
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_AGOV installation completed"
-else
-  msg "DISTRO: $_F_AGOV installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 commerce_7_1_install() {
 ###---### Commerce 7.x-1.x
 #
-_REAL_PRNAME="commerce_kickstart"
-_VIRT_PRNAME="commerce"
-_SHRD_PLNAME="$_VIRT_PRNAME-$_COMMERCE1-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "DCE" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_COMMERCE1 - http://drupalcommerce.org" ; then
-true
-msg "DISTRO: $_F_COMMERCE1 installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="commerce_kickstart"
+  _VIRT_PRNAME="commerce"
+  _SHRD_PLNAME="$_VIRT_PRNAME-$_COMMERCE1-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "DCE" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_COMMERCE1 - http://drupalcommerce.org" ; then
+          true
+          msg "DISTRO: $_F_COMMERCE1 installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+                "${urlDrp}/$_REAL_PRNAME-7.x-$_COMMERCE1-core.tar.gz" | tar -xzf -
+              if [ -d "$_CORE/commerce-7.x-$_COMMERCE1" ] ; then
+                mv commerce-7.x-$_COMMERCE1 $_SHRD_PLNAME
+              elif [ -d "$_CORE/$_REAL_PRNAME-7.x-$_COMMERCE1" ] ; then
+                mv $_REAL_PRNAME-7.x-$_COMMERCE1 $_SHRD_PLNAME
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+              cd $_SHRD_PRPATH
+              patch -p1 < ${pthPch}/$_REAL_PRNAME.patch &> /dev/null
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_COMMERCE1 installation completed"
+        else
+          msg "DISTRO: $_F_COMMERCE1 installation skipped"
+        fi
+      fi
     fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-7.x-$_COMMERCE1-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/commerce-7.x-$_COMMERCE1" ] ; then
-      mv commerce-7.x-$_COMMERCE1 $_SHRD_PLNAME
-    elif [ -d "$_CORE/$_REAL_PRNAME-7.x-$_COMMERCE1" ] ; then
-      mv $_REAL_PRNAME-7.x-$_COMMERCE1 $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-    cd $_SHRD_PRPATH
-    patch -p1 < /opt/tmp/boa/aegir/patches/$_REAL_PRNAME.patch &> /dev/null
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_COMMERCE1 installation completed"
-else
-  msg "DISTRO: $_F_COMMERCE1 installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 commerce_7_2_install() {
 ###---### Commerce 7.x-2.x
 #
-_REAL_PRNAME="commerce_kickstart"
-_VIRT_PRNAME="commerce"
-_SHRD_PLNAME="$_VIRT_PRNAME-$_COMMERCE2-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "CME" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_COMMERCE2 - http://drupalcommerce.org" ; then
-true
-msg "DISTRO: $_F_COMMERCE2 installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="commerce_kickstart"
+  _VIRT_PRNAME="commerce"
+  _SHRD_PLNAME="$_VIRT_PRNAME-$_COMMERCE2-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "CME" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_COMMERCE2 - http://drupalcommerce.org" ; then
+          true
+          msg "DISTRO: $_F_COMMERCE2 installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+                "${urlDrp}/$_REAL_PRNAME-7.x-$_COMMERCE2-core.tar.gz" | tar -xzf -
+              if [ -d "$_CORE/commerce-7.x-$_COMMERCE2" ] ; then
+                mv commerce-7.x-$_COMMERCE2 $_SHRD_PLNAME
+              elif [ -d "$_CORE/$_REAL_PRNAME-7.x-$_COMMERCE2" ] ; then
+                mv $_REAL_PRNAME-7.x-$_COMMERCE2 $_SHRD_PLNAME
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+              cd $_SHRD_PRPATH
+              patch -p1 < ${pthPch}/$_REAL_PRNAME.patch &> /dev/null
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_COMMERCE2 installation completed"
+        else
+          msg "DISTRO: $_F_COMMERCE2 installation skipped"
+        fi
+      fi
     fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-7.x-$_COMMERCE2-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/commerce-7.x-$_COMMERCE2" ] ; then
-      mv commerce-7.x-$_COMMERCE2 $_SHRD_PLNAME
-    elif [ -d "$_CORE/$_REAL_PRNAME-7.x-$_COMMERCE2" ] ; then
-      mv $_REAL_PRNAME-7.x-$_COMMERCE2 $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-    cd $_SHRD_PRPATH
-    patch -p1 < /opt/tmp/boa/aegir/patches/$_REAL_PRNAME.patch &> /dev/null
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_COMMERCE2 installation completed"
-else
-  msg "DISTRO: $_F_COMMERCE2 installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 commons_6_install() {
 ###---### Commons 6.x
 #
-_REAL_PRNAME="commons"
-_SHRD_PLNAME="$_REAL_PRNAME-$_COMMONS2-$_SMALLCORE6"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "DCS" ]] ; then
-if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
-echo " "
-if prompt_yes_no "$_F_COMMONS2 - http://acquia.com/drupalcommons" ; then
-true
-msg "DISTRO: $_F_COMMONS2 installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D6_CORE_DIR" ] ; then
-      prepare_drupal6_core
+  _REAL_PRNAME="commons"
+  _SHRD_PLNAME="$_REAL_PRNAME-$_COMMONS2-$_SMALLCORE6"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "DCS" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_COMMONS2 - http://acquia.com/drupalcommons" ; then
+          true
+          msg "DISTRO: $_F_COMMONS2 installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D6_CORE_DIR" ] ; then
+                prepare_drupal6_core
+              fi
+              cd $_CORE
+              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+                "${urlDrp}/$_REAL_PRNAME-6.x-$_COMMONS2-core.tar.gz" | tar -xzf -
+              if [ -d "$_CORE/$_REAL_PRNAME-6.x-$_COMMONS2" ] ; then
+                mv $_CORE/commons-6.x-$_COMMONS2 $_SHRD_PLPATH
+              fi
+              if [ -e "$_SHRD_PRPATH/drupal_commons.profile" ] \
+                && [ ! -e "$_SHRD_PRPATH/$_REAL_PRNAME.profile" ] ; then
+                mv -f $_SHRD_PRPATH/drupal_commons.profile \
+                  $_SHRD_PRPATH/$_REAL_PRNAME.profile
+              fi
+              find $_SHRD_PRPATH -type f -exec sed -i \
+                "s/drupal_commons/commons/g" {} \; &> /dev/null
+              rm -f -r $_SHRD_PLPATH/profiles/default
+              nocore_d6_dist_clean
+              if [ $_COMMONS2 = "2.21" ] ; then
+                cd $_SHRD_PRPATH/modules/contrib
+                rm -f -r {flag}
+                get_dev_contrib "flag-6.x-2.1.tar.gz"
+              fi
+            else
+              cd $_CORE
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          if [ ! -L "$_OCTO_PLPATH/sites/all/libraries/getid3" ] ; then
+            mkdir -p $_OCTO_PLPATH/sites/all/libraries
+            ln -sf $_SHRD_PRPATH/libraries/getid3 \
+              $_OCTO_PLPATH/sites/all/libraries/getid3
+          fi
+          msg "DISTRO: $_F_COMMONS2 installation completed"
+        else
+          msg "DISTRO: $_F_COMMONS2 installation skipped"
+        fi
+      fi
     fi
-    cd $_CORE
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-6.x-$_COMMONS2-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/$_REAL_PRNAME-6.x-$_COMMONS2" ] ; then
-      mv $_CORE/commons-6.x-$_COMMONS2 $_SHRD_PLPATH
-    fi
-    if [ -e "$_SHRD_PRPATH/drupal_commons.profile" ] && [ ! -e "$_SHRD_PRPATH/$_REAL_PRNAME.profile" ] ; then
-      mv -f $_SHRD_PRPATH/drupal_commons.profile $_SHRD_PRPATH/$_REAL_PRNAME.profile
-    fi
-    find $_SHRD_PRPATH -type f -exec sed -i "s/drupal_commons/commons/g" {} \; &> /dev/null
-    rm -f -r $_SHRD_PLPATH/profiles/default
-    nocore_d6_dist_clean
-    if [ $_COMMONS2 = "2.21" ] ; then
-      cd $_SHRD_PRPATH/modules/contrib
-      rm -f -r {flag}
-      get_dev_contrib "flag-6.x-2.1.tar.gz"
-    fi
-  else
-    cd $_CORE
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-if [ ! -L "$_OCTO_PLPATH/sites/all/libraries/getid3" ] ; then
-  mkdir -p $_OCTO_PLPATH/sites/all/libraries
-  ln -sf $_SHRD_PRPATH/libraries/getid3 $_OCTO_PLPATH/sites/all/libraries/getid3
-fi
-msg "DISTRO: $_F_COMMONS2 installation completed"
-else
-  msg "DISTRO: $_F_COMMONS2 installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 commons_7_install() {
 ###---### Commons 7.x
 #
-_REAL_PRNAME="commons"
-_SHRD_PLNAME="$_REAL_PRNAME-$_COMMONS3-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "CS7" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_COMMONS3 - http://acquia.com/drupalcommons" ; then
-true
-msg "DISTRO: $_F_COMMONS3 installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="commons"
+  _SHRD_PLNAME="$_REAL_PRNAME-$_COMMONS3-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "CS7" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_COMMONS3 - http://acquia.com/drupalcommons" ; then
+          true
+          msg "DISTRO: $_F_COMMONS3 installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+                "${urlDrp}/$_REAL_PRNAME-7.x-$_COMMONS3-core.tar.gz" | tar -xzf -
+              if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_COMMONS3" ] ; then
+                mv $_REAL_PRNAME-7.x-$_COMMONS3 $_SHRD_PLNAME
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+              cd $_SHRD_PRPATH
+              patch -p1 < ${pthPch}/commons_chicken_egg.patch &> /dev/null
+              sed -i "s/.*entitycache.*//g"  \
+                $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
+              rm -f -r $_SHRD_PRPATH/modules/contrib/entitycache
+              rm -f -r $_SHRD_PRPATH/modules/contrib/registry_rebuild
+              rm -f -r $_SHRD_PRPATH/modules/contrib/acquia_connector
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_COMMONS3 installation completed"
+        else
+          msg "DISTRO: $_F_COMMONS3 installation skipped"
+        fi
+      fi
     fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-7.x-$_COMMONS3-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_COMMONS3" ] ; then
-      mv $_REAL_PRNAME-7.x-$_COMMONS3 $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-    cd $_SHRD_PRPATH
-    patch -p1 < /opt/tmp/boa/aegir/patches/commons_chicken_egg.patch &> /dev/null
-    sed -i "s/.*entitycache.*//g"  $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
-    rm -f -r $_SHRD_PRPATH/modules/contrib/entitycache
-    rm -f -r $_SHRD_PRPATH/modules/contrib/registry_rebuild
-    rm -f -r $_SHRD_PRPATH/modules/contrib/acquia_connector
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_COMMONS3 installation completed"
-else
-  msg "DISTRO: $_F_COMMONS3 installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 drupal6_install() {
 ###---### Drupal 6 Pressflow
 #
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "D6D" ]] || [[ "$_PLATFORMS_LIST" =~ "D6S" ]] || [[ "$_PLATFORMS_LIST" =~ "D6P" ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod/modules/path_alias_cache" ] ; then
-echo " "
-if prompt_yes_no "$_F_DRUPAL6 - http://pressflow.org" ; then
-true
-
-###---### Drupal 6 Pressflow Development
-#
-_REAL_PRNAME="default"
-_VIRT_PRNAME="pressflow"
-_SHRD_PLNAME="$_VIRT_PRNAME-$_SMALLCORE6-dev"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "D6D" ]] ; then
-msg "DISTRO: $_F_DRUPAL6_D installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  if [ ! -e "$_D6_CORE_DIR" ] ; then
-    prepare_drupal6_core
+  if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+    || [[ "$_PLATFORMS_LIST" =~ "D6D" ]] \
+    || [[ "$_PLATFORMS_LIST" =~ "D6S" ]] \
+    || [[ "$_PLATFORMS_LIST" =~ "D6P" ]] ; then
+    local pthPfw="pressflow-$_SMALLCORE6-prod/modules/path_alias_cache"
+    if [ ! -d "$_ROOT/distro/$_THIS_CORE/${pthPfw}" ] ; then
+    echo " "
+      if prompt_yes_no "$_F_DRUPAL6 - http://pressflow.org" ; then
+        true
+        ###---### Drupal 6 Pressflow Development
+        #
+        _REAL_PRNAME="default"
+        _VIRT_PRNAME="pressflow"
+        _SHRD_PLNAME="$_VIRT_PRNAME-$_SMALLCORE6-dev"
+        _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+        _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+        _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+        if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+          || [[ "$_PLATFORMS_LIST" =~ "D6D" ]] ; then
+          msg "DISTRO: $_F_DRUPAL6_D installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            if [ ! -e "$_D6_CORE_DIR" ] ; then
+              prepare_drupal6_core
+            fi
+            cd $_CORE
+            mkdir -p $_SHRD_PLPATH
+            nocore_d6_dist_clean
+            enable_drupal6_admin
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_DRUPAL6_D installation completed"
+          echo " "
+        fi
+        ###---### Drupal 6 Pressflow Staging
+        #
+        _REAL_PRNAME="default"
+        _VIRT_PRNAME="pressflow"
+        _SHRD_PLNAME="$_VIRT_PRNAME-$_SMALLCORE6-stage"
+        _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+        _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+        _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+        if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+          || [[ "$_PLATFORMS_LIST" =~ "D6S" ]] ; then
+          msg "DISTRO: $_F_DRUPAL6_S installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            if [ ! -e "$_D6_CORE_DIR" ] ; then
+              prepare_drupal6_core
+            fi
+            cd $_CORE
+            mkdir -p $_SHRD_PLPATH
+            nocore_d6_dist_clean
+            enable_drupal6_admin
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_DRUPAL6_S installation completed"
+          echo " "
+        fi
+        ###---### Drupal 6 Pressflow Production
+        #
+        _REAL_PRNAME="default"
+        _VIRT_PRNAME="pressflow"
+        _SHRD_PLNAME="$_VIRT_PRNAME-$_SMALLCORE6-prod"
+        _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+        _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+        _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+        if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+          || [[ "$_PLATFORMS_LIST" =~ "D6P" ]] ; then
+          msg "DISTRO: $_F_DRUPAL6 installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            if [ ! -e "$_D6_CORE_DIR" ] ; then
+              prepare_drupal6_core
+            fi
+            cd $_CORE
+            mkdir -p $_SHRD_PLPATH
+            nocore_d6_dist_clean
+            enable_drupal6_admin
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_DRUPAL6 installation completed"
+        fi
+      else
+        msg "DISTRO: $_F_DRUPAL6 installation skipped"
+      fi
+    fi
   fi
-  cd $_CORE
-  mkdir -p $_SHRD_PLPATH
-  nocore_d6_dist_clean
-  enable_drupal6_admin
-fi
-init_this_distro_root
-msg "DISTRO: $_F_DRUPAL6_D installation completed"
-echo " "
-fi
-
-###---### Drupal 6 Pressflow Staging
-#
-_REAL_PRNAME="default"
-_VIRT_PRNAME="pressflow"
-_SHRD_PLNAME="$_VIRT_PRNAME-$_SMALLCORE6-stage"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "D6S" ]] ; then
-msg "DISTRO: $_F_DRUPAL6_S installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  if [ ! -e "$_D6_CORE_DIR" ] ; then
-    prepare_drupal6_core
-  fi
-  cd $_CORE
-  mkdir -p $_SHRD_PLPATH
-  nocore_d6_dist_clean
-  enable_drupal6_admin
-fi
-init_this_distro_root
-msg "DISTRO: $_F_DRUPAL6_S installation completed"
-echo " "
-fi
-
-###---### Drupal 6 Pressflow Production
-#
-_REAL_PRNAME="default"
-_VIRT_PRNAME="pressflow"
-_SHRD_PLNAME="$_VIRT_PRNAME-$_SMALLCORE6-prod"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "D6P" ]] ; then
-msg "DISTRO: $_F_DRUPAL6 installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  if [ ! -e "$_D6_CORE_DIR" ] ; then
-    prepare_drupal6_core
-  fi
-  cd $_CORE
-  mkdir -p $_SHRD_PLPATH
-  nocore_d6_dist_clean
-  enable_drupal6_admin
-fi
-init_this_distro_root
-msg "DISTRO: $_F_DRUPAL6 installation completed"
-fi
-
-else
-  msg "DISTRO: $_F_DRUPAL6 installation skipped"
-fi
-fi
-fi
 }
 
 
 drupal7_install() {
 ###---### Drupal 7
 #
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "D7D" ]] || [[ "$_PLATFORMS_LIST" =~ "D7S" ]] || [[ "$_PLATFORMS_LIST" =~ "D7P" ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
-echo " "
-if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/drupal-7.34" ; then
-true
-
-###---### Drupal 7 Development
-#
-_REAL_PRNAME="standard"
-_SHRD_PLNAME="$_DRUPAL7D"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "D7D" ]] ; then
-  msg "DISTRO: $_F_DRUPAL7_D installation in progress..."
-  create_drupal7_basic
-  msg "DISTRO: $_F_DRUPAL7_D installation completed"
-  echo " "
-fi
-
-###---### Drupal 7 Staging
-#
-_REAL_PRNAME="standard"
-_SHRD_PLNAME="$_DRUPAL7S"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "D7S" ]] ; then
-  msg "DISTRO: $_F_DRUPAL7_S installation in progress..."
-  create_drupal7_basic
-  msg "DISTRO: $_F_DRUPAL7_S installation completed"
-  echo " "
-fi
-
-###---### Drupal 7 Production
-#
-_REAL_PRNAME="standard"
-_SHRD_PLNAME="$_DRUPAL7P"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "D7P" ]] ; then
-  msg "DISTRO: $_F_DRUPAL7_P installation in progress..."
-  create_drupal7_basic
-  msg "DISTRO: $_F_DRUPAL7_P installation completed"
-fi
-
-else
-  msg "DISTRO: $_F_DRUPAL7 installation skipped"
-fi
-fi
-fi
+  if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+    || [[ "$_PLATFORMS_LIST" =~ "D7D" ]] \
+    || [[ "$_PLATFORMS_LIST" =~ "D7S" ]] \
+    || [[ "$_PLATFORMS_LIST" =~ "D7P" ]] ; then
+    if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
+      echo " "
+      if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/drupal-7.34" ; then
+        true
+        ###---### Drupal 7 Development
+        #
+        _REAL_PRNAME="standard"
+        _SHRD_PLNAME="$_DRUPAL7D"
+        _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+        _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+        _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+        if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+          || [[ "$_PLATFORMS_LIST" =~ "D7D" ]] ; then
+          msg "DISTRO: $_F_DRUPAL7_D installation in progress..."
+          create_drupal7_basic
+          msg "DISTRO: $_F_DRUPAL7_D installation completed"
+          echo " "
+        fi
+        ###---### Drupal 7 Staging
+        #
+        _REAL_PRNAME="standard"
+        _SHRD_PLNAME="$_DRUPAL7S"
+        _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+        _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+        _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+        if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+          || [[ "$_PLATFORMS_LIST" =~ "D7S" ]] ; then
+          msg "DISTRO: $_F_DRUPAL7_S installation in progress..."
+          create_drupal7_basic
+          msg "DISTRO: $_F_DRUPAL7_S installation completed"
+          echo " "
+        fi
+        ###---### Drupal 7 Production
+        #
+        _REAL_PRNAME="standard"
+        _SHRD_PLNAME="$_DRUPAL7P"
+        _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+        _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+        _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+        if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+          || [[ "$_PLATFORMS_LIST" =~ "D7P" ]] ; then
+          msg "DISTRO: $_F_DRUPAL7_P installation in progress..."
+          create_drupal7_basic
+          msg "DISTRO: $_F_DRUPAL7_P installation completed"
+        fi
+      else
+        msg "DISTRO: $_F_DRUPAL7 installation skipped"
+      fi
+    fi
+  fi
 }
 
 
 drupal8_install() {
 ###---### Drupal 8
 #
-_REAL_PRNAME="standard"
-_SHRD_PLNAME="drupal-$_SMALLCORE8"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_D_8_ALLOW" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "D8B" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_DRUPAL8 - http://drupal.org" ; then
-true
-msg "DISTRO: $_F_DRUPAL8 installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ ! -e "$_D8_CORE_DIR" ] ; then
-    prepare_drupal8_core
+  _REAL_PRNAME="standard"
+  _SHRD_PLNAME="drupal-$_SMALLCORE8"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_D_8_ALLOW" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "D8B" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_DRUPAL8 - http://drupal.org" ; then
+          true
+          msg "DISTRO: $_F_DRUPAL8 installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ ! -e "$_D8_CORE_DIR" ] ; then
+              prepare_drupal8_core
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_DRUPAL8 installation completed"
+        else
+          msg "DISTRO: $_F_DRUPAL8 installation skipped"
+        fi
+      fi
+    fi
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_DRUPAL8 installation completed"
-else
-  msg "DISTRO: $_F_DRUPAL8 installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 dr8_dev_install() {
 ###---### Drupal Edge 8
 ### _D8_DEV_LABEL="8-dev-$_TODAY"
-_REAL_PRNAME="standard"
-_SHRD_PLNAME="drupal-$_D8_DEV_LABEL"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_D_8_ALLOW" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "D8D" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_D8_DEV_LABEL - http://drupal.org" ; then
-true
-msg "DISTRO: $_F_D8_DEV_LABEL installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  _D8_CORE_DIR="$_D8_DEV_CORE_DIR"
-  if [ ! -e "$_D8_CORE_DIR" ] ; then
-    prepare_dr8_dev_core
+  _REAL_PRNAME="standard"
+  _SHRD_PLNAME="drupal-$_D8_DEV_LABEL"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_D_8_ALLOW" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "D8D" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_D8_DEV_LABEL - http://drupal.org" ; then
+          true
+          msg "DISTRO: $_F_D8_DEV_LABEL installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            _D8_CORE_DIR="$_D8_DEV_CORE_DIR"
+            if [ ! -e "$_D8_CORE_DIR" ] ; then
+              prepare_dr8_dev_core
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_D8_DEV_LABEL installation completed"
+        else
+          msg "DISTRO: $_F_D8_DEV_LABEL installation skipped"
+        fi
+      fi
+    fi
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_D8_DEV_LABEL installation completed"
-else
-  msg "DISTRO: $_F_D8_DEV_LABEL installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 erpal_install() {
 ###---### ERPAL
 #
-_REAL_PRNAME="erpal"
-_SHRD_PLNAME="$_REAL_PRNAME-$_ERPAL-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "ERP" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_ERPAL - https://drupal.org/project/erpal" ; then
-true
-msg "DISTRO: $_F_ERPAL installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="erpal"
+  _SHRD_PLNAME="$_REAL_PRNAME-$_ERPAL-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "ERP" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_ERPAL - ${urlPrt}/erpal" ; then
+          true
+          msg "DISTRO: $_F_ERPAL installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+                "${urlDrp}/$_REAL_PRNAME-7.x-$_ERPAL-core.tar.gz" | tar -xzf -
+              if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_ERPAL" ] ; then
+                mv $_REAL_PRNAME-7.x-$_ERPAL $_SHRD_PLNAME
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+              sed -i "s/.*entitycache.*//g"  \
+                $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
+              sed -i "s/\$options +=/\/\/\$options +=/g" \
+                $_SHRD_PRPATH/modules/contrib/flag/includes/flag/flag_flag.inc &> /dev/null
+              sed -i "s/\$options +=/\/\/\$options +=/g" \
+                $_SHRD_PRPATH/modules/contrib/flag/flag_flag.inc &> /dev/null
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_ERPAL installation completed"
+        else
+          msg "DISTRO: $_F_ERPAL installation skipped"
+        fi
+      fi
     fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-7.x-$_ERPAL-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_ERPAL" ] ; then
-      mv $_REAL_PRNAME-7.x-$_ERPAL $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-    sed -i "s/.*entitycache.*//g"  $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
-    sed -i "s/\$options +=/\/\/\$options +=/g" $_SHRD_PRPATH/modules/contrib/flag/includes/flag/flag_flag.inc &> /dev/null
-    sed -i "s/\$options +=/\/\/\$options +=/g" $_SHRD_PRPATH/modules/contrib/flag/flag_flag.inc &> /dev/null
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_ERPAL installation completed"
-else
-  msg "DISTRO: $_F_ERPAL installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 fserver_install() {
 ###---### Feature Server Make
 #
-_REAL_PRNAME="feature_server"
-_VIRT_PRNAME="fserver"
-_SHRD_PLNAME="$_VIRT_PRNAME-$_SMALLCORE6"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "FSR" ]] ; then
-if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
-echo " "
-if prompt_yes_no "$_F_FSERVER - http://bit.ly/fservermore" ; then
-true
-msg "DISTRO: $_F_FSERVER installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D6_CORE_DIR" ] ; then
-      prepare_drupal6_core
+  _REAL_PRNAME="feature_server"
+  _VIRT_PRNAME="fserver"
+  _SHRD_PLNAME="$_VIRT_PRNAME-$_SMALLCORE6"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+    || [[ "$_PLATFORMS_LIST" =~ "FSR" ]] ; then
+    if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
+      echo " "
+      if prompt_yes_no "$_F_FSERVER - http://bit.ly/fservermore" ; then
+        true
+        msg "DISTRO: $_F_FSERVER installation in progress..."
+        if [ ! -d "$_SHRD_PLPATH" ] ; then
+          if [ "$_AEGIR_VERSION" = "HEAD" ] \
+            && [ "$_T_BUILD" = "HEAD" ] ; then
+            if [ ! -e "$_D6_CORE_DIR" ] ; then
+              prepare_drupal6_core
+            fi
+            cd $_CORE
+            echo "api = 2" > fserver.make
+            echo "core = 6.x" >> fserver.make
+            echo "projects[pressflow][type] = \"core\"" \
+              >> fserver.make
+            echo "projects[pressflow][download][type] = \"get\"" \
+              >> fserver.make
+            echo "projects[pressflow][download][url] \
+              = \"http://files.aegir.cc/core/pressflow-6.34.1.tar.gz\"" \
+              >> fserver.make
+            echo "projects[$_REAL_PRNAME][type] = \"profile\"" \
+              >> fserver.make
+            echo "projects[$_REAL_PRNAME][download][type] = \"git\"" \
+              >> fserver.make
+            echo "projects[$_REAL_PRNAME][download][url] \
+              = \"git://github.com/omega8cc/$_REAL_PRNAME.git\"" \
+              >> fserver.make
+            $_DRUSHCMD make fserver.make $_SHRD_PLNAME &> /dev/null
+            nocore_d6_dist_clean
+            rm -f fserver.make
+            rm -f -r $_SHRD_PLPATH/profiles/default
+            cd $_SHRD_PLPATH/profiles/$_REAL_PRNAME/themes
+            patch -p0 \
+              < ${pthPch}/singular.patch &> /dev/null
+            patch -p0 \
+              < ${pthPch}/singular.mft.patch &> /dev/null
+          else
+            cd $_CORE
+            get_distro_ext "$_SHRD_PLNAME.tar.gz"
+          fi
+        fi
+        init_this_distro_root
+        msg "DISTRO: $_F_FSERVER installation completed"
+      else
+        msg "DISTRO: $_F_FSERVER installation skipped"
+      fi
     fi
-    cd $_CORE
-    echo "api = 2" > fserver.make
-    echo "core = 6.x" >> fserver.make
-    echo "projects[pressflow][type] = \"core\"" >> fserver.make
-    echo "projects[pressflow][download][type] = \"get\"" >> fserver.make
-    echo "projects[pressflow][download][url] = \"http://files.aegir.cc/core/pressflow-6.34.1.tar.gz\"" >> fserver.make
-    echo "projects[$_REAL_PRNAME][type] = \"profile\"" >> fserver.make
-    echo "projects[$_REAL_PRNAME][download][type] = \"git\"" >> fserver.make
-    echo "projects[$_REAL_PRNAME][download][url] = \"git://github.com/omega8cc/$_REAL_PRNAME.git\"" >> fserver.make
-    $_DRUSHCMD make fserver.make $_SHRD_PLNAME &> /dev/null
-    nocore_d6_dist_clean
-    rm -f fserver.make
-    rm -f -r $_SHRD_PLPATH/profiles/default
-    cd $_SHRD_PLPATH/profiles/$_REAL_PRNAME/themes
-    patch -p0 < /opt/tmp/boa/aegir/patches/singular.patch &> /dev/null
-    patch -p0 < /opt/tmp/boa/aegir/patches/singular.mft.patch &> /dev/null
-  else
-    cd $_CORE
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_FSERVER installation completed"
-else
-  msg "DISTRO: $_F_FSERVER installation skipped"
-fi
-fi
-fi
 }
 
 
 guardr_install() {
 ###---### Guardr
 #
-_REAL_PRNAME="guardr"
-_SHRD_PLNAME="$_REAL_PRNAME-$_GUARDR-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "GDR" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_GUARDR - https://drupal.org/project/guardr" ; then
-true
-msg "DISTRO: $_F_GUARDR installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="guardr"
+  _SHRD_PLNAME="$_REAL_PRNAME-$_GUARDR-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "GDR" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_GUARDR - ${urlPrt}/guardr" ; then
+          true
+          msg "DISTRO: $_F_GUARDR installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+                "${urlDrp}/$_REAL_PRNAME-7.x-$_GUARDR-core.tar.gz" | tar -xzf -
+              if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_GUARDR" ] ; then
+                mv $_REAL_PRNAME-7.x-$_GUARDR $_SHRD_PLNAME
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+              sed -i "s/.*entitycache.*//g"  \
+                $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
+              rm -f -r $_SHRD_PRPATH/modules/contrib/entitycache
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_GUARDR installation completed"
+        else
+          msg "DISTRO: $_F_GUARDR installation skipped"
+        fi
+      fi
     fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-7.x-$_GUARDR-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_GUARDR" ] ; then
-      mv $_REAL_PRNAME-7.x-$_GUARDR $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-    sed -i "s/.*entitycache.*//g"  $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
-    rm -f -r $_SHRD_PRPATH/modules/contrib/entitycache
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_GUARDR installation completed"
-else
-  msg "DISTRO: $_F_GUARDR installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 openacademy_install() {
 ###---### OpenAcademy
 #
-_REAL_PRNAME="openacademy"
-_SHRD_PLNAME="$_REAL_PRNAME-$_OPENACADEMY-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "OAY" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_OPENACADEMY - https://drupal.org/project/openacademy" ; then
-true
-msg "DISTRO: $_F_OPENACADEMY installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="openacademy"
+  _SHRD_PLNAME="$_REAL_PRNAME-$_OPENACADEMY-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "OAY" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_OPENACADEMY - ${urlPrt}/openacademy" ; then
+          true
+          msg "DISTRO: $_F_OPENACADEMY installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+                "${urlDrp}/$_REAL_PRNAME-7.x-$_OPENACADEMY-core.tar.gz" | tar -xzf -
+              if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_OPENACADEMY" ] ; then
+                mv $_REAL_PRNAME-7.x-$_OPENACADEMY $_SHRD_PLNAME
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+              if [ $_OPENACADEMY = "1.0" ] ; then
+                cd $_SHRD_PRPATH/modules/contrib
+                rm -f -r {image_resize_filter}
+                get_dev_contrib "image_resize_filter-7.x-1.14.tar.gz"
+                upgrade_contrib_less
+              fi
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_OPENACADEMY installation completed"
+        else
+          msg "DISTRO: $_F_OPENACADEMY installation skipped"
+        fi
+      fi
     fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-7.x-$_OPENACADEMY-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_OPENACADEMY" ] ; then
-      mv $_REAL_PRNAME-7.x-$_OPENACADEMY $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-    if [ $_OPENACADEMY = "1.0" ] ; then
-      cd $_SHRD_PRPATH/modules/contrib
-      rm -f -r {image_resize_filter}
-      get_dev_contrib "image_resize_filter-7.x-1.14.tar.gz"
-      upgrade_contrib_less
-    fi
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_OPENACADEMY installation completed"
-else
-  msg "DISTRO: $_F_OPENACADEMY installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 openatrium7_install() {
 ###---### OpenAtrium D7
 #
-_REAL_PRNAME="openatrium"
-_SHRD_PLNAME="$_REAL_PRNAME-$_OPENATRIUM7-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "OA7" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_OPENATRIUM7 - http://openatrium.com" ; then
-true
-msg "DISTRO: $_F_OPENATRIUM7 installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="openatrium"
+  _SHRD_PLNAME="$_REAL_PRNAME-$_OPENATRIUM7-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "OA7" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_OPENATRIUM7 - http://openatrium.com" ; then
+          true
+          msg "DISTRO: $_F_OPENATRIUM7 installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+                "${urlDrp}/$_REAL_PRNAME-7.x-$_OPENATRIUM7-core.tar.gz" | tar -xzf -
+              if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_OPENATRIUM7" ] ; then
+                mv $_REAL_PRNAME-7.x-$_OPENATRIUM7 $_SHRD_PLNAME
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+              cd $_SHRD_PRPATH/modules/contrib
+              upgrade_contrib_less
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_OPENATRIUM7 installation completed"
+        else
+          msg "DISTRO: $_F_OPENATRIUM7 installation skipped"
+        fi
+      fi
     fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-7.x-$_OPENATRIUM7-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_OPENATRIUM7" ] ; then
-      mv $_REAL_PRNAME-7.x-$_OPENATRIUM7 $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-    cd $_SHRD_PRPATH/modules/contrib
-    upgrade_contrib_less
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_OPENATRIUM7 installation completed"
-else
-  msg "DISTRO: $_F_OPENATRIUM7 installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 openblog_install() {
 ###---### OpenBlog
 #
-_REAL_PRNAME="openblog"
-_SHRD_PLNAME="$_REAL_PRNAME-$_OPENBLOG-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "OBG" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_OPENBLOG - https://drupal.org/project/openblog" ; then
-true
-msg "DISTRO: $_F_OPENBLOG installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="openblog"
+  _SHRD_PLNAME="$_REAL_PRNAME-$_OPENBLOG-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "OBG" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_OPENBLOG - ${urlPrt}/openblog" ; then
+          true
+          msg "DISTRO: $_F_OPENBLOG installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+                "${urlDrp}/$_REAL_PRNAME-7.x-$_OPENBLOG-core.tar.gz" | tar -xzf -
+              if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_OPENBLOG" ] ; then
+                mv $_REAL_PRNAME-7.x-$_OPENBLOG $_SHRD_PLNAME
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_OPENBLOG installation completed"
+        else
+          msg "DISTRO: $_F_OPENBLOG installation skipped"
+        fi
+      fi
     fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-7.x-$_OPENBLOG-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_OPENBLOG" ] ; then
-      mv $_REAL_PRNAME-7.x-$_OPENBLOG $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_OPENBLOG installation completed"
-else
-  msg "DISTRO: $_F_OPENBLOG installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 openchurch1_install() {
 ###---### OpenChurch
 #
-_REAL_PRNAME="openchurch"
-_SHRD_PLNAME="$_REAL_PRNAME-$_OPENCHURCH1-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "OCH" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_OPENCHURCH1 - http://openchurchsite.com" ; then
-true
-msg "DISTRO: $_F_OPENCHURCH1 installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="openchurch"
+  _SHRD_PLNAME="$_REAL_PRNAME-$_OPENCHURCH1-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "OCH" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_OPENCHURCH1 - http://openchurchsite.com" ; then
+          true
+          msg "DISTRO: $_F_OPENCHURCH1 installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+                "${urlDrp}/$_REAL_PRNAME-7.x-$_OPENCHURCH1-core.tar.gz" | tar -xzf -
+              if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_OPENCHURCH1" ] ; then
+                mv $_REAL_PRNAME-7.x-$_OPENCHURCH1 $_SHRD_PLNAME
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+              rm -f -r $_SHRD_PRPATH/libraries/plupload/examples
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_OPENCHURCH1 installation completed"
+        else
+          msg "DISTRO: $_F_OPENCHURCH1 installation skipped"
+        fi
+      fi
     fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-7.x-$_OPENCHURCH1-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_OPENCHURCH1" ] ; then
-      mv $_REAL_PRNAME-7.x-$_OPENCHURCH1 $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-    rm -f -r $_SHRD_PRPATH/libraries/plupload/examples
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_OPENCHURCH1 installation completed"
-else
-  msg "DISTRO: $_F_OPENCHURCH1 installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 openchurch2_install() {
 ###---### OpenChurch
 #
-_REAL_PRNAME="openchurch"
-_SHRD_PLNAME="$_REAL_PRNAME-$_OPENCHURCH2-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "CH2" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_OPENCHURCH2 - http://openchurchsite.com" ; then
-true
-msg "DISTRO: $_F_OPENCHURCH2 installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="openchurch"
+  _SHRD_PLNAME="$_REAL_PRNAME-$_OPENCHURCH2-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "CH2" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_OPENCHURCH2 - http://openchurchsite.com" ; then
+          true
+          msg "DISTRO: $_F_OPENCHURCH2 installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+                "${urlDrp}/$_REAL_PRNAME-7.x-$_OPENCHURCH2-core.tar.gz" | tar -xzf -
+              if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_OPENCHURCH2" ] ; then
+                mv $_REAL_PRNAME-7.x-$_OPENCHURCH2 $_SHRD_PLNAME
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+              rm -f -r $_SHRD_PRPATH/libraries/plupload/examples
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_OPENCHURCH2 installation completed"
+        else
+          msg "DISTRO: $_F_OPENCHURCH2 installation skipped"
+        fi
+      fi
     fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-7.x-$_OPENCHURCH2-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_OPENCHURCH2" ] ; then
-      mv $_REAL_PRNAME-7.x-$_OPENCHURCH2 $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-    rm -f -r $_SHRD_PRPATH/libraries/plupload/examples
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_OPENCHURCH2 installation completed"
-else
-  msg "DISTRO: $_F_OPENCHURCH2 installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 opendeals_install() {
 ###---### OpenDeals
 #
-_REAL_PRNAME="opendeals"
-_SHRD_PLNAME="$_REAL_PRNAME-$_OPENDEALS-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "ODS" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_OPENDEALS - http://opendealsapp.com" ; then
-true
-msg "DISTRO: $_F_OPENDEALS installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="opendeals"
+  _SHRD_PLNAME="$_REAL_PRNAME-$_OPENDEALS-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "ODS" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_OPENDEALS - http://opendealsapp.com" ; then
+          true
+          msg "DISTRO: $_F_OPENDEALS installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+                "${urlDrp}/$_REAL_PRNAME-7.x-$_OPENDEALS-core.tar.gz" | tar -xzf -
+              if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_OPENDEALS" ] ; then
+                mv $_REAL_PRNAME-7.x-$_OPENDEALS $_SHRD_PLNAME
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_OPENDEALS installation completed"
+        else
+          msg "DISTRO: $_F_OPENDEALS installation skipped"
+        fi
+      fi
     fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-7.x-$_OPENDEALS-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_OPENDEALS" ] ; then
-      mv $_REAL_PRNAME-7.x-$_OPENDEALS $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_OPENDEALS installation completed"
-else
-  msg "DISTRO: $_F_OPENDEALS installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 openoutreach_install() {
 ###---### OpenOutreach
 #
-_REAL_PRNAME="openoutreach"
-_SHRD_PLNAME="$_REAL_PRNAME-$_OPENOUTREACH-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "OOH" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_OPENOUTREACH - http://openoutreach.org" ; then
-true
-msg "DISTRO: $_F_OPENOUTREACH installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="openoutreach"
+  _SHRD_PLNAME="$_REAL_PRNAME-$_OPENOUTREACH-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "OOH" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_OPENOUTREACH - http://openoutreach.org" ; then
+          true
+          msg "DISTRO: $_F_OPENOUTREACH installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+                "${urlDrp}/$_REAL_PRNAME-7.x-$_OPENOUTREACH-core.tar.gz" | tar -xzf -
+              if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_OPENOUTREACH" ] ; then
+                mv $_REAL_PRNAME-7.x-$_OPENOUTREACH $_SHRD_PLNAME
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_OPENOUTREACH installation completed"
+        else
+          msg "DISTRO: $_F_OPENOUTREACH installation skipped"
+        fi
+      fi
     fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-7.x-$_OPENOUTREACH-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_OPENOUTREACH" ] ; then
-      mv $_REAL_PRNAME-7.x-$_OPENOUTREACH $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_OPENOUTREACH installation completed"
-else
-  msg "DISTRO: $_F_OPENOUTREACH installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 openpublic_install() {
 ###---### OpenPublic
 #
-_REAL_PRNAME="openpublic"
-_SHRD_PLNAME="$_REAL_PRNAME-$_OPENPUBLIC-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "OPC" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_OPENPUBLIC - http://openpublicapp.com" ; then
-true
-msg "DISTRO: $_F_OPENPUBLIC installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="openpublic"
+  _SHRD_PLNAME="$_REAL_PRNAME-$_OPENPUBLIC-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "OPC" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_OPENPUBLIC - http://openpublicapp.com" ; then
+          true
+          msg "DISTRO: $_F_OPENPUBLIC installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+                "${urlDrp}/$_REAL_PRNAME-7.x-$_OPENPUBLIC-core.tar.gz" | tar -xzf -
+              if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_OPENPUBLIC" ] ; then
+                mv $_REAL_PRNAME-7.x-$_OPENPUBLIC $_SHRD_PLNAME
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_OPENPUBLIC installation completed"
+        else
+          msg "DISTRO: $_F_OPENPUBLIC installation skipped"
+        fi
+      fi
     fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-7.x-$_OPENPUBLIC-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_OPENPUBLIC" ] ; then
-      mv $_REAL_PRNAME-7.x-$_OPENPUBLIC $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_OPENPUBLIC installation completed"
-else
-  msg "DISTRO: $_F_OPENPUBLIC installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 openscholar_install() {
 ###---### OpenScholar
 #
-_REAL_PRNAME="openscholar"
-_SHRD_PLNAME="$_REAL_PRNAME-$_OPENSCHOLAR-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "OSR" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_OPENSCHOLAR - http://theopenscholar.org" ; then
-true
-msg "DISTRO: $_F_OPENSCHOLAR installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="openscholar"
+  _SHRD_PLNAME="$_REAL_PRNAME-$_OPENSCHOLAR-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "OSR" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_OPENSCHOLAR - http://theopenscholar.org" ; then
+          true
+          msg "DISTRO: $_F_OPENSCHOLAR installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              get_distro_ext "$_REAL_PRNAME-7.x-$_OPENSCHOLAR.tar.gz"
+              if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_OPENSCHOLAR" ] ; then
+                mv $_REAL_PRNAME-7.x-$_OPENSCHOLAR $_SHRD_PLNAME
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+              rm -f -r $_SHRD_PRPATH/modules/contrib/{entitycache,expire}
+              sed -i "s/.*entitycache.*//g"  \
+                $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
+              if [ $_OPENSCHOLAR = "3.16.0" ] ; then
+                cd $_SHRD_PRPATH/modules/contrib
+                rm -f -r {biblio,boxes,entityreference_prepopulate,restws}
+                get_dev_contrib "biblio-7.x-1.0-rc7.tar.gz"
+                get_dev_contrib "boxes-7.x-1.2.tar.gz"
+                get_dev_contrib "entityreference_prepopulate-7.x-1.5.tar.gz"
+                get_dev_contrib "restws-7.x-2.2.tar.gz"
+                upgrade_contrib_less
+              fi
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_OPENSCHOLAR installation completed"
+        else
+          msg "DISTRO: $_F_OPENSCHOLAR installation skipped"
+        fi
+      fi
     fi
-    get_distro_ext "$_REAL_PRNAME-7.x-$_OPENSCHOLAR.tar.gz"
-    if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_OPENSCHOLAR" ] ; then
-      mv $_REAL_PRNAME-7.x-$_OPENSCHOLAR $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-    rm -f -r $_SHRD_PRPATH/modules/contrib/{entitycache,expire}
-    sed -i "s/.*entitycache.*//g"  $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
-    if [ $_OPENSCHOLAR = "3.16.0" ] ; then
-      cd $_SHRD_PRPATH/modules/contrib
-      rm -f -r {biblio,boxes,entityreference_prepopulate,restws}
-      get_dev_contrib "biblio-7.x-1.0-rc7.tar.gz"
-      get_dev_contrib "boxes-7.x-1.2.tar.gz"
-      get_dev_contrib "entityreference_prepopulate-7.x-1.5.tar.gz"
-      get_dev_contrib "restws-7.x-2.2.tar.gz"
-      upgrade_contrib_less
-    fi
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_OPENSCHOLAR installation completed"
-else
-  msg "DISTRO: $_F_OPENSCHOLAR installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 panopoly_install() {
 ###---### Panopoly
 #
-_REAL_PRNAME="panopoly"
-_SHRD_PLNAME="$_REAL_PRNAME-$_PANOPOLY-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "PPY" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_PANOPOLY - https://drupal.org/project/panopoly" ; then
-true
-msg "DISTRO: $_F_PANOPOLY installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
-    fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-7.x-$_PANOPOLY-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_PANOPOLY" ] ; then
-      mv $_REAL_PRNAME-7.x-$_PANOPOLY $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-    if [ $_PANOPOLY = "1.4" ] ; then
-      cd $_SHRD_PRPATH/modules/contrib
-      rm -f -r {fape}
-      get_dev_contrib "fape-7.x-1.2.tar.gz"
-    fi
-    if [ ! -d "$_SHRD_PRPATH/modules/panopoly/panopoly_demo" ] ; then
-      if [ -d "$_SHRD_PLPATH/sites/all/modules/panopoly_demo" ] ; then
-        mv -f $_SHRD_PLPATH/sites/all/modules/panopoly_demo $_SHRD_PRPATH/modules/panopoly/ &> /dev/null
-      else
-        cd $_SHRD_PRPATH/modules/panopoly
-        get_dev_contrib "panopoly_demo-7.x-1.14.tar.gz"
+  _REAL_PRNAME="panopoly"
+  _SHRD_PLNAME="$_REAL_PRNAME-$_PANOPOLY-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "PPY" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_PANOPOLY - ${urlPrt}/panopoly" ; then
+          true
+          msg "DISTRO: $_F_PANOPOLY installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+                "${urlDrp}/$_REAL_PRNAME-7.x-$_PANOPOLY-core.tar.gz" | tar -xzf -
+              if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_PANOPOLY" ] ; then
+                mv $_REAL_PRNAME-7.x-$_PANOPOLY $_SHRD_PLNAME
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+              if [ $_PANOPOLY = "1.4" ] ; then
+                cd $_SHRD_PRPATH/modules/contrib
+                rm -f -r {fape}
+                get_dev_contrib "fape-7.x-1.2.tar.gz"
+              fi
+              if [ ! -d "$_SHRD_PRPATH/modules/panopoly/panopoly_demo" ] ; then
+                if [ -d "$_SHRD_PLPATH/sites/all/modules/panopoly_demo" ] ; then
+                  mv -f $_SHRD_PLPATH/sites/all/modules/panopoly_demo \
+                    $_SHRD_PRPATH/modules/panopoly/ &> /dev/null
+                else
+                  cd $_SHRD_PRPATH/modules/panopoly
+                  get_dev_contrib "panopoly_demo-7.x-1.14.tar.gz"
+                fi
+              fi
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_PANOPOLY installation completed"
+        else
+          msg "DISTRO: $_F_PANOPOLY installation skipped"
+        fi
       fi
     fi
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_PANOPOLY installation completed"
-else
-  msg "DISTRO: $_F_PANOPOLY installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 recruiter_install() {
 ###---### Recruiter
 #
-_REAL_PRNAME="recruiter"
-_SHRD_PLNAME="$_REAL_PRNAME-$_RECRUITER-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "RER" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_RECRUITER - https://drupal.org/project/recruiter" ; then
-true
-msg "DISTRO: $_F_RECRUITER installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="recruiter"
+  _SHRD_PLNAME="$_REAL_PRNAME-$_RECRUITER-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "RER" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_RECRUITER - ${urlPrt}/recruiter" ; then
+          true
+          msg "DISTRO: $_F_RECRUITER installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+                "${urlDrp}/$_REAL_PRNAME-7.x-$_RECRUITER-core.tar.gz" | tar -xzf -
+              if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_RECRUITER" ] ; then
+                mv $_REAL_PRNAME-7.x-$_RECRUITER $_SHRD_PLNAME
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+              if [ $_RECRUITER = "1.3" ] ; then
+                cd $_SHRD_PRPATH/modules
+                rm -f -r {i18n,rules}
+                get_dev_contrib "i18n-7.x-1.11.tar.gz"
+                get_dev_contrib "rules-7.x-2.7.tar.gz"
+                upgrade_contrib_less
+              fi
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_RECRUITER installation completed"
+        else
+          msg "DISTRO: $_F_RECRUITER installation skipped"
+        fi
+      fi
     fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-7.x-$_RECRUITER-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_RECRUITER" ] ; then
-      mv $_REAL_PRNAME-7.x-$_RECRUITER $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-    if [ $_RECRUITER = "1.3" ] ; then
-      cd $_SHRD_PRPATH/modules
-      rm -f -r {i18n,rules}
-      get_dev_contrib "i18n-7.x-1.11.tar.gz"
-      get_dev_contrib "rules-7.x-2.7.tar.gz"
-      upgrade_contrib_less
-    fi
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_RECRUITER installation completed"
-else
-  msg "DISTRO: $_F_RECRUITER installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 restaurant_install() {
 ###---### Restaurant
 #
-_REAL_PRNAME="restaurant"
-_SHRD_PLNAME="$_REAL_PRNAME-$_RESTAURANT-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "RST" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_RESTAURANT - https://drupal.org/project/restaurant" ; then
-true
-msg "DISTRO: $_F_RESTAURANT installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="restaurant"
+  _SHRD_PLNAME="$_REAL_PRNAME-$_RESTAURANT-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "RST" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_RESTAURANT - ${urlPrt}/restaurant" ; then
+          true
+          msg "DISTRO: $_F_RESTAURANT installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
+                "${urlDrp}/$_REAL_PRNAME-7.x-$_RESTAURANT-core.tar.gz" | tar -xzf -
+              if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_RESTAURANT" ] ; then
+                mv $_REAL_PRNAME-7.x-$_RESTAURANT $_SHRD_PLNAME
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+              cd $_SHRD_PRPATH/modules/restaurant/restaurant_demo/import
+              patch -p1 < ${pthPch}/restaurant_demo.patch &> /dev/null
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_RESTAURANT installation completed"
+        else
+          msg "DISTRO: $_F_RESTAURANT installation skipped"
+        fi
+      fi
     fi
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-7.x-$_RESTAURANT-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/$_REAL_PRNAME-7.x-$_RESTAURANT" ] ; then
-      mv $_REAL_PRNAME-7.x-$_RESTAURANT $_SHRD_PLNAME
-    fi
-    nocore_d7_dist_clean
-    remove_default_core_seven_profiles
-    cd $_SHRD_PRPATH/modules/restaurant/restaurant_demo/import
-    patch -p1 < /opt/tmp/boa/aegir/patches/restaurant_demo.patch &> /dev/null
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_RESTAURANT installation completed"
-else
-  msg "DISTRO: $_F_RESTAURANT installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 ubercart6_install() {
 ###---### Ubercart 2
 #
-_REAL_PRNAME="uberdrupal"
-_VIRT_PRNAME="ubercart"
-_SHRD_PLNAME="$_VIRT_PRNAME-$_UBERCART6-$_SMALLCORE6"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "UCT" ]] ; then
-if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
-echo " "
-if prompt_yes_no "$_F_UBERCART6 - http://ubercart.org" ; then
-true
-msg "DISTRO: $_F_UBERCART6 installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    cd $_CORE
-    if [ ! -e "$_D6_CORE_DIR" ] ; then
-      prepare_drupal6_core
+  _REAL_PRNAME="uberdrupal"
+  _VIRT_PRNAME="ubercart"
+  _SHRD_PLNAME="$_VIRT_PRNAME-$_UBERCART6-$_SMALLCORE6"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+    || [[ "$_PLATFORMS_LIST" =~ "UCT" ]] ; then
+    if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
+      echo " "
+      if prompt_yes_no "$_F_UBERCART6 - http://ubercart.org" ; then
+        true
+        msg "DISTRO: $_F_UBERCART6 installation in progress..."
+        if [ ! -d "$_SHRD_PLPATH" ] ; then
+          if [ "$_AEGIR_VERSION" = "HEAD" ] \
+            && [ "$_T_BUILD" = "HEAD" ] ; then
+            cd $_CORE
+            if [ ! -e "$_D6_CORE_DIR" ] ; then
+              prepare_drupal6_core
+            fi
+            mkdir -p $_SHRD_PLPATH
+            nocore_d6_dist_clean
+            rm -f -r $_SHRD_PLPATH/profiles/default
+            cd $_SHRD_PLPATH/profiles
+            get_dev_contrib "uberdrupal.tar.gz"
+            cd $_CORE
+            mkdir -p $_SHRD_PRPATH/{modules,themes,libraries}
+            cd $_SHRD_PRPATH/libraries
+            get_dev_contrib "colorbox-1.3.18.zip"
+            cd $_SHRD_PRPATH/modules
+            get_dev_contrib "admin_menu-6.x-3.x-dev.tar.gz"
+            get_dev_contrib "cck-6.x-2.9.tar.gz"
+            get_dev_contrib "colorbox-6.x-1.4.tar.gz"
+            get_dev_contrib "date-6.x-2.9.tar.gz"
+            get_dev_contrib "filefield-6.x-3.13.tar.gz"
+            get_dev_contrib "google_analytics-6.x-4.1.tar.gz"
+            get_dev_contrib "imageapi-6.x-1.10.tar.gz"
+            get_dev_contrib "imagecache-6.x-2.x-dev.tar.gz"
+            get_dev_contrib "imagefield-6.x-3.11.tar.gz"
+            get_dev_contrib "jquery_update-6.x-2.0-alpha1.tar.gz"
+            get_dev_contrib "libraries-6.x-1.0.tar.gz"
+            get_dev_contrib "lightbox2-6.x-1.x-dev.tar.gz"
+            get_dev_contrib "rules-6.x-1.5.tar.gz"
+            get_dev_contrib "skinr-6.x-1.7.tar.gz"
+            get_dev_contrib "token-6.x-1.19.tar.gz"
+            get_dev_contrib "ubercart-6.x-$_UBERCART6.tar.gz"
+            get_dev_contrib "views-6.x-3.0.tar.gz"
+            get_dev_contrib "webform-6.x-3.20.tar.gz"
+            ### https://drupal.org/node/1167276#comment-5138248
+            cd $_SHRD_PRPATH/modules/$_VIRT_PRNAME
+            patch -p1 < ${pthPch}/$_VIRT_PRNAME-1167276-reroll.patch &> /dev/null
+            cd $_SHRD_PRPATH/modules/imagecache
+            # https://drupal.org/node/1243258#comment-4850634
+            patch -p1 < ${pthPch}/imagecache-1243258-5.patch &> /dev/null
+            cd $_SHRD_PRPATH/themes
+            get_dev_contrib "fusion-6.x-1.x-dev.tar.gz"
+            get_dev_contrib "acquia_prosper-6.x-1.1.tar.gz"
+          else
+            cd $_CORE
+            get_distro_ext "$_SHRD_PLNAME.tar.gz"
+          fi
+        fi
+        init_this_distro_root
+        msg "DISTRO: $_F_UBERCART6 installation completed"
+      else
+        msg "DISTRO: $_F_UBERCART6 installation skipped"
+      fi
     fi
-    mkdir -p $_SHRD_PLPATH
-    nocore_d6_dist_clean
-    rm -f -r $_SHRD_PLPATH/profiles/default
-    cd $_SHRD_PLPATH/profiles
-    get_dev_contrib "uberdrupal.tar.gz"
-    cd $_CORE
-    mkdir -p $_SHRD_PRPATH/{modules,themes,libraries}
-    cd $_SHRD_PRPATH/libraries
-    get_dev_contrib "colorbox-1.3.18.zip"
-    cd $_SHRD_PRPATH/modules
-    get_dev_contrib "admin_menu-6.x-3.x-dev.tar.gz"
-    get_dev_contrib "cck-6.x-2.9.tar.gz"
-    get_dev_contrib "colorbox-6.x-1.4.tar.gz"
-    get_dev_contrib "date-6.x-2.9.tar.gz"
-    get_dev_contrib "filefield-6.x-3.13.tar.gz"
-    get_dev_contrib "google_analytics-6.x-4.1.tar.gz"
-    get_dev_contrib "imageapi-6.x-1.10.tar.gz"
-    get_dev_contrib "imagecache-6.x-2.x-dev.tar.gz"
-    get_dev_contrib "imagefield-6.x-3.11.tar.gz"
-    get_dev_contrib "jquery_update-6.x-2.0-alpha1.tar.gz"
-    get_dev_contrib "libraries-6.x-1.0.tar.gz"
-    get_dev_contrib "lightbox2-6.x-1.x-dev.tar.gz"
-    get_dev_contrib "rules-6.x-1.5.tar.gz"
-    get_dev_contrib "skinr-6.x-1.7.tar.gz"
-    get_dev_contrib "token-6.x-1.19.tar.gz"
-    get_dev_contrib "ubercart-6.x-$_UBERCART6.tar.gz"
-    get_dev_contrib "views-6.x-3.0.tar.gz"
-    get_dev_contrib "webform-6.x-3.20.tar.gz"
-    ### https://drupal.org/node/1167276#comment-5138248
-    cd $_SHRD_PRPATH/modules/$_VIRT_PRNAME
-    patch -p1 < /opt/tmp/boa/aegir/patches/$_VIRT_PRNAME-1167276-reroll.patch &> /dev/null
-    cd $_SHRD_PRPATH/modules/imagecache
-    # https://drupal.org/node/1243258#comment-4850634
-    patch -p1 < /opt/tmp/boa/aegir/patches/imagecache-1243258-5.patch &> /dev/null
-    cd $_SHRD_PRPATH/themes
-    get_dev_contrib "fusion-6.x-1.x-dev.tar.gz"
-    get_dev_contrib "acquia_prosper-6.x-1.1.tar.gz"
-  else
-    cd $_CORE
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_UBERCART6 installation completed"
-else
-  msg "DISTRO: $_F_UBERCART6 installation skipped"
-fi
-fi
-fi
 }
 
 
 ubercart7_install() {
 ###---### Ubercart 3
 #
-_REAL_PRNAME="minimal"
-_VIRT_PRNAME="ubercart"
-_SHRD_PLNAME="$_VIRT_PRNAME-$_UBERCART7-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "UC7" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_UBERCART7 - http://ubercart.org" ; then
-true
-msg "DISTRO: $_F_UBERCART7 installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="minimal"
+  _VIRT_PRNAME="ubercart"
+  _SHRD_PLNAME="$_VIRT_PRNAME-$_UBERCART7-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "UC7" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_UBERCART7 - http://ubercart.org" ; then
+          true
+          msg "DISTRO: $_F_UBERCART7 installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              mkdir -p $_SHRD_PLPATH
+              nocore_d7_dist_clean
+              rm -f -r $_SHRD_PLPATH/profiles/standard
+              rm -f -r $_SHRD_PLPATH/profiles/testing
+              sed -i "s/version = VERSION/version = \"$_SMALLCORE7\"/g" \
+                $_SHRD_PLPATH/profiles/minimal/minimal.info &> /dev/null
+              mkdir -p $_SHRD_PRPATH/libraries
+              cd $_SHRD_PRPATH/libraries
+              get_dev_contrib "colorbox-1.5.13.zip"
+              if [ -d "colorbox-master" ] ; then
+                mv -f colorbox-master colorbox
+              fi
+              mkdir -p $_SHRD_PRPATH/modules
+              cd $_SHRD_PRPATH/modules
+              get_dev_contrib "colorbox-7.x-2.8.tar.gz"
+              get_dev_contrib "ctools-7.x-1.5.tar.gz"
+              get_dev_contrib "entity-7.x-1.5.tar.gz"
+              get_dev_contrib "google_analytics-7.x-2.0.tar.gz"
+              get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
+              get_dev_contrib "pathauto-7.x-1.2.tar.gz"
+              get_dev_contrib "rules-7.x-2.7.tar.gz"
+              get_dev_contrib "token-7.x-1.5.tar.gz"
+              get_dev_contrib "ubercart-7.x-$_UBERCART7.tar.gz"
+              get_dev_contrib "views-7.x-3.8.tar.gz"
+              cd $_SHRD_PRPATH/modules/views
+              # https://drupal.org/node/1766338#comment-6445882
+              patch -p1 < \
+                ${pthPch}/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+              # https://drupal.org/node/2037469
+              patch -p1 < \
+                ${pthPch}/views-exposed-sorts-2037469-1.patch &> /dev/null
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_UBERCART7 installation completed"
+        else
+          msg "DISTRO: $_F_UBERCART7 installation skipped"
+        fi
+      fi
     fi
-    mkdir -p $_SHRD_PLPATH
-    nocore_d7_dist_clean
-    rm -f -r $_SHRD_PLPATH/profiles/standard
-    rm -f -r $_SHRD_PLPATH/profiles/testing
-    sed -i "s/version = VERSION/version = \"$_SMALLCORE7\"/g" $_SHRD_PLPATH/profiles/minimal/minimal.info &> /dev/null
-    mkdir -p $_SHRD_PRPATH/libraries
-    cd $_SHRD_PRPATH/libraries
-    get_dev_contrib "colorbox-1.5.13.zip"
-    if [ -d "colorbox-master" ] ; then
-      mv -f colorbox-master colorbox
-    fi
-    mkdir -p $_SHRD_PRPATH/modules
-    cd $_SHRD_PRPATH/modules
-    get_dev_contrib "colorbox-7.x-2.8.tar.gz"
-    get_dev_contrib "ctools-7.x-1.5.tar.gz"
-    get_dev_contrib "entity-7.x-1.5.tar.gz"
-    get_dev_contrib "google_analytics-7.x-2.0.tar.gz"
-    get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
-    get_dev_contrib "pathauto-7.x-1.2.tar.gz"
-    get_dev_contrib "rules-7.x-2.7.tar.gz"
-    get_dev_contrib "token-7.x-1.5.tar.gz"
-    get_dev_contrib "ubercart-7.x-$_UBERCART7.tar.gz"
-    get_dev_contrib "views-7.x-3.8.tar.gz"
-    cd $_SHRD_PRPATH/modules/views
-    # https://drupal.org/node/1766338#comment-6445882
-    patch -p1 < /opt/tmp/boa/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
-    # https://drupal.org/node/2037469
-    patch -p1 < /opt/tmp/boa/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_UBERCART7 installation completed"
-else
-  msg "DISTRO: $_F_UBERCART7 installation skipped"
-fi
-fi
-fi
-fi
 }
 
 
 ubercart7_testing_install() {
 ###---### Ubercart 3 with testing profile
 #
-_REAL_PRNAME="testing"
-_VIRT_PRNAME="ubercart-$_REAL_PRNAME"
-_SHRD_PLNAME="$_VIRT_PRNAME-$_UBERCART7-$_SMALLCORE7"
-_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
-_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
-_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] || [[ "$_PLATFORMS_LIST" =~ "UC7" ]] ; then
-if [ ! -d "$_OCTO_PLPATH" ] ; then
-echo " "
-if prompt_yes_no "$_F_UBER_CART_TESTING - http://ubercart.org" ; then
-true
-msg "DISTRO: $_F_UBER_CART_TESTING installation in progress..."
-if [ ! -d "$_SHRD_PLPATH" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D7_CORE_DIR" ] ; then
-      prepare_drupal7_core
+  _REAL_PRNAME="testing"
+  _VIRT_PRNAME="ubercart-$_REAL_PRNAME"
+  _SHRD_PLNAME="$_VIRT_PRNAME-$_UBERCART7-$_SMALLCORE7"
+  _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+  _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+  _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+  if [ "$_ALLOW_ALL" = "YES" ] ; then
+    if [[ "$_PLATFORMS_LIST" =~ "ALL" ]] \
+      || [[ "$_PLATFORMS_LIST" =~ "UC7" ]] ; then
+      if [ ! -d "$_OCTO_PLPATH" ] ; then
+        echo " "
+        if prompt_yes_no "$_F_UBER_CART_TESTING - http://ubercart.org" ; then
+          true
+          msg "DISTRO: $_F_UBER_CART_TESTING installation in progress..."
+          if [ ! -d "$_SHRD_PLPATH" ] ; then
+            cd $_CORE
+            if [ "$_AEGIR_VERSION" = "HEAD" ] \
+              && [ "$_T_BUILD" = "HEAD" ] ; then
+              if [ ! -e "$_D7_CORE_DIR" ] ; then
+                prepare_drupal7_core
+              fi
+              mkdir -p $_SHRD_PLPATH
+              nocore_d7_dist_clean
+              rm -f -r $_SHRD_PLPATH/profiles/standard
+              rm -f -r $_SHRD_PLPATH/profiles/minimal
+              sed -i "s/version = VERSION/version = \"$_SMALLCORE7\"/g" \
+                $_SHRD_PLPATH/profiles/testing/testing.info &> /dev/null
+              mkdir -p $_SHRD_PRPATH/libraries
+              cd $_SHRD_PRPATH/libraries
+              get_dev_contrib "colorbox-1.5.13.zip"
+              if [ -d "colorbox-master" ] ; then
+                mv -f colorbox-master colorbox
+              fi
+              mkdir -p $_SHRD_PRPATH/modules
+              cd $_SHRD_PRPATH/modules
+              get_dev_contrib "colorbox-7.x-2.8.tar.gz"
+              get_dev_contrib "ctools-7.x-1.5.tar.gz"
+              get_dev_contrib "entity-7.x-1.5.tar.gz"
+              get_dev_contrib "google_analytics-7.x-2.0.tar.gz"
+              get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
+              get_dev_contrib "pathauto-7.x-1.2.tar.gz"
+              get_dev_contrib "rules-7.x-2.7.tar.gz"
+              get_dev_contrib "token-7.x-1.5.tar.gz"
+              get_dev_contrib "ubercart-7.x-$_UBERCART7.tar.gz"
+              get_dev_contrib "views-7.x-3.8.tar.gz"
+              cd $_SHRD_PRPATH/modules/views
+              # https://drupal.org/node/1766338#comment-6445882
+              patch -p1 < \
+                ${pthPch}/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+              # https://drupal.org/node/2037469
+              patch -p1 < \
+                ${pthPch}/views-exposed-sorts-2037469-1.patch &> /dev/null
+            else
+              get_distro_ext "$_SHRD_PLNAME.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_UBER_CART_TESTING installation completed"
+        else
+          msg "DISTRO: $_F_UBER_CART_TESTING installation skipped"
+        fi
+      fi
     fi
-    mkdir -p $_SHRD_PLPATH
-    nocore_d7_dist_clean
-    rm -f -r $_SHRD_PLPATH/profiles/standard
-    rm -f -r $_SHRD_PLPATH/profiles/minimal
-    sed -i "s/version = VERSION/version = \"$_SMALLCORE7\"/g" $_SHRD_PLPATH/profiles/testing/testing.info &> /dev/null
-    mkdir -p $_SHRD_PRPATH/libraries
-    cd $_SHRD_PRPATH/libraries
-    get_dev_contrib "colorbox-1.5.13.zip"
-    if [ -d "colorbox-master" ] ; then
-      mv -f colorbox-master colorbox
-    fi
-    mkdir -p $_SHRD_PRPATH/modules
-    cd $_SHRD_PRPATH/modules
-    get_dev_contrib "colorbox-7.x-2.8.tar.gz"
-    get_dev_contrib "ctools-7.x-1.5.tar.gz"
-    get_dev_contrib "entity-7.x-1.5.tar.gz"
-    get_dev_contrib "google_analytics-7.x-2.0.tar.gz"
-    get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
-    get_dev_contrib "pathauto-7.x-1.2.tar.gz"
-    get_dev_contrib "rules-7.x-2.7.tar.gz"
-    get_dev_contrib "token-7.x-1.5.tar.gz"
-    get_dev_contrib "ubercart-7.x-$_UBERCART7.tar.gz"
-    get_dev_contrib "views-7.x-3.8.tar.gz"
-    cd $_SHRD_PRPATH/modules/views
-    # https://drupal.org/node/1766338#comment-6445882
-    patch -p1 < /opt/tmp/boa/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
-    # https://drupal.org/node/2037469
-    patch -p1 < /opt/tmp/boa/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
-  else
-    get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
-fi
-init_this_distro_root
-msg "DISTRO: $_F_UBER_CART_TESTING installation completed"
-else
-  msg "DISTRO: $_F_UBER_CART_TESTING installation skipped"
-fi
-fi
-fi
-fi
 }
 
 drupal6_install
@@ -2084,12 +2196,17 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   _THIS_HOSTMASTER="$_HOSTMASTER_ROOT/sites/$_DOMAIN"
-  #msg "_THIS_HOSTMASTER is read static $_THIS_HOSTMASTER because _LOCAL_STATUS is $_LOCAL_STATUS"
+  #msg "_THIS_HOSTMASTER is read static $_THIS_HOSTMASTER because \
+  #  _LOCAL_STATUS is $_LOCAL_STATUS"
 else
   if [ -e "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
-    _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}'`
+    _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php \
+      | grep 'site_path' \
+      | cut -d: -f2 \
+      | awk '{ print $3}'`
     _THIS_HOSTMASTER=`echo $_THIS_HOSTMASTER | sed "s/[\,']//g"`
-    #msg "_THIS_HOSTMASTER is $_THIS_HOSTMASTER - read from $_ROOT/.drush/hostmaster.alias.drushrc.php"
+    #msg "_THIS_HOSTMASTER is $_THIS_HOSTMASTER - \
+    #  read from $_ROOT/.drush/hostmaster.alias.drushrc.php"
   else
     _THIS_HOSTMASTER="$_HOSTMASTER_ROOT/sites/$_DOMAIN"
     #msg "_THIS_HOSTMASTER is read static $_THIS_HOSTMASTER"
@@ -2107,210 +2224,255 @@ cp -af /opt/tmp/boa/aegir/helpers/make_platform.php.txt ./
 mv -f make_platform.php.txt make_platform.php &> /dev/null
 
 if [ "$_SERIES_RESULT" = "OK" ] ; then
-  _DRUSHRC_FILE="sites/all/drush/drushrc.php"
+  drhSrc="sites/all/drush/drushrc.php"
 else
-  _DRUSHRC_FILE="drushrc.php"
+  drhSrc="drushrc.php"
 fi
 
-if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_D" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7D &> /dev/null
+pthDst="$_ROOT/distro/$_THIS_CORE"
+
+if [ -d "${pthDst}/$_DRUPAL7D" ] ; then
+  if [ ! -e "${pthDst}/$_DRUPAL7D/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_D" standard \
+      ${pthDst}/$_DRUPAL7D &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7S" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7S/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_S" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7S &> /dev/null
+if [ -d "${pthDst}/$_DRUPAL7S" ] ; then
+  if [ ! -e "${pthDst}/$_DRUPAL7S/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_S" standard \
+      ${pthDst}/$_DRUPAL7S &> /dev/null
   fi
 fi
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
-  if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
-    if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P/$_DRUSHRC_FILE" ] ; then
-      $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_P" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P &> /dev/null
+if [ ! -d "${pthDst}/$_DRUPAL7" ] ; then
+  if [ -d "${pthDst}/$_DRUPAL7P" ] ; then
+    if [ ! -e "${pthDst}/$_DRUPAL7P/$drhSrc" ] ; then
+      $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_P" standard \
+        ${pthDst}/$_DRUPAL7P &> /dev/null
     fi
   fi
-elif [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
-  if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
-    if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7/$_DRUSHRC_FILE" ] ; then
-      $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_P" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7 &> /dev/null
+elif [ ! -d "${pthDst}/$_DRUPAL7P" ] ; then
+  if [ -d "${pthDst}/$_DRUPAL7" ] ; then
+    if [ ! -e "${pthDst}/$_DRUPAL7/$drhSrc" ] ; then
+      $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_P" standard \
+        ${pthDst}/$_DRUPAL7 &> /dev/null
     fi
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_AGOV" agov $_ROOT/distro/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/agov-$_AGOV-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/agov-$_AGOV-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_AGOV" agov \
+      ${pthDst}/agov-$_AGOV-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M6-$_SMALLCORE6" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M6-$_SMALLCORE6/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_CIVICRM_M6" default $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M6-$_SMALLCORE6 &> /dev/null
+if [ -d "${pthDst}/civicrm-$_CIVICRM_M6-$_SMALLCORE6" ] ; then
+  if [ ! -e "${pthDst}/civicrm-$_CIVICRM_M6-$_SMALLCORE6/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_CIVICRM_M6" default \
+      ${pthDst}/civicrm-$_CIVICRM_M6-$_SMALLCORE6 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M7-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M7-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_CIVICRM_M7" default $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M7-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/civicrm-$_CIVICRM_M7-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/civicrm-$_CIVICRM_M7-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_CIVICRM_M7" default \
+      ${pthDst}/civicrm-$_CIVICRM_M7-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_COD" cod $_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/cod-$_COD-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/cod-$_COD-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_COD" cod \
+      ${pthDst}/cod-$_COD-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE1-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE1-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_COMMERCE1" commerce $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE1-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/commerce-$_COMMERCE1-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/commerce-$_COMMERCE1-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_COMMERCE1" commerce_kickstart \
+      ${pthDst}/commerce-$_COMMERCE1-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE2-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE2-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_COMMERCE2" commerce $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE2-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/commerce-$_COMMERCE2-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/commerce-$_COMMERCE2-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_COMMERCE2" commerce_kickstart \
+      ${pthDst}/commerce-$_COMMERCE2-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_COMMONS2" commons $_ROOT/distro/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6 &> /dev/null
+if [ -d "${pthDst}/commons-$_COMMONS2-$_SMALLCORE6" ] ; then
+  if [ ! -e "${pthDst}/commons-$_COMMONS2-$_SMALLCORE6/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_COMMONS2" commons \
+      ${pthDst}/commons-$_COMMONS2-$_SMALLCORE6 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS3-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS3-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_COMMONS3" commons $_ROOT/distro/$_THIS_CORE/commons-$_COMMONS3-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/commons-$_COMMONS3-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/commons-$_COMMONS3-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_COMMONS3" commons \
+      ${pthDst}/commons-$_COMMONS3-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_SMALLCORE8" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/drupal-$_SMALLCORE8/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_DRUPAL8" standard $_ROOT/distro/$_THIS_CORE/drupal-$_SMALLCORE8 &> /dev/null
+if [ -d "${pthDst}/drupal-$_SMALLCORE8" ] ; then
+  if [ ! -e "${pthDst}/drupal-$_SMALLCORE8/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_DRUPAL8" standard \
+      ${pthDst}/drupal-$_SMALLCORE8 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_D8_DEV_LABEL" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/drupal-$_D8_DEV_LABEL/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_D8_DEV_LABEL" standard $_ROOT/distro/$_THIS_CORE/drupal-$_D8_DEV_LABEL &> /dev/null
+if [ -d "${pthDst}/drupal-$_D8_DEV_LABEL" ] ; then
+  if [ ! -e "${pthDst}/drupal-$_D8_DEV_LABEL/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_D8_DEV_LABEL" standard \
+      ${pthDst}/drupal-$_D8_DEV_LABEL &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/erpal-$_ERPAL-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/erpal-$_ERPAL-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_ERPAL" erpal $_ROOT/distro/$_THIS_CORE/erpal-$_ERPAL-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/erpal-$_ERPAL-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/erpal-$_ERPAL-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_ERPAL" erpal \
+      ${pthDst}/erpal-$_ERPAL-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_FSERVER" feature_server $_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6 &> /dev/null
+if [ -d "${pthDst}/fserver-$_SMALLCORE6" ] ; then
+  if [ ! -e "${pthDst}/fserver-$_SMALLCORE6/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_FSERVER" feature_server \
+      ${pthDst}/fserver-$_SMALLCORE6 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/guardr-$_GUARDR-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/guardr-$_GUARDR-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_GUARDR" guardr $_ROOT/distro/$_THIS_CORE/guardr-$_GUARDR-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/guardr-$_GUARDR-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/guardr-$_GUARDR-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_GUARDR" guardr \
+      ${pthDst}/guardr-$_GUARDR-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_OPENACADEMY" openacademy $_ROOT/distro/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/openacademy-$_OPENACADEMY-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/openacademy-$_OPENACADEMY-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_OPENACADEMY" openacademy \
+      ${pthDst}/openacademy-$_OPENACADEMY-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_OPENATRIUM7" openatrium $_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/openatrium-$_OPENATRIUM7-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/openatrium-$_OPENATRIUM7-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_OPENATRIUM7" openatrium \
+      ${pthDst}/openatrium-$_OPENATRIUM7-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_OPENBLOG" openblog $_ROOT/distro/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/openblog-$_OPENBLOG-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/openblog-$_OPENBLOG-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_OPENBLOG" openblog \
+      ${pthDst}/openblog-$_OPENBLOG-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH1-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH1-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_OPENCHURCH1" openchurch $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH1-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/openchurch-$_OPENCHURCH1-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/openchurch-$_OPENCHURCH1-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_OPENCHURCH1" openchurch \
+      ${pthDst}/openchurch-$_OPENCHURCH1-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH2-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH2-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_OPENCHURCH2" openchurch $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH2-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/openchurch-$_OPENCHURCH2-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/openchurch-$_OPENCHURCH2-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_OPENCHURCH2" openchurch \
+      ${pthDst}/openchurch-$_OPENCHURCH2-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_OPENDEALS" opendeals $_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/opendeals-$_OPENDEALS-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/opendeals-$_OPENDEALS-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_OPENDEALS" \
+      opendeals ${pthDst}/opendeals-$_OPENDEALS-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_OPENOUTREACH" openoutreach $_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/openoutreach-$_OPENOUTREACH-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_OPENOUTREACH" openoutreach \
+      ${pthDst}/openoutreach-$_OPENOUTREACH-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_OPENPUBLIC" openpublic $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/openpublic-$_OPENPUBLIC-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/openpublic-$_OPENPUBLIC-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_OPENPUBLIC" openpublic \
+      ${pthDst}/openpublic-$_OPENPUBLIC-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_OPENPUBLISH" openpublish $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/openpublish-$_OPENPUBLISH-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/openpublish-$_OPENPUBLISH-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_OPENPUBLISH" openpublish \
+      ${pthDst}/openpublish-$_OPENPUBLISH-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_OPENSCHOLAR" openscholar $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/openscholar-$_OPENSCHOLAR-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/openscholar-$_OPENSCHOLAR-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_OPENSCHOLAR" openscholar \
+      ${pthDst}/openscholar-$_OPENSCHOLAR-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_PANOPOLY" panopoly $_ROOT/distro/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/panopoly-$_PANOPOLY-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/panopoly-$_PANOPOLY-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_PANOPOLY" panopoly \
+      ${pthDst}/panopoly-$_PANOPOLY-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_RECRUITER" recruiter $_ROOT/distro/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/recruiter-$_RECRUITER-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/recruiter-$_RECRUITER-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_RECRUITER" recruiter \
+      ${pthDst}/recruiter-$_RECRUITER-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/restaurant-$_RESTAURANT-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/restaurant-$_RESTAURANT-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_RESTAURANT" restaurant $_ROOT/distro/$_THIS_CORE/restaurant-$_RESTAURANT-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/restaurant-$_RESTAURANT-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/restaurant-$_RESTAURANT-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_RESTAURANT" restaurant \
+      ${pthDst}/restaurant-$_RESTAURANT-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART6-$_SMALLCORE6" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART6-$_SMALLCORE6/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_UBERCART6" uberdrupal $_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART6-$_SMALLCORE6 &> /dev/null
+if [ -d "${pthDst}/ubercart-$_UBERCART6-$_SMALLCORE6" ] ; then
+  if [ ! -e "${pthDst}/ubercart-$_UBERCART6-$_SMALLCORE6/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_UBERCART6" uberdrupal \
+      ${pthDst}/ubercart-$_UBERCART6-$_SMALLCORE6 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART7-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART7-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_UBERCART7" minimal $_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART7-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/ubercart-$_UBERCART7-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/ubercart-$_UBERCART7-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_UBERCART7" minimal \
+      ${pthDst}/ubercart-$_UBERCART7-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBERCART7-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBERCART7-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_UBER_CART_TESTING" testing $_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBERCART7-$_SMALLCORE7 &> /dev/null
+if [ -d "${pthDst}/ubercart-testing-$_UBERCART7-$_SMALLCORE7" ] ; then
+  if [ ! -e "${pthDst}/ubercart-testing-$_UBERCART7-$_SMALLCORE7/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_UBER_CART_TESTING" testing \
+      ${pthDst}/ubercart-testing-$_UBERCART7-$_SMALLCORE7 &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_D" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev &> /dev/null
+if [ -d "${pthDst}/pressflow-$_SMALLCORE6-dev" ] ; then
+  if [ ! -e "${pthDst}/pressflow-$_SMALLCORE6-dev/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_D" default \
+      ${pthDst}/pressflow-$_SMALLCORE6-dev &> /dev/null
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage/$_DRUSHRC_FILE" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_S" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage &> /dev/null
+if [ -d "${pthDst}/pressflow-$_SMALLCORE6-stage" ] ; then
+  if [ ! -e "${pthDst}/pressflow-$_SMALLCORE6-stage/$drhSrc" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_S" default \
+      ${pthDst}/pressflow-$_SMALLCORE6-stage &> /dev/null
   fi
 fi
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
-  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod" ] ; then
-    if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod/$_DRUSHRC_FILE" ] ; then
-      $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod &> /dev/null
+if [ ! -d "${pthDst}/pressflow" ] ; then
+  if [ -d "${pthDst}/pressflow-$_SMALLCORE6-prod" ] ; then
+    if [ ! -e "${pthDst}/pressflow-$_SMALLCORE6-prod/$drhSrc" ] ; then
+      $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_P" default \
+        ${pthDst}/pressflow-$_SMALLCORE6-prod &> /dev/null
     fi
   fi
-elif [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod" ] ; then
-  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
-    if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow/$_DRUSHRC_FILE" ] ; then
-      $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow &> /dev/null
+elif [ ! -d "${pthDst}/pressflow-$_SMALLCORE6-prod" ] ; then
+  if [ -d "${pthDst}/pressflow" ] ; then
+    if [ ! -e "${pthDst}/pressflow/$drhSrc" ] ; then
+      $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_P" default \
+        ${pthDst}/pressflow &> /dev/null
     fi
   fi
 fi
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
-  _PLATF_IMP=$(ls -la /data/u | grep $_USER | cut -d'>' -f2 | sort | uniq | awk '{ print $1}')
+  _PLATF_IMP=$(ls -la /data/u \
+    | grep $_USER \
+    | cut -d'>' -f2 \
+    | sort \
+    | uniq \
+    | awk '{ print $1}')
   for _PLATF in $_PLATF_IMP ; do
     if [[ $_PLATF =~ "aegir" ]] ; then
       _FOUND_HM=YES
     else
       _PLATF_NAME=${_PLATF##*/}
-      $_DRUSHCMD php-script make_platform "$_PLATF_NAME ($RANDOM)" default $_PLATF
+      $_DRUSHCMD php-script make_platform "$_PLATF_NAME ($RANDOM)" default \
+        $_PLATF
     fi
   done
 fi

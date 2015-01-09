@@ -67,6 +67,7 @@ _DRUSHCMD="$_L_PHP_CLI/php $_ROOT/drush/drush.php"
 #
 SHELL=/bin/bash
 PATH=$_L_PHP_CLI:/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+urlStb="http://files.aegir.cc/versions/stable"
 
 
 ###---### Functions
@@ -274,7 +275,7 @@ hostmaster_go_up() {
       git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/usr/registry_rebuild &> /dev/null
     else
       cd $_ROOT/.drush/sys
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "${urlStb}/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
       msg "INFO: Downloading Drush and Provision extensions..."
       cd $_ROOT/.drush/xts
       _G_EXT="provision_boost provision_cdn security_review"

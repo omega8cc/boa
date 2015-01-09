@@ -679,6 +679,7 @@ fi
 octCnf="/root/.${_USER}.octopus.cnf"
 pthBld="/opt/tmp/boa"
 _WEB="${_USER}.web"
+urlStb="http://files.aegir.cc/versions/stable"
 
 
 ###
@@ -2175,7 +2176,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
 else
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 \
-    -A iCab "http://files.aegir.cc/versions/stable/tar/boa-${_X_VERSION}.tar.gz" \
+    -A iCab "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" \
     | tar -xzf -
   _BOA_REPO_NAME="boa"
 fi
