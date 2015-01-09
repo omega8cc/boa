@@ -818,7 +818,7 @@ else
   _FILE_VERSION=octopus-version.txt
 fi
 if [ -e "/opt/tmp/boa/aegir/conf/$_FILE_VERSION" ] ; then
-  _VERSIONS_TEST=`cat /opt/tmp/boa/aegir/conf/$_FILE_VERSION`
+  _VERSIONS_TEST=$(cat /opt/tmp/boa/aegir/conf/$_FILE_VERSION 2>&1)
   if [[ "$_VERSIONS_TEST" =~ "-dev" ]] ; then
     if [[ "$_VERSIONS_TEST" =~ "${_X_VERSION}" ]] \
       && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
@@ -933,23 +933,23 @@ provision_backend_dbpass_generate() {
       _ESC_PASS=$(randpass $_PWD_CHARS esc 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ] ; then
-        _ESC_PASS=`cat /root/.my.pass.txt`
+        _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
       else
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
-    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
+    _ESC_PASS=$(echo -n $_ESC_PASS | tr -d "\n" 2>&1)
     _ENC_PASS=$(python -c "import urllib; print urllib.quote('''$_ESC_PASS''')")
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
   if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 9 ] ; then
     if [ "$_THIS_DB_HOST" = "localhost" ] || [ "$_THIS_DB_HOST" = "FQDN" ] ; then
-      _ESC_PASS=`pwgen -v -s -1`
-      _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
-      _ESC_PASS=`sanitize_string "$_ESC_PASS"`
+      _ESC_PASS=$(pwgen -v -s -1 2>&1)
+      _ESC_PASS=$(echo -n $_ESC_PASS | tr -d "\n" 2>&1)
+      _ESC_PASS=$(sanitize_string "$_ESC_PASS" 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ] ; then
-        _ESC_PASS=`cat /root/.my.pass.txt`
+        _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
       else
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
@@ -974,8 +974,8 @@ provision_backend_dbpass_generate() {
     _USE_AEGIR_HOST=$(uname -n 2>&1)
     _SQL_CONNECT=localhost
   fi
-  _USE_RESOLVEIP=`echo $(getent ahostsv4 $_USE_AEGIR_HOST) \
-    | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
+  _USE_RESOLVEIP=$(echo $(getent ahostsv4 $_USE_AEGIR_HOST) \
+    | cut -d: -f2 | awk '{ print $1}' 2>&1)
   if [ -z "$_USE_RESOLVEIP" ] ; then
     msg "$_STATUS A: FATAL ERROR: DNS looks broken for $_USE_AEGIR_HOST"
     msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
@@ -1049,21 +1049,21 @@ provision_backend_dbpass_sync() {
 # Sync hostmaster frontend db_passwd.
 hostmaster_frontend_dbpass_sync() {
   msg "$_STATUS A: Syncing hostmaster frontend db_passwd..."
-  _THIS_HM_SPTH=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php \
+  _THIS_HM_SPTH=$(cat $_ROOT/.drush/hostmaster.alias.drushrc.php \
     | grep "site_path'" \
     | cut -d: -f2 \
     | awk '{ print $3}' \
-    | sed "s/[\,']//g"`
-  _THIS_HM_DBUR=`cat $_THIS_HM_SPTH/drushrc.php \
+    | sed "s/[\,']//g" 2>&1)
+  _THIS_HM_DBUR=$(cat $_THIS_HM_SPTH/drushrc.php \
     | grep "options\['db_user'\] = " \
     | cut -d: -f2 \
     | awk '{ print $3}' \
-    | sed "s/[\,';]//g"`
-  _THIS_HM_DBPD=`cat $_THIS_HM_SPTH/drushrc.php \
+    | sed "s/[\,';]//g" 2>&1)
+  _THIS_HM_DBPD=$(cat $_THIS_HM_SPTH/drushrc.php \
     | grep "options\['db_passwd'\] = " \
     | cut -d: -f2 \
     | awk '{ print $3}' \
-    | sed "s/[\,';]//g"`
+    | sed "s/[\,';]//g" 2>&1)
   if [ -e "$_THIS_HM_SPTH" ] \
     && [ ! -z "$_THIS_HM_DBUR" ] \
     && [ ! -z "$_THIS_HM_DBPD" ] ; then
@@ -1130,16 +1130,16 @@ else
       if [ ! -e "/root/.upstart.cnf" ] ; then
         service cron stop &> /dev/null
       fi
-      _THIS_HM_ROOT=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php \
+      _THIS_HM_ROOT=$(cat $_ROOT/.drush/hostmaster.alias.drushrc.php \
         | grep "root'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
-        | sed "s/[\,']//g"`
-      _THIS_HM_SITE=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php \
+        | sed "s/[\,']//g" 2>&1)
+      _THIS_HM_SITE=$(cat $_ROOT/.drush/hostmaster.alias.drushrc.php \
         | grep "site_path'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
-        | sed "s/[\,']//g"`
+        | sed "s/[\,']//g" 2>&1)
       _U_HD="$_ROOT/.drush"
       chattr -i $_U_HD/php.ini &> /dev/null
       chown -R $_USER:$_USRG $_ROOT/.drush
@@ -1312,8 +1312,12 @@ fi
 ###---### Fix files permissions.
 #
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
-  _PLATF_IMP=$(ls -la /data/u | grep $_USER | cut -d'>' -f2 | sort \
-    | uniq | awk '{ print $1}')
+  _PLATF_IMP=$(ls -la /data/u \
+    | grep $_USER \
+    | cut -d'>' -f2 \
+    | sort \
+    | uniq \
+    | awk '{ print $1}')
   for _PLATF in $_PLATF_IMP ; do
     if [[ "$_PLATF" =~ "aegir" ]] ; then
       _FOUND_HM=YES
@@ -1385,13 +1389,13 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     fi
     if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
       _ESC_LUPASS=$(randpass $_PWD_CHARS alnum 2>&1)
-      _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
+      _ESC_LUPASS=$(echo -n $_ESC_LUPASS | tr -d "\n" 2>&1)
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
     fi
     if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 9 ] ; then
-      _ESC_LUPASS=`pwgen -v -s -1`
-      _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
-      _ESC_LUPASS=`sanitize_string "$_ESC_LUPASS"`
+      _ESC_LUPASS=$(pwgen -v -s -1 2>&1)
+      _ESC_LUPASS=$(echo -n $_ESC_LUPASS | tr -d "\n" 2>&1)
+      _ESC_LUPASS=$(sanitize_string "$_ESC_LUPASS" 2>&1)
     fi
     echo "$_ESC_LUPASS" > $_ROOT/log/pass.txt
     # get the password hash
@@ -1549,12 +1553,12 @@ if [ "$_HM_ONLY" = "YES" ] ; then
   _DO_NOTHING=YES
 else
   if [ -e "$_ROOT/pass.txt" ] ; then
-    _PASWD=`cat $_ROOT/pass.txt`
-    _PASWD=`echo -n $_PASWD | tr -d "\n"`
+    _PASWD=$(cat $_ROOT/pass.txt 2>&1)
+    _PASWD=$(echo -n $_PASWD | tr -d "\n" 2>&1)
     mv -f $_ROOT/pass.txt $_ROOT/log/pass.txt &> /dev/null
   elif [ -e "$_ROOT/log/pass.txt" ] ; then
-    _PASWD=`cat $_ROOT/log/pass.txt`
-    _PASWD=`echo -n $_PASWD | tr -d "\n"`
+    _PASWD=$(cat $_ROOT/log/pass.txt 2>&1)
+    _PASWD=$(echo -n $_PASWD | tr -d "\n" 2>&1)
     rm -f $_ROOT/pass.txt
   else
     cd $_ROOT/log
@@ -1579,20 +1583,20 @@ else
     fi
     if [ "$_STRONG_PASSWORDS" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
       _ESC_LUPASS=$(randpass $_PWD_CHARS alnum 2>&1)
-      _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
+      _ESC_LUPASS=$(echo -n $_ESC_LUPASS | tr -d "\n" 2>&1)
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
     fi
     if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 9 ] ; then
-      _ESC_LUPASS=`pwgen -v -s -1`
-      _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
-      _ESC_LUPASS=`sanitize_string "$_ESC_LUPASS"`
+      _ESC_LUPASS=$(pwgen -v -s -1 2>&1)
+      _ESC_LUPASS=$(echo -n $_ESC_LUPASS | tr -d "\n" 2>&1)
+      _ESC_LUPASS=$(sanitize_string "$_ESC_LUPASS" 2>&1)
     fi
     echo "$_ESC_LUPASS" > $_ROOT/log/pass.txt
     ph=$(mkpasswd -m sha-512 $_ESC_LUPASS $(openssl rand -base64 16 \
       | tr -d '+=' | head -c 16))
     usermod -p $ph $_USERFTP &> /dev/null
-    _PASWD=`cat $_ROOT/log/pass.txt`
-    _PASWD=`echo -n $_PASWD | tr -d "\n"`
+    _PASWD=$(cat $_ROOT/log/pass.txt 2>&1)
+    _PASWD=$(echo -n $_PASWD | tr -d "\n" 2>&1)
   fi
 fi
 
@@ -2005,7 +2009,7 @@ fi
 
 ###---### Sending setup e-mail.
 #
-_MAILX_TEST=`mail -V 2>&1`
+_MAILX_TEST=$(mail -V 2>&1)
 if [ "$_STATUS" = "INIT" ] ; then
   msg "$_STATUS A: Sending setup e-mail on init..."
   TIME=$(date 2>&1)
@@ -2168,7 +2172,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     _DO_NOTHING=YES
   else
-    _AEGIR_LOGIN_URL=`grep --text "^http://$_DOMAIN" $_ROOT/log/install.log 2> /dev/null`
+    _AEGIR_LOGIN_URL=$(grep --text "^http://$_DOMAIN" $_ROOT/log/install.log 2>&1)
     if [ ! -z "$_AEGIR_LOGIN_URL" ] ; then
       echo " "
       msg "INFO: Congratulations, Aegir backend and frontend have been installed successfully"
