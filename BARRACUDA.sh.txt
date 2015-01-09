@@ -2426,7 +2426,25 @@ force_advanced_nginx_config() {
     && [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
     _ALLOW_NGINX_FORWARD_SECRECY=YES
     _SSL_PROTOCOLS="TLSv1 TLSv1.1 TLSv1.2;"
-    _SSL_CIPHERS="EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH:EDH+aRSA:\!aNULL:\!eNULL:\!LOW:\!3DES:\!MD5:\!EXP:\!PSK:\!SRP:\!DSS:\!RC4;"
+    _SSL_CIPHERS="EECDH+ECDSA+AESGCM: \
+      EECDH+aRSA+AESGCM:  \
+      EECDH+ECDSA+SHA384: \
+      EECDH+ECDSA+SHA256: \
+      EECDH+aRSA+SHA384:  \
+      EECDH+aRSA+SHA256:  \
+      EECDH:    \
+      EDH+aRSA: \
+      \!aNULL:  \
+      \!eNULL:  \
+      \!LOW:    \
+      \!3DES:   \
+      \!MD5:    \
+      \!EXP:    \
+      \!PSK:    \
+      \!SRP:    \
+      \!DSS:    \
+      \!RC4;"
+    _SSL_CIPHERS=$(echo "${_SSL_CIPHERS}" | sed "s/ //g" 2>&1)
   else
     _ALLOW_NGINX_FORWARD_SECRECY=NO
   fi
@@ -2468,8 +2486,8 @@ tune_web_server_config() {
       _LIM_FPM=24
     fi
   fi
-  let "_PROCESS_MAX_FPM = (($_LIM_FPM * 5))"
-  let "_CHILD_MAX_FPM = (($_LIM_FPM * 2))"
+  _PROCESS_MAX_FPM=$(( _LIM_FPM * 5 ))
+  _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
   if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
     _DO_NOTHING=YES
   else
@@ -2478,7 +2496,7 @@ tune_web_server_config() {
       _CHILD_MAX_FPM="$_PHP_FPM_WORKERS"
     fi
   fi
-  let "_START_LEGACY_FPM = (($_LIM_FPM - 21))"
+  _START_LEGACY_FPM=$(( _LIM_FPM - 21 ))
   if [ "$_START_LEGACY_FPM" -lt "3" ] ; then
     _START_LEGACY_FPM=3
   fi
@@ -2577,7 +2595,7 @@ tune_sql_memory_limits() {
       && [ "$_MYSQLTUNER_TEST_RESULT" = "OK" ] ; then
       _RAW_MYISAM_MEM=$(echo $_REC_MYISAM_MEM | sed "s/[A-Z]//g" 2>&1)
       if [[ "$_REC_MYISAM_MEM" =~ "G" ]] ; then
-        let "_RAW_MYISAM_MEM = (($_RAW_MYISAM_MEM * 1024))"
+        _RAW_MYISAM_MEM=$(( _RAW_MYISAM_MEM * 1024 ))
       fi
       if [ "$_RAW_MYISAM_MEM" -gt "$_USE_SQL" ] ; then
         _USE_MYISAM_MEM="$_USE_SQL"
@@ -2661,54 +2679,54 @@ tune_memory_limits() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc 2>&1)
-  if [ -z "$_NPROC_TEST" ] ; then
-    _CPU_NR="$_CPU_INFO"
+  if [ -z "${_NPROC_TEST}" ] ; then
+    _CPU_NR="${_CPU_INFO}"
   else
     _CPU_NR=$(nproc 2>&1)
   fi
   _CPU_NR=${_CPU_NR//[^0-9]/}
-  if [ ! -z "$_CPU_NR" ] && [ ! -z "$_CPU_INFO" ] \
-    && [ "$_CPU_NR" -gt "$_CPU_INFO" ] && [ "$_CPU_INFO" -gt "0" ] ; then
-    _CPU_NR="$_CPU_INFO"
+  if [ ! -z "${_CPU_NR}" ] && [ ! -z "${_CPU_INFO}" ] \
+    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt "0" ] ; then
+    _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "$_CPU_NR" ] || [ "$_CPU_NR" -lt "1" ] ; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ] ; then
     _CPU_NR=1
   fi
-  let "_CPU_MX = (($_CPU_NR * 2))"
+  _CPU_MX=$(( _CPU_NR * 2 ))
   if [ "$_CPU_MX" -lt "4" ] ; then
     _CPU_MX=4
   fi
-  let "_CPU_TG = (($_CPU_NR / 2))"
+  _CPU_TG=$(( _CPU_NR / 2 ))
   if [ "$_CPU_TG" -lt "4" ] ; then
     _CPU_TG=4
   fi
-  let "_CPU_VS = (($_CPU_NR / 12))"
+  _CPU_VS=$(( _CPU_NR / 12 ))
   if [ "$_CPU_VS" -lt "2" ] ; then
     _CPU_VS=2
   fi
   _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
   if [ "$_RESERVED_RAM" -gt "0" ] ; then
-    let "_RAM = (($_RAM - $_RESERVED_RAM))"
+    _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
-  let "_USE = (($_RAM / 4))"
+  _USE=$(( _RAM / 4 ))
   if [ "$_VMFAMILY" = "VS" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     if [ "$_VMFAMILY" = "VS" ] ; then
       if [ -e "/root/.tg.cnf" ] ; then
-        let "_USE_SQL = (($_RAM / 8))"
+        _USE_SQL=$(( _RAM / 8 ))
       else
-        let "_USE_SQL = (($_RAM / 18))"
+        _USE_SQL=$(( _RAM / 18 ))
       fi
     else
-      let "_USE_SQL = (($_RAM / 8))"
+      _USE_SQL=$(( _RAM / 8 ))
     fi
   else
-    let "_USE_SQL = (($_RAM / 8))"
+    _USE_SQL=$(( _RAM / 8 ))
   fi
   if [ "$_USE_SQL" -lt "256" ] ; then
     _USE_SQL=256
   fi
   _TMP_SQL="${_USE_SQL}M"
-  let "_SRT_SQL = (($_USE_SQL * 2))"
+  _SRT_SQL=$(( _USE_SQL * 2 ))
   _SRT_SQL="${_SRT_SQL}K"
   if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
     _USE_PHP=512
@@ -2827,7 +2845,7 @@ tune_memory_limits() {
   if [ "$_VMFAMILY" = "VZ" ] ; then
     _USE_OPC=64
   fi
-  let "_USE_FPM = (($_USE_PHP / 2))"
+  _USE_FPM=$(( _USE_PHP / 2 ))
   if [ "$_USE_FPM" -lt "196" ] ; then
     _USE_FPM=196
   fi
@@ -2870,7 +2888,7 @@ tune_memory_limits() {
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
     tune_sql_memory_limits
     _UXC_SQL=$_MXC_SQL
-    let "_UXC_SQL = (($_MXC_SQL / 2))"
+    _UXC_SQL=$(( _MXC_SQL / 2 ))
     sed -i "s/= 191/= $_UXC_SQL/g"                                               /etc/mysql/my.cnf
     sed -i "s/= 292/= $_MXC_SQL/g"                                               /etc/mysql/my.cnf
     sed -i "s/^tmp_table_size.*/tmp_table_size          = $_TMP_SQL/g"           /etc/mysql/my.cnf
@@ -4576,20 +4594,21 @@ upgrade_aegir_master() {
     chmod -R 02775 $_THIS_HM_SITE/files
     cd /var/aegir
     cp ${pthBld}/aegir/scripts/AegirUpgrade.sh.txt ./
-    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_AEGIR_XTS_VERSION/$_AEGIR_XTS_VERSION/g" /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"               /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_BRANCH_PRN/$_BRANCH_PRN/g"               /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_X_VERSION/${_X_VERSION}/g"               /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"   /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    local pthAue="/var/aegir/AegirUpgrade.sh.txt"
+    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         ${pthAue}
+    sed -i "s/EDIT_AEGIR_XTS_VERSION/$_AEGIR_XTS_VERSION/g" ${pthAue}
+    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  ${pthAue}
+    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         ${pthAue}
+    sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"               ${pthAue}
+    sed -i "s/EDIT_BRANCH_PRN/$_BRANCH_PRN/g"               ${pthAue}
+    sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               ${pthAue}
+    sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   ${pthAue}
+    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         ${pthAue}
+    sed -i "s/EDIT_X_VERSION/${_X_VERSION}/g"               ${pthAue}
+    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     ${pthAue}
+    sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     ${pthAue}
+    sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"   ${pthAue}
+    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           ${pthAue}
     mysqladmin flush-hosts &> /dev/null
     provision_backend_dbpass_sync
     hostmaster_frontend_dbpass_sync
@@ -11326,7 +11345,25 @@ else
   if [ "$_SSL_INSTALLED" = "$_OPENSSL_VRN" ] &&[ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
     _ALLOW_NGINX_FORWARD_SECRECY=YES
     _SSL_PROTOCOLS="TLSv1 TLSv1.1 TLSv1.2;"
-    _SSL_CIPHERS="EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH:EDH+aRSA:\!aNULL:\!eNULL:\!LOW:\!3DES:\!MD5:\!EXP:\!PSK:\!SRP:\!DSS:\!RC4;"
+    _SSL_CIPHERS="EECDH+ECDSA+AESGCM: \
+      EECDH+aRSA+AESGCM:  \
+      EECDH+ECDSA+SHA384: \
+      EECDH+ECDSA+SHA256: \
+      EECDH+aRSA+SHA384:  \
+      EECDH+aRSA+SHA256:  \
+      EECDH:    \
+      EDH+aRSA: \
+      \!aNULL:  \
+      \!eNULL:  \
+      \!LOW:    \
+      \!3DES:   \
+      \!MD5:    \
+      \!EXP:    \
+      \!PSK:    \
+      \!SRP:    \
+      \!DSS:    \
+      \!RC4;"
+    _SSL_CIPHERS=$(echo "${_SSL_CIPHERS}" | sed "s/ //g" 2>&1)
   else
     _ALLOW_NGINX_FORWARD_SECRECY=NO
   fi
