@@ -5561,9 +5561,9 @@ Added/Fixed:
 2. If there is no FQDN hostname, we are trying to set it
    using reverse IP hostname, if exists.
 
-3. Now we are trying both $(uname -n 2>&1) and `hostname -f`
+3. Now we are trying both `uname -n` and `hostname -f`
    to make sure if the FQDN hostname is already set,
-   but not available with $(uname -n 2>&1) test.
+   but not available with `uname -n` test.
 
 4. Added support for ionCube Loader with automatic
    discovery of required version 32/64 bit.
