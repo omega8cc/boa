@@ -141,6 +141,7 @@ _DRUSHCMD="$_L_PHP_CLI/php $_ROOT/tools/drush/drush.php"
 #
 SHELL=/bin/bash
 PATH=$_L_PHP_CLI:/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+_D="/data/all"
 
 
 ###---### Functions.
@@ -295,8 +296,6 @@ o_contrib_update_global() {
 
   RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 \
     cookie_cache_bypass_adv module_supports imageinfo_cache"
-
-  _D="/data/all"
 
   for i in $REVISIONS; do
     if [ -e "$_D/$i/o_contrib" ] \
