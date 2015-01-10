@@ -4296,7 +4296,9 @@ do_install_latest_git() {
     cd /var/opt
     touch ${pthLog}/git-${_GIT_VRN}-${_X_VERSION}-${_NOW}.log
   else
-    msg "INFO: Git ${_GIT_VRN} already installed from sources, OK"
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "INFO: Git ${_GIT_VRN} already installed from sources, OK"
+    fi
   fi
 }
 #
@@ -4717,11 +4719,15 @@ install_upgrade_nginx() {
     if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] \
       && [ "${_STATUS}" = "UPGRADE" ] ; then
       _NGINX_INSTALL_REQUIRED=NO
-      msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, OK"
+      if [ "${_DEBUG_MODE}" = "YES" ] ; then
+        msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, OK"
+      fi
     elif [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] \
       && [ "${_STATUS}" = "INIT" ] ; then
       _NGINX_INSTALL_REQUIRED=NO
-      msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, OK"
+      if [ "${_DEBUG_MODE}" = "YES" ] ; then
+        msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, OK"
+      fi
     elif [ "$_NGINX_F_INSTALLED" != "$_NGINX_F_VERSION" ] ; then
       _NGINX_INSTALL_REQUIRED=YES
       msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, upgrade required"
@@ -5801,13 +5807,17 @@ check_php_rebuild() {
       if [ "$_UP_PHP" = "YES" ] ; then
         if [ ! -z "$_PHP_ALREADY_REBUILT" ] \
           && [ "$_PHP_ALREADY_REBUILT" = "$1" ] ; then
-          msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
+          if [ "${_DEBUG_MODE}" = "YES" ] ; then
+            msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
+          fi
         else
           msg "INFO: PHP $_PHP_VERSION rebuild required to include upgraded libs"
           install_php_multi "$1"
         fi
       else
-        msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
+        if [ "${_DEBUG_MODE}" = "YES" ] ; then
+          msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
+        fi
       fi
     else
       if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
@@ -9244,7 +9254,9 @@ if [ "${_STATUS}" = "UPGRADE" ] ; then
   fi
   if [ "$_REDIS_V_INSTALLED" = "${_REDIS_VRN}" ] ; then
     _REDIS_INSTALL_MISMATCH=NO
-    msg "INFO: Installed Redis version $_REDIS_V_INSTALLED, OK"
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "INFO: Installed Redis version $_REDIS_V_INSTALLED, OK"
+    fi
   else
     _REDIS_INSTALL_MISMATCH=YES
     msg "INFO: Installed Redis version $_REDIS_V_INSTALLED, upgrade required"
@@ -9264,7 +9276,9 @@ else
     fi
     if [ "$_REDIS_V_INSTALLED" = "${_REDIS_VRN}" ] ; then
       _REDIS_INSTALL_MISMATCH=NO
-      msg "INFO: Installed Redis version $_REDIS_V_INSTALLED, OK"
+      if [ "${_DEBUG_MODE}" = "YES" ] ; then
+        msg "INFO: Installed Redis version $_REDIS_V_INSTALLED, OK"
+      fi
     else
       _REDIS_INSTALL_MISMATCH=YES
       msg "INFO: Installed Redis version $_REDIS_V_INSTALLED, rebuild required"
