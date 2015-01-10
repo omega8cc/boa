@@ -1530,13 +1530,16 @@ octopus_cnf() {
       echo "_SQL_CONVERT=${_SQL_CONVERT}" >> ${octCnf}
     fi
 
-    msg "NOTE! Please review all config options displayed below"
-    sleep 3
-    echo " "
-    while read line ; do
-      echo "$line"
-    done < ${octCnf}
-    echo " "
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "NOTE! Please review all config options displayed below"
+      sleep 3
+      echo " "
+      while read line ; do
+        echo "$line"
+      done < ${octCnf}
+      echo " "
+    fi
+
     if [ -e "${octCnf}" ] ; then
       source ${octCnf}
     fi

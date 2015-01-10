@@ -3216,10 +3216,12 @@ barracuda_cnf() {
       sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"    ${barCnf}
     fi
   else
-    msg "INFO: Reading your ${barCnf} config file"
-    sleep 1
-    msg "NOTE! Please review all config options displayed below"
-    msg "NOTE! It will *override* all settings in the Barracuda script"
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "INFO: Reading your ${barCnf} config file"
+      sleep 1
+      msg "NOTE! Please review all config options displayed below"
+      msg "NOTE! It will *override* all settings in the Barracuda script"
+    fi
     sed -i "s/_SPEED_VALID_MAX=300/_SPEED_VALID_MAX=3600/g" ${barCnf}
     _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER ${barCnf} 2>&1)
     if [[ "$_USE_SPEED_BOOSTER_TEST" =~ "_USE_SPEED_BOOSTER" ]] ; then
@@ -3711,11 +3713,13 @@ barracuda_cnf() {
       fi
     fi
     sed -i "/^$/d" ${barCnf}
-    echo " "
-    while read line ; do
-      echo "$line"
-    done < ${barCnf}
-    echo " "
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      echo " "
+      while read line ; do
+        echo "$line"
+      done < ${barCnf}
+      echo " "
+    fi
     if [ -e "${barCnf}" ] ; then
       source ${barCnf}
     fi
