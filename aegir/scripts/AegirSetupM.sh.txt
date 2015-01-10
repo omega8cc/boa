@@ -76,7 +76,7 @@ urlStb="http://files.aegir.cc/versions/stable"
 #
 # Noticeable messages.
 msg() {
-  echo "Barracuda [$(date 2>&1)] ==> $*"
+  echo "Barracuda [$(date +%DT%T 2>&1)] ==> $*"
 }
 #
 # Update local INI for PHP CLI on the Aegir Master Instance.

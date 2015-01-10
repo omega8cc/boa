@@ -6765,7 +6765,9 @@ fi
 
 
 ###--------------------###
-msg "INFO: Checking your system version..."
+if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  msg "INFO: Checking your system version..."
+fi
 _THIS_OS=$(lsb_release -si 2>&1)
 _THIS_RV=$(lsb_release -sc 2>&1)
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
@@ -7308,13 +7310,15 @@ else ### if [ "${_STATUS}" = "UPGRADE" ] ; then
   * Your Aegir control panel URL is https://${_THIS_FRONT}
 
 EOF
+    echo " "
   fi
-  echo " "
-  if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
-    true
-  else
-    echo "Upgrade aborted by you"
-    clean_pid_exit
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
+      true
+    else
+      echo "Upgrade aborted by you"
+      clean_pid_exit
+    fi
   fi
 fi
 
@@ -7616,7 +7620,7 @@ fi
 
 
 ###--------------------###
-msg "INFO: Running aptitude update..."
+msg "INFO: Running system packages update..."
 if [ "$_REL_VERSION" = "lenny" ] ; then
   sed -i "s/^deb.*security.debian.org.*/## security updates no longer \
     available for lenny/g" /etc/apt/sources.list &> /dev/null
@@ -8666,7 +8670,9 @@ fi
 cd /var
 if [ -d "/var/xdrago/conf" ] \
   && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
-  msg "INFO: Upgrading a few more tools..."
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "INFO: Upgrading a few more tools..."
+  fi
   mv -f /var/xdrago-pre* /var/backups/dragon/x/ &> /dev/null
   rm -f -r ${pthLog}/init.d-pre*
   rm -f -r /var/backups/dragon/z/init.d-pre-*
