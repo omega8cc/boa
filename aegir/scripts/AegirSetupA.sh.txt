@@ -290,14 +290,14 @@ create_shared_dirs() {
 #
 o_contrib_update_global() {
 
-  REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 \
+  _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 \
     017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 \
     035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
 
   RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 \
     cookie_cache_bypass_adv module_supports imageinfo_cache"
 
-  for i in $REVISIONS; do
+  for i in ${_REVISIONS}; do
     if [ -e "${_D}/$i/o_contrib" ] \
       && [ ! -e "${_D}/$i/o_contrib/update-${_X_VERSION}.info" ] ; then
       _FORCE_UP_SIX=YES
@@ -410,13 +410,13 @@ o_contrib_update_global() {
 #
 o_contrib_seven_update_global() {
 
-  REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 \
+  _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 \
     017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 \
     035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
 
   RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy"
 
-  for i in $REVISIONS; do
+  for i in ${_REVISIONS}; do
     if [ -e "${_D}/$i/o_contrib_seven" ] \
       && [ ! -e "${_D}/$i/o_contrib_seven/update-${_X_VERSION}.info" ] ; then
       _FORCE_UP_SEVEN=YES
@@ -1602,7 +1602,7 @@ fi
 
 ###---### Creating ftp symlinks.
 #
-if [ "${_D}IST_INSTALL" = "YES" ] ; then
+if [ "${_DIST_INSTALL}" = "YES" ] ; then
 msg "${_STATUS} A: Creating ftp symlinks"
 
   _QR="${_ROOT}/distro/$_THIS_CORE"
@@ -1704,29 +1704,29 @@ msg "${_STATUS} A: Creating ftp symlinks"
       fi
     fi
   fi
-  if [ -d "${_QR}/${_DRUPAL7}D/sites" ] ; then
+  if [ -d "${_QR}/${_DRUPAL7D}/sites" ] ; then
     if [ ! -L "${_QH}/${_DRUPAL7}-dev" ] ; then
-      _A="${_QR}/${_DRUPAL7}D/sites"
+      _A="${_QR}/${_DRUPAL7D}/sites"
       _B="${_QH}/${_DRUPAL7}-dev"
       ln -sf ${_A} ${_B}
     fi
   fi
-  if [ -d "${_QR}/${_DRUPAL7}S/sites" ] ; then
+  if [ -d "${_QR}/${_DRUPAL7S}/sites" ] ; then
     if [ ! -L "${_QH}/${_DRUPAL7}-stage" ] ; then
-      _A="${_QR}/${_DRUPAL7}S/sites"
+      _A="${_QR}/${_DRUPAL7S}/sites"
       _B="${_QH}/${_DRUPAL7}-stage"
       ln -sf ${_A} ${_B}
     fi
   fi
   if [ ! -d "${_QR}/${_DRUPAL7}" ] ; then
-    if [ -d "${_QR}/${_DRUPAL7}P/sites" ] ; then
+    if [ -d "${_QR}/${_DRUPAL7P}/sites" ] ; then
       if [ ! -L "${_QH}/${_DRUPAL7}-prod" ] ; then
-        _A="${_QR}/${_DRUPAL7}P/sites"
+        _A="${_QR}/${_DRUPAL7P}/sites"
         _B="${_QH}/${_DRUPAL7}-prod"
         ln -sf ${_A} ${_B}
       fi
     fi
-  elif [ ! -d "${_QR}/${_DRUPAL7}P" ] ; then
+  elif [ ! -d "${_QR}/${_DRUPAL7P}" ] ; then
     if [ -d "${_QR}/${_DRUPAL7}/sites" ] ; then
       if [ ! -L "${_QH}/${_DRUPAL7}-prod" ] ; then
         _A="${_QR}/${_DRUPAL7}/sites"
@@ -1984,7 +1984,7 @@ else
   _A_DM_EMAIL=${_ADM_EMAIL//\\\@/\@}
   # rm -f /opt/tmp/.admemail.txt
   if [ -e "${_ROOT}/log/setupmail.txt" ] ; then
-    if [ "${_D}IST_INSTALL" = "YES" ] ; then
+    if [ "${_DIST_INSTALL}" = "YES" ] ; then
       cd ${_ROOT}/log
       if [ -e "${_ROOT}/log/upgrademail.txt" ] ; then
         mv -f ${_ROOT}/log/upgrademail.txt \
@@ -2034,7 +2034,7 @@ if [ "${_STATUS}" = "INIT" ] ; then
     fi
   fi
 else
-  if [ "${_D}IST_INSTALL" = "YES" ] && [ "${_PLATFORMS_ONLY}" = "NO" ] ; then
+  if [ "${_DIST_INSTALL}" = "YES" ] && [ "${_PLATFORMS_ONLY}" = "NO" ] ; then
     msg "${_STATUS} A: Resending setup e-mail on upgrade..."
     TIME=$(date 2>&1)
     _Q="Your Aegir Upgrade on $TIME [${_USER}]"

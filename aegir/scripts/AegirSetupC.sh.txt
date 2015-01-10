@@ -273,20 +273,20 @@ fix_dirs_files() {
 # Create D6 symlinks.
 create_d6_symlinks() {
   if [ ! -L "includes" ] ; then
-    ln -sf ${_D}6_CORE_DIR/.htaccess .htaccess
-    ln -sf ${_D}6_CORE_DIR/boost_stats.php boost_stats.php
-    ln -sf ${_D}6_CORE_DIR/cron.php cron.php
-    ln -sf ${_D}6_CORE_DIR/crossdomain.xml crossdomain.xml
-    ln -sf ${_D}6_CORE_DIR/includes includes
-    ln -sf ${_D}6_CORE_DIR/index.php index.php
-    ln -sf ${_D}6_CORE_DIR/install.php install.php
-    ln -sf ${_D}6_CORE_DIR/js.php js.php
-    ln -sf ${_D}6_CORE_DIR/misc misc
-    ln -sf ${_D}6_CORE_DIR/modules modules
-    ln -sf ${_D}6_CORE_DIR/themes themes
-    ln -sf ${_D}6_CORE_DIR/update.php update.php
-    ln -sf ${_D}6_CORE_DIR/xmlrpc.php xmlrpc.php
-    cp -af ${_D}6_CORE_DIR/sites ./
+    ln -sf ${_D6_CORE_DIR}/.htaccess .htaccess
+    ln -sf ${_D6_CORE_DIR}/boost_stats.php boost_stats.php
+    ln -sf ${_D6_CORE_DIR}/cron.php cron.php
+    ln -sf ${_D6_CORE_DIR}/crossdomain.xml crossdomain.xml
+    ln -sf ${_D6_CORE_DIR}/includes includes
+    ln -sf ${_D6_CORE_DIR}/index.php index.php
+    ln -sf ${_D6_CORE_DIR}/install.php install.php
+    ln -sf ${_D6_CORE_DIR}/js.php js.php
+    ln -sf ${_D6_CORE_DIR}/misc misc
+    ln -sf ${_D6_CORE_DIR}/modules modules
+    ln -sf ${_D6_CORE_DIR}/themes themes
+    ln -sf ${_D6_CORE_DIR}/update.php update.php
+    ln -sf ${_D6_CORE_DIR}/xmlrpc.php xmlrpc.php
+    cp -af ${_D6_CORE_DIR}/sites ./
   fi
   if [ ! -L "$_OCTO_PLPATH/profiles" ] && [ -d "$_SHRD_PLPATH/profiles" ] ; then
     rm -f -r $_OCTO_PLPATH/profiles
@@ -297,21 +297,21 @@ create_d6_symlinks() {
 # Create D7 symlinks.
 create_d7_symlinks() {
   if [ ! -L "web.config" ] ; then
-    ln -sf ${_D}7_CORE_DIR/.htaccess .htaccess
-    ln -sf ${_D}7_CORE_DIR/authorize.php authorize.php
-    ln -sf ${_D}7_CORE_DIR/cron.php cron.php
-    ln -sf ${_D}7_CORE_DIR/crossdomain.xml crossdomain.xml
-    ln -sf ${_D}7_CORE_DIR/includes includes
-    ln -sf ${_D}7_CORE_DIR/index.php index.php
-    ln -sf ${_D}7_CORE_DIR/install.php install.php
-    ln -sf ${_D}7_CORE_DIR/js.php js.php
-    ln -sf ${_D}7_CORE_DIR/misc misc
-    ln -sf ${_D}7_CORE_DIR/modules modules
-    ln -sf ${_D}7_CORE_DIR/themes themes
-    ln -sf ${_D}7_CORE_DIR/update.php update.php
-    ln -sf ${_D}7_CORE_DIR/web.config web.config
-    ln -sf ${_D}7_CORE_DIR/xmlrpc.php xmlrpc.php
-    cp -af ${_D}7_CORE_DIR/sites ./
+    ln -sf ${_D7_CORE_DIR}/.htaccess .htaccess
+    ln -sf ${_D7_CORE_DIR}/authorize.php authorize.php
+    ln -sf ${_D7_CORE_DIR}/cron.php cron.php
+    ln -sf ${_D7_CORE_DIR}/crossdomain.xml crossdomain.xml
+    ln -sf ${_D7_CORE_DIR}/includes includes
+    ln -sf ${_D7_CORE_DIR}/index.php index.php
+    ln -sf ${_D7_CORE_DIR}/install.php install.php
+    ln -sf ${_D7_CORE_DIR}/js.php js.php
+    ln -sf ${_D7_CORE_DIR}/misc misc
+    ln -sf ${_D7_CORE_DIR}/modules modules
+    ln -sf ${_D7_CORE_DIR}/themes themes
+    ln -sf ${_D7_CORE_DIR}/update.php update.php
+    ln -sf ${_D7_CORE_DIR}/web.config web.config
+    ln -sf ${_D7_CORE_DIR}/xmlrpc.php xmlrpc.php
+    cp -af ${_D7_CORE_DIR}/sites ./
   fi
   if [ ! -L "$_OCTO_PLPATH/profiles" ] && [ -d "$_SHRD_PLPATH/profiles" ] ; then
     rm -f -r $_OCTO_PLPATH/profiles
@@ -322,21 +322,21 @@ create_d7_symlinks() {
 # Create D8 symlinks.
 create_d8_symlinks() {
   if [ ! -L "core" ] ; then
-    ln -sf ${_D}8_CORE_DIR/.csslintrc .csslintrc
-    ln -sf ${_D}8_CORE_DIR/.editorconfig .editorconfig
-    ln -sf ${_D}8_CORE_DIR/.eslintignore .eslintignore
-    ln -sf ${_D}8_CORE_DIR/.eslintrc .eslintrc
-    ln -sf ${_D}8_CORE_DIR/.htaccess .htaccess
-    ln -sf ${_D}8_CORE_DIR/composer.json composer.json
-    ln -sf ${_D}8_CORE_DIR/composer.lock composer.lock
-    ln -sf ${_D}8_CORE_DIR/core core
-    ln -sf ${_D}8_CORE_DIR/crossdomain.xml crossdomain.xml
-    ln -sf ${_D}8_CORE_DIR/index.php index.php
-    ln -sf ${_D}8_CORE_DIR/modules modules
-    ln -sf ${_D}8_CORE_DIR/profiles profiles
-    ln -sf ${_D}8_CORE_DIR/themes themes
-    ln -sf ${_D}8_CORE_DIR/web.config web.config
-    cp -af ${_D}8_CORE_DIR/sites ./
+    ln -sf ${_D8_CORE_DIR}/.csslintrc .csslintrc
+    ln -sf ${_D8_CORE_DIR}/.editorconfig .editorconfig
+    ln -sf ${_D8_CORE_DIR}/.eslintignore .eslintignore
+    ln -sf ${_D8_CORE_DIR}/.eslintrc .eslintrc
+    ln -sf ${_D8_CORE_DIR}/.htaccess .htaccess
+    ln -sf ${_D8_CORE_DIR}/composer.json composer.json
+    ln -sf ${_D8_CORE_DIR}/composer.lock composer.lock
+    ln -sf ${_D8_CORE_DIR}/core core
+    ln -sf ${_D8_CORE_DIR}/crossdomain.xml crossdomain.xml
+    ln -sf ${_D8_CORE_DIR}/index.php index.php
+    ln -sf ${_D8_CORE_DIR}/modules modules
+    ln -sf ${_D8_CORE_DIR}/profiles profiles
+    ln -sf ${_D8_CORE_DIR}/themes themes
+    ln -sf ${_D8_CORE_DIR}/web.config web.config
+    cp -af ${_D8_CORE_DIR}/sites ./
   fi
   if [ ! -L "$_OCTO_PLPATH/profiles" ] && [ -d "$_SHRD_PLPATH/profiles" ] ; then
     rm -f -r $_OCTO_PLPATH/profiles
@@ -367,51 +367,51 @@ rename_drupal8_profiles() {
 #
 # Prepare D6 core.
 prepare_drupal6_core() {
-  if [ ! -e "${_D}6_CORE_DIR" ] ; then
-    rm -f -r ${_D}6_CORE_DIR
+  if [ ! -e "${_D6_CORE_DIR}" ] ; then
+    rm -f -r ${_D6_CORE_DIR}
     cd /data/all/000/core
     curl -L --max-redirs 10 -k -s -A iCab \
       "http://files.aegir.cc/core/pressflow-${_SMALLCORE6}.tar.gz" | tar -xzf -
-    find ${_D}6_CORE_DIR -type d -exec chmod 0755 {} \; &> /dev/null
-    find ${_D}6_CORE_DIR -type f -exec chmod 0644 {} \; &> /dev/null
-    cd ${_D}6_CORE_DIR/
+    find ${_D6_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
+    find ${_D6_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
+    cd ${_D6_CORE_DIR}/
     fix_dirs_files
     patch -p0 < ${pthPch}/taxonomy-6.26.patch &> /dev/null
-    rm -f ${_D}6_CORE_DIR/modules/taxonomy/taxonomy.module.orig
+    rm -f ${_D6_CORE_DIR}/modules/taxonomy/taxonomy.module.orig
     rm -f modules/o_contrib
     ln -s $_CORE/o_contrib modules/o_contrib
     ln -s $_CORE/o_contrib/js/js.php js.php
     cp -af $_CORE/o_contrib/image/image.imagemagick.inc includes/
     cp -af $_CORE/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
-    rm -f -r ${_D}6_CORE_DIR/scripts
-    rm -f -r ${_D}6_CORE_DIR/themes/{bluemarine,chameleon,pushbutton,README.txt}
-    cd ${_D}6_CORE_DIR/themes
+    rm -f -r ${_D6_CORE_DIR}/scripts
+    rm -f -r ${_D6_CORE_DIR}/themes/{bluemarine,chameleon,pushbutton,README.txt}
+    cd ${_D6_CORE_DIR}/themes
     get_dev_contrib "rubik-6.x-3.0-beta5.tar.gz"
     get_dev_contrib "tao-6.x-3.3.tar.gz"
-    rm -f ${_D}6_CORE_DIR/sites/all/*.txt
+    rm -f ${_D6_CORE_DIR}/sites/all/*.txt
     cd $_CORE
   fi
 }
 #
 # Prepare D7 core.
 prepare_drupal7_core() {
-  if [ ! -e "${_D}7_CORE_DIR" ] ; then
-    rm -f -r ${_D}7_CORE_DIR
+  if [ ! -e "${_D7_CORE_DIR}" ] ; then
+    rm -f -r ${_D7_CORE_DIR}
     cd /data/all/000/core
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
       "http://files.aegir.cc/core/drupal-${_SMALLCORE7}.tar.gz" | tar -xzf -
-    find ${_D}7_CORE_DIR -type d -exec chmod 0755 {} \; &> /dev/null
-    find ${_D}7_CORE_DIR -type f -exec chmod 0644 {} \; &> /dev/null
-    cd ${_D}7_CORE_DIR/
+    find ${_D7_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
+    find ${_D7_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
+    cd ${_D7_CORE_DIR}/
     fix_dirs_files
     rename_drupal7_profiles
     patch -p0 < ${pthPch}/taxonomy-7.12.patch &> /dev/null
-    rm -f ${_D}7_CORE_DIR/modules/taxonomy/taxonomy.module.orig
+    rm -f ${_D7_CORE_DIR}/modules/taxonomy/taxonomy.module.orig
     rm -f modules/o_contrib_seven
     ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
     ln -s $_CORE/o_contrib_seven/js/js.php js.php
-    rm -f -r ${_D}7_CORE_DIR/scripts
-    cd ${_D}7_CORE_DIR/themes
+    rm -f -r ${_D7_CORE_DIR}/scripts
+    cd ${_D7_CORE_DIR}/themes
     get_dev_contrib "rubik-7.x-4.1.tar.gz"
     get_dev_contrib "tao-7.x-3.1.tar.gz"
     cd $_CORE
@@ -420,14 +420,14 @@ prepare_drupal7_core() {
 #
 # Prepare D8 core.
 prepare_drupal8_core() {
-  if [ ! -e "${_D}8_CORE_DIR" ] ; then
-    rm -f -r ${_D}8_CORE_DIR
+  if [ ! -e "${_D8_CORE_DIR}" ] ; then
+    rm -f -r ${_D8_CORE_DIR}
     cd /data/all/000/core
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
       "http://files.aegir.cc/core/drupal-${_SMALLCORE8}.tar.gz" | tar -xzf -
-    find ${_D}8_CORE_DIR -type d -exec chmod 0755 {} \; &> /dev/null
-    find ${_D}8_CORE_DIR -type f -exec chmod 0644 {} \; &> /dev/null
-    cd ${_D}8_CORE_DIR/
+    find ${_D8_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
+    find ${_D8_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
+    cd ${_D8_CORE_DIR}/
     fix_dirs_files
     rename_drupal8_profiles
     ### rm -f modules/o_contrib_eight
@@ -438,14 +438,14 @@ prepare_drupal8_core() {
 #
 # Prepare D8 dev core.
 prepare_dr8_dev_core() {
-  if [ ! -e "${_D}8_DEV_CORE_DIR" ] ; then
-    rm -f -r ${_D}8_DEV_CORE_DIR
+  if [ ! -e "${_D8_DEV_CORE_DIR}" ] ; then
+    rm -f -r ${_D8_DEV_CORE_DIR}
     cd /data/all/000/core
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
       "http://files.aegir.cc/core/drupal-${_D8_DEV_COMMIT}.tar.gz" | tar -xzf -
-    find ${_D}8_DEV_CORE_DIR -type d -exec chmod 0755 {} \; &> /dev/null
-    find ${_D}8_DEV_CORE_DIR -type f -exec chmod 0644 {} \; &> /dev/null
-    cd ${_D}8_DEV_CORE_DIR/
+    find ${_D8_DEV_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
+    find ${_D8_DEV_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
+    cd ${_D8_DEV_CORE_DIR}/
     fix_dirs_files
     rename_drupal8_profiles
     ### rm -f modules/o_contrib_eight
@@ -468,9 +468,9 @@ nocore_d6_dist_clean() {
   rm -f -r $_SHRD_PLPATH/sites
   rm -f -r $_SHRD_PLPATH/scripts
   rm -f -r $_SHRD_PLPATH/themes
-  if [ ! -d "$_SHRD_PLPATH/profiles" ] && [ -d "${_D}6_CORE_DIR/profiles" ] ; then
+  if [ ! -d "$_SHRD_PLPATH/profiles" ] && [ -d "${_D6_CORE_DIR}/profiles" ] ; then
     rm -f -r $_SHRD_PLPATH/profiles
-    cp -af ${_D}6_CORE_DIR/profiles $_SHRD_PLPATH/
+    cp -af ${_D6_CORE_DIR}/profiles $_SHRD_PLPATH/
   fi
   sed -i "s/'dblog'/'robotstxt', 'path_alias_cache'/g" \
     $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
@@ -497,9 +497,9 @@ nocore_d7_dist_clean() {
       mv $_CORE/drupal-7.$i $_SHRD_PLPATH
     fi
   done
-  if [ ! -d "$_SHRD_PLPATH/profiles" ] && [ -d "${_D}7_CORE_DIR/profiles" ] ; then
+  if [ ! -d "$_SHRD_PLPATH/profiles" ] && [ -d "${_D7_CORE_DIR}/profiles" ] ; then
     rm -f -r $_SHRD_PLPATH/profiles
-    cp -af ${_D}7_CORE_DIR/profiles $_SHRD_PLPATH/
+    cp -af ${_D7_CORE_DIR}/profiles $_SHRD_PLPATH/
   fi
 }
 #
@@ -519,9 +519,9 @@ nocore_d8_dist_clean() {
   rm -f -r $_SHRD_PLPATH/scripts
   rm -f -r $_SHRD_PLPATH/sites
   rm -f -r $_SHRD_PLPATH/themes
-  if [ ! -d "$_SHRD_PLPATH/profiles" ] && [ -d "${_D}8_CORE_DIR/profiles" ] ; then
+  if [ ! -d "$_SHRD_PLPATH/profiles" ] && [ -d "${_D8_CORE_DIR}/profiles" ] ; then
     rm -f -r $_SHRD_PLPATH/profiles
-    cp -af ${_D}8_CORE_DIR/profiles $_SHRD_PLPATH/
+    cp -af ${_D8_CORE_DIR}/profiles $_SHRD_PLPATH/
   fi
 }
 #
@@ -581,7 +581,7 @@ upgrade_contrib_less() {
 create_drupal7_basic() {
   if [ ! -d "$_SHRD_PLPATH" ] ; then
     mkdir -p $_SHRD_PLPATH
-    if [ ! -e "${_D}7_CORE_DIR" ] ; then
+    if [ ! -e "${_D7_CORE_DIR}" ] ; then
       prepare_drupal7_core
     fi
     nocore_d7_dist_clean
@@ -728,7 +728,7 @@ agov_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
@@ -777,7 +777,7 @@ commerce_7_1_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
@@ -827,7 +827,7 @@ commerce_7_2_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
@@ -875,7 +875,7 @@ commons_6_install() {
           if [ ! -d "$_SHRD_PLPATH" ] ; then
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}6_CORE_DIR" ] ; then
+              if [ ! -e "${_D6_CORE_DIR}" ] ; then
                 prepare_drupal6_core
               fi
               cd $_CORE
@@ -939,7 +939,7 @@ commons_7_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
@@ -995,7 +995,7 @@ drupal6_install() {
           || [[ "${_PLATFORMS_LIST}" =~ "D6D" ]] ; then
           msg "DISTRO: $_F_DRUPAL6_D installation in progress..."
           if [ ! -d "$_SHRD_PLPATH" ] ; then
-            if [ ! -e "${_D}6_CORE_DIR" ] ; then
+            if [ ! -e "${_D6_CORE_DIR}" ] ; then
               prepare_drupal6_core
             fi
             cd $_CORE
@@ -1019,7 +1019,7 @@ drupal6_install() {
           || [[ "${_PLATFORMS_LIST}" =~ "D6S" ]] ; then
           msg "DISTRO: $_F_DRUPAL6_S installation in progress..."
           if [ ! -d "$_SHRD_PLPATH" ] ; then
-            if [ ! -e "${_D}6_CORE_DIR" ] ; then
+            if [ ! -e "${_D6_CORE_DIR}" ] ; then
               prepare_drupal6_core
             fi
             cd $_CORE
@@ -1043,7 +1043,7 @@ drupal6_install() {
           || [[ "${_PLATFORMS_LIST}" =~ "D6P" ]] ; then
           msg "DISTRO: $_F_DRUPAL6 installation in progress..."
           if [ ! -d "$_SHRD_PLPATH" ] ; then
-            if [ ! -e "${_D}6_CORE_DIR" ] ; then
+            if [ ! -e "${_D6_CORE_DIR}" ] ; then
               prepare_drupal6_core
             fi
             cd $_CORE
@@ -1069,14 +1069,14 @@ drupal7_install() {
     || [[ "${_PLATFORMS_LIST}" =~ "D7D" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "D7S" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "D7P" ]] ; then
-    if [ ! -d "${_ROOT}/distro/$_THIS_CORE/${_DRUPAL7}P" ] ; then
+    if [ ! -d "${_ROOT}/distro/$_THIS_CORE/${_DRUPAL7P}" ] ; then
       echo " "
       if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/drupal-7.34" ; then
         true
         ###---### Drupal 7 Development
         #
         _REAL_PRNAME="standard"
-        _SHRD_PLNAME="${_DRUPAL7}D"
+        _SHRD_PLNAME="${_DRUPAL7D}"
         _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
         _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
         _OCTO_PLPATH="${_ROOT}/distro/$_THIS_CORE/$_SHRD_PLNAME"
@@ -1090,7 +1090,7 @@ drupal7_install() {
         ###---### Drupal 7 Staging
         #
         _REAL_PRNAME="standard"
-        _SHRD_PLNAME="${_DRUPAL7}S"
+        _SHRD_PLNAME="${_DRUPAL7S}"
         _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
         _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
         _OCTO_PLPATH="${_ROOT}/distro/$_THIS_CORE/$_SHRD_PLNAME"
@@ -1104,7 +1104,7 @@ drupal7_install() {
         ###---### Drupal 7 Production
         #
         _REAL_PRNAME="standard"
-        _SHRD_PLNAME="${_DRUPAL7}P"
+        _SHRD_PLNAME="${_DRUPAL7P}"
         _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
         _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
         _OCTO_PLPATH="${_ROOT}/distro/$_THIS_CORE/$_SHRD_PLNAME"
@@ -1139,7 +1139,7 @@ drupal8_install() {
           msg "DISTRO: $_F_DRUPAL8 installation in progress..."
           if [ ! -d "$_SHRD_PLPATH" ] ; then
             cd $_CORE
-            if [ ! -e "${_D}8_CORE_DIR" ] ; then
+            if [ ! -e "${_D8_CORE_DIR}" ] ; then
               prepare_drupal8_core
             fi
           fi
@@ -1171,8 +1171,8 @@ dr8_dev_install() {
           msg "DISTRO: $_F_D8_DEV_LABEL installation in progress..."
           if [ ! -d "$_SHRD_PLPATH" ] ; then
             cd $_CORE
-            _D8_CORE_DIR="${_D}8_DEV_CORE_DIR"
-            if [ ! -e "${_D}8_CORE_DIR" ] ; then
+            _D8_CORE_DIR="${_D8_DEV_CORE_DIR}"
+            if [ ! -e "${_D8_CORE_DIR}" ] ; then
               prepare_dr8_dev_core
             fi
           fi
@@ -1207,7 +1207,7 @@ erpal_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
@@ -1257,7 +1257,7 @@ fserver_install() {
         if [ ! -d "$_SHRD_PLPATH" ] ; then
           if [ "${_AEGIR_VERSION}" = "HEAD" ] \
             && [ "${_T_BUILD}" = "HEAD" ] ; then
-            if [ ! -e "${_D}6_CORE_DIR" ] ; then
+            if [ ! -e "${_D6_CORE_DIR}" ] ; then
               prepare_drupal6_core
             fi
             cd $_CORE
@@ -1321,7 +1321,7 @@ guardr_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
@@ -1369,7 +1369,7 @@ openacademy_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
@@ -1420,7 +1420,7 @@ openatrium7_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
@@ -1467,7 +1467,7 @@ openblog_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
@@ -1512,7 +1512,7 @@ openchurch1_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
@@ -1558,7 +1558,7 @@ openchurch2_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
@@ -1604,7 +1604,7 @@ opendeals_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
@@ -1649,7 +1649,7 @@ openoutreach_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
@@ -1694,7 +1694,7 @@ openpublic_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
@@ -1739,7 +1739,7 @@ openscholar_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               get_distro_ext "$_REAL_PRNAME-7.x-${_OPENSCHOLAR}.tar.gz"
@@ -1795,7 +1795,7 @@ panopoly_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
@@ -1854,7 +1854,7 @@ recruiter_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
@@ -1906,7 +1906,7 @@ restaurant_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
@@ -1953,7 +1953,7 @@ ubercart6_install() {
           if [ "${_AEGIR_VERSION}" = "HEAD" ] \
             && [ "${_T_BUILD}" = "HEAD" ] ; then
             cd $_CORE
-            if [ ! -e "${_D}6_CORE_DIR" ] ; then
+            if [ ! -e "${_D6_CORE_DIR}" ] ; then
               prepare_drupal6_core
             fi
             mkdir -p $_SHRD_PLPATH
@@ -2029,7 +2029,7 @@ ubercart7_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               mkdir -p $_SHRD_PLPATH
@@ -2099,7 +2099,7 @@ ubercart7_testing_install() {
             cd $_CORE
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ] ; then
-              if [ ! -e "${_D}7_CORE_DIR" ] ; then
+              if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
               mkdir -p $_SHRD_PLPATH
@@ -2231,26 +2231,26 @@ fi
 
 pthDst="${_ROOT}/distro/$_THIS_CORE"
 
-if [ -d "${pthDst}/${_DRUPAL7}D" ] ; then
-  if [ ! -e "${pthDst}/${_DRUPAL7}D/$drhSrc" ] ; then
+if [ -d "${pthDst}/${_DRUPAL7D}" ] ; then
+  if [ ! -e "${pthDst}/${_DRUPAL7D}/$drhSrc" ] ; then
     ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL7_D" standard \
-      ${pthDst}/${_DRUPAL7}D &> /dev/null
+      ${pthDst}/${_DRUPAL7D} &> /dev/null
   fi
 fi
-if [ -d "${pthDst}/${_DRUPAL7}S" ] ; then
-  if [ ! -e "${pthDst}/${_DRUPAL7}S/$drhSrc" ] ; then
+if [ -d "${pthDst}/${_DRUPAL7S}" ] ; then
+  if [ ! -e "${pthDst}/${_DRUPAL7S}/$drhSrc" ] ; then
     ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL7_S" standard \
-      ${pthDst}/${_DRUPAL7}S &> /dev/null
+      ${pthDst}/${_DRUPAL7S} &> /dev/null
   fi
 fi
 if [ ! -d "${pthDst}/${_DRUPAL7}" ] ; then
-  if [ -d "${pthDst}/${_DRUPAL7}P" ] ; then
-    if [ ! -e "${pthDst}/${_DRUPAL7}P/$drhSrc" ] ; then
+  if [ -d "${pthDst}/${_DRUPAL7P}" ] ; then
+    if [ ! -e "${pthDst}/${_DRUPAL7P}/$drhSrc" ] ; then
       ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL7_P" standard \
-        ${pthDst}/${_DRUPAL7}P &> /dev/null
+        ${pthDst}/${_DRUPAL7P} &> /dev/null
     fi
   fi
-elif [ ! -d "${pthDst}/${_DRUPAL7}P" ] ; then
+elif [ ! -d "${pthDst}/${_DRUPAL7P}" ] ; then
   if [ -d "${pthDst}/${_DRUPAL7}" ] ; then
     if [ ! -e "${pthDst}/${_DRUPAL7}/$drhSrc" ] ; then
       ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL7_P" standard \

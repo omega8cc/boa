@@ -437,7 +437,7 @@ manage_sec_user_drush_aliases() {
       && [ -e "${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php" ] ; then
       _DIFF_TEST=$(diff ${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
         ${User}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php 2>&1)
-      if [ ! -z "${_D}IFF_TEST" ] ; then
+      if [ ! -z "${_DIFF_TEST}" ] ; then
         cp -af ${User}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
           ${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
         chmod 440 ${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
@@ -1311,7 +1311,7 @@ manage_site_drush_alias_mirror() {
           else
             _DIFF_TEST=$(diff /home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
               ${User}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php 2>&1)
-            if [ ! -z "${_D}IFF_TEST" ] ; then
+            if [ ! -z "${_DIFF_TEST}" ] ; then
               cp -af ${User}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
                 /home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
               chmod 440 /home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
@@ -1458,7 +1458,7 @@ else
   manage_user >/var/backups/ltd/log/users-${_NOW}.log 2>&1
   if [ -e "${_THIS_LTD_CONF}" ] ; then
     _DIFF_TEST=$(diff ${_THIS_LTD_CONF} /etc/lshell.conf 2>&1)
-    if [ ! -z "${_D}IFF_TEST" ] ; then
+    if [ ! -z "${_DIFF_TEST}" ] ; then
       cp -af /etc/lshell.conf /var/backups/ltd/old/lshell.conf-before-${_NOW}
       cp -af ${_THIS_LTD_CONF} /etc/lshell.conf
     else

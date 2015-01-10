@@ -620,7 +620,7 @@ check_wrapper() {
   fi
   _BIN_FILE="/usr/local/bin/$(basename "$0")"
   _DATE_TEST=$(grep "### ${_TODAY} ###" ${_THIS_FILE} 2>&1)
-  if [[ "${_D}ATE_TEST" =~ "### ${_TODAY} ###" ]] ; then
+  if [[ "${_DATE_TEST}" =~ "### ${_TODAY} ###" ]] ; then
     _NEEDS_UPDATE=NO
   else
     _NEEDS_UPDATE=YES
@@ -679,7 +679,7 @@ check_root() {
     | sed 's/\%//g' \
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_D}F_TEST" ] && [ "${_D}F_TEST" -gt "90" ] ; then
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ] ; then
     echo "ERROR: Your disk space is almost full - \
       we can not proceed until it is below 90/100"
     clean_pid_exit

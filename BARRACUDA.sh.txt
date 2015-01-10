@@ -4168,7 +4168,7 @@ update_php_extensions() {
 # Install modern PHP version
 install_php_multi() {
   if [ "$1" = "55" ] || [ "$1" = "56" ] ; then
-    _PHP_EXTRA=$(echo "$_PHP_EXTRA" | sed "s/--with-curlwrappers//g" 2>&1)
+    _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-curlwrappers//g" 2>&1)
   fi
   ###--------------------###
   msg "INFO: Installing PHP $_PHP_VERSION"
@@ -4190,7 +4190,7 @@ install_php_multi() {
   ### cd /var/opt/php-$_PHP_VERSION
   msg "INFO: Installing PHP $_PHP_VERSION part 2/3"
   if [ "$1" = "55" ] || [ "$1" = "56" ] ; then
-    _PHP_EXTRA="$_PHP_EXTRA --enable-opcache"
+    _PHP_EXTRA="${_PHP_EXTRA} --enable-opcache"
   fi
   st_runner "sh ./configure \
                 --quiet \
@@ -4226,7 +4226,7 @@ install_php_multi() {
                 --with-xmlrpc \
                 --with-xsl \
                 --with-zlib \
-                $_PHP_EXTRA" 2> /dev/null
+                ${_PHP_EXTRA}" 2> /dev/null
   msg "INFO: Installing PHP $_PHP_VERSION part 3/3"
   sed -i "s/^EXTRA_LIBS = -lcrypt/EXTRA_LIBS = -llber -lcrypt/g" Makefile 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
@@ -5993,7 +5993,7 @@ strict_bin_permissions() {
                         /usr/local/bin \
                         /usr/local/sbin \
                         /usr/sbin"
-  for p in ${_WEB}SERVER_BIN_PATHS; do
+  for p in ${_WEBSERVER_BIN_PATHS}; do
     for f in `find $p ! -perm -4000 ! -perm -2000 -type f | grep pdf` ; do
       if [ -e "$f" ] ; then
         chgrp root $f &> /dev/null
@@ -6037,10 +6037,10 @@ strict_bin_permissions() {
                   which \
                   wkhtmltoimage \
                   wkhtmltopdf"
-  if [ ! -z "$_BACKEND_ITEMS_LIST" ] ; then
-    _BACKEND_ITEMS="$_BACKEND_ITEMS $_BACKEND_ITEMS_LIST"
+  if [ ! -z "${_BACKEND_ITEMS_LIST}" ] ; then
+    _BACKEND_ITEMS="${_BACKEND_ITEMS} ${_BACKEND_ITEMS_LIST}"
   fi
-  for i in $_BACKEND_ITEMS; do
+  for i in ${_BACKEND_ITEMS}; do
     _BIN_ITEM=$(which $i 2>&1)
     if [ -e "$_BIN_ITEM" ] ; then
       chgrp root $_BIN_ITEM &> /dev/null
@@ -6061,7 +6061,7 @@ strict_bin_permissions() {
                     sftp-kill \
                     sftp-state \
                     syncpass"
-  for i in $_PROTECTED_ITEMS; do
+  for i in ${_PROTECTED_ITEMS}; do
     _BIN_ITEM=$(which $i 2>&1)
     if [ -e "$_BIN_ITEM" ] ; then
       chown root:root $_BIN_ITEM &> /dev/null
@@ -6079,10 +6079,10 @@ strict_bin_permissions() {
 # Fix for broken platforms
 fix_broken_platforms() {
   if [ ! -e "${pthLog}/open-atrium-og-fixed-c3.log" ] ; then
-    REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
+    _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
       016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
       034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
-    for i in $REVISIONS; do
+    for i in ${_REVISIONS}; do
       if [ -d "/data/all/$i/openatrium-7.x-2.18-7.28.1/profiles/openatrium/modules/contrib" ] ; then
         cd /data/all/$i/openatrium-7.x-2.18-7.28.1/profiles/openatrium/modules/contrib/
         rm -f -r {context,ctools,entity,entityreference,mimemail,og}
@@ -6106,10 +6106,10 @@ fix_broken_platforms() {
     cd
   fi
   if [ ! -e "${pthLog}/open-atrium-og-fixed-d4.log" ] ; then
-    REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
+    _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
       016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
       034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
-    for i in $REVISIONS; do
+    for i in ${_REVISIONS}; do
       if [ -d "/data/all/$i/openatrium-7.x-2.21-7.31.1/profiles/openatrium/modules/contrib" ] ; then
         cd /data/all/$i/openatrium-7.x-2.21-7.31.1/profiles/openatrium/modules/contrib/
         rm -f -r {context,ctools,entity,entityreference,mimemail,og}
@@ -6133,10 +6133,10 @@ fix_broken_platforms() {
     cd
   fi
   if [ ! -e "${pthLog}/open-atrium-og-fixed-d5.log" ] ; then
-    REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
+    _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
       016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
       034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
-    for i in $REVISIONS; do
+    for i in ${_REVISIONS}; do
       if [ -d "/data/all/$i/openatrium-7.x-2.22-7.32.1/profiles/openatrium/modules/contrib" ] ; then
         cd /data/all/$i/openatrium-7.x-2.22-7.32.1/profiles/openatrium/modules/contrib/
         rm -f -r {context,ctools,entity,entityreference,mimemail,og}
@@ -6160,10 +6160,10 @@ fix_broken_platforms() {
     cd
   fi
   if [ ! -e "${pthLog}/erpal-fixed-e5.log" ] ; then
-    REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
+    _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
       016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
       034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
-    for i in $REVISIONS; do
+    for i in ${_REVISIONS}; do
       if [ -d "/data/all/$i/erpal-7.x-2.0-7.31.1/profiles/erpal/modules/contrib" ] ; then
         if [ -d "/data/all/$i/o_contrib_seven/entitycache" ] && [ ! -d "/data/all/$i/erpal-7.x-2.0-7.31.1/profiles/erpal/modules/contrib/entitycache" ] ; then
           cp -a /data/all/$i/o_contrib_seven/entitycache /data/all/$i/erpal-7.x-2.0-7.31.1/profiles/erpal/modules/contrib/
@@ -6174,10 +6174,10 @@ fix_broken_platforms() {
     cd
   fi
   if [ ! -e "${pthLog}/commons-fixed-c5.log" ] ; then
-    REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
+    _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
       016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
       034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
-    for i in $REVISIONS; do
+    for i in ${_REVISIONS}; do
       if [ -d "/data/all/$i/commons-7.x-3.17-7.31.1/profiles/commons/modules/contrib/acquia_connector" ] ; then
         rm -f -r /data/all/$i/commons-7.x-3.17-7.31.1/profiles/commons/modules/contrib/acquia_connector
       fi
@@ -6905,13 +6905,13 @@ if [ "${_STATUS}" = "INIT" ] ; then
     fi
   fi
   apt-get update &> /dev/null
-  ${_INI}TINS locales &> /dev/null
+  ${_INITINS} locales &> /dev/null
   fix_locales
-  ${_INI}TINS lsb-release &> /dev/null
-  ${_INI}TINS dnsutils &> /dev/null
-  ${_INI}TINS netcat &> /dev/null
-  ${_INI}TINS curl &> /dev/null
-  ${_INI}TINS wget &> /dev/null
+  ${_INITINS} lsb-release &> /dev/null
+  ${_INITINS} dnsutils &> /dev/null
+  ${_INITINS} netcat &> /dev/null
+  ${_INITINS} curl &> /dev/null
+  ${_INITINS} wget &> /dev/null
 fi
 
 
@@ -6937,11 +6937,11 @@ if [ "${_STATUS}" = "INIT" ] ; then
     fi
   fi
   apt-get update &> /dev/null
-  ${_INI}TINS locales &> /dev/null
+  ${_INITINS} locales &> /dev/null
   fix_locales
-  ${_INI}TINS git-core &> /dev/null
-  ${_INI}TINS aptitude &> /dev/null
-  ${_INI}TINS axel &> /dev/null
+  ${_INITINS} git-core &> /dev/null
+  ${_INITINS} aptitude &> /dev/null
+  ${_INITINS} axel &> /dev/null
 fi
 
 
@@ -8171,7 +8171,7 @@ elif [ "$_REL_VERSION" = "lenny" ] ; then
 fi
 
 install_with_aptitude_deps() {
-  st_runner "$_INSTAPP ${_D}EBDEPS" 2> /dev/null
+  st_runner "$_INSTAPP ${_DEBDEPS}" 2> /dev/null
   if [ -x "/usr/bin/gpg2" ] ; then
     _GPG=gpg2
   else
@@ -8920,10 +8920,12 @@ else
   _PHP_EXTRA="--with-ldap --with-gmp"
 fi
 if [ ! -z "${_PHP_EXTRA_CONF}" ] ; then
-  _PHP_EXTRA="$_PHP_EXTRA ${_PHP_EXTRA_CONF}"
+  _PHP_EXTRA="${_PHP_EXTRA} ${_PHP_EXTRA_CONF}"
 fi
-if [ ! -z "$_PHP_EXTRA" ] ; then
-  msg "INFO: PHP EXTRA is $_PHP_EXTRA"
+if [ ! -z "${_PHP_EXTRA}" ] ; then
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "INFO: PHP EXTRA is ${_PHP_EXTRA}"
+  fi
 fi
 if [ "$_REL_VERSION" = "trusty" ] ; then
   ln -sf /usr/include/freetype2 /usr/include/freetype2/freetype
@@ -10247,7 +10249,7 @@ else
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     mrun "service mysql restart" &> /dev/null
     mrun "sleep 8"
-    msg "INFO: Upgrading ${_DB_SERVER} tables if necessary, please wait a minute..."
+    msg "INFO: Upgrading ${_DB_SERVER} tables if necessary..."
     mrun "sleep 60"
     if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
       || [ ! -e "/var/run/mysqld/mysqld.sock" ] ; then

@@ -254,15 +254,15 @@ count() {
         fi
         if [ ! -z "${Dat}" ] && [ -e "/var/lib/mysql/${Dat}" ] ; then
           DatSize=$(du -s /var/lib/mysql/${Dat} 2>&1)
-          DatSize=$(echo "${Dat}Size" \
+          DatSize=$(echo "${DatSize}" \
             | cut -d'/' -f1 \
             | awk '{ print $1}' \
             | sed "s/[\/\s+]//g" 2>&1)
           if [ "${_DEV_URL}" = "YES" ] ; then
-            echo "${_THIS_U},${Dom},DatSize:${Dat}Size:${Dat},skip"
+            echo "${_THIS_U},${Dom},DatSize:${DatSize}:${Dat},skip"
           else
             SumDat=$(( SumDat + DatSize ))
-            echo "${_THIS_U},${Dom},DatSize:${Dat}Size:${Dat}"
+            echo "${_THIS_U},${Dom},DatSize:${DatSize}:${Dat}"
           fi
         else
           echo "Database ${Dat} for ${Dom} does not exist"
@@ -759,7 +759,7 @@ action() {
           if [ -e "${_THIS_HM_SITE}" ] ; then
             su -s /bin/bash - ${_THIS_U} -c "drush @hostmaster \
               vset --always-set site_footer 'Weekly Usage Monitor \
-              | ${_D}ATE \
+              | ${_DATE} \
               | Disk <strong>${HomSizH}</strong> MB \
               | Databases <strong>${SumDatH}</strong> MB \
               | <strong>${_CLIENT_CORES}</strong> \

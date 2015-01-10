@@ -288,7 +288,7 @@ fix_user_register_protection() {
       if [ "${_CLIENT_OPTION}" = "POWER" ] ; then
         _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
           $_PLR_CTRL_FILE 2>&1)
-        if [[ "${_D}IS_URP_T" =~ "disable_user_register_protection = TRUE" ]] ; then
+        if [[ "${_DIS_URP_T}" =~ "disable_user_register_protection = TRUE" ]] ; then
           _DISABLE_USER_REGISTER_PROTECTION=YES
         else
           _DISABLE_USER_REGISTER_PROTECTION=NO
@@ -297,7 +297,7 @@ fix_user_register_protection() {
     else
       _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
         $_PLR_CTRL_FILE 2>&1)
-      if [[ "${_D}IS_URP_T" =~ "disable_user_register_protection = TRUE" ]] ; then
+      if [[ "${_DIS_URP_T}" =~ "disable_user_register_protection = TRUE" ]] ; then
         _DISABLE_USER_REGISTER_PROTECTION=YES
       else
         _DISABLE_USER_REGISTER_PROTECTION=NO
@@ -316,16 +316,16 @@ fix_user_register_protection() {
 
   _DIR_CTRL_FILE="$Dir/modules/boa_site_control.ini"
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
-    && [ ! -e "${_D}IR_CTRL_FILE" ] ; then
-    cp -af /data/conf/default.boa_site_control.ini ${_D}IR_CTRL_FILE &> /dev/null
-    chown $_HM_U:users ${_D}IR_CTRL_FILE
-    chmod 0664 ${_D}IR_CTRL_FILE
+    && [ ! -e "${_DIR_CTRL_FILE}" ] ; then
+    cp -af /data/conf/default.boa_site_control.ini ${_DIR_CTRL_FILE} &> /dev/null
+    chown $_HM_U:users ${_DIR_CTRL_FILE}
+    chmod 0664 ${_DIR_CTRL_FILE}
   fi
 
-  if [ -e "${_D}IR_CTRL_FILE" ] ; then
+  if [ -e "${_DIR_CTRL_FILE}" ] ; then
     _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
-      ${_D}IR_CTRL_FILE 2>&1)
-    if [[ "${_D}IS_URP_T" =~ "disable_user_register_protection = TRUE" ]] ; then
+      ${_DIR_CTRL_FILE} 2>&1)
+    if [[ "${_DIS_URP_T}" =~ "disable_user_register_protection = TRUE" ]] ; then
       _DISABLE_USER_REGISTER_PROTECTION=YES
     else
       _DISABLE_USER_REGISTER_PROTECTION=NO
@@ -334,7 +334,7 @@ fix_user_register_protection() {
     _DISABLE_USER_REGISTER_PROTECTION=NO
   fi
 
-  if [ "${_D}ISABLE_USER_REGISTER_PROTECTION" = "NO" ] ; then
+  if [ "${_DISABLE_USER_REGISTER_PROTECTION}" = "NO" ] ; then
     Prm=$(drush4 vget ^user_register$ \
       | cut -d: -f2 \
       | awk '{ print $1}' \
@@ -679,26 +679,26 @@ check_site_status() {
         if [ -L "/home/${_HM_U}.ftp/.drush/usr/drupalgeddon" ] ; then
           run_drush4_cmd "en update -y"
           _DGDD_TEST=$(run_drush4_nosilent_cmd "drupalgeddon-test" 2>&1)
-          if [[ "${_D}GDD_TEST" =~ "No evidence of known Drupalgeddon exploits" ]] ; then
+          if [[ "${_DGDD_TEST}" =~ "No evidence of known Drupalgeddon exploits" ]] ; then
             _DO_NOTHING=YES
-          elif [[ "${_D}GDD_TEST" =~ "The drush command" ]] \
-            && [[ "${_D}GDD_TEST" =~ "could not be found" ]]; then
+          elif [[ "${_DGDD_TEST}" =~ "The drush command" ]] \
+            && [[ "${_DGDD_TEST}" =~ "could not be found" ]]; then
             _DO_NOTHING=YES
-          elif [ -z "${_D}GDD_TEST" ] ; then
+          elif [ -z "${_DGDD_TEST}" ] ; then
             _DO_NOTHING=YES
-          elif [[ "${_D}GDD_TEST" =~ "Drush command terminated" ]] ; then
+          elif [[ "${_DGDD_TEST}" =~ "Drush command terminated" ]] ; then
             echo "ALERT: THIS SITE IS PROBABLY BROKEN! $Dir"
             echo "${_DGDD_TEST}"
           else
             echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
             _DETECTED="${_DGDD_TEST}"
             if [ ! -z "${_MY_EMAIL}" ] ; then
-              if [[ "${_D}GDD_TEST" =~ "Role \"megauser\" discovered" ]] \
-                || [[ "${_D}GDD_TEST" =~ "User \"drupaldev\" discovered" ]] \
-                || [[ "${_D}GDD_TEST" =~ "User \"owned\" discovered" ]] \
-                || [[ "${_D}GDD_TEST" =~ "User \"system\" discovered" ]] \
-                || [[ "${_D}GDD_TEST" =~ "User \"configure\" discovered" ]] \
-                || [[ "${_D}GDD_TEST" =~ "User \"drplsys\" discovered" ]] ; then
+              if [[ "${_DGDD_TEST}" =~ "Role \"megauser\" discovered" ]] \
+                || [[ "${_DGDD_TEST}" =~ "User \"drupaldev\" discovered" ]] \
+                || [[ "${_DGDD_TEST}" =~ "User \"owned\" discovered" ]] \
+                || [[ "${_DGDD_TEST}" =~ "User \"system\" discovered" ]] \
+                || [[ "${_DGDD_TEST}" =~ "User \"configure\" discovered" ]] \
+                || [[ "${_DGDD_TEST}" =~ "User \"drplsys\" discovered" ]] ; then
                 if [ -e "${User}/config/server_master/nginx/vhost.d/${Dom}" ] ; then
                   mv -f ${User}/config/server_master/nginx/vhost.d/${Dom} \
                     ${User}/config/server_master/nginx/vhost.d/.${Dom}
@@ -713,7 +713,7 @@ check_site_status() {
           _DGMR_TEST=$(run_drush4_nosilent_cmd \
             "sqlq \"SELECT * FROM menu_router WHERE access_callback \
             = 'file_put_contents'\" | grep 'file_put_contents'" 2>&1)
-          if [[ "${_D}GMR_TEST" =~ "file_put_contents" ]] ; then
+          if [[ "${_DGMR_TEST}" =~ "file_put_contents" ]] ; then
             echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
             _DETECTED="file_put_contents as access_callback detected in menu_router table"
             if [ ! -z "${_MY_EMAIL}" ] ; then
@@ -723,7 +723,7 @@ check_site_status() {
           _DGMR_TEST=$(run_drush4_nosilent_cmd \
             "sqlq \"SELECT * FROM menu_router WHERE access_callback \
             = 'assert'\" | grep 'assert'" 2>&1)
-          if [[ "${_D}GMR_TEST" =~ "assert" ]] ; then
+          if [[ "${_DGMR_TEST}" =~ "assert" ]] ; then
             echo "ALERT: THIS SITE HAS BEEN HACKED! $Dir"
             _DETECTED="assert as access_callback detected in menu_router table"
             if [ ! -z "${_MY_EMAIL}" ] ; then
@@ -881,25 +881,25 @@ setup_solr() {
   _DIR_CTRL_FILE="$Dir/modules/boa_site_control.ini"
   _SOLR_DIR="/opt/solr4/${_HM_U}.${Dom}"
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
-    && [ ! -e "${_D}IR_CTRL_FILE" ] ; then
-    cp -af /data/conf/default.boa_site_control.ini ${_D}IR_CTRL_FILE &> /dev/null
-    chown $_HM_U:users ${_D}IR_CTRL_FILE
-    chmod 0664 ${_D}IR_CTRL_FILE
+    && [ ! -e "${_DIR_CTRL_FILE}" ] ; then
+    cp -af /data/conf/default.boa_site_control.ini ${_DIR_CTRL_FILE} &> /dev/null
+    chown $_HM_U:users ${_DIR_CTRL_FILE}
+    chmod 0664 ${_DIR_CTRL_FILE}
   fi
 
   ###
   ### Support for solr_custom_config directive
   ###
-  if [ -e "${_D}IR_CTRL_FILE" ] ; then
+  if [ -e "${_DIR_CTRL_FILE}" ] ; then
     _SOLR_CUSTOM_CONFIG_PRESENT=$(grep "solr_custom_config" \
-      ${_D}IR_CTRL_FILE 2>&1)
+      ${_DIR_CTRL_FILE} 2>&1)
     if [[ "$_SOLR_CUSTOM_CONFIG_PRESENT" =~ "solr_custom_config" ]] ; then
       _DO_NOTHING=YES
     else
-      echo ";solr_custom_config = NO" >> ${_D}IR_CTRL_FILE
+      echo ";solr_custom_config = NO" >> ${_DIR_CTRL_FILE}
     fi
     _SOLR_CUSTOM_CONFIG_TEST=$(grep "^solr_custom_config = YES" \
-      ${_D}IR_CTRL_FILE 2>&1)
+      ${_DIR_CTRL_FILE} 2>&1)
     if [[ "$_SOLR_CUSTOM_CONFIG_TEST" =~ "solr_custom_config = YES" ]] ; then
       _SOLR_CUSTOM_CONFIG_RESULT=YES
       echo "Solr config for ${_SOLR_DIR} is protected"
@@ -908,22 +908,22 @@ setup_solr() {
   ###
   ### Support for solr_integration_module directive
   ###
-  if [ -e "${_D}IR_CTRL_FILE" ] ; then
+  if [ -e "${_DIR_CTRL_FILE}" ] ; then
     _SOLR_MODULE=""
     _SOLR_IM_PRESENT=$(grep "solr_integration_module" \
-      ${_D}IR_CTRL_FILE 2>&1)
+      ${_DIR_CTRL_FILE} 2>&1)
     if [[ "$_SOLR_IM_PRESENT" =~ "solr_integration_module" ]] ; then
       _DO_NOTHING=YES
     else
-      echo ";solr_integration_module = NO" >> ${_D}IR_CTRL_FILE
+      echo ";solr_integration_module = NO" >> ${_DIR_CTRL_FILE}
     fi
     _ASOLR_T=$(grep "^solr_integration_module = apachesolr" \
-      ${_D}IR_CTRL_FILE 2>&1)
+      ${_DIR_CTRL_FILE} 2>&1)
     if [[ "$_ASOLR_T" =~ "apachesolr" ]] ; then
       _SOLR_MODULE=apachesolr
     fi
     _SAPI_SOLR_T=$(grep \
-      "^solr_integration_module = search_api_solr" ${_D}IR_CTRL_FILE 2>&1)
+      "^solr_integration_module = search_api_solr" ${_DIR_CTRL_FILE} 2>&1)
     if [[ "$_SAPI_SOLR_T" =~ "search_api_solr" ]] ; then
       _SOLR_MODULE=search_api_solr
     fi
@@ -936,16 +936,16 @@ setup_solr() {
   ###
   ### Support for solr_update_config directive
   ###
-  if [ -e "${_D}IR_CTRL_FILE" ] ; then
+  if [ -e "${_DIR_CTRL_FILE}" ] ; then
     _SOLR_UPDATE_CONFIG_PRESENT=$(grep "solr_update_config" \
-      ${_D}IR_CTRL_FILE 2>&1)
+      ${_DIR_CTRL_FILE} 2>&1)
     if [[ "$_SOLR_UPDATE_CONFIG_PRESENT" =~ "solr_update_config" ]] ; then
       _DO_NOTHING=YES
     else
-      echo ";solr_update_config = NO" >> ${_D}IR_CTRL_FILE
+      echo ";solr_update_config = NO" >> ${_DIR_CTRL_FILE}
     fi
     _SOLR_UPDATE_CONFIG_TEST=$(grep "^solr_update_config = YES" \
-      ${_D}IR_CTRL_FILE 2>&1)
+      ${_DIR_CTRL_FILE} 2>&1)
     if [[ "$_SOLR_UPDATE_CONFIG_TEST" =~ "solr_update_config = YES" ]] ; then
       if [ "$_SOLR_CUSTOM_CONFIG_RESULT" = "YES" ] \
         || [ -e "${_SOLR_DIR}/conf/BOA-2.4.0.conf" ] ; then
@@ -983,16 +983,16 @@ fix_modules() {
           fi
           if [ "$_AUTO_CONFIG_ADVAGG" = "YES" ] ; then
             if [ -e "/data/conf/default.boa_site_control.ini" ] \
-              && [ ! -e "${_D}IR_CTRL_FILE" ] ; then
+              && [ ! -e "${_DIR_CTRL_FILE}" ] ; then
               cp -af /data/conf/default.boa_site_control.ini \
-                ${_D}IR_CTRL_FILE &> /dev/null
-              chown $_HM_U:users ${_D}IR_CTRL_FILE
-              chmod 0664 ${_D}IR_CTRL_FILE
+                ${_DIR_CTRL_FILE} &> /dev/null
+              chown $_HM_U:users ${_DIR_CTRL_FILE}
+              chmod 0664 ${_DIR_CTRL_FILE}
             fi
-            if [ -e "${_D}IR_CTRL_FILE" ] ; then
-              _ADVAGG_P=$(grep "advagg_auto_configuration" ${_D}IR_CTRL_FILE 2>&1)
+            if [ -e "${_DIR_CTRL_FILE}" ] ; then
+              _ADVAGG_P=$(grep "advagg_auto_configuration" ${_DIR_CTRL_FILE} 2>&1)
               _ADVAGG_T=$(grep \
-                "^advagg_auto_configuration = TRUE" ${_D}IR_CTRL_FILE 2>&1)
+                "^advagg_auto_configuration = TRUE" ${_DIR_CTRL_FILE} 2>&1)
               if [[ "$_ADVAGG_T" =~ "advagg_auto_configuration = TRUE" ]] ; then
                 _DO_NOTHING=YES
               else
@@ -1001,32 +1001,32 @@ fix_modules() {
                 ###
                 if [[ "$_ADVAGG_P" =~ "advagg_auto_configuration" ]] ; then
                   sed -i "s/.*advagg_auto_c.*/advagg_auto_configuration = TRUE/g" \
-                    ${_D}IR_CTRL_FILE &> /dev/null
+                    ${_DIR_CTRL_FILE} &> /dev/null
                 else
-                  echo "advagg_auto_configuration = TRUE" >> ${_D}IR_CTRL_FILE
+                  echo "advagg_auto_configuration = TRUE" >> ${_DIR_CTRL_FILE}
                 fi
               fi
             fi
           else
             if [ -e "/data/conf/default.boa_site_control.ini" ] \
-              && [ ! -e "${_D}IR_CTRL_FILE" ] ; then
+              && [ ! -e "${_DIR_CTRL_FILE}" ] ; then
               cp -af /data/conf/default.boa_site_control.ini \
-                ${_D}IR_CTRL_FILE &> /dev/null
-              chown $_HM_U:users ${_D}IR_CTRL_FILE
-              chmod 0664 ${_D}IR_CTRL_FILE
+                ${_DIR_CTRL_FILE} &> /dev/null
+              chown $_HM_U:users ${_DIR_CTRL_FILE}
+              chmod 0664 ${_DIR_CTRL_FILE}
             fi
-            if [ -e "${_D}IR_CTRL_FILE" ] ; then
-              _ADVAGG_P=$(grep "advagg_auto_configuration" ${_D}IR_CTRL_FILE 2>&1)
+            if [ -e "${_DIR_CTRL_FILE}" ] ; then
+              _ADVAGG_P=$(grep "advagg_auto_configuration" ${_DIR_CTRL_FILE} 2>&1)
               _ADVAGG_T=$(grep "^advagg_auto_configuration = FALSE" \
-                ${_D}IR_CTRL_FILE 2>&1)
+                ${_DIR_CTRL_FILE} 2>&1)
               if [[ "$_ADVAGG_T" =~ "advagg_auto_configuration = FALSE" ]] ; then
                 _DO_NOTHING=YES
               else
                 if [[ "$_ADVAGG_P" =~ "advagg_auto_configuration" ]] ; then
                   sed -i "s/.*advagg_auto_c.*/advagg_auto_configuration = FALSE/g" \
-                    ${_D}IR_CTRL_FILE &> /dev/null
+                    ${_DIR_CTRL_FILE} &> /dev/null
                 else
-                  echo ";advagg_auto_configuration = FALSE" >> ${_D}IR_CTRL_FILE
+                  echo ";advagg_auto_configuration = FALSE" >> ${_DIR_CTRL_FILE}
                 fi
               fi
             fi
@@ -1043,17 +1043,17 @@ fix_modules() {
           fi
           if [ "$_AUTO_CONFIG_PURGE_EXPIRE" = "YES" ] ; then
             if [ -e "/data/conf/default.boa_site_control.ini" ] \
-              && [ ! -e "${_D}IR_CTRL_FILE" ] ; then
+              && [ ! -e "${_DIR_CTRL_FILE}" ] ; then
               cp -af /data/conf/default.boa_site_control.ini \
-                ${_D}IR_CTRL_FILE &> /dev/null
-              chown $_HM_U:users ${_D}IR_CTRL_FILE
-              chmod 0664 ${_D}IR_CTRL_FILE
+                ${_DIR_CTRL_FILE} &> /dev/null
+              chown $_HM_U:users ${_DIR_CTRL_FILE}
+              chmod 0664 ${_DIR_CTRL_FILE}
             fi
-            if [ -e "${_D}IR_CTRL_FILE" ] ; then
+            if [ -e "${_DIR_CTRL_FILE}" ] ; then
               _AC_PE_P=$(grep \
-                "purge_expire_auto_configuration" ${_D}IR_CTRL_FILE 2>&1)
+                "purge_expire_auto_configuration" ${_DIR_CTRL_FILE} 2>&1)
               _AC_PE_T=$(grep \
-                "^purge_expire_auto_configuration = TRUE" ${_D}IR_CTRL_FILE 2>&1)
+                "^purge_expire_auto_configuration = TRUE" ${_DIR_CTRL_FILE} 2>&1)
               if [[ "$_AC_PE_T" =~ "purge_expire_auto_configuration = TRUE" ]] ; then
                 _DO_NOTHING=YES
               else
@@ -1062,34 +1062,34 @@ fix_modules() {
                 ###
                 if [[ "$_AC_PE_P" =~ "purge_expire_auto_configuration" ]] ; then
                   sed -i "s/.*purge_expire_a.*/purge_expire_auto_configuration = TRUE/g" \
-                    ${_D}IR_CTRL_FILE &> /dev/null
+                    ${_DIR_CTRL_FILE} &> /dev/null
                 else
-                  echo "purge_expire_auto_configuration = TRUE" >> ${_D}IR_CTRL_FILE
+                  echo "purge_expire_auto_configuration = TRUE" >> ${_DIR_CTRL_FILE}
                 fi
               fi
             fi
           else
             if [ -e "/data/conf/default.boa_site_control.ini" ] \
-              && [ ! -e "${_D}IR_CTRL_FILE" ] ; then
+              && [ ! -e "${_DIR_CTRL_FILE}" ] ; then
               cp -af /data/conf/default.boa_site_control.ini \
-                ${_D}IR_CTRL_FILE &> /dev/null
-              chown $_HM_U:users ${_D}IR_CTRL_FILE
-              chmod 0664 ${_D}IR_CTRL_FILE
+                ${_DIR_CTRL_FILE} &> /dev/null
+              chown $_HM_U:users ${_DIR_CTRL_FILE}
+              chmod 0664 ${_DIR_CTRL_FILE}
             fi
-            if [ -e "${_D}IR_CTRL_FILE" ] ; then
+            if [ -e "${_DIR_CTRL_FILE}" ] ; then
               _AC_PE_P=$(grep "purge_expire_auto_configuration" \
-                ${_D}IR_CTRL_FILE 2>&1)
+                ${_DIR_CTRL_FILE} 2>&1)
               _AC_PE_T=$(grep "^purge_expire_auto_configuration = FALSE" \
-                ${_D}IR_CTRL_FILE 2>&1)
+                ${_DIR_CTRL_FILE} 2>&1)
               if [[ "$_AC_PE_T" =~ "purge_expire_auto_configuration = FALSE" ]] ; then
                 _DO_NOTHING=YES
               else
                 if [[ "$_AC_PE_P" =~ "purge_expire_auto_configuration" ]] ; then
                   sed -i "s/.*purge_expire_a.*/purge_expire_auto_configuration = FALSE/g" \
-                    ${_D}IR_CTRL_FILE &> /dev/null
+                    ${_DIR_CTRL_FILE} &> /dev/null
                 else
                   echo ";purge_expire_auto_configuration = FALSE" >> \
-                    ${_D}IR_CTRL_FILE
+                    ${_DIR_CTRL_FILE}
                 fi
               fi
             fi
@@ -1119,15 +1119,15 @@ fix_modules() {
             fi
             if [ "$_AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS" = "YES" ] ; then
               if [ -e "/data/conf/default.boa_site_control.ini" ] \
-                && [ ! -e "${_D}IR_CTRL_FILE" ] ; then
+                && [ ! -e "${_DIR_CTRL_FILE}" ] ; then
                 cp -af /data/conf/default.boa_site_control.ini \
-                  ${_D}IR_CTRL_FILE &> /dev/null
-                chown $_HM_U:users ${_D}IR_CTRL_FILE
-                chmod 0664 ${_D}IR_CTRL_FILE
+                  ${_DIR_CTRL_FILE} &> /dev/null
+                chown $_HM_U:users ${_DIR_CTRL_FILE}
+                chmod 0664 ${_DIR_CTRL_FILE}
               fi
-              if [ -e "${_D}IR_CTRL_FILE" ] ; then
+              if [ -e "${_DIR_CTRL_FILE}" ] ; then
                 _AC_PFD_T=$(grep "^allow_private_file_downloads = TRUE" \
-                  ${_D}IR_CTRL_FILE 2>&1)
+                  ${_DIR_CTRL_FILE} 2>&1)
                 if [[ "$_AC_PFD_T" =~ "allow_private_file_downloads = TRUE" ]] ; then
                   _DO_NOTHING=YES
                 else
@@ -1135,25 +1135,25 @@ fix_modules() {
                   ### Do this only for the site level ini file.
                   ###
                   sed -i "s/.*allow_private_f.*/allow_private_file_downloads = TRUE/g" \
-                    ${_D}IR_CTRL_FILE &> /dev/null
+                    ${_DIR_CTRL_FILE} &> /dev/null
                 fi
               fi
             else
               if [ -e "/data/conf/default.boa_site_control.ini" ] \
-                && [ ! -e "${_D}IR_CTRL_FILE" ] ; then
+                && [ ! -e "${_DIR_CTRL_FILE}" ] ; then
                 cp -af /data/conf/default.boa_site_control.ini \
-                  ${_D}IR_CTRL_FILE &> /dev/null
-                chown $_HM_U:users ${_D}IR_CTRL_FILE
-                chmod 0664 ${_D}IR_CTRL_FILE
+                  ${_DIR_CTRL_FILE} &> /dev/null
+                chown $_HM_U:users ${_DIR_CTRL_FILE}
+                chmod 0664 ${_DIR_CTRL_FILE}
               fi
-              if [ -e "${_D}IR_CTRL_FILE" ] ; then
+              if [ -e "${_DIR_CTRL_FILE}" ] ; then
                 _AC_PFD_T=$(grep "^allow_private_file_downloads = FALSE" \
-                  ${_D}IR_CTRL_FILE 2>&1)
+                  ${_DIR_CTRL_FILE} 2>&1)
                 if [[ "$_AC_PFD_T" =~ "allow_private_file_downloads = FALSE" ]] ; then
                   _DO_NOTHING=YES
                 else
                   sed -i "s/.*allow_private_f.*/allow_private_file_downloads = FALSE/g" \
-                    ${_D}IR_CTRL_FILE &> /dev/null
+                    ${_DIR_CTRL_FILE} &> /dev/null
                 fi
               fi
             fi
@@ -1352,60 +1352,60 @@ fix_modules() {
               echo ";views_content_cache_dont_enable = FALSE" >> $_PLR_CTRL_FILE
             fi
           fi
-          if [ -e "${_D}IR_CTRL_FILE" ] ; then
-             _VAR_IF_PRESENT=$(grep "session_cookie_ttl" ${_D}IR_CTRL_FILE 2>&1)
+          if [ -e "${_DIR_CTRL_FILE}" ] ; then
+             _VAR_IF_PRESENT=$(grep "session_cookie_ttl" ${_DIR_CTRL_FILE} 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "session_cookie_ttl" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";session_cookie_ttl = 86400" >> ${_D}IR_CTRL_FILE
+              echo ";session_cookie_ttl = 86400" >> ${_DIR_CTRL_FILE}
             fi
-            _VAR_IF_PRESENT=$(grep "session_gc_eol" ${_D}IR_CTRL_FILE 2>&1)
+            _VAR_IF_PRESENT=$(grep "session_gc_eol" ${_DIR_CTRL_FILE} 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "session_gc_eol" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";session_gc_eol = 86400" >> ${_D}IR_CTRL_FILE
+              echo ";session_gc_eol = 86400" >> ${_DIR_CTRL_FILE}
             fi
-            _VAR_IF_PRESENT=$(grep "redis_use_modern" ${_D}IR_CTRL_FILE 2>&1)
+            _VAR_IF_PRESENT=$(grep "redis_use_modern" ${_DIR_CTRL_FILE} 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_use_modern" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";redis_use_modern = TRUE" >> ${_D}IR_CTRL_FILE
+              echo ";redis_use_modern = TRUE" >> ${_DIR_CTRL_FILE}
             fi
-            _VAR_IF_PRESENT=$(grep "redis_flush_forced_mode" ${_D}IR_CTRL_FILE 2>&1)
+            _VAR_IF_PRESENT=$(grep "redis_flush_forced_mode" ${_DIR_CTRL_FILE} 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_flush_forced_mode" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";redis_flush_forced_mode = TRUE" >> ${_D}IR_CTRL_FILE
+              echo ";redis_flush_forced_mode = TRUE" >> ${_DIR_CTRL_FILE}
             fi
-            _VAR_IF_PRESENT=$(grep "redis_lock_enable" ${_D}IR_CTRL_FILE 2>&1)
+            _VAR_IF_PRESENT=$(grep "redis_lock_enable" ${_DIR_CTRL_FILE} 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_lock_enable" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";redis_lock_enable = TRUE" >> ${_D}IR_CTRL_FILE
+              echo ";redis_lock_enable = TRUE" >> ${_DIR_CTRL_FILE}
             fi
-            _VAR_IF_PRESENT=$(grep "redis_exclude_bins" ${_D}IR_CTRL_FILE 2>&1)
+            _VAR_IF_PRESENT=$(grep "redis_exclude_bins" ${_DIR_CTRL_FILE} 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_exclude_bins" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";redis_exclude_bins = FALSE" >> ${_D}IR_CTRL_FILE
+              echo ";redis_exclude_bins = FALSE" >> ${_DIR_CTRL_FILE}
             fi
-            _VAR_IF_PRESENT=$(grep "speed_booster_anon_cache_ttl" ${_D}IR_CTRL_FILE 2>&1)
+            _VAR_IF_PRESENT=$(grep "speed_booster_anon_cache_ttl" ${_DIR_CTRL_FILE} 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "speed_booster_anon_cache_ttl" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";speed_booster_anon_cache_ttl = 10" >> ${_D}IR_CTRL_FILE
+              echo ";speed_booster_anon_cache_ttl = 10" >> ${_DIR_CTRL_FILE}
             fi
-            _VAR_IF_PRESENT=$(grep "disable_drupal_page_cache" ${_D}IR_CTRL_FILE 2>&1)
+            _VAR_IF_PRESENT=$(grep "disable_drupal_page_cache" ${_DIR_CTRL_FILE} 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "disable_drupal_page_cache" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";disable_drupal_page_cache = FALSE" >> ${_D}IR_CTRL_FILE
+              echo ";disable_drupal_page_cache = FALSE" >> ${_DIR_CTRL_FILE}
             fi
-             _VAR_IF_PRESENT=$(grep "allow_private_file_downloads" ${_D}IR_CTRL_FILE 2>&1)
+             _VAR_IF_PRESENT=$(grep "allow_private_file_downloads" ${_DIR_CTRL_FILE} 2>&1)
             if [[ "$_VAR_IF_PRESENT" =~ "allow_private_file_downloads" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";allow_private_file_downloads = FALSE" >> ${_D}IR_CTRL_FILE
+              echo ";allow_private_file_downloads = FALSE" >> ${_DIR_CTRL_FILE}
             fi
           fi
 
@@ -1560,21 +1560,21 @@ fix_modules() {
               _SQL_CONVERT=myisam
             fi
           fi
-          if [ -e "${_D}IR_CTRL_FILE" ] ; then
+          if [ -e "${_DIR_CTRL_FILE}" ] ; then
             _SQL_INDB_P=$(grep "sql_conversion_mode" \
-              ${_D}IR_CTRL_FILE 2>&1)
+              ${_DIR_CTRL_FILE} 2>&1)
             if [[ "$_SQL_INDB_P" =~ "sql_conversion_mode" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";sql_conversion_mode = NO" >> ${_D}IR_CTRL_FILE
+              echo ";sql_conversion_mode = NO" >> ${_DIR_CTRL_FILE}
             fi
             _SQL_INDB_T=$(grep "^sql_conversion_mode = innodb" \
-              ${_D}IR_CTRL_FILE 2>&1)
+              ${_DIR_CTRL_FILE} 2>&1)
             if [[ "$_SQL_INDB_T" =~ "sql_conversion_mode = innodb" ]] ; then
               _SQL_CONVERT=innodb
             fi
             _SQL_MYSM_T=$(grep "^sql_conversion_mode = myisam" \
-              ${_D}IR_CTRL_FILE 2>&1)
+              ${_DIR_CTRL_FILE} 2>&1)
             if [[ "$_SQL_MYSM_T" =~ "sql_conversion_mode = myisam" ]] ; then
               _SQL_CONVERT=myisam
             fi
@@ -1780,7 +1780,7 @@ fix_permissions() {
     chown -L -R $_HM_U:www-data $Dir/private/config &> /dev/null
     _DB_HOST_PRESENT=$(grep "^\$_SERVER\['db_host'\] = \$options\['db_host'\];" \
       $Dir/drushrc.php 2>&1)
-    if [[ "${_D}B_HOST_PRESENT" =~ "db_host" ]] ; then
+    if [[ "${_DB_HOST_PRESENT}" =~ "db_host" ]] ; then
       if [ "$_FORCE_SITES_VERIFY" = "YES" ] ; then
         run_drush7_hmr_cmd "@hostmaster hosting-task @${Dom} verify --force"
       fi
@@ -2126,12 +2126,12 @@ process() {
           _PATCH_TEST=$(grep "foreach (array_values(\$data)" \
             $Plr/includes/database/database.inc 2>&1)
           if [[ "$_PATCH_TEST" =~ "array_values" ]] ; then
-            _DONT_TOUCH_PERMISSIONS="${_D}ONT_TOUCH_PERMISSIONS"
+            _DONT_TOUCH_PERMISSIONS="${_DONT_TOUCH_PERMISSIONS}"
           else
             _DONT_TOUCH_PERMISSIONS=NO
           fi
         fi
-        if [ "${_D}ONT_TOUCH_PERMISSIONS" = "NO" ] \
+        if [ "${_DONT_TOUCH_PERMISSIONS}" = "NO" ] \
           && [ "${_PERMISSIONS_FIX}" = "YES" ] ; then
           fix_permissions
         fi
@@ -2294,11 +2294,11 @@ purge_cruft_machine() {
   find ${User}/log/ctrl/* \
     -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 
-  REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
+  _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
     016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
     034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
 
-  for i in $REVISIONS; do
+  for i in ${_REVISIONS}; do
     if [ -e "/home/${_HM_U}.ftp/platforms/$i" ] ; then
       RevisionTest=$(ls /home/${_HM_U}.ftp/platforms/$i \
         | wc -l \
@@ -2322,7 +2322,7 @@ purge_cruft_machine() {
     fi
   done
 
-  for i in $REVISIONS; do
+  for i in ${_REVISIONS}; do
     if [ -e "${User}/distro/$i" ] \
       && [ ! -e "/home/${_HM_U}.ftp/platforms/$i" ] ; then
       chattr -i /home/${_HM_U}.ftp/platforms   &> /dev/null
@@ -2386,10 +2386,10 @@ shared_codebases_cleanup() {
   else
     _CLD="/var/backups/codebases-cleanup"
   fi
-  REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
+  _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
     016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
     034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
-  for i in $REVISIONS; do
+  for i in ${_REVISIONS}; do
     if [ -d "/data/all/$i/o_contrib" ] ; then
       for Codebase in `find /data/all/$i/* -maxdepth 1 -mindepth 1 -type d \
         | grep "/profiles$" 2>&1`; do
@@ -2549,7 +2549,7 @@ else
   _VMFAMILY="XEN"
 fi
 #
-if [ "${_D}OW" = "6" ] ; then
+if [ "${_DOW}" = "6" ] ; then
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
   _MODULES_OFF_SEVEN="background_process coder dblog devel hacked l10n_update \

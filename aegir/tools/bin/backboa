@@ -152,7 +152,7 @@ backup() {
     fi
   fi
   if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
-    && [ "${_D}O_CLEANUP" = "YES" ] ; then
+    && [ "${_DO_CLEANUP}" = "YES" ] ; then
     duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
   fi
   duplicity -v ${_AWS_VLV} --volsize 100 \
@@ -160,7 +160,7 @@ backup() {
     --asynchronous-upload ${_AWS_OPX} \
     ${INCLUDE} ${EXCLUDE} --exclude '**' / ${TARGET} > $LOGFILE
   if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
-    && [ "${_D}O_CLEANUP" = "YES" ] ; then
+    && [ "${_DO_CLEANUP}" = "YES" ] ; then
     duplicity -v ${_AWS_VLV} remove-older-than ${_AWS_TTL} \
       --force ${_AWS_OPX} ${TARGET} >> $LOGFILE
     duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET} >> $LOGFILE
@@ -229,8 +229,8 @@ install() {
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}')
-  if [ "${_D}UPLICITY_INSTALLED" = "${_D}UPLICITY_VERSION" ] ; then
-    echo "Latest duplicity version ${_D}UPLICITY_VERSION already installed"
+  if [ "${_DUPLICITY_INSTALLED}" = "${_DUPLICITY_VERSION}" ] ; then
+    echo "Latest duplicity version ${_DUPLICITY_VERSION} already installed"
   else
     echo "Installing duplicity dependencies, please wait..."
     cd
@@ -254,12 +254,12 @@ install() {
     tar xzf boto-$_BOTO_VERSION.tar.gz &> /dev/null
     cd /var/opt/boto-$_BOTO_VERSION
     python setup.py install &> /dev/null
-    echo "Installing duplicity version ${_D}UPLICITY_VERSION, please wait..."
+    echo "Installing duplicity version ${_DUPLICITY_VERSION}, please wait..."
     cd /var/opt
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab \
-      "http://files.aegir.cc/dev/src/duplicity-${_D}UPLICITY_VERSION.tar.gz"
-    tar xzf duplicity-${_D}UPLICITY_VERSION.tar.gz &> /dev/null
-    cd /var/opt/duplicity-${_D}UPLICITY_VERSION
+      "http://files.aegir.cc/dev/src/duplicity-${_DUPLICITY_VERSION}.tar.gz"
+    tar xzf duplicity-${_DUPLICITY_VERSION}.tar.gz &> /dev/null
+    cd /var/opt/duplicity-${_DUPLICITY_VERSION}
     python setup.py build &> /dev/null
     python setup.py install &> /dev/null
     cd
