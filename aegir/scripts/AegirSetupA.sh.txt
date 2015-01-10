@@ -294,7 +294,7 @@ o_contrib_update_global() {
     017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 \
     035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
 
-  RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 \
+  _RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 \
     cookie_cache_bypass_adv module_supports imageinfo_cache"
 
   for i in ${_REVISIONS}; do
@@ -313,8 +313,8 @@ o_contrib_update_global() {
     else
       _FORCE_UP_SIX=NO
     fi
-    if [ "$_FORCE_UP_SIX" = "YES" ] && [ -e "${_D}/$i/o_contrib" ] ; then
-      for m in $RMMODULES; do
+    if [ "${_FORCE_UP_SIX}" = "YES" ] && [ -e "${_D}/$i/o_contrib" ] ; then
+      for m in ${_RMMODULES}; do
         if [ -d "${_D}/$i/o_contrib/$m" ] ; then
           rm -f -r ${_D}/$i/o_contrib/$m
         fi
@@ -414,7 +414,7 @@ o_contrib_seven_update_global() {
     017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 \
     035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
 
-  RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy"
+  _RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy"
 
   for i in ${_REVISIONS}; do
     if [ -e "${_D}/$i/o_contrib_seven" ] \
@@ -435,9 +435,9 @@ o_contrib_seven_update_global() {
     else
       _FORCE_UP_SEVEN=NO
     fi
-    if [ "$_FORCE_UP_SEVEN" = "YES" ] \
+    if [ "${_FORCE_UP_SEVEN}" = "YES" ] \
       && [ -e "${_D}/$i/o_contrib_seven" ] ; then
-      for m in $RMMODULES; do
+      for m in ${_RMMODULES}; do
         if [ -d "${_D}/$i/o_contrib_seven/$m" ] ; then
           rm -f -r ${_D}/$i/o_contrib_seven/$m
         fi
