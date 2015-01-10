@@ -3841,6 +3841,7 @@ barracuda_cnf() {
         clean_pid_exit
       fi
     else
+      echo " "
       if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
         true
       else
