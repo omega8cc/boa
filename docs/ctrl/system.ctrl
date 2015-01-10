@@ -47,6 +47,15 @@ by the BOA install and upgrade tools exclusively.
 
  ### All other (empty) .cnf control files
 
+ @=> /root/.fast.cron.cnf
+
+  This file, if exists, allows to speed up the Aegir tasks and sites cron queues
+  on all hosted Octopus instances, so instead of runing every minute, it will
+  run every 10 seconds. Note that while it may be handy during development,
+  it will cause higher system load, even with its built-in prevention from
+  running more than two concurrent queues, so it is not recommended to use on
+  production systems.
+
  @=> /root/.force.drupalgeddon.cnf
 
   This file, if exists, allows to force running drupalgeddon checks daily
