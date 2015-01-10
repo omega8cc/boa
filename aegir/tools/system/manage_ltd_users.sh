@@ -4,7 +4,7 @@ SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _HOST_TEST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
-_USRG=users
+usrGroup=users
 _WEBG=www-data
 _THIS_RV=$(lsb_release -sc 2>&1)
 if [ "$_THIS_RV" = "wheezy" ] \
@@ -134,10 +134,10 @@ enable_chattr() {
       mkdir -p ${_U_HD}
       rm -f ${_U_HD}/.ctrl.php*
       rm -f ${_U_II}
-      if [ ! -z "$_LOC_PHP_CLI_VERSION" ] ; then
-        _USE_PHP_CLI="$_LOC_PHP_CLI_VERSION"
+      if [ ! -z "$_T_CLI_VRN" ] ; then
+        _USE_PHP_CLI="$_T_CLI_VRN"
         echo "_USE_PHP_CLI is $_USE_PHP_CLI for $1 at ${_USER} WTF \
-          _LOC_PHP_CLI_VERSION is $_LOC_PHP_CLI_VERSION"
+          _T_CLI_VRN is $_T_CLI_VRN"
       else
         _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
           /data/disk/${_USER}/tools/drush/drush.php 2>&1)
@@ -361,16 +361,16 @@ for Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`
 do
   _SEC_IDY=$(id -nG ${Existing} 2>&1)
   if [[ "$_SEC_IDY" =~ "ltd-shell" ]] ; then
-    _PAR_OWN=$(echo ${Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
-    _PAR_DIR="/data/disk/${_PAR_OWN}/clients"
+    usrParent=$(echo ${Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
+    _PAR_DIR="/data/disk/${usrParent}/clients"
     _SEC_SYM="/home/${Existing}/sites"
     _SEC_DIR=$(readlink -n ${_SEC_SYM} 2>&1)
     _SEC_DIR=$(echo -n ${_SEC_DIR} | tr -d "\n" 2>&1)
     if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
-      || [ ! -e "/home/${_PAR_OWN}.ftp/users/${Existing}" ] ; then
+      || [ ! -e "/home/${usrParent}.ftp/users/${Existing}" ] ; then
       disable_chattr ${Existing}
       deluser --remove-home --backup-to /var/backups/zombie/deleted ${Existing}
-      rm -f /home/${_PAR_OWN}.ftp/users/${Existing}
+      rm -f /home/${usrParent}.ftp/users/${Existing}
       echo Zombie ${Existing} killed
       echo
     fi
@@ -380,67 +380,64 @@ done
 #
 # Fix dot dirs.
 fix_dot_dirs() {
-  _USER_DRUSH="/home/${_USER_LTD}/.drush"
-  if [ ! -d "${_USER_DRUSH}" ] ; then
-    mkdir -p ${_USER_DRUSH}
-    chown ${_USER_LTD}:${_USRG} ${_USER_DRUSH}
-    chmod 700 ${_USER_DRUSH}
+  usrDrush="/home/${usrLtd}/.drush"
+  if [ ! -d "${usrDrush}" ] ; then
+    mkdir -p ${usrDrush}
+    chown ${usrLtd}:${usrGroup} ${usrDrush}
+    chmod 700 ${usrDrush}
   fi
-  _USER_SSH="/home/${_USER_LTD}/.ssh"
-  if [ ! -d "${_USER_SSH}" ] ; then
-    mkdir -p ${_USER_SSH}
-    chown -R ${_USER_LTD}:${_USRG} ${_USER_SSH}
-    chmod 700 ${_USER_SSH}
+  usrSsh="/home/${usrLtd}/.ssh"
+  if [ ! -d "${usrSsh}" ] ; then
+    mkdir -p ${usrSsh}
+    chown -R ${usrLtd}:${usrGroup} ${usrSsh}
+    chmod 700 ${usrSsh}
   fi
-  chmod 600 ${_USER_SSH}/id_{r,d}sa &> /dev/null
-  chmod 600 ${_USER_SSH}/known_hosts &> /dev/null
-  _USER_BZR="/home/${_USER_LTD}/.bazaar"
+  chmod 600 ${usrSsh}/id_{r,d}sa &> /dev/null
+  chmod 600 ${usrSsh}/known_hosts &> /dev/null
+  usrBzr="/home/${usrLtd}/.bazaar"
   if [ -x "/usr/local/bin/bzr" ] ; then
-    if [ ! -e "${_USER_BZR}/bazaar.conf" ] ; then
-      mkdir -p ${_USER_BZR}
-      echo ignore_missing_extensions=True > ${_USER_BZR}/bazaar.conf
-      chown -R ${_USER_LTD}:${_USRG} ${_USER_BZR}
-      chmod 700 ${_USER_BZR}
+    if [ ! -e "${usrBzr}/bazaar.conf" ] ; then
+      mkdir -p ${usrBzr}
+      echo ignore_missing_extensions=True > ${usrBzr}/bazaar.conf
+      chown -R ${usrLtd}:${usrGroup} ${usrBzr}
+      chmod 700 ${usrBzr}
     fi
   else
-    rm -f -r ${_USER_BZR}
+    rm -f -r ${usrBzr}
   fi
 }
 #
 # Manage Drush Aliases.
 manage_sec_user_drush_aliases() {
-  rm -f ${_USER_LTD_ROOT}/sites
-  ln -sf $Client ${_USER_LTD_ROOT}/sites
-  mkdir -p ${_USER_LTD_ROOT}/.drush
-  for Alias in `find ${_USER_LTD_ROOT}/.drush/*.alias.drushrc.php \
+  rm -f ${usrLtdRoot}/sites
+  ln -sf $Client ${usrLtdRoot}/sites
+  mkdir -p ${usrLtdRoot}/.drush
+  for Alias in `find ${usrLtdRoot}/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
     AliasName=$(echo "$Alias" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
     AliasName=$(echo "${AliasName}" \
       | sed "s/.alias.drushrc.php//g" \
       | awk '{ print $1}' 2>&1)
     if [ ! -z "${AliasName}" ] \
-      && [ ! -e "${_USER_LTD_ROOT}/sites/${AliasName}" ] ; then
-      rm -f ${_USER_LTD_ROOT}/.drush/${AliasName}.alias.drushrc.php
+      && [ ! -e "${usrLtdRoot}/sites/${AliasName}" ] ; then
+      rm -f ${usrLtdRoot}/.drush/${AliasName}.alias.drushrc.php
     fi
   done
-  for Symlink in `find ${_USER_LTD_ROOT}/sites/ \
+  for Symlink in `find ${usrLtdRoot}/sites/ \
     -maxdepth 1 -mindepth 1 | sort`; do
-    _THIS_SITE_NAME=$(echo $Symlink \
+    SiteName=$(echo $Symlink \
       | cut -d'/' -f5 \
       | awk '{ print $1}' 2>&1)
-    if [ ! -z "$_THIS_SITE_NAME" ] \
-      && [ ! -e "${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php" ] ; then
-      cp -af ${User}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
-        ${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
-      chmod 440 ${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
-    elif [ ! -z "$_THIS_SITE_NAME" ] \
-      && [ -e "${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php" ] ; then
-      _DIFF_TEST=$(diff ${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
-        ${User}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php 2>&1)
-      if [ ! -z "${_DIFF_TEST}" ] ; then
-        cp -af ${User}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
-          ${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
-        chmod 440 ${_USER_LTD_ROOT}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+    pthAliasMain="${pthParentUsr}/.drush/${SiteName}.alias.drushrc.php"
+    pthAliasCopy="${usrLtdRoot}/.drush/${SiteName}.alias.drushrc.php"
+    if [ ! -z "$SiteName" ] && [ ! -e "${pthAliasCopy}" ] ; then
+      cp -af ${pthAliasMain} ${pthAliasCopy}
+      chmod 440 ${pthAliasCopy}
+    elif [ ! -z "$SiteName" ]  && [ -e "${pthAliasCopy}" ] ; then
+      _DIFF_T=$(diff ${pthAliasCopy} ${pthAliasMain} 2>&1)
+      if [ ! -z "${_DIFF_T}" ] ; then
+        cp -af ${pthAliasMain} ${pthAliasCopy}
+        chmod 440 ${pthAliasCopy}
       fi
     fi
   done
@@ -450,21 +447,21 @@ manage_sec_user_drush_aliases() {
 ok_create_user() {
   _ADMIN="${_USER}.ftp"
   echo "_ADMIN is == ${_ADMIN} == at ok_create_user"
-  _USER_LTD_ROOT="/home/${_USER_LTD}"
-  _SEC_SYM="${_USER_LTD_ROOT}/sites"
+  usrLtdRoot="/home/${usrLtd}"
+  _SEC_SYM="${usrLtdRoot}/sites"
   _TMP="/var/tmp"
   if [ ! -L "${_SEC_SYM}" ] ; then
     mkdir -p /var/backups/zombie/deleted/${_NOW}
-    mv -f ${_USER_LTD_ROOT} /var/backups/zombie/deleted/${_NOW}/ &> /dev/null
+    mv -f ${usrLtdRoot} /var/backups/zombie/deleted/${_NOW}/ &> /dev/null
   fi
-  if [ ! -d "${_USER_LTD_ROOT}" ] ; then
+  if [ ! -d "${usrLtdRoot}" ] ; then
     if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ] ; then
-      useradd -d ${_USER_LTD_ROOT} -s /usr/bin/MySecureShell -m -N -r ${_USER_LTD}
-      echo "_USER_LTD_ROOT is == ${_USER_LTD_ROOT} == at ok_create_user"
+      useradd -d ${usrLtdRoot} -s /usr/bin/MySecureShell -m -N -r ${usrLtd}
+      echo "usrLtdRoot is == ${usrLtdRoot} == at ok_create_user"
     else
-      useradd -d ${_USER_LTD_ROOT} -s /usr/bin/lshell -m -N -r ${_USER_LTD}
+      useradd -d ${usrLtdRoot} -s /usr/bin/lshell -m -N -r ${usrLtd}
     fi
-    adduser ${_USER_LTD} ${_WEBG}
+    adduser ${usrLtd} ${_WEBG}
     _ESC_LUPASS=""
     _LEN_LUPASS=0
     if [ "${_STRONG_PASSWORDS}" = "YES" ]  ; then
@@ -495,64 +492,64 @@ ok_create_user() {
     fi
     ph=$(mkpasswd -m sha-512 ${_ESC_LUPASS} \
       $(openssl rand -base64 16 | tr -d '+=' | head -c 16) 2>&1)
-    usermod -p $ph ${_USER_LTD}
-    passwd -w 7 -x 90 ${_USER_LTD}
-    usermod -aG lshellg ${_USER_LTD}
-    usermod -aG ltd-shell ${_USER_LTD}
+    usermod -p $ph ${usrLtd}
+    passwd -w 7 -x 90 ${usrLtd}
+    usermod -aG lshellg ${usrLtd}
+    usermod -aG ltd-shell ${usrLtd}
   fi
-  if [ ! -e "/home/${_ADMIN}/users/${_USER_LTD}" ] \
+  if [ ! -e "/home/${_ADMIN}/users/${usrLtd}" ] \
     && [ ! -z "${_ESC_LUPASS}" ] ; then
     if [ -e "/usr/bin/MySecureShell" ] \
       && [ -e "/etc/ssh/sftp_config" ] ; then
-      chsh -s /usr/bin/MySecureShell ${_USER_LTD}
+      chsh -s /usr/bin/MySecureShell ${usrLtd}
     else
-      chsh -s /usr/bin/lshell ${_USER_LTD}
+      chsh -s /usr/bin/lshell ${usrLtd}
     fi
     echo >> ${_THIS_LTD_CONF}
-    echo "[${_USER_LTD}]" >> ${_THIS_LTD_CONF}
+    echo "[${usrLtd}]" >> ${_THIS_LTD_CONF}
     echo "path : [${_ALLD_DIR}]" >> ${_THIS_LTD_CONF}
-    chmod 700 ${_USER_LTD_ROOT}
+    chmod 700 ${usrLtdRoot}
     mkdir -p /home/${_ADMIN}/users
-    echo "${_ESC_LUPASS}" > /home/${_ADMIN}/users/${_USER_LTD}
+    echo "${_ESC_LUPASS}" > /home/${_ADMIN}/users/${usrLtd}
   fi
   fix_dot_dirs
-  rm -f ${_USER_LTD_ROOT}/{.profile,.bash_logout,.bash_profile,.bashrc}
+  rm -f ${usrLtdRoot}/{.profile,.bash_logout,.bash_profile,.bashrc}
 }
 #
 # OK, update user.
 ok_update_user() {
   _ADMIN="${_USER}.ftp"
-  _USER_LTD_ROOT="/home/${_USER_LTD}"
-  if [ -e "/home/${_ADMIN}/users/${_USER_LTD}" ] ; then
+  usrLtdRoot="/home/${usrLtd}"
+  if [ -e "/home/${_ADMIN}/users/${usrLtd}" ] ; then
     echo >> ${_THIS_LTD_CONF}
-    echo "[${_USER_LTD}]" >> ${_THIS_LTD_CONF}
+    echo "[${usrLtd}]" >> ${_THIS_LTD_CONF}
     echo "path : [${_ALLD_DIR}]" >> ${_THIS_LTD_CONF}
     manage_sec_user_drush_aliases
-    chmod 700 ${_USER_LTD_ROOT}
+    chmod 700 ${usrLtdRoot}
   fi
   fix_dot_dirs
-  rm -f ${_USER_LTD_ROOT}/{.profile,.bash_logout,.bash_profile,.bashrc}
+  rm -f ${usrLtdRoot}/{.profile,.bash_logout,.bash_profile,.bashrc}
 }
 #
 # Add user if not exists.
 add_user_if_not_exists() {
-  _ID_EXISTS=$(getent passwd ${_USER_LTD} 2>&1)
-  _ID_SHELLS=$(id -nG ${_USER_LTD} 2>&1)
+  _ID_EXISTS=$(getent passwd ${usrLtd} 2>&1)
+  _ID_SHELLS=$(id -nG ${usrLtd} 2>&1)
   echo "_ID_EXISTS is == ${_ID_EXISTS} == at add_user_if_not_exists"
   echo "_ID_SHELLS is == $_ID_SHELLS == at add_user_if_not_exists"
   if [ -z "${_ID_EXISTS}" ] ; then
-    echo "We will create user == ${_USER_LTD} =="
+    echo "We will create user == ${usrLtd} =="
     ok_create_user
     manage_sec_user_drush_aliases
-    enable_chattr ${_USER_LTD}
-  elif [[ "${_ID_EXISTS}" =~ "${_USER_LTD}" ]] \
+    enable_chattr ${usrLtd}
+  elif [[ "${_ID_EXISTS}" =~ "${usrLtd}" ]] \
     && [[ "$_ID_SHELLS" =~ "ltd-shell" ]] ; then
-    echo "We will update user == ${_USER_LTD} =="
-    disable_chattr ${_USER_LTD}
-    rm -f -r /home/${_USER_LTD}/drush-backups
-    find /home/${_USER_LTD}/.tmp/* -mtime +0 -exec rm -rf {} \; &> /dev/null
+    echo "We will update user == ${usrLtd} =="
+    disable_chattr ${usrLtd}
+    rm -f -r /home/${usrLtd}/drush-backups
+    find /home/${usrLtd}/.tmp/* -mtime +0 -exec rm -rf {} \; &> /dev/null
     ok_update_user
-    enable_chattr ${_USER_LTD}
+    enable_chattr ${usrLtd}
   fi
 }
 #
@@ -572,23 +569,23 @@ done
 #
 # Manage Secondary Users.
 manage_sec() {
-for Client in `find ${User}/clients/ -maxdepth 1 -mindepth 1 -type d | sort`; do
-  _USER_LTD=$(echo $Client | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
-  _USER_LTD=${_USER_LTD//[^a-zA-Z0-9]/}
-  _USER_LTD=$(echo -n ${_USER_LTD} | tr A-Z a-z 2>&1)
-  _USER_LTD="${_USER}.${_USER_LTD}"
-  echo "_USER_LTD is == ${_USER_LTD} == at manage_sec"
+for Client in `find ${pthParentUsr}/clients/ -maxdepth 1 -mindepth 1 -type d | sort`; do
+  usrLtd=$(echo $Client | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
+  usrLtd=${usrLtd//[^a-zA-Z0-9]/}
+  usrLtd=$(echo -n ${usrLtd} | tr A-Z a-z 2>&1)
+  usrLtd="${_USER}.${usrLtd}"
+  echo "usrLtd is == ${usrLtd} == at manage_sec"
   _ALLD_NUM="0"
   _ALLD_CTL="1"
   _ALLD_DIR="'$Client'"
   cd $Client
   manage_sec_access_paths
-  #_ALLD_DIR="${_ALLD_DIR}, '/home/${_USER_LTD}'"
+  #_ALLD_DIR="${_ALLD_DIR}, '/home/${usrLtd}'"
   if [ "$_ALLD_NUM" -ge "$_ALLD_CTL" ] ; then
     add_user_if_not_exists
-    echo Done for $Client at ${User}
+    echo Done for $Client at ${pthParentUsr}
   else
-    echo Empty $Client at ${User} - deleting now
+    echo Empty $Client at ${pthParentUsr} - deleting now
     if [ -e "$Client" ] ; then
       rmdir $Client
     fi
@@ -670,16 +667,16 @@ update_php_cli_local_ini() {
 # Update PHP-CLI for Drush.
 update_php_cli_drush() {
   _DRUSH_FILE="/data/disk/${_USER}/tools/drush/drush.php"
-  if [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
+  if [ "$_T_CLI_VRN" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
     _L_PHP_CLI=/opt/php55/bin
-  elif [ "$_LOC_PHP_CLI_VERSION" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
+  elif [ "$_T_CLI_VRN" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
     _L_PHP_CLI=/opt/php56/bin
-  elif [ "$_LOC_PHP_CLI_VERSION" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
+  elif [ "$_T_CLI_VRN" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php54\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
     _L_PHP_CLI=/opt/php54/bin
-  elif [ "$_LOC_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
+  elif [ "$_T_CLI_VRN" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php53\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
     _L_PHP_CLI=/opt/php53/bin
   else
@@ -951,77 +948,77 @@ create_web_user() {
 # Switch PHP Version.
 switch_php() {
   _PHP_CLI_UPDATE=NO
-  _LOC_PHP_CLI_VERSION=""
+  _T_CLI_VRN=""
   if [ -e "/data/disk/${_USER}/static/control/fpm.info" ] \
     || [ -e "/data/disk/${_USER}/static/control/cli.info" ] \
     || [ -e "/data/disk/${_USER}/static/control/hhvm.info" ] ; then
-    echo "Custom FPM, HHVM or CLI settings for $_OWN exist, \
+    echo "Custom FPM, HHVM or CLI settings for ${_USER} exist, \
       running switch_php checks"
     if [ -e "/data/disk/${_USER}/static/control/cli.info" ] ; then
-      _LOC_PHP_CLI_VERSION=$(cat /data/disk/${_USER}/static/control/cli.info 2>&1)
-      _LOC_PHP_CLI_VERSION=${_LOC_PHP_CLI_VERSION//[^0-9.]/}
-      _LOC_PHP_CLI_VERSION=$(echo -n $_LOC_PHP_CLI_VERSION | tr -d "\n" 2>&1)
-      if [ "$_LOC_PHP_CLI_VERSION" = "5.6" ] \
-        || [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] \
-        || [ "$_LOC_PHP_CLI_VERSION" = "5.4" ] \
-        || [ "$_LOC_PHP_CLI_VERSION" = "5.3" ] \
-        || [ "$_LOC_PHP_CLI_VERSION" = "5.2" ]; then
-        if [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] \
+      _T_CLI_VRN=$(cat /data/disk/${_USER}/static/control/cli.info 2>&1)
+      _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
+      _T_CLI_VRN=$(echo -n $_T_CLI_VRN | tr -d "\n" 2>&1)
+      if [ "$_T_CLI_VRN" = "5.6" ] \
+        || [ "$_T_CLI_VRN" = "5.5" ] \
+        || [ "$_T_CLI_VRN" = "5.4" ] \
+        || [ "$_T_CLI_VRN" = "5.3" ] \
+        || [ "$_T_CLI_VRN" = "5.2" ]; then
+        if [ "$_T_CLI_VRN" = "5.5" ] \
           && [ ! -x "/opt/php55/bin/php" ] ; then
           if [ -x "/opt/php56/bin/php" ] ; then
-            _LOC_PHP_CLI_VERSION=5.6
+            _T_CLI_VRN=5.6
           elif [ -x "/opt/php54/bin/php" ] ; then
-            _LOC_PHP_CLI_VERSION=5.4
+            _T_CLI_VRN=5.4
           elif [ -x "/opt/php53/bin/php" ] ; then
-            _LOC_PHP_CLI_VERSION=5.3
+            _T_CLI_VRN=5.3
           fi
-        elif [ "$_LOC_PHP_CLI_VERSION" = "5.6" ] \
+        elif [ "$_T_CLI_VRN" = "5.6" ] \
           && [ ! -x "/opt/php56/bin/php" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
-            _LOC_PHP_CLI_VERSION=5.5
+            _T_CLI_VRN=5.5
           elif [ -x "/opt/php54/bin/php" ] ; then
-            _LOC_PHP_CLI_VERSION=5.4
+            _T_CLI_VRN=5.4
           elif [ -x "/opt/php53/bin/php" ] ; then
-            _LOC_PHP_CLI_VERSION=5.3
+            _T_CLI_VRN=5.3
           fi
-        elif [ "$_LOC_PHP_CLI_VERSION" = "5.4" ] \
+        elif [ "$_T_CLI_VRN" = "5.4" ] \
           && [ ! -x "/opt/php54/bin/php" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
-            _LOC_PHP_CLI_VERSION=5.5
+            _T_CLI_VRN=5.5
           elif [ -x "/opt/php56/bin/php" ] ; then
-            _LOC_PHP_CLI_VERSION=5.6
+            _T_CLI_VRN=5.6
           elif [ -x "/opt/php53/bin/php" ] ; then
-            _LOC_PHP_CLI_VERSION=5.3
+            _T_CLI_VRN=5.3
           fi
-        elif [ "$_LOC_PHP_CLI_VERSION" = "5.3" ] \
+        elif [ "$_T_CLI_VRN" = "5.3" ] \
           && [ ! -x "/opt/php53/bin/php" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
-            _LOC_PHP_CLI_VERSION=5.5
+            _T_CLI_VRN=5.5
           elif [ -x "/opt/php56/bin/php" ] ; then
-            _LOC_PHP_CLI_VERSION=5.6
+            _T_CLI_VRN=5.6
           elif [ -x "/opt/php54/bin/php" ] ; then
-            _LOC_PHP_CLI_VERSION=5.4
+            _T_CLI_VRN=5.4
           fi
-        elif [ "$_LOC_PHP_CLI_VERSION" = "5.2" ] ; then
+        elif [ "$_T_CLI_VRN" = "5.2" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
-            _LOC_PHP_CLI_VERSION=5.5
+            _T_CLI_VRN=5.5
           elif [ -x "/opt/php56/bin/php" ] ; then
-            _LOC_PHP_CLI_VERSION=5.6
+            _T_CLI_VRN=5.6
           elif [ -x "/opt/php54/bin/php" ] ; then
-            _LOC_PHP_CLI_VERSION=5.4
+            _T_CLI_VRN=5.4
           elif [ -x "/opt/php53/bin/php" ] ; then
-            _LOC_PHP_CLI_VERSION=5.3
+            _T_CLI_VRN=5.3
           fi
         fi
-        if [ "$_LOC_PHP_CLI_VERSION" != "${_PHP_CLI_VERSION}" ] ; then
+        if [ "$_T_CLI_VRN" != "${_PHP_CLI_VERSION}" ] ; then
           _PHP_CLI_UPDATE=YES
           update_php_cli_drush
           if [ -x "${_L_PHP_CLI}/php" ] ; then
             update_php_cli_local_ini
-            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_LOC_PHP_CLI_VERSION/g" \
+            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_T_CLI_VRN/g" \
               /root/.${_USER}.octopus.cnf &> /dev/null
-            echo $_LOC_PHP_CLI_VERSION > /data/disk/${_USER}/log/cli.txt
-            echo $_LOC_PHP_CLI_VERSION > /data/disk/${_USER}/static/control/cli.info
+            echo $_T_CLI_VRN > /data/disk/${_USER}/log/cli.txt
+            echo $_T_CLI_VRN > /data/disk/${_USER}/static/control/cli.info
             chown ${_USER}.ftp:users /data/disk/${_USER}/static/control/cli.info
           fi
         fi
@@ -1098,67 +1095,67 @@ switch_php() {
     if [ ! -e "/data/disk/${_USER}/static/control/hhvm.info" ] \
       && [ -e "/data/disk/${_USER}/static/control/fpm.info" ] \
       && [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
-      _LOC_PHP_FPM_VERSION=$(cat /data/disk/${_USER}/static/control/fpm.info 2>&1)
-      _LOC_PHP_FPM_VERSION=${_LOC_PHP_FPM_VERSION//[^0-9.]/}
-      _LOC_PHP_FPM_VERSION=$(echo -n $_LOC_PHP_FPM_VERSION | tr -d "\n" 2>&1)
-      if [ "$_LOC_PHP_FPM_VERSION" = "5.6" ] \
-        || [ "$_LOC_PHP_FPM_VERSION" = "5.5" ] \
-        || [ "$_LOC_PHP_FPM_VERSION" = "5.4" ] \
-        || [ "$_LOC_PHP_FPM_VERSION" = "5.3" ] \
-        || [ "$_LOC_PHP_FPM_VERSION" = "5.2" ]; then
-        if [ "$_LOC_PHP_FPM_VERSION" = "5.5" ] \
+      _T_FPM_VRN=$(cat /data/disk/${_USER}/static/control/fpm.info 2>&1)
+      _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
+      _T_FPM_VRN=$(echo -n $_T_FPM_VRN | tr -d "\n" 2>&1)
+      if [ "$_T_FPM_VRN" = "5.6" ] \
+        || [ "$_T_FPM_VRN" = "5.5" ] \
+        || [ "$_T_FPM_VRN" = "5.4" ] \
+        || [ "$_T_FPM_VRN" = "5.3" ] \
+        || [ "$_T_FPM_VRN" = "5.2" ]; then
+        if [ "$_T_FPM_VRN" = "5.5" ] \
           && [ ! -x "/opt/php55/bin/php" ] ; then
           if [ -x "/opt/php56/bin/php" ] ; then
-            _LOC_PHP_FPM_VERSION=5.6
+            _T_FPM_VRN=5.6
           elif [ -x "/opt/php54/bin/php" ] ; then
-            _LOC_PHP_FPM_VERSION=5.4
+            _T_FPM_VRN=5.4
           elif [ -x "/opt/php53/bin/php" ] ; then
-            _LOC_PHP_FPM_VERSION=5.3
+            _T_FPM_VRN=5.3
           fi
-        elif [ "$_LOC_PHP_FPM_VERSION" = "5.6" ] \
+        elif [ "$_T_FPM_VRN" = "5.6" ] \
           && [ ! -x "/opt/php56/bin/php" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
-            _LOC_PHP_FPM_VERSION=5.5
+            _T_FPM_VRN=5.5
           elif [ -x "/opt/php54/bin/php" ] ; then
-            _LOC_PHP_FPM_VERSION=5.4
+            _T_FPM_VRN=5.4
           elif [ -x "/opt/php53/bin/php" ] ; then
-            _LOC_PHP_FPM_VERSION=5.3
+            _T_FPM_VRN=5.3
           fi
-        elif [ "$_LOC_PHP_FPM_VERSION" = "5.4" ] \
+        elif [ "$_T_FPM_VRN" = "5.4" ] \
           && [ ! -x "/opt/php54/bin/php" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
-            _LOC_PHP_FPM_VERSION=5.5
+            _T_FPM_VRN=5.5
           elif [ -x "/opt/php56/bin/php" ] ; then
-            _LOC_PHP_FPM_VERSION=5.6
+            _T_FPM_VRN=5.6
           elif [ -x "/opt/php53/bin/php" ] ; then
-            _LOC_PHP_FPM_VERSION=5.3
+            _T_FPM_VRN=5.3
           fi
-        elif [ "$_LOC_PHP_FPM_VERSION" = "5.3" ] \
+        elif [ "$_T_FPM_VRN" = "5.3" ] \
           && [ ! -x "/opt/php53/bin/php" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
-            _LOC_PHP_FPM_VERSION=5.5
+            _T_FPM_VRN=5.5
           elif [ -x "/opt/php56/bin/php" ] ; then
-            _LOC_PHP_FPM_VERSION=5.6
+            _T_FPM_VRN=5.6
           elif [ -x "/opt/php54/bin/php" ] ; then
-            _LOC_PHP_FPM_VERSION=5.4
+            _T_FPM_VRN=5.4
           fi
-        elif [ "$_LOC_PHP_FPM_VERSION" = "5.2" ] ; then
+        elif [ "$_T_FPM_VRN" = "5.2" ] ; then
           if [ -x "/opt/php55/bin/php" ] ; then
-            _LOC_PHP_FPM_VERSION=5.5
+            _T_FPM_VRN=5.5
           elif [ -x "/opt/php56/bin/php" ] ; then
-            _LOC_PHP_FPM_VERSION=5.6
+            _T_FPM_VRN=5.6
           elif [ -x "/opt/php54/bin/php" ] ; then
-            _LOC_PHP_FPM_VERSION=5.4
+            _T_FPM_VRN=5.4
           elif [ -x "/opt/php53/bin/php" ] ; then
-            _LOC_PHP_FPM_VERSION=5.3
+            _T_FPM_VRN=5.3
           fi
         fi
-        if [ "$_LOC_PHP_FPM_VERSION" != "${_PHP_FPM_VERSION}" ] \
+        if [ "$_T_FPM_VRN" != "${_PHP_FPM_VERSION}" ] \
           || [ "$_FORCE_FPM_SETUP" = "YES" ] ; then
           _NEW_FPM_SETUP=YES
           _FORCE_FPM_SETUP=NO
         fi
-        if [ ! -z "$_LOC_PHP_FPM_VERSION" ] \
+        if [ ! -z "$_T_FPM_VRN" ] \
           && [ "$_NEW_FPM_SETUP" = "YES" ] ; then
           _NEW_FPM_SETUP=NO
           tune_fpm_workers
@@ -1183,13 +1180,13 @@ switch_php() {
               _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
             fi
           fi
-          sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_LOC_PHP_FPM_VERSION/g" \
+          sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_T_FPM_VRN/g" \
             /root/.${_USER}.octopus.cnf &> /dev/null
-          echo $_LOC_PHP_FPM_VERSION > /data/disk/${_USER}/log/fpm.txt
-          echo $_LOC_PHP_FPM_VERSION > /data/disk/${_USER}/static/control/fpm.info
+          echo $_T_FPM_VRN > /data/disk/${_USER}/log/fpm.txt
+          echo $_T_FPM_VRN > /data/disk/${_USER}/static/control/fpm.info
           chown ${_USER}.ftp:users /data/disk/${_USER}/static/control/fpm.info
           _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
-          _PHP_SV=${_LOC_PHP_FPM_VERSION//[^0-9]/}
+          _PHP_SV=${_T_FPM_VRN//[^0-9]/}
           if [ -z "${_PHP_SV}" ] ; then
             _PHP_SV=55
           fi
@@ -1272,14 +1269,14 @@ manage_site_drush_alias_mirror() {
   for Alias in `find /home/${_USER}.ftp/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
     AliasFile=$(echo "$Alias" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
-    if [ ! -e "${User}/.drush/${AliasFile}" ] ; then
+    if [ ! -e "${pthParentUsr}/.drush/${AliasFile}" ] ; then
       rm -f /home/${_USER}.ftp/.drush/${AliasFile}
     fi
   done
 
   rm -f /home/${_USER}.ftp/.drush/hm.alias.drushrc.php
 
-  for Alias in `find ${User}/.drush/*.alias.drushrc.php \
+  for Alias in `find ${pthParentUsr}/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
     AliasName=$(echo "$Alias" | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
     AliasName=$(echo "${AliasName}" \
@@ -1291,35 +1288,34 @@ manage_site_drush_alias_mirror() {
       || [[ "${AliasName}" =~ (^)"hostmaster" ]] ; then
       _IS_SITE=NO
     else
-      _THIS_SITE_NAME="${AliasName}"
-      echo _THIS_SITE_NAME is $_THIS_SITE_NAME
-      if [[ "$_THIS_SITE_NAME" =~ ".restore"($) ]] ; then
+      SiteName="${AliasName}"
+      echo SiteName is $SiteName
+      if [[ "$SiteName" =~ ".restore"($) ]] ; then
         _IS_SITE=NO
-        rm -f ${User}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+        rm -f ${pthParentUsr}/.drush/${SiteName}.alias.drushrc.php
       else
-        _THIS_SITE_FDIR=$(cat $Alias \
+        SiteDir=$(cat $Alias \
           | grep "site_path'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
-        if [ -d "$_THIS_SITE_FDIR" ] ; then
-          echo _THIS_SITE_FDIR is $_THIS_SITE_FDIR
-          if [ ! -e "/home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php" ] ; then
-            cp -af ${User}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
-              /home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
-            chmod 440 /home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+        if [ -d "$SiteDir" ] ; then
+          echo SiteDir is $SiteDir
+          pthAliasMain="${pthParentUsr}/.drush/${SiteName}.alias.drushrc.php"
+          pthAliasCopy="/home/${_USER}.ftp/.drush/${SiteName}.alias.drushrc.php"
+          if [ ! -e "${pthAliasCopy}" ] ; then
+            cp -af ${pthAliasMain} ${pthAliasCopy}
+            chmod 440 ${pthAliasCopy}
           else
-            _DIFF_TEST=$(diff /home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
-              ${User}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php 2>&1)
-            if [ ! -z "${_DIFF_TEST}" ] ; then
-              cp -af ${User}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php \
-                /home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
-              chmod 440 /home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+            _DIFF_T=$(diff ${pthAliasCopy} ${pthAliasMain} 2>&1)
+            if [ ! -z "${_DIFF_T}" ] ; then
+              cp -af ${pthAliasMain} ${pthAliasCopy}
+              chmod 440 ${pthAliasCopy}
             fi
           fi
         else
-          rm -f /home/${_USER}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
-          echo "ZOMBIE $_THIS_SITE_FDIR IN ${User}/.drush/${_THIS_SITE_NAME}.alias.drushrc.php"
+          rm -f ${pthAliasCopy}
+          echo "ZOMBIE $SiteDir IN ${pthAliasMain}"
         fi
       fi
     fi
@@ -1328,13 +1324,13 @@ manage_site_drush_alias_mirror() {
 #
 # Manage Primary Users.
 manage_user() {
-for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
+for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
 do
-  if [ -e "${User}/config/server_master/nginx/vhost.d" ] \
-    && [ -e "${User}/log/fpm.txt" ] \
-    && [ ! -e "${User}/log/CANCELLED" ] ; then
+  if [ -e "${pthParentUsr}/config/server_master/nginx/vhost.d" ] \
+    && [ -e "${pthParentUsr}/log/fpm.txt" ] \
+    && [ ! -e "${pthParentUsr}/log/CANCELLED" ] ; then
     _USER=""
-    _USER=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+    _USER=$(echo ${pthParentUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
     echo "_USER is == ${_USER} == at manage_user"
     _WEB="${_USER}.web"
     octInc="/data/disk/${_USER}/config/includes"
@@ -1347,8 +1343,10 @@ do
     chmod 0400 /data/disk/${_USER}/.drush/platform_*.php &> /dev/null
     chmod 0400 /data/disk/${_USER}/.drush/server_*.php &> /dev/null
     chmod 0710 /data/disk/${_USER}/.drush &> /dev/null
-    find /data/disk/${_USER}/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
-    find /data/disk/${_USER}/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
+    find /data/disk/${_USER}/config/server_master \
+      -type d -exec chmod 0700 {} \; &> /dev/null
+    find /data/disk/${_USER}/config/server_master \
+      -type f -exec chmod 0600 {} \; &> /dev/null
     if [ ! -e "/data/disk/${_USER}/.tmp/.ctrl.240dev.txt" ] ; then
       rm -f -r /data/disk/${_USER}/.drush/cache
       rm -f -r /data/disk/${_USER}/.tmp
@@ -1365,7 +1363,8 @@ do
           /data/disk/${_USER}/static/control/README.txt &> /dev/null
         chmod 0644 /data/disk/${_USER}/static/control/README.txt
       fi
-      chown -R ${_USER}.ftp:${_USRG} /data/disk/${_USER}/static/control &> /dev/null
+      chown -R ${_USER}.ftp:${usrGroup} \
+        /data/disk/${_USER}/static/control &> /dev/null
       rm -f /data/disk/${_USER}/static/control/.ctrl.*
       echo OK > /data/disk/${_USER}/static/control/.ctrl.240dev.txt
     fi
@@ -1374,20 +1373,20 @@ do
     fi
     switch_php
     switch_newrelic
-    if [ -e "${User}/clients" ] && [ ! -z $_OWN ] ; then
-      echo Managing Users for ${User} Instance
-      rm -f -r ${User}/clients/admin &> /dev/null
-      rm -f -r ${User}/clients/omega8ccgmailcom &> /dev/null
-      rm -f -r ${User}/clients/nocomega8cc &> /dev/null
-      rm -f -r ${User}/clients/*/backups &> /dev/null
-      symlinks -dr ${User}/clients &> /dev/null
+    if [ -e "${pthParentUsr}/clients" ] && [ ! -z ${_USER} ] ; then
+      echo Managing Users for ${pthParentUsr} Instance
+      rm -f -r ${pthParentUsr}/clients/admin &> /dev/null
+      rm -f -r ${pthParentUsr}/clients/omega8ccgmailcom &> /dev/null
+      rm -f -r ${pthParentUsr}/clients/nocomega8cc &> /dev/null
+      rm -f -r ${pthParentUsr}/clients/*/backups &> /dev/null
+      symlinks -dr ${pthParentUsr}/clients &> /dev/null
       if [ -e "/home/${_USER}.ftp" ] ; then
         disable_chattr ${_USER}.ftp
         symlinks -dr /home/${_USER}.ftp &> /dev/null
         echo >> ${_THIS_LTD_CONF}
         echo "[${_USER}.ftp]" >> ${_THIS_LTD_CONF}
-        echo "path : ['/data/disk/$_OWN/distro', '/data/disk/$_OWN/static', \
-          '/data/disk/$_OWN/backups', '/data/disk/$_OWN/clients']" \
+        echo "path : ['/data/disk/${_USER}/distro', '/data/disk/${_USER}/static', \
+          '/data/disk/${_USER}/backups', '/data/disk/${_USER}/clients']" \
           >> ${_THIS_LTD_CONF}
         manage_site_drush_alias_mirror
         manage_sec
@@ -1411,13 +1410,13 @@ do
           echo OK > /home/${_USER}.ftp/.tmp/.ctrl.240dev.txt
         fi
         enable_chattr ${_USER}.ftp
-        echo Done for ${User}
+        echo Done for ${pthParentUsr}
       else
         echo Directory /home/${_USER}.ftp not available
       fi
       echo
     else
-      echo Directory ${User}/clients not available
+      echo Directory ${pthParentUsr}/clients not available
     fi
     echo
   fi
@@ -1457,8 +1456,8 @@ else
   kill_zombies >/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   manage_user >/var/backups/ltd/log/users-${_NOW}.log 2>&1
   if [ -e "${_THIS_LTD_CONF}" ] ; then
-    _DIFF_TEST=$(diff ${_THIS_LTD_CONF} /etc/lshell.conf 2>&1)
-    if [ ! -z "${_DIFF_TEST}" ] ; then
+    _DIFF_T=$(diff ${_THIS_LTD_CONF} /etc/lshell.conf 2>&1)
+    if [ ! -z "${_DIFF_T}" ] ; then
       cp -af /etc/lshell.conf /var/backups/ltd/old/lshell.conf-before-${_NOW}
       cp -af ${_THIS_LTD_CONF} /etc/lshell.conf
     else
@@ -1502,8 +1501,10 @@ else
   chmod 0400 /var/aegir/.drush/platform_*.php &> /dev/null
   chmod 0400 /var/aegir/.drush/server_*.php &> /dev/null
   chmod 0710 /var/aegir/.drush &> /dev/null
-  find /var/aegir/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
-  find /var/aegir/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
+  find /var/aegir/config/server_master \
+    -type d -exec chmod 0700 {} \; &> /dev/null
+  find /var/aegir/config/server_master \
+    -type f -exec chmod 0600 {} \; &> /dev/null
   if [ -e "/var/scout" ] ; then
     _SCOUT_CRON_OFF=$(grep "OFFscoutOFF" /etc/crontab 2>&1)
     if [[ "$_SCOUT_CRON_OFF" =~ "OFFscoutOFF" ]] ; then
@@ -1534,7 +1535,7 @@ else
       fi
     fi
   fi
-  sleep 60
+  sleep 5
   rm -f /var/run/manage_ltd_users.pid
   exit 0
 fi
