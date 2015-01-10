@@ -10234,6 +10234,7 @@ else
       || [ -e "/root/.dbhd.clstr.cnf" ] ; then
       touch /data/conf/clstr.cnf &> /dev/null
     fi
+    echo " "
     upgrade_aegir_master
   fi
 fi
