@@ -478,12 +478,12 @@ if [ `whoami` = "root" ] ; then
     if [ ! -z "$_SKYNET_MODE" ] && [ "$_SKYNET_MODE" = "OFF" ] ; then
       echo "STATUS: Skynet Agent is Inactive!"
       echo "STATUS: Please remove the _SKYNET_MODE=OFF line from"
-      echo "STATUS: ${barCnf} file to enable me again."
+      echo "STATUS: ${barCnf} to enable me again."
       exit 0
     else
       echo "STATUS: Skynet Agent is Active, OK!"
-      echo "STATUS: You can add the _SKYNET_MODE=OFF line to"
-      echo "STATUS: ${barCnf} file to disable me, if needed."
+      echo "STATUS: You can add the _SKYNET_MODE=OFF line in"
+      echo "STATUS: ${barCnf} to disable me, if needed."
     fi
   fi
   chmod a+w /dev/null
