@@ -3252,7 +3252,10 @@ barracuda_cnf() {
     if [[ "$_PHP_CLI_LEGACY_IF_USED_A" =~ "5.2" ]] \
       || [[ "$_PHP_CLI_LEGACY_IF_USED_B" =~ "5.2" ]] \
       || [[ "$_PHP_CLI_LEGACY_IF_USED_C" =~ "5.2" ]] ; then
-      msg "Legacy PHP-CLI 5.2 is used on this system but will be removed"
+      if [ -e "/opt/php52/bin/php" ] || [ -e "/etc/init.d/php52-fpm" ] ; then
+        echo " "
+        msg "Legacy PHP-CLI 5.2 is used on this system but will be removed"
+      fi
     fi
 
     _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.2" /data/disk/*/log/fpm.txt 2>&1)
@@ -3261,7 +3264,10 @@ barracuda_cnf() {
     if [[ "$_PHP_FPM_LEGACY_IF_USED_A" =~ "5.2" ]] \
       || [[ "$_PHP_FPM_LEGACY_IF_USED_B" =~ "5.2" ]] \
       || [[ "$_PHP_FPM_LEGACY_IF_USED_C" =~ "5.2" ]] ; then
-      msg "Legacy PHP-FPM 5.2 is used on this system but will be removed"
+      if [ -e "/opt/php52/bin/php" ] || [ -e "/etc/init.d/php52-fpm" ] ; then
+        msg "Legacy PHP-FPM 5.2 is used on this system but will be removed"
+        echo " "
+      fi
     fi
 
     _PHP_MULTI_INSTALL_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
