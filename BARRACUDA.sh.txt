@@ -10656,6 +10656,7 @@ else
       _L_ST="upgrade"
     fi
     if [ ! -e "${pthLog}/compass-${_X_VERSION}-${_NOW}-ruby-${_RUBY_VRN}.log" ] ; then
+      echo " "
       if prompt_yes_no "Do you want to $_L_ST Compass Tools for root?" ; then
         true
         msg "INFO: Running Compass Tools ${_L_ST}..."
