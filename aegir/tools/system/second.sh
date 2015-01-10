@@ -142,12 +142,12 @@ d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
     | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' \
     | tr -d "\s" \
     | sort \
-    | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" \
+    | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
       >> /var/backups/.auth.IP.list;done
   if [ -e "/root/.ip.protected.vhost.whitelist.cnf" ] ; then
     for _IP in `cat /root/.ip.protected.vhost.whitelist.cnf \
       | sort \
-      | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" \
+      | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
         >> /var/backups/.auth.IP.list;done
   fi
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" \
@@ -174,12 +174,12 @@ manage_ip_auth_access() {
     | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' \
     | tr -d "\s" \
     | sort \
-    | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" \
+    | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
       >> /var/backups/.auth.IP.list.tmp;done
   if [ -e "/root/.ip.protected.vhost.whitelist.cnf" ] ; then
     for _IP in `cat /root/.ip.protected.vhost.whitelist.cnf \
       | sort \
-      | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" \
+      | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
         >> /var/backups/.auth.IP.list.tmp;done
   fi
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" \
