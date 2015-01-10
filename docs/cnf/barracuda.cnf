@@ -78,10 +78,6 @@ _STRONG_PASSWORDS=NO #---------- Configurable length: 8-128, YES (32), NO (8)
 ###
 _CUSTOM_CONFIG_CSF=NO #--------- Protects custom CSF config when YES
 _CUSTOM_CONFIG_LSHELL=NO #------ Protects custom Limited Shell config when YES
-_CUSTOM_CONFIG_PHP53=NO #------- Protects custom PHP 5.3 ini files when YES
-_CUSTOM_CONFIG_PHP54=NO #------- Protects custom PHP 5.4 ini files when YES
-_CUSTOM_CONFIG_PHP55=NO #------- Protects custom PHP 5.5 ini files when YES
-_CUSTOM_CONFIG_PHP56=NO #------- Protects custom PHP 5.6 ini files when YES
 _CUSTOM_CONFIG_REDIS=NO #------- Protects custom Redis config when YES
 _CUSTOM_CONFIG_SQL=NO #--------- Protects custom SQL config when YES
 ###

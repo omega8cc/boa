@@ -815,10 +815,6 @@ _EXTRA_PACKAGES=""
 ###
 _CUSTOM_CONFIG_CSF=NO
 _CUSTOM_CONFIG_LSHELL=NO
-_CUSTOM_CONFIG_PHP53=NO
-_CUSTOM_CONFIG_PHP54=NO
-_CUSTOM_CONFIG_PHP55=NO
-_CUSTOM_CONFIG_PHP56=NO
 _CUSTOM_CONFIG_REDIS=NO
 _CUSTOM_CONFIG_SQL=NO
 
@@ -2066,12 +2062,8 @@ update_php_conf() {
       mkdir -p /opt/php${e}/lib
       cp -af ${locCnf}/php${e}-cli.ini /opt/php${e}/lib/php.ini
     fi
-    if [ "$_CUSTOM_CONFIG_PHP${e}" = "NO" ] \
-      || [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [ "${_VMFAMILY}" = "VS" ] ; then
-      cp -af ${locCnf}/php${e}.ini /opt/php${e}/etc/php${e}.ini
-      cp -af ${locCnf}/php${e}-cli.ini /opt/php${e}/lib/php.ini
-    fi
+    cp -af ${locCnf}/php${e}.ini /opt/php${e}/etc/php${e}.ini
+    cp -af ${locCnf}/php${e}-cli.ini /opt/php${e}/lib/php.ini
     cp -af ${locCnf}/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     fix_php_ini_redis
@@ -3152,10 +3144,6 @@ barracuda_cnf() {
     echo "###"                                                >> ${barCnf}
     echo "_CUSTOM_CONFIG_CSF=${_CUSTOM_CONFIG_CSF}"           >> ${barCnf}
     echo "_CUSTOM_CONFIG_LSHELL=${_CUSTOM_CONFIG_LSHELL}"     >> ${barCnf}
-    echo "_CUSTOM_CONFIG_PHP53=$_CUSTOM_CONFIG_PHP53"       >> ${barCnf}
-    echo "_CUSTOM_CONFIG_PHP54=$_CUSTOM_CONFIG_PHP54"       >> ${barCnf}
-    echo "_CUSTOM_CONFIG_PHP55=$_CUSTOM_CONFIG_PHP55"       >> ${barCnf}
-    echo "_CUSTOM_CONFIG_PHP56=$_CUSTOM_CONFIG_PHP56"       >> ${barCnf}
     echo "_CUSTOM_CONFIG_REDIS=${_CUSTOM_CONFIG_REDIS}"       >> ${barCnf}
     echo "_CUSTOM_CONFIG_SQL=${_CUSTOM_CONFIG_SQL}"           >> ${barCnf}
 
@@ -3223,27 +3211,19 @@ barracuda_cnf() {
       msg "NOTE! It will *override* all settings in the Barracuda script"
     fi
     sed -i "s/_SPEED_VALID_MAX=300/_SPEED_VALID_MAX=3600/g" ${barCnf}
-    _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER ${barCnf} 2>&1)
-    if [[ "$_USE_SPEED_BOOSTER_TEST" =~ "_USE_SPEED_BOOSTER" ]] ; then
-      sed -i "s/^_USE_SPEED_BOOSTER.*//g" ${barCnf}
-      sed -i "/^$/d" ${barCnf}
-    fi
+
     _NGINX_WORKERS_TEST=$(grep _NGINX_WORKERS ${barCnf} 2>&1)
     if [[ "${_NGINX_WORKERS_TEST}" =~ "_NGINX_WORKERS" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_NGINX_WORKERS=${_NGINX_WORKERS}" >> ${barCnf}
     fi
+
     _PHP_FPM_WORKERS_TEST=$(grep _PHP_FPM_WORKERS ${barCnf} 2>&1)
     if [[ "${_PHP_FPM_WORKERS_TEST}" =~ "_PHP_FPM_WORKERS" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}" >> ${barCnf}
-    fi
-    _PHP_INSTALL_NEW_TEST=$(grep _PHP_INSTALL_NEW ${barCnf} 2>&1)
-    if [[ "$_PHP_INSTALL_NEW_TEST" =~ "_PHP_INSTALL_NEW" ]] ; then
-      sed -i "s/^_PHP_INSTALL_NEW.*//g" ${barCnf}
-      sed -i "/^$/d" ${barCnf}
     fi
 
     _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.2" /data/disk/*/log/cli.txt 2>&1)
@@ -3359,139 +3339,104 @@ barracuda_cnf() {
       echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
     fi
 
-    _PHP_MODERN_ONLY_TEST=$(grep _PHP_MODERN_ONLY ${barCnf} 2>&1)
-    if [[ "$_PHP_MODERN_ONLY_TEST" =~ "_PHP_MODERN_ONLY" ]] ; then
-      sed -i "s/^_PHP_MODERN_ONLY.*//g" ${barCnf}
-      sed -i "/^$/d" ${barCnf}
-    fi
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION ${barCnf} 2>&1)
     if [[ "${_PHP_FPM_VERSION_TEST}" =~ "_PHP_FPM_VERSION" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_PHP_FPM_VERSION=${_PHP_FPM_VERSION}" >> ${barCnf}
     fi
+
     _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION ${barCnf} 2>&1)
     if [[ "${_PHP_CLI_VERSION_TEST}" =~ "_PHP_CLI_VERSION" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}" >> ${barCnf}
     fi
+
     _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL ${barCnf} 2>&1)
     if [[ "${_PHP_SINGLE_INSTALL_TEST}" =~ "_PHP_SINGLE_INSTALL" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}" >> ${barCnf}
     fi
-    _LOAD_LIMIT_ONE_TEST=$(grep _LOAD_LIMIT_ONE ${barCnf} 2>&1)
-    if [[ "$_LOAD_LIMIT_ONE_TEST" =~ "_LOAD_LIMIT_ONE" ]] ; then
-      sed -i "s/^_LOAD_LIMIT_ONE.*//g" ${barCnf}
-      sed -i "/^$/d" ${barCnf}
-    fi
-    _LOAD_LIMIT_TWO_TEST=$(grep _LOAD_LIMIT_TWO ${barCnf} 2>&1)
-    if [[ "$_LOAD_LIMIT_TWO_TEST" =~ "_LOAD_LIMIT_TWO" ]] ; then
-      sed -i "s/^_LOAD_LIMIT_TWO.*//g" ${barCnf}
-      sed -i "/^$/d" ${barCnf}
-    fi
+
     _CUSTOM_CONFIG_LSHELL_TEST=$(grep _CUSTOM_CONFIG_LSHELL ${barCnf} 2>&1)
     if [[ "${_CUSTOM_CONFIG_LSHELL_TEST}" =~ "_CUSTOM_CONFIG_LSHELL" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_CUSTOM_CONFIG_LSHELL=${_CUSTOM_CONFIG_LSHELL}" >> ${barCnf}
     fi
+
     _CUSTOM_CONFIG_CSF_TEST=$(grep _CUSTOM_CONFIG_CSF ${barCnf} 2>&1)
     if [[ "${_CUSTOM_CONFIG_CSF_TEST}" =~ "_CUSTOM_CONFIG_CSF" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_CUSTOM_CONFIG_CSF=${_CUSTOM_CONFIG_CSF}" >> ${barCnf}
     fi
+
     _CUSTOM_CONFIG_SQL_TEST=$(grep _CUSTOM_CONFIG_SQL ${barCnf} 2>&1)
     if [[ "${_CUSTOM_CONFIG_SQL_TEST}" =~ "_CUSTOM_CONFIG_SQL" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_CUSTOM_CONFIG_SQL=${_CUSTOM_CONFIG_SQL}" >> ${barCnf}
     fi
-    _CUSTOM_CONFIG_PHP56_TEST=$(grep _CUSTOM_CONFIG_PHP56 ${barCnf} 2>&1)
-    if [[ "$_CUSTOM_CONFIG_PHP56_TEST" =~ "_CUSTOM_CONFIG_PHP56" ]] ; then
-      _DO_NOTHING=YES
-    else
-      echo "_CUSTOM_CONFIG_PHP56=$_CUSTOM_CONFIG_PHP56" >> ${barCnf}
-    fi
-    _CUSTOM_CONFIG_PHP55_TEST=$(grep _CUSTOM_CONFIG_PHP55 ${barCnf} 2>&1)
-    if [[ "$_CUSTOM_CONFIG_PHP55_TEST" =~ "_CUSTOM_CONFIG_PHP55" ]] ; then
-      _DO_NOTHING=YES
-    else
-      echo "_CUSTOM_CONFIG_PHP55=$_CUSTOM_CONFIG_PHP55" >> ${barCnf}
-    fi
-    _CUSTOM_CONFIG_PHP54_TEST=$(grep _CUSTOM_CONFIG_PHP54 ${barCnf} 2>&1)
-    if [[ "$_CUSTOM_CONFIG_PHP54_TEST" =~ "_CUSTOM_CONFIG_PHP54" ]] ; then
-      _DO_NOTHING=YES
-    else
-      echo "_CUSTOM_CONFIG_PHP54=$_CUSTOM_CONFIG_PHP54" >> ${barCnf}
-    fi
-    _CUSTOM_CONFIG_PHP53_TEST=$(grep _CUSTOM_CONFIG_PHP53 ${barCnf} 2>&1)
-    if [[ "$_CUSTOM_CONFIG_PHP53_TEST" =~ "_CUSTOM_CONFIG_PHP53" ]] ; then
-      _DO_NOTHING=YES
-    else
-      echo "_CUSTOM_CONFIG_PHP53=$_CUSTOM_CONFIG_PHP53" >> ${barCnf}
-    fi
+
     _SPEED_VALID_MAX_TEST=$(grep _SPEED_VALID_MAX ${barCnf} 2>&1)
     if [[ "${_SPEED_VALID_MAX_TEST}" =~ "_SPEED_VALID_MAX" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_SPEED_VALID_MAX=${_SPEED_VALID_MAX}" >> ${barCnf}
     fi
+
     _NGINX_DOS_LIMIT_TEST=$(grep _NGINX_DOS_LIMIT ${barCnf} 2>&1)
     if [[ "${_NGINX_DOS_LIMIT_TEST}" =~ "_NGINX_DOS_LIMIT" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}" >> ${barCnf}
     fi
+
     _CPU_SPIDER_RATIO_TEST=$(grep _CPU_SPIDER_RATIO ${barCnf} 2>&1)
     if [[ "${_CPU_SPIDER_RATIO_TEST}" =~ "_CPU_SPIDER_RATIO" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO}" >> ${barCnf}
     fi
+
     _CPU_MAX_RATIO_TEST=$(grep _CPU_MAX_RATIO ${barCnf} 2>&1)
     if [[ "${_CPU_MAX_RATIO_TEST}" =~ "_CPU_MAX_RATIO" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_CPU_MAX_RATIO=${_CPU_MAX_RATIO}" >> ${barCnf}
     fi
+
     _CPU_CRIT_RATIO_TEST=$(grep _CPU_CRIT_RATIO ${barCnf} 2>&1)
     if [[ "${_CPU_CRIT_RATIO_TEST}" =~ "_CPU_CRIT_RATIO" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_CPU_CRIT_RATIO=${_CPU_CRIT_RATIO}" >> ${barCnf}
     fi
+
     _SYSTEM_UPGRADE_ONLY_TEST=$(grep _SYSTEM_UPGRADE_ONLY ${barCnf} 2>&1)
     if [[ "${_SYSTEM_UPGRADE_ONLY_TEST}" =~ "_SYSTEM_UPGRADE_ONLY" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_SYSTEM_UPGRADE_ONLY=${_SYSTEM_UPGRADE_ONLY}" >> ${barCnf}
     fi
+
     _AEGIR_UPGRADE_ONLY_TEST=$(grep _AEGIR_UPGRADE_ONLY ${barCnf} 2>&1)
     if [[ "${_AEGIR_UPGRADE_ONLY_TEST}" =~ "_AEGIR_UPGRADE_ONLY" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}" >> ${barCnf}
     fi
-    _USE_MEMCACHED_TEST=$(grep _USE_MEMCACHED ${barCnf} 2>&1)
-    if [[ "$_USE_MEMCACHED_TEST" =~ "_USE_MEMCACHED" ]] ; then
-      sed -i "s/^_USE_MEMCACHED.*//g" ${barCnf}
-      sed -i "/^$/d" ${barCnf}
-    fi
+
     _CUSTOM_CONFIG_REDIS_TEST=$(grep _CUSTOM_CONFIG_REDIS ${barCnf} 2>&1)
     if [[ "${_CUSTOM_CONFIG_REDIS_TEST}" =~ "_CUSTOM_CONFIG_REDIS" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_CUSTOM_CONFIG_REDIS=${_CUSTOM_CONFIG_REDIS}" >> ${barCnf}
     fi
-    _BUILD_FROM_SRC_TEST=$(grep _BUILD_FROM_SRC ${barCnf} 2>&1)
-    if [[ "$_BUILD_FROM_SRC_TEST" =~ "_BUILD_FROM_SRC" ]] ; then
-      sed -i "s/^_BUILD_FROM_SRC.*//g" ${barCnf}
-      sed -i "/^$/d" ${barCnf}
-    fi
+
     _NEWRELIC_KEY_TEST=$(grep _NEWRELIC_KEY ${barCnf} 2>&1)
     if [[ "${_NEWRELIC_KEY_TEST}" =~ "_NEWRELIC_KEY" ]] ; then
       _DO_NOTHING=YES
@@ -3507,29 +3452,12 @@ barracuda_cnf() {
         fi
       fi
     fi
+
     _SCOUT_KEY_TEST=$(grep _SCOUT_KEY ${barCnf} 2>&1)
     if [[ "${_SCOUT_KEY_TEST}" =~ "_SCOUT_KEY" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_SCOUT_KEY=${_SCOUT_KEY}" >> ${barCnf}
-    fi
-
-    _USE_STOCK_TEST=$(grep _USE_STOCK ${barCnf} 2>&1)
-    if [[ "$_USE_STOCK_TEST" =~ "_USE_STOCK" ]] ; then
-      sed -i "s/^_USE_STOCK.*//g" ${barCnf}
-      sed -i "/^$/d" ${barCnf}
-    fi
-
-    _HTTP_WILDCARD_TEST=$(grep _HTTP_WILDCARD ${barCnf} 2>&1)
-    if [[ "$_HTTP_WILDCARD_TEST" =~ "_HTTP_WILDCARD" ]] ; then
-      sed -i "s/^_HTTP_WILDCARD.*//g" ${barCnf}
-      sed -i "/^$/d" ${barCnf}
-    fi
-
-    _CUSTOM_CONFIG_PHP52_TEST=$(grep _CUSTOM_CONFIG_PHP52 ${barCnf} 2>&1)
-    if [[ "$_CUSTOM_CONFIG_PHP52_TEST" =~ "_CUSTOM_CONFIG_PHP52" ]] ; then
-      sed -i "s/^_CUSTOM_CONFIG_PHP52.*//g" ${barCnf}
-      sed -i "/^$/d" ${barCnf}
     fi
 
     _EXTRA_PACKAGES_TEST=$(grep _EXTRA_PACKAGES ${barCnf} 2>&1)
@@ -3538,137 +3466,205 @@ barracuda_cnf() {
     else
       echo "_EXTRA_PACKAGES=${_EXTRA_PACKAGES}" >> ${barCnf}
     fi
+
     _PHP_EXTRA_CONF_TEST=$(grep _PHP_EXTRA_CONF ${barCnf} 2>&1)
     if [[ "${_PHP_EXTRA_CONF_TEST}" =~ "_PHP_EXTRA_CONF" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_PHP_EXTRA_CONF=\"${_PHP_EXTRA_CONF}\"" >> ${barCnf}
     fi
+
     _PHP_FPM_DENY_TEST=$(grep _PHP_FPM_DENY ${barCnf} 2>&1)
     if [[ "${_PHP_FPM_DENY_TEST}" =~ "_PHP_FPM_DENY" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\"" >> ${barCnf}
     fi
+
     _STRONG_PASSWORDS_TEST=$(grep _STRONG_PASSWORDS ${barCnf} 2>&1)
     if [[ "${_STRONG_PASSWORDS_TEST}" =~ "_STRONG_PASSWORDS" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}" >> ${barCnf}
     fi
+
     _DB_BINARY_LOG_TEST=$(grep _DB_BINARY_LOG ${barCnf} 2>&1)
     if [[ "${_DB_BINARY_LOG_TEST}" =~ "_DB_BINARY_LOG" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_DB_BINARY_LOG=${_DB_BINARY_LOG}" >> ${barCnf}
     fi
+
     _INNODB_LOG_FILE_SIZE_TEST=$(grep _INNODB_LOG_FILE_SIZE ${barCnf} 2>&1)
     if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "_INNODB_LOG_FILE_SIZE" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE}" >> ${barCnf}
     fi
+
     _DB_ENGINE_TEST=$(grep _DB_ENGINE ${barCnf} 2>&1)
     if [[ "${_DB_ENGINE_TEST}" =~ "_DB_ENGINE" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_DB_ENGINE=${_DB_ENGINE}" >> ${barCnf}
     fi
+
     _REDIS_LISTEN_MODE_TEST=$(grep _REDIS_LISTEN_MODE ${barCnf} 2>&1)
     if [[ "${_REDIS_LISTEN_MODE_TEST}" =~ "_REDIS_LISTEN_MODE" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE}" >> ${barCnf}
     fi
+
     _NGINX_LDAP_TEST=$(grep _NGINX_LDAP ${barCnf} 2>&1)
     if [[ "${_NGINX_LDAP_TEST}" =~ "_NGINX_LDAP" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_NGINX_LDAP=${_NGINX_LDAP}" >> ${barCnf}
     fi
+
     _NGINX_NAXSI_TEST=$(grep _NGINX_NAXSI ${barCnf} 2>&1)
     if [[ "${_NGINX_NAXSI_TEST}" =~ "_NGINX_NAXSI" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_NGINX_NAXSI=${_NGINX_NAXSI}" >> ${barCnf}
     fi
+
     _NGINX_SPDY_TEST=$(grep _NGINX_SPDY ${barCnf} 2>&1)
     if [[ "${_NGINX_SPDY_TEST}" =~ "_NGINX_SPDY" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_NGINX_SPDY=${_NGINX_SPDY}" >> ${barCnf}
     fi
+
     _NGINX_FORWARD_SECRECY_TEST=$(grep _NGINX_FORWARD_SECRECY ${barCnf} 2>&1)
     if [[ "${_NGINX_FORWARD_SECRECY_TEST}" =~ "_NGINX_FORWARD_SECRECY" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_NGINX_FORWARD_SECRECY=${_NGINX_FORWARD_SECRECY}" >> ${barCnf}
     fi
+
     _PHP_GEOS_TEST=$(grep _PHP_GEOS ${barCnf} 2>&1)
     if [[ "${_PHP_GEOS_TEST}" =~ "_PHP_GEOS" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_PHP_GEOS=${_PHP_GEOS}" >> ${barCnf}
     fi
+
     _PHP_MONGODB_TEST=$(grep _PHP_MONGODB ${barCnf} 2>&1)
     if [[ "${_PHP_MONGODB_TEST}" =~ "_PHP_MONGODB" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_PHP_MONGODB=${_PHP_MONGODB}" >> ${barCnf}
     fi
-    _PHP_ZEND_OPCACHE_TEST=$(grep _PHP_ZEND_OPCACHE ${barCnf} 2>&1)
-    if [[ "$_PHP_ZEND_OPCACHE_TEST" =~ "_PHP_ZEND_OPCACHE" ]] ; then
-      sed -i "s/^_PHP_ZEND_OPCACHE.*//g" ${barCnf}
-      sed -i "/^$/d" ${barCnf}
-    fi
+
     _PERMISSIONS_FIX_TEST=$(grep _PERMISSIONS_FIX ${barCnf} 2>&1)
     if [[ "${_PERMISSIONS_FIX_TEST}" =~ "_PERMISSIONS_FIX" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_PERMISSIONS_FIX=${_PERMISSIONS_FIX}" >> ${barCnf}
     fi
+
     _MODULES_FIX_TEST=$(grep _MODULES_FIX ${barCnf} 2>&1)
     if [[ "${_MODULES_FIX_TEST}" =~ "_MODULES_FIX" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_MODULES_FIX=${_MODULES_FIX}" >> ${barCnf}
     fi
+
     _MODULES_SKIP_TEST=$(grep _MODULES_SKIP ${barCnf} 2>&1)
     if [[ "${_MODULES_SKIP_TEST}" =~ "_MODULES_SKIP" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_MODULES_SKIP=\"${_MODULES_SKIP}\"" >> ${barCnf}
     fi
+
     _SSL_FROM_SOURCES_TEST=$(grep _SSL_FROM_SOURCES ${barCnf} 2>&1)
     if [[ "${_SSL_FROM_SOURCES_TEST}" =~ "_SSL_FROM_SOURCES" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_SSL_FROM_SOURCES=${_SSL_FROM_SOURCES}" >> ${barCnf}
     fi
+
     _SSH_FROM_SOURCES_TEST=$(grep _SSH_FROM_SOURCES ${barCnf} 2>&1)
     if [[ "${_SSH_FROM_SOURCES_TEST}" =~ "_SSH_FROM_SOURCES" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_SSH_FROM_SOURCES=${_SSH_FROM_SOURCES}" >> ${barCnf}
     fi
+
     _RESERVED_RAM_TEST=$(grep _RESERVED_RAM ${barCnf} 2>&1)
     if [[ "${_RESERVED_RAM_TEST}" =~ "_RESERVED_RAM" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_RESERVED_RAM=${_RESERVED_RAM}" >> ${barCnf}
     fi
+
     _STRICT_BIN_PERMISSIONS_TEST=$(grep _STRICT_BIN_PERMISSIONS ${barCnf} 2>&1)
     if [[ "${_STRICT_BIN_PERMISSIONS_TEST}" =~ "_STRICT_BIN_PERMISSIONS" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_STRICT_BIN_PERMISSIONS=${_STRICT_BIN_PERMISSIONS}" >> ${barCnf}
     fi
+
     _DB_SERIES_TEST=$(grep _DB_SERIES ${barCnf} 2>&1)
     if [[ "${_DB_SERIES_TEST}" =~ "_DB_SERIES" ]] ; then
       _DO_NOTHING=YES
     else
       echo "_DB_SERIES=${_DB_SERIES}" >> ${barCnf}
     fi
+
+    ###
+    ### config cleanup start
+    ###
+    _USE_STOCK_TEST=$(grep _USE_STOCK ${barCnf} 2>&1)
+    if [[ "${_USE_STOCK_TEST}" =~ "_USE_STOCK" ]] ; then
+      sed -i "s/^_USE_STOCK.*//g" ${barCnf}
+    fi
+    _HTTP_WILDCARD_TEST=$(grep _HTTP_WILDCARD ${barCnf} 2>&1)
+    if [[ "${_HTTP_WILDCARD_TEST}" =~ "_HTTP_WILDCARD" ]] ; then
+      sed -i "s/^_HTTP_WILDCARD.*//g" ${barCnf}
+    fi
+    _PHP_MODERN_ONLY_TEST=$(grep _PHP_MODERN_ONLY ${barCnf} 2>&1)
+    if [[ "${_PHP_MODERN_ONLY_TEST}" =~ "_PHP_MODERN_ONLY" ]] ; then
+      sed -i "s/^_PHP_MODERN_ONLY.*//g" ${barCnf}
+    fi
+    _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER ${barCnf} 2>&1)
+    if [[ "${_USE_SPEED_BOOSTER_TEST}" =~ "_USE_SPEED_BOOSTER" ]] ; then
+      sed -i "s/^_USE_SPEED_BOOSTER.*//g" ${barCnf}
+    fi
+    _PHP_INSTALL_NEW_TEST=$(grep _PHP_INSTALL_NEW ${barCnf} 2>&1)
+    if [[ "${_PHP_INSTALL_NEW_TEST}" =~ "_PHP_INSTALL_NEW" ]] ; then
+      sed -i "s/^_PHP_INSTALL_NEW.*//g" ${barCnf}
+    fi
+    _CUSTOM_CONFIG_PHP_TEST=$(grep _CUSTOM_CONFIG_PHP ${barCnf} 2>&1)
+    if [[ "${_CUSTOM_CONFIG_PHP_TEST}" =~ "_CUSTOM_CONFIG_PHP" ]] ; then
+      sed -i "s/^_CUSTOM_CONFIG_PHP.*//g" ${barCnf}
+    fi
+    _LOAD_LIMIT_ONE_TEST=$(grep _LOAD_LIMIT_ONE ${barCnf} 2>&1)
+    if [[ "${_LOAD_LIMIT_ONE_TEST}" =~ "_LOAD_LIMIT_ONE" ]] ; then
+      sed -i "s/^_LOAD_LIMIT_ONE.*//g" ${barCnf}
+    fi
+    _LOAD_LIMIT_TWO_TEST=$(grep _LOAD_LIMIT_TWO ${barCnf} 2>&1)
+    if [[ "${_LOAD_LIMIT_TWO_TEST}" =~ "_LOAD_LIMIT_TWO" ]] ; then
+      sed -i "s/^_LOAD_LIMIT_TWO.*//g" ${barCnf}
+    fi
+    _USE_MEMCACHED_TEST=$(grep _USE_MEMCACHED ${barCnf} 2>&1)
+    if [[ "${_USE_MEMCACHED_TEST}" =~ "_USE_MEMCACHED" ]] ; then
+      sed -i "s/^_USE_MEMCACHED.*//g" ${barCnf}
+    fi
+    _PHP_ZEND_OPCACHE_TEST=$(grep _PHP_ZEND_OPCACHE ${barCnf} 2>&1)
+    if [[ "${_PHP_ZEND_OPCACHE_TEST}" =~ "_PHP_ZEND_OPCACHE" ]] ; then
+      sed -i "s/^_PHP_ZEND_OPCACHE.*//g" ${barCnf}
+    fi
+    _BUILD_FROM_SRC_TEST=$(grep _BUILD_FROM_SRC ${barCnf} 2>&1)
+    if [[ "${_BUILD_FROM_SRC_TEST}" =~ "_BUILD_FROM_SRC" ]] ; then
+      sed -i "s/^_BUILD_FROM_SRC.*//g" ${barCnf}
+    fi
+    ###
+    ### config cleanup end
+    ###
+
     sleep 1
     _CHECK_HOST=$(uname -n 2>&1)
     sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g" ${barCnf}
@@ -3798,41 +3794,54 @@ barracuda_cnf() {
       fi
     fi
 
+    ###
+    ### config cleanup start
+    ###
     _NGX_FORCE_REINSTALL_TEST=$(grep _NGX_FORCE_REINSTALL ${barCnf} 2>&1)
     if [[ "${_NGX_FORCE_REINSTALL_TEST}" =~ "_NGX_FORCE_REINSTALL" ]] ; then
       sed -i "s/^_NGX_FORCE_REINSTALL.*//g" ${barCnf}
-      sed -i "/^$/d" ${barCnf}
     fi
     _PHP_FORCE_REINSTALL_TEST=$(grep _PHP_FORCE_REINSTALL ${barCnf} 2>&1)
     if [[ "${_PHP_FORCE_REINSTALL_TEST}" =~ "_PHP_FORCE_REINSTALL" ]] ; then
       sed -i "s/^_PHP_FORCE_REINSTALL.*//g" ${barCnf}
-      sed -i "/^$/d" ${barCnf}
     fi
     _SQL_FORCE_REINSTALL_TEST=$(grep _SQL_FORCE_REINSTALL ${barCnf} 2>&1)
     if [[ "${_SQL_FORCE_REINSTALL_TEST}" =~ "_SQL_FORCE_REINSTALL" ]] ; then
       sed -i "s/^_SQL_FORCE_REINSTALL.*//g" ${barCnf}
-      sed -i "/^$/d" ${barCnf}
     fi
     _SSL_FORCE_REINSTALL_TEST=$(grep _SSL_FORCE_REINSTALL ${barCnf} 2>&1)
     if [[ "${_SSL_FORCE_REINSTALL_TEST}" =~ "_SSL_FORCE_REINSTALL" ]] ; then
       sed -i "s/^_SSL_FORCE_REINSTALL.*//g" ${barCnf}
-      sed -i "/^$/d" ${barCnf}
     fi
     _SSH_FORCE_REINSTALL_TEST=$(grep _SSH_FORCE_REINSTALL ${barCnf} 2>&1)
-    if [[ "$_SSH_FORCE_REINSTALL_TEST" =~ "_SSH_FORCE_REINSTALL" ]] ; then
+    if [[ "${_SSH_FORCE_REINSTALL_TEST}" =~ "_SSH_FORCE_REINSTALL" ]] ; then
       sed -i "s/^_SSH_FORCE_REINSTALL.*//g" ${barCnf}
-      sed -i "/^$/d" ${barCnf}
     fi
     _GIT_FORCE_REINSTALL_TEST=$(grep _GIT_FORCE_REINSTALL ${barCnf} 2>&1)
-    if [[ "$_GIT_FORCE_REINSTALL_TEST" =~ "_GIT_FORCE_REINSTALL" ]] ; then
+    if [[ "${_GIT_FORCE_REINSTALL_TEST}" =~ "_GIT_FORCE_REINSTALL" ]] ; then
       sed -i "s/^_GIT_FORCE_REINSTALL.*//g" ${barCnf}
-      sed -i "/^$/d" ${barCnf}
     fi
     _FULL_FORCE_REINSTALL_TEST=$(grep _FULL_FORCE_REINSTALL ${barCnf} 2>&1)
     if [[ "${_FULL_FORCE_REINSTALL_TEST}" =~ "_FULL_FORCE_REINSTALL" ]] ; then
       sed -i "s/^_FULL_FORCE_REINSTALL.*//g" ${barCnf}
-      sed -i "/^$/d" ${barCnf}
     fi
+    _TOMCAT_TO_JETTY_TEST=$(grep _TOMCAT_TO_JETTY ${barCnf} 2>&1)
+    if [[ "${_TOMCAT_TO_JETTY_TEST}" =~ "_TOMCAT_TO_JETTY" ]] ; then
+      sed -i "s/^_TOMCAT_TO_JETTY.*//g" ${barCnf}
+    fi
+    _SQUEEZE_TO_WHEEZY_TEST=$(grep _SQUEEZE_TO_WHEEZY ${barCnf} 2>&1)
+    if [[ "${_SQUEEZE_TO_WHEEZY_TEST}" =~ "_SQUEEZE_TO_WHEEZY" ]] ; then
+      sed -i "s/^_SQUEEZE_TO_WHEEZY.*//g" ${barCnf}
+    fi
+    _LENNY_TO_SQUEEZE_TEST=$(grep _LENNY_TO_SQUEEZE ${barCnf} 2>&1)
+    if [[ "${_LENNY_TO_SQUEEZE_TEST}" =~ "_LENNY_TO_SQUEEZE" ]] ; then
+      sed -i "s/^_LENNY_TO_SQUEEZE.*//g" ${barCnf}
+    fi
+    sed -i "/^$/d" ${barCnf}
+    ###
+    ### config cleanup end
+    ###
+
     if [ "${_STATUS}" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
         true

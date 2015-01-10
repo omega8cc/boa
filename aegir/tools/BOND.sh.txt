@@ -447,12 +447,8 @@ update_php_conf() {
       mkdir -p /opt/php${e}/lib
       cp -af ${locCnf}/php${e}-cli.ini /opt/php${e}/lib/php.ini
     fi
-    if [ "$_CUSTOM_CONFIG_PHP${e}" = "NO" ] \
-      || [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [ "${_VMFAMILY}" = "VS" ] ; then
-      cp -af ${locCnf}/php${e}.ini /opt/php${e}/etc/php${e}.ini
-      cp -af ${locCnf}/php${e}-cli.ini /opt/php${e}/lib/php.ini
-    fi
+    cp -af ${locCnf}/php${e}.ini /opt/php${e}/etc/php${e}.ini
+    cp -af ${locCnf}/php${e}-cli.ini /opt/php${e}/lib/php.ini
     cp -af ${locCnf}/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     fix_php_ini_redis
