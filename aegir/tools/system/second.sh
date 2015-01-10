@@ -2,25 +2,26 @@
 
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+pthVhstd="/var/aegir/config/server_master/nginx/vhost.d"
 
 hold() {
-  /etc/init.d/nginx stop
-  killall -9 nginx
+  service nginx stop &> /dev/null
+  killall -9 nginx &> /dev/null
   sleep 1
-  killall -9 nginx
+  killall -9 nginx &> /dev/null
   if [ -e "/etc/init.d/php56-fpm" ] ; then
-    /etc/init.d/php56-fpm stop
+    service php56-fpm stop &> /dev/null
   fi
   if [ -e "/etc/init.d/php55-fpm" ] ; then
-    /etc/init.d/php55-fpm stop
+    service php55-fpm stop &> /dev/null
   fi
   if [ -e "/etc/init.d/php54-fpm" ] ; then
-    /etc/init.d/php54-fpm stop
+    service php54-fpm stop &> /dev/null
   fi
   if [ -e "/etc/init.d/php53-fpm" ] ; then
-    /etc/init.d/php53-fpm stop
+    service php53-fpm stop &> /dev/null
   fi
-  killall -9 php-fpm php-cgi
+  killall -9 php-fpm php-cgi &> /dev/null
   echo "$(date 2>&1)" >> /var/xdrago/log/second.hold.log
   ### echo "load is ${_O_LOAD}:${_F_LOAD} while
   ### maxload is ${_O_LOAD_MAX}:${_F_LOAD_MAX}"
@@ -30,38 +31,40 @@ terminate() {
   if [ -e "/var/run/boa_run.pid" ] ; then
     sleep 1
   else
-    killall -9 php drush.php wget curl
+    killall -9 php drush.php wget curl &> /dev/null
     echo "$(date 2>&1)" >> /var/xdrago/log/second.terminate.log
   fi
 }
 
 nginx_high_load_on() {
   mv -f /data/conf/nginx_high_load_off.conf /data/conf/nginx_high_load.conf
-  /etc/init.d/nginx reload
+  service nginx reload &> /dev/null
 }
 
 nginx_high_load_off() {
   mv -f /data/conf/nginx_high_load.conf /data/conf/nginx_high_load_off.conf
-  /etc/init.d/nginx reload
+  service nginx reload &> /dev/null
 }
 
 check_vhost_health() {
   if [ -e "$1"* ] ; then
     echo vhost $1 exists
-    _VHOST_TEST_PLACEHOLDER=$(grep "### access" $1* 2>&1)
-    _VHOST_TEST_ALLOW=$(grep "allow .*;" $1* 2>&1)
-    _VHOST_TEST_DENY=$(grep "deny .*;" $1* 2>&1)
-    if [[ "$_VHOST_TEST_PLACEHOLDER" =~ "access" ]] \
-      && [[ "$_VHOST_TEST_DENY" =~ "deny" ]] ; then
-      if [[ "$_VHOST_TEST_ALLOW" =~ "allow" ]] ; then
-        _VHOST_HEALTH=YES
+    vhostPlaceTest=$(grep "### access" $1* 2>&1)
+    vhostAllowTest=$(grep "allow .*;" $1* 2>&1)
+    vhostDenyTest=$(grep "deny .*;" $1* 2>&1)
+    if [[ "${vhostPlaceTest}" =~ "access" ]] \
+      && [[ "${vhostDenyTest}" =~ "deny" ]] ; then
+      if [[ "${vhostAllowTest}" =~ "allow" ]] ; then
+        vhostHealthTest=YES
       else
-        _VHOST_HEALTH=YES
+        vhostHealthTest=YES
       fi
     else
-      _VHOST_HEALTH=NO
-      sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
-        $1* &> /dev/null
+      vhostHealthTest=NO
+      sed -i "s/### access .*//g; \
+        s/allow .*;//g; \
+        s/deny .*;//g; \
+        s/ *$//g; /^$/d" $1* &> /dev/null
       sed -i "s/limit_conn .*/limit_conn                   limreq 555;\n  \
         ### access none\n  deny                         all;/g" $1* &> /dev/null
     fi
@@ -73,52 +76,61 @@ check_vhost_health() {
 update_ip_auth_access() {
   touch /var/run/.auth.IP.list.pid
   if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
-    if [ -e "/var/aegir/config/server_master/nginx/vhost.d/chive."* ] ; then
-      sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
-        /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
+    if [ -e "${pthVhstd}/chive."* ] ; then
+      sed -i "s/### access .*//g; \
+        s/allow .*;//g; \
+        s/deny .*;//g; \
+        s/ *$//g; /^$/d" \
+        ${pthVhstd}/chive.* &> /dev/null
       sed -i "s/limit_conn .*/limit_conn                   limreq 555;\n  \
         ### access update/g" \
-        /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
+        ${pthVhstd}/chive.* &> /dev/null
     fi
-    if [ -e "/var/aegir/config/server_master/nginx/vhost.d/cgp."* ] ; then
-      sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
-        /var/aegir/config/server_master/nginx/vhost.d/cgp.* &> /dev/null
+    if [ -e "${pthVhstd}/cgp."* ] ; then
+      sed -i "s/### access .*//g; \
+        s/allow .*;//g; \
+        s/deny .*;//g; \
+        s/ *$//g; /^$/d" \
+        ${pthVhstd}/cgp.* &> /dev/null
       sed -i "s/limit_conn .*/limit_conn                   limreq 555;\n  \
         ### access update/g" \
-        /var/aegir/config/server_master/nginx/vhost.d/cgp.* &> /dev/null
+        ${pthVhstd}/cgp.* &> /dev/null
     fi
-    if [ -e "/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy."* ] ; then
-      sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
-        /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
+    if [ -e "${pthVhstd}/sqlbuddy."* ] ; then
+      sed -i "s/### access .*//g; \
+        s/allow .*;//g; \
+        s/deny .*;//g; \
+        s/ *$//g; /^$/d" \
+        ${pthVhstd}/sqlbuddy.* &> /dev/null
       sed -i "s/limit_conn .*/limit_conn                   limreq 555;\n  \
         ### access update/g" \
-        /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
+        ${pthVhstd}/sqlbuddy.* &> /dev/null
     fi
     sleep 1
     sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
-d;};' /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
+d;};' ${pthVhstd}/chive.* &> /dev/null
     sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
-d;};' /var/aegir/config/server_master/nginx/vhost.d/cgp.* &> /dev/null
+d;};' ${pthVhstd}/cgp.* &> /dev/null
     sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
-d;};' /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
-    mv -f /var/aegir/config/server_master/nginx/vhost.d/sed* /var/backups/
-    check_vhost_health "/var/aegir/config/server_master/nginx/vhost.d/chive."
-    check_vhost_health "/var/aegir/config/server_master/nginx/vhost.d/cgp."
-    check_vhost_health "/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy."
-    _NGX_TEST=$(service nginx configtest 2>&1)
-    if [[ "$_NGX_TEST" =~ "successful" ]] ; then
+d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
+    mv -f ${pthVhstd}/sed* /var/backups/
+    check_vhost_health "${pthVhstd}/chive."
+    check_vhost_health "${pthVhstd}/cgp."
+    check_vhost_health "${pthVhstd}/sqlbuddy."
+    ngxTest=$(service nginx configtest 2>&1)
+    if [[ "${ngxTest}" =~ "successful" ]] ; then
       service nginx reload &> /dev/null
     else
       service nginx reload &> /var/backups/.auth.IP.list.ops
       sed -i "s/allow .*;//g; s/ *$//g; /^$/d" \
-        /var/aegir/config/server_master/nginx/vhost.d/chive.*    &> /dev/null
+        ${pthVhstd}/chive.*    &> /dev/null
       sed -i "s/allow .*;//g; s/ *$//g; /^$/d" \
-        /var/aegir/config/server_master/nginx/vhost.d/cgp.*      &> /dev/null
+        ${pthVhstd}/cgp.*      &> /dev/null
       sed -i "s/allow .*;//g; s/ *$//g; /^$/d" \
-        /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
-      check_vhost_health "/var/aegir/config/server_master/nginx/vhost.d/chive."
-      check_vhost_health "/var/aegir/config/server_master/nginx/vhost.d/cgp."
-      check_vhost_health "/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy."
+        ${pthVhstd}/sqlbuddy.* &> /dev/null
+      check_vhost_health "${pthVhstd}/chive."
+      check_vhost_health "${pthVhstd}/cgp."
+      check_vhost_health "${pthVhstd}/sqlbuddy."
       service nginx reload &> /dev/null
     fi
   fi
@@ -141,9 +153,9 @@ d;};' /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" \
     /var/backups/.auth.IP.list &> /dev/null
   if [ -e "/var/backups/.auth.IP.list" ] ; then
-    _ALLOW_TEST_LIST=$(grep allow /var/backups/.auth.IP.list)
+    allowTestList=$(grep allow /var/backups/.auth.IP.list 2>&1)
   fi
-  if [[ "$_ALLOW_TEST_LIST" =~ "allow" ]] ; then
+  if [[ "${allowTestList}" =~ "allow" ]] ; then
     echo "  deny                         all;" >> /var/backups/.auth.IP.list
     echo "  ### access live"                   >> /var/backups/.auth.IP.list
   else
@@ -173,9 +185,9 @@ manage_ip_auth_access() {
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" \
     /var/backups/.auth.IP.list.tmp &> /dev/null
   if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
-    _ALLOW_TEST_TMP=$(grep allow /var/backups/.auth.IP.list.tmp)
+    allowTestTmp=$(grep allow /var/backups/.auth.IP.list.tmp 2>&1)
   fi
-  if [[ "$_ALLOW_TEST_TMP" =~ "allow" ]] ; then
+  if [[ "${allowTestTmp}" =~ "allow" ]] ; then
     echo "  deny                         all;" >> /var/backups/.auth.IP.list.tmp
     echo "  ### access live"                   >> /var/backups/.auth.IP.list.tmp
   else
@@ -187,9 +199,9 @@ manage_ip_auth_access() {
       update_ip_auth_access
     else
       if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
-        _DIFF_TEST=$(diff /var/backups/.auth.IP.list.tmp \
-          /var/backups/.auth.IP.list)
-        if [ ! -z "${_DIFF_TEST}" ] ; then
+        diffTestIf=$(diff /var/backups/.auth.IP.list.tmp \
+          /var/backups/.auth.IP.list 2>&1)
+        if [ ! -z "${diffTestIf}" ] ; then
           update_ip_auth_access
         fi
       fi
@@ -201,8 +213,9 @@ manage_ip_auth_access() {
       chmod 700 /var/backups/.vhost.d.wbhd
       cp -af /var/backups/.vhost.d.mstr/* /var/backups/.vhost.d.wbhd/
     fi
-    _DIFF_CLSTR_TEST=$(diff /var/backups/.vhost.d.wbhd /var/backups/.vhost.d.mstr)
-    if [ ! -z "${_DIFF_CLSTR_TEST}" ] ; then
+    diffClstrTest=$(diff /var/backups/.vhost.d.wbhd \
+      /var/backups/.vhost.d.mstr 2>&1)
+    if [ ! -z "${diffClstrTest}" ] ; then
       service nginx reload &> /dev/null
       rm -f -r /var/backups/.vhost.d.wbhd
       mkdir -p /var/backups/.vhost.d.wbhd
@@ -210,37 +223,34 @@ manage_ip_auth_access() {
       cp -af /var/backups/.vhost.d.mstr/* /var/backups/.vhost.d.wbhd/
     fi
   fi
-  if [[ "$_ALLOW_TEST_TMP" =~ "allow" ]] ; then
-    _VHOST_STATUS_CHIVE=TRUE
-    _VHOST_STATUS_CGP=TRUE
-    _VHOST_STATUS_SQLBUDDY=TRUE
-    if [ -e "/var/aegir/config/server_master/nginx/vhost.d/chive."* ] ; then
-      _VHOST_STATUS_CHIVE=FALSE
-      _ALLOW_TEST_VHOST_CHIVE=$(grep allow \
-        /var/aegir/config/server_master/nginx/vhost.d/chive.*)
-      if [[ "$_ALLOW_TEST_VHOST_CHIVE" =~ "allow" ]] ; then
-        _VHOST_STATUS_CHIVE=TRUE
+  if [[ "${allowTestTmp}" =~ "allow" ]] ; then
+    vhostStatusChive=TRUE
+    vhostStatusCgp=TRUE
+    vhostStatusBuddy=TRUE
+    if [ -e "${pthVhstd}/chive."* ] ; then
+      vhostStatusChive=FALSE
+      vhostTestChive=$(grep allow ${pthVhstd}/chive.* 2>&1)
+      if [[ "${vhostTestChive}" =~ "allow" ]] ; then
+        vhostStatusChive=TRUE
       fi
     fi
-    if [ -e "/var/aegir/config/server_master/nginx/vhost.d/cgp."* ] ; then
-      _VHOST_STATUS_CGP=FALSE
-      _ALLOW_TEST_VHOST_CGP=$(grep allow \
-        /var/aegir/config/server_master/nginx/vhost.d/cgp.*)
-      if [[ "$_ALLOW_TEST_VHOST_CGP" =~ "allow" ]] ; then
-        _VHOST_STATUS_CGP=TRUE
+    if [ -e "${pthVhstd}/cgp."* ] ; then
+      vhostStatusCgp=FALSE
+      vhostTestCgp=$(grep allow ${pthVhstd}/cgp.* 2>&1)
+      if [[ "${vhostTestCgp}" =~ "allow" ]] ; then
+        vhostStatusCgp=TRUE
       fi
     fi
-    if [ -e "/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy."* ] ; then
-      _VHOST_STATUS_SQLBUDDY=FALSE
-      _ALLOW_TEST_VHOST_SQLBUDDY=$(grep allow \
-        /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.*)
-      if [[ "$_ALLOW_TEST_VHOST_SQLBUDDY" =~ "allow" ]] ; then
-        _VHOST_STATUS_SQLBUDDY=TRUE
+    if [ -e "${pthVhstd}/sqlbuddy."* ] ; then
+      vhostStatusBuddy=FALSE
+      vhostTestBuddy=$(grep allow ${pthVhstd}/sqlbuddy.* 2>&1)
+      if [[ "${vhostTestBuddy}" =~ "allow" ]] ; then
+        vhostStatusBuddy=TRUE
       fi
     fi
-    if [ "$_VHOST_STATUS_CHIVE" = "FALSE" ] \
-      || [ "$_VHOST_STATUS_CGP" = "FALSE" ] \
-      || [ "$_VHOST_STATUS_SQLBUDDY" = "FALSE" ] ; then
+    if [ "${vhostStatusChive}" = "FALSE" ] \
+      || [ "${vhostStatusCgp}" = "FALSE" ] \
+      || [ "${vhostStatusBuddy}" = "FALSE" ] ; then
       update_ip_auth_access
     fi
   fi
@@ -253,7 +263,8 @@ proc_control() {
   elif [ "${_F_LOAD}" -ge "${_F_LOAD_MAX}" ] ; then
     hold
   else
-    echo load is ${_O_LOAD}:${_F_LOAD} while maxload is ${_O_LOAD_MAX}:${_F_LOAD_MAX}
+    echo "load is ${_O_LOAD}:${_F_LOAD} while \
+      maxload is ${_O_LOAD_MAX}:${_F_LOAD_MAX}"
     echo ...OK now running proc_num_ctrl...
     perl /var/xdrago/proc_num_ctrl.cgi
     touch /var/xdrago/log/proc_num_ctrl.done
