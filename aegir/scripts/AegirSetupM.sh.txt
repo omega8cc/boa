@@ -240,7 +240,7 @@ fi
 if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
   msg "INFO: Provision already seems to be installed"
 else
-  msg "INFO: Installing provision backend in ${_ROOT}/.drush"
+  msg "INFO: Installing Aegir Provision backend..."
   mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
   if [ "${_AEGIR_VERSION}" = "HEAD" ] ; then
     cd ${_ROOT}/.drush

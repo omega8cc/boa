@@ -425,7 +425,7 @@ else
   touch /opt/tmp/status-AegirSetupB-FAIL
   exit 1
 fi
-msg "${_STATUS} B: Installing provision backend in ${_ROOT}/.drush"
+msg "${_STATUS} B: Installing Aegir Provision backend..."
 mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
 cd ${_ROOT}/.drush
 if [ "${_AEGIR_VERSION}" = "HEAD" ] ; then

@@ -267,7 +267,7 @@ hostmaster_go_up() {
   if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
     msg "INFO: Provision seems to be installed already"
   else
-    msg "INFO: Installing provision backend in ${_ROOT}/.drush"
+    msg "INFO: Installing Aegir Provision backend..."
     mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
     rm -f -r ${_ROOT}/.drush/drush_make
     rm -f -r ${_ROOT}/.drush/sys/drush_make
