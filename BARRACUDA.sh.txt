@@ -6411,7 +6411,6 @@ check_php_cli() {
 # Final cleanup.
 finale() {
   ###--------------------###
-  echo " "
   if [ "${_STATUS}" = "INIT" ] ; then
     _L_ST="install"
     touch ${pthLog}/SA-CORE-2014-005-fixed-d7.log
