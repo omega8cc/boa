@@ -727,7 +727,7 @@ clean_pid_exit() {
 #
 # Noticeable messages.
 msg() {
-  echo "Octopus [$(date +%T 2>&1)] ==> $*"
+  echo "BOA [$(date +%T 2>&1)] ==> $*"
 }
 # Simple prompt.
 prompt_yes_no() {

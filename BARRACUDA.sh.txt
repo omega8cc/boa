@@ -1186,7 +1186,7 @@ clean_pid_exit() {
 #
 # Noticeable messages.
 msg() {
-  echo "Barracuda [$(date +%T 2>&1)] ==> $*"
+  echo "BOA [$(date +%T 2>&1)] ==> $*"
 }
 # Simple prompt.
 prompt_yes_no() {
