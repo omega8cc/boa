@@ -2671,7 +2671,9 @@ fi
 
 ###--------------------###
 if [ -z "$_SKYNET_MODE" ] || [ "$_SKYNET_MODE" = "ON" ] ; then
-  echo "INFO: Checking BARRACUDA version"
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    echo "INFO: Checking BARRACUDA version"
+  fi
   rm -f /opt/tmp/barracuda-version.txt*
   curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 15 -A iCab \
     "${urlHmr}/conf/barracuda-version.txt" \
@@ -2685,7 +2687,9 @@ if [ -e "/opt/tmp/barracuda-version.txt" ] ; then
   if [ ! -z "${_X_VERSION}" ] ; then
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] ; then
       _VERSIONS_TEST_RESULT=OK
-      echo "INFO: Version test result: OK"
+      if [ "${_DEBUG_MODE}" = "YES" ] ; then
+        echo "INFO: Version test result: OK"
+      fi
     else
       cat <<EOF | mail -e -s "New ${_X_VERSION} Stable Edition available" notify\@omega8.cc
 

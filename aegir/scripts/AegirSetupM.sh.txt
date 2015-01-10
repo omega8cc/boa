@@ -227,7 +227,9 @@ update_php_cli_drush
 update_php_cli_local_ini
 
 if ${_DRUSHCMD} help > /dev/null ; then
-  msg "INFO: Drush seems to be functioning properly"
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "INFO: Drush seems to be functioning properly"
+  fi
 else
   msg "FATAL ERROR: Drush is broken (${_DRUSH} help failed)"
   msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"

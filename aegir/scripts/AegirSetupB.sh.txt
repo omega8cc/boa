@@ -416,7 +416,9 @@ if [ "${_STATUS}" = "UPGRADE" ] ; then
 fi
 
 if ${_DRUSHCMD} help > /dev/null ; then
-  msg "${_STATUS} B: Drush seems to be functioning properly"
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "${_STATUS} B: Drush seems to be functioning properly"
+  fi
 else
   msg "${_STATUS} B: FATAL ERROR: Drush is broken ($DRUSH help failed)"
   msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
@@ -539,16 +541,24 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   ln -sf $_HOSTMASTER_ROOT /data/u/${_DOMAIN}
   ${_DRUSHCMD} cache-clear drush &> /dev/null
   rm -f -r ${_ROOT}/.tmp/cache
-  msg "${_STATUS} B: Running hosting-dispatch (1/3)..."
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "${_STATUS} B: Running hosting-dispatch (1/3)..."
+  fi
   ${_DRUSHCMD} '@hostmaster' hosting-dispatch &> /dev/null
   mrun "sleep 5"
-  msg "${_STATUS} B: Running hosting-dispatch (2/3)..."
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "${_STATUS} B: Running hosting-dispatch (2/3)..."
+  fi
   ${_DRUSHCMD} '@hostmaster' hosting-dispatch &> /dev/null
   mrun "sleep 5"
-  msg "${_STATUS} B: Running hosting-dispatch (3/3)..."
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "${_STATUS} B: Running hosting-dispatch (3/3)..."
+  fi
   ${_DRUSHCMD} '@hostmaster' hosting-dispatch &> /dev/null
 else
-  msg "${_STATUS} B: Testing previous install..."
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "${_STATUS} B: Testing previous install..."
+  fi
   ${_DRUSHCMD} cache-clear drush &> /dev/null
   rm -f -r ${_ROOT}/.tmp/cache
   if ${_DRUSHCMD} help clean-modules > /dev/null ; then

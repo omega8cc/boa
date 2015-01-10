@@ -1124,7 +1124,9 @@ check_git_repos_status() {
     _GITORIOUS_WORKS=YES
     sleep 1
   else
-    msg "INFO: Testing repository mirror servers availability..."
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "INFO: Testing repository mirror servers availability..."
+    fi
     sleep 1
     _GITHUB_WORKS=YES
     _GITORIOUS_WORKS=YES
@@ -1139,11 +1141,15 @@ check_git_repos_status() {
   if [ "$_GITHUB_WORKS" = "YES" ] ; then
     _BOA_REPO_NAME="boa"
     _BOA_REPO_GIT_URL="git://github.com/omega8cc"
-    msg "INFO: GitHub master repository will be used"
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "INFO: GitHub master repository will be used"
+    fi
   elif [ "$_GITORIOUS_WORKS" = "YES" ] ; then
     _BOA_REPO_NAME="barracuda-octopus"
     _BOA_REPO_GIT_URL="git://code.aegir.cc/aegir"
-    msg "INFO: Gitorious mirror repository will be used"
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "INFO: Gitorious mirror repository will be used"
+    fi
   else
     cat <<EOF
 
@@ -2431,7 +2437,8 @@ if [ "${_STATUS}" = "INIT" ] ; then
 
 EOF
 else
-  cat <<EOF
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    cat <<EOF
 
   * Your Aegir control panel for this instance is available at https://${_DOMAIN}
   * Your Aegir system user for this instance is ${_USER}
@@ -2441,6 +2448,7 @@ else
   * This Octopus options are listed as ${_CLIENT_OPTION} / ${_CLIENT_SUBSCR} / ${_CLIENT_CORES} C
 
 EOF
+  fi
 fi
 echo " "
 if prompt_yes_no "Do you want to proceed?" ; then

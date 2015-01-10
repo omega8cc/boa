@@ -1493,7 +1493,9 @@ check_git_repos_status() {
     _GITORIOUS_WORKS=YES
     sleep 1
   else
-    msg "INFO: Testing repository mirror servers availability..."
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "INFO: Testing repository mirror servers availability..."
+    fi
     sleep 1
     _GITHUB_WORKS=YES
     _GITORIOUS_WORKS=YES
@@ -1508,11 +1510,15 @@ check_git_repos_status() {
   if [ "$_GITHUB_WORKS" = "YES" ] ; then
     _BOA_REPO_NAME="boa"
     _BOA_REPO_GIT_URL="git://github.com/omega8cc"
-    msg "INFO: GitHub master repository will be used"
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "INFO: GitHub master repository will be used"
+    fi
   elif [ "$_GITORIOUS_WORKS" = "YES" ] ; then
     _BOA_REPO_NAME="barracuda-octopus"
     _BOA_REPO_GIT_URL="git://code.aegir.cc/aegir"
-    msg "INFO: Gitorious mirror repository will be used"
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "INFO: Gitorious mirror repository will be used"
+    fi
   else
     cat <<EOF
 
@@ -1580,7 +1586,9 @@ forced_redis_password_update() {
   if [ "${_REDIS_LISTEN_MODE}" = "SOCKET" ] \
     || [ "${_REDIS_LISTEN_MODE}" = "PORT" ] \
     || [ "${_REDIS_LISTEN_MODE}" = "127.0.0.1" ] ; then
-    msg "INFO: Generating random password for local Redis server"
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "INFO: Generating random password for local Redis server"
+    fi
     _ESC_RPASS=""
     _LEN_RPASS=0
     if [ "${_STRONG_PASSWORDS}" = "YES" ] ; then
@@ -4458,7 +4466,9 @@ mysqladmin flush-privileges &> /dev/null
 #
 # Sync provision backend db_passwd.
 provision_backend_dbpass_sync() {
-  msg "INFO: Syncing provision backend db_passwd..."
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "INFO: Syncing provision backend db_passwd..."
+  fi
   _ADBU=aegir_root
   _L_SYS="/var/aegir/backups/system/.$_ADBU.pass.txt"
   mv -f $_L_SYS $_L_SYS-pre-${_X_VERSION}-${_NOW} &> /dev/null
@@ -4482,19 +4492,27 @@ provision_backend_dbpass_sync() {
     su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_master \
       verify --force &> /dev/null"
   fi
-  msg "INFO: Running hosting-dispatch (1/3)..."
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "INFO: Running hosting-dispatch (1/3)..."
+  fi
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
   mrun "sleep 5"
-  msg "INFO: Running hosting-dispatch (2/3)..."
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "INFO: Running hosting-dispatch (2/3)..."
+  fi
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
   mrun "sleep 5"
-  msg "INFO: Running hosting-dispatch (3/3)..."
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "INFO: Running hosting-dispatch (3/3)..."
+  fi
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
 }
 #
 # Sync hostmaster frontend db_passwd.
 hostmaster_frontend_dbpass_sync() {
-  msg "INFO: Syncing hostmaster frontend db_passwd..."
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "INFO: Syncing hostmaster frontend db_passwd..."
+  fi
   _THIS_HM_SPTH=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
     | grep "site_path'" \
     | cut -d: -f2 \
@@ -4671,7 +4689,9 @@ detect_cdorked_malware() {
 #
 # Install or upgrade Nginx.
 install_upgrade_nginx() {
-  msg "INFO: Testing Nginx version..."
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "INFO: Testing Nginx version..."
+  fi
   if [ "${_STATUS}" = "UPGRADE" ] ; then
     _NGINX_INSTALL_REQUIRED=NO
   fi
@@ -5241,7 +5261,9 @@ update_sources_list() {
     _APT_SOURCES_REWRITE=YES
   fi
   if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
-    msg "INFO: Updating packages sources list..."
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "INFO: Updating packages sources list..."
+    fi
     mv -f /etc/apt/sources.list \
       /var/backups/sources.list-pre-${_X_VERSION}-${_NOW} &> /dev/null
     if [ "$_THIS_OS" = "Ubuntu" ] ; then
@@ -5275,7 +5297,9 @@ update_sources_list() {
           _MIRROR=archive.ubuntu.com
         fi
       fi
-      msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
+      if [ "${_DEBUG_MODE}" = "YES" ] ; then
+        msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
+      fi
       cd /var/opt
       echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
       echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION main \
@@ -5345,7 +5369,9 @@ update_sources_list() {
           _MIRROR=ftp.debian.org
         fi
       fi
-      msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
+      if [ "${_DEBUG_MODE}" = "YES" ] ; then
+        msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
+      fi
       cd /var/opt
       echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
       echo "deb http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" \
@@ -6388,7 +6414,7 @@ finale() {
     echo " "
     mrun "sleep 8"
   fi
-  msg "Final post-$_L_ST cleaning, please wait a moment..."
+  msg "Final post-$_L_ST cleaning, one moment..."
   fix_broken_platforms
   mv -f /etc/motd /var/backups/dragon/t/motd-pre-${_X_VERSION}-${_NOW} &> /dev/null
   mv -f /etc/motd-pre-* /var/backups/dragon/t/ &> /dev/null
@@ -6941,7 +6967,9 @@ fi
 
 
 ###--------------------###
-msg "INFO: Downloading little helpers..."
+if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  msg "INFO: Downloading little helpers..."
+fi
 sleep 1
 #
 # Git clone all
@@ -6995,7 +7023,9 @@ fi
 
 
 ###--------------------###
-msg "INFO: Checking BARRACUDA version..."
+if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  msg "INFO: Checking BARRACUDA version..."
+fi
 if [ "${_AEGIR_VERSION}" = "HEAD" ] ; then
   _FILE_VERSION=barracuda-release.txt
 else
@@ -7007,7 +7037,9 @@ if [ -e "${locCnf}/$_FILE_VERSION" ] ; then
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
       && [ "${_AEGIR_VERSION}" = "HEAD" ] ; then
       _VERSIONS_TEST_RESULT=OK
-      msg "INFO: BARRACUDA version test: OK"
+      if [ "${_DEBUG_MODE}" = "YES" ] ; then
+        msg "INFO: BARRACUDA version test: OK"
+      fi
     else
       _VERSIONS_TEST_RESULT=FAIL
     fi
@@ -7015,7 +7047,9 @@ if [ -e "${locCnf}/$_FILE_VERSION" ] ; then
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
       && [[ "${_AEGIR_VERSION}" =~ "BOA" ]] ; then
       _VERSIONS_TEST_RESULT=OK
-      msg "INFO: BARRACUDA version test: OK"
+      if [ "${_DEBUG_MODE}" = "YES" ] ; then
+        msg "INFO: BARRACUDA version test: OK"
+      fi
     else
       _VERSIONS_TEST_RESULT=FAIL
     fi
@@ -7264,15 +7298,17 @@ else ### if [ "${_STATUS}" = "UPGRADE" ] ; then
     msg "Please specify your working Aegir domain as a value of _MY_FRONT"
     clean_pid_exit
   fi
-  echo " "
-  msg "UPGRADE START -> checkpoint: "
-  cat <<EOF
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    echo " "
+    msg "UPGRADE START -> checkpoint: "
+    cat <<EOF
 
   * Your e-mail address is ${_MY_EMAIL}
   * Your server hostname is ${_THISHOST}
   * Your Aegir control panel URL is https://${_THIS_FRONT}
 
 EOF
+  fi
   echo " "
   if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
     true
@@ -7284,7 +7320,9 @@ fi
 
 
 ###--------------------###
-msg "INFO: Cleaning up temp files in /var/opt/"
+if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  msg "INFO: Cleaning up temp files in /var/opt/"
+fi
 rm -f -r /var/opt/*
 mkdir -p /var/log/php
 chmod 777 /var/log/php* &> /dev/null
@@ -8801,7 +8839,9 @@ fi
 
 ###--------------------###
 if [ "${_STATUS}" = "UPGRADE" ] ; then
-  msg "INFO: Checking if PHP upgrade is available"
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "INFO: Checking if PHP upgrade is available"
+  fi
   st_runner "aptitude remove php5-sasl php5-suhosin -y" &> /dev/null
   st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
 fi
@@ -10048,13 +10088,19 @@ EOFMYSQL
   chattr +i ${_U_HD}/php.ini &> /dev/null
   su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
   rm -f -r /var/aegir/.tmp/cache
-  msg "INFO: Running hosting-dispatch (1/3)..."
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "INFO: Running hosting-dispatch (1/3)..."
+  fi
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
   mrun "sleep 5"
-  msg "INFO: Running hosting-dispatch (2/3)..."
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "INFO: Running hosting-dispatch (2/3)..."
+  fi
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
   mrun "sleep 5"
-  msg "INFO: Running hosting-dispatch (3/3)..."
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "INFO: Running hosting-dispatch (3/3)..."
+  fi
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
   if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
     _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
@@ -10289,7 +10335,9 @@ fi
 ###--------------------###
 if [ -d "/var/www/chive" ] ; then
   if [ ! -z "$_PHP_CN" ] ; then
-    msg "INFO: _PHP_CN set to $_PHP_CN for Chive Manager"
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "INFO: _PHP_CN set to $_PHP_CN for Chive Manager"
+    fi
     chown -R $_PHP_CN:www-data /var/www/chive
   else
     msg "NOTE: _PHP_CN not set for Chive Manager"
@@ -10331,7 +10379,9 @@ fi
 ###--------------------###
 if [ -d "/var/www/sqlbuddy" ] ; then
   if [ ! -z "$_PHP_CN" ] ; then
-    msg "INFO: _PHP_CN set to $_PHP_CN for SQL Buddy Manager"
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "INFO: _PHP_CN set to $_PHP_CN for SQL Buddy Manager"
+    fi
     chown -R $_PHP_CN:www-data /var/www/sqlbuddy
   else
     msg "NOTE: _PHP_CN not set for SQL Buddy Manager"
@@ -10433,7 +10483,9 @@ fi
 ###--------------------###
 if [ -d "/var/www/cgp" ] ; then
   if [ ! -z "$_PHP_CN" ] ; then
-    msg "INFO: _PHP_CN set to $_PHP_CN for Collectd Graph Panel"
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "INFO: _PHP_CN set to $_PHP_CN for Collectd Graph Panel"
+    fi
     chown -R $_PHP_CN:www-data /var/www/cgp
   else
     msg "NOTE: _PHP_CN not set for Collectd Graph Panel"
@@ -10885,10 +10937,12 @@ forced_mysql_root_password_update() {
     chmod 0600 /root/.mytop
     echo "$_ESC_PASS" > /root/.my.pass.txt
     echo " "
-    if [ "${_STRONG_PASSWORDS}" = "YES" ] ; then
-      msg "INFO: New secure random password for ${_DB_SERVER} generated and updated"
-    else
-      msg "INFO: New random password for ${_DB_SERVER} generated and updated"
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      if [ "${_STRONG_PASSWORDS}" = "YES" ] ; then
+        msg "INFO: New secure random password for ${_DB_SERVER} generated"
+      else
+        msg "INFO: New random password for ${_DB_SERVER} generated"
+      fi
     fi
   fi
 }
@@ -11056,7 +11110,9 @@ _BARRACUDA_VERSION_INFO="$(date 2>&1) / \
   ${_LOG_DB_HOST}"
 echo "$_BARRACUDA_VERSION_INFO" >> /var/log/barracuda_log.txt
 echo "$_BARRACUDA_VERSION_INFO" >> /var/backups/barracuda_log.txt
-msg "INFO: New entry added to /var/log/barracuda_log.txt"
+if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  msg "INFO: New entry added to /var/log/barracuda_log.txt"
+fi
 
 
 ###--------------------###

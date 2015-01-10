@@ -201,7 +201,9 @@ get_dev_ext() {
 }
 #
 hostmaster_mv_up() {
-  msg "INFO: Moving old directories"
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "INFO: Moving old directories"
+  fi
   mkdir -p ${_ROOT}/backups/system
   chmod 700 ${_ROOT}/backups/system
   mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/ &> /dev/null
@@ -250,7 +252,9 @@ hostmaster_dr_up() {
   update_php_cli_drush
   update_php_cli_local_ini
   if ${_DRUSHCMD} help > /dev/null ; then
-    msg "INFO: Drush seems to be functioning properly"
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "INFO: Drush seems to be functioning properly"
+    fi
   else
     msg "FATAL ERROR: Drush is broken (${_DRUSHCMD} help failed)"
     msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
@@ -368,7 +372,9 @@ if [ -d "${_ROOT}/host_master/000" ] ; then
   nextnum=00$((10#${last%%[^0-9]*} + 1))
   nextnum=${nextnum: -3}
   _PREV_HOSTMASTER_ROOT_TEST="${_ROOT}/host_master/${_LASTNUM}"
-  msg "INFO: Testing previous install..."
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "INFO: Testing previous install..."
+  fi
   if [ -e "${_PREV_HOSTMASTER_ROOT_TEST}/sites/${_DOMAIN}/settings.php" ] ; then
     _DISTRO=${nextnum}
     _PREV_HOSTMASTER_ROOT="${_ROOT}/host_master/${_LASTNUM}"
@@ -436,7 +442,9 @@ if [ ! -d "/var/aegir/.drush/sys/provision/http" ] ; then
   exit 1
 fi
 if [ -e "${_PREV_HOSTMASTER_ROOT}/sites/${_DOMAIN}/settings.php" ] ; then
-  msg "INFO: Test OK, we can proceed with Hostmaster upgrade"
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "INFO: Test OK, we can proceed with Hostmaster upgrade"
+  fi
   hostmaster_mv_up
   hostmaster_dr_up
   hostmaster_go_up
