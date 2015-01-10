@@ -132,7 +132,7 @@ urlStb="http://files.aegir.cc/versions/stable"
 #
 # Noticeable messages.
 msg() {
-  echo "Octopus [$(date +%F/%T 2>&1)] ==> $*"
+  echo "Octopus [$(date +%T 2>&1)] ==> $*"
 }
 #
 # Small spinner.

@@ -154,7 +154,7 @@ urlPrt="https://drupal.org/project"
 #
 # Noticeable messages.
 msg() {
-  echo "Octopus [$(date +%F/%T 2>&1)] ==> $*"
+  echo "Octopus [$(date +%T 2>&1)] ==> $*"
 }
 #
 # Simple prompt.
