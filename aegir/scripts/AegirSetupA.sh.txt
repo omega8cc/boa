@@ -175,7 +175,9 @@ st_runner() {
     sleep 1
     echo "${CMD} failed.  Error (if any): $?"
     echo " "
-    echo "Displaying the last 15 lines of ${_LOG} to help troubleshoot this problem"
+    echo "Displaying the last 15 lines of logfile"
+    echo "  ${_LOG}"
+    echo "to help troubleshoot this problem"
     echo " "
     tail -15 ${_LOG}
     return 1
@@ -201,13 +203,13 @@ prompt_yes_no() {
 if [ "${_AUTOPILOT}" = "YES" ] ; then
   return 0
 else
-  while true ; do
+  while true; do
     printf "$* [Y/n] "
     read answer
-    if [ -z "$answer" ] ; then
+    if [ -z "${answer}" ] ; then
       return 0
     fi
-    case $answer in
+    case ${answer} in
       [Yy]|[Yy][Ee][Ss])
         return 0
         ;;
@@ -1327,7 +1329,7 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
     | sort \
     | uniq \
     | awk '{ print $1}')
-  for _PLATF in $_PLATF_IMP ; do
+  for _PLATF in ${_PLATF_IMP}; do
     if [[ "$_PLATF" =~ "aegir" ]] ; then
       _FOUND_HM=YES
     else

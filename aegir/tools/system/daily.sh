@@ -2411,8 +2411,7 @@ shared_codebases_cleanup() {
 }
 
 action() {
-  for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
-  do
+  for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     count_cpu
     load_control
     if [ -e "${User}/config/server_master/nginx/vhost.d" ] \
@@ -2649,7 +2648,7 @@ else
   fi
   action >/var/xdrago/log/daily/daily-${_NOW}.log 2>&1
   if [ "${_NGINX_FORWARD_SECRECY}" = "YES" ] ; then
-    for File in `find /etc/ssl/private/*.key -type f` ; do
+    for File in `find /etc/ssl/private/*.key -type f`; do
       _PFS_TEST=$(grep "DH PARAMETERS" $File 2>&1)
       if [[ "$_PFS_TEST" =~ "DH PARAMETERS" ]] ; then
         _DO_NOTHING=YES
@@ -2657,7 +2656,7 @@ else
         openssl dhparam -rand - 4096 >> $File
       fi
     done
-    for File in `find /etc/ssl/private/*.crt -type f` ; do
+    for File in `find /etc/ssl/private/*.crt -type f`; do
       _PFS_TEST=$(grep "DH PARAMETERS" $File 2>&1)
       if [[ "$_PFS_TEST" =~ "DH PARAMETERS" ]] ; then
         _DO_NOTHING=YES

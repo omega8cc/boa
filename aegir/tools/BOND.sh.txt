@@ -180,13 +180,13 @@ prompt_yes_no() {
 if [ "${_AUTOPILOT}" = "YES" ] ; then
   return 0
 else
-  while true ; do
+  while true; do
   printf "$* [Y/n] "
   read answer
-  if [ -z "$answer" ] ; then
+  if [ -z "${answer}" ] ; then
     return 0
   fi
-  case $answer in
+  case ${answer} in
     [Yy]|[Yy][Ee][Ss])
     return 0
     ;;
@@ -217,7 +217,10 @@ st_runner() {
     sleep 1
     echo "${CMD} failed.  Error (if any): $?"
     echo " "
-    echo "Displaying the last 15 lines of ${_LOG} to help troubleshoot this problem"
+    echo "Displaying the last 15 lines of logfile"
+    echo "  ${_LOG}"
+    echo "to help troubleshoot this problem"
+    echo " "
     echo "If you see any error with advice to run 'dpkg --configure -a', run this"
     echo "command first and choose default answer, then run this installer again"
     echo " "
@@ -320,7 +323,7 @@ fix_php_ini_newrelic_all() {
       _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
     fi
     _PHP_V="56 55 54 53"
-    for e in $_PHP_V; do
+    for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       fix_php_ini_newrelic
       _THIS_FILE=/opt/php${e}/lib/php.ini
@@ -357,7 +360,7 @@ fix_php_ini_opcache() {
 # Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all() {
   _PHP_V="56 55 54 53"
-  for e in $_PHP_V; do
+  for e in ${_PHP_V}; do
     case "${e}" in
       56) _P_API="${_PHP56_API}" ;;
       55) _P_API="${_PHP55_API}" ;;
@@ -432,7 +435,7 @@ update_php_conf() {
   sed -i "s/127.0.0.1/127.0.0.1,${_THISHTIP}/g" /opt/etc/fpm/fpm-pool-common.conf
   sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
   _PHP_V="56 55 54 53"
-  for e in $_PHP_V; do
+  for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ] ; then
       adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
       usermod -aG www-data www${e} &> /dev/null
@@ -614,8 +617,7 @@ restore_default_nginx() {
   cd /var/xdrago/monitor/check
   cp -af /opt/tmp/boa/aegir/tools/system/monitor/check/scan_nginx ./
   if [ -d "$_TUNE_HOSTMASTER" ] ; then
-    for Files in `find $_TUNE_HOSTMASTER/config/server_master/nginx/vhost.d -type f`
-    do
+    for Files in `find $_TUNE_HOSTMASTER/config/server_master/nginx/vhost.d -type f`; do
       sed -i "s/#limit_conn /limit_conn /g" $Files &> /dev/null
     done
   fi
@@ -632,8 +634,7 @@ tune_nginx() {
   if [ "$_TUNE_NGINX_CONNECT" = "OFF" ] ; then
     sed -i "s/limit_conn /#limit_conn /g" /var/aegir/config/server_master/nginx.conf &> /dev/null
     if [ -d "$_TUNE_HOSTMASTER" ] ; then
-      for Files in `find $_TUNE_HOSTMASTER/config/server_master/nginx/vhost.d -type f`
-      do
+      for Files in `find $_TUNE_HOSTMASTER/config/server_master/nginx/vhost.d -type f`; do
         sed -i "s/limit_conn /#limit_conn /g" $Files &> /dev/null
       done
     fi
@@ -685,7 +686,7 @@ tune_web_server_config() {
     _START_LEGACY_FPM=3
   fi
   _PHP_V="56 55 54 53"
-  for e in $_PHP_V; do
+  for e in ${_PHP_V}; do
     sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php${e}/etc/php${e}-fpm.conf    &> /dev/null
     sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
     if [ ! -z "${_PHP_FPM_DENY}" ] ; then

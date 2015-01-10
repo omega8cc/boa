@@ -20,7 +20,7 @@ php_opts="--fpm-config $php_fpm_CONF --pid $php_fpm_PID -c /opt/php54/etc/php54.
 wait_for_pid() {
 	try=0
 
-	while test $try -lt 5 ; do
+	while test $try -lt 5; do
 
 		case "$1" in
 			'created')

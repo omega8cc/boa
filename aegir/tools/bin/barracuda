@@ -41,7 +41,7 @@ fix_dns_settings() {
     cp -a /etc/resolv.conf ${varPath}/resolv.conf.tmp
   fi
   if [ ! -e "${varPath}/resolv.conf.vanilla" ] ; then
-    for Pre in `ls -la ${varPath}/resolv.conf.pre-*` ; do
+    for Pre in `ls -la ${varPath}/resolv.conf.pre-*`; do
       if [ -e "${Pre}" ] && [ -f "${Pre}" ] && [ ! -L "${Pre}" ] ; then
         cp -a ${Pre} ${varPath}/resolv.conf.vanilla
       fi

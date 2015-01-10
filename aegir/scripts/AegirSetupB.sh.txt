@@ -196,7 +196,7 @@ update_php_cli_local_ini() {
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
   _PHP_V="56 55 54 53"
-  for e in $_PHP_V; do
+  for e in ${_PHP_V}; do
     if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ] ; then
       _PHP_CLI_UPDATE=YES
@@ -458,12 +458,12 @@ else
   _G_EXT="provision_boost provision_cdn provision_civicrm \
     provision_platform_git provision_site_backup \
     provision_tasks_extra security_review"
-  for e in $_G_EXT; do
+  for e in ${_G_EXT}; do
     get_dev_ext "$e.tar.gz"
   done
   cd ${_ROOT}/.drush/usr
   _G_EXT="clean_missing_modules drupalgeddon drush_ecl registry_rebuild "
-  for e in $_G_EXT; do
+  for e in ${_G_EXT}; do
     get_dev_ext "$e.tar.gz"
   done
   cd ${_ROOT}/.drush/sys/provision

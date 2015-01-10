@@ -120,7 +120,7 @@ enable_chattr() {
     _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
       /data/disk/${_USER}/tools/drush/drush.php 2>&1)
     _PHP_V="56 55 54 53"
-    for e in $_PHP_V; do
+    for e in ${_PHP_V}; do
       if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] \
         && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ] ; then
         _PHP_CLI_UPDATE=YES
@@ -357,8 +357,7 @@ disable_chattr() {
 #
 # Kill zombies.
 kill_zombies() {
-for Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`
-do
+for Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`; do
   _SEC_IDY=$(id -nG ${Existing} 2>&1)
   if [[ "$_SEC_IDY" =~ "ltd-shell" ]] ; then
     usrParent=$(echo ${Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
@@ -601,7 +600,7 @@ update_php_cli_local_ini() {
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
   _PHP_V="56 55 54 53"
-  for e in $_PHP_V; do
+  for e in ${_PHP_V}; do
     if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ] ; then
       _PHP_CLI_UPDATE=YES
@@ -1194,7 +1193,7 @@ switch_php() {
           if [ -e "/home/${_WEB}/.drush/php.ini" ] ; then
             _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
             _PHP_V="56 55 54 53"
-            for e in $_PHP_V; do
+            for e in ${_PHP_V}; do
               if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]] ; then
                 if [ "${e}" != "${_PHP_SV}" ] \
                   || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.txt" ] ; then
@@ -1324,8 +1323,7 @@ manage_site_drush_alias_mirror() {
 #
 # Manage Primary Users.
 manage_user() {
-for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
-do
+for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
   if [ -e "${pthParentUsr}/config/server_master/nginx/vhost.d" ] \
     && [ -e "${pthParentUsr}/log/fpm.txt" ] \
     && [ ! -e "${pthParentUsr}/log/CANCELLED" ] ; then

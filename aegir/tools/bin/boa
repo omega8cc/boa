@@ -78,7 +78,7 @@ fix_dns_settings() {
     cp -a /etc/resolv.conf ${varPath}/resolv.conf.tmp
   fi
   if [ ! -e "${varPath}/resolv.conf.vanilla" ] ; then
-    for Pre in `ls -la ${varPath}/resolv.conf.pre-*` ; do
+    for Pre in `ls -la ${varPath}/resolv.conf.pre-*`; do
       if [ -e "${Pre}" ] && [ -f "${Pre}" ] && [ ! -L "${Pre}" ] ; then
         cp -a ${Pre} ${varPath}/resolv.conf.vanilla
       fi
@@ -595,8 +595,7 @@ check_root() {
       mountall.sh mountdevsubfs.sh mountkernfs.sh mountnfs-bootclean.sh \
       mountnfs.sh mountoverflowtmp mountvirtfs mtab.sh networking reboot \
       setserial sysstat umountfs umountnfs.sh umountroot urandom"
-    for link in $_REMOVE_LINKS
-    do
+    for link in ${_REMOVE_LINKS}; do
       update-rc.d -f $link remove &> /dev/null
     done
   fi

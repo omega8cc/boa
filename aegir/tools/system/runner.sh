@@ -43,8 +43,7 @@ action() {
 for Runner in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f \
   | grep run- \
   | uniq \
-  | sort`
-do
+  | sort`; do
   count_cpu
   load_control
   if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ] ; then

@@ -712,8 +712,7 @@ load_control() {
 }
 
 action() {
-  for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
-  do
+  for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     count_cpu
     load_control
     if [ -e "${User}/config/server_master/nginx/vhost.d" ] ; then

@@ -159,7 +159,7 @@ isRunning() {
 wait_for_pid() {
     try=0
 
-    while test $try -lt 35 ; do
+    while test $try -lt 35; do
         case "$1" in
             'created')
             if [ -f "$2" ] ; then

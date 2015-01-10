@@ -734,13 +734,13 @@ prompt_yes_no() {
 if [ "${_AUTOPILOT}" = "YES" ] ; then
   return 0
 else
-  while true ; do
+  while true; do
     printf "$* [Y/n] "
     read answer
-    if [ -z "$answer" ] ; then
+    if [ -z "${answer}" ] ; then
       return 0
     fi
-    case $answer in
+    case ${answer} in
       [Yy]|[Yy][Ee][Ss])
         return 0
         ;;
@@ -1014,7 +1014,7 @@ tune_fpm_config() {
       if [ -e "/home/${_WEB}/.drush/php.ini" ] ; then
         _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
         _PHP_V="56 55 54 53"
-        for e in $_PHP_V; do
+        for e in ${_PHP_V}; do
           if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]] ; then
             if [ "${e}" != "${_PHP_SV}" ] \
               || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.txt" ] ; then
@@ -1534,7 +1534,7 @@ octopus_cnf() {
       msg "NOTE! Please review all config options displayed below"
       sleep 3
       echo " "
-      while read line ; do
+      while read line; do
         echo "$line"
       done < ${octCnf}
       echo " "
@@ -1776,8 +1776,7 @@ action() {
       _HM_ONLY=NO
     fi
   fi
-  for Files in `find ${pthBld}/aegir/scripts -type f`
-  do
+  for Files in `find ${pthBld}/aegir/scripts -type f`; do
     sed -i "s/EDIT_AEGIR_VERSION/${_AEGIR_VERSION}/g"         $Files &> /dev/null
     sed -i "s/EDIT_AEGIR_XTS_VERSION/${_AEGIR_XTS_VERSION}/g" $Files &> /dev/null
     sed -i "s/EDIT_AGOV/${_AGOV}/g"                           $Files &> /dev/null
