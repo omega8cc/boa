@@ -6413,8 +6413,9 @@ finale() {
   msg "CARD: Thank you for entering your correct PIN code..."
   mrun "sleep 5"
   msg "CARD: It will take a moment to process your payment..."
-  mrun "sleep 5"
+  mrun "sleep 8"
   msg "JOKE: Just kidding !!! Enjoy your Aegir Hosting System :)"
+  mrun "sleep 5"
   echo " "
   if [ "$_UP_LNX" = "YES" ] ; then
     msg "ALRT! Your OS kernel has been upgraded!"
@@ -10202,7 +10203,6 @@ else
     echo " "
   elif [ "${_SYSTEM_UPGRADE_ONLY}" = "YES" ] ; then
     msg "INFO: Aegir Master Instance upgrade skipped"
-    echo " "
   else
     msg "INFO: Restarting ${_DB_SERVER} server, please wait..."
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
@@ -10227,7 +10227,6 @@ else
       fi
       clean_pid_exit
     fi
-    echo " "
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ] ; then
