@@ -156,7 +156,7 @@ clean_pid_exit() {
 #
 # Noticeable messages.
 msg() {
-  echo "Octopus [$(date +%DT%T 2>&1)] ==> $*"
+  echo "Octopus [$(date +%F/%T 2>&1)] ==> $*"
 }
 #
 # Silent runner.
