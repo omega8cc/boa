@@ -70,7 +70,7 @@ _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
 SHELL=/bin/bash
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 urlStb="http://files.aegir.cc/versions/stable"
-crlGet="curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 gitHub="git://github.com/omega8cc"
 gCb="git clone --branch"
 
@@ -195,7 +195,7 @@ extract_archive() {
 # Download and extract from dev.
 get_dev_ext() {
   if [ ! -z "$1" ] ; then
-    "${crlGet}" "http://files.aegir.cc/dev/${_AEGIR_XTS_VERSION}/$1"
+    curl ${crlGet} "http://files.aegir.cc/dev/${_AEGIR_XTS_VERSION}/$1"
     extract_archive "$1"
   fi
 }
@@ -272,7 +272,7 @@ else
   else
     msg "INFO: Downloading Drush and Provision extensions..."
     cd ${_ROOT}/.drush/sys
-    "${crlGet}" "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
+    curl ${crlGet} "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
     cd ${_ROOT}/.drush/usr
     get_dev_ext "clean_missing_modules.tar.gz"
     get_dev_ext "drupalgeddon.tar.gz"

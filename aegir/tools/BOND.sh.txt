@@ -160,7 +160,7 @@ _PHP55_VRN=5.5.20
 _PHP56_API=20131226
 _PHP56_VRN=5.6.4
 urlStb="http://files.aegir.cc/versions/stable"
-crlGet="curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 
 
 ###---### Functions
@@ -729,9 +729,9 @@ tune_sql_memory_limits() {
     msg "NOTE! This step may take a LONG time, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
     rm -f /var/opt/mysqltuner*
-    "${crlGet}" "${urlDld}/mysqltuner.pl" -o ${pthTun}
+    curl ${crlGet} "${urlDld}/mysqltuner.pl" -o ${pthTun}
     if [ ! -e "${pthTun}" ] ; then
-      "${crlGet}" "${urlDev}/mysqltuner.pl" -o ${pthTun}
+      curl ${crlGet} "${urlDev}/mysqltuner.pl" -o ${pthTun}
     fi
     if [ -e "${pthTun}" ] ; then
       perl ${pthTun} > ${outTun} 2>&1
@@ -1213,7 +1213,7 @@ if [ "${_AEGIR_VERSION}" = "HEAD" ] ; then
   git clone --branch ${_BRANCH_BOA} \
     ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
 else
-  "${crlGet}" "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
+  curl ${crlGet} "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"
 fi
 #

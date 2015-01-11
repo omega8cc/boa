@@ -25,7 +25,7 @@ else
   _GPG=gpg
 fi
 urlHmr="http://files.aegir.cc/versions/master/aegir"
-crlGet="curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 
 ###-------------SYSTEM-----------------###
 
@@ -51,7 +51,7 @@ extract_archive() {
 
 get_dev_ext() {
   if [ ! -z "$1" ] ; then
-    "${crlGet}" "http://files.aegir.cc/dev/HEAD/$1"
+    curl ${crlGet} "http://files.aegir.cc/dev/HEAD/$1"
     extract_archive "$1"
   fi
 }

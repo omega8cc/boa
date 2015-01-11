@@ -60,7 +60,7 @@ fi
 ###
 ### Helper variables
 ###
-crlGet="curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncO="octopus.sh.cnf"
 pthBld="/opt/tmp/boa"
 urlStb="http://files.aegir.cc/versions/stable"
@@ -1599,7 +1599,7 @@ if [ "${_AEGIR_VERSION}" = "HEAD" ] ; then
   git clone --branch ${_BRANCH_BOA} \
     ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
 else
-  "${crlGet}" "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
+  curl ${crlGet} "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"
 fi
 if [ ! -e "${pthBld}/aegir/helpers/apt.conf.noninteractive" ] ; then

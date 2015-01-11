@@ -12,7 +12,7 @@ stable="BOA-2.3.8"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
-crlGet="curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncB="barracuda.sh.cnf"
 filIncO="octopus.sh.cnf"
 octName="OCTOPUS.sh.txt"
@@ -649,7 +649,7 @@ up_finish() {
   echo
   if [ "$rkey" = "auto" ] || [ "${_NEEDS_UPDATE}" = "YES" ] ; then
     rm -f ${vBs}/BOA.sh.txt-*
-    "${crlGet}" "http://files.aegir.cc/BOA.sh.txt" -o ${vBs}/BOA.sh.txt-${_NOW}
+    curl ${crlGet} "http://files.aegir.cc/BOA.sh.txt" -o ${vBs}/BOA.sh.txt-${_NOW}
     exec bash ${vBs}/BOA.sh.txt-${_NOW} &> /dev/null
     rm -f ${vBs}/BOA.sh.txt-${_NOW}
   fi
@@ -667,14 +667,14 @@ set_pin_priority() {
     if [ "$_THIS_OS" = "Debian" ] ; then
       _THIS_RV=$(grep "6.0" /etc/issue.net 2>&1)
       if [[ "$_THIS_RV" =~ "6.0" ]] ; then
-        "${crlGet}" "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
+        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
           -o /etc/apt/preferences
       else
-        "${crlGet}" "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" \
+        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" \
           -o /etc/apt/preferences
       fi
     elif [ "$_THIS_OS" = "Ubuntu" ] ; then
-      "${crlGet}" "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
+      curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
         -o /etc/apt/preferences
     fi
   fi
@@ -683,7 +683,7 @@ set_pin_priority() {
 check_wrapper() {
   rm -f ${vBs}/$(basename "$0")-now-*
   _THIS_FILE="${vBs}/$(basename "$0")-now-${_NOW}"
-  "${crlGet}" "${urlHmr}/tools/bin/$(basename "$0")" -o ${_THIS_FILE}
+  curl ${crlGet} "${urlHmr}/tools/bin/$(basename "$0")" -o ${_THIS_FILE}
   if [ ! -e "${_THIS_FILE}" ] ; then
     echo "I can not download required installers \
       from files.aegir.cc at the moment."
@@ -772,7 +772,7 @@ proceed() {
   if [ "${cmmand}" = "up-head" ] ; then
     _SCRIPT_URL="$rgUrl/${master}/${barName}"
   elif [ "${cmmand}" = "up-modern" ] ; then
-    "${crlGet}" "${rgUrl}/${devel}/${pthIncB}" -o ${vBs}/${filIncB}
+    curl ${crlGet} "${rgUrl}/${devel}/${pthIncB}" -o ${vBs}/${filIncB}
     _SCRIPT_URL="$rgUrl/${devel}/${barName}"
   elif [ "${cmmand}" = "up-cluster" ] ; then
     _SCRIPT_URL="$rgUrl/${cluster}/${barName}"
@@ -795,7 +795,7 @@ proceed() {
     _SCRIPT_URL="$rgUrl/cluster/${barName}"
     cmmand="up-cluster"
   fi
-  "${crlGet}" ${_SCRIPT_URL} -o ${barName}
+  curl ${crlGet} ${_SCRIPT_URL} -o ${barName}
   up_action
   up_finish
 }
