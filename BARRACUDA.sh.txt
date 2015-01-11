@@ -5569,15 +5569,15 @@ fi
 ###
 ### Include default settings
 ###
-# if [ -e "${vBs}/${filIncB}" ] ; then
-#   source ${vBs}/${filIncB}
-# else
-#   msg "EXIT: Required lib file does not exist?"
-#   msg "EXIT: ${vBs}/${filIncB}"
-#   msg "EXIT: Cannot continue installation"
-#   msg "EXIT: Bye (0)"
-#   clean_pid_exit
-# fi
+if [ -e "${vBs}/${filIncB}" ] ; then
+  source ${vBs}/${filIncB}
+else
+  msg "EXIT: Required lib file does not exist?"
+  msg "EXIT: ${vBs}/${filIncB}"
+  msg "EXIT: Cannot continue installation"
+  msg "EXIT: Bye (0)"
+  clean_pid_exit
+fi
 
 
 ###--------------------###

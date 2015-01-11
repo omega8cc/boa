@@ -320,6 +320,11 @@ up_action() {
         ###
 
         sleep 3
+        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}/g"   ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"       ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g"       ${vBs}/${filIncB}
+        ### Legacy method
         sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}/g" ${vBs}/${barName}
         sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}/g"   ${vBs}/${barName}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"       ${vBs}/${barName}
@@ -365,6 +370,11 @@ up_action() {
         ###
 
         sleep 3
+        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"                        ${vBs}/${filIncB}
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"        ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g"        ${vBs}/${filIncB}
+        ### Legacy method
         sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"                        ${vBs}/${barName}
         sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${vBs}/${barName}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"        ${vBs}/${barName}
@@ -410,22 +420,30 @@ up_action() {
       rm -f /var/xdrago/monitor/* &> /dev/null
     fi
     if [ "${cmmand}" = "up-head" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"   ${vBs}/${barName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"   ${vBs}/${filIncB}
     elif [ "${cmmand}" = "up-modern" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"   ${vBs}/${barName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"   ${vBs}/${filIncB}
     else
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"  ${vBs}/${filIncB}
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=${branch}/g" ${vBs}/${filIncB}
+      ### Legacy method
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"  ${vBs}/${barName}
       sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=${branch}/g" ${vBs}/${barName}
     fi
     if [ "${cmmand}" = "up-head" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"  ${vBs}/${barName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"  ${vBs}/${filIncB}
     elif [ "${cmmand}" = "up-modern" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"   ${vBs}/${barName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"   ${vBs}/${filIncB}
     elif [ "${cmmand}" = "up-cluster" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g" ${vBs}/${barName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g" ${vBs}/${filIncB}
     else
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"  ${vBs}/${filIncB}
+      ### Legacy method
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"  ${vBs}/${barName}
     fi
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"              ${vBs}/${filIncB}
+    sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${filIncB}
+    ### Legacy method
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"              ${vBs}/${barName}
     sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${barName}
     if [ -e "/root/.auto.up.cnf" ] \
@@ -537,14 +555,20 @@ up_action() {
           else
             if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
               && [ -d "/var/aegir/config/server_master/nginx/subdir.d" ] ; then
+              sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"   ${vBs}/${filIncB}
+              ### Legacy method
               sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"   ${vBs}/${barName}
               sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"   ${barCnf}
             else
               if [[ "${_CHECK_HOST}" =~ "v55.lon." ]] \
                 || [[ "${_CHECK_HOST}" =~ ".lon1.h" ]] ; then
+                sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" ${vBs}/${filIncB}
+                ### Legacy method
                 sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" ${vBs}/${barName}
                 sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" ${barCnf}
               else
+                sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"  ${vBs}/${filIncB}
+                ### Legacy method
                 sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"  ${vBs}/${barName}
                 sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"  ${barCnf}
               fi
@@ -748,6 +772,7 @@ proceed() {
   if [ "${cmmand}" = "up-head" ] ; then
     _SCRIPT_URL="$rgUrl/${master}/${barName}"
   elif [ "${cmmand}" = "up-modern" ] ; then
+    ${crlGet} "${rgUrl}/${devel}/${pthIncB}" -o ${vBs}/${filIncB}
     _SCRIPT_URL="$rgUrl/${devel}/${barName}"
   elif [ "${cmmand}" = "up-cluster" ] ; then
     _SCRIPT_URL="$rgUrl/${cluster}/${barName}"
@@ -757,8 +782,7 @@ proceed() {
     _SCRIPT_URL="$rgUrl/$legacy/${barName}"
   else
     echo
-    echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log} \
-      {newrelickey|php-56|php-55|php-54|php-53|php-all|nodns}"
+    echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log} {newrelickey|php-56|php-55|php-54|php-53|php-all|nodns}"
     echo
     echo "  Silent Mode Option: system == OS only upgrade"
     echo "  Silent Mode Option: log ===== OS and Aegir Master Instance upgrade"
