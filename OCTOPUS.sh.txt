@@ -251,7 +251,7 @@ update_web_user() {
     mkdir -p /home/${_WEB}/.{tmp,drush}
     ### msg "DEBUG: ${_WEB} in update_web_user B"
     ### msg "DEBUG: ARG1 is $1 in update_web_user B"
-    if [ ! -z "$1" ] ; then
+    if [ ! -z $1 ] ; then
       if [ "$1" = "hhvm" ] ; then
         if [ -e "/opt/php56/etc/php56.ini" ] ; then
           _T_PV=56
@@ -1871,7 +1871,7 @@ fi
 #
 # Enable chattr.
 enable_chattr() {
-  if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
+  if [ ! -z $1 ] && [ -d "/home/$1" ] ; then
     chattr +i /home/$1/platforms    &> /dev/null
     chattr +i /home/$1/platforms/*  &> /dev/null
     if [ -d "/home/$1/.bazaar" ] ; then
@@ -1885,7 +1885,7 @@ enable_chattr() {
 #
 # Disable chattr.
 disable_chattr() {
-  if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
+  if [ ! -z $1 ] && [ -d "/home/$1" ] ; then
     chattr -i /home/$1/platforms    &> /dev/null
     chattr -i /home/$1/platforms/*  &> /dev/null
     if [ -d "/home/$1/.bazaar" ] ; then

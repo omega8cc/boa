@@ -30,7 +30,7 @@ crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 ###-------------SYSTEM-----------------###
 
 extract_archive() {
-  if [ ! -z "$1" ] ; then
+  if [ ! -z $1 ] ; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
       *.tar.gz)    tar xzf $1    ;;
@@ -50,7 +50,7 @@ extract_archive() {
 }
 
 get_dev_ext() {
-  if [ ! -z "$1" ] ; then
+  if [ ! -z $1 ] ; then
     curl "${crlGet}" "http://files.aegir.cc/dev/HEAD/$1"
     extract_archive "$1"
   fi
@@ -77,7 +77,7 @@ add_ltd_group_if_not_exists() {
 #
 # Enable chattr.
 enable_chattr() {
-  if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
+  if [ ! -z $1 ] && [ -d "/home/$1" ] ; then
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
@@ -313,7 +313,7 @@ enable_chattr() {
 #
 # Disable chattr.
 disable_chattr() {
-  if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
+  if [ ! -z $1 ] && [ -d "/home/$1" ] ; then
     if [ "$1" != "${_USER}.ftp" ] ; then
       chattr -i /home/$1             &> /dev/null
     else
@@ -842,7 +842,7 @@ update_web_user() {
   _T_II="${_T_HD}/php.ini"
   if [ -e "/home/${_WEB}" ] ; then
     mkdir -p /home/${_WEB}/.{tmp,drush}
-    if [ ! -z "$1" ] ; then
+    if [ ! -z $1 ] ; then
       if [ "$1" = "hhvm" ] ; then
         if [ -e "/opt/php56/etc/php56.ini" ] ; then
           _T_PV=56

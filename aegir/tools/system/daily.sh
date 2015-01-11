@@ -18,7 +18,7 @@ crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 ###-------------SYSTEM-----------------###
 
 extract_archive() {
-  if [ ! -z "$1" ] ; then
+  if [ ! -z $1 ] ; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
       *.tar.gz)    tar xzf $1    ;;
@@ -38,14 +38,14 @@ extract_archive() {
 }
 
 get_dev_ext() {
-  if [ ! -z "$1" ] ; then
+  if [ ! -z $1 ] ; then
     curl "${crlGet}" "http://files.aegir.cc/dev/HEAD/$1"
     extract_archive "$1"
   fi
 }
 
 enable_chattr() {
-  if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
+  if [ ! -z $1 ] && [ -d "/home/$1" ] ; then
     if [ "$1" != "${_HM_U}.ftp" ] ; then
       chattr +i /home/$1             &> /dev/null
     else
@@ -62,7 +62,7 @@ enable_chattr() {
 }
 
 disable_chattr() {
-  if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
+  if [ ! -z $1 ] && [ -d "/home/$1" ] ; then
     if [ "$1" != "${_HM_U}.ftp" ] ; then
       chattr -i /home/$1             &> /dev/null
     else
@@ -199,7 +199,7 @@ check_if_required() {
 
 check_if_skip() {
   for s in ${_MODULES_SKIP}; do
-    if [ ! -z "$1" ] && [ "$s" = "$1" ] ; then
+    if [ ! -z $1 ] && [ "$s" = "$1" ] ; then
       _SKIP=YES
       #echo $1 is whitelisted and will not be disabled in ${Dom}
     fi
@@ -208,7 +208,7 @@ check_if_skip() {
 
 check_if_force() {
   for s in $_MODULES_FORCE; do
-    if [ ! -z "$1" ] && [ "$s" = "$1" ] ; then
+    if [ ! -z $1 ] && [ "$s" = "$1" ] ; then
       _FORCE=YES
       #echo $1 is blacklisted and will be forcefully disabled in ${Dom}
     fi
@@ -764,7 +764,7 @@ check_file_with_wildcard_path() {
 write_solr_config() {
   # $1 is module
   # $2 is a path to solr.php
-  if [ ! -z "$1" ] \
+  if [ ! -z $1 ] \
     && [ ! -z $2 ] \
     && [ ! -z "${_MD5H}" ] \
     && [ -e "${Dir}" ] ; then
@@ -789,7 +789,7 @@ write_solr_config() {
 update_solr() {
   # $1 is module
   # $2 is solr core path
-  if [ ! -z "$1" ] \
+  if [ ! -z $1 ] \
     && [ ! -e "$2/conf/BOA-2.4.0.conf" ] \
     && [ -e "/var/xdrago/conf/solr" ] \
     && [ -e "$2/conf" ] ; then
@@ -827,7 +827,7 @@ update_solr() {
 add_solr() {
   # $1 is module
   # $2 is solr core path
-  if [ ! -z "$1" ] && [ ! -z $2 ] && [ -e "/var/xdrago/conf/solr" ] ; then
+  if [ ! -z $1 ] && [ ! -z $2 ] && [ -e "/var/xdrago/conf/solr" ] ; then
     if [ ! -e "$2" ] ; then
       cp -a /opt/solr4/core0 $2
       CHAR="[:alnum:]"
@@ -862,7 +862,7 @@ add_solr() {
 
 delete_solr() {
   # $1 is solr core path
-  if [ ! -z "$1" ] && [ -e "/var/xdrago/conf/solr" ] && [ -e "$1/conf" ] ; then
+  if [ ! -z $1 ] && [ -e "/var/xdrago/conf/solr" ] && [ -e "$1/conf" ] ; then
     sed -i "s/.*instanceDir=\"${_HM_U}.${Dom}\".*//g" \
       /opt/solr4/solr.xml
     sed -i "/^$/d" /opt/solr4/solr.xml &> /dev/null
@@ -879,7 +879,7 @@ delete_solr() {
 check_solr() {
   # $1 is module
   # $2 is solr core path
-  if [ ! -z "$1" ] && [ ! -z $2 ] && [ -e "/var/xdrago/conf/solr" ] ; then
+  if [ ! -z $1 ] && [ ! -z $2 ] && [ -e "/var/xdrago/conf/solr" ] ; then
     echo "Checking Solr with $1 for $2"
     if [ ! -e "$2" ] ; then
       add_solr $1 $2

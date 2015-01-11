@@ -284,7 +284,7 @@ find_correct_ip() {
 #
 # Extract archive.
 extract_archive() {
-  if [ ! -z "$1" ] ; then
+  if [ ! -z $1 ] ; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
       *.tar.gz)    tar xzf $1    ;;
@@ -305,7 +305,7 @@ extract_archive() {
 #
 # Download and extract archive from dev mirror.
 get_dev_arch() {
-  if [ ! -z "$1" ] ; then
+  if [ ! -z $1 ] ; then
     curl "${crlGet}" "${urlDev}/$1"
     extract_archive "$1"
   fi
@@ -313,7 +313,7 @@ get_dev_arch() {
 #
 # Download and extract from dev/version mirror.
 get_dev_ext() {
-  if [ ! -z "$1" ] ; then
+  if [ ! -z $1 ] ; then
     curl "${crlGet}" "${urlDev}/${_AEGIR_XTS_VERSION}/$1"
     extract_archive "$1"
   fi
@@ -321,7 +321,7 @@ get_dev_ext() {
 #
 # Download and extract from dev/contrib mirror.
 get_dev_contrib() {
-  if [ ! -z "$1" ] ; then
+  if [ ! -z $1 ] ; then
     curl "${crlGet}" "${urlDev}/contrib/$1"
     extract_archive "$1"
   fi
@@ -329,7 +329,7 @@ get_dev_contrib() {
 #
 # Download and extract archive from dev/src mirror.
 get_dev_src() {
-  if [ ! -z "$1" ] ; then
+  if [ ! -z $1 ] ; then
     curl "${crlGet}" "${urlDev}/src/$1"
     extract_archive "$1"
   fi
@@ -7884,7 +7884,7 @@ fi
 #
 # Install OpenSSH from sources.
 switch_php_cli() {
-  if [ ! -z "$1" ] ; then
+  if [ ! -z $1 ] ; then
     rm -f /usr/bin/php-cli
     ln -s /opt/php$1/bin/php /usr/bin/php-cli
     rm -f /usr/bin/php
