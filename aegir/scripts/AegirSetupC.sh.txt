@@ -601,7 +601,9 @@ fi
 
 ###---### User check.
 #
-msg "${_STATUS} C: Aegir automated install script part C"
+if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  msg "${_STATUS} C: Aegir automated install script part C"
+fi
 if [ `whoami` = "root" ] ; then
   msg "${_STATUS} C: FATAL ERROR: This script should be ran as a non-root user"
   msg "${_STATUS} C: FATAL ERROR: Aborting AegirSetupC installer NOW!"
@@ -618,20 +620,20 @@ if [ "${_HOT_SAUCE}" = "NO" ] ; then
   if [ "${_USE_CURRENT}" = "YES" ] \
     && [ -e "/data/all/000/core-v-${_SMALLCORE6}.txt" ] \
     && [ -e "/data/all/000/core-v-${_SMALLCORE7}.txt" ] ; then
-    msg "${_STATUS} C: Shared platforms code v.${_LAST_ALL} (latest available) will be used"
+    msg "${_STATUS} C: Shared platforms code v.${_LAST_ALL} will be used"
   elif [ "${_USE_CURRENT}" = "NO" ] \
     || [ ! -e "/data/all/000/core-v-${_SMALLCORE6}.txt" ] \
     || [ ! -e "/data/all/000/core-v-${_SMALLCORE7}.txt" ] ; then
     _CORE="/data/all/${_ALL_DISTRO}"
     _THIS_CORE="${_ALL_DISTRO}"
-    msg "${_STATUS} C: Shared platforms code v.${_ALL_DISTRO} (hot new) will be created"
+    msg "${_STATUS} C: Shared platforms code v.${_ALL_DISTRO} (new) will be created"
   else
-    msg "${_STATUS} C: Shared platforms code v.${_LAST_ALL} (latest available) will be used"
+    msg "${_STATUS} C: Shared platforms code v.${_LAST_ALL} will be used"
   fi
 else
   _CORE="/data/all/${_ALL_DISTRO}"
   _THIS_CORE="${_ALL_DISTRO}"
-  msg "${_STATUS} C: Shared platforms code v.${_ALL_DISTRO} (hot new) will be created"
+  msg "${_STATUS} C: Shared platforms code v.${_ALL_DISTRO} (new) will be created"
 fi
 _D6_CORE_DIR="/data/all/000/core/pressflow-${_SMALLCORE6}"
 _D7_CORE_DIR="/data/all/000/core/drupal-${_SMALLCORE7}"
@@ -2198,8 +2200,10 @@ ubercart7_testing_install
 
 ###---### Remove some unused core files.
 #
-echo " "
-msg "${_STATUS} C: Removing some unused core files..."
+if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  echo " "
+  msg "${_STATUS} C: Removing some unused core files..."
+fi
 rm -f -r $_CORE/*/themes/{bluemarine,chameleon,pushbutton,README.txt}
 rm -f -r $_CORE/*/scripts
 rm -f $_CORE/*{.make,.tar,.tar.gz,.zip}
@@ -2208,7 +2212,7 @@ cd $_CORE
 
 ###---### Save & verify platforms.
 #
-msg "${_STATUS} C: Running Platforms Save & Verify tasks, please wait..."
+msg "${_STATUS} C: Running Platforms Verify tasks, please wait..."
 _LOCAL_STATUS="NOT_SET"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT

@@ -854,28 +854,30 @@ if [ "${_HOT_SAUCE}" = "NO" ] ; then
   if [ "${_USE_CURRENT}" = "YES" ] \
     && [ -e "${_D}/000/core-v-${_SMALLCORE6}.txt" ] \
     && [ -e "${_D}/000/core-v-${_SMALLCORE7}.txt" ] ; then
-    msg "${_STATUS} A: Shared platforms code v.${_LAST_ALL} (latest available) will be used"
+    msg "${_STATUS} A: Shared platforms code v.${_LAST_ALL} will be used"
   elif [ "${_USE_CURRENT}" = "NO" ] \
     || [ ! -e "${_D}/000/core-v-${_SMALLCORE6}.txt" ] \
     || [ ! -e "${_D}/000/core-v-${_SMALLCORE7}.txt" ] ; then
     _CORE="${_D}/${_ALL_DISTRO}"
     _THIS_CORE="${_ALL_DISTRO}"
-    msg "${_STATUS} A: Shared platforms code v.${_ALL_DISTRO} (hot new) will be created"
+    msg "${_STATUS} A: Shared platforms code v.${_ALL_DISTRO} (new) will be created"
     sed -i "s/^_USE_CURRENT=.*/_USE_CURRENT=NO/g" \
       /opt/tmp/boa/aegir/scripts/AegirSetupC.sh.txt &> /dev/null
   else
-    msg "${_STATUS} A: Shared platforms code v.${_LAST_ALL} (latest available) will be used"
+    msg "${_STATUS} A: Shared platforms code v.${_LAST_ALL} will be used"
   fi
 else
   _CORE="${_D}/${_ALL_DISTRO}"
   _THIS_CORE="${_ALL_DISTRO}"
-  msg "${_STATUS} A: Shared platforms code v.${_ALL_DISTRO} (hot new) will be created"
+  msg "${_STATUS} A: Shared platforms code v.${_ALL_DISTRO} (new) will be created"
 fi
 
 
 ###---### Add required users and create directories.
 #
-msg "${_STATUS} A: Creating directories with correct permissions..."
+if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  msg "${_STATUS} A: Creating directories with correct permissions"
+fi
 mkdir -p /data/u
 mkdir -p /data/disk
 mkdir -p /data/conf
@@ -1620,7 +1622,9 @@ fi
 ###---### Creating ftp symlinks.
 #
 if [ "${_DIST_INSTALL}" = "YES" ] ; then
-msg "${_STATUS} A: Creating ftp symlinks"
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "${_STATUS} A: Creating ftp symlinks"
+  fi
 
   _QR="${_ROOT}/distro/$_THIS_CORE"
   _QH="/home/${_USERFTP}/platforms/$_THIS_CORE"
@@ -1996,7 +2000,9 @@ fi
 if [ "${_HM_ONLY}" = "YES" ] ; then
   _DO_NOTHING=YES
 else
-  msg "${_STATUS} A: Preparing setupmail.txt"
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "${_STATUS} A: Preparing setupmail.txt"
+  fi
   _AT_CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _A_DM_EMAIL=${_ADM_EMAIL//\\\@/\@}
   # rm -f /opt/tmp/.admemail.txt
@@ -2052,7 +2058,9 @@ if [ "${_STATUS}" = "INIT" ] ; then
   fi
 else
   if [ "${_DIST_INSTALL}" = "YES" ] && [ "${_PLATFORMS_ONLY}" = "NO" ] ; then
-    msg "${_STATUS} A: Resending setup e-mail on upgrade..."
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "${_STATUS} A: Resending setup e-mail on upgrade..."
+    fi
     TIME=$(date 2>&1)
     _Q="Your Aegir Upgrade on $TIME [${_USER}]"
     echo $TIME > ${_ROOT}/log/date-upgrade-$_THIS_CORE.txt
@@ -2213,7 +2221,9 @@ else
   o_contrib_seven_update_global
 fi
 if [ ! -e "/root/.upstart.cnf" ] ; then
-  msg "${_STATUS} A: Starting the cron now"
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "${_STATUS} A: Starting the cron now"
+  fi
   service cron start &> /dev/null
 fi
 msg "${_STATUS} A: All done!"

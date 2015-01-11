@@ -293,7 +293,9 @@ fi
 
 ###---### User check.
 #
-msg "${_STATUS} B: Aegir automated install script part B"
+if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  msg "${_STATUS} B: Aegir automated install script part B"
+fi
 if [ `whoami` = "root" ] ; then
   msg "${_STATUS} B: FATAL ERROR: This script should be ran as a non-root user"
   msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
@@ -304,7 +306,9 @@ fi
 
 ###---### Add required users and create directories.
 #
-msg "${_STATUS} B: Creating directories with correct permissions"
+if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  msg "${_STATUS} B: Creating directories with correct permissions"
+fi
 if [ -e "${_ROOT}/aegir.sh" ] ; then
   rm -f ${_ROOT}/aegir.sh
 fi
@@ -356,7 +360,9 @@ echo ${_DOMAIN} > ${_ROOT}/log/domain.txt
 
 ###---### Running standard installer.
 #
-msg "${_STATUS} B: Running standard installer"
+if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  msg "${_STATUS} B: Running standard installer"
+fi
 if [ "${_STATUS}" = "UPGRADE" ] ; then
   mkdir -p ${_ROOT}/backups/system
   chmod 700 ${_ROOT}/backups/system
@@ -674,8 +680,7 @@ else
   if [ -e "${_ROOT}/log/imported.pid" ] \
     || [ -e "${_ROOT}/log/exported.pid" ] ; then
     if [ ! -e "${_ROOT}/log/post-merge-fix.pid" ] ; then
-      msg "${_STATUS} B: Hostmaster STATUS: \
-        Fix for migrated/merged instance 1/2 start"
+      msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 start"
       _USE_AEGIR_HOST=$(uname -n 2>&1)
       ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO hosting_context (nid, name) \
         VALUES ('4', 'server_localhost'), ('2', 'server_master')" &> /dev/null
@@ -725,8 +730,7 @@ else
       ${_DRUSHCMD} @hostmaster hosting-task @server_localhost \
         verify --force &> /dev/null
       ${_DRUSHCMD} '@hostmaster' hosting-dispatch &> /dev/null
-      msg "${_STATUS} B: Hostmaster STATUS: \
-        Fix for migrated/merged instance 1/2 complete"
+      msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 complete"
     fi
     ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
       SET client='1' WHERE profile='7'" &> /dev/null
@@ -750,14 +754,12 @@ else
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context \
         SET name='hostmaster' WHERE nid='$_HM_NID'" &> /dev/null
     else
-      msg "${_STATUS} B: Hostmaster STATUS: \
-        Fix 1/2 hosting_context $_HM_NID empty!"
+      msg "${_STATUS} B: Hostmaster STATUS: Fix 1/2 hosting_context $_HM_NID empty!"
     fi
   fi
   ### Fix for old migrated/merged instances
 
-  msg "${_STATUS} B: Hostmaster STATUS: \
-    Running hostmaster-migrate, please wait..."
+  msg "${_STATUS} B: Hostmaster STATUS: Running hostmaster-migrate, please wait..."
   ${_DRUSHCMD} cache-clear drush &> /dev/null
   rm -f -r ${_ROOT}/.tmp/cache
   if [ "${_DEBUG_MODE}" = "YES" ] ; then
@@ -782,13 +784,11 @@ else
   if [ -e "${_ROOT}/log/imported.pid" ] \
     || [ -e "${_ROOT}/log/exported.pid" ] ; then
     if [ ! -e "${_ROOT}/log/post-merge-fix.pid" ] ; then
-      msg "${_STATUS} B: Hostmaster STATUS: \
-        Fix for migrated/merged instance 2/2 start"
+      msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 2/2 start"
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE users_roles \
         SET rid='7' WHERE rid='5'" &> /dev/null
       echo FIXED > ${_ROOT}/log/post-merge-fix.pid
-      msg "${_STATUS} B: Hostmaster STATUS: \
-        Fix for migrated/merged instance 2/2 complete"
+      msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 2/2 complete"
     fi
     ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
       SET client='1' WHERE profile='7'" &> /dev/null
@@ -812,8 +812,7 @@ else
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context \
         SET name='hostmaster' WHERE nid='$_HM_NID'" &> /dev/null
     else
-      msg "${_STATUS} B: Hostmaster STATUS: \
-        Fix 2/2 hosting_context $_HM_NID empty!"
+      msg "${_STATUS} B: Hostmaster STATUS: Fix 2/2 hosting_context $_HM_NID empty!"
     fi
   fi
   ### Fix for migrated/merged instances
@@ -828,9 +827,13 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
 else
   _MSG_STATUS="upgrade"
 fi
-msg "${_STATUS} B: Simple check if Aegir $_MSG_STATUS is successful"
+if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  msg "${_STATUS} B: Simple check if Aegir $_MSG_STATUS is successful"
+fi
 if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ] ; then
-  msg "${_STATUS} B: Aegir $_MSG_STATUS test result: OK"
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "${_STATUS} B: Aegir $_MSG_STATUS test result: OK"
+  fi
 else
   msg "${_STATUS} B: FATAL ERROR: Required file \
     ${_HM_ROOT}/sites/${_DOMAIN}/settings.php does not exist"
