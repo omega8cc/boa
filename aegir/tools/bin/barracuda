@@ -652,13 +652,6 @@ up_finish() {
   echo BARRACUDA upgrade completed
   echo Bye
   echo
-  if [ "${rkey}" = "auto" ] || [ "${_NEEDS_UPDATE}" = "YES" ] ; then
-    rm -f ${vBs}/BOA.sh.txt-*
-    curl ${crlGet} "http://files.aegir.cc/BOA.sh.txt" \
-      -o ${vBs}/BOA.sh.txt-${_NOW}
-    exec bash ${vBs}/BOA.sh.txt-${_NOW} &> /dev/null
-    rm -f ${vBs}/BOA.sh.txt-${_NOW}
-  fi
   exit 0
 }
 
@@ -683,25 +676,6 @@ set_pin_priority() {
       curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
         -o /etc/apt/preferences
     fi
-  fi
-}
-
-check_wrapper() {
-  rm -f ${vBs}/$(basename "$0")-now-*
-  _THIS_FILE="${vBs}/$(basename "$0")-now-${_NOW}"
-  curl ${crlGet} "${urlHmr}/tools/bin/$(basename "$0")" -o ${_THIS_FILE}
-  if [ ! -e "${_THIS_FILE}" ] ; then
-    echo "I can not download required installers at the moment"
-    echo "Please check http://stats.pingdom.com/x0s6yrbopal6/646562"
-    echo "and try again later"
-    clean_pid_exit
-  fi
-  _BIN_FILE="/usr/local/bin/$(basename "$0")"
-  _DATE_TEST=$(grep "### ${_TODAY} ###" ${_THIS_FILE} 2>&1)
-  if [[ "${_DATE_TEST}" =~ "### ${_TODAY} ###" ]] ; then
-    _NEEDS_UPDATE=NO
-  else
-    _NEEDS_UPDATE=YES
   fi
 }
 
@@ -770,7 +744,6 @@ check_root() {
 proceed() {
   check_root
   check_dns_curl
-  check_wrapper
   check_php_cli
   set_pin_priority
   up_start
