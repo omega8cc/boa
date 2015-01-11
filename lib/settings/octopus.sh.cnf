@@ -1,3 +1,4 @@
+
 ###----------------------------------------###
 ### EDITME                                 ###
 ###----------------------------------------###
@@ -15,7 +16,6 @@
 ### in the /root/.${_USER}.octopus.cnf file.
 ###
 _USER=o1
-_DOMAIN="${_USER}.$(uname -n 2>&1)"
 _MY_EMAIL="noc@omega8.cc"
 _CLIENT_EMAIL="notify@omega8.cc"
 _CLIENT_OPTION=SSD

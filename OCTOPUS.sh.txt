@@ -1395,21 +1395,6 @@ if [[ "${_X_VERSION}" =~ "-dev" ]] ; then
   rm -f -r /opt/tmp/test-*
 fi
 
-###
-### Include default settings
-###
-if [ -e "${vBs}/${filIncO}" ] ; then
-  source ${vBs}/${filIncO}
-  octCnf="/root/.${_USER}.octopus.cnf"
-  _WEB="${_USER}.web"
-else
-  msg "EXIT: Required lib file does not exist?"
-  msg "EXIT: ${vBs}/${filIncO}"
-  msg "EXIT: Cannot continue installation"
-  msg "EXIT: Bye (0)"
-  clean_pid_exit
-fi
-
 ###--------------------###
 if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
   || [ ! -e "/var/run/mysqld/mysqld.sock" ] ; then
@@ -1453,6 +1438,25 @@ else
   msg "Bye"
   clean_pid_exit
 fi
+
+
+###
+### Include default settings
+###
+if [ -e "${vBs}/${filIncO}" ] ; then
+  source ${vBs}/${filIncO}
+  octCnf="/root/.${_USER}.octopus.cnf"
+  _DOMAIN="${_USER}.$(uname -n 2>&1)"
+  _WEB="${_USER}.web"
+else
+  msg "EXIT: Required lib file does not exist?"
+  msg "EXIT: ${vBs}/${filIncO}"
+  msg "EXIT: Cannot continue installation"
+  msg "EXIT: Bye (0)"
+  clean_pid_exit
+fi
+
+
 #
 # Restart pdnsd server
 touch /var/run/boa_run.pid
