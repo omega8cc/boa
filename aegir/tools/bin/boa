@@ -373,28 +373,28 @@ barracuda_install() {
       fi
     fi
 
-    if [ ! -z "$rkey" ] ; then
-      if [ "$rkey" = "php-55" ] ; then
+    if [ ! -z "${rkey}" ] ; then
+      if [ "${rkey}" = "php-55" ] ; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.5/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.5/g"   ${vBs}/${filIncB}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${filIncO}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${filIncO}
-      elif [ "$rkey" = "php-56" ] ; then
+      elif [ "${rkey}" = "php-56" ] ; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.6/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.6/g"   ${vBs}/${filIncB}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${filIncO}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${filIncO}
-      elif [ "$rkey" = "php-54" ] ; then
+      elif [ "${rkey}" = "php-54" ] ; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.4/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.4/g"   ${vBs}/${filIncB}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g" ${vBs}/${filIncO}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g" ${vBs}/${filIncO}
-      elif [ "$rkey" = "php-53" ] ; then
+      elif [ "${rkey}" = "php-53" ] ; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.3/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.3/g"   ${vBs}/${filIncB}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${vBs}/${filIncO}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" ${vBs}/${filIncO}
-      elif [ "$rkey" = "php-all" ] ; then
+      elif [ "${rkey}" = "php-all" ] ; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${filIncB}
         pA="5.6 5.5 5.4 5.3"
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${filIncB}
@@ -402,36 +402,36 @@ barracuda_install() {
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${filIncO}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${filIncO}
-      elif [ "$rkey" = "nodns" ] ; then
+      elif [ "${rkey}" = "nodns" ] ; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${filIncB}
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${filIncB}
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${filIncO}
       else
-        sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g" ${vBs}/${filIncB}
+        sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"${rkey}\"/g" ${vBs}/${filIncB}
       fi
 
       ### Legacy method
-      if [ "$rkey" = "php-55" ] ; then
+      if [ "${rkey}" = "php-55" ] ; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.5/g" ${vBs}/${barName}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.5/g"   ${vBs}/${barName}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${octName}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${octName}
-      elif [ "$rkey" = "php-56" ] ; then
+      elif [ "${rkey}" = "php-56" ] ; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.6/g" ${vBs}/${barName}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.6/g"   ${vBs}/${barName}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${octName}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${octName}
-      elif [ "$rkey" = "php-54" ] ; then
+      elif [ "${rkey}" = "php-54" ] ; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.4/g" ${vBs}/${barName}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.4/g"   ${vBs}/${barName}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g" ${vBs}/${octName}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g" ${vBs}/${octName}
-      elif [ "$rkey" = "php-53" ] ; then
+      elif [ "${rkey}" = "php-53" ] ; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.3/g" ${vBs}/${barName}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.3/g"   ${vBs}/${barName}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${vBs}/${octName}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" ${vBs}/${octName}
-      elif [ "$rkey" = "php-all" ] ; then
+      elif [ "${rkey}" = "php-all" ] ; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${barName}
         pA="5.6 5.5 5.4 5.3"
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${barName}
@@ -439,12 +439,12 @@ barracuda_install() {
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${barName}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${octName}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${octName}
-      elif [ "$rkey" = "nodns" ] ; then
+      elif [ "${rkey}" = "nodns" ] ; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${barName}
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${barName}
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${octName}
       else
-        sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g" ${vBs}/${barName}
+        sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"${rkey}\"/g" ${vBs}/${barName}
       fi
     fi
 
@@ -512,14 +512,14 @@ set_pin_priority() {
     if [ "$_THIS_OS" = "Debian" ] ; then
       _THIS_RV=$(grep "6.0" /etc/issue.net 2>&1)
       if [[ "$_THIS_RV" =~ "6.0" ]] ; then
-        curl $crlGet "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
+        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
           -o /etc/apt/preferences
       else
-        curl $crlGet "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" \
+        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" \
           -o /etc/apt/preferences
       fi
     elif [ "$_THIS_OS" = "Ubuntu" ] ; then
-      curl $crlGet "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
+      curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
         -o /etc/apt/preferences
     fi
     rm -f ${vBs}/etc-apt-preferences-*
@@ -541,7 +541,7 @@ init_finish() {
   echo
   if [ "${_NEEDS_UPDATE}" = "YES" ] ; then
     rm -f ${vBs}/BOA.sh.txt-*
-    curl $crlGet "http://files.aegir.cc/BOA.sh.txt" -o ${vBs}/BOA.sh.txt-${_NOW}
+    curl ${crlGet} "http://files.aegir.cc/BOA.sh.txt" -o ${vBs}/BOA.sh.txt-${_NOW}
     exec bash ${vBs}/BOA.sh.txt-${_NOW} &> /dev/null
     rm -f ${vBs}/BOA.sh.txt-${_NOW}
   fi
@@ -565,16 +565,16 @@ init_setup() {
     check_id ${user}
   fi
 
-  if [ ! -z "$rkey" ] ; then
-    if [ "$rkey" = "2.4" ] ; then
-      vn=BOA-2.4.0
-      branch=2.4.x-dev
-    elif [ "$rkey" = "2.3" ] ; then
-      vn=BOA-2.3.8
-      branch=2.3.x-dev
-    elif [ "$rkey" = "2.2" ] ; then
-      vn=BOA-2.2.9
-      branch=2.2.x-legacy
+  if [ ! -z "${rkey}" ] ; then
+    if [ "${rkey}" = "2.4" ] ; then
+      vn="BOA-2.4.0"
+      branch="2.4.x-dev"
+    elif [ "${rkey}" = "2.3" ] ; then
+      vn="BOA-2.3.8"
+      branch="2.3.x-dev"
+    elif [ "${rkey}" = "2.2" ] ; then
+      vn="BOA-2.2.9"
+      branch="2.2.x-legacy"
     else
       vn=
     fi
@@ -583,33 +583,33 @@ init_setup() {
   init_start
   set_pin_priority
   if [ ! -z "${vn}" ] ; then
-    curl $crlGet "${rgUrl}/${vn}/${barName}"        -o ${vBs}/${barName}
-    curl $crlGet "${rgUrl}/${vn}/${octName}"        -o ${vBs}/${octName}
+    curl ${crlGet} "${rgUrl}/${vn}/${barName}"        -o ${vBs}/${barName}
+    curl ${crlGet} "${rgUrl}/${vn}/${octName}"        -o ${vBs}/${octName}
   else
     if [ "${cmmand}" = "in-head" ] ; then
-      curl $crlGet "${rgUrl}/${master}/${barName}"  -o ${vBs}/${barName}
-      curl $crlGet "${rgUrl}/${master}/${octName}"  -o ${vBs}/${octName}
-      curl $crlGet "${rgUrl}/${master}/${pthIncB}"  -o ${vBs}/${filIncB}
-      curl $crlGet "${rgUrl}/${master}/${pthIncO}"  -o ${vBs}/${filIncO}
+      curl ${crlGet} "${rgUrl}/${master}/${barName}"  -o ${vBs}/${barName}
+      curl ${crlGet} "${rgUrl}/${master}/${octName}"  -o ${vBs}/${octName}
+      curl ${crlGet} "${rgUrl}/${master}/${pthIncB}"  -o ${vBs}/${filIncB}
+      curl ${crlGet} "${rgUrl}/${master}/${pthIncO}"  -o ${vBs}/${filIncO}
     elif [ "${cmmand}" = "in-modern" ] ; then
-      curl $crlGet "${rgUrl}/${devel}/${barName}"   -o ${vBs}/${barName}
-      curl $crlGet "${rgUrl}/${devel}/${octName}"   -o ${vBs}/${octName}
-      curl $crlGet "${rgUrl}/${devel}/${pthIncB}"   -o ${vBs}/${filIncB}
-      curl $crlGet "${rgUrl}/${devel}/${pthIncO}"   -o ${vBs}/${filIncO}
+      curl ${crlGet} "${rgUrl}/${devel}/${barName}"   -o ${vBs}/${barName}
+      curl ${crlGet} "${rgUrl}/${devel}/${octName}"   -o ${vBs}/${octName}
+      curl ${crlGet} "${rgUrl}/${devel}/${pthIncB}"   -o ${vBs}/${filIncB}
+      curl ${crlGet} "${rgUrl}/${devel}/${pthIncO}"   -o ${vBs}/${filIncO}
     elif [ "${cmmand}" = "in-cluster" ] ; then
-      curl $crlGet "${rgUrl}/${cluster}/${barName}" -o ${vBs}/${barName}
-      curl $crlGet "${rgUrl}/${cluster}/${octName}" -o ${vBs}/${octName}
-      curl $crlGet "${rgUrl}/${cluster}/${pthIncB}" -o ${vBs}/${filIncB}
-      curl $crlGet "${rgUrl}/${cluster}/${pthIncO}" -o ${vBs}/${filIncO}
+      curl ${crlGet} "${rgUrl}/${cluster}/${barName}" -o ${vBs}/${barName}
+      curl ${crlGet} "${rgUrl}/${cluster}/${octName}" -o ${vBs}/${octName}
+      curl ${crlGet} "${rgUrl}/${cluster}/${pthIncB}" -o ${vBs}/${filIncB}
+      curl ${crlGet} "${rgUrl}/${cluster}/${pthIncO}" -o ${vBs}/${filIncO}
     elif [ "${cmmand}" = "in-stable" ] ; then
-      curl $crlGet "${rgUrl}/${stable}/${barName}"  -o ${vBs}/${barName}
-      curl $crlGet "${rgUrl}/${stable}/${octName}"  -o ${vBs}/${octName}
+      curl ${crlGet} "${rgUrl}/${stable}/${barName}"  -o ${vBs}/${barName}
+      curl ${crlGet} "${rgUrl}/${stable}/${octName}"  -o ${vBs}/${octName}
     elif [ "${cmmand}" = "in-legacy" ] ; then
-      curl $crlGet "${rgUrl}/${legacy}/${barName}"  -o ${vBs}/${barName}
-      curl $crlGet "${rgUrl}/${legacy}/${octName}"  -o ${vBs}/${octName}
+      curl ${crlGet} "${rgUrl}/${legacy}/${barName}"  -o ${vBs}/${barName}
+      curl ${crlGet} "${rgUrl}/${legacy}/${octName}"  -o ${vBs}/${octName}
     elif [ "${cmmand}" = "in-octopus" ] ; then
-      curl $crlGet "${rgUrl}/${stable}/${barName}"  -o ${vBs}/${barName}
-      curl $crlGet "${rgUrl}/${stable}/${octName}"  -o ${vBs}/${octName}
+      curl ${crlGet} "${rgUrl}/${stable}/${barName}"  -o ${vBs}/${barName}
+      curl ${crlGet} "${rgUrl}/${stable}/${octName}"  -o ${vBs}/${octName}
     fi
   fi
   if [ "${cmmand}" = "in-octopus" ] ; then
@@ -627,12 +627,11 @@ check_wrapper() {
   mkdir -p ${vBs}
   rm -f ${vBs}/$(basename "$0")-now-*
   _THIS_FILE="${vBs}/$(basename "$0")-now-${_NOW}"
-  curl $crlGet "${urlHmr}/tools/bin/$(basename "$0")" -o ${_THIS_FILE}
+  curl ${crlGet} "${urlHmr}/tools/bin/$(basename "$0")" -o ${_THIS_FILE}
   if [ ! -e "${_THIS_FILE}" ] ; then
-    echo "I can not download required installers \
-      from files.aegir.cc at the moment."
-    echo "Please check http://stats.pingdom.com/x0s6yrbopal6/646562 \
-      and try again later."
+    echo "I can not download required installers at the moment"
+    echo "Please check http://stats.pingdom.com/x0s6yrbopal6/646562"
+    echo "and try again later"
     clean_pid_exit
   fi
   _BIN_FILE="/usr/local/bin/$(basename "$0")"

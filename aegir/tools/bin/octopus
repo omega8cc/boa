@@ -153,7 +153,7 @@ extract_archive() {
 
 get_dev_ext() {
   if [ ! -z "$1" ] ; then
-    curl $crlGet "http://files.aegir.cc/dev/HEAD/$1" -o "$1"
+    curl ${crlGet} "http://files.aegir.cc/dev/HEAD/$1" -o "$1"
     extract_archive "$1"
   fi
 }
@@ -544,7 +544,7 @@ up_finish() {
   echo
   if [ "${_NEEDS_UPDATE}" = "YES" ] ; then
     rm -f ${vBs}/BOA.sh.txt-*
-    curl $crlGet "http://files.aegir.cc/BOA.sh.txt" -o ${vBs}/BOA.sh.txt-${_NOW}
+    curl ${crlGet} "http://files.aegir.cc/BOA.sh.txt" -o ${vBs}/BOA.sh.txt-${_NOW}
     exec bash ${vBs}/BOA.sh.txt-${_NOW} &> /dev/null
     rm -f ${vBs}/BOA.sh.txt-${_NOW}
   fi
@@ -553,7 +553,7 @@ up_finish() {
 
 up_head() {
   up_start
-  curl $crlGet "$rgUrl/${master}/${octName}" -o ${octName}
+  curl ${crlGet} "$rgUrl/${master}/${octName}" -o ${octName}
   if [ "${second}" = "all" ] ; then
     up_action_all
   else
@@ -564,7 +564,7 @@ up_head() {
 
 up_modern() {
   up_start
-  curl $crlGet "$rgUrl/${devel}/${octName}" -o ${octName}
+  curl ${crlGet} "$rgUrl/${devel}/${octName}" -o ${octName}
   if [ "${second}" = "all" ] ; then
     up_action_all
   else
@@ -575,7 +575,7 @@ up_modern() {
 
 up_cluster() {
   up_start
-  curl $crlGet "$rgUrl/$stable/${octName}" -o ${octName}
+  curl ${crlGet} "$rgUrl/$stable/${octName}" -o ${octName}
   if [ "${second}" = "all" ] ; then
     up_action_all
   else
@@ -586,7 +586,7 @@ up_cluster() {
 
 up_stable() {
   up_start
-  curl $crlGet "$rgUrl/$stable/${octName}" -o ${octName}
+  curl ${crlGet} "$rgUrl/$stable/${octName}" -o ${octName}
   if [ "${second}" = "all" ] ; then
     up_action_all
   else
@@ -597,7 +597,7 @@ up_stable() {
 
 up_legacy() {
   up_start
-  curl $crlGet "$rgUrl/$legacy/${octName}" -o ${octName}
+  curl ${crlGet} "$rgUrl/$legacy/${octName}" -o ${octName}
   if [ "${second}" = "all" ] ; then
     up_action_all
   else
@@ -610,10 +610,11 @@ check_wrapper() {
   mkdir -p ${vBs}
   rm -f ${vBs}/$(basename "$0")-now-*
   _THIS_FILE="${vBs}/$(basename "$0")-now-${_NOW}"
-  curl $crlGet "${urlHmr}/tools/bin/$(basename "$0")" -o ${_THIS_FILE}
+  curl ${crlGet} "${urlHmr}/tools/bin/$(basename "$0")" -o ${_THIS_FILE}
   if [ ! -e "${_THIS_FILE}" ] ; then
-    echo "I can not download required installers from files.aegir.cc at the moment."
-    echo "Please check http://stats.pingdom.com/x0s6yrbopal6/646562 and try again later."
+    echo "I can not download required installers at the moment"
+    echo "Please check http://stats.pingdom.com/x0s6yrbopal6/646562"
+    echo "and try again later"
     clean_pid_exit
   fi
   _BIN_FILE="/usr/local/bin/$(basename "$0")"
