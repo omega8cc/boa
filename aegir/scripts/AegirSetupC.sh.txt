@@ -620,7 +620,9 @@ if [ "${_HOT_SAUCE}" = "NO" ] ; then
   if [ "${_USE_CURRENT}" = "YES" ] \
     && [ -e "/data/all/000/core-v-${_SMALLCORE6}.txt" ] \
     && [ -e "/data/all/000/core-v-${_SMALLCORE7}.txt" ] ; then
-    msg "${_STATUS} C: Shared platforms code v.${_LAST_ALL} will be used"
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "${_STATUS} C: Shared platforms code v.${_LAST_ALL} will be used"
+    fi
   elif [ "${_USE_CURRENT}" = "NO" ] \
     || [ ! -e "/data/all/000/core-v-${_SMALLCORE6}.txt" ] \
     || [ ! -e "/data/all/000/core-v-${_SMALLCORE7}.txt" ] ; then
@@ -628,7 +630,9 @@ if [ "${_HOT_SAUCE}" = "NO" ] ; then
     _THIS_CORE="${_ALL_DISTRO}"
     msg "${_STATUS} C: Shared platforms code v.${_ALL_DISTRO} (new) will be created"
   else
-    msg "${_STATUS} C: Shared platforms code v.${_LAST_ALL} will be used"
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "${_STATUS} C: Shared platforms code v.${_LAST_ALL} will be used"
+    fi
   fi
 else
   _CORE="/data/all/${_ALL_DISTRO}"

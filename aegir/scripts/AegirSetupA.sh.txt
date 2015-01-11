@@ -864,7 +864,9 @@ if [ "${_HOT_SAUCE}" = "NO" ] ; then
   if [ "${_USE_CURRENT}" = "YES" ] \
     && [ -e "${_D}/000/core-v-${_SMALLCORE6}.txt" ] \
     && [ -e "${_D}/000/core-v-${_SMALLCORE7}.txt" ] ; then
-    msg "${_STATUS} A: Shared platforms code v.${_LAST_ALL} will be used"
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "${_STATUS} A: Shared platforms code v.${_LAST_ALL} will be used"
+    fi
   elif [ "${_USE_CURRENT}" = "NO" ] \
     || [ ! -e "${_D}/000/core-v-${_SMALLCORE6}.txt" ] \
     || [ ! -e "${_D}/000/core-v-${_SMALLCORE7}.txt" ] ; then
@@ -874,7 +876,9 @@ if [ "${_HOT_SAUCE}" = "NO" ] ; then
     sed -i "s/^_USE_CURRENT=.*/_USE_CURRENT=NO/g" \
       /opt/tmp/boa/aegir/scripts/AegirSetupC.sh.txt &> /dev/null
   else
-    msg "${_STATUS} A: Shared platforms code v.${_LAST_ALL} will be used"
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "${_STATUS} A: Shared platforms code v.${_LAST_ALL} will be used"
+    fi
   fi
 else
   _CORE="${_D}/${_ALL_DISTRO}"
