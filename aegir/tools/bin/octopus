@@ -371,9 +371,8 @@ up_one() {
         cd ${vBs}
       fi
     else
-      echo "${octName} installer not available - try again"
-      service cron start &> /dev/null
-      exit 1
+      echo "${vBs}/${tocName} installer not available - try again"
+      clean_pid_exit
     fi
   fi
 }
