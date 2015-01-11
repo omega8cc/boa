@@ -661,7 +661,7 @@ else
     touch /opt/tmp/status-AegirSetupB-FAIL
     exit 1
   fi
-  msg "${_STATUS} B: Hostmaster STATUS: Upgrade start"
+  msg "${_STATUS} B: Hostmaster STATUS: Upgrade will start now"
   mv -f ${_ROOT}/.drush/xts/security_review/security_review.drush.inc \
     ${_ROOT}/.drush/xts/security_review/foo.txt  &> /dev/null
   export DEBIAN_FRONTEND=noninteractive
@@ -759,7 +759,7 @@ else
   fi
   ### Fix for old migrated/merged instances
 
-  msg "${_STATUS} B: Hostmaster STATUS: Running hostmaster-migrate, please wait..."
+  msg "${_STATUS} B: Hostmaster STATUS: Upgrade in progress..."
   ${_DRUSHCMD} cache-clear drush &> /dev/null
   rm -f -r ${_ROOT}/.tmp/cache
   if [ "${_DEBUG_MODE}" = "YES" ] ; then
