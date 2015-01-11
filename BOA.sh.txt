@@ -146,7 +146,7 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ ! -e "/var/xdrago/log/runner.fixed.a19z.pid" ] ; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
+    curl "${crlGet}" "${urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
     if [ -e "/var/xdrago/runner.sh" ] ; then
       chmod 700 /var/xdrago/runner.sh
       chown root:root /var/xdrago/runner.sh
@@ -159,7 +159,7 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ ! -e "/var/xdrago/log/minute.fixed.a19z.pid" ] ; then
     mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
+    curl "${crlGet}" "${urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
     if [ -e "/var/xdrago/minute.sh" ] ; then
       chmod 700 /var/xdrago/minute.sh
       chown root:root /var/xdrago/minute.sh
@@ -172,7 +172,7 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ ! -e "/var/xdrago/log/clear.fixed.a19z.pid" ] ; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
+    curl "${crlGet}" "${urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
     if [ -e "/var/xdrago/clear.sh" ] ; then
       chmod 700 /var/xdrago/clear.sh
       chown root:root /var/xdrago/clear.sh
@@ -185,7 +185,7 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ ! -e "/var/xdrago/log/daily.fixed.a19z.pid" ] ; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
+    curl "${crlGet}" "${urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
     if [ -e "/var/xdrago/daily.sh" ] ; then
       chmod 700 /var/xdrago/daily.sh
       chown root:root /var/xdrago/daily.sh
@@ -198,7 +198,7 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ ! -e "/var/xdrago/log/manage_ltd_users.fixed.a19z.pid" ] ; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/manage_ltd_users.sh" \
+    curl "${crlGet}" "${urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ] ; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
@@ -212,7 +212,7 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ ! -e "/var/xdrago/log/proc_num_ctrl.fixed.a19z.pid" ] ; then
     mv -f /var/xdrago/proc_num_ctrl.cgi /var/xdrago/proc_num_ctrl.cgi.old
-    curl ${crlGet} "${urlHmr}/tools/system/proc_num_ctrl.cgi" \
+    curl "${crlGet}" "${urlHmr}/tools/system/proc_num_ctrl.cgi" \
       -o /var/xdrago/proc_num_ctrl.cgi
     if [ -e "/var/xdrago/proc_num_ctrl.cgi" ] ; then
       chmod 700 /var/xdrago/proc_num_ctrl.cgi
@@ -226,7 +226,7 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ ! -e "/var/xdrago/log/websh.fixed.a19z.pid" ] ; then
     mv -f /bin/websh /var/xdrago/websh.sh.old
-    curl ${crlGet} "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh
+    curl "${crlGet}" "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh
     if [ -e "/bin/websh" ] ; then
       chmod 755 /bin/websh
       chown root:root /bin/websh
@@ -243,7 +243,7 @@ fix_core() {
   if [ -e "/var/xdrago" ] \
     && [ ! -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] ; then
     mkdir -p /var/xdrago/conf
-    curl ${crlGet} "${urlHmr}/patches/7-core/SA-CORE-2014-005-D7.patch" \
+    curl "${crlGet}" "${urlHmr}/patches/7-core/SA-CORE-2014-005-D7.patch" \
       -o /var/xdrago/conf/SA-CORE-2014-005-D7.patch
   fi
   if [ -e "/var/xdrago" ] \
@@ -440,19 +440,19 @@ setup() {
   fi
   rm -f /opt/local/bin/{autoupboa*,backboa*,barracuda*,boa*,drushextra*}
   rm -f /opt/local/bin/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
-  curl ${crlGet} "${urlHmr}/tools/bin/autoupboa"      -o /opt/local/bin/autoupboa
+  curl "${crlGet}" "${urlHmr}/tools/bin/autoupboa"      -o /opt/local/bin/autoupboa
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
     echo "The duplicity backup is running!"
   else
-    curl ${crlGet} "${urlHmr}/tools/bin/backboa"      -o /opt/local/bin/backboa
+    curl "${crlGet}" "${urlHmr}/tools/bin/backboa"      -o /opt/local/bin/backboa
   fi
-  curl ${crlGet} "${urlHmr}/tools/bin/barracuda"      -o /opt/local/bin/barracuda
-  curl ${crlGet} "${urlHmr}/tools/bin/boa"            -o /opt/local/bin/boa
-  curl ${crlGet} "${urlHmr}/tools/bin/octopus"        -o /opt/local/bin/octopus
-  curl ${crlGet} "${urlHmr}/tools/bin/randpass"       -o /opt/local/bin/randpass
-  curl ${crlGet} "${urlHmr}/tools/bin/sqlmagic"       -o /opt/local/bin/sqlmagic
-  curl ${crlGet} "${urlHmr}/tools/bin/syncpass"       -o /opt/local/bin/syncpass
-  curl ${crlGet} "${urlHmr}/tools/bin/thinkdifferent" -o /opt/local/bin/thinkdifferent
+  curl "${crlGet}" "${urlHmr}/tools/bin/barracuda"      -o /opt/local/bin/barracuda
+  curl "${crlGet}" "${urlHmr}/tools/bin/boa"            -o /opt/local/bin/boa
+  curl "${crlGet}" "${urlHmr}/tools/bin/octopus"        -o /opt/local/bin/octopus
+  curl "${crlGet}" "${urlHmr}/tools/bin/randpass"       -o /opt/local/bin/randpass
+  curl "${crlGet}" "${urlHmr}/tools/bin/sqlmagic"       -o /opt/local/bin/sqlmagic
+  curl "${crlGet}" "${urlHmr}/tools/bin/syncpass"       -o /opt/local/bin/syncpass
+  curl "${crlGet}" "${urlHmr}/tools/bin/thinkdifferent" -o /opt/local/bin/thinkdifferent
   echo "### ${_TODAY} ###" >> /opt/local/bin/boa
   echo "### ${_TODAY} ###" >> /opt/local/bin/barracuda
   echo "### ${_TODAY} ###" >> /opt/local/bin/octopus

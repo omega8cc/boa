@@ -250,13 +250,13 @@ install() {
     mkdir -p /var/opt
     rm -f -r /var/opt/{boto*,duplicity*}
     cd /var/opt
-    curl ${crlGet} "http://files.aegir.cc/dev/src/boto-${_BOTO_VRN}.tar.gz"
+    curl "${crlGet}" "http://files.aegir.cc/dev/src/boto-${_BOTO_VRN}.tar.gz"
     tar xzf boto-${_BOTO_VRN}.tar.gz &> /dev/null
     cd /var/opt/boto-${_BOTO_VRN}
     python setup.py install &> /dev/null
     echo "Installing duplicity version ${_DUPLICITY_VRN}, please wait..."
     cd /var/opt
-    curl ${crlGet} "http://files.aegir.cc/dev/src/duplicity-${_DUPLICITY_VRN}.tar.gz"
+    curl "${crlGet}" "http://files.aegir.cc/dev/src/duplicity-${_DUPLICITY_VRN}.tar.gz"
     tar xzf duplicity-${_DUPLICITY_VRN}.tar.gz &> /dev/null
     cd /var/opt/duplicity-${_DUPLICITY_VRN}
     python setup.py build &> /dev/null

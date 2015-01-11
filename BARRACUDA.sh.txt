@@ -306,7 +306,7 @@ extract_archive() {
 # Download and extract archive from dev mirror.
 get_dev_arch() {
   if [ ! -z "$1" ] ; then
-    curl ${crlGet} "${urlDev}/$1"
+    curl "${crlGet}" "${urlDev}/$1"
     extract_archive "$1"
   fi
 }
@@ -314,7 +314,7 @@ get_dev_arch() {
 # Download and extract from dev/version mirror.
 get_dev_ext() {
   if [ ! -z "$1" ] ; then
-    curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VERSION}/$1"
+    curl "${crlGet}" "${urlDev}/${_AEGIR_XTS_VERSION}/$1"
     extract_archive "$1"
   fi
 }
@@ -322,7 +322,7 @@ get_dev_ext() {
 # Download and extract from dev/contrib mirror.
 get_dev_contrib() {
   if [ ! -z "$1" ] ; then
-    curl ${crlGet} "${urlDev}/contrib/$1"
+    curl "${crlGet}" "${urlDev}/contrib/$1"
     extract_archive "$1"
   fi
 }
@@ -330,7 +330,7 @@ get_dev_contrib() {
 # Download and extract archive from dev/src mirror.
 get_dev_src() {
   if [ ! -z "$1" ] ; then
-    curl ${crlGet} "${urlDev}/src/$1"
+    curl "${crlGet}" "${urlDev}/src/$1"
     extract_archive "$1"
   fi
 }
@@ -1504,9 +1504,9 @@ tune_sql_memory_limits() {
     msg "NOTE! This step may take a LONG time, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
     rm -f /var/opt/mysqltuner*
-    curl ${crlGet} "${urlDld}/mysqltuner.pl" -o ${pthTun}
+    curl "${crlGet}" "${urlDld}/mysqltuner.pl" -o ${pthTun}
     if [ ! -e "${pthTun}" ] ; then
-      curl ${crlGet} "${urlDev}/mysqltuner.pl" -o ${pthTun}
+      curl "${crlGet}" "${urlDev}/mysqltuner.pl" -o ${pthTun}
     fi
     if [ -e "${pthTun}" ] ; then
       perl ${pthTun} > ${outTun} 2>&1
@@ -4270,8 +4270,8 @@ update_sources_list() {
             this may take a while, please wait..."
           mkdir -p /opt/tmp/helpers
           cd /opt/tmp/helpers
-          curl ${crlGet} "${urlHmr}/helpers/ffmirror.sh.txt" -o ffmirror.sh.txt
-          curl ${crlGet} "${urlHmr}/helpers/apt-list-ubuntu.txt" \
+          curl "${crlGet}" "${urlHmr}/helpers/ffmirror.sh.txt" -o ffmirror.sh.txt
+          curl "${crlGet}" "${urlHmr}/helpers/apt-list-ubuntu.txt" \
             -o apt-list-ubuntu.txt
           _MIRROR=$(bash ffmirror.sh.txt < apt-list-ubuntu.txt 2>&1)
           _MIRROR=$(bash ffmirror.sh.txt < apt-list-ubuntu.txt 2>&1)
@@ -4319,7 +4319,7 @@ update_sources_list() {
       if [ -e "${locCnf}/etc-apt-preferences-ubuntu.txt" ] ; then
         cp -af ${locCnf}/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
       else
-        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
+        curl "${crlGet}" "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
           -o /etc/apt/preferences
       fi
     elif [ "$_THIS_OS" = "Debian" ] ; then
@@ -4343,8 +4343,8 @@ update_sources_list() {
             this may take a while, please wait..."
           mkdir -p /opt/tmp/helpers
           cd /opt/tmp/helpers
-          curl ${crlGet} "${urlHmr}/helpers/ffmirror.sh.txt" -o ffmirror.sh.txt
-          curl ${crlGet} "${urlHmr}/helpers/apt-list-debian.txt" -o apt-list-debian.txt
+          curl "${crlGet}" "${urlHmr}/helpers/ffmirror.sh.txt" -o ffmirror.sh.txt
+          curl "${crlGet}" "${urlHmr}/helpers/apt-list-debian.txt" -o apt-list-debian.txt
           _MIRROR=$(bash ffmirror.sh.txt < apt-list-debian.txt 2>&1)
           _MIRROR=$(bash ffmirror.sh.txt < apt-list-debian.txt 2>&1)
           echo " "
@@ -4396,7 +4396,7 @@ update_sources_list() {
           if [ -e "${locCnf}/etc-apt-preferences-wheezy.txt" ] ; then
             cp -af ${locCnf}/etc-apt-preferences-wheezy.txt /etc/apt/preferences
           else
-            curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" \
+            curl "${crlGet}" "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" \
               -o /etc/apt/preferences
           fi
         fi
@@ -4414,7 +4414,7 @@ update_sources_list() {
           if [ -e "${locCnf}/etc-apt-preferences-squeeze.txt" ] ; then
             cp -af ${locCnf}/etc-apt-preferences-squeeze.txt /etc/apt/preferences
           else
-            curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
+            curl "${crlGet}" "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
               -o /etc/apt/preferences
           fi
         fi
@@ -4429,7 +4429,7 @@ update_sources_list() {
       if [ -e "${locCnf}/etc-apt-preferences-ubuntu.txt" ] ; then
         cp -af ${locCnf}/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
       else
-        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
+        curl "${crlGet}" "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
           -o /etc/apt/preferences
       fi
     else
@@ -4437,14 +4437,14 @@ update_sources_list() {
         if [ -e "${locCnf}/etc-apt-preferences-wheezy.txt" ] ; then
           cp -af ${locCnf}/etc-apt-preferences-wheezy.txt /etc/apt/preferences
         else
-          curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" \
+          curl "${crlGet}" "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" \
             -o /etc/apt/preferences
         fi
       else
         if [ -e "${locCnf}/etc-apt-preferences-squeeze.txt" ] ; then
           cp -af ${locCnf}/etc-apt-preferences-squeeze.txt /etc/apt/preferences
         else
-          curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
+          curl "${crlGet}" "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
             -o /etc/apt/preferences
         fi
       fi
@@ -5995,7 +5995,7 @@ if [ "${_AEGIR_VERSION}" = "HEAD" ] ; then
     ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git \
     ${pthBld} &> /dev/null
 else
-  curl ${crlGet} "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
+  curl "${crlGet}" "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"
   _THIS_CNF="${pthBld}/aegir/conf"
 fi
@@ -10475,7 +10475,7 @@ csf_install() {
   if ! netcat -w 14 -z www.configserver.com 80 ; then
     get_dev_arch "csf.tgz"
   else
-    curl ${crlGet} "http://www.configserver.com/free/csf.tgz"
+    curl "${crlGet}" "http://www.configserver.com/free/csf.tgz"
     extract_archive "csf.tgz"
   fi
   cd csf

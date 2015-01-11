@@ -177,7 +177,7 @@ extract_archive() {
 # Download and extract from dev.
 get_dev_ext() {
   if [ ! -z "$1" ] ; then
-    curl ${crlGet} "http://files.aegir.cc/dev/${_AEGIR_XTS_VERSION}/$1"
+    curl "${crlGet}" "http://files.aegir.cc/dev/${_AEGIR_XTS_VERSION}/$1"
     extract_archive "$1"
   fi
 }
@@ -185,7 +185,7 @@ get_dev_ext() {
 # Download and extract from dev/contrib mirror.
 get_dev_contrib() {
   if [ ! -z "$1" ] ; then
-    curl ${crlGet} "http://files.aegir.cc/dev/contrib/$1"
+    curl "${crlGet}" "http://files.aegir.cc/dev/contrib/$1"
     extract_archive "$1"
   fi
 }
@@ -468,7 +468,7 @@ if [ "${_AEGIR_VERSION}" = "HEAD" ] ; then
   get_dev_ext "clean_missing_modules.tar.gz"
 else
   cd ${_ROOT}/.drush/sys
-  curl ${crlGet} "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
+  curl "${crlGet}" "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
   msg "${_STATUS} B: Downloading Drush and Provision extensions..."
   cd ${_ROOT}/.drush/xts
   _G_EXT="provision_boost provision_cdn provision_civicrm \

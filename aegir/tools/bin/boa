@@ -512,14 +512,14 @@ set_pin_priority() {
     if [ "$_THIS_OS" = "Debian" ] ; then
       _THIS_RV=$(grep "6.0" /etc/issue.net 2>&1)
       if [[ "$_THIS_RV" =~ "6.0" ]] ; then
-        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
+        curl "${crlGet}" "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
           -o /etc/apt/preferences
       else
-        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" \
+        curl "${crlGet}" "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" \
           -o /etc/apt/preferences
       fi
     elif [ "$_THIS_OS" = "Ubuntu" ] ; then
-      curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
+      curl "${crlGet}" "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
         -o /etc/apt/preferences
     fi
     rm -f ${vBs}/etc-apt-preferences-*
@@ -541,7 +541,7 @@ init_finish() {
   echo
   if [ "${_NEEDS_UPDATE}" = "YES" ] ; then
     rm -f ${vBs}/BOA.sh.txt-*
-    curl ${crlGet} "http://files.aegir.cc/BOA.sh.txt" -o ${vBs}/BOA.sh.txt-${_NOW}
+    curl "${crlGet}" "http://files.aegir.cc/BOA.sh.txt" -o ${vBs}/BOA.sh.txt-${_NOW}
     exec bash ${vBs}/BOA.sh.txt-${_NOW} &> /dev/null
     rm -f ${vBs}/BOA.sh.txt-${_NOW}
   fi
@@ -583,33 +583,33 @@ init_setup() {
   init_start
   set_pin_priority
   if [ ! -z "${vn}" ] ; then
-    curl ${crlGet} "${rgUrl}/${vn}/${barName}"        -o ${vBs}/${barName}
-    curl ${crlGet} "${rgUrl}/${vn}/${octName}"        -o ${vBs}/${octName}
+    curl "${crlGet}" "${rgUrl}/${vn}/${barName}"        -o ${vBs}/${barName}
+    curl "${crlGet}" "${rgUrl}/${vn}/${octName}"        -o ${vBs}/${octName}
   else
     if [ "${cmmand}" = "in-head" ] ; then
-      curl ${crlGet} "${rgUrl}/${master}/${barName}"  -o ${vBs}/${barName}
-      curl ${crlGet} "${rgUrl}/${master}/${octName}"  -o ${vBs}/${octName}
-      curl ${crlGet} "${rgUrl}/${master}/${pthIncB}"  -o ${vBs}/${filIncB}
-      curl ${crlGet} "${rgUrl}/${master}/${pthIncO}"  -o ${vBs}/${filIncO}
+      curl "${crlGet}" "${rgUrl}/${master}/${barName}"  -o ${vBs}/${barName}
+      curl "${crlGet}" "${rgUrl}/${master}/${octName}"  -o ${vBs}/${octName}
+      curl "${crlGet}" "${rgUrl}/${master}/${pthIncB}"  -o ${vBs}/${filIncB}
+      curl "${crlGet}" "${rgUrl}/${master}/${pthIncO}"  -o ${vBs}/${filIncO}
     elif [ "${cmmand}" = "in-modern" ] ; then
-      curl ${crlGet} "${rgUrl}/${devel}/${barName}"   -o ${vBs}/${barName}
-      curl ${crlGet} "${rgUrl}/${devel}/${octName}"   -o ${vBs}/${octName}
-      curl ${crlGet} "${rgUrl}/${devel}/${pthIncB}"   -o ${vBs}/${filIncB}
-      curl ${crlGet} "${rgUrl}/${devel}/${pthIncO}"   -o ${vBs}/${filIncO}
+      curl "${crlGet}" "${rgUrl}/${devel}/${barName}"   -o ${vBs}/${barName}
+      curl "${crlGet}" "${rgUrl}/${devel}/${octName}"   -o ${vBs}/${octName}
+      curl "${crlGet}" "${rgUrl}/${devel}/${pthIncB}"   -o ${vBs}/${filIncB}
+      curl "${crlGet}" "${rgUrl}/${devel}/${pthIncO}"   -o ${vBs}/${filIncO}
     elif [ "${cmmand}" = "in-cluster" ] ; then
-      curl ${crlGet} "${rgUrl}/${cluster}/${barName}" -o ${vBs}/${barName}
-      curl ${crlGet} "${rgUrl}/${cluster}/${octName}" -o ${vBs}/${octName}
-      curl ${crlGet} "${rgUrl}/${cluster}/${pthIncB}" -o ${vBs}/${filIncB}
-      curl ${crlGet} "${rgUrl}/${cluster}/${pthIncO}" -o ${vBs}/${filIncO}
+      curl "${crlGet}" "${rgUrl}/${cluster}/${barName}" -o ${vBs}/${barName}
+      curl "${crlGet}" "${rgUrl}/${cluster}/${octName}" -o ${vBs}/${octName}
+      curl "${crlGet}" "${rgUrl}/${cluster}/${pthIncB}" -o ${vBs}/${filIncB}
+      curl "${crlGet}" "${rgUrl}/${cluster}/${pthIncO}" -o ${vBs}/${filIncO}
     elif [ "${cmmand}" = "in-stable" ] ; then
-      curl ${crlGet} "${rgUrl}/${stable}/${barName}"  -o ${vBs}/${barName}
-      curl ${crlGet} "${rgUrl}/${stable}/${octName}"  -o ${vBs}/${octName}
+      curl "${crlGet}" "${rgUrl}/${stable}/${barName}"  -o ${vBs}/${barName}
+      curl "${crlGet}" "${rgUrl}/${stable}/${octName}"  -o ${vBs}/${octName}
     elif [ "${cmmand}" = "in-legacy" ] ; then
-      curl ${crlGet} "${rgUrl}/${legacy}/${barName}"  -o ${vBs}/${barName}
-      curl ${crlGet} "${rgUrl}/${legacy}/${octName}"  -o ${vBs}/${octName}
+      curl "${crlGet}" "${rgUrl}/${legacy}/${barName}"  -o ${vBs}/${barName}
+      curl "${crlGet}" "${rgUrl}/${legacy}/${octName}"  -o ${vBs}/${octName}
     elif [ "${cmmand}" = "in-octopus" ] ; then
-      curl ${crlGet} "${rgUrl}/${stable}/${barName}"  -o ${vBs}/${barName}
-      curl ${crlGet} "${rgUrl}/${stable}/${octName}"  -o ${vBs}/${octName}
+      curl "${crlGet}" "${rgUrl}/${stable}/${barName}"  -o ${vBs}/${barName}
+      curl "${crlGet}" "${rgUrl}/${stable}/${octName}"  -o ${vBs}/${octName}
     fi
   fi
   if [ "${cmmand}" = "in-octopus" ] ; then
@@ -627,7 +627,7 @@ check_wrapper() {
   mkdir -p ${vBs}
   rm -f ${vBs}/$(basename "$0")-now-*
   _THIS_FILE="${vBs}/$(basename "$0")-now-${_NOW}"
-  curl ${crlGet} "${urlHmr}/tools/bin/$(basename "$0")" -o ${_THIS_FILE}
+  curl "${crlGet}" "${urlHmr}/tools/bin/$(basename "$0")" -o ${_THIS_FILE}
   if [ ! -e "${_THIS_FILE}" ] ; then
     echo "I can not download required installers \
       from files.aegir.cc at the moment."

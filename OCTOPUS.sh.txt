@@ -1599,7 +1599,7 @@ if [ "${_AEGIR_VERSION}" = "HEAD" ] ; then
   git clone --branch ${_BRANCH_BOA} \
     ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
 else
-  curl ${crlGet} "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
+  curl "${crlGet}" "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"
 fi
 if [ ! -e "${pthBld}/aegir/helpers/apt.conf.noninteractive" ] ; then
