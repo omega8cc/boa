@@ -223,49 +223,66 @@ check_report() {
 
 up_mode() {
   if [ "${mcmode}" = "aegir" ] ; then
-    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g" ${vBs}/${toctName}
-    bash ${vBs}/${toctName}
+    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                     ${vBs}/${filIncO}
+    ### Legacy method
+    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                     ${vBs}/${tocName}
+    bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   elif [ "${mcmode}" = "platforms" ] ; then
-    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" ${vBs}/${toctName}
-    bash ${vBs}/${toctName}
+    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"       ${vBs}/${filIncO}
+    ### Legacy method
+    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"       ${vBs}/${tocName}
+    bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   elif [ "${mcmode}" = "both" ] ; then
-    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" ${vBs}/${toctName}
-    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" ${octCnf}
-    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" ${vBs}/${toctName}
-    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" ${octCnf}
-    bash ${vBs}/${toctName}
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${vBs}/${filIncO}
+    ### Legacy method
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${vBs}/${tocName}
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${octCnf}
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${vBs}/${filIncO}
+    ### Legacy method
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${vBs}/${tocName}
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${octCnf}
+    bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   else
-    bash ${vBs}/${toctName}
+    bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   fi
 }
 
 up_one() {
   if [ -e "${vBs}/${octName}" ] ; then
-    cp -af ${vBs}/${octName} ${vBs}/${toctName}
+    cp -af ${vBs}/${octName}  ${vBs}/${tocName}
     if [ "${cmmand}" = "up-head" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"    ${vBs}/${toctName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncO}
     elif [ "${cmmand}" = "up-modern" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"    ${vBs}/${toctName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncO}
     else
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"   ${vBs}/${toctName}
-      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=${branch}/g" ${vBs}/${toctName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${filIncO}
+      sed -i "s/^_BRANCH_PRO.*/_BRANCH_PROVISION=${branch}/g"  ${vBs}/${filIncO}
+      ### Legacy method
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${tocName}
+      sed -i "s/^_BRANCH_PRO.*/_BRANCH_PROVISION=${branch}/g"  ${vBs}/${tocName}
     fi
     if [ "${cmmand}" = "up-head" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"   ${vBs}/${toctName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"       ${vBs}/${filIncO}
     elif [ "${cmmand}" = "up-modern" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"    ${vBs}/${toctName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"        ${vBs}/${filIncO}
     elif [ "${cmmand}" = "up-cluster" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"  ${vBs}/${toctName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncO}
     else
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"   ${vBs}/${toctName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${filIncO}
+      ### Legacy method
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${tocName}
     fi
-    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           ${vBs}/${toctName}
-    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" ${vBs}/${toctName}
-    sed -i "s/^_USER=o1/_USER=${octUsr}/g"                 ${vBs}/${toctName}
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${filIncO}
+    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"       ${vBs}/${filIncO}
+    sed -i "s/^_USER=o1/_USER=${octUsr}/g"                     ${vBs}/${filIncO}
+    ### Legacy method
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${tocName}
+    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"       ${vBs}/${tocName}
+    sed -i "s/^_USER=o1/_USER=${octUsr}/g"                     ${vBs}/${tocName}
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -273,15 +290,18 @@ up_one() {
       if [ -e "/root/.debug.cnf" ] ; then
         _DO_NOTHING=YES
       else
-        sed -i "s/^_STRONG_PASSWORDS=NO/_STRONG_PASSWORDS=YES/g" ${vBs}/${toctName}
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     ${vBs}/${toctName}
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     ${octCnf}
-        sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               ${octCnf}
-        sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"     ${octCnf}
-        sed -i "s/^_STRONG_PASSWORDS=NO/_STRONG_PASSWORDS=YES/g" ${octCnf}
+        sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${vBs}/${filIncO}
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${vBs}/${filIncO}
+        ### Legacy method
+        sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${vBs}/${tocName}
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${vBs}/${tocName}
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${octCnf}
+        sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             ${octCnf}
+        sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"   ${octCnf}
+        sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${octCnf}
       fi
     fi
-    if [ -e "${vBs}/${toctName}" ] ; then
+    if [ -e " ${vBs}/${tocName}" ] ; then
       if [ -e "${User}/.drush/sys/provision" ] ; then
         _IS_OLD=$(find ${User}/.drush/sys/provision/ \
           -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
@@ -310,7 +330,8 @@ up_one() {
           rm -f -r ${User}/.drush/{sys,xts,usr}
           rm -f -r ${User}/.drush/{provision,drush_make}
           mkdir -p ${User}/.drush/{sys,xts,usr}
-          git clone --branch ${devel} git://github.com/omega8cc/provision.git \
+          git clone --branch ${devel} \
+            git://github.com/omega8cc/provision.git \
             ${User}/.drush/sys/provision &> /dev/null
           chown -R ${octUsr}:users ${User}/.drush/sys
         fi
@@ -400,7 +421,7 @@ up_action_all() {
       && [ ! -e "${User}/log/CANCELLED" ] ; then
       if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ] ; then
         octUsr=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}')
-        toctName=${octName}.${octUsr}
+        tocName=${octName}.${octUsr}
         octCnf=/root/.${octUsr}.octopus.cnf
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
         echo Octopus upgrade for User ${User}
@@ -429,13 +450,13 @@ up_action_all() {
           up_one
         fi
         n=$((RANDOM%9+2))
-        echo Waiting $n seconds...
+        echo "Waiting $n seconds..."
         sleep $n
-        rm -f ${vBs}/${toctName}
-        echo Done for ${User}
+        rm -f  ${vBs}/${tocName}
+        echo "Done for ${User}"
       else
-        echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
-        echo ...we have to wait...
+        echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
+        echo "...we have to wait..."
       fi
       echo
       echo
@@ -452,7 +473,7 @@ up_action_one() {
     && [ ! -e "${User}/log/CANCELLED" ] ; then
     if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ] ; then
       octUsr=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}')
-      toctName=${octName}.${octUsr}
+      tocName=${octName}.${octUsr}
       octCnf=/root/.${octUsr}.octopus.cnf
       echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
       echo Octopus upgrade for User ${User}
@@ -479,7 +500,7 @@ up_action_one() {
         up_one
       fi
       sleep 3
-      rm -f ${vBs}/${toctName}
+      rm -f  ${vBs}/${tocName}
       echo Done for ${User}
     else
       echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
@@ -505,6 +526,7 @@ up_start() {
     mkdir -p ${_LOG_DIR}
     cd ${vBs}
     rm -f ${vBs}/OCTOPUS.sh*
+    rm -f ${vBs}/*.sh.cnf*
   fi
   if [ "${cmmode}" = "log" ] ; then
     silent="${cmmode}"
@@ -528,12 +550,13 @@ up_start() {
 }
 
 up_finish() {
+  rm -f /root/BOA.sh*
   rm -f /var/run/boa_run.pid
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/manage_ltd_users.pid
   rm -f /var/run/manage_rvm_users.pid
+  rm -f ${vBs}/*.sh.cnf*
   rm -f ${vBs}/OCTOPUS.sh*
-  rm -f /root/BOA.sh*
   if [ -e "/opt/local/bin/php" ] || [ -e "/usr/local/bin/php" ] ; then
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
@@ -544,7 +567,8 @@ up_finish() {
   echo
   if [ "${_NEEDS_UPDATE}" = "YES" ] ; then
     rm -f ${vBs}/BOA.sh.txt-*
-    curl ${crlGet} "http://files.aegir.cc/BOA.sh.txt" -o ${vBs}/BOA.sh.txt-${_NOW}
+    curl ${crlGet} "http://files.aegir.cc/BOA.sh.txt" \
+      -o ${vBs}/BOA.sh.txt-${_NOW}
     exec bash ${vBs}/BOA.sh.txt-${_NOW} &> /dev/null
     rm -f ${vBs}/BOA.sh.txt-${_NOW}
   fi
@@ -553,7 +577,8 @@ up_finish() {
 
 up_head() {
   up_start
-  curl ${crlGet} "$rgUrl/${master}/${octName}" -o ${octName}
+  curl ${crlGet} "${rgUrl}/${master}/${octName}"  -o ${octName}
+  curl ${crlGet} "${rgUrl}/${master}/${pthIncO}"  -o ${vBs}/${filIncO}
   if [ "${second}" = "all" ] ; then
     up_action_all
   else
@@ -564,7 +589,8 @@ up_head() {
 
 up_modern() {
   up_start
-  curl ${crlGet} "$rgUrl/${devel}/${octName}" -o ${octName}
+  curl ${crlGet} "${rgUrl}/${devel}/${octName}"   -o ${octName}
+  curl ${crlGet} "${rgUrl}/${devel}/${pthIncO}"   -o ${vBs}/${filIncO}
   if [ "${second}" = "all" ] ; then
     up_action_all
   else
@@ -575,7 +601,8 @@ up_modern() {
 
 up_cluster() {
   up_start
-  curl ${crlGet} "$rgUrl/$stable/${octName}" -o ${octName}
+  curl ${crlGet} "${rgUrl}/${cluster}/${octName}" -o ${octName}
+  curl ${crlGet} "${rgUrl}/${cluster}/${pthIncO}" -o ${vBs}/${filIncO}
   if [ "${second}" = "all" ] ; then
     up_action_all
   else
@@ -586,7 +613,7 @@ up_cluster() {
 
 up_stable() {
   up_start
-  curl ${crlGet} "$rgUrl/$stable/${octName}" -o ${octName}
+  curl ${crlGet} "${rgUrl}/${stable}/${octName}"  -o ${octName}
   if [ "${second}" = "all" ] ; then
     up_action_all
   else
@@ -597,7 +624,7 @@ up_stable() {
 
 up_legacy() {
   up_start
-  curl ${crlGet} "$rgUrl/$legacy/${octName}" -o ${octName}
+  curl ${crlGet} "${rgUrl}/${legacy}/${octName}"  -o ${octName}
   if [ "${second}" = "all" ] ; then
     up_action_all
   else

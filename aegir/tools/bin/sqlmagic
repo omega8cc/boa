@@ -19,10 +19,11 @@ sqlmagic_fix() {
 
 sqlmagic_convert() {
   if [ ! -L "$HOME/static" ] ; then
-    echo "ERROR: you must be logged in as a limited shell main user, typically o1.ftp"
+    echo "ERROR: you must be logged in as a lshell main user, typically o1.ftp"
     exit 1
   fi
-  if drush status | grep "Successful" > /dev/null && [ -e "$HOME/static" ] ; then
+  if drush status | grep "Successful" > /dev/null \
+    && [ -e "$HOME/static" ] ; then
     echo "It may take a long time, please wait..."
     if [ "${kind}" = "to-myisam" ] ; then
       _THIS_DB=$(drush status \
@@ -37,7 +38,9 @@ sqlmagic_convert() {
       sed -i "s/.*TABLE_NAME.*//g; s/ *$//g; /^$/d" \
         $HOME/static/to_myisam_alter_table.sql &> /dev/null
       perl -p -i -e \
-        's/(ALTER TABLE (cache_[a-z_]+|cache|sessions|users|watchdog|accesslog) ENGINE=)MYISAM/\1INNODB/g' \
+        's/(ALTER TABLE \
+        (cache_[a-z_]+|cache|sessions|users|watchdog|accesslog) \
+        ENGINE=)MYISAM/\1INNODB/g' \
         $HOME/static/to_myisam_alter_table.sql
       drush sqlc < $HOME/static/to_myisam_alter_table.sql
       echo "This site database has been converted to MyISAM"

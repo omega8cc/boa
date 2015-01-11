@@ -775,10 +775,10 @@ action() {
               -c "drush @hostmaster cc all &> /dev/null"
           fi
         fi
-        echo Done for ${User}
+        echo "Done for ${User}"
       else
-        echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
-        echo ...we have to wait...
+        echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
+        echo "...we have to wait..."
       fi
       echo
       echo

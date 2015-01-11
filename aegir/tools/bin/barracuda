@@ -259,32 +259,32 @@ check_php_cli() {
 
 up_action() {
   if [ -e "${vBs}/${barName}" ] && [ -e "${barCnf}" ] ; then
-    if [ ! -z "$rkey" ] ; then
-      if [ "$rkey" = "php-55" ] ; then
-        _PHP_SINGLE_INSTALL=5.5
-      elif [ "$rkey" = "php-56" ] ; then
-        _PHP_SINGLE_INSTALL=5.6
-      elif [ "$rkey" = "php-54" ] ; then
-        _PHP_SINGLE_INSTALL=5.4
-      elif [ "$rkey" = "php-53" ] ; then
-        _PHP_SINGLE_INSTALL=5.3
-      elif [ "$rkey" = "php-all" ] ; then
-        _PHP_SINGLE_INSTALL=ALL
-      elif [ "$rkey" = "nodns" ] ; then
-        sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"    ${vBs}/${barName}
-        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"      ${vBs}/${barName}
-        sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"    ${barCnf}
-        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"      ${barCnf}
+    if [ ! -z "${rkey}" ] ; then
+      if [ "${rkey}" = "php-55" ] ; then
+        phpS=5.5
+      elif [ "${rkey}" = "php-56" ] ; then
+        phpS=5.6
+      elif [ "${rkey}" = "php-54" ] ; then
+        phpS=5.4
+      elif [ "${rkey}" = "php-53" ] ; then
+        phpS=5.3
+      elif [ "${rkey}" = "php-all" ] ; then
+        phpS=ALL
+      elif [ "${rkey}" = "nodns" ] ; then
+        sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${barName}
+        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${barName}
+        sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"          ${barCnf}
+        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"            ${barCnf}
       else
-        if [ "$rkey" != "debug" ] ; then
-          sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g" ${vBs}/${barName}
-          sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g" ${barCnf}
+        if [ "${rkey}" != "debug" ] ; then
+          sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${rkey}\"/g"  ${vBs}/${barName}
+          sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${rkey}\"/g"          ${barCnf}
         fi
       fi
 
       ### Debugging
       if [ "$debug" = "debug" ] ; then
-        echo rkey is $rkey
+        echo rkey is ${rkey}
         echo waiting 8 seconds...
         sleep 8
       fi
@@ -292,49 +292,51 @@ up_action() {
 
     fi
     ### Make sure that _PHP_SINGLE_INSTALL is set in ${barCnf}
-    if [ "${_PHP_SINGLE_INSTALL}" = "5.6" ] \
-      || [ "${_PHP_SINGLE_INSTALL}" = "5.5" ] \
-      || [ "${_PHP_SINGLE_INSTALL}" = "5.4" ] \
-      || [ "${_PHP_SINGLE_INSTALL}" = "5.3" ] ; then
+    if [ "${phpS}" = "5.6" ] \
+      || [ "${phpS}" = "5.5" ] \
+      || [ "${phpS}" = "5.4" ] \
+      || [ "${phpS}" = "5.3" ] ; then
       _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL ${barCnf} 2>&1)
       if [[ "${_PHP_SINGLE_INSTALL_TEST}" =~ "_PHP_SINGLE_INSTALL" ]] ; then
-        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}/g" ${barCnf}
+        sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=${phpS}/g" ${barCnf}
       else
-        echo "_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}" >> ${barCnf}
+        echo "_PHP_SINGLE_INSTALL=${phpS}" >> ${barCnf}
       fi
     fi
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
-    if [ ! -z "${_PHP_SINGLE_INSTALL}" ] ; then
-      if [ "${_PHP_SINGLE_INSTALL}" = "5.6" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "5.5" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "5.4" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "5.3" ] ; then
+    if [ ! -z "${phpS}" ] ; then
+      if [ "${phpS}" = "5.6" ] \
+        || [ "${phpS}" = "5.5" ] \
+        || [ "${phpS}" = "5.4" ] \
+        || [ "${phpS}" = "5.3" ] ; then
 
         ### Debugging
         if [ "$debug" = "debug" ] ; then
-          echo _PHP_MULTI_INSTALL is ${_PHP_SINGLE_INSTALL}
-          echo _PHP_SINGLE_INSTALL is ${_PHP_SINGLE_INSTALL}
+          echo _PHP_MULTI_INSTALL is ${phpS}
+          echo _PHP_SINGLE_INSTALL is ${phpS}
           echo waiting 8 seconds...
           sleep 8
         fi
         ###
 
         sleep 3
-        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}/g" ${vBs}/${filIncB}
-        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}/g"   ${vBs}/${filIncB}
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"       ${vBs}/${filIncB}
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g"       ${vBs}/${filIncB}
+        sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=${phpS}/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=${phpS}/g"  ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"    ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"    ${vBs}/${filIncB}
         ### Legacy method
-        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}/g" ${vBs}/${barName}
-        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}/g"   ${vBs}/${barName}
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"       ${vBs}/${barName}
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g"       ${vBs}/${barName}
-        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}/g" ${barCnf}
-        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}/g"   ${barCnf}
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"       ${barCnf}
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g"       ${barCnf}
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"       /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g"       /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=${phpS}/g" ${vBs}/${barName}
+        sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=${phpS}/g"  ${vBs}/${barName}
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"    ${vBs}/${barName}
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"    ${vBs}/${barName}
+        sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=${phpS}/g"         ${barCnf}
+        sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=${phpS}/g"          ${barCnf}
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"            ${barCnf}
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"            ${barCnf}
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g" \
+          /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g" \
+          /root/.*.octopus.cnf &> /dev/null
         sleep 3
 
         ### Debugging
@@ -349,42 +351,44 @@ up_action() {
         if [ -e "/data/disk" ] && [ -e "/data/conf/global.inc" ] ; then
           for Ctrl in `find /data/disk/*/log/fpm.txt \
             -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${_PHP_SINGLE_INSTALL} > $Ctrl &> /dev/null
+            echo ${phpS} > $Ctrl &> /dev/null
           done
           for Ctrl in `find /data/disk/*/log/cli.txt \
             -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${_PHP_SINGLE_INSTALL} > $Ctrl &> /dev/null
+            echo ${phpS} > $Ctrl &> /dev/null
           done
         fi
-      elif [ "${_PHP_SINGLE_INSTALL}" = "ALL" ] ; then
-        _PHP_MULTI_INSTALL="5.6 5.5 5.4 5.3"
-        _PHP_SINGLE_INSTALL=5.5
+      elif [ "${phpS}" = "ALL" ] ; then
+        phpM="5.6 5.5 5.4 5.3"
+        phpS=5.5
 
         ### Debugging
         if [ "$debug" = "debug" ] ; then
-          echo _PHP_MULTI_INSTALL is ${_PHP_MULTI_INSTALL}
-          echo _PHP_SINGLE_INSTALL is ${_PHP_SINGLE_INSTALL}
+          echo _PHP_MULTI_INSTALL is ${phpM}
+          echo _PHP_SINGLE_INSTALL is ${phpS}
           echo waiting 8 seconds...
           sleep 8
         fi
         ###
 
         sleep 3
-        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"                        ${vBs}/${filIncB}
-        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${vBs}/${filIncB}
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"        ${vBs}/${filIncB}
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g"        ${vBs}/${filIncB}
+        sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=/g"       ${vBs}/${filIncB}
+        sed -i "s/^_PHP_MUL*/_PHP_MULTI_INSTALL=\"${phpM}\"/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"    ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"    ${vBs}/${filIncB}
         ### Legacy method
-        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"                        ${vBs}/${barName}
-        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${vBs}/${barName}
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"        ${vBs}/${barName}
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g"        ${vBs}/${barName}
-        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"                        ${barCnf}
-        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"        ${barCnf}
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g"        ${barCnf}
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"        /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g"        /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=/g"       ${vBs}/${barName}
+        sed -i "s/^_PHP_MU.*/_PHP_MULTI_INSTALL=\"${phpM}\"/g" ${vBs}/${barName}
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"    ${vBs}/${barName}
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"    ${vBs}/${barName}
+        sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=/g"                ${barCnf}
+        sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=\"${phpM}\"/g"      ${barCnf}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${phpS}/g"     ${barCnf}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${phpS}/g"     ${barCnf}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${phpS}/g" \
+          /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${phpS}/g" \
+          /root/.*.octopus.cnf &> /dev/null
         sleep 3
 
         ### Debugging
@@ -399,11 +403,11 @@ up_action() {
         if [ -e "/data/disk" ] && [ -e "/data/conf/global.inc" ] ; then
           for Ctrl in `find /data/disk/*/log/fpm.txt \
             -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${_PHP_SINGLE_INSTALL} > $Ctrl &> /dev/null
+            echo ${phpS} > $Ctrl &> /dev/null
           done
           for Ctrl in `find /data/disk/*/log/cli.txt \
             -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${_PHP_SINGLE_INSTALL} > $Ctrl &> /dev/null
+            echo ${phpS} > $Ctrl &> /dev/null
           done
         fi
       fi
@@ -420,32 +424,32 @@ up_action() {
       rm -f /var/xdrago/monitor/* &> /dev/null
     fi
     if [ "${cmmand}" = "up-head" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"   ${vBs}/${filIncB}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncB}
     elif [ "${cmmand}" = "up-modern" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"   ${vBs}/${filIncB}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncB}
     else
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"  ${vBs}/${filIncB}
-      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=${branch}/g" ${vBs}/${filIncB}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${filIncB}
+      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${branch}/g" ${vBs}/${filIncB}
       ### Legacy method
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"  ${vBs}/${barName}
-      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=${branch}/g" ${vBs}/${barName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${barName}
+      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${branch}/g" ${vBs}/${barName}
     fi
     if [ "${cmmand}" = "up-head" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"  ${vBs}/${filIncB}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"       ${vBs}/${filIncB}
     elif [ "${cmmand}" = "up-modern" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"   ${vBs}/${filIncB}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"        ${vBs}/${filIncB}
     elif [ "${cmmand}" = "up-cluster" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g" ${vBs}/${filIncB}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncB}
     else
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"  ${vBs}/${filIncB}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${filIncB}
       ### Legacy method
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"  ${vBs}/${barName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${barName}
     fi
-    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"              ${vBs}/${filIncB}
-    sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${filIncB}
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${filIncB}
+    sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"     ${vBs}/${filIncB}
     ### Legacy method
-    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"              ${vBs}/${barName}
-    sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${barName}
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${barName}
+    sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"     ${vBs}/${barName}
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -454,35 +458,36 @@ up_action() {
         _DO_NOTHING=YES
       else
         if [ -e "${barCnf}" ] ; then
-          sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                           ${barCnf}
-          sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=YES/g"                 ${barCnf}
-          sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"   ${barCnf}
-          sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                         ${barCnf}
-          sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"                ${barCnf}
-          sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"             ${barCnf}
-          sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"             ${barCnf}
+          sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${barCnf}
+          sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=YES/g"         ${barCnf}
+          sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
+          sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
+          sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"        ${barCnf}
+          sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
+          sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"     ${barCnf}
           if [ -e "/root/.mstr.clstr.cnf" ] \
             || [ -e "/root/.wbhd.clstr.cnf" ] \
             || [ -e "/root/.dbhd.clstr.cnf" ] \
             || [ -e "/root/.test.clstr.cnf" ] ; then
             _DO_NOTHING=YES
           else
-            sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"      ${barCnf}
+            sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"    ${barCnf}
           fi
           if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
             || [ "${_L_VMFAMILY}" = "VS" ] ; then
             if [ "${_VMFAMILY}" = "VS" ] ; then
-              sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"               ${barCnf}
-              sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                 ${barCnf}
-              sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"           ${barCnf}
+              sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"       ${barCnf}
+              sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"         ${barCnf}
+              sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"   ${barCnf}
             fi
-            sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                     ${barCnf}
-            sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"             ${barCnf}
-            sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g"                      /root/.*.octopus.cnf &> /dev/null
+            sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"             ${barCnf}
+            sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"     ${barCnf}
+            sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g" \
+              /root/.*.octopus.cnf &> /dev/null
             if [ -x "/opt/php55/bin/php" ] \
-              && [ -z "${_PHP_SINGLE_INSTALL}" ] ; then
-              sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"           ${barCnf}
-              sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"           ${barCnf}
+              && [ -z "${phpS}" ] ; then
+              sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"   ${barCnf}
+              sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"   ${barCnf}
             fi
           fi
         fi
@@ -545,46 +550,46 @@ up_action() {
         sleep $n
         echo "Starting the upgrade in silent mode now..."
         echo
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g" ${barCnf}
-        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" ${vBs}/${barName}
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                     ${barCnf}
+        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                 ${vBs}/${barName}
         if [ "${silent}" = "system" ] ; then
           touch /var/run/boa_system_wait.pid
           if [ "${cmmand}" = "up-legacy" ] ; then
-            sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"     ${vBs}/${barName}
-            sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"     ${barCnf}
+            sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"      ${vBs}/${barName}
+            sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"              ${barCnf}
           else
             if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
               && [ -d "/var/aegir/config/server_master/nginx/subdir.d" ] ; then
-              sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"   ${vBs}/${filIncB}
+              sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"    ${vBs}/${filIncB}
               ### Legacy method
-              sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"   ${vBs}/${barName}
-              sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"   ${barCnf}
+              sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"    ${vBs}/${barName}
+              sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"            ${barCnf}
             else
               if [[ "${_CHECK_HOST}" =~ "v55.lon." ]] \
                 || [[ "${_CHECK_HOST}" =~ ".lon1.h" ]] ; then
-                sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" ${vBs}/${filIncB}
+                sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"  ${vBs}/${filIncB}
                 ### Legacy method
-                sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" ${vBs}/${barName}
-                sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" ${barCnf}
+                sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"  ${vBs}/${barName}
+                sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"          ${barCnf}
               else
-                sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"  ${vBs}/${filIncB}
+                sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=NO/g"   ${vBs}/${filIncB}
                 ### Legacy method
-                sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"  ${vBs}/${barName}
-                sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"  ${barCnf}
+                sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=NO/g"   ${vBs}/${barName}
+                sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=NO/g"           ${barCnf}
               fi
             fi
           fi
-          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"   ${barCnf}
+          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"  ${barCnf}
         elif [ "${silent}" = "log" ] ; then
-          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" ${barCnf}
-          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"   ${barCnf}
+          sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"            ${barCnf}
+          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"  ${barCnf}
         fi
         bash ${vBs}/${barName} >${_UP_LOG} 2>&1
         check_report
       else
-        sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" ${barCnf}
-        sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"   ${barCnf}
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                     ${barCnf}
+        sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g" ${barCnf}
+        sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"    ${barCnf}
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                      ${barCnf}
         bash ${vBs}/${barName}
       fi
     fi
@@ -647,9 +652,10 @@ up_finish() {
   echo BARRACUDA upgrade completed
   echo Bye
   echo
-  if [ "$rkey" = "auto" ] || [ "${_NEEDS_UPDATE}" = "YES" ] ; then
+  if [ "${rkey}" = "auto" ] || [ "${_NEEDS_UPDATE}" = "YES" ] ; then
     rm -f ${vBs}/BOA.sh.txt-*
-    curl ${crlGet} "http://files.aegir.cc/BOA.sh.txt" -o ${vBs}/BOA.sh.txt-${_NOW}
+    curl ${crlGet} "http://files.aegir.cc/BOA.sh.txt" \
+      -o ${vBs}/BOA.sh.txt-${_NOW}
     exec bash ${vBs}/BOA.sh.txt-${_NOW} &> /dev/null
     rm -f ${vBs}/BOA.sh.txt-${_NOW}
   fi
@@ -770,11 +776,13 @@ proceed() {
   up_start
   if [ "${cmmand}" = "up-head" ] ; then
     _SCRIPT_URL="$rgUrl/${master}/${barName}"
+    curl ${crlGet} "${rgUrl}/${master}/${pthIncB}"  -o ${vBs}/${filIncB}
   elif [ "${cmmand}" = "up-modern" ] ; then
-    curl ${crlGet} "${rgUrl}/${devel}/${pthIncB}" -o ${vBs}/${filIncB}
     _SCRIPT_URL="$rgUrl/${devel}/${barName}"
+    curl ${crlGet} "${rgUrl}/${devel}/${pthIncB}"   -o ${vBs}/${filIncB}
   elif [ "${cmmand}" = "up-cluster" ] ; then
     _SCRIPT_URL="$rgUrl/${cluster}/${barName}"
+    curl ${crlGet} "${rgUrl}/${cluster}/${pthIncB}" -o ${vBs}/${filIncB}
   elif [ "${cmmand}" = "up-stable" ] ; then
     _SCRIPT_URL="$rgUrl/$stable/${barName}"
   elif [ "${cmmand}" = "up-legacy" ] ; then
