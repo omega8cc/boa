@@ -51,7 +51,7 @@ extract_archive() {
 
 get_dev_ext() {
   if [ ! -z "$1" ] ; then
-    {crlGet} "http://files.aegir.cc/dev/HEAD/$1"
+    ${crlGet} "http://files.aegir.cc/dev/HEAD/$1"
     extract_archive "$1"
   fi
 }

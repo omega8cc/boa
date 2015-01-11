@@ -1,0 +1,1048 @@
+
+###----------------------------------------###
+### EDITME                                 ###
+###----------------------------------------###
+###
+### Enter your valid e-mail address below.
+###
+_MY_EMAIL="notify@omega8.cc"
+
+
+###----------------------------------------###
+### EASY SETUP MODE                        ###
+###----------------------------------------###
+###
+### Active only during initial system setup.
+###
+### It will skip all prompts and configure
+### Barracuda with only some options/services
+### enabled, as listed below. Supported
+### options and associated settings:
+###
+###  NO (requires manual configuration)
+###  WBHD (experimental for web heads)
+###  DBHD (experimental for db heads)
+###  LOCAL (experimental for local testing)
+###  PUBLIC (default)
+###
+_EASY_SETUP=PUBLIC
+
+###
+### Please enter your FQDN hostname below.
+###
+### It should already point to your server
+### IP address with DNS wildcard configured,
+### so you may need to wait for propagation
+### on the Internet before it will work.
+###
+### See for reference: http://bit.ly/UM2nRb
+###
+### NOTE! You shouldn't use "mydomain.org"
+### as your hostname. It should be some
+### subdomain, like "server.mydomain.org"
+###
+### You *don't* need to configure your server
+### hostname, since Barracuda will do that
+### for you, automatically.
+###
+_EASY_HOSTNAME="wildcard-enabled-hostname"
+
+###----------------------------------------###
+###
+### STOP! NO NEED TO CONFIGURE ANYTHING BELOW
+### IF _EASY_SETUP MODE HAS BEEN ENABLED.
+###
+###----------------------------------------###
+
+
+###----------------------------------------###
+### MANUAL INSTALL MODE                    ###
+###----------------------------------------###
+###
+### You can configure all options manually
+### below when _EASY_SETUP=NO above.
+###
+
+
+###----------------------------------------###
+### PHP MULTI INSTALL                      ###
+###----------------------------------------###
+###
+### By default Barracuda installs only PHP 5.5
+### but this option allows you to install also
+### other experimental PHP versions and then
+### choose different version for PHP and
+### PHP-CLI per Aegir Master and per Satellite
+### Instance with variables: _PHP_FPM_VERSION
+### and _PHP_CLI_VERSION.
+###
+### Available options: 5.6, 5.5, 5.4, 5.3
+###
+### Example: _PHP_MULTI_INSTALL="5.3 5.5"
+###
+### Note that removing any version from this
+### list once it is already installed, will
+### NOT uninstall anything.
+###
+### Do not confuse this with other settings
+### _PHP_FPM_VERSION and _PHP_CLI_VERSION,
+### which are used to define version to be
+### used by Master or Satellite Instance.
+###
+_PHP_MULTI_INSTALL="5.5"
+
+
+###----------------------------------------###
+### PHP SINGLE INSTALL                     ###
+###----------------------------------------###
+###
+### Note that this variable, if used, will
+### override all other related variables:
+###
+### _PHP_FPM_VERSION
+### _PHP_CLI_VERSION
+### _PHP_MULTI_INSTALL
+###
+### Available options: 5.6, 5.5, 5.4 or 5.3
+###
+### Example: _PHP_SINGLE_INSTALL=5.5
+###
+_PHP_SINGLE_INSTALL=
+
+
+###----------------------------------------###
+### PHP-FPM VERSION                        ###
+###----------------------------------------###
+###
+### You can choose PHP-FPM version per Aegir
+### Master and Satellite Instance - both on
+### install and upgrade.
+###
+### Available options (if installed):
+###
+### _PHP_FPM_VERSION=5.6
+### _PHP_FPM_VERSION=5.5
+### _PHP_FPM_VERSION=5.4
+### _PHP_FPM_VERSION=5.3
+###
+### Note that 5.5 will be set automatically
+### if you specify any other, not installed
+### version.
+###
+_PHP_FPM_VERSION=5.5
+
+
+###----------------------------------------###
+### PHP-CLI VERSION                        ###
+###----------------------------------------###
+###
+### You can choose PHP-CLI version per Aegir
+### Master and Satellite Instance - both on
+### install and upgrade.
+###
+### Available options (if installed):
+###
+### _PHP_CLI_VERSION=5.6
+### _PHP_CLI_VERSION=5.5
+### _PHP_CLI_VERSION=5.4
+### _PHP_CLI_VERSION=5.3
+###
+### Note that 5.5 will be set automatically
+### if you specify any other, not installed
+### version.
+###
+_PHP_CLI_VERSION=5.5
+
+
+###----------------------------------------###
+### XTRAS INSTALL MODE                     ###
+###----------------------------------------###
+###
+### You can use wildcard "ALL" to install
+### some default xtras or configure the list
+### as explained below.
+###
+### Note: the "ALL" wildcard is not default!
+###
+### When combined with _AUTOPILOT=YES option
+### you can speed up the process and still
+### control which xtras will be installed,
+### using the symbols listed below.
+###
+### Xtras included with "ALL" wildcard:
+###
+### CGP --- Collectd Graph Panel
+### CHV --- Chive DB Manager
+### CSF --- Firewall
+### CSS --- Compass Tools
+### FTP --- Pure-FTPd server with forced FTPS
+### WMN --- Webmin Control Panel
+###
+### Xtras which need to be listed explicitly:
+###
+### BDD --- SQL Buddy DB Manager
+### BND --- Bind9 DNS Server
+### BZR --- Bazaar
+### FMG --- FFmpeg support
+### GIT --- Latest Git from sources
+### IMG --- Image Optimize binaries
+### SR1 --- Apache Solr 1 with Jetty 7
+### SR3 --- Apache Solr 3 with Jetty 8
+### SR4 --- Apache Solr 4 with Jetty 8 or 9
+###
+### Examples:
+###
+### _XTRAS_LIST=""
+### _XTRAS_LIST="ALL"
+### _XTRAS_LIST="ALL GIT SR3"
+### _XTRAS_LIST="CSF CGP CHV FTP"
+###
+### Note that removing any item from this
+### list once it is already installed, will
+### NOT uninstall anything.
+###
+_XTRAS_LIST="CSF CHV FTP"
+
+
+###----------------------------------------###
+### NEW RELIC INSTALL                      ###
+###----------------------------------------###
+###
+### Enter your New Relic license key to get
+### it installed and enabled automatically.
+###
+_NEWRELIC_KEY=""
+
+
+###----------------------------------------###
+### SCOUT APP INSTALL                      ###
+###----------------------------------------###
+###
+### Enter your Scout App license key to get
+### it installed and enabled automatically.
+###
+_SCOUT_KEY=""
+
+
+###----------------------------------------###
+### AUTOPILOT MODE                         ###
+###----------------------------------------###
+###
+### To disable all Yes/no prompts and just run
+### everything as-is, change it to YES.
+###
+### _AUTOPILOT=YES
+###
+_AUTOPILOT=NO
+
+
+###----------------------------------------###
+### UPGRADE OPTIONS                        ###
+###----------------------------------------###
+###
+### Use YES to upgrade system only and skip
+### Aegir Master Instance upgrade.
+###
+_SYSTEM_UPGRADE_ONLY=NO
+
+###
+### Use YES to upgrade Aegir Master Instance
+### only and skip system upgrade.
+###
+_AEGIR_UPGRADE_ONLY=NO
+
+###
+### You can force Nginx, PHP and/or DB server
+### reinstall, even if there are no updates
+### available, when set to YES.
+###
+### Note that _SSL_FORCE_REINSTALL when set
+### to YES, will automatically force also
+### _NGX_FORCE_REINSTALL and
+### _PHP_FORCE_REINSTALL
+###
+_NGX_FORCE_REINSTALL=NO
+_PHP_FORCE_REINSTALL=NO
+_SQL_FORCE_REINSTALL=NO
+_SSL_FORCE_REINSTALL=NO
+
+###
+### Use YES to force installing everything
+### from sources again, even if there are
+### no updates available.
+###
+_FULL_FORCE_REINSTALL=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Squeeze to Debian Wheezy.
+###
+_SQUEEZE_TO_WHEEZY=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Lenny to Debian Squeeze.
+###
+_LENNY_TO_SQUEEZE=NO
+
+###
+### Use YES to run migration from Tomcat 6
+### to Jetty 7 with Apache Solr 1.4.1
+###
+_TOMCAT_TO_JETTY=NO
+
+###----------------------------------------###
+### DRUSH DEBUG MODE                       ###
+###----------------------------------------###
+###
+### When set to YES it will run Aegir Master
+### Instance install/upgrade with -d option,
+### displaying complete Drush backend report.
+###
+### _DEBUG_MODE=YES
+###
+_DEBUG_MODE=NO
+
+
+###----------------------------------------###
+### DB SERVER                              ###
+###----------------------------------------###
+###
+### Barracuda no longer supports Percona since
+### 2.2.0 release. If you have used Percona
+### before, Barracuda will force upgrade to
+### MariaDB and PHP rebuild, automatically.
+###
+_DB_SERVER=MariaDB
+
+
+###----------------------------------------###
+### DB SERIES                              ###
+###----------------------------------------###
+###
+### You can choose MariaDB 5.5 or new 10.0
+###
+### Note that on Ubuntu 14.04 LTS Trusty we
+### force the only available 10.0 version.
+###
+_DB_SERIES=5.5
+
+
+###----------------------------------------###
+### REDIS LISTEN MODE                      ###
+###----------------------------------------###
+###
+### If set to PORT (old default) Redis will
+### listen on standard port and 127.0.0.1 IP.
+###
+### You can also change this option to SOCKET
+### to improve caching backend performance.
+###
+### When set to any other IP address, it will
+### switch ALL your Aegir Satellite Instances
+### along with your Aegir Master Instance from
+### local Redis server to the remote Redis
+### server you have installed in your network.
+### It will also permanently disable your
+### local Redis server. Make sure to specify
+### correct IP when using this mode and also
+### modify /etc/csf/csf.conf to allow outgoing
+### TCP connections via port 6379.
+###
+_REDIS_LISTEN_MODE=PORT
+
+
+###----------------------------------------###
+### SSH CUSTOM PORT                        ###
+###----------------------------------------###
+###
+### Change this if you want to use non-default
+### port for SSH and SFTP connections.
+###
+### Changing the port will alter also your
+### server firewall (csf) settings, both on
+### install and upgrade, unless you are using
+### _CUSTOM_CONFIG_CSF=YES option.
+###
+_SSH_PORT=22
+
+
+###----------------------------------------###
+### LOCAL DEBIAN OR UBUNTU MIRROR          ###
+###----------------------------------------###
+###
+### Modify this if you prefer to use some
+### mirror you know is the best / the fastest
+### in your server location. For example:
+###
+### _LOCAL_DEBIAN_MIRROR=ftp.au.debian.org
+### _LOCAL_UBUNTU_MIRROR=au.archive.ubuntu.com
+###
+### To search for the fastest mirror around
+### the globe, use empty variables:
+###
+### _LOCAL_DEBIAN_MIRROR=""
+### _LOCAL_UBUNTU_MIRROR=""
+###
+### Note that searching around the globe is
+### no longer enabled by default!
+###
+### Note also that it may hang and later cause
+### broken upgrades if some tested mirror
+### responds with unexpected delay instead of
+### just respond or not, so it is better
+### to use reliable mirrors you know,
+### or leave default values.
+###
+_LOCAL_DEBIAN_MIRROR=ftp.debian.org
+_LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
+
+
+###----------------------------------------###
+### FORCE PREFERRED GIT REPOSITORY         ###
+###----------------------------------------###
+###
+### Use this when you are experiencing issues
+### trying to connect to the default github
+### repository. Valid options:
+###
+### _FORCE_GIT_MIRROR=github
+### _FORCE_GIT_MIRROR=gitorious
+###
+### Note: with forced mirror the script will
+### not try to connect and then switch to
+### alternate mirror. It will simply fail
+### if the forced mirror doesn't respond.
+###
+### We recommend github - it is much faster.
+###
+_FORCE_GIT_MIRROR=""
+
+
+###----------------------------------------###
+### DNS MANUAL CONFIG                      ###
+###----------------------------------------###
+###
+### Starting with release 0.4-alpha9 Aegir
+### requires proper DNS configuration
+### of your server. Your hostname has to be
+### FQDN and has to match your server IP.
+###
+### This script is trying to discover your
+### DNS details and allow or deny the install,
+### if something doesn't look right.
+###
+### This script will also use your FQDN
+### hostname as a web address of your Aegir
+### frontend (control panel) by default.
+###
+### You may want to change the automatic
+### defaults by setting up your IP address,
+### your FQDN hostname and your Aegir frontend
+### web address below - it is recommended!
+###
+### It may be useful when you are using local
+### environment with custom settings in your
+### /etc/hosts, when you have more than one
+### public IPs on eth0 and you wish to use
+### non-default (first) IP address, or when
+### you want to use non-hostname (sub)domain
+### to access your Aegir frontend.
+###
+### It is also useful when you plan to use
+### available in Barracuda optional installs
+### of Chive, SQL Buddy and Collectd, since
+### all of them will use subdomains in the
+### server hostname and it will not work
+### when your hostname domain DNS is not
+### under your control (like many default
+### hostnames and reverse DNS provided by
+### VPS hosting companies).
+###
+### Please change *all 3 values* if you wish
+### to customize this automatic setup.
+###
+### Example:
+###
+### _MY_OWNIP=192.168.0.108
+### _MY_HOSTN=server.mydomain.com
+### _MY_FRONT=aegir.mydomain.com
+###
+### NOTE:
+###
+### If you will use your custom DNS settings,
+### they will be still validated, therefore
+### make sure your _MY_HOSTN and _MY_FRONT
+### both matches your _MY_OWNIP or the script
+### will fail to install Aegir (unless you
+### will disable the DNS test completely
+### below in _DNS_SETUP_TEST).
+###
+_MY_OWNIP=""
+_MY_HOSTN=""
+_MY_FRONT=""
+
+
+###----------------------------------------###
+### DNS SETUP TEST                         ###
+###----------------------------------------###
+###
+### If you don't want to test your DNS
+### because of some custom local setup
+### you know is correct (like DynDNS)
+### but the script can't validate it with its
+### standard ifconfig tests, set this to:
+###
+### _DNS_SETUP_TEST=NO
+###
+### There is no guarantee it will work.
+###
+_DNS_SETUP_TEST=YES
+
+
+###----------------------------------------###
+### DATABASE DEFAULT HOST                  ###
+###----------------------------------------###
+###
+### If you prefer, you can set the database
+### to be connected via FQDN pointing to your
+### public IP instead of default "localhost",
+### but it will make it harder to migrate
+### sites with DB grants tied to the system
+### unique hostname.
+###
+### Note: the "FQDN" is a keyword. It will be
+### automatically replaced with your system
+### real hostname when used.
+###
+### NOTE: This distinction is very important,
+### because if you will specify your system
+### local hostname literally, BOA will use
+### the "Remote DB Server Mode" instead, as
+### explained further below.
+###
+### For local or Amazon based installs with
+### local/dynamic IP address it is recommended
+### to use default "localhost" option.
+###
+### Supported options:
+###
+### _THIS_DB_HOST=localhost
+### _THIS_DB_HOST=FQDN
+###
+_THIS_DB_HOST=localhost
+
+
+###----------------------------------------###
+### REMOTE DB SERVER MODE                  ###
+###----------------------------------------###
+###
+### WARNING !!!
+###
+### THIS IS **HIGHLY EXPERIMENTAL** FEATURE.
+### EXPECT YOUR SYSTEM TO *EXPLODE* IF USED.
+###
+### Note: We may refer to the DB server
+###       also by using term 'DB head'
+###
+### If you will specify some remote DB server
+### name (not IP) or even local hostname, but
+### literally instead of via 'localhost' or
+### 'FQDN' keyword, it will turn on and use
+### the special REMOTE DB SERVER MODE.
+###
+### This mode will work only if the remote DB
+### server has been already configured with
+### the same default dummy mysql root password
+### as your Aegir system you are about to
+### install, and if the mysql port 3306 is
+### already open for incoming and outgoing
+### TCP connections on all servers expected
+### to communicate in this mode.
+###
+### HINT: you may want to add WEB head (Aegir)
+### IP as allowed on the DB head with standard
+### command: 'csf -a 12.34.56.789 my web head'
+###
+### Note that if the remote DB server defined
+### as hostname with a valid DNS entry will be
+### used, BOA will never change mysql root
+### password and also on initial install will
+### use this dummy password:
+###
+###   sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+###
+### The same password will be used for the
+### Aegir special DB user 'aegir_root'.
+###
+### Furthermore, BOA will not create separate
+### special DB users per Octopus instance
+### and all instances will use the same
+### 'aegir_root' DB user to manage databases
+### for hosted sites.
+###
+### You can later change this password for
+### both mysql 'root' and 'aegir_root' users
+### on the remote DB server, but you will
+### have to manually update them in every
+### Aegir instance (Master and Satellites)
+### db server node settings.
+###
+### However, BOA will always check and use
+### the password it will find in the special
+### file /root/.my.pass.txt during Master
+### and Satellite instances upgrade.
+###
+### If you will change the mysql root password
+### you **must** update it also in two files:
+###
+###   /root/.my.pass.txt
+###   /root/.my.cnf
+###
+### When installing BOA on a machine expected
+### to work as a remote DB server, you should
+### create a special file containing your
+### WEB head (Aegir) hostname:
+###
+###  /root/.remote.web.head.txt
+###
+### BOA will use this file to add required
+### DB GRANT for 'aegir_root' on the DB head
+### so the WEB head (Aegir) hosted on the
+### machine with hostname specified in this
+### file will be able to manage databases
+### remotely. Make sure that this file
+### is present only on the DB head, though.
+###
+### WARNING !!!
+###
+### Make sure that there is no remote, public,
+### unrestricted access via port 3306 to any
+### DB server used in this special mode!
+###
+### Available non-default option:
+###
+### _THIS_DB_HOST=remote.db.server.name
+###
+_THIS_DB_HOST=localhost
+
+
+###----------------------------------------###
+### SMTP CONNECTION TEST                   ###
+###----------------------------------------###
+###
+### If you don't want to test outgoing SMTP
+### connections, change _SMTP_RELAY_TEST
+### value to "NO".
+###
+_SMTP_RELAY_TEST=YES
+
+
+###----------------------------------------###
+### SMTP RELAY HOST - ONLY WHEN REQUIRED   ###
+###----------------------------------------###
+###
+### _SMTP_RELAY_HOST="smtp.your.relay.net"
+###
+_SMTP_RELAY_HOST=""
+
+
+###----------------------------------------###
+### LOCALHOST ON LOCAL NETWORK             ###
+###----------------------------------------###
+###
+### When enabled, it will force your Nginx web
+### server to listen only on local IP with
+### local, non-FQDN hostname, for example:
+###
+### _LOCAL_NETWORK_IP=10.10.80.80
+### _LOCAL_NETWORK_HN=aegir.local
+###
+### In this example "aegir.local" will be used
+### as your hostname and all connections and
+### grants will use "aegir.local" instead of
+### FQDN. Also your Aegir Master Instance
+### will be available at http://aegir.local
+###
+### This option is useful when your server is
+### available only in your local network
+### without any public IP address assigned/
+### available on any eth interface. This also
+### means it should work as a handy local
+### setup on your wirelessly connected laptop
+### or netbook, with improved DNS cache
+### support - pdnsd will save results in file.
+###
+### In this case you could use 127.0.1.1 as
+### _LOCAL_NETWORK_IP to avoid issues with
+### DHCP changing your assigned IP on the fly
+### and to avoid conflicts with some other
+### services listening on 127.0.0.1
+###
+### This option works only with initial
+### install and is disabled on upgrade.
+###
+### When used, it will override all defined
+### above _MY_OWNIP, _MY_HOSTN and _MY_FRONT
+### values.
+###
+### It will also disable all DNS and SMTP
+### relay tests automatically.
+###
+_LOCAL_NETWORK_IP=""
+_LOCAL_NETWORK_HN=""
+
+
+###----------------------------------------###
+### ADVANCED CONFIGURATION OPTIONS         ###
+###----------------------------------------###
+
+###
+### Change to NO if you don't want the running
+### daily script to fix permissions on all
+### files belonging to hosted sites an their
+### platforms (and any shared code).
+###
+### Note that this feature is again enabled
+### by default, because critically important
+### security fixes/procedures depend on it.
+###
+_PERMISSIONS_FIX=YES
+
+###
+### Change to NO if you don't want the running
+### daily script to enable/disable modules in
+### all hosted sites without 'dev.' in their
+### main domain name, as listed in the
+### docs/MODULES.txt
+###
+### This options is now smart enough to check
+### if the module is defined as required by any
+### other module or feature and will skip such
+### module automatically, to avoid disabling
+### innocent modules via feature or any other
+### dependency.
+###
+### Note that if you disable this option, you
+### will automatically disable also the user
+### register protection check/feature:
+### https://omega8.cc/node/273
+###
+_MODULES_FIX=YES
+
+###
+### List modules to never disable via running
+### daily script to enable/disable modules in
+### all hosted sites without 'dev.' in their
+### main domain name, as listed in the
+### docs/MODULES.txt
+###
+### Requires: _MODULES_FIX=YES
+###
+### Example: _MODULES_SKIP="dblog update"
+###
+### While any module detected as required
+### will not be disabled anyway, this option
+### allows you to whitelist modules which
+### otherwise would get disabled.
+###
+_MODULES_SKIP=""
+
+###
+### Use YES only if both "randpass 32 esc"
+### and "randpass 32 alnum" commands produce
+### well looking, strong passwords and not
+### some binary garbage, which is typically
+### a sign of unreliable /dev/urandom.
+### See: https://drupal.org/node/1952042
+###
+### Configurable length: 8-128 or automatic
+### with keywords: YES (32), NO (8).
+###
+_STRONG_PASSWORDS=NO
+
+###
+### Extra packages to install. Useful to
+### specify packages not included by default
+### which could be otherwise removed because
+### of some conflicts due to the aggressive
+### Barracuda behaviour: apt-get autoremove -y
+###
+_EXTRA_PACKAGES=""
+
+###
+### Use YES to avoid overwriting configuration
+### for listed services on upgrade.
+###
+_CUSTOM_CONFIG_CSF=NO
+_CUSTOM_CONFIG_LSHELL=NO
+_CUSTOM_CONFIG_REDIS=NO
+_CUSTOM_CONFIG_SQL=NO
+
+###
+### You can define custom list of functions
+### to disable besides those already denied
+### in the system level 'disable_functions'.
+###
+### Note: If this option is left empty, BOA
+### will deny access also to function:
+###
+###   passthru
+###
+### If _PHP_FPM_DENY is *not* empty, its value
+### will *replace* default 'passthru', so any
+### denied function must be listed explicitly.
+###
+### WARNING! Do not add here 'shell_exec'
+### or you will break cron for all sites
+### including all hosted on all Satellite
+### Instances. The 'shell_exec' function is
+### also required by Collectd Graph Panel,
+### if installed.
+###
+### This option affects only Aegir Master
+### Instance plus all scripts running outside
+### of Octopus Satellite Instances.
+###
+### Example:
+###
+### _PHP_FPM_DENY="passthru,popen,system"
+###
+### Note that while it will improve security
+### it will also break modules which rely
+### on any of disabled functions.
+###
+_PHP_FPM_DENY=""
+
+###
+### We highly recommend to enable this option
+### to improve system security when certain
+### PHP functions, especially: exec, passthru,
+### shell_exec,system,proc_open,popen are not
+### disabled via option _PHP_FPM_DENY above.
+###
+### WARNING! This option is very aggressive
+### and can break any extra service or binary
+### you have installed which BOA doesn't
+### manage and the binary has system group
+### set to 'root'. BOA will not touch any
+### binary which has non-root group or has
+### setgid or setuid permissions.
+###
+_STRICT_BIN_PERMISSIONS=YES
+
+###
+### Define the amount of RAM you want to keep
+### reserved for other services installed which
+### are not controlled by BOA, so it will
+### assume that available RAM is the value of
+### ${_RAM} - ${_RESERVED_RAM} (in MB).
+###
+### Example for 256MB: _RESERVED_RAM=256
+###
+_RESERVED_RAM=0
+
+###
+### CiviCRM 4.2 and newer requires more SQL
+### privileges (the SUPER which can't be added
+### for obvious security reasons) or binary
+### logging disabled. Otherwise almost all
+### Aegir tasks against any site with CiviCRM
+### system active will fail, so we disable
+### binary logging by default. It will also
+### improve system performance on servers
+### with slower/lower disks I/O.
+###
+### You can still enable it, if you prefer,
+### by changing it to _DB_BINARY_LOG=YES
+### below or in the /root/.barracuda.cnf file,
+### but you must first stop mysql service
+### and delete or move away all existing files
+### from the /var/log/mysql/ directory, so it
+### will start fresh logs after it has been
+### disabled during previous system upgrade.
+###
+### Note: this option is ignored if the option
+### _CUSTOM_CONFIG_SQL is set to YES.
+###
+_DB_BINARY_LOG=NO
+
+###
+### BOA already outsources most of cache*
+### tables to Redis, disables accesslog and
+### dblog by default, so for many typical
+### Drupal sites MyISAM will provide better
+### speed and much lower memory usage -
+### typically only 1/3 of memory and binary
+### space used by InnoDB.
+###
+### However, MyISAM can't recover itself
+### on the fly like InnoDB, and if it will
+### crash, it will have to wait for the
+### self-healing monitor to detect the crash
+### and run auto-repair.
+###
+### Note that Drupal 7 forces InnoDB.
+###
+### You can easily convert any site to-MyISAM
+### or to-InnoDB with `sqlmagic` tool.
+###
+### Note: this option is ignored if the option
+### _CUSTOM_CONFIG_SQL is set to YES.
+###
+_DB_ENGINE=InnoDB
+
+###
+### Allows to change InnoDB log file size,
+### which requires special procedure.
+###
+### Accepted value must be an integer between
+### 10 and 500 (in megabytes).
+###
+### Note: if _CUSTOM_CONFIG_SQL is set to YES,
+### this option will be ignored.
+###
+### Example: _INNODB_LOG_FILE_SIZE=50
+###
+_INNODB_LOG_FILE_SIZE=AUTO
+
+###
+### Set max 1 min load per CPU core before blocking
+### spiders temporarily, until the load stabilizes.
+###
+_CPU_SPIDER_RATIO=3
+
+###
+### Set max 1 min load per CPU core before disabling
+### Nginx temporarily, until the load stabilizes.
+###
+_CPU_MAX_RATIO=6
+
+###
+### Set max 1 min load per CPU core before killing
+### all running PHP, Drush, Wget and Curl processes
+### until the load stabilizes.
+###
+### This shouldn't affect any innocent Aegir tasks,
+### including cron for sites, because the system
+### never starts them anyway, if the average load
+### in the last minute is higher than 3.5
+###
+_CPU_CRIT_RATIO=9
+
+###
+### Set max allowed page views from one IP
+### out of last 500. Note that it will lock
+### the access completely for 1 hour on the
+### firewall level in /etc/csf/csf.deny
+###
+_NGINX_DOS_LIMIT=300
+
+###
+### Experimental LDAP support is available
+### via third-party Nginx module. To enable
+### change this option to _NGINX_LDAP=YES
+### below or in the /root/.barracuda.cnf file.
+###
+_NGINX_LDAP=NO
+
+###
+### NAXSI means Nginx Anti XSS & SQL Injection
+### and is a third-party Nginx module not used
+### by default. If you want to test / use it,
+### change this option to _NGINX_NAXSI=YES
+### below or in the /root/.barracuda.cnf file.
+###
+_NGINX_NAXSI=NO
+
+###
+### When set to YES, it will also force
+### OpenSSL ans cURL re-install from sources
+### on systems other than Debian Wheezy,
+### which already comes with required
+### OpenSSL 1.0.1+ by default.
+###
+_NGINX_SPDY=NO
+
+###
+### When set to YES, it will also force
+### OpenSSL ans cURL re-install from sources
+### on systems other than Debian Wheezy,
+### which already comes with required
+### OpenSSL 1.0.1+ by default.
+###
+_NGINX_FORWARD_SECRECY=NO
+
+###
+### Use this only when you need to always
+### compile in some extra/custom module(s).
+###
+_NGINX_EXTRA_CONF=""
+
+###
+### Use this only when you need to always
+### compile in some extra PHP extension.
+###
+_PHP_EXTRA_CONF=""
+
+###
+### Change to YES to always compile in
+### MongoDB driver. Works for PHP 5.3 only.
+###
+_PHP_MONGODB=NO
+
+###
+### Change to YES to always compile in
+### GEOS extension. Works for PHP 5.3 only.
+### Warning: experimental only! See issue:
+### https://drupal.org/node/1913488
+###
+_PHP_GEOS=NO
+
+###
+### When set to YES, it will force
+### OpenSSL, OpenSSH and cURL re-install
+### from sources.
+###
+### Debian Wheezy already comes with latest
+### OpenSSL 1.0.1+ by default, so this option
+### will be ignored on this system.
+###
+_SSL_FROM_SOURCES=NO
+
+###
+### When set to YES it will force OpenSSH
+### re-install from sources. Do NOT use
+### if you don't have a serial console
+### access to the machine or VPS!
+###
+_SSH_FROM_SOURCES=NO
+
+###
+### AUTO will default to values calculated
+### on the fly and based on available RAM.
+### You can force workers number for Nginx
+### and PHP-FPM here.
+###
+_NGINX_WORKERS=AUTO
+_PHP_FPM_WORKERS=AUTO
+
+###
+### Max default TTL for Speed Booster Cache.
+### It will affect all Aegir Instances, but
+### it is used only for spiders and with not
+### enabled by default control file per site
+### or per platform modules/cache_hour/YES.txt
+###
+_SPEED_VALID_MAX=3600
+
+###----------------------------------------###
+### DON'T EDIT ANYTHING BELOW THIS LINE    ###
+###----------------------------------------###
+
+_AEGIR_VERSION="HEAD"
+_AEGIR_XTS_VERSION="BOA-2.4.0"
+_BRANCH_BOA="2.4.x-dev"
+_BRANCH_PRN="2.4.x-dev"
+_X_VERSION="BOA-2.4.0-dev"
+

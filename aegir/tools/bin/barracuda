@@ -3,23 +3,30 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
+branch="2.3.x-dev"
+cluster="BOA-2.3.8"
+devel="2.4.x-dev"
+legacy="BOA-2.2.9"
 master="master"
 stable="BOA-2.3.8"
-cluster="BOA-2.3.8"
-legacy="BOA-2.2.9"
-branch="2.3.x-dev"
-devel="2.4.x-dev"
-rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
-varPath="/var/backups"
-barName="BARRACUDA.sh.txt"
-octName="OCTOPUS.sh.txt"
+
 barCnf="/root/.barracuda.cnf"
+barName="BARRACUDA.sh.txt"
+crlGet="curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+filIncB="barracuda.sh.cnf"
+filIncO="octopus.sh.cnf"
+octName="OCTOPUS.sh.txt"
+pthBld="/opt/tmp/boa"
+pthIncB="lib/settings/${filIncB}"
+pthIncO="lib/settings/${filIncO}"
+rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
 urlHmr="http://files.aegir.cc/versions/master/aegir"
+vBs="/var/backups"
 
 _TODAY=$(date +%y%m%d 2>&1)
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _CHECK_HOST=$(uname -n 2>&1)
-_LOG_DIR="${varPath}/reports/up/$(basename "$0")/${_TODAY}"
+_LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
 _L_VMFAMILY=XEN
 _L_VM_TEST=$(uname -a 2>&1)
@@ -35,38 +42,38 @@ clean_pid_exit() {
 }
 
 fix_dns_settings() {
-  mkdir -p ${varPath}
-  rm -f ${varPath}/resolv.conf.tmp
+  mkdir -p ${vBs}
+  rm -f ${vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ] ; then
-    cp -a /etc/resolv.conf ${varPath}/resolv.conf.tmp
+    cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
   fi
-  if [ ! -e "${varPath}/resolv.conf.vanilla" ] ; then
-    for Pre in `ls -la ${varPath}/resolv.conf.pre-*`; do
+  if [ ! -e "${vBs}/resolv.conf.vanilla" ] ; then
+    for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
       if [ -e "${Pre}" ] && [ -f "${Pre}" ] && [ ! -L "${Pre}" ] ; then
-        cp -a ${Pre} ${varPath}/resolv.conf.vanilla
+        cp -a ${Pre} ${vBs}/resolv.conf.vanilla
       fi
     done
   fi
-  if [ ! -e "${varPath}/resolv.conf.vanilla" ] ; then
+  if [ ! -e "${vBs}/resolv.conf.vanilla" ] ; then
     rm -f /etc/resolv.conf
-    cp -a ${varPath}/resolv.conf.tmp /etc/resolv.conf
-    cp -a ${varPath}/resolv.conf.tmp ${varPath}/resolv.conf.vanilla
+    cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
+    cp -a ${vBs}/resolv.conf.tmp ${vBs}/resolv.conf.vanilla
   fi
-  sed -i "/^$/d" ${varPath}/resolv.conf.vanilla &> /dev/null
+  sed -i "/^$/d" ${vBs}/resolv.conf.vanilla &> /dev/null
   rm -f /etc/resolv.conf
   echo "nameserver 8.8.8.8" > /etc/resolv.conf
   echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
   if [[ "${_BROKEN_DNS_TEST}" =~ "no servers could be reached" ]] \
-    && [ -e "${varPath}/resolv.conf.vanilla" ] ; then
+    && [ -e "${vBs}/resolv.conf.vanilla" ] ; then
     touch /root/.use.local.nameservers.cnf
     rm -f /etc/resolv.conf
-    cp -a ${varPath}/resolv.conf.vanilla /etc/resolv.conf
+    cp -a ${vBs}/resolv.conf.vanilla /etc/resolv.conf
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   else
     rm -f /etc/resolv.conf
-    cp -a ${varPath}/resolv.conf.tmp /etc/resolv.conf
+    cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
   fi
   if [ -e "/etc/pdnsd.conf" ] ; then
     if [ -e "/root/.local.dns.IP.list" ] ; then
@@ -89,7 +96,7 @@ fix_dns_settings() {
           | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
           | cut -d ' ' -f2 \
           | sort \
-          | uniq`;do echo "        ip=$_IP;" >> /root/.local.dns.IP.list;done
+          | uniq`;do echo "        ip=${_IP};" >> /root/.local.dns.IP.list;done
         sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
         sed -i "s/ip=127.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
         sed -i "s/ip=Dyn.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
@@ -241,8 +248,8 @@ check_php_cli() {
         _USE_PHP_CLI_PATH=/opt/php53/bin/php
       fi
     fi
-    if [ -x "$_USE_PHP_CLI_PATH" ] ; then
-      ln -sf $_USE_PHP_CLI_PATH /usr/bin/php
+    if [ -x "${_USE_PHP_CLI_PATH}" ] ; then
+      ln -sf ${_USE_PHP_CLI_PATH} /usr/bin/php
     else
       echo "ERROR: I can not find PHP-CLI anywhere!"
       clean_pid_exit
@@ -251,7 +258,7 @@ check_php_cli() {
 }
 
 up_action() {
-  if [ -e "${varPath}/${barName}" ] && [ -e "${barCnf}" ] ; then
+  if [ -e "${vBs}/${barName}" ] && [ -e "${barCnf}" ] ; then
     if [ ! -z "$rkey" ] ; then
       if [ "$rkey" = "php-55" ] ; then
         _PHP_SINGLE_INSTALL=5.5
@@ -264,13 +271,13 @@ up_action() {
       elif [ "$rkey" = "php-all" ] ; then
         _PHP_SINGLE_INSTALL=ALL
       elif [ "$rkey" = "nodns" ] ; then
-        sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"    ${varPath}/${barName}
-        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"      ${varPath}/${barName}
+        sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"    ${vBs}/${barName}
+        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"      ${vBs}/${barName}
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"    ${barCnf}
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"      ${barCnf}
       else
         if [ "$rkey" != "debug" ] ; then
-          sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g" ${varPath}/${barName}
+          sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g" ${vBs}/${barName}
           sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g" ${barCnf}
         fi
       fi
@@ -313,10 +320,10 @@ up_action() {
         ###
 
         sleep 3
-        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}/g" ${varPath}/${barName}
-        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}/g"   ${varPath}/${barName}
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"       ${varPath}/${barName}
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g"       ${varPath}/${barName}
+        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}/g" ${vBs}/${barName}
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}/g"   ${vBs}/${barName}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"       ${vBs}/${barName}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g"       ${vBs}/${barName}
         sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}/g" ${barCnf}
         sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}/g"   ${barCnf}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"       ${barCnf}
@@ -358,10 +365,10 @@ up_action() {
         ###
 
         sleep 3
-        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"                        ${varPath}/${barName}
-        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${varPath}/${barName}
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"        ${varPath}/${barName}
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g"        ${varPath}/${barName}
+        sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"                        ${vBs}/${barName}
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${vBs}/${barName}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"        ${vBs}/${barName}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g"        ${vBs}/${barName}
         sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g"                        ${barCnf}
         sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"        ${barCnf}
@@ -397,30 +404,30 @@ up_action() {
       || [ "${_L_VMFAMILY}" = "VS" ] ; then
       _DO_NOTHING=YES
     else
-      mkdir -p ${varPath}/old-firewall-monitor/${_NOW}
+      mkdir -p ${vBs}/old-firewall-monitor/${_NOW}
       mv -f /var/xdrago/monitor/*.log \
-        ${varPath}/old-firewall-monitor/${_NOW}/ &> /dev/null
+        ${vBs}/old-firewall-monitor/${_NOW}/ &> /dev/null
       rm -f /var/xdrago/monitor/* &> /dev/null
     fi
     if [ "${cmmand}" = "up-head" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"   ${varPath}/${barName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"   ${vBs}/${barName}
     elif [ "${cmmand}" = "up-modern" ] ; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"   ${varPath}/${barName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"   ${vBs}/${barName}
     else
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"  ${varPath}/${barName}
-      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=${branch}/g" ${varPath}/${barName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"  ${vBs}/${barName}
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=${branch}/g" ${vBs}/${barName}
     fi
     if [ "${cmmand}" = "up-head" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"  ${varPath}/${barName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"  ${vBs}/${barName}
     elif [ "${cmmand}" = "up-modern" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"   ${varPath}/${barName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"   ${vBs}/${barName}
     elif [ "${cmmand}" = "up-cluster" ] ; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g" ${varPath}/${barName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g" ${vBs}/${barName}
     else
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"  ${varPath}/${barName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"  ${vBs}/${barName}
     fi
-    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"              ${varPath}/${barName}
-    sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"  ${varPath}/${barName}
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"              ${vBs}/${barName}
+    sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${barName}
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -467,7 +474,7 @@ up_action() {
       if [ "$_THIS_RV" = "lenny" ] \
         && [ -e "${barCnf}" ] ; then
         sed -i "s/^_LENNY_TO_SQUEEZE=.*/_LENNY_TO_SQUEEZE=YES/g" \
-          ${varPath}/${barName}
+          ${vBs}/${barName}
         sed -i "s/^_LENNY_TO_SQUEEZE.*//g" ${barCnf}
         sed -i "/^$/d" ${barCnf}
         echo "_LENNY_TO_SQUEEZE=YES" >> ${barCnf}
@@ -476,13 +483,13 @@ up_action() {
         && [ -e "/etc/init.d/tomcat" ] \
         && [ -e "${barCnf}" ] ; then
         sed -i "s/^_TOMCAT_TO_JETTY=.*/_TOMCAT_TO_JETTY=YES/g" \
-          ${varPath}/${barName}
+          ${vBs}/${barName}
         sed -i "s/^_TOMCAT_TO_JETTY.*//g" ${barCnf}
         sed -i "/^$/d" ${barCnf}
         echo "_TOMCAT_TO_JETTY=YES" >> ${barCnf}
       fi
     fi
-    if [ -e "${varPath}/${barName}" ] ; then
+    if [ -e "${vBs}/${barName}" ] ; then
       if [ "${cmmand}" = "up-cluster" ] ; then
         if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
           && [ ! -e "/root/.dbhd.clstr.cnf" ] \
@@ -521,24 +528,24 @@ up_action() {
         echo "Starting the upgrade in silent mode now..."
         echo
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g" ${barCnf}
-        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" ${varPath}/${barName}
+        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" ${vBs}/${barName}
         if [ "${silent}" = "system" ] ; then
           touch /var/run/boa_system_wait.pid
           if [ "${cmmand}" = "up-legacy" ] ; then
-            sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"     ${varPath}/${barName}
+            sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"     ${vBs}/${barName}
             sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"     ${barCnf}
           else
             if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
               && [ -d "/var/aegir/config/server_master/nginx/subdir.d" ] ; then
-              sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"   ${varPath}/${barName}
+              sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"   ${vBs}/${barName}
               sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g"   ${barCnf}
             else
               if [[ "${_CHECK_HOST}" =~ "v55.lon." ]] \
                 || [[ "${_CHECK_HOST}" =~ ".lon1.h" ]] ; then
-                sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" ${varPath}/${barName}
+                sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" ${vBs}/${barName}
                 sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" ${barCnf}
               else
-                sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"  ${varPath}/${barName}
+                sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"  ${vBs}/${barName}
                 sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"  ${barCnf}
               fi
             fi
@@ -548,13 +555,13 @@ up_action() {
           sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" ${barCnf}
           sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"   ${barCnf}
         fi
-        bash ${varPath}/${barName} >${_UP_LOG} 2>&1
+        bash ${vBs}/${barName} >${_UP_LOG} 2>&1
         check_report
       else
         sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" ${barCnf}
         sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"   ${barCnf}
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                     ${barCnf}
-        bash ${varPath}/${barName}
+        bash ${vBs}/${barName}
       fi
     fi
   else
@@ -579,8 +586,8 @@ up_start() {
     touch /var/run/boa_run.pid
     touch /var/run/boa_wait.pid
     mkdir -p ${_LOG_DIR}
-    cd ${varPath}
-    rm -f ${varPath}/BARRACUDA.sh*
+    cd ${vBs}
+    rm -f ${vBs}/BARRACUDA.sh*
   fi
   if [ -e "/opt/local/bin/php" ] \
     || [ -e "/opt/local/bin/pear" ] \
@@ -599,7 +606,7 @@ up_finish() {
   rm -f /var/run/boa_system_wait.pid
   rm -f /var/run/manage_ltd_users.pid
   rm -f /var/run/manage_rvm_users.pid
-  rm -f ${varPath}/BARRACUDA.sh*
+  rm -f ${vBs}/BARRACUDA.sh*
   rm -f /root/BOA.sh*
   rm -f /root/.bashrc.bak*
   if [ -e "/opt/local/bin/php" ] \
@@ -617,11 +624,10 @@ up_finish() {
   echo Bye
   echo
   if [ "$rkey" = "auto" ] || [ "${_NEEDS_UPDATE}" = "YES" ] ; then
-    rm -f ${varPath}/BOA.sh.txt-*
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-      "http://files.aegir.cc/BOA.sh.txt" -o ${varPath}/BOA.sh.txt-${_NOW}
-    exec bash ${varPath}/BOA.sh.txt-${_NOW} &> /dev/null
-    rm -f ${varPath}/BOA.sh.txt-${_NOW}
+    rm -f ${vBs}/BOA.sh.txt-*
+    ${crlGet} "http://files.aegir.cc/BOA.sh.txt" -o ${vBs}/BOA.sh.txt-${_NOW}
+    exec bash ${vBs}/BOA.sh.txt-${_NOW} &> /dev/null
+    rm -f ${vBs}/BOA.sh.txt-${_NOW}
   fi
   exit 0
 }
@@ -637,27 +643,23 @@ set_pin_priority() {
     if [ "$_THIS_OS" = "Debian" ] ; then
       _THIS_RV=$(grep "6.0" /etc/issue.net 2>&1)
       if [[ "$_THIS_RV" =~ "6.0" ]] ; then
-        curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-          "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
+        ${crlGet} "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
           -o /etc/apt/preferences
       else
-        curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-          "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" \
+        ${crlGet} "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" \
           -o /etc/apt/preferences
       fi
     elif [ "$_THIS_OS" = "Ubuntu" ] ; then
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-        "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
+      ${crlGet} "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
         -o /etc/apt/preferences
     fi
   fi
 }
 
 check_wrapper() {
-  rm -f ${varPath}/$(basename "$0")-now-*
-  _THIS_FILE="${varPath}/$(basename "$0")-now-${_NOW}"
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-    "${urlHmr}/tools/bin/$(basename "$0")" -o ${_THIS_FILE}
+  rm -f ${vBs}/$(basename "$0")-now-*
+  _THIS_FILE="${vBs}/$(basename "$0")-now-${_NOW}"
+  ${crlGet} "${urlHmr}/tools/bin/$(basename "$0")" -o ${_THIS_FILE}
   if [ ! -e "${_THIS_FILE}" ] ; then
     echo "I can not download required installers \
       from files.aegir.cc at the moment."
@@ -676,8 +678,8 @@ check_wrapper() {
 
 check_dns_curl() {
   if [ ! -e "/etc/resolv.conf" ] ; then
-    if [ -e "${varPath}/resolv.conf.vanilla" ] ; then
-      cat ${varPath}/resolv.conf.vanilla >/etc/resolv.conf
+    if [ -e "${vBs}/resolv.conf.vanilla" ] ; then
+      cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
     fi
     echo "nameserver 8.8.8.8" >>/etc/resolv.conf
     echo "nameserver 8.8.4.4" >>/etc/resolv.conf
@@ -718,7 +720,7 @@ check_root() {
     echo >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
   else
-    echo "ERROR: This script should be ran as a root user!"
+    echo "ERROR: This script should be ran as a root user"
     clean_pid_exit
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -769,8 +771,7 @@ proceed() {
     _SCRIPT_URL="$rgUrl/cluster/${barName}"
     cmmand="up-cluster"
   fi
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-    ${_SCRIPT_URL} -o ${barName}
+  ${crlGet} ${_SCRIPT_URL} -o ${barName}
   up_action
   up_finish
 }
