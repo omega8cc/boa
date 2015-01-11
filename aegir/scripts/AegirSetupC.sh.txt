@@ -201,7 +201,7 @@ mrun() {
 #
 # Extract archive.
 extract_archive() {
-  if [ ! -z $1 ] ; then
+  if [ ! -z "$1" ] ; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
       *.tar.gz)    tar xzf $1    ;;
@@ -222,16 +222,16 @@ extract_archive() {
 #
 # Download and extract from dev/contrib mirror.
 get_dev_contrib() {
-  if [ ! -z $1 ] ; then
-    curl $crlGet "http://files.aegir.cc/dev/contrib/$1"
+  if [ ! -z "$1" ] ; then
+    curl $crlGet "http://files.aegir.cc/dev/contrib/$1" -o "$1"
     extract_archive "$1"
   fi
 }
 #
 # Download and extract from distro.
 get_distro_ext() {
-  if [ ! -z $1 ] ; then
-    curl $crlGet "http://files.aegir.cc/distro/$1"
+  if [ ! -z "$1" ] ; then
+    curl $crlGet "http://files.aegir.cc/distro/$1" -o "$1"
     extract_archive "$1"
   fi
 }
