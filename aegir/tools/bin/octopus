@@ -301,7 +301,7 @@ up_one() {
         sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${octCnf}
       fi
     fi
-    if [ -e " ${vBs}/${tocName}" ] ; then
+    if [ -e "${vBs}/${tocName}" ] ; then
       if [ -e "${User}/.drush/sys/provision" ] ; then
         _IS_OLD=$(find ${User}/.drush/sys/provision/ \
           -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
