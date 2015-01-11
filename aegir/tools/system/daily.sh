@@ -39,7 +39,7 @@ extract_archive() {
 
 get_dev_ext() {
   if [ ! -z $1 ] ; then
-    curl "${crlGet}" "http://files.aegir.cc/dev/HEAD/$1"
+    curl $crlGet "http://files.aegir.cc/dev/HEAD/$1"
     extract_archive "$1"
   fi
 }
@@ -2621,7 +2621,7 @@ if [ -e "/root/.barracuda.cnf" ] ; then
 fi
 if [ -z "$_SKYNET_MODE" ] || [ "$_SKYNET_MODE" = "ON" ] ; then
   rm -f /var/backups/BOA.sh.txt-*
-  curl "${crlGet}" "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-${_NOW}
+  curl $crlGet "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-${_NOW}
   bash /var/backups/BOA.sh.txt-${_NOW} &> /dev/null
   rm -f /var/backups/BOA.sh.txt-${_NOW}
 fi
