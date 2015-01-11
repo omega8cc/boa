@@ -606,7 +606,9 @@ octopus_cnf() {
     echo "_CLIENT_CORES=\"${_CLIENT_CORES}\""                   >> ${octCnf}
     echo "###"                                                  >> ${octCnf}
   else
-    msg "INFO: Reading your ${octCnf} config file"
+    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+      msg "INFO: Reading your ${octCnf} config file"
+    fi
     sleep 1
     _PHP_FPM_WORKERS_TEST=$(grep _PHP_FPM_WORKERS ${octCnf} 2>&1)
     if [[ "${_PHP_FPM_WORKERS_TEST}" =~ "_PHP_FPM_WORKERS" ]] ; then
@@ -1824,8 +1826,10 @@ else
 fi
 #
 #
-echo " "
-msg "START -> checkpoint: "
+if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  echo " "
+  msg "START -> checkpoint: "
+fi
 if [ "${_STATUS}" = "INIT" ] ; then
   cat <<EOF
 
@@ -1851,9 +1855,10 @@ else
   * This Octopus options are listed as ${_CLIENT_OPTION} / ${_CLIENT_SUBSCR} / ${_CLIENT_CORES} C
 
 EOF
+  else
+    echo " "
   fi
 fi
-echo " "
 if prompt_yes_no "Do you want to proceed?" ; then
   true
 else
@@ -1902,7 +1907,9 @@ disable_chattr() {
 }
 #
 
-msg "8s before we will continue..."
+if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  msg "8s before we will continue..."
+fi
 sleep 8
 rm -f /tmp/cache.inc*
 rm -f /opt/tmp/status-*
