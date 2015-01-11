@@ -25,11 +25,12 @@ else
   _GPG=gpg
 fi
 urlHmr="http://files.aegir.cc/versions/master/aegir"
+crlGet="curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 
 ###-------------SYSTEM-----------------###
 
 extract_archive() {
-  if [ ! -z $1 ] ; then
+  if [ ! -z "$1" ] ; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
       *.tar.gz)    tar xzf $1    ;;
@@ -49,9 +50,8 @@ extract_archive() {
 }
 
 get_dev_ext() {
-  if [ ! -z $1 ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 \
-      -A iCab "http://files.aegir.cc/dev/HEAD/$1"
+  if [ ! -z "$1" ] ; then
+    {crlGet} "http://files.aegir.cc/dev/HEAD/$1"
     extract_archive "$1"
   fi
 }
@@ -82,7 +82,7 @@ enable_chattr() {
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
     if [ ! -e "${_U_HD}/.ctrl.240dev.txt" ] ; then
-      if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ] ; then
+      if [[ "${_HOST_TEST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ] ; then
         rm -f -r ${_U_HD}/*
         rm -f -r ${_U_HD}/.*
       else
@@ -109,8 +109,7 @@ enable_chattr() {
           ${_U_HD}/usr/clean_missing_modules
       fi
       if [ ! -L "${_U_HD}/usr/drupalgeddon" ] ; then
-        ln -sf /data/disk/${_USER}/.drush/usr/drupalgeddon \
-          ${_U_HD}/usr/drupalgeddon
+        ln -sf ${usrDgn} ${_U_HD}/usr/drupalgeddon
       fi
       if [ ! -L "${_U_HD}/usr/drush_ecl" ] ; then
         ln -sf /data/disk/${_USER}/.drush/usr/drush_ecl ${_U_HD}/usr/drush_ecl
@@ -136,7 +135,7 @@ enable_chattr() {
       rm -f ${_U_II}
       if [ ! -z "$_T_CLI_VRN" ] ; then
         _USE_PHP_CLI="$_T_CLI_VRN"
-        echo "_USE_PHP_CLI is $_USE_PHP_CLI for $1 at ${_USER} WTF \
+        echo "_USE_PHP_CLI is ${_USE_PHP_CLI} for $1 at ${_USER} WTF \
           _T_CLI_VRN is $_T_CLI_VRN"
       else
         _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
@@ -152,17 +151,17 @@ enable_chattr() {
           _USE_PHP_CLI=5.3
         fi
       fi
-      echo _USE_PHP_CLI is $_USE_PHP_CLI for $1
-      if [ "$_USE_PHP_CLI" = "5.5" ] ; then
+      echo _USE_PHP_CLI is ${_USE_PHP_CLI} for $1
+      if [ "${_USE_PHP_CLI}" = "5.5" ] ; then
         cp -af /opt/php55/lib/php.ini ${_U_II}
         _U_INI=55
-      elif [ "$_USE_PHP_CLI" = "5.6" ] ; then
+      elif [ "${_USE_PHP_CLI}" = "5.6" ] ; then
         cp -af /opt/php56/lib/php.ini ${_U_II}
         _U_INI=56
-      elif [ "$_USE_PHP_CLI" = "5.4" ] ; then
+      elif [ "${_USE_PHP_CLI}" = "5.4" ] ; then
         cp -af /opt/php54/lib/php.ini ${_U_II}
         _U_INI=54
-      elif [ "$_USE_PHP_CLI" = "5.3" ] ; then
+      elif [ "${_USE_PHP_CLI}" = "5.3" ] ; then
         cp -af /opt/php53/lib/php.ini ${_U_II}
         _U_INI=53
       fi
@@ -192,11 +191,11 @@ enable_chattr() {
         _INI=${_INI//\//\\\/}
         _QTP=${_U_TP//\//\\\/}
         sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_U_II}
-        sed -i "s/.*error_reporting =.*/error_reporting = 1/g"             ${_U_II}
-        sed -i "s/.*session.save_path =.*/session.save_path = $_QTP/g"     ${_U_II}
-        sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = $_QTP/g" ${_U_II}
-        sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               ${_U_II}
-        sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           ${_U_II}
+        sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
+        sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_U_II}
+        sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_U_II}
+        sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
+        sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
         echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
         echo > ${_U_HD}/.ctrl.240dev.txt
       fi
@@ -329,27 +328,25 @@ disable_chattr() {
     chattr -i /home/$1/.drush/*.ini  &> /dev/null
     if [ "$1" != "${_USER}.ftp" ] ; then
       if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] \
-        && [ -d "/data/disk/${_USER}/.drush/usr/drupalgeddon" ] ; then
-        ln -sf /data/disk/${_USER}/.drush/usr/drupalgeddon \
-          /home/$1/.drush/usr/drupalgeddon
+        && [ -d "${usrDgn}" ] ; then
+        ln -sf ${usrDgn} /home/$1/.drush/usr/drupalgeddon
       fi
     else
-      if [ ! -d "/data/disk/${_USER}/.drush/usr/drupalgeddon" ] \
+      if [ ! -d "${usrDgn}" ] \
         || [ ! -e "/data/disk/${_USER}/static/control/.drupalgeddon.in.015.pid" ] ; then
-        rm -f /data/disk/${_USER}/.drush/usr/drupalgeddon &> /dev/null
+        rm -f ${usrDgn} &> /dev/null
         cd /data/disk/${_USER}/.drush/usr
         get_dev_ext "drupalgeddon.tar.gz"
-        find /data/disk/${_USER}/.drush/usr/drupalgeddon -type d -exec chmod 0750 {} \; &> /dev/null
-        find /data/disk/${_USER}/.drush/usr/drupalgeddon -type f -exec chmod 0640 {} \; &> /dev/null
-        chown -R ${_USER}:users /data/disk/${_USER}/.drush/usr/drupalgeddon
+        find ${usrDgn} -type d -exec chmod 0750 {} \; &> /dev/null
+        find ${usrDgn} -type f -exec chmod 0640 {} \; &> /dev/null
+        chown -R ${_USER}:users ${usrDgn}
         rm -f /data/disk/${_USER}/static/control/.drupalgeddon.in.00*.pid
         touch /data/disk/${_USER}/static/control/.drupalgeddon.in.015.pid
       fi
       if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] \
-        && [ -d "/data/disk/${_USER}/.drush/usr/drupalgeddon" ] ; then
+        && [ -d "${usrDgn}" ] ; then
         rm -f -r /home/$1/.drush/usr/drupalgeddon
-        ln -sf /data/disk/${_USER}/.drush/usr/drupalgeddon \
-          /home/$1/.drush/usr/drupalgeddon
+        ln -sf ${usrDgn} /home/$1/.drush/usr/drupalgeddon
       fi
     fi
   fi
@@ -479,17 +476,17 @@ ok_create_user() {
         _PWD_CHARS=128
       fi
     fi
-    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ ${_PWD_CHARS} -gt "8" ] ; then
-      _ESC_LUPASS=$(randpass ${_PWD_CHARS} alnum 2>&1)
-      _ESC_LUPASS=$(echo -n ${_ESC_LUPASS} | tr -d "\n" 2>&1)
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ] ; then
+      _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+      _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
     fi
-    if [ -z "${_ESC_LUPASS}" ] || [ $_LEN_LUPASS -lt 9 ] ; then
+    if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ] ; then
       _ESC_LUPASS=$(pwgen -v -s -1 2>&1)
-      _ESC_LUPASS=$(echo -n ${_ESC_LUPASS} | tr -d "\n" 2>&1)
+      _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
       _ESC_LUPASS=$(sanitize_string "${_ESC_LUPASS}" 2>&1)
     fi
-    ph=$(mkpasswd -m sha-512 ${_ESC_LUPASS} \
+    ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" \
       $(openssl rand -base64 16 | tr -d '+=' | head -c 16) 2>&1)
     usermod -p $ph ${usrLtd}
     passwd -w 7 -x 90 ${usrLtd}
@@ -651,11 +648,11 @@ update_php_cli_local_ini() {
       _INI=${_INI//\//\\\/}
       _QTP=${_U_TP//\//\\\/}
       sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_U_II}
-      sed -i "s/.*error_reporting =.*/error_reporting = 1/g"             ${_U_II}
-      sed -i "s/.*session.save_path =.*/session.save_path = $_QTP/g"     ${_U_II}
-      sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = $_QTP/g" ${_U_II}
-      sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               ${_U_II}
-      sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           ${_U_II}
+      sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
+      sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_U_II}
+      sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_U_II}
+      sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
+      sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
       echo > ${_U_HD}/.ctrl.240dev.txt
     fi
@@ -668,26 +665,26 @@ update_php_cli_drush() {
   _DRUSH_FILE="/data/disk/${_USER}/tools/drush/drush.php"
   if [ "$_T_CLI_VRN" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-    _L_PHP_CLI=/opt/php55/bin
+    _T_CLI=/opt/php55/bin
   elif [ "$_T_CLI_VRN" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-    _L_PHP_CLI=/opt/php56/bin
+    _T_CLI=/opt/php56/bin
   elif [ "$_T_CLI_VRN" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php54\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-    _L_PHP_CLI=/opt/php54/bin
+    _T_CLI=/opt/php54/bin
   elif [ "$_T_CLI_VRN" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php53\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-    _L_PHP_CLI=/opt/php53/bin
+    _T_CLI=/opt/php53/bin
   else
-    _L_PHP_CLI=/foo/bar
+    _T_CLI=/foo/bar
   fi
-  if [ -x "${_L_PHP_CLI}/php" ] ; then
-    _DRUSHCMD="${_L_PHP_CLI}/php /data/disk/${_USER}/tools/drush/drush.php"
+  if [ -x "${_T_CLI}/php" ] ; then
+    _DRUSHCMD="${_T_CLI}/php /data/disk/${_USER}/tools/drush/drush.php"
     if [ -e "/data/disk/${_USER}/aegir.sh" ] ; then
       rm -f /data/disk/${_USER}/aegir.sh
     fi
     touch /data/disk/${_USER}/aegir.sh
-    echo -e "#!/bin/bash\n\nPATH=.:${_L_PHP_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n${_DRUSHCMD} \
+    echo -e "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n${_DRUSHCMD} \
       '@hostmaster' hosting-dispatch\ntouch /data/disk/${_USER}/${_USER}-task.done" \
       | tee -a /data/disk/${_USER}/aegir.sh >/dev/null 2>&1
     chown ${_USER}:users /data/disk/${_USER}/aegir.sh &> /dev/null
@@ -704,9 +701,9 @@ tune_fpm_workers() {
     _VMFAMILY="VZ"
   elif [ -e "/proc/bean_counters" ] ; then
     _VMFAMILY="VZ"
-  elif [[ "$_HOST_TEST" =~ ".host8." ]] && [ -e "/boot/grub/menu.lst" ] ; then
+  elif [[ "${_HOST_TEST}" =~ ".host8." ]] && [ -e "/boot/grub/menu.lst" ] ; then
     _VMFAMILY="TG"
-  elif [[ "$_HOST_TEST" =~ ".host8." ]] && [ -e "/boot/grub/grub.cfg" ] ; then
+  elif [[ "${_HOST_TEST}" =~ ".host8." ]] && [ -e "/boot/grub/grub.cfg" ] ; then
     _VMFAMILY="TG"
   else
     _VMFAMILY="XEN"
@@ -723,13 +720,13 @@ tune_fpm_workers() {
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   _USE=$(( _RAM / 4 ))
-  if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
+  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "1024" ] ; then
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ] ; then
       _L_PHP_FPM_WORKERS=12
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
-  elif [ "$_USE" -ge "1024" ] ; then
+  elif [ "${_USE}" -ge "1024" ] ; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ] ; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ] ; then
         _L_PHP_FPM_WORKERS=24
@@ -901,11 +898,11 @@ update_web_user() {
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
       _INI=${_INI//\//\\\/}
       _QTP=${_T_TP//\//\\\/}
-      sed -i "s/.*open_basedir =.*/${_INI}/g"                            ${_T_II}
-      sed -i "s/.*session.save_path =.*/session.save_path = $_QTP/g"     ${_T_II}
-      sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = $_QTP/g" ${_T_II}
-      sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               ${_T_II}
-      sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           ${_T_II}
+      sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_T_II}
+      sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_T_II}
+      sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_T_II}
+      sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_T_II}
+      sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_T_II}
       rm -f ${_T_HD}/.ctrl.php*
       echo > ${_T_HD}/.ctrl.php${_T_PV}.txt
     fi
@@ -1012,7 +1009,7 @@ switch_php() {
         if [ "$_T_CLI_VRN" != "${_PHP_CLI_VERSION}" ] ; then
           _PHP_CLI_UPDATE=YES
           update_php_cli_drush
-          if [ -x "${_L_PHP_CLI}/php" ] ; then
+          if [ -x "${_T_CLI}/php" ] ; then
             update_php_cli_local_ini
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_T_CLI_VRN/g" \
               /root/.${_USER}.octopus.cnf &> /dev/null
@@ -1160,7 +1157,7 @@ switch_php() {
           tune_fpm_workers
           _LIM_FPM="${_L_PHP_FPM_WORKERS}"
           if [ "$_LIM_FPM" -lt "24" ] ; then
-            if [[ "$_HOST_TEST" =~ ".host8." ]] \
+            if [[ "${_HOST_TEST}" =~ ".host8." ]] \
               || [ "${_VMFAMILY}" = "VS" ] ; then
               _LIM_FPM=24
             fi
@@ -1221,7 +1218,7 @@ switch_php() {
             sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
               /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
           else
-            if [[ "$_HOST_TEST" =~ ".host8." ]] \
+            if [[ "${_HOST_TEST}" =~ ".host8." ]] \
               || [ "${_VMFAMILY}" = "VS" ] \
               || [ -e "/root/.host8.cnf" ] ; then
               _DO_NOTHING=YES
@@ -1333,6 +1330,7 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     _WEB="${_USER}.web"
     octInc="/data/disk/${_USER}/config/includes"
     octTpl="/data/disk/${_USER}/.drush/sys/provision/http/Provision/Config/Nginx"
+    usrDgn="/data/disk/${_USER}/.drush/usr/drupalgeddon"
     rm -f /data/disk/${_USER}/*.php* &> /dev/null
     chmod 0440 /data/disk/${_USER}/.drush/*.php &> /dev/null
     chmod 0400 /data/disk/${_USER}/.drush/drushrc.php &> /dev/null

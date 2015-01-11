@@ -57,19 +57,22 @@ if [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
   _THIS_DB_HOST=$(uname -n 2>&1)
 fi
 if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
-  _L_PHP_CLI=/opt/php55/bin
+  _T_CLI=/opt/php55/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
-  _L_PHP_CLI=/opt/php56/bin
+  _T_CLI=/opt/php56/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
-  _L_PHP_CLI=/opt/php54/bin
+  _T_CLI=/opt/php54/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
-  _L_PHP_CLI=/opt/php53/bin
+  _T_CLI=/opt/php53/bin
 fi
-_DRUSHCMD="${_L_PHP_CLI}/php ${_ROOT}/drush/drush.php"
+_DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
 #
 SHELL=/bin/bash
-PATH=${_L_PHP_CLI}:/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 urlStb="http://files.aegir.cc/versions/stable"
+crlGet="curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+gitHub="git://github.com/omega8cc"
+gCb="git clone --branch"
 
 
 ###---### Functions.
@@ -138,11 +141,11 @@ update_php_cli_local_ini() {
       _INI=${_INI//\//\\\/}
       _QTP=${_U_TP//\//\\\/}
       sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_U_II}
-      sed -i "s/.*error_reporting =.*/error_reporting = 1/g"             ${_U_II}
-      sed -i "s/.*session.save_path =.*/session.save_path = $_QTP/g"     ${_U_II}
-      sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = $_QTP/g" ${_U_II}
-      sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               ${_U_II}
-      sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           ${_U_II}
+      sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
+      sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_U_II}
+      sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_U_II}
+      sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
+      sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
       echo > ${_U_HD}/.ctrl.240dev.txt
     fi
@@ -170,7 +173,7 @@ update_php_cli_drush() {
 #
 # Extract archive.
 extract_archive() {
-  if [ ! -z $1 ] ; then
+  if [ ! -z "$1" ] ; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
       *.tar.gz)    tar xzf $1    ;;
@@ -191,9 +194,8 @@ extract_archive() {
 #
 # Download and extract from dev.
 get_dev_ext() {
-  if [ ! -z $1 ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab \
-      "http://files.aegir.cc/dev/${_AEGIR_XTS_VERSION}/$1"
+  if [ ! -z "$1" ] ; then
+    ${crlGet} "http://files.aegir.cc/dev/${_AEGIR_XTS_VERSION}/$1"
     extract_archive "$1"
   fi
 }
@@ -248,22 +250,29 @@ else
     rm -f -r ${_ROOT}/.drush/{sys,xts,usr}
     rm -f -r ${_ROOT}/.drush/{provision,drush_make}
     mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
-    git clone --branch ${_BRANCH_PRN} git://github.com/omega8cc/provision.git ${_ROOT}/.drush/sys/provision        &> /dev/null
-    git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git ${_ROOT}/.drush/xts/provision_cdn       &> /dev/null
-    git clone --branch 7.x-1.x-dev git://github.com/omega8cc/drupalgeddon.git ${_ROOT}/.drush/usr/drupalgeddon     &> /dev/null
-    git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git ${_ROOT}/.drush/usr/drush_ecl               &> /dev/null
-    git clone --branch 7.x-1.x git://github.com/omega8cc/security_review.git ${_ROOT}/.drush/xts/security_review   &> /dev/null
-    git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git ${_ROOT}/.drush/xts/provision_boost   &> /dev/null
-    git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git ${_ROOT}/.drush/usr/registry_rebuild &> /dev/null
-    rm -f -r ${_ROOT}/.drush/*/.git
-    rm -f -r ${_ROOT}/.drush/*/*/.git
-    cd ${_ROOT}/.drush/usr
+    rD="${_ROOT}/.drush"
+    ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
+      ${rD}/sys/provision &> /dev/null
+    ${gCb} 6.x-2.x ${gitHub}/provision_cdn.git \
+      ${rD}/xts/provision_cdn &> /dev/null
+    ${gCb} 7.x-1.x-dev ${gitHub}/drupalgeddon.git \
+      ${rD}/usr/drupalgeddon &> /dev/null
+    ${gCb} 7.x-1.x ${gitHub}/drush_ecl.git \
+      ${rD}/usr/drush_ecl &> /dev/null
+    ${gCb} 7.x-1.x ${gitHub}/security_review.git \
+      ${rD}/xts/security_review &> /dev/null
+    ${gCb} 7.x-2.x ${gitHub}/provision_boost.git \
+      ${rD}/xts/provision_boost &> /dev/null
+    ${gCb} 7.x-2.x ${gitHub}/registry_rebuild.git \
+      ${rD}/usr/registry_rebuild &> /dev/null
+    rm -f -r ${rD}/*/.git
+    rm -f -r ${rD}/*/*/.git
+    cd ${rD}/usr
     get_dev_ext "clean_missing_modules.tar.gz"
   else
     msg "INFO: Downloading Drush and Provision extensions..."
     cd ${_ROOT}/.drush/sys
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-      "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
+    ${crlGet} "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
     cd ${_ROOT}/.drush/usr
     get_dev_ext "clean_missing_modules.tar.gz"
     get_dev_ext "drupalgeddon.tar.gz"
@@ -279,21 +288,21 @@ fi
 msg "INFO: Installing the frontend"
 ${_DRUSHCMD} cache-clear drush >${_ROOT}/install.log 2>&1
 rm -f -r ${_ROOT}/.tmp/cache
-_HOSTMASTER_ROOT="${_ROOT}/hostmaster-${_AEGIR_VERSION}"
+_HM_ROOT="${_ROOT}/hostmaster-${_AEGIR_VERSION}"
 
 ${_DRUSHCMD} hostmaster-install \
   --aegir_host=${_AEGIR_HOST} \
   --aegir_db_user=${_AEGIR_DB_USER} \
   --aegir_db_pass=${_ESC_APASS} \
   --aegir_root=${_ROOT} \
-  --root=$_HOSTMASTER_ROOT \
+  --root=${_HM_ROOT} \
   --version=${_AEGIR_VERSION} $@
 
 mkdir -p /var/aegir/backups/system
 chmod 700 /var/aegir/backups/system
 _L_SYS="/var/aegir/backups/system/.${_AEGIR_DB_USER}.pass.txt"
-echo "${_ESC_APASS}" > $_L_SYS
-chmod 0600 $_L_SYS
+echo "${_ESC_APASS}" > ${_L_SYS}
+chmod 0600 ${_L_SYS}
 
 ###----------------------------------------###
 ###

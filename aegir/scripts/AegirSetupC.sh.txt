@@ -116,23 +116,23 @@ _WEBG=EDIT_WEBG
 #
 _USER=EDIT_USER
 _ROOT="/data/disk/${_USER}"
-_HOSTMASTER_ROOT="${_ROOT}/aegir/distro/${_HM_DISTRO}"
-_PREV_HOSTMASTER_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
+_HM_ROOT="${_ROOT}/aegir/distro/${_HM_DISTRO}"
+_PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
 _LOG=/var/backups/octopus-${_USER}-${_NOW}.log
 #
 if [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
   _THIS_DB_HOST=$(uname -n 2>&1)
 fi
 if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
-  _L_PHP_CLI=/opt/php55/bin
+  _T_CLI=/opt/php55/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
-  _L_PHP_CLI=/opt/php56/bin
+  _T_CLI=/opt/php56/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
-  _L_PHP_CLI=/opt/php54/bin
+  _T_CLI=/opt/php54/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
-  _L_PHP_CLI=/opt/php53/bin
+  _T_CLI=/opt/php53/bin
 fi
-_DRUSHCMD="${_L_PHP_CLI}/php ${_ROOT}/tools/drush/drush.php"
+_DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
 #
 if [ "${_PHP_FPM_VERSION}" = "5.5" ] && [ "${_PHP_CLI_VERSION}" = "5.5" ] ; then
   _D_8_ALLOW=YES
@@ -145,10 +145,12 @@ else
 fi
 #
 SHELL=/bin/bash
-PATH=${_L_PHP_CLI}:/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 urlDrp="http://ftp.drupal.org/files/projects"
 pthPch="/opt/tmp/boa/aegir/patches"
 urlPrt="https://drupal.org/project"
+crlGet="curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+
 
 ###---### Functions.
 #
@@ -199,7 +201,7 @@ mrun() {
 #
 # Extract archive.
 extract_archive() {
-  if [ ! -z $1 ] ; then
+  if [ ! -z "$1" ] ; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
       *.tar.gz)    tar xzf $1    ;;
@@ -220,18 +222,16 @@ extract_archive() {
 #
 # Download and extract from dev/contrib mirror.
 get_dev_contrib() {
-  if [ ! -z $1 ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab \
-      "http://files.aegir.cc/dev/contrib/$1"
+  if [ ! -z "$1" ] ; then
+    ${crlGet} "http://files.aegir.cc/dev/contrib/$1"
     extract_archive "$1"
   fi
 }
 #
 # Download and extract from distro.
 get_distro_ext() {
-  if [ ! -z $1 ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab \
-      "http://files.aegir.cc/distro/$1"
+  if [ ! -z "$1" ] ; then
+    ${crlGet} "http://files.aegir.cc/distro/$1"
     extract_archive "$1"
   fi
 }
@@ -396,8 +396,9 @@ prepare_drupal7_core() {
   if [ ! -e "${_D7_CORE_DIR}" ] ; then
     rm -f -r ${_D7_CORE_DIR}
     cd /data/all/000/core
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-      "http://files.aegir.cc/core/drupal-${_SMALLCORE7}.tar.gz" | tar -xzf -
+    ${crlGet} \
+      "http://files.aegir.cc/core/drupal-${_SMALLCORE7}.tar.gz" \
+      | tar -xzf -
     find ${_D7_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
     find ${_D7_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
     cd ${_D7_CORE_DIR}/
@@ -421,8 +422,9 @@ prepare_drupal8_core() {
   if [ ! -e "${_D8_CORE_DIR}" ] ; then
     rm -f -r ${_D8_CORE_DIR}
     cd /data/all/000/core
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-      "http://files.aegir.cc/core/drupal-${_SMALLCORE8}.tar.gz" | tar -xzf -
+    ${crlGet} \
+      "http://files.aegir.cc/core/drupal-${_SMALLCORE8}.tar.gz" \
+      | tar -xzf -
     find ${_D8_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
     find ${_D8_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
     cd ${_D8_CORE_DIR}/
@@ -439,8 +441,9 @@ prepare_dr8_dev_core() {
   if [ ! -e "${_D8_DEV_CORE_DIR}" ] ; then
     rm -f -r ${_D8_DEV_CORE_DIR}
     cd /data/all/000/core
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-      "http://files.aegir.cc/core/drupal-${_D8_DEV_COMMIT}.tar.gz" | tar -xzf -
+    ${crlGet} \
+      "http://files.aegir.cc/core/drupal-${_D8_DEV_COMMIT}.tar.gz" \
+      | tar -xzf -
     find ${_D8_DEV_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
     find ${_D8_DEV_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
     cd ${_D8_DEV_CORE_DIR}/
@@ -729,8 +732,9 @@ agov_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-                "${urlDrp}/$_REAL_PRNAME-7.x-${_AGOV}-core.tar.gz" | tar -xzf -
+              ${crlGet} \
+                "${urlDrp}/$_REAL_PRNAME-7.x-${_AGOV}-core.tar.gz" \
+                | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_AGOV}" ] ; then
                 mv $_REAL_PRNAME-7.x-${_AGOV} $_SHRD_PLNAME
               fi
@@ -778,8 +782,9 @@ commerce_7_1_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-                "${urlDrp}/$_REAL_PRNAME-7.x-${_COMMERCE1}-core.tar.gz" | tar -xzf -
+              ${crlGet} \
+                "${urlDrp}/$_REAL_PRNAME-7.x-${_COMMERCE1}-core.tar.gz" \
+                | tar -xzf -
               if [ -d "$_CORE/commerce-7.x-${_COMMERCE1}" ] ; then
                 mv commerce-7.x-${_COMMERCE1} $_SHRD_PLNAME
               elif [ -d "$_CORE/$_REAL_PRNAME-7.x-${_COMMERCE1}" ] ; then
@@ -828,8 +833,9 @@ commerce_7_2_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-                "${urlDrp}/$_REAL_PRNAME-7.x-${_COMMERCE2}-core.tar.gz" | tar -xzf -
+              ${crlGet} \
+                "${urlDrp}/$_REAL_PRNAME-7.x-${_COMMERCE2}-core.tar.gz" \
+                | tar -xzf -
               if [ -d "$_CORE/commerce-7.x-${_COMMERCE2}" ] ; then
                 mv commerce-7.x-${_COMMERCE2} $_SHRD_PLNAME
               elif [ -d "$_CORE/$_REAL_PRNAME-7.x-${_COMMERCE2}" ] ; then
@@ -877,8 +883,9 @@ commons_6_install() {
                 prepare_drupal6_core
               fi
               cd $_CORE
-              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-                "${urlDrp}/$_REAL_PRNAME-6.x-${_COMMONS2}-core.tar.gz" | tar -xzf -
+              ${crlGet} \
+                "${urlDrp}/$_REAL_PRNAME-6.x-${_COMMONS2}-core.tar.gz" \
+                | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-6.x-${_COMMONS2}" ] ; then
                 mv $_CORE/commons-6.x-${_COMMONS2} $_SHRD_PLPATH
               fi
@@ -891,7 +898,7 @@ commons_6_install() {
                 "s/drupal_commons/commons/g" {} \; &> /dev/null
               rm -f -r $_SHRD_PLPATH/profiles/default
               nocore_d6_dist_clean
-              if [ ${_COMMONS2} = "2.21" ] ; then
+              if [ "${_COMMONS2}" = "2.21" ] ; then
                 cd $_SHRD_PRPATH/modules/contrib
                 rm -f -r {flag}
                 get_dev_contrib "flag-6.x-2.1.tar.gz"
@@ -940,8 +947,9 @@ commons_7_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-                "${urlDrp}/$_REAL_PRNAME-7.x-${_COMMONS3}-core.tar.gz" | tar -xzf -
+              ${crlGet} \
+                "${urlDrp}/$_REAL_PRNAME-7.x-${_COMMONS3}-core.tar.gz" \
+                | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_COMMONS3}" ] ; then
                 mv $_REAL_PRNAME-7.x-${_COMMONS3} $_SHRD_PLNAME
               fi
@@ -1208,8 +1216,9 @@ erpal_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-                "${urlDrp}/$_REAL_PRNAME-7.x-${_ERPAL}-core.tar.gz" | tar -xzf -
+              ${crlGet} \
+                "${urlDrp}/$_REAL_PRNAME-7.x-${_ERPAL}-core.tar.gz" \
+                | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_ERPAL}" ] ; then
                 mv $_REAL_PRNAME-7.x-${_ERPAL} $_SHRD_PLNAME
               fi
@@ -1322,8 +1331,9 @@ guardr_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-                "${urlDrp}/$_REAL_PRNAME-7.x-${_GUARDR}-core.tar.gz" | tar -xzf -
+              ${crlGet} \
+                "${urlDrp}/$_REAL_PRNAME-7.x-${_GUARDR}-core.tar.gz" \
+                | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_GUARDR}" ] ; then
                 mv $_REAL_PRNAME-7.x-${_GUARDR} $_SHRD_PLNAME
               fi
@@ -1370,14 +1380,15 @@ openacademy_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-                "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENACADEMY}-core.tar.gz" | tar -xzf -
+              ${crlGet} \
+                "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENACADEMY}-core.tar.gz" \
+                | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_OPENACADEMY}" ] ; then
                 mv $_REAL_PRNAME-7.x-${_OPENACADEMY} $_SHRD_PLNAME
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              if [ ${_OPENACADEMY} = "1.0" ] ; then
+              if [ "${_OPENACADEMY}" = "1.0" ] ; then
                 cd $_SHRD_PRPATH/modules/contrib
                 rm -f -r {image_resize_filter}
                 get_dev_contrib "image_resize_filter-7.x-1.14.tar.gz"
@@ -1421,8 +1432,9 @@ openatrium7_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-                "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENATRIUM7}-core.tar.gz" | tar -xzf -
+              ${crlGet} \
+                "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENATRIUM7}-core.tar.gz" \
+                | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_OPENATRIUM7}" ] ; then
                 mv $_REAL_PRNAME-7.x-${_OPENATRIUM7} $_SHRD_PLNAME
               fi
@@ -1468,8 +1480,9 @@ openblog_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-                "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENBLOG}-core.tar.gz" | tar -xzf -
+              ${crlGet} \
+                "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENBLOG}-core.tar.gz" \
+                | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_OPENBLOG}" ] ; then
                 mv $_REAL_PRNAME-7.x-${_OPENBLOG} $_SHRD_PLNAME
               fi
@@ -1513,8 +1526,9 @@ openchurch1_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-                "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENCHURCH1}-core.tar.gz" | tar -xzf -
+              ${crlGet} \
+                "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENCHURCH1}-core.tar.gz" \
+                | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_OPENCHURCH1}" ] ; then
                 mv $_REAL_PRNAME-7.x-${_OPENCHURCH1} $_SHRD_PLNAME
               fi
@@ -1559,8 +1573,9 @@ openchurch2_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-                "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENCHURCH2}-core.tar.gz" | tar -xzf -
+              ${crlGet} \
+                "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENCHURCH2}-core.tar.gz" \
+                | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_OPENCHURCH2}" ] ; then
                 mv $_REAL_PRNAME-7.x-${_OPENCHURCH2} $_SHRD_PLNAME
               fi
@@ -1605,8 +1620,9 @@ opendeals_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-                "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENDEALS}-core.tar.gz" | tar -xzf -
+              ${crlGet} \
+                "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENDEALS}-core.tar.gz" \
+                | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_OPENDEALS}" ] ; then
                 mv $_REAL_PRNAME-7.x-${_OPENDEALS} $_SHRD_PLNAME
               fi
@@ -1650,8 +1666,9 @@ openoutreach_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-                "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENOUTREACH}-core.tar.gz" | tar -xzf -
+              ${crlGet} \
+                "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENOUTREACH}-core.tar.gz" \
+                | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_OPENOUTREACH}" ] ; then
                 mv $_REAL_PRNAME-7.x-${_OPENOUTREACH} $_SHRD_PLNAME
               fi
@@ -1695,8 +1712,9 @@ openpublic_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-                "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENPUBLIC}-core.tar.gz" | tar -xzf -
+              ${crlGet} \
+                "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENPUBLIC}-core.tar.gz" \
+                | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_OPENPUBLIC}" ] ; then
                 mv $_REAL_PRNAME-7.x-${_OPENPUBLIC} $_SHRD_PLNAME
               fi
@@ -1749,7 +1767,7 @@ openscholar_install() {
               rm -f -r $_SHRD_PRPATH/modules/contrib/{entitycache,expire}
               sed -i "s/.*entitycache.*//g"  \
                 $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
-              if [ ${_OPENSCHOLAR} = "3.16.0" ] ; then
+              if [ "${_OPENSCHOLAR}" = "3.16.0" ] ; then
                 cd $_SHRD_PRPATH/modules/contrib
                 rm -f -r {biblio,boxes,entityreference_prepopulate,restws}
                 get_dev_contrib "biblio-7.x-1.0-rc7.tar.gz"
@@ -1796,14 +1814,15 @@ panopoly_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-                "${urlDrp}/$_REAL_PRNAME-7.x-${_PANOPOLY}-core.tar.gz" | tar -xzf -
+              ${crlGet} \
+                "${urlDrp}/$_REAL_PRNAME-7.x-${_PANOPOLY}-core.tar.gz" \
+                | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_PANOPOLY}" ] ; then
                 mv $_REAL_PRNAME-7.x-${_PANOPOLY} $_SHRD_PLNAME
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              if [ ${_PANOPOLY} = "1.4" ] ; then
+              if [ "${_PANOPOLY}" = "1.4" ] ; then
                 cd $_SHRD_PRPATH/modules/contrib
                 rm -f -r {fape}
                 get_dev_contrib "fape-7.x-1.2.tar.gz"
@@ -1855,14 +1874,15 @@ recruiter_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-                "${urlDrp}/$_REAL_PRNAME-7.x-${_RECRUITER}-core.tar.gz" | tar -xzf -
+              ${crlGet} \
+                "${urlDrp}/$_REAL_PRNAME-7.x-${_RECRUITER}-core.tar.gz" \
+                | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_RECRUITER}" ] ; then
                 mv $_REAL_PRNAME-7.x-${_RECRUITER} $_SHRD_PLNAME
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              if [ ${_RECRUITER} = "1.3" ] ; then
+              if [ "${_RECRUITER}" = "1.3" ] ; then
                 cd $_SHRD_PRPATH/modules
                 rm -f -r {i18n,rules}
                 get_dev_contrib "i18n-7.x-1.11.tar.gz"
@@ -1907,8 +1927,9 @@ restaurant_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab \
-                "${urlDrp}/$_REAL_PRNAME-7.x-${_RESTAURANT}-core.tar.gz" | tar -xzf -
+              ${crlGet} \
+                "${urlDrp}/$_REAL_PRNAME-7.x-${_RESTAURANT}-core.tar.gz" \
+                | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_RESTAURANT}" ] ; then
                 mv $_REAL_PRNAME-7.x-${_RESTAURANT} $_SHRD_PLNAME
               fi
@@ -2193,30 +2214,30 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
-  _THIS_HOSTMASTER="$_HOSTMASTER_ROOT/sites/${_DOMAIN}"
-  #msg "_THIS_HOSTMASTER is read static $_THIS_HOSTMASTER because \
+  _THIS_HM="${_HM_ROOT}/sites/${_DOMAIN}"
+  #msg "_THIS_HM is read static ${_THIS_HM} because \
   #  _LOCAL_STATUS is $_LOCAL_STATUS"
 else
   if [ -e "${_ROOT}/.drush/hostmaster.alias.drushrc.php" ] ; then
-    _THIS_HOSTMASTER=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
+    _THIS_HM=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
       | grep 'site_path' \
       | cut -d: -f2 \
       | awk '{ print $3}' 2>&1)
-    _THIS_HOSTMASTER=$(echo $_THIS_HOSTMASTER | sed "s/[\,']//g" 2>&1)
-    #msg "_THIS_HOSTMASTER is $_THIS_HOSTMASTER - \
+    _THIS_HM=$(echo ${_THIS_HM} | sed "s/[\,']//g" 2>&1)
+    #msg "_THIS_HM is ${_THIS_HM} - \
     #  read from ${_ROOT}/.drush/hostmaster.alias.drushrc.php"
   else
-    _THIS_HOSTMASTER="$_HOSTMASTER_ROOT/sites/${_DOMAIN}"
-    #msg "_THIS_HOSTMASTER is read static $_THIS_HOSTMASTER"
+    _THIS_HM="${_HM_ROOT}/sites/${_DOMAIN}"
+    #msg "_THIS_HM is read static ${_THIS_HM}"
   fi
 fi
-if [ -d "$_THIS_HOSTMASTER" ] ; then
-  #msg "_THIS_HOSTMASTER is $_THIS_HOSTMASTER (1)"
-  cd $_THIS_HOSTMASTER
+if [ -d "${_THIS_HM}" ] ; then
+  #msg "_THIS_HM is ${_THIS_HM} (1)"
+  cd ${_THIS_HM}
 else
-  _THIS_HOSTMASTER="${_PREV_HOSTMASTER_ROOT}/sites/${_DOMAIN}"
-  #msg "_THIS_HOSTMASTER is $_THIS_HOSTMASTER (2)"
-  cd $_THIS_HOSTMASTER
+  _THIS_HM="${_PREV_HM_ROOT}/sites/${_DOMAIN}"
+  #msg "_THIS_HM is ${_THIS_HM} (2)"
+  cd ${_THIS_HM}
 fi
 cp -af /opt/tmp/boa/aegir/helpers/make_platform.php.txt ./
 mv -f make_platform.php.txt make_platform.php &> /dev/null
@@ -2465,12 +2486,12 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
     | uniq \
     | awk '{ print $1}')
   for _PLATF in ${_PLATF_IMP}; do
-    if [[ $_PLATF =~ "aegir" ]] ; then
+    if [[ "${_PLATF}" =~ "aegir" ]] ; then
       _FOUND_HM=YES
     else
       _PLATF_NAME=${_PLATF##*/}
-      ${_DRUSHCMD} php-script make_platform "$_PLATF_NAME ($RANDOM)" default \
-        $_PLATF
+      ${_DRUSHCMD} php-script make_platform "${_PLATF_NAME} ($RANDOM)" default \
+        ${_PLATF}
     fi
   done
 fi

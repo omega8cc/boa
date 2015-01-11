@@ -12,25 +12,25 @@ if [ "${_SSL_INSTALLED}" = "${_OPENSSL_VRN}" ] ; then
 fi
 
 randpass() {
-  if [ $integer -ge 8 ] ; then
-    rkey="$integer"
+  if [ "${integer}" -ge "8" ] ; then
+    rkey="${integer}"
   else
     rkey=32
   fi
-  if [ "$kind" = "graph" ] ; then
+  if [ "${kind}" = "graph" ] ; then
     CHAR="[:graph:]"
     cat /dev/urandom \
       | tr -cd "$CHAR" \
       | head -c ${1:-$rkey} \
       | tr -d "\n"
-  elif [ "$kind" = "esc" ] ; then
+  elif [ "${kind}" = "esc" ] ; then
     CHAR="[:graph:]"
     cat /dev/urandom \
       | tr -cd "$CHAR" \
       | head -c ${1:-$rkey} \
       | tr -d "\n" \
       | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
-  elif [ "$kind" = "hash" ] ; then
+  elif [ "${kind}" = "hash" ] ; then
     CHAR="[:alnum:]"
     if [ "$_NEW_SSL" = "YES" ] \
       || [ "$_REL_VERSION" = "wheezy" ] \

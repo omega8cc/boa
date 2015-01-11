@@ -43,9 +43,11 @@
 
 export PATH=$PATH:/opt/local/bin
 SHELL=/bin/bash
-barCnf=/root/.barracuda.cnf
+
 _TODAY=$(date +%y%m%d 2>&1)
 _X_VERSION="BOA-2.4.0-dev"
+barCnf="/root/.barracuda.cnf"
+crlGet="curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 urlHmr="http://files.aegir.cc/versions/master/aegir"
 
 fix_dns_settings() {
@@ -103,7 +105,7 @@ fix_dns_settings() {
           | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
           | cut -d ' ' -f2 \
           | sort \
-          | uniq`; do echo "        ip=$_IP;" >> /root/.local.dns.IP.list;done
+          | uniq`; do echo "        ip=${_IP};" >> /root/.local.dns.IP.list;done
         sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
         sed -i "s/ip=127.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
         sed -i "s/ip=Dyn.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
@@ -144,8 +146,7 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ ! -e "/var/xdrago/log/runner.fixed.a19z.pid" ] ; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-      "${urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
+    ${crlGet} "${urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
     if [ -e "/var/xdrago/runner.sh" ] ; then
       chmod 700 /var/xdrago/runner.sh
       chown root:root /var/xdrago/runner.sh
@@ -158,8 +159,7 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ ! -e "/var/xdrago/log/minute.fixed.a19z.pid" ] ; then
     mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-      "${urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
+    ${crlGet} "${urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
     if [ -e "/var/xdrago/minute.sh" ] ; then
       chmod 700 /var/xdrago/minute.sh
       chown root:root /var/xdrago/minute.sh
@@ -172,8 +172,7 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ ! -e "/var/xdrago/log/clear.fixed.a19z.pid" ] ; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-      "${urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
+    ${crlGet} "${urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
     if [ -e "/var/xdrago/clear.sh" ] ; then
       chmod 700 /var/xdrago/clear.sh
       chown root:root /var/xdrago/clear.sh
@@ -186,8 +185,7 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ ! -e "/var/xdrago/log/daily.fixed.a19z.pid" ] ; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-      "${urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
+    ${crlGet} "${urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
     if [ -e "/var/xdrago/daily.sh" ] ; then
       chmod 700 /var/xdrago/daily.sh
       chown root:root /var/xdrago/daily.sh
@@ -200,8 +198,8 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ ! -e "/var/xdrago/log/manage_ltd_users.fixed.a19z.pid" ] ; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-      "${urlHmr}/tools/system/manage_ltd_users.sh" -o /var/xdrago/manage_ltd_users.sh
+    ${crlGet} "${urlHmr}/tools/system/manage_ltd_users.sh" \
+      -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ] ; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
@@ -214,8 +212,8 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ ! -e "/var/xdrago/log/proc_num_ctrl.fixed.a19z.pid" ] ; then
     mv -f /var/xdrago/proc_num_ctrl.cgi /var/xdrago/proc_num_ctrl.cgi.old
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-      "${urlHmr}/tools/system/proc_num_ctrl.cgi" -o /var/xdrago/proc_num_ctrl.cgi
+    ${crlGet} "${urlHmr}/tools/system/proc_num_ctrl.cgi" \
+      -o /var/xdrago/proc_num_ctrl.cgi
     if [ -e "/var/xdrago/proc_num_ctrl.cgi" ] ; then
       chmod 700 /var/xdrago/proc_num_ctrl.cgi
       chown root:root /var/xdrago/proc_num_ctrl.cgi
@@ -228,8 +226,7 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ ! -e "/var/xdrago/log/websh.fixed.a19z.pid" ] ; then
     mv -f /bin/websh /var/xdrago/websh.sh.old
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-      "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh
+    ${crlGet} "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh
     if [ -e "/bin/websh" ] ; then
       chmod 755 /bin/websh
       chown root:root /bin/websh
@@ -246,8 +243,7 @@ fix_core() {
   if [ -e "/var/xdrago" ] \
     && [ ! -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] ; then
     mkdir -p /var/xdrago/conf
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab \
-      "${urlHmr}/patches/7-core/SA-CORE-2014-005-D7.patch" \
+    ${crlGet} "${urlHmr}/patches/7-core/SA-CORE-2014-005-D7.patch" \
       -o /var/xdrago/conf/SA-CORE-2014-005-D7.patch
   fi
   if [ -e "/var/xdrago" ] \
@@ -444,19 +440,19 @@ setup() {
   fi
   rm -f /opt/local/bin/{autoupboa*,backboa*,barracuda*,boa*,drushextra*}
   rm -f /opt/local/bin/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "${urlHmr}/tools/bin/autoupboa"      -o /opt/local/bin/autoupboa
-  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
+  ${crlGet} "${urlHmr}/tools/bin/autoupboa"      -o /opt/local/bin/autoupboa
+  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
     echo "The duplicity backup is running!"
   else
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "${urlHmr}/tools/bin/backboa"      -o /opt/local/bin/backboa
+    ${crlGet} "${urlHmr}/tools/bin/backboa"      -o /opt/local/bin/backboa
   fi
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "${urlHmr}/tools/bin/barracuda"      -o /opt/local/bin/barracuda
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "${urlHmr}/tools/bin/boa"            -o /opt/local/bin/boa
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "${urlHmr}/tools/bin/octopus"        -o /opt/local/bin/octopus
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "${urlHmr}/tools/bin/randpass"       -o /opt/local/bin/randpass
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "${urlHmr}/tools/bin/sqlmagic"       -o /opt/local/bin/sqlmagic
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "${urlHmr}/tools/bin/syncpass"       -o /opt/local/bin/syncpass
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "${urlHmr}/tools/bin/thinkdifferent" -o /opt/local/bin/thinkdifferent
+  ${crlGet} "${urlHmr}/tools/bin/barracuda"      -o /opt/local/bin/barracuda
+  ${crlGet} "${urlHmr}/tools/bin/boa"            -o /opt/local/bin/boa
+  ${crlGet} "${urlHmr}/tools/bin/octopus"        -o /opt/local/bin/octopus
+  ${crlGet} "${urlHmr}/tools/bin/randpass"       -o /opt/local/bin/randpass
+  ${crlGet} "${urlHmr}/tools/bin/sqlmagic"       -o /opt/local/bin/sqlmagic
+  ${crlGet} "${urlHmr}/tools/bin/syncpass"       -o /opt/local/bin/syncpass
+  ${crlGet} "${urlHmr}/tools/bin/thinkdifferent" -o /opt/local/bin/thinkdifferent
   echo "### ${_TODAY} ###" >> /opt/local/bin/boa
   echo "### ${_TODAY} ###" >> /opt/local/bin/barracuda
   echo "### ${_TODAY} ###" >> /opt/local/bin/octopus
@@ -512,7 +508,7 @@ if [ `whoami` = "root" ] ; then
   service cron reload
   exit 0
 else
-  echo "ERROR: This script should be ran as a root user - please `sudo -i` first"
+  echo "ERROR: This script should be ran as a root user"
   exit 1
 fi
 

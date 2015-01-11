@@ -125,22 +125,22 @@ _WEBG=EDIT_WEBG
 #
 _USER=EDIT_USER
 _ROOT="/data/disk/${_USER}"
-_HOSTMASTER_ROOT="${_ROOT}/aegir/distro/${_HM_DISTRO}"
+_HM_ROOT="${_ROOT}/aegir/distro/${_HM_DISTRO}"
 _DISTRO_ROOT="${_ROOT}/distro/${_DISTRO}"
 #
 if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
-  _L_PHP_CLI=/opt/php55/bin
+  _T_CLI=/opt/php55/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
-  _L_PHP_CLI=/opt/php56/bin
+  _T_CLI=/opt/php56/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
-  _L_PHP_CLI=/opt/php54/bin
+  _T_CLI=/opt/php54/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
-  _L_PHP_CLI=/opt/php53/bin
+  _T_CLI=/opt/php53/bin
 fi
-_DRUSHCMD="${_L_PHP_CLI}/php ${_ROOT}/tools/drush/drush.php"
+_DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
 #
 SHELL=/bin/bash
-PATH=${_L_PHP_CLI}:/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _D="/data/all"
 
 
@@ -231,7 +231,7 @@ sanitize_string() {
 #
 # Extract archive.
 extract_archive() {
-  if [ ! -z $1 ] ; then
+  if [ ! -z "$1" ] ; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
       *.tar.gz)    tar xzf $1    ;;
@@ -252,7 +252,7 @@ extract_archive() {
 #
 # Download and extract from dev/contrib mirror.
 get_dev_contrib() {
-  if [ ! -z $1 ] ; then
+  if [ ! -z "$1" ] ; then
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 \
       -A iCab "http://files.aegir.cc/dev/contrib/$1"
     extract_archive "$1"
@@ -261,7 +261,7 @@ get_dev_contrib() {
 #
 # Download and extract from dev.
 get_dev_ext() {
-  if [ ! -z $1 ] ; then
+  if [ ! -z "$1" ] ; then
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 \
       -A iCab "http://files.aegir.cc/dev/${_AEGIR_XTS_VERSION}/$1"
     extract_archive "$1"
@@ -782,7 +782,7 @@ manage_o_contrib() {
   ln -s $_CORE/o_contrib_seven ${_D}/000/modules/o_contrib_seven
   rm -f ${_D}/000/modules/o_contrib
   ln -s $_CORE/o_contrib ${_D}/000/modules/o_contrib
-  if [ ${_STATUS} != "INIT" ] ; then
+  if [ "${_STATUS}" != "INIT" ] ; then
     check_fix_o_contrib
   fi
 }
@@ -920,18 +920,21 @@ provision_backend_dbpass_generate() {
     _PWD_CHARS=8
   else
     _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
-    if [ ! -z "${_STRONG_PASSWORDS}" ] && [ ${_STRONG_PASSWORDS} -gt "8" ] ; then
+    if [ ! -z "${_STRONG_PASSWORDS}" ] \
+      && [ "${_STRONG_PASSWORDS}" -gt "8" ] ; then
       _PWD_CHARS="${_STRONG_PASSWORDS}"
     else
       _PWD_CHARS=8
     fi
-    if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+    if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ] ; then
       _PWD_CHARS=128
     fi
   fi
-  if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
-    if [ "${_THIS_DB_HOST}" = "localhost" ] || [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
-      _ESC_PASS=$(randpass $_PWD_CHARS esc 2>&1)
+  if [ "${_STRONG_PASSWORDS}" = "YES" ] \
+    || [ "${_PWD_CHARS}" -gt "8" ] ; then
+    if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
+      _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ] ; then
         _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
@@ -939,15 +942,15 @@ provision_backend_dbpass_generate() {
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
-    _ESC_PASS=$(echo -n $_ESC_PASS | tr -d "\n" 2>&1)
-    _ENC_PASS=$(python -c "import urllib; print urllib.quote('''$_ESC_PASS''')")
+    _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+    _ENC_PASS=$(python -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
-  if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 9 ] ; then
+  if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ] ; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] || [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
       _ESC_PASS=$(pwgen -v -s -1 2>&1)
-      _ESC_PASS=$(echo -n $_ESC_PASS | tr -d "\n" 2>&1)
-      _ESC_PASS=$(sanitize_string "$_ESC_PASS" 2>&1)
+      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+      _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ] ; then
         _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
@@ -955,9 +958,9 @@ provision_backend_dbpass_generate() {
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
-    _ENC_PASS="$_ESC_PASS"
+    _ENC_PASS="${_ESC_PASS}"
   fi
-  echo "$_ESC_PASS" > ${_ROOT}/.${_USER}.pass.txt
+  echo "${_ESC_PASS}" > ${_ROOT}/.${_USER}.pass.txt
   chown ${_USER}:${_USRG} ${_ROOT}/.${_USER}.pass.txt &> /dev/null
   _ESC="\`%\`.*"
   mysqladmin flush-privileges &> /dev/null
@@ -975,10 +978,10 @@ provision_backend_dbpass_generate() {
     _USE_AEGIR_HOST=$(uname -n 2>&1)
     _SQL_CONNECT=localhost
   fi
-  _USE_RESOLVEIP=$(echo $(getent ahostsv4 $_USE_AEGIR_HOST) \
+  _USE_RESOLVEIP=$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
     | cut -d: -f2 | awk '{ print $1}' 2>&1)
-  if [ -z "$_USE_RESOLVEIP" ] ; then
-    msg "${_STATUS} A: FATAL ERROR: DNS looks broken for $_USE_AEGIR_HOST"
+  if [ -z "${_USE_RESOLVEIP}" ] ; then
+    msg "${_STATUS} A: FATAL ERROR: DNS looks broken for ${_USE_AEGIR_HOST}"
     msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
     touch /opt/tmp/status-AegirSetupA-FAIL
     clean_pid_exit
@@ -986,21 +989,21 @@ provision_backend_dbpass_generate() {
   if [ "${_THIS_DB_HOST}" = "localhost" ] || [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
     if [ "${_STATUS}" = "INIT" ] ; then
       mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'$_USE_AEGIR_HOST' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'$_USE_RESOLVEIP' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'localhost' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 EOFMYSQL
     else
       if [ "${_THIS_DB_HOST}" = "localhost" ] || [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
         mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
-DROP USER '$_USE_DB_USER'@'$_USE_AEGIR_HOST';
-DROP USER '$_USE_DB_USER'@'$_USE_RESOLVEIP';
-DROP USER '$_USE_DB_USER'@'localhost';
+DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
+DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
+DROP USER '${_USE_DB_USER}'@'localhost';
 EOFMYSQL
         mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'$_USE_AEGIR_HOST' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'$_USE_RESOLVEIP' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_USE_DB_USER'@'localhost' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 EOFMYSQL
       fi
     fi
@@ -1014,16 +1017,16 @@ provision_backend_dbpass_sync() {
     msg "${_STATUS} A: Syncing provision backend db_passwd..."
   fi
   _L_SYS="${_ROOT}/.${_USER}.pass.txt"
-  mv -f $_L_SYS $_L_SYS-pre-${_X_VERSION}-${_NOW} &> /dev/null
+  mv -f ${_L_SYS} ${_L_SYS}-pre-${_X_VERSION}-${_NOW} &> /dev/null
   provision_backend_dbpass_generate
-  if [ ! -z "$_ESC_PASS" ] && [ ! -z "$_ENC_PASS" ] ; then
+  if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ] ; then
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
-      sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_PASS' WHERE \
+      sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' WHERE \
       db_user='${_USER}'\" &> /dev/null"
-    mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_PASS') \
+    mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ESC_PASS}') \
       WHERE User='${_USER}';" &> /dev/null
     sed -i \
-      "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:$_ENC_PASS@${_SQL_CONNECT}',/g" \
+      "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
       ${_ROOT}/.drush/server_*.alias.drushrc.php &> /dev/null
   fi
   mysqladmin flush-privileges &> /dev/null
@@ -1218,17 +1221,17 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     ln -sf ${_ROOT}/config/${_USER}.nginx.conf \
       /var/aegir/config/server_master/nginx/platform.d/${_USER}.conf
   fi
-  chgrp -R ${_WEBG} $_HOSTMASTER_ROOT/sites/${_DOMAIN}/files
-  chgrp ${_WEBG} $_HOSTMASTER_ROOT/sites/${_DOMAIN}/settings.php
-  rm -f -r $_HOSTMASTER_ROOT/profiles/default
-  rm -f -r $_HOSTMASTER_ROOT/themes/bluemarine
-  rm -f -r $_HOSTMASTER_ROOT/themes/chameleon
-  rm -f -r $_HOSTMASTER_ROOT/themes/pushbutton
-  rm -f -r $_HOSTMASTER_ROOT/scripts
-  rm -f $_HOSTMASTER_ROOT/themes/README.txt
-  rm -f $_HOSTMASTER_ROOT/*.txt
+  chgrp -R ${_WEBG} ${_HM_ROOT}/sites/${_DOMAIN}/files
+  chgrp ${_WEBG} ${_HM_ROOT}/sites/${_DOMAIN}/settings.php
+  rm -f -r ${_HM_ROOT}/profiles/default
+  rm -f -r ${_HM_ROOT}/themes/bluemarine
+  rm -f -r ${_HM_ROOT}/themes/chameleon
+  rm -f -r ${_HM_ROOT}/themes/pushbutton
+  rm -f -r ${_HM_ROOT}/scripts
+  rm -f ${_HM_ROOT}/themes/README.txt
+  rm -f ${_HM_ROOT}/*.txt
   mrun "service nginx reload" &> /dev/null
-  cd $_HOSTMASTER_ROOT
+  cd ${_HM_ROOT}
   cp -af /opt/tmp/boa/aegir/conf/robots.txt ./
   cd ${_ROOT}
 fi
@@ -1236,7 +1239,7 @@ fi
 
 ###---### Set permissions for all.
 #
-chmod 0755 $_HOSTMASTER_ROOT &> /dev/null
+chmod 0755 ${_HM_ROOT} &> /dev/null
 find ${_ROOT}/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
 find ${_ROOT}/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
 chmod 0711 ${_ROOT}/config &> /dev/null
@@ -1330,11 +1333,11 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
     | uniq \
     | awk '{ print $1}')
   for _PLATF in ${_PLATF_IMP}; do
-    if [[ "$_PLATF" =~ "aegir" ]] ; then
+    if [[ "${_PLATF}" =~ "aegir" ]] ; then
       _FOUND_HM=YES
     else
-      chown -R ${_USER}:www-data $_PLATF/sites/*/files &> /dev/null
-      chmod -R 02775 $_PLATF/sites/*/files &> /dev/null
+      chown -R ${_USER}:www-data ${_PLATF}/sites/*/files &> /dev/null
+      chmod -R 02775 ${_PLATF}/sites/*/files &> /dev/null
     fi
   done
 fi
@@ -1389,28 +1392,29 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
       _PWD_CHARS=8
     else
       _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
-      if [ ! -z "${_STRONG_PASSWORDS}" ] && [ ${_STRONG_PASSWORDS} -gt "8" ] ; then
+      if [ ! -z "${_STRONG_PASSWORDS}" ] \
+        && [ "${_STRONG_PASSWORDS}" -gt "8" ] ; then
         _PWD_CHARS="${_STRONG_PASSWORDS}"
       else
         _PWD_CHARS=8
       fi
-      if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+      if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ] ; then
         _PWD_CHARS=128
       fi
     fi
-    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
-      _ESC_LUPASS=$(randpass $_PWD_CHARS alnum 2>&1)
-      _ESC_LUPASS=$(echo -n $_ESC_LUPASS | tr -d "\n" 2>&1)
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ] ; then
+      _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+      _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
     fi
-    if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 9 ] ; then
+    if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ] ; then
       _ESC_LUPASS=$(pwgen -v -s -1 2>&1)
-      _ESC_LUPASS=$(echo -n $_ESC_LUPASS | tr -d "\n" 2>&1)
-      _ESC_LUPASS=$(sanitize_string "$_ESC_LUPASS" 2>&1)
+      _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
+      _ESC_LUPASS=$(sanitize_string "${_ESC_LUPASS}" 2>&1)
     fi
-    echo "$_ESC_LUPASS" > ${_ROOT}/log/pass.txt
+    echo "${_ESC_LUPASS}" > ${_ROOT}/log/pass.txt
     # get the password hash
-    ph=$(mkpasswd -m sha-512 $_ESC_LUPASS $(openssl rand -base64 16 \
+    ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" $(openssl rand -base64 16 \
       | tr -d '+=' | head -c 16))
     # Set the password
     usermod -p $ph ${_USERFTP} &> /dev/null
@@ -1420,7 +1424,8 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   chsh -s $_PATH_LSHELL ${_USERFTP} &> /dev/null
   echo >> /etc/lshell.conf
   echo "[${_USERFTP}]" >> /etc/lshell.conf
-  echo "path : ['${_ROOT}/distro', '${_ROOT}/static', '${_ROOT}/backups', '${_ROOT}/clients']" >> /etc/lshell.conf
+  echo "path : ['${_ROOT}/distro', '${_ROOT}/static', \
+    '${_ROOT}/backups', '${_ROOT}/clients']" >> /etc/lshell.conf
 fi
 
 
@@ -1485,8 +1490,7 @@ if [ ! -L "${_USER_DS}/usr/drupalgeddon" ] ; then
   chown ${_USERFTP}:${_USRG} ${_USER_DS}
   chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
   chmod 700 ${_USER_DS}
-  ln -sf /data/disk/${_USER}/.drush/usr/drupalgeddon \
-    ${_USER_DS}/usr/drupalgeddon
+  ln -sf ${usrDgn} ${_USER_DS}/usr/drupalgeddon
 fi
 
 
@@ -1583,27 +1587,28 @@ else
       _PWD_CHARS=8
     else
       _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
-      if [ ! -z "${_STRONG_PASSWORDS}" ] && [ ${_STRONG_PASSWORDS} -gt "8" ] ; then
+      if [ ! -z "${_STRONG_PASSWORDS}" ] \
+        && [ "${_STRONG_PASSWORDS}" -gt "8" ] ; then
         _PWD_CHARS="${_STRONG_PASSWORDS}"
       else
         _PWD_CHARS=8
       fi
-      if [ ! -z "$_PWD_CHARS" ] && [ $_PWD_CHARS -gt "128" ] ; then
+      if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ] ; then
         _PWD_CHARS=128
       fi
     fi
-    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ $_PWD_CHARS -gt "8" ] ; then
-      _ESC_LUPASS=$(randpass $_PWD_CHARS alnum 2>&1)
-      _ESC_LUPASS=$(echo -n $_ESC_LUPASS | tr -d "\n" 2>&1)
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ] ; then
+      _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+      _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
     fi
-    if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 9 ] ; then
+    if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ] ; then
       _ESC_LUPASS=$(pwgen -v -s -1 2>&1)
-      _ESC_LUPASS=$(echo -n $_ESC_LUPASS | tr -d "\n" 2>&1)
-      _ESC_LUPASS=$(sanitize_string "$_ESC_LUPASS" 2>&1)
+      _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
+      _ESC_LUPASS=$(sanitize_string "${_ESC_LUPASS}" 2>&1)
     fi
-    echo "$_ESC_LUPASS" > ${_ROOT}/log/pass.txt
-    ph=$(mkpasswd -m sha-512 $_ESC_LUPASS $(openssl rand -base64 16 \
+    echo "${_ESC_LUPASS}" > ${_ROOT}/log/pass.txt
+    ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" $(openssl rand -base64 16 \
       | tr -d '+=' | head -c 16))
     usermod -p $ph ${_USERFTP} &> /dev/null
     _PASWD=$(cat ${_ROOT}/log/pass.txt 2>&1)
@@ -2030,12 +2035,12 @@ if [ "${_STATUS}" = "INIT" ] ; then
   _Q="Your Aegir Install on $TIME [${_USER}]"
   echo $TIME > ${_ROOT}/log/date-init.txt
   if [ -e "${_ROOT}/log/setupmail.txt" ] ; then
-    if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
+    if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]] ; then
       cat ${_ROOT}/log/setupmail.txt \
         | sed "s/[\~]//g" \
         | mail -a "From: $_A_DM_EMAIL" \
         -a "Bcc: $_A_DM_EMAIL" -e -s "$_Q" $_AT_CLIENT_EMAIL
-    elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
+    elif [[ "${_MAILX_TEST}" =~ "invalid" ]] ; then
       cat ${_ROOT}/log/setupmail.txt \
         | mail -a "From: $_A_DM_EMAIL" \
         -e -b $_A_DM_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
@@ -2052,12 +2057,12 @@ else
     _Q="Your Aegir Upgrade on $TIME [${_USER}]"
     echo $TIME > ${_ROOT}/log/date-upgrade-$_THIS_CORE.txt
     if [ -e "${_ROOT}/log/upgrademail.txt" ] ; then
-      if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
+      if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]] ; then
         cat ${_ROOT}/log/upgrademail.txt \
           | sed "s/[\~]//g" \
           | mail -a "From: $_A_DM_EMAIL" \
           -a "Bcc: $_A_DM_EMAIL" -e -s "$_Q" $_AT_CLIENT_EMAIL
-      elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
+      elif [[ "${_MAILX_TEST}" =~ "invalid" ]] ; then
         cat ${_ROOT}/log/upgrademail.txt \
           | mail -a "From: $_A_DM_EMAIL" \
           -e -b $_A_DM_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
@@ -2067,12 +2072,12 @@ else
           -e -b $_A_DM_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
       fi
     else
-      if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
+      if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]] ; then
         cat ${_ROOT}/log/setupmail.txt \
           | sed "s/[\~]//g" \
           | mail -a "From: $_A_DM_EMAIL" \
           -a "Bcc: $_A_DM_EMAIL" -e -s "$_Q" $_AT_CLIENT_EMAIL
-      elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
+      elif [[ "${_MAILX_TEST}" =~ "invalid" ]] ; then
         cat ${_ROOT}/log/setupmail.txt \
           | mail -a "From: $_A_DM_EMAIL" \
           -e -b $_A_DM_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL

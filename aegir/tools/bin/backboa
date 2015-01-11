@@ -24,7 +24,9 @@ _HST=$(uname -n 2>&1)
 _HST=${_HST//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
 
-if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt 0 ]; then
+crlGet="curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+
+if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
   echo "The duplicity backup is already running!"
   echo "Active duplicity process detected..."
   exit 1
@@ -248,15 +250,13 @@ install() {
     mkdir -p /var/opt
     rm -f -r /var/opt/{boto*,duplicity*}
     cd /var/opt
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab \
-      "http://files.aegir.cc/dev/src/boto-${_BOTO_VRN}.tar.gz"
+    ${crlGet} "http://files.aegir.cc/dev/src/boto-${_BOTO_VRN}.tar.gz"
     tar xzf boto-${_BOTO_VRN}.tar.gz &> /dev/null
     cd /var/opt/boto-${_BOTO_VRN}
     python setup.py install &> /dev/null
     echo "Installing duplicity version ${_DUPLICITY_VRN}, please wait..."
     cd /var/opt
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab \
-      "http://files.aegir.cc/dev/src/duplicity-${_DUPLICITY_VRN}.tar.gz"
+    ${crlGet} "http://files.aegir.cc/dev/src/duplicity-${_DUPLICITY_VRN}.tar.gz"
     tar xzf duplicity-${_DUPLICITY_VRN}.tar.gz &> /dev/null
     cd /var/opt/duplicity-${_DUPLICITY_VRN}
     python setup.py build &> /dev/null

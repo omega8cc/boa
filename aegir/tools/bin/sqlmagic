@@ -24,7 +24,7 @@ sqlmagic_convert() {
   fi
   if drush status | grep "Successful" > /dev/null && [ -e "$HOME/static" ] ; then
     echo "It may take a long time, please wait..."
-    if [ "$kind" = "to-myisam" ] ; then
+    if [ "${kind}" = "to-myisam" ] ; then
       _THIS_DB=$(drush status \
         | grep "Database name" \
         | cut -d: -f2 | awk '{ print $1}')
@@ -43,7 +43,7 @@ sqlmagic_convert() {
       echo "This site database has been converted to MyISAM"
       rm -f $HOME/static/to_myisam_alter_table.sql
       exit 0
-    elif [ "$kind" = "to-innodb" ] ; then
+    elif [ "${kind}" = "to-innodb" ] ; then
       _THIS_DB=$(drush status \
         | grep "Database name" \
         | cut -d: -f2 \

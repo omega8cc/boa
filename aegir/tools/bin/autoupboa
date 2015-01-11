@@ -88,7 +88,7 @@ if [ -e "/data/disk/arch" ] ; then
     _AUTO_UP_MONTH=11
     _AUTO_UP_DAY=30
   fi
-  if [[ "$_HOST_TEST" =~ ".host8." ]] \
+  if [[ "${_HOST_TEST}" =~ ".host8." ]] \
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] \
     || [ "$_AUTO_UP" = "YES" ] ; then
@@ -96,8 +96,8 @@ if [ -e "/data/disk/arch" ] ; then
     _AUTO_UP_MONTH=11
     _AUTO_UP_DAY=30
   fi
-  if [[ $_HOST_TEST =~ "v251a.a" ]] \
-    || [[ $_HOST_TEST =~ "v55.l" ]] ; then
+  if [[ "${_HOST_TEST}" =~ "v251a.a" ]] \
+    || [[ "${_HOST_TEST}" =~ "v55.l" ]] ; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=

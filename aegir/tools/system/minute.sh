@@ -65,7 +65,7 @@ _RAM_FREE=$(free -m | grep /+ | cut -d: -f2 | awk '{ print $2}' 2>&1)
 _RAM_PCT_FREE=$(echo "scale=0; $(bc -l <<< "${_RAM_FREE} / ${_RAM_TOTAL} * 100")/1" | bc 2>&1)
 _RAM_PCT_FREE=${_RAM_PCT_FREE//[^0-9]/}
 
-if [ ! -z "${_RAM_PCT_FREE}" ] && [ ${_RAM_PCT_FREE} -lt 10 ] ; then
+if [ ! -z "${_RAM_PCT_FREE}" ] && [ "${_RAM_PCT_FREE}" -lt "10" ] ; then
   oom_restart "ram"
 fi
 
@@ -119,7 +119,7 @@ if [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ] ; then
   service pdnsd restart &> /dev/null
 fi
 
-if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt 4 ]; then
+if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt "4" ]; then
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) Too many PHP-FPM master processes killed" >> \
     /var/xdrago/log/php-fpm-master-count.kill.log

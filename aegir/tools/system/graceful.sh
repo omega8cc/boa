@@ -21,7 +21,7 @@ action() {
   mkdir -p /opt/tmp
   chmod 777 /opt/tmp
   rm -f /opt/tmp/sess*
-  if [[ "$_HOST_TEST" =~ ".host8." ]] \
+  if [[ "${_HOST_TEST}" =~ ".host8." ]] \
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] ; then
     rm -f /tmp/*
