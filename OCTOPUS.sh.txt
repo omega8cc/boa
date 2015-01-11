@@ -62,10 +62,10 @@ fi
 ###
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncO="octopus.sh.cnf"
+gitHub="git://github.com/omega8cc"
 pthBld="/opt/tmp/boa"
 urlStb="http://files.aegir.cc/versions/stable"
 vBs="/var/backups"
-gitHub="git://github.com/omega8cc"
 
 ###
 ### Distributions
@@ -316,7 +316,7 @@ remove_web_user() {
   if [ -e "/home/${_WEB}/.tmp" ] || [ "$1" = "clean" ] ; then
     chattr -i /home/${_WEB} &> /dev/null
     chattr -i /home/${_WEB}/.drush &> /dev/null
-    deluser --remove-home --backup-to /var/backups/zombie/deleted ${_WEB}
+    deluser --remove-home --backup-to ${vBs}/zombie/deleted ${_WEB}
     if [ -e "/home/${_WEB}" ] ; then
       rm -f -r /home/${_WEB} &> /dev/null
     fi
@@ -1622,7 +1622,7 @@ cp -af ${pthBld}/aegir/helpers/spinner ./
 chmod +x spinner &> /dev/null
 #
 # Create tmp stuff
-_LOG=/var/backups/octopus-${_USER}-${_NOW}.log
+_LOG=${vBs}/octopus-${_USER}-${_NOW}.log
 touch ${_LOG}
 chmod 646 ${_LOG}
 _SILENT=/opt/tmp/silent.log
