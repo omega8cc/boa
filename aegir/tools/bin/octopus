@@ -443,6 +443,7 @@ up_action_all() {
           echo
           echo "Starting the upgrade in silent mode now..."
           echo
+          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" ${vBs}/${filIncO} &> /dev/null
           sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" ${vBs}/${octName} &> /dev/null
           up_one >>${_UP_LOG} 2>&1
           check_report
@@ -493,6 +494,7 @@ up_action_one() {
         echo
         echo "Starting the upgrade in silent mode now..."
         echo
+        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" ${vBs}/${filIncO} &> /dev/null
         sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" ${vBs}/${octName} &> /dev/null
         up_one >>${_UP_LOG} 2>&1
         check_report
@@ -570,7 +572,7 @@ up_finish() {
 
 up_head() {
   up_start
-  curl ${crlGet} "${rgUrl}/${master}/${octName}"  -o ${octName}
+  curl ${crlGet} "${rgUrl}/${master}/${octName}"  -o ${vBs}/${octName}
   curl ${crlGet} "${rgUrl}/${master}/${pthIncO}"  -o ${vBs}/${filIncO}
   if [ "${second}" = "all" ] ; then
     up_action_all
@@ -582,7 +584,7 @@ up_head() {
 
 up_modern() {
   up_start
-  curl ${crlGet} "${rgUrl}/${devel}/${octName}"   -o ${octName}
+  curl ${crlGet} "${rgUrl}/${devel}/${octName}"   -o ${vBs}/${octName}
   curl ${crlGet} "${rgUrl}/${devel}/${pthIncO}"   -o ${vBs}/${filIncO}
   if [ "${second}" = "all" ] ; then
     up_action_all
@@ -594,7 +596,7 @@ up_modern() {
 
 up_cluster() {
   up_start
-  curl ${crlGet} "${rgUrl}/${cluster}/${octName}" -o ${octName}
+  curl ${crlGet} "${rgUrl}/${cluster}/${octName}" -o ${vBs}/${octName}
   curl ${crlGet} "${rgUrl}/${cluster}/${pthIncO}" -o ${vBs}/${filIncO}
   if [ "${second}" = "all" ] ; then
     up_action_all
@@ -606,7 +608,7 @@ up_cluster() {
 
 up_stable() {
   up_start
-  curl ${crlGet} "${rgUrl}/${stable}/${octName}"  -o ${octName}
+  curl ${crlGet} "${rgUrl}/${stable}/${octName}"  -o ${vBs}/${octName}
   if [ "${second}" = "all" ] ; then
     up_action_all
   else
@@ -617,7 +619,7 @@ up_stable() {
 
 up_legacy() {
   up_start
-  curl ${crlGet} "${rgUrl}/${legacy}/${octName}"  -o ${octName}
+  curl ${crlGet} "${rgUrl}/${legacy}/${octName}"  -o ${vBs}/${octName}
   if [ "${second}" = "all" ] ; then
     up_action_all
   else
