@@ -223,7 +223,7 @@ extract_archive() {
 # Download and extract from dev/contrib mirror.
 get_dev_contrib() {
   if [ ! -z "$1" ] ; then
-    ${crlGet} "http://files.aegir.cc/dev/contrib/$1"
+    "${crlGet}" "http://files.aegir.cc/dev/contrib/$1"
     extract_archive "$1"
   fi
 }
@@ -231,7 +231,7 @@ get_dev_contrib() {
 # Download and extract from distro.
 get_distro_ext() {
   if [ ! -z "$1" ] ; then
-    ${crlGet} "http://files.aegir.cc/distro/$1"
+    "${crlGet}" "http://files.aegir.cc/distro/$1"
     extract_archive "$1"
   fi
 }
@@ -396,7 +396,7 @@ prepare_drupal7_core() {
   if [ ! -e "${_D7_CORE_DIR}" ] ; then
     rm -f -r ${_D7_CORE_DIR}
     cd /data/all/000/core
-    ${crlGet} \
+    "${crlGet}" \
       "http://files.aegir.cc/core/drupal-${_SMALLCORE7}.tar.gz" \
       | tar -xzf -
     find ${_D7_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
@@ -422,7 +422,7 @@ prepare_drupal8_core() {
   if [ ! -e "${_D8_CORE_DIR}" ] ; then
     rm -f -r ${_D8_CORE_DIR}
     cd /data/all/000/core
-    ${crlGet} \
+    "${crlGet}" \
       "http://files.aegir.cc/core/drupal-${_SMALLCORE8}.tar.gz" \
       | tar -xzf -
     find ${_D8_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
@@ -441,7 +441,7 @@ prepare_dr8_dev_core() {
   if [ ! -e "${_D8_DEV_CORE_DIR}" ] ; then
     rm -f -r ${_D8_DEV_CORE_DIR}
     cd /data/all/000/core
-    ${crlGet} \
+    "${crlGet}" \
       "http://files.aegir.cc/core/drupal-${_D8_DEV_COMMIT}.tar.gz" \
       | tar -xzf -
     find ${_D8_DEV_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
@@ -732,7 +732,7 @@ agov_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              ${crlGet} \
+              "${crlGet}" \
                 "${urlDrp}/$_REAL_PRNAME-7.x-${_AGOV}-core.tar.gz" \
                 | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_AGOV}" ] ; then
@@ -782,7 +782,7 @@ commerce_7_1_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              ${crlGet} \
+              "${crlGet}" \
                 "${urlDrp}/$_REAL_PRNAME-7.x-${_COMMERCE1}-core.tar.gz" \
                 | tar -xzf -
               if [ -d "$_CORE/commerce-7.x-${_COMMERCE1}" ] ; then
@@ -833,7 +833,7 @@ commerce_7_2_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              ${crlGet} \
+              "${crlGet}" \
                 "${urlDrp}/$_REAL_PRNAME-7.x-${_COMMERCE2}-core.tar.gz" \
                 | tar -xzf -
               if [ -d "$_CORE/commerce-7.x-${_COMMERCE2}" ] ; then
@@ -883,7 +883,7 @@ commons_6_install() {
                 prepare_drupal6_core
               fi
               cd $_CORE
-              ${crlGet} \
+              "${crlGet}" \
                 "${urlDrp}/$_REAL_PRNAME-6.x-${_COMMONS2}-core.tar.gz" \
                 | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-6.x-${_COMMONS2}" ] ; then
@@ -947,7 +947,7 @@ commons_7_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              ${crlGet} \
+              "${crlGet}" \
                 "${urlDrp}/$_REAL_PRNAME-7.x-${_COMMONS3}-core.tar.gz" \
                 | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_COMMONS3}" ] ; then
@@ -1216,7 +1216,7 @@ erpal_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              ${crlGet} \
+              "${crlGet}" \
                 "${urlDrp}/$_REAL_PRNAME-7.x-${_ERPAL}-core.tar.gz" \
                 | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_ERPAL}" ] ; then
@@ -1331,7 +1331,7 @@ guardr_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              ${crlGet} \
+              "${crlGet}" \
                 "${urlDrp}/$_REAL_PRNAME-7.x-${_GUARDR}-core.tar.gz" \
                 | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_GUARDR}" ] ; then
@@ -1380,7 +1380,7 @@ openacademy_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              ${crlGet} \
+              "${crlGet}" \
                 "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENACADEMY}-core.tar.gz" \
                 | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_OPENACADEMY}" ] ; then
@@ -1432,7 +1432,7 @@ openatrium7_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              ${crlGet} \
+              "${crlGet}" \
                 "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENATRIUM7}-core.tar.gz" \
                 | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_OPENATRIUM7}" ] ; then
@@ -1480,7 +1480,7 @@ openblog_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              ${crlGet} \
+              "${crlGet}" \
                 "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENBLOG}-core.tar.gz" \
                 | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_OPENBLOG}" ] ; then
@@ -1526,7 +1526,7 @@ openchurch1_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              ${crlGet} \
+              "${crlGet}" \
                 "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENCHURCH1}-core.tar.gz" \
                 | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_OPENCHURCH1}" ] ; then
@@ -1573,7 +1573,7 @@ openchurch2_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              ${crlGet} \
+              "${crlGet}" \
                 "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENCHURCH2}-core.tar.gz" \
                 | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_OPENCHURCH2}" ] ; then
@@ -1620,7 +1620,7 @@ opendeals_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              ${crlGet} \
+              "${crlGet}" \
                 "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENDEALS}-core.tar.gz" \
                 | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_OPENDEALS}" ] ; then
@@ -1666,7 +1666,7 @@ openoutreach_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              ${crlGet} \
+              "${crlGet}" \
                 "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENOUTREACH}-core.tar.gz" \
                 | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_OPENOUTREACH}" ] ; then
@@ -1712,7 +1712,7 @@ openpublic_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              ${crlGet} \
+              "${crlGet}" \
                 "${urlDrp}/$_REAL_PRNAME-7.x-${_OPENPUBLIC}-core.tar.gz" \
                 | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_OPENPUBLIC}" ] ; then
@@ -1814,7 +1814,7 @@ panopoly_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              ${crlGet} \
+              "${crlGet}" \
                 "${urlDrp}/$_REAL_PRNAME-7.x-${_PANOPOLY}-core.tar.gz" \
                 | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_PANOPOLY}" ] ; then
@@ -1874,7 +1874,7 @@ recruiter_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              ${crlGet} \
+              "${crlGet}" \
                 "${urlDrp}/$_REAL_PRNAME-7.x-${_RECRUITER}-core.tar.gz" \
                 | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_RECRUITER}" ] ; then
@@ -1927,7 +1927,7 @@ restaurant_install() {
               if [ ! -e "${_D7_CORE_DIR}" ] ; then
                 prepare_drupal7_core
               fi
-              ${crlGet} \
+              "${crlGet}" \
                 "${urlDrp}/$_REAL_PRNAME-7.x-${_RESTAURANT}-core.tar.gz" \
                 | tar -xzf -
               if [ -d "$_CORE/$_REAL_PRNAME-7.x-${_RESTAURANT}" ] ; then

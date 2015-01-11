@@ -195,7 +195,7 @@ extract_archive() {
 # Download and extract from dev.
 get_dev_ext() {
   if [ ! -z "$1" ] ; then
-    ${crlGet} "http://files.aegir.cc/dev/${_AEGIR_XTS_VERSION}/$1"
+    "${crlGet}" "http://files.aegir.cc/dev/${_AEGIR_XTS_VERSION}/$1"
     extract_archive "$1"
   fi
 }
@@ -272,7 +272,7 @@ else
   else
     msg "INFO: Downloading Drush and Provision extensions..."
     cd ${_ROOT}/.drush/sys
-    ${crlGet} "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
+    "${crlGet}" "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
     cd ${_ROOT}/.drush/usr
     get_dev_ext "clean_missing_modules.tar.gz"
     get_dev_ext "drupalgeddon.tar.gz"
