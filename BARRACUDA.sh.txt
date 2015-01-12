@@ -168,7 +168,7 @@ fi
 # Prompt to confirm choice.
 prompt_confirm_choice() {
   read -p "$1 [$2]:" _CONFIRMED_ANSWER
-  if [ -z "$_CONFIRMED_ANSWER" ] ; then
+  if [ -z "${_CONFIRMED_ANSWER}" ] ; then
     _CONFIRMED_ANSWER=$2
   fi
 }
@@ -719,7 +719,7 @@ update_redis_password() {
 #
 # Install Redis from sources.
 install_redis_src() {
-  msg "INFO: Installing Redis update for $_THIS_OS/$_THIS_RV..."
+  msg "INFO: Installing Redis update for ${_THIS_OS}/$_THIS_RV..."
   if [ ! -e "/var/lib/redis" ] ; then
     st_runner "adduser --system --group redis" 2> /dev/null
   fi
@@ -800,7 +800,7 @@ fix_ftps_pam() {
   if [ ! -e "/etc/ftpusers" ] ; then
     cp -af ${locCnf}/ftpusers /etc/ftpusers
   fi
-  if [ "$_REL_VERSION" = "lenny" ] ; then
+  if [ "${_REL_VERSION}" = "lenny" ] ; then
     _DO_NOTHING=YES
   else
     sed -i "s/pam_stack.so/pam_unix.so/g" /etc/pam.d/pure-ftpd &> /dev/null
@@ -810,7 +810,7 @@ fix_ftps_pam() {
 #
 # Fix FTPS and SFTP access on modern systems.
 fix_sftp_ftps_modern() {
-  if [ "$_REL_VERSION" != "lenny" ] ; then
+  if [ "${_REL_VERSION}" != "lenny" ] ; then
     _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells 2>&1)
     if [[ "$_LSHELL_PATH_TEST" =~ "/usr/bin/lshell" ]] ; then
       _DO_NOTHING=YES
@@ -1917,7 +1917,7 @@ fix_locales() {
 
 EOF
     sleep 5
-    if [ "$_THIS_OS" = "Debian" ] ; then
+    if [ "${_THIS_OS}" = "Debian" ] ; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
       if [[ ! "$_LOCALE_GEN_TEST" =~ "en_US.UTF-8 UTF-8" ]] ; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
@@ -1970,7 +1970,7 @@ EOF
       cp -af ${locCnf}/boa.bashrc.txt /root/.bashrc
       set_xterm
     fi
-    if [ "$_THIS_OS" = "Debian" ] ; then
+    if [ "${_THIS_OS}" = "Debian" ] ; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
       if [[ ! "$_LOCALE_GEN_TEST" =~ "en_US.UTF-8 UTF-8" ]] ; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
@@ -2835,7 +2835,7 @@ run_aptitude_full_upgrade() {
   if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
     || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
     msg "WARN: Installed keyring is broken, forced reinstall required"
-    if [ "$_THIS_OS" = "Debian" ] ; then
+    if [ "${_THIS_OS}" = "Debian" ] ; then
       st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
       st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
     else
@@ -2868,7 +2868,7 @@ run_silent_aptitude_full_upgrade() {
   if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
     || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
     msg "WARN: Installed keyring is broken, forced reinstall required"
-    if [ "$_THIS_OS" = "Debian" ] ; then
+    if [ "${_THIS_OS}" = "Debian" ] ; then
       mrun "apt-get install debian-keyring ${forCer}" 2> /dev/null
       mrun "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
     else
@@ -3173,9 +3173,9 @@ install_php_multi() {
   msg "INFO: Installing PHP ${_PHP_VERSION} part 1/3"
   cd /var/opt/php-${_PHP_VERSION}
   st_runner "sh ./buildconf --force" 2> /dev/null
-  if [ "$_REL_VERSION" = "wheezy" ] \
-    || [ "$_REL_VERSION" = "trusty" ] \
-    || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "${_REL_VERSION}" = "wheezy" ] \
+    || [ "${_REL_VERSION}" = "trusty" ] \
+    || [ "${_REL_VERSION}" = "precise" ] ; then
     patchFile="disable_SSLv2_for_openssl_1_0_0.patch"
     patch -p1 < ${pthBld}/aegir/patches/${patchFile} &> /dev/null
   fi
@@ -3284,8 +3284,8 @@ check_install_latest_git() {
     _GIT_FORCE_REINSTALL=YES
   fi
   if [[ "${_XTRAS_LIST}" =~ "GIT" ]] \
-    || [ "$_REL_VERSION" = "lenny" ] \
-    || [ "$_REL_VERSION" = "lucid" ] \
+    || [ "${_REL_VERSION}" = "lenny" ] \
+    || [ "${_REL_VERSION}" = "lucid" ] \
     || [ "$_SSB_SRC" = "YES" ] \
     || [ "$_GIT_FORCE_REINSTALL" = "YES" ] ; then
     _GIT_TEST=$(git --version 2>&1)
@@ -3320,9 +3320,9 @@ check_apt_updates() {
     if [ "${_NGINX_SPDY}" = "YES" ] \
       || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
       || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ] ; then
-      if [ "$_REL_VERSION" = "wheezy" ] \
-        || [ "$_REL_VERSION" = "trusty" ] \
-        || [ "$_REL_VERSION" = "precise" ] ; then
+      if [ "${_REL_VERSION}" = "wheezy" ] \
+        || [ "${_REL_VERSION}" = "trusty" ] \
+        || [ "${_REL_VERSION}" = "precise" ] ; then
         _UP_PHP=YES
       else
         _UP_PHP=NO
@@ -4209,7 +4209,7 @@ update_sources_list() {
     if [ ! -z "${_LOCAL_UBUNTU_MIRROR}" ] ; then
       _APT_SOURCES_REWRITE=YES
     fi
-    if [ "$_REL_VERSION" = "lenny" ] ; then
+    if [ "${_REL_VERSION}" = "lenny" ] ; then
       sed -i "s/^deb.*security.debian.org.*/## security updates no longer \
         available for lenny/g" /etc/apt/sources.list &> /dev/null
       sed -i "s/ftp.*debian.org/archive.debian.org/g" \
@@ -4218,19 +4218,19 @@ update_sources_list() {
         /etc/apt/sources.list &> /dev/null
     fi
     if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-      && [ "$_REL_VERSION" = "squeeze" ] ; then
+      && [ "${_REL_VERSION}" = "squeeze" ] ; then
       run_silent_aptitude_full_upgrade
       _LOC_REL_VERSION=squeeze
       _REL_VERSION=wheezy
       _APT_SOURCES_REWRITE=YES
     elif [ "${_LENNY_TO_SQUEEZE}" = "YES" ] \
-      && [ "$_REL_VERSION" = "lenny" ] ; then
+      && [ "${_REL_VERSION}" = "lenny" ] ; then
       run_silent_aptitude_full_upgrade
       _LOC_REL_VERSION=lenny
       _REL_VERSION=squeeze
       _APT_SOURCES_REWRITE=YES
     fi
-    if [ "$_REL_VERSION" = "squeeze" ] ; then
+    if [ "${_REL_VERSION}" = "squeeze" ] ; then
       _LTS_TEST=$(grep "DEBIAN LTS UPDATES" /etc/apt/sources.list 2>&1)
       if [[ "$_LTS_TEST" =~ "DEBIAN LTS UPDATES" ]] ; then
         _DO_NOTHING=YES
@@ -4437,7 +4437,7 @@ update_sources_list() {
     cd /var/opt
   fi
   if [ ! -e "/etc/apt/preferences" ] ; then
-    if [ "$_THIS_OS" = "Ubuntu" ] ; then
+    if [ "${_THIS_OS}" = "Ubuntu" ] ; then
       if [ -e "${locCnf}/etc-apt-preferences-ubuntu.txt" ] ; then
         cp -af ${locCnf}/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
       else
@@ -4445,7 +4445,7 @@ update_sources_list() {
           -o /etc/apt/preferences
       fi
     else
-      if [ "$_REL_VERSION" = "wheezy" ] ; then
+      if [ "${_REL_VERSION}" = "wheezy" ] ; then
         if [ -e "${locCnf}/etc-apt-preferences-wheezy.txt" ] ; then
           cp -af ${locCnf}/etc-apt-preferences-wheezy.txt /etc/apt/preferences
         else
@@ -4538,9 +4538,9 @@ install_curl_src() {
     if [ "$_CURL_SSL_ITD" = "${_OPENSSL_VRN}" ] ; then
       _CURL_INSTALL_REQUIRED=NO
     else
-      if [ "$_REL_VERSION" = "wheezy" ] \
-        || [ "$_REL_VERSION" = "trusty" ] \
-        || [ "$_REL_VERSION" = "precise" ] ; then
+      if [ "${_REL_VERSION}" = "wheezy" ] \
+        || [ "${_REL_VERSION}" = "trusty" ] \
+        || [ "${_REL_VERSION}" = "precise" ] ; then
         _DO_NOTHING=YES
       else
         _CURL_INSTALL_REQUIRED=YES
@@ -4549,9 +4549,9 @@ install_curl_src() {
       fi
     fi
   else
-    if [ "$_REL_VERSION" = "wheezy" ] \
-      || [ "$_REL_VERSION" = "trusty" ] \
-      || [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "${_REL_VERSION}" = "wheezy" ] \
+      || [ "${_REL_VERSION}" = "trusty" ] \
+      || [ "${_REL_VERSION}" = "precise" ] ; then
       _DO_NOTHING=YES
     else
       _CURL_INSTALL_REQUIRED=YES
@@ -4570,9 +4570,9 @@ install_curl_src() {
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version $_CURL_ITD, rebuild forced"
   fi
-  if [ "$_REL_VERSION" = "wheezy" ] \
-    || [ "$_REL_VERSION" = "trusty" ] \
-    || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "${_REL_VERSION}" = "wheezy" ] \
+    || [ "${_REL_VERSION}" = "trusty" ] \
+    || [ "${_REL_VERSION}" = "precise" ] ; then
     _CURL_INSTALL_REQUIRED=NO
   fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ] ; then
@@ -4599,14 +4599,14 @@ install_curl_src() {
     _UP_PHP=YES
   else
     ###--------------------###
-    if [ "$_REL_VERSION" = "wheezy" ] \
-      || [ "$_REL_VERSION" = "trusty" ] \
-      || [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "${_REL_VERSION}" = "wheezy" ] \
+      || [ "${_REL_VERSION}" = "trusty" ] \
+      || [ "${_REL_VERSION}" = "precise" ] ; then
       if [ "$_CURL_ITD" = "$_CURL_LIB_ITD" ] ; then
         _DO_NOTHING=YES
       else
-        if [ "$_REL_VERSION" = "trusty" ] \
-          || [ "$_REL_VERSION" = "precise" ] ; then
+        if [ "${_REL_VERSION}" = "trusty" ] \
+          || [ "${_REL_VERSION}" = "precise" ] ; then
           apt-mark unhold curl &> /dev/null
         fi
         if [[ "$_CURL_GET_DPKG" =~ "hold" ]]; then
@@ -5800,7 +5800,7 @@ if [ "${_DEBUG_MODE}" = "YES" ] ; then
 fi
 _THIS_OS=$(lsb_release -si 2>&1)
 _THIS_RV=$(lsb_release -sc 2>&1)
-if [ "$_THIS_OS" = "Ubuntu" ] ; then
+if [ "${_THIS_OS}" = "Ubuntu" ] ; then
   if [ "$_THIS_RV" = "trusty" ] ; then
     _REL_VERSION="trusty"
     _DB_SERVER=MariaDB
@@ -5819,7 +5819,7 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
   else
     not_supported_os
   fi
-elif [ "$_THIS_OS" = "Debian" ] ; then
+elif [ "${_THIS_OS}" = "Debian" ] ; then
   if [ "$_THIS_RV" = "wheezy" ] ; then
     _REL_VERSION="wheezy"
     _DB_SERVER=MariaDB
@@ -5850,7 +5850,7 @@ if [ "${_STATUS}" = "INIT" ] ; then
   if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
     || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
     msg "WARN: Installed keyring is broken, forced reinstall required"
-    if [ "$_THIS_OS" = "Debian" ] ; then
+    if [ "${_THIS_OS}" = "Debian" ] ; then
       apt-get install debian-keyring ${forCer} &> /dev/null
       apt-get install debian-archive-keyring ${forCer} &> /dev/null
     else
@@ -6651,7 +6651,7 @@ fi
 
 ###--------------------###
 msg "INFO: Running system packages update..."
-if [ "$_REL_VERSION" = "lenny" ] ; then
+if [ "${_REL_VERSION}" = "lenny" ] ; then
   sed -i "s/^deb.*security.debian.org.*/## security updates no longer \
     available for lenny/g" /etc/apt/sources.list &> /dev/null
   sed -i "s/ftp.*debian.org/archive.debian.org/g" \
@@ -6667,7 +6667,7 @@ _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
 if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
   || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
   msg "WARN: Installed keyring is broken, forced reinstall required"
-  if [ "$_THIS_OS" = "Debian" ] ; then
+  if [ "${_THIS_OS}" = "Debian" ] ; then
     st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
     st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
   else
@@ -6716,7 +6716,7 @@ else
     rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
     rm -f /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
   fi
-  if [ "$_REL_VERSION" = "squeeze" ] ; then
+  if [ "${_REL_VERSION}" = "squeeze" ] ; then
     if [ -e "/etc/apt/sources.list.d/dotdeb.list" ] ; then
       rm -f /etc/apt/sources.list.d/dotdeb.list
       st_runner "aptitude autoclean -y" &> /dev/null
@@ -6759,9 +6759,9 @@ if [ "${_STATUS}" = "INIT" ] ; then
     || [[ "${_THISHOST}" =~ ".host8." ]] \
     || [ -e "/root/.auto.up.cnf" ] \
     || [ -e "/root/.host8.cnf" ] ; then
-    if [ "$_REL_VERSION" = "wheezy" ] \
-      || [ "$_REL_VERSION" = "trusty" ] \
-      || [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "${_REL_VERSION}" = "wheezy" ] \
+      || [ "${_REL_VERSION}" = "trusty" ] \
+      || [ "${_REL_VERSION}" = "precise" ] ; then
       _APT_XTRA="openjdk-7-jre-headless openjdk-6-jre-headless nginx"
     else
       _APT_XTRA="openjdk-6-jre-headless nginx"
@@ -6787,9 +6787,9 @@ else
     || [[ "${_THISHOST}" =~ ".host8." ]] \
     || [ -e "/root/.auto.up.cnf" ] \
     || [ -e "/root/.host8.cnf" ] ; then
-    if [ "$_REL_VERSION" = "wheezy" ] \
-      || [ "$_REL_VERSION" = "trusty" ] \
-      || [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "${_REL_VERSION}" = "wheezy" ] \
+      || [ "${_REL_VERSION}" = "trusty" ] \
+      || [ "${_REL_VERSION}" = "precise" ] ; then
       _APT_XTRA="openjdk-7-jre-headless openjdk-6-jre-headless"
     else
       _APT_XTRA="openjdk-6-jre-headless"
@@ -6802,7 +6802,7 @@ else
   if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
     || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
     msg "WARN: Installed keyring is broken, forced reinstall required"
-    if [ "$_THIS_OS" = "Debian" ] ; then
+    if [ "${_THIS_OS}" = "Debian" ] ; then
       st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
       st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
     else
@@ -6834,8 +6834,8 @@ else
 fi
 if [ "$_IS_VZ" = "YES" ] \
   || [ -e "/root/.use.sysklogd.cnf" ] \
-  || [ "$_REL_VERSION" = "trusty" ] \
-  || [ "$_REL_VERSION" = "precise" ] ; then
+  || [ "${_REL_VERSION}" = "trusty" ] \
+  || [ "${_REL_VERSION}" = "precise" ] ; then
   _SYSLOGD=sysklogd
    mrun "apt-get purge rsyslog -y" &> /dev/null
    mrun "killall -9 rsyslogd" &> /dev/null
@@ -6845,9 +6845,9 @@ fi
 if [ "${_NGINX_SPDY}" = "YES" ] \
   || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
   || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ] ; then
-  if [ "$_REL_VERSION" = "wheezy" ] \
-    || [ "$_REL_VERSION" = "trusty" ] \
-    || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "${_REL_VERSION}" = "wheezy" ] \
+    || [ "${_REL_VERSION}" = "trusty" ] \
+    || [ "${_REL_VERSION}" = "precise" ] ; then
     _SSB_SRC=NO
   else
     _SSB_SRC=YES
@@ -6863,7 +6863,7 @@ else
                    libcurl4-openssl-dev \
                    ${_EXTRA_PACKAGES}"
 fi
-if [ "$_REL_VERSION" = "trusty" ] ; then
+if [ "${_REL_VERSION}" = "trusty" ] ; then
   _EXTRA_PACKAGES="libgd2-noxpm-dev \
                    libgd2-xpm-dev \
                    libgd2-dev \
@@ -6885,11 +6885,11 @@ if [[ "_XTRAS_LIST" =~ "IMG" ]] ; then
                    ${_EXTRA_PACKAGES}"
 fi
 
-if [ "$_REL_VERSION" = "wheezy" ] \
-  || [ "$_REL_VERSION" = "squeeze" ] \
-  || [ "$_REL_VERSION" = "trusty" ] \
-  || [ "$_REL_VERSION" = "precise" ] \
-  || [ "$_REL_VERSION" = "lucid" ] ; then
+if [ "${_REL_VERSION}" = "wheezy" ] \
+  || [ "${_REL_VERSION}" = "squeeze" ] \
+  || [ "${_REL_VERSION}" = "trusty" ] \
+  || [ "${_REL_VERSION}" = "precise" ] \
+  || [ "${_REL_VERSION}" = "lucid" ] ; then
   _DEBDEPS="apticron \
             $_APT_XTRA \
             $_EXTRA_LIB_APT \
@@ -7013,7 +7013,7 @@ if [ "$_REL_VERSION" = "wheezy" ] \
             zip \
             zlib1g-dev \
             zlibc"
-elif [ "$_REL_VERSION" = "lenny" ] ; then
+elif [ "${_REL_VERSION}" = "lenny" ] ; then
   _DEBDEPS="apticron \
             $_APT_ELSE \
             $_EXTRA_LIB_APT \
@@ -7142,12 +7142,12 @@ install_with_aptitude_deps() {
     _GPG=gpg
   fi
   if [[ "${_XTRAS_LIST}" =~ "FMG" ]] ; then
-    if [ "$_REL_VERSION" = "squeeze" ] ; then
+    if [ "${_REL_VERSION}" = "squeeze" ] ; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec52"
-    elif [ "$_REL_VERSION" = "lucid" ] ; then
+    elif [ "${_REL_VERSION}" = "lucid" ] ; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-52"
-    elif [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] \
-      || [ "$_REL_VERSION" = "precise" ] ; then
+    elif [ "${_REL_VERSION}" = "wheezy" ] || [ "${_REL_VERSION}" = "trusty" ] \
+      || [ "${_REL_VERSION}" = "precise" ] ; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-53"
     else
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec51"
@@ -7166,15 +7166,15 @@ install_mariadb_sql() {
       --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
     sleep 2
   done
-  if [ "$_REL_VERSION" = "trusty" ] ; then
+  if [ "${_REL_VERSION}" = "trusty" ] ; then
     st_runner "$_INSTAPP software-properties-common" 2> /dev/null
   fi
-  if [ "$_THIS_OS" = "Debian" ] ; then
+  if [ "${_THIS_OS}" = "Debian" ] ; then
     _THIS_OS_NAME=debian
-  elif [ "$_THIS_OS" = "Ubuntu" ] ; then
+  elif [ "${_THIS_OS}" = "Ubuntu" ] ; then
     _THIS_OS_NAME=ubuntu
   fi
-  if [ "$_REL_VERSION" = "trusty" ] ; then
+  if [ "${_REL_VERSION}" = "trusty" ] ; then
     _DB_SERIES=10.0
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -7183,36 +7183,36 @@ install_mariadb_sql() {
     else
       _MARIADB_VRN="${_MARIADB_10_VRN}"
     fi
-    msg "INFO: Forced MariaDB $_MARIADB_VRN in $_THIS_OS/$_REL_VERSION"
-  elif [ "$_REL_VERSION" = "lenny" ] ; then
+    msg "INFO: Forced MariaDB $_MARIADB_VRN in ${_THIS_OS}/${_REL_VERSION}"
+  elif [ "${_REL_VERSION}" = "lenny" ] ; then
     _DB_SERIES=5.3
     _MARIADB_VRN=5.3.12
-    msg "INFO: Forced MariaDB $_MARIADB_VRN in $_THIS_OS/$_REL_VERSION"
+    msg "INFO: Forced MariaDB $_MARIADB_VRN in ${_THIS_OS}/${_REL_VERSION}"
   else
     if [ "${_DB_SERIES}" = "10.0" ] || [ "${_DB_SERIES}" = "5.5" ] ; then
       _DO_NOTHING=YES
     else
       _DB_SERIES=5.5
       _MARIADB_VRN="${_MARIADB_5_VRN}"
-      msg "INFO: Forced MariaDB $_MARIADB_VRN in $_THIS_OS/$_REL_VERSION"
+      msg "INFO: Forced MariaDB $_MARIADB_VRN in ${_THIS_OS}/${_REL_VERSION}"
     fi
     if [ -z "${_DB_SERIES}" ] ; then
       _DB_SERIES=5.5
       _MARIADB_VRN="${_MARIADB_5_VRN}"
-      msg "INFO: Forced MariaDB $_MARIADB_VRN in $_THIS_OS/$_REL_VERSION"
+      msg "INFO: Forced MariaDB $_MARIADB_VRN in ${_THIS_OS}/${_REL_VERSION}"
     fi
   fi
-  _THIS_REL_VERSION="$_REL_VERSION"
+  _THIS_REL_VERSION="${_REL_VERSION}"
   echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
-  echo "deb http://${_DB_SERVER_SRC}/pub/mariadb/repo/${_DB_SERIES}/$_THIS_OS_NAME \
+  echo "deb http://${_DB_SERVER_SRC}/pub/mariadb/repo/${_DB_SERIES}/${_THIS_OS}_NAME \
     $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
-  echo "deb-src http://${_DB_SERVER_SRC}/pub/mariadb/repo/${_DB_SERIES}/$_THIS_OS_NAME \
+  echo "deb-src http://${_DB_SERVER_SRC}/pub/mariadb/repo/${_DB_SERIES}/${_THIS_OS}_NAME \
     $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
     || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
     msg "WARN: Installed keyring is broken, forced reinstall required"
-    if [ "$_THIS_OS" = "Debian" ] ; then
+    if [ "${_THIS_OS}" = "Debian" ] ; then
       st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
       st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
     else
@@ -7249,10 +7249,10 @@ install_mariadb_sql() {
           libdbi-perl"
 }
 install_with_aptitude_sql() {
-  if [ "$_REL_VERSION" = "squeeze" ] \
-    || [ "$_REL_VERSION" = "trusty" ] \
-    || [ "$_REL_VERSION" = "precise" ] \
-    || [ "$_REL_VERSION" = "lucid" ] ; then
+  if [ "${_REL_VERSION}" = "squeeze" ] \
+    || [ "${_REL_VERSION}" = "trusty" ] \
+    || [ "${_REL_VERSION}" = "precise" ] \
+    || [ "${_REL_VERSION}" = "lucid" ] ; then
     if [ "${_EASY_SETUP}" = "MSTR" ] \
       || [ "${_EASY_SETUP}" = "DBHD" ] \
       || [ "${_EASY_SETUP}" = "WBHD" ] \
@@ -7313,7 +7313,7 @@ else
     if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
       || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
       msg "WARN: Installed keyring is broken, forced reinstall required"
-      if [ "$_THIS_OS" = "Debian" ] ; then
+      if [ "${_THIS_OS}" = "Debian" ] ; then
         mrun "apt-get install debian-keyring ${forCer}" 2> /dev/null
         mrun "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
       else
@@ -7339,9 +7339,9 @@ fi
 if [ "${_NGINX_SPDY}" = "YES" ] \
   || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
   || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ] ; then
-  if [ "$_REL_VERSION" = "wheezy" ] \
-    || [ "$_REL_VERSION" = "trusty" ] \
-    || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "${_REL_VERSION}" = "wheezy" ] \
+    || [ "${_REL_VERSION}" = "trusty" ] \
+    || [ "${_REL_VERSION}" = "precise" ] ; then
     _DO_NOTHING=YES
   else
     install_ssl_src
@@ -7350,7 +7350,7 @@ if [ "${_NGINX_SPDY}" = "YES" ] \
   fi
 fi
 if [ "${_SSH_FROM_SOURCES}" = "YES" ] ; then
-  if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "${_REL_VERSION}" = "trusty" ] || [ "${_REL_VERSION}" = "precise" ] ; then
     _DO_NOTHING=YES
   else
     install_ssh_src
@@ -7381,7 +7381,7 @@ else
   if [ "$_SQL_TEST_UPGRADE" = "YES" ] && [ "${_DB_SERVER}" = "MariaDB" ] ; then
     _SQL_UPGRADE=YES
   fi
-  if [ "$_REL_VERSION" = "squeeze" ] \
+  if [ "${_REL_VERSION}" = "squeeze" ] \
     && [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]] \
     && [[ "${_DB_SERVER_TEST}" =~ " 5.3." ]] ; then
     _SQL_UPGRADE=YES
@@ -7426,16 +7426,16 @@ else
     && [ -e "${pthLog}/mariadb-apt-fixed-${_X_VERSION}.log" ] ; then
     _SQL_DEB_SRC_UPDATE=NO
   else
-    if [ "$_THIS_OS" = "Debian" ] ; then
+    if [ "${_THIS_OS}" = "Debian" ] ; then
       _THIS_OS_NAME=debian
-    elif [ "$_THIS_OS" = "Ubuntu" ] ; then
+    elif [ "${_THIS_OS}" = "Ubuntu" ] ; then
       _THIS_OS_NAME=ubuntu
     fi
-    _THIS_REL_VERSION="$_REL_VERSION"
+    _THIS_REL_VERSION="${_REL_VERSION}"
     echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
-    echo "deb http://${_DB_SERVER_SRC}/pub/mariadb/repo/${_DB_SERIES}/$_THIS_OS_NAME \
+    echo "deb http://${_DB_SERVER_SRC}/pub/mariadb/repo/${_DB_SERIES}/${_THIS_OS}_NAME \
       $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
-    echo "deb-src http://${_DB_SERVER_SRC}/pub/mariadb/repo/${_DB_SERIES}/$_THIS_OS_NAME \
+    echo "deb-src http://${_DB_SERVER_SRC}/pub/mariadb/repo/${_DB_SERIES}/${_THIS_OS}_NAME \
       $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
     st_runner "aptitude update -y" &> /dev/null
     touch ${pthLog}/mariadb-apt-fixed-${_X_VERSION}.log
@@ -7506,11 +7506,11 @@ install_wkhtmltoimage
 
 
 ###--------------------###
-if [ "$_REL_VERSION" = "wheezy" ] \
-  || [ "$_REL_VERSION" = "trusty" ] \
-  || [ "$_REL_VERSION" = "precise" ] ; then
+if [ "${_REL_VERSION}" = "wheezy" ] \
+  || [ "${_REL_VERSION}" = "trusty" ] \
+  || [ "${_REL_VERSION}" = "precise" ] ; then
   if [ ! -L "/usr/lib/libXpm.so" ] ; then
-    msg "INFO: Fix #1 for libs in $_THIS_OS $_REL_VERSION"
+    msg "INFO: Fix #1 for libs in ${_THIS_OS} ${_REL_VERSION}"
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "$_X86_64_TEST" = "x86_64" ] ; then
       ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
@@ -7540,16 +7540,16 @@ fi
 
 
 ###--------------------###
-if [ "$_REL_VERSION" = "wheezy" ] \
-  || [ "$_REL_VERSION" = "trusty" ] \
-  || [ "$_REL_VERSION" = "precise" ] ; then
+if [ "${_REL_VERSION}" = "wheezy" ] \
+  || [ "${_REL_VERSION}" = "trusty" ] \
+  || [ "${_REL_VERSION}" = "precise" ] ; then
   _SSL_FIX_REQUIRED=YES
   if [ "${_NGINX_SPDY}" = "YES" ] \
     || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
     || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ] ; then
-    if [ "$_REL_VERSION" = "wheezy" ] \
-      || [ "$_REL_VERSION" = "trusty" ] \
-      || [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "${_REL_VERSION}" = "wheezy" ] \
+      || [ "${_REL_VERSION}" = "trusty" ] \
+      || [ "${_REL_VERSION}" = "precise" ] ; then
       _SSL_FIX_REQUIRED=YES
     else
       _SSL_FIX_REQUIRED=NO
@@ -7557,7 +7557,7 @@ if [ "$_REL_VERSION" = "wheezy" ] \
   fi
   if [ ! -e "/usr/lib/libssl.so.1.0.0" ] \
     && [ "$_SSL_FIX_REQUIRED" = "YES" ] ; then
-    msg "INFO: Fix #2 for libs in $_THIS_OS $_REL_VERSION"
+    msg "INFO: Fix #2 for libs in ${_THIS_OS} ${_REL_VERSION}"
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "$_X86_64_TEST" = "x86_64" ] ; then
       if [ -e "/usr/lib/x86_64-linux-gnu/libssl.so.1.0.0" ] \
@@ -7603,7 +7603,7 @@ fi
 
 
 ###--------------------###
-if [ "$_THIS_OS" = "Debian" ] ; then
+if [ "${_THIS_OS}" = "Debian" ] ; then
   chmod 644 /usr/share/git-core/templates/description &> /dev/null
   chmod 644 /usr/share/git-core/templates/hooks/* &> /dev/null
   chmod 644 /usr/share/git-core/templates/info/* &> /dev/null
@@ -7880,9 +7880,9 @@ if [ "${_STATUS}" = "UPGRADE" ] ; then
   st_runner "aptitude remove php5-sasl php5-suhosin -y" &> /dev/null
   st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
 fi
-if [ "$_REL_VERSION" = "wheezy" ] \
-  || [ "$_REL_VERSION" = "trusty" ] \
-  || [ "$_REL_VERSION" = "precise" ] ; then
+if [ "${_REL_VERSION}" = "wheezy" ] \
+  || [ "${_REL_VERSION}" = "trusty" ] \
+  || [ "${_REL_VERSION}" = "precise" ] ; then
   _PHP_EXTRA="--with-ldap --with-gmp --with-xpm-dir=/usr"
 else
   _PHP_EXTRA="--with-ldap --with-gmp"
@@ -7895,7 +7895,7 @@ if [ ! -z "${_PHP_EXTRA}" ] ; then
     msg "INFO: PHP EXTRA is ${_PHP_EXTRA}"
   fi
 fi
-if [ "$_REL_VERSION" = "trusty" ] ; then
+if [ "${_REL_VERSION}" = "trusty" ] ; then
   ln -sf /usr/include/freetype2 /usr/include/freetype2/freetype
 fi
 
@@ -8055,7 +8055,7 @@ fi
 
 ###--------------------###
 if [[ "${_XTRAS_LIST}" =~ "BZR" ]] ; then
-  if [ "$_REL_VERSION" = "lenny" ] ; then
+  if [ "${_REL_VERSION}" = "lenny" ] ; then
     _DO_NOTHING=YES
   else
     _PATH_BZR="/usr/local/bin/bzr"
@@ -8117,7 +8117,7 @@ fi
 
 ###--------------------###
 if [ ! -e "${pthLog}/umask_fixed_shell_sftp.log" ] ; then
-  if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
+  if [ "${_REL_VERSION}" = "lenny" ] || [ "${_REL_VERSION}" = "lucid" ] ; then
     _DO_NOTHING=YES
   else
     sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /etc/ssh/sshd_config
@@ -8128,7 +8128,7 @@ if [ ! -e "${pthLog}/umask_fixed_shell_sftp.log" ] ; then
 fi
 if [ ! -e "${pthLog}/src_umask_fixed_shell_sftp.log" ] \
   && [ -e "/usr/etc/sshd_config" ] ; then
-  if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
+  if [ "${_REL_VERSION}" = "lenny" ] || [ "${_REL_VERSION}" = "lucid" ] ; then
     _DO_NOTHING=YES
   else
     sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /usr/etc/sshd_config
@@ -8139,7 +8139,7 @@ fi
 
 
 ###--------------------###
-if [ "$_REL_VERSION" = "lenny" ] ; then
+if [ "${_REL_VERSION}" = "lenny" ] ; then
   _PATH_LSHELL="/usr/bin/lshell"
 else
   _PATH_LSHELL="/usr/local/bin/lshell"
@@ -8363,9 +8363,9 @@ fi
 
 
 ###--------------------###
-if [ "$_REL_VERSION" = "wheezy" ] \
-  || [ "$_REL_VERSION" = "trusty" ] \
-  || [ "$_REL_VERSION" = "precise" ] ; then
+if [ "${_REL_VERSION}" = "wheezy" ] \
+  || [ "${_REL_VERSION}" = "trusty" ] \
+  || [ "${_REL_VERSION}" = "precise" ] ; then
   _REAL_JETTY=9
   _JETTY_CTRL="/opt/jetty9/jetty-ctrl-${_JETTY_9_VRN}-version.txt"
 else
@@ -8386,9 +8386,9 @@ if [[ "${_XTRAS_LIST}" =~ "SR4" ]] \
     && [ ! -e "/root/.mstr.clstr.cnf" ] \
     && [ ! -e "/root/.wbhd.clstr.cnf" ] \
     && [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
-    if [ "$_REL_VERSION" = "wheezy" ] \
-      || [ "$_REL_VERSION" = "trusty" ] \
-      || [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "${_REL_VERSION}" = "wheezy" ] \
+      || [ "${_REL_VERSION}" = "trusty" ] \
+      || [ "${_REL_VERSION}" = "precise" ] ; then
       _REAL_JETTY=9
     else
       _REAL_JETTY=8
@@ -8403,9 +8403,9 @@ if [[ "${_XTRAS_LIST}" =~ "SR4" ]] \
       rm -f -r /opt/solr4
       rm -f -r /opt/jetty9
       rm -f /etc/jetty.conf
-      if [ "$_REL_VERSION" = "wheezy" ] \
-        || [ "$_REL_VERSION" = "trusty" ] \
-        || [ "$_REL_VERSION" = "precise" ] ; then
+      if [ "${_REL_VERSION}" = "wheezy" ] \
+        || [ "${_REL_VERSION}" = "trusty" ] \
+        || [ "${_REL_VERSION}" = "precise" ] ; then
         get_dev_arch "jetty-distribution-${_JETTY_9_VRN}.tar.gz"
         mv /var/opt/jetty-distribution-${_JETTY_9_VRN} /opt/jetty9
         echo ${_JETTY_9_VRN} > $_JETTY_CTRL
@@ -8457,8 +8457,8 @@ if [[ "${_XTRAS_LIST}" =~ "SR4" ]] \
       chown -R jetty9:jetty9 /opt/solr4
       chown -R jetty9:jetty9 /opt/jetty9
       chown -R jetty9:jetty9 /var/log/jetty9
-      if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] \
-        || [ "$_REL_VERSION" = "precise" ] ; then
+      if [ "${_REL_VERSION}" = "wheezy" ] || [ "${_REL_VERSION}" = "trusty" ] \
+        || [ "${_REL_VERSION}" = "precise" ] ; then
         echo "JAVA=/usr/bin/java7 # Path to Java 1.7" > /etc/default/jetty9
         echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk/jre # Path to Java 1.7" >> \
           /etc/default/jetty9
@@ -8478,9 +8478,9 @@ if [[ "${_XTRAS_LIST}" =~ "SR4" ]] \
       echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m -Djava.awt.headless=true \
         -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" \
         # Options" >> /etc/default/jetty9
-      if [ "$_REL_VERSION" = "wheezy" ] \
-        || [ "$_REL_VERSION" = "trusty" ] \
-        || [ "$_REL_VERSION" = "precise" ] ; then
+      if [ "${_REL_VERSION}" = "wheezy" ] \
+        || [ "${_REL_VERSION}" = "trusty" ] \
+        || [ "${_REL_VERSION}" = "precise" ] ; then
         _DO_NOTHING=YES
       else
         sed -i "s/8/9/g" /opt/jetty9/bin/jetty.sh &> /dev/null
@@ -8509,9 +8509,9 @@ if [ "$_UP_JDK" = "YES" ] && [ -e "/etc/init.d/jetty9" ] ; then
   msg "INFO: Jetty 9 restart completed"
 fi
 if [ -e "/opt/jetty9/VERSION.txt" ] ; then
-  if [ "$_REL_VERSION" = "wheezy" ] \
-    || [ "$_REL_VERSION" = "trusty" ] \
-    || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "${_REL_VERSION}" = "wheezy" ] \
+    || [ "${_REL_VERSION}" = "trusty" ] \
+    || [ "${_REL_VERSION}" = "precise" ] ; then
     _JETTY9_JAVA_TEST=$(grep "Path to Java 1.7" /etc/default/jetty9 2>&1)
     if [[ "$_JETTY9_JAVA_TEST" =~ "Path to Java 1.7" ]] ; then
       _DO_NOTHING=YES
@@ -8541,9 +8541,9 @@ if [ -e "/opt/jetty9/VERSION.txt" ] ; then
     rm -f -r jetty-distribution-*
     kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
     mv -f /opt/jetty9 ${vBs}/jetty9-${_X_VERSION}-${_NOW}
-    if [ "$_REL_VERSION" = "wheezy" ] \
-      || [ "$_REL_VERSION" = "trusty" ] \
-      || [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "${_REL_VERSION}" = "wheezy" ] \
+      || [ "${_REL_VERSION}" = "trusty" ] \
+      || [ "${_REL_VERSION}" = "precise" ] ; then
       get_dev_arch "jetty-distribution-${_JETTY_9_VRN}.tar.gz"
       mv /var/opt/jetty-distribution-${_JETTY_9_VRN} /opt/jetty9
       echo ${_JETTY_9_VRN} > $_JETTY_CTRL
@@ -9538,7 +9538,7 @@ fi
 
 ###--------------------###
 if [[ "${_XTRAS_LIST}" =~ "HVM" ]] ; then
-  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] ; then
+  if [ "${_REL_VERSION}" = "wheezy" ] || [ "${_REL_VERSION}" = "trusty" ] ; then
     if [ ! -x "/usr/bin/hhvm" ] ; then
       echo " "
       if prompt_yes_no "Do you want to install HHVM Engine?" ; then
@@ -9546,10 +9546,10 @@ if [[ "${_XTRAS_LIST}" =~ "HVM" ]] ; then
         msg "INFO: Installing HHVM Engine..."
         cd /var/opt
         echo "## HHVM APT Repository" > /etc/apt/sources.list.d/hhvm.list
-        if [ "$_REL_VERSION" = "wheezy" ] ; then
+        if [ "${_REL_VERSION}" = "wheezy" ] ; then
           echo "deb http://dl.hhvm.com/debian wheezy main" >> \
             /etc/apt/sources.list.d/hhvm.list
-        elif [ "$_REL_VERSION" = "trusty" ] ; then
+        elif [ "${_REL_VERSION}" = "trusty" ] ; then
           echo "deb http://dl.hhvm.com/ubuntu trusty main" >> \
             /etc/apt/sources.list.d/hhvm.list
         fi
@@ -9646,7 +9646,7 @@ if [[ "${_XTRAS_LIST}" =~ "BND" ]] && [ "$_CHECK_OS" = "OTHER" ] ; then
 fi
 
 
-if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
+if [ "${_REL_VERSION}" = "lenny" ] || [ "${_REL_VERSION}" = "lucid" ] ; then
   _DO_NOTHING=YES
 else
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \

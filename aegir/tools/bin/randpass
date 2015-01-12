@@ -33,9 +33,9 @@ randpass() {
   elif [ "${kind}" = "hash" ] ; then
     CHAR="[:alnum:]"
     if [ "$_NEW_SSL" = "YES" ] \
-      || [ "$_REL_VERSION" = "wheezy" ] \
-      || [ "$_REL_VERSION" = "trusty" ] \
-      || [ "$_REL_VERSION" = "precise" ] ; then
+      || [ "${_REL_VERSION}" = "wheezy" ] \
+      || [ "${_REL_VERSION}" = "trusty" ] \
+      || [ "${_REL_VERSION}" = "precise" ] ; then
       cat /dev/urandom \
         | tr -cd "$CHAR" \
         | head -c ${1:-$rkey} \

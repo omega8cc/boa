@@ -833,9 +833,9 @@ add_solr() {
       CHAR="[:alnum:]"
       rkey=32
       if [ "$_NEW_SSL" = "YES" ] \
-        || [ "$_REL_VERSION" = "wheezy" ] \
-        || [ "$_REL_VERSION" = "trusty" ] \
-        || [ "$_REL_VERSION" = "precise" ] ; then
+        || [ "${_REL_VERSION}" = "wheezy" ] \
+        || [ "${_REL_VERSION}" = "trusty" ] \
+        || [ "${_REL_VERSION}" = "precise" ] ; then
         _MD5H=$(cat /dev/urandom \
           | tr -cd "$CHAR" \
           | head -c ${1:-$rkey} \
@@ -2113,9 +2113,9 @@ process() {
         | sed "s/[\,']//g" 2>&1)
       if [ -e "${Plr}" ] ; then
         if [ "$_NEW_SSL" = "YES" ] \
-          || [ "$_REL_VERSION" = "wheezy" ] \
-          || [ "$_REL_VERSION" = "trusty" ] \
-          || [ "$_REL_VERSION" = "precise" ] ; then
+          || [ "${_REL_VERSION}" = "wheezy" ] \
+          || [ "${_REL_VERSION}" = "trusty" ] \
+          || [ "${_REL_VERSION}" = "precise" ] ; then
           PlrID=$(echo ${Plr} \
             | openssl md5 \
             | awk '{ print $2}' \

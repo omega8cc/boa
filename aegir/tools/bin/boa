@@ -504,12 +504,12 @@ init_start() {
 set_pin_priority() {
   if [ ! -e "/etc/apt/preferences" ] && [ -e "/etc/issue.net" ] ; then
     _THIS_OS=$(grep "Debian" /etc/issue.net 2>&1)
-    if [[ "$_THIS_OS" =~ "Debian" ]] ; then
+    if [[ "${_THIS_OS}" =~ "Debian" ]] ; then
       _THIS_OS=Debian
     else
       _THIS_OS=Ubuntu
     fi
-    if [ "$_THIS_OS" = "Debian" ] ; then
+    if [ "${_THIS_OS}" = "Debian" ] ; then
       _THIS_RV=$(grep "6.0" /etc/issue.net 2>&1)
       if [[ "$_THIS_RV" =~ "6.0" ]] ; then
         curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
@@ -518,7 +518,7 @@ set_pin_priority() {
         curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" \
           -o /etc/apt/preferences
       fi
-    elif [ "$_THIS_OS" = "Ubuntu" ] ; then
+    elif [ "${_THIS_OS}" = "Ubuntu" ] ; then
       curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
         -o /etc/apt/preferences
     fi
