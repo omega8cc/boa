@@ -505,8 +505,6 @@ up_action_one() {
       echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
       echo try again later
     fi
-    echo
-    echo
   fi
 }
 
