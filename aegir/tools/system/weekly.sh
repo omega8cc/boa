@@ -196,15 +196,11 @@ count() {
     Dom=$(echo $Site | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
     #echo "${_THIS_U},${Dom},vhost-exists"
     _DEV_URL=NO
-    searchStringA=".dev."
-    searchStringB=".devel."
-    searchStringC=".tmp."
-    searchStringD=".test."
+    searchStringA=".temporary."
+    searchStringB=".testing."
     case ${Dom} in
       *"$searchStringA"*) _DEV_URL=YES ;;
       *"$searchStringB"*) _DEV_URL=YES ;;
-      *"$searchStringC"*) _DEV_URL=YES ;;
-      *"$searchStringD"*) _DEV_URL=YES ;;
       *)
       ;;
     esac
@@ -303,9 +299,9 @@ You can purchase more Aegir Engines easily online:
 Note that we do not count any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
 
-  .tmp. .test. .dev. .devel.
+  .temporary. .testing.
 
-For example, a site with main name: abc.test.foo.com is by default excluded
+For example, a site with main name: abc.testing.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes).
 
 However, if we discover that someone is using this method to hide real
@@ -365,9 +361,9 @@ You can purchase more Aegir Engines easily online:
 Note that we do not count any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
 
-  .tmp. .test. .dev. .devel.
+  .temporary. .testing.
 
-For example, a site with main name: abc.test.foo.com is by default excluded
+For example, a site with main name: abc.testing.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes).
 
 However, if we discover that someone is using this method to hide real
@@ -421,9 +417,9 @@ You can purchase more Aegir Engines easily online:
 Note that we do not count any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
 
-  .tmp. .test. .dev. .devel.
+  .temporary. .testing.
 
-For example, a site with main name: abc.test.foo.com is by default excluded
+For example, a site with main name: abc.testing.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes).
 
 However, if we discover that someone is using this method to hide real
@@ -482,9 +478,9 @@ You can purchase more Aegir Engines easily online:
 Note that we do not count any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
 
-  .tmp. .test. .dev. .devel.
+  .temporary. .testing.
 
-For example, a site with main name: abc.test.foo.com is by default excluded
+For example, a site with main name: abc.testing.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes).
 
 However, if we discover that someone is using this method to hide real
@@ -540,9 +536,9 @@ You can purchase more Aegir Engines easily online:
 Note that we do not count any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
 
-  .tmp. .test. .dev. .devel.
+  .temporary. .testing.
 
-For example, a site with main name: abc.test.foo.com is by default excluded
+For example, a site with main name: abc.testing.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes).
 
 However, if we discover that someone is using this method to hide real
@@ -586,9 +582,9 @@ You can purchase more Aegir Engines easily online:
 Note that we do not count any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
 
-  .tmp. .test. .dev. .devel.
+  .temporary. .testing.
 
-For example, a site with main name: abc.test.foo.com is by default excluded
+For example, a site with main name: abc.testing.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes).
 
 However, if we discover that someone is using this method to hide real
