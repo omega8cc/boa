@@ -423,7 +423,7 @@ if (!$is_backend && !$is_dev) {
  * Disable page caching when Speed Booster is disabled on the fly
  */
 if (!$is_bot && isset($_SERVER['REQUEST_URI']) &&
-  preg_match("/nocache=1/", $_SERVER['REQUEST_URI'])) {
+    preg_match("/nocache=1/", $_SERVER['REQUEST_URI'])) {
   if ($drupal_eight) {
     $config['system.performance']['cache.page.use_internal'] = FALSE;
   }
@@ -467,7 +467,7 @@ if ($conf['install_profile'] == 'hostmaster') {
       $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' ||
       $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
       if ($request_type != "SSL" &&
-        !preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI'])) { // we force secure connection here
+          !preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI'])) { // we force secure connection here
         header('X-Accel-Expires: 5');
         header("HTTP/1.1 301 Moved Permanently");
         header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
@@ -476,7 +476,7 @@ if ($conf['install_profile'] == 'hostmaster') {
       }
     }
     if (isset($_SERVER['HTTP_HOST']) &&
-      preg_match("/\.(?:host8|boa)\.(?:biz|io)$/i", $_SERVER['HTTP_HOST'])) {
+        preg_match("/\.(?:host8|boa)\.(?:biz|io)$/i", $_SERVER['HTTP_HOST'])) {
       if (preg_match("/^\/admin\/user\/user\/create/", $_SERVER['REQUEST_URI']) ||
           preg_match("/^\/node\/add\/server/", $_SERVER['REQUEST_URI']) ||
           preg_match("/^\/node\/(?:1|2|4|5|7|8|10)\/(?:edit|delete)/", $_SERVER['REQUEST_URI'])) {
@@ -495,7 +495,7 @@ if ($conf['install_profile'] == 'hostmaster') {
  * Main section starts here
  */
 if (isset($_SERVER['SERVER_NAME']) &&
-  $all_ini['allow_private_file_downloads']) {
+    $all_ini['allow_private_file_downloads']) {
   unset($conf['file_downloads']); // Disable hardcoded public downloads
   if ($is_dev && !$is_backend) {
     header('X-Is-Cart: YES');
@@ -507,7 +507,7 @@ if (isset($_SERVER['SERVER_NAME']) && $all_ini['redis_cache_disable']) {
 }
 
 if (!$is_bot && isset($_SERVER['REQUEST_URI']) &&
-  preg_match("/noredis=1/", $_SERVER['REQUEST_URI'])) {
+    preg_match("/noredis=1/", $_SERVER['REQUEST_URI'])) {
   $use_redis = FALSE;
 }
 
