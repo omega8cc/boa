@@ -1631,7 +1631,7 @@ _SILENT=/opt/tmp/silent.log
 #
 #
 if [ -d "${_ROOT}" ] ; then
-  msg "Octopus Upgrade on $(uname -n 2>&1) in progress..."
+  msg "Octopus Satellite Instance Upgrade in progress..."
   if [ -d "${_ROOT}/distro" ] ; then
     if [ -e "${_ROOT}/log/domain.txt" ] ; then
       _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>&1)
