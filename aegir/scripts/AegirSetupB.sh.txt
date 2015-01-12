@@ -271,8 +271,7 @@ update_php_cli_drush() {
   elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php53\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   else
-    msg "${_STATUS} B: FATAL ERROR: _PHP_CLI_VERSION must be set \
-      to one of supported values"
+    msg "${_STATUS} B: FATAL ERROR: _PHP_CLI_VERSION is not set correctly"
     msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
     touch /opt/tmp/status-AegirSetupB-FAIL
     exit 1
@@ -622,8 +621,8 @@ else
   fi
   if [ ! -e "${_PREV_HM_ROOT}/sites/${_DOMAIN}/settings.php" ] ; then
     _DEBUG_MODE=YES
-    msg "${_STATUS} B: Testing previous install... \
-      OPS, zombie found, moving it to backups..."
+    msg "${_STATUS} B: Testing previous install..."
+    msg "${_STATUS} B: OPS, zombie found, moving it to backups..."
     mv -f ${_PREV_HM_ROOT} \
       ${_ROOT}/backups/system/empty-host-master-${_LAST_HMR}-${_NOW}
     cd ${_ROOT}/aegir/distro
@@ -638,8 +637,8 @@ else
     msg "${_STATUS} B: Testing previous install again after removing zombie..."
     if [ ! -e "${_PREV_HM_ROOT}/sites/${_DOMAIN}/settings.php" ] ; then
       _DEBUG_MODE=YES
-      msg "${_STATUS} B: Testing previous install... \
-        OPS, another zombie found, moving it to backups..."
+      msg "${_STATUS} B: Testing previous install again..."
+      msg "${_STATUS} B: OPS, another zombie found, moving it to backups..."
       mv -f ${_PREV_HM_ROOT} \
         ${_ROOT}/backups/system/empty-host-master-$_L_HM_DISTRO-${_NOW}-sec
       cd ${_ROOT}/aegir/distro
@@ -655,8 +654,8 @@ else
     fi
   fi
   if [ -d "${_HM_ROOT}" ] ; then
-    msg "${_STATUS} B: FATAL ERROR: ${_HM_ROOT} already exists - \
-      too many zombies to delete!"
+    msg "${_STATUS} B: FATAL ERROR: ${_HM_ROOT} already exists"
+    msg "${_STATUS} B: FATAL ERROR: Too many zombies to delete! Try again..."
     msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
     touch /opt/tmp/status-AegirSetupB-FAIL
     exit 1
@@ -835,8 +834,8 @@ if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ] ; then
     msg "${_STATUS} B: Aegir $_MSG_STATUS test result: OK"
   fi
 else
-  msg "${_STATUS} B: FATAL ERROR: Required file \
-    ${_HM_ROOT}/sites/${_DOMAIN}/settings.php does not exist"
+  msg "${_STATUS} B: FATAL ERROR: Required file does not exist:"
+  msg "${_STATUS} B: FATAL ERROR: ${_HM_ROOT}/sites/${_DOMAIN}/settings.php"
   msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
   touch /opt/tmp/status-AegirSetupB-FAIL
   exit 1

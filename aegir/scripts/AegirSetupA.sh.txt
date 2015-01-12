@@ -544,7 +544,9 @@ download_textile() {
 # Download o_contrib_seven.
 download_o_contrib_seven() {
   touch update-${_X_VERSION}.info
-  #msg "${_STATUS} A: Downloading o_contrib_seven modules, please wait..."
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "${_STATUS} A: Downloading o_contrib_seven modules..."
+  fi
   get_dev_contrib "admin-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "advagg-7.x-2.7.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.x-dev.tar.gz"
@@ -623,7 +625,9 @@ download_o_contrib_seven() {
 # Download o_contrib_six.
 download_o_contrib_six() {
   touch update-${_X_VERSION}.info
-  #msg "${_STATUS} A: Downloading o_contrib modules, please wait..."
+  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    msg "${_STATUS} A: Downloading o_contrib modules..."
+  fi
   get_dev_contrib "admin-6.x-2.0.tar.gz"
   get_dev_contrib "advagg-6.x-1.x-dev.tar.gz"
   get_dev_contrib "blockcache_alter-6.x-1.6.tar.gz"
@@ -721,7 +725,7 @@ check_fix_o_contrib() {
   if [ -e "$_CORE/o_contrib" ] ; then
     if [ ! -d "$_CORE/o_contrib/robotstxt" ] \
       || [ "$_O_CONTRIB_FORCED_UP" = "YES" ] ; then
-      msg "${_STATUS} A: Running o_contrib forced upgrade, please wait..."
+      msg "${_STATUS} A: Running o_contrib forced upgrade..."
       cd $_CORE/o_contrib
       rm -f -r *
       download_o_contrib_six
@@ -731,7 +735,7 @@ check_fix_o_contrib() {
   if [ -e "$_CORE/o_contrib_seven" ] ; then
     if [ ! -d "$_CORE/o_contrib_seven/robotstxt" ] \
       || [ "$_O_CONTRIB_FORCED_UP" = "YES" ] ; then
-      msg "${_STATUS} A: Running o_contrib_seven forced upgrade, please wait..."
+      msg "${_STATUS} A: Running o_contrib_seven forced upgrade..."
       cd $_CORE/o_contrib_seven
       rm -f -r *
       download_o_contrib_seven
@@ -2225,8 +2229,8 @@ if [ "${_STATUS}" = "INIT" ] ; then
     _AEGIR_LOGIN_URL=$(grep --text "^http://${_DOMAIN}" ${_ROOT}/log/install.log 2>&1)
     if [ ! -z "$_AEGIR_LOGIN_URL" ] ; then
       echo " "
-      msg "INFO: Congratulations, Aegir backend and frontend have been installed successfully"
-      msg "NOTE! Please wait 1 minute before opening the following link in your web browser:"
+      msg "INFO: Congratulations, Aegir have been installed successfully!"
+      msg "NOTE! Please wait 2 min before visiting Aegir at:"
       echo " "
       msg "LINK: $_AEGIR_LOGIN_URL"
       echo " "

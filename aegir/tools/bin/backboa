@@ -226,11 +226,11 @@ retrieve() {
 }
 
 install() {
-  _DUPLICITY_INSTALLED=$(duplicity --version 2>&1 \
+  _DUPLICITY_ITD=$(duplicity --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
-  if [ "${_DUPLICITY_INSTALLED}" = "${_DUPLICITY_VRN}" ] ; then
+  if [ "${_DUPLICITY_ITD}" = "${_DUPLICITY_VRN}" ] ; then
     echo "Latest duplicity version ${_DUPLICITY_VRN} already installed"
   else
     echo "Installing duplicity dependencies, please wait..."

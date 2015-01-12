@@ -2223,8 +2223,6 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   _THIS_HM="${_HM_ROOT}/sites/${_DOMAIN}"
-  #msg "_THIS_HM is read static ${_THIS_HM} because \
-  #  _LOCAL_STATUS is $_LOCAL_STATUS"
 else
   if [ -e "${_ROOT}/.drush/hostmaster.alias.drushrc.php" ] ; then
     _THIS_HM=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
@@ -2232,19 +2230,14 @@ else
       | cut -d: -f2 \
       | awk '{ print $3}' 2>&1)
     _THIS_HM=$(echo ${_THIS_HM} | sed "s/[\,']//g" 2>&1)
-    #msg "_THIS_HM is ${_THIS_HM} - \
-    #  read from ${_ROOT}/.drush/hostmaster.alias.drushrc.php"
   else
     _THIS_HM="${_HM_ROOT}/sites/${_DOMAIN}"
-    #msg "_THIS_HM is read static ${_THIS_HM}"
   fi
 fi
 if [ -d "${_THIS_HM}" ] ; then
-  #msg "_THIS_HM is ${_THIS_HM} (1)"
   cd ${_THIS_HM}
 else
   _THIS_HM="${_PREV_HM_ROOT}/sites/${_DOMAIN}"
-  #msg "_THIS_HM is ${_THIS_HM} (2)"
   cd ${_THIS_HM}
 fi
 cp -af /opt/tmp/boa/aegir/helpers/make_platform.php.txt ./

@@ -167,7 +167,7 @@ update_php_cli_drush() {
   elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php53\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   else
-    msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported values"
+    msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported versions"
     msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
     touch /opt/tmp/status-AegirUpgrade-FAIL
     exit 1
@@ -389,8 +389,8 @@ if [ -d "${_ROOT}/host_master/000" ] ; then
     _PREV_HM_ROOT="${_ROOT}/host_master/${_LASTNUM}"
   else
     _DEBUG_MODE=YES
-    msg "INFO: Testing previous install... OPS, \
-      zombie found, moving it to backups..."
+    msg "INFO: Testing previous install..."
+    msg "INFO: OPS, zombie found, moving it to backups..."
     sleep 1
     mv -f ${_PREV_HM_ROOT_TEST} \
       ${_ROOT}/backups/system/empty-hm-${_LASTNUM}-${_NOW} &> /dev/null
@@ -409,8 +409,8 @@ if [ -d "${_ROOT}/host_master/000" ] ; then
       _PREV_HM_ROOT="${_ROOT}/host_master/${_LASTNUM}"
     else
       _DEBUG_MODE=YES
-      msg "INFO: Testing previous install... OPS, \
-        another zombie found, moving it to backups..."
+      msg "INFO: Testing previous install again..."
+      msg "INFO: OPS, another zombie found, moving it to backups..."
       sleep 1
       mv -f ${_PREV_HM_ROOT_TEST} \
         ${_ROOT}/backups/system/empty-hm-${_LASTNUM}-${_NOW}-sec &> /dev/null
@@ -434,8 +434,8 @@ fi
 
 _HM_ROOT="${_ROOT}/host_master/${_DISTRO}"
 if [ -d "${_HM_ROOT}" ] ; then
-  msg "FATAL ERROR: ${_HM_ROOT} already exists - \
-    too many zombies to delete!"
+  msg "FATAL ERROR: ${_HM_ROOT} already exists"
+  msg "FATAL ERROR: Too many zombies to delete! Try again..."
   msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
   touch /opt/tmp/status-AegirUpgrade-FAIL
   exit 1
@@ -444,8 +444,8 @@ fi
 mkdir -p ${_ROOT}/host_master
 chmod 711 ${_ROOT}/host_master &> /dev/null
 if [ ! -d "/var/aegir/.drush/sys/provision/http" ] ; then
-  msg "FATAL ERROR: Required directory \
-    /var/aegir/.drush/sys/provision/http does not exist"
+  msg "FATAL ERROR: Required directory does not exist:"
+  msg "FATAL ERROR: /var/aegir/.drush/sys/provision/http"
   msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
   touch /opt/tmp/status-AegirUpgrade-FAIL
   exit 1

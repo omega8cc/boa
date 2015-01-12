@@ -5,11 +5,11 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _WEBG=www-data
 _OPENSSL_VRN=1.0.1j
 _REL_VERSION=$(lsb_release -sc 2>&1)
-_SSL_INSTALLED=$(openssl version 2>&1 \
+_SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
   | awk '{ print $1}' 2>&1)
-if [ "${_SSL_INSTALLED}" = "${_OPENSSL_VRN}" ] ; then
+if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ] ; then
   _NEW_SSL=YES
 fi
 urlHmr="http://files.aegir.cc/versions/master/aegir"

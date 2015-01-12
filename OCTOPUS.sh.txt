@@ -465,21 +465,21 @@ check_id() {
     || [ "${_USER}" = "octopus" ] \
     || [ "${_USER}" = "boa" ] \
     || [ "${_USER}" = "all" ] ; then
-    msg "ERROR: ${_USER} is a restricted username, \
-      please choose different _USER"
+    msg "ERROR: ${_USER} is a restricted username"
+    msg "ERROR: Please choose a different _USER"
     clean_pid_exit
   elif [[ "${_USER}" =~ "drupal" ]] \
     || [[ "${_USER}" =~ "drush" ]] \
     || [[ "${_USER}" =~ "sites" ]] \
     || [[ "${_USER}" =~ "default" ]] ; then
-    msg "ERROR: ${_USER} includes restricted keyword, \
-      please choose different _USER"
+    msg "ERROR: ${_USER} includes restricted keyword"
+    msg "ERROR: Please choose a different _USER"
     clean_pid_exit
   fi
   _REGEX="^[[:digit:]]"
   if [[ "${_USER}" =~ "$_REGEX" ]] ; then
-    msg "ERROR: ${_USER} is a wrong username, \
-      it should start with a letter, not digit"
+    msg "ERROR: ${_USER} is a wrong username"
+    msg "ERROR: The correct username should start with a letter, not digit"
     clean_pid_exit
   fi
 }

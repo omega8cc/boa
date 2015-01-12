@@ -517,7 +517,7 @@ tune_php() {
 #
 # Update innodb_log_file_size.
 update_innodb_log_file_size() {
-  msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}, please wait..."
+  msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   mrun "service mysql stop" &> /dev/null
   mrun "sleep 5"
   if [ ! -e "/var/run/mysqld/mysqld.sock" ] \
@@ -1181,10 +1181,7 @@ fi
 #
 #
 if [ ! -f "/var/log/barracuda_log.txt" ] ; then
-  msg "ERROR: This script should be used only when \
-    the same version of BARRACUDA was used before"
-  msg "Your system has to be configured/upgraded \
-    by BARRACUDA version ${_X_VERSION} first"
+  msg "ERROR: Please upgrade this system to BOA version ${_X_VERSION} first"
   msg "Bye"
   clean_pid_exit
 else
@@ -1192,10 +1189,7 @@ else
   if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] ; then
     _VERSIONS_TEST_RESULT=OK
   else
-    msg "ERROR: This script should be used only when \
-      the same version of BARRACUDA was used before"
-    msg "Your system has to be configured/upgraded \
-      by BARRACUDA version ${_X_VERSION} first"
+    msg "ERROR: Please upgrade this system to BOA version ${_X_VERSION} first"
     msg "Bye"
     clean_pid_exit
   fi
