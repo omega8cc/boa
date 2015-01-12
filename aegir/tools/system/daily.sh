@@ -2128,8 +2128,8 @@ process() {
         fix_platform_control_files
         fix_o_contrib_symlink
         if [ -e "$Dir" ] ; then
-          searchStringD="dev."
-          searchStringF="devel."
+          searchStringD=".temporary."
+          searchStringF=".testing."
           case ${Dom} in
           *"$searchStringD"*) ;;
           *"$searchStringF"*) ;;
