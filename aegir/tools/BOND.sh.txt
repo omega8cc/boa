@@ -1287,7 +1287,9 @@ rm -f /var/run/boa_run.pid
 if [ ! -e "/root/.upstart.cnf" ] ; then
   service cron start &> /dev/null
 fi
-msg "INFO: Cron started again"
+if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  msg "INFO: Cron started again"
+fi
 msg "BYE!"
 
 ###----------------------------------------###

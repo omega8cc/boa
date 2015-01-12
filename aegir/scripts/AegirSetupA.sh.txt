@@ -1335,7 +1335,7 @@ else
         msg "${_STATUS} A: Platforms installation completed"
       fi
     else
-      msg "${_STATUS} A: No new platforms added this time"
+      msg "${_STATUS} A: No new Platforms added this time"
     fi
   fi
 fi
@@ -2254,7 +2254,9 @@ if [ ! -e "/root/.upstart.cnf" ] ; then
   fi
   service cron start &> /dev/null
 fi
-msg "${_STATUS} A: All done!"
+if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  msg "${_STATUS} A: All done!"
+fi
 msg "BYE!"
 
 touch /opt/tmp/status-AegirSetupA-OK
