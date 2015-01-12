@@ -1303,7 +1303,9 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     touch /opt/tmp/status-AegirSetupA-FAIL
     clean_pid_exit
   fi
-  msg "${_STATUS} A: Platforms installation completed"
+  if [ -e "/opt/tmp/status-AegirSetupC-runVerify" ] ; then
+    msg "${_STATUS} A: Platforms installation completed"
+  fi
 else
   if [ "${_HM_ONLY}" = "YES" ] ; then
     _DIST_INSTALL=NO
@@ -1329,7 +1331,9 @@ else
         touch /opt/tmp/status-AegirSetupA-FAIL
         clean_pid_exit
       fi
-      msg "${_STATUS} A: Platforms installation completed"
+      if [ -e "/opt/tmp/status-AegirSetupC-runVerify" ] ; then
+        msg "${_STATUS} A: Platforms installation completed"
+      fi
     else
       msg "${_STATUS} A: No new platforms added this time"
     fi
