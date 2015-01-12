@@ -5117,13 +5117,13 @@ fix_broken_platforms() {
     if [ -d "/data/all/000/core" ] ; then
       for Core in `find /data/all/000/core/drupal-7* -maxdepth 0 \
         -mindepth 0 | sort`; do
-        cd $Core
+        cd ${Core}
         patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
       done
     elif [ -d "/data/disk/all/000/core" ] ; then
       for Core in `find /data/disk/all/000/core/drupal-7* -maxdepth 0 \
         -mindepth 0 | sort`; do
-        cd $Core
+        cd ${Core}
         patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
       done
     fi
@@ -5138,8 +5138,8 @@ fix_broken_platforms() {
       for File in `find /data/all/*/*/includes/database/database.inc \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2>&1)
-        if [ -d "$Core" ] ; then
-          cd $Core
+        if [ -d "${Core}" ] && [ ! -d "${Core}/core" ] ; then
+          cd ${Core}
           patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
         fi
       done
@@ -5149,8 +5149,8 @@ fix_broken_platforms() {
       for File in `find /data/disk/all/*/*/includes/database/database.inc \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2>&1)
-        if [ -d "$Core" ] ; then
-          cd $Core
+        if [ -d "${Core}" ] && [ ! -d "${Core}/core" ] ; then
+          cd ${Core}
           patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
         fi
       done
@@ -5166,51 +5166,56 @@ fix_broken_platforms() {
       for File in `find /data/disk/*/static/*/includes/database/database.inc \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2>&1)
-        if [ -d "$Core" ] \
-          && [ ! -e "$Core/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
-          cd $Core
+        if [ -d "${Core}" ] \
+          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
+          cd ${Core}
           patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
-          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+          echo fixed > ${Core}/profiles/SA-CORE-2014-005-D7-fix.info
         fi
       done
       for File in `find /data/disk/*/static/*/*/includes/database/database.inc \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2>&1)
-        if [ -d "$Core" ] \
-          && [ ! -e "$Core/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
-          cd $Core
+        if [ -d "${Core}" ] \
+          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
+          cd ${Core}
           patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
-          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+          echo fixed > ${Core}/profiles/SA-CORE-2014-005-D7-fix.info
         fi
       done
       for File in `find /data/disk/*/static/*/*/*/includes/database/database.inc \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2>&1)
-        if [ -d "$Core" ] \
-          && [ ! -e "$Core/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
-          cd $Core
+        if [ -d "${Core}" ] \
+          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
+          cd ${Core}
           patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
-          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+          echo fixed > ${Core}/profiles/SA-CORE-2014-005-D7-fix.info
         fi
       done
       for File in `find /data/disk/*/static/*/*/*/*/includes/database/database.inc \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2>&1)
-        if [ -d "$Core" ] \
-          && [ ! -e "$Core/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
-          cd $Core
+        if [ -d "${Core}" ] \
+          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
+          cd ${Core}
           patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
-          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+          echo fixed > ${Core}/profiles/SA-CORE-2014-005-D7-fix.info
         fi
       done
       for File in `find /data/disk/*/static/*/*/*/*/*/includes/database/database.inc \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2>&1)
-        if [ -d "$Core" ] \
-          && [ ! -e "$Core/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
-          cd $Core
+        if [ -d "${Core}" ] \
+          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
+          cd ${Core}
           patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
-          echo fixed > $Core/profiles/SA-CORE-2014-005-D7-fix.info
+          echo fixed > ${Core}/profiles/SA-CORE-2014-005-D7-fix.info
         fi
       done
     fi

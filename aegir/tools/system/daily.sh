@@ -1645,7 +1645,7 @@ fix_seven_core_patch() {
 fix_static_permissions() {
   cleanup_ghost_platforms
   if [ -e "${Plr}/profiles" ] ; then
-    if [ -e "${Plr}/web.config" ] ; then
+    if [ -e "${Plr}/web.config" ] && [ ! -d "${Plr}/core" ] ; then
       fix_seven_core_patch
     fi
     if [ ! -e "${User}/static/control/unlock.info" ] \
@@ -2143,6 +2143,7 @@ process() {
         fi
         if [ -e "${Plr}/profiles" ] \
           && [ -e "${Plr}/web.config" ] \
+          && [ ! -d "${Plr}/core" ] \
           && [ ! -f "${Plr}/profiles/SA-CORE-2014-005-D7-fix.info" ] ; then
           _PATCH_TEST=$(grep "foreach (array_values(\$data)" \
             ${Plr}/includes/database/database.inc 2>&1)
