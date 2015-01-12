@@ -60,7 +60,8 @@ if (function_exists('drush_get_command')) {
  * Force backward compatible SERVER_SOFTWARE
  */
 if (!$is_backend) {
-  if (isset($_SERVER['SERVER_SOFTWARE']) && !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
+  if (isset($_SERVER['SERVER_SOFTWARE']) &&
+      !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
     $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.7.9.1';
   }
 }
@@ -69,15 +70,31 @@ if (!$is_backend) {
 /**
  * Bots detection
  */
-if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:crawl|bot|spider|tracker|click|parser|google|yahoo|yandex|baidu|bing)/i", $_SERVER['HTTP_USER_AGENT'])) {
+if (isset($_SERVER['HTTP_USER_AGENT']) &&
+    preg_match("/(?:crawl|bot|spider|tracker|click|parser|google|yahoo|yandex|baidu|bing)/i", $_SERVER['HTTP_USER_AGENT'])) {
   $is_bot = TRUE;
 }
 
 
 /**
- * Dev mode detection and URLs protection
+ * Use Aegir/BOA specific variable as a reverse fallback
  */
-if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) && !$is_backend) {
+if (isset($_SERVER['MAIN_SITE_NAME']) && !isset($_SERVER['SERVER_NAME'])) {
+  $_SERVER['SERVER_NAME'] = $_SERVER['MAIN_SITE_NAME'];
+}
+if (!isset($_SERVER['MAIN_SITE_NAME']) && isset($_SERVER['SERVER_NAME'])) {
+  $_SERVER['MAIN_SITE_NAME'] = $_SERVER['SERVER_NAME'];
+}
+
+
+/**
+ * Dev mode detection and URLs protection - works only for aliases
+ */
+if (isset($_SERVER['HTTP_HOST']) &&
+    preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) &&
+    $_SERVER['HTTP_HOST'] != $_SERVER['MAIN_SITE_NAME'] &&
+    $_SERVER['HTTP_HOST'] != $_SERVER['SERVER_NAME'] &&
+    !$is_backend) {
   $is_dev = TRUE;
   if ($is_bot) {
     // Deny known search bots on ^(dev|foo.(dev|devel)).domain subdomains
@@ -87,6 +104,14 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i"
     header("Connection: close");
     exit;
   }
+}
+
+
+/**
+ * Required for proper Redis support on command line / via Drush
+ */
+if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
+  $_SERVER['SERVER_NAME'] = $_SERVER['HTTP_HOST'];
 }
 
 
@@ -141,31 +166,18 @@ else {
  * Fix for Mollom, CloudFlare and others running via Proxy
  */
 if (isset($_SERVER['REMOTE_ADDR'])) {
-  if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) && $_SERVER['HTTP_X_FORWARDED_FOR'] != "127.0.0.1") {
+  if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) &&
+      $_SERVER['HTTP_X_FORWARDED_FOR'] != "127.0.0.1") {
     $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
   }
-  if (isset($_SERVER['HTTP_X_REAL_IP']) && $_SERVER['HTTP_X_REAL_IP'] != "127.0.0.1") {
+  if (isset($_SERVER['HTTP_X_REAL_IP']) &&
+      $_SERVER['HTTP_X_REAL_IP'] != "127.0.0.1") {
     $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_REAL_IP'];
   }
-  if (isset($_SERVER['HTTP_CF_CONNECTING_IP']) && $_SERVER['HTTP_CF_CONNECTING_IP'] != "127.0.0.1") {
+  if (isset($_SERVER['HTTP_CF_CONNECTING_IP']) &&
+      $_SERVER['HTTP_CF_CONNECTING_IP'] != "127.0.0.1") {
     $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
   }
-}
-
-
-/**
- * Use Aegir/BOA specific variable as a fallback
- */
-if (isset($_SERVER['MAIN_SITE_NAME']) && !isset($_SERVER['SERVER_NAME'])) {
-  $_SERVER['SERVER_NAME'] = $_SERVER['MAIN_SITE_NAME'];
-}
-
-
-/**
- * Required for proper Redis support on command line / via Drush
- */
-if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
-  $_SERVER['SERVER_NAME'] = $_SERVER['HTTP_HOST'];
 }
 
 
@@ -410,7 +422,8 @@ if (!$is_backend && !$is_dev) {
 /**
  * Disable page caching when Speed Booster is disabled on the fly
  */
-if (!$is_bot && isset($_SERVER['REQUEST_URI']) && preg_match("/nocache=1/", $_SERVER['REQUEST_URI'])) {
+if (!$is_bot && isset($_SERVER['REQUEST_URI']) &&
+  preg_match("/nocache=1/", $_SERVER['REQUEST_URI'])) {
   if ($drupal_eight) {
     $config['system.performance']['cache.page.use_internal'] = FALSE;
   }
@@ -451,8 +464,10 @@ if ($conf['install_profile'] == 'hostmaster') {
     ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
     header('X-Accel-Expires: 1');
     if (!file_exists('/data/conf/no-https-aegir.inc')) {
-      $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' || $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
-      if ($request_type != "SSL" && !preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI'])) { // we force secure connection here
+      $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' ||
+      $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
+      if ($request_type != "SSL" &&
+        !preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI'])) { // we force secure connection here
         header('X-Accel-Expires: 5');
         header("HTTP/1.1 301 Moved Permanently");
         header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
@@ -460,7 +475,8 @@ if ($conf['install_profile'] == 'hostmaster') {
         exit;
       }
     }
-    if (isset($_SERVER['HTTP_HOST']) && preg_match("/\.(?:host8|boa)\.(?:biz|io)$/i", $_SERVER['HTTP_HOST'])) {
+    if (isset($_SERVER['HTTP_HOST']) &&
+      preg_match("/\.(?:host8|boa)\.(?:biz|io)$/i", $_SERVER['HTTP_HOST'])) {
       if (preg_match("/^\/admin\/user\/user\/create/", $_SERVER['REQUEST_URI']) ||
           preg_match("/^\/node\/add\/server/", $_SERVER['REQUEST_URI']) ||
           preg_match("/^\/node\/(?:1|2|4|5|7|8|10)\/(?:edit|delete)/", $_SERVER['REQUEST_URI'])) {
@@ -478,7 +494,8 @@ if ($conf['install_profile'] == 'hostmaster') {
 /**
  * Main section starts here
  */
-if (isset($_SERVER['SERVER_NAME']) && $all_ini['allow_private_file_downloads']) {
+if (isset($_SERVER['SERVER_NAME']) &&
+  $all_ini['allow_private_file_downloads']) {
   unset($conf['file_downloads']); // Disable hardcoded public downloads
   if ($is_dev && !$is_backend) {
     header('X-Is-Cart: YES');
@@ -489,7 +506,8 @@ if (isset($_SERVER['SERVER_NAME']) && $all_ini['redis_cache_disable']) {
   $use_redis = FALSE;
 }
 
-if (!$is_bot && isset($_SERVER['REQUEST_URI']) && preg_match("/noredis=1/", $_SERVER['REQUEST_URI'])) {
+if (!$is_bot && isset($_SERVER['REQUEST_URI']) &&
+  preg_match("/noredis=1/", $_SERVER['REQUEST_URI'])) {
   $use_redis = FALSE;
 }
 
@@ -601,7 +619,8 @@ if (!$is_dev) {
     }
 
     if ($drupal_six || $drupal_seven) {
-      if (is_readable('modules/o_contrib/httprl/httprl.module') || is_readable('modules/o_contrib_seven/httprl/httprl.module')) {
+      if (is_readable('modules/o_contrib/httprl/httprl.module') ||
+          is_readable('modules/o_contrib_seven/httprl/httprl.module')) {
         $conf['advagg_use_httprl'] = 1;
         $conf['httprl_background_callback'] = 1;
         $conf['httprl_connect_timeout'] = 3;
@@ -646,7 +665,8 @@ else {
 /**
  * More logic for the front-end only
  */
-if (!$is_backend && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
+if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
+    isset($_SERVER['SERVER_NAME'])) {
   if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || isset($_SERVER['HTTPS'])) {
     $conf['https'] = TRUE;
     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' || $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
@@ -698,7 +718,8 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'
     $domain = '.'. preg_replace('`^www\.`', '', $_SERVER['HTTP_HOST']);
   }
   $domain = str_replace('..', '.', $domain);
-  if (count(explode('.', $domain)) > 2 && !is_numeric(str_replace('.', '', $domain))) {
+  if (count(explode('.', $domain)) > 2 &&
+      !is_numeric(str_replace('.', '', $domain))) {
     ini_set('session.cookie_domain', $domain);
     $cookie_domain = $domain;
     header("X-Cookie-Domain: " . $cookie_domain);
@@ -709,7 +730,9 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'
     header("X-Redis-Prefix: " . $this_prefix);
   }
 
-  if (isset($_SERVER['REQUEST_TIME']) && isset($_SERVER['REMOTE_ADDR']) && isset($_SERVER['HTTP_USER_AGENT']) &&
+  if (isset($_SERVER['REQUEST_TIME']) &&
+      isset($_SERVER['REMOTE_ADDR']) &&
+      isset($_SERVER['HTTP_USER_AGENT']) &&
       !preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
     $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['SERVER_NAME'] . $_SERVER['HTTP_USER_AGENT'];
     $identity = 'BD'. md5("$identity");
@@ -751,7 +774,8 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'
     }
     // Prevent turning the feature server site into a spam machine
     // Disable self-registration also on hostmaster
-    if ($conf['install_profile'] == 'feature_server' || $conf['install_profile'] == 'hostmaster') {
+    if ($conf['install_profile'] == 'feature_server' ||
+        $conf['install_profile'] == 'hostmaster') {
       $conf['user_register'] = 0; // Force "Only site administrators can create new user accounts"
     }
     if (!$is_bot && !$high_traffic && !$deny_anon) {
@@ -765,19 +789,22 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'
         $expire_in_seconds = '1';
         header('X-Limit-Booster: 1');
       }
-      if (isset($_SERVER['REQUEST_URI']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['REQUEST_URI'])) {
+      if (isset($_SERVER['REQUEST_URI']) &&
+          preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['REQUEST_URI'])) {
         $expire_in_seconds = '0';
         if ($is_dev) {
           header('X-Skip-Booster: AjaxRU');
         }
       }
-      if (isset($_SERVER['QUERY_STRING']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['QUERY_STRING'])) {
+      if (isset($_SERVER['QUERY_STRING']) &&
+          preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['QUERY_STRING'])) {
         $expire_in_seconds = '0';
         if ($is_dev) {
           header('X-Skip-Booster: AjaxQS');
         }
       }
-      if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST') {
+      if (isset($_SERVER['REQUEST_METHOD']) &&
+          $_SERVER['REQUEST_METHOD'] == 'POST') {
         if (!isset($_COOKIE['NoCacheID'])) {
           $lifetime = '15';
           setcookie('NoCacheID', 'POST' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
@@ -789,7 +816,8 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'
       }
     }
     if ($is_bot) {
-      if (!preg_match("/Pingdom/i", $_SERVER['HTTP_USER_AGENT']) && !preg_match("/(?:rss|feed)/i", $_SERVER['REQUEST_URI'])) {
+      if (!preg_match("/Pingdom/i", $_SERVER['HTTP_USER_AGENT']) &&
+          !preg_match("/(?:rss|feed)/i", $_SERVER['REQUEST_URI'])) {
         $expire_in_seconds = '3600';
         if ($is_dev) {
           header('X-Bot-Booster: 3600');
