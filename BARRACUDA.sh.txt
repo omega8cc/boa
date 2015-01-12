@@ -4262,7 +4262,7 @@ update_sources_list() {
     fi
     mv -f /etc/apt/sources.list \
       ${vBs}/sources.list-pre-${_X_VERSION}-${_NOW} &> /dev/null
-    if [ "$_THIS_OS" = "Ubuntu" ] ; then
+    if [ "${_THIS_OS}" = "Ubuntu" ] ; then
       if [ "${_AUTOPILOT}" = "YES" ] ; then
         if [ -z "${_LOCAL_UBUNTU_MIRROR}" ] ; then
           _MIRROR=archive.ubuntu.com
@@ -4271,55 +4271,58 @@ update_sources_list() {
         fi
       else
         if [ -z "${_LOCAL_UBUNTU_MIRROR}" ] ; then
-          msg "INFO: Now looking for the best/fastest $_THIS_OS mirror"
+          msg "INFO: Now looking for the best/fastest ${_THIS_OS} mirror"
           msg "INFO: This may take a while, please wait..."
-          mkdir -p /opt/tmp/helpers
-          cd /opt/tmp/helpers
-          curl ${crlGet} "${urlHmr}/helpers/ffmirror.sh.txt" -o ffmirror.sh.txt
-          curl ${crlGet} "${urlHmr}/helpers/apt-list-ubuntu.txt" \
-            -o apt-list-ubuntu.txt
-          _MIRROR=$(bash ffmirror.sh.txt < apt-list-ubuntu.txt 2>&1)
-          _MIRROR=$(bash ffmirror.sh.txt < apt-list-ubuntu.txt 2>&1)
-          echo " "
-          prompt_confirm_choice "Enter your own mirror to use or press enter \
-            to use the fastest found mirror" $_MIRROR
-          echo " "
-          _MIRROR=$_CONFIRMED_ANSWER
+          hlpPth="/opt/tmp/boa/aegir/helpers"
+          ffMirr="${hlpPth}/ffmirror.sh.txt"
+          ffList="${hlpPth}/apt-list-ubuntu.txt"
+          if [ -e "${ffMirr}" ] && [ -e "${ffList}" ] ; then
+            _MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+            _MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+            echo " "
+            askThis="Enter your own mirror to use or press enter"
+            askThis="${askThis} to use the fastest found mirror"
+            prompt_confirm_choice "${askThis}" ${_MIRROR}
+            echo " "
+            _MIRROR=${_CONFIRMED_ANSWER}
+          else
+            _MIRROR=${_LOCAL_UBUNTU_MIRROR}
+          fi
         else
           _MIRROR=${_LOCAL_UBUNTU_MIRROR}
         fi
-        if ! netcat -w 5 -z $_MIRROR 80 ; then
-          msg "INFO: The mirror $_MIRROR doesn't respond now, let's try default"
+        if ! netcat -w 5 -z ${_MIRROR} 80 ; then
+          msg "INFO: The mirror ${_MIRROR} doesn't respond, let's try default"
           _MIRROR=archive.ubuntu.com
         fi
       fi
       if [ "${_DEBUG_MODE}" = "YES" ] ; then
-        msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
+        msg "INFO: We will use ${_THIS_OS} mirror ${_MIRROR}"
       fi
       cd /var/opt
       echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
-      echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION main \
+      echo "deb http://${_MIRROR}/ubuntu/ ${_REL_VERSION} main \
         restricted universe multiverse" >> /etc/apt/sources.list
-      echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION main \
+      echo "deb-src http://${_MIRROR}/ubuntu/ ${_REL_VERSION} main \
         restricted universe multiverse" >> /etc/apt/sources.list
       echo "" >> /etc/apt/sources.list
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> \
         /etc/apt/sources.list
-      echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION-updates main \
+      echo "deb http://${_MIRROR}/ubuntu/ ${_REL_VERSION}-updates main \
         restricted universe multiverse" >> /etc/apt/sources.list
-      echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION-updates main \
+      echo "deb-src http://${_MIRROR}/ubuntu/ ${_REL_VERSION}-updates main \
         restricted universe multiverse" >> /etc/apt/sources.list
       echo "" >> /etc/apt/sources.list
       echo "## BACKPORTS" >> /etc/apt/sources.list
-      echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION-backports main \
+      echo "deb http://${_MIRROR}/ubuntu/ ${_REL_VERSION}-backports main \
         restricted universe multiverse" >> /etc/apt/sources.list
-      echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION-backports main \
+      echo "deb-src http://${_MIRROR}/ubuntu/ ${_REL_VERSION}-backports main \
         restricted universe multiverse" >> /etc/apt/sources.list
       echo "" >> /etc/apt/sources.list
       echo "## UBUNTU SECURITY UPDATES" >> /etc/apt/sources.list
-      echo "deb http://security.ubuntu.com/ubuntu $_REL_VERSION-security \
+      echo "deb http://security.ubuntu.com/ubuntu ${_REL_VERSION}-security \
         main restricted universe multiverse" >> /etc/apt/sources.list
-      echo "deb-src http://security.ubuntu.com/ubuntu $_REL_VERSION-security \
+      echo "deb-src http://security.ubuntu.com/ubuntu ${_REL_VERSION}-security \
         main restricted universe multiverse" >> /etc/apt/sources.list
       if [ -e "${locCnf}/etc-apt-preferences-ubuntu.txt" ] ; then
         cp -af ${locCnf}/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
@@ -4327,9 +4330,9 @@ update_sources_list() {
         curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
           -o /etc/apt/preferences
       fi
-    elif [ "$_THIS_OS" = "Debian" ] ; then
+    elif [ "${_THIS_OS}" = "Debian" ] ; then
       _MIRROR_CHECK=NO
-      if [ "$_REL_VERSION" = "lenny" ] ; then
+      if [ "${_REL_VERSION}" = "lenny" ] ; then
         _MIRROR=archive.debian.org
       else
         if [ "${_AUTOPILOT}" = "YES" ] ; then
@@ -4342,62 +4345,66 @@ update_sources_list() {
           _MIRROR_CHECK=YES
         fi
       fi
-      if [ "$_MIRROR_CHECK" = "YES" ] ; then
+      if [ "${_MIRROR}_CHECK" = "YES" ] ; then
         if [ -z "${_LOCAL_DEBIAN_MIRROR}" ] ; then
-          msg "INFO: Now looking for the best/fastest $_THIS_OS mirror"
+          msg "INFO: Now looking for the best/fastest ${_THIS_OS} mirror"
           msg "INFO: This may take a while, please wait..."
-          mkdir -p /opt/tmp/helpers
-          cd /opt/tmp/helpers
-          curl ${crlGet} "${urlHmr}/helpers/ffmirror.sh.txt" -o ffmirror.sh.txt
-          curl ${crlGet} "${urlHmr}/helpers/apt-list-debian.txt" -o apt-list-debian.txt
-          _MIRROR=$(bash ffmirror.sh.txt < apt-list-debian.txt 2>&1)
-          _MIRROR=$(bash ffmirror.sh.txt < apt-list-debian.txt 2>&1)
-          echo " "
-          prompt_confirm_choice "Enter your own mirror to use or press enter \
-            to use the fastest found mirror" $_MIRROR
-          echo " "
-          _MIRROR=$_CONFIRMED_ANSWER
+          hlpPth="/opt/tmp/boa/aegir/helpers"
+          ffMirr="${hlpPth}/ffmirror.sh.txt"
+          ffList="${hlpPth}/apt-list-debian.txt"
+          if [ -e "${ffMirr}" ] && [ -e "${ffList}" ] ; then
+            _MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+            _MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+            echo " "
+            askThis="Enter your own mirror to use or press enter"
+            askThis="${askThis} to use the fastest found mirror"
+            prompt_confirm_choice "${askThis}" ${_MIRROR}
+            echo " "
+            _MIRROR=${_CONFIRMED_ANSWER}
+          else
+            _MIRROR=${_LOCAL_DEBIAN_MIRROR}
+          fi
         else
           _MIRROR=${_LOCAL_DEBIAN_MIRROR}
         fi
-        if ! netcat -w 5 -z $_MIRROR 80 ; then
-          msg "INFO: The mirror $_MIRROR doesn't respond now, let's try default"
+        if ! netcat -w 5 -z ${_MIRROR} 80 ; then
+          msg "INFO: The mirror ${_MIRROR} doesn't respond, let's try default"
           _MIRROR=ftp.debian.org
         fi
       fi
       if [ "${_DEBUG_MODE}" = "YES" ] ; then
-        msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
+        msg "INFO: We will use ${_THIS_OS} mirror ${_MIRROR}"
       fi
       cd /var/opt
       echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
-      echo "deb http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" \
+      echo "deb http://${_MIRROR}/debian/ ${_REL_VERSION} main contrib non-free" \
         >> /etc/apt/sources.list
-      echo "deb-src http://$_MIRROR/debian/ $_REL_VERSION main contrib \
+      echo "deb-src http://${_MIRROR}/debian/ ${_REL_VERSION} main contrib \
         non-free" >> /etc/apt/sources.list
       echo "" >> /etc/apt/sources.list
       echo "## MAJOR BUG FIX UPDATES produced after the final release" \
         >> /etc/apt/sources.list
-      if [ "$_REL_VERSION" = "lenny" ] ; then
+      if [ "${_REL_VERSION}" = "lenny" ] ; then
         echo "deb http://archive.debian.org/debian-volatile \
-          $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
+          ${_REL_VERSION}/volatile main contrib non-free" >> /etc/apt/sources.list
         echo "deb-src http://archive.debian.org/debian-volatile \
-          $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
+          ${_REL_VERSION}/volatile main contrib non-free" >> /etc/apt/sources.list
       else
-        echo "deb http://$_MIRROR/debian/ $_REL_VERSION-updates main" \
+        echo "deb http://${_MIRROR}/debian/ ${_REL_VERSION}-updates main" \
           >> /etc/apt/sources.list
-        echo "deb-src http://$_MIRROR/debian/ $_REL_VERSION-updates main" \
+        echo "deb-src http://${_MIRROR}/debian/ ${_REL_VERSION}-updates main" \
           >> /etc/apt/sources.list
         echo "" >> /etc/apt/sources.list
         echo "## DEBIAN SECURITY UPDATES" >> /etc/apt/sources.list
-        echo "deb http://security.debian.org/ $_REL_VERSION/updates main \
+        echo "deb http://security.debian.org/ ${_REL_VERSION}/updates main \
           contrib non-free" >> /etc/apt/sources.list
-        echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main \
+        echo "deb-src http://security.debian.org/ ${_REL_VERSION}/updates main \
           contrib non-free" >> /etc/apt/sources.list
         echo "" >> /etc/apt/sources.list
         echo "## DEBIAN PROPOSED UPDATES" >> /etc/apt/sources.list
-        echo "deb http://$_MIRROR/debian/ $_REL_VERSION-proposed-updates main" \
+        echo "deb http://${_MIRROR}/debian/ ${_REL_VERSION}-proposed-updates main" \
           >> /etc/apt/sources.list
-        if [ "$_REL_VERSION" = "wheezy" ] ; then
+        if [ "${_REL_VERSION}" = "wheezy" ] ; then
           if [ -e "${locCnf}/etc-apt-preferences-wheezy.txt" ] ; then
             cp -af ${locCnf}/etc-apt-preferences-wheezy.txt /etc/apt/preferences
           else
@@ -4405,12 +4412,12 @@ update_sources_list() {
               -o /etc/apt/preferences
           fi
         fi
-        if [ "$_REL_VERSION" = "squeeze" ] ; then
+        if [ "${_REL_VERSION}" = "squeeze" ] ; then
           echo "" >> /etc/apt/sources.list
           echo "## DEBIAN LTS UPDATES" >> /etc/apt/sources.list
-          echo "deb http://$_MIRROR/debian/ $_REL_VERSION-lts main \
+          echo "deb http://${_MIRROR}/debian/ ${_REL_VERSION}-lts main \
             contrib non-free" >> /etc/apt/sources.list
-          echo "deb-src http://$_MIRROR/debian/ $_REL_VERSION-lts main \
+          echo "deb-src http://${_MIRROR}/debian/ ${_REL_VERSION}-lts main \
             contrib non-free" >> /etc/apt/sources.list
           if [ -e "/etc/apt/apt.conf" ] ; then
             sed -i "s/APT::Default-Release \"squeeze\";/APT::Default-Release \"squeeze-lts\";/g" \
