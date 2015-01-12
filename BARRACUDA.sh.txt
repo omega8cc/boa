@@ -5528,10 +5528,6 @@ if [ `whoami` = "root" ] ; then
       ln -s /proc/self/fd /dev/fd
     fi
   fi
-  echo " "
-  msg "BOA Skynet welcomes you aboard!"
-  echo " "
-  sleep 3
   chmod a+rw /dev/null
   rm -f -r /opt/tmp/*
   rm -f -r /tmp/drush_make_tmp*
@@ -5586,6 +5582,12 @@ else
   msg "EXIT: Bye (0)"
   clean_pid_exit
 fi
+
+
+echo " "
+msg "BOA Skynet Agent v.${_X_VERSION} welcomes you aboard!"
+echo " "
+sleep 3
 
 
 ###--------------------###
