@@ -5421,7 +5421,7 @@ finale() {
     echo " "
     mrun "sleep 8"
   fi
-  msg "Final post-$_L_ST cleaning, one moment..."
+  msg "Final post-${_L_ST} cleaning, one moment..."
   fix_broken_platforms
   mv -f /etc/motd ${vBs}/dragon/t/motd-pre-${_X_VERSION}-${_NOW} &> /dev/null
   mv -f /etc/motd-pre-* ${vBs}/dragon/t/ &> /dev/null
@@ -9655,7 +9655,7 @@ else
     fi
     if [ ! -e "${pthLog}/compass-${_X_VERSION}-${_NOW}-ruby-${_RUBY_VRN}.log" ] ; then
       echo " "
-      if prompt_yes_no "Do you want to $_L_ST Compass Tools for root?" ; then
+      if prompt_yes_no "Do you want to ${_L_ST} Compass Tools for root?" ; then
         true
         msg "INFO: Running Compass Tools ${_L_ST}..."
         if [ ! -e "${pthLog}/ruby-root-clean-reload.log" ] ; then
@@ -9719,9 +9719,9 @@ else
         fi
         PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin;export PATH
         touch ${pthLog}/compass-${_X_VERSION}-${_NOW}-ruby-${_RUBY_VRN}.log
-        msg "INFO: Compass Tools $_L_ST for root completed"
+        msg "INFO: Compass Tools ${_L_ST} for root completed"
       else
-        msg "INFO: Compass Tools $_L_ST for root skipped"
+        msg "INFO: Compass Tools ${_L_ST} for root skipped"
       fi
     fi
   fi

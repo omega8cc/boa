@@ -458,8 +458,6 @@ up_action_all() {
         echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
         echo "...we have to wait..."
       fi
-      echo
-      echo
     fi
   done
 }

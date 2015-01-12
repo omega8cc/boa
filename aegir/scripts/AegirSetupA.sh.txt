@@ -2149,7 +2149,12 @@ fi
 
 ###---### Final cleaning.
 #
-msg "${_STATUS} A: Final cleaning, one moment..."
+if [ "${_STATUS}" = "INIT" ] ; then
+  _L_ST="install"
+else
+  _L_ST="upgrade"
+fi
+msg "Final post-${_L_ST} cleaning, one moment..."
 cd /
 chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt &> /dev/null
 chmod 711 opt sbin selinux srv sys usr var share run &> /dev/null
