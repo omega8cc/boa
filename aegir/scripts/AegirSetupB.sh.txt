@@ -758,7 +758,6 @@ else
   fi
   ### Fix for old migrated/merged instances
 
-  msg "${_STATUS} B: Hostmaster STATUS: Upgrade in progress..."
   ${_DRUSHCMD} cache-clear drush &> /dev/null
   rm -f -r ${_ROOT}/.tmp/cache
   if [ "${_DEBUG_MODE}" = "YES" ] ; then
