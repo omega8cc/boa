@@ -1857,10 +1857,10 @@ else
 EOF
   else
     echo " "
-    thiSys="$(uname -m 2>&1) $(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1)"
-    msg "This Octopus System is ${thiSys}"
+    thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
     msg "This Octopus URL address is ${_DOMAIN}"
     msg "This Octopus PHP version is ${_PHP_FPM_VERSION}"
+    msg "This Octopus System is ${thiSys}"
     echo " "
   fi
 fi
