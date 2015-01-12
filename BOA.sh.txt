@@ -392,15 +392,15 @@ setup() {
   else
     check_dns_settings
   fi
-  _CURL_TEST=$(curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 10 -I \
-    "http://files.aegir.cc" 2> /dev/null)
-  if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
-    _DO_NOTHING=YES
-  else
-    apt-get clean -qq &> /dev/null
-    apt-get update -qq &> /dev/null
-    apt-get install curl -y --force-yes --reinstall &> /dev/null
-  fi
+#   _CURL_TEST=$(curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 10 -I \
+#     "http://files.aegir.cc" 2> /dev/null)
+#   if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
+#     _DO_NOTHING=YES
+#   else
+#     apt-get clean -qq &> /dev/null
+#     apt-get update -qq &> /dev/null
+#     apt-get install curl -y --force-yes --reinstall &> /dev/null
+#   fi
   _LSB_TEST=$(which lsb_release 2> /dev/null)
   if [[ "$_LSB_TEST" =~ "lsb_release" ]] ; then
     _DO_NOTHING=YES
