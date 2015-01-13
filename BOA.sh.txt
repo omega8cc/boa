@@ -180,47 +180,51 @@ update_agents() {
       mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
     fi
   fi
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "/var/xdrago/log/daily.fixed.a21z.pid" ] ; then
-    mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
-    if [ -e "/var/xdrago/daily.sh" ] ; then
-      chmod 700 /var/xdrago/daily.sh
-      chown root:root /var/xdrago/daily.sh
-      touch /var/xdrago/log/daily.fixed.a21z.pid
-    else
-      mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
-    fi
-  fi
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "/var/xdrago/log/manage_ltd_users.fixed.a21z.pid" ] ; then
-    mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/manage_ltd_users.sh" \
-      -o /var/xdrago/manage_ltd_users.sh
-    if [ -e "/var/xdrago/manage_ltd_users.sh" ] ; then
-      chmod 700 /var/xdrago/manage_ltd_users.sh
-      chown root:root /var/xdrago/manage_ltd_users.sh
-      touch /var/xdrago/log/manage_ltd_users.fixed.a21z.pid
-    else
-      mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
-    fi
-  fi
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "/var/xdrago/log/proc_num_ctrl.fixed.a21z.pid" ] ; then
-    mv -f /var/xdrago/proc_num_ctrl.cgi /var/xdrago/proc_num_ctrl.cgi.old
-    curl ${crlGet} "${urlHmr}/tools/system/proc_num_ctrl.cgi" \
-      -o /var/xdrago/proc_num_ctrl.cgi
-    if [ -e "/var/xdrago/proc_num_ctrl.cgi" ] ; then
-      chmod 700 /var/xdrago/proc_num_ctrl.cgi
-      chown root:root /var/xdrago/proc_num_ctrl.cgi
-      touch /var/xdrago/log/proc_num_ctrl.fixed.a21z.pid
-    else
-      mv -f /var/xdrago/proc_num_ctrl.cgi.old /var/xdrago/proc_num_ctrl.cgi
-    fi
-  fi
+
+#   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+#     && [ -e "/var/xdrago" ] \
+#     && [ ! -e "/var/xdrago/log/daily.fixed.a21z.pid" ] ; then
+#     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
+#     curl ${crlGet} "${urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
+#     if [ -e "/var/xdrago/daily.sh" ] ; then
+#       chmod 700 /var/xdrago/daily.sh
+#       chown root:root /var/xdrago/daily.sh
+#       touch /var/xdrago/log/daily.fixed.a21z.pid
+#     else
+#       mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
+#     fi
+#   fi
+
+#   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+#     && [ -e "/var/xdrago" ] \
+#     && [ ! -e "/var/xdrago/log/manage_ltd_users.fixed.a21z.pid" ] ; then
+#     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
+#     curl ${crlGet} "${urlHmr}/tools/system/manage_ltd_users.sh" \
+#       -o /var/xdrago/manage_ltd_users.sh
+#     if [ -e "/var/xdrago/manage_ltd_users.sh" ] ; then
+#       chmod 700 /var/xdrago/manage_ltd_users.sh
+#       chown root:root /var/xdrago/manage_ltd_users.sh
+#       touch /var/xdrago/log/manage_ltd_users.fixed.a21z.pid
+#     else
+#       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
+#     fi
+#   fi
+
+#   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+#     && [ -e "/var/xdrago" ] \
+#     && [ ! -e "/var/xdrago/log/proc_num_ctrl.fixed.a21z.pid" ] ; then
+#     mv -f /var/xdrago/proc_num_ctrl.cgi /var/xdrago/proc_num_ctrl.cgi.old
+#     curl ${crlGet} "${urlHmr}/tools/system/proc_num_ctrl.cgi" \
+#       -o /var/xdrago/proc_num_ctrl.cgi
+#     if [ -e "/var/xdrago/proc_num_ctrl.cgi" ] ; then
+#       chmod 700 /var/xdrago/proc_num_ctrl.cgi
+#       chown root:root /var/xdrago/proc_num_ctrl.cgi
+#       touch /var/xdrago/log/proc_num_ctrl.fixed.a21z.pid
+#     else
+#       mv -f /var/xdrago/proc_num_ctrl.cgi.old /var/xdrago/proc_num_ctrl.cgi
+#     fi
+#   fi
+
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
     && [ ! -e "/var/xdrago/log/websh.fixed.a21z.pid" ] ; then
