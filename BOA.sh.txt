@@ -441,7 +441,7 @@ setup() {
     if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] ; then
       echo "ERROR: Required cURL package is not available"
       echo "ERROR: Please install it manually with 'apt-get install curl'"
-      clean_pid_exit
+      exit 1
     else
       apt-get clean -qq &> /dev/null
       apt-get update -qq &> /dev/null
@@ -456,7 +456,7 @@ setup() {
     -I "http://${_USE_MIRROR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]] ; then
     echo "ERROR: ${_USE_MIRROR} is not available, please try later"
-    clean_pid_exit
+    exit 1
   else
     urlHmr="http://${_USE_MIRROR}/versions/master/aegir"
   fi
