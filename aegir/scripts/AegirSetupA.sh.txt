@@ -1947,9 +1947,9 @@ echo empty > ${_ROOT}/static/EMPTY.txt
 if [ ! -d "${_ROOT}/.tmp" ] ; then
   rm -f -r ${_ROOT}/.tmp
   mkdir -p ${_ROOT}/.tmp
+  chown ${_USER}:users ${_ROOT}/.tmp
+  chmod 02775 ${_ROOT}/.tmp
 fi
-chown ${_USERFTP}:www-data ${_ROOT}/.tmp
-chmod 02775 ${_ROOT}/.tmp
 
 
 ###---### Create .ssh dir and keys if not exist, plus some known_hosts for system user.
