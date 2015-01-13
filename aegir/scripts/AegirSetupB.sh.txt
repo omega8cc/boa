@@ -492,6 +492,8 @@ else
   get_dev_ext "remote_import.tar.gz"
   cd ${_ROOT}/.drush
 fi
+sed -i "s/files.aegir.cc/${_USE_MIRROR}/g" \
+  ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
 
 ###---### Build Aegir base.
 #

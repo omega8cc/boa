@@ -3571,6 +3571,8 @@ upgrade_aegir_master() {
       mkdir -p /var/aegir/.drush/{sys,xts,usr}
       git clone --branch ${_BRANCH_PRN} ${gitHub}/provision.git \
         /var/aegir/.drush/sys/provision &> /dev/null
+      sed -i "s/files.aegir.cc/${_USE_MIRROR}/g" \
+        /var/aegir/.drush/sys/provision/aegir.make &> /dev/null
       rm -f -r /var/aegir/drush
       cd /var/aegir
       get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"

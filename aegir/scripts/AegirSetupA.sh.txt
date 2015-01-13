@@ -1152,6 +1152,8 @@ else
         git clone --branch ${_BRANCH_PRN} \
           git://github.com/omega8cc/provision.git \
           ${_ROOT}/.drush/sys/provision &> /dev/null
+        sed -i "s/files.aegir.cc/${_USE_MIRROR}/g" \
+          ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
       fi
       rm -f -r ${_ROOT}/.drush/drush_make
       rm -f -r ${_ROOT}/.drush/sys/drush_make

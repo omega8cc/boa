@@ -314,6 +314,8 @@ hostmaster_go_up() {
     rm -f -r ${_ROOT}/.drush/*/*/.git
     cd ${_ROOT}/.drush/usr
     get_dev_ext "clean_missing_modules.tar.gz"
+    sed -i "s/files.aegir.cc/${_USE_MIRROR}/g" \
+      ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
   fi
   cd ${_PREV_HM_ROOT}
 }
