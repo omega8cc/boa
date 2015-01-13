@@ -695,10 +695,6 @@ find_mirror() {
     echo "us.files.aegir.cc" >> ${ffList}
     if [ -e "${ffList}" ] ; then
       _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-      sleep 3
-      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-      sleep 3
-      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
       _USE_MIRROR="${_CHECK_MIRROR}"
     else
       _USE_MIRROR="files.aegir.cc"
