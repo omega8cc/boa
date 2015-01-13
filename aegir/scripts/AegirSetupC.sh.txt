@@ -112,6 +112,7 @@ _T_BUILD=EDIT_T_BUILD
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _TODAY=$(date +%y%m%d 2>&1)
 _USE_CURRENT=EDIT_USE_CURRENT
+_USE_MIRROR=EDIT_USE_MIRROR
 _WEBG=EDIT_WEBG
 #
 _USER=EDIT_USER
@@ -223,7 +224,7 @@ extract_archive() {
 # Download and extract from dev/contrib mirror.
 get_dev_contrib() {
   if [ ! -z "$1" ] ; then
-    curl ${crlGet} "http://files.aegir.cc/dev/contrib/$1" -o "$1"
+    curl ${crlGet} "http://${_USE_MIRROR}/dev/contrib/$1" -o "$1"
     extract_archive "$1"
   fi
 }
@@ -231,7 +232,7 @@ get_dev_contrib() {
 # Download and extract from distro.
 get_distro_ext() {
   if [ ! -z "$1" ] ; then
-    curl ${crlGet} "http://files.aegir.cc/distro/$1" -o "$1"
+    curl ${crlGet} "http://${_USE_MIRROR}/distro/$1" -o "$1"
     extract_archive "$1"
   fi
 }
@@ -369,7 +370,7 @@ prepare_drupal6_core() {
     rm -f -r ${_D6_CORE_DIR}
     cd /data/all/000/core
     curl -L --max-redirs 10 -k -s -A iCab \
-      "http://files.aegir.cc/core/pressflow-${_SMALLCORE6}.tar.gz" | tar -xzf -
+      "http://${_USE_MIRROR}/core/pressflow-${_SMALLCORE6}.tar.gz" | tar -xzf -
     find ${_D6_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
     find ${_D6_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
     cd ${_D6_CORE_DIR}/
@@ -397,7 +398,7 @@ prepare_drupal7_core() {
     rm -f -r ${_D7_CORE_DIR}
     cd /data/all/000/core
     curl ${crlGet} \
-      "http://files.aegir.cc/core/drupal-${_SMALLCORE7}.tar.gz" \
+      "http://${_USE_MIRROR}/core/drupal-${_SMALLCORE7}.tar.gz" \
       | tar -xzf -
     find ${_D7_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
     find ${_D7_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
@@ -423,7 +424,7 @@ prepare_drupal8_core() {
     rm -f -r ${_D8_CORE_DIR}
     cd /data/all/000/core
     curl ${crlGet} \
-      "http://files.aegir.cc/core/drupal-${_SMALLCORE8}.tar.gz" \
+      "http://${_USE_MIRROR}/core/drupal-${_SMALLCORE8}.tar.gz" \
       | tar -xzf -
     find ${_D8_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
     find ${_D8_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
@@ -442,7 +443,7 @@ prepare_dr8_dev_core() {
     rm -f -r ${_D8_DEV_CORE_DIR}
     cd /data/all/000/core
     curl ${crlGet} \
-      "http://files.aegir.cc/core/drupal-${_D8_DEV_COMMIT}.tar.gz" \
+      "http://${_USE_MIRROR}/core/drupal-${_D8_DEV_COMMIT}.tar.gz" \
       | tar -xzf -
     find ${_D8_DEV_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
     find ${_D8_DEV_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1295,7 +1296,7 @@ fserver_install() {
             echo "projects[pressflow][download][type] = \"get\"" \
               >> fserver.make
             echo "projects[pressflow][download][url] \
-              = \"http://files.aegir.cc/core/pressflow-6.34.1.tar.gz\"" \
+              = \"http://${_USE_MIRROR}/core/pressflow-6.34.1.tar.gz\"" \
               >> fserver.make
             echo "projects[$_REAL_PRNAME][type] = \"profile\"" \
               >> fserver.make

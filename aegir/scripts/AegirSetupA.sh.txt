@@ -101,7 +101,6 @@ _HOT_SAUCE=EDIT_HOT_SAUCE
 _LAST_ALL=EDIT_LAST_ALL
 _LAST_HMR=EDIT_LAST_HMR
 _LASTNUM=EDIT_LASTNUM
-_SERIES_RESULT=EDIT_SERIES_RESULT
 _MY_OWNIP=EDIT_MY_OWNIP
 _NOW=EDIT_NOW
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
@@ -112,6 +111,7 @@ _PURGE_FOR_SEVEN=EDIT_PURGE_FOR_SEVEN
 _PURGE_MODE=EDIT_PURGE_MODE
 _REDIS_M_VERSION=EDIT_REDIS_M_VERSION
 _REL_VERSION=$(lsb_release -sc 2>&1)
+_SERIES_RESULT=EDIT_SERIES_RESULT
 _SPINNER=EDIT_SPINNER
 _STATUS=INIT
 _STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
@@ -120,6 +120,7 @@ _THIS_OS=$(lsb_release -si 2>&1)
 _THISHTIP=EDIT_THISHTIP
 _TODAY=$(date +%y%m%d 2>&1)
 _USE_CURRENT=EDIT_USE_CURRENT
+_USE_MIRROR=EDIT_USE_MIRROR
 _USRG=EDIT_USRG
 _WEBG=EDIT_WEBG
 #
@@ -253,8 +254,7 @@ extract_archive() {
 # Download and extract from dev/contrib mirror.
 get_dev_contrib() {
   if [ ! -z "$1" ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 \
-      -A iCab "http://files.aegir.cc/dev/contrib/$1"
+    curl ${crlGet} "http://${_USE_MIRROR}/dev/contrib/$1" -o "$1"
     extract_archive "$1"
   fi
 }
@@ -262,8 +262,7 @@ get_dev_contrib() {
 # Download and extract from dev.
 get_dev_ext() {
   if [ ! -z "$1" ] ; then
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 \
-      -A iCab "http://files.aegir.cc/dev/${_AEGIR_XTS_VERSION}/$1"
+    curl ${crlGet} "http://${_USE_MIRROR}/dev/${_AEGIR_XTS_VERSION}/$1" -o "$1"
     extract_archive "$1"
   fi
 }

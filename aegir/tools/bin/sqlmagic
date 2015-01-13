@@ -18,12 +18,12 @@ sqlmagic_fix() {
 }
 
 sqlmagic_convert() {
-  if [ ! -L "$HOME/static" ] ; then
+  if [ ! -L "${HOME}/static" ] ; then
     echo "ERROR: you must be logged in as a lshell main user, typically o1.ftp"
     exit 1
   fi
   if drush status | grep "Successful" > /dev/null \
-    && [ -e "$HOME/static" ] ; then
+    && [ -e "${HOME}/static" ] ; then
     echo "It may take a long time, please wait..."
     if [ "${kind}" = "to-myisam" ] ; then
       _THIS_DB=$(drush status \
@@ -34,17 +34,17 @@ sqlmagic_convert() {
       drush sql-query "$_THIS_SHOW" \
         | tail -n +2 \
         | xargs -I '{}' echo "ALTER TABLE {} ENGINE=MYISAM;" > \
-        $HOME/static/to_myisam_alter_table.sql
+        ${HOME}/static/to_myisam_alter_table.sql
       sed -i "s/.*TABLE_NAME.*//g; s/ *$//g; /^$/d" \
-        $HOME/static/to_myisam_alter_table.sql &> /dev/null
+        ${HOME}/static/to_myisam_alter_table.sql &> /dev/null
       perl -p -i -e \
         's/(ALTER TABLE \
         (cache_[a-z_]+|cache|sessions|users|watchdog|accesslog) \
         ENGINE=)MYISAM/\1INNODB/g' \
-        $HOME/static/to_myisam_alter_table.sql
-      drush sqlc < $HOME/static/to_myisam_alter_table.sql
+        ${HOME}/static/to_myisam_alter_table.sql
+      drush sqlc < ${HOME}/static/to_myisam_alter_table.sql
       echo "This site database has been converted to MyISAM"
-      rm -f $HOME/static/to_myisam_alter_table.sql
+      rm -f ${HOME}/static/to_myisam_alter_table.sql
       exit 0
     elif [ "${kind}" = "to-innodb" ] ; then
       _THIS_DB=$(drush status \
@@ -56,15 +56,15 @@ sqlmagic_convert() {
       drush sql-query "$_THIS_SHOW" \
         | tail -n +2 \
         | xargs -I '{}' echo "ALTER TABLE {} ENGINE=INNODB;" > \
-        $HOME/static/to_innodb_alter_table.sql
+        ${HOME}/static/to_innodb_alter_table.sql
       sed -i "s/.*TABLE_NAME.*//g; s/ *$//g; /^$/d" \
-        $HOME/static/to_innodb_alter_table.sql &> /dev/null
+        ${HOME}/static/to_innodb_alter_table.sql &> /dev/null
       perl -p -i -e \
         's/(search_[a-z_]+ ENGINE=)INNODB/\1MYISAM/g' \
-        $HOME/static/to_innodb_alter_table.sql
-      drush sqlc < $HOME/static/to_innodb_alter_table.sql
+        ${HOME}/static/to_innodb_alter_table.sql
+      drush sqlc < ${HOME}/static/to_innodb_alter_table.sql
       echo "This site database has been converted to InnoDB"
-      rm -f $HOME/static/to_innodb_alter_table.sql
+      rm -f ${HOME}/static/to_innodb_alter_table.sql
       exit 0
     else
       echo "Invalid target format - use either to-myisam or to-innodb"

@@ -112,9 +112,6 @@ mtrNgx="/var/aegir/config/server_master/nginx"
 mtrTpl="/var/aegir/.drush/sys/provision/http/Provision/Config/Nginx"
 pthBld="/opt/tmp/boa"
 pthLog="/var/xdrago/log"
-urlDev="http://files.aegir.cc/dev"
-urlHmr="http://files.aegir.cc/versions/master/aegir"
-urlStb="http://files.aegir.cc/versions/stable"
 vBs="/var/backups"
 gitHub="git://github.com/omega8cc"
 
@@ -268,6 +265,44 @@ st_runner() {
     tail -15 ${_LOG}
     return 1
   fi
+}
+#
+# Find the fastest mirror.
+find_mirror() {
+  isNetc=$(which netcat 2>&1)
+  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ] ; then
+    apt-get update -qq &> /dev/null
+    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    sleep 3
+  fi
+  ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${ffMirr}" ] ; then
+    ffList="/var/backups/boa-mirrors.txt"
+    mkdir -p /var/backups
+    echo "jp.files.aegir.cc"  > ${ffList}
+    echo "nl.files.aegir.cc" >> ${ffList}
+    echo "uk.files.aegir.cc" >> ${ffList}
+    echo "us.files.aegir.cc" >> ${ffList}
+    if [ -e "${ffList}" ] ; then
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      sleep 3
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      sleep 3
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      _USE_MIRROR="${_CHECK_MIRROR}"
+    else
+      _USE_MIRROR="files.aegir.cc"
+    fi
+  else
+    _USE_MIRROR="files.aegir.cc"
+  fi
+  if ! netcat -w 5 -z ${_USE_MIRROR} 80 ; then
+    echo "INFO: The mirror ${_USE_MIRROR} doesn't respond, let's try default"
+    _USE_MIRROR="files.aegir.cc"
+  fi
+  urlDev="http://${_USE_MIRROR}/dev"
+  urlHmr="http://${_USE_MIRROR}/versions/master/aegir"
+  urlStb="http://${_USE_MIRROR}/versions/stable"
 }
 #
 # Remove dangerous stuff from the string.
@@ -821,7 +856,7 @@ fix_sftp_ftps_modern() {
   if [ ! -e "${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log" ] \
     || [ ! -e "/etc/ssh/sftp_config" ] \
     || [ ! -e "/usr/bin/MySecureShell" ] \
-    || [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
+    || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ] ; then
     msg "INFO: Installing MySecureShell ${_MSS_VRN}..."
     cd /var/opt
     rm -f -r mysecureshell*
@@ -3585,11 +3620,12 @@ upgrade_aegir_master() {
     sed -i "s/EDIT_DEBUG_MODE/${_DEBUG_MODE}/g"               ${pthAue}
     sed -i "s/EDIT_DOMAIN/${_THIS_FRONT}/g"                   ${pthAue}
     sed -i "s/EDIT_DRUSH_VERSION/${_DRUSH_VERSION}/g"         ${pthAue}
-    sed -i "s/EDIT_X_VERSION/${_X_VERSION}/g"                 ${pthAue}
     sed -i "s/EDIT_PHP_CLI_VERSION/${_PHP_CLI_VERSION}/g"     ${pthAue}
     sed -i "s/EDIT_PHP_FPM_VERSION/${_PHP_FPM_VERSION}/g"     ${pthAue}
     sed -i "s/EDIT_STRONG_PASSWORDS/${_STRONG_PASSWORDS}/g"   ${pthAue}
     sed -i "s/EDIT_THIS_DB_HOST/${_THIS_DB_HOST}/g"           ${pthAue}
+    sed -i "s/EDIT_USE_MIRROR/${_USE_MIRROR}/g"               ${pthAue}
+    sed -i "s/EDIT_X_VERSION/${_X_VERSION}/g"                 ${pthAue}
     mysqladmin flush-hosts &> /dev/null
     provision_backend_dbpass_sync
     hostmaster_frontend_dbpass_sync
@@ -4274,7 +4310,7 @@ update_sources_list() {
           msg "INFO: Now looking for the best/fastest ${_THIS_OS} mirror"
           msg "INFO: This may take a while, please wait..."
           hlpPth="/opt/tmp/boa/aegir/helpers"
-          ffMirr="${hlpPth}/ffmirror.sh.txt"
+          ffMirr=$(which ffmirror 2>&1)
           ffList="${hlpPth}/apt-list-ubuntu.txt"
           if [ -e "${ffMirr}" ] && [ -e "${ffList}" ] ; then
             _MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
@@ -4350,7 +4386,7 @@ update_sources_list() {
           msg "INFO: Now looking for the best/fastest ${_THIS_OS} mirror"
           msg "INFO: This may take a while, please wait..."
           hlpPth="/opt/tmp/boa/aegir/helpers"
-          ffMirr="${hlpPth}/ffmirror.sh.txt"
+          ffMirr=$(which ffmirror 2>&1)
           ffList="${hlpPth}/apt-list-debian.txt"
           if [ -e "${ffMirr}" ] && [ -e "${ffList}" ] ; then
             _MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
@@ -4534,7 +4570,7 @@ install_curl_src() {
     | awk '{ print $1}' \
     | cut -d"/" -f2 \
     | awk '{ print $1}' 2>&1)
-  if [ "$_CURL_ITD" = "${_CURL_VRN}" ] ; then
+  if [ "${_CURL_ITD}" = "${_CURL_VRN}" ] ; then
     if [ "$_CURL_SSL_ITD" = "${_OPENSSL_VRN}" ] ; then
       _CURL_INSTALL_REQUIRED=NO
     else
@@ -4544,7 +4580,7 @@ install_curl_src() {
         _DO_NOTHING=YES
       else
         _CURL_INSTALL_REQUIRED=YES
-        msg "INFO: Installed cURL $_CURL_ITD with OpenSSL $_CURL_SSL_ITD"
+        msg "INFO: Installed cURL ${_CURL_ITD} with OpenSSL $_CURL_SSL_ITD"
         msg "INFO: cURL rebuild will be forced"
       fi
     fi
@@ -4555,20 +4591,20 @@ install_curl_src() {
       _DO_NOTHING=YES
     else
       _CURL_INSTALL_REQUIRED=YES
-      msg "INFO: Installed cURL version $_CURL_ITD, upgrade required"
+      msg "INFO: Installed cURL version ${_CURL_ITD}, upgrade required"
     fi
   fi
   _BROKEN_CURL_TEST=$(curl --version 2>&1)
-  if [[ "$_BROKEN_CURL_TEST" =~ "libcurl.so.4" ]]; then
+  if [[ "${_BROKEN_CURL_TEST}" =~ "libcurl.so.4" ]]; then
     _CURL_INSTALL_REQUIRED=YES
-    msg "INFO: Installed libcurl is broken, cURL $_CURL_ITD upgrade required"
+    msg "INFO: Installed libcurl is broken, cURL ${_CURL_ITD} upgrade required"
   fi
-  if [ "$_PHP_BIN_BROKEN" = "YES" ] && [ -z "$_CURL_ALREADY_REBUILT" ] ; then
+  if [ "${_PHP_BIN_BROKEN}" = "YES" ] && [ -z "$_CURL_ALREADY_REBUILT" ] ; then
     _CURL_INSTALL_REQUIRED=YES
   fi
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] ; then
     _CURL_INSTALL_REQUIRED=YES
-    msg "INFO: Installed cURL version $_CURL_ITD, rebuild forced"
+    msg "INFO: Installed cURL version ${_CURL_ITD}, rebuild forced"
   fi
   if [ "${_REL_VERSION}" = "wheezy" ] \
     || [ "${_REL_VERSION}" = "trusty" ] \
@@ -4577,7 +4613,7 @@ install_curl_src() {
   fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ] ; then
     ###--------------------###
-    if [[ ! "$_CURL_GET_DPKG" =~ "hold" ]] ; then
+    if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]] ; then
       echo "libcurl3 install" | dpkg --set-selections &> /dev/null
       echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
       echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
@@ -4602,20 +4638,20 @@ install_curl_src() {
     if [ "${_REL_VERSION}" = "wheezy" ] \
       || [ "${_REL_VERSION}" = "trusty" ] \
       || [ "${_REL_VERSION}" = "precise" ] ; then
-      if [ "$_CURL_ITD" = "$_CURL_LIB_ITD" ] ; then
+      if [ "${_CURL_ITD}" = "${_CURL_LIB_ITD}" ] ; then
         _DO_NOTHING=YES
       else
         if [ "${_REL_VERSION}" = "trusty" ] \
           || [ "${_REL_VERSION}" = "precise" ] ; then
           apt-mark unhold curl &> /dev/null
         fi
-        if [[ "$_CURL_GET_DPKG" =~ "hold" ]]; then
+        if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
           echo "curl install" | dpkg --set-selections &> /dev/null
           apt-get install curl -y --force-yes --reinstall &> /dev/null
         fi
       fi
     else
-      if [[ ! "$_CURL_GET_DPKG" =~ "hold" ]] ; then
+      if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]] ; then
         echo "libcurl3 install" | dpkg --set-selections &> /dev/null
         echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
         echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
@@ -4668,7 +4704,7 @@ install_ssl_src() {
     rm -f ${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log
     msg "INFO: Installed OpenSSL version ${_SSL_ITD}, upgrade required"
   fi
-  if [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
+  if [ "${_SSL_INSTALL_REQUIRED}" = "YES" ] ; then
     ###--------------------###
     msg "INFO: Installing zlib ${_ZLIB_VRN}, please wait..."
     cd /var/opt
@@ -5589,6 +5625,19 @@ else
   msg "EXIT: Bye (0)"
   clean_pid_exit
 fi
+
+
+###
+### Restart pdnsd server
+###
+if [ -d "/var/cache/pdnsd" ] ; then
+  service pdnsd stop &> /dev/null
+  sleep 1
+  rm -f /var/cache/pdnsd/pdnsd.cache
+  sleep 1
+  service pdnsd start &> /dev/null
+fi
+find_mirror
 
 
 echo " "
@@ -8148,7 +8197,7 @@ if [ ! -e "/etc/logrotate.d/lshell" ] \
   || [ ! -e "$_PATH_LSHELL" ] \
   || [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}" ] \
   || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
-  || [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
+  || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ] ; then
   if [ "${_STATUS}" = "UPGRADE" ] ; then
     msg "INFO: Upgrading Limited Shell to version ${_LSHELL_VRN}..."
     cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_NOW} &> /dev/null
@@ -8203,7 +8252,7 @@ if [[ "${_XTRAS_LIST}" =~ "ALL" ]] || [[ "${_XTRAS_LIST}" =~ "FTP" ]] ; then
     || [ ! -e "/usr/local/sbin/pure-ftpd" ] \
     || [ ! -e "${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
-    || [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
+    || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ] ; then
     msg "INFO: Installing latest Pure-FTPd server, please wait..."
     if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
       echo "/bin/false" >> /etc/shells
@@ -9087,6 +9136,7 @@ EOFMYSQL
     sed -i "s/EDIT_PHP_FPM_VERSION/${_PHP_FPM_VERSION}/g"     $Files &> /dev/null
     sed -i "s/EDIT_STRONG_PASSWORDS/${_STRONG_PASSWORDS}/g"   $Files &> /dev/null
     sed -i "s/EDIT_THIS_DB_HOST/${_THIS_DB_HOST}/g"           $Files &> /dev/null
+    sed -i "s/EDIT_USE_MIRROR/${_USE_MIRROR}/g"               $Files &> /dev/null
   done
 
   cp -af ${pthBld}/aegir/scripts/$_AEGIR_SCRIPT ./

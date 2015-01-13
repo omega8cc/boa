@@ -64,7 +64,6 @@ crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncO="octopus.sh.cnf"
 gitHub="git://github.com/omega8cc"
 pthBld="/opt/tmp/boa"
-urlStb="http://files.aegir.cc/versions/stable"
 vBs="/var/backups"
 
 ###
@@ -153,6 +152,43 @@ mrun() {
     return 0
   fi
 }
+#
+# Find the fastest mirror.
+find_mirror() {
+  isNetc=$(which netcat 2>&1)
+  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ] ; then
+    apt-get update -qq &> /dev/null
+    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    sleep 3
+  fi
+  ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${ffMirr}" ] ; then
+    ffList="/var/backups/boa-mirrors.txt"
+    mkdir -p /var/backups
+    echo "jp.files.aegir.cc"  > ${ffList}
+    echo "nl.files.aegir.cc" >> ${ffList}
+    echo "uk.files.aegir.cc" >> ${ffList}
+    echo "us.files.aegir.cc" >> ${ffList}
+    if [ -e "${ffList}" ] ; then
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      sleep 3
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      sleep 3
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      _USE_MIRROR="${_CHECK_MIRROR}"
+    else
+      _USE_MIRROR="files.aegir.cc"
+    fi
+  else
+    _USE_MIRROR="files.aegir.cc"
+  fi
+  if ! netcat -w 5 -z ${_USE_MIRROR} 80 ; then
+    echo "INFO: The mirror ${_USE_MIRROR} doesn't respond, let's try default"
+    _USE_MIRROR="files.aegir.cc"
+  fi
+  urlStb="http://${_USE_MIRROR}/versions/stable"
+}
+
 #
 # Tune FPM workers.
 tune_fpm_workers() {
@@ -1196,7 +1232,6 @@ action() {
     sed -i "s/EDIT_HM_DISTRO/${_HM_DISTRO}/g"                 $Files &> /dev/null
     sed -i "s/EDIT_HM_ONLY/${_HM_ONLY}/g"                     $Files &> /dev/null
     sed -i "s/EDIT_HOT_SAUCE/${_HOT_SAUCE}/g"                 $Files &> /dev/null
-    sed -i "s/EDIT_X_VERSION/${_X_VERSION}/g"                 $Files &> /dev/null
     sed -i "s/EDIT_LAST_ALL/${_LAST_ALL}/g"                   $Files &> /dev/null
     sed -i "s/EDIT_LAST_HMR/${_LAST_HMR}/g"                   $Files &> /dev/null
     sed -i "s/EDIT_LASTNUM/${_LASTNUM}/g"                     $Files &> /dev/null
@@ -1235,9 +1270,11 @@ action() {
     sed -i "s/EDIT_UBERCART6/${_UBERCART6}/g"                 $Files &> /dev/null
     sed -i "s/EDIT_UBERCART7/${_UBERCART7}/g"                 $Files &> /dev/null
     sed -i "s/EDIT_USE_CURRENT/${_USE_CURRENT}/g"             $Files &> /dev/null
+    sed -i "s/EDIT_USE_MIRROR/${_USE_MIRROR}/g"               $Files &> /dev/null
     sed -i "s/EDIT_USER/${_USER}/g"                           $Files &> /dev/null
     sed -i "s/EDIT_USRG/${_USRG}/g"                           $Files &> /dev/null
     sed -i "s/EDIT_WEBG/${_WEBG}/g"                           $Files &> /dev/null
+    sed -i "s/EDIT_X_VERSION/${_X_VERSION}/g"                 $Files &> /dev/null
   done
   _THISHOST=$(cat /etc/hostname 2>&1)
   _THISHOST=$(echo -n ${_THISHOST} | tr -d "\n" 2>&1)
@@ -1459,9 +1496,10 @@ else
 fi
 
 
-#
-# Restart pdnsd server
 touch /var/run/boa_run.pid
+###
+### Restart pdnsd server
+###
 if [ -d "/var/cache/pdnsd" ] ; then
   service pdnsd stop &> /dev/null
   sleep 1
@@ -1469,6 +1507,9 @@ if [ -d "/var/cache/pdnsd" ] ; then
   sleep 1
   service pdnsd start &> /dev/null
 fi
+find_mirror
+
+
 #
 # Sanitize _USER and check the status
   _USER=${_USER//[^a-zA-Z0-9-.]/}

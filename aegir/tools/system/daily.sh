@@ -12,10 +12,44 @@ _SSL_ITD=$(openssl version 2>&1 \
 if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ] ; then
   _NEW_SSL=YES
 fi
-urlHmr="http://files.aegir.cc/versions/master/aegir"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 
 ###-------------SYSTEM-----------------###
+
+find_mirror() {
+  isNetc=$(which netcat 2>&1)
+  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ] ; then
+    apt-get update -qq &> /dev/null
+    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    sleep 3
+  fi
+  ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${ffMirr}" ] ; then
+    ffList="/var/backups/boa-mirrors.txt"
+    mkdir -p /var/backups
+    echo "jp.files.aegir.cc"  > ${ffList}
+    echo "nl.files.aegir.cc" >> ${ffList}
+    echo "uk.files.aegir.cc" >> ${ffList}
+    echo "us.files.aegir.cc" >> ${ffList}
+    if [ -e "${ffList}" ] ; then
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      sleep 3
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      sleep 3
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      _USE_MIRROR="${_CHECK_MIRROR}"
+    else
+      _USE_MIRROR="files.aegir.cc"
+    fi
+  else
+    _USE_MIRROR="files.aegir.cc"
+  fi
+  if ! netcat -w 5 -z ${_USE_MIRROR} 80 ; then
+    echo "INFO: The mirror ${_USE_MIRROR} doesn't respond, let's try default"
+    _USE_MIRROR="files.aegir.cc"
+  fi
+  urlHmr="http://${_USE_MIRROR}/versions/master/aegir"
+}
 
 extract_archive() {
   if [ ! -z "$1" ] ; then
@@ -39,7 +73,7 @@ extract_archive() {
 
 get_dev_ext() {
   if [ ! -z "$1" ] ; then
-    curl ${crlGet} "http://files.aegir.cc/dev/HEAD/$1" -o "$1"
+    curl ${crlGet} "http://${_USE_MIRROR}/dev/HEAD/$1" -o "$1"
     extract_archive "$1"
   fi
 }
@@ -2620,9 +2654,12 @@ mkdir -p /var/xdrago/log/daily
 if [ -e "/root/.barracuda.cnf" ] ; then
   source /root/.barracuda.cnf
 fi
+#
+find_mirror
+#
 if [ -z "$_SKYNET_MODE" ] || [ "$_SKYNET_MODE" = "ON" ] ; then
   rm -f /var/backups/BOA.sh.txt-*
-  curl ${crlGet} "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-${_NOW}
+  curl ${crlGet} "http://${_USE_MIRROR}/BOA.sh.txt" -o /var/backups/BOA.sh.txt-${_NOW}
   bash /var/backups/BOA.sh.txt-${_NOW} &> /dev/null
   rm -f /var/backups/BOA.sh.txt-${_NOW}
 fi
@@ -2702,7 +2739,10 @@ if [ -z "$_SKYNET_MODE" ] || [ "$_SKYNET_MODE" = "ON" ] ; then
     echo "INFO: Checking BARRACUDA version"
   fi
   rm -f /opt/tmp/barracuda-version.txt*
-  curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 15 -A iCab \
+  curl -L -k -s \
+    --max-redirs 10 \
+    --retry 3 \
+    --retry-delay 15 -A iCab \
     "${urlHmr}/conf/barracuda-version.txt" \
     -o /opt/tmp/barracuda-version.txt
 else

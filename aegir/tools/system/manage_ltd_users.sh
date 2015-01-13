@@ -24,10 +24,44 @@ if [ -x "/usr/bin/gpg2" ] ; then
 else
   _GPG=gpg
 fi
-urlHmr="http://files.aegir.cc/versions/master/aegir"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 
 ###-------------SYSTEM-----------------###
+
+find_mirror() {
+  isNetc=$(which netcat 2>&1)
+  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ] ; then
+    apt-get update -qq &> /dev/null
+    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    sleep 3
+  fi
+  ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${ffMirr}" ] ; then
+    ffList="/var/backups/boa-mirrors.txt"
+    mkdir -p /var/backups
+    echo "jp.files.aegir.cc"  > ${ffList}
+    echo "nl.files.aegir.cc" >> ${ffList}
+    echo "uk.files.aegir.cc" >> ${ffList}
+    echo "us.files.aegir.cc" >> ${ffList}
+    if [ -e "${ffList}" ] ; then
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      sleep 3
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      sleep 3
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      _USE_MIRROR="${_CHECK_MIRROR}"
+    else
+      _USE_MIRROR="files.aegir.cc"
+    fi
+  else
+    _USE_MIRROR="files.aegir.cc"
+  fi
+  if ! netcat -w 5 -z ${_USE_MIRROR} 80 ; then
+    echo "INFO: The mirror ${_USE_MIRROR} doesn't respond, let's try default"
+    _USE_MIRROR="files.aegir.cc"
+  fi
+  urlHmr="http://${_USE_MIRROR}/versions/master/aegir"
+}
 
 extract_archive() {
   if [ ! -z "$1" ] ; then
@@ -51,7 +85,7 @@ extract_archive() {
 
 get_dev_ext() {
   if [ ! -z "$1" ] ; then
-    curl ${crlGet} "http://files.aegir.cc/dev/HEAD/$1" -o "$1"
+    curl ${crlGet} "http://${_USE_MIRROR}/dev/HEAD/$1" -o "$1"
     extract_archive "$1"
   fi
 }
@@ -1437,6 +1471,7 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ] ; then
   exit 0
 else
   touch /var/run/manage_ltd_users.pid
+  find_mirror
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   cat /var/xdrago/conf/lshell.conf > ${_THIS_LTD_CONF}
   _THISHTNM=$(hostname --fqdn 2>&1)

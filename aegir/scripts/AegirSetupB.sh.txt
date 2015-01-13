@@ -105,6 +105,7 @@ _PURGE_MODE=EDIT_PURGE_MODE
 _SPINNER=EDIT_SPINNER
 _STATUS=INIT
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
+_USE_MIRROR=EDIT_USE_MIRROR
 _WEBG=EDIT_WEBG
 #
 _USER=EDIT_USER
@@ -125,7 +126,7 @@ _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
 #
 SHELL=/bin/bash
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-urlStb="http://files.aegir.cc/versions/stable"
+urlStb="http://${_USE_MIRROR}/versions/stable"
 vSet="vset --always-set"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 gitHub="git://github.com/omega8cc"
@@ -177,7 +178,7 @@ extract_archive() {
 # Download and extract from dev.
 get_dev_ext() {
   if [ ! -z "$1" ] ; then
-    curl ${crlGet} "http://files.aegir.cc/dev/${_AEGIR_XTS_VERSION}/$1" -o "$1"
+    curl ${crlGet} "http://${_USE_MIRROR}/dev/${_AEGIR_XTS_VERSION}/$1" -o "$1"
     extract_archive "$1"
   fi
 }
@@ -185,7 +186,7 @@ get_dev_ext() {
 # Download and extract from dev/contrib mirror.
 get_dev_contrib() {
   if [ ! -z "$1" ] ; then
-    curl ${crlGet} "http://files.aegir.cc/dev/contrib/$1" -o "$1"
+    curl ${crlGet} "http://${_USE_MIRROR}/dev/contrib/$1" -o "$1"
     extract_archive "$1"
   fi
 }

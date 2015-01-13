@@ -34,6 +34,8 @@
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
+_AEGIR_DB_USER=EDIT_AEGIR_DB_USER
+_AEGIR_HOST=EDIT_AEGIR_HOST
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _AEGIR_XTS_VERSION=EDIT_AEGIR_XTS_VERSION
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
@@ -41,17 +43,16 @@ _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _BRANCH_BOA=EDIT_BRANCH_BOA
 _BRANCH_PRN=EDIT_BRANCH_PRN
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
+_ESC_APASS="EDIT_ESC_APASS"
 _LOCAL_NETWORK_IP=EDIT_LOCAL_NETWORK_IP
 _MY_OWNIP=EDIT_MY_OWNIP
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
 _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
 _REL_VERSION=$(lsb_release -sc 2>&1)
-_ROOT="$HOME"
+_ROOT="${HOME}"
 _STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
-_AEGIR_DB_USER=EDIT_AEGIR_DB_USER
-_ESC_APASS="EDIT_ESC_APASS"
-_AEGIR_HOST=EDIT_AEGIR_HOST
+_USE_MIRROR=EDIT_USE_MIRROR
 #
 if [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
   _THIS_DB_HOST=$(uname -n 2>&1)
@@ -69,7 +70,7 @@ _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
 #
 SHELL=/bin/bash
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-urlStb="http://files.aegir.cc/versions/stable"
+urlStb="http://${_USE_MIRROR}/versions/stable"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 gitHub="git://github.com/omega8cc"
 gCb="git clone --branch"
@@ -195,7 +196,7 @@ extract_archive() {
 # Download and extract from dev.
 get_dev_ext() {
   if [ ! -z "$1" ] ; then
-    curl ${crlGet} "http://files.aegir.cc/dev/${_AEGIR_XTS_VERSION}/$1" -o "$1"
+    curl ${crlGet} "http://${_USE_MIRROR}/dev/${_AEGIR_XTS_VERSION}/$1" -o "$1"
     extract_archive "$1"
   fi
 }

@@ -43,13 +43,14 @@ _BRANCH_PRN=EDIT_BRANCH_PRN
 _DEBUG_MODE=EDIT_DEBUG_MODE
 _DOMAIN=EDIT_DOMAIN
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
-_X_VERSION=EDIT_X_VERSION
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
 _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
 _PURGE_MODE=EDIT_PURGE_MODE
 _REL_VERSION=$(lsb_release -sc 2>&1)
+_ROOT="${HOME}"
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
-_ROOT="$HOME"
+_USE_MIRROR=EDIT_USE_MIRROR
+_X_VERSION=EDIT_X_VERSION
 #
 if [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
   _THIS_DB_HOST=$(uname -n 2>&1)
@@ -67,7 +68,7 @@ _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
 #
 SHELL=/bin/bash
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-urlStb="http://files.aegir.cc/versions/stable"
+urlStb="http://${_USE_MIRROR}/versions/stable"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 gitHub="git://github.com/omega8cc"
 gCb="git clone --branch"
@@ -197,7 +198,7 @@ extract_archive() {
 #
 get_dev_ext() {
   if [ ! -z "$1" ] ; then
-    curl ${crlGet} "http://files.aegir.cc/dev/${_AEGIR_XTS_VERSION}/$1" -o "$1"
+    curl ${crlGet} "http://${_USE_MIRROR}/dev/${_AEGIR_XTS_VERSION}/$1" -o "$1"
     extract_archive "$1"
   fi
 }

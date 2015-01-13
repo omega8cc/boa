@@ -48,7 +48,6 @@ _TODAY=$(date +%y%m%d 2>&1)
 _X_VERSION="BOA-2.4.0-dev"
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-urlHmr="http://files.aegir.cc/versions/master/aegir"
 
 fix_dns_settings() {
   mkdir -p /var/backups
@@ -383,6 +382,40 @@ fix_alt() {
   fi
 }
 
+find_mirror() {
+  isNetc=$(which netcat 2>&1)
+  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ] ; then
+    apt-get update -qq &> /dev/null
+    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    sleep 3
+  fi
+  ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${ffMirr}" ] ; then
+    ffList="/var/backups/boa-mirrors.txt"
+    mkdir -p /var/backups
+    echo "jp.files.aegir.cc"  > ${ffList}
+    echo "nl.files.aegir.cc" >> ${ffList}
+    echo "uk.files.aegir.cc" >> ${ffList}
+    echo "us.files.aegir.cc" >> ${ffList}
+    if [ -e "${ffList}" ] ; then
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      sleep 3
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      sleep 3
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      _USE_MIRROR="${_CHECK_MIRROR}"
+    else
+      _USE_MIRROR="files.aegir.cc"
+    fi
+  else
+    _USE_MIRROR="files.aegir.cc"
+  fi
+  if ! netcat -w 5 -z ${_USE_MIRROR} 80 ; then
+    echo "INFO: The mirror ${_USE_MIRROR} doesn't respond, let's try default"
+    _USE_MIRROR="files.aegir.cc"
+  fi
+}
+
 setup() {
   sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
   echo >>/etc/hosts
@@ -397,15 +430,41 @@ setup() {
   else
     check_dns_settings
   fi
-#   _CURL_TEST=$(curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 10 -I \
-#     "http://files.aegir.cc" 2> /dev/null)
-#   if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
-#     _DO_NOTHING=YES
-#   else
-#     apt-get clean -qq &> /dev/null
-#     apt-get update -qq &> /dev/null
-#     apt-get install curl -y --force-yes --reinstall &> /dev/null
-#   fi
+
+  if [ -d "/var/cache/pdnsd" ] ; then
+    service pdnsd stop &> /dev/null
+    sleep 1
+    rm -f /var/cache/pdnsd/pdnsd.cache
+    sleep 1
+    service pdnsd start &> /dev/null
+  fi
+  find_mirror
+
+  isCurl=$(curl --version 2>&1)
+  if [[ ! "$isCurl" =~ "OpenSSL" ]] || [ -z "${isCurl}" ] ; then
+    if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ] ; then
+      echo "ERROR: Required cURL package is not available"
+      echo "ERROR: Please install it manually with 'apt-get install curl'"
+      clean_pid_exit
+    else
+      apt-get clean -qq &> /dev/null
+      apt-get update -qq &> /dev/null
+      apt-get install curl -y --force-yes --reinstall &> /dev/null
+    fi
+  fi
+
+  _CURL_TEST=$(curl -L -k -s \
+    --max-redirs 10 \
+    --retry 3 \
+    --retry-delay 10 \
+    -I "http://${_USE_MIRROR}" 2> /dev/null)
+  if [[ ! "${_CURL_TEST}" =~ "200 OK" ]] ; then
+    echo "ERROR: ${_USE_MIRROR} is not available, please try later"
+    clean_pid_exit
+  else
+    urlHmr="http://${_USE_MIRROR}/versions/master/aegir"
+  fi
+
   _LSB_TEST=$(which lsb_release 2> /dev/null)
   if [[ "$_LSB_TEST" =~ "lsb_release" ]] ; then
     _DO_NOTHING=YES
@@ -416,14 +475,14 @@ setup() {
   fi
   _ADD_LEGACY_SYMLINK=NO
   _PATH_TEST=$(grep 'export PATH' /root/.bashrc)
-  if [[ "$_PATH_TEST" =~ "export PATH" ]] ; then
+  if [[ "${_PATH_TEST}" =~ "export PATH" ]] ; then
     _DO_NOTHING=YES
   else
     echo "export PATH=\$PATH:/usr/local/bin:/opt/local/bin" >> /root/.bashrc
     _ADD_LEGACY_SYMLINK=YES
   fi
   _PATH_TEST=$(grep '/opt/local/bin' /root/.bashrc)
-  if [[ "$_PATH_TEST" =~ "/opt/local/bin" ]] ; then
+  if [[ "${_PATH_TEST}" =~ "/opt/local/bin" ]] ; then
     _DO_NOTHING=YES
   else
     sed -i "s/^export \
@@ -434,25 +493,21 @@ setup() {
   mkdir -p /usr/local/bin
   mkdir -p /opt/local/bin
   rm -f /opt/local/bin/.{boa*,fix*}
-  rm -f /usr/local/bin/{autoupboa*,backboa*,barracuda*,boa*,drushextra*}
+  rm -f /usr/local/bin/{autoupboa*,backboa*,barracuda*,boa*,ffmirror*}
   rm -f /usr/local/bin/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   if [ ! -e "/data/disk" ] ; then
     ln -s /opt/local/bin/boa /usr/local/bin/boa
   fi
-  if [ "$_ADD_LEGACY_SYMLINK" = "YES" ] ; then
+  if [ "${_ADD_LEGACY_SYMLINK}" = "YES" ] ; then
     ln -s /opt/local/bin/barracuda /usr/local/bin/barracuda
     ln -s /opt/local/bin/octopus /usr/local/bin/octopus
   fi
-  rm -f /opt/local/bin/{autoupboa*,backboa*,barracuda*,boa*,drushextra*}
+  rm -f /opt/local/bin/{autoupboa*,backboa*,barracuda*,boa*,ffmirror*}
   rm -f /opt/local/bin/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   curl ${crlGet} "${urlHmr}/tools/bin/autoupboa"      -o /opt/local/bin/autoupboa
-  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
-    echo "The duplicity backup is running!"
-  else
-    curl ${crlGet} "${urlHmr}/tools/bin/backboa"      -o /opt/local/bin/backboa
-  fi
   curl ${crlGet} "${urlHmr}/tools/bin/barracuda"      -o /opt/local/bin/barracuda
   curl ${crlGet} "${urlHmr}/tools/bin/boa"            -o /opt/local/bin/boa
+  curl ${crlGet} "${urlHmr}/tools/bin/ffmirror"       -o /opt/local/bin/ffmirror
   curl ${crlGet} "${urlHmr}/tools/bin/octopus"        -o /opt/local/bin/octopus
   curl ${crlGet} "${urlHmr}/tools/bin/randpass"       -o /opt/local/bin/randpass
   curl ${crlGet} "${urlHmr}/tools/bin/sqlmagic"       -o /opt/local/bin/sqlmagic
@@ -461,7 +516,13 @@ setup() {
   echo "### ${_TODAY} ###" >> /opt/local/bin/boa
   echo "### ${_TODAY} ###" >> /opt/local/bin/barracuda
   echo "### ${_TODAY} ###" >> /opt/local/bin/octopus
-  chmod 700 /opt/local/bin/{autoupboa,backboa,barracuda,boa,octopus,syncpass}
+  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+    echo "The duplicity backup is running!"
+  else
+    curl ${crlGet} "${urlHmr}/tools/bin/backboa"      -o /opt/local/bin/backboa
+  fi
+  chmod 700 /opt/local/bin/{autoupboa,backboa,barracuda,boa}
+  chmod 700 /opt/local/bin/{ffmirror,octopus,syncpass}
   chmod 755 /opt/local/bin/{randpass,sqlmagic,thinkdifferent}
   echo
   echo "BOA Meta Installer setup completed"

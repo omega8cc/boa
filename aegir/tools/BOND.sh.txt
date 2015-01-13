@@ -159,7 +159,6 @@ _PHP55_API=20121212
 _PHP55_VRN=5.5.20
 _PHP56_API=20131226
 _PHP56_VRN=5.6.4
-urlStb="http://files.aegir.cc/versions/stable"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 
 
@@ -243,6 +242,42 @@ mrun() {
     sleep 1
     return 0
   fi
+}
+#
+# Find the fastest mirror.
+find_mirror() {
+  isNetc=$(which netcat 2>&1)
+  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ] ; then
+    apt-get update -qq &> /dev/null
+    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    sleep 3
+  fi
+  ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${ffMirr}" ] ; then
+    ffList="/var/backups/boa-mirrors.txt"
+    mkdir -p /var/backups
+    echo "jp.files.aegir.cc"  > ${ffList}
+    echo "nl.files.aegir.cc" >> ${ffList}
+    echo "uk.files.aegir.cc" >> ${ffList}
+    echo "us.files.aegir.cc" >> ${ffList}
+    if [ -e "${ffList}" ] ; then
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      sleep 3
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      sleep 3
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      _USE_MIRROR="${_CHECK_MIRROR}"
+    else
+      _USE_MIRROR="files.aegir.cc"
+    fi
+  else
+    _USE_MIRROR="files.aegir.cc"
+  fi
+  if ! netcat -w 5 -z ${_USE_MIRROR} 80 ; then
+    echo "INFO: The mirror ${_USE_MIRROR} doesn't respond, let's try default"
+    _USE_MIRROR="files.aegir.cc"
+  fi
+  urlStb="http://${_USE_MIRROR}/versions/stable"
 }
 #
 # Find correct IP.
@@ -1173,6 +1208,7 @@ if [ `whoami` = "root" ] ; then
     fi
   fi
   msg "INFO: This script is ran as a root user"
+  find_mirror
 else
   msg "ERROR: This script should be ran as a root user"
   msg "Bye"
