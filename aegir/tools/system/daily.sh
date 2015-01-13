@@ -2541,8 +2541,8 @@ action() {
               _HM_NID=$(run_drush7_hmr_cmd "@hostmaster \
                 sqlq \"SELECT site.nid FROM hosting_site site JOIN \
                 hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN \
-                hosting_package pkg ON pkg.nid=pkgi.package_id WHERE \
-                pkg.short_name='hostmaster'\" 2>&1")
+                hosting_package pkg ON pkg.nid=pkgi.package_id \
+                WHERE pkg.short_name='hostmaster'\" 2>&1")
               _HM_NID=${_HM_NID//[^0-9]/}
               if [ ! -z "$_HM_NID" ] ; then
                 run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context \
@@ -2553,10 +2553,10 @@ action() {
           fi
         fi
         process
-        run_drush7_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE \
-          task_type='delete' AND task_status='-1'\""
-        run_drush7_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE \
-          task_type='delete' AND task_status='0' AND executed='0'\""
+        run_drush7_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task \
+          WHERE task_type='delete' AND task_status='-1'\""
+        run_drush7_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task \
+          WHERE task_type='delete' AND task_status='0' AND executed='0'\""
         check_old_empty_platforms
         purge_cruft_machine
         if [[ "${_HOST_TEST}" =~ ".host8." ]] \

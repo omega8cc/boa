@@ -10441,16 +10441,26 @@ else
   ### in all Octopus instances which could break Nginx restart
   ###
   if [ -e "/data/disk" ] ; then
-    for File in `grep will_expire_in /data/disk/*/config/includes/* | cut -d: -f1 | awk '{ print $1}'`; do rm -f $File ;done
-    for Vght in `ls /data/disk/*/log/CANCELLED 2> /dev/null | cut -d"/" -f4 | awk '{ print $1}'`; do rm -f /data/disk/$Vght/config/server_*/nginx/vhost.d/* ;done
-    sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf &> /dev/null
-    sed -i "s/OctopusNCookie/AegirCookie/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf      &> /dev/null
-    sed -i "s/OctopusNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf      &> /dev/null
+    for File in `grep will_expire_in /data/disk/*/config/includes/* \
+      | cut -d: -f1 \
+      | awk '{ print $1}'`; do
+      rm -f $File
+    done
+    for Vght in `ls /data/disk/*/log/CANCELLED 2> /dev/null \
+      | cut -d"/" -f4 \
+      | awk '{ print $1}'`; do
+      rm -f /data/disk/$Vght/config/server_*/nginx/vhost.d/*
+    done
+    wildPth="/data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf"
+    sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${wildPth} &> /dev/null
+    sed -i "s/OctopusNCookie/AegirCookie/g"      ${wildPth} &> /dev/null
+    sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${wildPth} &> /dev/null
   fi
   if [ -e "/var/aegir" ] ; then
-    sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf   &> /dev/null
-    sed -i "s/OctopusNCookie/AegirCookie/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
-    sed -i "s/OctopusNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
+    wildPth="/var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf"
+    sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${wildPth} &> /dev/null
+    sed -i "s/OctopusNCookie/AegirCookie/g"      ${wildPth} &> /dev/null
+    sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${wildPth} &> /dev/null
     sed -i "s/60/180/g" /var/aegir/config/server_*/nginx.conf  &> /dev/null
     sed -i "s/300/180/g" /var/aegir/config/server_*/nginx.conf &> /dev/null
   fi
@@ -10460,7 +10470,11 @@ else
     rm -f /root/.tmp.IP.list*
     rm -f /root/.local.IP.list*
     for _IP in `hostname -I`;do echo ${_IP} >> /root/.tmp.IP.list;done
-    for _IP in `cat /root/.tmp.IP.list | sort | uniq`;do echo "${_IP} # local IP address" >> /root/.local.IP.list;done
+    for _IP in `cat /root/.tmp.IP.list \
+      | sort \
+      | uniq`; do
+      echo "${_IP} # local IP address" >> /root/.local.IP.list
+    done
     rm -f /root/.tmp.IP.list*
   fi
   _IP_IF_PRESENT=$(grep "${_CRON_IP}" /root/.local.IP.list 2>&1)
@@ -10469,7 +10483,9 @@ else
   else
     _IP_PRESENT=NO
   fi
-  if [ ! -z "${_CRON_IP}" ] && [ "${_IP_PRESENT}" = "YES" ] && [ -e "/root/.local.IP.list" ] ; then
+  if [ ! -z "${_CRON_IP}" ] \
+    && [ "${_IP_PRESENT}" = "YES" ] \
+    && [ -e "/root/.local.IP.list" ] ; then
     fix_multi_ip_cron_access
   fi
   mrun "service nginx reload" &> /dev/null
