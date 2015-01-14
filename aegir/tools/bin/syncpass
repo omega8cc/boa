@@ -36,8 +36,7 @@ check_generate() {
       echo "INFO: We will generate new random strong password (${_PWD_CHARS})"
       _ESC_APASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
       _ESC_APASS=$(echo -n ${_ESC_APASS} | tr -d "\n" 2>&1)
-      _ENC_APASS=$(python -c \
-        "import urllib; print urllib.quote('''${_ESC_APASS}''')")
+      _ENC_APASS=$(python -c "import urllib; print urllib.quote('''${_ESC_APASS}''')")
       echo "${_ESC_APASS}" > ${_L_SYS}
     else
        echo "INFO: We will generate new random password using pwgen tool"
