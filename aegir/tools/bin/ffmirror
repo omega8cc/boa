@@ -1,11 +1,6 @@
 #!/bin/bash
-# ffmirror.sh - http://grulos.blogspot.com
-# find fastest mirror (?!?)
-# give it a list of hosts and it will sort them
-# according to their response time
-# no switches (ATM) just ./ffmirror<mirrors.txt
-# www.foo.org or http://www.foo.org or
-# http://foo.org/page or ...
+
+# borrowed from http://grulos.blogspot.com
 
 trap 'printf "\ncaught signal\nGot only ${#slist[@]}\n" &&
   printf "%s\n" "${slist[@]}" && exit 1' 2
@@ -41,7 +36,3 @@ done
 
 # printf "%s\n" "${slist[@]}"
 printf "${slist[@]}"
-
-# root@lucid:~# bash ffmirror.sh.txt < apt-list-ubuntu.txt 2>> err.log
-# fr.archive.ubuntu.com
-# root@lucid:~# 

@@ -9,16 +9,16 @@ hold() {
   killall -9 nginx &> /dev/null
   sleep 1
   killall -9 nginx &> /dev/null
-  if [ -e "/etc/init.d/php56-fpm" ] ; then
+  if [ -e "/etc/init.d/php56-fpm" ]; then
     service php56-fpm stop &> /dev/null
   fi
-  if [ -e "/etc/init.d/php55-fpm" ] ; then
+  if [ -e "/etc/init.d/php55-fpm" ]; then
     service php55-fpm stop &> /dev/null
   fi
-  if [ -e "/etc/init.d/php54-fpm" ] ; then
+  if [ -e "/etc/init.d/php54-fpm" ]; then
     service php54-fpm stop &> /dev/null
   fi
-  if [ -e "/etc/init.d/php53-fpm" ] ; then
+  if [ -e "/etc/init.d/php53-fpm" ]; then
     service php53-fpm stop &> /dev/null
   fi
   killall -9 php-fpm php-cgi &> /dev/null
@@ -28,7 +28,7 @@ hold() {
 }
 
 terminate() {
-  if [ -e "/var/run/boa_run.pid" ] ; then
+  if [ -e "/var/run/boa_run.pid" ]; then
     sleep 1
   else
     killall -9 php drush.php wget curl &> /dev/null
@@ -47,14 +47,14 @@ nginx_high_load_off() {
 }
 
 check_vhost_health() {
-  if [ -e "$1"* ] ; then
+  if [ -e "$1"* ]; then
     echo vhost $1 exists
     vhostPlaceTest=$(grep "### access" $1* 2>&1)
     vhostAllowTest=$(grep "allow .*;" $1* 2>&1)
     vhostDenyTest=$(grep "deny .*;" $1* 2>&1)
     if [[ "${vhostPlaceTest}" =~ "access" ]] \
-      && [[ "${vhostDenyTest}" =~ "deny" ]] ; then
-      if [[ "${vhostAllowTest}" =~ "allow" ]] ; then
+      && [[ "${vhostDenyTest}" =~ "deny" ]]; then
+      if [[ "${vhostAllowTest}" =~ "allow" ]]; then
         vhostHealthTest=YES
       else
         vhostHealthTest=YES
@@ -75,8 +75,8 @@ check_vhost_health() {
 
 update_ip_auth_access() {
   touch /var/run/.auth.IP.list.pid
-  if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
-    if [ -e "${pthVhstd}/chive."* ] ; then
+  if [ -e "/var/backups/.auth.IP.list.tmp" ]; then
+    if [ -e "${pthVhstd}/chive."* ]; then
       sed -i "s/### access .*//g; \
         s/allow .*;//g; \
         s/deny .*;//g; \
@@ -86,7 +86,7 @@ update_ip_auth_access() {
         ### access update/g" \
         ${pthVhstd}/chive.* &> /dev/null
     fi
-    if [ -e "${pthVhstd}/cgp."* ] ; then
+    if [ -e "${pthVhstd}/cgp."* ]; then
       sed -i "s/### access .*//g; \
         s/allow .*;//g; \
         s/deny .*;//g; \
@@ -96,7 +96,7 @@ update_ip_auth_access() {
         ### access update/g" \
         ${pthVhstd}/cgp.* &> /dev/null
     fi
-    if [ -e "${pthVhstd}/sqlbuddy."* ] ; then
+    if [ -e "${pthVhstd}/sqlbuddy."* ]; then
       sed -i "s/### access .*//g; \
         s/allow .*;//g; \
         s/deny .*;//g; \
@@ -118,7 +118,7 @@ d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
     check_vhost_health "${pthVhstd}/cgp."
     check_vhost_health "${pthVhstd}/sqlbuddy."
     ngxTest=$(service nginx configtest 2>&1)
-    if [[ "${ngxTest}" =~ "successful" ]] ; then
+    if [[ "${ngxTest}" =~ "successful" ]]; then
       service nginx reload &> /dev/null
     else
       service nginx reload &> /var/backups/.auth.IP.list.ops
@@ -144,7 +144,7 @@ d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
     | sort \
     | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
       >> /var/backups/.auth.IP.list;done
-  if [ -e "/root/.ip.protected.vhost.whitelist.cnf" ] ; then
+  if [ -e "/root/.ip.protected.vhost.whitelist.cnf" ]; then
     for _IP in `cat /root/.ip.protected.vhost.whitelist.cnf \
       | sort \
       | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
@@ -152,10 +152,10 @@ d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
   fi
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" \
     /var/backups/.auth.IP.list &> /dev/null
-  if [ -e "/var/backups/.auth.IP.list" ] ; then
+  if [ -e "/var/backups/.auth.IP.list" ]; then
     allowTestList=$(grep allow /var/backups/.auth.IP.list 2>&1)
   fi
-  if [[ "${allowTestList}" =~ "allow" ]] ; then
+  if [[ "${allowTestList}" =~ "allow" ]]; then
     echo "  deny                         all;" >> /var/backups/.auth.IP.list
     echo "  ### access live"                   >> /var/backups/.auth.IP.list
   else
@@ -176,7 +176,7 @@ manage_ip_auth_access() {
     | sort \
     | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
       >> /var/backups/.auth.IP.list.tmp;done
-  if [ -e "/root/.ip.protected.vhost.whitelist.cnf" ] ; then
+  if [ -e "/root/.ip.protected.vhost.whitelist.cnf" ]; then
     for _IP in `cat /root/.ip.protected.vhost.whitelist.cnf \
       | sort \
       | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
@@ -184,38 +184,38 @@ manage_ip_auth_access() {
   fi
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" \
     /var/backups/.auth.IP.list.tmp &> /dev/null
-  if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
+  if [ -e "/var/backups/.auth.IP.list.tmp" ]; then
     allowTestTmp=$(grep allow /var/backups/.auth.IP.list.tmp 2>&1)
   fi
-  if [[ "${allowTestTmp}" =~ "allow" ]] ; then
+  if [[ "${allowTestTmp}" =~ "allow" ]]; then
     echo "  deny                         all;" >> /var/backups/.auth.IP.list.tmp
     echo "  ### access live"                   >> /var/backups/.auth.IP.list.tmp
   else
     echo "  deny                         all;" >  /var/backups/.auth.IP.list.tmp
     echo "  ### access none"                   >> /var/backups/.auth.IP.list.tmp
   fi
-  if [ ! -e "/var/run/.auth.IP.list.pid" ] ; then
-    if [ ! -e "/var/backups/.auth.IP.list" ] ; then
+  if [ ! -e "/var/run/.auth.IP.list.pid" ]; then
+    if [ ! -e "/var/backups/.auth.IP.list" ]; then
       update_ip_auth_access
     else
-      if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
+      if [ -e "/var/backups/.auth.IP.list.tmp" ]; then
         diffTestIf=$(diff /var/backups/.auth.IP.list.tmp \
           /var/backups/.auth.IP.list 2>&1)
-        if [ ! -z "${diffTestIf}" ] ; then
+        if [ ! -z "${diffTestIf}" ]; then
           update_ip_auth_access
         fi
       fi
     fi
   fi
-  if [ -L "/var/backups/.vhost.d.mstr" ] ; then
-    if [ ! -d "/var/backups/.vhost.d.wbhd" ] ; then
+  if [ -L "/var/backups/.vhost.d.mstr" ]; then
+    if [ ! -d "/var/backups/.vhost.d.wbhd" ]; then
       mkdir -p /var/backups/.vhost.d.wbhd
       chmod 700 /var/backups/.vhost.d.wbhd
       cp -af /var/backups/.vhost.d.mstr/* /var/backups/.vhost.d.wbhd/
     fi
     diffClstrTest=$(diff /var/backups/.vhost.d.wbhd \
       /var/backups/.vhost.d.mstr 2>&1)
-    if [ ! -z "${diffClstrTest}" ] ; then
+    if [ ! -z "${diffClstrTest}" ]; then
       service nginx reload &> /dev/null
       rm -f -r /var/backups/.vhost.d.wbhd
       mkdir -p /var/backups/.vhost.d.wbhd
@@ -223,34 +223,34 @@ manage_ip_auth_access() {
       cp -af /var/backups/.vhost.d.mstr/* /var/backups/.vhost.d.wbhd/
     fi
   fi
-  if [[ "${allowTestTmp}" =~ "allow" ]] ; then
+  if [[ "${allowTestTmp}" =~ "allow" ]]; then
     vhostStatusChive=TRUE
     vhostStatusCgp=TRUE
     vhostStatusBuddy=TRUE
-    if [ -e "${pthVhstd}/chive."* ] ; then
+    if [ -e "${pthVhstd}/chive."* ]; then
       vhostStatusChive=FALSE
       vhostTestChive=$(grep allow ${pthVhstd}/chive.* 2>&1)
-      if [[ "${vhostTestChive}" =~ "allow" ]] ; then
+      if [[ "${vhostTestChive}" =~ "allow" ]]; then
         vhostStatusChive=TRUE
       fi
     fi
-    if [ -e "${pthVhstd}/cgp."* ] ; then
+    if [ -e "${pthVhstd}/cgp."* ]; then
       vhostStatusCgp=FALSE
       vhostTestCgp=$(grep allow ${pthVhstd}/cgp.* 2>&1)
-      if [[ "${vhostTestCgp}" =~ "allow" ]] ; then
+      if [[ "${vhostTestCgp}" =~ "allow" ]]; then
         vhostStatusCgp=TRUE
       fi
     fi
-    if [ -e "${pthVhstd}/sqlbuddy."* ] ; then
+    if [ -e "${pthVhstd}/sqlbuddy."* ]; then
       vhostStatusBuddy=FALSE
       vhostTestBuddy=$(grep allow ${pthVhstd}/sqlbuddy.* 2>&1)
-      if [[ "${vhostTestBuddy}" =~ "allow" ]] ; then
+      if [[ "${vhostTestBuddy}" =~ "allow" ]]; then
         vhostStatusBuddy=TRUE
       fi
     fi
     if [ "${vhostStatusChive}" = "FALSE" ] \
       || [ "${vhostStatusCgp}" = "FALSE" ] \
-      || [ "${vhostStatusBuddy}" = "FALSE" ] ; then
+      || [ "${vhostStatusBuddy}" = "FALSE" ]; then
       update_ip_auth_access
     fi
   fi
@@ -258,9 +258,9 @@ manage_ip_auth_access() {
 }
 
 proc_control() {
-  if [ "${_O_LOAD}" -ge "${_O_LOAD_MAX}" ] ; then
+  if [ "${_O_LOAD}" -ge "${_O_LOAD_MAX}" ]; then
     hold
-  elif [ "${_F_LOAD}" -ge "${_F_LOAD_MAX}" ] ; then
+  elif [ "${_F_LOAD}" -ge "${_F_LOAD_MAX}" ]; then
     hold
   else
     echo "load is ${_O_LOAD}:${_F_LOAD} while \
@@ -306,21 +306,21 @@ load_control() {
 
   if [ "${_O_LOAD}" -ge "${_O_LOAD_SPR}" ] \
     && [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ] \
-    && [ -e "/data/conf/nginx_high_load_off.conf" ] ; then
+    && [ -e "/data/conf/nginx_high_load_off.conf" ]; then
     nginx_high_load_on
   elif [ "${_F_LOAD}" -ge "${_F_LOAD_SPR}" ] \
     && [ "${_F_LOAD}" -lt "${_F_LOAD_MAX}" ] \
-    && [ -e "/data/conf/nginx_high_load_off.conf" ] ; then
+    && [ -e "/data/conf/nginx_high_load_off.conf" ]; then
     nginx_high_load_on
   elif [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ] \
     && [ "${_F_LOAD}" -lt "${_F_LOAD_SPR}" ] \
-    && [ -e "/data/conf/nginx_high_load.conf" ] ; then
+    && [ -e "/data/conf/nginx_high_load.conf" ]; then
     nginx_high_load_off
   fi
 
-  if [ "${_O_LOAD}" -ge "${_O_LOAD_CRT}" ] ; then
+  if [ "${_O_LOAD}" -ge "${_O_LOAD_CRT}" ]; then
     terminate
-  elif [ "${_F_LOAD}" -ge "${_F_LOAD_CRT}" ] ; then
+  elif [ "${_F_LOAD}" -ge "${_F_LOAD_CRT}" ]; then
     terminate
   fi
 
@@ -331,7 +331,7 @@ count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc 2>&1)
-  if [ -z "${_NPROC_TEST}" ] ; then
+  if [ -z "${_NPROC_TEST}" ]; then
     _CPU_NR="${_CPU_INFO}"
   else
     _CPU_NR=$(nproc 2>&1)
@@ -340,28 +340,28 @@ count_cpu() {
   if [ ! -z "${_CPU_NR}" ] \
     && [ ! -z "${_CPU_INFO}" ] \
     && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
-    && [ "${_CPU_INFO}" -gt "0" ] ; then
+    && [ "${_CPU_INFO}" -gt "0" ]; then
     _CPU_NR="${_CPU_INFO}"
   fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ] ; then
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
     _CPU_NR=1
   fi
 }
 
-if [ -e "/root/.barracuda.cnf" ] ; then
+if [ -e "/root/.barracuda.cnf" ]; then
   source /root/.barracuda.cnf
   _CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO//[^0-9]/}
   _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
   _CPU_CRIT_RATIO=${_CPU_CRIT_RATIO//[^0-9]/}
 fi
 
-if [ -z "${_CPU_SPIDER_RATIO}" ] ; then
+if [ -z "${_CPU_SPIDER_RATIO}" ]; then
   _CPU_SPIDER_RATIO=3
 fi
-if [ -z "${_CPU_MAX_RATIO}" ] ; then
+if [ -z "${_CPU_MAX_RATIO}" ]; then
   _CPU_MAX_RATIO=6
 fi
-if [ -z "${_CPU_CRIT_RATIO}" ] ; then
+if [ -z "${_CPU_CRIT_RATIO}" ]; then
   _CPU_CRIT_RATIO=9
 fi
 

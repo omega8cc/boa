@@ -32,11 +32,11 @@ if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
   exit 1
 fi
 
-if [ -e "/root/.barracuda.cnf" ] ; then
+if [ -e "/root/.barracuda.cnf" ]; then
   source /root/.barracuda.cnf
 fi
 
-if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ] ; then
+if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
   echo "
 
   CONFIGURATION REQUIRED!
@@ -82,38 +82,38 @@ if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ] ; then
   exit 1
 fi
 
-if [ -z "${_AWS_REG}" ] ; then
+if [ -z "${_AWS_REG}" ]; then
   _AWS_REG="us-east-1"
 fi
 
 if [ "${_AWS_REG}" = "us-east-1" ] \
   || [ "${_AWS_REG}" = "us-west-2" ] \
-  || [ "${_AWS_REG}" = "us-west-1" ] ; then
+  || [ "${_AWS_REG}" = "us-west-1" ]; then
   _GOOD_AWS_REG=YES
 elif [ "${_AWS_REG}" = "eu-west-1" ] \
   || [ "${_AWS_REG}" = "eu-central-1" ] \
-  || [ "${_AWS_REG}" = "ap-southeast-1" ] ; then
+  || [ "${_AWS_REG}" = "ap-southeast-1" ]; then
   _GOOD_AWS_REG=YES
 elif [ "${_AWS_REG}" = "ap-southeast-2" ] \
   || [ "${_AWS_REG}" = "ap-northeast-1" ] \
-  || [ "${_AWS_REG}" = "sa-east-1" ] ; then
+  || [ "${_AWS_REG}" = "sa-east-1" ]; then
   _GOOD_AWS_REG=YES
 else
   _AWS_REG="us-east-1"
 fi
 
 _AWS_TTL=${_AWS_TTL//[^A-Z0-9]/}
-if [ -z "${_AWS_TTL}" ] ; then
+if [ -z "${_AWS_TTL}" ]; then
   _AWS_TTL="30D"
 fi
 
 _AWS_FLC=${_AWS_FLC//[^A-Z0-9]/}
-if [ -z "${_AWS_FLC}" ] ; then
+if [ -z "${_AWS_FLC}" ]; then
   _AWS_FLC="7D"
 fi
 
 _AWS_VLV=${_AWS_VLV//[^0-9]/}
-if [ -z "${_AWS_VLV}" ] ; then
+if [ -z "${_AWS_VLV}" ]; then
   _AWS_VLV="1"
 fi
 
@@ -131,7 +131,7 @@ TARGET="s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}"
 LOGFILE="/var/xdrago/log/${BUCKET}.log"
 
 backup() {
-  if [ ! -z "${_AWS_PRG}" ] && [ "${_AWS_PRG}" = "YES" ] ; then
+  if [ ! -z "${_AWS_PRG}" ] && [ "${_AWS_PRG}" = "YES" ]; then
     _AWS_OPX="--s3-use-new-style --progress"
   fi
   INCLUDE=""
@@ -139,21 +139,21 @@ backup() {
     TMP=" --include  ${CDIR}"
     INCLUDE="${INCLUDE}${TMP}"
   done
-  if [ -e "/root/.cache/duplicity" ] ; then
+  if [ -e "/root/.cache/duplicity" ]; then
     CacheTest=$(find /root/.cache/duplicity/* \
       -maxdepth 1 \
       -mindepth 1 \
       -type f \
       | sort 2>&1)
     if [[ "$CacheTest" =~ "No such file or directory" ]] \
-      || [ -z "$CacheTest" ] ; then
+      || [ -z "$CacheTest" ]; then
       _DO_CLEANUP=NO
     else
       _DO_CLEANUP=YES
     fi
   fi
   if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
-    && [ "${_DO_CLEANUP}" = "YES" ] ; then
+    && [ "${_DO_CLEANUP}" = "YES" ]; then
     duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
   fi
   duplicity -v ${_AWS_VLV} --volsize 100 \
@@ -161,12 +161,12 @@ backup() {
     --asynchronous-upload ${_AWS_OPX} \
     ${INCLUDE} ${EXCLUDE} --exclude '**' / ${TARGET} > ${LOGFILE}
   if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
-    && [ "${_DO_CLEANUP}" = "YES" ] ; then
+    && [ "${_DO_CLEANUP}" = "YES" ]; then
     duplicity -v ${_AWS_VLV} remove-older-than ${_AWS_TTL} \
       --force ${_AWS_OPX} ${TARGET} >> ${LOGFILE}
     duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET} >> ${LOGFILE}
   fi
-  if [ -n "${_MY_EMAIL}" ] && [ "${_AWS_VLV}" -lt "3" ] ; then
+  if [ -n "${_MY_EMAIL}" ] && [ "${_AWS_VLV}" -lt "3" ]; then
     mail -s "Daily backup: ${_HST} $(date 2>&1)" ${_MY_EMAIL} < ${LOGFILE}
   fi
   cat /var/xdrago/log/${BUCKET}.log >> /var/xdrago/log/${BUCKET}.archive.log
@@ -176,7 +176,7 @@ conn_test() {
   echo "Running AWS connection test, please wait..."
   ConnTest=$(duplicity -v 2 cleanup --dry-run \
     --timeout 1 ${_AWS_OPX} ${TARGET} 2>&1)
-  if [[ "$ConnTest" =~ "No connection to backend" ]] ; then
+  if [[ "$ConnTest" =~ "No connection to backend" ]]; then
     echo
     echo "  Sorry, I can't connect to ${TARGET}"
     echo "  Please check if the bucket has expected name: ${BUCKET}"
@@ -227,20 +227,20 @@ retrieve() {
 
 find_mirror() {
   isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ] ; then
+  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     apt-get update -qq &> /dev/null
     apt-get install netcat -y --force-yes --reinstall &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
-  if [ -x "${ffMirr}" ] ; then
+  if [ -x "${ffMirr}" ]; then
     ffList="/var/backups/boa-mirrors.txt"
     mkdir -p /var/backups
     echo "jp.files.aegir.cc"  > ${ffList}
     echo "nl.files.aegir.cc" >> ${ffList}
     echo "uk.files.aegir.cc" >> ${ffList}
     echo "us.files.aegir.cc" >> ${ffList}
-    if [ -e "${ffList}" ] ; then
+    if [ -e "${ffList}" ]; then
       _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
       _USE_MIRROR="${_CHECK_MIRROR}"
     else
@@ -260,7 +260,7 @@ install() {
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
-  if [ "${_DUPLICITY_ITD}" = "${_DUPLICITY_VRN}" ] ; then
+  if [ "${_DUPLICITY_ITD}" = "${_DUPLICITY_VRN}" ]; then
     echo "Latest duplicity version ${_DUPLICITY_VRN} already installed"
   else
     echo "Installing duplicity dependencies, please wait..."

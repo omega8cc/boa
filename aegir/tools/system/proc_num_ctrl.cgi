@@ -198,7 +198,7 @@ sub global_action
   local(@MYARR) = `ps auxf 2>&1`;
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,\?\=\|\\\+]//g;
-    local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, $TIME, $COMMAND, $B, $K, $X, $Y, $Z, $T) = split(/\s+/,$line);
+    local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, ${TIME}, $COMMAND, $B, $K, $X, $Y, $Z, $T) = split(/\s+/,$line);
     $PID =~ s/[^0-9]//g;
     $li_cnt{$USER}++ if ($PID);
     $li_cnt{$X}++ if ($PID && $COMMAND =~ /php-fpm/ && $X =~ /php/);
@@ -207,7 +207,7 @@ sub global_action
 
     if ($PID)
     {
-      local($HOUR, $MIN) = split(/:/,$TIME);
+      local($HOUR, $MIN) = split(/:/,${TIME});
       $MIN =~ s/^0//g;
 
       if ($COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/)
@@ -219,7 +219,7 @@ sub global_action
         if ($hourminute !~ /^000/)
         {
           system("kill -9 $PID");
-         `echo "G $timedate $TIME $STAT $START $COMMAND, $B, $K, $X, $Y, $Z, $T" >> /var/xdrago/log/php-cli.kill.log`;
+         `echo "G $timedate ${TIME} $STAT $START $COMMAND, $B, $K, $X, $Y, $Z, $T" >> /var/xdrago/log/php-cli.kill.log`;
         }
       }
 
@@ -233,11 +233,11 @@ sub global_action
             system("bash /var/xdrago/move_sql.sh");
             $timedate=`date +%y%m%d-%H%M%S`;
             chomp($timedate);
-           `echo "$USER CPU:$CPU MAXSQLCPU:$MAXSQLCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/mysql.forced.restart.log`;
+           `echo "$USER CPU:$CPU MAXSQLCPU:$MAXSQLCPU $STAT START:$START TIME:${TIME} $timedate" >> /var/xdrago/log/mysql.forced.restart.log`;
           }
         }
         if ($CPU > 50 && !-f "/var/run/boa_sql_backup.pid") {
-         `echo "$USER CPU:$CPU MAXSQLCPU:$MAXSQLCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/mysql.watch.log`;
+         `echo "$USER CPU:$CPU MAXSQLCPU:$MAXSQLCPU $STAT START:$START TIME:${TIME} $timedate" >> /var/xdrago/log/mysql.watch.log`;
         }
       }
 
@@ -251,11 +251,11 @@ sub global_action
           {
             if (!-e "/root/.no.fpm.cpu.limit.cnf") {
               system("kill -9 $PID");
-             `echo "$X CPU:$CPU MAXFPMCPU:$MAXFPMCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/php-fpm.kill.log`;
+             `echo "$X CPU:$CPU MAXFPMCPU:$MAXFPMCPU $STAT START:$START TIME:${TIME} $timedate" >> /var/xdrago/log/php-fpm.kill.log`;
               $fpm_result = "KILLED";
             }
           }
-         `echo "$X CPU:$CPU $STAT START:$START TIME:$TIME $timedate $fpm_result" >> /var/xdrago/log/php-fpm.watch.log`;
+         `echo "$X CPU:$CPU $STAT START:$START TIME:${TIME} $timedate $fpm_result" >> /var/xdrago/log/php-fpm.watch.log`;
         }
       }
 
@@ -268,7 +268,7 @@ sub global_action
          if ($hourminute !~ /^000/)
          {
             system("kill -9 $PID");
-           `echo "$timedate $TIME $STAT $START $B" >> /var/xdrago/log/git.kill.log`;
+           `echo "$timedate ${TIME} $STAT $START $B" >> /var/xdrago/log/git.kill.log`;
          }
       }
 
@@ -281,16 +281,16 @@ sub global_action
          if ($hourminute !~ /^000/)
          {
             system("kill -9 $PID");
-           `echo "$timedate $TIME $STAT $START $B" >> /var/xdrago/log/git.kill.log`;
+           `echo "$timedate ${TIME} $STAT $START $B" >> /var/xdrago/log/git.kill.log`;
          }
       }
 
-      if ($USER =~ /(tomcat|jetty)/ && $COMMAND =~ /java/ && ($STAT =~ /R/ || $TIME !~ /^[0-5]{1}:/))
+      if ($USER =~ /(tomcat|jetty)/ && $COMMAND =~ /java/ && ($STAT =~ /R/ || ${TIME} !~ /^[0-5]{1}:/))
       {
          system("kill -9 $PID");
          $timedate=`date +%y%m%d-%H%M%S`;
          chomp($timedate);
-        `echo "$timedate $TIME $CPU $MEM $STAT $START $USER" >> /var/xdrago/log/tomcat-jetty-java.kill.log`;
+        `echo "$timedate ${TIME} $CPU $MEM $STAT $START $USER" >> /var/xdrago/log/tomcat-jetty-java.kill.log`;
       }
 
       if ($COMMAND !~ /^(\\)/ && $COMMAND !~ /^(\|)/)
@@ -321,11 +321,11 @@ sub convert_action
   local(@MYARR) = `ps auxf 2>&1`;
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,\?\=\|\\\+]//g;
-    local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, $TIME, $COMMAND, $B, $K, $X, $Y, $Z, $T) = split(/\s+/,$line);
+    local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, ${TIME}, $COMMAND, $B, $K, $X, $Y, $Z, $T) = split(/\s+/,$line);
     $PID =~ s/[^0-9]//g;
     if ($PID)
     {
-      local($HOUR, $MIN) = split(/:/,$TIME);
+      local($HOUR, $MIN) = split(/:/,${TIME});
       $MIN =~ s/^0//g;
       if ($COMMAND =~ /^(\|)/ && $K =~ /convert/ && $CPU > 10 && $MIN > 1 && ($STAT =~ /R/ || $STAT =~ /Z/))
       {
@@ -333,18 +333,18 @@ sub convert_action
         chomp($timedate);
         if ($convertsumar > 5 && $CPU > 50) {
           system("kill -9 $PID");
-         `echo "$USER $CPU $STAT $START $TIME $timedate KILL Q $convertsumar" >> /var/xdrago/log/convert.kill.log`;
+         `echo "$USER $CPU $STAT $START ${TIME} $timedate KILL Q $convertsumar" >> /var/xdrago/log/convert.kill.log`;
           $kill_convert = "YES";
         }
         else {
-         `echo "$USER $CPU $STAT $START $TIME $timedate WATCH $convertsumar" >> /var/xdrago/log/convert.watch.log`;
+         `echo "$USER $CPU $STAT $START ${TIME} $timedate WATCH $convertsumar" >> /var/xdrago/log/convert.watch.log`;
         }
       }
 
       if ($kill_convert && $COMMAND =~ /^(\|)/ && $K =~ /bin/ && $Y =~ /convert/)
       {
         system("kill -9 $PID");
-       `echo "$USER $CPU $STAT $START $TIME $timedate KILL Z $convertsumar" >> /var/xdrago/log/convert.kill.log`;
+       `echo "$USER $CPU $STAT $START ${TIME} $timedate KILL Z $convertsumar" >> /var/xdrago/log/convert.kill.log`;
       }
     }
   }

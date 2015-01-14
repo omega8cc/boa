@@ -9,17 +9,17 @@ _WEBG=www-data
 _THIS_RV=$(lsb_release -sc 2>&1)
 if [ "$_THIS_RV" = "wheezy" ] \
   || [ "$_THIS_RV" = "trusty" ] \
-  || [ "$_THIS_RV" = "precise" ] ; then
+  || [ "$_THIS_RV" = "precise" ]; then
   _RUBY_VRN=2.2.0
 else
   _RUBY_VRN=2.0.0
 fi
-if [[ "${_VM_TEST}" =~ beng ]] ; then
+if [[ "${_VM_TEST}" =~ beng ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
 fi
-if [ -x "/usr/bin/gpg2" ] ; then
+if [ -x "/usr/bin/gpg2" ]; then
   _GPG=gpg2
 else
   _GPG=gpg
@@ -30,20 +30,20 @@ crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 
 find_mirror() {
   isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ] ; then
+  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     apt-get update -qq &> /dev/null
     apt-get install netcat -y --force-yes --reinstall &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
-  if [ -x "${ffMirr}" ] ; then
+  if [ -x "${ffMirr}" ]; then
     ffList="/var/backups/boa-mirrors.txt"
     mkdir -p /var/backups
     echo "jp.files.aegir.cc"  > ${ffList}
     echo "nl.files.aegir.cc" >> ${ffList}
     echo "uk.files.aegir.cc" >> ${ffList}
     echo "us.files.aegir.cc" >> ${ffList}
-    if [ -e "${ffList}" ] ; then
+    if [ -e "${ffList}" ]; then
       _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
       _USE_MIRROR="${_CHECK_MIRROR}"
     else
@@ -60,7 +60,7 @@ find_mirror() {
 }
 
 extract_archive() {
-  if [ ! -z "$1" ] ; then
+  if [ ! -z "$1" ]; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
       *.tar.gz)    tar xzf $1    ;;
@@ -80,7 +80,7 @@ extract_archive() {
 }
 
 get_dev_ext() {
-  if [ ! -z "$1" ] ; then
+  if [ ! -z "$1" ]; then
     curl ${crlGet} "http://${_USE_MIRROR}/dev/HEAD/$1" -o "$1"
     extract_archive "$1"
   fi
@@ -98,7 +98,7 @@ sanitize_string() {
 # Add ltd-shell group if not exists.
 add_ltd_group_if_not_exists() {
   _LTD_EXISTS=$(getent group ltd-shell 2>&1)
-  if [[ "$_LTD_EXISTS" =~ "ltd-shell" ]] ; then
+  if [[ "$_LTD_EXISTS" =~ "ltd-shell" ]]; then
     _DO_NOTHING=YES
   else
     addgroup --system ltd-shell &> /dev/null
@@ -107,12 +107,12 @@ add_ltd_group_if_not_exists() {
 #
 # Enable chattr.
 enable_chattr() {
-  if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
+  if [ ! -z "$1" ] && [ -d "/home/$1" ]; then
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
-    if [ ! -e "${_U_HD}/.ctrl.240dev.txt" ] ; then
-      if [[ "${_HOST_TEST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ] ; then
+    if [ ! -e "${_U_HD}/.ctrl.240dev.txt" ]; then
+      if [[ "${_HOST_TEST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
         rm -f -r ${_U_HD}/*
         rm -f -r ${_U_HD}/.*
       else
@@ -130,18 +130,18 @@ enable_chattr() {
       chmod 700      ${_U_HD}
       chown $1:users ${_U_TP}
       chown $1:users ${_U_HD}
-      if [ ! -L "${_U_HD}/usr/registry_rebuild" ] ; then
+      if [ ! -L "${_U_HD}/usr/registry_rebuild" ]; then
         ln -sf /data/disk/${_USER}/.drush/usr/registry_rebuild \
           ${_U_HD}/usr/registry_rebuild
       fi
-      if [ ! -L "${_U_HD}/usr/clean_missing_modules" ] ; then
+      if [ ! -L "${_U_HD}/usr/clean_missing_modules" ]; then
         ln -sf /data/disk/${_USER}/.drush/usr/clean_missing_modules \
           ${_U_HD}/usr/clean_missing_modules
       fi
-      if [ ! -L "${_U_HD}/usr/drupalgeddon" ] ; then
+      if [ ! -L "${_U_HD}/usr/drupalgeddon" ]; then
         ln -sf ${usrDgn} ${_U_HD}/usr/drupalgeddon
       fi
-      if [ ! -L "${_U_HD}/usr/drush_ecl" ] ; then
+      if [ ! -L "${_U_HD}/usr/drush_ecl" ]; then
         ln -sf /data/disk/${_USER}/.drush/usr/drush_ecl ${_U_HD}/usr/drush_ecl
       fi
     fi
@@ -151,7 +151,7 @@ enable_chattr() {
     _PHP_V="56 55 54 53"
     for e in ${_PHP_V}; do
       if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] \
-        && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ] ; then
+        && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ]; then
         _PHP_CLI_UPDATE=YES
       fi
     done
@@ -159,11 +159,11 @@ enable_chattr() {
 
     if [ "$_PHP_CLI_UPDATE" = "YES" ] \
       || [ ! -e "${_U_II}" ] \
-      || [ ! -e "${_U_HD}/.ctrl.240dev.txt" ] ; then
+      || [ ! -e "${_U_HD}/.ctrl.240dev.txt" ]; then
       mkdir -p ${_U_HD}
       rm -f ${_U_HD}/.ctrl.php*
       rm -f ${_U_II}
-      if [ ! -z "$_T_CLI_VRN" ] ; then
+      if [ ! -z "$_T_CLI_VRN" ]; then
         _USE_PHP_CLI="$_T_CLI_VRN"
         echo "_USE_PHP_CLI is ${_USE_PHP_CLI} for $1 at ${_USER} WTF \
           _T_CLI_VRN is $_T_CLI_VRN"
@@ -171,31 +171,31 @@ enable_chattr() {
         _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
           /data/disk/${_USER}/tools/drush/drush.php 2>&1)
         echo "_CHECK_USE_PHP_CLI is $_CHECK_USE_PHP_CLI for $1 at ${_USER}"
-        if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]] ; then
+        if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]]; then
           _USE_PHP_CLI=5.5
-        elif [[ "$_CHECK_USE_PHP_CLI" =~ "php56" ]] ; then
+        elif [[ "$_CHECK_USE_PHP_CLI" =~ "php56" ]]; then
           _USE_PHP_CLI=5.6
-        elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]] ; then
+        elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]]; then
           _USE_PHP_CLI=5.4
-        elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]] ; then
+        elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]]; then
           _USE_PHP_CLI=5.3
         fi
       fi
       echo _USE_PHP_CLI is ${_USE_PHP_CLI} for $1
-      if [ "${_USE_PHP_CLI}" = "5.5" ] ; then
+      if [ "${_USE_PHP_CLI}" = "5.5" ]; then
         cp -af /opt/php55/lib/php.ini ${_U_II}
         _U_INI=55
-      elif [ "${_USE_PHP_CLI}" = "5.6" ] ; then
+      elif [ "${_USE_PHP_CLI}" = "5.6" ]; then
         cp -af /opt/php56/lib/php.ini ${_U_II}
         _U_INI=56
-      elif [ "${_USE_PHP_CLI}" = "5.4" ] ; then
+      elif [ "${_USE_PHP_CLI}" = "5.4" ]; then
         cp -af /opt/php54/lib/php.ini ${_U_II}
         _U_INI=54
-      elif [ "${_USE_PHP_CLI}" = "5.3" ] ; then
+      elif [ "${_USE_PHP_CLI}" = "5.3" ]; then
         cp -af /opt/php53/lib/php.ini ${_U_II}
         _U_INI=53
       fi
-      if [ -e "${_U_II}" ] ; then
+      if [ -e "${_U_II}" ]; then
         _INI="open_basedir = \".: \
           /data/all:  \
           /data/conf: \
@@ -232,17 +232,17 @@ enable_chattr() {
     fi
 
     UQ="$1"
-    if [ -f "/data/disk/${_USER}/static/control/compass.info" ] ; then
-      if [ -d "/home/${UQ}/.rvm/src" ] ; then
+    if [ -f "/data/disk/${_USER}/static/control/compass.info" ]; then
+      if [ -d "/home/${UQ}/.rvm/src" ]; then
         rm -f -r /home/${UQ}/.rvm/src/*
       fi
-      if [ -d "/home/${UQ}/.rvm/archives" ] ; then
+      if [ -d "/home/${UQ}/.rvm/archives" ]; then
         rm -f -r /home/${UQ}/.rvm/archives/*
       fi
-      if [ -d "/home/${UQ}/.rvm/log" ] ; then
+      if [ -d "/home/${UQ}/.rvm/log" ]; then
         rm -f -r /home/${UQ}/.rvm/log/*
       fi
-      if [ ! -x "/home/${UQ}/.rvm/bin/rvm" ] ; then
+      if [ ! -x "/home/${UQ}/.rvm/bin/rvm" ]; then
         touch /var/run/manage_rvm_users.pid
         su -s /bin/bash - ${UQ} -c "$_GPG --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3"
         su -s /bin/bash - ${UQ} -c "\curl -sSL https://rvm.io/mpapis.asc | $_GPG --import"
@@ -252,17 +252,17 @@ enable_chattr() {
         rm -f /var/run/manage_rvm_users.pid
       fi
       su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
-      if [ ! -e "/home/${UQ}/.rvm/rubies/default" ] ; then
-        if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
+      if [ ! -e "/home/${UQ}/.rvm/rubies/default" ]; then
+        if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
           _WEB_SH=$(readlink -n /bin/sh 2>&1)
           _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
-          if [ -x "/bin/dash" ] ; then
-            if [ "${_WEB_SH}" != "/bin/dash" ] ; then
+          if [ -x "/bin/dash" ]; then
+            if [ "${_WEB_SH}" != "/bin/dash" ]; then
               rm -f /bin/sh
               ln -s /bin/dash /bin/sh
             fi
           else
-            if [ "${_WEB_SH}" != "/bin/bash" ] ; then
+            if [ "${_WEB_SH}" != "/bin/bash" ]; then
               rm -f /bin/sh
               ln -s /bin/bash /bin/sh
             fi
@@ -275,18 +275,18 @@ enable_chattr() {
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
       fi
-      if [ ! -f "/data/disk/${_USER}/log/.gems.build.d.${UQ}.txt" ] ; then
+      if [ ! -f "/data/disk/${_USER}/log/.gems.build.d.${UQ}.txt" ]; then
         rm -f /data/disk/${_USER}/log/eventmachine*
-        if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
+        if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
           _WEB_SH=$(readlink -n /bin/sh 2>&1)
           _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
-          if [ -x "/bin/dash" ] ; then
-            if [ "${_WEB_SH}" != "/bin/dash" ] ; then
+          if [ -x "/bin/dash" ]; then
+            if [ "${_WEB_SH}" != "/bin/dash" ]; then
               rm -f /bin/sh
               ln -s /bin/dash /bin/sh
             fi
           else
-            if [ "${_WEB_SH}" != "/bin/bash" ] ; then
+            if [ "${_WEB_SH}" != "/bin/bash" ]; then
               rm -f /bin/sh
               ln -s /bin/bash /bin/sh
             fi
@@ -307,32 +307,32 @@ enable_chattr() {
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
       fi
-      if [ -d "/home/${UQ}/.rvm/src" ] ; then
+      if [ -d "/home/${UQ}/.rvm/src" ]; then
         rm -f -r /home/${UQ}/.rvm/src/*
       fi
-      if [ -d "/home/${UQ}/.rvm/archives" ] ; then
+      if [ -d "/home/${UQ}/.rvm/archives" ]; then
         rm -f -r /home/${UQ}/.rvm/archives/*
       fi
-      if [ -d "/home/${UQ}/.rvm/log" ] ; then
+      if [ -d "/home/${UQ}/.rvm/log" ]; then
         rm -f -r /home/${UQ}/.rvm/log/*
       fi
       rm -f /home/${UQ}/{.profile,.bash_logout,.bash_profile,.bashrc,.zlogin,.zshrc}
       rm -f /home/${UQ}/.rvm/scripts/notes
     else
-      if [ -d "/home/${UQ}/.rvm" ] || [ -d "/home/${UQ}/.gem" ] ; then
+      if [ -d "/home/${UQ}/.rvm" ] || [ -d "/home/${UQ}/.gem" ]; then
         rm -f /data/disk/${_USER}/log/.gems.build*
         rm -f -r /home/${UQ}/.rvm    &> /dev/null
         rm -f -r /home/${UQ}/.gem    &> /dev/null
       fi
     fi
 
-    if [ "$1" != "${_USER}.ftp" ] ; then
+    if [ "$1" != "${_USER}.ftp" ]; then
       chattr +i /home/$1             &> /dev/null
     else
       chattr +i /home/$1/platforms   &> /dev/null
       chattr +i /home/$1/platforms/* &> /dev/null
     fi
-    if [ -d "/home/$1/.bazaar" ] ; then
+    if [ -d "/home/$1/.bazaar" ]; then
       chattr +i /home/$1/.bazaar     &> /dev/null
     fi
     chattr +i /home/$1/.drush        &> /dev/null
@@ -343,27 +343,27 @@ enable_chattr() {
 #
 # Disable chattr.
 disable_chattr() {
-  if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
-    if [ "$1" != "${_USER}.ftp" ] ; then
+  if [ ! -z "$1" ] && [ -d "/home/$1" ]; then
+    if [ "$1" != "${_USER}.ftp" ]; then
       chattr -i /home/$1             &> /dev/null
     else
       chattr -i /home/$1/platforms   &> /dev/null
       chattr -i /home/$1/platforms/* &> /dev/null
     fi
-    if [ -d "/home/$1/.bazaar" ] ; then
+    if [ -d "/home/$1/.bazaar" ]; then
       chattr -i /home/$1/.bazaar     &> /dev/null
     fi
     chattr -i /home/$1/.drush        &> /dev/null
     chattr -i /home/$1/.drush/usr    &> /dev/null
     chattr -i /home/$1/.drush/*.ini  &> /dev/null
-    if [ "$1" != "${_USER}.ftp" ] ; then
+    if [ "$1" != "${_USER}.ftp" ]; then
       if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] \
-        && [ -d "${usrDgn}" ] ; then
+        && [ -d "${usrDgn}" ]; then
         ln -sf ${usrDgn} /home/$1/.drush/usr/drupalgeddon
       fi
     else
       if [ ! -d "${usrDgn}" ] \
-        || [ ! -e "/data/disk/${_USER}/static/control/.drupalgeddon.in.015.pid" ] ; then
+        || [ ! -e "/data/disk/${_USER}/static/control/.drupalgeddon.in.015.pid" ]; then
         rm -f ${usrDgn} &> /dev/null
         cd /data/disk/${_USER}/.drush/usr
         get_dev_ext "drupalgeddon.tar.gz"
@@ -374,7 +374,7 @@ disable_chattr() {
         touch /data/disk/${_USER}/static/control/.drupalgeddon.in.015.pid
       fi
       if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] \
-        && [ -d "${usrDgn}" ] ; then
+        && [ -d "${usrDgn}" ]; then
         rm -f -r /home/$1/.drush/usr/drupalgeddon
         ln -sf ${usrDgn} /home/$1/.drush/usr/drupalgeddon
       fi
@@ -386,14 +386,14 @@ disable_chattr() {
 kill_zombies() {
 for Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`; do
   _SEC_IDY=$(id -nG ${Existing} 2>&1)
-  if [[ "$_SEC_IDY" =~ "ltd-shell" ]] ; then
+  if [[ "$_SEC_IDY" =~ "ltd-shell" ]]; then
     usrParent=$(echo ${Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
     _PAR_DIR="/data/disk/${usrParent}/clients"
     _SEC_SYM="/home/${Existing}/sites"
     _SEC_DIR=$(readlink -n ${_SEC_SYM} 2>&1)
     _SEC_DIR=$(echo -n ${_SEC_DIR} | tr -d "\n" 2>&1)
     if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
-      || [ ! -e "/home/${usrParent}.ftp/users/${Existing}" ] ; then
+      || [ ! -e "/home/${usrParent}.ftp/users/${Existing}" ]; then
       disable_chattr ${Existing}
       deluser --remove-home --backup-to /var/backups/zombie/deleted ${Existing}
       rm -f /home/${usrParent}.ftp/users/${Existing}
@@ -407,13 +407,13 @@ done
 # Fix dot dirs.
 fix_dot_dirs() {
   usrDrush="/home/${usrLtd}/.drush"
-  if [ ! -d "${usrDrush}" ] ; then
+  if [ ! -d "${usrDrush}" ]; then
     mkdir -p ${usrDrush}
     chown ${usrLtd}:${usrGroup} ${usrDrush}
     chmod 700 ${usrDrush}
   fi
   usrSsh="/home/${usrLtd}/.ssh"
-  if [ ! -d "${usrSsh}" ] ; then
+  if [ ! -d "${usrSsh}" ]; then
     mkdir -p ${usrSsh}
     chown -R ${usrLtd}:${usrGroup} ${usrSsh}
     chmod 700 ${usrSsh}
@@ -421,8 +421,8 @@ fix_dot_dirs() {
   chmod 600 ${usrSsh}/id_{r,d}sa &> /dev/null
   chmod 600 ${usrSsh}/known_hosts &> /dev/null
   usrBzr="/home/${usrLtd}/.bazaar"
-  if [ -x "/usr/local/bin/bzr" ] ; then
-    if [ ! -e "${usrBzr}/bazaar.conf" ] ; then
+  if [ -x "/usr/local/bin/bzr" ]; then
+    if [ ! -e "${usrBzr}/bazaar.conf" ]; then
       mkdir -p ${usrBzr}
       echo ignore_missing_extensions=True > ${usrBzr}/bazaar.conf
       chown -R ${usrLtd}:${usrGroup} ${usrBzr}
@@ -445,7 +445,7 @@ manage_sec_user_drush_aliases() {
       | sed "s/.alias.drushrc.php//g" \
       | awk '{ print $1}' 2>&1)
     if [ ! -z "${AliasName}" ] \
-      && [ ! -e "${usrLtdRoot}/sites/${AliasName}" ] ; then
+      && [ ! -e "${usrLtdRoot}/sites/${AliasName}" ]; then
       rm -f ${usrLtdRoot}/.drush/${AliasName}.alias.drushrc.php
     fi
   done
@@ -456,12 +456,12 @@ manage_sec_user_drush_aliases() {
       | awk '{ print $1}' 2>&1)
     pthAliasMain="${pthParentUsr}/.drush/${SiteName}.alias.drushrc.php"
     pthAliasCopy="${usrLtdRoot}/.drush/${SiteName}.alias.drushrc.php"
-    if [ ! -z "$SiteName" ] && [ ! -e "${pthAliasCopy}" ] ; then
+    if [ ! -z "$SiteName" ] && [ ! -e "${pthAliasCopy}" ]; then
       cp -af ${pthAliasMain} ${pthAliasCopy}
       chmod 440 ${pthAliasCopy}
-    elif [ ! -z "$SiteName" ]  && [ -e "${pthAliasCopy}" ] ; then
+    elif [ ! -z "$SiteName" ]  && [ -e "${pthAliasCopy}" ]; then
       _DIFF_T=$(diff ${pthAliasCopy} ${pthAliasMain} 2>&1)
-      if [ ! -z "${_DIFF_T}" ] ; then
+      if [ ! -z "${_DIFF_T}" ]; then
         cp -af ${pthAliasMain} ${pthAliasCopy}
         chmod 440 ${pthAliasCopy}
       fi
@@ -476,12 +476,12 @@ ok_create_user() {
   usrLtdRoot="/home/${usrLtd}"
   _SEC_SYM="${usrLtdRoot}/sites"
   _TMP="/var/tmp"
-  if [ ! -L "${_SEC_SYM}" ] ; then
+  if [ ! -L "${_SEC_SYM}" ]; then
     mkdir -p /var/backups/zombie/deleted/${_NOW}
     mv -f ${usrLtdRoot} /var/backups/zombie/deleted/${_NOW}/ &> /dev/null
   fi
-  if [ ! -d "${usrLtdRoot}" ] ; then
-    if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ] ; then
+  if [ ! -d "${usrLtdRoot}" ]; then
+    if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ]; then
       useradd -d ${usrLtdRoot} -s /usr/bin/MySecureShell -m -N -r ${usrLtd}
       echo "usrLtdRoot is == ${usrLtdRoot} == at ok_create_user"
     else
@@ -492,26 +492,26 @@ ok_create_user() {
     _LEN_LUPASS=0
     if [ "${_STRONG_PASSWORDS}" = "YES" ]  ; then
       _PWD_CHARS=32
-    elif [ "${_STRONG_PASSWORDS}" = "NO" ] ; then
+    elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
       _PWD_CHARS=8
     else
       _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
       if [ ! -z "${_STRONG_PASSWORDS}" ] \
-        && [ "${_STRONG_PASSWORDS}" -gt "8" ] ; then
+        && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
         _PWD_CHARS="${_STRONG_PASSWORDS}"
       else
         _PWD_CHARS=8
       fi
-      if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ] ; then
+      if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
         _PWD_CHARS=128
       fi
     fi
-    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ] ; then
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ]; then
       _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
       _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
     fi
-    if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ] ; then
+    if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ]; then
       _ESC_LUPASS=$(pwgen -v -s -1 2>&1)
       _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
       _ESC_LUPASS=$(sanitize_string "${_ESC_LUPASS}" 2>&1)
@@ -524,9 +524,9 @@ ok_create_user() {
     usermod -aG ltd-shell ${usrLtd}
   fi
   if [ ! -e "/home/${_ADMIN}/users/${usrLtd}" ] \
-    && [ ! -z "${_ESC_LUPASS}" ] ; then
+    && [ ! -z "${_ESC_LUPASS}" ]; then
     if [ -e "/usr/bin/MySecureShell" ] \
-      && [ -e "/etc/ssh/sftp_config" ] ; then
+      && [ -e "/etc/ssh/sftp_config" ]; then
       chsh -s /usr/bin/MySecureShell ${usrLtd}
     else
       chsh -s /usr/bin/lshell ${usrLtd}
@@ -546,7 +546,7 @@ ok_create_user() {
 ok_update_user() {
   _ADMIN="${_USER}.ftp"
   usrLtdRoot="/home/${usrLtd}"
-  if [ -e "/home/${_ADMIN}/users/${usrLtd}" ] ; then
+  if [ -e "/home/${_ADMIN}/users/${usrLtd}" ]; then
     echo >> ${_THIS_LTD_CONF}
     echo "[${usrLtd}]" >> ${_THIS_LTD_CONF}
     echo "path : [${_ALLD_DIR}]" >> ${_THIS_LTD_CONF}
@@ -563,13 +563,13 @@ add_user_if_not_exists() {
   _ID_SHELLS=$(id -nG ${usrLtd} 2>&1)
   echo "_ID_EXISTS is == ${_ID_EXISTS} == at add_user_if_not_exists"
   echo "_ID_SHELLS is == $_ID_SHELLS == at add_user_if_not_exists"
-  if [ -z "${_ID_EXISTS}" ] ; then
+  if [ -z "${_ID_EXISTS}" ]; then
     echo "We will create user == ${usrLtd} =="
     ok_create_user
     manage_sec_user_drush_aliases
     enable_chattr ${usrLtd}
   elif [[ "${_ID_EXISTS}" =~ "${usrLtd}" ]] \
-    && [[ "$_ID_SHELLS" =~ "ltd-shell" ]] ; then
+    && [[ "$_ID_SHELLS" =~ "ltd-shell" ]]; then
     echo "We will update user == ${usrLtd} =="
     disable_chattr ${usrLtd}
     rm -f -r /home/${usrLtd}/drush-backups
@@ -586,7 +586,7 @@ for Domain in `find $Client/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _PATH_DOM=$(readlink -n ${Domain} 2>&1)
   _PATH_DOM=$(echo -n ${_PATH_DOM} | tr -d "\n" 2>&1)
   _ALLD_DIR="${_ALLD_DIR}, '${_PATH_DOM}'"
-  if [ -e "${_PATH_DOM}" ] ; then
+  if [ -e "${_PATH_DOM}" ]; then
     _ALLD_NUM=$(( _ALLD_NUM += 1 ))
   fi
   echo Done for ${Domain} at $Client
@@ -607,12 +607,12 @@ for Client in `find ${pthParentUsr}/clients/ -maxdepth 1 -mindepth 1 -type d | s
   cd $Client
   manage_sec_access_paths
   #_ALLD_DIR="${_ALLD_DIR}, '/home/${usrLtd}'"
-  if [ "$_ALLD_NUM" -ge "$_ALLD_CTL" ] ; then
+  if [ "$_ALLD_NUM" -ge "$_ALLD_CTL" ]; then
     add_user_if_not_exists
     echo Done for $Client at ${pthParentUsr}
   else
     echo Empty $Client at ${pthParentUsr} - deleting now
-    if [ -e "$Client" ] ; then
+    if [ -e "$Client" ]; then
       rmdir $Client
     fi
   fi
@@ -629,14 +629,14 @@ update_php_cli_local_ini() {
   _PHP_V="56 55 54 53"
   for e in ${_PHP_V}; do
     if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ] ; then
+      && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ]; then
       _PHP_CLI_UPDATE=YES
     fi
   done
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.240dev.txt" ] ; then
+    || [ ! -e "${_U_HD}/.ctrl.240dev.txt" ]; then
     rm -f -r ${_U_TP}
     mkdir -p ${_U_TP}
     chmod 700 ${_U_TP}
@@ -644,20 +644,20 @@ update_php_cli_local_ini() {
     chattr -i ${_U_II}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]] ; then
+    if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]]; then
       cp -af /opt/php55/lib/php.ini ${_U_II}
       _U_INI=55
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php56" ]] ; then
+    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php56" ]]; then
       cp -af /opt/php56/lib/php.ini ${_U_II}
       _U_INI=56
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]] ; then
+    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]]; then
       cp -af /opt/php54/lib/php.ini ${_U_II}
       _U_INI=54
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]] ; then
+    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]]; then
       cp -af /opt/php53/lib/php.ini ${_U_II}
       _U_INI=53
     fi
-    if [ -e "${_U_II}" ] ; then
+    if [ -e "${_U_II}" ]; then
       _INI="open_basedir = \".: \
         /data/all:          \
         /data/conf:         \
@@ -693,30 +693,30 @@ update_php_cli_local_ini() {
 # Update PHP-CLI for Drush.
 update_php_cli_drush() {
   _DRUSH_FILE="/data/disk/${_USER}/tools/drush/drush.php"
-  if [ "$_T_CLI_VRN" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
+  if [ "$_T_CLI_VRN" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
     _T_CLI=/opt/php55/bin
-  elif [ "$_T_CLI_VRN" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
+  elif [ "$_T_CLI_VRN" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
     _T_CLI=/opt/php56/bin
-  elif [ "$_T_CLI_VRN" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
+  elif [ "$_T_CLI_VRN" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php54\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
     _T_CLI=/opt/php54/bin
-  elif [ "$_T_CLI_VRN" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
+  elif [ "$_T_CLI_VRN" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php53\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
     _T_CLI=/opt/php53/bin
   else
     _T_CLI=/foo/bar
   fi
-  if [ -x "${_T_CLI}/php" ] ; then
+  if [ -x "${_T_CLI}/php" ]; then
     _DRUSHCMD="${_T_CLI}/php /data/disk/${_USER}/tools/drush/drush.php"
-    if [ -e "/data/disk/${_USER}/aegir.sh" ] ; then
+    if [ -e "/data/disk/${_USER}/aegir.sh" ]; then
       rm -f /data/disk/${_USER}/aegir.sh
     fi
     touch /data/disk/${_USER}/aegir.sh
     echo -e "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n${_DRUSHCMD} \
       '@hostmaster' hosting-dispatch\ntouch /data/disk/${_USER}/${_USER}-task.done" \
-      | tee -a /data/disk/${_USER}/aegir.sh >/dev/null 2>&1
+      | fmt -su | tee -a /data/disk/${_USER}/aegir.sh >/dev/null 2>&1
     chown ${_USER}:users /data/disk/${_USER}/aegir.sh &> /dev/null
     chmod 0700 /data/disk/${_USER}/aegir.sh &> /dev/null
   fi
@@ -727,67 +727,67 @@ tune_fpm_workers() {
   _ETH_TEST=$(ifconfig 2>&1)
   _AWS_TEST_A=$(grep cloudimg /etc/fstab 2>&1)
   _AWS_TEST_B=$(grep cloudconfig /etc/fstab 2>&1)
-  if [[ "${_ETH_TEST}" =~ "venet0" ]] ; then
+  if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
     _VMFAMILY="VZ"
-  elif [ -e "/proc/bean_counters" ] ; then
+  elif [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
-  elif [[ "${_HOST_TEST}" =~ ".host8." ]] && [ -e "/boot/grub/menu.lst" ] ; then
+  elif [[ "${_HOST_TEST}" =~ ".host8." ]] && [ -e "/boot/grub/menu.lst" ]; then
     _VMFAMILY="TG"
-  elif [[ "${_HOST_TEST}" =~ ".host8." ]] && [ -e "/boot/grub/grub.cfg" ] ; then
+  elif [[ "${_HOST_TEST}" =~ ".host8." ]] && [ -e "/boot/grub/grub.cfg" ]; then
     _VMFAMILY="TG"
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ beng ]] ; then
+  if [[ "${_VM_TEST}" =~ beng ]]; then
     _VMFAMILY="VS"
   fi
   if [[ "${_AWS_TEST_A}" =~ "cloudimg" ]] \
-    || [[ "${_AWS_TEST_B}" =~ "cloudconfig" ]] ; then
+    || [[ "${_AWS_TEST_B}" =~ "cloudconfig" ]]; then
     _VMFAMILY="AWS"
   fi
   _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
-  if [ "${_RESERVED_RAM}" -gt "0" ] ; then
+  if [ "${_RESERVED_RAM}" -gt "0" ]; then
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   _USE=$(( _RAM / 4 ))
-  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "1024" ] ; then
-    if [ "${_PHP_FPM_WORKERS}" = "AUTO" ] ; then
+  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "1024" ]; then
+    if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
       _L_PHP_FPM_WORKERS=12
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
-  elif [ "${_USE}" -ge "1024" ] ; then
-    if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ] ; then
-      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ] ; then
+  elif [ "${_USE}" -ge "1024" ]; then
+    if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
+      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _L_PHP_FPM_WORKERS=24
       else
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
-    elif [ "${_VMFAMILY}" = "VS" ] || [ "${_VMFAMILY}" = "TG" ] ; then
+    elif [ "${_VMFAMILY}" = "VS" ] || [ "${_VMFAMILY}" = "TG" ]; then
       if [ -e "/boot/grub/grub.cfg" ] \
         || [ -e "/boot/grub/menu.lst" ] \
-        || [ -e "/root/.tg.cnf" ] ; then
-        if [ "${_PHP_FPM_WORKERS}" = "AUTO" ] ; then
+        || [ -e "/root/.tg.cnf" ]; then
+        if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
           _L_PHP_FPM_WORKERS=24
         else
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
       else
-        if [ "${_PHP_FPM_WORKERS}" = "AUTO" ] ; then
+        if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
           _L_PHP_FPM_WORKERS=6
         else
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
       fi
     else
-      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ] ; then
+      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _L_PHP_FPM_WORKERS=12
       else
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
     fi
   else
-    if [ "${_PHP_FPM_WORKERS}" = "AUTO" ] ; then
+    if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
       _L_PHP_FPM_WORKERS=6
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
@@ -798,19 +798,19 @@ tune_fpm_workers() {
 # Disable New Relic per Octopus instance.
 disable_newrelic() {
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
-  if [ -z "${_PHP_SV}" ] ; then
+  if [ -z "${_PHP_SV}" ]; then
     _PHP_SV=55
   fi
   _THIS_POOL_TPL="/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf"
-  if [ -e "$_THIS_POOL_TPL" ] ; then
+  if [ -e "$_THIS_POOL_TPL" ]; then
     _CHECK_NEW_RELIC_KEY=$(grep "newrelic.enabled.*true" $_THIS_POOL_TPL 2>&1)
-    if [[ "$_CHECK_NEW_RELIC_KEY" =~ "newrelic.enabled" ]] ; then
+    if [[ "$_CHECK_NEW_RELIC_KEY" =~ "newrelic.enabled" ]]; then
       echo New Relic for ${_USER} will be disabled because newrelic.info does not exist
       sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] \
         = \"\"/g" $_THIS_POOL_TPL
       sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] \
         = \"false\"/g" $_THIS_POOL_TPL
-      if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ] ; then
+      if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ]; then
         service php${_PHP_SV}-fpm reload
       fi
     fi
@@ -822,21 +822,21 @@ enable_newrelic() {
   _LOC_NEW_RELIC_KEY=$(cat /data/disk/${_USER}/static/control/newrelic.info 2>&1)
   _LOC_NEW_RELIC_KEY=${_LOC_NEW_RELIC_KEY//[^0-9a-zA-Z]/}
   _LOC_NEW_RELIC_KEY=$(echo -n $_LOC_NEW_RELIC_KEY | tr -d "\n" 2>&1)
-  if [ -z "$_LOC_NEW_RELIC_KEY" ] ; then
+  if [ -z "$_LOC_NEW_RELIC_KEY" ]; then
     disable_newrelic
   else
     _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
-    if [ -z "${_PHP_SV}" ] ; then
+    if [ -z "${_PHP_SV}" ]; then
       _PHP_SV=55
     fi
     _THIS_POOL_TPL="/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf"
-    if [ -e "$_THIS_POOL_TPL" ] ; then
+    if [ -e "$_THIS_POOL_TPL" ]; then
       _CHECK_NEW_RELIC_TPL=$(grep "newrelic.license" $_THIS_POOL_TPL 2>&1)
       _CHECK_NEW_RELIC_KEY=$(grep "$_LOC_NEW_RELIC_KEY" $_THIS_POOL_TPL 2>&1)
-      if [[ "$_CHECK_NEW_RELIC_KEY" =~ "$_LOC_NEW_RELIC_KEY" ]] ; then
+      if [[ "$_CHECK_NEW_RELIC_KEY" =~ "$_LOC_NEW_RELIC_KEY" ]]; then
         echo "New Relic integration is already active for ${_USER}"
       else
-        if [[ "$_CHECK_NEW_RELIC_TPL" =~ "newrelic.license" ]] ; then
+        if [[ "$_CHECK_NEW_RELIC_TPL" =~ "newrelic.license" ]]; then
           echo "New Relic for ${_USER} update with key \
             $_LOC_NEW_RELIC_KEY in php${_PHP_SV}"
           sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] \
@@ -848,7 +848,7 @@ enable_newrelic() {
           echo "php_admin_value[newrelic.license] = \"$_LOC_NEW_RELIC_KEY\"" >> $_THIS_POOL_TPL
           echo "php_admin_value[newrelic.enabled] = \"true\"" >> $_THIS_POOL_TPL
         fi
-        if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ] ; then
+        if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ]; then
           service php${_PHP_SV}-fpm reload
         fi
       fi
@@ -858,7 +858,7 @@ enable_newrelic() {
 #
 # Switch New Relic on or off per Octopus instance.
 switch_newrelic() {
-  if [ -e "/data/disk/${_USER}/static/control/newrelic.info" ] ; then
+  if [ -e "/data/disk/${_USER}/static/control/newrelic.info" ]; then
     enable_newrelic
   else
     disable_newrelic
@@ -870,37 +870,37 @@ update_web_user() {
   _T_HD="/home/${_WEB}/.drush"
   _T_TP="/home/${_WEB}/.tmp"
   _T_II="${_T_HD}/php.ini"
-  if [ -e "/home/${_WEB}" ] ; then
+  if [ -e "/home/${_WEB}" ]; then
     mkdir -p /home/${_WEB}/.{tmp,drush}
-    if [ ! -z "$1" ] ; then
-      if [ "$1" = "hhvm" ] ; then
-        if [ -e "/opt/php56/etc/php56.ini" ] ; then
+    if [ ! -z "$1" ]; then
+      if [ "$1" = "hhvm" ]; then
+        if [ -e "/opt/php56/etc/php56.ini" ]; then
           _T_PV=56
-        elif [ -e "/opt/php55/etc/php55.ini" ] ; then
+        elif [ -e "/opt/php55/etc/php55.ini" ]; then
           _T_PV=55
         fi
       else
         _T_PV=$1
       fi
     fi
-    if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ] ; then
+    if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
       cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
     else
-      if [ -e "/opt/php55/etc/php55.ini" ] ; then
+      if [ -e "/opt/php55/etc/php55.ini" ]; then
         cp -af /opt/php55/etc/php55.ini ${_T_II}
         _T_PV=55
-      elif [ -e "/opt/php56/etc/php56.ini" ] ; then
+      elif [ -e "/opt/php56/etc/php56.ini" ]; then
         cp -af /opt/php56/etc/php56.ini ${_T_II}
         _T_PV=56
-      elif [ -e "/opt/php54/etc/php54.ini" ] ; then
+      elif [ -e "/opt/php54/etc/php54.ini" ]; then
         cp -af /opt/php54/etc/php54.ini ${_T_II}
         _T_PV=54
-      elif [ -e "/opt/php53/etc/php53.ini" ] ; then
+      elif [ -e "/opt/php53/etc/php53.ini" ]; then
         cp -af /opt/php53/etc/php53.ini ${_T_II}
         _T_PV=53
       fi
     fi
-    if [ -e "${_T_II}" ] ; then
+    if [ -e "${_T_II}" ]; then
       _INI="open_basedir = \".: \
         /data/all:  \
         /data/conf: \
@@ -947,11 +947,11 @@ update_web_user() {
 #
 # Remove web user.
 remove_web_user() {
-  if [ -e "/home/${_WEB}/.tmp" ] || [ "$1" = "clean" ] ; then
+  if [ -e "/home/${_WEB}/.tmp" ] || [ "$1" = "clean" ]; then
     chattr -i /home/${_WEB} &> /dev/null
     chattr -i /home/${_WEB}/.drush &> /dev/null
     deluser --remove-home --backup-to /var/backups/zombie/deleted ${_WEB}
-    if [ -e "/home/${_WEB}" ] ; then
+    if [ -e "/home/${_WEB}" ]; then
       rm -f -r /home/${_WEB} &> /dev/null
     fi
   fi
@@ -962,9 +962,9 @@ create_web_user() {
   _T_HD="/home/${_WEB}/.drush"
   _T_II="${_T_HD}/php.ini"
   _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
-  if [ ! -z "${_T_ID_EXISTS}" ] && [ -e "${_T_II}" ] ; then
+  if [ ! -z "${_T_ID_EXISTS}" ] && [ -e "${_T_II}" ]; then
     update_web_user "$1"
-  elif [ -z "${_T_ID_EXISTS}" ] || [ ! -e "${_T_II}" ] ; then
+  elif [ -z "${_T_ID_EXISTS}" ] || [ ! -e "${_T_II}" ]; then
     remove_web_user "clean"
     adduser --force-badname --system --ingroup www-data ${_WEB} &> /dev/null
     update_web_user "$1"
@@ -977,10 +977,10 @@ switch_php() {
   _T_CLI_VRN=""
   if [ -e "/data/disk/${_USER}/static/control/fpm.info" ] \
     || [ -e "/data/disk/${_USER}/static/control/cli.info" ] \
-    || [ -e "/data/disk/${_USER}/static/control/hhvm.info" ] ; then
+    || [ -e "/data/disk/${_USER}/static/control/hhvm.info" ]; then
     echo "Custom FPM, HHVM or CLI settings for ${_USER} exist, \
       running switch_php checks"
-    if [ -e "/data/disk/${_USER}/static/control/cli.info" ] ; then
+    if [ -e "/data/disk/${_USER}/static/control/cli.info" ]; then
       _T_CLI_VRN=$(cat /data/disk/${_USER}/static/control/cli.info 2>&1)
       _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
       _T_CLI_VRN=$(echo -n $_T_CLI_VRN | tr -d "\n" 2>&1)
@@ -990,56 +990,56 @@ switch_php() {
         || [ "$_T_CLI_VRN" = "5.3" ] \
         || [ "$_T_CLI_VRN" = "5.2" ]; then
         if [ "$_T_CLI_VRN" = "5.5" ] \
-          && [ ! -x "/opt/php55/bin/php" ] ; then
-          if [ -x "/opt/php56/bin/php" ] ; then
+          && [ ! -x "/opt/php55/bin/php" ]; then
+          if [ -x "/opt/php56/bin/php" ]; then
             _T_CLI_VRN=5.6
-          elif [ -x "/opt/php54/bin/php" ] ; then
+          elif [ -x "/opt/php54/bin/php" ]; then
             _T_CLI_VRN=5.4
-          elif [ -x "/opt/php53/bin/php" ] ; then
+          elif [ -x "/opt/php53/bin/php" ]; then
             _T_CLI_VRN=5.3
           fi
         elif [ "$_T_CLI_VRN" = "5.6" ] \
-          && [ ! -x "/opt/php56/bin/php" ] ; then
-          if [ -x "/opt/php55/bin/php" ] ; then
+          && [ ! -x "/opt/php56/bin/php" ]; then
+          if [ -x "/opt/php55/bin/php" ]; then
             _T_CLI_VRN=5.5
-          elif [ -x "/opt/php54/bin/php" ] ; then
+          elif [ -x "/opt/php54/bin/php" ]; then
             _T_CLI_VRN=5.4
-          elif [ -x "/opt/php53/bin/php" ] ; then
+          elif [ -x "/opt/php53/bin/php" ]; then
             _T_CLI_VRN=5.3
           fi
         elif [ "$_T_CLI_VRN" = "5.4" ] \
-          && [ ! -x "/opt/php54/bin/php" ] ; then
-          if [ -x "/opt/php55/bin/php" ] ; then
+          && [ ! -x "/opt/php54/bin/php" ]; then
+          if [ -x "/opt/php55/bin/php" ]; then
             _T_CLI_VRN=5.5
-          elif [ -x "/opt/php56/bin/php" ] ; then
+          elif [ -x "/opt/php56/bin/php" ]; then
             _T_CLI_VRN=5.6
-          elif [ -x "/opt/php53/bin/php" ] ; then
+          elif [ -x "/opt/php53/bin/php" ]; then
             _T_CLI_VRN=5.3
           fi
         elif [ "$_T_CLI_VRN" = "5.3" ] \
-          && [ ! -x "/opt/php53/bin/php" ] ; then
-          if [ -x "/opt/php55/bin/php" ] ; then
+          && [ ! -x "/opt/php53/bin/php" ]; then
+          if [ -x "/opt/php55/bin/php" ]; then
             _T_CLI_VRN=5.5
-          elif [ -x "/opt/php56/bin/php" ] ; then
+          elif [ -x "/opt/php56/bin/php" ]; then
             _T_CLI_VRN=5.6
-          elif [ -x "/opt/php54/bin/php" ] ; then
+          elif [ -x "/opt/php54/bin/php" ]; then
             _T_CLI_VRN=5.4
           fi
-        elif [ "$_T_CLI_VRN" = "5.2" ] ; then
-          if [ -x "/opt/php55/bin/php" ] ; then
+        elif [ "$_T_CLI_VRN" = "5.2" ]; then
+          if [ -x "/opt/php55/bin/php" ]; then
             _T_CLI_VRN=5.5
-          elif [ -x "/opt/php56/bin/php" ] ; then
+          elif [ -x "/opt/php56/bin/php" ]; then
             _T_CLI_VRN=5.6
-          elif [ -x "/opt/php54/bin/php" ] ; then
+          elif [ -x "/opt/php54/bin/php" ]; then
             _T_CLI_VRN=5.4
-          elif [ -x "/opt/php53/bin/php" ] ; then
+          elif [ -x "/opt/php53/bin/php" ]; then
             _T_CLI_VRN=5.3
           fi
         fi
-        if [ "$_T_CLI_VRN" != "${_PHP_CLI_VERSION}" ] ; then
+        if [ "$_T_CLI_VRN" != "${_PHP_CLI_VERSION}" ]; then
           _PHP_CLI_UPDATE=YES
           update_php_cli_drush
-          if [ -x "${_T_CLI}/php" ] ; then
+          if [ -x "${_T_CLI}/php" ]; then
             update_php_cli_local_ini
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_T_CLI_VRN/g" \
               /root/.${_USER}.octopus.cnf &> /dev/null
@@ -1050,10 +1050,10 @@ switch_php() {
         fi
       fi
     fi
-    if [ -e "/data/disk/${_USER}/static/control/hhvm.info" ] ; then
+    if [ -e "/data/disk/${_USER}/static/control/hhvm.info" ]; then
       if [ -x "/usr/bin/hhvm" ] \
         && [ -e "/var/xdrago/conf/hhvm/init.d/hhvm.foo" ] \
-        && [ -e "/var/xdrago/conf/hhvm/server.foo.ini" ] ; then
+        && [ -e "/var/xdrago/conf/hhvm/server.foo.ini" ]; then
         if [ ! -e "/opt/hhvm/server.${_USER}.ini" ] \
           || [ ! -e "/etc/init.d/hhvm.${_USER}" ] \
           || [ ! -e "/var/run/hhvm/${_USER}" ]  ; then
@@ -1093,7 +1093,7 @@ switch_php() {
         || [ -e "/etc/init.d/hhvm.${_USER}" ] \
         || [ -e "/var/run/hhvm/${_USER}" ]  ; then
         ### disable no longer used custom hhvm server instance
-        if [ -e "/etc/init.d/hhvm.${_USER}" ] ; then
+        if [ -e "/etc/init.d/hhvm.${_USER}" ]; then
           service hhvm.${_USER} stop &> /dev/null
           update-rc.d -f hhvm.${_USER} remove &> /dev/null
           rm -f /etc/init.d/hhvm.${_USER}
@@ -1120,7 +1120,7 @@ switch_php() {
     sleep 5
     if [ ! -e "/data/disk/${_USER}/static/control/hhvm.info" ] \
       && [ -e "/data/disk/${_USER}/static/control/fpm.info" ] \
-      && [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
+      && [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
       _T_FPM_VRN=$(cat /data/disk/${_USER}/static/control/fpm.info 2>&1)
       _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
       _T_FPM_VRN=$(echo -n $_T_FPM_VRN | tr -d "\n" 2>&1)
@@ -1130,79 +1130,79 @@ switch_php() {
         || [ "$_T_FPM_VRN" = "5.3" ] \
         || [ "$_T_FPM_VRN" = "5.2" ]; then
         if [ "$_T_FPM_VRN" = "5.5" ] \
-          && [ ! -x "/opt/php55/bin/php" ] ; then
-          if [ -x "/opt/php56/bin/php" ] ; then
+          && [ ! -x "/opt/php55/bin/php" ]; then
+          if [ -x "/opt/php56/bin/php" ]; then
             _T_FPM_VRN=5.6
-          elif [ -x "/opt/php54/bin/php" ] ; then
+          elif [ -x "/opt/php54/bin/php" ]; then
             _T_FPM_VRN=5.4
-          elif [ -x "/opt/php53/bin/php" ] ; then
+          elif [ -x "/opt/php53/bin/php" ]; then
             _T_FPM_VRN=5.3
           fi
         elif [ "$_T_FPM_VRN" = "5.6" ] \
-          && [ ! -x "/opt/php56/bin/php" ] ; then
-          if [ -x "/opt/php55/bin/php" ] ; then
+          && [ ! -x "/opt/php56/bin/php" ]; then
+          if [ -x "/opt/php55/bin/php" ]; then
             _T_FPM_VRN=5.5
-          elif [ -x "/opt/php54/bin/php" ] ; then
+          elif [ -x "/opt/php54/bin/php" ]; then
             _T_FPM_VRN=5.4
-          elif [ -x "/opt/php53/bin/php" ] ; then
+          elif [ -x "/opt/php53/bin/php" ]; then
             _T_FPM_VRN=5.3
           fi
         elif [ "$_T_FPM_VRN" = "5.4" ] \
-          && [ ! -x "/opt/php54/bin/php" ] ; then
-          if [ -x "/opt/php55/bin/php" ] ; then
+          && [ ! -x "/opt/php54/bin/php" ]; then
+          if [ -x "/opt/php55/bin/php" ]; then
             _T_FPM_VRN=5.5
-          elif [ -x "/opt/php56/bin/php" ] ; then
+          elif [ -x "/opt/php56/bin/php" ]; then
             _T_FPM_VRN=5.6
-          elif [ -x "/opt/php53/bin/php" ] ; then
+          elif [ -x "/opt/php53/bin/php" ]; then
             _T_FPM_VRN=5.3
           fi
         elif [ "$_T_FPM_VRN" = "5.3" ] \
-          && [ ! -x "/opt/php53/bin/php" ] ; then
-          if [ -x "/opt/php55/bin/php" ] ; then
+          && [ ! -x "/opt/php53/bin/php" ]; then
+          if [ -x "/opt/php55/bin/php" ]; then
             _T_FPM_VRN=5.5
-          elif [ -x "/opt/php56/bin/php" ] ; then
+          elif [ -x "/opt/php56/bin/php" ]; then
             _T_FPM_VRN=5.6
-          elif [ -x "/opt/php54/bin/php" ] ; then
+          elif [ -x "/opt/php54/bin/php" ]; then
             _T_FPM_VRN=5.4
           fi
-        elif [ "$_T_FPM_VRN" = "5.2" ] ; then
-          if [ -x "/opt/php55/bin/php" ] ; then
+        elif [ "$_T_FPM_VRN" = "5.2" ]; then
+          if [ -x "/opt/php55/bin/php" ]; then
             _T_FPM_VRN=5.5
-          elif [ -x "/opt/php56/bin/php" ] ; then
+          elif [ -x "/opt/php56/bin/php" ]; then
             _T_FPM_VRN=5.6
-          elif [ -x "/opt/php54/bin/php" ] ; then
+          elif [ -x "/opt/php54/bin/php" ]; then
             _T_FPM_VRN=5.4
-          elif [ -x "/opt/php53/bin/php" ] ; then
+          elif [ -x "/opt/php53/bin/php" ]; then
             _T_FPM_VRN=5.3
           fi
         fi
         if [ "$_T_FPM_VRN" != "${_PHP_FPM_VERSION}" ] \
-          || [ "$_FORCE_FPM_SETUP" = "YES" ] ; then
+          || [ "$_FORCE_FPM_SETUP" = "YES" ]; then
           _NEW_FPM_SETUP=YES
           _FORCE_FPM_SETUP=NO
         fi
         if [ ! -z "$_T_FPM_VRN" ] \
-          && [ "$_NEW_FPM_SETUP" = "YES" ] ; then
+          && [ "$_NEW_FPM_SETUP" = "YES" ]; then
           _NEW_FPM_SETUP=NO
           tune_fpm_workers
           _LIM_FPM="${_L_PHP_FPM_WORKERS}"
-          if [ "$_LIM_FPM" -lt "24" ] ; then
+          if [ "$_LIM_FPM" -lt "24" ]; then
             if [[ "${_HOST_TEST}" =~ ".host8." ]] \
-              || [ "${_VMFAMILY}" = "VS" ] ; then
+              || [ "${_VMFAMILY}" = "VS" ]; then
               _LIM_FPM=24
             fi
           fi
-          if [ "${_CLIENT_OPTION}" = "MICRO" ] ; then
+          if [ "${_CLIENT_OPTION}" = "MICRO" ]; then
             _LIM_FPM=2
             _PHP_FPM_WORKERS=4
           fi
           _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
-          if [ "${_PHP_FPM_WORKERS}" = "AUTO" ] ; then
+          if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
             _DO_NOTHING=YES
           else
             _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
             if [ ! -z "${_PHP_FPM_WORKERS}" ] \
-              && [ "${_PHP_FPM_WORKERS}" -gt "0" ] ; then
+              && [ "${_PHP_FPM_WORKERS}" -gt "0" ]; then
               _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
             fi
           fi
@@ -1213,17 +1213,17 @@ switch_php() {
           chown ${_USER}.ftp:users /data/disk/${_USER}/static/control/fpm.info
           _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
           _PHP_SV=${_T_FPM_VRN//[^0-9]/}
-          if [ -z "${_PHP_SV}" ] ; then
+          if [ -z "${_PHP_SV}" ]; then
             _PHP_SV=55
           fi
           ### create or update special system user if needed
-          if [ -e "/home/${_WEB}/.drush/php.ini" ] ; then
+          if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
             _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
             _PHP_V="56 55 54 53"
             for e in ${_PHP_V}; do
-              if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]] ; then
+              if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
                 if [ "${e}" != "${_PHP_SV}" ] \
-                  || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.txt" ] ; then
+                  || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.txt" ]; then
                   echo _OLD_PHP_IN_USE is ${_OLD_PHP_IN_USE} for ${_WEB} update
                   echo _NEW_PHP_TO_USE is ${_PHP_SV} for ${_WEB} update
                   update_web_user "${_PHP_SV}"
@@ -1244,13 +1244,13 @@ switch_php() {
             /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
           sed -i "s/foo/${_USER}/g" \
             /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-          if [ ! -z "${_PHP_FPM_DENY}" ] ; then
+          if [ ! -z "${_PHP_FPM_DENY}" ]; then
             sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
               /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
           else
             if [[ "${_HOST_TEST}" =~ ".host8." ]] \
               || [ "${_VMFAMILY}" = "VS" ] \
-              || [ -e "/root/.host8.cnf" ] ; then
+              || [ -e "/root/.host8.cnf" ]; then
               _DO_NOTHING=YES
             else
               sed -i "s/passthru,//g" \
@@ -1258,29 +1258,29 @@ switch_php() {
             fi
           fi
           if [ "${_PHP_FPM_TIMEOUT}" = "AUTO" ] \
-            || [ -z "${_PHP_FPM_TIMEOUT}" ] ; then
+            || [ -z "${_PHP_FPM_TIMEOUT}" ]; then
             _PHP_FPM_TIMEOUT=180
           fi
           _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
-          if [ "${_PHP_FPM_TIMEOUT}" -lt "60" ] ; then
+          if [ "${_PHP_FPM_TIMEOUT}" -lt "60" ]; then
             _PHP_FPM_TIMEOUT=60
           fi
-          if [ "${_PHP_FPM_TIMEOUT}" -gt "180" ] ; then
+          if [ "${_PHP_FPM_TIMEOUT}" -gt "180" ]; then
             _PHP_FPM_TIMEOUT=180
           fi
-          if [ ! -z "${_PHP_FPM_TIMEOUT}" ] ; then
+          if [ ! -z "${_PHP_FPM_TIMEOUT}" ]; then
             _PHP_TO="${_PHP_FPM_TIMEOUT}s"
             sed -i "s/180s/${_PHP_TO}/g" \
               /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
           fi
-          if [ ! -z "${_CHILD_MAX_FPM}" ] ; then
+          if [ ! -z "${_CHILD_MAX_FPM}" ]; then
             sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
               /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
           fi
-          if [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ] ; then
+          if [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
             service php${_PHP_OLD_SV}-fpm reload &> /dev/null
           fi
-          if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ] ; then
+          if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ]; then
             service php${_PHP_SV}-fpm reload &> /dev/null
           fi
         fi
@@ -1295,7 +1295,7 @@ manage_site_drush_alias_mirror() {
   for Alias in `find /home/${_USER}.ftp/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
     AliasFile=$(echo "$Alias" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
-    if [ ! -e "${pthParentUsr}/.drush/${AliasFile}" ] ; then
+    if [ ! -e "${pthParentUsr}/.drush/${AliasFile}" ]; then
       rm -f /home/${_USER}.ftp/.drush/${AliasFile}
     fi
   done
@@ -1311,12 +1311,12 @@ manage_site_drush_alias_mirror() {
     if [ "${AliasName}" = "hm" ] \
       || [[ "${AliasName}" =~ (^)"platform_" ]] \
       || [[ "${AliasName}" =~ (^)"server_" ]] \
-      || [[ "${AliasName}" =~ (^)"hostmaster" ]] ; then
+      || [[ "${AliasName}" =~ (^)"hostmaster" ]]; then
       _IS_SITE=NO
     else
       SiteName="${AliasName}"
       echo SiteName is $SiteName
-      if [[ "$SiteName" =~ ".restore"($) ]] ; then
+      if [[ "$SiteName" =~ ".restore"($) ]]; then
         _IS_SITE=NO
         rm -f ${pthParentUsr}/.drush/${SiteName}.alias.drushrc.php
       else
@@ -1325,16 +1325,16 @@ manage_site_drush_alias_mirror() {
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
-        if [ -d "$SiteDir" ] ; then
+        if [ -d "$SiteDir" ]; then
           echo SiteDir is $SiteDir
           pthAliasMain="${pthParentUsr}/.drush/${SiteName}.alias.drushrc.php"
           pthAliasCopy="/home/${_USER}.ftp/.drush/${SiteName}.alias.drushrc.php"
-          if [ ! -e "${pthAliasCopy}" ] ; then
+          if [ ! -e "${pthAliasCopy}" ]; then
             cp -af ${pthAliasMain} ${pthAliasCopy}
             chmod 440 ${pthAliasCopy}
           else
             _DIFF_T=$(diff ${pthAliasCopy} ${pthAliasMain} 2>&1)
-            if [ ! -z "${_DIFF_T}" ] ; then
+            if [ ! -z "${_DIFF_T}" ]; then
               cp -af ${pthAliasMain} ${pthAliasCopy}
               chmod 440 ${pthAliasCopy}
             fi
@@ -1353,7 +1353,7 @@ manage_user() {
 for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
   if [ -e "${pthParentUsr}/config/server_master/nginx/vhost.d" ] \
     && [ -e "${pthParentUsr}/log/fpm.txt" ] \
-    && [ ! -e "${pthParentUsr}/log/CANCELLED" ] ; then
+    && [ ! -e "${pthParentUsr}/log/CANCELLED" ]; then
     _USER=""
     _USER=$(echo ${pthParentUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
     echo "_USER is == ${_USER} == at manage_user"
@@ -1373,7 +1373,7 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       -type d -exec chmod 0700 {} \; &> /dev/null
     find /data/disk/${_USER}/config/server_master \
       -type f -exec chmod 0600 {} \; &> /dev/null
-    if [ ! -e "/data/disk/${_USER}/.tmp/.ctrl.240dev.txt" ] ; then
+    if [ ! -e "/data/disk/${_USER}/.tmp/.ctrl.240dev.txt" ]; then
       rm -f -r /data/disk/${_USER}/.drush/cache
       rm -f -r /data/disk/${_USER}/.tmp
       mkdir -p /data/disk/${_USER}/.tmp
@@ -1381,10 +1381,10 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       chmod 02775 /data/disk/${_USER}/.tmp &> /dev/null
       echo OK > /data/disk/${_USER}/.tmp/.ctrl.240dev.txt
     fi
-    if [ ! -e "/data/disk/${_USER}/static/control/.ctrl.240dev.txt" ] ; then
+    if [ ! -e "/data/disk/${_USER}/static/control/.ctrl.240dev.txt" ]; then
       mkdir -p /data/disk/${_USER}/static/control
       chmod 755 /data/disk/${_USER}/static/control
-      if [ -e "/var/xdrago/conf/control-readme.txt" ] ; then
+      if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
         cp -af /var/xdrago/conf/control-readme.txt \
           /data/disk/${_USER}/static/control/README.txt &> /dev/null
         chmod 0644 /data/disk/${_USER}/static/control/README.txt
@@ -1394,40 +1394,42 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       rm -f /data/disk/${_USER}/static/control/.ctrl.*
       echo OK > /data/disk/${_USER}/static/control/.ctrl.240dev.txt
     fi
-    if [ -e "/root/.${_USER}.octopus.cnf" ] ; then
+    if [ -e "/root/.${_USER}.octopus.cnf" ]; then
       source /root/.${_USER}.octopus.cnf
     fi
     switch_php
     switch_newrelic
-    if [ -e "${pthParentUsr}/clients" ] && [ ! -z ${_USER} ] ; then
+    if [ -e "${pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
       echo Managing Users for ${pthParentUsr} Instance
       rm -f -r ${pthParentUsr}/clients/admin &> /dev/null
       rm -f -r ${pthParentUsr}/clients/omega8ccgmailcom &> /dev/null
       rm -f -r ${pthParentUsr}/clients/nocomega8cc &> /dev/null
       rm -f -r ${pthParentUsr}/clients/*/backups &> /dev/null
       symlinks -dr ${pthParentUsr}/clients &> /dev/null
-      if [ -e "/home/${_USER}.ftp" ] ; then
+      if [ -e "/home/${_USER}.ftp" ]; then
         disable_chattr ${_USER}.ftp
         symlinks -dr /home/${_USER}.ftp &> /dev/null
         echo >> ${_THIS_LTD_CONF}
         echo "[${_USER}.ftp]" >> ${_THIS_LTD_CONF}
-        echo "path : ['/data/disk/${_USER}/distro', '/data/disk/${_USER}/static', \
-          '/data/disk/${_USER}/backups', '/data/disk/${_USER}/clients']" \
-          >> ${_THIS_LTD_CONF}
+        echo "path : ['/data/disk/${_USER}/distro', \
+                      '/data/disk/${_USER}/static', \
+                      '/data/disk/${_USER}/backups', \
+                      '/data/disk/${_USER}/clients']" \
+                      | fmt -su >> ${_THIS_LTD_CONF}
         manage_site_drush_alias_mirror
         manage_sec
-        if [ -e "/home/${_USER}.ftp/users" ] ; then
+        if [ -e "/home/${_USER}.ftp/users" ]; then
           chown -R ${_USER}.ftp:users /home/${_USER}.ftp/users
           chmod 700 /home/${_USER}.ftp/users
           chmod 600 /home/${_USER}.ftp/users/*
         fi
-        if [ ! -L "/home/${_USER}.ftp/static" ] ; then
+        if [ ! -L "/home/${_USER}.ftp/static" ]; then
           rm -f /home/${_USER}.ftp/{backups,clients,static}
           ln -sf /data/disk/${_USER}/backups /home/${_USER}.ftp/backups
           ln -sf /data/disk/${_USER}/clients /home/${_USER}.ftp/clients
           ln -sf /data/disk/${_USER}/static  /home/${_USER}.ftp/static
         fi
-        if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.240dev.txt" ] ; then
+        if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.240dev.txt" ]; then
           rm -f -r /home/${_USER}.ftp/.drush/cache
           rm -f -r /home/${_USER}.ftp/.tmp
           mkdir -p /home/${_USER}.ftp/.tmp
@@ -1458,11 +1460,11 @@ _THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.${_NOW}"
 if [ -e "/var/run/manage_rvm_users.pid" ] \
   || [ -e "/var/run/manage_ltd_users.pid" ] \
   || [ -e "/var/run/boa_run.pid" ] \
-  || [ -e "/var/run/boa_wait.pid" ] ; then
+  || [ -e "/var/run/boa_wait.pid" ]; then
   touch /var/xdrago/log/wait-manage-ltd-users
   echo Another BOA task is running, we have to wait
   exit 0
-elif [ ! -e "/var/xdrago/conf/lshell.conf" ] ; then
+elif [ ! -e "/var/xdrago/conf/lshell.conf" ]; then
   echo Missing /var/xdrago/conf/lshell.conf template
   exit 0
 else
@@ -1475,39 +1477,39 @@ else
     | cut -d: -f2 \
     | awk '{ print $1}' 2>&1)
   sed -i "s/8.8.8.8/${_THISHTIP}/g" ${_THIS_LTD_CONF}
-  if [ ! -e "/root/.allow.mc.cnf" ] ; then
+  if [ ! -e "/root/.allow.mc.cnf" ]; then
     sed -i "s/'mc', //g" ${_THIS_LTD_CONF}
     sed -i "s/, 'mc':'mc -u'//g" ${_THIS_LTD_CONF}
   fi
   add_ltd_group_if_not_exists
   kill_zombies >/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   manage_user >/var/backups/ltd/log/users-${_NOW}.log 2>&1
-  if [ -e "${_THIS_LTD_CONF}" ] ; then
+  if [ -e "${_THIS_LTD_CONF}" ]; then
     _DIFF_T=$(diff ${_THIS_LTD_CONF} /etc/lshell.conf 2>&1)
-    if [ ! -z "${_DIFF_T}" ] ; then
+    if [ ! -z "${_DIFF_T}" ]; then
       cp -af /etc/lshell.conf /var/backups/ltd/old/lshell.conf-before-${_NOW}
       cp -af ${_THIS_LTD_CONF} /etc/lshell.conf
     else
       rm -f ${_THIS_LTD_CONF}
     fi
   fi
-  if [ -L "/bin/sh" ] ; then
+  if [ -L "/bin/sh" ]; then
     _WEB_SH=$(readlink -n /bin/sh 2>&1)
     _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
-    if [ -x "/bin/websh" ] ; then
+    if [ -x "/bin/websh" ]; then
       if [ "${_WEB_SH}" != "/bin/websh" ] \
-        && [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
+        && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
       fi
     else
-      if [ -x "/bin/dash" ] ; then
-        if [ "${_WEB_SH}" != "/bin/dash" ] ; then
+      if [ -x "/bin/dash" ]; then
+        if [ "${_WEB_SH}" != "/bin/dash" ]; then
           rm -f /bin/sh
           ln -s /bin/dash /bin/sh
         fi
       else
-        if [ "${_WEB_SH}" != "/bin/bash" ] ; then
+        if [ "${_WEB_SH}" != "/bin/bash" ]; then
           rm -f /bin/sh
           ln -s /bin/bash /bin/sh
         fi
@@ -1517,7 +1519,7 @@ else
     fi
   fi
   rm -f $_TMP/*.txt
-  if [ ! -e "/root/.home.no.wildcard.chmod.cnf" ] ; then
+  if [ ! -e "/root/.home.no.wildcard.chmod.cnf" ]; then
     chmod 700 /home/* &> /dev/null
   fi
   chmod 0600 /var/log/lsh/*
@@ -1532,27 +1534,27 @@ else
     -type d -exec chmod 0700 {} \; &> /dev/null
   find /var/aegir/config/server_master \
     -type f -exec chmod 0600 {} \; &> /dev/null
-  if [ -e "/var/scout" ] ; then
+  if [ -e "/var/scout" ]; then
     _SCOUT_CRON_OFF=$(grep "OFFscoutOFF" /etc/crontab 2>&1)
-    if [[ "$_SCOUT_CRON_OFF" =~ "OFFscoutOFF" ]] ; then
+    if [[ "$_SCOUT_CRON_OFF" =~ "OFFscoutOFF" ]]; then
       sleep 5
       sed -i "s/OFFscoutOFF/scout/g" /etc/crontab &> /dev/null
     fi
   fi
-  if [ -e "/var/backups/reports/up/barracuda" ] ; then
+  if [ -e "/var/backups/reports/up/barracuda" ]; then
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
-      || [ -e "/root/.dbhd.clstr.cnf" ] ; then
-      if [ -e "/var/spool/cron/crontabs/aegir" ] ; then
+      || [ -e "/root/.dbhd.clstr.cnf" ]; then
+      if [ -e "/var/spool/cron/crontabs/aegir" ]; then
         sleep 180
         rm -f /var/spool/cron/crontabs/aegir
         service cron reload &> /dev/null
       fi
     fi
     if [ -e "/root/.mstr.clstr.cnf" ] \
-      || [ -e "/root/.wbhd.clstr.cnf" ] ; then
+      || [ -e "/root/.wbhd.clstr.cnf" ]; then
       if [ -e "/var/run/mysqld/mysqld.pid" ] \
-        && [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
+        && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
         service cron stop &> /dev/null
         sleep 180
         touch /root/.remote.db.cnf

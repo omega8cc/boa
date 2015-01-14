@@ -4,20 +4,20 @@ SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _PHPLOG_SIZE_TEST=$(du -s -h /var/log/php 2>&1)
-if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]] ; then
+if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]]; then
   echo $_PHPLOG_SIZE_TEST too big
   touch /var/run/fmp_wait.pid
   rm -f /var/log/php/*
-  if [ -e "/etc/init.d/php56-fpm" ] ; then
+  if [ -e "/etc/init.d/php56-fpm" ]; then
     /etc/init.d/php56-fpm reload
   fi
-  if [ -e "/etc/init.d/php55-fpm" ] ; then
+  if [ -e "/etc/init.d/php55-fpm" ]; then
     /etc/init.d/php55-fpm reload
   fi
-  if [ -e "/etc/init.d/php54-fpm" ] ; then
+  if [ -e "/etc/init.d/php54-fpm" ]; then
     /etc/init.d/php54-fpm reload
   fi
-  if [ -e "/etc/init.d/php53-fpm" ] ; then
+  if [ -e "/etc/init.d/php53-fpm" ]; then
     /etc/init.d/php53-fpm reload
   fi
   sleep 8
@@ -53,7 +53,7 @@ oom_restart() {
   exit 0
 }
 
-if [ -e "/var/log/nginx/error.log" ] ; then
+if [ -e "/var/log/nginx/error.log" ]; then
   if [ `tail --lines=500 /var/log/nginx/error.log \
     | grep --count "Cannot allocate memory"` -gt "0" ]; then
     oom_restart "nginx"
@@ -65,7 +65,7 @@ _RAM_FREE=$(free -m | grep /+ | cut -d: -f2 | awk '{ print $2}' 2>&1)
 _RAM_PCT_FREE=$(echo "scale=0; $(bc -l <<< "${_RAM_FREE} / ${_RAM_TOTAL} * 100")/1" | bc 2>&1)
 _RAM_PCT_FREE=${_RAM_PCT_FREE//[^0-9]/}
 
-if [ ! -z "${_RAM_PCT_FREE}" ] && [ "${_RAM_PCT_FREE}" -lt "10" ] ; then
+if [ ! -z "${_RAM_PCT_FREE}" ] && [ "${_RAM_PCT_FREE}" -lt "10" ]; then
   oom_restart "ram"
 fi
 
@@ -74,20 +74,20 @@ jetty_restart() {
   sleep 5
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
   rm -f /var/log/jetty{7,8,9}/*
-  if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] ; then
+  if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
     /etc/init.d/jetty9 start
   fi
-  if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ] ; then
+  if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
     /etc/init.d/jetty8 start
   fi
-  if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ] ; then
+  if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
     /etc/init.d/jetty7 start
   fi
   sleep 5
   rm -f /var/run/boa_run.pid
 }
 
-if [ -e "/var/log/jetty9" ] ; then
+if [ -e "/var/log/jetty9" ]; then
   if [ `tail --lines=500 /var/log/jetty9/*stderrout.log \
     | grep --count "Address already in use"` -gt "0" ]; then
     jetty_restart "zombie"
@@ -96,7 +96,7 @@ if [ -e "/var/log/jetty9" ] ; then
   fi
 fi
 
-if [ -e "/var/log/jetty8" ] ; then
+if [ -e "/var/log/jetty8" ]; then
   if [ `tail --lines=500 /var/log/jetty8/*stderrout.log \
     | grep --count "Address already in use"` -gt "0" ]; then
     jetty_restart "zombie"
@@ -105,7 +105,7 @@ if [ -e "/var/log/jetty8" ] ; then
   fi
 fi
 
-if [ -e "/var/log/jetty7" ] ; then
+if [ -e "/var/log/jetty7" ]; then
   if [ `tail --lines=500 /var/log/jetty7/*stderrout.log \
     | grep --count "Address already in use"` -gt "0" ]; then
     jetty_restart "zombie"
@@ -114,7 +114,7 @@ if [ -e "/var/log/jetty7" ] ; then
   fi
 fi
 
-if [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ] ; then
+if [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
   resolvconf -u &> /dev/null
   service pdnsd restart &> /dev/null
 fi
@@ -125,7 +125,7 @@ if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt "4" 
     /var/xdrago/log/php-fpm-master-count.kill.log
 fi
 
-if [ -e "/root/.high_traffic.cnf" ] ; then
+if [ -e "/root/.high_traffic.cnf" ]; then
   _DO_NOTHING=YES
 else
   perl /var/xdrago/monitor/check/segfault_alert
@@ -135,7 +135,7 @@ mysql_proc_kill() {
   if [ "$xtime" != "Time" ] \
     && [ "$xuser" != "root" ] \
     && [ "$xtime" != "|" ] \
-    && [[ "$xtime" -gt "$limit" ]] ; then
+    && [[ "$xtime" -gt "$limit" ]]; then
     xkill=$(mysqladmin kill $each 2>&1)
     times=$(date 2>&1)
     echo $times $each $xuser $xtime $xkill
@@ -153,7 +153,7 @@ for each in `mysqladmin proc \
     | awk '{print $2, $4, $8, $12}' \
     | grep $each \
     | awk '{print $4}' 2>&1)
-  if [ "$xtime" = "|" ] ; then
+  if [ "$xtime" = "|" ]; then
     xtime=$(mysqladmin proc \
       | awk '{print $2, $4, $8, $11}' \
       | grep $each \
@@ -163,8 +163,8 @@ for each in `mysqladmin proc \
     | awk '{print $2, $4, $8, $12}' \
     | grep $each \
     | awk '{print $2}' 2>&1)
-  if [ "$xtime" != "Time" ] ; then
-    if [ "$xuser" = "xabuse" ] ; then
+  if [ "$xtime" != "Time" ]; then
+    if [ "$xuser" = "xabuse" ]; then
       limit=60
       mysql_proc_kill
     else
@@ -176,7 +176,7 @@ done
 }
 
 lsyncd_proc_control() {
-if [ -e "/var/log/lsyncd.log" ] ; then
+if [ -e "/var/log/lsyncd.log" ]; then
   if [ `tail --lines=100 /var/log/lsyncd.log \
     | grep --count "Error: Terminating"` -gt "0" ]; then
     echo "$(date 2>&1) TRM lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
@@ -190,29 +190,29 @@ if [ -e "/var/log/lsyncd.log" ] ; then
     echo "$(date 2>&1) NRM lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
   fi
 fi
-if [ -e "/var/xdrago/log/lsyncd.monitor.log" ] ; then
-  if [ -e "/root/.barracuda.cnf" ] ; then
+if [ -e "/var/xdrago/log/lsyncd.monitor.log" ]; then
+  if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
   fi
   if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log \
-    | grep --count "TRM lsyncd"` -gt "3" ] && [ -n "${_MY_EMAIL}" ] ; then
+    | grep --count "TRM lsyncd"` -gt "3" ] && [ -n "${_MY_EMAIL}" ]; then
     mail -s "ALERT! lsyncd TRM failure on $(uname -n 2>&1)" ${_MY_EMAIL} < \
       /var/xdrago/log/lsyncd.monitor.log
     _ARCHIVE_LOG=YES
   fi
   if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log \
-    | grep --count "ERR lsyncd"` -gt "3" ] && [ -n "${_MY_EMAIL}" ] ; then
+    | grep --count "ERR lsyncd"` -gt "3" ] && [ -n "${_MY_EMAIL}" ]; then
     mail -s "ALERT! lsyncd ERR failure on $(uname -n 2>&1)" ${_MY_EMAIL} < \
       /var/xdrago/log/lsyncd.monitor.log
     _ARCHIVE_LOG=YES
   fi
   if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log \
-    | grep --count "NRM lsyncd"` -gt "3" ] && [ -n "${_MY_EMAIL}" ] ; then
+    | grep --count "NRM lsyncd"` -gt "3" ] && [ -n "${_MY_EMAIL}" ]; then
     mail -s "NOTICE: lsyncd NRM problem on $(uname -n 2>&1)" ${_MY_EMAIL} < \
       /var/xdrago/log/lsyncd.monitor.log
     _ARCHIVE_LOG=YES
   fi
-  if [ "$_ARCHIVE_LOG" = "YES" ] ; then
+  if [ "$_ARCHIVE_LOG" = "YES" ]; then
     cat /var/xdrago/log/lsyncd.monitor.log >> \
       /var/xdrago/log/lsyncd.warn.archive.log
     rm -f /var/xdrago/log/lsyncd.monitor.log
@@ -247,7 +247,7 @@ perl /var/xdrago/monitor/check/escapecheck
 perl /var/xdrago/monitor/check/hackcheck
 perl /var/xdrago/monitor/check/hackftp
 perl /var/xdrago/monitor/check/scan_nginx
-if [ ! -e "/root/.high_traffic.cnf" ] ; then
+if [ ! -e "/root/.high_traffic.cnf" ]; then
   perl /var/xdrago/monitor/check/locked
 fi
 perl /var/xdrago/monitor/check/sqlcheck

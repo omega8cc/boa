@@ -4,7 +4,7 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 local_ip_rg() {
-  if [ -e "/root/.local.IP.list" ] ; then
+  if [ -e "/root/.local.IP.list" ]; then
     echo "the file /root/.local.IP.list already exists"
     for _IP in `hostname -I`; do
       _IP_CHECK=$(cat /root/.local.IP.list \
@@ -13,7 +13,7 @@ local_ip_rg() {
         | uniq \
         | tr -d "\s" \
         | grep ${_IP} 2>&1)
-      if [ -z ${_IP_CHECK} ] ; then
+      if [ -z ${_IP_CHECK} ]; then
         echo "${_IP} not yet listed in /root/.local.IP.list"
         echo "${_IP} # local IP address" >> /root/.local.IP.list
       else
@@ -50,32 +50,32 @@ local_ip_rg() {
 
 guard_stats() {
   for i in `dir -d /vservers/*`; do
-    if [ -e "/root/.local.IP.list" ] ; then
+    if [ -e "/root/.local.IP.list" ]; then
       cp -af /root/.local.IP.list $i/root/.local.IP.list
     fi
-    if [ -e "$i/${_HA}" ] ; then
+    if [ -e "$i/${_HA}" ]; then
       for _IP in `cat $i/${_HA} | cut -d '#' -f1 | sort | uniq`; do
         _NR_TEST="0"
         _NR_TEST=$(tr -s ' ' '\n' < $i/${_HA} | grep -c ${_IP} 2>&1)
-        if [ -e "/root/.local.IP.list" ] ; then
+        if [ -e "/root/.local.IP.list" ]; then
           _IP_CHECK=$(cat /root/.local.IP.list \
             | cut -d '#' -f1 \
             | sort \
             | uniq \
             | tr -d "\s" \
             | grep ${_IP} 2>&1)
-          if [ ! -z ${_IP_CHECK} ] ; then
+          if [ ! -z ${_IP_CHECK} ]; then
             _NR_TEST="0"
             echo "${_IP} is a local IP address! $i/${_HA}"
           fi
         fi
         echo ${_IP} ${_NR_TEST}
-        if [ ! -z ${_NR_TEST} ] && [ ${_NR_TEST} -ge "24" ] ; then
+        if [ ! -z ${_NR_TEST} ] && [ ${_NR_TEST} -ge "24" ]; then
           _FW_TEST=$(iptables --list -n | grep ${_IP} 2>&1)
-          if [[ "${_FW_TEST}" =~ "${_IP}" ]] ; then
+          if [[ "${_FW_TEST}" =~ "${_IP}" ]]; then
             echo "${_IP} already denied or allowed on port 22"
           else
-            if [ ${_NR_TEST} -ge "64" ] ; then
+            if [ ${_NR_TEST} -ge "64" ]; then
               echo "Deny ${_IP} permanently ${_NR_TEST}"
               csf -d ${_IP} do not delete Brute force SSH Server ${_NR_TEST} attacks
             else
@@ -86,29 +86,29 @@ guard_stats() {
         fi
       done
     fi
-    if [ -e "$i/${_WA}" ] ; then
+    if [ -e "$i/${_WA}" ]; then
       for _IP in `cat $i/${_WA} | cut -d '#' -f1 | sort | uniq`; do
         _NR_TEST="0"
         _NR_TEST=$(tr -s ' ' '\n' < $i/${_WA} | grep -c ${_IP} 2>&1)
-        if [ -e "/root/.local.IP.list" ] ; then
+        if [ -e "/root/.local.IP.list" ]; then
           _IP_CHECK=$(cat /root/.local.IP.list \
             | cut -d '#' -f1 \
             | sort \
             | uniq \
             | tr -d "\s" \
             | grep ${_IP} 2>&1)
-          if [ ! -z ${_IP_CHECK} ] ; then
+          if [ ! -z ${_IP_CHECK} ]; then
             _NR_TEST="0"
             echo "${_IP} is a local IP address! $i/${_WA}"
           fi
         fi
         echo ${_IP} ${_NR_TEST}
-        if [ ! -z ${_NR_TEST} ] && [ ${_NR_TEST} -ge "24" ] ; then
+        if [ ! -z ${_NR_TEST} ] && [ ${_NR_TEST} -ge "24" ]; then
           _FW_TEST=$(iptables --list -n | grep ${_IP} 2>&1)
-          if [[ "${_FW_TEST}" =~ "${_IP}" ]] ; then
+          if [[ "${_FW_TEST}" =~ "${_IP}" ]]; then
             echo "${_IP} already denied or allowed on port 80"
           else
-            if [ ${_NR_TEST} -ge "64" ] ; then
+            if [ ${_NR_TEST} -ge "64" ]; then
               echo "Deny ${_IP} permanently ${_NR_TEST}"
               csf -d ${_IP} do not delete Brute force Web Server ${_NR_TEST} attacks
             else
@@ -119,29 +119,29 @@ guard_stats() {
         fi
       done
     fi
-    if [ -e "$i/$_FA" ] ; then
+    if [ -e "$i/$_FA" ]; then
       for _IP in `cat $i/$_FA | cut -d '#' -f1 | sort | uniq`; do
         _NR_TEST="0"
         _NR_TEST=$(tr -s ' ' '\n' < $i/$_FA | grep -c ${_IP} 2>&1)
-        if [ -e "/root/.local.IP.list" ] ; then
+        if [ -e "/root/.local.IP.list" ]; then
           _IP_CHECK=$(cat /root/.local.IP.list \
             | cut -d '#' -f1 \
             | sort \
             | uniq \
             | tr -d "\s" \
             | grep ${_IP} 2>&1)
-          if [ ! -z ${_IP_CHECK} ] ; then
+          if [ ! -z ${_IP_CHECK} ]; then
             _NR_TEST="0"
             echo "${_IP} is a local IP address! $i/$_FA"
           fi
         fi
         echo ${_IP} ${_NR_TEST}
-        if [ ! -z ${_NR_TEST} ] && [ ${_NR_TEST} -ge "24" ] ; then
+        if [ ! -z ${_NR_TEST} ] && [ ${_NR_TEST} -ge "24" ]; then
           _FW_TEST=$(iptables --list -n | grep ${_IP} 2>&1)
-          if [[ "${_FW_TEST}" =~ "${_IP}" ]] ; then
+          if [[ "${_FW_TEST}" =~ "${_IP}" ]]; then
             echo "${_IP} already denied or allowed on port 21"
           else
-            if [ ${_NR_TEST} -ge "64" ] ; then
+            if [ ${_NR_TEST} -ge "64" ]; then
               echo "Deny ${_IP} permanently ${_NR_TEST}"
               csf -d ${_IP} do not delete Brute force FTP Server ${_NR_TEST} attacks
             else
@@ -157,8 +157,8 @@ guard_stats() {
 
 if [ -e "/vservers" ] \
   && [ -e "/etc/csf/csf.deny" ] \
-  && [ -e "/usr/sbin/csf" ] ; then
-  if [ -e "/root/.local.IP.list" ] ; then
+  && [ -e "/usr/sbin/csf" ]; then
+  if [ -e "/root/.local.IP.list" ]; then
     for _IP in `cat /root/.local.IP.list \
       | cut -d '#' -f1 \
       | sort \
@@ -189,7 +189,7 @@ if [ -e "/vservers" ] \
 fi
 ntpdate pool.ntp.org
 _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')
-if [ -z "$_IF_CDP" ] && [ ! -e "/root/.no.swap.clear.cnf" ] ; then
+if [ -z "$_IF_CDP" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
   swapoff -a
   swapon -a
 fi

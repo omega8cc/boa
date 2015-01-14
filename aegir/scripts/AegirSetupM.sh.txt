@@ -48,22 +48,22 @@ _LOCAL_NETWORK_IP=EDIT_LOCAL_NETWORK_IP
 _MY_OWNIP=EDIT_MY_OWNIP
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
 _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
-_REL_VERSION=$(lsb_release -sc 2>&1)
+_OSV=$(lsb_release -sc 2>&1)
 _ROOT="${HOME}"
 _STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _USE_MIRROR=EDIT_USE_MIRROR
 #
-if [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
+if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
   _THIS_DB_HOST=$(uname -n 2>&1)
 fi
-if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
+if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
   _T_CLI=/opt/php55/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
+elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
+elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
   _T_CLI=/opt/php54/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
+elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
   _T_CLI=/opt/php53/bin
 fi
 _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
@@ -93,34 +93,34 @@ update_php_cli_local_ini() {
   _PHP_V="56 55 54 53"
   for e in ${_PHP_V}; do
     if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ] ; then
+      && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ]; then
       _PHP_CLI_UPDATE=YES
     fi
   done
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.240dev.txt" ] ; then
+    || [ ! -e "${_U_HD}/.ctrl.240dev.txt" ]; then
     rm -f -r ${_U_TP}
     mkdir -p ${_U_TP}
     chmod 700 ${_U_TP}
     mkdir -p ${_U_HD}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]] ; then
+    if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]]; then
       cp -af /opt/php55/lib/php.ini ${_U_II}
       _U_INI=55
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php56" ]] ; then
+    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php56" ]]; then
       cp -af /opt/php56/lib/php.ini ${_U_II}
       _U_INI=56
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]] ; then
+    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]]; then
       cp -af /opt/php54/lib/php.ini ${_U_II}
       _U_INI=54
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]] ; then
+    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]]; then
       cp -af /opt/php53/lib/php.ini ${_U_II}
       _U_INI=53
     fi
-    if [ -e "${_U_II}" ] ; then
+    if [ -e "${_U_II}" ]; then
       _INI="open_basedir = \".: \
         /data/all:        \
         /data/conf:       \
@@ -156,13 +156,13 @@ update_php_cli_local_ini() {
 # Update php-cli for Drush.
 update_php_cli_drush() {
   _DRUSH_FILE="${_ROOT}/drush/drush.php"
-  if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
+  if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
+  elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
+  elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php54\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
+  elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php53\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   else
     msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported values"
@@ -174,7 +174,7 @@ update_php_cli_drush() {
 #
 # Extract archive.
 extract_archive() {
-  if [ ! -z "$1" ] ; then
+  if [ ! -z "$1" ]; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
       *.tar.gz)    tar xzf $1    ;;
@@ -195,7 +195,7 @@ extract_archive() {
 #
 # Download and extract from dev.
 get_dev_ext() {
-  if [ ! -z "$1" ] ; then
+  if [ ! -z "$1" ]; then
     curl ${crlGet} "http://${_USE_MIRROR}/dev/${_AEGIR_XTS_VERSION}/$1" -o "$1"
     extract_archive "$1"
   fi
@@ -208,7 +208,7 @@ sanitize_string() {
 
 ###--------------------###
 
-if [ `whoami` = "root" ] ; then
+if [ `whoami` = "root" ]; then
   msg "FATAL ERROR: This script should be ran as a non-root user"
   msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
   touch /opt/tmp/status-AegirSetupM-FAIL
@@ -230,7 +230,7 @@ update_php_cli_drush
 update_php_cli_local_ini
 
 if ${_DRUSHCMD} help > /dev/null ; then
-  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush seems to be functioning properly"
   fi
 else
@@ -245,7 +245,7 @@ if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
 else
   msg "INFO: Installing Aegir Provision backend..."
   mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
-  if [ "${_AEGIR_VERSION}" = "HEAD" ] ; then
+  if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
     cd ${_ROOT}/.drush
     msg "INFO: Downloading Drush and Provision extensions..."
     rm -f -r ${_ROOT}/.drush/{sys,xts,usr}

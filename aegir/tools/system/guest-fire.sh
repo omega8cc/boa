@@ -4,12 +4,12 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 guest_guard() {
-if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ] ; then
+if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
   touch /var/run/fire.pid
-  if [ -e "/var/xdrago/monitor/ssh.log" ] ; then
+  if [ -e "/var/xdrago/monitor/ssh.log" ]; then
     for _IP in `cat /var/xdrago/monitor/ssh.log | cut -d '#' -f1 | sort`; do
       _FW_TEST=$(iptables --list -n | grep ${_IP} 2>&1)
-      if [[ "${_FW_TEST}" =~ "${_IP}" ]] ; then
+      if [[ "${_FW_TEST}" =~ "${_IP}" ]]; then
         echo "${_IP} already denied or allowed on port 22"
       else
         echo "Deny ${_IP} on ports 21,22,443,80 in the next 1h"
@@ -20,10 +20,10 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ] ; then
       fi
     done
   fi
-  if [ -e "/var/xdrago/monitor/web.log" ] ; then
+  if [ -e "/var/xdrago/monitor/web.log" ]; then
     for _IP in `cat /var/xdrago/monitor/web.log | cut -d '#' -f1 | sort`; do
       _FW_TEST=$(iptables --list -n | grep ${_IP} 2>&1)
-      if [[ "${_FW_TEST}" =~ "${_IP}" ]] ; then
+      if [[ "${_FW_TEST}" =~ "${_IP}" ]]; then
         echo "${_IP} already denied or allowed on port 80"
       else
         echo "Deny ${_IP} on ports 21,22,443,80 in the next 1h"
@@ -34,10 +34,10 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ] ; then
       fi
     done
   fi
-  if [ -e "/var/xdrago/monitor/ftp.log" ] ; then
+  if [ -e "/var/xdrago/monitor/ftp.log" ]; then
     for _IP in `cat /var/xdrago/monitor/ftp.log | cut -d '#' -f1 | sort`; do
       _FW_TEST=$(iptables --list -n | grep ${_IP} 2>&1)
-      if [[ "${_FW_TEST}" =~ "${_IP}" ]] ; then
+      if [[ "${_FW_TEST}" =~ "${_IP}" ]]; then
         echo "${_IP} already denied or allowed on port 21"
       else
         echo "Deny ${_IP} on ports 21,22,443,80 in the next 1h"
@@ -52,7 +52,7 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ] ; then
 fi
 }
 
-if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; then
+if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
   guest_guard
   sleep 5
   guest_guard

@@ -6,13 +6,13 @@ BACKUPDIR=/data/disk/arch/sql
 HOST=$(uname -n 2>&1)
 DATE=$(date +%y%m%d-%H%M 2>&1)
 SAVELOCATION=$BACKUPDIR/$HOST-$DATE
-if [ -e "/root/.my.optimize.cnf" ] ; then
+if [ -e "/root/.my.optimize.cnf" ]; then
   OPTIM=YES
 else
   OPTIM=NO
 fi
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ beng ]] ; then
+if [[ "${_VM_TEST}" =~ beng ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
@@ -73,17 +73,17 @@ backup_this_database() {
 for DB in `mysql -e "show databases" -s | uniq | sort`; do
   if [ "$DB" != "Database" ] \
     && [ "$DB" != "information_schema" ] \
-    && [ "$DB" != "performance_schema" ] ; then
-    if [ "$DB" != "mysql" ] ; then
+    && [ "$DB" != "performance_schema" ]; then
+    if [ "$DB" != "mysql" ]; then
       truncate_cache_tables &> /dev/null
-      if [[ "$HOST" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ] ; then
+      if [[ "$HOST" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
         truncate_accesslog_tables &> /dev/null
         echo "Truncated not used accesslog for $DB"
         truncate_queue_tables &> /dev/null
         echo "Truncated queue for $DB"
       fi
       echo "All cache tables truncated in $DB"
-      if [ "$OPTIM" = "YES" ] ; then
+      if [ "$OPTIM" = "YES" ]; then
         optimize_this_database &> /dev/null
         echo "Optimize completed for $DB"
       fi
@@ -94,7 +94,7 @@ for DB in `mysql -e "show databases" -s | uniq | sort`; do
   fi
 done
 
-if [ "$OPTIM" = "YES" ] ; then
+if [ "$OPTIM" = "YES" ]; then
   touch /var/run/boa_wait.pid
   touch /var/xdrago/log/mysql_restart_running.pid
   sleep 3

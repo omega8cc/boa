@@ -4,7 +4,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
 
 crontab_update() {
-  if [ -e "/etc/crontab" ] ; then
+  if [ -e "/etc/crontab" ]; then
     sed -i "s/.*barracuda.*//gi"  /etc/crontab &> /dev/null
     sed -i "s/.*BOA.sh.txt.*//gi" /etc/crontab &> /dev/null
     sed -i "s/.*daily.sh.*//gi"   /etc/crontab &> /dev/null
@@ -13,24 +13,24 @@ crontab_update() {
     sed -i "s/.*water.*//gi"      /etc/crontab &> /dev/null
     sed -i "s/.*weekly.sh.*//gi"  /etc/crontab &> /dev/null
     sed -i "s/.*xdrago.*//gi"     /etc/crontab &> /dev/null
-    if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    if [ "${_VMFAMILY}" = "VS" ] ; then
+    if [ "${_VMFAMILY}" = "VS" ]; then
       echo "28 6    * * 7   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d"                /etc/crontab &> /dev/null
     if [ -f "/root/.mstr.clstr.cnf" ] \
       && [ ! -f "/root/.wbhd.clstr.cnf" ] \
-      && [ ! -f "/root/.dbhd.clstr.cnf" ] ; then
+      && [ ! -f "/root/.dbhd.clstr.cnf" ]; then
       _BCDA_FULL="up-cluster log"
       _BCDA_SYST="up-cluster system"
       _OCTO_FULL="up-cluster all both log"
-    elif [ -e "/root/.wbhd.clstr.cnf" ] ; then
+    elif [ -e "/root/.wbhd.clstr.cnf" ]; then
       _BCDA_FULL="up-cluster log"
       _BCDA_SYST="up-cluster system"
-    elif [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    elif [ -e "/root/.dbhd.clstr.cnf" ]; then
       _BCDA_FULL="up-cluster log"
       _BCDA_SYST="up-cluster system"
     else
@@ -39,72 +39,72 @@ crontab_update() {
       _OCTO_FULL="up-stable all both log"
     fi
     echo "# Barracuda weekly system only upgrade" >> /etc/crontab
-    echo "35 2    * * $_AUTO_UP_WEEKLY   root    /opt/local/bin/barracuda $_BCDA_SYST" >> /etc/crontab
-    echo "40 2    * * $_AUTO_UP_WEEKLY   root    /opt/local/bin/barracuda $_BCDA_SYST" >> /etc/crontab
+    echo "35 2    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
+    echo "40 2    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
     echo "# Barracuda stable full upgrade" >> /etc/crontab
-    echo "50 2  $_AUTO_UP_DAY $_AUTO_UP_MONTH *   root    /opt/local/bin/barracuda $_BCDA_FULL" >> /etc/crontab
-    echo "55 2  $_AUTO_UP_DAY $_AUTO_UP_MONTH *   root    /opt/local/bin/barracuda $_BCDA_FULL" >> /etc/crontab
+    echo "50 2  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
+    echo "55 2  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
     echo "# Barracuda stable system only upgrade" >> /etc/crontab
-    echo "50 4  $_AUTO_UP_DAY $_AUTO_UP_MONTH *   root    /opt/local/bin/barracuda $_BCDA_SYST" >> /etc/crontab
-    echo "55 4  $_AUTO_UP_DAY $_AUTO_UP_MONTH *   root    /opt/local/bin/barracuda $_BCDA_SYST" >> /etc/crontab
-    if [ ! -e "/root/.wbhd.clstr.cnf" ] && [ ! -e "/root/.dbhd.clstr.cnf" ] ; then
+    echo "50 4  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
+    echo "55 4  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
+    if [ ! -e "/root/.wbhd.clstr.cnf" ] && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
       echo "# Octopus stable full upgrade" >> /etc/crontab
-      echo "50 5  $_AUTO_UP_DAY $_AUTO_UP_MONTH *   root    /opt/local/bin/octopus $_OCTO_FULL" >> /etc/crontab
-      echo "55 5  $_AUTO_UP_DAY $_AUTO_UP_MONTH *   root    /opt/local/bin/octopus $_OCTO_FULL" >> /etc/crontab
-      echo "50 15 $_AUTO_UP_DAY $_AUTO_UP_MONTH *   root    bash /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "50 5  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
+      echo "55 5  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
+      echo "50 15 ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    bash /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     echo Cron Update Completed
   fi
 }
 
-if [ -e "/data/disk/arch" ] ; then
+if [ -e "/data/disk/arch" ]; then
   _HOST_TEST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ beng ]] ; then
+  if [[ "${_VM_TEST}" =~ beng ]]; then
     _VMFAMILY="VS"
   fi
-  if [ -e "/root/.barracuda.cnf" ] ; then
+  if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
   fi
   _AUTO_UP_WEEKLY=${_AUTO_UP_WEEKLY//[^0-9]/}
   _AUTO_UP_MONTH=${_AUTO_UP_MONTH//[^0-9]/}
   _AUTO_UP_DAY=${_CPU_INFO//[^0-9]/}
-  if [[ "${_MY_EMAIL}" =~ "omega8" ]] ; then
+  if [[ "${_MY_EMAIL}" =~ "omega8" ]]; then
     _AUTO_UP=YES
   fi
-  if [ -e "/etc/apticron/apticron.conf" ] ; then
+  if [ -e "/etc/apticron/apticron.conf" ]; then
     _APTICRON_TEST=$(grep "omega8" /etc/apticron/apticron.conf 2>&1)
-    if [[ "$_APTICRON_TEST" =~ "omega8" ]] ; then
+    if [[ "$_APTICRON_TEST" =~ "omega8" ]]; then
       _AUTO_UP=YES
     fi
   fi
-  if [ ! -e "/root/.auto.up.cnf" ] && [ "$_AUTO_UP" = "YES" ] ; then
+  if [ ! -e "/root/.auto.up.cnf" ] && [ "${_AUTO_UP}" = "YES" ]; then
     touch /root/.auto.up.cnf
   fi
   if [[ "${_HOST_TEST}" =~ ".host8." ]] \
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] \
-    || [ "$_AUTO_UP" = "YES" ] ; then
+    || [ "${_AUTO_UP}" = "YES" ]; then
     _AUTO_UP_WEEKLY=2
     _AUTO_UP_MONTH=11
     _AUTO_UP_DAY=30
   fi
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ] ; then
+    || [ -e "/root/.dbhd.clstr.cnf" ]; then
     _AUTO_UP_WEEKLY=1
     _AUTO_UP_MONTH=11
     _AUTO_UP_DAY=30
   fi
   if [[ "${_HOST_TEST}" =~ "v251a.a" ]] \
-    || [[ "${_HOST_TEST}" =~ "v55.l" ]] ; then
+    || [[ "${_HOST_TEST}" =~ "v55.l" ]]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
   fi
-  if [ ! -z "$_AUTO_UP_WEEKLY" ] \
-    && [ ! -z "$_AUTO_UP_MONTH" ] \
-    && [ ! -z "$_AUTO_UP_DAY" ] ; then
+  if [ ! -z "${_AUTO_UP_WEEKLY}" ] \
+    && [ ! -z "${_AUTO_UP_MONTH}" ] \
+    && [ ! -z "${_AUTO_UP_DAY}" ]; then
     crontab_update
   fi
 fi

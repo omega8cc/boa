@@ -113,13 +113,13 @@ _ROOT="/data/disk/${_USER}"
 _HM_ROOT="${_ROOT}/aegir/distro/${_HM_DISTRO}"
 _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
 #
-if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
+if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
   _T_CLI=/opt/php55/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
+elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
+elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
   _T_CLI=/opt/php54/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
+elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
   _T_CLI=/opt/php53/bin
 fi
 _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
@@ -144,7 +144,7 @@ msg() {
 mrun() {
   CMD="$1"
   touch busy
-  if [ "${_SPINNER}" = "YES" ] ; then
+  if [ "${_SPINNER}" = "YES" ]; then
     bash ${_SRCDIR}/spinner busy &
   fi
   if ${CMD} >> ${_LOG}; then
@@ -156,7 +156,7 @@ mrun() {
 #
 # Extract archive.
 extract_archive() {
-  if [ ! -z "$1" ] ; then
+  if [ ! -z "$1" ]; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
       *.tar.gz)    tar xzf $1    ;;
@@ -177,7 +177,7 @@ extract_archive() {
 #
 # Download and extract from dev.
 get_dev_ext() {
-  if [ ! -z "$1" ] ; then
+  if [ ! -z "$1" ]; then
     curl ${crlGet} "http://${_USE_MIRROR}/dev/${_AEGIR_XTS_VERSION}/$1" -o "$1"
     extract_archive "$1"
   fi
@@ -185,7 +185,7 @@ get_dev_ext() {
 #
 # Download and extract from dev/contrib mirror.
 get_dev_contrib() {
-  if [ ! -z "$1" ] ; then
+  if [ ! -z "$1" ]; then
     curl ${crlGet} "http://${_USE_MIRROR}/dev/contrib/$1" -o "$1"
     extract_archive "$1"
   fi
@@ -201,34 +201,34 @@ update_php_cli_local_ini() {
   _PHP_V="56 55 54 53"
   for e in ${_PHP_V}; do
     if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ] ; then
+      && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ]; then
       _PHP_CLI_UPDATE=YES
     fi
   done
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.240dev.txt" ] ; then
+    || [ ! -e "${_U_HD}/.ctrl.240dev.txt" ]; then
     rm -f -r ${_U_TP}
     mkdir -p ${_U_TP}
     chmod 700 ${_U_TP}
     mkdir -p ${_U_HD}/{sys,xts,usr}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]] ; then
+    if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]]; then
       cp -af /opt/php55/lib/php.ini ${_U_II}
       _U_INI=55
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php56" ]] ; then
+    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php56" ]]; then
       cp -af /opt/php56/lib/php.ini ${_U_II}
       _U_INI=56
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]] ; then
+    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]]; then
       cp -af /opt/php54/lib/php.ini ${_U_II}
       _U_INI=54
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]] ; then
+    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]]; then
       cp -af /opt/php53/lib/php.ini ${_U_II}
       _U_INI=53
     fi
-    if [ -e "${_U_II}" ] ; then
+    if [ -e "${_U_II}" ]; then
       _INI="open_basedir = \".: \
         /data/all:           \
         /data/conf:          \
@@ -263,13 +263,13 @@ update_php_cli_local_ini() {
 # Update php-cli for Drush.
 update_php_cli_drush() {
   _DRUSH_FILE="${_ROOT}/tools/drush/drush.php"
-  if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
+  if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ] ; then
+  elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
+  elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php54\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
+  elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php53\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   else
     msg "${_STATUS} B: FATAL ERROR: _PHP_CLI_VERSION is not set correctly"
@@ -285,7 +285,7 @@ _LOG=/var/backups/octopus-${_USER}-${_NOW}.log
 
 ###---### Checking status.
 #
-if [ -e "${_ROOT}/aegir.sh" ] ; then
+if [ -e "${_ROOT}/aegir.sh" ]; then
   _STATUS=UPGRADE
   cd ${_ROOT}
 fi
@@ -293,10 +293,10 @@ fi
 
 ###---### User check.
 #
-if [ "${_DEBUG_MODE}" = "YES" ] ; then
+if [ "${_DEBUG_MODE}" = "YES" ]; then
   msg "${_STATUS} B: Aegir automated install script part B"
 fi
-if [ `whoami` = "root" ] ; then
+if [ `whoami` = "root" ]; then
   msg "${_STATUS} B: FATAL ERROR: This script should be ran as a non-root user"
   msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
   touch /opt/tmp/status-AegirSetupB-FAIL
@@ -306,10 +306,10 @@ fi
 
 ###---### Add required users and create directories.
 #
-if [ "${_DEBUG_MODE}" = "YES" ] ; then
+if [ "${_DEBUG_MODE}" = "YES" ]; then
   msg "${_STATUS} B: Creating directories with correct permissions"
 fi
-if [ -e "${_ROOT}/aegir.sh" ] ; then
+if [ -e "${_ROOT}/aegir.sh" ]; then
   rm -f ${_ROOT}/aegir.sh
 fi
 touch ${_ROOT}/aegir.sh
@@ -317,7 +317,7 @@ chmod 0700 ${_ROOT}/aegir.sh &> /dev/null
 echo -e \
   "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n${_DRUSHCMD} \
   '@hostmaster' hosting-dispatch\ntouch ${_ROOT}/${_USER}-task.done" \
-  | tee -a ${_ROOT}/aegir.sh >/dev/null 2>&1
+   | fmt -su | tee -a ${_ROOT}/aegir.sh >/dev/null 2>&1
 
 mkdir -p ${_ROOT}/aegir/distro
 mkdir -p ${_ROOT}/distro/${_DISTRO}
@@ -331,19 +331,19 @@ chmod 0711 ${_ROOT}/{aegir,aegir/distro,distro,platforms,tools} &> /dev/null
 chmod 0711 ${_ROOT}/distro/${_DISTRO} &> /dev/null
 chmod 0750 ${_ROOT}/{backups,clients} &> /dev/null
 
-if [ "${_STATUS}" = "UPGRADE" ] ; then
+if [ "${_STATUS}" = "UPGRADE" ]; then
   #msg "${_STATUS} B: UPGRADE in progress..."
-  if [ -d "${_ROOT}/distro" ] ; then
+  if [ -d "${_ROOT}/distro" ]; then
    #msg "${_STATUS} B: UPGRADE v.2 in progress..."
-   if [ -e "${_ROOT}/log/domain.txt" ] ; then
+   if [ -e "${_ROOT}/log/domain.txt" ]; then
     _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>&1)
     _DOMAIN=$(echo -n ${_DOMAIN} | tr -d "\n" 2>&1)
    fi
    #msg "${_STATUS} B: _DOMAIN is ${_DOMAIN}"
-  elif [ ! -d "${_ROOT}/distro" ] ; then
+  elif [ ! -d "${_ROOT}/distro" ]; then
    #msg "${_STATUS} B: UPGRADE v.1 in progress..."
    #msg "${_STATUS} B: _DISTRO is ${_DISTRO}"
-   if [ -e "${_ROOT}/log/domain.txt" ] ; then
+   if [ -e "${_ROOT}/log/domain.txt" ]; then
     _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>&1)
     _DOMAIN=$(echo -n ${_DOMAIN} | tr -d "\n" 2>&1)
    fi
@@ -360,20 +360,20 @@ echo ${_DOMAIN} > ${_ROOT}/log/domain.txt
 
 ###---### Running standard installer.
 #
-if [ "${_DEBUG_MODE}" = "YES" ] ; then
+if [ "${_DEBUG_MODE}" = "YES" ]; then
   msg "${_STATUS} B: Running standard installer"
 fi
-if [ "${_STATUS}" = "UPGRADE" ] ; then
+if [ "${_STATUS}" = "UPGRADE" ]; then
   mkdir -p ${_ROOT}/backups/system
   chmod 700 ${_ROOT}/backups/system
-  if [ -d "${_ROOT}/aegir/config" ] ; then
-    if [ ! -d "${_ROOT}/config" ] ; then
+  if [ -d "${_ROOT}/aegir/config" ]; then
+    if [ ! -d "${_ROOT}/config" ]; then
       cd ${_ROOT}/aegir
       mv -f config ${_ROOT}/config &> /dev/null
       ln -sf ${_ROOT}/config ${_ROOT}/aegir/config
     fi
   fi
-  if [ -d "${_ROOT}/tools/drush" ] ; then
+  if [ -d "${_ROOT}/tools/drush" ]; then
     cd ${_ROOT}/tools
     mv -f drush \
       ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
@@ -393,7 +393,7 @@ chmod 755 ${_ROOT}/tools/drush/drush.php
 update_php_cli_drush
 update_php_cli_local_ini
 
-if [ "${_STATUS}" = "UPGRADE" ] ; then
+if [ "${_STATUS}" = "UPGRADE" ]; then
   mkdir -p ${_ROOT}/backups/system
   chmod 700 ${_ROOT}/backups/system
   mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/ &> /dev/null
@@ -402,22 +402,22 @@ if [ "${_STATUS}" = "UPGRADE" ] ; then
     provision_site_backup provision_tasks_extra registry_rebuild \
     security_check security_review remote_import"
   for e in ${_B_EXT}; do
-    if [ -e "${_ROOT}/.drush/$e" ] ; then
+    if [ -e "${_ROOT}/.drush/$e" ]; then
       mv -f ${_ROOT}/.drush/$e \
         ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW} &> /dev/null
       mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/ &> /dev/null
     fi
-    if [ -e "${_ROOT}/.drush/xts/$e" ] ; then
+    if [ -e "${_ROOT}/.drush/xts/$e" ]; then
       mv -f ${_ROOT}/.drush/xts/$e \
         ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW} &> /dev/null
       mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/ &> /dev/null
     fi
-    if [ -e "${_ROOT}/.drush/usr/$e" ] ; then
+    if [ -e "${_ROOT}/.drush/usr/$e" ]; then
       mv -f ${_ROOT}/.drush/usr/$e \
         ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW} &> /dev/null
       mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/ &> /dev/null
     fi
-    if [ -e "${_ROOT}/.drush/sys/$e" ] ; then
+    if [ -e "${_ROOT}/.drush/sys/$e" ]; then
       mv -f ${_ROOT}/.drush/sys/$e \
         ${_ROOT}/backups/system/$e-pre-${_DISTRO}-${_NOW} &> /dev/null
       mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/ &> /dev/null
@@ -426,7 +426,7 @@ if [ "${_STATUS}" = "UPGRADE" ] ; then
 fi
 
 if ${_DRUSHCMD} help > /dev/null ; then
-  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} B: Drush seems to be functioning properly"
   fi
 else
@@ -438,7 +438,7 @@ fi
 msg "${_STATUS} B: Installing Aegir Provision backend..."
 mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
 cd ${_ROOT}/.drush
-if [ "${_AEGIR_VERSION}" = "HEAD" ] ; then
+if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
   msg "${_STATUS} B: Downloading Drush and Provision extensions..."
   rm -f -r ${_ROOT}/.drush/{sys,xts,usr}
   rm -f -r ${_ROOT}/.drush/{provision,drush_make}
@@ -498,17 +498,17 @@ sed -i "s/files.aegir.cc/${_USE_MIRROR}/g" \
 ###---### Build Aegir base.
 #
 _LOCAL_STATUS="${_STATUS}"
-if [ -e "/var/run/aegir_upgrade.pid" ] ; then
+if [ -e "/var/run/aegir_upgrade.pid" ]; then
   _LOCAL_STATUS=INIT
 fi
-if [ "$_LOCAL_STATUS" = "INIT" ] ; then
+if [ "$_LOCAL_STATUS" = "INIT" ]; then
   cd ${_ROOT}
   _AGRPXSWD=$(cat ${_ROOT}/.${_USER}.pass.txt 2>&1)
   _AGRPASWD=$(echo -n $_AGRPXSWD | tr -d "\n" 2>&1)
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
-    || [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
-    if [ "${_THIS_DB_HOST}" = "FQDN" ] ; then
+    || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+    if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       _THIS_DB_HOST=$(uname -n 2>&1)
     else
       _THIS_DB_HOST=localhost
@@ -519,7 +519,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     _USE_AEGIR_HOST=$(uname -n 2>&1)
     _USE_DB_USER=aegir_root
   fi
-  if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ] ; then
+  if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
     _USE_AEGIR_HOST=$(uname -n 2>&1)
     _THIS_DB_HOST=$(uname -n 2>&1)
   fi
@@ -527,7 +527,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   msg "${_STATUS} B: Running hostmaster-install, please wait..."
   ${_DRUSHCMD} cache-clear drush >${_ROOT}/log/install.log 2>&1
   rm -f -r ${_ROOT}/.tmp/cache
-  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
     ${_DRUSHCMD} hostmaster-install ${_DOMAIN} \
       --aegir_host=${_USE_AEGIR_HOST} \
       --aegir_db_user=${_USE_DB_USER} \
@@ -566,47 +566,47 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   ln -sf ${_HM_ROOT} /data/u/${_DOMAIN}
   ${_DRUSHCMD} cache-clear drush &> /dev/null
   rm -f -r ${_ROOT}/.tmp/cache
-  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} B: Running hosting-dispatch (1/3)..."
   fi
   ${_DRUSHCMD} '@hostmaster' hosting-dispatch &> /dev/null
   mrun "sleep 5"
-  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} B: Running hosting-dispatch (2/3)..."
   fi
   ${_DRUSHCMD} '@hostmaster' hosting-dispatch &> /dev/null
   mrun "sleep 5"
-  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} B: Running hosting-dispatch (3/3)..."
   fi
   ${_DRUSHCMD} '@hostmaster' hosting-dispatch &> /dev/null
 else
-  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} B: Testing previous install..."
   fi
   ${_DRUSHCMD} cache-clear drush &> /dev/null
   rm -f -r ${_ROOT}/.tmp/cache
   if ${_DRUSHCMD} help clean-modules > /dev/null ; then
-    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} B: Drush clean-modules is available"
     fi
     _CLEAN_MODULES=YES
   else
-    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} B: Drush clean-modules not available yet"
     fi
     _CLEAN_MODULES=NO
   fi
-  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} B: Uninstalling css_emimage module in debug mode b/u"
     ${_DRUSHCMD} @hostmaster dis css_emimage -y
-    if [ "$_CLEAN_MODULES" = "YES" ] ; then
+    if [ "$_CLEAN_MODULES" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster clean-modules -y
     fi
     ${_DRUSHCMD} @hostmaster pm-uninstall css_emimage -y
   else
     ${_DRUSHCMD} @hostmaster dis css_emimage -y &> /dev/null
-    if [ "$_CLEAN_MODULES" = "YES" ] ; then
+    if [ "$_CLEAN_MODULES" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster clean-modules -y &> /dev/null
     fi
     ${_DRUSHCMD} @hostmaster pm-uninstall css_emimage -y &> /dev/null
@@ -615,14 +615,14 @@ else
   ${_DRUSHCMD} cache-clear drush &> /dev/null
   rm -f -r ${_ROOT}/.tmp/cache
   if [ -d "${_HM_ROOT}/modules/o_contrib" ] \
-    && [ ! -L "${_HM_ROOT}/modules/o_contrib" ] ; then
+    && [ ! -L "${_HM_ROOT}/modules/o_contrib" ]; then
     rm -f ${_HM_ROOT}/modules/o_contrib/{cache_backport,redis_edge,redis}
   fi
   if [ -d "${_PREV_HM_ROOT}/modules/o_contrib" ] \
-    && [ ! -L "${_PREV_HM_ROOT}/modules/o_contrib" ] ; then
+    && [ ! -L "${_PREV_HM_ROOT}/modules/o_contrib" ]; then
     rm -f ${_PREV_HM_ROOT}/modules/o_contrib/{cache_backport,redis_edge,redis}
   fi
-  if [ ! -e "${_PREV_HM_ROOT}/sites/${_DOMAIN}/settings.php" ] ; then
+  if [ ! -e "${_PREV_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
     _DEBUG_MODE=YES
     msg "${_STATUS} B: Testing previous install..."
     msg "${_STATUS} B: OPS, zombie found, moving it to backups..."
@@ -638,7 +638,7 @@ else
     _HM_ROOT="${_ROOT}/aegir/distro/$_L_HM_DISTRO"
     _PREV_HM_ROOT="${_ROOT}/aegir/distro/$_L_LAST_HMR"
     msg "${_STATUS} B: Testing previous install again after removing zombie..."
-    if [ ! -e "${_PREV_HM_ROOT}/sites/${_DOMAIN}/settings.php" ] ; then
+    if [ ! -e "${_PREV_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
       _DEBUG_MODE=YES
       msg "${_STATUS} B: Testing previous install again..."
       msg "${_STATUS} B: OPS, another zombie found, moving it to backups..."
@@ -656,7 +656,7 @@ else
       msg "${_STATUS} B: Let's hope there are no more zombies left..."
     fi
   fi
-  if [ -d "${_HM_ROOT}" ] ; then
+  if [ -d "${_HM_ROOT}" ]; then
     msg "${_STATUS} B: FATAL ERROR: ${_HM_ROOT} already exists"
     msg "${_STATUS} B: FATAL ERROR: Too many zombies to delete! Try again..."
     msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
@@ -680,8 +680,8 @@ else
 
   ### Fix for migrated/merged instances
   if [ -e "${_ROOT}/log/imported.pid" ] \
-    || [ -e "${_ROOT}/log/exported.pid" ] ; then
-    if [ ! -e "${_ROOT}/log/post-merge-fix.pid" ] ; then
+    || [ -e "${_ROOT}/log/exported.pid" ]; then
+    if [ ! -e "${_ROOT}/log/post-merge-fix.pid" ]; then
       msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 start"
       _USE_AEGIR_HOST=$(uname -n 2>&1)
       ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO hosting_context (nid, name) \
@@ -751,7 +751,7 @@ else
       ON pkgi.rid=site.nid JOIN hosting_package pkg \
       ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'" 2>&1)
     _HM_NID=${_HM_NID//[^0-9]/}
-    if [ ! -z "$_HM_NID" ] ; then
+    if [ ! -z "$_HM_NID" ]; then
       msg "${_STATUS} B: Hostmaster STATUS: Fix 1/2 hosting_context $_HM_NID"
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context \
         SET name='hostmaster' WHERE nid='$_HM_NID'" &> /dev/null
@@ -763,7 +763,7 @@ else
 
   ${_DRUSHCMD} cache-clear drush &> /dev/null
   rm -f -r ${_ROOT}/.tmp/cache
-  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
     ${_DRUSHCMD} hostmaster-migrate \
       ${_DOMAIN} ${_HM_ROOT} -y -d
   else
@@ -783,8 +783,8 @@ else
 
   ### Fix for migrated/merged instances
   if [ -e "${_ROOT}/log/imported.pid" ] \
-    || [ -e "${_ROOT}/log/exported.pid" ] ; then
-    if [ ! -e "${_ROOT}/log/post-merge-fix.pid" ] ; then
+    || [ -e "${_ROOT}/log/exported.pid" ]; then
+    if [ ! -e "${_ROOT}/log/post-merge-fix.pid" ]; then
       msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 2/2 start"
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE users_roles \
         SET rid='7' WHERE rid='5'" &> /dev/null
@@ -808,7 +808,7 @@ else
       ON pkgi.rid=site.nid JOIN hosting_package pkg \
       ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'" 2>&1)
     _HM_NID=${_HM_NID//[^0-9]/}
-    if [ ! -z "$_HM_NID" ] ; then
+    if [ ! -z "$_HM_NID" ]; then
       msg "${_STATUS} B: Hostmaster STATUS: Fix 2/2 hosting_context $_HM_NID"
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context \
         SET name='hostmaster' WHERE nid='$_HM_NID'" &> /dev/null
@@ -823,16 +823,16 @@ fi
 
 
 ###--------------------###
-if [ "$_LOCAL_STATUS" = "INIT" ] ; then
+if [ "$_LOCAL_STATUS" = "INIT" ]; then
   _MSG_STATUS="install"
 else
   _MSG_STATUS="upgrade"
 fi
-if [ "${_DEBUG_MODE}" = "YES" ] ; then
+if [ "${_DEBUG_MODE}" = "YES" ]; then
   msg "${_STATUS} B: Simple check if Aegir $_MSG_STATUS is successful"
 fi
-if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ] ; then
-  if [ "${_DEBUG_MODE}" = "YES" ] ; then
+if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} B: Aegir $_MSG_STATUS test result: OK"
   fi
 else
@@ -850,7 +850,7 @@ msg "${_STATUS} B: Enhancing Aegir UI, please wait..."
 mkdir -p ${_HM_ROOT}/sites/all/{modules,themes,libraries}
 cd ${_HM_ROOT}/profiles/hostmaster/modules
 get_dev_ext "aegir_custom_settings-6.x-3.12.tar.gz"
-if [ "${_AEGIR_VERSION}" = "HEAD" ] ; then
+if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
   ${gCb} 6.x-2.x ${gitHub}/hosting_civicrm.git          &> /dev/null
   ${gCb} 6.x-2.x ${gitHub}/hosting_remote_import.git    &> /dev/null
   ${gCb} 6.x-2.x ${gitHub}/hosting_cdn.git              &> /dev/null
@@ -869,7 +869,7 @@ else
   get_dev_ext "hosting_tasks_extra.tar.gz"
 fi
 cd ${_HM_ROOT}/sites/${_DOMAIN}
-if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ] ; then
+if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
 
   pthThis="profiles/hostmaster/modules/hosting_backup_gc"
   sed -i "s/backup_delete/backup-delete/g" \
@@ -888,13 +888,13 @@ if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ] ; then
     ${_HM_ROOT}/${pthThis}/hosting_platform_pathauto.module &> /dev/null
 
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ beng ]] ; then
+  if [[ "${_VM_TEST}" =~ beng ]]; then
     _VMFAMILY="VS"
   else
     _VMFAMILY="XEN"
   fi
-  if [ "${_VMFAMILY}" = "VS" ] ; then
-    if [ -e "/root/.debug.cnf" ] ; then
+  if [ "${_VMFAMILY}" = "VS" ]; then
+    if [ -e "/root/.debug.cnf" ]; then
       _DO_NOTHING=YES
     else
       ${_DRUSHCMD} @hostmaster dis hosting_cdn -y &> /dev/null
@@ -905,20 +905,20 @@ if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ] ; then
     fi
   fi
   cd ${_HM_ROOT}/sites/${_DOMAIN}
-  if [ "${_CLIENT_CORES}" -ge "1" ] ; then
+  if [ "${_CLIENT_CORES}" -ge "1" ]; then
     _ALLOW_CIVICRM=YES
   else
     _ALLOW_CIVICRM=NO
   fi
-  if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
+  if [ "$_ALLOW_CIVICRM" = "YES" ]; then
     ${_DRUSHCMD} @hostmaster en hosting_civicrm -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_civicrm_cron -y &> /dev/null
   else
     ${_DRUSHCMD} @hostmaster dis hosting_civicrm_cron -y &> /dev/null
     ${_DRUSHCMD} @hostmaster dis hosting_civicrm -y &> /dev/null
   fi
-  if [ "${_STATUS}" = "UPGRADE" ] ; then
-    if [ "${_DEBUG_MODE}" = "YES" ] ; then
+  if [ "${_STATUS}" = "UPGRADE" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} B: Uninstalling css_emimage module in debug mode a/u"
       ${_DRUSHCMD} @hostmaster dis css_emimage -y
       ${_DRUSHCMD} @hostmaster clean-modules -y
@@ -950,7 +950,7 @@ if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ] ; then
   ${_DRUSHCMD} @hostmaster ${vSet} hosting_feature_client 1 &> /dev/null
   ${_DRUSHCMD} @hostmaster ${vSet} clone 1 &> /dev/null
   ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_send_welcome 1 &> /dev/null
-  if [ ! -e "${_ROOT}/log/custom_cron" ] ; then
+  if [ ! -e "${_ROOT}/log/custom_cron" ]; then
     _DO_NOTHING=YES
   fi
   ${_DRUSHCMD} @hostmaster ${vSet} \
@@ -989,7 +989,7 @@ if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ] ; then
   ${_DRUSHCMD} @hostmaster fr aegir_custom_settings -y &> /dev/null
   ${_DRUSHCMD} @hostmaster cc all &> /dev/null
   ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
-  if [ "$_LOCAL_STATUS" = "INIT" ] ; then
+  if [ "$_LOCAL_STATUS" = "INIT" ]; then
     ${_DRUSHCMD} @hostmaster ${vSet} \
       site_name "Octopus System powered by Barracuda" &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
@@ -1000,7 +1000,7 @@ if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ] ; then
     rm -f make_home.php
     cp -af /opt/tmp/boa/aegir/helpers/make_client.php.txt ./
     mv -f make_client.php.txt make_client.php &> /dev/null
-    if [ "${_THIS_DB_HOST}" = "localhost" ] ; then
+    if [ "${_THIS_DB_HOST}" = "localhost" ]; then
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
         SET status=-1 WHERE nid=7" &> /dev/null
     else
@@ -1014,7 +1014,7 @@ if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ] ; then
     ${_DRUSHCMD} @hostmaster \
      urol "aegir account manager" --mail=${_CLIENT_EMAIL} &> /dev/null
   fi
-  if [ "${_VMFAMILY}" = "VS" ] ; then
+  if [ "${_VMFAMILY}" = "VS" ]; then
     ${_DRUSHCMD} @hostmaster ${vSet} \
       site_name "Octopus System powered by Barracuda" &> /dev/null
     cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./
@@ -1046,16 +1046,16 @@ sed -i "s/listen .*:80;/listen        \*:80;/g"    ${rPth}_*/nginx/vhost.d/*
 ###---### Aegir global.inc file.
 #
 cd ${_ROOT}
-if [ -e "/data/conf/global.inc" ] ; then
+if [ -e "/data/conf/global.inc" ]; then
   ln -sf /data/conf/global.inc ${_ROOT}/config/includes/global.inc
 fi
 
 ###---### Redis integration.
 #
 if [ ! -e "${_HM_ROOT}/modules/o_contrib/redis_edge" ] \
-  || [ ! -e "${_HM_ROOT}/modules/o_contrib/cache_backport" ] ; then
+  || [ ! -e "${_HM_ROOT}/modules/o_contrib/cache_backport" ]; then
   if [ -e "/data/all/000/modules/redis_edge" ] \
-    && [ -e "/data/all/000/modules/cache_backport" ] ; then
+    && [ -e "/data/all/000/modules/cache_backport" ]; then
     mkdir -p ${_HM_ROOT}/modules/o_contrib
     rm -f ${_HM_ROOT}/modules/o_contrib/{cache_backport,redis_edge,redis}
     ln -s /data/all/000/modules/redis_edge \

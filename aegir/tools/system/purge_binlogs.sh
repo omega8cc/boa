@@ -7,7 +7,7 @@ count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc 2>&1)
-  if [ -z "${_NPROC_TEST}" ] ; then
+  if [ -z "${_NPROC_TEST}" ]; then
     _CPU_NR="${_CPU_INFO}"
   else
     _CPU_NR=$(nproc 2>&1)
@@ -16,21 +16,21 @@ count_cpu() {
   if [ ! -z "${_CPU_NR}" ] \
     && [ ! -z "${_CPU_INFO}" ] \
     && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
-    && [ "${_CPU_INFO}" -gt "0" ] ; then
+    && [ "${_CPU_INFO}" -gt "0" ]; then
     _CPU_NR="${_CPU_INFO}"
   fi
   if [ -z "${_CPU_NR}" ] \
-    || [ "${_CPU_NR}" -lt "1" ] ; then
+    || [ "${_CPU_NR}" -lt "1" ]; then
     _CPU_NR=1
   fi
 }
 
 load_control() {
-  if [ -e "/root/.barracuda.cnf" ] ; then
+  if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
     _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
   fi
-  if [ -z "${_CPU_MAX_RATIO}" ] ; then
+  if [ -z "${_CPU_MAX_RATIO}" ]; then
     _CPU_MAX_RATIO=6
   fi
   _O_LOAD=$(awk '{print $1*100}' /proc/loadavg 2>&1)
@@ -41,7 +41,7 @@ load_control() {
 action() {
   count_cpu
   load_control
-  if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ] ; then
+  if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ]; then
     echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
 /usr/bin/mysql --default-character-set=utf8 mysql<<EOFMYSQL
 PURGE MASTER LOGS BEFORE DATE_SUB( NOW( ), INTERVAL 1 HOUR);
@@ -50,7 +50,7 @@ EOFMYSQL
   fi
 }
 
-if [ -e "/var/run/boa_wait.pid" ] ; then
+if [ -e "/var/run/boa_wait.pid" ]; then
   touch /var/xdrago/log/wait-purge
   exit 0
 else

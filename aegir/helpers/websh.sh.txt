@@ -5,48 +5,48 @@ _ALL="$@"
 _INTERNAL=NO
 _LTD_GID=$(id -nG ${USER} 2>&1)
 _LTD_UID=$(id -nu ${USER} 2>&1)
-if [ -z "${USER}" ] ; then
+if [ -z "${USER}" ]; then
   USER=$(id -nu ${USER} 2>&1)
   _LTD_QQQ=YES
 fi
 _X_USR=".*"
 if [ "${USER}" = "aegir" ] \
-  || [ "${HOME}" = "/var/aegir" ] ; then
+  || [ "${HOME}" = "/var/aegir" ]; then
   _Y_USR=aegir
 else
   _Y_USR=${USER%${_X_USR}}
 fi
-if [ -z "${HOME}" ] ; then
-  if [ -d "/home/${USER}/.tmp" ] ; then
+if [ -z "${HOME}" ]; then
+  if [ -d "/home/${USER}/.tmp" ]; then
     HOME="/home/${USER}"
-  elif [ -d "/data/disk/${_Y_USR}/.tmp" ] ; then
+  elif [ -d "/data/disk/${_Y_USR}/.tmp" ]; then
     HOME="/data/disk/${_Y_USR}"
-  elif [ -d "/var/${_Y_USR}/.tmp" ] ; then
+  elif [ -d "/var/${_Y_USR}/.tmp" ]; then
     HOME="/var/${_Y_USR}"
   fi
 fi
-if [ "$1" = "-c" ] ; then
+if [ "$1" = "-c" ]; then
   _ARGS="$2"
 else
   _ARGS="$1"
 fi
 
-if [ -d "/home/${USER}/.tmp" ] ; then
+if [ -d "/home/${USER}/.tmp" ]; then
   export TMP="/home/${USER}/.tmp"
   export TMPDIR="/home/${USER}/.tmp"
   export TEMP="/home/${USER}/.tmp"
   if [[ "${_ARGS}" =~ " id " ]] \
-    || [[ "${_ARGS}" =~ (^)"id " ]] ; then
+    || [[ "${_ARGS}" =~ (^)"id " ]]; then
     exit 1
   elif [[ "${_ARGS}" =~ (^)"newrelic" ]] \
-    || [[ "${_ARGS}" =~ (^)"nrsysm" ]] ; then
+    || [[ "${_ARGS}" =~ (^)"nrsysm" ]]; then
     exit 1
   fi
-elif [ -d "/data/disk/${_Y_USR}/.tmp" ] ; then
+elif [ -d "/data/disk/${_Y_USR}/.tmp" ]; then
   export TMP="/data/disk/${_Y_USR}/.tmp"
   export TMPDIR="/data/disk/${_Y_USR}/.tmp"
   export TEMP="/data/disk/${_Y_USR}/.tmp"
-elif [ -d "/var/${_Y_USR}/.tmp" ] ; then
+elif [ -d "/var/${_Y_USR}/.tmp" ]; then
   export TMP="/var/${_Y_USR}/.tmp"
   export TMPDIR="/var/${_Y_USR}/.tmp"
   export TEMP="/var/${_Y_USR}/.tmp"
@@ -76,32 +76,32 @@ fi
 
 # Check PHP CLI version defined.
 check_php_cli_version() {
-  if [ "${HOME}" = "/var/aegir" ] ; then
+  if [ "${HOME}" = "/var/aegir" ]; then
     _PHP_CLI=$(grep "/opt/php" /var/aegir/drush/drush.php 2>&1)
-  elif [[ "${HOME}" =~ "/data/disk/" ]] ; then
+  elif [[ "${HOME}" =~ "/data/disk/" ]]; then
     _PHP_CLI=$(grep "/opt/php" /data/disk/${_Y_USR}/tools/drush/drush.php 2>&1)
   else
-    if [ -f "/data/disk/${_Y_USR}/tools/drush/drush.php" ] ; then
+    if [ -f "/data/disk/${_Y_USR}/tools/drush/drush.php" ]; then
       _PHP_CLI=$(grep "/opt/php" /data/disk/${_Y_USR}/tools/drush/drush.php 2>&1)
     fi
   fi
-  if [[ "${_PHP_CLI}" =~ "php55" ]] ; then
+  if [[ "${_PHP_CLI}" =~ "php55" ]]; then
     DRUSH_PHP="/opt/php55/bin/php"
     PHP_INI="/opt/php55/lib/php.ini"
-  elif [[ "${_PHP_CLI}" =~ "php56" ]] ; then
+  elif [[ "${_PHP_CLI}" =~ "php56" ]]; then
     DRUSH_PHP="/opt/php56/bin/php"
     PHP_INI="/opt/php56/lib/php.ini"
-  elif [[ "${_PHP_CLI}" =~ "php54" ]] ; then
+  elif [[ "${_PHP_CLI}" =~ "php54" ]]; then
     DRUSH_PHP="/opt/php54/bin/php"
     PHP_INI="/opt/php54/lib/php.ini"
-  elif [[ "${_PHP_CLI}" =~ "php53" ]] ; then
+  elif [[ "${_PHP_CLI}" =~ "php53" ]]; then
     DRUSH_PHP="/opt/php53/bin/php"
     PHP_INI="/opt/php53/lib/php.ini"
   else
     DRUSH_PHP=""
     PHP_INI=""
   fi
-  if [ ! -z "${PHP_OPTIONS}" ] && [ -f "${HOME}/.drush/rphp.ini" ] ; then
+  if [ ! -z "${PHP_OPTIONS}" ] && [ -f "${HOME}/.drush/rphp.ini" ]; then
     PHP_INI="${HOME}/.drush/rphp.ini"
     # echo 1 PHP_OPTIONS is ${PHP_OPTIONS}
   fi
@@ -113,33 +113,33 @@ if [ "${_LTD_GID}" = "www-data users" ] \
   || [[ "${_LTD_GID}" =~ "lshellg"($) ]] \
   || [[ "${_LTD_GID}" =~ "ltd-shell"($) ]] \
   || [[ "${_LTD_GID}" =~ (^)"users www-data"($) ]] \
-  || [[ "${_LTD_GID}" =~ (^)"aegir www-data users"($) ]] ; then
-  if [ "$1" = "-c" ] ; then
-    if [[ "$2" =~ "set -m;" ]] && [ "$0" = "/bin/sh" ] ; then
+  || [[ "${_LTD_GID}" =~ (^)"aegir www-data users"($) ]]; then
+  if [ "$1" = "-c" ]; then
+    if [[ "$2" =~ "set -m;" ]] && [ "$0" = "/bin/sh" ]; then
       _IN_PATH=YES
       _INTERNAL=YES
-      if [[ "${_ALL}" =~ "drush" ]] ; then
+      if [[ "${_ALL}" =~ "drush" ]]; then
         _PWD=$(pwd 2>&1)
         check_php_cli_version
-        if [[ "$2" =~ "pm-update" ]] ; then
+        if [[ "$2" =~ "pm-update" ]]; then
           DRUSH_PHP=""
           _PHP_DEFAULT=$(/usr/bin/php-cli -v | grep 'PHP 5' \
             | cut -d: -f1 | awk '{ print $2}' 2>&1)
-          if [[ "${_PHP_DEFAULT}" =~ "5.5." ]] ; then
+          if [[ "${_PHP_DEFAULT}" =~ "5.5." ]]; then
             PHP_INI="/opt/php55/lib/php.ini"
-          elif [[ "${_PHP_DEFAULT}" =~ "5.6." ]] ; then
+          elif [[ "${_PHP_DEFAULT}" =~ "5.6." ]]; then
             PHP_INI="/opt/php56/lib/php.ini"
-          elif [[ "${_PHP_DEFAULT}" =~ "5.4." ]] ; then
+          elif [[ "${_PHP_DEFAULT}" =~ "5.4." ]]; then
             PHP_INI="/opt/php54/lib/php.ini"
-          elif [[ "${_PHP_DEFAULT}" =~ "5.3." ]] ; then
+          elif [[ "${_PHP_DEFAULT}" =~ "5.3." ]]; then
             PHP_INI="/opt/php53/lib/php.ini"
           fi
         else
-          if [ -f "${HOME}/.drush/php.ini" ] ; then
+          if [ -f "${HOME}/.drush/php.ini" ]; then
             PHP_INI="${HOME}/.drush/php.ini"
           fi
           if [ ! -z "${PHP_OPTIONS}" ] \
-            && [ -f "${HOME}/.drush/rphp.ini" ] ; then
+            && [ -f "${HOME}/.drush/rphp.ini" ]; then
             PHP_INI="${HOME}/.drush/rphp.ini"
             # echo 2 PHP_OPTIONS is ${PHP_OPTIONS}
           fi
@@ -150,19 +150,19 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "${_ALL}" =~ "drush7 make" ]] \
           || [[ "${_ALL}" =~ "drush7 cc drush" ]] \
           || [[ "${_ALL}" =~ "drush6 make" ]] \
-          || [[ "${_ALL}" =~ "drush6 cc drush" ]] ; then
+          || [[ "${_ALL}" =~ "drush6 cc drush" ]]; then
           if [[ "${_PWD}" =~ "/static" ]] \
             || [[ "${_ALL}" =~ "drush7 cc drush" ]] \
-            || [[ "${_ALL}" =~ "drush6 cc drush" ]] ; then
+            || [[ "${_ALL}" =~ "drush6 cc drush" ]]; then
             _CORRECT=YES
           else
             if [[ "${_ALL}" =~ "make-generate" ]] \
-              && [ -f "${_PWD}/settings.php" ] ; then
+              && [ -f "${_PWD}/settings.php" ]; then
               _CORRECT=YES
             else
               echo
               echo " This drush command can not be run in ${_PWD}"
-              if [[ "$2" =~ "make-generate" ]] ; then
+              if [[ "$2" =~ "make-generate" ]]; then
                 echo " Please cd to the valid sites/foo.com directory first"
                 echo " or use a valid @alias, like: drush @foo.com status"
                 echo " Hint: Use 'drush aliases' to display all aliases"
@@ -176,7 +176,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         else
           if [[ "${_ALL}" =~ "drush @" ]] \
             || [[ "${_ALL}" =~ "drush7 @" ]] \
-            || [[ "${_ALL}" =~ "drush6 @" ]] ; then
+            || [[ "${_ALL}" =~ "drush6 @" ]]; then
             if [[ "$3" =~ "restore"($) ]] \
               || [[ "$3" =~ "arr"($) ]] \
               || [[ "$3" =~ "cli"($) ]] \
@@ -197,7 +197,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
               || [[ "$3" =~ (^)"si"($) ]] \
               || [[ "$3" =~ "sql-create"($) ]] \
               || [[ "$3" =~ (^)"ssh"($) ]] \
-              || [[ "$3" =~ (^)"sup"($) ]] ; then
+              || [[ "$3" =~ (^)"sup"($) ]]; then
               echo
               echo " This drush command is not available (A)"
               echo
@@ -216,11 +216,11 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             || [[ "${_ALL}" =~ "-c set -m; drush6 help" ]] \
             || [[ "${_ALL}" =~ "drush6 dl" ]] \
             || [[ "${_ALL}" =~ "drush6 pm-download" ]] \
-            || [[ "${_ALL}" =~ "drush6 sa" ]] ; then
+            || [[ "${_ALL}" =~ "drush6 sa" ]]; then
             _CORRECT=YES
           else
             if [[ "${_ALL}" =~ "-c set -m; drush" ]] \
-              && [ ! -f "${_PWD}/settings.php" ] ; then
+              && [ ! -f "${_PWD}/settings.php" ]; then
               echo
               echo " This drush command can not be run in ${_PWD}"
               echo " Please cd to the valid sites/foo.com directory first"
@@ -228,7 +228,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
               echo " Hint: Use 'drush aliases' to display all aliases"
               echo
               exit 0
-            elif [[ "${_ALL}" =~ "drush" ]] && [ -f "${_PWD}/settings.php" ] ; then
+            elif [[ "${_ALL}" =~ "drush" ]] && [ -f "${_PWD}/settings.php" ]; then
               _CORRECT=YES
             fi
           fi
@@ -237,7 +237,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     else
       if [[ "${_ALL}" =~ "drush @" ]] \
         || [[ "${_ALL}" =~ "drush7 @" ]] \
-        || [[ "${_ALL}" =~ "drush6 @" ]] ; then
+        || [[ "${_ALL}" =~ "drush6 @" ]]; then
         if [[ "$3" =~ "restore"($) ]] \
           || [[ "$3" =~ "arr"($) ]] \
           || [[ "$3" =~ "cli"($) ]] \
@@ -258,7 +258,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "$3" =~ (^)"si"($) ]] \
           || [[ "$3" =~ "sql-create"($) ]] \
           || [[ "$3" =~ (^)"ssh"($) ]] \
-          || [[ "$3" =~ (^)"sup"($) ]] ; then
+          || [[ "$3" =~ (^)"sup"($) ]]; then
           echo
           echo " This drush command is not available (B)"
           echo
@@ -268,35 +268,35 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       _RAW_IN_PATH=${2//[^a-z/]/}
       if [[ "$2" =~ (^)"/usr/" ]] \
         || [[ "$2" =~ (^)"/bin/" ]] \
-        || [[ "$2" =~ (^)"/opt/" ]] ; then
+        || [[ "$2" =~ (^)"/opt/" ]]; then
         _IN_PATH=YES
-      elif [[ "$2" =~ (^)"/data/disk/${_Y_USR}/tools/drush/drush.php" ]] ; then
+      elif [[ "$2" =~ (^)"/data/disk/${_Y_USR}/tools/drush/drush.php" ]]; then
         _IN_PATH=YES
-      elif [[ "$2" =~ (^)"(/data/disk/${_Y_USR}/tools/drush/drush.php" ]] ; then
+      elif [[ "$2" =~ (^)"(/data/disk/${_Y_USR}/tools/drush/drush.php" ]]; then
         _IN_PATH=YES
-      elif [[ "$2" =~ (^)"/var/${_Y_USR}/drush/drush.php" ]] ; then
+      elif [[ "$2" =~ (^)"/var/${_Y_USR}/drush/drush.php" ]]; then
         _IN_PATH=YES
-      elif [[ "$2" =~ (^)"(/var/${_Y_USR}/drush/drush.php" ]] ; then
+      elif [[ "$2" =~ (^)"(/var/${_Y_USR}/drush/drush.php" ]]; then
         _IN_PATH=YES
-      elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/wkhtmltopdf" ]] ; then
+      elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/wkhtmltopdf" ]]; then
         _IN_PATH=YES
-      elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/wkhtmltoimage" ]] ; then
+      elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/wkhtmltoimage" ]]; then
         _IN_PATH=YES
-      elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/convert" ]] ; then
+      elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/convert" ]]; then
         _IN_PATH=YES
-      elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/gs" ]] ; then
+      elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/gs" ]]; then
         _IN_PATH=YES
       elif [[ "$2" =~ (^)"/home/" ]] \
         || [[ "$2" =~ (^)"/data/" ]] \
         || [[ "$2" =~ (^)"/tmp/" ]]; then
-        if [ -e "$2" ] ; then
+        if [ -e "$2" ]; then
           _IN_PATH=NO
         fi
       else
         _WHICH_TEST=$(which $2 2>&1)
         if [[ "${_WHICH_TEST}" =~ (^)"/usr/" ]] \
           || [[ "${_WHICH_TEST}" =~ (^)"/bin/" ]] \
-          || [[ "${_WHICH_TEST}" =~ (^)"/opt/" ]] ; then
+          || [[ "${_WHICH_TEST}" =~ (^)"/opt/" ]]; then
           _IN_PATH=YES
         else
           _IN_PATH=NO
@@ -306,7 +306,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
   else
     if [[ "${_ALL}" =~ "drush @" ]] \
       || [[ "${_ALL}" =~ "drush7 @" ]] \
-      || [[ "${_ALL}" =~ "drush6 @" ]] ; then
+      || [[ "${_ALL}" =~ "drush6 @" ]]; then
       if [[ "$3" =~ "restore"($) ]] \
         || [[ "$3" =~ "arr"($) ]] \
         || [[ "$3" =~ "cli"($) ]] \
@@ -327,7 +327,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         || [[ "$3" =~ (^)"si"($) ]] \
         || [[ "$3" =~ "sql-create"($) ]] \
         || [[ "$3" =~ (^)"ssh"($) ]] \
-        || [[ "$3" =~ (^)"sup"($) ]] ; then
+        || [[ "$3" =~ (^)"sup"($) ]]; then
         echo
         echo " This drush command is not available (C)"
         echo
@@ -336,46 +336,46 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     fi
     if [[ "$1" =~ (^)"/usr/" ]] \
       || [[ "$1" =~ (^)"/bin/" ]] \
-      || [[ "$1" =~ (^)"/opt/" ]] ; then
+      || [[ "$1" =~ (^)"/opt/" ]]; then
       _IN_PATH=YES
-      if [ -z "${PHP_INI}" ] && [[ "$1" =~ "drush" ]] ; then
+      if [ -z "${PHP_INI}" ] && [[ "$1" =~ "drush" ]]; then
         check_php_cli_version
-        if [ -f "${HOME}/.drush/php.ini" ] ; then
+        if [ -f "${HOME}/.drush/php.ini" ]; then
           PHP_INI="${HOME}/.drush/php.ini"
         fi
-        if [ ! -z "${PHP_OPTIONS}" ] && [ -f "${HOME}/.drush/rphp.ini" ] ; then
+        if [ ! -z "${PHP_OPTIONS}" ] && [ -f "${HOME}/.drush/rphp.ini" ]; then
           PHP_INI="${HOME}/.drush/rphp.ini"
           # echo 3 PHP_OPTIONS is ${PHP_OPTIONS}
         fi
         # echo 2 DRUSH_PHP is ${DRUSH_PHP}
         # echo 2 PHP_INI is ${PHP_INI}
       fi
-    elif [[ "$1" =~ (^)"/data/disk/${_Y_USR}/tools/drush/drush.php" ]] ; then
+    elif [[ "$1" =~ (^)"/data/disk/${_Y_USR}/tools/drush/drush.php" ]]; then
       _IN_PATH=YES
-    elif [[ "$1" =~ (^)"(/data/disk/${_Y_USR}/tools/drush/drush.php" ]] ; then
+    elif [[ "$1" =~ (^)"(/data/disk/${_Y_USR}/tools/drush/drush.php" ]]; then
       _IN_PATH=YES
-    elif [[ "$1" =~ (^)"/var/${_Y_USR}/drush/drush.php" ]] ; then
+    elif [[ "$1" =~ (^)"/var/${_Y_USR}/drush/drush.php" ]]; then
       _IN_PATH=YES
-    elif [[ "$1" =~ (^)"(/var/${_Y_USR}/drush/drush.php" ]] ; then
+    elif [[ "$1" =~ (^)"(/var/${_Y_USR}/drush/drush.php" ]]; then
       _IN_PATH=YES
     elif [[ "$1" =~ (^)"/home/" ]] \
       || [[ "$1" =~ (^)"/data/" ]] \
-      || [[ "$1" =~ (^)"/tmp/" ]] ; then
-      if [ -e "$1" ] ; then
+      || [[ "$1" =~ (^)"/tmp/" ]]; then
+      if [ -e "$1" ]; then
         _IN_PATH=NO
       fi
     else
       _WHICH_TEST=$(which $1 2>&1)
       if [[ "${_WHICH_TEST}" =~ (^)"/usr/" ]] \
         || [[ "${_WHICH_TEST}" =~ (^)"/bin/" ]] \
-        || [[ "${_WHICH_TEST}" =~ (^)"/opt/" ]] ; then
+        || [[ "${_WHICH_TEST}" =~ (^)"/opt/" ]]; then
         _IN_PATH=YES
-        if [ -z "${PHP_INI}" ] && [[ "$1" =~ "drush" ]] ; then
+        if [ -z "${PHP_INI}" ] && [[ "$1" =~ "drush" ]]; then
           check_php_cli_version
-          if [ -f "${HOME}/.drush/php.ini" ] ; then
+          if [ -f "${HOME}/.drush/php.ini" ]; then
             PHP_INI="${HOME}/.drush/php.ini"
           fi
-          if [ ! -z "${PHP_OPTIONS}" ] && [ -f "${HOME}/.drush/rphp.ini" ] ; then
+          if [ ! -z "${PHP_OPTIONS}" ] && [ -f "${HOME}/.drush/rphp.ini" ]; then
             PHP_INI="${HOME}/.drush/rphp.ini"
             # echo 4 PHP_OPTIONS is ${PHP_OPTIONS}
           fi
@@ -388,9 +388,9 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     fi
   fi
   if [[ "${_LTD_GID}" =~ "lshellg"($) ]] \
-    || [[ "${_LTD_GID}" =~ "ltd-shell"($) ]] ; then
-    if [[ "${_ALL}" =~ "*" ]] ; then
-      if [[ "${_ALL}" =~ "-c set -m; " ]] ; then
+    || [[ "${_LTD_GID}" =~ "ltd-shell"($) ]]; then
+    if [[ "${_ALL}" =~ "*" ]]; then
+      if [[ "${_ALL}" =~ "-c set -m; " ]]; then
         _SILENT=YES
       else
         if [[ "${_ALL}" =~ "__build__" ]] \
@@ -422,7 +422,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "${_ALL}" =~ "tar " ]] \
           || [[ "${_ALL}" =~ "wget " ]] \
           || [[ "${_ALL}" =~ "wkhtmltoimage" ]] \
-          || [[ "${_ALL}" =~ "wkhtmltopdf" ]] ; then
+          || [[ "${_ALL}" =~ "wkhtmltopdf" ]]; then
           _SILENT=YES
         else
           echo
@@ -430,13 +430,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       fi
     fi
   fi
-  if [ "${_IN_PATH}" = "YES" ] ; then
+  if [ "${_IN_PATH}" = "YES" ]; then
     if [[ "${_ALL}" =~ "-c set -m; " ]] \
-      && [ -x "/home/${USER}/.rvm/bin/rvm" ] ; then
+      && [ -x "/home/${USER}/.rvm/bin/rvm" ]; then
       _THIS_RV=$(lsb_release -sc 2>&1)
       if [ "${_THIS_RV}" = "wheezy" ] \
         || [ "${_THIS_RV}" = "trusty" ] \
-        || [ "${_THIS_RV}" = "precise" ] ; then
+        || [ "${_THIS_RV}" = "precise" ]; then
         _DETECTED_RUBY_VP=$(grep 'RUBY_VERSION' \
           /home/${USER}/.rvm/environments/default \
           | cut -d= -f2 \
@@ -444,7 +444,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           | sed "s/'//g" \
           | sed "s/ruby-//g" 2>&1)
         if [ ! -z "${_DETECTED_RUBY_VP}" ] \
-          && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ] ; then
+          && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ]; then
           _RUBY_VP="${_DETECTED_RUBY_VP}"
         else
           _RUBY_VP=2.2.0
@@ -457,7 +457,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           | sed "s/'//g" \
           | sed "s/ruby-//g" 2>&1)
         if [ ! -z "${_DETECTED_RUBY_VP}" ] \
-          && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ] ; then
+          && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ]; then
           _RUBY_VP="${_DETECTED_RUBY_VP}"
         else
           _RUBY_VP=2.0.0-p598
@@ -478,8 +478,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       unset RBXOPT
       export RUBY_VERSION="ruby-${_RUBY_VP}"
     fi
-    if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ] ; then
-      if [ -x "/bin/dash" ] ; then
+    if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ]; then
+      if [ -x "/bin/dash" ]; then
         export DRUSH_PHP;export PHP_INI;exec /bin/dash "$@"
       else
         export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
@@ -492,13 +492,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     exit 1
   fi
 else
-  if [ "${USER}" = "root" ] ; then
+  if [ "${USER}" = "root" ]; then
     if [[ "$1" =~ "drush" ]] \
-      || [[ "$2" =~ "drush" ]] ; then
+      || [[ "$2" =~ "drush" ]]; then
       if [[ "$2" =~ "uli" ]] \
         || [[ "$2" =~ "vget" ]] \
         || [[ "$2" =~ "vset" ]] \
-        || [[ "$2" =~ "status" ]] ; then
+        || [[ "$2" =~ "status" ]]; then
         _ALLOW=YES
       else
         echo
@@ -510,17 +510,17 @@ else
     fi
   fi
   check_php_cli_version
-  if [ -f "${HOME}/.drush/php.ini" ] ; then
+  if [ -f "${HOME}/.drush/php.ini" ]; then
     PHP_INI="${HOME}/.drush/php.ini"
   fi
-  if [ ! -z "${PHP_OPTIONS}" ] && [ -f "${HOME}/.drush/rphp.ini" ] ; then
+  if [ ! -z "${PHP_OPTIONS}" ] && [ -f "${HOME}/.drush/rphp.ini" ]; then
     PHP_INI="${HOME}/.drush/rphp.ini"
     # echo 5 PHP_OPTIONS is ${PHP_OPTIONS}
   fi
   # echo 4 DRUSH_PHP is ${DRUSH_PHP}
   # echo 4 PHP_INI is ${PHP_INI}
-  if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ] ; then
-    if [ -x "/bin/dash" ] ; then
+  if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ]; then
+    if [ -x "/bin/dash" ]; then
       export DRUSH_PHP;export PHP_INI;exec /bin/dash "$@"
     else
       export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"

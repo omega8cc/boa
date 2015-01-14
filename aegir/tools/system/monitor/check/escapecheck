@@ -40,14 +40,14 @@ local(@MYARR) = `grep -i forbidden /var/log/lsh/*.log | tail --lines=999 2>&1`;
       if ($line =~ /(var\/log\/lsh)/i) {
         ($log, $line) = split(/.log:/,$line);
       }
-      local($DATEQ, $TIMEQ, $rest) = split(/\s+/,$line);
-      local($TIMEX, $rest) = split(/\,/,$TIMEQ);
+      local($DATEQ, ${TIME}Q, $rest) = split(/\s+/,$line);
+      local(${TIME}X, $rest) = split(/\,/,${TIME}Q);
       chomp($DATEQ);
-      chomp($TIMEX);
+      chomp(${TIME}X);
       chomp($line);
-      $TIMEX =~ s/[^0-9\:]//g;
-      if ($TIMEX =~ /^[0-9]/) {
-        local($HOUR, $MIN, $SEC) = split(/:/,$TIMEX);
+      ${TIME}X =~ s/[^0-9\:]//g;
+      if (${TIME}X =~ /^[0-9]/) {
+        local($HOUR, $MIN, $SEC) = split(/:/,${TIME}X);
         $log_is="$DATEQ $HOUR:$MIN";
         if ($now_is eq $log_is) {
           $status="ERROR";

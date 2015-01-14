@@ -1,41 +1,41 @@
 #!/bin/bash
 
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-_REL_VERSION=$(lsb_release -sc 2>&1)
+_OSV=$(lsb_release -sc 2>&1)
 _OPENSSL_VRN=1.0.1j
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
   | awk '{ print $1}')
-if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ] ; then
+if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ]; then
   _NEW_SSL=YES
 fi
 
 randpass() {
-  if [ "${integer}" -ge "8" ] ; then
+  if [ "${integer}" -ge "8" ]; then
     rkey="${integer}"
   else
     rkey=32
   fi
-  if [ "${kind}" = "graph" ] ; then
+  if [ "${kind}" = "graph" ]; then
     CHAR="[:graph:]"
     cat /dev/urandom \
       | tr -cd "$CHAR" \
       | head -c ${1:-$rkey} \
       | tr -d "\n"
-  elif [ "${kind}" = "esc" ] ; then
+  elif [ "${kind}" = "esc" ]; then
     CHAR="[:graph:]"
     cat /dev/urandom \
       | tr -cd "$CHAR" \
       | head -c ${1:-$rkey} \
       | tr -d "\n" \
       | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
-  elif [ "${kind}" = "hash" ] ; then
+  elif [ "${kind}" = "hash" ]; then
     CHAR="[:alnum:]"
     if [ "$_NEW_SSL" = "YES" ] \
-      || [ "${_REL_VERSION}" = "wheezy" ] \
-      || [ "${_REL_VERSION}" = "trusty" ] \
-      || [ "${_REL_VERSION}" = "precise" ] ; then
+      || [ "${_OSV}" = "wheezy" ] \
+      || [ "${_OSV}" = "trusty" ] \
+      || [ "${_OSV}" = "precise" ]; then
       cat /dev/urandom \
         | tr -cd "$CHAR" \
         | head -c ${1:-$rkey} \
