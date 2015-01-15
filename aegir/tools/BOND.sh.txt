@@ -160,7 +160,7 @@ _PHP55_VRN=5.5.20
 _PHP56_API=20131226
 _PHP56_VRN=5.6.4
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-
+vBs="/var/backups"
 
 ###---### Functions
 #
@@ -527,23 +527,23 @@ restore_default_php() {
 #
 tune_php() {
   msg "INFO: Tuning PHP configuration"
-  if [ "$_TUNE_PHP_FPM_TIMEOUT" -lt "60" ]; then
+  if [ "${_TUNE_PHP_FPM_TIMEOUT}" -lt "60" ]; then
     _TUNE_PHP_FPM_TIMEOUT=60
   fi
   # PHP-FPM pools
-  sed -i "s/180s/${_TUNE_PHP_FPM_TIMEOUT}s/g" /opt/php*/etc/pool.d/*.conf                                         &> /dev/null
-  sed -i "s/180s/${_TUNE_PHP_FPM_TIMEOUT}s/g" /opt/php*/etc/php*-fpm.conf                                         &> /dev/null
-  sed -i "s/180/$_TUNE_PHP_FPM_TIMEOUT/g" /opt/etc/fpm/fpm-pool-common.conf                                       &> /dev/null
+  sed -i "s/180s/${_TUNE_PHP_FPM_TIMEOUT}s/g" /opt/php*/etc/pool.d/*.conf                                           &> /dev/null
+  sed -i "s/180s/${_TUNE_PHP_FPM_TIMEOUT}s/g" /opt/php*/etc/php*-fpm.conf                                           &> /dev/null
+  sed -i "s/180/${_TUNE_PHP_FPM_TIMEOUT}/g" /opt/etc/fpm/fpm-pool-common.conf                                       &> /dev/null
   # PHP-FPM INI
-  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = $_TUNE_PHP_FPM_TIMEOUT/g" /opt/php*/etc/php*.ini &> /dev/null
-  sed -i "s/^max_execution_time =.*/max_execution_time = $_TUNE_PHP_FPM_TIMEOUT/g" /opt/php*/etc/php*.ini         &> /dev/null
-  sed -i "s/^max_input_time =.*/max_input_time = $_TUNE_PHP_FPM_TIMEOUT/g" /opt/php*/etc/php*.ini                 &> /dev/null
+  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = ${_TUNE_PHP_FPM_TIMEOUT}/g" /opt/php*/etc/php*.ini &> /dev/null
+  sed -i "s/^max_execution_time =.*/max_execution_time = ${_TUNE_PHP_FPM_TIMEOUT}/g" /opt/php*/etc/php*.ini         &> /dev/null
+  sed -i "s/^max_input_time =.*/max_input_time = ${_TUNE_PHP_FPM_TIMEOUT}/g" /opt/php*/etc/php*.ini                 &> /dev/null
   # PHP-CLI INI
-  sed -i "s/^max_execution_time =.*/max_execution_time = $_TUNE_PHP_CLI_TIMEOUT/g" /opt/php*/lib/php.ini          &> /dev/null
-  sed -i "s/^max_input_time =.*/max_input_time = $_TUNE_PHP_CLI_TIMEOUT/g" /opt/php*/lib/php.ini                  &> /dev/null
-  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = $_TUNE_PHP_CLI_TIMEOUT/g" /opt/php*/lib/php.ini  &> /dev/null
+  sed -i "s/^max_execution_time =.*/max_execution_time = ${_TUNE_PHP_CLI_TIMEOUT}/g" /opt/php*/lib/php.ini          &> /dev/null
+  sed -i "s/^max_input_time =.*/max_input_time = ${_TUNE_PHP_CLI_TIMEOUT}/g" /opt/php*/lib/php.ini                  &> /dev/null
+  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = ${_TUNE_PHP_CLI_TIMEOUT}/g" /opt/php*/lib/php.ini  &> /dev/null
   # Redis config should sync with PHP-CLI
-  sed -i "s/^timeout .*/timeout $_TUNE_PHP_CLI_TIMEOUT/g" /etc/redis/redis.conf                                   &> /dev/null
+  sed -i "s/^timeout .*/timeout ${_TUNE_PHP_CLI_TIMEOUT}/g" /etc/redis/redis.conf                                   &> /dev/null
 }
 #
 # Update innodb_log_file_size.
@@ -553,10 +553,10 @@ update_innodb_log_file_size() {
   mrun "sleep 5"
   if [ ! -e "/var/run/mysqld/mysqld.sock" ] \
     && [ ! -e "/var/run/mysqld/mysqld.pid" ]; then
-    mkdir -p /var/backups/old-sql-ib-log-${_NOW}
+    mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
     mrun "sleep 5"
-    mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-sql-ib-log-${_NOW}/ &> /dev/null
-    mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-sql-ib-log-${_NOW}/ &> /dev/null
+    mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+    mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
     mrun "sleep 5"
   fi
@@ -566,17 +566,22 @@ update_innodb_log_file_size() {
 restore_default_sql() {
   msg "INFO: Restoring default SQL configuration"
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
-  if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] || [[ "${_THISHOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+  if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
+    || [[ "${_THISHOST}" =~ ".host8." ]] \
+    || [ "${_VMFAMILY}" = "VS" ]; then
     if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
       _DO_NOTHING=YES
     else
-      cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      cp -af /etc/mysql/my.cnf \
+        /var/backups/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW} &> /dev/null
       cp -af /opt/tmp/boa/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
       _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
       if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "10" ] && [ "${_INNODB_LOG_FILE_SIZE}" -lt "501" ]; then
+        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "10" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "501" ]; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
-          _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" /var/backups/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW} 2>&1)
+          _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
+            /var/backups/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW} 2>&1)
           if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
             _INNODB_LOG_FILE_SIZE_SAME=YES
           else
@@ -596,14 +601,16 @@ restore_default_sql() {
   sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
   sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
   _THIS_DB_SERVER_TEST=$(mysql -V 2>&1)
-  if [[ "${_THIS_DB_SERVER_TEST}" =~ "5.5." ]] || [[ "${_THIS_DB_SERVER_TEST}" =~ "10.0" ]]; then
+  if [[ "${_THIS_DB_SERVER_TEST}" =~ "5.5." ]] \
+    || [[ "${_THIS_DB_SERVER_TEST}" =~ "10.0" ]]; then
     _DO_NOTHING=YES
   else
     sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf &> /dev/null
     sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf &> /dev/null
   fi
   if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
-    sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" \
+      /etc/mysql/my.cnf &> /dev/null
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
@@ -619,17 +626,20 @@ restore_default_sql() {
       sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
     fi
     if [ "${_DB_ENGINE}" = "MyISAM" ] || [ "${_DB_ENGINE}" = "InnoDB" ]; then
-      sed -i "s/^default_storage_engine.*/default_storage_engine  = ${_DB_ENGINE}/g" /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^default_storage_engine.*/default_storage_engine  = ${_DB_ENGINE}/g" \
+        /etc/mysql/my.cnf &> /dev/null
     fi
     if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "10" ] && [ "${_INNODB_LOG_FILE_SIZE}" -lt "501" ]; then
+      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "10" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "501" ]; then
         _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
         _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" /etc/mysql/my.cnf 2>&1)
         if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
           _DO_NOTHING=YES
         else
           if [ "${_INNODB_LOG_FILE_SIZE_SAME}" = "YES" ]; then
-            sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf &> /dev/null
+            sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" \
+              /etc/mysql/my.cnf &> /dev/null
           else
             update_innodb_log_file_size
           fi
@@ -641,16 +651,16 @@ restore_default_sql() {
 #
 tune_sql() {
   msg "INFO: Tuning SQL configuration"
-  sed -i "s/3600/$_TUNE_SQL_TIMEOUT/g" /etc/mysql/my.cnf     &> /dev/null
-  sed -i "s/3600/$_TUNE_SQL_TIMEOUT/g" /var/xdrago/minute.sh &> /dev/null
+  sed -i "s/3600/${_TUNE_SQL_TIMEOUT}/g" /etc/mysql/my.cnf     &> /dev/null
+  sed -i "s/3600/${_TUNE_SQL_TIMEOUT}/g" /var/xdrago/minute.sh &> /dev/null
 }
 #
 restore_default_nginx() {
   msg "INFO: Restoring default Nginx configuration"
   cd /var/xdrago/monitor/check
   cp -af /opt/tmp/boa/aegir/tools/system/monitor/check/scan_nginx ./
-  if [ -d "$_TUNE_HOSTMASTER" ]; then
-    for Files in `find $_TUNE_HOSTMASTER/config/server_master/nginx/vhost.d -type f`; do
+  if [ -d "${_TUNE_HOSTMASTER}" ]; then
+    for Files in `find ${_TUNE_HOSTMASTER}/config/server_master/nginx/vhost.d -type f`; do
       sed -i "s/#limit_conn /limit_conn /g" $Files &> /dev/null
     done
   fi
@@ -660,14 +670,14 @@ restore_default_nginx() {
 #
 tune_nginx() {
   msg "INFO: Tuning Nginx configuration"
-  sed -i "s/ = 300/ = $_TUNE_NGINX_FIREWALL/g" /var/xdrago/monitor/check/scan_nginx  &> /dev/null
-  sed -i "s/60/$_TUNE_NGINX_TIMEOUT/g" /var/aegir/config/server_master/nginx.conf    &> /dev/null
-  sed -i "s/300/$_TUNE_NGINX_TIMEOUT/g" /var/aegir/config/server_master/nginx.conf   &> /dev/null
-  sed -i "s/180/$_TUNE_NGINX_TIMEOUT/g" /var/aegir/config/server_master/nginx.conf   &> /dev/null
-  if [ "$_TUNE_NGINX_CONNECT" = "OFF" ]; then
+  sed -i "s/ = 300/ = ${_TUNE_NGINX_FIREWALL}/g" /var/xdrago/monitor/check/scan_nginx  &> /dev/null
+  sed -i "s/60/${_TUNE_NGINX_TIMEOUT}/g" /var/aegir/config/server_master/nginx.conf    &> /dev/null
+  sed -i "s/300/${_TUNE_NGINX_TIMEOUT}/g" /var/aegir/config/server_master/nginx.conf   &> /dev/null
+  sed -i "s/180/${_TUNE_NGINX_TIMEOUT}/g" /var/aegir/config/server_master/nginx.conf   &> /dev/null
+  if [ "${_TUNE_NGINX_CONNECT}" = "OFF" ]; then
     sed -i "s/limit_conn /#limit_conn /g" /var/aegir/config/server_master/nginx.conf &> /dev/null
-    if [ -d "$_TUNE_HOSTMASTER" ]; then
-      for Files in `find $_TUNE_HOSTMASTER/config/server_master/nginx/vhost.d -type f`; do
+    if [ -d "${_TUNE_HOSTMASTER}" ]; then
+      for Files in `find ${_TUNE_HOSTMASTER}/config/server_master/nginx/vhost.d -type f`; do
         sed -i "s/limit_conn /#limit_conn /g" $Files &> /dev/null
       done
     fi
@@ -720,10 +730,13 @@ tune_web_server_config() {
   fi
   _PHP_V="56 55 54 53"
   for e in ${_PHP_V}; do
-    sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php${e}/etc/php${e}-fpm.conf    &> /dev/null
-    sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
+    sed -i "s/process.max =.*/process.max = ${_PROCESS_MAX_FPM}/g" \
+      /opt/php${e}/etc/php${e}-fpm.conf &> /dev/null
+    sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
+      /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
     if [ ! -z "${_PHP_FPM_DENY}" ]; then
-      sed -i "s/passthru,/${_PHP_FPM_DENY},/g" /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
+      sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
+        /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
     fi
   done
   # PHP-FPM INI
@@ -736,8 +749,8 @@ tune_web_server_config() {
   sed -i "s/^max_input_time =.*/max_input_time = 3600/g" /opt/php*/lib/php.ini                 &> /dev/null
   # Redis config should sync with PHP-CLI
   sed -i "s/^timeout .*/timeout 3600/g" /etc/redis/redis.conf                                  &> /dev/null
-  if [ ! -z "${_L_NGINX_WORKERS}" ]; then
-    sed -i "s/worker_processes.*/worker_processes  ${_L_NGINX_WORKERS};/g" /etc/nginx/nginx.conf &> /dev/null
+  if [ ! -z "${_L_NGX_WRKS}" ]; then
+    sed -i "s/worker_processes.*/worker_processes  ${_L_NGX_WRKS};/g" /etc/nginx/nginx.conf    &> /dev/null
   else
     sed -i "s/worker_processes.*/worker_processes  4;/g" /etc/nginx/nginx.conf                 &> /dev/null
   fi
@@ -853,6 +866,7 @@ tune_sql_memory_limits() {
   fi
 }
 #
+# Tune memory limits for PHP, Nginx and MariaDB.
 tune_memory_limits() {
   msg "INFO: Default Memory Tuning"
   _AWS_TEST_A=$(grep cloudimg /etc/fstab 2>&1)
@@ -942,9 +956,9 @@ tune_memory_limits() {
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
     if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-      _L_NGINX_WORKERS=$_CPU_MX
+      _L_NGX_WRKS=$_CPU_MX
     else
-      _L_NGINX_WORKERS=${_NGINX_WORKERS}
+      _L_NGX_WRKS=${_NGINX_WORKERS}
     fi
   elif [ "${_USE}" -ge "1024" ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
@@ -960,9 +974,9 @@ tune_memory_limits() {
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
       if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-        _L_NGINX_WORKERS=$_CPU_MX
+        _L_NGX_WRKS=$_CPU_MX
       else
-        _L_NGINX_WORKERS=${_NGINX_WORKERS}
+        _L_NGX_WRKS=${_NGINX_WORKERS}
       fi
     elif [ "${_VMFAMILY}" = "VS" ] || [ "${_VMFAMILY}" = "TG" ]; then
       if [ -e "/boot/grub/grub.cfg" ] \
@@ -980,9 +994,9 @@ tune_memory_limits() {
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-          _L_NGINX_WORKERS=$_CPU_TG
+          _L_NGX_WRKS=$_CPU_TG
         else
-          _L_NGINX_WORKERS=${_NGINX_WORKERS}
+          _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
         sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php55/etc/php55.ini &> /dev/null
@@ -1001,9 +1015,9 @@ tune_memory_limits() {
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-          _L_NGINX_WORKERS=${_CPU_VS}
+          _L_NGX_WRKS=${_CPU_VS}
         else
-          _L_NGINX_WORKERS=${_NGINX_WORKERS}
+          _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
       fi
     else
@@ -1019,9 +1033,9 @@ tune_memory_limits() {
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
       if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-        _L_NGINX_WORKERS=$_CPU_MX
+        _L_NGX_WRKS=$_CPU_MX
       else
-        _L_NGINX_WORKERS=${_NGINX_WORKERS}
+        _L_NGX_WRKS=${_NGINX_WORKERS}
       fi
     fi
   else
@@ -1037,9 +1051,9 @@ tune_memory_limits() {
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
     if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-      _L_NGINX_WORKERS=$_CPU_MX
+      _L_NGX_WRKS=$_CPU_MX
     else
-      _L_NGINX_WORKERS=${_NGINX_WORKERS}
+      _L_NGX_WRKS=${_NGINX_WORKERS}
     fi
   fi
   _USE_JETTY="-Xmx${_USE_OPC}m"
@@ -1263,13 +1277,13 @@ if [ "${_DEBUG_MODE}" = "YES" ]; then
   msg "TUNER START -> checkpoint: "
   cat <<EOF
 
-  * Aegir Satellite Instance to tune: $_TUNE_HOSTMASTER
-  * Nginx server mod_evasive will be set to $_TUNE_NGINX_CONNECT
-  * Nginx server fastcgi timeout will be set to $_TUNE_NGINX_TIMEOUT seconds
-  * Nginx firewall limit of allowed requests will be set to $_TUNE_NGINX_FIREWALL/300
-  * Database server timeout will be set to $_TUNE_SQL_TIMEOUT seconds
-  * PHP-FPM server timeout will be set to $_TUNE_PHP_FPM_TIMEOUT seconds
-  * PHP-CLI drush timeout will be set to $_TUNE_PHP_CLI_TIMEOUT seconds
+  * Aegir Satellite Instance to tune: ${_TUNE_HOSTMASTER}
+  * Nginx server mod_evasive will be set to ${_TUNE_NGINX_CONNECT}
+  * Nginx server fastcgi timeout will be set to ${_TUNE_NGINX_TIMEOUT} seconds
+  * Nginx firewall limit of allowed requests will be set to ${_TUNE_NGINX_FIREWALL}/300
+  * Database server timeout will be set to ${_TUNE_SQL_TIMEOUT} seconds
+  * PHP-FPM server timeout will be set to ${_TUNE_PHP_FPM_TIMEOUT} seconds
+  * PHP-CLI drush timeout will be set to ${_TUNE_PHP_CLI_TIMEOUT} seconds
 
 EOF
   echo " "

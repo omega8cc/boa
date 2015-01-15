@@ -1496,10 +1496,13 @@ tune_web_server_config() {
   fi
   _PHP_V="56 55 54 53"
   for e in ${_PHP_V}; do
-    sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php${e}/etc/php${e}-fpm.conf    &> /dev/null
-    sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
+    sed -i "s/process.max =.*/process.max = ${_PROCESS_MAX_FPM}/g" \
+      /opt/php${e}/etc/php${e}-fpm.conf &> /dev/null
+    sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
+      /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
     if [ ! -z "${_PHP_FPM_DENY}" ]; then
-      sed -i "s/passthru,/${_PHP_FPM_DENY},/g" /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
+      sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
+        /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
     fi
   done
   # PHP-FPM INI
@@ -1512,8 +1515,8 @@ tune_web_server_config() {
   sed -i "s/^max_input_time =.*/max_input_time = 3600/g" /opt/php*/lib/php.ini                 &> /dev/null
   # Redis config should sync with PHP-CLI
   sed -i "s/^timeout .*/timeout 3600/g" /etc/redis/redis.conf                                  &> /dev/null
-  if [ ! -z "${_L_NGINX_WORKERS}" ]; then
-    sed -i "s/worker_processes.*/worker_processes  ${_L_NGINX_WORKERS};/g" /etc/nginx/nginx.conf &> /dev/null
+  if [ ! -z "${_L_NGX_WRKS}" ]; then
+    sed -i "s/worker_processes.*/worker_processes  ${_L_NGX_WRKS};/g" /etc/nginx/nginx.conf    &> /dev/null
   else
     sed -i "s/worker_processes.*/worker_processes  4;/g" /etc/nginx/nginx.conf                 &> /dev/null
   fi
@@ -1716,9 +1719,9 @@ tune_memory_limits() {
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
     if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-      _L_NGINX_WORKERS=$_CPU_MX
+      _L_NGX_WRKS=$_CPU_MX
     else
-      _L_NGINX_WORKERS=${_NGINX_WORKERS}
+      _L_NGX_WRKS=${_NGINX_WORKERS}
     fi
   elif [ "${_USE}" -ge "1024" ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
@@ -1734,9 +1737,9 @@ tune_memory_limits() {
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
       if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-        _L_NGINX_WORKERS=$_CPU_MX
+        _L_NGX_WRKS=$_CPU_MX
       else
-        _L_NGINX_WORKERS=${_NGINX_WORKERS}
+        _L_NGX_WRKS=${_NGINX_WORKERS}
       fi
     elif [ "${_VMFAMILY}" = "VS" ] || [ "${_VMFAMILY}" = "TG" ]; then
       if [ -e "/boot/grub/grub.cfg" ] \
@@ -1754,9 +1757,9 @@ tune_memory_limits() {
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-          _L_NGINX_WORKERS=$_CPU_TG
+          _L_NGX_WRKS=$_CPU_TG
         else
-          _L_NGINX_WORKERS=${_NGINX_WORKERS}
+          _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
         sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php55/etc/php55.ini &> /dev/null
@@ -1775,9 +1778,9 @@ tune_memory_limits() {
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-          _L_NGINX_WORKERS=${_CPU_VS}
+          _L_NGX_WRKS=${_CPU_VS}
         else
-          _L_NGINX_WORKERS=${_NGINX_WORKERS}
+          _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
       fi
     else
@@ -1793,9 +1796,9 @@ tune_memory_limits() {
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
       if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-        _L_NGINX_WORKERS=$_CPU_MX
+        _L_NGX_WRKS=$_CPU_MX
       else
-        _L_NGINX_WORKERS=${_NGINX_WORKERS}
+        _L_NGX_WRKS=${_NGINX_WORKERS}
       fi
     fi
   else
@@ -1811,9 +1814,9 @@ tune_memory_limits() {
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
     if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-      _L_NGINX_WORKERS=$_CPU_MX
+      _L_NGX_WRKS=$_CPU_MX
     else
-      _L_NGINX_WORKERS=${_NGINX_WORKERS}
+      _L_NGX_WRKS=${_NGINX_WORKERS}
     fi
   fi
   _USE_JETTY="-Xmx${_USE_OPC}m"
