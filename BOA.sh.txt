@@ -46,48 +46,52 @@ SHELL=/bin/bash
 
 _TODAY=$(date +%y%m%d 2>&1)
 _X_VERSION="BOA-2.4.0-dev"
+#
+saCoreN="SA-CORE-2014-005"
+saCoreS="${saCoreN}-D7"
+saIncDb="includes/database/database.inc"
+saPatch="/var/xdrago/conf/${saCoreS}.patch"
+#
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 optBin="/opt/local/bin"
-saCoreN="SA-CORE-2014-005"
-saCoreD="${saCoreN}-D7"
-cPatchX="/var/xdrago/conf/${saCoreD}.patch"
-incDb="includes/database/database.inc"
 pthLog="/var/xdrago/log"
+tBn="tools/bin"
+vBs="/var/backups"
 
 fix_dns_settings() {
-  mkdir -p /var/backups
-  rm -f /var/backups/resolv.conf.tmp
+  mkdir -p ${vBs}
+  rm -f ${vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
-    cp -a /etc/resolv.conf /var/backups/resolv.conf.tmp
+    cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
   fi
-  if [ ! -e "/var/backups/resolv.conf.vanilla" ]; then
-    for Pre in `ls -la /var/backups/resolv.conf.pre-*`; do
+  if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
+    for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
       if [ -e "${Pre}" ] && [ -f "${Pre}" ] && [ ! -L "${Pre}" ]; then
-        cp -a ${Pre} /var/backups/resolv.conf.vanilla
+        cp -a ${Pre} ${vBs}/resolv.conf.vanilla
       fi
     done
   fi
-  if [ ! -e "/var/backups/resolv.conf.vanilla" ]; then
+  if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
     rm -f /etc/resolv.conf
-    cp -a /var/backups/resolv.conf.tmp /etc/resolv.conf
-    cp -a /var/backups/resolv.conf.tmp /var/backups/resolv.conf.vanilla
+    cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
+    cp -a ${vBs}/resolv.conf.tmp ${vBs}/resolv.conf.vanilla
   fi
-  sed -i "/^$/d" /var/backups/resolv.conf.vanilla &> /dev/null
+  sed -i "/^$/d" ${vBs}/resolv.conf.vanilla &> /dev/null
   rm -f /etc/resolv.conf
   echo "nameserver 8.8.8.8" > /etc/resolv.conf
   echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
   if [[ "${_BROKEN_DNS_TEST}" =~ "no servers could be reached" ]] \
-    && [ -e "/var/backups/resolv.conf.vanilla" ]; then
+    && [ -e "${vBs}/resolv.conf.vanilla" ]; then
     touch /root/.use.local.nameservers.cnf
     rm -f /etc/resolv.conf
-    cp -a /var/backups/resolv.conf.vanilla /etc/resolv.conf
+    cp -a ${vBs}/resolv.conf.vanilla /etc/resolv.conf
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   else
     rm -f /etc/resolv.conf
-    cp -a /var/backups/resolv.conf.tmp /etc/resolv.conf
+    cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
   fi
   if [ -e "/etc/pdnsd.conf" ]; then
     if [ -e "/root/.local.dns.IP.list" ]; then
@@ -246,28 +250,28 @@ update_agents() {
   fi
 }
 
-fix_core() {
+fix_core_dgd() {
   # https://www.drupal.org/SA-CORE-2014-005
   sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf
   if [ -e "/var/xdrago" ] \
-    && [ ! -e "${cPatchX}" ]; then
+    && [ ! -e "${saPatch}" ]; then
     mkdir -p /var/xdrago/conf
-    curl ${crlGet} "${urlHmr}/patches/7-core/${saCoreD}.patch" -o ${cPatchX}
+    curl ${crlGet} "${urlHmr}/patches/7-core/${saCoreS}.patch" -o ${saPatch}
   fi
   if [ -e "/var/xdrago" ] \
-    && [ -e "${cPatchX}" ] \
+    && [ -e "${saPatch}" ] \
     && [ ! -e "${pthLog}/${saCoreN}-fixed-d7.log" ]; then
     if [ -d "/data/all/000/core" ]; then
       for Core in `find /data/all/000/core/drupal-7* \
         -maxdepth 0 -mindepth 0 | sort`; do
         cd ${Core}
-        patch -p1 < ${cPatchX} &> /dev/null
+        patch -p1 < ${saPatch} &> /dev/null
       done
     elif [ -d "/data/disk/all/000/core" ]; then
       for Core in `find /data/disk/all/000/core/drupal-7* \
         -maxdepth 0 -mindepth 0 | sort`; do
         cd ${Core}
-        patch -p1 < ${cPatchX} &> /dev/null
+        patch -p1 < ${saPatch} &> /dev/null
       done
     fi
     touch ${pthLog}/${saCoreN}-fixed-d7.log
@@ -275,30 +279,30 @@ fix_core() {
   fi
   # https://www.drupal.org/SA-CORE-2014-005 for ancient platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "${cPatchX}" ]; then
+    && [ -e "${saPatch}" ]; then
     if [ -d "/data/all" ] \
       && [ ! -e "${pthLog}/legacy-${saCoreN}-fixed-d7.log" ]; then
-      for File in `find /data/all/*/*/${incDb} \
+      for File in `find /data/all/*/*/${saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] && [ ! -d "${Core}/core" ]; then
           cd ${Core}
-          patch -p1 < ${cPatchX} &> /dev/null
+          patch -p1 < ${saPatch} &> /dev/null
         fi
       done
       touch ${pthLog}/legacy-${saCoreN}-fixed-d7.log
     elif [ -d "/data/disk/all" ] \
       && [ ! -e "${pthLog}/legacy-${saCoreN}-fixed-d7eee.log" ]; then
-      for File in `find /data/disk/all/*/*/${incDb} \
+      for File in `find /data/disk/all/*/*/${saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] && [ ! -d "${Core}/core" ]; then
           cd ${Core}
-          patch -p1 < ${cPatchX} &> /dev/null
+          patch -p1 < ${saPatch} &> /dev/null
         fi
       done
       touch ${pthLog}/legacy-${saCoreN}-fixed-d7eee.log
@@ -307,72 +311,72 @@ fix_core() {
   fi
   # https://www.drupal.org/SA-CORE-2014-005 for custom platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "${cPatchX}" ]; then
+    && [ -e "${saPatch}" ]; then
     if [ -d "/data/disk" ] \
       && [ ! -e "${pthLog}/batch-custom-${saCoreN}-fixed-d7.log" ]; then
-      for File in `find /data/disk/*/static/*/${incDb} \
+      for File in `find /data/disk/*/static/*/${saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
           && [ ! -d "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saCoreD}-fix.info" ]; then
+          && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
-          patch -p1 < ${cPatchX} &> /dev/null
-          echo fixed > ${Core}/profiles/${saCoreD}-fix.info
+          patch -p1 < ${saPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreS}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/${incDb} \
+      for File in `find /data/disk/*/static/*/*/${saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
           && [ ! -d "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saCoreD}-fix.info" ]; then
+          && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
-          patch -p1 < ${cPatchX} &> /dev/null
-          echo fixed > ${Core}/profiles/${saCoreD}-fix.info
+          patch -p1 < ${saPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreS}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/*/${incDb} \
+      for File in `find /data/disk/*/static/*/*/*/${saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
           && [ ! -d "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saCoreD}-fix.info" ]; then
+          && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
-          patch -p1 < ${cPatchX} &> /dev/null
-          echo fixed > ${Core}/profiles/${saCoreD}-fix.info
+          patch -p1 < ${saPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreS}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/*/*/${incDb} \
+      for File in `find /data/disk/*/static/*/*/*/*/${saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
           && [ ! -d "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saCoreD}-fix.info" ]; then
+          && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
-          patch -p1 < ${cPatchX} &> /dev/null
-          echo fixed > ${Core}/profiles/${saCoreD}-fix.info
+          patch -p1 < ${saPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreS}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/*/*/*/${incDb} \
+      for File in `find /data/disk/*/static/*/*/*/*/*/${saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
           && [ ! -d "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/${saCoreD}-fix.info" ]; then
+          && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
-          patch -p1 < ${cPatchX} &> /dev/null
-          echo fixed > ${Core}/profiles/${saCoreD}-fix.info
+          patch -p1 < ${saPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreS}-fix.info
         fi
       done
     fi
@@ -400,8 +404,8 @@ find_mirror() {
   fi
   ffMirr=$(which ffmirror 2>&1)
   if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors.txt"
-    mkdir -p /var/backups
+    ffList="${vBs}/boa-mirrors.txt"
+    mkdir -p ${vBs}
     echo "jp.files.aegir.cc"  > ${ffList}
     echo "nl.files.aegir.cc" >> ${ffList}
     echo "uk.files.aegir.cc" >> ${ffList}
@@ -429,8 +433,8 @@ setup() {
   echo >>/etc/hosts
   sed -i "/^$/d" /etc/hosts
   if [ ! -e "/etc/resolv.conf" ]; then
-    if [ -e "/var/backups/resolv.conf.vanilla" ]; then
-      cat /var/backups/resolv.conf.vanilla >/etc/resolv.conf
+    if [ -e "${vBs}/resolv.conf.vanilla" ]; then
+      cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
     fi
     echo "nameserver 8.8.8.8" >>/etc/resolv.conf
     echo "nameserver 8.8.4.4" >>/etc/resolv.conf
@@ -512,22 +516,22 @@ setup() {
   fi
   rm -f ${optBin}/{autoupboa*,backboa*,barracuda*,boa*,ffmirror*}
   rm -f ${optBin}/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
-  curl ${crlGet} "${urlHmr}/tools/bin/autoupboa"      -o ${optBin}/autoupboa
-  curl ${crlGet} "${urlHmr}/tools/bin/barracuda"      -o ${optBin}/barracuda
-  curl ${crlGet} "${urlHmr}/tools/bin/boa"            -o ${optBin}/boa
-  curl ${crlGet} "${urlHmr}/tools/bin/ffmirror"       -o ${optBin}/ffmirror
-  curl ${crlGet} "${urlHmr}/tools/bin/octopus"        -o ${optBin}/octopus
-  curl ${crlGet} "${urlHmr}/tools/bin/randpass"       -o ${optBin}/randpass
-  curl ${crlGet} "${urlHmr}/tools/bin/sqlmagic"       -o ${optBin}/sqlmagic
-  curl ${crlGet} "${urlHmr}/tools/bin/syncpass"       -o ${optBin}/syncpass
-  curl ${crlGet} "${urlHmr}/tools/bin/thinkdifferent" -o ${optBin}/thinkdifferent
+  curl ${crlGet} "${urlHmr}/${tBn}/autoupboa"      -o ${optBin}/autoupboa
+  curl ${crlGet} "${urlHmr}/${tBn}/barracuda"      -o ${optBin}/barracuda
+  curl ${crlGet} "${urlHmr}/${tBn}/boa"            -o ${optBin}/boa
+  curl ${crlGet} "${urlHmr}/${tBn}/ffmirror"       -o ${optBin}/ffmirror
+  curl ${crlGet} "${urlHmr}/${tBn}/octopus"        -o ${optBin}/octopus
+  curl ${crlGet} "${urlHmr}/${tBn}/randpass"       -o ${optBin}/randpass
+  curl ${crlGet} "${urlHmr}/${tBn}/sqlmagic"       -o ${optBin}/sqlmagic
+  curl ${crlGet} "${urlHmr}/${tBn}/syncpass"       -o ${optBin}/syncpass
+  curl ${crlGet} "${urlHmr}/${tBn}/thinkdifferent" -o ${optBin}/thinkdifferent
   echo "### ${_TODAY} ###" >> ${optBin}/boa
   echo "### ${_TODAY} ###" >> ${optBin}/barracuda
   echo "### ${_TODAY} ###" >> ${optBin}/octopus
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
     echo "The duplicity backup is running!"
   else
-    curl ${crlGet} "${urlHmr}/tools/bin/backboa"      -o ${optBin}/backboa
+    curl ${crlGet} "${urlHmr}/${tBn}/backboa"      -o ${optBin}/backboa
   fi
   chmod 700 ${optBin}/{autoupboa,backboa,barracuda,boa}
   chmod 700 ${optBin}/{ffmirror,octopus,syncpass}
@@ -576,7 +580,7 @@ if [ `whoami` = "root" ]; then
       fi
     else
       update_agents
-      fix_core
+      fix_core_dgd
     fi
   fi
   service cron reload
