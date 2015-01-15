@@ -7532,7 +7532,7 @@ else
     if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       mrun "csf -e" &> /dev/null
     fi
-    msg "INFO: Restarting ${_DB_SERVER} server completed"
+    msg "INFO: ${_DB_SERVER} server restart completed"
   fi
 fi
 
@@ -8956,7 +8956,7 @@ if [ -e "/root/.my.pass.txt" ]; then
     update_php_conf
     update_ini_tpl
     tune_memory_limits
-    msg "INFO: Restarting ${_DB_SERVER} server"
+    msg "INFO: Restarting ${_DB_SERVER} server..."
     mrun "service mysql restart" &> /dev/null
     msg "INFO: OS and services installation completed"
   else
@@ -9944,7 +9944,7 @@ else
     mrun "service jetty7 start" &> /dev/null
   fi
   if [ ! -e "/var/run/aegir_upgrade.pid" ]; then
-    msg "INFO: Restarting Redis, PHP-FPM and Nginx"
+    msg "INFO: Restarting Redis, PHP-FPM and Nginx..."
     mrun "service redis-server restart" &> /dev/null
     st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
     mrun "service nginx stop" &> /dev/null
@@ -9967,7 +9967,7 @@ else
     killall -9 php-fpm &> /dev/null
     killall -9 php-cgi &> /dev/null
     killall -9 pure-ftpd &> /dev/null
-    msg "INFO: Restarting ${_DB_SERVER} server"
+    msg "INFO: Restarting ${_DB_SERVER} server..."
     mrun "service mysql restart" &> /dev/null
     if [ -e "/etc/init.d/php56-fpm" ]; then
       mrun "service php56-fpm start" &> /dev/null
