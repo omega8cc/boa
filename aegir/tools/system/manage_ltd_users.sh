@@ -205,24 +205,24 @@ enable_chattr() {
       fi
       if [ -e "${_U_II}" ]; then
         _INI="open_basedir = \".: \
-          /data/all:  \
-          /data/conf: \
+          /data/all:        \
+          /data/conf:       \
+          /data/disk/all:   \
+          /opt/php53:       \
+          /opt/php54:       \
+          /opt/php55:       \
+          /opt/php56:       \
+          /opt/tika:        \
+          /opt/tika7:       \
+          /opt/tika8:       \
+          /opt/tika9:       \
+          /opt/tools/drush: \
+          /usr/bin:         \
+          ${_U_HD}:         \
           ${dscUsr}/.drush/usr: \
           ${dscUsr}/distro:     \
           ${dscUsr}/platforms:  \
           ${dscUsr}/static:     \
-          /data/disk/all:       \
-          /opt/php53: \
-          /opt/php54: \
-          /opt/php55: \
-          /opt/php56: \
-          /opt/tika:  \
-          /opt/tika7: \
-          /opt/tika8: \
-          /opt/tika9: \
-          /opt/tools/drush: \
-          /usr/bin:   \
-          ${_U_HD}:   \
           ${_U_TP}\""
         _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
         _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
@@ -659,7 +659,6 @@ update_php_cli_local_ini() {
       _INI="open_basedir = \".: \
         /data/all:           \
         /data/conf:          \
-        ${dscUsr}:           \
         /data/disk/all:      \
         /opt/php53:          \
         /opt/php54:          \
@@ -671,6 +670,7 @@ update_php_cli_local_ini() {
         /opt/tika9:          \
         /opt/tmp/make_local: \
         /opt/tools/drush:    \
+        ${dscUsr}:           \
         /usr/bin\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
@@ -901,27 +901,27 @@ update_web_user() {
     fi
     if [ -e "${_T_II}" ]; then
       _INI="open_basedir = \".: \
-        /data/all:  \
-        /data/conf: \
+        /data/all:      \
+        /data/conf:     \
+        /data/disk/all: \
+        /mnt:           \
+        /opt/php53:     \
+        /opt/php54:     \
+        /opt/php55:     \
+        /opt/php56:     \
+        /opt/tika:      \
+        /opt/tika7:     \
+        /opt/tika8:     \
+        /opt/tika9:     \
+        /srv:           \
+        /usr/bin:       \
+        /var/second/${_USER}:     \
+        ${_T_HD}:                 \
         ${dscUsr}/aegir:          \
         ${dscUsr}/backup-exports: \
         ${dscUsr}/distro:         \
         ${dscUsr}/platforms:      \
         ${dscUsr}/static:         \
-        /data/disk/all:           \
-        /mnt:       \
-        /opt/php53: \
-        /opt/php54: \
-        /opt/php55: \
-        /opt/php56: \
-        /opt/tika:  \
-        /opt/tika7: \
-        /opt/tika8: \
-        /opt/tika9: \
-        /srv:       \
-        /usr/bin:   \
-        /var/second/${_USER}: \
-        ${_T_HD}:   \
         ${_T_TP}\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)

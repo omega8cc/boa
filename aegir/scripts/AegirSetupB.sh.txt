@@ -234,19 +234,19 @@ update_php_cli_local_ini() {
     fi
     if [ -e "${_U_II}" ]; then
       _INI="open_basedir = \".: \
-        /data/all:           \
-        /data/conf:          \
-        /data/disk/${_USER}: \
-        /data/disk/all:      \
-        /opt/php53:          \
-        /opt/php54:          \
-        /opt/php55:          \
-        /opt/php56:          \
-        /opt/tika:           \
-        /opt/tika7:          \
-        /opt/tika8:          \
-        /opt/tika9:          \
-        /opt/tools/drush:    \
+        /data/all:        \
+        /data/conf:       \
+        /data/disk/all:   \
+        /opt/php53:       \
+        /opt/php54:       \
+        /opt/php55:       \
+        /opt/php56:       \
+        /opt/tika:        \
+        /opt/tika7:       \
+        /opt/tika8:       \
+        /opt/tika9:       \
+        /opt/tools/drush: \
+        ${_ROOT}:         \
         /usr/bin\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
@@ -979,13 +979,13 @@ if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
   ${_DRUSHCMD} @hostmaster ${vSet} \
     hosting_alias_automatic_www 1 &> /dev/null
   ${_DRUSHCMD} @hostmaster ${vSet} \
-    hosting_upload_platform_path "/data/disk/${_USER}/static" &> /dev/null
+    hosting_upload_platform_path "${_ROOT}/static" &> /dev/null
   ${_DRUSHCMD} @hostmaster ${vSet} \
     hosting_upload_upload_path "sites/${_DOMAIN}/files/deployment" &> /dev/null
   ${_DRUSHCMD} @hostmaster ${vSet} \
-    hosting_platform_pathauto_base_path "/data/disk/${_USER}/static/" &> /dev/null
+    hosting_platform_pathauto_base_path "${_ROOT}/static/" &> /dev/null
   ${_DRUSHCMD} @hostmaster ${vSet} \
-    hosting_site_backup_manager_base_path "/data/disk/${_USER}" &> /dev/null
+    hosting_site_backup_manager_base_path "${_ROOT}" &> /dev/null
   ${_DRUSHCMD} @hostmaster ${vSet} \
     hosting_default_profile "minimal" &> /dev/null
   ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \

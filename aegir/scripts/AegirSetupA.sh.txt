@@ -1552,7 +1552,7 @@ if [ ! -L "${_USER_DS}/usr/registry_rebuild" ]; then
   chown ${_USERFTP}:${_USRG} ${_USER_DS}
   chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
   chmod 700 ${_USER_DS}
-  ln -sf /data/disk/${_USER}/.drush/usr/registry_rebuild \
+  ln -sf ${_ROOT}/.drush/usr/registry_rebuild \
     ${_USER_DS}/usr/registry_rebuild
 fi
 
@@ -1565,7 +1565,7 @@ if [ ! -L "${_USER_DS}/usr/clean_missing_modules" ]; then
   chown ${_USERFTP}:${_USRG} ${_USER_DS}
   chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
   chmod 700 ${_USER_DS}
-  ln -sf /data/disk/${_USER}/.drush/usr/clean_missing_modules \
+  ln -sf ${_ROOT}/.drush/usr/clean_missing_modules \
     ${_USER_DS}/usr/clean_missing_modules
 fi
 
@@ -1578,7 +1578,7 @@ if [ ! -L "${_USER_DS}/usr/drupalgeddon" ]; then
   chown ${_USERFTP}:${_USRG} ${_USER_DS}
   chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
   chmod 700 ${_USER_DS}
-  ln -sf /data/disk/${_USER}/.drush/usr/drupalgeddon \
+  ln -sf ${_ROOT}/.drush/usr/drupalgeddon \
     ${_USER_DS}/usr/drupalgeddon
 fi
 
@@ -1591,7 +1591,7 @@ if [ ! -L "${_USER_DS}/usr/drush_ecl" ]; then
   chown ${_USERFTP}:${_USRG} ${_USER_DS}
   chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
   chmod 700 ${_USER_DS}
-  ln -sf /data/disk/${_USER}/.drush/usr/drush_ecl \
+  ln -sf ${_ROOT}/.drush/usr/drush_ecl \
     ${_USER_DS}/usr/drush_ecl
 fi
 
@@ -1604,7 +1604,7 @@ if [ ! -L "${_USER_DS}/usr/make_local" ]; then
   chown ${_USERFTP}:${_USRG} ${_USER_DS}
   chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
   chmod 700 ${_USER_DS}
-  ln -sf /data/disk/${_USER}/.drush/usr/make_local \
+  ln -sf ${_ROOT}/.drush/usr/make_local \
     ${_USER_DS}/usr/make_local
 fi
 
