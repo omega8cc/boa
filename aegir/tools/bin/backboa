@@ -263,7 +263,7 @@ install() {
   if [ "${_DUPLICITY_ITD}" = "${_DUPLICITY_VRN}" ]; then
     echo "Latest duplicity version ${_DUPLICITY_VRN} already installed"
   else
-    echo "Installing duplicity dependencies, please wait..."
+    echo "Installing duplicity dependencies..."
     cd
     find_mirror
     apt-get clean -qq                    &> /dev/null
@@ -286,7 +286,7 @@ install() {
     tar xzf ${fe} &> /dev/null
     cd /var/opt/boto-${_BOTO_VRN}
     python setup.py install &> /dev/null
-    echo "Installing duplicity version ${_DUPLICITY_VRN}, please wait..."
+    echo "Building duplicity version ${_DUPLICITY_VRN} from sources..."
     cd /var/opt
     fe="duplicity-${_DUPLICITY_VRN}.tar.gz"
     curl ${crlGet} "http://${_USE_MIRROR}/dev/src/${fe}" -o ${fe}

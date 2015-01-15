@@ -2865,7 +2865,7 @@ barracuda_cnf() {
 #
 # Running aptitude full-upgrade.
 run_aptitude_full_upgrade() {
-  msg "INFO: Running aptitude full-upgrade, please wait..."
+  msg "INFO: Running aptitude full-upgrade..."
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
     || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
@@ -2898,7 +2898,7 @@ run_aptitude_full_upgrade() {
 #
 # Running silent aptitude full-upgrade.
 run_silent_aptitude_full_upgrade() {
-  msg "INFO: Running silent aptitude full-upgrade, please wait..."
+  msg "INFO: Running silent aptitude full-upgrade..."
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
     || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
@@ -2998,7 +2998,7 @@ install_php_extensions() {
   ###--------------------###
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
     if [ "$1" = "53" ]; then
-      msg "INFO: Installing GEOS extension for PHP $_T_PHP_VRN, please wait..."
+      msg "INFO: Building GEOS extension for PHP $_T_PHP_VRN from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
         st_runner "apt-get update -y --force-yes" &> /dev/null
         st_runner "$_INSTAPP libgeos-dev libgeos-c1 phpunit" 2> /dev/null
@@ -3124,7 +3124,7 @@ update_php_extensions() {
   if [ "$1" = "53" ] \
     && [ ! -e "${pthLog}/php-geos-${_GEOS_VRN}-$_T_PHP_VRN.log" ]; then
     if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-      msg "INFO: Installing GEOS upgrade for PHP $_T_PHP_VRN, please wait..."
+      msg "INFO: Building GEOS upgrade for PHP $_T_PHP_VRN from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
         st_runner "apt-get update -y --force-yes" &> /dev/null
         st_runner "$_INSTAPP libgeos-dev libgeos-c1 phpunit" 2> /dev/null
@@ -3201,11 +3201,11 @@ install_php_multi() {
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-curlwrappers//g" 2>&1)
   fi
   ###--------------------###
-  msg "INFO: Installing PHP ${_PHP_VERSION}, please wait..."
+  msg "INFO: Building PHP ${_PHP_VERSION} from sources, please wait..."
   cd /var/opt
   rm -f -r php*
   get_dev_src "php-${_PHP_VERSION}.tar.bz2"
-  msg "INFO: Installing PHP ${_PHP_VERSION} part 1/3"
+  msg "INFO: Building PHP ${_PHP_VERSION} part 1/3"
   cd /var/opt/php-${_PHP_VERSION}
   st_runner "sh ./buildconf --force" 2> /dev/null
   if [ "${_OSV}" = "wheezy" ] \
@@ -3217,7 +3217,7 @@ install_php_multi() {
   ### cd sapi/fpm/fpm
   ### patch -p1 < ${pthBld}/aegir/patches/fpm_main.c.patch &> /dev/null
   ### cd /var/opt/php-${_PHP_VERSION}
-  msg "INFO: Installing PHP ${_PHP_VERSION} part 2/3"
+  msg "INFO: Building PHP ${_PHP_VERSION} part 2/3"
   if [ "$1" = "55" ] || [ "$1" = "56" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --enable-opcache"
   fi
@@ -3256,7 +3256,7 @@ install_php_multi() {
                 --with-xsl \
                 --with-zlib \
                 ${_PHP_EXTRA}" 2> /dev/null
-  msg "INFO: Installing PHP ${_PHP_VERSION} part 3/3"
+  msg "INFO: Building PHP ${_PHP_VERSION} part 3/3"
   sed -i "s/^EXTRA_LIBS = -lcrypt/EXTRA_LIBS = -llber -lcrypt/g" Makefile 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
@@ -3292,7 +3292,7 @@ update_php_multi() {
 # Install latest Git.
 do_install_latest_git() {
   if [ ! -e "${pthLog}/git-${_GIT_VRN}-${_X_VERSION}-${_NOW}.log" ]; then
-    msg "INFO: Installing Git ${_GIT_VRN} from sources, please wait..."
+    msg "INFO: Building Git ${_GIT_VRN} from sources, please wait..."
     cd /var/opt
     rm -f -r git*
     get_dev_src "git-${_GIT_VRN}.tar.gz"
@@ -4519,7 +4519,7 @@ install_ssh_src() {
     msg "INFO: Installed OpenSSH version $_SSH_ITD, upgrade required"
   fi
   if [ "$_SSH_INSTALL_REQUIRED" = "YES" ]; then
-    msg "INFO: Installing OpenSSH ${_OPENSSH_VRN}, please wait..."
+    msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources, please wait..."
     cd /var/opt
     rm -f -r openssh*
     get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
@@ -4623,7 +4623,7 @@ install_curl_src() {
       echo "curl hold" | dpkg --set-selections &> /dev/null
       aptitude hold curl &> /dev/null
     fi
-    msg "INFO: Installing cURL ${_CURL_VRN}, please wait..."
+    msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
     cd /var/opt
     rm -f -r curl*
     get_dev_src "curl-${_CURL_VRN}.tar.gz"
@@ -4706,7 +4706,7 @@ install_ssl_src() {
   fi
   if [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
-    msg "INFO: Installing zlib ${_ZLIB_VRN}, please wait..."
+    msg "INFO: Building zlib ${_ZLIB_VRN} from sources, please wait..."
     cd /var/opt
     rm -f -r zlib*
     get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
@@ -4715,7 +4715,7 @@ install_ssl_src() {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     ###--------------------###
-    msg "INFO: Installing OpenSSL ${_OPENSSL_VRN}, please wait..."
+    msg "INFO: Building OpenSSL ${_OPENSSL_VRN} from sources, please wait..."
     cd /var/opt
     rm -f -r openssl*
     get_dev_src "openssl-${_OPENSSL_VRN}.tar.gz"
@@ -6415,7 +6415,7 @@ mkdir -p ${vBs}/dragon/{x,z,t}
 
 
 ###--------------------###
-msg "INFO: Installing extra Drush versions"
+msg "INFO: Installing extra Drush versions..."
 get_drush_versions
 
 
@@ -6798,7 +6798,7 @@ fi
 if [ "${_STATUS}" = "INIT" ]; then
   msg "INFO: Installing required libraries and tools, please wait..."
 else
-  msg "INFO: Upgrading required libraries and tools, please wait..."
+  msg "INFO: Upgrading required libraries and tools..."
   if [ ! -e "/etc/init.d/php5-fpm" ]; then
     cp -af ${locCnf}/php5-fpm-init-vanilla /etc/init.d/php5-fpm
   fi
@@ -7308,9 +7308,9 @@ install_with_aptitude_sql() {
       || [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ]; then
-      msg "INFO: Installing MariaDB Galera Cluster, please wait..."
+      msg "INFO: Installing MariaDB Galera Cluster..."
     else
-      msg "INFO: Installing MariaDB, please wait..."
+      msg "INFO: Installing MariaDB..."
     fi
   else
     if [ "${_EASY_SETUP}" = "MSTR" ] \
@@ -7320,9 +7320,9 @@ install_with_aptitude_sql() {
       || [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ]; then
-      msg "INFO: Installing MariaDB Galera Cluster, please wait..."
+      msg "INFO: Installing MariaDB Galera Cluster..."
     else
-      msg "INFO: Installing MariaDB, please wait..."
+      msg "INFO: Installing MariaDB..."
     fi
   fi
   install_mariadb_sql
@@ -7526,7 +7526,7 @@ else
     fi
     _PHP_FORCE_REINSTALL=YES
     mrun "sleep 8"
-    msg "INFO: Restarting ${_DB_SERVER} server, please wait..."
+    msg "INFO: Restarting ${_DB_SERVER} server..."
     mrun "service mysql restart" &> /dev/null
     mrun "service nginx start" &> /dev/null
     if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
@@ -8119,7 +8119,7 @@ if [[ "${_XTRAS_LIST}" =~ "BZR" ]]; then
     if [ ! -e "$_PATH_BZR" ] \
       || [ ! -e "${pthLog}/bzr-${_BZR_VRN}.log" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      msg "INFO: Installing Bazaar (bzr) ${_BZR_VRN}, please wait..."
+      msg "INFO: Building Bazaar (bzr) ${_BZR_VRN} from sources, please wait..."
       if [ -e "/usr/local/lib/python2.6/dist-packages/bzrlib" ]; then
         rm -f -r /usr/local/lib/python2.6/dist-packages/bzrlib
       fi
@@ -8262,7 +8262,7 @@ if [[ "${_XTRAS_LIST}" =~ "ALL" ]] || [[ "${_XTRAS_LIST}" =~ "FTP" ]]; then
     || [ ! -e "${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
-    msg "INFO: Installing latest Pure-FTPd server, please wait..."
+    msg "INFO: Building Pure-FTPd server from sources, please wait..."
     if [ ! -e "/usr/local/sbin/pure-config.pl" ]; then
       echo "/bin/false" >> /etc/shells
       echo "/bin/true" >> /etc/shells
@@ -9288,7 +9288,7 @@ else
   elif [ "${_SYSTEM_UPGRADE_ONLY}" = "YES" ]; then
     msg "INFO: Aegir Master Instance upgrade skipped"
   else
-    msg "INFO: Restarting ${_DB_SERVER} server, please wait..."
+    msg "INFO: Restarting ${_DB_SERVER} server..."
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     mrun "service mysql restart" &> /dev/null
     mrun "sleep 8"
