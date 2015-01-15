@@ -223,23 +223,23 @@ check_report() {
 
 up_mode() {
   if [ "${mcmode}" = "aegir" ]; then
-    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                     ${vBs}/${filIncO}
+    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                     ${vBs}/${tocIncO}
     ### Legacy method
     sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                     ${vBs}/${tocName}
     bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   elif [ "${mcmode}" = "platforms" ]; then
-    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"       ${vBs}/${filIncO}
+    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"       ${vBs}/${tocIncO}
     ### Legacy method
     sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"       ${vBs}/${tocName}
     bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   elif [ "${mcmode}" = "both" ]; then
-    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${vBs}/${filIncO}
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${vBs}/${tocIncO}
     ### Legacy method
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${vBs}/${tocName}
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${octCnf}
-    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${vBs}/${filIncO}
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${vBs}/${tocIncO}
     ### Legacy method
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${vBs}/${tocName}
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${octCnf}
@@ -254,35 +254,35 @@ up_mode() {
 up_one() {
   if [ -e "${vBs}/${octName}" ]; then
     cp -af ${vBs}/${octName}  ${vBs}/${tocName}
+    cp -af ${vBs}/${filIncO}  ${vBs}/${tocIncO}
     if [ "${cmmand}" = "up-head" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncO}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${tocIncO}
     elif [ "${cmmand}" = "up-modern" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncO}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${tocIncO}
     else
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${filIncO}
-      sed -i "s/^_BRANCH_PRO.*/_BRANCH_PROVISION=${branch}/g"  ${vBs}/${filIncO}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${tocIncO}
+      sed -i "s/^_BRANCH_PRO.*/_BRANCH_PROVISION=${branch}/g"  ${vBs}/${tocIncO}
       ### Legacy method
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${tocName}
       sed -i "s/^_BRANCH_PRO.*/_BRANCH_PROVISION=${branch}/g"  ${vBs}/${tocName}
     fi
     if [ "${cmmand}" = "up-head" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"       ${vBs}/${filIncO}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"       ${vBs}/${tocIncO}
     elif [ "${cmmand}" = "up-modern" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"        ${vBs}/${filIncO}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"        ${vBs}/${tocIncO}
     elif [ "${cmmand}" = "up-cluster" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncO}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${tocIncO}
     else
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${filIncO}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${tocIncO}
       ### Legacy method
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${tocName}
     fi
-    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${filIncO}
-    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"       ${vBs}/${filIncO}
-    sed -i "s/^_USER=o1/_USER=${octUsr}/g"                     ${vBs}/${filIncO}
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${tocIncO}
+    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"       ${vBs}/${tocIncO}
+    sed -i "s/^_USER=o1/_USER=${octUsr}/g"                     ${vBs}/${tocName}
     ### Legacy method
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${tocName}
     sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"       ${vBs}/${tocName}
-    sed -i "s/^_USER=o1/_USER=${octUsr}/g"                     ${vBs}/${tocName}
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -290,8 +290,8 @@ up_one() {
       if [ -e "/root/.debug.cnf" ]; then
         _DO_NOTHING=YES
       else
-        sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${vBs}/${filIncO}
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${vBs}/${filIncO}
+        sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${vBs}/${tocIncO}
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${vBs}/${tocIncO}
         ### Legacy method
         sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${vBs}/${tocName}
         sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${vBs}/${tocName}
@@ -420,7 +420,8 @@ up_action_all() {
       && [ ! -e "${User}/log/CANCELLED" ]; then
       if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ]; then
         octUsr=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}')
-        tocName=${octName}.${octUsr}
+        tocName="${octName}.${octUsr}"
+        tocIncO="${filIncO}.${octUsr}"
         octCnf=/root/.${octUsr}.octopus.cnf
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
         echo Octopus upgrade for User ${User}
@@ -442,7 +443,7 @@ up_action_all() {
           echo
           echo "Starting the upgrade in silent mode now..."
           echo
-          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" ${vBs}/${filIncO} &> /dev/null
+          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" ${vBs}/${tocIncO} &> /dev/null
           sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" ${vBs}/${octName} &> /dev/null
           up_one >>${_UP_LOG} 2>&1
           check_report
@@ -452,7 +453,8 @@ up_action_all() {
         n=$((RANDOM%9+2))
         echo "Waiting $n seconds..."
         sleep $n
-        rm -f  ${vBs}/${tocName}
+        rm -f ${vBs}/${tocName}
+        rm -f ${vBs}/${tocIncO}
         echo "Done for ${User}"
       else
         echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
@@ -499,7 +501,8 @@ up_action_one() {
         up_one
       fi
       sleep 3
-      rm -f  ${vBs}/${tocName}
+      rm -f ${vBs}/${tocName}
+      rm -f ${vBs}/${tocIncO}
       echo Done for ${User}
     else
       echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}

@@ -31,6 +31,30 @@
 
 
 ###----------------------------------------###
+### EDITME                                 ###
+###----------------------------------------###
+###
+### Enter below your valid e-mail address and
+### the (sub)domain for this Aegir Satellite
+### Instance, already pointing to your server.
+### Define also your *new* Aegir user for this
+### instance or existing if this is an upgrade
+###
+### NOTE: if this is an upgrade, it's enough
+### to define the _USER value only, since
+### _DOMAIN etc. will be auto-discovered
+### and you can't override it here nor even
+### in the /root/.${_USER}.octopus.cnf file.
+###
+_USER=o1
+_MY_EMAIL="noc@omega8.cc"
+_CLIENT_EMAIL="notify@omega8.cc"
+_CLIENT_OPTION=SSD
+_CLIENT_SUBSCR=Y
+_CLIENT_CORES=8
+
+
+###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
@@ -58,10 +82,18 @@ if [ -n "${STY+x}" ]; then
 fi
 
 ###
+### Instance specific variables
+###
+_WEB="${_USER}.web"
+_DOMAIN="${_USER}.$(uname -n 2>&1)"
+octCnf="/root/.${_USER}.octopus.cnf"
+
+###
 ### Helper variables
 ###
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncO="octopus.sh.cnf"
+tocIncO="${filIncO}.${_USER}"
 gitHub="git://github.com/omega8cc"
 pthBld="/opt/tmp/boa"
 vBs="/var/backups"
@@ -1499,15 +1531,16 @@ fi
 ###
 ### Include default settings
 ###
-if [ -e "${vBs}/${filIncO}" ]; then
-  source ${vBs}/${filIncO}
-  octCnf="/root/.${_USER}.octopus.cnf"
-  _DOMAIN="${_USER}.$(uname -n 2>&1)"
-  _WEB="${_USER}.web"
+if [ -e "${vBs}/${tocIncO}" ]; then
+  source "${vBs}/${tocIncO}"
+  tInc="${vBs}/${tocIncO}"
+elif [ -e "${vBs}/${filIncO}" ]; then
+  source "${vBs}/${filIncO}"
+  tInc="${vBs}/${filIncO}"
 else
   msg "EXIT: Required lib file does not exist?"
-  msg "EXIT: ${vBs}/${filIncO}"
-  msg "EXIT: Cannot continue installation"
+  msg "EXIT: ${tInc}"
+  msg "EXIT: Cannot continue"
   msg "EXIT: Bye (0)"
   clean_pid_exit
 fi

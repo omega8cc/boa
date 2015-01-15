@@ -178,29 +178,17 @@ octopus_install() {
 
     if [ "${cmmand}" = "in-octopus" ]; then
       if [ ! -z "${copt}" ]; then
-        sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=${copt}/g" ${vBs}/${filIncO}
-        ### Legacy method
         sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=${copt}/g" ${vBs}/${octName}
       fi
       if [ ! -z "${csub}" ]; then
-        sed -i "s/^_CLIENT_SUBSCR=.*/_CLIENT_SUBSCR=${csub}/g" ${vBs}/${filIncO}
-        ### Legacy method
         sed -i "s/^_CLIENT_SUBSCR=.*/_CLIENT_SUBSCR=${csub}/g" ${vBs}/${octName}
       fi
       if [ ! -z "${ccor}" ]; then
-        sed -i "s/^_CLIENT_CORES=.*/_CLIENT_CORES=${ccor}/g"   ${vBs}/${filIncO}
-        ### Legacy method
         sed -i "s/^_CLIENT_CORES=.*/_CLIENT_CORES=${ccor}/g"   ${vBs}/${octName}
       fi
     else
-      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${email}\"/g"        ${vBs}/${filIncO}
-      ### Legacy method
       sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${email}\"/g"        ${vBs}/${octName}
     fi
-
-    sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"${email}\"/g"  ${vBs}/${filIncO}
-    sed -i "s/^_USER=.*/_USER=${user}/g"                       ${vBs}/${filIncO}
-    ### Legacy method
     sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"${email}\"/g"  ${vBs}/${octName}
     sed -i "s/^_USER=.*/_USER=${user}/g"                       ${vBs}/${octName}
 
