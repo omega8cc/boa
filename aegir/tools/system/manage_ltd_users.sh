@@ -141,13 +141,16 @@ enable_chattr() {
           ${_U_HD}/usr/clean_missing_modules
       fi
       if [ ! -L "${_U_HD}/usr/drupalgeddon" ]; then
-        ln -sf ${usrDgn} ${_U_HD}/usr/drupalgeddon
+        ln -sf /data/disk/${_USER}/.drush/usr/drupalgeddon \
+          ${_U_HD}/usr/drupalgeddon
       fi
       if [ ! -L "${_U_HD}/usr/drush_ecl" ]; then
-        ln -sf /data/disk/${_USER}/.drush/usr/drush_ecl ${_U_HD}/usr/drush_ecl
+        ln -sf /data/disk/${_USER}/.drush/usr/drush_ecl \
+          ${_U_HD}/usr/drush_ecl
       fi
       if [ ! -L "${_U_HD}/usr/make_local" ]; then
-        ln -sf /data/disk/${_USER}/.drush/usr/make_local ${_U_HD}/usr/make_local
+        ln -sf /data/disk/${_USER}/.drush/usr/make_local \
+          ${_U_HD}/usr/make_local
       fi
     fi
 

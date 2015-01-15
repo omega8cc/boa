@@ -110,13 +110,15 @@ disable_chattr() {
     if [ "$1" != "${_HM_U}.ftp" ]; then
       if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] \
         && [ -d "${User}/.drush/usr/drupalgeddon" ]; then
-        ln -sf ${User}/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
+        ln -sf ${User}/.drush/usr/drupalgeddon \
+          /home/$1/.drush/usr/drupalgeddon
       fi
     else
       if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] \
         && [ -d "${User}/.drush/usr/drupalgeddon" ]; then
         rm -f -r /home/$1/.drush/usr/drupalgeddon
-        ln -sf ${User}/.drush/usr/drupalgeddon /home/$1/.drush/usr/drupalgeddon
+        ln -sf ${User}/.drush/usr/drupalgeddon \
+          /home/$1/.drush/usr/drupalgeddon
       fi
     fi
   fi

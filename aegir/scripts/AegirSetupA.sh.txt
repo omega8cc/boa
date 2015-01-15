@@ -1578,7 +1578,8 @@ if [ ! -L "${_USER_DS}/usr/drupalgeddon" ]; then
   chown ${_USERFTP}:${_USRG} ${_USER_DS}
   chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
   chmod 700 ${_USER_DS}
-  ln -sf ${usrDgn} ${_USER_DS}/usr/drupalgeddon
+  ln -sf /data/disk/${_USER}/.drush/usr/drupalgeddon \
+    ${_USER_DS}/usr/drupalgeddon
 fi
 
 
