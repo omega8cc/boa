@@ -48,6 +48,12 @@ _TODAY=$(date +%y%m%d 2>&1)
 _X_VERSION="BOA-2.4.0-dev"
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+optBin="/opt/local/bin"
+saCoreN="SA-CORE-2014-005"
+saCoreD="${saCoreN}-D7"
+cPatchX="/var/xdrago/conf/${saCoreD}.patch"
+incDb="includes/database/database.inc"
+pthLog="/var/xdrago/log"
 
 fix_dns_settings() {
   mkdir -p /var/backups
@@ -143,39 +149,39 @@ check_dns_settings() {
 update_agents() {
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "/var/xdrago/log/runner.fixed.a21z.pid" ]; then
+    && [ ! -e "${pthLog}/runner.fixed.a21z.pid" ]; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
     if [ -e "/var/xdrago/runner.sh" ]; then
       chmod 700 /var/xdrago/runner.sh
       chown root:root /var/xdrago/runner.sh
-      touch /var/xdrago/log/runner.fixed.a21z.pid
+      touch ${pthLog}/runner.fixed.a21z.pid
     else
       mv -f /var/xdrago/runner.sh.old /var/xdrago/runner.sh
     fi
   fi
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "/var/xdrago/log/minute.fixed.a21z.pid" ]; then
+    && [ ! -e "${pthLog}/minute.fixed.a21z.pid" ]; then
     mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
     if [ -e "/var/xdrago/minute.sh" ]; then
       chmod 700 /var/xdrago/minute.sh
       chown root:root /var/xdrago/minute.sh
-      touch /var/xdrago/log/minute.fixed.a21z.pid
+      touch ${pthLog}/minute.fixed.a21z.pid
     else
       mv -f /var/xdrago/minute.sh.old /var/xdrago/minute.sh
     fi
   fi
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "/var/xdrago/log/clear.fixed.a21z.pid" ]; then
+    && [ ! -e "${pthLog}/clear.fixed.a21z.pid" ]; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
     if [ -e "/var/xdrago/clear.sh" ]; then
       chmod 700 /var/xdrago/clear.sh
       chown root:root /var/xdrago/clear.sh
-      touch /var/xdrago/log/clear.fixed.a21z.pid
+      touch ${pthLog}/clear.fixed.a21z.pid
     else
       mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
     fi
@@ -183,13 +189,13 @@ update_agents() {
 
 #   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
 #     && [ -e "/var/xdrago" ] \
-#     && [ ! -e "/var/xdrago/log/daily.fixed.a21z.pid" ]; then
+#     && [ ! -e "${pthLog}/daily.fixed.a21z.pid" ]; then
 #     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
 #     curl ${crlGet} "${urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
 #     if [ -e "/var/xdrago/daily.sh" ]; then
 #       chmod 700 /var/xdrago/daily.sh
 #       chown root:root /var/xdrago/daily.sh
-#       touch /var/xdrago/log/daily.fixed.a21z.pid
+#       touch ${pthLog}/daily.fixed.a21z.pid
 #     else
 #       mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
 #     fi
@@ -197,14 +203,14 @@ update_agents() {
 
 #   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
 #     && [ -e "/var/xdrago" ] \
-#     && [ ! -e "/var/xdrago/log/manage_ltd_users.fixed.a21z.pid" ]; then
+#     && [ ! -e "${pthLog}/manage_ltd_users.fixed.a21z.pid" ]; then
 #     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
 #     curl ${crlGet} "${urlHmr}/tools/system/manage_ltd_users.sh" \
 #       -o /var/xdrago/manage_ltd_users.sh
 #     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
 #       chmod 700 /var/xdrago/manage_ltd_users.sh
 #       chown root:root /var/xdrago/manage_ltd_users.sh
-#       touch /var/xdrago/log/manage_ltd_users.fixed.a21z.pid
+#       touch ${pthLog}/manage_ltd_users.fixed.a21z.pid
 #     else
 #       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
 #     fi
@@ -212,14 +218,14 @@ update_agents() {
 
 #   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
 #     && [ -e "/var/xdrago" ] \
-#     && [ ! -e "/var/xdrago/log/proc_num_ctrl.fixed.a21z.pid" ]; then
+#     && [ ! -e "${pthLog}/proc_num_ctrl.fixed.a21z.pid" ]; then
 #     mv -f /var/xdrago/proc_num_ctrl.cgi /var/xdrago/proc_num_ctrl.cgi.old
 #     curl ${crlGet} "${urlHmr}/tools/system/proc_num_ctrl.cgi" \
 #       -o /var/xdrago/proc_num_ctrl.cgi
 #     if [ -e "/var/xdrago/proc_num_ctrl.cgi" ]; then
 #       chmod 700 /var/xdrago/proc_num_ctrl.cgi
 #       chown root:root /var/xdrago/proc_num_ctrl.cgi
-#       touch /var/xdrago/log/proc_num_ctrl.fixed.a21z.pid
+#       touch ${pthLog}/proc_num_ctrl.fixed.a21z.pid
 #     else
 #       mv -f /var/xdrago/proc_num_ctrl.cgi.old /var/xdrago/proc_num_ctrl.cgi
 #     fi
@@ -227,13 +233,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "/var/xdrago/log/websh.fixed.a21z.pid" ]; then
+    && [ ! -e "${pthLog}/websh.fixed.a21z.pid" ]; then
     mv -f /bin/websh /var/xdrago/websh.sh.old
     curl ${crlGet} "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh
     if [ -e "/bin/websh" ]; then
       chmod 755 /bin/websh
       chown root:root /bin/websh
-      touch /var/xdrago/log/websh.fixed.a21z.pid
+      touch ${pthLog}/websh.fixed.a21z.pid
     else
       mv -f /var/xdrago/websh.sh.old /bin/websh
     fi
@@ -244,135 +250,134 @@ fix_core() {
   # https://www.drupal.org/SA-CORE-2014-005
   sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf
   if [ -e "/var/xdrago" ] \
-    && [ ! -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ]; then
+    && [ ! -e "${cPatchX}" ]; then
     mkdir -p /var/xdrago/conf
-    curl ${crlGet} "${urlHmr}/patches/7-core/SA-CORE-2014-005-D7.patch" \
-      -o /var/xdrago/conf/SA-CORE-2014-005-D7.patch
+    curl ${crlGet} "${urlHmr}/patches/7-core/${saCoreD}.patch" -o ${cPatchX}
   fi
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] \
-    && [ ! -e "/var/xdrago/log/SA-CORE-2014-005-fixed-d7.log" ]; then
+    && [ -e "${cPatchX}" ] \
+    && [ ! -e "${pthLog}/${saCoreN}-fixed-d7.log" ]; then
     if [ -d "/data/all/000/core" ]; then
       for Core in `find /data/all/000/core/drupal-7* \
         -maxdepth 0 -mindepth 0 | sort`; do
         cd ${Core}
-        patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+        patch -p1 < ${cPatchX} &> /dev/null
       done
     elif [ -d "/data/disk/all/000/core" ]; then
       for Core in `find /data/disk/all/000/core/drupal-7* \
         -maxdepth 0 -mindepth 0 | sort`; do
         cd ${Core}
-        patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+        patch -p1 < ${cPatchX} &> /dev/null
       done
     fi
-    touch /var/xdrago/log/SA-CORE-2014-005-fixed-d7.log
+    touch ${pthLog}/${saCoreN}-fixed-d7.log
     cd
   fi
   # https://www.drupal.org/SA-CORE-2014-005 for ancient platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ]; then
+    && [ -e "${cPatchX}" ]; then
     if [ -d "/data/all" ] \
-      && [ ! -e "/var/xdrago/log/legacy-SA-CORE-2014-005-fixed-d7.log" ]; then
-      for File in `find /data/all/*/*/includes/database/database.inc \
+      && [ ! -e "${pthLog}/legacy-${saCoreN}-fixed-d7.log" ]; then
+      for File in `find /data/all/*/*/${incDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] && [ ! -d "${Core}/core" ]; then
           cd ${Core}
-          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          patch -p1 < ${cPatchX} &> /dev/null
         fi
       done
-      touch /var/xdrago/log/legacy-SA-CORE-2014-005-fixed-d7.log
+      touch ${pthLog}/legacy-${saCoreN}-fixed-d7.log
     elif [ -d "/data/disk/all" ] \
-      && [ ! -e "/var/xdrago/log/legacy-SA-CORE-2014-005-fixed-d7eee.log" ]; then
-      for File in `find /data/disk/all/*/*/includes/database/database.inc \
+      && [ ! -e "${pthLog}/legacy-${saCoreN}-fixed-d7eee.log" ]; then
+      for File in `find /data/disk/all/*/*/${incDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] && [ ! -d "${Core}/core" ]; then
           cd ${Core}
-          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          patch -p1 < ${cPatchX} &> /dev/null
         fi
       done
-      touch /var/xdrago/log/legacy-SA-CORE-2014-005-fixed-d7eee.log
+      touch ${pthLog}/legacy-${saCoreN}-fixed-d7eee.log
     fi
     cd
   fi
   # https://www.drupal.org/SA-CORE-2014-005 for custom platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ]; then
+    && [ -e "${cPatchX}" ]; then
     if [ -d "/data/disk" ] \
-      && [ ! -e "/var/xdrago/log/batch-custom-SA-CORE-2014-005-fixed-d7.log" ]; then
-      for File in `find /data/disk/*/static/*/includes/database/database.inc \
+      && [ ! -e "${pthLog}/batch-custom-${saCoreN}-fixed-d7.log" ]; then
+      for File in `find /data/disk/*/static/*/${incDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
           && [ ! -d "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
+          && [ ! -e "${Core}/profiles/${saCoreD}-fix.info" ]; then
           cd ${Core}
-          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
-          echo fixed > ${Core}/profiles/SA-CORE-2014-005-D7-fix.info
+          patch -p1 < ${cPatchX} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreD}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/includes/database/database.inc \
+      for File in `find /data/disk/*/static/*/*/${incDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
           && [ ! -d "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
+          && [ ! -e "${Core}/profiles/${saCoreD}-fix.info" ]; then
           cd ${Core}
-          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
-          echo fixed > ${Core}/profiles/SA-CORE-2014-005-D7-fix.info
+          patch -p1 < ${cPatchX} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreD}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/*/includes/database/database.inc \
+      for File in `find /data/disk/*/static/*/*/*/${incDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
           && [ ! -d "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
+          && [ ! -e "${Core}/profiles/${saCoreD}-fix.info" ]; then
           cd ${Core}
-          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
-          echo fixed > ${Core}/profiles/SA-CORE-2014-005-D7-fix.info
+          patch -p1 < ${cPatchX} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreD}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/*/*/includes/database/database.inc \
+      for File in `find /data/disk/*/static/*/*/*/*/${incDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
           && [ ! -d "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
+          && [ ! -e "${Core}/profiles/${saCoreD}-fix.info" ]; then
           cd ${Core}
-          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
-          echo fixed > ${Core}/profiles/SA-CORE-2014-005-D7-fix.info
+          patch -p1 < ${cPatchX} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreD}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/*/*/*/includes/database/database.inc \
+      for File in `find /data/disk/*/static/*/*/*/*/*/${incDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
           && [ ! -d "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
+          && [ ! -e "${Core}/profiles/${saCoreD}-fix.info" ]; then
           cd ${Core}
-          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
-          echo fixed > ${Core}/profiles/SA-CORE-2014-005-D7-fix.info
+          patch -p1 < ${cPatchX} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreD}-fix.info
         fi
       done
     fi
     cd
-    touch /var/xdrago/log/batch-custom-SA-CORE-2014-005-fixed-d7.log
+    touch ${pthLog}/batch-custom-${saCoreN}-fixed-d7.log
   fi
 }
 
@@ -481,11 +486,11 @@ setup() {
   if [[ "${_PATH_TEST}" =~ "export PATH" ]]; then
     _DO_NOTHING=YES
   else
-    echo "export PATH=\$PATH:/usr/local/bin:/opt/local/bin" >> /root/.bashrc
+    echo "export PATH=\$PATH:/usr/local/bin:${optBin}" >> /root/.bashrc
     _ADD_LEGACY_SYMLINK=YES
   fi
-  _PATH_TEST=$(grep '/opt/local/bin' /root/.bashrc)
-  if [[ "${_PATH_TEST}" =~ "/opt/local/bin" ]]; then
+  _PATH_TEST=$(grep '${optBin}' /root/.bashrc)
+  if [[ "${_PATH_TEST}" =~ "${optBin}" ]]; then
     _DO_NOTHING=YES
   else
     sed -i "s/^export \
@@ -494,39 +499,39 @@ setup() {
     _ADD_LEGACY_SYMLINK=YES
   fi
   mkdir -p /usr/local/bin
-  mkdir -p /opt/local/bin
-  rm -f /opt/local/bin/.{boa*,fix*}
+  mkdir -p ${optBin}
+  rm -f ${optBin}/.{boa*,fix*}
   rm -f /usr/local/bin/{autoupboa*,backboa*,barracuda*,boa*,ffmirror*}
   rm -f /usr/local/bin/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   if [ ! -e "/data/disk" ]; then
-    ln -s /opt/local/bin/boa /usr/local/bin/boa
+    ln -s ${optBin}/boa /usr/local/bin/boa
   fi
   if [ "${_ADD_LEGACY_SYMLINK}" = "YES" ]; then
-    ln -s /opt/local/bin/barracuda /usr/local/bin/barracuda
-    ln -s /opt/local/bin/octopus /usr/local/bin/octopus
+    ln -s ${optBin}/barracuda /usr/local/bin/barracuda
+    ln -s ${optBin}/octopus /usr/local/bin/octopus
   fi
-  rm -f /opt/local/bin/{autoupboa*,backboa*,barracuda*,boa*,ffmirror*}
-  rm -f /opt/local/bin/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
-  curl ${crlGet} "${urlHmr}/tools/bin/autoupboa"      -o /opt/local/bin/autoupboa
-  curl ${crlGet} "${urlHmr}/tools/bin/barracuda"      -o /opt/local/bin/barracuda
-  curl ${crlGet} "${urlHmr}/tools/bin/boa"            -o /opt/local/bin/boa
-  curl ${crlGet} "${urlHmr}/tools/bin/ffmirror"       -o /opt/local/bin/ffmirror
-  curl ${crlGet} "${urlHmr}/tools/bin/octopus"        -o /opt/local/bin/octopus
-  curl ${crlGet} "${urlHmr}/tools/bin/randpass"       -o /opt/local/bin/randpass
-  curl ${crlGet} "${urlHmr}/tools/bin/sqlmagic"       -o /opt/local/bin/sqlmagic
-  curl ${crlGet} "${urlHmr}/tools/bin/syncpass"       -o /opt/local/bin/syncpass
-  curl ${crlGet} "${urlHmr}/tools/bin/thinkdifferent" -o /opt/local/bin/thinkdifferent
-  echo "### ${_TODAY} ###" >> /opt/local/bin/boa
-  echo "### ${_TODAY} ###" >> /opt/local/bin/barracuda
-  echo "### ${_TODAY} ###" >> /opt/local/bin/octopus
+  rm -f ${optBin}/{autoupboa*,backboa*,barracuda*,boa*,ffmirror*}
+  rm -f ${optBin}/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
+  curl ${crlGet} "${urlHmr}/tools/bin/autoupboa"      -o ${optBin}/autoupboa
+  curl ${crlGet} "${urlHmr}/tools/bin/barracuda"      -o ${optBin}/barracuda
+  curl ${crlGet} "${urlHmr}/tools/bin/boa"            -o ${optBin}/boa
+  curl ${crlGet} "${urlHmr}/tools/bin/ffmirror"       -o ${optBin}/ffmirror
+  curl ${crlGet} "${urlHmr}/tools/bin/octopus"        -o ${optBin}/octopus
+  curl ${crlGet} "${urlHmr}/tools/bin/randpass"       -o ${optBin}/randpass
+  curl ${crlGet} "${urlHmr}/tools/bin/sqlmagic"       -o ${optBin}/sqlmagic
+  curl ${crlGet} "${urlHmr}/tools/bin/syncpass"       -o ${optBin}/syncpass
+  curl ${crlGet} "${urlHmr}/tools/bin/thinkdifferent" -o ${optBin}/thinkdifferent
+  echo "### ${_TODAY} ###" >> ${optBin}/boa
+  echo "### ${_TODAY} ###" >> ${optBin}/barracuda
+  echo "### ${_TODAY} ###" >> ${optBin}/octopus
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
     echo "The duplicity backup is running!"
   else
-    curl ${crlGet} "${urlHmr}/tools/bin/backboa"      -o /opt/local/bin/backboa
+    curl ${crlGet} "${urlHmr}/tools/bin/backboa"      -o ${optBin}/backboa
   fi
-  chmod 700 /opt/local/bin/{autoupboa,backboa,barracuda,boa}
-  chmod 700 /opt/local/bin/{ffmirror,octopus,syncpass}
-  chmod 755 /opt/local/bin/{randpass,sqlmagic,thinkdifferent}
+  chmod 700 ${optBin}/{autoupboa,backboa,barracuda,boa}
+  chmod 700 ${optBin}/{ffmirror,octopus,syncpass}
+  chmod 755 ${optBin}/{randpass,sqlmagic,thinkdifferent}
   echo
   echo "BOA Meta Installer setup completed"
   echo "Please check INSTALL.txt and UPGRADE.txt at http://bit.ly/boa-docs"

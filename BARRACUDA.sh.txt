@@ -5194,124 +5194,141 @@ strict_bin_permissions() {
 #
 # Fix for broken platforms
 fix_broken_platforms() {
+  saCoreN="SA-CORE-2014-005"
+  saCoreD="${saCoreN}-D7"
+  cPatchX="/var/xdrago/conf/${saCoreD}.patch"
+  incDb="includes/database/database.inc"
   # https://www.drupal.org/SA-CORE-2014-005
+  sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf
   if [ -e "/var/xdrago" ] \
-    && [ ! -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] \
-    && [ -e "${pthBld}/aegir/patches/7-core/SA-CORE-2014-005-D7.patch" ]; then
+    && [ ! -e "${cPatchX}" ]; then
     mkdir -p /var/xdrago/conf
-    cp -a ${pthBld}/aegir/patches/7-core/SA-CORE-2014-005-D7.patch \
-      /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+    cp -a ${pthBld}/aegir/patches/7-core/${saCoreD}.patch -o ${cPatchX}
   fi
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ] \
-    && [ ! -e "${pthLog}/SA-CORE-2014-005-fixed-d7.log" ]; then
+    && [ -e "${cPatchX}" ] \
+    && [ ! -e "${pthLog}/${saCoreN}-fixed-d7.log" ]; then
     if [ -d "/data/all/000/core" ]; then
-      for Core in `find /data/all/000/core/drupal-7* -maxdepth 0 \
-        -mindepth 0 | sort`; do
+      for Core in `find /data/all/000/core/drupal-7* \
+        -maxdepth 0 -mindepth 0 | sort`; do
         cd ${Core}
-        patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+        patch -p1 < ${cPatchX} &> /dev/null
       done
     elif [ -d "/data/disk/all/000/core" ]; then
-      for Core in `find /data/disk/all/000/core/drupal-7* -maxdepth 0 \
-        -mindepth 0 | sort`; do
+      for Core in `find /data/disk/all/000/core/drupal-7* \
+        -maxdepth 0 -mindepth 0 | sort`; do
         cd ${Core}
-        patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+        patch -p1 < ${cPatchX} &> /dev/null
       done
     fi
-    touch ${pthLog}/SA-CORE-2014-005-fixed-d7.log
+    touch ${pthLog}/${saCoreN}-fixed-d7.log
     cd
   fi
   # https://www.drupal.org/SA-CORE-2014-005 for ancient platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ]; then
+    && [ -e "${cPatchX}" ]; then
     if [ -d "/data/all" ] \
-      && [ ! -e "${pthLog}/legacy-SA-CORE-2014-005-fixed-d7.log" ]; then
-      for File in `find /data/all/*/*/includes/database/database.inc \
+      && [ ! -e "${pthLog}/legacy-${saCoreN}-fixed-d7.log" ]; then
+      for File in `find /data/all/*/*/${incDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2>&1)
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] && [ ! -d "${Core}/core" ]; then
           cd ${Core}
-          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          patch -p1 < ${cPatchX} &> /dev/null
         fi
       done
-      touch ${pthLog}/legacy-SA-CORE-2014-005-fixed-d7.log
+      touch ${pthLog}/legacy-${saCoreN}-fixed-d7.log
     elif [ -d "/data/disk/all" ] \
-      && [ ! -e "${pthLog}/legacy-SA-CORE-2014-005-fixed-d7eee.log" ]; then
-      for File in `find /data/disk/all/*/*/includes/database/database.inc \
+      && [ ! -e "${pthLog}/legacy-${saCoreN}-fixed-d7eee.log" ]; then
+      for File in `find /data/disk/all/*/*/${incDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2>&1)
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] && [ ! -d "${Core}/core" ]; then
           cd ${Core}
-          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
+          patch -p1 < ${cPatchX} &> /dev/null
         fi
       done
-      touch ${pthLog}/legacy-SA-CORE-2014-005-fixed-d7eee.log
+      touch ${pthLog}/legacy-${saCoreN}-fixed-d7eee.log
     fi
     cd
   fi
   # https://www.drupal.org/SA-CORE-2014-005 for custom platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/var/xdrago/conf/SA-CORE-2014-005-D7.patch" ]; then
+    && [ -e "${cPatchX}" ]; then
     if [ -d "/data/disk" ] \
-      && [ ! -e "${pthLog}/batch-custom-SA-CORE-2014-005-fixed-d7.log" ]; then
-      for File in `find /data/disk/*/static/*/includes/database/database.inc \
+      && [ ! -e "${pthLog}/batch-custom-${saCoreN}-fixed-d7.log" ]; then
+      for File in `find /data/disk/*/static/*/${incDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2>&1)
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
           && [ ! -d "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
+          && [ ! -e "${Core}/profiles/${saCoreD}-fix.info" ]; then
           cd ${Core}
-          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
-          echo fixed > ${Core}/profiles/SA-CORE-2014-005-D7-fix.info
+          patch -p1 < ${cPatchX} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreD}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/includes/database/database.inc \
+      for File in `find /data/disk/*/static/*/*/${incDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2>&1)
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
           && [ ! -d "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
+          && [ ! -e "${Core}/profiles/${saCoreD}-fix.info" ]; then
           cd ${Core}
-          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
-          echo fixed > ${Core}/profiles/SA-CORE-2014-005-D7-fix.info
+          patch -p1 < ${cPatchX} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreD}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/*/includes/database/database.inc \
+      for File in `find /data/disk/*/static/*/*/*/${incDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2>&1)
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
           && [ ! -d "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
+          && [ ! -e "${Core}/profiles/${saCoreD}-fix.info" ]; then
           cd ${Core}
-          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
-          echo fixed > ${Core}/profiles/SA-CORE-2014-005-D7-fix.info
+          patch -p1 < ${cPatchX} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreD}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/*/*/includes/database/database.inc \
+      for File in `find /data/disk/*/static/*/*/*/*/${incDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2>&1)
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
           && [ ! -d "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
+          && [ ! -e "${Core}/profiles/${saCoreD}-fix.info" ]; then
           cd ${Core}
-          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
-          echo fixed > ${Core}/profiles/SA-CORE-2014-005-D7-fix.info
+          patch -p1 < ${cPatchX} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreD}-fix.info
         fi
       done
-      for File in `find /data/disk/*/static/*/*/*/*/*/includes/database/database.inc \
+      for File in `find /data/disk/*/static/*/*/*/*/*/${incDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
-        Core=$(echo $File | sed 's/\/includes.*//g'| awk '{print $1}' 2>&1)
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
           && [ ! -d "${Core}/core" ] \
-          && [ ! -e "${Core}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
+          && [ ! -e "${Core}/profiles/${saCoreD}-fix.info" ]; then
           cd ${Core}
-          patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch &> /dev/null
-          echo fixed > ${Core}/profiles/SA-CORE-2014-005-D7-fix.info
+          patch -p1 < ${cPatchX} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreD}-fix.info
         fi
       done
     fi
     cd
-    touch ${pthLog}/batch-custom-SA-CORE-2014-005-fixed-d7.log
+    touch ${pthLog}/batch-custom-${saCoreN}-fixed-d7.log
   fi
 }
 # Fix for Postfix configuration.
