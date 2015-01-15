@@ -285,22 +285,23 @@ hostmaster_go_up() {
       rm -f -r ${_ROOT}/.drush/{sys,xts,usr}
       rm -f -r ${_ROOT}/.drush/{provision,drush_make}
       mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
+      rD="${_ROOT}/.drush"
       ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
-        ${_ROOT}/.drush/sys/provision &> /dev/null
+        ${rD}/sys/provision &> /dev/null
       ${gCb} 6.x-2.x ${gitHub}/make_local.git \
-        ${_ROOT}/usr/make_local &> /dev/null
+        ${rD}/usr/make_local &> /dev/null
       ${gCb} 6.x-2.x ${gitHub}/provision_cdn.git \
-        ${_ROOT}/.drush/xts/provision_cdn &> /dev/null
+        ${rD}/xts/provision_cdn &> /dev/null
       ${gCb} 7.x-1.x-dev ${gitHub}/drupalgeddon.git \
-        ${_ROOT}/.drush/usr/drupalgeddon &> /dev/null
+        ${rD}/usr/drupalgeddon &> /dev/null
       ${gCb} 7.x-1.x ${gitHub}/drush_ecl.git \
-        ${_ROOT}/.drush/usr/drush_ecl &> /dev/null
+        ${rD}/usr/drush_ecl &> /dev/null
       ${gCb} 7.x-1.x ${gitHub}/security_review.git \
-        ${_ROOT}/.drush/xts/security_review &> /dev/null
+        ${rD}/xts/security_review &> /dev/null
       ${gCb} 7.x-2.x ${gitHub}/provision_boost.git \
-        ${_ROOT}/.drush/xts/provision_boost &> /dev/null
+        ${rD}/xts/provision_boost &> /dev/null
       ${gCb} 7.x-2.x ${gitHub}/registry_rebuild.git \
-        ${_ROOT}/.drush/usr/registry_rebuild &> /dev/null
+        ${rD}/usr/registry_rebuild &> /dev/null
     else
       cd ${_ROOT}/.drush/sys
       curl ${crlGet} "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
