@@ -144,6 +144,11 @@ _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
 SHELL=/bin/bash
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 #
+crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+gCb="git clone --branch"
+gitHub="git://github.com/omega8cc"
+vSet="vset --always-set"
+#
 urlDev="http://${_USE_MIR}/dev"
 urlHmr="http://${_USE_MIR}/versions/master/aegir"
 urlStb="http://${_USE_MIR}/versions/stable"
@@ -273,15 +278,13 @@ get_dev_ext() {
 #
 # Download and extract from dev/static.
 get_dev_stc() {
-  if [ ! -z "$1" ] && [ -d "${mL}" ] && [ ! -e "${mL}/$1" ]; then
+  if [ ! -z "$1" ]; then
     if [ "$1" = "hosting.tar.gz" ]; then
-      curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/$1" -o "${mL}/$1"
+      curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/$1" -o "$1"
     else
-      curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/static/$1" -o "${mL}/$1"
+      curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/static/$1" -o "$1"
     fi
-    if [ -e "${mL}/$1" ]; then
-      extract_archive "${mL}/$1"
-    fi
+    extract_archive "$1"
   fi
 }
 #
@@ -1145,6 +1148,7 @@ fi
 if [ "${_DEBUG_MODE}" = "YES" ]; then
   msg "${_STATUS} A: Downloading hostmaster modules..."
 fi
+cd ${mL}
 get_dev_stc "hosting.tar.gz"
 get_dev_stc "eldir.tar.gz"
 get_dev_stc "views-6.x-3.0.tar.gz"
