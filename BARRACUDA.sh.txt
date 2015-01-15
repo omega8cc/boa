@@ -353,15 +353,13 @@ get_dev_ext() {
 #
 # Download and extract from dev/static.
 get_dev_stc() {
-  if [ ! -z "$1" ] && [ -d "${mL}" ] && [ ! -e "${mL}/$1" ]; then
+  if [ ! -z "$1" ]; then
     if [ "$1" = "hosting.tar.gz" ]; then
-      curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/$1" -o "${mL}/$1"
+      curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/$1" -o "$1"
     else
-      curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/static/$1" -o "${mL}/$1"
+      curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/static/$1" -o "$1"
     fi
-    if [ -e "${mL}/$1" ]; then
-      extract_archive "${mL}/$1"
-    fi
+    extract_archive "$1"
   fi
 }
 #
@@ -3579,6 +3577,7 @@ download_for_dmlb() {
   if [ ! -d "${mL}" ]; then
     mkdir -p ${mL}
   fi
+  cd ${mL}
   get_dev_stc "hosting.tar.gz"
   get_dev_stc "eldir.tar.gz"
   get_dev_stc "views-6.x-3.0.tar.gz"
@@ -3678,6 +3677,7 @@ upgrade_aegir_master() {
     provision_backend_dbpass_sync
     hostmaster_frontend_dbpass_sync
     download_for_dmlb
+    cd /var/aegir
     su -s /bin/bash - aegir -c "bash AegirUpgrade.sh.txt"
     if [ -e "/opt/tmp/status-AegirUpgrade-FAIL" ]; then
       msg "FATAL ERROR: AegirUpgrade installer failed"
@@ -9179,7 +9179,6 @@ EOFMYSQL
   fi
 
   download_for_dmlb
-
   cd /var/aegir
   _AEGIR_SCRIPT="AegirSetupM.sh.txt"
   for fe in `find ${pthBld}/aegir/scripts -type f`; do
