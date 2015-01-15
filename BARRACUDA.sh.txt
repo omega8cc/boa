@@ -363,6 +363,7 @@ get_dev_stc() {
       extract_archive "${mL}/$1"
     fi
   fi
+}
 #
 # Download and extract from dev/contrib mirror.
 get_dev_contrib() {
