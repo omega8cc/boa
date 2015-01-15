@@ -350,7 +350,8 @@ remove_web_user() {
   if [ -e "/home/${_WEB}/.tmp" ] || [ "$1" = "clean" ]; then
     chattr -i /home/${_WEB} &> /dev/null
     chattr -i /home/${_WEB}/.drush &> /dev/null
-    deluser --remove-home --backup-to ${vBs}/zombie/deleted ${_WEB}
+    mkdir -p ${vBs}/zombie/deleted
+    deluser --remove-home --backup-to ${vBs}/zombie/deleted ${_WEB} &> /dev/null
     if [ -e "/home/${_WEB}" ]; then
       rm -f -r /home/${_WEB} &> /dev/null
     fi

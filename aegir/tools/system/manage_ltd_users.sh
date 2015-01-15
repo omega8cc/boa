@@ -400,7 +400,9 @@ for Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`; do
     if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
       || [ ! -e "/home/${usrParent}.ftp/users/${Existing}" ]; then
       disable_chattr ${Existing}
-      deluser --remove-home --backup-to /var/backups/zombie/deleted ${Existing}
+      deluser \
+        --remove-home \
+        --backup-to /var/backups/zombie/deleted ${Existing} &> /dev/null
       rm -f /home/${usrParent}.ftp/users/${Existing}
       echo Zombie ${Existing} killed
       echo
@@ -722,7 +724,7 @@ update_php_cli_drush() {
     touch /data/disk/${_USER}/aegir.sh
     echo -e "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n${_DRUSHCMD} \
       '@hostmaster' hosting-dispatch\ntouch /data/disk/${_USER}/${_USER}-task.done" \
-      | fmt -su | tee -a /data/disk/${_USER}/aegir.sh >/dev/null 2>&1
+      | fmt -su -w 300 | tee -a /data/disk/${_USER}/aegir.sh >/dev/null 2>&1
     chown ${_USER}:users /data/disk/${_USER}/aegir.sh &> /dev/null
     chmod 0700 /data/disk/${_USER}/aegir.sh &> /dev/null
   fi
@@ -956,7 +958,9 @@ remove_web_user() {
   if [ -e "/home/${_WEB}/.tmp" ] || [ "$1" = "clean" ]; then
     chattr -i /home/${_WEB} &> /dev/null
     chattr -i /home/${_WEB}/.drush &> /dev/null
-    deluser --remove-home --backup-to /var/backups/zombie/deleted ${_WEB}
+    deluser \
+      --remove-home \
+      --backup-to /var/backups/zombie/deleted ${_WEB} &> /dev/null
     if [ -e "/home/${_WEB}" ]; then
       rm -f -r /home/${_WEB} &> /dev/null
     fi
@@ -1421,7 +1425,7 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
                       '/data/disk/${_USER}/static', \
                       '/data/disk/${_USER}/backups', \
                       '/data/disk/${_USER}/clients']" \
-                      | fmt -su >> ${_THIS_LTD_CONF}
+                      | fmt -su -w 300 >> ${_THIS_LTD_CONF}
         manage_site_drush_alias_mirror
         manage_sec
         if [ -e "/home/${_USER}.ftp/users" ]; then

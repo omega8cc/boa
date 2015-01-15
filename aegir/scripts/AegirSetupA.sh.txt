@@ -1510,7 +1510,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ]; then
   echo >> /etc/lshell.conf
   echo "[${_USERFTP}]" >> /etc/lshell.conf
   echo "path : ['${_ROOT}/distro', '${_ROOT}/static', \
-    '${_ROOT}/backups', '${_ROOT}/clients']" | fmt -su >> /etc/lshell.conf
+    '${_ROOT}/backups', '${_ROOT}/clients']" | fmt -su -w 300 >> /etc/lshell.conf
 fi
 
 
@@ -2216,7 +2216,7 @@ _OCTOPUS_VERSION_INFO="$(date 2>&1) / \
   / Aegir ${_AEGIR_VERSION} / Octopus ${_X_VERSION} \
   / FPM ${_PHP_FPM_VERSION} / CLI ${_PHP_CLI_VERSION}"
 
-echo "${_OCTOPUS_VERSION_INFO}" | fmt -su >> ${_ROOT}/log/octopus_log.txt
+echo "${_OCTOPUS_VERSION_INFO}" | fmt -su -w 300 >> ${_ROOT}/log/octopus_log.txt
 
 if [ "${_DEBUG_MODE}" = "YES" ]; then
   msg "${_STATUS} A: New entry added to ${_ROOT}/log/octopus_log.txt"

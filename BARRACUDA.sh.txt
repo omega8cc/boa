@@ -4387,27 +4387,27 @@ update_sources_list() {
       cd /var/opt
       echo "## MAIN REPOSITORIES" > ${aptLiSys}
       echo "deb http://${_MIRROR}/ubuntu/ ${_OSV} main \
-        restricted universe multiverse" | fmt -su >> ${aptLiSys}
+        restricted universe multiverse" | fmt -su -w 300 >> ${aptLiSys}
       echo "deb-src http://${_MIRROR}/ubuntu/ ${_OSV} main \
-        restricted universe multiverse" | fmt -su >> ${aptLiSys}
+        restricted universe multiverse" | fmt -su -w 300 >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES" >> ${aptLiSys}
       echo "deb http://${_MIRROR}/ubuntu/ ${_OSV}-updates main \
-        restricted universe multiverse" | fmt -su >> ${aptLiSys}
+        restricted universe multiverse" | fmt -su -w 300 >> ${aptLiSys}
       echo "deb-src http://${_MIRROR}/ubuntu/ ${_OSV}-updates main \
-        restricted universe multiverse" | fmt -su >> ${aptLiSys}
+        restricted universe multiverse" | fmt -su -w 300 >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## BACKPORTS" >> ${aptLiSys}
       echo "deb http://${_MIRROR}/ubuntu/ ${_OSV}-backports main \
-        restricted universe multiverse" | fmt -su >> ${aptLiSys}
+        restricted universe multiverse" | fmt -su -w 300 >> ${aptLiSys}
       echo "deb-src http://${_MIRROR}/ubuntu/ ${_OSV}-backports main \
-        restricted universe multiverse" | fmt -su >> ${aptLiSys}
+        restricted universe multiverse" | fmt -su -w 300 >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## UBUNTU SECURITY UPDATES" >> ${aptLiSys}
       echo "deb http://security.ubuntu.com/ubuntu ${_OSV}-security \
-        main restricted universe multiverse" | fmt -su >> ${aptLiSys}
+        main restricted universe multiverse" | fmt -su -w 300 >> ${aptLiSys}
       echo "deb-src http://security.ubuntu.com/ubuntu ${_OSV}-security \
-        main restricted universe multiverse" | fmt -su >> ${aptLiSys}
+        main restricted universe multiverse" | fmt -su -w 300 >> ${aptLiSys}
       if [ -e "${locCnf}/etc-apt-preferences-ubuntu.txt" ]; then
         cp -af ${locCnf}/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
       else
@@ -4470,9 +4470,9 @@ update_sources_list() {
         >> ${aptLiSys}
       if [ "${_OSV}" = "lenny" ]; then
         echo "deb http://archive.debian.org/debian-volatile \
-          ${_OSV}/volatile main contrib non-free" | fmt -su >> ${aptLiSys}
+          ${_OSV}/volatile main contrib non-free" | fmt -su -w 300 >> ${aptLiSys}
         echo "deb-src http://archive.debian.org/debian-volatile \
-          ${_OSV}/volatile main contrib non-free" | fmt -su >> ${aptLiSys}
+          ${_OSV}/volatile main contrib non-free" | fmt -su -w 300 >> ${aptLiSys}
       else
         echo "deb http://${_MIRROR}/debian/ ${_OSV}-updates main" \
           >> ${aptLiSys}
@@ -4481,9 +4481,9 @@ update_sources_list() {
         echo "" >> ${aptLiSys}
         echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
         echo "deb http://security.debian.org/ ${_OSV}/updates main \
-          contrib non-free" | fmt -su >> ${aptLiSys}
+          contrib non-free" | fmt -su -w 300 >> ${aptLiSys}
         echo "deb-src http://security.debian.org/ ${_OSV}/updates main \
-          contrib non-free" | fmt -su >> ${aptLiSys}
+          contrib non-free" | fmt -su -w 300 >> ${aptLiSys}
         echo "" >> ${aptLiSys}
         echo "## DEBIAN PROPOSED UPDATES" >> ${aptLiSys}
         echo "deb http://${_MIRROR}/debian/ ${_OSV}-proposed-updates main" \
@@ -4500,9 +4500,9 @@ update_sources_list() {
           echo "" >> ${aptLiSys}
           echo "## DEBIAN LTS UPDATES" >> ${aptLiSys}
           echo "deb http://${_MIRROR}/debian/ ${_OSV}-lts main \
-            contrib non-free" | fmt -su >> ${aptLiSys}
+            contrib non-free" | fmt -su -w 300 >> ${aptLiSys}
           echo "deb-src http://${_MIRROR}/debian/ ${_OSV}-lts main \
-            contrib non-free" | fmt -su >> ${aptLiSys}
+            contrib non-free" | fmt -su -w 300 >> ${aptLiSys}
           if [ -e "/etc/apt/apt.conf" ]; then
             sed -i "s/APT::Default-Release \"squeeze\";/APT::Default-Release \"squeeze-lts\";/g" \
               /etc/apt/apt.conf &> /dev/null
@@ -5518,11 +5518,11 @@ finale() {
   mv -f /etc/motd-pre-* ${vBs}/dragon/t/ &> /dev/null
   echo > /etc/motd
   echo " Barracuda System managed by Skynet Agent v.${_X_VERSION} \
-    welcomes you aboard" | fmt -su >> /etc/motd
+    welcomes you aboard" | fmt -su -w 300 >> /etc/motd
   echo >> /etc/motd
   echo > /etc/motd.tail
   echo " Barracuda System managed by Skynet Agent v.${_X_VERSION} \
-    welcomes you aboard" | fmt -su >> /etc/motd.tail
+    welcomes you aboard" | fmt -su -w 300 >> /etc/motd.tail
   echo >> /etc/motd.tail
   aptitude autoclean -y &> /dev/null
   apt-get clean -qq &> /dev/null
@@ -6725,9 +6725,9 @@ if [ -d "/etc/webmin" ]; then
     cd /var/opt
     echo "## Webmin APT Repository" > ${aptLiSys}.d/webmin.list
     echo "deb http://download.webmin.com/download/repository \
-      sarge contrib" | fmt -su >> ${aptLiSys}.d/webmin.list
+      sarge contrib" | fmt -su -w 300 >> ${aptLiSys}.d/webmin.list
     echo "deb http://webmin.mirror.somersettechsolutions.co.uk/repository \
-      sarge contrib" | fmt -su >> ${aptLiSys}.d/webmin.list
+      sarge contrib" | fmt -su -w 300 >> ${aptLiSys}.d/webmin.list
     _KEYS_SERVER_TEST=FALSE
     until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]]; do
       rm -f jcameron-key.asc*
@@ -8579,7 +8579,7 @@ if [[ "${_XTRAS_LIST}" =~ "SR4" ]] \
       echo "JETTY_PID=\$JETTY_RUN/jetty9.pid # Pid file" >> /etc/default/jetty9
       echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m -Djava.awt.headless=true \
         -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" \
-        # Options" | fmt -su >> /etc/default/jetty9
+        # Options" | fmt -su -w 300 >> /etc/default/jetty9
       if [ "${_OSV}" = "wheezy" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
@@ -8632,7 +8632,7 @@ if [ -e "/opt/jetty9/VERSION.txt" ]; then
       echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m \
         -Djava.awt.headless=true \
         -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" \
-        # Options" | fmt -su >> /etc/default/jetty9
+        # Options" | fmt -su -w 300 >> /etc/default/jetty9
     fi
   fi
   if [ ! -e "$_PORT_CTRL" ] \
@@ -8751,7 +8751,7 @@ if [[ "${_XTRAS_LIST}" =~ "SR3" ]]; then
       echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m \
         -Djava.awt.headless=true \
         -Dsolr.solr.home=/opt/solr3 \$JAVA_OPTIONS\" \
-        # Options" | fmt -su >> /etc/default/jetty8
+        # Options" | fmt -su -w 300 >> /etc/default/jetty8
       sed -i "s/8080/8088/g" /opt/jetty8/bin/jetty.sh &> /dev/null
       ln -sf /opt/jetty8/bin/jetty.sh /etc/init.d/jetty8 &> /dev/null
       chmod 755 /etc/init.d/jetty8
@@ -8873,7 +8873,7 @@ if [[ "${_XTRAS_LIST}" =~ "SR1" ]] || [ "${_TOMCAT_TO_JETTY}" = "YES" ]; then
       echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m \
         -Djava.awt.headless=true \
         -Dsolr.solr.home=/opt/solr1 \$JAVA_OPTIONS\" \
-        # Options" | fmt -su >> /etc/default/jetty7
+        # Options" | fmt -su -w 300 >> /etc/default/jetty7
       sed -i "s/8080/8077/g" /opt/jetty7/bin/jetty.sh &> /dev/null
       ln -sf /opt/jetty7/bin/jetty.sh /etc/init.d/jetty7 &> /dev/null
       chmod 755 /etc/init.d/jetty7
@@ -9694,9 +9694,9 @@ if [[ "${_XTRAS_LIST}" =~ "ALL" ]] || [[ "${_XTRAS_LIST}" =~ "WMN" ]]; then
       cd /var/opt
       echo "## Webmin APT Repository" > ${aptLiSys}.d/webmin.list
       echo "deb http://download.webmin.com/download/repository \
-        sarge contrib" | fmt -su >> ${aptLiSys}.d/webmin.list
+        sarge contrib" | fmt -su -w 300 >> ${aptLiSys}.d/webmin.list
       echo "deb http://webmin.mirror.somersettechsolutions.co.uk/repository \
-        sarge contrib" | fmt -su >> ${aptLiSys}.d/webmin.list
+        sarge contrib" | fmt -su -w 300 >> ${aptLiSys}.d/webmin.list
       _KEYS_SERVER_TEST=FALSE
       until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]]; do
         rm -f jcameron-key.asc*
@@ -9829,7 +9829,7 @@ else
             adduser --system --group --home /var/scout scout &> /dev/null
             usermod -aG users scout &> /dev/null
             echo -e "* * * * * scout $_GEM_FILE ${_SCOUT_KEY}" \
-              | fmt -su | tee -a $_GEM_CRON >/dev/null 2>&1
+              | fmt -su -w 300 | tee -a $_GEM_CRON >/dev/null 2>&1
           fi
         fi
         if [ -e "$_GEM_FILE" ]; then
@@ -10259,8 +10259,8 @@ _BARRACUDA_VERSION_INFO="$(date 2>&1) / \
   ${_DB_SERVER}-${_LOG_DB_V} \
   ${_LOG_DB_HOST}"
 
-echo "${_BARRACUDA_VERSION_INFO}" | fmt -su >> /var/log/barracuda_log.txt
-echo "${_BARRACUDA_VERSION_INFO}" | fmt -su >> ${vBs}/barracuda_log.txt
+echo ${_BARRACUDA_VERSION_INFO} | fmt -su -w 300 >> /var/log/barracuda_log.txt
+echo ${_BARRACUDA_VERSION_INFO} | fmt -su -w 300 >> ${vBs}/barracuda_log.txt
 
 if [ "${_DEBUG_MODE}" = "YES" ]; then
   msg "INFO: New entry added to /var/log/barracuda_log.txt"
