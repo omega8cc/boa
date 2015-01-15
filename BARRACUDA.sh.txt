@@ -5518,11 +5518,11 @@ finale() {
   mv -f /etc/motd-pre-* ${vBs}/dragon/t/ &> /dev/null
   echo > /etc/motd
   echo " Barracuda System managed by Skynet Agent v.${_X_VERSION} \
-    welcomes you aboard" >> /etc/motd
+    welcomes you aboard" | fmt -su >> /etc/motd
   echo >> /etc/motd
   echo > /etc/motd.tail
   echo " Barracuda System managed by Skynet Agent v.${_X_VERSION} \
-    welcomes you aboard" >> /etc/motd.tail
+    welcomes you aboard" | fmt -su >> /etc/motd.tail
   echo >> /etc/motd.tail
   aptitude autoclean -y &> /dev/null
   apt-get clean -qq &> /dev/null
@@ -5892,9 +5892,6 @@ fi
 
 
 ###--------------------###
-if [ "${_DEBUG_MODE}" = "YES" ]; then
-  msg "INFO: Checking your system version..."
-fi
 _THIS_OS=$(lsb_release -si 2>&1)
 _THIS_RV=$(lsb_release -sc 2>&1)
 if [ "${_THIS_OS}" = "Ubuntu" ]; then
@@ -6437,7 +6434,6 @@ else ### if [ "${_STATUS}" = "UPGRADE" ]; then
   * Your e-mail address is ${_MY_EMAIL}
   * Your server hostname is ${_THISHOST}
   * Your Aegir control panel URL is https://${_THIS_FRONT}
-
 EOF
     echo " "
   fi
