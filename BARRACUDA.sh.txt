@@ -3681,7 +3681,6 @@ upgrade_aegir_master() {
     msg "INFO: Aegir Master Instance upgrade completed"
   else
     msg "INFO: Aegir Master Instance not upgraded this time"
-    echo " "
   fi
   rm -f /var/aegir/*install.sh.txt
 }
