@@ -10253,14 +10253,15 @@ _BARRACUDA_VERSION_INFO="$(date 2>&1) / \
   Aegir ${_AEGIR_VERSION} / \
   Barracuda ${_X_VERSION}${_LOG_GIT_MIRROR} / \
   Nginx ${_NGINX_VRN} / \
-  PHP ${_PHP_MULTI_INSTALL} / \
+  PHP-MULTI ${_PHP_MULTI_INSTALL} / \
+  PHP-SINLE ${_PHP_SINGLE_INSTALL} / \
   FPM ${_PHP_FPM_VERSION} / \
   CLI ${_PHP_CLI_VERSION} / \
   ${_DB_SERVER}-${_LOG_DB_V} \
   ${_LOG_DB_HOST}"
 
-echo ${_BARRACUDA_VERSION_INFO} | fmt -su -w 9000 >> /var/log/barracuda_log.txt
-echo ${_BARRACUDA_VERSION_INFO} | fmt -su -w 9000 >> ${vBs}/barracuda_log.txt
+echo "${_BARRACUDA_VERSION_INFO}" | fmt -su -w 9000 >> /var/log/barracuda_log.txt
+echo "${_BARRACUDA_VERSION_INFO}" | fmt -su -w 9000 >> ${vBs}/barracuda_log.txt
 
 if [ "${_DEBUG_MODE}" = "YES" ]; then
   msg "INFO: New entry added to /var/log/barracuda_log.txt"
