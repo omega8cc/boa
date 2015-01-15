@@ -3602,6 +3602,7 @@ download_for_dmlb() {
   get_dev_stc "jquery-ui-1.7.3.zip"
   find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null
   find ${mL} -type f -exec chmod 0644 {} \; &> /dev/null
+  chown -R root:root ${mL}
 }
 #
 # Upgrade Aegir Master Instance.

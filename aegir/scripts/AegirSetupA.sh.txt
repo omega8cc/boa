@@ -1167,6 +1167,7 @@ get_dev_stc "revision_deletion.tar.gz"
 get_dev_stc "strongarm.tar.gz"
 get_dev_stc "userprotect.tar.gz"
 get_dev_stc "jquery-ui-1.7.3.zip"
+chown -R root:root ${mL}
 find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null
 find ${mL} -type f -exec chmod 0644 {} \; &> /dev/null
 
