@@ -403,17 +403,20 @@ find_mirror() {
     echo "us.files.aegir.cc" >> ${ffList}
     if [ -e "${ffList}" ]; then
       _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-      _USE_MIRROR="${_CHECK_MIRROR}"
+      _USE_MIR="${_CHECK_MIRROR}"
     else
-      _USE_MIRROR="files.aegir.cc"
+      _USE_MIR="files.aegir.cc"
     fi
   else
-    _USE_MIRROR="files.aegir.cc"
+    _USE_MIR="files.aegir.cc"
   fi
-  if ! netcat -w 5 -z ${_USE_MIRROR} 80 ; then
-    echo "INFO: The mirror ${_USE_MIRROR} doesn't respond, let's try default"
-    _USE_MIRROR="files.aegir.cc"
+  if ! netcat -w 5 -z ${_USE_MIR} 80 ; then
+    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
+    _USE_MIR="files.aegir.cc"
   fi
+  urlDev="http://${_USE_MIR}/dev"
+  urlHmr="http://${_USE_MIR}/versions/master/aegir"
+  urlStb="http://${_USE_MIR}/versions/stable"
 }
 
 setup() {
@@ -457,12 +460,12 @@ setup() {
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 10 \
-    -I "http://${_USE_MIRROR}" 2> /dev/null)
+    -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
-    echo "ERROR: ${_USE_MIRROR} is not available, please try later"
+    echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
   else
-    urlHmr="http://${_USE_MIRROR}/versions/master/aegir"
+    urlHmr="http://${_USE_MIR}/versions/master/aegir"
   fi
 
   _LSB_TEST=$(which lsb_release 2> /dev/null)

@@ -286,20 +286,20 @@ find_mirror() {
     echo "us.files.aegir.cc" >> ${ffList}
     if [ -e "${ffList}" ]; then
       _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-      _USE_MIRROR="${_CHECK_MIRROR}"
+      _USE_MIR="${_CHECK_MIRROR}"
     else
-      _USE_MIRROR="files.aegir.cc"
+      _USE_MIR="files.aegir.cc"
     fi
   else
-    _USE_MIRROR="files.aegir.cc"
+    _USE_MIR="files.aegir.cc"
   fi
-  if ! netcat -w 5 -z ${_USE_MIRROR} 80 ; then
-    echo "INFO: The mirror ${_USE_MIRROR} doesn't respond, let's try default"
-    _USE_MIRROR="files.aegir.cc"
+  if ! netcat -w 5 -z ${_USE_MIR} 80 ; then
+    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
+    _USE_MIR="files.aegir.cc"
   fi
-  urlDev="http://${_USE_MIRROR}/dev"
-  urlHmr="http://${_USE_MIRROR}/versions/master/aegir"
-  urlStb="http://${_USE_MIRROR}/versions/stable"
+  urlDev="http://${_USE_MIR}/dev"
+  urlHmr="http://${_USE_MIR}/versions/master/aegir"
+  urlStb="http://${_USE_MIR}/versions/stable"
 }
 #
 # Remove dangerous stuff from the string.
@@ -346,10 +346,23 @@ get_dev_arch() {
 # Download and extract from dev/version mirror.
 get_dev_ext() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VERSION}/$1" -o "$1"
+    curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/$1" -o "$1"
     extract_archive "$1"
   fi
 }
+#
+# Download and extract from dev/static.
+get_dev_stc() {
+  if [ ! -z "$1" ] && [ -d "${mL}" ] && [ ! -e "${mL}/$1" ]; then
+    if [ "$1" = "hosting.tar.gz" ]; then
+      curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/$1" -o "${mL}/$1"
+    else
+      curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/static/$1" -o "${mL}/$1"
+    fi
+    if [ -e "${mL}/$1" ]; then
+      extract_archive "${mL}/$1"
+    fi
+  fi
 #
 # Download and extract from dev/contrib mirror.
 get_dev_contrib() {
@@ -3559,6 +3572,38 @@ hostmaster_frontend_dbpass_sync() {
   mysqladmin flush-privileges &> /dev/null
 }
 #
+# Download for Drush Make Local build.
+download_for_dmlb() {
+  mL="/opt/tmp/make_local"
+  if [ ! -d "${mL}" ]; then
+    mkdir -p ${mL}
+  fi
+  get_dev_stc "hosting.tar.gz"
+  get_dev_stc "eldir.tar.gz"
+  get_dev_stc "views-6.x-3.0.tar.gz"
+  get_dev_stc "views_bulk_operations-6.x-1.16.tar.gz"
+  get_dev_stc "admin_menu.tar.gz"
+  get_dev_stc "install_profile_api.tar.gz"
+  get_dev_stc "jquery_ui.tar.gz"
+  get_dev_stc "jquery_update.tar.gz"
+  get_dev_stc "modalframe.tar.gz"
+  get_dev_stc "openidadmin.tar.gz"
+  get_dev_stc "css_emimage.tar.gz"
+  get_dev_stc "ctools.tar.gz"
+  get_dev_stc "features_extra.tar.gz"
+  get_dev_stc "features.tar.gz"
+  get_dev_stc "hosting_backup_queue.tar.gz"
+  get_dev_stc "hosting_platform_pathauto.tar.gz"
+  get_dev_stc "hosting_task_gc.tar.gz"
+  get_dev_stc "protect_critical_users.tar.gz"
+  get_dev_stc "revision_deletion.tar.gz"
+  get_dev_stc "strongarm.tar.gz"
+  get_dev_stc "userprotect.tar.gz"
+  get_dev_stc "jquery-ui-1.7.3.zip"
+  find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${mL} -type f -exec chmod 0644 {} \; &> /dev/null
+}
+#
 # Upgrade Aegir Master Instance.
 upgrade_aegir_master() {
   if prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
@@ -3575,7 +3620,7 @@ upgrade_aegir_master() {
       mkdir -p /var/aegir/.drush/{sys,xts,usr}
       git clone --branch ${_BRANCH_PRN} ${gitHub}/provision.git \
         /var/aegir/.drush/sys/provision &> /dev/null
-      sed -i "s/files.aegir.cc/${_USE_MIRROR}/g" \
+      sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
         /var/aegir/.drush/sys/provision/aegir.make &> /dev/null
       rm -f -r /var/aegir/drush
       cd /var/aegir
@@ -3614,7 +3659,7 @@ upgrade_aegir_master() {
     cp ${pthBld}/aegir/scripts/AegirUpgrade.sh.txt ./
     pthAue="/var/aegir/AegirUpgrade.sh.txt"
     sed -i "s/EDIT_AEGIR_VERSION/${_AEGIR_VERSION}/g"         ${pthAue}
-    sed -i "s/EDIT_AEGIR_XTS_VERSION/${_AEGIR_XTS_VERSION}/g" ${pthAue}
+    sed -i "s/EDIT_AEGIR_XTS_VRN/${_AEGIR_XTS_VRN}/g"         ${pthAue}
     sed -i "s/EDIT_BOA_REPO_GIT_URL/${_BOA_REPO_GIT_URLX}/g"  ${pthAue}
     sed -i "s/EDIT_BOA_REPO_NAME/${_BOA_REPO_NAME}/g"         ${pthAue}
     sed -i "s/EDIT_BRANCH_BOA/${_BRANCH_BOA}/g"               ${pthAue}
@@ -3626,11 +3671,12 @@ upgrade_aegir_master() {
     sed -i "s/EDIT_PHP_FPM_VERSION/${_PHP_FPM_VERSION}/g"     ${pthAue}
     sed -i "s/EDIT_STRONG_PASSWORDS/${_STRONG_PASSWORDS}/g"   ${pthAue}
     sed -i "s/EDIT_THIS_DB_HOST/${_THIS_DB_HOST}/g"           ${pthAue}
-    sed -i "s/EDIT_USE_MIRROR/${_USE_MIRROR}/g"               ${pthAue}
+    sed -i "s/EDIT_USE_MIR/${_USE_MIR}/g"                     ${pthAue}
     sed -i "s/EDIT_X_VERSION/${_X_VERSION}/g"                 ${pthAue}
     mysqladmin flush-hosts &> /dev/null
     provision_backend_dbpass_sync
     hostmaster_frontend_dbpass_sync
+    download_for_dmlb
     su -s /bin/bash - aegir -c "bash AegirUpgrade.sh.txt"
     if [ -e "/opt/tmp/status-AegirUpgrade-FAIL" ]; then
       msg "FATAL ERROR: AegirUpgrade installer failed"
@@ -9131,13 +9177,15 @@ GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'$_LOCAL_IP' IDENTIFIED BY 
 EOFMYSQL
   fi
 
+  download_for_dmlb
+
   cd /var/aegir
   _AEGIR_SCRIPT="AegirSetupM.sh.txt"
   for fe in `find ${pthBld}/aegir/scripts -type f`; do
     sed -i "s/EDIT_AEGIR_DB_USER/${_AEGIR_DB_USER}/g"         ${fe} &> /dev/null
     sed -i "s/EDIT_AEGIR_HOST/${_AEGIR_HOST}/g"               ${fe} &> /dev/null
     sed -i "s/EDIT_AEGIR_VERSION/${_AEGIR_VERSION}/g"         ${fe} &> /dev/null
-    sed -i "s/EDIT_AEGIR_XTS_VERSION/${_AEGIR_XTS_VERSION}/g" ${fe} &> /dev/null
+    sed -i "s/EDIT_AEGIR_XTS_VRN/${_AEGIR_XTS_VRN}/g"         ${fe} &> /dev/null
     sed -i "s/EDIT_BOA_REPO_GIT_URL/${_BOA_REPO_GIT_URLX}/g"  ${fe} &> /dev/null
     sed -i "s/EDIT_BOA_REPO_NAME/${_BOA_REPO_NAME}/g"         ${fe} &> /dev/null
     sed -i "s/EDIT_BRANCH_BOA/${_BRANCH_BOA}/g"               ${fe} &> /dev/null
@@ -9152,7 +9200,7 @@ EOFMYSQL
     sed -i "s/EDIT_PHP_FPM_VERSION/${_PHP_FPM_VERSION}/g"     ${fe} &> /dev/null
     sed -i "s/EDIT_STRONG_PASSWORDS/${_STRONG_PASSWORDS}/g"   ${fe} &> /dev/null
     sed -i "s/EDIT_THIS_DB_HOST/${_THIS_DB_HOST}/g"           ${fe} &> /dev/null
-    sed -i "s/EDIT_USE_MIRROR/${_USE_MIRROR}/g"               ${fe} &> /dev/null
+    sed -i "s/EDIT_USE_MIR/${_USE_MIR}/g"                     ${fe} &> /dev/null
   done
 
   cp -af ${pthBld}/aegir/scripts/$_AEGIR_SCRIPT ./

@@ -22,17 +22,20 @@ find_mirror() {
     echo "us.files.aegir.cc" >> ${ffList}
     if [ -e "${ffList}" ]; then
       _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-      _USE_MIRROR="${_CHECK_MIRROR}"
+      _USE_MIR="${_CHECK_MIRROR}"
     else
-      _USE_MIRROR="files.aegir.cc"
+      _USE_MIR="files.aegir.cc"
     fi
   else
-    _USE_MIRROR="files.aegir.cc"
+    _USE_MIR="files.aegir.cc"
   fi
-  if ! netcat -w 5 -z ${_USE_MIRROR} 80 ; then
-    echo "INFO: The mirror ${_USE_MIRROR} doesn't respond, let's try default"
-    _USE_MIRROR="files.aegir.cc"
+  if ! netcat -w 5 -z ${_USE_MIR} 80 ; then
+    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
+    _USE_MIR="files.aegir.cc"
   fi
+  urlDev="http://${_USE_MIR}/dev"
+  urlHmr="http://${_USE_MIR}/versions/master/aegir"
+  urlStb="http://${_USE_MIR}/versions/stable"
 }
 
 service ssh restart &> /dev/null
@@ -66,7 +69,7 @@ else
       --max-redirs 10 \
       --retry 10 \
       --retry-delay 5 \
-      -A iCab "http://${_USE_MIRROR}/BOA.sh.txt" \
+      -A iCab "http://${_USE_MIR}/BOA.sh.txt" \
       -o /var/backups/BOA.sh.txt.hourly
     bash /var/backups/BOA.sh.txt.hourly &> /dev/null
     rm -f /var/backups/BOA.sh.txt.hourly*

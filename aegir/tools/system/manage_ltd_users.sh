@@ -45,18 +45,20 @@ find_mirror() {
     echo "us.files.aegir.cc" >> ${ffList}
     if [ -e "${ffList}" ]; then
       _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-      _USE_MIRROR="${_CHECK_MIRROR}"
+      _USE_MIR="${_CHECK_MIRROR}"
     else
-      _USE_MIRROR="files.aegir.cc"
+      _USE_MIR="files.aegir.cc"
     fi
   else
-    _USE_MIRROR="files.aegir.cc"
+    _USE_MIR="files.aegir.cc"
   fi
-  if ! netcat -w 5 -z ${_USE_MIRROR} 80 ; then
-    echo "INFO: The mirror ${_USE_MIRROR} doesn't respond, let's try default"
-    _USE_MIRROR="files.aegir.cc"
+  if ! netcat -w 5 -z ${_USE_MIR} 80 ; then
+    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
+    _USE_MIR="files.aegir.cc"
   fi
-  urlHmr="http://${_USE_MIRROR}/versions/master/aegir"
+  urlDev="http://${_USE_MIR}/dev"
+  urlHmr="http://${_USE_MIR}/versions/master/aegir"
+  urlStb="http://${_USE_MIR}/versions/stable"
 }
 
 extract_archive() {
@@ -81,7 +83,7 @@ extract_archive() {
 
 get_dev_ext() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "http://${_USE_MIRROR}/dev/HEAD/$1" -o "$1"
+    curl ${crlGet} "${urlDev}/HEAD/$1" -o "$1"
     extract_archive "$1"
   fi
 }
@@ -111,7 +113,7 @@ enable_chattr() {
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
-    if [ ! -e "${_U_HD}/.ctrl.240dev.txt" ]; then
+    if [ ! -e "${_U_HD}/.ctrl.240devB.txt" ]; then
       if [[ "${_HOST_TEST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
         rm -f -r ${_U_HD}/*
         rm -f -r ${_U_HD}/.*
@@ -162,7 +164,7 @@ enable_chattr() {
 
     if [ "$_PHP_CLI_UPDATE" = "YES" ] \
       || [ ! -e "${_U_II}" ] \
-      || [ ! -e "${_U_HD}/.ctrl.240dev.txt" ]; then
+      || [ ! -e "${_U_HD}/.ctrl.240devB.txt" ]; then
       mkdir -p ${_U_HD}
       rm -f ${_U_HD}/.ctrl.php*
       rm -f ${_U_II}
@@ -206,7 +208,7 @@ enable_chattr() {
           /data/disk/${_USER}/distro:     \
           /data/disk/${_USER}/platforms:  \
           /data/disk/${_USER}/static:     \
-          /data/disk/all:                \
+          /data/disk/all:                 \
           /opt/php53: \
           /opt/php54: \
           /opt/php55: \
@@ -216,8 +218,8 @@ enable_chattr() {
           /opt/tika8: \
           /opt/tika9: \
           /opt/tools/drush: \
-          /usr/bin:  \
-          ${_U_HD}:  \
+          /usr/bin:   \
+          ${_U_HD}:   \
           ${_U_TP}\""
         _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
         _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
@@ -230,7 +232,7 @@ enable_chattr() {
         sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
         sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
         echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-        echo > ${_U_HD}/.ctrl.240dev.txt
+        echo > ${_U_HD}/.ctrl.240devB.txt
       fi
     fi
 
@@ -639,7 +641,7 @@ update_php_cli_local_ini() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.240dev.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.240devB.txt" ]; then
     rm -f -r ${_U_TP}
     mkdir -p ${_U_TP}
     chmod 700 ${_U_TP}
@@ -662,19 +664,20 @@ update_php_cli_local_ini() {
     fi
     if [ -e "${_U_II}" ]; then
       _INI="open_basedir = \".: \
-        /data/all:          \
-        /data/conf:         \
+        /data/all:           \
+        /data/conf:          \
         /data/disk/${_USER}: \
-        /data/disk/all:     \
-        /opt/php53:         \
-        /opt/php54:         \
-        /opt/php55:         \
-        /opt/php56:         \
-        /opt/tika:          \
-        /opt/tika7:         \
-        /opt/tika8:         \
-        /opt/tika9:         \
-        /opt/tools/drush:   \
+        /data/disk/all:      \
+        /opt/php53:          \
+        /opt/php54:          \
+        /opt/php55:          \
+        /opt/php56:          \
+        /opt/tika:           \
+        /opt/tika7:          \
+        /opt/tika8:          \
+        /opt/tika9:          \
+        /opt/tmp/make_local: \
+        /opt/tools/drush:    \
         /usr/bin\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
@@ -687,7 +690,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.240dev.txt
+      echo > ${_U_HD}/.ctrl.240devB.txt
     fi
     chattr +i ${_U_II}
   fi
@@ -1376,15 +1379,15 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       -type d -exec chmod 0700 {} \; &> /dev/null
     find /data/disk/${_USER}/config/server_master \
       -type f -exec chmod 0600 {} \; &> /dev/null
-    if [ ! -e "/data/disk/${_USER}/.tmp/.ctrl.240dev.txt" ]; then
+    if [ ! -e "/data/disk/${_USER}/.tmp/.ctrl.240devB.txt" ]; then
       rm -f -r /data/disk/${_USER}/.drush/cache
       rm -f -r /data/disk/${_USER}/.tmp
       mkdir -p /data/disk/${_USER}/.tmp
       chown ${_USER}:www-data /data/disk/${_USER}/.tmp &> /dev/null
       chmod 02775 /data/disk/${_USER}/.tmp &> /dev/null
-      echo OK > /data/disk/${_USER}/.tmp/.ctrl.240dev.txt
+      echo OK > /data/disk/${_USER}/.tmp/.ctrl.240devB.txt
     fi
-    if [ ! -e "/data/disk/${_USER}/static/control/.ctrl.240dev.txt" ]; then
+    if [ ! -e "/data/disk/${_USER}/static/control/.ctrl.240devB.txt" ]; then
       mkdir -p /data/disk/${_USER}/static/control
       chmod 755 /data/disk/${_USER}/static/control
       if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
@@ -1395,7 +1398,7 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       chown -R ${_USER}.ftp:${usrGroup} \
         /data/disk/${_USER}/static/control &> /dev/null
       rm -f /data/disk/${_USER}/static/control/.ctrl.*
-      echo OK > /data/disk/${_USER}/static/control/.ctrl.240dev.txt
+      echo OK > /data/disk/${_USER}/static/control/.ctrl.240devB.txt
     fi
     if [ -e "/root/.${_USER}.octopus.cnf" ]; then
       source /root/.${_USER}.octopus.cnf
@@ -1432,13 +1435,13 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
           ln -sf /data/disk/${_USER}/clients /home/${_USER}.ftp/clients
           ln -sf /data/disk/${_USER}/static  /home/${_USER}.ftp/static
         fi
-        if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.240dev.txt" ]; then
+        if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.240devB.txt" ]; then
           rm -f -r /home/${_USER}.ftp/.drush/cache
           rm -f -r /home/${_USER}.ftp/.tmp
           mkdir -p /home/${_USER}.ftp/.tmp
           chown ${_USER}.ftp:users /home/${_USER}.ftp/.tmp &> /dev/null
           chmod 700 /home/${_USER}.ftp/.tmp &> /dev/null
-          echo OK > /home/${_USER}.ftp/.tmp/.ctrl.240dev.txt
+          echo OK > /home/${_USER}.ftp/.tmp/.ctrl.240devB.txt
         fi
         enable_chattr ${_USER}.ftp
         echo Done for ${pthParentUsr}

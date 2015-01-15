@@ -77,7 +77,7 @@ _UBERCART7=EDIT_UBERCART7
 #
 _ADM_EMAIL="EDIT_MY_EMAIL"
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
-_AEGIR_XTS_VERSION=EDIT_AEGIR_XTS_VERSION
+_AEGIR_XTS_VRN=EDIT_AEGIR_XTS_VRN
 _AUTOPILOT=EDIT_AUTOPILOT
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
@@ -105,7 +105,7 @@ _PURGE_MODE=EDIT_PURGE_MODE
 _SPINNER=EDIT_SPINNER
 _STATUS=INIT
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
-_USE_MIRROR=EDIT_USE_MIRROR
+_USE_MIR=EDIT_USE_MIR
 _WEBG=EDIT_WEBG
 #
 _USER=EDIT_USER
@@ -126,11 +126,15 @@ _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
 #
 SHELL=/bin/bash
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-urlStb="http://${_USE_MIRROR}/versions/stable"
-vSet="vset --always-set"
+#
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-gitHub="git://github.com/omega8cc"
 gCb="git clone --branch"
+gitHub="git://github.com/omega8cc"
+vSet="vset --always-set"
+#
+urlDev="http://${_USE_MIR}/dev"
+urlHmr="http://${_USE_MIR}/versions/master/aegir"
+urlStb="http://${_USE_MIR}/versions/stable"
 
 
 ###---### Functions.
@@ -178,7 +182,7 @@ extract_archive() {
 # Download and extract from dev.
 get_dev_ext() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "http://${_USE_MIRROR}/dev/${_AEGIR_XTS_VERSION}/$1" -o "$1"
+    curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/$1" -o "$1"
     extract_archive "$1"
   fi
 }
@@ -186,7 +190,7 @@ get_dev_ext() {
 # Download and extract from dev/contrib mirror.
 get_dev_contrib() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "http://${_USE_MIRROR}/dev/contrib/$1" -o "$1"
+    curl ${crlGet} "${urlDev}/contrib/$1" -o "$1"
     extract_archive "$1"
   fi
 }
@@ -208,7 +212,7 @@ update_php_cli_local_ini() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.240dev.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.240devB.txt" ]; then
     rm -f -r ${_U_TP}
     mkdir -p ${_U_TP}
     chmod 700 ${_U_TP}
@@ -255,7 +259,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.240dev.txt
+      echo > ${_U_HD}/.ctrl.240devB.txt
     fi
   fi
 }
@@ -495,7 +499,7 @@ else
   get_dev_ext "remote_import.tar.gz"
   cd ${_ROOT}/.drush
 fi
-sed -i "s/files.aegir.cc/${_USE_MIRROR}/g" \
+sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
   ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
 
 ###---### Build Aegir base.

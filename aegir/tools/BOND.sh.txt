@@ -137,7 +137,7 @@ _TUNE_PHP_CLI_TIMEOUT=7200
 ###----------------------------------------###
 
 _AEGIR_VERSION="HEAD"
-_AEGIR_XTS_VERSION="BOA-2.4.0"
+_AEGIR_XTS_VRN="BOA-2.4.0"
 _BRANCH_BOA="2.4.x-dev"
 _BRANCH_PRN="2.4.x-dev"
 _X_VERSION="BOA-2.4.0-dev"
@@ -262,18 +262,20 @@ find_mirror() {
     echo "us.files.aegir.cc" >> ${ffList}
     if [ -e "${ffList}" ]; then
       _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-      _USE_MIRROR="${_CHECK_MIRROR}"
+      _USE_MIR="${_CHECK_MIRROR}"
     else
-      _USE_MIRROR="files.aegir.cc"
+      _USE_MIR="files.aegir.cc"
     fi
   else
-    _USE_MIRROR="files.aegir.cc"
+    _USE_MIR="files.aegir.cc"
   fi
-  if ! netcat -w 5 -z ${_USE_MIRROR} 80 ; then
-    echo "INFO: The mirror ${_USE_MIRROR} doesn't respond, let's try default"
-    _USE_MIRROR="files.aegir.cc"
+  if ! netcat -w 5 -z ${_USE_MIR} 80 ; then
+    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
+    _USE_MIR="files.aegir.cc"
   fi
-  urlStb="http://${_USE_MIRROR}/versions/stable"
+  urlDev="http://${_USE_MIR}/dev"
+  urlHmr="http://${_USE_MIR}/versions/master/aegir"
+  urlStb="http://${_USE_MIR}/versions/stable"
 }
 #
 # Find correct IP.

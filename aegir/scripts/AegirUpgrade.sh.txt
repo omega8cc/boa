@@ -35,7 +35,7 @@
 ###----------------------------------------###
 
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
-_AEGIR_XTS_VERSION=EDIT_AEGIR_XTS_VERSION
+_AEGIR_XTS_VRN=EDIT_AEGIR_XTS_VRN
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _BRANCH_BOA=EDIT_BRANCH_BOA
@@ -49,7 +49,7 @@ _PURGE_MODE=EDIT_PURGE_MODE
 _OSV=$(lsb_release -sc 2>&1)
 _ROOT="${HOME}"
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
-_USE_MIRROR=EDIT_USE_MIRROR
+_USE_MIR=EDIT_USE_MIR
 _X_VERSION=EDIT_X_VERSION
 #
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
@@ -68,10 +68,14 @@ _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
 #
 SHELL=/bin/bash
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-urlStb="http://${_USE_MIRROR}/versions/stable"
+#
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-gitHub="git://github.com/omega8cc"
 gCb="git clone --branch"
+gitHub="git://github.com/omega8cc"
+#
+urlDev="http://${_USE_MIR}/dev"
+urlHmr="http://${_USE_MIR}/versions/master/aegir"
+urlStb="http://${_USE_MIR}/versions/stable"
 
 
 ###---### Functions
@@ -103,7 +107,7 @@ update_php_cli_local_ini() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.240dev.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.240devB.txt" ]; then
     rm -f -r ${_U_TP}
     mkdir -p ${_U_TP}
     chmod 700 ${_U_TP}
@@ -151,7 +155,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.240dev.txt
+      echo > ${_U_HD}/.ctrl.240devB.txt
     fi
   fi
 }
@@ -198,7 +202,7 @@ extract_archive() {
 #
 get_dev_ext() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "http://${_USE_MIRROR}/dev/${_AEGIR_XTS_VERSION}/$1" -o "$1"
+    curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/$1" -o "$1"
     extract_archive "$1"
   fi
 }
@@ -316,7 +320,7 @@ hostmaster_go_up() {
     rm -f -r ${_ROOT}/.drush/*/*/.git
     cd ${_ROOT}/.drush/usr
     get_dev_ext "clean_missing_modules.tar.gz"
-    sed -i "s/files.aegir.cc/${_USE_MIRROR}/g" \
+    sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
       ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
   fi
   cd ${_PREV_HM_ROOT}

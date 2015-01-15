@@ -80,7 +80,7 @@ _UBERCART7=EDIT_UBERCART7
 #
 _ADM_EMAIL="EDIT_MY_EMAIL"
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
-_AEGIR_XTS_VERSION=EDIT_AEGIR_XTS_VERSION
+_AEGIR_XTS_VRN=EDIT_AEGIR_XTS_VRN
 _ALL_DISTRO=EDIT_ALL_DISTRO
 _AUTOPILOT=EDIT_AUTOPILOT
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
@@ -120,7 +120,7 @@ _THIS_OS=$(lsb_release -si 2>&1)
 _THISHTIP=EDIT_THISHTIP
 _TODAY=$(date +%y%m%d 2>&1)
 _USE_CURRENT=EDIT_USE_CURRENT
-_USE_MIRROR=EDIT_USE_MIRROR
+_USE_MIR=EDIT_USE_MIR
 _USRG=EDIT_USRG
 _WEBG=EDIT_WEBG
 #
@@ -128,6 +128,7 @@ _USER=EDIT_USER
 _ROOT="/data/disk/${_USER}"
 _HM_ROOT="${_ROOT}/aegir/distro/${_HM_DISTRO}"
 _DISTRO_ROOT="${_ROOT}/distro/${_DISTRO}"
+_D="/data/all"
 #
 if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
   _T_CLI=/opt/php55/bin
@@ -142,7 +143,10 @@ _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
 #
 SHELL=/bin/bash
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-_D="/data/all"
+#
+urlDev="http://${_USE_MIR}/dev"
+urlHmr="http://${_USE_MIR}/versions/master/aegir"
+urlStb="http://${_USE_MIR}/versions/stable"
 
 
 ###---### Functions.
@@ -254,7 +258,7 @@ extract_archive() {
 # Download and extract from dev/contrib mirror.
 get_dev_contrib() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "http://${_USE_MIRROR}/dev/contrib/$1" -o "$1"
+    curl ${crlGet} "${urlDev}/contrib/$1" -o "$1"
     extract_archive "$1"
   fi
 }
@@ -262,8 +266,22 @@ get_dev_contrib() {
 # Download and extract from dev.
 get_dev_ext() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "http://${_USE_MIRROR}/dev/${_AEGIR_XTS_VERSION}/$1" -o "$1"
+    curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/$1" -o "$1"
     extract_archive "$1"
+  fi
+}
+#
+# Download and extract from dev/static.
+get_dev_stc() {
+  if [ ! -z "$1" ] && [ -d "${mL}" ] && [ ! -e "${mL}/$1" ]; then
+    if [ "$1" = "hosting.tar.gz" ]; then
+      curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/$1" -o "${mL}/$1"
+    else
+      curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/static/$1" -o "${mL}/$1"
+    fi
+    if [ -e "${mL}/$1" ]; then
+      extract_archive "${mL}/$1"
+    fi
   fi
 }
 #
@@ -285,7 +303,7 @@ create_shared_dirs() {
   chown ${_USER}:${_USRG} ${_D}              &> /dev/null
   chown ${_USER}:${_USRG} ${_D}/000          &> /dev/null
   chown ${_USER}:${_USRG} ${_D}/000/core     &> /dev/null
-  chown ${_USER}:${_USRG} ${_CORE}             &> /dev/null
+  chown ${_USER}:${_USRG} ${_CORE}           &> /dev/null
   chmod 777 ${_CORE} ${_D} /data /data/disk /data/conf &> /dev/null
 }
 #
@@ -1119,6 +1137,39 @@ _LOCAL_STATUS="${_STATUS}"
 if [ -e "/var/run/aegir_upgrade.pid" ]; then
   _LOCAL_STATUS=INIT
 fi
+
+mL="/opt/tmp/make_local"
+if [ ! -d "${mL}" ]; then
+  mkdir -p ${mL}
+fi
+if [ "${_DEBUG_MODE}" = "YES" ]; then
+  msg "${_STATUS} A: Downloading hostmaster modules..."
+fi
+get_dev_stc "hosting.tar.gz"
+get_dev_stc "eldir.tar.gz"
+get_dev_stc "views-6.x-3.0.tar.gz"
+get_dev_stc "views_bulk_operations-6.x-1.16.tar.gz"
+get_dev_stc "admin_menu.tar.gz"
+get_dev_stc "install_profile_api.tar.gz"
+get_dev_stc "jquery_ui.tar.gz"
+get_dev_stc "jquery_update.tar.gz"
+get_dev_stc "modalframe.tar.gz"
+get_dev_stc "openidadmin.tar.gz"
+get_dev_stc "css_emimage.tar.gz"
+get_dev_stc "ctools.tar.gz"
+get_dev_stc "features_extra.tar.gz"
+get_dev_stc "features.tar.gz"
+get_dev_stc "hosting_backup_queue.tar.gz"
+get_dev_stc "hosting_platform_pathauto.tar.gz"
+get_dev_stc "hosting_task_gc.tar.gz"
+get_dev_stc "protect_critical_users.tar.gz"
+get_dev_stc "revision_deletion.tar.gz"
+get_dev_stc "strongarm.tar.gz"
+get_dev_stc "userprotect.tar.gz"
+get_dev_stc "jquery-ui-1.7.3.zip"
+find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null
+find ${mL} -type f -exec chmod 0644 {} \; &> /dev/null
+
 if [ "$_LOCAL_STATUS" = "INIT" ]; then
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Switching user and running AegirSetupB..."
@@ -1152,7 +1203,7 @@ else
         git clone --branch ${_BRANCH_PRN} \
           git://github.com/omega8cc/provision.git \
           ${_ROOT}/.drush/sys/provision &> /dev/null
-        sed -i "s/files.aegir.cc/${_USE_MIRROR}/g" \
+        sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
           ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
       fi
       rm -f -r ${_ROOT}/.drush/drush_make

@@ -33,18 +33,20 @@ find_mirror() {
     echo "us.files.aegir.cc" >> ${ffList}
     if [ -e "${ffList}" ]; then
       _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-      _USE_MIRROR="${_CHECK_MIRROR}"
+      _USE_MIR="${_CHECK_MIRROR}"
     else
-      _USE_MIRROR="files.aegir.cc"
+      _USE_MIR="files.aegir.cc"
     fi
   else
-    _USE_MIRROR="files.aegir.cc"
+    _USE_MIR="files.aegir.cc"
   fi
-  if ! netcat -w 5 -z ${_USE_MIRROR} 80 ; then
-    echo "INFO: The mirror ${_USE_MIRROR} doesn't respond, let's try default"
-    _USE_MIRROR="files.aegir.cc"
+  if ! netcat -w 5 -z ${_USE_MIR} 80 ; then
+    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
+    _USE_MIR="files.aegir.cc"
   fi
-  urlHmr="http://${_USE_MIRROR}/versions/master/aegir"
+  urlDev="http://${_USE_MIR}/dev"
+  urlHmr="http://${_USE_MIR}/versions/master/aegir"
+  urlStb="http://${_USE_MIR}/versions/stable"
 }
 
 extract_archive() {
@@ -69,7 +71,7 @@ extract_archive() {
 
 get_dev_ext() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "http://${_USE_MIRROR}/dev/HEAD/$1" -o "$1"
+    curl ${crlGet} "${urlDev}/HEAD/$1" -o "$1"
     extract_archive "$1"
   fi
 }
@@ -2655,7 +2657,7 @@ find_mirror
 #
 if [ -z "$_SKYNET_MODE" ] || [ "$_SKYNET_MODE" = "ON" ]; then
   rm -f /var/backups/BOA.sh.txt-*
-  curl ${crlGet} "http://${_USE_MIRROR}/BOA.sh.txt" -o /var/backups/BOA.sh.txt-${_NOW}
+  curl ${crlGet} "http://${_USE_MIR}/BOA.sh.txt" -o /var/backups/BOA.sh.txt-${_NOW}
   bash /var/backups/BOA.sh.txt-${_NOW} &> /dev/null
   rm -f /var/backups/BOA.sh.txt-${_NOW}
 fi
