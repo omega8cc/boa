@@ -561,7 +561,7 @@ init_this_distro_root() {
 # Upgrade contrib less.
 upgrade_contrib_less() {
   rm -f -r {context,ctools,entity,entityreference,mimemail,og}
-  get_dev_contrib "context-7.x-3.2.tar.gz"
+  get_dev_contrib "context-7.x-3.6.tar.gz"
   get_dev_contrib "ctools-7.x-1.5.tar.gz"
   get_dev_contrib "entity-7.x-1.5.tar.gz"
   get_dev_contrib "entityreference-7.x-1.1.tar.gz"
@@ -1408,12 +1408,6 @@ openacademy_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              if [ "${_OPENACADEMY}" = "1.0" ]; then
-                cd ${_SHRD_PRPATH}/modules/contrib
-                rm -f -r {image_resize_filter}
-                get_dev_contrib "image_resize_filter-7.x-1.14.tar.gz"
-                upgrade_contrib_less
-              fi
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
@@ -1795,15 +1789,13 @@ openscholar_install() {
               rm -f -r ${_SHRD_PRPATH}/modules/contrib/{entitycache,expire}
               sed -i "s/.*entitycache.*//g"  \
                 ${_SHRD_PRPATH}/${_REAL_PRNAME}.info &> /dev/null
-              if [ "${_OPENSCHOLAR}" = "3.16.0" ]; then
-                cd ${_SHRD_PRPATH}/modules/contrib
-                rm -f -r {biblio,boxes,entityreference_prepopulate,restws}
-                get_dev_contrib "biblio-7.x-1.0-rc7.tar.gz"
-                get_dev_contrib "boxes-7.x-1.2.tar.gz"
-                get_dev_contrib "entityreference_prepopulate-7.x-1.5.tar.gz"
-                get_dev_contrib "restws-7.x-2.2.tar.gz"
-                upgrade_contrib_less
-              fi
+              cd ${_SHRD_PRPATH}/modules/contrib
+              rm -f -r {biblio,boxes,entityreference_prepopulate,restws}
+              get_dev_contrib "biblio-7.x-1.0-rc7.tar.gz"
+              get_dev_contrib "boxes-7.x-1.2.tar.gz"
+              get_dev_contrib "entityreference_prepopulate-7.x-1.5.tar.gz"
+              get_dev_contrib "restws-7.x-2.2.tar.gz"
+              upgrade_contrib_less
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
@@ -1916,7 +1908,7 @@ recruiter_install() {
                 cd ${_SHRD_PRPATH}/modules
                 rm -f -r {i18n,rules}
                 get_dev_contrib "i18n-7.x-1.11.tar.gz"
-                get_dev_contrib "rules-7.x-2.7.tar.gz"
+                get_dev_contrib "rules-7.x-2.8.tar.gz"
                 upgrade_contrib_less
               fi
             else
@@ -2101,10 +2093,10 @@ ubercart7_install() {
               get_dev_contrib "colorbox-7.x-2.8.tar.gz"
               get_dev_contrib "ctools-7.x-1.5.tar.gz"
               get_dev_contrib "entity-7.x-1.5.tar.gz"
-              get_dev_contrib "google_analytics-7.x-2.0.tar.gz"
+              get_dev_contrib "google_analytics-7.x-2.1.tar.gz"
               get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
               get_dev_contrib "pathauto-7.x-1.2.tar.gz"
-              get_dev_contrib "rules-7.x-2.7.tar.gz"
+              get_dev_contrib "rules-7.x-2.8.tar.gz"
               get_dev_contrib "token-7.x-1.5.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
               get_dev_contrib "views-7.x-3.8.tar.gz"
@@ -2175,7 +2167,7 @@ ubercart7_testing_install() {
               get_dev_contrib "google_analytics-7.x-2.0.tar.gz"
               get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
               get_dev_contrib "pathauto-7.x-1.2.tar.gz"
-              get_dev_contrib "rules-7.x-2.7.tar.gz"
+              get_dev_contrib "rules-7.x-2.8.tar.gz"
               get_dev_contrib "token-7.x-1.5.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
               get_dev_contrib "views-7.x-3.8.tar.gz"
