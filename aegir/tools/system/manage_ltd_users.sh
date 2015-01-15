@@ -133,29 +133,29 @@ enable_chattr() {
       chown $1:users ${_U_TP}
       chown $1:users ${_U_HD}
       if [ ! -L "${_U_HD}/usr/registry_rebuild" ]; then
-        ln -sf /data/disk/${_USER}/.drush/usr/registry_rebuild \
+        ln -sf ${dscUsr}/.drush/usr/registry_rebuild \
           ${_U_HD}/usr/registry_rebuild
       fi
       if [ ! -L "${_U_HD}/usr/clean_missing_modules" ]; then
-        ln -sf /data/disk/${_USER}/.drush/usr/clean_missing_modules \
+        ln -sf ${dscUsr}/.drush/usr/clean_missing_modules \
           ${_U_HD}/usr/clean_missing_modules
       fi
       if [ ! -L "${_U_HD}/usr/drupalgeddon" ]; then
-        ln -sf /data/disk/${_USER}/.drush/usr/drupalgeddon \
+        ln -sf ${dscUsr}/.drush/usr/drupalgeddon \
           ${_U_HD}/usr/drupalgeddon
       fi
       if [ ! -L "${_U_HD}/usr/drush_ecl" ]; then
-        ln -sf /data/disk/${_USER}/.drush/usr/drush_ecl \
+        ln -sf ${dscUsr}/.drush/usr/drush_ecl \
           ${_U_HD}/usr/drush_ecl
       fi
       if [ ! -L "${_U_HD}/usr/make_local" ]; then
-        ln -sf /data/disk/${_USER}/.drush/usr/make_local \
+        ln -sf ${dscUsr}/.drush/usr/make_local \
           ${_U_HD}/usr/make_local
       fi
     fi
 
     _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
-      /data/disk/${_USER}/tools/drush/drush.php 2>&1)
+      ${dscUsr}/tools/drush/drush.php 2>&1)
     _PHP_V="56 55 54 53"
     for e in ${_PHP_V}; do
       if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] \
@@ -171,13 +171,13 @@ enable_chattr() {
       mkdir -p ${_U_HD}
       rm -f ${_U_HD}/.ctrl.php*
       rm -f ${_U_II}
-      if [ ! -z "$_T_CLI_VRN" ]; then
-        _USE_PHP_CLI="$_T_CLI_VRN"
+      if [ ! -z "${_T_CLI_VRN}" ]; then
+        _USE_PHP_CLI="${_T_CLI_VRN}"
         echo "_USE_PHP_CLI is ${_USE_PHP_CLI} for $1 at ${_USER} WTF \
-          _T_CLI_VRN is $_T_CLI_VRN"
+          _T_CLI_VRN is ${_T_CLI_VRN}"
       else
         _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
-          /data/disk/${_USER}/tools/drush/drush.php 2>&1)
+          ${dscUsr}/tools/drush/drush.php 2>&1)
         echo "_CHECK_USE_PHP_CLI is $_CHECK_USE_PHP_CLI for $1 at ${_USER}"
         if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]]; then
           _USE_PHP_CLI=5.5
@@ -207,11 +207,11 @@ enable_chattr() {
         _INI="open_basedir = \".: \
           /data/all:  \
           /data/conf: \
-          /data/disk/${_USER}/.drush/usr: \
-          /data/disk/${_USER}/distro:     \
-          /data/disk/${_USER}/platforms:  \
-          /data/disk/${_USER}/static:     \
-          /data/disk/all:                 \
+          ${dscUsr}/.drush/usr: \
+          ${dscUsr}/distro:     \
+          ${dscUsr}/platforms:  \
+          ${dscUsr}/static:     \
+          /data/disk/all:       \
           /opt/php53: \
           /opt/php54: \
           /opt/php55: \
@@ -240,7 +240,7 @@ enable_chattr() {
     fi
 
     UQ="$1"
-    if [ -f "/data/disk/${_USER}/static/control/compass.info" ]; then
+    if [ -f "${dscUsr}/static/control/compass.info" ]; then
       if [ -d "/home/${UQ}/.rvm/src" ]; then
         rm -f -r /home/${UQ}/.rvm/src/*
       fi
@@ -283,8 +283,8 @@ enable_chattr() {
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
       fi
-      if [ ! -f "/data/disk/${_USER}/log/.gems.build.d.${UQ}.txt" ]; then
-        rm -f /data/disk/${_USER}/log/eventmachine*
+      if [ ! -f "${dscUsr}/log/.gems.build.d.${UQ}.txt" ]; then
+        rm -f ${dscUsr}/log/eventmachine*
         if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
           _WEB_SH=$(readlink -n /bin/sh 2>&1)
           _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
@@ -310,7 +310,7 @@ enable_chattr() {
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative oily_png"       &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.1.1 oily_png"      &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative yajl-ruby"      &> /dev/null
-        touch /data/disk/${_USER}/log/.gems.build.d.${UQ}.txt
+        touch ${dscUsr}/log/.gems.build.d.${UQ}.txt
         rm -f /var/run/manage_rvm_users.pid
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
@@ -328,7 +328,7 @@ enable_chattr() {
       rm -f /home/${UQ}/.rvm/scripts/notes
     else
       if [ -d "/home/${UQ}/.rvm" ] || [ -d "/home/${UQ}/.gem" ]; then
-        rm -f /data/disk/${_USER}/log/.gems.build*
+        rm -f ${dscUsr}/log/.gems.build*
         rm -f -r /home/${UQ}/.rvm    &> /dev/null
         rm -f -r /home/${UQ}/.gem    &> /dev/null
       fi
@@ -364,16 +364,15 @@ disable_chattr() {
     chattr -i /home/$1/.drush        &> /dev/null
     chattr -i /home/$1/.drush/usr    &> /dev/null
     chattr -i /home/$1/.drush/*.ini  &> /dev/null
+    usrTgt="/home/$1/.drush/usr"
     if [ "$1" != "${_USER}.ftp" ]; then
-      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] \
-        && [ -d "${usrDgn}" ]; then
-        ln -sf ${usrDgn} /home/$1/.drush/usr/drupalgeddon
+      if [ ! -L "${usrTgt}/drupalgeddon" ] && [ -d "${usrDgn}" ]; then
+        ln -sf ${usrDgn} ${usrTgt}/drupalgeddon
       fi
     else
-      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] \
-        && [ -d "${usrDgn}" ]; then
-        rm -f -r /home/$1/.drush/usr/drupalgeddon
-        ln -sf ${usrDgn} /home/$1/.drush/usr/drupalgeddon
+      if [ ! -L "${usrTgt}/drupalgeddon" ] && [ -d "${usrDgn}" ]; then
+        rm -f -r ${usrTgt}/drupalgeddon
+        ln -sf ${usrDgn} ${usrTgt}/drupalgeddon
       fi
     fi
   fi
@@ -620,8 +619,8 @@ done
 #
 # Update local INI for PHP CLI on the Aegir Satellite Instance.
 update_php_cli_local_ini() {
-  _U_HD="/data/disk/${_USER}/.drush"
-  _U_TP="/data/disk/${_USER}/.tmp"
+  _U_HD="${dscUsr}/.drush"
+  _U_TP="${dscUsr}/.tmp"
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
@@ -660,7 +659,7 @@ update_php_cli_local_ini() {
       _INI="open_basedir = \".: \
         /data/all:           \
         /data/conf:          \
-        /data/disk/${_USER}: \
+        ${dscUsr}:           \
         /data/disk/all:      \
         /opt/php53:          \
         /opt/php54:          \
@@ -692,33 +691,33 @@ update_php_cli_local_ini() {
 #
 # Update PHP-CLI for Drush.
 update_php_cli_drush() {
-  _DRUSH_FILE="/data/disk/${_USER}/tools/drush/drush.php"
-  if [ "$_T_CLI_VRN" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
+  _DRUSH_FILE="${dscUsr}/tools/drush/drush.php"
+  if [ "${_T_CLI_VRN}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
     _T_CLI=/opt/php55/bin
-  elif [ "$_T_CLI_VRN" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
+  elif [ "${_T_CLI_VRN}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
     _T_CLI=/opt/php56/bin
-  elif [ "$_T_CLI_VRN" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
+  elif [ "${_T_CLI_VRN}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php54\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
     _T_CLI=/opt/php54/bin
-  elif [ "$_T_CLI_VRN" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
+  elif [ "${_T_CLI_VRN}" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php53\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
     _T_CLI=/opt/php53/bin
   else
     _T_CLI=/foo/bar
   fi
   if [ -x "${_T_CLI}/php" ]; then
-    _DRUSHCMD="${_T_CLI}/php /data/disk/${_USER}/tools/drush/drush.php"
-    if [ -e "/data/disk/${_USER}/aegir.sh" ]; then
-      rm -f /data/disk/${_USER}/aegir.sh
+    _DRUSHCMD="${_T_CLI}/php ${dscUsr}/tools/drush/drush.php"
+    if [ -e "${dscUsr}/aegir.sh" ]; then
+      rm -f ${dscUsr}/aegir.sh
     fi
-    touch /data/disk/${_USER}/aegir.sh
+    touch ${dscUsr}/aegir.sh
     echo -e "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n${_DRUSHCMD} \
-      '@hostmaster' hosting-dispatch\ntouch /data/disk/${_USER}/${_USER}-task.done" \
-      | fmt -su -w 2500 | tee -a /data/disk/${_USER}/aegir.sh >/dev/null 2>&1
-    chown ${_USER}:users /data/disk/${_USER}/aegir.sh &> /dev/null
-    chmod 0700 /data/disk/${_USER}/aegir.sh &> /dev/null
+      '@hostmaster' hosting-dispatch\ntouch ${dscUsr}/${_USER}-task.done" \
+      | fmt -su -w 2500 | tee -a ${dscUsr}/aegir.sh >/dev/null 2>&1
+    chown ${_USER}:users ${dscUsr}/aegir.sh &> /dev/null
+    chmod 0700 ${dscUsr}/aegir.sh &> /dev/null
   fi
 }
 #
@@ -819,7 +818,7 @@ disable_newrelic() {
 #
 # Enable New Relic per Octopus instance.
 enable_newrelic() {
-  _LOC_NEW_RELIC_KEY=$(cat /data/disk/${_USER}/static/control/newrelic.info 2>&1)
+  _LOC_NEW_RELIC_KEY=$(cat ${dscUsr}/static/control/newrelic.info 2>&1)
   _LOC_NEW_RELIC_KEY=${_LOC_NEW_RELIC_KEY//[^0-9a-zA-Z]/}
   _LOC_NEW_RELIC_KEY=$(echo -n $_LOC_NEW_RELIC_KEY | tr -d "\n" 2>&1)
   if [ -z "$_LOC_NEW_RELIC_KEY" ]; then
@@ -858,7 +857,7 @@ enable_newrelic() {
 #
 # Switch New Relic on or off per Octopus instance.
 switch_newrelic() {
-  if [ -e "/data/disk/${_USER}/static/control/newrelic.info" ]; then
+  if [ -e "${dscUsr}/static/control/newrelic.info" ]; then
     enable_newrelic
   else
     disable_newrelic
@@ -904,12 +903,12 @@ update_web_user() {
       _INI="open_basedir = \".: \
         /data/all:  \
         /data/conf: \
-        /data/disk/${_USER}/aegir:          \
-        /data/disk/${_USER}/backup-exports: \
-        /data/disk/${_USER}/distro:         \
-        /data/disk/${_USER}/platforms:      \
-        /data/disk/${_USER}/static:         \
-        /data/disk/all:                     \
+        ${dscUsr}/aegir:          \
+        ${dscUsr}/backup-exports: \
+        ${dscUsr}/distro:         \
+        ${dscUsr}/platforms:      \
+        ${dscUsr}/static:         \
+        /data/disk/all:           \
         /mnt:       \
         /opt/php53: \
         /opt/php54: \
@@ -977,21 +976,21 @@ create_web_user() {
 switch_php() {
   _PHP_CLI_UPDATE=NO
   _T_CLI_VRN=""
-  if [ -e "/data/disk/${_USER}/static/control/fpm.info" ] \
-    || [ -e "/data/disk/${_USER}/static/control/cli.info" ] \
-    || [ -e "/data/disk/${_USER}/static/control/hhvm.info" ]; then
+  if [ -e "${dscUsr}/static/control/fpm.info" ] \
+    || [ -e "${dscUsr}/static/control/cli.info" ] \
+    || [ -e "${dscUsr}/static/control/hhvm.info" ]; then
     echo "Custom FPM, HHVM or CLI settings for ${_USER} exist, \
       running switch_php checks"
-    if [ -e "/data/disk/${_USER}/static/control/cli.info" ]; then
-      _T_CLI_VRN=$(cat /data/disk/${_USER}/static/control/cli.info 2>&1)
+    if [ -e "${dscUsr}/static/control/cli.info" ]; then
+      _T_CLI_VRN=$(cat ${dscUsr}/static/control/cli.info 2>&1)
       _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
-      _T_CLI_VRN=$(echo -n $_T_CLI_VRN | tr -d "\n" 2>&1)
-      if [ "$_T_CLI_VRN" = "5.6" ] \
-        || [ "$_T_CLI_VRN" = "5.5" ] \
-        || [ "$_T_CLI_VRN" = "5.4" ] \
-        || [ "$_T_CLI_VRN" = "5.3" ] \
-        || [ "$_T_CLI_VRN" = "5.2" ]; then
-        if [ "$_T_CLI_VRN" = "5.5" ] \
+      _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
+      if [ "${_T_CLI_VRN}" = "5.6" ] \
+        || [ "${_T_CLI_VRN}" = "5.5" ] \
+        || [ "${_T_CLI_VRN}" = "5.4" ] \
+        || [ "${_T_CLI_VRN}" = "5.3" ] \
+        || [ "${_T_CLI_VRN}" = "5.2" ]; then
+        if [ "${_T_CLI_VRN}" = "5.5" ] \
           && [ ! -x "/opt/php55/bin/php" ]; then
           if [ -x "/opt/php56/bin/php" ]; then
             _T_CLI_VRN=5.6
@@ -1000,7 +999,7 @@ switch_php() {
           elif [ -x "/opt/php53/bin/php" ]; then
             _T_CLI_VRN=5.3
           fi
-        elif [ "$_T_CLI_VRN" = "5.6" ] \
+        elif [ "${_T_CLI_VRN}" = "5.6" ] \
           && [ ! -x "/opt/php56/bin/php" ]; then
           if [ -x "/opt/php55/bin/php" ]; then
             _T_CLI_VRN=5.5
@@ -1009,7 +1008,7 @@ switch_php() {
           elif [ -x "/opt/php53/bin/php" ]; then
             _T_CLI_VRN=5.3
           fi
-        elif [ "$_T_CLI_VRN" = "5.4" ] \
+        elif [ "${_T_CLI_VRN}" = "5.4" ] \
           && [ ! -x "/opt/php54/bin/php" ]; then
           if [ -x "/opt/php55/bin/php" ]; then
             _T_CLI_VRN=5.5
@@ -1018,7 +1017,7 @@ switch_php() {
           elif [ -x "/opt/php53/bin/php" ]; then
             _T_CLI_VRN=5.3
           fi
-        elif [ "$_T_CLI_VRN" = "5.3" ] \
+        elif [ "${_T_CLI_VRN}" = "5.3" ] \
           && [ ! -x "/opt/php53/bin/php" ]; then
           if [ -x "/opt/php55/bin/php" ]; then
             _T_CLI_VRN=5.5
@@ -1027,7 +1026,7 @@ switch_php() {
           elif [ -x "/opt/php54/bin/php" ]; then
             _T_CLI_VRN=5.4
           fi
-        elif [ "$_T_CLI_VRN" = "5.2" ]; then
+        elif [ "${_T_CLI_VRN}" = "5.2" ]; then
           if [ -x "/opt/php55/bin/php" ]; then
             _T_CLI_VRN=5.5
           elif [ -x "/opt/php56/bin/php" ]; then
@@ -1038,21 +1037,21 @@ switch_php() {
             _T_CLI_VRN=5.3
           fi
         fi
-        if [ "$_T_CLI_VRN" != "${_PHP_CLI_VERSION}" ]; then
+        if [ "${_T_CLI_VRN}" != "${_PHP_CLI_VERSION}" ]; then
           _PHP_CLI_UPDATE=YES
           update_php_cli_drush
           if [ -x "${_T_CLI}/php" ]; then
             update_php_cli_local_ini
-            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=$_T_CLI_VRN/g" \
+            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_T_CLI_VRN}/g" \
               /root/.${_USER}.octopus.cnf &> /dev/null
-            echo $_T_CLI_VRN > /data/disk/${_USER}/log/cli.txt
-            echo $_T_CLI_VRN > /data/disk/${_USER}/static/control/cli.info
-            chown ${_USER}.ftp:users /data/disk/${_USER}/static/control/cli.info
+            echo ${_T_CLI_VRN} > ${dscUsr}/log/cli.txt
+            echo ${_T_CLI_VRN} > ${dscUsr}/static/control/cli.info
+            chown ${_USER}.ftp:users ${dscUsr}/static/control/cli.info
           fi
         fi
       fi
     fi
-    if [ -e "/data/disk/${_USER}/static/control/hhvm.info" ]; then
+    if [ -e "${dscUsr}/static/control/hhvm.info" ]; then
       if [ -x "/usr/bin/hhvm" ] \
         && [ -e "/var/xdrago/conf/hhvm/init.d/hhvm.foo" ] \
         && [ -e "/var/xdrago/conf/hhvm/server.foo.ini" ]; then
@@ -1080,12 +1079,12 @@ switch_php() {
           ### start custom hhvm server
           service hhvm.${_USER} start &> /dev/null
           ### remove fpm control file to avoid confusion
-          rm -f /data/disk/${_USER}/static/control/fpm.info
+          rm -f ${dscUsr}/static/control/fpm.info
           ### update nginx configuration
           sed -i "s/\/var\/run\/${_USER}.fpm.socket/\/var\/run\/hhvm\/${_USER}\/hhvm.socket/g" \
-            /data/disk/${_USER}/config/includes/nginx_vhost_common.conf
+            ${dscUsr}/config/includes/nginx_vhost_common.conf
           sed -i "s/\/var\/run\/${_USER}.fpm.socket/\/var\/run\/hhvm\/${_USER}\/hhvm.socket/g" \
-            /data/disk/${_USER}/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php
+            ${dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php
           ### reload nginx
           service nginx reload &> /dev/null
         fi
@@ -1108,22 +1107,22 @@ switch_php() {
         rm -f -r /var/log/hhvm/${_USER}
         ### update nginx configuration
         sed -i "s/\/var\/run\/hhvm\/${_USER}\/hhvm.socket/\/var\/run\/${_USER}.fpm.socket/g" \
-          /data/disk/${_USER}/config/includes/nginx_vhost_common.conf
+          ${dscUsr}/config/includes/nginx_vhost_common.conf
         sed -i "s/\/var\/run\/hhvm\/${_USER}\/hhvm.socket/\/var\/run\/${_USER}.fpm.socket/g" \
-          /data/disk/${_USER}/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php
+          ${dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php
         ### reload nginx
         service nginx reload &> /dev/null
         ### create dummy control file to enable PHP-FPM again
-        echo 5.2 > /data/disk/${_USER}/static/control/fpm.info
-        chown ${_USER}.ftp:users /data/disk/${_USER}/static/control/fpm.info
+        echo 5.2 > ${dscUsr}/static/control/fpm.info
+        chown ${_USER}.ftp:users ${dscUsr}/static/control/fpm.info
         _FORCE_FPM_SETUP=YES
       fi
     fi
     sleep 5
-    if [ ! -e "/data/disk/${_USER}/static/control/hhvm.info" ] \
-      && [ -e "/data/disk/${_USER}/static/control/fpm.info" ] \
+    if [ ! -e "${dscUsr}/static/control/hhvm.info" ] \
+      && [ -e "${dscUsr}/static/control/fpm.info" ] \
       && [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
-      _T_FPM_VRN=$(cat /data/disk/${_USER}/static/control/fpm.info 2>&1)
+      _T_FPM_VRN=$(cat ${dscUsr}/static/control/fpm.info 2>&1)
       _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
       _T_FPM_VRN=$(echo -n $_T_FPM_VRN | tr -d "\n" 2>&1)
       if [ "$_T_FPM_VRN" = "5.6" ] \
@@ -1210,9 +1209,9 @@ switch_php() {
           fi
           sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_T_FPM_VRN/g" \
             /root/.${_USER}.octopus.cnf &> /dev/null
-          echo $_T_FPM_VRN > /data/disk/${_USER}/log/fpm.txt
-          echo $_T_FPM_VRN > /data/disk/${_USER}/static/control/fpm.info
-          chown ${_USER}.ftp:users /data/disk/${_USER}/static/control/fpm.info
+          echo $_T_FPM_VRN > ${dscUsr}/log/fpm.txt
+          echo $_T_FPM_VRN > ${dscUsr}/static/control/fpm.info
+          chown ${_USER}.ftp:users ${dscUsr}/static/control/fpm.info
           _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
           _PHP_SV=${_T_FPM_VRN//[^0-9]/}
           if [ -z "${_PHP_SV}" ]; then
@@ -1360,41 +1359,42 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     _USER=$(echo ${pthParentUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
     echo "_USER is == ${_USER} == at manage_user"
     _WEB="${_USER}.web"
-    octInc="/data/disk/${_USER}/config/includes"
-    octTpl="/data/disk/${_USER}/.drush/sys/provision/http/Provision/Config/Nginx"
-    usrDgn="/data/disk/${_USER}/.drush/usr/drupalgeddon"
-    rm -f /data/disk/${_USER}/*.php* &> /dev/null
-    chmod 0440 /data/disk/${_USER}/.drush/*.php &> /dev/null
-    chmod 0400 /data/disk/${_USER}/.drush/drushrc.php &> /dev/null
-    chmod 0400 /data/disk/${_USER}/.drush/hm.alias.drushrc.php &> /dev/null
-    chmod 0400 /data/disk/${_USER}/.drush/hostmaster*.php &> /dev/null
-    chmod 0400 /data/disk/${_USER}/.drush/platform_*.php &> /dev/null
-    chmod 0400 /data/disk/${_USER}/.drush/server_*.php &> /dev/null
-    chmod 0710 /data/disk/${_USER}/.drush &> /dev/null
-    find /data/disk/${_USER}/config/server_master \
+    dscUsr="/data/disk/${_USER}"
+    octInc="${dscUsr}/config/includes"
+    octTpl="${dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx"
+    usrDgn="${dscUsr}/.drush/usr/drupalgeddon"
+    rm -f ${dscUsr}/*.php* &> /dev/null
+    chmod 0440 ${dscUsr}/.drush/*.php &> /dev/null
+    chmod 0400 ${dscUsr}/.drush/drushrc.php &> /dev/null
+    chmod 0400 ${dscUsr}/.drush/hm.alias.drushrc.php &> /dev/null
+    chmod 0400 ${dscUsr}/.drush/hostmaster*.php &> /dev/null
+    chmod 0400 ${dscUsr}/.drush/platform_*.php &> /dev/null
+    chmod 0400 ${dscUsr}/.drush/server_*.php &> /dev/null
+    chmod 0710 ${dscUsr}/.drush &> /dev/null
+    find ${dscUsr}/config/server_master \
       -type d -exec chmod 0700 {} \; &> /dev/null
-    find /data/disk/${_USER}/config/server_master \
+    find ${dscUsr}/config/server_master \
       -type f -exec chmod 0600 {} \; &> /dev/null
-    if [ ! -e "/data/disk/${_USER}/.tmp/.ctrl.240devB.txt" ]; then
-      rm -f -r /data/disk/${_USER}/.drush/cache
-      rm -f -r /data/disk/${_USER}/.tmp
-      mkdir -p /data/disk/${_USER}/.tmp
-      chown ${_USER}:www-data /data/disk/${_USER}/.tmp &> /dev/null
-      chmod 02775 /data/disk/${_USER}/.tmp &> /dev/null
-      echo OK > /data/disk/${_USER}/.tmp/.ctrl.240devB.txt
+    if [ ! -e "${dscUsr}/.tmp/.ctrl.240devB.txt" ]; then
+      rm -f -r ${dscUsr}/.drush/cache
+      rm -f -r ${dscUsr}/.tmp
+      mkdir -p ${dscUsr}/.tmp
+      chown ${_USER}:www-data ${dscUsr}/.tmp &> /dev/null
+      chmod 02775 ${dscUsr}/.tmp &> /dev/null
+      echo OK > ${dscUsr}/.tmp/.ctrl.240devB.txt
     fi
-    if [ ! -e "/data/disk/${_USER}/static/control/.ctrl.240devB.txt" ]; then
-      mkdir -p /data/disk/${_USER}/static/control
-      chmod 755 /data/disk/${_USER}/static/control
+    if [ ! -e "${dscUsr}/static/control/.ctrl.240devB.txt" ]; then
+      mkdir -p ${dscUsr}/static/control
+      chmod 755 ${dscUsr}/static/control
       if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
         cp -af /var/xdrago/conf/control-readme.txt \
-          /data/disk/${_USER}/static/control/README.txt &> /dev/null
-        chmod 0644 /data/disk/${_USER}/static/control/README.txt
+          ${dscUsr}/static/control/README.txt &> /dev/null
+        chmod 0644 ${dscUsr}/static/control/README.txt
       fi
       chown -R ${_USER}.ftp:${usrGroup} \
-        /data/disk/${_USER}/static/control &> /dev/null
-      rm -f /data/disk/${_USER}/static/control/.ctrl.*
-      echo OK > /data/disk/${_USER}/static/control/.ctrl.240devB.txt
+        ${dscUsr}/static/control &> /dev/null
+      rm -f ${dscUsr}/static/control/.ctrl.*
+      echo OK > ${dscUsr}/static/control/.ctrl.240devB.txt
     fi
     if [ -e "/root/.${_USER}.octopus.cnf" ]; then
       source /root/.${_USER}.octopus.cnf
@@ -1413,10 +1413,10 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
         symlinks -dr /home/${_USER}.ftp &> /dev/null
         echo >> ${_THIS_LTD_CONF}
         echo "[${_USER}.ftp]" >> ${_THIS_LTD_CONF}
-        echo "path : ['/data/disk/${_USER}/distro', \
-                      '/data/disk/${_USER}/static', \
-                      '/data/disk/${_USER}/backups', \
-                      '/data/disk/${_USER}/clients']" \
+        echo "path : ['${dscUsr}/distro', \
+                      '${dscUsr}/static', \
+                      '${dscUsr}/backups', \
+                      '${dscUsr}/clients']" \
                       | fmt -su -w 2500 >> ${_THIS_LTD_CONF}
         manage_site_drush_alias_mirror
         manage_sec
@@ -1427,9 +1427,9 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
         fi
         if [ ! -L "/home/${_USER}.ftp/static" ]; then
           rm -f /home/${_USER}.ftp/{backups,clients,static}
-          ln -sf /data/disk/${_USER}/backups /home/${_USER}.ftp/backups
-          ln -sf /data/disk/${_USER}/clients /home/${_USER}.ftp/clients
-          ln -sf /data/disk/${_USER}/static  /home/${_USER}.ftp/static
+          ln -sf ${dscUsr}/backups /home/${_USER}.ftp/backups
+          ln -sf ${dscUsr}/clients /home/${_USER}.ftp/clients
+          ln -sf ${dscUsr}/static  /home/${_USER}.ftp/static
         fi
         if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.240devB.txt" ]; then
           rm -f -r /home/${_USER}.ftp/.drush/cache

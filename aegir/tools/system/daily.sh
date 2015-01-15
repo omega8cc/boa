@@ -107,19 +107,12 @@ disable_chattr() {
     chattr -i /home/$1/.drush        &> /dev/null
     chattr -i /home/$1/.drush/usr    &> /dev/null
     chattr -i /home/$1/.drush/*.ini  &> /dev/null
-    if [ "$1" != "${_HM_U}.ftp" ]; then
-      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] \
-        && [ -d "${User}/.drush/usr/drupalgeddon" ]; then
-        ln -sf ${User}/.drush/usr/drupalgeddon \
-          /home/$1/.drush/usr/drupalgeddon
-      fi
-    else
-      if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] \
-        && [ -d "${User}/.drush/usr/drupalgeddon" ]; then
-        rm -f -r /home/$1/.drush/usr/drupalgeddon
-        ln -sf ${User}/.drush/usr/drupalgeddon \
-          /home/$1/.drush/usr/drupalgeddon
-      fi
+    usrSrc="${User}/.drush/usr"
+    usrTgt="/home/$1/.drush/usr"
+    if [ ! -L "${usrTgt}/drupalgeddon" ] \
+      && [ -d "${usrSrc}/drupalgeddon" ]; then
+      rm -f -r ${usrTgt}/drupalgeddon
+      ln -sf ${usrSrc}/drupalgeddon ${usrTgt}/drupalgeddon
     fi
   fi
 }
