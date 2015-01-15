@@ -254,6 +254,8 @@ else
     rD="${_ROOT}/.drush"
     ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
       ${rD}/sys/provision &> /dev/null
+    ${gCb} 6.x-2.x ${gitHub}/make_local.git \
+      ${rD}/usr/make_local &> /dev/null
     ${gCb} 6.x-2.x ${gitHub}/provision_cdn.git \
       ${rD}/xts/provision_cdn &> /dev/null
     ${gCb} 7.x-1.x-dev ${gitHub}/drupalgeddon.git \
@@ -278,6 +280,7 @@ else
     get_dev_ext "clean_missing_modules.tar.gz"
     get_dev_ext "drupalgeddon.tar.gz"
     get_dev_ext "drush_ecl.tar.gz"
+    get_dev_ext "make_local.tar.gz"
     get_dev_ext "registry_rebuild.tar.gz"
     cd ${_ROOT}/.drush/xts
     get_dev_ext "provision_boost.tar.gz"

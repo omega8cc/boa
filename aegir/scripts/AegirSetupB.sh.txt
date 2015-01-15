@@ -397,7 +397,7 @@ if [ "${_STATUS}" = "UPGRADE" ]; then
   mkdir -p ${_ROOT}/backups/system
   chmod 700 ${_ROOT}/backups/system
   mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/ &> /dev/null
-  _B_EXT="provision clean_missing_modules drupalgeddon drush_ecl \
+  _B_EXT="provision clean_missing_modules drupalgeddon drush_ecl make_local \
     provision_boost provision_cdn provision_civicrm provision_platform_git \
     provision_site_backup provision_tasks_extra registry_rebuild \
     security_check security_review remote_import"
@@ -446,6 +446,8 @@ if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
   rD="${_ROOT}/.drush"
   ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
     ${rD}/sys/provision &> /dev/null
+  ${gCb} 6.x-2.x ${gitHub}/make_local.git \
+    ${rD}/usr/make_local &> /dev/null
   ${gCb} 6.x-2.x ${gitHub}/provision_civicrm.git \
     ${rD}/xts/provision_civicrm &> /dev/null
   ${gCb} 6.x-2.x ${gitHub}/provision_cdn.git \
@@ -484,7 +486,8 @@ else
     get_dev_ext "$e.tar.gz"
   done
   cd ${_ROOT}/.drush/usr
-  _G_EXT="clean_missing_modules drupalgeddon drush_ecl registry_rebuild "
+  _G_EXT="clean_missing_modules drupalgeddon drush_ecl make_local \
+    registry_rebuild"
   for e in ${_G_EXT}; do
     get_dev_ext "$e.tar.gz"
   done

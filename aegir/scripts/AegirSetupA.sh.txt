@@ -1483,6 +1483,9 @@ fi
 if [ -e "${_USER_DS}/drush_ecl" ]; then
   rm -f ${_USER_DS}/drush_ecl
 fi
+if [ -e "${_USER_DS}/make_local" ]; then
+  rm -f ${_USER_DS}/make_local
+fi
 
 
 ###---### Add symlink to the system registry_rebuild.
@@ -1533,6 +1536,19 @@ if [ ! -L "${_USER_DS}/usr/drush_ecl" ]; then
   chmod 700 ${_USER_DS}
   ln -sf /data/disk/${_USER}/.drush/usr/drush_ecl \
     ${_USER_DS}/usr/drush_ecl
+fi
+
+
+###---### Add symlink to the system make_local.
+#
+if [ ! -L "${_USER_DS}/usr/make_local" ]; then
+  msg "${_STATUS} A: Adding symlink to the system make_local"
+  mkdir -p ${_USER_DS}/usr
+  chown ${_USERFTP}:${_USRG} ${_USER_DS}
+  chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
+  chmod 700 ${_USER_DS}
+  ln -sf /data/disk/${_USER}/.drush/usr/make_local \
+    ${_USER_DS}/usr/make_local
 fi
 
 
@@ -2214,6 +2230,7 @@ rm -f /data/u/*host8* &> /dev/null
 mv -f ${_ROOT}/backups/drupalgeddon-pre* ${_ROOT}/backups/system/ &> /dev/null
 mv -f ${_ROOT}/backups/drush_make-pre* ${_ROOT}/backups/system/ &> /dev/null
 mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/ &> /dev/null
+mv -f ${_ROOT}/backups/make_local-pre* ${_ROOT}/backups/system/ &> /dev/null
 mv -f ${_ROOT}/backups/provision_boost-pre* ${_ROOT}/backups/system/ &> /dev/null
 mv -f ${_ROOT}/backups/provision_cdn-pre* ${_ROOT}/backups/system/ &> /dev/null
 mv -f ${_ROOT}/backups/provision_civicrm-pre* ${_ROOT}/backups/system/ &> /dev/null
