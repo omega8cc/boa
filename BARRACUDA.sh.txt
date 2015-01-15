@@ -6393,6 +6393,13 @@ else ### if [ "${_STATUS}" = "UPGRADE" ]; then
 
 EOF
     echo " "
+  else
+    echo " "
+    thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
+    msg "This Barracuda URL address is ${_THIS_FRONT}"
+    msg "This Barracuda PHP version is ${_PHP_FPM_VERSION}"
+    msg "This Barracuda System is ${thiSys}"
+    echo " "
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
