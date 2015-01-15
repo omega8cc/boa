@@ -1053,6 +1053,24 @@ octopus_cnf() {
           _PHP_CLI_VERSION=
         fi
       fi
+    elif [ "${_PHP_FPM_VERSION}" = "5.2" ] \
+      || [ "${_PHP_CLI_VERSION}" = "5.2" ]; then
+      if [ -x "/opt/php55/bin/php" ]; then
+        _PHP_FPM_VERSION=5.5
+        _PHP_CLI_VERSION=5.5
+      elif [ -x "/opt/php56/bin/php" ]; then
+        _PHP_FPM_VERSION=5.6
+        _PHP_CLI_VERSION=5.6
+      elif [ -x "/opt/php54/bin/php" ]; then
+        _PHP_FPM_VERSION=5.4
+        _PHP_CLI_VERSION=5.4
+      elif [ -x "/opt/php53/bin/php" ]; then
+        _PHP_FPM_VERSION=5.3
+        _PHP_CLI_VERSION=5.3
+      else
+        _PHP_FPM_VERSION=
+        _PHP_CLI_VERSION=
+      fi
     else
       _PHP_FPM_VERSION=
       _PHP_CLI_VERSION=
