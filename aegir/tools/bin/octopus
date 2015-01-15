@@ -169,6 +169,7 @@ send_report() {
     if [ ! -z "${_MY_EMAIL}" ]; then
       repSub="Successful Octopus upgrade for ${octUsr}"
       repSub="REPORT: ${repSub} on ${_CHECK_HOST}"
+      repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
       cat ${_UP_LOG} | mail -e -s "${repSub} at ${_NOW}" ${_MY_EMAIL}
       echo "${repSub} sent to ${_MY_EMAIL}"
     fi
@@ -186,6 +187,7 @@ send_alert() {
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
       repSub="ALERT: Failed Octopus upgrade for ${octUsr} on ${_CHECK_HOST}"
+      repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
       cat ${_UP_LOG} | mail -e -s "${repSub} at ${_NOW}" ${_MY_EMAIL}
       echo "${repSub} sent to ${_MY_EMAIL}"
     fi
