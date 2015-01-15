@@ -5887,7 +5887,7 @@ else
 fi
 echo " "
 thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
-thiSys="$(uname -n 2>&1) ${thiSys}"
+thiSys="$(uname -n 2>&1) ${thiSys} PHP ${_PHP_FPM_VERSION}"
 msg "Aegir on ${thiSys}"
 echo " "
 
@@ -6391,10 +6391,6 @@ else ### if [ "${_STATUS}" = "UPGRADE" ]; then
   * Your Aegir control panel URL is https://${_THIS_FRONT}
 
 EOF
-    echo " "
-  else
-    msg "This Barracuda URL address is ${_THIS_FRONT}"
-    msg "This Barracuda PHP version is ${_PHP_FPM_VERSION}"
     echo " "
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
