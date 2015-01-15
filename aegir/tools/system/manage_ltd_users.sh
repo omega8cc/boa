@@ -367,17 +367,6 @@ disable_chattr() {
         ln -sf ${usrDgn} /home/$1/.drush/usr/drupalgeddon
       fi
     else
-      if [ ! -d "${usrDgn}" ] \
-        || [ ! -e "/data/disk/${_USER}/static/control/.drupalgeddon.in.015.pid" ]; then
-        rm -f ${usrDgn} &> /dev/null
-        cd /data/disk/${_USER}/.drush/usr
-        get_dev_ext "drupalgeddon.tar.gz"
-        find ${usrDgn} -type d -exec chmod 0750 {} \; &> /dev/null
-        find ${usrDgn} -type f -exec chmod 0640 {} \; &> /dev/null
-        chown -R ${_USER}:users ${usrDgn}
-        rm -f /data/disk/${_USER}/static/control/.drupalgeddon.in.00*.pid
-        touch /data/disk/${_USER}/static/control/.drupalgeddon.in.015.pid
-      fi
       if [ ! -L "/home/$1/.drush/usr/drupalgeddon" ] \
         && [ -d "${usrDgn}" ]; then
         rm -f -r /home/$1/.drush/usr/drupalgeddon
