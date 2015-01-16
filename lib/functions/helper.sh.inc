@@ -372,6 +372,8 @@ mode_detection() {
   rm -f -r /var/opt/*
   mkdir -p ${_SRCDIR}
   chmod -R 777 /opt/tmp &> /dev/null
+  find /opt/tmp/boa -type d -exec chmod 0755 {} \; &> /dev/null
+  find /opt/tmp/boa -type f -exec chmod 0644 {} \; &> /dev/null
   rm -f /var/run/aegir_upgrade.pid
   if [ "${_STRICT_BIN_PERMISSIONS}" = "YES" ]; then
     if [ -x "/bin/dash" ]; then
