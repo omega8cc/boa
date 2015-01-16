@@ -30,13 +30,8 @@ action() {
   rm -f /root/install-uptrack
   find /tmp/{.ICE-unix,.X11-unix,.webmin} -mtime +0 -type f -exec rm -rf {} \;
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
-  kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
   rm -f -r /tmp/{drush*,pear,jetty*}
-  rm -f /opt/tomcat6/logs/*
   rm -f /var/log/jetty{7,8,9}/*
-  if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ]; then
-    /etc/init.d/tomcat start
-  fi
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
     /etc/init.d/jetty9 start
   fi

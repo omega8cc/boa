@@ -1143,6 +1143,10 @@ barracuda_cnf() {
       echo "_DB_SERIES=${_DB_SERIES}" >> ${barCnf}
     fi
 
+    if [ -e "/etc/init.d/tomcat" ]; then
+      echo "_TOMCAT_TO_JETTY=YES" >> ${barCnf}
+    fi
+
     ###
     ### config cleanup start
     ###
@@ -1356,7 +1360,9 @@ barracuda_cnf() {
     fi
     _TOMCAT_TO_JETTY_TEST=$(grep _TOMCAT_TO_JETTY ${barCnf} 2>&1)
     if [[ "${_TOMCAT_TO_JETTY_TEST}" =~ "_TOMCAT_TO_JETTY" ]]; then
-      sed -i "s/^_TOMCAT_TO_JETTY.*//g" ${barCnf}
+      if [ ! -e "/etc/init.d/tomcat" ]; then
+        sed -i "s/^_TOMCAT_TO_JETTY.*//g" ${barCnf}
+      fi
     fi
     _SQUEEZE_TO_WHEEZY_TEST=$(grep _SQUEEZE_TO_WHEEZY ${barCnf} 2>&1)
     if [[ "${_SQUEEZE_TO_WHEEZY_TEST}" =~ "_SQUEEZE_TO_WHEEZY" ]]; then

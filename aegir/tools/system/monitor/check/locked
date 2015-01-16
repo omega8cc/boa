@@ -40,9 +40,6 @@ if ($java_status ne "CLEAN") {
   if (-f "/etc/default/jetty7" && -f "/etc/init.d/jetty7") {
     `/etc/init.d/jetty7 start`;
   }
-  if (-f "/etc/default/tomcat" && -f "/etc/init.d/tomcat") {
-    `/etc/init.d/tomcat start`;
-  }
 }
 `touch /var/xdrago/log/last-run-locked`;
 exit;

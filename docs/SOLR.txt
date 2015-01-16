@@ -100,6 +100,9 @@ It will migrate all cores as-is, so they will be available on the same port 8080
 previously used by Tomcat. It will also automatically install Jetty 7 with
 Solr 1.4.1 for you, even if you forgot to add required SR1 in the _XTRAS_LIST.
 
+This migration is forced since BOA-2.4.0, because we don't support Tomcat
+for a very long time already, so it shouldn't be used with BOA.
+
 
 NOTE ON RELATED ERRORS:
 
