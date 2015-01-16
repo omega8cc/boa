@@ -91,11 +91,12 @@ octCnf="/root/.${_USER}.octopus.cnf"
 ###
 ### Helper variables
 ###
+bldPth="/opt/tmp/boa"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncO="octopus.sh.cnf"
-tocIncO="${filIncO}.${_USER}"
 gitHub="git://github.com/omega8cc"
-pthBld="/opt/tmp/boa"
+libFnc="${bldPth}/lib/functions"
+tocIncO="${filIncO}.${_USER}"
 vBs="/var/backups"
 
 ###
@@ -131,8 +132,24 @@ _UBERCART6=2.14
 _UBERCART7=3.8
 
 
-###---### Functions
-#
+###
+### Include helper functions
+###
+if [ -e "${vBs}/${tocIncO}" ]; then
+  source "${vBs}/${tocIncO}"
+  tInc="${vBs}/${tocIncO}"
+elif [ -e "${vBs}/${filIncO}" ]; then
+  source "${vBs}/${filIncO}"
+  tInc="${vBs}/${filIncO}"
+else
+  msg "EXIT: Required lib file does not exist?"
+  msg "EXIT: ${tInc}"
+  msg "EXIT: Cannot continue"
+  msg "EXIT: Bye (0)"
+  clean_pid_exit
+fi
+touch /var/run/boa_run.pid
+
 # Clean pid files on exit.
 clean_pid_exit() {
   rm -f /var/run/boa_wait.pid
@@ -218,7 +235,6 @@ find_mirror() {
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
   urlStb="http://${_USE_MIR}/versions/stable"
 }
-
 #
 # Tune FPM workers.
 tune_fpm_workers() {
@@ -453,7 +469,7 @@ tune_fpm_config() {
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
     mkdir -p /var/xdrago/conf
   fi
-  cp -af ${pthBld}/aegir/conf/fpm-pool-foo.conf \
+  cp -af ${bldPth}/aegir/conf/fpm-pool-foo.conf \
     /var/xdrago/conf/fpm-pool-foo.conf
   if [ ! -z "${_PHP_FPM_TIMEOUT}" ] && [ ! -z "${_PHP_SV}" ]; then
     if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
@@ -1276,7 +1292,7 @@ action() {
       _HM_ONLY=NO
     fi
   fi
-  for fe in `find ${pthBld}/aegir/scripts -type f`; do
+  for fe in `find ${bldPth}/aegir/scripts -type f`; do
     sed -i "s/EDIT_AEGIR_VERSION/${_AEGIR_VERSION}/g"         ${fe} &> /dev/null
     sed -i "s/EDIT_AEGIR_XTS_VRN/${_AEGIR_XTS_VRN}/g"         ${fe} &> /dev/null
     sed -i "s/EDIT_AGOV/${_AGOV}/g"                           ${fe} &> /dev/null
@@ -1380,11 +1396,11 @@ action() {
   if [ -z "${_LOCAL_THISHTIP}" ]; then
     _LOCAL_THISHTIP=all
   fi
-  cp -af ${pthBld}/aegir/scripts/run-xdrago \
+  cp -af ${bldPth}/aegir/scripts/run-xdrago \
     /var/xdrago/run-${_USER} &> /dev/null
   chmod 700 /var/xdrago/run-${_USER} &> /dev/null
-  chmod 700 ${pthBld}/aegir/scripts/* &> /dev/null
-  bash ${pthBld}/aegir/scripts/AegirSetupA.sh.txt
+  chmod 700 ${bldPth}/aegir/scripts/* &> /dev/null
+  bash ${bldPth}/aegir/scripts/AegirSetupA.sh.txt
   if [ -e "/opt/tmp/status-AegirSetupA-FAIL" ]; then
     msg "FATAL ERROR: AegirSetupA installer failed"
     msg "FATAL ERROR: Aborting Octopus installer NOW!"
@@ -1721,7 +1737,7 @@ _SRCDIR=/opt/tmp/files
 mkdir -p ${_SRCDIR}
 chmod -R 777 /opt/tmp &> /dev/null
 cd /opt/tmp
-rm -f -r ${pthBld}
+rm -f -r ${bldPth}
 if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
   git clone --branch ${_BRANCH_BOA} \
     ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
@@ -1729,7 +1745,7 @@ else
   curl ${crlGet} "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"
 fi
-if [ ! -e "${pthBld}/aegir/helpers/apt.conf.noninteractive" ]; then
+if [ ! -e "${bldPth}/aegir/helpers/apt.conf.noninteractive" ]; then
   echo " "
   msg "EXIT on error due to missing helpers"
   msg "Please try to run this script again in a few minutes"
@@ -1741,7 +1757,7 @@ fi
 # Get spinner
 cd ${_SRCDIR}
 rm -f spinner*
-cp -af ${pthBld}/aegir/helpers/spinner ./
+cp -af ${bldPth}/aegir/helpers/spinner ./
 chmod +x spinner &> /dev/null
 #
 # Create tmp stuff
