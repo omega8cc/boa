@@ -81,8 +81,8 @@ _CUSTOM_CONFIG_LSHELL=NO #------ Protects custom Limited Shell config when YES
 _CUSTOM_CONFIG_REDIS=NO #------- Protects custom Redis config when YES
 _CUSTOM_CONFIG_SQL=NO #--------- Protects custom SQL config when YES
 ###
-_AEGIR_UPGRADE_ONLY=NO #-------- Allows to skip system on Aegir upgrade when YES
-_SYSTEM_UPGRADE_ONLY=NO #------- Allows to skip Aegir on upgrade (deprecated)
+_AEGIR_UPGRADE_ONLY=NO #-------- Run only Aegir upgrade when YES (deprecated)
+_SYSTEM_UPGRADE_ONLY=NO #------- Managed on the fly with 'system' keyword
 ###
 ### Barracuda version BOA-2.4.0
 ###

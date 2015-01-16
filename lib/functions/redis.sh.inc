@@ -230,3 +230,60 @@ install_redis_src() {
   update_redis_password
   touch ${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log
 }
+
+install_update_redis() {
+  if [ "${_STATUS}" = "UPGRADE" ]; then
+    _REDIS_V_ITD=$(redis-server -v 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f4 \
+      | awk '{ print $1}' 2>&1)
+    if [[ "$_REDIS_V_ITD" =~ "sha" ]]; then
+      _REDIS_V_ITD=$(redis-server -v 2>&1 \
+        | tr -d "\n" \
+        | tr -d "v=" \
+        | cut -d" " -f3 \
+        | awk '{ print $1}' 2>&1)
+    fi
+    if [ "$_REDIS_V_ITD" = "${_REDIS_VRN}" ]; then
+      _REDIS_INSTALL_MISMATCH=NO
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Installed Redis version $_REDIS_V_ITD, OK"
+      fi
+    else
+      _REDIS_INSTALL_MISMATCH=YES
+      msg "INFO: Installed Redis version $_REDIS_V_ITD, upgrade required"
+    fi
+  else
+    if [ -x "/usr/bin/redis-server" ]; then
+      _REDIS_V_ITD=$(redis-server -v 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f4 \
+        | awk '{ print $1}' 2>&1)
+      if [[ "$_REDIS_V_ITD" =~ "sha" ]]; then
+        _REDIS_V_ITD=$(redis-server -v 2>&1 \
+          | tr -d "\n" \
+          | tr -d "v=" \
+          | cut -d" " -f3 \
+          | awk '{ print $1}' 2>&1)
+      fi
+      if [ "$_REDIS_V_ITD" = "${_REDIS_VRN}" ]; then
+        _REDIS_INSTALL_MISMATCH=NO
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Installed Redis version $_REDIS_V_ITD, OK"
+        fi
+      else
+        _REDIS_INSTALL_MISMATCH=YES
+        msg "INFO: Installed Redis version $_REDIS_V_ITD, rebuild required"
+      fi
+    fi
+  fi
+  if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] \
+    || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log" ] \
+    || [ ! -d "/var/run/redis" ] \
+    || [ ! -x "/usr/bin/redis-server" ] \
+    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+    if [ "$_REDIS_HOST" = "LOCAL" ] || [ -z "$_REDIS_HOST" ]; then
+      install_redis_src
+    fi
+  fi
+}

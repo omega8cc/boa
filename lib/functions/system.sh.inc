@@ -1,3 +1,55 @@
+
+check_root_barracuda() {
+  if [ `whoami` = "root" ]; then
+    chmod a+w /dev/null
+    if [ ! -e "/dev/fd" ]; then
+      if [ -e "/proc/self/fd" ]; then
+        rm -rf /dev/fd
+        ln -s /proc/self/fd /dev/fd
+      fi
+    fi
+    chmod a+rw /dev/null
+    rm -f -r /opt/tmp/*
+    rm -f -r /tmp/drush_make_tmp*
+    rm -f -r /tmp/make_tmp*
+    rm -f /tmp/pm-updatecode*
+    rm -f /tmp/cache.inc*
+    if [ ! -e "/root/.upstart.cnf" ]; then
+      service cron stop &> /dev/null
+    fi
+    touch /var/run/boa_run.pid
+    mkdir -p ${pthLog}
+    find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
+    _AWS_TEST_A=$(grep cloudimg /etc/fstab 2>&1)
+    _AWS_TEST_B=$(grep cloudconfig /etc/fstab 2>&1)
+    if [[ "${_AWS_TEST_A}" =~ "cloudimg" ]] \
+      || [[ "${_AWS_TEST_B}" =~ "cloudconfig" ]]; then
+      _VMFAMILY="AWS"
+    fi
+    _VM_TEST=$(uname -a 2>&1)
+    if [[ "${_VM_TEST}" =~ beng ]]; then
+      _VMFAMILY="VS"
+      touch /var/run/cloud_vhost.pid
+      if [ -d "/etc/webmin" ]; then
+        mrun "dpkg --configure -a" &> /dev/null
+        mrun "apt-get clean -qq"   &> /dev/null
+        mrun "apt-get update -qq"  &> /dev/null
+        mrun "apt-get remove webmin -y --force-yes -qq" &> /dev/null
+        mrun "apt-get purge webmin -y --force-yes -qq"  &> /dev/null
+        mrun "apt-get autoremove -y --force-yes -qq"    &> /dev/null
+        rm -f -r /usr/share/webmin
+      fi
+      rm -f ${aptLiSys}.d/ksplice.list
+      rm -f ${aptLiSys}.d/longview.list
+      rm -f ${aptLiSys}.d/webmin.list
+    fi
+    sleep 1
+  else
+    msg "ERROR: This script should be ran as a root user"
+    clean_pid_exit
+  fi
+}
+
 #
 # Set xterm.
 set_xterm() {
@@ -2594,4 +2646,1635 @@ finale() {
     sbin selinux srv sys usr var share run &> /dev/null
   chmod 700 root &> /dev/null
   msg "BYE!"
+}
+
+install_with_aptitude_deps() {
+  st_runner "$_INSTAPP ${_DEBDEPS}" 2> /dev/null
+  if [ -x "/usr/bin/gpg2" ]; then
+    _GPG=gpg2
+  else
+    _GPG=gpg
+  fi
+  if [[ "${_XTRAS_LIST}" =~ "FMG" ]]; then
+    if [ "${_OSV}" = "squeeze" ]; then
+      _EXTRA_APT="tree ffmpeg flvtool2 libavcodec52"
+    elif [ "${_OSV}" = "lucid" ]; then
+      _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-52"
+    elif [ "${_OSV}" = "wheezy" ] || [ "${_OSV}" = "trusty" ] \
+      || [ "${_OSV}" = "precise" ]; then
+      _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-53"
+    else
+      _EXTRA_APT="tree ffmpeg flvtool2 libavcodec51"
+    fi
+  else
+    _EXTRA_APT="tree"
+  fi
+  st_runner "apt-get install $_EXTRA_APT -f -y --force-yes -q \
+    --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+}
+
+basic_packages_install_on_init() {
+  if [ "${_STATUS}" = "INIT" ]; then
+    msg "INFO: Installing some basic tools now, please wait..."
+    _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+    if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
+      || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
+      msg "WARN: Installed keyring is broken, forced reinstall required"
+      if [ "${_THIS_OS}" = "Debian" ]; then
+        apt-get install debian-keyring ${forCer} &> /dev/null
+        apt-get install debian-archive-keyring ${forCer} &> /dev/null
+      else
+        apt-get install ubuntu-keyring ${forCer} &> /dev/null
+      fi
+    fi
+    apt-get update &> /dev/null
+    ${_INITINS} locales &> /dev/null
+    fix_locales
+    ${_INITINS} lsb-release &> /dev/null
+    ${_INITINS} dnsutils &> /dev/null
+    ${_INITINS} netcat &> /dev/null
+    ${_INITINS} curl &> /dev/null
+    ${_INITINS} wget &> /dev/null
+  fi
+}
+
+more_packages_install_on_init() {
+  if [ "${_STATUS}" = "INIT" ]; then
+    msg "INFO: Installing more basic tools now, please wait..."
+    if [ -e "/etc/debian_version" ]; then
+      _L_DEB_TEST=$(grep "^5." /etc/debian_version 2>&1)
+      if [ ! -z "$_L_DEB_TEST" ]; then
+        sed -i "s/^deb.*security.debian.org.*/## security updates no longer \
+          available for lenny/g" ${aptLiSys} &> /dev/null
+        sed -i "s/ftp.*debian.org/archive.debian.org/g" \
+          ${aptLiSys} &> /dev/null
+        sed -i "s/volatile.debian.org/archive.debian.org/g" \
+          ${aptLiSys} &> /dev/null
+      fi
+    fi
+    apt-get update &> /dev/null
+    ${_INITINS} locales &> /dev/null
+    fix_locales
+    ${_INITINS} git-core &> /dev/null
+    ${_INITINS} aptitude &> /dev/null
+    ${_INITINS} axel &> /dev/null
+  fi
+}
+
+if_squeeze_to_wheezy() {
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "squeeze" ]; then
+    msg "WARN: Squeeze to Wheezy upgrade will start in 60 seconds..."
+    msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
+    if [ ! -e "/root/.upstart.cnf" ]; then
+      service cron stop &> /dev/null
+      mrun "sleep 60"
+    fi
+    check_dns_settings
+    if [ "${_USE_PROVIDER_DNS}" = "NO" ]; then
+      mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
+      echo "nameserver 8.8.8.8" >/etc/resolv.conf
+      echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+      cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
+    fi
+    mv -f /var/xdrago /var/xdrago_wait &> /dev/null
+    mv -f /var/xdrago /var/xdrago_wait &> /dev/null
+    msg "WARN: Too late! Squeeze to Wheezy upgrade in progress..."
+    msg "HINT: Run tail -f ${_LOG}"
+    msg "HINT: in another terminal window to watch details"
+    _FULL_FORCE_REINSTALL=YES
+    _PURGE_MODE=OFF
+    rm -f ${mtrNgx}/pre.d/nginx_speed_purge.conf
+    if [ -e "/etc/init.d/bind" ]; then
+      rm -f /etc/init.d/bind
+    fi
+    if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ]; then
+      service tomcat stop &> /dev/null
+      mv /etc/init.d/tomcat /etc/init.d/offtomcat
+      kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
+    fi
+    echo "curl install" | dpkg --set-selections &> /dev/null
+    echo "libssl-dev install" | dpkg --set-selections &> /dev/null
+    echo "openssh-client install" | dpkg --set-selections &> /dev/null
+    echo "openssh-server install" | dpkg --set-selections &> /dev/null
+    echo "openssl install" | dpkg --set-selections &> /dev/null
+    echo "ssh install" | dpkg --set-selections &> /dev/null
+    echo "zlib1g install" | dpkg --set-selections &> /dev/null
+    echo "zlib1g-dev install" | dpkg --set-selections &> /dev/null
+    echo "zlibc install" | dpkg --set-selections &> /dev/null
+    mrun "apt-get remove collectd -y --force-yes -qq" &> /dev/null
+    if [ -e "/etc/php5/conf.d" ]; then
+      touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
+      touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
+    fi
+    mrun "aptitude remove php5 \
+                          php5-cgi \
+                          php5-curl \
+                          php5-fpm \
+                          php5-gd \
+                          php5-geoip \
+                          php5-gmp \
+                          php5-imagick \
+                          php5-imap \
+                          php5-ldap \
+                          php5-mcrypt \
+                          php5-memcache \
+                          php5-mysql \
+                          php5-sqlite \
+                          php5-xmlrpc \
+                          php5-xsl -y" &> /dev/null
+    mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
+    mrun "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
+    mrun "aptitude remove php5-cli php5-common -y" &> /dev/null
+    mrun "aptitude remove php5-apc -y" &> /dev/null
+    mrun "aptitude remove php-apc -y" &> /dev/null
+    if [ -e "/etc/php5/conf.d" ]; then
+      rm -f /etc/php5/conf.d/{opcache.ini,imagick.ini,memcached.ini}
+      rm -f /etc/php5/conf.d/{apc.ini,redis.ini,suhosin.ini,newrelic.ini}
+    fi
+    mrun "apt-get purge svscan -y" &> /dev/null
+    mrun "apt-get purge pound -y" &> /dev/null
+    mrun "apt-get update -y --force-yes" &> /dev/null
+    mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
+    mrun "apt-get install apt dpkg aptitude -f -y --force-yes -q \
+      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+    mrun "apt-get dist-upgrade -f -y --force-yes -q \
+      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+    install_upgrade_nginx
+    if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
+      ln -sf /etc/init.d/bind9 /etc/init.d/bind
+    fi
+    if [ -d "/var/www/cgp" ]; then
+      st_runner "apt-get install collectd -y --force-yes" 2> /dev/null
+    fi
+    _L_VM_TEST=$(uname -a 2>&1)
+    if [[ "${_L_VM_TEST}" =~ beng ]]; then
+      _REMOVE_LINKS="halt \
+                     hwclock.sh \
+                     hwclockfirst.sh \
+                     ifupdown \
+                     ifupdown-clean \
+                     klogd \
+                     mountall-bootclean.sh \
+                     mountall.sh \
+                     mountdevsubfs.sh \
+                     mountkernfs.sh \
+                     mountnfs-bootclean.sh \
+                     mountnfs.sh \
+                     mountoverflowtmp \
+                     mountvirtfs \
+                     mtab.sh \
+                     networking \
+                     reboot \
+                     setserial \
+                     umountfs \
+                     umountnfs.sh \
+                     umountroot \
+                     urandom"
+      for link in ${_REMOVE_LINKS}; do
+        update-rc.d -f $link remove &> /dev/null
+      done
+    fi
+    mrun "dpkg --configure --force-all -a" 2> /dev/null
+    mrun "apt-get update -y" 2> /dev/null
+    mrun "dpkg --configure --force-all -a" 2> /dev/null
+    mrun "apt-get install aptitude ${forCer}" 2> /dev/null
+    mrun "apt-get install util-linux ${forCer}" 2> /dev/null
+    mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
+          -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
+    echo rotate > /var/log/syslog &> /dev/null
+    mv -f /var/xdrago_wait /var/xdrago &> /dev/null
+    msg "INFO: No errors? Then Squeeze to Wheezy upgrade was successful - congrats!"
+    msg "HINT: Please remember to reboot when Barracuda will complete all upgrades"
+  fi
+}
+
+if_lenny_to_squeeze() {
+  if [ "${_LENNY_TO_SQUEEZE}" = "YES" ] && [ "${_LOC_OSV}" = "lenny" ]; then
+    _FULL_FORCE_REINSTALL=YES
+    msg "WARN: Lenny to Squeeze upgrade will start in 60 seconds..."
+    msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
+    if [ ! -e "/root/.upstart.cnf" ]; then
+      service cron stop &> /dev/null
+      mrun "sleep 60"
+    fi
+    check_dns_settings
+    if [ "${_USE_PROVIDER_DNS}" = "NO" ]; then
+      mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
+      echo "nameserver 8.8.8.8" >/etc/resolv.conf
+      echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+      cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
+    fi
+    mv -f /var/xdrago /var/xdrago_wait &> /dev/null
+    msg "WARN: Too late! Lenny to Squeeze upgrade in progress..."
+    msg "HINT: Run tail -f ${_LOG}"
+    msg "HINT: in another terminal window to watch details"
+    if [ -e "/etc/init.d/bind" ]; then
+      rm -f /etc/init.d/bind
+    fi
+    if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ]; then
+      service tomcat stop &> /dev/null
+      mv /etc/init.d/tomcat /etc/init.d/offtomcat
+      kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
+    fi
+    mrun "apt-get remove collectd -y --force-yes -qq" &> /dev/null
+    mrun "apt-get remove libc-client2007b-dev -y --force-yes -qq" &> /dev/null
+    mrun "apt-get purge svscan -y" &> /dev/null
+    mrun "apt-get purge pound -y" &> /dev/null
+    if [[ "${_L_VM_TEST}" =~ beng ]]; then
+      mrun "apt-get remove udev -y --force-yes -qq" &> /dev/null
+    fi
+    mrun "apt-get remove lsb-release -y --force-yes -qq" &> /dev/null
+    mrun "apt-get update -y --force-yes" &> /dev/null
+    mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
+    mrun "apt-get install apt dpkg aptitude -f -y --force-yes -q \
+      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+    mrun "apt-get dist-upgrade -f -y --force-yes -q \
+      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+    mrun "apt-get install libgeoip1 libgeoip-dev geoip-database \
+      -y --force-yes" 2> /dev/null
+    check_install_latest_git
+    install_upgrade_nginx
+    if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
+      ln -sf /etc/init.d/bind9 /etc/init.d/bind
+    fi
+    if [ -d "/var/www/cgp" ]; then
+      mrun "apt-get install collectd -y --force-yes" 2> /dev/null
+    fi
+    mrun "apt-get install udev lsb-release libc-client2007e-dev \
+      -y --force-yes" 2> /dev/null
+    _L_VM_TEST=$(uname -a 2>&1)
+    if [[ "${_L_VM_TEST}" =~ beng ]]; then
+      _REMOVE_LINKS="halt \
+                     hwclock.sh \
+                     hwclockfirst.sh \
+                     ifupdown \
+                     ifupdown-clean \
+                     klogd \
+                     mountall-bootclean.sh \
+                     mountall.sh \
+                     mountdevsubfs.sh \
+                     mountkernfs.sh \
+                     mountnfs-bootclean.sh \
+                     mountnfs.sh \
+                     mountoverflowtmp \
+                     mountvirtfs \
+                     mtab.sh \
+                     networking \
+                     reboot \
+                     setserial \
+                     umountfs \
+                     umountnfs.sh \
+                     umountroot \
+                     urandom"
+      for link in ${_REMOVE_LINKS}; do
+        update-rc.d -f $link remove &> /dev/null
+      done
+    fi
+    mrun "aptitude update -y" &> /dev/null
+    mrun "dpkg --configure --force-all -a" 2> /dev/null
+    mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
+          -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
+    echo rotate > /var/log/syslog &> /dev/null
+    mv -f /var/xdrago_wait /var/xdrago &> /dev/null
+    msg "INFO: No errors? Then Lenny to Squeeze upgrade was successful - congrats!"
+    msg "HINT: Please remember to reboot when Barracuda will complete all upgrades"
+  fi
+}
+
+update_webmin_apt() {
+  if [ -d "/etc/webmin" ]; then
+    if [ ! -e "${pthLog}/webmin_update_apt_src.log" ]; then
+      cd /var/opt
+      echo "## Webmin APT Repository" > ${aptLiSys}.d/webmin.list
+      echo "deb http://download.webmin.com/download/repository \
+        sarge contrib" | fmt -su -w 2500 >> ${aptLiSys}.d/webmin.list
+      echo "deb http://webmin.mirror.somersettechsolutions.co.uk/repository \
+        sarge contrib" | fmt -su -w 2500 >> ${aptLiSys}.d/webmin.list
+      _KEYS_SERVER_TEST=FALSE
+      until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]]; do
+        rm -f jcameron-key.asc*
+        wget -q -U iCab ${urlDev}/jcameron-key.asc
+        _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.asc 2>&1)
+        sleep 2
+      done
+      cat jcameron-key.asc | apt-key add - &> /dev/null
+      rm -f jcameron-key.asc*
+      touch ${pthLog}/webmin_update_apt_src.log
+    fi
+  fi
+}
+
+sys_packages_update() {
+  msg "INFO: Running system packages update..."
+  update_webmin_apt
+  if [ "${_OSV}" = "lenny" ]; then
+    sed -i "s/^deb.*security.debian.org.*/## security updates no longer \
+      available for lenny/g" ${aptLiSys} &> /dev/null
+    sed -i "s/ftp.*debian.org/archive.debian.org/g" \
+      ${aptLiSys} &> /dev/null
+    sed -i "s/volatile.debian.org/archive.debian.org/g" \
+      ${aptLiSys} &> /dev/null
+    st_runner "aptitude autoclean -y" &> /dev/null
+    st_runner "apt-get clean -qq" &> /dev/null
+  else
+    st_runner "dpkg --configure --force-all -a" 2> /dev/null
+  fi
+  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
+    || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
+    msg "WARN: Installed keyring is broken, forced reinstall required"
+    if [ "${_THIS_OS}" = "Debian" ]; then
+      st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
+      st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
+    else
+      st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
+    fi
+  fi
+  st_runner "aptitude update -y" &> /dev/null
+  _DB_SERVER_TEST=$(mysql -V 2>&1)
+  if [ "${_STATUS}" = "INIT" ]; then
+    st_runner "aptitude full-upgrade -f -y -q \
+      -o Dpkg::Options::=--force-confdef \
+      -o Dpkg::Options::=--force-confold" 2> /dev/null
+    st_runner "aptitude update -y" &> /dev/null
+    st_runner "aptitude full-upgrade -f -y -q \
+      -o Dpkg::Options::=--force-confdef \
+      -o Dpkg::Options::=--force-confold" 2> /dev/null
+    st_runner "aptitude autoclean -y" &> /dev/null
+  else
+    echo "gnupg-curl install" | dpkg --set-selections &> /dev/null
+    if [ -e "/etc/php5/conf.d" ]; then
+      touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
+      touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
+    fi
+    st_runner "aptitude remove php5 \
+                               php5-cgi \
+                               php5-curl \
+                               php5-fpm \
+                               php5-gd \
+                               php5-geoip \
+                               php5-gmp \
+                               php5-imagick \
+                               php5-imap \
+                               php5-ldap \
+                               php5-mcrypt \
+                               php5-memcache \
+                               php5-mysql \
+                               php5-sqlite \
+                               php5-xmlrpc \
+                               php5-xsl -y" &> /dev/null
+    st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
+    st_runner "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
+    st_runner "aptitude remove php5-cli php5-common -y" &> /dev/null
+    st_runner "aptitude remove php5-apc -y" &> /dev/null
+    st_runner "aptitude remove php-apc -y" &> /dev/null
+    if [ -e "/etc/php5/conf.d" ]; then
+      rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
+      rm -f /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
+    fi
+    if [ "${_OSV}" = "squeeze" ]; then
+      if [ -e "${aptLiSys}.d/dotdeb.list" ]; then
+        rm -f ${aptLiSys}.d/dotdeb.list
+        st_runner "aptitude autoclean -y" &> /dev/null
+        st_runner "apt-get clean -qq" &> /dev/null
+        st_runner "apt-get update -y --force-yes" &> /dev/null
+      fi
+    fi
+    rm -f /var/lib/mysql/debian-*.flag &> /dev/null
+    _KEYS_SERVER_TEST=FALSE
+    if [ ! -e "/root/.upstart.cnf" ]; then
+      service cron stop &> /dev/null
+    fi
+    if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+      csf -x &> /dev/null
+    fi
+    until [[ "$_KEYS_SERVER_TEST" =~ "MariaDB" ]]; do
+      _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
+        --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
+      sleep 2
+    done
+    _UP_JDK=NO
+    _UP_LNX=NO
+    _UP_NRC=NO
+    _UP_PHP=NO
+    check_apt_updates
+  fi
+}
+
+sys_packages_install() {
+  if [ "${_STATUS}" = "INIT" ]; then
+    msg "INFO: Installing required libraries and tools, please wait..."
+  else
+    msg "INFO: Upgrading required libraries and tools..."
+    if [ ! -e "/etc/init.d/php5-fpm" ]; then
+      cp -af ${locCnf}/php5-fpm-init-vanilla /etc/init.d/php5-fpm
+    fi
+  fi
+  if [ "${_STATUS}" = "INIT" ]; then
+    if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
+      || [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [ -e "/root/.auto.up.cnf" ] \
+      || [ -e "/root/.host8.cnf" ]; then
+      if [ "${_OSV}" = "wheezy" ] \
+        || [ "${_OSV}" = "trusty" ] \
+        || [ "${_OSV}" = "precise" ]; then
+        _APT_XTRA="openjdk-7-jre-headless openjdk-6-jre-headless nginx"
+      else
+        _APT_XTRA="openjdk-6-jre-headless nginx"
+      fi
+    else
+      _APT_XTRA="nginx"
+    fi
+    _APT_ELSE="netcat nginx"
+  else
+    _APT_ITEM=$(dpkg --get-selections | grep openjdk-6-jdk | grep install 2>&1)
+    if [[ "$_APT_ITEM" =~ "install" ]]; then
+      mrun "apt-get remove openjdk-6-jdk -y --force-yes -qq" &> /dev/null
+      mrun "apt-get purge openjdk-6-jdk -y --force-yes -qq" &> /dev/null
+      mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
+    fi
+    _APT_ITEM=$(dpkg --get-selections | grep openjdk-7-jdk | grep install 2>&1)
+    if [[ "$_APT_ITEM" =~ "install" ]]; then
+      mrun "apt-get remove openjdk-7-jdk -y --force-yes -qq" &> /dev/null
+      mrun "apt-get purge openjdk-7-jdk -y --force-yes -qq" &> /dev/null
+      mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
+    fi
+    if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
+      || [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [ -e "/root/.auto.up.cnf" ] \
+      || [ -e "/root/.host8.cnf" ]; then
+      if [ "${_OSV}" = "wheezy" ] \
+        || [ "${_OSV}" = "trusty" ] \
+        || [ "${_OSV}" = "precise" ]; then
+        _APT_XTRA="openjdk-7-jre-headless openjdk-6-jre-headless"
+      else
+        _APT_XTRA="openjdk-6-jre-headless"
+      fi
+    else
+      _APT_XTRA=""
+    fi
+    _APT_ELSE="netcat"
+    _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+    if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
+      || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
+      msg "WARN: Installed keyring is broken, forced reinstall required"
+      if [ "${_THIS_OS}" = "Debian" ]; then
+        st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
+        st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
+      else
+        st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
+      fi
+    fi
+    mrun "apt-get -f install -qq"                         &> /dev/null
+    mrun "service nginx start"                            &> /dev/null
+    mrun "apt-get remove nginx-extras -y --force-yes -qq" &> /dev/null
+    mrun "apt-get remove nginx -y --force-yes -qq"        &> /dev/null
+    mrun "apt-get remove nginx-common -y --force-yes -qq" &> /dev/null
+    mrun "apt-get remove nginx-full -y --force-yes -qq"   &> /dev/null
+    mrun "apt-get remove redis-server -y --force-yes -qq" &> /dev/null
+    st_runner "apt-get autoremove -y --force-yes -qq"     &> /dev/null
+    st_runner "apt-get update -y --force-yes"             &> /dev/null
+  fi
+  _EXTRA_LIB_APT="libmcrypt-dev"
+  if [ ! -z "${_EXTRA_PACKAGES}" ]; then
+    _EXTRA_PACKAGES="screen ${_EXTRA_PACKAGES}"
+  else
+    _EXTRA_PACKAGES="screen"
+  fi
+  _ETH_TEST=$(ifconfig 2>&1)
+  _VM_TEST=$(uname -a 2>&1)
+  if [[ "${_ETH_TEST}" =~ "venet0" ]] || [ -e "/proc/bean_counters" ]; then
+    _IS_VZ=YES
+  else
+    _IS_VZ=NO
+  fi
+  if [ "$_IS_VZ" = "YES" ] \
+    || [ -e "/root/.use.sysklogd.cnf" ] \
+    || [ "${_OSV}" = "trusty" ] \
+    || [ "${_OSV}" = "precise" ]; then
+    _SYSLOGD=sysklogd
+     mrun "apt-get purge rsyslog -y" &> /dev/null
+     mrun "killall -9 rsyslogd" &> /dev/null
+  else
+    _SYSLOGD=rsyslog
+  fi
+  if [ "${_NGINX_SPDY}" = "YES" ] \
+    || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
+    || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
+    if [ "${_OSV}" = "wheezy" ] \
+      || [ "${_OSV}" = "trusty" ] \
+      || [ "${_OSV}" = "precise" ]; then
+      _SSB_SRC=NO
+    else
+      _SSB_SRC=YES
+    fi
+  else
+    _SSB_SRC=NO
+  fi
+  if [ "$_SSB_SRC" = "YES" ]; then
+    _EXTRA_PACKAGES="libcurl4-openssl-dev \
+                     ${_EXTRA_PACKAGES}"
+  else
+    _EXTRA_PACKAGES="curl \
+                     libcurl4-openssl-dev \
+                     ${_EXTRA_PACKAGES}"
+  fi
+  if [ "${_OSV}" = "trusty" ]; then
+    _EXTRA_PACKAGES="libgd2-noxpm-dev \
+                     libgd2-xpm-dev \
+                     libgd2-dev \
+                     libgd3 \
+                     libxpm-dev \
+                     ${_EXTRA_PACKAGES}"
+  else
+    _EXTRA_PACKAGES="libgd2-xpm \
+                     ${_EXTRA_PACKAGES}"
+  fi
+
+  if [[ "_XTRAS_LIST" =~ "IMG" ]]; then
+    _EXTRA_PACKAGES="advancecomp \
+                     jpegoptim \
+                     libjpeg-progs \
+                     optipng \
+                     pngcrush \
+                     pngquant \
+                     ${_EXTRA_PACKAGES}"
+  fi
+
+  if [ "${_OSV}" = "wheezy" ] \
+    || [ "${_OSV}" = "squeeze" ] \
+    || [ "${_OSV}" = "trusty" ] \
+    || [ "${_OSV}" = "precise" ] \
+    || [ "${_OSV}" = "lucid" ]; then
+    _DEBDEPS="apticron \
+              $_APT_XTRA \
+              $_EXTRA_LIB_APT \
+              ${_EXTRA_PACKAGES} \
+              $_SYSLOGD \
+              aptitude \
+              auditd \
+              autoconf2.13 \
+              automake \
+              automake1.4 \
+              autotools-dev \
+              bc \
+              bison \
+              build-essential \
+              catdoc \
+              cron \
+              cvs \
+              cython \
+              defoma \
+              devscripts \
+              dnsutils \
+              dstat \
+              flex \
+              fontconfig-config \
+              geoip-database \
+              gettext \
+              ghostscript \
+              gnupg \
+              gnupg-curl \
+              gnupg2 \
+              htop \
+              ifstat \
+              imagemagick \
+              iptables \
+              ldap-utils \
+              lemon \
+              lftp \
+              libapr1 \
+              libaprutil1 \
+              libc-client-dev \
+              libc-client2007e \
+              libc-client2007e-dev \
+              libfilesys-diskspace-perl \
+              libfontconfig1 \
+              libfreetype6 \
+              libfreetype6-dev \
+              libfribidi0 \
+              libgeoip-dev \
+              libgeoip1 \
+              libgmp3-dev \
+              libhtml-template-perl \
+              libjpeg-dev \
+              libjpeg62 \
+              libmagickwand-dev \
+              libnet-daemon-perl \
+              libpam-umask \
+              libpam-unix2 \
+              libpcre3 \
+              libpcre3-dev \
+              libplrpc-perl \
+              libpng12-0 \
+              libpng12-dev \
+              libpq5 \
+              libsasl2-modules \
+              libssl-dev \
+              libt1-5 \
+              libt1-dev \
+              libterm-readkey-perl \
+              libtool \
+              libwww-perl \
+              libxcrypt1 \
+              libxml2-dev \
+              libxpm4 \
+              libxslt-dev \
+              libxslt1-dbg \
+              libxslt1-dev \
+              libxslt1.1 \
+              m4 \
+              makepasswd \
+              mc \
+              mcrypt \
+              nano \
+              ncurses-dev \
+              ncurses-term \
+              netcat \
+              ntpdate \
+              p7zip-full \
+              pdftk \
+              postfix \
+              postfix-pcre \
+              pwgen \
+              python-dev \
+              python-software-properties \
+              re2c \
+              rrdtool \
+              rsync \
+              s3cmd \
+              shtool \
+              sipcalc \
+              ssh \
+              ssl-cert \
+              subversion \
+              sudo \
+              symlinks \
+              sysstat \
+              sysvinit-utils \
+              t1lib-bin \
+              telnet \
+              time \
+              ttf-dejavu \
+              ttf-dejavu-core \
+              ttf-dejavu-extra \
+              udev \
+              unrtf \
+              unzip \
+              vim \
+              whois \
+              xml-core \
+              xml2 \
+              xpdf \
+              zip \
+              zlib1g-dev \
+              zlibc"
+  elif [ "${_OSV}" = "lenny" ]; then
+    _DEBDEPS="apticron \
+              $_APT_ELSE \
+              $_EXTRA_LIB_APT \
+              ${_EXTRA_PACKAGES} \
+              $_SYSLOGD \
+              aptitude \
+              auditd \
+              autoconf2.13 \
+              automake \
+              automake1.4 \
+              autotools-dev \
+              bc \
+              bison \
+              build-essential \
+              catdoc \
+              cron \
+              cvs \
+              cython \
+              defoma \
+              devscripts \
+              dnsutils \
+              dstat \
+              flex \
+              fontconfig-config \
+              gettext \
+              ghostscript \
+              gnupg \
+              gnupg-curl \
+              gnupg2 \
+              htop \
+              ifstat \
+              imagemagick \
+              iptables \
+              ldap-utils \
+              lemon \
+              lftp \
+              libapr1 \
+              libaprutil1 \
+              libc-client-dev \
+              libc-client2007b \
+              libc-client2007b-dev \
+              libfilesys-diskspace-perl \
+              libfontconfig1 \
+              libfreetype6 \
+              libfreetype6-dev \
+              libfribidi0 \
+              libgeoip-dev \
+              libgeoip1 \
+              libgmp3-dev \
+              libhtml-template-perl \
+              libjpeg-dev \
+              libjpeg62 \
+              libmagick9-dev \
+              libnet-daemon-perl \
+              libpam-umask \
+              libpcre3 \
+              libpcre3-dev \
+              libplrpc-perl \
+              libpng12-0 \
+              libpng12-dev \
+              libpq5 \
+              libsasl2-modules \
+              libssl-dev \
+              libt1-5 \
+              libt1-dev \
+              libterm-readkey-perl \
+              libtool \
+              libwww-perl \
+              libxml2-dev \
+              libxpm4 \
+              libxslt-dev \
+              libxslt1-dbg \
+              libxslt1-dev \
+              libxslt1.1 \
+              m4 \
+              makepasswd \
+              mc \
+              mcrypt \
+              nano \
+              ncurses-dev \
+              ncurses-term \
+              ntpdate \
+              openjdk-6-jre-headless \
+              p7zip-full \
+              pdftk \
+              postfix \
+              postfix-pcre \
+              pwgen \
+              python-dev \
+              re2c \
+              rrdtool \
+              rsync \
+              shtool \
+              sipcalc \
+              ssh \
+              ssl-cert \
+              subversion \
+              sudo \
+              symlinks \
+              sysstat \
+              sysvconfig \
+              t1lib-bin \
+              telnet \
+              time \
+              ttf-dejavu \
+              ttf-dejavu-core \
+              ttf-dejavu-extra \
+              udev \
+              unrtf \
+              unzip \
+              vim \
+              whois \
+              xml-core \
+              xml2 \
+              xpdf \
+              zip \
+              zlib1g-dev \
+              zlibc"
+  fi
+}
+
+fix_postfix() {
+  if [ "${_STATUS}" = "INIT" ]; then
+    st_runner "aptitude remove exim4 exim4-base exim4-config sendmail \
+      sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
+    st_runner "apt-get purge exim4 exim4-base exim4-config sendmail \
+      sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
+    st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
+    rm -f /etc/aliases
+    rm -f -r /etc/mail
+    killall -9 sendmail &> /dev/null
+  else
+    _POSTFIX_TEST=$(grep "fatal: open lock file" /var/log/mail.log 2>&1)
+    if [[ "$_POSTFIX_TEST" =~ "fatal: open lock file" ]]; then
+      _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+      if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
+        || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
+        msg "WARN: Installed keyring is broken, forced reinstall required"
+        if [ "${_THIS_OS}" = "Debian" ]; then
+          mrun "apt-get install debian-keyring ${forCer}" 2> /dev/null
+          mrun "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
+        else
+          mrun "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
+        fi
+      fi
+      mrun "dpkg --configure -a"      &> /dev/null
+      mrun "apt-get clean -qq"        &> /dev/null
+      mrun "apt-get update -qq"       &> /dev/null
+      mrun "apt-get purge postfix -y" &> /dev/null
+      echo > /var/log/mail.log
+    fi
+  fi
+  if [ ! -e "/etc/aliases" ]; then
+    echo "postmaster:    root" > /etc/aliases
+    newaliases &> /dev/null
+  fi
+}
+
+fix_libs_php() {
+  if [ "${_OSV}" = "wheezy" ] \
+    || [ "${_OSV}" = "trusty" ] \
+    || [ "${_OSV}" = "precise" ]; then
+    if [ ! -L "/usr/lib/libXpm.so" ]; then
+      msg "INFO: Fix #1 for libs in ${_THIS_OS} ${_OSV}"
+      _X86_64_TEST=$(uname -m 2>&1)
+      if [ "$_X86_64_TEST" = "x86_64" ]; then
+        ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
+        ln -sf /usr/lib/x86_64-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
+        ln -sf /usr/lib/x86_64-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
+        ln -sf /usr/lib/x86_64-linux-gnu/libldap.so /usr/lib/libldap.so
+        ln -sf /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
+        ln -sf /usr/lib/x86_64-linux-gnu/libXpm.so  /usr/lib/libXpm.so
+        if [ ! -e "/usr/include/gmp.h" ] \
+          && [ -e "/usr/include/x86_64-linux-gnu/gmp.h" ]; then
+          ln -sf /usr/include/x86_64-linux-gnu/gmp.h  /usr/include/gmp.h
+        fi
+      else
+        ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so
+        ln -sf /usr/lib/i386-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
+        ln -sf /usr/lib/i386-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
+        ln -sf /usr/lib/i386-linux-gnu/libldap.so /usr/lib/libldap.so
+        ln -sf /usr/lib/i386-linux-gnu/libpng.so  /usr/lib/libpng.so
+        ln -sf /usr/lib/i386-linux-gnu/libXpm.so  /usr/lib/libXpm.so
+        if [ ! -e "/usr/include/gmp.h" ] \
+          && [ -e "/usr/include/i386-linux-gnu/gmp.h" ]; then
+          ln -sf /usr/include/i386-linux-gnu/gmp.h  /usr/include/gmp.h
+        fi
+      fi
+    fi
+  fi
+}
+
+fix_libssl() {
+  if [ "${_OSV}" = "wheezy" ] \
+    || [ "${_OSV}" = "trusty" ] \
+    || [ "${_OSV}" = "precise" ]; then
+    _SSL_FIX_REQUIRED=YES
+    if [ "${_NGINX_SPDY}" = "YES" ] \
+      || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
+      || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
+      if [ "${_OSV}" = "wheezy" ] \
+        || [ "${_OSV}" = "trusty" ] \
+        || [ "${_OSV}" = "precise" ]; then
+        _SSL_FIX_REQUIRED=YES
+      else
+        _SSL_FIX_REQUIRED=NO
+      fi
+    fi
+    if [ ! -e "/usr/lib/libssl.so.1.0.0" ] \
+      && [ "$_SSL_FIX_REQUIRED" = "YES" ]; then
+      msg "INFO: Fix #2 for libs in ${_THIS_OS} ${_OSV}"
+      _X86_64_TEST=$(uname -m 2>&1)
+      if [ "$_X86_64_TEST" = "x86_64" ]; then
+        if [ -e "/usr/lib/x86_64-linux-gnu/libssl.so.1.0.0" ] \
+          && [ ! -e "/usr/lib/libssl.so.1.0.0" ]; then
+          ln -s /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0  \
+            /usr/lib/libssl.so.1.0.0
+        elif [ -e "/lib/x86_64-linux-gnu/libssl.so.1.0.0" ] \
+          && [ ! -e "/usr/lib/libssl.so.1.0.0" ]; then
+          ln -s /lib/x86_64-linux-gnu/libssl.so.1.0.0  \
+            /usr/lib/libssl.so.1.0.0
+        fi
+        if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0" ] \
+          && [ ! -e "/usr/lib/libcrypto.so.1.0.0" ]; then
+          ln -s /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0 \
+            /usr/lib/libcrypto.so.1.0.0
+        elif [ -e "/lib/x86_64-linux-gnu/libcrypto.so.1.0.0" ] \
+          && [ ! -e "/usr/lib/libcrypto.so.1.0.0" ]; then
+          ln -s /lib/x86_64-linux-gnu/libcrypto.so.1.0.0 \
+            /usr/lib/libcrypto.so.1.0.0
+        fi
+      else
+        if [ -e "/usr/lib/i386-linux-gnu/libssl.so.1.0.0" ] \
+          && [ ! -e "/usr/lib/libssl.so.1.0.0" ]; then
+          ln -s /usr/lib/i386-linux-gnu/libssl.so.1.0.0  \
+            /usr/lib/libssl.so.1.0.0
+        elif [ -e "/lib/i386-linux-gnu/libssl.so.1.0.0" ] \
+          && [ ! -e "/usr/lib/libssl.so.1.0.0" ]; then
+          ln -s /lib/i386-linux-gnu/libssl.so.1.0.0  \
+            /usr/lib/libssl.so.1.0.0
+        fi
+        if [ -e "/usr/lib/i386-linux-gnu/libcrypto.so.1.0.0" ] \
+          && [ ! -e "/usr/lib/libcrypto.so.1.0.0" ]; then
+          ln -s /usr/lib/i386-linux-gnu/libcrypto.so.1.0.0 \
+            /usr/lib/libcrypto.so.1.0.0
+        elif [ -e "/lib/i386-linux-gnu/libcrypto.so.1.0.0" ] \
+          && [ ! -e "/usr/lib/libcrypto.so.1.0.0" ]; then
+          ln -s /lib/i386-linux-gnu/libcrypto.so.1.0.0 \
+            /usr/lib/libcrypto.so.1.0.0
+        fi
+      fi
+    fi
+  fi
+}
+
+check_smtp() {
+  if [ -z "${_SMTP_RELAY_HOST}" ] && [ "${_SMTP_RELAY_TEST}" = "YES" ]; then
+    msg "INFO: Checking SMTP connections..."
+    if ! netcat -w 14 -z smtp.gmail.com 25 ; then
+      WE_NEED_RELAY=YES
+      cat <<EOF
+
+      Your outgoing SMTP port 25 doesn't work
+      as expected, so your server can't send out
+      any e-mails directly.
+
+      It appears you need a SMTP relayhost added
+      in your Postfix /etc/postfix/main.cf config.
+
+      Please enter your SMTP relay host name
+      as a value for _SMTP_RELAY_HOST="smtp.your.relay.server"
+
+      Then run this script again.
+
+EOF
+      clean_pid_exit
+    else
+      _DO_NOTHING=YES
+    fi
+    ###
+    ### Required if outgoing smtp port is closed and smtp relay is in use
+    ###
+    if [ ! -z "${_SMTP_RELAY_HOST}" ]; then
+      sed -i "s/${_SMTP_RELAY_HOST}//g" /etc/postfix/main.cf &> /dev/null
+      sed -i "s/relayhost =/relayhost = ${_SMTP_RELAY_HOST}/g" \
+        /etc/postfix/main.cf &> /dev/null
+      postfix reload &> /dev/null
+    fi
+  fi
+}
+
+install_vnstat() {
+  if [ ! -e "/var/run/cloud_vhost.pid" ]; then
+    if [ ! -e "${pthLog}/vnstat-${_VNSTAT_VRN}.log" ] \
+      || [ ! -e "/usr/bin/vnstat" ] \
+      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      msg "INFO: Installing VnStat monitor..."
+      cd /var/opt
+      rm -f -r vnstat*
+      get_dev_src "vnstat-${_VNSTAT_VRN}.tar.gz"
+      cd vnstat-${_VNSTAT_VRN}
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      for INF in `vnstat --iflist | sed "s/Available interfaces//g" \
+        | cut -d: -f2` ;do vnstat -u -i $INF &> /dev/null;done
+      cp -af /var/opt/vnstat-${_VNSTAT_VRN}/examples/init.d/debian/vnstat \
+        /etc/init.d/vnstat
+      chmod 755 /etc/init.d/vnstat &> /dev/null
+      st_runner "update-rc.d vnstat defaults" &> /dev/null
+      mrun "service vnstat start" &> /dev/null
+      touch ${pthLog}/vnstat-${_VNSTAT_VRN}.log
+      mrun "service vnstat restart" &> /dev/null
+    fi
+  fi
+  if [ -e "/etc/init.d/vnstat" ] \
+    && [ "${_VMFAMILY}" = "VS" ] \
+    && [ ! -e "/boot/grub/grub.cfg" ] \
+    && [ ! -e "/boot/grub/menu.lst" ]; then
+    service vnstat stop &> /dev/null
+    update-rc.d -f vnstat remove &> /dev/null
+    rm -f /etc/init.d/vnstat
+    rm -f /usr/bin/vnstat
+    rm -f -r /var/lib/vnstat
+  fi
+}
+
+install_update_xdrago() {
+  cd /var
+  if [ -d "/var/xdrago/conf" ] \
+    && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Upgrading a few more tools..."
+    fi
+    mv -f /var/xdrago-pre* ${vBs}/dragon/x/ &> /dev/null
+    rm -f -r ${pthLog}/init.d-pre*
+    rm -f -r ${vBs}/dragon/z/init.d-pre-*
+    rm -f ${pthLog}/cron-root-pre*
+    cp -af /var/xdrago \
+      ${vBs}/dragon/x/xdrago-pre-${_X_VERSION}-${_NOW} &> /dev/null
+    rm -f ${pthLog}/VISITOR_ABUSE_ONE.log
+    rm -f ${pthLog}/blackIP.log
+    rm -f /var/xdrago/{enableStatus,graceful,move_sql,run_all,second,Minute}
+    rm -f /var/xdrago/{firewall.sh,stop-mysql-innodb.sh,firewall_restarter}
+    rm -f /var/xdrago/{FireStart,memcache,redis}
+    cp -af /var/spool/cron/crontabs/root \
+      ${vBs}/dragon/z/cron-root-pre-${_X_VERSION}-${_NOW} &> /dev/null
+    if [ "${_CUSTOM_CONFIG_LSHELL}" = "YES" ] \
+      && [ -e "/var/xdrago/conf/lshell.conf" ]; then
+      cp -af /var/xdrago/conf/lshell.conf ${vBs}/custom_lshell.conf
+    fi
+    cp -af ${bldPth}/aegir/tools/system/* /var/xdrago/ &> /dev/null
+    if [ "${_CUSTOM_CONFIG_LSHELL}" = "YES" ] \
+      && [ -e "${vBs}/custom_lshell.conf" ]; then
+      cp -af ${vBs}/custom_lshell.conf /var/xdrago/conf/lshell.conf
+    fi
+    if [ -z "${_THISHTIP}" ]; then
+      _LOC_DOM="${_THISHOST}"
+      find_correct_ip
+      _THISHTIP="${_LOC_IP}"
+    fi
+    if [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [ "${_VMFAMILY}" = "VS" ] \
+      || [ -e "/root/.auto.up.cnf" ] \
+      || [ -e "/root/.host8.cnf" ]; then
+      if [[ "${_THISHOST}" =~ "v251a.ams." ]]; then
+        _NGINX_DOS_LIMIT=888
+      else
+        if [ -z "${_NGINX_DOS_LIMIT}" ] \
+          || [ "${_NGINX_DOS_LIMIT}" = "300" ]; then
+          if [ "${_VMFAMILY}" = "VS" ]; then
+            _NGINX_DOS_LIMIT=149
+          else
+            _NGINX_DOS_LIMIT=188
+          fi
+        fi
+      fi
+    fi
+    sed -i "s/= 150/= ${_NGINX_DOS_LIMIT}/g" \
+      /var/xdrago/monitor/check/scan_nginx &> /dev/null
+    sed -i "s/= 200/= ${_NGINX_DOS_LIMIT}/g" \
+      /var/xdrago/monitor/check/scan_nginx &> /dev/null
+    if [ ! -z "$_NGINX_DOS_KEYWORDS" ]; then
+      _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|]/}
+      if [ ! -z "$_NGINX_DOS_KEYWORDS" ]; then
+        msg "INFO: Configured _NGINX_DOS_KEYWORDS: $_NGINX_DOS_KEYWORDS"
+        sed -i "s/foobar/$_NGINX_DOS_KEYWORDS/g" \
+          /var/xdrago/monitor/check/scan_nginx &> /dev/null
+      fi
+    fi
+    mv -f /etc/cron.daily/mlocate ${vBs}/ &> /dev/null
+    cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
+    if [ -e "/var/xdrago/cron/custom.txt" ]; then
+      cat /var/xdrago/cron/custom.txt >> /var/spool/cron/crontabs/root
+    fi
+    chown root:crontab /var/spool/cron/crontabs/root
+    chmod 600 /var/spool/cron/crontabs/root
+    if [[ "${_THISHOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+      if [ -e "/root/.debug.cnf" ]; then
+        _DO_NOTHING=YES
+      else
+        if [ -e "/root/.high_load.cnf" ] \
+          && [ ! -e "/root/.big_db.cnf" ] \
+          && [ ! -e "/root/.tg.cnf" ]; then
+          sed -i "s/3600/180/g" /var/xdrago/minute.sh &> /dev/null
+        elif [ -e "/root/.big_db.cnf" ] || [ -e "/root/.tg.cnf" ]; then
+          _DO_NOTHING=YES
+        else
+          sed -i "s/3600/1800/g" /var/xdrago/minute.sh &> /dev/null
+        fi
+        sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
+        sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
+        sed -i "s/INTERVAL 1 HOUR/INTERVAL 15 MINUTE/g" \
+          /var/xdrago/purge_binlogs.sh &> /dev/null
+      fi
+    else
+      sed -i "s/log\/lshell/log\/lsh/g" /etc/logrotate.d/lshell &> /dev/null
+    fi
+  fi
+  if [ "${_STATUS}" = "INIT" ]; then
+    msg "INFO: Installing a few more tools..."
+    mkdir -p ./xdrago
+    cp -af ${bldPth}/aegir/tools/system/* ./xdrago/ &> /dev/null
+    cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
+    chown root:crontab /var/spool/cron/crontabs/root
+    chmod 600 /var/spool/cron/crontabs/root
+    if [ -z "${_THISHTIP}" ]; then
+      _LOC_DOM="${_THISHOST}"
+      find_correct_ip
+      _THISHTIP="${_LOC_IP}"
+    fi
+    if [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [ "${_VMFAMILY}" = "VS" ] \
+      || [ -e "/root/.auto.up.cnf" ] \
+      || [ -e "/root/.host8.cnf" ]; then
+      if [[ "${_THISHOST}" =~ "v251a.ams." ]]; then
+        _NGINX_DOS_LIMIT=888
+      else
+        if [ -z "${_NGINX_DOS_LIMIT}" ] \
+          || [ "${_NGINX_DOS_LIMIT}" = "300" ]; then
+          if [ "${_VMFAMILY}" = "VS" ]; then
+            _NGINX_DOS_LIMIT=149
+          else
+            _NGINX_DOS_LIMIT=188
+          fi
+        fi
+      fi
+    fi
+    sed -i "s/= 150/= ${_NGINX_DOS_LIMIT}/g" \
+      /var/xdrago/monitor/check/scan_nginx &> /dev/null
+    sed -i "s/= 200/= ${_NGINX_DOS_LIMIT}/g" \
+      /var/xdrago/monitor/check/scan_nginx &> /dev/null
+    if [ ! -z "$_NGINX_DOS_KEYWORDS" ]; then
+      _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|]/}
+      if [ ! -z "$_NGINX_DOS_KEYWORDS" ]; then
+        msg "INFO: Configured _NGINX_DOS_KEYWORDS: $_NGINX_DOS_KEYWORDS"
+        sed -i "s/foobar/$_NGINX_DOS_KEYWORDS/g" \
+          /var/xdrago/monitor/check/scan_nginx &> /dev/null
+      fi
+    fi
+    mv -f /etc/cron.daily/mlocate ${vBs}/ &> /dev/null
+    if [[ "${_THISHOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+      if [ -e "/root/.debug.cnf" ]; then
+        _DO_NOTHING=YES
+      else
+        if [ -e "/root/.high_load.cnf" ] \
+          && [ ! -e "/root/.big_db.cnf" ] \
+          && [ ! -e "/root/.tg.cnf" ]; then
+          sed -i "s/3600/180/g" /var/xdrago/minute.sh &> /dev/null
+        elif [ -e "/root/.big_db.cnf" ] || [ -e "/root/.tg.cnf" ]; then
+          _DO_NOTHING=YES
+        else
+          sed -i "s/3600/1800/g" /var/xdrago/minute.sh &> /dev/null
+        fi
+        sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
+        sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
+      fi
+    fi
+  fi
+  if [ -d "/var/xdrago-pre-${_X_VERSION}-${_NOW}" ]; then
+    cp -af /var/xdrago-pre-${_X_VERSION}-${_NOW}/run-* /var/xdrago/ &> /dev/null
+  fi
+  sed -i "s/firewall/monitor/g" /var/xdrago/minute.sh &> /dev/null
+  chmod -R 700 /var/xdrago/monitor/check &> /dev/null
+  chmod 700 /var/xdrago/* &> /dev/null
+  chmod 700 /var/xdrago &> /dev/null
+}
+
+check_fix_umask() {
+  if [ ! -e "${pthLog}/umask_fixed_new.log" ]; then
+    mkdir -p /var/www/nginx-default
+    sed -i "s/^UMASK.*//g" /etc/default/login &> /dev/null
+    echo "UMASK=002" >> /etc/default/login
+    sed -i "/^$/d" /etc/default/login &> /dev/null
+    sed -i "s/^UMASK.*/UMASK 002/g" /etc/login.defs &> /dev/null
+    sed -i "s/^umask.*022/umask 002/g" /etc/profile &> /dev/null
+    sed -i "s/^session optional pam_umask.*//g" /etc/pam.d/login &> /dev/null
+    echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/login
+    sed -i "/^$/d" /etc/pam.d/login &> /dev/null
+    echo "umask 002" >> /var/www/.profile
+    chown www-data:www-data /var/www/.profile &> /dev/null
+    chown www-data:www-data /var/www/nginx-default &> /dev/null
+    touch ${pthLog}/umask_fixed_new.log
+  fi
+  if [ ! -e "${pthLog}/umask_fixed_shell_sftp.log" ]; then
+    if [ "${_OSV}" = "lenny" ] || [ "${_OSV}" = "lucid" ]; then
+      _DO_NOTHING=YES
+    else
+      sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /etc/ssh/sshd_config
+    fi
+    echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/sshd
+    mrun "service ssh restart" &> /dev/null
+    touch ${pthLog}/umask_fixed_shell_sftp.log
+  fi
+  if [ ! -e "${pthLog}/src_umask_fixed_shell_sftp.log" ] \
+    && [ -e "/usr/etc/sshd_config" ]; then
+    if [ "${_OSV}" = "lenny" ] || [ "${_OSV}" = "lucid" ]; then
+      _DO_NOTHING=YES
+    else
+      sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /usr/etc/sshd_config
+    fi
+    mrun "service ssh restart" &> /dev/null
+    touch ${pthLog}/src_umask_fixed_shell_sftp.log
+  fi
+}
+
+install_update_lshell() {
+  if [ "${_OSV}" = "lenny" ]; then
+    _PATH_LSHELL="/usr/bin/lshell"
+  else
+    _PATH_LSHELL="/usr/local/bin/lshell"
+  fi
+  if [ ! -e "/etc/logrotate.d/lshell" ] \
+    || [ ! -e "$_PATH_LSHELL" ] \
+    || [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}" ] \
+    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
+    || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
+    if [ "${_STATUS}" = "UPGRADE" ]; then
+      msg "INFO: Upgrading Limited Shell to version ${_LSHELL_VRN}..."
+      cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_NOW} &> /dev/null
+    else
+      msg "INFO: Installing Limited Shell ${_LSHELL_VRN}..."
+    fi
+    cd /var/opt
+    rm -f -r lshell*
+    get_dev_src "lshell-${_LSHELL_VRN}.tar.gz"
+    for Files in `find /var/opt/lshell-${_LSHELL_VRN} -type f`; do
+      sed -i "s/kicked/logged/g" $Files &> /dev/null
+      sed -i "s/Kicked/Logged/g" $Files &> /dev/null
+    done
+    cd /var/opt/lshell-${_LSHELL_VRN}
+    rm -f -r /usr/local/lib/python2.6/dist-packages/lshell*
+    rm -f -r /usr/local/lib/python2.7/dist-packages/lshell*
+    st_runner "python setup.py install --no-compile" 2> /dev/null
+    if [ "${_STATUS}" = "UPGRADE" ]; then
+      cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
+    else
+      cp -af ${bldPth}/aegir/tools/system/conf/lshell.conf /etc/lshell.conf
+      echo "$_PATH_LSHELL" >> /etc/shells
+    fi
+    sed -i "s/log\/lshell/log\/lsh/g" /etc/logrotate.d/lshell &> /dev/null
+    addgroup --system lshellg &> /dev/null
+    mkdir -p /var/log/lsh
+    chown :lshellg /var/log/lsh
+    chmod 770 /var/log/lsh &> /dev/null
+    touch ${pthLog}/lshell-build-${_LSHELL_VRN}
+    if [ -f "/var/xdrago/manage_ltd_users.sh" ]; then
+      if [ "${_STATUS}" = "UPGRADE" ] \
+        && [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
+        cp -af ${bldPth}/aegir/tools/system/conf/lshell.conf \
+          /var/xdrago/conf/lshell.conf
+      fi
+      st_runner "bash /var/xdrago/manage_ltd_users.sh" &> /dev/null
+    fi
+  fi
+  if [ -f "/usr/local/bin/lshell" ]; then
+    if [ ! -L "/usr/bin/lshell" ]; then
+      ln -sf /usr/local/bin/lshell /usr/bin/lshell &> /dev/null
+    fi
+  fi
+  if [[ "${_THISHOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+    sed -i "s/rotate 12/rotate 50/g" /etc/logrotate.d/lshell &> /dev/null
+  fi
+}
+
+if_install_ftpd() {
+  if [[ "${_XTRAS_LIST}" =~ "ALL" ]] || [[ "${_XTRAS_LIST}" =~ "FTP" ]]; then
+    if [ ! -e "/etc/ssl/private/pure-ftpd.pem" ] \
+      || [ ! -e "/usr/local/sbin/pure-config.pl" ] \
+      || [ ! -e "/usr/local/sbin/pure-ftpd" ] \
+      || [ ! -e "${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log" ] \
+      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
+      || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
+      msg "INFO: Building Pure-FTPd server from sources, please wait..."
+      if [ ! -e "/usr/local/sbin/pure-config.pl" ]; then
+        echo "/bin/false" >> /etc/shells
+        echo "/bin/true" >> /etc/shells
+      fi
+      mkdir -p /etc/ssl/private/
+      rm -f /etc/ssl/private/pure-ftpd.pem
+      rm -f /usr/local/sbin/pure-ftpd
+      st_runner "openssl req -x509 -nodes -days 7300 -newkey rsa:4096 \
+        -keyout /etc/ssl/private/pure-ftpd.pem \
+        -out /etc/ssl/private/pure-ftpd.pem -batch" 2> /dev/null
+      chmod 600 /etc/ssl/private/pure-ftpd.pem &> /dev/null
+      cd /var/opt
+      rm -f -r pure-ftpd*
+      mkdir -p /usr/local/etc
+      get_dev_src "pure-ftpd-${_PURE_FTPD_VRN}.tar.gz"
+      cd pure-ftpd-${_PURE_FTPD_VRN}
+      st_runner "sh ./configure --with-everything --with-virtualchroot \
+        --without-humor --with-tls --with-diraliases --with-pam \
+        --with-certfile=/etc/ssl/private/pure-ftpd.pem" 2> /dev/null
+      st_runner "make install-strip" 2> /dev/null
+      cd /usr/local/sbin/
+      cp -af ${locCnf}/pure-config.pl.txt ./
+      mv -f pure-config.pl.txt pure-config.pl &> /dev/null
+      chmod 755 /usr/local/sbin/pure-config.pl &> /dev/null
+      cp -af /var/opt/pure-ftpd-${_PURE_FTPD_VRN}/pam/pure-ftpd /etc/pam.d/
+      fix_ftps_pam
+      cd /usr/local/etc
+      rm -f pure-ftpd.conf
+      cp -af ${locCnf}/pure-ftpd.conf ./
+      killall -9 pure-ftpd &> /dev/null
+      st_runner "/usr/local/sbin/pure-config.pl \
+        /usr/local/etc/pure-ftpd.conf" &> /dev/null
+      cd /var/opt
+      touch ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log
+    fi
+  fi
+}
+
+check_fix_newrelic() {
+  _NEWRELIC_APP_CFG="/etc/newrelic/newrelic.cfg"
+  if [ -e "$_NEWRELIC_APP_CFG" ]; then
+    _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" $_NEWRELIC_APP_CFG 2>&1)
+    if [[ "${_NEWRELIC_KEY_TEST}" =~ "REPLACE_WITH_REAL_KEY" ]] \
+      && [ ! -z "${_NEWRELIC_KEY}" ]; then
+      sed -i "s/REPLACE_WITH_REAL_KEY/${_NEWRELIC_KEY}/g" \
+        $_NEWRELIC_APP_CFG &> /dev/null
+    fi
+    sed -i "s/^loglevel=.*/loglevel=error/g" $_NEWRELIC_APP_CFG &> /dev/null
+    mrun "service newrelic-daemon restart" &> /dev/null
+  fi
+  _NEWRELIC_SYS_CFG="/etc/newrelic/nrsysmond.cfg"
+  if [ -e "$_NEWRELIC_SYS_CFG" ]; then
+    _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" $_NEWRELIC_SYS_CFG 2>&1)
+    if [[ "${_NEWRELIC_KEY_TEST}" =~ "REPLACE_WITH_REAL_KEY" ]] \
+      && [ ! -z "${_NEWRELIC_KEY}" ]; then
+      sed -i "s/REPLACE_WITH_REAL_KEY/${_NEWRELIC_KEY}/g" \
+        $_NEWRELIC_SYS_CFG &> /dev/null
+    fi
+    sed -i "s/^loglevel=.*/loglevel=error/g" \
+      $_NEWRELIC_SYS_CFG &> /dev/null
+    sed -i "s/.*pidfile=.*/pidfile=\/var\/run\/nrsysmond.pid/g" \
+      $_NEWRELIC_SYS_CFG &> /dev/null
+    if [ -e "/root/.enable.newrelic.sysmond.cnf" ]; then
+      mrun "service newrelic-sysmond restart" &> /dev/null
+    else
+      mrun "service newrelic-sysmond stop" &> /dev/null
+    fi
+  fi
+}
+
+check_fix_java() {
+  if [ ! -e "/usr/lib/jvm/java-6-openjdk" ] \
+    && [ -d "/usr/lib/jvm/java-6-openjdk-amd64" ]; then
+    ln -sf /usr/lib/jvm/java-6-openjdk-amd64 /usr/lib/jvm/java-6-openjdk
+  fi
+  if [ ! -e "/usr/lib/jvm/java-6-openjdk" ] \
+    && [ -d "/usr/lib/jvm/java-6-openjdk-i386" ]; then
+    ln -sf /usr/lib/jvm/java-6-openjdk-i386 /usr/lib/jvm/java-6-openjdk
+  fi
+  if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] \
+    && [ -d "/usr/lib/jvm/java-7-openjdk-amd64" ]; then
+    ln -sf /usr/lib/jvm/java-7-openjdk-amd64 /usr/lib/jvm/java-7-openjdk
+  fi
+  if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] \
+    && [ -d "/usr/lib/jvm/java-7-openjdk-i386" ]; then
+    ln -sf /usr/lib/jvm/java-7-openjdk-i386 /usr/lib/jvm/java-7-openjdk
+  fi
+  if [ ! -e "/usr/bin/java7" ] \
+    && [ -e "/usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java /usr/bin/java7
+  fi
+  if [ ! -e "/usr/bin/java7" ] \
+    && [ -e "/usr/lib/jvm/java-7-openjdk-i386/jre/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-7-openjdk-i386/jre/bin/java /usr/bin/java7
+  fi
+}
+
+update_initd() {
+  if [ "${_STATUS}" = "INIT" ]; then
+    msg "INFO: Updating init scripts"
+    cp -af ${locCnf}/clean-boa-env /etc/init.d/clean-boa-env
+    chmod 755 /etc/init.d/clean-boa-env &> /dev/null
+    st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
+    _SSH_USEDNS_TEST=$(grep "UseDNS" /etc/ssh/sshd_config 2>&1)
+    if [[ "$_SSH_USEDNS_TEST" =~ (^)"UseDNS no" ]]; then
+      _DO_NOTHING=YES
+    elif [[ "$_SSH_USEDNS_TEST" =~ "UseDNS" ]]; then
+      sed -i "s/.*UseDNS.*/UseDNS no/g" /etc/ssh/sshd_config &> /dev/null
+    else
+      echo >> /etc/ssh/sshd_config
+      echo "UseDNS no" >> /etc/ssh/sshd_config
+    fi
+    if [ -e "/usr/etc/sshd_config" ]; then
+      _SSH_USEDNS_TEST=$(grep "UseDNS" /usr/etc/sshd_config 2>&1)
+      if [[ "$_SSH_USEDNS_TEST" =~ (^)"UseDNS no" ]]; then
+        _DO_NOTHING=YES
+      elif [[ "$_SSH_USEDNS_TEST" =~ "UseDNS" ]]; then
+        sed -i "s/.*UseDNS.*/UseDNS no/g" /usr/etc/sshd_config &> /dev/null
+      else
+        echo >> /usr/etc/sshd_config
+        echo "UseDNS no" >> /usr/etc/sshd_config
+      fi
+    fi
+    mrun "service ssh reload" &> /dev/null
+    if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
+      msg "INFO: Restarting Jetty 9"
+      kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
+      mrun "service jetty9 start" &> /dev/null
+    fi
+    if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
+      msg "INFO: Restarting Jetty 8"
+      kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
+      mrun "service jetty8 start" &> /dev/null
+    fi
+    if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
+      msg "INFO: Restarting Jetty 7"
+      kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
+      mrun "service jetty7 start" &> /dev/null
+    fi
+    if [ ! -e "/var/run/aegir_upgrade.pid" ]; then
+      msg "INFO: Starting Redis, PHP-FPM and Nginx"
+      mrun "service redis-server start" &> /dev/null
+      killall -9 nginx php-cgi php-fpm &> /dev/null
+      st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
+      st_runner "update-rc.d cron defaults" &> /dev/null
+      if [ -e "/etc/init.d/php56-fpm" ]; then
+        st_runner "update-rc.d php56-fpm defaults" &> /dev/null
+        mrun "service php56-fpm start" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php55-fpm" ]; then
+        st_runner "update-rc.d php55-fpm defaults" &> /dev/null
+        mrun "service php55-fpm start" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php54-fpm" ]; then
+        st_runner "update-rc.d php54-fpm defaults" &> /dev/null
+        mrun "service php54-fpm start" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php53-fpm" ]; then
+        st_runner "update-rc.d php53-fpm defaults" &> /dev/null
+        mrun "service php53-fpm start" &> /dev/null
+      fi
+      st_runner "update-rc.d nginx defaults" &> /dev/null
+      mrun "service nginx start" &> /dev/null
+    fi
+  else
+    if [[ "${_THISHOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+      sed -i "s/.*UseDNS.*//g" /etc/ssh/sshd_config &> /dev/null
+      sed -i "s/^ClientAliveCountMax.*//g" /etc/ssh/sshd_config &> /dev/null
+      sed -i "s/^ClientAliveInterval.*//g" /etc/ssh/sshd_config &> /dev/null
+      sed -i "s/^IgnoreUserKnownHosts.*//g" /etc/ssh/sshd_config &> /dev/null
+      sed -i "s/^PasswordAuthentication.*//g" /etc/ssh/sshd_config &> /dev/null
+      sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" \
+        /etc/ssh/sshd_config &> /dev/null
+      echo >> /etc/ssh/sshd_config
+      echo "IgnoreUserKnownHosts no" >> /etc/ssh/sshd_config
+      echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
+      echo "UseDNS no" >> /etc/ssh/sshd_config
+      echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
+      echo "ClientAliveCountMax 3" >> /etc/ssh/sshd_config
+      sed -i "/^$/d" /etc/ssh/sshd_config &> /dev/null
+      if [ -e "/usr/etc/sshd_config" ]; then
+        sed -i "s/.*UseDNS.*//g" /usr/etc/sshd_config &> /dev/null
+        sed -i "s/^ClientAliveCountMax.*//g" /usr/etc/sshd_config &> /dev/null
+        sed -i "s/^ClientAliveInterval.*//g" /usr/etc/sshd_config &> /dev/null
+        sed -i "s/^IgnoreUserKnownHosts.*//g" /usr/etc/sshd_config &> /dev/null
+        sed -i "s/^PasswordAuthentication.*//g" /usr/etc/sshd_config &> /dev/null
+        sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" \
+          /usr/etc/sshd_config &> /dev/null
+        echo >> /usr/etc/sshd_config
+        echo "IgnoreUserKnownHosts no" >> /usr/etc/sshd_config
+        echo "PasswordAuthentication yes" >> /usr/etc/sshd_config
+        echo "UseDNS no" >> /usr/etc/sshd_config
+        echo "ClientAliveInterval 300" >> /usr/etc/sshd_config
+        echo "ClientAliveCountMax 3" >> /usr/etc/sshd_config
+        sed -i "/^$/d" /usr/etc/sshd_config &> /dev/null
+      fi
+      mrun "service ssh reload" &> /dev/null
+    else
+      _SSH_USEDNS_TEST=$(grep "^UseDNS no" /etc/ssh/sshd_config 2>&1)
+      if [[ "$_SSH_USEDNS_TEST" =~ "UseDNS no" ]]; then
+        _DO_NOTHING=YES
+      else
+        sed -i "s/.*UseDNS.*/UseDNS no/g" /etc/ssh/sshd_config &> /dev/null
+      fi
+      if [ -e "/usr/etc/sshd_config" ]; then
+        _SSH_USEDNS_TEST=$(grep "^UseDNS no" /usr/etc/sshd_config 2>&1)
+        if [[ "$_SSH_USEDNS_TEST" =~ "UseDNS no" ]]; then
+          _DO_NOTHING=YES
+        else
+          sed -i "s/.*UseDNS.*/UseDNS no/g" /usr/etc/sshd_config &> /dev/null
+        fi
+      fi
+      mrun "service ssh reload" &> /dev/null
+    fi
+    fix_on_upgrade
+    tune_memory_limits
+    kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
+    if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
+      msg "INFO: Restarting Jetty 9"
+      mrun "service jetty9 start" &> /dev/null
+    fi
+    if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
+      msg "INFO: Restarting Jetty 8"
+      mrun "service jetty8 start" &> /dev/null
+    fi
+    if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
+      msg "INFO: Restarting Jetty 7"
+      mrun "service jetty7 start" &> /dev/null
+    fi
+    if [ ! -e "/var/run/aegir_upgrade.pid" ]; then
+      msg "INFO: Restarting Redis, PHP-FPM and Nginx..."
+      mrun "service redis-server restart" &> /dev/null
+      st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
+      mrun "service nginx stop" &> /dev/null
+      if [ -e "/etc/init.d/php56-fpm" ]; then
+        st_runner "update-rc.d php56-fpm defaults" &> /dev/null
+        mrun "service php56-fpm stop" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php55-fpm" ]; then
+        st_runner "update-rc.d php55-fpm defaults" &> /dev/null
+        mrun "service php55-fpm stop" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php54-fpm" ]; then
+        st_runner "update-rc.d php54-fpm defaults" &> /dev/null
+        mrun "service php54-fpm stop" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php53-fpm" ]; then
+        st_runner "update-rc.d php53-fpm defaults" &> /dev/null
+        mrun "service php53-fpm stop" &> /dev/null
+      fi
+      killall -9 php-fpm &> /dev/null
+      killall -9 php-cgi &> /dev/null
+      killall -9 pure-ftpd &> /dev/null
+      msg "INFO: Restarting ${_DB_SERVER} server..."
+      mrun "service mysql restart" &> /dev/null
+      if [ -e "/etc/init.d/php56-fpm" ]; then
+        mrun "service php56-fpm start" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php55-fpm" ]; then
+        mrun "service php55-fpm start" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php54-fpm" ]; then
+        mrun "service php54-fpm start" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php53-fpm" ]; then
+        mrun "service php53-fpm start" &> /dev/null
+      fi
+      mrun "service nginx start" &> /dev/null
+    fi
+  fi
+}
+
+update_sysctl() {
+  if [ ! -e "${pthLog}/sysctl.conf-${_X_VERSION}-${_NOW}.log" ]; then
+    cp -af /etc/sysctl.conf \
+      ${vBs}/dragon/t/sysctl.conf-pre-${_X_VERSION}-${_NOW} &> /dev/null
+    cp -af ${locCnf}/sysctl.conf /etc/sysctl.conf
+    if [ -e "/etc/security/limits.conf" ]; then
+      _IF_NF=$(grep '524288' /etc/security/limits.conf 2>&1)
+      if [ -z "$_IF_NF" ]; then
+        echo "*         hard    nofile      524288"  >> /etc/security/limits.conf
+        echo "*         soft    nofile      524288"  >> /etc/security/limits.conf
+        echo "root      hard    nofile      1048576" >> /etc/security/limits.conf
+        echo "root      soft    nofile      1048576" >> /etc/security/limits.conf
+      fi
+    fi
+    if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ]; then
+      sysctl -p /etc/sysctl.conf &> /dev/null
+      _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}' 2>&1)
+      if [ -z "$_IF_CDP" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
+        msg "INFO: Cleaning up system swap, it may take a moment..."
+        st_runner "swapoff -a" &> /dev/null
+        st_runner "swapon -a" &> /dev/null
+      fi
+    else
+      sysctl -p /etc/sysctl.conf &> /dev/null
+    fi
+    touch ${pthLog}/sysctl.conf-${_X_VERSION}-${_NOW}.log
+  fi
+}
+
+update_apticron() {
+  XPTEMAIL=${_MY_EMAIL//\@/\\\\\@}
+  sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g"  \
+    /etc/csf/csf.conf &> /dev/null
+  sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
+    /var/xdrago/checksql.cgi
+  sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
+    /var/xdrago/daily.sh
+  sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
+    /var/xdrago/weekly.sh
+  sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
+    /var/xdrago/monitor/check/segfault_alert
+  sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
+    /var/xdrago/monitor/check/escapecheck
+  if [ -e "/usr/sbin/apticron" ]; then
+    if [ -e "/etc/apticron/apticron.conf" ]; then
+      _APTICRON_TEST=$(grep "NOTIFY_HOLDS" /etc/apticron/apticron.conf 2>&1)
+      if [[ "$_APTICRON_TEST" =~ "NOTIFY_HOLDS" ]]; then
+        sed -i "s/^# NOTIFY_HOLDS=\"0\"/NOTIFY_HOLDS=\"0\"/g" \
+          /etc/apticron/apticron.conf
+        sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g" \
+          /etc/apticron/apticron.conf
+        sed -i "s/root/${_MY_EMAIL}/g" \
+          /etc/apticron/apticron.conf
+      else
+        mrun "apt-get remove apticron -y --force-yes -qq" &> /dev/null
+        mrun "apt-get purge apticron -y --force-yes -qq"  &> /dev/null
+        mrun "apt-get install apticron -y"                &> /dev/null
+        sed -i "s/^# NOTIFY_HOLDS=\"0\"/NOTIFY_HOLDS=\"0\"/g" \
+          /etc/apticron/apticron.conf
+        sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g" \
+          /etc/apticron/apticron.conf
+        sed -i "s/root/${_MY_EMAIL}/g" \
+          /etc/apticron/apticron.conf
+      fi
+    fi
+    if [[ "${_X_VERSION}" =~ "dev" ]] && [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+      sed -i "s/aptitude full-upgrade/barracuda up-head system/g" \
+        /usr/sbin/apticron
+      sed -i "s/apt-get dist-upgrade/barracuda up-head system/g" \
+        /usr/sbin/apticron
+      sed -i "s/barracuda up-head.*/barracuda up-head system/g" \
+        /usr/sbin/apticron
+    else
+      sed -i "s/aptitude full-upgrade/barracuda up-stable system/g" \
+        /usr/sbin/apticron
+      sed -i "s/apt-get dist-upgrade/barracuda up-stable system/g" \
+        /usr/sbin/apticron
+      sed -i "s/barracuda up-stable.*/barracuda up-stable system/g" \
+        /usr/sbin/apticron
+    fi
+  fi
 }

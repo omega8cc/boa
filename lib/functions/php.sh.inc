@@ -1100,3 +1100,196 @@ check_php_cli() {
     fi
   fi
 }
+
+switch_php_cli() {
+  if [ ! -z "$1" ]; then
+    rm -f /usr/bin/php-cli
+    ln -s /opt/php$1/bin/php /usr/bin/php-cli
+    rm -f /usr/bin/php
+    ln -s /opt/php$1/bin/php /usr/bin/php
+    rm -f /usr/bin/php-config
+    ln -s /opt/php$1/bin/php-config /usr/bin/php-config
+  fi
+}
+
+php_upgrade_all() {
+  if [ -x "/opt/php53/bin/php" ] \
+    && [ -z "$_FRESH_PHP53_BUILD" ]; then
+    _PHP_VERSION="${_PHP53_VRN}"
+    _PHP_BIN_BROKEN=NO
+    _BROKEN_LIBCURL_TEST=""
+    switch_php_cli "53"
+    check_php_broken "53"
+    check_php_rebuild "53"
+    update_php_multi "53"
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+  fi
+  if [ -x "/opt/php54/bin/php" ] \
+    && [ -z "$_FRESH_PHP54_BUILD" ]; then
+    _PHP_VERSION="${_PHP54_VRN}"
+    _PHP_BIN_BROKEN=NO
+    _BROKEN_LIBCURL_TEST=""
+    switch_php_cli "54"
+    check_php_broken "54"
+    check_php_rebuild "54"
+    update_php_multi "54"
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+  fi
+  if [ -x "/opt/php55/bin/php" ] \
+    && [ -z "$_FRESH_PHP55_BUILD" ]; then
+    _PHP_VERSION="${_PHP55_VRN}"
+    _PHP_BIN_BROKEN=NO
+    _BROKEN_LIBCURL_TEST=""
+    switch_php_cli "55"
+    check_php_broken "55"
+    check_php_rebuild "55"
+    update_php_multi "55"
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+  fi
+  if [ -x "/opt/php56/bin/php" ] \
+    && [ -z "$_FRESH_PHP56_BUILD" ]; then
+    _PHP_VERSION="${_PHP56_VRN}"
+    _PHP_BIN_BROKEN=NO
+    _BROKEN_LIBCURL_TEST=""
+    switch_php_cli "56"
+    check_php_broken "56"
+    check_php_rebuild "56"
+    update_php_multi "56"
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+  fi
+}
+
+install_update_php() {
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "squeeze" ]; then
+    mrun "service nginx stop" &> /dev/null
+    killall -9 nginx &> /dev/null
+  elif [ "${_LENNY_TO_SQUEEZE}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "lenny" ]; then
+    mrun "service nginx stop" &> /dev/null
+    killall -9 nginx &> /dev/null
+  fi
+  if [ "${_STATUS}" = "UPGRADE" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Checking if PHP upgrade is available"
+    fi
+    st_runner "aptitude remove php5-sasl php5-suhosin -y" &> /dev/null
+    st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
+  fi
+  if [ "${_OSV}" = "wheezy" ] \
+    || [ "${_OSV}" = "trusty" ] \
+    || [ "${_OSV}" = "precise" ]; then
+    _PHP_EXTRA="--with-ldap --with-gmp --with-xpm-dir=/usr"
+  else
+    _PHP_EXTRA="--with-ldap --with-gmp"
+  fi
+  if [ ! -z "${_PHP_EXTRA_CONF}" ]; then
+    _PHP_EXTRA="${_PHP_EXTRA} ${_PHP_EXTRA_CONF}"
+  fi
+  if [ ! -z "${_PHP_EXTRA}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: PHP EXTRA is ${_PHP_EXTRA}"
+    fi
+  fi
+  if [ "${_OSV}" = "trusty" ]; then
+    ln -sf /usr/include/freetype2 /usr/include/freetype2/freetype
+  fi
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "5.3" ]] \
+    && [ ! -x "/opt/php53/bin/php" ]; then
+    _PHP_VERSION="${_PHP53_VRN}"
+    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+    switch_php_cli "53"
+    install_php_multi "53"
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+    _FRESH_PHP53_BUILD=53
+  fi
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "5.4" ]] \
+    && [ ! -x "/opt/php54/bin/php" ]; then
+    _PHP_VERSION="${_PHP54_VRN}"
+    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+    switch_php_cli "54"
+    install_php_multi "54"
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+    _FRESH_PHP54_BUILD=54
+  fi
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "5.5" ]] \
+    && [ ! -x "/opt/php55/bin/php" ]; then
+    _PHP_VERSION="${_PHP55_VRN}"
+    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+    switch_php_cli "55"
+    install_php_multi "55"
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+    _FRESH_PHP55_BUILD=55
+  fi
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "5.6" ]] \
+    && [ ! -x "/opt/php56/bin/php" ]; then
+    _PHP_VERSION="${_PHP56_VRN}"
+    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+    switch_php_cli "56"
+    install_php_multi "56"
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+    _FRESH_PHP56_BUILD=56
+  fi
+}
+
+check_fix_php() {
+  if [ -x "/opt/php53/bin/php" ]; then
+    _CURLWRAPPERS_TEST=$(/opt/php53/bin/php -i | grep "with-curlwrappers" 2>&1)
+    if [[ "$_CURLWRAPPERS_TEST" =~ "with-curlwrappers" ]]; then
+      _CURLWRAPPERS_REBUILD=YES
+    fi
+  fi
+  if [ -x "/opt/php54/bin/php" ]; then
+    _CURLWRAPPERS_TEST=$(/opt/php54/bin/php -i | grep "with-curlwrappers" 2>&1)
+    if [[ "$_CURLWRAPPERS_TEST" =~ "with-curlwrappers" ]]; then
+      _CURLWRAPPERS_REBUILD=YES
+    fi
+  fi
+  if [ "$_CURLWRAPPERS_REBUILD" = "YES" ] \
+    && [[ ! "${_PHP_EXTRA_CONF}" =~ "with-curlwrappers" ]]; then
+    msg "INFO: PHP rebuild required to remove --with-curlwrappers option..."
+    _PHP_FORCE_REINSTALL=YES
+    php_upgrade_all
+  fi
+  _BROKEN_LIBCURL_TEST=$(php -v 2>&1)
+  if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]]; then
+    msg "INFO: PHP rebuild required to fix broken libcurl..."
+    install_curl_src
+    php_upgrade_all
+  fi
+  install_newrelic
+  if [ ! -e "${pthLog}/ioncube-${_IONCUBE_VRN}.log" ] \
+    || [ "${_PHP_FORCE_REINSTALL}" = "YES" ] \
+    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+    install_ioncube
+  fi
+}
+
+install_composer() {
+  if [ ! -x "/usr/local/bin/composer" ] || [ ! -L "/usr/bin/composer" ]; then
+    rm -f /usr/local/bin/composer
+    rm -f /usr/bin/composer
+    rm -f -r /root/.composer
+    mkdir -p /var/opt
+    cd /var/opt
+    curl -sS https://getcomposer.org/installer | php &> /dev/null
+    mv composer.phar /usr/local/bin/composer
+    ln -sf /usr/local/bin/composer /usr/bin/composer
+  fi
+}

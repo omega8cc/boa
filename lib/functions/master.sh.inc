@@ -381,3 +381,370 @@ update_php_cli_cron() {
   fi
   chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
 }
+
+install_upgrade_aegir_master() {
+  if [ "${_STATUS}" = "INIT" ]; then
+
+  ###--------------------###
+    if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
+      || [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
+      _DB_SERVER_TEST=$(mysql -V 2>&1)
+      if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
+        _DB_SERVER=MariaDB
+        msg "ALRT! ${_DB_SERVER} server not running properly!"
+        msg "EXIT: We can't proceed with installation and will exit now"
+        msg "HINT: Please check ${_LOG} for more information,"
+        msg "HINT: (re)start ${_DB_SERVER} server and then run installer again"
+        msg "Bye"
+      else
+        msg "ALRT! ${_DB_SERVER} server not installed properly!"
+        msg "EXIT: We can't proceed and will exit now"
+        msg "Bye"
+      fi
+      rm -f /root/.my.pass.txt
+      mkdir -p /var/aegir
+      clean_pid_exit
+    fi
+
+  ###--------------------###
+    msg "INFO: Installing Aegir Master Instance, please wait..."
+    if [ -e "/root/.mstr.clstr.cnf" ] \
+      || [ -e "/root/.wbhd.clstr.cnf" ] \
+      || [ -e "/root/.dbhd.clstr.cnf" ]; then
+      touch /data/conf/clstr.cnf &> /dev/null
+    fi
+    adduser --system --group --home /var/aegir aegir &> /dev/null
+    usermod -aG www-data aegir &> /dev/null
+    usermod -aG users aegir &> /dev/null
+    echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+    ln -sf /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf &> /dev/null
+    update_nginx_conf
+
+    if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+      if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+        _THIS_DB_HOST=$(uname -n 2>&1)
+      else
+        _THIS_DB_HOST=localhost
+      fi
+      _AEGIR_HOST=$(uname -n 2>&1)
+      _SQL_CONNECT=localhost
+    else
+      _AEGIR_HOST=$(uname -n 2>&1)
+      ### _SQL_CONNECT="${_THIS_DB_HOST}"
+      ### Master Instance will use local DB server
+      _SQL_CONNECT=localhost
+    fi
+    if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
+      _AEGIR_HOST=$(uname -n 2>&1)
+      _SQL_CONNECT=localhost
+    fi
+
+    _RESOLVEIP=$(echo $(getent ahostsv4 ${_AEGIR_HOST}) \
+      | cut -d: -f2 \
+      | awk '{ print $1}' 2>&1)
+    if [ -z "$_RESOLVEIP" ]; then
+      msg "FATAL ERROR: DNS looks broken for server ${_AEGIR_HOST}"
+      exit 1
+    else
+      _AEGIR_HOST_IP="$_RESOLVEIP"
+    fi
+
+    if [ "${_VMFAMILY}" != "AWS" ]; then
+      _MYSQLTEST=$(mysql -h${_AEGIR_HOST_IP} -uINVALIDLOGIN -pINVALIDPASS 2>&1 >/dev/null | cat)
+      if [ -z `echo $_MYSQLTEST | grep -q "ERROR \(2003\|1130\)"` ]; then
+        msg "INFO: ${_DB_SERVER} is listening on ${_AEGIR_HOST_IP}."
+      else
+        msg "FATAL ERROR: ${_DB_SERVER} is not configured to listen on ${_AEGIR_HOST_IP}"
+        exit 1
+      fi
+    fi
+
+    _AEGIR_DB_USER=aegir_root
+    _ESC_APASS=""
+    _LEN_APASS=0
+
+    if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
+      _PWD_CHARS=32
+    elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
+      _PWD_CHARS=8
+    else
+      _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+      if [ ! -z "${_STRONG_PASSWORDS}" ] \
+        && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+        _PWD_CHARS="${_STRONG_PASSWORDS}"
+      else
+        _PWD_CHARS=8
+      fi
+      if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
+        _PWD_CHARS=128
+      fi
+    fi
+
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ]; then
+      if [ "${_THIS_DB_HOST}" = "localhost" ] \
+        || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+        _ESC_APASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+      else
+        if [ -e "/root/.my.pass.txt" ]; then
+          _ESC_APASS=$(cat /root/.my.pass.txt 2>&1)
+        else
+          _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+        fi
+      fi
+      _ESC_APASS=$(echo -n ${_ESC_APASS} | tr -d "\n" 2>&1)
+      _LEN_APASS=$(echo ${#_ESC_APASS} 2>&1)
+    fi
+
+    if [ -z "${_ESC_APASS}" ] || [ "${_LEN_APASS}" -lt "9" ]; then
+      if [ "${_THIS_DB_HOST}" = "localhost" ] \
+        || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+        _ESC_APASS=$(pwgen -v -s -1 2>&1)
+        _ESC_APASS=$(echo -n ${_ESC_APASS} | tr -d "\n" 2>&1)
+        _ESC_APASS=$(sanitize_string "${_ESC_APASS}" 2>&1)
+      else
+        if [ -e "/root/.my.pass.txt" ]; then
+          _ESC_APASS=$(cat /root/.my.pass.txt 2>&1)
+        else
+          _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+        fi
+      fi
+    fi
+
+    _ESC="\`%\`.*"
+    mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+  GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'${_AEGIR_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+  GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'${_AEGIR_HOST_IP}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+  GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+EOFMYSQL
+
+    if [ "${_THIS_DB_HOST}" = "localhost" ] || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+      _EXTRA_GRANTS=NO
+    else
+      _LOCAL_HOST=$(uname -n 2>&1)
+      _LOCAL_IP=$(echo $(getent ahostsv4 $_LOCAL_HOST) | cut -d: -f2 | awk '{ print $1}' 2>&1)
+      mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+  GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'${_THIS_DB_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+  GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'$_LOCAL_HOST' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+  GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'$_LOCAL_IP' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+EOFMYSQL
+    fi
+
+    download_for_dmlb
+    cd /var/aegir
+    _AEGIR_SCRIPT="AegirSetupM.sh.txt"
+    for fe in `find ${bldPth}/aegir/scripts -type f`; do
+      sed -i "s/EDIT_AEGIR_DB_USER/${_AEGIR_DB_USER}/g"         ${fe} &> /dev/null
+      sed -i "s/EDIT_AEGIR_HOST/${_AEGIR_HOST}/g"               ${fe} &> /dev/null
+      sed -i "s/EDIT_AEGIR_VERSION/${_AEGIR_VERSION}/g"         ${fe} &> /dev/null
+      sed -i "s/EDIT_AEGIR_XTS_VRN/${_AEGIR_XTS_VRN}/g"         ${fe} &> /dev/null
+      sed -i "s/EDIT_BOA_REPO_GIT_URL/${_BOA_REPO_GIT_URLX}/g"  ${fe} &> /dev/null
+      sed -i "s/EDIT_BOA_REPO_NAME/${_BOA_REPO_NAME}/g"         ${fe} &> /dev/null
+      sed -i "s/EDIT_BRANCH_BOA/${_BRANCH_BOA}/g"               ${fe} &> /dev/null
+      sed -i "s/EDIT_BRANCH_PRN/${_BRANCH_PRN}/g"               ${fe} &> /dev/null
+      sed -i "s/EDIT_DEBUG_MODE/${_DEBUG_MODE}/g"               ${fe} &> /dev/null
+      sed -i "s/EDIT_DOMAIN/${_THIS_FRONT}/g"                   ${fe} &> /dev/null
+      sed -i "s/EDIT_DRUSH_VERSION/${_DRUSH_VERSION}/g"         ${fe} &> /dev/null
+      sed -i "s/EDIT_ESC_APASS/${_ESC_APASS}/g"                 ${fe} &> /dev/null
+      sed -i "s/EDIT_LOCAL_NETWORK_IP/${_LOCAL_NETWORK_IP}/g"   ${fe} &> /dev/null
+      sed -i "s/EDIT_MY_OWNIP/${_MY_OWNIP}/g"                   ${fe} &> /dev/null
+      sed -i "s/EDIT_PHP_CLI_VERSION/${_PHP_CLI_VERSION}/g"     ${fe} &> /dev/null
+      sed -i "s/EDIT_PHP_FPM_VERSION/${_PHP_FPM_VERSION}/g"     ${fe} &> /dev/null
+      sed -i "s/EDIT_STRONG_PASSWORDS/${_STRONG_PASSWORDS}/g"   ${fe} &> /dev/null
+      sed -i "s/EDIT_THIS_DB_HOST/${_THIS_DB_HOST}/g"           ${fe} &> /dev/null
+      sed -i "s/EDIT_USE_MIR/${_USE_MIR}/g"                     ${fe} &> /dev/null
+    done
+
+    cp -af ${bldPth}/aegir/scripts/$_AEGIR_SCRIPT ./
+
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT ${_THIS_FRONT} \
+        --http_service_type='nginx' \
+        --aegir_db_host='${_THIS_DB_HOST}' \
+        --client_email='${_MY_EMAIL}' -y -d"
+    else
+      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT ${_THIS_FRONT} \
+        --http_service_type='nginx' \
+        --aegir_db_host='${_THIS_DB_HOST}' \
+        --client_email='${_MY_EMAIL}' -y >/var/aegir/install.log 2>&1"
+    fi
+    if [ -e "/opt/tmp/status-AegirSetupM-FAIL" ]; then
+      msg "FATAL ERROR: AegirSetupM installer failed"
+      msg "FATAL ERROR: Aborting Barracuda installer NOW!"
+      msg "HINT: Please check /var/aegir/install.log"
+      msg "HINT: for more information on errors occured"
+      touch /opt/tmp/status-Barracuda-FAIL
+      clean_pid_exit
+    fi
+    if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
+      _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
+        | grep "root'" \
+        | cut -d: -f2 \
+        | awk '{ print $3}' \
+        | sed "s/[\,']//g" 2>&1)
+      if [ -e "${_THIS_HM_ROOT}/sites/all" ] \
+        && [ ! -e "${_THIS_HM_ROOT}/sites/all/libraries" ]; then
+        mkdir -p \
+          ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries} &> /dev/null
+      fi
+    fi
+    _U_HD="/var/aegir/.drush"
+    chattr +i ${_U_HD}/php.ini &> /dev/null
+    su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
+    rm -f -r /var/aegir/.tmp/cache
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Running hosting-dispatch (1/3)..."
+    fi
+    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+    mrun "sleep 5"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Running hosting-dispatch (2/3)..."
+    fi
+    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+    mrun "sleep 5"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Running hosting-dispatch (3/3)..."
+    fi
+    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+    if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
+      _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
+        | grep "root'" \
+        | cut -d: -f2 \
+        | awk '{ print $3}' \
+        | sed "s/[\,']//g" 2>&1)
+      if [ -e "${_THIS_HM_ROOT}/sites/all" ] \
+        && [ ! -e "${_THIS_HM_ROOT}/sites/all/libraries" ]; then
+        mkdir -p \
+          ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries} &> /dev/null
+      fi
+    fi
+    chown -R aegir:aegir ${_THIS_HM_ROOT}/sites/all &> /dev/null
+    rm -f /var/aegir/$_AEGIR_SCRIPT
+
+  ###--------------------###
+    if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
+      _DO_NOTHING=YES
+    else
+      msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed!"
+      msg "HINT: Please check /var/aegir/install.log for more information."
+      clean_pid_exit
+    fi
+
+  ###--------------------###
+    if [ ! -L "${mtrInc}/global.inc" ] && [ -e "${mtrInc}/global.inc" ]; then
+      mv -f ${mtrInc}/global.inc \
+        ${mtrInc}/global.inc-pre-${_X_VERSION}-${_NOW} &> /dev/null
+    fi
+    mkdir -p /data/conf
+    cp -af ${locCnf}/global.inc /data/conf/global.inc
+    sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
+    if [ -e "${mtrInc}" ] \
+      && [ ! -L "${mtrInc}/global.inc" ] \
+      && [ -e "/data/conf/global.inc" ]; then
+      ln -sf /data/conf/global.inc ${mtrInc}/global.inc
+    fi
+    update_redis_password
+    force_advanced_nginx_config
+    chmod 0711 ${mtrInc} &> /dev/null
+    chmod 0711 /var/aegir/config &> /dev/null
+    find /var/aegir/host_master/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
+    find /var/aegir/host_master/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
+    find /var/aegir/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
+    find /var/aegir/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
+    chown -R aegir:aegir /var/aegir/.drush &> /dev/null
+    find /var/aegir/.drush -type d -exec chmod 0755 {} \; &> /dev/null
+    find /var/aegir/.drush -type f -exec chmod 0644 {} \; &> /dev/null
+    chmod 0440 /var/aegir/.drush/*.php &> /dev/null
+    chmod 0711 /var/aegir/.drush &> /dev/null
+    cd /var/aegir
+    rm -f /etc/nginx/sites-available/default
+    rm -f /etc/nginx/sites-enabled/default
+    if [ -e "${locCnf}/nginx.conf" ]; then
+      mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
+      cp -af ${locCnf}/nginx.conf /etc/nginx/nginx.conf
+    fi
+    mrun "service nginx reload" &> /dev/null
+    msg "INFO: Aegir Master Instance installation completed"
+  else
+    echo " "
+    if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+      && [ "${_LOC_OSV}" = "squeeze" ]; then
+      msg "INFO: Aegir Master Instance upgrade skipped!"
+      echo " "
+      msg "NOTE! You *must* reboot the server and then run boa up-stable *again*"
+      msg "NOTE! to complete all system upgrades and upgrade also"
+      msg "NOTE! Aegir Master Instance securely"
+      echo " "
+    elif [ "${_LENNY_TO_SQUEEZE}" = "YES" ] \
+      && [ "${_LOC_OSV}" = "lenny" ]; then
+      msg "INFO: Aegir Master Instance upgrade skipped!"
+      echo " "
+      msg "NOTE! You *must* reboot the server and then run boa up-stable *again*"
+      msg "NOTE! to complete all system upgrades and upgrade also"
+      msg "NOTE! Aegir Master Instance securely"
+      echo " "
+    elif [ "${_SYSTEM_UPGRADE_ONLY}" = "YES" ]; then
+      msg "INFO: Aegir Master Instance upgrade skipped"
+    else
+      msg "INFO: Restarting ${_DB_SERVER} server..."
+      rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
+      mrun "service mysql restart" &> /dev/null
+      mrun "sleep 8"
+      msg "INFO: Upgrading ${_DB_SERVER} tables if necessary..."
+      mrun "sleep 60"
+      if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
+        || [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
+        _DB_SERVER_TEST=$(mysql -V 2>&1)
+        if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
+          _DB_SERVER=MariaDB
+          msg "ALRT! ${_DB_SERVER} server not running properly!"
+          msg "EXIT: We can't proceed with upgrade and will exit now"
+          msg "HINT: Please check ${_LOG} for more information,"
+          msg "HINT: (re)start ${_DB_SERVER} server and then run installer again"
+          msg "Bye"
+        else
+          msg "ALRT! ${_DB_SERVER} server not installed properly!"
+          msg "EXIT: We can't proceed and will exit now"
+          msg "Bye"
+        fi
+        clean_pid_exit
+      fi
+      if [ -e "/root/.mstr.clstr.cnf" ] \
+        || [ -e "/root/.wbhd.clstr.cnf" ] \
+        || [ -e "/root/.dbhd.clstr.cnf" ]; then
+        touch /data/conf/clstr.cnf &> /dev/null
+      fi
+      echo " "
+      upgrade_aegir_master
+    fi
+  fi
+  update_php_cli_cron
+}
+
+display_login_link() {
+  if [ "${_STATUS}" = "INIT" ]; then
+    if [ "${_EASY_SETUP}" != "LOCAL" ]; then
+      mrun "bash /usr/sbin/apticron" &> /dev/null
+    fi
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _DO_NOTHING=YES
+    else
+      _AEGIR_LOGIN_URL=$(grep --text "^http://${_THIS_FRONT}" \
+        /var/aegir/install.log 2>&1)
+      if [ ! -z "$_AEGIR_LOGIN_URL" ]; then
+        echo " "
+        msg "INFO: Congratulations, Aegir have been installed successfully!"
+        msg "NOTE! Please wait 2 min before visiting Aegir at:"
+        echo " "
+        msg "LINK: $_AEGIR_LOGIN_URL"
+      else
+        msg "ALRT! Something went wrong"
+        msg "ALRT! Please check the install log for details:"
+        msg "ALRT! /var/aegir/install.log"
+      fi
+    fi
+  fi
+  if [ ! -e "${pthLog}/cron_aegir_off.pid" ]; then
+    touch ${pthLog}/cron_aegir_off.pid
+  fi
+}

@@ -353,3 +353,287 @@ d;};' ${mtrInc}/nginx_vhost_common.conf
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
 d;};' ${mtrNgx}/pre.d/nginx_speed_purge.conf
 }
+
+check_nginx_initd() {
+  _X_INIT_TEST=$(cat /etc/init.d/nginx 2>&1)
+  if [[ "$_X_INIT_TEST" =~ "github" ]]; then
+    _DO_NOTHING=YES
+  else
+    mv -f /etc/init.d/nginx \
+      ${vBs}/nginx-pre-${_X_VERSION}-${_NOW} &> /dev/null
+    cp -af ${locCnf}/nginx /etc/init.d/nginx
+    chmod 755 /etc/init.d/nginx &> /dev/null
+  fi
+}
+
+fix_nginx_mime() {
+  if [ -e "${locCnf}/mime.types" ]; then
+    mv -f /etc/nginx/mime.types \
+      /etc/nginx/mime.types-pre-${_X_VERSION}-${_NOW} &> /dev/null
+    cp -af ${locCnf}/mime.types /etc/nginx/mime.types
+    if [ ! -L "/var/www/nginx-default/index.html" ] \
+      && [ ! -L "/var/www/nginx-default/under_construction.jpg" ]; then
+      mkdir -p /var/www/nginx-default
+      mv -f /var/www/nginx-default/index.html \
+        /var/www/nginx-default/index.html-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      cp -af ${locCnf}/uc.html /var/www/nginx-default/index.html
+      cp -af ${locCnf}/under_construction.jpg \
+        /var/www/nginx-default/under_construction.jpg
+    fi
+    rm -f /etc/nginx/sites-available/default
+    rm -f /etc/nginx/sites-enabled/default
+    if [ ! -e "/var/run/aegir_upgrade.pid" ]; then
+      mrun "service nginx reload" &> /dev/null
+    fi
+  fi
+}
+
+nginx_wildcard_ssl() {
+  _WILD_SSL_VHOST="${mtrNgx}/pre.d/nginx_wild_ssl.conf"
+  if [ ! -e "$_WILD_SSL_VHOST" ]; then
+    msg "INFO: Installing default SSL Wildcard Nginx Proxy..."
+    _HTTPS_TEST=$(netstat -ln | grep :443 2>&1)
+    if [[ "$_HTTPS_TEST" =~ "443" ]]; then
+      _HTTPS_TEST=EXIST
+      msg "WARNING!"
+      cat <<EOF
+
+    We can't enable Wildcard HTTPS Proxy for all your hosted sites,
+    including all Aegir Satellite Instances, because you have already
+    enabled SSL on the IP address used by your Aegir Master Instance.
+
+    If you wish to use provided now by Barracuda Wildcard HTTPS Proxy,
+    please disable the SSL you enabled, or use the built-in Aegir SSL
+    feature on another IP address available and not used by the Hostmaster,
+    and other hosted sites.
+
+    We will continue in 10 seconds...
+
+EOF
+      mrun "sleep 10"
+    else
+      _HTTPS_TEST=FREE
+      validate_public_ip &> /dev/null
+      validate_xtras_ip &> /dev/null
+      openssl req -x509 -nodes -days 7300 \
+        -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.${_THISHOST}" \
+        -newkey rsa:4096 \
+        -keyout /etc/ssl/private/nginx-wild-ssl.key \
+        -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
+      cp -af ${locCnf}/nginx_wild_ssl.conf $_WILD_SSL_VHOST
+      sed -i "s/127.0.0.1:80/localhost:80/g" $_WILD_SSL_VHOST &> /dev/null
+      sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_WILD_SSL_VHOST &> /dev/null
+      mkdir -p /data/conf
+      if [ -e "${locCnf}/global.inc" ]; then
+        cp -af ${locCnf}/global.inc /data/conf/global.inc
+      fi
+      if [ -e "${mtrInc}" ] \
+        && [ ! -L "${mtrInc}/global.inc" ] \
+        && [ -e "/data/conf/global.inc" ]; then
+        ln -sf /data/conf/global.inc ${mtrInc}/global.inc
+      fi
+      sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
+      update_redis_password
+      killall -9 nginx &> /dev/null
+      mrun "service nginx start" &> /dev/null
+    fi
+  else
+    _WILDCARD_SSL_TEST=$(grep "localhost:80" $_WILD_SSL_VHOST 2>&1)
+    if [[ "$_WILDCARD_SSL_TEST" =~ "localhost:80" ]]; then
+      _DO_NOTHING=YES
+    else
+      validate_public_ip &> /dev/null
+      validate_xtras_ip &> /dev/null
+      cp -af ${locCnf}/nginx_wild_ssl.conf $_WILD_SSL_VHOST
+      sed -i "s/127.0.0.1:80/localhost:80/g" $_WILD_SSL_VHOST
+      sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_WILD_SSL_VHOST
+    fi
+  fi
+}
+
+fix_update_nginx_config() {
+  if [ "${_FORCE_REDIS_RESTART}" = "YES" ]; then
+    service redis-server stop &> /dev/null
+    killall -9 redis-server &> /dev/null
+    service redis-server start &> /dev/null
+  fi
+  if [ "${_STATUS}" = "INIT" ]; then
+    service cron start &> /dev/null
+    if [ "${_EASY_SETUP}" = "NO" ]; then
+      echo " "
+      msg "Now waiting 2 minutes before restarting Nginx..."
+      mrun "sleep 111"
+    fi
+    force_advanced_nginx_config
+    mrun "sleep 8"
+    mrun "service nginx restart" &> /dev/null
+  else
+    if [ -e "/var/aegir/config" ]; then
+      sed -i "s/.*listen .*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/*          &> /dev/null
+      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
+      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/chive.*    &> /dev/null
+      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
+      sed -i "s/SSLv3 TLSv1;/TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf       &> /dev/null
+      sed -i "s/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/HIGH:\!ADH:\!MD5;/RC4:HIGH:\!aNULL:\!MD5;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                           &> /dev/null
+      sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/vhost.d/*                              &> /dev/null
+      sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                   &> /dev/null
+      sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_*/nginx/vhost.d/*                      &> /dev/null
+      sed -i "s/.*proxy_buffers .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                       &> /dev/null
+      sed -i "s/.*proxy_buffers .*//g" /var/aegir/config/server_*/nginx/vhost.d/*                          &> /dev/null
+      sed -i "s/.*proxy_busy_buffers_size .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf             &> /dev/null
+      sed -i "s/.*proxy_busy_buffers_size .*//g" /var/aegir/config/server_*/nginx/vhost.d/*                &> /dev/null
+      sed -i "s/.*proxy_temp_file_write_size .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf          &> /dev/null
+      sed -i "s/.*proxy_temp_file_write_size .*//g" /var/aegir/config/server_*/nginx/vhost.d/*             &> /dev/null
+      sed -i "s/.*proxy_buffering .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                     &> /dev/null
+      sed -i "s/.*proxy_buffering .*//g" /var/aegir/config/server_*/nginx/vhost.d/*                        &> /dev/null
+      sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;\n    proxy_buffering            off;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;\n    proxy_buffering            off;/g" /var/aegir/config/server_*/nginx/vhost.d/*    &> /dev/null
+      sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*.conf                               &> /dev/null
+      sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/vhost.d/*                                  &> /dev/null
+      sed -i "s/add_header Vary .*//g" /var/aegir/config/server_*/nginx.conf                               &> /dev/null
+    fi
+    if [ "${_NGINX_SPDY}" = "YES" ]; then
+      sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/vhost.d/*    &> /dev/null
+    fi
+    _SSL_ITD=$(openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}' 2>&1)
+    if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ] &&[ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
+      _ALLOW_NGINX_FORWARD_SECRECY=YES
+      _SSL_PROTOCOLS="TLSv1 TLSv1.1 TLSv1.2;"
+      _SSL_CIPHERS="EECDH+ECDSA+AESGCM: \
+        EECDH+aRSA+AESGCM:  \
+        EECDH+ECDSA+SHA384: \
+        EECDH+ECDSA+SHA256: \
+        EECDH+aRSA+SHA384:  \
+        EECDH+aRSA+SHA256:  \
+        EECDH:    \
+        EDH+aRSA: \
+        \!aNULL:  \
+        \!eNULL:  \
+        \!LOW:    \
+        \!3DES:   \
+        \!MD5:    \
+        \!EXP:    \
+        \!PSK:    \
+        \!SRP:    \
+        \!DSS:    \
+        \!RC4;"
+      _SSL_CIPHERS=$(echo "${_SSL_CIPHERS}" | sed "s/ //g" 2>&1)
+    else
+      _ALLOW_NGINX_FORWARD_SECRECY=NO
+    fi
+    if [ "$_ALLOW_NGINX_FORWARD_SECRECY" = "YES" ]; then
+      sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" \
+        /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" \
+        /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+      sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" \
+        /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" \
+        /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+    fi
+
+    ###
+    ### Nginx: Convert all vhosts to wildcard mode on Barracuda upgrade
+    ### to avoid extended downtime until all Octopus instances will receive
+    ### full upgrade, if IP based listen directive was used before.
+    ###
+    if [ -e "/var/aegir" ]; then
+      sed -i "s/.*listen.*127.0.0.1:80;.*//g" \
+        /var/aegir/config/server_*/nginx.conf &> /dev/null
+      sed -i "s/listen .*/listen        \*:80;/g" \
+        /var/aegir/config/server_*/nginx.conf &> /dev/null
+    fi
+    if [ -e "/data/disk" ]; then
+      sed -i "s/.*listen.*127.0.0.1:80;.*//g" \
+        /data/disk/*/config/server_*/nginx.conf &> /dev/null
+      sed -i "s/listen .*/listen        \*:80;/g" \
+        /data/disk/*/config/server_*/nginx.conf &> /dev/null
+      sed -i "s/listen .*/listen        \*:80;/g" \
+        /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
+      sed -i "s/param db_port.*/param db_port   3306;/g" \
+        /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
+    fi
+
+    if [ -e "/data/disk" ]; then
+      for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+        pthPrN="provision/http/Provision/Config/Nginx"
+        if [ -e "$_OCT/.drush/sys/drush_make" ]; then
+          sed -i "s/\!empty.*';/'*';/g" \
+            $_OCT/.drush/sys/${pNx}/server.tpl.php &> /dev/null
+          sed -i "s/\!empty.*';/'*';/g" \
+            $_OCT/.drush/sys/${pNx}/vhost.tpl.php &> /dev/null
+          sed -i "s/\!empty.*';/'*';/g" \
+            $_OCT/.drush/sys/${pNx}/vhost_disabled.tpl.php &> /dev/null
+          sed -i "s/\!empty.*';/'*';/g" \
+            $_OCT/.drush/xts/provision_cdn/Provision/Config/cdn.tpl.php &> /dev/null
+        elif [ -e "$_OCT/.drush/drush_make" ]; then
+          sed -i "s/\!empty.*';/'*';/g" \
+            $_OCT/.drush/${pNx}/server.tpl.php &> /dev/null
+          sed -i "s/\!empty.*';/'*';/g" \
+            $_OCT/.drush/${pNx}/vhost.tpl.php &> /dev/null
+          sed -i "s/\!empty.*';/'*';/g" \
+            $_OCT/.drush/${pNx}/vhost_disabled.tpl.php &> /dev/null
+          sed -i "s/\!empty.*';/'*';/g" \
+            $_OCT/.drush/provision_cdn/Provision/Config/cdn.tpl.php &> /dev/null
+        fi
+      done
+    fi
+
+    ###
+    ### Delete any ghost, outdated or broken config includes and vhosts
+    ### in all Octopus instances which could break Nginx restart
+    ###
+    if [ -e "/data/disk" ]; then
+      for File in `grep will_expire_in /data/disk/*/config/includes/* \
+        | cut -d: -f1 \
+        | awk '{ print $1}'`; do
+        rm -f $File
+      done
+      for Vght in `ls /data/disk/*/log/CANCELLED 2> /dev/null \
+        | cut -d"/" -f4 \
+        | awk '{ print $1}'`; do
+        rm -f /data/disk/$Vght/config/server_*/nginx/vhost.d/*
+      done
+      wildPth="/data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf"
+      sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${wildPth} &> /dev/null
+      sed -i "s/OctopusNCookie/AegirCookie/g"      ${wildPth} &> /dev/null
+      sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${wildPth} &> /dev/null
+    fi
+    if [ -e "/var/aegir" ]; then
+      wildPth="/var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf"
+      sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${wildPth} &> /dev/null
+      sed -i "s/OctopusNCookie/AegirCookie/g"      ${wildPth} &> /dev/null
+      sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${wildPth} &> /dev/null
+      sed -i "s/60/180/g" /var/aegir/config/server_*/nginx.conf  &> /dev/null
+      sed -i "s/300/180/g" /var/aegir/config/server_*/nginx.conf &> /dev/null
+    fi
+    validate_public_ip &> /dev/null
+    _CRON_IP=${_THISHTIP//[^0-9.]/}
+    if [ ! -e "/root/.local.IP.list" ]; then
+      rm -f /root/.tmp.IP.list*
+      rm -f /root/.local.IP.list*
+      for _IP in `hostname -I`;do echo ${_IP} >> /root/.tmp.IP.list;done
+      for _IP in `cat /root/.tmp.IP.list \
+        | sort \
+        | uniq`; do
+        echo "${_IP} # local IP address" >> /root/.local.IP.list
+      done
+      rm -f /root/.tmp.IP.list*
+    fi
+    _IP_IF_PRESENT=$(grep "${_CRON_IP}" /root/.local.IP.list 2>&1)
+    if [[ "${_IP_IF_PRESENT}" =~ "${_CRON_IP}" ]]; then
+      _IP_PRESENT=YES
+    else
+      _IP_PRESENT=NO
+    fi
+    if [ ! -z "${_CRON_IP}" ] \
+      && [ "${_IP_PRESENT}" = "YES" ] \
+      && [ -e "/root/.local.IP.list" ]; then
+      fix_multi_ip_cron_access
+    fi
+    mrun "service nginx reload" &> /dev/null
+  fi
+}
