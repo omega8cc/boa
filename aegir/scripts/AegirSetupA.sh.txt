@@ -288,7 +288,7 @@ get_dev_stc() {
   fi
 }
 #
-_SRCDIR=/opt/tmp/files
+_SRCDIR="/opt/tmp/files"
 _LOG=/var/backups/octopus-${_USER}-${_NOW}.log
 #
 # Create shared dirs.

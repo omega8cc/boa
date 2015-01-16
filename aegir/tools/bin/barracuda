@@ -680,7 +680,7 @@ set_pin_priority() {
   fi
 }
 
-find_mirror() {
+find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     apt-get update -qq &> /dev/null
@@ -731,7 +731,7 @@ check_dns_curl() {
     sleep 1
     service pdnsd start &> /dev/null
   fi
-  find_mirror
+  find_fast_mirror
   isCurl=$(curl --version 2>&1)
   if [[ ! "$isCurl" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     echo "ERROR: Required cURL package is not available"

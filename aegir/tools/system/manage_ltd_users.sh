@@ -28,7 +28,7 @@ crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 
 ###-------------SYSTEM-----------------###
 
-find_mirror() {
+find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     apt-get update -qq &> /dev/null
@@ -1471,7 +1471,7 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ]; then
   exit 0
 else
   touch /var/run/manage_ltd_users.pid
-  find_mirror
+  find_fast_mirror
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   cat /var/xdrago/conf/lshell.conf > ${_THIS_LTD_CONF}
   _THISHTNM=$(hostname --fqdn 2>&1)

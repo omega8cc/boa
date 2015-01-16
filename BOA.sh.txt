@@ -395,7 +395,7 @@ fix_alt() {
   fi
 }
 
-find_mirror() {
+find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     apt-get update -qq &> /dev/null
@@ -442,7 +442,6 @@ setup() {
   else
     check_dns_settings
   fi
-
   if [ -d "/var/cache/pdnsd" ]; then
     service pdnsd stop &> /dev/null
     sleep 1
@@ -450,8 +449,7 @@ setup() {
     sleep 1
     service pdnsd start &> /dev/null
   fi
-  find_mirror
-
+  find_fast_mirror
   isCurl=$(curl --version 2>&1)
   if [[ ! "$isCurl" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ]; then
@@ -464,7 +462,6 @@ setup() {
       apt-get install curl -y --force-yes --reinstall &> /dev/null
     fi
   fi
-
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
     --retry 3 \
@@ -476,7 +473,6 @@ setup() {
   else
     urlHmr="http://${_USE_MIR}/versions/master/aegir"
   fi
-
   _LSB_TEST=$(which lsb_release 2> /dev/null)
   if [[ "$_LSB_TEST" =~ "lsb_release" ]]; then
     _DO_NOTHING=YES

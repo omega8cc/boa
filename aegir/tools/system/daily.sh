@@ -16,7 +16,7 @@ crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 
 ###-------------SYSTEM-----------------###
 
-find_mirror() {
+find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     apt-get update -qq &> /dev/null
@@ -2635,7 +2635,7 @@ if [ -e "/root/.barracuda.cnf" ]; then
   source /root/.barracuda.cnf
 fi
 #
-find_mirror
+find_fast_mirror
 #
 if [ -z "$_SKYNET_MODE" ] || [ "$_SKYNET_MODE" = "ON" ]; then
   rm -f /var/backups/BOA.sh.txt-*

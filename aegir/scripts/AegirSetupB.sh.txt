@@ -283,7 +283,7 @@ update_php_cli_drush() {
   fi
 }
 #
-_SRCDIR=/opt/tmp/files
+_SRCDIR="/opt/tmp/files"
 _LOG=/var/backups/octopus-${_USER}-${_NOW}.log
 #
 

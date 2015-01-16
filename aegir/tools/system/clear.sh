@@ -5,7 +5,7 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 #
 # Find the fastest mirror.
-find_mirror() {
+find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     apt-get update -qq &> /dev/null
@@ -64,7 +64,7 @@ else
   if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ]; then
     rm -f /tmp/*error*
     rm -f /var/backups/BOA.sh.txt.hourly*
-    find_mirror
+    find_fast_mirror
     curl -L -k -s \
       --max-redirs 10 \
       --retry 10 \

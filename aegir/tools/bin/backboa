@@ -225,7 +225,7 @@ retrieve() {
   fi
 }
 
-find_mirror() {
+find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     apt-get update -qq &> /dev/null
@@ -268,7 +268,7 @@ install() {
   else
     echo "Installing duplicity dependencies..."
     cd
-    find_mirror
+    find_fast_mirror
     apt-get clean -qq                    &> /dev/null
     apt-get update -qq                   &> /dev/null
     aptitude purge duplicity -y          &> /dev/null

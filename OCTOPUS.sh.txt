@@ -203,7 +203,7 @@ mrun() {
 }
 #
 # Find the fastest mirror.
-find_mirror() {
+find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     apt-get update -qq &> /dev/null
@@ -1616,7 +1616,7 @@ if [ -d "/var/cache/pdnsd" ]; then
   sleep 1
   service pdnsd start &> /dev/null
 fi
-find_mirror
+find_fast_mirror
 
 ###
 ### Some auto-magic for localhost install
@@ -1733,7 +1733,7 @@ fi
 #
 rm -f /var/run/aegir_upgrade.pid
 rm -f /opt/tmp/testecho*
-_SRCDIR=/opt/tmp/files
+_SRCDIR="/opt/tmp/files"
 mkdir -p ${_SRCDIR}
 chmod -R 777 /opt/tmp &> /dev/null
 cd /opt/tmp
