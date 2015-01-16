@@ -148,7 +148,7 @@ fi
 
 
 ###
-### Clean pid files on exit.
+### Clean pid files on exit
 ###
 clean_pid_exit() {
   rm -f /var/run/boa_wait.pid
@@ -159,7 +159,7 @@ clean_pid_exit() {
 
 
 ###
-### Panic on missing include.
+### Panic on missing include
 ###
 panic_exit() {
   echo
