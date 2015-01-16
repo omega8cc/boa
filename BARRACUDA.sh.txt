@@ -133,8 +133,9 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-#
-# Clean pid files on exit.
+###
+### Clean pid files on exit.
+###
 clean_pid_exit() {
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/boa_run.pid
@@ -142,11 +143,12 @@ clean_pid_exit() {
   exit 1
 }
 
-#
-# Panic on missing include.
+###
+### Panic on missing include.
+###
 panic_exit() {
   echo
-  echo " EXIT: Required lib file does not exist?"
+  echo " EXIT: Required lib file not available?"
   echo " EXIT: $1"
   echo " EXIT: Cannot continue"
   echo " EXIT: Bye (0)"
@@ -233,15 +235,8 @@ fi
 ###
 ### Include default settings
 ###
-if [ -e "${vBs}/${filIncB}" ]; then
-  source ${vBs}/${filIncB}
-else
-  msg "EXIT: Required lib file does not exist?"
-  msg "EXIT: ${vBs}/${filIncB}"
-  msg "EXIT: Cannot continue installation"
-  msg "EXIT: Bye (0)"
-  clean_pid_exit
-fi
+[ -r "${vBs}/${filIncB}" ] || panic_exit "${vBs}/${filIncB}"
+  source "${vBs}/${filIncB}"
 
 ###
 ### Restart pdnsd server
