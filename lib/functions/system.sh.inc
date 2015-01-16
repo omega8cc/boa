@@ -9,7 +9,6 @@ check_root_barracuda() {
       fi
     fi
     chmod a+rw /dev/null
-    rm -f -r /opt/tmp/*
     rm -f -r /tmp/drush_make_tmp*
     rm -f -r /tmp/make_tmp*
     rm -f /tmp/pm-updatecode*
@@ -2572,7 +2571,6 @@ finale() {
   rm -f /tmp/cache.inc*
   rm -f /var/opt/._zendopcache*
   rm -f -r /var/opt/*
-  rm -f -r /opt/tmp/*
   rm -f /var/xdrago/monitor/acrashsql.sh
   rm -f /var/xdrago/acrashsql.sh
   rm -f /var/xdrago/usage.sh

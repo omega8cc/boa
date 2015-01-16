@@ -649,6 +649,7 @@ up_finish() {
     service webmin stop &> /dev/null
     service usermin stop &> /dev/null
   fi
+  rm -f -r /opt/tmp/*
   echo
   echo BARRACUDA upgrade completed
   echo Bye

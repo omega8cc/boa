@@ -523,6 +523,7 @@ init_finish() {
   rm -f ${vBs}/BARRACUDA.sh*
   rm -f ${vBs}/OCTOPUS.sh*
   echo
+  rm -f -r /opt/tmp/*
   echo BOA ${cmmand} completed
   echo Bye
   echo

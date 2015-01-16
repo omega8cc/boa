@@ -561,6 +561,7 @@ up_finish() {
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
   fi
+  rm -f -r /opt/tmp/*
   echo
   echo OCTOPUS upgrade completed
   echo Bye
