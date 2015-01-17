@@ -510,6 +510,20 @@ check_boa_version() {
   fi
 }
 
+check_prepare_dirs_permissions() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Cleaning up temp files in /var/opt/"
+  fi
+  rm -f -r /var/opt/*
+  mkdir -p /var/log/php
+  chmod 777 /var/log/php* &> /dev/null
+  mkdir -p ${vBs}/dragon/{x,z,t}
+  if [ -e "/etc/init.d/buagent" ]; then
+    mv -f /etc/init.d/buagent \
+      ${vBs}/buagent-pre-${_X_VERSION}-${_NOW} &> /dev/null
+  fi
+}
+
 check_fix_avatars() {
   if [ ! -e "/var/www/nginx-default/profiles/commons/images/avatars" ]; then
     if [ -e "${bldPth}/aegir/var/commons/images" ]; then

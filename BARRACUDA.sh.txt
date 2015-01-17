@@ -238,41 +238,19 @@ check_mariadb_src
 check_boa_version
 check_git_repos_status
 check_ip_hostname
+check_prepare_dirs_permissions
 
 
-###--------------------###
-if [ "${_DEBUG_MODE}" = "YES" ]; then
-  msg "INFO: Cleaning up temp files in /var/opt/"
-fi
-rm -f -r /var/opt/*
-mkdir -p /var/log/php
-chmod 777 /var/log/php* &> /dev/null
-mkdir -p ${vBs}/dragon/{x,z,t}
-if [ -e "/etc/init.d/buagent" ]; then
-  mv -f /etc/init.d/buagent \
-    ${vBs}/buagent-pre-${_X_VERSION}-${_NOW} &> /dev/null
-fi
-
-
-###--------------------###
-msg "INFO: Installing extra Drush versions..."
+###
+### Download system-wide Drush versions
+###
 get_drush_versions
 
 
 ###
 ### Upgrade only Aegir Master Instance (obsolete mode)
 ###
-if [ "${_STATUS}" = "UPGRADE" ]; then
-  if [ "${_AEGIR_UPGRADE_ONLY}" = "YES" ] \
-    && [ "${_SYSTEM_UPGRADE_ONLY}" = "NO" ]; then
-    echo " "
-    upgrade_aegir_master
-    mrun "sleep 8"
-    mrun "service nginx reload" &> /dev/null
-    finale
-    exit 0
-  fi
-fi
+if_upgrade_only_aegir_master
 
 
 ###
@@ -295,13 +273,13 @@ fix_locales
 ###
 ### Do not allow strong passwords until locales work properly
 ###
-if [ "$_LOCALE_TEST" = "BROKEN" ]; then
+if [ "${_LOCALE_TEST}" = "BROKEN" ]; then
   _STRONG_PASSWORDS=NO
 fi
 
 
 ###
-### Install SPDY and PFS depenedecies if needed
+### Install SPDY and PFS dependencies if needed
 ###
 if [ "${_NGINX_SPDY}" = "YES" ] \
   || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
@@ -322,7 +300,8 @@ fi
 ### Install OpenSSH from sources if needed
 ###
 if [ "${_SSH_FROM_SOURCES}" = "YES" ]; then
-  if [ "${_OSV}" = "trusty" ] || [ "${_OSV}" = "precise" ]; then
+  if [ "${_OSV}" = "trusty" ] \
+    || [ "${_OSV}" = "precise" ]; then
     _DO_NOTHING=YES
   else
     install_ssh_src
@@ -333,7 +312,8 @@ fi
 ###
 ### Install Git and Nginx early if needed
 ###
-if [ "${_LENNY_TO_SQUEEZE}" = "NO" ]; then
+if [ "${_LENNY_TO_SQUEEZE}" = "NO" ] \
+  || [ -z "${_LENNY_TO_SQUEEZE}" ]; then
   check_install_latest_git
   install_upgrade_nginx
 fi
@@ -350,8 +330,6 @@ install_mariadb_server
 ###
 run_aptitude_full_upgrade
 install_with_aptitude_deps
-mrun "service php5-fpm stop" &> /dev/null
-st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
 check_install_latest_git
 install_upgrade_nginx
 kill_nash
@@ -421,12 +399,12 @@ finalize_sql_initial_setup
 
 
 ###
-### Update barracuda install/upgrade log and system settings
+### Update barracuda log and system settings
 ###
 update_barracuda_log
 update_sysctl
 update_apticron
-display_login_link
+if_display_login_link
 fix_update_nginx_config
 
 
@@ -443,27 +421,9 @@ install_upgrade_pdnsd
 
 
 ###
-### Config fixes
+### Complete system checks and cleanup
 ###
-fix_lfd_whitelist
-fix_lfd_uidignore
-fix_cnf_postfix
-
-
-###--------------------###
-if [ "${_STRICT_BIN_PERMISSIONS}" = "YES" ]; then
-  usermod -aG users aegir &> /dev/null
-  usermod -aG users man &> /dev/null
-  usermod -aG users mysql &> /dev/null
-  if [ -x "/bin/dash" ]; then
-    switch_to_dash
-  else
-    switch_to_bash
-  fi
-  strict_bin_permissions
-fi
-check_php_cli
-finale
+complete
 exit 0
 
 

@@ -506,7 +506,7 @@ fix_locales() {
   if [[ "$_LOC_TEST" =~ "Cannot" ]]; then
     _LOCALE_TEST=BROKEN
   fi
-  if [ "$_LOCALE_TEST" = "BROKEN" ]; then
+  if [ "${_LOCALE_TEST}" = "BROKEN" ]; then
     msg "WARNING!"
     cat <<EOF
 
@@ -1656,6 +1656,7 @@ install_wkhtmltoimage() {
 #
 # Install or update Drush versions.
 get_drush_versions() {
+  msg "INFO: Installing extra Drush versions..."
   ###--------------------###
   mkdir -p /opt/tools/drush/{4,6,7}
   chown -R root:root /opt/tools
@@ -2669,6 +2670,10 @@ install_with_aptitude_deps() {
   fi
   st_runner "apt-get install $_EXTRA_APT -f -y --force-yes -q \
     --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+  if [ -e "/etc/init.d/php5-fpm" ]; then
+    mrun "service php5-fpm stop" &> /dev/null
+    mrun "update-rc.d -f php5-fpm remove" &> /dev/null
+  fi
 }
 
 basic_packages_install_on_init() {
@@ -4275,4 +4280,23 @@ update_apticron() {
         /usr/sbin/apticron
     fi
   fi
+}
+
+complete() {
+  fix_lfd_whitelist
+  fix_lfd_uidignore
+  fix_cnf_postfix
+  if [ "${_STRICT_BIN_PERMISSIONS}" = "YES" ]; then
+    usermod -aG users aegir &> /dev/null
+    usermod -aG users man &> /dev/null
+    usermod -aG users mysql &> /dev/null
+    if [ -x "/bin/dash" ]; then
+      switch_to_dash
+    else
+      switch_to_bash
+    fi
+    strict_bin_permissions
+  fi
+  check_php_cli
+  finale
 }

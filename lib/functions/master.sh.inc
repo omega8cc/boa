@@ -721,7 +721,21 @@ EOFMYSQL
   update_php_cli_cron
 }
 
-display_login_link() {
+if_upgrade_only_aegir_master() {
+  if [ "${_STATUS}" = "UPGRADE" ]; then
+    if [ "${_AEGIR_UPGRADE_ONLY}" = "YES" ] \
+      && [ "${_SYSTEM_UPGRADE_ONLY}" = "NO" ]; then
+      echo " "
+      upgrade_aegir_master
+      mrun "sleep 8"
+      mrun "service nginx reload" &> /dev/null
+      finale
+      exit 0
+    fi
+  fi
+}
+
+if_display_login_link() {
   if [ "${_STATUS}" = "INIT" ]; then
     if [ "${_EASY_SETUP}" != "LOCAL" ]; then
       mrun "bash /usr/sbin/apticron" &> /dev/null

@@ -1,4 +1,4 @@
-#!/bin/dash
+#!/bin/bash
 #
 # /etc/init.d/hhvm.foo -- startup script for HHVM FastCGI foo
 #
