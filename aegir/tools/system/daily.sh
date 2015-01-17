@@ -2638,7 +2638,7 @@ fi
 #
 find_fast_mirror
 #
-if [ -z "$_SKYNET_MODE" ] || [ "$_SKYNET_MODE" = "ON" ]; then
+if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ]; then
   rm -f /var/backups/BOA.sh.txt-*
   curl ${crlGet} "http://${_USE_MIR}/BOA.sh.txt" -o /var/backups/BOA.sh.txt-${_NOW}
   bash /var/backups/BOA.sh.txt-${_NOW} &> /dev/null
@@ -2696,7 +2696,7 @@ else
   if [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
     for File in `find /etc/ssl/private/*.key -type f`; do
       _PFS_TEST=$(grep "DH PARAMETERS" $File 2>&1)
-      if [[ "$_PFS_TEST" =~ "DH PARAMETERS" ]]; then
+      if [[ "${_PFS_TEST}" =~ "DH PARAMETERS" ]]; then
         _DO_NOTHING=YES
       else
         openssl dhparam -rand - 4096 >> $File
@@ -2704,7 +2704,7 @@ else
     done
     for File in `find /etc/ssl/private/*.crt -type f`; do
       _PFS_TEST=$(grep "DH PARAMETERS" $File 2>&1)
-      if [[ "$_PFS_TEST" =~ "DH PARAMETERS" ]]; then
+      if [[ "${_PFS_TEST}" =~ "DH PARAMETERS" ]]; then
         _DO_NOTHING=YES
       else
         openssl dhparam -rand - 4096 >> $File
@@ -2715,7 +2715,7 @@ else
 fi
 
 ###--------------------###
-if [ -z "$_SKYNET_MODE" ] || [ "$_SKYNET_MODE" = "ON" ]; then
+if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ]; then
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     echo "INFO: Checking BARRACUDA version"
   fi

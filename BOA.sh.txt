@@ -545,7 +545,7 @@ if [ `whoami` = "root" ]; then
     if [ -e "${barCnf}" ]; then
       source ${barCnf}
     fi
-    if [ ! -z "$_SKYNET_MODE" ] && [ "$_SKYNET_MODE" = "OFF" ]; then
+    if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
       echo "STATUS: Skynet Agent is Inactive!"
       echo "STATUS: Please remove the _SKYNET_MODE=OFF line from"
       echo "STATUS: ${barCnf} to enable me again."
