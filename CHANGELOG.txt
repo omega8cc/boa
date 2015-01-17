@@ -8,9 +8,9 @@
 
 # Release Notes:
 
-  This new BOA release includes 7 updated Aegir platforms, over 25 new features
-  and enhancements, 11 new software versions, over 26 important changes, plus
-  over 57 bug fixes, with most notable features and changes listed below:
+  This new BOA release includes 8 updated Aegir platforms, over 27 new features
+  and enhancements, 11 new software versions, over 30 important changes, plus
+  over 72 bug fixes, with most notable features and changes listed below:
 
   @=> Added Support for latest Drupal 8.0.x head
   @=> Added Support for latest PHP 5.6
@@ -22,7 +22,7 @@
   @=> PHP 5.5 is used by default on new installs instead of old 5.3
   @=> PHP-FPM (and HHVM) runs now as a separate, very limited system user
   @=> Removed Support for legacy PHP 5.2
-  @=> Sites Names Exceptions Keywords have changed
+  @=> Sites Names Exceptions and Special Keywords have changed
   @=> The Dev-Mode works only for site aliases, no longer for main site name
 
   Please read further below for more details.
@@ -30,6 +30,7 @@
 # Updated Octopus platforms:
 
   aGov 1.6 --------------------- https://drupal.org/project/agov
+  Commerce 1.32 (with 1.11) ---- https://drupal.org/project/commerce_kickstart
   OpenAtrium 2.26 -------------- https://drupal.org/project/openatrium
   OpenChurch 1.17-b1 ----------- https://drupal.org/project/openchurch
   OpenChurch 2.1-b3 ------------ https://drupal.org/project/openchurch
@@ -54,19 +55,22 @@
   * Monitor and rotate PHP error logs if too big (over 1 GB).
   * Monitor the number of master PHP-FPM processes and force restart if needed.
   * New 'nodns' option to skip DNS and SMTP checks on the fly.
-  * PHP: Add HHVMinfo
+  * Nginx: Add support for images derivatives with URI shortcuts - fixes #481
+  * Nginx: Add support for URI shortcuts for sites in subdirectories.
+  * PHP: Add HHVMinfo.
   * PHP: Add support for latest 5.6
   * PHP: Allow to define version to install and use on command line - fixes #536
   * PHP: Disable not used CLI versions if _PHP_SINGLE_INSTALL is defined.
   * PHP: Disable not used FPM and CLI versions.
   * PHP: HHVM experimental support - fixes #443
-  * Provide default value for composer_manager_vendor_dir - fixes #385
+  * Provide default value for composer_manager_vendor_dir variable - fixes #385
   * Redis: Allow to configure remote IP via _REDIS_LISTEN_MODE /cluster support.
   * Use cron scheduler fast mode (every 10 sec) if /root/.fast.cron.cnf exists.
   * Use Drush Make Local for Hostmaster with download mirrors auto-detection.
 
 # Changes:
 
+  * Alter the cron_interval for existing sites to match Aegir default.
   * Change required exceptions keywords to .temporary. and .testing.
   * Dev mode detection and URLs protection - now works only for aliases.
   * Do not display .cnf files contents if _DEBUG_MODE is not set to YES.
@@ -74,6 +78,7 @@
   * Drush 7 is now used by default instead of Drush 6.
   * Drush: Upgrade to mini-7-17-01-2015
   * Force _TOMCAT_TO_JETTY=YES - fixes #570
+  * Hostmaster: Use Drush Make Local instead of downloading contrib with Drush
   * Limit status messages verbosity if _DEBUG_MODE is not set to YES
   * Make it possible to opt-out from BOA Skynet auto-updates - fixes #557
   * PHP: Always use by default version 5.5
@@ -88,9 +93,11 @@
   * Reload system cron hourly.
   * Remove deprecated RC4 from ssl_protocols.
   * Remove the _O_CONTRIB_UP variable/feature.
+  * Run cron for 3 sites at once max.
   * Split huge BARRACUDA script into lib includes.
   * Switch to special limited system user also in PHP-FPM mode - fixes #551
   * There is no need to update drupalgeddon every 5 minutes.
+  * Use 86400 as a default cron_interval to sync with Drupal default.
   * Use provision_civicrm 6.x-2.x directly.
   * Use separate versioning for Aegir extensions download URLs.
 
@@ -114,7 +121,9 @@
   * Add in docs/HINTS.txt Helper locations to avoid 404 on legacy images paths.
   * Add warning about vCloud Air incompatibility with Drupal.
   * Allow slower DNS response.
+  * Avoid broken install on D8 core where sites/all doesn't exist by default.
   * Avoid confusing EXIT: You must specify already installed PHP version.
+  * Avoid sed warnings in old stable and legacy modes.
   * Backward compatibility with Drush 6.
   * Block attempts to lookup /etc/passwd via web shell.
   * Delete duplicity ghost pid file if older than 2 days.
@@ -123,7 +132,9 @@
   * Do not try to add platforms nodes if no new platform has been installed.
   * Do not update backboa if duplicity is running.
   * Document when to use /root/.fast.cron.cnf
+  * Drupal 8 removed drupal_mail()
   * Drupal 8 requires read permissions in sites/all
+  * Drupal 8 with $clean_urls=1 should use /cron/ URI.
   * Drush 7 requires composer.
   * Fix and Improve Squeeze to Wheezy upgrade procedure.
   * Fix for $HOME detection if not set for some reason.
@@ -134,6 +145,7 @@
   * Fix public IP auto-detection on AWS in Octopus.
   * Fix the logic for TMPDIR set on the fly - fixes #552
   * Fix: LANGUAGE (en_US.UTF-8) is not compatible with LC_ALL (). Disabling it.
+  * Force _PHP_MULTI_INSTALL to match defined _PHP_FPM_VERSION on cluster nodes.
   * Force _THIS_DB_HOST=localhost on AWS.
   * HHVM: Add /home/ to open_basedir so access to the .tmp works - fixes #569
   * HHVM: Add workarounds for potential security issues - fixes #443
@@ -145,27 +157,37 @@
   * Increase inotify defaults to improve lsyncd support.
   * Jetty: Detect if running as zombie and force restart if needed.
   * Make sure that AcceptEnv is set in sshd_config.
+  * Make sure to never run cron on just cloned site.
   * MariaDB patch is no longer needed.
   * Monitor lsyncd and xinetd if installed and expected to run.
+  * Nginx: Fix for D8-specific /cron/ location regex.
+  * Nginx: Force clean URLs for Drupal 8.
+  * Nginx: Hide X-Drupal-Cache-Tags header.
   * PHP: Avoid version guessing for Octopus when _PHP_SINGLE_INSTALL is used.
   * PHP: Make sure that _PHP_SINGLE_INSTALL takes precedence.
   * PHP: OPcache configuration for Drupal 8 - fixes #419
   * PHP: Re-install libmagickwand-dev to avoid broken extension build.
   * PHP: The fallback version should be detected and not hardcoded.
   * Prevent 'Could not change permissions' warnings with CiviCRM - fixes #523
+  * Remove Drupal 8 specific code from settings template used in older Drupal.
   * Remove known sensitive credentials from barracuda upgrade log.
+  * Revert "Issue #2313327: Fixed Unknown options for provision-verify."
   * Run agents update on cluster nodes.
   * Run single mirror check - fixes #565
+  * Set files paths on D8 install to avoid using system default /tmp.
   * Skip auto-update for agents not compatible with older versions.
   * Skip extra SQL connection test on AWS.
   * Standardize platforms version and naming convention.
   * Support for _NGINX_NAXSI is experimental (don't use)
   * Symlinks directories expected by Drush/Aegir in D8 root.
   * Sync defaults for hosting_advanced_cron_default_interval
+  * The /login suffix is no longer supported in Drupal 8 and results with 404.
+  * The backend verify sub-task breaks site import for Drupal 8.
   * Tomcat is not used anymore - see #570
   * Use consistent stderr 2 stdout redirects in grep checks.
   * Use correct _THIS_DB_HOST on master instance.
   * Use correct pid file in procs monitor.
+  * Use extended display mode for messages longer than 200 chars.
   * Use mirror to download complete vendor directory for Drush 7.
 
 
