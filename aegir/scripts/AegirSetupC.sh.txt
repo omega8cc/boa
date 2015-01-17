@@ -1908,7 +1908,7 @@ recruiter_install() {
                 cd ${_SHRD_PRPATH}/modules
                 rm -f -r {i18n,rules}
                 get_dev_contrib "i18n-7.x-1.11.tar.gz"
-                get_dev_contrib "rules-7.x-2.8.tar.gz"
+                get_dev_contrib "rules-7.x-2.7.tar.gz"
                 upgrade_contrib_less
               fi
             else
@@ -2096,7 +2096,7 @@ ubercart7_install() {
               get_dev_contrib "google_analytics-7.x-2.1.tar.gz"
               get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
               get_dev_contrib "pathauto-7.x-1.2.tar.gz"
-              get_dev_contrib "rules-7.x-2.8.tar.gz"
+              get_dev_contrib "rules-7.x-2.7.tar.gz"
               get_dev_contrib "token-7.x-1.5.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
               get_dev_contrib "views-7.x-3.8.tar.gz"
@@ -2167,7 +2167,7 @@ ubercart7_testing_install() {
               get_dev_contrib "google_analytics-7.x-2.0.tar.gz"
               get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
               get_dev_contrib "pathauto-7.x-1.2.tar.gz"
-              get_dev_contrib "rules-7.x-2.8.tar.gz"
+              get_dev_contrib "rules-7.x-2.7.tar.gz"
               get_dev_contrib "token-7.x-1.5.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
               get_dev_contrib "views-7.x-3.8.tar.gz"
