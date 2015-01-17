@@ -1542,6 +1542,9 @@ fi
 if [ -e "${_USER_DS}/make_local" ]; then
   rm -f ${_USER_DS}/make_local
 fi
+if [ -e "${_USER_DS}/safe_cache_form_clear" ]; then
+  rm -f ${_USER_DS}/safe_cache_form_clear
+fi
 
 
 ###---### Add symlink to the system registry_rebuild.
@@ -1606,6 +1609,19 @@ if [ ! -L "${_USER_DS}/usr/make_local" ]; then
   chmod 700 ${_USER_DS}
   ln -sf ${_ROOT}/.drush/usr/make_local \
     ${_USER_DS}/usr/make_local
+fi
+
+
+###---### Add symlink to the system safe_cache_form_clear.
+#
+if [ ! -L "${_USER_DS}/usr/safe_cache_form_clear" ]; then
+  msg "${_STATUS} A: Adding symlink to the system safe_cache_form_clear"
+  mkdir -p ${_USER_DS}/usr
+  chown ${_USERFTP}:${_USRG} ${_USER_DS}
+  chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
+  chmod 700 ${_USER_DS}
+  ln -sf ${_ROOT}/.drush/usr/safe_cache_form_clear \
+    ${_USER_DS}/usr/safe_cache_form_clear
 fi
 
 
@@ -2296,6 +2312,7 @@ mv -f ${_ROOT}/backups/provision_site_backup-pre* ${_ROOT}/backups/system/ &> /d
 mv -f ${_ROOT}/backups/provision_tasks_extra-pre* ${_ROOT}/backups/system/ &> /dev/null
 mv -f ${_ROOT}/backups/provision-pre* ${_ROOT}/backups/system/ &> /dev/null
 mv -f ${_ROOT}/backups/registry_rebuild-pre* ${_ROOT}/backups/system/ &> /dev/null
+mv -f ${_ROOT}/backups/safe_cache_form_clear-pre* ${_ROOT}/backups/system/ &> /dev/null
 mkdir -p /data/conf/arch
 mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
 mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null

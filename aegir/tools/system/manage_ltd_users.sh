@@ -119,9 +119,9 @@ enable_chattr() {
         rm -f -r ${_U_HD}/.*
       else
         rm -f ${_U_HD}/{drush_make,registry_rebuild,clean_missing_modules}
-        rm -f ${_U_HD}/{drupalgeddon,drush_ecl,make_local}
+        rm -f ${_U_HD}/{drupalgeddon,drush_ecl,make_local,safe_cache_form*}
         rm -f ${_U_HD}/usr/{drush_make,registry_rebuild,clean_missing_modules}
-        rm -f ${_U_HD}/usr/{drupalgeddon,drush_ecl,make_local}
+        rm -f ${_U_HD}/usr/{drupalgeddon,drush_ecl,make_local,safe_cache_form*}
         rm -f ${_U_HD}/.ctrl*
         rm -f -r ${_U_HD}/{cache,drush.ini,*drushrc*,*.inc}
       fi
@@ -151,6 +151,10 @@ enable_chattr() {
       if [ ! -L "${_U_HD}/usr/make_local" ]; then
         ln -sf ${dscUsr}/.drush/usr/make_local \
           ${_U_HD}/usr/make_local
+      fi
+      if [ ! -L "${_U_HD}/usr/safe_cache_form_clear" ]; then
+        ln -sf ${dscUsr}/.drush/usr/safe_cache_form_clear \
+          ${_U_HD}/usr/safe_cache_form_clear
       fi
     fi
 

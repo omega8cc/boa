@@ -216,8 +216,8 @@ hostmaster_mv_up() {
   mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/ &> /dev/null
   _D_EXT="provision clean_missing_modules drupalgeddon drush_ecl make_local \
     provision_boost provision_cdn provision_civicrm provision_site_backup \
-    provision_tasks_extra registry_rebuild security_check \
-    security_review remote_import"
+    provision_tasks_extra registry_rebuild remote_import \
+    safe_cache_form_clear security_check security_review"
   for e in ${_D_EXT}; do
     if [ -e "${_ROOT}/.drush/$e" ]; then
       mv -f ${_ROOT}/.drush/$e \
@@ -302,6 +302,8 @@ hostmaster_go_up() {
         ${rD}/xts/provision_boost &> /dev/null
       ${gCb} 7.x-2.x ${gitHub}/registry_rebuild.git \
         ${rD}/usr/registry_rebuild &> /dev/null
+      ${gCb} 7.x-1.0 ${gitHub}/safe_cache_form_clear.git \
+        ${rD}/usr/safe_cache_form_clear &> /dev/null
     else
       cd ${_ROOT}/.drush/sys
       curl ${crlGet} "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
@@ -312,7 +314,8 @@ hostmaster_go_up() {
         get_dev_ext "$e.tar.gz"
       done
       cd ${_ROOT}/.drush/usr
-      _G_EXT="drupalgeddon drush_ecl make_local registry_rebuild"
+      _G_EXT="drupalgeddon drush_ecl make_local \
+        registry_rebuild safe_cache_form_clear"
       for e in ${_G_EXT}; do
         get_dev_ext "$e.tar.gz"
       done
