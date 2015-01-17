@@ -439,7 +439,7 @@ up_action_all() {
         octUsr=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}')
         tocName="${octName}.${octUsr}"
         tocIncO="${filIncO}.${octUsr}"
-        octCnf=/root/.${octUsr}.octopus.cnf
+        octCnf="/root/.${octUsr}.octopus.cnf"
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
         echo Octopus upgrade for User ${User}
         n=$((RANDOM%9+2))
@@ -493,9 +493,10 @@ up_action_one() {
     && [ -e "${User}/log/cores.txt" ] \
     && [ ! -e "${User}/log/CANCELLED" ]; then
     if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ]; then
-      octUsr=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}')
-      tocName=${octName}.${octUsr}
-      octCnf=/root/.${octUsr}.octopus.cnf
+      octUsr="${second}"
+      tocName="${octName}.${octUsr}"
+      tocIncO="${filIncO}.${octUsr}"
+      octCnf="/root/.${octUsr}.octopus.cnf"
       echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
       echo Octopus upgrade for User ${User}
       sleep 3
