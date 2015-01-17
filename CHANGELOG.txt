@@ -17,16 +17,15 @@
   @=> BOA can auto-detect its fastest download mirror on install, upgrade etc.
   @=> BOA Code Refactoring to make it modular and easier to read (in progress)
   @=> BOA Skynet auto-updates can be turned off with _SKYNET_MODE=OFF
+  @=> Force single PHP version with command keyword on install and upgrade
   @=> Introducing Support for HHVM -- see docs/HHVM.txt for details.
-  @=> PHP 5.5 is used by default on new installs
-  @=> PHP-FPM (and HHVM) runs as a separate, very limited system user
+  @=> PHP 5.5 is used by default on new installs instead of old 5.3
+  @=> PHP-FPM (and HHVM) runs now as a separate, very limited system user
   @=> Removed Support for legacy PHP 5.2
-  @=> Sites Names Exceptions Keywords have chamged
+  @=> Sites Names Exceptions Keywords have changed
   @=> The Dev-Mode works only for site aliases, no longer for main site name
 
   Please read further below for more details.
-
-# New Octopus platforms:
 
 # Updated Octopus platforms:
 
