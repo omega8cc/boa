@@ -10,7 +10,7 @@
 
   This new BOA release includes 8 updated Aegir platforms, over 27 new features
   and enhancements, 11 new software versions, over 30 important changes, plus
-  over 72 bug fixes, with most notable features and changes listed below:
+  over 73 bug fixes, with most notable features and changes listed below:
 
   @=> Added Support for latest Drupal 8.0.x head
   @=> Added Support for latest PHP 5.6
@@ -51,7 +51,7 @@
   * Detect critically low free RAM and forcefully restart services if needed.
   * Detect OOM incidents and forcefully restart services if needed.
   * Improve backboa with AWS connection testing.
-  * Install D8-beta with D8B keyword, and D8-dev with D8D keyword specified.
+  * Install latest D8-dev with D8D keyword specified.
   * Monitor and rotate PHP error logs if too big (over 1 GB).
   * Monitor the number of master PHP-FPM processes and force restart if needed.
   * New 'nodns' option to skip DNS and SMTP checks on the fly.
@@ -139,6 +139,7 @@
   * Fix and Improve Squeeze to Wheezy upgrade procedure.
   * Fix for $HOME detection if not set for some reason.
   * Fix for Drush aliases protection.
+  * Fix for octopus batch upgrade mode.
   * Fix for pdnsd install/update logic.
   * Fix missing symlinks after broken openjdk-6 upgrade.
   * Fix path to PHP-CLI if needed.
