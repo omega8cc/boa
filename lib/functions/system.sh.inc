@@ -864,7 +864,11 @@ barracuda_cnf() {
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
-        _CLSTR_PHP_MULTI_INSTALL="${_PHP_MULTI_INSTALL}"
+        _PHP_OVERRIDE=$(grep _PHP_FPM_VERSION ${barCnf} \
+          | cut -d= -f2 \
+          | awk '{ print $1}' \
+          | sed "s/[\"]//g" 2>&1)
+        _CLSTR_PHP_MULTI_INSTALL="${_PHP_OVERRIDE}"
       fi
       if [ ! -e "/root/.debug.cnf" ]; then
         sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
@@ -884,8 +888,8 @@ barracuda_cnf() {
         if [ -e "/root/.mstr.clstr.cnf" ] \
           || [ -e "/root/.wbhd.clstr.cnf" ] \
           || [ -e "/root/.dbhd.clstr.cnf" ]; then
-          if [ ! -z "$_CLSTR_PHP_MULTI_INSTALL" ]; then
-            _PHP_MULTI_INSTALL="$_CLSTR_PHP_MULTI_INSTALL"
+          if [ ! -z "${_CLSTR_PHP_MULTI_INSTALL}" ]; then
+            _PHP_MULTI_INSTALL="${_CLSTR_PHP_MULTI_INSTALL}"
           else
             _PHP_MULTI_INSTALL="5.5"
           fi
