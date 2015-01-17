@@ -374,7 +374,7 @@ up_action() {
 
         sleep 3
         sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=/g"       ${vBs}/${filIncB}
-        sed -i "s/^_PHP_MUL*/_PHP_MULTI_INSTALL=\"${phpM}\"/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_MU.*/_PHP_MULTI_INSTALL=\"${phpM}\"/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"    ${vBs}/${filIncB}
         sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"    ${vBs}/${filIncB}
         ### Legacy method
