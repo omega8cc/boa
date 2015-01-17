@@ -256,7 +256,7 @@ validate_purge_ip() {
           | grep 'inet addr:' \
           | cut -d: -f2 \
           | awk '{ print $1}' 2>&1)
-        if [[ "$_PURGE_THISHTIP" =~ "127.0.0." ]]; then
+        if [[ "${_PURGE_THISHTIP}" =~ "127.0.0." ]]; then
           _PURGE_THISHTIP=$(ifconfig ${_IFCONFIG}:0 \
             | grep 'inet addr:' \
             | cut -d: -f2 \
@@ -288,7 +288,7 @@ validate_purge_ip() {
         _PURGE_THISHTIP="${_MY_OWNIP}"
       fi
     fi
-    if [ -z "$_PURGE_THISHTIP" ]; then
+    if [ -z "${_PURGE_THISHTIP}" ]; then
       _PURGE_THISHTIP="0.0.0.0/0"
     fi
   fi
@@ -356,10 +356,10 @@ install_pdnsd_cache() {
     echo "nameserver 8.8.8.8" > /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   fi
-  st_runner "$_INSTALL resolvconf" &> /dev/null
-  st_runner "$_INSTALL pdnsd" &> /dev/null
-  st_runner "$_INSTALL resolvconf" &> /dev/null
-  st_runner "$_INSTALL pdnsd" &> /dev/null
+  st_runner "${_INSTALL} resolvconf" &> /dev/null
+  st_runner "${_INSTALL} pdnsd" &> /dev/null
+  st_runner "${_INSTALL} resolvconf" &> /dev/null
+  st_runner "${_INSTALL} pdnsd" &> /dev/null
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
   cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
   if [ "${_USE_PROVIDER_DNS}" = "YES" ]; then

@@ -131,14 +131,6 @@ saPatch="/var/xdrago/conf/${saCoreS}.patch"
 
 
 ###
-### Commands shortcuts
-###
-_INITINS="/usr/bin/apt-get -y --force-yes install"
-_INSTALL="/usr/bin/apt-get -y --force-yes \
-  --config-file /opt/tmp/apt.conf.noninteractive install"
-
-
-###
 ### Avoid too many questions
 ###
 export DEBIAN_FRONTEND=noninteractive
