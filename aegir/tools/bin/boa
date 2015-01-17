@@ -193,23 +193,31 @@ octopus_install() {
     sed -i "s/^_USER=.*/_USER=${user}/g"                       ${vBs}/${octName}
 
     if [ "${mode}" = "mini" ]; then
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${filIncO}
+      if [ -e "${vBs}/${filIncO}" ]; then
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
+      fi
       ### Legacy method
       sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${octName}
     elif [ "${mode}" = "max" ]; then
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${filIncO}
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     ${vBs}/${filIncO}
+      if [ -e "${vBs}/${filIncO}" ]; then
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${vBs}/${filIncO}
+      fi
       ### Legacy method
       sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${octName}
       sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     ${vBs}/${octName}
     elif [ "${mode}" = "none" ]; then
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${filIncO}
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"    ${vBs}/${filIncO}
+      if [ -e "${vBs}/${filIncO}" ]; then
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  ${vBs}/${filIncO}
+      fi
       ### Legacy method
       sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${octName}
       sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"    ${vBs}/${octName}
     else
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     ${vBs}/${filIncO}
+      if [ -e "${vBs}/${filIncO}" ]; then
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${vBs}/${filIncO}
+      fi
       ### Legacy method
       sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     ${vBs}/${octName}
     fi
@@ -219,8 +227,10 @@ octopus_install() {
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [ "${_L_VMFAMILY}" = "VS" ]; then
       if [ ! -e "/root/.debug.cnf" ]; then
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
-        sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"     ${vBs}/${filIncO}
+        if [ -e "${vBs}/${filIncO}" ]; then
+          sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"           ${vBs}/${filIncO}
+          sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"   ${vBs}/${filIncO}
+        fi
         ### Legacy method
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${octName}
         sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"     ${vBs}/${octName}
@@ -232,8 +242,9 @@ octopus_install() {
     elif [ "${cmmand}" = "in-modern" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncO}
     else
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${filIncO}
-      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${branch}/g" ${vBs}/${filIncO}
+      if [ -e "${vBs}/${filIncO}" ]; then
+        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"     ${vBs}/${filIncO}
+      fi
       ### Legacy method
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${octName}
       sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${branch}/g" ${vBs}/${octName}
@@ -246,16 +257,20 @@ octopus_install() {
     elif [ "${cmmand}" = "in-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncO}
     else
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${filIncO}
+      if [ -e "${vBs}/${filIncO}" ]; then
+        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"     ${vBs}/${filIncO}
+      fi
       ### Legacy method
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${octName}
     fi
 
     if [ ! -z "${dbip}" ] && [ "${cmmand}" = "in-cluster" ]; then
       if [ "${kind}" = "mstr" ] || [ "${kind}" = "wbhd" ]; then
-        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"   ${vBs}/${filIncO}
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
-        sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"     ${vBs}/${filIncO}
+        if [ -e "${vBs}/${filIncO}" ]; then
+          sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g" ${vBs}/${filIncO}
+          sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"           ${vBs}/${filIncO}
+          sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"   ${vBs}/${filIncO}
+        fi
       fi
     fi
 
@@ -273,8 +288,10 @@ barracuda_install() {
 
     sed -i "s/^127.0.1.1.*//g" /etc/hosts
 
-    sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${email}\"/g"          ${vBs}/${filIncB}
-    sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                 ${vBs}/${filIncB}
+    if [ -e "${vBs}/${filIncB}" ]; then
+      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${email}\"/g"        ${vBs}/${filIncB}
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${filIncB}
+    fi
     ### Legacy method
     sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${email}\"/g"          ${vBs}/${barName}
     sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                 ${vBs}/${barName}
@@ -282,21 +299,19 @@ barracuda_install() {
     if [ "${kind}" = "local" ]; then
       echo "127.0.1.1 aegir.local o1.sub.aegir.local \
         o2.sub.aegir.local o3.sub.aegir.local" >> /etc/hosts
-      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g"           ${vBs}/${filIncB}
-      ### Legacy variables
-      sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=YES/g"     ${vBs}/${filIncB}
-      sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"            ${vBs}/${filIncB}
+      if [ -e "${vBs}/${filIncB}" ]; then
+        sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g"         ${vBs}/${filIncB}
+      fi
       ### Legacy method
       sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g"           ${vBs}/${barName}
       ### Legacy variables
       sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=YES/g"     ${vBs}/${barName}
       sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"            ${vBs}/${barName}
     elif [ "${kind}" = "public" ] && [ ! -z "${fqdn}" ]; then
-      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"          ${vBs}/${filIncB}
-      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
-      ### Legacy variables
-      sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"      ${vBs}/${filIncB}
-      sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"           ${vBs}/${filIncB}
+      if [ -e "${vBs}/${filIncB}" ]; then
+        sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        ${vBs}/${filIncB}
+        sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
+      fi
       ### Legacy method
       sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"          ${vBs}/${barName}
       sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${barName}
@@ -309,36 +324,41 @@ barracuda_install() {
       && [ ! -z "${loip}" ] \
       && [ "${cmmand}" = "in-cluster" ]; then
       touch /root/.mstr.clstr.cnf
-      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=MSTR/g"            ${vBs}/${filIncB}
-      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
-      sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"     ${vBs}/${filIncB}
-      sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"             ${vBs}/${filIncB}
+      if [ -e "${vBs}/${filIncB}" ]; then
+        sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=MSTR/g"          ${vBs}/${filIncB}
+        sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
+        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"   ${vBs}/${filIncB}
+        sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"           ${vBs}/${filIncB}
+      fi
     elif [ "${kind}" = "dbhd" ] \
       && [ ! -z "${fqdn}" ] \
       && [ ! -z "${dbip}" ] \
       && [ ! -z "${loip}" ] \
       && [ "${cmmand}" = "in-cluster" ]; then
       touch /root/.dbhd.clstr.cnf
-      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=DBHD/g"            ${vBs}/${filIncB}
-      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
-      sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"     ${vBs}/${filIncB}
-      sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"             ${vBs}/${filIncB}
+      if [ -e "${vBs}/${filIncB}" ]; then
+        sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=DBHD/g"          ${vBs}/${filIncB}
+        sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
+        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"   ${vBs}/${filIncB}
+        sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"           ${vBs}/${filIncB}
+      fi
     elif [ "${kind}" = "wbhd" ] \
       && [ ! -z "${fqdn}" ] \
       && [ ! -z "${dbip}" ] \
       && [ ! -z "${loip}" ] \
       && [ "${cmmand}" = "in-cluster" ]; then
       touch /root/.wbhd.clstr.cnf
-      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=WBHD/g"            ${vBs}/${filIncB}
-      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
-      sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"     ${vBs}/${filIncB}
-      sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"             ${vBs}/${filIncB}
+      if [ -e "${vBs}/${filIncB}" ]; then
+        sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=WBHD/g"          ${vBs}/${filIncB}
+        sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
+        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"   ${vBs}/${filIncB}
+        sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"           ${vBs}/${filIncB}
+      fi
     else
-      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"          ${vBs}/${filIncB}
-      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
-      ### Legacy variables
-      sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"      ${vBs}/${filIncB}
-      sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"           ${vBs}/${filIncB}
+      if [ -e "${vBs}/${filIncB}" ]; then
+        sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        ${vBs}/${filIncB}
+        sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
+      fi
       ### Legacy method
       sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"          ${vBs}/${barName}
       sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${barName}
@@ -360,7 +380,9 @@ barracuda_install() {
       fi
     fi
 
-    if [ ! -z "${rkey}" ]; then
+    if [ ! -z "${rkey}" ] \
+      && [ -e "${vBs}/${filIncB}" ] \
+      && [ -e "${vBs}/${filIncO}" ]; then
       if [ "${rkey}" = "php-55" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.5/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.5/g"   ${vBs}/${filIncB}
@@ -396,7 +418,11 @@ barracuda_install() {
       else
         sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${rkey}\"/g"    ${vBs}/${filIncB}
       fi
+    fi
 
+    if [ ! -z "${rkey}" ] \
+      && [ -e "${vBs}/${barName}" ] \
+      && [ -e "${vBs}/${octName}" ]; then
       ### Legacy method
       if [ "${rkey}" = "php-55" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.5/g" ${vBs}/${barName}
@@ -440,8 +466,9 @@ barracuda_install() {
     elif [ "${cmmand}" = "in-modern" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncB}
     else
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${filIncB}
-      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${branch}/g" ${vBs}/${filIncB}
+      if [ -e "${vBs}/${filIncB}" ]; then
+        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"     ${vBs}/${filIncB}
+      fi
       ### Legacy method
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${barName}
       sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${branch}/g" ${vBs}/${barName}
@@ -454,7 +481,9 @@ barracuda_install() {
     elif [ "${cmmand}" = "in-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncB}
     else
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${filIncB}
+      if [ -e "${vBs}/${filIncB}" ]; then
+        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"     ${vBs}/${filIncB}
+      fi
       ### Legacy method
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${barName}
     fi

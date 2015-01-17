@@ -223,23 +223,31 @@ check_report() {
 
 up_mode() {
   if [ "${mcmode}" = "aegir" ]; then
-    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                     ${vBs}/${tocIncO}
+    if [ -e "${vBs}/${tocIncO}" ]; then
+      sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                   ${vBs}/${tocIncO}
+    fi
     ### Legacy method
     sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                     ${vBs}/${tocName}
     bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   elif [ "${mcmode}" = "platforms" ]; then
-    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"       ${vBs}/${tocIncO}
+    if [ -e "${vBs}/${tocIncO}" ]; then
+      sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"     ${vBs}/${tocIncO}
+    fi
     ### Legacy method
     sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"       ${vBs}/${tocName}
     bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   elif [ "${mcmode}" = "both" ]; then
-    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${vBs}/${tocIncO}
+    if [ -e "${vBs}/${tocIncO}" ]; then
+      sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                   ${vBs}/${tocIncO}
+    fi
     ### Legacy method
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${vBs}/${tocName}
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${octCnf}
-    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${vBs}/${tocIncO}
+    if [ -e "${vBs}/${tocIncO}" ]; then
+      sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"     ${vBs}/${tocIncO}
+    fi
     ### Legacy method
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${vBs}/${tocName}
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${octCnf}
@@ -254,14 +262,17 @@ up_mode() {
 up_one() {
   if [ -e "${vBs}/${octName}" ]; then
     cp -af ${vBs}/${octName}  ${vBs}/${tocName}
-    cp -af ${vBs}/${filIncO}  ${vBs}/${tocIncO}
+    if [ -e "${vBs}/${filIncO}" ]; then
+      cp -af ${vBs}/${filIncO}  ${vBs}/${tocIncO}
+    fi
     if [ "${cmmand}" = "up-head" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${tocIncO}
     elif [ "${cmmand}" = "up-modern" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${tocIncO}
     else
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${tocIncO}
-      sed -i "s/^_BRANCH_PRO.*/_BRANCH_PROVISION=${branch}/g"  ${vBs}/${tocIncO}
+      if [ -e "${vBs}/${tocIncO}" ]; then
+        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"     ${vBs}/${tocIncO}
+      fi
       ### Legacy method
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${tocName}
       sed -i "s/^_BRANCH_PRO.*/_BRANCH_PROVISION=${branch}/g"  ${vBs}/${tocName}
@@ -273,12 +284,16 @@ up_one() {
     elif [ "${cmmand}" = "up-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${tocIncO}
     else
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${tocIncO}
+      if [ -e "${vBs}/${tocIncO}" ]; then
+        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"     ${vBs}/${tocIncO}
+      fi
       ### Legacy method
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${tocName}
     fi
-    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${tocIncO}
-    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"       ${vBs}/${tocIncO}
+    if [ -e "${vBs}/${tocIncO}" ]; then
+      sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               ${vBs}/${tocIncO}
+      sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"     ${vBs}/${tocIncO}
+    fi
     sed -i "s/^_USER=o1/_USER=${octUsr}/g"                     ${vBs}/${tocName}
     ### Legacy method
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${tocName}
@@ -290,8 +305,10 @@ up_one() {
       if [ -e "/root/.debug.cnf" ]; then
         _DO_NOTHING=YES
       else
-        sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${vBs}/${tocIncO}
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${vBs}/${tocIncO}
+        if [ -e "${vBs}/${tocIncO}" ]; then
+          sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"  ${vBs}/${tocIncO}
+          sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g" ${vBs}/${tocIncO}
+        fi
         ### Legacy method
         sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${vBs}/${tocName}
         sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${vBs}/${tocName}
@@ -443,8 +460,12 @@ up_action_all() {
           echo
           echo "Starting the upgrade in silent mode now..."
           echo
-          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" ${vBs}/${tocIncO} &> /dev/null
-          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" ${vBs}/${octName} &> /dev/null
+          if [ -e "${vBs}/${tocIncO}" ]; then
+            sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"             ${vBs}/${tocIncO}
+          fi
+          if [ -e "${vBs}/${octName}" ]; then
+            sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"             ${vBs}/${octName}
+          fi
           up_one >>${_UP_LOG} 2>&1
           check_report
         else
@@ -493,8 +514,12 @@ up_action_one() {
         echo
         echo "Starting the upgrade in silent mode now..."
         echo
-        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" ${vBs}/${filIncO} &> /dev/null
-        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" ${vBs}/${octName} &> /dev/null
+        if [ -e "${vBs}/${filIncO}" ]; then
+          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"               ${vBs}/${filIncO}
+        fi
+        if [ -e "${vBs}/${octName}" ]; then
+          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"               ${vBs}/${octName}
+        fi
         up_one >>${_UP_LOG} 2>&1
         check_report
       else
