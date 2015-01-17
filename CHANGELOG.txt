@@ -1,4 +1,175 @@
 
+### Stable BOA-2.4.0 Release - Full Edition
+### Date: TBD
+
+  @=> Includes Aegir Hostmaster 2.x-head with improvements
+  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Drush 7.0.0-alpha8 customized for BOA
+
+# Release Notes:
+
+  This new BOA release includes 7 updated Aegir platforms, over 25 new features
+  and enhancements, 11 new software versions, over 26 important changes, plus
+  over 57 bug fixes, with most notable features and changes listed below:
+
+  @=> Added Support for latest Drupal 8 head
+  @=> Added Support for latest PHP 5.6
+  @=> BOA can auto-detect its fastest download mirror on install, upgrade etc.
+  @=> BOA Code Refactoring to make it modular and easier to read (in progress)
+  @=> BOA Skynet auto-updates can be turned off with _SKYNET_MODE=OFF
+  @=> Introducing Support for HHVM -- see docs/HHVM.txt for details.
+  @=> PHP 5.5 is used by default on new installs
+  @=> PHP-FPM (and HHVM) runs as a separate, very limited system user
+  @=> Removed Support for legacy PHP 5.2
+  @=> Sites Names Exceptions Keywords have chamged
+  @=> The Dev-Mode works only for site aliases, no longer for main site name
+
+  Please read further below for more details.
+
+# New Octopus platforms:
+
+# Updated Octopus platforms:
+
+  aGov 1.6 --------------------- https://drupal.org/project/agov
+  OpenAtrium 2.26 -------------- https://drupal.org/project/openatrium
+  OpenChurch 1.17-b1 ----------- https://drupal.org/project/openchurch
+  OpenChurch 2.1-b3 ------------ https://drupal.org/project/openchurch
+  OpenOutreach 1.14 ------------ https://drupal.org/project/openoutreach
+  OpenPublic 1.4 --------------- https://drupal.org/project/openpublic
+  Panopoly 1.15 ---------------- https://drupal.org/project/panopoly
+
+# New features and enhancements:
+
+  * Add backboa variables to configure full backup cycle and log verbosity.
+  * Add Backdrop CMS compatibility in global.inc (experimental)
+  * Add Drupal 8 compatibility in global.inc
+  * Add Drush Make Local - fixes #332
+  * Add safe_cache_form_clear Drush extension by default - fixes #568
+  * Allow to set _PHP_SINGLE_INSTALL on command line - on install and upgrade.
+  * Allow to use both platform specific and ALL keyword in _PLATFORMS_LIST.
+  * BOA auto-selects the fastest download mirror on install, upgrade and update.
+  * Detect critically low free RAM and forcefully restart services if needed.
+  * Detect OOM incidents and forcefully restart services if needed.
+  * Improve backboa with AWS connection testing.
+  * Install D8-beta with D8B keyword, and D8-dev with D8D keyword specified.
+  * Monitor and rotate PHP error logs if too big (over 1 GB).
+  * Monitor the number of master PHP-FPM processes and force restart if needed.
+  * New 'nodns' option to skip DNS and SMTP checks on the fly.
+  * PHP: Add HHVMinfo
+  * PHP: Add support for latest 5.6
+  * PHP: Allow to define version to install and use on command line - fixes #536
+  * PHP: Disable not used CLI versions if _PHP_SINGLE_INSTALL is defined.
+  * PHP: Disable not used FPM and CLI versions.
+  * PHP: HHVM experimental support - fixes #443
+  * Provide default value for composer_manager_vendor_dir - fixes #385
+  * Redis: Allow to configure remote IP via _REDIS_LISTEN_MODE /cluster support.
+  * Use cron scheduler fast mode (every 10 sec) if /root/.fast.cron.cnf exists.
+  * Use Drush Make Local for Hostmaster with download mirrors auto-detection.
+
+# Changes:
+
+  * Change required exceptions keywords to .temporary. and .testing.
+  * Dev mode detection and URLs protection - now works only for aliases.
+  * Do not display .cnf files contents if _DEBUG_MODE is not set to YES.
+  * Do not restart Redis daily if /root/.high_traffic.cnf exists - fixes #533
+  * Drush 7 is now used by default instead of Drush 6.
+  * Drush: Upgrade to mini-7-17-01-2015
+  * Force _TOMCAT_TO_JETTY=YES - fixes #570
+  * Limit status messages verbosity if _DEBUG_MODE is not set to YES
+  * Make it possible to opt-out from BOA Skynet auto-updates - fixes #557
+  * PHP: Always use by default version 5.5
+  * PHP: Disable legacy 5.2 version if installed.
+  * PHP: Ignore --with-curlwrappers defined in _PHP_EXTRA_CONF for 5.5 and 5.6
+  * PHP: Rebuild to remove --with-curlwrappers unless added in _PHP_EXTRA_CONF
+  * PHP: Remove no longer working custom config protection - see #559
+  * PHP: Tune FPM defaults for speed and RAM optimization.
+  * PHP: Use built-in Zend OPcache in 5.5
+  * PHP: Use built-in Zend OPcache in 5.6
+  * Redis Integration Module: Update to version mod-14-12-2014
+  * Reload system cron hourly.
+  * Remove deprecated RC4 from ssl_protocols.
+  * Remove the _O_CONTRIB_UP variable/feature.
+  * Split huge BARRACUDA script into lib includes.
+  * Switch to special limited system user also in PHP-FPM mode - fixes #551
+  * There is no need to update drupalgeddon every 5 minutes.
+  * Use provision_civicrm 6.x-2.x directly.
+  * Use separate versioning for Aegir extensions download URLs.
+
+# System upgrades:
+
+  * cURL 7.40.0 (if installed from sources)
+  * Git 2.2.1 (if installed from sources)
+  * MariaDB 5.5.41
+  * MariaDB Galera Cluster 10.0.15
+  * Nginx 1.7.9
+  * PHP 5.4.36
+  * PHP 5.5.20
+  * PHP 5.6.4
+  * PHP: ionCube loader 4.7.3
+  * Redis 2.8.19
+  * Ruby 2.2.0
+
+# Fixes:
+
+  * Add CONTRIBUTING.txt guidelines.
+  * Add in docs/HINTS.txt Helper locations to avoid 404 on legacy images paths.
+  * Add warning about vCloud Air incompatibility with Drupal.
+  * Allow slower DNS response.
+  * Avoid confusing EXIT: You must specify already installed PHP version.
+  * Backward compatibility with Drush 6.
+  * Block attempts to lookup /etc/passwd via web shell.
+  * Delete duplicity ghost pid file if older than 2 days.
+  * Do not confuse D7 with D8 or Backdrop CMS.
+  * Do not force cURL reinstall from packages - fixes #565
+  * Do not try to add platforms nodes if no new platform has been installed.
+  * Do not update backboa if duplicity is running.
+  * Document when to use /root/.fast.cron.cnf
+  * Drupal 8 requires read permissions in sites/all
+  * Drush 7 requires composer.
+  * Fix and Improve Squeeze to Wheezy upgrade procedure.
+  * Fix for $HOME detection if not set for some reason.
+  * Fix for Drush aliases protection.
+  * Fix for pdnsd install/update logic.
+  * Fix missing symlinks after broken openjdk-6 upgrade.
+  * Fix path to PHP-CLI if needed.
+  * Fix public IP auto-detection on AWS in Octopus.
+  * Fix the logic for TMPDIR set on the fly - fixes #552
+  * Fix: LANGUAGE (en_US.UTF-8) is not compatible with LC_ALL (). Disabling it.
+  * Force _THIS_DB_HOST=localhost on AWS.
+  * HHVM: Add /home/ to open_basedir so access to the .tmp works - fixes #569
+  * HHVM: Add workarounds for potential security issues - fixes #443
+  * Improve Aegir tasks scheduling and load spikes protection.
+  * Improve docs for backboa.
+  * Improve pdnsd configuration update by removing non-IP lines early enough.
+  * Improve procs monitor.
+  * Improve web wrapper.
+  * Increase inotify defaults to improve lsyncd support.
+  * Jetty: Detect if running as zombie and force restart if needed.
+  * Make sure that AcceptEnv is set in sshd_config.
+  * MariaDB patch is no longer needed.
+  * Monitor lsyncd and xinetd if installed and expected to run.
+  * PHP: Avoid version guessing for Octopus when _PHP_SINGLE_INSTALL is used.
+  * PHP: Make sure that _PHP_SINGLE_INSTALL takes precedence.
+  * PHP: OPcache configuration for Drupal 8 - fixes #419
+  * PHP: Re-install libmagickwand-dev to avoid broken extension build.
+  * PHP: The fallback version should be detected and not hardcoded.
+  * Prevent 'Could not change permissions' warnings with CiviCRM - fixes #523
+  * Remove known sensitive credentials from barracuda upgrade log.
+  * Run agents update on cluster nodes.
+  * Run single mirror check - fixes #565
+  * Skip auto-update for agents not compatible with older versions.
+  * Skip extra SQL connection test on AWS.
+  * Standardize platforms version and naming convention.
+  * Support for _NGINX_NAXSI is experimental (don't use)
+  * Symlinks directories expected by Drush/Aegir in D8 root.
+  * Sync defaults for hosting_advanced_cron_default_interval
+  * Tomcat is not used anymore - see #570
+  * Use consistent stderr 2 stdout redirects in grep checks.
+  * Use correct _THIS_DB_HOST on master instance.
+  * Use correct pid file in procs monitor.
+  * Use mirror to download complete vendor directory for Drush 7.
+
+
 ### Stable BOA-2.3.8 Release - Full Edition
 ### Date: Sat Nov 29 09:58:45 SGT 2014
 ### Includes Aegir 2.x-head with improvements
