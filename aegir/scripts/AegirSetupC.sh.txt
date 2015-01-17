@@ -807,6 +807,11 @@ commerce_7_1_install() {
               remove_default_core_seven_profiles
               cd ${_SHRD_PRPATH}
               patch -p1 < ${pthPch}/${_REAL_PRNAME}.patch &> /dev/null
+              if [ "${_COMMERCE1}" = "1.32" ]; then
+                cd ${_SHRD_PRPATH}/modules/
+                rm -f -r commerce
+                get_dev_contrib "commerce-7.x-1.11.tar.gz"
+              fi
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
