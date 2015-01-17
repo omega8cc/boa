@@ -94,6 +94,7 @@ octCnf="/root/.${_USER}.octopus.cnf"
 bldPth="/opt/tmp/boa"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncO="octopus.sh.cnf"
+gCb="git clone --branch"
 gitHub="git://github.com/omega8cc"
 libFnc="${bldPth}/lib/functions"
 tocIncO="${filIncO}.${_USER}"
@@ -1739,8 +1740,7 @@ chmod -R 777 /opt/tmp &> /dev/null
 cd /opt/tmp
 rm -f -r ${bldPth}
 if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-  git clone --branch ${_BRANCH_BOA} \
-    ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
+  ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
 else
   curl ${crlGet} "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"

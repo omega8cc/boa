@@ -149,6 +149,7 @@ SHELL=/bin/bash
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 #
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+gCb="git clone --branch"
 pthPch="/opt/tmp/boa/aegir/patches"
 urlDrp="http://ftp.drupal.org/files/projects"
 urlPrt="https://drupal.org/project"

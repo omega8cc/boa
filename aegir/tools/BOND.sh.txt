@@ -163,11 +163,12 @@ _PHP56_VRN=5.6.4
 ###
 ### Helper variables
 ###
-crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-gitHub="git://github.com/omega8cc"
-vBs="/var/backups"
 bldPth="/opt/tmp/boa"
+crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+gCb="git clone --branch"
+gitHub="git://github.com/omega8cc"
 libFnc="${bldPth}/lib/functions"
+vBs="/var/backups"
 
 ###---### Functions
 #
@@ -1259,8 +1260,7 @@ chmod -R 777 /opt/tmp &> /dev/null
 cd /opt/tmp
 rm -f -r /opt/tmp/boa
 if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-  git clone --branch ${_BRANCH_BOA} \
-    ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
+  ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
 else
   curl ${crlGet} "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"

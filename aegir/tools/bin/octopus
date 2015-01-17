@@ -12,11 +12,12 @@ stable="BOA-2.3.8"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
+bldPth="/opt/tmp/boa"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncB="barracuda.sh.cnf"
 filIncO="octopus.sh.cnf"
+gCb="git clone --branch"
 octName="OCTOPUS.sh.txt"
-bldPth="/opt/tmp/boa"
 pthIncB="lib/settings/${filIncB}"
 pthIncO="lib/settings/${filIncO}"
 rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
@@ -347,8 +348,7 @@ up_one() {
           rm -f -r ${User}/.drush/{sys,xts,usr}
           rm -f -r ${User}/.drush/{provision,drush_make}
           mkdir -p ${User}/.drush/{sys,xts,usr}
-          git clone --branch ${devel} \
-            git://github.com/omega8cc/provision.git \
+          ${gCb} ${devel} git://github.com/omega8cc/provision.git \
             ${User}/.drush/sys/provision &> /dev/null
           chown -R ${octUsr}:users ${User}/.drush/sys
         fi

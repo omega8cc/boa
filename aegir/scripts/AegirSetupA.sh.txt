@@ -1205,7 +1205,7 @@ else
         mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
         rm -f -r ${_ROOT}/.drush/provision
         rm -f -r ${_ROOT}/.drush/sys/provision
-        git clone --branch ${_BRANCH_PRN} \
+        ${gCb} ${_BRANCH_PRN} \
           git://github.com/omega8cc/provision.git \
           ${_ROOT}/.drush/sys/provision &> /dev/null
         sed -i "s/files.aegir.cc/${_USE_MIR}/g" \

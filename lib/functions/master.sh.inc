@@ -249,7 +249,7 @@ upgrade_aegir_master() {
       rm -f -r /var/aegir/.drush/{sys,xts,usr}
       rm -f -r /var/aegir/.drush/{provision,drush_make}
       mkdir -p /var/aegir/.drush/{sys,xts,usr}
-      git clone --branch ${_BRANCH_PRN} ${gitHub}/provision.git \
+      ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
         /var/aegir/.drush/sys/provision &> /dev/null
       sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
         /var/aegir/.drush/sys/provision/aegir.make &> /dev/null
