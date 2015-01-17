@@ -12,7 +12,7 @@
   and enhancements, 11 new software versions, over 26 important changes, plus
   over 57 bug fixes, with most notable features and changes listed below:
 
-  @=> Added Support for latest Drupal 8 head
+  @=> Added Support for latest Drupal 8.0.x head
   @=> Added Support for latest PHP 5.6
   @=> BOA can auto-detect its fastest download mirror on install, upgrade etc.
   @=> BOA Code Refactoring to make it modular and easier to read (in progress)
