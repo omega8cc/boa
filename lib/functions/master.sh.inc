@@ -203,32 +203,33 @@ hostmaster_frontend_dbpass_sync() {
 # Download for Drush Make Local build.
 download_for_dmlb() {
   mL="/opt/tmp/make_local"
-  if [ ! -d "${mL}" ]; then
+  if [ ! -e "${mL}/hosting/hosting.info" ]; then
+    rm -f -r ${mL}
     mkdir -p ${mL}
+    cd ${mL}
+    get_dev_stc "hosting.tar.gz"
+    get_dev_stc "eldir.tar.gz"
+    get_dev_stc "views-6.x-3.0.tar.gz"
+    get_dev_stc "views_bulk_operations-6.x-1.16.tar.gz"
+    get_dev_stc "admin_menu.tar.gz"
+    get_dev_stc "install_profile_api.tar.gz"
+    get_dev_stc "jquery_ui.tar.gz"
+    get_dev_stc "jquery_update.tar.gz"
+    get_dev_stc "modalframe.tar.gz"
+    get_dev_stc "openidadmin.tar.gz"
+    get_dev_stc "css_emimage.tar.gz"
+    get_dev_stc "ctools.tar.gz"
+    get_dev_stc "features_extra.tar.gz"
+    get_dev_stc "features.tar.gz"
+    get_dev_stc "hosting_backup_queue.tar.gz"
+    get_dev_stc "hosting_platform_pathauto.tar.gz"
+    get_dev_stc "hosting_task_gc.tar.gz"
+    get_dev_stc "protect_critical_users.tar.gz"
+    get_dev_stc "revision_deletion.tar.gz"
+    get_dev_stc "strongarm.tar.gz"
+    get_dev_stc "userprotect.tar.gz"
+    get_dev_stc "jquery-ui-1.7.3.zip"
   fi
-  cd ${mL}
-  get_dev_stc "hosting.tar.gz"
-  get_dev_stc "eldir.tar.gz"
-  get_dev_stc "views-6.x-3.0.tar.gz"
-  get_dev_stc "views_bulk_operations-6.x-1.16.tar.gz"
-  get_dev_stc "admin_menu.tar.gz"
-  get_dev_stc "install_profile_api.tar.gz"
-  get_dev_stc "jquery_ui.tar.gz"
-  get_dev_stc "jquery_update.tar.gz"
-  get_dev_stc "modalframe.tar.gz"
-  get_dev_stc "openidadmin.tar.gz"
-  get_dev_stc "css_emimage.tar.gz"
-  get_dev_stc "ctools.tar.gz"
-  get_dev_stc "features_extra.tar.gz"
-  get_dev_stc "features.tar.gz"
-  get_dev_stc "hosting_backup_queue.tar.gz"
-  get_dev_stc "hosting_platform_pathauto.tar.gz"
-  get_dev_stc "hosting_task_gc.tar.gz"
-  get_dev_stc "protect_critical_users.tar.gz"
-  get_dev_stc "revision_deletion.tar.gz"
-  get_dev_stc "strongarm.tar.gz"
-  get_dev_stc "userprotect.tar.gz"
-  get_dev_stc "jquery-ui-1.7.3.zip"
   find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null
   find ${mL} -type f -exec chmod 0644 {} \; &> /dev/null
   chown -R root:root ${mL}
