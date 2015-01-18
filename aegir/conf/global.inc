@@ -744,7 +744,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     else {
       $test_sess_name = 'SESS'. md5($cookie_domain);
     }
-    if (!isset($_COOKIE[$test_sess_name])) {
+    if (!isset($_COOKIE[$test_sess_name]) && !$drupal_eight) {
       if ($all_ini['speed_booster_anon_cache_ttl'] && preg_match("/^[0-9]{2,}$/", $all_ini['speed_booster_anon_cache_ttl'])) {
         if ($all_ini['speed_booster_anon_cache_ttl'] > 10) {
           $expire_in_seconds = $all_ini['speed_booster_anon_cache_ttl'];
@@ -752,7 +752,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
         }
       }
     }
-    if (!isset($_COOKIE[$test_sess_name])) {
+    if (!isset($_COOKIE[$test_sess_name]) && !$drupal_eight) {
       if (preg_match("/\/(?:node\/[0-9]+\/edit|node\/add)/", $_SERVER['REQUEST_URI'])) {
         if (!$all_ini['allow_anon_node_add']) {
           $deny_anon = TRUE;
