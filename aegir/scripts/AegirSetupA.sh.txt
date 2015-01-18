@@ -1202,78 +1202,72 @@ if [ "$_LOCAL_STATUS" = "INIT" ]; then
   chown root:root /data/u &> /dev/null
   msg "${_STATUS} A: Aegir Satellite Instance installed"
 else
-  echo " "
-  if prompt_yes_no "Do you want to upgrade this Aegir Satellite Instance?"; then
-    true
-    if [ "${_PLATFORMS_ONLY}" = "YES" ]; then
-      msg "${_STATUS} A: Aegir Satellite Instance upgrade skipped"
-    else
-      if [ ! -d "${_ROOT}/.drush/sys/provision/http" ]; then
-        mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
-        rm -f -r ${_ROOT}/.drush/provision
-        rm -f -r ${_ROOT}/.drush/sys/provision
-        ${gCb} ${_BRANCH_PRN} \
-          git://github.com/omega8cc/provision.git \
-          ${_ROOT}/.drush/sys/provision &> /dev/null
-        sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
-          ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
-      fi
-      rm -f -r ${_ROOT}/.drush/drush_make
-      rm -f -r ${_ROOT}/.drush/sys/drush_make
-      hostmaster_frontend_dbpass_sync
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "${_STATUS} A: Switching user and running AegirSetupB..."
-      fi
-      rm -f /opt/tmp/testecho*
-      if [ ! -e "/root/.upstart.cnf" ]; then
-        service cron stop &> /dev/null
-      fi
-      _THIS_HM_ROOT=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
-        | grep "root'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
-      _THIS_HM_SITE=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
-        | grep "site_path'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
-      _U_HD="${_ROOT}/.drush"
-      chattr -i ${_U_HD}/php.ini &> /dev/null
-      chown -R ${_USER}:${_USRG} ${_ROOT}/.drush
-      chown -R ${_USER}:${_USRG} ${_ROOT}/backups
-      chown -R ${_USER}:${_USRG} ${_ROOT}/clients
-      chown -R ${_USER}:${_USRG} ${_ROOT}/config
-      chown -R ${_USER}:${_USRG} ${_ROOT}/tools
-      chown -R ${_USER} ${_THIS_HM_ROOT}
-      chown -R ${_USER}:${_WEBG} $_THIS_HM_SITE/files
-      chmod -R 02775 $_THIS_HM_SITE/files
-      chown root:${_USRG} /data/u &> /dev/null
-      chmod 0771 /data/u &> /dev/null
-      su -s /bin/bash - ${_USER} -c "/bin/bash AegirSetupB.sh.txt"
-      if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ]; then
-        msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
-        msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-        touch /opt/tmp/status-AegirSetupA-FAIL
-        clean_pid_exit
-      else
-        chattr +i ${_U_HD}/php.ini &> /dev/null
-        mkdir -p ${_ROOT}/backups/system/old_hostmaster
-        chmod 700 ${_ROOT}/backups/system/old_hostmaster
-        chmod 700 ${_ROOT}/backups/system
-        mv -f ${_ROOT}/backups/*host8* \
-          ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
-        mv -f ${_ROOT}/backups/*o8.io* \
-          ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
-        chmod 600 ${_ROOT}/backups/system/old_hostmaster/* &> /dev/null
-        hostmaster_frontend_dbpass_sync
-      fi
-      chmod 0700 /data/u &> /dev/null
-      chown root:root /data/u &> /dev/null
-      msg "${_STATUS} A: Aegir Satellite Instance upgrade completed"
-    fi
+  if [ "${_PLATFORMS_ONLY}" = "YES" ]; then
+    msg "${_STATUS} A: Satellite Instance Hostmaster upgrade skipped"
   else
-    msg "${_STATUS} A: Aegir Satellite Instance not upgraded this time"
+    if [ ! -d "${_ROOT}/.drush/sys/provision/http" ]; then
+      mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
+      rm -f -r ${_ROOT}/.drush/provision
+      rm -f -r ${_ROOT}/.drush/sys/provision
+      ${gCb} ${_BRANCH_PRN} \
+        git://github.com/omega8cc/provision.git \
+        ${_ROOT}/.drush/sys/provision &> /dev/null
+      sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
+        ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
+    fi
+    rm -f -r ${_ROOT}/.drush/drush_make
+    rm -f -r ${_ROOT}/.drush/sys/drush_make
+    hostmaster_frontend_dbpass_sync
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "${_STATUS} A: Switching user and running AegirSetupB..."
+    fi
+    rm -f /opt/tmp/testecho*
+    if [ ! -e "/root/.upstart.cnf" ]; then
+      service cron stop &> /dev/null
+    fi
+    _THIS_HM_ROOT=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
+      | grep "root'" \
+      | cut -d: -f2 \
+      | awk '{ print $3}' \
+      | sed "s/[\,']//g" 2>&1)
+    _THIS_HM_SITE=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
+      | grep "site_path'" \
+      | cut -d: -f2 \
+      | awk '{ print $3}' \
+      | sed "s/[\,']//g" 2>&1)
+    _U_HD="${_ROOT}/.drush"
+    chattr -i ${_U_HD}/php.ini &> /dev/null
+    chown -R ${_USER}:${_USRG} ${_ROOT}/.drush
+    chown -R ${_USER}:${_USRG} ${_ROOT}/backups
+    chown -R ${_USER}:${_USRG} ${_ROOT}/clients
+    chown -R ${_USER}:${_USRG} ${_ROOT}/config
+    chown -R ${_USER}:${_USRG} ${_ROOT}/tools
+    chown -R ${_USER} ${_THIS_HM_ROOT}
+    chown -R ${_USER}:${_WEBG} $_THIS_HM_SITE/files
+    chmod -R 02775 $_THIS_HM_SITE/files
+    chown root:${_USRG} /data/u &> /dev/null
+    chmod 0771 /data/u &> /dev/null
+    su -s /bin/bash - ${_USER} -c "/bin/bash AegirSetupB.sh.txt"
+    if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ]; then
+      msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
+      msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+      touch /opt/tmp/status-AegirSetupA-FAIL
+      clean_pid_exit
+    else
+      chattr +i ${_U_HD}/php.ini &> /dev/null
+      mkdir -p ${_ROOT}/backups/system/old_hostmaster
+      chmod 700 ${_ROOT}/backups/system/old_hostmaster
+      chmod 700 ${_ROOT}/backups/system
+      mv -f ${_ROOT}/backups/*host8* \
+        ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
+      mv -f ${_ROOT}/backups/*o8.io* \
+        ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
+      chmod 600 ${_ROOT}/backups/system/old_hostmaster/* &> /dev/null
+      hostmaster_frontend_dbpass_sync
+    fi
+    chmod 0700 /data/u &> /dev/null
+    chown root:root /data/u &> /dev/null
+    msg "${_STATUS} A: Aegir Satellite Instance upgrade completed"
   fi
 fi
 
