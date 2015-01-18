@@ -9,10 +9,10 @@
 # Release Notes:
 
   This new BOA release includes 8 updated Aegir platforms, over 27 new features
-  and enhancements, 11 new software versions, over 30 important changes, plus
-  over 73 bug fixes, with most notable features and changes listed below:
+  and enhancements, 11 new software versions, over 31 important changes, plus
+  over 78 bug fixes, with most notable features and changes listed below:
 
-  @=> Added Support for latest Drupal 8.0.x head
+  @=> Added Support for latest Drupal 8.0.0-dev
   @=> Added Support for latest PHP 5.6
   @=> BOA can auto-detect its fastest download mirror on install, upgrade etc.
   @=> BOA Code Refactoring to make it modular and easier to read (in progress)
@@ -100,6 +100,8 @@
   * Use 86400 as a default cron_interval to sync with Drupal default.
   * Use provision_civicrm 6.x-2.x directly.
   * Use separate versioning for Aegir extensions download URLs.
+  * Run built-in registry-rebuild on Verify only if empty ctrl file
+    sites/all/modules/registry-rebuild.ini exists.
 
 # System upgrades:
 
@@ -120,12 +122,14 @@
   * Add CONTRIBUTING.txt guidelines.
   * Add in docs/HINTS.txt Helper locations to avoid 404 on legacy images paths.
   * Add warning about vCloud Air incompatibility with Drupal.
+  * Aliases are wiped out after site rename - fixes #542
   * Allow slower DNS response.
   * Avoid broken install on D8 core where sites/all doesn't exist by default.
   * Avoid confusing EXIT: You must specify already installed PHP version.
   * Avoid sed warnings in old stable and legacy modes.
   * Backward compatibility with Drush 6.
   * Block attempts to lookup /etc/passwd via web shell.
+  * Compare $new_uri with d()->name and not d()->uri in the Site Rename Check.
   * Delete duplicity ghost pid file if older than 2 days.
   * Do not confuse D7 with D8 or Backdrop CMS.
   * Do not force cURL reinstall from packages - fixes #565
@@ -156,13 +160,16 @@
   * Improve procs monitor.
   * Improve web wrapper.
   * Increase inotify defaults to improve lsyncd support.
+  * Issue #2372653: Add --no-autocommit when dumping MySQL tables.
   * Jetty: Detect if running as zombie and force restart if needed.
   * Make sure that AcceptEnv is set in sshd_config.
   * Make sure to never run cron on just cloned site.
   * MariaDB patch is no longer needed.
   * Monitor lsyncd and xinetd if installed and expected to run.
+  * Nginx: Add missing variables in subdirectory config template.
   * Nginx: Fix for D8-specific /cron/ location regex.
   * Nginx: Force clean URLs for Drupal 8.
+  * Nginx: Helper locations to avoid 404 on legacy images paths (subdir only)
   * Nginx: Hide X-Drupal-Cache-Tags header.
   * PHP: Avoid version guessing for Octopus when _PHP_SINGLE_INSTALL is used.
   * PHP: Make sure that _PHP_SINGLE_INSTALL takes precedence.
