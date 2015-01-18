@@ -406,20 +406,23 @@ find_fast_mirror() {
   if [ -x "${ffMirr}" ]; then
     ffList="${vBs}/boa-mirrors.txt"
     mkdir -p ${vBs}
-    echo "jp.files.aegir.cc"  > ${ffList}
-    echo "nl.files.aegir.cc" >> ${ffList}
-    echo "uk.files.aegir.cc" >> ${ffList}
-    echo "us.files.aegir.cc" >> ${ffList}
+    if [ ! -e "${ffList}" ]; then
+      echo "jp.files.aegir.cc"  > ${ffList}
+      echo "nl.files.aegir.cc" >> ${ffList}
+      echo "uk.files.aegir.cc" >> ${ffList}
+      echo "us.files.aegir.cc" >> ${ffList}
+    fi
     if [ -e "${ffList}" ]; then
       _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
       _USE_MIR="${_CHECK_MIRROR}"
+      [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
     else
       _USE_MIR="files.aegir.cc"
     fi
   else
     _USE_MIR="files.aegir.cc"
   fi
-  if ! netcat -w 5 -z ${_USE_MIR} 80 ; then
+  if ! netcat -w 10 -z "${_USE_MIR}" 80; then
     echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
     _USE_MIR="files.aegir.cc"
   fi
