@@ -1203,7 +1203,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ]; then
   msg "${_STATUS} A: Aegir Satellite Instance installed"
 else
   echo " "
-  if prompt_yes_no "Do you want to upgrade this Aegir Satellite Instance?" ; then
+  if prompt_yes_no "Do you want to upgrade this Aegir Satellite Instance?"; then
     true
     if [ "${_PLATFORMS_ONLY}" = "YES" ]; then
       msg "${_STATUS} A: Aegir Satellite Instance upgrade skipped"
@@ -1375,7 +1375,7 @@ else
     _DIST_INSTALL=NO
   else
     echo " "
-    if prompt_yes_no "Do you want to install some latest, ready to use platforms?" ; then
+    if prompt_yes_no "Do you want to install some ready to use platforms?"; then
       true
       _DIST_INSTALL=YES
       if [ ! -e "/root/.upstart.cnf" ]; then
