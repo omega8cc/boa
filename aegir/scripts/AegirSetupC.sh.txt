@@ -174,17 +174,16 @@ prompt_yes_no() {
 if [ "${_AUTOPILOT}" = "YES" ]; then
   return 0
 else
+  echo " "
   while true; do
     printf "$* [Y/n] "
     read answer
     if [ -z "${answer}" ]; then
       return 0
-      echo " "
     fi
     case ${answer} in
       [Yy]|[Yy][Ee][Ss])
         return 0
-        echo " "
         ;;
       [Nn]|[Nn][Oo])
         return 1
