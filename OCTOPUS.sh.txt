@@ -61,7 +61,7 @@ _CLIENT_CORES=8
 ###
 ### Variables
 ###
-_D8_DEV_COMMIT=8x_94efde60
+_D8_DEV_COMMIT=8x_18b3d4af
 _DRUSH_VERSION=mini-7-17-01-2015
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _PLATFORMS_ONLY=NO
