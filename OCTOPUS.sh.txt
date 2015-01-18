@@ -1992,12 +1992,6 @@ EOF
     echo " "
   fi
 fi
-if prompt_yes_no "Do you want to proceed with ${modeDetect}?" ; then
-  true
-else
-  echo "OK, ${modeDetect} aborted by you"
-  clean_pid_exit
-fi
 
 _MY_EMAIL=${_MY_EMAIL//\@/\\\@}
 _RAW_CLIENT_EMAIL="${_CLIENT_EMAIL}"
