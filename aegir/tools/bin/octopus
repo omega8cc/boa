@@ -351,6 +351,7 @@ up_one() {
           ${gCb} ${devel} git://github.com/omega8cc/provision.git \
             ${User}/.drush/sys/provision &> /dev/null
           chown -R ${octUsr}:users ${User}/.drush/sys
+          up_mode
         fi
       fi
       if [ -e "${User}/log/cores.txt" ] \
