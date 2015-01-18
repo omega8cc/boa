@@ -171,6 +171,7 @@ prompt_yes_no() {
 if [ "${_AUTOPILOT}" = "YES" ]; then
   return 0
 else
+  echo " "
   while true; do
     printf "$* [Y/n] "
     read answer
@@ -734,7 +735,6 @@ agov_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "AGV" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_AGOV - ${urlPrt}/agov" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -787,7 +787,6 @@ commerce_7_1_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "DCE" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_COMMERCE1 - http://drupalcommerce.org" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -846,7 +845,6 @@ commerce_7_2_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "CME" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_COMMERCE2 - http://drupalcommerce.org" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -899,7 +897,6 @@ commons_6_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "DCS" ]]; then
       if [ ! -d "${_OCTO_PLPATH}/modules/path_alias_cache" ]; then
-        echo " "
         if prompt_yes_no "$_F_COMMONS2 - http://acquia.com/drupalcommons" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -966,7 +963,6 @@ commons_7_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "CS7" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_COMMONS3 - http://acquia.com/drupalcommons" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1019,7 +1015,6 @@ drupal6_install() {
     || [[ "${_PLATFORMS_LIST}" =~ "D6P" ]]; then
     pthPfw="pressflow-${_SMALLCORE6}-prod/modules/path_alias_cache"
     if [ ! -d "${_ROOT}/distro/${_THIS_CORE}/${pthPfw}" ]; then
-    echo " "
       if prompt_yes_no "$_F_DRUPAL6 - http://pressflow.org" ; then
         true
         ###---### Drupal 6 Pressflow Development
@@ -1047,7 +1042,6 @@ drupal6_install() {
           init_this_distro_root
           msg "DISTRO: $_F_DRUPAL6_D installed"
           _RUN_VERIFY=YES
-          echo " "
         fi
         ###---### Drupal 6 Pressflow Staging
         #
@@ -1074,7 +1068,6 @@ drupal6_install() {
           init_this_distro_root
           msg "DISTRO: $_F_DRUPAL6_S installed"
           _RUN_VERIFY=YES
-          echo " "
         fi
         ###---### Drupal 6 Pressflow Production
         #
@@ -1118,7 +1111,6 @@ drupal7_install() {
     || [[ "${_PLATFORMS_LIST}" =~ "D7S" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "D7P" ]]; then
     if [ ! -d "${_ROOT}/distro/${_THIS_CORE}/${_DRUPAL7P}" ]; then
-      echo " "
       if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/drupal-7.34" ; then
         true
         ###---### Drupal 7 Development
@@ -1136,7 +1128,6 @@ drupal7_install() {
           create_drupal7_basic
           msg "DISTRO: $_F_DRUPAL7_D installed"
           _RUN_VERIFY=YES
-          echo " "
         fi
         ###---### Drupal 7 Staging
         #
@@ -1153,7 +1144,6 @@ drupal7_install() {
           create_drupal7_basic
           msg "DISTRO: $_F_DRUPAL7_S installed"
           _RUN_VERIFY=YES
-          echo " "
         fi
         ###---### Drupal 7 Production
         #
@@ -1190,7 +1180,6 @@ drupal8_install() {
   if [ "${_D_8_ALLOW}" = "YES" ]; then
     if [[ "${_PLATFORMS_LIST}" =~ "D8B" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_DRUPAL8 - http://drupal.org" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1225,7 +1214,6 @@ dr8_dev_install() {
   if [ "${_D_8_ALLOW}" = "YES" ]; then
     if [[ "${_PLATFORMS_LIST}" =~ "D8D" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_D8_DEV_LABEL - http://drupal.org" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1262,7 +1250,6 @@ erpal_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "ERP" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_ERPAL - ${urlPrt}/erpal" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1317,7 +1304,6 @@ fserver_install() {
   if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "FSR" ]]; then
     if [ ! -d "${_OCTO_PLPATH}/modules/path_alias_cache" ]; then
-      echo " "
       if prompt_yes_no "$_F_FSERVER - http://bit.ly/fservermore" ; then
         true
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1375,7 +1361,6 @@ guardr_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "GDR" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_GUARDR - ${urlPrt}/guardr" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1427,7 +1412,6 @@ openacademy_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OAY" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_OPENACADEMY - ${urlPrt}/openacademy" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1476,7 +1460,6 @@ openatrium7_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OA7" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_OPENATRIUM7 - http://openatrium.com" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1527,7 +1510,6 @@ openblog_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OBG" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_OPENBLOG - ${urlPrt}/openblog" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1576,7 +1558,6 @@ openchurch1_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OCH" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_OPENCHURCH1 - http://openchurchsite.com" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1626,7 +1607,6 @@ openchurch2_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "CH2" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_OPENCHURCH2 - http://openchurchsite.com" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1676,7 +1656,6 @@ opendeals_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "ODS" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_OPENDEALS - http://opendealsapp.com" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1725,7 +1704,6 @@ openoutreach_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OOH" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_OPENOUTREACH - http://openoutreach.org" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1774,7 +1752,6 @@ openpublic_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OPC" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_OPENPUBLIC - http://openpublicapp.com" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1823,7 +1800,6 @@ openscholar_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OSR" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_OPENSCHOLAR - http://theopenscholar.org" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1880,7 +1856,6 @@ panopoly_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "PPY" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_PANOPOLY - ${urlPrt}/panopoly" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1943,7 +1918,6 @@ recruiter_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "RER" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_RECRUITER - ${urlPrt}/recruiter" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1999,7 +1973,6 @@ restaurant_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "RST" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_RESTAURANT - ${urlPrt}/restaurant" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2050,7 +2023,6 @@ ubercart6_install() {
   if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "UCT" ]]; then
     if [ ! -d "${_OCTO_PLPATH}/modules/path_alias_cache" ]; then
-      echo " "
       if prompt_yes_no "$_F_UBERCART6 - http://ubercart.org" ; then
         true
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2129,7 +2101,6 @@ ubercart7_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "UC7" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_UBERCART7 - http://ubercart.org" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2202,7 +2173,6 @@ ubercart7_testing_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "UC7" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        echo " "
         if prompt_yes_no "$_F_UBER_CART_TESTING - http://ubercart.org" ; then
           true
           if [ "${_DEBUG_MODE}" = "YES" ]; then
