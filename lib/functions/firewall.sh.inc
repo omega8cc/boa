@@ -108,7 +108,7 @@ csf_install() {
     fi
     mrun "service ssh restart" &> /dev/null
     if [ "$_CSF_MODE" = "install" ]; then
-      msg "INFO: csf/lfd firewall installation completed"
+      msg "INFO: csf/lfd firewall installed"
     else
       msg "INFO: csf/lfd firewall upgrade completed"
     fi

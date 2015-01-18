@@ -50,7 +50,7 @@ if_install_chive() {
         sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"            $_CHIVE_VHOST
         sed -i "s/chive_name/chive.${_THIS_FRONT} ${_THISHTIP}/g"  $_CHIVE_VHOST
         touch ${pthLog}/chive-${_CHIVE_VRN}.fix-dns-vhost-wildcard.log
-        msg "INFO: Chive Manager installation completed"
+        msg "INFO: Chive Manager installed"
       else
         msg "INFO: Chive Manager installation skipped"
       fi
@@ -91,7 +91,7 @@ if_install_sqlbuddy() {
         sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_SQLBUDDY_VHOST
         sed -i "s/buddy_name/sqlbuddy.${_THIS_FRONT}/g"   $_SQLBUDDY_VHOST
         touch ${pthLog}/sqlbuddy.fix-dns-vhost-wildcard.log
-        msg "INFO: SQL Buddy Manager installation completed"
+        msg "INFO: SQL Buddy Manager installed"
       else
         msg "INFO: SQL Buddy Manager installation skipped"
       fi
@@ -175,7 +175,7 @@ if_install_collectd() {
           sed -i "s/cgp_name/cgp.${_THIS_FRONT}/g"           $_CGP_VHOST
           st_runner "update-rc.d collectd defaults" &> /dev/null
           touch ${pthLog}/cgp-${_CGP_VRN}.fix-dns-vhost-wildcard.log
-          msg "INFO: Collectd Graph Panel installation completed"
+          msg "INFO: Collectd Graph Panel installed"
         else
           msg "INFO: Collectd Graph Panel installation skipped"
         fi
@@ -236,7 +236,7 @@ if_install_hhvm() {
           cat /var/opt/hhvm.gpg.key | apt-key add - &> /dev/null
           st_runner "apt-get update -y --force-yes" &> /dev/null
           st_runner "apt-get install hhvm ${forCer}" 2> /dev/null
-          msg "INFO: HHVM Engine installation completed"
+          msg "INFO: HHVM Engine installed"
         else
           msg "INFO: HHVM Engine installation skipped"
         fi
@@ -273,7 +273,7 @@ if_install_webmin() {
                              libxml-simple-perl \
                              libcrypt-ssleay-perl" 2> /dev/null
         update-rc.d webmin defaults &> /dev/null
-        msg "INFO: Webmin Control Panel installation completed"
+        msg "INFO: Webmin Control Panel installed"
       else
         msg "INFO: Webmin Control Panel installation skipped"
       fi
@@ -310,7 +310,7 @@ if_install_bind() {
         fi
         sed -i "s/.*bind.*//g" /etc/sudoers &> /dev/null
         sed -i "/^$/d" /etc/sudoers &> /dev/null
-        msg "INFO: Bind9 DNS Server installation completed"
+        msg "INFO: Bind9 DNS Server installed"
       else
         msg "INFO: Bind9 DNS Server installation skipped"
       fi

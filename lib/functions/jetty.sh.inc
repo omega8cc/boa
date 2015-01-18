@@ -293,7 +293,7 @@ if_install_jetty() {
         mrun "service jetty8 start" &> /dev/null
         echo ${_JETTY_8_VRN} > $_JETTY_CTRL
         echo ${_SOLR_3_VRN}  > $_SOLR_CTRL
-        msg "INFO: MultiCore Apache Solr 3 with Jetty 8 installation completed"
+        msg "INFO: MultiCore Apache Solr 3 with Jetty 8 installed"
       else
         msg "INFO: MultiCore Apache Solr 3 with Jetty 8 installation skipped"
       fi
@@ -414,7 +414,7 @@ if_install_jetty() {
         mrun "service jetty7 start" &> /dev/null
         echo ${_JETTY_7_VRN} > $_JETTY_CTRL
         echo ${_SOLR_1_VRN}  > $_SOLR_CTRL
-        msg "INFO: MultiCore Apache Solr 1 with Jetty 7 installation completed"
+        msg "INFO: MultiCore Apache Solr 1 with Jetty 7 installed"
       else
         msg "INFO: MultiCore Apache Solr 1 with Jetty 7 installation skipped"
       fi

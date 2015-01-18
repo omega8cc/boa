@@ -1200,7 +1200,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ]; then
   chattr +i ${_U_HD}/php.ini &> /dev/null
   chmod 0700 /data/u &> /dev/null
   chown root:root /data/u &> /dev/null
-  msg "${_STATUS} A: Aegir Satellite Instance installation completed"
+  msg "${_STATUS} A: Aegir Satellite Instance installed"
 else
   echo " "
   if prompt_yes_no "Do you want to upgrade this Aegir Satellite Instance?" ; then
@@ -1368,7 +1368,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ]; then
     clean_pid_exit
   fi
   if [ -e "/opt/tmp/status-AegirSetupC-runVerify" ]; then
-    msg "${_STATUS} A: Platforms installation completed"
+    msg "${_STATUS} A: Platforms installed"
   fi
 else
   if [ "${_HM_ONLY}" = "YES" ]; then
@@ -1396,7 +1396,7 @@ else
         clean_pid_exit
       fi
       if [ -e "/opt/tmp/status-AegirSetupC-runVerify" ]; then
-        msg "${_STATUS} A: Platforms installation completed"
+        msg "${_STATUS} A: Platforms installed"
       fi
     else
       msg "${_STATUS} A: No new Platforms added this time"

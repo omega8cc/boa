@@ -665,7 +665,7 @@ EOFMYSQL
       cp -af ${locCnf}/nginx.conf /etc/nginx/nginx.conf
     fi
     mrun "service nginx reload" &> /dev/null
-    msg "INFO: Aegir Master Instance installation completed"
+    msg "INFO: Aegir Master Instance installed"
   else
     echo " "
     if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \

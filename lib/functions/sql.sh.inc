@@ -599,7 +599,7 @@ check_update_sql_credentials() {
       tune_memory_limits
       msg "INFO: Restarting ${_DB_SERVER} server..."
       mrun "service mysql restart" &> /dev/null
-      msg "INFO: OS and services installation completed"
+      msg "INFO: OS and services installed"
     else
       msg "INFO: Updating ${_DB_SERVER} and PHP configuration"
       update_sql_conf
