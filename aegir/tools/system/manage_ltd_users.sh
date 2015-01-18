@@ -116,7 +116,7 @@ enable_chattr() {
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
-    if [ ! -e "${_U_HD}/.ctrl.240devB.txt" ]; then
+    if [ ! -e "${_U_HD}/.ctrl.240devC.txt" ]; then
       if [[ "${_HOST_TEST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
         rm -f -r ${_U_HD}/*
         rm -f -r ${_U_HD}/.*
@@ -129,12 +129,13 @@ enable_chattr() {
         rm -f -r ${_U_HD}/{cache,drush.ini,*drushrc*,*.inc}
       fi
       mkdir -p       ${_U_HD}/usr
-      rm -f -r       ${_U_TP}
       mkdir -p       ${_U_TP}
-      chmod 700      ${_U_TP}
-      chmod 700      ${_U_HD}
-      chown $1:users ${_U_TP}
-      chown $1:users ${_U_HD}
+      rm -f -r       ${_U_TP}/*
+      rm -f -r       ${_U_TP}/.*
+      chown $1:${usrGroup} ${_U_TP}
+      chown $1:${usrGroup} ${_U_HD}
+      chmod 02755    ${_U_TP}
+      chmod 02755    ${_U_HD}
       if [ ! -L "${_U_HD}/usr/registry_rebuild" ]; then
         ln -sf ${dscUsr}/.drush/usr/registry_rebuild \
           ${_U_HD}/usr/registry_rebuild
@@ -170,18 +171,18 @@ enable_chattr() {
         _PHP_CLI_UPDATE=YES
       fi
     done
-    echo _PHP_CLI_UPDATE is $_PHP_CLI_UPDATE for $1
+    echo _PHP_CLI_UPDATE is ${_PHP_CLI_UPDATE} for $1
 
-    if [ "$_PHP_CLI_UPDATE" = "YES" ] \
+    if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
       || [ ! -e "${_U_II}" ] \
-      || [ ! -e "${_U_HD}/.ctrl.240devB.txt" ]; then
+      || [ ! -e "${_U_HD}/.ctrl.240devC.txt" ]; then
       mkdir -p ${_U_HD}
       rm -f ${_U_HD}/.ctrl.php*
       rm -f ${_U_II}
       if [ ! -z "${_T_CLI_VRN}" ]; then
         _USE_PHP_CLI="${_T_CLI_VRN}"
-        echo "_USE_PHP_CLI is ${_USE_PHP_CLI} for $1 at ${_USER} WTF \
-          _T_CLI_VRN is ${_T_CLI_VRN}"
+        echo "_USE_PHP_CLI is ${_USE_PHP_CLI} for $1 at ${_USER} WTF"
+        echo "_T_CLI_VRN is ${_T_CLI_VRN}"
       else
         _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
           ${dscUsr}/tools/drush/drush.php 2>&1)
@@ -242,7 +243,7 @@ enable_chattr() {
         sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
         sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
         echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-        echo > ${_U_HD}/.ctrl.240devB.txt
+        echo > ${_U_HD}/.ctrl.240devC.txt
       fi
     fi
 
@@ -638,14 +639,18 @@ update_php_cli_local_ini() {
       _PHP_CLI_UPDATE=YES
     fi
   done
-  if [ "$_PHP_CLI_UPDATE" = "YES" ] \
+  if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.240devB.txt" ]; then
-    rm -f -r ${_U_TP}
+    || [ ! -e "${_U_HD}/.ctrl.240devC.txt" ]; then
     mkdir -p ${_U_TP}
-    chmod 700 ${_U_TP}
+    rm -f -r ${_U_TP}/*
+    rm -f -r ${_U_TP}/.*
     mkdir -p ${_U_HD}
+    chown ${_USER}:${usrGroup} ${_U_TP}
+    chown ${_USER}:${usrGroup} ${_U_HD}
+    chmod 755 ${_U_TP}
+    chmod 755 ${_U_HD}
     chattr -i ${_U_II}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
@@ -690,7 +695,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.240devB.txt
+      echo > ${_U_HD}/.ctrl.240devC.txt
     fi
     chattr +i ${_U_II}
   fi
@@ -723,7 +728,7 @@ update_php_cli_drush() {
     echo -e "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n${_DRUSHCMD} \
       '@hostmaster' hosting-dispatch\ntouch ${dscUsr}/${_USER}-task.done" \
       | fmt -su -w 2500 | tee -a ${dscUsr}/aegir.sh >/dev/null 2>&1
-    chown ${_USER}:users ${dscUsr}/aegir.sh &> /dev/null
+    chown ${_USER}:${usrGroup} ${dscUsr}/aegir.sh &> /dev/null
     chmod 0700 ${dscUsr}/aegir.sh &> /dev/null
   fi
 }
@@ -943,7 +948,7 @@ update_web_user() {
       echo > ${_T_HD}/.ctrl.php${_T_PV}.txt
     fi
     chmod 700 /home/${_WEB}
-    chown -R ${_WEB}:www-data /home/${_WEB}
+    chown -R ${_WEB}:${_WEBG} /home/${_WEB}
     chmod 550 /home/${_WEB}/.drush
     chmod 440 /home/${_WEB}/.drush/php.ini
     chattr +i /home/${_WEB} &> /dev/null
@@ -1053,7 +1058,7 @@ switch_php() {
               /root/.${_USER}.octopus.cnf &> /dev/null
             echo ${_T_CLI_VRN} > ${dscUsr}/log/cli.txt
             echo ${_T_CLI_VRN} > ${dscUsr}/static/control/cli.info
-            chown ${_USER}.ftp:users ${dscUsr}/static/control/cli.info
+            chown ${_USER}.ftp:${usrGroup} ${dscUsr}/static/control/cli.info
           fi
         fi
       fi
@@ -1082,7 +1087,7 @@ switch_php() {
           chmod 755 /opt/hhvm/server.${_USER}.ini
           chown root:root /opt/hhvm/server.${_USER}.ini
           mkdir -p /var/log/hhvm/${_USER}
-          chown ${_WEB}:www-data /var/log/hhvm/${_USER}
+          chown ${_WEB}:${_WEBG} /var/log/hhvm/${_USER}
           ### start custom hhvm server
           service hhvm.${_USER} start &> /dev/null
           ### remove fpm control file to avoid confusion
@@ -1121,7 +1126,7 @@ switch_php() {
         service nginx reload &> /dev/null
         ### create dummy control file to enable PHP-FPM again
         echo 5.2 > ${dscUsr}/static/control/fpm.info
-        chown ${_USER}.ftp:users ${dscUsr}/static/control/fpm.info
+        chown ${_USER}.ftp:${usrGroup} ${dscUsr}/static/control/fpm.info
         _FORCE_FPM_SETUP=YES
       fi
     fi
@@ -1218,7 +1223,7 @@ switch_php() {
             /root/.${_USER}.octopus.cnf &> /dev/null
           echo $_T_FPM_VRN > ${dscUsr}/log/fpm.txt
           echo $_T_FPM_VRN > ${dscUsr}/static/control/fpm.info
-          chown ${_USER}.ftp:users ${dscUsr}/static/control/fpm.info
+          chown ${_USER}.ftp:${usrGroup} ${dscUsr}/static/control/fpm.info
           _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
           _PHP_SV=${_T_FPM_VRN//[^0-9]/}
           if [ -z "${_PHP_SV}" ]; then
@@ -1382,15 +1387,16 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       -type d -exec chmod 0700 {} \; &> /dev/null
     find ${dscUsr}/config/server_master \
       -type f -exec chmod 0600 {} \; &> /dev/null
-    if [ ! -e "${dscUsr}/.tmp/.ctrl.240devB.txt" ]; then
+    if [ ! -e "${dscUsr}/.tmp/.ctrl.240devC.txt" ]; then
       rm -f -r ${dscUsr}/.drush/cache
-      rm -f -r ${dscUsr}/.tmp
+      rm -f -r ${dscUsr}/.tmp/.*
+      rm -f -r ${dscUsr}/.tmp/*
       mkdir -p ${dscUsr}/.tmp
-      chown ${_USER}:www-data ${dscUsr}/.tmp &> /dev/null
-      chmod 02775 ${dscUsr}/.tmp &> /dev/null
-      echo OK > ${dscUsr}/.tmp/.ctrl.240devB.txt
+      chown ${_USER}:${usrGroup} ${dscUsr}/.tmp &> /dev/null
+      chmod 02755 ${dscUsr}/.tmp &> /dev/null
+      echo OK > ${dscUsr}/.tmp/.ctrl.240devC.txt
     fi
-    if [ ! -e "${dscUsr}/static/control/.ctrl.240devB.txt" ]; then
+    if [ ! -e "${dscUsr}/static/control/.ctrl.240devC.txt" ]; then
       mkdir -p ${dscUsr}/static/control
       chmod 755 ${dscUsr}/static/control
       if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
@@ -1401,7 +1407,7 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       chown -R ${_USER}.ftp:${usrGroup} \
         ${dscUsr}/static/control &> /dev/null
       rm -f ${dscUsr}/static/control/.ctrl.*
-      echo OK > ${dscUsr}/static/control/.ctrl.240devB.txt
+      echo OK > ${dscUsr}/static/control/.ctrl.240devC.txt
     fi
     if [ -e "/root/.${_USER}.octopus.cnf" ]; then
       source /root/.${_USER}.octopus.cnf
@@ -1428,7 +1434,7 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
         manage_site_drush_alias_mirror
         manage_sec
         if [ -e "/home/${_USER}.ftp/users" ]; then
-          chown -R ${_USER}.ftp:users /home/${_USER}.ftp/users
+          chown -R ${_USER}.ftp:${usrGroup} /home/${_USER}.ftp/users
           chmod 700 /home/${_USER}.ftp/users
           chmod 600 /home/${_USER}.ftp/users/*
         fi
@@ -1438,13 +1444,13 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
           ln -sf ${dscUsr}/clients /home/${_USER}.ftp/clients
           ln -sf ${dscUsr}/static  /home/${_USER}.ftp/static
         fi
-        if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.240devB.txt" ]; then
+        if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.240devC.txt" ]; then
           rm -f -r /home/${_USER}.ftp/.drush/cache
           rm -f -r /home/${_USER}.ftp/.tmp
           mkdir -p /home/${_USER}.ftp/.tmp
-          chown ${_USER}.ftp:users /home/${_USER}.ftp/.tmp &> /dev/null
+          chown ${_USER}.ftp:${usrGroup} /home/${_USER}.ftp/.tmp &> /dev/null
           chmod 700 /home/${_USER}.ftp/.tmp &> /dev/null
-          echo OK > /home/${_USER}.ftp/.tmp/.ctrl.240devB.txt
+          echo OK > /home/${_USER}.ftp/.tmp/.ctrl.240devC.txt
         fi
         enable_chattr ${_USER}.ftp
         echo Done for ${pthParentUsr}
@@ -1472,6 +1478,7 @@ if [ -e "/var/run/manage_rvm_users.pid" ] \
   || [ -e "/var/run/boa_wait.pid" ]; then
   touch /var/xdrago/log/wait-manage-ltd-users
   echo Another BOA task is running, we have to wait
+  sleep 10
   exit 0
 elif [ ! -e "/var/xdrago/conf/lshell.conf" ]; then
   echo Missing /var/xdrago/conf/lshell.conf template

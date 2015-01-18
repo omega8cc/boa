@@ -113,12 +113,7 @@ chmod 700 /data/disk/arch/sql
 chmod 700 /data/disk/arch
 echo "Permissions fixed"
 
-rm -f /var/run/boa_run.pid
 rm -f /var/run/boa_sql_backup.pid
-rm -f /var/run/boa_wait.pid
-rm -f /var/run/daily-fix.pid
-rm -f /var/run/manage_ltd_users.pid
-rm -f /var/run/manage_rvm_users.pid
 touch /var/xdrago/log/last-run-backup
 echo "COMPLETED ALL"
 exit 0

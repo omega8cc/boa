@@ -104,10 +104,11 @@ update_php_cli_local_ini() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.240devB.txt" ]; then
-    rm -f -r ${_U_TP}
+    || [ ! -e "${_U_HD}/.ctrl.240devC.txt" ]; then
     mkdir -p ${_U_TP}
-    chmod 700 ${_U_TP}
+    rm -f -r ${_U_TP}/*
+    rm -f -r ${_U_TP}/.*
+    chmod 02755 ${_U_TP}
     mkdir -p ${_U_HD}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
@@ -152,7 +153,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.240devB.txt
+      echo > ${_U_HD}/.ctrl.240devC.txt
     fi
   fi
 }

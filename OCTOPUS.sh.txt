@@ -518,9 +518,8 @@ tune_fpm_config() {
         /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
     fi
     if [ ! -d "${_ROOT}/tmp" ]; then
-      rm -f -r ${_ROOT}/tmp
       mkdir -p ${_ROOT}/tmp
-      chown ${_USER}:www-data ${_ROOT}/tmp &> /dev/null
+      chown ${_USER}:users ${_ROOT}/tmp &> /dev/null
     fi
     if [ ! -z "${_PHP_OLD_SV}" ] \
       && [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
@@ -1414,7 +1413,7 @@ action() {
   if [ ! -e "${_ROOT}/log/cli.txt" ]; then
     echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
   fi
-  if [ ! -e "${_ROOT}/static/control/.ctrl.240devB.txt" ] \
+  if [ ! -e "${_ROOT}/static/control/.ctrl.240devC.txt" ] \
     || [ ! -e "${_ROOT}/static/control/README.txt" ]; then
     mkdir -p ${_ROOT}/static/control
     chmod 755 ${_ROOT}/static/control
@@ -1426,7 +1425,7 @@ action() {
     chown -R ${_USER}.ftp:${_USRG} \
       ${_ROOT}/static/control &> /dev/null
     rm -f ${_ROOT}/static/control/.ctrl.*
-    echo OK > ${_ROOT}/static/control/.ctrl.240devB.txt
+    echo OK > ${_ROOT}/static/control/.ctrl.240devC.txt
   fi
   if [ -d "/data/all/000" ]; then
     if [ ! -e "/data/all/000/core-v-${_SMALLCORE6}.txt" ] \
