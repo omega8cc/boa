@@ -128,14 +128,13 @@ enable_chattr() {
         rm -f ${_U_HD}/.ctrl*
         rm -f -r ${_U_HD}/{cache,drush.ini,*drushrc*,*.inc}
       fi
-      mkdir -p       ${_U_HD}/usr
-      mkdir -p       ${_U_TP}
-      rm -f -r       ${_U_TP}/*
-      rm -f -r       ${_U_TP}/.*
+      mkdir -p ${_U_HD}/usr
+      mkdir -p ${_U_TP}
+      find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
       chown $1:${usrGroup} ${_U_TP}
       chown $1:${usrGroup} ${_U_HD}
-      chmod 02755    ${_U_TP}
-      chmod 02755    ${_U_HD}
+      chmod 02755 ${_U_TP}
+      chmod 02755 ${_U_HD}
       if [ ! -L "${_U_HD}/usr/registry_rebuild" ]; then
         ln -sf ${dscUsr}/.drush/usr/registry_rebuild \
           ${_U_HD}/usr/registry_rebuild
@@ -644,8 +643,7 @@ update_php_cli_local_ini() {
     || [ ! -d "${_U_TP}" ] \
     || [ ! -e "${_U_HD}/.ctrl.240devC.txt" ]; then
     mkdir -p ${_U_TP}
-    rm -f -r ${_U_TP}/*
-    rm -f -r ${_U_TP}/.*
+    find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
     mkdir -p ${_U_HD}
     chown ${_USER}:${usrGroup} ${_U_TP}
     chown ${_USER}:${usrGroup} ${_U_HD}
@@ -1389,9 +1387,8 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       -type f -exec chmod 0600 {} \; &> /dev/null
     if [ ! -e "${dscUsr}/.tmp/.ctrl.240devC.txt" ]; then
       rm -f -r ${dscUsr}/.drush/cache
-      rm -f -r ${dscUsr}/.tmp/.*
-      rm -f -r ${dscUsr}/.tmp/*
       mkdir -p ${dscUsr}/.tmp
+      find ${dscUsr}/.tmp/ -mtime +0 -exec rm -rf {} \; &> /dev/null
       chown ${_USER}:${usrGroup} ${dscUsr}/.tmp &> /dev/null
       chmod 02755 ${dscUsr}/.tmp &> /dev/null
       echo OK > ${dscUsr}/.tmp/.ctrl.240devC.txt
