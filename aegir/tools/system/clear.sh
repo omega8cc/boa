@@ -3,6 +3,10 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
+find /var/run/boa*.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
+find /var/run/manage*users.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
+find /var/run/daily-fix.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
+
 #
 # Find the fastest mirror.
 find_fast_mirror() {
