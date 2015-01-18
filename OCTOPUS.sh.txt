@@ -1160,21 +1160,6 @@ octopus_cnf() {
       msg "EXIT: in both _PHP_FPM_VERSION and _PHP_CLI_VERSION"
       clean_pid_exit
     fi
-    if [ "${_STATUS}" = "INIT" ]; then
-      if prompt_yes_no "Do you want to proceed with the install?" ; then
-        true
-      else
-        echo "Installation aborted by you"
-        clean_pid_exit
-      fi
-    else
-      if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
-        true
-      else
-        echo "Upgrade aborted by you"
-        clean_pid_exit
-      fi
-    fi
   fi
 }
 #
@@ -1968,6 +1953,7 @@ if [ "${_DEBUG_MODE}" = "YES" ]; then
   msg "START -> checkpoint: "
 fi
 if [ "${_STATUS}" = "INIT" ]; then
+  modeDetect="installation"
   optInf="${_CLIENT_OPTION} / ${_CLIENT_SUBSCR} / ${_CLIENT_CORES} C"
   cat <<EOF
 
@@ -1983,6 +1969,7 @@ if [ "${_STATUS}" = "INIT" ]; then
 
 EOF
 else
+  modeDetect="upgrade"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     optInf="${_CLIENT_OPTION} / ${_CLIENT_SUBSCR} / ${_CLIENT_CORES} C"
     cat <<EOF
@@ -2005,10 +1992,10 @@ EOF
     echo " "
   fi
 fi
-if prompt_yes_no "Do you want to proceed?" ; then
+if prompt_yes_no "Do you want to proceed with ${modeDetect}?" ; then
   true
 else
-  echo "Installation/upgrade aborted by you"
+  echo "OK, ${modeDetect} aborted by you"
   clean_pid_exit
 fi
 

@@ -157,6 +157,9 @@ urlPrt="https://drupal.org/project"
 urlDev="http://${_USE_MIR}/dev"
 urlHmr="http://${_USE_MIR}/versions/master/aegir"
 urlStb="http://${_USE_MIR}/versions/stable"
+#
+noT="not installed"
+yOk="installation in progress..."
 
 
 ###---### Functions.
@@ -683,7 +686,7 @@ _F_OPENSCHOLAR="OpenScholar ${_OPENSCHOLAR} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_PANOPOLY="Panopoly ${_PANOPOLY} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_RECRUITER="Recruiter ${_RECRUITER} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_RESTAURANT="Restaurant 1.0-b10 ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_UBER_CART_TESTING="Ubercart ${_UBERCART7} [ud2] ${_SMALLCORE7} [${_THIS_CORE}]"
+_F_UBER_CART_T="Ubercart ${_UBERCART7} [ud2] ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_UBERCART6="Ubercart ${_UBERCART6} ${_SMALLCORE6} [${_THIS_CORE}]"
 _F_UBERCART7="Ubercart ${_UBERCART7} [aq3] ${_SMALLCORE7} [${_THIS_CORE}]"
 #
@@ -737,9 +740,7 @@ agov_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_AGOV - ${urlPrt}/agov" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_AGOV installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_AGOV ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -766,7 +767,7 @@ agov_install() {
           msg "DISTRO: $_F_AGOV installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_AGOV installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_AGOV ${noT}"
         fi
       fi
     fi
@@ -789,9 +790,7 @@ commerce_7_1_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_COMMERCE1 - http://drupalcommerce.org" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_COMMERCE1 installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMERCE1 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -824,7 +823,7 @@ commerce_7_1_install() {
           msg "DISTRO: $_F_COMMERCE1 installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_COMMERCE1 installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMERCE1 ${noT}"
         fi
       fi
     fi
@@ -847,9 +846,7 @@ commerce_7_2_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_COMMERCE2 - http://drupalcommerce.org" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_COMMERCE2 installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMERCE2 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -877,7 +874,7 @@ commerce_7_2_install() {
           msg "DISTRO: $_F_COMMERCE2 installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_COMMERCE2 installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMERCE2 ${noT}"
         fi
       fi
     fi
@@ -899,9 +896,7 @@ commons_6_install() {
       if [ ! -d "${_OCTO_PLPATH}/modules/path_alias_cache" ]; then
         if prompt_yes_no "$_F_COMMONS2 - http://acquia.com/drupalcommons" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_COMMONS2 installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMONS2 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
@@ -943,7 +938,7 @@ commons_6_install() {
           msg "DISTRO: $_F_COMMONS2 installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_COMMONS2 installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMONS2 ${noT}"
         fi
       fi
     fi
@@ -965,9 +960,7 @@ commons_7_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_COMMONS3 - http://acquia.com/drupalcommons" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_COMMONS3 installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMONS3 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -998,7 +991,7 @@ commons_7_install() {
           msg "DISTRO: $_F_COMMONS3 installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_COMMONS3 installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMONS3 ${noT}"
         fi
       fi
     fi
@@ -1027,9 +1020,7 @@ drupal6_install() {
         _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
         if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
           || [[ "${_PLATFORMS_LIST}" =~ "D6D" ]]; then
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_DRUPAL6_D installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL6_D ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             if [ ! -e "${_D6_CORE_DIR}" ]; then
               prepare_drupal6_core
@@ -1053,9 +1044,7 @@ drupal6_install() {
         _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
         if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
           || [[ "${_PLATFORMS_LIST}" =~ "D6S" ]]; then
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_DRUPAL6_S installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL6_S ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             if [ ! -e "${_D6_CORE_DIR}" ]; then
               prepare_drupal6_core
@@ -1079,9 +1068,7 @@ drupal6_install() {
         _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
         if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
           || [[ "${_PLATFORMS_LIST}" =~ "D6P" ]]; then
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_DRUPAL6 installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL6 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             if [ ! -e "${_D6_CORE_DIR}" ]; then
               prepare_drupal6_core
@@ -1096,7 +1083,7 @@ drupal6_install() {
           _RUN_VERIFY=YES
         fi
       else
-        msg "DISTRO: $_F_DRUPAL6 installation skipped"
+        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL6 ${noT}"
       fi
     fi
   fi
@@ -1122,9 +1109,7 @@ drupal7_install() {
         _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
         if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
           || [[ "${_PLATFORMS_LIST}" =~ "D7D" ]]; then
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_DRUPAL7_D installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL7_D ${yOk}"
           create_drupal7_basic
           msg "DISTRO: $_F_DRUPAL7_D installed"
           _RUN_VERIFY=YES
@@ -1138,9 +1123,7 @@ drupal7_install() {
         _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
         if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
           || [[ "${_PLATFORMS_LIST}" =~ "D7S" ]]; then
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_DRUPAL7_S installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL7_S ${yOk}"
           create_drupal7_basic
           msg "DISTRO: $_F_DRUPAL7_S installed"
           _RUN_VERIFY=YES
@@ -1154,15 +1137,13 @@ drupal7_install() {
         _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
         if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
           || [[ "${_PLATFORMS_LIST}" =~ "D7P" ]]; then
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_DRUPAL7_P installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL7_P ${yOk}"
           create_drupal7_basic
           msg "DISTRO: $_F_DRUPAL7_P installed"
           _RUN_VERIFY=YES
         fi
       else
-        msg "DISTRO: $_F_DRUPAL7 installation skipped"
+        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL7 ${noT}"
       fi
     fi
   fi
@@ -1182,9 +1163,7 @@ drupal8_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_DRUPAL8 - http://drupal.org" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_DRUPAL8 installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL8 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ ! -e "${_D8_CORE_DIR}" ]; then
@@ -1195,7 +1174,7 @@ drupal8_install() {
           msg "DISTRO: $_F_DRUPAL8 installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_DRUPAL8 installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL8 ${noT}"
         fi
       fi
     fi
@@ -1216,9 +1195,7 @@ dr8_dev_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_D8_DEV_LABEL - http://drupal.org" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_D8_DEV_LABEL installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_D8_DEV_LABEL ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             _D8_CORE_DIR="${_D8_DEV_CORE_DIR}"
@@ -1230,7 +1207,7 @@ dr8_dev_install() {
           msg "DISTRO: $_F_D8_DEV_LABEL installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_D8_DEV_LABEL installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_D8_DEV_LABEL ${noT}"
         fi
       fi
     fi
@@ -1252,9 +1229,7 @@ erpal_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_ERPAL - ${urlPrt}/erpal" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_ERPAL installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_ERPAL ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -1284,7 +1259,7 @@ erpal_install() {
           msg "DISTRO: $_F_ERPAL installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_ERPAL installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_ERPAL ${noT}"
         fi
       fi
     fi
@@ -1306,9 +1281,7 @@ fserver_install() {
     if [ ! -d "${_OCTO_PLPATH}/modules/path_alias_cache" ]; then
       if prompt_yes_no "$_F_FSERVER - http://bit.ly/fservermore" ; then
         true
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "DISTRO: $_F_FSERVER installation in progress..."
-        fi
+        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_FSERVER ${yOk}"
         if [ ! -d "${_SHRD_PLPATH}" ]; then
           if [ "${_AEGIR_VERSION}" = "HEAD" ] \
             && [ "${_T_BUILD}" = "HEAD" ]; then
@@ -1342,7 +1315,7 @@ fserver_install() {
         msg "DISTRO: $_F_FSERVER installed"
         _RUN_VERIFY=YES
       else
-        msg "DISTRO: $_F_FSERVER installation skipped"
+        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_FSERVER ${noT}"
       fi
     fi
   fi
@@ -1363,9 +1336,7 @@ guardr_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_GUARDR - ${urlPrt}/guardr" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_GUARDR installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_GUARDR ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -1392,7 +1363,7 @@ guardr_install() {
           msg "DISTRO: $_F_GUARDR installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_GUARDR installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_GUARDR ${noT}"
         fi
       fi
     fi
@@ -1414,9 +1385,7 @@ openacademy_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_OPENACADEMY - ${urlPrt}/openacademy" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_OPENACADEMY installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENACADEMY ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -1440,7 +1409,7 @@ openacademy_install() {
           msg "DISTRO: $_F_OPENACADEMY installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_OPENACADEMY installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENACADEMY ${noT}"
         fi
       fi
     fi
@@ -1462,9 +1431,7 @@ openatrium7_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_OPENATRIUM7 - http://openatrium.com" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_OPENATRIUM7 installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENATRIUM7 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -1490,7 +1457,7 @@ openatrium7_install() {
           msg "DISTRO: $_F_OPENATRIUM7 installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_OPENATRIUM7 installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENATRIUM7 ${noT}"
         fi
       fi
     fi
@@ -1512,9 +1479,7 @@ openblog_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_OPENBLOG - ${urlPrt}/openblog" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_OPENBLOG installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENBLOG ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -1538,7 +1503,7 @@ openblog_install() {
           msg "DISTRO: $_F_OPENBLOG installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_OPENBLOG installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENBLOG ${noT}"
         fi
       fi
     fi
@@ -1560,9 +1525,7 @@ openchurch1_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_OPENCHURCH1 - http://openchurchsite.com" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_OPENCHURCH1 installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENCHURCH1 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -1587,7 +1550,7 @@ openchurch1_install() {
           msg "DISTRO: $_F_OPENCHURCH1 installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_OPENCHURCH1 installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENCHURCH1 ${noT}"
         fi
       fi
     fi
@@ -1609,9 +1572,7 @@ openchurch2_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_OPENCHURCH2 - http://openchurchsite.com" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_OPENCHURCH2 installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENCHURCH2 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -1636,7 +1597,7 @@ openchurch2_install() {
           msg "DISTRO: $_F_OPENCHURCH2 installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_OPENCHURCH2 installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENCHURCH2 ${noT}"
         fi
       fi
     fi
@@ -1658,9 +1619,7 @@ opendeals_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_OPENDEALS - http://opendealsapp.com" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_OPENDEALS installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENDEALS ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -1684,7 +1643,7 @@ opendeals_install() {
           msg "DISTRO: $_F_OPENDEALS installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_OPENDEALS installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENDEALS ${noT}"
         fi
       fi
     fi
@@ -1706,9 +1665,7 @@ openoutreach_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_OPENOUTREACH - http://openoutreach.org" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_OPENOUTREACH installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENOUTREACH ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -1732,7 +1689,7 @@ openoutreach_install() {
           msg "DISTRO: $_F_OPENOUTREACH installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_OPENOUTREACH installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENOUTREACH ${noT}"
         fi
       fi
     fi
@@ -1754,9 +1711,7 @@ openpublic_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_OPENPUBLIC - http://openpublicapp.com" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_OPENPUBLIC installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENPUBLIC ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -1780,7 +1735,7 @@ openpublic_install() {
           msg "DISTRO: $_F_OPENPUBLIC installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_OPENPUBLIC installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENPUBLIC ${noT}"
         fi
       fi
     fi
@@ -1802,9 +1757,7 @@ openscholar_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_OPENSCHOLAR - http://theopenscholar.org" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_OPENSCHOLAR installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENSCHOLAR ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -1836,7 +1789,7 @@ openscholar_install() {
           msg "DISTRO: $_F_OPENSCHOLAR installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_OPENSCHOLAR installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENSCHOLAR ${noT}"
         fi
       fi
     fi
@@ -1858,9 +1811,7 @@ panopoly_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_PANOPOLY - ${urlPrt}/panopoly" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_PANOPOLY installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_PANOPOLY ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -1898,7 +1849,7 @@ panopoly_install() {
           msg "DISTRO: $_F_PANOPOLY installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_PANOPOLY installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_PANOPOLY ${noT}"
         fi
       fi
     fi
@@ -1920,9 +1871,7 @@ recruiter_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_RECRUITER - ${urlPrt}/recruiter" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_RECRUITER installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_RECRUITER ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -1953,7 +1902,7 @@ recruiter_install() {
           msg "DISTRO: $_F_RECRUITER installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_RECRUITER installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_RECRUITER ${noT}"
         fi
       fi
     fi
@@ -1975,9 +1924,7 @@ restaurant_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_RESTAURANT - ${urlPrt}/restaurant" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_RESTAURANT installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_RESTAURANT ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -2003,7 +1950,7 @@ restaurant_install() {
           msg "DISTRO: $_F_RESTAURANT installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_RESTAURANT installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_RESTAURANT ${noT}"
         fi
       fi
     fi
@@ -2025,9 +1972,7 @@ ubercart6_install() {
     if [ ! -d "${_OCTO_PLPATH}/modules/path_alias_cache" ]; then
       if prompt_yes_no "$_F_UBERCART6 - http://ubercart.org" ; then
         true
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "DISTRO: $_F_UBERCART6 installation in progress..."
-        fi
+        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_UBERCART6 ${yOk}"
         if [ ! -d "${_SHRD_PLPATH}" ]; then
           if [ "${_AEGIR_VERSION}" = "HEAD" ] \
             && [ "${_T_BUILD}" = "HEAD" ]; then
@@ -2081,7 +2026,7 @@ ubercart6_install() {
         msg "DISTRO: $_F_UBERCART6 installed"
         _RUN_VERIFY=YES
       else
-        msg "DISTRO: $_F_UBERCART6 installation skipped"
+        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_UBERCART6 ${noT}"
       fi
     fi
   fi
@@ -2103,9 +2048,7 @@ ubercart7_install() {
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_UBERCART7 - http://ubercart.org" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_UBERCART7 installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_UBERCART7 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -2152,7 +2095,7 @@ ubercart7_install() {
           msg "DISTRO: $_F_UBERCART7 installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_UBERCART7 installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_UBERCART7 ${noT}"
         fi
       fi
     fi
@@ -2173,11 +2116,9 @@ ubercart7_testing_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "UC7" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_UBER_CART_TESTING - http://ubercart.org" ; then
+        if prompt_yes_no "$_F_UBER_CART_T - http://ubercart.org" ; then
           true
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DISTRO: $_F_UBER_CART_TESTING installation in progress..."
-          fi
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_UBER_CART_T ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -2221,10 +2162,10 @@ ubercart7_testing_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_UBER_CART_TESTING installed"
+          msg "DISTRO: $_F_UBER_CART_T installed"
           _RUN_VERIFY=YES
         else
-          msg "DISTRO: $_F_UBER_CART_TESTING installation skipped"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_UBER_CART_T ${noT}"
         fi
       fi
     fi
@@ -2466,7 +2407,7 @@ save_verify_platforms() {
   fi
   if [ -d "${pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}" ]; then
     if [ ! -e "${pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_UBER_CART_TESTING" testing \
+      ${_DRUSHCMD} php-script make_platform "$_F_UBER_CART_T" testing \
         ${pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7} &> /dev/null
     fi
   fi

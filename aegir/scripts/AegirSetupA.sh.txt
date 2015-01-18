@@ -1206,7 +1206,7 @@ else
   if prompt_yes_no "Do you want to upgrade this Aegir Satellite Instance?" ; then
     true
     if [ "${_PLATFORMS_ONLY}" = "YES" ]; then
-      msg "${_STATUS} A: Aegir Satellite Instance upgrade skipped - platforms only"
+      msg "${_STATUS} A: Aegir Satellite Instance upgrade skipped"
     else
       if [ ! -d "${_ROOT}/.drush/sys/provision/http" ]; then
         mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
