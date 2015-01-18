@@ -1300,8 +1300,10 @@ if [ "${_DEBUG_MODE}" = "YES" ]; then
 EOF
   echo " "
 fi
-if prompt_yes_no "Are you ready to tune your system \
-  with values shown above?" ; then
+tPrmt="Are you ready to tune your system"
+tPrmt="${tPrmt} with values shown above"
+tPrmt=$(echo -n ${tPrmt} | fmt -su -w 2500 2>&1)
+if prompt_yes_no "${tPrmt}?" ; then
   true
   if [ ! -e "/root/.upstart.cnf" ]; then
     msg "INFO: We will stop cron and then wait 30 seconds..."

@@ -3,10 +3,10 @@ if_install_jetty() {
   if [ "${_OSV}" = "wheezy" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
-    _REAL_JETTY=9
+    _R_JETTY=9
     _JETTY_CTRL="/opt/jetty9/jetty-ctrl-${_JETTY_9_VRN}-version.txt"
   else
-    _REAL_JETTY=8
+    _R_JETTY=8
     _JETTY_CTRL="/opt/jetty9/jetty-ctrl-${_JETTY_8_VRN}-version.txt"
   fi
   _SOLR_CTRL="/opt/jetty9/solr-${_SOLR_4_VRN}-version.txt"
@@ -26,15 +26,17 @@ if_install_jetty() {
       if [ "${_OSV}" = "wheezy" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
-        _REAL_JETTY=9
+        _R_JETTY=9
       else
-        _REAL_JETTY=8
+        _R_JETTY=8
       fi
       echo " "
-      if prompt_yes_no "Do you want to install MultiCore Apache Solr 4 \
-        with Jetty $_REAL_JETTY?" ; then
+      tPrmt="Do you want to install MultiCore Apache Solr 4"
+      tPrmt="${tPrmt} with Jetty ${_R_JETTY}"
+      tPrmt=$(echo -n ${tPrmt} | fmt -su -w 2500 2>&1)
+      if prompt_yes_no "${tPrmt}?" ; then
         true
-        msg "INFO: Installing MultiCore Apache Solr 4 with Jetty $_REAL_JETTY..."
+        msg "INFO: Installing MultiCore Apache Solr 4 with Jetty ${_R_JETTY}..."
         cd /var/opt
         rm -f -r jetty-distribution-*
         rm -f -r /opt/solr4
@@ -133,9 +135,9 @@ if_install_jetty() {
         st_runner "update-rc.d jetty9 defaults" &> /dev/null
         mrun "service jetty9 start" &> /dev/null
         echo ${_SOLR_4_VRN} > $_SOLR_CTRL
-        msg "INFO: MultiCore Apache Solr 4 with Jetty $_REAL_JETTY installed"
+        msg "INFO: MultiCore Apache Solr 4 with Jetty ${_R_JETTY} installed"
       else
-        msg "INFO: MultiCore Apache Solr 4 with Jetty $_REAL_JETTY not installed"
+        msg "INFO: MultiCore Apache Solr 4 with Jetty ${_R_JETTY} not installed"
       fi
     fi
   fi
@@ -173,7 +175,7 @@ if_install_jetty() {
     if [ ! -e "$_PORT_CTRL" ] \
       || [ ! -e "$_JETTY_CTRL" ] \
       || [ ! -e "$_SOLR_CTRL" ]; then
-      msg "INFO: Upgrading MultiCore Apache Solr 4 with Jetty $_REAL_JETTY..."
+      msg "INFO: Upgrading MultiCore Apache Solr 4 with Jetty ${_R_JETTY}..."
       cd /var/opt
       rm -f -r jetty-distribution-*
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
@@ -207,7 +209,7 @@ if_install_jetty() {
       chown -R jetty9:jetty9 /opt/jetty9
       mrun "service jetty9 start" &> /dev/null
       echo ${_SOLR_4_VRN} > $_SOLR_CTRL
-      msg "INFO: MultiCore Apache Solr 4 with Jetty $_REAL_JETTY upgrade completed"
+      msg "INFO: MultiCore Apache Solr 4 with Jetty ${_R_JETTY} upgrade completed"
     fi
   fi
 
@@ -217,8 +219,10 @@ if_install_jetty() {
   if [[ "${_XTRAS_LIST}" =~ "SR3" ]]; then
     if [ ! -d "/opt/solr3" ]; then
       echo " "
-      if prompt_yes_no "Do you want to install MultiCore Apache Solr 3 \
-        with Jetty 8?" ; then
+      tPrmt="Do you want to install MultiCore Apache Solr 3"
+      tPrmt="${tPrmt} with Jetty 8"
+      tPrmt=$(echo -n ${tPrmt} | fmt -su -w 2500 2>&1)
+      if prompt_yes_no "${tPrmt}?" ; then
         true
         msg "INFO: Installing MultiCore Apache Solr 3 with Jetty 8..."
         cd /var/opt
@@ -336,8 +340,10 @@ if_install_jetty() {
   if [[ "${_XTRAS_LIST}" =~ "SR1" ]] || [ "${_TOMCAT_TO_JETTY}" = "YES" ]; then
     if [ ! -d "/opt/solr1" ]; then
       echo " "
-      if prompt_yes_no "Do you want to install MultiCore Apache Solr 1 \
-        with Jetty 7?" ; then
+      tPrmt="Do you want to install MultiCore Apache Solr 1"
+      tPrmt="${tPrmt} with Jetty 7"
+      tPrmt=$(echo -n ${tPrmt} | fmt -su -w 2500 2>&1)
+      if prompt_yes_no "${tPrmt}?" ; then
         true
         msg "INFO: Installing MultiCore Apache Solr 1 with Jetty 7..."
         cd /var/opt
