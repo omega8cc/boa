@@ -1,6 +1,7 @@
 #
 # Fix DNS settings.
 fix_dns_settings() {
+  dnsLi="/root/.local.dns.IP.list"
   mkdir -p ${vBs}
   rm -f ${vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
@@ -35,14 +36,14 @@ fix_dns_settings() {
     cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
   fi
   if [ -e "/etc/pdnsd.conf" ]; then
-    if [ -e "/root/.local.dns.IP.list" ]; then
-      sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" /root/.local.dns.IP.list
-      sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   /root/.local.dns.IP.list
-      _BROKEN_DNS_TEST=$(grep "\." /root/.local.dns.IP.list 2>&1)
+    if [ -e "${dnsLi}" ]; then
+      sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
+      sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
+      _BROKEN_DNS_TEST=$(grep "\." ${dnsLi} 2>&1)
       if [ -z "${_BROKEN_DNS_TEST}" ]; then
-        echo "        label = \"google-servers\";" > /root/.local.dns.IP.list
-        echo "        ip=8.8.8.8;" >> /root/.local.dns.IP.list
-        echo "        ip=8.8.4.4;" >> /root/.local.dns.IP.list
+        echo "        label = \"google-servers\";" > ${dnsLi}
+        echo "        ip=8.8.8.8;" >> ${dnsLi}
+        echo "        ip=8.8.4.4;" >> ${dnsLi}
       fi
     fi
     _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
@@ -50,23 +51,23 @@ fix_dns_settings() {
     if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
       || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]]; then
       if [ -e "/root/.use.local.nameservers.cnf" ]; then
-        echo "        label = \"google-servers\";" > /root/.local.dns.IP.list
+        echo "        label = \"google-servers\";" > ${dnsLi}
         for _IP in `cat /etc/resolv.conf \
           | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
           | cut -d ' ' -f2 \
           | sort \
-          | uniq`;do echo "        ip=${_IP};" >> /root/.local.dns.IP.list;done
+          | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
         sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
         sed -i "s/ip=127.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
         sed -i "s/ip=Dyn.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-        sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" /root/.local.dns.IP.list
-        sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   /root/.local.dns.IP.list
-        _BROKEN_DNS_TEST=$(grep "\." /root/.local.dns.IP.list 2>&1)
+        sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
+        sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
+        _BROKEN_DNS_TEST=$(grep "\." ${dnsLi} 2>&1)
         if [ -z "${_BROKEN_DNS_TEST}" ]; then
-           echo "        ip=8.8.8.8;" >> /root/.local.dns.IP.list
-           echo "        ip=8.8.4.4;" >> /root/.local.dns.IP.list
+           echo "        ip=8.8.8.8;" >> ${dnsLi}
+           echo "        ip=8.8.4.4;" >> ${dnsLi}
         fi
-        sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+        sed -i '/        label = \"google-servers\";/ {r ${dnsLi}
 d;};' /etc/pdnsd.conf
         resolvconf -u                      &> /dev/null
         service pdnsd stop                 &> /dev/null
@@ -366,14 +367,14 @@ install_pdnsd_cache() {
     _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
     if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
       && [ -e "/root/.use.local.nameservers.cnf" ]; then
-      echo "        label = \"google-servers\";" > /root/.local.dns.IP.list
+      echo "        label = \"google-servers\";" > ${dnsLi}
       for _IP in `cat /etc/resolv.conf \
         | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
         | cut -d ' ' -f2 \
         | sort \
-        | uniq`;do echo "        ip=${_IP};" >> /root/.local.dns.IP.list;done
+        | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
       sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-      sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+      sed -i '/        label = \"google-servers\";/ {r ${dnsLi}
 d;};' /etc/pdnsd.conf
     fi
   fi

@@ -38,10 +38,10 @@ local_ip_rg() {
     echo "the file /root/.local.IP.list does not exist"
     rm -f /root/.tmp.IP.list*
     rm -f /root/.local.IP.list*
-    for _IP in `hostname -I`; do echo ${_IP} >> /root/.tmp.IP.list; done
+    for _IP in `hostname -I`;do echo ${_IP} >> /root/.tmp.IP.list; done
     for _IP in `cat /root/.tmp.IP.list \
       | sort \
-      | uniq`; do echo "${_IP} # local IP address" >> /root/.local.IP.list; done
+      | uniq`;do echo "${_IP} # local IP address" >> /root/.local.IP.list; done
     rm -f /root/.tmp.IP.list*
   fi
   sed -i "/^$/d" /etc/csf/csf.ignore &> /dev/null
