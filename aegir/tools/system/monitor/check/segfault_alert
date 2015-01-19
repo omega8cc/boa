@@ -56,22 +56,22 @@ INTROX
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
     if ($line =~ /php\-.*: segfault/i) {
-      local($MONTX, $DAYX, ${TIME}X, $rest) = split(/\s+/,$line);
-      chomp(${TIME}X);
-      ${TIME}X =~ s/[^0-9\:]//g;
-      if (${TIME}X =~ /^[0-9]/) {
+      local($MONTX, $DAYX, $TIMEX, $rest) = split(/\s+/,$line);
+      chomp($TIMEX);
+      $TIMEX =~ s/[^0-9\:]//g;
+      if ($TIMEX =~ /^[0-9]/) {
         chomp($line);
-        $li_cnt{${TIME}X}++;
+        $li_cnt{$TIMEX}++;
       }
     }
   }
-  foreach ${TIME}X (sort keys %li_cnt) {
-    $sumar = $sumar + $li_cnt{${TIME}X};
-    local($thissumar) = $li_cnt{${TIME}X};
+  foreach $TIMEX (sort keys %li_cnt) {
+    $sumar = $sumar + $li_cnt{$TIMEX};
+    local($thissumar) = $li_cnt{$TIMEX};
     local($blocked) = 0;
-    &check_ip(${TIME}X);
+    &check_ip($TIMEX);
     if (!$blocked && $thissumar > 0) {
-      &trash_it_action(${TIME}X,$thissumar);
+      &trash_it_action($TIMEX,$thissumar);
     }
   }
   print "\n===[$sumar]\tGLOBAL===\n\n";

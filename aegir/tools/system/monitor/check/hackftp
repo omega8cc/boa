@@ -67,17 +67,17 @@ sub makeactions
 #############################################################################
 sub verify_timestamp
 {
-  local($MONTX, $DAYX, ${TIME}X, $rest) = split(/\s+/,$line);
+  local($MONTX, $DAYX, $TIMEX, $rest) = split(/\s+/,$line);
   if ($DAYX =~ /^\s+/) {
     $DAYX =~ s/[^0-9]//g;
   }
   if ($DAYX !~ /^0/ && $DAYX !~ /[0-9]{2}/) {
     $DAYX = "0$DAYX";
   }
-  chomp(${TIME}X);
-  ${TIME}X =~ s/[^0-9\:]//g;
-  if (${TIME}X =~ /^[0-9]/) {
-    local($HOUR, $MIN, $SEC) = split(/:/,${TIME}X);
+  chomp($TIMEX);
+  $TIMEX =~ s/[^0-9\:]//g;
+  if ($TIMEX =~ /^[0-9]/) {
+    local($HOUR, $MIN, $SEC) = split(/:/,$TIMEX);
     $log_is="$MONTX:$DAYX:$HOUR:$MIN";
     if ($now_is eq $log_is) {
       $timestamp="NEW";
