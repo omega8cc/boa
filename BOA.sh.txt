@@ -485,23 +485,6 @@ setup() {
     apt-get update -qq &> /dev/null
     apt-get install lsb-release -y --force-yes --reinstall &> /dev/null
   fi
-  _ADD_LEGACY_SYMLINK=NO
-  _PATH_TEST=$(grep 'export PATH' /root/.bashrc)
-  if [[ "${_PATH_TEST}" =~ "export PATH" ]]; then
-    _DO_NOTHING=YES
-  else
-    echo "export PATH=\$PATH:/usr/local/bin:${optBin}" >> /root/.bashrc
-    _ADD_LEGACY_SYMLINK=YES
-  fi
-  _PATH_TEST=$(grep '${optBin}' /root/.bashrc)
-  if [[ "${_PATH_TEST}" =~ "${optBin}" ]]; then
-    _DO_NOTHING=YES
-  else
-    sed -i "s/^export \
-      PATH=.*/export PATH=\$PATH:\/usr\/local\/bin:\/opt\/local\/bin/g" \
-      /root/.bashrc &> /dev/null
-    _ADD_LEGACY_SYMLINK=YES
-  fi
   mkdir -p /usr/local/bin
   mkdir -p ${optBin}
   rm -f ${optBin}/.{boa*,fix*}
@@ -509,10 +492,6 @@ setup() {
   rm -f /usr/local/bin/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   if [ ! -e "/data/disk" ]; then
     ln -s ${optBin}/boa /usr/local/bin/boa
-  fi
-  if [ "${_ADD_LEGACY_SYMLINK}" = "YES" ]; then
-    ln -s ${optBin}/barracuda /usr/local/bin/barracuda
-    ln -s ${optBin}/octopus /usr/local/bin/octopus
   fi
   rm -f ${optBin}/{autoupboa*,backboa*,barracuda*,boa*,ffmirror*}
   rm -f ${optBin}/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
