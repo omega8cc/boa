@@ -70,16 +70,17 @@ _REDIS_M_VERSION=mod-14-12-2014
 _SMALLCORE6=6.34.1
 _SMALLCORE7=7.34.1
 _SMALLCORE8=8.0.0-beta4
-_SPINNER=YES
 _T_BUILD=HEAD
 _TODAY=$(date +%y%m%d 2>&1)
 _USRG=users
 _WEBG=www-data
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
+_SPINNER=YES
 if [ -n "${STY+x}" ]; then
   _SPINNER=NO
 fi
+export _SPINNER="${_SPINNER}"
 
 ###
 ### Instance specific variables
@@ -153,6 +154,82 @@ touch /var/run/boa_run.pid
 
 # Clean pid files on exit.
 clean_pid_exit() {
+  export _AEGIR_VERSION=
+  export _AEGIR_XTS_VRN=
+  export _AGOV=
+  export _ALL_DISTRO=
+  export _AUTOPILOT=
+  export _BOA_REPO_GIT_URL=
+  export _BOA_REPO_NAME=
+  export _BRANCH_BOA=
+  export _BRANCH_PRN=
+  export _CIVICRM_M6=
+  export _CIVICRM_M7=
+  export _CLIENT_CORES=
+  export _CLIENT_EMAIL=
+  export _CLIENT_OPTION=
+  export _COD=
+  export _COMMERCE1=
+  export _COMMERCE2=
+  export _COMMONS2=
+  export _COMMONS3=
+  export _D8_DEV_COMMIT=
+  export _D8_DEV_LABEL=
+  export _DEBUG_MODE=
+  export _DISTRO=
+  export _DOMAIN=
+  export _DRUPAL7=
+  export _DRUPAL8=
+  export _DRUSH_VERSION=
+  export _ERPAL=
+  export _GUARDR=
+  export _HM_DISTRO=
+  export _HM_ONLY=
+  export _HOT_SAUCE=
+  export _LAST_ALL=
+  export _LAST_HMR=
+  export _LASTNUM=
+  export _MY_EMAIL=
+  export _MY_OWNIP=
+  export _NOW=
+  export _OPENACADEMY=
+  export _OPENATRIUM7=
+  export _OPENBLOG=
+  export _OPENCHURCH1=
+  export _OPENCHURCH2=
+  export _OPENDEALS=
+  export _OPENOUTREACH=
+  export _OPENPUBLIC=
+  export _OPENPUBLISH=
+  export _OPENSCHOLAR=
+  export _PANOPOLY=
+  export _PHP_CLI_VERSION=
+  export _PHP_FPM_VERSION=
+  export _PLATFORMS_LIST=
+  export _PLATFORMS_ONLY=
+  export _PURGE_FOR_SEVEN=
+  export _PURGE_MODE=
+  export _RECRUITER=
+  export _REDIS_M_VERSION=
+  export _RESTAURANT=
+  export _SERIES_RESULT=
+  export _SMALLCORE6=
+  export _SMALLCORE7=
+  export _SMALLCORE8=
+  export _SPINNER=
+  export _STRONG_PASSWORDS=
+  export _T_BUILD=
+  export _THIS_DB_HOST=
+  export _THISHTIP=
+  export _TODAY=
+  export _UBERCART6=
+  export _UBERCART7=
+  export _USE_CURRENT=
+  export _USE_MIR=
+  export _USER=
+  export _USRG=
+  export _WEBG=
+  export _X_VERSION=
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
@@ -1280,6 +1357,84 @@ action() {
       _HM_ONLY=NO
     fi
   fi
+
+  export _AEGIR_VERSION="${_AEGIR_VERSION}"
+  export _AEGIR_XTS_VRN="${_AEGIR_XTS_VRN}"
+  export _AGOV="${_AGOV}"
+  export _ALL_DISTRO="${_ALL_DISTRO}"
+  export _AUTOPILOT="${_AUTOPILOT}"
+  export _BOA_REPO_GIT_URL="${_BOA_REPO_GIT_URLX}"
+  export _BOA_REPO_NAME="${_BOA_REPO_NAME}"
+  export _BRANCH_BOA="${_BRANCH_BOA}"
+  export _BRANCH_PRN="${_BRANCH_PRN}"
+  export _CIVICRM_M6="${_CIVICRM_M6}"
+  export _CIVICRM_M7="${_CIVICRM_M7}"
+  export _CLIENT_CORES="${_CLIENT_CORES}"
+  export _CLIENT_EMAIL="${_CLIENT_EMAIL}"
+  export _CLIENT_OPTION="${_CLIENT_OPTION}"
+  export _COD="${_COD}"
+  export _COMMERCE1="${_COMMERCE1}"
+  export _COMMERCE2="${_COMMERCE2}"
+  export _COMMONS2="${_COMMONS2}"
+  export _COMMONS3="${_COMMONS3}"
+  export _D8_DEV_COMMIT="${_D8_DEV_COMMIT}"
+  export _D8_DEV_LABEL="${_D8_DEV_LABEL}"
+  export _DEBUG_MODE="${_DEBUG_MODE}"
+  export _DISTRO="${_DISTRO}"
+  export _DOMAIN="${_DOMAIN}"
+  export _DRUPAL7="${_DRUPAL7}"
+  export _DRUPAL8="${_DRUPAL8}"
+  export _DRUSH_VERSION="${_DRUSH_VERSION}"
+  export _ERPAL="${_ERPAL}"
+  export _GUARDR="${_GUARDR}"
+  export _HM_DISTRO="${_HM_DISTRO}"
+  export _HM_ONLY="${_HM_ONLY}"
+  export _HOT_SAUCE="${_HOT_SAUCE}"
+  export _LAST_ALL="${_LAST_ALL}"
+  export _LAST_HMR="${_LAST_HMR}"
+  export _LASTNUM="${_LASTNUM}"
+  export _MY_EMAIL="${_MY_EMAIL}"
+  export _MY_OWNIP="${_MY_OWNIP}"
+  export _NOW="${_NOW}"
+  export _OPENACADEMY="${_OPENACADEMY}"
+  export _OPENATRIUM7="${_OPENATRIUM7}"
+  export _OPENBLOG="${_OPENBLOG}"
+  export _OPENCHURCH1="${_OPENCHURCH1}"
+  export _OPENCHURCH2="${_OPENCHURCH2}"
+  export _OPENDEALS="${_OPENDEALS}"
+  export _OPENOUTREACH="${_OPENOUTREACH}"
+  export _OPENPUBLIC="${_OPENPUBLIC}"
+  export _OPENPUBLISH="${_OPENPUBLISH}"
+  export _OPENSCHOLAR="${_OPENSCHOLAR}"
+  export _PANOPOLY="${_PANOPOLY}"
+  export _PHP_CLI_VERSION="${_PHP_CLI_VERSION}"
+  export _PHP_FPM_VERSION="${_PHP_FPM_VERSION}"
+  export _PLATFORMS_LIST="${_PLATFORMS_LIST}"
+  export _PLATFORMS_ONLY="${_PLATFORMS_ONLY}"
+  export _PURGE_FOR_SEVEN="${_PURGE_FOR_SEVEN}"
+  export _PURGE_MODE="${_PURGE_MODE}"
+  export _RECRUITER="${_RECRUITER}"
+  export _REDIS_M_VERSION="${_REDIS_M_VERSION}"
+  export _RESTAURANT="${_RESTAURANT}"
+  export _SERIES_RESULT="${_SERIES_RESULT}"
+  export _SMALLCORE6="${_SMALLCORE6}"
+  export _SMALLCORE7="${_SMALLCORE7}"
+  export _SMALLCORE8="${_SMALLCORE8}"
+  export _SPINNER="${_SPINNER}"
+  export _STRONG_PASSWORDS="${_STRONG_PASSWORDS}"
+  export _T_BUILD="${_T_BUILD}"
+  export _THIS_DB_HOST="${_THIS_DB_HOST}"
+  export _THISHTIP="${_THISHTIP}"
+  export _TODAY="${_TODAY}"
+  export _UBERCART6="${_UBERCART6}"
+  export _UBERCART7="${_UBERCART7}"
+  export _USE_CURRENT="${_USE_CURRENT}"
+  export _USE_MIR="${_USE_MIR}"
+  export _USER="${_USER}"
+  export _USRG="${_USRG}"
+  export _WEBG="${_WEBG}"
+  export _X_VERSION="${_X_VERSION}"
+
   for fe in `find ${bldPth}/aegir/scripts -type f`; do
     sed -i "s/EDIT_AEGIR_VERSION/${_AEGIR_VERSION}/g"         ${fe} &> /dev/null
     sed -i "s/EDIT_AEGIR_XTS_VRN/${_AEGIR_XTS_VRN}/g"         ${fe} &> /dev/null
@@ -2006,10 +2161,10 @@ else
   _PURGE_MODE=OFF
 fi
 
-
 if [ "${_DEBUG_MODE}" = "YES" ]; then
   msg "8s before we will continue..."
 fi
+
 sleep 8
 rm -f /tmp/cache.inc*
 rm -f /opt/tmp/status-*
@@ -2019,10 +2174,13 @@ rm -f /tmp/pm-updatecode*
 if [ -e "/home/${_USER}.ftp" ]; then
   disable_chattr ${_USER}.ftp
 fi
+
 action
+
 if [ -e "/home/${_USER}.ftp" ]; then
   enable_chattr ${_USER}.ftp
 fi
+
 rm -f /tmp/cache.inc*
 rm -f -r /var/opt/*
 rm -f -r /tmp/drush_make_tmp*
@@ -2032,8 +2190,85 @@ rm -f /var/run/boa_run.pid
 rm -f -r ${_ROOT}/.tmp/cache
 rm -f /var/run/manage_ltd_users.pid
 rm -f /var/run/manage_rvm_users.pid
-exit 0
 
+export _AEGIR_VERSION=
+export _AEGIR_XTS_VRN=
+export _AGOV=
+export _ALL_DISTRO=
+export _AUTOPILOT=
+export _BOA_REPO_GIT_URL=
+export _BOA_REPO_NAME=
+export _BRANCH_BOA=
+export _BRANCH_PRN=
+export _CIVICRM_M6=
+export _CIVICRM_M7=
+export _CLIENT_CORES=
+export _CLIENT_EMAIL=
+export _CLIENT_OPTION=
+export _COD=
+export _COMMERCE1=
+export _COMMERCE2=
+export _COMMONS2=
+export _COMMONS3=
+export _D8_DEV_COMMIT=
+export _D8_DEV_LABEL=
+export _DEBUG_MODE=
+export _DISTRO=
+export _DOMAIN=
+export _DRUPAL7=
+export _DRUPAL8=
+export _DRUSH_VERSION=
+export _ERPAL=
+export _GUARDR=
+export _HM_DISTRO=
+export _HM_ONLY=
+export _HOT_SAUCE=
+export _LAST_ALL=
+export _LAST_HMR=
+export _LASTNUM=
+export _MY_EMAIL=
+export _MY_OWNIP=
+export _NOW=
+export _OPENACADEMY=
+export _OPENATRIUM7=
+export _OPENBLOG=
+export _OPENCHURCH1=
+export _OPENCHURCH2=
+export _OPENDEALS=
+export _OPENOUTREACH=
+export _OPENPUBLIC=
+export _OPENPUBLISH=
+export _OPENSCHOLAR=
+export _PANOPOLY=
+export _PHP_CLI_VERSION=
+export _PHP_FPM_VERSION=
+export _PLATFORMS_LIST=
+export _PLATFORMS_ONLY=
+export _PURGE_FOR_SEVEN=
+export _PURGE_MODE=
+export _RECRUITER=
+export _REDIS_M_VERSION=
+export _RESTAURANT=
+export _SERIES_RESULT=
+export _SMALLCORE6=
+export _SMALLCORE7=
+export _SMALLCORE8=
+export _SPINNER=
+export _STRONG_PASSWORDS=
+export _T_BUILD=
+export _THIS_DB_HOST=
+export _THISHTIP=
+export _TODAY=
+export _UBERCART6=
+export _UBERCART7=
+export _USE_CURRENT=
+export _USE_MIR=
+export _USER=
+export _USRG=
+export _WEBG=
+export _X_VERSION=
+
+exit 0
 
 ###----------------------------------------###
 ###

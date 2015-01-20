@@ -34,6 +34,36 @@ if [[ "${_L_VM_TEST}" =~ beng ]]; then
 fi
 
 clean_pid_exit() {
+  export _AEGIR_DB_USER=
+  export _AEGIR_HOST=
+  export _AEGIR_VERSION=
+  export _AEGIR_XTS_VRN=
+  export _AUTOPILOT=
+  export _BOA_REPO_GIT_URL=
+  export _BOA_REPO_NAME=
+  export _BRANCH_BOA=
+  export _BRANCH_PRN=
+  export _DEBUG_MODE=
+  export _DOMAIN=
+  export _DRUSH_VERSION=
+  export _ESC_APASS=
+  export _LOCAL_NETWORK_IP=
+  export _MY_EMAIL=
+  export _MY_OWNIP=
+  export _NOW=
+  export _PHP_CLI_VERSION=
+  export _PHP_FPM_VERSION=
+  export _PURGE_ALL_THISHTIP=
+  export _PURGE_MODE=
+  export _SPINNER=
+  export _STRONG_PASSWORDS=
+  export _THIS_DB_HOST=
+  export _TODAY=
+  export _USE_MIR=
+  export _USER=
+  export _USRG=
+  export _WEBG=
+  export _X_VERSION=
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
