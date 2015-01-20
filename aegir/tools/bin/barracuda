@@ -262,13 +262,13 @@ check_php_cli() {
 up_action() {
   if [ -e "${vBs}/${barName}" ] && [ -e "${barCnf}" ]; then
     if [ ! -z "${rkey}" ]; then
-      if [ "${rkey}" = "php-55" ]; then
+      if [ "${rkey}" = "php-55" ] || [ "${rkey}" = "php-5.5" ]; then
         phpS=5.5
-      elif [ "${rkey}" = "php-56" ]; then
+      elif [ "${rkey}" = "php-56" ] || [ "${rkey}" = "php-5.6" ]; then
         phpS=5.6
-      elif [ "${rkey}" = "php-54" ]; then
+      elif [ "${rkey}" = "php-54" ] || [ "${rkey}" = "php-5.4" ]; then
         phpS=5.4
-      elif [ "${rkey}" = "php-53" ]; then
+      elif [ "${rkey}" = "php-53" ] || [ "${rkey}" = "php-5.3" ]; then
         phpS=5.3
       elif [ "${rkey}" = "php-all" ]; then
         phpS=ALL
@@ -823,7 +823,7 @@ proceed() {
     _SCRIPT_URL="$rgUrl/$legacy/${barName}"
   else
     echo
-    echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log} {newrelickey|php-56|php-55|php-54|php-53|php-all|nodns}"
+    echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log} {newrelickey|php-5.6|php-5.5|php-5.4|php-5.3|php-all|nodns}"
     echo
     echo "  Silent Mode Option: system == OS only upgrade"
     echo "  Silent Mode Option: log ===== OS and Aegir Master Instance upgrade"

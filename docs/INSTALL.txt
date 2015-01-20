@@ -46,7 +46,7 @@
    built-in platform, while "ask" is a default mode if you don't specify
    this option at all.
 
-   The last {newrelickey|php-56|php-55|php-54|php-53|php-all|nodns} part is
+   The last {newrelickey|php-5.6|php-5.5|php-5.4|php-5.3|php-all|nodns} part is
    optional and can be used either to install New Relic Apps Monitor (you should
    replace the "newrelickey" keyword with a valid license key), or to define
    single PHP version to install and use both for Master and Satellite instances.

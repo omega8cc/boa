@@ -384,22 +384,22 @@ barracuda_install() {
     if [ ! -z "${rkey}" ] \
       && [ -e "${vBs}/${filIncB}" ] \
       && [ -e "${vBs}/${filIncO}" ]; then
-      if [ "${rkey}" = "php-55" ]; then
+      if [ "${rkey}" = "php-55" ] || [ "${rkey}" = "php-5.5" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.5/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.5/g"   ${vBs}/${filIncB}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${filIncO}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${filIncO}
-      elif [ "${rkey}" = "php-56" ]; then
+      elif [ "${rkey}" = "php-56" ] || [ "${rkey}" = "php-5.6" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.6/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.6/g"   ${vBs}/${filIncB}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${filIncO}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${filIncO}
-      elif [ "${rkey}" = "php-54" ]; then
+      elif [ "${rkey}" = "php-54" ] || [ "${rkey}" = "php-5.4" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.4/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.4/g"   ${vBs}/${filIncB}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g" ${vBs}/${filIncO}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g" ${vBs}/${filIncO}
-      elif [ "${rkey}" = "php-53" ]; then
+      elif [ "${rkey}" = "php-53" ] || [ "${rkey}" = "php-5.3" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.3/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.3/g"   ${vBs}/${filIncB}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${vBs}/${filIncO}
@@ -859,10 +859,10 @@ case "$1" in
 
   {extra}
       license <------ valid new relic license key
-      php-56 <------- single PHP version to install and use
-      php-55 <------- single PHP version to install and use
-      php-54 <------- single PHP version to install and use
-      php-53 <------- single PHP version to install and use
+      php-5.6 <------ single PHP version to install and use
+      php-5.5 <------ single PHP version to install and use
+      php-5.4 <------ single PHP version to install and use
+      php-5.3 <------ single PHP version to install and use
       php-all <------ all PHP versions to install, use 5.5 by default
       nodns <-------- disable DNS checks on the fly
       2.2 <---------- legacy BOA version to install, overrides {version}
