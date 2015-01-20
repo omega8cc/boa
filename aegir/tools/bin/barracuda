@@ -174,11 +174,16 @@ check_report() {
   sed -i "/^$/d"                 ${_UP_LOG}
   _SEND_ALERT=NO
   _RESULT_TEST_OK=$(grep "INFO: Test OK" ${_UP_LOG} 2>&1)
-  if [[ "$_RESULT_TEST_OK" =~ "INFO: Test OK" ]]; then
+  _RESULT_TEST_CARD=$(grep "CARD: Now charging" ${_UP_LOG} 2>&1)
+  if [[ "$_RESULT_TEST_OK" =~ "INFO: Test OK" ]] \
+    || [[ "$_RESULT_TEST_CARD" =~ "CARD: Now charging" ]]; then
     _DO_NOTHING=YES
   else
     if [ "${silent}" = "system" ]; then
-      _DO_NOTHING=YES
+      if [[ ! "$_RESULT_TEST_CARD" =~ "CARD: Now charging" ]]; then
+        _SEND_ALERT=YES
+        _ALERT_MSG="ALERT: Failed Barracuda upgrade"
+      fi
     else
       _SEND_ALERT=YES
       _ALERT_MSG="ALERT: Failed Barracuda upgrade"
