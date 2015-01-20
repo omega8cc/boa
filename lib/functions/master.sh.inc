@@ -288,26 +288,8 @@ upgrade_aegir_master() {
     chown -R aegir:www-data $_THIS_HM_SITE/files
     chmod -R 02775 $_THIS_HM_SITE/files
     cd /var/aegir
-
-    export _AEGIR_VERSION="${_AEGIR_VERSION}"
-    export _AEGIR_XTS_VRN="${_AEGIR_XTS_VRN}"
-    export _BOA_REPO_GIT_URL="${_BOA_REPO_GIT_URLX}"
-    export _BOA_REPO_NAME="${_BOA_REPO_NAME}"
-    export _BRANCH_BOA="${_BRANCH_BOA}"
-    export _BRANCH_PRN="${_BRANCH_PRN}"
-    export _DEBUG_MODE="${_DEBUG_MODE}"
-    export _DOMAIN="${_THIS_FRONT}"
-    export _DRUSH_VERSION="${_DRUSH_VERSION}"
-    export _PHP_CLI_VERSION="${_PHP_CLI_VERSION}"
-    export _PHP_FPM_VERSION="${_PHP_FPM_VERSION}"
-    export _STRONG_PASSWORDS="${_STRONG_PASSWORDS}"
-    export _THIS_DB_HOST="${_THIS_DB_HOST}"
-    export _USE_MIR="${_USE_MIR}"
-    export _X_VERSION="${_X_VERSION}"
-
     cp ${bldPth}/aegir/scripts/AegirUpgrade.sh.txt ./
     pthAue="/var/aegir/AegirUpgrade.sh.txt"
-
     sed -i "s/EDIT_AEGIR_VERSION/${_AEGIR_VERSION}/g"         ${pthAue}
     sed -i "s/EDIT_AEGIR_XTS_VRN/${_AEGIR_XTS_VRN}/g"         ${pthAue}
     sed -i "s/EDIT_BOA_REPO_GIT_URL/${_BOA_REPO_GIT_URLX}/g"  ${pthAue}
@@ -323,7 +305,6 @@ upgrade_aegir_master() {
     sed -i "s/EDIT_THIS_DB_HOST/${_THIS_DB_HOST}/g"           ${pthAue}
     sed -i "s/EDIT_USE_MIR/${_USE_MIR}/g"                     ${pthAue}
     sed -i "s/EDIT_X_VERSION/${_X_VERSION}/g"                 ${pthAue}
-
     mysqladmin flush-hosts &> /dev/null
     provision_backend_dbpass_sync
     hostmaster_frontend_dbpass_sync
@@ -552,27 +533,6 @@ EOFMYSQL
 
     download_for_dmlb
     cd /var/aegir
-
-    export _AEGIR_DB_USER="${_AEGIR_DB_USER}"
-    export _AEGIR_HOST="${_AEGIR_HOST}"
-    export _AEGIR_VERSION="${_AEGIR_VERSION}"
-    export _AEGIR_XTS_VRN="${_AEGIR_XTS_VRN}"
-    export _BOA_REPO_GIT_URL="${_BOA_REPO_GIT_URLX}"
-    export _BOA_REPO_NAME="${_BOA_REPO_NAME}"
-    export _BRANCH_BOA="${_BRANCH_BOA}"
-    export _BRANCH_PRN="${_BRANCH_PRN}"
-    export _DEBUG_MODE="${_DEBUG_MODE}"
-    export _DOMAIN="${_THIS_FRONT}"
-    export _DRUSH_VERSION="${_DRUSH_VERSION}"
-    export _ESC_APASS="${_ESC_APASS}"
-    export _LOCAL_NETWORK_IP="${_LOCAL_NETWORK_IP}"
-    export _MY_OWNIP="${_MY_OWNIP}"
-    export _PHP_CLI_VERSION="${_PHP_CLI_VERSION}"
-    export _PHP_FPM_VERSION="${_PHP_FPM_VERSION}"
-    export _STRONG_PASSWORDS="${_STRONG_PASSWORDS}"
-    export _THIS_DB_HOST="${_THIS_DB_HOST}"
-    export _USE_MIR="${_USE_MIR}"
-
     _AEGIR_SCRIPT="AegirSetupM.sh.txt"
     for fe in `find ${bldPth}/aegir/scripts -type f`; do
       sed -i "s/EDIT_AEGIR_DB_USER/${_AEGIR_DB_USER}/g"         ${fe} &> /dev/null
@@ -609,7 +569,6 @@ EOFMYSQL
         --aegir_db_host='${_THIS_DB_HOST}' \
         --client_email='${_MY_EMAIL}' -y >/var/aegir/install.log 2>&1"
     fi
-
     if [ -e "/opt/tmp/status-AegirSetupM-FAIL" ]; then
       msg "FATAL ERROR: AegirSetupM installer failed"
       msg "FATAL ERROR: Aborting Barracuda installer NOW!"
