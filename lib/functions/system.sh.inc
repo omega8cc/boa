@@ -3980,6 +3980,25 @@ check_fix_newrelic() {
     fi
     sed -i "s/^loglevel=.*/loglevel=error/g" $_NEWRELIC_APP_CFG &> /dev/null
     mrun "service newrelic-daemon restart" &> /dev/null
+  else
+    if [ -e "/etc/init.d/newrelic-daemon" ] \
+      || [ -e "/etc/init.d/newrelic-sysmond" ]; then
+      service newrelic-daemon stop &> /dev/null
+      update-rc.d -f newrelic-daemon remove &> /dev/null
+      service newrelic-sysmond stop &> /dev/null
+      update-rc.d -f newrelic-sysmond remove &> /dev/null
+      st_runner "aptitude remove newrelic-php5 \
+        newrelic-php5-common \
+        newrelic-daemon \
+        newrelic-sysmond -y" &> /dev/null
+      st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
+      mv -f /etc/newrelic \
+        ${vBs}/nr/etc-newrelic-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      rm -f /etc/init.d/newrelic-sysmond
+      rm -f /etc/init.d/newrelic-daemon
+      killall -9 newrelic-daemon &> /dev/null
+      killall -9 nrsysmond &> /dev/null
+    fi
   fi
   _NEWRELIC_SYS_CFG="/etc/newrelic/nrsysmond.cfg"
   if [ -e "$_NEWRELIC_SYS_CFG" ]; then
