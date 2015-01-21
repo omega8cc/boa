@@ -40,21 +40,6 @@ prompt_confirm_choice() {
 }
 
 #
-# Success msg.
-success() {
-  msg "$1 Succeeded"
-}
-
-#
-# Error msg.
-fatal() {
-  echo " "
-  msg "Fatal Error Occurred: $1"
-  msg "Cannot continue installation"
-  clean_pid_exit
-}
-
-#
 # Not supported OS.
 not_supported_os() {
   msg "== FATAL ERROR =="
@@ -63,36 +48,6 @@ not_supported_os() {
   msg "You need Debian - Squeeze (recommended) or Wheezy"
   msg "or Ubuntu - Precise or Lucid"
   clean_pid_exit
-}
-
-#
-# Perform an action, log it, and run the spinner throughout.
-runner() {
-  CMD="$1"
-  touch busy
-  if [ "${_SPINNER}" = "YES" ]; then
-    bash ${_SRCDIR}/spinner busy &
-  fi
-  if ${CMD} >> ${_LOG}; then
-    rm busy
-    sleep 1
-    success "${CMD}:"
-    return 0
-  else
-    rm busy
-    sleep 1
-    echo "${CMD} failed.  Error (if any): $?"
-    echo " "
-    echo "Displaying the last 15 lines of logfile"
-    echo "  ${_LOG}"
-    echo "to help troubleshoot this problem"
-    echo " "
-    echo "If you see any error with advice to run 'dpkg --configure -a', run this"
-    echo "command first and choose default answer, then run this installer again"
-    echo " "
-    tail -15 ${_LOG}
-    return 1
-  fi
 }
 
 #
