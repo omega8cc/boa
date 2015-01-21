@@ -583,7 +583,7 @@ up_finish() {
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/manage_ltd_users.pid
   rm -f /var/run/manage_rvm_users.pid
-  ## rm -f ${vBs}/*.sh.cnf*
+  rm -f ${vBs}/*.sh.cnf*
   rm -f ${vBs}/OCTOPUS.sh*
   if [ -e "/opt/local/bin/php" ] || [ -e "/usr/local/bin/php" ]; then
     rm -f /opt/local/bin/php
