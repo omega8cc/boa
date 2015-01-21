@@ -1722,6 +1722,9 @@ get_drush_versions() {
 # Update packages sources list.
 update_sources_list() {
   ###--------------------###
+  aptitude autoclean -y &> /dev/null
+  apt-get clean -qq &> /dev/null
+  ###--------------------###
   if [ -e "${pthLog}/apt-fast-install-log.txt" ] \
     || [ -e "/var/log/apt-fast-install-log.txt" ]; then
     _APT_SOURCES_REWRITE=NO
@@ -1983,6 +1986,9 @@ update_sources_list() {
       fi
     fi
   fi
+  ###--------------------###
+  apt-get update &> /dev/null
+  ###--------------------###
 }
 
 #
@@ -3595,7 +3601,9 @@ fix_libssl() {
 
 check_smtp() {
   if [ -z "${_SMTP_RELAY_HOST}" ] && [ "${_SMTP_RELAY_TEST}" = "YES" ]; then
-    msg "INFO: Checking SMTP connections..."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Checking SMTP connections..."
+    fi
     if ! netcat -w 14 -z smtp.gmail.com 25 ; then
       WE_NEED_RELAY=YES
       cat <<EOF

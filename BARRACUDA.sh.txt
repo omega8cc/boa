@@ -215,10 +215,7 @@ os_detection
 ### Basic packages check and update
 ###
 basic_packages_install_on_init
-aptitude autoclean -y &> /dev/null
-apt-get clean -qq &> /dev/null
 update_sources_list
-apt-get update &> /dev/null
 more_packages_install_on_init
 
 
