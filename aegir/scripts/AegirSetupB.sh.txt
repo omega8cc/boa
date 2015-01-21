@@ -190,7 +190,7 @@ get_dev_ext() {
 # Download and extract from dev/contrib mirror.
 get_dev_contrib() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "${urlDev}/contrib/$1" -o "$1"
+    curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/contrib/$1" -o "$1"
     extract_archive "$1"
   fi
 }
