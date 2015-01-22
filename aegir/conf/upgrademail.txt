@@ -2,7 +2,7 @@ Hello,
 
 Your Aegir Hosting System has been upgraded to version BOA-2.4.0-dev
 
-  https://aegir.dragon.ny.host8.biz
+  https://aegir.url.name
 
 This new BOA release includes updated versions of all supported Drupal
 platforms to provide latest Drupal 7.34 and Pressflow 6.34 cores, plus

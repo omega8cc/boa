@@ -5,7 +5,7 @@ multi-sites deployment, development and management.
 
 Your Aegir control panel [version BOA-2.4.0-dev] is available at:
 
-  https://aegir.dragon.ny.host8.biz
+  https://aegir.url.name
 
 Note:
 
@@ -87,12 +87,12 @@ like below:
 
  yourdomain.com.           IN  A      166.84.6.231
   or
- subdomain.yourdomain.com. IN  CNAME  aegir.dragon.ny.host8.biz.
+ subdomain.yourdomain.com. IN  CNAME  aegir.url.name.
 
-You can also use any subdomain in *.aegir.dragon.ny.host8.biz
+You can also use any subdomain in *.aegir.url.name
 to create test sites, for example:
 
-  http://atrium.aegir.dragon.ny.host8.biz
+  http://atrium.aegir.url.name
 
 If you need our assistance in importing your site, please purchase
 this add-on service:
@@ -107,7 +107,7 @@ this add-on service:
 To add modules/themes to any of the enabled platforms,
 you need to log into your FTPS/SSH/SFTP account:
 
-  host: aegir.dragon.ny.host8.biz
+  host: aegir.url.name
   user: dragon.ftp
   pass: FN8rXcQn
   port: 21 (for FTPS connections)
