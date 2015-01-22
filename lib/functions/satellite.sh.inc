@@ -3093,6 +3093,7 @@ satellite_make() {
   fi
 
   cp -af ${bldPth}/aegir/scripts/run-xdrago /var/xdrago/run-${_USER}
+  sed -i "s/EDIT_USER/${_USER}/g" /var/xdrago/run-${_USER}
   chmod 700 /var/xdrago/run-${_USER} &> /dev/null
   chmod 700 ${bldPth}/aegir/scripts/* &> /dev/null
 
