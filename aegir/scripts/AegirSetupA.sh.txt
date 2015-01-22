@@ -50,22 +50,6 @@ vSet="vset --always-set"
 
 
 ###
-### Env debugging
-###
-if [ "${_DEBUG_MODE}" = "YES" ]; then
-  echo DEBUG AegirSetupA
-  echo DEBUG AegirSetupA
-  echo Effective _USER is $1
-  [ -r "${vBs}/${tocIncO}" ] && echo Effective tocIncO is ${tocIncO}
-  echo DEBUG AegirSetupA
-  echo DEBUG AegirSetupA
-  env
-  echo DEBUG AegirSetupA
-  echo DEBUG AegirSetupA
-fi
-
-
-###
 ### Panic on missing include
 ###
 panic_exit() {
@@ -91,6 +75,22 @@ elif [ -e "${vBs}/${filIncO}" ]; then
   tInc="${vBs}/${filIncO}"
 else
   panic_exit "${tInc}"
+fi
+
+
+###
+### Env debugging
+###
+if [ "${_DEBUG_MODE}" = "YES" ]; then
+  echo DEBUG AegirSetupA
+  echo DEBUG AegirSetupA
+  echo Effective _USER is $1
+  [ -r "${vBs}/${tocIncO}" ] && echo Effective tocIncO is ${tocIncO}
+  echo DEBUG AegirSetupA
+  echo DEBUG AegirSetupA
+  env
+  echo DEBUG AegirSetupA
+  echo DEBUG AegirSetupA
 fi
 
 
