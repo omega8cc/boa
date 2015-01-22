@@ -115,6 +115,9 @@ done
 ###
 ### Local variables
 ###
+if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+  _THIS_DB_HOST=$(uname -n 2>&1)
+fi
 _DIST_INSTALL=NO
 _STATUS=INIT
 _LOCAL_STATUS="${_STATUS}"

@@ -34,112 +34,123 @@
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_X_VERSION=EDIT_X_VERSION
+
+###
+### Helper variables
+###
+bldPth="/opt/tmp/boa"
+crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+filIncO="octopus.sh.cnf"
+gCb="git clone --branch"
+gitHub="git://github.com/omega8cc"
+libFnc="${bldPth}/lib/functions"
+tocIncO="${filIncO}.${_USER}"
+vBs="/var/backups"
+vSet="vset --always-set"
 
 
-###---### Distro config.
-#
-_AGOV=EDIT_AGOV
-_CIVICRM_M6=EDIT_CIVICRM_M6
-_CIVICRM_M7=EDIT_CIVICRM_M7
-_COD=EDIT_COD
-_COMMERCE1=EDIT_COMMERCE1
-_COMMERCE2=EDIT_COMMERCE2
-_COMMONS2=EDIT_COMMONS2
-_COMMONS3=EDIT_COMMONS3
-_D8_DEV_COMMIT=EDIT_D8_DEV_COMMIT
-_D8_DEV_LABEL=EDIT_D8_DEV_LABEL
-_DRUPAL7=EDIT_DRUPAL7
-_DRUPAL7D="EDIT_DRUPAL7-dev"
-_DRUPAL7P="EDIT_DRUPAL7-prod"
-_DRUPAL7S="EDIT_DRUPAL7-stage"
-_DRUPAL8=EDIT_DRUPAL8
-_ERPAL=EDIT_ERPAL
-_GUARDR=EDIT_GUARDR
-_OPENACADEMY=EDIT_OPENACADEMY
-_OPENATRIUM7=EDIT_OPENATRIUM7
-_OPENBLOG=EDIT_OPENBLOG
-_OPENCHURCH1=EDIT_OPENCHURCH1
-_OPENCHURCH2=EDIT_OPENCHURCH2
-_OPENDEALS=EDIT_OPENDEALS
-_OPENOUTREACH=EDIT_OPENOUTREACH
-_OPENPUBLIC=EDIT_OPENPUBLIC
-_OPENPUBLISH=EDIT_OPENPUBLISH
-_OPENSCHOLAR=EDIT_OPENSCHOLAR
-_PANOPOLY=EDIT_PANOPOLY
-_RECRUITER=EDIT_RECRUITER
-_RESTAURANT=EDIT_RESTAURANT
-_SMALLCORE6=EDIT_SMALLCORE6
-_SMALLCORE7=EDIT_SMALLCORE7
-_SMALLCORE8=EDIT_SMALLCORE8
-_UBERCART6=EDIT_UBERCART6
-_UBERCART7=EDIT_UBERCART7
+###
+### Env debugging
+###
+if [ "${_DEBUG_MODE}" = "YES" ]; then
+  echo DEBUG AegirSetupC
+  echo DEBUG AegirSetupC
+  echo Effective _USER is ${_USER}
+  [ -r "${tocIncO}" ] && echo Effective tocIncO is ${tocIncO}
+  echo DEBUG AegirSetupC
+  echo DEBUG AegirSetupC
+  env
+  echo DEBUG AegirSetupC
+  echo DEBUG AegirSetupC
+fi
 
 
-###---### Main config.
-#
-_AEGIR_VERSION=EDIT_AEGIR_VERSION
-_AEGIR_XTS_VRN=EDIT_AEGIR_XTS_VRN
-_ALL_DISTRO=EDIT_ALL_DISTRO
-_AUTOPILOT=EDIT_AUTOPILOT
-_BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
-_BOA_REPO_NAME=EDIT_BOA_REPO_NAME
-_BRANCH_BOA=EDIT_BRANCH_BOA
-_BRANCH_PRN=EDIT_BRANCH_PRN
-_CLIENT_CORES=EDIT_CLIENT_CORES
-_CLIENT_OPTION=EDIT_CLIENT_OPTION
-_DEBUG_MODE=EDIT_DEBUG_MODE
-_DISTRO=EDIT_DISTRO
-_DOMAIN=EDIT_DOMAIN
-_DRUSH_VERSION=EDIT_DRUSH_VERSION
-_HM_DISTRO=EDIT_HM_DISTRO
-_HM_ONLY=EDIT_HM_ONLY
-_HOT_SAUCE=EDIT_HOT_SAUCE
-_LAST_ALL=EDIT_LAST_ALL
-_LAST_HMR=EDIT_LAST_HMR
-_LASTNUM=EDIT_LASTNUM
-_SERIES_RESULT=EDIT_SERIES_RESULT
-_NOW=EDIT_NOW
-_PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
-_PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
-_PLATFORMS_LIST="EDIT_PLATFORMS_LIST"
-_PURGE_FOR_SEVEN=EDIT_PURGE_FOR_SEVEN
-_PURGE_MODE=EDIT_PURGE_MODE
-_SPINNER=EDIT_SPINNER
-_SRCDIR="/opt/tmp/files"
-_STATUS=INIT
-_T_BUILD=EDIT_T_BUILD
-_THIS_DB_HOST=EDIT_THIS_DB_HOST
-_TODAY=$(date +%y%m%d 2>&1)
-_USE_CURRENT=EDIT_USE_CURRENT
-_USE_MIR=EDIT_USE_MIR
-_WEBG=EDIT_WEBG
-#
-_USER=EDIT_USER
-_ROOT="/data/disk/${_USER}"
-_HM_ROOT="${_ROOT}/aegir/distro/${_HM_DISTRO}"
-_PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
-_LOG=/var/backups/octopus-${_USER}-${_NOW}.log
-#
+###
+### Panic on missing include
+###
+panic_exit() {
+  echo
+  echo " EXIT: Required lib file not available?"
+  echo " EXIT: $1"
+  echo " EXIT: Cannot continue"
+  echo " EXIT: Bye (0)"
+  echo
+  touch /opt/tmp/status-AegirSetupC-FAIL
+  exit 1
+}
+
+
+###
+### Include helper functions
+###
+if [ -e "${vBs}/${tocIncO}" ]; then
+  source "${vBs}/${tocIncO}"
+  tInc="${vBs}/${tocIncO}"
+elif [ -e "${vBs}/${filIncO}" ]; then
+  source "${vBs}/${filIncO}"
+  tInc="${vBs}/${filIncO}"
+else
+  panic_exit "${tInc}"
+fi
+
+
+###
+### More helper variables
+###
+urlDev="http://${_USE_MIR}/dev"
+urlHmr="http://${_USE_MIR}/versions/master/aegir"
+urlStb="http://${_USE_MIR}/versions/stable"
+
+
+###
+### Include shared functions
+###
+_FL="helper satellite"
+for f in ${_FL}; do
+  [ -r "${libFnc}/${f}.sh.inc" ] || panic_exit "${f}"
+  source "${libFnc}/${f}.sh.inc"
+done
+
+
+###
+### Local variables
+###
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
   _THIS_DB_HOST=$(uname -n 2>&1)
 fi
-if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
+_DIST_INSTALL=NO
+_STATUS=INIT
+_LOCAL_STATUS="${_STATUS}"
+_ROOT="/data/disk/${_USER}"
+_HM_ROOT="${_ROOT}/aegir/distro/${_HM_DISTRO}"
+_DISTRO_ROOT="${_ROOT}/distro/${_DISTRO}"
+_PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
+_D="/data/all"
+_SRCDIR="/opt/tmp/files"
+_LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
+if [ "${_PHP_CLI_VERSION}" = "5.5" ] \
+  && [ -x "/opt/php55/bin/php" ]; then
   _T_CLI=/opt/php55/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
+elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
+  && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
+elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
+  && [ -x "/opt/php54/bin/php" ]; then
   _T_CLI=/opt/php54/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
+elif [ "${_PHP_CLI_VERSION}" = "5.3" ] \
+  && [ -x "/opt/php53/bin/php" ]; then
   _T_CLI=/opt/php53/bin
 fi
 _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
 #
-if [ "${_PHP_FPM_VERSION}" = "5.5" ] && [ "${_PHP_CLI_VERSION}" = "5.5" ]; then
+if [ "${_PHP_FPM_VERSION}" = "5.5" ] \
+  && [ "${_PHP_CLI_VERSION}" = "5.5" ]; then
   _D_8_ALLOW=YES
-elif [ "${_PHP_FPM_VERSION}" = "5.6" ] && [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
+elif [ "${_PHP_FPM_VERSION}" = "5.6" ] \
+  && [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
   _D_8_ALLOW=YES
-elif [ "${_PHP_FPM_VERSION}" = "5.4" ] && [ "${_PHP_CLI_VERSION}" = "5.4" ]; then
+elif [ "${_PHP_FPM_VERSION}" = "5.4" ] \
+  && [ "${_PHP_CLI_VERSION}" = "5.4" ]; then
   _D_8_ALLOW=YES
 else
   _D_8_ALLOW=NO
