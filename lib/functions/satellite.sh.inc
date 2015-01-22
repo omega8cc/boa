@@ -2960,7 +2960,6 @@ satellite_send_welcome_email() {
 #
 # Satellite start.
 satellite_make() {
-  export _F_TIME=$(date 2>&1)
   export _THIS_OS=$(lsb_release -si 2>&1)
   export _OSV=$(lsb_release -sc 2>&1)
   if [ -d "/data/all/000" ]; then
@@ -3450,10 +3449,10 @@ satellite_if_init_or_upgrade() {
         cd /data/all
         listl=([0-9]*)
         lastl=${listl[@]: -1}
-        _LAST_ALL=$lastl
+        export _LAST_ALL=$lastl
         nextnuml=00$((10#${lastl%%[^0-9]*} + 1))
         nextnuml=${nextnuml: -3}
-        _ALL_DISTRO=${nextnuml}
+        export _ALL_DISTRO=${nextnuml}
       fi
     #
     #
@@ -3471,10 +3470,10 @@ satellite_if_init_or_upgrade() {
       cd /data/all
       listl=([0-9]*)
       lastl=${listl[@]: -1}
-      _LAST_ALL=$lastl
+      export _LAST_ALL=$lastl
       nextnuml=00$((10#${lastl%%[^0-9]*} + 1))
       nextnuml=${nextnuml: -3}
-      _ALL_DISTRO=${nextnuml}
+      export _ALL_DISTRO=${nextnuml}
     fi
   fi
 }
@@ -3696,6 +3695,7 @@ satellite_batch_cleanup() {
   chmod 0700 /data/u &> /dev/null
   chown root:root /data/u &> /dev/null
   rm -f /data/u/*host8* &> /dev/null
+  rm -f /data/u/*o8.io* &> /dev/null
   mv -f ${_ROOT}/backups/drupalgeddon-pre* ${_ROOT}/backups/system/ &> /dev/null
   mv -f ${_ROOT}/backups/drush_make-pre* ${_ROOT}/backups/system/ &> /dev/null
   mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/ &> /dev/null
@@ -4029,7 +4029,7 @@ satellite_child_b_aegir_build() {
     chgrp -R ${_WEBG} sites/${_DOMAIN}/files &> /dev/null
     rm -f ${_ROOT}/u/${_DOMAIN}
     ln -sf ${_HM_ROOT} ${_ROOT}/u/${_DOMAIN}
-    rm -f /data/u/${_DOMAIN}
+    rm -f /data/u/${_DOMAIN} &> /dev/null
     ln -sf ${_HM_ROOT} /data/u/${_DOMAIN}
     ${_DRUSHCMD} cache-clear drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
@@ -4242,7 +4242,7 @@ satellite_child_b_aegir_build() {
       ${_ROOT}/.drush/xts/security_review/security_review.drush.inc  &> /dev/null
     rm -f ${_ROOT}/u/${_DOMAIN}
     ln -sf ${_HM_ROOT} ${_ROOT}/u/${_DOMAIN}
-    rm -f /data/u/${_DOMAIN}
+    rm -f /data/u/${_DOMAIN} &> /dev/null
     ln -sf ${_HM_ROOT} /data/u/${_DOMAIN}
     rm -rf ${_HM_ROOT}/profiles/{default,standard,minimal,testing}
 

@@ -56,7 +56,7 @@ if [ "${_DEBUG_MODE}" = "YES" ]; then
   echo DEBUG AegirSetupB
   echo DEBUG AegirSetupB
   echo Effective _USER is ${_USER}
-  [ -r "${tocIncO}" ] && echo Effective tocIncO is ${tocIncO}
+  [ -r "${vBs}/${tocIncO}" ] && echo Effective tocIncO is ${tocIncO}
   echo DEBUG AegirSetupB
   echo DEBUG AegirSetupB
   env
