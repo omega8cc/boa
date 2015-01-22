@@ -1948,7 +1948,7 @@ satellite_run_child_b() {
     rm -f /opt/tmp/testecho*
     chown root:${_USRG} /data/u &> /dev/null
     chmod 0771 /data/u &> /dev/null
-    su -s /bin/bash - ${_USER} -c "/bin/bash ${AegirSetupB}"
+    su -s /bin/bash - ${_USER} -c "/bin/bash ${AegirSetupB} ${_USER}"
     if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ]; then
       msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
       msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
@@ -2006,7 +2006,7 @@ satellite_run_child_b() {
       chmod -R 02775 $_THIS_HM_SITE/files
       chown root:${_USRG} /data/u &> /dev/null
       chmod 0771 /data/u &> /dev/null
-      su -s /bin/bash - ${_USER} -c "/bin/bash ${AegirSetupB}"
+      su -s /bin/bash - ${_USER} -c "/bin/bash ${AegirSetupB} ${_USER}"
       if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ]; then
         msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
         msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
@@ -2115,7 +2115,8 @@ satellite_run_child_c() {
       msg "${_STATUS} A: Switching user and running Platforms build"
     fi
     cd ${_ROOT}
-    su -s /bin/bash - ${_USER} -c "/bin/bash ${_ROOT}/AegirSetupC.sh.txt"
+    AegirSetupC="${bldPth}/aegir/scripts/AegirSetupC.sh.txt"
+    su -s /bin/bash - ${_USER} -c "/bin/bash ${AegirSetupC} ${_USER}"
     if [ -e "/opt/tmp/status-AegirSetupC-FAIL" ]; then
       msg "${_STATUS} A: FATAL ERROR: AegirSetupC installer failed"
       msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
@@ -2143,7 +2144,8 @@ satellite_run_child_c() {
           msg "${_STATUS} A: Switching user and running Platforms build"
         fi
         cd ${_ROOT}
-        su -s /bin/bash - ${_USER} -c "/bin/bash ${_ROOT}/AegirSetupC.sh.txt"
+        AegirSetupC="${bldPth}/aegir/scripts/AegirSetupC.sh.txt"
+        su -s /bin/bash - ${_USER} -c "/bin/bash ${AegirSetupC} ${_USER}"
         if [ -e "/opt/tmp/status-AegirSetupC-FAIL" ]; then
           msg "${_STATUS} A: FATAL ERROR: AegirSetupC installer failed"
           msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
@@ -3096,7 +3098,7 @@ satellite_make() {
 
   ###
   AegirSetupA="${bldPth}/aegir/scripts/AegirSetupA.sh.txt"
-  bash ${AegirSetupA}
+  bash ${AegirSetupA} ${_USER}
   ###
 
   if [ -e "/opt/tmp/status-AegirSetupA-FAIL" ]; then

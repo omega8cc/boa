@@ -44,7 +44,7 @@ filIncO="octopus.sh.cnf"
 gCb="git clone --branch"
 gitHub="git://github.com/omega8cc"
 libFnc="${bldPth}/lib/functions"
-tocIncO="${filIncO}.${_USER}"
+tocIncO="${filIncO}.$1"
 vBs="/var/backups"
 vSet="vset --always-set"
 
@@ -55,7 +55,7 @@ vSet="vset --always-set"
 if [ "${_DEBUG_MODE}" = "YES" ]; then
   echo DEBUG AegirSetupC
   echo DEBUG AegirSetupC
-  echo Effective _USER is ${_USER}
+  echo Effective _USER is $1
   [ -r "${vBs}/${tocIncO}" ] && echo Effective tocIncO is ${tocIncO}
   echo DEBUG AegirSetupC
   echo DEBUG AegirSetupC
