@@ -791,7 +791,7 @@ install_newrelic() {
       || [ ! -e "/etc/newrelic/newrelic.cfg" ] \
       || [ ! -e "/etc/newrelic/nrsysmond.cfg" ] \
       || [ ! -e "${aptLiSys}.d/newrelic.list" ]; then
-      msg "INFO: Installing New Relic Apps and Server Monitor..."
+      msg "INFO: Installing New Relic Apps Monitor..."
       cd /var/opt
       _KEYS_SERVER_TEST=FALSE
       until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]]; do
