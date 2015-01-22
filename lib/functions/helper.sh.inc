@@ -13,7 +13,6 @@ prompt_yes_no() {
 if [ "${_AUTOPILOT}" = "YES" ]; then
   return 0
 else
-  echo " "
   while true; do
     printf "$* [Y/n] "
     read answer
