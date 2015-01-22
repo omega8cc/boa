@@ -47,22 +47,6 @@ _EASY_SETUP=PUBLIC
 ###
 _EASY_HOSTNAME="wildcard-enabled-hostname"
 
-###----------------------------------------###
-###
-### STOP! NO NEED TO CONFIGURE ANYTHING BELOW
-### IF _EASY_SETUP MODE HAS BEEN ENABLED.
-###
-###----------------------------------------###
-
-
-###----------------------------------------###
-### MANUAL INSTALL MODE                    ###
-###----------------------------------------###
-###
-### You can configure all options manually
-### below when _EASY_SETUP=NO above.
-###
-
 
 ###----------------------------------------###
 ### PHP MULTI INSTALL                      ###
@@ -290,6 +274,7 @@ _LENNY_TO_SQUEEZE=NO
 ### to Jetty 7 with Apache Solr 1.4.1
 ###
 _TOMCAT_TO_JETTY=NO
+
 
 ###----------------------------------------###
 ### DRUSH DEBUG MODE                       ###
@@ -1040,6 +1025,7 @@ _SPEED_VALID_MAX=3600
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
+
 _AEGIR_VERSION="HEAD"
 _AEGIR_XTS_VRN="BOA-2.4.0"
 _BRANCH_BOA="2.4.x-dev"
@@ -1047,7 +1033,7 @@ _BRANCH_PRN="2.4.x-dev"
 _X_VERSION="BOA-2.4.0-dev"
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${gitHub}"
-_BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
+
 
 ###
 ### Commands shortcuts
@@ -1056,6 +1042,7 @@ gCb="git clone --branch"
 _INITINS="/usr/bin/apt-get -y --force-yes install"
 _INSTALL="/usr/bin/apt-get -y --force-yes \
   --config-file /opt/tmp/apt.conf.noninteractive install"
+
 
 ###
 ### Find the fastest mirror to use for downloads
@@ -1103,6 +1090,7 @@ find_fast_mirror() {
   urlStb="http://${_USE_MIR}/versions/stable"
 }
 
+
 ###
 ### Download helpers and libs
 ###
@@ -1147,7 +1135,6 @@ download_helpers_libs() {
   fi
   touch ${_LOG}
   chmod 600 ${_LOG}
-  _SILENT=/opt/tmp/silent.log
   mkdir -p /var/opt
   rm -f -r /var/opt/*
   _SRCDIR="/opt/tmp/files"

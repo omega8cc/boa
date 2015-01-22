@@ -96,7 +96,7 @@ check_dns_settings() {
 
 #
 # Check repo status.
-check_git_repos_status() {
+dns_check_git_repos_status() {
   if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
     _GITHUB_WORKS=NO
     _GITORIOUS_WORKS=NO

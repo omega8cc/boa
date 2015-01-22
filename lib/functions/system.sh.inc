@@ -1,5 +1,5 @@
 
-check_root_barracuda() {
+if_running_as_root_barracuda() {
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then

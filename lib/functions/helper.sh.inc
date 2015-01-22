@@ -1,14 +1,19 @@
-#
-# Noticeable messages.
+
+###
+### Noticeable messages
+###
 msg() {
   echo "BOA [$(date +%T 2>&1)] ==> $*"
 }
 
-# Simple prompt.
+###
+### Simple prompt
+###
 prompt_yes_no() {
 if [ "${_AUTOPILOT}" = "YES" ]; then
   return 0
 else
+  echo " "
   while true; do
     printf "$* [Y/n] "
     read answer
@@ -50,8 +55,9 @@ not_supported_os() {
   clean_pid_exit
 }
 
-#
-# Small spinner.
+###
+### Small spinner
+###
 mrun() {
   CMD="$1"
   touch busy

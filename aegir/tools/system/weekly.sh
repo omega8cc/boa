@@ -37,12 +37,12 @@ read_account_data() {
 }
 
 send_notice_core() {
-  _ADM_EMAIL="notify@omega8.cc"
+  _MY_EMAIL="notify@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_ADM_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
+  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
     -s "URGENT: Please migrate ${Dom} site to Pressflow" ${_CLIENT_EMAIL}
 Hello,
 
@@ -78,7 +78,7 @@ This e-mail has been sent by your Aegir platform core monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_ADM_EMAIL}" -e -b ${_BCC_EMAIL} \
+  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
     -s "URGENT: Please migrate ${Dom} site to Pressflow" ${_CLIENT_EMAIL}
 Hello,
 
@@ -114,7 +114,7 @@ This e-mail has been sent by your Aegir platform core monitor.
 
 EOF
   else
-  cat <<EOF | mail -r ${_ADM_EMAIL} -e -b ${_BCC_EMAIL} \
+  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
     -s "URGENT: Please migrate ${Dom} site to Pressflow" ${_CLIENT_EMAIL}
 Hello,
 
@@ -269,12 +269,12 @@ count() {
 }
 
 send_notice_sql() {
-  _ADM_EMAIL="notify@omega8.cc"
+  _MY_EMAIL="notify@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_ADM_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
+  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
     -s "NOTICE: Your DB Usage on [${_THIS_U}] is too high" ${_CLIENT_EMAIL}
 Hello,
 
@@ -336,7 +336,7 @@ This e-mail has been sent by your Aegir resources usage weekly monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_ADM_EMAIL}" -e -b ${_BCC_EMAIL} \
+  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
     -s "NOTICE: Your DB Usage on [${_THIS_U}] is too high" ${_CLIENT_EMAIL}
 Hello,
 
@@ -392,7 +392,7 @@ This e-mail has been sent by your Aegir resources usage weekly monitor.
 
 EOF
   else
-  cat <<EOF | mail -r ${_ADM_EMAIL} -e -b ${_BCC_EMAIL} \
+  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
     -s "NOTICE: Your DB Usage on [${_THIS_U}] is too high" ${_CLIENT_EMAIL}
 Hello,
 
@@ -452,12 +452,12 @@ EOF
 }
 
 send_notice_disk() {
-  _ADM_EMAIL="notify@omega8.cc"
+  _MY_EMAIL="notify@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_ADM_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
+  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
     -s "NOTICE: Your Disk Usage on [${_THIS_U}] is too high" ${_CLIENT_EMAIL}
 Hello,
 
@@ -515,7 +515,7 @@ This e-mail has been sent by your Aegir resources usage weekly monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_ADM_EMAIL}" -e -b ${_BCC_EMAIL} \
+  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
     -s "NOTICE: Your Disk Usage on [${_THIS_U}] is too high" ${_CLIENT_EMAIL}
 Hello,
 
@@ -561,7 +561,7 @@ This e-mail has been sent by your Aegir resources usage weekly monitor.
 
 EOF
   else
-  cat <<EOF | mail -r ${_ADM_EMAIL} -e -b ${_BCC_EMAIL} \
+  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
     -s "NOTICE: Your Disk Usage on [${_THIS_U}] is too high" ${_CLIENT_EMAIL}
 Hello,
 
