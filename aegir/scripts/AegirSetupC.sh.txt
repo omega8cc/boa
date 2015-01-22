@@ -1009,7 +1009,7 @@ drupal6_install() {
             enable_drupal6_admin
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_DRUPAL6 installed"
+          msg "DISTRO: $_F_DRUPAL6_P installed"
           _RUN_VERIFY=YES
         fi
       else
