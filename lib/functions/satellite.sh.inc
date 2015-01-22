@@ -1,7 +1,7 @@
 
 #
 # Tune FPM workers.
-tune_fpm_workers() {
+satellite_tune_fpm_workers() {
   _ETH_TEST=$(ifconfig 2>&1)
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
@@ -74,15 +74,15 @@ tune_fpm_workers() {
 
 #
 # Update web user.
-update_web_user() {
+satellite_update_web_user() {
   _T_HD="/home/${_WEB}/.drush"
   _T_TP="/home/${_WEB}/.tmp"
   _T_II="${_T_HD}/php.ini"
-  ### msg "DEBUG: ${_WEB} in update_web_user A"
+  ### msg "DEBUG: ${_WEB} in satellite_update_web_user A"
   if [ -e "/home/${_WEB}" ]; then
     mkdir -p /home/${_WEB}/.{tmp,drush}
-    ### msg "DEBUG: ${_WEB} in update_web_user B"
-    ### msg "DEBUG: ARG1 is $1 in update_web_user B"
+    ### msg "DEBUG: ${_WEB} in satellite_update_web_user B"
+    ### msg "DEBUG: ARG1 is $1 in satellite_update_web_user B"
     if [ ! -z "$1" ]; then
       if [ "$1" = "hhvm" ]; then
         if [ -e "/opt/php56/etc/php56.ini" ]; then
@@ -92,12 +92,12 @@ update_web_user() {
         fi
       else
         _T_PV=$1
-        ### msg "DEBUG: _T_PV is ${_T_PV} in update_web_user C"
+        ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_update_web_user C"
       fi
     fi
     if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
       cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
-      ### msg "DEBUG: _T_PV is ${_T_PV} in update_web_user D"
+      ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_update_web_user D"
     else
       if [ -e "/opt/php55/etc/php55.ini" ]; then
         cp -af /opt/php55/etc/php55.ini ${_T_II}
@@ -160,7 +160,7 @@ update_web_user() {
 
 #
 # Remove web user.
-remove_web_user() {
+satellite_remove_web_user() {
   if [ -e "/home/${_WEB}/.tmp" ] || [ "$1" = "clean" ]; then
     chattr -i /home/${_WEB} &> /dev/null
     chattr -i /home/${_WEB}/.drush &> /dev/null
@@ -174,25 +174,25 @@ remove_web_user() {
 
 #
 # Add web user.
-create_web_user() {
+satellite_create_web_user() {
   _T_HD="/home/${_WEB}/.drush"
   _T_II="${_T_HD}/php.ini"
   _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
   if [ ! -z "${_T_ID_EXISTS}" ] && [ -e "${_T_II}" ]; then
-    ### msg "DEBUG: ARG1 is $1 in create_web_user B"
-    update_web_user "$1"
+    ### msg "DEBUG: ARG1 is $1 in satellite_create_web_user B"
+    satellite_update_web_user "$1"
   elif [ -z "${_T_ID_EXISTS}" ] || [ ! -e "${_T_II}" ]; then
-    ### msg "DEBUG: ARG1 is $1 in create_web_user C"
-    remove_web_user "clean"
+    ### msg "DEBUG: ARG1 is $1 in satellite_create_web_user C"
+    satellite_remove_web_user "clean"
     adduser --force-badname --system --ingroup www-data ${_WEB} &> /dev/null
-    update_web_user "$1"
+    satellite_update_web_user "$1"
   fi
 }
 
 #
 # Tune FPM configuration.
-tune_fpm_config() {
-  tune_fpm_workers
+satellite_tune_fpm_config() {
+  satellite_tune_fpm_workers
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
   if [ "$_LIM_FPM" -lt "24" ]; then
     if [[ "${_THISHOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
@@ -254,13 +254,13 @@ tune_fpm_config() {
           if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
             if [ "${e}" != "${_PHP_SV}" ] \
               || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.txt" ]; then
-              update_web_user "${_PHP_SV}"
+              satellite_update_web_user "${_PHP_SV}"
             fi
           fi
         done
       else
-        ### msg "DEBUG: _PHP_SV is ${_PHP_SV} in create_web_user A"
-        create_web_user "${_PHP_SV}"
+        ### msg "DEBUG: _PHP_SV is ${_PHP_SV} in satellite_create_web_user A"
+        satellite_create_web_user "${_PHP_SV}"
       fi
       ### create or update special system user if needed
       sed -i "s/.ftp/.web/g" \
@@ -297,7 +297,7 @@ tune_fpm_config() {
 
 #
 # Make sure that username is unique and not restricted.
-check_id() {
+satellite_check_id() {
   _ID_EXISTS=$(getent passwd ${_USER} 2>&1)
   if [ -z "${_ID_EXISTS}" ]; then
     _DO_NOTHING=YES
@@ -363,14 +363,6 @@ disable_chattr() {
     chattr -i /home/$1/.drush/usr   &> /dev/null
     chattr -i /home/$1/.drush/*.ini &> /dev/null
   fi
-}
-
-#
-# Find correct IP.
-find_correct_ip() {
-  _LOC_IP=$(echo $(getent ahostsv4 $_LOC_DOM) \
-    | cut -d: -f2 \
-    | awk '{ print $1}' 2>&1)
 }
 
 #
@@ -882,7 +874,7 @@ satellite_cnf() {
 
 #
 # Fix advanced cron IP for cURL requests.
-fix_advanced_cron_curl() {
+satellite_fix_advanced_cron_curl() {
   if [ -e "${_ROOT}/.drush/hostmaster.alias.drushrc.php" ]; then
     _THIS_HM_ROOT=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
       | grep "root'" \
@@ -899,7 +891,7 @@ fix_advanced_cron_curl() {
 
 #
 # Fix multi-IP cron access.
-fix_multi_ip_cron_access() {
+satellite_fix_multi_ip_cron_access() {
   rm -f /root/.local.IP.list.allow
   for _IP in `cat /root/.local.IP.list \
     | cut -d '#' -f1 \
@@ -928,7 +920,7 @@ d;};' ${octInc}/nginx_vhost_common.conf
 
 #
 # Sub Force advanced Nginx configuration.
-sub_force_advanced_nginx_config() {
+satellite_sub_satellite_force_advanced_nginx_config() {
   if [ -d "${octInc}" ]; then
     _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
     if [ -z "${_PHP_SV}" ]; then
@@ -969,16 +961,16 @@ sub_force_advanced_nginx_config() {
     if [ ! -z "${_CRON_IP}" ] \
       && [ "${_IP_PRESENT}" = "YES" ] \
       && [ -e "/root/.local.IP.list" ]; then
-      fix_multi_ip_cron_access
-      fix_advanced_cron_curl
+      satellite_fix_multi_ip_cron_access
+      satellite_fix_advanced_cron_curl
     fi
   fi
 }
 
 #
 # Force advanced Nginx configuration.
-force_advanced_nginx_config() {
-  sub_force_advanced_nginx_config
+satellite_force_advanced_nginx_config() {
+  satellite_sub_satellite_force_advanced_nginx_config
   if [ -e "${_ROOT}/config/includes/nginx_vhost_common.conf" ]; then
     rm -f ${_ROOT}/config/includes/nginx_advanced_include.conf
     rm -f ${_ROOT}/config/includes/nginx_legacy_include.conf
@@ -1080,7 +1072,7 @@ satellite_child_b_update_php_cli() {
 
 #
 # Create shared dirs.
-create_shared_dirs() {
+satellite_create_shared_dirs() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Creating shared directories..."
   fi
@@ -1100,7 +1092,7 @@ create_shared_dirs() {
 
 #
 # Update o_contrib.
-o_contrib_update_global() {
+satellite_o_contrib_update_global() {
 
   _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 \
     017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 \
@@ -1220,7 +1212,7 @@ o_contrib_update_global() {
 
 #
 # Update o_contrib_seven.
-o_contrib_seven_update_global() {
+satellite_o_contrib_seven_update_global() {
 
   _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 \
     017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 \
@@ -1342,7 +1334,7 @@ o_contrib_seven_update_global() {
 
 #
 # Download Textile.
-download_textile() {
+satellite_download_textile() {
   cd textile
   cp -af /opt/tmp/boa/aegir/helpers/classTextile.php ./
   cp -af classTextile.php include/ &> /dev/null
@@ -1352,7 +1344,7 @@ download_textile() {
 
 #
 # Download o_contrib_seven.
-download_o_contrib_seven() {
+satellite_download_o_contrib_seven() {
   touch update-${_X_VERSION}.info
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_seven modules..."
@@ -1411,7 +1403,7 @@ download_o_contrib_seven() {
   if [ ! -L "./redis_edge" ]; then
     ln -sf ${_D}/000/modules/redis_edge redis_edge
   fi
-  download_textile
+  satellite_download_textile
   if [ ! -e "${_D}/000/modules/redis/update-${_X_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -1434,7 +1426,7 @@ download_o_contrib_seven() {
 
 #
 # Download o_contrib_six.
-download_o_contrib_six() {
+satellite_download_o_contrib_six() {
   touch update-${_X_VERSION}.info
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib modules..."
@@ -1493,7 +1485,7 @@ download_o_contrib_six() {
   if [ ! -L "./cache_backport" ]; then
     ln -sf ${_D}/000/modules/cache_backport cache_backport
   fi
-  download_textile
+  satellite_download_textile
   if [ ! -e "${_D}/000/modules/cache_backport/update-${_X_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -1523,7 +1515,7 @@ download_o_contrib_six() {
 
 #
 # Upgrade o_contrib.
-check_fix_o_contrib() {
+satellite_check_fix_o_contrib() {
   if [ -e "${_CORE}/o_contrib" ]; then
     if [ ! -e "${_CORE}/o_contrib/textile/include/classTextile.php" ]; then
       _O_CONTRIB_FORCED_UP=YES
@@ -1540,7 +1532,7 @@ check_fix_o_contrib() {
       msg "${_STATUS} A: Running o_contrib forced upgrade..."
       cd ${_CORE}/o_contrib
       rm -f -r *
-      download_o_contrib_six
+      satellite_download_o_contrib_six
       cd ${_CORE}/o_contrib
     fi
   fi
@@ -1550,7 +1542,7 @@ check_fix_o_contrib() {
       msg "${_STATUS} A: Running o_contrib_seven forced upgrade..."
       cd ${_CORE}/o_contrib_seven
       rm -f -r *
-      download_o_contrib_seven
+      satellite_download_o_contrib_seven
       cd ${_CORE}/o_contrib_seven
     fi
   fi
@@ -1583,17 +1575,17 @@ check_fix_o_contrib() {
 
 #
 # Manage o_contrib.
-manage_o_contrib() {
+satellite_manage_o_contrib() {
   if [ ! -e "${_CORE}/o_contrib_seven" ]; then
     mkdir -p ${_CORE}/o_contrib_seven
     cd ${_CORE}/o_contrib_seven
-    download_o_contrib_seven
+    satellite_download_o_contrib_seven
     cd ${_CORE}/o_contrib_seven
   fi
   if [ ! -e "${_CORE}/o_contrib" ]; then
     mkdir -p ${_CORE}/o_contrib
     cd ${_CORE}/o_contrib
-    download_o_contrib_six
+    satellite_download_o_contrib_six
     cd ${_CORE}/o_contrib
   fi
   mkdir -p ${_D}/000/modules
@@ -1602,7 +1594,7 @@ manage_o_contrib() {
   rm -f ${_D}/000/modules/o_contrib
   ln -s ${_CORE}/o_contrib ${_D}/000/modules/o_contrib
   if [ "${_STATUS}" != "INIT" ]; then
-    check_fix_o_contrib
+    satellite_check_fix_o_contrib
   fi
 }
 
@@ -1710,8 +1702,6 @@ satellite_prepare_child_scripts() {
 #
 # Generate provision backend db_passwd.
 provision_backend_dbpass_generate() {
-  touch ${_ROOT}/.${_USER}.pass.txt
-  chmod 0600 ${_ROOT}/.${_USER}.pass.txt
   _ESC_PASS=""
   _LEN_PASS=0
   if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
@@ -1747,7 +1737,8 @@ provision_backend_dbpass_generate() {
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
   if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
-    if [ "${_THIS_DB_HOST}" = "localhost" ] || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+    if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       _ESC_PASS=$(pwgen -v -s -1 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
       _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
@@ -1760,12 +1751,16 @@ provision_backend_dbpass_generate() {
     fi
     _ENC_PASS="${_ESC_PASS}"
   fi
+
   echo "${_ESC_PASS}" > ${_ROOT}/.${_USER}.pass.txt
-  chown ${_USER}:${_USRG} ${_ROOT}/.${_USER}.pass.txt &> /dev/null
+  chown ${_USER}:${_USRG} ${_ROOT}/.${_USER}.pass.txt
+  chmod 0600 ${_ROOT}/.${_USER}.pass.txt
+
   _ESC="\`%\`.*"
   mysqladmin flush-privileges &> /dev/null
 
-  if [ "${_THIS_DB_HOST}" = "localhost" ] || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+  if [ "${_THIS_DB_HOST}" = "localhost" ] \
+    || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
     _USE_AEGIR_HOST=$(uname -n 2>&1)
     _SQL_CONNECT=localhost
     _USE_DB_USER="${_USER}"
@@ -1786,7 +1781,8 @@ provision_backend_dbpass_generate() {
     touch /opt/tmp/status-AegirSetupA-FAIL
     exit 1
   fi
-  if [ "${_THIS_DB_HOST}" = "localhost" ] || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+  if [ "${_THIS_DB_HOST}" = "localhost" ] \
+    || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
     if [ "${_STATUS}" = "INIT" ]; then
       mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
@@ -1794,7 +1790,8 @@ GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIE
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 EOFMYSQL
     else
-      if [ "${_THIS_DB_HOST}" = "localhost" ] || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+      if [ "${_THIS_DB_HOST}" = "localhost" ] \
+        || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
 DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
 DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
@@ -2112,8 +2109,8 @@ satellite_run_child_c() {
   if [ "$_LOCAL_STATUS" = "INIT" ]; then
     _DIST_INSTALL=YES
     rm -f /opt/tmp/testecho*
-    create_shared_dirs
-    manage_o_contrib
+    satellite_create_shared_dirs
+    satellite_manage_o_contrib
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} A: Switching user and running Platforms build"
     fi
@@ -2140,8 +2137,8 @@ satellite_run_child_c() {
           service cron stop &> /dev/null
         fi
         rm -f /opt/tmp/testecho*
-        create_shared_dirs
-        manage_o_contrib
+        satellite_create_shared_dirs
+        satellite_manage_o_contrib
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "${_STATUS} A: Switching user and running Platforms build"
         fi
@@ -2260,7 +2257,8 @@ satellite_if_add_ftps_lshell_access() {
     echo >> /etc/lshell.conf
     echo "[${_USERFTP}]" >> /etc/lshell.conf
     echo "path : ['${_ROOT}/distro', '${_ROOT}/static', \
-      '${_ROOT}/backups', '${_ROOT}/clients']" | fmt -su -w 2500 >> /etc/lshell.conf
+      '${_ROOT}/backups', '${_ROOT}/clients']" \
+      | fmt -su -w 2500 >> /etc/lshell.conf
   fi
 }
 
@@ -3144,40 +3142,9 @@ satellite_make() {
   fi
 
   if [ -e "${_ROOT}/log/email.txt" ]; then
-    tune_fpm_config
-    force_advanced_nginx_config
+    satellite_tune_fpm_config
+    satellite_force_advanced_nginx_config
     mrun "service nginx reload" &> /dev/null
-  fi
-}
-
-#
-# Test connection.
-wait_for_connection() {
-  echo " "
-  msg "I can not connect to github.com on port 9418 at the moment"
-  msg "I will try again in 60 seconds, please wait..."
-  msg "Waiting for attempt $1..."
-  sleep 60
-}
-check_connection() {
-  if ! netcat -w 14 -z github.com 9418 ; then
-    wait_for_connection "2/4"
-    if ! netcat -w 14 -z github.com 9418 ; then
-      wait_for_connection "3/4"
-      if ! netcat -w 14 -z github.com 9418 ; then
-        wait_for_connection "4/4"
-        if ! netcat -w 14 -z github.com 9418 ; then
-          echo " "
-          msg "Sorry, I gave up."
-          msg "EXIT on error due to GitHub git server at 9418 downtime"
-          msg "Please try to run this script again in a few minutes"
-          msg "You may want to check https://status.github.com/messages"
-          msg "Also, make sure that the git port 9418 is open"
-          msg "Bye"
-          clean_pid_exit
-        fi
-      fi
-    fi
   fi
 }
 
@@ -3271,7 +3238,7 @@ satellite_check_sanitize_user_name() {
     _STATUS=UPGRADE
   fi
   if [ "${_STATUS}" = "INIT" ]; then
-    check_id
+    satellite_check_id
   fi
 }
 
@@ -3778,8 +3745,8 @@ satellite_display_url_finalize() {
       fi
     fi
   else
-    o_contrib_update_global
-    o_contrib_seven_update_global
+    satellite_o_contrib_update_global
+    satellite_o_contrib_seven_update_global
   fi
   if [ ! -e "/root/.upstart.cnf" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then

@@ -37,7 +37,7 @@ clean_pid_exit() {
   exit 1
 }
 
-check_id() {
+satellite_check_id() {
   _USER=$1
   _ID_EXISTS=$(getent passwd ${_USER} 2>&1)
   if [ -z "${_ID_EXISTS}" ]; then
@@ -578,7 +578,7 @@ init_setup() {
       mode="${user}"
       user="o1"
     fi
-    check_id ${user}
+    satellite_check_id ${user}
   fi
 
   if [ ! -z "${rkey}" ]; then

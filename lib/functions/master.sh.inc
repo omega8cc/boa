@@ -9,7 +9,8 @@ provision_backend_dbpass_generate() {
     _PWD_CHARS=8
   else
     _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
-    if [ ! -z "${_STRONG_PASSWORDS}" ] && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+    if [ ! -z "${_STRONG_PASSWORDS}" ] \
+      && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
       _PWD_CHARS="${_STRONG_PASSWORDS}"
     else
       _PWD_CHARS=8
@@ -19,8 +20,10 @@ provision_backend_dbpass_generate() {
     fi
   fi
 
-  if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ]; then
-    if [ "${_THIS_DB_HOST}" = "localhost" ] || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+  if [ "${_STRONG_PASSWORDS}" = "YES" ] \
+    || [ "${_PWD_CHARS}" -gt "8" ]; then
+    if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       _ESC_APASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ]; then
@@ -29,15 +32,16 @@ provision_backend_dbpass_generate() {
         _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
-    _ESC_APASS=$(echo -n ${_ESC_APASS} | tr -d "\n" 2>&1)
+    _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
     _ENC_APASS=$(python -c "import urllib; print urllib.quote('''${_ESC_APASS}''')")
     _LEN_APASS=$(echo ${#_ESC_APASS} 2>&1)
   fi
 
   if [ -z "${_ESC_APASS}" ] || [ "${_LEN_APASS}" -lt "9" ]; then
-    if [ "${_THIS_DB_HOST}" = "localhost" ] || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+    if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       _ESC_APASS=$(pwgen -v -s -1 2>&1)
-      _ESC_APASS=$(echo -n ${_ESC_APASS} | tr -d "\n" 2>&1)
+      _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
       _ESC_APASS=$(sanitize_string "${_ESC_APASS}" 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ]; then
@@ -53,7 +57,8 @@ provision_backend_dbpass_generate() {
   chown aegir:aegir ${_L_SYS} &> /dev/null
   chmod 0600 ${_L_SYS}
 
-  if [ "${_THIS_DB_HOST}" = "localhost" ] || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+  if [ "${_THIS_DB_HOST}" = "localhost" ] \
+    || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
     if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       _THIS_DB_HOST=$(uname -n 2>&1)
     else
@@ -496,7 +501,7 @@ install_upgrade_aegir_master() {
           _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
         fi
       fi
-      _ESC_APASS=$(echo -n ${_ESC_APASS} | tr -d "\n" 2>&1)
+      _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
       _LEN_APASS=$(echo ${#_ESC_APASS} 2>&1)
     fi
 
@@ -504,7 +509,7 @@ install_upgrade_aegir_master() {
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         _ESC_APASS=$(pwgen -v -s -1 2>&1)
-        _ESC_APASS=$(echo -n ${_ESC_APASS} | tr -d "\n" 2>&1)
+        _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
         _ESC_APASS=$(sanitize_string "${_ESC_APASS}" 2>&1)
       else
         if [ -e "/root/.my.pass.txt" ]; then

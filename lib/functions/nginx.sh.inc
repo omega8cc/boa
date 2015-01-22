@@ -327,29 +327,34 @@ install_upgrade_nginx() {
 
 #
 # Fix multi-IP cron access.
-fix_multi_ip_cron_access() {
+master_fix_multi_ip_cron_access() {
   rm -f /root/.local.IP.list.allow
   for _IP in `cat /root/.local.IP.list \
     | cut -d '#' -f1 \
     | sort \
     | uniq \
-    | tr -d "\s"`;do echo "  allow        ${_IP};" >> /root/.local.IP.list.allow;done
+    | tr -d "\s"`;do echo "  allow        ${_IP};" >> \
+      /root/.local.IP.list.allow;done
   echo "  allow        127.0.0.1;" >> /root/.local.IP.list.allow
   echo "  deny         all;" >> /root/.local.IP.list.allow
 
-  sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" ${mtrTpl}/Inc/vhost_include.tpl.php
+  sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" \
+    ${mtrTpl}/Inc/vhost_include.tpl.php
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
 d;};' ${mtrTpl}/Inc/vhost_include.tpl.php
 
-  sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" ${mtrTpl}/subdir.tpl.php
+  sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" \
+    ${mtrTpl}/subdir.tpl.php
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
 d;};' ${mtrTpl}/subdir.tpl.php
 
-  sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" ${mtrInc}/nginx_vhost_common.conf
+  sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" \
+    ${mtrInc}/nginx_vhost_common.conf
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
 d;};' ${mtrInc}/nginx_vhost_common.conf
 
-  sed -i "s/allow .*;//g; s/ *$//g; /^$/d" ${mtrNgx}/pre.d/nginx_speed_purge.conf
+  sed -i "s/allow .*;//g; s/ *$//g; /^$/d" \
+    ${mtrNgx}/pre.d/nginx_speed_purge.conf
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
 d;};' ${mtrNgx}/pre.d/nginx_speed_purge.conf
 }
@@ -632,7 +637,7 @@ fix_update_nginx_config() {
     if [ ! -z "${_CRON_IP}" ] \
       && [ "${_IP_PRESENT}" = "YES" ] \
       && [ -e "/root/.local.IP.list" ]; then
-      fix_multi_ip_cron_access
+      master_fix_multi_ip_cron_access
     fi
     mrun "service nginx reload" &> /dev/null
   fi

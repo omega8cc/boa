@@ -263,7 +263,9 @@ find_fast_mirror() {
 #
 # Find correct IP.
 find_correct_ip() {
-  _LOC_IP=$(echo $(getent ahostsv4 $_LOC_DOM) | cut -d: -f2 | awk '{ print $1}' 2>&1)
+  _LOC_IP=$(echo $(getent ahostsv4 $_LOC_DOM) \
+    | cut -d: -f2 \
+    | awk '{ print $1}' 2>&1)
 }
 #
 # Fix php.ini files to remove suhosin.so

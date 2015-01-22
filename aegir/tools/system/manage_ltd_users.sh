@@ -732,7 +732,7 @@ update_php_cli_drush() {
 }
 #
 # Tune FPM workers.
-tune_fpm_workers() {
+satellite_tune_fpm_workers() {
   _ETH_TEST=$(ifconfig 2>&1)
   _AWS_TEST_A=$(grep cloudimg /etc/fstab 2>&1)
   _AWS_TEST_B=$(grep cloudconfig /etc/fstab 2>&1)
@@ -875,7 +875,7 @@ switch_newrelic() {
 }
 #
 # Update web user.
-update_web_user() {
+satellite_update_web_user() {
   _T_HD="/home/${_WEB}/.drush"
   _T_TP="/home/${_WEB}/.tmp"
   _T_II="${_T_HD}/php.ini"
@@ -955,7 +955,7 @@ update_web_user() {
 }
 #
 # Remove web user.
-remove_web_user() {
+satellite_remove_web_user() {
   if [ -e "/home/${_WEB}/.tmp" ] || [ "$1" = "clean" ]; then
     chattr -i /home/${_WEB} &> /dev/null
     chattr -i /home/${_WEB}/.drush &> /dev/null
@@ -969,16 +969,16 @@ remove_web_user() {
 }
 #
 # Add web user.
-create_web_user() {
+satellite_create_web_user() {
   _T_HD="/home/${_WEB}/.drush"
   _T_II="${_T_HD}/php.ini"
   _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
   if [ ! -z "${_T_ID_EXISTS}" ] && [ -e "${_T_II}" ]; then
-    update_web_user "$1"
+    satellite_update_web_user "$1"
   elif [ -z "${_T_ID_EXISTS}" ] || [ ! -e "${_T_II}" ]; then
-    remove_web_user "clean"
+    satellite_remove_web_user "clean"
     adduser --force-badname --system --ingroup www-data ${_WEB} &> /dev/null
-    update_web_user "$1"
+    satellite_update_web_user "$1"
   fi
 }
 #
@@ -1069,7 +1069,7 @@ switch_php() {
           || [ ! -e "/etc/init.d/hhvm.${_USER}" ] \
           || [ ! -e "/var/run/hhvm/${_USER}" ]  ; then
           ### create or update special system user if needed
-          create_web_user "hhvm"
+          satellite_create_web_user "hhvm"
           ### configure custom hhvm server init.d script
           cp -af /var/xdrago/conf/hhvm/init.d/hhvm.foo /etc/init.d/hhvm.${_USER}
           sed -i "s/foo/${_USER}/g" /etc/init.d/hhvm.${_USER} &> /dev/null
@@ -1110,7 +1110,7 @@ switch_php() {
           rm -f /etc/init.d/hhvm.${_USER}
         fi
         ### delete special system user no longer needed
-        remove_web_user "hhvm"
+        satellite_remove_web_user "hhvm"
         ### delete leftovers
         rm -f /opt/hhvm/server.${_USER}.ini
         rm -f -r /var/run/hhvm/${_USER}
@@ -1195,7 +1195,7 @@ switch_php() {
         if [ ! -z "$_T_FPM_VRN" ] \
           && [ "$_NEW_FPM_SETUP" = "YES" ]; then
           _NEW_FPM_SETUP=NO
-          tune_fpm_workers
+          satellite_tune_fpm_workers
           _LIM_FPM="${_L_PHP_FPM_WORKERS}"
           if [ "$_LIM_FPM" -lt "24" ]; then
             if [[ "${_HOST_TEST}" =~ ".host8." ]] \
@@ -1237,13 +1237,13 @@ switch_php() {
                   || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.txt" ]; then
                   echo _OLD_PHP_IN_USE is ${_OLD_PHP_IN_USE} for ${_WEB} update
                   echo _NEW_PHP_TO_USE is ${_PHP_SV} for ${_WEB} update
-                  update_web_user "${_PHP_SV}"
+                  satellite_update_web_user "${_PHP_SV}"
                 fi
               fi
             done
           else
             echo _NEW_PHP_TO_USE is ${_PHP_SV} for ${_WEB} create
-            create_web_user "${_PHP_SV}"
+            satellite_create_web_user "${_PHP_SV}"
           fi
           ### create or update special system user if needed
           rm -f /opt/php*/etc/pool.d/${_USER}.conf
