@@ -541,12 +541,16 @@ up_action_one() {
 
 up_start() {
   if [ -e "/var/run/boa_run.pid" ]; then
-    echo Another BOA installer is running probably - \
-      /var/run/boa_run.pid exists
+    echo
+    echo "  Another BOA installer is running probably"
+    echo "  because /var/run/boa_run.pid exists"
+    echo
     exit 1
   elif [ -e "/var/run/boa_wait.pid" ]; then
-    echo Some important system task is running probably - \
-      /var/run/boa_wait.pid exists
+    echo
+    echo "  Some important system task is running probably"
+    echo "  because /var/run/boa_wait.pid exists"
+    echo
     exit 1
   else
     touch /var/run/boa_run.pid
