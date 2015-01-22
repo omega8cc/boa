@@ -24,6 +24,7 @@
   @=> PHP-FPM (and HHVM) runs now as a separate, very limited system user
   @=> Removed Support for legacy PHP 5.2
   @=> Sites Names Exceptions and Special Keywords have changed
+  @=> The built-in registry-rebuild on every Verify task is not run by default
   @=> The Dev-Mode works only for site aliases, no longer for main site name
 
   Please read further below for more details.
