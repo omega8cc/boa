@@ -201,7 +201,7 @@ hostmaster_frontend_dbpass_sync() {
 
 #
 # Download for Drush Make Local build.
-download_for_dmlb() {
+master_download_for_local_build() {
   mL="/opt/tmp/make_local"
   if [ ! -e "${mL}/hosting/hosting.info" ]; then
     rm -f -r ${mL}
@@ -287,28 +287,31 @@ upgrade_aegir_master() {
     chown -R aegir ${_THIS_HM_ROOT}
     chown -R aegir:www-data $_THIS_HM_SITE/files
     chmod -R 02775 $_THIS_HM_SITE/files
+
+    echo _AEGIR_VERSION="${_AEGIR_VERSION}"         >> ${vBs}/${filIncB}
+    echo _AEGIR_XTS_VRN="${_AEGIR_XTS_VRN}"         >> ${vBs}/${filIncB}
+    echo _BOA_REPO_GIT_URL="${_BOA_REPO_GIT_URL}"   >> ${vBs}/${filIncB}
+    echo _BOA_REPO_NAME="${_BOA_REPO_NAME}"         >> ${vBs}/${filIncB}
+    echo _BRANCH_BOA="${_BRANCH_BOA}"               >> ${vBs}/${filIncB}
+    echo _BRANCH_PRN="${_BRANCH_PRN}"               >> ${vBs}/${filIncB}
+    echo _DEBUG_MODE="${_DEBUG_MODE}"               >> ${vBs}/${filIncB}
+    echo _DOMAIN="${_THIS_FRONT}"                   >> ${vBs}/${filIncB}
+    echo _DRUSH_VERSION="${_DRUSH_VERSION}"         >> ${vBs}/${filIncB}
+    echo _NOW="${_NOW}"                             >> ${vBs}/${filIncB}
+    echo _PHP_CLI_VERSION="${_PHP_CLI_VERSION}"     >> ${vBs}/${filIncB}
+    echo _PHP_FPM_VERSION="${_PHP_FPM_VERSION}"     >> ${vBs}/${filIncB}
+    echo _STRONG_PASSWORDS="${_STRONG_PASSWORDS}"   >> ${vBs}/${filIncB}
+    echo _THIS_DB_HOST="${_THIS_DB_HOST}"           >> ${vBs}/${filIncB}
+    echo _USE_MIR="${_USE_MIR}"                     >> ${vBs}/${filIncB}
+    echo _X_VERSION="${_X_VERSION}"                 >> ${vBs}/${filIncB}
+
     cd /var/aegir
     cp ${bldPth}/aegir/scripts/AegirUpgrade.sh.txt ./
-    pthAue="/var/aegir/AegirUpgrade.sh.txt"
-    sed -i "s/EDIT_AEGIR_VERSION/${_AEGIR_VERSION}/g"         ${pthAue}
-    sed -i "s/EDIT_AEGIR_XTS_VRN/${_AEGIR_XTS_VRN}/g"         ${pthAue}
-    sed -i "s/EDIT_BOA_REPO_GIT_URL/${_BOA_REPO_GIT_URLX}/g"  ${pthAue}
-    sed -i "s/EDIT_BOA_REPO_NAME/${_BOA_REPO_NAME}/g"         ${pthAue}
-    sed -i "s/EDIT_BRANCH_BOA/${_BRANCH_BOA}/g"               ${pthAue}
-    sed -i "s/EDIT_BRANCH_PRN/${_BRANCH_PRN}/g"               ${pthAue}
-    sed -i "s/EDIT_DEBUG_MODE/${_DEBUG_MODE}/g"               ${pthAue}
-    sed -i "s/EDIT_DOMAIN/${_THIS_FRONT}/g"                   ${pthAue}
-    sed -i "s/EDIT_DRUSH_VERSION/${_DRUSH_VERSION}/g"         ${pthAue}
-    sed -i "s/EDIT_PHP_CLI_VERSION/${_PHP_CLI_VERSION}/g"     ${pthAue}
-    sed -i "s/EDIT_PHP_FPM_VERSION/${_PHP_FPM_VERSION}/g"     ${pthAue}
-    sed -i "s/EDIT_STRONG_PASSWORDS/${_STRONG_PASSWORDS}/g"   ${pthAue}
-    sed -i "s/EDIT_THIS_DB_HOST/${_THIS_DB_HOST}/g"           ${pthAue}
-    sed -i "s/EDIT_USE_MIR/${_USE_MIR}/g"                     ${pthAue}
-    sed -i "s/EDIT_X_VERSION/${_X_VERSION}/g"                 ${pthAue}
+
     mysqladmin flush-hosts &> /dev/null
     provision_backend_dbpass_sync
     hostmaster_frontend_dbpass_sync
-    download_for_dmlb
+    master_download_for_local_build
     cd /var/aegir
     su -s /bin/bash - aegir -c "bash AegirUpgrade.sh.txt"
     if [ -e "/opt/tmp/status-AegirUpgrade-FAIL" ]; then
@@ -446,7 +449,7 @@ install_upgrade_aegir_master() {
       | awk '{ print $1}' 2>&1)
     if [ -z "$_RESOLVEIP" ]; then
       msg "FATAL ERROR: DNS looks broken for server ${_AEGIR_HOST}"
-      exit 1
+      clean_pid_exit
     else
       _AEGIR_HOST_IP="$_RESOLVEIP"
     fi
@@ -457,7 +460,7 @@ install_upgrade_aegir_master() {
         msg "INFO: ${_DB_SERVER} is listening on ${_AEGIR_HOST_IP}."
       else
         msg "FATAL ERROR: ${_DB_SERVER} is not configured to listen on ${_AEGIR_HOST_IP}"
-        exit 1
+        clean_pid_exit
       fi
     fi
 
@@ -531,40 +534,40 @@ EOFMYSQL
 EOFMYSQL
     fi
 
-    download_for_dmlb
-    cd /var/aegir
-    _AEGIR_SCRIPT="AegirSetupM.sh.txt"
-    for fe in `find ${bldPth}/aegir/scripts -type f`; do
-      sed -i "s/EDIT_AEGIR_DB_USER/${_AEGIR_DB_USER}/g"         ${fe} &> /dev/null
-      sed -i "s/EDIT_AEGIR_HOST/${_AEGIR_HOST}/g"               ${fe} &> /dev/null
-      sed -i "s/EDIT_AEGIR_VERSION/${_AEGIR_VERSION}/g"         ${fe} &> /dev/null
-      sed -i "s/EDIT_AEGIR_XTS_VRN/${_AEGIR_XTS_VRN}/g"         ${fe} &> /dev/null
-      sed -i "s/EDIT_BOA_REPO_GIT_URL/${_BOA_REPO_GIT_URLX}/g"  ${fe} &> /dev/null
-      sed -i "s/EDIT_BOA_REPO_NAME/${_BOA_REPO_NAME}/g"         ${fe} &> /dev/null
-      sed -i "s/EDIT_BRANCH_BOA/${_BRANCH_BOA}/g"               ${fe} &> /dev/null
-      sed -i "s/EDIT_BRANCH_PRN/${_BRANCH_PRN}/g"               ${fe} &> /dev/null
-      sed -i "s/EDIT_DEBUG_MODE/${_DEBUG_MODE}/g"               ${fe} &> /dev/null
-      sed -i "s/EDIT_DOMAIN/${_THIS_FRONT}/g"                   ${fe} &> /dev/null
-      sed -i "s/EDIT_DRUSH_VERSION/${_DRUSH_VERSION}/g"         ${fe} &> /dev/null
-      sed -i "s/EDIT_ESC_APASS/${_ESC_APASS}/g"                 ${fe} &> /dev/null
-      sed -i "s/EDIT_LOCAL_NETWORK_IP/${_LOCAL_NETWORK_IP}/g"   ${fe} &> /dev/null
-      sed -i "s/EDIT_MY_OWNIP/${_MY_OWNIP}/g"                   ${fe} &> /dev/null
-      sed -i "s/EDIT_PHP_CLI_VERSION/${_PHP_CLI_VERSION}/g"     ${fe} &> /dev/null
-      sed -i "s/EDIT_PHP_FPM_VERSION/${_PHP_FPM_VERSION}/g"     ${fe} &> /dev/null
-      sed -i "s/EDIT_STRONG_PASSWORDS/${_STRONG_PASSWORDS}/g"   ${fe} &> /dev/null
-      sed -i "s/EDIT_THIS_DB_HOST/${_THIS_DB_HOST}/g"           ${fe} &> /dev/null
-      sed -i "s/EDIT_USE_MIR/${_USE_MIR}/g"                     ${fe} &> /dev/null
-    done
+    echo _AEGIR_DB_USER="${_AEGIR_DB_USER}"         >> ${vBs}/${filIncB}
+    echo _AEGIR_HOST="${_AEGIR_HOST}"               >> ${vBs}/${filIncB}
+    echo _AEGIR_VERSION="${_AEGIR_VERSION}"         >> ${vBs}/${filIncB}
+    echo _AEGIR_XTS_VRN="${_AEGIR_XTS_VRN}"         >> ${vBs}/${filIncB}
+    echo _BOA_REPO_GIT_URL="${_BOA_REPO_GIT_URL}"   >> ${vBs}/${filIncB}
+    echo _BOA_REPO_NAME="${_BOA_REPO_NAME}"         >> ${vBs}/${filIncB}
+    echo _BRANCH_BOA="${_BRANCH_BOA}"               >> ${vBs}/${filIncB}
+    echo _BRANCH_PRN="${_BRANCH_PRN}"               >> ${vBs}/${filIncB}
+    echo _DEBUG_MODE="${_DEBUG_MODE}"               >> ${vBs}/${filIncB}
+    echo _DOMAIN="${_THIS_FRONT}"                   >> ${vBs}/${filIncB}
+    echo _DRUSH_VERSION="${_DRUSH_VERSION}"         >> ${vBs}/${filIncB}
+    echo _ESC_APASS="${_ESC_APASS}"                 >> ${vBs}/${filIncB}
+    echo _LOCAL_NETWORK_IP="${_LOCAL_NETWORK_IP}"   >> ${vBs}/${filIncB}
+    echo _MY_OWNIP="${_MY_OWNIP}"                   >> ${vBs}/${filIncB}
+    echo _NOW="${_NOW}"                             >> ${vBs}/${filIncB}
+    echo _PHP_CLI_VERSION="${_PHP_CLI_VERSION}"     >> ${vBs}/${filIncB}
+    echo _PHP_FPM_VERSION="${_PHP_FPM_VERSION}"     >> ${vBs}/${filIncB}
+    echo _STRONG_PASSWORDS="${_STRONG_PASSWORDS}"   >> ${vBs}/${filIncB}
+    echo _THIS_DB_HOST="${_THIS_DB_HOST}"           >> ${vBs}/${filIncB}
+    echo _USE_MIR="${_USE_MIR}"                     >> ${vBs}/${filIncB}
 
-    cp -af ${bldPth}/aegir/scripts/$_AEGIR_SCRIPT ./
+    master_download_for_local_build
+    cd /var/aegir
+    _AEGIR_INIT_SCRIPT="AegirSetupM.sh.txt"
+
+    cp -af ${bldPth}/aegir/scripts/${_AEGIR_INIT_SCRIPT} ./
 
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT ${_THIS_FRONT} \
+      su -s /bin/bash - aegir -c "bash ${_AEGIR_INIT_SCRIPT} ${_THIS_FRONT} \
         --http_service_type='nginx' \
         --aegir_db_host='${_THIS_DB_HOST}' \
         --client_email='${_MY_EMAIL}' -y -d"
     else
-      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT ${_THIS_FRONT} \
+      su -s /bin/bash - aegir -c "bash ${_AEGIR_INIT_SCRIPT} ${_THIS_FRONT} \
         --http_service_type='nginx' \
         --aegir_db_host='${_THIS_DB_HOST}' \
         --client_email='${_MY_EMAIL}' -y >/var/aegir/install.log 2>&1"
@@ -620,7 +623,7 @@ EOFMYSQL
       fi
     fi
     chown -R aegir:aegir ${_THIS_HM_ROOT}/sites/all &> /dev/null
-    rm -f /var/aegir/$_AEGIR_SCRIPT
+    rm -f /var/aegir/${_AEGIR_INIT_SCRIPT}
 
   ###--------------------###
     if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
@@ -763,3 +766,75 @@ if_display_login_link() {
     touch ${pthLog}/cron_aegir_off.pid
   fi
 }
+
+#
+# Update local INI for PHP CLI on the Aegir Master Instance.
+update_php_cli_local_ini() {
+  _U_HD="/var/aegir/.drush"
+  _U_TP="/var/aegir/.tmp"
+  _U_II="${_U_HD}/php.ini"
+  _PHP_CLI_UPDATE=NO
+  _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
+  _PHP_V="56 55 54 53"
+  for e in ${_PHP_V}; do
+    if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] \
+      && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ]; then
+      _PHP_CLI_UPDATE=YES
+    fi
+  done
+  if [ "$_PHP_CLI_UPDATE" = "YES" ] \
+    || [ ! -e "${_U_II}" ] \
+    || [ ! -d "${_U_TP}" ] \
+    || [ ! -e "${_U_HD}/.ctrl.240devC.txt" ]; then
+    mkdir -p ${_U_TP}
+    find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
+    chmod 02755 ${_U_TP}
+    mkdir -p ${_U_HD}
+    rm -f ${_U_HD}/.ctrl.php*
+    rm -f ${_U_II}
+    if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]]; then
+      cp -af /opt/php55/lib/php.ini ${_U_II}
+      _U_INI=55
+    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php56" ]]; then
+      cp -af /opt/php56/lib/php.ini ${_U_II}
+      _U_INI=56
+    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]]; then
+      cp -af /opt/php54/lib/php.ini ${_U_II}
+      _U_INI=54
+    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]]; then
+      cp -af /opt/php53/lib/php.ini ${_U_II}
+      _U_INI=53
+    fi
+    if [ -e "${_U_II}" ]; then
+      _INI="open_basedir = \".: \
+        /data/all:        \
+        /data/conf:       \
+        /data/disk/all:   \
+        /opt/php53:       \
+        /opt/php54:       \
+        /opt/php55:       \
+        /opt/php56:       \
+        /opt/tika:        \
+        /opt/tika7:       \
+        /opt/tika8:       \
+        /opt/tika9:       \
+        /opt/tools/drush: \
+        /tmp:             \
+        /usr/bin:         \
+        /var/aegir\""
+      _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
+      _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
+      _INI=${_INI//\//\\\/}
+      _QTP=${_U_TP//\//\\\/}
+      sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_U_II}
+      sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
+      sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_U_II}
+      sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_U_II}
+      sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
+      sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
+      echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
+      echo > ${_U_HD}/.ctrl.240devC.txt
+    fi
+  fi
+}
+
