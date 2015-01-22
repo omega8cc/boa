@@ -47,7 +47,7 @@ vBs="/var/backups"
 ###
 ### Panic on missing include
 ###
-inc_panic_exit() {
+panic_exit() {
   echo
   echo " EXIT: Required lib file not available?"
   echo " EXIT: $1"
