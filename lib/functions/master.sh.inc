@@ -293,22 +293,22 @@ upgrade_aegir_master() {
     chown -R aegir:www-data $_THIS_HM_SITE/files
     chmod -R 02775 $_THIS_HM_SITE/files
 
-    echo _AEGIR_VERSION="${_AEGIR_VERSION}"         >> ${vBs}/${filIncB}
-    echo _AEGIR_XTS_VRN="${_AEGIR_XTS_VRN}"         >> ${vBs}/${filIncB}
-    echo _BOA_REPO_GIT_URL="${_BOA_REPO_GIT_URL}"   >> ${vBs}/${filIncB}
-    echo _BOA_REPO_NAME="${_BOA_REPO_NAME}"         >> ${vBs}/${filIncB}
-    echo _BRANCH_BOA="${_BRANCH_BOA}"               >> ${vBs}/${filIncB}
-    echo _BRANCH_PRN="${_BRANCH_PRN}"               >> ${vBs}/${filIncB}
-    echo _DEBUG_MODE="${_DEBUG_MODE}"               >> ${vBs}/${filIncB}
-    echo _DOMAIN="${_THIS_FRONT}"                   >> ${vBs}/${filIncB}
-    echo _DRUSH_VERSION="${_DRUSH_VERSION}"         >> ${vBs}/${filIncB}
-    echo _NOW="${_NOW}"                             >> ${vBs}/${filIncB}
-    echo _PHP_CLI_VERSION="${_PHP_CLI_VERSION}"     >> ${vBs}/${filIncB}
-    echo _PHP_FPM_VERSION="${_PHP_FPM_VERSION}"     >> ${vBs}/${filIncB}
-    echo _STRONG_PASSWORDS="${_STRONG_PASSWORDS}"   >> ${vBs}/${filIncB}
-    echo _THIS_DB_HOST="${_THIS_DB_HOST}"           >> ${vBs}/${filIncB}
-    echo _USE_MIR="${_USE_MIR}"                     >> ${vBs}/${filIncB}
-    echo _X_VERSION="${_X_VERSION}"                 >> ${vBs}/${filIncB}
+    echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${vBs}/${filIncB}
+    echo "_AEGIR_XTS_VRN=\"${_AEGIR_XTS_VRN}\""         >> ${vBs}/${filIncB}
+    echo "_BOA_REPO_GIT_URL=\"${_BOA_REPO_GIT_URL}\""   >> ${vBs}/${filIncB}
+    echo "_BOA_REPO_NAME=\"${_BOA_REPO_NAME}\""         >> ${vBs}/${filIncB}
+    echo "_BRANCH_BOA=\"${_BRANCH_BOA}\""               >> ${vBs}/${filIncB}
+    echo "_BRANCH_PRN=\"${_BRANCH_PRN}\""               >> ${vBs}/${filIncB}
+    echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${vBs}/${filIncB}
+    echo "_DOMAIN=\"${_THIS_FRONT}\""                   >> ${vBs}/${filIncB}
+    echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${vBs}/${filIncB}
+    echo "_NOW=\"${_NOW}\""                             >> ${vBs}/${filIncB}
+    echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${vBs}/${filIncB}
+    echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${vBs}/${filIncB}
+    echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${vBs}/${filIncB}
+    echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${vBs}/${filIncB}
+    echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${vBs}/${filIncB}
+    echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${vBs}/${filIncB}
 
     cd /var/aegir
     cp ${bldPth}/aegir/scripts/AegirUpgrade.sh.txt ./
@@ -539,26 +539,26 @@ EOFMYSQL
 EOFMYSQL
     fi
 
-    echo _AEGIR_DB_USER="${_AEGIR_DB_USER}"         >> ${vBs}/${filIncB}
-    echo _AEGIR_HOST="${_AEGIR_HOST}"               >> ${vBs}/${filIncB}
-    echo _AEGIR_VERSION="${_AEGIR_VERSION}"         >> ${vBs}/${filIncB}
-    echo _AEGIR_XTS_VRN="${_AEGIR_XTS_VRN}"         >> ${vBs}/${filIncB}
-    echo _BOA_REPO_GIT_URL="${_BOA_REPO_GIT_URL}"   >> ${vBs}/${filIncB}
-    echo _BOA_REPO_NAME="${_BOA_REPO_NAME}"         >> ${vBs}/${filIncB}
-    echo _BRANCH_BOA="${_BRANCH_BOA}"               >> ${vBs}/${filIncB}
-    echo _BRANCH_PRN="${_BRANCH_PRN}"               >> ${vBs}/${filIncB}
-    echo _DEBUG_MODE="${_DEBUG_MODE}"               >> ${vBs}/${filIncB}
-    echo _DOMAIN="${_THIS_FRONT}"                   >> ${vBs}/${filIncB}
-    echo _DRUSH_VERSION="${_DRUSH_VERSION}"         >> ${vBs}/${filIncB}
-    echo _ESC_APASS="${_ESC_APASS}"                 >> ${vBs}/${filIncB}
-    echo _LOCAL_NETWORK_IP="${_LOCAL_NETWORK_IP}"   >> ${vBs}/${filIncB}
-    echo _MY_OWNIP="${_MY_OWNIP}"                   >> ${vBs}/${filIncB}
-    echo _NOW="${_NOW}"                             >> ${vBs}/${filIncB}
-    echo _PHP_CLI_VERSION="${_PHP_CLI_VERSION}"     >> ${vBs}/${filIncB}
-    echo _PHP_FPM_VERSION="${_PHP_FPM_VERSION}"     >> ${vBs}/${filIncB}
-    echo _STRONG_PASSWORDS="${_STRONG_PASSWORDS}"   >> ${vBs}/${filIncB}
-    echo _THIS_DB_HOST="${_THIS_DB_HOST}"           >> ${vBs}/${filIncB}
-    echo _USE_MIR="${_USE_MIR}"                     >> ${vBs}/${filIncB}
+    echo "_AEGIR_DB_USER=\"${_AEGIR_DB_USER}\""         >> ${vBs}/${filIncB}
+    echo "_AEGIR_HOST=\"${_AEGIR_HOST}\""               >> ${vBs}/${filIncB}
+    echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${vBs}/${filIncB}
+    echo "_AEGIR_XTS_VRN=\"${_AEGIR_XTS_VRN}\""         >> ${vBs}/${filIncB}
+    echo "_BOA_REPO_GIT_URL=\"${_BOA_REPO_GIT_URL}\""   >> ${vBs}/${filIncB}
+    echo "_BOA_REPO_NAME=\"${_BOA_REPO_NAME}\""         >> ${vBs}/${filIncB}
+    echo "_BRANCH_BOA=\"${_BRANCH_BOA}\""               >> ${vBs}/${filIncB}
+    echo "_BRANCH_PRN=\"${_BRANCH_PRN}\""               >> ${vBs}/${filIncB}
+    echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${vBs}/${filIncB}
+    echo "_DOMAIN=\"${_THIS_FRONT}\""                   >> ${vBs}/${filIncB}
+    echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${vBs}/${filIncB}
+    echo "_ESC_APASS=\"${_ESC_APASS}\""                 >> ${vBs}/${filIncB}
+    echo "_LOCAL_NETWORK_IP=\"${_LOCAL_NETWORK_IP}\""   >> ${vBs}/${filIncB}
+    echo "_MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${vBs}/${filIncB}
+    echo "_NOW=\"${_NOW}\""                             >> ${vBs}/${filIncB}
+    echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${vBs}/${filIncB}
+    echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${vBs}/${filIncB}
+    echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${vBs}/${filIncB}
+    echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${vBs}/${filIncB}
+    echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${vBs}/${filIncB}
 
     master_download_for_local_build
     cd /var/aegir
