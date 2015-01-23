@@ -60,12 +60,12 @@ backup_this_database() {
   echo waiting ${n} sec
   sleep ${n}
   mysqldump \
-    --opt \
-    --skip-lock-tables \
-    --order-by-primary \
     --single-transaction \
+    --quick \
+    --no-autocommit \
     --default-character-set=utf8 \
-    -Q --hex-blob ${DB} | gzip -c > ${SAVELOCATION}/${DB}.sql.gz
+    --hex-blob ${DB} \
+    | gzip -c > ${SAVELOCATION}/${DB}.sql.gz
 }
 
 [ ! -a ${SAVELOCATION} ] && mkdir -p ${SAVELOCATION};
