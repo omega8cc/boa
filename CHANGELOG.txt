@@ -112,7 +112,7 @@
   * MariaDB 5.5.41
   * MariaDB Galera Cluster 10.0.15
   * Nginx 1.7.9
-  * PHP 5.4.36
+  * PHP 5.4.37
   * PHP 5.5.20
   * PHP 5.6.4
   * PHP: ionCube loader 4.7.3
