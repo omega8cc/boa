@@ -462,9 +462,6 @@ up_action_all() {
           echo
           echo "Starting the upgrade in silent mode now..."
           echo
-          if [ -e "${vBs}/${tocIncO}" ]; then
-            sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"             ${vBs}/${tocIncO}
-          fi
           if [ -e "${vBs}/${octName}" ]; then
             sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"             ${vBs}/${octName}
           fi
@@ -517,9 +514,6 @@ up_action_one() {
         echo
         echo "Starting the upgrade in silent mode now..."
         echo
-        if [ -e "${vBs}/${filIncO}" ]; then
-          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"               ${vBs}/${filIncO}
-        fi
         if [ -e "${vBs}/${octName}" ]; then
           sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"               ${vBs}/${octName}
         fi
