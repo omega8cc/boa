@@ -178,6 +178,7 @@ octopus_install() {
     _CHECK_HOST=$(uname -n 2>&1)
 
     if [ "${cmmand}" = "in-octopus" ]; then
+      sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                   ${vBs}/${octName}
       if [ ! -z "${copt}" ]; then
         sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=${copt}/g" ${vBs}/${octName}
       fi
