@@ -85,14 +85,14 @@ if [ -e "/data/disk/arch" ]; then
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] \
     || [ "${_AUTO_UP}" = "YES" ]; then
-    _AUTO_UP_WEEKLY=2
+    _AUTO_UP_WEEKLY=6
     _AUTO_UP_MONTH=11
     _AUTO_UP_DAY=30
   fi
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    _AUTO_UP_WEEKLY=1
+    _AUTO_UP_WEEKLY=6
     _AUTO_UP_MONTH=11
     _AUTO_UP_DAY=30
   fi
