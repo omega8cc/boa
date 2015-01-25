@@ -112,6 +112,7 @@ tune_sql_memory_limits() {
     _GALERA_COMP=NO
   fi
   if [ ! -e "${outTun}" ] \
+    && [ "${_USE_MYSQLTUNER}" = "YES" ] \
     && [ "${_STATUS}" = "UPGRADE" ] \
     && [ -z "$_GALERA_COMP" ]; then
     msg "INFO: Running MySQLTuner check on all databases..."
@@ -128,6 +129,7 @@ tune_sql_memory_limits() {
   fi
   if [ -e "${pthTun}" ] \
     && [ -e "${outTun}" ] \
+    && [ "${_USE_MYSQLTUNER}" = "YES" ] \
     && [ "${_STATUS}" = "UPGRADE" ]; then
     _REC_MYISAM_MEM=$(cat ${outTun} \
       | grep "Data in MyISAM tables" \
