@@ -4231,8 +4231,9 @@ satellite_child_b_aegir_build() {
       _HM_NID=${_HM_NID//[^0-9]/}
       if [ ! -z "${_HM_NID}" ]; then
         msg "${_STATUS} B: Hostmaster STATUS: Fix 1/2 hosting_context ${_HM_NID}"
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context \
-          SET name='hostmaster' WHERE nid='${_HM_NID}'" &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'" &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"           &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revisions SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'" &> /dev/null
       else
         msg "${_STATUS} B: Hostmaster STATUS: Fix 1/2 hosting_context ${_HM_NID} empty!"
       fi
@@ -4286,8 +4287,9 @@ satellite_child_b_aegir_build() {
       _HM_NID=${_HM_NID//[^0-9]/}
       if [ ! -z "${_HM_NID}" ]; then
         msg "${_STATUS} B: Hostmaster STATUS: Fix 2/2 hosting_context ${_HM_NID}"
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context \
-          SET name='hostmaster' WHERE nid='${_HM_NID}'" &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'" &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"           &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revisions SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'" &> /dev/null
       else
         msg "${_STATUS} B: Hostmaster STATUS: Fix 2/2 hosting_context ${_HM_NID} empty!"
       fi
