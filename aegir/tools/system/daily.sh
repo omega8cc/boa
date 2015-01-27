@@ -291,8 +291,8 @@ fix_user_register_protection() {
     && [ ! -e "${_PLR_CTRL_F}" ]; then
     cp -af /data/conf/default.boa_platform_control.ini \
       ${_PLR_CTRL_F} &> /dev/null
-    chown ${_HM_U}:users ${_PLR_CTRL_F}
-    chmod 0664 ${_PLR_CTRL_F}
+    chown ${_HM_U}:users ${_PLR_CTRL_F} &> /dev/null
+    chmod 0664 ${_PLR_CTRL_F} &> /dev/null
   fi
 
   if [ -e "${_PLR_CTRL_F}" ]; then
@@ -337,8 +337,8 @@ fix_user_register_protection() {
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
     cp -af /data/conf/default.boa_site_control.ini ${_DIR_CTRL_F} &> /dev/null
-    chown ${_HM_U}:users ${_DIR_CTRL_F}
-    chmod 0664 ${_DIR_CTRL_F}
+    chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
+    chmod 0664 ${_DIR_CTRL_F} &> /dev/null
   fi
 
   if [ -e "${_DIR_CTRL_F}" ]; then
@@ -407,8 +407,8 @@ fix_boost_cache() {
     fi
   fi
   if [ -e "${Plr}/cache" ]; then
-    chown ${_HM_U}.ftp:www-data ${Plr}/cache
-    chmod 02775 ${Plr}/cache
+    chown ${_HM_U}.ftp:www-data ${Plr}/cache &> /dev/null
+    chmod 02775 ${Plr}/cache &> /dev/null
   fi
   if [ -f "${Plr}/robots.txt" ] || [ -L "${Plr}/robots.txt" ]; then
     rm -f ${Plr}/robots.txt
@@ -799,8 +799,8 @@ write_solr_config() {
     echo "To learn more please make sure to check the module docs at:"   >> $2
     echo                                                                 >> $2
     echo "https://drupal.org/project/$1"                                 >> $2
-    chown ${_HM_U}:users $2
-    chmod 440 $2
+    chown ${_HM_U}:users $2 &> /dev/null
+    chmod 440 $2 &> /dev/null
   fi
 }
 
@@ -914,8 +914,8 @@ setup_solr() {
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
     cp -af /data/conf/default.boa_site_control.ini ${_DIR_CTRL_F} &> /dev/null
-    chown ${_HM_U}:users ${_DIR_CTRL_F}
-    chmod 0664 ${_DIR_CTRL_F}
+    chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
+    chmod 0664 ${_DIR_CTRL_F} &> /dev/null
   fi
 
   ###
@@ -1012,8 +1012,8 @@ fix_modules() {
               && [ ! -e "${_DIR_CTRL_F}" ]; then
               cp -af /data/conf/default.boa_site_control.ini \
                 ${_DIR_CTRL_F} &> /dev/null
-              chown ${_HM_U}:users ${_DIR_CTRL_F}
-              chmod 0664 ${_DIR_CTRL_F}
+              chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
+              chmod 0664 ${_DIR_CTRL_F} &> /dev/null
             fi
             if [ -e "${_DIR_CTRL_F}" ]; then
               _AGG_P=$(grep "advagg_auto_configuration" ${_DIR_CTRL_F} 2>&1)
@@ -1037,8 +1037,8 @@ fix_modules() {
               && [ ! -e "${_DIR_CTRL_F}" ]; then
               cp -af /data/conf/default.boa_site_control.ini \
                 ${_DIR_CTRL_F} &> /dev/null
-              chown ${_HM_U}:users ${_DIR_CTRL_F}
-              chmod 0664 ${_DIR_CTRL_F}
+              chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
+              chmod 0664 ${_DIR_CTRL_F} &> /dev/null
             fi
             if [ -e "${_DIR_CTRL_F}" ]; then
               _AGG_P=$(grep "advagg_auto_configuration" ${_DIR_CTRL_F} 2>&1)
@@ -1071,8 +1071,8 @@ fix_modules() {
               && [ ! -e "${_DIR_CTRL_F}" ]; then
               cp -af /data/conf/default.boa_site_control.ini \
                 ${_DIR_CTRL_F} &> /dev/null
-              chown ${_HM_U}:users ${_DIR_CTRL_F}
-              chmod 0664 ${_DIR_CTRL_F}
+              chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
+              chmod 0664 ${_DIR_CTRL_F} &> /dev/null
             fi
             if [ -e "${_DIR_CTRL_F}" ]; then
               _AC_PE_P=$(grep "purge_expire_auto_configuration" \
@@ -1098,8 +1098,8 @@ fix_modules() {
               && [ ! -e "${_DIR_CTRL_F}" ]; then
               cp -af /data/conf/default.boa_site_control.ini \
                 ${_DIR_CTRL_F} &> /dev/null
-              chown ${_HM_U}:users ${_DIR_CTRL_F}
-              chmod 0664 ${_DIR_CTRL_F}
+              chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
+              chmod 0664 ${_DIR_CTRL_F} &> /dev/null
             fi
             if [ -e "${_DIR_CTRL_F}" ]; then
               _AC_PE_P=$(grep "purge_expire_auto_configuration" \
@@ -1147,8 +1147,8 @@ fix_modules() {
                 && [ ! -e "${_DIR_CTRL_F}" ]; then
                 cp -af /data/conf/default.boa_site_control.ini \
                   ${_DIR_CTRL_F} &> /dev/null
-                chown ${_HM_U}:users ${_DIR_CTRL_F}
-                chmod 0664 ${_DIR_CTRL_F}
+                chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
+                chmod 0664 ${_DIR_CTRL_F} &> /dev/null
               fi
               if [ -e "${_DIR_CTRL_F}" ]; then
                 _AC_PFD_T=$(grep "^allow_private_file_downloads = TRUE" \
@@ -1168,8 +1168,8 @@ fix_modules() {
                 && [ ! -e "${_DIR_CTRL_F}" ]; then
                 cp -af /data/conf/default.boa_site_control.ini \
                   ${_DIR_CTRL_F} &> /dev/null
-                chown ${_HM_U}:users ${_DIR_CTRL_F}
-                chmod 0664 ${_DIR_CTRL_F}
+                chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
+                chmod 0664 ${_DIR_CTRL_F} &> /dev/null
               fi
               if [ -e "${_DIR_CTRL_F}" ]; then
                 _AC_PFD_T=$(grep "^allow_private_file_downloads = FALSE" \
@@ -1204,8 +1204,8 @@ fix_modules() {
               && [ ! -e "${_PLR_CTRL_F}" ]; then
               cp -af /data/conf/default.boa_platform_control.ini \
                 ${_PLR_CTRL_F} &> /dev/null
-              chown ${_HM_U}:users ${_PLR_CTRL_F}
-              chmod 0664 ${_PLR_CTRL_F}
+              chown ${_HM_U}:users ${_PLR_CTRL_F} &> /dev/null
+              chmod 0664 ${_PLR_CTRL_F} &> /dev/null
             fi
             if [ -e "${_PLR_CTRL_F}" ]; then
               _AD_FB_T=$(grep "^auto_detect_facebook_integration = TRUE" \
@@ -1227,8 +1227,8 @@ fix_modules() {
               && [ ! -e "${_PLR_CTRL_F}" ]; then
               cp -af /data/conf/default.boa_platform_control.ini \
                 ${_PLR_CTRL_F} &> /dev/null
-              chown ${_HM_U}:users ${_PLR_CTRL_F}
-              chmod 0664 ${_PLR_CTRL_F}
+              chown ${_HM_U}:users ${_PLR_CTRL_F} &> /dev/null
+              chmod 0664 ${_PLR_CTRL_F} &> /dev/null
             fi
             if [ -e "${_PLR_CTRL_F}" ]; then
               _AD_FB_T=$(grep "^auto_detect_facebook_integration = FALSE" \
@@ -1262,8 +1262,8 @@ fix_modules() {
               && [ ! -e "${_PLR_CTRL_F}" ]; then
               cp -af /data/conf/default.boa_platform_control.ini \
                 ${_PLR_CTRL_F} &> /dev/null
-              chown ${_HM_U}:users ${_PLR_CTRL_F}
-              chmod 0664 ${_PLR_CTRL_F}
+              chown ${_HM_U}:users ${_PLR_CTRL_F} &> /dev/null
+              chmod 0664 ${_PLR_CTRL_F} &> /dev/null
             fi
             if [ -e "${_PLR_CTRL_F}" ]; then
               _AD_DA_T=$(grep "^auto_detect_domain_access_integration = TRUE" \
@@ -1285,8 +1285,8 @@ fix_modules() {
               && [ ! -e "${_PLR_CTRL_F}" ]; then
               cp -af /data/conf/default.boa_platform_control.ini \
                 ${_PLR_CTRL_F} &> /dev/null
-              chown ${_HM_U}:users ${_PLR_CTRL_F}
-              chmod 0664 ${_PLR_CTRL_F}
+              chown ${_HM_U}:users ${_PLR_CTRL_F} &> /dev/null
+              chmod 0664 ${_PLR_CTRL_F} &> /dev/null
             fi
             if [ -e "${_PLR_CTRL_F}" ]; then
               _AD_DA_T=$(grep "^auto_detect_domain_access_integration = FALSE" \
@@ -1645,12 +1645,12 @@ fix_seven_core_patch() {
     else
       cd ${Plr}
       patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch
-      chown ${_HM_U}:users ${Plr}/includes/database/*.inc
-      chmod 0664 ${Plr}/includes/database/*.inc
+      chown ${_HM_U}:users ${Plr}/includes/database/*.inc &> /dev/null
+      chmod 0664 ${Plr}/includes/database/*.inc &> /dev/null
       echo fixed > ${Plr}/profiles/SA-CORE-2014-005-D7-fix.info
     fi
-    chown ${_HM_U}:users ${Plr}/profiles/*-fix.info
-    chmod 0664 ${Plr}/profiles/*-fix.info
+    chown ${_HM_U}:users ${Plr}/profiles/*-fix.info &> /dev/null
+    chmod 0664 ${Plr}/profiles/*-fix.info &> /dev/null
   fi
 }
 
@@ -1788,13 +1788,13 @@ fix_permissions() {
     find ${Dir}/files/* -type f -exec chmod 0664 {} \; &> /dev/null
     chmod 02775 ${Dir}/files &> /dev/null
     chown ${_HM_U}:www-data ${Dir}/files &> /dev/null
-    chown ${_HM_U}:www-data ${Dir}/files/{tmp,images,pictures,css,js}
-    chown ${_HM_U}:www-data ${Dir}/files/{advagg_css,advagg_js,ctools}
-    chown ${_HM_U}:www-data ${Dir}/files/{ctools/css,imagecache,locations}
-    chown ${_HM_U}:www-data ${Dir}/files/{xmlsitemap,deployment,styles,private}
-    chown ${_HM_U}:www-data ${Dir}/files/{civicrm,civicrm/templates_c}
-    chown ${_HM_U}:www-data ${Dir}/files/{civicrm/upload,civicrm/persist}
-    chown ${_HM_U}:www-data ${Dir}/files/{civicrm/custom,civicrm/dynamic}
+    chown ${_HM_U}:www-data ${Dir}/files/{tmp,images,pictures,css,js} &> /dev/null
+    chown ${_HM_U}:www-data ${Dir}/files/{advagg_css,advagg_js,ctools} &> /dev/null
+    chown ${_HM_U}:www-data ${Dir}/files/{ctools/css,imagecache,locations} &> /dev/null
+    chown ${_HM_U}:www-data ${Dir}/files/{xmlsitemap,deployment,styles,private} &> /dev/null
+    chown ${_HM_U}:www-data ${Dir}/files/{civicrm,civicrm/templates_c} &> /dev/null
+    chown ${_HM_U}:www-data ${Dir}/files/{civicrm/upload,civicrm/persist} &> /dev/null
+    chown ${_HM_U}:www-data ${Dir}/files/{civicrm/custom,civicrm/dynamic} &> /dev/null
     ### private - site level
     chown -L -R ${_HM_U}.ftp:www-data ${Dir}/private &> /dev/null
     find ${Dir}/private -type d -exec chmod 02775 {} \; &> /dev/null
@@ -1956,8 +1956,8 @@ fix_platform_control_files() {
       || [ "$_CTRL_TPL_FORCE_UPDATE" = "YES" ]; then
       cp -af /data/conf/default.boa_platform_control.ini \
         ${Plr}/sites/all/modules/ &> /dev/null
-      chown ${_HM_U}:users ${Plr}/sites/all/modules/default.boa_platform_control.ini
-      chmod 0664 ${Plr}/sites/all/modules/default.boa_platform_control.ini
+      chown ${_HM_U}:users ${Plr}/sites/all/modules/default.boa_platform_control.ini &> /dev/null
+      chmod 0664 ${Plr}/sites/all/modules/default.boa_platform_control.ini &> /dev/null
     fi
     _CTRL_F_TPL="${Plr}/sites/all/modules/default.boa_platform_control.ini"
     _CTRL_F="${Plr}/sites/all/modules/boa_platform_control.ini"
@@ -1974,8 +1974,8 @@ fix_site_control_files() {
     if [ ! -e "${Dir}/modules/default.boa_site_control.ini" ] \
       || [ "$_CTRL_TPL_FORCE_UPDATE" = "YES" ]; then
       cp -af /data/conf/default.boa_site_control.ini ${Dir}/modules/ &> /dev/null
-      chown ${_HM_U}:users ${Dir}/modules/default.boa_site_control.ini
-      chmod 0664 ${Dir}/modules/default.boa_site_control.ini
+      chown ${_HM_U}:users ${Dir}/modules/default.boa_site_control.ini &> /dev/null
+      chmod 0664 ${Dir}/modules/default.boa_site_control.ini &> /dev/null
     fi
     _CTRL_F_TPL="${Dir}/modules/default.boa_site_control.ini"
     _CTRL_F="${Dir}/modules/boa_site_control.ini"
@@ -2010,8 +2010,7 @@ cleanup_ghost_vhosts() {
         if [ ! -e "${User}/.drush/${Dom}.alias.drushrc.php" ]; then
           mkdir -p ${User}/undo
           mv -f $Site ${User}/undo/ &> /dev/null
-          echo "GHOST vhost for ${Dom} with no drushrc detected \
-            and moved to ${User}/undo/"
+          echo "GHOST vhost for ${Dom} with no drushrc detected and moved to ${User}/undo/"
         fi
       fi
     fi
@@ -2038,17 +2037,14 @@ cleanup_ghost_drushrc() {
         if [ ! -e "$Plm/index.php" ] || [ ! -e "$Plm/profiles" ]; then
           mkdir -p ${User}/undo
           mv -f $Plm ${User}/undo/ &> /dev/null
-          echo "GHOST broken platform dir $Plm detected \
-            and moved to ${User}/undo/"
+          echo "GHOST broken platform dir $Plm detected and moved to ${User}/undo/"
           mv -f ${Alias} ${User}/undo/ &> /dev/null
-          echo "GHOST broken platform alias ${Alias} detected \
-            and moved to ${User}/undo/"
+          echo "GHOST broken platform alias ${Alias} detected and moved to ${User}/undo/"
         fi
       else
         mkdir -p ${User}/undo
         mv -f ${Alias} ${User}/undo/ &> /dev/null
-        echo "GHOST nodir platform alias ${Alias} detected \
-          and moved to ${User}/undo/"
+        echo "GHOST nodir platform alias ${Alias} detected and moved to ${User}/undo/"
       fi
     else
       _T_SITE_NAME="${AliasName}"
@@ -2059,8 +2055,7 @@ cleanup_ghost_drushrc() {
           ${User}/undo/ &> /dev/null
         mv -f ${User}/config/server_master/nginx/vhost.d/${_T_SITE_NAME} \
           ${User}/undo/ &> /dev/null
-        echo "GHOST drushrc and vhost for ${_T_SITE_NAME} detected \
-          and moved to ${User}/undo/"
+        echo "GHOST drushrc and vhost for ${_T_SITE_NAME} detected and moved to ${User}/undo/"
       else
         _T_SITE_FDIR=$(cat ${Alias} \
           | grep "site_path'" \
@@ -2076,19 +2071,16 @@ cleanup_ghost_drushrc() {
           mkdir -p ${User}/undo
           mv -f ${User}/.drush/${_T_SITE_NAME}.alias.drushrc.php \
             ${User}/undo/ &> /dev/null
-          echo "GHOST drushrc for ${_T_SITE_NAME} detected \
-            and moved to ${User}/undo/"
+          echo "GHOST drushrc for ${_T_SITE_NAME} detected and moved to ${User}/undo/"
           if [[ ! "${_T_SITE_FDIR}" =~ "aegir/distro" ]]; then
             mv -f ${User}/config/server_master/nginx/vhost.d/${_T_SITE_NAME} \
               ${User}/undo/ghost-vhost-${_T_SITE_NAME} &> /dev/null
-            echo "GHOST vhost for ${_T_SITE_NAME} detected \
-              and moved to ${User}/undo/"
+            echo "GHOST vhost for ${_T_SITE_NAME} detected and moved to ${User}/undo/"
           fi
           if [ -d "${_T_SITE_FDIR}" ]; then
             mv -f ${_T_SITE_FDIR} \
               ${User}/undo/ghost-site-${_T_SITE_NAME} &> /dev/null
-            echo "GHOST site dir for ${_T_SITE_NAME} detected \
-              and moved from ${_T_SITE_FDIR} to ${User}/undo/"
+            echo "GHOST site dir for ${_T_SITE_NAME} detected and moved from ${_T_SITE_FDIR} to ${User}/undo/"
           fi
         fi
       fi
@@ -2223,8 +2215,7 @@ check_old_empty_platforms() {
           mkdir -p ${User}/undo
           mv -f ${User}/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php \
             ${User}/undo/ &> /dev/null
-          echo "GHOST platform ${_T_PFM_ROOT} detected \
-            and moved to ${User}/undo/"
+          echo "GHOST platform ${_T_PFM_ROOT} detected and moved to ${User}/undo/"
         fi
         if [[ "${_T_PFM_SITE}" =~ ".restore" ]]; then
           echo "WARNING: ghost site leftover found: ${_T_PFM_SITE}"
@@ -2323,7 +2314,7 @@ purge_cruft_machine() {
     -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
 
   mkdir -p ${User}/static/trash
-  chown ${_HM_U}.ftp:users ${User}/static/trash
+  chown ${_HM_U}.ftp:users ${User}/static/trash &> /dev/null
   find ${User}/static/trash/* \
     -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
 
@@ -2366,8 +2357,8 @@ purge_cruft_machine() {
       chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
       mkdir -p /home/${_HM_U}.ftp/platforms/$i
       mkdir -p ${User}/distro/$i/keys
-      chown ${_HM_U}.ftp:${_WEBG} ${User}/distro/$i/keys
-      chmod 02775 ${User}/distro/$i/keys
+      chown ${_HM_U}.ftp:${_WEBG} ${User}/distro/$i/keys &> /dev/null
+      chmod 02775 ${User}/distro/$i/keys &> /dev/null
       ln -sf ${User}/distro/$i/keys /home/${_HM_U}.ftp/platforms/$i/keys
       for Codebase in `find ${User}/distro/$i/* \
         -maxdepth 1 \
@@ -2404,7 +2395,7 @@ count_cpu() {
     _CPU_NR=1
   fi
   echo ${_CPU_NR} > /data/all/cpuinfo
-  chmod 644 /data/all/cpuinfo
+  chmod 644 /data/all/cpuinfo &> /dev/null
 }
 
 load_control() {
@@ -2759,31 +2750,31 @@ if [ "${_PERMISSIONS_FIX}" = "YES" ] \
   echo "INFO: Fixing permissions in the /data/all tree..."
   find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
   find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
-  chown -R root:root /data/conf
+  chown -R root:root /data/conf &> /dev/null
   if [ -e "/data/all" ]; then
     find /data/all -type d -exec chmod 0755 {} \; &> /dev/null
     find /data/all -type f -exec chmod 0644 {} \; &> /dev/null
     chmod 02775 /data/all/*/*/sites/all/{modules,libraries,themes} &> /dev/null
     chmod 02775 /data/all/000/core/*/sites/all/{modules,libraries,themes} &> /dev/null
-    chown -R root:root /data/all
-    chown -R root:users /data/all/*/*/sites
-    chown -R root:users /data/all/000/core/*/sites
+    chown -R root:root /data/all &> /dev/null
+    chown -R root:users /data/all/*/*/sites &> /dev/null
+    chown -R root:users /data/all/000/core/*/sites &> /dev/null
   elif [ -e "/data/disk/all" ]; then
     find /data/disk/all -type d -exec chmod 0755 {} \; &> /dev/null
     find /data/disk/all -type f -exec chmod 0644 {} \; &> /dev/null
     chmod 02775 /data/disk/all/*/*/sites/all/{modules,libraries,themes} &> /dev/null
     chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes} &> /dev/null
-    chown -R root:root /data/disk/all
-    chown -R root:users /data/disk/all/*/*/sites
-    chown -R root:users /data/disk/all/000/core/*/sites
+    chown -R root:root /data/disk/all &> /dev/null
+    chown -R root:users /data/disk/all/*/*/sites &> /dev/null
+    chown -R root:users /data/disk/all/000/core/*/sites &> /dev/null
   fi
   chmod 02775 /data/disk/*/distro/*/*/sites/all/{modules,libraries,themes} &> /dev/null
   echo fixed > /data/all/permissions-fix-${_X_VERSION}-fixed-dz.info
 fi
 if [ ! -e "/var/backups/fix-sites-all-permsissions-${_X_SE}.txt" ]; then
-  chmod 0751  /data/disk/*/distro/*/*/sites
-  chmod 0755  /data/disk/*/distro/*/*/sites/all
-  chmod 02775 /data/disk/*/distro/*/*/sites/all/{modules,libraries,themes}
+  chmod 0751  /data/disk/*/distro/*/*/sites &> /dev/null
+  chmod 0755  /data/disk/*/distro/*/*/sites/all &> /dev/null
+  chmod 02775 /data/disk/*/distro/*/*/sites/all/{modules,libraries,themes} &> /dev/null
   echo FIXED > /var/backups/fix-sites-all-permsissions-${_X_SE}.txt
   echo "Permissions in sites/all tree just fixed"
 fi
