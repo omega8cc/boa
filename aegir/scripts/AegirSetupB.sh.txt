@@ -612,11 +612,19 @@ else
     _HM_NID=${_HM_NID//[^0-9]/}
     if [ ! -z "$_HM_NID" ] ; then
       msg "$_STATUS B: Hostmaster STATUS: Fix 1/2 hosting_context $_HM_NID"
-      $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid='$_HM_NID'" &> /dev/null
-      $_DRUSHCMD @hostmaster sqlq "UPDATE node SET title='$_DOMAIN' WHERE nid='$_HM_NID'" &> /dev/null
-      $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET title='$_DOMAIN' WHERE nid='$_HM_NID'" &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'"         &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"                   &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revisions SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"         &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid='${_HM_NID}'" &> /dev/null
     else
       msg "$_STATUS B: Hostmaster STATUS: Fix 1/2 hosting_context $_HM_NID empty!"
+    fi
+    if [ -e "${_ROOT}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ] \
+      && [ ! -e "${_ROOT}/log/hmpathfix.pid" ]; then
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
+        SET publish_path='${_ROOT}/aegir/distro/001' \
+        WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
+      touch ${_ROOT}/log/hmpathfix.pid
     fi
   fi
   ### Fix for old migrated/merged instances
@@ -657,11 +665,19 @@ else
     _HM_NID=${_HM_NID//[^0-9]/}
     if [ ! -z "$_HM_NID" ] ; then
       msg "$_STATUS B: Hostmaster STATUS: Fix 2/2 hosting_context $_HM_NID"
-      $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid='$_HM_NID'" &> /dev/null
-      $_DRUSHCMD @hostmaster sqlq "UPDATE node SET title='$_DOMAIN' WHERE nid='$_HM_NID'" &> /dev/null
-      $_DRUSHCMD @hostmaster sqlq "UPDATE node_revisions SET title='$_DOMAIN' WHERE nid='$_HM_NID'" &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'"         &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"                   &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revisions SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"         &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid='${_HM_NID}'" &> /dev/null
     else
       msg "$_STATUS B: Hostmaster STATUS: Fix 2/2 hosting_context $_HM_NID empty!"
+    fi
+    if [ -e "${_ROOT}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ] \
+      && [ ! -e "${_ROOT}/log/hmpathfix.pid" ]; then
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
+        SET publish_path='${_ROOT}/aegir/distro/001' \
+        WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
+      touch ${_ROOT}/log/hmpathfix.pid
     fi
   fi
   ### Fix for migrated/merged instances
