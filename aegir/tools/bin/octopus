@@ -225,37 +225,37 @@ check_report() {
 
 up_mode() {
   if [ "${mcmode}" = "aegir" ]; then
+    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                     ${octCnf}
+    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                     ${vBs}/${tocName}
     if [ -e "${vBs}/${tocIncO}" ]; then
       sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                   ${vBs}/${tocIncO}
     fi
-    ### Legacy method
-    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                     ${vBs}/${tocName}
     bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   elif [ "${mcmode}" = "platforms" ]; then
+    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"       ${octCnf}
+    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"       ${vBs}/${tocName}
     if [ -e "${vBs}/${tocIncO}" ]; then
       sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"     ${vBs}/${tocIncO}
     fi
-    ### Legacy method
-    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"       ${vBs}/${tocName}
     bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   elif [ "${mcmode}" = "both" ]; then
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${octCnf}
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${vBs}/${tocName}
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${octCnf}
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${vBs}/${tocName}
     if [ -e "${vBs}/${tocIncO}" ]; then
       sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                   ${vBs}/${tocIncO}
     fi
-    ### Legacy method
-    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${vBs}/${tocName}
-    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${octCnf}
     if [ -e "${vBs}/${tocIncO}" ]; then
       sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"     ${vBs}/${tocIncO}
     fi
-    ### Legacy method
-    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${vBs}/${tocName}
-    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${octCnf}
     bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   else
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${octCnf}
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${octCnf}
     bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   fi
