@@ -878,9 +878,10 @@ switch_newrelic() {
 satellite_update_web_user() {
   _T_HD="/home/${_WEB}/.drush"
   _T_TP="/home/${_WEB}/.tmp"
+  _T_TS="/home/${_WEB}/.aws"
   _T_II="${_T_HD}/php.ini"
   if [ -e "/home/${_WEB}" ]; then
-    mkdir -p /home/${_WEB}/.{tmp,drush}
+    mkdir -p /home/${_WEB}/.{tmp,drush,aws}
     if [ ! -z "$1" ]; then
       if [ "$1" = "hhvm" ]; then
         if [ -e "/opt/php56/etc/php56.ini" ]; then
@@ -926,13 +927,14 @@ satellite_update_web_user() {
         /srv:           \
         /usr/bin:       \
         /var/second/${_USER}:     \
-        ${_T_HD}:                 \
         ${dscUsr}/aegir:          \
         ${dscUsr}/backup-exports: \
         ${dscUsr}/distro:         \
         ${dscUsr}/platforms:      \
         ${dscUsr}/static:         \
-        ${_T_TP}\""
+        ${_T_HD}:                 \
+        ${_T_TP}:                 \
+        ${_T_TS}\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
       _INI=${_INI//\//\\\/}

@@ -77,10 +77,11 @@ satellite_tune_fpm_workers() {
 satellite_update_web_user() {
   _T_HD="/home/${_WEB}/.drush"
   _T_TP="/home/${_WEB}/.tmp"
+  _T_TS="/home/${_WEB}/.aws"
   _T_II="${_T_HD}/php.ini"
   ### msg "DEBUG: ${_WEB} in satellite_update_web_user A"
   if [ -e "/home/${_WEB}" ]; then
-    mkdir -p /home/${_WEB}/.{tmp,drush}
+    mkdir -p /home/${_WEB}/.{tmp,drush,aws}
     ### msg "DEBUG: ${_WEB} in satellite_update_web_user B"
     ### msg "DEBUG: ARG1 is $1 in satellite_update_web_user B"
     if [ ! -z "$1" ]; then
@@ -136,7 +137,8 @@ satellite_update_web_user() {
         ${_ROOT}/platforms:      \
         ${_ROOT}/static:         \
         ${_T_HD}:                \
-        ${_T_TP}\""
+        ${_T_TP}:                \
+        ${_T_TS}\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
       _INI=${_INI//\//\\\/}
