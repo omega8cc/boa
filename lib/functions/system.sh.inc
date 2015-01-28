@@ -490,8 +490,7 @@ fix_locales() {
   fi
   _LOCALE_TEST=BROKEN
   _LOC_TEST=$(locale 2>&1)
-  if [[ "$_LOC_TEST" =~ LANGUAGE=.*UTF-8 ]] \
-    && [[ "$_LOC_TEST" =~ LANG=.*UTF-8 ]]; then
+  if [[ "$_LOC_TEST" =~ LANG=.*UTF-8 ]]; then
     _LOCALE_TEST=OK
   fi
   if [[ "$_LOC_TEST" =~ "Cannot" ]]; then
