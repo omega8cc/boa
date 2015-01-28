@@ -78,7 +78,7 @@
   * Do not display .cnf files contents if _DEBUG_MODE is not set to YES.
   * Do not restart Redis daily if /root/.high_traffic.cnf exists - fixes #533
   * Drush 7 is now used by default instead of Drush 6.
-  * Drush: Upgrade to mini-7-18-01-2015
+  * Drush: Upgrade to mini-7-28-01-2015
   * Force _TOMCAT_TO_JETTY=YES - fixes #570
   * Hostmaster: Use Drush Make Local instead of downloading contrib with Drush
   * Limit status messages verbosity if _DEBUG_MODE is not set to YES
