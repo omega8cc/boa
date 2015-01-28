@@ -456,22 +456,13 @@ tune_memory_limits() {
   sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" \
     /etc/redis/redis.conf &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ]; then
-    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} \
-      -Djava.awt.headless=true \
-      -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" \
-      # Options/g" /etc/default/jetty9
+    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9
   fi
   if [ -e "/etc/default/jetty8" ] && [ -e "/opt/solr3" ]; then
-    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} \
-      -Djava.awt.headless=true \
-      -Dsolr.solr.home=\/opt\/solr3 \$JAVA_OPTIONS\" \
-      # Options/g" /etc/default/jetty8
+    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr3 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty8
   fi
   if [ -e "/etc/default/jetty7" ] && [ -e "/opt/solr1" ]; then
-    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} \
-      -Djava.awt.headless=true \
-      -Dsolr.solr.home=\/opt\/solr1 \$JAVA_OPTIONS\" \
-      # Options/g" /etc/default/jetty7
+    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr1 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty7
   fi
   tune_web_server_config
 }
@@ -1735,8 +1726,7 @@ update_sources_list() {
       _APT_SOURCES_REWRITE=YES
     fi
     if [ "${_OSV}" = "lenny" ]; then
-      sed -i "s/^deb.*security.debian.org.*/## security updates no longer \
-        available for lenny/g" ${aptLiSys} &> /dev/null
+      sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" ${aptLiSys} &> /dev/null
       sed -i "s/ftp.*debian.org/archive.debian.org/g" \
         ${aptLiSys} &> /dev/null
       sed -i "s/volatile.debian.org/archive.debian.org/g" \
@@ -2717,8 +2707,7 @@ more_packages_install_on_init() {
     if [ -e "/etc/debian_version" ]; then
       _L_DEB_TEST=$(grep "^5." /etc/debian_version 2>&1)
       if [ ! -z "$_L_DEB_TEST" ]; then
-        sed -i "s/^deb.*security.debian.org.*/## security updates no longer \
-          available for lenny/g" ${aptLiSys} &> /dev/null
+        sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" ${aptLiSys} &> /dev/null
         sed -i "s/ftp.*debian.org/archive.debian.org/g" \
           ${aptLiSys} &> /dev/null
         sed -i "s/volatile.debian.org/archive.debian.org/g" \
@@ -2982,8 +2971,7 @@ sys_packages_update() {
   msg "INFO: Running system packages update..."
   update_webmin_apt
   if [ "${_OSV}" = "lenny" ]; then
-    sed -i "s/^deb.*security.debian.org.*/## security updates no longer \
-      available for lenny/g" ${aptLiSys} &> /dev/null
+    sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" ${aptLiSys} &> /dev/null
     sed -i "s/ftp.*debian.org/archive.debian.org/g" \
       ${aptLiSys} &> /dev/null
     sed -i "s/volatile.debian.org/archive.debian.org/g" \

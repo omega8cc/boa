@@ -815,10 +815,8 @@ disable_newrelic() {
     _CHECK_NEW_RELIC_KEY=$(grep "newrelic.enabled.*true" $_THIS_POOL_TPL 2>&1)
     if [[ "$_CHECK_NEW_RELIC_KEY" =~ "newrelic.enabled" ]]; then
       echo New Relic for ${_USER} will be disabled because newrelic.info does not exist
-      sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] \
-        = \"\"/g" $_THIS_POOL_TPL
-      sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] \
-        = \"false\"/g" $_THIS_POOL_TPL
+      sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"\"/g" $_THIS_POOL_TPL
+      sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"false\"/g" $_THIS_POOL_TPL
       if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ]; then
         service php${_PHP_SV}-fpm reload
       fi
@@ -848,10 +846,8 @@ enable_newrelic() {
         if [[ "$_CHECK_NEW_RELIC_TPL" =~ "newrelic.license" ]]; then
           echo "New Relic for ${_USER} update with key \
             $_LOC_NEW_RELIC_KEY in php${_PHP_SV}"
-          sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] \
-            = \"$_LOC_NEW_RELIC_KEY\"/g" $_THIS_POOL_TPL
-          sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] \
-            = \"true\"/g" $_THIS_POOL_TPL
+          sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"$_LOC_NEW_RELIC_KEY\"/g" $_THIS_POOL_TPL
+          sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"true\"/g" $_THIS_POOL_TPL
         else
           echo New Relic for ${_USER} setup with key $_LOC_NEW_RELIC_KEY in php${_PHP_SV}
           echo "php_admin_value[newrelic.license] = \"$_LOC_NEW_RELIC_KEY\"" >> $_THIS_POOL_TPL

@@ -382,8 +382,7 @@ if_install_rvm() {
               st_runner "rvm @global do gem install --conservative scout" 2> /dev/null
               adduser --system --group --home /var/scout scout &> /dev/null
               usermod -aG users scout &> /dev/null
-              sed -i "s/\* \* \* \* \* scout .*/* * * * * \
-                scout $_GEM_PATH ${_SCOUT_KEY}/g" $_GEM_CRON &> /dev/null
+              sed -i "s/\* \* \* \* \* scout .*/* * * * * scout $_GEM_PATH ${_SCOUT_KEY}/g" $_GEM_CRON &> /dev/null
             fi
           else
             if [ ! -z "${_SCOUT_KEY}" ]; then

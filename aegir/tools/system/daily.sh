@@ -877,8 +877,7 @@ add_solr() {
 delete_solr() {
   # $1 is solr core path
   if [ ! -z "$1" ] && [ -e "/var/xdrago/conf/solr" ] && [ -e "$1/conf" ]; then
-    sed -i "s/.*instanceDir=\"${_HM_U}.${Dom}\".*//g" \
-      /opt/solr4/solr.xml
+    sed -i "s/.*instanceDir=\"${_HM_U}.${Dom}\".*//g" /opt/solr4/solr.xml
     sed -i "/^$/d" /opt/solr4/solr.xml &> /dev/null
     rm -f -r $1
     rm -f ${Dir}/solr.php
