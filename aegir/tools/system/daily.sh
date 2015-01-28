@@ -867,11 +867,7 @@ add_solr() {
           | openssl md5 \
           | tr -d "\n" 2>&1)
       fi
-      sed -i "s/.*<core name=\"core0\" instanceDir=\"core0\" \
-        \/>.*/<core name=\"core0\" instanceDir=\"core0\" \/>\n<core \
-        name=\"${_MD5H}.${Dom}.${_HM_U}\" \
-        instanceDir=\"${_HM_U}.${Dom}\" \/>\n/g" \
-        /opt/solr4/solr.xml
+      sed -i "s/.*<core name=\"core0\" instanceDir=\"core0\" \/>.*/<core name=\"core0\" instanceDir=\"core0\" \/>\n<core name=\"${_MD5H}.${Dom}.${_HM_U}\" instanceDir=\"${_HM_U}.${Dom}\" \/>\n/g" /opt/solr4/solr.xml
       update_solr $1 $2
       echo "New Solr with $1 for $2 added"
     fi
