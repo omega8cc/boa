@@ -185,7 +185,7 @@ check_if_required() {
         "echo _REQ for $1 is ${_REQ} in ${Dom} == 7 == via $_REW_TEST"
       fi
     fi
-    Profile=$(drush4 vget ^install_profile$ \
+    Profile=$(run_drush4_nosilent_cmd "vget ^install_profile$" \
       | cut -d: -f2 \
       | awk '{ print $1}' \
       | sed "s/['\"]//g" \
@@ -354,7 +354,7 @@ fix_user_register_protection() {
   fi
 
   if [ "${_DISABLE_USER_REGISTER_PROTECTION}" = "NO" ]; then
-    Prm=$(drush4 vget ^user_register$ \
+    Prm=$(run_drush4_nosilent_cmd "vget ^user_register$" \
       | cut -d: -f2 \
       | awk '{ print $1}' \
       | sed "s/['\"]//g" \
@@ -681,7 +681,7 @@ EOF
 }
 
 check_site_status() {
-  _SITE_TEST=$(drush4 status 2>&1)
+  _SITE_TEST=$(run_drush4_nosilent_cmd "status" 2>&1)
   if [[ "$_SITE_TEST" =~ "Error:" ]] \
     || [[ "$_SITE_TEST" =~ "Drush was attempting to connect" ]]; then
     _SITE_TEST_RESULT=ERROR
@@ -1116,7 +1116,7 @@ fix_modules() {
           fi
 
           if [ -e "${Plr}/modules/o_contrib_seven" ]; then
-            _PRIV_TEST=$(drush4 vget ^file_default_scheme$ 2>&1)
+            _PRIV_TEST=$(run_drush4_nosilent_cmd "vget ^file_default_scheme$" 2>&1)
             if [[ "${_PRIV_TEST}" =~ "No matching variable" ]]; then
               _PRIV_TEST_RESULT=NONE
             else
@@ -1124,7 +1124,7 @@ fix_modules() {
             fi
             _AUTO_CNF_PF_DL=NO
             if [ "${_PRIV_TEST_RESULT}" = "OK" ]; then
-              Pri=$(drush4 vget ^file_default_scheme$ \
+              Pri=$(run_drush4_nosilent_cmd "vget ^file_default_scheme$" \
                 | cut -d: -f2 \
                 | awk '{ print $1}' \
                 | sed "s/['\"]//g" \
