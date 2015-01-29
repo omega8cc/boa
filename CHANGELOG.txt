@@ -111,7 +111,7 @@
   * cURL 7.40.0 (if installed from sources)
   * Git 2.2.1 (if installed from sources)
   * MariaDB 5.5.41
-  * MariaDB Galera Cluster 10.0.15
+  * MariaDB Galera Cluster 10.0.16
   * Nginx 1.7.9
   * PHP 5.4.37
   * PHP 5.5.21
