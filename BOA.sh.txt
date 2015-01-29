@@ -152,6 +152,12 @@ check_dns_settings() {
 }
 
 update_agents() {
+
+  if [ -e "/var/xdrago" ] && [ ! -e "${pthLog}/prmfix.fixed.a24z.pid" ]; then
+    sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=NO/g" /root/.barracuda.cnf
+    touch ${pthLog}/prmfix.fixed.a24z.pid
+  fi
+
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
     && [ ! -e "${pthLog}/runner.fixed.a24z.pid" ]; then
@@ -253,7 +259,7 @@ update_agents() {
 
 fix_core_dgd() {
   # https://www.drupal.org/SA-CORE-2014-005
-  sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf
+  ### sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf
   if [ -e "/var/xdrago" ] \
     && [ ! -e "${saPatch}" ]; then
     mkdir -p /var/xdrago/conf
