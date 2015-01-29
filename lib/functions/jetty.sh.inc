@@ -17,6 +17,7 @@ if_install_jetty() {
   fi
   if [[ "${_XTRAS_LIST}" =~ "SR4" ]] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
     || [ -e "/root/.auto.up.cnf" ] \
     || [ -e "/root/.host8.cnf" ]; then
     if [ ! -d "/opt/solr4" ] \

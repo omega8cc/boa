@@ -303,7 +303,9 @@ fix_user_register_protection() {
     else
       _ENABLE_USER_REGISTER_PROTECTION=NO
     fi
-    if [[ "${_HOST_TEST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+    if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+      || [ "${_VMFAMILY}" = "VS" ]; then
       if [ "${_CLIENT_OPTION}" = "POWER" ]; then
         _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
           ${_PLR_CTRL_F} 2>&1)
@@ -449,17 +451,20 @@ send_shutdown_notice() {
   else
     _ALRT_EMAIL="${_MY_EMAIL}"
   fi
-  if [[ "${_HOST_TEST}" =~ ".host8." ]] \
+  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ]; then
     _BCC_EMAIL="omega8cc@gmail.com"
   else
+    if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     _BCC_EMAIL="${_MY_EMAIL}"
   fi
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
   cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "ALERT! Shutdown of Hacked ${Dom} Site on ${_HOST_TEST}" \
+    -s "ALERT! Shutdown of Hacked ${Dom} Site on ${_CHECK_HOST}" \
     ${_ALRT_EMAIL}
 Hello,
 
@@ -483,7 +488,7 @@ The platform root directory for this site is:
 
 The system hostname is:
 
-  ${_HOST_TEST}
+  ${_CHECK_HOST}
 
 To learn more on what happened, how it was possible and
 how to survive #Drupageddon, please read:
@@ -496,7 +501,7 @@ This e-mail has been sent by your Aegir system monitor.
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
   cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "ALERT! Shutdown of Hacked ${Dom} Site on ${_HOST_TEST}" \
+    -s "ALERT! Shutdown of Hacked ${Dom} Site on ${_CHECK_HOST}" \
     ${_ALRT_EMAIL}
 Hello,
 
@@ -520,7 +525,7 @@ The platform root directory for this site is:
 
 The system hostname is:
 
-  ${_HOST_TEST}
+  ${_CHECK_HOST}
 
 To learn more on what happened, how it was possible and
 how to survive #Drupageddon, please read:
@@ -533,7 +538,7 @@ This e-mail has been sent by your Aegir system monitor.
 EOF
   else
   cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
-    -s "ALERT! Shutdown of Hacked ${Dom} Site on ${_HOST_TEST}" \
+    -s "ALERT! Shutdown of Hacked ${Dom} Site on ${_CHECK_HOST}" \
     ${_ALRT_EMAIL}
 Hello,
 
@@ -557,7 +562,7 @@ The platform root directory for this site is:
 
 The system hostname is:
 
-  ${_HOST_TEST}
+  ${_CHECK_HOST}
 
 To learn more on what happened, how it was possible and
 how to survive #Drupageddon, please read:
@@ -581,7 +586,8 @@ send_hacked_alert() {
   else
     _ALRT_EMAIL="${_MY_EMAIL}"
   fi
-  if [[ "${_HOST_TEST}" =~ ".host8." ]] \
+  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ]; then
     _BCC_EMAIL="omega8cc@gmail.com"
@@ -591,7 +597,7 @@ send_hacked_alert() {
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
   cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "URGENT: The ${Dom} site on "${_HOST_TEST}" has been HACKED!" \
+    -s "URGENT: The ${Dom} site on "${_CHECK_HOST}" has been HACKED!" \
     ${_ALRT_EMAIL}
 Hello,
 
@@ -607,7 +613,7 @@ The platform root directory for this site is:
 
 The system hostname is:
 
-  ${_HOST_TEST}
+  ${_CHECK_HOST}
 
 To learn more on what happened, how it was possible and
 how to survive #Drupageddon, please read:
@@ -620,7 +626,7 @@ This e-mail has been sent by your Aegir system monitor.
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
   cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "URGENT: The ${Dom} site on "${_HOST_TEST}" has been HACKED!" \
+    -s "URGENT: The ${Dom} site on "${_CHECK_HOST}" has been HACKED!" \
     ${_ALRT_EMAIL}
 Hello,
 
@@ -636,7 +642,7 @@ The platform root directory for this site is:
 
 The system hostname is:
 
-  ${_HOST_TEST}
+  ${_CHECK_HOST}
 
 To learn more on what happened, how it was possible and
 how to survive #Drupageddon, please read:
@@ -649,7 +655,7 @@ This e-mail has been sent by your Aegir system monitor.
 EOF
   else
   cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
-    -s "URGENT: The ${Dom} site on "${_HOST_TEST}" has been HACKED!" \
+    -s "URGENT: The ${Dom} site on "${_CHECK_HOST}" has been HACKED!" \
     ${_ALRT_EMAIL}
 Hello,
 
@@ -665,7 +671,7 @@ The platform root directory for this site is:
 
 The system hostname is:
 
-  ${_HOST_TEST}
+  ${_CHECK_HOST}
 
 To learn more on what happened, how it was possible and
 how to survive #Drupageddon, please read:
@@ -2168,10 +2174,11 @@ delete_this_platform() {
 }
 
 check_old_empty_platforms() {
-  if [[ "${_HOST_TEST}" =~ ".host8." ]] \
+  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ]; then
-    if [[ "${_HOST_TEST}" =~ "v189q.nyc." ]] \
+    if [[ "${_CHECK_HOST}" =~ "v189q.nyc." ]] \
       || [ -e "/root/.debug.cnf" ]; then
       _DO_NOTHING=YES
     else
@@ -2179,7 +2186,8 @@ check_old_empty_platforms() {
         && [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
         _DO_NOTHING=YES
       else
-        if [[ "${_HOST_TEST}" =~ ".host8." ]] \
+        if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+          || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
           || [ "${_VMFAMILY}" = "VS" ]; then
           _DEL_OLD_EMPTY_PLATFORMS="30"
         else
@@ -2237,7 +2245,8 @@ purge_cruft_machine() {
     _PURGE_TMP="0"
   fi
 
-  if [[ "${_HOST_TEST}" =~ ".host8." ]] \
+  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ]; then
     _PURGE_BACKUPS="8"
@@ -2527,7 +2536,8 @@ action() {
           WHERE task_type='delete' AND task_status='0' AND executed='0'\""
         check_old_empty_platforms
         purge_cruft_machine
-        if [[ "${_HOST_TEST}" =~ ".host8." ]] \
+        if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+          || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
           || [ "${_VMFAMILY}" = "VS" ]; then
           rm -f -r ${User}/clients/admin &> /dev/null
           rm -f -r ${User}/clients/omega8ccgmailcom &> /dev/null
@@ -2557,7 +2567,7 @@ echo "INFO: Daily maintenance start"
 #
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _DOW=$(date +%w 2>&1)
-_HOST_TEST=$(uname -n 2>&1)
+_CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
 if [ -e "/root/.force.sites.verify.cnf" ]; then
   _FORCE_SITES_VERIFY=YES
@@ -2640,7 +2650,9 @@ elif [ -e "/root/.wbhd.clstr.cnf" ]; then
   exit 1
 else
   touch /var/run/daily-fix.pid
-  if [[ "${_HOST_TEST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+    || [ "${_VMFAMILY}" = "VS" ]; then
     _PERMISSIONS_FIX=YES
     _MODULES_FIX=YES
     n=$((RANDOM%800+80))
@@ -2779,7 +2791,8 @@ fi
 find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -rf {} \;
 find /var/backups/jetty* -mtime +0 -exec rm -rf {} \;
 find /var/backups/dragon/* -mtime +7 -exec rm -rf {} \;
-if [[ "${_HOST_TEST}" =~ ".host8." ]] \
+if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+  || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
   || [ "${_VMFAMILY}" = "VS" ] \
   || [ -e "/root/.host8.cnf" ]; then
   if [ -d "/var/backups/codebases-cleanup" ]; then

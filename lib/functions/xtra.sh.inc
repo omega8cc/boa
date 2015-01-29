@@ -326,6 +326,7 @@ if_install_rvm() {
       || [[ "${_XTRAS_LIST}" =~ "CSS" ]] \
       || [ ! -z "${_SCOUT_KEY}" ] \
       || [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ -e "/root/.host8.cnf" ] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       if [ "${_STATUS}" = "INIT" ]; then

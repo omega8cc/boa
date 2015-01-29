@@ -21,7 +21,8 @@ action() {
   mkdir -p /opt/tmp
   chmod 777 /opt/tmp
   rm -f /opt/tmp/sess*
-  if [[ "${_HOST_TEST}" =~ ".host8." ]] \
+  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ]; then
     rm -f /tmp/*
@@ -75,7 +76,7 @@ action() {
 
 ###--------------------###
 _NOW=$(date +%y%m%d-%H%M 2>&1)
-_HOST_TEST=$(uname -n 2>&1)
+_CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
 if [[ "${_VM_TEST}" =~ beng ]]; then
   _VMFAMILY="VS"

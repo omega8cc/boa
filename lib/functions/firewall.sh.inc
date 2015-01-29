@@ -68,7 +68,9 @@ csf_install() {
   cd csf
   st_runner "sh install.sh" 2> /dev/null
   cd /var/opt
-  if [[ "${_THISHOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+  if [[ "${_THISHOST}" =~ ".host8." ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+    || [ "${_VMFAMILY}" = "VS" ]; then
     _SSH_PORT=22
   fi
   _CSF_COMPATIBILITY_TEST=$(perl /etc/csf/csftest.pl 2>&1)
@@ -172,6 +174,7 @@ install_upgrade_csf_lfd() {
       fi
       if [ -e "/root/.host8.cnf" ] \
         || [ -e "/root/.auto.up.cnf" ] \
+        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]]; then
         sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"1\"/g" \
           /etc/csf/csf.conf &> /dev/null

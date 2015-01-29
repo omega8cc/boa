@@ -227,6 +227,7 @@ octopus_install() {
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
       || [ "${_L_VMFAMILY}" = "VS" ]; then
       if [ ! -e "/root/.debug.cnf" ]; then
         if [ -e "${vBs}/${filIncO}" ]; then

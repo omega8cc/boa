@@ -144,6 +144,7 @@ fix_sftp_ftps_modern() {
 # Disable Old Purge Cruft Machine.
 disable_old_purge_cruft_machine() {
   if [[ "${_THISHOST}" =~ ".host8." ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ]; then
     sed -i "s/.*purge_cruft.*//g" /etc/crontab &> /dev/null
@@ -155,6 +156,7 @@ disable_old_purge_cruft_machine() {
 # Enable Weekly Usage Monitor (Monday).
 enable_weekly_usage_monitor() {
   if [[ "${_THISHOST}" =~ ".host8." ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     sed -i "s/.*weekly.sh.*//g" /etc/crontab &> /dev/null
     sed -i "/^$/d" /etc/crontab &> /dev/null
@@ -216,10 +218,6 @@ tune_memory_limits() {
     _VMFAMILY="VZ"
   elif [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
-  elif [[ "${_THISHOST}" =~ ".host8." ]] && [ -e "/boot/grub/menu.lst" ]; then
-    _VMFAMILY="TG"
-  elif [[ "${_THISHOST}" =~ ".host8." ]] && [ -e "/boot/grub/grub.cfg" ]; then
-    _VMFAMILY="TG"
   else
     _VMFAMILY="XEN"
   fi
@@ -263,7 +261,9 @@ tune_memory_limits() {
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   _USE=$(( _RAM / 4 ))
-  if [ "${_VMFAMILY}" = "VS" ] || [[ "${_THISHOST}" =~ ".host8." ]]; then
+  if [ "${_VMFAMILY}" = "VS" ] \
+    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+    || [[ "${_THISHOST}" =~ ".host8." ]]; then
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.tg.cnf" ]; then
         _USE_SQL=$(( _RAM / 8 ))
@@ -611,6 +611,7 @@ barracuda_cnf() {
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
         if [ -e "/root/.debug.cnf" ]; then
           _DO_NOTHING=YES
@@ -726,6 +727,7 @@ barracuda_cnf() {
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.debug.cnf" ]; then
         _DO_NOTHING=YES
@@ -753,7 +755,9 @@ barracuda_cnf() {
         else
           sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"            ${barCnf}
         fi
-        if [[ "${_CHECK_HOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+        if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+          || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+          || [ "${_VMFAMILY}" = "VS" ]; then
           if [ "${_VMFAMILY}" = "VS" ]; then
             sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     ${barCnf}
             sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                       ${barCnf}
@@ -849,6 +853,7 @@ barracuda_cnf() {
     fi
     if [ -e "/root/.auto.up.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
       || [ "${_L_VMFAMILY}" = "VS" ] \
       || [ -e "/root/.host8.cnf" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
@@ -873,6 +878,7 @@ barracuda_cnf() {
     else
       if [ -e "/root/.auto.up.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
         || [ "${_L_VMFAMILY}" = "VS" ] \
         || [ -e "/root/.host8.cnf" ]; then
         if [ -e "/root/.mstr.clstr.cnf" ] \
@@ -1249,6 +1255,7 @@ barracuda_cnf() {
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.debug.cnf" ]; then
         _DO_NOTHING=YES
@@ -1276,7 +1283,9 @@ barracuda_cnf() {
         else
           sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"            ${barCnf}
         fi
-        if [[ "${_CHECK_HOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+        if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+          || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+          || [ "${_VMFAMILY}" = "VS" ]; then
           if [ "${_VMFAMILY}" = "VS" ]; then
             sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     ${barCnf}
             sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                       ${barCnf}
@@ -1324,6 +1333,7 @@ barracuda_cnf() {
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
         if [ -e "/root/.debug.cnf" ]; then
           _DO_NOTHING=YES
@@ -2607,7 +2617,8 @@ finale() {
     && [ -e "/var/xdrago/guest-water.sh" ]; then
     sed -i "s/.*fire.*//g" /etc/crontab &> /dev/null
     sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
-    if [[ "${_THISHOST}" =~ ".host8." ]]; then
+    if [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [[ "${_THISHOST}" =~ ".boa.io" ]] ; then
       if [ "${_VMFAMILY}" = "VS" ]; then
         _DO_NOTHING=YES
       else
@@ -3074,6 +3085,7 @@ sys_packages_install() {
   if [ "${_STATUS}" = "INIT" ]; then
     if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
       || [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
       if [ "${_OSV}" = "wheezy" ] \
@@ -3102,6 +3114,7 @@ sys_packages_install() {
     fi
     if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
       || [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
       if [ "${_OSV}" = "wheezy" ] \
@@ -3694,6 +3707,7 @@ install_update_xdrago() {
       _THISHTIP="${_LOC_IP}"
     fi
     if [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
@@ -3729,7 +3743,9 @@ install_update_xdrago() {
     fi
     chown root:crontab /var/spool/cron/crontabs/root
     chmod 600 /var/spool/cron/crontabs/root
-    if [[ "${_THISHOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+    if [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+      || [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.debug.cnf" ]; then
         _DO_NOTHING=YES
       else
@@ -3764,6 +3780,7 @@ install_update_xdrago() {
       _THISHTIP="${_LOC_IP}"
     fi
     if [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
@@ -3793,7 +3810,9 @@ install_update_xdrago() {
       fi
     fi
     mv -f /etc/cron.daily/mlocate ${vBs}/ &> /dev/null
-    if [[ "${_THISHOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+    if [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+      || [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.debug.cnf" ]; then
         _DO_NOTHING=YES
       else
@@ -3912,7 +3931,9 @@ install_update_lshell() {
       ln -sf /usr/local/bin/lshell /usr/bin/lshell &> /dev/null
     fi
   fi
-  if [[ "${_THISHOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+  if [[ "${_THISHOST}" =~ ".host8." ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+    || [ "${_VMFAMILY}" = "VS" ]; then
     sed -i "s/rotate 12/rotate 50/g" /etc/logrotate.d/lshell &> /dev/null
   fi
 }
@@ -4110,7 +4131,9 @@ update_initd() {
       mrun "service nginx start" &> /dev/null
     fi
   else
-    if [[ "${_THISHOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+    if [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+      || [ "${_VMFAMILY}" = "VS" ]; then
       sed -i "s/.*UseDNS.*//g" /etc/ssh/sshd_config &> /dev/null
       sed -i "s/^ClientAliveCountMax.*//g" /etc/ssh/sshd_config &> /dev/null
       sed -i "s/^ClientAliveInterval.*//g" /etc/ssh/sshd_config &> /dev/null

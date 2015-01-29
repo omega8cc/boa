@@ -67,8 +67,10 @@ fix_redis_mode() {
   chown redis:redis /var/run/redis
   if [ "${_CUSTOM_CONFIG_REDIS}" = "NO" ] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     if [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -214,6 +216,7 @@ install_redis_src() {
   if [ -e "/etc/redis/redis.conf" ] && [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_CUSTOM_CONFIG_REDIS}" = "NO" ] \
       || [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] \
         || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log" ]; then

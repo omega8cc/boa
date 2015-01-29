@@ -8,10 +8,6 @@ satellite_tune_fpm_workers() {
     _VMFAMILY="VZ"
   elif [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
-  elif [[ "${_THISHOST}" =~ ".host8." ]] && [ -e "/boot/grub/menu.lst" ]; then
-    _VMFAMILY="TG"
-  elif [[ "${_THISHOST}" =~ ".host8." ]] && [ -e "/boot/grub/grub.cfg" ]; then
-    _VMFAMILY="TG"
   else
     _VMFAMILY="XEN"
   fi
@@ -197,7 +193,9 @@ satellite_tune_fpm_config() {
   satellite_tune_fpm_workers
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
   if [ "$_LIM_FPM" -lt "24" ]; then
-    if [[ "${_THISHOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+    if [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+      || [ "${_VMFAMILY}" = "VS" ]; then
       _LIM_FPM=24
     fi
   fi
@@ -377,6 +375,7 @@ satellite_cnf() {
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
         _DO_NOTHING=YES
       else
@@ -464,7 +463,9 @@ satellite_cnf() {
       echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}" >> ${octCnf}
     fi
     _CHECK_HOST=$(uname -n 2>&1)
-    if [[ "${_CHECK_HOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+    if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+      || [ "${_VMFAMILY}" = "VS" ]; then
       _LD_DOM=YES
     else
       _LD_DOM=NO
@@ -762,6 +763,7 @@ satellite_cnf() {
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
         _DO_NOTHING=YES
       else
@@ -3373,6 +3375,7 @@ satellite_if_init_or_upgrade() {
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
         if [ -e "${_ROOT}/log/amazing_upgrade.txt" ] \
           && [ ! -e "${_ROOT}/log/amazing_upgrade_complete.txt" ]; then
@@ -3423,6 +3426,7 @@ satellite_if_init_or_upgrade() {
         if [ -e "/root/.auto.up.cnf" ] \
           || [ -e "/root/.host8.cnf" ] \
           || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+          || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
           || [ "${_VMFAMILY}" = "VS" ]; then
           _DO_NOTHING=YES
         else

@@ -2,7 +2,7 @@
 
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-_HOST_TEST=$(uname -n 2>&1)
+_CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
 usrGroup=users
 _WEBG=www-data
@@ -117,7 +117,9 @@ enable_chattr() {
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
     if [ ! -e "${_U_HD}/.ctrl.240devC.txt" ]; then
-      if [[ "${_HOST_TEST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+      if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        || [ "${_VMFAMILY}" = "VS" ]; then
         rm -f -r ${_U_HD}/*
         rm -f -r ${_U_HD}/.*
       else
@@ -740,10 +742,6 @@ satellite_tune_fpm_workers() {
     _VMFAMILY="VZ"
   elif [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
-  elif [[ "${_HOST_TEST}" =~ ".host8." ]] && [ -e "/boot/grub/menu.lst" ]; then
-    _VMFAMILY="TG"
-  elif [[ "${_HOST_TEST}" =~ ".host8." ]] && [ -e "/boot/grub/grub.cfg" ]; then
-    _VMFAMILY="TG"
   else
     _VMFAMILY="XEN"
   fi
@@ -1196,7 +1194,8 @@ switch_php() {
           satellite_tune_fpm_workers
           _LIM_FPM="${_L_PHP_FPM_WORKERS}"
           if [ "$_LIM_FPM" -lt "24" ]; then
-            if [[ "${_HOST_TEST}" =~ ".host8." ]] \
+            if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+              || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
               || [ "${_VMFAMILY}" = "VS" ]; then
               _LIM_FPM=24
             fi
@@ -1257,7 +1256,8 @@ switch_php() {
             sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
               /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
           else
-            if [[ "${_HOST_TEST}" =~ ".host8." ]] \
+            if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+              || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
               || [ "${_VMFAMILY}" = "VS" ] \
               || [ -e "/root/.host8.cnf" ]; then
               _DO_NOTHING=YES

@@ -2,14 +2,14 @@
 
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-BACKUPDIR=/data/disk/arch/sql
-HOST=$(uname -n 2>&1)
-DATE=$(date +%y%m%d-%H%M 2>&1)
-SAVELOCATION=${BACKUPDIR}/${HOST}-$DATE
+_BACKUPDIR=/data/disk/arch/sql
+_CHECK_HOST=$(uname -n 2>&1)
+_DATE=$(date +%y%m%d-%H%M 2>&1)
+_SAVELOCATION=${_BACKUPDIR}/${_CHECK_HOST}-$_DATE
 if [ -e "/root/.my.optimize.cnf" ]; then
-  OPTIM=YES
+  _OPTIM=YES
 else
-  OPTIM=NO
+  _OPTIM=NO
 fi
 _VM_TEST=$(uname -a 2>&1)
 if [[ "${_VM_TEST}" =~ beng ]]; then
@@ -20,36 +20,36 @@ fi
 touch /var/run/boa_sql_backup.pid
 
 truncate_cache_tables() {
-  TABLES=$(mysql ${DB} -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
-  for C in ${TABLES}; do
-mysql --default-character-set=utf8 ${DB}<<EOFMYSQL
-TRUNCATE $C;
+  _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
+  for C in ${_TABLES}; do
+mysql --default-character-set=utf8 ${_DB}<<EOFMYSQL
+TRUNCATE ${C};
 EOFMYSQL
   done
 }
 
 truncate_accesslog_tables() {
-  TABLES=$(mysql ${DB} -e "show tables" -s | grep ^accesslog$ 2>&1)
-  for A in ${TABLES}; do
-mysql --default-character-set=utf8 ${DB}<<EOFMYSQL
+  _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^accesslog$ 2>&1)
+  for A in ${_TABLES}; do
+mysql --default-character-set=utf8 ${_DB}<<EOFMYSQL
 TRUNCATE ${A};
 EOFMYSQL
   done
 }
 
 truncate_queue_tables() {
-  TABLES=$(mysql ${DB} -e "show tables" -s | grep ^queue$ 2>&1)
-  for A in ${TABLES}; do
-mysql --default-character-set=utf8 ${DB}<<EOFMYSQL
-TRUNCATE ${A};
+  _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^queue$ 2>&1)
+  for Q in ${_TABLES}; do
+mysql --default-character-set=utf8 ${_DB}<<EOFMYSQL
+TRUNCATE ${Q};
 EOFMYSQL
   done
 }
 
 optimize_this_database() {
-  TABLES=$(mysql ${DB} -e "show tables" -s | uniq | sort 2>&1)
-  for T in ${TABLES}; do
-mysql --default-character-set=utf8 ${DB}<<EOFMYSQL
+  _TABLES=$(mysql ${_DB} -e "show tables" -s | uniq | sort 2>&1)
+  for T in ${_TABLES}; do
+mysql --default-character-set=utf8 ${_DB}<<EOFMYSQL
 OPTIMIZE TABLE ${T};
 EOFMYSQL
   done
@@ -64,37 +64,39 @@ backup_this_database() {
     --quick \
     --no-autocommit \
     --default-character-set=utf8 \
-    --hex-blob ${DB} \
-    | gzip -c > ${SAVELOCATION}/${DB}.sql.gz
+    --hex-blob ${_DB} \
+    | gzip -c > ${_SAVELOCATION}/${_DB}.sql.gz
 }
 
-[ ! -a ${SAVELOCATION} ] && mkdir -p ${SAVELOCATION};
+[ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
-for DB in `mysql -e "show databases" -s | uniq | sort`; do
-  if [ "${DB}" != "Database" ] \
-    && [ "${DB}" != "information_schema" ] \
-    && [ "${DB}" != "performance_schema" ]; then
-    if [ "${DB}" != "mysql" ]; then
+for _DB in `mysql -e "show databases" -s | uniq | sort`; do
+  if [ "${_DB}" != "Database" ] \
+    && [ "${_DB}" != "information_schema" ] \
+    && [ "${_DB}" != "performance_schema" ]; then
+    if [ "${_DB}" != "mysql" ]; then
       truncate_cache_tables &> /dev/null
-      if [[ "${HOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+      if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        || [ "${_VMFAMILY}" = "VS" ]; then
         truncate_accesslog_tables &> /dev/null
-        echo "Truncated not used accesslog for ${DB}"
+        echo "Truncated not used accesslog for ${_DB}"
         truncate_queue_tables &> /dev/null
-        echo "Truncated queue for ${DB}"
+        echo "Truncated queue for ${_DB}"
       fi
-      echo "All cache tables truncated in ${DB}"
-      if [ "${OPTIM}" = "YES" ]; then
+      echo "All cache tables truncated in ${_DB}"
+      if [ "${_OPTIM}" = "YES" ]; then
         optimize_this_database &> /dev/null
-        echo "Optimize completed for ${DB}"
+        echo "Optimize completed for ${_DB}"
       fi
     fi
     backup_this_database &> /dev/null
-    echo "Backup completed for ${DB}"
+    echo "Backup completed for ${_DB}"
     echo " "
   fi
 done
 
-if [ "${OPTIM}" = "YES" ]; then
+if [ "${_OPTIM}" = "YES" ]; then
   touch /var/run/boa_wait.pid
   touch /var/xdrago/log/mysql_restart_running.pid
   sleep 3
@@ -104,7 +106,7 @@ if [ "${OPTIM}" = "YES" ]; then
   rm -f /var/xdrago/log/mysql_restart_running.pid
 fi
 
-find ${BACKUPDIR} -mtime +8 -type d -exec rm -rf {} \;
+find ${_BACKUPDIR} -mtime +8 -type d -exec rm -rf {} \;
 echo "Backups older than 8 days deleted"
 
 chmod 600 /data/disk/arch/sql/*/*

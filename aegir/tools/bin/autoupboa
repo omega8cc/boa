@@ -58,7 +58,7 @@ crontab_update() {
 }
 
 if [ -e "/data/disk/arch" ]; then
-  _HOST_TEST=$(uname -n 2>&1)
+  _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ beng ]]; then
     _VMFAMILY="VS"
@@ -81,7 +81,8 @@ if [ -e "/data/disk/arch" ]; then
   if [ ! -e "/root/.auto.up.cnf" ] && [ "${_AUTO_UP}" = "YES" ]; then
     touch /root/.auto.up.cnf
   fi
-  if [[ "${_HOST_TEST}" =~ ".host8." ]] \
+  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] \
     || [ "${_AUTO_UP}" = "YES" ]; then
@@ -96,8 +97,8 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP_MONTH=11
     _AUTO_UP_DAY=30
   fi
-  if [[ "${_HOST_TEST}" =~ "v251a.a" ]] \
-    || [[ "${_HOST_TEST}" =~ "v55.l" ]]; then
+  if [[ "${_CHECK_HOST}" =~ "v251a.a" ]] \
+    || [[ "${_CHECK_HOST}" =~ "v55.l" ]]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=

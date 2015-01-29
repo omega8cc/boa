@@ -248,7 +248,9 @@ update_php_conf() {
 tune_web_server_config() {
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
   if [ "$_LIM_FPM" -lt "24" ]; then
-    if [[ "${_THISHOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+    if [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+      || [ "${_VMFAMILY}" = "VS" ]; then
       _LIM_FPM=24
     fi
   fi

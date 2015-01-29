@@ -163,7 +163,8 @@ detect_vanilla_core() {
           && [ ! -e "/boot/grub/menu.lst" ] \
           && [[ "${Plr}" =~ "static" ]] \
           && [ ! -e "${Plr}/modules/cookie_cache_bypass" ]; then
-          if [[ "${_THISHOST}" =~ ".host8." ]] \
+          if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+            || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
             || [ "${_VMFAMILY}" = "VS" ]; then
             echo Vanilla Drupal 5.x Platform detected in ${Plr}
             read_account_data
@@ -177,7 +178,8 @@ detect_vanilla_core() {
           echo Vanilla Drupal 6.x Platform detected in ${Plr}
           if [ ! -e "/boot/grub/grub.cfg" ] \
             && [ ! -e "/boot/grub/menu.lst" ]; then
-            if [[ "${_THISHOST}" =~ ".host8." ]] \
+            if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+              || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
               || [ "${_VMFAMILY}" = "VS" ]; then
               read_account_data
               send_notice_core
@@ -749,7 +751,9 @@ action() {
         echo HomSiz is ${HomSiz} or ${HomSizH} MB
         echo SumDir is ${SumDir} or ${SumDirH} MB
         echo SumDat is ${SumDat} or ${SumDatH} MB
-        if [[ "${_THISHOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+        if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+          || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+          || [ "${_VMFAMILY}" = "VS" ]; then
           check_limits
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} -c "drush @hostmaster \
@@ -786,7 +790,7 @@ action() {
 echo "INFO: Weekly maintenance start"
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _DATE=$(date 2>&1)
-_HOST_TEST=$(uname -n 2>&1)
+_CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
 if [[ "${_VM_TEST}" =~ beng ]]; then
   _VMFAMILY="VS"

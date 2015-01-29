@@ -144,7 +144,7 @@ _X_VERSION="BOA-2.4.0-dev"
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
-_THISHOST=$(uname -n 2>&1)
+_CHECK_HOST=$(uname -n 2>&1)
 _SPINNER=YES
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
@@ -443,7 +443,7 @@ fix_php_ini_mongo_all() {
 # Update PHP Config.
 update_php_conf() {
   if [ -z "${_THISHTIP}" ]; then
-    _LOC_DOM="${_THISHOST}"
+    _LOC_DOM="${_CHECK_HOST}"
     find_correct_ip
     _THISHTIP="${_LOC_IP}"
   fi
@@ -554,7 +554,8 @@ restore_default_sql() {
   msg "INFO: Restoring default SQL configuration"
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
-    || [[ "${_THISHOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
       _DO_NOTHING=YES
@@ -697,7 +698,9 @@ restart_services() {
 tune_web_server_config() {
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
   if [ "$_LIM_FPM" -lt "24" ]; then
-    if [[ "${_THISHOST}" =~ ".host8." ]] || [ "${_VMFAMILY}" = "VS" ]; then
+    if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+      || [ "${_VMFAMILY}" = "VS" ]; then
       _LIM_FPM=24
     fi
   fi
@@ -864,10 +867,6 @@ tune_memory_limits() {
     _VMFAMILY="VZ"
   elif [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
-  elif [[ "${_THISHOST}" =~ ".host8." ]] && [ -e "/boot/grub/menu.lst" ]; then
-    _VMFAMILY="TG"
-  elif [[ "${_THISHOST}" =~ ".host8." ]] && [ -e "/boot/grub/grub.cfg" ]; then
-    _VMFAMILY="TG"
   else
     _VMFAMILY="XEN"
   fi
@@ -911,7 +910,9 @@ tune_memory_limits() {
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   _USE=$(( _RAM / 4 ))
-  if [ "${_VMFAMILY}" = "VS" ] || [[ "${_THISHOST}" =~ ".host8." ]]; then
+  if [ "${_VMFAMILY}" = "VS" ] \
+    || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]]; then
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.tg.cnf" ]; then
         _USE_SQL=$(( _RAM / 8 ))
