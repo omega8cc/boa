@@ -310,15 +310,16 @@ upgrade_aegir_master() {
     echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${vBs}/${filIncB}
     echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${vBs}/${filIncB}
 
-    cd /var/aegir
-    cp ${bldPth}/aegir/scripts/AegirUpgrade.sh.txt ./
-
     mysqladmin flush-hosts &> /dev/null
     provision_backend_dbpass_sync
     hostmaster_frontend_dbpass_sync
     master_download_for_local_build
-    cd /var/aegir
-    su -s /bin/bash - aegir -c "bash AegirUpgrade.sh.txt"
+
+    ###
+    AegirUpgrade="${bldPth}/aegir/scripts/AegirUpgrade.sh.txt"
+    su -s /bin/bash - aegir -c "/bin/bash ${AegirUpgrade} aegir"
+    ###
+
     if [ -e "/opt/tmp/status-AegirUpgrade-FAIL" ]; then
       msg "FATAL ERROR: AegirUpgrade installer failed"
       msg "FATAL ERROR: Aborting Barracuda installer NOW!"
@@ -344,7 +345,6 @@ upgrade_aegir_master() {
     update_redis_password
     force_advanced_nginx_config
     cd /var/aegir
-    rm -f AegirUpgrade.sh.txt
     if [ -d "${mtrNgx}/conf.d" ]; then
       if [ ! -d "${mtrNgx}/pre.d" ]; then
         cd ${mtrNgx}
@@ -561,18 +561,18 @@ EOFMYSQL
     echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${vBs}/${filIncB}
 
     master_download_for_local_build
-    cd /var/aegir
-    _AEGIR_INIT_SCRIPT="AegirSetupM.sh.txt"
 
-    cp -af ${bldPth}/aegir/scripts/${_AEGIR_INIT_SCRIPT} ./
+    ###
+    AegirSetupM="${bldPth}/aegir/scripts/AegirSetupM.sh.txt"
+    ###
 
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      su -s /bin/bash - aegir -c "bash ${_AEGIR_INIT_SCRIPT} ${_THIS_FRONT} \
+      su -s /bin/bash - aegir -c "/bin/bash ${AegirSetupM} ${_THIS_FRONT} \
         --http_service_type='nginx' \
         --aegir_db_host='${_THIS_DB_HOST}' \
         --client_email='${_MY_EMAIL}' -y -d"
     else
-      su -s /bin/bash - aegir -c "bash ${_AEGIR_INIT_SCRIPT} ${_THIS_FRONT} \
+      su -s /bin/bash - aegir -c "/bin/bash ${AegirSetupM} ${_THIS_FRONT} \
         --http_service_type='nginx' \
         --aegir_db_host='${_THIS_DB_HOST}' \
         --client_email='${_MY_EMAIL}' -y >/var/aegir/install.log 2>&1"
@@ -628,7 +628,6 @@ EOFMYSQL
       fi
     fi
     chown -R aegir:aegir ${_THIS_HM_ROOT}/sites/all &> /dev/null
-    rm -f /var/aegir/${_AEGIR_INIT_SCRIPT}
 
   ###--------------------###
     if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
