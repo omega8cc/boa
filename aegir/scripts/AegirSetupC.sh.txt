@@ -497,7 +497,7 @@ init_this_distro_root() {
 upgrade_contrib_less() {
   rm -f -r {context,ctools,entity,entityreference,mimemail,og}
   get_dev_contrib "context-7.x-3.6.tar.gz"
-  get_dev_contrib "ctools-7.x-1.5.tar.gz"
+  get_dev_contrib "ctools-7.x-1.6.tar.gz"
   get_dev_contrib "entity-7.x-1.5.tar.gz"
   get_dev_contrib "entityreference-7.x-1.1.tar.gz"
   get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz"
@@ -2001,7 +2001,7 @@ ubercart7_install() {
               mkdir -p ${_SHRD_PRPATH}/modules
               cd ${_SHRD_PRPATH}/modules
               get_dev_contrib "colorbox-7.x-2.8.tar.gz"
-              get_dev_contrib "ctools-7.x-1.5.tar.gz"
+              get_dev_contrib "ctools-7.x-1.6.tar.gz"
               get_dev_contrib "entity-7.x-1.5.tar.gz"
               get_dev_contrib "google_analytics-7.x-2.1.tar.gz"
               get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
@@ -2071,7 +2071,7 @@ ubercart7_testing_install() {
               mkdir -p ${_SHRD_PRPATH}/modules
               cd ${_SHRD_PRPATH}/modules
               get_dev_contrib "colorbox-7.x-2.8.tar.gz"
-              get_dev_contrib "ctools-7.x-1.5.tar.gz"
+              get_dev_contrib "ctools-7.x-1.6.tar.gz"
               get_dev_contrib "entity-7.x-1.5.tar.gz"
               get_dev_contrib "google_analytics-7.x-2.0.tar.gz"
               get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
