@@ -2786,17 +2786,17 @@ fi
 if [ ! -e "/root/.upstart.cnf" ]; then
   service cron reload &> /dev/null
 fi
-find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -rf {} \;
-find /var/backups/jetty* -mtime +0 -exec rm -rf {} \;
-find /var/backups/dragon/* -mtime +7 -exec rm -rf {} \;
+find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
+find /var/backups/jetty* -mtime +0 -exec rm -rf {} \; &> /dev/null
+find /var/backups/dragon/* -mtime +7 -exec rm -rf {} \; &> /dev/null
 if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
   || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
   || [ "${_VMFAMILY}" = "VS" ] \
   || [ -e "/root/.host8.cnf" ]; then
   if [ -d "/var/backups/codebases-cleanup" ]; then
-    find /var/backups/codebases-cleanup/* -mtime +7 -exec rm -rf {} \;
+    find /var/backups/codebases-cleanup/* -mtime +7 -exec rm -rf {} \; &> /dev/null
   elif [ -d "/data/disk/codebases-cleanup" ]; then
-    find /data/disk/codebases-cleanup/* -mtime +7 -exec rm -rf {} \;
+    find /data/disk/codebases-cleanup/* -mtime +7 -exec rm -rf {} \; &> /dev/null
   fi
 fi
 rm -f /tmp/.cron.*.pid
@@ -2807,7 +2807,7 @@ rm -f /data/disk/*/.tmp/.busy.*.pid
 ###
 ### Delete duplicity ghost pid file if older than 2 days
 ###
-find /var/run/*_backup.pid -mtime +1 -exec rm -rf {} \;
+find /var/run/*_backup.pid -mtime +1 -exec rm -rf {} \; &> /dev/null
 
 if [ ! -e "/root/.high_traffic.cnf" ]; then
   echo "INFO: Redis server will be restarted in 5 minutes"
