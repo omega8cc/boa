@@ -31,7 +31,7 @@ module/theme: [S]upported, [B]undled, [F]orce[E]nabled,
 this module is used without the need to enable it.
 
 NOTE: Both [F]orce[E]nabled and [F]orce[D]isabled list can be skipped
-      with _MODULES_FIX=NO in /root/.barracuda.cnf (default: YES)
+      with _MODULES_FIX=NO in /root/.barracuda.cnf (default since BOA-2.4.0)
       However, this procedure is now smart enough to check if the module
       is defined as required by any other module or feature and will
       skip such module automatically, to avoid disabling innocent modules

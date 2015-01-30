@@ -153,15 +153,24 @@ check_dns_settings() {
 
 update_agents() {
 
-  if [ "${_SKIP_VS}" = "NO" ] \
+  if [ "${_BENG_VS}" = "NO" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/modfix.fixed.a24z.pid" ]; then
+    sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=NO/g" /root/.barracuda.cnf
+    touch ${pthLog}/modfix.fixed.a24z.pid
+  fi
+
+  if [ "${_BENG_VS}" = "NO" ] \
     && [ -e "/var/xdrago" ] \
     && [ ! -e "${pthLog}/prmfix.fixed.a24z.pid" ]; then
     sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=NO/g" /root/.barracuda.cnf
     touch ${pthLog}/prmfix.fixed.a24z.pid
-  else
-    if [ ! -e "/root/.tg.cnf" ]; then
-      touch /root/.tg.cnf
-    fi
+  fi
+
+  if [ "${_BENG_VS}" = "YES" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "/root/.tg.cnf" ]; then
+    touch /root/.tg.cnf
   fi
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
@@ -446,6 +455,7 @@ find_fast_mirror() {
 
 setup() {
 
+  _BENG_VS=NO
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ beng ]]; then
@@ -453,11 +463,10 @@ setup() {
   else
     _VMFAMILY="XEN"
   fi
-  _SKIP_VS=NO
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
-    _SKIP_VS=YES
+    _BENG_VS=YES
   fi
 
   sed -i "s/.*files.aegir.cc.*//g" /etc/hosts

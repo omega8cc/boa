@@ -695,11 +695,11 @@ _LOCAL_NETWORK_HN=""
 _PERMISSIONS_FIX=NO
 
 ###
-### Change to NO if you don't want the running
+### Change to YES if you prefer the running
 ### daily script to enable/disable modules in
-### all hosted sites without 'dev.' in their
-### main domain name, as listed in the
-### docs/MODULES.txt
+### all hosted sites without '.testing.' or
+### '.temporary.' keywords in their main name,
+### as listed in the docs/MODULES.txt
 ###
 ### This options is now smart enough to check
 ### if the module is defined as required by any
@@ -713,7 +713,7 @@ _PERMISSIONS_FIX=NO
 ### register protection check/feature:
 ### https://omega8.cc/node/273
 ###
-_MODULES_FIX=YES
+_MODULES_FIX=NO
 
 ###
 ### List modules to never disable via running
