@@ -457,8 +457,6 @@ send_shutdown_notice() {
     || [ -e "/root/.host8.cnf" ]; then
     _BCC_EMAIL="omega8cc@gmail.com"
   else
-    if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]]; then
     _BCC_EMAIL="${_MY_EMAIL}"
   fi
   _MAILX_TEST=$(mail -V 2>&1)
