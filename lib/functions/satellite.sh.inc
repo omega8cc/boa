@@ -1279,7 +1279,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "httprl-7.x-1.14.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/js" ]; then
-        get_dev_contrib "js-7.x-1.x-dev.tar.gz"
+        get_dev_contrib "js-7.x-2.0-beta1.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/panels_content_cache" ]; then
         get_dev_contrib "panels_content_cache-7.x-1.0.tar.gz"
@@ -1368,7 +1368,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "force_password_change-7.x-1.0-rc2.tar.gz"
   get_dev_contrib "fpa-7.x-2.6.tar.gz"
   get_dev_contrib "httprl-7.x-1.14.tar.gz"
-  get_dev_contrib "js-7.x-1.x-dev.tar.gz"
+  get_dev_contrib "js-7.x-2.0-beta1.tar.gz"
   get_dev_contrib "login_security-7.x-1.9.tar.gz"
   get_dev_contrib "nocurrent_pass-7.x-1.0.tar.gz"
   get_dev_contrib "panels_content_cache-7.x-1.0.tar.gz"
