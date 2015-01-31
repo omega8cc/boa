@@ -312,6 +312,7 @@ enable_chattr() {
         touch /var/run/manage_rvm_users.pid
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative bluecloth"      &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative eventmachine"   &> /dev/null
+        su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.0.3 eventmachine"  &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative ffi"            &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.9.3 ffi"           &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative hitimes"        &> /dev/null
