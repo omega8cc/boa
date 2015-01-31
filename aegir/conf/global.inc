@@ -21,6 +21,7 @@ $is_backend   = FALSE;
 $is_bot       = FALSE;
 $is_dev       = FALSE;
 $is_install   = FALSE;
+$is_tmp       = FALSE;
 $raw_host     = FALSE;
 $redis_lock   = FALSE;
 $redis_up     = FALSE;
@@ -84,6 +85,29 @@ if (isset($_SERVER['MAIN_SITE_NAME']) && !isset($_SERVER['SERVER_NAME'])) {
 }
 if (!isset($_SERVER['MAIN_SITE_NAME']) && isset($_SERVER['SERVER_NAME'])) {
   $_SERVER['MAIN_SITE_NAME'] = $_SERVER['SERVER_NAME'];
+}
+
+
+/**
+ * Site mode detection and cron protection - cron works only for live sites
+ */
+if (preg_match("/^\/cron.php/", $_SERVER['REQUEST_URI']) ||
+    preg_match("/^\/cron\//", $_SERVER['REQUEST_URI'])) {
+  if (isset($_SERVER['HTTP_HOST']) &&
+      (preg_match("/(?:^dev\.|\.dev\.)/i", $_SERVER['HTTP_HOST']) ||
+       preg_match("/(?:^devel\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) ||
+       preg_match("/(?:^tmp\.|\.tmp\.)/i", $_SERVER['HTTP_HOST']) ||
+       preg_match("/(?:^temp\.|\.temp\.)/i", $_SERVER['HTTP_HOST']) ||
+       preg_match("/(?:^temporary\.|\.temporary\.)/i", $_SERVER['HTTP_HOST']) ||
+       preg_match("/(?:^test\.|\.test\.)/i", $_SERVER['HTTP_HOST']) ||
+       preg_match("/(?:^testing\.|\.testing\.)/i", $_SERVER['HTTP_HOST']))) {
+    $is_tmp = TRUE;
+    // Ignore cron requests
+    header('X-Accel-Expires: 300');
+    header('HTTP/1.0 404 Not Found');
+    header("Connection: close");
+    exit;
+  }
 }
 
 
