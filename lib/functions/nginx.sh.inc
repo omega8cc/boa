@@ -57,6 +57,12 @@ force_advanced_nginx_config() {
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
   if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ] \
+    || [[ "${_SSL_ITD}" =~ "1.0.1" ]]; then
+    _PFS_READY=YES
+  else
+    _PFS_READY=NO
+  fi
+  if [ "${_PFS_READY}" = "YES" ] \
     && [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
     _ALLOW_NGINX_FORWARD_SECRECY=YES
     _SSL_PROTOCOLS="TLSv1 TLSv1.1 TLSv1.2;"
@@ -83,10 +89,14 @@ force_advanced_nginx_config() {
     _ALLOW_NGINX_FORWARD_SECRECY=NO
   fi
   if [ "$_ALLOW_NGINX_FORWARD_SECRECY" = "YES" ]; then
-    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
-    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" ${mtrNgx}/vhost.d/*    &> /dev/null
-    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" ${mtrNgx}/pre.d/*.conf       &> /dev/null
-    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" ${mtrNgx}/vhost.d/*          &> /dev/null
+    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" \
+      ${mtrNgx}/pre.d/*.conf &> /dev/null
+    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" \
+      ${mtrNgx}/vhost.d/* &> /dev/null
+    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" \
+      ${mtrNgx}/pre.d/*.conf &> /dev/null
+    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" \
+      ${mtrNgx}/vhost.d/* &> /dev/null
   fi
   if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
     rm -f ${mtrInc}/nginx_advanced_include.conf
@@ -504,7 +514,15 @@ fix_update_nginx_config() {
       sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/vhost.d/*    &> /dev/null
     fi
     _SSL_ITD=$(openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}' 2>&1)
-    if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ] &&[ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
+
+    if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ] \
+      || [[ "${_SSL_ITD}" =~ "1.0.1" ]]; then
+      _PFS_READY=YES
+    else
+      _PFS_READY=NO
+    fi
+    if [ "${_PFS_READY}" = "YES" ] \
+      && [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
       _ALLOW_NGINX_FORWARD_SECRECY=YES
       _SSL_PROTOCOLS="TLSv1 TLSv1.1 TLSv1.2;"
       _SSL_CIPHERS="EECDH+ECDSA+AESGCM: \
