@@ -38,7 +38,7 @@
   aGov 1.6 --------------------- https://drupal.org/project/agov
   Commerce 1.32 (with 1.11) ---- https://drupal.org/project/commerce_kickstart
   Guardr 2.7 ------------------- https://drupal.org/project/guardr
-  OpenAtrium 2.30-rc1 ---------- https://drupal.org/project/openatrium
+  OpenAtrium 2.30-rc3 ---------- https://drupal.org/project/openatrium
   OpenChurch 1.17-b1 ----------- https://drupal.org/project/openchurch
   OpenChurch 2.1-b3 ------------ https://drupal.org/project/openchurch
   OpenOutreach 1.14 ------------ https://drupal.org/project/openoutreach
