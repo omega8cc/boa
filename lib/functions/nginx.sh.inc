@@ -89,13 +89,13 @@ force_advanced_nginx_config() {
     _ALLOW_NGINX_FORWARD_SECRECY=NO
   fi
   if [ "$_ALLOW_NGINX_FORWARD_SECRECY" = "YES" ]; then
-    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" \
+    sed -i "s/ssl_protocols .*/ssl_protocols                $_SSL_PROTOCOLS/g" \
       ${mtrNgx}/pre.d/*.conf &> /dev/null
-    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" \
+    sed -i "s/ssl_protocols .*/ssl_protocols                $_SSL_PROTOCOLS/g" \
       ${mtrNgx}/vhost.d/* &> /dev/null
-    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" \
+    sed -i "s/ssl_ciphers .*/ssl_ciphers                  $_SSL_CIPHERS/g" \
       ${mtrNgx}/pre.d/*.conf &> /dev/null
-    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" \
+    sed -i "s/ssl_ciphers .*/ssl_ciphers                  $_SSL_CIPHERS/g" \
       ${mtrNgx}/vhost.d/* &> /dev/null
   fi
   if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
@@ -548,13 +548,13 @@ fix_update_nginx_config() {
       _ALLOW_NGINX_FORWARD_SECRECY=NO
     fi
     if [ "$_ALLOW_NGINX_FORWARD_SECRECY" = "YES" ]; then
-      sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" \
+      sed -i "s/ssl_protocols .*/ssl_protocols                $_SSL_PROTOCOLS/g" \
         /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
-      sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" \
+      sed -i "s/ssl_protocols .*/ssl_protocols                $_SSL_PROTOCOLS/g" \
         /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
-      sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" \
+      sed -i "s/ssl_ciphers .*/ssl_ciphers                  $_SSL_CIPHERS/g" \
         /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
-      sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" \
+      sed -i "s/ssl_ciphers .*/ssl_ciphers                  $_SSL_CIPHERS/g" \
         /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
     fi
 
