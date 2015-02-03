@@ -96,6 +96,15 @@ _SYSTEM_UPGRADE_ONLY=NO #------- Managed on the fly with 'system' keyword
 ###
 
 ###
+### By default BOA configures your system to use as much RAM as safely available
+### but if you want to make the configuration more precize, add this extra
+### variable to use MySQLTuner on the fly to detect optimal memory allocation.
+### This check is no longer enabled by default, because it is very expensive
+### method on systems with not enough resources and many sites hosted.
+###
+_USE_MYSQLTUNER=NO #------------ Use MySQLTuner to configure SQL limits when YES
+
+###
 ### You can configure BOA to run automated upgrades to latest stable version
 ### for both Barracuda and all Octopus instances with three variables, empty
 ### by default. All three variables must be defined to enable auto-upgrade.
