@@ -11,7 +11,7 @@
 
   This new BOA release includes 9 updated Aegir platforms, over 28 new features
   and enhancements, 12 new software versions, over 36 important changes, plus
-  over 97 bug fixes, with most notable features and changes listed below:
+  over 100 bug fixes, with most notable features and changes listed below:
 
   @=> Added Support for latest Drupal 8.0.0-beta with D8B platform keyword
   @=> Added Support for latest Drupal 8.0.0-dev with D8D platform keyword
@@ -216,6 +216,7 @@
   * Sync defaults for hosting_advanced_cron_default_interval
   * Syntax error - fixes #587
   * Syntax error - fixes #588
+  * The _NGINX_FORWARD_SECRECY=YES is ignored on Debian Wheezy - fixes #591
   * The /login suffix is no longer supported in Drupal 8 and results with 404.
   * The backend verify sub-task breaks site import for Drupal 8.
   * Tomcat is not used anymore - see #570
@@ -228,8 +229,10 @@
   * Use mirror to download complete vendor directory for Drush 7.
   * Use more intuitive PHP keyword naming convention.
   * Use mutatable interface in install_8.inc - fxes #2409085
+  * Use recommended releases for views404 and views_accelerator - fixes #578
   * Use release specific o_contrib downloads.
   * Use safe tmp cleanup to avoid race conditions.
+  * Where to set _USE_MYSQLTUNER variable - fixes #594
 
 
 ### Stable BOA-2.3.8 Release - Full Edition
