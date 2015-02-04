@@ -41,7 +41,6 @@
   OpenAtrium 2.26 -------------- https://drupal.org/project/openatrium
   OpenChurch 1.17-b1 ----------- https://drupal.org/project/openchurch
   OpenChurch 2.1-b3 ------------ https://drupal.org/project/openchurch
-  OpenOutreach 1.14 ------------ https://drupal.org/project/openoutreach
   OpenPublic 1.4 --------------- https://drupal.org/project/openpublic
   Panopoly 1.15 ---------------- https://drupal.org/project/panopoly
 
