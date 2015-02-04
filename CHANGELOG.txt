@@ -1,6 +1,6 @@
 
 ### Stable BOA-2.4.0 Release - Full Edition
-### Date: TBD
+### Date: Wed Feb  4 20:30:04 CET 2015
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.0
 
   @=> Includes Aegir Hostmaster 2.x-head with improvements
@@ -9,7 +9,7 @@
 
 # Release Notes:
 
-  This new BOA release includes 9 updated Aegir platforms, over 28 new features
+  This new BOA release includes 7 updated Aegir platforms, over 28 new features
   and enhancements, 12 new software versions, over 36 important changes, plus
   over 100 bug fixes, with most notable features and changes listed below:
 
@@ -87,6 +87,7 @@
   * Hostmaster: Use Drush Make Local instead of downloading contrib with Drush
   * Limit status messages verbosity if _DEBUG_MODE is not set to YES
   * Make it possible to opt-out from BOA Skynet auto-updates - fixes #557
+  * Nginx: Block SEOkicks crawler.
   * PHP: Always use by default version 5.5
   * PHP: Disable legacy 5.2 version if installed.
   * PHP: Ignore --with-curlwrappers defined in _PHP_EXTRA_CONF for 5.5 and 5.6
@@ -97,7 +98,6 @@
   * PHP: Use built-in Zend OPcache in 5.6
   * Redis Integration Module: Update to version mod-14-12-2014
   * Reload system cron hourly.
-  * Nginx: Block SEOkicks crawler.
   * Remove deprecated RC4 from ssl_protocols.
   * Remove the _O_CONTRIB_UP variable/feature.
   * Run cron for 3 sites at once max.

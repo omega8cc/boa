@@ -45,7 +45,7 @@ export PATH=$PATH:/opt/local/bin
 SHELL=/bin/bash
 
 _TODAY=$(date +%y%m%d 2>&1)
-_X_VERSION="BOA-2.4.0-dev"
+_X_VERSION="BOA-2.4.0"
 #
 saCoreN="SA-CORE-2014-005"
 saCoreS="${saCoreN}-D7"
