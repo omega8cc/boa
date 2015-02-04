@@ -4070,6 +4070,20 @@ satellite_child_b_aegir_build() {
     fi
     ${_DRUSHCMD} cache-clear drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
+
+    ### Pre-Fix for migrated/merged instances
+    if [ -e "${_ROOT}/log/imported.pid" ] || [ -e "${_ROOT}/log/exported.pid" ]; then
+      if [ -e "${_ROOT}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
+        sed -i "s/platform_0.*'/platform_hostmaster'/g"    ${_ROOT}/.drush/hostmaster.alias.drushrc.php
+        sed -i "s/distro\/0.*\/sites/distro\/001\/sites/g" ${_ROOT}/.drush/hostmaster.alias.drushrc.php
+        sed -i "s/distro\/01.*',/distro\/001',/g"          ${_ROOT}/.drush/hostmaster.alias.drushrc.php
+        sed -i "s/distro\/02.*',/distro\/001',/g"          ${_ROOT}/.drush/hostmaster.alias.drushrc.php
+        sed -i "s/distro\/03.*',/distro\/001',/g"          ${_ROOT}/.drush/hostmaster.alias.drushrc.php
+        sed -i "s/distro\/04.*',/distro\/001',/g"          ${_ROOT}/.drush/hostmaster.alias.drushrc.php
+        sed -i "s/distro\/05.*',/distro\/001',/g"          ${_ROOT}/.drush/hostmaster.alias.drushrc.php
+      fi
+    fi
+
     if ${_DRUSHCMD} help clean-modules > /dev/null ; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "${_STATUS} B: Drush clean-modules is available"
@@ -4157,6 +4171,7 @@ satellite_child_b_aegir_build() {
     cd ${_PREV_HM_ROOT}
     ${_DRUSHCMD} cache-clear drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
+
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
       WHERE task_type='delete' AND task_status='-1'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
