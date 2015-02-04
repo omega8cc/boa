@@ -2405,7 +2405,7 @@ openacademy_install
 openatrium7_install
 openblog_install
 openchurch1_install
-openchurch2_install
+### openchurch2_install  ### https://www.drupal.org/node/2420143
 opendeals_install
 ### openoutreach_install ### https://www.drupal.org/node/2293949
 openpublic_install
