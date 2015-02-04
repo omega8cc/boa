@@ -622,6 +622,8 @@ init_setup() {
     elif [ "${cmmand}" = "in-stable" ]; then
       curl ${crlGet} "${rgUrl}/${stable}/${barName}"  -o ${vBs}/${barName}
       curl ${crlGet} "${rgUrl}/${stable}/${octName}"  -o ${vBs}/${octName}
+      curl ${crlGet} "${rgUrl}/${stable}/${pthIncB}"  -o ${vBs}/${filIncB}
+      curl ${crlGet} "${rgUrl}/${stable}/${pthIncO}"  -o ${vBs}/${filIncO}
     elif [ "${cmmand}" = "in-legacy" ]; then
       curl ${crlGet} "${rgUrl}/${legacy}/${barName}"  -o ${vBs}/${barName}
       curl ${crlGet} "${rgUrl}/${legacy}/${octName}"  -o ${vBs}/${octName}

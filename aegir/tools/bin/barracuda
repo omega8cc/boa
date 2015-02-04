@@ -834,7 +834,8 @@ proceed() {
     _SCRIPT_URL="$rgUrl/${cluster}/${barName}"
     curl ${crlGet} "${rgUrl}/${cluster}/${pthIncB}" -o ${vBs}/${filIncB}
   elif [ "${cmmand}" = "up-stable" ]; then
-    _SCRIPT_URL="$rgUrl/$stable/${barName}"
+    _SCRIPT_URL="$rgUrl/${stable}/${barName}"
+    curl ${crlGet} "${rgUrl}/${stable}/${pthIncB}"  -o ${vBs}/${filIncB}
   elif [ "${cmmand}" = "up-legacy" ]; then
     _SCRIPT_URL="$rgUrl/$legacy/${barName}"
   else
