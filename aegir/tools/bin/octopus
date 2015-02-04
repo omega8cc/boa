@@ -637,6 +637,7 @@ up_cluster() {
 up_stable() {
   up_start
   curl ${crlGet} "${rgUrl}/${stable}/${octName}"  -o ${vBs}/${octName}
+  curl ${crlGet} "${rgUrl}/${stable}/${pthIncO}"  -o ${vBs}/${filIncO}
   if [ "${second}" = "all" ]; then
     up_action_all
   else
