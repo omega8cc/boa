@@ -102,6 +102,12 @@ else
   _AWS_REG="us-east-1"
 fi
 
+if [ "${_AWS_REG}" = "us-east-1" ]; then
+  _AWS_URL="s3-external-1.amazonaws.com"
+else
+  _AWS_URL="s3-${_AWS_REG}.amazonaws.com"
+fi
+
 _AWS_TTL=${_AWS_TTL//[^A-Z0-9]/}
 if [ -z "${_AWS_TTL}" ]; then
   _AWS_TTL="30D"
@@ -127,7 +133,7 @@ export PASSPHRASE="${_AWS_PWD}"
 SOURCE="/etc /var/aegir /var/www /home /data"
 EXCLUDE="--exclude /data/conf/arch"
 BUCKET="daily.boa.${_HST}"
-TARGET="s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}"
+TARGET="s3://${_AWS_URL}/${BUCKET}"
 LOGFILE="/var/xdrago/log/${BUCKET}.log"
 
 backup() {
