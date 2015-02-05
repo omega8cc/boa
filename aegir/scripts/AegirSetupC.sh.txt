@@ -1610,6 +1610,8 @@ openoutreach_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
+              cd ${_SHRD_PRPATH}
+              patch -p1 < ${pthPch}/${_REAL_PRNAME}.patch &> /dev/null
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
