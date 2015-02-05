@@ -2561,7 +2561,15 @@ finale() {
     mrun "sleep 8"
   fi
   msg "Final post-${_L_ST} cleaning, one moment..."
-  fix_core_dgd
+  if [ -e "/var/log/barracuda_log.txt" ]; then
+    _T_SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+    if [[ "${_T_SERIES_TEST}" =~ "BOA-2.4." ]] \
+      || [[ "${_T_SERIES_TEST}" =~ "BOA-2.3.8" ]]; then
+      _DO_NOTHING=YES
+    else
+      fix_core_dgd
+    fi
+  fi
   mv -f /etc/motd ${vBs}/dragon/t/motd-pre-${_X_VERSION}-${_NOW} &> /dev/null
   mv -f /etc/motd-pre-* ${vBs}/dragon/t/ &> /dev/null
   echo > /etc/motd
