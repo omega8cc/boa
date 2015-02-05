@@ -389,21 +389,29 @@ barracuda_install() {
       if [ "${rkey}" = "php-55" ] || [ "${rkey}" = "php-5.5" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.5/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.5/g"   ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${filIncO}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${filIncO}
       elif [ "${rkey}" = "php-56" ] || [ "${rkey}" = "php-5.6" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.6/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.6/g"   ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${filIncO}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${filIncO}
       elif [ "${rkey}" = "php-54" ] || [ "${rkey}" = "php-5.4" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.4/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.4/g"   ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g" ${vBs}/${filIncO}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g" ${vBs}/${filIncO}
       elif [ "${rkey}" = "php-53" ] || [ "${rkey}" = "php-5.3" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.3/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.3/g"   ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${vBs}/${filIncO}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" ${vBs}/${filIncO}
       elif [ "${rkey}" = "php-all" ]; then
