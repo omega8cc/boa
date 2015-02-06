@@ -385,6 +385,10 @@ if_install_rvm() {
               usermod -aG users scout &> /dev/null
               sed -i "s/\* \* \* \* \* scout .*/* * * * * scout $_GEM_PATH ${_SCOUT_KEY}/g" $_GEM_CRON &> /dev/null
             fi
+            _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
+            if [[ ! "$_VAR_IF_PRESENT" =~ "scout ALL=NOPASSWD" ]]; then
+              echo "scout ALL=NOPASSWD: /usr/bin/mysql" >> /etc/sudoers
+            fi
           else
             if [ ! -z "${_SCOUT_KEY}" ]; then
               st_runner "rvm @global do gem install --conservative scout" 2> /dev/null
@@ -392,6 +396,10 @@ if_install_rvm() {
               usermod -aG users scout &> /dev/null
               echo -e "* * * * * scout $_GEM_FILE ${_SCOUT_KEY}" \
                 | fmt -su -w 2500 | tee -a $_GEM_CRON >/dev/null 2>&1
+              _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
+              if [[ ! "$_VAR_IF_PRESENT" =~ "scout ALL=NOPASSWD" ]]; then
+                echo "scout ALL=NOPASSWD: /usr/bin/mysql" >> /etc/sudoers
+              fi
             fi
           fi
           if [ -e "$_GEM_FILE" ]; then
