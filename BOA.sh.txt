@@ -45,7 +45,7 @@ export PATH=$PATH:/opt/local/bin
 SHELL=/bin/bash
 
 _TODAY=$(date +%y%m%d 2>&1)
-_X_VERSION="BOA-2.4.0"
+_X_VERSION="BOA-2.4.0-stable"
 #
 saCoreN="SA-CORE-2014-005"
 saCoreS="${saCoreN}-D7"
@@ -524,12 +524,12 @@ setup() {
   mkdir -p /usr/local/bin
   mkdir -p ${optBin}
   rm -f ${optBin}/.{boa*,fix*}
-  rm -f /usr/local/bin/{autoupboa*,backboa*,barracuda*,boa*,ffmirror*}
+  rm -f /usr/local/bin/{autoupboa*,barracuda*,boa*,ffmirror*}
   rm -f /usr/local/bin/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   if [ ! -e "/data/disk" ]; then
     ln -s ${optBin}/boa /usr/local/bin/boa
   fi
-  rm -f ${optBin}/{autoupboa*,backboa*,barracuda*,boa*,ffmirror*}
+  rm -f ${optBin}/{autoupboa*,barracuda*,boa*,ffmirror*}
   rm -f ${optBin}/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   curl ${crlGet} "${urlHmr}/${tBn}/autoupboa"      -o ${optBin}/autoupboa
   curl ${crlGet} "${urlHmr}/${tBn}/barracuda"      -o ${optBin}/barracuda
@@ -546,6 +546,7 @@ setup() {
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
     echo "The duplicity backup is running!"
   else
+    rm -f ${optBin}/backboa
     curl ${crlGet} "${urlHmr}/${tBn}/backboa"      -o ${optBin}/backboa
   fi
   chmod 700 ${optBin}/{autoupboa,backboa,barracuda,boa}

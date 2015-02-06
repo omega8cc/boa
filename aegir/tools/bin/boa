@@ -389,21 +389,29 @@ barracuda_install() {
       if [ "${rkey}" = "php-55" ] || [ "${rkey}" = "php-5.5" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.5/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.5/g"   ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${filIncO}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${filIncO}
       elif [ "${rkey}" = "php-56" ] || [ "${rkey}" = "php-5.6" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.6/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.6/g"   ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${filIncO}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${filIncO}
       elif [ "${rkey}" = "php-54" ] || [ "${rkey}" = "php-5.4" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.4/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.4/g"   ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g" ${vBs}/${filIncO}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g" ${vBs}/${filIncO}
       elif [ "${rkey}" = "php-53" ] || [ "${rkey}" = "php-5.3" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.3/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.3/g"   ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" ${vBs}/${filIncB}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${vBs}/${filIncO}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" ${vBs}/${filIncO}
       elif [ "${rkey}" = "php-all" ]; then
@@ -427,22 +435,22 @@ barracuda_install() {
       && [ -e "${vBs}/${barName}" ] \
       && [ -e "${vBs}/${octName}" ]; then
       ### Legacy method
-      if [ "${rkey}" = "php-55" ]; then
+      if [ "${rkey}" = "php-55" ] || [ "${rkey}" = "php-5.5" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.5/g" ${vBs}/${barName}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.5/g"   ${vBs}/${barName}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${octName}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${octName}
-      elif [ "${rkey}" = "php-56" ]; then
+      elif [ "${rkey}" = "php-56" ] || [ "${rkey}" = "php-5.6" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.6/g" ${vBs}/${barName}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.6/g"   ${vBs}/${barName}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${octName}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${octName}
-      elif [ "${rkey}" = "php-54" ]; then
+      elif [ "${rkey}" = "php-54" ] || [ "${rkey}" = "php-5.4" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.4/g" ${vBs}/${barName}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.4/g"   ${vBs}/${barName}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g" ${vBs}/${octName}
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g" ${vBs}/${octName}
-      elif [ "${rkey}" = "php-53" ]; then
+      elif [ "${rkey}" = "php-53" ] || [ "${rkey}" = "php-5.3" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.3/g" ${vBs}/${barName}
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.3/g"   ${vBs}/${barName}
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${vBs}/${octName}
@@ -603,6 +611,10 @@ init_setup() {
   if [ ! -z "${vn}" ]; then
     curl ${crlGet} "${rgUrl}/${vn}/${barName}"        -o ${vBs}/${barName}
     curl ${crlGet} "${rgUrl}/${vn}/${octName}"        -o ${vBs}/${octName}
+    if [ "${vn}" = "BOA-2.4.0" ]; then
+      curl ${crlGet} "${rgUrl}/${stable}/${pthIncB}"  -o ${vBs}/${filIncB}
+      curl ${crlGet} "${rgUrl}/${stable}/${pthIncO}"  -o ${vBs}/${filIncO}
+    fi
   else
     if [ "${cmmand}" = "in-head" ]; then
       curl ${crlGet} "${rgUrl}/${master}/${barName}"  -o ${vBs}/${barName}
@@ -622,12 +634,16 @@ init_setup() {
     elif [ "${cmmand}" = "in-stable" ]; then
       curl ${crlGet} "${rgUrl}/${stable}/${barName}"  -o ${vBs}/${barName}
       curl ${crlGet} "${rgUrl}/${stable}/${octName}"  -o ${vBs}/${octName}
-    elif [ "${cmmand}" = "in-legacy" ]; then
-      curl ${crlGet} "${rgUrl}/${legacy}/${barName}"  -o ${vBs}/${barName}
-      curl ${crlGet} "${rgUrl}/${legacy}/${octName}"  -o ${vBs}/${octName}
+      curl ${crlGet} "${rgUrl}/${stable}/${pthIncB}"  -o ${vBs}/${filIncB}
+      curl ${crlGet} "${rgUrl}/${stable}/${pthIncO}"  -o ${vBs}/${filIncO}
     elif [ "${cmmand}" = "in-octopus" ]; then
       curl ${crlGet} "${rgUrl}/${stable}/${barName}"  -o ${vBs}/${barName}
       curl ${crlGet} "${rgUrl}/${stable}/${octName}"  -o ${vBs}/${octName}
+      curl ${crlGet} "${rgUrl}/${stable}/${pthIncB}"  -o ${vBs}/${filIncB}
+      curl ${crlGet} "${rgUrl}/${stable}/${pthIncO}"  -o ${vBs}/${filIncO}
+    elif [ "${cmmand}" = "in-legacy" ]; then
+      curl ${crlGet} "${rgUrl}/${legacy}/${barName}"  -o ${vBs}/${barName}
+      curl ${crlGet} "${rgUrl}/${legacy}/${octName}"  -o ${vBs}/${octName}
     fi
   fi
   if [ "${cmmand}" = "in-octopus" ]; then
