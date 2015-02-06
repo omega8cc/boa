@@ -217,6 +217,7 @@ enable_chattr() {
           /data/all:        \
           /data/conf:       \
           /data/disk/all:   \
+          /home/$1:         \
           /opt/php53:       \
           /opt/php54:       \
           /opt/php55:       \
@@ -227,12 +228,10 @@ enable_chattr() {
           /opt/tika9:       \
           /opt/tools/drush: \
           /usr/bin:         \
-          ${_U_HD}:         \
           ${dscUsr}/.drush/usr: \
           ${dscUsr}/distro:     \
           ${dscUsr}/platforms:  \
-          ${dscUsr}/static:     \
-          ${_U_TP}\""
+          ${dscUsr}/static\""
         _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
         _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
         _INI=${_INI//\//\\\/}
