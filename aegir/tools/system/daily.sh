@@ -121,16 +121,12 @@ disable_chattr() {
   fi
 }
 
-run_drush4_cmd() {
-  su -s /bin/bash - ${_HM_U}.ftp -c "drush4 @${Dom} $1" &> /dev/null
+run_drush7_cmd() {
+  su -s /bin/bash - ${_HM_U}.ftp -c "drush7 @${Dom} $1" &> /dev/null
 }
 
 run_drush7_hmr_cmd() {
-  su -s /bin/bash - ${_HM_U} -c "drush7 $1" &> /dev/null
-}
-
-run_drush4_nosilent_cmd() {
-  su -s /bin/bash - ${_HM_U}.ftp -c "drush4 @${Dom} $1"
+  su -s /bin/bash - ${_HM_U} -c "drush7 @hostmaster $1" &> /dev/null
 }
 
 run_drush7_nosilent_cmd() {
@@ -185,7 +181,7 @@ check_if_required() {
         "echo _REQ for $1 is ${_REQ} in ${Dom} == 7 == via $_REW_TEST"
       fi
     fi
-    Profile=$(run_drush4_nosilent_cmd "vget ^install_profile$" \
+    Profile=$(run_drush7_nosilent_cmd "vget ^install_profile$" \
       | cut -d: -f2 \
       | awk '{ print $1}' \
       | sed "s/['\"]//g" \
@@ -244,7 +240,7 @@ disable_modules() {
       check_if_force "$m"
     fi
     if [ "${_SKIP}" = "NO" ]; then
-      _MODULE_T=$(run_drush4_nosilent_cmd "pml --status=enabled \
+      _MODULE_T=$(run_drush7_nosilent_cmd "pml --status=enabled \
         --type=module | grep \($m\)" 2>&1)
       if [[ "${_MODULE_T}" =~ "($m)" ]]; then
         if [ "$_FORCE" = "NO" ]; then
@@ -254,10 +250,10 @@ disable_modules() {
           _REQ=FCE
         fi
         if [ "${_REQ}" = "FCE" ]; then
-          run_drush4_cmd "dis $m -y"
+          run_drush7_cmd "dis $m -y"
           echo "$m FCE disabled in ${Dom}"
         elif [ "${_REQ}" = "NO" ]; then
-          run_drush4_cmd "dis $m -y"
+          run_drush7_cmd "dis $m -y"
           echo "$m disabled in ${Dom}"
         elif [ "${_REQ}" = "NULL" ]; then
           echo "$m is not used in ${Dom}"
@@ -271,12 +267,12 @@ disable_modules() {
 
 enable_modules() {
   for m in $1; do
-    _MODULE_T=$(run_drush4_nosilent_cmd "pml --status=enabled \
+    _MODULE_T=$(run_drush7_nosilent_cmd "pml --status=enabled \
       --type=module | grep \($m\)" 2>&1)
     if [[ "${_MODULE_T}" =~ "($m)" ]]; then
       _DO_NOTHING=YES
     else
-      run_drush4_cmd "en $m -y"
+      run_drush7_cmd "en $m -y"
       echo "$m enabled in ${Dom}"
     fi
   done
@@ -356,7 +352,7 @@ fix_user_register_protection() {
   fi
 
   if [ "${_DISABLE_USER_REGISTER_PROTECTION}" = "NO" ]; then
-    Prm=$(run_drush4_nosilent_cmd "vget ^user_register$" \
+    Prm=$(run_drush7_nosilent_cmd "vget ^user_register$" \
       | cut -d: -f2 \
       | awk '{ print $1}' \
       | sed "s/['\"]//g" \
@@ -364,12 +360,12 @@ fix_user_register_protection() {
     Prm=${Prm//[^0-2]/}
     echo "Prm user_register for ${Dom} is ${Prm}"
     if [ "$_ENABLE_USER_REGISTER_PROTECTION" = "YES" ]; then
-      drush4 vset --always-set user_register 0 &> /dev/null
+      run_drush7_cmd "vset --always-set user_register 0"
     else
       if [ "${Prm}" = "1" ] || [ -z "${Prm}" ]; then
-        drush4 vset --always-set user_register 2 &> /dev/null
+        run_drush7_cmd "vset --always-set user_register 2"
       fi
-      drush4 vset --always-set user_email_verification 1 &> /dev/null
+      run_drush7_cmd "vset --always-set user_email_verification 1"
     fi
   fi
 
@@ -380,7 +376,7 @@ fix_user_register_protection() {
       rm -f ${Dir}/modules/readonlymode_fix.info
     fi
     if [ ! -e "${User}/log/ctrl/site.${Dom}.rom-fix.info" ]; then
-      drush4 vset --always-set site_readonly 0 &> /dev/null
+      run_drush7_cmd "vset --always-set site_readonly 0"
       touch ${User}/log/ctrl/site.${Dom}.rom-fix.info
     fi
   fi
@@ -685,7 +681,7 @@ EOF
 }
 
 check_site_status() {
-  _SITE_TEST=$(run_drush4_nosilent_cmd "status" 2>&1)
+  _SITE_TEST=$(run_drush7_nosilent_cmd "status" 2>&1)
   if [[ "$_SITE_TEST" =~ "Error:" ]] \
     || [[ "$_SITE_TEST" =~ "Drush was attempting to connect" ]]; then
     _SITE_TEST_RESULT=ERROR
@@ -693,7 +689,7 @@ check_site_status() {
     _SITE_TEST_RESULT=OK
   fi
   if [ "${_SITE_TEST_RESULT}" = "OK" ]; then
-    _STATUS_TEST=$(run_drush4_nosilent_cmd "status \
+    _STATUS_TEST=$(run_drush7_nosilent_cmd "status \
       | grep 'Drupal bootstrap.*:.*Successful'" 2>&1)
     if [[ "${_STATUS_TEST}" =~ "Successful" ]]; then
       _STATUS=OK
@@ -708,8 +704,8 @@ check_site_status() {
       if [ -e "${Plr}/modules/o_contrib_seven" ] \
         && [ "${_RUN_DGN}" = "YES" ]; then
         if [ -L "/home/${_HM_U}.ftp/.drush/usr/drupalgeddon" ]; then
-          run_drush4_cmd "en update -y"
-          _DGDD_T=$(run_drush4_nosilent_cmd "drupalgeddon-test" 2>&1)
+          run_drush7_cmd "en update -y"
+          _DGDD_T=$(run_drush7_nosilent_cmd "drupalgeddon-test" 2>&1)
           if [[ "${_DGDD_T}" =~ "No evidence of known Drupalgeddon" ]]; then
             _DO_NOTHING=YES
           elif [[ "${_DGDD_T}" =~ "The drush command" ]] \
@@ -741,7 +737,7 @@ check_site_status() {
             fi
           fi
         else
-          _DGMR_TEST=$(run_drush4_nosilent_cmd \
+          _DGMR_TEST=$(run_drush7_nosilent_cmd \
             "sqlq \"SELECT * FROM menu_router WHERE access_callback \
             = 'file_put_contents'\" | grep 'file_put_contents'" 2>&1)
           if [[ "${_DGMR_TEST}" =~ "file_put_contents" ]]; then
@@ -752,7 +748,7 @@ check_site_status() {
               send_hacked_alert
             fi
           fi
-          _DGMR_TEST=$(run_drush4_nosilent_cmd \
+          _DGMR_TEST=$(run_drush7_nosilent_cmd \
             "sqlq \"SELECT * FROM menu_router WHERE access_callback \
             = 'assert'\" | grep 'assert'" 2>&1)
           if [[ "${_DGMR_TEST}" =~ "assert" ]]; then
@@ -1000,7 +996,7 @@ fix_modules() {
           if [ -e "${Plr}/sites/all/modules/advagg" ] \
             || [ -e "${Plr}/modules/o_contrib/advagg" ] \
             || [ -e "${Plr}/modules/o_contrib_seven/advagg" ]; then
-            _MODULE_T=$(run_drush4_nosilent_cmd "pml --status=enabled \
+            _MODULE_T=$(run_drush7_nosilent_cmd "pml --status=enabled \
               --type=module | grep \(advagg\)" 2>&1)
             if [[ "${_MODULE_T}" =~ "(advagg)" ]]; then
               _AUTO_CONFIG_ADVAGG=YES
@@ -1059,7 +1055,7 @@ fix_modules() {
           _AUTO_CONFIG_PURGE_EXPIRE=NO
           if [ -e "${Plr}/modules/o_contrib/purge" ] \
             || [ -e "${Plr}/modules/o_contrib_seven/purge" ]; then
-            _MODULE_T=$(run_drush4_nosilent_cmd "pml --status=enabled \
+            _MODULE_T=$(run_drush7_nosilent_cmd "pml --status=enabled \
               --type=module | grep \(purge\)" 2>&1)
             if [[ "${_MODULE_T}" =~ "(purge)" ]]; then
               _AUTO_CONFIG_PURGE_EXPIRE=YES
@@ -1120,7 +1116,7 @@ fix_modules() {
           fi
 
           if [ -e "${Plr}/modules/o_contrib_seven" ]; then
-            _PRIV_TEST=$(run_drush4_nosilent_cmd "vget ^file_default_scheme$" 2>&1)
+            _PRIV_TEST=$(run_drush7_nosilent_cmd "vget ^file_default_scheme$" 2>&1)
             if [[ "${_PRIV_TEST}" =~ "No matching variable" ]]; then
               _PRIV_TEST_RESULT=NONE
             else
@@ -1128,7 +1124,7 @@ fix_modules() {
             fi
             _AUTO_CNF_PF_DL=NO
             if [ "${_PRIV_TEST_RESULT}" = "OK" ]; then
-              Pri=$(run_drush4_nosilent_cmd "vget ^file_default_scheme$" \
+              Pri=$(run_drush7_nosilent_cmd "vget ^file_default_scheme$" \
                 | cut -d: -f2 \
                 | awk '{ print $1}' \
                 | sed "s/['\"]//g" \
@@ -1471,7 +1467,7 @@ fix_modules() {
 
           if [ -e "${Plr}/profiles/hostmaster" ] \
             && [ ! -f "${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info" ]; then
-            run_drush7_hmr_cmd "@hostmaster dis cache syslog dblog -y"
+            run_drush7_hmr_cmd "dis cache syslog dblog -y"
             touch ${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
           elif [ -e "${Plr}/modules/o_contrib" ]; then
             if [ ! -e "${Plr}/modules/user" ] \
@@ -1484,7 +1480,7 @@ fix_modules() {
               && [ -e "${Plr}/modules/user" ]; then
               disable_modules "$_MODULES_OFF_SIX"
               enable_modules "$_MODULES_ON_SIX"
-              run_drush4_cmd "sqlq \"UPDATE system SET weight = '-1' \
+              run_drush7_cmd "sqlq \"UPDATE system SET weight = '-1' \
                 WHERE type = 'module' AND name = 'path_alias_cache'\""
             fi
           elif [ -e "${Plr}/modules/o_contrib_seven" ]; then
@@ -1505,9 +1501,9 @@ fix_modules() {
             rm -f ${Dir}/modules/commerce_ubercart_check.info
           fi
           if [ ! -e "${User}/log/ctrl/site.${Dom}.cart-check.info" ]; then
-            _COMMERCE_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled \
+            _COMMERCE_TEST=$(run_drush7_nosilent_cmd "pml --status=enabled \
               --no-core --type=module | grep \(commerce\)" 2>&1)
-            _UBERCART_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled \
+            _UBERCART_TEST=$(run_drush7_nosilent_cmd "pml --status=enabled \
               --no-core --type=module | grep \(uc_cart\)" 2>&1)
             if [[ "$_COMMERCE_TEST" =~ "Commerce" ]] \
               || [[ "$_UBERCART_TEST" =~ "Ubercart" ]]; then
@@ -1517,10 +1513,10 @@ fix_modules() {
           fi
           if [ -e "${User}/static/control/enable_views_cache_bully.info" ] \
             || [ -e "${User}/static/control/enable_views_content_cache.info" ]; then
-            _VIEWS_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled \
+            _VIEWS_TEST=$(run_drush7_nosilent_cmd "pml --status=enabled \
               --no-core --type=module | grep \(views\)" 2>&1)
             if [ -e "${User}/static/control/enable_views_content_cache.info" ]; then
-              _CTOOLS_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled \
+              _CTOOLS_TEST=$(run_drush7_nosilent_cmd "pml --status=enabled \
                 --no-core --type=module | grep \(ctools\)" 2>&1)
             fi
             if [[ "$_VIEWS_TEST" =~ "Views" ]] \
@@ -1807,11 +1803,11 @@ fix_permissions() {
       ${Dir}/drushrc.php 2>&1)
     if [[ "${_DB_HOST_PRESENT}" =~ "db_host" ]]; then
       if [ "$_FORCE_SITES_VERIFY" = "YES" ]; then
-        run_drush7_hmr_cmd "@hostmaster hosting-task @${Dom} verify --force"
+        run_drush7_hmr_cmd "hosting-task @${Dom} verify --force"
       fi
     else
       echo "\$_SERVER['db_host'] = \$options['db_host'];" >> ${Dir}/drushrc.php
-      run_drush7_hmr_cmd "@hostmaster hosting-task @${Dom} verify --force"
+      run_drush7_hmr_cmd "hosting-task @${Dom} verify --force"
     fi
   fi
 }
@@ -2166,8 +2162,7 @@ process() {
 }
 
 delete_this_platform() {
-  run_drush7_hmr_cmd "@hostmaster hosting-task \
-    @platform_${_T_PFM_NAME} delete --force"
+  run_drush7_hmr_cmd "hosting-task @platform_${_T_PFM_NAME} delete --force"
   echo "Old empty platform_${_T_PFM_NAME} will be deleted"
 }
 
@@ -2491,36 +2486,36 @@ action() {
           cd $_THIS_HM_SITE
           su -s /bin/bash ${_HM_U} -c "drush7 cc drush &> /dev/null"
           rm -f -r ${User}/.tmp/cache
-          run_drush7_hmr_cmd "@hostmaster vset \
+          run_drush7_hmr_cmd "vset \
             --always-set hosting_advanced_cron_default_interval 86400"
-          run_drush7_hmr_cmd "@hostmaster vset \
+          run_drush7_hmr_cmd "vset \
             --always-set hosting_queue_advanced_cron_frequency 1"
-          run_drush7_hmr_cmd "@hostmaster vset \
+          run_drush7_hmr_cmd "vset \
             --always-set hosting_queue_cron_frequency 53222400"
-          run_drush7_hmr_cmd "@hostmaster vset \
+          run_drush7_hmr_cmd "vset \
             --always-set hosting_cron_use_backend 0"
-          run_drush7_hmr_cmd "@hostmaster vset \
+          run_drush7_hmr_cmd "vset \
             --always-set hosting_ignore_default_profiles 0"
-          run_drush7_hmr_cmd "@hostmaster vset \
+          run_drush7_hmr_cmd "vset \
             --always-set hosting_queue_tasks_items 1"
-          run_drush7_hmr_cmd "@hostmaster en path_alias_cache -y"
-          run_drush7_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
-          run_drush7_hmr_cmd "@hostmaster cc all"
-          run_drush7_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
-          run_drush7_hmr_cmd "@hostmaster cc all"
-          run_drush7_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
-          run_drush7_hmr_cmd "@hostmaster cc all"
+          run_drush7_hmr_cmd "en path_alias_cache -y"
+          run_drush7_hmr_cmd "fr aegir_custom_settings -y"
+          run_drush7_hmr_cmd "cc all"
+          run_drush7_hmr_cmd "fr aegir_custom_settings -y"
+          run_drush7_hmr_cmd "cc all"
+          run_drush7_hmr_cmd "fr aegir_custom_settings -y"
+          run_drush7_hmr_cmd "cc all"
           if [ -e "${User}/log/imported.pid" ] \
             || [ -e "${User}/log/exported.pid" ]; then
             if [ ! -e "${User}/log/hosting_context.pid" ]; then
-              _HM_NID=$(run_drush7_hmr_cmd "@hostmaster \
-                sqlq \"SELECT site.nid FROM hosting_site site JOIN \
+              _HM_NID=$(run_drush7_hmr_cmd "sqlq \
+                \"SELECT site.nid FROM hosting_site site JOIN \
                 hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN \
                 hosting_package pkg ON pkg.nid=pkgi.package_id \
                 WHERE pkg.short_name='hostmaster'\" 2>&1")
               _HM_NID=${_HM_NID//[^0-9]/}
               if [ ! -z "$_HM_NID" ]; then
-                run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context \
+                run_drush7_hmr_cmd "sqlq \"UPDATE hosting_context \
                   SET name='hostmaster' WHERE nid='$_HM_NID'\""
                 echo $_HM_NID > ${User}/log/hosting_context.pid
               fi
@@ -2528,9 +2523,9 @@ action() {
           fi
         fi
         process
-        run_drush7_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task \
+        run_drush7_hmr_cmd "sqlq \"DELETE FROM hosting_task \
           WHERE task_type='delete' AND task_status='-1'\""
-        run_drush7_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task \
+        run_drush7_hmr_cmd "sqlq \"DELETE FROM hosting_task \
           WHERE task_type='delete' AND task_status='0' AND executed='0'\""
         check_old_empty_platforms
         purge_cruft_machine
