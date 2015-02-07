@@ -62,6 +62,12 @@ if [ -e "/data/disk/arch" ]; then
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ beng ]]; then
     _VMFAMILY="VS"
+    _VM_VERSION=$(uname -a | grep "3.14.29-vs2.3.6.14-beng" 2>&1)
+    if [[ "${_VM_VERSION}" =~ beng ]]; then
+      _VM_VERSION="MODERN"
+    else
+      _VM_VERSION="LEGACY"
+    fi
   fi
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
@@ -98,6 +104,7 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP_DAY=30
   fi
   if [[ "${_CHECK_HOST}" =~ "v251a.a" ]] \
+    || [[ "${_VM_VERSION}" =~ "LEGACY" ]] \
     || [[ "${_CHECK_HOST}" =~ "v55.l" ]]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
