@@ -2025,6 +2025,8 @@ satellite_run_child_b() {
           ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
         mv -f ${_ROOT}/backups/*o8.io* \
           ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
+        mv -f ${_ROOT}/backups/*boa.io* \
+          ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
         chmod 600 ${_ROOT}/backups/system/old_hostmaster/* &> /dev/null
         hostmaster_frontend_dbpass_sync
       fi
@@ -3713,6 +3715,7 @@ satellite_batch_cleanup() {
   chown root:root /data/u &> /dev/null
   rm -f /data/u/*host8* &> /dev/null
   rm -f /data/u/*o8.io* &> /dev/null
+  rm -f /data/u/*boa.io* &> /dev/null
   mv -f ${_ROOT}/backups/drupalgeddon-pre* ${_ROOT}/backups/system/ &> /dev/null
   mv -f ${_ROOT}/backups/drush_make-pre* ${_ROOT}/backups/system/ &> /dev/null
   mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/ &> /dev/null
