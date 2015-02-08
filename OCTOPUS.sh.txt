@@ -81,6 +81,7 @@ _SMALLCORE8=8.0.0-beta6
 _SPINNER=YES
 _T_BUILD=HEAD
 _TODAY=$(date +%y%m%d 2>&1)
+_F_TIME=$(date 2>&1)
 _USRG=users
 _WEBG=www-data
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
