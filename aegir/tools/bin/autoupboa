@@ -102,6 +102,9 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP_WEEKLY=5
     _AUTO_UP_MONTH=11
     _AUTO_UP_DAY=30
+    sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.3/g" /root/.barracuda.cnf
+    sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" /root/.barracuda.cnf
+    sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" /root/.barracuda.cnf
   fi
   if [[ "${_CHECK_HOST}" =~ "v251a.a" ]] \
     || [[ "${_VM_VERSION}" =~ "LEGACY" ]] \
