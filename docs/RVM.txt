@@ -73,4 +73,19 @@
   separate RVM along with some problematic gems in every sub-account,
   so the effective wait time will be multiplied.
 
+  If the 'bundle install' complains that it can’t build native extension
+  for gem foobar, but that gem is already installed for you and listed when
+  you type 'gem-list', the first step is to compare this gem versions.
+  For example, when RVM has been initialized on your account, it installed
+  some problematic gems which can’t be installed in limited shell: bluecloth,
+  eventmachine, ffi, hitimes, http_parser.rb, oily_png and yajl-ruby.
+
+  However, the version installed may be newer or older than version defined
+  in your theme Gemfile.lock file. To fix the problem, you need to update gem
+  version in that lock file and then run 'bundle install' again, or, if you
+  really need a newer version of the problematic gem, you need to re-initialize
+  RVM on your account: delete the control file, wait until .gem and .rvm
+  subdirectories disappear, add the control file again, and proceed with
+  further steps as usual.
+
   Source: https://omega8.cc/how-to-use-rvm-to-install-compass-tools-329
