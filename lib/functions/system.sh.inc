@@ -3216,7 +3216,7 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  if [[ "_XTRAS_LIST" =~ "IMG" ]]; then
+  if [[ "${_XTRAS_LIST}" =~ "IMG" ]]; then
     _EXTRA_PACKAGES="advancecomp \
                      jpegoptim \
                      libjpeg-progs \
