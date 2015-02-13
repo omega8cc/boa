@@ -598,12 +598,9 @@ _BOA_REPO_GIT_URL="${gitHub}"
 ### Find the fastest mirror to use for downloads
 ###
 find_fast_mirror() {
-  if [ -d "/var/cache/pdnsd" ]; then
-    service pdnsd stop &> /dev/null
-    sleep 1
-    rm -f /var/cache/pdnsd/pdnsd.cache
-    sleep 1
-    service pdnsd start &> /dev/null
+  if [ -d "/var/cache/pdnsd" ] \
+    && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+    pdnsd-ctl empty-cache &> /dev/null
   fi
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then

@@ -83,9 +83,9 @@ print "\n $lsyncdsumar Lsyncd procs\t\tGLOBAL" if ($lsyncdlives);
 system("service bind9 restart") if (!$namedsumar && -f "/etc/init.d/bind9");
 
 if (-e "/usr/sbin/pdnsd" && (!$pdnsdsumar || !-e "/etc/resolvconf/run/interface/lo.pdnsd") && !-f "/var/run/boa_run.pid") {
-  system("service pdnsd stop");
-  system("rm -f /var/cache/pdnsd/pdnsd.cache");
-  system("service pdnsd start");
+  system("resolvconf -u");
+  system("service pdnsd restart");
+  system("pdnsd-ctl empty-cache");
 }
 
 if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid" && !-f "/root/.remote.db.cnf") {
