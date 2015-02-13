@@ -69,13 +69,9 @@ fix_dns_settings() {
         fi
         sed -i '/        label = \"google-servers\";/ {r ${dnsLi}
 d;};' /etc/pdnsd.conf
-        resolvconf -u                      &> /dev/null
-        service pdnsd stop                 &> /dev/null
-        rm -f /var/cache/pdnsd/pdnsd.cache &> /dev/null
-        service pdnsd start                &> /dev/null
-        service pdnsd stop                 &> /dev/null
-        rm -f /var/cache/pdnsd/pdnsd.cache &> /dev/null
-        service pdnsd start                &> /dev/null
+        resolvconf -u         &> /dev/null
+        service pdnsd restart &> /dev/null
+        pdnsd-ctl empty-cache &> /dev/null
       fi
     fi
   fi
@@ -405,8 +401,9 @@ d;};' /etc/pdnsd.conf
     else
       rm -f /etc/resolv.conf
       ln -s /etc/resolvconf/run/resolv.conf /etc/resolv.conf
-      resolvconf -u &> /dev/null
+      resolvconf -u         &> /dev/null
       service pdnsd restart &> /dev/null
+      pdnsd-ctl empty-cache &> /dev/null
     fi
   fi
   if [ ! -e "/etc/resolv.conf" ]; then
@@ -420,13 +417,9 @@ d;};' /etc/pdnsd.conf
       /etc/NetworkManager/NetworkManager.conf &> /dev/null
     mrun "service network-manager restart" &> /dev/null
   fi
-  mrun "service pdnsd stop" &> /dev/null
-  rm -f /var/cache/pdnsd/pdnsd.cache
-  mrun "service pdnsd start" &> /dev/null
-  mrun "service pdnsd stop" &> /dev/null
-  rm -f /var/cache/pdnsd/pdnsd.cache
-  mrun "service pdnsd start" &> /dev/null
-  resolvconf -u &> /dev/null
+  resolvconf -u         &> /dev/null
+  service pdnsd restart &> /dev/null
+  pdnsd-ctl empty-cache &> /dev/null
 }
 
 check_github_for_aegir_head_mode() {

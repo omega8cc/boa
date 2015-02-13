@@ -109,13 +109,9 @@ fix_dns_settings() {
         fi
         sed -i '/        label = \"google-servers\";/ {r ${dnsLi}
 d;};' /etc/pdnsd.conf
-        resolvconf -u                      &> /dev/null
-        service pdnsd stop                 &> /dev/null
-        rm -f /var/cache/pdnsd/pdnsd.cache &> /dev/null
-        service pdnsd start                &> /dev/null
-        service pdnsd stop                 &> /dev/null
-        rm -f /var/cache/pdnsd/pdnsd.cache &> /dev/null
-        service pdnsd start                &> /dev/null
+        resolvconf -u         &> /dev/null
+        service pdnsd restart &> /dev/null
+        pdnsd-ctl empty-cache &> /dev/null
       fi
     fi
   fi
@@ -760,12 +756,9 @@ check_dns_curl() {
   else
     check_dns_settings
   fi
-  if [ -d "/var/cache/pdnsd" ]; then
-    service pdnsd stop &> /dev/null
-    sleep 1
-    rm -f /var/cache/pdnsd/pdnsd.cache
-    sleep 1
-    service pdnsd start &> /dev/null
+  if [ -d "/var/cache/pdnsd" ] \
+    && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+    pdnsd-ctl empty-cache &> /dev/null
   fi
   find_fast_mirror
   isCurl=$(curl --version 2>&1)
