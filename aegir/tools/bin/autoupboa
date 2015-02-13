@@ -108,7 +108,7 @@ if [ -e "/data/disk/arch" ]; then
   fi
   if [[ "${_CHECK_HOST}" =~ "v251a.a" ]] \
     || [[ "${_VM_VERSION}" =~ "LEGACY" ]] \
-    || [[ "${_CHECK_HOST}" =~ "v55.l" ]]; then
+    || [[ "${_CHECK_HOST}" =~ "v5.s8." ]]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
