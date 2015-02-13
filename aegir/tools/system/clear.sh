@@ -84,11 +84,6 @@ else
   bash /opt/local/bin/autoupboa
 fi
 
-if [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
-  rm -f /etc/resolvconf/run/interface/eth*
-  resolvconf -u &> /dev/null
-fi
-
 if [ -d "/dev/disk" ]; then
   _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')
   if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
