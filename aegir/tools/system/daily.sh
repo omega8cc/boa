@@ -2238,12 +2238,14 @@ purge_cruft_machine() {
     _PURGE_TMP="0"
   fi
 
+  _LOW_NR="2"
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ]; then
     _PURGE_BACKUPS="8"
     _PURGE_TMP="0"
+    _LOW_NR="8"
   fi
 
   find ${User}/backups/* -mtime +${_PURGE_BACKUPS} -type f -exec \
@@ -2327,7 +2329,8 @@ purge_cruft_machine() {
       RevisionTest=$(ls /home/${_HM_U}.ftp/platforms/$i \
         | wc -l \
         | tr -d "\n" 2>&1)
-      if [ "${RevisionTest}" -lt "2" ] && [ ! -z "${RevisionTest}" ]; then
+      if [ "${RevisionTest}" -lt "${_LOW_NR}" ] \
+        && [ ! -z "${RevisionTest}" ]; then
         chattr -i /home/${_HM_U}.ftp/platforms   &> /dev/null
         chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
         rm -f -r /home/${_HM_U}.ftp/platforms/$i
@@ -2341,8 +2344,7 @@ purge_cruft_machine() {
       if [ "${RevisionTest}" -lt "2" ] && [ ! -z "${RevisionTest}" ]; then
         mkdir -p ${User}/undo
         mv -f ${User}/distro/$i ${User}/undo/ &> /dev/null
-        echo "GHOST revision ${User}/distro/$i detected and \
-          moved to ${User}/undo/"
+        echo "GHOST revision ${User}/distro/$i detected and moved to ${User}/undo/"
       fi
     fi
   done
