@@ -83,6 +83,8 @@ print "\n $lsyncdsumar Lsyncd procs\t\tGLOBAL" if ($lsyncdlives);
 system("service bind9 restart") if (!$namedsumar && -f "/etc/init.d/bind9");
 
 if (-e "/usr/sbin/pdnsd" && (!$pdnsdsumar || !-e "/etc/resolvconf/run/interface/lo.pdnsd") && !-f "/var/run/boa_run.pid") {
+  system("mkdir -p /var/cache/pdnsd");
+  system("chown -R pdnsd:proxy /var/cache/pdnsd");
   system("resolvconf -u");
   system("service pdnsd restart");
   system("pdnsd-ctl empty-cache");
