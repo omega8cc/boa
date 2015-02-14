@@ -2597,6 +2597,7 @@ finale() {
   rm -f /var/xdrago/usage.sh
   rm -f /var/xdrago/memcache.sh*
   rm -f /var/xdrago/purge_cruft.sh
+  rm -f /var/xdrago/*.old
   rm -f -r /tmp/drush_make_tmp*
   rm -f -r /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
