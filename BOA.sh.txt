@@ -182,6 +182,7 @@ update_agents() {
       mv -f /var/xdrago/runner.sh.old /var/xdrago/runner.sh
     fi
   fi
+
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
     && [ ! -e "${pthLog}/minute.fixed.a25z.pid" ]; then
@@ -195,6 +196,7 @@ update_agents() {
       mv -f /var/xdrago/minute.sh.old /var/xdrago/minute.sh
     fi
   fi
+
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
     && [ ! -e "${pthLog}/clear.fixed.a25z.pid" ]; then
@@ -554,6 +556,14 @@ setup() {
 
 ###--------------------###
 if [ `whoami` = "root" ]; then
+
+  if [ -e "/var/run/pdnsd.pid" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+    mkdir -p /etc/resolvconf/run/interface
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
+  fi
+
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ]; then
     if [ -e "${barCnf}" ]; then
       source ${barCnf}
