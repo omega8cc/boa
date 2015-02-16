@@ -2336,6 +2336,9 @@ purge_cruft_machine() {
         rm -f -r /home/${_HM_U}.ftp/platforms/$i
       fi
     fi
+  done
+
+  for i in ${_REVISIONS}; do
     if [ -d "${User}/distro/$i" ]; then
       if [ ! -d "${User}/distro/$i/keys" ]; then
         mkdir -p ${User}/distro/$i/keys
