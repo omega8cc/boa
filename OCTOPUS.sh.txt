@@ -30,21 +30,8 @@
 ###----------------------------------------###
 
 
-###----------------------------------------###
-### EDITME                                 ###
-###----------------------------------------###
 ###
-### Enter below your valid e-mail address and
-### the (sub)domain for this Aegir Satellite
-### Instance, already pointing to your server.
-### Define also your *new* Aegir user for this
-### instance or existing if this is an upgrade
-###
-### NOTE: if this is an upgrade, it's enough
-### to define the _USER value only, since
-### _DOMAIN etc. will be auto-discovered
-### and you can't override it here nor even
-### in the /root/.${_USER}.octopus.cnf file.
+### Default values for main variables
 ###
 _USER=o1
 _MY_EMAIL="noc@omega8.cc"
@@ -52,11 +39,6 @@ _CLIENT_EMAIL="notify@omega8.cc"
 _CLIENT_OPTION=SSD
 _CLIENT_SUBSCR=Y
 _CLIENT_CORES=8
-
-
-###----------------------------------------###
-### DON'T EDIT ANYTHING BELOW THIS LINE    ###
-###----------------------------------------###
 
 
 ###
