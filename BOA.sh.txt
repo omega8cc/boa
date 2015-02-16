@@ -579,6 +579,9 @@ if [ `whoami` = "root" ]; then
       echo "STATUS: ${barCnf} to disable me, if needed."
     fi
   fi
+  if [ -d "/.newrelic" ]; then
+    rm -rf /.newrelic
+  fi
   chmod a+w /dev/null
   if [ ! -e "/dev/fd" ]; then
     if [ -e "/proc/self/fd" ]; then
