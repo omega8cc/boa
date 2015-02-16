@@ -32,13 +32,16 @@ PHP-FPM, Zend OPcache, MariaDB and Redis.
 ###
 ### Modules - supported, enabled or disabled: docs/MODULES.txt
 ###
-### For how-to on using MultiCore Solr Jetty see docs/SOLR.txt
-### For custom Nginx rewrites how-to see docs/HINTS.txt
-### For SSL and extra IPs how-to see docs/SSL.txt
-### For sites migration between instances see docs/REMOTE.txt
+### For how-to on using remote S3 backups see: docs/BACKUPS.txt
+### For how-to on using MultiCore Solr Jetty see: docs/SOLR.txt
+### For how-to on using RVM and Compass see: docs/RVM.txt
+### For hww-to on using HHVM see: docs/HHVM.txt
+### For custom Nginx rewrites how-to see: docs/HINTS.txt
+### For SSL and extra IPs how-to see: docs/SSL.txt
+### For sites migration between instances see: docs/REMOTE.txt
 ### For advanced password encryption tips see: docs/BLOWFISH.txt
 ### For security related settings see: docs/SECURITY.txt
-### For frequently asked questions and answers see docs/FAQ.txt
+### For frequently asked questions and answers see: docs/FAQ.txt
 ###
 ###--------------------------------------------------------------------------###
 
