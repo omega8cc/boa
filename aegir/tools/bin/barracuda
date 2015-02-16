@@ -281,7 +281,8 @@ up_action() {
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"          ${barCnf}
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"            ${barCnf}
       else
-        if [ "${rkey}" != "debug" ]; then
+        _L_KEY=$(echo ${#rkey} 2>&1)
+        if [ ! -z "${_L_KEY}" ] && [ "${_L_KEY}" = "40" ]; then
           sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${rkey}\"/g"  ${vBs}/${barName}
           sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${rkey}\"/g"          ${barCnf}
         fi
