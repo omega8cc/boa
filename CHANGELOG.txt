@@ -34,6 +34,16 @@
 
   Please read further below for more details.
 
+# Caveats for self-hosted BOA:
+
+  We recommend to proceed with major upgrade procedure as follows:
+
+    $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+    $ barracuda up-stable
+    $ barracuda up-stable system
+    $ octopus up-stable all both
+    $ bash /var/xdrago/daily.sh
+
 # Updated Octopus platforms:
 
   aGov 1.6 --------------------- https://drupal.org/project/agov
