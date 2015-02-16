@@ -197,28 +197,3 @@ Octopus can install the platforms listed below:
 * All D6 and D7 platforms include some useful and/all performance related
   contrib modules - see docs/MODULES.txt for details.
 
-
-### MAINTAINERS
-
-BOA development is maintained and sponsored by Omega8.cc
-
-  https://omega8.cc/about
-
-
-### CREDITS
-
-* Brian Mercer ---------------- https://drupal.org/user/103565
-  Initial work ---------------- https://drupal.org/node/244072#comment-1747170
-
-* Nice people who are submitting bugs and problems in the issue queue.
-
-
-### DONATIONS
-
-If you wish to support BOA development or simply send a nice 'Thank you'
-to the Universe, please donate something to The Rights of the Child charity:
-
-  http://trotc.org/
-
-Thank you!
-
