@@ -76,36 +76,18 @@ system tuning for development and switching it back easily to the standard
 production settings.
 
 
-### SUPPORTED PARENT SYSTEMS
+### SUPPORTED PARENT SYSTEMS {c} please read also: docs/CAVEATS.txt
 
 * Xen, VServer, Linux KVM or VMware based VPS or a dedicated box.
 
-NOTE: By VMware we mean the system, not the company or its hosted service,
-      the vCloud Air, which is known to cause serious issues for Drupal
-      in general, which are not related to anything in BOA. The vCloud Air
-      has a major flaw which breaks many Drupal features, including
-      images derivatives, AdvAgg and any other module which requires
-      that the site can connect to itself via its public IP address.
 
-* VirtualBox VM for localhost install - check the (old) how-to for:
-  Ubuntu Precise desktop image install: http://bit.ly/boa-precise
-  Debian Squeeze desktop image install: http://bit.ly/boa-squeeze
-
-NOTE: BOA maintainers use only server (public) install mode and rarely test
-      localhost (local) mode, which is considered highly experimental,
-      while server (public) mode is considered stable and fully supported.
-
-
-### SUPPORTED LTS OS 32/64bit - Minimal on server or Desktop on localhost
+### SUPPORTED LTS OS {c} please read also: docs/CAVEATS.txt
 
 * Debian 7 Wheezy (recommended)
-* Debian 6 Squeeze (fully supported with automatic upgrade to Wheezy available)
+* Debian 6 Squeeze (limited support with automatic upgrade to Wheezy)
 * Ubuntu Trusty 14.04 (limited support)
 * Ubuntu Precise 12.04 (limited support)
 * Ubuntu Lucid 10.04 (limited support)
-
-NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
-      We don't use and rarely test Ubuntu, so for best results use Debian 64bit.
 
 
 ### OTHER REQUIREMENTS
@@ -126,7 +108,7 @@ NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
 * All libraries & tools required to install and run Nginx based Aegir system.
 * Latest release of MariaDB 5.5 or 10.0 database server with Chive manager.
 * Latest version of Nginx web server.
-* PHP-FPM 5.6, 5.5, 5.4, 5.3 - multi-install mode, configurable per Octopus instance.
+* PHP-FPM 5.6, 5.5, 5.4, 5.3 - multi-install mode, configurable per Octopus.
 * PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse and ionCube.
 * Fast Redis Cache with DB auto-failover for all 6.x and 7.x platforms.
 * Fast Redis Lock support with DB auto-failover for all 6.x and 7.x platforms.
