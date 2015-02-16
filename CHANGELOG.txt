@@ -42,6 +42,7 @@
     $ barracuda up-stable
     $ barracuda up-stable system
     $ octopus up-stable all both
+    $ bash /var/xdrago/manage_ltd_users.sh
     $ bash /var/xdrago/daily.sh
 
 # Updated Octopus platforms:

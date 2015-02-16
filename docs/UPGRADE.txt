@@ -9,9 +9,10 @@
 
     $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
     $ barracuda up-stable
-    $ barracuda up-stable system (recommended on major upgrade)
+    $ barracuda up-stable system           (recommended on major upgrade)
     $ octopus up-stable all both
-    $ bash /var/xdrago/daily.sh  (recommended on major upgrade)
+    $ bash /var/xdrago/manage_ltd_users.sh (recommended on major upgrade)
+    $ bash /var/xdrago/daily.sh            (recommended on major upgrade)
 
     For silent, logged mode with e-mail message sent once the upgrade is
     complete, but no progress is displayed in the terminal window, you can run
