@@ -554,6 +554,31 @@ setup() {
   echo
 }
 
+count_cpu() {
+  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO=${_CPU_INFO//[^0-9]/}
+  _NPROC_TEST=$(which nproc 2>&1)
+  if [ -z "${_NPROC_TEST}" ]; then
+    _CPU_NR="${_CPU_INFO}"
+  else
+    _CPU_NR=$(nproc 2>&1)
+  fi
+  _CPU_NR=${_CPU_NR//[^0-9]/}
+  if [ ! -z "${_CPU_NR}" ] \
+    && [ ! -z "${_CPU_INFO}" ] \
+    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
+    && [ "${_CPU_INFO}" -gt "0" ]; then
+    _CPU_NR="${_CPU_INFO}"
+  fi
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+    _CPU_NR=1
+  fi
+  mkdir -p /data/all
+  chmod 755 /data/all
+  echo ${_CPU_NR} > /data/all/cpuinfo
+  chmod 644 /data/all/cpuinfo
+}
+
 ###--------------------###
 if [ `whoami` = "root" ]; then
 
@@ -562,6 +587,10 @@ if [ `whoami` = "root" ]; then
     && [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
+  fi
+
+  if [ ! -e "/data/all/cpuinfo" ]; then
+    count_cpu
   fi
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ]; then
