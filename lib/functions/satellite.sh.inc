@@ -3482,7 +3482,7 @@ satellite_if_init_or_upgrade() {
       fi
     fi
   else
-    msg "New Octopus Setup on $(uname -m 2>&1) in progress..."
+    msg "New Octopus Setup on $(uname -n 2>&1) in progress..."
     #
     # Check for last all nr
     if [ -d "/data/all" ]; then
