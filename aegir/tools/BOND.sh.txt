@@ -408,13 +408,16 @@ fix_php_ini_geos() {
   fi
 }
 #
-# Fix 5.3 php.ini files to add geos.so
+# Fix all php.ini files to add geos.so
 fix_php_ini_geos_all() {
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-    _THIS_FILE=/opt/php53/etc/php53.ini
-    fix_php_ini_geos
-    _THIS_FILE=/opt/php53/lib/php.ini
-    fix_php_ini_geos
+    _PHP_V="56 55 54 53"
+    for e in ${_PHP_V}; do
+      _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+      fix_php_ini_geos
+      _THIS_FILE=/opt/php${e}/lib/php.ini
+      fix_php_ini_geos
+    done
   fi
 }
 #

@@ -977,10 +977,8 @@ _PHP_EXTRA_CONF=""
 _PHP_MONGODB=NO
 
 ###
-### Change to YES to always compile in
-### GEOS extension. Works for PHP 5.3 only.
-### Warning: experimental only! See issue:
-### https://drupal.org/node/1913488
+### Change to YES to compile GEOS extension.
+### See issue: https://drupal.org/node/1913488
 ###
 _PHP_GEOS=NO
 

@@ -148,13 +148,16 @@ fix_php_ini_geos() {
 }
 
 #
-# Fix 5.3 php.ini files to add geos.so
+# Fix all php.ini files to add geos.so
 fix_php_ini_geos_all() {
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-    _THIS_FILE=/opt/php53/etc/php53.ini
-    fix_php_ini_geos
-    _THIS_FILE=/opt/php53/lib/php.ini
-    fix_php_ini_geos
+    _PHP_V="56 55 54 53"
+    for e in ${_PHP_V}; do
+      _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+      fix_php_ini_geos
+      _THIS_FILE=/opt/php${e}/lib/php.ini
+      fix_php_ini_geos
+    done
   fi
 }
 
@@ -375,8 +378,8 @@ install_php_extensions() {
   touch ${pthLog}/php-pecl-jsmin-$_T_PHP_VRN.log
   ###--------------------###
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-    if [ "$1" = "53" ]; then
       msg "INFO: Building GEOS extension for PHP $_T_PHP_VRN from sources..."
+    if [ "$1" != "52" ]; then
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
         st_runner "apt-get update -y --force-yes" &> /dev/null
         st_runner "$_INSTAPP libgeos-dev libgeos-c1 phpunit" 2> /dev/null
@@ -500,8 +503,8 @@ update_php_extensions() {
     touch ${pthLog}/php-pecl-jsmin-$_T_PHP_VRN.log
   fi
   ###--------------------###
-  if [ "$1" = "53" ] \
     && [ ! -e "${pthLog}/php-geos-${_GEOS_VRN}-$_T_PHP_VRN.log" ]; then
+  if [ "$1" != "52" ] \
     if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
       msg "INFO: Building GEOS upgrade for PHP $_T_PHP_VRN from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
