@@ -77,6 +77,8 @@ satellite_update_web_user() {
   _T_II="${_T_HD}/php.ini"
   ### msg "DEBUG: ${_WEB} in satellite_update_web_user A"
   if [ -e "/home/${_WEB}" ]; then
+    chattr -i /home/${_WEB} &> /dev/null
+    chattr -i /home/${_WEB}/.drush &> /dev/null
     mkdir -p /home/${_WEB}/.{tmp,drush,aws}
     ### msg "DEBUG: ${_WEB} in satellite_update_web_user B"
     ### msg "DEBUG: ARG1 is $1 in satellite_update_web_user B"
