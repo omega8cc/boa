@@ -875,6 +875,8 @@ satellite_update_web_user() {
   _T_TS="/home/${_WEB}/.aws"
   _T_II="${_T_HD}/php.ini"
   if [ -e "/home/${_WEB}" ]; then
+    chattr -i /home/${_WEB} &> /dev/null
+    chattr -i /home/${_WEB}/.drush &> /dev/null
     mkdir -p /home/${_WEB}/.{tmp,drush,aws}
     if [ ! -z "$1" ]; then
       if [ "$1" = "hhvm" ]; then
