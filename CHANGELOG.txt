@@ -2,7 +2,7 @@
 ### Stable BOA-2.4.0 Release - Full Edition
 ### Date: Wed Feb  4 20:30:04 CET 2015
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.0
-### Latest hotfix added on: Tue Feb 17 22:47:14 CET 2015
+### Latest hotfix added on: Thu Feb 19 11:00:47 UTC 2015
 
   @=> Includes Aegir Hostmaster 2.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
