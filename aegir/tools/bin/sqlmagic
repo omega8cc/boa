@@ -41,7 +41,7 @@ sqlmagic_convert() {
         's/(ALTER TABLE \
         (cache_[a-z_]+|cache|sessions|users|watchdog|accesslog) \
         ENGINE=)MYISAM/\1INNODB/g' \
-        ${HOME}/static/to_myisam_alter_table.sql
+        ${HOME}/static/to_myisam_alter_table.sql &> /dev/null
       drush sqlc < ${HOME}/static/to_myisam_alter_table.sql
       echo "This site database has been converted to MyISAM"
       rm -f ${HOME}/static/to_myisam_alter_table.sql
@@ -61,7 +61,7 @@ sqlmagic_convert() {
         ${HOME}/static/to_innodb_alter_table.sql &> /dev/null
       perl -p -i -e \
         's/(search_[a-z_]+ ENGINE=)INNODB/\1MYISAM/g' \
-        ${HOME}/static/to_innodb_alter_table.sql
+        ${HOME}/static/to_innodb_alter_table.sql &> /dev/null
       drush sqlc < ${HOME}/static/to_innodb_alter_table.sql
       echo "This site database has been converted to InnoDB"
       rm -f ${HOME}/static/to_innodb_alter_table.sql
