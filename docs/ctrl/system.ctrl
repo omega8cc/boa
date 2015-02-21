@@ -80,11 +80,8 @@ by the BOA install and upgrade tools exclusively.
   system install by your hosting provider. It will automatically configure
   pdnsd cache server to use these IPs instead of public Google DNS servers.
 
-  This file will be created automatically if BOA will detect that default Google
-  DNS servers can't be used because of parent network forced DNS configuration.
-
-  You can further customize name servers to use by editing template file:
-  /var/backups/resolv.conf.vanilla
+  It depends on existence of another file with custom name servers to use
+  listed, one per line: /var/backups/resolv.conf.vanilla
 
  @=> /root/.hr.monitor.cnf
 
