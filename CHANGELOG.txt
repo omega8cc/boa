@@ -2,7 +2,7 @@
 ### Stable BOA-2.4.0 Release - Full Edition
 ### Date: Wed Feb  4 20:30:04 CET 2015
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.0
-### Latest hotfix added on: Tue Feb 17 22:47:14 CET 2015
+### Latest hotfix added on: Sat Feb 21 10:18:15 UTC 2015
 
   @=> Includes Aegir Hostmaster 2.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -120,7 +120,7 @@
   * cURL 7.40.0 (if installed from sources)
   * Git 2.2.1 (if installed from sources)
   * MariaDB 10.0.16
-  * MariaDB 5.5.41
+  * MariaDB 5.5.42
   * MariaDB Galera Cluster 10.0.16
   * Nginx 1.7.9
   * PHP 5.4.37
