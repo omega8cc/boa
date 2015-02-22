@@ -78,7 +78,7 @@ action() {
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ beng ]]; then
+if [[ "${_VM_TEST}" =~ "3.14.29-vs2.3.6.14-beng" ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"

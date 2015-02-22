@@ -2573,7 +2573,7 @@ else
   _FORCE_SITES_VERIFY=NO
 fi
 #
-if [[ "${_VM_TEST}" =~ beng ]]; then
+if [[ "${_VM_TEST}" =~ "3.14.29-vs2.3.6.14-beng" ]]; then
   _VMFAMILY="VS"
   _MODULES_FORCE="background_process coder cookie_cache_bypass css_gzip hacked \
     javascript_aggregator memcache memcache_admin poormanscron search_krumo \

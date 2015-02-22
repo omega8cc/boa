@@ -14,7 +14,7 @@ if [ "$_THIS_RV" = "wheezy" ] \
 else
   _RUBY_VRN=2.0.0
 fi
-if [[ "${_VM_TEST}" =~ beng ]]; then
+if [[ "${_VM_TEST}" =~ "3.14.29-vs2.3.6.14-beng" ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
@@ -745,7 +745,7 @@ satellite_tune_fpm_workers() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ beng ]]; then
+  if [[ "${_VM_TEST}" =~ "3.14.29-vs2.3.6.14-beng" ]]; then
     _VMFAMILY="VS"
   fi
   if [[ "${_AWS_TEST_A}" =~ "cloudimg" ]] \
