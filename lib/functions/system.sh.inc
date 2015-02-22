@@ -2828,11 +2828,19 @@ if_squeeze_to_wheezy() {
     if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
       ln -sf /etc/init.d/bind9 /etc/init.d/bind
     fi
-    if [ -d "/var/www/cgp" ]; then
-      st_runner "apt-get install collectd -y --force-yes" 2> /dev/null
+    if [ -e "/etc/init.d/networking.dpkg-dist" ]; then
+      mv -f /etc/init.d/networking /etc/init.d/networking.bak
+      cp -af /etc/init.d/networking.dpkg-dist /etc/init.d/networking
+      chmod 755 /etc/init.d/networking
     fi
+    if [ -d "/var/www/cgp" ]; then
+      mrun "apt-get install collectd -y --force-yes" 2> /dev/null
+    fi
+    mrun "apt-get install udev lsb-release libc-client2007e-dev \
+      -y --force-yes" 2> /dev/null
     _L_VM_TEST=$(uname -a 2>&1)
     if [[ "${_L_VM_TEST}" =~ "3.14.29-vs2.3.6.14-beng" ]]; then
+      _PTMX=OK
       _REMOVE_LINKS="halt \
                      hwclock.sh \
                      hwclockfirst.sh \
@@ -2858,6 +2866,8 @@ if_squeeze_to_wheezy() {
       for link in ${_REMOVE_LINKS}; do
         update-rc.d -f $link remove &> /dev/null
       done
+    else
+      _PTMX=CHECK
     fi
     mrun "dpkg --configure --force-all -a" 2> /dev/null
     mrun "apt-get update -y" 2> /dev/null
@@ -2866,6 +2876,21 @@ if_squeeze_to_wheezy() {
     mrun "apt-get install util-linux ${forCer}" 2> /dev/null
     mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
           -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
+    _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
+    if [[ ! "${_PTS_TEST}" =~ "devpts" ]] || [ ! -e "/dev/pts/ptmx" ]; then
+      _PTS=FIX
+    else
+      _PTS=OK
+    fi
+    if [ "${_PTMX}" = "CHECK" ] && [ "${_PTS}" = "FIX" ]; then
+      msg "WARN: Required /dev/pts/ptmx does not exist! We will fix this now..."
+      mkdir -p /dev/pts
+      rm -f -r /dev/pts/*
+      apt-get update -qq &> /dev/null
+      apt-get install udev -y --force-yes &> /dev/null
+      mount -t devpts devpts /dev/pts &> /dev/null
+      echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
+    fi
     echo rotate > /var/log/syslog &> /dev/null
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null
     msg "INFO: No errors? Then Squeeze to Wheezy upgrade was successful - congrats!"
