@@ -3548,11 +3548,12 @@ fix_libs_php() {
   if [ "${_OSV}" = "wheezy" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
-    if [ ! -L "/usr/lib/libXpm.so" ]; then
+    if [ ! -L "/usr/lib/libXpm.so" ] || [ ! -e "/usr/lib/libgmp.so.3" ]; then
       msg "INFO: Fix #1 for libs in ${_THIS_OS} ${_OSV}"
       _X86_64_TEST=$(uname -m 2>&1)
       if [ "$_X86_64_TEST" = "x86_64" ]; then
         ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
+        ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
         ln -sf /usr/lib/x86_64-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
         ln -sf /usr/lib/x86_64-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
         ln -sf /usr/lib/x86_64-linux-gnu/libldap.so /usr/lib/libldap.so
@@ -3564,6 +3565,7 @@ fix_libs_php() {
         fi
       else
         ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so
+        ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
         ln -sf /usr/lib/i386-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
         ln -sf /usr/lib/i386-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
         ln -sf /usr/lib/i386-linux-gnu/libldap.so /usr/lib/libldap.so
