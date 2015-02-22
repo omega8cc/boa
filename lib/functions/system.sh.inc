@@ -26,7 +26,7 @@ if_running_as_root_barracuda() {
       _VMFAMILY="AWS"
     fi
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ beng ]]; then
+    if [[ "${_VM_TEST}" =~ "3.14.29-vs2.3.6.14-beng" ]]; then
       _VMFAMILY="VS"
       touch /var/run/cloud_vhost.pid
       if [ -d "/etc/webmin" ]; then
@@ -64,7 +64,7 @@ set_xterm() {
 # Kill nash-hotplug.
 kill_nash() {
   _L_VM_TEST=$(uname -a 2>&1)
-  if [[ "${_L_VM_TEST}" =~ beng ]]; then
+  if [[ "${_L_VM_TEST}" =~ "3.14.29-vs2.3.6.14-beng" ]]; then
     _DO_NOTHING=YES
   else
     _NASH_TEST=$(grep nash-hotplug /etc/rc.local 2>&1)
@@ -221,7 +221,7 @@ tune_memory_limits() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ beng ]]; then
+  if [[ "${_VM_TEST}" =~ "3.14.29-vs2.3.6.14-beng" ]]; then
     _VMFAMILY="VS"
   fi
   if [[ "${_AWS_TEST_A}" =~ "cloudimg" ]] \
@@ -848,7 +848,7 @@ barracuda_cnf() {
     _CHECK_HOST=$(uname -n 2>&1)
     _L_VMFAMILY=XEN
     _L_VM_TEST=$(uname -a 2>&1)
-    if [[ "${_L_VM_TEST}" =~ beng ]]; then
+    if [[ "${_L_VM_TEST}" =~ "3.14.29-vs2.3.6.14-beng" ]]; then
       _L_VMFAMILY="VS"
     fi
     if [ -e "/root/.auto.up.cnf" ] \
@@ -2832,7 +2832,7 @@ if_squeeze_to_wheezy() {
       st_runner "apt-get install collectd -y --force-yes" 2> /dev/null
     fi
     _L_VM_TEST=$(uname -a 2>&1)
-    if [[ "${_L_VM_TEST}" =~ beng ]]; then
+    if [[ "${_L_VM_TEST}" =~ "3.14.29-vs2.3.6.14-beng" ]]; then
       _REMOVE_LINKS="halt \
                      hwclock.sh \
                      hwclockfirst.sh \
@@ -2905,7 +2905,7 @@ if_lenny_to_squeeze() {
     mrun "apt-get remove libc-client2007b-dev -y --force-yes -qq" &> /dev/null
     mrun "apt-get purge svscan -y" &> /dev/null
     mrun "apt-get purge pound -y" &> /dev/null
-    if [[ "${_L_VM_TEST}" =~ beng ]]; then
+    if [[ "${_L_VM_TEST}" =~ "3.14.29-vs2.3.6.14-beng" ]]; then
       mrun "apt-get remove udev -y --force-yes -qq" &> /dev/null
     fi
     mrun "apt-get remove lsb-release -y --force-yes -qq" &> /dev/null
@@ -2928,7 +2928,7 @@ if_lenny_to_squeeze() {
     mrun "apt-get install udev lsb-release libc-client2007e-dev \
       -y --force-yes" 2> /dev/null
     _L_VM_TEST=$(uname -a 2>&1)
-    if [[ "${_L_VM_TEST}" =~ beng ]]; then
+    if [[ "${_L_VM_TEST}" =~ "3.14.29-vs2.3.6.14-beng" ]]; then
       _REMOVE_LINKS="halt \
                      hwclock.sh \
                      hwclockfirst.sh \
