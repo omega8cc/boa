@@ -2869,6 +2869,7 @@ if_squeeze_to_wheezy() {
     else
       _PTMX=CHECK
     fi
+    sed -i "s/squeeze/wheezy/g"  /etc/apt/sources.list.d/* &> /dev/null
     mrun "dpkg --configure --force-all -a" 2> /dev/null
     mrun "apt-get update -y" 2> /dev/null
     mrun "dpkg --configure --force-all -a" 2> /dev/null
@@ -2980,6 +2981,7 @@ if_lenny_to_squeeze() {
         update-rc.d -f $link remove &> /dev/null
       done
     fi
+    sed -i "s/lenny/squeeze/g"  /etc/apt/sources.list.d/* &> /dev/null
     mrun "aptitude update -y" &> /dev/null
     mrun "dpkg --configure --force-all -a" 2> /dev/null
     mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
