@@ -2818,9 +2818,13 @@ if_squeeze_to_wheezy() {
     fi
     mrun "apt-get purge svscan -y" &> /dev/null
     mrun "apt-get purge pound -y" &> /dev/null
-    mrun "apt-get update -y --force-yes" &> /dev/null
     mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
-    mrun "apt-get install apt dpkg aptitude -f -y --force-yes -q \
+    sed -i "s/.*proposed-updates.*//g" /etc/apt/sources.list
+    sed -i "s/squeeze/wheezy/g"  /etc/apt/sources.list.d/* &> /dev/null
+    mrun "apt-get update -y --force-yes" &> /dev/null
+    mrun "apt-get upgrade -f -y --force-yes -q \
+      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+    mrun "apt-get install apt dpkg aptitude ${forCer} -q \
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
     mrun "apt-get dist-upgrade -f -y --force-yes -q \
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
@@ -2869,7 +2873,6 @@ if_squeeze_to_wheezy() {
     else
       _PTMX=CHECK
     fi
-    sed -i "s/squeeze/wheezy/g"  /etc/apt/sources.list.d/* &> /dev/null
     mrun "dpkg --configure --force-all -a" 2> /dev/null
     mrun "apt-get update -y" 2> /dev/null
     mrun "dpkg --configure --force-all -a" 2> /dev/null
