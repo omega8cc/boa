@@ -74,7 +74,7 @@ if [ -e "/data/disk/arch" ]; then
   fi
   _AUTO_UP_WEEKLY=${_AUTO_UP_WEEKLY//[^0-9]/}
   _AUTO_UP_MONTH=${_AUTO_UP_MONTH//[^0-9]/}
-  _AUTO_UP_DAY=${_CPU_INFO//[^0-9]/}
+  _AUTO_UP_DAY=${_AUTO_UP_DAY//[^0-9]/}
   if [[ "${_MY_EMAIL}" =~ "omega8" ]]; then
     _AUTO_UP=YES
   fi
