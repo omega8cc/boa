@@ -1599,7 +1599,7 @@ fix_modules() {
               _SQL_CONVERT=myisam
             fi
           fi
-          if [ ! -z "${_SQL_CONVERT}" ]; then
+          if [ ! -z "${_SQL_CONVERT}" ] && [ "${_DOW}" = "6" ]; then
             if [ "${_SQL_CONVERT}" = "YES" ]; then
               _SQL_CONVERT=innodb
             fi

@@ -476,7 +476,7 @@ _STRONG_PASSWORDS=NO
 ### DB ENGINE AUTO-CONVERSION              ###
 ###----------------------------------------###
 ###
-### Automatic, running daily DB conversion to
+### Automatic, running weekly DB conversion to
 ### InnoDB or MyISAM for all sites hosted on
 ### the instance via the 'sqlmagic' tool.
 ###
@@ -501,7 +501,7 @@ _STRONG_PASSWORDS=NO
 ### force conversion to InnoDB format in all
 ### sites hosted on this instance.
 ###
-### Note that it will run daily on all sites
+### Note that it will run weekly on all sites
 ### even if all tables have been already
 ### converted to the desired format/engine.
 ###
