@@ -10,5 +10,6 @@
 01 0 * * * bash /var/xdrago/graceful.sh >/dev/null 2>&1
 08 0 * * * bash /var/xdrago/mysql_backup.sh >/dev/null 2>&1
 08 2 * * * bash /opt/local/bin/backboa backup >/dev/null 2>&1
+08 8 * * * bash /opt/local/bin/duobackboa backup >/dev/null 2>&1
 58 2 * * * bash /var/xdrago/daily.sh >/dev/null 2>&1
 58 5 * * * bash /var/xdrago/fetch-remote.sh >/dev/null 2>&1

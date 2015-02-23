@@ -540,10 +540,11 @@ setup() {
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
     echo "The duplicity backup is running!"
   else
-    rm -f ${optBin}/backboa
+    rm -f ${optBin}/{backboa,duobackboa}
     curl ${crlGet} "${urlHmr}/${tBn}/backboa"      -o ${optBin}/backboa
+    curl ${crlGet} "${urlHmr}/${tBn}/duobackboa"   -o ${optBin}/duobackboa
   fi
-  chmod 700 ${optBin}/{autoupboa,backboa,barracuda,boa}
+  chmod 700 ${optBin}/{autoupboa,backboa,barracuda,boa,duobackboa}
   chmod 700 ${optBin}/{ffmirror,octopus,syncpass}
   chmod 755 ${optBin}/{randpass,sqlmagic,thinkdifferent}
   echo
