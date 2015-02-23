@@ -159,11 +159,11 @@ by the BOA install and upgrade tools exclusively.
   performed via 'sqlmagic' tool, and since it uses the 'ALTER TABLE' command,
   in turn it performs auto-optimization on the fly.
 
-  This optional conversion starts daily at 4:18 AM and runs until the agent
-  completes all tasks included in the /var/xdrago/daily.sh script.
+  This optional conversion starts every Saturday at 2:58 AM and runs until
+  the agent completes all tasks included in the /var/xdrago/daily.sh script.
 
-  If _SQL_CONVERT=NO is set, the conversion mode can be individually enabled and
-  more precisely configured with variable:
+  If _SQL_CONVERT=NO is set, the conversion mode can be individually enabled
+  and more precisely configured with variable:
 
     sql_conversion_mode
 
