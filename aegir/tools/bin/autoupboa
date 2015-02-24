@@ -57,6 +57,28 @@ crontab_update() {
   fi
 }
 
+crontab_clean() {
+  if [ -e "/etc/crontab" ]; then
+    sed -i "s/.*barracuda.*//gi"  /etc/crontab &> /dev/null
+    sed -i "s/.*BOA.sh.txt.*//gi" /etc/crontab &> /dev/null
+    sed -i "s/.*daily.sh.*//gi"   /etc/crontab &> /dev/null
+    sed -i "s/.*fire.*//gi"       /etc/crontab &> /dev/null
+    sed -i "s/.*octopus.*//gi"    /etc/crontab &> /dev/null
+    sed -i "s/.*water.*//gi"      /etc/crontab &> /dev/null
+    sed -i "s/.*weekly.sh.*//gi"  /etc/crontab &> /dev/null
+    sed -i "s/.*xdrago.*//gi"     /etc/crontab &> /dev/null
+    if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
+      echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
+    fi
+    if [ "${_VMFAMILY}" = "VS" ]; then
+      echo "28 6    * * 7   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
+    fi
+    sed -i "/^$/d"                /etc/crontab &> /dev/null
+    echo Cron Cleanup Completed
+  fi
+}
+
 if [ -e "/data/disk/arch" ]; then
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
@@ -99,9 +121,9 @@ if [ -e "/data/disk/arch" ]; then
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    _AUTO_UP_WEEKLY=6
-    _AUTO_UP_MONTH=11
-    _AUTO_UP_DAY=30
+    _AUTO_UP_WEEKLY=
+    _AUTO_UP_MONTH=
+    _AUTO_UP_DAY=
     sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=5.3/g" /root/.barracuda.cnf
     sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" /root/.barracuda.cnf
     sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" /root/.barracuda.cnf
@@ -118,6 +140,8 @@ if [ -e "/data/disk/arch" ]; then
     && [ ! -z "${_AUTO_UP_MONTH}" ] \
     && [ ! -z "${_AUTO_UP_DAY}" ]; then
     crontab_update
+  else
+    crontab_clean
   fi
 fi
 ###EOF2015###
