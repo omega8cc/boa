@@ -739,8 +739,6 @@ commerce_7_1_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              cd ${_SHRD_PRPATH}
-              patch -p1 < ${pthPch}/${_REAL_PRNAME}.patch &> /dev/null
               if [ "${_COMMERCE1}" = "1.32" ]; then
                 cd ${_SHRD_PRPATH}/modules/
                 rm -f -r commerce
@@ -795,8 +793,10 @@ commerce_7_2_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              cd ${_SHRD_PRPATH}
-              patch -p1 < ${pthPch}/${_REAL_PRNAME}.patch &> /dev/null
+              if [ "${_COMMERCE2}" = "2.21" ]; then
+                cd ${_SHRD_PLPATH}
+                patch -p1 < ${pthPch}/${_REAL_PRNAME}.patch &> /dev/null
+              fi
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
