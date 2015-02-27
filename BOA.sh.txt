@@ -528,7 +528,9 @@ setup() {
   rm -f /usr/local/bin/{autoupboa*,barracuda*,boa*,ffmirror*}
   rm -f /usr/local/bin/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   if [ ! -e "/data/disk" ]; then
-    ln -s ${optBin}/boa /usr/local/bin/boa
+    ln -s ${optBin}/boa       /usr/local/bin/boa
+    ln -s ${optBin}/barracuda /usr/local/bin/barracuda
+    ln -s ${optBin}/octopus   /usr/local/bin/octopus
   fi
   rm -f ${optBin}/{autoupboa*,barracuda*,boa*,ffmirror*}
   rm -f ${optBin}/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
