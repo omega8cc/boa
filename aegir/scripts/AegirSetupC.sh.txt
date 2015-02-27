@@ -642,7 +642,9 @@ if [ "${_CLIENT_CORES}" -lt "1" ]; then
   _ALLOW_CIVICRM=NO
   _D_8_ALLOW=NO
 fi
-if [[ "${_VM_TEST}" =~ "3.14.29-vs2.3.6.14-beng" ]]; then
+if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
+  || [ -e "/root/.debug.cnf" ] \
+  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"

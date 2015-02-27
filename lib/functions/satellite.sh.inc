@@ -11,7 +11,9 @@ satellite_tune_fpm_workers() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.14.29-vs2.3.6.14-beng" ]]; then
+  if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
+    || [ -e "/root/.debug.cnf" ] \
+    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   fi
   if [[ "${_AWS_TEST_A}" =~ "cloudimg" ]] \
@@ -3295,7 +3297,9 @@ satellite_detect_vm_family() {
     _IFCONFIG="eth0"
   fi
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ "3.14.29-vs2.3.6.14-beng" ]]; then
+  if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
+    || [ -e "/root/.debug.cnf" ] \
+    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   else
     _VMFAMILY="XEN"
@@ -4417,7 +4421,9 @@ satellite_child_b_aegir_ui_enhance() {
       ${_HM_ROOT}/${pthThis}/hosting_platform_pathauto.module &> /dev/null
 
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.14.29-vs2.3.6.14-beng" ]]; then
+    if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
+      || [ -e "/root/.debug.cnf" ] \
+      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _VMFAMILY="VS"
     else
       _VMFAMILY="XEN"

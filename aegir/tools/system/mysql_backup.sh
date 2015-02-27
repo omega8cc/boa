@@ -12,7 +12,9 @@ else
   _OPTIM=NO
 fi
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.14.29-vs2.3.6.14-beng" ]]; then
+if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
+  || [ -e "/root/.debug.cnf" ] \
+  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
