@@ -94,6 +94,11 @@ if_install_jetty() {
           touch /opt/solr4/search_api_solr-7.x-1.6.log
         fi
         cp -af ${bldPth}/docs/SOLR.txt /opt/solr4/README.txt &> /dev/null
+        cd /var/opt
+        get_dev_arch "slf4j-${_SLF4J_VRN}.tar.gz"
+        mv -f /var/opt/slf4j-${_SLF4J_VRN}/*.jar /opt/jetty9/lib/ext/ &> /dev/null
+        rm -f /opt/jetty9/lib/ext/*sources.jar
+        rm -f /opt/jetty9/lib/ext/*android*
         chown -R jetty9:jetty9 /opt/solr4
         chown -R jetty9:jetty9 /opt/jetty9
         chown -R jetty9:jetty9 /var/log/jetty9
@@ -129,6 +134,10 @@ if_install_jetty() {
         if [ -e "/opt/jetty9/start.d/http.ini" ]; then
           sed -i "s/8080/8099/g" /opt/jetty9/start.d/http.ini &> /dev/null
           touch /opt/jetty9/start.d/.fixed.http.ini.txt &> /dev/null
+        fi
+        if [ -e "/opt/jetty9/start.ini" ]; then
+          sed -i "s/8080/8099/g" /opt/jetty9/start.ini &> /dev/null
+          touch /opt/jetty9/.fixed.start.ini.txt &> /dev/null
         fi
         sed -i "s/8080/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
         ln -sf /opt/jetty9/bin/jetty.sh /etc/init.d/jetty9 &> /dev/null
@@ -174,6 +183,8 @@ if_install_jetty() {
       fi
     fi
     if [ ! -e "$_PORT_CTRL" ] \
+      || [ ! -e "/opt/jetty9/lib/ext/slf4j-api-${_SLF4J_VRN}.jar" ] \
+      || [ ! -e "/opt/jetty9/.fixed.start.ini.txt" ] \
       || [ ! -e "$_JETTY_CTRL" ] \
       || [ ! -e "$_SOLR_CTRL" ]; then
       msg "INFO: Upgrading MultiCore Apache Solr 4 with Jetty ${_R_JETTY}..."
@@ -198,6 +209,10 @@ if_install_jetty() {
         sed -i "s/8080/8099/g" /opt/jetty9/start.d/http.ini &> /dev/null
         touch /opt/jetty9/start.d/.fixed.http.ini.txt &> /dev/null
       fi
+      if [ -e "/opt/jetty9/start.ini" ]; then
+        sed -i "s/8080/8099/g" /opt/jetty9/start.ini &> /dev/null
+        touch /opt/jetty9/.fixed.start.ini.txt &> /dev/null
+      fi
       sed -i "s/8080/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
       get_dev_arch "solr-${_SOLR_4_VRN}.tgz"
       cp -af /var/opt/solr-${_SOLR_4_VRN}/dist/solr-${_SOLR_4_VRN}.war \
@@ -207,6 +222,10 @@ if_install_jetty() {
       wget -q -U iCab ${urlDev}/tika-app-1.3.jar
       wget -q -U iCab ${urlDev}/tika-app-1.1.jar
       cd /var/opt
+      get_dev_arch "slf4j-${_SLF4J_VRN}.tar.gz"
+      mv -f /var/opt/slf4j-${_SLF4J_VRN}/*.jar /opt/jetty9/lib/ext/ &> /dev/null
+      rm -f /opt/jetty9/lib/ext/*sources.jar
+      rm -f /opt/jetty9/lib/ext/*android*
       chown -R jetty9:jetty9 /opt/jetty9
       mrun "service jetty9 start" &> /dev/null
       echo ${_SOLR_4_VRN} > $_SOLR_CTRL
