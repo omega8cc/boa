@@ -646,6 +646,9 @@ if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
   || [ -e "/root/.debug.cnf" ] \
   || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _VMFAMILY="VS"
+  if [ ! -e "/root/.d8allow.cnf" ]; then
+    _D_8_ALLOW=NO
+  fi
 else
   _VMFAMILY="XEN"
 fi
