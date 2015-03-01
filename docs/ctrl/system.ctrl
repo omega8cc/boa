@@ -47,6 +47,11 @@ by the BOA install and upgrade tools exclusively.
 
  ### All other (empty) .cnf control files
 
+ @=> /root/.mysqladmin.monitor.cnf
+
+  This file, if exists, allows to log the output of `mysqladmin proc` command
+  in the /var/xdrago/log/mysqladmin.monitor.log file, every 5 seconds.
+
  @=> /root/.fast.cron.cnf
 
   This file, if exists, allows to speed up the Aegir tasks and sites cron queues

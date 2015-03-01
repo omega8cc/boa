@@ -139,82 +139,89 @@ mysql_proc_kill() {
 }
 
 mysql_proc_control() {
-limit=3600
-xkill=null
-for each in `mysqladmin proc \
-  | awk '{print $2, $4, $8, $12}' \
-  | awk '{print $1}'`; do
-  xtime=$(mysqladmin proc \
+  if [ ! -z "${_SQLMONITOR}" ] && [ "${_SQLMONITOR}" = "YES" ]; then
+    echo "$(date 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
+    echo "$(mysqladmin proc 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
+  fi
+  limit=3600
+  xkill=null
+  for each in `mysqladmin proc \
     | awk '{print $2, $4, $8, $12}' \
-    | grep $each \
-    | awk '{print $4}' 2>&1)
-  if [ "$xtime" = "|" ]; then
+    | awk '{print $1}'`; do
     xtime=$(mysqladmin proc \
-      | awk '{print $2, $4, $8, $11}' \
+      | awk '{print $2, $4, $8, $12}' \
       | grep $each \
       | awk '{print $4}' 2>&1)
-  fi
-  xuser=$(mysqladmin proc \
-    | awk '{print $2, $4, $8, $12}' \
-    | grep $each \
-    | awk '{print $2}' 2>&1)
-  if [ "$xtime" != "Time" ]; then
-    if [ "$xuser" = "xabuse" ]; then
-      limit=60
-      mysql_proc_kill
-    else
-      limit=3600
-      mysql_proc_kill
+    if [ "$xtime" = "|" ]; then
+      xtime=$(mysqladmin proc \
+        | awk '{print $2, $4, $8, $11}' \
+        | grep $each \
+        | awk '{print $4}' 2>&1)
     fi
-  fi;
-done
+    xuser=$(mysqladmin proc \
+      | awk '{print $2, $4, $8, $12}' \
+      | grep $each \
+      | awk '{print $2}' 2>&1)
+    if [ "$xtime" != "Time" ]; then
+      if [ "$xuser" = "xabuse" ]; then
+        limit=60
+        mysql_proc_kill
+      else
+        limit=3600
+        mysql_proc_kill
+      fi
+    fi;
+  done
 }
 
 lsyncd_proc_control() {
-if [ -e "/var/log/lsyncd.log" ]; then
-  if [ `tail --lines=100 /var/log/lsyncd.log \
-    | grep --count "Error: Terminating"` -gt "0" ]; then
-    echo "$(date 2>&1) TRM lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
+  if [ -e "/var/log/lsyncd.log" ]; then
+    if [ `tail --lines=100 /var/log/lsyncd.log \
+      | grep --count "Error: Terminating"` -gt "0" ]; then
+      echo "$(date 2>&1) TRM lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
+    fi
+    if [ `tail --lines=100 /var/log/lsyncd.log \
+      | grep --count "ERROR: Auto-resolving failed"` -gt "5" ]; then
+      echo "$(date 2>&1) ERR lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
+    fi
+    if [ `tail --lines=5000 /var/log/lsyncd.log \
+      | grep --count "Normal: Finished events list = 0"` -lt "1" ]; then
+      echo "$(date 2>&1) NRM lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
+    fi
   fi
-  if [ `tail --lines=100 /var/log/lsyncd.log \
-    | grep --count "ERROR: Auto-resolving failed"` -gt "5" ]; then
-    echo "$(date 2>&1) ERR lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
+  if [ -e "/var/xdrago/log/lsyncd.monitor.log" ]; then
+    if [ -e "/root/.barracuda.cnf" ]; then
+      source /root/.barracuda.cnf
+    fi
+    if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log \
+      | grep --count "TRM lsyncd"` -gt "3" ] && [ -n "${_MY_EMAIL}" ]; then
+      mail -s "ALERT! lsyncd TRM failure on $(uname -n 2>&1)" ${_MY_EMAIL} < \
+        /var/xdrago/log/lsyncd.monitor.log
+      _ARCHIVE_LOG=YES
+    fi
+    if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log \
+      | grep --count "ERR lsyncd"` -gt "3" ] && [ -n "${_MY_EMAIL}" ]; then
+      mail -s "ALERT! lsyncd ERR failure on $(uname -n 2>&1)" ${_MY_EMAIL} < \
+        /var/xdrago/log/lsyncd.monitor.log
+      _ARCHIVE_LOG=YES
+    fi
+    if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log \
+      | grep --count "NRM lsyncd"` -gt "3" ] && [ -n "${_MY_EMAIL}" ]; then
+      mail -s "NOTICE: lsyncd NRM problem on $(uname -n 2>&1)" ${_MY_EMAIL} < \
+        /var/xdrago/log/lsyncd.monitor.log
+      _ARCHIVE_LOG=YES
+    fi
+    if [ "$_ARCHIVE_LOG" = "YES" ]; then
+      cat /var/xdrago/log/lsyncd.monitor.log >> \
+        /var/xdrago/log/lsyncd.warn.archive.log
+      rm -f /var/xdrago/log/lsyncd.monitor.log
+    fi
   fi
-  if [ `tail --lines=5000 /var/log/lsyncd.log \
-    | grep --count "Normal: Finished events list = 0"` -lt "1" ]; then
-    echo "$(date 2>&1) NRM lsyncd" >> /var/xdrago/log/lsyncd.monitor.log
-  fi
-fi
-if [ -e "/var/xdrago/log/lsyncd.monitor.log" ]; then
-  if [ -e "/root/.barracuda.cnf" ]; then
-    source /root/.barracuda.cnf
-  fi
-  if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log \
-    | grep --count "TRM lsyncd"` -gt "3" ] && [ -n "${_MY_EMAIL}" ]; then
-    mail -s "ALERT! lsyncd TRM failure on $(uname -n 2>&1)" ${_MY_EMAIL} < \
-      /var/xdrago/log/lsyncd.monitor.log
-    _ARCHIVE_LOG=YES
-  fi
-  if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log \
-    | grep --count "ERR lsyncd"` -gt "3" ] && [ -n "${_MY_EMAIL}" ]; then
-    mail -s "ALERT! lsyncd ERR failure on $(uname -n 2>&1)" ${_MY_EMAIL} < \
-      /var/xdrago/log/lsyncd.monitor.log
-    _ARCHIVE_LOG=YES
-  fi
-  if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log \
-    | grep --count "NRM lsyncd"` -gt "3" ] && [ -n "${_MY_EMAIL}" ]; then
-    mail -s "NOTICE: lsyncd NRM problem on $(uname -n 2>&1)" ${_MY_EMAIL} < \
-      /var/xdrago/log/lsyncd.monitor.log
-    _ARCHIVE_LOG=YES
-  fi
-  if [ "$_ARCHIVE_LOG" = "YES" ]; then
-    cat /var/xdrago/log/lsyncd.monitor.log >> \
-      /var/xdrago/log/lsyncd.warn.archive.log
-    rm -f /var/xdrago/log/lsyncd.monitor.log
-  fi
-fi
 }
 
+if [ -e "/root/.mysqladmin.monitor.cnf" ]; then
+  _SQLMONITOR=YES
+fi
 lsyncd_proc_control
 mysql_proc_control
 sleep 5
