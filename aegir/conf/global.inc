@@ -803,13 +803,9 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
       $conf['user_register'] = 0; // Force "Only site administrators can create new user accounts"
     }
     if (!$is_bot && !$high_traffic && !$deny_anon) {
-      if (preg_match("/^\/(?:[a-z]{2}\/)?(?:user|admin|cart|checkout|logout|privatemsg)/", $_SERVER['REQUEST_URI']) ||
-          preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users|ajax_comments|commerce_currency_select)/", $_SERVER['REQUEST_URI']) ||
+      if (preg_match("/^\/(?:[a-z]{2}\/)?(?:admin|cart|checkout|logout|privatemsg)/", $_SERVER['REQUEST_URI']) ||
+          preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|ajax_comments|commerce_currency_select)/", $_SERVER['REQUEST_URI']) ||
           preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/", $_SERVER['HTTP_HOST'])) {
-        if (!isset($_COOKIE['NoCacheID'])) {
-          $lifetime = '15';
-          setcookie('NoCacheID', 'NC' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
-        }
         $expire_in_seconds = '1';
         header('X-Limit-Booster: 1');
       }
