@@ -40,7 +40,7 @@ crontab_update() {
     fi
     echo "# Barracuda weekly system only upgrade" >> /etc/crontab
     echo "35 2    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
-    echo "40 2    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
+    echo "37 2    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
     echo "# Barracuda stable full upgrade" >> /etc/crontab
     echo "50 2  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
     echo "55 2  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
