@@ -179,7 +179,7 @@ Octopus can install the platforms listed below:
  OpenDeals 1.35 --------------- https://drupal.org/project/opendeals
  OpenOutreach 1.16 ------------ https://drupal.org/project/openoutreach
  OpenPublic 1.4 --------------- https://drupal.org/project/openpublic
- OpenScholar 3.16.0 ----------- http://theopenscholar.org
+ OpenScholar 3.20.0 ----------- http://theopenscholar.org
  Panopoly 1.18 ---------------- https://drupal.org/project/panopoly
  Recruiter 1.5 ---------------- https://drupal.org/project/recruiter
  Restaurant 1.0-b10 ----------- https://drupal.org/project/restaurant
