@@ -4429,7 +4429,7 @@ satellite_child_b_aegir_ui_enhance() {
       _VMFAMILY="XEN"
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
-      if [ -e "/root/.debug.cnf" ]; then
+      if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
         ${_DRUSHCMD} @hostmaster dis hosting_cdn -y &> /dev/null

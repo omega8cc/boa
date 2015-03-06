@@ -472,7 +472,7 @@ up_action() {
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
       || [ "${_L_VMFAMILY}" = "VS" ]; then
-      if [ -e "/root/.debug.cnf" ]; then
+      if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
         if [ -e "${barCnf}" ]; then

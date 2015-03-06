@@ -619,7 +619,7 @@ barracuda_cnf() {
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
-        if [ -e "/root/.debug.cnf" ]; then
+        if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
           _DO_NOTHING=YES
         else
           _DB_SERVER=MariaDB
@@ -735,7 +735,7 @@ barracuda_cnf() {
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
-      if [ -e "/root/.debug.cnf" ]; then
+      if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
@@ -873,7 +873,7 @@ barracuda_cnf() {
           | sed "s/[\"]//g" 2>&1)
         _CLSTR_PHP_MULTI_INSTALL="${_PHP_OVERRIDE}"
       fi
-      if [ ! -e "/root/.debug.cnf" ]; then
+      if [ ! -e "/root/.debug.cnf" ] || [ -e "/root/.default.cnf" ]; then
         sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
         sed -i "/^$/d" ${barCnf}
         _PHP_MULTI_INSTALL=""
@@ -908,7 +908,7 @@ barracuda_cnf() {
               _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
             fi
           else
-            if [ ! -e "/root/.debug.cnf" ]; then
+            if [ ! -e "/root/.debug.cnf" ] || [ -e "/root/.default.cnf" ]; then
               _PHP_MULTI_INSTALL="5.6 5.5 5.4 5.3"
             fi
           fi
@@ -1265,7 +1265,7 @@ barracuda_cnf() {
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
-      if [ -e "/root/.debug.cnf" ]; then
+      if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
@@ -1343,7 +1343,7 @@ barracuda_cnf() {
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
-        if [ -e "/root/.debug.cnf" ]; then
+        if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
           _DO_NOTHING=YES
         else
           _DB_SERVER=MariaDB
@@ -3804,7 +3804,7 @@ install_update_xdrago() {
     if [[ "${_THISHOST}" =~ ".host8." ]] \
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
-      if [ -e "/root/.debug.cnf" ]; then
+      if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
         if [ -e "/root/.high_load.cnf" ] \
@@ -3871,7 +3871,7 @@ install_update_xdrago() {
     if [[ "${_THISHOST}" =~ ".host8." ]] \
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
-      if [ -e "/root/.debug.cnf" ]; then
+      if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
         if [ -e "/root/.high_load.cnf" ] \
