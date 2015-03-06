@@ -47,9 +47,9 @@ projects[strongarm][download][type] = "get"
 projects[strongarm][download][url] = "http://files.aegir.cc/dev/contrib/strongarm-6.x-2.2.tar.gz"
 
 projects[views][type] = "module"
-;projects[views][version] = "2.16"
+;projects[views][version] = "2.18"
 projects[views][download][type] = "get"
-projects[views][download][url] = "http://files.aegir.cc/dev/contrib/views-6.x-2.16.tar.gz"
+projects[views][download][url] = "http://files.aegir.cc/dev/contrib/views-6.x-2.18.tar.gz"
 
 projects[nodereference_url][type] = "module"
 ;projects[nodereference_url][version] = "1.11"
