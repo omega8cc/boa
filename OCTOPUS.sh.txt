@@ -51,7 +51,7 @@ export _USER="${_USER}"
 ###
 ### Variables
 ###
-_D8_DEV_COMMIT=8x_a4cecd6c
+_D8_DEV_COMMIT=8x_f49bb893
 _DRUSH_VERSION=mini-7-27-02-2015
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _PLATFORMS_ONLY=NO
