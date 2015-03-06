@@ -2088,7 +2088,8 @@ process() {
   cleanup_ghost_drushrc
   for Site in `find ${User}/config/server_master/nginx/vhost.d \
     -maxdepth 1 -mindepth 1 -type f | sort`; do
-    #echo Counting Site $Site
+    _MOMENT=$(date +%y%m%d-%H%M 2>&1)
+    echo ${_MOMENT} Start Counting Site $Site
     Dom=$(echo $Site | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
     _STATUS_DISABLED=NO
     _STATUS_TEST=$(grep "Do not reveal Aegir front-end URL here" \
@@ -2157,6 +2158,8 @@ process() {
           fix_permissions
         fi
       fi
+     _MOMENT=$(date +%y%m%d-%H%M 2>&1)
+     echo ${_MOMENT} End Counting Site $Site
     fi
   done
 }
