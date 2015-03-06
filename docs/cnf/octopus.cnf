@@ -135,6 +135,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### FSR ----------- Feature Server
 ### GDR ----------- Guardr
 ### OA7 ----------- OpenAtrium D7
+### OAD ----------- OpenAid
 ### OAY ----------- OpenAcademy
 ### OBG ----------- OpenBlog
 ### OCH ----------- OpenChurch 1

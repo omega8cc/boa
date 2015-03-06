@@ -2667,6 +2667,13 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
+    if [ -d "${_QR}/openaid-${_OPENAID}-${_SMALLCORE7}/sites" ]; then
+      if [ ! -L "${_QH}/openaid-${_OPENAID}-${_SMALLCORE7}" ]; then
+        _A="${_QR}/openaid-${_OPENAID}-${_SMALLCORE7}/sites"
+        _B="${_QH}/openaid-${_OPENAID}-${_SMALLCORE7}"
+        ln -sf ${_A} ${_B}
+      fi
+    fi
     if [ -d "${_QR}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7}" ]; then
         _A="${_QR}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7}/sites"
@@ -3034,6 +3041,7 @@ satellite_make() {
   echo "_MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${writeTo}
   echo "_NOW=\"${_NOW}\""                             >> ${writeTo}
   echo "_OPENACADEMY=\"${_OPENACADEMY}\""             >> ${writeTo}
+  echo "_OPENAID=\"${_OPENAID}\""                     >> ${writeTo}
   echo "_OPENATRIUM7=\"${_OPENATRIUM7}\""             >> ${writeTo}
   echo "_OPENBLOG=\"${_OPENBLOG}\""                   >> ${writeTo}
   echo "_OPENCHURCH1=\"${_OPENCHURCH1}\""             >> ${writeTo}

@@ -192,6 +192,7 @@
 ### FSR ----------- Feature Server
 ### GDR ----------- Guardr
 ### OA7 ----------- OpenAtrium D7
+### OAD ----------- OpenAid
 ### OAY ----------- OpenAcademy
 ### OBG ----------- OpenBlog
 ### OCH ----------- OpenChurch 1
