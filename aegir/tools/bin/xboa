@@ -919,10 +919,7 @@ sub_ssl_gen() {
 }
 
 ssl_gen() {
-  if [ -z "$vm" ]; then
-    echo "requirement 1st argument empty"
-    exit 1
-  elif [ ! -e "/root/.ssl.proxy.cnf" ]; then
+  if [ ! -e "/root/.ssl.proxy.cnf" ]; then
     echo "please create /root/.ssl.proxy.cnf first"
     exit 1
   elif [ ! -e "/var/xdrago/conf/pln_proxy.conf" ]; then
@@ -935,7 +932,7 @@ ssl_gen() {
     echo "vm $vm aegir master not ready"
     exit 1
   else
-    [ -e "/root/.ssl.proxy.cnf" ] && sub_ssl_gen $vm
+    [ -e "/root/.ssl.proxy.cnf" ] && sub_ssl_gen
   fi
 }
 
