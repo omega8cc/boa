@@ -34,7 +34,7 @@ if_install_chive() {
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] || [[ "${_XTRAS_LIST}" =~ "CHV" ]]; then
     _CHIVE_VHOST="${mtrNgx}/vhost.d/chive.${_THIS_FRONT}"
     if [ ! -d "/var/www/chive" ] \
-      || [ ! -f "$_CHIVE_VHOST" ] \
+      || [ ! -f "${_CHIVE_VHOST}" ] \
       || [ ! -f "${pthLog}/chive-${_CHIVE_VRN}.fix-dns-vhost-wildcard.log" ]; then
       echo " "
       if prompt_yes_no "Do you want to install Chive Manager?" ; then
@@ -45,10 +45,10 @@ if_install_chive() {
         get_dev_arch "chive_${_CHIVE_VRN}.tar.gz"
         validate_public_ip &> /dev/null
         validate_xtras_ip &> /dev/null
-        cp -af ${locCnf}/nginx_sql_chive.conf $_CHIVE_VHOST
-        sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"              $_CHIVE_VHOST
-        sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"            $_CHIVE_VHOST
-        sed -i "s/chive_name/chive.${_THIS_FRONT} ${_THISHTIP}/g"  $_CHIVE_VHOST
+        cp -af ${locCnf}/nginx_sql_chive.conf ${_CHIVE_VHOST}
+        sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"            ${_CHIVE_VHOST}
+        sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g"          ${_CHIVE_VHOST}
+        sed -i "s/chive_name/chive.${_THIS_FRONT} ${_THISHTIP}/g"  ${_CHIVE_VHOST}
         touch ${pthLog}/chive-${_CHIVE_VRN}.fix-dns-vhost-wildcard.log
         msg "INFO: Chive Manager installed"
       else
@@ -57,11 +57,11 @@ if_install_chive() {
     fi
   fi
   if [ -d "/var/www/chive" ]; then
-    if [ ! -z "$_PHP_CN" ]; then
+    if [ ! -z "${_PHP_CN}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: _PHP_CN set to $_PHP_CN for Chive Manager"
+        msg "INFO: _PHP_CN set to ${_PHP_CN} for Chive Manager"
       fi
-      chown -R $_PHP_CN:www-data /var/www/chive
+      chown -R ${_PHP_CN}:www-data /var/www/chive
     else
       msg "NOTE: _PHP_CN not set for Chive Manager"
       chown -R www-data:www-data /var/www/chive
@@ -75,7 +75,7 @@ if_install_sqlbuddy() {
   if [[ "${_XTRAS_LIST}" =~ "BDD" ]]; then
     _SQLBUDDY_VHOST="${mtrNgx}/vhost.d/sqlbuddy.${_THIS_FRONT}"
     if [ ! -d "/var/www/sqlbuddy" ] \
-      || [ ! -f "$_SQLBUDDY_VHOST" ] \
+      || [ ! -f "${_SQLBUDDY_VHOST}" ] \
       || [ ! -f "${pthLog}/sqlbuddy.fix-dns-vhost-wildcard.log" ]; then
       echo " "
       if prompt_yes_no "Do you want to install SQL Buddy Manager?" ; then
@@ -86,10 +86,10 @@ if_install_sqlbuddy() {
         get_dev_arch "sqlbuddy_1_3_3.tar.gz"
         validate_public_ip &> /dev/null
         validate_xtras_ip &> /dev/null
-        cp -af ${locCnf}/nginx_sql_buddy.conf $_SQLBUDDY_VHOST
-        sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"   $_SQLBUDDY_VHOST
-        sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_SQLBUDDY_VHOST
-        sed -i "s/buddy_name/sqlbuddy.${_THIS_FRONT}/g"   $_SQLBUDDY_VHOST
+        cp -af ${locCnf}/nginx_sql_buddy.conf ${_SQLBUDDY_VHOST}
+        sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"   ${_SQLBUDDY_VHOST}
+        sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_SQLBUDDY_VHOST}
+        sed -i "s/buddy_name/sqlbuddy.${_THIS_FRONT}/g"   ${_SQLBUDDY_VHOST}
         touch ${pthLog}/sqlbuddy.fix-dns-vhost-wildcard.log
         msg "INFO: SQL Buddy Manager installed"
       else
@@ -98,11 +98,11 @@ if_install_sqlbuddy() {
     fi
   fi
   if [ -d "/var/www/sqlbuddy" ]; then
-    if [ ! -z "$_PHP_CN" ]; then
+    if [ ! -z "${_PHP_CN}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: _PHP_CN set to $_PHP_CN for SQL Buddy Manager"
+        msg "INFO: _PHP_CN set to ${_PHP_CN} for SQL Buddy Manager"
       fi
-      chown -R $_PHP_CN:www-data /var/www/sqlbuddy
+      chown -R ${_PHP_CN}:www-data /var/www/sqlbuddy
     else
       msg "NOTE: _PHP_CN not set for SQL Buddy Manager"
       chown -R www-data:www-data /var/www/sqlbuddy
@@ -114,15 +114,15 @@ if_install_sqlbuddy() {
 
 fix_collectd_rrd_syslog_flood() {
   _COLLECTD_CNF="/etc/collectd/collectd.conf"
-  if [ -e "$_COLLECTD_CNF" ]; then
-    _COLLECTD_CNF_TEST=$(grep "rootfs" $_COLLECTD_CNF 2>&1)
-    if [[ "$_COLLECTD_CNF_TEST" =~ "rootfs" ]]; then
+  if [ -e "${_COLLECTD_CNF}" ]; then
+    _COLLECTD_CNF_TEST=$(grep "rootfs" ${_COLLECTD_CNF} 2>&1)
+    if [[ "${_COLLECTD_CNF_TEST}" =~ "rootfs" ]]; then
       _DO_NOTHING=YES
     else
-      echo "<Plugin df>"                 >> $_COLLECTD_CNF
-      echo "        FSType \"rootfs\""   >> $_COLLECTD_CNF
-      echo "        IgnoreSelected true" >> $_COLLECTD_CNF
-      echo "</Plugin>"                   >> $_COLLECTD_CNF
+      echo "<Plugin df>"                 >> ${_COLLECTD_CNF}
+      echo "        FSType \"rootfs\""   >> ${_COLLECTD_CNF}
+      echo "        IgnoreSelected true" >> ${_COLLECTD_CNF}
+      echo "</Plugin>"                   >> ${_COLLECTD_CNF}
       mrun "service collectd restart" &> /dev/null
     fi
   fi
@@ -131,17 +131,17 @@ fix_collectd_rrd_syslog_flood() {
 
 fix_collectd_nginx() {
   _COLLECTD_CNF="/etc/collectd/collectd.conf"
-  if [ -e "$_COLLECTD_CNF" ]; then
-    _COLLECTD_CNF_TEST=$(grep "^LoadPlugin nginx" $_COLLECTD_CNF 2>&1)
-    if [[ "$_COLLECTD_CNF_TEST" =~ "LoadPlugin nginx" ]]; then
+  if [ -e "${_COLLECTD_CNF}" ]; then
+    _COLLECTD_CNF_TEST=$(grep "^LoadPlugin nginx" ${_COLLECTD_CNF} 2>&1)
+    if [[ "${_COLLECTD_CNF_TEST}" =~ "LoadPlugin nginx" ]]; then
       _DO_NOTHING=YES
     else
-      echo "<Plugin nginx>"                                >> $_COLLECTD_CNF
-      echo "        URL \"http://127.0.0.1/nginx_status\"" >> $_COLLECTD_CNF
-      echo "        VerifyPeer false"                      >> $_COLLECTD_CNF
-      echo "        VerifyHost false"                      >> $_COLLECTD_CNF
-      echo "</Plugin>"                                     >> $_COLLECTD_CNF
-      sed -i "s/^#LoadPlugin nginx/LoadPlugin nginx/g"        $_COLLECTD_CNF
+      echo "<Plugin nginx>"                                >> ${_COLLECTD_CNF}
+      echo "        URL \"http://127.0.0.1/nginx_status\"" >> ${_COLLECTD_CNF}
+      echo "        VerifyPeer false"                      >> ${_COLLECTD_CNF}
+      echo "        VerifyHost false"                      >> ${_COLLECTD_CNF}
+      echo "</Plugin>"                                     >> ${_COLLECTD_CNF}
+      sed -i "s/^#LoadPlugin nginx/LoadPlugin nginx/g"        ${_COLLECTD_CNF}
       mrun "service collectd restart" &> /dev/null
     fi
   fi
@@ -152,13 +152,13 @@ if_install_collectd() {
     _CGP_VHOST="${mtrNgx}/vhost.d/cgp.${_THIS_FRONT}"
     if [ ! -e "/var/run/cloud_vhost.pid" ]; then
       if [ ! -d "/var/www/cgp" ] \
-        || [ ! -f "$_CGP_VHOST" ] \
+        || [ ! -f "${_CGP_VHOST}" ] \
         || [ ! -f "${pthLog}/cgp-${_CGP_VRN}.fix-dns-vhost-wildcard.log" ]; then
         echo " "
         if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
           true
           msg "INFO: Installing Collectd Graph Panel..."
-          st_runner "$_INSTAPP collectd" 2> /dev/null
+          st_runner "${_INSTAPP} collectd" 2> /dev/null
           rm -f -r /var/www/cgp
           cd /var/www
           get_dev_arch "cgp-${_CGP_VRN}.tar.gz"
@@ -169,10 +169,10 @@ if_install_collectd() {
           sed -i "s/'uncategorized'/'Barracuda Server'/g" /var/www/cgp/index.php
           validate_public_ip &> /dev/null
           validate_xtras_ip &> /dev/null
-          cp -af ${locCnf}/nginx_sql_cgp.conf $_CGP_VHOST
-          sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"    $_CGP_VHOST
-          sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"  $_CGP_VHOST
-          sed -i "s/cgp_name/cgp.${_THIS_FRONT}/g"           $_CGP_VHOST
+          cp -af ${locCnf}/nginx_sql_cgp.conf ${_CGP_VHOST}
+          sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"    ${_CGP_VHOST}
+          sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g"  ${_CGP_VHOST}
+          sed -i "s/cgp_name/cgp.${_THIS_FRONT}/g"           ${_CGP_VHOST}
           st_runner "update-rc.d collectd defaults" &> /dev/null
           touch ${pthLog}/cgp-${_CGP_VRN}.fix-dns-vhost-wildcard.log
           msg "INFO: Collectd Graph Panel installed"
@@ -192,11 +192,11 @@ if_install_collectd() {
     rm -f -r /var/www/cgp
   fi
   if [ -d "/var/www/cgp" ]; then
-    if [ ! -z "$_PHP_CN" ]; then
+    if [ ! -z "${_PHP_CN}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: _PHP_CN set to $_PHP_CN for Collectd Graph Panel"
+        msg "INFO: _PHP_CN set to ${_PHP_CN} for Collectd Graph Panel"
       fi
-      chown -R $_PHP_CN:www-data /var/www/cgp
+      chown -R ${_PHP_CN}:www-data /var/www/cgp
     else
       msg "NOTE: _PHP_CN not set for Collectd Graph Panel"
       chown -R www-data:www-data /var/www/cgp
@@ -226,7 +226,7 @@ if_install_hhvm() {
               ${aptLiSys}.d/hhvm.list
           fi
           _KEYS_SERVER_TEST=FALSE
-          until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]]; do
+          until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
             rm -f /var/opt/hhvm.gpg.key*
             cd /var/opt
             wget -q -U iCab http://dl.hhvm.com/conf/hhvm.gpg.key
@@ -259,7 +259,7 @@ if_install_webmin() {
         echo "deb http://webmin.mirror.somersettechsolutions.co.uk/repository \
           sarge contrib" | fmt -su -w 2500 >> ${aptLiSys}.d/webmin.list
         _KEYS_SERVER_TEST=FALSE
-        until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]]; do
+        until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
           rm -f jcameron-key.asc*
           wget -q -U iCab ${urlDev}/jcameron-key.asc
           _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.asc 2>&1)
@@ -269,7 +269,7 @@ if_install_webmin() {
         rm -f jcameron-key.asc*
         touch ${pthLog}/webmin_update_apt_src.log
         st_runner "apt-get update -y --force-yes" &> /dev/null
-        st_runner "$_INSTAPP webmin \
+        st_runner "${_INSTAPP} webmin \
                              libxml-simple-perl \
                              libcrypt-ssleay-perl" 2> /dev/null
         update-rc.d webmin defaults &> /dev/null
@@ -283,12 +283,12 @@ if_install_webmin() {
 
 if_install_bind() {
   _CHECK_OS=$(grep "Ubuntu.*LTS" /etc/issue.net 2>&1)
-  if [[ "$_CHECK_OS" =~ "Ubuntu" ]]; then
+  if [[ "${_CHECK_OS}" =~ "Ubuntu" ]]; then
     _CHECK_OS=ULTS
   else
     _CHECK_OS=OTHER
   fi
-  if [[ "${_XTRAS_LIST}" =~ "BND" ]] && [ "$_CHECK_OS" = "OTHER" ]; then
+  if [[ "${_XTRAS_LIST}" =~ "BND" ]] && [ "${_CHECK_OS}" = "OTHER" ]; then
     if [ ! -e "/usr/sbin/named" ] || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       echo " "
       if prompt_yes_no "Do you want to install Bind9 DNS Server?" ; then
@@ -299,7 +299,7 @@ if_install_bind() {
           find_correct_ip
           _THISHTIP="${_LOC_IP}"
         fi
-        st_runner "$_INSTAPP bind9" 2> /dev/null
+        st_runner "${_INSTAPP} bind9" 2> /dev/null
         cp -af /etc/bind/named.conf.options \
           ${vBs}/named.conf.options.pre-${_X_VERSION}-${_NOW}
         cp -af ${locCnf}/named.conf.options /etc/bind/named.conf.options

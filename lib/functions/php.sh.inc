@@ -382,7 +382,7 @@ install_php_extensions() {
       msg "INFO: Building GEOS extension for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
         st_runner "apt-get update -y --force-yes" &> /dev/null
-        st_runner "$_INSTAPP libgeos-dev libgeos-c1 phpunit" 2> /dev/null
+        st_runner "${_INSTAPP} libgeos-dev libgeos-c1 phpunit" 2> /dev/null
         touch ${pthLog}/geos-${_X_VERSION}.log
       fi
       cd /var/opt
@@ -509,7 +509,7 @@ update_php_extensions() {
       msg "INFO: Building GEOS upgrade for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
         st_runner "apt-get update -y --force-yes" &> /dev/null
-        st_runner "$_INSTAPP libgeos-dev libgeos-c1 phpunit" 2> /dev/null
+        st_runner "${_INSTAPP} libgeos-dev libgeos-c1 phpunit" 2> /dev/null
         touch ${pthLog}/geos-${_X_VERSION}.log
       fi
       cd /var/opt
@@ -683,7 +683,7 @@ update_newrelic() {
       msg "INFO: Uninstalling previous version of New Relic Apps Monitor..."
       cd /var/opt
       _KEYS_SERVER_TEST=FALSE
-      until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]]; do
+      until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
         rm -f 548C16BF.gpg*
         wget -q -U iCab http://download.newrelic.com/548C16BF.gpg
         _KEYS_SERVER_TEST=$(grep GnuPG 548C16BF.gpg 2>&1)
@@ -799,7 +799,7 @@ install_newrelic() {
       msg "INFO: Installing New Relic Apps Monitor..."
       cd /var/opt
       _KEYS_SERVER_TEST=FALSE
-      until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]]; do
+      until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
         rm -f 548C16BF.gpg*
         wget -q -U iCab http://download.newrelic.com/548C16BF.gpg
         _KEYS_SERVER_TEST=$(grep GnuPG 548C16BF.gpg 2>&1)

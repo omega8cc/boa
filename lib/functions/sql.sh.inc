@@ -217,13 +217,13 @@ tune_sql_memory_limits() {
 install_mariadb_sql() {
   cd /var/opt
   _KEYS_SERVER_TEST=FALSE
-  until [[ "$_KEYS_SERVER_TEST" =~ "MariaDB" ]]; do
+  until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
     _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
       --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
     sleep 2
   done
   if [ "${_OSV}" = "trusty" ]; then
-    st_runner "$_INSTAPP software-properties-common" 2> /dev/null
+    st_runner "${_INSTAPP} software-properties-common" 2> /dev/null
   fi
   if [ "${_THIS_OS}" = "Debian" ]; then
     _OSN=debian
@@ -334,11 +334,11 @@ install_with_aptitude_sql() {
     fi
   fi
   install_mariadb_sql
-  st_runner "$_INSTAPP mytop" 2> /dev/null
+  st_runner "${_INSTAPP} mytop" 2> /dev/null
   touch ${pthLog}/fixed-mytop-mariadb.log
-  st_runner "$_INSTAPP $SQLDEB" 2> /dev/null
-  st_runner "$_INSTAPP $SQLADD" 2> /dev/null
-  st_runner "$_INSTAPP $SQLDEB" 2> /dev/null
+  st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
+  st_runner "${_INSTAPP} ${SQLADD}" 2> /dev/null
+  st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
   if [ "${_EASY_SETUP}" = "DBHD" ] \
     || [ -e "/etc/mysql/conf.d/galera.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
@@ -506,7 +506,7 @@ install_mariadb_server() {
       rm -f ${aptLiSys}.d/percona.list
       rm -f ${aptLiSys}.d/ourdelta.list
       _KEYS_SERVER_TEST=FALSE
-      until [[ "$_KEYS_SERVER_TEST" =~ "MariaDB" ]]; do
+      until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
         _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
           --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
         sleep 2

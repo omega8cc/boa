@@ -57,7 +57,8 @@ force_advanced_nginx_config() {
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
   if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ] \
-    || [[ "${_SSL_ITD}" =~ "1.0.1" ]]; then
+    || [[ "${_SSL_ITD}" =~ "1.0.1" ]] \
+    || [[ "${_SSL_ITD}" =~ "1.0.2" ]]; then
     _PFS_READY=YES
   else
     _PFS_READY=NO
@@ -88,14 +89,14 @@ force_advanced_nginx_config() {
   else
     _ALLOW_NGINX_FORWARD_SECRECY=NO
   fi
-  if [ "$_ALLOW_NGINX_FORWARD_SECRECY" = "YES" ]; then
-    sed -i "s/ssl_protocols .*/ssl_protocols                $_SSL_PROTOCOLS/g" \
+  if [ "${_ALLOW_NGINX_FORWARD_SECRECY}" = "YES" ]; then
+    sed -i "s/ssl_protocols .*/ssl_protocols                ${_SSL_PROTOCOLS}/g" \
       ${mtrNgx}/pre.d/*.conf &> /dev/null
-    sed -i "s/ssl_protocols .*/ssl_protocols                $_SSL_PROTOCOLS/g" \
+    sed -i "s/ssl_protocols .*/ssl_protocols                ${_SSL_PROTOCOLS}/g" \
       ${mtrNgx}/vhost.d/* &> /dev/null
-    sed -i "s/ssl_ciphers .*/ssl_ciphers                  $_SSL_CIPHERS/g" \
+    sed -i "s/ssl_ciphers .*/ssl_ciphers                  ${_SSL_CIPHERS}/g" \
       ${mtrNgx}/pre.d/*.conf &> /dev/null
-    sed -i "s/ssl_ciphers .*/ssl_ciphers                  $_SSL_CIPHERS/g" \
+    sed -i "s/ssl_ciphers .*/ssl_ciphers                  ${_SSL_CIPHERS}/g" \
       ${mtrNgx}/vhost.d/* &> /dev/null
   fi
   if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
@@ -129,7 +130,7 @@ detect_cdorked_malware() {
     rm -f -r /var/opt/foo_bar*
     gcc -o /var/opt/foo_bar ${bldPth}/aegir/helpers/dump_cdorked_config.c &> /dev/null
     _C_DORKED_TEST=$(/var/opt/foo_bar 2>&1)
-    if [[ "$_C_DORKED_TEST" =~ "No shared memory matching Cdorked signature" ]]; then
+    if [[ "${_C_DORKED_TEST}" =~ "No shared memory matching Cdorked signature" ]]; then
       _DO_NOTHING=YES
       ### msg "INFO: No Linux/Cdorked.A malware traces found - system clean"
     else
@@ -156,80 +157,80 @@ install_upgrade_nginx() {
     _NGINX_F_ITD=$(/usr/sbin/nginx -v 2>&1 | tr -d "\n" \
       | cut -d" " -f4 | awk '{ print $1}' 2>&1)
     _NGINX_V_ITD=$(/usr/sbin/nginx -V 2>&1)
-    if [ -z "$_NGINX_F_ITD" ]; then
+    if [ -z "${_NGINX_F_ITD}" ]; then
       _NGINX_F_ITD=$(/usr/sbin/nginx -v 2>&1 | tr -d "\n" \
         | cut -d" " -f3 | awk '{ print $1}' 2>&1)
     fi
     _NGINX_F_VERSION="${_CUSTOM_NAME}/${_NGINX_VRN}"
-    if [ "$_NGINX_F_ITD" = "$_NGINX_F_VERSION" ] \
+    if [ "${_NGINX_F_ITD}" = "${_NGINX_F_VERSION}" ] \
       && [ "${_STATUS}" = "UPGRADE" ]; then
       _NGINX_INSTALL_REQUIRED=NO
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed Nginx version $_NGINX_F_ITD, OK"
+        msg "INFO: Installed Nginx version ${_NGINX_F_ITD}, OK"
       fi
-    elif [ "$_NGINX_F_ITD" = "$_NGINX_F_VERSION" ] \
+    elif [ "${_NGINX_F_ITD}" = "${_NGINX_F_VERSION}" ] \
       && [ "${_STATUS}" = "INIT" ]; then
       _NGINX_INSTALL_REQUIRED=NO
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed Nginx version $_NGINX_F_ITD, OK"
+        msg "INFO: Installed Nginx version ${_NGINX_F_ITD}, OK"
       fi
-    elif [ "$_NGINX_F_ITD" != "$_NGINX_F_VERSION" ]; then
+    elif [ "${_NGINX_F_ITD}" != "${_NGINX_F_VERSION}" ]; then
       _NGINX_INSTALL_REQUIRED=YES
-      msg "INFO: Installed Nginx version $_NGINX_F_ITD, upgrade required"
+      msg "INFO: Installed Nginx version ${_NGINX_F_ITD}, upgrade required"
     fi
-    if [ "$_NGINX_F_ITD" = "$_NGINX_F_VERSION" ]; then
-      if [[ "$_NGINX_V_ITD" =~ "geoip" ]]; then
+    if [ "${_NGINX_F_ITD}" = "${_NGINX_F_VERSION}" ]; then
+      if [[ "${_NGINX_V_ITD}" =~ "geoip" ]]; then
         _DO_NOTHING=YES
       else
         _NGINX_INSTALL_REQUIRED=YES
-        msg "INFO: Installed Nginx version $_NGINX_F_ITD"
+        msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
         msg "INFO: Nginx forced rebuild to include geoip module"
       fi
-      if [[ "$_NGINX_V_ITD" =~ "nginx-development-kit" ]]; then
+      if [[ "${_NGINX_V_ITD}" =~ "nginx-development-kit" ]]; then
         _NGINX_INSTALL_REQUIRED=YES
         msg "INFO: Nginx rebuild required to avoid apt-get overwrite"
       fi
-      if [[ "$_NGINX_V_ITD" =~ "http_flv_module" ]] \
-        && [[ "$_NGINX_V_ITD" =~ "http_mp4_module" ]]; then
+      if [[ "${_NGINX_V_ITD}" =~ "http_flv_module" ]] \
+        && [[ "${_NGINX_V_ITD}" =~ "http_mp4_module" ]]; then
         _DO_NOTHING=YES
       else
         _NGINX_INSTALL_REQUIRED=YES
-        msg "INFO: Installed Nginx version $_NGINX_F_ITD"
+        msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
         msg "INFO: Nginx forced rebuild to include pseudo-streaming support"
       fi
       if [ "${_NGINX_LDAP}" = "YES" ]; then
-        if [[ "$_NGINX_V_ITD" =~ "nginx-auth-ldap" ]]; then
+        if [[ "${_NGINX_V_ITD}" =~ "nginx-auth-ldap" ]]; then
           _DO_NOTHING=YES
         else
           _NGINX_INSTALL_REQUIRED=YES
-          msg "INFO: Installed Nginx version $_NGINX_F_ITD"
+          msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
           msg "INFO: Nginx forced rebuild to include LDAP support"
         fi
       fi
       if [ "${_PURGE_MODE}" = "ON" ]; then
-        if [[ "$_NGINX_V_ITD" =~ "purge" ]]; then
+        if [[ "${_NGINX_V_ITD}" =~ "purge" ]]; then
           _DO_NOTHING=YES
         else
           _NGINX_INSTALL_REQUIRED=YES
-          msg "INFO: Installed Nginx version $_NGINX_F_ITD"
+          msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
           msg "INFO: Nginx forced rebuild to include purge module"
         fi
       fi
       if [ "${_NGINX_NAXSI}" = "YES" ]; then
-        if [[ "$_NGINX_V_ITD" =~ "naxsi" ]]; then
+        if [[ "${_NGINX_V_ITD}" =~ "naxsi" ]]; then
           _DO_NOTHING=YES
         else
           _NGINX_INSTALL_REQUIRED=YES
-          msg "INFO: Installed Nginx version $_NGINX_F_ITD"
+          msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
           msg "INFO: Nginx forced rebuild to include NAXSI module"
         fi
       fi
       if [ "${_NGINX_SPDY}" = "YES" ]; then
-        if [[ "$_NGINX_V_ITD" =~ "http_spdy_module" ]]; then
+        if [[ "${_NGINX_V_ITD}" =~ "http_spdy_module" ]]; then
           _DO_NOTHING=YES
         else
           _NGINX_INSTALL_REQUIRED=YES
-          msg "INFO: Installed Nginx version $_NGINX_F_ITD"
+          msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
           msg "INFO: Nginx forced rebuild to include SPDY support"
         fi
       fi
@@ -242,7 +243,7 @@ install_upgrade_nginx() {
     _NGINX_INSTALL_REQUIRED=YES
     msg "INFO: Nginx rebuild required to remove possible Linux/Cdorked.A malware"
   fi
-  if [ "$_NGINX_INSTALL_REQUIRED" = "YES" ] \
+  if [ "${_NGINX_INSTALL_REQUIRED}" = "YES" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_NGX_FORCE_REINSTALL}" = "YES" ]; then
     if [ "${_STATUS}" = "UPGRADE" ]; then
@@ -268,14 +269,14 @@ install_upgrade_nginx() {
       _NGINX_EXTRA=""
     fi
     if [ -e "/var/opt/nginx-upload-progress-module" ]; then
-      _NGINX_EXTRA="--add-module=/var/opt/nginx-upload-progress-module/ $_NGINX_EXTRA"
+      _NGINX_EXTRA="--add-module=/var/opt/nginx-upload-progress-module/ ${_NGINX_EXTRA}"
     fi
     if [ "${_NGINX_LDAP}" = "YES" ]; then
       cd /var/opt
       rm -f -r /var/opt/nginx-auth-ldap*
       get_dev_src "nginx-auth-ldap.tar.gz"
       if [ -e "/var/opt/nginx-auth-ldap" ]; then
-        _NGINX_EXTRA="--add-module=/var/opt/nginx-auth-ldap/ $_NGINX_EXTRA"
+        _NGINX_EXTRA="--add-module=/var/opt/nginx-auth-ldap/ ${_NGINX_EXTRA}"
       fi
     fi
     if [ "${_NGINX_NAXSI}" = "YES" ]; then
@@ -283,11 +284,11 @@ install_upgrade_nginx() {
       rm -f -r /var/opt/nginx-naxsi*
       get_dev_src "nginx-naxsi.tar.gz"
       if [ -e "/var/opt/nginx-naxsi" ]; then
-        _NGINX_EXTRA="--add-module=/var/opt/nginx-naxsi/naxsi_src/ $_NGINX_EXTRA"
+        _NGINX_EXTRA="--add-module=/var/opt/nginx-naxsi/naxsi_src/ ${_NGINX_EXTRA}"
       fi
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
-      _NGINX_EXTRA="--with-http_spdy_module $_NGINX_EXTRA"
+      _NGINX_EXTRA="--with-http_spdy_module ${_NGINX_EXTRA}"
     fi
     cd /var/opt/nginx-${_NGINX_VRN}
     st_runner "sh ./configure \
@@ -314,7 +315,7 @@ install_upgrade_nginx() {
       --without-http_uwsgi_module \
       --with-ipv6 \
       --with-http_geoip_module \
-      --with-debug $_NGINX_EXTRA" 2> /dev/null
+      --with-debug ${_NGINX_EXTRA}" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
@@ -405,7 +406,7 @@ fix_nginx_mime() {
 
 nginx_wildcard_ssl() {
   _WILD_SSL_VHOST="${mtrNgx}/pre.d/nginx_wild_ssl.conf"
-  if [ ! -e "$_WILD_SSL_VHOST" ]; then
+  if [ ! -e "${_WILD_SSL_VHOST}" ]; then
     msg "INFO: Installing default SSL Wildcard Nginx Proxy..."
     _HTTPS_TEST=$(netstat -ln | grep :443 2>&1)
     if [[ "$_HTTPS_TEST" =~ "443" ]]; then
@@ -435,9 +436,9 @@ EOF
         -newkey rsa:4096 \
         -keyout /etc/ssl/private/nginx-wild-ssl.key \
         -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
-      cp -af ${locCnf}/nginx_wild_ssl.conf $_WILD_SSL_VHOST
-      sed -i "s/127.0.0.1:80/localhost:80/g" $_WILD_SSL_VHOST &> /dev/null
-      sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_WILD_SSL_VHOST &> /dev/null
+      cp -af ${locCnf}/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
+      sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST} &> /dev/null
+      sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST} &> /dev/null
       mkdir -p /data/conf
       if [ -e "${locCnf}/global.inc" ]; then
         cp -af ${locCnf}/global.inc /data/conf/global.inc
@@ -453,15 +454,15 @@ EOF
       mrun "service nginx start" &> /dev/null
     fi
   else
-    _WILDCARD_SSL_TEST=$(grep "localhost:80" $_WILD_SSL_VHOST 2>&1)
-    if [[ "$_WILDCARD_SSL_TEST" =~ "localhost:80" ]]; then
+    _WILDCARD_SSL_TEST=$(grep "localhost:80" ${_WILD_SSL_VHOST} 2>&1)
+    if [[ "${_WILDCARD_SSL_TEST}" =~ "localhost:80" ]]; then
       _DO_NOTHING=YES
     else
       validate_public_ip &> /dev/null
       validate_xtras_ip &> /dev/null
-      cp -af ${locCnf}/nginx_wild_ssl.conf $_WILD_SSL_VHOST
-      sed -i "s/127.0.0.1:80/localhost:80/g" $_WILD_SSL_VHOST
-      sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_WILD_SSL_VHOST
+      cp -af ${locCnf}/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
+      sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST}
+      sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST}
     fi
   fi
 }
@@ -516,7 +517,8 @@ fix_update_nginx_config() {
     _SSL_ITD=$(openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}' 2>&1)
 
     if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ] \
-      || [[ "${_SSL_ITD}" =~ "1.0.1" ]]; then
+      || [[ "${_SSL_ITD}" =~ "1.0.1" ]] \
+      || [[ "${_SSL_ITD}" =~ "1.0.2" ]]; then
       _PFS_READY=YES
     else
       _PFS_READY=NO
@@ -547,14 +549,14 @@ fix_update_nginx_config() {
     else
       _ALLOW_NGINX_FORWARD_SECRECY=NO
     fi
-    if [ "$_ALLOW_NGINX_FORWARD_SECRECY" = "YES" ]; then
-      sed -i "s/ssl_protocols .*/ssl_protocols                $_SSL_PROTOCOLS/g" \
+    if [ "${_ALLOW_NGINX_FORWARD_SECRECY}" = "YES" ]; then
+      sed -i "s/ssl_protocols .*/ssl_protocols                ${_SSL_PROTOCOLS}/g" \
         /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
-      sed -i "s/ssl_protocols .*/ssl_protocols                $_SSL_PROTOCOLS/g" \
+      sed -i "s/ssl_protocols .*/ssl_protocols                ${_SSL_PROTOCOLS}/g" \
         /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
-      sed -i "s/ssl_ciphers .*/ssl_ciphers                  $_SSL_CIPHERS/g" \
+      sed -i "s/ssl_ciphers .*/ssl_ciphers                  ${_SSL_CIPHERS}/g" \
         /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
-      sed -i "s/ssl_ciphers .*/ssl_ciphers                  $_SSL_CIPHERS/g" \
+      sed -i "s/ssl_ciphers .*/ssl_ciphers                  ${_SSL_CIPHERS}/g" \
         /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
     fi
 

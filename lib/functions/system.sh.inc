@@ -1489,7 +1489,7 @@ run_aptitude_full_upgrade() {
     -o Dpkg::Options::=--force-confold" 2> /dev/null
   if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]] \
     && [ -e "${pthLog}/fixed-mytop-mariadb.log" ]; then
-    st_runner "$_INSTAPP mytop" 2> /dev/null
+    st_runner "${_INSTAPP} mytop" 2> /dev/null
   fi
 }
 
@@ -2678,7 +2678,7 @@ finale() {
 }
 
 install_with_aptitude_deps() {
-  st_runner "$_INSTAPP ${_DEBDEPS}" 2> /dev/null
+  st_runner "${_INSTAPP} ${_DEBDEPS}" 2> /dev/null
   if [ -x "/usr/bin/gpg2" ]; then
     _GPG=gpg2
   else
@@ -3020,7 +3020,7 @@ update_webmin_apt() {
       echo "deb http://webmin.mirror.somersettechsolutions.co.uk/repository \
         sarge contrib" | fmt -su -w 2500 >> ${aptLiSys}.d/webmin.list
       _KEYS_SERVER_TEST=FALSE
-      until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]]; do
+      until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
         rm -f jcameron-key.asc*
         wget -q -U iCab ${urlDev}/jcameron-key.asc
         _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.asc 2>&1)
@@ -3116,7 +3116,7 @@ sys_packages_update() {
     if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       csf -x &> /dev/null
     fi
-    until [[ "$_KEYS_SERVER_TEST" =~ "MariaDB" ]]; do
+    until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
       _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
         --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
       sleep 2
