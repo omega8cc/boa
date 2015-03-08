@@ -532,7 +532,7 @@ setup() {
     ln -s ${optBin}/barracuda /usr/local/bin/barracuda
     ln -s ${optBin}/octopus   /usr/local/bin/octopus
   fi
-  rm -f ${optBin}/{autoupboa*,barracuda*,boa*,ffmirror*}
+  rm -f ${optBin}/{autoupboa*,barracuda*,boa*,ffmirror*,xboa*}
   rm -f ${optBin}/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   curl ${crlGet} "${urlHmr}/${tBn}/autoupboa"      -o ${optBin}/autoupboa
   curl ${crlGet} "${urlHmr}/${tBn}/barracuda"      -o ${optBin}/barracuda
@@ -543,6 +543,7 @@ setup() {
   curl ${crlGet} "${urlHmr}/${tBn}/sqlmagic"       -o ${optBin}/sqlmagic
   curl ${crlGet} "${urlHmr}/${tBn}/syncpass"       -o ${optBin}/syncpass
   curl ${crlGet} "${urlHmr}/${tBn}/thinkdifferent" -o ${optBin}/thinkdifferent
+  curl ${crlGet} "${urlHmr}/${tBn}/xboa"           -o ${optBin}/xboa
   echo "### ${_TODAY} ###" >> ${optBin}/boa
   echo "### ${_TODAY} ###" >> ${optBin}/barracuda
   echo "### ${_TODAY} ###" >> ${optBin}/octopus
@@ -554,7 +555,7 @@ setup() {
     curl ${crlGet} "${urlHmr}/${tBn}/duobackboa"   -o ${optBin}/duobackboa
   fi
   chmod 700 ${optBin}/{autoupboa,backboa,barracuda,boa,duobackboa}
-  chmod 700 ${optBin}/{ffmirror,octopus,syncpass}
+  chmod 700 ${optBin}/{ffmirror,octopus,syncpass,xboa}
   chmod 755 ${optBin}/{randpass,sqlmagic,thinkdifferent}
   echo
   echo "BOA Meta Installer setup completed"
