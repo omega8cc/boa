@@ -4,18 +4,9 @@ Your Aegir Hosting System has been upgraded to version BOA-2.4.0
 
   https://aegir.url.name
 
-This new BOA release includes 7 updated Aegir platforms, over 28 new features
-and enhancements, 12 new software versions, over 36 important changes, plus
-over 100 bug fixes, with most notable features and changes listed below:
-
-@=> Added Support for latest Drupal 8.0.0-beta with D8B platform keyword
-@=> Added Support for latest PHP 5.6
-@=> Cron is run only for live sites with no tmp, temp, dev, test etc keywords
-@=> PHP-FPM runs now as a separate, very limited system user
-@=> Removed Support for legacy PHP 5.2
-@=> Sites Names Exceptions and Special Keywords have changed
-@=> The built-in registry-rebuild on every Verify task is not run by default
-@=> The Dev-Mode works only for site aliases, no longer for main site name
+This new BOA release includes one new and 12 updated Aegir platforms,
+8 new features and enhancements, 15 new software versions, 10 changes,
+plus over 38 bug fixes.
 
 We recommend that you upgrade your sites using this safe workflow:
 
@@ -24,7 +15,7 @@ We recommend that you upgrade your sites using this safe workflow:
 You can find all details on how to use new features, along with all
 other changes explained in the release notes and changelog available at:
 
-  https://omega8.cc/boa-240-full-edition-349
+  https://omega8.cc/boa-241-full-edition-351
 
 It is always highly recommended that you read extensive release notes
 and changelog posted on our website for previous BOA Editions, so you
