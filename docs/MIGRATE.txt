@@ -28,7 +28,7 @@
 
   3. Just change the machine powering your BOA, magically, on the fly.
 
-@=> The steps you need to follow are listed below.
+@=> The steps you need to follow are listed below
 
   The 'source-host' is a placeholder for the source system FQDN hostname.
   The 'target-host' is a placeholder for the target system FQDN hostname.
