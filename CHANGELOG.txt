@@ -1,6 +1,6 @@
 
 ### Stable BOA-2.4.1 Release - Full Edition
-### Date: TBD
+### Date: Sun Mar  8 14:56:51 PDT 2015
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.1
 
   @=> Includes Aegir Hostmaster 2.x-head with improvements
@@ -9,9 +9,9 @@
 
 # Release Notes:
 
-  This new BOA release includes 1 new Aegir platforms, 12 updated platforms,
-  8 new features and enhancements, 15 new software versions, 9 important changes,
-  plus over 36 bug fixes, with most notable features and changes listed below:
+  This new BOA release includes one new and 12 updated Aegir platforms,
+  8 new features and enhancements, 15 new software versions, 10 other changes,
+  plus over 38 bug fixes, with most notable features and changes listed below:
 
   @=> Add duobackboa with /root/.duobackboa.cnf file to run duplicate backups
   @=> Add SSL with TLS/SNI on server with one IP, multiple certificates support
@@ -55,6 +55,7 @@
   * Do not send extra nocache cookie on GET requests
   * Drush mini-7-07-03-2015
   * Make barracuda wrapper available on initial install to avoid confusion
+  * Nginx: Update for crawlers exceptions list
   * Redis Integration Module: Update to version mod-05-03-2015
   * Remove dependency on legacy Drush 4
   * Use latest Apache Solr Search 6.x-3.x config
@@ -81,6 +82,8 @@
 # Fixes:
 
   * [provision] False "load on system too heavy" messages - fixes #619
+  * [provision] Issue #2350695 - Profile is registered twice, also as a module
+  * [provision] Nginx: Remove webform keyword from regex locations - fixes #599
   * Add also manage_ltd_users to the list - fixes #616
   * Avoid installing New Relic with no valid license key provided - fixes #608
   * Do not add no longer used symlink
