@@ -1,5 +1,5 @@
 
-### How to migrate sites between remote Aegir instances
+### How to migrate single sites between remote Aegir instances
 #
 # This is detailed how-to for remote_import Provision extension
 # and hosting_remote_import module included by default in every
