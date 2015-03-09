@@ -918,6 +918,7 @@ sub_ssl_gen() {
       sed -i "s/dedicated_ip/${dedicated_ip}/g"    ${Ssl}
       sed -i "s/dedicated_sn/${dedicated_sn}/g"    ${Ssl}
       echo OK created ${Ssl}
+      service nginx reload
     else
       echo some variables missing in the record: $p
     fi
