@@ -30,10 +30,10 @@
 
 @=> The steps you need to follow are listed below
 
-  The 'source-host' is a placeholder for the source system FQDN hostname.
-  The 'target-host' is a placeholder for the target system FQDN hostname.
-  The 'source-ip'   is a placeholder for the source system IP addresss.
-  The 'target-ip'   is a placeholder for the target system IP addresss.
+  The 'source-host' is a placeholder for the source system FQDN hostname
+  The 'target-host' is a placeholder for the target system FQDN hostname
+  The 'source-ip'   is a placeholder for the source system IP address
+  The 'target-ip'   is a placeholder for the target system IP address
 
   While it is really easy when you have some experience with the procedure,
   we don't recommend to use it on any live system without prior practicing
