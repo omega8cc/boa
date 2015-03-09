@@ -60,7 +60,7 @@
 
   3. Point the 'domain_name' DNS to 'dedicated_ip' if different than 'target_ip'
 
-@=> How to enable permanent redirect to HTTPS
+@=> How to enable permanent redirect to HTTPS with dedicated IP
 
   Edit /var/aegir/config/server_master/nginx/pre.d/{domain_name}_pln_proxy.conf
 
@@ -76,10 +76,26 @@
 
   Make sure that all dots in all aliases are escaped, as shown above.
 
-  Note: When using TLS/SNI mode with single default IP address, if you plan
-  to use aliases other than www.{domain_name} which is added automatically,
-  you will need to add them also in the 'server_name' line in both the
-  {domain_name}_pln_proxy.conf and {domain_name}_ssl_proxy.conf vhosts.
+@=> How to enable permanent redirect to HTTPS with single IP
 
-@=> Related: https://github.com/omega8cc/boa/issues/465#issuecomment-77743643
+  While it is not possible to force HTTPS-only mode on the Nginx level in this
+  case because the site doesn't have separate IP and we can't add effectively
+  duplicate vhost for plain HTTP proxy, you can add in the local.settings.php
+  file the PHP code shown below:
 
+  // redirect start
+  $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
+  if ($request_type != "SSL" && isset($_SERVER['HTTP_USER_AGENT'])) {
+    header('X-Accel-Expires: 1');
+    header("HTTP/1.1 301 Moved Permanently");
+    header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
+    header("Connection: close");
+    exit;
+  }
+  $base_url = 'https://' . $_SERVER['HTTP_HOST'];
+  // redirect end
+
+@=> Related issue comments
+
+  https://github.com/omega8cc/boa/issues/465#issuecomment-77743643
+  https://github.com/omega8cc/boa/issues/465#issuecomment-77786301
