@@ -888,29 +888,35 @@ sub_ssl_gen() {
       if [ "${target_ip}" = "${dedicated_ip}" ]; then
         dedicated_ip="*"
         dedicated_sn="${domain_name} www.${domain_name}"
+        single=YES
       else
         dedicated_sn="_"
+        single=NO
       fi
+      ###
       Pln="/var/aegir/config/server_master/nginx/pre.d/z_${domain_name}_pln_proxy.conf"
       Ssl="/var/aegir/config/server_master/nginx/pre.d/z_${domain_name}_ssl_proxy.conf"
       ###
-      cp -af /var/xdrago/conf/pln_proxy.conf     ${Pln}
-      cp -af /var/xdrago/conf/ssl_proxy.conf     ${Ssl}
+      if [ "${single}" = "YES" ]; then
+        rm -f ${Pln}
+      else
+        cp -af /var/xdrago/conf/pln_proxy.conf     ${Pln}
+        sed -i "s/domain_name/${domain_name}/g"    ${Pln}
+        sed -i "s/target_ip/${target_ip}/g"        ${Pln}
+        sed -i "s/oct_uid/${oct_uid}/g"            ${Pln}
+        sed -i "s/oct_mail/${oct_mail}/g"          ${Pln}
+        sed -i "s/dedicated_ip/${dedicated_ip}/g"  ${Pln}
+        sed -i "s/dedicated_sn/${dedicated_sn}/g"  ${Pln}
+        echo OK created ${Pln}
+      fi
       ###
-      sed -i "s/domain_name/${domain_name}/g"    ${Pln}
-      sed -i "s/target_ip/${target_ip}/g"        ${Pln}
-      sed -i "s/oct_uid/${oct_uid}/g"            ${Pln}
-      sed -i "s/oct_mail/${oct_mail}/g"          ${Pln}
-      sed -i "s/dedicated_ip/${dedicated_ip}/g"  ${Pln}
-      sed -i "s/dedicated_sn/${dedicated_sn}/g"  ${Pln}
-      echo OK created ${Pln}
-      ###
-      sed -i "s/domain_name/${domain_name}/g"    ${Ssl}
-      sed -i "s/target_ip/${target_ip}/g"        ${Ssl}
-      sed -i "s/oct_uid/${oct_uid}/g"            ${Ssl}
-      sed -i "s/oct_mail/${oct_mail}/g"          ${Ssl}
-      sed -i "s/dedicated_ip/${dedicated_ip}/g"  ${Ssl}
-      sed -i "s/dedicated_sn/${dedicated_sn}/g"  ${Ssl}
+      cp -af /var/xdrago/conf/ssl_proxy.conf       ${Ssl}
+      sed -i "s/domain_name/${domain_name}/g"      ${Ssl}
+      sed -i "s/target_ip/${target_ip}/g"          ${Ssl}
+      sed -i "s/oct_uid/${oct_uid}/g"              ${Ssl}
+      sed -i "s/oct_mail/${oct_mail}/g"            ${Ssl}
+      sed -i "s/dedicated_ip/${dedicated_ip}/g"    ${Ssl}
+      sed -i "s/dedicated_sn/${dedicated_sn}/g"    ${Ssl}
       echo OK created ${Ssl}
     else
       echo some variables missing in the record: $p
