@@ -608,14 +608,19 @@ if [ `whoami` = "root" ]; then
       source ${barCnf}
     fi
     if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
-      echo "STATUS: Skynet Agent is Inactive!"
-      echo "STATUS: Please remove the _SKYNET_MODE=OFF line from"
-      echo "STATUS: ${barCnf} to enable me again."
-      exit 0
+      if [ -n "${TTY+x}" ]; then
+        echo "STATUS: Skynet Agent is Inactive!"
+        echo "STATUS: Please remove the _SKYNET_MODE=OFF line from"
+        echo "STATUS: ${barCnf} to enable me again."
+      else
+        exit 0
+      fi
     else
-      echo "STATUS: Skynet Agent is Active, OK!"
-      echo "STATUS: You can add the _SKYNET_MODE=OFF line in"
-      echo "STATUS: ${barCnf} to disable me, if needed."
+      if [ -n "${TTY+x}" ]; then
+        echo "STATUS: Skynet Agent is Active, OK!"
+        echo "STATUS: You can add the _SKYNET_MODE=OFF line in"
+        echo "STATUS: ${barCnf} to disable me, if needed."
+      fi
     fi
   fi
   if [ -d "/.newrelic" ]; then
