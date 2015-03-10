@@ -43,6 +43,7 @@
 
 export PATH=$PATH:/opt/local/bin
 SHELL=/bin/bash
+export DEBIAN_FRONTEND=noninteractive
 
 _TODAY=$(date +%y%m%d 2>&1)
 _X_VERSION="BOA-2.4.1-stable"
@@ -608,7 +609,7 @@ if [ `whoami` = "root" ]; then
       source ${barCnf}
     fi
     if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
-      if [ -n "${TTY+x}" ]; then
+      if [ -n "${SSH_TTY+x}" ]; then
         echo "STATUS: Skynet Agent is Inactive!"
         echo "STATUS: Please remove the _SKYNET_MODE=OFF line from"
         echo "STATUS: ${barCnf} to enable me again."
@@ -616,7 +617,7 @@ if [ `whoami` = "root" ]; then
         exit 0
       fi
     else
-      if [ -n "${TTY+x}" ]; then
+      if [ -n "${SSH_TTY+x}" ]; then
         echo "STATUS: Skynet Agent is Active, OK!"
         echo "STATUS: You can add the _SKYNET_MODE=OFF line in"
         echo "STATUS: ${barCnf} to disable me, if needed."
