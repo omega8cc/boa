@@ -218,7 +218,7 @@ satellite_check_sanitize_user_name
 satellite_if_localhost_mode_magic
 satellite_check_sanitize_domain_name
 satellite_detect_vm_family
-dns_check_git_repos_status
+check_git_repos
 
 
 ###

@@ -221,7 +221,7 @@ more_packages_install_on_init
 check_github_for_aegir_head_mode
 check_mariadb_src
 check_boa_version
-dns_check_git_repos_status
+check_git_repos
 check_ip_hostname
 check_prepare_dirs_permissions
 

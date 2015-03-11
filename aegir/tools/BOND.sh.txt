@@ -1121,7 +1121,7 @@ tune_memory_limits() {
   tune_web_server_config
 }
 #
-dns_check_git_repos_status() {
+check_git_repos() {
   _GITHUB_WORKS=NO
   _GITORIOUS_WORKS=NO
   if [ "${_FORCE_GIT_MIRROR}" = "drupal" ]; then
@@ -1187,7 +1187,7 @@ touch /var/run/boa_run.pid
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="git://github.com/omega8cc"
 if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-  dns_check_git_repos_status
+  check_git_repos
 fi
 #
 #
