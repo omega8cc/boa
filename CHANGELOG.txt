@@ -69,6 +69,7 @@
   * Jetty 9.2.7.v20150116
   * MariaDB 10.0.17
   * MariaDB 5.5.42
+  * MariaDB Galera Cluster 10.0.17
   * Nginx 1.7.10
   * OpenSSL 1.0.2 (if installed from sources)
   * PHP 5.4.38
