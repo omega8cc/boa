@@ -10,38 +10,32 @@ PHP-FPM, Zend OPcache, MariaDB and Redis.
 
 ###--------------------------------------------------------------------------###
 ###
-### For BOA installation instructions see docs/INSTALL.txt
-### See also related information in docs/NOTES.txt
-### For BOA upgrade instructions see docs/UPGRADE.txt
+### Installation instructions .........: docs/INSTALL.txt
+### Other related information .........: docs/NOTES.txt
+### Upgrade instructions ..............: docs/UPGRADE.txt
 ###
 ### Barracuda configuration template ..: docs/cnf/barracuda.cnf
 ### Octopus configuration template ....: docs/cnf/octopus.cnf
 ### System control files index ........: docs/ctrl/system.ctrl
-###
-### Please read all comments for configuration options in both
-### BARRACUDA.sh.txt and OCTOPUS.sh.txt, since there is information
-### not included in the README or INSTALL and can be modified or
-### updated with every new Edition.
 ###
 ### Platform and site level INI templates:
 ###
 ###   aegir/conf/default.boa_platform_control.ini
 ###   aegir/conf/default.boa_site_control.ini
 ###
-### Octopus platforms configuration symbols: docs/PLATFORMS.txt
-###
-### Modules - supported, enabled or disabled: docs/MODULES.txt
-###
-### For how-to on using remote S3 backups see: docs/BACKUPS.txt
-### For how-to on using MultiCore Solr Jetty see: docs/SOLR.txt
-### For how-to on using RVM and Compass see: docs/RVM.txt
-### For hww-to on using HHVM see: docs/HHVM.txt
-### For custom Nginx rewrites how-to see: docs/HINTS.txt
-### For SSL and extra IPs how-to see: docs/SSL.txt
-### For sites migration between instances see: docs/REMOTE.txt
-### For advanced password encryption tips see: docs/BLOWFISH.txt
-### For security related settings see: docs/SECURITY.txt
-### For frequently asked questions and answers see: docs/FAQ.txt
+### Advanced password encryption ......: docs/BLOWFISH.txt
+### Custom Nginx rewrites .............: docs/HINTS.txt
+### HHVM support ......................: docs/HHVM.txt
+### Modules enabled or disabled .......: docs/MODULES.txt
+### MultiCore Solr Jetty ..............: docs/SOLR.txt
+### Octopus batch migration ...........: docs/MIGRATE.txt
+### Platforms configuration symbols ...: docs/PLATFORMS.txt
+### Remote S3 backups .................: docs/BACKUPS.txt
+### RVM and Compass Tools .............: docs/RVM.txt
+### Security related settings .........: docs/SECURITY.txt
+### Single site migration .............: docs/REMOTE.txt
+### SSL with single or extra IP .......: docs/SSL.txt
+### FAQ ...............................: docs/FAQ.txt
 ###
 ###--------------------------------------------------------------------------###
 
@@ -63,7 +57,7 @@ Octopus is an Aegir + Platforms installer (you can interactively choose
 the platforms you wish to install on the instance) and updater only. It allows
 to install new versions of platforms with clean directory structure, with code
 shared between all created instances, so one vanilla Octopus instance is using
-only ~18 MB, while most of the code, which is over 1 GB total, is shared.
+only 35 MB, while most of the code, which is over 1400 MB in total, is shared.
 
 Sharing the code between instances is of critical importance, because it allows
 you to dramatically lower RAM and CPU usage, because most of the actively used
