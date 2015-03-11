@@ -2,6 +2,7 @@
 ### Stable BOA-2.4.1 Release - Full Edition
 ### Date: Sun Mar  8 14:56:51 PDT 2015
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.1
+### Latest hotfix added on: Wed Mar 11 11:58:52 PDT 2015
 
   @=> Includes Aegir Hostmaster 2.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -89,6 +90,7 @@
   * Add also manage_ltd_users to the list - fixes #616
   * Avoid installing New Relic with no valid license key provided - fixes #608
   * Do not add no longer used symlink
+  * Do not create conflicting plain HTTP proxy for single IP mode - fixes #465
   * Do not delete backboa while duplicity is running
   * Do not replace any contrib in latest OA - fixes #2420131
   * Do not run D7 core hotfix on already fixed instances
@@ -102,16 +104,19 @@
   * Force php.ini update
   * Hotfix for cluster instances
   * Hotfix for OpenSSL/cURL versions out of sync
+  * How to enable permanent redirect to HTTPS with single IP - #465
   * Issue #2425963 - Broken slider in Commerce Kickstart 2.21
   * Make sure that @hostmaster alias works after migration
   * Provide a patch for older civicrm versions to make them Drush 7 compatible
   * Randomize backups schedule to avoid issues with AWS limits
+  * Reload nginx service automatically - #465
   * Remove conflicting pdnsd restarts to avoid race conditions - fixes #610
   * Remove deprecated sysctl options
   * Remove post-install leftovers if needed
   * Single PHP-version installation fails - fixes #598
   * Typo - fixes #539
   * Unable to connect to SOLR on latest head - fixes #623
+  * Update installers as expected, also with _SKYNET_MODE=OFF - fixes #644
   * Update meta-installers for new stable
   * Update the upgrade procedure how-to - fixes ##616
   * Use civicrm-4.5.6 compatible with Drush 7
