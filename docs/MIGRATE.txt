@@ -84,6 +84,7 @@
   xboa import o1 target-ip
   service nginx reload
   xboa post-mig
+  service cron start
 
 @=> On the source-host
   xboa proxy o1 target-ip
