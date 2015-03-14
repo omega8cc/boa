@@ -103,6 +103,9 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP=YES
   fi
   if [ -e "/etc/apticron/apticron.conf" ]; then
+    sed -i "s/^# be something like.*/# be something like ${_MY_EMAIL}/g" \
+      /etc/apticron/apticron.conf
+    [ -r "/root/.auto.up.cnf" ] && rm -f /root/.auto.up.cnf
     _APTICRON_TEST=$(grep "omega8" /etc/apticron/apticron.conf 2>&1)
     if [[ "$_APTICRON_TEST" =~ "omega8" ]]; then
       _AUTO_UP=YES
@@ -117,8 +120,8 @@ if [ -e "/data/disk/arch" ]; then
     || [ -e "/root/.host8.cnf" ] \
     || [ "${_AUTO_UP}" = "YES" ]; then
     _AUTO_UP_WEEKLY=6
-    _AUTO_UP_MONTH=2
-    _AUTO_UP_DAY=8
+    _AUTO_UP_MONTH=3
+    _AUTO_UP_DAY=14
   fi
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \

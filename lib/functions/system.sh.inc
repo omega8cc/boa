@@ -4353,6 +4353,8 @@ update_apticron() {
           /etc/apticron/apticron.conf
         sed -i "s/root/${_MY_EMAIL}/g" \
           /etc/apticron/apticron.conf
+        sed -i "s/^# be something like.*/# be something like ${_MY_EMAIL}/g" \
+          /etc/apticron/apticron.conf
       else
         mrun "apt-get remove apticron -y --force-yes -qq" &> /dev/null
         mrun "apt-get purge apticron -y --force-yes -qq"  &> /dev/null
@@ -4362,6 +4364,8 @@ update_apticron() {
         sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g" \
           /etc/apticron/apticron.conf
         sed -i "s/root/${_MY_EMAIL}/g" \
+          /etc/apticron/apticron.conf
+        sed -i "s/^# be something like.*/# be something like ${_MY_EMAIL}/g" \
           /etc/apticron/apticron.conf
       fi
     fi
