@@ -747,7 +747,7 @@ barracuda_cnf() {
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
         sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"         ${barCnf}
         sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                               ${barCnf}
-        sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=YES/g"                                   ${barCnf}
+        sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                                    ${barCnf}
         sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                   ${barCnf}
         sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   ${barCnf}
@@ -769,6 +769,7 @@ barracuda_cnf() {
             sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     ${barCnf}
             sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                       ${barCnf}
             sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
+            sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=YES/g"                               ${barCnf}
           fi
           sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g"                            /root/.*.octopus.cnf &> /dev/null
           sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                           ${barCnf}
@@ -1278,7 +1279,7 @@ barracuda_cnf() {
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
         sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"         ${barCnf}
         sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                               ${barCnf}
-        sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=YES/g"                                   ${barCnf}
+        sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                                    ${barCnf}
         sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                   ${barCnf}
         sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   ${barCnf}
@@ -1300,6 +1301,7 @@ barracuda_cnf() {
             sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     ${barCnf}
             sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                       ${barCnf}
             sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
+            sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=YES/g"                               ${barCnf}
           fi
           sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                           ${barCnf}
           sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                   ${barCnf}
