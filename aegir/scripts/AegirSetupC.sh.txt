@@ -1821,7 +1821,7 @@ panopoly_install() {
                     ${_SHRD_PRPATH}/modules/panopoly/ &> /dev/null
                 else
                   cd ${_SHRD_PRPATH}/modules/panopoly
-                  get_dev_contrib "panopoly_demo-7.x-1.18.tar.gz"
+                  get_dev_contrib "panopoly_demo-7.x-1.19.tar.gz"
                 fi
               fi
             else
