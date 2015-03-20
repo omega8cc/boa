@@ -1983,7 +1983,7 @@ ubercart6_install() {
             get_dev_contrib "token-6.x-1.19.tar.gz"
             get_dev_contrib "ubercart-6.x-${_UBERCART6}.tar.gz"
             get_dev_contrib "views-6.x-3.0.tar.gz"
-            get_dev_contrib "webform-6.x-3.20.tar.gz"
+            get_dev_contrib "webform-6.x-3.23.tar.gz"
             ### https://drupal.org/node/1167276#comment-5138248
             cd ${_SHRD_PRPATH}/modules/$_VIRT_PRNAME
             patch -p1 < ${pthPch}/$_VIRT_PRNAME-1167276-reroll.patch &> /dev/null
