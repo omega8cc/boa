@@ -383,6 +383,7 @@ fix_user_register_protection() {
 }
 
 fix_robots_txt() {
+  find ${Dir}/files/robots.txt -mtime +6 -exec rm -f {} \; &> /dev/null
   if [ ! -e "${Dir}/files/robots.txt" ] \
     && [ ! -e "${Plr}/profiles/hostmaster" ] \
     && [ "${_STATUS}" = "OK" ]; then
