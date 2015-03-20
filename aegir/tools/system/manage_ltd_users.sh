@@ -490,8 +490,8 @@ ok_create_user() {
     mv -f ${usrLtdRoot} /var/backups/zombie/deleted/${_NOW}/ &> /dev/null
   fi
   if [ ! -d "${usrLtdRoot}" ]; then
-    if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ]; then
-      useradd -d ${usrLtdRoot} -s /usr/bin/MySecureShell -m -N -r ${usrLtd}
+    if [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
+      useradd -d ${usrLtdRoot} -s /usr/bin/mysecureshell -m -N -r ${usrLtd}
       echo "usrLtdRoot is == ${usrLtdRoot} == at ok_create_user"
     else
       useradd -d ${usrLtdRoot} -s /usr/bin/lshell -m -N -r ${usrLtd}
@@ -534,9 +534,9 @@ ok_create_user() {
   fi
   if [ ! -e "/home/${_ADMIN}/users/${usrLtd}" ] \
     && [ ! -z "${_ESC_LUPASS}" ]; then
-    if [ -e "/usr/bin/MySecureShell" ] \
+    if [ -e "/usr/bin/mysecureshell" ] \
       && [ -e "/etc/ssh/sftp_config" ]; then
-      chsh -s /usr/bin/MySecureShell ${usrLtd}
+      chsh -s /usr/bin/mysecureshell ${usrLtd}
     else
       chsh -s /usr/bin/lshell ${usrLtd}
     fi
@@ -1468,6 +1468,11 @@ done
 }
 
 ###-------------SYSTEM-----------------###
+
+if [ ! -L "/usr/bin/MySecureShell" ] && [ -x "/usr/bin/mysecureshell" ] ; then
+  mv -f /usr/bin/MySecureShell /var/backups/legacy-MySecureShell-bin
+  ln -sf /usr/bin/mysecureshell /usr/bin/MySecureShell
+fi
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 mkdir -p /var/backups/ltd/{conf,log,old}

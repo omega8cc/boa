@@ -2212,8 +2212,8 @@ satellite_if_add_ftps_lshell_access() {
   if [ "$_LOCAL_STATUS" = "INIT" ]; then
     _USERFTP="${_USER}.ftp"
     _USERFTP_ROOT="/home/${_USERFTP}"
-    if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ]; then
-      _PATH_LSHELL="/usr/bin/MySecureShell"
+    if [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
+      _PATH_LSHELL="/usr/bin/mysecureshell"
     else
       _PATH_LSHELL="/usr/bin/lshell"
     fi

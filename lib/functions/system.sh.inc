@@ -111,13 +111,13 @@ fix_sftp_ftps_modern() {
   fi
   if [ ! -e "${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log" ] \
     || [ ! -e "/etc/ssh/sftp_config" ] \
-    || [ ! -e "/usr/bin/MySecureShell" ] \
+    || [ ! -e "/usr/bin/mysecureshell" ] \
     || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Installing MySecureShell ${_MSS_VRN}..."
     cd /var/opt
     rm -f -r mysecureshell*
     get_dev_src "mysecureshell-${_MSS_VRN}.tar.gz"
-    cd /var/opt/mysecureshell-${_MSS_VRN}
+    cd /var/opt/mysecureshell
     st_runner "sh ./configure" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "sh ./install.sh yesall" 2> /dev/null
@@ -125,17 +125,21 @@ fix_sftp_ftps_modern() {
     cp -af ${locCnf}/sftp_config /etc/ssh/sftp_config
     mrun "service ssh restart" &> /dev/null
   fi
-  if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ]; then
+  if [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
     _MSS_TEST=$(grep "lshell" /etc/passwd 2>&1)
     if [[ "$_MSS_TEST" =~ "lshell" ]]; then
-      sed -i "s/usr\/.*\/lshell/usr\/bin\/MySecureShell/g" /etc/passwd &> /dev/null
+      sed -i "s/usr\/.*\/lshell/usr\/bin\/mysecureshell/g" /etc/passwd &> /dev/null
+    fi
+    _MSS_TEST=$(grep "MySecureShell" /etc/passwd 2>&1)
+    if [[ "$_MSS_TEST" =~ "MySecureShell" ]]; then
+      sed -i "s/usr\/.*\/MySecureShell/usr\/bin\/mysecureshell/g" /etc/passwd &> /dev/null
     fi
   fi
-  _MSS_PATH_TEST=$(grep "/usr/bin/MySecureShell" /etc/shells 2>&1)
-  if [[ "$_MSS_PATH_TEST" =~ "/usr/bin/MySecureShell" ]]; then
+  _MSS_PATH_TEST=$(grep "/usr/bin/mysecureshell" /etc/shells 2>&1)
+  if [[ "$_MSS_PATH_TEST" =~ "/usr/bin/mysecureshell" ]]; then
     _DO_NOTHING=YES
   else
-    echo "/usr/bin/MySecureShell" >> /etc/shells
+    echo "/usr/bin/mysecureshell" >> /etc/shells
   fi
   if [ ! -e "${pthLog}/fixed-sftp-idle.log" ]; then
     sed -i "s/IdleTimeOut.*/IdleTimeOut            15m/g" /etc/ssh/sftp_config &> /dev/null
