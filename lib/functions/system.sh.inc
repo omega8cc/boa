@@ -2533,6 +2533,9 @@ strict_bin_permissions() {
                     sftp-admin \
                     sftp-kill \
                     sftp-state \
+                    sftp-user \
+                    sftp-verif \
+                    sftp-who \
                     syncpass"
   for i in ${_PROTECTED_ITEMS}; do
     _BIN_ITEM=$(which $i 2>&1)
@@ -2541,6 +2544,9 @@ strict_bin_permissions() {
       chmod 700 $_BIN_ITEM &> /dev/null
     fi
   done
+
+  chown root:root /usr/bin/mysecureshell &> /dev/null
+  chmod 4755 /usr/bin/mysecureshell &> /dev/null
 
   cp -af ${bldPth}/aegir/helpers/websh.sh.txt /bin/websh
   chmod 755 /bin/websh
