@@ -1810,18 +1810,13 @@ panopoly_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              if [ "${_PANOPOLY}" = "1.4" ]; then
-                cd ${_SHRD_PRPATH}/modules/contrib
-                rm -f -r {fape}
-                get_dev_contrib "fape-7.x-1.2.tar.gz"
-              fi
               if [ ! -d "${_SHRD_PRPATH}/modules/panopoly/panopoly_demo" ]; then
                 if [ -d "${_SHRD_PLPATH}/sites/all/modules/panopoly_demo" ]; then
                   mv -f ${_SHRD_PLPATH}/sites/all/modules/panopoly_demo \
                     ${_SHRD_PRPATH}/modules/panopoly/ &> /dev/null
                 else
                   cd ${_SHRD_PRPATH}/modules/panopoly
-                  get_dev_contrib "panopoly_demo-7.x-1.19.tar.gz"
+                  get_dev_contrib "panopoly_demo-7.x-${_PANOPOLY}.tar.gz"
                 fi
               fi
             else
