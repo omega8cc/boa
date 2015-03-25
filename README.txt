@@ -176,7 +176,7 @@ Octopus can install the platforms listed below:
  OpenPublic 1.5 --------------- https://drupal.org/project/openpublic
  OpenScholar 3.20.0 ----------- http://theopenscholar.org
  Panopoly 1.19 ---------------- https://drupal.org/project/panopoly
- Recruiter 1.5 ---------------- https://drupal.org/project/recruiter
+ Recruiter 1.6 ---------------- https://drupal.org/project/recruiter
  Restaurant 1.0-b10 ----------- https://drupal.org/project/restaurant
  Ubercart 3.8 ----------------- https://drupal.org/project/ubercart
 
