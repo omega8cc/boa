@@ -1008,6 +1008,7 @@ satellite_child_b_update_ini_php_cli() {
     || [ ! -d "${_U_TP}" ] \
     || [ ! -e "${_U_HD}/.ctrl.241stableU.txt" ]; then
     mkdir -p ${_U_TP}
+    touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
     chmod 02755 ${_U_TP}
     mkdir -p ${_U_HD}/{sys,xts,usr}
@@ -2397,6 +2398,7 @@ satellite_if_add_update_user_dot_dirs() {
   _USER_TMP="${_USER_HD}/.tmp"
   if [ ! -d "${_USER_TMP}" ]; then
     mkdir -p ${_USER_TMP}
+    touch ${_USER_TMP}
     find ${_USER_TMP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
     chown -R ${_USERFTP}:${_USRG} ${_USER_TMP}
     chmod 755 ${_USER_TMP}

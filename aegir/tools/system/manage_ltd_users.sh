@@ -134,6 +134,7 @@ enable_chattr() {
       fi
       mkdir -p ${_U_HD}/usr
       mkdir -p ${_U_TP}
+      touch ${_U_TP}
       find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
       chown $1:${usrGroup} ${_U_TP}
       chown $1:${usrGroup} ${_U_HD}
@@ -415,6 +416,12 @@ done
 #
 # Fix dot dirs.
 fix_dot_dirs() {
+  usrTmp="/home/${usrLtd}/.tmp"
+  if [ ! -d "${usrTmp}" ]; then
+    mkdir -p ${usrTmp}
+    chown ${usrLtd}:${usrGroup} ${usrTmp}
+    chmod 02755 ${usrTmp}
+  fi
   usrDrush="/home/${usrLtd}/.drush"
   if [ ! -d "${usrDrush}" ]; then
     mkdir -p ${usrDrush}
@@ -582,7 +589,9 @@ add_user_if_not_exists() {
     echo "We will update user == ${usrLtd} =="
     disable_chattr ${usrLtd}
     rm -f -r /home/${usrLtd}/drush-backups
-    find /home/${usrLtd}/.tmp/* -mtime +0 -exec rm -rf {} \; &> /dev/null
+    mkdir -p /home/${usrLtd}/.tmp
+    touch /home/${usrLtd}/.tmp
+    find /home/${usrLtd}/.tmp/ -mtime +0 -exec rm -rf {} \; &> /dev/null
     ok_update_user
     enable_chattr ${usrLtd}
   fi
@@ -647,6 +656,7 @@ update_php_cli_local_ini() {
     || [ ! -d "${_U_TP}" ] \
     || [ ! -e "${_U_HD}/.ctrl.241stableU.txt" ]; then
     mkdir -p ${_U_TP}
+    touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
     mkdir -p ${_U_HD}
     chown ${_USER}:${usrGroup} ${_U_TP}
@@ -1392,6 +1402,7 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     if [ ! -e "${dscUsr}/.tmp/.ctrl.241stableU.txt" ]; then
       rm -f -r ${dscUsr}/.drush/cache
       mkdir -p ${dscUsr}/.tmp
+      touch ${dscUsr}/.tmp
       find ${dscUsr}/.tmp/ -mtime +0 -exec rm -rf {} \; &> /dev/null
       chown ${_USER}:${usrGroup} ${dscUsr}/.tmp &> /dev/null
       chmod 02755 ${dscUsr}/.tmp &> /dev/null

@@ -791,6 +791,7 @@ update_php_cli_local_ini() {
     || [ ! -d "${_U_TP}" ] \
     || [ ! -e "${_U_HD}/.ctrl.241stableU.txt" ]; then
     mkdir -p ${_U_TP}
+    touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
     chmod 02755 ${_U_TP}
     mkdir -p ${_U_HD}
