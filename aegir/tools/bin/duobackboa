@@ -163,6 +163,7 @@ backup() {
     duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
   fi
   duplicity -v ${_AWS_VLV} --volsize 100 \
+    --allow-source-mismatch \
     --full-if-older-than ${_AWS_FLC} \
     --asynchronous-upload ${_AWS_OPX} \
     ${INCLUDE} ${EXCLUDE} --exclude '**' / ${TARGET} > ${LOGFILE}
