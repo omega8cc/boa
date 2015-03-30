@@ -589,9 +589,14 @@ add_user_if_not_exists() {
     echo "We will update user == ${usrLtd} =="
     disable_chattr ${usrLtd}
     rm -f -r /home/${usrLtd}/drush-backups
-    mkdir -p /home/${usrLtd}/.tmp
-    touch /home/${usrLtd}/.tmp
-    find /home/${usrLtd}/.tmp/ -mtime +0 -exec rm -rf {} \; &> /dev/null
+    usrTmp="/home/${usrLtd}/.tmp"
+    if [ ! -d "${usrTmp}" ]; then
+      mkdir -p ${usrTmp}
+      chown ${usrLtd}:${usrGroup} ${usrTmp}
+      chmod 02755 ${usrTmp}
+    fi
+    touch ${usrTmp}
+    find ${usrTmp}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
     ok_update_user
     enable_chattr ${usrLtd}
   fi
