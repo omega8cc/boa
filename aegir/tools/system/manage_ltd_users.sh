@@ -422,6 +422,18 @@ fix_dot_dirs() {
     chown ${usrLtd}:${usrGroup} ${usrTmp}
     chmod 02755 ${usrTmp}
   fi
+  usrLftp="/home/${usrLtd}/.lftp"
+  if [ ! -d "${usrLftp}" ]; then
+    mkdir -p ${usrLftp}
+    chown ${usrLtd}:${usrGroup} ${usrLftp}
+    chmod 02755 ${usrLftp}
+  fi
+  usrLhist="/home/${usrLtd}/.lhistory"
+  if [ ! -e "${usrLhist}" ]; then
+    touch ${usrLhist}
+    chown ${usrLtd}:${usrGroup} ${usrLhist}
+    chmod 644 ${usrLhist}
+  fi
   usrDrush="/home/${usrLtd}/.drush"
   if [ ! -d "${usrDrush}" ]; then
     mkdir -p ${usrDrush}
