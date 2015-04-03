@@ -82,8 +82,8 @@ Please follow our docs to import your site into Aegir properly:
   https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
 
 To make a site "live" using any domain name you manage, you
-need to point its A or CNAME DNS record to your VPS address,
-like below:
+need to point its A or CNAME DNS record to your Aegir instance
+public IP address, like shown below:
 
  yourdomain.com.           IN  A      166.84.6.231
   or
