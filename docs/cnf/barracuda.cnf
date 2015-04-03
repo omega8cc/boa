@@ -221,4 +221,4 @@ _LENNY_TO_SQUEEZE=NO
 ### to Jetty 7 with Apache Solr 1.4.1
 ### See also docs/SOLR.txt
 ###
-_TOMCAT_TO_JETTY=YES
+_TOMCAT_TO_JETTY=NO
