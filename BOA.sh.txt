@@ -149,24 +149,10 @@ check_dns_settings() {
 
 update_agents() {
 
-  if [ "${_BENG_VS}" = "NO" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/modfix.pid" ]; then
-    sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=NO/g" /root/.barracuda.cnf
-    touch ${pthLog}/modfix.pid
-  fi
-
-  if [ "${_BENG_VS}" = "NO" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/prmfix.pid" ]; then
-    sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=NO/g" /root/.barracuda.cnf
-    touch ${pthLog}/prmfix.pid
-  fi
-
   if [ "${_BENG_VS}" = "YES" ] \
     && [ -e "/var/xdrago" ]; then
     InTest=$(ls /data/disk/ | wc -l 2>&1)
-    if [ "${InTest}" -gt "8" ]; then
+    if [ "${InTest}" -gt "10" ]; then
       echo ${InTest} > /root/.tg.cnf
     else
       rm -f /root/.tg.cnf
