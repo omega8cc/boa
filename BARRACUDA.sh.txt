@@ -333,7 +333,7 @@ install_update_php
 install_curl_src
 php_upgrade_all
 check_fix_php
-install_composer
+install_update_composer
 check_fix_avatars
 check_fix_umask
 install_update_lshell
