@@ -156,13 +156,13 @@ Octopus can install the platforms listed below:
 
  Drupal 8.0.0-b7 -------------- https://drupal.org/drupal-8.0
 
- @ Drupal 7.35.1
+ @ Drupal 7.36.1
 
  aGov 1.7 --------------------- https://drupal.org/project/agov
  Commerce 1.34 ---------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.22 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.23 ----------------- https://drupal.org/project/commons
- Drupal 7.35.1 ---------------- https://drupal.org/drupal-7.35
+ Drupal 7.36.1 ---------------- https://drupal.org/drupal-7.36
  ERPAL 2.2 -------------------- https://drupal.org/project/erpal
  Guardr 2.10 ------------------ https://drupal.org/project/guardr
  OpenAcademy 1.1 -------------- https://drupal.org/project/openacademy
@@ -187,7 +187,7 @@ Octopus can install the platforms listed below:
  Pressflow 6.35.1 ------------- http://pressflow.org
  Ubercart 2.14 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.35.1 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.36.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
 * All D6 platforms have been enhanced using Pressflow 6.35.1 +Extra core:
