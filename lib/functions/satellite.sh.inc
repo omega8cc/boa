@@ -1381,7 +1381,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "readonlymode-7.x-1.2.tar.gz"
   get_dev_contrib "reroute_email-7.x-1.2.tar.gz"
   get_dev_contrib "robotstxt-7.x-1.3.tar.gz"
-  get_dev_contrib "securesite-7.x-2.x-dev.tar.gz"
+  get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
   get_dev_contrib "site_verify-7.x-1.1.tar.gz"
   get_dev_contrib "speedy-7.x-1.16.tar.gz"
