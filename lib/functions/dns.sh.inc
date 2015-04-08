@@ -38,8 +38,8 @@ fix_dns_settings() {
     if [ -e "${dnsLi}" ]; then
       sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
       sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
-      _BROKEN_DNS_TEST=$(grep "\." ${dnsLi} 2>&1)
-      if [ -z "${_BROKEN_DNS_TEST}" ]; then
+      _BROKEN_DNS_TEST_A=$(grep "\." ${dnsLi} 2>&1)
+      if [ -z "${_BROKEN_DNS_TEST_A}" ]; then
         echo "        label = \"google-servers\";" > ${dnsLi}
         echo "        ip=8.8.8.8;" >> ${dnsLi}
         echo "        ip=8.8.4.4;" >> ${dnsLi}
@@ -51,7 +51,7 @@ fix_dns_settings() {
       || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]]; then
       if [ -e "/root/.use.local.nameservers.cnf" ]; then
         echo "        label = \"google-servers\";" > ${dnsLi}
-        for _IP in `cat /etc/resolv.conf \
+        for _IP in `cat /root/.use.local.nameservers.cnf \
           | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
           | cut -d ' ' -f2 \
           | sort \
@@ -61,8 +61,8 @@ fix_dns_settings() {
         sed -i "s/ip=Dyn.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
         sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
         sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
-        _BROKEN_DNS_TEST=$(grep "\." ${dnsLi} 2>&1)
-        if [ -z "${_BROKEN_DNS_TEST}" ]; then
+        _BROKEN_DNS_TEST_B=$(grep "\." ${dnsLi} 2>&1)
+        if [ -z "${_BROKEN_DNS_TEST_B}" ]; then
            echo "        ip=8.8.8.8;" >> ${dnsLi}
            echo "        ip=8.8.4.4;" >> ${dnsLi}
         fi
@@ -79,13 +79,18 @@ d;};' /etc/pdnsd.conf
 #
 # Check DNS settings.
 check_dns_settings() {
-  _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "${_BROKEN_DNS_TEST}" =~ "no servers could be reached" ]] \
-    && [ -e "/root/.use.local.nameservers.cnf" ]; then
+  if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
+    _CUSTOM_DNS_TEST=$(grep "\." /root/.use.local.nameservers.cnf 2>&1)
+    if [ -z "${_CUSTOM_DNS_TEST}" ] \
+      && [ -e "/var/backups/resolv.conf.vanilla" ]; then
+      cp -a /var/backups/resolv.conf.vanilla /root/.use.local.nameservers.cnf
+    fi
+  fi
+  _BROKEN_DNS_TEST_C=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
+  if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
+    || [[ "${_BROKEN_DNS_TEST_C}" =~ "no servers could be reached" ]]; then
     fix_dns_settings
-  else
-    _USE_PROVIDER_DNS=NO
   fi
 }
 
@@ -363,7 +368,7 @@ install_pdnsd_cache() {
     if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
       && [ -e "/root/.use.local.nameservers.cnf" ]; then
       echo "        label = \"google-servers\";" > ${dnsLi}
-      for _IP in `cat /etc/resolv.conf \
+      for _IP in `cat /root/.use.local.nameservers.cnf \
         | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
         | cut -d ' ' -f2 \
         | sort \

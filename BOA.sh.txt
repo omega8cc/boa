@@ -60,92 +60,6 @@ pthLog="/var/xdrago/log"
 tBn="tools/bin"
 vBs="/var/backups"
 
-fix_dns_settings() {
-  dnsLi="/root/.local.dns.IP.list"
-  mkdir -p ${vBs}
-  rm -f ${vBs}/resolv.conf.tmp
-  if [ -e "/etc/resolv.conf" ]; then
-    cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
-  fi
-  if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
-    for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
-      if [ -e "${Pre}" ] && [ -f "${Pre}" ] && [ ! -L "${Pre}" ]; then
-        cp -a ${Pre} ${vBs}/resolv.conf.vanilla
-      fi
-    done
-  fi
-  if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
-    rm -f /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.tmp ${vBs}/resolv.conf.vanilla
-  fi
-  sed -i "/^$/d" ${vBs}/resolv.conf.vanilla &> /dev/null
-  rm -f /etc/resolv.conf
-  echo "nameserver 8.8.8.8" > /etc/resolv.conf
-  echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-  _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "${_BROKEN_DNS_TEST}" =~ "no servers could be reached" ]] \
-    && [ -e "${vBs}/resolv.conf.vanilla" ]; then
-    rm -f /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.vanilla /etc/resolv.conf
-    echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-  else
-    rm -f /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
-  fi
-  if [ -e "/etc/pdnsd.conf" ]; then
-    if [ -e "${dnsLi}" ]; then
-      sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
-      sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
-      _BROKEN_DNS_TEST=$(grep "\." ${dnsLi} 2>&1)
-      if [ -z "${_BROKEN_DNS_TEST}" ]; then
-        echo "        label = \"google-servers\";" > ${dnsLi}
-        echo "        ip=8.8.8.8;" >> ${dnsLi}
-        echo "        ip=8.8.4.4;" >> ${dnsLi}
-      fi
-    fi
-    _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
-    _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
-    if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
-      || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]]; then
-      if [ -e "/root/.use.local.nameservers.cnf" ]; then
-        echo "        label = \"google-servers\";" > ${dnsLi}
-        for _IP in `cat /etc/resolv.conf \
-          | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
-          | cut -d ' ' -f2 \
-          | sort \
-          | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
-        sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-        sed -i "s/ip=127.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-        sed -i "s/ip=Dyn.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-        sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
-        sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
-        _BROKEN_DNS_TEST=$(grep "\." ${dnsLi} 2>&1)
-        if [ -z "${_BROKEN_DNS_TEST}" ]; then
-           echo "        ip=8.8.8.8;" >> ${dnsLi}
-           echo "        ip=8.8.4.4;" >> ${dnsLi}
-        fi
-        sed -i '/        label = \"google-servers\";/ {r ${dnsLi}
-d;};' /etc/pdnsd.conf
-        resolvconf -u         &> /dev/null
-        service pdnsd restart &> /dev/null
-        pdnsd-ctl empty-cache &> /dev/null
-      fi
-    fi
-  fi
-}
-
-check_dns_settings() {
-  _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "${_BROKEN_DNS_TEST}" =~ "no servers could be reached" ]] \
-    && [ -e "/root/.use.local.nameservers.cnf" ]; then
-    _USE_PROVIDER_DNS=YES
-    fix_dns_settings
-  else
-    _USE_PROVIDER_DNS=NO
-  fi
-}
 
 update_agents() {
 
@@ -463,16 +377,6 @@ setup() {
   sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
   echo >>/etc/hosts
   sed -i "/^$/d" /etc/hosts
-  if [ ! -e "/etc/resolv.conf" ]; then
-    if [ -e "${vBs}/resolv.conf.vanilla" ]; then
-      cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
-    fi
-    echo "nameserver 8.8.8.8" >>/etc/resolv.conf
-    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
-    check_dns_settings
-  else
-    check_dns_settings
-  fi
   if [ -d "/var/cache/pdnsd" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
     pdnsd-ctl empty-cache &> /dev/null
