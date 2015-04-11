@@ -64,7 +64,8 @@ fix_dns_settings() {
            echo "        ip=8.8.8.8;" >> ${dnsLi}
            echo "        ip=8.8.4.4;" >> ${dnsLi}
         fi
-        sed -i '/        label = \"google-servers\";/ {r ${dnsLi}
+        echo debug dns A
+        sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
 d;};' /etc/pdnsd.conf
         resolvconf -u         &> /dev/null
         service pdnsd restart &> /dev/null
