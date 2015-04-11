@@ -22,8 +22,10 @@ fix_dns_settings() {
   fi
   sed -i "/^$/d" ${vBs}/resolv.conf.vanilla &> /dev/null
   if [ -e "${vBs}/resolv.conf.vanilla" ]; then
-    rm -f /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.vanilla /etc/resolv.conf
+    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
+      rm -f /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.vanilla /etc/resolv.conf
+    fi
   else
     if [ -e "${vBs}/resolv.conf.tmp" ]; then
       rm -f /etc/resolv.conf
@@ -35,8 +37,7 @@ fix_dns_settings() {
       sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
       sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
       _BROKEN_DNS_TEST_X=$(grep "\." ${dnsLi} 2>&1)
-      if [ -z "${_BROKEN_DNS_TEST_X}" ] \
-        || [ "${_USE_DEFAULT_DNS}" = "YES" ]; then
+      if [ -z "${_BROKEN_DNS_TEST_X}" ]; then
         echo "        label = \"google-servers\";" > ${dnsLi}
         echo "        ip=8.8.8.8;" >> ${dnsLi}
         echo "        ip=8.8.4.4;" >> ${dnsLi}
@@ -58,8 +59,7 @@ fix_dns_settings() {
       sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
       sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
       _BROKEN_DNS_TEST_Y=$(grep "\." ${dnsLi} 2>&1)
-      if [ -z "${_BROKEN_DNS_TEST_Y}" ] \
-        || [ "${_USE_DEFAULT_DNS}" = "YES" ]; then
+      if [ -z "${_BROKEN_DNS_TEST_Y}" ]; then
          echo "        ip=8.8.8.8;" >> ${dnsLi}
          echo "        ip=8.8.4.4;" >> ${dnsLi}
       fi
