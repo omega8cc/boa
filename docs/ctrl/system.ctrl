@@ -44,12 +44,6 @@ by the BOA install and upgrade tools exclusively.
   This file, if exists, allows to whitelist IP addresses (one valid IP per line)
   for access to vhosts protected via valid shell login (chive, cgp, sqlbuddy).
 
- @=> /root/.use.local.nameservers.cnf
-
-  This file, if exists, allows to define IP addresses (one per line) of custom
-  name servers, which can by used by the pdnsd cache server instead of default,
-  public Google DNS cache servers.
-
 
  ### All other (empty) .cnf control files
 
@@ -84,6 +78,15 @@ by the BOA install and upgrade tools exclusively.
   This file, if exists, allows to run newrelic-sysmond service, otherwise
   disabled for security reasons, because it exposes too much system level
   information/details in the New Relic control panel.
+
+ @=> /root/.use.local.nameservers.cnf
+
+  This file, if exists, allows to use original nameservers provided on the
+  system install by your hosting provider. It will automatically configure
+  pdnsd cache server to use these IPs instead of public Google DNS servers.
+
+  It depends on existence of another file with custom name servers to use
+  listed, one per line: /var/backups/resolv.conf.vanilla
 
  @=> /root/.hr.monitor.cnf
 
