@@ -84,8 +84,6 @@ fix_dns_settings() {
   if [ -e "${vBs}/resolv.conf.vanilla" ]; then
     rm -f /etc/resolv.conf
     cp -a ${vBs}/resolv.conf.vanilla /etc/resolv.conf
-    echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   else
     if [ -e "${vBs}/resolv.conf.tmp" ]; then
       rm -f /etc/resolv.conf
