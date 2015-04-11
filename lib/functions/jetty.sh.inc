@@ -195,12 +195,10 @@ if_install_jetty() {
       if [ "${_OSV}" = "wheezy" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
-        echo dl jetty-distribution-${_JETTY_9_VRN}.tar.gz
         get_dev_arch "jetty-distribution-${_JETTY_9_VRN}.tar.gz"
         mv /var/opt/jetty-distribution-${_JETTY_9_VRN} /opt/jetty9
         echo ${_JETTY_9_VRN} > $_JETTY_CTRL
       else
-        echo dl jetty-distribution-${_JETTY_8_VRN}.tar.gz
         get_dev_arch "jetty-distribution-${_JETTY_8_VRN}.tar.gz"
         mv /var/opt/jetty-distribution-${_JETTY_8_VRN} /opt/jetty9
         sed -i "s/8/9/g" /opt/jetty9/bin/jetty.sh &> /dev/null
@@ -216,7 +214,6 @@ if_install_jetty() {
         touch /opt/jetty9/.fixed.start.ini.txt &> /dev/null
       fi
       sed -i "s/8080/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
-      echo dl solr-${_SOLR_4_VRN}.tgz
       get_dev_arch "solr-${_SOLR_4_VRN}.tgz"
       cp -af /var/opt/solr-${_SOLR_4_VRN}/dist/solr-${_SOLR_4_VRN}.war \
         /opt/jetty9/webapps/solr.war
@@ -225,7 +222,6 @@ if_install_jetty() {
       wget -q -U iCab ${urlDev}/tika-app-1.3.jar
       wget -q -U iCab ${urlDev}/tika-app-1.1.jar
       cd /var/opt
-      echo dl slf4j-${_SLF4J_VRN}.tar.gz
       get_dev_arch "slf4j-${_SLF4J_VRN}.tar.gz"
       mv -f /var/opt/slf4j-${_SLF4J_VRN}/*.jar /opt/jetty9/lib/ext/ &> /dev/null
       rm -f /opt/jetty9/lib/ext/*sources.jar
