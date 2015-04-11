@@ -382,8 +382,7 @@ install_pdnsd_cache() {
     cat ${vBs}/resolv.conf.vanilla > /etc/resolvconf/resolv.conf.d/base
   fi
   resolvconf -u &> /dev/null
-  if [ "${_USE_PROVIDER_DNS}" != "YES" ] \
-    && [ -e "/etc/resolvconf/run/resolv.conf" ]; then
+  if [ -e "/etc/resolvconf/run/resolv.conf" ]; then
     _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
     if [[ "$_RESOLV_TEST" =~ "nameserver 127.0.0.1" ]]; then
       _DO_NOTHING=YES
