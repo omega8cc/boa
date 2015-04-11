@@ -16,9 +16,11 @@ fix_dns_settings() {
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ] \
     && [ -e "${vBs}/resolv.conf.tmp" ] ; then
-    rm -f /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.tmp ${vBs}/resolv.conf.vanilla
+    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
+      rm -f /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.tmp ${vBs}/resolv.conf.vanilla
+    fi
   fi
   sed -i "/^$/d" ${vBs}/resolv.conf.vanilla &> /dev/null
   if [ -e "${vBs}/resolv.conf.vanilla" ]; then
@@ -27,7 +29,8 @@ fix_dns_settings() {
       cp -a ${vBs}/resolv.conf.vanilla /etc/resolv.conf
     fi
   else
-    if [ -e "${vBs}/resolv.conf.tmp" ]; then
+    if [ -e "${vBs}/resolv.conf.tmp" ] \
+      && [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
       cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
     fi
@@ -722,6 +725,7 @@ install_upgrade_pdnsd() {
     install_pdnsd_cache
   else
     if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
+      || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
       || [ ! -L "/etc/resolvconf/run" ] \
       || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] \
       || [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then

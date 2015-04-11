@@ -95,9 +95,11 @@ fix_dns_settings() {
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ] \
     && [ -e "${vBs}/resolv.conf.tmp" ] ; then
-    rm -f /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.tmp ${vBs}/resolv.conf.vanilla
+    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
+      rm -f /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.tmp ${vBs}/resolv.conf.vanilla
+    fi
   fi
   sed -i "/^$/d" ${vBs}/resolv.conf.vanilla &> /dev/null
   if [ -e "${vBs}/resolv.conf.vanilla" ]; then
@@ -106,7 +108,8 @@ fix_dns_settings() {
       cp -a ${vBs}/resolv.conf.vanilla /etc/resolv.conf
     fi
   else
-    if [ -e "${vBs}/resolv.conf.tmp" ]; then
+    if [ -e "${vBs}/resolv.conf.tmp" ] \
+      && [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
       cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
     fi
@@ -153,15 +156,22 @@ d;};' /etc/pdnsd.conf
 }
 
 check_dns_settings() {
+  if [ -e "/root/.use.default.nameservers.cnf" ]; then
+    _USE_DEFAULT_DNS=YES
+    rm -f /root/.local.dns.IP.list
+  fi
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
   else
     _REMOTE_DNS_TEST=$(host -a files.aegir.cc 8.8.8.8 -w 10 2>&1)
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
+    || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
     _CTRL_DNS_TEST=$(host -a files.aegir.cc 2>&1)
     if [[ ! "${_CTRL_DNS_TEST}" =~ "104.245.208.226" ]] \
+      || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
+      || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
       fix_dns_settings
     fi
