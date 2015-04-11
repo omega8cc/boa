@@ -336,7 +336,7 @@ check_connection() {
 install_pdnsd_cache() {
   msg "INFO: Installing DNS cache pdnsd server..."
   cp -af /etc/resolv.conf ${vBs}/resolv.conf.pre-${_X_VERSION}-${_NOW}
-  if [ "${_USE_PROVIDER_DNS}" = "NO" ]; then
+  if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
     rm -f /etc/resolv.conf
     echo "nameserver 8.8.8.8" > /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
@@ -350,7 +350,7 @@ install_pdnsd_cache() {
   st_runner "aptitude purge pdnsd -y" &> /dev/null
   st_runner "aptitude purge resolvconf -y" &> /dev/null
   st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
-  if [ "${_USE_PROVIDER_DNS}" = "NO" ]; then
+  if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
     rm -f /etc/resolv.conf
     echo "nameserver 8.8.8.8" > /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
@@ -361,21 +361,7 @@ install_pdnsd_cache() {
   st_runner "${_INSTALL} pdnsd" &> /dev/null
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
   cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
-  if [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
-    _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
-    if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
-      && [ -e "/root/.use.local.nameservers.cnf" ]; then
-      echo "        label = \"google-servers\";" > ${dnsLi}
-      for _IP in `cat /etc/resolv.conf \
-        | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
-        | cut -d ' ' -f2 \
-        | sort \
-        | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
-      sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-      sed -i '/        label = \"google-servers\";/ {r ${dnsLi}
-d;};' /etc/pdnsd.conf
-    fi
-  fi
+  check_dns_settings
   if [ ! -L "/etc/resolvconf/run" ] \
     || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] \
     || [ ! -e "/etc/resolvconf/resolv.conf.d/tail" ]; then
@@ -395,7 +381,7 @@ d;};' /etc/pdnsd.conf
     cat ${vBs}/resolv.conf.vanilla > /etc/resolvconf/resolv.conf.d/base
   fi
   resolvconf -u &> /dev/null
-  if [ "${_USE_PROVIDER_DNS}" = "NO" ] \
+  if [ "${_USE_PROVIDER_DNS}" != "YES" ] \
     && [ -e "/etc/resolvconf/run/resolv.conf" ]; then
     _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
     if [[ "$_RESOLV_TEST" =~ "nameserver 127.0.0.1" ]]; then
