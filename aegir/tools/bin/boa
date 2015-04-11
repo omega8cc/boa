@@ -114,7 +114,8 @@ fix_dns_settings() {
       sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
       sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
       _BROKEN_DNS_TEST_X=$(grep "\." ${dnsLi} 2>&1)
-      if [ -z "${_BROKEN_DNS_TEST_X}" ]; then
+      if [ -z "${_BROKEN_DNS_TEST_X}" ] \
+        || [ "${_USE_DEFAULT_DNS}" = "YES" ]; then
         echo "        label = \"google-servers\";" > ${dnsLi}
         echo "        ip=8.8.8.8;" >> ${dnsLi}
         echo "        ip=8.8.4.4;" >> ${dnsLi}
@@ -136,7 +137,8 @@ fix_dns_settings() {
       sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
       sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
       _BROKEN_DNS_TEST_Y=$(grep "\." ${dnsLi} 2>&1)
-      if [ -z "${_BROKEN_DNS_TEST_Y}" ]; then
+      if [ -z "${_BROKEN_DNS_TEST_Y}" ] \
+        || [ "${_USE_DEFAULT_DNS}" = "YES" ]; then
          echo "        ip=8.8.8.8;" >> ${dnsLi}
          echo "        ip=8.8.4.4;" >> ${dnsLi}
       fi
