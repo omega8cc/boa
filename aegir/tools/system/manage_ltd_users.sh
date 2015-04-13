@@ -10,7 +10,7 @@ _THIS_RV=$(lsb_release -sc 2>&1)
 if [ "$_THIS_RV" = "wheezy" ] \
   || [ "$_THIS_RV" = "trusty" ] \
   || [ "$_THIS_RV" = "precise" ]; then
-  _RUBY_VRN=2.2.1
+  _RUBY_VRN=2.2.2
 else
   _RUBY_VRN=2.0.0
 fi
