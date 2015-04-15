@@ -151,11 +151,6 @@ guard_stats() {
 }
 
 if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
-  ### make sure that dl mirrors never get blocked
-  csf -a 50.31.251.116 jp.files.aegir.cc
-  csf -a 50.31.233.231 nl.files.aegir.cc
-  csf -a 134.19.164.236 uk.files.aegir.cc
-  csf -a 104.245.208.226 us.files.aegir.cc
   if [ -e "/root/.local.IP.list" ]; then
     for _IP in `cat /root/.local.IP.list \
       | cut -d '#' -f1 \

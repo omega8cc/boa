@@ -588,16 +588,23 @@ count_cpu() {
   chmod 644 /data/all/cpuinfo
 }
 
-###--------------------###
-if [ `whoami` = "root" ]; then
-
+check_fix_csf() {
   if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
-    ### make sure that dl mirrors never get blocked
+    csf -df &> /dev/null
+    csf -tf &> /dev/null
     csf -a 50.31.251.116 jp.files.aegir.cc   &> /dev/null
     csf -a 50.31.233.231 nl.files.aegir.cc   &> /dev/null
     csf -a 134.19.164.236 uk.files.aegir.cc  &> /dev/null
     csf -a 104.245.208.226 us.files.aegir.cc &> /dev/null
+    csf -x  &> /dev/null
+    csf -uf &> /dev/null
   fi
+}
+
+###--------------------###
+if [ `whoami` = "root" ]; then
+
+  check_fix_csf
 
   if [ -e "/var/run/pdnsd.pid" ] \
     && [ -e "/var/xdrago" ] \
