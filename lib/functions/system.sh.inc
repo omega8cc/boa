@@ -2680,9 +2680,10 @@ finale() {
     service cron start     &> /dev/null
   fi
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-    csf -x &> /dev/null
-    csf -e &> /dev/null
-    csf -q &> /dev/null
+    csf -x  &> /dev/null
+    csf -uf &> /dev/null
+    csf -e  &> /dev/null
+    csf -q  &> /dev/null
   fi
   cd /
   chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt opt \

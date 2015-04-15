@@ -741,17 +741,22 @@ check_dns_curl() {
   fi
 }
 
+check_fix_csf() {
+  if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
+    csf -df &> /dev/null
+    csf -tf &> /dev/null
+    csf -a 50.31.251.116 jp.files.aegir.cc   &> /dev/null
+    csf -a 50.31.233.231 nl.files.aegir.cc   &> /dev/null
+    csf -a 134.19.164.236 uk.files.aegir.cc  &> /dev/null
+    csf -a 104.245.208.226 us.files.aegir.cc &> /dev/null
+    csf -x  &> /dev/null
+    csf -uf &> /dev/null
+  fi
+}
+
 check_root() {
   if [ `whoami` = "root" ]; then
-    if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
-      csf -df &> /dev/null
-      csf -tf &> /dev/null
-      csf -a 50.31.251.116 jp.files.aegir.cc   &> /dev/null
-      csf -a 50.31.233.231 nl.files.aegir.cc   &> /dev/null
-      csf -a 134.19.164.236 uk.files.aegir.cc  &> /dev/null
-      csf -a 104.245.208.226 us.files.aegir.cc &> /dev/null
-      csf -x &> /dev/null
-    fi
+    check_fix_csf
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
