@@ -59,12 +59,7 @@ csf_install() {
   fi
   cd /var/opt
   rm -f ${pthLog}/lastFire
-  if ! netcat -w 14 -z www.configserver.com 80 ; then
-    get_dev_arch "csf.tgz"
-  else
-    curl ${crlGet} "http://www.configserver.com/free/csf.tgz" -o "csf.tgz"
-    extract_archive "csf.tgz"
-  fi
+  get_dev_arch "csf.tgz"
   cd csf
   st_runner "sh install.sh" 2> /dev/null
   cd /var/opt
