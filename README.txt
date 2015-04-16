@@ -90,8 +90,7 @@ production settings.
 ### OTHER REQUIREMENTS
 
 * Wget must be installed.
-* The Git standard port 9418 must be open.
-* SMTP standard port 25 (or SMTP relay) must be open for outgoing connections.
+* The outgoing TCP connections via ports: 25, 53, 80 and 443 must be open.
 * Minimum 1 GB of RAM
 * Locales with UTF-8 support, otherwise en_US.UTF-8 (default) is forced.
 * Basic sysadmin skills and experience.

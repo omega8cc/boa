@@ -58,7 +58,7 @@ projects[nodereference_url][download][url] = "http://files.aegir.cc/dev/contrib/
 
 projects[fserver][type] = "module"
 projects[fserver][download][type] = "git"
-projects[fserver][download][url] = "git://github.com/omega8cc/FeatureServer.git"
+projects[fserver][download][url] = "https://github.com/omega8cc/FeatureServer.git"
 projects[fserver][directory_name] = "fserver"
 projects[fserver][destination] = "modules"
 
@@ -69,4 +69,4 @@ projects[tao][download][url] = "http://files.aegir.cc/dev/contrib/tao-6.x-3.3.ta
 
 projects[singular][type] = "theme"
 projects[singular][download][type] = "git"
-projects[singular][download][url] = "git://github.com/omega8cc/singular.git"
+projects[singular][download][url] = "https://github.com/omega8cc/singular.git"

@@ -392,7 +392,7 @@ _LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
 ### repository. Valid options:
 ###
 ### _FORCE_GIT_MIRROR=github
-### _FORCE_GIT_MIRROR=gitorious
+### _FORCE_GIT_MIRROR=gitlab
 ###
 ### Note: with forced mirror the script will
 ### not try to connect and then switch to
@@ -1113,7 +1113,7 @@ download_helpers_libs() {
     echo " "
     echo "EXIT on error due to missing helpers"
     echo "Please try to run this script again in a few minutes"
-    echo "Also, make sure that the git port 9418 is open"
+    echo "Also, make sure that the outgoing connections via port 443 work"
     echo "Bye"
     echo " "
     clean_pid_exit

@@ -25,7 +25,7 @@
 ###  GNU GPL along with this program.
 ###  If not, see http://www.gnu.org/licenses/
 ###
-###  Code: https://code.aegir.cc/aegir
+###  Code: https://github.com/omega8cc/boa
 ###
 ###----------------------------------------###
 
@@ -91,7 +91,8 @@ bldPth="/opt/tmp/boa"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncO="octopus.sh.cnf"
 gCb="git clone --branch"
-gitHub="git://github.com/omega8cc"
+gitHub="https://github.com/omega8cc"
+gitLab="https://gitlab.com/omega8cc"
 libFnc="${bldPth}/lib/functions"
 tocIncO="${filIncO}.${_USER}"
 vBs="/var/backups"

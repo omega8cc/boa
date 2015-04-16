@@ -25,7 +25,7 @@
 ###  GNU GPL along with this program.
 ###  If not, see http://www.gnu.org/licenses/
 ###
-###  Code: https://code.aegir.cc/aegir
+###  Code: https://github.com/omega8cc/boa
 ###
 ###----------------------------------------###
 
@@ -166,7 +166,8 @@ _PHP56_VRN=5.6.7
 bldPth="/opt/tmp/boa"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 gCb="git clone --branch"
-gitHub="git://github.com/omega8cc"
+gitHub="https://github.com/omega8cc"
+gitLab="https://gitlab.com/omega8cc"
 libFnc="${bldPth}/lib/functions"
 vBs="/var/backups"
 
@@ -1123,19 +1124,22 @@ tune_memory_limits() {
 #
 check_git_repos() {
   _GITHUB_WORKS=NO
-  _GITORIOUS_WORKS=NO
+  _GITLAB_WORKS=NO
   if [ "${_FORCE_GIT_MIRROR}" = "drupal" ]; then
     _FORCE_GIT_MIRROR=github
+  fi
+  if [ "${_FORCE_GIT_MIRROR}" = "gitorious" ]; then
+    _FORCE_GIT_MIRROR=gitlab
   fi
   if [ "${_FORCE_GIT_MIRROR}" = "github" ]; then
     msg "INFO: We will use forced GitHub repository without testing connection"
     _GITHUB_WORKS=YES
-    _GITORIOUS_WORKS=NO
+    _GITLAB_WORKS=NO
     sleep 1
-  elif [ "${_FORCE_GIT_MIRROR}" = "gitorious" ]; then
-    msg "INFO: We will use forced Gitorious mirror without testing connection"
+  elif [ "${_FORCE_GIT_MIRROR}" = "gitlab" ]; then
+    msg "INFO: We will use forced GitLab mirror without testing connection"
     _GITHUB_WORKS=NO
-    _GITORIOUS_WORKS=YES
+    _GITLAB_WORKS=YES
     sleep 1
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1143,26 +1147,26 @@ check_git_repos() {
     fi
     sleep 1
     _GITHUB_WORKS=YES
-    _GITORIOUS_WORKS=YES
-    if ! netcat -w 14 -z github.com 9418 ; then
+    _GITLAB_WORKS=YES
+    if ! netcat -w 10 -z github.com 443 ; then
       _GITHUB_WORKS=NO
       msg "WARN: The GitHub master repository server doesn't respond..."
-    elif ! netcat -w 14 -z code.aegir.cc 9418 ; then
-      _GITORIOUS_WORKS=NO
-      msg "WARN: The Gitorious mirror repository server doesn't respond..."
+    elif ! netcat -w 10 -z gitlab.com 443 ; then
+      _GITLAB_WORKS=NO
+      msg "WARN: The GitLab mirror repository server doesn't respond..."
     fi
   fi
   if [ "$_GITHUB_WORKS" = "YES" ]; then
     _BOA_REPO_NAME="boa"
-    _BOA_REPO_GIT_URL="git://github.com/omega8cc"
+    _BOA_REPO_GIT_URL="https://github.com/omega8cc"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: GitHub master repository will be used"
     fi
-  elif [ "$_GITORIOUS_WORKS" = "YES" ]; then
-    _BOA_REPO_NAME="barracuda-octopus"
-    _BOA_REPO_GIT_URL="git://code.aegir.cc/aegir"
+  elif [ "$_GITLAB_WORKS" = "YES" ]; then
+    _BOA_REPO_NAME="boa"
+    _BOA_REPO_GIT_URL="${gitLab}"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Gitorious mirror repository will be used"
+      msg "INFO: GitLab mirror repository will be used"
     fi
   else
     cat <<EOF
@@ -1170,7 +1174,7 @@ check_git_repos() {
     None of repository servers responded in 8 seconds,
     so we can't continue this installation.
 
-    Please try again later or check if your firewall has port 9418 open.
+    Please try again later or check if your firewall has port 443 open.
 
     Bye.
 
@@ -1185,7 +1189,7 @@ EOF
 touch /var/run/boa_run.pid
 #
 _BOA_REPO_NAME="boa"
-_BOA_REPO_GIT_URL="git://github.com/omega8cc"
+_BOA_REPO_GIT_URL="https://github.com/omega8cc"
 if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
   check_git_repos
 fi

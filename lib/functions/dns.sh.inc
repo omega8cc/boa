@@ -105,19 +105,22 @@ check_dns_settings() {
 check_git_repos() {
   if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
     _GITHUB_WORKS=NO
-    _GITORIOUS_WORKS=NO
+    _GITLAB_WORKS=NO
     if [ "${_FORCE_GIT_MIRROR}" = "drupal" ]; then
       _FORCE_GIT_MIRROR=github
+    fi
+    if [ "${_FORCE_GIT_MIRROR}" = "gitorious" ]; then
+      _FORCE_GIT_MIRROR=gitlab
     fi
     if [ "${_FORCE_GIT_MIRROR}" = "github" ]; then
       msg "INFO: We will use forced GitHub repository without testing connection"
       _GITHUB_WORKS=YES
-      _GITORIOUS_WORKS=NO
+      _GITLAB_WORKS=NO
       sleep 1
-    elif [ "${_FORCE_GIT_MIRROR}" = "gitorious" ]; then
-      msg "INFO: We will use forced Gitorious mirror without testing connection"
+    elif [ "${_FORCE_GIT_MIRROR}" = "gitlab" ]; then
+      msg "INFO: We will use forced GitLab mirror without testing connection"
       _GITHUB_WORKS=NO
-      _GITORIOUS_WORKS=YES
+      _GITLAB_WORKS=YES
       sleep 1
     else
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -125,13 +128,13 @@ check_git_repos() {
       fi
       sleep 1
       _GITHUB_WORKS=YES
-      _GITORIOUS_WORKS=YES
-      if ! netcat -w 14 -z github.com 9418 ; then
+      _GITLAB_WORKS=YES
+      if ! netcat -w 10 -z github.com 443 ; then
         _GITHUB_WORKS=NO
         msg "WARN: The GitHub master repository server doesn't respond..."
-      elif ! netcat -w 14 -z code.aegir.cc 9418 ; then
-        _GITORIOUS_WORKS=NO
-        msg "WARN: The Gitorious mirror repository server doesn't respond..."
+      elif ! netcat -w 10 -z gitlab.com 443 ; then
+        _GITLAB_WORKS=NO
+        msg "WARN: The GitLab mirror repository server doesn't respond..."
       fi
     fi
     if [ "$_GITHUB_WORKS" = "YES" ]; then
@@ -140,11 +143,11 @@ check_git_repos() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: GitHub master repository will be used"
       fi
-    elif [ "$_GITORIOUS_WORKS" = "YES" ]; then
-      _BOA_REPO_NAME="barracuda-octopus"
-      _BOA_REPO_GIT_URL="git://code.aegir.cc/aegir"
+    elif [ "$_GITLAB_WORKS" = "YES" ]; then
+      _BOA_REPO_NAME="boa"
+      _BOA_REPO_GIT_URL="${gitLab}"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Gitorious mirror repository will be used"
+        msg "INFO: GitLab mirror repository will be used"
       fi
     else
       cat <<EOF
@@ -152,7 +155,7 @@ check_git_repos() {
       None of repository servers responded in 8 seconds,
       so we can't continue this installation.
 
-      Please try again later or check if your firewall has port 9418 open.
+      Please try again later or check if your firewall has port 443 open.
 
       Bye.
 
@@ -311,7 +314,7 @@ validate_local_ip() {
 # Wait for connection.
 wait_for_connection() {
   echo " "
-  msg "I can not connect to github.com on port 9418 at the moment"
+  msg "I can not connect to github.com on port 443 at the moment"
   msg "I will try again in 60 seconds, please wait..."
   msg "Waiting for attempt $1..."
   sleep 60
@@ -320,19 +323,19 @@ wait_for_connection() {
 #
 # Check connection.
 check_connection() {
-  if ! netcat -w 14 -z github.com 9418 ; then
+  if ! netcat -w 10 -z github.com 443 ; then
     wait_for_connection "2/4"
-    if ! netcat -w 14 -z github.com 9418 ; then
+    if ! netcat -w 10 -z github.com 443 ; then
       wait_for_connection "3/4"
-      if ! netcat -w 14 -z github.com 9418 ; then
+      if ! netcat -w 10 -z github.com 443 ; then
         wait_for_connection "4/4"
-        if ! netcat -w 14 -z github.com 9418 ; then
+        if ! netcat -w 10 -z github.com 443 ; then
           echo " "
           msg "Sorry, I gave up."
-          msg "EXIT on error due to GitHub git server at 9418 downtime"
+          msg "EXIT on error due to GitHub git server at 443 downtime"
           msg "Please try to run this script again in a few minutes"
           msg "You may want to check https://status.github.com/messages"
-          msg "Also, make sure that the git port 9418 is open"
+          msg "Also, make sure that the outgoing connections via port 443 work"
           msg "Bye"
           clean_pid_exit
         fi
