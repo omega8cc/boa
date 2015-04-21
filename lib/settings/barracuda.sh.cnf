@@ -947,7 +947,7 @@ _NGINX_NAXSI=NO
 ### which already comes with required
 ### OpenSSL 1.0.1+ by default.
 ###
-_NGINX_SPDY=NO
+_NGINX_SPDY=YES
 
 ###
 ### When set to YES, it will also force
@@ -956,7 +956,7 @@ _NGINX_SPDY=NO
 ### which already comes with required
 ### OpenSSL 1.0.1+ by default.
 ###
-_NGINX_FORWARD_SECRECY=NO
+_NGINX_FORWARD_SECRECY=YES
 
 ###
 ### Use this only when you need to always
