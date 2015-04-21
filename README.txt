@@ -99,11 +99,13 @@ production settings.
 
 ### PROVIDES
 
-=== Included by default - see docs/NOTES.txt for details
+=== Included/enabled by default - see docs/NOTES.txt for details
 
 * All libraries & tools required to install and run Nginx based Aegir system.
 * Latest release of MariaDB 5.5 or 10.0 database server with Chive manager.
 * Latest version of Nginx web server.
+* SPDY Nginx support.
+* PFS (Perfect Forward Secrecy) support in Nginx.
 * PHP-FPM 5.6, 5.5, 5.4, 5.3 - multi-install mode, configurable per Octopus.
 * PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse and ionCube.
 * Fast Redis Cache with DB auto-failover for all 6.x and 7.x platforms.
@@ -119,7 +121,7 @@ production settings.
 * Magic Speed Booster cache, working like a Boost + AuthCache, but per user.
 * Entry level XSS built-in protection on the Nginx level.
 * Firewall csf/lfd integrated with Nginx abuse guard.
-* PHP errors debugging, including WSOD, enabled on the fly on dev. aliases.
+* PHP errors debugging, including WSOD, enabled on the fly on .dev. aliases.
 * Boost, AdvAgg, Domain Access and Drupal for Facebook built-in support.
 * Built-in collection of useful modules available in all platforms.
 * Autonomous Maintenance & Auto-Healing scripts in /var/xdrago.
@@ -129,8 +131,6 @@ production settings.
 === Optional add-ons - see docs/NOTES.txt for details
 
 * Compass Tools.
-* SPDY Nginx support.
-* PFS (Perfect Forward Secrecy) support in Nginx.
 * HHVM support - see docs/HHVM.txt for details.
 * MultiCore Apache Solr 1.4.1 with Jetty 7 - see docs/SOLR.txt for details.
 * MultiCore Apache Solr 3.6.2 with Jetty 8 - see docs/SOLR.txt for details.
@@ -143,8 +143,8 @@ production settings.
 * SQL Buddy database manager.
 * Collectd server monitor.
 * LDAP Nginx support via third-party module (experimental).
-* MongoDB driver for PHP 5.3 (experimental).
-* GEOS extension for PHP 5.3 (experimental).
+* MongoDB driver for PHP (experimental).
+* GEOS extension for PHP (all supported PHP versions).
 
 
 ### OCTOPUS PLATFORMS
