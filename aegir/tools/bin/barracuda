@@ -372,11 +372,11 @@ up_action() {
         if [ -e "/data/disk" ] && [ -e "/data/conf/global.inc" ]; then
           for Ctrl in `find /data/disk/*/log/fpm.txt \
             -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${phpS} > $Ctrl &> /dev/null
+            echo ${phpS} > ${Ctrl}
           done
           for Ctrl in `find /data/disk/*/log/cli.txt \
             -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${phpS} > $Ctrl &> /dev/null
+            echo ${phpS} > ${Ctrl}
           done
         fi
       elif [ "${phpS}" = "ALL" ]; then
@@ -426,11 +426,11 @@ up_action() {
         if [ -e "/data/disk" ] && [ -e "/data/conf/global.inc" ]; then
           for Ctrl in `find /data/disk/*/log/fpm.txt \
             -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${phpS} > $Ctrl &> /dev/null
+            echo ${phpS} > ${Ctrl}
           done
           for Ctrl in `find /data/disk/*/log/cli.txt \
             -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${phpS} > $Ctrl &> /dev/null
+            echo ${phpS} > ${Ctrl}
           done
         fi
       fi
