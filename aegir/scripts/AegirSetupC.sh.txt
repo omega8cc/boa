@@ -798,7 +798,7 @@ commerce_7_2_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              if [ "${_COMMERCE2}" = "2.22" ]; then
+              if [ "${_COMMERCE2}" = "2.23" ]; then
                 cd ${_SHRD_PLPATH}
                 patch -p1 < ${pthPch}/${_REAL_PRNAME}.patch &> /dev/null
               fi
