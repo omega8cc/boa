@@ -3,6 +3,32 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
+if [ -e "/var/log/php" ]; then
+  if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
+    | grep --count "already listen on"` -gt "0" ]; then
+    touch /var/run/fmp_wait.pid
+    sleep 8
+    kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
+    rm -f /var/log/php/*
+    if [ -e "/etc/init.d/php56-fpm" ]; then
+      /etc/init.d/php56-fpm start
+    fi
+    if [ -e "/etc/init.d/php55-fpm" ]; then
+      /etc/init.d/php55-fpm start
+    fi
+    if [ -e "/etc/init.d/php54-fpm" ]; then
+      /etc/init.d/php54-fpm start
+    fi
+    if [ -e "/etc/init.d/php53-fpm" ]; then
+      /etc/init.d/php53-fpm start
+    fi
+    sleep 8
+    rm -f /var/run/fmp_wait.pid
+    echo "$(date 2>&1) FPM instances conflict detected" >> \
+      /var/xdrago/log/fpm.conflict.incident.log
+  fi
+fi
+
 _PHPLOG_SIZE_TEST=$(du -s -h /var/log/php 2>&1)
 if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]]; then
   echo $_PHPLOG_SIZE_TEST too big
