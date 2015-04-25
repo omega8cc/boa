@@ -78,11 +78,16 @@ if (isset($_SERVER['HTTP_USER_AGENT']) &&
 
 
 /**
- * Use Aegir/BOA specific variable as a reverse fallback
+ * Use Aegir/BOA specific MAIN_SITE_NAME instead of possibly fake SERVER_NAME
  */
-if (isset($_SERVER['MAIN_SITE_NAME']) && !isset($_SERVER['SERVER_NAME'])) {
+if (isset($_SERVER['MAIN_SITE_NAME'])) {
   $_SERVER['SERVER_NAME'] = $_SERVER['MAIN_SITE_NAME'];
 }
+
+
+/**
+ * Set MAIN_SITE_NAME to match SERVER_NAME, if MAIN_SITE_NAME is not set
+ */
 if (!isset($_SERVER['MAIN_SITE_NAME']) && isset($_SERVER['SERVER_NAME'])) {
   $_SERVER['MAIN_SITE_NAME'] = $_SERVER['SERVER_NAME'];
 }
