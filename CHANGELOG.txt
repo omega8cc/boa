@@ -31,6 +31,12 @@
   Recruiter 1.6 ---------------- https://drupal.org/project/recruiter
   Restaurant 1.0-b12 ----------- https://drupal.org/project/restaurant
 
+  @=> NOTE: Drupal 8 support is broken in this release, because latest Drush
+      doesn't support older Drupal 8 beta versions, while new D8 beta is not
+      released and tested yet, and we really need latest Drush to fix broken
+      D6->D7 upgrade path, so we could prepare for full Aegir 3, which comes
+      with D7 in the frontend.
+
 # New features and enhancements:
 
   * Re-create files/robots.txt if older than 7 days
