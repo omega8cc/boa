@@ -111,13 +111,13 @@ fix_sftp_ftps_modern() {
   fi
   if [ ! -e "${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log" ] \
     || [ ! -e "/etc/ssh/sftp_config" ] \
-    || [ ! -e "/usr/bin/MySecureShell" ] \
+    || [ ! -e "/usr/bin/mysecureshell" ] \
     || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Installing MySecureShell ${_MSS_VRN}..."
     cd /var/opt
     rm -f -r mysecureshell*
     get_dev_src "mysecureshell-${_MSS_VRN}.tar.gz"
-    cd /var/opt/mysecureshell-${_MSS_VRN}
+    cd /var/opt/mysecureshell
     st_runner "sh ./configure" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "sh ./install.sh yesall" 2> /dev/null
@@ -125,17 +125,21 @@ fix_sftp_ftps_modern() {
     cp -af ${locCnf}/sftp_config /etc/ssh/sftp_config
     mrun "service ssh restart" &> /dev/null
   fi
-  if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ]; then
+  if [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
     _MSS_TEST=$(grep "lshell" /etc/passwd 2>&1)
     if [[ "$_MSS_TEST" =~ "lshell" ]]; then
-      sed -i "s/usr\/.*\/lshell/usr\/bin\/MySecureShell/g" /etc/passwd &> /dev/null
+      sed -i "s/usr\/.*\/lshell/usr\/bin\/mysecureshell/g" /etc/passwd &> /dev/null
+    fi
+    _MSS_TEST=$(grep "MySecureShell" /etc/passwd 2>&1)
+    if [[ "$_MSS_TEST" =~ "MySecureShell" ]]; then
+      sed -i "s/usr\/.*\/MySecureShell/usr\/bin\/mysecureshell/g" /etc/passwd &> /dev/null
     fi
   fi
-  _MSS_PATH_TEST=$(grep "/usr/bin/MySecureShell" /etc/shells 2>&1)
-  if [[ "$_MSS_PATH_TEST" =~ "/usr/bin/MySecureShell" ]]; then
+  _MSS_PATH_TEST=$(grep "/usr/bin/mysecureshell" /etc/shells 2>&1)
+  if [[ "$_MSS_PATH_TEST" =~ "/usr/bin/mysecureshell" ]]; then
     _DO_NOTHING=YES
   else
-    echo "/usr/bin/MySecureShell" >> /etc/shells
+    echo "/usr/bin/mysecureshell" >> /etc/shells
   fi
   if [ ! -e "${pthLog}/fixed-sftp-idle.log" ]; then
     sed -i "s/IdleTimeOut.*/IdleTimeOut            15m/g" /etc/ssh/sftp_config &> /dev/null
@@ -2036,18 +2040,18 @@ install_ssh_src() {
       aptitude hold openssh-server &> /dev/null
       aptitude hold openssh-client &> /dev/null
       aptitude hold ssh &> /dev/null
-      echo "openssh-server hold" | dpkg --set-selections &> /dev/null
-      echo "openssh-client hold" | dpkg --set-selections &> /dev/null
-      echo "ssh hold" | dpkg --set-selections &> /dev/null
+      echo "openssh-server hold" | dpkg --set-selections
+      echo "openssh-client hold" | dpkg --set-selections
+      echo "ssh hold" | dpkg --set-selections
     fi
   else
     if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]]; then
       aptitude hold openssh-server &> /dev/null
       aptitude hold openssh-client &> /dev/null
       aptitude hold ssh &> /dev/null
-      echo "openssh-server hold" | dpkg --set-selections &> /dev/null
-      echo "openssh-client hold" | dpkg --set-selections &> /dev/null
-      echo "ssh hold" | dpkg --set-selections &> /dev/null
+      echo "openssh-server hold" | dpkg --set-selections
+      echo "openssh-client hold" | dpkg --set-selections
+      echo "ssh hold" | dpkg --set-selections
     fi
   fi
   _SSH_FORCE_REINSTALL=NO
@@ -2121,13 +2125,13 @@ install_curl_src() {
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ]; then
     ###--------------------###
     if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
-      echo "libcurl3 install" | dpkg --set-selections &> /dev/null
-      echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
-      echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
+      echo "libcurl3 install" | dpkg --set-selections
+      echo "libcurl3-gnutls install" | dpkg --set-selections
+      echo "libcurl4-openssl-dev install" | dpkg --set-selections
       aptitude install libcurl3 -y &> /dev/null
       aptitude install libcurl3-gnutls -y &> /dev/null
       aptitude install libcurl4-openssl-dev -y &> /dev/null
-      echo "curl hold" | dpkg --set-selections &> /dev/null
+      echo "curl hold" | dpkg --set-selections
       aptitude hold curl &> /dev/null
     fi
     msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
@@ -2153,19 +2157,19 @@ install_curl_src() {
           apt-mark unhold curl &> /dev/null
         fi
         if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
-          echo "curl install" | dpkg --set-selections &> /dev/null
+          echo "curl install" | dpkg --set-selections
           apt-get install curl -y --force-yes --reinstall &> /dev/null
         fi
       fi
     else
       if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
-        echo "libcurl3 install" | dpkg --set-selections &> /dev/null
-        echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
-        echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
+        echo "libcurl3 install" | dpkg --set-selections
+        echo "libcurl3-gnutls install" | dpkg --set-selections
+        echo "libcurl4-openssl-dev install" | dpkg --set-selections
         aptitude install libcurl3 -y &> /dev/null
         aptitude install libcurl3-gnutls -y &> /dev/null
         aptitude install libcurl4-openssl-dev -y &> /dev/null
-        echo "curl hold" | dpkg --set-selections &> /dev/null
+        echo "curl hold" | dpkg --set-selections
         aptitude hold curl &> /dev/null
       fi
     fi
@@ -2246,11 +2250,11 @@ install_ssl_src() {
       aptitude hold zlibc &> /dev/null
       aptitude hold zlib1g &> /dev/null
       aptitude hold zlib1g-dev &> /dev/null
-      echo "libssl-dev install" | dpkg --set-selections &> /dev/null
-      echo "openssl hold" | dpkg --set-selections &> /dev/null
-      echo "zlibc hold" | dpkg --set-selections &> /dev/null
-      echo "zlib1g hold" | dpkg --set-selections &> /dev/null
-      echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
+      echo "libssl-dev install" | dpkg --set-selections
+      echo "openssl hold" | dpkg --set-selections
+      echo "zlibc hold" | dpkg --set-selections
+      echo "zlib1g hold" | dpkg --set-selections
+      echo "zlib1g-dev hold" | dpkg --set-selections
     fi
   else
     if [[ ! "$_SSL_GET_DPKG" =~ "hold" ]]; then
@@ -2259,11 +2263,11 @@ install_ssl_src() {
       aptitude hold zlibc &> /dev/null
       aptitude hold zlib1g &> /dev/null
       aptitude hold zlib1g-dev &> /dev/null
-      echo "libssl-dev install" | dpkg --set-selections &> /dev/null
-      echo "openssl hold" | dpkg --set-selections &> /dev/null
-      echo "zlibc hold" | dpkg --set-selections &> /dev/null
-      echo "zlib1g hold" | dpkg --set-selections &> /dev/null
-      echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
+      echo "libssl-dev install" | dpkg --set-selections
+      echo "openssl hold" | dpkg --set-selections
+      echo "zlibc hold" | dpkg --set-selections
+      echo "zlib1g hold" | dpkg --set-selections
+      echo "zlib1g-dev hold" | dpkg --set-selections
     fi
   fi
 }
@@ -2529,6 +2533,9 @@ strict_bin_permissions() {
                     sftp-admin \
                     sftp-kill \
                     sftp-state \
+                    sftp-user \
+                    sftp-verif \
+                    sftp-who \
                     syncpass"
   for i in ${_PROTECTED_ITEMS}; do
     _BIN_ITEM=$(which $i 2>&1)
@@ -2537,6 +2544,9 @@ strict_bin_permissions() {
       chmod 700 $_BIN_ITEM &> /dev/null
     fi
   done
+
+  chown root:root /usr/bin/mysecureshell &> /dev/null
+  chmod 4755 /usr/bin/mysecureshell &> /dev/null
 
   cp -af ${bldPth}/aegir/helpers/websh.sh.txt /bin/websh
   chmod 755 /bin/websh
@@ -2670,9 +2680,10 @@ finale() {
     service cron start     &> /dev/null
   fi
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-    csf -x &> /dev/null
-    csf -e &> /dev/null
-    csf -q &> /dev/null
+    csf -x  &> /dev/null
+    csf -uf &> /dev/null
+    csf -e  &> /dev/null
+    csf -q  &> /dev/null
   fi
   cd /
   chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt opt \
@@ -2789,15 +2800,15 @@ if_squeeze_to_wheezy() {
       mv /etc/init.d/tomcat /etc/init.d/offtomcat
       kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
     fi
-    echo "curl install" | dpkg --set-selections &> /dev/null
-    echo "libssl-dev install" | dpkg --set-selections &> /dev/null
-    echo "openssh-client install" | dpkg --set-selections &> /dev/null
-    echo "openssh-server install" | dpkg --set-selections &> /dev/null
-    echo "openssl install" | dpkg --set-selections &> /dev/null
-    echo "ssh install" | dpkg --set-selections &> /dev/null
-    echo "zlib1g install" | dpkg --set-selections &> /dev/null
-    echo "zlib1g-dev install" | dpkg --set-selections &> /dev/null
-    echo "zlibc install" | dpkg --set-selections &> /dev/null
+    echo "curl install" | dpkg --set-selections
+    echo "libssl-dev install" | dpkg --set-selections
+    echo "openssh-client install" | dpkg --set-selections
+    echo "openssh-server install" | dpkg --set-selections
+    echo "openssl install" | dpkg --set-selections
+    echo "ssh install" | dpkg --set-selections
+    echo "zlib1g install" | dpkg --set-selections
+    echo "zlib1g-dev install" | dpkg --set-selections
+    echo "zlibc install" | dpkg --set-selections
     mrun "apt-get remove collectd -y --force-yes -qq" &> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
@@ -2911,7 +2922,7 @@ if_squeeze_to_wheezy() {
       mount -t devpts devpts /dev/pts &> /dev/null
       echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
     fi
-    echo rotate > /var/log/syslog &> /dev/null
+    echo rotate > /var/log/syslog
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null
     msg "INFO: No errors? Then Squeeze to Wheezy upgrade was successful - congrats!"
     msg "HINT: Please remember to reboot when Barracuda will complete all upgrades"
@@ -3009,7 +3020,7 @@ if_lenny_to_squeeze() {
     mrun "dpkg --configure --force-all -a" 2> /dev/null
     mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
           -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
-    echo rotate > /var/log/syslog &> /dev/null
+    echo rotate > /var/log/syslog
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null
     msg "INFO: No errors? Then Lenny to Squeeze upgrade was successful - congrats!"
     msg "HINT: Please remember to reboot when Barracuda will complete all upgrades"
@@ -3076,7 +3087,7 @@ sys_packages_update() {
       -o Dpkg::Options::=--force-confold" 2> /dev/null
     st_runner "aptitude autoclean -y" &> /dev/null
   else
-    echo "gnupg-curl install" | dpkg --set-selections &> /dev/null
+    echo "gnupg-curl install" | dpkg --set-selections
     if [ -e "/etc/php5/conf.d" ]; then
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}

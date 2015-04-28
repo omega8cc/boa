@@ -3,8 +3,8 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _WEBG=www-data
-_OPENSSL_VRN=1.0.2
-_X_SE="2.4.1-stable"
+_OPENSSL_VRN=1.0.2a
+_X_SE="2.4.2-stable"
 _OSV=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
@@ -383,6 +383,7 @@ fix_user_register_protection() {
 }
 
 fix_robots_txt() {
+  find ${Dir}/files/robots.txt -mtime +6 -exec rm -f {} \; &> /dev/null
   if [ ! -e "${Dir}/files/robots.txt" ] \
     && [ ! -e "${Plr}/profiles/hostmaster" ] \
     && [ "${_STATUS}" = "OK" ]; then

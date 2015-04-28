@@ -10,7 +10,7 @@ _THIS_RV=$(lsb_release -sc 2>&1)
 if [ "$_THIS_RV" = "wheezy" ] \
   || [ "$_THIS_RV" = "trusty" ] \
   || [ "$_THIS_RV" = "precise" ]; then
-  _RUBY_VRN=2.2.1
+  _RUBY_VRN=2.2.2
 else
   _RUBY_VRN=2.0.0
 fi
@@ -118,7 +118,7 @@ enable_chattr() {
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
-    if [ ! -e "${_U_HD}/.ctrl.241stableU.txt" ]; then
+    if [ ! -e "${_U_HD}/.ctrl.242stableU.txt" ]; then
       if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
@@ -134,6 +134,7 @@ enable_chattr() {
       fi
       mkdir -p ${_U_HD}/usr
       mkdir -p ${_U_TP}
+      touch ${_U_TP}
       find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
       chown $1:${usrGroup} ${_U_TP}
       chown $1:${usrGroup} ${_U_HD}
@@ -178,7 +179,7 @@ enable_chattr() {
 
     if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
       || [ ! -e "${_U_II}" ] \
-      || [ ! -e "${_U_HD}/.ctrl.241stableU.txt" ]; then
+      || [ ! -e "${_U_HD}/.ctrl.242stableU.txt" ]; then
       mkdir -p ${_U_HD}
       rm -f ${_U_HD}/.ctrl.php*
       rm -f ${_U_II}
@@ -245,7 +246,7 @@ enable_chattr() {
         sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
         sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
         echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-        echo > ${_U_HD}/.ctrl.241stableU.txt
+        echo > ${_U_HD}/.ctrl.242stableU.txt
       fi
     fi
 
@@ -415,6 +416,24 @@ done
 #
 # Fix dot dirs.
 fix_dot_dirs() {
+  usrTmp="/home/${usrLtd}/.tmp"
+  if [ ! -d "${usrTmp}" ]; then
+    mkdir -p ${usrTmp}
+    chown ${usrLtd}:${usrGroup} ${usrTmp}
+    chmod 02755 ${usrTmp}
+  fi
+  usrLftp="/home/${usrLtd}/.lftp"
+  if [ ! -d "${usrLftp}" ]; then
+    mkdir -p ${usrLftp}
+    chown ${usrLtd}:${usrGroup} ${usrLftp}
+    chmod 02755 ${usrLftp}
+  fi
+  usrLhist="/home/${usrLtd}/.lhistory"
+  if [ ! -e "${usrLhist}" ]; then
+    touch ${usrLhist}
+    chown ${usrLtd}:${usrGroup} ${usrLhist}
+    chmod 644 ${usrLhist}
+  fi
   usrDrush="/home/${usrLtd}/.drush"
   if [ ! -d "${usrDrush}" ]; then
     mkdir -p ${usrDrush}
@@ -490,8 +509,8 @@ ok_create_user() {
     mv -f ${usrLtdRoot} /var/backups/zombie/deleted/${_NOW}/ &> /dev/null
   fi
   if [ ! -d "${usrLtdRoot}" ]; then
-    if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ]; then
-      useradd -d ${usrLtdRoot} -s /usr/bin/MySecureShell -m -N -r ${usrLtd}
+    if [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
+      useradd -d ${usrLtdRoot} -s /usr/bin/mysecureshell -m -N -r ${usrLtd}
       echo "usrLtdRoot is == ${usrLtdRoot} == at ok_create_user"
     else
       useradd -d ${usrLtdRoot} -s /usr/bin/lshell -m -N -r ${usrLtd}
@@ -534,9 +553,9 @@ ok_create_user() {
   fi
   if [ ! -e "/home/${_ADMIN}/users/${usrLtd}" ] \
     && [ ! -z "${_ESC_LUPASS}" ]; then
-    if [ -e "/usr/bin/MySecureShell" ] \
+    if [ -e "/usr/bin/mysecureshell" ] \
       && [ -e "/etc/ssh/sftp_config" ]; then
-      chsh -s /usr/bin/MySecureShell ${usrLtd}
+      chsh -s /usr/bin/mysecureshell ${usrLtd}
     else
       chsh -s /usr/bin/lshell ${usrLtd}
     fi
@@ -582,7 +601,14 @@ add_user_if_not_exists() {
     echo "We will update user == ${usrLtd} =="
     disable_chattr ${usrLtd}
     rm -f -r /home/${usrLtd}/drush-backups
-    find /home/${usrLtd}/.tmp/* -mtime +0 -exec rm -rf {} \; &> /dev/null
+    usrTmp="/home/${usrLtd}/.tmp"
+    if [ ! -d "${usrTmp}" ]; then
+      mkdir -p ${usrTmp}
+      chown ${usrLtd}:${usrGroup} ${usrTmp}
+      chmod 02755 ${usrTmp}
+    fi
+    touch ${usrTmp}
+    find ${usrTmp}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
     ok_update_user
     enable_chattr ${usrLtd}
   fi
@@ -645,8 +671,9 @@ update_php_cli_local_ini() {
   if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.241stableU.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.242stableU.txt" ]; then
     mkdir -p ${_U_TP}
+    touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
     mkdir -p ${_U_HD}
     chown ${_USER}:${usrGroup} ${_U_TP}
@@ -697,7 +724,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.241stableU.txt
+      echo > ${_U_HD}/.ctrl.242stableU.txt
     fi
     chattr +i ${_U_II}
   fi
@@ -1389,15 +1416,16 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       -type d -exec chmod 0700 {} \; &> /dev/null
     find ${dscUsr}/config/server_master \
       -type f -exec chmod 0600 {} \; &> /dev/null
-    if [ ! -e "${dscUsr}/.tmp/.ctrl.241stableU.txt" ]; then
+    if [ ! -e "${dscUsr}/.tmp/.ctrl.242stableU.txt" ]; then
       rm -f -r ${dscUsr}/.drush/cache
       mkdir -p ${dscUsr}/.tmp
+      touch ${dscUsr}/.tmp
       find ${dscUsr}/.tmp/ -mtime +0 -exec rm -rf {} \; &> /dev/null
       chown ${_USER}:${usrGroup} ${dscUsr}/.tmp &> /dev/null
       chmod 02755 ${dscUsr}/.tmp &> /dev/null
-      echo OK > ${dscUsr}/.tmp/.ctrl.241stableU.txt
+      echo OK > ${dscUsr}/.tmp/.ctrl.242stableU.txt
     fi
-    if [ ! -e "${dscUsr}/static/control/.ctrl.241stableU.txt" ]; then
+    if [ ! -e "${dscUsr}/static/control/.ctrl.242stableU.txt" ]; then
       mkdir -p ${dscUsr}/static/control
       chmod 755 ${dscUsr}/static/control
       if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
@@ -1408,7 +1436,7 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       chown -R ${_USER}.ftp:${usrGroup} \
         ${dscUsr}/static/control &> /dev/null
       rm -f ${dscUsr}/static/control/.ctrl.*
-      echo OK > ${dscUsr}/static/control/.ctrl.241stableU.txt
+      echo OK > ${dscUsr}/static/control/.ctrl.242stableU.txt
     fi
     if [ -e "/root/.${_USER}.octopus.cnf" ]; then
       source /root/.${_USER}.octopus.cnf
@@ -1445,13 +1473,13 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
           ln -sf ${dscUsr}/clients /home/${_USER}.ftp/clients
           ln -sf ${dscUsr}/static  /home/${_USER}.ftp/static
         fi
-        if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.241stableU.txt" ]; then
+        if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.242stableU.txt" ]; then
           rm -f -r /home/${_USER}.ftp/.drush/cache
           rm -f -r /home/${_USER}.ftp/.tmp
           mkdir -p /home/${_USER}.ftp/.tmp
           chown ${_USER}.ftp:${usrGroup} /home/${_USER}.ftp/.tmp &> /dev/null
           chmod 700 /home/${_USER}.ftp/.tmp &> /dev/null
-          echo OK > /home/${_USER}.ftp/.tmp/.ctrl.241stableU.txt
+          echo OK > /home/${_USER}.ftp/.tmp/.ctrl.242stableU.txt
         fi
         enable_chattr ${_USER}.ftp
         echo Done for ${pthParentUsr}
@@ -1468,6 +1496,11 @@ done
 }
 
 ###-------------SYSTEM-----------------###
+
+if [ ! -L "/usr/bin/MySecureShell" ] && [ -x "/usr/bin/mysecureshell" ] ; then
+  mv -f /usr/bin/MySecureShell /var/backups/legacy-MySecureShell-bin
+  ln -sf /usr/bin/mysecureshell /usr/bin/MySecureShell
+fi
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 mkdir -p /var/backups/ltd/{conf,log,old}

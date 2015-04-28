@@ -25,7 +25,7 @@
 ###  GNU GPL along with this program.
 ###  If not, see http://www.gnu.org/licenses/
 ###
-###  Code: https://code.aegir.cc/aegir
+###  Code: https://github.com/omega8cc/boa
 ###
 ###----------------------------------------###
 
@@ -42,7 +42,8 @@ bldPth="/opt/tmp/boa"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncO="octopus.sh.cnf"
 gCb="git clone --branch"
-gitHub="git://github.com/omega8cc"
+gitHub="https://github.com/omega8cc"
+gitLab="https://gitlab.com/omega8cc"
 libFnc="${bldPth}/lib/functions"
 tocIncO="${filIncO}.$1"
 vBs="/var/backups"
@@ -496,7 +497,7 @@ init_this_distro_root() {
 upgrade_contrib_less() {
   rm -f -r {context,ctools,entity,entityreference,mimemail,og}
   get_dev_contrib "context-7.x-3.6.tar.gz"
-  get_dev_contrib "ctools-7.x-1.6.tar.gz"
+  get_dev_contrib "ctools-7.x-1.7.tar.gz"
   get_dev_contrib "entity-7.x-1.6.tar.gz"
   get_dev_contrib "entityreference-7.x-1.1.tar.gz"
   get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz"
@@ -606,8 +607,8 @@ _F_OPENACADEMY="OpenAcademy ${_OPENACADEMY} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENAID="OpenAid ${_OPENAID} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENATRIUM7="OpenAtrium ${_OPENATRIUM7} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENBLOG="OpenBlog 1.0-v3 ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_OPENCHURCH1="OpenChurch 1.17-b1 ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_OPENCHURCH2="OpenChurch 2.1-b5 ${_SMALLCORE7} [${_THIS_CORE}]"
+_F_OPENCHURCH1="OpenChurch 1.17-b2 ${_SMALLCORE7} [${_THIS_CORE}]"
+_F_OPENCHURCH2="OpenChurch 2.1-b7 ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENDEALS="OpenDeals ${_OPENDEALS} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENOUTREACH="OpenOutreach ${_OPENOUTREACH} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENPUBLIC="OpenPublic ${_OPENPUBLIC} ${_SMALLCORE7} [${_THIS_CORE}]"
@@ -615,7 +616,7 @@ _F_OPENPUBLISH="OpenPublish 3.0-b7 ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENSCHOLAR="OpenScholar ${_OPENSCHOLAR} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_PANOPOLY="Panopoly ${_PANOPOLY} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_RECRUITER="Recruiter ${_RECRUITER} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_RESTAURANT="Restaurant 1.0-b10 ${_SMALLCORE7} [${_THIS_CORE}]"
+_F_RESTAURANT="Restaurant 1.0-b12 ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_UBER_CART_T="Ubercart ${_UBERCART7} [ud2] ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_UBERCART6="Ubercart ${_UBERCART6} ${_SMALLCORE6} [${_THIS_CORE}]"
 _F_UBERCART7="Ubercart ${_UBERCART7} [aq3] ${_SMALLCORE7} [${_THIS_CORE}]"
@@ -797,7 +798,7 @@ commerce_7_2_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              if [ "${_COMMERCE2}" = "2.21" ]; then
+              if [ "${_COMMERCE2}" = "2.22" ]; then
                 cd ${_SHRD_PLPATH}
                 patch -p1 < ${pthPch}/${_REAL_PRNAME}.patch &> /dev/null
               fi
@@ -1033,7 +1034,7 @@ drupal7_install() {
     || [[ "${_PLATFORMS_LIST}" =~ "D7S" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "D7P" ]]; then
     if [ ! -d "${_ROOT}/distro/${_THIS_CORE}/${_DRUPAL7P}" ]; then
-      if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/drupal-7.34" ; then
+      if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/drupal-7.36" ; then
         true
         ###---### Drupal 7 Development
         #
@@ -1228,10 +1229,10 @@ fserver_install() {
             echo "core = 6.x" >> fserver.make
             echo "projects[pressflow][type] = \"core\"" >> fserver.make
             echo "projects[pressflow][download][type] = \"get\"" >> fserver.make
-            echo "projects[pressflow][download][url] = \"http://${_USE_MIR}/core/pressflow-6.34.1.tar.gz\"" >> fserver.make
+            echo "projects[pressflow][download][url] = \"http://${_USE_MIR}/core/pressflow-6.35.1.tar.gz\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][type] = \"profile\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][download][type] = \"git\"" >> fserver.make
-            echo "projects[${_REAL_PRNAME}][download][url] = \"git://github.com/omega8cc/${_REAL_PRNAME}.git\"" >> fserver.make
+            echo "projects[${_REAL_PRNAME}][download][url] = \"https://github.com/omega8cc/${_REAL_PRNAME}.git\"" >> fserver.make
             ${_DRUSHCMD} make fserver.make ${_SHRD_PLNAME} &> /dev/null
             nocore_d6_dist_clean
             rm -f fserver.make
@@ -1810,18 +1811,13 @@ panopoly_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              if [ "${_PANOPOLY}" = "1.4" ]; then
-                cd ${_SHRD_PRPATH}/modules/contrib
-                rm -f -r {fape}
-                get_dev_contrib "fape-7.x-1.2.tar.gz"
-              fi
               if [ ! -d "${_SHRD_PRPATH}/modules/panopoly/panopoly_demo" ]; then
                 if [ -d "${_SHRD_PLPATH}/sites/all/modules/panopoly_demo" ]; then
                   mv -f ${_SHRD_PLPATH}/sites/all/modules/panopoly_demo \
                     ${_SHRD_PRPATH}/modules/panopoly/ &> /dev/null
                 else
                   cd ${_SHRD_PRPATH}/modules/panopoly
-                  get_dev_contrib "panopoly_demo-7.x-1.18.tar.gz"
+                  get_dev_contrib "panopoly_demo-7.x-${_PANOPOLY}.tar.gz"
                 fi
               fi
             else
@@ -1983,7 +1979,7 @@ ubercart6_install() {
             get_dev_contrib "token-6.x-1.19.tar.gz"
             get_dev_contrib "ubercart-6.x-${_UBERCART6}.tar.gz"
             get_dev_contrib "views-6.x-3.0.tar.gz"
-            get_dev_contrib "webform-6.x-3.20.tar.gz"
+            get_dev_contrib "webform-6.x-3.23.tar.gz"
             ### https://drupal.org/node/1167276#comment-5138248
             cd ${_SHRD_PRPATH}/modules/$_VIRT_PRNAME
             patch -p1 < ${pthPch}/$_VIRT_PRNAME-1167276-reroll.patch &> /dev/null
@@ -2047,12 +2043,12 @@ ubercart7_install() {
               mkdir -p ${_SHRD_PRPATH}/modules
               cd ${_SHRD_PRPATH}/modules
               get_dev_contrib "colorbox-7.x-2.8.tar.gz"
-              get_dev_contrib "ctools-7.x-1.6.tar.gz"
+              get_dev_contrib "ctools-7.x-1.7.tar.gz"
               get_dev_contrib "entity-7.x-1.6.tar.gz"
               get_dev_contrib "google_analytics-7.x-2.1.tar.gz"
               get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
               get_dev_contrib "pathauto-7.x-1.2.tar.gz"
-              get_dev_contrib "rules-7.x-2.7.tar.gz"
+              get_dev_contrib "rules-7.x-2.9.tar.gz"
               get_dev_contrib "token-7.x-1.5.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
               get_dev_contrib "views-7.x-3.8.tar.gz"
@@ -2117,12 +2113,12 @@ ubercart7_testing_install() {
               mkdir -p ${_SHRD_PRPATH}/modules
               cd ${_SHRD_PRPATH}/modules
               get_dev_contrib "colorbox-7.x-2.8.tar.gz"
-              get_dev_contrib "ctools-7.x-1.6.tar.gz"
+              get_dev_contrib "ctools-7.x-1.7.tar.gz"
               get_dev_contrib "entity-7.x-1.6.tar.gz"
               get_dev_contrib "google_analytics-7.x-2.0.tar.gz"
               get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
               get_dev_contrib "pathauto-7.x-1.2.tar.gz"
-              get_dev_contrib "rules-7.x-2.7.tar.gz"
+              get_dev_contrib "rules-7.x-2.9.tar.gz"
               get_dev_contrib "token-7.x-1.5.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
               get_dev_contrib "views-7.x-3.8.tar.gz"

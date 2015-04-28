@@ -63,7 +63,7 @@ if (function_exists('drush_get_command')) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.7.10.1';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.8.0.1';
   }
 }
 
@@ -78,11 +78,16 @@ if (isset($_SERVER['HTTP_USER_AGENT']) &&
 
 
 /**
- * Use Aegir/BOA specific variable as a reverse fallback
+ * Use Aegir/BOA specific MAIN_SITE_NAME instead of possibly fake SERVER_NAME
  */
-if (isset($_SERVER['MAIN_SITE_NAME']) && !isset($_SERVER['SERVER_NAME'])) {
+if (isset($_SERVER['MAIN_SITE_NAME'])) {
   $_SERVER['SERVER_NAME'] = $_SERVER['MAIN_SITE_NAME'];
 }
+
+
+/**
+ * Set MAIN_SITE_NAME to match SERVER_NAME, if MAIN_SITE_NAME is not set
+ */
 if (!isset($_SERVER['MAIN_SITE_NAME']) && isset($_SERVER['SERVER_NAME'])) {
   $_SERVER['MAIN_SITE_NAME'] = $_SERVER['SERVER_NAME'];
 }

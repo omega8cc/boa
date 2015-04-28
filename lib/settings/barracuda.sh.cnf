@@ -392,7 +392,7 @@ _LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
 ### repository. Valid options:
 ###
 ### _FORCE_GIT_MIRROR=github
-### _FORCE_GIT_MIRROR=gitorious
+### _FORCE_GIT_MIRROR=gitlab
 ###
 ### Note: with forced mirror the script will
 ### not try to connect and then switch to
@@ -947,7 +947,7 @@ _NGINX_NAXSI=NO
 ### which already comes with required
 ### OpenSSL 1.0.1+ by default.
 ###
-_NGINX_SPDY=NO
+_NGINX_SPDY=YES
 
 ###
 ### When set to YES, it will also force
@@ -956,7 +956,7 @@ _NGINX_SPDY=NO
 ### which already comes with required
 ### OpenSSL 1.0.1+ by default.
 ###
-_NGINX_FORWARD_SECRECY=NO
+_NGINX_FORWARD_SECRECY=YES
 
 ###
 ### Use this only when you need to always
@@ -1024,11 +1024,11 @@ _SPEED_VALID_MAX=3600
 ###----------------------------------------###
 
 
-_AEGIR_VERSION="BOA-2.4.1"
-_AEGIR_XTS_VRN="BOA-2.4.1"
+_AEGIR_VERSION="BOA-2.4.2"
+_AEGIR_XTS_VRN="BOA-2.4.2"
 _BRANCH_BOA="2.4.x-dev"
 _BRANCH_PRN="2.4.x-dev"
-_X_VERSION="BOA-2.4.1"
+_X_VERSION="BOA-2.4.2"
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${gitHub}"
 
@@ -1113,7 +1113,7 @@ download_helpers_libs() {
     echo " "
     echo "EXIT on error due to missing helpers"
     echo "Please try to run this script again in a few minutes"
-    echo "Also, make sure that the git port 9418 is open"
+    echo "Also, make sure that the outgoing connections via port 443 work"
     echo "Bye"
     echo " "
     clean_pid_exit

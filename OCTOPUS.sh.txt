@@ -25,7 +25,7 @@
 ###  GNU GPL along with this program.
 ###  If not, see http://www.gnu.org/licenses/
 ###
-###  Code: https://code.aegir.cc/aegir
+###  Code: https://github.com/omega8cc/boa
 ###
 ###----------------------------------------###
 
@@ -52,13 +52,13 @@ export _USER="${_USER}"
 ### Variables
 ###
 _D8_DEV_COMMIT=8x_f49bb893
-_DRUSH_VERSION=mini-7-07-03-2015
+_DRUSH_VERSION=mini-7-25-04-2015
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
 _REDIS_M_VERSION=mod-05-03-2015
-_SMALLCORE6=6.34.1
-_SMALLCORE7=7.34.1
+_SMALLCORE6=6.35.1
+_SMALLCORE7=7.36.1
 _SMALLCORE8=8.0.0-beta7
 _SPINNER=YES
 _T_BUILD=HEAD
@@ -91,7 +91,8 @@ bldPth="/opt/tmp/boa"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncO="octopus.sh.cnf"
 gCb="git clone --branch"
-gitHub="git://github.com/omega8cc"
+gitHub="https://github.com/omega8cc"
+gitLab="https://gitlab.com/omega8cc"
 libFnc="${bldPth}/lib/functions"
 tocIncO="${filIncO}.${_USER}"
 vBs="/var/backups"
@@ -100,33 +101,33 @@ vBs="/var/backups"
 ###
 ### Distributions
 ###
-_AGOV=1.6
+_AGOV=1.7
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
 _COD=1.0-alpha5
-_COMMERCE1=1.33
-_COMMERCE2=2.21
-_COMMONS2=2.22
-_COMMONS3=3.22
+_COMMERCE1=1.36
+_COMMERCE2=2.23
+_COMMONS2=2.23
+_COMMONS3=3.23
 _D8_DEV_LABEL="8-dev-${_TODAY}"
 _DRUPAL7="drupal-${_SMALLCORE7}"
 _DRUPAL8="drupal-${_SMALLCORE8}"
 _ERPAL=2.2
-_GUARDR=2.8
+_GUARDR=2.11
 _OPENACADEMY=1.1
-_OPENAID=2.0
-_OPENATRIUM7=2.32
+_OPENAID=2.1
+_OPENATRIUM7=2.33
 _OPENBLOG=1.0-alpha3
-_OPENCHURCH1=1.17-beta1
-_OPENCHURCH2=2.1-beta5
+_OPENCHURCH1=1.17-beta2
+_OPENCHURCH2=2.1-beta7
 _OPENDEALS=1.35
-_OPENOUTREACH=1.16
-_OPENPUBLIC=1.4
+_OPENOUTREACH=1.18
+_OPENPUBLIC=1.5
 _OPENPUBLISH=1.0-beta7
 _OPENSCHOLAR=3.20.0
-_PANOPOLY=1.18
-_RECRUITER=1.5
-_RESTAURANT=1.0-beta10
+_PANOPOLY=1.20
+_RECRUITER=1.6
+_RESTAURANT=1.0-beta12
 _UBERCART6=2.14
 _UBERCART7=3.8
 

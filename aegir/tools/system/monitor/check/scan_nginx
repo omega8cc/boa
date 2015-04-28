@@ -82,7 +82,7 @@ sub makeactions
           ### print "Not Counted Dynamic Request URI: $line\n";
           $skip_post = 1;
         }
-        elsif ($line =~ /files\/(imagecache|styles)/) {
+        elsif ($line =~ /files\/(imagecache|styles)/ && $line !~ /GET \/system\//) {
           ### print "Monitored Dynamic Request URI: $line\n";
           $im_li_cnt{$VISITOR}++;
           $skip_post = 1;
@@ -132,7 +132,7 @@ sub makeactions
           ### print "Not Counted Dynamic Request URI: $line\n";
           $skip_post = 1;
         }
-        elsif ($line =~ /files\/(imagecache|styles)/) {
+        elsif ($line =~ /files\/(imagecache|styles)/ && $line !~ /GET \/system\//) {
           ### print "Monitored Dynamic Request URI: $line\n";
           $im_px_cnt{$PROXY}++;
           $skip_post = 1;

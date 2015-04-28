@@ -9,7 +9,7 @@ core = 6.x
 
 projects[pressflow][type] = "core"
 projects[pressflow][download][type] = "get"
-projects[pressflow][download][url] = "http://files.aegir.cc/core/pressflow-6.34.1.tar.gz"
+projects[pressflow][download][url] = "http://files.aegir.cc/core/pressflow-6.35.1.tar.gz"
 
 projects[cck][type] = "module"
 ;projects[cck][version] = "2.9"
@@ -22,9 +22,9 @@ projects[context][download][type] = "get"
 projects[context][download][url] = "http://files.aegir.cc/dev/contrib/context-6.x-3.3.tar.gz"
 
 projects[ctools][type] = "module"
-;projects[ctools][version] = "1.11"
+;projects[ctools][version] = "1.12"
 projects[ctools][download][type] = "get"
-projects[ctools][download][url] = "http://files.aegir.cc/dev/contrib/ctools-6.x-1.11.tar.gz"
+projects[ctools][download][url] = "http://files.aegir.cc/dev/contrib/ctools-6.x-1.12.tar.gz"
 
 projects[features][type] = "module"
 ;projects[features][version] = "1.2"
@@ -58,7 +58,7 @@ projects[nodereference_url][download][url] = "http://files.aegir.cc/dev/contrib/
 
 projects[fserver][type] = "module"
 projects[fserver][download][type] = "git"
-projects[fserver][download][url] = "git://github.com/omega8cc/FeatureServer.git"
+projects[fserver][download][url] = "https://github.com/omega8cc/FeatureServer.git"
 projects[fserver][directory_name] = "fserver"
 projects[fserver][destination] = "modules"
 
@@ -69,4 +69,4 @@ projects[tao][download][url] = "http://files.aegir.cc/dev/contrib/tao-6.x-3.3.ta
 
 projects[singular][type] = "theme"
 projects[singular][download][type] = "git"
-projects[singular][download][url] = "git://github.com/omega8cc/singular.git"
+projects[singular][download][url] = "https://github.com/omega8cc/singular.git"

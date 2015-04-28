@@ -7,22 +7,22 @@ fix_lfd_uidignore() {
     if [[ "$_CSF_UIDIGNORE_TEST" =~ "pdnsd" ]]; then
       _DO_NOTHING=YES
     else
-      echo "#root"          >> /etc/csf/csf.uidignore &> /dev/null
-      echo `id -u root`     >> /etc/csf/csf.uidignore &> /dev/null
-      echo "#pdnsd"         >> /etc/csf/csf.uidignore &> /dev/null
-      echo `id -u pdnsd`    >> /etc/csf/csf.uidignore &> /dev/null
-      echo "#postfix"       >> /etc/csf/csf.uidignore &> /dev/null
-      echo `id -u postfix`  >> /etc/csf/csf.uidignore &> /dev/null
-      echo "#www-data"      >> /etc/csf/csf.uidignore &> /dev/null
-      echo `id -u www-data` >> /etc/csf/csf.uidignore &> /dev/null
+      echo "#root"          >> /etc/csf/csf.uidignore
+      echo `id -u root`     >> /etc/csf/csf.uidignore
+      echo "#pdnsd"         >> /etc/csf/csf.uidignore
+      echo `id -u pdnsd`    >> /etc/csf/csf.uidignore
+      echo "#postfix"       >> /etc/csf/csf.uidignore
+      echo `id -u postfix`  >> /etc/csf/csf.uidignore
+      echo "#www-data"      >> /etc/csf/csf.uidignore
+      echo `id -u www-data` >> /etc/csf/csf.uidignore
     fi
     if [ -e "/usr/sbin/named" ]; then
       _CSF_UIDIGNORE_TEST=$(grep "bind" ${_THIS_FILE} 2>&1)
       if [[ "$_CSF_UIDIGNORE_TEST" =~ "bind" ]]; then
         _DO_NOTHING=YES
       else
-        echo "#bind"        >> /etc/csf/csf.uidignore &> /dev/null
-        echo `id -u bind`   >> /etc/csf/csf.uidignore &> /dev/null
+        echo "#bind"        >> /etc/csf/csf.uidignore
+        echo `id -u bind`   >> /etc/csf/csf.uidignore
       fi
     fi
     sed -i "/^$/d" ${_THIS_FILE} &> /dev/null
@@ -59,12 +59,7 @@ csf_install() {
   fi
   cd /var/opt
   rm -f ${pthLog}/lastFire
-  if ! netcat -w 14 -z www.configserver.com 80 ; then
-    get_dev_arch "csf.tgz"
-  else
-    curl ${crlGet} "http://www.configserver.com/free/csf.tgz" -o "csf.tgz"
-    extract_archive "csf.tgz"
-  fi
+  get_dev_arch "csf.tgz"
   cd csf
   st_runner "sh install.sh" 2> /dev/null
   cd /var/opt

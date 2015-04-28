@@ -212,28 +212,28 @@ master_download_for_local_build() {
     rm -f -r ${mL}
     mkdir -p ${mL}
     cd ${mL}
-    get_dev_stc "hosting.tar.gz"
-    get_dev_stc "eldir.tar.gz"
-    get_dev_stc "views-6.x-3.0.tar.gz"
-    get_dev_stc "views_bulk_operations-6.x-1.16.tar.gz"
-    get_dev_stc "admin_menu.tar.gz"
-    get_dev_stc "install_profile_api.tar.gz"
-    get_dev_stc "jquery_ui.tar.gz"
-    get_dev_stc "jquery_update.tar.gz"
-    get_dev_stc "modalframe.tar.gz"
-    get_dev_stc "openidadmin.tar.gz"
+    get_dev_stc "admin_menu-6.x-1.9.tar.gz"
     get_dev_stc "css_emimage.tar.gz"
-    get_dev_stc "ctools.tar.gz"
-    get_dev_stc "features_extra.tar.gz"
-    get_dev_stc "features.tar.gz"
+    get_dev_stc "ctools-6.x-1.12.tar.gz"
+    get_dev_stc "eldir.tar.gz"
+    get_dev_stc "features_extra-6.x-1.x-dev.tar.gz"
+    get_dev_stc "features-6.x-1.2.tar.gz"
     get_dev_stc "hosting_backup_queue.tar.gz"
     get_dev_stc "hosting_platform_pathauto.tar.gz"
     get_dev_stc "hosting_task_gc.tar.gz"
-    get_dev_stc "protect_critical_users.tar.gz"
-    get_dev_stc "revision_deletion.tar.gz"
-    get_dev_stc "strongarm.tar.gz"
-    get_dev_stc "userprotect.tar.gz"
+    get_dev_stc "hosting.tar.gz"
+    get_dev_stc "install_profile_api.tar.gz"
+    get_dev_stc "jquery_ui-6.x-1.5.tar.gz"
+    get_dev_stc "jquery_update-6.x-2.0-alpha1.tar.gz"
     get_dev_stc "jquery-ui-1.7.3.zip"
+    get_dev_stc "modalframe-6.x-1.9.tar.gz"
+    get_dev_stc "openidadmin-6.x-1.2.tar.gz"
+    get_dev_stc "protect_critical_users-6.x-1.1.tar.gz"
+    get_dev_stc "revision_deletion-6.x-1.x-dev.tar.gz"
+    get_dev_stc "strongarm-6.x-2.2.tar.gz"
+    get_dev_stc "userprotect-6.x-1.5.tar.gz"
+    get_dev_stc "views_bulk_operations-6.x-1.16.tar.gz"
+    get_dev_stc "views-6.x-3.2.tar.gz"
   fi
   find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null
   find ${mL} -type f -exec chmod 0644 {} \; &> /dev/null
@@ -789,8 +789,9 @@ update_php_cli_local_ini() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.241stableU.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.242stableU.txt" ]; then
     mkdir -p ${_U_TP}
+    touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
     chmod 02755 ${_U_TP}
     mkdir -p ${_U_HD}
@@ -837,7 +838,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.241stableU.txt
+      echo > ${_U_HD}/.ctrl.242stableU.txt
     fi
   fi
 }

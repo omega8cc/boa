@@ -25,7 +25,7 @@
 ###  GNU GPL along with this program.
 ###  If not, see http://www.gnu.org/licenses/
 ###
-###  Code: https://code.aegir.cc/aegir
+###  Code: https://github.com/omega8cc/boa
 ###
 ###----------------------------------------###
 
@@ -46,7 +46,7 @@ SHELL=/bin/bash
 export DEBIAN_FRONTEND=noninteractive
 
 _TODAY=$(date +%y%m%d 2>&1)
-_X_VERSION="BOA-2.4.1-stable"
+_X_VERSION="BOA-2.4.2-stable"
 #
 saCoreN="SA-CORE-2014-005"
 saCoreS="${saCoreN}-D7"
@@ -74,32 +74,33 @@ fix_dns_settings() {
       fi
     done
   fi
-  if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
-    rm -f /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.tmp ${vBs}/resolv.conf.vanilla
+  if [ ! -e "${vBs}/resolv.conf.vanilla" ] \
+    && [ -e "${vBs}/resolv.conf.tmp" ] ; then
+    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
+      rm -f /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.tmp ${vBs}/resolv.conf.vanilla
+    fi
   fi
   sed -i "/^$/d" ${vBs}/resolv.conf.vanilla &> /dev/null
-  rm -f /etc/resolv.conf
-  echo "nameserver 8.8.8.8" > /etc/resolv.conf
-  echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-  _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "${_BROKEN_DNS_TEST}" =~ "no servers could be reached" ]] \
-    && [ -e "${vBs}/resolv.conf.vanilla" ]; then
-    rm -f /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.vanilla /etc/resolv.conf
-    echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  if [ -e "${vBs}/resolv.conf.vanilla" ]; then
+    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
+      rm -f /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.vanilla /etc/resolv.conf
+    fi
   else
-    rm -f /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
+    if [ -e "${vBs}/resolv.conf.tmp" ] \
+      && [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
+      rm -f /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
+    fi
   fi
   if [ -e "/etc/pdnsd.conf" ]; then
     if [ -e "${dnsLi}" ]; then
       sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
       sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
-      _BROKEN_DNS_TEST=$(grep "\." ${dnsLi} 2>&1)
-      if [ -z "${_BROKEN_DNS_TEST}" ]; then
+      _BROKEN_DNS_TEST_X=$(grep "\." ${dnsLi} 2>&1)
+      if [ -z "${_BROKEN_DNS_TEST_X}" ]; then
         echo "        label = \"google-servers\";" > ${dnsLi}
         echo "        ip=8.8.8.8;" >> ${dnsLi}
         echo "        ip=8.8.4.4;" >> ${dnsLi}
@@ -108,65 +109,62 @@ fix_dns_settings() {
     _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
     _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
     if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
+      || [ -e "/root/.use.default.nameservers.cnf" ] \
+      || [ -e "/root/.use.local.nameservers.cnf" ] \
       || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]]; then
-      if [ -e "/root/.use.local.nameservers.cnf" ]; then
-        echo "        label = \"google-servers\";" > ${dnsLi}
-        for _IP in `cat /etc/resolv.conf \
-          | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
-          | cut -d ' ' -f2 \
-          | sort \
-          | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
-        sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-        sed -i "s/ip=127.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-        sed -i "s/ip=Dyn.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-        sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
-        sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
-        _BROKEN_DNS_TEST=$(grep "\." ${dnsLi} 2>&1)
-        if [ -z "${_BROKEN_DNS_TEST}" ]; then
-           echo "        ip=8.8.8.8;" >> ${dnsLi}
-           echo "        ip=8.8.4.4;" >> ${dnsLi}
-        fi
-        sed -i '/        label = \"google-servers\";/ {r ${dnsLi}
-d;};' /etc/pdnsd.conf
-        resolvconf -u         &> /dev/null
-        service pdnsd restart &> /dev/null
-        pdnsd-ctl empty-cache &> /dev/null
+      echo "        label = \"google-servers\";" > ${dnsLi}
+      for _IP in `cat /etc/resolv.conf \
+        | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
+        | cut -d ' ' -f2 \
+        | sort \
+        | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
+      sed -i "s/ip=.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
+      sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
+      sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
+      _BROKEN_DNS_TEST_Y=$(grep "\." ${dnsLi} 2>&1)
+      if [ -z "${_BROKEN_DNS_TEST_Y}" ]; then
+         echo "        ip=8.8.8.8;" >> ${dnsLi}
+         echo "        ip=8.8.4.4;" >> ${dnsLi}
       fi
+      ### echo debug dns A
+      sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+d;};' /etc/pdnsd.conf
+      resolvconf -u         &> /dev/null
+      service pdnsd restart &> /dev/null
+      pdnsd-ctl empty-cache &> /dev/null
     fi
   fi
 }
 
 check_dns_settings() {
-  _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "${_BROKEN_DNS_TEST}" =~ "no servers could be reached" ]] \
-    && [ -e "/root/.use.local.nameservers.cnf" ]; then
+  if [ -e "/root/.use.default.nameservers.cnf" ]; then
+    _USE_DEFAULT_DNS=YES
+    rm -f /root/.local.dns.IP.list
+  fi
+  if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
-    fix_dns_settings
   else
-    _USE_PROVIDER_DNS=NO
+    _REMOTE_DNS_TEST=$(host -a files.aegir.cc 8.8.8.8 -w 10 2>&1)
+  fi
+  if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
+    || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
+    || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
+    _CTRL_DNS_TEST=$(host -a files.aegir.cc 2>&1)
+    if [[ ! "${_CTRL_DNS_TEST}" =~ "104.245.208.226" ]] \
+      || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
+      || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
+      || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
+      fix_dns_settings
+    fi
   fi
 }
 
 update_agents() {
 
-  if [ "${_BENG_VS}" = "NO" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/modfix.fixed.a282q.pid" ]; then
-    sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=NO/g" /root/.barracuda.cnf
-    touch ${pthLog}/modfix.fixed.a282q.pid
-  fi
-
-  if [ "${_BENG_VS}" = "NO" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/prmfix.fixed.a282q.pid" ]; then
-    sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=NO/g" /root/.barracuda.cnf
-    touch ${pthLog}/prmfix.fixed.a282q.pid
-  fi
-
   if [ "${_BENG_VS}" = "YES" ] \
     && [ -e "/var/xdrago" ]; then
     InTest=$(ls /data/disk/ | wc -l 2>&1)
-    if [ "${InTest}" -gt "8" ]; then
+    if [ "${InTest}" -gt "10" ]; then
       echo ${InTest} > /root/.tg.cnf
     else
       rm -f /root/.tg.cnf
@@ -176,13 +174,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/runner.fixed.a282q.pid" ]; then
+    && [ ! -e "${pthLog}/runner.fixed.a242i.pid" ]; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
     if [ -e "/var/xdrago/runner.sh" ]; then
       chmod 700 /var/xdrago/runner.sh
       chown root:root /var/xdrago/runner.sh
-      touch ${pthLog}/runner.fixed.a282q.pid
+      touch ${pthLog}/runner.fixed.a242i.pid
     else
       mv -f /var/xdrago/runner.sh.old /var/xdrago/runner.sh
     fi
@@ -190,13 +188,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/minute.fixed.a282q.pid" ]; then
+    && [ ! -e "${pthLog}/minute.fixed.a242i.pid" ]; then
     mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
     if [ -e "/var/xdrago/minute.sh" ]; then
       chmod 700 /var/xdrago/minute.sh
       chown root:root /var/xdrago/minute.sh
-      touch ${pthLog}/minute.fixed.a282q.pid
+      touch ${pthLog}/minute.fixed.a242i.pid
     else
       mv -f /var/xdrago/minute.sh.old /var/xdrago/minute.sh
     fi
@@ -204,13 +202,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/clear.fixed.a282q.pid" ]; then
+    && [ ! -e "${pthLog}/clear.fixed.a242i.pid" ]; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
     if [ -e "/var/xdrago/clear.sh" ]; then
       chmod 700 /var/xdrago/clear.sh
       chown root:root /var/xdrago/clear.sh
-      touch ${pthLog}/clear.fixed.a282q.pid
+      touch ${pthLog}/clear.fixed.a242i.pid
     else
       mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
     fi
@@ -218,13 +216,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/daily.fixed.a282q.pid" ]; then
+    && [ ! -e "${pthLog}/daily.fixed.a242i.pid" ]; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
     if [ -e "/var/xdrago/daily.sh" ]; then
       chmod 700 /var/xdrago/daily.sh
       chown root:root /var/xdrago/daily.sh
-      touch ${pthLog}/daily.fixed.a282q.pid
+      touch ${pthLog}/daily.fixed.a242i.pid
     else
       mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
     fi
@@ -232,14 +230,14 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/manage_ltd_users.fixed.a282q.pid" ]; then
+    && [ ! -e "${pthLog}/manage_ltd_users.fixed.a242i.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${pthLog}/manage_ltd_users.fixed.a282q.pid
+      touch ${pthLog}/manage_ltd_users.fixed.a242i.pid
     else
       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
     fi
@@ -247,14 +245,14 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/proc_num_ctrl.fixed.a282q.pid" ]; then
+    && [ ! -e "${pthLog}/proc_num_ctrl.fixed.a242i.pid" ]; then
     mv -f /var/xdrago/proc_num_ctrl.cgi /var/xdrago/proc_num_ctrl.cgi.old
     curl ${crlGet} "${urlHmr}/tools/system/proc_num_ctrl.cgi" \
       -o /var/xdrago/proc_num_ctrl.cgi
     if [ -e "/var/xdrago/proc_num_ctrl.cgi" ]; then
       chmod 700 /var/xdrago/proc_num_ctrl.cgi
       chown root:root /var/xdrago/proc_num_ctrl.cgi
-      touch ${pthLog}/proc_num_ctrl.fixed.a282q.pid
+      touch ${pthLog}/proc_num_ctrl.fixed.a242i.pid
     else
       mv -f /var/xdrago/proc_num_ctrl.cgi.old /var/xdrago/proc_num_ctrl.cgi
     fi
@@ -262,13 +260,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/websh.fixed.a282q.pid" ]; then
+    && [ ! -e "${pthLog}/websh.fixed.a242i.pid" ]; then
     mv -f /bin/websh /var/xdrago/websh.sh.old
     curl ${crlGet} "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh
     if [ -e "/bin/websh" ]; then
       chmod 755 /bin/websh
       chown root:root /bin/websh
-      touch ${pthLog}/websh.fixed.a282q.pid
+      touch ${pthLog}/websh.fixed.a242i.pid
     else
       mv -f /var/xdrago/websh.sh.old /bin/websh
     fi

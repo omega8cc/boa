@@ -314,7 +314,7 @@ mode_detection() {
     barracuda_cnf
   fi
   if [ "${_AEGIR_VERSION}" = "HEAD" ] && [ ! -z "${_FORCE_GIT_MIRROR}" ]; then
-    if [ "${_FORCE_GIT_MIRROR}" = "gitorious" ]; then
+    if [ "${_FORCE_GIT_MIRROR}" = "gitlab" ]; then
       _INSTAPP="/usr/bin/aptitude-fast -f -y -q \
         -o Dpkg::Options::=--force-confdef \
         -o Dpkg::Options::=--force-confold install"

@@ -25,7 +25,7 @@
 ###  GNU GPL along with this program.
 ###  If not, see http://www.gnu.org/licenses/
 ###
-###  Code: https://code.aegir.cc/aegir
+###  Code: https://github.com/omega8cc/boa
 ###
 ###----------------------------------------###
 
@@ -36,11 +36,11 @@
 _BZR_VRN=2.6.0
 _CGP_VRN=master-30-03-2014
 _CHIVE_VRN=1.3
-_CURL_VRN=7.41.0
+_CURL_VRN=7.42.0
 _DB_SRC=ftp.osuosl.org
 _DRUSH4_VRN=mini-4-26-08-2014
 _DRUSH6_VRN=mini-6-30-10-2014
-_DRUSH7_VRN=mini-7-07-03-2015
+_DRUSH7_VRN=mini-7-25-04-2015
 _GALERA_10_VRN=10.0.17
 _GEOS_VRN=3.4.2
 _GIT_VRN=2.3.0
@@ -54,27 +54,27 @@ _MAILPARSE_VRN=2.1.6
 _MARIADB_10_VRN=10.0.17
 _MARIADB_5_VRN=5.5.42
 _MONGO_VRN=1.4.5
-_MSS_VRN=1.33
-_NGINX_VRN=1.7.10
-_OPCACHE_VRN=master-08-11-2014
-_OPENSSH_VRN=6.7p1
-_OPENSSL_VRN=1.0.2
+_MSS_VRN=master-20-03-2015
+_NGINX_VRN=1.8.0
+_OPCACHE_VRN=7.0.5
+_OPENSSH_VRN=6.8p1
+_OPENSSL_VRN=1.0.2a
 _PHP53_API=20090626
 _PHP53_VRN=5.3.29
 _PHP54_API=20100525
-_PHP54_VRN=5.4.38
+_PHP54_VRN=5.4.40
 _PHP55_API=20121212
-_PHP55_VRN=5.5.22
+_PHP55_VRN=5.5.24
 _PHP56_API=20131226
-_PHP56_VRN=5.6.6
-_PHPREDIS_VRN=master-03-10-2014
+_PHP56_VRN=5.6.8
+_PHPREDIS_VRN=master-18-03-2015
 _PURE_FTPD_VRN=1.0.37
-_REDIS_VRN=2.8.19
-_RUBY_VRN=2.2.1
+_REDIS_VRN=3.0.0
+_RUBY_VRN=2.2.2
 _SOLR_1_VRN=1.4.1
 _SOLR_3_VRN=3.6.2
 _SOLR_4_VRN=4.9.1
-_SLF4J_VRN=1.7.10
+_SLF4J_VRN=1.7.12
 _UPROGRESS_VRN=1.0.3.1
 _VNSTAT_VRN=1.13
 _ZLIB_VRN=1.2.8
@@ -107,7 +107,8 @@ bldPth="/opt/tmp/boa"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncB="barracuda.sh.cnf"
 forCer="-f -y --force-yes --reinstall"
-gitHub="git://github.com/omega8cc"
+gitHub="https://github.com/omega8cc"
+gitLab="https://gitlab.com/omega8cc"
 libFnc="${bldPth}/lib/functions"
 locCnf="/opt/tmp/boa/aegir/conf"
 mtrInc="/var/aegir/config/includes"
@@ -333,7 +334,7 @@ install_update_php
 install_curl_src
 php_upgrade_all
 check_fix_php
-install_composer
+install_update_composer
 check_fix_avatars
 check_fix_umask
 install_update_lshell

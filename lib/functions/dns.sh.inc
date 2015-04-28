@@ -14,32 +14,33 @@ fix_dns_settings() {
       fi
     done
   fi
-  if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
-    rm -f /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.tmp ${vBs}/resolv.conf.vanilla
+  if [ ! -e "${vBs}/resolv.conf.vanilla" ] \
+    && [ -e "${vBs}/resolv.conf.tmp" ] ; then
+    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
+      rm -f /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.tmp ${vBs}/resolv.conf.vanilla
+    fi
   fi
   sed -i "/^$/d" ${vBs}/resolv.conf.vanilla &> /dev/null
-  rm -f /etc/resolv.conf
-  echo "nameserver 8.8.8.8" > /etc/resolv.conf
-  echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-  _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "${_BROKEN_DNS_TEST}" =~ "no servers could be reached" ]] \
-    && [ -e "${vBs}/resolv.conf.vanilla" ]; then
-    rm -f /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.vanilla /etc/resolv.conf
-    echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  if [ -e "${vBs}/resolv.conf.vanilla" ]; then
+    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
+      rm -f /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.vanilla /etc/resolv.conf
+    fi
   else
-    rm -f /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
+    if [ -e "${vBs}/resolv.conf.tmp" ] \
+      && [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
+      rm -f /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
+    fi
   fi
   if [ -e "/etc/pdnsd.conf" ]; then
     if [ -e "${dnsLi}" ]; then
       sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
       sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
-      _BROKEN_DNS_TEST=$(grep "\." ${dnsLi} 2>&1)
-      if [ -z "${_BROKEN_DNS_TEST}" ]; then
+      _BROKEN_DNS_TEST_X=$(grep "\." ${dnsLi} 2>&1)
+      if [ -z "${_BROKEN_DNS_TEST_X}" ]; then
         echo "        label = \"google-servers\";" > ${dnsLi}
         echo "        ip=8.8.8.8;" >> ${dnsLi}
         echo "        ip=8.8.4.4;" >> ${dnsLi}
@@ -48,30 +49,29 @@ fix_dns_settings() {
     _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
     _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
     if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
+      || [ -e "/root/.use.default.nameservers.cnf" ] \
+      || [ -e "/root/.use.local.nameservers.cnf" ] \
       || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]]; then
-      if [ -e "/root/.use.local.nameservers.cnf" ]; then
-        echo "        label = \"google-servers\";" > ${dnsLi}
-        for _IP in `cat /etc/resolv.conf \
-          | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
-          | cut -d ' ' -f2 \
-          | sort \
-          | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
-        sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-        sed -i "s/ip=127.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-        sed -i "s/ip=Dyn.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-        sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
-        sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
-        _BROKEN_DNS_TEST=$(grep "\." ${dnsLi} 2>&1)
-        if [ -z "${_BROKEN_DNS_TEST}" ]; then
-           echo "        ip=8.8.8.8;" >> ${dnsLi}
-           echo "        ip=8.8.4.4;" >> ${dnsLi}
-        fi
-        sed -i '/        label = \"google-servers\";/ {r ${dnsLi}
-d;};' /etc/pdnsd.conf
-        resolvconf -u         &> /dev/null
-        service pdnsd restart &> /dev/null
-        pdnsd-ctl empty-cache &> /dev/null
+      echo "        label = \"google-servers\";" > ${dnsLi}
+      for _IP in `cat /etc/resolv.conf \
+        | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
+        | cut -d ' ' -f2 \
+        | sort \
+        | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
+      sed -i "s/ip=.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
+      sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
+      sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
+      _BROKEN_DNS_TEST_Y=$(grep "\." ${dnsLi} 2>&1)
+      if [ -z "${_BROKEN_DNS_TEST_Y}" ]; then
+         echo "        ip=8.8.8.8;" >> ${dnsLi}
+         echo "        ip=8.8.4.4;" >> ${dnsLi}
       fi
+      ### echo debug dns A
+      sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+d;};' /etc/pdnsd.conf
+      resolvconf -u         &> /dev/null
+      service pdnsd restart &> /dev/null
+      pdnsd-ctl empty-cache &> /dev/null
     fi
   fi
 }
@@ -79,13 +79,24 @@ d;};' /etc/pdnsd.conf
 #
 # Check DNS settings.
 check_dns_settings() {
-  _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "${_BROKEN_DNS_TEST}" =~ "no servers could be reached" ]] \
-    && [ -e "/root/.use.local.nameservers.cnf" ]; then
+  if [ -e "/root/.use.default.nameservers.cnf" ]; then
+    _USE_DEFAULT_DNS=YES
+    rm -f /root/.local.dns.IP.list
+  fi
+  if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
-    fix_dns_settings
   else
-    _USE_PROVIDER_DNS=NO
+    _REMOTE_DNS_TEST=$(host -a files.aegir.cc 8.8.8.8 -w 10 2>&1)
+  fi
+  if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
+    || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
+    || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
+    _CTRL_DNS_TEST=$(host -a files.aegir.cc 2>&1)
+    if [[ ! "${_CTRL_DNS_TEST}" =~ "104.245.208.226" ]] \
+      || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
+      || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
+      fix_dns_settings
+    fi
   fi
 }
 
@@ -94,19 +105,22 @@ check_dns_settings() {
 check_git_repos() {
   if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
     _GITHUB_WORKS=NO
-    _GITORIOUS_WORKS=NO
+    _GITLAB_WORKS=NO
     if [ "${_FORCE_GIT_MIRROR}" = "drupal" ]; then
       _FORCE_GIT_MIRROR=github
+    fi
+    if [ "${_FORCE_GIT_MIRROR}" = "gitorious" ]; then
+      _FORCE_GIT_MIRROR=gitlab
     fi
     if [ "${_FORCE_GIT_MIRROR}" = "github" ]; then
       msg "INFO: We will use forced GitHub repository without testing connection"
       _GITHUB_WORKS=YES
-      _GITORIOUS_WORKS=NO
+      _GITLAB_WORKS=NO
       sleep 1
-    elif [ "${_FORCE_GIT_MIRROR}" = "gitorious" ]; then
-      msg "INFO: We will use forced Gitorious mirror without testing connection"
+    elif [ "${_FORCE_GIT_MIRROR}" = "gitlab" ]; then
+      msg "INFO: We will use forced GitLab mirror without testing connection"
       _GITHUB_WORKS=NO
-      _GITORIOUS_WORKS=YES
+      _GITLAB_WORKS=YES
       sleep 1
     else
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -114,13 +128,13 @@ check_git_repos() {
       fi
       sleep 1
       _GITHUB_WORKS=YES
-      _GITORIOUS_WORKS=YES
-      if ! netcat -w 14 -z github.com 9418 ; then
+      _GITLAB_WORKS=YES
+      if ! netcat -w 10 -z github.com 443 ; then
         _GITHUB_WORKS=NO
         msg "WARN: The GitHub master repository server doesn't respond..."
-      elif ! netcat -w 14 -z code.aegir.cc 9418 ; then
-        _GITORIOUS_WORKS=NO
-        msg "WARN: The Gitorious mirror repository server doesn't respond..."
+      elif ! netcat -w 10 -z gitlab.com 443 ; then
+        _GITLAB_WORKS=NO
+        msg "WARN: The GitLab mirror repository server doesn't respond..."
       fi
     fi
     if [ "$_GITHUB_WORKS" = "YES" ]; then
@@ -129,11 +143,11 @@ check_git_repos() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: GitHub master repository will be used"
       fi
-    elif [ "$_GITORIOUS_WORKS" = "YES" ]; then
-      _BOA_REPO_NAME="barracuda-octopus"
-      _BOA_REPO_GIT_URL="git://code.aegir.cc/aegir"
+    elif [ "$_GITLAB_WORKS" = "YES" ]; then
+      _BOA_REPO_NAME="boa"
+      _BOA_REPO_GIT_URL="${gitLab}"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Gitorious mirror repository will be used"
+        msg "INFO: GitLab mirror repository will be used"
       fi
     else
       cat <<EOF
@@ -141,7 +155,7 @@ check_git_repos() {
       None of repository servers responded in 8 seconds,
       so we can't continue this installation.
 
-      Please try again later or check if your firewall has port 9418 open.
+      Please try again later or check if your firewall has port 443 open.
 
       Bye.
 
@@ -300,7 +314,7 @@ validate_local_ip() {
 # Wait for connection.
 wait_for_connection() {
   echo " "
-  msg "I can not connect to github.com on port 9418 at the moment"
+  msg "I can not connect to github.com on port 443 at the moment"
   msg "I will try again in 60 seconds, please wait..."
   msg "Waiting for attempt $1..."
   sleep 60
@@ -309,19 +323,19 @@ wait_for_connection() {
 #
 # Check connection.
 check_connection() {
-  if ! netcat -w 14 -z github.com 9418 ; then
+  if ! netcat -w 10 -z github.com 443 ; then
     wait_for_connection "2/4"
-    if ! netcat -w 14 -z github.com 9418 ; then
+    if ! netcat -w 10 -z github.com 443 ; then
       wait_for_connection "3/4"
-      if ! netcat -w 14 -z github.com 9418 ; then
+      if ! netcat -w 10 -z github.com 443 ; then
         wait_for_connection "4/4"
-        if ! netcat -w 14 -z github.com 9418 ; then
+        if ! netcat -w 10 -z github.com 443 ; then
           echo " "
           msg "Sorry, I gave up."
-          msg "EXIT on error due to GitHub git server at 9418 downtime"
+          msg "EXIT on error due to GitHub git server at 443 downtime"
           msg "Please try to run this script again in a few minutes"
           msg "You may want to check https://status.github.com/messages"
-          msg "Also, make sure that the git port 9418 is open"
+          msg "Also, make sure that the outgoing connections via port 443 work"
           msg "Bye"
           clean_pid_exit
         fi
@@ -333,7 +347,7 @@ check_connection() {
 install_pdnsd_cache() {
   msg "INFO: Installing DNS cache pdnsd server..."
   cp -af /etc/resolv.conf ${vBs}/resolv.conf.pre-${_X_VERSION}-${_NOW}
-  if [ "${_USE_PROVIDER_DNS}" = "NO" ]; then
+  if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
     rm -f /etc/resolv.conf
     echo "nameserver 8.8.8.8" > /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
@@ -347,7 +361,7 @@ install_pdnsd_cache() {
   st_runner "aptitude purge pdnsd -y" &> /dev/null
   st_runner "aptitude purge resolvconf -y" &> /dev/null
   st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
-  if [ "${_USE_PROVIDER_DNS}" = "NO" ]; then
+  if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
     rm -f /etc/resolv.conf
     echo "nameserver 8.8.8.8" > /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
@@ -358,21 +372,7 @@ install_pdnsd_cache() {
   st_runner "${_INSTALL} pdnsd" &> /dev/null
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
   cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
-  if [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
-    _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
-    if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
-      && [ -e "/root/.use.local.nameservers.cnf" ]; then
-      echo "        label = \"google-servers\";" > ${dnsLi}
-      for _IP in `cat /etc/resolv.conf \
-        | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
-        | cut -d ' ' -f2 \
-        | sort \
-        | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
-      sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-      sed -i '/        label = \"google-servers\";/ {r ${dnsLi}
-d;};' /etc/pdnsd.conf
-    fi
-  fi
+  check_dns_settings
   if [ ! -L "/etc/resolvconf/run" ] \
     || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] \
     || [ ! -e "/etc/resolvconf/resolv.conf.d/tail" ]; then
@@ -392,8 +392,7 @@ d;};' /etc/pdnsd.conf
     cat ${vBs}/resolv.conf.vanilla > /etc/resolvconf/resolv.conf.d/base
   fi
   resolvconf -u &> /dev/null
-  if [ "${_USE_PROVIDER_DNS}" = "NO" ] \
-    && [ -e "/etc/resolvconf/run/resolv.conf" ]; then
+  if [ -e "/etc/resolvconf/run/resolv.conf" ]; then
     _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
     if [[ "$_RESOLV_TEST" =~ "nameserver 127.0.0.1" ]]; then
       _DO_NOTHING=YES
@@ -729,6 +728,7 @@ install_upgrade_pdnsd() {
     install_pdnsd_cache
   else
     if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
+      || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
       || [ ! -L "/etc/resolvconf/run" ] \
       || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] \
       || [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then

@@ -15,7 +15,7 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-_DUPLICITY_VRN="0.7.01"
+_DUPLICITY_VRN="0.7.02"
 _BOTO_VRN="2.36.0"
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
@@ -163,6 +163,7 @@ backup() {
     duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
   fi
   duplicity -v ${_AWS_VLV} --volsize 100 \
+    --allow-source-mismatch \
     --full-if-older-than ${_AWS_FLC} \
     --asynchronous-upload ${_AWS_OPX} \
     ${INCLUDE} ${EXCLUDE} --exclude '**' / ${TARGET} > ${LOGFILE}

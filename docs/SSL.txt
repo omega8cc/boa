@@ -62,9 +62,11 @@
 
 @=> How to enable permanent redirect to HTTPS with dedicated IP
 
-  Edit /var/aegir/config/server_master/nginx/pre.d/{domain_name}_pln_proxy.conf
+  Edit /var/aegir/config/server_master/nginx/pre.d/z_{domain_name}_pln_proxy.conf
 
-  Make sure that redirect regex location lists all aliases you want to
+  Add the extra if{} pseudo-location within the server{} configuration block.
+
+  Make sure that regex in the first line lists all aliases you want to
   redirect to the HTTPS permanently, as shown in the example below:
 
   ###

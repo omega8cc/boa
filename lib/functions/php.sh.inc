@@ -1286,7 +1286,10 @@ check_fix_php() {
   fi
 }
 
-install_composer() {
+install_update_composer() {
+  if [ -x "/usr/local/bin/composer" ]; then
+    /usr/local/bin/composer self-update &> /dev/null
+  fi
   if [ ! -x "/usr/local/bin/composer" ] || [ ! -L "/usr/bin/composer" ]; then
     rm -f /usr/local/bin/composer
     rm -f /usr/bin/composer

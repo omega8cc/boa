@@ -90,8 +90,7 @@ production settings.
 ### OTHER REQUIREMENTS
 
 * Wget must be installed.
-* The Git standard port 9418 must be open.
-* SMTP standard port 25 (or SMTP relay) must be open for outgoing connections.
+* The outgoing TCP connections via ports: 25, 53, 80 and 443 must be open.
 * Minimum 1 GB of RAM
 * Locales with UTF-8 support, otherwise en_US.UTF-8 (default) is forced.
 * Basic sysadmin skills and experience.
@@ -100,11 +99,13 @@ production settings.
 
 ### PROVIDES
 
-=== Included by default - see docs/NOTES.txt for details
+=== Included/enabled by default - see docs/NOTES.txt for details
 
 * All libraries & tools required to install and run Nginx based Aegir system.
 * Latest release of MariaDB 5.5 or 10.0 database server with Chive manager.
 * Latest version of Nginx web server.
+* SPDY Nginx support.
+* PFS (Perfect Forward Secrecy) support in Nginx.
 * PHP-FPM 5.6, 5.5, 5.4, 5.3 - multi-install mode, configurable per Octopus.
 * PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse and ionCube.
 * Fast Redis Cache with DB auto-failover for all 6.x and 7.x platforms.
@@ -120,7 +121,7 @@ production settings.
 * Magic Speed Booster cache, working like a Boost + AuthCache, but per user.
 * Entry level XSS built-in protection on the Nginx level.
 * Firewall csf/lfd integrated with Nginx abuse guard.
-* PHP errors debugging, including WSOD, enabled on the fly on dev. aliases.
+* PHP errors debugging, including WSOD, enabled on the fly on .dev. aliases.
 * Boost, AdvAgg, Domain Access and Drupal for Facebook built-in support.
 * Built-in collection of useful modules available in all platforms.
 * Autonomous Maintenance & Auto-Healing scripts in /var/xdrago.
@@ -130,8 +131,6 @@ production settings.
 === Optional add-ons - see docs/NOTES.txt for details
 
 * Compass Tools.
-* SPDY Nginx support.
-* PFS (Perfect Forward Secrecy) support in Nginx.
 * HHVM support - see docs/HHVM.txt for details.
 * MultiCore Apache Solr 1.4.1 with Jetty 7 - see docs/SOLR.txt for details.
 * MultiCore Apache Solr 3.6.2 with Jetty 8 - see docs/SOLR.txt for details.
@@ -144,8 +143,8 @@ production settings.
 * SQL Buddy database manager.
 * Collectd server monitor.
 * LDAP Nginx support via third-party module (experimental).
-* MongoDB driver for PHP 5.3 (experimental).
-* GEOS extension for PHP 5.3 (experimental).
+* MongoDB driver for PHP (experimental).
+* GEOS extension for PHP (all supported PHP versions).
 
 
 ### OCTOPUS PLATFORMS
@@ -156,41 +155,41 @@ Octopus can install the platforms listed below:
 
  Drupal 8.0.0-b7 -------------- https://drupal.org/drupal-8.0
 
- @ Drupal 7.34.1
+ @ Drupal 7.36.1
 
- aGov 1.6 --------------------- https://drupal.org/project/agov
- Commerce 1.33 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.21 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.22 ----------------- https://drupal.org/project/commons
- Drupal 7.34.1 ---------------- https://drupal.org/drupal-7.34
+ aGov 1.7 --------------------- https://drupal.org/project/agov
+ Commerce 1.36 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 2.23 ---------------- https://drupal.org/project/commerce_kickstart
+ Commons 3.23 ----------------- https://drupal.org/project/commons
+ Drupal 7.36.1 ---------------- https://drupal.org/drupal-7.36
  ERPAL 2.2 -------------------- https://drupal.org/project/erpal
- Guardr 2.8 ------------------- https://drupal.org/project/guardr
+ Guardr 2.11 ------------------ https://drupal.org/project/guardr
  OpenAcademy 1.1 -------------- https://drupal.org/project/openacademy
- OpenAid 2.0 ------------------ https://drupal.org/project/openaid
- OpenAtrium 2.32 -------------- https://drupal.org/project/openatrium
+ OpenAid 2.1 ------------------ https://drupal.org/project/openaid
+ OpenAtrium 2.33 -------------- https://drupal.org/project/openatrium
  OpenBlog 1.0-v3 -------------- https://drupal.org/project/openblog
- OpenChurch 1.17-b1 ----------- https://drupal.org/project/openchurch
- OpenChurch 2.1-b5 ------------ https://drupal.org/project/openchurch
+ OpenChurch 1.17-b2 ----------- https://drupal.org/project/openchurch
+ OpenChurch 2.1-b7 ------------ https://drupal.org/project/openchurch
  OpenDeals 1.35 --------------- https://drupal.org/project/opendeals
- OpenOutreach 1.16 ------------ https://drupal.org/project/openoutreach
- OpenPublic 1.4 --------------- https://drupal.org/project/openpublic
+ OpenOutreach 1.18 ------------ https://drupal.org/project/openoutreach
+ OpenPublic 1.5 --------------- https://drupal.org/project/openpublic
  OpenScholar 3.20.0 ----------- http://theopenscholar.org
- Panopoly 1.18 ---------------- https://drupal.org/project/panopoly
- Recruiter 1.5 ---------------- https://drupal.org/project/recruiter
- Restaurant 1.0-b10 ----------- https://drupal.org/project/restaurant
+ Panopoly 1.20 ---------------- https://drupal.org/project/panopoly
+ Recruiter 1.6 ---------------- https://drupal.org/project/recruiter
+ Restaurant 1.0-b12 ----------- https://drupal.org/project/restaurant
  Ubercart 3.8 ----------------- https://drupal.org/project/ubercart
 
- @ Pressflow 6.34.1
+ @ Pressflow 6.35.1
 
- Commons 2.22 ----------------- https://drupal.org/project/commons
+ Commons 2.23 ----------------- https://drupal.org/project/commons
  Feature Server 1.2 ----------- http://bit.ly/fserver
- Pressflow 6.34.1 ------------- http://pressflow.org
+ Pressflow 6.35.1 ------------- http://pressflow.org
  Ubercart 2.14 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.34.1 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.36.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
-* All D6 platforms have been enhanced using Pressflow 6.34.1 +Extra core:
+* All D6 platforms have been enhanced using Pressflow 6.35.1 +Extra core:
   https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 * All D6 and D7 platforms include some useful and/all performance related
