@@ -848,6 +848,7 @@ add_solr() {
   # $2 is solr core path
   if [ ! -z "$1" ] && [ ! -z $2 ] && [ -e "/var/xdrago/conf/solr" ]; then
     if [ ! -e "$2" ]; then
+      rm -f -r /opt/solr4/core0/data/*
       cp -a /opt/solr4/core0 $2
       CHAR="[:alnum:]"
       rkey=32
