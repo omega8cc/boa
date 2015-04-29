@@ -9,7 +9,7 @@ This new BOA release includes 15 updated Aegir platforms,
 
 IMPORTANT!
 
-Please note that this is the latest BOA upgrade which still allows
+Please note that this is the last BOA upgrade which still allows
 to run deprecated, buggy and insecure PHP 5.3 version by default.
 
 Next BOA upgrade (2.4.3) will force PHP 5.5 on all hosted Aegir
