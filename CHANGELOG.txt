@@ -50,7 +50,7 @@
 
 # System upgrades:
 
-  * cURL 7.42.0 (if installed from sources)
+  * cURL 7.42.1 (if installed from sources)
   * Drush mini-7-25-04-2015
   * Duplicity 0.7.02 (please run 'backboa install' to upgrade)
   * MariaDB Galera Cluster 10.0.17
