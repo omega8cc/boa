@@ -160,7 +160,7 @@ Octopus can install the platforms listed below:
  aGov 1.7 --------------------- https://drupal.org/project/agov
  Commerce 1.36 ---------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.23 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.23 ----------------- https://drupal.org/project/commons
+ Commons 3.25 ----------------- https://drupal.org/project/commons
  Drupal 7.36.1 ---------------- https://drupal.org/drupal-7.36
  ERPAL 2.2 -------------------- https://drupal.org/project/erpal
  Guardr 2.11 ------------------ https://drupal.org/project/guardr
@@ -171,17 +171,17 @@ Octopus can install the platforms listed below:
  OpenChurch 1.17-b2 ----------- https://drupal.org/project/openchurch
  OpenChurch 2.1-b7 ------------ https://drupal.org/project/openchurch
  OpenDeals 1.35 --------------- https://drupal.org/project/opendeals
- OpenOutreach 1.18 ------------ https://drupal.org/project/openoutreach
+ OpenOutreach 1.19 ------------ https://drupal.org/project/openoutreach
  OpenPublic 1.5 --------------- https://drupal.org/project/openpublic
  OpenScholar 3.20.0 ----------- http://theopenscholar.org
- Panopoly 1.20 ---------------- https://drupal.org/project/panopoly
+ Panopoly 1.21 ---------------- https://drupal.org/project/panopoly
  Recruiter 1.6 ---------------- https://drupal.org/project/recruiter
  Restaurant 1.0-b12 ----------- https://drupal.org/project/restaurant
  Ubercart 3.8 ----------------- https://drupal.org/project/ubercart
 
  @ Pressflow 6.35.1
 
- Commons 2.23 ----------------- https://drupal.org/project/commons
+ Commons 2.24 ----------------- https://drupal.org/project/commons
  Feature Server 1.2 ----------- http://bit.ly/fserver
  Pressflow 6.35.1 ------------- http://pressflow.org
  Ubercart 2.14 ---------------- https://drupal.org/project/ubercart
