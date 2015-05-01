@@ -2,7 +2,7 @@
 ### Stable BOA-2.4.2 Release - Full Edition
 ### Date: Mon Apr 27 11:12:09 PDT 2015
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.2
-### Latest hotfix added on: Thu Apr 30 15:00:42 PDT 2015
+### Latest hotfix added on: Fri May  1 02:07:54 PDT 2015
 
   @=> Includes Aegir Hostmaster 2.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -54,6 +54,7 @@
   * cURL 7.42.1 (if installed from sources)
   * Drush mini-7-25-04-2015
   * Duplicity 0.7.02 (please run 'backboa install' to upgrade)
+  * MariaDB 5.5.43
   * MariaDB Galera Cluster 10.0.17
   * MySecureShell master-20-03-2015
   * Nginx 1.8.0
