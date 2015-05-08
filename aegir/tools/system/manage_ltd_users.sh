@@ -1342,7 +1342,21 @@ manage_site_drush_alias_mirror() {
     fi
   done
 
-  rm -f /home/${_USER}.ftp/.drush/hm.alias.drushrc.php
+  if [ -e "/home/${_USER}.ftp/.drush/hm.alias.drushrc.php" ]; then
+    rm -f /home/${_USER}.ftp/.drush/hm.alias.drushrc.php
+  fi
+  if [ -e "/home/${_USER}.ftp/.drush/self.alias.drushrc.php" ]; then
+    rm -f /home/${_USER}.ftp/.drush/self.alias.drushrc.php
+  fi
+  if [ -e "/data/disk/${_USER}/.drush/.alias.drushrc.php" ]; then
+    rm -f /data/disk/${_USER}/.drush/.alias.drushrc.php
+  fi
+  if [ -e "/data/disk/${_USER}/.drush/self.alias.drushrc.php" ]; then
+    rm -f /data/disk/${_USER}/.drush/self.alias.drushrc.php
+  fi
+  if [ -e "/data/disk/${_USER}/config/self" ]; then
+    rm -f -r /data/disk/${_USER}/config/self
+  fi
 
   for Alias in `find ${pthParentUsr}/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
@@ -1353,7 +1367,9 @@ manage_site_drush_alias_mirror() {
     if [ "${AliasName}" = "hm" ] \
       || [[ "${AliasName}" =~ (^)"platform_" ]] \
       || [[ "${AliasName}" =~ (^)"server_" ]] \
-      || [[ "${AliasName}" =~ (^)"hostmaster" ]]; then
+      || [[ "${AliasName}" =~ (^)"self" ]] \
+      || [[ "${AliasName}" =~ (^)"hostmaster" ]] \
+      || [ -z "${AliasName}" ]; then
       _IS_SITE=NO
     else
       SiteName="${AliasName}"
