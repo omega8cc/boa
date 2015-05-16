@@ -269,7 +269,9 @@ else {
   $conf['composer_manager_vendor_dir'] = 'sites/' . $_SERVER['SERVER_NAME'] . '/vendor'; // Support for composer_manager
   $update_free_access = FALSE;
   $conf['webform_table'] = TRUE; // Workaround for SA-CONTRIB-2015-063 https://www.drupal.org/node/2445935
-  // $conf['redis_eval_enabled'] = TRUE; // Use EVAL commands to greatly speed up cache clearing (enable when #2487333 is fixed)
+  // $conf['redis_eval_enabled'] = TRUE;
+  // Use EVAL commands to greatly speed up cache clearing
+  // Enable when https://www.drupal.org/node/2487333 is fixed
 }
 
 
