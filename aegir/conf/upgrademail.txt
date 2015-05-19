@@ -14,7 +14,7 @@ to use deprecated PHP 5.3 by default, even if it is no longer
 maintained, so it will never receive fixes for many bugs and
 known security issues.
 
-Next BOA upgrade (2.4.3) will force PHP 5.5 on all hosted Aegir
+Next BOA upgrade (2.4.4) will force PHP 5.5 on all hosted Aegir
 instances, unless you will explicitly opt-out *before* that upgrade
 using PHP version control files, as explained in our docs at:
 
