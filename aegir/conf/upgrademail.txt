@@ -4,8 +4,8 @@ Your Aegir Hosting System has been upgraded to version BOA-2.4.2
 
   https://aegir.url.name
 
-This new BOA release includes 15 updated Aegir platforms,
-13 new software versions, plus over 23 bug fixes and improvements.
+This BOA release is focused on Aegir platforms update with latest
+Drupal core included.
 
 IMPORTANT!
 

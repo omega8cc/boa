@@ -67,24 +67,47 @@ force_advanced_nginx_config() {
     && [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
     _ALLOW_NGINX_FORWARD_SECRECY=YES
     _SSL_PROTOCOLS="TLSv1 TLSv1.1 TLSv1.2;"
-    _SSL_CIPHERS="EECDH+ECDSA+AESGCM: \
-      EECDH+aRSA+AESGCM:  \
-      EECDH+ECDSA+SHA384: \
-      EECDH+ECDSA+SHA256: \
-      EECDH+aRSA+SHA384:  \
-      EECDH+aRSA+SHA256:  \
-      EECDH:    \
-      EDH+aRSA: \
-      \!aNULL:  \
-      \!eNULL:  \
-      \!LOW:    \
-      \!3DES:   \
-      \!MD5:    \
-      \!EXP:    \
-      \!PSK:    \
-      \!SRP:    \
-      \!DSS:    \
-      \!RC4;"
+    _SSL_CIPHERS="ECDHE-RSA-AES128-GCM-SHA256:  \
+      ECDHE-ECDSA-AES128-GCM-SHA256:  \
+      ECDHE-RSA-AES256-GCM-SHA384:    \
+      ECDHE-ECDSA-AES256-GCM-SHA384:  \
+      DHE-RSA-AES128-GCM-SHA256:  \
+      DHE-DSS-AES128-GCM-SHA256:  \
+      kEDH+AESGCM:                \
+      ECDHE-RSA-AES128-SHA256:    \
+      ECDHE-ECDSA-AES128-SHA256:  \
+      ECDHE-RSA-AES128-SHA:       \
+      ECDHE-ECDSA-AES128-SHA:     \
+      ECDHE-RSA-AES256-SHA384:    \
+      ECDHE-ECDSA-AES256-SHA384:  \
+      ECDHE-RSA-AES256-SHA:       \
+      ECDHE-ECDSA-AES256-SHA:     \
+      DHE-RSA-AES128-SHA256:      \
+      DHE-RSA-AES128-SHA:         \
+      DHE-DSS-AES128-SHA256:      \
+      DHE-RSA-AES256-SHA256:      \
+      DHE-DSS-AES256-SHA:  \
+      DHE-RSA-AES256-SHA:  \
+      AES128-GCM-SHA256:   \
+      AES256-GCM-SHA384:   \
+      AES128-SHA256:  \
+      AES256-SHA256:  \
+      AES128-SHA:     \
+      AES256-SHA:     \
+      AES:            \
+      CAMELLIA:       \
+      DES-CBC3-SHA:   \
+      \!aNULL:   \
+      \!eNULL:   \
+      \!EXPORT:  \
+      \!DES:     \
+      \!RC4:     \
+      \!MD5:     \
+      \!PSK:     \
+      \!aECDH:   \
+      \!EDH-DSS-DES-CBC3-SHA:  \
+      \!EDH-RSA-DES-CBC3-SHA:  \
+      \!KRB5-DES-CBC3-SHA;"
     _SSL_CIPHERS=$(echo "${_SSL_CIPHERS}" | sed "s/ //g" 2>&1)
   else
     _ALLOW_NGINX_FORWARD_SECRECY=NO
@@ -527,24 +550,47 @@ fix_update_nginx_config() {
       && [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
       _ALLOW_NGINX_FORWARD_SECRECY=YES
       _SSL_PROTOCOLS="TLSv1 TLSv1.1 TLSv1.2;"
-      _SSL_CIPHERS="EECDH+ECDSA+AESGCM: \
-        EECDH+aRSA+AESGCM:  \
-        EECDH+ECDSA+SHA384: \
-        EECDH+ECDSA+SHA256: \
-        EECDH+aRSA+SHA384:  \
-        EECDH+aRSA+SHA256:  \
-        EECDH:    \
-        EDH+aRSA: \
-        \!aNULL:  \
-        \!eNULL:  \
-        \!LOW:    \
-        \!3DES:   \
-        \!MD5:    \
-        \!EXP:    \
-        \!PSK:    \
-        \!SRP:    \
-        \!DSS:    \
-        \!RC4;"
+      _SSL_CIPHERS="ECDHE-RSA-AES128-GCM-SHA256:  \
+        ECDHE-ECDSA-AES128-GCM-SHA256:  \
+        ECDHE-RSA-AES256-GCM-SHA384:    \
+        ECDHE-ECDSA-AES256-GCM-SHA384:  \
+        DHE-RSA-AES128-GCM-SHA256:  \
+        DHE-DSS-AES128-GCM-SHA256:  \
+        kEDH+AESGCM:                \
+        ECDHE-RSA-AES128-SHA256:    \
+        ECDHE-ECDSA-AES128-SHA256:  \
+        ECDHE-RSA-AES128-SHA:       \
+        ECDHE-ECDSA-AES128-SHA:     \
+        ECDHE-RSA-AES256-SHA384:    \
+        ECDHE-ECDSA-AES256-SHA384:  \
+        ECDHE-RSA-AES256-SHA:       \
+        ECDHE-ECDSA-AES256-SHA:     \
+        DHE-RSA-AES128-SHA256:      \
+        DHE-RSA-AES128-SHA:         \
+        DHE-DSS-AES128-SHA256:      \
+        DHE-RSA-AES256-SHA256:      \
+        DHE-DSS-AES256-SHA:  \
+        DHE-RSA-AES256-SHA:  \
+        AES128-GCM-SHA256:   \
+        AES256-GCM-SHA384:   \
+        AES128-SHA256:  \
+        AES256-SHA256:  \
+        AES128-SHA:     \
+        AES256-SHA:     \
+        AES:            \
+        CAMELLIA:       \
+        DES-CBC3-SHA:   \
+        \!aNULL:   \
+        \!eNULL:   \
+        \!EXPORT:  \
+        \!DES:     \
+        \!RC4:     \
+        \!MD5:     \
+        \!PSK:     \
+        \!aECDH:   \
+        \!EDH-DSS-DES-CBC3-SHA:  \
+        \!EDH-RSA-DES-CBC3-SHA:  \
+        \!KRB5-DES-CBC3-SHA;"
       _SSL_CIPHERS=$(echo "${_SSL_CIPHERS}" | sed "s/ //g" 2>&1)
     else
       _ALLOW_NGINX_FORWARD_SECRECY=NO
