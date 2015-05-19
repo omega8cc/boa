@@ -1006,7 +1006,7 @@ satellite_child_b_update_ini_php_cli() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.242stableU.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.243stableU.txt" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1054,7 +1054,7 @@ satellite_child_b_update_ini_php_cli() {
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.242stableU.txt
+      echo > ${_U_HD}/.ctrl.243stableU.txt
     fi
   fi
 }
@@ -1296,7 +1296,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/speedy" ]; then
-        get_dev_contrib "speedy-7.x-1.16.tar.gz"
+        get_dev_contrib "speedy-7.x-1.18.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/taxonomy_edge" ]; then
         get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
@@ -1384,7 +1384,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
   get_dev_contrib "site_verify-7.x-1.1.tar.gz"
-  get_dev_contrib "speedy-7.x-1.16.tar.gz"
+  get_dev_contrib "speedy-7.x-1.18.tar.gz"
   get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
   get_dev_contrib "textile-7.x-2.0-rc11.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
@@ -1921,7 +1921,7 @@ satellite_download_for_local_build() {
     fi
     get_dev_stc "admin_menu-6.x-1.9.tar.gz"
     get_dev_stc "css_emimage.tar.gz"
-    get_dev_stc "ctools-6.x-1.12.tar.gz"
+    get_dev_stc "ctools-6.x-1.13.tar.gz"
     get_dev_stc "eldir.tar.gz"
     get_dev_stc "features_extra-6.x-1.x-dev.tar.gz"
     get_dev_stc "features-6.x-1.2.tar.gz"
@@ -3148,7 +3148,7 @@ satellite_make() {
     echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
   fi
 
-  if [ ! -e "${_ROOT}/static/control/.ctrl.242stableU.txt" ] \
+  if [ ! -e "${_ROOT}/static/control/.ctrl.243stableU.txt" ] \
     || [ ! -e "${_ROOT}/static/control/README.txt" ]; then
     mkdir -p ${_ROOT}/static/control
     chmod 755 ${_ROOT}/static/control
@@ -3160,7 +3160,7 @@ satellite_make() {
     chown -R ${_USER}.ftp:${_USRG} \
       ${_ROOT}/static/control &> /dev/null
     rm -f ${_ROOT}/static/control/.ctrl.*
-    echo OK > ${_ROOT}/static/control/.ctrl.242stableU.txt
+    echo OK > ${_ROOT}/static/control/.ctrl.243stableU.txt
   fi
 
   if [ -d "/data/all/000" ]; then

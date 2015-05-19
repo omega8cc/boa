@@ -22,9 +22,9 @@ projects[context][download][type] = "get"
 projects[context][download][url] = "http://files.aegir.cc/dev/contrib/context-6.x-3.3.tar.gz"
 
 projects[ctools][type] = "module"
-;projects[ctools][version] = "1.12"
+;projects[ctools][version] = "1.13"
 projects[ctools][download][type] = "get"
-projects[ctools][download][url] = "http://files.aegir.cc/dev/contrib/ctools-6.x-1.12.tar.gz"
+projects[ctools][download][url] = "http://files.aegir.cc/dev/contrib/ctools-6.x-1.13.tar.gz"
 
 projects[features][type] = "module"
 ;projects[features][version] = "1.2"

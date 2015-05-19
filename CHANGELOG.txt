@@ -1,4 +1,40 @@
 
+### Stable BOA-2.4.3 Release - Full Edition
+### Date: Tue May 19 13:40:40 PDT 2015
+### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.3
+
+  @=> Includes Aegir Hostmaster 2.x-head with improvements
+  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Drush 7 customized for BOA
+
+# Release Notes:
+
+  This BOA release is focused on Aegir platforms update with latest Drupal core
+  included. There are also a few system updates and bug fixes, as listed below.
+
+# Changes:
+
+  * Redis Integration Module: Update to version mod-08-05-2015
+  * Use HTTPS intermediate mode to support legacy systems like XP/IE8 - see #718
+
+# System upgrades:
+
+  * Drush mini-7-08-05-2015
+  * MariaDB 10.0.19
+  * MariaDB Galera Cluster 10.0.19
+  * PHP 5.4.41
+  * PHP 5.5.25
+  * PHP 5.6.9
+  * Redis 3.0.1
+
+# Fixes:
+
+  * CiviCRM known bugs and regressions fixed
+  * Improve drush aliases cleanup
+  * Redis: sync net.core.somaxconn with tcp-backlog
+  * sqlmagic: do not escape backslashes and EOL character - fixes #672
+
+
 ### Stable BOA-2.4.2 Release - Full Edition
 ### Date: Mon Apr 27 11:12:09 PDT 2015
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.2
