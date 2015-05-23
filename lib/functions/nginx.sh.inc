@@ -514,7 +514,6 @@ fix_update_nginx_config() {
       sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
       sed -i "s/SSLv3 TLSv1;/TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf       &> /dev/null
       sed -i "s/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
-      sed -i "s/HIGH:\!ADH:\!MD5;/RC4:HIGH:\!aNULL:\!MD5;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
       sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                           &> /dev/null
       sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/vhost.d/*                              &> /dev/null
       sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                   &> /dev/null
