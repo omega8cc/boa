@@ -4021,9 +4021,15 @@ if_install_ftpd() {
       || [ ! -e "/usr/local/sbin/pure-config.pl" ] \
       || [ ! -e "/usr/local/sbin/pure-ftpd" ] \
       || [ ! -e "${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log" ] \
+      || [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
       msg "INFO: Building Pure-FTPd server from sources, please wait..."
+      if [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ]; then
+        msg "INFO: Generating DH parameters, 4096 bit, please wait..."
+        st_runner "openssl dhparam \
+          -out /etc/ssl/private/pure-ftpd-dhparams.pem 4096" 2> /dev/null
+      fi
       if [ ! -e "/usr/local/sbin/pure-config.pl" ]; then
         echo "/bin/false" >> /etc/shells
         echo "/bin/true" >> /etc/shells
