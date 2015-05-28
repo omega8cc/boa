@@ -2695,20 +2695,18 @@ else
   fi
   action >/var/xdrago/log/daily/daily-${_NOW}.log 2>&1
   if [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
-    for File in `find /etc/ssl/private/*.key -type f`; do
-      _PFS_TEST=$(grep "DH PARAMETERS" $File 2>&1)
-      if [[ "${_PFS_TEST}" =~ "DH PARAMETERS" ]]; then
-        _DO_NOTHING=YES
-      else
-        openssl dhparam -rand - 4096 >> $File
-      fi
-    done
-    for File in `find /etc/ssl/private/*.crt -type f`; do
-      _PFS_TEST=$(grep "DH PARAMETERS" $File 2>&1)
-      if [[ "${_PFS_TEST}" =~ "DH PARAMETERS" ]]; then
-        _DO_NOTHING=YES
-      else
-        openssl dhparam -rand - 4096 >> $File
+    for f in `find /etc/ssl/private/*.crt -type f`; do
+      sslName=$(echo ${f} | cut -d'/' -f5 | awk '{ print $1}' | sed "s/.crt//g")
+      sslFile="/etc/ssl/private/${sslName}.dhp"
+      if [ -e "${f}" ] && [ ! -z "${sslName}" ]; then
+        if [ ! -e "${sslFile}" ]; then
+          openssl dhparam -out ${sslFile} 4096 &> /dev/null
+        else
+          _PFS_TEST=$(grep "DH PARAMETERS" ${sslFile} 2>&1)
+          if [[ ! "${_PFS_TEST}" =~ "DH PARAMETERS" ]]; then
+            openssl dhparam -out ${sslFile} 4096 &> /dev/null
+          fi
+        fi
       fi
     done
     /etc/init.d/nginx reload

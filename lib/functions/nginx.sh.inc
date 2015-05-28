@@ -44,6 +44,11 @@ sub_force_advanced_nginx_config() {
 #
 # Force advanced Nginx configuration.
 force_advanced_nginx_config() {
+  if [ ! -e "/etc/ssl/private/nginx-wild-ssl.dhp" ]; then
+    msg "INFO: Generating DH parameters, 4096 bit, please wait..."
+    st_runner "openssl dhparam \
+      -out /etc/ssl/private/nginx-wild-ssl.dhp 4096" 2> /dev/null
+  fi
   cp -af ${locCnf}/nginx_compact_include.conf ${mtrInc}/nginx_compact_include.conf
   validate_local_ip &> /dev/null
   sub_force_advanced_nginx_config
