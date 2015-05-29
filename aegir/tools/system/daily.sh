@@ -2700,11 +2700,11 @@ else
       sslFile="/etc/ssl/private/${sslName}.dhp"
       if [ -e "${f}" ] && [ ! -z "${sslName}" ]; then
         if [ ! -e "${sslFile}" ]; then
-          openssl dhparam -out ${sslFile} 4096 &> /dev/null
+          openssl dhparam -out ${sslFile} 2048 &> /dev/null
         else
           _PFS_TEST=$(grep "DH PARAMETERS" ${sslFile} 2>&1)
           if [[ ! "${_PFS_TEST}" =~ "DH PARAMETERS" ]]; then
-            openssl dhparam -out ${sslFile} 4096 &> /dev/null
+            openssl dhparam -out ${sslFile} 2048 &> /dev/null
           fi
         fi
       fi

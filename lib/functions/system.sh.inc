@@ -4026,9 +4026,9 @@ if_install_ftpd() {
       || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
       msg "INFO: Building Pure-FTPd server from sources, please wait..."
       if [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ]; then
-        msg "INFO: Generating DH parameters, 4096 bit, please wait..."
+        msg "INFO: Generating DH parameters, 2048 bit, please wait..."
         st_runner "openssl dhparam \
-          -out /etc/ssl/private/pure-ftpd-dhparams.pem 4096" 2> /dev/null
+          -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048" 2> /dev/null
       fi
       if [ ! -e "/usr/local/sbin/pure-config.pl" ]; then
         echo "/bin/false" >> /etc/shells
@@ -4037,7 +4037,7 @@ if_install_ftpd() {
       mkdir -p /etc/ssl/private/
       rm -f /etc/ssl/private/pure-ftpd.pem
       rm -f /usr/local/sbin/pure-ftpd
-      st_runner "openssl req -x509 -nodes -days 7300 -newkey rsa:4096 \
+      st_runner "openssl req -x509 -nodes -days 7300 -newkey rsa:2048 \
         -keyout /etc/ssl/private/pure-ftpd.pem \
         -out /etc/ssl/private/pure-ftpd.pem -batch" 2> /dev/null
       chmod 600 /etc/ssl/private/pure-ftpd.pem &> /dev/null

@@ -922,12 +922,12 @@ sub_ssl_gen() {
         sslFile="/etc/ssl/private/${domain_name}.dhp"
         if [ ! -e "${sslFile}" ]; then
           echo "We will generate .dhp file now, please wait..."
-          openssl dhparam -out ${sslFile} 4096 &> /dev/null
+          openssl dhparam -out ${sslFile} 2048 &> /dev/null
         else
           _PFS_TEST=$(grep "DH PARAMETERS" ${sslFile} 2>&1)
           if [[ ! "${_PFS_TEST}" =~ "DH PARAMETERS" ]]; then
             echo "We will generate .dhp file now, please wait..."
-            openssl dhparam -out ${sslFile} 4096 &> /dev/null
+            openssl dhparam -out ${sslFile} 2048 &> /dev/null
           fi
         fi
       fi

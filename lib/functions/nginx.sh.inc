@@ -45,9 +45,9 @@ sub_force_advanced_nginx_config() {
 # Force advanced Nginx configuration.
 force_advanced_nginx_config() {
   if [ ! -e "/etc/ssl/private/nginx-wild-ssl.dhp" ]; then
-    msg "INFO: Generating DH parameters, 4096 bit, please wait..."
+    msg "INFO: Generating DH parameters, 2048 bit, please wait..."
     st_runner "openssl dhparam \
-      -out /etc/ssl/private/nginx-wild-ssl.dhp 4096" 2> /dev/null
+      -out /etc/ssl/private/nginx-wild-ssl.dhp 2048" 2> /dev/null
   fi
   cp -af ${locCnf}/nginx_compact_include.conf ${mtrInc}/nginx_compact_include.conf
   validate_local_ip &> /dev/null
@@ -461,7 +461,7 @@ EOF
       validate_xtras_ip &> /dev/null
       openssl req -x509 -nodes -days 7300 \
         -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.${_THISHOST}" \
-        -newkey rsa:4096 \
+        -newkey rsa:2048 \
         -keyout /etc/ssl/private/nginx-wild-ssl.key \
         -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
       cp -af ${locCnf}/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
