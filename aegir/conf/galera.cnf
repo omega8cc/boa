@@ -19,8 +19,9 @@ innodb_flush_log_at_trx_commit=0
 #
 # wsrep_provider=/usr/lib/galera/libgalera_smm.so
 # wsrep_cluster_name="galera_cluster"
-# wsrep_cluster_address="gcomm://192.168.0.1,192.168.0.2,192.168.0.3"
+# wsrep_cluster_address="gcomm://192.168.0.1,192.168.0.2,192.168.0.3,...?pc.wait_prim=no"
 # wsrep_sst_auth=wsrep:sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+# wsrep_provider_options='socket.checksum=1'
 
 ### Optional Galera Settings
 #
