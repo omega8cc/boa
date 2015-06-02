@@ -289,8 +289,7 @@ install_mariadb_sql() {
     || [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ]; then
-    SQLDEB="galera \
-            mariadb-galera-server"
+    SQLDEB="mariadb-galera-server"
   else
     SQLDEB="mariadb-server-${_DB_SERIES} \
             mariadb-client-${_DB_SERIES} \
