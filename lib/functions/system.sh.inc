@@ -2498,6 +2498,7 @@ strict_bin_permissions() {
                   logger \
                   newrelic-daemon \
                   nrsysmond \
+                  optipng \
                   pngcrush \
                   pngquant \
                   redis-server \
