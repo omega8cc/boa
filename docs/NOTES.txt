@@ -23,7 +23,7 @@
     ### BZR --- Bazaar
     ### FMG --- FFmpeg support
     ### GIT --- Latest Git from sources
-    ### IMG --- Image Optimize binaries: advdef advpng jpegoptim jpegtran pngcrush pngquant
+    ### IMG --- Image Optimize binaries: advdef advpng jpegoptim jpegtran optipng pngcrush pngquant
     ### SR1 --- Apache Solr 1 with Jetty 7
     ### SR3 --- Apache Solr 3 with Jetty 8
     ### SR4 --- Apache Solr 4 with Jetty 8 or 9
