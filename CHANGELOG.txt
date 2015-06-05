@@ -2,6 +2,7 @@
 ### Stable BOA-2.4.3 Release - Full Edition
 ### Date: Tue May 19 13:40:40 PDT 2015
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.3
+### Latest hotfix added on: Fri Jun  5 04:43:50 PDT 2015
 
   @=> Includes Aegir Hostmaster 2.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -33,6 +34,8 @@
   * Improve drush aliases cleanup
   * Redis: sync net.core.somaxconn with tcp-backlog
   * sqlmagic: do not escape backslashes and EOL character - fixes #672
+  * SQL dump definer regexp causes invalid SQL during migrate/clone - #2497091
+  * Fix for backward compatibility with old Galera versions
 
 
 ### Stable BOA-2.4.2 Release - Full Edition
