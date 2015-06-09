@@ -81,7 +81,7 @@ production settings.
 ### SUPPORTED LTS OS {c} please read also: docs/CAVEATS.txt
 
 * Debian 7 Wheezy (recommended)
-* Debian 6 Squeeze (limited support with automatic upgrade to Wheezy)
+* Debian 6 Squeeze (limited support)
 * Ubuntu Trusty 14.04 (limited support)
 * Ubuntu Precise 12.04 (limited support)
 * Ubuntu Lucid 10.04 (limited support)
