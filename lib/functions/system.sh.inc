@@ -3733,6 +3733,7 @@ install_vnstat() {
         /etc/init.d/vnstat
       chmod 755 /etc/init.d/vnstat &> /dev/null
       st_runner "update-rc.d vnstat defaults" &> /dev/null
+      sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /etc/vnstat.conf
       mrun "service vnstat start" &> /dev/null
       touch ${pthLog}/vnstat-${_VNSTAT_VRN}.log
       mrun "service vnstat restart" &> /dev/null
