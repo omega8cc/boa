@@ -34,8 +34,13 @@ crontab_update() {
       _BCDA_FULL="up-cluster log"
       _BCDA_SYST="up-cluster system"
     else
-      _BCDA_FULL="up-stable log"
-      _BCDA_SYST="up-stable system"
+      if [ "${_AUTO_PHP}" = "php-all" ]; then
+        _BCDA_FULL="up-stable log php-all"
+        _BCDA_SYST="up-stable system php-all"
+      else
+        _BCDA_FULL="up-stable log"
+        _BCDA_SYST="up-stable system"
+      fi
       _OCTO_FULL="up-stable all both log"
     fi
     echo "# Barracuda weekly system only upgrade" >> /etc/crontab
@@ -119,9 +124,10 @@ if [ -e "/data/disk/arch" ]; then
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] \
     || [ "${_AUTO_UP}" = "YES" ]; then
-    _AUTO_UP_WEEKLY=6
-    _AUTO_UP_MONTH=5
-    _AUTO_UP_DAY=20
+    _AUTO_UP_WEEKLY=
+    _AUTO_UP_MONTH=
+    _AUTO_UP_DAY=
+    _AUTO_PHP="php-all"
   fi
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -129,6 +135,7 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
+    _AUTO_PHP=
     sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"5.3 5.5\"/g" /root/.barracuda.cnf
     sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" /root/.barracuda.cnf
     sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" /root/.barracuda.cnf
@@ -140,6 +147,7 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
+    _AUTO_PHP=
   fi
   if [ ! -z "${_AUTO_UP_WEEKLY}" ] \
     && [ ! -z "${_AUTO_UP_MONTH}" ] \
