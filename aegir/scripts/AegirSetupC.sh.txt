@@ -323,7 +323,6 @@ prepare_drupal6_core() {
     cp -af ${_CORE}/o_contrib/image/image.imagemagick.inc includes/
     cp -af ${_CORE}/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
     rm -f -r ${_D6_CORE_DIR}/scripts
-    rm -f -r ${_D6_CORE_DIR}/themes/{bluemarine,chameleon,pushbutton,README.txt}
     cd ${_D6_CORE_DIR}/themes
     get_dev_contrib "rubik-6.x-3.0-beta5.tar.gz"
     get_dev_contrib "tao-6.x-3.3.tar.gz"
@@ -2473,7 +2472,6 @@ if [ "${_DEBUG_MODE}" = "YES" ]; then
   echo " "
   msg "${_STATUS} C: Removing some unused core files..."
 fi
-rm -f -r ${_CORE}/*/themes/{bluemarine,chameleon,pushbutton,README.txt}
 rm -f -r ${_CORE}/*/scripts
 rm -f ${_CORE}/*{.make,.tar,.tar.gz,.zip}
 cd ${_CORE}
