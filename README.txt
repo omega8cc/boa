@@ -179,17 +179,17 @@ Octopus can install the platforms listed below:
  Restaurant 1.0-b12 ----------- https://drupal.org/project/restaurant
  Ubercart 3.8 ----------------- https://drupal.org/project/ubercart
 
- @ Pressflow 6.35.1
+ @ Pressflow 6.36.1
 
  Commons 2.24 ----------------- https://drupal.org/project/commons
  Feature Server 1.2 ----------- http://bit.ly/fserver
- Pressflow 6.35.1 ------------- http://pressflow.org
+ Pressflow 6.36.1 ------------- http://pressflow.org
  Ubercart 2.14 ---------------- https://drupal.org/project/ubercart
 
 * All D7 platforms have been enhanced using Drupal 7.37.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
-* All D6 platforms have been enhanced using Pressflow 6.35.1 +Extra core:
+* All D6 platforms have been enhanced using Pressflow 6.36.1 +Extra core:
   https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 * All D6 and D7 platforms include some useful and/all performance related
