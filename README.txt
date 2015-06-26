@@ -171,7 +171,7 @@ Octopus can install the platforms listed below:
  OpenChurch 1.17-b2 ----------- https://drupal.org/project/openchurch
  OpenChurch 2.1 --------------- https://drupal.org/project/openchurch
  OpenDeals 1.35 --------------- https://drupal.org/project/opendeals
- OpenOutreach 1.20 ------------ https://drupal.org/project/openoutreach
+ OpenOutreach 1.21 ------------ https://drupal.org/project/openoutreach
  OpenPublic 1.5 --------------- https://drupal.org/project/openpublic
  OpenScholar 3.20.0 ----------- http://theopenscholar.org
  Panopoly 1.23 ---------------- https://drupal.org/project/panopoly
