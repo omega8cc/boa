@@ -1,30 +1,60 @@
 #!/bin/bash
 
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-_REL_VERSION=`lsb_release -sc`
+_OSV=$(lsb_release -sc 2>&1)
+_OPENSSL_VRN=1.0.2c
+_SSL_ITD=$(openssl version 2>&1 \
+  | tr -d "\n" \
+  | cut -d" " -f2 \
+  | awk '{ print $1}')
+if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ]; then
+  _NEW_SSL=YES
+fi
 
 randpass() {
-  if [ $integer -ge 8 ] ; then
-    rkey="$integer"
+  if [ "${integer}" -ge "8" ]; then
+    rkey="${integer}"
   else
     rkey=32
   fi
-  if [ "$kind" = "graph" ] ; then
+  if [ "${kind}" = "graph" ]; then
     CHAR="[:graph:]"
-    cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | tr -d "\n"
-  elif [ "$kind" = "esc" ] ; then
+    cat /dev/urandom \
+      | tr -cd "$CHAR" \
+      | head -c ${1:-$rkey} \
+      | tr -d "\n"
+  elif [ "${kind}" = "esc" ]; then
     CHAR="[:graph:]"
-    cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | tr -d "\n" | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
-  elif [ "$kind" = "hash" ] ; then
+    cat /dev/urandom \
+      | tr -cd "$CHAR" \
+      | head -c ${1:-$rkey} \
+      | tr -d "\n" \
+      | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
+  elif [ "${kind}" = "hash" ]; then
     CHAR="[:alnum:]"
-    if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
-      cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | openssl md5 | awk '{ print $2}' | tr -d "\n"
+    if [ "$_NEW_SSL" = "YES" ] \
+      || [ "${_OSV}" = "wheezy" ] \
+      || [ "${_OSV}" = "trusty" ] \
+      || [ "${_OSV}" = "precise" ]; then
+      cat /dev/urandom \
+        | tr -cd "$CHAR" \
+        | head -c ${1:-$rkey} \
+        | openssl md5 \
+        | awk '{ print $2}' \
+        | tr -d "\n"
     else
-      cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | openssl md5 | tr -d "\n"
+      cat /dev/urandom \
+        | tr -cd "$CHAR" \
+        | head -c ${1:-$rkey} \
+        | openssl md5 \
+        | tr -d "\n"
     fi
   else
     CHAR="[:alnum:]"
-    cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | tr -d "\n"
+    cat /dev/urandom \
+      | tr -cd "$CHAR" \
+      | head -c ${1:-$rkey} \
+      | tr -d "\n"
   fi
   echo
 }

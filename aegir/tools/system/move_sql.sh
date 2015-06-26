@@ -3,7 +3,7 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-if [ -e "/var/run/boa_wait.pid" ] ; then
+if [ -e "/var/run/boa_wait.pid" ]; then
   touch /var/xdrago/log/wait-for-mysql-restart
   exit 0
 else
@@ -20,4 +20,4 @@ else
   touch /var/xdrago/log/last-mysql-restart-done
   exit 0
 fi
-###EOF2014###
+###EOF2015###

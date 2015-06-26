@@ -37,8 +37,7 @@ SCRIPTNAME=/etc/init.d/$NAME
 #
 # Function to check the correctness of the config file
 #
-do_check()
-{
+do_check() {
     [ "$1" != "no" ] && $DAEMON $DAEMON_ARGS -t 2>&1 | grep -v "\[ERROR\]"
     FPM_ERROR=$($DAEMON $DAEMON_ARGS -t 2>&1 | grep "\[ERROR\]")
 
@@ -53,8 +52,7 @@ do_check()
 #
 # Function that starts the daemon/service
 #
-do_start()
-{
+do_start() {
 	# Return
 	#   0 if daemon has been started
 	#   1 if daemon was already running
@@ -72,14 +70,13 @@ do_start()
 #
 # Function that stops the daemon/service
 #
-do_stop()
-{
+do_stop() {
 	# Return
 	#   0 if daemon has been stopped
 	#   1 if daemon was already stopped
 	#   2 if daemon could not be stopped
 	#   other if a failure occurred
-	start-stop-daemon --stop --quiet --retry=QUIT/$TIMEOUT/TERM/5/KILL/5 --pidfile $PIDFILE --name $NAME
+	start-stop-daemon --stop --quiet --retry=QUIT/${TIME}OUT/TERM/5/KILL/5 --pidfile $PIDFILE --name $NAME
 	RETVAL="$?"
 	[ "$RETVAL" = 2 ] && return 2
 	# Wait for children to finish too if this is a daemon that forks

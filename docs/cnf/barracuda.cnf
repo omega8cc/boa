@@ -1,15 +1,14 @@
 ###
-### Barracuda version BOA-2.3.0-dev
+### Barracuda version BOA-2.4.3
 ###
 ### Configuration stored in the /root/.barracuda.cnf file.
 ### This example is for public install mode - see docs/INSTALL.txt
 ###
-### NOTE: the group of settings displayed bellow will *not* be overridden
+### NOTE: the group of settings displayed below will *not* be overridden
 ### on upgrade by the Barracuda script nor by this configuration file.
 ### They can be defined only on initial Barracuda install.
 ###
-_EASY_HOSTNAME="f-q-d-n" #------ Hostname auto-configured via _EASY_PUBLIC
-_HTTP_WILDCARD=YES #------------ Listen on single IP instead of all IPs when NO
+_EASY_HOSTNAME="f-q-d-n" #------ Hostname auto-configured via _EASY_SETUP
 _LOCAL_NETWORK_HN="" #---------- Hostname if in localhost mode - auto-conf
 _LOCAL_NETWORK_IP="" #---------- Web server IP if in localhost mode - auto-conf
 _MY_FRONT="master.f-q-d-n" #---- URL of the Aegir Master Instance control panel
@@ -19,7 +18,7 @@ _SMTP_RELAY_HOST="" #----------- Allows to configure simple SMTP relay (w/o pwd)
 _SMTP_RELAY_TEST=YES #---------- Allows to skip SMTP availability tests when NO
 _THIS_DB_HOST=localhost #------- Allows to use hostname in DB grants when FQDN
 ###
-### NOTE: the group of settings displayed bellow
+### NOTE: the group of settings displayed below
 ### will *override* all listed settings in the Barracuda script,
 ### both on initial install and upgrade.
 ###
@@ -28,9 +27,9 @@ _DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
 _MY_EMAIL="my@email" #---------- System admin e-mail
 _XTRAS_LIST="" #---------------- See docs/NOTES.txt for details on add-ons
 ###
-_MODULES_FIX=YES #-------------- Will skip modules enabling/disabling when NO
+_MODULES_FIX=NO #--------------- Runs daily modules enabling/disabling when YES
 _MODULES_SKIP="" #-------------- Modules (machine names) to never auto-disable
-_PERMISSIONS_FIX=NO #----------- Allows to fix permissions daily when YES
+_PERMISSIONS_FIX=NO #----------- Allows to run daily permissions fix when YES
 ###
 _CPU_CRIT_RATIO=9 #------------- Max load per CPU core before killing PHP/Drush
 _CPU_MAX_RATIO=6 #-------------- Max load per CPU core before disabling Nginx
@@ -52,20 +51,21 @@ _SCOUT_KEY= #------------------- Installs Scout App when license key is set
 ###
 _NGINX_DOS_LIMIT=300 #---------- Allows to override default 250/300 limit
 _NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
-_NGINX_FORWARD_SECRECY=NO #----- Installs PFS Nginx support when YES
+_NGINX_FORWARD_SECRECY=YES #---- Installs PFS Nginx support when YES (default)
 _NGINX_LDAP=NO #---------------- Installs LDAP Nginx support when YES
-_NGINX_NAXSI=NO #--------------- Installs Nginx NAXSI WAF when YES
-_NGINX_SPDY=NO #---------------- Installs SPDY Nginx support when YES
+_NGINX_NAXSI=NO #--------------- Installs NAXSI WAF when YES - experimental
+_NGINX_SPDY=YES #--------------- Installs SPDY Nginx support when YES (default)
 _NGINX_WORKERS=AUTO #----------- Allows to override AUTO with a valid integer
 ###
-_PHP_CLI_VERSION=5.3 #---------- PHP-CLI used by Master Instance: 5.{2,3,4,5}
+_PHP_CLI_VERSION=5.5 #---------- PHP-CLI used by Master Instance: 5.{3,4,5,6}
 _PHP_EXTRA_CONF="" #------------ Allows to add custom options to PHP build
 _PHP_FPM_DENY="" #-------------- Modify disable_functions -- see info below
-_PHP_FPM_VERSION=5.3 #---------- PHP-FPM used by Master Instance: 5.{2,3,4,5}
+_PHP_FPM_VERSION=5.5 #---------- PHP-FPM used by Master Instance: 5.{3,4,5,6}
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
-_PHP_GEOS=NO #------------------ Installs GEOS for PHP when YES - experimental
-_PHP_MONGODB=NO #--------------- Installs MONGODB for PHP when YES
-_PHP_MULTI_INSTALL="5.3" #------ Lists PHP versions to install: 5.3, 5.4, 5.5
+_PHP_GEOS=NO #------------------ Installs GEOS for all PHP versions when YES
+_PHP_MONGODB=NO #--------------- Installs MONGODB for PHP 5.3 only when YES
+_PHP_MULTI_INSTALL="5.5" #------ Lists PHP versions to install: 5.3 5.4 5.5 5.6
+_PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 5.5
 ###
 _REDIS_LISTEN_MODE=PORT #------- Redis listen mode: PORT or SOCKET (recommended)
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
@@ -74,22 +74,17 @@ _SSH_FROM_SOURCES=NO #---------- Allows to force OpenSSH build from sources
 _SSH_PORT=22 #------------------ Allows to configure non-standard SSH port
 _SSL_FROM_SOURCES=NO #---------- Allows to force OpenSSL build from sources
 _STRICT_BIN_PERMISSIONS=YES #--- Aggressively protect all binaries when YES
-_STRONG_PASSWORDS=NO #---------- Allows to generate secure passwords when YES
+_STRONG_PASSWORDS=NO #---------- Configurable length: 8-128, YES (32), NO (8)
 ###
 _CUSTOM_CONFIG_CSF=NO #--------- Protects custom CSF config when YES
 _CUSTOM_CONFIG_LSHELL=NO #------ Protects custom Limited Shell config when YES
-_CUSTOM_CONFIG_PHP52=NO #------- Protects custom PHP 5.2 ini files when YES
-_CUSTOM_CONFIG_PHP53=NO #------- Protects custom PHP 5.3 ini files when YES
-_CUSTOM_CONFIG_PHP54=NO #------- Protects custom PHP 5.4 ini files when YES
-_CUSTOM_CONFIG_PHP55=NO #------- Protects custom PHP 5.5 ini files when YES
 _CUSTOM_CONFIG_REDIS=NO #------- Protects custom Redis config when YES
 _CUSTOM_CONFIG_SQL=NO #--------- Protects custom SQL config when YES
 ###
-_AEGIR_UPGRADE_ONLY=NO #-------- Allows to skip system on Aegir upgrade when YES
-_SYSTEM_UPGRADE_ONLY=NO #------- Allows to skip Aegir on upgrade (deprecated)
-_USE_STOCK=NO #----------------- Allows to install stock Aegir 2.x when YES
+_AEGIR_UPGRADE_ONLY=NO #-------- Run only Aegir upgrade when YES (deprecated)
+_SYSTEM_UPGRADE_ONLY=NO #------- Managed on the fly with 'system' keyword
 ###
-### Barracuda version BOA-2.3.0-dev
+### Barracuda version BOA-2.4.3
 ###
 
 ###
@@ -99,6 +94,30 @@ _USE_STOCK=NO #----------------- Allows to install stock Aegir 2.x when YES
 ###
 ### Extra, special purpose settings are listed below.
 ###
+
+###
+### By default BOA configures your system to use as much RAM as safely available
+### but if you want to make the configuration more precize, add this extra
+### variable to use MySQLTuner on the fly to detect optimal memory allocation.
+### This check is no longer enabled by default, because it is very expensive
+### method on systems with not enough resources and many sites hosted.
+###
+_USE_MYSQLTUNER=NO #------------ Use MySQLTuner to configure SQL limits when YES
+
+###
+### You can configure BOA to run automated upgrades to latest stable version
+### for both Barracuda and all Octopus instances with three variables, empty
+### by default. All three variables must be defined to enable auto-upgrade.
+### You can set _AUTO_UP_MONTH and _AUTO_UP_DAY to any date in the past
+### if you wish to enable only weekly system upgrades.
+###
+### Remember that one-time upgrades will include complete upgrade to latest BOA
+### stable for Barracuda and all Octopus instances, while weekly upgrade is
+### designed to run only 'barracuda up-stable system' upgrade.
+###
+_AUTO_UP_WEEKLY= #-------------- Day of week (1-7) for weekly system upgrades
+_AUTO_UP_MONTH= #--------------- Month (1-12) to define date of one-time upgrade
+_AUTO_UP_DAY= #----------------- Day (1-31) to define date of one-time upgrade
 
 ###
 ### You can whitelist extra binaries to make them available for web server
@@ -116,7 +135,51 @@ _USE_STOCK=NO #----------------- Allows to install stock Aegir 2.x when YES
 _BACKEND_ITEMS_LIST=
 
 ###
-### NOTE: the group of settings displayed bellow is never stored
+### The BOA Skynet auto-updates were initially limited to checking for new BOA
+### release and notifying the system admin daily, until the system has been
+### upgraded to latest stable release.
+###
+### Next, since people tend to forget about running meta-installers update
+### before running barracuda or octopus upgrade, and it generated a ton of
+### unneeded tickets, confusion and frustration, we have automated these
+### updates, so all your meta-installers were updated daily.
+###
+### Then #drupageddon happened, and we realized that we could make all existing
+### BOA systems secure, auto-magically, in the first 60 minutes after the
+### #drupageddon alert was published. Only if we could have a running mechanism
+### in place to apply very trivial but how important patch to all your D7 sites/
+### /codebases while you were on vacation, out of town, or just AFK anywhere.
+###
+### So we have added Drupal core monitoring and auto-patching to make sure you
+### never run vulnerable codebase again. To make it effective, we have scheduled
+### to run these checks hourly.
+###
+### Then we have added also hourly updates for a few key scripts responsible
+### for your system security, self-monitoring and self-healing.
+###
+### Gradually it grew into its current incarnation, so at the moment BOA Skynet
+### auto-updates do these things for you, while you sleep:
+###
+### * Daily version/release check and notification
+### * Hourly update for all meta-installers and related tools
+### * Hourly check for D7 core vulnerability and patching if detected
+### * Hourly update for key BOA tools, monitors and self-healing agents
+### * Hourly check if your DNS resolver works as expected and repair if not
+###
+### While it is a very convenient to have all this work done for you, and we
+### believe that it should be still enabled by default, we should make it
+### possible to opt-out from all those auto-updates, if you prefer that your
+### BOA system never calls home, and whatever happens, is totally under
+### your control.
+###
+### Now you can disable this convenient magic completely by adding the line:
+###
+###   _SKYNET_MODE=OFF
+###
+_SKYNET_MODE=ON
+
+###
+### NOTE: the group of settings displayed below is never stored
 ### permanently in this config file, since they are intended to be used
 ### only when required/useful for some reason, and while can be added
 ### manually before running barracuda up-{stable|head} command,
@@ -132,6 +195,7 @@ _BACKEND_ITEMS_LIST=
 _NGX_FORCE_REINSTALL=NO
 _PHP_FORCE_REINSTALL=NO
 _SQL_FORCE_REINSTALL=NO
+_GIT_FORCE_REINSTALL=NO
 
 ###
 ### Use YES to force installing everything

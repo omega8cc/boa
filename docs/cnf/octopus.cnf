@@ -1,19 +1,17 @@
 ###
-### Octopus version BOA-2.3.0-dev
+### Octopus version BOA-2.4.3
 ###
 ### Configuration stored in the /root/.${_USER}.octopus.cnf file.
 ### This example is for public install mode - see docs/INSTALL.txt
 ###
-### NOTE: the group of settings displayed bellow
+### NOTE: the group of settings displayed below
 ### will *override* all listed here settings in the Octopus script.
 ###
 _USER="o1" #-------------------- Aegir Instance system account name
 _MY_EMAIL="my@email" #---------- Aegir Instance owner e-mail
 _PLATFORMS_LIST=ALL #----------- Platforms to install - see docs/PLATFORMS.txt
-_ALLOW_UNSUPPORTED=NO #--------- Allows to install deprecated platforms when YES
 _AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
 _HM_ONLY=NO #------------------- Allows to upgrade Aegir only (deprecated)
-_O_CONTRIB_UP=NO #-------------- Allows to force o_contrib upgrade when YES
 _DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
 _MY_OWNIP= #-------------------- Allows to specify web server IP if not default
 _FORCE_GIT_MIRROR="" #---------- Allows to use different mirror (deprecated)
@@ -25,17 +23,16 @@ _DEL_OLD_EMPTY_PLATFORMS="0" #-- Delete empty platforms if verified > X-days-ago
 _DEL_OLD_BACKUPS=0 #------------ Delete Aegir/b-migrate backups if > X-days-ago
 _DEL_OLD_TMP=0 #---------------- Delete sites temp files if > X-days-ago
 _LOCAL_NETWORK_IP= #------------ Web server IP if in localhost mode - auto-conf
-_PHP_FPM_VERSION=5.3 #---------- PHP-FPM used by Satellite Instance: 5.{2,3,4,5}
-_PHP_CLI_VERSION=5.3 #---------- PHP-CLI used by Satellite Instance: 5.{2,3,4,5}
+_PHP_FPM_VERSION=5.5 #---------- PHP-FPM used by Satellite Instance: 5.{3,4,5,6}
+_PHP_CLI_VERSION=5.5 #---------- PHP-CLI used by Satellite Instance: 5.{3,4,5,6}
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_FPM_TIMEOUT=AUTO #--------- Allows to override default 180 when 60-180
 _PHP_FPM_DENY="" #-------------- Modify the disable_functions list per instance
-_USE_STOCK=NO #----------------- Allows to install stock Aegir 2.x when YES
-_STRONG_PASSWORDS=NO #---------- Allows to generate secure passwords when YES
+_STRONG_PASSWORDS=NO #---------- Configurable length: 8-128, YES (32), NO (8)
 _SQL_CONVERT=NO #--------------- DB conversion when innodb (or YES), or myisam
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
 ###
-### NOTE: the group of settings displayed bellow will be *overridden*
+### NOTE: the group of settings displayed below will be *overridden*
 ### by config files stored in the /data/disk/o1/log/ directory,
 ### but only on upgrade.
 ###
@@ -45,7 +42,7 @@ _CLIENT_OPTION="SSD" #---------- Currently not used
 _CLIENT_SUBSCR="Y" #------------ Currently not used
 _CLIENT_CORES="8" #------------- Currently not used
 ###
-### Octopus version BOA-2.3.0-dev
+### Octopus version BOA-2.4.3
 ###
 
 ###
@@ -55,7 +52,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ###
 ### Extra, special purpose control files are listed below.
 ###
-### NOTE: the group of control files listed bellow are intended to be used
+### NOTE: the group of control files listed below are intended to be used
 ### by the instance owner to *overwrite* some settings stored in the
 ### /root/.${_USER}.octopus.cnf file without system admin (root) assistance.
 ###
@@ -64,7 +61,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### /data/disk/${_USER}/static/control/fpm.info
 ###
 ### This file, if exists and contains supported and installed PHP version
-### will be used by running every 5 minutes /var/xdrago/manage_ltd_users.sh
+### will be used by running every minute /var/xdrago/manage_ltd_users.sh
 ### maintenance script to switch PHP-FPM version for this Octopus instance,
 ### if different than defined in the /root/.${_USER}.octopus.cnf file, in the
 ### _PHP_FPM_VERSION variable. It will also overwrite _PHP_FPM_VERSION value
@@ -75,21 +72,20 @@ _CLIENT_CORES="8" #------------- Currently not used
 ###
 ### Supported values which can be written in this file:
 ###
+### 5.6
 ### 5.5
 ### 5.4
 ### 5.3
 ###
-### There must be only one line and one value in this control file. Otherwise
-### it will be ignored. If you will enter 5.2 it will force 5.3, so this file
-### should not exist if you have 5.2 defined in the /root/.${_USER}.octopus.cnf
-### file for some reason.
+### There must be only one line and one value in this control file.
+### Otherwise it will be ignored.
 ###
 
 ###
 ### /data/disk/${_USER}/static/control/cli.info
 ###
 ### This file, if exists and contains supported and installed PHP version
-### will be used by running every 5 minutes /var/xdrago/manage_ltd_users.sh
+### will be used by running every minute /var/xdrago/manage_ltd_users.sh
 ### maintenance script to switch PHP-CLI version for this Octopus instance,
 ### if different than defined in the /root/.${_USER}.octopus.cnf file, in the
 ### _PHP_CLI_VERSION variable. It will also overwrite _PHP_CLI_VERSION value
@@ -101,14 +97,13 @@ _CLIENT_CORES="8" #------------- Currently not used
 ###
 ### Supported values which can be written in this file:
 ###
+### 5.6
 ### 5.5
 ### 5.4
 ### 5.3
 ###
-### There must be only one line and one value in this control file. Otherwise
-### it will be ignored. If you will enter 5.2 it will force 5.3, so this file
-### should not exist if you have 5.2 defined in the /root/.${_USER}.octopus.cnf
-### file for some reason.
+### There must be only one line and one value in this control file.
+### Otherwise it will be ignored.
 ###
 
 ###
@@ -127,6 +122,8 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### Supported values which can be written in this file, listed in a single line
 ### or one per line:
 ###
+### D8B ----------- Drupal 8-beta
+### D8D ----------- Drupal 8-dev
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
 ### AGV ----------- aGov
@@ -137,30 +134,31 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### ERP ----------- ERPAL
 ### FSR ----------- Feature Server
 ### GDR ----------- Guardr
-### MNS ----------- Managing News
-### OA7 ----------- Open Atrium D7
-### OAM ----------- Open Atrium D6
-### OAY ----------- Open Academy
+### OA7 ----------- OpenAtrium D7
+### OAD ----------- OpenAid
+### OAY ----------- OpenAcademy
 ### OBG ----------- OpenBlog
-### OCH ----------- OpenChurch
-### ODS ----------- Open Deals
-### OOH ----------- Open Outreach
+### OCH ----------- OpenChurch 1
+### CH2 ----------- OpenChurch 2
+### ODS ----------- OpenDeals
+### OOH ----------- OpenOutreach
 ### OPC ----------- OpenPublic
 ### OSR ----------- OpenScholar
 ### PPY ----------- Panopoly
 ### RER ----------- Recruiter
 ### RST ----------- Restaurant
-### SRK ----------- Spark
-### TTM ----------- Totem
 ### UC7 ----------- Ubercart D7
 ### UCT ----------- Ubercart D6
 ###
 ### You can also use special keyword 'ALL' instead of any other symbols to have
 ### all available platforms installed, including newly added in all future BOA
-### system releases.
+### system releases, but excluding Drupal 8 platforms, which can be installed
+### only if respective keywords are explicitly listed and Octopus instance PHP
+### version is already set to 5.4 or newer - both for CLI and FPM.
 ###
 ### Examples:
 ###
 ### ALL
+### ALL D8B
 ### D7P D6P OAM MNS OOH RST
 ###

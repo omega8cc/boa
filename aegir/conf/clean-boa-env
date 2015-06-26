@@ -20,63 +20,87 @@ set -e
 case "$1" in
   start)
     echo -n "Starting $DESC: "
-    if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
+    if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
       _WEB_SH=`readlink -n /bin/sh`
       _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
-      if [ -x "/bin/dash" ] ; then
-        if [ "$_WEB_SH" != "/bin/dash" ] ; then
+      if [ -x "/bin/dash" ]; then
+        if [ "$_WEB_SH" != "/bin/dash" ]; then
           rm -f /bin/sh
           ln -s /bin/dash /bin/sh
         fi
       else
-        if [ "$_WEB_SH" != "/bin/bash" ] ; then
+        if [ "$_WEB_SH" != "/bin/bash" ]; then
           rm -f /bin/sh
           ln -s /bin/bash /bin/sh
         fi
       fi
     fi
     touch $PIDFILE
-    if [ -e "/var/run/boa_wait.pid" ] ; then
+    if [ -e "/var/run/boa_wait.pid" ]; then
       rm -f /var/run/boa_wait.pid
       echo "$NAME 1 done."
     else
       echo "$NAME 1 nothing to do."
     fi
-    if [ -e "/var/run/boa_run.pid" ] ; then
+    if [ -e "/var/run/boa_run.pid" ]; then
       rm -f /var/run/boa_run.pid
       echo "$NAME 2 done."
     else
       echo "$NAME 2 nothing to do."
     fi
+    if [ -e "/var/run/manage_ltd_users.pid" ]; then
+      rm -f /var/run/manage_ltd_users.pid
+      echo "$NAME 3 done."
+    else
+      echo "$NAME 3 nothing to do."
+    fi
+    if [ -e "/var/run/daily-fix.pid" ]; then
+      rm -f /var/run/daily-fix.pid
+      echo "$NAME 4 done."
+    else
+      echo "$NAME 4 nothing to do."
+    fi
   ;;
   stop)
     echo -n "Stopping $DESC: "
-    if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
+    if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
       _WEB_SH=`readlink -n /bin/sh`
       _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
-      if [ -x "/bin/dash" ] ; then
-        if [ "$_WEB_SH" != "/bin/dash" ] ; then
+      if [ -x "/bin/dash" ]; then
+        if [ "$_WEB_SH" != "/bin/dash" ]; then
           rm -f /bin/sh
           ln -s /bin/dash /bin/sh
         fi
       else
-        if [ "$_WEB_SH" != "/bin/bash" ] ; then
+        if [ "$_WEB_SH" != "/bin/bash" ]; then
           rm -f /bin/sh
           ln -s /bin/bash /bin/sh
         fi
       fi
     fi
-    if [ -e "/var/run/boa_wait.pid" ] ; then
+    if [ -e "/var/run/boa_wait.pid" ]; then
       rm -f /var/run/boa_wait.pid
       echo "$NAME done."
     else
       echo "$NAME nothing to do."
     fi
-    if [ -e "/var/run/boa_run.pid" ] ; then
+    if [ -e "/var/run/boa_run.pid" ]; then
       rm -f /var/run/boa_run.pid
       echo "$NAME 2 done."
     else
       echo "$NAME 2 nothing to do."
+    fi
+    if [ -e "/var/run/manage_ltd_users.pid" ]; then
+      rm -f /var/run/manage_ltd_users.pid
+      echo "$NAME 3 done."
+    else
+      echo "$NAME 3 nothing to do."
+    fi
+    if [ -e "/var/run/daily-fix.pid" ]; then
+      rm -f /var/run/daily-fix.pid
+      echo "$NAME 4 done."
+    else
+      echo "$NAME 4 nothing to do."
     fi
     rm -f $PIDFILE
   ;;
@@ -88,13 +112,13 @@ case "$1" in
 
   status)
     echo -n "$DESC status: "
-    if [ -e "/var/run/boa_wait.pid" ] ; then
+    if [ -e "/var/run/boa_wait.pid" ]; then
       echo "fail 1"
     else
       echo "OK 1"
       exit 1
     fi
-    if [ -e "/var/run/boa_run.pid" ] ; then
+    if [ -e "/var/run/boa_run.pid" ]; then
       echo "fail 2"
     else
       echo "OK 2"

@@ -1,5 +1,5 @@
 #-------------------------------------------------------------
-# BOA-2.3.0-dev default .bashrc
+# BOA-2.4.3 default .bashrc
 #-------------------------------------------------------------
 
 ulimit -S -c 0
@@ -63,8 +63,7 @@ fi
 alias df='df -kTh'
 alias wget='wget --no-check-certificate'
 
-function xtitle()
-{
+function xtitle() {
   case "$TERM" in
     xterm*|rxvt*)
     echo -n -e "\033]0;$*\007" ;;
@@ -73,15 +72,14 @@ function xtitle()
   esac
 }
 
-_L_HOST=`uname -n`
+_L_HOST=$(uname -n 2>&1)
 alias top='xtitle $_L_HOST System Monitor && top'
 alias htop='xtitle $_L_HOST System Monitor && htop'
 alias mytop='xtitle $_L_HOST SQL Monitor && mytop'
 alias make='xtitle Making $(basename $PWD) ; make'
 
-function extract()
-{
-  if [ -f $1 ] ; then
+function extract() {
+  if [ -f $1 ]; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
       *.tar.gz)    tar xzf $1    ;;

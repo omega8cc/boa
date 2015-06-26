@@ -14,60 +14,38 @@
 ### control which platforms will be installed,
 ### using the symbols listed below.
 ###
-### D8D ----------- Drupal 8 dev-tested (off)
-### D8E ----------- Drupal 8 dev-edge (off)
+### D8B ----------- Drupal 8-beta
+### D8D ----------- Drupal 8-dev
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
 ### AGV ----------- aGov
-### AQ6 ----------- Acquia D6 (off)
-### CM6 ----------- CiviCRM 4.1.6 D6 (off)
-### CM7 ----------- CiviCRM 4.3.7 D7 (off)
 ### CME ----------- Commerce v.2
-### COD ----------- Conference (off)
 ### CS7 ----------- Commons 7
 ### DCE ----------- Commerce v.1
 ### DCS ----------- Commons 6
 ### ERP ----------- ERPAL
 ### FSR ----------- Feature Server
 ### GDR ----------- Guardr
-### MNS ----------- Managing News
-### NS7 ----------- NodeStream D7 (off)
-### OA7 ----------- Open Atrium D7
-### OAM ----------- Open Atrium D6
-### OAY ----------- Open Academy
+### OA7 ----------- OpenAtrium D7
+### OAD ----------- OpenAid
+### OAY ----------- OpenAcademy
 ### OBG ----------- OpenBlog
-### OCH ----------- OpenChurch
-### ODS ----------- Open Deals
-### OOH ----------- Open Outreach
+### OCH ----------- OpenChurch 1
+### CH2 ----------- OpenChurch 2
+### ODS ----------- OpenDeals
+### OOH ----------- OpenOutreach
 ### OPC ----------- OpenPublic
-### OPH ----------- OpenPublish (off)
 ### OSR ----------- OpenScholar
-### PPT ----------- ProsePoint (off)
 ### PPY ----------- Panopoly
 ### RER ----------- Recruiter
 ### RST ----------- Restaurant
-### SRK ----------- Spark
-### TTM ----------- Totem
 ### UC7 ----------- Ubercart D7
 ### UCT ----------- Ubercart D6
 ###
 ### Examples:
 ###
 ### _PLATFORMS_LIST=ALL
-### _PLATFORMS_LIST="D7P D6P OAM MNS NS7 OOH"
+### _PLATFORMS_LIST="ALL D8B"
+### _PLATFORMS_LIST="D7P D6P PPY RST OOH"
 ###
 _PLATFORMS_LIST="D7P D7S D7D D6P D6S D6D"
-
-
-###----------------------------------------###
-### UNSUPPORTED (off) DISTROS INSTALL      ###
-###----------------------------------------###
-###
-### If you wish to install also distros listed
-### above as (off), change the option below
-### to: _ALLOW_UNSUPPORTED=YES
-###
-### Note that this option works only with BOA
-### head and is ignored in stable.
-###
-_ALLOW_UNSUPPORTED=NO

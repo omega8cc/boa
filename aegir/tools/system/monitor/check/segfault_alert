@@ -1,12 +1,14 @@
 #!/usr/bin/perl
 
+### TODO - rewrite this legacy script in bash
+
 ###
 ### This is a segfault monitor for php-fpm and nginx
 ###
 
 $| = 1;
 $this_filename = "segfault_alert";
-$s=`uname -n`;
+$s = system("uname -n 2>&1");
 chomp($s);
 &makeactions;
 print " CONTROL 1 done_______________________\n ...\n";
@@ -194,4 +196,4 @@ sub send_alert
   `rm -f /var/xdrago/monitor/segfault_alert`;
 }
 
-###EOF2014###
+###EOF2015###

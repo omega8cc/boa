@@ -9,7 +9,7 @@ core = 6.x
 
 projects[pressflow][type] = "core"
 projects[pressflow][download][type] = "get"
-projects[pressflow][download][url] = "http://files.aegir.cc/core/pressflow-6.32.1.tar.gz"
+projects[pressflow][download][url] = "http://files.aegir.cc/core/pressflow-6.35.1.tar.gz"
 
 projects[cck][type] = "module"
 ;projects[cck][version] = "2.9"
@@ -22,9 +22,9 @@ projects[context][download][type] = "get"
 projects[context][download][url] = "http://files.aegir.cc/dev/contrib/context-6.x-3.3.tar.gz"
 
 projects[ctools][type] = "module"
-;projects[ctools][version] = "1.11"
+;projects[ctools][version] = "1.13"
 projects[ctools][download][type] = "get"
-projects[ctools][download][url] = "http://files.aegir.cc/dev/contrib/ctools-6.x-1.11.tar.gz"
+projects[ctools][download][url] = "http://files.aegir.cc/dev/contrib/ctools-6.x-1.13.tar.gz"
 
 projects[features][type] = "module"
 ;projects[features][version] = "1.2"
@@ -47,9 +47,9 @@ projects[strongarm][download][type] = "get"
 projects[strongarm][download][url] = "http://files.aegir.cc/dev/contrib/strongarm-6.x-2.2.tar.gz"
 
 projects[views][type] = "module"
-;projects[views][version] = "2.16"
+;projects[views][version] = "2.18"
 projects[views][download][type] = "get"
-projects[views][download][url] = "http://files.aegir.cc/dev/contrib/views-6.x-2.16.tar.gz"
+projects[views][download][url] = "http://files.aegir.cc/dev/contrib/views-6.x-2.18.tar.gz"
 
 projects[nodereference_url][type] = "module"
 ;projects[nodereference_url][version] = "1.11"
@@ -58,7 +58,7 @@ projects[nodereference_url][download][url] = "http://files.aegir.cc/dev/contrib/
 
 projects[fserver][type] = "module"
 projects[fserver][download][type] = "git"
-projects[fserver][download][url] = "git://github.com/omega8cc/FeatureServer.git"
+projects[fserver][download][url] = "https://github.com/omega8cc/FeatureServer.git"
 projects[fserver][directory_name] = "fserver"
 projects[fserver][destination] = "modules"
 
@@ -69,4 +69,4 @@ projects[tao][download][url] = "http://files.aegir.cc/dev/contrib/tao-6.x-3.3.ta
 
 projects[singular][type] = "theme"
 projects[singular][download][type] = "git"
-projects[singular][download][url] = "git://github.com/omega8cc/singular.git"
+projects[singular][download][url] = "https://github.com/omega8cc/singular.git"

@@ -1,5 +1,7 @@
 #!/usr/bin/perl
 
+### TODO - rewrite this legacy script in bash
+
 $| = 1;
 if (-f "/var/run/boa_wait.pid") {exit;}
 $status="CLEAN";
@@ -45,4 +47,4 @@ local(@MYARR) = `grep mysql /var/log/syslog | tail --lines=999 2>&1`;
     }
   }
 }
-###EOF2014###
+###EOF2015###

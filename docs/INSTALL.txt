@@ -40,24 +40,26 @@
 
    Specifying Octopus username is optional. It will use "o1" if empty.
 
-   The one before last part {ask|mini|max|stock} is optional, if you wish
+   The one before last part {ask|mini|max|none} is optional, if you wish
    to control Octopus platforms install mode, as explained below.
-   Note that none === "ask" which is default.
+   Note that "none" is a special option you can use to not install any
+   built-in platform, while "ask" is a default mode if you don't specify
+   this option at all.
 
-   The special "stock" option allows you to install non-BOA, vanilla
-   Aegir 2.x version, useful **only** for testing/debugging, but it will
-   automatically force in-head install. If not sure, don't even try this,
-   because most of the time it will be (probably) broken.
-
-   The last {newrelickey} part is optional, if you wish to install
-   and auto-magically enable both New Relic Apps and Server Monitor.
-   It must be a valid New Relic license key - even if it is their
-   free Lite option.
+   The last {newrelickey|php-5.6|php-5.5|php-5.4|php-5.3|php-all|nodns} part is
+   optional and can be used either to install New Relic Apps Monitor (you should
+   replace the "newrelickey" keyword with a valid license key), or to define
+   single PHP version to install and use both for Master and Satellite instances.
+   When "php-all" is defined, then all available versions will be installed,
+   but 5.5 will be used by default. You can later install or modify PHP version
+   used via _PHP_MULTI_INSTALL, _PHP_CLI_VERSION and _PHP_FPM_VERSION, but
+   the _PHP_SINGLE_INSTALL variable must be set empty to not override other
+   related variables. The "nodns" option allows to skip DNS and SMTP checks.
 
    # Stable on public server - prompt for every platform install
    $ boa in-stable public server.mydomain.org my@email o1
 
-   # Stable on public server - no prompt with 3xD6 + 3xD7 + Atrium only
+   # Stable on public server - no prompt with 3xD6 + 3xD7 only
    $ boa in-stable public server.mydomain.org my@email o1 mini
 
    # Stable on public server - no prompt with all platforms and New Relic
@@ -69,9 +71,8 @@
    To install Legacy version instead of Stable, use the same commands, but
    replace "in-stable" with "in-legacy"
 
-   The Legacy version is currently the last Edition in the 2.1.x series, and
-   will move gradually to 2.2.x series when 2.3.x will be released. It still
-   supports Drupal 5 and uses Drush 4 along with older Aegir version.
+   The Legacy version is currently the last Edition in the 2.2.x series,
+   which is BOA-2.2.9
 
    Note that once you will install current Stable or HEAD, you can't
    downgrade back to Legacy version!
@@ -99,7 +100,7 @@
    # Stable on localhost - prompt for every platform install
    $ boa in-stable local my@email
 
-   # Stable on localhost - no prompt with 3xD6 + 3xD7 + Atrium only
+   # Stable on localhost - no prompt with 3xD6 + 3xD7 only
    $ boa in-stable local my@email mini
 
    # Stable on localhost - no prompt with all platforms installed

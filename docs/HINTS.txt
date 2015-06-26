@@ -11,7 +11,8 @@
 # Note that some locations will require using parent literal location
 # to stop searching for / using other regex based locations.
 #
-# To learn more please read: http://nginx.org/en/docs/http/ngx_http_core_module.html#location
+# To learn more please read:
+# http://nginx.org/en/docs/http/ngx_http_core_module.html#location
 #
 # Your custom include file should have filename: nginx_vhost_include.conf
 # for standard overrides and/or nginx_force_include.conf for high level
@@ -68,36 +69,69 @@ location ^~ /some-literal-path/no-regex-here {
 }
 
 ###
-### Site specific 301 redirect for various legacy .php URIs with parent literal
-### locations to stop searching for (and using) other regex based locations.
+### 301 redirect for various legacy .php URIs with parent literal locations
+### to stop searching for (and using) other regex based locations.
 ###
 location ^~ /services {
   location ~* ^/services {
-    if ($host ~* ^(www\.)?(foo\.com)$) {
-      rewrite ^/services/accounting\.php$ $scheme://$host/node/18 permanent;
-      rewrite ^/services/assurance\.php$  $scheme://$host/node/11 permanent;
-      rewrite ^/services/audit\.php$      $scheme://$host/node/11 permanent;
-      rewrite ^/services/taxation\.php$   $scheme://$host/node/92 permanent;
-      rewrite ^/services/wealth\.php$     $scheme://$host/node/15 permanent;
-      rewrite ^/services\.php$            $scheme://$host/node/17 permanent;
-    }
+    rewrite ^/services/accounting\.php$ $scheme://$host/node/18 permanent;
+    rewrite ^/services/assurance\.php$  $scheme://$host/node/11 permanent;
+    rewrite ^/services/audit\.php$      $scheme://$host/node/11 permanent;
+    rewrite ^/services/taxation\.php$   $scheme://$host/node/92 permanent;
+    rewrite ^/services/wealth\.php$     $scheme://$host/node/15 permanent;
+    rewrite ^/services\.php$            $scheme://$host/node/17 permanent;
     try_files $uri @cache;
   }
   try_files $uri @cache;
 }
 location ^~ /our_team {
   location ~* ^/our_team {
-    if ($host ~* ^(www\.)?(foo\.com)$) {
-      rewrite ^/our_team\.php$ $scheme://$host/node/10 permanent;
-      rewrite ^/our_team$      $scheme://$host/node/10 permanent;
-    }
+    rewrite ^/our_team\.php$ $scheme://$host/node/10 permanent;
+    rewrite ^/our_team$      $scheme://$host/node/10 permanent;
     try_files $uri @cache;
   }
   try_files $uri @cache;
 }
+
+###
+### Domain specific 301 redirect for legacy .php URIs with literal location
+### to stop searching for (and using) other regex based locations.
+###
 location = /about_us.php {
   if ($host ~* ^(www\.)?(foo\.com)$) {
     rewrite ^ $scheme://$host/node/19 permanent;
   }
   return 403;
+}
+
+###
+### Helper locations to avoid 404 on legacy images paths
+###
+if ($main_site_name = '') {
+  set $main_site_name "$server_name";
+}
+location ^~ /sites/default/files {
+  location ~* ^/sites/default/files/imagecache {
+    access_log off;
+    log_not_found off;
+    expires 30d;
+    set $nocache_details "Skip";
+    rewrite ^/sites/default/files/imagecache/(.*)$ /sites/$main_site_name/files/imagecache/$1 last;
+    try_files $uri @drupal;
+  }
+  location ~* ^/sites/default/files/styles {
+    access_log off;
+    log_not_found off;
+    expires 30d;
+    set $nocache_details "Skip";
+    rewrite ^/sites/default/files/styles/(.*)$ /sites/$main_site_name/files/styles/$1 last;
+    try_files $uri @drupal;
+  }
+  location ~* ^/sites/default/files {
+    access_log off;
+    log_not_found off;
+    expires 30d;
+    rewrite ^/sites/default/files/(.*)$ /sites/$main_site_name/files/$1 last;
+    try_files $uri =404;
+  }
 }

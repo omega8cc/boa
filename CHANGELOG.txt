@@ -1,4 +1,1707 @@
 
+### Stable BOA-2.4.3 Release - Full Edition
+### Date: Tue May 19 13:40:40 PDT 2015
+### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.3
+### Latest hotfix added on: Fri Jun  5 04:43:50 PDT 2015
+
+  @=> Includes Aegir Hostmaster 2.x-head with improvements
+  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Drush 7 customized for BOA
+
+# Release Notes:
+
+  This BOA release is focused on Aegir platforms update with latest Drupal core
+  included. There are also a few system updates and bug fixes, as listed below.
+
+# Changes:
+
+  * Redis Integration Module: Update to version mod-08-05-2015
+  * Use HTTPS intermediate mode to support legacy systems like XP/IE8 - see #718
+
+# System upgrades:
+
+  * Drush mini-7-08-05-2015
+  * MariaDB 10.0.19
+  * MariaDB Galera Cluster 10.0.19
+  * PHP 5.4.41
+  * PHP 5.5.25
+  * PHP 5.6.9
+  * Redis 3.0.1
+
+# Fixes:
+
+  * CiviCRM known bugs and regressions fixed
+  * Improve drush aliases cleanup
+  * Redis: sync net.core.somaxconn with tcp-backlog
+  * sqlmagic: do not escape backslashes and EOL character - fixes #672
+  * SQL dump definer regexp causes invalid SQL during migrate/clone - #2497091
+  * Fix for backward compatibility with old Galera versions
+
+
+### Stable BOA-2.4.2 Release - Full Edition
+### Date: Mon Apr 27 11:12:09 PDT 2015
+### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.2
+### Latest hotfix added on: Fri May  1 02:07:54 PDT 2015
+
+  @=> Includes Aegir Hostmaster 2.x-head with improvements
+  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Drush 7 customized for BOA
+
+# Release Notes:
+
+  This BOA release includes 15 updated Aegir platforms with latest Drupal core,
+  2 new features and enhancements, 13 new software versions, 3 other changes,
+  plus over 20 bug fixes.
+
+# Updated Octopus platforms:
+
+  aGov 1.7 --------------------- https://drupal.org/project/agov
+  Commerce 1.36 ---------------- https://drupal.org/project/commerce_kickstart
+  Commerce 2.23 ---------------- https://drupal.org/project/commerce_kickstart
+  Commons 2.24 ----------------- https://drupal.org/project/commons
+  Commons 3.25 ----------------- https://drupal.org/project/commons
+  Guardr 2.11 ------------------ https://drupal.org/project/guardr
+  OpenAid 2.1 ------------------ https://drupal.org/project/openaid
+  OpenAtrium 2.33 -------------- https://drupal.org/project/openatrium
+  OpenChurch 1.17-b2 ----------- https://drupal.org/project/openchurch
+  OpenChurch 2.1-b7 ------------ https://drupal.org/project/openchurch
+  OpenOutreach 1.19 ------------ https://drupal.org/project/openoutreach
+  OpenPublic 1.5 --------------- https://drupal.org/project/openpublic
+  Panopoly 1.21 ---------------- https://drupal.org/project/panopoly
+  Recruiter 1.6 ---------------- https://drupal.org/project/recruiter
+  Restaurant 1.0-b12 ----------- https://drupal.org/project/restaurant
+
+  @=> NOTE: Drupal 8 support is broken in this release, because latest Drush
+      doesn't support older Drupal 8 beta versions, while new D8 beta is not
+      released and tested yet, and we really need latest Drush to fix broken
+      D6->D7 upgrade path, so we could prepare for full Aegir 3, which comes
+      with D7 in the frontend.
+
+# New features and enhancements:
+
+  * Re-create files/robots.txt if older than 7 days
+  * Restore default DNS when /root/.use.default.nameservers.cnf exists
+
+# Changes:
+
+  * Enable SPDY and PFS by default - fixes #545
+  * Use GitLab as a secondary mirror
+  * Whitelist drush pm-updatestatus
+
+# System upgrades:
+
+  * cURL 7.42.1 (if installed from sources)
+  * Drush mini-7-25-04-2015
+  * Duplicity 0.7.02 (please run 'backboa install' to upgrade)
+  * MariaDB 5.5.43
+  * MariaDB Galera Cluster 10.0.17
+  * MySecureShell master-20-03-2015
+  * Nginx 1.8.0
+  * OpenSSH 6.8p1 (if installed from sources)
+  * OpenSSL 1.0.2a (if installed from sources)
+  * PHP 5.6.8, 5.5.24, 5.4.40
+  * PHPRedis master-18-03-2015
+  * Redis 3.0.0
+  * Ruby 2.2.2
+
+# Fixes:
+
+  * Add service cron start to migrate docs - fixes #654
+  * BOA.sh.txt should update installers when invoked interactively - fixes #644
+  * Do not add Google DNS when custom DNS is expected
+  * Do not count requests for images derivatives if private files mode is used
+  * Do not create conflicting plain HTTP proxy for single IP mode - fixes #465
+  * Force csf/lfd update before and after running barracuda upgrade - fixes #685
+  * How to enable permanent redirect to HTTPS with single IP - #465
+  * Improve DNS self-healing magic - see #674
+  * Improve FPM auto-healing to properly detect conflicting instances
+  * Make sure that dl mirrors never get blocked
+  * Nginx: Stop the POST flood to /autodiscover/autodiscover.xml
+  * Nginx: Use dummy db fastcgi_param placeholders if any of them is empty
+  * Remove aggresive firewall cleanup - fixes #688
+  * Remove onetime fix intended to sync new defaults - fixes #678
+  * Update absolute URLs to files for sites cloned/migrated/renamed
+  * Update composer on barracuda upgrade
+  * Use _TOMCAT_TO_JETTY=NO in cnf template to avoid confusion - see #676
+  * Use correct placeholder in the xboa proxy - fixes #655
+  * Use MAIN_SITE_NAME instead of possibly fake SERVER_NAME - see #385
+  * Where to add the SSL redirect configuration snippet - fixes #681
+
+
+### Stable BOA-2.4.1 Release - Full Edition
+### Date: Sun Mar  8 14:56:51 PDT 2015
+### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.1
+### Latest hotfix added on: Wed Mar 11 11:58:52 PDT 2015
+
+  @=> Includes Aegir Hostmaster 2.x-head with improvements
+  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Drush 7.0.0-alpha9 customized for BOA
+
+# Release Notes:
+
+  This new BOA release includes one new and 12 updated Aegir platforms,
+  8 new features and enhancements, 15 new software versions, 10 other changes,
+  plus over 38 bug fixes, with most notable features and changes listed below:
+
+  @=> Add duobackboa with /root/.duobackboa.cnf file to run duplicate backups
+  @=> Add SSL with TLS/SNI on server with one IP, multiple certificates support
+  @=> Add support for Octopus batch migration - see docs/MIGRATE.txt for details
+  @=> Allow to use _PHP_GEOS=YES with all PHP versions
+
+# New Octopus platforms:
+
+  OpenAid 2.0 ------------------ https://drupal.org/project/openaid
+
+# Updated Octopus platforms:
+
+  Commerce 1.33 ---------------- https://drupal.org/project/commerce_kickstart
+  Commerce 2.21 ---------------- https://drupal.org/project/commerce_kickstart
+  Commons 2.22 ----------------- https://drupal.org/project/commons
+  Commons 3.22 ----------------- https://drupal.org/project/commons
+  Drupal 8.0.0-b7 -------------- https://drupal.org/drupal-8.0
+  Guardr 2.8 ------------------- https://drupal.org/project/guardr
+  OpenAtrium 2.32 -------------- https://drupal.org/project/openatrium
+  OpenChurch 2.1-b5 ------------ https://drupal.org/project/openchurch
+  OpenOutreach 1.16 ------------ https://drupal.org/project/openoutreach
+  OpenScholar 3.20.0 ----------- http://theopenscholar.org
+  Panopoly 1.18 ---------------- https://drupal.org/project/panopoly
+  Recruiter 1.5 ---------------- https://drupal.org/project/recruiter
+
+# New features and enhancements:
+
+  * Add compatibility with latest VS beng kernel
+  * Add duobackboa with /root/.duobackboa.cnf file to run duplicate backups
+  * Add support for multivalued fields in SOLR 4 - pull request #626
+  * Add support for mysqladmin proc logging
+  * Add support for Octopus batch migration - see docs/MIGRATE.txt for details
+  * Add support for scout/mysql monitoring
+  * CSF: Add popular ports 222 and 2222 to TCP_OUT by default
+  * SSL with TLS/SNI on server with one IP, multiple certificates - fixes #465
+
+# Changes:
+
+  * Allow to run automated SQL conversion only weekly
+  * Allow to use _PHP_GEOS=YES with all PHP versions
+  * Do not send extra nocache cookie on GET requests
+  * Drush mini-7-07-03-2015
+  * Make barracuda wrapper available on initial install to avoid confusion
+  * Nginx: Update for crawlers exceptions list
+  * Redis Integration Module: Update to version mod-05-03-2015
+  * Remove dependency on legacy Drush 4
+  * Use latest Apache Solr Search 6.x-3.x config
+  * Use latest Apache Solr Search 7.x-1.x config
+
+# System upgrades:
+
+  * Apache Solr 4.9.1
+  * cURL 7.41.0 (if installed from sources)
+  * Git 2.3.0 (if installed from sources)
+  * Jetty 9.2.7.v20150116
+  * MariaDB 10.0.17
+  * MariaDB 5.5.42
+  * MariaDB Galera Cluster 10.0.17
+  * Nginx 1.7.10
+  * OpenSSL 1.0.2 (if installed from sources)
+  * PHP 5.4.38
+  * PHP 5.5.22
+  * PHP 5.6.6
+  * PHP: ionCube loader 4.7.4
+  * Pure-FTPd 1.0.37
+  * Ruby 2.2.1
+  * Use duplicity 0.7.01 and boto 2.36.0 - fixes #630
+  * Vnstat 1.13
+
+# Fixes:
+
+  * [provision] False "load on system too heavy" messages - fixes #619
+  * [provision] Issue #2350695 - Profile is registered twice, also as a module
+  * [provision] Nginx: Remove webform keyword from regex locations - fixes #599
+  * Add also manage_ltd_users to the list - fixes #616
+  * Avoid installing New Relic with no valid license key provided - fixes #608
+  * Do not add no longer used symlink
+  * Do not create conflicting plain HTTP proxy for single IP mode - fixes #465
+  * Do not delete backboa while duplicity is running
+  * Do not replace any contrib in latest OA - fixes #2420131
+  * Do not run D7 core hotfix on already fixed instances
+  * Fix for legacy systems autoupdate logic
+  * Fix for missing chattr -i on web user update
+  * Fix for missing datestamp
+  * Fix for too dangerous pdnsd auto-config logic
+  * Fix pdnsd restarts procedures - fixes #610
+  * Fix permissions for pdnsd if needed
+  * Fix variable in autoupboa - pull request #629
+  * Force php.ini update
+  * Hotfix for cluster instances
+  * Hotfix for OpenSSL/cURL versions out of sync
+  * How to enable permanent redirect to HTTPS with single IP - #465
+  * Issue #2425963 - Broken slider in Commerce Kickstart 2.21
+  * Make sure that @hostmaster alias works after migration
+  * Provide a patch for older civicrm versions to make them Drush 7 compatible
+  * Randomize backups schedule to avoid issues with AWS limits
+  * Reload nginx service automatically - #465
+  * Remove conflicting pdnsd restarts to avoid race conditions - fixes #610
+  * Remove deprecated sysctl options
+  * Remove post-install leftovers if needed
+  * Single PHP-version installation fails - fixes #598
+  * Typo - fixes #539
+  * Unable to connect to SOLR on latest head - fixes #623
+  * Update installers as expected, also with _SKYNET_MODE=OFF - fixes #644
+  * Update meta-installers for new stable
+  * Update the upgrade procedure how-to - fixes ##616
+  * Use civicrm-4.5.6 compatible with Drush 7
+  * Use correct AWS Endpoint when us-east-1 Region is specified
+  * Use correct open_basedir for lshell user - fixes #603
+  * Use separate loops for symlinks and ghost cleanup
+  * Workaround for EntityMalformedException in Open Outreach - fixes #229
+  * Workaround for missing interface/lo.pdnsd on legacy systems
+  * Workaround for SA-CONTRIB-2015-063 - Webform - Cross Site Scripting
+
+
+### Stable BOA-2.4.0 Release - Full Edition
+### Date: Wed Feb  4 20:30:04 CET 2015
+### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.0
+### Latest hotfix added on: Sat Feb 21 10:18:15 UTC 2015
+
+  @=> Includes Aegir Hostmaster 2.x-head with improvements
+  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Drush 7.0.0-alpha8 customized for BOA
+
+# Release Notes:
+
+  This new BOA release includes 7 updated Aegir platforms, over 28 new features
+  and enhancements, 12 new software versions, over 36 important changes, plus
+  over 100 bug fixes, with most notable features and changes listed below:
+
+  @=> Added Support for latest Drupal 8.0.0-beta with D8B platform keyword
+  @=> Added Support for latest Drupal 8.0.0-dev with D8D platform keyword
+  @=> Added Support for latest PHP 5.6
+  @=> BOA can auto-detect its fastest download mirror on install, upgrade etc.
+  @=> BOA Code Refactoring to make it modular and easier to read (in progress)
+  @=> BOA Skynet auto-updates can be turned off with _SKYNET_MODE=OFF
+  @=> Cron is run only for live sites with no tmp, temp, dev, test etc keywords
+  @=> Force single PHP version with command keyword on install and upgrade
+  @=> Introducing Support for HHVM -- see docs/HHVM.txt for details.
+  @=> PHP 5.5 is used by default on new installs instead of old 5.3
+  @=> PHP-FPM (and HHVM) runs now as a separate, very limited system user
+  @=> Removed Support for legacy PHP 5.2
+  @=> Sites Names Exceptions and Special Keywords have changed
+  @=> The _MODULES_FIX variable is set to NO by default
+  @=> The _PERMISSIONS_FIX variable is set to NO by default
+  @=> The built-in registry-rebuild on every Verify task is not run by default
+  @=> The Dev-Mode works only for site aliases, no longer for main site name
+
+  Please read further below for more details.
+
+# Caveats for self-hosted BOA:
+
+  We recommend to proceed with major upgrade procedure as follows:
+
+    $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+    $ barracuda up-stable
+    $ barracuda up-stable system
+    $ octopus up-stable all both
+    $ bash /var/xdrago/manage_ltd_users.sh
+    $ bash /var/xdrago/daily.sh
+
+# Updated Octopus platforms:
+
+  aGov 1.6 --------------------- https://drupal.org/project/agov
+  Commerce 1.32 (with 1.11) ---- https://drupal.org/project/commerce_kickstart
+  Guardr 2.7 ------------------- https://drupal.org/project/guardr
+  OpenAtrium 2.26 -------------- https://drupal.org/project/openatrium
+  OpenChurch 1.17-b1 ----------- https://drupal.org/project/openchurch
+  OpenPublic 1.4 --------------- https://drupal.org/project/openpublic
+  Panopoly 1.15 ---------------- https://drupal.org/project/panopoly
+
+# New features and enhancements:
+
+  * Add backboa variables to configure full backup cycle and log verbosity.
+  * Add Backdrop CMS compatibility in global.inc (experimental)
+  * Add Drupal 8 compatibility in global.inc
+  * Add Drush Make Local - fixes #332
+  * Add safe_cache_form_clear Drush extension by default - fixes #568
+  * Add support for writable .aws directory in the web user home.
+  * Allow to set _PHP_SINGLE_INSTALL on command line - on install and upgrade.
+  * Allow to use both platform specific and ALL keyword in _PLATFORMS_LIST.
+  * BOA auto-selects the fastest download mirror on install, upgrade and update.
+  * Detect critically low free RAM and forcefully restart services if needed.
+  * Detect OOM incidents and forcefully restart services if needed.
+  * Improve backboa with AWS connection testing.
+  * Install latest D8-dev with D8D keyword specified.
+  * Monitor and rotate PHP error logs if too big (over 1 GB).
+  * Monitor the number of master PHP-FPM processes and force restart if needed.
+  * New 'nodns' option to skip DNS and SMTP checks on the fly.
+  * Nginx: Add support for images derivatives with URI shortcuts - fixes #481
+  * Nginx: Add support for URI shortcuts for sites in subdirectories.
+  * PHP: Add HHVMinfo.
+  * PHP: Add support for latest 5.6
+  * PHP: Allow to define version to install and use on command line - fixes #536
+  * PHP: Disable not used CLI versions if _PHP_SINGLE_INSTALL is defined.
+  * PHP: Disable not used FPM and CLI versions.
+  * PHP: HHVM experimental support - fixes #443
+  * Provide default value for composer_manager_vendor_dir variable - fixes #385
+  * Redis: Allow to configure remote IP via _REDIS_LISTEN_MODE /cluster support.
+  * Use cron scheduler fast mode (every 10 sec) if /root/.fast.cron.cnf exists.
+  * Use Drush Make Local for Hostmaster with download mirrors auto-detection.
+
+# Changes:
+
+  * Alter the cron_interval for existing sites to match Aegir default.
+  * Change required exceptions keywords to .temporary. and .testing.
+  * Dev mode detection and URLs protection - now works only for aliases.
+  * Do not display .cnf files contents if _DEBUG_MODE is not set to YES.
+  * Do not restart Redis daily if /root/.high_traffic.cnf exists - fixes #533
+  * Drush 7 is now used by default instead of Drush 6.
+  * Drush: Upgrade to mini-7-02-02-2015
+  * Force _TOMCAT_TO_JETTY=YES - fixes #570
+  * Hostmaster: Use Drush Make Local instead of downloading contrib with Drush
+  * Limit status messages verbosity if _DEBUG_MODE is not set to YES
+  * Make it possible to opt-out from BOA Skynet auto-updates - fixes #557
+  * Nginx: Block SEOkicks crawler.
+  * PHP: Always use by default version 5.5
+  * PHP: Disable legacy 5.2 version if installed.
+  * PHP: Ignore --with-curlwrappers defined in _PHP_EXTRA_CONF for 5.5 and 5.6
+  * PHP: Rebuild to remove --with-curlwrappers unless added in _PHP_EXTRA_CONF
+  * PHP: Remove no longer working custom config protection - see #559
+  * PHP: Tune FPM defaults for speed and RAM optimization.
+  * PHP: Use built-in Zend OPcache in 5.5
+  * PHP: Use built-in Zend OPcache in 5.6
+  * Redis Integration Module: Update to version mod-14-12-2014
+  * Reload system cron hourly.
+  * Remove deprecated RC4 from ssl_protocols.
+  * Remove the _O_CONTRIB_UP variable/feature.
+  * Run cron for 3 sites at once max.
+  * Set _MODULES_FIX=NO by default
+  * Set _PERMISSIONS_FIX=NO by default
+  * Site mode detection and cron protection - cron works only for live sites
+  * Split huge BARRACUDA script into lib includes.
+  * Switch to special limited system user also in PHP-FPM mode - fixes #551
+  * There is no need to update drupalgeddon every 5 minutes.
+  * Use 86400 as a default cron_interval to sync with Drupal default.
+  * Use MySQLTuner only if _USE_MYSQLTUNER=YES is set in .barracuda.cnf
+  * Use provision_civicrm 6.x-2.x directly.
+  * Use separate versioning for Aegir extensions download URLs.
+  * Run built-in registry-rebuild on Verify only if empty ctrl file
+    sites/all/modules/registry-rebuild.ini exists.
+
+# System upgrades:
+
+  * cURL 7.40.0 (if installed from sources)
+  * Git 2.2.1 (if installed from sources)
+  * MariaDB 10.0.16
+  * MariaDB 5.5.42
+  * MariaDB Galera Cluster 10.0.16
+  * Nginx 1.7.9
+  * PHP 5.4.37
+  * PHP 5.5.21
+  * PHP 5.6.5
+  * PHP: ionCube loader 4.7.3
+  * Redis 2.8.19
+  * Ruby 2.2.0
+
+# Fixes:
+
+  * Add CONTRIBUTING.txt guidelines.
+  * Add in docs/HINTS.txt Helper locations to avoid 404 on legacy images paths.
+  * Add still missing updates for migrated instances.
+  * Add warning about vCloud Air incompatibility with Drupal.
+  * Aliases are wiped out after site rename - fixes #542
+  * Allow slower DNS response.
+  * Always disable spinner when running boa in-octopus.
+  * Avoid broken install on D8 core where sites/all doesn't exist by default.
+  * Avoid confusing EXIT: You must specify already installed PHP version.
+  * Avoid sed warnings in old stable and legacy modes.
+  * Backward compatibility with Drush 6.
+  * Block attempts to lookup /etc/passwd via web shell.
+  * Check only LANG environment variable in locale test - fixes #584
+  * Compare $new_uri with d()->name and not d()->uri in the Site Rename Check.
+  * Delete duplicity ghost pid file if older than 2 days.
+  * Do not confuse D7 with D8 or Backdrop CMS.
+  * Do not force cURL reinstall from packages - fixes #565
+  * Do not try to add platforms nodes if no new platform has been installed.
+  * Do not update backboa if duplicity is running.
+  * Document when to use /root/.fast.cron.cnf
+  * Drupal 8 removed drupal_mail()
+  * Drupal 8 requires container_yamls defined.
+  * Drupal 8 requires read permissions in sites/all
+  * Drupal 8 requires trusted_host_patterns defined in settings.php
+  * Drupal 8 with $clean_urls=1 should use /cron/ URI.
+  * Drush 7 requires composer.
+  * Fix and Improve Squeeze to Wheezy upgrade procedure.
+  * Fix for $HOME detection if not set for some reason.
+  * Fix for Drush aliases protection.
+  * Fix for octopus batch upgrade mode.
+  * Fix for octopus single upgrade mode.
+  * Fix for pdnsd install/update logic.
+  * Fix missing symlinks after broken openjdk-6 upgrade.
+  * Fix path to PHP-CLI if needed.
+  * Fix public IP auto-detection on AWS in Octopus.
+  * Fix the logic for aegir/platforms upgrade mode.
+  * Fix the logic for TMPDIR set on the fly - fixes #552
+  * Fix: LANGUAGE (en_US.UTF-8) is not compatible with LC_ALL (). Disabling it.
+  * Force _PHP_MULTI_INSTALL to match defined _PHP_FPM_VERSION on cluster nodes.
+  * Force _THIS_DB_HOST=localhost on AWS.
+  * HHVM: Add /home/ to open_basedir so access to the .tmp works - fixes #569
+  * HHVM: Add workarounds for potential security issues - fixes #443
+  * Improve Aegir tasks scheduling and load spikes protection.
+  * Improve docs for backboa.
+  * Improve pdnsd configuration update by removing non-IP lines early enough.
+  * Improve procs monitor.
+  * Improve web wrapper.
+  * Increase inotify defaults to improve lsyncd support.
+  * Issue #2372653: Add --no-autocommit when dumping MySQL tables.
+  * Jetty: Detect if running as zombie and force restart if needed.
+  * Make sure that AcceptEnv is set in sshd_config.
+  * Make sure to never run cron on just cloned site.
+  * MariaDB patch is no longer needed.
+  * Monitor lsyncd and xinetd if installed and expected to run.
+  * Never delete tmp dirs to avoid Drush/PHP segfaults and race conditions.
+  * Nginx: Add missing variables in subdirectory config template.
+  * Nginx: Fix for D8-specific /cron/ location regex.
+  * Nginx: Force clean URLs for Drupal 8.
+  * Nginx: Helper locations to avoid 404 on legacy images paths (subdir only)
+  * Nginx: Hide X-Drupal-Cache-Tags header.
+  * Nginx: Use safe fallback for mysteriously empty $db_port
+  * PHP: Avoid version guessing for Octopus when _PHP_SINGLE_INSTALL is used.
+  * PHP: Make sure that _PHP_SINGLE_INSTALL takes precedence.
+  * PHP: OPcache configuration for Drupal 8 - fixes #419
+  * PHP: Re-install libmagickwand-dev to avoid broken extension build.
+  * PHP: The fallback version should be detected and not hardcoded.
+  * Prevent 'Could not change permissions' warnings with CiviCRM - fixes #523
+  * Remove Drupal 8 specific code from settings template used in older Drupal.
+  * Remove known sensitive credentials from barracuda upgrade log.
+  * Revert "Issue #2313327: Fixed Unknown options for provision-verify."
+  * Run agents update on cluster nodes.
+  * Run single mirror check - fixes #565
+  * RVM: Install also eventmachine-1.0.3
+  * Set files paths on D8 install to avoid using system default /tmp.
+  * Silence confusing noise - fixes #589
+  * Skip auto-update for agents not compatible with older versions.
+  * Skip extra SQL connection test on AWS.
+  * Standardize platforms version and naming convention.
+  * Support for _NGINX_NAXSI is experimental (don't use)
+  * Symlinks directories expected by Drush/Aegir in D8 root.
+  * Sync defaults for hosting_advanced_cron_default_interval
+  * Syntax error - fixes #587
+  * Syntax error - fixes #588
+  * The _NGINX_FORWARD_SECRECY=YES is ignored on Debian Wheezy - fixes #591
+  * The /login suffix is no longer supported in Drupal 8 and results with 404.
+  * The backend verify sub-task breaks site import for Drupal 8.
+  * Tomcat is not used anymore - see #570
+  * Use consistent stderr 2 stdout redirects in grep checks.
+  * Use correct _THIS_DB_HOST on master instance.
+  * Use correct pid file in procs monitor.
+  * Use correct user to run drush test commands.
+  * Use extended display mode for messages longer than 200 chars.
+  * Use faster mysqldump mode/flags.
+  * Use mirror to download complete vendor directory for Drush 7.
+  * Use more intuitive PHP keyword naming convention.
+  * Use mutatable interface in install_8.inc - fxes #2409085
+  * Use recommended releases for views404 and views_accelerator - fixes #578
+  * Use release specific o_contrib downloads.
+  * Use safe tmp cleanup to avoid race conditions.
+  * Where to set _USE_MYSQLTUNER variable - fixes #594
+
+
+### Stable BOA-2.3.8 Release - Full Edition
+### Date: Sat Nov 29 09:58:45 SGT 2014
+### Includes Aegir 2.x-head with improvements
+
+# Release Notes:
+
+  This new BOA release includes new features, improvements and bug fixes.
+
+#-### Support for optional Drupalgeddon daily checks on all hosted D7 sites
+
+  ~/static/control/drupalgeddon.info
+
+  Previously enabled by default, now requires this control file to still
+  run daily, because it may generate some false positives not always possible
+  to avoid or silence, so it no longer makes sense to run this check daily,
+  especially after BOA has run it automatically for a month and finally even
+  disabled automatically all clearly compromised sites.
+
+  Note that your system administrator may still enable this with root level
+  control file /root/.force.drupalgeddon.cnf, so it will still run, even
+  if you will not create the Octopus instance level empty control file:
+  ~/static/control/drupalgeddon.info
+
+  Please note that current version of Drupalgeddon Drush extension needs
+  the 'update' module to be enabled to avoid even more false positives,
+  so BOA will enable the 'update' module temporarily while running this
+  check, which in turn will result with even more e-mails notices sent
+  to the site admin e-mail, if these notices are enabled.
+
+#-### Support for automated BOA upgrades: weekly and one-time
+
+  You can configure BOA to run automated upgrades to latest stable version
+  for both Barracuda and all Octopus instances with three variables, empty
+  by default. All three variables must be defined to enable auto-upgrade.
+  You can set _AUTO_UP_MONTH and _AUTO_UP_DAY to any date in the past
+  if you wish to enable only weekly system upgrades.
+
+  Remember that one-time upgrades will include complete upgrade to latest BOA
+  stable for Barracuda and all Octopus instances, while weekly upgrade is
+  designed to run only 'barracuda up-stable system' upgrade.
+
+  _AUTO_UP_WEEKLY= #------ Day of week (1-7) for weekly system upgrades
+  _AUTO_UP_MONTH= #------- Month (1-12) to define date of one-time upgrade
+  _AUTO_UP_DAY= #--------- Day (1-31) to define date of one-time upgrade
+
+  All three variables should be added in your /root/.barracuda.cnf file.
+
+# Updated Octopus platforms:
+
+  ERPAL 2.2 -------------------- https://drupal.org/project/erpal
+
+# New features and enhancements in this release:
+
+  * Support for automated BOA upgrades: weekly and one-time.
+
+# Changes in this release:
+
+  * Drupalgeddon daily checks on all hosted D7 sites are now optional.
+
+# Fixes in this release:
+
+  * Issue #508 - The _EASY_HOSTNAME is not required in local install mode.
+  * Issue #516 - Do not break binaries detection with 'which'.
+
+
+### Stable BOA-2.3.7 Release - Full Edition
+### Date: Tue Nov 25 15:44:48 PST 2014
+### Includes Aegir 2.x-head with improvements
+
+# Release Notes:
+
+  This new BOA release includes updated versions of all supported Drupal
+  platforms to provide latest Drupal 7.34 and Pressflow 6.34 cores, plus
+  new features, improvements and bug fixes.
+
+  We recommend that you upgrade your D7 sites using this safe workflow:
+
+    https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
+  For up-to-date information on #Drupageddon please check:
+
+    https://omega8.cc/drupageddon-psa-2014-003-342
+
+#-### Support for locking/unlocking web server write access in all codebases
+
+  This new, auto-enabled by default protection will enhance your system
+  security, especially for sites in custom platforms you maintain
+  in the ~/static directory tree.
+
+  It is important to understand that your web server / PHP-FPM runs as your
+  shell/ftps user, although with a different group. This allows to maintain
+  virtual chroot for Octopus instances, which significantly improves security.
+
+  However, it had a serious drawback: the web server had write access in all
+  your platforms codebases located in the ~/static directory tree, because
+  all files you have uploaded there have the same owner.
+
+  While it allows you to use code management which requires web hooks, it also
+  opens a door for possible attack vectors, like for the infamous #drupageddon
+  disaster, where Drupal allowed attackers to create .php files intended
+  to be used as backdoors in future attacks - inside your codebase.
+
+  Even if it could affect only custom platforms you maintain in the ~/static
+  directory tree, since all built-in Octopus platforms always had Drupal core
+  completely write-protected, plus, even if created by attacking bot, these
+  extra .php files are completely useless for attackers, because BOA default
+  restricted configuration doesn't allow to execute not whitelisted, unknown
+  .php files, having codebase writable by your web server is still dangerous,
+  because at least theoretically it may open a possibility to overwrite valid
+  .php files, so they could be used as an entry point in a future attack.
+
+  BOA now protects all your codebases by reverting (daily) ownership on all
+  files and directories in your codebase (modules and themes) so they are
+  owned by the Aegir backend user and not your shell/ftps user.
+
+  While this new default procedure protects all your codebases in the ~/static
+  directory tree, and even in the sites/all directory tree, and even in the
+  sites/foo.com/modules|themes tree in all your built-in Octopus platforms,
+  you can still manage the code and themes with your main and extra shell
+  accounts as usual, because your codebase is still group writable, and your
+  shell accounts are members of the group not available for the web server.
+
+  You can easily disable this default daily procedure with a single switch:
+
+    ~/static/control/unlock.info
+
+  You can also exclude any custom platform you maintain in the ~/static
+  directory tree from this global procedure by adding an empty skip.info
+  control file in the given platform root directory, so all other platforms
+  are still protected, and only excluded platform is open for write access
+  also for the web server. But normally you should never need this unlock!
+
+  Please note that this procedure will not affect any platform if you have
+  the non-default _PERMISSIONS_FIX=NO setting in your /root/.barracuda.cnf
+  file. It will also skip any platform with fix_files_permissions_daily
+  variable set to FALSE in the given platform active INI file.
+
+# Updated Octopus platforms:
+
+  Commerce 1.32 ---------------- https://drupal.org/project/commerce_kickstart
+  Commerce 2.20 ---------------- https://drupal.org/project/commerce_kickstart
+  Commons 2.21 ----------------- https://drupal.org/project/commons
+  Commons 3.20 ----------------- https://drupal.org/project/commons
+  Guardr 2.5 ------------------- https://drupal.org/project/guardr
+  Open Atrium 2.25 ------------- https://drupal.org/project/openatrium
+  Open Outreach 1.13 ----------- https://drupal.org/project/openoutreach
+  Panopoly 1.14 ---------------- https://drupal.org/project/panopoly
+
+# New features and enhancements in this release:
+
+  * Support for locking/unlocking web server write access in all codebases.
+
+# Changes in this release:
+
+  * Do not force site_readonly to be disabled on non-dev sites.
+
+# System upgrades in this release:
+
+  * MariaDB 10.0.15
+
+# Fixes in this release:
+
+  * Allow any single site to use 1/2 of available SQL connections max.
+  * Clean up dot files after installing or updating RVM.
+  * Do not run extra updates on systems running latest head version.
+  * Improve ghost sites cleanup.
+  * Issue #467 - Centralize control files outside of codebases tree.
+  * Issue #498 - ERPAL: Fatal error: Unsupported operand types.
+  * Issue #499 - RVM: Add oily_png gem version 1.1.1
+  * Issue #504 - Add docs/RVM.txt
+  * Issue #504 - Remove ~/.rvm/scripts/notes script breaking lshell.
+  * Issue #509 - Do not delete anything from hostmaster site level modules.
+  * It is safe to run manage_ltd_users every minute.
+  * Never touch hostmaster aliases and vhosts even they appear broken.
+  * Nginx: Fix for possible problem with files/imagecache in legacy D6 sites.
+  * Use gnupg2 by default.
+  * Use latest Ruby 2.1.x or 2.0.x available.
+  * Use verbose RVM install mode to improve debugging.
+
+
+### Stable BOA-2.3.6 Release - Full Edition
+### Date: Mon Nov 17 08:11:17 SGT 2014
+### Includes Aegir 2.x-head with improvements
+
+# Release Notes:
+
+  This new BOA release includes updated versions of all supported Drupal
+  platforms to provide latest Drupal 7.33 core, plus great new features,
+  improvements and bug fixes.
+
+  We recommend that you upgrade your D7 sites using this safe workflow:
+
+    https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
+  For up-to-date information on #Drupageddon please check:
+
+    https://omega8.cc/drupageddon-psa-2014-003-342
+
+#-### Support for automated, encrypted, daily backups to Amazon S3
+
+  * This new feature is available on self-hosted BOA and hosted Power Engines.
+  * Note that provided 'backboa' tool uses symmetric password-only encryption.
+  * You can configure AWS Region you prefer to use and Backup Rotation policy.
+
+  It will archive all directories required to restore your data (sites files,
+  databases archives, Nginx configuration and more) on a freshly installed BOA:
+
+    /etc /var/aegir /var/www /home /data
+
+  It will start to run nightly at 2:08 AM (server time) only once you will add
+  five required _AWS_* variables in the /root/.barracuda.cnf file and run the
+  special command 'backboa install' while logged in as root.
+
+  To restore any file from backups created with 'backboa' tool, you can use
+  the same script on the same or any other BOA server.
+
+  Please read docs/BACKUPS.txt at https://github.com/omega8cc/boa for details.
+
+# Updated Octopus platforms:
+
+  Commons 3.19 ----------------- https://drupal.org/project/commons
+  Open Atrium 2.24 ------------- https://drupal.org/project/openatrium
+  Open Deals 1.35 -------------- https://drupal.org/project/opendeals
+  OpenChurch 1.15 -------------- https://drupal.org/project/openchurch
+  OpenChurch 2.0-b2 ------------ https://drupal.org/project/openchurch
+  OpenScholar 3.16.0 ----------- http://theopenscholar.org
+  Panopoly 1.13 ---------------- https://drupal.org/project/panopoly
+  Restaurant 1.0-b10 ----------- https://drupal.org/project/restaurant
+  Ubercart 2.14 ---------------- https://drupal.org/project/ubercart
+  Ubercart 3.8 ----------------- https://drupal.org/project/ubercart
+
+# New features and enhancements in this release:
+
+  * Add support for automated, encrypted, daily backups to Amazon S3.
+  * Automatic shutdown for sites with known #Drupageddon users/roles added.
+  * Drush drupalgeddon extension added in all accounts.
+  * Make _STRONG_PASSWORDS length configurable: 8-128, YES (32), NO (8).
+  * Support for web and db clusters with MariaDB Galera (work in progress).
+  * Apply SA-CORE-2014-005 hot-fix daily everywhere, also on BOA (any version)
+    servers left on the auto-pilot.
+
+# Changes in this release:
+
+  * Do not force site_readonly to be disabled on non-dev sites.
+  * Ignore disabled sites in daily monitoring and healing procedures.
+  * Remove support for abandoned Managing News distro.
+  * Remove support for abandoned Open Atrium 6.x distro.
+  * Remove support for abandoned Spark distro.
+  * Remove support for abandoned Totem distro.
+  * Set _PERMISSIONS_FIX=YES by default, so important fixes can be applied.
+  * Update BOA wrappers hourly.
+
+# System upgrades in this release:
+
+  * cURL 7.39.0 (if installed from sources)
+  * Drush: Upgrade command line version 6 to mini-6-30-10-2014
+  * Nginx 1.7.7
+  * PHP 5.4.35
+  * PHP 5.5.19
+  * PHP: Zend OPcache master-08-11-2014
+
+# Fixes in this release:
+
+  * Add scout user if _SCOUT_KEY is not empty or cron entry exists.
+  * Always escape dots in preg_replace() to not truncate www. by mistake.
+  * Check if directory tree exists before running extended checks/fixes.
+  * Clear drush cache directly before running hostmaster-migrate.
+  * Disable scout if installed and enable later.
+  * Do not export LC_CTYPE on initial install.
+  * Do not use Redis on provision-save.
+  * Fix for edge case when incorrect permissions were set in custom platform.
+  * Fix for openatrium-7.x-2.22-7.32.1
+  * Fix for site_readonly mode in migrated instances.
+  * Force setting to avoid issues with not expected to work RVM self-update.
+  * Hint for Apache Solr Attachments and Java path possible confusion.
+  * Improve web wrapper filtering.
+  * Issue #2163979 - Check if field_info_field_map() is available.
+  * Issue #2373923 - HTTPS and aliases redirection problem with Nginx.
+  * Issue #438 - PHP: Remove support for 5.5 built-in Zend OPcache.
+  * Issue #452 - PHP build could be broken also with MariaDB newer than 5.5.40
+  * Issue #456 - Aliases redirection: problems with AdvAgg paths.
+  * Issue #457 - Aliases redirection: 404 file not found for resources.
+  * Issue #461 - Remote Import needs Drush strict=0 mode.
+  * Issue #463 - The yajl-ruby gem needs native binaries building.
+  * Issue #480 - Normalize /etc/hosts to avoid FQDN mapped to 127.0.1.1
+  * Issue #490 - Nginx: Block semalt botnet.
+  * Issue #496 - RVM 1.26.0 introduces signed releases (rvm: not found error).
+  * Make sure that hostmaster site usage is not counted.
+  * Move DB GRANTS setup for master instance to the correct level.
+  * Move redis server daily restart to daily.sh agent.
+  * Nginx: Fail if required db creds are empty to never create a broken vhost.
+  * Remove hardcoded DNS for files.aegir.cc
+  * Strict Permissions on All Binaries are default, not optional.
+  * There is no point in running MySQLTuner on initial install.
+  * Whitelist mysql command for overssh in lshell.
+
+
+### Stable BOA-2.3.5 Release - Full Edition
+### Date: Wed Oct 15 16:28:25 PDT 2014
+### Includes Aegir 2.1 with improvements
+### Latest hotfix added on: Thu Oct 16 08:55:02 PDT 2014
+
+# Release Notes:
+
+  This new BOA release includes important updates and bug fixes.
+
+  * All new Drupal 7 platforms received Drupal core security upgrade.
+    For details please read: https://www.drupal.org/SA-CORE-2014-005
+
+  * All existing Drupal 7 built-in platforms will receive a hot-fix for
+    this known vulnerability: https://www.drupal.org/SA-CORE-2014-005
+    once you will run 'barracuda up-stable' command on your server.
+    This procedure is automated on hosted and managed Aegir at Omega8.cc
+
+  * Your custom D7 platforms created in the ~/static directory tree
+    will be checked in the next 12 hours after the upgrade, and if you
+    have not applied this patch yet, it will be applied automatically
+    for you - but only if there is at least one active site present
+    in the given custom D7 platform. Note that while this procedure is
+    automated on hosted and managed Aegir at Omega8.cc, on self-hosted
+    BOA systems it will work only if you will set _PERMISSIONS_FIX=YES
+    in /root/.barracuda.cnf (default is NO)
+
+  We recommend that you upgrade your D7 sites using safe workflow:
+
+    https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
+# Updated Octopus platforms:
+
+  aGov 1.5 --------------------- https://drupal.org/project/agov
+  Commerce 1.31 ---------------- https://drupal.org/project/commerce_kickstart
+  Commerce 2.19 ---------------- https://drupal.org/project/commerce_kickstart
+  ERPAL 2.1 -------------------- https://drupal.org/project/erpal
+  Guardr 1.14 ------------------ https://drupal.org/project/guardr
+  Open Atrium 2.22 ------------- https://drupal.org/project/openatrium
+  Open Outreach 1.12 ----------- https://drupal.org/project/openoutreach
+  OpenPublic 1.2 --------------- https://drupal.org/project/openpublic
+  Panopoly 1.12 ---------------- https://drupal.org/project/panopoly
+  Recruiter 1.3 ---------------- https://drupal.org/project/recruiter
+
+# New features and enhancements in this release:
+
+  * Explain that Solr self-provisioning works only if _MODULES_FIX=YES is set.
+  * Reverify all sites daily if /root/.force.sites.verify.cnf ctrl file exists
+    and _PERMISSIONS_FIX=YES is set in /root/.barracuda.cnf (default is NO)
+
+# Changes in this release:
+
+  * Security: Remove support for SSLv3 due to POODLE vulnerability.
+  * Disable Redis in Hostmaster until we will fix the Views based pages/blocks.
+  * Disable site_readonly for non-dev sites by default.
+  * Drush: Upgrade command line version 6 to mini-6-04-10-2014
+  * Enable AllowUserFXP in Pure-FTPd config by default.
+  * Remove support for already deprecated non-LTS Ubuntu versions.
+  * Run manage_ip_auth_access only once per minute.
+  * The INI variable redis_flush_forced_mode is enabled by default (again).
+  * Use sysklogd instead of rsyslog on Ubuntu.
+
+# System upgrades in this release:
+
+  * MariaDB 5.5.40
+  * Nginx 1.7.6
+  * OpenSSH 6.7p1 (if installed from sources)
+  * OpenSSL 1.0.1j (if installed from sources) - security upgrade.
+  * PHP 5.5.18
+  * PHPRedis: master-03-10-2014
+
+# Fixes in this release:
+
+  * Add auto-detection of Legacy Ruby patch level update on old systems.
+  * Add cleanup for ghost/broken sites dirs leftovers.
+  * Add missing cleanup for backup_migrate leftovers.
+  * Always cleanup pid files on exit/abort.
+  * Apply patch for SA-CORE-2014-005 in all shared D7 cores/built-in platforms.
+  * Compass Tools: Install 1.9.3 ffi expected by older themes.
+  * Fix db_port entry in all vhosts hourly.
+  * Fix for broken erpal-7.x-2.0-7.31.1
+  * Fix for broken site level drushrc.php file.
+  * Fix for false alarm caused by ghost sites leftovers.
+  * Fix for incorrect hash filtering on systems with OpenSSL built from sources.
+  * Fix locales: Numerous fixes and improvements -- thanks ar-jan!
+  * Fix typo in REVISIONS.
+  * Force site Verify via frontend if drushrc.php has been fixed.
+  * Issue #435 - SQL: Remove deprecated table_cache +update table_open_cache
+  * Issue #440 - Improve innodb_buffer_pool_size calculation and add 10%
+  * Issue #441 - New Relic is not disabled after removing newrelic.info file.
+  * Issue #442 - Skip locked/fpmcheck if /root/.high_traffic.cnf exists.
+  * Issue #444 - PHP: Remove useless sed replacement in pool.d/www{*}.conf
+  * Issue #445 - Remote Import: update 6.x-2.x branch for Aegir 2.x and Drush 6
+  * Issue #447 - Export LANG, LANGUAGE and all LC_ environment variables.
+  * Issue #447 - Improve locales consistency.
+  * Issue #447 - Set default LC_CTYPE and LC_COLLATE environment variables.
+  * Issue #447 - Simplify locales configuration on Ubuntu.
+  * Issue #448 - Enforce locale settings by configuring defaults.
+  * Issue #452 - PHP build is broken with latest MariaDB 5.5.40
+  * Make sure that db_port is never empty and defaults to 3306.
+  * Make sure that firewall monitoring scripts never run simultaneously.
+  * Make sure that standard caching is enabled in hostmaster.
+  * Pause hostmaster tasks when RVM install for any user is running.
+  * PHP: Do not run rebuilds if not needed.
+  * PHP: Fix for broken upgrade logic on libcurl or libssl packages upgrade.
+  * Remove acquia_connector from latest Commons to avoid broken installs.
+  * Remove all legacy gems and re-install RVM/Ruby for root from scratch.
+  * Remove legacy replacement to avoid converting symlinked includes into files.
+  * SQL: Use correct defaults if MySQLTuner test failed.
+  * Workaround for Drupal flood using 127.0.0.1 for all requests behind proxy.
+
+
+### Stable BOA-2.3.4 Release - Full Edition
+### Date: Wed Oct 15 09:51:08 PDT 2014
+### Includes Aegir 2.1 with improvements
+
+  Release Notes and changelog for BOA-2.3.4 has been merged into BOA-2.3.5
+  above after security upgrades related to OpenSSL and SSLv3 have been added
+  shortly after 2.3.4 release.
+
+
+### Stable BOA-2.3.3 Release - Full Edition
+### Date: Sat Sep 27 01:25:46 PDT 2014
+### Includes Aegir 2.1 with improvements
+
+# Release Notes:
+
+  This BOA Edition includes important fixes to address some issues discovered
+  after BOA-2.3.1 release. Please read also the release notes for BOA-2.3.1
+  further below before running the upgrade!
+
+#-### Important details on CiviCRM versions compatibility and profiles support
+
+  * All BOA-2.3.x Editions fully support latest CiviCRM 4.5.0 for Drupal 7.
+  * CiviCRM for Drupal 6 is not supported because of known CiviCRM issues.
+  * CiviCRM support for Drupal 7 works great when added in sites/all/modules
+  * CiviCRM support for Drupal 7 also works when added in profiles/foo/modules
+    but no CiviCRM cron is currently managed until this known issue is fixed,
+    therefore BOA-2.3.3 will check all platforms on the Octopus instance and if
+    it will detect any with CiviCRM added in the installation profile directory
+    tree, it will refuse to upgrade such instance to not break things for those
+    using currently not fully supported CiviCRM codebase structure.
+
+# New Octopus platforms:
+
+  OpenChurch 2.0-b1 ------------ https://drupal.org/project/openchurch
+
+# Updated Octopus platforms:
+
+  ERPAL 2.0 -------------------- https://drupal.org/project/erpal
+  Guardr 1.13 ------------------ https://drupal.org/project/guardr
+  Open Outreach 1.11 ----------- https://drupal.org/project/openoutreach
+  OpenChurch 1.14 -------------- https://drupal.org/project/openchurch
+  OpenPublic 1.0-rc5 ----------- https://drupal.org/project/openpublic
+  OpenScholar 3.15.1 ----------- http://theopenscholar.org
+
+# New features and enhancements in this release:
+
+  * Add makefiles for CiviCRM 4.4.7
+  * Add makefiles for CiviCRM 4.5.0
+
+# Changes in this release:
+
+  * Drush: Upgrade command line version 6 to mini-6-27-09-2014
+  * Restart SSH hourly.
+  * The INI variable redis_flush_forced_mode is now disabled by default.
+  * Use aegir_custom_settings-6.x-3.12
+  * Use Provision CiviCRM boa-2.3.3-dev
+
+# System upgrades in this release:
+
+  * MariaDB 10.0.14
+  * Nginx 1.7.5
+  * PHP 5.4.33
+  * PHP 5.5.17
+  * PHPRedis: master-02-09-2014
+  * Redis 2.8.17
+
+# Fixes in this release:
+
+  * Add extra cleanup for Drush related caches.
+  * Always respect _SSH_PORT if set.
+  * Always start cron before aborting on error.
+  * Do not add duplicate cron entry for runner.sh
+  * Do not allow system only upgrades if Master Instance is still on 2.2.x
+  * Do not disable _DNS_SETUP_TEST
+  * Enable path_alias_cache by default also in the hostmaster site.
+  * Fix for broken pdnsd configuration if wrong IPs are detected.
+  * Fix for insufficient permissions on files/civicrm/ConfigAndLog
+  * Fix for insufficient permissions on files/civicrm/custom
+  * Fix for insufficient permissions on files/civicrm/dynamic
+  * Fix for missing cron entry for Scout, if _SCOUT_KEY is not empty.
+  * Fix the not working procedure to revert hostmaster features.
+  * Force problematic gems install to add them on accounts with enabled RVM.
+  * Fox for Java version for Jetty 9 on newer systems.
+  * Hardcode files.aegir.cc DNS entry.
+  * Improve docs/ctrl/system.ctrl readability.
+  * Install openjdk on CI instances by default.
+  * Issue #411 - Unable to update Octopus Instance - Reports PHP on 5.2
+  * Issue #423 - Make sure that innodb_buffer_pool_size is not smaller than 64M
+  * Issue #424 - Update mysqltuner.pl to support MariaDB 10.0
+  * Make sure that lsb-release is installed properly.
+  * Make the check_civicrm_compatibility more reliable to avoid false alarms.
+  * New Relic not enabled if no custom ~/static/control/{fpm|cli}.info exists.
+  * Nginx: Auto-Switch to wildcard all vhosts existing in the Master Instance.
+  * Nginx: Avoid any downtime on upgrade by using www53.fpm.socket temporarily.
+  * Nginx: Convert all config templates to wildcard mode in legacy instances.
+  * Nginx: Convert all Octopus vhosts to wildcard mode on Barracuda upgrade.
+  * Nginx: Convert config to use PHP 5.2 if the instance still depends on it.
+  * Nginx: Delete ghost, outdated or broken config includes in all instances.
+  * Nginx: Delete ghost, outdated or broken vhosts in all instances.
+  * Nginx: Force special vhosts access rules rebuild hourly.
+  * Nginx: Improve wildcard conversion procedure on some really old instances.
+  * Purge all ghost delete tasks before running hostmaster-migrate / upgrade.
+  * Purge Drush related caches cleanly when needed.
+  * Recreate possibly broken vhosts.
+  * Remove duplicate cron entry for runner.sh to avoid critical system load.
+  * Remove legacy replacement to not convert config symlinks into regular files.
+  * Run check_civicrm_compatibility only on upgrade.
+  * Single feature revert may not be enough.
+  * Update contrib in Open Atrium D7 to maintain upgrade path.
+  * Update cron defaults and remove legacy code.
+  * Update default SSL Wildcard Nginx Proxy to use wildcard listen mode.
+  * Use strict regex in vhosts listen mode conversion to not break ports.
+
+
+### Stable BOA-2.3.2 Release - Full Edition
+### Date: Thu Sep 18 15:16:33 PDT 2014
+### Includes Aegir 2.1 with improvements
+
+  Release Notes and changelog for BOA-2.3.2 has been merged into BOA-2.3.3
+  above after several hotfixes and various updates have been added shortly
+  after 2.3.2 release to address all identified post-release issues.
+
+
+### Stable BOA-2.3.1 Release - Full Edition
+### Date: Sun Sep 14 15:53:25 SGT 2014
+### Includes Aegir 2.1 with improvements
+### Latest hotfix added on: Mon Sep 15 19:10:07 SGT 2014
+
+# Release Notes:
+
+  This major BOA Edition introduces many new features, changes and fixes.
+
+  You should carefully read about some caveats further below **before** running
+  this major upgrade on your system. Please secure a fresh system backup first.
+
+  If you haven't run full barracuda+octopus upgrade to latest BOA Stable
+  Edition yet, don't use any partial/system upgrade modes.
+
+  Once new BOA Stable is released, you must run *full* upgrades with commands:
+
+  $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+  $ barracuda up-stable
+  $ octopus up-stable all both
+
+  @=> Key new features:
+
+  * BOA-2.3.1 comes with new, shiny Aegir 2.1 stable version!
+  * Support for Drupal sites in subdirectories is enabled by default
+  * Solr 4 cores can be added/updated/deleted via site level INI settings
+  * Super-easy to use New Relic support with per Octopus license key
+  * Ability to add new Octopus instances with new, simple command syntax
+
+  @=> Aegir control panel new features:
+
+  * The list of sites is searchable by name or installation profile
+  * Sites have dedicated tabs: Backups, Task log, Edit and Packages
+  * Platform have tabs: Add site, Clients, Task log, Edit and Packages
+  * You can schedule tasks against filtered sites in batches
+  * Scheduling tasks in batches is available also on the platform view
+  * Scheduling tasks in batches is available also on the profile view
+  * Scheduling tasks in batches is available also on the client view
+  * You can schedule tasks also against platforms in batches
+  * You can safely apply db updates via 'Run db updates' task on any site
+  * The new 'Clients' menu item allows to list and manage sub-accounts
+  * Profiles are listed with both human-readable and machine names
+  * It is now possible to choose any existing alias or the main site name
+    as a redirect target, but without the need to rename the site --
+    it will just re-verify the site and create new vhost automatically
+
+  @=> Aegir control panel changes:
+
+  * The hosting/signup form is still available but not included in the menu
+  * The node/add/site form is no longer included in the main menu
+  * The optional pseudo-CDN-aliases feature is now disabled by default
+
+  @=> Other important changes:
+
+  * Support for PHP 5.2 has been officially deprecated
+  * The www53 PHP-FPM pool has been switched from port to default socket mode
+  * All existing vhosts must use wildcard in the Nginx 'listen' directive
+  * Legacy mode for Install and Upgrade moves to 2.2.x branch
+  * DB credentials are no longer in settings.php, only in drushrc.php
+  * Latest Drush 6 version is used in the Aegir backend by default
+
+  But what if you are not ready for this major upgrade and you would like
+  to have more time for testing, but still be able to run system upgrades,
+  thus effectively still using previous version 2.2.9 ?
+
+#-### Legacy mode for Install and Upgrade moves to 2.2.x branch
+
+  From now on, the 'legacy' install and upgrade mode available in all meta-
+  installers will utilize branch 2.2.x instead of deprecated 2.1.x series.
+
+  This means that starting with meta installers updated to use BOA-2.3.1
+  version you can use commands like shown below to update Barracuda, Octopus
+  and also to install more Octopus instances, while still using version 2.2.9:
+
+  $ boa in-legacy public server.mydomain.org my@email o1
+  $ barracuda up-legacy system
+  $ octopus up-legacy o1
+  $ boa in-legacy public server.mydomain.org my@email o2 mini
+  etc.
+
+  Remember to update your meta-installers first!
+
+  $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+
+  Note also that if you will upgrade to current 'stable', it is not possible
+  to downgrade back to the 'old stable' with 'legacy' mode, so please proceed
+  with care!
+
+  Remember also that current legacy version will not receive any further
+  updates, even for security issues (besides those provided as packages by
+  your OS vendor - Debian or Ubuntu, which will still work), because it is
+  already different enough from current 2.3.1 stable, so we can't reliably
+  maintain both with working upgrade path.
+
+#-### Caveats: This upgrade will force wildcard in the Nginx 'listen' directive
+
+  If you have old enough BOA system which still uses legacy IP mode and not
+  a wildcard in the Nginx 'listen' directive, which is both Aegir and BOA
+  standard for a long time already, this upgrade will fix the problem and
+  update directives only in vhosts known and controlled by BOA.
+
+  If you have any other vhosts, located in standard or non-standard Nginx/BOA
+  directories for vhosts, you have to update them manually after upgrade to
+  BOA-2.3.0 or newer, or they will take over all other vhosts on the system
+  and cause redirects to /install.php which results with Nginx error 403 or 404,
+  depending on the prior configuration.
+
+  It will happen because IP based 'listen' directive in Nginx has higher
+  priority, and will mess things horribly if there are vhosts using wildcard
+  and some using the main system IP address.
+
+  What and how to replace? Here are the commands you need to run as root:
+
+    $ sed -i "s/.*listen.*:80;/  listen  \*:80;/g" /path/to/vhost.file
+    $ service nginx reload
+
+  Note: this **doesn't** affect special vhosts for SSL enabled sites, if used,
+  because they are designed to use IP based 'listen' directives to provide
+  separation between SSL enabled IPs and their associated certificates,
+  while their associated 'upstream' block may even point to either local or
+  remote IP address, so there is no wildcard to use in this case, and it will
+  not conflict with all other vhosts managed by Aegir, because all SSL enabled
+  vhosts listen on other IP addresses than the main system IP, which is
+  by default used by all vhosts with wildcard in the 'listen' directive.
+
+  The problem may happen only when you have vhosts using wildcard and also
+  some vhosts using **main** system IP address in the 'listen' directive,
+  which may happen also unintentionally during upgrade to BOA-2.3.0 or never,
+  if there are either vhosts BOA doesn't control, or there are ghost vhosts
+  not yet purged if you didn't upgrade to BOA-2.2.9 before, or there are
+  some disabled sites, so their vhosts will not be re-created by Aegir
+  during this major upgrade (because only active sites can be re-verified).
+
+  While BOA will fix also any such ghost vhosts anyway, it will not be able
+  to detect and fix vhosts outside of the standard directories managed by Aegir.
+
+#-### Ability to add new Octopus instances with new, simple command syntax
+
+  It is now possible to add stable Octopus instances w/o forcing Barracuda
+  upgrade, plus optionally with no platforms added by default -- usage:
+
+    $ boa {in-octopus} {email} {o2} {mini|max|none}
+
+#-### The www53 PHP-FPM pool has been switched from port to default socket mode.
+
+  Note that we are breaking backward compatibility here, so it will cause
+  downtime on upgrade from any too old BOA version, until you will upgrade also
+  Octopus instance(s) and update any other non-standard vhosts or includes
+  still using legacy port mode for 'fastcgi_pass' Nginx directive.
+
+  If you have 'fastcgi_pass 127.0.0.1:9090;' in any custom vhost or Nginx
+  include file on the Octopus instance, you should replace it with:
+
+    fastcgi_pass unix:/var/run/o1.fpm.socket;
+
+  where 'o1' is your corresponding Octopus system username.
+
+  Note that if you have custom vhosts or includes in the Aegir Master Instance,
+  you should instead replace 'fastcgi_pass 127.0.0.1:9090;' with:
+
+    fastcgi_pass unix:/var/run/www53.fpm.socket;
+
+  where '53' is related to PHP version defined via _PHP_FPM_VERSION in your
+  /root/.barracuda.cnf file. Note that while variable has a dot, the socket
+  name doesn't.
+
+#-### Support for PHP 5.2 has been officially deprecated
+
+  While Barracuda 2.3.1 can continue to run and even upgrade if needed also
+  the very old PHP 5.2 version, only Octopus instances running at least PHP 5.3
+  or newer in both FPM and CLI mode can be upgraded to Octopus 2.3.1 Edition.
+
+  If you are still using PHP 5.2 in your Octopus instance, you will not
+  receive Aegir nor Drupal Platforms upgrade, but the Barracuda part of your
+  system will receive upgrade to 2.3.1 anyway, so it will be ready to support
+  your outdated Octopus instance upgrade as soon as you will switch it to
+  modern and secure PHP version -- which is easy!
+
+  Let's quote the original how-to for reference:
+
+#-### Support for PHP FPM/CLI version safe switch per Octopus instance
+
+  This allows to easily switch PHP version by the instance owner w/o system
+  admin (root) help. All you need to do is to create ~/static/control/fpm.info
+  and ~/static/control/cli.info file with a single line telling the system
+  which available PHP version should be used (if installed): 5.5 or 5.4 or 5.3
+
+  Only one of them can be set, but you can use separate versions for web access
+  (fpm.info) and the Aegir backend (cli.info). The system will switch versions
+  defined via these control files in 5 minutes or less. We use external control
+  files and not any option in the Aegir interface to make sure you will never
+  lock yourself by switching to version which may cause unexpected problems.
+
+#-### Support for New Relic monitoring with per Octopus instance license key
+
+  This new feature will disable global New Relic monitoring by deactivating
+  server-level license key, so it can safely auto-enable or auto-disable it
+  every 5 minutes, but per Octopus instance -- for all sites hosted on
+  the given instance -- when a valid license key is present in the special
+  new ~/static/control/newrelic.info control file.
+
+  Please note that valid license key is a 40-character hexadecimal string
+  that New Relic provides when you sign up for an account.
+
+  To disable New Relic monitoring for the Octopus instance, simply delete
+  its ~/static/control/newrelic.info control file and wait a few minutes.
+
+  Please note that on a self-hosted BOA you still need to add your valid
+  license key as _NEWRELIC_KEY in the /root/.barracuda.cnf file and run
+  system upgrade with at least 'barracuda up-stable' first. This step is
+  not required on Omega8.cc hosted service, where New Relic agent is already
+  pre-installed for you.
+
+#-### Solr 4 cores can be added/updated/deleted via site level INI settings
+
+;;
+;;  This option allows to activate Solr 4 core configuration for the site.
+;;
+;;  Only Solr 4 powered by Jetty server is available. Supported integration
+;;  modules are limited to latest versions of either search_api_solr (D7 only)
+;;  or apachesolr (will use Drupal core specific version automatically).
+;;
+;;  Currently used versions are listed below:
+;;
+;;    http://ftp.drupal.org/files/projects/search_api_solr-7.x-1.6.tar.gz
+;;    http://ftp.drupal.org/files/projects/apachesolr-7.x-1.7.tar.gz
+;;    http://ftp.drupal.org/files/projects/apachesolr-6.x-3.0-rc2.tar.gz
+;;
+;;  Note that you still need to add preferred integration module along with
+;;  any its dependencies in your codebase since this feature doesn't modify
+;;  your platform or site - it only creates Solr core with configuration
+;;  files provided by integration module: schema.xml and solrconfig.xml
+;;
+;;  This setting affects only the running daily maintenance system behaviour,
+;;  so you need to wait until next morning to be able to use new Solr 4 core.
+;;
+;;  Once the Solr core is ready to use, you will find a special file in your
+;;  site directory: sites/foo.com/solr.php with details on how to access
+;;  your new Solr core with correct credentials.
+;;
+;;  The site with enabled Solr core can be safely migrated between platforms,
+;;  integration module can be moved within your codebase and even upgraded,
+;;  as long as it is using compatible schema.xml and solrconfig.xml files.
+;;
+;;  Supported values for the solr_integration_module variable:
+;;
+;;    apachesolr
+;;    search_api_solr
+;;
+;;  To delete existing Solr core simply comment out this line.
+;;  The system will cleanly delete existing Solr core next morning.
+;;
+;;  IMPORTANT if you are using self-hosted BOA: _MODULES_FIX=YES must be set
+;;  in the /root/.barracuda.cnf file (this is default value) to make this
+;;  feature active.
+;;
+;solr_integration_module = NO
+
+;;
+;;  This option allows to auto-update your Solr 4 core configuration files:
+;;
+;;    schema.xml
+;;    solrconfig.xml
+;;
+;;  If there is new release for either apachesolr or search_api_solr, your
+;;  Solr core will not be automatically upgraded to use newer schema.xml and
+;;  solrconfig.xml, unless allowed by switching solr_update_config to YES.
+;;
+;;  This option will be ignored if you will set solr_custom_config to YES.
+;;
+;solr_update_config = NO
+
+;;
+;;  This option allows to protect custom Solr 4 core configuration files:
+;;
+;;    schema.xml
+;;    solrconfig.xml
+;;
+;;  To use customized version of either schema.xml or solrconfig.xml, you need
+;;  to switch solr_custom_config to YES below and if you are using hosted
+;;  Aegir service, submit a support ticket to get these files updated with
+;;  your custom versions. On self-hosted BOA simply update these files directly.
+;;
+;;  Please remember to use Solr 4 compatible config files.
+;;
+;solr_custom_config = NO
+
+
+# Updated Octopus platforms:
+
+  aGov 1.4 --------------------- https://drupal.org/project/agov
+  Guardr 1.12 ------------------ https://drupal.org/project/guardr
+  Open Academy 1.1 ------------- https://drupal.org/project/openacademy
+  Restaurant 1.0-b9 ------------ https://drupal.org/project/restaurant
+  Ubercart 3.7 ----------------- https://drupal.org/project/ubercart
+
+# New features and enhancements in this release:
+
+  * Ability to add new Octopus instances with new, simple command syntax
+  * Add default aggressive php-fpm monitoring + /root/.no.fpm.cpu.limit.cnf
+  * Allow to define always disabled modules via _MODULES_FORCE variable.
+  * Better wait limits on connection testing for slow network / long distance.
+  * Issue #1927522 - Add support for easy Solr cores self-management.
+  * Issue #362 - Add imageapi_optimize binaries via IMG in _XTRAS_LIST
+  * Issue #376 - Add New Relic support with per Octopus instance license key.
+  * Make firewall management faster with randomized schedule.
+  * Procs monitor runs every 3 seconds.
+  * Run mysql_proc_control every 5 seconds for better results.
+  * You can safely apply db updates via 'Run db updates' task on any site.
+
+# Changes in this release:
+
+  * DB credentials are no longer visible in settings.php, only in drushrc.php
+  * Delete default profiles in the hostmaster platform.
+  * Disable _DEBUG_MODE if not enabled on the fly.
+  * Disable newrelic-sysmond unless /root/.enable.newrelic.sysmond.cnf exists.
+  * Drush: Upgrade command line version 6 to mini-6-14-09-2014
+  * Nginx: Remove deprecated code - _HTTP_WILDCARD is already used by default.
+  * Nginx: Use limit_conn protection only for known dynamic requests.
+  * Redis Integration Module (cache_backport): Update to version 6.x-1.0-rc2
+  * Redis Integration Module: Update to version mod-12-09-2014
+  * Remove _ALLOW_UNSUPPORTED legacy and no longer working properly feature.
+  * Remove dependency on Update Manager globally.
+  * Remove deprecated multi-instance labels in the New Relic configuration.
+  * Replace old hosting_civicrm_cron with newer hosting_civicrm module.
+  * Set hosting_default_profile to 'minimal' to improve Ubercart 3 visibility.
+  * The www53 PHP-FPM pool has been switched from port to default socket mode.
+  * Use Provision CiviCRM boa-2.3.1-dev
+
+# System upgrades in this release:
+
+  * cURL 7.38.0 (if installed from sources)
+  * Git 2.1.0 (if installed from sources)
+  * Jetty 7.6.16.v20140903
+  * Jetty 8.1.16.v20140903
+  * Jetty 9.2.3.v20140905
+  * PHP 5.3.29 EOL! Please read: http://php.net/archive/2014.php#id2014-08-14-1
+  * PHP 5.4.32
+  * PHP 5.5.16
+  * Redis 2.8.14
+
+# Fixes in this release:
+
+  * Add cleanup for _GIT_FORCE_REINSTALL if added in .barracuda.cnf
+  * Add missing drush cache-clear drush to improve upgrade path.
+  * Add new features in the README.txt
+  * Add wheezy to the exceptions list where required.
+  * Allow to clear drush cache without directory restrictions.
+  * Always set correct TMP path for supported users.
+  * Cleanup for cron pid files in user specific .tmp dirs.
+  * Count properly also symlinked files directories (improved).
+  * D6 colorbox module requires old 1.3.18 library.
+  * Delete drush_make leftovers.
+  * Delete duplicate menu items on upgrade.
+  * Do not allow to install SSH from sources on Trusty to avoid problems.
+  * Do not skip daily.sh during barracuda system only update.
+  * Eldir theme: Use max width for buttons, if possible.
+  * Explain why installing RVM may take longer than expected.
+  * Fix cleanup for drush aliases in sub-accounts.
+  * Fix daily cleanup for user specific .tmp directories.
+  * Fix docs/HINTS.txt
+  * Fix for broken mariadb.list
+  * Fix for broken, way too aggressive PHP-FPM monitoring.
+  * Fix for ghost dirs cleanup.
+  * Fix for ghost vhosts cleanup.
+  * Fix for missing symlinks to existing platforms.
+  * Fix for not working protection from blocking local IPs on multi-IP systems.
+  * Fix for subdirs_support universal check.
+  * Fix for unreliable _IS_OLD check on Octopus instances upgrade.
+  * Fix for warning "Could not create directory ." on Hostmaster site Verify.
+  * Fix the fields order in the site edit form.
+  * Fix the regex to not whitelist unexpected IP ranges inadvertently.
+  * Force cURL rebuild if installed with outdated OpenSSL version.
+  * Guard against destructive or insecure tasks run on the hostmaster site.
+  * Improve cleanup for empty platforms directories.
+  * Improve monitoring to protect against convert trying to overload the system.
+  * Issue #2330781 - Use Drush dt() wrapper instead of not always available t()
+  * Issue #357 - Fix the logic for Git (re)install from sources.
+  * Issue #360 - Exclude special --CDN vhosts from daily cleanup.
+  * Issue #361 - Update and improve docs/FAQ.txt
+  * Issue #369 - Automatically download and fix /bin/websh if missing.
+  * Issue #369 - Restore classic /bin/sh symlink automatically if needed.
+  * Issue #373 - Set correct TMP, TEMP, TMPDIR env variables in limited shell.
+  * Issue #373 - Too restrictive lshell forbidden list breaks drush sql-sync.
+  * Issue #380 - Nameserver / pdnsd problem -- Fixes also Issue #2007990.
+  * Issue #381 - Zend OPcache forced adds useless noise in the log.
+  * Issue #388 - Version 6.x-2.x of provision_civicrm requires hosting_civicrm
+  * Issue #389 - hosting_civicrm breaks site install form with confusing error.
+  * Issue #390 - Duplicate platforms nodes are created after upgrade to 2.3.0
+  * Issue #395 - Validate username isn't reserved before running install script.
+  * Issue #396 - Locale isn't getting set properly.
+  * Issue #397 - Not actually prompted for platforms during installation.
+  * Issue #398 - Make locales setup/fix for Debian always OS compatible.
+  * Issue #399 - The hitimes gem needs to be pre-installed to support Omega4.
+  * Issue #400 - CiviCRM is not installed on 2.3.0
+  * Issue #401 - Create sites/all/* subdirs in Hostmaster early enough.
+  * Issue #402 - Fix for ghost or disabled vhosts which still listen on IP.
+  * Issue #405 - Installer hangs due to yes/no dialog - "Untrusted packages"
+  * Issue #406 - Force keyring reinstall also upon 'GPG error'.
+  * Issue #407 - Fix for 'username is already taken' error on a local VM install
+  * Issue #408 - Fix for multiple funny typos. Thanks ar-jan!
+  * Make it clear that subdomain and subdirectory name must be identical.
+  * Make sure that keys subdirectory exists to avoid active platforms cleanup.
+  * Make the PHP-FPM processes monitor less aggressive by default.
+  * New Relic not enabled if no custom ~/static/control/{fpm|cli}.info exists.
+  * Nginx: Add config symlinks only on legacy instances.
+  * Nginx: Add cron access support for subdir sites.
+  * Nginx: Convert all vhosts to wildcard mode on Barracuda upgrade.
+  * Nginx: Disable monitoring for POST requests related to cart/checkout URI.
+  * Nginx: Do not touch nginx_wild_ssl.conf during this upgrade.
+  * Nginx: Improve wildcard conversion procedure on some really old instances.
+  * Nginx: Remove deprecated code and config templates.
+  * Nginx: Sanitize aliases in vhost_disabled.tpl.php to avoid warnings.
+  * Nginx: Update config includes to match optional BOA features improvements.
+  * Nginx: Update unified configuration templates in Provision to unfork BOA.
+  * Nginx: Update vhosts templates to match BOA improvements.
+  * PHP: Avoid unintended duplicate rebuilds.
+  * PHP: Sync disable_functions list.
+  * Protect sites/all/drush
+  * Provision: Backport provision_hosting_feature_enabled()
+  * Provision: Remove legacy subdir code and update checks.
+  * Redis config should sync with PHP-CLI, not PHP-FPM.
+  * Remove legacy procs monitoring code.
+  * Remove no longer needed limreq global fixes.
+  * Remove no longer needed/used contrib updates.
+  * Remove redundant file_exists() if is_readable() is also used.
+  * Replace old hosting_civicrm_cron with newer hosting_civicrm module.
+  * Restart pdnsd before running barracuda upgrade.
+  * Restore BOA formatting for tasks log to improve readability.
+  * Restore BOA naming convention and docs in Hostmaster.
+  * Restore BOA naming convention for Installation profiles in Hostmaster.
+  * Restore BOA strict _hosting_valid_fqdn* testing procedures in Hostmaster.
+  * Restore BOA weight defaults in the form in Hostmaster.
+  * Restore punycode in Hostmaster.
+  * Restore tasks sort to always show tasks scheduled and running at the top.
+  * Sanitize cli.info and fpm.info
+  * Set _PLATFORMS_LIST properly.
+  * Silence early sed replacements to avoid confusion.
+  * Simplify colorbox-1.3.18 download.
+  * Simplify colorbox-1.5.13 download.
+  * Switch branch on the fly and add support for Aegir vanilla mode.
+  * Sync /tmp access restrictions.
+  * The hosting_civicrm_cron is now a submodule and should be also auto-enabled.
+  * The wildcard transition **doesn't** affect vhosts for SSL enabled sites.
+  * There is no need to force backend clone from GitHub on initial upgrade.
+  * Update for the Hostmaster welcome page.
+  * Update FPM monitoring settings.
+  * Use as short labels on the site node as possible.
+  * Use control files properly to not run redundant Jetty/Solr upgrade.
+  * Use correct paths to platform level drushrc.php file.
+  * Use correct Provision version on initial upgrade to 2.3.0
+  * Use Drush6 with @hostmaster.
+  * Use is_dir() instead of file_exists() when checking directory existence.
+  * Use is_file() and is_link() instead of file_exists() before trying unlink()
+  * Use is_readable() and file_exists() instead of file_exists() for backup.
+  * Use is_readable() check instead of insufficient file_exists() for includes.
+  * Use is_readable() instead of file_exists() when checking alias existence.
+  * Install latest Git even if not specified via _XTRAS_LIST but previous
+    version built from sources is detected.
+  * Issue #2278847 - Derivatives can't be created on install with Drush and
+    Aegir or when no vhost is available yet (Drupal Commons)
+
+
+### Stable BOA-2.3.0 Release - Full Edition
+### Date: Mon Sep  8 08:42:01 PDT 2014
+### Includes Aegir 2.1 with improvements
+
+  Release Notes and changelog for BOA-2.3.0 has been merged into BOA-2.3.1
+  above after several hotfixes and some great new features have been added
+  shortly after 2.3.0 release to address all identified post-release issues.
+
+
+### Stable BOA-2.2.9 Release - Full Edition
+### Date: Wed Aug  6 17:08:10 PDT 2014
+### Includes Aegir 2.x-boa-custom version.
+### Latest hotfix added on: Fri Aug 15 09:37:04 PDT 2014
+
+# Release Notes:
+
+  This release includes updated versions of all supported Drupal platforms to
+  provide latest Drupal 7 and Pressflow 6 core, plus some changes, improvements,
+  bug fixes, and many updated Octopus platforms.
+
+  NOTE: Since the first Edition in the BOA-2.3.x series is not ready for release
+  yet, and new Drupal core has been released to fix security issues, followed
+  by yet another release to fix serious regressions, followed by yet another
+  security release, we have decided to make it available to everyone and release
+  yet another stable BOA-2.2.x Edition.
+
+  IMPORTANT! This is the last Edition in the 2.2.x series, which marks the end
+  of Drupal 5, PHP 5.2 and Drush 4 support. Next Edition will open 2.3.x series,
+  which will allow us to provide newer Aegir version with built-in Drush 6
+  support, sites in subdirectories, and many Aegir User Interface improvements.
+
+  If you still host any Drupal 5 sites or you are using PHP 5.2 for D6 sites,
+  you will not be able to upgrade to the next 2.3.x Edition and you will have to
+  stay on the 'legacy' BOA 2.2.x version, which will receive only system
+  security upgrades, but no further feature nor bugfix releases.
+
+  This also means that from now on the 'legacy' 2.2.x version will no longer
+  receive Drupal core upgrades, even if there will be security core releases.
+
+  It is time to upgrade away from Drupal 5 and away from PHP 5.2, if still used.
+
+# Updated Octopus platforms:
+
+  aGov 1.2 --------------------- https://drupal.org/project/agov
+  Commerce 1.29 ---------------- https://drupal.org/project/commerce_kickstart
+  Commerce 2.17 ---------------- https://drupal.org/project/commerce_kickstart
+  Commons 2.20 ----------------- https://drupal.org/project/commons
+  Commons 3.17 ----------------- https://drupal.org/project/commons
+  ERPAL 2.0-b5 ----------------- https://drupal.org/project/erpal
+  Guardr 1.11 ------------------ https://drupal.org/project/guardr
+  Open Atrium 2.21 ------------- https://drupal.org/project/openatrium
+  Open Outreach 1.10 ----------- https://drupal.org/project/openoutreach
+  OpenPublic 1.0-rc4 ----------- https://drupal.org/project/openpublic
+  Panopoly 1.11 ---------------- https://drupal.org/project/panopoly
+  Restaurant 1.0-b2 ------------ https://drupal.org/project/restaurant
+
+# New features and enhancements in this release:
+
+  * Allow to define always disabled modules via _MODULES_FORCE variable.
+  * Eldir: Add subtle 3D and round some edges.
+  * Eldir: Improve spacing and hide useless headers.
+  * Fix permissions on sites/all/{modules,libraries,themes} on Platform Verify.
+  * Make firewall management faster with randomized schedule.
+  * Merge pull request #362 from pricejn2/imageapi-optimize-binaries
+  * RVM: Add exceptions for gems which can't be installed in Limited Shell.
+  * Shell: Compass Tools: Allow to access guard.
+  * Shell: Improve config to better support advanced Drush commands over SSH.
+
+# Changes in this release:
+
+  * Drush: Upgrade command line version 6 to mini-6-14-08-2014
+  * Nginx: Add DBot to is_crawler list.
+  * Remove no longer supported NodeStream distro.
+  * Run complete modules-dis-list weekly (Saturday) and basic list daily.
+
+# System upgrades in this release:
+
+  * MariaDB 10.0.13
+  * MariaDB 5.5.39
+  * Nginx 1.7.4
+  * OpenSSL 1.0.1i (if installed from sources)
+  * PHP: ionCube loader 4.6.1
+  * PHP: Zend OPcache master-30-07-2014
+
+# Fixes in this release:
+
+  * Add cleanup for .tmp in sub-accounts.
+  * Add cleanup for drush-backups leftovers.
+  * Add cleanup for various /var/backups/* leftovers.
+  * Add daily auto-cleanup for ghost vhosts, platforms and drush aliases.
+  * Add exception for symlinked /data/all
+  * Add hint for HTTPS-only mode forced in local.settings.php
+  * Allow to clear drush cache without directory restrictions.
+  * Avoid "Is a directory" noise in the log.
+  * Commons 2.20 has changed its profile name from drupal_commons to commons.
+  * Do not modify site_footer on hostmaster upgrade.
+  * Do not rename the legacy Commons profile name.
+  * Fix -mtime expected values.
+  * Fix cleanup for .restore vhost leftovers.
+  * Fix cleanup for drush aliases in sub-accounts.
+  * Fix for unreliable _IS_OLD check on Octopus instances upgrade.
+  * Fix Nginx monitor to respect all whitelisted POST requests in both modes.
+  * Fix permissions on sites/all/{modules,libraries,themes} globally.
+  * Fix weird typo in global.inc
+  * Improve cleanup for empty platforms directories.
+  * Improve RVM cleanup.
+  * Issue #2278847 - Derivatives (Drupal Commons) can't be created on install.
+  * Issue #334 - Backported provision_civicrm #1485920
+  * Issue #334 - Delete the civicrm_class_loader variable after deploying.
+  * Issue #334 - Install civicrm in any location (sites/ profiles + contrib).
+  * Issue #360 - Exclude special --CDN vhosts from daily cleanup.
+  * Make sure that /keys subdirectory exists to avoid active platforms cleanup.
+  * Make sure that local IPs are never blocked by mistake.
+  * Never touch websh wrapper to avoid high load because of redirect loop.
+  * Nginx: Detected $device is not used in Boost config, only in Speed Booster.
+  * Nginx: Fix limreq also for some really old vhosts.
+  * Nginx: Modify only vhosts known as included in the protected mode.
+  * Remove /var/run/daily-fix.pid if exists when it shouldn't.
+  * Remove debugging mode in old codebases cleanup.
+  * Remove no longer needed/used contrib updates.
+  * Restore default websh wrapper symlink as fast as possible.
+  * Run manage_ltd_users every 3 minutes instead of every minute.
+  * Simplify colorbox-1.3.18 download.
+  * Simplify colorbox-1.5.13 download.
+  * Uninstall css_emimage only on hostmaster upgrade.
+  * Update and improve docs/FAQ.txt
+  * Update regex for exceptions in Nginx monitoring.
+
+
+### Stable BOA-2.2.8 Release - Full Edition
+### Date: Sat Jul 26 15:31:29 PDT 2014
+### Includes Aegir 2.x-boa-custom version.
+### Latest hotfix added on: Tue Aug  5 14:47:17 PDT 2014
+
+# Release Notes:
+
+  This release includes updated versions of all supported Drupal platforms to
+  provide latest Drupal 7 and Pressflow 6 core, plus some changes, improvements,
+  bug fixes, and six (6) updated Octopus platforms.
+
+  NOTE: Since the first Edition in the BOA-2.3.x series is not ready for release
+  yet, and new Drupal core has been released to fix security issues, followed by
+  yet another release to fix serious regressions, we have decided to make it
+  available to everyone and release yet another stable BOA-2.2.x Edition.
+
+  IMPORTANT! This is the last Edition in the 2.2.x series, which marks the end
+  of Drupal 5, PHP 5.2 and Drush 4 support. Next Edition will open 2.3.x series,
+  which will allow us to provide newer Aegir version with built-in Drush 6
+  support, sites in subdirectories, and many Aegir User Interface improvements.
+
+  If you still host any Drupal 5 sites or you are using PHP 5.2 for D6 sites,
+  you will not be able to upgrade to the next 2.3.x Edition and you will have to
+  stay on the 'legacy' BOA 2.2.x version, which will receive only system
+  security upgrades, but no further feature nor bugfix releases.
+
+  This also means that from now on the 'legacy' 2.2.x version will no longer
+  receive Drupal core upgrades, even if there will be security core releases.
+
+  It is time to upgrade away from Drupal 5 and away from PHP 5.2, if still used.
+
+# Updated Octopus platforms:
+
+  Commerce 1.28 ---------------- https://drupal.org/project/commerce_kickstart
+  Commerce 2.16 ---------------- https://drupal.org/project/commerce_kickstart
+  Commons 3.16 ----------------- https://drupal.org/project/commons
+  Open Outreach 1.8 ------------ https://drupal.org/project/openoutreach
+  OpenBlog 1.0-v3 -------------- https://drupal.org/project/openblog
+  Panopoly 1.8 ----------------- https://drupal.org/project/panopoly
+
+# New features and enhancements in this release:
+
+  * Allow to force OpenSSL etc. re-install with _SSL_FORCE_REINSTALL=YES
+  * Auto-Move no longer used shared codebases to /var/backups/codebases-cleanup
+
+# Changes in this release:
+
+  * Drush: Upgrade command line version 6 to mini-6-29-07-2014
+  * Issue #334 - Update provision_civicrm version - code by ixiam - thanks!
+  * Redis Integration Module: Update to version mod-21-07-2014
+  * Uninstall css_emimage in hostmaster to avoid broken upgrades.
+  * Update for Contrib [F]orce[D]isabled modules list.
+  * Use more aggressive defaults for _PURGE_BACKUPS and _PURGE_TMP if not set.
+
+# System upgrades in this release:
+
+  * PHP 5.4.31
+  * PHP 5.5.15
+
+# Fixes in this release:
+
+  * Add auto-cleanup for civimail ghost leftovers.
+  * Add cleanup drush aliases in the main SSH account properly.
+  * Add cleanup for RVM archives and logs.
+  * Fix for default value on hot fix update.
+  * Fix for dev regression - it shouldn't set $conf['cache'] on valid dev URLs.
+  * Fix the logic for custom _DEL_OLD_EMPTY_PLATFORMS defaults.
+  * Issue #333 - Update BOA changelog URL shortcut.
+  * Nginx: Automate SPDY test to determine if OpenSSL re-install is required.
+  * Nginx: Silence access log for already protected /civicrm admin requests.
+  * Remove special one-time variables if set, once used.
+  * RVM: Install OS compatible Ruby version + various related adjustments.
+  * Silence useless noise in the log.
+  * Sync firewall limits.
+
+
 ### Stable BOA-2.2.7 Release - Full Edition
 ### Date: Thu Jul 17 03:11:47 CEST 2014
 ### Includes Aegir 2.x-boa-custom version.
@@ -1686,7 +3389,7 @@
   * Fix the check_if_required() logic in the Auto-Disable agent.
   * Improve all cURL based downloads with auto-continue mode.
   * Issue #1980250 - Fix for broken cache_page bin in Redis integration module.
-  * Issue #2127237 - NewRelic: Unable to initialize module on Debian Wheezy.
+  * Issue #2127237 - New Relic: Unable to initialize module on Debian Wheezy.
   * Issue #2128233 - Rsyslog is still installed and consumes all CPU on OpenVZ.
   * Issue #2128819 - Better exceptions in too aggressive process monitoring.
   * Make sure to never set any HTTP headers or redirects in the backend.
@@ -2313,7 +4016,7 @@
   * PHP: Properly uninstall all related packages when using source build.
   * PHP: Start more FPM workers on systems with enough RAM by default.
   * Purge bin logs before disabling them.
-  * Run NewRelic re-install early enough to avoid locking full-upgrade.
+  * Run New Relic re-install early enough to avoid locking full-upgrade.
   * Sync the load limits for spiders and backend tasks.
   * The Java/Jetty monitor should use higher allowed limits by default.
   * Update apticron message to recommend system mode instead of full upgrade.
@@ -2736,7 +4439,7 @@
   * Update csf.conf template.
   * Upgrade to ctools-6.x-1.10 in the hostmaster platform.
   * Use aliases in drush commands where possible.
-  * Use better name for non-web NewRelic app tracking.
+  * Use better name for non-web New Relic app tracking.
   * You must remove remote_import extension from the source server.
 
 

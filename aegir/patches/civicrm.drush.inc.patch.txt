@@ -1,0 +1,64 @@
+diff -burp a/civicrm/drupal/drush/civicrm.drush.inc b/civicrm/drupal/drush/civicrm.drush.inc
+--- a/civicrm/drupal/drush/civicrm.drush.inc	2014-09-18 11:46:17.000000000 +0000
++++ b/civicrm/drupal/drush/civicrm.drush.inc	2015-02-04 16:13:25.000000000 +0000
+@@ -257,6 +257,20 @@ function civicrm_drush_command() {
+  * Implementation of drush_hook_COMMAND_validate for command 'civicrm-install'
+  */
+ function drush_civicrm_install_validate() {
++
++  switch (substr(drush_core_version(), 0, 1)) {
++    case '7':
++      $sql = drush_get_class('Drush\Sql\Sql', array(), array(drush_drupal_major_version()));
++      $db_spec = $sql->get_db_spec();
++      break;
++    case '6':
++    case '5':
++      $db_spec = _drush_sql_get_db_spec();
++      break;
++    default:
++      drush_set_error('DRUSH_UNSUPPORTED_VERSION', dt('Drush !version is not supported'));
++  }
++
+   // TODO: Replace these with required options (Drush 5).
+   // Get the drupal credentials in case civi specific db info is not passed.
+   if (drush_get_option('db-url', FALSE)) {
+@@ -445,7 +459,19 @@ function _civicrm_generate_settings_file
+   }
+
+   $baseUrl = !$baseUrl ? ($GLOBALS['base_url']) : ($protocol . '://' . $baseUrl);
++
++  switch (substr(drush_core_version(), 0, 1)) {
++    case '7':
++      $sql = drush_get_class('Drush\Sql\Sql', array(), array(drush_drupal_major_version()));
++      $db_spec = $sql->get_db_spec();
++      break;
++    case '6':
++    case '5':
+   $db_spec = _drush_sql_get_db_spec();
++      break;
++    default:
++      drush_set_error('DRUSH_UNSUPPORTED_VERSION', dt('Drush !version is not supported'));
++  }
+
+   // Check version: since 4.1, Drupal6 must be used for the UF in D6
+   // The file civicrm-version.php appeared around 4.0, so it is safe to assume
+@@ -961,7 +987,19 @@ function drush_civicrm_restore() {
+   $restore_backup_dir = rtrim($restore_backup_dir, '/');
+
+   // get confirmation from user -
++  switch (substr(drush_core_version(), 0, 1)) {
++    case '7':
++      $sql = drush_get_class('Drush\Sql\Sql', array(), array(drush_drupal_major_version()));
++      $db_spec = $sql->get_db_spec();
++      break;
++    case '6':
++    case '5':
+   $db_spec = _drush_sql_get_db_spec();
++      break;
++    default:
++      drush_set_error('DRUSH_UNSUPPORTED_VERSION', dt('Drush !version is not supported'));
++  }
++
+   drush_print(dt("\nProcess involves :"));
+   drush_print(dt("1. Restoring '\$restore-dir/civicrm' directory to '!toDir'.", array('!toDir' => $civicrm_root_base)));
+   drush_print(dt("2. Dropping and creating '!db' database.", array('!db' => $db_spec['database'])));

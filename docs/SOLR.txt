@@ -13,8 +13,8 @@ different versions of Apache Solr and Jetty server, for maximum backward and
 future compatibility.
 
 By default, all pre-configured Solr Cores come with required solrconfig.xml,
-schema.xml and protwords.txt files compatible with Solr 3.x config series from
-Search API Solr search module for Solr 3.x and Solr 4.x, or Solr 1.x config
+schema.xml and protwords.txt files compatible with Solr 4.x config series from
+Search API Solr search module for Solr 4.x, or Solr 1.x config
 series for Solr 1.x
 
 You may want to replace them if you wish to use Solr with Drupal 6 sites,
@@ -100,3 +100,17 @@ It will migrate all cores as-is, so they will be available on the same port 8080
 previously used by Tomcat. It will also automatically install Jetty 7 with
 Solr 1.4.1 for you, even if you forgot to add required SR1 in the _XTRAS_LIST.
 
+This migration is forced since BOA-2.4.0, because we don't support Tomcat
+for a very long time already, so it shouldn't be used with BOA.
+
+
+NOTE ON RELATED ERRORS:
+
+ "Apache Solr Attachments Java executable not found
+  Could not execute a java command. You may need to set the path of
+  the correct java executable as the variable 'apachesolr_attachments_java'
+  in settings.php."
+
+To fix add in the site's local.settings.php file this line:
+
+  $conf['apachesolr_attachments_java'] = '/usr/bin/java7 -Xms32m -Xmx64m';

@@ -1,5 +1,7 @@
 #!/usr/bin/perl
 
+### TODO - rewrite this legacy script in bash
+
 $| = 1;
 if (-f "/var/run/boa_wait.pid") {exit;}
 $fpm_status="CLEAN";
@@ -10,7 +12,9 @@ chomp($now_is);
 &javacheck;
 if ($fpm_status ne "CLEAN") {
   `kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')`;
-  `kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}')`;
+  if (-f "/etc/init.d/php56-fpm") {
+    `/etc/init.d/php56-fpm restart`;
+  }
   if (-f "/etc/init.d/php55-fpm") {
     `/etc/init.d/php55-fpm restart`;
   }
@@ -20,14 +24,10 @@ if ($fpm_status ne "CLEAN") {
   if (-f "/etc/init.d/php53-fpm") {
     `/etc/init.d/php53-fpm restart`;
   }
-  if (-f "/etc/init.d/php52-fpm") {
-    `/etc/init.d/php52-fpm restart`;
-  }
   sleep(2);
 }
 if ($java_status ne "CLEAN") {
   `kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')`;
-  `kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}')`;
   sleep(2);
   if (-f "/etc/default/jetty9" && -f "/etc/init.d/jetty9") {
     `/etc/init.d/jetty9 start`;
@@ -37,9 +37,6 @@ if ($java_status ne "CLEAN") {
   }
   if (-f "/etc/default/jetty7" && -f "/etc/init.d/jetty7") {
     `/etc/init.d/jetty7 start`;
-  }
-  if (-f "/etc/default/tomcat" && -f "/etc/init.d/tomcat") {
-    `/etc/init.d/tomcat start`;
   }
 }
 `touch /var/xdrago/log/last-run-locked`;
@@ -124,4 +121,4 @@ local(@MYARR) = `grep "Apache Solr" /var/log/syslog | tail --lines=999 2>&1`;
     }
   }
 }
-###EOF2014###
+###EOF2015###

@@ -5,7 +5,7 @@
 ###
 ###  BOA Meta Installer
 ###
-###  Copyright (C) 2010-2014 Omega8.cc
+###  Copyright (C) 2010-2015 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -25,7 +25,7 @@
 ###  GNU GPL along with this program.
 ###  If not, see http://www.gnu.org/licenses/
 ###
-###  Code: https://code.aegir.cc/aegir
+###  Code: https://github.com/omega8cc/boa
 ###
 ###----------------------------------------###
 
@@ -43,90 +43,616 @@
 
 export PATH=$PATH:/opt/local/bin
 SHELL=/bin/bash
-_TODAY=`date +%y%m%d`
+export DEBIAN_FRONTEND=noninteractive
 
-setup ()
-{
-  if [ ! -e "/etc/resolv.conf" ] ; then
-    echo "nameserver 8.8.8.8" >/etc/resolv.conf
-    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
-  else
-    _RESOLV_TEST=$(grep "nameserver" /etc/resolv.conf)
-    if [[ "$_RESOLV_TEST" =~ "nameserver" ]] ; then
-      _DO_NOTHING=YES
-    else
+_TODAY=$(date +%y%m%d 2>&1)
+_X_VERSION="BOA-2.4.3-stable"
+#
+saCoreN="SA-CORE-2014-005"
+saCoreS="${saCoreN}-D7"
+saIncDb="includes/database/database.inc"
+saPatch="/var/xdrago/conf/${saCoreS}.patch"
+#
+barCnf="/root/.barracuda.cnf"
+crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+optBin="/opt/local/bin"
+pthLog="/var/xdrago/log"
+tBn="tools/bin"
+vBs="/var/backups"
+
+fix_dns_settings() {
+  dnsLi="/root/.local.dns.IP.list"
+  mkdir -p ${vBs}
+  rm -f ${vBs}/resolv.conf.tmp
+  if [ -e "/etc/resolv.conf" ]; then
+    cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+  fi
+  if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
+    for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
+      if [ -e "${Pre}" ] && [ -f "${Pre}" ] && [ ! -L "${Pre}" ]; then
+        cp -a ${Pre} ${vBs}/resolv.conf.vanilla
+      fi
+    done
+  fi
+  if [ ! -e "${vBs}/resolv.conf.vanilla" ] \
+    && [ -e "${vBs}/resolv.conf.tmp" ] ; then
+    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
-      echo "nameserver 8.8.8.8" >/etc/resolv.conf
-      echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.tmp ${vBs}/resolv.conf.vanilla
     fi
   fi
-  _CURL_TEST=$(curl -L --max-redirs 10 -k -s -I "http://files.aegir.cc" 2> /dev/null)
-  if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
+  sed -i "/^$/d" ${vBs}/resolv.conf.vanilla &> /dev/null
+  if [ -e "${vBs}/resolv.conf.vanilla" ]; then
+    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
+      rm -f /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.vanilla /etc/resolv.conf
+    fi
+  else
+    if [ -e "${vBs}/resolv.conf.tmp" ] \
+      && [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
+      rm -f /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
+    fi
+  fi
+  if [ -e "/etc/pdnsd.conf" ]; then
+    if [ -e "${dnsLi}" ]; then
+      sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
+      sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
+      _BROKEN_DNS_TEST_X=$(grep "\." ${dnsLi} 2>&1)
+      if [ -z "${_BROKEN_DNS_TEST_X}" ]; then
+        echo "        label = \"google-servers\";" > ${dnsLi}
+        echo "        ip=8.8.8.8;" >> ${dnsLi}
+        echo "        ip=8.8.4.4;" >> ${dnsLi}
+      fi
+    fi
+    _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
+    _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
+    if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
+      || [ -e "/root/.use.default.nameservers.cnf" ] \
+      || [ -e "/root/.use.local.nameservers.cnf" ] \
+      || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]]; then
+      echo "        label = \"google-servers\";" > ${dnsLi}
+      for _IP in `cat /etc/resolv.conf \
+        | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
+        | cut -d ' ' -f2 \
+        | sort \
+        | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
+      sed -i "s/ip=.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
+      sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
+      sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
+      _BROKEN_DNS_TEST_Y=$(grep "\." ${dnsLi} 2>&1)
+      if [ -z "${_BROKEN_DNS_TEST_Y}" ]; then
+         echo "        ip=8.8.8.8;" >> ${dnsLi}
+         echo "        ip=8.8.4.4;" >> ${dnsLi}
+      fi
+      ### echo debug dns A
+      sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+d;};' /etc/pdnsd.conf
+      resolvconf -u         &> /dev/null
+      service pdnsd restart &> /dev/null
+      pdnsd-ctl empty-cache &> /dev/null
+    fi
+  fi
+}
+
+check_dns_settings() {
+  if [ -e "/root/.use.default.nameservers.cnf" ]; then
+    _USE_DEFAULT_DNS=YES
+    rm -f /root/.local.dns.IP.list
+  fi
+  if [ -e "/root/.use.local.nameservers.cnf" ]; then
+    _USE_PROVIDER_DNS=YES
+  else
+    _REMOTE_DNS_TEST=$(host -a files.aegir.cc 8.8.8.8 -w 10 2>&1)
+  fi
+  if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
+    || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
+    || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
+    _CTRL_DNS_TEST=$(host -a files.aegir.cc 2>&1)
+    if [[ ! "${_CTRL_DNS_TEST}" =~ "104.245.208.226" ]] \
+      || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
+      || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
+      || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
+      fix_dns_settings
+    fi
+  fi
+}
+
+update_agents() {
+
+  if [ "${_BENG_VS}" = "YES" ] \
+    && [ -e "/var/xdrago" ]; then
+    InTest=$(ls /data/disk/ | wc -l 2>&1)
+    if [ "${InTest}" -gt "10" ]; then
+      echo ${InTest} > /root/.tg.cnf
+    else
+      rm -f /root/.tg.cnf
+      echo ${InTest} > /root/.intest.cnf
+    fi
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/runner.fixed.a242i.pid" ]; then
+    mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
+    curl ${crlGet} "${urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
+    if [ -e "/var/xdrago/runner.sh" ]; then
+      chmod 700 /var/xdrago/runner.sh
+      chown root:root /var/xdrago/runner.sh
+      touch ${pthLog}/runner.fixed.a242i.pid
+    else
+      mv -f /var/xdrago/runner.sh.old /var/xdrago/runner.sh
+    fi
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/minute.fixed.a242i.pid" ]; then
+    mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
+    curl ${crlGet} "${urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
+    if [ -e "/var/xdrago/minute.sh" ]; then
+      chmod 700 /var/xdrago/minute.sh
+      chown root:root /var/xdrago/minute.sh
+      touch ${pthLog}/minute.fixed.a242i.pid
+    else
+      mv -f /var/xdrago/minute.sh.old /var/xdrago/minute.sh
+    fi
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/clear.fixed.a242i.pid" ]; then
+    mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
+    curl ${crlGet} "${urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
+    if [ -e "/var/xdrago/clear.sh" ]; then
+      chmod 700 /var/xdrago/clear.sh
+      chown root:root /var/xdrago/clear.sh
+      touch ${pthLog}/clear.fixed.a242i.pid
+    else
+      mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
+    fi
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/daily.fixed.a242i.pid" ]; then
+    mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
+    curl ${crlGet} "${urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
+    if [ -e "/var/xdrago/daily.sh" ]; then
+      chmod 700 /var/xdrago/daily.sh
+      chown root:root /var/xdrago/daily.sh
+      touch ${pthLog}/daily.fixed.a242i.pid
+    else
+      mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
+    fi
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/manage_ltd_users.fixed.a242i.pid" ]; then
+    mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
+    curl ${crlGet} "${urlHmr}/tools/system/manage_ltd_users.sh" \
+      -o /var/xdrago/manage_ltd_users.sh
+    if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
+      chmod 700 /var/xdrago/manage_ltd_users.sh
+      chown root:root /var/xdrago/manage_ltd_users.sh
+      touch ${pthLog}/manage_ltd_users.fixed.a242i.pid
+    else
+      mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
+    fi
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/proc_num_ctrl.fixed.a242i.pid" ]; then
+    mv -f /var/xdrago/proc_num_ctrl.cgi /var/xdrago/proc_num_ctrl.cgi.old
+    curl ${crlGet} "${urlHmr}/tools/system/proc_num_ctrl.cgi" \
+      -o /var/xdrago/proc_num_ctrl.cgi
+    if [ -e "/var/xdrago/proc_num_ctrl.cgi" ]; then
+      chmod 700 /var/xdrago/proc_num_ctrl.cgi
+      chown root:root /var/xdrago/proc_num_ctrl.cgi
+      touch ${pthLog}/proc_num_ctrl.fixed.a242i.pid
+    else
+      mv -f /var/xdrago/proc_num_ctrl.cgi.old /var/xdrago/proc_num_ctrl.cgi
+    fi
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/websh.fixed.a242i.pid" ]; then
+    mv -f /bin/websh /var/xdrago/websh.sh.old
+    curl ${crlGet} "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh
+    if [ -e "/bin/websh" ]; then
+      chmod 755 /bin/websh
+      chown root:root /bin/websh
+      touch ${pthLog}/websh.fixed.a242i.pid
+    else
+      mv -f /var/xdrago/websh.sh.old /bin/websh
+    fi
+  fi
+}
+
+fix_core_dgd() {
+  # https://www.drupal.org/SA-CORE-2014-005
+  ### sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf
+  if [ -e "/var/xdrago" ] \
+    && [ ! -e "${saPatch}" ]; then
+    mkdir -p /var/xdrago/conf
+    curl ${crlGet} "${urlHmr}/patches/7-core/${saCoreS}.patch" -o ${saPatch}
+  fi
+  if [ -e "/var/xdrago" ] \
+    && [ -e "${saPatch}" ] \
+    && [ ! -e "${pthLog}/${saCoreN}-fixed-d7.log" ]; then
+    if [ -d "/data/all/000/core" ]; then
+      for Core in `find /data/all/000/core/drupal-7* \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        cd ${Core}
+        patch -p1 < ${saPatch} &> /dev/null
+      done
+    elif [ -d "/data/disk/all/000/core" ]; then
+      for Core in `find /data/disk/all/000/core/drupal-7* \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        cd ${Core}
+        patch -p1 < ${saPatch} &> /dev/null
+      done
+    fi
+    touch ${pthLog}/${saCoreN}-fixed-d7.log
+    cd
+  fi
+  # https://www.drupal.org/SA-CORE-2014-005 for ancient platforms
+  if [ -e "/var/xdrago" ] \
+    && [ -e "${saPatch}" ]; then
+    if [ -d "/data/all" ] \
+      && [ ! -e "${pthLog}/legacy-${saCoreN}-fixed-d7.log" ]; then
+      for File in `find /data/all/*/*/${saIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] && [ ! -d "${Core}/core" ]; then
+          cd ${Core}
+          patch -p1 < ${saPatch} &> /dev/null
+        fi
+      done
+      touch ${pthLog}/legacy-${saCoreN}-fixed-d7.log
+    elif [ -d "/data/disk/all" ] \
+      && [ ! -e "${pthLog}/legacy-${saCoreN}-fixed-d7eee.log" ]; then
+      for File in `find /data/disk/all/*/*/${saIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] && [ ! -d "${Core}/core" ]; then
+          cd ${Core}
+          patch -p1 < ${saPatch} &> /dev/null
+        fi
+      done
+      touch ${pthLog}/legacy-${saCoreN}-fixed-d7eee.log
+    fi
+    cd
+  fi
+  # https://www.drupal.org/SA-CORE-2014-005 for custom platforms
+  if [ -e "/var/xdrago" ] \
+    && [ -e "${saPatch}" ]; then
+    if [ -d "/data/disk" ] \
+      && [ ! -e "${pthLog}/batch-custom-${saCoreN}-fixed-d7.log" ]; then
+      for File in `find /data/disk/*/static/*/${saIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] \
+          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
+          cd ${Core}
+          patch -p1 < ${saPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreS}-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/${saIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] \
+          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
+          cd ${Core}
+          patch -p1 < ${saPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreS}-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/*/${saIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] \
+          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
+          cd ${Core}
+          patch -p1 < ${saPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreS}-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/*/*/${saIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] \
+          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
+          cd ${Core}
+          patch -p1 < ${saPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreS}-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/*/*/*/${saIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] \
+          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
+          cd ${Core}
+          patch -p1 < ${saPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saCoreS}-fix.info
+        fi
+      done
+    fi
+    cd
+    touch ${pthLog}/batch-custom-${saCoreN}-fixed-d7.log
+  fi
+}
+
+fix_alt() {
+  if [ -x "/usr/lib/jvm/java-6-openjdk/jre/bin/java" ]; then
+    if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
+      ln -sf /usr/lib/jvm/java-6-openjdk/jre/bin/java /etc/alternatives/java
+      ln -sf /etc/alternatives/java /usr/bin/java
+      echo fixed java symlinks
+    fi
+  fi
+}
+
+find_fast_mirror() {
+  isNetc=$(which netcat 2>&1)
+  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    apt-get update -qq &> /dev/null
+    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    sleep 3
+  fi
+  ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${ffMirr}" ]; then
+    ffList="${vBs}/boa-mirrors.txt"
+    mkdir -p ${vBs}
+    if [ ! -e "${ffList}" ]; then
+      echo "jp.files.aegir.cc"  > ${ffList}
+      echo "nl.files.aegir.cc" >> ${ffList}
+      echo "uk.files.aegir.cc" >> ${ffList}
+      echo "us.files.aegir.cc" >> ${ffList}
+    fi
+    if [ -e "${ffList}" ]; then
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      _USE_MIR="${_CHECK_MIRROR}"
+      [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+    else
+      _USE_MIR="files.aegir.cc"
+    fi
+  else
+    _USE_MIR="files.aegir.cc"
+  fi
+  if ! netcat -w 10 -z "${_USE_MIR}" 80; then
+    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
+    _USE_MIR="files.aegir.cc"
+  fi
+  urlDev="http://${_USE_MIR}/dev"
+  urlHmr="http://${_USE_MIR}/versions/master/aegir"
+  urlStb="http://${_USE_MIR}/versions/stable"
+}
+
+setup() {
+
+  _BENG_VS=NO
+  _CHECK_HOST=$(uname -n 2>&1)
+  _VM_TEST=$(uname -a 2>&1)
+  if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
+    || [ -e "/root/.debug.cnf" ] \
+    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
+    _VMFAMILY="VS"
+  else
+    _VMFAMILY="XEN"
+  fi
+  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+    || [ "${_VMFAMILY}" = "VS" ]; then
+    _BENG_VS=YES
+  fi
+
+  sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
+  echo >>/etc/hosts
+  sed -i "/^$/d" /etc/hosts
+  if [ ! -e "/etc/resolv.conf" ]; then
+    if [ -e "${vBs}/resolv.conf.vanilla" ]; then
+      cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
+    fi
+    echo "nameserver 8.8.8.8" >>/etc/resolv.conf
+    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    check_dns_settings
+  else
+    check_dns_settings
+  fi
+  if [ -d "/var/cache/pdnsd" ] \
+    && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+    pdnsd-ctl empty-cache &> /dev/null
+  fi
+  find_fast_mirror
+  isCurl=$(curl --version 2>&1)
+  if [[ ! "$isCurl" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+    if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ]; then
+      echo "ERROR: Required cURL package is not available"
+      echo "ERROR: Please install it manually with 'apt-get install curl'"
+      exit 1
+    else
+      apt-get clean -qq &> /dev/null
+      apt-get update -qq &> /dev/null
+      apt-get install curl -y --force-yes --reinstall &> /dev/null
+    fi
+  fi
+  _CURL_TEST=$(curl -L -k -s \
+    --max-redirs 10 \
+    --retry 3 \
+    --retry-delay 10 \
+    -I "http://${_USE_MIR}" 2> /dev/null)
+  if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
+    echo "ERROR: ${_USE_MIR} is not available, please try later"
+    exit 1
+  else
+    urlHmr="http://${_USE_MIR}/versions/master/aegir"
+  fi
+  _LSB_TEST=$(which lsb_release 2> /dev/null)
+  if [[ "$_LSB_TEST" =~ "lsb_release" ]]; then
     _DO_NOTHING=YES
   else
     apt-get clean -qq &> /dev/null
     apt-get update -qq &> /dev/null
-    apt-get install curl -y --force-yes --reinstall &> /dev/null
-  fi
-  _ADD_LEGACY_SYMLINK=NO
-  _PATH_TEST=$(grep 'export PATH' /root/.bashrc)
-  if [[ "$_PATH_TEST" =~ "export PATH" ]] ; then
-    _DO_NOTHING=YES
-  else
-    echo "export PATH=\$PATH:/usr/local/bin:/opt/local/bin" >> /root/.bashrc
-    _ADD_LEGACY_SYMLINK=YES
-  fi
-  _PATH_TEST=$(grep '/opt/local/bin' /root/.bashrc)
-  if [[ "$_PATH_TEST" =~ "/opt/local/bin" ]] ; then
-    _DO_NOTHING=YES
-  else
-    sed -i "s/^export PATH=.*/export PATH=\$PATH:\/usr\/local\/bin:\/opt\/local\/bin/g" /root/.bashrc &> /dev/null
-    _ADD_LEGACY_SYMLINK=YES
+    apt-get install lsb-release -y --force-yes --reinstall &> /dev/null
   fi
   mkdir -p /usr/local/bin
-  mkdir -p /opt/local/bin
-  rm -f /opt/local/bin/.{boa*,fix*}
-  rm -f /usr/local/bin/{barracuda*,boa*,drushextra*,octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
-  if [ ! -e "/data/disk" ] ; then
-    ln -s /opt/local/bin/boa /usr/local/bin/boa
+  mkdir -p ${optBin}
+  rm -f ${optBin}/.{boa*,fix*}
+  rm -f /usr/local/bin/{autoupboa*,barracuda*,boa*,ffmirror*}
+  rm -f /usr/local/bin/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
+  if [ ! -e "/data/disk" ]; then
+    ln -s ${optBin}/boa       /usr/local/bin/boa
+    ln -s ${optBin}/barracuda /usr/local/bin/barracuda
+    ln -s ${optBin}/octopus   /usr/local/bin/octopus
   fi
-  if [ "$_ADD_LEGACY_SYMLINK" = "YES" ] ; then
-    ln -s /opt/local/bin/barracuda /usr/local/bin/barracuda
-    ln -s /opt/local/bin/octopus /usr/local/bin/octopus
+  rm -f ${optBin}/{autoupboa*,barracuda*,boa*,ffmirror*,xboa*}
+  rm -f ${optBin}/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
+  curl ${crlGet} "${urlHmr}/${tBn}/autoupboa"      -o ${optBin}/autoupboa
+  curl ${crlGet} "${urlHmr}/${tBn}/barracuda"      -o ${optBin}/barracuda
+  curl ${crlGet} "${urlHmr}/${tBn}/boa"            -o ${optBin}/boa
+  curl ${crlGet} "${urlHmr}/${tBn}/ffmirror"       -o ${optBin}/ffmirror
+  curl ${crlGet} "${urlHmr}/${tBn}/octopus"        -o ${optBin}/octopus
+  curl ${crlGet} "${urlHmr}/${tBn}/randpass"       -o ${optBin}/randpass
+  curl ${crlGet} "${urlHmr}/${tBn}/sqlmagic"       -o ${optBin}/sqlmagic
+  curl ${crlGet} "${urlHmr}/${tBn}/syncpass"       -o ${optBin}/syncpass
+  curl ${crlGet} "${urlHmr}/${tBn}/thinkdifferent" -o ${optBin}/thinkdifferent
+  curl ${crlGet} "${urlHmr}/${tBn}/xboa"           -o ${optBin}/xboa
+  echo "### ${_TODAY} ###" >> ${optBin}/boa
+  echo "### ${_TODAY} ###" >> ${optBin}/barracuda
+  echo "### ${_TODAY} ###" >> ${optBin}/octopus
+  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+    echo "The duplicity backup is running!"
+  else
+    rm -f ${optBin}/{backboa,duobackboa}
+    curl ${crlGet} "${urlHmr}/${tBn}/backboa"      -o ${optBin}/backboa
+    curl ${crlGet} "${urlHmr}/${tBn}/duobackboa"   -o ${optBin}/duobackboa
   fi
-  rm -f /opt/local/bin/{barracuda*,boa*,drushextra*,octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/barracuda"      -o /opt/local/bin/barracuda
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/boa"            -o /opt/local/bin/boa
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/octopus"        -o /opt/local/bin/octopus
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/randpass"       -o /opt/local/bin/randpass
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/sqlmagic"       -o /opt/local/bin/sqlmagic
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/syncpass"       -o /opt/local/bin/syncpass
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/thinkdifferent" -o /opt/local/bin/thinkdifferent
-  echo "### $_TODAY ###" >> /opt/local/bin/boa
-  echo "### $_TODAY ###" >> /opt/local/bin/barracuda
-  echo "### $_TODAY ###" >> /opt/local/bin/octopus
-  chmod 700 /opt/local/bin/{boa,barracuda,octopus,syncpass}
-  chmod 755 /opt/local/bin/{randpass,sqlmagic,thinkdifferent}
+  chmod 700 ${optBin}/{autoupboa,backboa,barracuda,boa,duobackboa}
+  chmod 700 ${optBin}/{ffmirror,octopus,syncpass,xboa}
+  chmod 755 ${optBin}/{randpass,sqlmagic,thinkdifferent}
   echo
   echo "BOA Meta Installer setup completed"
-  echo "Please check INSTALL.txt and UPGRADE.txt at http://bit.ly/boa-docs for how-to"
+  echo "Please check INSTALL.txt and UPGRADE.txt at http://bit.ly/boa-docs"
   echo "Bye"
   echo
 }
 
+count_cpu() {
+  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO=${_CPU_INFO//[^0-9]/}
+  _NPROC_TEST=$(which nproc 2>&1)
+  if [ -z "${_NPROC_TEST}" ]; then
+    _CPU_NR="${_CPU_INFO}"
+  else
+    _CPU_NR=$(nproc 2>&1)
+  fi
+  _CPU_NR=${_CPU_NR//[^0-9]/}
+  if [ ! -z "${_CPU_NR}" ] \
+    && [ ! -z "${_CPU_INFO}" ] \
+    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
+    && [ "${_CPU_INFO}" -gt "0" ]; then
+    _CPU_NR="${_CPU_INFO}"
+  fi
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+    _CPU_NR=1
+  fi
+  mkdir -p /data/all
+  chmod 755 /data/all
+  echo ${_CPU_NR} > /data/all/cpuinfo
+  chmod 644 /data/all/cpuinfo
+}
+
 ###--------------------###
-if [ `whoami` = "root" ] ; then
+if [ `whoami` = "root" ]; then
+
+  if [ -e "/var/run/pdnsd.pid" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+    mkdir -p /etc/resolvconf/run/interface
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
+  fi
+
+  if [ ! -e "/data/all/cpuinfo" ]; then
+    count_cpu
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ]; then
+    if [ -e "${barCnf}" ]; then
+      source ${barCnf}
+    fi
+    if [ ! -z "${_SKYNET_MODE}" ] && [ "${_SKYNET_MODE}" = "OFF" ]; then
+      if [ -n "${SSH_TTY+x}" ]; then
+        echo "STATUS: Skynet Agent is Inactive!"
+        echo "STATUS: Please remove the _SKYNET_MODE=OFF line from"
+        echo "STATUS: ${barCnf} to enable me again."
+      else
+        exit 0
+      fi
+    else
+      if [ -n "${SSH_TTY+x}" ]; then
+        echo "STATUS: Skynet Agent is Active, OK!"
+        echo "STATUS: You can add the _SKYNET_MODE=OFF line in"
+        echo "STATUS: ${barCnf} to disable me, if needed."
+      fi
+    fi
+  fi
+  if [ -d "/.newrelic" ]; then
+    rm -rf /.newrelic
+  fi
   chmod a+w /dev/null
-  if [ ! -e "/dev/fd" ] ; then
-    if [ -e "/proc/self/fd" ] ; then
+  if [ ! -e "/dev/fd" ]; then
+    if [ -e "/proc/self/fd" ]; then
       rm -rf /dev/fd
       ln -s /proc/self/fd /dev/fd
     fi
   fi
   setup
+  fix_alt
+  if [ -e "/var/log/barracuda_log.txt" ]; then
+    _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+    if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
+      _VERSIONS_TEST_RESULT=OK
+      if [ -e "/root/.mstr.clstr.cnf" ] \
+        || [ -e "/root/.wbhd.clstr.cnf" ] \
+        || [ -e "/root/.debug.cnf" ] \
+        || [ -e "/root/.dbhd.clstr.cnf" ]; then
+        update_agents
+      fi
+    else
+      update_agents
+      fix_core_dgd
+    fi
+  fi
+  service cron reload
   exit 0
 else
-  msg "ERROR: This script should be ran as a root user - please `sudo -i` first"
+  echo "ERROR: This script should be ran as a root user"
   exit 1
 fi
 

@@ -3,9 +3,9 @@ Hello,
 Welcome to your new Aegir control panel for easy Drupal
 multi-sites deployment, development and management.
 
-Your Aegir control panel [version BOA-2.3.0-dev] is available at:
+Your Aegir control panel [version BOA-2.4.3] is available at:
 
-  https://aegir.dragon.ny.host8.biz
+  https://aegir.url.name
 
 Note:
 
@@ -82,17 +82,17 @@ Please follow our docs to import your site into Aegir properly:
   https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
 
 To make a site "live" using any domain name you manage, you
-need to point its A or CNAME DNS record to your VPS address,
-like below:
+need to point its A or CNAME DNS record to your Aegir instance
+public IP address, like shown below:
 
  yourdomain.com.           IN  A      166.84.6.231
   or
- subdomain.yourdomain.com. IN  CNAME  aegir.dragon.ny.host8.biz.
+ subdomain.yourdomain.com. IN  CNAME  aegir.url.name.
 
-You can also use any subdomain in *.aegir.dragon.ny.host8.biz
+You can also use any subdomain in *.aegir.url.name
 to create test sites, for example:
 
-  http://atrium.aegir.dragon.ny.host8.biz
+  http://atrium.aegir.url.name
 
 If you need our assistance in importing your site, please purchase
 this add-on service:
@@ -107,7 +107,7 @@ this add-on service:
 To add modules/themes to any of the enabled platforms,
 you need to log into your FTPS/SSH/SFTP account:
 
-  host: aegir.dragon.ny.host8.biz
+  host: aegir.url.name
   user: dragon.ftp
   pass: FN8rXcQn
   port: 21 (for FTPS connections)

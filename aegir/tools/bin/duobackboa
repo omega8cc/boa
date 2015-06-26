@@ -1,0 +1,412 @@
+#!/bin/bash
+
+###
+### Acknowledgements
+###
+### Thomas Sileo @ http://thomassileo.com
+### Original recipe: http://bit.ly/Zi9mZX
+###
+### Extended by Barracuda Team for BOA project
+###
+### See also:
+### http://www.nongnu.org/duplicity/index.html
+###
+
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
+
+_DUPLICITY_VRN="0.7.02"
+_BOTO_VRN="2.36.0"
+
+_NOW=$(date +%y%m%d-%H%M 2>&1)
+_DOW=$(date +%w 2>&1)
+_HST=$(uname -n 2>&1)
+_HST=${_HST//[^a-zA-Z0-9-.]/}
+_HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
+
+crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+
+if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+  echo "The duplicity backup is already running!"
+  echo "Active duplicity process detected..."
+  exit 1
+fi
+
+if [ -e "/root/.duobackboa.cnf" ]; then
+  source /root/.duobackboa.cnf
+fi
+
+if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
+  echo "
+
+  CONFIGURATION REQUIRED!
+
+  Add listed below eight (8) lines to your /root/.duobackboa.cnf file.
+  Required lines are marked with [R] and optional with [O]:
+
+    _AWS_KEY='Your AWS Access Key ID'     ### [R] From your AWS S3 settings
+    _AWS_SEC='Your AWS Secret Access Key' ### [R] From your AWS S3 settings
+    _AWS_PWD='Your Secret Password'       ### [R] Generate with 'openssl rand -base64 32'
+    _AWS_REG='Your AWS Region ID'         ### [R] By default 'us-east-1'
+    _AWS_TTL='Your Backup Rotation'       ### [O] By default '30D'
+    _AWS_FLC='Your Backup Full Cycle'     ### [O] By default '7D'
+    _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default '1'
+    _AWS_PRG='Your Backup Progress'       ### [O] By default 'NO' -- can be YES/NO
+
+    Supported values to use as _AWS_REG:
+
+      us-east-1
+      us-west-2
+      us-west-1
+      eu-west-1
+      eu-central-1
+      ap-southeast-1
+      ap-southeast-2
+      ap-northeast-1
+      sa-east-1
+
+    Source: http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
+
+    You have to use S3 Console at https://console.aws.amazon.com/s3/home
+    (before attempting to run initial backup!) to create S3 bucket in the
+    desired region with correct name as shown below:
+
+      daily.remote.${_HST}
+
+    While duplicity should be able to create new bucket on demand, in practice
+    it almost never works due to typical delays between various AWS regions.
+
+    Please run: 'duobackboa test' to make sure that the connection works.
+
+  "
+  exit 1
+fi
+
+if [ -z "${_AWS_REG}" ]; then
+  _AWS_REG="us-east-1"
+fi
+
+if [ "${_AWS_REG}" = "us-east-1" ] \
+  || [ "${_AWS_REG}" = "us-west-2" ] \
+  || [ "${_AWS_REG}" = "us-west-1" ]; then
+  _GOOD_AWS_REG=YES
+elif [ "${_AWS_REG}" = "eu-west-1" ] \
+  || [ "${_AWS_REG}" = "eu-central-1" ] \
+  || [ "${_AWS_REG}" = "ap-southeast-1" ]; then
+  _GOOD_AWS_REG=YES
+elif [ "${_AWS_REG}" = "ap-southeast-2" ] \
+  || [ "${_AWS_REG}" = "ap-northeast-1" ] \
+  || [ "${_AWS_REG}" = "sa-east-1" ]; then
+  _GOOD_AWS_REG=YES
+else
+  _AWS_REG="us-east-1"
+fi
+
+if [ "${_AWS_REG}" = "us-east-1" ]; then
+  _AWS_URL="s3-external-1.amazonaws.com"
+else
+  _AWS_URL="s3-${_AWS_REG}.amazonaws.com"
+fi
+
+_AWS_TTL=${_AWS_TTL//[^A-Z0-9]/}
+if [ -z "${_AWS_TTL}" ]; then
+  _AWS_TTL="30D"
+fi
+
+_AWS_FLC=${_AWS_FLC//[^A-Z0-9]/}
+if [ -z "${_AWS_FLC}" ]; then
+  _AWS_FLC="7D"
+fi
+
+_AWS_VLV=${_AWS_VLV//[^0-9]/}
+if [ -z "${_AWS_VLV}" ]; then
+  _AWS_VLV="1"
+fi
+
+_AWS_PRG=${_AWS_PRG//[^A-Z]/}
+_AWS_OPX="--s3-use-new-style"
+
+export AWS_ACCESS_KEY_ID="${_AWS_KEY}"
+export AWS_SECRET_ACCESS_KEY="${_AWS_SEC}"
+export PASSPHRASE="${_AWS_PWD}"
+
+SOURCE="/etc /var/aegir /var/www /home /data"
+EXCLUDE="--exclude /data/conf/arch"
+BUCKET="daily.remote.${_HST}"
+TARGET="s3://${_AWS_URL}/${BUCKET}"
+LOGFILE="/var/xdrago/log/${BUCKET}.log"
+
+backup() {
+  if [ ! -z "${_AWS_PRG}" ] && [ "${_AWS_PRG}" = "YES" ]; then
+    _AWS_OPX="--s3-use-new-style --progress"
+  fi
+  INCLUDE=""
+  for CDIR in ${SOURCE}; do
+    TMP=" --include  ${CDIR}"
+    INCLUDE="${INCLUDE}${TMP}"
+  done
+  if [ -e "/root/.cache/duplicity" ]; then
+    CacheTest=$(find /root/.cache/duplicity/* \
+      -maxdepth 1 \
+      -mindepth 1 \
+      -type f \
+      | sort 2>&1)
+    if [[ "$CacheTest" =~ "No such file or directory" ]] \
+      || [ -z "$CacheTest" ]; then
+      _DO_CLEANUP=NO
+    else
+      _DO_CLEANUP=YES
+    fi
+  fi
+  if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
+    && [ "${_DO_CLEANUP}" = "YES" ]; then
+    duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
+  fi
+  duplicity -v ${_AWS_VLV} --volsize 100 \
+    --allow-source-mismatch \
+    --full-if-older-than ${_AWS_FLC} \
+    --asynchronous-upload ${_AWS_OPX} \
+    ${INCLUDE} ${EXCLUDE} --exclude '**' / ${TARGET} > ${LOGFILE}
+  if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
+    && [ "${_DO_CLEANUP}" = "YES" ]; then
+    duplicity -v ${_AWS_VLV} remove-older-than ${_AWS_TTL} \
+      --force ${_AWS_OPX} ${TARGET} >> ${LOGFILE}
+    duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET} >> ${LOGFILE}
+  fi
+  if [ -n "${_MY_EMAIL}" ] && [ "${_AWS_VLV}" -lt "3" ]; then
+    mail -s "Daily backup: ${_HST} $(date 2>&1)" ${_MY_EMAIL} < ${LOGFILE}
+  fi
+  cat /var/xdrago/log/${BUCKET}.log >> /var/xdrago/log/${BUCKET}.archive.log
+}
+
+conn_test() {
+  echo "Running AWS connection test, please wait..."
+  ConnTest=$(duplicity -v 2 cleanup --dry-run \
+    --timeout 1 ${_AWS_OPX} ${TARGET} 2>&1)
+  if [[ "$ConnTest" =~ "No connection to backend" ]]; then
+    echo
+    echo "  Sorry, I can't connect to ${TARGET}"
+    echo "  Please check if the bucket has expected name: ${BUCKET}"
+    echo "  This bucket must already exist in the ${_AWS_REG} AWS region"
+    echo "  http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region"
+    echo "  Bye"
+    echo
+    exit 1
+  else
+    echo "OK, I can connect to ${TARGET}"
+  fi
+}
+
+status() {
+  duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET}
+}
+
+cleanup() {
+  duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
+  duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET}
+}
+
+list() {
+  duplicity -v ${_AWS_VLV} list-current-files ${_AWS_OPX} ${TARGET}
+}
+
+restore() {
+  if [ $# = 2 ]; then
+    duplicity -v ${_AWS_VLV} restore \
+      --file-to-restore $1 ${_AWS_OPX} ${TARGET} $2
+  else
+    duplicity -v ${_AWS_VLV} restore \
+      --file-to-restore $1 --time $2 ${_AWS_OPX} ${TARGET} $3
+  fi
+}
+
+retrieve() {
+  if [ $# = 3 ]; then
+    BUCKET="daily.remote.$3"
+    TARGET="s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}"
+    duplicity restore --file-to-restore $1 ${_AWS_OPX} ${TARGET} $2
+  elif [ $# = 4 ]; then
+    BUCKET="daily.remote.$4"
+    TARGET="s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}"
+    duplicity restore --file-to-restore $1 --time $2 ${_AWS_OPX} ${TARGET} $3
+  fi
+}
+
+find_fast_mirror() {
+  isNetc=$(which netcat 2>&1)
+  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    apt-get update -qq &> /dev/null
+    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    sleep 3
+  fi
+  ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${ffMirr}" ]; then
+    ffList="/var/backups/boa-mirrors.txt"
+    mkdir -p /var/backups
+    if [ ! -e "${ffList}" ]; then
+      echo "jp.files.aegir.cc"  > ${ffList}
+      echo "nl.files.aegir.cc" >> ${ffList}
+      echo "uk.files.aegir.cc" >> ${ffList}
+      echo "us.files.aegir.cc" >> ${ffList}
+    fi
+    if [ -e "${ffList}" ]; then
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      _USE_MIR="${_CHECK_MIRROR}"
+      [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+    else
+      _USE_MIR="files.aegir.cc"
+    fi
+  else
+    _USE_MIR="files.aegir.cc"
+  fi
+  if ! netcat -w 10 -z "${_USE_MIR}" 80; then
+    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
+    _USE_MIR="files.aegir.cc"
+  fi
+  urlDev="http://${_USE_MIR}/dev"
+  urlHmr="http://${_USE_MIR}/versions/master/aegir"
+  urlStb="http://${_USE_MIR}/versions/stable"
+}
+
+install() {
+  _DUPLICITY_ITD=$(duplicity --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}' 2>&1)
+  if [ "${_DUPLICITY_ITD}" = "${_DUPLICITY_VRN}" ]; then
+    echo "Latest duplicity version ${_DUPLICITY_VRN} already installed"
+  else
+    echo "Installing duplicity dependencies..."
+    cd
+    find_fast_mirror
+    apt-get clean -qq                    &> /dev/null
+    apt-get update -qq                   &> /dev/null
+    aptitude purge duplicity -y          &> /dev/null
+    rm -f -r /usr/local/lib/python2.7/dist-packages/boto*
+    rm -f -r /usr/local/lib/python2.6/dist-packages/boto*
+    rm -f -r /usr/local/lib/python2.7/dist-packages/duplicity*
+    rm -f -r /usr/local/lib/python2.6/dist-packages/duplicity*
+    apt-get install librsync-dev -y      &> /dev/null
+    apt-get install python-dev -y        &> /dev/null
+    apt-get install python-lockfile -y   &> /dev/null
+    apt-get install python-setuptools -y &> /dev/null
+    apt-get install s3cmd -y             &> /dev/null
+    mkdir -p /var/opt
+    rm -f -r /var/opt/{boto*,duplicity*}
+    cd /var/opt
+    fe="boto-${_BOTO_VRN}.tar.gz"
+    curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
+    tar xzf ${fe} &> /dev/null
+    cd /var/opt/boto-${_BOTO_VRN}
+    python setup.py install &> /dev/null
+    echo "Building duplicity version ${_DUPLICITY_VRN} from sources..."
+    cd /var/opt
+    fe="duplicity-${_DUPLICITY_VRN}.tar.gz"
+    curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
+    tar xzf ${fe} &> /dev/null
+    cd /var/opt/duplicity-${_DUPLICITY_VRN}
+    python setup.py build &> /dev/null
+    python setup.py install &> /dev/null
+    cd
+    rm -f -r /var/opt/{boto*,duplicity*}
+    echo "Installation complete!"
+  fi
+}
+
+if [ "$1" = "backup" ]; then
+  n=$((RANDOM%1800+80))
+  echo "waiting $n seconds before running backup..."
+  sleep $n
+  conn_test
+  if test -f /var/run/${_HST}_backup.pid ; then
+    touch /var/xdrago/log/wait_${_HST}_backup.log
+    echo "The duplicity backup is running already?"
+    echo "Existing /var/run/${_HST}_backup.pid found..."
+    echo "But no active duplicity process detected..."
+    exit 1
+  else
+    touch /var/run/${_HST}_backup.pid
+    echo "The duplicity backup is starting now..."
+    backup
+    echo "The duplicity backup is complete!"
+    touch /var/xdrago/log/run_${_HST}_backup.log
+    rm -f /var/run/${_HST}_backup.pid
+  fi
+elif [ "$1" = "install" ]; then
+  install
+elif [ "$1" = "cleanup" ]; then
+  conn_test
+  cleanup
+elif [ "$1" = "list" ]; then
+  conn_test
+  list
+elif [ "$1" = "restore" ]; then
+  conn_test
+  if [ $# = 3 ]; then
+    restore $2 $3
+  else
+    restore $2 $3 $4
+  fi
+elif [ "$1" = "retrieve" ]; then
+  conn_test
+  if [ $# = 4 ]; then
+    restore $2 $3 $4
+  elif [ $# = 5 ]; then
+    restore $2 $3 $4 $5
+  else
+    echo "You have to specify also hostname of the backed up system"
+    exit 1
+  fi
+elif [ "$1" = "status" ]; then
+  conn_test
+  status
+elif [ "$1" = "test" ]; then
+  conn_test
+else
+  echo "
+
+  INSTALLATION:
+
+  $ duobackboa install
+
+  USAGE:
+
+  $ duobackboa backup
+  $ duobackboa cleanup
+  $ duobackboa list
+  $ duobackboa status
+  $ duobackboa test
+  $ duobackboa restore file [time] destination
+  $ duobackboa retrieve file [time] destination hostname
+
+  RESTORE EXAMPLES:
+
+  Note: Be careful while restoring not to prepend a slash to the path!
+
+  Restoring a single file to tmp/
+  $ duobackboa restore data/disk/o1/backups/foo.tar.gz tmp/foo.tar.gz
+
+  Restoring an older version of a directory to tmp/ - interval or full date
+  $ duobackboa restore data/disk/o1/backups 7D8h8s tmp/backups
+  $ duobackboa restore data/disk/o1/backups 2014/11/11 tmp/backups
+
+  Restoring data on a different server
+  $ duobackboa retrieve data/disk/o1/backups/foo.tar.gz tmp/foo.tar.gz srv.foo.bar
+  $ duobackboa retrieve data/disk/o1/backups 2014/11/11 tmp/backups srv.foo.bar
+
+  Note: The srv.foo.bar is a hostname of the BOA system backed up before.
+        In the 'retrieve' mode it will use the _AWS_* variables configured
+        in the current system /root/.duobackboa.cnf file - so make sure to edit
+        this file to set/replace temporarily all four required _AWS_* variables
+        used originally on the host you are retrieving data from! You should
+        keep them secret and manage in your offline password manager app.
+
+  "
+  exit 1
+fi
+
+export AWS_ACCESS_KEY_ID=
+export AWS_SECRET_ACCESS_KEY=
+export PASSPHRASE=
+
+exit 0

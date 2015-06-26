@@ -108,7 +108,7 @@ test -x $DAEMON || {
 }
 
 # Include nginx defaults if available
-if [ -f /etc/default/nginx ] ; then
+if [ -f /etc/default/nginx ]; then
     . /etc/default/nginx
 fi
 
@@ -120,7 +120,7 @@ fi
 #------------------------------------------------------------------------------
 
 setFilePerms(){
-    if [ -f $PIDSPATH/$PIDFILE ] ; then
+    if [ -f $PIDSPATH/$PIDFILE ]; then
         chmod 400 $PIDSPATH/$PIDFILE
     fi
 }
@@ -134,11 +134,11 @@ getPSCount() {
 }
 
 isRunning() {
-    if [ $1 ] ; then
+    if [ $1 ]; then
         pidof_daemon $1
         PID=$?
 
-        if [ $PID -gt 0 ] ; then
+        if [ $PID -gt 0 ]; then
             return 1
         else
             return 0
@@ -147,7 +147,7 @@ isRunning() {
         pidof_daemon
         PID=$?
 
-        if [ $PID -gt 0 ] ; then
+        if [ $PID -gt 0 ]; then
             return 1
         else
             return 0
@@ -156,20 +156,20 @@ isRunning() {
 }
 
 #courtesy of php-fpm
-wait_for_pid () {
+wait_for_pid() {
     try=0
 
-    while test $try -lt 35 ; do
+    while test $try -lt 35; do
         case "$1" in
             'created')
-            if [ -f "$2" ] ; then
+            if [ -f "$2" ]; then
                 try=''
                 break
             fi
             ;;
 
             'removed')
-            if [ ! -f "$2" ] ; then
+            if [ ! -f "$2" ]; then
                 try=''
                 break
             fi
@@ -185,7 +185,7 @@ status(){
     isRunning
     isAlive=$?
 
-    if [ "${isAlive}" -eq $TRUE ] ; then
+    if [ "${isAlive}" -eq $TRUE ]; then
         log_warning_msg "$DESCRIPTION found running with processes:  `pidof $PS`"
         rc=0
     else
@@ -197,13 +197,13 @@ status(){
 }
 
 removePIDFile(){
-    if [ $1 ] ; then
-        if [ -f $1 ] ; then
+    if [ $1 ]; then
+        if [ -f $1 ]; then
             rm -f $1
         fi
     else
         #Do default removal
-        if [ -f $PIDSPATH/$PIDFILE ] ; then
+        if [ -f $PIDSPATH/$PIDFILE ]; then
             rm -f $PIDSPATH/$PIDFILE
         fi
     fi
@@ -215,7 +215,7 @@ start() {
     isRunning
     isAlive=$?
 
-    if [ "${isAlive}" -eq $TRUE ] ; then
+    if [ "${isAlive}" -eq $TRUE ]; then
         log_end_msg $SCRIPT_ERROR
         rc=0
     else
@@ -236,12 +236,12 @@ stop() {
     isRunning
     isAlive=$?
 
-    if [ "${isAlive}" -eq $TRUE ] ; then
+    if [ "${isAlive}" -eq $TRUE ]; then
         start-stop-daemon --stop --quiet --pidfile $PIDSPATH/$PIDFILE
 
         wait_for_pid 'removed' $PIDSPATH/$PIDFILE
 
-        if [ -n "$try" ] ; then
+        if [ -n "$try" ]; then
             log_end_msg $SCRIPT_ERROR
             rc=0 # lsb states 1, but under status it is 2 (which is more prescriptive). Deferring to standard.
         else
@@ -264,7 +264,7 @@ reload() {
 
     isRunning
 
-    if [ $? -eq $TRUE ] ; then
+    if [ $? -eq $TRUE ]; then
         kill -HUP `cat $PIDSPATH/$PIDFILE`
         log_end_msg $SCRIPT_OK
         rc=0
@@ -282,14 +282,14 @@ quietupgrade() {
     isRunning
     isAlive=$?
 
-    if [ "${isAlive}" -eq $TRUE ] ; then
+    if [ "${isAlive}" -eq $TRUE ]; then
         kill -USR2 `cat $PIDSPATH/$PIDFILE`
         kill -WINCH `cat $PIDSPATH/$PIDFILE.oldbin`
 
         isRunning
         isAlive=$?
 
-        if [ "${isAlive}" -eq $TRUE ] ; then
+        if [ "${isAlive}" -eq $TRUE ]; then
             kill -QUIT `cat $PIDSPATH/$PIDFILE.oldbin`
             wait_for_pid 'removed' $PIDSPATH/$PIDFILE.oldbin
             removePIDFile $PIDSPATH/$PIDFILE.oldbin
@@ -327,7 +327,7 @@ terminate() {
     [ -e $PIDSPATH/$PIDFILE ] && PIDS2=`cat $PIDSPATH/$PIDFILE`
 
     for i in $PIDS; do
-        if [ "$i" = "$PIDS2" ] ; then
+        if [ "$i" = "$PIDS2" ]; then
             kill $i
             wait_for_pid 'removed' $PIDSPATH/$PIDFILE
             removePIDFile
@@ -351,7 +351,7 @@ pidof_daemon() {
     [ -e $PIDSPATH/$PIDFILE ] && PIDS2=`cat $PIDSPATH/$PIDFILE`
 
     for i in $PIDS; do
-        if [ "$i" = "$PIDS2" ] ; then
+        if [ "$i" = "$PIDS2" ]; then
             return 1
         fi
     done
@@ -369,7 +369,7 @@ case "$1" in
         ;;
     restart|force-reload)
         stop
-        # if [ $rc -ne 0 ] ; then
+        # if [ $rc -ne 0 ]; then
         #     script_exit
         # fi
         sleep 1

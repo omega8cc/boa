@@ -1,0 +1,28 @@
+From b72102ef8f5fb913d2f197067d8c2cd7ee3e99ed Mon Sep 17 00:00:00 2001
+From: Nedjo Rogers
+Date: Wed, 04 Feb 2015 19:27:16 +0000
+Subject: Issue #2293949: fix drush install time errors by enabling file_entity earlier.
+
+---
+diff --git a/openoutreach.info b/openoutreach.info
+index ea5540c..1471c80 100644
+--- a/openoutreach.info
++++ b/openoutreach.info
+@@ -14,7 +14,7 @@ dependencies[] = "dashboard"
+ dependencies[] = "dblog"
+ dependencies[] = "features"
+ dependencies[] = "field_ui"
+-dependencies[] = "file"
++dependencies[] = "file_entity"
+ dependencies[] = "help"
+ dependencies[] = "image"
+ dependencies[] = "libraries"
+@@ -85,4 +85,4 @@ subprofiles[membership][features][debut_section] = TRUE
+ subprofiles[membership][features][debut_seo] = TRUE
+ subprofiles[membership][features][debut_social] = TRUE
+ subprofiles[membership][features][debut_wysiwyg] = TRUE
+-subprofiles[membership][features][openoutreach_front_page] = TRUE
+\ No newline at end of file
++subprofiles[membership][features][openoutreach_front_page] = TRUE
+--
+cgit v0.9.2

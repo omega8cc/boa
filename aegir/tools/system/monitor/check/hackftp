@@ -1,5 +1,7 @@
 #!/usr/bin/perl
 
+### TODO - rewrite this legacy script in bash
+
 ###
 ### This is an auth abuse monitor for ftp.
 ###
@@ -105,4 +107,4 @@ sub check_ip
     }
   }
 }
-###EOF2014###
+###EOF2015###

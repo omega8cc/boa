@@ -1,0 +1,705 @@
+
+###----------------------------------------###
+### PHP-FPM VERSION                        ###
+###----------------------------------------###
+###
+### You can choose PHP-FPM version per Aegir
+### Satellite Instance - both on install and
+### upgrade.
+###
+### Available options (if installed):
+###
+### _PHP_FPM_VERSION=5.6
+### _PHP_FPM_VERSION=5.5
+### _PHP_FPM_VERSION=5.4
+### _PHP_FPM_VERSION=5.3
+###
+### Note that 5.5 will be set automatically
+### if you specify any other, not installed
+### version.
+###
+_PHP_FPM_VERSION=5.5
+
+
+###----------------------------------------###
+### PHP-CLI VERSION                        ###
+###----------------------------------------###
+###
+### You can choose PHP-CLI version per Aegir
+### Satellite Instance - both on install and
+### upgrade.
+###
+### Available options (if installed):
+###
+### _PHP_CLI_VERSION=5.6
+### _PHP_CLI_VERSION=5.5
+### _PHP_CLI_VERSION=5.4
+### _PHP_CLI_VERSION=5.3
+###
+### Note that 5.5 will be set automatically
+### if you specify any other, not installed
+### version.
+###
+_PHP_CLI_VERSION=5.5
+
+
+###----------------------------------------###
+### PLATFORMS INSTALL MODE                 ###
+###----------------------------------------###
+###
+### You can use wildcard "ALL" to install all
+### available platforms or configure the list
+### of platforms to be installed as explained
+### below.
+###
+### Note: the "ALL" wildcard is not default!
+###
+### When combined with _AUTOPILOT=YES option
+### you can speed up the process and still
+### control which platforms will be installed,
+### using the symbols listed below.
+###
+### D8B ----------- Drupal 8-beta
+### D8D ----------- Drupal 8-dev
+### D7P D7S D7D --- Drupal 7 prod/stage/dev
+### D6P D6S D6D --- Pressflow 6 p/s/d
+### AGV ----------- aGov
+### CME ----------- Commerce v.2
+### CS7 ----------- Commons 7
+### DCE ----------- Commerce v.1
+### DCS ----------- Commons 6
+### ERP ----------- ERPAL
+### FSR ----------- Feature Server
+### GDR ----------- Guardr
+### OA7 ----------- OpenAtrium D7
+### OAD ----------- OpenAid
+### OAY ----------- OpenAcademy
+### OBG ----------- OpenBlog
+### OCH ----------- OpenChurch 1
+### CH2 ----------- OpenChurch 2
+### ODS ----------- OpenDeals
+### OOH ----------- OpenOutreach
+### OPC ----------- OpenPublic
+### OSR ----------- OpenScholar
+### PPY ----------- Panopoly
+### RER ----------- Recruiter
+### RST ----------- Restaurant
+### UC7 ----------- Ubercart D7
+### UCT ----------- Ubercart D6
+###
+### Examples:
+###
+### _PLATFORMS_LIST=ALL
+### _PLATFORMS_LIST="ALL D8B"
+### _PLATFORMS_LIST="D7P D6P PPY RST OOH"
+###
+_PLATFORMS_LIST="D7P D7S D7D D6P D6S D6D"
+
+
+###----------------------------------------###
+### AUTOPILOT MODE                         ###
+###----------------------------------------###
+###
+### To disable all Yes/no prompts and just run
+### everything as-is, change this to YES.
+###
+### _AUTOPILOT=YES
+###
+_AUTOPILOT=NO
+
+
+###----------------------------------------###
+### UPGRADE MODE                           ###
+###----------------------------------------###
+###
+### To upgrade Hostmaster without installing
+### new platforms, change this to YES.
+###
+### Don't use this option for initial install.
+###
+### _HM_ONLY=YES
+###
+_HM_ONLY=NO
+
+
+###----------------------------------------###
+### DRUSH DEBUG MODE                       ###
+###----------------------------------------###
+###
+### When set to YES it will run this Satellite
+### Instance install/upgrade with -d option,
+### displaying complete Drush backend report.
+###
+### _DEBUG_MODE=YES
+###
+_DEBUG_MODE=NO
+
+
+###----------------------------------------###
+### FORCED IP MODE                         ###
+###----------------------------------------###
+###
+### To install or upgrade Aegir Satellite
+### Instance on any non-default IP address
+### available on your server/machine, please
+### define it below. For default, main IP
+### based install, leave this empty.
+###
+### _MY_OWNIP=123.45.67.89
+###
+_MY_OWNIP=""
+
+
+###----------------------------------------###
+### FORCE PREFERRED GIT REPOSITORY         ###
+###----------------------------------------###
+###
+### Use this when you are experiencing issues
+### trying to connect to the default github
+### repository. Valid options:
+###
+### _FORCE_GIT_MIRROR=github
+### _FORCE_GIT_MIRROR=gitlab
+###
+### Note: with forced mirror the script will
+### not try to connect and then switch to
+### alternate mirror. It will simply fail
+### if the forced mirror doesn't respond.
+###
+### We recommend github - it is much faster.
+###
+_FORCE_GIT_MIRROR=""
+
+
+###----------------------------------------###
+### DNS SETUP TEST                         ###
+###----------------------------------------###
+###
+### If you don't want to test your DNS
+### because of some custom local setup
+### you know is correct (like DynDNS)
+### but the script can't validate it with its
+### standard ifconfig tests, set this to:
+###
+### _DNS_SETUP_TEST=NO
+###
+### There is no guarantee it will work.
+###
+_DNS_SETUP_TEST=YES
+
+
+###----------------------------------------###
+### DATABASE DEFAULT HOST                  ###
+###----------------------------------------###
+###
+### If you prefer, you can set the database
+### to be connected via FQDN pointing to your
+### public IP instead of default "localhost",
+### but it will make it harder to migrate
+### sites with DB grants tied to the system
+### unique hostname.
+###
+### Note: the "FQDN" is a keyword. It will be
+### automatically replaced with your system
+### real hostname when used.
+###
+### NOTE: This distinction is very important,
+### because if you will specify your system
+### local hostname literally, BOA will use
+### the "Remote DB Server Mode" instead, as
+### explained further below.
+###
+### For local or Amazon based installs with
+### local/dynamic IP address it is recommended
+### to use default "localhost" option.
+###
+### Supported options:
+###
+### _THIS_DB_HOST=localhost
+### _THIS_DB_HOST=FQDN
+###
+_THIS_DB_HOST=localhost
+
+
+###----------------------------------------###
+### REMOTE DB SERVER MODE                  ###
+###----------------------------------------###
+###
+### WARNING !!!
+###
+### THIS IS **HIGHLY EXPERIMENTAL** FEATURE.
+### EXPECT YOUR SYSTEM TO *EXPLODE* IF USED.
+###
+### Note: We may refer to the DB server
+###       also by using term 'DB head'
+###
+### If you will specify some remote DB server
+### name (not IP) or even local hostname, but
+### literally instead of via 'localhost' or
+### 'FQDN' keyword, it will turn on and use
+### the special REMOTE DB SERVER MODE.
+###
+### This mode will work only if the remote DB
+### server has been already configured with
+### the same default dummy mysql root password
+### as your Aegir system you are about to
+### install, and if the mysql port 3306 is
+### already open for incoming and outgoing
+### TCP connections on all servers expected
+### to communicate in this mode.
+###
+### HINT: you may want to add WEB head (Aegir)
+### IP as allowed on the DB head with standard
+### command: 'csf -a 12.34.56.789 my web head'
+###
+### Note that if the remote DB server defined
+### as hostname with a valid DNS entry will be
+### used, BOA will never change mysql root
+### password and also on initial install will
+### use this dummy password:
+###
+###   sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+###
+### The same password will be used for the
+### Aegir special DB user 'aegir_root'.
+###
+### Furthermore, BOA will not create separate
+### special DB users per Octopus instance
+### and all instances will use the same
+### 'aegir_root' DB user to manage databases
+### for hosted sites.
+###
+### You can later change this password for
+### both mysql 'root' and 'aegir_root' users
+### on the remote DB server, but you will
+### have to manually update them in every
+### Aegir instance (Master and Satellites)
+### db server node settings.
+###
+### However, BOA will always check and use
+### the password it will find in the special
+### file /root/.my.pass.txt during Master
+### and Satellite instances upgrade.
+###
+### If you will change the mysql root password
+### you **must** update it also in two files:
+###
+###   /root/.my.pass.txt
+###   /root/.my.cnf
+###
+### When installing BOA on a machine expected
+### to work as a remote DB server, you should
+### create a special file containing your
+### WEB head (Aegir) hostname:
+###
+###  /root/.remote.web.head.txt
+###
+### BOA will use this file to add required
+### DB GRANT for 'aegir_root' on the DB head
+### so the WEB head (Aegir) hosted on the
+### machine with hostname specified in this
+### file will be able to manage databases
+### remotely. Make sure that this file
+### is present only on the DB head, though.
+###
+### WARNING !!!
+###
+### Make sure that there is no remote, public,
+### unrestricted access via port 3306 to any
+### DB server used in this special mode!
+###
+### Available non-default option:
+###
+### _THIS_DB_HOST=remote.db.server.name
+###
+_THIS_DB_HOST=localhost
+
+
+###----------------------------------------###
+### DISTRO INITIAL VERSION NR              ###
+###----------------------------------------###
+###
+### By default every new Aegir Satellite
+### Instance will use shared code for its
+### platforms, created during previous Aegir
+### Satellite Instance install or upgrade,
+### resulting with new 00x number in the
+### /data/all directory.
+###
+### It is not always good, since you want
+### to keep the code shared between instances,
+### but you also don't want to create a new
+### instance with outdated code if your last
+### install/upgrade was performed a few months
+### ago.
+###
+### If you don't want to build a new Aegir
+### Satellite Instance with latest code, then
+### leave it at default value. Otherwise
+### change it to:
+###
+### _HOT_SAUCE=YES
+###
+_HOT_SAUCE=NO
+
+
+###----------------------------------------###
+### DISTRO USING EXISTING VERSION NR       ###
+###----------------------------------------###
+###
+### We changed the default to YES to avoid
+### creating many duplicated platforms on
+### every Aegir Satellite Instance upgrade,
+### when there is no new core, thus no reason
+### to create newer platforms for the same
+### distributions versions.
+###
+### It will also allow you to add some newer
+### platforms to the existing shared code,
+### which helps to keep your opcache memory
+### as low as possible without fragmentation.
+###
+### When set to _USE_CURRENT=NO it will force
+### creating new set (with increased serial
+### number) of *all* platforms on upgrade,
+### so it is useful *only* when there is
+### a newer Drupal core version released, or
+### when newer Pressflow head includes some
+### important fixes.
+###
+### Note: it will not work at all if you are
+### using _HOT_SAUCE=YES above, because
+### _HOT_SAUCE=YES forces new serial number
+### both on install and upgrade.
+###
+_USE_CURRENT=YES
+
+
+###----------------------------------------###
+### DELETE OLD EMPTY PLATFORMS             ###
+###----------------------------------------###
+###
+### Change to any integer greater than "0" to
+### automatically delete empty platforms with
+### no sites hosted, during daily cleanup,
+### if verified more than X days ago, where X
+### is a number of days defined below.
+### If "0" then this option is disabled.
+###
+_DEL_OLD_EMPTY_PLATFORMS="0"
+
+
+###----------------------------------------###
+### DELETE OLD BACKUPS                     ###
+###----------------------------------------###
+###
+### Change to any integer greater than "0" to
+### automatically delete backups stored in the
+### /data/disk/U/backups/ directory and in all
+### hosted sites backup_migrate directories,
+### during daily cleanup, if created more
+### than X days ago, where X is a number
+### of days defined below. If "0" then
+### this option is disabled.
+###
+_DEL_OLD_BACKUPS="0"
+
+
+###----------------------------------------###
+### DELETE OLD TMP FILES                   ###
+###----------------------------------------###
+###
+### Change to any integer greater than "0" to
+### automatically delete temporary files
+### in all hosted sites files/tmp/ and also
+### private/temp/ directories, during daily
+### cleanup, if created more than X days ago,
+### where X is a number of days defined below.
+### If "0" then this option is disabled.
+###
+_DEL_OLD_TMP="0"
+
+
+###----------------------------------------###
+### LOCALHOST ON LOCAL NETWORK             ###
+###----------------------------------------###
+###
+### When enabled, it will force your Nginx web
+### server to listen only on local IP:
+###
+### _LOCAL_NETWORK_IP=10.10.80.80
+###
+### This option is useful when your server is
+### available only in your local network
+### without any public IP address assigned/
+### available on any eth interface. This also
+### means it should work as a handy local
+### setup on your wirelessly connected laptop
+### or netbook, with improved DNS cache
+### support - pdnsd will save results in file.
+###
+### In this case you could use 127.0.1.1 as
+### _LOCAL_NETWORK_IP to avoid issues with
+### DHCP changing your assigned IP on the fly
+### and to avoid conflicts with some other
+### services listening on 127.0.0.1
+###
+### This option works only with initial
+### install and is disabled on upgrade.
+###
+### You should use this option only when you
+### already used it with initial Barracuda
+### install. It will override any defined
+### above _MY_OWNIP value and disable DNS test
+### automatically.
+###
+_LOCAL_NETWORK_IP=""
+
+
+###----------------------------------------###
+### STRONG PASSWORDS                       ###
+###----------------------------------------###
+###
+### Use YES only if both "randpass 32 esc"
+### and "randpass 32 alnum" commands produce
+### well looking, strong passwords and not
+### some binary garbage, which is typically
+### a sign of unreliable /dev/urandom.
+### See: https://drupal.org/node/1952042
+###
+### Configurable length: 8-128 or automatic
+### with keywords: YES (32), NO (8).
+###
+_STRONG_PASSWORDS=NO
+
+
+###----------------------------------------###
+### DB ENGINE AUTO-CONVERSION              ###
+###----------------------------------------###
+###
+### Automatic, running weekly DB conversion to
+### InnoDB or MyISAM for all sites hosted on
+### the instance via the 'sqlmagic' tool.
+###
+### If _SQL_CONVERT=NO is set, the conversion
+### mode can be individually enabled and more
+### precisely configured with variable:
+###
+###   sql_conversion_mode
+###
+### if set in the site and/or platform level,
+### active INI files:
+###
+###   boa_platform_control.ini
+###   boa_site_control.ini
+###
+### More info: https://omega8.cc/node/293
+###
+### Please note that if you will change it
+### to _SQL_CONVERT=YES, the system will
+### ignore sql_conversion_mode variables set
+### in the active INI files, and instead will
+### force conversion to InnoDB format in all
+### sites hosted on this instance.
+###
+### Note that it will run weekly on all sites
+### even if all tables have been already
+### converted to the desired format/engine.
+###
+### This behaviour has two purposes. It will
+### effectively run OPTIMIZE foo; on all,
+### even already converted tables via the
+### ALTER TABLE foo ENGINE=bar; command.
+### It will also make sure that any newly
+### created table will receive expected
+### format/engine, despite system or Drupal
+### core defaults.
+###
+### Accepted values:
+###
+###  innodb (forced globally)
+###  myisam (forced globally)
+###  YES    (same as innodb, forced globally)
+###  NO     (nothing forced globally)
+###
+_SQL_CONVERT=NO
+
+
+###----------------------------------------###
+### ADVANCED CONFIGURATION OPTIONS         ###
+###----------------------------------------###
+
+###
+### AUTO will default to value calculated
+### on the fly and based on available RAM.
+### You can force workers number for PHP-FPM.
+###
+_PHP_FPM_WORKERS=AUTO
+
+###
+### AUTO will not modify default TTL (180).
+### You can lower it to any number < 180.
+###
+_PHP_FPM_TIMEOUT=AUTO
+
+###
+### You can define custom list of functions
+### to disable besides those already denied
+### in the system level 'disable_functions'.
+###
+### Note: If this option is left empty, BOA
+### will deny access also to function:
+###
+###   passthru
+###
+### If _PHP_FPM_DENY is *not* empty, its value
+### will *replace* 'passthru', so any denied
+### function must be listed explicitly.
+###
+### Note that while it will improve security
+### it will also break modules which rely
+### on any of disabled functions.
+###
+### This option affects only this Satellite
+### Instance. It is not affected by the same
+### option set in the Barracuda Master.
+###
+### Example:
+###
+### _PHP_FPM_DENY="system,exec,shell_exec"
+###
+_PHP_FPM_DENY=""
+
+###
+### Define the amount of RAM you want to keep
+### reserved for other services installed which
+### are not controlled by BOA, so it will
+### assume that available RAM is the value of
+### ${_RAM} - ${_RESERVED_RAM} (in MB).
+###
+### Example for 256MB: _RESERVED_RAM=256
+###
+_RESERVED_RAM=0
+
+###----------------------------------------###
+### DON'T EDIT ANYTHING BELOW THIS LINE    ###
+###----------------------------------------###
+
+
+_AEGIR_VERSION="HEAD"
+_AEGIR_XTS_VRN="HEAD"
+_BRANCH_BOA="2.4.x-dev"
+_BRANCH_PRN="2.4.x-dev"
+_X_VERSION="BOA-2.4.4-dev"
+_BOA_REPO_NAME="boa"
+_BOA_REPO_GIT_URL="${gitHub}"
+
+
+###
+### Find the fastest mirror to use for downloads
+###
+find_fast_mirror() {
+  if [ -d "/var/cache/pdnsd" ] \
+    && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+    pdnsd-ctl empty-cache &> /dev/null
+  fi
+  isNetc=$(which netcat 2>&1)
+  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    apt-get update -qq &> /dev/null
+    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    sleep 3
+  fi
+  ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${ffMirr}" ]; then
+    ffList="/var/backups/boa-mirrors.txt"
+    mkdir -p /var/backups
+    if [ ! -e "${ffList}" ]; then
+      echo "jp.files.aegir.cc"  > ${ffList}
+      echo "nl.files.aegir.cc" >> ${ffList}
+      echo "uk.files.aegir.cc" >> ${ffList}
+      echo "us.files.aegir.cc" >> ${ffList}
+    fi
+    if [ -e "${ffList}" ]; then
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      _USE_MIR="${_CHECK_MIRROR}"
+      [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+    else
+      _USE_MIR="files.aegir.cc"
+    fi
+  else
+    _USE_MIR="files.aegir.cc"
+  fi
+  if ! netcat -w 10 -z "${_USE_MIR}" 80; then
+    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
+    _USE_MIR="files.aegir.cc"
+  fi
+  urlDev="http://${_USE_MIR}/dev"
+  urlHmr="http://${_USE_MIR}/versions/master/aegir"
+  urlStb="http://${_USE_MIR}/versions/stable"
+}
+
+
+###
+### Download helpers and libs
+###
+download_helpers_libs() {
+  find_fast_mirror
+  mkdir -p /opt/tmp
+  cd /opt/tmp
+  rm -f -r ${bldPth}
+  if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+    isGit=$(which git 2>&1)
+    if [ ! -x "${isGit}" ] || [ -z "${isGit}" ]; then
+      apt-get update -qq &> /dev/null
+      apt-get install git-core -y --force-yes --reinstall &> /dev/null
+      sleep 3
+    fi
+    ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git \
+      ${bldPth} &> /dev/null
+  else
+    curl ${crlGet} "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
+    _BOA_REPO_NAME="boa"
+    _THIS_CNF="${bldPth}/aegir/conf"
+  fi
+  #
+  if [ ! -e "${bldPth}/aegir/helpers/apt.conf.noninteractive" ]; then
+    echo " "
+    echo "EXIT on error due to missing helpers"
+    echo "Please try to run this script again in a few minutes"
+    echo "Also, make sure that the outgoing connections via port 443 work"
+    echo "Bye"
+    echo " "
+    clean_pid_exit
+  fi
+  # Get apt helper
+  rm -f apt.conf.noninteractive*
+  cp -af ${bldPth}/aegir/helpers/apt.conf.noninteractive ./
+  #
+  # Create tmp stuff
+  if [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
+    _LOG=${vBs}/octopus-install-${_NOW}.log
+  else
+    _LOG=${vBs}/octopus-upgrade-${_NOW}.log
+  fi
+  touch ${_LOG}
+  chmod 646 ${_LOG}
+  mkdir -p /var/opt
+  rm -f -r /var/opt/*
+  _SRCDIR="/opt/tmp/files"
+  mkdir -p ${_SRCDIR}
+  cd ${_SRCDIR}
+  #
+  # Get spinner
+  rm -f spinner*
+  cp -af ${bldPth}/aegir/helpers/spinner ./
+  chmod +x spinner &> /dev/null
+  #
+  # Get axelerator
+  if [ ! -e "/usr/bin/aptitude-fast" ]; then
+    git clone ${gitHub}/apt-fast.git /opt/tmp/apt-fast &> /dev/null
+    cp -af /opt/tmp/apt-fast/apt-fast /usr/bin/aptitude-fast &> /dev/null
+    chmod +x /usr/bin/aptitude-fast &> /dev/null
+    cd /opt/tmp
+  fi
+}
+

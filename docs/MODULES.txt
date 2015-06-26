@@ -31,7 +31,7 @@ module/theme: [S]upported, [B]undled, [F]orce[E]nabled,
 this module is used without the need to enable it.
 
 NOTE: Both [F]orce[E]nabled and [F]orce[D]isabled list can be skipped
-      with _MODULES_FIX=NO in /root/.barracuda.cnf (default: YES)
+      with _MODULES_FIX=NO in /root/.barracuda.cnf (default since BOA-2.4.0)
       However, this procedure is now smart enough to check if the module
       is defined as required by any other module or feature and will
       skip such module automatically, to avoid disabling innocent modules
@@ -50,6 +50,7 @@ Contrib [S]upported:
  ckeditor ------------------- [D6,D7] --- [S]
  fbconnect ------------------ [D6,D7] --- [S]
  fckeditor ------------------ [D6] ------ [S]
+ imageapi_optimize ---------- [D6,D7] --- [S] when IMG XTRAS is installed
  imagecache ----------------- [D6,D7] --- [S]
  imagecache_external -------- [D6,D7] --- [S]
  responsive_images ---------- [D7] ------ [S]
@@ -149,9 +150,11 @@ Core [F]orce[D]isabled:
 Drush [E]xtensions [M]aster [S]atellite:
 
  clean_missing_modules ------ [D6,D7] --- [S] [B] [EM,ES]
+ drupalgeddon --------------- [D7] ------ [S] [B] [EM,ES]
  drush_ecl ------------------ [D7] ------ [S] [B] [EM,ES]
- drush_make ----------------- [D6,D7] --- [S] [B] [EM,ES]
+ make_local ----------------- [D6,D7] --- [S] [B] [EM,ES]
  registry_rebuild ----------- [D6,D7] --- [S] [B] [EM,ES]
+ safe_cache_form_clear ------ [D7] ------ [S] [B] [EM,ES]
  security_review ------------ [D6,D7] --- [S] [B] [EM,ES]
 
 Provision [E]xtensions [M]aster [S]atellite:
@@ -167,13 +170,14 @@ Provision [E]xtensions [M]aster [S]atellite:
 Hostmaster [E]xtensions [S]atellite:
 
  aegir_custom_settings ------ [D6] ------ [S] [B] [FE] [ES]
- css_emimage ---------------- [D6] ------ [S] [B]      [ES]
  ctools --------------------- [D6] ------ [S] [B] [FE] [ES]
  features ------------------- [D6] ------ [S] [B] [FE] [ES]
  features_extra ------------- [D6] ------ [S] [B] [FE] [ES]
  hosting_advanced_cron ------ [D6] ------ [S] [B] [FE] [ES]
  hosting_backup_queue ------- [D6] ------ [S] [B]      [ES]
  hosting_cdn ---------------- [D6] ------ [S] [B]      [ES]
+ hosting_civicrm ------------ [D6] ------ [S] [B] [FE] [ES]
+ hosting_civicrm_cron ------- [D6] ------ [S] [B] [FE] [ES]
  hosting_platform_git ------- [D6] ------ [S] [B]      [ES]
  hosting_platform_pathauto -- [D6] ------ [S] [B]      [ES]
  hosting_remote_import ------ [D6] ------ [S] [B]      [ES]

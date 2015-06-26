@@ -17,21 +17,21 @@ php_fpm_CONF=/opt/php53/etc/php53-fpm.conf
 php_fpm_PID=/var/run/php53-fpm.pid
 php_opts="--fpm-config $php_fpm_CONF --pid $php_fpm_PID -c /opt/php53/etc/php53.ini"
 
-wait_for_pid () {
+wait_for_pid() {
 	try=0
 
-	while test $try -lt 5 ; do
+	while test $try -lt 5; do
 
 		case "$1" in
 			'created')
-			if [ -f "$2" ] ; then
+			if [ -f "$2" ]; then
 				try=''
 				break
 			fi
 			;;
 
 			'removed')
-			if [ ! -f "$2" ] ; then
+			if [ ! -f "$2" ]; then
 				try=''
 				break
 			fi
@@ -52,14 +52,14 @@ case "$1" in
 
 		$php_fpm_BIN --daemonize $php_opts
 
-		if [ "$?" != 0 ] ; then
+		if [ "$?" != 0 ]; then
 			echo " failed"
 			exit 1
 		fi
 
 		wait_for_pid created $php_fpm_PID
 
-		if [ -n "$try" ] ; then
+		if [ -n "$try" ]; then
 			echo " failed"
 			exit 1
 		else
@@ -70,7 +70,7 @@ case "$1" in
 	stop)
 		echo -n "Gracefully shutting down php53-fpm.."
 
-		if [ ! -r $php_fpm_PID ] ; then
+		if [ ! -r $php_fpm_PID ]; then
 			echo "warning, no pid file found - php53-fpm is not running ?"
 			exit 1
 		fi
@@ -79,7 +79,7 @@ case "$1" in
 
 		wait_for_pid removed $php_fpm_PID
 
-		if [ -n "$try" ] ; then
+		if [ -n "$try" ]; then
 			echo " failed. Use force-quit"
 			exit 1
 		else
@@ -88,7 +88,7 @@ case "$1" in
 	;;
 
 	status)
-		if [ ! -r $php_fpm_PID ] ; then
+		if [ ! -r $php_fpm_PID ]; then
 			echo "php53-fpm is stopped"
 			exit 0
 		fi
@@ -104,7 +104,7 @@ case "$1" in
 	force-quit)
 		echo -n "Terminating php53-fpm.."
 
-		if [ ! -r $php_fpm_PID ] ; then
+		if [ ! -r $php_fpm_PID ]; then
 			echo "warning, no pid file found - php53-fpm is not running ?"
 			exit 1
 		fi
@@ -113,7 +113,7 @@ case "$1" in
 
 		wait_for_pid removed $php_fpm_PID
 
-		if [ -n "$try" ] ; then
+		if [ -n "$try" ]; then
 			echo " failed"
 			exit 1
 		else
@@ -130,7 +130,7 @@ case "$1" in
 
 		echo -n "Reloading service php53-fpm.."
 
-		if [ ! -r $php_fpm_PID ] ; then
+		if [ ! -r $php_fpm_PID ]; then
 			echo "warning, no pid file found - php53-fpm is not running ?"
 			exit 1
 		fi

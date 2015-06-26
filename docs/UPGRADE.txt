@@ -7,8 +7,12 @@
     Edition yet, don't use any partial upgrade modes explained further below.
     Once new BOA Stable is released, you must run *full* upgrades with commands:
 
+    $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
     $ barracuda up-stable
+    $ barracuda up-stable system           (recommended on major upgrade)
     $ octopus up-stable all both
+    $ bash /var/xdrago/manage_ltd_users.sh (recommended on major upgrade)
+    $ bash /var/xdrago/daily.sh            (recommended on major upgrade)
 
     For silent, logged mode with e-mail message sent once the upgrade is
     complete, but no progress is displayed in the terminal window, you can run
@@ -17,6 +21,7 @@
     will complete:
 
     $ screen
+    $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
     $ barracuda up-stable log
     $ octopus up-stable all both log
 
@@ -112,9 +117,8 @@
  => To keep Legacy version instead of Stable, use the same commands, but
     replace "up-stable" with "up-legacy".
 
-    The Legacy version is currently the last Edition in the 2.1.x series, and
-    will move gradually to 2.2.x series when 2.3.x will be released. It still
-    supports Drupal 5 and uses Drush 4 along with older Aegir version.
+    The Legacy version is currently the last Edition in the 2.2.x series,
+    which is BOA-2.2.9
 
     Note that once you will upgrade to current Stable or HEAD, you can't
     downgrade back to Legacy version!
