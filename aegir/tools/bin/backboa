@@ -180,6 +180,10 @@ backup() {
 }
 
 conn_test() {
+  if [ $# = 1 ]; then
+    BUCKET="daily.boa.${1}"
+    TARGET="s3://${_AWS_URL}/${BUCKET}"
+  fi
   echo "Running AWS connection test, please wait..."
   ConnTest=$(duplicity -v 2 cleanup --dry-run \
     --timeout 1 ${_AWS_OPX} ${TARGET} 2>&1)
@@ -348,11 +352,12 @@ elif [ "$1" = "restore" ]; then
     restore $2 $3 $4
   fi
 elif [ "$1" = "retrieve" ]; then
-  conn_test
   if [ $# = 4 ]; then
-    restore $2 $3 $4
+    conn_test
+    retrieve $2 $3 $4
   elif [ $# = 5 ]; then
-    restore $2 $3 $4 $5
+    conn_test $5
+    retrieve $2 $3 $4 $5
   else
     echo "You have to specify also hostname of the backed up system"
     exit 1
