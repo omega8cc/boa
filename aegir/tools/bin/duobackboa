@@ -227,11 +227,11 @@ restore() {
 retrieve() {
   if [ $# = 3 ]; then
     BUCKET="daily.remote.$3"
-    TARGET="s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}"
+    TARGET="s3://${_AWS_URL}/${BUCKET}"
     duplicity restore --file-to-restore $1 ${_AWS_OPX} ${TARGET} $2
   elif [ $# = 4 ]; then
     BUCKET="daily.remote.$4"
-    TARGET="s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}"
+    TARGET="s3://${_AWS_URL}/${BUCKET}"
     duplicity restore --file-to-restore $1 --time $2 ${_AWS_OPX} ${TARGET} $3
   fi
 }
