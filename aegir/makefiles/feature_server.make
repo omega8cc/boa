@@ -14,7 +14,7 @@ projects[pressflow][download][url] = "http://files.aegir.cc/core/pressflow-6.36.
 projects[cck][type] = "module"
 ;projects[cck][version] = "2.9"
 projects[cck][download][type] = "get"
-projects[cck][download][url] = "http://files.aegir.cc/dev/contrib/cck-6.x-2.9.tar.gz"
+projects[cck][download][url] = "http://files.aegir.cc/dev/contrib/cck-6.x-3.0-alpha4.tar.gz"
 
 projects[context][type] = "module"
 ;projects[context][version] = "3.1"
