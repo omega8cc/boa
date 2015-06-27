@@ -181,7 +181,7 @@ backup() {
 
 conn_test() {
   if [ $# = 1 ]; then
-    BUCKET="daily.boa.${1}"
+    BUCKET="daily.boa.$1"
     TARGET="s3://${_AWS_URL}/${BUCKET}"
   fi
   echo "Running AWS connection test, please wait..."
