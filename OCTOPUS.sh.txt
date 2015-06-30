@@ -52,7 +52,7 @@ export _USER="${_USER}"
 ### Variables
 ###
 _D8_DEV_COMMIT=8x_f49bb893
-_DRUSH_VERSION=mini-7-08-05-2015
+_DRUSH_VERSION=mini-7-30-06-2015
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
