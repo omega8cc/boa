@@ -174,6 +174,9 @@ check_dns_settings() {
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
       fix_dns_settings
+      if [ -e "/etc/init.d/postfix" ]; then
+        service postfix restart &> /dev/null
+      fi
     fi
   fi
 }
@@ -778,8 +781,8 @@ check_root() {
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
-    echo "ERROR: Your disk space is almost full - \
-      we can not proceed until it is below 90/100"
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
     clean_pid_exit
   fi
   _L_VM_TEST=$(uname -a 2>&1)

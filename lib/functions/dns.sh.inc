@@ -96,6 +96,9 @@ check_dns_settings() {
       || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
       || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
       fix_dns_settings
+      if [ -e "/etc/init.d/postfix" ]; then
+        service postfix restart &> /dev/null
+      fi
     fi
   fi
 }

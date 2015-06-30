@@ -137,6 +137,9 @@ check_dns_settings() {
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
       fix_dns_settings
+      if [ -e "/etc/init.d/postfix" ]; then
+        service postfix restart &> /dev/null
+      fi
     fi
   fi
 }
@@ -700,6 +703,9 @@ up_finish() {
     csf -e  &> /dev/null
     csf -q  &> /dev/null
   fi
+  if [ -e "/etc/init.d/postfix" ]; then
+    service postfix restart &> /dev/null
+  fi
   echo
   echo BARRACUDA upgrade completed
   echo Bye
@@ -850,6 +856,9 @@ check_root() {
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
     echo >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
+    if [ -e "/etc/init.d/postfix" ]; then
+      service postfix restart &> /dev/null
+    fi
   else
     echo "ERROR: This script should be ran as a root user"
     clean_pid_exit
@@ -860,8 +869,8 @@ check_root() {
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
-    echo "ERROR: Your disk space is almost full - \
-      we can not proceed until it is below 90/100"
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
     clean_pid_exit
   fi
   if [ -e "${barCnf}" ]; then
