@@ -4504,8 +4504,13 @@ satellite_child_b_aegir_ui_enhance() {
       hosting_queue_advanced_cron_frequency 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_queue_cron_frequency 53222400 &> /dev/null
-    ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_cron_use_backend 0 &> /dev/null
+    if [ -e "${_ROOT}/log/hosting_cron_use_backend.txt" ]; then
+      ${_DRUSHCMD} @hostmaster ${vSet} \
+        hosting_cron_use_backend 1 &> /dev/null
+    else
+      ${_DRUSHCMD} @hostmaster ${vSet} \
+        hosting_cron_use_backend 0 &> /dev/null
+    fi
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_ignore_default_profiles 0 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \

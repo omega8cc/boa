@@ -2502,8 +2502,13 @@ action() {
             --always-set hosting_queue_advanced_cron_frequency 1"
           run_drush7_hmr_cmd "vset \
             --always-set hosting_queue_cron_frequency 53222400"
-          run_drush7_hmr_cmd "vset \
-            --always-set hosting_cron_use_backend 0"
+          if [ -e "${User}/log/hosting_cron_use_backend.txt" ]; then
+            run_drush7_hmr_cmd "vset \
+              --always-set hosting_cron_use_backend 1"
+          else
+             run_drush7_hmr_cmd "vset \
+              --always-set hosting_cron_use_backend 0"
+          fi
           run_drush7_hmr_cmd "vset \
             --always-set hosting_ignore_default_profiles 0"
           run_drush7_hmr_cmd "vset \
