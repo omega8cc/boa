@@ -608,7 +608,7 @@ if (!$is_dev) {
         $conf['preprocess_css'] = 0; // CSS aggregation disabled
         $conf['preprocess_js'] = 0;  // JS aggregation disabled
         $conf['advagg_aggregate_mode'] = 1;
-        $conf['advagg_async_generation'] = 0;
+        $conf['advagg_async_generation'] = 1;
         $conf['advagg_checksum_mode'] = "md5";
         $conf['advagg_closure'] = 1;
         $conf['advagg_css_compress_agg_files'] = 1;
