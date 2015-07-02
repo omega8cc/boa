@@ -1257,13 +1257,13 @@ satellite_o_contrib_seven_update_global() {
       done
       cd ${_D}/$i/o_contrib_seven
       if [ ! -d "${_D}/$i/o_contrib_seven/advagg" ]; then
-        get_dev_contrib "advagg-7.x-2.11.tar.gz"
+        get_dev_contrib "advagg-7.x-2.13.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/boost" ]; then
         get_dev_contrib "boost-7.x-1.0.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/cdn" ]; then
-        get_dev_contrib "cdn-7.x-2.x-dev.tar.gz"
+        get_dev_contrib "cdn-7.x-2.7-beta1.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/display_cache" ]; then
         get_dev_contrib "display_cache-7.x-1.0.tar.gz"
@@ -1287,7 +1287,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "js-7.x-1.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/panels_content_cache" ]; then
-        get_dev_contrib "panels_content_cache-7.x-1.0.tar.gz"
+        get_dev_contrib "panels_content_cache-7.x-1.2.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/print" ]; then
         get_dev_contrib "print-7.x-2.0.tar.gz"
@@ -1296,7 +1296,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/speedy" ]; then
-        get_dev_contrib "speedy-7.x-1.18.tar.gz"
+        get_dev_contrib "speedy-7.x-1.19.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/taxonomy_edge" ]; then
         get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
@@ -1316,7 +1316,7 @@ satellite_o_contrib_seven_update_global() {
           get_dev_contrib "expire-7.x-2.0-rc4.tar.gz"
         fi
         if [ ! -d "${_D}/$i/o_contrib_seven/purge" ]; then
-          get_dev_contrib "purge-7.x-1.6.tar.gz"
+          get_dev_contrib "purge-7.x-1.7.tar.gz"
         fi
       fi
       if [ -d "${_D}/$i/o_contrib_seven/redis" ]; then
@@ -1359,10 +1359,10 @@ satellite_download_o_contrib_seven() {
     msg "${_STATUS} A: Downloading o_contrib_seven modules..."
   fi
   get_dev_contrib "admin-7.x-2.0-beta3.tar.gz"
-  get_dev_contrib "advagg-7.x-2.11.tar.gz"
+  get_dev_contrib "advagg-7.x-2.13.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.x-dev.tar.gz"
   get_dev_contrib "boost-7.x-1.0.tar.gz"
-  get_dev_contrib "cdn-7.x-2.x-dev.tar.gz"
+  get_dev_contrib "cdn-7.x-2.7-beta1.tar.gz"
   get_dev_contrib "config_perms-7.x-2.1.tar.gz"
   get_dev_contrib "css_emimage-7.x-1.x-dev.tar.gz"
   get_dev_contrib "display_cache-7.x-1.0.tar.gz"
@@ -1376,7 +1376,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "js-7.x-1.x-dev.tar.gz"
   get_dev_contrib "login_security-7.x-1.9.tar.gz"
   get_dev_contrib "nocurrent_pass-7.x-1.0.tar.gz"
-  get_dev_contrib "panels_content_cache-7.x-1.0.tar.gz"
+  get_dev_contrib "panels_content_cache-7.x-1.2.tar.gz"
   get_dev_contrib "print-7.x-2.0.tar.gz"
   get_dev_contrib "readonlymode-7.x-1.2.tar.gz"
   get_dev_contrib "reroute_email-7.x-1.2.tar.gz"
@@ -1384,7 +1384,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
   get_dev_contrib "site_verify-7.x-1.1.tar.gz"
-  get_dev_contrib "speedy-7.x-1.18.tar.gz"
+  get_dev_contrib "speedy-7.x-1.19.tar.gz"
   get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
   get_dev_contrib "textile-7.x-2.0-rc11.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
@@ -1397,7 +1397,7 @@ satellite_download_o_contrib_seven() {
     rm -f -r expire*
     rm -f -r purge*
     get_dev_contrib "expire-7.x-2.0-rc4.tar.gz"
-    get_dev_contrib "purge-7.x-1.6.tar.gz"
+    get_dev_contrib "purge-7.x-1.7.tar.gz"
   else
     rm -f -r nginx_accel_redirect*
     rm -f -r purge*
