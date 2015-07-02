@@ -1180,7 +1180,7 @@ satellite_o_contrib_update_global() {
           get_dev_contrib "expire-6.x-1.x-dev.tar.gz"
         fi
         if [ ! -d "${_D}/$i/o_contrib/purge" ]; then
-          get_dev_contrib "purge-6.x-1.6.tar.gz"
+          get_dev_contrib "purge-6.x-1.7.tar.gz"
         fi
       fi
       if [ -d "${_D}/$i/o_contrib/cache_backport" ]; then
@@ -1475,7 +1475,7 @@ satellite_download_o_contrib_six() {
   if [ "${_PURGE_MODE}" = "ON" ]; then
     rm -f -r purge*
     rm -f -r expire*
-    get_dev_contrib "purge-6.x-1.6.tar.gz"
+    get_dev_contrib "purge-6.x-1.7.tar.gz"
     get_dev_contrib "expire-6.x-1.x-dev.tar.gz"
   else
     rm -f -r nginx_accel_redirect*
@@ -1499,7 +1499,7 @@ satellite_download_o_contrib_six() {
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -f -r ${_D}/000/modules/cache_backport
-    get_dev_contrib "cache_backport-6.x-1.0-rc2.tar.gz"
+    get_dev_contrib "cache_backport-6.x-1.0-rc4.tar.gz"
     echo update > cache_backport/update-${_X_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis/update-${_X_VERSION}.info" ]; then
@@ -1559,7 +1559,7 @@ satellite_check_fix_o_contrib() {
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -f -r ${_D}/000/modules/cache_backport
-    get_dev_contrib "cache_backport-6.x-1.0-rc2.tar.gz"
+    get_dev_contrib "cache_backport-6.x-1.0-rc4.tar.gz"
     echo update > cache_backport/update-${_X_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis/update-${_X_VERSION}.info" ]; then
