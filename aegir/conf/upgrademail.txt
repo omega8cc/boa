@@ -4,31 +4,17 @@ Your Aegir Hosting System has been upgraded to version BOA-2.4.3
 
   https://aegir.url.name
 
-This BOA release is focused on Aegir platforms update with latest
-Drupal core included.
+This BOA release includes several important system upgrades and
+bug fixes. All supported Aegir platforms have been updated with
+latest Drupal cores.
 
 IMPORTANT!
 
-Please note that this is the last BOA upgrade which still allows
-to use deprecated PHP 5.3 by default, even if it is no longer
-maintained, so it will never receive fixes for many bugs and
-known security issues.
-
-Next BOA upgrade (2.4.4) will force PHP 5.5 on all hosted Aegir
-instances, unless you will explicitly opt-out *before* that upgrade
-using PHP version control files, as explained in our docs at:
-
-  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
-
-We recommend that you try to switch to PHP 5.5 or even 5.6 as soon
-as possible, so you could effectively detect any possible issues
-with your site(s) and switch them explicitly to PHP 5.3 until
-you will be able to fix problems and start using the latest,
-much faster and secure PHP version.
-
-If you will not configure PHP version as explained in our docs,
-your instance will be automatically switched to PHP 5.5 during
-the *next* BOA upgrade, expected in June 2015.
+This version automatically switches all hosted sites to PHP 5.5
+on systems hosted and managed remotely by Omega8.cc support team,
+unless you have explicitly switched your Octopus instance to use
+PHP version you prefer. Using PHP older than 5.5 is strongly
+discouraged, for security reasons.
 
 We recommend that you upgrade your sites using this safe workflow:
 
