@@ -23,7 +23,7 @@ We recommend that you upgrade your sites using this safe workflow:
 You can find all details on how to use new features, along with all
 other changes explained in the release notes and changelog available at:
 
-  https://omega8.cc/boa-243-full-edition-360
+  https://omega8.cc/boa-244-full-edition-364
 
 It is always highly recommended that you read extensive release notes
 and changelog posted on our website for previous BOA Editions, so you
