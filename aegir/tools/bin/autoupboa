@@ -139,6 +139,7 @@ if [ -e "/data/disk/arch" ]; then
     sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"5.3 5.5\"/g" /root/.barracuda.cnf
     sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" /root/.barracuda.cnf
     sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" /root/.barracuda.cnf
+    sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" /root/.barracuda.cnf
   fi
   if [[ "${_CHECK_HOST}" =~ "v251a.a" ]] \
     || [[ "${_VM_VERSION}" =~ "LEGACY" ]] \
