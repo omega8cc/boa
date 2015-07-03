@@ -46,7 +46,7 @@ SHELL=/bin/bash
 export DEBIAN_FRONTEND=noninteractive
 
 _TODAY=$(date +%y%m%d 2>&1)
-_X_VERSION="BOA-2.4.3-stable"
+_X_VERSION="BOA-2.4.4-stable"
 #
 saCoreN="SA-CORE-2014-005"
 saCoreS="${saCoreN}-D7"
@@ -127,8 +127,13 @@ fix_dns_settings() {
          echo "        ip=8.8.4.4;" >> ${dnsLi}
       fi
       ### echo debug dns A
-      sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+      _DNS_TPL_TEST=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
+      _DNS_RGX_TEST=$(grep "google-servers" /root/.local.dns.IP.list 2>&1)
+      if [[ "${_DNS_TPL_TEST}" =~ "google-servers" ]] \
+        && [[ "${_DNS_RGX_TEST}" =~ "google-servers" ]]; then
+        sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
 d;};' /etc/pdnsd.conf
+      fi
       resolvconf -u         &> /dev/null
       service pdnsd restart &> /dev/null
       pdnsd-ctl empty-cache &> /dev/null
@@ -155,6 +160,9 @@ check_dns_settings() {
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
       fix_dns_settings
+      if [ -e "/etc/init.d/postfix" ]; then
+        service postfix restart &> /dev/null
+      fi
     fi
   fi
 }

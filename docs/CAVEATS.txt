@@ -11,4 +11,5 @@ NOTE: BOA maintainers use only server (public) install mode and rarely test
       while server (public) mode is considered stable and fully supported.
 
 NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
-      We don't use and rarely test Ubuntu, so for best results use Debian 64bit.
+      We don't use and rarely test Ubuntu, so for best results use Debian
+      Wheezy 64bit.

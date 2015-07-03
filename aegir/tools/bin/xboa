@@ -917,6 +917,21 @@ sub_ssl_gen() {
       sed -i "s/oct_mail/${oct_mail}/g"            ${Ssl}
       sed -i "s/dedicated_ip/${dedicated_ip}/g"    ${Ssl}
       sed -i "s/dedicated_sn/${dedicated_sn}/g"    ${Ssl}
+      ###
+      if [ -e "${Ssl}" ]; then
+        sslFile="/etc/ssl/private/${domain_name}.dhp"
+        if [ ! -e "${sslFile}" ]; then
+          echo "We will generate .dhp file now, please wait..."
+          openssl dhparam -out ${sslFile} 2048 &> /dev/null
+        else
+          _PFS_TEST=$(grep "DH PARAMETERS" ${sslFile} 2>&1)
+          if [[ ! "${_PFS_TEST}" =~ "DH PARAMETERS" ]]; then
+            echo "We will generate .dhp file now, please wait..."
+            openssl dhparam -out ${sslFile} 2048 &> /dev/null
+          fi
+        fi
+      fi
+      ###
       echo OK created ${Ssl}
       service nginx reload
     else

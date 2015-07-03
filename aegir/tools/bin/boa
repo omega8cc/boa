@@ -4,11 +4,11 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 branch="2.4.x-dev"
-cluster="BOA-2.4.3"
+cluster="BOA-2.4.4"
 devel="2.4.x-dev"
 legacy="BOA-2.2.9"
 master="master"
-stable="BOA-2.4.3"
+stable="BOA-2.4.4"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -146,8 +146,13 @@ fix_dns_settings() {
          echo "        ip=8.8.4.4;" >> ${dnsLi}
       fi
       ### echo debug dns A
-      sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+      _DNS_TPL_TEST=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
+      _DNS_RGX_TEST=$(grep "google-servers" /root/.local.dns.IP.list 2>&1)
+      if [[ "${_DNS_TPL_TEST}" =~ "google-servers" ]] \
+        && [[ "${_DNS_RGX_TEST}" =~ "google-servers" ]]; then
+        sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
 d;};' /etc/pdnsd.conf
+      fi
       resolvconf -u         &> /dev/null
       service pdnsd restart &> /dev/null
       pdnsd-ctl empty-cache &> /dev/null
@@ -174,6 +179,9 @@ check_dns_settings() {
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
       fix_dns_settings
+      if [ -e "/etc/init.d/postfix" ]; then
+        service postfix restart &> /dev/null
+      fi
     fi
   fi
 }
@@ -602,7 +610,7 @@ init_setup() {
 
   if [ ! -z "${rkey}" ]; then
     if [ "${rkey}" = "2.4" ]; then
-      vn="BOA-2.4.3"
+      vn="BOA-2.4.4"
       branch="2.4.x-dev"
     elif [ "${rkey}" = "2.3" ]; then
       vn="BOA-2.3.8"
@@ -620,7 +628,7 @@ init_setup() {
   if [ ! -z "${vn}" ]; then
     curl ${crlGet} "${rgUrl}/${vn}/${barName}"        -o ${vBs}/${barName}
     curl ${crlGet} "${rgUrl}/${vn}/${octName}"        -o ${vBs}/${octName}
-    if [ "${vn}" = "BOA-2.4.3" ]; then
+    if [ "${vn}" = "BOA-2.4.4" ]; then
       curl ${crlGet} "${rgUrl}/${stable}/${pthIncB}"  -o ${vBs}/${filIncB}
       curl ${crlGet} "${rgUrl}/${stable}/${pthIncO}"  -o ${vBs}/${filIncO}
     fi
@@ -778,8 +786,8 @@ check_root() {
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
-    echo "ERROR: Your disk space is almost full - \
-      we can not proceed until it is below 90/100"
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
     clean_pid_exit
   fi
   _L_VM_TEST=$(uname -a 2>&1)

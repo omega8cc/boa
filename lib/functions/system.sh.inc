@@ -295,15 +295,15 @@ tune_memory_limits() {
   if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "1024" ]; then
     _USE_PHP=512
     _USE_OPC=512
-    _MXC_SQL=20
     _QCE_SQL=128M
     _RND_SQL=8M
     _JBF_SQL=4M
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=12
+      _L_PHP_FPM_WORKERS=24
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
+    _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 2 ))
     if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
       _L_NGX_WRKS=$_CPU_MX
     else
@@ -313,15 +313,15 @@ tune_memory_limits() {
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
       _USE_PHP=1024
       _USE_OPC=1024
-      _MXC_SQL=50
       _QCE_SQL=128M
       _RND_SQL=8M
       _JBF_SQL=4M
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=24
+        _L_PHP_FPM_WORKERS=48
       else
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
+      _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 2 ))
       if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
         _L_NGX_WRKS=$_CPU_MX
       else
@@ -333,15 +333,15 @@ tune_memory_limits() {
         || [ -e "/root/.tg.cnf" ]; then
         _USE_PHP=2048
         _USE_OPC=2048
-        _MXC_SQL=100
         _QCE_SQL=256M
         _RND_SQL=8M
         _JBF_SQL=4M
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=24
+          _L_PHP_FPM_WORKERS=48
         else
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
+        _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 2 ))
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
           _L_NGX_WRKS=$_CPU_TG
         else
@@ -354,15 +354,15 @@ tune_memory_limits() {
       else
         _USE_PHP=1024
         _USE_OPC=1024
-        _MXC_SQL=30
         _QCE_SQL=64M
         _RND_SQL=2M
         _JBF_SQL=2M
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=6
+          _L_PHP_FPM_WORKERS=24
         else
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
+        _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 2 ))
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
           _L_NGX_WRKS=${_CPU_VS}
         else
@@ -372,15 +372,15 @@ tune_memory_limits() {
     else
       _USE_PHP=256
       _USE_OPC=256
-      _MXC_SQL=10
       _QCE_SQL=32M
       _RND_SQL=2M
       _JBF_SQL=2M
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=12
+        _L_PHP_FPM_WORKERS=24
       else
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
+      _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 2 ))
       if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
         _L_NGX_WRKS=$_CPU_MX
       else
@@ -390,7 +390,6 @@ tune_memory_limits() {
   else
     _USE_PHP="${_USE}"
     _USE_OPC="${_USE}"
-    _MXC_SQL=10
     _QCE_SQL=32M
     _RND_SQL=1M
     _JBF_SQL=1M
@@ -399,6 +398,7 @@ tune_memory_limits() {
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
+    _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 2 ))
     if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
       _L_NGX_WRKS=$_CPU_MX
     else
@@ -2498,6 +2498,7 @@ strict_bin_permissions() {
                   logger \
                   newrelic-daemon \
                   nrsysmond \
+                  optipng \
                   pngcrush \
                   pngquant \
                   redis-server \
@@ -3732,6 +3733,7 @@ install_vnstat() {
         /etc/init.d/vnstat
       chmod 755 /etc/init.d/vnstat &> /dev/null
       st_runner "update-rc.d vnstat defaults" &> /dev/null
+      sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /etc/vnstat.conf
       mrun "service vnstat start" &> /dev/null
       touch ${pthLog}/vnstat-${_VNSTAT_VRN}.log
       mrun "service vnstat restart" &> /dev/null
@@ -4021,9 +4023,15 @@ if_install_ftpd() {
       || [ ! -e "/usr/local/sbin/pure-config.pl" ] \
       || [ ! -e "/usr/local/sbin/pure-ftpd" ] \
       || [ ! -e "${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log" ] \
+      || [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
       msg "INFO: Building Pure-FTPd server from sources, please wait..."
+      if [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ]; then
+        msg "INFO: Generating DH parameters, 2048 bit, please wait..."
+        st_runner "openssl dhparam \
+          -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048" 2> /dev/null
+      fi
       if [ ! -e "/usr/local/sbin/pure-config.pl" ]; then
         echo "/bin/false" >> /etc/shells
         echo "/bin/true" >> /etc/shells
@@ -4031,7 +4039,7 @@ if_install_ftpd() {
       mkdir -p /etc/ssl/private/
       rm -f /etc/ssl/private/pure-ftpd.pem
       rm -f /usr/local/sbin/pure-ftpd
-      st_runner "openssl req -x509 -nodes -days 7300 -newkey rsa:4096 \
+      st_runner "openssl req -x509 -nodes -days 7300 -newkey rsa:2048 \
         -keyout /etc/ssl/private/pure-ftpd.pem \
         -out /etc/ssl/private/pure-ftpd.pem -batch" 2> /dev/null
       chmod 600 /etc/ssl/private/pure-ftpd.pem &> /dev/null

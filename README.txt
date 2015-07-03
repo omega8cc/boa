@@ -81,7 +81,7 @@ production settings.
 ### SUPPORTED LTS OS {c} please read also: docs/CAVEATS.txt
 
 * Debian 7 Wheezy (recommended)
-* Debian 6 Squeeze (limited support with automatic upgrade to Wheezy)
+* Debian 6 Squeeze (limited support)
 * Ubuntu Trusty 14.04 (limited support)
 * Ubuntu Precise 12.04 (limited support)
 * Ubuntu Lucid 10.04 (limited support)
@@ -155,41 +155,41 @@ Octopus can install the platforms listed below:
 
  Drupal 8.0.0-b7 -------------- https://drupal.org/drupal-8.0
 
- @ Drupal 7.37.1
+ @ Drupal 7.38.1
 
- aGov 1.7 --------------------- https://drupal.org/project/agov
+ aGov 1.8 --------------------- https://drupal.org/project/agov
  Commerce 1.37 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.24 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.26 ----------------- https://drupal.org/project/commons
- Drupal 7.37.1 ---------------- https://drupal.org/drupal-7.37
+ Commerce 2.25 ---------------- https://drupal.org/project/commerce_kickstart
+ Commons 3.27 ----------------- https://drupal.org/project/commons
+ Drupal 7.38.1 ---------------- https://drupal.org/drupal-7.38
  ERPAL 2.2 -------------------- https://drupal.org/project/erpal
- Guardr 2.13 ------------------ https://drupal.org/project/guardr
+ Guardr 2.17 ------------------ https://drupal.org/project/guardr
  OpenAcademy 1.1 -------------- https://drupal.org/project/openacademy
  OpenAid 2.1 ------------------ https://drupal.org/project/openaid
- OpenAtrium 2.41 -------------- https://drupal.org/project/openatrium
+ OpenAtrium 2.42 -------------- https://drupal.org/project/openatrium
  OpenBlog 1.0-v3 -------------- https://drupal.org/project/openblog
  OpenChurch 1.17-b2 ----------- https://drupal.org/project/openchurch
- OpenChurch 2.1-b7 ------------ https://drupal.org/project/openchurch
+ OpenChurch 2.1 --------------- https://drupal.org/project/openchurch
  OpenDeals 1.35 --------------- https://drupal.org/project/opendeals
- OpenOutreach 1.19 ------------ https://drupal.org/project/openoutreach
- OpenPublic 1.5 --------------- https://drupal.org/project/openpublic
+ OpenOutreach 1.22 ------------ https://drupal.org/project/openoutreach
+ OpenPublic 1.6 --------------- https://drupal.org/project/openpublic
  OpenScholar 3.20.0 ----------- http://theopenscholar.org
- Panopoly 1.21 ---------------- https://drupal.org/project/panopoly
+ Panopoly 1.24 ---------------- https://drupal.org/project/panopoly
  Recruiter 1.6 ---------------- https://drupal.org/project/recruiter
  Restaurant 1.0-b12 ----------- https://drupal.org/project/restaurant
  Ubercart 3.8 ----------------- https://drupal.org/project/ubercart
 
- @ Pressflow 6.35.1
+ @ Pressflow 6.36.1
 
- Commons 2.24 ----------------- https://drupal.org/project/commons
+ Commons 2.25 ----------------- https://drupal.org/project/commons
  Feature Server 1.2 ----------- http://bit.ly/fserver
- Pressflow 6.35.1 ------------- http://pressflow.org
+ Pressflow 6.36.1 ------------- http://pressflow.org
  Ubercart 2.14 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.37.1 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.38.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
-* All D6 platforms have been enhanced using Pressflow 6.35.1 +Extra core:
+* All D6 platforms have been enhanced using Pressflow 6.36.1 +Extra core:
   https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 * All D6 and D7 platforms include some useful and/all performance related
