@@ -1,6 +1,6 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version BOA-2.4.3
+Your Aegir Hosting System has been upgraded to version BOA-2.4.4
 
   https://aegir.url.name
 
@@ -14,7 +14,7 @@ This version automatically switches all hosted sites to PHP 5.5
 on systems hosted and managed remotely by Omega8.cc support team,
 unless you have explicitly switched your Octopus instance to use
 PHP version you prefer. Using PHP older than 5.5 is strongly
-discouraged, for security reasons.
+discouraged, for security, stability and performance reasons.
 
 We recommend that you upgrade your sites using this safe workflow:
 
