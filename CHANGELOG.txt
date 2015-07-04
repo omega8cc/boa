@@ -2,6 +2,7 @@
 ### Stable BOA-2.4.4 Release - Full Edition
 ### Date: Fri Jul  3 12:08:29 PDT 2015
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.4
+### Latest hotfix added on: Fri Jul  3 19:02:27 PDT 2015
 
   @=> Includes Aegir Hostmaster 2.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -57,6 +58,7 @@
   * Use _AWS_URL to properly handle us-east-1 exception
   * Use 2048 bit where possible - see #723
   * Use better default value for advagg_cache_level - fixes #726
+  * Skip daily reload on high traffic instances
 
 
 ### Stable BOA-2.4.3 Release - Full Edition
