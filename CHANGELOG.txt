@@ -54,11 +54,11 @@
   * Incorrect permissions on /usr/bin/optipng - fixes #722
   * Mitigate LOGJAM - fixes #723
   * Restart Postfix after system DNS update -- #701
+  * Skip daily reload on high traffic instances
   * Sync SQL connection limits with _PHP_FPM_WORKERS variable - fixes #699
   * Use _AWS_URL to properly handle us-east-1 exception
   * Use 2048 bit where possible - see #723
   * Use better default value for advagg_cache_level - fixes #726
-  * Skip daily reload on high traffic instances
 
 
 ### Stable BOA-2.4.3 Release - Full Edition
