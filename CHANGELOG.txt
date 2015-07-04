@@ -33,6 +33,7 @@
   * MariaDB 5.5.44
   * MariaDB Galera Cluster 10.0.20
   * Nginx 1.9.1
+  * OpenSSH 6.9p1 (if installed from sources)
   * OpenSSL 1.0.2c (if installed from sources)
   * PHP 5.4.42
   * PHP 5.5.26
