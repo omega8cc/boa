@@ -59,11 +59,7 @@ action() {
   fi
   sleep 8
   rm -f /var/run/fmp_wait.pid
-  if [ -e "/root/.high_traffic.cnf" ]; then
-    _DO_NOTHING=YES
-  else
-    rm -f -r /var/lib/nginx/speed/*
-  fi
+  rm -f -r /var/lib/nginx/speed/*
   /etc/init.d/nginx reload
   echo rotate > /var/log/nginx/speed_purge.log
   if [ -e "/var/log/newrelic" ]; then
@@ -86,7 +82,7 @@ else
   _VMFAMILY="XEN"
 fi
 
-if [ -e "/var/run/boa_run.pid" ]; then
+if [ -e "/var/run/boa_run.pid" ] || [ -e "/root/.high_traffic.cnf" ]; then
   exit 0
 else
   touch /var/run/boa_wait.pid

@@ -930,8 +930,6 @@ debug="$4"
 if [ ! -z "${silent}" ]; then
   if [ "${silent}" = "log" ] || [ "${silent}" = "system" ]; then
     silent="$2"
-    rkey=
-    debug=
   else
     silent=
     rkey="$2"
