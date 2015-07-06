@@ -1266,7 +1266,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "cdn-7.x-2.7-beta1.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/display_cache" ]; then
-        get_dev_contrib "display_cache-7.x-1.0.tar.gz"
+        get_dev_contrib "display_cache-7.x-1.3.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/entitycache" ]; then
         get_dev_contrib "entitycache-7.x-1.2.tar.gz"
@@ -1365,7 +1365,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "cdn-7.x-2.7-beta1.tar.gz"
   get_dev_contrib "config_perms-7.x-2.1.tar.gz"
   get_dev_contrib "css_emimage-7.x-1.x-dev.tar.gz"
-  get_dev_contrib "display_cache-7.x-1.0.tar.gz"
+  get_dev_contrib "display_cache-7.x-1.3.tar.gz"
   get_dev_contrib "entitycache-7.x-1.2.tar.gz"
   get_dev_contrib "esi-7.x-3.x-dev.tar.gz"
   get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
