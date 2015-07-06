@@ -3,8 +3,8 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _WEBG=www-data
-_OPENSSL_VRN=1.0.2a
-_X_SE="2.4.3-stable"
+_OPENSSL_VRN=1.0.1o
+_X_SE="2.4.4-stable"
 _OSV=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
@@ -2502,8 +2502,13 @@ action() {
             --always-set hosting_queue_advanced_cron_frequency 1"
           run_drush7_hmr_cmd "vset \
             --always-set hosting_queue_cron_frequency 53222400"
-          run_drush7_hmr_cmd "vset \
-            --always-set hosting_cron_use_backend 0"
+          if [ -e "${User}/log/hosting_cron_use_backend.txt" ]; then
+            run_drush7_hmr_cmd "vset \
+              --always-set hosting_cron_use_backend 1"
+          else
+             run_drush7_hmr_cmd "vset \
+              --always-set hosting_cron_use_backend 0"
+          fi
           run_drush7_hmr_cmd "vset \
             --always-set hosting_ignore_default_profiles 0"
           run_drush7_hmr_cmd "vset \
@@ -2695,20 +2700,18 @@ else
   fi
   action >/var/xdrago/log/daily/daily-${_NOW}.log 2>&1
   if [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
-    for File in `find /etc/ssl/private/*.key -type f`; do
-      _PFS_TEST=$(grep "DH PARAMETERS" $File 2>&1)
-      if [[ "${_PFS_TEST}" =~ "DH PARAMETERS" ]]; then
-        _DO_NOTHING=YES
-      else
-        openssl dhparam -rand - 4096 >> $File
-      fi
-    done
-    for File in `find /etc/ssl/private/*.crt -type f`; do
-      _PFS_TEST=$(grep "DH PARAMETERS" $File 2>&1)
-      if [[ "${_PFS_TEST}" =~ "DH PARAMETERS" ]]; then
-        _DO_NOTHING=YES
-      else
-        openssl dhparam -rand - 4096 >> $File
+    for f in `find /etc/ssl/private/*.crt -type f`; do
+      sslName=$(echo ${f} | cut -d'/' -f5 | awk '{ print $1}' | sed "s/.crt//g")
+      sslFile="/etc/ssl/private/${sslName}.dhp"
+      if [ -e "${f}" ] && [ ! -z "${sslName}" ]; then
+        if [ ! -e "${sslFile}" ]; then
+          openssl dhparam -out ${sslFile} 2048 &> /dev/null
+        else
+          _PFS_TEST=$(grep "DH PARAMETERS" ${sslFile} 2>&1)
+          if [[ ! "${_PFS_TEST}" =~ "DH PARAMETERS" ]]; then
+            openssl dhparam -out ${sslFile} 2048 &> /dev/null
+          fi
+        fi
       fi
     done
     /etc/init.d/nginx reload

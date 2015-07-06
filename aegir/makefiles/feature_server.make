@@ -9,12 +9,12 @@ core = 6.x
 
 projects[pressflow][type] = "core"
 projects[pressflow][download][type] = "get"
-projects[pressflow][download][url] = "http://files.aegir.cc/core/pressflow-6.35.1.tar.gz"
+projects[pressflow][download][url] = "http://files.aegir.cc/core/pressflow-6.36.1.tar.gz"
 
 projects[cck][type] = "module"
-;projects[cck][version] = "2.9"
+;projects[cck][version] = "3.0"
 projects[cck][download][type] = "get"
-projects[cck][download][url] = "http://files.aegir.cc/dev/contrib/cck-6.x-2.9.tar.gz"
+projects[cck][download][url] = "http://files.aegir.cc/dev/contrib/cck-6.x-3.0-alpha4.tar.gz"
 
 projects[context][type] = "module"
 ;projects[context][version] = "3.1"

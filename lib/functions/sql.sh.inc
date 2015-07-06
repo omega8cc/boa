@@ -749,7 +749,9 @@ finalize_sql_initial_setup() {
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ ! -e "/root/.mysql.no.new.password.cnf" ]; then
-        forced_mysql_root_password_update
+        if [ -e "/root/.mysql.yes.new.password.cnf" ]; then
+          forced_mysql_root_password_update
+        fi
       fi
     fi
   fi

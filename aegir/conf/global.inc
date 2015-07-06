@@ -63,7 +63,7 @@ if (function_exists('drush_get_command')) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.8.0.1';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.9.1.1';
   }
 }
 
@@ -608,7 +608,7 @@ if (!$is_dev) {
         $conf['preprocess_css'] = 0; // CSS aggregation disabled
         $conf['preprocess_js'] = 0;  // JS aggregation disabled
         $conf['advagg_aggregate_mode'] = 1;
-        $conf['advagg_async_generation'] = 0;
+        $conf['advagg_async_generation'] = 1;
         $conf['advagg_checksum_mode'] = "md5";
         $conf['advagg_closure'] = 1;
         $conf['advagg_css_compress_agg_files'] = 1;
@@ -633,7 +633,7 @@ if (!$is_dev) {
       if (is_readable('modules/o_contrib_seven/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')) {
         $conf['advagg_bundler_active'] = 1;
-        $conf['advagg_cache_level'] = 1;
+        $conf['advagg_cache_level'] = 3;
         $conf['advagg_combine_css_media'] = 0;
         $conf['advagg_core_groups'] = 0;
         $conf['advagg_css_compressor'] = 2;

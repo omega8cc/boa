@@ -27,14 +27,14 @@ satellite_tune_fpm_workers() {
   _USE=$(( _RAM / 4 ))
   if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "1024" ]; then
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=12
+      _L_PHP_FPM_WORKERS=24
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
   elif [ "${_USE}" -ge "1024" ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=24
+        _L_PHP_FPM_WORKERS=48
       else
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
@@ -43,20 +43,20 @@ satellite_tune_fpm_workers() {
         || [ -e "/boot/grub/menu.lst" ] \
         || [ -e "/root/.tg.cnf" ]; then
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=24
+          _L_PHP_FPM_WORKERS=48
         else
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
       else
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=6
+          _L_PHP_FPM_WORKERS=24
         else
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
       fi
     else
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=12
+        _L_PHP_FPM_WORKERS=24
       else
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
@@ -1006,7 +1006,7 @@ satellite_child_b_update_ini_php_cli() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.243stableU.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.244stableU.txt" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1054,7 +1054,7 @@ satellite_child_b_update_ini_php_cli() {
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.243stableU.txt
+      echo > ${_U_HD}/.ctrl.244stableU.txt
     fi
   fi
 }
@@ -1180,7 +1180,7 @@ satellite_o_contrib_update_global() {
           get_dev_contrib "expire-6.x-1.x-dev.tar.gz"
         fi
         if [ ! -d "${_D}/$i/o_contrib/purge" ]; then
-          get_dev_contrib "purge-6.x-1.6.tar.gz"
+          get_dev_contrib "purge-6.x-1.7.tar.gz"
         fi
       fi
       if [ -d "${_D}/$i/o_contrib/cache_backport" ]; then
@@ -1257,13 +1257,13 @@ satellite_o_contrib_seven_update_global() {
       done
       cd ${_D}/$i/o_contrib_seven
       if [ ! -d "${_D}/$i/o_contrib_seven/advagg" ]; then
-        get_dev_contrib "advagg-7.x-2.8.tar.gz"
+        get_dev_contrib "advagg-7.x-2.13.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/boost" ]; then
         get_dev_contrib "boost-7.x-1.0.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/cdn" ]; then
-        get_dev_contrib "cdn-7.x-2.x-dev.tar.gz"
+        get_dev_contrib "cdn-7.x-2.7-beta1.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/display_cache" ]; then
         get_dev_contrib "display_cache-7.x-1.0.tar.gz"
@@ -1287,7 +1287,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "js-7.x-1.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/panels_content_cache" ]; then
-        get_dev_contrib "panels_content_cache-7.x-1.0.tar.gz"
+        get_dev_contrib "panels_content_cache-7.x-1.2.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/print" ]; then
         get_dev_contrib "print-7.x-2.0.tar.gz"
@@ -1296,7 +1296,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/speedy" ]; then
-        get_dev_contrib "speedy-7.x-1.18.tar.gz"
+        get_dev_contrib "speedy-7.x-1.19.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/taxonomy_edge" ]; then
         get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
@@ -1316,7 +1316,7 @@ satellite_o_contrib_seven_update_global() {
           get_dev_contrib "expire-7.x-2.0-rc4.tar.gz"
         fi
         if [ ! -d "${_D}/$i/o_contrib_seven/purge" ]; then
-          get_dev_contrib "purge-7.x-1.6.tar.gz"
+          get_dev_contrib "purge-7.x-1.7.tar.gz"
         fi
       fi
       if [ -d "${_D}/$i/o_contrib_seven/redis" ]; then
@@ -1359,11 +1359,11 @@ satellite_download_o_contrib_seven() {
     msg "${_STATUS} A: Downloading o_contrib_seven modules..."
   fi
   get_dev_contrib "admin-7.x-2.0-beta3.tar.gz"
-  get_dev_contrib "advagg-7.x-2.8.tar.gz"
+  get_dev_contrib "advagg-7.x-2.13.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.x-dev.tar.gz"
   get_dev_contrib "boost-7.x-1.0.tar.gz"
-  get_dev_contrib "cdn-7.x-2.x-dev.tar.gz"
-  get_dev_contrib "config_perms-7.x-2.x-dev.tar.gz"
+  get_dev_contrib "cdn-7.x-2.7-beta1.tar.gz"
+  get_dev_contrib "config_perms-7.x-2.1.tar.gz"
   get_dev_contrib "css_emimage-7.x-1.x-dev.tar.gz"
   get_dev_contrib "display_cache-7.x-1.0.tar.gz"
   get_dev_contrib "entitycache-7.x-1.2.tar.gz"
@@ -1376,7 +1376,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "js-7.x-1.x-dev.tar.gz"
   get_dev_contrib "login_security-7.x-1.9.tar.gz"
   get_dev_contrib "nocurrent_pass-7.x-1.0.tar.gz"
-  get_dev_contrib "panels_content_cache-7.x-1.0.tar.gz"
+  get_dev_contrib "panels_content_cache-7.x-1.2.tar.gz"
   get_dev_contrib "print-7.x-2.0.tar.gz"
   get_dev_contrib "readonlymode-7.x-1.2.tar.gz"
   get_dev_contrib "reroute_email-7.x-1.2.tar.gz"
@@ -1384,7 +1384,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
   get_dev_contrib "site_verify-7.x-1.1.tar.gz"
-  get_dev_contrib "speedy-7.x-1.18.tar.gz"
+  get_dev_contrib "speedy-7.x-1.19.tar.gz"
   get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
   get_dev_contrib "textile-7.x-2.0-rc11.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
@@ -1397,7 +1397,7 @@ satellite_download_o_contrib_seven() {
     rm -f -r expire*
     rm -f -r purge*
     get_dev_contrib "expire-7.x-2.0-rc4.tar.gz"
-    get_dev_contrib "purge-7.x-1.6.tar.gz"
+    get_dev_contrib "purge-7.x-1.7.tar.gz"
   else
     rm -f -r nginx_accel_redirect*
     rm -f -r purge*
@@ -1475,7 +1475,7 @@ satellite_download_o_contrib_six() {
   if [ "${_PURGE_MODE}" = "ON" ]; then
     rm -f -r purge*
     rm -f -r expire*
-    get_dev_contrib "purge-6.x-1.6.tar.gz"
+    get_dev_contrib "purge-6.x-1.7.tar.gz"
     get_dev_contrib "expire-6.x-1.x-dev.tar.gz"
   else
     rm -f -r nginx_accel_redirect*
@@ -1499,7 +1499,7 @@ satellite_download_o_contrib_six() {
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -f -r ${_D}/000/modules/cache_backport
-    get_dev_contrib "cache_backport-6.x-1.0-rc2.tar.gz"
+    get_dev_contrib "cache_backport-6.x-1.0-rc4.tar.gz"
     echo update > cache_backport/update-${_X_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis/update-${_X_VERSION}.info" ]; then
@@ -1559,7 +1559,7 @@ satellite_check_fix_o_contrib() {
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -f -r ${_D}/000/modules/cache_backport
-    get_dev_contrib "cache_backport-6.x-1.0-rc2.tar.gz"
+    get_dev_contrib "cache_backport-6.x-1.0-rc4.tar.gz"
     echo update > cache_backport/update-${_X_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis/update-${_X_VERSION}.info" ]; then
@@ -3148,7 +3148,7 @@ satellite_make() {
     echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
   fi
 
-  if [ ! -e "${_ROOT}/static/control/.ctrl.243stableU.txt" ] \
+  if [ ! -e "${_ROOT}/static/control/.ctrl.244stableU.txt" ] \
     || [ ! -e "${_ROOT}/static/control/README.txt" ]; then
     mkdir -p ${_ROOT}/static/control
     chmod 755 ${_ROOT}/static/control
@@ -3160,7 +3160,7 @@ satellite_make() {
     chown -R ${_USER}.ftp:${_USRG} \
       ${_ROOT}/static/control &> /dev/null
     rm -f ${_ROOT}/static/control/.ctrl.*
-    echo OK > ${_ROOT}/static/control/.ctrl.243stableU.txt
+    echo OK > ${_ROOT}/static/control/.ctrl.244stableU.txt
   fi
 
   if [ -d "/data/all/000" ]; then
@@ -4504,8 +4504,13 @@ satellite_child_b_aegir_ui_enhance() {
       hosting_queue_advanced_cron_frequency 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_queue_cron_frequency 53222400 &> /dev/null
-    ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_cron_use_backend 0 &> /dev/null
+    if [ -e "${_ROOT}/log/hosting_cron_use_backend.txt" ]; then
+      ${_DRUSHCMD} @hostmaster ${vSet} \
+        hosting_cron_use_backend 1 &> /dev/null
+    else
+      ${_DRUSHCMD} @hostmaster ${vSet} \
+        hosting_cron_use_backend 0 &> /dev/null
+    fi
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_ignore_default_profiles 0 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
