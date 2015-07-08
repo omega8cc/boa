@@ -58,10 +58,6 @@ if [ -e "/etc/cron.daily/logrotate" ]; then
   fi
 fi
 
-if [ -e "/root/.high_traffic.cnf" ]; then
-  echo rotate > /var/log/nginx/access.log
-fi
-
 if [ -e "/var/run/boa_run.pid" ] || [ -e "/var/run/daily-fix.pid" ]; then
   sleep 1
 else
