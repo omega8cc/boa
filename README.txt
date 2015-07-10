@@ -151,10 +151,6 @@ production settings.
 
 Octopus can install the platforms listed below:
 
- @ Drupal 8.0.0
-
- Drupal 8.0.0-b7 -------------- https://drupal.org/drupal-8.0
-
  @ Drupal 7.38.1
 
  aGov 1.8 --------------------- https://drupal.org/project/agov
