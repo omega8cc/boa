@@ -10,6 +10,7 @@
 # Release Notes:
 
   This BOA release includes PHP security upgrade for versions 5.6, 5.5 and 5.4
+  plus security upgrade for Redis server and three updated Octopus platforms.
 
   Support for Drupal 8 is temporarily removed, because now it would require
   an upgrade to Drush 8, which in turn completely removes support for PHP 5.3,
@@ -33,6 +34,7 @@
   * PHP 5.4.43
   * PHP 5.5.27
   * PHP 5.6.11
+  * Redis 3.0.2
 
 
 ### Stable BOA-2.4.4 Release - Full Edition
