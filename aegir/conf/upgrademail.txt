@@ -1,6 +1,6 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version BOA-2.4.4
+Your Aegir Hosting System has been upgraded to version BOA-2.4.5
 
   https://aegir.url.name
 
