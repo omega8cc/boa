@@ -1693,9 +1693,9 @@ fix_expected_symlinks() {
 
 fix_permissions() {
   ### modules,themes,libraries - profile level in ~/static
-  searchStringG="/static/"
+  searchStringT="/static/"
   case ${Plr} in
-  *"$searchStringG"*)
+  *"$searchStringT"*)
   fix_static_permissions
   ;;
   esac
@@ -2130,11 +2130,21 @@ process() {
         fix_platform_control_files
         fix_o_contrib_symlink
         if [ -e "${Dir}" ]; then
-          searchStringD=".temporary."
-          searchStringF=".testing."
+          searchStringB=".dev."
+          searchStringC=".devel."
+          searchStringD=".temp."
+          searchStringE=".tmp."
+          searchStringF=".temporary."
+          searchStringG=".test."
+          searchStringH=".testing."
           case ${Dom} in
+          *"$searchStringB"*) ;;
+          *"$searchStringC"*) ;;
           *"$searchStringD"*) ;;
+          *"$searchStringE"*) ;;
           *"$searchStringF"*) ;;
+          *"$searchStringG"*) ;;
+          *"$searchStringH"*) ;;
           *)
           fix_modules
           fix_robots_txt
