@@ -1,20 +1,12 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version BOA-2.4.4
+Your Aegir Hosting System has been upgraded to version BOA-2.4.5
 
   https://aegir.url.name
 
-This BOA release includes several important system upgrades and
-bug fixes. All supported Aegir platforms have been updated with
-latest Drupal cores.
-
-IMPORTANT!
-
-This version automatically switches all hosted sites to PHP 5.5
-on systems hosted and managed remotely by Omega8.cc support team,
-unless you have explicitly switched your Octopus instance to use
-PHP version you prefer. Using PHP older than 5.5 is strongly
-discouraged, for security, stability and performance reasons.
+This BOA release includes PHP security upgrade for versions
+5.6, 5.5 and 5.4 plus newer versions of Commons, Open Atrium and
+Panopoly platforms.
 
 We recommend that you upgrade your sites using this safe workflow:
 
@@ -23,7 +15,7 @@ We recommend that you upgrade your sites using this safe workflow:
 You can find all details on how to use new features, along with all
 other changes explained in the release notes and changelog available at:
 
-  https://omega8.cc/boa-244-full-edition-364
+  https://omega8.cc/boa-245-full-edition-365
 
 It is always highly recommended that you read extensive release notes
 and changelog posted on our website for previous BOA Editions, so you

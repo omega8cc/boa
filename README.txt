@@ -151,22 +151,18 @@ production settings.
 
 Octopus can install the platforms listed below:
 
- @ Drupal 8.0.0
-
- Drupal 8.0.0-b7 -------------- https://drupal.org/drupal-8.0
-
  @ Drupal 7.38.1
 
  aGov 1.8 --------------------- https://drupal.org/project/agov
  Commerce 1.37 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.25 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.27 ----------------- https://drupal.org/project/commons
+ Commerce 2.26 ---------------- https://drupal.org/project/commerce_kickstart
+ Commons 3.28 ----------------- https://drupal.org/project/commons
  Drupal 7.38.1 ---------------- https://drupal.org/drupal-7.38
  ERPAL 2.2 -------------------- https://drupal.org/project/erpal
  Guardr 2.17 ------------------ https://drupal.org/project/guardr
  OpenAcademy 1.1 -------------- https://drupal.org/project/openacademy
  OpenAid 2.1 ------------------ https://drupal.org/project/openaid
- OpenAtrium 2.42 -------------- https://drupal.org/project/openatrium
+ OpenAtrium 2.43 -------------- https://drupal.org/project/openatrium
  OpenBlog 1.0-v3 -------------- https://drupal.org/project/openblog
  OpenChurch 1.17-b2 ----------- https://drupal.org/project/openchurch
  OpenChurch 2.1 --------------- https://drupal.org/project/openchurch
@@ -174,7 +170,7 @@ Octopus can install the platforms listed below:
  OpenOutreach 1.22 ------------ https://drupal.org/project/openoutreach
  OpenPublic 1.6 --------------- https://drupal.org/project/openpublic
  OpenScholar 3.20.0 ----------- http://theopenscholar.org
- Panopoly 1.24 ---------------- https://drupal.org/project/panopoly
+ Panopoly 1.25 ---------------- https://drupal.org/project/panopoly
  Recruiter 1.6 ---------------- https://drupal.org/project/recruiter
  Restaurant 1.0-b12 ----------- https://drupal.org/project/restaurant
  Ubercart 3.8 ----------------- https://drupal.org/project/ubercart

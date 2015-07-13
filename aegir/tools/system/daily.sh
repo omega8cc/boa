@@ -3,8 +3,8 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _WEBG=www-data
-_OPENSSL_VRN=1.0.1o
-_X_SE="2.4.4-stable"
+_OPENSSL_VRN=1.0.1p
+_X_SE="2.4.5-stable"
 _OSV=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
@@ -1693,9 +1693,9 @@ fix_expected_symlinks() {
 
 fix_permissions() {
   ### modules,themes,libraries - profile level in ~/static
-  searchStringG="/static/"
+  searchStringT="/static/"
   case ${Plr} in
-  *"$searchStringG"*)
+  *"$searchStringT"*)
   fix_static_permissions
   ;;
   esac
@@ -2130,11 +2130,21 @@ process() {
         fix_platform_control_files
         fix_o_contrib_symlink
         if [ -e "${Dir}" ]; then
-          searchStringD=".temporary."
-          searchStringF=".testing."
+          searchStringB=".dev."
+          searchStringC=".devel."
+          searchStringD=".temp."
+          searchStringE=".tmp."
+          searchStringF=".temporary."
+          searchStringG=".test."
+          searchStringH=".testing."
           case ${Dom} in
+          *"$searchStringB"*) ;;
+          *"$searchStringC"*) ;;
           *"$searchStringD"*) ;;
+          *"$searchStringE"*) ;;
           *"$searchStringF"*) ;;
+          *"$searchStringG"*) ;;
+          *"$searchStringH"*) ;;
           *)
           fix_modules
           fix_robots_txt

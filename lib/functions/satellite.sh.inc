@@ -1006,7 +1006,7 @@ satellite_child_b_update_ini_php_cli() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.244stableU.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.245stableU.txt" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1054,7 +1054,7 @@ satellite_child_b_update_ini_php_cli() {
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.244stableU.txt
+      echo > ${_U_HD}/.ctrl.245stableU.txt
     fi
   fi
 }
@@ -1266,7 +1266,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "cdn-7.x-2.7-beta1.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/display_cache" ]; then
-        get_dev_contrib "display_cache-7.x-1.0.tar.gz"
+        get_dev_contrib "display_cache-7.x-1.3.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/entitycache" ]; then
         get_dev_contrib "entitycache-7.x-1.2.tar.gz"
@@ -1365,7 +1365,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "cdn-7.x-2.7-beta1.tar.gz"
   get_dev_contrib "config_perms-7.x-2.1.tar.gz"
   get_dev_contrib "css_emimage-7.x-1.x-dev.tar.gz"
-  get_dev_contrib "display_cache-7.x-1.0.tar.gz"
+  get_dev_contrib "display_cache-7.x-1.3.tar.gz"
   get_dev_contrib "entitycache-7.x-1.2.tar.gz"
   get_dev_contrib "esi-7.x-3.x-dev.tar.gz"
   get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
@@ -3148,7 +3148,7 @@ satellite_make() {
     echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
   fi
 
-  if [ ! -e "${_ROOT}/static/control/.ctrl.244stableU.txt" ] \
+  if [ ! -e "${_ROOT}/static/control/.ctrl.245stableU.txt" ] \
     || [ ! -e "${_ROOT}/static/control/README.txt" ]; then
     mkdir -p ${_ROOT}/static/control
     chmod 755 ${_ROOT}/static/control
@@ -3160,7 +3160,7 @@ satellite_make() {
     chown -R ${_USER}.ftp:${_USRG} \
       ${_ROOT}/static/control &> /dev/null
     rm -f ${_ROOT}/static/control/.ctrl.*
-    echo OK > ${_ROOT}/static/control/.ctrl.244stableU.txt
+    echo OK > ${_ROOT}/static/control/.ctrl.245stableU.txt
   fi
 
   if [ -d "/data/all/000" ]; then

@@ -59,8 +59,8 @@ _PHP_CLI_VERSION=5.5
 ### control which platforms will be installed,
 ### using the symbols listed below.
 ###
-### D8B ----------- Drupal 8-beta
-### D8D ----------- Drupal 8-dev
+### D8B ----------- Drupal 8-beta (inactive)
+### D8D ----------- Drupal 8-dev  (inactive)
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
 ### AGV ----------- aGov
@@ -586,11 +586,11 @@ _RESERVED_RAM=0
 ###----------------------------------------###
 
 
-_AEGIR_VERSION="BOA-2.4.4"
-_AEGIR_XTS_VRN="BOA-2.4.4"
+_AEGIR_VERSION="BOA-2.4.5"
+_AEGIR_XTS_VRN="BOA-2.4.5"
 _BRANCH_BOA="2.4.x-dev"
 _BRANCH_PRN="2.4.x-dev"
-_X_VERSION="BOA-2.4.4"
+_X_VERSION="BOA-2.4.5"
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${gitHub}"
 
