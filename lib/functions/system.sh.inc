@@ -2810,6 +2810,15 @@ if_squeeze_to_wheezy() {
     echo "zlib1g install" | dpkg --set-selections
     echo "zlib1g-dev install" | dpkg --set-selections
     echo "zlibc install" | dpkg --set-selections
+    mrun "apt-get install openssl install ${forCer}" &> /dev/null
+    mrun "apt-get install libssl-dev install ${forCer}" &> /dev/null
+    mrun "apt-get install curl install ${forCer}" &> /dev/null
+    mrun "apt-get install openssh-client install ${forCer}" &> /dev/null
+    mrun "apt-get install openssh-server install ${forCer}" &> /dev/null
+    mrun "apt-get install ssh install ${forCer}" &> /dev/null
+    mrun "apt-get install zlib1g install ${forCer}" &> /dev/null
+    mrun "apt-get install zlib1g-dev install ${forCer}" &> /dev/null
+    mrun "apt-get install zlibc install ${forCer}" &> /dev/null
     mrun "apt-get remove collectd -y --force-yes -qq" &> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
