@@ -2867,6 +2867,7 @@ if_squeeze_to_wheezy() {
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
     mrun "apt-get dist-upgrade -f -y --force-yes -q \
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+    touch ${mtrNgx}/pre.d/nginx_speed_purge.conf
     install_upgrade_nginx
     if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
       ln -sf /etc/init.d/bind9 /etc/init.d/bind
