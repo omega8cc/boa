@@ -2810,16 +2810,20 @@ if_squeeze_to_wheezy() {
     echo "zlib1g install" | dpkg --set-selections
     echo "zlib1g-dev install" | dpkg --set-selections
     echo "zlibc install" | dpkg --set-selections
-    mrun "apt-get install openssl install ${forCer}" &> /dev/null
-    mrun "apt-get install libssl-dev install ${forCer}" &> /dev/null
-    mrun "apt-get install curl install ${forCer}" &> /dev/null
+    mrun "apt-get install openssl install ${forCer}"        &> /dev/null
+    mrun "apt-get install libssl-dev install ${forCer}"     &> /dev/null
+    mrun "apt-get install curl install ${forCer}"           &> /dev/null
     mrun "apt-get install openssh-client install ${forCer}" &> /dev/null
     mrun "apt-get install openssh-server install ${forCer}" &> /dev/null
-    mrun "apt-get install ssh install ${forCer}" &> /dev/null
-    mrun "apt-get install zlib1g install ${forCer}" &> /dev/null
-    mrun "apt-get install zlib1g-dev install ${forCer}" &> /dev/null
-    mrun "apt-get install zlibc install ${forCer}" &> /dev/null
-    mrun "apt-get remove collectd -y --force-yes -qq" &> /dev/null
+    mrun "apt-get install ssh install ${forCer}"            &> /dev/null
+    mrun "apt-get install zlib1g install ${forCer}"         &> /dev/null
+    mrun "apt-get install zlib1g-dev install ${forCer}"     &> /dev/null
+    mrun "apt-get install zlibc install ${forCer}"          &> /dev/null
+    mrun "apt-get remove collectd -y --force-yes -qq"       &> /dev/null
+    mrun "apt-get remove nginx-extras -y --force-yes -qq"   &> /dev/null
+    mrun "apt-get remove nginx -y --force-yes -qq"          &> /dev/null
+    mrun "apt-get remove nginx-common -y --force-yes -qq"   &> /dev/null
+    mrun "apt-get remove nginx-full -y --force-yes -qq"     &> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
@@ -2915,6 +2919,10 @@ if_squeeze_to_wheezy() {
     mrun "dpkg --configure --force-all -a" 2> /dev/null
     mrun "apt-get install aptitude ${forCer}" 2> /dev/null
     mrun "apt-get install util-linux ${forCer}" 2> /dev/null
+    mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
+          -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
+    mrun "dpkg --configure --force-all -a" 2> /dev/null
+    mrun "apt-get -f install -qq" &> /dev/null
     mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
           -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
     _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
