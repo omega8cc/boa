@@ -16,7 +16,8 @@
   The 'domain_name' is a placeholder for domain name without any prefixes.
   Please don't include 'www.' prefix. If you have a wildcard certificate,
   don't use the *. prefix in front of 'domain_name'. If you have a multidomain
-  certificate, use any domain or subdomain listed in the certificate.
+  certificate, use any domain or subdomain listed in the certificate, but make
+  sure to not include any prefix.
 
 @=> Prepare the certificate and the private key files
 
