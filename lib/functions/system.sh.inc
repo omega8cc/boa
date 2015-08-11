@@ -2850,6 +2850,8 @@ if_squeeze_to_wheezy() {
     mrun "aptitude remove php5-apc -y" &> /dev/null
     mrun "aptitude remove php-apc -y" &> /dev/null
     mrun "aptitude remove apache2.2-common -y" &> /dev/null
+    mrun "aptitude remove apache2-utils apache2.2-bin -y" &> /dev/null
+    mrun "aptitude install lsof -y" &> /dev/null
     mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       rm -f /etc/php5/conf.d/{opcache.ini,imagick.ini,memcached.ini}
@@ -3133,6 +3135,8 @@ sys_packages_update() {
     st_runner "aptitude remove php5-apc -y" &> /dev/null
     st_runner "aptitude remove php-apc -y" &> /dev/null
     st_runner "aptitude remove apache2.2-common -y" &> /dev/null
+    st_runner "aptitude remove apache2-utils apache2.2-bin -y" &> /dev/null
+    st_runner "aptitude install lsof -y" &> /dev/null
     st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
