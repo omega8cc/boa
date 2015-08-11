@@ -167,7 +167,7 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
   echo Waiting $n seconds...
   sleep $n
   touch /var/run/water.pid
-  sleep 180
+  sleep 10
   local_ip_rg
   _HA=/var/xdrago/monitor/hackcheck.archive.log
   _WA=/var/xdrago/monitor/scan_nginx.archive.log
