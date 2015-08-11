@@ -35,11 +35,11 @@ crontab_update() {
       _BCDA_SYST="up-cluster system"
     else
       if [ "${_AUTO_PHP}" = "php-all" ]; then
-        _BCDA_FULL="up-stable log php-all"
-        _BCDA_SYST="up-stable system php-all"
+        _BCDA_FULL="up-${_AUTO_VER} log php-all"
+        _BCDA_SYST="up-${_AUTO_VER} system php-all"
       else
-        _BCDA_FULL="up-stable log"
-        _BCDA_SYST="up-stable system"
+        _BCDA_FULL="up-${_AUTO_VER} log"
+        _BCDA_SYST="up-${_AUTO_VER} system"
       fi
       _OCTO_FULL="up-stable all both log"
     fi
@@ -87,6 +87,7 @@ crontab_clean() {
 if [ -e "/data/disk/arch" ]; then
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
+  _AUTO_VER="stable"
   if [[ "${_VM_TEST}" =~ "beng" ]]; then
     _VMFAMILY="VS"
     _VM_VERSION_T_A=$(uname -a | grep "3.6.14-beng" 2>&1)
@@ -128,6 +129,7 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
     _AUTO_PHP="php-all"
+    _AUTO_VER="stable"
   fi
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -136,6 +138,7 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
     _AUTO_PHP=
+    _AUTO_VER="stable"
     sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"5.3 5.5\"/g" /root/.barracuda.cnf
     sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" /root/.barracuda.cnf
     sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" /root/.barracuda.cnf
@@ -148,7 +151,7 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
-    _AUTO_PHP=
+    _AUTO_VER="stable"
   fi
   if [ ! -z "${_AUTO_UP_WEEKLY}" ] \
     && [ ! -z "${_AUTO_UP_MONTH}" ] \
