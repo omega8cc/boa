@@ -252,22 +252,27 @@ lsyncd_proc_control
 mysql_proc_control
 sleep 5
 mysql_proc_control
+perl /var/xdrago/monitor/check/scan_nginx
 sleep 5
 mysql_proc_control
 sleep 5
 mysql_proc_control
+perl /var/xdrago/monitor/check/scan_nginx
 sleep 5
 mysql_proc_control
 sleep 5
 mysql_proc_control
+perl /var/xdrago/monitor/check/scan_nginx
 sleep 5
 mysql_proc_control
 sleep 5
 mysql_proc_control
+perl /var/xdrago/monitor/check/scan_nginx
 sleep 5
 mysql_proc_control
 sleep 5
 mysql_proc_control
+perl /var/xdrago/monitor/check/scan_nginx
 sleep 5
 mysql_proc_control
 sleep 5
