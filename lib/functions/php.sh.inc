@@ -382,7 +382,7 @@ install_php_extensions() {
       msg "INFO: Building GEOS extension for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
         st_runner "apt-get update -y --force-yes" &> /dev/null
-        st_runner "${_INSTAPP} libgeos-dev libgeos-c1 phpunit" 2> /dev/null
+        st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
         touch ${pthLog}/geos-${_X_VERSION}.log
       fi
       cd /var/opt
@@ -509,7 +509,7 @@ update_php_extensions() {
       msg "INFO: Building GEOS upgrade for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
         st_runner "apt-get update -y --force-yes" &> /dev/null
-        st_runner "${_INSTAPP} libgeos-dev libgeos-c1 phpunit" 2> /dev/null
+        st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
         touch ${pthLog}/geos-${_X_VERSION}.log
       fi
       cd /var/opt
