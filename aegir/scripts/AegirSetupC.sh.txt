@@ -2450,7 +2450,6 @@ fserver_install
 guardr_install
 openaid_install
 openatrium7_install
-openblog_install
 openchurch1_install
 openchurch2_install
 opendeals_install
@@ -2465,7 +2464,7 @@ ubercart7_install
 ubercart7_testing_install
 
 ### openacademy_install
-
+### openblog_install
 
 ###---### Remove some unused core files.
 #
