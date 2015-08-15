@@ -2451,7 +2451,7 @@ guardr_install
 openaid_install
 openatrium7_install
 openchurch2_install
-opendeals_install
+
 openoutreach_install
 openpublic_install
 openscholar_install
@@ -2465,6 +2465,7 @@ ubercart7_testing_install
 ### openacademy_install
 ### openblog_install
 ### openchurch1_install
+### opendeals_install
 
 ###---### Remove some unused core files.
 #

@@ -194,7 +194,6 @@
 ### OA7 ----------- OpenAtrium D7
 ### OAD ----------- OpenAid
 ### CH2 ----------- OpenChurch 2
-### ODS ----------- OpenDeals
 ### OOH ----------- OpenOutreach
 ### OPC ----------- OpenPublic
 ### OSR ----------- OpenScholar
