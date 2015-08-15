@@ -28,7 +28,6 @@
 ### GDR ----------- Guardr
 ### OA7 ----------- OpenAtrium D7
 ### OAD ----------- OpenAid
-### OCH ----------- OpenChurch 1
 ### CH2 ----------- OpenChurch 2
 ### ODS ----------- OpenDeals
 ### OOH ----------- OpenOutreach
