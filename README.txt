@@ -187,3 +187,5 @@ Octopus can install the platforms listed below:
 * All D6 and D7 platforms include some useful and/all performance related
   contrib modules - see docs/MODULES.txt for details.
 
+
+Join the chat at https://gitter.im/omega8cc/boa
