@@ -195,6 +195,27 @@ octopus_install() {
     _CHECK_HOST=$(uname -n 2>&1)
 
     if [ "${cmmand}" = "in-octopus" ]; then
+      if [ -e "/root/.auto.up.cnf" ] \
+        || [ -e "/root/.host8.cnf" ] \
+        || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        || [ "${_L_VMFAMILY}" = "VS" ]; then
+        _DO_NOTHING=YES
+      else
+        if [ -e "/root/.barracuda.cnf" ]; then
+          source /root/.barracuda.cnf
+        fi
+        if [ ! -z "${_MY_EMAIL}" ] && [ "${_MY_EMAIL}" = "${email}" ]; then
+          sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"root\"/g"        ${vBs}/${octName}
+        else
+          lml="${_MY_EMAIL}"
+          if [ ! -z "${lml}" ]; then
+            sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${lml}\"/g"    ${vBs}/${octName}
+          else
+            sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"root\"/g"      ${vBs}/${octName}
+          fi
+        fi
+      fi
       sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                   ${vBs}/${octName}
       if [ ! -z "${copt}" ]; then
         sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=${copt}/g" ${vBs}/${octName}
