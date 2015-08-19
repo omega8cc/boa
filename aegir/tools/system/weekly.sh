@@ -198,11 +198,21 @@ count() {
     Dom=$(echo $Site | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
     #echo "${_THIS_U},${Dom},vhost-exists"
     _DEV_URL=NO
-    searchStringA=".temporary."
-    searchStringB=".testing."
+    searchStringB=".dev."
+    searchStringC=".devel."
+    searchStringD=".temp."
+    searchStringE=".tmp."
+    searchStringF=".temporary."
+    searchStringG=".test."
+    searchStringH=".testing."
     case ${Dom} in
-      *"$searchStringA"*) _DEV_URL=YES ;;
       *"$searchStringB"*) _DEV_URL=YES ;;
+      *"$searchStringC"*) _DEV_URL=YES ;;
+      *"$searchStringD"*) _DEV_URL=YES ;;
+      *"$searchStringE"*) _DEV_URL=YES ;;
+      *"$searchStringF"*) _DEV_URL=YES ;;
+      *"$searchStringG"*) _DEV_URL=YES ;;
+      *"$searchStringH"*) _DEV_URL=YES ;;
       *)
       ;;
     esac
