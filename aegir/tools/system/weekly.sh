@@ -719,6 +719,19 @@ load_control() {
   _O_LOAD_MAX=$(( 100 * _CPU_MAX_RATIO ))
 }
 
+sub_count_usr_home() {
+  if [ -e "$1" ]; then
+    HqmSiz=$(du -s $1 2>&1)
+    HqmSiz=$(echo "${HqmSiz}" \
+      | cut -d'/' -f1 \
+      | awk '{ print $1}' \
+      | sed "s/[\/\s+]//g" 2>&1)
+    HxmSiz=$(( HxmSiz + HqmSiz ))
+    ### echo $1 disk usage is $HqmSiz
+    ### echo HxmSiz total is $HxmSiz
+  fi
+}
+
 action() {
   for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     count_cpu
@@ -729,6 +742,7 @@ action() {
         SumDat=0
         HomSiz=0
         HxmSiz=0
+        HqmSiz=0
         _THIS_U=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         _THIS_HM_SITE=$(cat ${User}/.drush/hostmaster.alias.drushrc.php \
           | grep "site_path'" \
@@ -739,11 +753,9 @@ action() {
         echo Counting User ${User}
         count
         if [ -e "/home/${_THIS_U}.ftp" ]; then
-          HxmSiz=$(du -s /home/${_THIS_U}.ftp 2>&1)
-          HxmSiz=$(echo "${HxmSiz}" \
-            | cut -d'/' -f1 \
-            | awk '{ print $1}' \
-            | sed "s/[\/\s+]//g" 2>&1)
+          for uH in `find /home/${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
+            sub_count_usr_home ${uH}
+          done
         fi
         if [ -L "${User}" ]; then
           HomSiz=$(du -D -s ${User} 2>&1)
