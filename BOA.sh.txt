@@ -239,6 +239,20 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/weekly.fixed.a245i.pid" ]; then
+    mv -f /var/xdrago/weekly.sh /var/xdrago/weekly.sh.old
+    curl ${crlGet} "${urlHmr}/tools/system/weekly.sh" -o /var/xdrago/weekly.sh
+    if [ -e "/var/xdrago/weekly.sh" ]; then
+      chmod 700 /var/xdrago/weekly.sh
+      chown root:root /var/xdrago/weekly.sh
+      touch ${pthLog}/weekly.fixed.a245i.pid
+    else
+      mv -f /var/xdrago/weekly.sh.old /var/xdrago/weekly.sh
+    fi
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
     && [ ! -e "${pthLog}/manage_ltd_users.fixed.a245i.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/manage_ltd_users.sh" \
