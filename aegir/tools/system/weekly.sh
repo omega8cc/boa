@@ -253,12 +253,8 @@ count() {
             | cut -d'/' -f1 \
             | awk '{ print $1}' \
             | sed "s/[\/\s+]//g" 2>&1)
-          if [ "${_DEV_URL}" = "YES" ]; then
-            echo "${_THIS_U},${Dom},DirSize:${DirSize},skip"
-          else
-            SumDir=$(( SumDir + DirSize ))
-            echo "${_THIS_U},${Dom},DirSize:${DirSize}"
-          fi
+          SumDir=$(( SumDir + DirSize ))
+          echo "${_THIS_U},${Dom},DirSize:${DirSize}"
         fi
         if [ ! -z "${Dat}" ] && [ -e "/var/lib/mysql/${Dat}" ]; then
           DatSize=$(du -s /var/lib/mysql/${Dat} 2>&1)
