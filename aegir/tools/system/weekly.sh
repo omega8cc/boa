@@ -778,8 +778,8 @@ action() {
               vset --always-set site_footer 'Weekly Usage Monitor \
               | ${_DATE} \
               | ALL Files <strong>${HomSizH}</strong> MB \
-              | LIVE Databases <strong>${SumDatH}</strong> MB \
-              | DEV Databases <strong>${SkipDtH}</strong> MB \
+              | LIVE Dbs <strong>${SumDatH}</strong> MB \
+              | DEV Dbs <strong>${SkipDtH}</strong> MB \
               | <strong>${_CLIENT_CORES}</strong> \
               Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}' &> /dev/null"
             su -s /bin/bash - ${_THIS_U} \
