@@ -2477,9 +2477,9 @@ commerce_7_1_install
 commerce_7_2_install
 commons_6_install
 
-###_USE_DISTRO_CORE=YES
+_USE_DISTRO_CORE=YES
 commons_7_install
-###_USE_DISTRO_CORE=NO
+_USE_DISTRO_CORE=NO
 
 erpal_install
 guardr_install
