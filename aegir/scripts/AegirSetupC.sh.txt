@@ -2494,11 +2494,7 @@ openscholar_install
 _USE_DISTRO_CORE=NO
 
 panopoly_install
-
-_USE_DISTRO_CORE=YES
 recruiter_install
-_USE_DISTRO_CORE=NO
-
 restaurant_install
 ubercart6_install
 ubercart7_install
