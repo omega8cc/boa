@@ -916,7 +916,6 @@ commons_6_install() {
 commons_7_install() {
 ###---### Commons 7.x
 #
-  _USE_DISTRO_CORE=YES
   _REAL_PRNAME="commons"
   _SHRD_PLNAME="${_REAL_PRNAME}-${_COMMONS3}-${_SMALLCORE7}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
@@ -1762,7 +1761,6 @@ openpublic_install() {
 openscholar_install() {
 ###---### OpenScholar
 #
-  _USE_DISTRO_CORE=YES
   _REAL_PRNAME="openscholar"
   _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENSCHOLAR}-${_SMALLCORE7}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
@@ -1872,7 +1870,6 @@ panopoly_install() {
 recruiter_install() {
 ###---### Recruiter
 #
-  _USE_DISTRO_CORE=YES
   _REAL_PRNAME="recruiter"
   _SHRD_PLNAME="${_REAL_PRNAME}-${_RECRUITER}-${_SMALLCORE7}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
@@ -2479,18 +2476,29 @@ agov_install
 commerce_7_1_install
 commerce_7_2_install
 commons_6_install
+
+_USE_DISTRO_CORE=YES
 commons_7_install
+_USE_DISTRO_CORE=NO
+
 erpal_install
 guardr_install
 openaid_install
 openatrium7_install
 openchurch2_install
-
 openoutreach_install
 openpublic_install
+
+_USE_DISTRO_CORE=YES
 openscholar_install
+_USE_DISTRO_CORE=NO
+
 panopoly_install
+
+_USE_DISTRO_CORE=YES
 recruiter_install
+_USE_DISTRO_CORE=NO
+
 restaurant_install
 ubercart6_install
 ubercart7_install
