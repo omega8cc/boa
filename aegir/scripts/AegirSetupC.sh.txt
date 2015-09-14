@@ -2481,7 +2481,6 @@ commerce_7_2_install
 commons_6_install
 commons_7_install
 erpal_install
-fserver_install
 guardr_install
 openaid_install
 openatrium7_install
@@ -2501,6 +2500,7 @@ ubercart7_testing_install
 ### openblog_install
 ### openchurch1_install
 ### opendeals_install
+### fserver_install
 
 ###---### Remove some unused core files.
 #

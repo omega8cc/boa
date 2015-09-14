@@ -189,7 +189,6 @@
 ### DCE ----------- Commerce v.1
 ### DCS ----------- Commons 6
 ### ERP ----------- ERPAL
-### FSR ----------- Feature Server
 ### GDR ----------- Guardr
 ### OA7 ----------- OpenAtrium D7
 ### OAD ----------- OpenAid
