@@ -121,6 +121,7 @@ if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
 fi
 _DIST_INSTALL=NO
 _STATUS=INIT
+_USE_DISTRO_CORE=NO
 _LOCAL_STATUS="${_STATUS}"
 _ROOT="/data/disk/${_USER}"
 _HM_ROOT="${_ROOT}/aegir/distro/${_HM_DISTRO}"
@@ -254,6 +255,31 @@ create_d7_symlinks() {
     ln -sf ${_D7_CORE_DIR}/web.config web.config
     ln -sf ${_D7_CORE_DIR}/xmlrpc.php xmlrpc.php
     cp -af ${_D7_CORE_DIR}/sites ./
+  fi
+  if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
+    rm -f -r ${_OCTO_PLPATH}/profiles
+    ln -s ${_SHRD_PLPATH}/profiles ${_OCTO_PLPATH}/profiles
+  fi
+}
+#
+# Create distro own D7 core symlinks.
+create_distro_d7_symlinks() {
+  if [ ! -L "web.config" ]; then
+    ln -sf ${_SHRD_PLPATH}/.htaccess .htaccess
+    ln -sf ${_SHRD_PLPATH}/authorize.php authorize.php
+    ln -sf ${_SHRD_PLPATH}/cron.php cron.php
+    ln -sf ${_SHRD_PLPATH}/crossdomain.xml crossdomain.xml
+    ln -sf ${_SHRD_PLPATH}/includes includes
+    ln -sf ${_SHRD_PLPATH}/index.php index.php
+    ln -sf ${_SHRD_PLPATH}/install.php install.php
+    ln -sf ${_CORE}/o_contrib_seven/js/js.php js.php
+    ln -sf ${_SHRD_PLPATH}/misc misc
+    ln -sf ${_SHRD_PLPATH}/modules modules
+    ln -sf ${_SHRD_PLPATH}/themes themes
+    ln -sf ${_SHRD_PLPATH}/update.php update.php
+    ln -sf ${_SHRD_PLPATH}/web.config web.config
+    ln -sf ${_SHRD_PLPATH}/xmlrpc.php xmlrpc.php
+    cp -af ${_SHRD_PLPATH}/sites ./
   fi
   if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
     rm -f -r ${_OCTO_PLPATH}/profiles
@@ -419,28 +445,30 @@ nocore_d6_dist_clean() {
 #
 # Remove D7 core from distro directory.
 nocore_d7_dist_clean() {
-  rm -f ${_SHRD_PLPATH}/.gitignore
-  rm -f ${_SHRD_PLPATH}/.htaccess
-  rm -f ${_SHRD_PLPATH}/*.php
-  rm -f ${_SHRD_PLPATH}/*.txt
-  rm -f ${_SHRD_PLPATH}/*.xml
-  rm -f ${_SHRD_PLPATH}/web.config
-  rm -f -r ${_SHRD_PLPATH}/cache
-  rm -f -r ${_SHRD_PLPATH}/includes
-  rm -f -r ${_SHRD_PLPATH}/misc
-  rm -f -r ${_SHRD_PLPATH}/modules
-  rm -f -r ${_SHRD_PLPATH}/sites
-  rm -f -r ${_SHRD_PLPATH}/scripts
-  rm -f -r ${_SHRD_PLPATH}/themes
-  _REVISIONS="34 35 36 37 38 39"
-  for i in $_REVISIONS; do
-    if [ -d "${_CORE}/drupal-7.$i" ] && [ ! -e "${_SHRD_PLPATH}" ]; then
-      mv ${_CORE}/drupal-7.$i ${_SHRD_PLPATH}
+  if [ "${_USE_DISTRO_CORE}" = "NO" ]; then
+    rm -f ${_SHRD_PLPATH}/.gitignore
+    rm -f ${_SHRD_PLPATH}/.htaccess
+    rm -f ${_SHRD_PLPATH}/*.php
+    rm -f ${_SHRD_PLPATH}/*.txt
+    rm -f ${_SHRD_PLPATH}/*.xml
+    rm -f ${_SHRD_PLPATH}/web.config
+    rm -f -r ${_SHRD_PLPATH}/cache
+    rm -f -r ${_SHRD_PLPATH}/includes
+    rm -f -r ${_SHRD_PLPATH}/misc
+    rm -f -r ${_SHRD_PLPATH}/modules
+    rm -f -r ${_SHRD_PLPATH}/sites
+    rm -f -r ${_SHRD_PLPATH}/scripts
+    rm -f -r ${_SHRD_PLPATH}/themes
+    _REVISIONS="34 35 36 37 38 39"
+    for i in $_REVISIONS; do
+      if [ -d "${_CORE}/drupal-7.$i" ] && [ ! -e "${_SHRD_PLPATH}" ]; then
+        mv ${_CORE}/drupal-7.$i ${_SHRD_PLPATH}
+      fi
+    done
+    if [ ! -d "${_SHRD_PLPATH}/profiles" ] && [ -d "${_D7_CORE_DIR}/profiles" ]; then
+      rm -f -r ${_SHRD_PLPATH}/profiles
+      cp -af ${_D7_CORE_DIR}/profiles ${_SHRD_PLPATH}/
     fi
-  done
-  if [ ! -d "${_SHRD_PLPATH}/profiles" ] && [ -d "${_D7_CORE_DIR}/profiles" ]; then
-    rm -f -r ${_SHRD_PLPATH}/profiles
-    cp -af ${_D7_CORE_DIR}/profiles ${_SHRD_PLPATH}/
   fi
 }
 #
@@ -483,12 +511,16 @@ remove_default_core_seven_profiles() {
 init_this_distro_root() {
   mkdir -p ${_OCTO_PLPATH}
   cd ${_OCTO_PLPATH}
-  if [[ "${_SHRD_PLNAME}" =~ "-${_SMALLCORE6}" ]]; then
-    create_d6_symlinks
-  elif [[ "${_SHRD_PLNAME}" =~ "-${_SMALLCORE7}" ]]; then
-    create_d7_symlinks
+  if [[ "${_USE_DISTRO_CORE}" = "YES" ]]; then
+    create_distro_d7_symlinks
   else
-    create_d8_symlinks
+    if [[ "${_SHRD_PLNAME}" =~ "-${_SMALLCORE6}" ]]; then
+      create_d6_symlinks
+    elif [[ "${_SHRD_PLNAME}" =~ "-${_SMALLCORE7}" ]]; then
+      create_d7_symlinks
+    else
+      create_d8_symlinks
+    fi
   fi
 }
 #
@@ -884,6 +916,7 @@ commons_6_install() {
 commons_7_install() {
 ###---### Commons 7.x
 #
+  _USE_DISTRO_CORE=YES
   _REAL_PRNAME="commons"
   _SHRD_PLNAME="${_REAL_PRNAME}-${_COMMONS3}-${_SMALLCORE7}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
@@ -1729,6 +1762,7 @@ openpublic_install() {
 openscholar_install() {
 ###---### OpenScholar
 #
+  _USE_DISTRO_CORE=YES
   _REAL_PRNAME="openscholar"
   _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENSCHOLAR}-${_SMALLCORE7}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
@@ -1838,6 +1872,7 @@ panopoly_install() {
 recruiter_install() {
 ###---### Recruiter
 #
+  _USE_DISTRO_CORE=YES
   _REAL_PRNAME="recruiter"
   _SHRD_PLNAME="${_REAL_PRNAME}-${_RECRUITER}-${_SMALLCORE7}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
