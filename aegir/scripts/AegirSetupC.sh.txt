@@ -2496,12 +2496,16 @@ openchurch2_install
 openoutreach_install
 openpublic_install
 
-_USE_DISTRO_CORE=YES
-openscholar_install
-_USE_DISTRO_CORE=NO
+### _USE_DISTRO_CORE=YES
+### openscholar_install
+### _USE_DISTRO_CORE=NO
+### TMP OFF -- doesn't work with latest core and comes with too old core version
 
 panopoly_install
-recruiter_install
+
+### recruiter_install
+### TMP OFF -- version 1.7 has critical bugs and doesn't work properly
+
 restaurant_install
 ubercart6_install
 ubercart7_install
