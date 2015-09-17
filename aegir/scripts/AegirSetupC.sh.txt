@@ -265,6 +265,12 @@ create_d7_symlinks() {
 # Create distro own D7 core symlinks.
 create_distro_d7_symlinks() {
   if [ ! -L "web.config" ]; then
+    if [ ! -f "${_SHRD_PLPATH}/crossdomain.xml" ]; then
+      rm -f ${_SHRD_PLPATH}/crossdomain.xml
+      cd ${_SHRD_PLPATH}
+      fix_dirs_files
+    fi
+    cd ${_OCTO_PLPATH}
     ln -sf ${_SHRD_PLPATH}/.htaccess .htaccess
     ln -sf ${_SHRD_PLPATH}/authorize.php authorize.php
     ln -sf ${_SHRD_PLPATH}/cron.php cron.php
