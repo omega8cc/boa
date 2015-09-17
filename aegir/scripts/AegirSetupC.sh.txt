@@ -1801,6 +1801,7 @@ openscholar_install() {
             fi
           fi
           init_this_distro_root
+          mkdir -p ${_OCTO_PLPATH}/sites/all/libraries
           msg "DISTRO: $_F_OPENSCHOLAR installed"
           _RUN_VERIFY=YES
         else
