@@ -626,7 +626,7 @@ check_limits() {
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 640 ))
   else
     _SQL_MIN_LIMIT=256
-    _DSK_MIN_LIMIT=5120
+    _DSK_MIN_LIMIT=7680
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 64 ))
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 640 ))
   fi
