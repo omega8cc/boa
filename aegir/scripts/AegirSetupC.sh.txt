@@ -2491,11 +2491,7 @@ _USE_DISTRO_CORE=NO
 erpal_install
 guardr_install
 openaid_install
-
-_USE_DISTRO_CORE=YES
 openatrium7_install
-_USE_DISTRO_CORE=NO
-
 openchurch2_install
 openoutreach_install
 openpublic_install
