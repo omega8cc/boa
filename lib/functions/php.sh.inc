@@ -36,6 +36,19 @@ fix_php_ini_jsmin() {
 }
 
 #
+# Fix php.ini files to add twig.so
+fix_php_ini_twig() {
+  if [ -e "${_THIS_FILE}" ]; then
+    _TWIG_INI_TEST=$(grep "extension=twig.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_TWIG_INI_TEST" =~ "extension=twig.so" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=twig.so" >> ${_THIS_FILE}
+    fi
+  fi
+}
+
+#
 # Fix php.ini files to add redis.so
 fix_php_ini_redis() {
   if [ -e "${_THIS_FILE}" ]; then
@@ -222,11 +235,13 @@ update_php_conf() {
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     fix_php_ini_redis
     fix_php_ini_jsmin
+    fix_php_ini_twig
     fix_php_ini_suhosin
     fix_php_ini_mailparse
     _THIS_FILE=/opt/php${e}/lib/php.ini
     fix_php_ini_redis
     fix_php_ini_jsmin
+    fix_php_ini_twig
     fix_php_ini_suhosin
     fix_php_ini_mailparse
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
@@ -377,6 +392,17 @@ install_php_extensions() {
   st_runner "make --quiet install" 2> /dev/null
   touch ${pthLog}/php-pecl-jsmin-${_T_PHP_VRN}.log
   ###--------------------###
+  msg "INFO: Installing Twig C for PHP ${_T_PHP_VRN}..."
+  cd /var/opt
+  rm -f -r twig*
+  get_dev_src "twig-${_TWIGC_VRN}.tar.gz"
+  cd /var/opt/twig-${_TWIGC_VRN}/ext/twig
+  st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  touch ${pthLog}/php-twig-${_T_PHP_VRN}.log
+  ###--------------------###
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
     if [ "$1" != "52" ]; then
       msg "INFO: Building GEOS extension for PHP ${_T_PHP_VRN} from sources..."
@@ -501,6 +527,19 @@ update_php_extensions() {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     touch ${pthLog}/php-pecl-jsmin-${_T_PHP_VRN}.log
+  fi
+  ###--------------------###
+  if [ ! -e "${pthLog}/php-twig-${_T_PHP_VRN}.log" ]; then
+    msg "INFO: Installing Twig C upgrade for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -f -r twig*
+    get_dev_src "twig-${_TWIGC_VRN}.tar.gz"
+    cd /var/opt/twig-${_TWIGC_VRN}/ext/twig
+    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    touch ${pthLog}/php-twig-${_T_PHP_VRN}.log
   fi
   ###--------------------###
   if [ "$1" != "52" ] \
