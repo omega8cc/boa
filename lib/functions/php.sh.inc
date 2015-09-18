@@ -369,8 +369,8 @@ install_php_extensions() {
   msg "INFO: Installing JSMin for PHP ${_T_PHP_VRN}..."
   cd /var/opt
   rm -f -r pecl-jsmin*
-  get_dev_src "pecl-jsmin-0.1.1.tar.gz"
-  cd /var/opt/pecl-jsmin-0.1.1
+  get_dev_src "pecl-jsmin-${_JSMIN_VRN}.tar.gz"
+  cd /var/opt/pecl-jsmin-${_JSMIN_VRN}
   st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
@@ -494,8 +494,8 @@ update_php_extensions() {
     msg "INFO: Installing JSMin upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -f -r pecl-jsmin*
-    get_dev_src "pecl-jsmin-0.1.1.tar.gz"
-    cd /var/opt/pecl-jsmin-0.1.1
+    get_dev_src "pecl-jsmin-${_JSMIN_VRN}.tar.gz"
+    cd /var/opt/pecl-jsmin-${_JSMIN_VRN}
     st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
