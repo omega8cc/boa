@@ -270,6 +270,9 @@ create_distro_d7_symlinks() {
       cd ${_SHRD_PLPATH}
       fix_dirs_files
     fi
+    if [ ! -L "${_SHRD_PLPATH}/modules/o_contrib_seven" ]; then
+      ln -sf ${_CORE}/o_contrib_seven ${_SHRD_PLPATH}/modules/o_contrib_seven
+    fi
     cd ${_OCTO_PLPATH}
     ln -sf ${_SHRD_PLPATH}/.htaccess .htaccess
     ln -sf ${_SHRD_PLPATH}/authorize.php authorize.php
