@@ -390,7 +390,7 @@ install_php_extensions() {
   st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  touch ${pthLog}/php-pecl-jsmin-${_T_PHP_VRN}.log
+  touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
   ###--------------------###
   msg "INFO: Installing Twig C for PHP ${_T_PHP_VRN}..."
   cd /var/opt
@@ -401,7 +401,7 @@ install_php_extensions() {
   st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  touch ${pthLog}/php-twig-${_T_PHP_VRN}.log
+  touch ${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log
   ###--------------------###
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
     if [ "$1" != "52" ]; then
@@ -516,7 +516,7 @@ update_php_extensions() {
     touch ${pthLog}/uploadprogress-${_UPROGRESS_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
-  if [ ! -e "${pthLog}/php-pecl-jsmin-${_T_PHP_VRN}.log" ]; then
+  if [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing JSMin upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -f -r pecl-jsmin*
@@ -526,10 +526,10 @@ update_php_extensions() {
     st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    touch ${pthLog}/php-pecl-jsmin-${_T_PHP_VRN}.log
+    touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
-  if [ ! -e "${pthLog}/php-twig-${_T_PHP_VRN}.log" ]; then
+  if [ ! -e "${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing Twig C upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -f -r twig*
@@ -539,7 +539,7 @@ update_php_extensions() {
     st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    touch ${pthLog}/php-twig-${_T_PHP_VRN}.log
+    touch ${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
   if [ "$1" != "52" ] \
