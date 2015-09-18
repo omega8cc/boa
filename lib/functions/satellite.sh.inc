@@ -1939,7 +1939,7 @@ satellite_download_for_local_build() {
     get_dev_stc "revision_deletion-6.x-1.x-dev.tar.gz"
     get_dev_stc "strongarm-6.x-2.2.tar.gz"
     get_dev_stc "userprotect-6.x-1.5.tar.gz"
-    get_dev_stc "views_bulk_operations-6.x-1.16.tar.gz"
+    get_dev_stc "views_bulk_operations-6.x-1.17.tar.gz"
     get_dev_stc "views-6.x-3.2.tar.gz"
   fi
   find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null
