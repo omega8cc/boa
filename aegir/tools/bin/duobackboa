@@ -15,7 +15,7 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-_DUPLICITY_VRN="0.7.03"
+_DUPLICITY_VRN="0.7.05"
 _BOTO_VRN="2.36.0"
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
