@@ -4,11 +4,11 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 branch="2.4.x-dev"
-cluster="BOA-2.4.5"
+cluster="BOA-2.4.6"
 devel="2.4.x-dev"
 legacy="BOA-2.2.9"
 master="master"
-stable="BOA-2.4.5"
+stable="BOA-2.4.6"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -631,7 +631,7 @@ init_setup() {
 
   if [ ! -z "${rkey}" ]; then
     if [ "${rkey}" = "2.4" ]; then
-      vn="BOA-2.4.5"
+      vn="BOA-2.4.6"
       branch="2.4.x-dev"
     elif [ "${rkey}" = "2.3" ]; then
       vn="BOA-2.3.8"
@@ -649,7 +649,7 @@ init_setup() {
   if [ ! -z "${vn}" ]; then
     curl ${crlGet} "${rgUrl}/${vn}/${barName}"        -o ${vBs}/${barName}
     curl ${crlGet} "${rgUrl}/${vn}/${octName}"        -o ${vBs}/${octName}
-    if [ "${vn}" = "BOA-2.4.5" ]; then
+    if [ "${vn}" = "BOA-2.4.6" ]; then
       curl ${crlGet} "${rgUrl}/${stable}/${pthIncB}"  -o ${vBs}/${filIncB}
       curl ${crlGet} "${rgUrl}/${stable}/${pthIncO}"  -o ${vBs}/${filIncO}
     fi

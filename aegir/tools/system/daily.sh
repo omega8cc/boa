@@ -4,7 +4,7 @@ SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _WEBG=www-data
 _OPENSSL_VRN=1.0.1p
-_X_SE="2.4.5-stable"
+_X_SE="2.4.6-stable"
 _OSV=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
