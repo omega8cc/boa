@@ -303,14 +303,18 @@ create_d8_symlinks() {
     ln -sf ${_D8_CORE_DIR}/.editorconfig .editorconfig
     ln -sf ${_D8_CORE_DIR}/.eslintignore .eslintignore
     ln -sf ${_D8_CORE_DIR}/.eslintrc .eslintrc
+    ln -sf ${_D8_CORE_DIR}/.gitattributes .gitattributes
     ln -sf ${_D8_CORE_DIR}/.htaccess .htaccess
+    ln -sf ${_D8_CORE_DIR}/autoload.php autoload.php
     ln -sf ${_D8_CORE_DIR}/composer.json composer.json
     ln -sf ${_D8_CORE_DIR}/core core
     ln -sf ${_D8_CORE_DIR}/crossdomain.xml crossdomain.xml
+    ln -sf ${_D8_CORE_DIR}/example.gitignore example.gitignore
     ln -sf ${_D8_CORE_DIR}/index.php index.php
     ln -sf ${_D8_CORE_DIR}/modules modules
     ln -sf ${_D8_CORE_DIR}/profiles profiles
     ln -sf ${_D8_CORE_DIR}/themes themes
+    ln -sf ${_D8_CORE_DIR}/update.php update.php
     ln -sf ${_D8_CORE_DIR}/web.config web.config
     cp -af ${_D8_CORE_DIR}/sites ./
   fi
