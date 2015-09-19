@@ -40,7 +40,6 @@
   * MariaDB 5.5.45
   * MariaDB Galera Cluster 10.0.21
   * Nginx 1.9.4
-  * OpenSSH 7.0p1 (if installed from sources)
   * OpenSSH 7.1p1 (if installed from sources)
   * PHP 5.6.13, 5.5.29, 5.4.45
   * PHP: ionCube loader 5.0.18
@@ -63,7 +62,7 @@
   * Nginx: Fix support for s3/files/styles (s3fs)
   * Sync .htaccess with D7 core
   * Sync keywords for exceptions in daily.sh with global.inc
-  * User short sleep on firewall temp blocks cleanup
+  * Use short sleep on firewall temp blocks cleanup
 
 
 ### Stable BOA-2.4.5 Release - Full Edition
