@@ -214,7 +214,7 @@ master_download_for_local_build() {
     cd ${mL}
     get_dev_stc "admin_menu-6.x-1.9.tar.gz"
     get_dev_stc "css_emimage.tar.gz"
-    get_dev_stc "ctools-6.x-1.13.tar.gz"
+    get_dev_stc "ctools-6.x-1.14.tar.gz"
     get_dev_stc "eldir.tar.gz"
     get_dev_stc "features_extra-6.x-1.x-dev.tar.gz"
     get_dev_stc "features-6.x-1.2.tar.gz"
@@ -232,7 +232,7 @@ master_download_for_local_build() {
     get_dev_stc "revision_deletion-6.x-1.x-dev.tar.gz"
     get_dev_stc "strongarm-6.x-2.2.tar.gz"
     get_dev_stc "userprotect-6.x-1.5.tar.gz"
-    get_dev_stc "views_bulk_operations-6.x-1.16.tar.gz"
+    get_dev_stc "views_bulk_operations-6.x-1.17.tar.gz"
     get_dev_stc "views-6.x-3.2.tar.gz"
   fi
   find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null

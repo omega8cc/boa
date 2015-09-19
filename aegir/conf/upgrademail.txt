@@ -4,9 +4,14 @@ Your Aegir Hosting System has been upgraded to version BOA-2.4.5
 
   https://aegir.url.name
 
-This BOA release includes PHP security upgrade for versions
-5.6, 5.5 and 5.4 plus newer versions of Commons, Open Atrium and
-Panopoly platforms.
+This BOA release includes several important system upgrades and
+bug fixes. All supported Aegir platforms have been updated with
+latest Drupal cores.
+
+@=> Latest Drupal 8.0.0-beta15 works great, but currently only
+    when installed as a custom platform in the ~/static directory tree,
+    because it is not really symlinks-friendly. We will re-introduce
+    built-in Drupal 8 platforms once this situation is improved.
 
 We recommend that you upgrade your sites using this safe workflow:
 
@@ -15,7 +20,7 @@ We recommend that you upgrade your sites using this safe workflow:
 You can find all details on how to use new features, along with all
 other changes explained in the release notes and changelog available at:
 
-  https://omega8.cc/boa-245-full-edition-365
+  https://omega8.cc/boa-246-full-edition-366
 
 It is always highly recommended that you read extensive release notes
 and changelog posted on our website for previous BOA Editions, so you

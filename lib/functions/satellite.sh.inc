@@ -1257,7 +1257,7 @@ satellite_o_contrib_seven_update_global() {
       done
       cd ${_D}/$i/o_contrib_seven
       if [ ! -d "${_D}/$i/o_contrib_seven/advagg" ]; then
-        get_dev_contrib "advagg-7.x-2.13.tar.gz"
+        get_dev_contrib "advagg-7.x-2.16.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/boost" ]; then
         get_dev_contrib "boost-7.x-1.0.tar.gz"
@@ -1287,7 +1287,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "js-7.x-1.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/panels_content_cache" ]; then
-        get_dev_contrib "panels_content_cache-7.x-1.2.tar.gz"
+        get_dev_contrib "panels_content_cache-7.x-1.3.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/print" ]; then
         get_dev_contrib "print-7.x-2.0.tar.gz"
@@ -1296,7 +1296,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/speedy" ]; then
-        get_dev_contrib "speedy-7.x-1.19.tar.gz"
+        get_dev_contrib "speedy-7.x-1.20.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/taxonomy_edge" ]; then
         get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
@@ -1359,7 +1359,7 @@ satellite_download_o_contrib_seven() {
     msg "${_STATUS} A: Downloading o_contrib_seven modules..."
   fi
   get_dev_contrib "admin-7.x-2.0-beta3.tar.gz"
-  get_dev_contrib "advagg-7.x-2.13.tar.gz"
+  get_dev_contrib "advagg-7.x-2.16.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.x-dev.tar.gz"
   get_dev_contrib "boost-7.x-1.0.tar.gz"
   get_dev_contrib "cdn-7.x-2.7-beta1.tar.gz"
@@ -1376,7 +1376,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "js-7.x-1.x-dev.tar.gz"
   get_dev_contrib "login_security-7.x-1.9.tar.gz"
   get_dev_contrib "nocurrent_pass-7.x-1.0.tar.gz"
-  get_dev_contrib "panels_content_cache-7.x-1.2.tar.gz"
+  get_dev_contrib "panels_content_cache-7.x-1.3.tar.gz"
   get_dev_contrib "print-7.x-2.0.tar.gz"
   get_dev_contrib "readonlymode-7.x-1.2.tar.gz"
   get_dev_contrib "reroute_email-7.x-1.2.tar.gz"
@@ -1384,7 +1384,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
   get_dev_contrib "site_verify-7.x-1.1.tar.gz"
-  get_dev_contrib "speedy-7.x-1.19.tar.gz"
+  get_dev_contrib "speedy-7.x-1.20.tar.gz"
   get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
   get_dev_contrib "textile-7.x-2.0-rc11.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
@@ -1921,7 +1921,7 @@ satellite_download_for_local_build() {
     fi
     get_dev_stc "admin_menu-6.x-1.9.tar.gz"
     get_dev_stc "css_emimage.tar.gz"
-    get_dev_stc "ctools-6.x-1.13.tar.gz"
+    get_dev_stc "ctools-6.x-1.14.tar.gz"
     get_dev_stc "eldir.tar.gz"
     get_dev_stc "features_extra-6.x-1.x-dev.tar.gz"
     get_dev_stc "features-6.x-1.2.tar.gz"
@@ -1939,7 +1939,7 @@ satellite_download_for_local_build() {
     get_dev_stc "revision_deletion-6.x-1.x-dev.tar.gz"
     get_dev_stc "strongarm-6.x-2.2.tar.gz"
     get_dev_stc "userprotect-6.x-1.5.tar.gz"
-    get_dev_stc "views_bulk_operations-6.x-1.16.tar.gz"
+    get_dev_stc "views_bulk_operations-6.x-1.17.tar.gz"
     get_dev_stc "views-6.x-3.2.tar.gz"
   fi
   find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null

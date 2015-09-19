@@ -3,6 +3,21 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
+check_pdnsd() {
+  if [ -e "/etc/resolv.conf" ]; then
+    _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
+    if [[ "$_RESOLV_TEST" =~ "nameserver 127.0.0.1" ]]; then
+      _THIS_DNS_TEST=$(host -a files.aegir.cc 127.0.0.1 -w 3 2>&1)
+      if [[ "${_THIS_DNS_TEST}" =~ "no servers could be reached" ]]; then
+        service pdnsd stop &> /dev/null
+        sleep 1
+        perl /var/xdrago/proc_num_ctrl.cgi
+      fi
+    fi
+  fi
+}
+check_pdnsd
+
 if [ -e "/var/log/php" ]; then
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "already listen on"` -gt "0" ]; then

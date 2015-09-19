@@ -121,6 +121,7 @@ if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
 fi
 _DIST_INSTALL=NO
 _STATUS=INIT
+_USE_DISTRO_CORE=NO
 _LOCAL_STATUS="${_STATUS}"
 _ROOT="/data/disk/${_USER}"
 _HM_ROOT="${_ROOT}/aegir/distro/${_HM_DISTRO}"
@@ -261,6 +262,40 @@ create_d7_symlinks() {
   fi
 }
 #
+# Create distro own D7 core symlinks.
+create_distro_d7_symlinks() {
+  if [ ! -L "web.config" ]; then
+    if [ ! -f "${_SHRD_PLPATH}/crossdomain.xml" ]; then
+      rm -f ${_SHRD_PLPATH}/crossdomain.xml
+      cd ${_SHRD_PLPATH}
+      fix_dirs_files
+    fi
+    if [ ! -L "${_SHRD_PLPATH}/modules/o_contrib_seven" ]; then
+      ln -sf ${_CORE}/o_contrib_seven ${_SHRD_PLPATH}/modules/o_contrib_seven
+    fi
+    cd ${_OCTO_PLPATH}
+    ln -sf ${_SHRD_PLPATH}/.htaccess .htaccess
+    ln -sf ${_SHRD_PLPATH}/authorize.php authorize.php
+    ln -sf ${_SHRD_PLPATH}/cron.php cron.php
+    ln -sf ${_SHRD_PLPATH}/crossdomain.xml crossdomain.xml
+    ln -sf ${_SHRD_PLPATH}/includes includes
+    ln -sf ${_SHRD_PLPATH}/index.php index.php
+    ln -sf ${_SHRD_PLPATH}/install.php install.php
+    ln -sf ${_CORE}/o_contrib_seven/js/js.php js.php
+    ln -sf ${_SHRD_PLPATH}/misc misc
+    ln -sf ${_SHRD_PLPATH}/modules modules
+    ln -sf ${_SHRD_PLPATH}/themes themes
+    ln -sf ${_SHRD_PLPATH}/update.php update.php
+    ln -sf ${_SHRD_PLPATH}/web.config web.config
+    ln -sf ${_SHRD_PLPATH}/xmlrpc.php xmlrpc.php
+    cp -af ${_SHRD_PLPATH}/sites ./
+  fi
+  if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
+    rm -f -r ${_OCTO_PLPATH}/profiles
+    ln -s ${_SHRD_PLPATH}/profiles ${_OCTO_PLPATH}/profiles
+  fi
+}
+#
 # Create D8 symlinks.
 create_d8_symlinks() {
   if [ ! -L "core" ]; then
@@ -268,14 +303,18 @@ create_d8_symlinks() {
     ln -sf ${_D8_CORE_DIR}/.editorconfig .editorconfig
     ln -sf ${_D8_CORE_DIR}/.eslintignore .eslintignore
     ln -sf ${_D8_CORE_DIR}/.eslintrc .eslintrc
+    ln -sf ${_D8_CORE_DIR}/.gitattributes .gitattributes
     ln -sf ${_D8_CORE_DIR}/.htaccess .htaccess
+    ln -sf ${_D8_CORE_DIR}/autoload.php autoload.php
     ln -sf ${_D8_CORE_DIR}/composer.json composer.json
     ln -sf ${_D8_CORE_DIR}/core core
     ln -sf ${_D8_CORE_DIR}/crossdomain.xml crossdomain.xml
+    ln -sf ${_D8_CORE_DIR}/example.gitignore example.gitignore
     ln -sf ${_D8_CORE_DIR}/index.php index.php
     ln -sf ${_D8_CORE_DIR}/modules modules
     ln -sf ${_D8_CORE_DIR}/profiles profiles
     ln -sf ${_D8_CORE_DIR}/themes themes
+    ln -sf ${_D8_CORE_DIR}/update.php update.php
     ln -sf ${_D8_CORE_DIR}/web.config web.config
     cp -af ${_D8_CORE_DIR}/sites ./
   fi
@@ -419,28 +458,30 @@ nocore_d6_dist_clean() {
 #
 # Remove D7 core from distro directory.
 nocore_d7_dist_clean() {
-  rm -f ${_SHRD_PLPATH}/.gitignore
-  rm -f ${_SHRD_PLPATH}/.htaccess
-  rm -f ${_SHRD_PLPATH}/*.php
-  rm -f ${_SHRD_PLPATH}/*.txt
-  rm -f ${_SHRD_PLPATH}/*.xml
-  rm -f ${_SHRD_PLPATH}/web.config
-  rm -f -r ${_SHRD_PLPATH}/cache
-  rm -f -r ${_SHRD_PLPATH}/includes
-  rm -f -r ${_SHRD_PLPATH}/misc
-  rm -f -r ${_SHRD_PLPATH}/modules
-  rm -f -r ${_SHRD_PLPATH}/sites
-  rm -f -r ${_SHRD_PLPATH}/scripts
-  rm -f -r ${_SHRD_PLPATH}/themes
-  _REVISIONS="34 35 36 37 38 39"
-  for i in $_REVISIONS; do
-    if [ -d "${_CORE}/drupal-7.$i" ] && [ ! -e "${_SHRD_PLPATH}" ]; then
-      mv ${_CORE}/drupal-7.$i ${_SHRD_PLPATH}
+  if [ "${_USE_DISTRO_CORE}" = "NO" ]; then
+    rm -f ${_SHRD_PLPATH}/.gitignore
+    rm -f ${_SHRD_PLPATH}/.htaccess
+    rm -f ${_SHRD_PLPATH}/*.php
+    rm -f ${_SHRD_PLPATH}/*.txt
+    rm -f ${_SHRD_PLPATH}/*.xml
+    rm -f ${_SHRD_PLPATH}/web.config
+    rm -f -r ${_SHRD_PLPATH}/cache
+    rm -f -r ${_SHRD_PLPATH}/includes
+    rm -f -r ${_SHRD_PLPATH}/misc
+    rm -f -r ${_SHRD_PLPATH}/modules
+    rm -f -r ${_SHRD_PLPATH}/sites
+    rm -f -r ${_SHRD_PLPATH}/scripts
+    rm -f -r ${_SHRD_PLPATH}/themes
+    _REVISIONS="34 35 36 37 38 39"
+    for i in $_REVISIONS; do
+      if [ -d "${_CORE}/drupal-7.$i" ] && [ ! -e "${_SHRD_PLPATH}" ]; then
+        mv ${_CORE}/drupal-7.$i ${_SHRD_PLPATH}
+      fi
+    done
+    if [ ! -d "${_SHRD_PLPATH}/profiles" ] && [ -d "${_D7_CORE_DIR}/profiles" ]; then
+      rm -f -r ${_SHRD_PLPATH}/profiles
+      cp -af ${_D7_CORE_DIR}/profiles ${_SHRD_PLPATH}/
     fi
-  done
-  if [ ! -d "${_SHRD_PLPATH}/profiles" ] && [ -d "${_D7_CORE_DIR}/profiles" ]; then
-    rm -f -r ${_SHRD_PLPATH}/profiles
-    cp -af ${_D7_CORE_DIR}/profiles ${_SHRD_PLPATH}/
   fi
 }
 #
@@ -483,12 +524,16 @@ remove_default_core_seven_profiles() {
 init_this_distro_root() {
   mkdir -p ${_OCTO_PLPATH}
   cd ${_OCTO_PLPATH}
-  if [[ "${_SHRD_PLNAME}" =~ "-${_SMALLCORE6}" ]]; then
-    create_d6_symlinks
-  elif [[ "${_SHRD_PLNAME}" =~ "-${_SMALLCORE7}" ]]; then
-    create_d7_symlinks
+  if [[ "${_USE_DISTRO_CORE}" = "YES" ]]; then
+    create_distro_d7_symlinks
   else
-    create_d8_symlinks
+    if [[ "${_SHRD_PLNAME}" =~ "-${_SMALLCORE6}" ]]; then
+      create_d6_symlinks
+    elif [[ "${_SHRD_PLNAME}" =~ "-${_SMALLCORE7}" ]]; then
+      create_d7_symlinks
+    else
+      create_d8_symlinks
+    fi
   fi
 }
 #
@@ -496,7 +541,7 @@ init_this_distro_root() {
 upgrade_contrib_less() {
   rm -f -r {context,ctools,entity,entityreference,mimemail,og}
   get_dev_contrib "context-7.x-3.6.tar.gz"
-  get_dev_contrib "ctools-7.x-1.7.tar.gz"
+  get_dev_contrib "ctools-7.x-1.9.tar.gz"
   get_dev_contrib "entity-7.x-1.6.tar.gz"
   get_dev_contrib "entityreference-7.x-1.1.tar.gz"
   get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz"
@@ -600,7 +645,7 @@ _F_DRUPAL6="Drupal ${_SMALLCORE6} [${_THIS_CORE}]"
 _F_DRUPAL7="Drupal ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_DRUPAL8="Drupal ${_SMALLCORE8} [${_THIS_CORE}]"
 _F_ERPAL="ERPAL ${_ERPAL} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_FSERVER="Feature Server 1.2 ${_SMALLCORE6} [${_THIS_CORE}]"
+_F_FSERVER="Feature Server 1.3 ${_SMALLCORE6} [${_THIS_CORE}]"
 _F_GUARDR="Guardr ${_GUARDR} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENACADEMY="OpenAcademy ${_OPENACADEMY} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENAID="OpenAid ${_OPENAID} ${_SMALLCORE7} [${_THIS_CORE}]"
@@ -647,7 +692,7 @@ if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
   || [ -e "/root/.debug.cnf" ] \
   || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _VMFAMILY="VS"
-  if [ ! -e "/root/.d8allow.cnf" ]; then
+  if [ ! -e "/data/conf/.d8allow.cnf" ]; then
     _D_8_ALLOW=NO
   fi
 else
@@ -1033,7 +1078,7 @@ drupal7_install() {
     || [[ "${_PLATFORMS_LIST}" =~ "D7S" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "D7P" ]]; then
     if [ ! -d "${_ROOT}/distro/${_THIS_CORE}/${_DRUPAL7D}" ]; then
-      if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/drupal-7.38" ; then
+      if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/drupal-7.39" ; then
         true
         ###---### Drupal 7 Development
         #
@@ -1228,7 +1273,7 @@ fserver_install() {
             echo "core = 6.x" >> fserver.make
             echo "projects[pressflow][type] = \"core\"" >> fserver.make
             echo "projects[pressflow][download][type] = \"get\"" >> fserver.make
-            echo "projects[pressflow][download][url] = \"http://${_USE_MIR}/core/pressflow-6.36.1.tar.gz\"" >> fserver.make
+            echo "projects[pressflow][download][url] = \"http://${_USE_MIR}/core/pressflow-6.37.1.tar.gz\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][type] = \"profile\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][download][type] = \"git\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][download][url] = \"https://github.com/omega8cc/${_REAL_PRNAME}.git\"" >> fserver.make
@@ -1769,6 +1814,7 @@ openscholar_install() {
             fi
           fi
           init_this_distro_root
+          mkdir -p ${_OCTO_PLPATH}/sites/all/libraries
           msg "DISTRO: $_F_OPENSCHOLAR installed"
           _RUN_VERIFY=YES
         else
@@ -2042,7 +2088,7 @@ ubercart7_install() {
               mkdir -p ${_SHRD_PRPATH}/modules
               cd ${_SHRD_PRPATH}/modules
               get_dev_contrib "colorbox-7.x-2.9.tar.gz"
-              get_dev_contrib "ctools-7.x-1.7.tar.gz"
+              get_dev_contrib "ctools-7.x-1.9.tar.gz"
               get_dev_contrib "entity-7.x-1.6.tar.gz"
               get_dev_contrib "google_analytics-7.x-2.1.tar.gz"
               get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
@@ -2112,7 +2158,7 @@ ubercart7_testing_install() {
               mkdir -p ${_SHRD_PRPATH}/modules
               cd ${_SHRD_PRPATH}/modules
               get_dev_contrib "colorbox-7.x-2.9.tar.gz"
-              get_dev_contrib "ctools-7.x-1.7.tar.gz"
+              get_dev_contrib "ctools-7.x-1.9.tar.gz"
               get_dev_contrib "entity-7.x-1.6.tar.gz"
               get_dev_contrib "google_analytics-7.x-2.0.tar.gz"
               get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
@@ -2444,27 +2490,39 @@ agov_install
 commerce_7_1_install
 commerce_7_2_install
 commons_6_install
+
+_USE_DISTRO_CORE=YES
 commons_7_install
+_USE_DISTRO_CORE=NO
+
 erpal_install
-fserver_install
 guardr_install
-openacademy_install
 openaid_install
 openatrium7_install
-openblog_install
-openchurch1_install
 openchurch2_install
-opendeals_install
 openoutreach_install
 openpublic_install
-openscholar_install
+
+### _USE_DISTRO_CORE=YES
+### openscholar_install
+### _USE_DISTRO_CORE=NO
+### TMP OFF -- doesn't work with latest core and comes with too old core version
+
 panopoly_install
-recruiter_install
+
+### recruiter_install
+### TMP OFF -- version 1.7 has critical bugs and doesn't work properly
+
 restaurant_install
 ubercart6_install
 ubercart7_install
 ubercart7_testing_install
 
+### openacademy_install
+### openblog_install
+### openchurch1_install
+### opendeals_install
+### fserver_install
 
 ###---### Remove some unused core files.
 #
