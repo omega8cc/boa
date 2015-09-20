@@ -2,6 +2,7 @@
 ### Stable BOA-2.4.6 Release - Full Edition
 ### Date: Sat Sep 19 11:09:09 PDT 2015
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.6
+### Latest hotfix added on: Sun Sep 20 08:12:23 PDT 2015
 
   @=> Includes Aegir Hostmaster 2.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -52,6 +53,7 @@
 
   * Allow to re-install deleted D7/D6 platforms when dev doesn't exist
   * Do not install phpunit -- it adds many PHP tools we don't need
+  * Drush requires php-eval to run drush_find_tmp() in sql-sync
   * Fix apache cleanup
   * Fix invalid regex in the INI docs
   * Improve auto-healing for SSHd
