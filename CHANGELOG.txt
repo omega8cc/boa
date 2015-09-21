@@ -2,7 +2,7 @@
 ### Stable BOA-2.4.6 Release - Full Edition
 ### Date: Sat Sep 19 11:09:09 PDT 2015
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.6
-### Latest hotfix added on: Sun Sep 20 08:12:23 PDT 2015
+### Latest hotfix added on: Mon Sep 21 05:18:33 PDT 2015
 
   @=> Includes Aegir Hostmaster 2.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -62,6 +62,7 @@
   * Improve SSL Docs to add more detail about multidomain certificates #757
   * Issue #766 - Fix for broken boa in-octopus procedure
   * Nginx: Fix support for s3/files/styles (s3fs)
+  * Restart PHP-FPM if too many running childs are detected
   * Sync .htaccess with D7 core
   * Sync keywords for exceptions in daily.sh with global.inc
   * Use short sleep on firewall temp blocks cleanup
