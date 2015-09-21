@@ -42,6 +42,29 @@ if [ -e "/var/log/php" ]; then
     echo "$(date 2>&1) FPM instances conflict detected" >> \
       /var/xdrago/log/fpm.conflict.incident.log
   fi
+  if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
+    | grep --count "process.max"` -gt "0" ]; then
+    touch /var/run/fmp_wait.pid
+    sleep 8
+    kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
+    rm -f /var/log/php/*
+    if [ -e "/etc/init.d/php56-fpm" ]; then
+      /etc/init.d/php56-fpm start
+    fi
+    if [ -e "/etc/init.d/php55-fpm" ]; then
+      /etc/init.d/php55-fpm start
+    fi
+    if [ -e "/etc/init.d/php54-fpm" ]; then
+      /etc/init.d/php54-fpm start
+    fi
+    if [ -e "/etc/init.d/php53-fpm" ]; then
+      /etc/init.d/php53-fpm start
+    fi
+    sleep 8
+    rm -f /var/run/fmp_wait.pid
+    echo "$(date 2>&1) Too many running FPM childs detected" >> \
+      /var/xdrago/log/fpm.childs.incident.log
+  fi
 fi
 
 _PHPLOG_SIZE_TEST=$(du -s -h /var/log/php 2>&1)
