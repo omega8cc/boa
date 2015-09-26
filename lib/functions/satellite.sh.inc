@@ -2892,6 +2892,7 @@ satellite_prepare_setup_email_tpl() {
         sed -i "s/dragon/${_USER}/g" ${_ROOT}/log/upgrademail.txt
         sed -i "s/FN8rXcQn/$_PASWD/g" ${_ROOT}/log/upgrademail.txt
         sed -i "s/166.84.6.231/${_THISHTIP}/g" ${_ROOT}/log/upgrademail.txt
+        sed -i "s/boa.version/${_X_VERSION}/g" ${_ROOT}/log/upgrademail.txt
       else
         _SEND_UPGRADE_EMAIL=NO
       fi
@@ -2902,6 +2903,7 @@ satellite_prepare_setup_email_tpl() {
      sed -i "s/dragon/${_USER}/g" ${_ROOT}/log/setupmail.txt
      sed -i "s/FN8rXcQn/$_PASWD/g" ${_ROOT}/log/setupmail.txt
      sed -i "s/166.84.6.231/${_THISHTIP}/g" ${_ROOT}/log/setupmail.txt
+     sed -i "s/boa.version/${_X_VERSION}/g" ${_ROOT}/log/setupmail.txt
     fi
   fi
 }

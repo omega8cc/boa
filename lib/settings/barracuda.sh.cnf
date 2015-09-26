@@ -1024,11 +1024,11 @@ _SPEED_VALID_MAX=3600
 ###----------------------------------------###
 
 
-_AEGIR_VERSION="BOA-2.4.6"
-_AEGIR_XTS_VRN="BOA-2.4.6"
-_BRANCH_BOA="2.4.x-dev"
-_BRANCH_PRN="2.4.x-dev"
-_X_VERSION="BOA-2.4.6"
+_AEGIR_VERSION="AUTO"
+_AEGIR_XTS_VRN="AUTO"
+_BRANCH_BOA="AUTO"
+_BRANCH_PRN="AUTO"
+_X_VERSION="AUTO"
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${gitHub}"
 
