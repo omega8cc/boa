@@ -973,6 +973,10 @@ satellite_update_web_user() {
       sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_T_II}
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_T_II}
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_T_II}
+      if [ "$1" = "hhvm" ]; then
+        sed -i "s/.*ioncube.*//g" ${_T_II}
+        sed -i "s/.*opcache.*//g" ${_T_II}
+      fi
       rm -f ${_T_HD}/.ctrl.php*
       echo > ${_T_HD}/.ctrl.php${_T_PV}.txt
     fi
