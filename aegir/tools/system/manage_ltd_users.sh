@@ -911,9 +911,11 @@ satellite_update_web_user() {
     mkdir -p /home/${_WEB}/.{tmp,drush,aws}
     if [ ! -z "$1" ]; then
       if [ "$1" = "hhvm" ]; then
-        if [ -e "/opt/php56/etc/php56.ini" ]; then
+        if [ -e "/opt/php56/etc/php56.ini" ] \
+          && [ -x "/opt/php56/bin/php" ]; then
           _T_PV=56
-        elif [ -e "/opt/php55/etc/php55.ini" ]; then
+        elif [ -e "/opt/php55/etc/php55.ini" ] \
+          && [ -x "/opt/php55/bin/php" ]; then
           _T_PV=55
         fi
       else
