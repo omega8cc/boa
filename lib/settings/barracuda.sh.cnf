@@ -62,7 +62,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ###
 ### Available options: 5.6, 5.5, 5.4, 5.3
 ###
-### Example: _PHP_MULTI_INSTALL="5.3 5.5"
+### Example: _PHP_MULTI_INSTALL="5.6 5.5"
 ###
 ### Note that removing any version from this
 ### list once it is already installed, will
