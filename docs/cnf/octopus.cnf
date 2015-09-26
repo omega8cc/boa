@@ -1,5 +1,5 @@
 ###
-### Octopus version BOA-2.4.5
+### Octopus version BOA-2.4.6
 ###
 ### Configuration stored in the /root/.${_USER}.octopus.cnf file.
 ### This example is for public install mode - see docs/INSTALL.txt
@@ -42,7 +42,7 @@ _CLIENT_OPTION="SSD" #---------- Currently not used
 _CLIENT_SUBSCR="Y" #------------ Currently not used
 _CLIENT_CORES="8" #------------- Currently not used
 ###
-### Octopus version BOA-2.4.5
+### Octopus version BOA-2.4.6
 ###
 
 ###
@@ -132,15 +132,10 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### DCE ----------- Commerce v.1
 ### DCS ----------- Commons 6
 ### ERP ----------- ERPAL
-### FSR ----------- Feature Server
 ### GDR ----------- Guardr
 ### OA7 ----------- OpenAtrium D7
 ### OAD ----------- OpenAid
-### OAY ----------- OpenAcademy
-### OBG ----------- OpenBlog
-### OCH ----------- OpenChurch 1
 ### CH2 ----------- OpenChurch 2
-### ODS ----------- OpenDeals
 ### OOH ----------- OpenOutreach
 ### OPC ----------- OpenPublic
 ### OSR ----------- OpenScholar

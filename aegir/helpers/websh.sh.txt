@@ -2,6 +2,10 @@
 
 export PATH=$PATH:/opt/local/bin
 _ALL="$@"
+if [[ "${_ALL}" =~ "true COLUMNS=" ]]; then
+  _R_M=`echo -n "${_ALL}" | grep -o "true COLUMNS=[0-9]\+ "`
+  _ALL=`echo ${_ALL} | sed "s/\$_R_M//g"`
+fi
 _INTERNAL=NO
 _LTD_GID=$(id -nG ${USER} 2>&1)
 _LTD_UID=$(id -nu ${USER} 2>&1)
@@ -29,6 +33,11 @@ if [ "$1" = "-c" ]; then
   _ARGS="$2"
 else
   _ARGS="$1"
+fi
+
+if [[ "${_ARGS}" =~ "true COLUMNS=" ]]; then
+  _R_M=`echo -n "${_ARGS}" | grep -o "true COLUMNS=[0-9]\+ "`
+  _ARGS=`echo ${_ARGS} | sed "s/\$_R_M//g"`
 fi
 
 if [ -d "/home/${USER}/.tmp" ]; then
@@ -185,8 +194,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
               || [[ "$3" =~ "execute"($) ]] \
               || [[ "$3" =~ "core-quick-drupal"($) ]] \
               || [[ "$3" =~ "exec"($) ]] \
-              || [[ "$3" =~ (^)"ev"($) ]] \
-              || [[ "$3" =~ "eval"($) ]] \
               || [[ "$3" =~ "xstatus"($) ]] \
               || [[ "$3" =~ "redis-flush"($) ]] \
               || [[ "$3" =~ (^)"qd"($) ]] \
@@ -248,8 +255,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "$3" =~ "execute"($) ]] \
           || [[ "$3" =~ "core-quick-drupal"($) ]] \
           || [[ "$3" =~ "exec"($) ]] \
-          || [[ "$3" =~ (^)"ev"($) ]] \
-          || [[ "$3" =~ "eval"($) ]] \
           || [[ "$3" =~ "xstatus"($) ]] \
           || [[ "$3" =~ "redis-flush"($) ]] \
           || [[ "$3" =~ (^)"qd"($) ]] \
@@ -318,8 +323,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         || [[ "$3" =~ "execute"($) ]] \
         || [[ "$3" =~ "core-quick-drupal"($) ]] \
         || [[ "$3" =~ "exec"($) ]] \
-        || [[ "$3" =~ (^)"ev"($) ]] \
-        || [[ "$3" =~ "eval"($) ]] \
         || [[ "$3" =~ "xstatus"($) ]] \
         || [[ "$3" =~ "redis-flush"($) ]] \
         || [[ "$3" =~ (^)"qd"($) ]] \
@@ -451,7 +454,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ]; then
           _RUBY_VP="${_DETECTED_RUBY_VP}"
         else
-          _RUBY_VP=2.2.2
+          _RUBY_VP=2.2.3
         fi
       else
         _DETECTED_RUBY_VP=$(grep 'RUBY_VERSION' \
@@ -464,7 +467,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ]; then
           _RUBY_VP="${_DETECTED_RUBY_VP}"
         else
-          _RUBY_VP=2.0.0-p645
+          _RUBY_VP=2.0.0-p647
         fi
       fi
       _SP_A="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}/bin"

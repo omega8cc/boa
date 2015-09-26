@@ -9,7 +9,7 @@ core = 6.x
 
 projects[pressflow][type] = "core"
 projects[pressflow][download][type] = "get"
-projects[pressflow][download][url] = "http://files.aegir.cc/core/pressflow-6.36.1.tar.gz"
+projects[pressflow][download][url] = "http://files.aegir.cc/core/pressflow-6.37.1.tar.gz"
 
 projects[cck][type] = "module"
 ;projects[cck][version] = "3.0"
@@ -24,7 +24,7 @@ projects[context][download][url] = "http://files.aegir.cc/dev/contrib/context-6.
 projects[ctools][type] = "module"
 ;projects[ctools][version] = "1.13"
 projects[ctools][download][type] = "get"
-projects[ctools][download][url] = "http://files.aegir.cc/dev/contrib/ctools-6.x-1.13.tar.gz"
+projects[ctools][download][url] = "http://files.aegir.cc/dev/contrib/ctools-6.x-1.14.tar.gz"
 
 projects[features][type] = "module"
 ;projects[features][version] = "1.2"

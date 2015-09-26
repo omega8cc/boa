@@ -773,7 +773,7 @@ barracuda_cnf() {
             sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     ${barCnf}
             sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                       ${barCnf}
             sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
-            sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=YES/g"                               ${barCnf}
+            sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                                ${barCnf}
           fi
           sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g"                            /root/.*.octopus.cnf &> /dev/null
           sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                           ${barCnf}
@@ -878,6 +878,7 @@ barracuda_cnf() {
           | awk '{ print $1}' \
           | sed "s/[\"]//g" 2>&1)
         _CLSTR_PHP_MULTI_INSTALL="${_PHP_OVERRIDE}"
+        _CLSTR_PHP_MULTI_INSTALL="5.6 5.5 5.3"
       fi
       if [ ! -e "/root/.debug.cnf" ] || [ -e "/root/.default.cnf" ]; then
         sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
@@ -1305,7 +1306,7 @@ barracuda_cnf() {
             sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     ${barCnf}
             sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                       ${barCnf}
             sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
-            sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=YES/g"                               ${barCnf}
+            sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                                ${barCnf}
           fi
           sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                           ${barCnf}
           sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                   ${barCnf}
@@ -2810,7 +2811,20 @@ if_squeeze_to_wheezy() {
     echo "zlib1g install" | dpkg --set-selections
     echo "zlib1g-dev install" | dpkg --set-selections
     echo "zlibc install" | dpkg --set-selections
-    mrun "apt-get remove collectd -y --force-yes -qq" &> /dev/null
+    mrun "apt-get install openssl install ${forCer}"        &> /dev/null
+    mrun "apt-get install libssl-dev install ${forCer}"     &> /dev/null
+    mrun "apt-get install curl install ${forCer}"           &> /dev/null
+    mrun "apt-get install openssh-client install ${forCer}" &> /dev/null
+    mrun "apt-get install openssh-server install ${forCer}" &> /dev/null
+    mrun "apt-get install ssh install ${forCer}"            &> /dev/null
+    mrun "apt-get install zlib1g install ${forCer}"         &> /dev/null
+    mrun "apt-get install zlib1g-dev install ${forCer}"     &> /dev/null
+    mrun "apt-get install zlibc install ${forCer}"          &> /dev/null
+    mrun "apt-get remove collectd -y --force-yes -qq"       &> /dev/null
+    mrun "apt-get remove nginx-extras -y --force-yes -qq"   &> /dev/null
+    mrun "apt-get remove nginx -y --force-yes -qq"          &> /dev/null
+    mrun "apt-get remove nginx-common -y --force-yes -qq"   &> /dev/null
+    mrun "apt-get remove nginx-full -y --force-yes -qq"     &> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
@@ -2837,6 +2851,8 @@ if_squeeze_to_wheezy() {
     mrun "aptitude remove php5-apc -y" &> /dev/null
     mrun "aptitude remove php-apc -y" &> /dev/null
     mrun "aptitude remove apache2.2-common -y" &> /dev/null
+    mrun "aptitude remove apache2-utils apache2.2-bin -y" &> /dev/null
+    mrun "aptitude install lsof -y" &> /dev/null
     mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       rm -f /etc/php5/conf.d/{opcache.ini,imagick.ini,memcached.ini}
@@ -2854,6 +2870,7 @@ if_squeeze_to_wheezy() {
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
     mrun "apt-get dist-upgrade -f -y --force-yes -q \
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+    touch ${mtrNgx}/pre.d/nginx_speed_purge.conf
     install_upgrade_nginx
     if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
       ln -sf /etc/init.d/bind9 /etc/init.d/bind
@@ -2906,6 +2923,10 @@ if_squeeze_to_wheezy() {
     mrun "dpkg --configure --force-all -a" 2> /dev/null
     mrun "apt-get install aptitude ${forCer}" 2> /dev/null
     mrun "apt-get install util-linux ${forCer}" 2> /dev/null
+    mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
+          -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
+    mrun "dpkg --configure --force-all -a" 2> /dev/null
+    mrun "apt-get -f install -qq" &> /dev/null
     mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
           -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
     _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
@@ -3115,6 +3136,8 @@ sys_packages_update() {
     st_runner "aptitude remove php5-apc -y" &> /dev/null
     st_runner "aptitude remove php-apc -y" &> /dev/null
     st_runner "aptitude remove apache2.2-common -y" &> /dev/null
+    st_runner "aptitude remove apache2-utils apache2.2-bin -y" &> /dev/null
+    st_runner "aptitude install lsof -y" &> /dev/null
     st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}

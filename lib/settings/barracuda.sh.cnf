@@ -62,7 +62,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ###
 ### Available options: 5.6, 5.5, 5.4, 5.3
 ###
-### Example: _PHP_MULTI_INSTALL="5.3 5.5"
+### Example: _PHP_MULTI_INSTALL="5.6 5.5"
 ###
 ### Note that removing any version from this
 ### list once it is already installed, will
@@ -1024,11 +1024,11 @@ _SPEED_VALID_MAX=3600
 ###----------------------------------------###
 
 
-_AEGIR_VERSION="BOA-2.4.5"
-_AEGIR_XTS_VRN="BOA-2.4.5"
+_AEGIR_VERSION="BOA-2.4.6"
+_AEGIR_XTS_VRN="BOA-2.4.6"
 _BRANCH_BOA="2.4.x-dev"
 _BRANCH_PRN="2.4.x-dev"
-_X_VERSION="BOA-2.4.5"
+_X_VERSION="BOA-2.4.6"
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${gitHub}"
 
