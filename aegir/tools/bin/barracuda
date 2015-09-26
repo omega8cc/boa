@@ -902,7 +902,7 @@ proceed() {
     _SCRIPT_URL="$rgUrl/${stable}/${barName}"
     curl ${crlGet} "${rgUrl}/${stable}/${pthIncB}"  -o ${vBs}/${filIncB}
   elif [ "${cmmand}" = "up-legacy" ]; then
-    _SCRIPT_URL="$rgUrl/$legacy/${barName}"
+    _SCRIPT_URL="$rgUrl/${legacy}/${barName}"
   else
     echo
     echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log} {newrelickey|php-5.6|php-5.5|php-5.4|php-5.3|php-all|nodns}"
@@ -915,7 +915,7 @@ proceed() {
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    _SCRIPT_URL="$rgUrl/cluster/${barName}"
+    _SCRIPT_URL="$rgUrl/${cluster}/${barName}"
     cmmand="up-cluster"
   fi
   curl ${crlGet} ${_SCRIPT_URL} -o ${barName}
