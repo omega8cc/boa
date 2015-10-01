@@ -4349,7 +4349,8 @@ update_initd() {
 }
 
 update_sysctl() {
-  if [ ! -e "${pthLog}/sysctl.conf-${_X_VERSION}-${_NOW}.log" ]; then
+  if [ ! -e "/root/.no.sysctl.update.cnf" ] \
+    && [ ! -e "${pthLog}/sysctl.conf-${_X_VERSION}-${_NOW}.log" ]; then
     cp -af /etc/sysctl.conf \
       ${vBs}/dragon/t/sysctl.conf-pre-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${locCnf}/sysctl.conf /etc/sysctl.conf

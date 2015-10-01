@@ -137,9 +137,7 @@ _TUNE_PHP_CLI_TIMEOUT=7200
 ###----------------------------------------###
 
 _AEGIR_VERSION="BOA-2.4.6"
-_AEGIR_XTS_VRN="BOA-2.4.6"
 _BRANCH_BOA="2.4.x-dev"
-_BRANCH_PRN="2.4.x-dev"
 _X_VERSION="BOA-2.4.6"
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
