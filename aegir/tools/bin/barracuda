@@ -916,6 +916,7 @@ proceed() {
       || [ "${silent}" = "gravcms" ] \
       || [ "${silent}" = "jessie" ]; then
       echo "FEATURE MODE: ${silent}"
+      master="feature/${silent}"
       _SCRIPT_URL="$rgUrl/feature/${silent}/${barName}"
       curl ${crlGet} "${rgUrl}/feature/${silent}/${pthIncB}" -o ${vBs}/${filIncB}
     else
