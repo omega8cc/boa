@@ -1679,22 +1679,8 @@ install_wkhtmltoimage() {
 get_drush_versions() {
   msg "INFO: Installing extra Drush versions..."
   ###--------------------###
-  mkdir -p /opt/tools/drush/{4,6,7}
+  mkdir -p /opt/tools/drush/{7,8}
   chown -R root:root /opt/tools
-  rm -f -r /opt/tools/drush/4/*
-  cd /opt/tools/drush/4/
-  get_dev_ext "drush-${_DRUSH4_VRN}.tar.gz"
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush ${_DRUSH4_VRN} installation complete"
-  fi
-  rm -f -r /opt/tools/drush/6/*
-  cd /opt/tools/drush/6/
-  get_dev_ext "drush-${_DRUSH6_VRN}.tar.gz"
-  cd /opt/tools/drush/6/drush/lib
-  get_dev_ext "Console_Table-1.1.3.tgz"
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush ${_DRUSH6_VRN} installation complete"
-  fi
   rm -f -r /opt/tools/drush/7/*
   cd /opt/tools/drush/7/
   get_dev_ext "drush-${_DRUSH7_VRN}.tar.gz"
@@ -1704,32 +1690,40 @@ get_drush_versions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH7_VRN} installation complete"
   fi
+  rm -f -r /opt/tools/drush/8/*
+  cd /opt/tools/drush/8/
+  get_dev_ext "drush-${_DRUSH8_VRN}.tar.gz"
+  cd /opt/tools/drush/8/drush/
+  rm -f -r /opt/tools/drush/8/drush/vendor
+  get_dev_ext "vendor-${_DRUSH8_VRN}.tar.gz"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Drush ${_DRUSH8_VRN} installation complete"
+  fi
   find /opt/tools -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tools -type f -exec chmod 0644 {} \; &> /dev/null
   chmod 755 /opt/tools/drush/*/drush/drush
   chmod 755 /opt/tools/drush/*/drush/drush.php
-  if [ -x "/opt/tools/drush/4/drush/drush" ]; then
-    rm -f /usr/bin/drush4
-    ln -s /opt/tools/drush/4/drush/drush /usr/bin/drush4
-  fi
-  if [ -x "/opt/tools/drush/6/drush/drush" ]; then
-    rm -f /usr/bin/drush6
-    ln -s /opt/tools/drush/6/drush/drush /usr/bin/drush6
-  fi
   if [ -x "/opt/tools/drush/7/drush/drush" ]; then
     rm -f /usr/bin/drush7
-    rm -f /usr/bin/drush
     ln -s /opt/tools/drush/7/drush/drush /usr/bin/drush7
-    ln -s /opt/tools/drush/7/drush/drush /usr/bin/drush
-  else
-    rm -f /usr/bin/drush7
-    if [ -x "/opt/tools/drush/6/drush/drush" ]; then
-      ln -s /opt/tools/drush/6/drush/drush /usr/bin/drush7
-    fi
+  fi
+  if [ -x "/opt/tools/drush/8/drush/drush" ]; then
+    rm -f /usr/bin/drush8
+    rm -f /usr/bin/drush
+    ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush8
+    ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush
+  fi
+  if [ -e "/opt/tools/drush/6" ]; then
+    rm -f -r /opt/tools/drush/6
+    rm -f /usr/bin/drush6
   fi
   if [ -e "/opt/tools/drush/5" ]; then
     rm -f -r /opt/tools/drush/5
     rm -f /usr/bin/drush5
+  fi
+  if [ -e "/opt/tools/drush/4" ]; then
+    rm -f -r /opt/tools/drush/4
+    rm -f /usr/bin/drush4
   fi
   chown -R root:root /opt/tools/drush
   cd /opt/tmp
