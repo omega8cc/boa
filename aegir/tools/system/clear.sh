@@ -58,7 +58,7 @@ if [ -e "/etc/cron.daily/logrotate" ]; then
   fi
 fi
 
-if [ -e "/var/run/boa_run.pid" ] || [ -e "/var/run/daily-fix.pid" ]; then
+if [ -e "/var/run/boa_run.pid" ]; then
   sleep 1
 else
   if [ -e "/root/.barracuda.cnf" ]; then
