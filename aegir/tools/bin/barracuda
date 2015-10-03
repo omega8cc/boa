@@ -910,8 +910,18 @@ proceed() {
   set_pin_priority
   up_start
   if [ "${cmmand}" = "up-head" ]; then
-    _SCRIPT_URL="$rgUrl/${master}/${barName}"
-    curl ${crlGet} "${rgUrl}/${master}/${pthIncB}"  -o ${vBs}/${filIncB}
+    if [ "${silent}" = "backdrop" ] \
+      || [ "${silent}" = "cluster" ] \
+      || [ "${silent}" = "drush" ] \
+      || [ "${silent}" = "gravcms" ] \
+      || [ "${silent}" = "jessie" ]; then
+      echo "FEATURE MODE: ${silent}"
+      _SCRIPT_URL="$rgUrl/feature/${silent}/${barName}"
+      curl ${crlGet} "${rgUrl}/feature/${silent}/${pthIncB}" -o ${vBs}/${filIncB}
+    else
+      _SCRIPT_URL="$rgUrl/${master}/${barName}"
+      curl ${crlGet} "${rgUrl}/${master}/${pthIncB}"  -o ${vBs}/${filIncB}
+    fi
   elif [ "${cmmand}" = "up-modern" ]; then
     _SCRIPT_URL="$rgUrl/${devel}/${barName}"
     curl ${crlGet} "${rgUrl}/${devel}/${pthIncB}"   -o ${vBs}/${filIncB}
@@ -948,7 +958,13 @@ silent="$2"
 rkey="$3"
 debug="$4"
 if [ ! -z "${silent}" ]; then
-  if [ "${silent}" = "log" ] || [ "${silent}" = "system" ]; then
+  if [ "${silent}" = "log" ] \
+    || [ "${silent}" = "backdrop" ] \
+    || [ "${silent}" = "cluster" ] \
+    || [ "${silent}" = "drush" ] \
+    || [ "${silent}" = "gravcms" ] \
+    || [ "${silent}" = "jessie" ] \
+    || [ "${silent}" = "system" ]; then
     silent="$2"
   else
     silent=
