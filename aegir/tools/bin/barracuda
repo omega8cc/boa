@@ -488,7 +488,8 @@ up_action() {
       fi
     fi
     if [ "${cmmand}" = "up-head" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"       ${vBs}/${filIncB}
+      mstr=${master//\//\\\/}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${filIncB}
     elif [ "${cmmand}" = "up-modern" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"        ${vBs}/${filIncB}
     elif [ "${cmmand}" = "up-cluster" ]; then
