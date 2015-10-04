@@ -236,8 +236,6 @@ hostmaster_go_up() {
       rD="${_ROOT}/.drush"
       ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
         ${rD}/sys/provision &> /dev/null
-      ${gCb} 6.x-2.x ${gitHub}/make_local.git \
-        ${rD}/usr/make_local &> /dev/null
       ${gCb} 6.x-2.x ${gitHub}/provision_cdn.git \
         ${rD}/xts/provision_cdn &> /dev/null
       ${gCb} 7.x-1.x-dev ${gitHub}/drupalgeddon.git \
@@ -262,7 +260,7 @@ hostmaster_go_up() {
         get_dev_ext "$e.tar.gz"
       done
       cd ${_ROOT}/.drush/usr
-      _G_EXT="drupalgeddon drush_ecl make_local \
+      _G_EXT="drupalgeddon drush_ecl \
         registry_rebuild safe_cache_form_clear"
       for e in ${_G_EXT}; do
         get_dev_ext "$e.tar.gz"

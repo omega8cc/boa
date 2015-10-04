@@ -2355,18 +2355,6 @@ satellite_if_add_update_user_symlinks() {
       ${_USER_DS}/usr/drush_ecl
   fi
 
-  ###---### Add symlink to the system make_local.
-  #
-  if [ ! -L "${_USER_DS}/usr/make_local" ]; then
-    msg "${_STATUS} A: Adding symlink to the system make_local"
-    mkdir -p ${_USER_DS}/usr
-    chown ${_USERFTP}:${_USRG} ${_USER_DS}
-    chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
-    chmod 700 ${_USER_DS}
-    ln -sf ${_ROOT}/.drush/usr/make_local \
-      ${_USER_DS}/usr/make_local
-  fi
-
   ###---### Add symlink to the system safe_cache_form_clear.
   #
   if [ ! -L "${_USER_DS}/usr/safe_cache_form_clear" ]; then
@@ -3953,8 +3941,6 @@ satellite_child_b_drush_xts_install() {
     rD="${_ROOT}/.drush"
     ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
       ${rD}/sys/provision &> /dev/null
-    ${gCb} 6.x-2.x ${gitHub}/make_local.git \
-      ${rD}/usr/make_local &> /dev/null
     ${gCb} 6.x-2.x ${gitHub}/provision_civicrm.git \
       ${rD}/xts/provision_civicrm &> /dev/null
     ${gCb} 6.x-2.x ${gitHub}/provision_cdn.git \
@@ -3995,7 +3981,7 @@ satellite_child_b_drush_xts_install() {
       get_dev_ext "$e.tar.gz"
     done
     cd ${_ROOT}/.drush/usr
-    _G_EXT="clean_missing_modules drupalgeddon drush_ecl make_local \
+    _G_EXT="clean_missing_modules drupalgeddon drush_ecl \
       registry_rebuild safe_cache_form_clear"
     for e in ${_G_EXT}; do
       get_dev_ext "$e.tar.gz"
