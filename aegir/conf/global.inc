@@ -521,6 +521,9 @@ if ($conf['install_profile'] == 'hostmaster') {
       }
     }
   }
+  else {
+    $use_redis = FALSE;
+  }
 }
 
 
