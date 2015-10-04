@@ -511,20 +511,20 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ]; then
       if [ -x "/bin/dash" ]; then
         if [ ! -z "${_ARR}" ]; then
-          export DRUSH_PHP;export PHP_INI;exec drush ${_ARR}
+          export DRUSH_PHP;export PHP_INI;exec drush7 ${_ARR}
         else
           export DRUSH_PHP;export PHP_INI;exec /bin/dash "$@"
         fi
       else
         if [ ! -z "${_ARR}" ]; then
-          export DRUSH_PHP;export PHP_INI;exec drush ${_ARR}
+          export DRUSH_PHP;export PHP_INI;exec drush7 ${_ARR}
         else
           export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
         fi
       fi
     else
       if [ ! -z "${_ARR}" ]; then
-        export DRUSH_PHP;export PHP_INI;exec drush ${_ARR}
+        export DRUSH_PHP;export PHP_INI;exec drush7 ${_ARR}
       else
         export DRUSH_PHP;export PHP_INI;exec $0 "$@"
       fi
