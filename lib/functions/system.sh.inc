@@ -1702,7 +1702,14 @@ get_drush_versions() {
   find /opt/tools -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tools -type f -exec chmod 0644 {} \; &> /dev/null
   chmod 755 /opt/tools/drush/*/drush/drush
+  chmod 755 /opt/tools/drush/*/drush/drush.bat
+  chmod 755 /opt/tools/drush/*/drush/drush.complete.sh
+  chmod 755 /opt/tools/drush/*/drush/drush.launcher
   chmod 755 /opt/tools/drush/*/drush/drush.php
+  chmod 755 /opt/tools/drush/*/drush/unish.sh
+  chmod 755 /opt/tools/drush/*/drush/examples/drush.wrapper
+  chmod 755 /opt/tools/drush/*/drush/examples/git-bisect.example.sh
+  chmod 755 /opt/tools/drush/*/drush/examples/helloworld.script
   if [ -x "/opt/tools/drush/7/drush/drush" ]; then
     rm -f /usr/bin/drush7
     ln -s /opt/tools/drush/7/drush/drush /usr/bin/drush7
