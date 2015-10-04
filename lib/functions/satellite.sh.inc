@@ -1029,19 +1029,20 @@ satellite_child_b_update_ini_php_cli() {
     fi
     if [ -e "${_U_II}" ]; then
       _INI="open_basedir = \".: \
-        /data/all:        \
-        /data/conf:       \
-        /data/disk/all:   \
-        /opt/php53:       \
-        /opt/php54:       \
-        /opt/php55:       \
-        /opt/php56:       \
-        /opt/tika:        \
-        /opt/tika7:       \
-        /opt/tika8:       \
-        /opt/tika9:       \
-        /opt/tools/drush: \
-        ${_ROOT}:         \
+        /data/all:           \
+        /data/conf:          \
+        /data/disk/all:      \
+        /opt/php53:          \
+        /opt/php54:          \
+        /opt/php55:          \
+        /opt/php56:          \
+        /opt/tika:           \
+        /opt/tika7:          \
+        /opt/tika8:          \
+        /opt/tika9:          \
+        /opt/tmp/make_local: \
+        /opt/tools/drush:    \
+        ${_ROOT}:            \
         /usr/bin\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
