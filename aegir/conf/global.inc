@@ -149,7 +149,7 @@ if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
  */
 if (file_exists('web.config')) {
   if (file_exists('core')) {
-    if (file_exists('core/vendor/symfony')) {
+    if (file_exists('vendor/symfony') || file_exists('core/vendor/symfony')) {
       $drupal_eight = TRUE;
       if ($is_dev && !$is_backend) {
         header('X-Backend: A');
@@ -521,6 +521,9 @@ if ($conf['install_profile'] == 'hostmaster') {
       }
     }
   }
+  else {
+    $use_redis = FALSE;
+  }
 }
 
 
@@ -637,15 +640,15 @@ if (!$is_dev) {
         $conf['advagg_combine_css_media'] = 0;
         $conf['advagg_core_groups'] = 0;
         $conf['advagg_css_compressor'] = 2;
-        $conf['advagg_css_inline_compressor'] = 2;
-        $conf['advagg_css_inline_compress_if_not_cacheable'] = 1;
+        $conf['advagg_css_compress_inline'] = 2;
+        $conf['advagg_css_compress_inline_if_not_cacheable'] = 1;
         $conf['advagg_enabled'] = 1;
         $conf['advagg_gzip'] = 1;
         $conf['advagg_ie_css_selector_limiter'] = 1;
         $conf['advagg_js_compressor'] = 3;
         $conf['advagg_js_compress_packer'] = 0;
-        $conf['advagg_js_inline_compressor'] = 3;
-        $conf['advagg_js_inline_compress_if_not_cacheable'] = 1;
+        $conf['advagg_js_compress_inline'] = 3;
+        $conf['advagg_js_compress_inline_if_not_cacheable'] = 1;
         $conf['preprocess_css'] = 1;
         $conf['preprocess_js'] = 1;
       }

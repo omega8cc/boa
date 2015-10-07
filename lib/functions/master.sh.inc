@@ -812,20 +812,21 @@ update_php_cli_local_ini() {
     fi
     if [ -e "${_U_II}" ]; then
       _INI="open_basedir = \".: \
-        /data/all:        \
-        /data/conf:       \
-        /data/disk/all:   \
-        /opt/php53:       \
-        /opt/php54:       \
-        /opt/php55:       \
-        /opt/php56:       \
-        /opt/tika:        \
-        /opt/tika7:       \
-        /opt/tika8:       \
-        /opt/tika9:       \
-        /opt/tools/drush: \
-        /tmp:             \
-        /usr/bin:         \
+        /data/all:           \
+        /data/conf:          \
+        /data/disk/all:      \
+        /opt/php53:          \
+        /opt/php54:          \
+        /opt/php55:          \
+        /opt/php56:          \
+        /opt/tika:           \
+        /opt/tika7:          \
+        /opt/tika8:          \
+        /opt/tika9:          \
+        /opt/tmp/make_local: \
+        /opt/tools/drush:    \
+        /tmp:                \
+        /usr/bin:            \
         /var/aegir\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
