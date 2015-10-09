@@ -1029,19 +1029,20 @@ satellite_child_b_update_ini_php_cli() {
     fi
     if [ -e "${_U_II}" ]; then
       _INI="open_basedir = \".: \
-        /data/all:        \
-        /data/conf:       \
-        /data/disk/all:   \
-        /opt/php53:       \
-        /opt/php54:       \
-        /opt/php55:       \
-        /opt/php56:       \
-        /opt/tika:        \
-        /opt/tika7:       \
-        /opt/tika8:       \
-        /opt/tika9:       \
-        /opt/tools/drush: \
-        ${_ROOT}:         \
+        /data/all:           \
+        /data/conf:          \
+        /data/disk/all:      \
+        /opt/php53:          \
+        /opt/php54:          \
+        /opt/php55:          \
+        /opt/php56:          \
+        /opt/tika:           \
+        /opt/tika7:          \
+        /opt/tika8:          \
+        /opt/tika9:          \
+        /opt/tmp/make_local: \
+        /opt/tools/drush:    \
+        ${_ROOT}:            \
         /usr/bin\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
@@ -2892,6 +2893,7 @@ satellite_prepare_setup_email_tpl() {
         sed -i "s/dragon/${_USER}/g" ${_ROOT}/log/upgrademail.txt
         sed -i "s/FN8rXcQn/$_PASWD/g" ${_ROOT}/log/upgrademail.txt
         sed -i "s/166.84.6.231/${_THISHTIP}/g" ${_ROOT}/log/upgrademail.txt
+        sed -i "s/boa.version/${_X_VERSION}/g" ${_ROOT}/log/upgrademail.txt
       else
         _SEND_UPGRADE_EMAIL=NO
       fi
@@ -2902,6 +2904,7 @@ satellite_prepare_setup_email_tpl() {
      sed -i "s/dragon/${_USER}/g" ${_ROOT}/log/setupmail.txt
      sed -i "s/FN8rXcQn/$_PASWD/g" ${_ROOT}/log/setupmail.txt
      sed -i "s/166.84.6.231/${_THISHTIP}/g" ${_ROOT}/log/setupmail.txt
+     sed -i "s/boa.version/${_X_VERSION}/g" ${_ROOT}/log/setupmail.txt
     fi
   fi
 }

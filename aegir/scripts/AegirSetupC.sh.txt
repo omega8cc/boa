@@ -315,6 +315,7 @@ create_d8_symlinks() {
     ln -sf ${_D8_CORE_DIR}/profiles profiles
     ln -sf ${_D8_CORE_DIR}/themes themes
     ln -sf ${_D8_CORE_DIR}/update.php update.php
+    ln -sf ${_D8_CORE_DIR}/vendor vendor
     ln -sf ${_D8_CORE_DIR}/web.config web.config
     cp -af ${_D8_CORE_DIR}/sites ./
   fi
@@ -487,12 +488,6 @@ nocore_d7_dist_clean() {
 #
 # Remove D8 core from distro directory.
 nocore_d8_dist_clean() {
-  rm -f ${_SHRD_PLPATH}/.gitignore
-  rm -f ${_SHRD_PLPATH}/.htaccess
-  rm -f ${_SHRD_PLPATH}/*.php
-  rm -f ${_SHRD_PLPATH}/*.txt
-  rm -f ${_SHRD_PLPATH}/*.xml
-  rm -f ${_SHRD_PLPATH}/web.config
   rm -f -r ${_SHRD_PLPATH}/cache
   rm -f -r ${_SHRD_PLPATH}/core
   rm -f -r ${_SHRD_PLPATH}/includes
@@ -501,6 +496,13 @@ nocore_d8_dist_clean() {
   rm -f -r ${_SHRD_PLPATH}/scripts
   rm -f -r ${_SHRD_PLPATH}/sites
   rm -f -r ${_SHRD_PLPATH}/themes
+  rm -f -r ${_SHRD_PLPATH}/vendor
+  rm -f ${_SHRD_PLPATH}/.gitignore
+  rm -f ${_SHRD_PLPATH}/.htaccess
+  rm -f ${_SHRD_PLPATH}/*.php
+  rm -f ${_SHRD_PLPATH}/*.txt
+  rm -f ${_SHRD_PLPATH}/*.xml
+  rm -f ${_SHRD_PLPATH}/web.config
   if [ ! -d "${_SHRD_PLPATH}/profiles" ] && [ -d "${_D8_CORE_DIR}/profiles" ]; then
     rm -f -r ${_SHRD_PLPATH}/profiles
     cp -af ${_D8_CORE_DIR}/profiles ${_SHRD_PLPATH}/
@@ -2483,7 +2485,7 @@ save_verify_platforms() {
 
 drupal6_install
 drupal7_install
-### drupal8_install
+drupal8_install
 ### dr8_dev_install
 
 agov_install
