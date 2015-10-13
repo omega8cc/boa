@@ -155,12 +155,12 @@ Octopus can install the platforms listed below:
 
  aGov 2.1 --------------------- https://drupal.org/project/agov
  Commerce 1.38 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.28 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.30 ----------------- https://drupal.org/project/commons
+ Commerce 2.29 ---------------- https://drupal.org/project/commerce_kickstart
+ Commons 3.31 ----------------- https://drupal.org/project/commons
  Drupal 7.39.2 ---------------- https://drupal.org/drupal-7.39
  ERPAL 2.2 -------------------- https://drupal.org/project/erpal
  Guardr 2.19 ------------------ https://drupal.org/project/guardr
- OpenAid 2.5 ------------------ https://drupal.org/project/openaid
+ OpenAid 2.7 ------------------ https://drupal.org/project/openaid
  OpenAtrium 2.45 -------------- https://drupal.org/project/openatrium
  OpenChurch 2.1 --------------- https://drupal.org/project/openchurch
  OpenOutreach 1.23 ------------ https://drupal.org/project/openoutreach
