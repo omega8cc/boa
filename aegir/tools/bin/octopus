@@ -313,7 +313,7 @@ up_one() {
       fi
     fi
     if [ "${cmmand}" = "up-head" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"       ${vBs}/${tocIncO}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${tocIncO}
     elif [ "${cmmand}" = "up-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${tocIncO}
     else
@@ -630,8 +630,19 @@ up_finish() {
 
 up_head() {
   up_start
+  if [ "${silent}" = "backdrop" ] \
+    || [ "${silent}" = "cluster" ] \
+    || [ "${silent}" = "drush" ] \
+    || [ "${silent}" = "gravcms" ] \
+    || [ "${silent}" = "jessie" ]; then
+    echo "FEATURE MODE: ${silent}"
+    master="feature/${silent}"
+    branch="feature/${silent}"
+  fi
   curl ${crlGet} "${rgUrl}/${master}/${octName}"  -o ${vBs}/${octName}
   curl ${crlGet} "${rgUrl}/${master}/${pthIncO}"  -o ${vBs}/${filIncO}
+  mstr=${master//\//\\\/}
+  brnch=${branch//\//\\\/}
   if [ "${second}" = "all" ]; then
     up_action_all
   else
