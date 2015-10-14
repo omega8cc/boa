@@ -916,7 +916,7 @@ case "$1" in
       in-stable <---- install current BOA stable release
       in-head <------ install BOA HEAD for testing
       in-legacy <---- install old stable, not recommended
-      in-octopus <--- install extra Octopus instance
+      in-octopus <--- install extra Octopus instance (stable)
 
   {mode}
       public <------- recommended for general use
@@ -932,7 +932,7 @@ case "$1" in
       o1 <----------- default Octopus system account
 
   {platforms}
-      ask <---------- say y/n to every prompt in install, default
+      ask <---------- say y/n to every prompt in install (default)
       mini <--------- install only basic Drupal platforms w/o prompt
       max <---------- install all currently supported distros
       none <--------- do not install platforms, just Aegir
