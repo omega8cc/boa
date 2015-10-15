@@ -2083,7 +2083,7 @@ install_curl_src() {
     if [ "$_CURL_SSL_ITD" = "${_OPENSSL_VRN}" ]; then
       _CURL_INSTALL_REQUIRED=NO
     else
-      if [ "${_OSV}" = "wheezy" ] \
+      if [ "${_OSV}" = "stretch" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
         _DO_NOTHING=YES
