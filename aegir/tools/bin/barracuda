@@ -5,7 +5,6 @@ SHELL=/bin/bash
 
 branch="2.4.x-dev"
 cluster="BOA-2.4.6"
-devel="2.4.x-dev"
 hd="HEAD"
 lgcy="BOA-2.2.9"
 master="master"
@@ -458,25 +457,20 @@ up_action() {
       rm -f /var/xdrago/monitor/* &> /dev/null
     fi
     if [ "${cmmand}" = "up-head" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncB}
-      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncB}
-      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"     ${vBs}/${filIncB}
-      sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${filIncB}
-    elif [ "${cmmand}" = "up-modern" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncB}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncB}
       sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"     ${vBs}/${filIncB}
       sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${filIncB}
     else
       if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"     ${vBs}/${filIncB}
+        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncB}
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncB}
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${filIncB}
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncB}
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${barName}
-      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${branch}/g" ${vBs}/${barName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${barName}
+      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${barName}
       if [ "${cmmand}" = "up-legacy" ]; then
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcy}/g" ${vBs}/${barName}
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcy}/g" ${vBs}/${barName}
@@ -488,18 +482,15 @@ up_action() {
       fi
     fi
     if [ "${cmmand}" = "up-head" ]; then
-      mstr=${master//\//\\\/}
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${filIncB}
-    elif [ "${cmmand}" = "up-modern" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"        ${vBs}/${filIncB}
     elif [ "${cmmand}" = "up-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncB}
     else
       if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"     ${vBs}/${filIncB}
+        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${filIncB}
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${barName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${barName}
     fi
     if [ -e "${vBs}/${filIncB}" ]; then
       sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               ${vBs}/${filIncB}
@@ -918,15 +909,13 @@ proceed() {
       || [ "${silent}" = "jessie" ]; then
       echo "FEATURE MODE: ${silent}"
       master="feature/${silent}"
+      branch="feature/${silent}"
       _SCRIPT_URL="$rgUrl/feature/${silent}/${barName}"
       curl ${crlGet} "${rgUrl}/feature/${silent}/${pthIncB}" -o ${vBs}/${filIncB}
     else
       _SCRIPT_URL="$rgUrl/${master}/${barName}"
       curl ${crlGet} "${rgUrl}/${master}/${pthIncB}"  -o ${vBs}/${filIncB}
     fi
-  elif [ "${cmmand}" = "up-modern" ]; then
-    _SCRIPT_URL="$rgUrl/${devel}/${barName}"
-    curl ${crlGet} "${rgUrl}/${devel}/${pthIncB}"   -o ${vBs}/${filIncB}
   elif [ "${cmmand}" = "up-cluster" ]; then
     _SCRIPT_URL="$rgUrl/${cluster}/${barName}"
     curl ${crlGet} "${rgUrl}/${cluster}/${pthIncB}" -o ${vBs}/${filIncB}
@@ -944,6 +933,8 @@ proceed() {
     echo
     clean_pid_exit
   fi
+  mstr=${master//\//\\\/}
+  brnch=${branch//\//\\\/}
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then

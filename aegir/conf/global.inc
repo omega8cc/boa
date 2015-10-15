@@ -305,10 +305,10 @@ if (!$is_backend) {
     ini_set('display_startup_errors', TRUE);
     ini_set('opcache.revalidate_freq', '1');
     if ($drupal_eight) {
-      unset($config['system.logging']['error_level']);                 // Stop hardcoding no errors on screen
-      unset($config['system.performance']['cache.page.use_internal']); // Stop hardcoding internal page cache
-      unset($config['system.performance']['css']['preprocess']);       // Stop hardcoding CSS aggregation
-      unset($config['system.performance']['js']['preprocess']);        // Stop hardcoding JS aggregation
+      unset($config['system.logging']['error_level']);            // Stop hardcoding no errors on screen
+      unset($config['system.performance']['cache.page.max_age']); // Stop hardcoding internal page cache
+      unset($config['system.performance']['css']['preprocess']);  // Stop hardcoding CSS aggregation
+      unset($config['system.performance']['js']['preprocess']);   // Stop hardcoding JS aggregation
     }
     else {
       $conf['xmlsitemap_submit'] = 0; // Disable XML Sitemap for foo.dev.domain
@@ -435,7 +435,7 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
 if (!$is_backend && !$is_dev) {
   if (!$is_bot && $all_ini['disable_drupal_page_cache']) {
     if ($drupal_eight) {
-      $config['system.performance']['cache.page.use_internal'] = FALSE;
+      $config['system.performance']['cache.page.max_age'] = 0;
     }
     else {
       $conf['cache'] = 0;
@@ -443,7 +443,7 @@ if (!$is_backend && !$is_dev) {
   }
   else {
     if ($drupal_eight) {
-      $config['system.performance']['cache.page.use_internal'] = TRUE;
+      $config['system.performance']['cache.page.max_age'] = 60;
     }
     else {
       $conf['cache'] = 1;
@@ -458,7 +458,7 @@ if (!$is_backend && !$is_dev) {
 if (!$is_bot && isset($_SERVER['REQUEST_URI']) &&
     preg_match("/nocache=1/", $_SERVER['REQUEST_URI'])) {
   if ($drupal_eight) {
-    $config['system.performance']['cache.page.use_internal'] = FALSE;
+    $config['system.performance']['cache.page.max_age'] = 0;
   }
   else {
     $conf['cache'] = 0;
