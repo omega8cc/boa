@@ -2033,7 +2033,7 @@ install_ssh_src() {
     get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
     cd /var/opt/openssh-${_OPENSSH_VRN}
     st_runner "sh ./configure --without-openssl-header-check --prefix=/usr \
-      --with-pam" 2> /dev/null
+      --with-pam --with-openssl=/usr" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     mrun "service ssh restart" &> /dev/null
