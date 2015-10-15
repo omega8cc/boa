@@ -5,7 +5,6 @@ SHELL=/bin/bash
 
 branch="2.4.x-dev"
 cluster="BOA-2.4.6"
-devel="2.4.x-dev"
 hd="HEAD"
 lgcy="BOA-2.2.9"
 master="master"
@@ -281,25 +280,20 @@ octopus_install() {
     fi
 
     if [ "${cmmand}" = "in-head" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncO}
-      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncO}
-      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"     ${vBs}/${filIncO}
-      sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${filIncO}
-    elif [ "${cmmand}" = "in-modern" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncO}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncO}
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncO}
       sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"     ${vBs}/${filIncO}
       sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${filIncO}
     else
       if [ -e "${vBs}/${filIncO}" ]; then
-        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"     ${vBs}/${filIncO}
+        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncO}
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncO}
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${filIncO}
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncO}
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${octName}
-      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${branch}/g" ${vBs}/${octName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${octName}
+      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${octName}
       if [ "${cmmand}" = "in-legacy" ]; then
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcy}/g" ${vBs}/${octName}
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcy}/g" ${vBs}/${octName}
@@ -313,16 +307,14 @@ octopus_install() {
 
     if [ "${cmmand}" = "in-head" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"       ${vBs}/${filIncO}
-    elif [ "${cmmand}" = "in-modern" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"        ${vBs}/${filIncO}
     elif [ "${cmmand}" = "in-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncO}
     else
       if [ -e "${vBs}/${filIncO}" ]; then
-        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"     ${vBs}/${filIncO}
+        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${filIncO}
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${octName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${octName}
     fi
 
     if [ ! -z "${dbip}" ] && [ "${cmmand}" = "in-cluster" ]; then
@@ -531,25 +523,20 @@ barracuda_install() {
     fi
 
     if [ "${cmmand}" = "in-head" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncB}
-      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncB}
-      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"     ${vBs}/${filIncB}
-      sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${filIncB}
-    elif [ "${cmmand}" = "in-modern" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncB}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncB}
       sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"     ${vBs}/${filIncB}
       sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${filIncB}
     else
       if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"     ${vBs}/${filIncB}
+        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncB}
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncB}
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${filIncB}
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncB}
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${barName}
-      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${branch}/g" ${vBs}/${barName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${barName}
+      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${barName}
       if [ "${cmmand}" = "in-legacy" ]; then
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcy}/g" ${vBs}/${barName}
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcy}/g" ${vBs}/${barName}
@@ -563,16 +550,14 @@ barracuda_install() {
 
     if [ "${cmmand}" = "in-head" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"       ${vBs}/${filIncB}
-    elif [ "${cmmand}" = "in-modern" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"        ${vBs}/${filIncB}
     elif [ "${cmmand}" = "in-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncB}
     else
       if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"     ${vBs}/${filIncB}
+        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${filIncB}
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${barName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${barName}
     fi
 
     if [ -e "${vBs}/${barName}" ]; then
@@ -681,6 +666,7 @@ init_setup() {
       vn=
     fi
   fi
+  brnch=${branch//\//\\\/}
 
   init_start
   set_pin_priority
@@ -697,11 +683,6 @@ init_setup() {
       curl ${crlGet} "${rgUrl}/${master}/${octName}"  -o ${vBs}/${octName}
       curl ${crlGet} "${rgUrl}/${master}/${pthIncB}"  -o ${vBs}/${filIncB}
       curl ${crlGet} "${rgUrl}/${master}/${pthIncO}"  -o ${vBs}/${filIncO}
-    elif [ "${cmmand}" = "in-modern" ]; then
-      curl ${crlGet} "${rgUrl}/${devel}/${barName}"   -o ${vBs}/${barName}
-      curl ${crlGet} "${rgUrl}/${devel}/${octName}"   -o ${vBs}/${octName}
-      curl ${crlGet} "${rgUrl}/${devel}/${pthIncB}"   -o ${vBs}/${filIncB}
-      curl ${crlGet} "${rgUrl}/${devel}/${pthIncO}"   -o ${vBs}/${filIncO}
     elif [ "${cmmand}" = "in-cluster" ]; then
       curl ${crlGet} "${rgUrl}/${cluster}/${barName}" -o ${vBs}/${barName}
       curl ${crlGet} "${rgUrl}/${cluster}/${octName}" -o ${vBs}/${octName}
@@ -881,17 +862,6 @@ case "$1" in
              check_dns_curl
              init_setup
   ;;
-  in-modern) cmmand="$1"
-             kind="$2"
-             fqdn="$3"
-             email="$4"
-             user="$5"
-             mode="$6"
-             rkey="$7"
-             check_root
-             check_dns_curl
-             init_setup
-  ;;
   in-cluster) cmmand="$1"
              kind="$2"
              fqdn="$3"
@@ -946,7 +916,7 @@ case "$1" in
       in-stable <---- install current BOA stable release
       in-head <------ install BOA HEAD for testing
       in-legacy <---- install old stable, not recommended
-      in-octopus <--- install extra Octopus instance
+      in-octopus <--- install extra Octopus instance (stable)
 
   {mode}
       public <------- recommended for general use
@@ -962,7 +932,7 @@ case "$1" in
       o1 <----------- default Octopus system account
 
   {platforms}
-      ask <---------- say y/n to every prompt in install, default
+      ask <---------- say y/n to every prompt in install (default)
       mini <--------- install only basic Drupal platforms w/o prompt
       max <---------- install all currently supported distros
       none <--------- do not install platforms, just Aegir
