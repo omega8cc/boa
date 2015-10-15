@@ -533,7 +533,8 @@ _PHP_FPM_WORKERS=AUTO
 
 ###
 ### AUTO will not modify default TTL (180).
-### You can lower it to any number < 180.
+### You can lower it to any number which is
+### < 180 and > 60.
 ###
 _PHP_FPM_TIMEOUT=AUTO
 
