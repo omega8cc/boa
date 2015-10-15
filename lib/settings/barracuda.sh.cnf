@@ -942,7 +942,7 @@ _NGINX_NAXSI=NO
 
 ###
 ### When set to YES, it will also force
-### OpenSSL ans cURL re-install from sources
+### OpenSSL and cURL re-install from sources
 ### on systems other than Debian Wheezy,
 ### which already comes with required
 ### OpenSSL 1.0.1+ by default.
@@ -951,7 +951,7 @@ _NGINX_SPDY=YES
 
 ###
 ### When set to YES, it will also force
-### OpenSSL ans cURL re-install from sources
+### OpenSSL and cURL re-install from sources
 ### on systems other than Debian Wheezy,
 ### which already comes with required
 ### OpenSSL 1.0.1+ by default.
