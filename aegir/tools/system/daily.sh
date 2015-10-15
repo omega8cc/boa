@@ -940,7 +940,7 @@ setup_solr() {
     if [[ "${_SOLR_IM_PT}" =~ "solr_integration_module" ]]; then
       _DO_NOTHING=YES
     else
-      echo ";solr_integration_module = NO" >> ${_DIR_CTRL_F}
+      echo ";solr_integration_module = your_module_name_here" >> ${_DIR_CTRL_F}
     fi
     _ASOLR_T=$(grep "^solr_integration_module = apachesolr" \
       ${_DIR_CTRL_F} 2>&1)

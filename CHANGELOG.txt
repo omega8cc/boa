@@ -1464,7 +1464,7 @@
 ;;  in the /root/.barracuda.cnf file (this is default value) to make this
 ;;  feature active.
 ;;
-;solr_integration_module = NO
+;solr_integration_module = your_module_name_here
 
 ;;
 ;;  This option allows to auto-update your Solr 4 core configuration files:
