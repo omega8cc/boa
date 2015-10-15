@@ -231,7 +231,7 @@ sub global_action
         chomp($timedate);
         if ($CPU > $MAXSQLCPU && $HOUR > 1 && ($STAT =~ /R/ || $STAT =~ /Z/))
         {
-          if (!-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid") {
+          if (!-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid" && !-e "/root/.no.sql.cpu.limit.cnf") {
             system("bash /var/xdrago/move_sql.sh");
             $timedate=`date +%y%m%d-%H%M%S`;
             chomp($timedate);
