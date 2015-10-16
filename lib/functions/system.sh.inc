@@ -2101,7 +2101,7 @@ install_curl_src() {
       fi
     fi
   else
-    if [ "${_OSV}" = "wheezy" ] \
+    if [ "${_OSV}" = "stretch" ] \
       || [ "${_OSV}" = "trusty" ] \
       || [ "${_OSV}" = "precise" ]; then
       _DO_NOTHING=YES
@@ -2122,7 +2122,7 @@ install_curl_src() {
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version ${_CURL_ITD}, rebuild forced"
   fi
-  if [ "${_OSV}" = "wheezy" ] \
+  if [ "${_OSV}" = "stretch" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     _CURL_INSTALL_REQUIRED=NO
@@ -2151,7 +2151,7 @@ install_curl_src() {
     _UP_PHP=YES
   else
     ###--------------------###
-    if [ "${_OSV}" = "wheezy" ] \
+    if [ "${_OSV}" = "stretch" ] \
       || [ "${_OSV}" = "trusty" ] \
       || [ "${_OSV}" = "precise" ]; then
       if [ "${_CURL_ITD}" = "${_CURL_LIB_ITD}" ]; then
