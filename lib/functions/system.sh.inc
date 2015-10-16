@@ -2164,10 +2164,10 @@ install_curl_src() {
         fi
         if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
           echo "curl install" | dpkg --set-selections
-          apt-get install libcurl3 ${forCer} &> /dev/null
-          apt-get install libcurl3-gnutls ${forCer} &> /dev/null
-          apt-get install libcurl4-openssl-dev ${forCer} &> /dev/null
-          apt-get install curl ${forCer} &> /dev/null
+          st_runner "apt-get install libcurl3 ${forCer}" 2> /dev/null
+          st_runner "apt-get install libcurl3-gnutls ${forCer}" 2> /dev/null
+          st_runner "apt-get install libcurl4-openssl-dev ${forCer}" 2> /dev/null
+          st_runner "apt-get install curl ${forCer}" 2> /dev/null
         fi
       fi
     else
@@ -2175,9 +2175,9 @@ install_curl_src() {
         echo "libcurl3 install" | dpkg --set-selections
         echo "libcurl3-gnutls install" | dpkg --set-selections
         echo "libcurl4-openssl-dev install" | dpkg --set-selections
-        aptitude install libcurl3 -y &> /dev/null
-        aptitude install libcurl3-gnutls -y &> /dev/null
-        aptitude install libcurl4-openssl-dev -y &> /dev/null
+        st_runner "aptitude install libcurl3 -y" 2> /dev/null
+        st_runner "aptitude install libcurl3-gnutls -y" 2> /dev/null
+        st_runner "aptitude install libcurl4-openssl-dev -y" 2> /dev/null
         echo "curl hold" | dpkg --set-selections
         aptitude hold curl &> /dev/null
       fi
@@ -2227,7 +2227,7 @@ install_ssl_src() {
   fi
   if [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
-    msg "INFO: Installing OpenSSL ${_OPENSSL_VRN} from sid, please wait..."
+    msg "INFO: Installing OpenSSL ${_OPENSSL_VRN}, please wait..."
     aptTmp="${aptLiSys}.d/openssl.list"
     echo "## OpenSSL APT Repository" > ${aptTmp}
     if [ "${_THIS_OS}" = "Ubuntu" ]; then
@@ -2237,12 +2237,12 @@ install_ssl_src() {
       echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
       echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
     fi
-    apt-get update -qq &> /dev/null
-    apt-get install zlibc -y --force-yes &> /dev/null
-    apt-get install zlib1g -y --force-yes &> /dev/null
-    apt-get install zlib1g-dev -y --force-yes &> /dev/null
-    apt-get install libssl-dev -y --force-yes &> /dev/null
-    apt-get install openssl -y --force-yes &> /dev/null
+    st_runner "apt-get update -qq" 2> /dev/null
+    st_runner "apt-get install zlibc -y --force-yes" 2> /dev/null
+    st_runner "apt-get install zlib1g -y --force-yes" 2> /dev/null
+    st_runner "apt-get install zlib1g-dev -y --force-yes" 2> /dev/null
+    st_runner "apt-get install libssl-dev -y --force-yes" 2> /dev/null
+    st_runner "apt-get install openssl -y --force-yes" 2> /dev/null
     ###--------------------###
     if [[ "$_SSL_GET_DPKG" =~ "hold" ]]; then
       echo "zlibc install" | dpkg --set-selections
@@ -2250,14 +2250,14 @@ install_ssl_src() {
       echo "zlib1g-dev install" | dpkg --set-selections
       echo "libssl-dev install" | dpkg --set-selections
       echo "openssl install" | dpkg --set-selections
-      apt-get install zlibc ${forCer} &> /dev/null
-      apt-get install zlib1g ${forCer} &> /dev/null
-      apt-get install zlib1g-dev ${forCer} &> /dev/null
-      apt-get install libssl-dev ${forCer} &> /dev/null
-      apt-get install openssl ${forCer} &> /dev/null
+      st_runner "apt-get install zlibc ${forCer}" 2> /dev/null
+      st_runner "apt-get install zlib1g ${forCer}" 2> /dev/null
+      st_runner "apt-get install zlib1g-dev ${forCer}" 2> /dev/null
+      st_runner "apt-get install libssl-dev ${forCer}" 2> /dev/null
+      st_runner "apt-get install openssl ${forCer}" 2> /dev/null
     fi
     rm -f ${aptTmp}
-    apt-get update -qq &> /dev/null
+    st_runner "apt-get update -qq" 2> /dev/null
   fi
 }
 
