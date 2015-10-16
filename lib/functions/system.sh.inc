@@ -2568,13 +2568,11 @@ finale() {
     _L_ST="upgrade"
   fi
   msg "CARD: Now charging your credit card for this magic show..."
-  mrun "sleep 5"
-  msg "CARD: Thank you for entering your correct PIN code..."
-  mrun "sleep 5"
+  mrun "sleep 2"
   msg "CARD: It will take a moment to process your payment..."
-  mrun "sleep 8"
-  msg "JOKE: Just kidding !!! Enjoy your Aegir Hosting System :)"
   mrun "sleep 5"
+  msg "JOKE: Just kidding !!! Enjoy your Aegir Hosting System :)"
+  mrun "sleep 3"
   echo " "
   if [ "$_UP_LNX" = "YES" ]; then
     msg "ALRT! Your OS kernel has been upgraded!"
