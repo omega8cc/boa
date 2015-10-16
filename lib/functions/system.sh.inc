@@ -2129,18 +2129,7 @@ install_curl_src() {
   fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ]; then
     ###--------------------###
-    if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]] \
-      || [ "${_CURL_ITD}" != "${_CURL_LIB_ITD}" ]; then
-      aptTmp="${aptLiSys}.d/openssl.list"
-      echo "## OpenSSL APT Repository" > ${aptTmp}
-      if [ "${_THIS_OS}" = "Ubuntu" ]; then
-        echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-        echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-      else
-        echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
-        echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
-      fi
-      apt-get update -qq &> /dev/null
+    if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
       echo "libcurl3 install" | dpkg --set-selections
       echo "libcurl3-gnutls install" | dpkg --set-selections
       echo "libcurl4-openssl-dev install" | dpkg --set-selections
@@ -2149,8 +2138,6 @@ install_curl_src() {
       aptitude install libcurl4-openssl-dev -y &> /dev/null
       echo "curl hold" | dpkg --set-selections
       aptitude hold curl &> /dev/null
-      rm -f ${aptTmp}
-      apt-get update -qq &> /dev/null
     fi
     msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
     cd /var/opt
