@@ -422,7 +422,8 @@ install_php_extensions() {
     if [ "$1" != "52" ]; then
       msg "INFO: Building GEOS extension for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
-        st_runner "apt-get update -y --force-yes" &> /dev/null
+        rm -f /etc/apt/sources.list.d/openssl.list
+        st_runner "apt-get update -qq" &> /dev/null
         st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
         touch ${pthLog}/geos-${_X_VERSION}.log
       fi
@@ -583,7 +584,8 @@ update_php_extensions() {
     if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
       msg "INFO: Building GEOS upgrade for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
-        st_runner "apt-get update -y --force-yes" &> /dev/null
+        rm -f /etc/apt/sources.list.d/openssl.list
+        st_runner "apt-get update -qq" &> /dev/null
         st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
         touch ${pthLog}/geos-${_X_VERSION}.log
       fi
@@ -806,7 +808,8 @@ update_newrelic() {
       echo "## New Relic APT Repository" > ${aptLiSys}.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
         >> ${aptLiSys}.d/newrelic.list
-      st_runner "apt-get update -y --force-yes" &> /dev/null
+      rm -f /etc/apt/sources.list.d/openssl.list
+      st_runner "apt-get update -qq" &> /dev/null
       st_runner "apt-get install newrelic-php5 newrelic-sysmond -f -y \
         --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" \
         2> /dev/null
@@ -909,7 +912,8 @@ install_newrelic() {
         ${aptLiSys}.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
         >> ${aptLiSys}.d/newrelic.list
-      st_runner "apt-get update -y --force-yes" &> /dev/null
+      rm -f /etc/apt/sources.list.d/openssl.list
+      st_runner "apt-get update -qq" &> /dev/null
       st_runner "apt-get install newrelic-php5 newrelic-sysmond -f -y \
         --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
       if [ "$_MULTI_NR" = "YES" ]; then

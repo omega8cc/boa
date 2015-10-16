@@ -32,6 +32,7 @@ if_running_as_root_barracuda() {
       _VMFAMILY="VS"
       touch /var/run/cloud_vhost.pid
       if [ -d "/etc/webmin" ]; then
+        rm -f /etc/apt/sources.list.d/openssl.list
         mrun "dpkg --configure -a" &> /dev/null
         mrun "apt-get clean -qq"   &> /dev/null
         mrun "apt-get update -qq"  &> /dev/null
@@ -1472,6 +1473,7 @@ barracuda_cnf() {
 # Running aptitude full-upgrade.
 run_aptitude_full_upgrade() {
   msg "INFO: Running aptitude full-upgrade..."
+  rm -f /etc/apt/sources.list.d/openssl.list
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
     || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
@@ -1484,7 +1486,7 @@ run_aptitude_full_upgrade() {
     fi
   fi
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
-  st_runner "aptitude update -y" &> /dev/null
+  st_runner "apt-get update -qq" &> /dev/null
   _THIS_DB_SERVER_TEST=$(mysql -V 2>&1)
   if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]] \
     && [ ! -e "${pthLog}/fixed-mytop-mariadb.log" ]; then
@@ -1506,6 +1508,7 @@ run_aptitude_full_upgrade() {
 # Running silent aptitude full-upgrade.
 run_silent_aptitude_full_upgrade() {
   msg "INFO: Running silent aptitude full-upgrade..."
+  rm -f /etc/apt/sources.list.d/openssl.list
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
     || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
@@ -2003,7 +2006,8 @@ update_sources_list() {
     fi
   fi
   ###--------------------###
-  apt-get update &> /dev/null
+  rm -f /etc/apt/sources.list.d/openssl.list
+  apt-get update -qq &> /dev/null
   ###--------------------###
 }
 
@@ -2219,57 +2223,37 @@ install_ssl_src() {
   fi
   if [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
-    msg "INFO: Building zlib ${_ZLIB_VRN} from sources, please wait..."
-    cd /var/opt
-    rm -f -r zlib*
-    get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
-    cd /var/opt/zlib-${_ZLIB_VRN}
-    st_runner "./configure --prefix=/usr" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    ###--------------------###
-    msg "INFO: Building OpenSSL ${_OPENSSL_VRN} from sources, please wait..."
-    cd /var/opt
-    rm -f -r openssl*
-    get_dev_src "openssl-${_OPENSSL_VRN}.tar.gz"
-    cd /var/opt/openssl-${_OPENSSL_VRN}
-    _X86_64_IF=$(uname -m 2>&1)
-    if [ "$_X86_64_IF" = "x86_64" ]; then
-      st_runner "sh ./config --prefix=/usr zlib-dynamic \
-        shared enable-ec_nistp_64_gcc_128" 2> /dev/null
-      st_runner "make depend" 2> /dev/null
+    msg "INFO: Installing OpenSSL ${_OPENSSL_VRN} from sid, please wait..."
+    aptTmp="${aptLiSys}.d/openssl.list"
+    echo "## OpenSSL APT Repository" > ${aptTmp}
+    if [ "${_THIS_OS}" = "Ubuntu" ]; then
+      echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
+      echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
     else
-      st_runner "sh ./config --prefix=/usr zlib-dynamic \
-        shared" 2> /dev/null
+      echo "deb http://${_MIRROR}/debian/ sid main" >> ${aptTmp}
+      echo "deb-src http://${_MIRROR}/debian/ sid main" >> ${aptTmp}
     fi
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    apt-get update -qq &> /dev/null
+    apt-get install zlibc -y --force-yes &> /dev/null
+    apt-get install zlib1g -y --force-yes &> /dev/null
+    apt-get install zlib1g-dev -y --force-yes &> /dev/null
+    apt-get install libssl-dev -y --force-yes &> /dev/null
+    apt-get install openssl -y --force-yes &> /dev/null
     ###--------------------###
-    if [[ ! "$_SSL_GET_DPKG" =~ "hold" ]]; then
-      aptitude install libssl-dev -y &> /dev/null
-      aptitude hold openssl &> /dev/null
-      aptitude hold zlibc &> /dev/null
-      aptitude hold zlib1g &> /dev/null
-      aptitude hold zlib1g-dev &> /dev/null
+    if [[ "$_SSL_GET_DPKG" =~ "hold" ]]; then
+      echo "zlibc install" | dpkg --set-selections
+      echo "zlib1g install" | dpkg --set-selections
+      echo "zlib1g-dev install" | dpkg --set-selections
       echo "libssl-dev install" | dpkg --set-selections
-      echo "openssl hold" | dpkg --set-selections
-      echo "zlibc hold" | dpkg --set-selections
-      echo "zlib1g hold" | dpkg --set-selections
-      echo "zlib1g-dev hold" | dpkg --set-selections
+      echo "openssl install" | dpkg --set-selections
+      apt-get install zlibc -y --force-yes --reinstall &> /dev/null
+      apt-get install zlib1g -y --force-yes --reinstall &> /dev/null
+      apt-get install zlib1g-dev -y --force-yes --reinstall &> /dev/null
+      apt-get install libssl-dev -y --force-yes --reinstall &> /dev/null
+      apt-get install openssl -y --force-yes --reinstall &> /dev/null
     fi
-  else
-    if [[ ! "$_SSL_GET_DPKG" =~ "hold" ]]; then
-      aptitude install libssl-dev -y &> /dev/null
-      aptitude hold openssl &> /dev/null
-      aptitude hold zlibc &> /dev/null
-      aptitude hold zlib1g &> /dev/null
-      aptitude hold zlib1g-dev &> /dev/null
-      echo "libssl-dev install" | dpkg --set-selections
-      echo "openssl hold" | dpkg --set-selections
-      echo "zlibc hold" | dpkg --set-selections
-      echo "zlib1g hold" | dpkg --set-selections
-      echo "zlib1g-dev hold" | dpkg --set-selections
-    fi
+    rm -f ${aptTmp}
+    apt-get update -qq &> /dev/null
   fi
 }
 
@@ -2724,6 +2708,7 @@ install_with_aptitude_deps() {
 basic_packages_install_on_init() {
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Installing some basic tools now, please wait..."
+    rm -f /etc/apt/sources.list.d/openssl.list
     _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
     if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
       || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
@@ -2735,7 +2720,7 @@ basic_packages_install_on_init() {
         apt-get install ubuntu-keyring ${forCer} &> /dev/null
       fi
     fi
-    apt-get update &> /dev/null
+    apt-get update -qq &> /dev/null
     ${_INITINS} locales &> /dev/null
     fix_locales
     ${_INITINS} lsb-release &> /dev/null
@@ -2759,7 +2744,8 @@ more_packages_install_on_init() {
           ${aptLiSys} &> /dev/null
       fi
     fi
-    apt-get update &> /dev/null
+    rm -f /etc/apt/sources.list.d/openssl.list
+    apt-get update -qq &> /dev/null
     ${_INITINS} locales &> /dev/null
     fix_locales
     ${_INITINS} git-core &> /dev/null
@@ -2861,7 +2847,8 @@ if_squeeze_to_wheezy() {
     mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
     sed -i "s/.*proposed-updates.*//g" /etc/apt/sources.list
     sed -i "s/squeeze/wheezy/g"  /etc/apt/sources.list.d/* &> /dev/null
-    mrun "apt-get update -y --force-yes" &> /dev/null
+    rm -f /etc/apt/sources.list.d/openssl.list
+    mrun "apt-get update -qq" &> /dev/null
     mrun "apt-get upgrade -f -y --force-yes -q \
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
     mrun "apt-get install apt dpkg aptitude ${forCer} -q \
@@ -2916,6 +2903,7 @@ if_squeeze_to_wheezy() {
     else
       _PTMX=CHECK
     fi
+    rm -f /etc/apt/sources.list.d/openssl.list
     mrun "dpkg --configure --force-all -a" 2> /dev/null
     mrun "apt-get update -y" 2> /dev/null
     mrun "dpkg --configure --force-all -a" 2> /dev/null
@@ -2937,6 +2925,7 @@ if_squeeze_to_wheezy() {
       msg "WARN: Required /dev/pts/ptmx does not exist! We will fix this now..."
       mkdir -p /dev/pts
       rm -f -r /dev/pts/*
+      rm -f /etc/apt/sources.list.d/openssl.list
       apt-get update -qq &> /dev/null
       apt-get install udev -y --force-yes &> /dev/null
       mount -t devpts devpts /dev/pts &> /dev/null
@@ -2986,8 +2975,9 @@ if_lenny_to_squeeze() {
       || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
       mrun "apt-get remove udev -y --force-yes -qq" &> /dev/null
     fi
+    rm -f /etc/apt/sources.list.d/openssl.list
     mrun "apt-get remove lsb-release -y --force-yes -qq" &> /dev/null
-    mrun "apt-get update -y --force-yes" &> /dev/null
+    mrun "apt-get update -qq" &> /dev/null
     mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
     mrun "apt-get install apt dpkg aptitude -f -y --force-yes -q \
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
@@ -3036,7 +3026,7 @@ if_lenny_to_squeeze() {
       done
     fi
     sed -i "s/lenny/squeeze/g"  /etc/apt/sources.list.d/* &> /dev/null
-    mrun "aptitude update -y" &> /dev/null
+    mrun "apt-get update -qq" &> /dev/null
     mrun "dpkg --configure --force-all -a" 2> /dev/null
     mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
           -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
@@ -3084,6 +3074,7 @@ sys_packages_update() {
   else
     st_runner "dpkg --configure --force-all -a" 2> /dev/null
   fi
+  rm -f /etc/apt/sources.list.d/openssl.list
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
     || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
@@ -3095,13 +3086,13 @@ sys_packages_update() {
       st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
     fi
   fi
-  st_runner "aptitude update -y" &> /dev/null
+  st_runner "apt-get update -qq" &> /dev/null
   _DB_SERVER_TEST=$(mysql -V 2>&1)
   if [ "${_STATUS}" = "INIT" ]; then
     st_runner "aptitude full-upgrade -f -y -q \
       -o Dpkg::Options::=--force-confdef \
       -o Dpkg::Options::=--force-confold" 2> /dev/null
-    st_runner "aptitude update -y" &> /dev/null
+    st_runner "apt-get update -qq" &> /dev/null
     st_runner "aptitude full-upgrade -f -y -q \
       -o Dpkg::Options::=--force-confdef \
       -o Dpkg::Options::=--force-confold" 2> /dev/null
@@ -3144,9 +3135,10 @@ sys_packages_update() {
     if [ "${_OSV}" = "squeeze" ]; then
       if [ -e "${aptLiSys}.d/dotdeb.list" ]; then
         rm -f ${aptLiSys}.d/dotdeb.list
+        rm -f /etc/apt/sources.list.d/openssl.list
         st_runner "aptitude autoclean -y" &> /dev/null
         st_runner "apt-get clean -qq" &> /dev/null
-        st_runner "apt-get update -y --force-yes" &> /dev/null
+        st_runner "apt-get update -qq" &> /dev/null
       fi
     fi
     rm -f /var/lib/mysql/debian-*.flag &> /dev/null
@@ -3225,6 +3217,7 @@ sys_packages_install() {
       _APT_XTRA=""
     fi
     _APT_ELSE="netcat"
+    rm -f /etc/apt/sources.list.d/openssl.list
     _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
     if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
       || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
@@ -3244,7 +3237,7 @@ sys_packages_install() {
     mrun "apt-get remove nginx-full -y --force-yes -qq"   &> /dev/null
     mrun "apt-get remove redis-server -y --force-yes -qq" &> /dev/null
     st_runner "apt-get autoremove -y --force-yes -qq"     &> /dev/null
-    st_runner "apt-get update -y --force-yes"             &> /dev/null
+    st_runner "apt-get update -qq"                        &> /dev/null
   fi
   _EXTRA_LIB_APT="libmcrypt-dev"
   if [ ! -z "${_EXTRA_PACKAGES}" ]; then
@@ -3575,6 +3568,7 @@ fix_postfix() {
   else
     _POSTFIX_TEST=$(grep "fatal: open lock file" /var/log/mail.log 2>&1)
     if [[ "$_POSTFIX_TEST" =~ "fatal: open lock file" ]]; then
+      rm -f /etc/apt/sources.list.d/openssl.list
       _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
       if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
         || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then

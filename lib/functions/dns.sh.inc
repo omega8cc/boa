@@ -366,7 +366,8 @@ install_pdnsd_cache() {
     echo "nameserver 8.8.8.8" > /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   fi
-  st_runner "apt-get update -y --force-yes" &> /dev/null
+  rm -f /etc/apt/sources.list.d/openssl.list
+  st_runner "apt-get update -qq" &> /dev/null
   st_runner "aptitude purge pdnsd -y" &> /dev/null
   st_runner "aptitude purge resolvconf -y" &> /dev/null
   st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null

@@ -258,6 +258,7 @@ install_mariadb_sql() {
       msg "INFO: Forced MariaDB $_MARIADB_VRN in ${_THIS_OS}/${_OSV}"
     fi
   fi
+  rm -f /etc/apt/sources.list.d/openssl.list
   aptRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
   aptLiDb="${aptLiSys}.d/mariadb.list"
   echo "## MariaDB APT Repository" > ${aptLiDb}
@@ -281,7 +282,7 @@ install_mariadb_sql() {
   st_runner "aptitude remove mysql-common -y"              &> /dev/null
   st_runner "apt-get purge mysql-common -y"                &> /dev/null
   st_runner "apt-get autoremove -y --force-yes -qq"        &> /dev/null
-  st_runner "apt-get update -y --force-yes"                &> /dev/null
+  st_runner "apt-get update -qq"                           &> /dev/null
   if [ "${_EASY_SETUP}" = "MSTR" ] \
     || [ "${_EASY_SETUP}" = "DBHD" ] \
     || [ "${_EASY_SETUP}" = "WBHD" ] \
@@ -491,7 +492,8 @@ install_mariadb_server() {
       echo "## MariaDB APT Repository" > ${aptLiDb}
       echo "deb http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
       echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
-      st_runner "aptitude update -y" &> /dev/null
+      rm -f /etc/apt/sources.list.d/openssl.list
+      st_runner "apt-get update -qq" &> /dev/null
       touch ${pthLog}/mariadb-apt-fixed-${_X_VERSION}.log
     fi
     if [ "$_SQL_UPGRADE" = "YES" ]; then
@@ -510,9 +512,10 @@ install_mariadb_server() {
           --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
         sleep 2
       done
+      rm -f /etc/apt/sources.list.d/openssl.list
       st_runner "aptitude autoclean -y" &> /dev/null
       st_runner "apt-get clean -qq" &> /dev/null
-      st_runner "apt-get update -y --force-yes" &> /dev/null
+      st_runner "apt-get update -qq" &> /dev/null
       cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
       sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
       sed -i "s/.*language/#language/g" /etc/mysql/my.cnf

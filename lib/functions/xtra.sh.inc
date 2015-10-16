@@ -234,7 +234,8 @@ if_install_hhvm() {
             sleep 2
           done
           cat /var/opt/hhvm.gpg.key | apt-key add - &> /dev/null
-          st_runner "apt-get update -y --force-yes" &> /dev/null
+          rm -f /etc/apt/sources.list.d/openssl.list
+          st_runner "apt-get update -qq" &> /dev/null
           st_runner "apt-get install hhvm ${forCer}" 2> /dev/null
           msg "INFO: HHVM Engine installed"
         else
@@ -268,7 +269,8 @@ if_install_webmin() {
         cat jcameron-key.asc | apt-key add - &> /dev/null
         rm -f jcameron-key.asc*
         touch ${pthLog}/webmin_update_apt_src.log
-        st_runner "apt-get update -y --force-yes" &> /dev/null
+        rm -f /etc/apt/sources.list.d/openssl.list
+        st_runner "apt-get update -qq" &> /dev/null
         st_runner "${_INSTAPP} webmin \
                              libxml-simple-perl \
                              libcrypt-ssleay-perl" 2> /dev/null
@@ -357,7 +359,8 @@ if_install_rvm() {
           if [ "${_STATUS}" = "INIT" ] \
             || [ "$_RUBY_UPGRADE" = "YES" ] \
             || [ "$_RUBY_RELOAD" = "YES" ]; then
-            mrun "apt-get update -y --force-yes" &> /dev/null
+            rm -f /etc/apt/sources.list.d/openssl.list
+            mrun "apt-get update -qq" &> /dev/null
             mrun "apt-get remove rubygems \
                                  ruby1.9.1-dev \
                                  libruby1.9.1 \
