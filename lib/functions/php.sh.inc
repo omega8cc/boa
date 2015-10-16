@@ -663,7 +663,7 @@ update_php_extensions() {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
-    rm ${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log
+    rm -f ${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log
   fi
   if [ ! -e "${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing YAML upgrade for PHP ${_T_PHP_VRN}..."
