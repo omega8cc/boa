@@ -2235,11 +2235,11 @@ install_ssl_src() {
     cd /var/opt/openssl-${_OPENSSL_VRN}
     _X86_64_IF=$(uname -m 2>&1)
     if [ "$_X86_64_IF" = "x86_64" ]; then
-      st_runner "sh ./config --prefix=/usr zlib-dynamic --openssldir=/etc/ssl \
+      st_runner "sh ./config --prefix=/opt/ssl zlib-dynamic \
         shared enable-ec_nistp_64_gcc_128" 2> /dev/null
       st_runner "make depend" 2> /dev/null
     else
-      st_runner "sh ./config --prefix=/usr zlib-dynamic --openssldir=/etc/ssl \
+      st_runner "sh ./config --prefix=/opt/ssl zlib-dynamic \
         shared" 2> /dev/null
     fi
     st_runner "make --quiet" 2> /dev/null
