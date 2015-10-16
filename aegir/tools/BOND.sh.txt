@@ -289,6 +289,18 @@ fix_php_ini_mailparse() {
   fi
 }
 #
+# Fix php.ini files to add yaml.so
+fix_php_ini_yaml() {
+  if [ -e "${_THIS_FILE}" ]; then
+    _MAILPARSE_INI_TEST=$(grep "extension=yaml.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_MAILPARSE_INI_TEST" =~ "extension=yaml.so" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=yaml.so" >> ${_THIS_FILE}
+    fi
+  fi
+}
+#
 # Fix php.ini files to add jsmin.so
 fix_php_ini_jsmin() {
   if [ -e "${_THIS_FILE}" ]; then
@@ -493,12 +505,14 @@ update_php_conf() {
     fix_php_ini_twig
     fix_php_ini_suhosin
     fix_php_ini_mailparse
+    fix_php_ini_yaml
     _THIS_FILE=/opt/php${e}/lib/php.ini
     fix_php_ini_redis
     fix_php_ini_jsmin
     fix_php_ini_twig
     fix_php_ini_suhosin
     fix_php_ini_mailparse
+    fix_php_ini_yaml
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g"       /opt/php${e}/etc/php${e}.ini
       sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php${e}/etc/php${e}.ini

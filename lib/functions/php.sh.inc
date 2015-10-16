@@ -23,6 +23,19 @@ fix_php_ini_mailparse() {
 }
 
 #
+# Fix php.ini files to add yaml.so
+fix_php_ini_yaml() {
+  if [ -e "${_THIS_FILE}" ]; then
+    _MAILPARSE_INI_TEST=$(grep "extension=yaml.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_MAILPARSE_INI_TEST" =~ "extension=yaml.so" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=yaml.so" >> ${_THIS_FILE}
+    fi
+  fi
+}
+
+#
 # Fix php.ini files to add jsmin.so
 fix_php_ini_jsmin() {
   if [ -e "${_THIS_FILE}" ]; then
@@ -238,12 +251,14 @@ update_php_conf() {
     fix_php_ini_twig
     fix_php_ini_suhosin
     fix_php_ini_mailparse
+    fix_php_ini_yaml
     _THIS_FILE=/opt/php${e}/lib/php.ini
     fix_php_ini_redis
     fix_php_ini_jsmin
     fix_php_ini_twig
     fix_php_ini_suhosin
     fix_php_ini_mailparse
+    fix_php_ini_yaml
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g"       /opt/php${e}/etc/php${e}.ini
       sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php${e}/etc/php${e}.ini
@@ -469,6 +484,27 @@ install_php_extensions() {
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
+  ###--------------------###
+  msg "INFO: Installing YAML for PHP ${_T_PHP_VRN}..."
+  if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ]; then
+    cd /var/opt
+    rm -f -r yaml*
+    get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
+    cd /var/opt/yaml-${_LIB_YAML_VRN}
+    st_runner "sh ./configure" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
+  fi
+  cd /var/opt
+  rm -f -r yaml*
+  get_dev_src "yaml-${_YAML_VRN}.tgz"
+  cd /var/opt/yaml-${_YAML_VRN}
+  st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  touch ${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log
 }
 
 #
@@ -613,6 +649,29 @@ update_php_extensions() {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
+  fi
+  ###--------------------###
+  if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ]; then
+    cd /var/opt
+    rm -f -r yaml*
+    get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
+    cd /var/opt/yaml-${_LIB_YAML_VRN}
+    st_runner "sh ./configure" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
+  fi
+  if [ ! -e "${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log" ]; then
+    msg "INFO: Installing YAML upgrade for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -f -r yaml*
+    get_dev_src "yaml-${_YAML_VRN}.tgz"
+    cd /var/opt/yaml-${_YAML_VRN}
+    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    touch ${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log
   fi
 }
 
