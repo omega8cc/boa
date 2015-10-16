@@ -492,6 +492,7 @@ install_php_extensions() {
 #     rm -f -r yaml*
 #     get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
 #     cd /var/opt/yaml-${_LIB_YAML_VRN}
+#     st_runner "sh ./bootstrap" 2> /dev/null
 #     st_runner "sh ./configure --prefix=/usr" 2> /dev/null
 #     st_runner "make --quiet" 2> /dev/null
 #     st_runner "make --quiet install" 2> /dev/null
@@ -668,14 +669,28 @@ update_php_extensions() {
   fi
   ###--------------------###
   if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ]; then
-    cd /var/opt
-    rm -f -r yaml*
-    get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
-    cd /var/opt/yaml-${_LIB_YAML_VRN}
-    st_runner "sh ./bootstrap" 2> /dev/null
-    st_runner "sh ./configure" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+#     cd /var/opt
+#     rm -f -r yaml*
+#     get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
+#     cd /var/opt/yaml-${_LIB_YAML_VRN}
+#     st_runner "sh ./bootstrap" 2> /dev/null
+#     st_runner "sh ./configure --prefix=/usr" 2> /dev/null
+#     st_runner "make --quiet" 2> /dev/null
+#     st_runner "make --quiet install" 2> /dev/null
+    aptTmp="${aptLiSys}.d/openssl.list"
+    echo "## OpenSSL APT Repository" > ${aptTmp}
+    if [ "${_THIS_OS}" = "Ubuntu" ]; then
+      echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
+      echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
+    else
+      echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
+      echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
+    fi
+    st_runner "apt-get update -qq" 2> /dev/null
+    st_runner "apt-get install ibyaml-0-2 -y --force-yes" 2> /dev/null
+    st_runner "apt-get install libyaml-dev -y --force-yes" 2> /dev/null
+    rm -f ${aptTmp}
+    st_runner "apt-get update -qq" 2> /dev/null
     touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
     rm -f ${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log
   fi
