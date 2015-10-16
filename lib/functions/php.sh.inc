@@ -506,7 +506,7 @@ install_php_extensions() {
       echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
     fi
     st_runner "apt-get update -qq" 2> /dev/null
-    st_runner "apt-get install ibyaml-0-2 -y --force-yes" 2> /dev/null
+    st_runner "apt-get install libyaml-0-2 -y --force-yes" 2> /dev/null
     st_runner "apt-get install libyaml-dev -y --force-yes" 2> /dev/null
     rm -f ${aptTmp}
     st_runner "apt-get update -qq" 2> /dev/null
@@ -687,7 +687,7 @@ update_php_extensions() {
       echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
     fi
     st_runner "apt-get update -qq" 2> /dev/null
-    st_runner "apt-get install ibyaml-0-2 -y --force-yes" 2> /dev/null
+    st_runner "apt-get install libyaml-0-2 -y --force-yes" 2> /dev/null
     st_runner "apt-get install libyaml-dev -y --force-yes" 2> /dev/null
     rm -f ${aptTmp}
     st_runner "apt-get update -qq" 2> /dev/null
