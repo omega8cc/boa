@@ -163,7 +163,7 @@ Octopus can install the platforms listed below:
  OpenAid 2.7 ------------------ https://drupal.org/project/openaid
  OpenAtrium 2.45 -------------- https://drupal.org/project/openatrium
  OpenChurch 2.1 --------------- https://drupal.org/project/openchurch
- OpenOutreach 1.23 ------------ https://drupal.org/project/openoutreach
+ OpenOutreach 1.24 ------------ https://drupal.org/project/openoutreach
  OpenPublic 1.6 --------------- https://drupal.org/project/openpublic
  Panopoly 1.27 ---------------- https://drupal.org/project/panopoly
  Restaurant 1.0-b12 ----------- https://drupal.org/project/restaurant
