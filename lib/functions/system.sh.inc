@@ -2129,15 +2129,16 @@ install_curl_src() {
   fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ]; then
     ###--------------------###
-    if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
+    if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]] \
+      || [ "${_CURL_ITD}" != "${_CURL_LIB_ITD}" ]; then
       aptTmp="${aptLiSys}.d/openssl.list"
       echo "## OpenSSL APT Repository" > ${aptTmp}
       if [ "${_THIS_OS}" = "Ubuntu" ]; then
         echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
         echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
       else
-        echo "deb http://${_MIRROR}/debian/ sid main" >> ${aptTmp}
-        echo "deb-src http://${_MIRROR}/debian/ sid main" >> ${aptTmp}
+        echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
+        echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
       fi
       apt-get update -qq &> /dev/null
       echo "libcurl3 install" | dpkg --set-selections
@@ -2242,8 +2243,8 @@ install_ssl_src() {
       echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
       echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
     else
-      echo "deb http://${_MIRROR}/debian/ sid main" >> ${aptTmp}
-      echo "deb-src http://${_MIRROR}/debian/ sid main" >> ${aptTmp}
+      echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
+      echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
     fi
     apt-get update -qq &> /dev/null
     apt-get install zlibc -y --force-yes &> /dev/null
