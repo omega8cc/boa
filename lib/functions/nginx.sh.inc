@@ -461,7 +461,7 @@ EOF
       _HTTPS_TEST=FREE
       validate_public_ip &> /dev/null
       validate_xtras_ip &> /dev/null
-      openssl req -x509 -nodes -days 7300 \
+      openssl req -x509 -nodes -sha256 -days 7300 \
         -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.${_THISHOST}" \
         -newkey rsa:2048 \
         -keyout /etc/ssl/private/nginx-wild-ssl.key \

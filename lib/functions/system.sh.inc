@@ -4058,7 +4058,7 @@ if_install_ftpd() {
       mkdir -p /etc/ssl/private/
       rm -f /etc/ssl/private/pure-ftpd.pem
       rm -f /usr/local/sbin/pure-ftpd
-      st_runner "openssl req -x509 -nodes -days 7300 -newkey rsa:2048 \
+      st_runner "openssl req -x509 -nodes -sha256 -days 7300 -newkey rsa:2048 \
         -keyout /etc/ssl/private/pure-ftpd.pem \
         -out /etc/ssl/private/pure-ftpd.pem -batch" 2> /dev/null
       chmod 600 /etc/ssl/private/pure-ftpd.pem &> /dev/null
