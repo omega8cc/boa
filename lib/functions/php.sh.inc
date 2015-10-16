@@ -728,7 +728,7 @@ install_php_multi() {
                 --with-mysql-sock=/var/run/mysqld/mysqld.sock \
                 --with-mysql=/usr \
                 --with-mysqli=/usr/bin/mysql_config \
-                --with-openssl=/usr/local \
+                --with-openssl \
                 --with-pdo-mysql=/usr \
                 --with-pear \
                 --with-png-dir=/usr \
