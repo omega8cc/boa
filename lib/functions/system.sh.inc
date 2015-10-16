@@ -2155,7 +2155,8 @@ install_curl_src() {
     msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
     cd /var/opt
     rm -f -r curl*
-    get_dev_src "curl-${_CURL_VRN}.tar.gz"
+    wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
+    extract_archive "curl-${_CURL_VRN}.tar.gz"
     cd /var/opt/curl-${_CURL_VRN}
     st_runner "sh ./configure --prefix=/usr" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
@@ -2176,7 +2177,10 @@ install_curl_src() {
         fi
         if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
           echo "curl install" | dpkg --set-selections
-          apt-get install curl -y --force-yes --reinstall &> /dev/null
+          apt-get install libcurl3 ${forCer} &> /dev/null
+          apt-get install libcurl3-gnutls ${forCer} &> /dev/null
+          apt-get install libcurl4-openssl-dev ${forCer} &> /dev/null
+          apt-get install curl ${forCer} &> /dev/null
         fi
       fi
     else
@@ -2259,11 +2263,11 @@ install_ssl_src() {
       echo "zlib1g-dev install" | dpkg --set-selections
       echo "libssl-dev install" | dpkg --set-selections
       echo "openssl install" | dpkg --set-selections
-      apt-get install zlibc -y --force-yes --reinstall &> /dev/null
-      apt-get install zlib1g -y --force-yes --reinstall &> /dev/null
-      apt-get install zlib1g-dev -y --force-yes --reinstall &> /dev/null
-      apt-get install libssl-dev -y --force-yes --reinstall &> /dev/null
-      apt-get install openssl -y --force-yes --reinstall &> /dev/null
+      apt-get install zlibc ${forCer} &> /dev/null
+      apt-get install zlib1g ${forCer} &> /dev/null
+      apt-get install zlib1g-dev ${forCer} &> /dev/null
+      apt-get install libssl-dev ${forCer} &> /dev/null
+      apt-get install openssl ${forCer} &> /dev/null
     fi
     rm -f ${aptTmp}
     apt-get update -qq &> /dev/null

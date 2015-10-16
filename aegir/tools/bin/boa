@@ -16,8 +16,8 @@ barName="BARRACUDA.sh.txt"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncB="barracuda.sh.cnf"
 filIncO="octopus.sh.cnf"
+forCer="-f -y --force-yes --reinstall"
 octName="OCTOPUS.sh.txt"
-bldPth="/opt/tmp/boa"
 pthIncB="lib/settings/${filIncB}"
 pthIncO="lib/settings/${filIncO}"
 rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
@@ -719,7 +719,7 @@ find_fast_mirror() {
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -777,7 +777,10 @@ check_dns_curl() {
       rm -f /etc/apt/sources.list.d/openssl.list
       apt-get clean -qq &> /dev/null
       apt-get update -qq &> /dev/null
-      apt-get install curl -y --force-yes --reinstall &> /dev/null
+      apt-get install libcurl3 ${forCer} &> /dev/null
+      apt-get install libcurl3-gnutls ${forCer} &> /dev/null
+      apt-get install libcurl4-openssl-dev ${forCer} &> /dev/null
+      apt-get install curl ${forCer} &> /dev/null
     fi
   fi
   _CURL_TEST=$(curl -L -k -s \
