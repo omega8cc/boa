@@ -658,10 +658,12 @@ update_php_extensions() {
     rm -f -r yaml*
     get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
     cd /var/opt/yaml-${_LIB_YAML_VRN}
+    st_runner "sh ./bootstrap" 2> /dev/null
     st_runner "sh ./configure" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
+    rm ${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log
   fi
   if [ ! -e "${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing YAML upgrade for PHP ${_T_PHP_VRN}..."
