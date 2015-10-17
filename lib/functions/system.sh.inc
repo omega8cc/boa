@@ -2014,6 +2014,9 @@ update_sources_list() {
 #
 # Install OpenSSH from sources.
 install_ssh_src() {
+  if [ "${_THIS_OS}" = "Ubuntu" ]; then
+    _OPENSSH_VRN=6.9p1
+  fi
   _SSH_GET_DPKG=$(dpkg --get-selections | grep ssh | grep hold 2>&1)
   _SSH_INSTALL_REQUIRED=NO
   _SSH_ITD=$(ssh -V 2>&1 \
@@ -2032,22 +2035,63 @@ install_ssh_src() {
   fi
   if [ "$_SSH_INSTALL_REQUIRED" = "YES" ]; then
     msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources, please wait..."
-    cd /var/opt
-    rm -f -r openssh*
-    get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
-    cd /var/opt/openssh-${_OPENSSH_VRN}
-    st_runner "sh ./configure --without-openssl-header-check --prefix=/usr \
-      --with-pam" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    mrun "service ssh restart" &> /dev/null
-    if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]]; then
-      aptitude hold openssh-server &> /dev/null
-      aptitude hold openssh-client &> /dev/null
-      aptitude hold ssh &> /dev/null
-      echo "openssh-server hold" | dpkg --set-selections
-      echo "openssh-client hold" | dpkg --set-selections
-      echo "ssh hold" | dpkg --set-selections
+    if [ "${_THIS_OS}" = "Ubuntu" ]; then
+      aptTmp="${aptLiSys}.d/openssl.list"
+      echo "## OpenSSL APT Repository" > ${aptTmp}
+      if [ "${_THIS_OS}" = "Ubuntu" ]; then
+        echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
+        echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
+      else
+        echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
+        echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
+      fi
+      st_runner "apt-get update -qq" 2> /dev/null
+      st_runner "apt-get install openssh-server -y --force-yes" 2> /dev/null
+      st_runner "apt-get install openssh-client -y --force-yes" 2> /dev/null
+      st_runner "apt-get install ssh -y --force-yes" 2> /dev/null
+      ###--------------------###
+      if [[ "$_SSH_GET_DPKG" =~ "hold" ]]; then
+        echo "openssh-server install" | dpkg --set-selections
+        echo "openssh-client install" | dpkg --set-selections
+        echo "ssh install" | dpkg --set-selections
+        apt-mark unhold openssh-server &> /dev/null
+        apt-mark unhold openssh-client &> /dev/null
+        apt-mark unhold ssh &> /dev/null
+        st_runner "apt-get install openssh-server ${forCer}" 2> /dev/null
+        st_runner "apt-get install openssh-client ${forCer}" 2> /dev/null
+        st_runner "apt-get install ssh ${forCer}" 2> /dev/null
+      fi
+      rm -f ${aptTmp}
+      st_runner "apt-get update -qq" 2> /dev/null
+      _SSH_GET_DPKG=$(dpkg --get-selections \
+        | grep ssh \
+        | grep hold 2>&1)
+      if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]]; then
+        aptitude hold openssh-server &> /dev/null
+        aptitude hold openssh-client &> /dev/null
+        aptitude hold ssh &> /dev/null
+        echo "openssh-server hold" | dpkg --set-selections
+        echo "openssh-client hold" | dpkg --set-selections
+        echo "ssh hold" | dpkg --set-selections
+      fi
+    else
+      cd /var/opt
+      rm -f -r openssh*
+      get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
+      cd /var/opt/openssh-${_OPENSSH_VRN}
+      st_runner "sh ./configure --without-openssl-header-check --prefix=/usr \
+        --with-pam" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      mrun "service ssh restart" &> /dev/null
+      if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]]; then
+        aptitude hold openssh-server &> /dev/null
+        aptitude hold openssh-client &> /dev/null
+        aptitude hold ssh &> /dev/null
+        echo "openssh-server hold" | dpkg --set-selections
+        echo "openssh-client hold" | dpkg --set-selections
+        echo "ssh hold" | dpkg --set-selections
+      fi
     fi
   else
     if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]]; then
