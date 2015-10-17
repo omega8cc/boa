@@ -275,7 +275,7 @@ if [ "${_NGINX_SPDY}" = "YES" ] \
   || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
   || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
   if [ "${_OSV}" = "stretch" ] \
-    || [ "${_OSV}" = "wily" ] \
+    || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     _DO_NOTHING=YES
   else
