@@ -942,19 +942,15 @@ _NGINX_NAXSI=NO
 
 ###
 ### When set to YES, it will also force
-### OpenSSL and cURL re-install from sources
-### on systems other than Debian Wheezy,
-### which already comes with required
-### OpenSSL 1.0.1+ by default.
+### OpenSSL (packages) and cURL (sources)
+### upgrade / re-install.
 ###
 _NGINX_SPDY=YES
 
 ###
 ### When set to YES, it will also force
-### OpenSSL and cURL re-install from sources
-### on systems other than Debian Wheezy,
-### which already comes with required
-### OpenSSL 1.0.1+ by default.
+### OpenSSL (packages) and cURL (sources)
+### upgrade / re-install.
 ###
 _NGINX_FORWARD_SECRECY=YES
 
@@ -983,23 +979,19 @@ _PHP_MONGODB=NO
 _PHP_GEOS=NO
 
 ###
-### When set to YES, it will force
-### OpenSSL, OpenSSH and cURL re-install
-### from sources.
+### When set to YES, it will also force
+### OpenSSL (packages), cURL (sources)
+### and OpenSSH (sources) re-install.
+### Note that OpenSSH will be upgraded
+### only on Debian.
 ###
-### Debian Wheezy already comes with latest
-### OpenSSL 1.0.1+ by default, so this option
-### will be ignored on this system.
-###
-_SSL_FROM_SOURCES=NO
+_SSL_FROM_SOURCES=YES
 
 ###
 ### When set to YES it will force OpenSSH
-### re-install from sources. Do NOT use
-### if you don't have a serial console
-### access to the machine or VPS!
+### re-install from sources (Debian only)
 ###
-_SSH_FROM_SOURCES=NO
+_SSH_FROM_SOURCES=YES
 
 ###
 ### AUTO will default to values calculated

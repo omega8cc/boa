@@ -734,7 +734,13 @@ barracuda_cnf() {
     echo "_SYSTEM_UPGRADE_ONLY=${_SYSTEM_UPGRADE_ONLY}"       >> ${barCnf}
     echo "###"                                                >> ${barCnf}
     _CHECK_HOST=$(uname -n 2>&1)
-    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g" ${barCnf}
+    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"               ${barCnf}
+    ### Force modern HTTP/2 and PFS with latest OpenSSL
+    sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
+    sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
+    sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g"     ${barCnf}
+    ### Force latest OpenSSH from sources on Debian
+    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -750,10 +756,7 @@ barracuda_cnf() {
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
         sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"  ${barCnf}
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
-        sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"         ${barCnf}
-        sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                               ${barCnf}
         sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                                    ${barCnf}
-        sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                   ${barCnf}
         sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   ${barCnf}
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                /root/.*.octopus.cnf &> /dev/null
@@ -1267,7 +1270,13 @@ barracuda_cnf() {
 
     sleep 1
     _CHECK_HOST=$(uname -n 2>&1)
-    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g" ${barCnf}
+    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"               ${barCnf}
+    ### Force modern HTTP/2 and PFS with latest OpenSSL
+    sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
+    sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
+    sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g"     ${barCnf}
+    ### Force latest OpenSSH from sources on Debian
+    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -1283,10 +1292,7 @@ barracuda_cnf() {
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
         sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"  ${barCnf}
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
-        sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"         ${barCnf}
-        sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                               ${barCnf}
         sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                                    ${barCnf}
-        sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                   ${barCnf}
         sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   ${barCnf}
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                /root/.*.octopus.cnf &> /dev/null
@@ -1584,35 +1590,17 @@ check_apt_updates() {
   for Update in `/usr/bin/apt-get -q -y --force-yes --allow-unauthenticated \
     -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`; do
     case $Update in
-      *libcurl*)    _UP_CRL=YES ;;
+      *libcurl*)    _UP_PHP=YES ;;
       *libmysql*)   _UP_PHP=YES ;;
       *libssl*)     _UP_PHP=YES ;;
       *linux-*)     _UP_LNX=YES ;;
       *mariadb*)    _UP_PHP=YES ;;
       *newrelic*)   _UP_NRC=YES ;;
       *openjdk*)    _UP_JDK=YES ;;
-      *openssl*)    _YP_PHP=YES ;;
+      *openssl*)    _UP_PHP=YES ;;
       *)  ;;
     esac
   done
-  if [ "$_YP_PHP" = "YES" ]; then
-    if [ "${_NGINX_SPDY}" = "YES" ] \
-      || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
-      || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
-      if [ "${_OSV}" = "wheezy" ] \
-        || [ "${_OSV}" = "trusty" ] \
-        || [ "${_OSV}" = "precise" ]; then
-        _UP_PHP=YES
-      else
-        _UP_PHP=NO
-      fi
-    else
-      _UP_PHP=YES
-    fi
-  fi
-  if [ "$_UP_CRL" = "YES" ]; then
-    _UP_PHP=YES
-  fi
 }
 
 #
@@ -3337,8 +3325,7 @@ sys_packages_install() {
     || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
     || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
     if [ "${_OSV}" = "stretch" ] \
-      || [ "${_OSV}" = "wily" ] \
-      || [ "${_OSV}" = "precise" ]; then
+      || [ "${_OSV}" = "wily" ]; then
       _SSB_SRC=NO
     else
       _SSB_SRC=YES
