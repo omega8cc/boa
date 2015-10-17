@@ -513,6 +513,7 @@ setup() {
   echo >>/etc/hosts
   sed -i "/^$/d" /etc/hosts
   if [ ! -e "/etc/resolv.conf" ]; then
+    rm -f /etc/resolv.conf
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then
       cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
     fi

@@ -434,10 +434,13 @@ install_pdnsd_cache() {
     fi
   fi
   if [ ! -e "/etc/resolv.conf" ]; then
+    rm -f /etc/resolv.conf
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then
       cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
     fi
     echo "nameserver 127.0.0.1" >> /etc/resolv.conf
+    echo "nameserver 8.8.8.8" >>/etc/resolv.conf
+    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
   fi
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ]; then
     sed -i "s/^dns=.*/dns=pdnsd/g" \
