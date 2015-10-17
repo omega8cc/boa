@@ -4459,10 +4459,10 @@ complete() {
     usermod -aG users aegir &> /dev/null
     usermod -aG users man &> /dev/null
     usermod -aG users mysql &> /dev/null
-    if [ -x "/bin/dash" ]; then
-      switch_to_dash
-    else
+    if [ -x "/bin/bash" ]; then
       switch_to_bash
+    elif [ -x "/bin/dash" ]; then
+      switch_to_dash
     fi
     strict_bin_permissions
   fi
