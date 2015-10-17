@@ -826,7 +826,6 @@ update_newrelic() {
                                  newrelic-php5-common \
                                  newrelic-daemon \
                                  newrelic-sysmond -y" &> /dev/null
-      st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
       mkdir -p ${vBs}/nr
       mv -f /etc/newrelic \
         ${vBs}/nr/etc-newrelic-pre-${_X_VERSION}-${_NOW} &> /dev/null

@@ -38,7 +38,6 @@ if_running_as_root_barracuda() {
         mrun "apt-get update -qq"  &> /dev/null
         mrun "apt-get remove webmin -y --force-yes -qq" &> /dev/null
         mrun "apt-get purge webmin -y --force-yes -qq"  &> /dev/null
-        mrun "apt-get autoremove -y --force-yes -qq"    &> /dev/null
         rm -f -r /usr/share/webmin
       fi
       rm -f ${aptLiSys}.d/ksplice.list
@@ -2854,20 +2853,20 @@ if_squeeze_to_wheezy() {
     echo "zlib1g install" | dpkg --set-selections
     echo "zlib1g-dev install" | dpkg --set-selections
     echo "zlibc install" | dpkg --set-selections
-    mrun "apt-get install openssl install ${forCer}"        &> /dev/null
-    mrun "apt-get install libssl-dev install ${forCer}"     &> /dev/null
-    mrun "apt-get install curl install ${forCer}"           &> /dev/null
-    mrun "apt-get install openssh-client install ${forCer}" &> /dev/null
-    mrun "apt-get install openssh-server install ${forCer}" &> /dev/null
-    mrun "apt-get install ssh install ${forCer}"            &> /dev/null
-    mrun "apt-get install zlib1g install ${forCer}"         &> /dev/null
-    mrun "apt-get install zlib1g-dev install ${forCer}"     &> /dev/null
-    mrun "apt-get install zlibc install ${forCer}"          &> /dev/null
-    mrun "apt-get remove collectd -y --force-yes -qq"       &> /dev/null
-    mrun "apt-get remove nginx-extras -y --force-yes -qq"   &> /dev/null
-    mrun "apt-get remove nginx -y --force-yes -qq"          &> /dev/null
-    mrun "apt-get remove nginx-common -y --force-yes -qq"   &> /dev/null
-    mrun "apt-get remove nginx-full -y --force-yes -qq"     &> /dev/null
+    mrun "apt-get install openssl install ${forCer}"        2> /dev/null
+    mrun "apt-get install libssl-dev install ${forCer}"     2> /dev/null
+    mrun "apt-get install curl install ${forCer}"           2> /dev/null
+    mrun "apt-get install openssh-client install ${forCer}" 2> /dev/null
+    mrun "apt-get install openssh-server install ${forCer}" 2> /dev/null
+    mrun "apt-get install ssh install ${forCer}"            2> /dev/null
+    mrun "apt-get install zlib1g install ${forCer}"         2> /dev/null
+    mrun "apt-get install zlib1g-dev install ${forCer}"     2> /dev/null
+    mrun "apt-get install zlibc install ${forCer}"          2> /dev/null
+    mrun "apt-get remove collectd -y --force-yes -qq"       2> /dev/null
+    mrun "apt-get remove nginx-extras -y --force-yes -qq"   2> /dev/null
+    mrun "apt-get remove nginx -y --force-yes -qq"          2> /dev/null
+    mrun "apt-get remove nginx-common -y --force-yes -qq"   2> /dev/null
+    mrun "apt-get remove nginx-full -y --force-yes -qq"     2> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
@@ -2887,27 +2886,24 @@ if_squeeze_to_wheezy() {
                           php5-mysql \
                           php5-sqlite \
                           php5-xmlrpc \
-                          php5-xsl -y" &> /dev/null
-    mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
-    mrun "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
-    mrun "aptitude remove php5-cli php5-common -y" &> /dev/null
-    mrun "aptitude remove php5-apc -y" &> /dev/null
-    mrun "aptitude remove php-apc -y" &> /dev/null
-    mrun "aptitude remove apache2.2-common -y" &> /dev/null
-    mrun "aptitude remove apache2-utils apache2.2-bin -y" &> /dev/null
-    mrun "aptitude install lsof -y" &> /dev/null
-    mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
+                          php5-xsl -y" 2> /dev/null
+    mrun "aptitude remove phpunit php-pear php-benchmark -y" 2> /dev/null
+    mrun "aptitude remove php5-cli php5-common -y" 2> /dev/null
+    mrun "aptitude remove php5-apc -y" 2> /dev/null
+    mrun "aptitude remove php-apc -y" 2> /dev/null
+    mrun "aptitude remove apache2.2-common -y" 2> /dev/null
+    mrun "aptitude remove apache2-utils apache2.2-bin -y" 2> /dev/null
+    mrun "aptitude install lsof -y" 2> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       rm -f /etc/php5/conf.d/{opcache.ini,imagick.ini,memcached.ini}
       rm -f /etc/php5/conf.d/{apc.ini,redis.ini,suhosin.ini,newrelic.ini}
     fi
-    mrun "apt-get purge svscan -y" &> /dev/null
-    mrun "apt-get purge pound -y" &> /dev/null
-    mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
+    mrun "apt-get purge svscan -y" 2> /dev/null
+    mrun "apt-get purge pound -y" 2> /dev/null
     sed -i "s/.*proposed-updates.*//g" /etc/apt/sources.list
     sed -i "s/squeeze/wheezy/g"  /etc/apt/sources.list.d/* &> /dev/null
     rm -f /etc/apt/sources.list.d/openssl.list
-    mrun "apt-get update -qq" &> /dev/null
+    mrun "apt-get update -qq" 2> /dev/null
     mrun "apt-get upgrade -f -y --force-yes -q \
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
     mrun "apt-get install apt dpkg aptitude ${forCer} -q \
@@ -2971,7 +2967,7 @@ if_squeeze_to_wheezy() {
     mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
           -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
     mrun "dpkg --configure --force-all -a" 2> /dev/null
-    mrun "apt-get -f install -qq" &> /dev/null
+    mrun "apt-get -f install -qq" 2> /dev/null
     mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
           -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
     _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
@@ -3025,19 +3021,18 @@ if_lenny_to_squeeze() {
       mv /etc/init.d/tomcat /etc/init.d/offtomcat
       kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
     fi
-    mrun "apt-get remove collectd -y --force-yes -qq" &> /dev/null
-    mrun "apt-get remove libc-client2007b-dev -y --force-yes -qq" &> /dev/null
-    mrun "apt-get purge svscan -y" &> /dev/null
-    mrun "apt-get purge pound -y" &> /dev/null
+    mrun "apt-get remove collectd -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove libc-client2007b-dev -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get purge svscan -y" 2> /dev/null
+    mrun "apt-get purge pound -y" 2> /dev/null
     if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
       || [ -e "/root/.debug.cnf" ] \
       || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
-      mrun "apt-get remove udev -y --force-yes -qq" &> /dev/null
+      mrun "apt-get remove udev -y --force-yes -qq" 2> /dev/null
     fi
     rm -f /etc/apt/sources.list.d/openssl.list
-    mrun "apt-get remove lsb-release -y --force-yes -qq" &> /dev/null
-    mrun "apt-get update -qq" &> /dev/null
-    mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
+    mrun "apt-get remove lsb-release -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get update -qq" 2> /dev/null
     mrun "apt-get install apt dpkg aptitude -f -y --force-yes -q \
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
     mrun "apt-get dist-upgrade -f -y --force-yes -q \
@@ -3085,7 +3080,7 @@ if_lenny_to_squeeze() {
       done
     fi
     sed -i "s/lenny/squeeze/g"  /etc/apt/sources.list.d/* &> /dev/null
-    mrun "apt-get update -qq" &> /dev/null
+    mrun "apt-get update -qq" 2> /dev/null
     mrun "dpkg --configure --force-all -a" 2> /dev/null
     mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
           -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
@@ -3178,7 +3173,6 @@ sys_packages_update() {
                                php5-sqlite \
                                php5-xmlrpc \
                                php5-xsl -y" &> /dev/null
-    st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
     st_runner "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
     st_runner "aptitude remove php5-cli php5-common -y" &> /dev/null
     st_runner "aptitude remove php5-apc -y" &> /dev/null
@@ -3186,7 +3180,6 @@ sys_packages_update() {
     st_runner "aptitude remove apache2.2-common -y" &> /dev/null
     st_runner "aptitude remove apache2-utils apache2.2-bin -y" &> /dev/null
     st_runner "aptitude install lsof -y" &> /dev/null
-    st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       rm -f /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
@@ -3252,13 +3245,11 @@ sys_packages_install() {
     if [[ "$_APT_ITEM" =~ "install" ]]; then
       mrun "apt-get remove openjdk-6-jdk -y --force-yes -qq" &> /dev/null
       mrun "apt-get purge openjdk-6-jdk -y --force-yes -qq" &> /dev/null
-      mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
     fi
     _APT_ITEM=$(dpkg --get-selections | grep openjdk-7-jdk | grep install 2>&1)
     if [[ "$_APT_ITEM" =~ "install" ]]; then
       mrun "apt-get remove openjdk-7-jdk -y --force-yes -qq" &> /dev/null
       mrun "apt-get purge openjdk-7-jdk -y --force-yes -qq" &> /dev/null
-      mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
     fi
     if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
       || [[ "${_THISHOST}" =~ ".host8." ]] \
@@ -3295,7 +3286,6 @@ sys_packages_install() {
     mrun "apt-get remove nginx-common -y --force-yes -qq" &> /dev/null
     mrun "apt-get remove nginx-full -y --force-yes -qq"   &> /dev/null
     mrun "apt-get remove redis-server -y --force-yes -qq" &> /dev/null
-    st_runner "apt-get autoremove -y --force-yes -qq"     &> /dev/null
     st_runner "apt-get update -qq"                        &> /dev/null
   fi
   _EXTRA_LIB_APT="libmcrypt-dev"
@@ -3619,7 +3609,6 @@ fix_postfix() {
       sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
     st_runner "apt-get purge exim4 exim4-base exim4-config sendmail \
       sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
-    st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
     rm -f /etc/aliases
     rm -f -r /etc/mail
     killall -9 sendmail &> /dev/null
@@ -4165,7 +4154,6 @@ check_fix_newrelic() {
         newrelic-php5-common \
         newrelic-daemon \
         newrelic-sysmond -y" &> /dev/null
-      st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
       mv -f /etc/newrelic \
         ${vBs}/nr/etc-newrelic-pre-${_X_VERSION}-${_NOW} &> /dev/null
       rm -f /etc/init.d/newrelic-sysmond

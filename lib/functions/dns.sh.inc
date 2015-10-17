@@ -382,12 +382,10 @@ install_pdnsd_cache() {
   st_runner "apt-get update -qq" &> /dev/null
   st_runner "aptitude purge pdnsd -y" &> /dev/null
   st_runner "aptitude purge resolvconf -y" &> /dev/null
-  st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
   rm -f -r /lib/init/rw/resolvconf
   rm -f -r /etc/resolvconf
   st_runner "aptitude purge pdnsd -y" &> /dev/null
   st_runner "aptitude purge resolvconf -y" &> /dev/null
-  st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
   if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
     rm -f /etc/resolv.conf
     echo "nameserver 8.8.8.8" > /etc/resolv.conf

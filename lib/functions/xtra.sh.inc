@@ -367,7 +367,6 @@ if_install_rvm() {
                                  libruby1.9.1 \
                                  ruby1.9.1 \
                                  -y --force-yes -qq" &> /dev/null
-            mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
             mrun "rvm install ${_RUBY_VRN}" &> /dev/null
             mrun "rvm use ${_RUBY_VRN} --default" &> /dev/null
             mrun "rvm get stable" 2> /dev/null

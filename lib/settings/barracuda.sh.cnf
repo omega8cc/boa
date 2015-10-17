@@ -748,10 +748,7 @@ _STRONG_PASSWORDS=NO
 
 ###
 ### Extra packages to install. Useful to
-### specify packages not included by default
-### which could be otherwise removed because
-### of some conflicts due to the aggressive
-### Barracuda behaviour: apt-get autoremove -y
+### specify packages not included by default.
 ###
 _EXTRA_PACKAGES=""
 

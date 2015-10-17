@@ -852,7 +852,6 @@ check_root() {
     if [ -e "/sbin/hdparm" ]; then
       apt-get remove hdparm -y --force-yes -qq &> /dev/null
       apt-get purge hdparm -y --force-yes -qq &> /dev/null
-      apt-get autoremove -y --force-yes -qq &> /dev/null
     fi
     _REMOVE_LINKS="vnstat buagent svscan kerneloops halt hwclock.sh \
       hwclockfirst.sh ifupdown ifupdown-clean klogd mountall-bootclean.sh \
