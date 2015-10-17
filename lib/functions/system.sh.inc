@@ -2088,7 +2088,7 @@ install_curl_src() {
       _CURL_INSTALL_REQUIRED=NO
     else
       if [ "${_OSV}" = "stretch" ] \
-        || [ "${_OSV}" = "trusty" ] \
+        || [ "${_OSV}" = "wily" ] \
         || [ "${_OSV}" = "precise" ]; then
         _DO_NOTHING=YES
       else
@@ -2102,7 +2102,7 @@ install_curl_src() {
     fi
   else
     if [ "${_OSV}" = "stretch" ] \
-      || [ "${_OSV}" = "trusty" ] \
+      || [ "${_OSV}" = "wily" ] \
       || [ "${_OSV}" = "precise" ]; then
       _DO_NOTHING=YES
     else
@@ -2123,7 +2123,7 @@ install_curl_src() {
     msg "INFO: Installed cURL version ${_CURL_ITD}, rebuild forced"
   fi
   if [ "${_OSV}" = "stretch" ] \
-    || [ "${_OSV}" = "trusty" ] \
+    || [ "${_OSV}" = "wily" ] \
     || [ "${_OSV}" = "precise" ]; then
     _CURL_INSTALL_REQUIRED=NO
   fi
@@ -2153,7 +2153,7 @@ install_curl_src() {
   else
     ###--------------------###
     if [ "${_OSV}" = "stretch" ] \
-      || [ "${_OSV}" = "trusty" ] \
+      || [ "${_OSV}" = "wily" ] \
       || [ "${_OSV}" = "precise" ]; then
       if [ "${_CURL_ITD}" = "${_CURL_LIB_ITD}" ]; then
         _DO_NOTHING=YES
@@ -2692,7 +2692,8 @@ install_with_aptitude_deps() {
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec52"
     elif [ "${_OSV}" = "lucid" ]; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-52"
-    elif [ "${_OSV}" = "wheezy" ] || [ "${_OSV}" = "trusty" ] \
+    elif [ "${_OSV}" = "wheezy" ] \
+      || [ "${_OSV}" = "trusty" ] \
       || [ "${_OSV}" = "precise" ]; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-53"
     else
@@ -3269,8 +3270,8 @@ sys_packages_install() {
   if [ "${_NGINX_SPDY}" = "YES" ] \
     || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
     || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
-    if [ "${_OSV}" = "wheezy" ] \
-      || [ "${_OSV}" = "trusty" ] \
+    if [ "${_OSV}" = "stretch" ] \
+      || [ "${_OSV}" = "wily" ] \
       || [ "${_OSV}" = "precise" ]; then
       _SSB_SRC=NO
     else

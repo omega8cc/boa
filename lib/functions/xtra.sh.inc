@@ -210,7 +210,8 @@ if_install_collectd() {
 
 if_install_hhvm() {
   if [[ "${_XTRAS_LIST}" =~ "HVM" ]]; then
-    if [ "${_OSV}" = "wheezy" ] || [ "${_OSV}" = "trusty" ]; then
+    if [ "${_OSV}" = "wheezy" ] \
+      || [ "${_OSV}" = "trusty" ]; then
       if [ ! -x "/usr/bin/hhvm" ]; then
         echo " "
         if prompt_yes_no "Do you want to install HHVM Engine?" ; then

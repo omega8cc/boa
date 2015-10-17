@@ -275,7 +275,7 @@ if [ "${_NGINX_SPDY}" = "YES" ] \
   || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
   || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
   if [ "${_OSV}" = "stretch" ] \
-    || [ "${_OSV}" = "trusty" ] \
+    || [ "${_OSV}" = "wily" ] \
     || [ "${_OSV}" = "precise" ]; then
     _DO_NOTHING=YES
   else
@@ -290,7 +290,7 @@ fi
 ### Install OpenSSH from sources if needed
 ###
 if [ "${_SSH_FROM_SOURCES}" = "YES" ]; then
-  if [ "${_OSV}" = "trusty" ] \
+  if [ "${_OSV}" = "wily" ] \
     || [ "${_OSV}" = "precise" ]; then
     _DO_NOTHING=YES
   else
