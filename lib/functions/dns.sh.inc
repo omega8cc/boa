@@ -5,7 +5,19 @@ fix_dns_settings() {
   mkdir -p ${vBs}
   rm -f ${vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
-    cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    if [ -L "/etc/resolv.conf" ]; then
+      rslvT=`readlink -n /etc/resolv.conf`
+      if [ ! -e "${rslvT}" ]; then
+        rm -f /etc/resolv.conf
+      fi
+    fi
+    if [ -e "/etc/resolv.conf" ]; then
+      cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    fi
+  fi
+  if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
+    echo "nameserver 8.8.8.8" >${vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.4.4" >>${vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
     for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
@@ -397,6 +409,8 @@ install_pdnsd_cache() {
     if [ ! -e "/lib/init/rw/resolvconf/interface" ]; then
       mkdir -p /lib/init/rw/resolvconf/interface
     fi
+    mkdir -p /run/resolvconf
+    ln -s /lib/init/rw/resolvconf/interface /run/resolvconf/interface
     rm -f /lib/init/rw/resolvconf/postponed-update
     touch /lib/init/rw/resolvconf/enable-updates
     rm -f /etc/resolvconf/resolv.conf.d/tail
