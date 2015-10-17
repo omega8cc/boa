@@ -2258,6 +2258,24 @@ install_ssl_src() {
     fi
     rm -f ${aptTmp}
     st_runner "apt-get update -qq" 2> /dev/null
+    _SSL_GET_DPKG=$(dpkg --get-selections \
+      | grep openssl \
+      | grep hold 2>&1)
+    _ZLB_GET_DPKG=$(dpkg --get-selections \
+      | grep zlibc \
+      | grep hold 2>&1)
+    if [[ ! "$_SSL_GET_DPKG" =~ "hold" ]]; then
+      aptitude hold openssl &> /dev/null
+      echo "openssl hold" | dpkg --set-selections
+    fi
+    if [[ ! "$_ZLB_GET_DPKG" =~ "hold" ]]; then
+      aptitude hold zlibc &> /dev/null
+      aptitude hold zlib1g &> /dev/null
+      aptitude hold zlib1g-dev &> /dev/null
+      echo "zlibc hold" | dpkg --set-selections
+      echo "zlib1g hold" | dpkg --set-selections
+      echo "zlib1g-dev hold" | dpkg --set-selections
+    fi
   fi
 }
 
