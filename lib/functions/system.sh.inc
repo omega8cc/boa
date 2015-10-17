@@ -2034,8 +2034,8 @@ install_ssh_src() {
     msg "INFO: Installed OpenSSH version $_SSH_ITD, upgrade required"
   fi
   if [ "$_SSH_INSTALL_REQUIRED" = "YES" ]; then
-    msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources, please wait..."
     if [ "${_THIS_OS}" = "Ubuntu" ]; then
+    msg "INFO: Installing OpenSSH ${_OPENSSH_VRN}, please wait..."
       aptTmp="${aptLiSys}.d/openssl.list"
       echo "## OpenSSL APT Repository" > ${aptTmp}
       if [ "${_THIS_OS}" = "Ubuntu" ]; then
@@ -2075,6 +2075,7 @@ install_ssh_src() {
         echo "ssh hold" | dpkg --set-selections
       fi
     else
+      msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources, please wait..."
       cd /var/opt
       rm -f -r openssh*
       get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
