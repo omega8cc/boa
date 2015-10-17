@@ -871,7 +871,7 @@ check_root() {
       _PTMX=CHECK
     fi
     _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
-    if [[ ! "${_PTS_TEST}" =~ "devpts" ]] || [ ! -e "/dev/pts/ptmx" ]; then
+    if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then
       _PTS=FIX
     else
       _PTS=OK
@@ -883,8 +883,8 @@ check_root() {
       rm -f /etc/apt/sources.list.d/openssl.list
       apt-get update -qq &> /dev/null
       apt-get install udev -y --force-yes &> /dev/null
-      mount -t devpts devpts /dev/pts &> /dev/null
       echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
+      mount -t devpts devpts /dev/pts &> /dev/null
     fi
     sed -i "s/.*173.231.133.190.*//g" /etc/hosts
     sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
