@@ -90,12 +90,8 @@ fix_ftps_pam() {
   if [ ! -e "/etc/ftpusers" ]; then
     cp -af ${locCnf}/ftpusers /etc/ftpusers
   fi
-  if [ "${_OSV}" = "lenny" ]; then
-    _DO_NOTHING=YES
-  else
-    sed -i "s/pam_stack.so/pam_unix.so/g" /etc/pam.d/pure-ftpd &> /dev/null
-    sed -i "s/ service=system-auth//g"    /etc/pam.d/pure-ftpd &> /dev/null
-  fi
+  sed -i "s/pam_stack.so/pam_unix.so/g" /etc/pam.d/pure-ftpd &> /dev/null
+  sed -i "s/ service=system-auth//g"    /etc/pam.d/pure-ftpd &> /dev/null
 }
 
 #
@@ -1526,11 +1522,11 @@ run_silent_aptitude_full_upgrade() {
     fi
   fi
   mrun "dpkg --configure --force-all -a" 2> /dev/null
-  mrun "apt-get update -y" 2> /dev/null
+  mrun "apt-get update -qq" 2> /dev/null
   mrun "dpkg --configure --force-all -a" 2> /dev/null
-  mrun "apt-get install aptitude ${forCer}" 2> /dev/null
-  mrun "apt-get install util-linux ${forCer}" 2> /dev/null
-  mrun "apt-get install libmagickwand-dev ${forCer}" 2> /dev/null
+  mrun "apt-get install aptitude -y --force-yes" 2> /dev/null
+  mrun "apt-get install util-linux -y --force-yes" 2> /dev/null
+  mrun "apt-get install libmagickwand-dev -y --force-yes" 2> /dev/null
   mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
     -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
 }
@@ -1567,7 +1563,6 @@ check_install_latest_git() {
     _GIT_FORCE_REINSTALL=YES
   fi
   if [[ "${_XTRAS_LIST}" =~ "GIT" ]] \
-    || [ "${_OSV}" = "lenny" ] \
     || [ "${_OSV}" = "lucid" ] \
     || [ "$_SSB_SRC" = "YES" ] \
     || [ "$_GIT_FORCE_REINSTALL" = "YES" ]; then
@@ -1739,26 +1734,6 @@ update_sources_list() {
       _APT_SOURCES_REWRITE=YES
     fi
     if [ ! -z "${_LOCAL_UBUNTU_MIRROR}" ]; then
-      _APT_SOURCES_REWRITE=YES
-    fi
-    if [ "${_OSV}" = "lenny" ]; then
-      sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" ${aptLiSys} &> /dev/null
-      sed -i "s/ftp.*debian.org/archive.debian.org/g" \
-        ${aptLiSys} &> /dev/null
-      sed -i "s/volatile.debian.org/archive.debian.org/g" \
-        ${aptLiSys} &> /dev/null
-    fi
-    if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-      && [ "${_OSV}" = "squeeze" ]; then
-      run_silent_aptitude_full_upgrade
-      _LOC_OSV=squeeze
-      _OSV=wheezy
-      _APT_SOURCES_REWRITE=YES
-    elif [ "${_LENNY_TO_SQUEEZE}" = "YES" ] \
-      && [ "${_OSV}" = "lenny" ]; then
-      run_silent_aptitude_full_upgrade
-      _LOC_OSV=lenny
-      _OSV=squeeze
       _APT_SOURCES_REWRITE=YES
     fi
     if [ "${_OSV}" = "squeeze" ]; then
@@ -2814,6 +2789,10 @@ more_packages_install_on_init() {
 
 if_squeeze_to_wheezy() {
   if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_OSV}" = "squeeze" ]; then
+    _LOC_OSV=squeeze
+  fi
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
     && [ "${_LOC_OSV}" = "squeeze" ]; then
     msg "WARN: Squeeze to Wheezy upgrade will start in 60 seconds..."
     msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
@@ -2823,12 +2802,16 @@ if_squeeze_to_wheezy() {
     fi
     check_dns_settings
     if [ "${_USE_PROVIDER_DNS}" = "NO" ]; then
-      mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
+      if [ -e "/etc/resolv.conf" ]; then
+        mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
+      fi
+      rm -f /etc/resolv.conf
       echo "nameserver 8.8.8.8" >/etc/resolv.conf
       echo "nameserver 8.8.4.4" >>/etc/resolv.conf
-      cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
+      if [ -e "/etc/resolv.conf.pre-dist-upgrade" ]; then
+        cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
+      fi
     fi
-    mv -f /var/xdrago /var/xdrago_wait &> /dev/null
     mv -f /var/xdrago /var/xdrago_wait &> /dev/null
     msg "WARN: Too late! Squeeze to Wheezy upgrade in progress..."
     msg "HINT: Run tail -f ${_LOG}"
@@ -2844,6 +2827,7 @@ if_squeeze_to_wheezy() {
       mv /etc/init.d/tomcat /etc/init.d/offtomcat
       kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
     fi
+    mrun "apt-get update -qq" 2> /dev/null
     echo "curl install" | dpkg --set-selections
     echo "libssl-dev install" | dpkg --set-selections
     echo "openssh-client install" | dpkg --set-selections
@@ -2853,6 +2837,16 @@ if_squeeze_to_wheezy() {
     echo "zlib1g install" | dpkg --set-selections
     echo "zlib1g-dev install" | dpkg --set-selections
     echo "zlibc install" | dpkg --set-selections
+    mrun "aptitude install curl -y"                         2> /dev/null
+    mrun "aptitude install libssl-dev -y"                   2> /dev/null
+    mrun "aptitude install openssh-client -y"               2> /dev/null
+    mrun "aptitude install openssh-server -y"               2> /dev/null
+    mrun "aptitude install openssl -y"                      2> /dev/null
+    mrun "aptitude install ssh -y"                          2> /dev/null
+    mrun "aptitude install zlib1g -y"                       2> /dev/null
+    mrun "aptitude install zlib1g-dev -y"                   2> /dev/null
+    mrun "aptitude install zlibc -y"                        2> /dev/null
+    mrun "apt-get update -qq"                               2> /dev/null
     mrun "apt-get install openssl install ${forCer}"        2> /dev/null
     mrun "apt-get install libssl-dev install ${forCer}"     2> /dev/null
     mrun "apt-get install curl install ${forCer}"           2> /dev/null
@@ -2900,10 +2894,36 @@ if_squeeze_to_wheezy() {
     fi
     mrun "apt-get purge svscan -y" 2> /dev/null
     mrun "apt-get purge pound -y" 2> /dev/null
-    sed -i "s/.*proposed-updates.*//g" /etc/apt/sources.list
-    sed -i "s/squeeze/wheezy/g"  /etc/apt/sources.list.d/* &> /dev/null
+    ### First with aptitude
+    run_silent_aptitude_full_upgrade
+    ### Next with apt-get
+    mrun "apt-get upgrade -f -y --force-yes -q \
+      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+    mrun "apt-get dist-upgrade -f -y --force-yes -q \
+      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+    ### Check if we can continue
+    _AUDIT_DPKG=$(dpkg --audit 2>&1)
+    if [ ! -z "${_AUDIT_DPKG}" ]; then
+      msg "ALRT! I can not continue until dpkg --audit is clean"
+      msg "ALRT! ${_AUDIT_DPKG}"
+      msg "ALRT! Aborting installer NOW!"
+      clean_pid_exit
+    fi
+    _HOLD_TEST_DPKG=$(dpkg --get-selections | grep hold 2>&1)
+    if [[ "${_HOLD_TEST_DPKG}" =~ "hold" ]]; then
+      msg "ALRT! I can not continue until these packages are un-hold"
+      msg "ALRT! ${_HOLD_TEST_DPKG}"
+      msg "ALRT! Aborting installer NOW!"
+      clean_pid_exit
+    fi
+    ### Switching gears on the fly
+    sed -i "s/.*DEBIAN LTS.*//g"  /etc/apt/sources.list
+    sed -i "s/.*squeeze-lts.*//g" /etc/apt/sources.list
+    sed -i "s/squeeze/wheezy/g"   /etc/apt/sources.list
+    sed -i "s/squeeze/wheezy/g"   /etc/apt/sources.list.d/*
     rm -f /etc/apt/sources.list.d/openssl.list
     mrun "apt-get update -qq" 2> /dev/null
+    ### Two step upgrade with apt-get only
     mrun "apt-get upgrade -f -y --force-yes -q \
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
     mrun "apt-get install apt dpkg aptitude ${forCer} -q \
@@ -2958,20 +2978,10 @@ if_squeeze_to_wheezy() {
     else
       _PTMX=CHECK
     fi
-    rm -f /etc/apt/sources.list.d/openssl.list
-    mrun "dpkg --configure --force-all -a" 2> /dev/null
-    mrun "apt-get update -y" 2> /dev/null
-    mrun "dpkg --configure --force-all -a" 2> /dev/null
-    mrun "apt-get install aptitude ${forCer}" 2> /dev/null
-    mrun "apt-get install util-linux ${forCer}" 2> /dev/null
-    mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
-          -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
-    mrun "dpkg --configure --force-all -a" 2> /dev/null
-    mrun "apt-get -f install -qq" 2> /dev/null
-    mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
-          -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
+    mrun "apt-get install aptitude -y --force-yes" 2> /dev/null
+    mrun "apt-get install util-linux -y --force-yes" 2> /dev/null
     _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
-    if [[ ! "${_PTS_TEST}" =~ "devpts" ]] || [ ! -e "/dev/pts/ptmx" ]; then
+    if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then
       _PTS=FIX
     else
       _PTS=OK
@@ -2983,111 +2993,17 @@ if_squeeze_to_wheezy() {
       rm -f /etc/apt/sources.list.d/openssl.list
       apt-get update -qq &> /dev/null
       apt-get install udev -y --force-yes &> /dev/null
-      mount -t devpts devpts /dev/pts &> /dev/null
       echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
+      mount -t devpts devpts /dev/pts &> /dev/null
     fi
     echo rotate > /var/log/syslog
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null
-    msg "INFO: No errors? Then Squeeze to Wheezy upgrade was successful - congrats!"
-    msg "HINT: Please remember to reboot when Barracuda will complete all upgrades"
-  fi
-}
-
-if_lenny_to_squeeze() {
-  if [ "${_LENNY_TO_SQUEEZE}" = "YES" ] && [ "${_LOC_OSV}" = "lenny" ]; then
-    _FULL_FORCE_REINSTALL=YES
-    msg "WARN: Lenny to Squeeze upgrade will start in 60 seconds..."
-    msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
-    if [ ! -e "/root/.upstart.cnf" ]; then
-      service cron stop &> /dev/null
-      mrun "sleep 60"
-    fi
-    check_dns_settings
-    if [ "${_USE_PROVIDER_DNS}" = "NO" ]; then
-      mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
-      echo "nameserver 8.8.8.8" >/etc/resolv.conf
-      echo "nameserver 8.8.4.4" >>/etc/resolv.conf
-      cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
-    fi
-    mv -f /var/xdrago /var/xdrago_wait &> /dev/null
-    msg "WARN: Too late! Lenny to Squeeze upgrade in progress..."
-    msg "HINT: Run tail -f ${_LOG}"
-    msg "HINT: in another terminal window to watch details"
-    if [ -e "/etc/init.d/bind" ]; then
-      rm -f /etc/init.d/bind
-    fi
-    if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ]; then
-      service tomcat stop &> /dev/null
-      mv /etc/init.d/tomcat /etc/init.d/offtomcat
-      kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
-    fi
-    mrun "apt-get remove collectd -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove libc-client2007b-dev -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get purge svscan -y" 2> /dev/null
-    mrun "apt-get purge pound -y" 2> /dev/null
-    if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [ -e "/root/.debug.cnf" ] \
-      || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
-      mrun "apt-get remove udev -y --force-yes -qq" 2> /dev/null
-    fi
-    rm -f /etc/apt/sources.list.d/openssl.list
-    mrun "apt-get remove lsb-release -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get update -qq" 2> /dev/null
-    mrun "apt-get install apt dpkg aptitude -f -y --force-yes -q \
-      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
-    mrun "apt-get dist-upgrade -f -y --force-yes -q \
-      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
-    mrun "apt-get install libgeoip1 libgeoip-dev geoip-database \
-      -y --force-yes" 2> /dev/null
-    check_install_latest_git
-    install_upgrade_nginx
-    if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
-      ln -sf /etc/init.d/bind9 /etc/init.d/bind
-    fi
-    if [ -d "/var/www/cgp" ]; then
-      mrun "apt-get install collectd -y --force-yes" 2> /dev/null
-    fi
-    mrun "apt-get install udev lsb-release libc-client2007e-dev \
-      -y --force-yes" 2> /dev/null
-    _L_VM_TEST=$(uname -a 2>&1)
-    if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [ -e "/root/.debug.cnf" ] \
-      || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
-      _REMOVE_LINKS="halt \
-                     hwclock.sh \
-                     hwclockfirst.sh \
-                     ifupdown \
-                     ifupdown-clean \
-                     klogd \
-                     mountall-bootclean.sh \
-                     mountall.sh \
-                     mountdevsubfs.sh \
-                     mountkernfs.sh \
-                     mountnfs-bootclean.sh \
-                     mountnfs.sh \
-                     mountoverflowtmp \
-                     mountvirtfs \
-                     mtab.sh \
-                     networking \
-                     reboot \
-                     setserial \
-                     umountfs \
-                     umountnfs.sh \
-                     umountroot \
-                     urandom"
-      for link in ${_REMOVE_LINKS}; do
-        update-rc.d -f $link remove &> /dev/null
-      done
-    fi
-    sed -i "s/lenny/squeeze/g"  /etc/apt/sources.list.d/* &> /dev/null
-    mrun "apt-get update -qq" 2> /dev/null
-    mrun "dpkg --configure --force-all -a" 2> /dev/null
-    mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
-          -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
-    echo rotate > /var/log/syslog
-    mv -f /var/xdrago_wait /var/xdrago &> /dev/null
-    msg "INFO: No errors? Then Lenny to Squeeze upgrade was successful - congrats!"
-    msg "HINT: Please remember to reboot when Barracuda will complete all upgrades"
+    echo " "
+    msg "INFO: No errors? Then Squeeze to Wheezy upgrade was successful."
+    msg "INFO: Please reboot NOW, and then run barracuda system upgrade again."
+    msg "BYE!"
+    echo " "
+    clean_pid_exit
   fi
 }
 
@@ -3117,17 +3033,7 @@ update_webmin_apt() {
 sys_packages_update() {
   msg "INFO: Running system packages update..."
   update_webmin_apt
-  if [ "${_OSV}" = "lenny" ]; then
-    sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" ${aptLiSys} &> /dev/null
-    sed -i "s/ftp.*debian.org/archive.debian.org/g" \
-      ${aptLiSys} &> /dev/null
-    sed -i "s/volatile.debian.org/archive.debian.org/g" \
-      ${aptLiSys} &> /dev/null
-    st_runner "aptitude autoclean -y" &> /dev/null
-    st_runner "apt-get clean -qq" &> /dev/null
-  else
-    st_runner "dpkg --configure --force-all -a" 2> /dev/null
-  fi
+  st_runner "dpkg --configure --force-all -a" 2> /dev/null
   rm -f /etc/apt/sources.list.d/openssl.list
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
@@ -3464,125 +3370,6 @@ sys_packages_install() {
               symlinks \
               sysstat \
               sysvinit-utils \
-              t1lib-bin \
-              telnet \
-              time \
-              ttf-dejavu \
-              ttf-dejavu-core \
-              ttf-dejavu-extra \
-              udev \
-              unrtf \
-              unzip \
-              vim \
-              whois \
-              xml-core \
-              xml2 \
-              xpdf \
-              zip \
-              zlib1g-dev \
-              zlibc"
-  elif [ "${_OSV}" = "lenny" ]; then
-    _DEBDEPS="apticron \
-              $_APT_ELSE \
-              $_EXTRA_LIB_APT \
-              ${_EXTRA_PACKAGES} \
-              $_SYSLOGD \
-              aptitude \
-              auditd \
-              autoconf2.13 \
-              automake \
-              automake1.4 \
-              autotools-dev \
-              bc \
-              bison \
-              build-essential \
-              catdoc \
-              cron \
-              cvs \
-              cython \
-              defoma \
-              devscripts \
-              dnsutils \
-              dstat \
-              flex \
-              fontconfig-config \
-              gettext \
-              ghostscript \
-              gnupg \
-              gnupg-curl \
-              gnupg2 \
-              htop \
-              ifstat \
-              imagemagick \
-              iptables \
-              ldap-utils \
-              lemon \
-              lftp \
-              libapr1 \
-              libaprutil1 \
-              libc-client-dev \
-              libc-client2007b \
-              libc-client2007b-dev \
-              libfilesys-diskspace-perl \
-              libfontconfig1 \
-              libfreetype6 \
-              libfreetype6-dev \
-              libfribidi0 \
-              libgeoip-dev \
-              libgeoip1 \
-              libgmp3-dev \
-              libhtml-template-perl \
-              libjpeg-dev \
-              libjpeg62 \
-              libmagick9-dev \
-              libnet-daemon-perl \
-              libpam-umask \
-              libpcre3 \
-              libpcre3-dev \
-              libplrpc-perl \
-              libpng12-0 \
-              libpng12-dev \
-              libpq5 \
-              libsasl2-modules \
-              libssl-dev \
-              libt1-5 \
-              libt1-dev \
-              libterm-readkey-perl \
-              libtool \
-              libwww-perl \
-              libxml2-dev \
-              libxpm4 \
-              libxslt-dev \
-              libxslt1-dbg \
-              libxslt1-dev \
-              libxslt1.1 \
-              m4 \
-              makepasswd \
-              mc \
-              mcrypt \
-              nano \
-              ncurses-dev \
-              ncurses-term \
-              ntpdate \
-              openjdk-6-jre-headless \
-              p7zip-full \
-              pdftk \
-              postfix \
-              postfix-pcre \
-              pwgen \
-              python-dev \
-              re2c \
-              rrdtool \
-              rsync \
-              shtool \
-              sipcalc \
-              ssh \
-              ssl-cert \
-              subversion \
-              sudo \
-              symlinks \
-              sysstat \
-              sysvconfig \
               t1lib-bin \
               telnet \
               time \

@@ -1309,10 +1309,6 @@ install_update_php() {
     && [ "${_LOC_OSV}" = "squeeze" ]; then
     mrun "service nginx stop" &> /dev/null
     killall -9 nginx &> /dev/null
-  elif [ "${_LENNY_TO_SQUEEZE}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "lenny" ]; then
-    mrun "service nginx stop" &> /dev/null
-    killall -9 nginx &> /dev/null
   fi
   if [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then

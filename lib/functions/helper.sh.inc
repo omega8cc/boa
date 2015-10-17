@@ -400,11 +400,6 @@ os_detection() {
       _DB_SERVER=MariaDB
     elif [ "$_THIS_RV" = "squeeze" ]; then
       _OSV="squeeze"
-    elif [ "$_THIS_RV" = "lenny" ]; then
-      _OSV="lenny"
-      _DB_SERVER=MariaDB
-      _DB_SERIES=5.3
-      _MARIADB_VRN=5.3.12
     else
       not_supported_os
     fi

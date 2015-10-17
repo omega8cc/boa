@@ -351,9 +351,6 @@ install_upgrade_nginx() {
     if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
       && [ "${_LOC_OSV}" = "squeeze" ]; then
       _DO_NOTHING=YES
-    elif [ "${_LENNY_TO_SQUEEZE}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "lenny" ]; then
-      _DO_NOTHING=YES
     else
       mrun "service nginx stop" &> /dev/null
       killall -9 nginx &> /dev/null

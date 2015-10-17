@@ -211,12 +211,6 @@ _FULL_FORCE_REINSTALL=NO
 _SQUEEZE_TO_WHEEZY=NO
 
 ###
-### Use YES to run major system upgrade
-### from Debian Lenny to Debian Squeeze.
-###
-_LENNY_TO_SQUEEZE=NO
-
-###
 ### Use YES to run migration from Tomcat 6
 ### to Jetty 7 with Apache Solr 1.4.1
 ### See also docs/SOLR.txt

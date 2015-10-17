@@ -240,10 +240,6 @@ install_mariadb_sql() {
       _MARIADB_VRN="${_MARIADB_10_VRN}"
     fi
     msg "INFO: Forced MariaDB $_MARIADB_VRN in ${_THIS_OS}/${_OSV}"
-  elif [ "${_OSV}" = "lenny" ]; then
-    _DB_SERIES=5.3
-    _MARIADB_VRN=5.3.12
-    msg "INFO: Forced MariaDB $_MARIADB_VRN in ${_THIS_OS}/${_OSV}"
   else
     if [ "${_DB_SERIES}" = "10.0" ] || [ "${_DB_SERIES}" = "5.5" ]; then
       _DO_NOTHING=YES
@@ -468,10 +464,6 @@ install_mariadb_server() {
     fi
     if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
       && [ "${_LOC_OSV}" = "squeeze" ]; then
-      _SQL_UPGRADE=NO
-    fi
-    if [ "${_LENNY_TO_SQUEEZE}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "lenny" ]; then
       _SQL_UPGRADE=NO
     fi
     _SQL_DEB_SRC_TEST=$(grep ${_DB_SRC} \

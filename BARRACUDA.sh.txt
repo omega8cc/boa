@@ -232,6 +232,12 @@ check_prepare_dirs_permissions
 
 
 ###
+### Optional major system upgrades
+###
+if_squeeze_to_wheezy
+
+
+###
 ### Download system-wide Drush versions
 ###
 get_drush_versions
@@ -241,13 +247,6 @@ get_drush_versions
 ### Upgrade only Aegir Master Instance (obsolete mode)
 ###
 if_upgrade_only_aegir_master
-
-
-###
-### Optional major system upgrades
-###
-if_squeeze_to_wheezy
-if_lenny_to_squeeze
 
 
 ###
@@ -300,8 +299,8 @@ fi
 ###
 ### Install Git and Nginx early if needed
 ###
-if [ "${_LENNY_TO_SQUEEZE}" = "NO" ] \
-  || [ -z "${_LENNY_TO_SQUEEZE}" ]; then
+if [ "${_SQUEEZE_TO_WHEEZY}" = "NO" ] \
+  || [ -z "${_SQUEEZE_TO_WHEEZY}" ]; then
   check_install_latest_git
   install_upgrade_nginx
 fi
