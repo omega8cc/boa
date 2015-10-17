@@ -2740,6 +2740,9 @@ finale() {
   chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt opt \
     sbin selinux srv sys usr var share run &> /dev/null
   chmod 700 root &> /dev/null
+  if [ "${_STATUS}" = "INIT" ]; then
+    killall -9 bash &> /dev/null
+  fi
   msg "BYE!"
 }
 
