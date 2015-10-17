@@ -2763,7 +2763,7 @@ else
     sed -i "s/.*resolver_timeout .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf           &> /dev/null
     sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n  resolver 8.8.8.8 8.8.4.4 valid=300s;\n  resolver_timeout 5s;/g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
     sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                      &> /dev/null
-    /etc/init.d/nginx reload
+    service nginx reload
   fi
 fi
 
@@ -2872,13 +2872,13 @@ if [ ! -e "/root/.high_traffic.cnf" ]; then
   echo "INFO: Redis server will be restarted in 5 minutes"
   touch /var/run/boa_wait.pid
   sleep 300
-  /etc/init.d/nginx reload
-  /etc/init.d/redis-server stop
+  service nginx reload
+  service redis-server stop
   killall -9 redis-server
   rm -f /var/run/redis.pid
   rm -f /var/lib/redis/*
   rm -f /var/log/redis/redis-server.log
-  /etc/init.d/redis-server start
+  service redis-server start
   rm -f /var/run/boa_wait.pid
   echo "INFO: Redis server restarted OK"
 fi

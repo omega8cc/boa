@@ -102,7 +102,7 @@ if [ "${_OPTIM}" = "YES" ]; then
   touch /var/run/boa_wait.pid
   touch /var/xdrago/log/mysql_restart_running.pid
   sleep 3
-  /etc/init.d/mysql restart
+  service mysql restart
   sleep 3
   rm -f /var/run/boa_wait.pid
   rm -f /var/xdrago/log/mysql_restart_running.pid
