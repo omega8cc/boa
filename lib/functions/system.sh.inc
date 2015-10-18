@@ -2910,14 +2910,14 @@ if_squeeze_to_wheezy() {
       clean_pid_exit
     fi
     _HOLD_TEST_DPKG=$(dpkg --get-selections | grep 'hold$' 2>&1)
-    if [ ! -z "${_HOLD_TEST_DPKG} ]; then
+    if [ ! -z "${_HOLD_TEST_DPKG}" ]; then
       msg "ALRT! I can not continue until these packages are un-hold"
       msg "ALRT! ${_HOLD_TEST_DPKG}"
       msg "ALRT! Aborting installer NOW!"
       clean_pid_exit
     fi
     _HOLD_TEST_ATE=$(aptitude search "~ahold" 2>&1)
-    if [ ! -z "${_HOLD_TEST_ATE} ]; then
+    if [ ! -z "${_HOLD_TEST_ATE}" ]; then
       msg "ALRT! I can not continue until these packages are un-hold"
       msg "ALRT! ${_HOLD_TEST_ATE}"
       msg "ALRT! Aborting installer NOW!"
