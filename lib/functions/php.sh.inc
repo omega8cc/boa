@@ -505,11 +505,11 @@ install_php_extensions() {
       echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
       echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
     fi
-    st_runner "apt-get update -qq" 2> /dev/null
-    st_runner "apt-get install libyaml-0-2 -y --force-yes" 2> /dev/null
-    st_runner "apt-get install libyaml-dev -y --force-yes" 2> /dev/null
+    mrun "apt-get update -qq" 2> /dev/null
+    mrun "${_INSTALL} libyaml-0-2" 2> /dev/null
+    mrun "${_INSTALL} libyaml-dev" 2> /dev/null
     rm -f ${aptTmp}
-    st_runner "apt-get update -qq" 2> /dev/null
+    mrun "apt-get update -qq" 2> /dev/null
     touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
   fi
   cd /var/opt
@@ -686,11 +686,11 @@ update_php_extensions() {
       echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
       echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
     fi
-    st_runner "apt-get update -qq" 2> /dev/null
-    st_runner "apt-get install libyaml-0-2 -y --force-yes" 2> /dev/null
-    st_runner "apt-get install libyaml-dev -y --force-yes" 2> /dev/null
+    mrun "apt-get update -qq" 2> /dev/null
+    mrun "${_INSTALL} libyaml-0-2" 2> /dev/null
+    mrun "${_INSTALL} libyaml-dev" 2> /dev/null
     rm -f ${aptTmp}
-    st_runner "apt-get update -qq" 2> /dev/null
+    mrun "apt-get update -qq" 2> /dev/null
     touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
     rm -f ${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log
   fi

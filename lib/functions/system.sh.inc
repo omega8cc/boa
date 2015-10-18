@@ -2226,16 +2226,11 @@ install_ssl_src() {
       echo "libssl-dev install" | dpkg --set-selections
       echo "openssl install" | dpkg --set-selections
       mrun "apt-get update -qq" 2> /dev/null
-      mrun "aptitude install zlibc -y" 2> /dev/null
-      mrun "aptitude install zlib1g -y" 2> /dev/null
-      mrun "aptitude install zlib1g-dev -y" 2> /dev/null
-      mrun "aptitude install libssl-dev -y" 2> /dev/null
-      mrun "aptitude install openssl -y" 2> /dev/null
-      mrun "apt-get install zlibc -y --force-yes" 2> /dev/null
-      mrun "apt-get install zlib1g -y --force-yes" 2> /dev/null
-      mrun "apt-get install zlib1g-dev -y --force-yes" 2> /dev/null
-      mrun "apt-get install libssl-dev -y --force-yes" 2> /dev/null
-      mrun "apt-get install openssl -y --force-yes" 2> /dev/null
+      mrun "${_INSTALL} zlibc" 2> /dev/null
+      mrun "${_INSTALL} zlib1g" 2> /dev/null
+      mrun "${_INSTALL} zlib1g-dev" 2> /dev/null
+      mrun "${_INSTALL} libssl-dev" 2> /dev/null
+      mrun "${_INSTALL} openssl" 2> /dev/null
     fi
     rm -f ${aptTmp}
     st_runner "apt-get update -qq" 2> /dev/null
@@ -2809,25 +2804,16 @@ if_squeeze_to_wheezy() {
     echo "zlib1g install" | dpkg --set-selections
     echo "zlib1g-dev install" | dpkg --set-selections
     echo "zlibc install" | dpkg --set-selections
-    mrun "aptitude install curl -y"                         2> /dev/null
-    mrun "aptitude install libssl-dev -y"                   2> /dev/null
-    mrun "aptitude install openssh-client -y"               2> /dev/null
-    mrun "aptitude install openssh-server -y"               2> /dev/null
-    mrun "aptitude install openssl -y"                      2> /dev/null
-    mrun "aptitude install ssh -y"                          2> /dev/null
-    mrun "aptitude install zlib1g -y"                       2> /dev/null
-    mrun "aptitude install zlib1g-dev -y"                   2> /dev/null
-    mrun "aptitude install zlibc -y"                        2> /dev/null
-    mrun "apt-get install zlib1g -y --force-yes"            2> /dev/null
-    mrun "apt-get install zlib1g-dev -y --force-yes"        2> /dev/null
-    mrun "apt-get install zlibc -y --force-yes"             2> /dev/null
-    mrun "apt-get install openssl -y --force-yes"           2> /dev/null
-    mrun "apt-get install libssl-dev -y --force-yes"        2> /dev/null
-    mrun "apt-get install curl ${forCer}"                   2> /dev/null
-    mrun "apt-get install openssh-client ${forCer}"         2> /dev/null
-    mrun "apt-get install openssh-server ${forCer}"         2> /dev/null
-    mrun "apt-get install ssh ${forCer}"                    2> /dev/null
-    mrun "apt-get remove collectd -y --force-yes -qq"       2> /dev/null
+    mrun "${_INSTALL} zlib1g"     2> /dev/null
+    mrun "${_INSTALL} zlib1g-dev" 2> /dev/null
+    mrun "${_INSTALL} zlibc"      2> /dev/null
+    mrun "${_INSTALL} openssl"    2> /dev/null
+    mrun "${_INSTALL} libssl-dev" 2> /dev/null
+    mrun "apt-get install curl ${forCer}"             2> /dev/null
+    mrun "apt-get install openssh-client ${forCer}"   2> /dev/null
+    mrun "apt-get install openssh-server ${forCer}"   2> /dev/null
+    mrun "apt-get install ssh ${forCer}"              2> /dev/null
+    mrun "apt-get remove collectd -y --force-yes -qq" 2> /dev/null
     mrun "apt-get upgrade -f -y --force-yes -q \
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
     mrun "apt-get dist-upgrade -f -y --force-yes -q \
@@ -2882,10 +2868,9 @@ if_squeeze_to_wheezy() {
       fi
     fi
     if [ -d "/var/www/cgp" ]; then
-      mrun "apt-get install collectd -y --force-yes" 2> /dev/null
+      mrun "${_INSTALL} collectd" 2> /dev/null
     fi
-    mrun "apt-get install udev lsb-release libc-client2007e-dev \
-      -y --force-yes" 2> /dev/null
+    mrun "${_INSTALL} udev lsb-release libc-client2007e-dev" 2> /dev/null
     _L_VM_TEST=$(uname -a 2>&1)
     if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
       || [ -e "/root/.debug.cnf" ] \
@@ -2919,8 +2904,8 @@ if_squeeze_to_wheezy() {
     else
       _PTMX=CHECK
     fi
-    mrun "apt-get install aptitude -y --force-yes" 2> /dev/null
-    mrun "apt-get install util-linux -y --force-yes" 2> /dev/null
+    mrun "${_INSTALL} aptitude"   2> /dev/null
+    mrun "${_INSTALL} util-linux" 2> /dev/null
     if [ -e "/root/.debug.cnf" ]; then
       _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
       if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then
