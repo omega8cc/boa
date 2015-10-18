@@ -1997,7 +1997,7 @@ install_ssh_src() {
   fi
   if [ "$_SSH_INSTALL_REQUIRED" = "YES" ]; then
     if [ "${_THIS_OS}" = "Ubuntu" ]; then
-    msg "INFO: Installing OpenSSH ${_OPENSSH_VRN}, please wait..."
+      msg "INFO: Installing OpenSSH ${_OPENSSH_VRN}, please wait..."
       aptTmp="${aptLiSys}.d/openssl.list"
       echo "## OpenSSL APT Repository" > ${aptTmp}
       if [ "${_THIS_OS}" = "Ubuntu" ]; then
@@ -2007,21 +2007,21 @@ install_ssh_src() {
         echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
         echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
       fi
-      st_runner "apt-get update -qq" 2> /dev/null
-      st_runner "apt-get install openssh-server -y --force-yes" 2> /dev/null
-      st_runner "apt-get install openssh-client -y --force-yes" 2> /dev/null
-      st_runner "apt-get install ssh -y --force-yes" 2> /dev/null
+      mrun "apt-get update -qq" 2> /dev/null
       ###--------------------###
       if [[ "$_SSH_GET_DPKG" =~ "hold" ]]; then
         echo "openssh-server install" | dpkg --set-selections
         echo "openssh-client install" | dpkg --set-selections
         echo "ssh install" | dpkg --set-selections
-        apt-mark unhold openssh-server &> /dev/null
-        apt-mark unhold openssh-client &> /dev/null
-        apt-mark unhold ssh &> /dev/null
-        st_runner "apt-get install openssh-server ${forCer}" 2> /dev/null
-        st_runner "apt-get install openssh-client ${forCer}" 2> /dev/null
-        st_runner "apt-get install ssh ${forCer}" 2> /dev/null
+        mrun "aptitude install openssh-server -y" 2> /dev/null
+        mrun "aptitude install openssh-client -y" 2> /dev/null
+        mrun "aptitude install ssh -y" 2> /dev/null
+        apt-mark unhold openssh-server 2> /dev/null
+        apt-mark unhold openssh-client 2> /dev/null
+        apt-mark unhold ssh 2> /dev/null
+        mrun "apt-get install openssh-server ${forCer}" 2> /dev/null
+        mrun "apt-get install openssh-client ${forCer}" 2> /dev/null
+        mrun "apt-get install ssh ${forCer}" 2> /dev/null
       fi
       rm -f ${aptTmp}
       st_runner "apt-get update -qq" 2> /dev/null
@@ -2244,12 +2244,6 @@ install_ssl_src() {
       echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
       echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
     fi
-    st_runner "apt-get update -qq" 2> /dev/null
-    st_runner "apt-get install zlibc -y --force-yes" 2> /dev/null
-    st_runner "apt-get install zlib1g -y --force-yes" 2> /dev/null
-    st_runner "apt-get install zlib1g-dev -y --force-yes" 2> /dev/null
-    st_runner "apt-get install libssl-dev -y --force-yes" 2> /dev/null
-    st_runner "apt-get install openssl -y --force-yes" 2> /dev/null
     ###--------------------###
     if [[ "$_SSL_GET_DPKG" =~ "hold" ]]; then
       echo "zlibc install" | dpkg --set-selections
@@ -2257,11 +2251,17 @@ install_ssl_src() {
       echo "zlib1g-dev install" | dpkg --set-selections
       echo "libssl-dev install" | dpkg --set-selections
       echo "openssl install" | dpkg --set-selections
-      st_runner "apt-get install zlibc ${forCer}" 2> /dev/null
-      st_runner "apt-get install zlib1g ${forCer}" 2> /dev/null
-      st_runner "apt-get install zlib1g-dev ${forCer}" 2> /dev/null
-      st_runner "apt-get install libssl-dev ${forCer}" 2> /dev/null
-      st_runner "apt-get install openssl ${forCer}" 2> /dev/null
+      mrun "apt-get update -qq" 2> /dev/null
+      mrun "aptitude install zlibc -y" 2> /dev/null
+      mrun "aptitude install zlib1g -y" 2> /dev/null
+      mrun "aptitude install zlib1g-dev -y" 2> /dev/null
+      mrun "aptitude install libssl-dev -y" 2> /dev/null
+      mrun "aptitude install openssl -y" 2> /dev/null
+      mrun "apt-get install zlibc -y --force-yes" 2> /dev/null
+      mrun "apt-get install zlib1g -y --force-yes" 2> /dev/null
+      mrun "apt-get install zlib1g-dev -y --force-yes" 2> /dev/null
+      mrun "apt-get install libssl-dev -y --force-yes" 2> /dev/null
+      mrun "apt-get install openssl -y --force-yes" 2> /dev/null
     fi
     rm -f ${aptTmp}
     st_runner "apt-get update -qq" 2> /dev/null
@@ -2847,15 +2847,15 @@ if_squeeze_to_wheezy() {
     mrun "aptitude install zlib1g-dev -y"                   2> /dev/null
     mrun "aptitude install zlibc -y"                        2> /dev/null
     mrun "apt-get update -qq"                               2> /dev/null
-    mrun "apt-get install openssl install ${forCer}"        2> /dev/null
-    mrun "apt-get install libssl-dev install ${forCer}"     2> /dev/null
-    mrun "apt-get install curl install ${forCer}"           2> /dev/null
-    mrun "apt-get install openssh-client install ${forCer}" 2> /dev/null
-    mrun "apt-get install openssh-server install ${forCer}" 2> /dev/null
-    mrun "apt-get install ssh install ${forCer}"            2> /dev/null
-    mrun "apt-get install zlib1g install ${forCer}"         2> /dev/null
-    mrun "apt-get install zlib1g-dev install ${forCer}"     2> /dev/null
-    mrun "apt-get install zlibc install ${forCer}"          2> /dev/null
+    mrun "apt-get install openssl -y --force-yes"           2> /dev/null
+    mrun "apt-get install libssl-dev -y --force-yes"        2> /dev/null
+    mrun "apt-get install curl ${forCer}"                   2> /dev/null
+    mrun "apt-get install openssh-client ${forCer}"         2> /dev/null
+    mrun "apt-get install openssh-server ${forCer}"         2> /dev/null
+    mrun "apt-get install ssh ${forCer}"                    2> /dev/null
+    mrun "apt-get install zlib1g -y --force-yes"            2> /dev/null
+    mrun "apt-get install zlib1g-dev -y --force-yes"        2> /dev/null
+    mrun "apt-get install zlibc -y --force-yes"             2> /dev/null
     mrun "apt-get remove collectd -y --force-yes -qq"       2> /dev/null
     mrun "apt-get remove nginx-extras -y --force-yes -qq"   2> /dev/null
     mrun "apt-get remove nginx -y --force-yes -qq"          2> /dev/null
@@ -2909,10 +2909,17 @@ if_squeeze_to_wheezy() {
       msg "ALRT! Aborting installer NOW!"
       clean_pid_exit
     fi
-    _HOLD_TEST_DPKG=$(dpkg --get-selections | grep hold 2>&1)
-    if [[ "${_HOLD_TEST_DPKG}" =~ "hold" ]]; then
+    _HOLD_TEST_DPKG=$(dpkg --get-selections | grep 'hold$' 2>&1)
+    if [ ! -z "${_HOLD_TEST_DPKG} ]; then
       msg "ALRT! I can not continue until these packages are un-hold"
       msg "ALRT! ${_HOLD_TEST_DPKG}"
+      msg "ALRT! Aborting installer NOW!"
+      clean_pid_exit
+    fi
+    _HOLD_TEST_ATE=$(aptitude search "~ahold" 2>&1)
+    if [ ! -z "${_HOLD_TEST_ATE} ]; then
+      msg "ALRT! I can not continue until these packages are un-hold"
+      msg "ALRT! ${_HOLD_TEST_ATE}"
       msg "ALRT! Aborting installer NOW!"
       clean_pid_exit
     fi
