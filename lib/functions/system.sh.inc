@@ -2926,6 +2926,8 @@ if_squeeze_to_wheezy() {
     ### Switching gears on the fly
     sed -i "s/.*DEBIAN LTS.*//g"  /etc/apt/sources.list
     sed -i "s/.*squeeze-lts.*//g" /etc/apt/sources.list
+    sed -i "s/.*PROPOSED.*//g"    /etc/apt/sources.list
+    sed -i "s/.*proposed.*//g"    /etc/apt/sources.list
     sed -i "s/squeeze/wheezy/g"   /etc/apt/sources.list
     sed -i "s/squeeze/wheezy/g"   /etc/apt/sources.list.d/*
     rm -f /etc/apt/sources.list.d/openssl.list
