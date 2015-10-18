@@ -297,16 +297,6 @@ fi
 
 
 ###
-### Install Git and Nginx early if needed
-###
-if [ "${_SQUEEZE_TO_WHEEZY}" = "NO" ] \
-  || [ -z "${_SQUEEZE_TO_WHEEZY}" ]; then
-  check_install_latest_git
-  install_upgrade_nginx
-fi
-
-
-###
 ### Install MariaDB server
 ###
 install_mariadb_server

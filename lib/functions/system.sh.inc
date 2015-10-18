@@ -1506,32 +1506,6 @@ run_aptitude_full_upgrade() {
 }
 
 #
-# Running silent aptitude full-upgrade.
-run_silent_aptitude_full_upgrade() {
-  msg "INFO: Running silent aptitude full-upgrade..."
-  rm -f /etc/apt/sources.list.d/openssl.list
-  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
-    || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
-    msg "WARN: Installed keyring is broken, forced reinstall required"
-    if [ "${_THIS_OS}" = "Debian" ]; then
-      mrun "apt-get install debian-keyring ${forCer}" 2> /dev/null
-      mrun "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
-    else
-      mrun "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
-    fi
-  fi
-  mrun "dpkg --configure --force-all -a" 2> /dev/null
-  mrun "apt-get update -qq" 2> /dev/null
-  mrun "dpkg --configure --force-all -a" 2> /dev/null
-  mrun "apt-get install aptitude -y --force-yes" 2> /dev/null
-  mrun "apt-get install util-linux -y --force-yes" 2> /dev/null
-  mrun "apt-get install libmagickwand-dev -y --force-yes" 2> /dev/null
-  mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
-    -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
-}
-
-#
 # Install latest Git.
 do_install_latest_git() {
   if [ ! -e "${pthLog}/git-${_GIT_VRN}-${_X_VERSION}-${_NOW}.log" ]; then
@@ -2816,9 +2790,7 @@ if_squeeze_to_wheezy() {
     msg "WARN: Too late! Squeeze to Wheezy upgrade in progress..."
     msg "HINT: Run tail -f ${_LOG}"
     msg "HINT: in another terminal window to watch details"
-    _FULL_FORCE_REINSTALL=YES
-    _PURGE_MODE=OFF
-    rm -f ${mtrNgx}/pre.d/nginx_speed_purge.conf
+    echo "_FULL_FORCE_REINSTALL=YES" >> ${barCnf}
     if [ -e "/etc/init.d/bind" ]; then
       rm -f /etc/init.d/bind
     fi
@@ -2846,57 +2818,16 @@ if_squeeze_to_wheezy() {
     mrun "aptitude install zlib1g -y"                       2> /dev/null
     mrun "aptitude install zlib1g-dev -y"                   2> /dev/null
     mrun "aptitude install zlibc -y"                        2> /dev/null
-    mrun "apt-get update -qq"                               2> /dev/null
+    mrun "apt-get install zlib1g -y --force-yes"            2> /dev/null
+    mrun "apt-get install zlib1g-dev -y --force-yes"        2> /dev/null
+    mrun "apt-get install zlibc -y --force-yes"             2> /dev/null
     mrun "apt-get install openssl -y --force-yes"           2> /dev/null
     mrun "apt-get install libssl-dev -y --force-yes"        2> /dev/null
     mrun "apt-get install curl ${forCer}"                   2> /dev/null
     mrun "apt-get install openssh-client ${forCer}"         2> /dev/null
     mrun "apt-get install openssh-server ${forCer}"         2> /dev/null
     mrun "apt-get install ssh ${forCer}"                    2> /dev/null
-    mrun "apt-get install zlib1g -y --force-yes"            2> /dev/null
-    mrun "apt-get install zlib1g-dev -y --force-yes"        2> /dev/null
-    mrun "apt-get install zlibc -y --force-yes"             2> /dev/null
     mrun "apt-get remove collectd -y --force-yes -qq"       2> /dev/null
-    mrun "apt-get remove nginx-extras -y --force-yes -qq"   2> /dev/null
-    mrun "apt-get remove nginx -y --force-yes -qq"          2> /dev/null
-    mrun "apt-get remove nginx-common -y --force-yes -qq"   2> /dev/null
-    mrun "apt-get remove nginx-full -y --force-yes -qq"     2> /dev/null
-    if [ -e "/etc/php5/conf.d" ]; then
-      touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
-      touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
-    fi
-    mrun "aptitude remove php5 \
-                          php5-cgi \
-                          php5-curl \
-                          php5-fpm \
-                          php5-gd \
-                          php5-geoip \
-                          php5-gmp \
-                          php5-imagick \
-                          php5-imap \
-                          php5-ldap \
-                          php5-mcrypt \
-                          php5-memcache \
-                          php5-mysql \
-                          php5-sqlite \
-                          php5-xmlrpc \
-                          php5-xsl -y" 2> /dev/null
-    mrun "aptitude remove phpunit php-pear php-benchmark -y" 2> /dev/null
-    mrun "aptitude remove php5-cli php5-common -y" 2> /dev/null
-    mrun "aptitude remove php5-apc -y" 2> /dev/null
-    mrun "aptitude remove php-apc -y" 2> /dev/null
-    mrun "aptitude remove apache2.2-common -y" 2> /dev/null
-    mrun "aptitude remove apache2-utils apache2.2-bin -y" 2> /dev/null
-    mrun "aptitude install lsof -y" 2> /dev/null
-    if [ -e "/etc/php5/conf.d" ]; then
-      rm -f /etc/php5/conf.d/{opcache.ini,imagick.ini,memcached.ini}
-      rm -f /etc/php5/conf.d/{apc.ini,redis.ini,suhosin.ini,newrelic.ini}
-    fi
-    mrun "apt-get purge svscan -y" 2> /dev/null
-    mrun "apt-get purge pound -y" 2> /dev/null
-    ### First with aptitude
-    run_silent_aptitude_full_upgrade
-    ### Next with apt-get
     mrun "apt-get upgrade -f -y --force-yes -q \
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
     mrun "apt-get dist-upgrade -f -y --force-yes -q \
@@ -2935,19 +2866,20 @@ if_squeeze_to_wheezy() {
     ### Two step upgrade with apt-get only
     mrun "apt-get upgrade -f -y --force-yes -q \
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
-    mrun "apt-get install apt dpkg aptitude ${forCer} -q \
+    mrun "apt-get install apt dpkg aptitude -f -y --force-yes -q \
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
     mrun "apt-get dist-upgrade -f -y --force-yes -q \
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
     touch ${mtrNgx}/pre.d/nginx_speed_purge.conf
-    install_upgrade_nginx
     if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
       ln -sf /etc/init.d/bind9 /etc/init.d/bind
     fi
-    if [ -e "/etc/init.d/networking.dpkg-dist" ]; then
-      mv -f /etc/init.d/networking /etc/init.d/networking.bak
-      cp -af /etc/init.d/networking.dpkg-dist /etc/init.d/networking
-      chmod 755 /etc/init.d/networking
+    if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
+      if [ -e "/root/.debug.cnf" ]; then
+        mv -f /etc/init.d/networking /etc/init.d/networking.bak
+        cp -af /etc/init.d/networking.dpkg-dist /etc/init.d/networking
+        chmod 755 /etc/init.d/networking
+      fi
     fi
     if [ -d "/var/www/cgp" ]; then
       mrun "apt-get install collectd -y --force-yes" 2> /dev/null
@@ -2989,21 +2921,23 @@ if_squeeze_to_wheezy() {
     fi
     mrun "apt-get install aptitude -y --force-yes" 2> /dev/null
     mrun "apt-get install util-linux -y --force-yes" 2> /dev/null
-    _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
-    if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then
-      _PTS=FIX
-    else
-      _PTS=OK
-    fi
-    if [ "${_PTMX}" = "CHECK" ] && [ "${_PTS}" = "FIX" ]; then
-      msg "WARN: Required /dev/pts/ptmx does not exist! We will fix this now..."
-      mkdir -p /dev/pts
-      rm -f -r /dev/pts/*
-      rm -f /etc/apt/sources.list.d/openssl.list
-      apt-get update -qq &> /dev/null
-      apt-get install udev -y --force-yes &> /dev/null
-      echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
-      mount -t devpts devpts /dev/pts &> /dev/null
+    if [ -e "/root/.debug.cnf" ]; then
+      _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
+      if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then
+        _PTS=FIX
+      else
+        _PTS=OK
+      fi
+      if [ "${_PTMX}" = "CHECK" ] && [ "${_PTS}" = "FIX" ]; then
+        msg "WARN: Required /dev/pts/ptmx does not exist! We will fix this now..."
+        mkdir -p /dev/pts
+        rm -f -r /dev/pts/*
+        rm -f /etc/apt/sources.list.d/openssl.list
+        apt-get update -qq &> /dev/null
+        apt-get install udev -y --force-yes &> /dev/null
+        echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
+        mount -t devpts devpts /dev/pts &> /dev/null
+      fi
     fi
     echo rotate > /var/log/syslog
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null
@@ -3072,29 +3006,29 @@ sys_packages_update() {
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
-    st_runner "aptitude remove php5 \
-                               php5-cgi \
-                               php5-curl \
-                               php5-fpm \
-                               php5-gd \
-                               php5-geoip \
-                               php5-gmp \
-                               php5-imagick \
-                               php5-imap \
-                               php5-ldap \
-                               php5-mcrypt \
-                               php5-memcache \
-                               php5-mysql \
-                               php5-sqlite \
-                               php5-xmlrpc \
-                               php5-xsl -y" &> /dev/null
-    st_runner "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
-    st_runner "aptitude remove php5-cli php5-common -y" &> /dev/null
-    st_runner "aptitude remove php5-apc -y" &> /dev/null
-    st_runner "aptitude remove php-apc -y" &> /dev/null
-    st_runner "aptitude remove apache2.2-common -y" &> /dev/null
-    st_runner "aptitude remove apache2-utils apache2.2-bin -y" &> /dev/null
-    st_runner "aptitude install lsof -y" &> /dev/null
+    mrun "aptitude remove php5 \
+                      php5-cgi \
+                      php5-curl \
+                      php5-fpm \
+                      php5-gd \
+                      php5-geoip \
+                      php5-gmp \
+                      php5-imagick \
+                      php5-imap \
+                      php5-ldap \
+                      php5-mcrypt \
+                      php5-memcache \
+                      php5-mysql \
+                      php5-sqlite \
+                      php5-xmlrpc \
+                      php5-xsl -y" &> /dev/null
+    mrun "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
+    mrun "aptitude remove php5-cli php5-common -y" &> /dev/null
+    mrun "aptitude remove php5-apc -y" &> /dev/null
+    mrun "aptitude remove php-apc -y" &> /dev/null
+    mrun "aptitude remove apache2.2-common -y" &> /dev/null
+    mrun "aptitude remove apache2-utils apache2.2-bin -y" &> /dev/null
+    mrun "aptitude install lsof -y" &> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       rm -f /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
@@ -3103,9 +3037,9 @@ sys_packages_update() {
       if [ -e "${aptLiSys}.d/dotdeb.list" ]; then
         rm -f ${aptLiSys}.d/dotdeb.list
         rm -f /etc/apt/sources.list.d/openssl.list
-        st_runner "aptitude autoclean -y" &> /dev/null
-        st_runner "apt-get clean -qq" &> /dev/null
-        st_runner "apt-get update -qq" &> /dev/null
+        mrun "aptitude autoclean -y" &> /dev/null
+        mrun "apt-get clean -qq" &> /dev/null
+        mrun "apt-get update -qq" &> /dev/null
       fi
     fi
     rm -f /var/lib/mysql/debian-*.flag &> /dev/null
