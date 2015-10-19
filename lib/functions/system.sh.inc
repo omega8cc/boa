@@ -1978,18 +1978,18 @@ install_ssh_src() {
     st_runner "make --quiet install" 2> /dev/null
     mrun "service ssh restart" &> /dev/null
     if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]]; then
-      aptitude hold openssh-server &> /dev/null
-      aptitude hold openssh-client &> /dev/null
-      aptitude hold ssh &> /dev/null
+      ### aptitude hold openssh-server &> /dev/null
+      ### aptitude hold openssh-client &> /dev/null
+      ### aptitude hold ssh &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections
       echo "openssh-client hold" | dpkg --set-selections
       echo "ssh hold" | dpkg --set-selections
     fi
   else
     if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]]; then
-      aptitude hold openssh-server &> /dev/null
-      aptitude hold openssh-client &> /dev/null
-      aptitude hold ssh &> /dev/null
+      ### aptitude hold openssh-server &> /dev/null
+      ### aptitude hold openssh-client &> /dev/null
+      ### aptitude hold ssh &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections
       echo "openssh-client hold" | dpkg --set-selections
       echo "ssh hold" | dpkg --set-selections
@@ -2097,7 +2097,7 @@ install_curl_src() {
     _UP_PHP=YES
     if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
       echo "curl hold" | dpkg --set-selections
-      aptitude hold curl &> /dev/null
+      ### aptitude hold curl &> /dev/null
     fi
   else
     ###--------------------###
@@ -2142,7 +2142,7 @@ install_curl_src() {
         rm -f ${aptTmp}
         mrun "apt-get update -qq" 2> /dev/null
         echo "curl hold" | dpkg --set-selections
-        aptitude hold curl &> /dev/null
+        ### aptitude hold curl &> /dev/null
       fi
     fi
   fi
@@ -2247,13 +2247,13 @@ install_ssl_src() {
       | grep zlibc \
       | grep hold 2>&1)
     if [[ ! "$_SSL_GET_DPKG" =~ "hold" ]]; then
-      aptitude hold openssl &> /dev/null
+      ### aptitude hold openssl &> /dev/null
       echo "openssl hold" | dpkg --set-selections
     fi
     if [[ ! "$_ZLB_GET_DPKG" =~ "hold" ]]; then
-      aptitude hold zlibc &> /dev/null
-      aptitude hold zlib1g &> /dev/null
-      aptitude hold zlib1g-dev &> /dev/null
+      ### aptitude hold zlibc &> /dev/null
+      ### aptitude hold zlib1g &> /dev/null
+      ### aptitude hold zlib1g-dev &> /dev/null
       echo "zlibc hold" | dpkg --set-selections
       echo "zlib1g hold" | dpkg --set-selections
       echo "zlib1g-dev hold" | dpkg --set-selections
