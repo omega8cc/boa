@@ -378,7 +378,6 @@ os_detection() {
   if [ "${_THIS_OS}" = "Ubuntu" ]; then
     if [ "${_THIS_RV}" = "trusty" ]; then
       _OSV="trusty"
-      _CURL_VRN=7.35.0
       _DB_SERIES=10.0
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
@@ -392,7 +391,6 @@ os_detection() {
       fi
     elif [ "${_THIS_RV}" = "precise" ]; then
       _OSV="precise"
-      _CURL_VRN=7.22.0
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=NO
@@ -408,14 +406,12 @@ os_detection() {
   elif [ "${_THIS_OS}" = "Debian" ]; then
     if [ "${_THIS_RV}" = "wheezy" ]; then
       _OSV="wheezy"
-      _CURL_VRN=7.26.0
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=YES
       _SSL_FROM_SOURCES=YES
     elif [ "${_THIS_RV}" = "squeeze" ]; then
       _OSV="squeeze"
-      _CURL_VRN=7.45.0
       _NGINX_VRN=1.9.4
       _OPENSSL_VRN=1.0.1p
       _NGINX_FORWARD_SECRECY=YES
