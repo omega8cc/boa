@@ -2195,6 +2195,15 @@ install_ssl_src() {
   fi
   if [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
+    msg "INFO: Building zlib ${_ZLIB_VRN} from sources, please wait..."
+    cd /var/opt
+    rm -f -r zlib*
+    get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
+    cd /var/opt/zlib-${_ZLIB_VRN}
+    st_runner "./configure --prefix=/usr" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    ###--------------------###
     msg "INFO: Installing OpenSSL ${_OPENSSL_VRN}, please wait..."
     aptTmp="${aptLiSys}.d/openssl.list"
     echo "## OpenSSL APT Repository" > ${aptTmp}
@@ -2207,18 +2216,12 @@ install_ssl_src() {
     fi
     ###--------------------###
     if [[ "$_SSL_GET_DPKG" =~ "hold" ]]; then
-      echo "zlibc install" | dpkg --set-selections
-      echo "zlib1g install" | dpkg --set-selections
-      echo "zlib1g-dev install" | dpkg --set-selections
       if [ "${_OSV}" != "squeeze" ]; then
         echo "libssl-dev install" | dpkg --set-selections
         echo "openssl install" | dpkg --set-selections
       fi
     fi
     mrun "apt-get update -qq" 2> /dev/null
-    mrun "${_INSTALL} zlibc" 2> /dev/null
-    mrun "${_INSTALL} zlib1g" 2> /dev/null
-    mrun "${_INSTALL} zlib1g-dev" 2> /dev/null
     if [ "${_OSV}" != "squeeze" ]; then
       mrun "${_INSTALL} libssl-dev" 2> /dev/null
       mrun "${_INSTALL} openssl" 2> /dev/null
