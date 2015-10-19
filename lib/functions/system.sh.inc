@@ -2028,7 +2028,6 @@ install_curl_src() {
     else
       if [ "${_OSV}" = "stretch" ] \
         || [ "${_OSV}" = "jessie" ] \
-        || [ "${_OSV}" = "wheezy" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
         _CURL_INSTALL_REQUIRED=NO
@@ -2044,7 +2043,6 @@ install_curl_src() {
   else
     if [ "${_OSV}" = "stretch" ] \
       || [ "${_OSV}" = "jessie" ] \
-      || [ "${_OSV}" = "wheezy" ] \
       || [ "${_OSV}" = "trusty" ] \
       || [ "${_OSV}" = "precise" ]; then
       _CURL_INSTALL_REQUIRED=NO
@@ -2067,7 +2065,6 @@ install_curl_src() {
   fi
   if [ "${_OSV}" = "stretch" ] \
     || [ "${_OSV}" = "jessie" ] \
-    || [ "${_OSV}" = "wheezy" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     _CURL_INSTALL_REQUIRED=NO
