@@ -6,6 +6,9 @@ _WEBG=www-data
 _OPENSSL_VRN=1.0.2d
 _X_SE="2.4.6-stable"
 _OSV=$(lsb_release -sc 2>&1)
+if [ "${_OSV}" = "squeeze" ]; then
+  _OPENSSL_VRN=1.0.1p
+fi
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
