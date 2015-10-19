@@ -2182,14 +2182,14 @@ install_ssl_src() {
         echo "libssl-dev install" | dpkg --set-selections
         echo "openssl install" | dpkg --set-selections
       fi
-      mrun "apt-get update -qq" 2> /dev/null
-      mrun "${_INSTALL} zlibc" 2> /dev/null
-      mrun "${_INSTALL} zlib1g" 2> /dev/null
-      mrun "${_INSTALL} zlib1g-dev" 2> /dev/null
-      if [ "${_OSV}" != "squeeze" ]; then
-        mrun "${_INSTALL} libssl-dev" 2> /dev/null
-        mrun "${_INSTALL} openssl" 2> /dev/null
-      fi
+    fi
+    mrun "apt-get update -qq" 2> /dev/null
+    mrun "${_INSTALL} zlibc" 2> /dev/null
+    mrun "${_INSTALL} zlib1g" 2> /dev/null
+    mrun "${_INSTALL} zlib1g-dev" 2> /dev/null
+    if [ "${_OSV}" != "squeeze" ]; then
+      mrun "${_INSTALL} libssl-dev" 2> /dev/null
+      mrun "${_INSTALL} openssl" 2> /dev/null
     fi
     rm -f ${aptTmp}
     st_runner "apt-get update -qq" 2> /dev/null
