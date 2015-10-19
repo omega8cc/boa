@@ -2187,15 +2187,14 @@ install_ssl_src() {
         mrun "sh ./config zlib-dynamic \
           --openssldir=/usr/local/ssl \
           --with-zlib=/usr/local \
-          shared no-ssl2 no-ssl3 enable-ec_nistp_64_gcc_128" 2> /dev/null
+          shared enable-ec_nistp_64_gcc_128" 2> /dev/null
       else
         mrun "sh ./config zlib-dynamic \
           --openssldir=/usr/local/ssl \
           --with-zlib=/usr/local \
-          shared no-ssl2 no-ssl3" 2> /dev/null
+          shared" 2> /dev/null
       fi
       mrun "make depend" 2> /dev/null
-      mrun "make all" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       ###--------------------###
