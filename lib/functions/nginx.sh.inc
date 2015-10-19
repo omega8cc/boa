@@ -54,10 +54,22 @@ force_advanced_nginx_config() {
   sub_force_advanced_nginx_config
   sed -i "s/ 90;/ 180;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
   if [ "${_NGINX_SPDY}" = "YES" ]; then
-    sed -i "s/:443;/:443 ssl http2;/g" ${mtrNgx}/pre.d/*.conf          &> /dev/null
-    sed -i "s/:443;/:443 ssl http2;/g" ${mtrNgx}/vhost.d/*             &> /dev/null
-    sed -i "s/:443 ssl spdy;/:443 ssl http2;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
-    sed -i "s/:443 ssl spdy;/:443 ssl http2;/g" ${mtrNgx}/vhost.d/*    &> /dev/null
+    if [ "${_OSV}" = "squeeze" ]; then
+      sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/pre.d/*.conf           &> /dev/null
+      sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/vhost.d/*              &> /dev/null
+      sed -i "s/:443 ssl http2;/:443 ssl spdy;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
+      sed -i "s/:443 ssl http2;/:443 ssl spdy;/g" ${mtrNgx}/vhost.d/*    &> /dev/null
+    else
+      sed -i "s/:443;/:443 ssl http2;/g" ${mtrNgx}/pre.d/*.conf          &> /dev/null
+      sed -i "s/:443;/:443 ssl http2;/g" ${mtrNgx}/vhost.d/*             &> /dev/null
+      sed -i "s/:443 ssl spdy;/:443 ssl http2;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
+      sed -i "s/:443 ssl spdy;/:443 ssl http2;/g" ${mtrNgx}/vhost.d/*    &> /dev/null
+    fi
+  else
+    sed -i "s/:443 ssl http2;/:443;/g" ${mtrNgx}/pre.d/*.conf            &> /dev/null
+    sed -i "s/:443 ssl http2;/:443;/g" ${mtrNgx}/vhost.d/*               &> /dev/null
+    sed -i "s/:443 ssl spdy;/:443;/g"  ${mtrNgx}/pre.d/*.conf            &> /dev/null
+    sed -i "s/:443 ssl spdy;/:443;/g"  ${mtrNgx}/vhost.d/*               &> /dev/null
   fi
   _SSL_ITD=$(openssl version 2>&1 \
     | tr -d "\n" \
@@ -542,10 +554,22 @@ fix_update_nginx_config() {
       sed -i "s/add_header Vary .*//g" /var/aegir/config/server_*/nginx.conf                               &> /dev/null
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
-      sed -i "s/:443;/:443 ssl http2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf          &> /dev/null
-      sed -i "s/:443;/:443 ssl http2;/g" /var/aegir/config/server_*/nginx/vhost.d/*             &> /dev/null
-      sed -i "s/:443 ssl spdy;/:443 ssl http2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
-      sed -i "s/:443 ssl spdy;/:443 ssl http2;/g" /var/aegir/config/server_*/nginx/vhost.d/*    &> /dev/null
+      if [ "${_OSV}" = "squeeze" ]; then
+        sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf           &> /dev/null
+        sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/vhost.d/*              &> /dev/null
+        sed -i "s/:443 ssl http2;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+        sed -i "s/:443 ssl http2;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/vhost.d/*    &> /dev/null
+      else
+        sed -i "s/:443;/:443 ssl http2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf          &> /dev/null
+        sed -i "s/:443;/:443 ssl http2;/g" /var/aegir/config/server_*/nginx/vhost.d/*             &> /dev/null
+        sed -i "s/:443 ssl spdy;/:443 ssl http2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+        sed -i "s/:443 ssl spdy;/:443 ssl http2;/g" /var/aegir/config/server_*/nginx/vhost.d/*    &> /dev/null
+      fi
+    else
+      sed -i "s/:443 ssl http2;/:443;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf            &> /dev/null
+      sed -i "s/:443 ssl http2;/:443;/g" /var/aegir/config/server_*/nginx/vhost.d/*               &> /dev/null
+      sed -i "s/:443 ssl spdy;/:443;/g"  /var/aegir/config/server_*/nginx/pre.d/*.conf            &> /dev/null
+      sed -i "s/:443 ssl spdy;/:443;/g"  /var/aegir/config/server_*/nginx/vhost.d/*               &> /dev/null
     fi
     _SSL_ITD=$(openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}' 2>&1)
 

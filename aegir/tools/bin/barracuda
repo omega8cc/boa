@@ -511,11 +511,11 @@ up_action() {
     ### Legacy method
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${barName}
     sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"     ${vBs}/${barName}
-    ### Force modern HTTP/2 and PFS with latest OpenSSL
+    ### Force HTTP/2 or SPDY plus PFS on supported systems
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                       ${barCnf}
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"          ${barCnf}
     sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g"           ${barCnf}
-    ### Force latest OpenSSH from sources on Debian
+    ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"           ${barCnf}
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \

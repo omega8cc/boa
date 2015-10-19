@@ -378,8 +378,10 @@ os_detection() {
   if [ "${_THIS_OS}" = "Ubuntu" ]; then
     if [ "${_THIS_RV}" = "trusty" ]; then
       _OSV="trusty"
-      _DB_SERVER=MariaDB
       _DB_SERIES=10.0
+      _NGINX_FORWARD_SECRECY=YES
+      _NGINX_SPDY=YES
+      _SSH_FROM_SOURCES=NO
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
@@ -389,17 +391,33 @@ os_detection() {
       fi
     elif [ "${_THIS_RV}" = "precise" ]; then
       _OSV="precise"
+      _NGINX_FORWARD_SECRECY=YES
+      _NGINX_SPDY=YES
+      _SSH_FROM_SOURCES=NO
     elif [ "${_THIS_RV}" = "lucid" ]; then
       _OSV="lucid"
+      _NGINX_FORWARD_SECRECY=NO
+      _NGINX_SPDY=NO
+      _SSH_FROM_SOURCES=NO
+      _SSL_FROM_SOURCES=NO
     else
       not_supported_os
     fi
   elif [ "${_THIS_OS}" = "Debian" ]; then
     if [ "${_THIS_RV}" = "wheezy" ]; then
       _OSV="wheezy"
-      _DB_SERVER=MariaDB
+      _NGINX_FORWARD_SECRECY=YES
+      _NGINX_SPDY=YES
+      _SSH_FROM_SOURCES=YES
+      _SSL_FROM_SOURCES=YES
     elif [ "${_THIS_RV}" = "squeeze" ]; then
       _OSV="squeeze"
+      _NGINX_VRN=1.9.4
+      _OPENSSL_VRN=1.0.1p
+      _NGINX_FORWARD_SECRECY=YES
+      _NGINX_SPDY=YES
+      _SSH_FROM_SOURCES=YES
+      _SSL_FROM_SOURCES=YES
     else
       not_supported_os
     fi

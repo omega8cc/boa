@@ -730,11 +730,11 @@ barracuda_cnf() {
     echo "###"                                                >> ${barCnf}
     _CHECK_HOST=$(uname -n 2>&1)
     sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"               ${barCnf}
-    ### Force modern HTTP/2 and PFS with latest OpenSSL
+    ### Force HTTP/2 or SPDY plus PFS on supported systems
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
     sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g"     ${barCnf}
-    ### Force latest OpenSSH from sources on Debian
+    ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
@@ -1266,11 +1266,11 @@ barracuda_cnf() {
     sleep 1
     _CHECK_HOST=$(uname -n 2>&1)
     sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"               ${barCnf}
-    ### Force modern HTTP/2 and PFS with latest OpenSSL
+    ### Force HTTP/2 or SPDY plus PFS on supported systems
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
     sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g"     ${barCnf}
-    ### Force latest OpenSSH from sources on Debian
+    ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
@@ -1950,9 +1950,6 @@ update_sources_list() {
 #
 # Install OpenSSH from sources.
 install_ssh_src() {
-  if [ "${_THIS_OS}" = "Ubuntu" ]; then
-    _OPENSSH_VRN=6.9p1
-  fi
   _SSH_GET_DPKG=$(dpkg --get-selections | grep ssh | grep hold 2>&1)
   _SSH_INSTALL_REQUIRED=NO
   _SSH_ITD=$(ssh -V 2>&1 \
@@ -1970,65 +1967,23 @@ install_ssh_src() {
     msg "INFO: Installed OpenSSH version $_SSH_ITD, upgrade required"
   fi
   if [ "$_SSH_INSTALL_REQUIRED" = "YES" ]; then
-    if [ "${_THIS_OS}" = "Ubuntu" ]; then
-      msg "INFO: Installing OpenSSH ${_OPENSSH_VRN}, please wait..."
-      aptTmp="${aptLiSys}.d/openssl.list"
-      echo "## OpenSSL APT Repository" > ${aptTmp}
-      if [ "${_THIS_OS}" = "Ubuntu" ]; then
-        echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-        echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-      else
-        echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
-        echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
-      fi
-      mrun "apt-get update -qq" 2> /dev/null
-      ###--------------------###
-      if [[ "$_SSH_GET_DPKG" =~ "hold" ]]; then
-        echo "openssh-server install" | dpkg --set-selections
-        echo "openssh-client install" | dpkg --set-selections
-        echo "ssh install" | dpkg --set-selections
-        mrun "aptitude install openssh-server -y" 2> /dev/null
-        mrun "aptitude install openssh-client -y" 2> /dev/null
-        mrun "aptitude install ssh -y" 2> /dev/null
-        apt-mark unhold openssh-server 2> /dev/null
-        apt-mark unhold openssh-client 2> /dev/null
-        apt-mark unhold ssh 2> /dev/null
-        mrun "apt-get install openssh-server ${forCer}" 2> /dev/null
-        mrun "apt-get install openssh-client ${forCer}" 2> /dev/null
-        mrun "apt-get install ssh ${forCer}" 2> /dev/null
-      fi
-      rm -f ${aptTmp}
-      st_runner "apt-get update -qq" 2> /dev/null
-      _SSH_GET_DPKG=$(dpkg --get-selections \
-        | grep ssh \
-        | grep hold 2>&1)
-      if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]]; then
-        aptitude hold openssh-server &> /dev/null
-        aptitude hold openssh-client &> /dev/null
-        aptitude hold ssh &> /dev/null
-        echo "openssh-server hold" | dpkg --set-selections
-        echo "openssh-client hold" | dpkg --set-selections
-        echo "ssh hold" | dpkg --set-selections
-      fi
-    else
-      msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources, please wait..."
-      cd /var/opt
-      rm -f -r openssh*
-      get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
-      cd /var/opt/openssh-${_OPENSSH_VRN}
-      st_runner "sh ./configure --without-openssl-header-check --prefix=/usr \
-        --with-pam" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
-      mrun "service ssh restart" &> /dev/null
-      if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]]; then
-        aptitude hold openssh-server &> /dev/null
-        aptitude hold openssh-client &> /dev/null
-        aptitude hold ssh &> /dev/null
-        echo "openssh-server hold" | dpkg --set-selections
-        echo "openssh-client hold" | dpkg --set-selections
-        echo "ssh hold" | dpkg --set-selections
-      fi
+    msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources, please wait..."
+    cd /var/opt
+    rm -f -r openssh*
+    get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
+    cd /var/opt/openssh-${_OPENSSH_VRN}
+    st_runner "sh ./configure --without-openssl-header-check --prefix=/usr \
+      --with-pam" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    mrun "service ssh restart" &> /dev/null
+    if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]]; then
+      aptitude hold openssh-server &> /dev/null
+      aptitude hold openssh-client &> /dev/null
+      aptitude hold ssh &> /dev/null
+      echo "openssh-server hold" | dpkg --set-selections
+      echo "openssh-client hold" | dpkg --set-selections
+      echo "ssh hold" | dpkg --set-selections
     fi
   else
     if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]]; then
@@ -2223,17 +2178,41 @@ install_ssl_src() {
       echo "zlibc install" | dpkg --set-selections
       echo "zlib1g install" | dpkg --set-selections
       echo "zlib1g-dev install" | dpkg --set-selections
-      echo "libssl-dev install" | dpkg --set-selections
-      echo "openssl install" | dpkg --set-selections
+      if [ "${_OSV}" != "squeeze" ]; then
+        echo "libssl-dev install" | dpkg --set-selections
+        echo "openssl install" | dpkg --set-selections
+      fi
       mrun "apt-get update -qq" 2> /dev/null
       mrun "${_INSTALL} zlibc" 2> /dev/null
       mrun "${_INSTALL} zlib1g" 2> /dev/null
       mrun "${_INSTALL} zlib1g-dev" 2> /dev/null
-      mrun "${_INSTALL} libssl-dev" 2> /dev/null
-      mrun "${_INSTALL} openssl" 2> /dev/null
+      if [ "${_OSV}" != "squeeze" ]; then
+        mrun "${_INSTALL} libssl-dev" 2> /dev/null
+        mrun "${_INSTALL} openssl" 2> /dev/null
+      fi
     fi
     rm -f ${aptTmp}
     st_runner "apt-get update -qq" 2> /dev/null
+    if [ "${_OSV}" = "squeeze" ]; then
+      ###--------------------###
+      msg "INFO: Building OpenSSL ${_OPENSSL_VRN} from sources, please wait..."
+      cd /var/opt
+      rm -f -r openssl*
+      get_dev_src "openssl-${_OPENSSL_VRN}.tar.gz"
+      cd /var/opt/openssl-${_OPENSSL_VRN}
+      _X86_64_IF=$(uname -m 2>&1)
+      if [ "$_X86_64_IF" = "x86_64" ]; then
+        st_runner "sh ./config --prefix=/usr zlib-dynamic --openssldir=/etc/ssl \
+          shared enable-ec_nistp_64_gcc_128" 2> /dev/null
+        st_runner "make depend" 2> /dev/null
+      else
+        st_runner "sh ./config --prefix=/usr zlib-dynamic --openssldir=/etc/ssl \
+          shared" 2> /dev/null
+      fi
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      ###--------------------###
+    fi
     _SSL_GET_DPKG=$(dpkg --get-selections \
       | grep openssl \
       | grep hold 2>&1)
