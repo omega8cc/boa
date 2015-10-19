@@ -488,28 +488,28 @@ install_php_extensions() {
   ###--------------------###
   msg "INFO: Installing YAML for PHP ${_T_PHP_VRN}..."
   if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ]; then
-#     cd /var/opt
-#     rm -f -r yaml*
-#     get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
-#     cd /var/opt/yaml-${_LIB_YAML_VRN}
-#     st_runner "sh ./bootstrap" 2> /dev/null
-#     st_runner "sh ./configure --prefix=/usr" 2> /dev/null
-#     st_runner "make --quiet" 2> /dev/null
-#     st_runner "make --quiet install" 2> /dev/null
-    aptTmp="${aptLiSys}.d/openssl.list"
-    echo "## OpenSSL APT Repository" > ${aptTmp}
-    if [ "${_THIS_OS}" = "Ubuntu" ]; then
-      echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-      echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-    else
-      echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
-      echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
-    fi
-    mrun "apt-get update -qq" 2> /dev/null
-    mrun "${_INSTALL} libyaml-0-2" 2> /dev/null
-    mrun "${_INSTALL} libyaml-dev" 2> /dev/null
-    rm -f ${aptTmp}
-    mrun "apt-get update -qq" 2> /dev/null
+    cd /var/opt
+    rm -f -r yaml*
+    get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
+    cd /var/opt/yaml-${_LIB_YAML_VRN}
+    st_runner "sh ./bootstrap" 2> /dev/null
+    st_runner "sh ./configure --prefix=/usr" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+#     aptTmp="${aptLiSys}.d/openssl.list"
+#     echo "## OpenSSL APT Repository" > ${aptTmp}
+#     if [ "${_THIS_OS}" = "Ubuntu" ]; then
+#       echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
+#       echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
+#     else
+#       echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
+#       echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
+#     fi
+#     mrun "apt-get update -qq" 2> /dev/null
+#     mrun "${_INSTALL} libyaml-0-2" 2> /dev/null
+#     mrun "${_INSTALL} libyaml-dev" 2> /dev/null
+#     rm -f ${aptTmp}
+#     mrun "apt-get update -qq" 2> /dev/null
     touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
   fi
   cd /var/opt
@@ -669,28 +669,28 @@ update_php_extensions() {
   fi
   ###--------------------###
   if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ]; then
-#     cd /var/opt
-#     rm -f -r yaml*
-#     get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
-#     cd /var/opt/yaml-${_LIB_YAML_VRN}
-#     st_runner "sh ./bootstrap" 2> /dev/null
-#     st_runner "sh ./configure --prefix=/usr" 2> /dev/null
-#     st_runner "make --quiet" 2> /dev/null
-#     st_runner "make --quiet install" 2> /dev/null
-    aptTmp="${aptLiSys}.d/openssl.list"
-    echo "## OpenSSL APT Repository" > ${aptTmp}
-    if [ "${_THIS_OS}" = "Ubuntu" ]; then
-      echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-      echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-    else
-      echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
-      echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
-    fi
-    mrun "apt-get update -qq" 2> /dev/null
-    mrun "${_INSTALL} libyaml-0-2" 2> /dev/null
-    mrun "${_INSTALL} libyaml-dev" 2> /dev/null
-    rm -f ${aptTmp}
-    mrun "apt-get update -qq" 2> /dev/null
+    cd /var/opt
+    rm -f -r yaml*
+    get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
+    cd /var/opt/yaml-${_LIB_YAML_VRN}
+    st_runner "sh ./bootstrap" 2> /dev/null
+    st_runner "sh ./configure --prefix=/usr" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+#     aptTmp="${aptLiSys}.d/openssl.list"
+#     echo "## OpenSSL APT Repository" > ${aptTmp}
+#     if [ "${_THIS_OS}" = "Ubuntu" ]; then
+#       echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
+#       echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
+#     else
+#       echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
+#       echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
+#     fi
+#     mrun "apt-get update -qq" 2> /dev/null
+#     mrun "${_INSTALL} libyaml-0-2" 2> /dev/null
+#     mrun "${_INSTALL} libyaml-dev" 2> /dev/null
+#     rm -f ${aptTmp}
+#     mrun "apt-get update -qq" 2> /dev/null
     touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
     rm -f ${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log
   fi
@@ -748,7 +748,7 @@ install_php_multi() {
                 --enable-pcntl \
                 --enable-soap \
                 --enable-zip \
-                --with-curl \
+                --with-curl=/usr/local \
                 --with-fpm-group=www-data \
                 --with-fpm-user=www-data \
                 --with-freetype-dir=/usr \
@@ -761,14 +761,14 @@ install_php_multi() {
                 --with-mysql-sock=/var/run/mysqld/mysqld.sock \
                 --with-mysql=/usr \
                 --with-mysqli=/usr/bin/mysql_config \
-                --with-openssl \
+                --with-openssl=/usr/local/ssl \
                 --with-pdo-mysql=/usr \
                 --with-pear \
                 --with-png-dir=/usr \
                 --with-t1lib=/usr \
                 --with-xmlrpc \
                 --with-xsl \
-                --with-zlib \
+                --with-zlib=/usr/local \
                 ${_PHP_EXTRA}" 2> /dev/null
   msg "INFO: Building PHP ${_PHP_VERSION} part 3/3"
   sed -i "s/^EXTRA_LIBS = -lcrypt/EXTRA_LIBS = -llber -lcrypt/g" Makefile

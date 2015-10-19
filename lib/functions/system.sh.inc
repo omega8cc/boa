@@ -1972,7 +1972,10 @@ install_ssh_src() {
     rm -f -r openssh*
     get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
     cd /var/opt/openssh-${_OPENSSH_VRN}
-    st_runner "sh ./configure --without-openssl-header-check --prefix=/usr \
+    st_runner "sh ./configure \
+      --with-openssl=/usr/local/ssl \
+      --without-openssl-header-check \
+      --prefix=/usr \
       --with-pam" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
@@ -2071,14 +2074,16 @@ install_curl_src() {
   fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ]; then
     ###--------------------###
-    if [ "${_OSV}" = "squeeze" ]; then
+    if [ "${_OSV}" != "xsqueeze" ]; then
       msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
       cd /var/opt
       rm -f -r curl*
       wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
       extract_archive "curl-${_CURL_VRN}.tar.gz"
       cd /var/opt/curl-${_CURL_VRN}
-      mrun "sh ./configure --prefix=/usr" 2> /dev/null
+      mrun "sh ./configure \
+        --prefix=/usr/local \
+        --with-openssl=/usr/local/ssl" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
@@ -2141,35 +2146,36 @@ install_ssl_src() {
     rm -f -r zlib*
     get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
     cd /var/opt/zlib-${_ZLIB_VRN}
-    st_runner "./configure --prefix=/usr" 2> /dev/null
+    st_runner "./configure --prefix=/usr/local" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     ###--------------------###
-    msg "INFO: Installing OpenSSL ${_OPENSSL_VRN}, please wait..."
-    aptTmp="${aptLiSys}.d/openssl.list"
-    echo "## OpenSSL APT Repository" > ${aptTmp}
-    if [ "${_THIS_OS}" = "Ubuntu" ]; then
-      echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-      echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-    else
-      echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
-      echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
-    fi
-    ###--------------------###
-    if [[ "$_SSL_GET_DPKG" =~ "hold" ]]; then
-      if [ "${_OSV}" != "squeeze" ]; then
-        echo "libssl-dev install" | dpkg --set-selections
-        echo "openssl install" | dpkg --set-selections
+    if [ "${_OSV}" = ""xsqueeze"" ]; then
+      msg "INFO: Installing OpenSSL ${_OPENSSL_VRN}, please wait..."
+      aptTmp="${aptLiSys}.d/openssl.list"
+      echo "## OpenSSL APT Repository" > ${aptTmp}
+      if [ "${_THIS_OS}" = "Ubuntu" ]; then
+        echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
+        echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
+      else
+        echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
+        echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
       fi
-    fi
-    mrun "apt-get update -qq" 2> /dev/null
-    if [ "${_OSV}" != "squeeze" ]; then
-      mrun "${_INSTALL} libssl-dev" 2> /dev/null
-      mrun "${_INSTALL} openssl" 2> /dev/null
-    fi
-    rm -f ${aptTmp}
-    mrun "apt-get update -qq" 2> /dev/null
-    if [ "${_OSV}" = "squeeze" ]; then
+      ###--------------------###
+      if [[ "$_SSL_GET_DPKG" =~ "hold" ]]; then
+        if [ "${_OSV}" != "squeeze" ]; then
+          echo "libssl-dev install" | dpkg --set-selections
+          echo "openssl install" | dpkg --set-selections
+        fi
+      fi
+      mrun "apt-get update -qq" 2> /dev/null
+      if [ "${_OSV}" != "squeeze" ]; then
+        mrun "${_INSTALL} libssl-dev" 2> /dev/null
+        mrun "${_INSTALL} openssl" 2> /dev/null
+      fi
+      rm -f ${aptTmp}
+      mrun "apt-get update -qq" 2> /dev/null
+    else
       ###--------------------###
       msg "INFO: Building OpenSSL ${_OPENSSL_VRN} from sources, please wait..."
       cd /var/opt
@@ -2178,11 +2184,15 @@ install_ssl_src() {
       cd /var/opt/openssl-${_OPENSSL_VRN}
       _X86_64_IF=$(uname -m 2>&1)
       if [ "$_X86_64_IF" = "x86_64" ]; then
-        st_runner "sh ./config --prefix=/usr zlib-dynamic --openssldir=/etc/ssl \
+        st_runner "sh ./config zlib-dynamic \
+          --openssldir=/usr/local/ssl \
+          --with-zlib=/usr/local \
           shared enable-ec_nistp_64_gcc_128" 2> /dev/null
         st_runner "make depend" 2> /dev/null
       else
-        st_runner "sh ./config --prefix=/usr zlib-dynamic --openssldir=/etc/ssl \
+        st_runner "sh ./config zlib-dynamic \
+          --openssldir=/usr/local/ssl \
+          --with-zlib=/usr/local \
           shared" 2> /dev/null
       fi
       st_runner "make --quiet" 2> /dev/null
