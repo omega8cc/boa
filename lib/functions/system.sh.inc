@@ -2083,9 +2083,6 @@ install_curl_src() {
       mrun "${_INSTALL} libcurl3" 2> /dev/null
       mrun "${_INSTALL} libcurl3-gnutls" 2> /dev/null
       mrun "${_INSTALL} libcurl4-openssl-dev" 2> /dev/null
-      mrun "${_INSTALL} libc-client2007e-dev" 2> /dev/null
-      mrun "${_INSTALL} krb5-multidev" 2> /dev/null
-      mrun "${_INSTALL} libkrb5-dev" 2> /dev/null
     fi
     if [ "${_OSV}" = "squeeze" ]; then
       msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
@@ -2150,9 +2147,6 @@ install_curl_src() {
           mrun "${_INSTALL} libcurl3" 2> /dev/null
           mrun "${_INSTALL} libcurl3-gnutls" 2> /dev/null
           mrun "${_INSTALL} libcurl4-openssl-dev" 2> /dev/null
-          mrun "${_INSTALL} libc-client2007e-dev" 2> /dev/null
-          mrun "${_INSTALL} krb5-multidev" 2> /dev/null
-          mrun "${_INSTALL} libkrb5-dev" 2> /dev/null
           rm -f ${aptTmp}
           mrun "apt-get update -qq" 2> /dev/null
         fi
