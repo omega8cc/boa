@@ -2183,18 +2183,20 @@ install_ssl_src() {
       get_dev_src "openssl-${_OPENSSL_VRN}.tar.gz"
       cd /var/opt/openssl-${_OPENSSL_VRN}
       _X86_64_IF=$(uname -m 2>&1)
+      st_runner "make dclean" 2> /dev/null
       if [ "$_X86_64_IF" = "x86_64" ]; then
         st_runner "sh ./config zlib-dynamic \
           --openssldir=/usr/local/ssl \
           --with-zlib=/usr/local \
-          shared enable-ec_nistp_64_gcc_128" 2> /dev/null
-        st_runner "make depend" 2> /dev/null
+          shared no-ssl2 no-ssl3 enable-ec_nistp_64_gcc_128" 2> /dev/null
       else
         st_runner "sh ./config zlib-dynamic \
           --openssldir=/usr/local/ssl \
           --with-zlib=/usr/local \
-          shared" 2> /dev/null
+          shared no-ssl2 no-ssl3" 2> /dev/null
       fi
+      st_runner "make depend --quiet" 2> /dev/null
+      st_runner "make all --quiet" 2> /dev/null
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
       ###--------------------###
