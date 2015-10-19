@@ -2065,23 +2065,25 @@ install_curl_src() {
   fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ]; then
     ###--------------------###
-    msg "INFO: Reinstalling LibcURL packages (1), please wait..."
-    aptTmp="${aptLiSys}.d/openssl.list"
-    echo "## OpenSSL APT Repository" > ${aptTmp}
-    if [ "${_THIS_OS}" = "Ubuntu" ]; then
-      echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-      echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-    else
-      echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
-      echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
+    if [ "${_OSV}" != "squeeze" ]; then
+      msg "INFO: Reinstalling LibcURL packages (1), please wait..."
+      aptTmp="${aptLiSys}.d/openssl.list"
+      echo "## OpenSSL APT Repository" > ${aptTmp}
+      if [ "${_THIS_OS}" = "Ubuntu" ]; then
+        echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
+        echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
+      else
+        echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
+        echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
+      fi
+      mrun "apt-get update -qq" 2> /dev/null
+      echo "libcurl3 install" | dpkg --set-selections
+      echo "libcurl3-gnutls install" | dpkg --set-selections
+      echo "libcurl4-openssl-dev install" | dpkg --set-selections
+      mrun "${_INSTALL} libcurl3" 2> /dev/null
+      mrun "${_INSTALL} libcurl3-gnutls" 2> /dev/null
+      mrun "${_INSTALL} libcurl4-openssl-dev" 2> /dev/null
     fi
-    mrun "apt-get update -qq" 2> /dev/null
-    echo "libcurl3 install" | dpkg --set-selections
-    echo "libcurl3-gnutls install" | dpkg --set-selections
-    echo "libcurl4-openssl-dev install" | dpkg --set-selections
-    mrun "${_INSTALL} libcurl3" 2> /dev/null
-    mrun "${_INSTALL} libcurl3-gnutls" 2> /dev/null
-    mrun "${_INSTALL} libcurl4-openssl-dev" 2> /dev/null
     if [ "${_OSV}" = "squeeze" ]; then
       msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
       cd /var/opt
@@ -2127,25 +2129,27 @@ install_curl_src() {
       fi
     else
       if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
-        msg "INFO: Reinstalling LibcURL packages (2), please wait..."
-        echo "libcurl3 install" | dpkg --set-selections
-        echo "libcurl3-gnutls install" | dpkg --set-selections
-        echo "libcurl4-openssl-dev install" | dpkg --set-selections
-        aptTmp="${aptLiSys}.d/openssl.list"
-        echo "## OpenSSL APT Repository" > ${aptTmp}
-        if [ "${_THIS_OS}" = "Ubuntu" ]; then
-          echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-          echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-        else
-          echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
-          echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
+        if [ "${_OSV}" != "squeeze" ]; then
+          msg "INFO: Reinstalling LibcURL packages (2), please wait..."
+          echo "libcurl3 install" | dpkg --set-selections
+          echo "libcurl3-gnutls install" | dpkg --set-selections
+          echo "libcurl4-openssl-dev install" | dpkg --set-selections
+          aptTmp="${aptLiSys}.d/openssl.list"
+          echo "## OpenSSL APT Repository" > ${aptTmp}
+          if [ "${_THIS_OS}" = "Ubuntu" ]; then
+            echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
+            echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
+          else
+            echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
+            echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
+          fi
+          mrun "apt-get update -qq" 2> /dev/null
+          mrun "${_INSTALL} libcurl3" 2> /dev/null
+          mrun "${_INSTALL} libcurl3-gnutls" 2> /dev/null
+          mrun "${_INSTALL} libcurl4-openssl-dev" 2> /dev/null
+          rm -f ${aptTmp}
+          mrun "apt-get update -qq" 2> /dev/null
         fi
-        mrun "apt-get update -qq" 2> /dev/null
-        mrun "${_INSTALL} libcurl3" 2> /dev/null
-        mrun "${_INSTALL} libcurl3-gnutls" 2> /dev/null
-        mrun "${_INSTALL} libcurl4-openssl-dev" 2> /dev/null
-        rm -f ${aptTmp}
-        mrun "apt-get update -qq" 2> /dev/null
         echo "curl hold" | dpkg --set-selections
         ### aptitude hold curl &> /dev/null
       fi
