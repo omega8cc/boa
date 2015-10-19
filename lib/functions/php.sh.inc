@@ -768,7 +768,7 @@ install_php_multi() {
                 --with-t1lib=/usr \
                 --with-xmlrpc \
                 --with-xsl \
-                --with-zlib=/usr/local \
+                --with-zlib \
                 ${_PHP_EXTRA}" 2> /dev/null
   msg "INFO: Building PHP ${_PHP_VERSION} part 3/3"
   sed -i "s/^EXTRA_LIBS = -lcrypt/EXTRA_LIBS = -llber -lcrypt/g" Makefile

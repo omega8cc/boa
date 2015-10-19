@@ -358,7 +358,6 @@ install_upgrade_nginx() {
       --with-ipv6 \
       --with-http_geoip_module \
       --with-openssl=/usr/local/ssl \
-      --with-zlib=/usr/local \
       --with-debug ${_NGINX_EXTRA}" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null

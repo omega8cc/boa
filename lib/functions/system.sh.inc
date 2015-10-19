@@ -2146,7 +2146,7 @@ install_ssl_src() {
     rm -f -r zlib*
     get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
     cd /var/opt/zlib-${_ZLIB_VRN}
-    st_runner "./configure --prefix=/usr/local" 2> /dev/null
+    st_runner "./configure --prefix=/usr" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     ###--------------------###
@@ -2185,13 +2185,13 @@ install_ssl_src() {
       _X86_64_IF=$(uname -m 2>&1)
       if [ "$_X86_64_IF" = "x86_64" ]; then
         mrun "sh ./config zlib-dynamic \
+          --prefix=/usr/local/ssl \
           --openssldir=/usr/local/ssl \
-          --with-zlib=/usr/local \
           shared enable-ec_nistp_64_gcc_128" 2> /dev/null
       else
         mrun "sh ./config zlib-dynamic \
+          --prefix=/usr/local/ssl \
           --openssldir=/usr/local/ssl \
-          --with-zlib=/usr/local \
           shared" 2> /dev/null
       fi
       mrun "make depend" 2> /dev/null
