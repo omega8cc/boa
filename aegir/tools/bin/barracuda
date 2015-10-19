@@ -562,7 +562,7 @@ up_action() {
       fi
       sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${barCnf}
       _THIS_RV=$(lsb_release -sc 2>&1)
-      if [ "$_THIS_RV" = "lenny" ] \
+      if [ "${_THIS_RV}" = "lenny" ] \
         && [ -e "${barCnf}" ]; then
         sed -i "s/^_LENNY_TO_SQUEEZE=.*/_LENNY_TO_SQUEEZE=YES/g" \
           ${vBs}/${barName}
@@ -755,7 +755,7 @@ set_pin_priority() {
     fi
     if [ "${_THIS_OS}" = "Debian" ]; then
       _THIS_RV=$(grep "6.0" /etc/issue.net 2>&1)
-      if [[ "$_THIS_RV" =~ "6.0" ]]; then
+      if [[ "${_THIS_RV}" =~ "6.0" ]]; then
         curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
           -o /etc/apt/preferences
       else

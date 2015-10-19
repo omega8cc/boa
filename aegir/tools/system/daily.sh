@@ -853,7 +853,7 @@ add_solr() {
       cp -a /opt/solr4/core0 $2
       CHAR="[:alnum:]"
       rkey=32
-      if [ "$_NEW_SSL" = "YES" ] \
+      if [ "${_NEW_SSL}" = "YES" ] \
         || [ "${_OSV}" = "wheezy" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
@@ -2115,7 +2115,7 @@ process() {
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
       if [ -e "${Plr}" ]; then
-        if [ "$_NEW_SSL" = "YES" ] \
+        if [ "${_NEW_SSL}" = "YES" ] \
           || [ "${_OSV}" = "wheezy" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then

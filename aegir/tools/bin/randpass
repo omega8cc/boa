@@ -32,7 +32,7 @@ randpass() {
       | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
   elif [ "${kind}" = "hash" ]; then
     CHAR="[:alnum:]"
-    if [ "$_NEW_SSL" = "YES" ] \
+    if [ "${_NEW_SSL}" = "YES" ] \
       || [ "${_OSV}" = "wheezy" ] \
       || [ "${_OSV}" = "trusty" ] \
       || [ "${_OSV}" = "precise" ]; then

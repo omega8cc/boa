@@ -376,7 +376,7 @@ os_detection() {
   _THIS_OS=$(lsb_release -si 2>&1)
   _THIS_RV=$(lsb_release -sc 2>&1)
   if [ "${_THIS_OS}" = "Ubuntu" ]; then
-    if [ "$_THIS_RV" = "trusty" ]; then
+    if [ "${_THIS_RV}" = "trusty" ]; then
       _OSV="trusty"
       _DB_SERVER=MariaDB
       _DB_SERIES=10.0
@@ -387,18 +387,18 @@ os_detection() {
       else
         _MARIADB_VRN="${_MARIADB_10_VRN}"
       fi
-    elif [ "$_THIS_RV" = "precise" ]; then
+    elif [ "${_THIS_RV}" = "precise" ]; then
       _OSV="precise"
-    elif [ "$_THIS_RV" = "lucid" ]; then
+    elif [ "${_THIS_RV}" = "lucid" ]; then
       _OSV="lucid"
     else
       not_supported_os
     fi
   elif [ "${_THIS_OS}" = "Debian" ]; then
-    if [ "$_THIS_RV" = "wheezy" ]; then
+    if [ "${_THIS_RV}" = "wheezy" ]; then
       _OSV="wheezy"
       _DB_SERVER=MariaDB
-    elif [ "$_THIS_RV" = "squeeze" ]; then
+    elif [ "${_THIS_RV}" = "squeeze" ]; then
       _OSV="squeeze"
     else
       not_supported_os
