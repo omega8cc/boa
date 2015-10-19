@@ -406,6 +406,7 @@ os_detection() {
   elif [ "${_THIS_OS}" = "Debian" ]; then
     if [ "${_THIS_RV}" = "wheezy" ]; then
       _OSV="wheezy"
+      _CURL_VRN=7.26.0
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=YES
