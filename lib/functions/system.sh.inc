@@ -1950,7 +1950,7 @@ update_sources_list() {
 #
 # Install OpenSSH from sources.
 install_ssh_src() {
-  _SSH_GET_DPKG=$(dpkg --get-selections | grep ssh | grep hold 2>&1)
+  _SSH_GET_DPKG=$(dpkg --get-selections | grep ssh | grep 'hold$' 2>&1)
   _SSH_INSTALL_REQUIRED=NO
   _SSH_ITD=$(ssh -V 2>&1 \
     | tr -d "\n" \
@@ -2024,14 +2024,14 @@ install_imap_src() {
 # Install cURL from sources.
 install_curl_src() {
   _CURL_INSTALL_REQUIRED=NO
-  _CURL_GET_DPKG=$(dpkg --get-selections | grep curl | grep hold 2>&1)
-  if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
-    echo "curl install" | dpkg --set-selections
+  _CURL_GET_DPKG=$(dpkg --get-selections | grep curl | grep 'hold$' 2>&1)
+  if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
+    echo "curl hold" | dpkg --set-selections
   fi
   if [ -x "/usr/local/bin/curl" ]; then
     _CURL_BIN="/usr/local/bin/curl"
   else
-    _CURL_BIN="curl"
+    _CURL_BIN="/usr/bin/curl"
     _CURL_INSTALL_REQUIRED=YES
   fi
   _CURL_ITD=$(${_CURL_BIN} --version 2>&1 \
@@ -2075,8 +2075,6 @@ install_curl_src() {
   fi
   if [ -x "/usr/local/bin/curl" ]; then
     _BROKEN_CURL_TEST=$(/usr/local/bin/curl --version 2>&1)
-  else
-    _BROKEN_CURL_TEST=$(curl --version 2>&1)
   fi
   if [[ "${_BROKEN_CURL_TEST}" =~ "libcurl.so.4" ]]; then
     _CURL_INSTALL_REQUIRED=YES
@@ -2098,11 +2096,17 @@ install_curl_src() {
     extract_archive "curl-${_CURL_VRN}.tar.gz"
     cd /var/opt/curl-${_CURL_VRN}
     mrun "sh ./configure \
+      --with-ssl=/usr/local/ssl \
+      --libdir=/usr/local/ssl/lib \
       --prefix=/usr/local" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     _CURL_ALREADY_REBUILT=YES
     _UP_PHP=YES
+  fi
+  if [ -x "/usr/local/bin/curl" ] && [ ! -e "/usr/bin/vancurl" ]; then
+    mv -f /usr/bin/curl /usr/bin/vancurl
+    ln -s /usr/local/bin/curl /usr/bin/curl
   fi
 }
 
@@ -2114,7 +2118,7 @@ install_ssl_src() {
     _SSL_BIN="/usr/local/ssl/bin/openssl"
   else
     _SSL_INSTALL_REQUIRED=YES
-    _SSL_BIN="openssl"
+    _SSL_BIN="/usr/bin/openssl"
   fi
   _SSL_ITD=$(${_SSL_BIN} version 2>&1 \
     | tr -d "\n" \
@@ -2183,18 +2187,22 @@ install_ssl_src() {
     ###--------------------###
     _SSL_GET_DPKG=$(dpkg --get-selections \
       | grep openssl \
-      | grep hold 2>&1)
+      | grep 'hold$' 2>&1)
     _ZLB_GET_DPKG=$(dpkg --get-selections \
       | grep zlibc \
-      | grep hold 2>&1)
-    if [[ "${_SSL_GET_DPKG}" =~ "hold" ]]; then
-      echo "openssl install" | dpkg --set-selections
+      | grep 'hold$' 2>&1)
+    if [[ ! "${_SSL_GET_DPKG}" =~ "hold" ]]; then
+      echo "openssl hold" | dpkg --set-selections
     fi
     if [[ ! "$_ZLB_GET_DPKG" =~ "hold" ]]; then
       echo "zlibc hold" | dpkg --set-selections
       echo "zlib1g hold" | dpkg --set-selections
       echo "zlib1g-dev hold" | dpkg --set-selections
     fi
+  fi
+  if [ -x "/usr/local/ssl/bin/openssl" ] && [ ! -e "/usr/bin/vanopenssl" ]; then
+    mv -f /usr/bin/openssl /usr/bin/vanopenssl
+    ln -s /usr/local/ssl/bin/openssl /usr/bin/openssl
   fi
 }
 
