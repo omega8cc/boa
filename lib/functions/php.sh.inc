@@ -748,7 +748,7 @@ install_php_multi() {
                 --enable-pcntl \
                 --enable-soap \
                 --enable-zip \
-                --with-curl=/usr \
+                --with-curl=/usr/local \
                 --with-fpm-group=www-data \
                 --with-fpm-user=www-data \
                 --with-freetype-dir=/usr \

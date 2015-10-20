@@ -2028,23 +2028,28 @@ install_curl_src() {
   if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
     echo "curl hold" | dpkg --set-selections
   fi
-  _CURL_ITD=$(curl --version 2>&1 \
+  if [ -x "/usr/local/bin/curl" ]; then
+    _CURL_BIN="/usr/local/bin/curl"
+  else
+    _CURL_BIN="/usr/bin/curl"
+    _CURL_INSTALL_REQUIRED=YES
+  fi
+  _CURL_ITD=$(${_CURL_BIN} --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
-  _CURL_SSL_ITD=$(curl --version 2>&1 \
+  _CURL_SSL_ITD=$(${_CURL_BIN} --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f5 \
     | awk '{ print $1}' \
     | cut -d"/" -f2 \
     | awk '{ print $1}' 2>&1)
-  _CURL_LIB_ITD=$(curl --version 2>&1 \
+  _CURL_LIB_ITD=$(${_CURL_BIN} --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f4 \
     | awk '{ print $1}' \
     | cut -d"/" -f2 \
     | awk '{ print $1}' 2>&1)
-  _CURL_INSTALL_REQUIRED=YES
   if [ "${_CURL_ITD}" = "${_CURL_VRN}" ]; then
     if [ "$_CURL_SSL_ITD" = "${_OPENSSL_VRN}" ]; then
       _CURL_INSTALL_REQUIRED=NO
@@ -2068,7 +2073,13 @@ install_curl_src() {
       msg "INFO: Installed cURL version ${_CURL_ITD}, upgrade required"
     fi
   fi
-  _BROKEN_CURL_TEST=$(curl --version 2>&1)
+  if [ ! -e "/usr/local/lib/libcurl.so" ]; then
+    _CURL_INSTALL_REQUIRED=YES
+    msg "INFO: Installed libcurl is broken, cURL ${_CURL_ITD} rebuild required"
+  fi
+  if [ -x "/usr/local/bin/curl" ]; then
+    _BROKEN_CURL_TEST=$(/usr/local/bin/curl --version 2>&1)
+  fi
   if [[ "${_BROKEN_CURL_TEST}" =~ "libcurl.so.4" ]]; then
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed libcurl is broken, cURL ${_CURL_ITD} upgrade required"
@@ -2090,16 +2101,18 @@ install_curl_src() {
     wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
     extract_archive "curl-${_CURL_VRN}.tar.gz"
     cd /var/opt/curl-${_CURL_VRN}
-    mrun "sh ./configure \
-      --with-ssl=/usr/local/ssl/ \
-      --prefix=/usr" 2> /dev/null
-    if [ ! -e "/usr/bin/prevcurl" ]; then
-      mv -f /usr/bin/curl /usr/bin/prevcurl
-    fi
+    export PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig"
+    mrun "PKG_CONFIG_PATH=/usr/local/ssl/lib/pkgconfig sh ./configure \
+      --with-ssl=/usr/local/ssl \
+      --prefix=/usr/local" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     _CURL_ALREADY_REBUILT=YES
     _UP_PHP=YES
+  fi
+  if [ -x "/usr/local/bin/curl" ] && [ ! -e "/usr/bin/vancurl" ]; then
+    mv -f /usr/bin/curl /usr/bin/vancurl
+    ln -s /usr/local/bin/curl /usr/bin/curl
   fi
 }
 
