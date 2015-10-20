@@ -2029,27 +2029,42 @@ install_curl_src() {
     echo "curl hold" | dpkg --set-selections
   fi
   if [ -x "/usr/local/bin/curl" ]; then
-    _CURL_BIN="/usr/local/bin/curl"
+    _CURL_ITD=$(/usr/local/bin/curl --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f2 \
+      | awk '{ print $1}' 2>&1)
+    _CURL_SSL_ITD=$(/usr/local/bin/curl --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f5 \
+      | awk '{ print $1}' \
+      | cut -d"/" -f2 \
+      | awk '{ print $1}' 2>&1)
+    _CURL_LIB_ITD=$(/usr/local/bin/curl --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f4 \
+      | awk '{ print $1}' \
+      | cut -d"/" -f2 \
+      | awk '{ print $1}' 2>&1)
+    _CURL_INSTALL_REQUIRED=YES
   else
-    _CURL_BIN="/usr/bin/curl"
+    _CURL_ITD=$(/usr/bin/curl --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f2 \
+      | awk '{ print $1}' 2>&1)
+    _CURL_SSL_ITD=$(/usr/bin/curl --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f5 \
+      | awk '{ print $1}' \
+      | cut -d"/" -f2 \
+      | awk '{ print $1}' 2>&1)
+    _CURL_LIB_ITD=$(/usr/bin/curl --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f4 \
+      | awk '{ print $1}' \
+      | cut -d"/" -f2 \
+      | awk '{ print $1}' 2>&1)
     _CURL_INSTALL_REQUIRED=YES
   fi
-  _CURL_ITD=$(${_CURL_BIN} --version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f2 \
-    | awk '{ print $1}' 2>&1)
-  _CURL_SSL_ITD=$(${_CURL_BIN} --version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f5 \
-    | awk '{ print $1}' \
-    | cut -d"/" -f2 \
-    | awk '{ print $1}' 2>&1)
-  _CURL_LIB_ITD=$(${_CURL_BIN} --version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f4 \
-    | awk '{ print $1}' \
-    | cut -d"/" -f2 \
-    | awk '{ print $1}' 2>&1)
   if [ "${_CURL_ITD}" = "${_CURL_VRN}" ]; then
     if [ "$_CURL_SSL_ITD" = "${_OPENSSL_VRN}" ]; then
       _CURL_INSTALL_REQUIRED=NO
@@ -2073,13 +2088,7 @@ install_curl_src() {
       msg "INFO: Installed cURL version ${_CURL_ITD}, upgrade required"
     fi
   fi
-  if [ ! -e "/usr/local/lib/libcurl.so" ]; then
-    _CURL_INSTALL_REQUIRED=YES
-    msg "INFO: Installed libcurl is broken, cURL ${_CURL_ITD} rebuild required"
-  fi
-  if [ -x "/usr/local/bin/curl" ]; then
-    _BROKEN_CURL_TEST=$(/usr/local/bin/curl --version 2>&1)
-  fi
+  _BROKEN_CURL_TEST=$(curl --version 2>&1)
   if [[ "${_BROKEN_CURL_TEST}" =~ "libcurl.so.4" ]]; then
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed libcurl is broken, cURL ${_CURL_ITD} upgrade required"
@@ -2094,16 +2103,14 @@ install_curl_src() {
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ]; then
     ###--------------------###
     msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
-    mrun "apt-get remove libcurl4-openssl-dev -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get purge libcurl4-openssl-dev -y --force-yes -qq" 2> /dev/null
+    ### mrun "${_INSTALL} libcurl4-openssl-dev" 2> /dev/null
     cd /var/opt
     rm -f -r curl*
     wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
     extract_archive "curl-${_CURL_VRN}.tar.gz"
     cd /var/opt/curl-${_CURL_VRN}
-    export PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig"
-    mrun "PKG_CONFIG_PATH=/usr/local/ssl/lib/pkgconfig sh ./configure \
-      --with-ssl=/usr/local/ssl \
+    mrun "sh ./configure \
+      --with-ssl=/usr/local/ssl/ \
       --prefix=/usr/local" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
@@ -2222,6 +2229,7 @@ install_ssl_src() {
     mv -f /usr/bin/openssl /usr/bin/vanopenssl
     ln -s /usr/local/ssl/bin/openssl /usr/bin/openssl
   fi
+  fix_libssl
 }
 
 #
@@ -3412,18 +3420,53 @@ fix_libssl() {
       fi
     fi
   fi
-  if [ -e "/usr/local/ssl/lib/libcrypto.so.1.0.0" ]; then
-    if [ -L "/usr/lib/libssl.so.1.0.0" ]; then
-      rm -f /usr/lib/libssl.so.1.0.0
-      rm -f /usr/lib/libcrypto.so.1.0.0
-      ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/libssl.so.1.0.0
-      ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0
-    fi
-    if [ -L "/usr/local/lib/libssl.so.1.0.0" ]; then
-      rm -f /usr/local/lib/libssl.so.1.0.0
-      rm -f /usr/local/lib/libcrypto.so.1.0.0
-      ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /usr/local/lib/libssl.so.1.0.0
-      ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/local/lib/libcrypto.so.1.0.0
+  if [ ! -e "/usr/local/ssl/lib/.libfix.txt" ] \
+    && [ "$_SSL_FIX_REQUIRED" = "YES" ]; then
+    if [ -e "/usr/local/ssl/lib/libcrypto.so.1.0.0" ]; then
+      if [ -e "/usr/lib/x86_64-linux-gnu" ]; then
+        if [ ! -e "/usr/lib/x86_64-linux-gnu/libssl.so.1.0.0.old" ]; then
+          mv -f /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0 /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0.old
+          mv -f /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0 /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0.old
+          ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0
+          ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0
+        fi
+      elif [ -e "/usr/lib/i386-linux-gnu" ]; then
+        if [ ! -e "/usr/lib/i386-linux-gnu/libssl.so.1.0.0.old" ]; then
+          mv -f /usr/lib/i386-linux-gnu/libssl.so.1.0.0 /usr/lib/i386-linux-gnu/libssl.so.1.0.0.old
+          mv -f /usr/lib/i386-linux-gnu/libcrypto.so.1.0.0 /usr/lib/i386-linux-gnu/libcrypto.so.1.0.0.old
+          ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/i386-linux-gnu/libssl.so.1.0.0
+          ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/i386-linux-gnu/libcrypto.so.1.0.0
+        fi
+      fi
+      if [ -e "/lib/x86_64-linux-gnu" ]; then
+        if [ ! -e "/lib/x86_64-linux-gnu/libssl.so.1.0.0.old" ]; then
+          mv -f /lib/x86_64-linux-gnu/libssl.so.1.0.0 /lib/x86_64-linux-gnu/libssl.so.1.0.0.old
+          mv -f /lib/x86_64-linux-gnu/libcrypto.so.1.0.0 /lib/x86_64-linux-gnu/libcrypto.so.1.0.0.old
+          ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /lib/x86_64-linux-gnu/libssl.so.1.0.0
+          ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /lib/x86_64-linux-gnu/libcrypto.so.1.0.0
+        fi
+      elif [ -e "/lib/i386-linux-gnu" ]; then
+        if [ ! -e "/lib/i386-linux-gnu/libssl.so.1.0.0.old" ]; then
+          mv -f /lib/i386-linux-gnu/libssl.so.1.0.0 /lib/i386-linux-gnu/libssl.so.1.0.0.old
+          mv -f /lib/i386-linux-gnu/libcrypto.so.1.0.0 /lib/i386-linux-gnu/libcrypto.so.1.0.0.old
+          ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /lib/i386-linux-gnu/libssl.so.1.0.0
+          ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /lib/i386-linux-gnu/libcrypto.so.1.0.0
+        fi
+      fi
+      if [ -L "/usr/lib/libssl.so.1.0.0" ]; then
+        mv -f /usr/lib/libssl.so.1.0.0 /usr/lib/libssl.so.1.0.0.old
+        mv -f /usr/lib/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0.old
+        ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/libssl.so.1.0.0
+        ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0
+      fi
+      if [ -L "/usr/local/lib/libssl.so.1.0.0" ]; then
+        mv -f /usr/local/lib/libssl.so.1.0.0 /usr/local/lib/libssl.so.1.0.0.old
+        mv -f /usr/local/lib/libcrypto.so.1.0.0 /usr/local/lib/libcrypto.so.1.0.0.old
+        ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /usr/local/lib/libssl.so.1.0.0
+        ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/local/lib/libcrypto.so.1.0.0
+      fi
+      mkdir -p /usr/local/ssl/lib
+      touch /usr/local/ssl/lib/.libfix.txt
     fi
   fi
 }
