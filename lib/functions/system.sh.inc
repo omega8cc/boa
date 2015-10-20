@@ -2006,17 +2006,26 @@ install_ssh_src() {
 install_curl_src() {
   _CURL_INSTALL_REQUIRED=NO
   _CURL_GET_DPKG=$(dpkg --get-selections | grep curl | grep hold 2>&1)
-  _CURL_ITD=$(curl --version 2>&1 \
+  if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
+    echo "curl install" | dpkg --set-selections
+  fi
+  if [ -x "/usr/local/bin/curl" ]; then
+    _CURL_BIN="/usr/local/bin/curl"
+  else
+    _CURL_BIN="curl"
+    _CURL_INSTALL_REQUIRED=YES
+  fi
+  _CURL_ITD=$(${_CURL_BIN} --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
-  _CURL_SSL_ITD=$(curl --version 2>&1 \
+  _CURL_SSL_ITD=$(${_CURL_BIN} --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f5 \
     | awk '{ print $1}' \
     | cut -d"/" -f2 \
     | awk '{ print $1}' 2>&1)
-  _CURL_LIB_ITD=$(curl --version 2>&1 \
+  _CURL_LIB_ITD=$(${_CURL_BIN} --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f4 \
     | awk '{ print $1}' \
@@ -2026,10 +2035,7 @@ install_curl_src() {
     if [ "$_CURL_SSL_ITD" = "${_OPENSSL_VRN}" ]; then
       _CURL_INSTALL_REQUIRED=NO
     else
-      if [ "${_OSV}" = "stretch" ] \
-        || [ "${_OSV}" = "jessie" ] \
-        || [ "${_OSV}" = "trusty" ] \
-        || [ "${_OSV}" = "precise" ]; then
+      if [ "${_OSV}" = "none" ]; then
         _CURL_INSTALL_REQUIRED=NO
       else
         _CURL_INSTALL_REQUIRED=YES
@@ -2041,17 +2047,18 @@ install_curl_src() {
       fi
     fi
   else
-    if [ "${_OSV}" = "stretch" ] \
-      || [ "${_OSV}" = "jessie" ] \
-      || [ "${_OSV}" = "trusty" ] \
-      || [ "${_OSV}" = "precise" ]; then
+    if [ "${_OSV}" = "none" ]; then
       _CURL_INSTALL_REQUIRED=NO
     else
       _CURL_INSTALL_REQUIRED=YES
       msg "INFO: Installed cURL version ${_CURL_ITD}, upgrade required"
     fi
   fi
-  _BROKEN_CURL_TEST=$(curl --version 2>&1)
+  if [ -x "/usr/local/bin/curl" ]; then
+    _BROKEN_CURL_TEST=$(/usr/local/bin/curl --version 2>&1)
+  else
+    _BROKEN_CURL_TEST=$(curl --version 2>&1)
+  fi
   if [[ "${_BROKEN_CURL_TEST}" =~ "libcurl.so.4" ]]; then
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed libcurl is broken, cURL ${_CURL_ITD} upgrade required"
@@ -2063,34 +2070,19 @@ install_curl_src() {
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version ${_CURL_ITD}, rebuild forced"
   fi
-  if [ "${_OSV}" = "stretch" ] \
-    || [ "${_OSV}" = "jessie" ] \
-    || [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "precise" ]; then
-    _CURL_INSTALL_REQUIRED=NO
-  fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ]; then
     ###--------------------###
-    if [ "${_OSV}" != "xsqueeze" ]; then
-      msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
-      cd /var/opt
-      rm -f -r curl*
-      wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
-      extract_archive "curl-${_CURL_VRN}.tar.gz"
-      cd /var/opt/curl-${_CURL_VRN}
-      mrun "sh ./configure \
-        --prefix=/usr/local \
-        --with-openssl=/usr/local/ssl" 2> /dev/null
-      mrun "make --quiet" 2> /dev/null
-      mrun "make --quiet install" 2> /dev/null
-      if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
-        echo "curl hold" | dpkg --set-selections
-        ### aptitude hold curl &> /dev/null
-      fi
-    else
-      msg "INFO: Reinstalling cURL from packages, please wait..."
-      mrun "apt-get install curl ${forCer}" 2> /dev/null
-    fi
+    msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
+    cd /var/opt
+    rm -f -r curl*
+    wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
+    extract_archive "curl-${_CURL_VRN}.tar.gz"
+    cd /var/opt/curl-${_CURL_VRN}
+    mrun "sh ./configure \
+      --prefix=/usr/local \
+      --with-ssl=/usr/local/ssl" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     _CURL_ALREADY_REBUILT=YES
     _UP_PHP=YES
   fi
@@ -2100,10 +2092,13 @@ install_curl_src() {
 # Install OpenSSL from sources.
 install_ssl_src() {
   _SSL_INSTALL_REQUIRED=NO
-  _SSL_GET_DPKG=$(dpkg --get-selections \
-    | grep openssl \
-    | grep hold 2>&1)
-  _SSL_ITD=$(openssl version 2>&1 \
+  if [ -x "/usr/local/ssl/bin/openssl" ]; then
+    _SSL_BIN="/usr/local/ssl/bin/openssl"
+  else
+    _SSL_INSTALL_REQUIRED=YES
+    _SSL_BIN="openssl"
+  fi
+  _SSL_ITD=$(${_SSL_BIN} version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
@@ -2147,69 +2142,37 @@ install_ssl_src() {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     ###--------------------###
-    if [ "${_OSV}" = ""xsqueeze"" ]; then
-      msg "INFO: Installing OpenSSL ${_OPENSSL_VRN}, please wait..."
-      aptTmp="${aptLiSys}.d/openssl.list"
-      echo "## OpenSSL APT Repository" > ${aptTmp}
-      if [ "${_THIS_OS}" = "Ubuntu" ]; then
-        echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-        echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-      else
-        echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
-        echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
-      fi
-      ###--------------------###
-      if [[ "$_SSL_GET_DPKG" =~ "hold" ]]; then
-        if [ "${_OSV}" != "squeeze" ]; then
-          echo "libssl-dev install" | dpkg --set-selections
-          echo "openssl install" | dpkg --set-selections
-        fi
-      fi
-      mrun "apt-get update -qq" 2> /dev/null
-      if [ "${_OSV}" != "squeeze" ]; then
-        mrun "${_INSTALL} libssl-dev" 2> /dev/null
-        mrun "${_INSTALL} openssl" 2> /dev/null
-      fi
-      rm -f ${aptTmp}
-      mrun "apt-get update -qq" 2> /dev/null
+    msg "INFO: Building OpenSSL ${_OPENSSL_VRN} from sources, please wait..."
+    cd /var/opt
+    rm -f -r openssl*
+    get_dev_src "openssl-${_OPENSSL_VRN}.tar.gz"
+    cd /var/opt/openssl-${_OPENSSL_VRN}
+    _X86_64_IF=$(uname -m 2>&1)
+    if [ "$_X86_64_IF" = "x86_64" ]; then
+      mrun "sh ./config zlib-dynamic \
+        --prefix=/usr/local/ssl \
+        --openssldir=/usr/local/ssl \
+        shared enable-ec_nistp_64_gcc_128" 2> /dev/null
     else
-      ###--------------------###
-      msg "INFO: Building OpenSSL ${_OPENSSL_VRN} from sources, please wait..."
-      cd /var/opt
-      rm -f -r openssl*
-      get_dev_src "openssl-${_OPENSSL_VRN}.tar.gz"
-      cd /var/opt/openssl-${_OPENSSL_VRN}
-      _X86_64_IF=$(uname -m 2>&1)
-      if [ "$_X86_64_IF" = "x86_64" ]; then
-        mrun "sh ./config zlib-dynamic \
-          --prefix=/usr/local/ssl \
-          --openssldir=/usr/local/ssl \
-          shared enable-ec_nistp_64_gcc_128" 2> /dev/null
-      else
-        mrun "sh ./config zlib-dynamic \
-          --prefix=/usr/local/ssl \
-          --openssldir=/usr/local/ssl \
-          shared" 2> /dev/null
-      fi
-      mrun "make depend" 2> /dev/null
-      mrun "make --quiet" 2> /dev/null
-      mrun "make --quiet install" 2> /dev/null
-      ###--------------------###
+      mrun "sh ./config zlib-dynamic \
+        --prefix=/usr/local/ssl \
+        --openssldir=/usr/local/ssl \
+        shared" 2> /dev/null
     fi
+    mrun "make depend" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    ###--------------------###
     _SSL_GET_DPKG=$(dpkg --get-selections \
       | grep openssl \
       | grep hold 2>&1)
     _ZLB_GET_DPKG=$(dpkg --get-selections \
       | grep zlibc \
       | grep hold 2>&1)
-    if [[ ! "$_SSL_GET_DPKG" =~ "hold" ]]; then
-      ### aptitude hold openssl &> /dev/null
-      echo "openssl hold" | dpkg --set-selections
+    if [[ "${_SSL_GET_DPKG}" =~ "hold" ]]; then
+      echo "openssl install" | dpkg --set-selections
     fi
     if [[ ! "$_ZLB_GET_DPKG" =~ "hold" ]]; then
-      ### aptitude hold zlibc &> /dev/null
-      ### aptitude hold zlib1g &> /dev/null
-      ### aptitude hold zlib1g-dev &> /dev/null
       echo "zlibc hold" | dpkg --set-selections
       echo "zlib1g hold" | dpkg --set-selections
       echo "zlib1g-dev hold" | dpkg --set-selections
