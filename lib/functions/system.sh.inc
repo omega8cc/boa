@@ -2104,7 +2104,6 @@ install_curl_src() {
     export PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig"
     mrun "PKG_CONFIG_PATH=/usr/local/ssl/lib/pkgconfig sh ./configure \
       --with-ssl=/usr/local/ssl \
-      --libdir=/usr/local/ssl/lib \
       --prefix=/usr/local" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
