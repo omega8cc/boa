@@ -2168,16 +2168,6 @@ install_ssl_src() {
     rm -f ${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log
     msg "INFO: Installed OpenSSL version ${_SSL_ITD}, upgrade required"
   fi
-  if [ ! -e "/usr/local/lib/libcurl.so" ]; then
-    _SSL_INSTALL_REQUIRED=YES
-    _SSH_FORCE_REINSTALL=YES
-    _NGX_FORCE_REINSTALL=YES
-    _PHP_FORCE_REINSTALL=YES
-    _GIT_FORCE_REINSTALL=YES
-    rm -f ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log
-    rm -f ${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log
-    msg "INFO: Installed OpenSSL version ${_SSL_ITD}, upgrade required"
-  fi
   if [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
     msg "INFO: Building zlib ${_ZLIB_VRN} from sources, please wait..."
