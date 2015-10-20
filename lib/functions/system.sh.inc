@@ -2117,15 +2117,17 @@ install_curl_src() {
 install_ssl_src() {
   _SSL_INSTALL_REQUIRED=NO
   if [ -x "/usr/local/ssl/bin/openssl" ]; then
-    _SSL_BIN="/usr/local/ssl/bin/openssl"
+    _SSL_ITD=$(/usr/local/ssl/bin/openssl version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f2 \
+      | awk '{ print $1}' 2>&1)
   else
+    _SSL_ITD=$(/usr/bin/openssl version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f2 \
+      | awk '{ print $1}' 2>&1)
     _SSL_INSTALL_REQUIRED=YES
-    _SSL_BIN="/usr/bin/openssl"
   fi
-  _SSL_ITD=$(${_SSL_BIN} version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f2 \
-    | awk '{ print $1}' 2>&1)
   if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ]; then
     _SPDY_COMPATIBILITY_TEST=$(service nginx configtest 2>&1)
     if [[ "$_SPDY_COMPATIBILITY_TEST" =~ "without OpenSSL ALPN or NPN" ]]; then
