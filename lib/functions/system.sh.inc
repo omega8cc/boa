@@ -2073,6 +2073,10 @@ install_curl_src() {
       msg "INFO: Installed cURL version ${_CURL_ITD}, upgrade required"
     fi
   fi
+  if [ ! -e "/usr/local/lib/libcurl.so" ]; then
+    _CURL_INSTALL_REQUIRED=YES
+    msg "INFO: Installed libcurl is broken, cURL ${_CURL_ITD} rebuild required"
+  fi
   if [ -x "/usr/local/bin/curl" ]; then
     _BROKEN_CURL_TEST=$(/usr/local/bin/curl --version 2>&1)
   fi
@@ -2100,6 +2104,7 @@ install_curl_src() {
     export PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig"
     mrun "PKG_CONFIG_PATH=/usr/local/ssl/lib/pkgconfig sh ./configure \
       --with-ssl=/usr/local/ssl \
+      --libdir=/usr/local/ssl/lib \
       --prefix=/usr/local" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
@@ -2148,6 +2153,16 @@ install_ssl_src() {
       _SSH_FORCE_REINSTALL=NO
     fi
   else
+    _SSL_INSTALL_REQUIRED=YES
+    _SSH_FORCE_REINSTALL=YES
+    _NGX_FORCE_REINSTALL=YES
+    _PHP_FORCE_REINSTALL=YES
+    _GIT_FORCE_REINSTALL=YES
+    rm -f ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log
+    rm -f ${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log
+    msg "INFO: Installed OpenSSL version ${_SSL_ITD}, upgrade required"
+  fi
+  if [ ! -e "/usr/local/lib/libcurl.so" ]; then
     _SSL_INSTALL_REQUIRED=YES
     _SSH_FORCE_REINSTALL=YES
     _NGX_FORCE_REINSTALL=YES
@@ -3396,6 +3411,20 @@ fix_libssl() {
             /usr/lib/libcrypto.so.1.0.0
         fi
       fi
+    fi
+  fi
+  if [ -e "/usr/local/ssl/lib/libcrypto.so.1.0.0" ]; then
+    if [ -L "/usr/lib/libssl.so.1.0.0" ]; then
+      rm -f /usr/lib/libssl.so.1.0.0
+      rm -f /usr/lib/libcrypto.so.1.0.0
+      ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/libssl.so.1.0.0
+      ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0
+    fi
+    if [ -L "/usr/local/lib/libssl.so.1.0.0" ]; then
+      rm -f /usr/local/lib/libssl.so.1.0.0
+      rm -f /usr/local/lib/libcrypto.so.1.0.0
+      ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /usr/local/lib/libssl.so.1.0.0
+      ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/local/lib/libcrypto.so.1.0.0
     fi
   fi
 }
