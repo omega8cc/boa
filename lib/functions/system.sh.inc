@@ -2002,6 +2002,25 @@ install_ssh_src() {
 }
 
 #
+# Install IMAP libs from sources.
+install_imap_src() {
+  if [ ! -e "/usr/local/imap-${_IMAP_VRN}/lib/libc-client.a" ]; then
+    ###--------------------###
+    msg "INFO: Building IMAP libs ${_IMAP_VRN} from sources, please wait..."
+    cd /var/opt
+    rm -f -r imap*
+    get_dev_src "imap-${_IMAP_VRN}.tar.gz"
+    mv -f imap-${_IMAP_VRN} /usr/local/
+    cd /usr/local/imap-${_IMAP_VRN}
+    mrun "make slx SSLINCLUDE=/usr/local/ssl/include/openssl" 2> /dev/null
+    ln -s c-client lib
+    ln -s c-client include
+    cd c-client
+    ln -s c-client.a libc-client.a
+  fi
+}
+
+#
 # Install cURL from sources.
 install_curl_src() {
   _CURL_INSTALL_REQUIRED=NO
@@ -2794,7 +2813,7 @@ if_squeeze_to_wheezy() {
     if [ -d "/var/www/cgp" ]; then
       mrun "${_INSTALL} collectd" 2> /dev/null
     fi
-    mrun "${_INSTALL} udev lsb-release libc-client2007e-dev" 2> /dev/null
+    mrun "${_INSTALL} udev lsb-release" 2> /dev/null
     _L_VM_TEST=$(uname -a 2>&1)
     if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
       || [ -e "/root/.debug.cnf" ] \
@@ -3155,9 +3174,6 @@ sys_packages_install() {
               lftp \
               libapr1 \
               libaprutil1 \
-              libc-client-dev \
-              libc-client2007e \
-              libc-client2007e-dev \
               libfilesys-diskspace-perl \
               libfontconfig1 \
               libfreetype6 \

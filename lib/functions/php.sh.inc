@@ -753,7 +753,7 @@ install_php_multi() {
                 --with-fpm-user=www-data \
                 --with-freetype-dir=/usr \
                 --with-gd \
-                --with-imap \
+                --with-imap=/usr/local/imap-${_IMAP_VRN} \
                 --with-imap-ssl=/usr/local/ssl \
                 --with-jpeg-dir=/usr \
                 --with-kerberos \
