@@ -2161,27 +2161,6 @@ install_ssl_src() {
     mrun "make depend" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-
-    cd /var/opt
-    rm -f -r openssl*
-    get_dev_src "openssl-${_OPENSSL_VRN}.tar.gz"
-    cd /var/opt/openssl-${_OPENSSL_VRN}
-    _X86_64_IF=$(uname -m 2>&1)
-    if [ "$_X86_64_IF" = "x86_64" ]; then
-      mrun "sh ./config zlib-dynamic \
-        --prefix=/usr \
-        --openssldir=/usr \
-        shared enable-ec_nistp_64_gcc_128" 2> /dev/null
-    else
-      mrun "sh ./config zlib-dynamic \
-        --prefix=/usr \
-        --openssldir=/usr \
-        shared" 2> /dev/null
-    fi
-    mrun "make depend" 2> /dev/null
-    mrun "make --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
-
     ###--------------------###
     _SSL_GET_DPKG=$(dpkg --get-selections \
       | grep openssl \
