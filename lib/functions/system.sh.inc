@@ -2090,14 +2090,16 @@ install_curl_src() {
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ]; then
     ###--------------------###
     msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
+    mrun "apt-get remove libcurl4-openssl-dev -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get purge libcurl4-openssl-dev -y --force-yes -qq" 2> /dev/null
     cd /var/opt
     rm -f -r curl*
     wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
     extract_archive "curl-${_CURL_VRN}.tar.gz"
     cd /var/opt/curl-${_CURL_VRN}
-    mrun "sh ./configure \
+    export PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig"
+    mrun "PKG_CONFIG_PATH=/usr/local/ssl/lib/pkgconfig sh ./configure \
       --with-ssl=/usr/local/ssl \
-      --libdir=/usr/local/ssl/lib \
       --prefix=/usr/local" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
@@ -3109,8 +3111,7 @@ sys_packages_install() {
     _SSB_SRC=NO
   fi
   if [ "$_SSB_SRC" = "YES" ]; then
-    _EXTRA_PACKAGES="libcurl4-openssl-dev \
-                     ${_EXTRA_PACKAGES}"
+    _EXTRA_PACKAGES="${_EXTRA_PACKAGES}"
   else
     _EXTRA_PACKAGES="curl \
                      libcurl4-openssl-dev \
