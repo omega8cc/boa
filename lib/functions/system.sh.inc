@@ -3419,54 +3419,55 @@ fix_libssl() {
         fi
       fi
     fi
-  fi
-  if [ ! -e "/usr/local/ssl/lib/.libfix.txt" ] \
-    && [ "$_SSL_FIX_REQUIRED" = "YES" ]; then
-    if [ -e "/usr/local/ssl/lib/libcrypto.so.1.0.0" ]; then
-      if [ -e "/usr/lib/x86_64-linux-gnu" ]; then
-        if [ ! -e "/usr/lib/x86_64-linux-gnu/libssl.so.1.0.0.old" ]; then
-          mv -f /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0 /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0.old
-          mv -f /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0 /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0.old
-          ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0
-          ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0
+    if [ ! -e "/usr/local/ssl/lib/.libfix.txt" ] \
+      && [ "$_SSL_FIX_REQUIRED" = "YES" ]; then
+      msg "INFO: Fix #3 for libs in ${_THIS_OS} ${_OSV}"
+      if [ -e "/usr/local/ssl/lib/libcrypto.so.1.0.0" ]; then
+        if [ -e "/usr/lib/x86_64-linux-gnu" ]; then
+          if [ ! -e "/usr/lib/x86_64-linux-gnu/libssl.so.1.0.0.old" ]; then
+            mv -f /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0 /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0.old
+            mv -f /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0 /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0.old
+            ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0
+            ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0
+          fi
+        elif [ -e "/usr/lib/i386-linux-gnu" ]; then
+          if [ ! -e "/usr/lib/i386-linux-gnu/libssl.so.1.0.0.old" ]; then
+            mv -f /usr/lib/i386-linux-gnu/libssl.so.1.0.0 /usr/lib/i386-linux-gnu/libssl.so.1.0.0.old
+            mv -f /usr/lib/i386-linux-gnu/libcrypto.so.1.0.0 /usr/lib/i386-linux-gnu/libcrypto.so.1.0.0.old
+            ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/i386-linux-gnu/libssl.so.1.0.0
+            ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/i386-linux-gnu/libcrypto.so.1.0.0
+          fi
         fi
-      elif [ -e "/usr/lib/i386-linux-gnu" ]; then
-        if [ ! -e "/usr/lib/i386-linux-gnu/libssl.so.1.0.0.old" ]; then
-          mv -f /usr/lib/i386-linux-gnu/libssl.so.1.0.0 /usr/lib/i386-linux-gnu/libssl.so.1.0.0.old
-          mv -f /usr/lib/i386-linux-gnu/libcrypto.so.1.0.0 /usr/lib/i386-linux-gnu/libcrypto.so.1.0.0.old
-          ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/i386-linux-gnu/libssl.so.1.0.0
-          ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/i386-linux-gnu/libcrypto.so.1.0.0
+        if [ -e "/lib/x86_64-linux-gnu" ]; then
+          if [ ! -e "/lib/x86_64-linux-gnu/libssl.so.1.0.0.old" ]; then
+            mv -f /lib/x86_64-linux-gnu/libssl.so.1.0.0 /lib/x86_64-linux-gnu/libssl.so.1.0.0.old
+            mv -f /lib/x86_64-linux-gnu/libcrypto.so.1.0.0 /lib/x86_64-linux-gnu/libcrypto.so.1.0.0.old
+            ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /lib/x86_64-linux-gnu/libssl.so.1.0.0
+            ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /lib/x86_64-linux-gnu/libcrypto.so.1.0.0
+          fi
+        elif [ -e "/lib/i386-linux-gnu" ]; then
+          if [ ! -e "/lib/i386-linux-gnu/libssl.so.1.0.0.old" ]; then
+            mv -f /lib/i386-linux-gnu/libssl.so.1.0.0 /lib/i386-linux-gnu/libssl.so.1.0.0.old
+            mv -f /lib/i386-linux-gnu/libcrypto.so.1.0.0 /lib/i386-linux-gnu/libcrypto.so.1.0.0.old
+            ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /lib/i386-linux-gnu/libssl.so.1.0.0
+            ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /lib/i386-linux-gnu/libcrypto.so.1.0.0
+          fi
         fi
-      fi
-      if [ -e "/lib/x86_64-linux-gnu" ]; then
-        if [ ! -e "/lib/x86_64-linux-gnu/libssl.so.1.0.0.old" ]; then
-          mv -f /lib/x86_64-linux-gnu/libssl.so.1.0.0 /lib/x86_64-linux-gnu/libssl.so.1.0.0.old
-          mv -f /lib/x86_64-linux-gnu/libcrypto.so.1.0.0 /lib/x86_64-linux-gnu/libcrypto.so.1.0.0.old
-          ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /lib/x86_64-linux-gnu/libssl.so.1.0.0
-          ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /lib/x86_64-linux-gnu/libcrypto.so.1.0.0
+        if [ -L "/usr/lib/libssl.so.1.0.0" ]; then
+          mv -f /usr/lib/libssl.so.1.0.0 /usr/lib/libssl.so.1.0.0.old
+          mv -f /usr/lib/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0.old
+          ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/libssl.so.1.0.0
+          ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0
         fi
-      elif [ -e "/lib/i386-linux-gnu" ]; then
-        if [ ! -e "/lib/i386-linux-gnu/libssl.so.1.0.0.old" ]; then
-          mv -f /lib/i386-linux-gnu/libssl.so.1.0.0 /lib/i386-linux-gnu/libssl.so.1.0.0.old
-          mv -f /lib/i386-linux-gnu/libcrypto.so.1.0.0 /lib/i386-linux-gnu/libcrypto.so.1.0.0.old
-          ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /lib/i386-linux-gnu/libssl.so.1.0.0
-          ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /lib/i386-linux-gnu/libcrypto.so.1.0.0
+        if [ -L "/usr/local/lib/libssl.so.1.0.0" ]; then
+          mv -f /usr/local/lib/libssl.so.1.0.0 /usr/local/lib/libssl.so.1.0.0.old
+          mv -f /usr/local/lib/libcrypto.so.1.0.0 /usr/local/lib/libcrypto.so.1.0.0.old
+          ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /usr/local/lib/libssl.so.1.0.0
+          ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/local/lib/libcrypto.so.1.0.0
         fi
+        mkdir -p /usr/local/ssl/lib
+        touch /usr/local/ssl/lib/.libfix.txt
       fi
-      if [ -L "/usr/lib/libssl.so.1.0.0" ]; then
-        mv -f /usr/lib/libssl.so.1.0.0 /usr/lib/libssl.so.1.0.0.old
-        mv -f /usr/lib/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0.old
-        ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/libssl.so.1.0.0
-        ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0
-      fi
-      if [ -L "/usr/local/lib/libssl.so.1.0.0" ]; then
-        mv -f /usr/local/lib/libssl.so.1.0.0 /usr/local/lib/libssl.so.1.0.0.old
-        mv -f /usr/local/lib/libcrypto.so.1.0.0 /usr/local/lib/libcrypto.so.1.0.0.old
-        ln -sf /usr/local/ssl/lib/libssl.so.1.0.0 /usr/local/lib/libssl.so.1.0.0
-        ln -sf /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/local/lib/libcrypto.so.1.0.0
-      fi
-      mkdir -p /usr/local/ssl/lib
-      touch /usr/local/ssl/lib/.libfix.txt
     fi
   fi
 }
