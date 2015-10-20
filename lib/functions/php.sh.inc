@@ -754,13 +754,14 @@ install_php_multi() {
                 --with-freetype-dir=/usr \
                 --with-gd \
                 --with-imap \
-                --with-imap-ssl \
+                --with-imap-ssl=/usr/local/ssl \
                 --with-jpeg-dir=/usr \
                 --with-kerberos \
                 --with-mcrypt \
                 --with-mysql-sock=/var/run/mysqld/mysqld.sock \
                 --with-mysql=/usr \
                 --with-mysqli=/usr/bin/mysql_config \
+                --with-openssl-dir=/usr/local/ssl \
                 --with-openssl=/usr/local/ssl \
                 --with-pdo-mysql=/usr \
                 --with-pear \

@@ -2079,8 +2079,7 @@ install_curl_src() {
     extract_archive "curl-${_CURL_VRN}.tar.gz"
     cd /var/opt/curl-${_CURL_VRN}
     mrun "sh ./configure \
-      --prefix=/usr/local \
-      --with-ssl=/usr/local/ssl" 2> /dev/null
+      --prefix=/usr/local" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     _CURL_ALREADY_REBUILT=YES
