@@ -528,7 +528,7 @@ up_action() {
         if [ -e "${barCnf}" ]; then
           sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${barCnf}
           sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=YES/g"         ${barCnf}
-          sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                      ${barCnf}
+          ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                  ${barCnf}
           sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"        ${barCnf}
           sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"     ${barCnf}
           if [ -e "/root/.mstr.clstr.cnf" ] \
