@@ -2058,22 +2058,7 @@ install_curl_src() {
     | cut -d"/" -f2 \
     | awk '{ print $1}' 2>&1)
   _CURL_INSTALL_REQUIRED=YES
-  if [ "${_CURL_ITD}" = "${_CURL_VRN}" ]; then
-    if [ "$_CURL_SSL_ITD" = "${_OPENSSL_VRN}" ]; then
-      _CURL_INSTALL_REQUIRED=NO
-    else
-      if [ "${_OSV}" = "none" ]; then
-        _CURL_INSTALL_REQUIRED=NO
-      else
-        _CURL_INSTALL_REQUIRED=YES
-        msg "INFO: Installed cURL ${_CURL_ITD} with OpenSSL $_CURL_SSL_ITD"
-        msg "INFO: cURL rebuild will be forced"
-        sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g" /root/.barracuda.cnf
-        echo _GIT_FORCE_REINSTALL=YES >> /root/.barracuda.cnf
-        echo _SSL_FORCE_REINSTALL=YES >> /root/.barracuda.cnf
-      fi
-    fi
-  else
+  if [ "${_CURL_ITD}" != "${_CURL_VRN}" ]; then
     if [ "${_OSV}" = "none" ]; then
       _CURL_INSTALL_REQUIRED=NO
     else
