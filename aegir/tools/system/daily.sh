@@ -2713,6 +2713,7 @@ else
     for f in `find /etc/ssl/private/*.crt -type f`; do
       sslName=$(echo ${f} | cut -d'/' -f5 | awk '{ print $1}' | sed "s/.crt//g")
       sslFile="/etc/ssl/private/${sslName}.dhp"
+      sslFileZ=${sslFile//\//\\\/}
       if [ -e "${f}" ] && [ ! -z "${sslName}" ]; then
         if [ ! -e "${sslFile}" ]; then
           openssl dhparam -out ${sslFile} 2048 &> /dev/null
@@ -2725,16 +2726,30 @@ else
           sslFileX="${sslRootd}/z_${sslName}_ssl_proxy.conf"
           sslFileY="${sslRootd}/${sslName}_ssl_proxy.conf"
           if [ -e "${sslFileX}" ]; then
+            _DHP_TEST=$(grep "sslFile" ${sslFileX} 2>&1)
+            if [[ "${_DHP_TEST}" =~ "sslFile" ]]; then
+              sed -i "s/.*sslFile.*//g" ${sslFileX} &> /dev/null
+              sed -i "s/ *$//g; /^$/d" ${sslFileX} &> /dev/null
+            fi
+          fi
+          if [ -e "${sslFileY}" ]; then
+            _DHP_TEST=$(grep "sslFile" ${sslFileY} 2>&1)
+            if [[ "${_DHP_TEST}" =~ "sslFile" ]]; then
+              sed -i "s/.*sslFile.*//g" ${sslFileY} &> /dev/null
+              sed -i "s/ *$//g; /^$/d" ${sslFileY} &> /dev/null
+            fi
+          fi
+          if [ -e "${sslFileX}" ]; then
             _DHP_TEST=$(grep "ssl_dhparam" ${sslFileX} 2>&1)
             if [[ ! "${_DHP_TEST}" =~ "ssl_dhparam" ]]; then
-              sed -i "s/ssl_session_timeout .*/ssl_session_timeout          5m;\n  ssl_dhparam                  ${sslFile};/g" ${sslFileX} &> /dev/null
+              sed -i "s/ssl_session_timeout .*/ssl_session_timeout          5m;\n  ssl_dhparam                  ${sslFileZ};/g" ${sslFileX} &> /dev/null
               sed -i "s/ *$//g; /^$/d" ${sslFileX} &> /dev/null
             fi
           fi
           if [ -e "${sslFileY}" ]; then
             _DHP_TEST=$(grep "ssl_dhparam" ${sslFileY} 2>&1)
             if [[ ! "${_DHP_TEST}" =~ "ssl_dhparam" ]]; then
-              sed -i "s/ssl_session_timeout .*/ssl_session_timeout          5m;\n  ssl_dhparam                  ${sslFile};/g" ${sslFileY} &> /dev/null
+              sed -i "s/ssl_session_timeout .*/ssl_session_timeout          5m;\n  ssl_dhparam                  ${sslFileZ};/g" ${sslFileY} &> /dev/null
               sed -i "s/ *$//g; /^$/d" ${sslFileY} &> /dev/null
             fi
           fi
