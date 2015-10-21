@@ -112,6 +112,11 @@ by the BOA install and upgrade tools exclusively.
   This file, if exists, allows to disable aggressive php-fpm processes
   monitoring and killing if any is using really too much CPU power.
 
+ @=> /root/.no.sql.cpu.limit.cnf
+
+  This file, if exists, allows to disable mysql processes monitoring
+  and restarting mysql server if any is using really too much CPU power.
+
  @=> /root/.no.swap.clear.cnf
 
   This file, if exists, allows to skip the otherwise default procedure
