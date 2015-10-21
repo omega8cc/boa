@@ -1,4 +1,15 @@
 #
+# Fix php.ini files to remove ionCube
+fix_php_ini_ioncube() {
+  if [ -e "${_THIS_FILE}" ] && [ "${_PHP_IONCUBE}" = "NO" ]; then
+    _IONCUBE_INI_TEST=$(grep "ioncube_loader" ${_THIS_FILE} 2>&1)
+    if [[ "$_IONCUBE_INI_TEST" =~ "ioncube_loader" ]]; then
+      sed -i "s/.*ioncube_loader.*//g" ${_THIS_FILE} &> /dev/null
+    fi
+  fi
+}
+
+#
 # Fix php.ini files to remove suhosin.so
 fix_php_ini_suhosin() {
   if [ -e "${_THIS_FILE}" ]; then
@@ -249,6 +260,7 @@ update_php_conf() {
     fix_php_ini_redis
     fix_php_ini_jsmin
     fix_php_ini_twig
+    fix_php_ini_ioncube
     fix_php_ini_suhosin
     fix_php_ini_mailparse
     fix_php_ini_yaml
@@ -256,6 +268,7 @@ update_php_conf() {
     fix_php_ini_redis
     fix_php_ini_jsmin
     fix_php_ini_twig
+    fix_php_ini_ioncube
     fix_php_ini_suhosin
     fix_php_ini_mailparse
     fix_php_ini_yaml

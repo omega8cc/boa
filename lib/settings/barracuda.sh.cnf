@@ -958,6 +958,11 @@ _NGINX_EXTRA_CONF=""
 _PHP_EXTRA_CONF=""
 
 ###
+### Change to YES to enable ionCube.
+###
+_PHP_IONCUBE=NO
+
+###
 ### Change to YES to always compile in
 ### MongoDB driver. Works for PHP 5.3 only.
 ###

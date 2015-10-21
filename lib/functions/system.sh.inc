@@ -703,6 +703,7 @@ barracuda_cnf() {
     echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\""                 >> ${barCnf}
     echo "_PHP_FPM_VERSION=${_PHP_FPM_VERSION}"               >> ${barCnf}
     echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}"               >> ${barCnf}
+    echo "_PHP_IONCUBE=${_PHP_IONCUBE}"                       >> ${barCnf}
     echo "_PHP_GEOS=${_PHP_GEOS}"                             >> ${barCnf}
     echo "_PHP_MONGODB=${_PHP_MONGODB}"                       >> ${barCnf}
     echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\""       >> ${barCnf}
@@ -1136,6 +1137,11 @@ barracuda_cnf() {
       _DO_NOTHING=YES
     else
       echo "_NGINX_FORWARD_SECRECY=${_NGINX_FORWARD_SECRECY}" >> ${barCnf}
+    fi
+
+    _PHP_IONCUBE_TEST=$(grep _PHP_IONCUBE ${barCnf} 2>&1)
+    if [[ ! "${_PHP_IONCUBE_TEST}" =~ "_PHP_IONCUBE" ]]; then
+      echo "_PHP_IONCUBE=${_PHP_IONCUBE}" >> ${barCnf}
     fi
 
     _PHP_GEOS_TEST=$(grep _PHP_GEOS ${barCnf} 2>&1)
