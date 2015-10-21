@@ -2024,6 +2024,13 @@ install_imap_src() {
     cd c-client
     ln -s c-client.a libc-client.a
   fi
+  if [ -e "/usr/local/imap-${_IMAP_VRN}/lib/libc-client.a" ]; then
+    if [ ! -e "/usr/lib/libc-client.a.old" ]; then
+      mv -f /usr/lib/libc-client.a /usr/lib/libc-client.a.old
+      rm -f /usr/lib/libc-client.a
+      ln -s /usr/local/imap-${_IMAP_VRN}/lib/libc-client.a /usr/lib/libc-client.a
+    fi
+  fi
 }
 
 #
@@ -2051,7 +2058,9 @@ install_curl_src() {
       | awk '{ print $1}' \
       | cut -d"/" -f2 \
       | awk '{ print $1}' 2>&1)
-    _CURL_INSTALL_REQUIRED=YES
+    if [ ! -L "/usr/bin/curl" ]; then
+      _CURL_INSTALL_REQUIRED=YES
+    fi
   else
     _CURL_ITD=$(/usr/bin/curl --version 2>&1 \
       | tr -d "\n" \
@@ -2108,8 +2117,17 @@ install_curl_src() {
   fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ]; then
     ###--------------------###
+    if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
+      echo "libcurl3 install" | dpkg --set-selections
+      echo "libcurl3-gnutls install" | dpkg --set-selections
+      echo "libcurl4-openssl-dev install" | dpkg --set-selections
+      mrun "${_INSTALL} libcurl3" 2> /dev/null
+      mrun "${_INSTALL} libcurl3-gnutls" 2> /dev/null
+      mrun "${_INSTALL} libcurl4-openssl-dev" 2> /dev/null
+      echo "curl hold" | dpkg --set-selections
+      ### aptitude hold curl &> /dev/null
+    fi
     msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
-    ### mrun "${_INSTALL} libcurl4-openssl-dev" 2> /dev/null
     cd /var/opt
     rm -f -r curl*
     wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
@@ -2123,7 +2141,7 @@ install_curl_src() {
     _CURL_ALREADY_REBUILT=YES
     _UP_PHP=YES
   fi
-  if [ -x "/usr/local/bin/curl" ] && [ ! -e "/usr/bin/vancurl" ]; then
+  if [ -x "/usr/local/bin/curl" ] && [ ! -L "/usr/bin/curl" ]; then
     mv -f /usr/bin/curl /usr/bin/vancurl
     ln -s /usr/local/bin/curl /usr/bin/curl
   fi
@@ -2140,6 +2158,9 @@ install_curl_src() {
 install_ssl_src() {
   _SSL_INSTALL_REQUIRED=NO
   if [ -x "/usr/local/ssl/bin/openssl" ]; then
+    if [ ! -L "/usr/bin/openssl" ]; then
+      _SSL_INSTALL_REQUIRED=YES
+    fi
     _SSL_ITD=$(/usr/local/ssl/bin/openssl version 2>&1 \
       | tr -d "\n" \
       | cut -d" " -f2 \
@@ -2227,17 +2248,22 @@ install_ssl_src() {
       echo "zlib1g-dev hold" | dpkg --set-selections
     fi
   fi
-  if [ -x "/usr/local/ssl/bin/openssl" ] && [ ! -e "/usr/bin/vanopenssl" ]; then
+  if [ -x "/usr/local/ssl/bin/openssl" ] && [ ! -L "/usr/bin/openssl" ]; then
     mv -f /usr/bin/openssl /usr/bin/vanopenssl
     ln -s /usr/local/ssl/bin/openssl /usr/bin/openssl
   fi
   fix_libssl
   if [ -e "/usr/lib/x86_64-linux-gnu" ]; then
-    if [ -e "/usr/local/ssl/lib/libcurl.so.4" ]; then
+    if [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ] \
+      && [ -e "/usr/local/ssl/lib/libcrypto.so.1.0.0" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0
       rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0
       ln -s /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0
       ln -s /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0
+      rm -f /usr/lib/libssl.so.1.0.0
+      rm -f /usr/lib/libcrypto.so.1.0.0
+      ln -s /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/libssl.so.1.0.0
+      ln -s /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0
     fi
   fi
 }
