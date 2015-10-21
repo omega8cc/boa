@@ -512,7 +512,7 @@ up_action() {
           sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=YES/g"         ${barCnf}
           sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
           sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
-          sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                      ${barCnf}
+          ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                  ${barCnf}
           sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"        ${barCnf}
           sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
           sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"     ${barCnf}
@@ -531,7 +531,7 @@ up_action() {
               sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"       ${barCnf}
               sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"         ${barCnf}
               sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"   ${barCnf}
-              sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                  ${barCnf}
+              ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"              ${barCnf}
             fi
             sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"             ${barCnf}
             sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"     ${barCnf}
