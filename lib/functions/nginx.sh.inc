@@ -330,7 +330,11 @@ install_upgrade_nginx() {
       fi
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
-      _NGINX_EXTRA="--with-http_v2_module ${_NGINX_EXTRA}"
+      if [ "${_OSV}" = "squeeze" ]; then
+        _NGINX_EXTRA="--with-http_spdy_module ${_NGINX_EXTRA}"
+      else
+        _NGINX_EXTRA="--with-http_v2_module ${_NGINX_EXTRA}"
+      fi
     fi
     if [ ! -e "/var/opt/openssl-${_OPENSSL_NGX_VRN}" ]; then
       cd /var/opt
