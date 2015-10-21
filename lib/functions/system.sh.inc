@@ -1973,7 +1973,7 @@ install_ssh_src() {
     get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
     cd /var/opt/openssh-${_OPENSSH_VRN}
     st_runner "sh ./configure \
-      --with-openssl=/usr/local/ssl \
+      --with-openssl \
       --without-openssl-header-check \
       --prefix=/usr \
       --with-pam" 2> /dev/null
@@ -2018,7 +2018,7 @@ install_imap_src() {
     else
       bldFls="slx"
     fi
-    mrun "make ${bldFls} SSLINCLUDE=/usr/local/ssl/include/openssl" 2> /dev/null
+    mrun "make ${bldFls} SSLINCLUDE=/usr/include/openssl" 2> /dev/null
     ln -s c-client lib
     ln -s c-client include
     cd c-client
@@ -2041,45 +2041,23 @@ install_curl_src() {
   if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
     echo "curl hold" | dpkg --set-selections
   fi
-  if [ -x "/usr/local/bin/curl" ]; then
-    _CURL_ITD=$(/usr/local/bin/curl --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f2 \
-      | awk '{ print $1}' 2>&1)
-    _CURL_SSL_ITD=$(/usr/local/bin/curl --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f5 \
-      | awk '{ print $1}' \
-      | cut -d"/" -f2 \
-      | awk '{ print $1}' 2>&1)
-    _CURL_LIB_ITD=$(/usr/local/bin/curl --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f4 \
-      | awk '{ print $1}' \
-      | cut -d"/" -f2 \
-      | awk '{ print $1}' 2>&1)
-    if [ ! -L "/usr/bin/curl" ]; then
-      _CURL_INSTALL_REQUIRED=YES
-    fi
-  else
-    _CURL_ITD=$(/usr/bin/curl --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f2 \
-      | awk '{ print $1}' 2>&1)
-    _CURL_SSL_ITD=$(/usr/bin/curl --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f5 \
-      | awk '{ print $1}' \
-      | cut -d"/" -f2 \
-      | awk '{ print $1}' 2>&1)
-    _CURL_LIB_ITD=$(/usr/bin/curl --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f4 \
-      | awk '{ print $1}' \
-      | cut -d"/" -f2 \
-      | awk '{ print $1}' 2>&1)
-    _CURL_INSTALL_REQUIRED=YES
-  fi
+  _CURL_ITD=$(curl --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}' 2>&1)
+  _CURL_SSL_ITD=$(curl --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f5 \
+    | awk '{ print $1}' \
+    | cut -d"/" -f2 \
+    | awk '{ print $1}' 2>&1)
+  _CURL_LIB_ITD=$(curl --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f4 \
+    | awk '{ print $1}' \
+    | cut -d"/" -f2 \
+    | awk '{ print $1}' 2>&1)
+  _CURL_INSTALL_REQUIRED=YES
   if [ "${_CURL_ITD}" = "${_CURL_VRN}" ]; then
     if [ "$_CURL_SSL_ITD" = "${_OPENSSL_VRN}" ]; then
       _CURL_INSTALL_REQUIRED=NO
@@ -2117,16 +2095,12 @@ install_curl_src() {
   fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ]; then
     ###--------------------###
-    if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
-      echo "libcurl3 install" | dpkg --set-selections
-      echo "libcurl3-gnutls install" | dpkg --set-selections
-      echo "libcurl4-openssl-dev install" | dpkg --set-selections
-      mrun "${_INSTALL} libcurl3" 2> /dev/null
-      mrun "${_INSTALL} libcurl3-gnutls" 2> /dev/null
-      mrun "${_INSTALL} libcurl4-openssl-dev" 2> /dev/null
-      echo "curl hold" | dpkg --set-selections
-      ### aptitude hold curl &> /dev/null
-    fi
+    echo "libcurl3 install" | dpkg --set-selections
+    echo "libcurl3-gnutls install" | dpkg --set-selections
+    echo "libcurl4-openssl-dev install" | dpkg --set-selections
+    mrun "${_INSTALL} libcurl3" 2> /dev/null
+    mrun "${_INSTALL} libcurl3-gnutls" 2> /dev/null
+    mrun "${_INSTALL} libcurl4-openssl-dev" 2> /dev/null
     msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
     cd /var/opt
     rm -f -r curl*
@@ -2134,22 +2108,12 @@ install_curl_src() {
     extract_archive "curl-${_CURL_VRN}.tar.gz"
     cd /var/opt/curl-${_CURL_VRN}
     mrun "sh ./configure \
-      --with-ssl=/usr/local/ssl/ \
-      --prefix=/usr/local" 2> /dev/null
+      --with-ssl \
+      --prefix=/usr" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     _CURL_ALREADY_REBUILT=YES
     _UP_PHP=YES
-  fi
-  if [ -x "/usr/local/bin/curl" ] && [ ! -L "/usr/bin/curl" ]; then
-    mv -f /usr/bin/curl /usr/bin/vancurl
-    ln -s /usr/local/bin/curl /usr/bin/curl
-  fi
-  if [ -e "/usr/lib/x86_64-linux-gnu" ]; then
-    if [ -e "/usr/local/ssl/lib/libcurl.so.4" ]; then
-      rm -f /usr/lib/x86_64-linux-gnu/libcurl.so.4
-      ln -s /usr/local/ssl/lib/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4
-    fi
   fi
 }
 
@@ -2157,21 +2121,10 @@ install_curl_src() {
 # Install OpenSSL from sources.
 install_ssl_src() {
   _SSL_INSTALL_REQUIRED=NO
-  if [ -x "/usr/local/ssl/bin/openssl" ]; then
-    if [ ! -L "/usr/bin/openssl" ]; then
-      _SSL_INSTALL_REQUIRED=YES
-    fi
-    _SSL_ITD=$(/usr/local/ssl/bin/openssl version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f2 \
-      | awk '{ print $1}' 2>&1)
-  else
-    _SSL_ITD=$(/usr/bin/openssl version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f2 \
-      | awk '{ print $1}' 2>&1)
-    _SSL_INSTALL_REQUIRED=YES
-  fi
+  _SSL_ITD=$(openssl version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}' 2>&1)
   if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ]; then
     _SPDY_COMPATIBILITY_TEST=$(service nginx configtest 2>&1)
     if [[ "$_SPDY_COMPATIBILITY_TEST" =~ "without OpenSSL ALPN or NPN" ]]; then
@@ -2220,13 +2173,13 @@ install_ssl_src() {
     _X86_64_IF=$(uname -m 2>&1)
     if [ "$_X86_64_IF" = "x86_64" ]; then
       mrun "sh ./config zlib-dynamic \
-        --prefix=/usr/local/ssl \
-        --openssldir=/usr/local/ssl \
+        --prefix=/usr \
+        --openssldir=/usr \
         shared enable-ec_nistp_64_gcc_128" 2> /dev/null
     else
       mrun "sh ./config zlib-dynamic \
-        --prefix=/usr/local/ssl \
-        --openssldir=/usr/local/ssl \
+        --prefix=/usr \
+        --openssldir=/usr \
         shared" 2> /dev/null
     fi
     mrun "make depend" 2> /dev/null
@@ -2248,24 +2201,7 @@ install_ssl_src() {
       echo "zlib1g-dev hold" | dpkg --set-selections
     fi
   fi
-  if [ -x "/usr/local/ssl/bin/openssl" ] && [ ! -L "/usr/bin/openssl" ]; then
-    mv -f /usr/bin/openssl /usr/bin/vanopenssl
-    ln -s /usr/local/ssl/bin/openssl /usr/bin/openssl
-  fi
   fix_libssl
-  if [ -e "/usr/lib/x86_64-linux-gnu" ]; then
-    if [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ] \
-      && [ -e "/usr/local/ssl/lib/libcrypto.so.1.0.0" ]; then
-      rm -f /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0
-      rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0
-      ln -s /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0
-      ln -s /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0
-      rm -f /usr/lib/libssl.so.1.0.0
-      rm -f /usr/lib/libcrypto.so.1.0.0
-      ln -s /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/libssl.so.1.0.0
-      ln -s /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0
-    fi
-  fi
 }
 
 #

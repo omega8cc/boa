@@ -332,10 +332,10 @@ install_upgrade_nginx() {
     if [ "${_NGINX_SPDY}" = "YES" ]; then
       _NGINX_EXTRA="--with-http_v2_module ${_NGINX_EXTRA}"
     fi
-    if [ ! -e "/var/opt/openssl-${_OPENSSL_VRN}" ]; then
+    if [ ! -e "/var/opt/openssl-${_OPENSSL_NGX_VRN}" ]; then
       cd /var/opt
       rm -f -r openssl*
-      get_dev_src "openssl-${_OPENSSL_VRN}.tar.gz"
+      get_dev_src "openssl-${_OPENSSL_NGX_VRN}.tar.gz"
     fi
     cd /var/opt/nginx-${_NGINX_VRN}
     st_runner "sh ./configure \
@@ -362,7 +362,7 @@ install_upgrade_nginx() {
       --without-http_uwsgi_module \
       --with-ipv6 \
       --with-http_geoip_module \
-      --with-openssl=/var/opt/openssl-${_OPENSSL_VRN} \
+      --with-openssl=/var/opt/openssl-${_OPENSSL_NGX_VRN} \
       --with-debug ${_NGINX_EXTRA}" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
