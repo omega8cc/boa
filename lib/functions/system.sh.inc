@@ -2012,7 +2012,13 @@ install_imap_src() {
     get_dev_src "imap-${_IMAP_VRN}.tar.gz"
     mv -f imap-${_IMAP_VRN} /usr/local/
     cd /usr/local/imap-${_IMAP_VRN}
-    mrun "make slx SSLINCLUDE=/usr/local/ssl/include/openssl" 2> /dev/null
+    _X86_64_TEST=$(uname -m 2>&1)
+    if [ "$_X86_64_TEST" = "x86_64" ]; then
+      bldFls="slx EXTRACFLAGS=-fPIC"
+    else
+      bldFls="slx"
+    fi
+    mrun "make ${bldFls} SSLINCLUDE=/usr/local/ssl/include/openssl" 2> /dev/null
     ln -s c-client lib
     ln -s c-client include
     cd c-client
