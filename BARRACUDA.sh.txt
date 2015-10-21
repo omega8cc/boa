@@ -326,7 +326,6 @@ check_nginx_initd
 install_vnstat
 install_update_xdrago
 install_curl_src
-install_imap_src
 install_update_php
 php_upgrade_all
 check_fix_php
