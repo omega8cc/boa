@@ -54,7 +54,7 @@ force_advanced_nginx_config() {
   sub_force_advanced_nginx_config
   sed -i "s/ 90;/ 180;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
   if [ "${_NGINX_SPDY}" = "YES" ]; then
-    if [ "${_OSV}" = "squeeze" ]; then
+    if [ "${_OSV}" = "none" ]; then
       sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/pre.d/*.conf           &> /dev/null
       sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/vhost.d/*              &> /dev/null
       sed -i "s/:443 ssl http2;/:443 ssl spdy;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
@@ -330,7 +330,7 @@ install_upgrade_nginx() {
       fi
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
-      if [ "${_OSV}" = "squeeze" ]; then
+      if [ "${_OSV}" = "none" ]; then
         _NGINX_EXTRA="--with-http_spdy_module ${_NGINX_EXTRA}"
       else
         _NGINX_EXTRA="--with-http_v2_module ${_NGINX_EXTRA}"
@@ -564,7 +564,7 @@ fix_update_nginx_config() {
       sed -i "s/add_header Vary .*//g" /var/aegir/config/server_*/nginx.conf                               &> /dev/null
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
-      if [ "${_OSV}" = "squeeze" ]; then
+      if [ "${_OSV}" = "none" ]; then
         sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf           &> /dev/null
         sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/vhost.d/*              &> /dev/null
         sed -i "s/:443 ssl http2;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null

@@ -412,7 +412,6 @@ os_detection() {
       _SSL_FROM_SOURCES=YES
     elif [ "${_THIS_RV}" = "squeeze" ]; then
       _OSV="squeeze"
-      _NGINX_VRN=1.9.4
       _OPENSSL_VRN=1.0.1p
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
