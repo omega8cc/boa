@@ -935,107 +935,77 @@ barracuda_cnf() {
     fi
 
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION ${barCnf} 2>&1)
-    if [[ "${_PHP_FPM_VERSION_TEST}" =~ "_PHP_FPM_VERSION" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_PHP_FPM_VERSION_TEST}" =~ "_PHP_FPM_VERSION" ]]; then
       echo "_PHP_FPM_VERSION=${_PHP_FPM_VERSION}" >> ${barCnf}
     fi
 
     _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION ${barCnf} 2>&1)
-    if [[ "${_PHP_CLI_VERSION_TEST}" =~ "_PHP_CLI_VERSION" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_PHP_CLI_VERSION_TEST}" =~ "_PHP_CLI_VERSION" ]]; then
       echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}" >> ${barCnf}
     fi
 
     _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL ${barCnf} 2>&1)
-    if [[ "${_PHP_SINGLE_INSTALL_TEST}" =~ "_PHP_SINGLE_INSTALL" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_PHP_SINGLE_INSTALL_TEST}" =~ "_PHP_SINGLE_INSTALL" ]]; then
       echo "_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}" >> ${barCnf}
     fi
 
     _CUSTOM_CONFIG_LSHELL_TEST=$(grep _CUSTOM_CONFIG_LSHELL ${barCnf} 2>&1)
-    if [[ "${_CUSTOM_CONFIG_LSHELL_TEST}" =~ "_CUSTOM_CONFIG_LSHELL" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_CUSTOM_CONFIG_LSHELL_TEST}" =~ "_CUSTOM_CONFIG_LSHELL" ]]; then
       echo "_CUSTOM_CONFIG_LSHELL=${_CUSTOM_CONFIG_LSHELL}" >> ${barCnf}
     fi
 
     _CUSTOM_CONFIG_CSF_TEST=$(grep _CUSTOM_CONFIG_CSF ${barCnf} 2>&1)
-    if [[ "${_CUSTOM_CONFIG_CSF_TEST}" =~ "_CUSTOM_CONFIG_CSF" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_CUSTOM_CONFIG_CSF_TEST}" =~ "_CUSTOM_CONFIG_CSF" ]]; then
       echo "_CUSTOM_CONFIG_CSF=${_CUSTOM_CONFIG_CSF}" >> ${barCnf}
     fi
 
     _CUSTOM_CONFIG_SQL_TEST=$(grep _CUSTOM_CONFIG_SQL ${barCnf} 2>&1)
-    if [[ "${_CUSTOM_CONFIG_SQL_TEST}" =~ "_CUSTOM_CONFIG_SQL" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_CUSTOM_CONFIG_SQL_TEST}" =~ "_CUSTOM_CONFIG_SQL" ]]; then
       echo "_CUSTOM_CONFIG_SQL=${_CUSTOM_CONFIG_SQL}" >> ${barCnf}
     fi
 
     _SPEED_VALID_MAX_TEST=$(grep _SPEED_VALID_MAX ${barCnf} 2>&1)
-    if [[ "${_SPEED_VALID_MAX_TEST}" =~ "_SPEED_VALID_MAX" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_SPEED_VALID_MAX_TEST}" =~ "_SPEED_VALID_MAX" ]]; then
       echo "_SPEED_VALID_MAX=${_SPEED_VALID_MAX}" >> ${barCnf}
     fi
 
     _NGINX_DOS_LIMIT_TEST=$(grep _NGINX_DOS_LIMIT ${barCnf} 2>&1)
-    if [[ "${_NGINX_DOS_LIMIT_TEST}" =~ "_NGINX_DOS_LIMIT" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_NGINX_DOS_LIMIT_TEST}" =~ "_NGINX_DOS_LIMIT" ]]; then
       echo "_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}" >> ${barCnf}
     fi
 
     _CPU_SPIDER_RATIO_TEST=$(grep _CPU_SPIDER_RATIO ${barCnf} 2>&1)
-    if [[ "${_CPU_SPIDER_RATIO_TEST}" =~ "_CPU_SPIDER_RATIO" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_CPU_SPIDER_RATIO_TEST}" =~ "_CPU_SPIDER_RATIO" ]]; then
       echo "_CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO}" >> ${barCnf}
     fi
 
     _CPU_MAX_RATIO_TEST=$(grep _CPU_MAX_RATIO ${barCnf} 2>&1)
-    if [[ "${_CPU_MAX_RATIO_TEST}" =~ "_CPU_MAX_RATIO" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_CPU_MAX_RATIO_TEST}" =~ "_CPU_MAX_RATIO" ]]; then
       echo "_CPU_MAX_RATIO=${_CPU_MAX_RATIO}" >> ${barCnf}
     fi
 
     _CPU_CRIT_RATIO_TEST=$(grep _CPU_CRIT_RATIO ${barCnf} 2>&1)
-    if [[ "${_CPU_CRIT_RATIO_TEST}" =~ "_CPU_CRIT_RATIO" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_CPU_CRIT_RATIO_TEST}" =~ "_CPU_CRIT_RATIO" ]]; then
       echo "_CPU_CRIT_RATIO=${_CPU_CRIT_RATIO}" >> ${barCnf}
     fi
 
     _SYSTEM_UPGRADE_ONLY_TEST=$(grep _SYSTEM_UPGRADE_ONLY ${barCnf} 2>&1)
-    if [[ "${_SYSTEM_UPGRADE_ONLY_TEST}" =~ "_SYSTEM_UPGRADE_ONLY" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_SYSTEM_UPGRADE_ONLY_TEST}" =~ "_SYSTEM_UPGRADE_ONLY" ]]; then
       echo "_SYSTEM_UPGRADE_ONLY=${_SYSTEM_UPGRADE_ONLY}" >> ${barCnf}
     fi
 
     _AEGIR_UPGRADE_ONLY_TEST=$(grep _AEGIR_UPGRADE_ONLY ${barCnf} 2>&1)
-    if [[ "${_AEGIR_UPGRADE_ONLY_TEST}" =~ "_AEGIR_UPGRADE_ONLY" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_AEGIR_UPGRADE_ONLY_TEST}" =~ "_AEGIR_UPGRADE_ONLY" ]]; then
       echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}" >> ${barCnf}
     fi
 
     _CUSTOM_CONFIG_REDIS_TEST=$(grep _CUSTOM_CONFIG_REDIS ${barCnf} 2>&1)
-    if [[ "${_CUSTOM_CONFIG_REDIS_TEST}" =~ "_CUSTOM_CONFIG_REDIS" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_CUSTOM_CONFIG_REDIS_TEST}" =~ "_CUSTOM_CONFIG_REDIS" ]]; then
       echo "_CUSTOM_CONFIG_REDIS=${_CUSTOM_CONFIG_REDIS}" >> ${barCnf}
     fi
 
     _NEWRELIC_KEY_TEST=$(grep _NEWRELIC_KEY ${barCnf} 2>&1)
-    if [[ "${_NEWRELIC_KEY_TEST}" =~ "_NEWRELIC_KEY" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_NEWRELIC_KEY_TEST}" =~ "_NEWRELIC_KEY" ]]; then
       if [ ! -z "${_NEWRELIC_KEY}" ]; then
         echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}" >> ${barCnf}
       else
@@ -1049,93 +1019,67 @@ barracuda_cnf() {
     fi
 
     _SCOUT_KEY_TEST=$(grep _SCOUT_KEY ${barCnf} 2>&1)
-    if [[ "${_SCOUT_KEY_TEST}" =~ "_SCOUT_KEY" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_SCOUT_KEY_TEST}" =~ "_SCOUT_KEY" ]]; then
       echo "_SCOUT_KEY=${_SCOUT_KEY}" >> ${barCnf}
     fi
 
     _EXTRA_PACKAGES_TEST=$(grep _EXTRA_PACKAGES ${barCnf} 2>&1)
-    if [[ "${_EXTRA_PACKAGES_TEST}" =~ "_EXTRA_PACKAGES" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_EXTRA_PACKAGES_TEST}" =~ "_EXTRA_PACKAGES" ]]; then
       echo "_EXTRA_PACKAGES=${_EXTRA_PACKAGES}" >> ${barCnf}
     fi
 
     _PHP_EXTRA_CONF_TEST=$(grep _PHP_EXTRA_CONF ${barCnf} 2>&1)
-    if [[ "${_PHP_EXTRA_CONF_TEST}" =~ "_PHP_EXTRA_CONF" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_PHP_EXTRA_CONF_TEST}" =~ "_PHP_EXTRA_CONF" ]]; then
       echo "_PHP_EXTRA_CONF=\"${_PHP_EXTRA_CONF}\"" >> ${barCnf}
     fi
 
     _PHP_FPM_DENY_TEST=$(grep _PHP_FPM_DENY ${barCnf} 2>&1)
-    if [[ "${_PHP_FPM_DENY_TEST}" =~ "_PHP_FPM_DENY" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_PHP_FPM_DENY_TEST}" =~ "_PHP_FPM_DENY" ]]; then
       echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\"" >> ${barCnf}
     fi
 
     _STRONG_PASSWORDS_TEST=$(grep _STRONG_PASSWORDS ${barCnf} 2>&1)
-    if [[ "${_STRONG_PASSWORDS_TEST}" =~ "_STRONG_PASSWORDS" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_STRONG_PASSWORDS_TEST}" =~ "_STRONG_PASSWORDS" ]]; then
       echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}" >> ${barCnf}
     fi
 
     _DB_BINARY_LOG_TEST=$(grep _DB_BINARY_LOG ${barCnf} 2>&1)
-    if [[ "${_DB_BINARY_LOG_TEST}" =~ "_DB_BINARY_LOG" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_DB_BINARY_LOG_TEST}" =~ "_DB_BINARY_LOG" ]]; then
       echo "_DB_BINARY_LOG=${_DB_BINARY_LOG}" >> ${barCnf}
     fi
 
     _INNODB_LOG_FILE_SIZE_TEST=$(grep _INNODB_LOG_FILE_SIZE ${barCnf} 2>&1)
-    if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "_INNODB_LOG_FILE_SIZE" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "_INNODB_LOG_FILE_SIZE" ]]; then
       echo "_INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE}" >> ${barCnf}
     fi
 
     _DB_ENGINE_TEST=$(grep _DB_ENGINE ${barCnf} 2>&1)
-    if [[ "${_DB_ENGINE_TEST}" =~ "_DB_ENGINE" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_DB_ENGINE_TEST}" =~ "_DB_ENGINE" ]]; then
       echo "_DB_ENGINE=${_DB_ENGINE}" >> ${barCnf}
     fi
 
     _REDIS_LISTEN_MODE_TEST=$(grep _REDIS_LISTEN_MODE ${barCnf} 2>&1)
-    if [[ "${_REDIS_LISTEN_MODE_TEST}" =~ "_REDIS_LISTEN_MODE" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_REDIS_LISTEN_MODE_TEST}" =~ "_REDIS_LISTEN_MODE" ]]; then
       echo "_REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE}" >> ${barCnf}
     fi
 
     _NGINX_LDAP_TEST=$(grep _NGINX_LDAP ${barCnf} 2>&1)
-    if [[ "${_NGINX_LDAP_TEST}" =~ "_NGINX_LDAP" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_NGINX_LDAP_TEST}" =~ "_NGINX_LDAP" ]]; then
       echo "_NGINX_LDAP=${_NGINX_LDAP}" >> ${barCnf}
     fi
 
     _NGINX_NAXSI_TEST=$(grep _NGINX_NAXSI ${barCnf} 2>&1)
-    if [[ "${_NGINX_NAXSI_TEST}" =~ "_NGINX_NAXSI" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_NGINX_NAXSI_TEST}" =~ "_NGINX_NAXSI" ]]; then
       echo "_NGINX_NAXSI=${_NGINX_NAXSI}" >> ${barCnf}
     fi
 
     _NGINX_SPDY_TEST=$(grep _NGINX_SPDY ${barCnf} 2>&1)
-    if [[ "${_NGINX_SPDY_TEST}" =~ "_NGINX_SPDY" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_NGINX_SPDY_TEST}" =~ "_NGINX_SPDY" ]]; then
       echo "_NGINX_SPDY=${_NGINX_SPDY}" >> ${barCnf}
     fi
 
     _NGINX_FORWARD_SECRECY_TEST=$(grep _NGINX_FORWARD_SECRECY ${barCnf} 2>&1)
-    if [[ "${_NGINX_FORWARD_SECRECY_TEST}" =~ "_NGINX_FORWARD_SECRECY" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_NGINX_FORWARD_SECRECY_TEST}" =~ "_NGINX_FORWARD_SECRECY" ]]; then
       echo "_NGINX_FORWARD_SECRECY=${_NGINX_FORWARD_SECRECY}" >> ${barCnf}
     fi
 
@@ -1145,72 +1089,52 @@ barracuda_cnf() {
     fi
 
     _PHP_GEOS_TEST=$(grep _PHP_GEOS ${barCnf} 2>&1)
-    if [[ "${_PHP_GEOS_TEST}" =~ "_PHP_GEOS" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_PHP_GEOS_TEST}" =~ "_PHP_GEOS" ]]; then
       echo "_PHP_GEOS=${_PHP_GEOS}" >> ${barCnf}
     fi
 
     _PHP_MONGODB_TEST=$(grep _PHP_MONGODB ${barCnf} 2>&1)
-    if [[ "${_PHP_MONGODB_TEST}" =~ "_PHP_MONGODB" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_PHP_MONGODB_TEST}" =~ "_PHP_MONGODB" ]]; then
       echo "_PHP_MONGODB=${_PHP_MONGODB}" >> ${barCnf}
     fi
 
     _PERMISSIONS_FIX_TEST=$(grep _PERMISSIONS_FIX ${barCnf} 2>&1)
-    if [[ "${_PERMISSIONS_FIX_TEST}" =~ "_PERMISSIONS_FIX" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_PERMISSIONS_FIX_TEST}" =~ "_PERMISSIONS_FIX" ]]; then
       echo "_PERMISSIONS_FIX=${_PERMISSIONS_FIX}" >> ${barCnf}
     fi
 
     _MODULES_FIX_TEST=$(grep _MODULES_FIX ${barCnf} 2>&1)
-    if [[ "${_MODULES_FIX_TEST}" =~ "_MODULES_FIX" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_MODULES_FIX_TEST}" =~ "_MODULES_FIX" ]]; then
       echo "_MODULES_FIX=${_MODULES_FIX}" >> ${barCnf}
     fi
 
     _MODULES_SKIP_TEST=$(grep _MODULES_SKIP ${barCnf} 2>&1)
-    if [[ "${_MODULES_SKIP_TEST}" =~ "_MODULES_SKIP" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_MODULES_SKIP_TEST}" =~ "_MODULES_SKIP" ]]; then
       echo "_MODULES_SKIP=\"${_MODULES_SKIP}\"" >> ${barCnf}
     fi
 
     _SSL_FROM_SOURCES_TEST=$(grep _SSL_FROM_SOURCES ${barCnf} 2>&1)
-    if [[ "${_SSL_FROM_SOURCES_TEST}" =~ "_SSL_FROM_SOURCES" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_SSL_FROM_SOURCES_TEST}" =~ "_SSL_FROM_SOURCES" ]]; then
       echo "_SSL_FROM_SOURCES=${_SSL_FROM_SOURCES}" >> ${barCnf}
     fi
 
     _SSH_FROM_SOURCES_TEST=$(grep _SSH_FROM_SOURCES ${barCnf} 2>&1)
-    if [[ "${_SSH_FROM_SOURCES_TEST}" =~ "_SSH_FROM_SOURCES" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_SSH_FROM_SOURCES_TEST}" =~ "_SSH_FROM_SOURCES" ]]; then
       echo "_SSH_FROM_SOURCES=${_SSH_FROM_SOURCES}" >> ${barCnf}
     fi
 
     _RESERVED_RAM_TEST=$(grep _RESERVED_RAM ${barCnf} 2>&1)
-    if [[ "${_RESERVED_RAM_TEST}" =~ "_RESERVED_RAM" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_RESERVED_RAM_TEST}" =~ "_RESERVED_RAM" ]]; then
       echo "_RESERVED_RAM=${_RESERVED_RAM}" >> ${barCnf}
     fi
 
     _STRICT_BIN_PERMISSIONS_TEST=$(grep _STRICT_BIN_PERMISSIONS ${barCnf} 2>&1)
-    if [[ "${_STRICT_BIN_PERMISSIONS_TEST}" =~ "_STRICT_BIN_PERMISSIONS" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_STRICT_BIN_PERMISSIONS_TEST}" =~ "_STRICT_BIN_PERMISSIONS" ]]; then
       echo "_STRICT_BIN_PERMISSIONS=${_STRICT_BIN_PERMISSIONS}" >> ${barCnf}
     fi
 
     _DB_SERIES_TEST=$(grep _DB_SERIES ${barCnf} 2>&1)
-    if [[ "${_DB_SERIES_TEST}" =~ "_DB_SERIES" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_DB_SERIES_TEST}" =~ "_DB_SERIES" ]]; then
       echo "_DB_SERIES=${_DB_SERIES}" >> ${barCnf}
     fi
 
