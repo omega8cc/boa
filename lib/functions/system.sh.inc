@@ -2025,7 +2025,6 @@ install_curl_src() {
     | awk '{ print $1}' \
     | cut -d"/" -f2 \
     | awk '{ print $1}' 2>&1)
-  _CURL_INSTALL_REQUIRED=YES
   if [ "${_CURL_ITD}" != "${_CURL_VRN}" ]; then
     if [ "${_OSV}" = "none" ]; then
       _CURL_INSTALL_REQUIRED=NO
