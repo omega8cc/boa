@@ -151,22 +151,22 @@ production settings.
 
 Octopus can install the platforms listed below:
 
- @ Drupal 7.39.2
+ @ Drupal 7.41.1
 
  aGov 2.1 --------------------- https://drupal.org/project/agov
- Commerce 1.38 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 1.39 ---------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.29 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.31 ----------------- https://drupal.org/project/commons
- Drupal 7.39.2 ---------------- https://drupal.org/drupal-7.39
+ Drupal 7.41.1 ---------------- https://drupal.org/drupal-7.41
  ERPAL 2.2 -------------------- https://drupal.org/project/erpal
  Guardr 2.19 ------------------ https://drupal.org/project/guardr
  OpenAid 2.7 ------------------ https://drupal.org/project/openaid
  OpenAtrium 2.45 -------------- https://drupal.org/project/openatrium
- OpenChurch 2.1 --------------- https://drupal.org/project/openchurch
- OpenOutreach 1.23 ------------ https://drupal.org/project/openoutreach
+ OpenChurch 2.2 --------------- https://drupal.org/project/openchurch
+ OpenOutreach 1.24 ------------ https://drupal.org/project/openoutreach
  OpenPublic 1.6 --------------- https://drupal.org/project/openpublic
  Panopoly 1.27 ---------------- https://drupal.org/project/panopoly
- Restaurant 1.0-b12 ----------- https://drupal.org/project/restaurant
+ Restaurant 1.0-rc1 ----------- https://drupal.org/project/restaurant
  Ubercart 3.8 ----------------- https://drupal.org/project/ubercart
 
  @ Pressflow 6.37.1
@@ -175,7 +175,7 @@ Octopus can install the platforms listed below:
  Pressflow 6.37.1 ------------- http://pressflow.org
  Ubercart 2.14 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.39.2 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.41.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
 * All D6 platforms have been enhanced using Pressflow 6.37.1 +Extra core:
