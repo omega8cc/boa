@@ -162,11 +162,11 @@ Octopus can install the platforms listed below:
  Guardr 2.19 ------------------ https://drupal.org/project/guardr
  OpenAid 2.7 ------------------ https://drupal.org/project/openaid
  OpenAtrium 2.45 -------------- https://drupal.org/project/openatrium
- OpenChurch 2.1 --------------- https://drupal.org/project/openchurch
+ OpenChurch 2.2 --------------- https://drupal.org/project/openchurch
  OpenOutreach 1.24 ------------ https://drupal.org/project/openoutreach
  OpenPublic 1.6 --------------- https://drupal.org/project/openpublic
  Panopoly 1.27 ---------------- https://drupal.org/project/panopoly
- Restaurant 1.0-b12 ----------- https://drupal.org/project/restaurant
+ Restaurant 1.0-rc1 ----------- https://drupal.org/project/restaurant
  Ubercart 3.8 ----------------- https://drupal.org/project/ubercart
 
  @ Pressflow 6.37.1
