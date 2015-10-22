@@ -1420,10 +1420,12 @@ check_fix_php() {
     php_upgrade_all
   fi
   install_newrelic
-  if [ ! -e "${pthLog}/ioncube-${_IONCUBE_VRN}.log" ] \
-    || [ "${_PHP_FORCE_REINSTALL}" = "YES" ] \
-    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-    install_ioncube
+  if [ "${_PHP_IONCUBE}" = "YES" ]; then
+    if [ ! -e "${pthLog}/ioncube-${_IONCUBE_VRN}.log" ] \
+      || [ "${_PHP_FORCE_REINSTALL}" = "YES" ] \
+      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      install_ioncube
+    fi
   fi
 }
 
