@@ -2633,8 +2633,39 @@ if_squeeze_to_wheezy() {
       kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
     fi
     mrun "apt-get update -qq" 2> /dev/null
-    mrun "apt-get remove collectd -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove collectd      -y --force-yes -qq" 2> /dev/null
     mrun "apt-get remove libc-client2007b-dev -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove nginx-extras  -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove nginx         -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove nginx-common  -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove nginx-full    -y --force-yes -qq" 2> /dev/null
+    if [ -e "/etc/php5/conf.d" ]; then
+      touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
+      touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
+    fi
+    mrun "apt-get remove php5 \
+                          php5-cgi \
+                          php5-curl \
+                          php5-fpm \
+                          php5-gd \
+                          php5-geoip \
+                          php5-gmp \
+                          php5-imagick \
+                          php5-imap \
+                          php5-ldap \
+                          php5-mcrypt \
+                          php5-memcache \
+                          php5-mysql \
+                          php5-sqlite \
+                          php5-xmlrpc \
+                          php5-xsl     -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove phpunit       -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php-pear      -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php-benchmark -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php5-cli      -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php5-common   -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php5-apc      -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php-apc       -y --force-yes -qq" 2> /dev/null
     echo "curl install" | dpkg --set-selections
     echo "libssl-dev install" | dpkg --set-selections
     echo "openssh-client install" | dpkg --set-selections
