@@ -209,8 +209,13 @@ if_install_collectd() {
 }
 
 if_install_hhvm() {
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "squeeze" ]; then
+    _DO_FIX=YES
+  fi
   if [[ "${_XTRAS_LIST}" =~ "HVM" ]]; then
     if [ "${_OSV}" = "wheezy" ] \
+      || [ "${_DO_FIX}" = "YES" ] \
       || [ "${_OSV}" = "trusty" ]; then
       if [ ! -x "/usr/bin/hhvm" ]; then
         echo " "
@@ -219,7 +224,7 @@ if_install_hhvm() {
           msg "INFO: Installing HHVM Engine..."
           cd /var/opt
           echo "## HHVM APT Repository" > ${aptLiSys}.d/hhvm.list
-          if [ "${_OSV}" = "wheezy" ]; then
+          if [ "${_OSV}" = "wheezy" ] || [ "${_DO_FIX}" = "YES" ]; then
             echo "deb http://dl.hhvm.com/debian wheezy main" >> \
               ${aptLiSys}.d/hhvm.list
           elif [ "${_OSV}" = "trusty" ]; then

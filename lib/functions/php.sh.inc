@@ -724,6 +724,10 @@ update_php_extensions() {
 #
 # Install modern PHP version
 install_php_multi() {
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "squeeze" ]; then
+    _DO_FIX=YES
+  fi
   if [ "$1" = "55" ] || [ "$1" = "56" ]; then
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-curlwrappers//g" 2>&1)
   fi
@@ -736,6 +740,7 @@ install_php_multi() {
   cd /var/opt/php-${_PHP_VERSION}
   st_runner "sh ./buildconf --force" 2> /dev/null
   if [ "${_OSV}" = "wheezy" ] \
+    || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     patchFile="disable_SSLv2_for_openssl_1_0_0.patch"
@@ -1320,6 +1325,10 @@ php_upgrade_all() {
 install_update_php() {
   if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
     && [ "${_LOC_OSV}" = "squeeze" ]; then
+    _DO_FIX=YES
+  fi
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "squeeze" ]; then
     mrun "service nginx stop" &> /dev/null
     killall -9 nginx &> /dev/null
   fi
@@ -1331,6 +1340,7 @@ install_update_php() {
     st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
   fi
   if [ "${_OSV}" = "wheezy" ] \
+    || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     _PHP_EXTRA="--with-ldap --with-gmp --with-xpm-dir=/usr"

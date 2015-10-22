@@ -2509,6 +2509,10 @@ finale() {
 }
 
 install_with_aptitude_deps() {
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "squeeze" ]; then
+    _DO_FIX=YES
+  fi
   st_runner "${_INSTAPP} ${_DEBDEPS}" 2> /dev/null
   if [ -x "/usr/bin/gpg2" ]; then
     _GPG=gpg2
@@ -2516,14 +2520,15 @@ install_with_aptitude_deps() {
     _GPG=gpg
   fi
   if [[ "${_XTRAS_LIST}" =~ "FMG" ]]; then
-    if [ "${_OSV}" = "squeeze" ]; then
-      _EXTRA_APT="tree ffmpeg flvtool2 libavcodec52"
-    elif [ "${_OSV}" = "lucid" ]; then
-      _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-52"
-    elif [ "${_OSV}" = "wheezy" ] \
+    if [ "${_OSV}" = "wheezy" ] \
+      || [ "${_DO_FIX}" = "YES" ] \
       || [ "${_OSV}" = "trusty" ] \
       || [ "${_OSV}" = "precise" ]; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-53"
+    elif [ "${_OSV}" = "squeeze" ]; then
+      _EXTRA_APT="tree ffmpeg flvtool2 libavcodec52"
+    elif [ "${_OSV}" = "lucid" ]; then
+      _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-52"
     else
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec51"
     fi
@@ -2882,6 +2887,10 @@ sys_packages_update() {
 }
 
 sys_packages_install() {
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "squeeze" ]; then
+    _DO_FIX=YES
+  fi
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Installing required libraries and tools, please wait..."
   else
@@ -2924,6 +2933,7 @@ sys_packages_install() {
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
       if [ "${_OSV}" = "wheezy" ] \
+        || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
         _APT_XTRA="openjdk-7-jre-headless openjdk-6-jre-headless"
@@ -2991,7 +3001,8 @@ sys_packages_install() {
     _SSB_SRC=NO
   fi
   if [ "$_SSB_SRC" = "YES" ]; then
-    _EXTRA_PACKAGES="${_EXTRA_PACKAGES}"
+    _EXTRA_PACKAGES="libcurl4-openssl-dev \
+                     ${_EXTRA_PACKAGES}"
   else
     _EXTRA_PACKAGES="curl \
                      libcurl4-openssl-dev \
@@ -3187,7 +3198,12 @@ fix_postfix() {
 }
 
 fix_libs_php() {
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "squeeze" ]; then
+    _DO_FIX=YES
+  fi
   if [ "${_OSV}" = "wheezy" ] \
+    || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     if [ ! -L "/usr/lib/libXpm.so" ] \
@@ -3219,7 +3235,12 @@ fix_libs_php() {
 }
 
 fix_libssl() {
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "squeeze" ]; then
+    _DO_FIX=YES
+  fi
   if [ "${_OSV}" = "wheezy" ] \
+    || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     _SSL_FIX_REQUIRED=YES
@@ -3227,6 +3248,7 @@ fix_libssl() {
       || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
       || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
       if [ "${_OSV}" = "wheezy" ] \
+        || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
         _SSL_FIX_REQUIRED=YES
