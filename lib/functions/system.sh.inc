@@ -1424,7 +1424,9 @@ run_aptitude_full_upgrade() {
     st_runner "aptitude remove mytop -y" &> /dev/null
     st_runner "apt-get purge mytop -y --force-yes -qq" &> /dev/null
     rm -f /usr/bin/mytop
-    touch ${pthLog}/fixed-mytop-mariadb.log
+    if [ -e "${pthLog}" ]; then
+      touch ${pthLog}/fixed-mytop-mariadb.log
+    fi
   fi
   st_runner "aptitude full-upgrade -f -y -q \
     -o Dpkg::Options::=--force-confdef \

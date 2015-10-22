@@ -329,7 +329,9 @@ install_with_aptitude_sql() {
   fi
   install_mariadb_sql
   st_runner "${_INSTAPP} mytop" 2> /dev/null
-  touch ${pthLog}/fixed-mytop-mariadb.log
+  if [ -e "${pthLog}" ]; then
+    touch ${pthLog}/fixed-mytop-mariadb.log
+  fi
   st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
   st_runner "${_INSTAPP} ${SQLADD}" 2> /dev/null
   st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
