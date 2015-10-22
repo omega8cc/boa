@@ -279,7 +279,12 @@ if [ "${_NGINX_SPDY}" = "YES" ] \
     _DO_NOTHING=YES
   else
     if [ "${_OSV}" = "squeeze" ]; then
-      install_ssl_src
+      if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+        && [ "${_LOC_OSV}" = "squeeze" ]; then
+        _DO_NOTHING=YES
+      else
+        install_ssl_src
+      fi
     fi
     if [ "${_THIS_OS}" = "Debian" ]; then
       install_ssh_src
