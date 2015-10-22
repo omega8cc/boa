@@ -3219,7 +3219,10 @@ fix_libs_php() {
         ln -sf /usr/lib/x86_64-linux-gnu/libldap.so /usr/lib/libldap.so
         ln -sf /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
         ln -sf /usr/lib/x86_64-linux-gnu/libXpm.so  /usr/lib/libXpm.so
-        ln -sf /usr/include/x86_64-linux-gnu/gmp.h  /usr/include/gmp.h
+        if [ ! -e "/usr/include/gmp.h" ] \
+          && [ -e "/usr/include/x86_64-linux-gnu/gmp.h" ]; then
+          ln -sf /usr/include/x86_64-linux-gnu/gmp.h  /usr/include/gmp.h
+        fi
       else
         ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so
         ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
@@ -3228,7 +3231,10 @@ fix_libs_php() {
         ln -sf /usr/lib/i386-linux-gnu/libldap.so /usr/lib/libldap.so
         ln -sf /usr/lib/i386-linux-gnu/libpng.so  /usr/lib/libpng.so
         ln -sf /usr/lib/i386-linux-gnu/libXpm.so  /usr/lib/libXpm.so
-        ln -sf /usr/include/i386-linux-gnu/gmp.h  /usr/include/gmp.h
+        if [ ! -e "/usr/include/gmp.h" ] \
+          && [ -e "/usr/include/i386-linux-gnu/gmp.h" ]; then
+          ln -sf /usr/include/i386-linux-gnu/gmp.h  /usr/include/gmp.h
+        fi
       fi
     fi
   fi
