@@ -2785,6 +2785,13 @@ if_squeeze_to_wheezy() {
     fi
     mrun "${_INSTALL} aptitude"   2> /dev/null
     mrun "${_INSTALL} util-linux" 2> /dev/null
+    sys_packages_update
+    sys_packages_install
+    fix_postfix
+    install_with_aptitude_deps
+    fix_locales
+    run_aptitude_full_upgrade
+    install_with_aptitude_deps
     if [ -e "/root/.debug.cnf" ]; then
       _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
       if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then
