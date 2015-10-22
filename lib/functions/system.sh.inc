@@ -2722,7 +2722,13 @@ if_squeeze_to_wheezy() {
     ### Two step upgrade with apt-get only
     mrun "apt-get upgrade -f -y --force-yes -q \
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
-    mrun "apt-get install apt dpkg aptitude -f -y --force-yes -q \
+    mrun "apt-get install apt dpkg aptitude util-linux -f -y --force-yes -q \
+      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+    mrun "apt-get upgrade -f -y --force-yes -q \
+      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+    mrun "apt-get upgrade -f -y --force-yes -q \
+      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+    mrun "apt-get dist-upgrade -f -y --force-yes -q \
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
     mrun "apt-get dist-upgrade -f -y --force-yes -q \
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
@@ -2783,8 +2789,6 @@ if_squeeze_to_wheezy() {
     else
       _PTMX=CHECK
     fi
-    mrun "${_INSTALL} aptitude"   2> /dev/null
-    mrun "${_INSTALL} util-linux" 2> /dev/null
     sys_packages_update
     sys_packages_install
     fix_postfix
