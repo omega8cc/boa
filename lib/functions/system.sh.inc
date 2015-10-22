@@ -2716,11 +2716,14 @@ if_squeeze_to_wheezy() {
       || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
       || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _PTMX=OK
-      _REMOVE_LINKS="halt \
+      _REMOVE_LINKS="buagent \
+                     fancontrol \
+                     halt \
                      hwclock.sh \
                      hwclockfirst.sh \
                      ifupdown \
                      ifupdown-clean \
+                     kerneloops \
                      klogd \
                      mountall-bootclean.sh \
                      mountall.sh \
@@ -2734,12 +2737,17 @@ if_squeeze_to_wheezy() {
                      networking \
                      reboot \
                      setserial \
+                     svscan \
+                     sysstat \
                      umountfs \
                      umountnfs.sh \
                      umountroot \
-                     urandom"
+                     urandom \
+                     vnstat"
       for link in ${_REMOVE_LINKS}; do
-        update-rc.d -f $link remove &> /dev/null
+        if [ -e "/etc/init.d/${link}" ]; then
+          update-rc.d -f ${link} remove &> /dev/null
+        fi
       done
     else
       _PTMX=CHECK
