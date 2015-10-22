@@ -2616,7 +2616,9 @@ if_squeeze_to_wheezy() {
     msg "WARN: Too late! Squeeze to Wheezy upgrade in progress..."
     msg "HINT: Run tail -f ${_LOG}"
     msg "HINT: in another terminal window to watch details"
-    echo "_FULL_FORCE_REINSTALL=YES" >> ${barCnf}
+    _FULL_FORCE_REINSTALL=YES
+    _PURGE_MODE=OFF
+    rm -f ${mtrNgx}/pre.d/nginx_speed_purge.conf
     if [ -e "/etc/init.d/bind" ]; then
       rm -f /etc/init.d/bind
     fi
@@ -2689,6 +2691,7 @@ if_squeeze_to_wheezy() {
     mrun "apt-get dist-upgrade -f -y --force-yes -q \
       --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
     touch ${mtrNgx}/pre.d/nginx_speed_purge.conf
+    install_upgrade_nginx
     if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
       ln -sf /etc/init.d/bind9 /etc/init.d/bind
     fi
@@ -2759,11 +2762,9 @@ if_squeeze_to_wheezy() {
     echo rotate > /var/log/syslog
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null
     echo " "
-    msg "INFO: No errors? Then Squeeze to Wheezy upgrade was successful."
-    msg "INFO: Please reboot NOW, and then run barracuda system upgrade again."
-    msg "BYE!"
+    msg "INFO: No errors? Then Squeeze to Wheezy upgrade was successful :)"
+    msg "INFO: REBOOT your system once Barracuda will complete all upgrades!"
     echo " "
-    clean_pid_exit
   fi
 }
 
