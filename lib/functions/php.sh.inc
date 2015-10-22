@@ -499,8 +499,8 @@ install_php_extensions() {
   st_runner "make --quiet install" 2> /dev/null
   touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
   ###--------------------###
-  msg "INFO: Installing YAML for PHP ${_T_PHP_VRN}..."
   if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ]; then
+    msg "INFO: Installing YAML for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -f -r yaml*
     get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
@@ -509,20 +509,6 @@ install_php_extensions() {
     st_runner "sh ./configure --prefix=/usr" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-#     aptTmp="${aptLiSys}.d/openssl.list"
-#     echo "## OpenSSL APT Repository" > ${aptTmp}
-#     if [ "${_THIS_OS}" = "Ubuntu" ]; then
-#       echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-#       echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-#     else
-#       echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
-#       echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
-#     fi
-#     mrun "apt-get update -qq" 2> /dev/null
-#     mrun "${_INSTALL} libyaml-0-2" 2> /dev/null
-#     mrun "${_INSTALL} libyaml-dev" 2> /dev/null
-#     rm -f ${aptTmp}
-#     mrun "apt-get update -qq" 2> /dev/null
     touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
   fi
   cd /var/opt
@@ -690,20 +676,6 @@ update_php_extensions() {
     st_runner "sh ./configure --prefix=/usr" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-#     aptTmp="${aptLiSys}.d/openssl.list"
-#     echo "## OpenSSL APT Repository" > ${aptTmp}
-#     if [ "${_THIS_OS}" = "Ubuntu" ]; then
-#       echo "deb http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-#       echo "deb-src http://${_MIRROR}/ubuntu/ wily main" >> ${aptTmp}
-#     else
-#       echo "deb http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
-#       echo "deb-src http://${_MIRROR}/debian/ stretch main" >> ${aptTmp}
-#     fi
-#     mrun "apt-get update -qq" 2> /dev/null
-#     mrun "${_INSTALL} libyaml-0-2" 2> /dev/null
-#     mrun "${_INSTALL} libyaml-dev" 2> /dev/null
-#     rm -f ${aptTmp}
-#     mrun "apt-get update -qq" 2> /dev/null
     touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
     rm -f ${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log
   fi

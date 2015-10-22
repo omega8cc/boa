@@ -2773,6 +2773,7 @@ if_squeeze_to_wheezy() {
       fi
     fi
     echo rotate > /var/log/syslog
+    rm -f /var/xdrago/log/*.log
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null
     echo " "
     msg "INFO: No errors? Then Squeeze to Wheezy upgrade was successful :)"
