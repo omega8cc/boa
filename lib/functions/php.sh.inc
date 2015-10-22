@@ -500,7 +500,7 @@ install_php_extensions() {
   touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
   ###--------------------###
   if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ]; then
-    msg "INFO: Installing YAML for PHP ${_T_PHP_VRN}..."
+    msg "INFO: Installing LibYAML for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -f -r yaml*
     get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
@@ -510,7 +510,24 @@ install_php_extensions() {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
+    _X86_64_TEST=$(uname -m 2>&1)
+    if [ "$_X86_64_TEST" = "x86_64" ]; then
+      if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ]; then
+        mkdir p /var/backups/libyaml
+        cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/
+        rm -f /usr/lib/x86_64-linux-gnu/libyaml*
+        cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/
+      fi
+    else
+      if [ ! -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.4" ]; then
+        mkdir p /var/backups/libyaml
+        cp -af /usr/lib/i386-linux-gnu/libyaml* /var/backups/libyaml/
+        rm -f /usr/lib/i386-linux-gnu/libyaml*
+        cp -af /usr/lib/libyaml* /usr/lib/i386-linux-gnu/
+      fi
+    fi
   fi
+  msg "INFO: Installing YAML for PHP ${_T_PHP_VRN}..."
   cd /var/opt
   rm -f -r yaml*
   get_dev_src "yaml-${_YAML_VRN}.tgz"
@@ -668,6 +685,7 @@ update_php_extensions() {
   fi
   ###--------------------###
   if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ]; then
+    msg "INFO: Installing LibYAML upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -f -r yaml*
     get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
