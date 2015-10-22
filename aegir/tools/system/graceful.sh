@@ -62,7 +62,7 @@ _NOW=$(date +%y%m%d-%H%M 2>&1)
 _CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
 if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-  || [ -e "/root/.debug.cnf" ] \
+  || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _VMFAMILY="VS"
 else

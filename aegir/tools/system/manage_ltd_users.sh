@@ -15,7 +15,7 @@ else
   _RUBY_VRN=2.0.0
 fi
 if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-  || [ -e "/root/.debug.cnf" ] \
+  || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _VMFAMILY="VS"
 else
@@ -776,7 +776,7 @@ satellite_tune_fpm_workers() {
     _VMFAMILY="XEN"
   fi
   if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [ -e "/root/.debug.cnf" ] \
+    || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   fi

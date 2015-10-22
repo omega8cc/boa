@@ -27,7 +27,7 @@ if_running_as_root_barracuda() {
     fi
     _VM_TEST=$(uname -a 2>&1)
     if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [ -e "/root/.debug.cnf" ] \
+      || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _VMFAMILY="VS"
       touch /var/run/cloud_vhost.pid
@@ -67,7 +67,7 @@ set_xterm() {
 kill_nash() {
   _L_VM_TEST=$(uname -a 2>&1)
   if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [ -e "/root/.debug.cnf" ] \
+    || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
     || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _DO_NOTHING=YES
   else
@@ -226,7 +226,7 @@ tune_memory_limits() {
     _VMFAMILY="XEN"
   fi
   if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [ -e "/root/.debug.cnf" ] \
+    || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   fi
@@ -861,7 +861,7 @@ barracuda_cnf() {
     _L_VMFAMILY=XEN
     _L_VM_TEST=$(uname -a 2>&1)
     if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [ -e "/root/.debug.cnf" ] \
+      || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
       || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _L_VMFAMILY="VS"
     fi
@@ -2713,7 +2713,7 @@ if_squeeze_to_wheezy() {
     mrun "${_INSTALL} udev lsb-release libc-client2007e-dev" 2> /dev/null
     _L_VM_TEST=$(uname -a 2>&1)
     if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [ -e "/root/.debug.cnf" ] \
+      || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
       || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _PTMX=OK
       _REMOVE_LINKS="halt \

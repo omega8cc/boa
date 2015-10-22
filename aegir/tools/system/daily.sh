@@ -2598,7 +2598,7 @@ else
 fi
 #
 if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-  || [ -e "/root/.debug.cnf" ] \
+  || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _VMFAMILY="VS"
   _MODULES_FORCE="background_process coder cookie_cache_bypass css_gzip hacked \

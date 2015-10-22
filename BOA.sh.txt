@@ -497,7 +497,7 @@ setup() {
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [ -e "/root/.debug.cnf" ] \
+    || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   else
@@ -681,7 +681,6 @@ if [ `whoami` = "root" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ] \
-        || [ -e "/root/.debug.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [ "${_BENG_VS}" = "YES" ]; then
         update_agents

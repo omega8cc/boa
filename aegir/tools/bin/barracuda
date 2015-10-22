@@ -31,7 +31,7 @@ _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
 _L_VMFAMILY=XEN
 _L_VM_TEST=$(uname -a 2>&1)
 if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-  || [ -e "/root/.debug.cnf" ] \
+  || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
   || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _L_VMFAMILY="VS"
 fi
@@ -866,7 +866,7 @@ check_root() {
     fi
     _L_VM_TEST=$(uname -a 2>&1)
     if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [ -e "/root/.debug.cnf" ] \
+      || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
       || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _PTMX=OK
     else
