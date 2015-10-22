@@ -37,8 +37,8 @@ fix_php_ini_mailparse() {
 # Fix php.ini files to add yaml.so
 fix_php_ini_yaml() {
   if [ -e "${_THIS_FILE}" ]; then
-    _MAILPARSE_INI_TEST=$(grep "extension=yaml.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_MAILPARSE_INI_TEST" =~ "extension=yaml.so" ]]; then
+    _YAML_INI_TEST=$(grep "extension=yaml.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_YAML_INI_TEST" =~ "extension=yaml.so" ]]; then
       _DO_NOTHING=YES
     else
       echo "extension=yaml.so" >> ${_THIS_FILE}
