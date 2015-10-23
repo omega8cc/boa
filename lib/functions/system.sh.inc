@@ -2539,8 +2539,7 @@ install_with_aptitude_deps() {
   else
     _EXTRA_APT="tree"
   fi
-  st_runner "apt-get install $_EXTRA_APT -f -y --force-yes -q \
-    --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+  st_runner "apt-get install ${_EXTRA_APT} ${nrmUpArg}" 2> /dev/null
   if [ -e "/etc/init.d/php5-fpm" ]; then
     mrun "service php5-fpm stop" &> /dev/null
     mrun "update-rc.d -f php5-fpm remove" &> /dev/null
@@ -2670,32 +2669,30 @@ if_squeeze_to_wheezy() {
     mrun "apt-get remove php5-common   -y --force-yes -qq" 2> /dev/null
     mrun "apt-get remove php5-apc      -y --force-yes -qq" 2> /dev/null
     mrun "apt-get remove php-apc       -y --force-yes -qq" 2> /dev/null
-    echo "curl install" | dpkg --set-selections
-    echo "git install" | dpkg --set-selections
-    echo "git-core install" | dpkg --set-selections
-    echo "libssl-dev install" | dpkg --set-selections
+    echo "curl install"           | dpkg --set-selections
+    echo "git install"            | dpkg --set-selections
+    echo "git-core install"       | dpkg --set-selections
+    echo "libssl-dev install"     | dpkg --set-selections
     echo "openssh-client install" | dpkg --set-selections
     echo "openssh-server install" | dpkg --set-selections
-    echo "openssl install" | dpkg --set-selections
-    echo "ssh install" | dpkg --set-selections
-    echo "zlib1g install" | dpkg --set-selections
-    echo "zlib1g-dev install" | dpkg --set-selections
-    echo "zlibc install" | dpkg --set-selections
+    echo "openssl install"        | dpkg --set-selections
+    echo "ssh install"            | dpkg --set-selections
+    echo "zlib1g install"         | dpkg --set-selections
+    echo "zlib1g-dev install"     | dpkg --set-selections
+    echo "zlibc install"          | dpkg --set-selections
     mrun "${_INSTALL} zlib1g"     2> /dev/null
     mrun "${_INSTALL} zlib1g-dev" 2> /dev/null
     mrun "${_INSTALL} zlibc"      2> /dev/null
     mrun "${_INSTALL} openssl"    2> /dev/null
     mrun "${_INSTALL} libssl-dev" 2> /dev/null
-    mrun "apt-get install curl ${forCer}"             2> /dev/null
-    mrun "apt-get install git ${forCer}"              2> /dev/null
-    mrun "apt-get install git-core ${forCer}"         2> /dev/null
-    mrun "apt-get install openssh-client ${forCer}"   2> /dev/null
-    mrun "apt-get install openssh-server ${forCer}"   2> /dev/null
-    mrun "apt-get install ssh ${forCer}"              2> /dev/null
-    mrun "apt-get upgrade -f -y --force-yes -q \
-      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
-    mrun "apt-get dist-upgrade -f -y --force-yes -q \
-      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+    mrun "apt-get install curl ${forCer}"           2> /dev/null
+    mrun "apt-get install git ${forCer}"            2> /dev/null
+    mrun "apt-get install git-core ${forCer}"       2> /dev/null
+    mrun "apt-get install openssh-client ${forCer}" 2> /dev/null
+    mrun "apt-get install openssh-server ${forCer}" 2> /dev/null
+    mrun "apt-get install ssh ${forCer}"            2> /dev/null
+    mrun "apt-get upgrade ${nrmUpArg}"              2> /dev/null
+    mrun "apt-get dist-upgrade ${nrmUpArg}"         2> /dev/null
     ### Check if we can continue
     _AUDIT_DPKG=$(dpkg --audit 2>&1)
     if [ ! -z "${_AUDIT_DPKG}" ]; then
@@ -2728,18 +2725,10 @@ if_squeeze_to_wheezy() {
     rm -f /etc/apt/sources.list.d/openssl.list
     mrun "apt-get update -qq" 2> /dev/null
     ### Two step upgrade with apt-get only
-    mrun "apt-get upgrade -f -y --force-yes -q \
-      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
-    mrun "apt-get install apt dpkg aptitude util-linux -f -y --force-yes -q \
-      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
-    mrun "apt-get upgrade -f -y --force-yes -q \
-      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
-    mrun "apt-get upgrade -f -y --force-yes -q \
-      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
-    mrun "apt-get dist-upgrade -f -y --force-yes -q \
-      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
-    mrun "apt-get dist-upgrade -f -y --force-yes -q \
-      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+    mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
+    mrun "apt-get install apt dpkg aptitude util-linux ${dstUpArg}" 2> /dev/null
+    mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
+    mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
     touch ${mtrNgx}/pre.d/nginx_speed_purge.conf
     install_upgrade_nginx
     if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
@@ -2753,9 +2742,11 @@ if_squeeze_to_wheezy() {
       fi
     fi
     if [ -d "/var/www/cgp" ]; then
-      mrun "${_INSTALL} collectd" 2> /dev/null
+      mrun "apt-get install collectd ${dstUpArg}" 2> /dev/null
     fi
-    mrun "${_INSTALL} udev lsb-release libc-client2007e-dev" 2> /dev/null
+    mrun "apt-get install udev ${dstUpArg}" 2> /dev/null
+    mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
+    mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     _L_VM_TEST=$(uname -a 2>&1)
     if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
       || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
@@ -2797,13 +2788,6 @@ if_squeeze_to_wheezy() {
     else
       _PTMX=CHECK
     fi
-    sys_packages_update
-    sys_packages_install
-    fix_postfix
-    install_with_aptitude_deps
-    fix_locales
-    run_aptitude_full_upgrade
-    install_with_aptitude_deps
     if [ -e "/root/.debug.cnf" ]; then
       _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
       if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then

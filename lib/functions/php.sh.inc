@@ -848,9 +848,8 @@ update_newrelic() {
         >> ${aptLiSys}.d/newrelic.list
       rm -f /etc/apt/sources.list.d/openssl.list
       st_runner "apt-get update -qq" &> /dev/null
-      st_runner "apt-get install newrelic-php5 newrelic-sysmond -f -y \
-        --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" \
-        2> /dev/null
+      st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
+      st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
       NR_PHPLIST="/opt/php53/bin:/opt/php54/bin:/opt/php55/bin:/opt/php56/bin"
       NR_SILENT="silent"
       export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
@@ -952,8 +951,8 @@ install_newrelic() {
         >> ${aptLiSys}.d/newrelic.list
       rm -f /etc/apt/sources.list.d/openssl.list
       st_runner "apt-get update -qq" &> /dev/null
-      st_runner "apt-get install newrelic-php5 newrelic-sysmond -f -y \
-        --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+      st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
+      st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
       if [ "$_MULTI_NR" = "YES" ]; then
         msg "INFO: Installing latest version of New Relic Apps Monitor..."
         NR_PHPLIST="/opt/php53/bin:/opt/php54/bin:/opt/php55/bin:/opt/php56/bin"

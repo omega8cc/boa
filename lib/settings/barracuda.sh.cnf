@@ -1025,9 +1025,10 @@ _BOA_REPO_GIT_URL="${gitHub}"
 ### Commands shortcuts
 ###
 gCb="git clone --branch"
+dstUpArg="-fuy --force-yes -q --config-file /opt/tmp/apt.conf.noi.dist"
+nrmUpArg="-fuy --force-yes -q --config-file /opt/tmp/apt.conf.noi.nrml"
 _INITINS="/usr/bin/apt-get -y --force-yes install"
-_INSTALL="/usr/bin/apt-get -y --force-yes \
-  --config-file /opt/tmp/apt.conf.noninteractive install"
+_INSTALL="/usr/bin/apt-get ${nrmUpArg} install"
 
 
 ###
@@ -1042,7 +1043,7 @@ find_fast_mirror() {
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -f -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -1088,7 +1089,7 @@ download_helpers_libs() {
     if [ ! -x "${isGit}" ] || [ -z "${isGit}" ]; then
       rm -f /etc/apt/sources.list.d/openssl.list
       apt-get update -qq &> /dev/null
-      apt-get install git-core -f -y --force-yes --reinstall &> /dev/null
+      apt-get install git-core -fuy --force-yes --reinstall &> /dev/null
       sleep 3
     fi
     ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git \
@@ -1099,7 +1100,8 @@ download_helpers_libs() {
     _THIS_CNF="${bldPth}/aegir/conf"
   fi
   #
-  if [ ! -e "${bldPth}/aegir/helpers/apt.conf.noninteractive" ]; then
+  if [ ! -e "${bldPth}/aegir/helpers/apt.conf.noi.nrml" ] \
+    || [ ! -e "${bldPth}/aegir/helpers/apt.conf.noi.dist" ]; then
     echo " "
     echo "EXIT on error due to missing helpers"
     echo "Please try to run this script again in a few minutes"
@@ -1108,9 +1110,10 @@ download_helpers_libs() {
     echo " "
     clean_pid_exit
   fi
-  # Get apt helper
-  rm -f apt.conf.noninteractive*
-  cp -af ${bldPth}/aegir/helpers/apt.conf.noninteractive ./
+  # Get apt helpers
+  rm -f apt.conf.noi*
+  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.nrml ./
+  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.dist ./
   #
   # Create tmp stuff
   if [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
