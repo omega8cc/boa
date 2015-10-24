@@ -49,8 +49,8 @@ not_supported_os() {
   msg "== FATAL ERROR =="
   msg "Invalid install script or OS used"
   msg "It is not any supported Debian or Ubuntu version"
-  msg "You need Debian - Squeeze (recommended) or Wheezy"
-  msg "or Ubuntu - Precise or Lucid"
+  msg "You need Debian Wheezy (recommended) or Squeeze,"
+  msg "or Ubuntu -- Trusty or Precise."
   clean_pid_exit
 }
 
