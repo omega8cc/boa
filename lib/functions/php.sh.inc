@@ -500,7 +500,7 @@ install_php_extensions() {
   touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
   ###--------------------###
   if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ]; then
-    msg "INFO: Installing LibYAML for PHP ${_T_PHP_VRN}..."
+    msg "INFO: Installing LibYAML for PHP..."
     cd /var/opt
     rm -f -r yaml*
     get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
@@ -685,7 +685,7 @@ update_php_extensions() {
   fi
   ###--------------------###
   if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ]; then
-    msg "INFO: Installing LibYAML upgrade for PHP ${_T_PHP_VRN}..."
+    msg "INFO: Installing LibYAML upgrade for PHP..."
     cd /var/opt
     rm -f -r yaml*
     get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
