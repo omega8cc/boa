@@ -1940,9 +1940,6 @@ install_ssh_src() {
 install_curl_src() {
   _CURL_INSTALL_REQUIRED=NO
   _CURL_GET_DPKG=$(dpkg --get-selections | grep curl | grep 'hold$' 2>&1)
-  if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
-    echo "curl hold" | dpkg --set-selections
-  fi
   _CURL_ITD=$(curl --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
@@ -1979,6 +1976,10 @@ install_curl_src() {
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version ${_CURL_ITD}, rebuild forced"
   fi
+  if [ "${_OSV}" = "precise" ] \
+    || [ "${_OSV}" = "lucid" ]; then
+    touch /root/.use.curl.from.packages.cnf
+  fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ]; then
     ###--------------------###
     echo "libcurl3 install" | dpkg --set-selections
@@ -1987,17 +1988,29 @@ install_curl_src() {
     mrun "${_INSTALL} libcurl3" 2> /dev/null
     mrun "${_INSTALL} libcurl3-gnutls" 2> /dev/null
     mrun "${_INSTALL} libcurl4-openssl-dev" 2> /dev/null
-    msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
-    cd /var/opt
-    rm -f -r curl*
-    wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
-    extract_archive "curl-${_CURL_VRN}.tar.gz"
-    cd /var/opt/curl-${_CURL_VRN}
-    mrun "sh ./configure \
-      --with-ssl \
-      --prefix=/usr" 2> /dev/null
-    mrun "make --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
+    if [ -e "/root/.use.curl.from.packages.cnf" ]; then
+      if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
+        echo "curl install" | dpkg --set-selections
+      fi
+      if [ -z "$_CURL_ALREADY_REBUILT" ]; then
+        apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
+      fi
+    else
+      if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
+        echo "curl hold" | dpkg --set-selections
+      fi
+      msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
+      cd /var/opt
+      rm -f -r curl*
+      wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
+      extract_archive "curl-${_CURL_VRN}.tar.gz"
+      cd /var/opt/curl-${_CURL_VRN}
+      mrun "sh ./configure \
+        --with-ssl \
+        --prefix=/usr" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
+    fi
     _CURL_ALREADY_REBUILT=YES
     _UP_PHP=YES
   fi

@@ -837,6 +837,11 @@ check_dns_curl() {
     --retry-delay 10 \
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
+    if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
+      echo "curl install" | dpkg --set-selections
+      apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
+      touch /root/.use.curl.from.packages.cnf
+    fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     clean_pid_exit
   fi
