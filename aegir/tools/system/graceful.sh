@@ -69,7 +69,7 @@ else
   _VMFAMILY="XEN"
 fi
 
-if [ -e "/var/run/boa_run.pid" ]; then
+if [ -e "/var/run/boa_run.pid" ] || [ -e "/root/.skip_cleanup.cnf" ]; then
   exit 0
 else
   touch /var/run/boa_wait.pid
