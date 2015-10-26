@@ -3706,6 +3706,7 @@ satellite_batch_cleanup() {
     find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
     chown root:root /opt/tmp &> /dev/null
     chmod 0711 /data ${_D}/* /data/disk /data/conf &> /dev/null
+    chmod 644 /data/all/cpuinfo &> /dev/null
     chmod 0755 ${_D} ${_D}/000 &> /dev/null
   elif [ -e "/data/disk/all" ]; then
     if [ ! -f "/data/disk/all/permissions-fix-${_X_VERSION}-${_TODAY}.info" ]; then
@@ -3728,6 +3729,7 @@ satellite_batch_cleanup() {
     find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
     chown root:root /opt/tmp &> /dev/null
     chmod 0711 /data /data/disk/all/* /data/disk /data/conf &> /dev/null
+    chmod 644 /data/disk/all/cpuinfo &> /dev/null
     chmod 0755 /data/disk/all /data/disk/all/000 &> /dev/null
   fi
   chmod 0700 /data/u &> /dev/null
