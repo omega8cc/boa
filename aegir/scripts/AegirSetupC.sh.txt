@@ -1959,8 +1959,10 @@ restaurant_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              cd ${_SHRD_PRPATH}/modules/restaurant/restaurant_demo/import
-              patch -p1 < ${pthPch}/restaurant_demo.patch &> /dev/null
+              if [ -d "${_SHRD_PRPATH}/modules/restaurant/restaurant_demo/import" ]; then
+                cd ${_SHRD_PRPATH}/modules/restaurant/restaurant_demo/import
+                patch -p1 < ${pthPch}/restaurant_demo.patch &> /dev/null
+              fi
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
