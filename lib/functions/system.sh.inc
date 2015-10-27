@@ -27,17 +27,17 @@ if_running_as_root_barracuda() {
     fi
     _VM_TEST=$(uname -a 2>&1)
     if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [ -e "/root/.debug.cnf" ] \
+      || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _VMFAMILY="VS"
       touch /var/run/cloud_vhost.pid
       if [ -d "/etc/webmin" ]; then
+        rm -f /etc/apt/sources.list.d/openssl.list
         mrun "dpkg --configure -a" &> /dev/null
         mrun "apt-get clean -qq"   &> /dev/null
         mrun "apt-get update -qq"  &> /dev/null
         mrun "apt-get remove webmin -y --force-yes -qq" &> /dev/null
         mrun "apt-get purge webmin -y --force-yes -qq"  &> /dev/null
-        mrun "apt-get autoremove -y --force-yes -qq"    &> /dev/null
         rm -f -r /usr/share/webmin
       fi
       rm -f ${aptLiSys}.d/ksplice.list
@@ -67,7 +67,7 @@ set_xterm() {
 kill_nash() {
   _L_VM_TEST=$(uname -a 2>&1)
   if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [ -e "/root/.debug.cnf" ] \
+    || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
     || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _DO_NOTHING=YES
   else
@@ -90,12 +90,8 @@ fix_ftps_pam() {
   if [ ! -e "/etc/ftpusers" ]; then
     cp -af ${locCnf}/ftpusers /etc/ftpusers
   fi
-  if [ "${_OSV}" = "lenny" ]; then
-    _DO_NOTHING=YES
-  else
-    sed -i "s/pam_stack.so/pam_unix.so/g" /etc/pam.d/pure-ftpd &> /dev/null
-    sed -i "s/ service=system-auth//g"    /etc/pam.d/pure-ftpd &> /dev/null
-  fi
+  sed -i "s/pam_stack.so/pam_unix.so/g" /etc/pam.d/pure-ftpd &> /dev/null
+  sed -i "s/ service=system-auth//g"    /etc/pam.d/pure-ftpd &> /dev/null
 }
 
 #
@@ -230,7 +226,7 @@ tune_memory_limits() {
     _VMFAMILY="XEN"
   fi
   if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [ -e "/root/.debug.cnf" ] \
+    || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   fi
@@ -707,6 +703,7 @@ barracuda_cnf() {
     echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\""                 >> ${barCnf}
     echo "_PHP_FPM_VERSION=${_PHP_FPM_VERSION}"               >> ${barCnf}
     echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}"               >> ${barCnf}
+    echo "_PHP_IONCUBE=${_PHP_IONCUBE}"                       >> ${barCnf}
     echo "_PHP_GEOS=${_PHP_GEOS}"                             >> ${barCnf}
     echo "_PHP_MONGODB=${_PHP_MONGODB}"                       >> ${barCnf}
     echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\""       >> ${barCnf}
@@ -733,7 +730,13 @@ barracuda_cnf() {
     echo "_SYSTEM_UPGRADE_ONLY=${_SYSTEM_UPGRADE_ONLY}"       >> ${barCnf}
     echo "###"                                                >> ${barCnf}
     _CHECK_HOST=$(uname -n 2>&1)
-    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g" ${barCnf}
+    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"               ${barCnf}
+    ### Force HTTP/2 or SPDY plus PFS on supported systems
+    sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
+    sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
+    sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g"     ${barCnf}
+    ### Force latest OpenSSH from sources on supported systems
+    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -749,10 +752,7 @@ barracuda_cnf() {
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
         sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"  ${barCnf}
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
-        sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"         ${barCnf}
-        sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                               ${barCnf}
         ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                                ${barCnf}
-        sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                   ${barCnf}
         sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   ${barCnf}
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                /root/.*.octopus.cnf &> /dev/null
@@ -861,7 +861,7 @@ barracuda_cnf() {
     _L_VMFAMILY=XEN
     _L_VM_TEST=$(uname -a 2>&1)
     if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [ -e "/root/.debug.cnf" ] \
+      || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
       || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _L_VMFAMILY="VS"
     fi
@@ -935,107 +935,77 @@ barracuda_cnf() {
     fi
 
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION ${barCnf} 2>&1)
-    if [[ "${_PHP_FPM_VERSION_TEST}" =~ "_PHP_FPM_VERSION" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_PHP_FPM_VERSION_TEST}" =~ "_PHP_FPM_VERSION" ]]; then
       echo "_PHP_FPM_VERSION=${_PHP_FPM_VERSION}" >> ${barCnf}
     fi
 
     _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION ${barCnf} 2>&1)
-    if [[ "${_PHP_CLI_VERSION_TEST}" =~ "_PHP_CLI_VERSION" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_PHP_CLI_VERSION_TEST}" =~ "_PHP_CLI_VERSION" ]]; then
       echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}" >> ${barCnf}
     fi
 
     _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL ${barCnf} 2>&1)
-    if [[ "${_PHP_SINGLE_INSTALL_TEST}" =~ "_PHP_SINGLE_INSTALL" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_PHP_SINGLE_INSTALL_TEST}" =~ "_PHP_SINGLE_INSTALL" ]]; then
       echo "_PHP_SINGLE_INSTALL=${_PHP_SINGLE_INSTALL}" >> ${barCnf}
     fi
 
     _CUSTOM_CONFIG_LSHELL_TEST=$(grep _CUSTOM_CONFIG_LSHELL ${barCnf} 2>&1)
-    if [[ "${_CUSTOM_CONFIG_LSHELL_TEST}" =~ "_CUSTOM_CONFIG_LSHELL" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_CUSTOM_CONFIG_LSHELL_TEST}" =~ "_CUSTOM_CONFIG_LSHELL" ]]; then
       echo "_CUSTOM_CONFIG_LSHELL=${_CUSTOM_CONFIG_LSHELL}" >> ${barCnf}
     fi
 
     _CUSTOM_CONFIG_CSF_TEST=$(grep _CUSTOM_CONFIG_CSF ${barCnf} 2>&1)
-    if [[ "${_CUSTOM_CONFIG_CSF_TEST}" =~ "_CUSTOM_CONFIG_CSF" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_CUSTOM_CONFIG_CSF_TEST}" =~ "_CUSTOM_CONFIG_CSF" ]]; then
       echo "_CUSTOM_CONFIG_CSF=${_CUSTOM_CONFIG_CSF}" >> ${barCnf}
     fi
 
     _CUSTOM_CONFIG_SQL_TEST=$(grep _CUSTOM_CONFIG_SQL ${barCnf} 2>&1)
-    if [[ "${_CUSTOM_CONFIG_SQL_TEST}" =~ "_CUSTOM_CONFIG_SQL" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_CUSTOM_CONFIG_SQL_TEST}" =~ "_CUSTOM_CONFIG_SQL" ]]; then
       echo "_CUSTOM_CONFIG_SQL=${_CUSTOM_CONFIG_SQL}" >> ${barCnf}
     fi
 
     _SPEED_VALID_MAX_TEST=$(grep _SPEED_VALID_MAX ${barCnf} 2>&1)
-    if [[ "${_SPEED_VALID_MAX_TEST}" =~ "_SPEED_VALID_MAX" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_SPEED_VALID_MAX_TEST}" =~ "_SPEED_VALID_MAX" ]]; then
       echo "_SPEED_VALID_MAX=${_SPEED_VALID_MAX}" >> ${barCnf}
     fi
 
     _NGINX_DOS_LIMIT_TEST=$(grep _NGINX_DOS_LIMIT ${barCnf} 2>&1)
-    if [[ "${_NGINX_DOS_LIMIT_TEST}" =~ "_NGINX_DOS_LIMIT" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_NGINX_DOS_LIMIT_TEST}" =~ "_NGINX_DOS_LIMIT" ]]; then
       echo "_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}" >> ${barCnf}
     fi
 
     _CPU_SPIDER_RATIO_TEST=$(grep _CPU_SPIDER_RATIO ${barCnf} 2>&1)
-    if [[ "${_CPU_SPIDER_RATIO_TEST}" =~ "_CPU_SPIDER_RATIO" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_CPU_SPIDER_RATIO_TEST}" =~ "_CPU_SPIDER_RATIO" ]]; then
       echo "_CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO}" >> ${barCnf}
     fi
 
     _CPU_MAX_RATIO_TEST=$(grep _CPU_MAX_RATIO ${barCnf} 2>&1)
-    if [[ "${_CPU_MAX_RATIO_TEST}" =~ "_CPU_MAX_RATIO" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_CPU_MAX_RATIO_TEST}" =~ "_CPU_MAX_RATIO" ]]; then
       echo "_CPU_MAX_RATIO=${_CPU_MAX_RATIO}" >> ${barCnf}
     fi
 
     _CPU_CRIT_RATIO_TEST=$(grep _CPU_CRIT_RATIO ${barCnf} 2>&1)
-    if [[ "${_CPU_CRIT_RATIO_TEST}" =~ "_CPU_CRIT_RATIO" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_CPU_CRIT_RATIO_TEST}" =~ "_CPU_CRIT_RATIO" ]]; then
       echo "_CPU_CRIT_RATIO=${_CPU_CRIT_RATIO}" >> ${barCnf}
     fi
 
     _SYSTEM_UPGRADE_ONLY_TEST=$(grep _SYSTEM_UPGRADE_ONLY ${barCnf} 2>&1)
-    if [[ "${_SYSTEM_UPGRADE_ONLY_TEST}" =~ "_SYSTEM_UPGRADE_ONLY" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_SYSTEM_UPGRADE_ONLY_TEST}" =~ "_SYSTEM_UPGRADE_ONLY" ]]; then
       echo "_SYSTEM_UPGRADE_ONLY=${_SYSTEM_UPGRADE_ONLY}" >> ${barCnf}
     fi
 
     _AEGIR_UPGRADE_ONLY_TEST=$(grep _AEGIR_UPGRADE_ONLY ${barCnf} 2>&1)
-    if [[ "${_AEGIR_UPGRADE_ONLY_TEST}" =~ "_AEGIR_UPGRADE_ONLY" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_AEGIR_UPGRADE_ONLY_TEST}" =~ "_AEGIR_UPGRADE_ONLY" ]]; then
       echo "_AEGIR_UPGRADE_ONLY=${_AEGIR_UPGRADE_ONLY}" >> ${barCnf}
     fi
 
     _CUSTOM_CONFIG_REDIS_TEST=$(grep _CUSTOM_CONFIG_REDIS ${barCnf} 2>&1)
-    if [[ "${_CUSTOM_CONFIG_REDIS_TEST}" =~ "_CUSTOM_CONFIG_REDIS" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_CUSTOM_CONFIG_REDIS_TEST}" =~ "_CUSTOM_CONFIG_REDIS" ]]; then
       echo "_CUSTOM_CONFIG_REDIS=${_CUSTOM_CONFIG_REDIS}" >> ${barCnf}
     fi
 
     _NEWRELIC_KEY_TEST=$(grep _NEWRELIC_KEY ${barCnf} 2>&1)
-    if [[ "${_NEWRELIC_KEY_TEST}" =~ "_NEWRELIC_KEY" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_NEWRELIC_KEY_TEST}" =~ "_NEWRELIC_KEY" ]]; then
       if [ ! -z "${_NEWRELIC_KEY}" ]; then
         echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}" >> ${barCnf}
       else
@@ -1049,163 +1019,122 @@ barracuda_cnf() {
     fi
 
     _SCOUT_KEY_TEST=$(grep _SCOUT_KEY ${barCnf} 2>&1)
-    if [[ "${_SCOUT_KEY_TEST}" =~ "_SCOUT_KEY" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_SCOUT_KEY_TEST}" =~ "_SCOUT_KEY" ]]; then
       echo "_SCOUT_KEY=${_SCOUT_KEY}" >> ${barCnf}
     fi
 
     _EXTRA_PACKAGES_TEST=$(grep _EXTRA_PACKAGES ${barCnf} 2>&1)
-    if [[ "${_EXTRA_PACKAGES_TEST}" =~ "_EXTRA_PACKAGES" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_EXTRA_PACKAGES_TEST}" =~ "_EXTRA_PACKAGES" ]]; then
       echo "_EXTRA_PACKAGES=${_EXTRA_PACKAGES}" >> ${barCnf}
     fi
 
     _PHP_EXTRA_CONF_TEST=$(grep _PHP_EXTRA_CONF ${barCnf} 2>&1)
-    if [[ "${_PHP_EXTRA_CONF_TEST}" =~ "_PHP_EXTRA_CONF" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_PHP_EXTRA_CONF_TEST}" =~ "_PHP_EXTRA_CONF" ]]; then
       echo "_PHP_EXTRA_CONF=\"${_PHP_EXTRA_CONF}\"" >> ${barCnf}
     fi
 
     _PHP_FPM_DENY_TEST=$(grep _PHP_FPM_DENY ${barCnf} 2>&1)
-    if [[ "${_PHP_FPM_DENY_TEST}" =~ "_PHP_FPM_DENY" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_PHP_FPM_DENY_TEST}" =~ "_PHP_FPM_DENY" ]]; then
       echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\"" >> ${barCnf}
     fi
 
     _STRONG_PASSWORDS_TEST=$(grep _STRONG_PASSWORDS ${barCnf} 2>&1)
-    if [[ "${_STRONG_PASSWORDS_TEST}" =~ "_STRONG_PASSWORDS" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_STRONG_PASSWORDS_TEST}" =~ "_STRONG_PASSWORDS" ]]; then
       echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}" >> ${barCnf}
     fi
 
     _DB_BINARY_LOG_TEST=$(grep _DB_BINARY_LOG ${barCnf} 2>&1)
-    if [[ "${_DB_BINARY_LOG_TEST}" =~ "_DB_BINARY_LOG" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_DB_BINARY_LOG_TEST}" =~ "_DB_BINARY_LOG" ]]; then
       echo "_DB_BINARY_LOG=${_DB_BINARY_LOG}" >> ${barCnf}
     fi
 
     _INNODB_LOG_FILE_SIZE_TEST=$(grep _INNODB_LOG_FILE_SIZE ${barCnf} 2>&1)
-    if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "_INNODB_LOG_FILE_SIZE" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "_INNODB_LOG_FILE_SIZE" ]]; then
       echo "_INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE}" >> ${barCnf}
     fi
 
     _DB_ENGINE_TEST=$(grep _DB_ENGINE ${barCnf} 2>&1)
-    if [[ "${_DB_ENGINE_TEST}" =~ "_DB_ENGINE" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_DB_ENGINE_TEST}" =~ "_DB_ENGINE" ]]; then
       echo "_DB_ENGINE=${_DB_ENGINE}" >> ${barCnf}
     fi
 
     _REDIS_LISTEN_MODE_TEST=$(grep _REDIS_LISTEN_MODE ${barCnf} 2>&1)
-    if [[ "${_REDIS_LISTEN_MODE_TEST}" =~ "_REDIS_LISTEN_MODE" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_REDIS_LISTEN_MODE_TEST}" =~ "_REDIS_LISTEN_MODE" ]]; then
       echo "_REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE}" >> ${barCnf}
     fi
 
     _NGINX_LDAP_TEST=$(grep _NGINX_LDAP ${barCnf} 2>&1)
-    if [[ "${_NGINX_LDAP_TEST}" =~ "_NGINX_LDAP" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_NGINX_LDAP_TEST}" =~ "_NGINX_LDAP" ]]; then
       echo "_NGINX_LDAP=${_NGINX_LDAP}" >> ${barCnf}
     fi
 
     _NGINX_NAXSI_TEST=$(grep _NGINX_NAXSI ${barCnf} 2>&1)
-    if [[ "${_NGINX_NAXSI_TEST}" =~ "_NGINX_NAXSI" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_NGINX_NAXSI_TEST}" =~ "_NGINX_NAXSI" ]]; then
       echo "_NGINX_NAXSI=${_NGINX_NAXSI}" >> ${barCnf}
     fi
 
     _NGINX_SPDY_TEST=$(grep _NGINX_SPDY ${barCnf} 2>&1)
-    if [[ "${_NGINX_SPDY_TEST}" =~ "_NGINX_SPDY" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_NGINX_SPDY_TEST}" =~ "_NGINX_SPDY" ]]; then
       echo "_NGINX_SPDY=${_NGINX_SPDY}" >> ${barCnf}
     fi
 
     _NGINX_FORWARD_SECRECY_TEST=$(grep _NGINX_FORWARD_SECRECY ${barCnf} 2>&1)
-    if [[ "${_NGINX_FORWARD_SECRECY_TEST}" =~ "_NGINX_FORWARD_SECRECY" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_NGINX_FORWARD_SECRECY_TEST}" =~ "_NGINX_FORWARD_SECRECY" ]]; then
       echo "_NGINX_FORWARD_SECRECY=${_NGINX_FORWARD_SECRECY}" >> ${barCnf}
     fi
 
+    _PHP_IONCUBE_TEST=$(grep _PHP_IONCUBE ${barCnf} 2>&1)
+    if [[ ! "${_PHP_IONCUBE_TEST}" =~ "_PHP_IONCUBE" ]]; then
+      echo "_PHP_IONCUBE=${_PHP_IONCUBE}" >> ${barCnf}
+    fi
+
     _PHP_GEOS_TEST=$(grep _PHP_GEOS ${barCnf} 2>&1)
-    if [[ "${_PHP_GEOS_TEST}" =~ "_PHP_GEOS" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_PHP_GEOS_TEST}" =~ "_PHP_GEOS" ]]; then
       echo "_PHP_GEOS=${_PHP_GEOS}" >> ${barCnf}
     fi
 
     _PHP_MONGODB_TEST=$(grep _PHP_MONGODB ${barCnf} 2>&1)
-    if [[ "${_PHP_MONGODB_TEST}" =~ "_PHP_MONGODB" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_PHP_MONGODB_TEST}" =~ "_PHP_MONGODB" ]]; then
       echo "_PHP_MONGODB=${_PHP_MONGODB}" >> ${barCnf}
     fi
 
     _PERMISSIONS_FIX_TEST=$(grep _PERMISSIONS_FIX ${barCnf} 2>&1)
-    if [[ "${_PERMISSIONS_FIX_TEST}" =~ "_PERMISSIONS_FIX" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_PERMISSIONS_FIX_TEST}" =~ "_PERMISSIONS_FIX" ]]; then
       echo "_PERMISSIONS_FIX=${_PERMISSIONS_FIX}" >> ${barCnf}
     fi
 
     _MODULES_FIX_TEST=$(grep _MODULES_FIX ${barCnf} 2>&1)
-    if [[ "${_MODULES_FIX_TEST}" =~ "_MODULES_FIX" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_MODULES_FIX_TEST}" =~ "_MODULES_FIX" ]]; then
       echo "_MODULES_FIX=${_MODULES_FIX}" >> ${barCnf}
     fi
 
     _MODULES_SKIP_TEST=$(grep _MODULES_SKIP ${barCnf} 2>&1)
-    if [[ "${_MODULES_SKIP_TEST}" =~ "_MODULES_SKIP" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_MODULES_SKIP_TEST}" =~ "_MODULES_SKIP" ]]; then
       echo "_MODULES_SKIP=\"${_MODULES_SKIP}\"" >> ${barCnf}
     fi
 
     _SSL_FROM_SOURCES_TEST=$(grep _SSL_FROM_SOURCES ${barCnf} 2>&1)
-    if [[ "${_SSL_FROM_SOURCES_TEST}" =~ "_SSL_FROM_SOURCES" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_SSL_FROM_SOURCES_TEST}" =~ "_SSL_FROM_SOURCES" ]]; then
       echo "_SSL_FROM_SOURCES=${_SSL_FROM_SOURCES}" >> ${barCnf}
     fi
 
     _SSH_FROM_SOURCES_TEST=$(grep _SSH_FROM_SOURCES ${barCnf} 2>&1)
-    if [[ "${_SSH_FROM_SOURCES_TEST}" =~ "_SSH_FROM_SOURCES" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_SSH_FROM_SOURCES_TEST}" =~ "_SSH_FROM_SOURCES" ]]; then
       echo "_SSH_FROM_SOURCES=${_SSH_FROM_SOURCES}" >> ${barCnf}
     fi
 
     _RESERVED_RAM_TEST=$(grep _RESERVED_RAM ${barCnf} 2>&1)
-    if [[ "${_RESERVED_RAM_TEST}" =~ "_RESERVED_RAM" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_RESERVED_RAM_TEST}" =~ "_RESERVED_RAM" ]]; then
       echo "_RESERVED_RAM=${_RESERVED_RAM}" >> ${barCnf}
     fi
 
     _STRICT_BIN_PERMISSIONS_TEST=$(grep _STRICT_BIN_PERMISSIONS ${barCnf} 2>&1)
-    if [[ "${_STRICT_BIN_PERMISSIONS_TEST}" =~ "_STRICT_BIN_PERMISSIONS" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_STRICT_BIN_PERMISSIONS_TEST}" =~ "_STRICT_BIN_PERMISSIONS" ]]; then
       echo "_STRICT_BIN_PERMISSIONS=${_STRICT_BIN_PERMISSIONS}" >> ${barCnf}
     fi
 
     _DB_SERIES_TEST=$(grep _DB_SERIES ${barCnf} 2>&1)
-    if [[ "${_DB_SERIES_TEST}" =~ "_DB_SERIES" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_DB_SERIES_TEST}" =~ "_DB_SERIES" ]]; then
       echo "_DB_SERIES=${_DB_SERIES}" >> ${barCnf}
     fi
 
@@ -1266,7 +1195,13 @@ barracuda_cnf() {
 
     sleep 1
     _CHECK_HOST=$(uname -n 2>&1)
-    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g" ${barCnf}
+    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"               ${barCnf}
+    ### Force HTTP/2 or SPDY plus PFS on supported systems
+    sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
+    sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
+    sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g"     ${barCnf}
+    ### Force latest OpenSSH from sources on supported systems
+    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -1282,10 +1217,7 @@ barracuda_cnf() {
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
         sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"  ${barCnf}
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
-        sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"         ${barCnf}
-        sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                               ${barCnf}
         ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                                ${barCnf}
-        sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                   ${barCnf}
         sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   ${barCnf}
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                /root/.*.octopus.cnf &> /dev/null
@@ -1472,6 +1404,7 @@ barracuda_cnf() {
 # Running aptitude full-upgrade.
 run_aptitude_full_upgrade() {
   msg "INFO: Running aptitude full-upgrade..."
+  rm -f /etc/apt/sources.list.d/openssl.list
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
     || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
@@ -1484,14 +1417,16 @@ run_aptitude_full_upgrade() {
     fi
   fi
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
-  st_runner "aptitude update -y" &> /dev/null
+  st_runner "apt-get update -qq" &> /dev/null
   _THIS_DB_SERVER_TEST=$(mysql -V 2>&1)
   if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]] \
     && [ ! -e "${pthLog}/fixed-mytop-mariadb.log" ]; then
     st_runner "aptitude remove mytop -y" &> /dev/null
     st_runner "apt-get purge mytop -y --force-yes -qq" &> /dev/null
     rm -f /usr/bin/mytop
-    touch ${pthLog}/fixed-mytop-mariadb.log
+    if [ -e "${pthLog}" ]; then
+      touch ${pthLog}/fixed-mytop-mariadb.log
+    fi
   fi
   st_runner "aptitude full-upgrade -f -y -q \
     -o Dpkg::Options::=--force-confdef \
@@ -1500,31 +1435,6 @@ run_aptitude_full_upgrade() {
     && [ -e "${pthLog}/fixed-mytop-mariadb.log" ]; then
     st_runner "${_INSTAPP} mytop" 2> /dev/null
   fi
-}
-
-#
-# Running silent aptitude full-upgrade.
-run_silent_aptitude_full_upgrade() {
-  msg "INFO: Running silent aptitude full-upgrade..."
-  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
-    || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
-    msg "WARN: Installed keyring is broken, forced reinstall required"
-    if [ "${_THIS_OS}" = "Debian" ]; then
-      mrun "apt-get install debian-keyring ${forCer}" 2> /dev/null
-      mrun "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
-    else
-      mrun "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
-    fi
-  fi
-  mrun "dpkg --configure --force-all -a" 2> /dev/null
-  mrun "apt-get update -y" 2> /dev/null
-  mrun "dpkg --configure --force-all -a" 2> /dev/null
-  mrun "apt-get install aptitude ${forCer}" 2> /dev/null
-  mrun "apt-get install util-linux ${forCer}" 2> /dev/null
-  mrun "apt-get install libmagickwand-dev ${forCer}" 2> /dev/null
-  mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
-    -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
 }
 
 #
@@ -1544,6 +1454,8 @@ do_install_latest_git() {
     ln -sf /usr/local/bin/git /usr/bin/git
     cd /var/opt
     touch ${pthLog}/git-${_GIT_VRN}-${_X_VERSION}-${_NOW}.log
+    echo "git hold" | dpkg --set-selections
+    echo "git-core hold" | dpkg --set-selections
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Git ${_GIT_VRN} already installed from sources, OK"
@@ -1559,7 +1471,6 @@ check_install_latest_git() {
     _GIT_FORCE_REINSTALL=YES
   fi
   if [[ "${_XTRAS_LIST}" =~ "GIT" ]] \
-    || [ "${_OSV}" = "lenny" ] \
     || [ "${_OSV}" = "lucid" ] \
     || [ "$_SSB_SRC" = "YES" ] \
     || [ "$_GIT_FORCE_REINSTALL" = "YES" ]; then
@@ -1581,35 +1492,17 @@ check_apt_updates() {
   for Update in `/usr/bin/apt-get -q -y --force-yes --allow-unauthenticated \
     -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`; do
     case $Update in
-      *libcurl*)    _UP_CRL=YES ;;
+      *libcurl*)    _UP_PHP=YES ;;
       *libmysql*)   _UP_PHP=YES ;;
       *libssl*)     _UP_PHP=YES ;;
       *linux-*)     _UP_LNX=YES ;;
       *mariadb*)    _UP_PHP=YES ;;
       *newrelic*)   _UP_NRC=YES ;;
       *openjdk*)    _UP_JDK=YES ;;
-      *openssl*)    _YP_PHP=YES ;;
+      *openssl*)    _UP_PHP=YES ;;
       *)  ;;
     esac
   done
-  if [ "$_YP_PHP" = "YES" ]; then
-    if [ "${_NGINX_SPDY}" = "YES" ] \
-      || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
-      || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
-      if [ "${_OSV}" = "wheezy" ] \
-        || [ "${_OSV}" = "trusty" ] \
-        || [ "${_OSV}" = "precise" ]; then
-        _UP_PHP=YES
-      else
-        _UP_PHP=NO
-      fi
-    else
-      _UP_PHP=YES
-    fi
-  fi
-  if [ "$_UP_CRL" = "YES" ]; then
-    _UP_PHP=YES
-  fi
 }
 
 #
@@ -1750,26 +1643,6 @@ update_sources_list() {
       _APT_SOURCES_REWRITE=YES
     fi
     if [ ! -z "${_LOCAL_UBUNTU_MIRROR}" ]; then
-      _APT_SOURCES_REWRITE=YES
-    fi
-    if [ "${_OSV}" = "lenny" ]; then
-      sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" ${aptLiSys} &> /dev/null
-      sed -i "s/ftp.*debian.org/archive.debian.org/g" \
-        ${aptLiSys} &> /dev/null
-      sed -i "s/volatile.debian.org/archive.debian.org/g" \
-        ${aptLiSys} &> /dev/null
-    fi
-    if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-      && [ "${_OSV}" = "squeeze" ]; then
-      run_silent_aptitude_full_upgrade
-      _LOC_OSV=squeeze
-      _OSV=wheezy
-      _APT_SOURCES_REWRITE=YES
-    elif [ "${_LENNY_TO_SQUEEZE}" = "YES" ] \
-      && [ "${_OSV}" = "lenny" ]; then
-      run_silent_aptitude_full_upgrade
-      _LOC_OSV=lenny
-      _OSV=squeeze
       _APT_SOURCES_REWRITE=YES
     fi
     if [ "${_OSV}" = "squeeze" ]; then
@@ -2004,14 +1877,15 @@ update_sources_list() {
     fi
   fi
   ###--------------------###
-  apt-get update &> /dev/null
+  rm -f /etc/apt/sources.list.d/openssl.list
+  apt-get update -qq &> /dev/null
   ###--------------------###
 }
 
 #
 # Install OpenSSH from sources.
 install_ssh_src() {
-  _SSH_GET_DPKG=$(dpkg --get-selections | grep ssh | grep hold 2>&1)
+  _SSH_GET_DPKG=$(dpkg --get-selections | grep ssh | grep 'hold$' 2>&1)
   _SSH_INSTALL_REQUIRED=NO
   _SSH_ITD=$(ssh -V 2>&1 \
     | tr -d "\n" \
@@ -2033,24 +1907,27 @@ install_ssh_src() {
     rm -f -r openssh*
     get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
     cd /var/opt/openssh-${_OPENSSH_VRN}
-    st_runner "sh ./configure --without-openssl-header-check --prefix=/usr \
+    st_runner "sh ./configure \
+      --with-openssl \
+      --without-openssl-header-check \
+      --prefix=/usr \
       --with-pam" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     mrun "service ssh restart" &> /dev/null
     if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]]; then
-      aptitude hold openssh-server &> /dev/null
-      aptitude hold openssh-client &> /dev/null
-      aptitude hold ssh &> /dev/null
+      ### aptitude hold openssh-server &> /dev/null
+      ### aptitude hold openssh-client &> /dev/null
+      ### aptitude hold ssh &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections
       echo "openssh-client hold" | dpkg --set-selections
       echo "ssh hold" | dpkg --set-selections
     fi
   else
     if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]]; then
-      aptitude hold openssh-server &> /dev/null
-      aptitude hold openssh-client &> /dev/null
-      aptitude hold ssh &> /dev/null
+      ### aptitude hold openssh-server &> /dev/null
+      ### aptitude hold openssh-client &> /dev/null
+      ### aptitude hold ssh &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections
       echo "openssh-client hold" | dpkg --set-selections
       echo "ssh hold" | dpkg --set-selections
@@ -2063,7 +1940,7 @@ install_ssh_src() {
 # Install cURL from sources.
 install_curl_src() {
   _CURL_INSTALL_REQUIRED=NO
-  _CURL_GET_DPKG=$(dpkg --get-selections | grep curl | grep hold 2>&1)
+  _CURL_GET_DPKG=$(dpkg --get-selections | grep curl | grep 'hold$' 2>&1)
   _CURL_ITD=$(curl --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
@@ -2080,28 +1957,9 @@ install_curl_src() {
     | awk '{ print $1}' \
     | cut -d"/" -f2 \
     | awk '{ print $1}' 2>&1)
-  if [ "${_CURL_ITD}" = "${_CURL_VRN}" ]; then
-    if [ "$_CURL_SSL_ITD" = "${_OPENSSL_VRN}" ]; then
+  if [ "${_CURL_ITD}" != "${_CURL_VRN}" ]; then
+    if [ "${_OSV}" = "none" ]; then
       _CURL_INSTALL_REQUIRED=NO
-    else
-      if [ "${_OSV}" = "wheezy" ] \
-        || [ "${_OSV}" = "trusty" ] \
-        || [ "${_OSV}" = "precise" ]; then
-        _DO_NOTHING=YES
-      else
-        _CURL_INSTALL_REQUIRED=YES
-        msg "INFO: Installed cURL ${_CURL_ITD} with OpenSSL $_CURL_SSL_ITD"
-        msg "INFO: cURL rebuild will be forced"
-        sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g" /root/.barracuda.cnf
-        echo _GIT_FORCE_REINSTALL=YES >> /root/.barracuda.cnf
-        echo _SSL_FORCE_REINSTALL=YES >> /root/.barracuda.cnf
-      fi
-    fi
-  else
-    if [ "${_OSV}" = "wheezy" ] \
-      || [ "${_OSV}" = "trusty" ] \
-      || [ "${_OSV}" = "precise" ]; then
-      _DO_NOTHING=YES
     else
       _CURL_INSTALL_REQUIRED=YES
       msg "INFO: Installed cURL version ${_CURL_ITD}, upgrade required"
@@ -2119,62 +1977,43 @@ install_curl_src() {
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version ${_CURL_ITD}, rebuild forced"
   fi
-  if [ "${_OSV}" = "wheezy" ] \
-    || [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "precise" ]; then
-    _CURL_INSTALL_REQUIRED=NO
+  if [ "${_OSV}" = "precise" ] \
+    || [ "${_OSV}" = "lucid" ]; then
+    touch /root/.use.curl.from.packages.cnf
   fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ]; then
     ###--------------------###
-    if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
-      echo "libcurl3 install" | dpkg --set-selections
-      echo "libcurl3-gnutls install" | dpkg --set-selections
-      echo "libcurl4-openssl-dev install" | dpkg --set-selections
-      aptitude install libcurl3 -y &> /dev/null
-      aptitude install libcurl3-gnutls -y &> /dev/null
-      aptitude install libcurl4-openssl-dev -y &> /dev/null
-      echo "curl hold" | dpkg --set-selections
-      aptitude hold curl &> /dev/null
-    fi
-    msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
-    cd /var/opt
-    rm -f -r curl*
-    get_dev_src "curl-${_CURL_VRN}.tar.gz"
-    cd /var/opt/curl-${_CURL_VRN}
-    st_runner "sh ./configure --prefix=/usr" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    _CURL_ALREADY_REBUILT=YES
-    _UP_PHP=YES
-  else
-    ###--------------------###
-    if [ "${_OSV}" = "wheezy" ] \
-      || [ "${_OSV}" = "trusty" ] \
-      || [ "${_OSV}" = "precise" ]; then
-      if [ "${_CURL_ITD}" = "${_CURL_LIB_ITD}" ]; then
-        _DO_NOTHING=YES
-      else
-        if [ "${_OSV}" = "trusty" ] \
-          || [ "${_OSV}" = "precise" ]; then
-          apt-mark unhold curl &> /dev/null
-        fi
-        if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
-          echo "curl install" | dpkg --set-selections
-          apt-get install curl -y --force-yes --reinstall &> /dev/null
-        fi
+    echo "libcurl3 install" | dpkg --set-selections
+    echo "libcurl3-gnutls install" | dpkg --set-selections
+    echo "libcurl4-openssl-dev install" | dpkg --set-selections
+    mrun "${_INSTALL} libcurl3" 2> /dev/null
+    mrun "${_INSTALL} libcurl3-gnutls" 2> /dev/null
+    mrun "${_INSTALL} libcurl4-openssl-dev" 2> /dev/null
+    if [ -e "/root/.use.curl.from.packages.cnf" ]; then
+      if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
+        echo "curl install" | dpkg --set-selections
+      fi
+      if [ -z "$_CURL_ALREADY_REBUILT" ]; then
+        apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
       fi
     else
       if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
-        echo "libcurl3 install" | dpkg --set-selections
-        echo "libcurl3-gnutls install" | dpkg --set-selections
-        echo "libcurl4-openssl-dev install" | dpkg --set-selections
-        aptitude install libcurl3 -y &> /dev/null
-        aptitude install libcurl3-gnutls -y &> /dev/null
-        aptitude install libcurl4-openssl-dev -y &> /dev/null
         echo "curl hold" | dpkg --set-selections
-        aptitude hold curl &> /dev/null
       fi
+      msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
+      cd /var/opt
+      rm -f -r curl*
+      wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
+      extract_archive "curl-${_CURL_VRN}.tar.gz"
+      cd /var/opt/curl-${_CURL_VRN}
+      mrun "sh ./configure \
+        --with-ssl \
+        --prefix=/usr" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
     fi
+    _CURL_ALREADY_REBUILT=YES
+    _UP_PHP=YES
   fi
 }
 
@@ -2182,9 +2021,6 @@ install_curl_src() {
 # Install OpenSSL from sources.
 install_ssl_src() {
   _SSL_INSTALL_REQUIRED=NO
-  _SSL_GET_DPKG=$(dpkg --get-selections \
-    | grep openssl \
-    | grep hold 2>&1)
   _SSL_ITD=$(openssl version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
@@ -2236,42 +2072,36 @@ install_ssl_src() {
     cd /var/opt/openssl-${_OPENSSL_VRN}
     _X86_64_IF=$(uname -m 2>&1)
     if [ "$_X86_64_IF" = "x86_64" ]; then
-      st_runner "sh ./config --prefix=/usr zlib-dynamic --openssldir=/etc/ssl \
+      mrun "sh ./config zlib-dynamic \
+        --prefix=/usr \
+        --openssldir=/usr \
         shared enable-ec_nistp_64_gcc_128" 2> /dev/null
-      st_runner "make depend" 2> /dev/null
     else
-      st_runner "sh ./config --prefix=/usr zlib-dynamic --openssldir=/etc/ssl \
+      mrun "sh ./config zlib-dynamic \
+        --prefix=/usr \
+        --openssldir=/usr \
         shared" 2> /dev/null
     fi
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    mrun "make depend" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     ###--------------------###
-    if [[ ! "$_SSL_GET_DPKG" =~ "hold" ]]; then
-      aptitude install libssl-dev -y &> /dev/null
-      aptitude hold openssl &> /dev/null
-      aptitude hold zlibc &> /dev/null
-      aptitude hold zlib1g &> /dev/null
-      aptitude hold zlib1g-dev &> /dev/null
-      echo "libssl-dev install" | dpkg --set-selections
+    _SSL_GET_DPKG=$(dpkg --get-selections \
+      | grep openssl \
+      | grep 'hold$' 2>&1)
+    _ZLB_GET_DPKG=$(dpkg --get-selections \
+      | grep zlibc \
+      | grep 'hold$' 2>&1)
+    if [[ ! "${_SSL_GET_DPKG}" =~ "hold" ]]; then
       echo "openssl hold" | dpkg --set-selections
-      echo "zlibc hold" | dpkg --set-selections
-      echo "zlib1g hold" | dpkg --set-selections
-      echo "zlib1g-dev hold" | dpkg --set-selections
     fi
-  else
-    if [[ ! "$_SSL_GET_DPKG" =~ "hold" ]]; then
-      aptitude install libssl-dev -y &> /dev/null
-      aptitude hold openssl &> /dev/null
-      aptitude hold zlibc &> /dev/null
-      aptitude hold zlib1g &> /dev/null
-      aptitude hold zlib1g-dev &> /dev/null
-      echo "libssl-dev install" | dpkg --set-selections
-      echo "openssl hold" | dpkg --set-selections
+    if [[ ! "$_ZLB_GET_DPKG" =~ "hold" ]]; then
       echo "zlibc hold" | dpkg --set-selections
       echo "zlib1g hold" | dpkg --set-selections
       echo "zlib1g-dev hold" | dpkg --set-selections
     fi
   fi
+  fix_libssl
 }
 
 #
@@ -2569,13 +2399,11 @@ finale() {
     _L_ST="upgrade"
   fi
   msg "CARD: Now charging your credit card for this magic show..."
-  mrun "sleep 5"
-  msg "CARD: Thank you for entering your correct PIN code..."
-  mrun "sleep 5"
+  mrun "sleep 2"
   msg "CARD: It will take a moment to process your payment..."
-  mrun "sleep 8"
-  msg "JOKE: Just kidding !!! Enjoy your Aegir Hosting System :)"
   mrun "sleep 5"
+  msg "JOKE: Just kidding !!! Enjoy your Aegir Hosting System :)"
+  mrun "sleep 3"
   echo " "
   if [ "$_UP_LNX" = "YES" ]; then
     msg "ALRT! Your OS kernel has been upgraded!"
@@ -2692,10 +2520,17 @@ finale() {
   chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt opt \
     sbin selinux srv sys usr var share run &> /dev/null
   chmod 700 root &> /dev/null
+  if [ "${_STATUS}" = "INIT" ]; then
+    killall -9 bash &> /dev/null
+  fi
   msg "BYE!"
 }
 
 install_with_aptitude_deps() {
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "squeeze" ]; then
+    _DO_FIX=YES
+  fi
   st_runner "${_INSTAPP} ${_DEBDEPS}" 2> /dev/null
   if [ -x "/usr/bin/gpg2" ]; then
     _GPG=gpg2
@@ -2703,21 +2538,22 @@ install_with_aptitude_deps() {
     _GPG=gpg
   fi
   if [[ "${_XTRAS_LIST}" =~ "FMG" ]]; then
-    if [ "${_OSV}" = "squeeze" ]; then
+    if [ "${_OSV}" = "wheezy" ] \
+      || [ "${_DO_FIX}" = "YES" ] \
+      || [ "${_OSV}" = "trusty" ] \
+      || [ "${_OSV}" = "precise" ]; then
+      _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-53"
+    elif [ "${_OSV}" = "squeeze" ]; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec52"
     elif [ "${_OSV}" = "lucid" ]; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-52"
-    elif [ "${_OSV}" = "wheezy" ] || [ "${_OSV}" = "trusty" ] \
-      || [ "${_OSV}" = "precise" ]; then
-      _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-53"
     else
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec51"
     fi
   else
     _EXTRA_APT="tree"
   fi
-  st_runner "apt-get install $_EXTRA_APT -f -y --force-yes -q \
-    --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+  st_runner "apt-get install ${_EXTRA_APT} ${nrmUpArg}" 2> /dev/null
   if [ -e "/etc/init.d/php5-fpm" ]; then
     mrun "service php5-fpm stop" &> /dev/null
     mrun "update-rc.d -f php5-fpm remove" &> /dev/null
@@ -2727,6 +2563,7 @@ install_with_aptitude_deps() {
 basic_packages_install_on_init() {
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Installing some basic tools now, please wait..."
+    rm -f /etc/apt/sources.list.d/openssl.list
     _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
     if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
       || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
@@ -2738,7 +2575,7 @@ basic_packages_install_on_init() {
         apt-get install ubuntu-keyring ${forCer} &> /dev/null
       fi
     fi
-    apt-get update &> /dev/null
+    apt-get update -qq &> /dev/null
     ${_INITINS} locales &> /dev/null
     fix_locales
     ${_INITINS} lsb-release &> /dev/null
@@ -2762,7 +2599,8 @@ more_packages_install_on_init() {
           ${aptLiSys} &> /dev/null
       fi
     fi
-    apt-get update &> /dev/null
+    rm -f /etc/apt/sources.list.d/openssl.list
+    apt-get update -qq &> /dev/null
     ${_INITINS} locales &> /dev/null
     fix_locales
     ${_INITINS} git-core &> /dev/null
@@ -2773,6 +2611,10 @@ more_packages_install_on_init() {
 
 if_squeeze_to_wheezy() {
   if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_OSV}" = "squeeze" ]; then
+    _LOC_OSV=squeeze
+  fi
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
     && [ "${_LOC_OSV}" = "squeeze" ]; then
     msg "WARN: Squeeze to Wheezy upgrade will start in 60 seconds..."
     msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
@@ -2782,12 +2624,16 @@ if_squeeze_to_wheezy() {
     fi
     check_dns_settings
     if [ "${_USE_PROVIDER_DNS}" = "NO" ]; then
-      mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
+      if [ -e "/etc/resolv.conf" ]; then
+        mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
+      fi
+      rm -f /etc/resolv.conf
       echo "nameserver 8.8.8.8" >/etc/resolv.conf
       echo "nameserver 8.8.4.4" >>/etc/resolv.conf
-      cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
+      if [ -e "/etc/resolv.conf.pre-dist-upgrade" ]; then
+        cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
+      fi
     fi
-    mv -f /var/xdrago /var/xdrago_wait &> /dev/null
     mv -f /var/xdrago /var/xdrago_wait &> /dev/null
     msg "WARN: Too late! Squeeze to Wheezy upgrade in progress..."
     msg "HINT: Run tail -f ${_LOG}"
@@ -2803,34 +2649,18 @@ if_squeeze_to_wheezy() {
       mv /etc/init.d/tomcat /etc/init.d/offtomcat
       kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
     fi
-    echo "curl install" | dpkg --set-selections
-    echo "libssl-dev install" | dpkg --set-selections
-    echo "openssh-client install" | dpkg --set-selections
-    echo "openssh-server install" | dpkg --set-selections
-    echo "openssl install" | dpkg --set-selections
-    echo "ssh install" | dpkg --set-selections
-    echo "zlib1g install" | dpkg --set-selections
-    echo "zlib1g-dev install" | dpkg --set-selections
-    echo "zlibc install" | dpkg --set-selections
-    mrun "apt-get install openssl install ${forCer}"        &> /dev/null
-    mrun "apt-get install libssl-dev install ${forCer}"     &> /dev/null
-    mrun "apt-get install curl install ${forCer}"           &> /dev/null
-    mrun "apt-get install openssh-client install ${forCer}" &> /dev/null
-    mrun "apt-get install openssh-server install ${forCer}" &> /dev/null
-    mrun "apt-get install ssh install ${forCer}"            &> /dev/null
-    mrun "apt-get install zlib1g install ${forCer}"         &> /dev/null
-    mrun "apt-get install zlib1g-dev install ${forCer}"     &> /dev/null
-    mrun "apt-get install zlibc install ${forCer}"          &> /dev/null
-    mrun "apt-get remove collectd -y --force-yes -qq"       &> /dev/null
-    mrun "apt-get remove nginx-extras -y --force-yes -qq"   &> /dev/null
-    mrun "apt-get remove nginx -y --force-yes -qq"          &> /dev/null
-    mrun "apt-get remove nginx-common -y --force-yes -qq"   &> /dev/null
-    mrun "apt-get remove nginx-full -y --force-yes -qq"     &> /dev/null
+    mrun "apt-get update -qq" 2> /dev/null
+    mrun "apt-get remove collectd      -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove libc-client2007b-dev -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove nginx-extras  -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove nginx         -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove nginx-common  -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove nginx-full    -y --force-yes -qq" 2> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
-    mrun "aptitude remove php5 \
+    mrun "apt-get remove php5 \
                           php5-cgi \
                           php5-curl \
                           php5-fpm \
@@ -2845,57 +2675,105 @@ if_squeeze_to_wheezy() {
                           php5-mysql \
                           php5-sqlite \
                           php5-xmlrpc \
-                          php5-xsl -y" &> /dev/null
-    mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
-    mrun "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
-    mrun "aptitude remove php5-cli php5-common -y" &> /dev/null
-    mrun "aptitude remove php5-apc -y" &> /dev/null
-    mrun "aptitude remove php-apc -y" &> /dev/null
-    mrun "aptitude remove apache2.2-common -y" &> /dev/null
-    mrun "aptitude remove apache2-utils apache2.2-bin -y" &> /dev/null
-    mrun "aptitude install lsof -y" &> /dev/null
-    mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
-    if [ -e "/etc/php5/conf.d" ]; then
-      rm -f /etc/php5/conf.d/{opcache.ini,imagick.ini,memcached.ini}
-      rm -f /etc/php5/conf.d/{apc.ini,redis.ini,suhosin.ini,newrelic.ini}
+                          php5-xsl     -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove phpunit       -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php-pear      -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php-benchmark -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php5-cli      -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php5-common   -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php5-apc      -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php-apc       -y --force-yes -qq" 2> /dev/null
+    echo "curl install"           | dpkg --set-selections
+    echo "git install"            | dpkg --set-selections
+    echo "git-core install"       | dpkg --set-selections
+    echo "libssl-dev install"     | dpkg --set-selections
+    echo "openssh-client install" | dpkg --set-selections
+    echo "openssh-server install" | dpkg --set-selections
+    echo "openssl install"        | dpkg --set-selections
+    echo "ssh install"            | dpkg --set-selections
+    echo "zlib1g install"         | dpkg --set-selections
+    echo "zlib1g-dev install"     | dpkg --set-selections
+    echo "zlibc install"          | dpkg --set-selections
+    mrun "${_INSTALL} zlib1g"     2> /dev/null
+    mrun "${_INSTALL} zlib1g-dev" 2> /dev/null
+    mrun "${_INSTALL} zlibc"      2> /dev/null
+    mrun "${_INSTALL} openssl"    2> /dev/null
+    mrun "${_INSTALL} libssl-dev" 2> /dev/null
+    mrun "apt-get install curl ${forCer}"           2> /dev/null
+    mrun "apt-get install git ${forCer}"            2> /dev/null
+    mrun "apt-get install git-core ${forCer}"       2> /dev/null
+    mrun "apt-get install openssh-client ${forCer}" 2> /dev/null
+    mrun "apt-get install openssh-server ${forCer}" 2> /dev/null
+    mrun "apt-get install ssh ${forCer}"            2> /dev/null
+    mrun "apt-get upgrade ${nrmUpArg}"              2> /dev/null
+    mrun "apt-get dist-upgrade ${nrmUpArg}"         2> /dev/null
+    ### Check if we can continue
+    _AUDIT_DPKG=$(dpkg --audit 2>&1)
+    if [ ! -z "${_AUDIT_DPKG}" ]; then
+      msg "ALRT! I can not continue until dpkg --audit is clean"
+      msg "ALRT! ${_AUDIT_DPKG}"
+      msg "ALRT! Aborting installer NOW!"
+      clean_pid_exit
     fi
-    mrun "apt-get purge svscan -y" &> /dev/null
-    mrun "apt-get purge pound -y" &> /dev/null
-    mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
-    sed -i "s/.*proposed-updates.*//g" /etc/apt/sources.list
-    sed -i "s/squeeze/wheezy/g"  /etc/apt/sources.list.d/* &> /dev/null
-    mrun "apt-get update -y --force-yes" &> /dev/null
-    mrun "apt-get upgrade -f -y --force-yes -q \
-      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
-    mrun "apt-get install apt dpkg aptitude ${forCer} -q \
-      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
-    mrun "apt-get dist-upgrade -f -y --force-yes -q \
-      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+    _HOLD_TEST_DPKG=$(dpkg --get-selections | grep 'hold$' 2>&1)
+    if [ ! -z "${_HOLD_TEST_DPKG}" ]; then
+      msg "ALRT! I can not continue until these packages are un-hold"
+      msg "ALRT! ${_HOLD_TEST_DPKG}"
+      msg "ALRT! Aborting installer NOW!"
+      clean_pid_exit
+    fi
+    _HOLD_TEST_ATE=$(aptitude search "~ahold" 2>&1)
+    if [ ! -z "${_HOLD_TEST_ATE}" ]; then
+      msg "ALRT! I can not continue until these packages are un-hold"
+      msg "ALRT! ${_HOLD_TEST_ATE}"
+      msg "ALRT! Aborting installer NOW!"
+      clean_pid_exit
+    fi
+    ### Switching gears on the fly
+    sed -i "s/.*DEBIAN LTS.*//g"  /etc/apt/sources.list
+    sed -i "s/.*squeeze-lts.*//g" /etc/apt/sources.list
+    sed -i "s/.*PROPOSED.*//g"    /etc/apt/sources.list
+    sed -i "s/.*proposed.*//g"    /etc/apt/sources.list
+    sed -i "s/squeeze/wheezy/g"   /etc/apt/sources.list
+    sed -i "s/squeeze/wheezy/g"   /etc/apt/sources.list.d/*
+    rm -f /etc/apt/sources.list.d/openssl.list
+    mrun "apt-get update -qq" 2> /dev/null
+    ### Two step upgrade with apt-get only
+    mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
+    mrun "apt-get install apt dpkg aptitude util-linux ${dstUpArg}" 2> /dev/null
+    mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
+    mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
     touch ${mtrNgx}/pre.d/nginx_speed_purge.conf
     install_upgrade_nginx
     if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
       ln -sf /etc/init.d/bind9 /etc/init.d/bind
     fi
-    if [ -e "/etc/init.d/networking.dpkg-dist" ]; then
-      mv -f /etc/init.d/networking /etc/init.d/networking.bak
-      cp -af /etc/init.d/networking.dpkg-dist /etc/init.d/networking
-      chmod 755 /etc/init.d/networking
+    if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
+      if [ -e "/root/.debug.cnf" ]; then
+        mv -f /etc/init.d/networking /etc/init.d/networking.bak
+        cp -af /etc/init.d/networking.dpkg-dist /etc/init.d/networking
+        chmod 755 /etc/init.d/networking
+      fi
     fi
     if [ -d "/var/www/cgp" ]; then
-      mrun "apt-get install collectd -y --force-yes" 2> /dev/null
+      mrun "apt-get install collectd ${dstUpArg}" 2> /dev/null
     fi
-    mrun "apt-get install udev lsb-release libc-client2007e-dev \
-      -y --force-yes" 2> /dev/null
+    mrun "apt-get install udev ${dstUpArg}" 2> /dev/null
+    mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
+    mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     _L_VM_TEST=$(uname -a 2>&1)
     if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [ -e "/root/.debug.cnf" ] \
+      || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
       || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _PTMX=OK
-      _REMOVE_LINKS="halt \
+      _REMOVE_LINKS="buagent \
+                     fancontrol \
+                     halt \
                      hwclock.sh \
                      hwclockfirst.sh \
                      ifupdown \
                      ifupdown-clean \
+                     kerneloops \
                      klogd \
                      mountall-bootclean.sh \
                      mountall.sh \
@@ -2909,144 +2787,46 @@ if_squeeze_to_wheezy() {
                      networking \
                      reboot \
                      setserial \
+                     svscan \
+                     sysstat \
                      umountfs \
                      umountnfs.sh \
                      umountroot \
-                     urandom"
+                     urandom \
+                     vnstat"
       for link in ${_REMOVE_LINKS}; do
-        update-rc.d -f $link remove &> /dev/null
+        if [ -e "/etc/init.d/${link}" ]; then
+          update-rc.d -f ${link} remove &> /dev/null
+        fi
       done
     else
       _PTMX=CHECK
     fi
-    mrun "dpkg --configure --force-all -a" 2> /dev/null
-    mrun "apt-get update -y" 2> /dev/null
-    mrun "dpkg --configure --force-all -a" 2> /dev/null
-    mrun "apt-get install aptitude ${forCer}" 2> /dev/null
-    mrun "apt-get install util-linux ${forCer}" 2> /dev/null
-    mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
-          -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
-    mrun "dpkg --configure --force-all -a" 2> /dev/null
-    mrun "apt-get -f install -qq" &> /dev/null
-    mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
-          -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
-    _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
-    if [[ ! "${_PTS_TEST}" =~ "devpts" ]] || [ ! -e "/dev/pts/ptmx" ]; then
-      _PTS=FIX
-    else
-      _PTS=OK
-    fi
-    if [ "${_PTMX}" = "CHECK" ] && [ "${_PTS}" = "FIX" ]; then
-      msg "WARN: Required /dev/pts/ptmx does not exist! We will fix this now..."
-      mkdir -p /dev/pts
-      rm -f -r /dev/pts/*
-      apt-get update -qq &> /dev/null
-      apt-get install udev -y --force-yes &> /dev/null
-      mount -t devpts devpts /dev/pts &> /dev/null
-      echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
+    if [ -e "/root/.debug.cnf" ]; then
+      _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
+      if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then
+        _PTS=FIX
+      else
+        _PTS=OK
+      fi
+      if [ "${_PTMX}" = "CHECK" ] && [ "${_PTS}" = "FIX" ]; then
+        msg "WARN: Required /dev/pts/ptmx does not exist! We will fix this now..."
+        mkdir -p /dev/pts
+        rm -f -r /dev/pts/*
+        rm -f /etc/apt/sources.list.d/openssl.list
+        apt-get update -qq &> /dev/null
+        apt-get install udev -y --force-yes &> /dev/null
+        echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
+        mount -t devpts devpts /dev/pts &> /dev/null
+      fi
     fi
     echo rotate > /var/log/syslog
+    rm -f /var/xdrago/log/*.log
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null
-    msg "INFO: No errors? Then Squeeze to Wheezy upgrade was successful - congrats!"
-    msg "HINT: Please remember to reboot when Barracuda will complete all upgrades"
-  fi
-}
-
-if_lenny_to_squeeze() {
-  if [ "${_LENNY_TO_SQUEEZE}" = "YES" ] && [ "${_LOC_OSV}" = "lenny" ]; then
-    _FULL_FORCE_REINSTALL=YES
-    msg "WARN: Lenny to Squeeze upgrade will start in 60 seconds..."
-    msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
-    if [ ! -e "/root/.upstart.cnf" ]; then
-      service cron stop &> /dev/null
-      mrun "sleep 60"
-    fi
-    check_dns_settings
-    if [ "${_USE_PROVIDER_DNS}" = "NO" ]; then
-      mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
-      echo "nameserver 8.8.8.8" >/etc/resolv.conf
-      echo "nameserver 8.8.4.4" >>/etc/resolv.conf
-      cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
-    fi
-    mv -f /var/xdrago /var/xdrago_wait &> /dev/null
-    msg "WARN: Too late! Lenny to Squeeze upgrade in progress..."
-    msg "HINT: Run tail -f ${_LOG}"
-    msg "HINT: in another terminal window to watch details"
-    if [ -e "/etc/init.d/bind" ]; then
-      rm -f /etc/init.d/bind
-    fi
-    if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ]; then
-      service tomcat stop &> /dev/null
-      mv /etc/init.d/tomcat /etc/init.d/offtomcat
-      kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
-    fi
-    mrun "apt-get remove collectd -y --force-yes -qq" &> /dev/null
-    mrun "apt-get remove libc-client2007b-dev -y --force-yes -qq" &> /dev/null
-    mrun "apt-get purge svscan -y" &> /dev/null
-    mrun "apt-get purge pound -y" &> /dev/null
-    if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [ -e "/root/.debug.cnf" ] \
-      || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
-      mrun "apt-get remove udev -y --force-yes -qq" &> /dev/null
-    fi
-    mrun "apt-get remove lsb-release -y --force-yes -qq" &> /dev/null
-    mrun "apt-get update -y --force-yes" &> /dev/null
-    mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
-    mrun "apt-get install apt dpkg aptitude -f -y --force-yes -q \
-      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
-    mrun "apt-get dist-upgrade -f -y --force-yes -q \
-      --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
-    mrun "apt-get install libgeoip1 libgeoip-dev geoip-database \
-      -y --force-yes" 2> /dev/null
-    check_install_latest_git
-    install_upgrade_nginx
-    if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
-      ln -sf /etc/init.d/bind9 /etc/init.d/bind
-    fi
-    if [ -d "/var/www/cgp" ]; then
-      mrun "apt-get install collectd -y --force-yes" 2> /dev/null
-    fi
-    mrun "apt-get install udev lsb-release libc-client2007e-dev \
-      -y --force-yes" 2> /dev/null
-    _L_VM_TEST=$(uname -a 2>&1)
-    if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [ -e "/root/.debug.cnf" ] \
-      || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
-      _REMOVE_LINKS="halt \
-                     hwclock.sh \
-                     hwclockfirst.sh \
-                     ifupdown \
-                     ifupdown-clean \
-                     klogd \
-                     mountall-bootclean.sh \
-                     mountall.sh \
-                     mountdevsubfs.sh \
-                     mountkernfs.sh \
-                     mountnfs-bootclean.sh \
-                     mountnfs.sh \
-                     mountoverflowtmp \
-                     mountvirtfs \
-                     mtab.sh \
-                     networking \
-                     reboot \
-                     setserial \
-                     umountfs \
-                     umountnfs.sh \
-                     umountroot \
-                     urandom"
-      for link in ${_REMOVE_LINKS}; do
-        update-rc.d -f $link remove &> /dev/null
-      done
-    fi
-    sed -i "s/lenny/squeeze/g"  /etc/apt/sources.list.d/* &> /dev/null
-    mrun "aptitude update -y" &> /dev/null
-    mrun "dpkg --configure --force-all -a" 2> /dev/null
-    mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef \
-          -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
-    echo rotate > /var/log/syslog
-    mv -f /var/xdrago_wait /var/xdrago &> /dev/null
-    msg "INFO: No errors? Then Lenny to Squeeze upgrade was successful - congrats!"
-    msg "HINT: Please remember to reboot when Barracuda will complete all upgrades"
+    echo " "
+    msg "INFO: No errors? Then Squeeze to Wheezy upgrade was successful :)"
+    msg "INFO: REBOOT your system once Barracuda will complete all upgrades!"
+    echo " "
   fi
 }
 
@@ -3076,17 +2856,8 @@ update_webmin_apt() {
 sys_packages_update() {
   msg "INFO: Running system packages update..."
   update_webmin_apt
-  if [ "${_OSV}" = "lenny" ]; then
-    sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" ${aptLiSys} &> /dev/null
-    sed -i "s/ftp.*debian.org/archive.debian.org/g" \
-      ${aptLiSys} &> /dev/null
-    sed -i "s/volatile.debian.org/archive.debian.org/g" \
-      ${aptLiSys} &> /dev/null
-    st_runner "aptitude autoclean -y" &> /dev/null
-    st_runner "apt-get clean -qq" &> /dev/null
-  else
-    st_runner "dpkg --configure --force-all -a" 2> /dev/null
-  fi
+  st_runner "dpkg --configure --force-all -a" 2> /dev/null
+  rm -f /etc/apt/sources.list.d/openssl.list
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
     || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
@@ -3098,13 +2869,13 @@ sys_packages_update() {
       st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
     fi
   fi
-  st_runner "aptitude update -y" &> /dev/null
+  st_runner "apt-get update -qq" &> /dev/null
   _DB_SERVER_TEST=$(mysql -V 2>&1)
   if [ "${_STATUS}" = "INIT" ]; then
     st_runner "aptitude full-upgrade -f -y -q \
       -o Dpkg::Options::=--force-confdef \
       -o Dpkg::Options::=--force-confold" 2> /dev/null
-    st_runner "aptitude update -y" &> /dev/null
+    st_runner "apt-get update -qq" &> /dev/null
     st_runner "aptitude full-upgrade -f -y -q \
       -o Dpkg::Options::=--force-confdef \
       -o Dpkg::Options::=--force-confold" 2> /dev/null
@@ -3115,31 +2886,29 @@ sys_packages_update() {
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
-    st_runner "aptitude remove php5 \
-                               php5-cgi \
-                               php5-curl \
-                               php5-fpm \
-                               php5-gd \
-                               php5-geoip \
-                               php5-gmp \
-                               php5-imagick \
-                               php5-imap \
-                               php5-ldap \
-                               php5-mcrypt \
-                               php5-memcache \
-                               php5-mysql \
-                               php5-sqlite \
-                               php5-xmlrpc \
-                               php5-xsl -y" &> /dev/null
-    st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
-    st_runner "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
-    st_runner "aptitude remove php5-cli php5-common -y" &> /dev/null
-    st_runner "aptitude remove php5-apc -y" &> /dev/null
-    st_runner "aptitude remove php-apc -y" &> /dev/null
-    st_runner "aptitude remove apache2.2-common -y" &> /dev/null
-    st_runner "aptitude remove apache2-utils apache2.2-bin -y" &> /dev/null
-    st_runner "aptitude install lsof -y" &> /dev/null
-    st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
+    mrun "aptitude remove php5 \
+                      php5-cgi \
+                      php5-curl \
+                      php5-fpm \
+                      php5-gd \
+                      php5-geoip \
+                      php5-gmp \
+                      php5-imagick \
+                      php5-imap \
+                      php5-ldap \
+                      php5-mcrypt \
+                      php5-memcache \
+                      php5-mysql \
+                      php5-sqlite \
+                      php5-xmlrpc \
+                      php5-xsl -y" &> /dev/null
+    mrun "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
+    mrun "aptitude remove php5-cli php5-common -y" &> /dev/null
+    mrun "aptitude remove php5-apc -y" &> /dev/null
+    mrun "aptitude remove php-apc -y" &> /dev/null
+    mrun "aptitude remove apache2.2-common -y" &> /dev/null
+    mrun "aptitude remove apache2-utils apache2.2-bin -y" &> /dev/null
+    mrun "aptitude install lsof -y" &> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       rm -f /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
@@ -3147,9 +2916,10 @@ sys_packages_update() {
     if [ "${_OSV}" = "squeeze" ]; then
       if [ -e "${aptLiSys}.d/dotdeb.list" ]; then
         rm -f ${aptLiSys}.d/dotdeb.list
-        st_runner "aptitude autoclean -y" &> /dev/null
-        st_runner "apt-get clean -qq" &> /dev/null
-        st_runner "apt-get update -y --force-yes" &> /dev/null
+        rm -f /etc/apt/sources.list.d/openssl.list
+        mrun "aptitude autoclean -y" &> /dev/null
+        mrun "apt-get clean -qq" &> /dev/null
+        mrun "apt-get update -qq" &> /dev/null
       fi
     fi
     rm -f /var/lib/mysql/debian-*.flag &> /dev/null
@@ -3174,6 +2944,10 @@ sys_packages_update() {
 }
 
 sys_packages_install() {
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "squeeze" ]; then
+    _DO_FIX=YES
+  fi
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Installing required libraries and tools, please wait..."
   else
@@ -3204,13 +2978,11 @@ sys_packages_install() {
     if [[ "$_APT_ITEM" =~ "install" ]]; then
       mrun "apt-get remove openjdk-6-jdk -y --force-yes -qq" &> /dev/null
       mrun "apt-get purge openjdk-6-jdk -y --force-yes -qq" &> /dev/null
-      mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
     fi
     _APT_ITEM=$(dpkg --get-selections | grep openjdk-7-jdk | grep install 2>&1)
     if [[ "$_APT_ITEM" =~ "install" ]]; then
       mrun "apt-get remove openjdk-7-jdk -y --force-yes -qq" &> /dev/null
       mrun "apt-get purge openjdk-7-jdk -y --force-yes -qq" &> /dev/null
-      mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
     fi
     if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
       || [[ "${_THISHOST}" =~ ".host8." ]] \
@@ -3218,6 +2990,7 @@ sys_packages_install() {
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
       if [ "${_OSV}" = "wheezy" ] \
+        || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
         _APT_XTRA="openjdk-7-jre-headless openjdk-6-jre-headless"
@@ -3228,6 +3001,7 @@ sys_packages_install() {
       _APT_XTRA=""
     fi
     _APT_ELSE="netcat"
+    rm -f /etc/apt/sources.list.d/openssl.list
     _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
     if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
       || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
@@ -3246,8 +3020,7 @@ sys_packages_install() {
     mrun "apt-get remove nginx-common -y --force-yes -qq" &> /dev/null
     mrun "apt-get remove nginx-full -y --force-yes -qq"   &> /dev/null
     mrun "apt-get remove redis-server -y --force-yes -qq" &> /dev/null
-    st_runner "apt-get autoremove -y --force-yes -qq"     &> /dev/null
-    st_runner "apt-get update -y --force-yes"             &> /dev/null
+    st_runner "apt-get update -qq"                        &> /dev/null
   fi
   _EXTRA_LIB_APT="libmcrypt-dev"
   if [ ! -z "${_EXTRA_PACKAGES}" ]; then
@@ -3275,9 +3048,8 @@ sys_packages_install() {
   if [ "${_NGINX_SPDY}" = "YES" ] \
     || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
     || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
-    if [ "${_OSV}" = "wheezy" ] \
-      || [ "${_OSV}" = "trusty" ] \
-      || [ "${_OSV}" = "precise" ]; then
+    if [ "${_OSV}" = "stretch" ] \
+      || [ "${_OSV}" = "wily" ]; then
       _SSB_SRC=NO
     else
       _SSB_SRC=YES
@@ -3379,7 +3151,6 @@ sys_packages_install() {
               libpam-unix2 \
               libpcre3 \
               libpcre3-dev \
-              libplrpc-perl \
               libpng12-0 \
               libpng12-dev \
               libpq5 \
@@ -3443,125 +3214,6 @@ sys_packages_install() {
               zip \
               zlib1g-dev \
               zlibc"
-  elif [ "${_OSV}" = "lenny" ]; then
-    _DEBDEPS="apticron \
-              $_APT_ELSE \
-              $_EXTRA_LIB_APT \
-              ${_EXTRA_PACKAGES} \
-              $_SYSLOGD \
-              aptitude \
-              auditd \
-              autoconf2.13 \
-              automake \
-              automake1.4 \
-              autotools-dev \
-              bc \
-              bison \
-              build-essential \
-              catdoc \
-              cron \
-              cvs \
-              cython \
-              defoma \
-              devscripts \
-              dnsutils \
-              dstat \
-              flex \
-              fontconfig-config \
-              gettext \
-              ghostscript \
-              gnupg \
-              gnupg-curl \
-              gnupg2 \
-              htop \
-              ifstat \
-              imagemagick \
-              iptables \
-              ldap-utils \
-              lemon \
-              lftp \
-              libapr1 \
-              libaprutil1 \
-              libc-client-dev \
-              libc-client2007b \
-              libc-client2007b-dev \
-              libfilesys-diskspace-perl \
-              libfontconfig1 \
-              libfreetype6 \
-              libfreetype6-dev \
-              libfribidi0 \
-              libgeoip-dev \
-              libgeoip1 \
-              libgmp3-dev \
-              libhtml-template-perl \
-              libjpeg-dev \
-              libjpeg62 \
-              libmagick9-dev \
-              libnet-daemon-perl \
-              libpam-umask \
-              libpcre3 \
-              libpcre3-dev \
-              libplrpc-perl \
-              libpng12-0 \
-              libpng12-dev \
-              libpq5 \
-              libsasl2-modules \
-              libssl-dev \
-              libt1-5 \
-              libt1-dev \
-              libterm-readkey-perl \
-              libtool \
-              libwww-perl \
-              libxml2-dev \
-              libxpm4 \
-              libxslt-dev \
-              libxslt1-dbg \
-              libxslt1-dev \
-              libxslt1.1 \
-              m4 \
-              makepasswd \
-              mc \
-              mcrypt \
-              nano \
-              ncurses-dev \
-              ncurses-term \
-              ntpdate \
-              openjdk-6-jre-headless \
-              p7zip-full \
-              pdftk \
-              postfix \
-              postfix-pcre \
-              pwgen \
-              python-dev \
-              re2c \
-              rrdtool \
-              rsync \
-              shtool \
-              sipcalc \
-              ssh \
-              ssl-cert \
-              subversion \
-              sudo \
-              symlinks \
-              sysstat \
-              sysvconfig \
-              t1lib-bin \
-              telnet \
-              time \
-              ttf-dejavu \
-              ttf-dejavu-core \
-              ttf-dejavu-extra \
-              udev \
-              unrtf \
-              unzip \
-              vim \
-              whois \
-              xml-core \
-              xml2 \
-              xpdf \
-              zip \
-              zlib1g-dev \
-              zlibc"
   fi
 }
 
@@ -3571,13 +3223,13 @@ fix_postfix() {
       sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
     st_runner "apt-get purge exim4 exim4-base exim4-config sendmail \
       sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
-    st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
     rm -f /etc/aliases
     rm -f -r /etc/mail
     killall -9 sendmail &> /dev/null
   else
     _POSTFIX_TEST=$(grep "fatal: open lock file" /var/log/mail.log 2>&1)
     if [[ "$_POSTFIX_TEST" =~ "fatal: open lock file" ]]; then
+      rm -f /etc/apt/sources.list.d/openssl.list
       _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
       if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
         || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
@@ -3603,10 +3255,17 @@ fix_postfix() {
 }
 
 fix_libs_php() {
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "squeeze" ]; then
+    _DO_FIX=YES
+  fi
   if [ "${_OSV}" = "wheezy" ] \
+    || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
-    if [ ! -L "/usr/lib/libXpm.so" ] || [ ! -e "/usr/lib/libgmp.so.3" ]; then
+    if [ ! -L "/usr/lib/libXpm.so" ] \
+      || [ ! -e "/usr/lib/libgmp.so.3" ] \
+      || [ ! -e "/usr/include/gmp.h" ]; then
       msg "INFO: Fix #1 for libs in ${_THIS_OS} ${_OSV}"
       _X86_64_TEST=$(uname -m 2>&1)
       if [ "$_X86_64_TEST" = "x86_64" ]; then
@@ -3639,7 +3298,12 @@ fix_libs_php() {
 }
 
 fix_libssl() {
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "squeeze" ]; then
+    _DO_FIX=YES
+  fi
   if [ "${_OSV}" = "wheezy" ] \
+    || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     _SSL_FIX_REQUIRED=YES
@@ -3647,6 +3311,7 @@ fix_libssl() {
       || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
       || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
       if [ "${_OSV}" = "wheezy" ] \
+        || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
         _SSL_FIX_REQUIRED=YES
@@ -4063,7 +3728,7 @@ if_install_ftpd() {
       mkdir -p /etc/ssl/private/
       rm -f /etc/ssl/private/pure-ftpd.pem
       rm -f /usr/local/sbin/pure-ftpd
-      st_runner "openssl req -x509 -nodes -days 7300 -newkey rsa:2048 \
+      st_runner "openssl req -x509 -nodes -sha256 -days 7300 -newkey rsa:2048 \
         -keyout /etc/ssl/private/pure-ftpd.pem \
         -out /etc/ssl/private/pure-ftpd.pem -batch" 2> /dev/null
       chmod 600 /etc/ssl/private/pure-ftpd.pem &> /dev/null
@@ -4116,7 +3781,6 @@ check_fix_newrelic() {
         newrelic-php5-common \
         newrelic-daemon \
         newrelic-sysmond -y" &> /dev/null
-      st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
       mv -f /etc/newrelic \
         ${vBs}/nr/etc-newrelic-pre-${_X_VERSION}-${_NOW} &> /dev/null
       rm -f /etc/init.d/newrelic-sysmond
@@ -4445,10 +4109,10 @@ complete() {
     usermod -aG users aegir &> /dev/null
     usermod -aG users man &> /dev/null
     usermod -aG users mysql &> /dev/null
-    if [ -x "/bin/dash" ]; then
-      switch_to_dash
-    else
+    if [ -x "/bin/bash" ]; then
       switch_to_bash
+    elif [ -x "/bin/dash" ]; then
+      switch_to_dash
     fi
     strict_bin_permissions
   fi

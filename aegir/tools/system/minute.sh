@@ -26,16 +26,16 @@ if [ -e "/var/log/php" ]; then
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
     rm -f /var/log/php/*
     if [ -e "/etc/init.d/php56-fpm" ]; then
-      /etc/init.d/php56-fpm start
+      service php56-fpm start
     fi
     if [ -e "/etc/init.d/php55-fpm" ]; then
-      /etc/init.d/php55-fpm start
+      service php55-fpm start
     fi
     if [ -e "/etc/init.d/php54-fpm" ]; then
-      /etc/init.d/php54-fpm start
+      service php54-fpm start
     fi
     if [ -e "/etc/init.d/php53-fpm" ]; then
-      /etc/init.d/php53-fpm start
+      service php53-fpm start
     fi
     sleep 8
     rm -f /var/run/fmp_wait.pid
@@ -49,16 +49,16 @@ if [ -e "/var/log/php" ]; then
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
     rm -f /var/log/php/*
     if [ -e "/etc/init.d/php56-fpm" ]; then
-      /etc/init.d/php56-fpm start
+      service php56-fpm start
     fi
     if [ -e "/etc/init.d/php55-fpm" ]; then
-      /etc/init.d/php55-fpm start
+      service php55-fpm start
     fi
     if [ -e "/etc/init.d/php54-fpm" ]; then
-      /etc/init.d/php54-fpm start
+      service php54-fpm start
     fi
     if [ -e "/etc/init.d/php53-fpm" ]; then
-      /etc/init.d/php53-fpm start
+      service php53-fpm start
     fi
     sleep 8
     rm -f /var/run/fmp_wait.pid
@@ -73,16 +73,16 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]]; then
   touch /var/run/fmp_wait.pid
   rm -f /var/log/php/*
   if [ -e "/etc/init.d/php56-fpm" ]; then
-    /etc/init.d/php56-fpm reload
+    service php56-fpm reload
   fi
   if [ -e "/etc/init.d/php55-fpm" ]; then
-    /etc/init.d/php55-fpm reload
+    service php55-fpm reload
   fi
   if [ -e "/etc/init.d/php54-fpm" ]; then
-    /etc/init.d/php54-fpm reload
+    service php54-fpm reload
   fi
   if [ -e "/etc/init.d/php53-fpm" ]; then
-    /etc/init.d/php53-fpm reload
+    service php53-fpm reload
   fi
   sleep 8
   rm -f /var/run/fmp_wait.pid
@@ -139,13 +139,13 @@ jetty_restart() {
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
   rm -f /var/log/jetty{7,8,9}/*
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
-    /etc/init.d/jetty9 start
+    service jetty9 start
   fi
   if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
-    /etc/init.d/jetty8 start
+    service jetty8 start
   fi
   if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
-    /etc/init.d/jetty7 start
+    service jetty7 start
   fi
   sleep 5
   rm -f /var/run/boa_run.pid
