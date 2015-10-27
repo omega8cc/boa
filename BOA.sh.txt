@@ -55,6 +55,7 @@ saPatch="/var/xdrago/conf/${saCoreS}.patch"
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+forCer="-fuy --force-yes --reinstall"
 optBin="/opt/local/bin"
 pthLog="/var/xdrago/log"
 tBn="tools/bin"
@@ -65,7 +66,19 @@ fix_dns_settings() {
   mkdir -p ${vBs}
   rm -f ${vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
-    cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    if [ -L "/etc/resolv.conf" ]; then
+      rslvT=`readlink -n /etc/resolv.conf`
+      if [ ! -e "${rslvT}" ]; then
+        rm -f /etc/resolv.conf
+      fi
+    fi
+    if [ -e "/etc/resolv.conf" ]; then
+      cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    fi
+  fi
+  if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
+    echo "nameserver 8.8.8.8" >${vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.4.4" >>${vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
     for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
@@ -444,8 +457,9 @@ fix_alt() {
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -483,7 +497,7 @@ setup() {
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [ -e "/root/.debug.cnf" ] \
+    || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   else
@@ -499,6 +513,7 @@ setup() {
   echo >>/etc/hosts
   sed -i "/^$/d" /etc/hosts
   if [ ! -e "/etc/resolv.conf" ]; then
+    rm -f /etc/resolv.conf
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then
       cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
     fi
@@ -520,9 +535,10 @@ setup() {
       echo "ERROR: Please install it manually with 'apt-get install curl'"
       exit 1
     else
+      rm -f /etc/apt/sources.list.d/openssl.list
       apt-get clean -qq &> /dev/null
       apt-get update -qq &> /dev/null
-      apt-get install curl -y --force-yes --reinstall &> /dev/null
+      apt-get install curl ${forCer} &> /dev/null
     fi
   fi
   _CURL_TEST=$(curl -L -k -s \
@@ -531,6 +547,11 @@ setup() {
     --retry-delay 10 \
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
+    if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
+      echo "curl install" | dpkg --set-selections
+      apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
+      touch /root/.use.curl.from.packages.cnf
+    fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
   else
@@ -540,9 +561,10 @@ setup() {
   if [[ "$_LSB_TEST" =~ "lsb_release" ]]; then
     _DO_NOTHING=YES
   else
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get clean -qq &> /dev/null
     apt-get update -qq &> /dev/null
-    apt-get install lsb-release -y --force-yes --reinstall &> /dev/null
+    apt-get install lsb-release ${forCer} &> /dev/null
   fi
   mkdir -p /usr/local/bin
   mkdir -p ${optBin}
@@ -664,7 +686,6 @@ if [ `whoami` = "root" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ] \
-        || [ -e "/root/.debug.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [ "${_BENG_VS}" = "YES" ]; then
         update_agents

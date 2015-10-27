@@ -12,8 +12,9 @@ find /var/run/daily-fix.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)

@@ -7,15 +7,15 @@ _VM_TEST=$(uname -a 2>&1)
 usrGroup=users
 _WEBG=www-data
 _THIS_RV=$(lsb_release -sc 2>&1)
-if [ "$_THIS_RV" = "wheezy" ] \
-  || [ "$_THIS_RV" = "trusty" ] \
-  || [ "$_THIS_RV" = "precise" ]; then
+if [ "${_THIS_RV}" = "wheezy" ] \
+  || [ "${_THIS_RV}" = "trusty" ] \
+  || [ "${_THIS_RV}" = "precise" ]; then
   _RUBY_VRN=2.2.3
 else
   _RUBY_VRN=2.0.0
 fi
 if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-  || [ -e "/root/.debug.cnf" ] \
+  || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _VMFAMILY="VS"
 else
@@ -33,8 +33,9 @@ crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -775,7 +776,7 @@ satellite_tune_fpm_workers() {
     _VMFAMILY="XEN"
   fi
   if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [ -e "/root/.debug.cnf" ] \
+    || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   fi
