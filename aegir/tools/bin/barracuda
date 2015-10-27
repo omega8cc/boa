@@ -31,7 +31,7 @@ _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
 _L_VMFAMILY=XEN
 _L_VM_TEST=$(uname -a 2>&1)
 if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-  || [ -e "/root/.debug.cnf" ] \
+  || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
   || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _L_VMFAMILY="VS"
 fi
@@ -48,7 +48,19 @@ fix_dns_settings() {
   mkdir -p ${vBs}
   rm -f ${vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
-    cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    if [ -L "/etc/resolv.conf" ]; then
+      rslvT=`readlink -n /etc/resolv.conf`
+      if [ ! -e "${rslvT}" ]; then
+        rm -f /etc/resolv.conf
+      fi
+    fi
+    if [ -e "/etc/resolv.conf" ]; then
+      cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    fi
+  fi
+  if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
+    echo "nameserver 8.8.8.8" >${vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.4.4" >>${vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
     for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
@@ -499,6 +511,12 @@ up_action() {
     ### Legacy method
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${barName}
     sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"     ${vBs}/${barName}
+    ### Force HTTP/2 or SPDY plus PFS on supported systems
+    sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                       ${barCnf}
+    sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"          ${barCnf}
+    sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g"           ${barCnf}
+    ### Force latest OpenSSH from sources on supported systems
+    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"           ${barCnf}
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -510,11 +528,8 @@ up_action() {
         if [ -e "${barCnf}" ]; then
           sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${barCnf}
           sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=YES/g"         ${barCnf}
-          sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
-          sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
           ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                  ${barCnf}
           sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"        ${barCnf}
-          sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
           sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"     ${barCnf}
           if [ -e "/root/.mstr.clstr.cnf" ] \
             || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -547,7 +562,7 @@ up_action() {
       fi
       sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${barCnf}
       _THIS_RV=$(lsb_release -sc 2>&1)
-      if [ "$_THIS_RV" = "lenny" ] \
+      if [ "${_THIS_RV}" = "lenny" ] \
         && [ -e "${barCnf}" ]; then
         sed -i "s/^_LENNY_TO_SQUEEZE=.*/_LENNY_TO_SQUEEZE=YES/g" \
           ${vBs}/${barName}
@@ -740,7 +755,7 @@ set_pin_priority() {
     fi
     if [ "${_THIS_OS}" = "Debian" ]; then
       _THIS_RV=$(grep "6.0" /etc/issue.net 2>&1)
-      if [[ "$_THIS_RV" =~ "6.0" ]]; then
+      if [[ "${_THIS_RV}" =~ "6.0" ]]; then
         curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
           -o /etc/apt/preferences
       else
@@ -757,8 +772,9 @@ set_pin_priority() {
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -792,6 +808,7 @@ find_fast_mirror() {
 
 check_dns_curl() {
   if [ ! -e "/etc/resolv.conf" ]; then
+    rm -f /etc/resolv.conf
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then
       cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
     fi
@@ -808,9 +825,11 @@ check_dns_curl() {
   find_fast_mirror
   isCurl=$(curl --version 2>&1)
   if [[ ! "$isCurl" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-    echo "ERROR: Required cURL package is not available"
-    echo "ERROR: Please install it manually with 'apt-get install curl'"
-    clean_pid_exit
+    if [[ ! "$isCurl" =~ "GnuTLS" ]] || [ -z "${isCurl}" ]; then
+      echo "ERROR: Required cURL package is not available"
+      echo "ERROR: Please install it manually with 'apt-get install curl'"
+      clean_pid_exit
+    fi
   fi
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
@@ -818,6 +837,11 @@ check_dns_curl() {
     --retry-delay 10 \
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
+    if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
+      echo "curl install" | dpkg --set-selections
+      apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
+      touch /root/.use.curl.from.packages.cnf
+    fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     clean_pid_exit
   fi
@@ -847,14 +871,14 @@ check_root() {
     fi
     _L_VM_TEST=$(uname -a 2>&1)
     if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [ -e "/root/.debug.cnf" ] \
+      || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
       || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _PTMX=OK
     else
       _PTMX=CHECK
     fi
     _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
-    if [[ ! "${_PTS_TEST}" =~ "devpts" ]] || [ ! -e "/dev/pts/ptmx" ]; then
+    if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then
       _PTS=FIX
     else
       _PTS=OK
@@ -863,10 +887,11 @@ check_root() {
       echo "Required /dev/pts/ptmx does not exist! We will fix this now..."
       mkdir -p /dev/pts
       rm -f -r /dev/pts/*
+      rm -f /etc/apt/sources.list.d/openssl.list
       apt-get update -qq &> /dev/null
       apt-get install udev -y --force-yes &> /dev/null
-      mount -t devpts devpts /dev/pts &> /dev/null
       echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
+      mount -t devpts devpts /dev/pts &> /dev/null
     fi
     sed -i "s/.*173.231.133.190.*//g" /etc/hosts
     sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts

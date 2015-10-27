@@ -209,8 +209,14 @@ if_install_collectd() {
 }
 
 if_install_hhvm() {
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "squeeze" ]; then
+    _DO_FIX=YES
+  fi
   if [[ "${_XTRAS_LIST}" =~ "HVM" ]]; then
-    if [ "${_OSV}" = "wheezy" ] || [ "${_OSV}" = "trusty" ]; then
+    if [ "${_OSV}" = "wheezy" ] \
+      || [ "${_DO_FIX}" = "YES" ] \
+      || [ "${_OSV}" = "trusty" ]; then
       if [ ! -x "/usr/bin/hhvm" ]; then
         echo " "
         if prompt_yes_no "Do you want to install HHVM Engine?" ; then
@@ -218,7 +224,7 @@ if_install_hhvm() {
           msg "INFO: Installing HHVM Engine..."
           cd /var/opt
           echo "## HHVM APT Repository" > ${aptLiSys}.d/hhvm.list
-          if [ "${_OSV}" = "wheezy" ]; then
+          if [ "${_OSV}" = "wheezy" ] || [ "${_DO_FIX}" = "YES" ]; then
             echo "deb http://dl.hhvm.com/debian wheezy main" >> \
               ${aptLiSys}.d/hhvm.list
           elif [ "${_OSV}" = "trusty" ]; then
@@ -234,7 +240,8 @@ if_install_hhvm() {
             sleep 2
           done
           cat /var/opt/hhvm.gpg.key | apt-key add - &> /dev/null
-          st_runner "apt-get update -y --force-yes" &> /dev/null
+          rm -f /etc/apt/sources.list.d/openssl.list
+          st_runner "apt-get update -qq" &> /dev/null
           st_runner "apt-get install hhvm ${forCer}" 2> /dev/null
           msg "INFO: HHVM Engine installed"
         else
@@ -268,7 +275,8 @@ if_install_webmin() {
         cat jcameron-key.asc | apt-key add - &> /dev/null
         rm -f jcameron-key.asc*
         touch ${pthLog}/webmin_update_apt_src.log
-        st_runner "apt-get update -y --force-yes" &> /dev/null
+        rm -f /etc/apt/sources.list.d/openssl.list
+        st_runner "apt-get update -qq" &> /dev/null
         st_runner "${_INSTAPP} webmin \
                              libxml-simple-perl \
                              libcrypt-ssleay-perl" 2> /dev/null
@@ -357,13 +365,13 @@ if_install_rvm() {
           if [ "${_STATUS}" = "INIT" ] \
             || [ "$_RUBY_UPGRADE" = "YES" ] \
             || [ "$_RUBY_RELOAD" = "YES" ]; then
-            mrun "apt-get update -y --force-yes" &> /dev/null
+            rm -f /etc/apt/sources.list.d/openssl.list
+            mrun "apt-get update -qq" &> /dev/null
             mrun "apt-get remove rubygems \
                                  ruby1.9.1-dev \
                                  libruby1.9.1 \
                                  ruby1.9.1 \
                                  -y --force-yes -qq" &> /dev/null
-            mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
             mrun "rvm install ${_RUBY_VRN}" &> /dev/null
             mrun "rvm use ${_RUBY_VRN} --default" &> /dev/null
             mrun "rvm get stable" 2> /dev/null

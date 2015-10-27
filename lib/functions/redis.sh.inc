@@ -186,7 +186,7 @@ update_redis_password() {
 #
 # Install Redis from sources.
 install_redis_src() {
-  msg "INFO: Installing Redis update for ${_THIS_OS}/$_THIS_RV..."
+  msg "INFO: Installing Redis update for ${_THIS_OS}/${_THIS_RV}..."
   if [ ! -e "/var/lib/redis" ]; then
     st_runner "adduser --system --group redis" 2> /dev/null
   fi

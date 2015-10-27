@@ -12,7 +12,7 @@ satellite_tune_fpm_workers() {
     _VMFAMILY="XEN"
   fi
   if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [ -e "/root/.debug.cnf" ] \
+    || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   fi
@@ -1270,7 +1270,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "display_cache-7.x-1.3.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/entitycache" ]; then
-        get_dev_contrib "entitycache-7.x-1.2.tar.gz"
+        get_dev_contrib "entitycache-7.x-1.4.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/filefield_nginx_progress" ]; then
         get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
@@ -1367,7 +1367,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "config_perms-7.x-2.1.tar.gz"
   get_dev_contrib "css_emimage-7.x-1.x-dev.tar.gz"
   get_dev_contrib "display_cache-7.x-1.3.tar.gz"
-  get_dev_contrib "entitycache-7.x-1.2.tar.gz"
+  get_dev_contrib "entitycache-7.x-1.4.tar.gz"
   get_dev_contrib "esi-7.x-3.x-dev.tar.gz"
   get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
   get_dev_contrib "flood_control-7.x-1.x-dev.tar.gz"
@@ -3311,7 +3311,7 @@ satellite_detect_vm_family() {
   fi
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [ -e "/root/.debug.cnf" ] \
+    || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   else
@@ -3706,6 +3706,7 @@ satellite_batch_cleanup() {
     find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
     chown root:root /opt/tmp &> /dev/null
     chmod 0711 /data ${_D}/* /data/disk /data/conf &> /dev/null
+    chmod 644 /data/all/cpuinfo &> /dev/null
     chmod 0755 ${_D} ${_D}/000 &> /dev/null
   elif [ -e "/data/disk/all" ]; then
     if [ ! -f "/data/disk/all/permissions-fix-${_X_VERSION}-${_TODAY}.info" ]; then
@@ -3728,6 +3729,7 @@ satellite_batch_cleanup() {
     find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
     chown root:root /opt/tmp &> /dev/null
     chmod 0711 /data /data/disk/all/* /data/disk /data/conf &> /dev/null
+    chmod 644 /data/disk/all/cpuinfo &> /dev/null
     chmod 0755 /data/disk/all /data/disk/all/000 &> /dev/null
   fi
   chmod 0700 /data/u &> /dev/null
@@ -4435,7 +4437,7 @@ satellite_child_b_aegir_ui_enhance() {
 
     _VM_TEST=$(uname -a 2>&1)
     if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [ -e "/root/.debug.cnf" ] \
+      || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _VMFAMILY="VS"
     else

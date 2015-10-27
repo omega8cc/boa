@@ -2,7 +2,10 @@
 
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _OSV=$(lsb_release -sc 2>&1)
-_OPENSSL_VRN=1.0.1p
+_OPENSSL_VRN=1.0.2d
+if [ "${_OSV}" = "squeeze" ]; then
+  _OPENSSL_VRN=1.0.1p
+fi
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
@@ -32,7 +35,7 @@ randpass() {
       | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
   elif [ "${kind}" = "hash" ]; then
     CHAR="[:alnum:]"
-    if [ "$_NEW_SSL" = "YES" ] \
+    if [ "${_NEW_SSL}" = "YES" ] \
       || [ "${_OSV}" = "wheezy" ] \
       || [ "${_OSV}" = "trusty" ] \
       || [ "${_OSV}" = "precise" ]; then
