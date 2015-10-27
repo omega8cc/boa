@@ -43,23 +43,25 @@ _DRUSH6_VRN=mini-6-30-10-2014
 _DRUSH7_VRN=mini-7-30-06-2015
 _GALERA_10_VRN=10.0.21
 _GEOS_VRN=3.5.0
-_GIT_VRN=2.3.0
+_GIT_VRN=2.6.1
 _IMAGICK_VRN=3.1.2
 _IONCUBE_VRN=5.0.18
 _JETTY_7_VRN=7.6.17.v20150415
 _JETTY_8_VRN=8.1.17.v20150415
 _JETTY_9_VRN=9.2.7.v20150116
 _JSMIN_VRN=1.1.0
+_LIB_YAML_VRN=0.1.6
 _LSHELL_VRN=0.9.16.5-om8
 _MAILPARSE_VRN=2.1.6
 _MARIADB_10_VRN=10.0.21
 _MARIADB_5_VRN=5.5.46
 _MONGO_VRN=1.4.5
 _MSS_VRN=master-20-03-2015
-_NGINX_VRN=1.9.4
+_NGINX_VRN=1.9.6
 _OPCACHE_VRN=7.0.5
 _OPENSSH_VRN=7.1p1
-_OPENSSL_VRN=1.0.1p
+_OPENSSL_VRN=1.0.2d
+_OPENSSL_NGX_VRN=1.0.2d
 _PHP53_API=20090626
 _PHP53_VRN=5.3.29
 _PHP54_API=20100525
@@ -79,6 +81,7 @@ _SOLR_4_VRN=4.9.1
 _TWIGC_VRN=1.22.1
 _UPROGRESS_VRN=1.0.3.1
 _VNSTAT_VRN=1.14
+_YAML_VRN=1.2.0
 _ZLIB_VRN=1.2.8
 
 
@@ -108,7 +111,7 @@ barCnf="/root/.barracuda.cnf"
 bldPth="/opt/tmp/boa"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncB="barracuda.sh.cnf"
-forCer="-f -y --force-yes --reinstall"
+forCer="-fuy --force-yes --reinstall"
 gitHub="https://github.com/omega8cc"
 gitLab="https://gitlab.com/omega8cc"
 libFnc="${bldPth}/lib/functions"
@@ -230,6 +233,12 @@ check_prepare_dirs_permissions
 
 
 ###
+### Optional major system upgrades
+###
+if_squeeze_to_wheezy
+
+
+###
 ### Download system-wide Drush versions
 ###
 get_drush_versions
@@ -239,13 +248,6 @@ get_drush_versions
 ### Upgrade only Aegir Master Instance (obsolete mode)
 ###
 if_upgrade_only_aegir_master
-
-
-###
-### Optional major system upgrades
-###
-if_squeeze_to_wheezy
-if_lenny_to_squeeze
 
 
 ###
@@ -272,13 +274,21 @@ fi
 if [ "${_NGINX_SPDY}" = "YES" ] \
   || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
   || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
-  if [ "${_OSV}" = "wheezy" ] \
-    || [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "precise" ]; then
+  if [ "${_OSV}" = "stretch" ] \
+    || [ "${_OSV}" = "wily" ]; then
     _DO_NOTHING=YES
   else
-    install_ssl_src
-    install_ssh_src
+    if [ "${_OSV}" = "squeeze" ]; then
+      if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+        && [ "${_LOC_OSV}" = "squeeze" ]; then
+        _DO_NOTHING=YES
+      else
+        install_ssl_src
+      fi
+    fi
+    if [ "${_THIS_OS}" = "Debian" ]; then
+      install_ssh_src
+    fi
     install_curl_src
   fi
 fi
@@ -288,22 +298,9 @@ fi
 ### Install OpenSSH from sources if needed
 ###
 if [ "${_SSH_FROM_SOURCES}" = "YES" ]; then
-  if [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "precise" ]; then
-    _DO_NOTHING=YES
-  else
+  if [ "${_THIS_OS}" = "Debian" ]; then
     install_ssh_src
   fi
-fi
-
-
-###
-### Install Git and Nginx early if needed
-###
-if [ "${_LENNY_TO_SQUEEZE}" = "NO" ] \
-  || [ -z "${_LENNY_TO_SQUEEZE}" ]; then
-  check_install_latest_git
-  install_upgrade_nginx
 fi
 
 
@@ -332,8 +329,8 @@ check_smtp
 check_nginx_initd
 install_vnstat
 install_update_xdrago
-install_update_php
 install_curl_src
+install_update_php
 php_upgrade_all
 check_fix_php
 install_update_composer

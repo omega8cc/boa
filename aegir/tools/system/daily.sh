@@ -3,9 +3,12 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _WEBG=www-data
-_OPENSSL_VRN=1.0.1p
+_OPENSSL_VRN=1.0.2d
 _X_SE="2.4.6-stable"
 _OSV=$(lsb_release -sc 2>&1)
+if [ "${_OSV}" = "squeeze" ]; then
+  _OPENSSL_VRN=1.0.1p
+fi
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
@@ -20,8 +23,9 @@ crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -852,7 +856,7 @@ add_solr() {
       cp -a /opt/solr4/core0 $2
       CHAR="[:alnum:]"
       rkey=32
-      if [ "$_NEW_SSL" = "YES" ] \
+      if [ "${_NEW_SSL}" = "YES" ] \
         || [ "${_OSV}" = "wheezy" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
@@ -2114,7 +2118,7 @@ process() {
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
       if [ -e "${Plr}" ]; then
-        if [ "$_NEW_SSL" = "YES" ] \
+        if [ "${_NEW_SSL}" = "YES" ] \
           || [ "${_OSV}" = "wheezy" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
@@ -2594,7 +2598,7 @@ else
 fi
 #
 if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-  || [ -e "/root/.debug.cnf" ] \
+  || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _VMFAMILY="VS"
   _MODULES_FORCE="background_process coder cookie_cache_bypass css_gzip hacked \
@@ -2762,7 +2766,7 @@ else
     sed -i "s/.*resolver_timeout .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf           &> /dev/null
     sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n  resolver 8.8.8.8 8.8.4.4 valid=300s;\n  resolver_timeout 5s;/g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
     sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                      &> /dev/null
-    /etc/init.d/nginx reload
+    service nginx reload
   fi
 fi
 
@@ -2871,13 +2875,13 @@ if [ ! -e "/root/.high_traffic.cnf" ]; then
   echo "INFO: Redis server will be restarted in 5 minutes"
   touch /var/run/boa_wait.pid
   sleep 300
-  /etc/init.d/nginx reload
-  /etc/init.d/redis-server stop
+  service nginx reload
+  service redis-server stop
   killall -9 redis-server
   rm -f /var/run/redis.pid
   rm -f /var/lib/redis/*
   rm -f /var/log/redis/redis-server.log
-  /etc/init.d/redis-server start
+  service redis-server start
   rm -f /var/run/boa_wait.pid
   echo "INFO: Redis server restarted OK"
 fi

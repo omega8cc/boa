@@ -54,8 +54,22 @@ force_advanced_nginx_config() {
   sub_force_advanced_nginx_config
   sed -i "s/ 90;/ 180;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
   if [ "${_NGINX_SPDY}" = "YES" ]; then
-    sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
-    sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/vhost.d/*    &> /dev/null
+    if [ "${_OSV}" = "none" ]; then
+      sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/pre.d/*.conf           &> /dev/null
+      sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/vhost.d/*              &> /dev/null
+      sed -i "s/:443 ssl http2;/:443 ssl spdy;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
+      sed -i "s/:443 ssl http2;/:443 ssl spdy;/g" ${mtrNgx}/vhost.d/*    &> /dev/null
+    else
+      sed -i "s/:443;/:443 ssl http2;/g" ${mtrNgx}/pre.d/*.conf          &> /dev/null
+      sed -i "s/:443;/:443 ssl http2;/g" ${mtrNgx}/vhost.d/*             &> /dev/null
+      sed -i "s/:443 ssl spdy;/:443 ssl http2;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
+      sed -i "s/:443 ssl spdy;/:443 ssl http2;/g" ${mtrNgx}/vhost.d/*    &> /dev/null
+    fi
+  else
+    sed -i "s/:443 ssl http2;/:443;/g" ${mtrNgx}/pre.d/*.conf            &> /dev/null
+    sed -i "s/:443 ssl http2;/:443;/g" ${mtrNgx}/vhost.d/*               &> /dev/null
+    sed -i "s/:443 ssl spdy;/:443;/g"  ${mtrNgx}/pre.d/*.conf            &> /dev/null
+    sed -i "s/:443 ssl spdy;/:443;/g"  ${mtrNgx}/vhost.d/*               &> /dev/null
   fi
   _SSL_ITD=$(openssl version 2>&1 \
     | tr -d "\n" \
@@ -254,7 +268,7 @@ install_upgrade_nginx() {
         fi
       fi
       if [ "${_NGINX_SPDY}" = "YES" ]; then
-        if [[ "${_NGINX_V_ITD}" =~ "http_spdy_module" ]]; then
+        if [[ "${_NGINX_V_ITD}" =~ "http_v2_module" ]]; then
           _DO_NOTHING=YES
         else
           _NGINX_INSTALL_REQUIRED=YES
@@ -316,7 +330,16 @@ install_upgrade_nginx() {
       fi
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
-      _NGINX_EXTRA="--with-http_spdy_module ${_NGINX_EXTRA}"
+      if [ "${_OSV}" = "none" ]; then
+        _NGINX_EXTRA="--with-http_spdy_module ${_NGINX_EXTRA}"
+      else
+        _NGINX_EXTRA="--with-http_v2_module ${_NGINX_EXTRA}"
+      fi
+    fi
+    if [ ! -e "/var/opt/openssl-${_OPENSSL_NGX_VRN}" ]; then
+      cd /var/opt
+      rm -f -r openssl*
+      get_dev_src "openssl-${_OPENSSL_NGX_VRN}.tar.gz"
     fi
     cd /var/opt/nginx-${_NGINX_VRN}
     st_runner "sh ./configure \
@@ -343,14 +366,12 @@ install_upgrade_nginx() {
       --without-http_uwsgi_module \
       --with-ipv6 \
       --with-http_geoip_module \
+      --with-openssl=/var/opt/openssl-${_OPENSSL_NGX_VRN} \
       --with-debug ${_NGINX_EXTRA}" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
       && [ "${_LOC_OSV}" = "squeeze" ]; then
-      _DO_NOTHING=YES
-    elif [ "${_LENNY_TO_SQUEEZE}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "lenny" ]; then
       _DO_NOTHING=YES
     else
       mrun "service nginx stop" &> /dev/null
@@ -459,7 +480,7 @@ EOF
       _HTTPS_TEST=FREE
       validate_public_ip &> /dev/null
       validate_xtras_ip &> /dev/null
-      openssl req -x509 -nodes -days 7300 \
+      openssl req -x509 -nodes -sha256 -days 7300 \
         -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.${_THISHOST}" \
         -newkey rsa:2048 \
         -keyout /etc/ssl/private/nginx-wild-ssl.key \
@@ -543,8 +564,22 @@ fix_update_nginx_config() {
       sed -i "s/add_header Vary .*//g" /var/aegir/config/server_*/nginx.conf                               &> /dev/null
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
-      sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
-      sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/vhost.d/*    &> /dev/null
+      if [ "${_OSV}" = "none" ]; then
+        sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf           &> /dev/null
+        sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/vhost.d/*              &> /dev/null
+        sed -i "s/:443 ssl http2;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+        sed -i "s/:443 ssl http2;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/vhost.d/*    &> /dev/null
+      else
+        sed -i "s/:443;/:443 ssl http2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf          &> /dev/null
+        sed -i "s/:443;/:443 ssl http2;/g" /var/aegir/config/server_*/nginx/vhost.d/*             &> /dev/null
+        sed -i "s/:443 ssl spdy;/:443 ssl http2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+        sed -i "s/:443 ssl spdy;/:443 ssl http2;/g" /var/aegir/config/server_*/nginx/vhost.d/*    &> /dev/null
+      fi
+    else
+      sed -i "s/:443 ssl http2;/:443;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf            &> /dev/null
+      sed -i "s/:443 ssl http2;/:443;/g" /var/aegir/config/server_*/nginx/vhost.d/*               &> /dev/null
+      sed -i "s/:443 ssl spdy;/:443;/g"  /var/aegir/config/server_*/nginx/pre.d/*.conf            &> /dev/null
+      sed -i "s/:443 ssl spdy;/:443;/g"  /var/aegir/config/server_*/nginx/vhost.d/*               &> /dev/null
     fi
     _SSL_ITD=$(openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}' 2>&1)
 

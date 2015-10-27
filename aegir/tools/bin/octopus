@@ -31,7 +31,7 @@ _LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _L_VMFAMILY=XEN
 _L_VM_TEST=$(uname -a 2>&1)
 if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-  || [ -e "/root/.debug.cnf" ] \
+  || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
   || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _L_VMFAMILY="VS"
 fi
@@ -48,7 +48,19 @@ fix_dns_settings() {
   mkdir -p ${vBs}
   rm -f ${vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
-    cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    if [ -L "/etc/resolv.conf" ]; then
+      rslvT=`readlink -n /etc/resolv.conf`
+      if [ ! -e "${rslvT}" ]; then
+        rm -f /etc/resolv.conf
+      fi
+    fi
+    if [ -e "/etc/resolv.conf" ]; then
+      cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    fi
+  fi
+  if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
+    echo "nameserver 8.8.8.8" >${vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.4.4" >>${vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
     for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
@@ -689,8 +701,9 @@ up_legacy() {
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -724,6 +737,7 @@ find_fast_mirror() {
 
 check_dns_curl() {
   if [ ! -e "/etc/resolv.conf" ]; then
+    rm -f /etc/resolv.conf
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then
       cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
     fi
@@ -750,6 +764,11 @@ check_dns_curl() {
     --retry-delay 10 \
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
+    if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
+      echo "curl install" | dpkg --set-selections
+      apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
+      touch /root/.use.curl.from.packages.cnf
+    fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     clean_pid_exit
   fi
