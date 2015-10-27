@@ -1,6 +1,11 @@
 
 if_install_jetty() {
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "squeeze" ]; then
+    _DO_FIX=YES
+  fi
   if [ "${_OSV}" = "wheezy" ] \
+    || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     _R_JETTY=9
@@ -25,6 +30,7 @@ if_install_jetty() {
       && [ ! -e "/root/.wbhd.clstr.cnf" ] \
       && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
       if [ "${_OSV}" = "wheezy" ] \
+        || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
         _R_JETTY=9
@@ -44,6 +50,7 @@ if_install_jetty() {
         rm -f -r /opt/jetty9
         rm -f /etc/jetty.conf
         if [ "${_OSV}" = "wheezy" ] \
+          || [ "${_DO_FIX}" = "YES" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
           get_dev_arch "jetty-distribution-${_JETTY_9_VRN}.tar.gz"
@@ -102,7 +109,9 @@ if_install_jetty() {
         chown -R jetty9:jetty9 /opt/solr4
         chown -R jetty9:jetty9 /opt/jetty9
         chown -R jetty9:jetty9 /var/log/jetty9
-        if [ "${_OSV}" = "wheezy" ] || [ "${_OSV}" = "trusty" ] \
+        if [ "${_OSV}" = "wheezy" ] \
+          || [ "${_DO_FIX}" = "YES" ] \
+          || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
           echo "JAVA=/usr/bin/java7 # Path to Java 1.7" > /etc/default/jetty9
           echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk/jre # Path to Java 1.7" >> \
@@ -124,6 +133,7 @@ if_install_jetty() {
           -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" \
           # Options" | fmt -su -w 2500 >> /etc/default/jetty9
         if [ "${_OSV}" = "wheezy" ] \
+          || [ "${_DO_FIX}" = "YES" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
           _DO_NOTHING=YES
@@ -159,6 +169,7 @@ if_install_jetty() {
   fi
   if [ -e "/opt/jetty9/VERSION.txt" ]; then
     if [ "${_OSV}" = "wheezy" ] \
+      || [ "${_DO_FIX}" = "YES" ] \
       || [ "${_OSV}" = "trusty" ] \
       || [ "${_OSV}" = "precise" ]; then
       _JETTY9_JAVA_TEST=$(grep "Path to Java 1.7" /etc/default/jetty9 2>&1)
@@ -193,6 +204,7 @@ if_install_jetty() {
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
       mv -f /opt/jetty9 ${vBs}/jetty9-${_X_VERSION}-${_NOW}
       if [ "${_OSV}" = "wheezy" ] \
+        || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
         get_dev_arch "jetty-distribution-${_JETTY_9_VRN}.tar.gz"

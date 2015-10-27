@@ -172,6 +172,12 @@ by the BOA install and upgrade tools exclusively.
   since the daily Speed Booster cache forced cleanup procedure has been
   improved to not cause load spikes, even under "Giant Traffic" pressure.
 
+ @=> /root/.skip_cleanup.cnf
+
+  This file, if exists, allows to skip all daily cleanup otherwise run via
+  /var/xdrago/graceful.sh -- it works like /root/.giant_traffic.cnf and
+  additionally disables /tmp/ and /opt/tmp/ cleanup and Jetty restart.
+
  @=> /root/.home.no.wildcard.chmod.cnf
 
   This file, if exists, allows to avoid setting restrictive (but recommended)

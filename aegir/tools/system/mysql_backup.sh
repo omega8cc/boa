@@ -13,7 +13,7 @@ else
 fi
 _VM_TEST=$(uname -a 2>&1)
 if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-  || [ -e "/root/.debug.cnf" ] \
+  || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _VMFAMILY="VS"
 else
@@ -102,7 +102,7 @@ if [ "${_OPTIM}" = "YES" ]; then
   touch /var/run/boa_wait.pid
   touch /var/xdrago/log/mysql_restart_running.pid
   sleep 3
-  /etc/init.d/mysql restart
+  service mysql restart
   sleep 3
   rm -f /var/run/boa_wait.pid
   rm -f /var/xdrago/log/mysql_restart_running.pid

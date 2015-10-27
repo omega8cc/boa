@@ -16,8 +16,8 @@ barName="BARRACUDA.sh.txt"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncB="barracuda.sh.cnf"
 filIncO="octopus.sh.cnf"
+forCer="-fuy --force-yes --reinstall"
 octName="OCTOPUS.sh.txt"
-bldPth="/opt/tmp/boa"
 pthIncB="lib/settings/${filIncB}"
 pthIncO="lib/settings/${filIncO}"
 rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
@@ -28,7 +28,7 @@ _NOW=$(date +%y%m%d-%H%M 2>&1)
 _L_VMFAMILY=XEN
 _L_VM_TEST=$(uname -a 2>&1)
 if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-  || [ -e "/root/.debug.cnf" ] \
+  || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
   || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _L_VMFAMILY="VS"
 fi
@@ -85,7 +85,19 @@ fix_dns_settings() {
   mkdir -p ${vBs}
   rm -f ${vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
-    cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    if [ -L "/etc/resolv.conf" ]; then
+      rslvT=`readlink -n /etc/resolv.conf`
+      if [ ! -e "${rslvT}" ]; then
+        rm -f /etc/resolv.conf
+      fi
+    fi
+    if [ -e "/etc/resolv.conf" ]; then
+      cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    fi
+  fi
+  if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
+    echo "nameserver 8.8.8.8" >${vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.4.4" >>${vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
     for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
@@ -603,7 +615,7 @@ set_pin_priority() {
     fi
     if [ "${_THIS_OS}" = "Debian" ]; then
       _THIS_RV=$(grep "6.0" /etc/issue.net 2>&1)
-      if [[ "$_THIS_RV" =~ "6.0" ]]; then
+      if [[ "${_THIS_RV}" =~ "6.0" ]]; then
         curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
           -o /etc/apt/preferences
       else
@@ -717,8 +729,9 @@ init_setup() {
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -752,6 +765,7 @@ find_fast_mirror() {
 
 check_dns_curl() {
   if [ ! -e "/etc/resolv.conf" ]; then
+    rm -f /etc/resolv.conf
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then
       cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
     fi
@@ -773,9 +787,10 @@ check_dns_curl() {
       echo "ERROR: Please install it manually with 'apt-get install curl'"
       clean_pid_exit
     else
+      rm -f /etc/apt/sources.list.d/openssl.list
       apt-get clean -qq &> /dev/null
       apt-get update -qq &> /dev/null
-      apt-get install curl -y --force-yes --reinstall &> /dev/null
+      apt-get install curl ${forCer} &> /dev/null
     fi
   fi
   _CURL_TEST=$(curl -L -k -s \
@@ -784,6 +799,11 @@ check_dns_curl() {
     --retry-delay 10 \
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
+    if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
+      echo "curl install" | dpkg --set-selections
+      apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
+      touch /root/.use.curl.from.packages.cnf
+    fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     clean_pid_exit
   fi
@@ -832,20 +852,44 @@ check_root() {
   fi
   _L_VM_TEST=$(uname -a 2>&1)
   if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [ -e "/root/.debug.cnf" ] \
+    || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
     || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
     if [ -e "/sbin/hdparm" ]; then
       apt-get remove hdparm -y --force-yes -qq &> /dev/null
       apt-get purge hdparm -y --force-yes -qq &> /dev/null
-      apt-get autoremove -y --force-yes -qq &> /dev/null
     fi
-    _REMOVE_LINKS="vnstat buagent svscan kerneloops halt hwclock.sh \
-      hwclockfirst.sh ifupdown ifupdown-clean klogd mountall-bootclean.sh \
-      mountall.sh mountdevsubfs.sh mountkernfs.sh mountnfs-bootclean.sh \
-      mountnfs.sh mountoverflowtmp mountvirtfs mtab.sh networking reboot \
-      setserial sysstat umountfs umountnfs.sh umountroot urandom"
+    _REMOVE_LINKS="buagent \
+                   fancontrol \
+                   halt \
+                   hwclock.sh \
+                   hwclockfirst.sh \
+                   ifupdown \
+                   ifupdown-clean \
+                   kerneloops \
+                   klogd \
+                   mountall-bootclean.sh \
+                   mountall.sh \
+                   mountdevsubfs.sh \
+                   mountkernfs.sh \
+                   mountnfs-bootclean.sh \
+                   mountnfs.sh \
+                   mountoverflowtmp \
+                   mountvirtfs \
+                   mtab.sh \
+                   networking \
+                   reboot \
+                   setserial \
+                   svscan \
+                   sysstat \
+                   umountfs \
+                   umountnfs.sh \
+                   umountroot \
+                   urandom \
+                   vnstat"
     for link in ${_REMOVE_LINKS}; do
-      update-rc.d -f $link remove &> /dev/null
+      if [ -e "/etc/init.d/${link}" ]; then
+        update-rc.d -f ${link} remove &> /dev/null
+      fi
     done
   fi
 }

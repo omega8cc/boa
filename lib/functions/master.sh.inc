@@ -679,17 +679,9 @@ EOFMYSQL
       && [ "${_LOC_OSV}" = "squeeze" ]; then
       msg "INFO: Aegir Master Instance upgrade skipped!"
       echo " "
-      msg "NOTE! You *must* reboot the server and then run boa up-stable *again*"
-      msg "NOTE! to complete all system upgrades and upgrade also"
-      msg "NOTE! Aegir Master Instance securely"
-      echo " "
-    elif [ "${_LENNY_TO_SQUEEZE}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "lenny" ]; then
-      msg "INFO: Aegir Master Instance upgrade skipped!"
-      echo " "
-      msg "NOTE! You *must* reboot the server and then run boa up-stable *again*"
-      msg "NOTE! to complete all system upgrades and upgrade also"
-      msg "NOTE! Aegir Master Instance securely"
+      msg "NOTE! You must reboot the server and run barracuda upgrade"
+      msg "NOTE! again to complete all system upgrades and upgrade also"
+      msg "NOTE! Aegir Master Instance."
       echo " "
     elif [ "${_SYSTEM_UPGRADE_ONLY}" = "YES" ]; then
       msg "INFO: Aegir Master Instance upgrade skipped"

@@ -8,7 +8,7 @@ This BOA release includes several important system upgrades and
 bug fixes. All supported Aegir platforms have been updated with
 latest Drupal cores.
 
-@=> Latest Drupal 8.0.0-beta15 works great, but currently only
+@=> Latest Drupal 8.0.0-rc2 works great, but currently only
     when installed as a custom platform in the ~/static directory tree,
     because it is not really symlinks-friendly. We will re-introduce
     built-in Drupal 8 platforms once this situation is improved.
