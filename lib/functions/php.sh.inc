@@ -1,4 +1,15 @@
 #
+# Fix php.ini files to remove ionCube
+fix_php_ini_ioncube() {
+  if [ -e "${_THIS_FILE}" ] && [ "${_PHP_IONCUBE}" = "NO" ]; then
+    _IONCUBE_INI_TEST=$(grep "ioncube_loader" ${_THIS_FILE} 2>&1)
+    if [[ "$_IONCUBE_INI_TEST" =~ "ioncube_loader" ]]; then
+      sed -i "s/.*ioncube_loader.*//g" ${_THIS_FILE} &> /dev/null
+    fi
+  fi
+}
+
+#
 # Fix php.ini files to remove suhosin.so
 fix_php_ini_suhosin() {
   if [ -e "${_THIS_FILE}" ]; then
@@ -23,6 +34,19 @@ fix_php_ini_mailparse() {
 }
 
 #
+# Fix php.ini files to add yaml.so
+fix_php_ini_yaml() {
+  if [ -e "${_THIS_FILE}" ]; then
+    _YAML_INI_TEST=$(grep "extension=yaml.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_YAML_INI_TEST" =~ "extension=yaml.so" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=yaml.so" >> ${_THIS_FILE}
+    fi
+  fi
+}
+
+#
 # Fix php.ini files to add jsmin.so
 fix_php_ini_jsmin() {
   if [ -e "${_THIS_FILE}" ]; then
@@ -31,6 +55,19 @@ fix_php_ini_jsmin() {
       _DO_NOTHING=YES
     else
       echo "extension=jsmin.so" >> ${_THIS_FILE}
+    fi
+  fi
+}
+
+#
+# Fix php.ini files to add twig.so
+fix_php_ini_twig() {
+  if [ -e "${_THIS_FILE}" ]; then
+    _TWIG_INI_TEST=$(grep "extension=twig.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_TWIG_INI_TEST" =~ "extension=twig.so" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=twig.so" >> ${_THIS_FILE}
     fi
   fi
 }
@@ -222,13 +259,19 @@ update_php_conf() {
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     fix_php_ini_redis
     fix_php_ini_jsmin
+    fix_php_ini_twig
+    fix_php_ini_ioncube
     fix_php_ini_suhosin
     fix_php_ini_mailparse
+    fix_php_ini_yaml
     _THIS_FILE=/opt/php${e}/lib/php.ini
     fix_php_ini_redis
     fix_php_ini_jsmin
+    fix_php_ini_twig
+    fix_php_ini_ioncube
     fix_php_ini_suhosin
     fix_php_ini_mailparse
+    fix_php_ini_yaml
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g"       /opt/php${e}/etc/php${e}.ini
       sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php${e}/etc/php${e}.ini
@@ -369,20 +412,32 @@ install_php_extensions() {
   msg "INFO: Installing JSMin for PHP ${_T_PHP_VRN}..."
   cd /var/opt
   rm -f -r pecl-jsmin*
-  get_dev_src "pecl-jsmin-0.1.1.tar.gz"
-  cd /var/opt/pecl-jsmin-0.1.1
+  get_dev_src "pecl-jsmin-${_JSMIN_VRN}.tar.gz"
+  cd /var/opt/pecl-jsmin-${_JSMIN_VRN}
   st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  touch ${pthLog}/php-pecl-jsmin-${_T_PHP_VRN}.log
+  touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
+  ###--------------------###
+  msg "INFO: Installing Twig C for PHP ${_T_PHP_VRN}..."
+  cd /var/opt
+  rm -f -r twig*
+  get_dev_src "twig-${_TWIGC_VRN}.tar.gz"
+  cd /var/opt/twig-${_TWIGC_VRN}/ext/twig
+  st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  touch ${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log
   ###--------------------###
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
     if [ "$1" != "52" ]; then
       msg "INFO: Building GEOS extension for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
-        st_runner "apt-get update -y --force-yes" &> /dev/null
-        st_runner "${_INSTAPP} libgeos-dev libgeos-c1 phpunit" 2> /dev/null
+        rm -f /etc/apt/sources.list.d/openssl.list
+        st_runner "apt-get update -qq" &> /dev/null
+        st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
         touch ${pthLog}/geos-${_X_VERSION}.log
       fi
       cd /var/opt
@@ -443,6 +498,45 @@ install_php_extensions() {
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
+  ###--------------------###
+  if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ]; then
+    msg "INFO: Installing LibYAML for PHP..."
+    cd /var/opt
+    rm -f -r yaml*
+    get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
+    cd /var/opt/yaml-${_LIB_YAML_VRN}
+    st_runner "sh ./bootstrap" 2> /dev/null
+    st_runner "sh ./configure --prefix=/usr" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
+    _X86_64_TEST=$(uname -m 2>&1)
+    if [ "$_X86_64_TEST" = "x86_64" ]; then
+      if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ]; then
+        mkdir p /var/backups/libyaml
+        cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/
+        rm -f /usr/lib/x86_64-linux-gnu/libyaml*
+        cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/
+      fi
+    else
+      if [ ! -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.4" ]; then
+        mkdir p /var/backups/libyaml
+        cp -af /usr/lib/i386-linux-gnu/libyaml* /var/backups/libyaml/
+        rm -f /usr/lib/i386-linux-gnu/libyaml*
+        cp -af /usr/lib/libyaml* /usr/lib/i386-linux-gnu/
+      fi
+    fi
+  fi
+  msg "INFO: Installing YAML for PHP ${_T_PHP_VRN}..."
+  cd /var/opt
+  rm -f -r yaml*
+  get_dev_src "yaml-${_YAML_VRN}.tgz"
+  cd /var/opt/yaml-${_YAML_VRN}
+  st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  touch ${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log
 }
 
 #
@@ -490,17 +584,30 @@ update_php_extensions() {
     touch ${pthLog}/uploadprogress-${_UPROGRESS_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
-  if [ ! -e "${pthLog}/php-pecl-jsmin-${_T_PHP_VRN}.log" ]; then
+  if [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing JSMin upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -f -r pecl-jsmin*
-    get_dev_src "pecl-jsmin-0.1.1.tar.gz"
-    cd /var/opt/pecl-jsmin-0.1.1
+    get_dev_src "pecl-jsmin-${_JSMIN_VRN}.tar.gz"
+    cd /var/opt/pecl-jsmin-${_JSMIN_VRN}
     st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    touch ${pthLog}/php-pecl-jsmin-${_T_PHP_VRN}.log
+    touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
+  fi
+  ###--------------------###
+  if [ ! -e "${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log" ]; then
+    msg "INFO: Installing Twig C upgrade for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -f -r twig*
+    get_dev_src "twig-${_TWIGC_VRN}.tar.gz"
+    cd /var/opt/twig-${_TWIGC_VRN}/ext/twig
+    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    touch ${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
   if [ "$1" != "52" ] \
@@ -508,8 +615,9 @@ update_php_extensions() {
     if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
       msg "INFO: Building GEOS upgrade for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
-        st_runner "apt-get update -y --force-yes" &> /dev/null
-        st_runner "${_INSTAPP} libgeos-dev libgeos-c1 phpunit" 2> /dev/null
+        rm -f /etc/apt/sources.list.d/openssl.list
+        st_runner "apt-get update -qq" &> /dev/null
+        st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
         touch ${pthLog}/geos-${_X_VERSION}.log
       fi
       cd /var/opt
@@ -575,11 +683,41 @@ update_php_extensions() {
     st_runner "make --quiet install" 2> /dev/null
     touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
   fi
+  ###--------------------###
+  if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ]; then
+    msg "INFO: Installing LibYAML upgrade for PHP..."
+    cd /var/opt
+    rm -f -r yaml*
+    get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
+    cd /var/opt/yaml-${_LIB_YAML_VRN}
+    st_runner "sh ./bootstrap" 2> /dev/null
+    st_runner "sh ./configure --prefix=/usr" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
+    rm -f ${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log
+  fi
+  if [ ! -e "${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log" ]; then
+    msg "INFO: Installing YAML upgrade for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -f -r yaml*
+    get_dev_src "yaml-${_YAML_VRN}.tgz"
+    cd /var/opt/yaml-${_YAML_VRN}
+    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    touch ${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log
+  fi
 }
 
 #
 # Install modern PHP version
 install_php_multi() {
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "squeeze" ]; then
+    _DO_FIX=YES
+  fi
   if [ "$1" = "55" ] || [ "$1" = "56" ]; then
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-curlwrappers//g" 2>&1)
   fi
@@ -592,6 +730,7 @@ install_php_multi() {
   cd /var/opt/php-${_PHP_VERSION}
   st_runner "sh ./buildconf --force" 2> /dev/null
   if [ "${_OSV}" = "wheezy" ] \
+    || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     patchFile="disable_SSLv2_for_openssl_1_0_0.patch"
@@ -617,7 +756,7 @@ install_php_multi() {
                 --enable-pcntl \
                 --enable-soap \
                 --enable-zip \
-                --with-curl \
+                --with-curl=/usr/local \
                 --with-fpm-group=www-data \
                 --with-fpm-user=www-data \
                 --with-freetype-dir=/usr \
@@ -695,7 +834,6 @@ update_newrelic() {
                                  newrelic-php5-common \
                                  newrelic-daemon \
                                  newrelic-sysmond -y" &> /dev/null
-      st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
       mkdir -p ${vBs}/nr
       mv -f /etc/newrelic \
         ${vBs}/nr/etc-newrelic-pre-${_X_VERSION}-${_NOW} &> /dev/null
@@ -708,10 +846,10 @@ update_newrelic() {
       echo "## New Relic APT Repository" > ${aptLiSys}.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
         >> ${aptLiSys}.d/newrelic.list
-      st_runner "apt-get update -y --force-yes" &> /dev/null
-      st_runner "apt-get install newrelic-php5 newrelic-sysmond -f -y \
-        --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" \
-        2> /dev/null
+      rm -f /etc/apt/sources.list.d/openssl.list
+      st_runner "apt-get update -qq" &> /dev/null
+      st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
+      st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
       NR_PHPLIST="/opt/php53/bin:/opt/php54/bin:/opt/php55/bin:/opt/php56/bin"
       NR_SILENT="silent"
       export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
@@ -811,9 +949,10 @@ install_newrelic() {
         ${aptLiSys}.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
         >> ${aptLiSys}.d/newrelic.list
-      st_runner "apt-get update -y --force-yes" &> /dev/null
-      st_runner "apt-get install newrelic-php5 newrelic-sysmond -f -y \
-        --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+      rm -f /etc/apt/sources.list.d/openssl.list
+      st_runner "apt-get update -qq" &> /dev/null
+      st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
+      st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
       if [ "$_MULTI_NR" = "YES" ]; then
         msg "INFO: Installing latest version of New Relic Apps Monitor..."
         NR_PHPLIST="/opt/php53/bin:/opt/php54/bin:/opt/php55/bin:/opt/php56/bin"
@@ -1175,10 +1314,10 @@ php_upgrade_all() {
 install_update_php() {
   if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
     && [ "${_LOC_OSV}" = "squeeze" ]; then
-    mrun "service nginx stop" &> /dev/null
-    killall -9 nginx &> /dev/null
-  elif [ "${_LENNY_TO_SQUEEZE}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "lenny" ]; then
+    _DO_FIX=YES
+  fi
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "squeeze" ]; then
     mrun "service nginx stop" &> /dev/null
     killall -9 nginx &> /dev/null
   fi
@@ -1190,6 +1329,7 @@ install_update_php() {
     st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
   fi
   if [ "${_OSV}" = "wheezy" ] \
+    || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     _PHP_EXTRA="--with-ldap --with-gmp --with-xpm-dir=/usr"
@@ -1279,10 +1419,12 @@ check_fix_php() {
     php_upgrade_all
   fi
   install_newrelic
-  if [ ! -e "${pthLog}/ioncube-${_IONCUBE_VRN}.log" ] \
-    || [ "${_PHP_FORCE_REINSTALL}" = "YES" ] \
-    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-    install_ioncube
+  if [ "${_PHP_IONCUBE}" = "YES" ]; then
+    if [ ! -e "${pthLog}/ioncube-${_IONCUBE_VRN}.log" ] \
+      || [ "${_PHP_FORCE_REINSTALL}" = "YES" ] \
+      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      install_ioncube
+    fi
   fi
 }
 

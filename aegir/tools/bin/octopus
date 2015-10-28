@@ -4,11 +4,12 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 branch="2.4.x-dev"
-cluster="BOA-2.4.3"
-devel="2.4.x-dev"
-legacy="BOA-2.2.9"
+cluster="BOA-2.4.6"
+hd="HEAD"
+lgcy="BOA-2.2.9"
 master="master"
-stable="BOA-2.4.3"
+nextv="BOA-2.4.7-dev"
+stbl="BOA-2.4.6"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -30,7 +31,7 @@ _LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _L_VMFAMILY=XEN
 _L_VM_TEST=$(uname -a 2>&1)
 if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-  || [ -e "/root/.debug.cnf" ] \
+  || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
   || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _L_VMFAMILY="VS"
 fi
@@ -47,7 +48,19 @@ fix_dns_settings() {
   mkdir -p ${vBs}
   rm -f ${vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
-    cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    if [ -L "/etc/resolv.conf" ]; then
+      rslvT=`readlink -n /etc/resolv.conf`
+      if [ ! -e "${rslvT}" ]; then
+        rm -f /etc/resolv.conf
+      fi
+    fi
+    if [ -e "/etc/resolv.conf" ]; then
+      cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    fi
+  fi
+  if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
+    echo "nameserver 8.8.8.8" >${vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.4.4" >>${vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
     for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
@@ -109,8 +122,13 @@ fix_dns_settings() {
          echo "        ip=8.8.4.4;" >> ${dnsLi}
       fi
       ### echo debug dns A
-      sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+      _DNS_TPL_TEST=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
+      _DNS_RGX_TEST=$(grep "google-servers" /root/.local.dns.IP.list 2>&1)
+      if [[ "${_DNS_TPL_TEST}" =~ "google-servers" ]] \
+        && [[ "${_DNS_RGX_TEST}" =~ "google-servers" ]]; then
+        sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
 d;};' /etc/pdnsd.conf
+      fi
       resolvconf -u         &> /dev/null
       service pdnsd restart &> /dev/null
       pdnsd-ctl empty-cache &> /dev/null
@@ -137,6 +155,9 @@ check_dns_settings() {
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
       fix_dns_settings
+      if [ -e "/etc/init.d/postfix" ]; then
+        service postfix restart &> /dev/null
+      fi
     fi
   fi
 }
@@ -279,29 +300,40 @@ up_one() {
       cp -af ${vBs}/${filIncO}  ${vBs}/${tocIncO}
     fi
     if [ "${cmmand}" = "up-head" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${tocIncO}
-    elif [ "${cmmand}" = "up-modern" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${tocIncO}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${tocIncO}
+      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${tocIncO}
+      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"     ${vBs}/${tocIncO}
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${tocIncO}
     else
       if [ -e "${vBs}/${tocIncO}" ]; then
-        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"     ${vBs}/${tocIncO}
+        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${tocIncO}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${tocIncO}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${tocIncO}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${tocIncO}
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${tocName}
-      sed -i "s/^_BRANCH_PRO.*/_BRANCH_PROVISION=${branch}/g"  ${vBs}/${tocName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${tocName}
+      sed -i "s/^_BRANCH_PRO.*/_BRANCH_PROVISION=${brnch}/g"   ${vBs}/${tocName}
+      if [ "${cmmand}" = "up-legacy" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcy}/g" ${vBs}/${tocName}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcy}/g" ${vBs}/${tocName}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcy}/g"         ${vBs}/${tocName}
+      else
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${tocName}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${tocName}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${tocName}
+      fi
     fi
     if [ "${cmmand}" = "up-head" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"       ${vBs}/${tocIncO}
-    elif [ "${cmmand}" = "up-modern" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"        ${vBs}/${tocIncO}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${tocIncO}
     elif [ "${cmmand}" = "up-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${tocIncO}
     else
       if [ -e "${vBs}/${tocIncO}" ]; then
-        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"     ${vBs}/${tocIncO}
+        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${tocIncO}
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${tocName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${tocName}
     fi
     if [ -e "${vBs}/${tocIncO}" ]; then
       sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               ${vBs}/${tocIncO}
@@ -361,7 +393,7 @@ up_one() {
           rm -f -r ${User}/.drush/{sys,xts,usr}
           rm -f -r ${User}/.drush/{provision,drush_make}
           mkdir -p ${User}/.drush/{sys,xts,usr}
-          ${gCb} ${devel} https://github.com/omega8cc/provision.git \
+          ${gCb} ${branch} https://github.com/omega8cc/provision.git \
             ${User}/.drush/sys/provision &> /dev/null
           chown -R ${octUsr}:users ${User}/.drush/sys
           up_mode
@@ -585,6 +617,7 @@ up_start() {
       service mysql start &> /dev/null
     fi
   fi
+  brnch=${branch//\//\\\/}
 }
 
 up_finish() {
@@ -609,20 +642,19 @@ up_finish() {
 
 up_head() {
   up_start
+  if [ "${silent}" = "backdrop" ] \
+    || [ "${silent}" = "cluster" ] \
+    || [ "${silent}" = "drush" ] \
+    || [ "${silent}" = "gravcms" ] \
+    || [ "${silent}" = "jessie" ]; then
+    echo "FEATURE MODE: ${silent}"
+    master="feature/${silent}"
+    branch="feature/${silent}"
+  fi
   curl ${crlGet} "${rgUrl}/${master}/${octName}"  -o ${vBs}/${octName}
   curl ${crlGet} "${rgUrl}/${master}/${pthIncO}"  -o ${vBs}/${filIncO}
-  if [ "${second}" = "all" ]; then
-    up_action_all
-  else
-    up_action_one
-  fi
-  up_finish
-}
-
-up_modern() {
-  up_start
-  curl ${crlGet} "${rgUrl}/${devel}/${octName}"   -o ${vBs}/${octName}
-  curl ${crlGet} "${rgUrl}/${devel}/${pthIncO}"   -o ${vBs}/${filIncO}
+  mstr=${master//\//\\\/}
+  brnch=${branch//\//\\\/}
   if [ "${second}" = "all" ]; then
     up_action_all
   else
@@ -645,8 +677,8 @@ up_cluster() {
 
 up_stable() {
   up_start
-  curl ${crlGet} "${rgUrl}/${stable}/${octName}"  -o ${vBs}/${octName}
-  curl ${crlGet} "${rgUrl}/${stable}/${pthIncO}"  -o ${vBs}/${filIncO}
+  curl ${crlGet} "${rgUrl}/${stbl}/${octName}"    -o ${vBs}/${octName}
+  curl ${crlGet} "${rgUrl}/${stbl}/${pthIncO}"    -o ${vBs}/${filIncO}
   if [ "${second}" = "all" ]; then
     up_action_all
   else
@@ -657,7 +689,7 @@ up_stable() {
 
 up_legacy() {
   up_start
-  curl ${crlGet} "${rgUrl}/${legacy}/${octName}"  -o ${vBs}/${octName}
+  curl ${crlGet} "${rgUrl}/${lgcy}/${octName}"    -o ${vBs}/${octName}
   if [ "${second}" = "all" ]; then
     up_action_all
   else
@@ -669,8 +701,9 @@ up_legacy() {
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -704,6 +737,7 @@ find_fast_mirror() {
 
 check_dns_curl() {
   if [ ! -e "/etc/resolv.conf" ]; then
+    rm -f /etc/resolv.conf
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then
       cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
     fi
@@ -730,6 +764,11 @@ check_dns_curl() {
     --retry-delay 10 \
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
+    if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
+      echo "curl install" | dpkg --set-selections
+      apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
+      touch /root/.use.curl.from.packages.cnf
+    fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     clean_pid_exit
   fi
@@ -749,6 +788,9 @@ check_root() {
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
     echo >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
+    if [ -e "/etc/init.d/postfix" ]; then
+      service postfix restart &> /dev/null
+    fi
   else
     echo "ERROR: This script should be ran as a root user"
     clean_pid_exit
@@ -759,8 +801,8 @@ check_root() {
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
-    echo "ERROR: Your disk space is almost full - \
-      we can not proceed until it is below 90/100"
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
     clean_pid_exit
   fi
 }
@@ -773,14 +815,6 @@ case "$1" in
              check_root
              check_dns_curl
              up_head
-  ;;
-  up-modern) cmmand="$1"
-             second="$2"
-             cmmode="$3"
-             silent="$4"
-             check_root
-             check_dns_curl
-             up_modern
   ;;
   up-cluster) cmmand="$1"
              second="$2"

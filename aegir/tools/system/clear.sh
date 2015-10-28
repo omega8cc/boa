@@ -12,8 +12,9 @@ find /var/run/daily-fix.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -58,11 +59,7 @@ if [ -e "/etc/cron.daily/logrotate" ]; then
   fi
 fi
 
-if [ -e "/root/.high_traffic.cnf" ]; then
-  echo rotate > /var/log/nginx/access.log
-fi
-
-if [ -e "/var/run/boa_run.pid" ] || [ -e "/var/run/daily-fix.pid" ]; then
+if [ -e "/var/run/boa_run.pid" ]; then
   sleep 1
 else
   if [ -e "/root/.barracuda.cnf" ]; then

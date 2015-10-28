@@ -136,11 +136,9 @@ _TUNE_PHP_CLI_TIMEOUT=7200
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_AEGIR_VERSION="HEAD"
-_AEGIR_XTS_VRN="HEAD"
+_AEGIR_VERSION="BOA-2.4.6"
 _BRANCH_BOA="2.4.x-dev"
-_BRANCH_PRN="2.4.x-dev"
-_X_VERSION="BOA-2.4.4-dev"
+_X_VERSION="BOA-2.4.6"
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
@@ -154,11 +152,11 @@ fi
 _PHP53_API=20090626
 _PHP53_VRN=5.3.29
 _PHP54_API=20100525
-_PHP54_VRN=5.4.42
+_PHP54_VRN=5.4.45
 _PHP55_API=20121212
-_PHP55_VRN=5.5.26
+_PHP55_VRN=5.5.30
 _PHP56_API=20131226
-_PHP56_VRN=5.6.10
+_PHP56_VRN=5.6.14
 
 ###
 ### Helper variables
@@ -229,8 +227,9 @@ mrun() {
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -269,6 +268,16 @@ find_correct_ip() {
     | awk '{ print $1}' 2>&1)
 }
 #
+# Fix php.ini files to remove ionCube
+fix_php_ini_ioncube() {
+  if [ -e "${_THIS_FILE}" ] && [ "${_PHP_IONCUBE}" = "NO" ]; then
+    _IONCUBE_INI_TEST=$(grep "ioncube_loader" ${_THIS_FILE} 2>&1)
+    if [[ "$_IONCUBE_INI_TEST" =~ "ioncube_loader" ]]; then
+      sed -i "s/.*ioncube_loader.*//g" ${_THIS_FILE} &> /dev/null
+    fi
+  fi
+}
+#
 # Fix php.ini files to remove suhosin.so
 fix_php_ini_suhosin() {
   if [ -e "${_THIS_FILE}" ]; then
@@ -291,6 +300,18 @@ fix_php_ini_mailparse() {
   fi
 }
 #
+# Fix php.ini files to add yaml.so
+fix_php_ini_yaml() {
+  if [ -e "${_THIS_FILE}" ]; then
+    _YAML_INI_TEST=$(grep "extension=yaml.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_YAML_INI_TEST" =~ "extension=yaml.so" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=yaml.so" >> ${_THIS_FILE}
+    fi
+  fi
+}
+#
 # Fix php.ini files to add jsmin.so
 fix_php_ini_jsmin() {
   if [ -e "${_THIS_FILE}" ]; then
@@ -299,6 +320,18 @@ fix_php_ini_jsmin() {
       _DO_NOTHING=YES
     else
       echo "extension=jsmin.so" >> ${_THIS_FILE}
+    fi
+  fi
+}
+#
+# Fix php.ini files to add twig.so
+fix_php_ini_twig() {
+  if [ -e "${_THIS_FILE}" ]; then
+    _TWIG_INI_TEST=$(grep "extension=twig.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_TWIG_INI_TEST" =~ "extension=twig.so" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=twig.so" >> ${_THIS_FILE}
     fi
   fi
 }
@@ -480,13 +513,19 @@ update_php_conf() {
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     fix_php_ini_redis
     fix_php_ini_jsmin
+    fix_php_ini_twig
+    fix_php_ini_ioncube
     fix_php_ini_suhosin
     fix_php_ini_mailparse
+    fix_php_ini_yaml
     _THIS_FILE=/opt/php${e}/lib/php.ini
     fix_php_ini_redis
     fix_php_ini_jsmin
+    fix_php_ini_twig
+    fix_php_ini_ioncube
     fix_php_ini_suhosin
     fix_php_ini_mailparse
+    fix_php_ini_yaml
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g"       /opt/php${e}/etc/php${e}.ini
       sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php${e}/etc/php${e}.ini
@@ -875,7 +914,7 @@ tune_memory_limits() {
     _VMFAMILY="XEN"
   fi
   if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [ -e "/root/.debug.cnf" ] \
+    || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   fi

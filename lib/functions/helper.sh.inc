@@ -49,8 +49,8 @@ not_supported_os() {
   msg "== FATAL ERROR =="
   msg "Invalid install script or OS used"
   msg "It is not any supported Debian or Ubuntu version"
-  msg "You need Debian - Squeeze (recommended) or Wheezy"
-  msg "or Ubuntu - Precise or Lucid"
+  msg "You need Debian Wheezy (recommended) or Squeeze,"
+  msg "or Ubuntu -- Trusty or Precise."
   clean_pid_exit
 }
 
@@ -376,10 +376,12 @@ os_detection() {
   _THIS_OS=$(lsb_release -si 2>&1)
   _THIS_RV=$(lsb_release -sc 2>&1)
   if [ "${_THIS_OS}" = "Ubuntu" ]; then
-    if [ "$_THIS_RV" = "trusty" ]; then
+    if [ "${_THIS_RV}" = "trusty" ]; then
       _OSV="trusty"
-      _DB_SERVER=MariaDB
       _DB_SERIES=10.0
+      _NGINX_FORWARD_SECRECY=YES
+      _NGINX_SPDY=YES
+      _SSH_FROM_SOURCES=NO
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
@@ -387,24 +389,34 @@ os_detection() {
       else
         _MARIADB_VRN="${_MARIADB_10_VRN}"
       fi
-    elif [ "$_THIS_RV" = "precise" ]; then
+    elif [ "${_THIS_RV}" = "precise" ]; then
       _OSV="precise"
-    elif [ "$_THIS_RV" = "lucid" ]; then
+      _NGINX_FORWARD_SECRECY=YES
+      _NGINX_SPDY=YES
+      _SSH_FROM_SOURCES=NO
+    elif [ "${_THIS_RV}" = "lucid" ]; then
       _OSV="lucid"
+      _NGINX_FORWARD_SECRECY=NO
+      _NGINX_SPDY=NO
+      _SSH_FROM_SOURCES=NO
+      _SSL_FROM_SOURCES=NO
     else
       not_supported_os
     fi
   elif [ "${_THIS_OS}" = "Debian" ]; then
-    if [ "$_THIS_RV" = "wheezy" ]; then
+    if [ "${_THIS_RV}" = "wheezy" ]; then
       _OSV="wheezy"
-      _DB_SERVER=MariaDB
-    elif [ "$_THIS_RV" = "squeeze" ]; then
+      _NGINX_FORWARD_SECRECY=YES
+      _NGINX_SPDY=YES
+      _SSH_FROM_SOURCES=YES
+      _SSL_FROM_SOURCES=YES
+    elif [ "${_THIS_RV}" = "squeeze" ]; then
       _OSV="squeeze"
-    elif [ "$_THIS_RV" = "lenny" ]; then
-      _OSV="lenny"
-      _DB_SERVER=MariaDB
-      _DB_SERIES=5.3
-      _MARIADB_VRN=5.3.12
+      _OPENSSL_VRN=1.0.1p
+      _NGINX_FORWARD_SECRECY=YES
+      _NGINX_SPDY=YES
+      _SSH_FROM_SOURCES=YES
+      _SSL_FROM_SOURCES=YES
     else
       not_supported_os
     fi

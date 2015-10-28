@@ -2,6 +2,21 @@
 
 export PATH=$PATH:/opt/local/bin
 _ALL="$@"
+### echo _ALL is ${_ALL}
+_ARR=
+if [[ "${_ALL}" =~ "true COLUMNS=" ]]; then
+  _R_M=`echo -n "${_ALL}" | grep -o "\-c set -m\; true COLUMNS=[0-9]\+ drush"`
+  ### echo _R_M is $_R_M
+  _CLR=`echo ${_ALL} | sed "s/\$_R_M//g"`
+  _ARR=() # the buffer array for filtered parameters
+  for arg in "${_CLR}"; do
+    case $_R_M in
+      $arg\ * | *\ $arg | *\ $arg\ *) ;;
+      *) _ARR+=("$arg") ;;
+    esac
+  done
+  ### echo _ARR is ${_ARR}
+fi
 _INTERNAL=NO
 _LTD_GID=$(id -nG ${USER} 2>&1)
 _LTD_UID=$(id -nu ${USER} 2>&1)
@@ -29,6 +44,11 @@ if [ "$1" = "-c" ]; then
   _ARGS="$2"
 else
   _ARGS="$1"
+fi
+
+if [[ "${_ARGS}" =~ "true COLUMNS=" ]]; then
+  _R_M=`echo -n "${_ARGS}" | grep -o "true COLUMNS=[0-9]\+ "`
+  _ARGS=`echo ${_ARGS} | sed "s/\$_R_M//g"`
 fi
 
 if [ -d "/home/${USER}/.tmp" ]; then
@@ -73,6 +93,10 @@ fi
 # echo 3 is $3
 # echo 4 is $4
 # echo 5 is $5
+# echo 6 is $6
+# echo 7 is $7
+# echo 8 is $8
+# echo 9 is $9
 
 # Check PHP CLI version defined.
 check_php_cli_version() {
@@ -148,12 +172,14 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         # echo 1 PHP_INI is ${PHP_INI}
         if [[ "${_ALL}" =~ "drush make" ]] \
           || [[ "${_ALL}" =~ "drush7 make" ]] \
+          || [[ "${_ALL}" =~ "drush8 make" ]] \
+          || [[ "${_ALL}" =~ "drush cc drush" ]] \
           || [[ "${_ALL}" =~ "drush7 cc drush" ]] \
-          || [[ "${_ALL}" =~ "drush6 make" ]] \
-          || [[ "${_ALL}" =~ "drush6 cc drush" ]]; then
+          || [[ "${_ALL}" =~ "drush8 cc drush" ]]; then
           if [[ "${_PWD}" =~ "/static" ]] \
+            || [[ "${_ALL}" =~ "drush cc drush" ]] \
             || [[ "${_ALL}" =~ "drush7 cc drush" ]] \
-            || [[ "${_ALL}" =~ "drush6 cc drush" ]]; then
+            || [[ "${_ALL}" =~ "drush8 cc drush" ]]; then
             _CORRECT=YES
           else
             if [[ "${_ALL}" =~ "make-generate" ]] \
@@ -176,7 +202,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         else
           if [[ "${_ALL}" =~ "drush @" ]] \
             || [[ "${_ALL}" =~ "drush7 @" ]] \
-            || [[ "${_ALL}" =~ "drush6 @" ]]; then
+            || [[ "${_ALL}" =~ "drush8 @" ]]; then
             if [[ "$3" =~ "restore"($) ]] \
               || [[ "$3" =~ "arr"($) ]] \
               || [[ "$3" =~ "cli"($) ]] \
@@ -185,8 +211,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
               || [[ "$3" =~ "execute"($) ]] \
               || [[ "$3" =~ "core-quick-drupal"($) ]] \
               || [[ "$3" =~ "exec"($) ]] \
-              || [[ "$3" =~ (^)"ev"($) ]] \
-              || [[ "$3" =~ "eval"($) ]] \
               || [[ "$3" =~ "xstatus"($) ]] \
               || [[ "$3" =~ "redis-flush"($) ]] \
               || [[ "$3" =~ (^)"qd"($) ]] \
@@ -207,18 +231,24 @@ if [ "${_LTD_GID}" = "www-data users" ] \
               _CORRECT=YES
             fi
           elif [[ "${_ALL}" =~ "cache-clear drush" ]] \
-            || [[ "${_ALL}" =~ "drush4 site-alias" ]] \
             || [[ "${_ALL}" =~ "drush7 site-alias" ]] \
             || [[ "${_ALL}" =~ "-c set -m; drush7 --version" ]] \
             || [[ "${_ALL}" =~ "-c set -m; drush7 help" ]] \
             || [[ "${_ALL}" =~ "drush7 dl" ]] \
             || [[ "${_ALL}" =~ "drush7 pm-download" ]] \
             || [[ "${_ALL}" =~ "drush7 sa" ]] \
-            || [[ "${_ALL}" =~ "-c set -m; drush6 --version" ]] \
-            || [[ "${_ALL}" =~ "-c set -m; drush6 help" ]] \
-            || [[ "${_ALL}" =~ "drush6 dl" ]] \
-            || [[ "${_ALL}" =~ "drush6 pm-download" ]] \
-            || [[ "${_ALL}" =~ "drush6 sa" ]]; then
+            || [[ "${_ALL}" =~ "drush8 site-alias" ]] \
+            || [[ "${_ALL}" =~ "-c set -m; drush8 --version" ]] \
+            || [[ "${_ALL}" =~ "-c set -m; drush8 help" ]] \
+            || [[ "${_ALL}" =~ "drush8 dl" ]] \
+            || [[ "${_ALL}" =~ "drush8 pm-download" ]] \
+            || [[ "${_ALL}" =~ "drush8 sa" ]] \
+            || [[ "${_ALL}" =~ "drush site-alias" ]] \
+            || [[ "${_ALL}" =~ "-c set -m; drush --version" ]] \
+            || [[ "${_ALL}" =~ "-c set -m; drush help" ]] \
+            || [[ "${_ALL}" =~ "drush dl" ]] \
+            || [[ "${_ALL}" =~ "drush pm-download" ]] \
+            || [[ "${_ALL}" =~ "drush sa" ]]; then
             _CORRECT=YES
           else
             if [[ "${_ALL}" =~ "-c set -m; drush" ]] \
@@ -239,7 +269,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     else
       if [[ "${_ALL}" =~ "drush @" ]] \
         || [[ "${_ALL}" =~ "drush7 @" ]] \
-        || [[ "${_ALL}" =~ "drush6 @" ]]; then
+        || [[ "${_ALL}" =~ "drush8 @" ]]; then
         if [[ "$3" =~ "restore"($) ]] \
           || [[ "$3" =~ "arr"($) ]] \
           || [[ "$3" =~ "cli"($) ]] \
@@ -248,8 +278,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "$3" =~ "execute"($) ]] \
           || [[ "$3" =~ "core-quick-drupal"($) ]] \
           || [[ "$3" =~ "exec"($) ]] \
-          || [[ "$3" =~ (^)"ev"($) ]] \
-          || [[ "$3" =~ "eval"($) ]] \
           || [[ "$3" =~ "xstatus"($) ]] \
           || [[ "$3" =~ "redis-flush"($) ]] \
           || [[ "$3" =~ (^)"qd"($) ]] \
@@ -309,7 +337,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
   else
     if [[ "${_ALL}" =~ "drush @" ]] \
       || [[ "${_ALL}" =~ "drush7 @" ]] \
-      || [[ "${_ALL}" =~ "drush6 @" ]]; then
+      || [[ "${_ALL}" =~ "drush8 @" ]]; then
       if [[ "$3" =~ "restore"($) ]] \
         || [[ "$3" =~ "arr"($) ]] \
         || [[ "$3" =~ "cli"($) ]] \
@@ -318,8 +346,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         || [[ "$3" =~ "execute"($) ]] \
         || [[ "$3" =~ "core-quick-drupal"($) ]] \
         || [[ "$3" =~ "exec"($) ]] \
-        || [[ "$3" =~ (^)"ev"($) ]] \
-        || [[ "$3" =~ "eval"($) ]] \
         || [[ "$3" =~ "xstatus"($) ]] \
         || [[ "$3" =~ "redis-flush"($) ]] \
         || [[ "$3" =~ (^)"qd"($) ]] \
@@ -451,7 +477,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ]; then
           _RUBY_VP="${_DETECTED_RUBY_VP}"
         else
-          _RUBY_VP=2.2.2
+          _RUBY_VP=2.2.3
         fi
       else
         _DETECTED_RUBY_VP=$(grep 'RUBY_VERSION' \
@@ -464,7 +490,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ]; then
           _RUBY_VP="${_DETECTED_RUBY_VP}"
         else
-          _RUBY_VP=2.0.0-p645
+          _RUBY_VP=2.0.0-p647
         fi
       fi
       _SP_A="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}/bin"
@@ -484,12 +510,24 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     fi
     if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ]; then
       if [ -x "/bin/dash" ]; then
-        export DRUSH_PHP;export PHP_INI;exec /bin/dash "$@"
+        if [ ! -z "${_ARR}" ]; then
+          export DRUSH_PHP;export PHP_INI;exec drush7 ${_ARR}
+        else
+          export DRUSH_PHP;export PHP_INI;exec /bin/dash "$@"
+        fi
       else
-        export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
+        if [ ! -z "${_ARR}" ]; then
+          export DRUSH_PHP;export PHP_INI;exec drush7 ${_ARR}
+        else
+          export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
+        fi
       fi
     else
-      export DRUSH_PHP;export PHP_INI;exec $0 "$@"
+      if [ ! -z "${_ARR}" ]; then
+        export DRUSH_PHP;export PHP_INI;exec drush7 ${_ARR}
+      else
+        export DRUSH_PHP;export PHP_INI;exec $0 "$@"
+      fi
     fi
     exit 0
   else

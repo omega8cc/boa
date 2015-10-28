@@ -15,7 +15,7 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-_DUPLICITY_VRN="0.7.02"
+_DUPLICITY_VRN="0.7.05"
 _BOTO_VRN="2.36.0"
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
@@ -181,7 +181,7 @@ backup() {
 
 conn_test() {
   if [ $# = 1 ]; then
-    BUCKET="daily.boa.$1"
+    BUCKET="daily.remote.$1"
     TARGET="s3://${_AWS_URL}/${BUCKET}"
   fi
   echo "Running AWS connection test, please wait..."
@@ -227,11 +227,11 @@ restore() {
 retrieve() {
   if [ $# = 3 ]; then
     BUCKET="daily.remote.$3"
-    TARGET="s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}"
+    TARGET="s3://${_AWS_URL}/${BUCKET}"
     duplicity restore --file-to-restore $1 ${_AWS_OPX} ${TARGET} $2
   elif [ $# = 4 ]; then
     BUCKET="daily.remote.$4"
-    TARGET="s3://s3-${_AWS_REG}.amazonaws.com/${BUCKET}"
+    TARGET="s3://${_AWS_URL}/${BUCKET}"
     duplicity restore --file-to-restore $1 --time $2 ${_AWS_OPX} ${TARGET} $3
   fi
 }
@@ -239,8 +239,9 @@ retrieve() {
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -283,6 +284,7 @@ install() {
     echo "Installing duplicity dependencies..."
     cd
     find_fast_mirror
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get clean -qq                    &> /dev/null
     apt-get update -qq                   &> /dev/null
     aptitude purge duplicity -y          &> /dev/null

@@ -4,11 +4,12 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 branch="2.4.x-dev"
-cluster="BOA-2.4.3"
-devel="2.4.x-dev"
-legacy="BOA-2.2.9"
+cluster="BOA-2.4.6"
+hd="HEAD"
+lgcy="BOA-2.2.9"
 master="master"
-stable="BOA-2.4.3"
+nextv="BOA-2.4.7-dev"
+stbl="BOA-2.4.6"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -30,7 +31,7 @@ _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
 _L_VMFAMILY=XEN
 _L_VM_TEST=$(uname -a 2>&1)
 if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-  || [ -e "/root/.debug.cnf" ] \
+  || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
   || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _L_VMFAMILY="VS"
 fi
@@ -47,7 +48,19 @@ fix_dns_settings() {
   mkdir -p ${vBs}
   rm -f ${vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
-    cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    if [ -L "/etc/resolv.conf" ]; then
+      rslvT=`readlink -n /etc/resolv.conf`
+      if [ ! -e "${rslvT}" ]; then
+        rm -f /etc/resolv.conf
+      fi
+    fi
+    if [ -e "/etc/resolv.conf" ]; then
+      cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    fi
+  fi
+  if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
+    echo "nameserver 8.8.8.8" >${vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.4.4" >>${vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
     for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
@@ -109,8 +122,13 @@ fix_dns_settings() {
          echo "        ip=8.8.4.4;" >> ${dnsLi}
       fi
       ### echo debug dns A
-      sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+      _DNS_TPL_TEST=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
+      _DNS_RGX_TEST=$(grep "google-servers" /root/.local.dns.IP.list 2>&1)
+      if [[ "${_DNS_TPL_TEST}" =~ "google-servers" ]] \
+        && [[ "${_DNS_RGX_TEST}" =~ "google-servers" ]]; then
+        sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
 d;};' /etc/pdnsd.conf
+      fi
       resolvconf -u         &> /dev/null
       service pdnsd restart &> /dev/null
       pdnsd-ctl empty-cache &> /dev/null
@@ -137,6 +155,9 @@ check_dns_settings() {
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
       fix_dns_settings
+      if [ -e "/etc/init.d/postfix" ]; then
+        service postfix restart &> /dev/null
+      fi
     fi
   fi
 }
@@ -448,29 +469,40 @@ up_action() {
       rm -f /var/xdrago/monitor/* &> /dev/null
     fi
     if [ "${cmmand}" = "up-head" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncB}
-    elif [ "${cmmand}" = "up-modern" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncB}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
+      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncB}
+      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"     ${vBs}/${filIncB}
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${filIncB}
     else
       if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"     ${vBs}/${filIncB}
+        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncB}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncB}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${filIncB}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncB}
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${barName}
-      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${branch}/g" ${vBs}/${barName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${barName}
+      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${barName}
+      if [ "${cmmand}" = "up-legacy" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcy}/g" ${vBs}/${barName}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcy}/g" ${vBs}/${barName}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcy}/g"         ${vBs}/${barName}
+      else
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${barName}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${barName}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${barName}
+      fi
     fi
     if [ "${cmmand}" = "up-head" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"       ${vBs}/${filIncB}
-    elif [ "${cmmand}" = "up-modern" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"        ${vBs}/${filIncB}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${filIncB}
     elif [ "${cmmand}" = "up-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncB}
     else
       if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"     ${vBs}/${filIncB}
+        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${filIncB}
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${barName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${barName}
     fi
     if [ -e "${vBs}/${filIncB}" ]; then
       sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               ${vBs}/${filIncB}
@@ -479,6 +511,12 @@ up_action() {
     ### Legacy method
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${barName}
     sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"     ${vBs}/${barName}
+    ### Force HTTP/2 or SPDY plus PFS on supported systems
+    sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                       ${barCnf}
+    sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"          ${barCnf}
+    sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g"           ${barCnf}
+    ### Force latest OpenSSH from sources on supported systems
+    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"           ${barCnf}
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -490,11 +528,8 @@ up_action() {
         if [ -e "${barCnf}" ]; then
           sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${barCnf}
           sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=YES/g"         ${barCnf}
-          sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
-          sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
-          sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                      ${barCnf}
+          ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                  ${barCnf}
           sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"        ${barCnf}
-          sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
           sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"     ${barCnf}
           if [ -e "/root/.mstr.clstr.cnf" ] \
             || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -511,7 +546,7 @@ up_action() {
               sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"       ${barCnf}
               sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"         ${barCnf}
               sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"   ${barCnf}
-              sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=YES/g"                 ${barCnf}
+              ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"              ${barCnf}
             fi
             sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"             ${barCnf}
             sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"     ${barCnf}
@@ -527,7 +562,7 @@ up_action() {
       fi
       sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${barCnf}
       _THIS_RV=$(lsb_release -sc 2>&1)
-      if [ "$_THIS_RV" = "lenny" ] \
+      if [ "${_THIS_RV}" = "lenny" ] \
         && [ -e "${barCnf}" ]; then
         sed -i "s/^_LENNY_TO_SQUEEZE=.*/_LENNY_TO_SQUEEZE=YES/g" \
           ${vBs}/${barName}
@@ -700,6 +735,9 @@ up_finish() {
     csf -e  &> /dev/null
     csf -q  &> /dev/null
   fi
+  if [ -e "/etc/init.d/postfix" ]; then
+    service postfix restart &> /dev/null
+  fi
   echo
   echo BARRACUDA upgrade completed
   echo Bye
@@ -717,7 +755,7 @@ set_pin_priority() {
     fi
     if [ "${_THIS_OS}" = "Debian" ]; then
       _THIS_RV=$(grep "6.0" /etc/issue.net 2>&1)
-      if [[ "$_THIS_RV" =~ "6.0" ]]; then
+      if [[ "${_THIS_RV}" =~ "6.0" ]]; then
         curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
           -o /etc/apt/preferences
       else
@@ -734,8 +772,9 @@ set_pin_priority() {
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -769,6 +808,7 @@ find_fast_mirror() {
 
 check_dns_curl() {
   if [ ! -e "/etc/resolv.conf" ]; then
+    rm -f /etc/resolv.conf
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then
       cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
     fi
@@ -785,9 +825,11 @@ check_dns_curl() {
   find_fast_mirror
   isCurl=$(curl --version 2>&1)
   if [[ ! "$isCurl" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-    echo "ERROR: Required cURL package is not available"
-    echo "ERROR: Please install it manually with 'apt-get install curl'"
-    clean_pid_exit
+    if [[ ! "$isCurl" =~ "GnuTLS" ]] || [ -z "${isCurl}" ]; then
+      echo "ERROR: Required cURL package is not available"
+      echo "ERROR: Please install it manually with 'apt-get install curl'"
+      clean_pid_exit
+    fi
   fi
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
@@ -795,6 +837,11 @@ check_dns_curl() {
     --retry-delay 10 \
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
+    if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
+      echo "curl install" | dpkg --set-selections
+      apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
+      touch /root/.use.curl.from.packages.cnf
+    fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     clean_pid_exit
   fi
@@ -824,14 +871,14 @@ check_root() {
     fi
     _L_VM_TEST=$(uname -a 2>&1)
     if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [ -e "/root/.debug.cnf" ] \
+      || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
       || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _PTMX=OK
     else
       _PTMX=CHECK
     fi
     _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
-    if [[ ! "${_PTS_TEST}" =~ "devpts" ]] || [ ! -e "/dev/pts/ptmx" ]; then
+    if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then
       _PTS=FIX
     else
       _PTS=OK
@@ -840,16 +887,20 @@ check_root() {
       echo "Required /dev/pts/ptmx does not exist! We will fix this now..."
       mkdir -p /dev/pts
       rm -f -r /dev/pts/*
+      rm -f /etc/apt/sources.list.d/openssl.list
       apt-get update -qq &> /dev/null
       apt-get install udev -y --force-yes &> /dev/null
-      mount -t devpts devpts /dev/pts &> /dev/null
       echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
+      mount -t devpts devpts /dev/pts &> /dev/null
     fi
     sed -i "s/.*173.231.133.190.*//g" /etc/hosts
     sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
     echo >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
+    if [ -e "/etc/init.d/postfix" ]; then
+      service postfix restart &> /dev/null
+    fi
   else
     echo "ERROR: This script should be ran as a root user"
     clean_pid_exit
@@ -860,8 +911,8 @@ check_root() {
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
-    echo "ERROR: Your disk space is almost full - \
-      we can not proceed until it is below 90/100"
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
     clean_pid_exit
   fi
   if [ -e "${barCnf}" ]; then
@@ -876,19 +927,28 @@ proceed() {
   set_pin_priority
   up_start
   if [ "${cmmand}" = "up-head" ]; then
-    _SCRIPT_URL="$rgUrl/${master}/${barName}"
-    curl ${crlGet} "${rgUrl}/${master}/${pthIncB}"  -o ${vBs}/${filIncB}
-  elif [ "${cmmand}" = "up-modern" ]; then
-    _SCRIPT_URL="$rgUrl/${devel}/${barName}"
-    curl ${crlGet} "${rgUrl}/${devel}/${pthIncB}"   -o ${vBs}/${filIncB}
+    if [ "${silent}" = "backdrop" ] \
+      || [ "${silent}" = "cluster" ] \
+      || [ "${silent}" = "drush" ] \
+      || [ "${silent}" = "gravcms" ] \
+      || [ "${silent}" = "jessie" ]; then
+      echo "FEATURE MODE: ${silent}"
+      master="feature/${silent}"
+      branch="feature/${silent}"
+      _SCRIPT_URL="$rgUrl/feature/${silent}/${barName}"
+      curl ${crlGet} "${rgUrl}/feature/${silent}/${pthIncB}" -o ${vBs}/${filIncB}
+    else
+      _SCRIPT_URL="$rgUrl/${master}/${barName}"
+      curl ${crlGet} "${rgUrl}/${master}/${pthIncB}"  -o ${vBs}/${filIncB}
+    fi
   elif [ "${cmmand}" = "up-cluster" ]; then
     _SCRIPT_URL="$rgUrl/${cluster}/${barName}"
     curl ${crlGet} "${rgUrl}/${cluster}/${pthIncB}" -o ${vBs}/${filIncB}
   elif [ "${cmmand}" = "up-stable" ]; then
-    _SCRIPT_URL="$rgUrl/${stable}/${barName}"
-    curl ${crlGet} "${rgUrl}/${stable}/${pthIncB}"  -o ${vBs}/${filIncB}
+    _SCRIPT_URL="$rgUrl/${stbl}/${barName}"
+    curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
   elif [ "${cmmand}" = "up-legacy" ]; then
-    _SCRIPT_URL="$rgUrl/$legacy/${barName}"
+    _SCRIPT_URL="$rgUrl/${lgcy}/${barName}"
   else
     echo
     echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log} {newrelickey|php-5.6|php-5.5|php-5.4|php-5.3|php-all|nodns}"
@@ -898,10 +958,12 @@ proceed() {
     echo
     clean_pid_exit
   fi
+  mstr=${master//\//\\\/}
+  brnch=${branch//\//\\\/}
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    _SCRIPT_URL="$rgUrl/cluster/${barName}"
+    _SCRIPT_URL="$rgUrl/${cluster}/${barName}"
     cmmand="up-cluster"
   fi
   curl ${crlGet} ${_SCRIPT_URL} -o ${barName}
@@ -914,10 +976,14 @@ silent="$2"
 rkey="$3"
 debug="$4"
 if [ ! -z "${silent}" ]; then
-  if [ "${silent}" = "log" ] || [ "${silent}" = "system" ]; then
+  if [ "${silent}" = "log" ] \
+    || [ "${silent}" = "backdrop" ] \
+    || [ "${silent}" = "cluster" ] \
+    || [ "${silent}" = "drush" ] \
+    || [ "${silent}" = "gravcms" ] \
+    || [ "${silent}" = "jessie" ] \
+    || [ "${silent}" = "system" ]; then
     silent="$2"
-    rkey=
-    debug=
   else
     silent=
     rkey="$2"

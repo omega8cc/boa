@@ -112,15 +112,33 @@ by the BOA install and upgrade tools exclusively.
   This file, if exists, allows to disable aggressive php-fpm processes
   monitoring and killing if any is using really too much CPU power.
 
+ @=> /root/.no.sql.cpu.limit.cnf
+
+  This file, if exists, allows to disable mysql processes monitoring
+  and restarting mysql server if any is using really too much CPU power.
+
  @=> /root/.no.swap.clear.cnf
 
   This file, if exists, allows to skip the otherwise default procedure
   designed to clear system (memory) swap hourly.
 
+ @=> /root/.no.sysctl.update.cnf
+
+  This file, if exists, allows to skip /etc/sysctl.conf update procedure
+  designed to adjust it on every barracuda upgrade, if needed.
+
+ @=> /root/.mysql.yes.new.password.cnf
+
+  This file, if exists, allows to automatically generate random, new mysql
+  root password on every barracuda upgrade. This file is ignored if
+  /root/.mysql.no.new.password.cnf file also exists. Warning: this may cause
+  problems reported at: https://github.com/omega8cc/boa/issues/642
+
  @=> /root/.mysql.no.new.password.cnf
 
-  This file, if exists, allows to skip the otherwise default procedure
-  designed to generate new mysql root password on every barracuda upgrade.
+  This file, if exists, allows to ignore /root/.mysql.yes.new.password.cnf
+  for backward compatibility and configuration consistency -- by default
+  BOA (since 2.4.4) doesn't change mysql root password.
 
  @=> /root/.redis.no.new.password.cnf
 
@@ -140,11 +158,25 @@ by the BOA install and upgrade tools exclusively.
 
  @=> /root/.high_traffic.cnf
 
-  This file, if exists, will result with Nginx access log cleared hourly.
-  Recommended if you have a very busy site(s) hosted. It also prevents
+  Recommended if you have a very busy site(s) hosted. It prevents PHP-FPM
+  restarts when the system detects segfault. It also allows to skip daily Redis
+  restarts. Note that unlike before, even without this file, PHP-FPM will not
+  be restarted at midnight, thanks to some improvements elsewhere in the
+  self-healing procedures.
+
+ @=> /root/.giant_traffic.cnf
+
+  Recommended if you have an extremely busy site(s) hosted. It prevents
   the daily Speed Booster cache forced cleanup, which happens at midnight.
-  Furthermore, it prevents PHP-FPM restarts when the system detects segfault.
-  It also allows to skip daily Redis restarts.
+  However, even with very busy sites hosted, it will be really rarely needed,
+  since the daily Speed Booster cache forced cleanup procedure has been
+  improved to not cause load spikes, even under "Giant Traffic" pressure.
+
+ @=> /root/.skip_cleanup.cnf
+
+  This file, if exists, allows to skip all daily cleanup otherwise run via
+  /var/xdrago/graceful.sh -- it works like /root/.giant_traffic.cnf and
+  additionally disables /tmp/ and /opt/tmp/ cleanup and Jetty restart.
 
  @=> /root/.home.no.wildcard.chmod.cnf
 

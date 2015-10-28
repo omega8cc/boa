@@ -3,6 +3,21 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
+check_pdnsd() {
+  if [ -e "/etc/resolv.conf" ]; then
+    _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
+    if [[ "$_RESOLV_TEST" =~ "nameserver 127.0.0.1" ]]; then
+      _THIS_DNS_TEST=$(host -a files.aegir.cc 127.0.0.1 -w 3 2>&1)
+      if [[ "${_THIS_DNS_TEST}" =~ "no servers could be reached" ]]; then
+        service pdnsd stop &> /dev/null
+        sleep 1
+        perl /var/xdrago/proc_num_ctrl.cgi
+      fi
+    fi
+  fi
+}
+check_pdnsd
+
 if [ -e "/var/log/php" ]; then
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "already listen on"` -gt "0" ]; then
@@ -11,21 +26,44 @@ if [ -e "/var/log/php" ]; then
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
     rm -f /var/log/php/*
     if [ -e "/etc/init.d/php56-fpm" ]; then
-      /etc/init.d/php56-fpm start
+      service php56-fpm start
     fi
     if [ -e "/etc/init.d/php55-fpm" ]; then
-      /etc/init.d/php55-fpm start
+      service php55-fpm start
     fi
     if [ -e "/etc/init.d/php54-fpm" ]; then
-      /etc/init.d/php54-fpm start
+      service php54-fpm start
     fi
     if [ -e "/etc/init.d/php53-fpm" ]; then
-      /etc/init.d/php53-fpm start
+      service php53-fpm start
     fi
     sleep 8
     rm -f /var/run/fmp_wait.pid
     echo "$(date 2>&1) FPM instances conflict detected" >> \
       /var/xdrago/log/fpm.conflict.incident.log
+  fi
+  if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
+    | grep --count "process.max"` -gt "0" ]; then
+    touch /var/run/fmp_wait.pid
+    sleep 8
+    kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
+    rm -f /var/log/php/*
+    if [ -e "/etc/init.d/php56-fpm" ]; then
+      service php56-fpm start
+    fi
+    if [ -e "/etc/init.d/php55-fpm" ]; then
+      service php55-fpm start
+    fi
+    if [ -e "/etc/init.d/php54-fpm" ]; then
+      service php54-fpm start
+    fi
+    if [ -e "/etc/init.d/php53-fpm" ]; then
+      service php53-fpm start
+    fi
+    sleep 8
+    rm -f /var/run/fmp_wait.pid
+    echo "$(date 2>&1) Too many running FPM childs detected" >> \
+      /var/xdrago/log/fpm.childs.incident.log
   fi
 fi
 
@@ -35,16 +73,16 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]]; then
   touch /var/run/fmp_wait.pid
   rm -f /var/log/php/*
   if [ -e "/etc/init.d/php56-fpm" ]; then
-    /etc/init.d/php56-fpm reload
+    service php56-fpm reload
   fi
   if [ -e "/etc/init.d/php55-fpm" ]; then
-    /etc/init.d/php55-fpm reload
+    service php55-fpm reload
   fi
   if [ -e "/etc/init.d/php54-fpm" ]; then
-    /etc/init.d/php54-fpm reload
+    service php54-fpm reload
   fi
   if [ -e "/etc/init.d/php53-fpm" ]; then
-    /etc/init.d/php53-fpm reload
+    service php53-fpm reload
   fi
   sleep 8
   rm -f /var/run/fmp_wait.pid
@@ -101,13 +139,13 @@ jetty_restart() {
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
   rm -f /var/log/jetty{7,8,9}/*
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
-    /etc/init.d/jetty9 start
+    service jetty9 start
   fi
   if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
-    /etc/init.d/jetty8 start
+    service jetty8 start
   fi
   if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
-    /etc/init.d/jetty7 start
+    service jetty7 start
   fi
   sleep 5
   rm -f /var/run/boa_run.pid
@@ -252,22 +290,27 @@ lsyncd_proc_control
 mysql_proc_control
 sleep 5
 mysql_proc_control
+perl /var/xdrago/monitor/check/scan_nginx
 sleep 5
 mysql_proc_control
 sleep 5
 mysql_proc_control
+perl /var/xdrago/monitor/check/scan_nginx
 sleep 5
 mysql_proc_control
 sleep 5
 mysql_proc_control
+perl /var/xdrago/monitor/check/scan_nginx
 sleep 5
 mysql_proc_control
 sleep 5
 mysql_proc_control
+perl /var/xdrago/monitor/check/scan_nginx
 sleep 5
 mysql_proc_control
 sleep 5
 mysql_proc_control
+perl /var/xdrago/monitor/check/scan_nginx
 sleep 5
 mysql_proc_control
 sleep 5

@@ -1,34 +1,17 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version BOA-2.4.3
+Your Aegir Hosting System has been upgraded to version boa.version
 
   https://aegir.url.name
 
-This BOA release is focused on Aegir platforms update with latest
-Drupal core included.
+This BOA release includes several important system upgrades and
+bug fixes. All supported Aegir platforms have been updated with
+latest Drupal cores.
 
-IMPORTANT!
-
-Please note that this is the last BOA upgrade which still allows
-to use deprecated PHP 5.3 by default, even if it is no longer
-maintained, so it will never receive fixes for many bugs and
-known security issues.
-
-Next BOA upgrade (2.4.4) will force PHP 5.5 on all hosted Aegir
-instances, unless you will explicitly opt-out *before* that upgrade
-using PHP version control files, as explained in our docs at:
-
-  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
-
-We recommend that you try to switch to PHP 5.5 or even 5.6 as soon
-as possible, so you could effectively detect any possible issues
-with your site(s) and switch them explicitly to PHP 5.3 until
-you will be able to fix problems and start using the latest,
-much faster and secure PHP version.
-
-If you will not configure PHP version as explained in our docs,
-your instance will be automatically switched to PHP 5.5 during
-the *next* BOA upgrade, expected in June 2015.
+@=> Latest Drupal 8.0.0-rc2 works great, but currently only
+    when installed as a custom platform in the ~/static directory tree,
+    because it is not really symlinks-friendly. We will re-introduce
+    built-in Drupal 8 platforms once this situation is improved.
 
 We recommend that you upgrade your sites using this safe workflow:
 
@@ -37,7 +20,7 @@ We recommend that you upgrade your sites using this safe workflow:
 You can find all details on how to use new features, along with all
 other changes explained in the release notes and changelog available at:
 
-  https://omega8.cc/boa-243-full-edition-360
+  https://omega8.cc/boa-246-full-edition-366
 
 It is always highly recommended that you read extensive release notes
 and changelog posted on our website for previous BOA Editions, so you

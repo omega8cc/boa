@@ -214,7 +214,7 @@ master_download_for_local_build() {
     cd ${mL}
     get_dev_stc "admin_menu-6.x-1.9.tar.gz"
     get_dev_stc "css_emimage.tar.gz"
-    get_dev_stc "ctools-6.x-1.13.tar.gz"
+    get_dev_stc "ctools-6.x-1.14.tar.gz"
     get_dev_stc "eldir.tar.gz"
     get_dev_stc "features_extra-6.x-1.x-dev.tar.gz"
     get_dev_stc "features-6.x-1.2.tar.gz"
@@ -232,7 +232,7 @@ master_download_for_local_build() {
     get_dev_stc "revision_deletion-6.x-1.x-dev.tar.gz"
     get_dev_stc "strongarm-6.x-2.2.tar.gz"
     get_dev_stc "userprotect-6.x-1.5.tar.gz"
-    get_dev_stc "views_bulk_operations-6.x-1.16.tar.gz"
+    get_dev_stc "views_bulk_operations-6.x-1.17.tar.gz"
     get_dev_stc "views-6.x-3.2.tar.gz"
   fi
   find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null
@@ -679,17 +679,9 @@ EOFMYSQL
       && [ "${_LOC_OSV}" = "squeeze" ]; then
       msg "INFO: Aegir Master Instance upgrade skipped!"
       echo " "
-      msg "NOTE! You *must* reboot the server and then run boa up-stable *again*"
-      msg "NOTE! to complete all system upgrades and upgrade also"
-      msg "NOTE! Aegir Master Instance securely"
-      echo " "
-    elif [ "${_LENNY_TO_SQUEEZE}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "lenny" ]; then
-      msg "INFO: Aegir Master Instance upgrade skipped!"
-      echo " "
-      msg "NOTE! You *must* reboot the server and then run boa up-stable *again*"
-      msg "NOTE! to complete all system upgrades and upgrade also"
-      msg "NOTE! Aegir Master Instance securely"
+      msg "NOTE! You must reboot the server and run barracuda upgrade"
+      msg "NOTE! again to complete all system upgrades and upgrade also"
+      msg "NOTE! Aegir Master Instance."
       echo " "
     elif [ "${_SYSTEM_UPGRADE_ONLY}" = "YES" ]; then
       msg "INFO: Aegir Master Instance upgrade skipped"
@@ -789,7 +781,7 @@ update_php_cli_local_ini() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.243stableU.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.246stableU.txt" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -812,20 +804,21 @@ update_php_cli_local_ini() {
     fi
     if [ -e "${_U_II}" ]; then
       _INI="open_basedir = \".: \
-        /data/all:        \
-        /data/conf:       \
-        /data/disk/all:   \
-        /opt/php53:       \
-        /opt/php54:       \
-        /opt/php55:       \
-        /opt/php56:       \
-        /opt/tika:        \
-        /opt/tika7:       \
-        /opt/tika8:       \
-        /opt/tika9:       \
-        /opt/tools/drush: \
-        /tmp:             \
-        /usr/bin:         \
+        /data/all:           \
+        /data/conf:          \
+        /data/disk/all:      \
+        /opt/php53:          \
+        /opt/php54:          \
+        /opt/php55:          \
+        /opt/php56:          \
+        /opt/tika:           \
+        /opt/tika7:          \
+        /opt/tika8:          \
+        /opt/tika9:          \
+        /opt/tmp/make_local: \
+        /opt/tools/drush:    \
+        /tmp:                \
+        /usr/bin:            \
         /var/aegir\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
@@ -838,7 +831,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.243stableU.txt
+      echo > ${_U_HD}/.ctrl.246stableU.txt
     fi
   fi
 }

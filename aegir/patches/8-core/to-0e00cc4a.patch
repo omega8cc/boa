@@ -1,0 +1,143 @@
+diff -urp c24c1c76/core/authorize.php 0e00cc4a/core/authorize.php
+--- c24c1c76/core/authorize.php	2015-09-04 10:56:04.000000000 +0200
++++ 0e00cc4a/core/authorize.php	2015-09-19 12:52:00.000000000 +0200
+@@ -28,7 +28,7 @@ use Symfony\Component\HttpFoundation\Res
+ use Drupal\Core\Site\Settings;
+ 
+ // Change the directory to the Drupal root.
+-chdir('..');
++chdir(dirname(dirname($_SERVER['SCRIPT_FILENAME'])));
+ 
+ $autoloader = require_once 'autoload.php';
+ 
+diff -urp c24c1c76/core/includes/file.inc 0e00cc4a/core/includes/file.inc
+--- c24c1c76/core/includes/file.inc	2015-09-04 10:56:04.000000000 +0200
++++ 0e00cc4a/core/includes/file.inc	2015-09-19 12:52:00.000000000 +0200
+@@ -1138,28 +1138,42 @@ function file_directory_temp() {
+  *   A string containing the path to the temporary directory.
+  */
+ function file_directory_os_temp() {
+-  $directories = array();
++  static $this_temp_dir;
+ 
+-  // Has PHP been set with an upload_tmp_dir?
+-  if (ini_get('upload_tmp_dir')) {
+-    $directories[] = ini_get('upload_tmp_dir');
++  if (preg_match("/^\/home/", getenv('HOME')) || preg_match("/^\/data\/disk/", getenv('HOME')) || preg_match("/^\/var\/aegir/", getenv('HOME'))) {
++    $this_temp_dir = getenv('HOME') . "/.tmp";
+   }
+-
+-  // Operating system specific dirs.
+-  if (substr(PHP_OS, 0, 3) == 'WIN') {
+-    $directories[] = 'c:\\windows\\temp';
+-    $directories[] = 'c:\\winnt\\temp';
+-  }
+-  else {
+-    $directories[] = '/tmp';
++  if (!is_dir($this_temp_dir)) {
++    $this_temp_dir = FALSE;
+   }
+-  // PHP may be able to find an alternative tmp directory.
+-  $directories[] = sys_get_temp_dir();
+ 
+-  foreach ($directories as $directory) {
+-    if (is_dir($directory) && is_writable($directory)) {
+-      return $directory;
++  if (!isset($this_temp_dir)) {
++    $directories = array();
++
++    // Has PHP been set with an upload_tmp_dir?
++    if (ini_get('upload_tmp_dir')) {
++      $directories[] = ini_get('upload_tmp_dir');
++    }
++
++    // Operating system specific dirs.
++    if (substr(PHP_OS, 0, 3) == 'WIN') {
++      $directories[] = 'c:\\windows\\temp';
++      $directories[] = 'c:\\winnt\\temp';
+     }
++    else {
++      $directories[] = '/tmp';
++    }
++    // PHP may be able to find an alternative tmp directory.
++    $directories[] = sys_get_temp_dir();
++
++    foreach ($directories as $directory) {
++      if (is_dir($directory) && is_writable($directory)) {
++        return $directory;
++      }
++    }
++  }
++  else {
++    return $this_temp_dir;
+   }
+   return FALSE;
+ }
+diff -urp c24c1c76/core/includes/install.core.inc 0e00cc4a/core/includes/install.core.inc
+--- c24c1c76/core/includes/install.core.inc	2015-09-04 10:56:04.000000000 +0200
++++ 0e00cc4a/core/includes/install.core.inc	2015-09-19 12:52:00.000000000 +0200
+@@ -319,7 +319,7 @@ function install_begin_request($class_lo
+   }
+ 
+   $site_path = DrupalKernel::findSitePath($request, FALSE);
+-  Settings::initialize(dirname(dirname(__DIR__)), $site_path, $class_loader);
++  Settings::initialize(getcwd(), $site_path, $class_loader);
+ 
+   // Ensure that procedural dependencies are loaded as early as possible,
+   // since the error/exception handlers depend on them.
+diff -urp c24c1c76/core/install.php 0e00cc4a/core/install.php
+--- c24c1c76/core/install.php	2015-09-04 10:56:04.000000000 +0200
++++ 0e00cc4a/core/install.php	2015-09-19 12:52:00.000000000 +0200
+@@ -6,7 +6,7 @@
+  */
+ 
+ // Change the directory to the Drupal root.
+-chdir('..');
++chdir(dirname(dirname($_SERVER['SCRIPT_FILENAME'])));
+ 
+ /**
+  * Global flag to indicate the site is in installation mode.
+diff -urp c24c1c76/core/lib/Drupal/Core/DrupalKernel.php 0e00cc4a/core/lib/Drupal/Core/DrupalKernel.php
+--- c24c1c76/core/lib/Drupal/Core/DrupalKernel.php	2015-09-04 10:56:04.000000000 +0200
++++ 0e00cc4a/core/lib/Drupal/Core/DrupalKernel.php	2015-09-19 12:52:00.000000000 +0200
+@@ -886,7 +886,12 @@ class DrupalKernel implements DrupalKern
+     }
+ 
+     // Include our bootstrap file.
+-    $core_root = dirname(dirname(dirname(__DIR__)));
++    if (is_link(getcwd() . '/core')) {
++      $core_root = getcwd() . '/core';
++    }
++    else {
++      $core_root = dirname(dirname(dirname(__DIR__)));
++    }
+     require_once $core_root . '/includes/bootstrap.inc';
+ 
+     // Enforce E_STRICT, but allow users to set levels not part of E_STRICT.
+diff -urp c24c1c76/core/modules/statistics/statistics.php 0e00cc4a/core/modules/statistics/statistics.php
+--- c24c1c76/core/modules/statistics/statistics.php	2015-09-04 10:56:04.000000000 +0200
++++ 0e00cc4a/core/modules/statistics/statistics.php	2015-09-19 12:52:00.000000000 +0200
+@@ -8,9 +8,9 @@
+ use Drupal\Core\DrupalKernel;
+ use Symfony\Component\HttpFoundation\Request;
+ 
+-chdir('../../..');
++chdir(dirname(dirname(dirname(dirname($_SERVER['SCRIPT_FILENAME'])))));
+ 
+-$autoloader = require_once 'autoload.php';
++$autoloader = require_once getcwd() . '/vendor/autoload.php';
+ 
+ $kernel = DrupalKernel::createFromRequest(Request::createFromGlobals(), $autoloader, 'prod');
+ $kernel->boot();
+diff -urp c24c1c76/core/rebuild.php 0e00cc4a/core/rebuild.php
+--- c24c1c76/core/rebuild.php	2015-09-04 10:56:04.000000000 +0200
++++ 0e00cc4a/core/rebuild.php	2015-09-19 12:52:00.000000000 +0200
+@@ -18,7 +18,7 @@ use Symfony\Component\HttpFoundation\Req
+ use Symfony\Component\HttpFoundation\Response;
+ 
+ // Change the directory to the Drupal root.
+-chdir('..');
++chdir(dirname(dirname($_SERVER['SCRIPT_FILENAME'])));
+ 
+ $autoloader = require_once __DIR__ . '/vendor/autoload.php';
+ require_once __DIR__ . '/includes/utility.inc';

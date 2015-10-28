@@ -151,47 +151,38 @@ production settings.
 
 Octopus can install the platforms listed below:
 
- @ Drupal 8.0.0
+ @ Drupal 7.41.1
 
- Drupal 8.0.0-b7 -------------- https://drupal.org/drupal-8.0
-
- @ Drupal 7.37.1
-
- aGov 1.7 --------------------- https://drupal.org/project/agov
- Commerce 1.37 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.25 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.26 ----------------- https://drupal.org/project/commons
- Drupal 7.37.1 ---------------- https://drupal.org/drupal-7.37
+ aGov 2.1 --------------------- https://drupal.org/project/agov
+ Commerce 1.40 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 2.30 ---------------- https://drupal.org/project/commerce_kickstart
+ Commons 3.31 ----------------- https://drupal.org/project/commons
+ Drupal 7.41.1 ---------------- https://drupal.org/drupal-7.41
  ERPAL 2.2 -------------------- https://drupal.org/project/erpal
- Guardr 2.14 ------------------ https://drupal.org/project/guardr
- OpenAcademy 1.1 -------------- https://drupal.org/project/openacademy
- OpenAid 2.1 ------------------ https://drupal.org/project/openaid
- OpenAtrium 2.41 -------------- https://drupal.org/project/openatrium
- OpenBlog 1.0-v3 -------------- https://drupal.org/project/openblog
- OpenChurch 1.17-b2 ----------- https://drupal.org/project/openchurch
- OpenChurch 2.1 --------------- https://drupal.org/project/openchurch
- OpenDeals 1.35 --------------- https://drupal.org/project/opendeals
- OpenOutreach 1.20 ------------ https://drupal.org/project/openoutreach
- OpenPublic 1.5 --------------- https://drupal.org/project/openpublic
- OpenScholar 3.20.0 ----------- http://theopenscholar.org
- Panopoly 1.22 ---------------- https://drupal.org/project/panopoly
- Recruiter 1.6 ---------------- https://drupal.org/project/recruiter
- Restaurant 1.0-b12 ----------- https://drupal.org/project/restaurant
+ Guardr 2.22 ------------------ https://drupal.org/project/guardr
+ OpenAid 2.7 ------------------ https://drupal.org/project/openaid
+ OpenAtrium 2.50-rc1 ---------- https://drupal.org/project/openatrium
+ OpenChurch 2.2 --------------- https://drupal.org/project/openchurch
+ OpenOutreach 1.25 ------------ https://drupal.org/project/openoutreach
+ OpenPublic 1.7 --------------- https://drupal.org/project/openpublic
+ Panopoly 1.28 ---------------- https://drupal.org/project/panopoly
+ Restaurant 1.0-rc2 ----------- https://drupal.org/project/restaurant
  Ubercart 3.8 ----------------- https://drupal.org/project/ubercart
 
- @ Pressflow 6.35.1
+ @ Pressflow 6.37.1
 
- Commons 2.24 ----------------- https://drupal.org/project/commons
- Feature Server 1.2 ----------- http://bit.ly/fserver
- Pressflow 6.35.1 ------------- http://pressflow.org
+ Commons 2.26 ----------------- https://drupal.org/project/commons
+ Pressflow 6.37.1 ------------- http://pressflow.org
  Ubercart 2.14 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.37.1 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.41.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
-* All D6 platforms have been enhanced using Pressflow 6.35.1 +Extra core:
+* All D6 platforms have been enhanced using Pressflow 6.37.1 +Extra core:
   https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 * All D6 and D7 platforms include some useful and/all performance related
   contrib modules - see docs/MODULES.txt for details.
 
+
+Join the chat at https://gitter.im/omega8cc/boa

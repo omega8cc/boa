@@ -46,7 +46,7 @@ SHELL=/bin/bash
 export DEBIAN_FRONTEND=noninteractive
 
 _TODAY=$(date +%y%m%d 2>&1)
-_X_VERSION="BOA-2.4.3-stable"
+_X_VERSION="BOA-2.4.7-dev"
 #
 saCoreN="SA-CORE-2014-005"
 saCoreS="${saCoreN}-D7"
@@ -55,6 +55,7 @@ saPatch="/var/xdrago/conf/${saCoreS}.patch"
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+forCer="-fuy --force-yes --reinstall"
 optBin="/opt/local/bin"
 pthLog="/var/xdrago/log"
 tBn="tools/bin"
@@ -65,7 +66,19 @@ fix_dns_settings() {
   mkdir -p ${vBs}
   rm -f ${vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
-    cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    if [ -L "/etc/resolv.conf" ]; then
+      rslvT=`readlink -n /etc/resolv.conf`
+      if [ ! -e "${rslvT}" ]; then
+        rm -f /etc/resolv.conf
+      fi
+    fi
+    if [ -e "/etc/resolv.conf" ]; then
+      cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    fi
+  fi
+  if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
+    echo "nameserver 8.8.8.8" >${vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.4.4" >>${vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
     for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
@@ -127,8 +140,13 @@ fix_dns_settings() {
          echo "        ip=8.8.4.4;" >> ${dnsLi}
       fi
       ### echo debug dns A
-      sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+      _DNS_TPL_TEST=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
+      _DNS_RGX_TEST=$(grep "google-servers" /root/.local.dns.IP.list 2>&1)
+      if [[ "${_DNS_TPL_TEST}" =~ "google-servers" ]] \
+        && [[ "${_DNS_RGX_TEST}" =~ "google-servers" ]]; then
+        sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
 d;};' /etc/pdnsd.conf
+      fi
       resolvconf -u         &> /dev/null
       service pdnsd restart &> /dev/null
       pdnsd-ctl empty-cache &> /dev/null
@@ -155,6 +173,9 @@ check_dns_settings() {
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
       fix_dns_settings
+      if [ -e "/etc/init.d/postfix" ]; then
+        service postfix restart &> /dev/null
+      fi
     fi
   fi
 }
@@ -166,6 +187,7 @@ update_agents() {
     InTest=$(ls /data/disk/ | wc -l 2>&1)
     if [ "${InTest}" -gt "10" ]; then
       echo ${InTest} > /root/.tg.cnf
+      echo ${InTest} > /root/.high_traffic.cnf
     else
       rm -f /root/.tg.cnf
       echo ${InTest} > /root/.intest.cnf
@@ -174,13 +196,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/runner.fixed.a242i.pid" ]; then
+    && [ ! -e "${pthLog}/runner.fixed.a245i.pid" ]; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
     if [ -e "/var/xdrago/runner.sh" ]; then
       chmod 700 /var/xdrago/runner.sh
       chown root:root /var/xdrago/runner.sh
-      touch ${pthLog}/runner.fixed.a242i.pid
+      touch ${pthLog}/runner.fixed.a245i.pid
     else
       mv -f /var/xdrago/runner.sh.old /var/xdrago/runner.sh
     fi
@@ -188,13 +210,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/minute.fixed.a242i.pid" ]; then
+    && [ ! -e "${pthLog}/minute.fixed.a245i.pid" ]; then
     mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
     if [ -e "/var/xdrago/minute.sh" ]; then
       chmod 700 /var/xdrago/minute.sh
       chown root:root /var/xdrago/minute.sh
-      touch ${pthLog}/minute.fixed.a242i.pid
+      touch ${pthLog}/minute.fixed.a245i.pid
     else
       mv -f /var/xdrago/minute.sh.old /var/xdrago/minute.sh
     fi
@@ -202,13 +224,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/clear.fixed.a242i.pid" ]; then
+    && [ ! -e "${pthLog}/clear.fixed.a245i.pid" ]; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
     if [ -e "/var/xdrago/clear.sh" ]; then
       chmod 700 /var/xdrago/clear.sh
       chown root:root /var/xdrago/clear.sh
-      touch ${pthLog}/clear.fixed.a242i.pid
+      touch ${pthLog}/clear.fixed.a245i.pid
     else
       mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
     fi
@@ -216,13 +238,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/daily.fixed.a242i.pid" ]; then
+    && [ ! -e "${pthLog}/daily.fixed.a245i.pid" ]; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
     if [ -e "/var/xdrago/daily.sh" ]; then
       chmod 700 /var/xdrago/daily.sh
       chown root:root /var/xdrago/daily.sh
-      touch ${pthLog}/daily.fixed.a242i.pid
+      touch ${pthLog}/daily.fixed.a245i.pid
     else
       mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
     fi
@@ -230,14 +252,28 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/manage_ltd_users.fixed.a242i.pid" ]; then
+    && [ ! -e "${pthLog}/weekly.fixed.a245i.pid" ]; then
+    mv -f /var/xdrago/weekly.sh /var/xdrago/weekly.sh.old
+    curl ${crlGet} "${urlHmr}/tools/system/weekly.sh" -o /var/xdrago/weekly.sh
+    if [ -e "/var/xdrago/weekly.sh" ]; then
+      chmod 700 /var/xdrago/weekly.sh
+      chown root:root /var/xdrago/weekly.sh
+      touch ${pthLog}/weekly.fixed.a245i.pid
+    else
+      mv -f /var/xdrago/weekly.sh.old /var/xdrago/weekly.sh
+    fi
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/manage_ltd_users.fixed.a245i.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${pthLog}/manage_ltd_users.fixed.a242i.pid
+      touch ${pthLog}/manage_ltd_users.fixed.a245i.pid
     else
       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
     fi
@@ -245,14 +281,14 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/proc_num_ctrl.fixed.a242i.pid" ]; then
+    && [ ! -e "${pthLog}/proc_num_ctrl.fixed.a245i.pid" ]; then
     mv -f /var/xdrago/proc_num_ctrl.cgi /var/xdrago/proc_num_ctrl.cgi.old
     curl ${crlGet} "${urlHmr}/tools/system/proc_num_ctrl.cgi" \
       -o /var/xdrago/proc_num_ctrl.cgi
     if [ -e "/var/xdrago/proc_num_ctrl.cgi" ]; then
       chmod 700 /var/xdrago/proc_num_ctrl.cgi
       chown root:root /var/xdrago/proc_num_ctrl.cgi
-      touch ${pthLog}/proc_num_ctrl.fixed.a242i.pid
+      touch ${pthLog}/proc_num_ctrl.fixed.a245i.pid
     else
       mv -f /var/xdrago/proc_num_ctrl.cgi.old /var/xdrago/proc_num_ctrl.cgi
     fi
@@ -260,13 +296,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/websh.fixed.a242i.pid" ]; then
+    && [ ! -e "${pthLog}/websh.fixed.a245i.pid" ]; then
     mv -f /bin/websh /var/xdrago/websh.sh.old
     curl ${crlGet} "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh
     if [ -e "/bin/websh" ]; then
       chmod 755 /bin/websh
       chown root:root /bin/websh
-      touch ${pthLog}/websh.fixed.a242i.pid
+      touch ${pthLog}/websh.fixed.a245i.pid
     else
       mv -f /var/xdrago/websh.sh.old /bin/websh
     fi
@@ -421,8 +457,9 @@ fix_alt() {
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -460,7 +497,7 @@ setup() {
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [ -e "/root/.debug.cnf" ] \
+    || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   else
@@ -476,6 +513,7 @@ setup() {
   echo >>/etc/hosts
   sed -i "/^$/d" /etc/hosts
   if [ ! -e "/etc/resolv.conf" ]; then
+    rm -f /etc/resolv.conf
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then
       cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
     fi
@@ -497,9 +535,10 @@ setup() {
       echo "ERROR: Please install it manually with 'apt-get install curl'"
       exit 1
     else
+      rm -f /etc/apt/sources.list.d/openssl.list
       apt-get clean -qq &> /dev/null
       apt-get update -qq &> /dev/null
-      apt-get install curl -y --force-yes --reinstall &> /dev/null
+      apt-get install curl ${forCer} &> /dev/null
     fi
   fi
   _CURL_TEST=$(curl -L -k -s \
@@ -508,6 +547,11 @@ setup() {
     --retry-delay 10 \
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
+    if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
+      echo "curl install" | dpkg --set-selections
+      apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
+      touch /root/.use.curl.from.packages.cnf
+    fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
   else
@@ -517,9 +561,10 @@ setup() {
   if [[ "$_LSB_TEST" =~ "lsb_release" ]]; then
     _DO_NOTHING=YES
   else
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get clean -qq &> /dev/null
     apt-get update -qq &> /dev/null
-    apt-get install lsb-release -y --force-yes --reinstall &> /dev/null
+    apt-get install lsb-release ${forCer} &> /dev/null
   fi
   mkdir -p /usr/local/bin
   mkdir -p ${optBin}
@@ -640,8 +685,9 @@ if [ `whoami` = "root" ]; then
       _VERSIONS_TEST_RESULT=OK
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
-        || [ -e "/root/.debug.cnf" ] \
-        || [ -e "/root/.dbhd.clstr.cnf" ]; then
+        || [ -e "/root/.dbhd.clstr.cnf" ] \
+        || [ -e "/root/.host8.cnf" ] \
+        || [ "${_BENG_VS}" = "YES" ]; then
         update_agents
       fi
     else

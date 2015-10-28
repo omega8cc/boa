@@ -1,4 +1,178 @@
 
+### Stable BOA-2.4.6 Release - Full Edition
+### Date: Sat Sep 19 11:09:09 PDT 2015
+### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.6
+### Latest hotfix added on: Mon Sep 21 05:18:33 PDT 2015
+
+  @=> Includes Aegir Hostmaster 2.x-head with improvements
+  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Drush 7 customized for BOA
+
+# Release Notes:
+
+  This BOA release includes several important system upgrades and bug fixes.
+  All supported Aegir platforms have been updated with latest Drupal cores.
+
+  @=> Latest Drupal 8.0.0-beta15 works great, but currently only when installed
+      as a custom platform in the ~/static directory tree, because it is not
+      really symlinks-friendly. We will re-introduce built-in Drupal 8 platforms
+      once this situation is improved.
+
+# Changes:
+
+  * Add Twig C extension to PHP - v.1.22.1
+  * Allow to customize auto-upgrades mode
+  * Disable support for broken OpenScholar and Recruiter
+  * Open default Postgres port for outgoing connections
+  * Remove support for deprecated Feature Server distro
+  * Remove support for deprecated OpenAcademy distro
+  * Remove support for deprecated OpenBlog distro
+  * Remove support for deprecated OpenChurch v.1 distro
+  * Remove support for deprecated OpenDeals distro
+  * Use distro specific Drupal core for problematic distros
+
+# System upgrades:
+
+  * cURL 7.44.0 (if installed from sources)
+  * Duplicity 0.7.05 (please run 'backboa install' to upgrade)
+  * Jetty 7.6.17.v20150415
+  * Jetty 8.1.17.v20150415
+  * MariaDB 10.0.21
+  * MariaDB 5.5.45
+  * MariaDB Galera Cluster 10.0.21
+  * Nginx 1.9.4
+  * OpenSSH 7.1p1 (if installed from sources)
+  * PHP 5.6.13, 5.5.29, 5.4.45
+  * PHP: ionCube loader 5.0.18
+  * Pure-FTPd 1.0.42
+  * Redis 3.0.4
+  * Ruby 2.2.3, 2.0.0-p647
+  * Use pecl-jsmin-1.1.0
+
+# Fixes:
+
+  * Allow to re-install deleted D7/D6 platforms when dev doesn't exist
+  * Do not install phpunit -- it adds many PHP tools we don't need
+  * Drush requires php-eval to run drush_find_tmp() in sql-sync
+  * Fix apache cleanup
+  * Fix invalid regex in the INI docs
+  * Improve auto-healing for SSHd
+  * Improve Nginx DoS an DDoS protection
+  * Improve pdnsd auto-healing
+  * Improve SSL Docs to add more detail about multidomain certificates #757
+  * Issue #766 - Fix for broken boa in-octopus procedure
+  * Nginx: Fix support for s3/files/styles (s3fs)
+  * Restart PHP-FPM if too many running childs are detected
+  * Sync .htaccess with D7 core
+  * Sync keywords for exceptions in daily.sh with global.inc
+  * Use short sleep on firewall temp blocks cleanup
+
+
+### Stable BOA-2.4.5 Release - Full Edition
+### Date: Fri Jul 10 11:25:43 PDT 2015
+### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.5
+### Latest hotfix added on: Fri Jul 10 14:49:11 PDT 2015
+
+  @=> Includes Aegir Hostmaster 2.x-head with improvements
+  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Drush 7 customized for BOA
+
+# Release Notes:
+
+  This BOA release includes PHP security upgrade for versions 5.6, 5.5 and 5.4
+  plus security upgrade for Redis server and four updated Octopus platforms.
+
+  Support for Drupal 8 is temporarily removed, because now it would require
+  an upgrade to Drush 8, which in turn completely removes support for PHP 5.3,
+  while it's still more important to support legacy Pressflow 6 sites, if they
+  are not ready to move beyond PHP 5.3 yet, than trying to support some
+  (too fast) moving targets like Drupal 8 beta, and Drush 8 head.
+
+# Updated Octopus platforms:
+
+  Commerce 2.26 ---------------- https://drupal.org/project/commerce_kickstart
+  Commons 3.28 ----------------- https://drupal.org/project/commons
+  OpenAtrium 2.43 -------------- https://drupal.org/project/openatrium
+  Panopoly 1.25 ---------------- https://drupal.org/project/panopoly
+
+# Changes:
+
+  * Drupal 8 is not supported until we can switch to Drush 8 and remove PHP 5.3
+
+# System upgrades:
+
+  * Nginx 1.9.2
+  * PHP 5.4.43
+  * PHP 5.5.27
+  * PHP 5.6.11
+  * Redis 3.0.2
+
+
+### Stable BOA-2.4.4 Release - Full Edition
+### Date: Fri Jul  3 12:08:29 PDT 2015
+### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.4
+### Latest hotfix added on: Thu Jul  9 10:28:42 PDT 2015
+
+  @=> Includes Aegir Hostmaster 2.x-head with improvements
+  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Drush 7 customized for BOA
+
+# Release Notes:
+
+  This BOA release includes several important system upgrades and bug fixes.
+
+  All supported Aegir platforms have been updated with latest Drupal cores.
+
+  This version automatically switches all hosted sites to PHP 5.5 on systems
+  hosted and managed remotely by Omega8.cc support team, unless you have
+  explicitly switched your Octopus instance to use PHP version you prefer.
+  Using PHP older than 5.5 is strongly discouraged, for security, stability and
+  performance reasons.
+
+# Changes:
+
+  * Do not change mysql root password by default -- workaround for #642
+  * Enable advagg_async_generation by default
+  * Logic update for /root/.high_traffic.cnf
+  * Redis Integration Module: Update to version mod-26-06-2015
+  * Use modern ssl_ciphers in all templates by default
+
+# System upgrades:
+
+  * cURL 7.43.0 (if installed from sources)
+  * Drush mini-7-30-06-2015 -- fixes #734
+  * MariaDB 5.5.44
+  * MariaDB Galera Cluster 10.0.20
+  * Nginx 1.9.1
+  * OpenSSH 6.9p1 (if installed from sources)
+  * OpenSSL 1.0.1p (if installed from sources)
+  * PHP 5.4.42
+  * PHP 5.5.26
+  * PHP 5.6.10
+  * PHPRedis master-27-06-2015
+  * Pure-FTPd 1.0.41
+  * vnStat 1.14
+
+# Fixes:
+
+  * Add 'grep' to overssh -- a list of commands allowed to execute over SSH
+  * Broken pdnsd configuration breaks DNS resolver -- fixes #701
+  * Do not force update_agents()
+  * Do not modify rkey/debug args in barracuda log/system upgrade mode
+  * Don't remove Drupal 6 core themes -- fixes #738
+  * Fix for legacy vnStat config
+  * Fixed backboa/duobackboa retrieve from remote host -- fixes #741
+  * Improve system cron tasks queue
+  * Incorrect permissions on /usr/bin/optipng - fixes #722
+  * Mitigate LOGJAM - fixes #723
+  * Restart Postfix after system DNS update -- #701
+  * Skip daily reload on high traffic instances
+  * Sync SQL connection limits with _PHP_FPM_WORKERS variable - fixes #699
+  * Use _AWS_URL to properly handle us-east-1 exception
+  * Use 2048 bit where possible - see #723
+  * Use better default value for advagg_cache_level - fixes #726
+
+
 ### Stable BOA-2.4.3 Release - Full Edition
 ### Date: Tue May 19 13:40:40 PDT 2015
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.3
@@ -1260,7 +1434,7 @@
 ;;
 ;;    http://ftp.drupal.org/files/projects/search_api_solr-7.x-1.6.tar.gz
 ;;    http://ftp.drupal.org/files/projects/apachesolr-7.x-1.7.tar.gz
-;;    http://ftp.drupal.org/files/projects/apachesolr-6.x-3.0-rc2.tar.gz
+;;    http://ftp.drupal.org/files/projects/apachesolr-6.x-3.0.tar.gz
 ;;
 ;;  Note that you still need to add preferred integration module along with
 ;;  any its dependencies in your codebase since this feature doesn't modify
@@ -1290,7 +1464,7 @@
 ;;  in the /root/.barracuda.cnf file (this is default value) to make this
 ;;  feature active.
 ;;
-;solr_integration_module = NO
+;solr_integration_module = your_module_name_here
 
 ;;
 ;;  This option allows to auto-update your Solr 4 core configuration files:

@@ -5,7 +5,19 @@ fix_dns_settings() {
   mkdir -p ${vBs}
   rm -f ${vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
-    cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    if [ -L "/etc/resolv.conf" ]; then
+      rslvT=`readlink -n /etc/resolv.conf`
+      if [ ! -e "${rslvT}" ]; then
+        rm -f /etc/resolv.conf
+      fi
+    fi
+    if [ -e "/etc/resolv.conf" ]; then
+      cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    fi
+  fi
+  if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
+    echo "nameserver 8.8.8.8" >${vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.4.4" >>${vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
     for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
@@ -67,8 +79,19 @@ fix_dns_settings() {
          echo "        ip=8.8.4.4;" >> ${dnsLi}
       fi
       ### echo debug dns A
-      sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+      _DNS_TPL_TEST=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
+      _DNS_RGX_TEST=$(grep "google-servers" /root/.local.dns.IP.list 2>&1)
+      if [[ "${_DNS_TPL_TEST}" =~ "google-servers" ]] \
+        && [[ "${_DNS_RGX_TEST}" =~ "google-servers" ]]; then
+        sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
 d;};' /etc/pdnsd.conf
+      else
+        if [ -e "${locCnf}/pdnsd.conf" ]; then
+          cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
+        fi
+        cp -af /root/.local.dns.IP.list /root/.broken.local.dns.IP.list
+        cp -af /etc/pdnsd.conf /root/.broken.etc.pdnsd.conf
+      fi
       resolvconf -u         &> /dev/null
       service pdnsd restart &> /dev/null
       pdnsd-ctl empty-cache &> /dev/null
@@ -96,6 +119,9 @@ check_dns_settings() {
       || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
       || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
       fix_dns_settings
+      if [ -e "/etc/init.d/postfix" ]; then
+        service postfix restart &> /dev/null
+      fi
     fi
   fi
 }
@@ -352,15 +378,14 @@ install_pdnsd_cache() {
     echo "nameserver 8.8.8.8" > /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   fi
-  st_runner "apt-get update -y --force-yes" &> /dev/null
+  rm -f /etc/apt/sources.list.d/openssl.list
+  st_runner "apt-get update -qq" &> /dev/null
   st_runner "aptitude purge pdnsd -y" &> /dev/null
   st_runner "aptitude purge resolvconf -y" &> /dev/null
-  st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
   rm -f -r /lib/init/rw/resolvconf
   rm -f -r /etc/resolvconf
   st_runner "aptitude purge pdnsd -y" &> /dev/null
   st_runner "aptitude purge resolvconf -y" &> /dev/null
-  st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
   if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
     rm -f /etc/resolv.conf
     echo "nameserver 8.8.8.8" > /etc/resolv.conf
@@ -382,6 +407,8 @@ install_pdnsd_cache() {
     if [ ! -e "/lib/init/rw/resolvconf/interface" ]; then
       mkdir -p /lib/init/rw/resolvconf/interface
     fi
+    mkdir -p /run/resolvconf
+    ln -s /lib/init/rw/resolvconf/interface /run/resolvconf/interface
     rm -f /lib/init/rw/resolvconf/postponed-update
     touch /lib/init/rw/resolvconf/enable-updates
     rm -f /etc/resolvconf/resolv.conf.d/tail
@@ -405,10 +432,13 @@ install_pdnsd_cache() {
     fi
   fi
   if [ ! -e "/etc/resolv.conf" ]; then
+    rm -f /etc/resolv.conf
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then
       cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
     fi
     echo "nameserver 127.0.0.1" >> /etc/resolv.conf
+    echo "nameserver 8.8.8.8" >>/etc/resolv.conf
+    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
   fi
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ]; then
     sed -i "s/^dns=.*/dns=pdnsd/g" \

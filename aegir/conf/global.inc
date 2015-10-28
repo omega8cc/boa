@@ -63,7 +63,7 @@ if (function_exists('drush_get_command')) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.9.1.1';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.9.6';
   }
 }
 
@@ -149,7 +149,7 @@ if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
  */
 if (file_exists('web.config')) {
   if (file_exists('core')) {
-    if (file_exists('core/vendor/symfony')) {
+    if (file_exists('vendor/symfony') || file_exists('core/vendor/symfony')) {
       $drupal_eight = TRUE;
       if ($is_dev && !$is_backend) {
         header('X-Backend: A');
@@ -305,10 +305,10 @@ if (!$is_backend) {
     ini_set('display_startup_errors', TRUE);
     ini_set('opcache.revalidate_freq', '1');
     if ($drupal_eight) {
-      unset($config['system.logging']['error_level']);                 // Stop hardcoding no errors on screen
-      unset($config['system.performance']['cache.page.use_internal']); // Stop hardcoding internal page cache
-      unset($config['system.performance']['css']['preprocess']);       // Stop hardcoding CSS aggregation
-      unset($config['system.performance']['js']['preprocess']);        // Stop hardcoding JS aggregation
+      unset($config['system.logging']['error_level']);            // Stop hardcoding no errors on screen
+      unset($config['system.performance']['cache.page.max_age']); // Stop hardcoding internal page cache
+      unset($config['system.performance']['css']['preprocess']);  // Stop hardcoding CSS aggregation
+      unset($config['system.performance']['js']['preprocess']);   // Stop hardcoding JS aggregation
     }
     else {
       $conf['xmlsitemap_submit'] = 0; // Disable XML Sitemap for foo.dev.domain
@@ -435,7 +435,7 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
 if (!$is_backend && !$is_dev) {
   if (!$is_bot && $all_ini['disable_drupal_page_cache']) {
     if ($drupal_eight) {
-      $config['system.performance']['cache.page.use_internal'] = FALSE;
+      $config['system.performance']['cache.page.max_age'] = 0;
     }
     else {
       $conf['cache'] = 0;
@@ -443,7 +443,7 @@ if (!$is_backend && !$is_dev) {
   }
   else {
     if ($drupal_eight) {
-      $config['system.performance']['cache.page.use_internal'] = TRUE;
+      $config['system.performance']['cache.page.max_age'] = 60;
     }
     else {
       $conf['cache'] = 1;
@@ -458,7 +458,7 @@ if (!$is_backend && !$is_dev) {
 if (!$is_bot && isset($_SERVER['REQUEST_URI']) &&
     preg_match("/nocache=1/", $_SERVER['REQUEST_URI'])) {
   if ($drupal_eight) {
-    $config['system.performance']['cache.page.use_internal'] = FALSE;
+    $config['system.performance']['cache.page.max_age'] = 0;
   }
   else {
     $conf['cache'] = 0;
@@ -520,6 +520,9 @@ if ($conf['install_profile'] == 'hostmaster') {
         exit;
       }
     }
+  }
+  else {
+    $use_redis = FALSE;
   }
 }
 
@@ -608,7 +611,7 @@ if (!$is_dev) {
         $conf['preprocess_css'] = 0; // CSS aggregation disabled
         $conf['preprocess_js'] = 0;  // JS aggregation disabled
         $conf['advagg_aggregate_mode'] = 1;
-        $conf['advagg_async_generation'] = 0;
+        $conf['advagg_async_generation'] = 1;
         $conf['advagg_checksum_mode'] = "md5";
         $conf['advagg_closure'] = 1;
         $conf['advagg_css_compress_agg_files'] = 1;
@@ -637,15 +640,15 @@ if (!$is_dev) {
         $conf['advagg_combine_css_media'] = 0;
         $conf['advagg_core_groups'] = 0;
         $conf['advagg_css_compressor'] = 2;
-        $conf['advagg_css_inline_compressor'] = 2;
-        $conf['advagg_css_inline_compress_if_not_cacheable'] = 1;
+        $conf['advagg_css_compress_inline'] = 2;
+        $conf['advagg_css_compress_inline_if_not_cacheable'] = 1;
         $conf['advagg_enabled'] = 1;
         $conf['advagg_gzip'] = 1;
         $conf['advagg_ie_css_selector_limiter'] = 1;
         $conf['advagg_js_compressor'] = 3;
         $conf['advagg_js_compress_packer'] = 0;
-        $conf['advagg_js_inline_compressor'] = 3;
-        $conf['advagg_js_inline_compress_if_not_cacheable'] = 1;
+        $conf['advagg_js_compress_inline'] = 3;
+        $conf['advagg_js_compress_inline_if_not_cacheable'] = 1;
         $conf['preprocess_css'] = 1;
         $conf['preprocess_js'] = 1;
       }

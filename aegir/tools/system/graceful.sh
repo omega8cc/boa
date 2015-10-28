@@ -34,38 +34,21 @@ action() {
   rm -f -r /tmp/{drush*,pear,jetty*}
   rm -f /var/log/jetty{7,8,9}/*
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
-    /etc/init.d/jetty9 start
+    service jetty9 start
   fi
   if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
-    /etc/init.d/jetty8 start
+    service jetty8 start
   fi
   if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
-    /etc/init.d/jetty7 start
+    service jetty7 start
   fi
-  touch /var/run/fmp_wait.pid
-  rm -f /var/log/php/*
-  rm -f /var/log/mysql/sql-slow-query.log
-  if [ -e "/etc/init.d/php56-fpm" ]; then
-    /etc/init.d/php56-fpm reload
+  if [ ! -e "/root/.giant_traffic.cnf" ]; then
+    echo " " >> /var/log/nginx/speed_purge.log
+    echo "speed_purge start `date`" >> /var/log/nginx/speed_purge.log
+    find /var/lib/nginx/speed/* -mtime +1 -exec rm -rf {} \; &> /dev/null
+    echo "speed_purge complete `date`" >> /var/log/nginx/speed_purge.log
+    service nginx reload
   fi
-  if [ -e "/etc/init.d/php55-fpm" ]; then
-    /etc/init.d/php55-fpm reload
-  fi
-  if [ -e "/etc/init.d/php54-fpm" ]; then
-    /etc/init.d/php54-fpm reload
-  fi
-  if [ -e "/etc/init.d/php53-fpm" ]; then
-    /etc/init.d/php53-fpm reload
-  fi
-  sleep 8
-  rm -f /var/run/fmp_wait.pid
-  if [ -e "/root/.high_traffic.cnf" ]; then
-    _DO_NOTHING=YES
-  else
-    rm -f -r /var/lib/nginx/speed/*
-  fi
-  /etc/init.d/nginx reload
-  echo rotate > /var/log/nginx/speed_purge.log
   if [ -e "/var/log/newrelic" ]; then
     echo rotate > /var/log/newrelic/nrsysmond.log
     echo rotate > /var/log/newrelic/php_agent.log
@@ -79,14 +62,14 @@ _NOW=$(date +%y%m%d-%H%M 2>&1)
 _CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
 if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-  || [ -e "/root/.debug.cnf" ] \
+  || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
 fi
 
-if [ -e "/var/run/boa_run.pid" ]; then
+if [ -e "/var/run/boa_run.pid" ] || [ -e "/root/.skip_cleanup.cnf" ]; then
   exit 0
 else
   touch /var/run/boa_wait.pid

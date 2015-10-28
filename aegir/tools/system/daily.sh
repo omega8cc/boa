@@ -3,9 +3,12 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _WEBG=www-data
-_OPENSSL_VRN=1.0.2c
-_X_SE="2.4.3-stable"
+_OPENSSL_VRN=1.0.2d
+_X_SE="2.4.6-stable"
 _OSV=$(lsb_release -sc 2>&1)
+if [ "${_OSV}" = "squeeze" ]; then
+  _OPENSSL_VRN=1.0.1p
+fi
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
@@ -20,8 +23,9 @@ crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -852,7 +856,7 @@ add_solr() {
       cp -a /opt/solr4/core0 $2
       CHAR="[:alnum:]"
       rkey=32
-      if [ "$_NEW_SSL" = "YES" ] \
+      if [ "${_NEW_SSL}" = "YES" ] \
         || [ "${_OSV}" = "wheezy" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
@@ -940,7 +944,7 @@ setup_solr() {
     if [[ "${_SOLR_IM_PT}" =~ "solr_integration_module" ]]; then
       _DO_NOTHING=YES
     else
-      echo ";solr_integration_module = NO" >> ${_DIR_CTRL_F}
+      echo ";solr_integration_module = your_module_name_here" >> ${_DIR_CTRL_F}
     fi
     _ASOLR_T=$(grep "^solr_integration_module = apachesolr" \
       ${_DIR_CTRL_F} 2>&1)
@@ -1693,9 +1697,9 @@ fix_expected_symlinks() {
 
 fix_permissions() {
   ### modules,themes,libraries - profile level in ~/static
-  searchStringG="/static/"
+  searchStringT="/static/"
   case ${Plr} in
-  *"$searchStringG"*)
+  *"$searchStringT"*)
   fix_static_permissions
   ;;
   esac
@@ -2114,7 +2118,7 @@ process() {
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
       if [ -e "${Plr}" ]; then
-        if [ "$_NEW_SSL" = "YES" ] \
+        if [ "${_NEW_SSL}" = "YES" ] \
           || [ "${_OSV}" = "wheezy" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
@@ -2130,11 +2134,21 @@ process() {
         fix_platform_control_files
         fix_o_contrib_symlink
         if [ -e "${Dir}" ]; then
-          searchStringD=".temporary."
-          searchStringF=".testing."
+          searchStringB=".dev."
+          searchStringC=".devel."
+          searchStringD=".temp."
+          searchStringE=".tmp."
+          searchStringF=".temporary."
+          searchStringG=".test."
+          searchStringH=".testing."
           case ${Dom} in
+          *"$searchStringB"*) ;;
+          *"$searchStringC"*) ;;
           *"$searchStringD"*) ;;
+          *"$searchStringE"*) ;;
           *"$searchStringF"*) ;;
+          *"$searchStringG"*) ;;
+          *"$searchStringH"*) ;;
           *)
           fix_modules
           fix_robots_txt
@@ -2502,8 +2516,13 @@ action() {
             --always-set hosting_queue_advanced_cron_frequency 1"
           run_drush7_hmr_cmd "vset \
             --always-set hosting_queue_cron_frequency 53222400"
-          run_drush7_hmr_cmd "vset \
-            --always-set hosting_cron_use_backend 0"
+          if [ -e "${User}/log/hosting_cron_use_backend.txt" ]; then
+            run_drush7_hmr_cmd "vset \
+              --always-set hosting_cron_use_backend 1"
+          else
+             run_drush7_hmr_cmd "vset \
+              --always-set hosting_cron_use_backend 0"
+          fi
           run_drush7_hmr_cmd "vset \
             --always-set hosting_ignore_default_profiles 0"
           run_drush7_hmr_cmd "vset \
@@ -2579,7 +2598,7 @@ else
 fi
 #
 if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-  || [ -e "/root/.debug.cnf" ] \
+  || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _VMFAMILY="VS"
   _MODULES_FORCE="background_process coder cookie_cache_bypass css_gzip hacked \
@@ -2698,6 +2717,7 @@ else
     for f in `find /etc/ssl/private/*.crt -type f`; do
       sslName=$(echo ${f} | cut -d'/' -f5 | awk '{ print $1}' | sed "s/.crt//g")
       sslFile="/etc/ssl/private/${sslName}.dhp"
+      sslFileZ=${sslFile//\//\\\/}
       if [ -e "${f}" ] && [ ! -z "${sslName}" ]; then
         if [ ! -e "${sslFile}" ]; then
           openssl dhparam -out ${sslFile} 2048 &> /dev/null
@@ -2706,10 +2726,47 @@ else
           if [[ ! "${_PFS_TEST}" =~ "DH PARAMETERS" ]]; then
             openssl dhparam -out ${sslFile} 2048 &> /dev/null
           fi
+          sslRootd="/var/aegir/config/server_master/nginx/pre.d"
+          sslFileX="${sslRootd}/z_${sslName}_ssl_proxy.conf"
+          sslFileY="${sslRootd}/${sslName}_ssl_proxy.conf"
+          if [ -e "${sslFileX}" ]; then
+            _DHP_TEST=$(grep "sslFile" ${sslFileX} 2>&1)
+            if [[ "${_DHP_TEST}" =~ "sslFile" ]]; then
+              sed -i "s/.*sslFile.*//g" ${sslFileX} &> /dev/null
+              sed -i "s/ *$//g; /^$/d" ${sslFileX} &> /dev/null
+            fi
+          fi
+          if [ -e "${sslFileY}" ]; then
+            _DHP_TEST=$(grep "sslFile" ${sslFileY} 2>&1)
+            if [[ "${_DHP_TEST}" =~ "sslFile" ]]; then
+              sed -i "s/.*sslFile.*//g" ${sslFileY} &> /dev/null
+              sed -i "s/ *$//g; /^$/d" ${sslFileY} &> /dev/null
+            fi
+          fi
+          if [ -e "${sslFileX}" ]; then
+            _DHP_TEST=$(grep "ssl_dhparam" ${sslFileX} 2>&1)
+            if [[ ! "${_DHP_TEST}" =~ "ssl_dhparam" ]]; then
+              sed -i "s/ssl_session_timeout .*/ssl_session_timeout          5m;\n  ssl_dhparam                  ${sslFileZ};/g" ${sslFileX} &> /dev/null
+              sed -i "s/ *$//g; /^$/d" ${sslFileX} &> /dev/null
+            fi
+          fi
+          if [ -e "${sslFileY}" ]; then
+            _DHP_TEST=$(grep "ssl_dhparam" ${sslFileY} 2>&1)
+            if [[ ! "${_DHP_TEST}" =~ "ssl_dhparam" ]]; then
+              sed -i "s/ssl_session_timeout .*/ssl_session_timeout          5m;\n  ssl_dhparam                  ${sslFileZ};/g" ${sslFileY} &> /dev/null
+              sed -i "s/ *$//g; /^$/d" ${sslFileY} &> /dev/null
+            fi
+          fi
         fi
       fi
     done
-    /etc/init.d/nginx reload
+    sed -i "s/.*ssl_stapling .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf               &> /dev/null
+    sed -i "s/.*ssl_stapling_verify .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf        &> /dev/null
+    sed -i "s/.*resolver .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                   &> /dev/null
+    sed -i "s/.*resolver_timeout .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf           &> /dev/null
+    sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n  resolver 8.8.8.8 8.8.4.4 valid=300s;\n  resolver_timeout 5s;/g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
+    sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                      &> /dev/null
+    service nginx reload
   fi
 fi
 
@@ -2818,13 +2875,13 @@ if [ ! -e "/root/.high_traffic.cnf" ]; then
   echo "INFO: Redis server will be restarted in 5 minutes"
   touch /var/run/boa_wait.pid
   sleep 300
-  /etc/init.d/nginx reload
-  /etc/init.d/redis-server stop
+  service nginx reload
+  service redis-server stop
   killall -9 redis-server
   rm -f /var/run/redis.pid
   rm -f /var/lib/redis/*
   rm -f /var/log/redis/redis-server.log
-  /etc/init.d/redis-server start
+  service redis-server start
   rm -f /var/run/boa_wait.pid
   echo "INFO: Redis server restarted OK"
 fi

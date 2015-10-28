@@ -4,19 +4,20 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 branch="2.4.x-dev"
-cluster="BOA-2.4.3"
-devel="2.4.x-dev"
-legacy="BOA-2.2.9"
+cluster="BOA-2.4.6"
+hd="HEAD"
+lgcy="BOA-2.2.9"
 master="master"
-stable="BOA-2.4.3"
+nextv="BOA-2.4.7-dev"
+stbl="BOA-2.4.6"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncB="barracuda.sh.cnf"
 filIncO="octopus.sh.cnf"
+forCer="-fuy --force-yes --reinstall"
 octName="OCTOPUS.sh.txt"
-bldPth="/opt/tmp/boa"
 pthIncB="lib/settings/${filIncB}"
 pthIncO="lib/settings/${filIncO}"
 rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
@@ -27,7 +28,7 @@ _NOW=$(date +%y%m%d-%H%M 2>&1)
 _L_VMFAMILY=XEN
 _L_VM_TEST=$(uname -a 2>&1)
 if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-  || [ -e "/root/.debug.cnf" ] \
+  || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
   || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _L_VMFAMILY="VS"
 fi
@@ -84,7 +85,19 @@ fix_dns_settings() {
   mkdir -p ${vBs}
   rm -f ${vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
-    cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    if [ -L "/etc/resolv.conf" ]; then
+      rslvT=`readlink -n /etc/resolv.conf`
+      if [ ! -e "${rslvT}" ]; then
+        rm -f /etc/resolv.conf
+      fi
+    fi
+    if [ -e "/etc/resolv.conf" ]; then
+      cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    fi
+  fi
+  if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
+    echo "nameserver 8.8.8.8" >${vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.4.4" >>${vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
     for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
@@ -146,8 +159,13 @@ fix_dns_settings() {
          echo "        ip=8.8.4.4;" >> ${dnsLi}
       fi
       ### echo debug dns A
-      sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+      _DNS_TPL_TEST=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
+      _DNS_RGX_TEST=$(grep "google-servers" /root/.local.dns.IP.list 2>&1)
+      if [[ "${_DNS_TPL_TEST}" =~ "google-servers" ]] \
+        && [[ "${_DNS_RGX_TEST}" =~ "google-servers" ]]; then
+        sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
 d;};' /etc/pdnsd.conf
+      fi
       resolvconf -u         &> /dev/null
       service pdnsd restart &> /dev/null
       pdnsd-ctl empty-cache &> /dev/null
@@ -174,6 +192,9 @@ check_dns_settings() {
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
       fix_dns_settings
+      if [ -e "/etc/init.d/postfix" ]; then
+        service postfix restart &> /dev/null
+      fi
     fi
   fi
 }
@@ -187,6 +208,27 @@ octopus_install() {
     _CHECK_HOST=$(uname -n 2>&1)
 
     if [ "${cmmand}" = "in-octopus" ]; then
+      if [ -e "/root/.auto.up.cnf" ] \
+        || [ -e "/root/.host8.cnf" ] \
+        || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        || [ "${_L_VMFAMILY}" = "VS" ]; then
+        _DO_NOTHING=YES
+      else
+        if [ -e "/root/.barracuda.cnf" ]; then
+          source /root/.barracuda.cnf
+        fi
+        if [ ! -z "${_MY_EMAIL}" ] && [ "${_MY_EMAIL}" = "${email}" ]; then
+          sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"root\"/g"        ${vBs}/${octName}
+        else
+          lml="${_MY_EMAIL}"
+          if [ ! -z "${lml}" ]; then
+            sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${lml}\"/g"    ${vBs}/${octName}
+          else
+            sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"root\"/g"      ${vBs}/${octName}
+          fi
+        fi
+      fi
       sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                   ${vBs}/${octName}
       if [ ! -z "${copt}" ]; then
         sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=${copt}/g" ${vBs}/${octName}
@@ -250,30 +292,41 @@ octopus_install() {
     fi
 
     if [ "${cmmand}" = "in-head" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncO}
-    elif [ "${cmmand}" = "in-modern" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncO}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncO}
+      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncO}
+      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"     ${vBs}/${filIncO}
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${filIncO}
     else
       if [ -e "${vBs}/${filIncO}" ]; then
-        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"     ${vBs}/${filIncO}
+        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncO}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncO}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${filIncO}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncO}
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${octName}
-      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${branch}/g" ${vBs}/${octName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${octName}
+      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${octName}
+      if [ "${cmmand}" = "in-legacy" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcy}/g" ${vBs}/${octName}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcy}/g" ${vBs}/${octName}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcy}/g"         ${vBs}/${octName}
+      else
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${octName}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${octName}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${octName}
+      fi
     fi
 
     if [ "${cmmand}" = "in-head" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"       ${vBs}/${filIncO}
-    elif [ "${cmmand}" = "in-modern" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"        ${vBs}/${filIncO}
     elif [ "${cmmand}" = "in-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncO}
     else
       if [ -e "${vBs}/${filIncO}" ]; then
-        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"     ${vBs}/${filIncO}
+        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${filIncO}
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${octName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${octName}
     fi
 
     if [ ! -z "${dbip}" ] && [ "${cmmand}" = "in-cluster" ]; then
@@ -482,30 +535,41 @@ barracuda_install() {
     fi
 
     if [ "${cmmand}" = "in-head" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncB}
-    elif [ "${cmmand}" = "in-modern" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${filIncB}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
+      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncB}
+      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"     ${vBs}/${filIncB}
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${filIncB}
     else
       if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"     ${vBs}/${filIncB}
+        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncB}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncB}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${filIncB}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncB}
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${barName}
-      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${branch}/g" ${vBs}/${barName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${barName}
+      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${barName}
+      if [ "${cmmand}" = "in-legacy" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcy}/g" ${vBs}/${barName}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcy}/g" ${vBs}/${barName}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcy}/g"         ${vBs}/${barName}
+      else
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${barName}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${barName}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${barName}
+      fi
     fi
 
     if [ "${cmmand}" = "in-head" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"       ${vBs}/${filIncB}
-    elif [ "${cmmand}" = "in-modern" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"        ${vBs}/${filIncB}
     elif [ "${cmmand}" = "in-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncB}
     else
       if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"     ${vBs}/${filIncB}
+        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${filIncB}
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${barName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${barName}
     fi
 
     if [ -e "${vBs}/${barName}" ]; then
@@ -551,7 +615,7 @@ set_pin_priority() {
     fi
     if [ "${_THIS_OS}" = "Debian" ]; then
       _THIS_RV=$(grep "6.0" /etc/issue.net 2>&1)
-      if [[ "$_THIS_RV" =~ "6.0" ]]; then
+      if [[ "${_THIS_RV}" =~ "6.0" ]]; then
         curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
           -o /etc/apt/preferences
       else
@@ -602,7 +666,7 @@ init_setup() {
 
   if [ ! -z "${rkey}" ]; then
     if [ "${rkey}" = "2.4" ]; then
-      vn="BOA-2.4.3"
+      vn="BOA-2.4.6"
       branch="2.4.x-dev"
     elif [ "${rkey}" = "2.3" ]; then
       vn="BOA-2.3.8"
@@ -614,15 +678,16 @@ init_setup() {
       vn=
     fi
   fi
+  brnch=${branch//\//\\\/}
 
   init_start
   set_pin_priority
   if [ ! -z "${vn}" ]; then
     curl ${crlGet} "${rgUrl}/${vn}/${barName}"        -o ${vBs}/${barName}
     curl ${crlGet} "${rgUrl}/${vn}/${octName}"        -o ${vBs}/${octName}
-    if [ "${vn}" = "BOA-2.4.3" ]; then
-      curl ${crlGet} "${rgUrl}/${stable}/${pthIncB}"  -o ${vBs}/${filIncB}
-      curl ${crlGet} "${rgUrl}/${stable}/${pthIncO}"  -o ${vBs}/${filIncO}
+    if [ "${vn}" = "${stbl}" ]; then
+      curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
+      curl ${crlGet} "${rgUrl}/${stbl}/${pthIncO}"    -o ${vBs}/${filIncO}
     fi
   else
     if [ "${cmmand}" = "in-head" ]; then
@@ -630,29 +695,24 @@ init_setup() {
       curl ${crlGet} "${rgUrl}/${master}/${octName}"  -o ${vBs}/${octName}
       curl ${crlGet} "${rgUrl}/${master}/${pthIncB}"  -o ${vBs}/${filIncB}
       curl ${crlGet} "${rgUrl}/${master}/${pthIncO}"  -o ${vBs}/${filIncO}
-    elif [ "${cmmand}" = "in-modern" ]; then
-      curl ${crlGet} "${rgUrl}/${devel}/${barName}"   -o ${vBs}/${barName}
-      curl ${crlGet} "${rgUrl}/${devel}/${octName}"   -o ${vBs}/${octName}
-      curl ${crlGet} "${rgUrl}/${devel}/${pthIncB}"   -o ${vBs}/${filIncB}
-      curl ${crlGet} "${rgUrl}/${devel}/${pthIncO}"   -o ${vBs}/${filIncO}
     elif [ "${cmmand}" = "in-cluster" ]; then
       curl ${crlGet} "${rgUrl}/${cluster}/${barName}" -o ${vBs}/${barName}
       curl ${crlGet} "${rgUrl}/${cluster}/${octName}" -o ${vBs}/${octName}
       curl ${crlGet} "${rgUrl}/${cluster}/${pthIncB}" -o ${vBs}/${filIncB}
       curl ${crlGet} "${rgUrl}/${cluster}/${pthIncO}" -o ${vBs}/${filIncO}
     elif [ "${cmmand}" = "in-stable" ]; then
-      curl ${crlGet} "${rgUrl}/${stable}/${barName}"  -o ${vBs}/${barName}
-      curl ${crlGet} "${rgUrl}/${stable}/${octName}"  -o ${vBs}/${octName}
-      curl ${crlGet} "${rgUrl}/${stable}/${pthIncB}"  -o ${vBs}/${filIncB}
-      curl ${crlGet} "${rgUrl}/${stable}/${pthIncO}"  -o ${vBs}/${filIncO}
+      curl ${crlGet} "${rgUrl}/${stbl}/${barName}"    -o ${vBs}/${barName}
+      curl ${crlGet} "${rgUrl}/${stbl}/${octName}"    -o ${vBs}/${octName}
+      curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
+      curl ${crlGet} "${rgUrl}/${stbl}/${pthIncO}"    -o ${vBs}/${filIncO}
     elif [ "${cmmand}" = "in-octopus" ]; then
-      curl ${crlGet} "${rgUrl}/${stable}/${barName}"  -o ${vBs}/${barName}
-      curl ${crlGet} "${rgUrl}/${stable}/${octName}"  -o ${vBs}/${octName}
-      curl ${crlGet} "${rgUrl}/${stable}/${pthIncB}"  -o ${vBs}/${filIncB}
-      curl ${crlGet} "${rgUrl}/${stable}/${pthIncO}"  -o ${vBs}/${filIncO}
+      curl ${crlGet} "${rgUrl}/${stbl}/${barName}"    -o ${vBs}/${barName}
+      curl ${crlGet} "${rgUrl}/${stbl}/${octName}"    -o ${vBs}/${octName}
+      curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
+      curl ${crlGet} "${rgUrl}/${stbl}/${pthIncO}"    -o ${vBs}/${filIncO}
     elif [ "${cmmand}" = "in-legacy" ]; then
-      curl ${crlGet} "${rgUrl}/${legacy}/${barName}"  -o ${vBs}/${barName}
-      curl ${crlGet} "${rgUrl}/${legacy}/${octName}"  -o ${vBs}/${octName}
+      curl ${crlGet} "${rgUrl}/${lgcy}/${barName}"    -o ${vBs}/${barName}
+      curl ${crlGet} "${rgUrl}/${lgcy}/${octName}"    -o ${vBs}/${octName}
     fi
   fi
   if [ "${cmmand}" = "in-octopus" ]; then
@@ -669,8 +729,9 @@ init_setup() {
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -704,6 +765,7 @@ find_fast_mirror() {
 
 check_dns_curl() {
   if [ ! -e "/etc/resolv.conf" ]; then
+    rm -f /etc/resolv.conf
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then
       cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
     fi
@@ -725,9 +787,10 @@ check_dns_curl() {
       echo "ERROR: Please install it manually with 'apt-get install curl'"
       clean_pid_exit
     else
+      rm -f /etc/apt/sources.list.d/openssl.list
       apt-get clean -qq &> /dev/null
       apt-get update -qq &> /dev/null
-      apt-get install curl -y --force-yes --reinstall &> /dev/null
+      apt-get install curl ${forCer} &> /dev/null
     fi
   fi
   _CURL_TEST=$(curl -L -k -s \
@@ -736,6 +799,11 @@ check_dns_curl() {
     --retry-delay 10 \
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
+    if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
+      echo "curl install" | dpkg --set-selections
+      apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
+      touch /root/.use.curl.from.packages.cnf
+    fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     clean_pid_exit
   fi
@@ -778,43 +846,56 @@ check_root() {
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
-    echo "ERROR: Your disk space is almost full - \
-      we can not proceed until it is below 90/100"
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
     clean_pid_exit
   fi
   _L_VM_TEST=$(uname -a 2>&1)
   if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [ -e "/root/.debug.cnf" ] \
+    || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
     || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
     if [ -e "/sbin/hdparm" ]; then
       apt-get remove hdparm -y --force-yes -qq &> /dev/null
       apt-get purge hdparm -y --force-yes -qq &> /dev/null
-      apt-get autoremove -y --force-yes -qq &> /dev/null
     fi
-    _REMOVE_LINKS="vnstat buagent svscan kerneloops halt hwclock.sh \
-      hwclockfirst.sh ifupdown ifupdown-clean klogd mountall-bootclean.sh \
-      mountall.sh mountdevsubfs.sh mountkernfs.sh mountnfs-bootclean.sh \
-      mountnfs.sh mountoverflowtmp mountvirtfs mtab.sh networking reboot \
-      setserial sysstat umountfs umountnfs.sh umountroot urandom"
+    _REMOVE_LINKS="buagent \
+                   fancontrol \
+                   halt \
+                   hwclock.sh \
+                   hwclockfirst.sh \
+                   ifupdown \
+                   ifupdown-clean \
+                   kerneloops \
+                   klogd \
+                   mountall-bootclean.sh \
+                   mountall.sh \
+                   mountdevsubfs.sh \
+                   mountkernfs.sh \
+                   mountnfs-bootclean.sh \
+                   mountnfs.sh \
+                   mountoverflowtmp \
+                   mountvirtfs \
+                   mtab.sh \
+                   networking \
+                   reboot \
+                   setserial \
+                   svscan \
+                   sysstat \
+                   umountfs \
+                   umountnfs.sh \
+                   umountroot \
+                   urandom \
+                   vnstat"
     for link in ${_REMOVE_LINKS}; do
-      update-rc.d -f $link remove &> /dev/null
+      if [ -e "/etc/init.d/${link}" ]; then
+        update-rc.d -f ${link} remove &> /dev/null
+      fi
     done
   fi
 }
 
 case "$1" in
   in-head)   cmmand="$1"
-             kind="$2"
-             fqdn="$3"
-             email="$4"
-             user="$5"
-             mode="$6"
-             rkey="$7"
-             check_root
-             check_dns_curl
-             init_setup
-  ;;
-  in-modern) cmmand="$1"
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -879,7 +960,7 @@ case "$1" in
       in-stable <---- install current BOA stable release
       in-head <------ install BOA HEAD for testing
       in-legacy <---- install old stable, not recommended
-      in-octopus <--- install extra Octopus instance
+      in-octopus <--- install extra Octopus instance (stable)
 
   {mode}
       public <------- recommended for general use
@@ -895,7 +976,7 @@ case "$1" in
       o1 <----------- default Octopus system account
 
   {platforms}
-      ask <---------- say y/n to every prompt in install, default
+      ask <---------- say y/n to every prompt in install (default)
       mini <--------- install only basic Drupal platforms w/o prompt
       max <---------- install all currently supported distros
       none <--------- do not install platforms, just Aegir

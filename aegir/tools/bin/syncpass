@@ -149,6 +149,9 @@ check_root() {
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
     echo >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
+    if [ -e "/etc/init.d/postfix" ]; then
+      service postfix restart &> /dev/null
+    fi
     if [ -e "/root/.barracuda.cnf" ]; then
       source /root/.barracuda.cnf
       if [ "${_THIS_DB_HOST}" = "localhost" ] \

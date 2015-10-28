@@ -1,6 +1,11 @@
 
 if_install_jetty() {
+  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "squeeze" ]; then
+    _DO_FIX=YES
+  fi
   if [ "${_OSV}" = "wheezy" ] \
+    || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     _R_JETTY=9
@@ -25,6 +30,7 @@ if_install_jetty() {
       && [ ! -e "/root/.wbhd.clstr.cnf" ] \
       && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
       if [ "${_OSV}" = "wheezy" ] \
+        || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
         _R_JETTY=9
@@ -44,6 +50,7 @@ if_install_jetty() {
         rm -f -r /opt/jetty9
         rm -f /etc/jetty.conf
         if [ "${_OSV}" = "wheezy" ] \
+          || [ "${_DO_FIX}" = "YES" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
           get_dev_arch "jetty-distribution-${_JETTY_9_VRN}.tar.gz"
@@ -81,17 +88,17 @@ if_install_jetty() {
             $Dir/ &> /dev/null
         done
         adduser --system --group --home /opt/solr4 jetty9 &> /dev/null
-        if [ ! -e "/opt/solr4/search_api_solr-7.x-1.8.log" ]; then
+        if [ ! -e "/opt/solr4/search_api_solr-7.x-1.9.log" ]; then
           cd /var/opt
           rm -f -r search_api_solr*
-          get_dev_contrib "search_api_solr-7.x-1.8.tar.gz"
+          get_dev_contrib "search_api_solr-7.x-1.9.tar.gz"
           for Dir in `find /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/ \
             -maxdepth 1 -mindepth 1 -type d | grep conf`; do
             cp -af /var/opt/search_api_solr/solr-conf/4.x/* $Dir/ &> /dev/null
           done
           sed -i "s/8983/8099/g" \
             /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
-          touch /opt/solr4/search_api_solr-7.x-1.8.log
+          touch /opt/solr4/search_api_solr-7.x-1.9.log
         fi
         cp -af ${bldPth}/docs/SOLR.txt /opt/solr4/README.txt &> /dev/null
         cd /var/opt
@@ -102,7 +109,9 @@ if_install_jetty() {
         chown -R jetty9:jetty9 /opt/solr4
         chown -R jetty9:jetty9 /opt/jetty9
         chown -R jetty9:jetty9 /var/log/jetty9
-        if [ "${_OSV}" = "wheezy" ] || [ "${_OSV}" = "trusty" ] \
+        if [ "${_OSV}" = "wheezy" ] \
+          || [ "${_DO_FIX}" = "YES" ] \
+          || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
           echo "JAVA=/usr/bin/java7 # Path to Java 1.7" > /etc/default/jetty9
           echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk/jre # Path to Java 1.7" >> \
@@ -124,6 +133,7 @@ if_install_jetty() {
           -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" \
           # Options" | fmt -su -w 2500 >> /etc/default/jetty9
         if [ "${_OSV}" = "wheezy" ] \
+          || [ "${_DO_FIX}" = "YES" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
           _DO_NOTHING=YES
@@ -159,6 +169,7 @@ if_install_jetty() {
   fi
   if [ -e "/opt/jetty9/VERSION.txt" ]; then
     if [ "${_OSV}" = "wheezy" ] \
+      || [ "${_DO_FIX}" = "YES" ] \
       || [ "${_OSV}" = "trusty" ] \
       || [ "${_OSV}" = "precise" ]; then
       _JETTY9_JAVA_TEST=$(grep "Path to Java 1.7" /etc/default/jetty9 2>&1)
@@ -193,6 +204,7 @@ if_install_jetty() {
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
       mv -f /opt/jetty9 ${vBs}/jetty9-${_X_VERSION}-${_NOW}
       if [ "${_OSV}" = "wheezy" ] \
+        || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
         get_dev_arch "jetty-distribution-${_JETTY_9_VRN}.tar.gz"
@@ -279,17 +291,17 @@ if_install_jetty() {
             $Dir/ &> /dev/null
         done
         adduser --system --group --home /opt/solr3 jetty8 &> /dev/null
-        if [ ! -e "/opt/solr3/search_api_solr-7.x-1.8.log" ]; then
+        if [ ! -e "/opt/solr3/search_api_solr-7.x-1.9.log" ]; then
           cd /var/opt
           rm -f -r search_api_solr*
-          get_dev_contrib "search_api_solr-7.x-1.8.tar.gz"
+          get_dev_contrib "search_api_solr-7.x-1.9.tar.gz"
           for Dir in `find /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/ \
             -maxdepth 1 -mindepth 1 -type d | grep conf`; do
             cp -af /var/opt/search_api_solr/solr-conf/3.x/* $Dir/ &> /dev/null
           done
           sed -i "s/8983/8088/g" \
             /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
-          touch /opt/solr3/search_api_solr-7.x-1.8.log
+          touch /opt/solr3/search_api_solr-7.x-1.9.log
         fi
         cp -af ${bldPth}/docs/SOLR.txt /opt/solr3/README.txt &> /dev/null
         chown -R jetty8:jetty8 /opt/solr3
@@ -400,10 +412,10 @@ if_install_jetty() {
           $Dir/ &> /dev/null
         done
         adduser --system --group --home /opt/solr1 jetty7 &> /dev/null
-        if [ ! -e "/opt/solr1/search_api_solr-7.x-1.8.log" ]; then
+        if [ ! -e "/opt/solr1/search_api_solr-7.x-1.9.log" ]; then
           cd /var/opt
           rm -f -r search_api_solr*
-          get_dev_contrib "search_api_solr-7.x-1.8.tar.gz"
+          get_dev_contrib "search_api_solr-7.x-1.9.tar.gz"
           for Dir in `find /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/ \
             -maxdepth 1 -mindepth 1 -type d | grep conf`; do
             cp -af /var/opt/search_api_solr/solr-conf/1.4/* \
@@ -411,7 +423,7 @@ if_install_jetty() {
           done
           sed -i "s/8983/8077/g" \
             /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
-          touch /opt/solr1/search_api_solr-7.x-1.8.log
+          touch /opt/solr1/search_api_solr-7.x-1.9.log
         fi
         cp -af ${bldPth}/docs/SOLR.txt /opt/solr1/README.txt &> /dev/null
         rm -f -r /opt/jetty7/solr

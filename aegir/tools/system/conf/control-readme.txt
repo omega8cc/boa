@@ -179,8 +179,8 @@
 ### Supported values which can be written in this file, listed in a single line
 ### or one per line:
 ###
-### D8B ----------- Drupal 8-beta
-### D8D ----------- Drupal 8-dev
+### D8B ----------- Drupal 8-beta (inactive)
+### D8D ----------- Drupal 8-dev  (inactive)
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
 ### AGV ----------- aGov
@@ -189,15 +189,10 @@
 ### DCE ----------- Commerce v.1
 ### DCS ----------- Commons 6
 ### ERP ----------- ERPAL
-### FSR ----------- Feature Server
 ### GDR ----------- Guardr
 ### OA7 ----------- OpenAtrium D7
 ### OAD ----------- OpenAid
-### OAY ----------- OpenAcademy
-### OBG ----------- OpenBlog
-### OCH ----------- OpenChurch 1
 ### CH2 ----------- OpenChurch 2
-### ODS ----------- OpenDeals
 ### OOH ----------- OpenOutreach
 ### OPC ----------- OpenPublic
 ### OSR ----------- OpenScholar

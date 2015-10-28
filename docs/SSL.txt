@@ -11,14 +11,20 @@
   difference is that for proxy listening on the default IP address, both the
   dedicated_ip and target_ip columns should list the same, default IP address.
 
+  IMPORTANT!
+
+  The 'domain_name' is a placeholder for domain name without any prefixes.
+  Please don't include 'www.' prefix. If you have a wildcard certificate,
+  don't use the *. prefix in front of 'domain_name'. If you have a multidomain
+  certificate, use any domain or subdomain listed in the certificate, but make
+  sure to not include any prefix.
+
 @=> Prepare the certificate and the private key files
 
   1. Paste your private SSL key in the file /etc/ssl/private/{domain_name}.key
 
   2. Paste your SSL certificate and all intermediate certificates (bundles)
      below it in the file /etc/ssl/private/{domain_name}.crt
-
-  Don't use 'www.' prefix in the {domain_name}.crt filename, just the domain.
 
   For more related technical hints check also: https://omega8.cc/ssl-order
 
@@ -73,7 +79,7 @@
   ### Optional permanent redirect to HTTPS per domain/regex
   ###
   if ($host ~* ^(www\.)?((foo|bar)\.com)$) {
-    rewrite ^ https://$host$uri? permanent;
+    rewrite ^ https://$host$request_uri permanent;
   }
 
   Make sure that all dots in all aliases are escaped, as shown above.
