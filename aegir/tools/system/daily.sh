@@ -332,6 +332,7 @@ fix_user_register_protection() {
     && [ -e "${User}/static/control/enable_user_register_protection.info" ]; then
     sed -i "s/.*enable_user_register_protection.*/enable_user_register_protection = TRUE/g" \
       ${_PLR_CTRL_F} &> /dev/null
+    wait
     _ENABLE_USER_REGISTER_PROTECTION=YES
   fi
 
@@ -874,6 +875,7 @@ add_solr() {
           | tr -d "\n" 2>&1)
       fi
       sed -i "s/.*<core name=\"core0\" instanceDir=\"core0\" \/>.*/<core name=\"core0\" instanceDir=\"core0\" \/>\n<core name=\"${_MD5H}.${Dom}.${_HM_U}\" instanceDir=\"${_HM_U}.${Dom}\" \/>\n/g" /opt/solr4/solr.xml
+      wait
       update_solr $1 $2
       echo "New Solr with $1 for $2 added"
     fi
@@ -884,7 +886,9 @@ delete_solr() {
   # $1 is solr core path
   if [ ! -z "$1" ] && [ -e "/var/xdrago/conf/solr" ] && [ -e "$1/conf" ]; then
     sed -i "s/.*instanceDir=\"${_HM_U}.${Dom}\".*//g" /opt/solr4/solr.xml
+    wait
     sed -i "/^$/d" /opt/solr4/solr.xml &> /dev/null
+    wait
     rm -f -r $1
     rm -f ${Dir}/solr.php
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
@@ -1028,6 +1032,7 @@ fix_modules() {
                 if [[ "${_AGG_P}" =~ "advagg_auto_configuration" ]]; then
                   sed -i "s/.*advagg_auto_c.*/advagg_auto_configuration = TRUE/g" \
                     ${_DIR_CTRL_F} &> /dev/null
+                  wait
                 else
                   echo "advagg_auto_configuration = TRUE" >> ${_DIR_CTRL_F}
                 fi
@@ -1051,6 +1056,7 @@ fix_modules() {
                 if [[ "${_AGG_P}" =~ "advagg_auto_configuration" ]]; then
                   sed -i "s/.*advagg_auto_c.*/advagg_auto_configuration = FALSE/g" \
                     ${_DIR_CTRL_F} &> /dev/null
+                  wait
                 else
                   echo ";advagg_auto_configuration = FALSE" >> ${_DIR_CTRL_F}
                 fi
@@ -1089,6 +1095,7 @@ fix_modules() {
                 if [[ "$_AC_PE_P" =~ "purge_expire_auto_configuration" ]]; then
                   sed -i "s/.*purge_expire_a.*/purge_expire_auto_configuration = TRUE/g" \
                     ${_DIR_CTRL_F} &> /dev/null
+                  wait
                 else
                   echo "purge_expire_auto_configuration = TRUE" >> ${_DIR_CTRL_F}
                 fi
@@ -1113,6 +1120,7 @@ fix_modules() {
                 if [[ "$_AC_PE_P" =~ "purge_expire_auto_configuration" ]]; then
                   sed -i "s/.*purge_expire_a.*/purge_expire_auto_configuration = FALSE/g" \
                     ${_DIR_CTRL_F} &> /dev/null
+                  wait
                 else
                   echo ";purge_expire_auto_configuration = FALSE" >> \
                     ${_DIR_CTRL_F}
@@ -1162,6 +1170,7 @@ fix_modules() {
                   ###
                   sed -i "s/.*allow_private_f.*/allow_private_file_downloads = TRUE/g" \
                     ${_DIR_CTRL_F} &> /dev/null
+                  wait
                 fi
               fi
             else
@@ -1180,6 +1189,7 @@ fix_modules() {
                 else
                   sed -i "s/.*allow_private_f.*/allow_private_file_downloads = FALSE/g" \
                     ${_DIR_CTRL_F} &> /dev/null
+                  wait
                 fi
               fi
             fi
@@ -1221,6 +1231,7 @@ fix_modules() {
                 ###
                 sed -i "s/.*auto_detect_face.*/auto_detect_facebook_integration = TRUE/g" \
                   ${_PLR_CTRL_F} &> /dev/null
+                wait
               fi
             fi
           else
@@ -1239,6 +1250,7 @@ fix_modules() {
               else
                 sed -i "s/.*auto_detect_face.*/auto_detect_facebook_integration = FALSE/g" \
                   ${_PLR_CTRL_F} &> /dev/null
+                wait
               fi
             fi
           fi
@@ -1279,6 +1291,7 @@ fix_modules() {
                 ###
                 sed -i "s/.*auto_detect_domain.*/auto_detect_domain_access_integration = TRUE/g" \
                   ${_PLR_CTRL_F} &> /dev/null
+                wait
               fi
             fi
           else
@@ -1297,6 +1310,7 @@ fix_modules() {
               else
                 sed -i "s/.*auto_detect_domain.*/auto_detect_domain_access_integration = FALSE/g" \
                   ${_PLR_CTRL_F} &> /dev/null
+                wait
               fi
             fi
           fi
@@ -1677,6 +1691,7 @@ fix_static_permissions() {
     if [ ! -f "${User}/log/ctrl/plr.${PlrID}.perm-fix-${_NOW}.info" ]; then
       find ${Plr}/profiles -type f -name "*.info" -print0 | xargs -0 sed -i \
         's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
+      wait
       find ${Plr} -type d -exec chmod 0775 {} \; &> /dev/null
       find ${Plr} -type f -exec chmod 0664 {} \; &> /dev/null
     fi
@@ -1714,6 +1729,7 @@ fix_permissions() {
     find ${Plr}/sites/all/modules -type f -name "*.info" -print0 \
       | xargs -0 sed -i \
       's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
+    wait
     find ${Plr}/sites/all/{modules,themes,libraries,drush}/*{.tar,.tar.gz,.zip} \
       -type f -exec rm -f {} \; &> /dev/null
     if [ ! -e "${User}/static/control/unlock.info" ] \
@@ -1821,20 +1837,22 @@ fix_permissions() {
 convert_controls_orig() {
   if [ -e "$_CTRL_DIR/$1.info" ] \
     || [ -e "${User}/static/control/$1.info" ]; then
-    if [ ! -e "$_CTRL_F" ] && [ -e "$_CTRL_F_TPL" ]; then
-      cp -af $_CTRL_F_TPL $_CTRL_F
+    if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F}_TPL" ]; then
+      cp -af ${_CTRL_F}_TPL ${_CTRL_F}
     fi
-    sed -i "s/.*$1.*/$1 = TRUE/g" $_CTRL_F &> /dev/null
+    sed -i "s/.*$1.*/$1 = TRUE/g" ${_CTRL_F} &> /dev/null
+    wait
     rm -f $_CTRL_DIR/$1.info
   fi
 }
 
 convert_controls_orig_no_global() {
   if [ -e "$_CTRL_DIR/$1.info" ]; then
-    if [ ! -e "$_CTRL_F" ] && [ -e "$_CTRL_F_TPL" ]; then
-      cp -af $_CTRL_F_TPL $_CTRL_F
+    if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F}_TPL" ]; then
+      cp -af ${_CTRL_F}_TPL ${_CTRL_F}
     fi
-    sed -i "s/.*$1.*/$1 = TRUE/g" $_CTRL_F &> /dev/null
+    sed -i "s/.*$1.*/$1 = TRUE/g" ${_CTRL_F} &> /dev/null
+    wait
     rm -f $_CTRL_DIR/$1.info
   fi
 }
@@ -1842,8 +1860,8 @@ convert_controls_orig_no_global() {
 convert_controls_value() {
   if [ -e "$_CTRL_DIR/$1.info" ] \
     || [ -e "${User}/static/control/$1.info" ]; then
-    if [ ! -e "$_CTRL_F" ] && [ -e "$_CTRL_F_TPL" ]; then
-      cp -af $_CTRL_F_TPL $_CTRL_F
+    if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F}_TPL" ]; then
+      cp -af ${_CTRL_F}_TPL ${_CTRL_F}
     fi
     if [ "$1" = "nginx_cache_day" ]; then
       _TTL=86400
@@ -1853,19 +1871,21 @@ convert_controls_value() {
       _TTL=900
     fi
     sed -i "s/.*speed_booster_anon.*/speed_booster_anon_cache_ttl = ${_TTL}/g" \
-      $_CTRL_F &> /dev/null
+      ${_CTRL_F} &> /dev/null
+    wait
     rm -f $_CTRL_DIR/$1.info
   fi
 }
 
 convert_controls_renamed() {
   if [ -e "$_CTRL_DIR/$1.info" ]; then
-    if [ ! -e "$_CTRL_F" ] && [ -e "$_CTRL_F_TPL" ]; then
-      cp -af $_CTRL_F_TPL $_CTRL_F
+    if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F}_TPL" ]; then
+      cp -af ${_CTRL_F}_TPL ${_CTRL_F}
     fi
     if [ "$1" = "cookie_domain" ]; then
       sed -i "s/.*server_name_cookie.*/server_name_cookie_domain = TRUE/g" \
-        $_CTRL_F &> /dev/null
+        ${_CTRL_F} &> /dev/null
+      wait
     fi
     rm -f $_CTRL_DIR/$1.info
   fi
@@ -1910,44 +1930,47 @@ fix_site_system_control_settings() {
 }
 
 cleanup_ini() {
-  if [ -e "$_CTRL_F" ]; then
-    sed -i "s/^;;.*//g" $_CTRL_F &> /dev/null
-    sed -i "/^$/d" $_CTRL_F &> /dev/null
-    sed -i "s/^\[/\n\[/g" $_CTRL_F &> /dev/null
+  if [ -e "${_CTRL_F}" ]; then
+    sed -i "s/^;;.*//g"   ${_CTRL_F} &> /dev/null
+    wait
+    sed -i "/^$/d"        ${_CTRL_F} &> /dev/null
+    wait
+    sed -i "s/^\[/\n\[/g" ${_CTRL_F} &> /dev/null
+    wait
   fi
 }
 
 add_note_platform_ini() {
-  if [ -e "$_CTRL_F" ]; then
-    echo "" >> $_CTRL_F
-    echo ";;" >> $_CTRL_F
-    echo ";;  This is a platform level ACTIVE INI file which can be used to modify"     >> $_CTRL_F
-    echo ";;  default BOA system behaviour for all sites hosted on this platform."      >> $_CTRL_F
-    echo ";;" >> $_CTRL_F
-    echo ";;  Please review complete documentation included in this file TEMPLATE:"     >> $_CTRL_F
-    echo ";;  default.boa_platform_control.ini, since this ACTIVE INI file"             >> $_CTRL_F
-    echo ";;  may not include all options available after upgrade to BOA-${_X_SE}"      >> $_CTRL_F
-    echo ";;" >> $_CTRL_F
-    echo ";;  Note that it takes ~60 seconds to see any modification results in action" >> $_CTRL_F
-    echo ";;  due to opcode caching enabled in PHP-FPM for all non-dev sites."          >> $_CTRL_F
-    echo ";;" >> $_CTRL_F
+  if [ -e "${_CTRL_F}" ]; then
+    echo "" >> ${_CTRL_F}
+    echo ";;" >> ${_CTRL_F}
+    echo ";;  This is a platform level ACTIVE INI file which can be used to modify"     >> ${_CTRL_F}
+    echo ";;  default BOA system behaviour for all sites hosted on this platform."      >> ${_CTRL_F}
+    echo ";;" >> ${_CTRL_F}
+    echo ";;  Please review complete documentation included in this file TEMPLATE:"     >> ${_CTRL_F}
+    echo ";;  default.boa_platform_control.ini, since this ACTIVE INI file"             >> ${_CTRL_F}
+    echo ";;  may not include all options available after upgrade to BOA-${_X_SE}"      >> ${_CTRL_F}
+    echo ";;" >> ${_CTRL_F}
+    echo ";;  Note that it takes ~60 seconds to see any modification results in action" >> ${_CTRL_F}
+    echo ";;  due to opcode caching enabled in PHP-FPM for all non-dev sites."          >> ${_CTRL_F}
+    echo ";;" >> ${_CTRL_F}
   fi
 }
 
 add_note_site_ini() {
-  if [ -e "$_CTRL_F" ]; then
-    echo "" >> $_CTRL_F
-    echo ";;" >> $_CTRL_F
-    echo ";;  This is a site level ACTIVE INI file which can be used to modify"         >> $_CTRL_F
-    echo ";;  default BOA system behaviour for this site only."                         >> $_CTRL_F
-    echo ";;" >> $_CTRL_F
-    echo ";;  Please review complete documentation included in this file TEMPLATE:"     >> $_CTRL_F
-    echo ";;  default.boa_site_control.ini, since this ACTIVE INI file"                 >> $_CTRL_F
-    echo ";;  may not include all options available after upgrade to BOA-${_X_SE}"      >> $_CTRL_F
-    echo ";;" >> $_CTRL_F
-    echo ";;  Note that it takes ~60 seconds to see any modification results in action" >> $_CTRL_F
-    echo ";;  due to opcode caching enabled in PHP-FPM for all non-dev sites."          >> $_CTRL_F
-    echo ";;" >> $_CTRL_F
+  if [ -e "${_CTRL_F}" ]; then
+    echo "" >> ${_CTRL_F}
+    echo ";;" >> ${_CTRL_F}
+    echo ";;  This is a site level ACTIVE INI file which can be used to modify"         >> ${_CTRL_F}
+    echo ";;  default BOA system behaviour for this site only."                         >> ${_CTRL_F}
+    echo ";;" >> ${_CTRL_F}
+    echo ";;  Please review complete documentation included in this file TEMPLATE:"     >> ${_CTRL_F}
+    echo ";;  default.boa_site_control.ini, since this ACTIVE INI file"                 >> ${_CTRL_F}
+    echo ";;  may not include all options available after upgrade to BOA-${_X_SE}"      >> ${_CTRL_F}
+    echo ";;" >> ${_CTRL_F}
+    echo ";;  Note that it takes ~60 seconds to see any modification results in action" >> ${_CTRL_F}
+    echo ";;  due to opcode caching enabled in PHP-FPM for all non-dev sites."          >> ${_CTRL_F}
+    echo ";;" >> ${_CTRL_F}
   fi
 }
 
@@ -2500,6 +2523,7 @@ action() {
             else
               sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"/g" \
                 /root/.${_HM_U}.octopus.cnf
+              wait
               _CLIENT_EMAIL=${_F_CLIENT_EMAIL}
             fi
           fi
@@ -2692,6 +2716,7 @@ else
   if [ -e "/data/all" ]; then
     find /data/all -type f -name "*.info" -print0 | xargs -0 sed -i \
       's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
+    wait
     if [ ! -e "/data/all/permissions-fix-post-up-${_X_SE}.info" ]; then
       rm -f /data/all/permissions-fix*
       find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} \
@@ -2703,6 +2728,7 @@ else
   elif [ -e "/data/disk/all" ]; then
     find /data/disk/all -type f -name "*.info" -print0 | xargs -0 sed -i \
       's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
+    wait
     if [ ! -e "/data/disk/all/permissions-fix-post-up-${_X_SE}.info" ]; then
       rm -f /data/disk/all/permissions-fix*
       find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} \
@@ -2733,39 +2759,53 @@ else
             _DHP_TEST=$(grep "sslFile" ${sslFileX} 2>&1)
             if [[ "${_DHP_TEST}" =~ "sslFile" ]]; then
               sed -i "s/.*sslFile.*//g" ${sslFileX} &> /dev/null
+              wait
               sed -i "s/ *$//g; /^$/d" ${sslFileX} &> /dev/null
+              wait
             fi
           fi
           if [ -e "${sslFileY}" ]; then
             _DHP_TEST=$(grep "sslFile" ${sslFileY} 2>&1)
             if [[ "${_DHP_TEST}" =~ "sslFile" ]]; then
               sed -i "s/.*sslFile.*//g" ${sslFileY} &> /dev/null
+              wait
               sed -i "s/ *$//g; /^$/d" ${sslFileY} &> /dev/null
+              wait
             fi
           fi
           if [ -e "${sslFileX}" ]; then
             _DHP_TEST=$(grep "ssl_dhparam" ${sslFileX} 2>&1)
             if [[ ! "${_DHP_TEST}" =~ "ssl_dhparam" ]]; then
               sed -i "s/ssl_session_timeout .*/ssl_session_timeout          5m;\n  ssl_dhparam                  ${sslFileZ};/g" ${sslFileX} &> /dev/null
+              wait
               sed -i "s/ *$//g; /^$/d" ${sslFileX} &> /dev/null
+              wait
             fi
           fi
           if [ -e "${sslFileY}" ]; then
             _DHP_TEST=$(grep "ssl_dhparam" ${sslFileY} 2>&1)
             if [[ ! "${_DHP_TEST}" =~ "ssl_dhparam" ]]; then
               sed -i "s/ssl_session_timeout .*/ssl_session_timeout          5m;\n  ssl_dhparam                  ${sslFileZ};/g" ${sslFileY} &> /dev/null
+              wait
               sed -i "s/ *$//g; /^$/d" ${sslFileY} &> /dev/null
+              wait
             fi
           fi
         fi
       fi
     done
     sed -i "s/.*ssl_stapling .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf               &> /dev/null
+    wait
     sed -i "s/.*ssl_stapling_verify .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf        &> /dev/null
+    wait
     sed -i "s/.*resolver .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                   &> /dev/null
+    wait
     sed -i "s/.*resolver_timeout .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf           &> /dev/null
+    wait
     sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n  resolver 8.8.8.8 8.8.4.4 valid=300s;\n  resolver_timeout 5s;/g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
+    wait
     sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                      &> /dev/null
+    wait
     service nginx reload
   fi
 fi

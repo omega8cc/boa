@@ -2,17 +2,26 @@
 
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
+barCnf="/root/.barracuda.cnf"
 
 crontab_update() {
   if [ -e "/etc/crontab" ]; then
     sed -i "s/.*barracuda.*//gi"  /etc/crontab &> /dev/null
+    wait
     sed -i "s/.*BOA.sh.txt.*//gi" /etc/crontab &> /dev/null
+    wait
     sed -i "s/.*daily.sh.*//gi"   /etc/crontab &> /dev/null
+    wait
     sed -i "s/.*fire.*//gi"       /etc/crontab &> /dev/null
+    wait
     sed -i "s/.*octopus.*//gi"    /etc/crontab &> /dev/null
+    wait
     sed -i "s/.*water.*//gi"      /etc/crontab &> /dev/null
+    wait
     sed -i "s/.*weekly.sh.*//gi"  /etc/crontab &> /dev/null
+    wait
     sed -i "s/.*xdrago.*//gi"     /etc/crontab &> /dev/null
+    wait
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
@@ -21,6 +30,7 @@ crontab_update() {
       echo "28 6    * * 7   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d"                /etc/crontab &> /dev/null
+    wait
     if [ -f "/root/.mstr.clstr.cnf" ] \
       && [ ! -f "/root/.wbhd.clstr.cnf" ] \
       && [ ! -f "/root/.dbhd.clstr.cnf" ]; then
@@ -65,13 +75,21 @@ crontab_update() {
 crontab_clean() {
   if [ -e "/etc/crontab" ]; then
     sed -i "s/.*barracuda.*//gi"  /etc/crontab &> /dev/null
+    wait
     sed -i "s/.*BOA.sh.txt.*//gi" /etc/crontab &> /dev/null
+    wait
     sed -i "s/.*daily.sh.*//gi"   /etc/crontab &> /dev/null
+    wait
     sed -i "s/.*fire.*//gi"       /etc/crontab &> /dev/null
+    wait
     sed -i "s/.*octopus.*//gi"    /etc/crontab &> /dev/null
+    wait
     sed -i "s/.*water.*//gi"      /etc/crontab &> /dev/null
+    wait
     sed -i "s/.*weekly.sh.*//gi"  /etc/crontab &> /dev/null
+    wait
     sed -i "s/.*xdrago.*//gi"     /etc/crontab &> /dev/null
+    wait
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
@@ -80,6 +98,7 @@ crontab_clean() {
       echo "28 6    * * 7   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d"                /etc/crontab &> /dev/null
+    wait
     echo Cron Cleanup Completed
   fi
 }
@@ -99,8 +118,8 @@ if [ -e "/data/disk/arch" ]; then
       _VM_VERSION="LEGACY"
     fi
   fi
-  if [ -e "/root/.barracuda.cnf" ]; then
-    source /root/.barracuda.cnf
+  if [ -e "${barCnf}" ]; then
+    source ${barCnf}
   fi
   _AUTO_UP_WEEKLY=${_AUTO_UP_WEEKLY//[^0-9]/}
   _AUTO_UP_MONTH=${_AUTO_UP_MONTH//[^0-9]/}
@@ -139,10 +158,14 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP_DAY=
     _AUTO_PHP=
     _AUTO_VER="stable"
-    sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"5.6 5.5 5.3\"/g" /root/.barracuda.cnf
-    sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" /root/.barracuda.cnf
-    sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" /root/.barracuda.cnf
-    sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" /root/.barracuda.cnf
+    sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"5.6 5.5 5.3\"/g" ${barCnf}
+    wait
+    sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" ${barCnf}
+    wait
+    sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${barCnf}
+    wait
+    sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" ${barCnf}
+    wait
   fi
   if [[ "${_CHECK_HOST}" =~ "v251a.a" ]] \
     || [[ "${_VM_VERSION}" =~ "LEGACY" ]] \

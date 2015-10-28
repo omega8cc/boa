@@ -241,11 +241,17 @@ enable_chattr() {
         _INI=${_INI//\//\\\/}
         _QTP=${_U_TP//\//\\\/}
         sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_U_II}
+        wait
         sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
+        wait
         sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_U_II}
+        wait
         sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_U_II}
+        wait
         sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
+        wait
         sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
+        wait
         echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
         echo > ${_U_HD}/.ctrl.246stableU.txt
       fi
@@ -719,11 +725,17 @@ update_php_cli_local_ini() {
       _INI=${_INI//\//\\\/}
       _QTP=${_U_TP//\//\\\/}
       sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_U_II}
+      wait
       sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
+      wait
       sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_U_II}
+      wait
       sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_U_II}
+      wait
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
+      wait
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
+      wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
       echo > ${_U_HD}/.ctrl.246stableU.txt
     fi
@@ -846,7 +858,9 @@ disable_newrelic() {
     if [[ "$_CHECK_NEW_RELIC_KEY" =~ "newrelic.enabled" ]]; then
       echo New Relic for ${_USER} will be disabled because newrelic.info does not exist
       sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"\"/g" $_THIS_POOL_TPL
+      wait
       sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"false\"/g" $_THIS_POOL_TPL
+      wait
       if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ]; then
         service php${_PHP_SV}-fpm reload
       fi
@@ -877,7 +891,9 @@ enable_newrelic() {
           echo "New Relic for ${_USER} update with key \
             $_LOC_NEW_RELIC_KEY in php${_PHP_SV}"
           sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"$_LOC_NEW_RELIC_KEY\"/g" $_THIS_POOL_TPL
+          wait
           sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"true\"/g" $_THIS_POOL_TPL
+          wait
         else
           echo New Relic for ${_USER} setup with key $_LOC_NEW_RELIC_KEY in php${_PHP_SV}
           echo "php_admin_value[newrelic.license] = \"$_LOC_NEW_RELIC_KEY\"" >> $_THIS_POOL_TPL
@@ -970,13 +986,20 @@ satellite_update_web_user() {
       _INI=${_INI//\//\\\/}
       _QTP=${_T_TP//\//\\\/}
       sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_T_II}
+      wait
       sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_T_II}
+      wait
       sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_T_II}
+      wait
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_T_II}
+      wait
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_T_II}
+      wait
       if [ "$1" = "hhvm" ]; then
         sed -i "s/.*ioncube.*//g" ${_T_II}
+        wait
         sed -i "s/.*opcache.*//g" ${_T_II}
+        wait
       fi
       rm -f ${_T_HD}/.ctrl.php*
       echo > ${_T_HD}/.ctrl.php${_T_PV}.txt
@@ -1090,6 +1113,7 @@ switch_php() {
             update_php_cli_local_ini
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_T_CLI_VRN}/g" \
               /root/.${_USER}.octopus.cnf &> /dev/null
+            wait
             echo ${_T_CLI_VRN} > ${dscUsr}/log/cli.txt
             echo ${_T_CLI_VRN} > ${dscUsr}/static/control/cli.info
             chown ${_USER}.ftp:${usrGroup} ${dscUsr}/static/control/cli.info
@@ -1109,7 +1133,9 @@ switch_php() {
           ### configure custom hhvm server init.d script
           cp -af /var/xdrago/conf/hhvm/init.d/hhvm.foo /etc/init.d/hhvm.${_USER}
           sed -i "s/foo/${_USER}/g" /etc/init.d/hhvm.${_USER} &> /dev/null
+          wait
           sed -i "s/.ftp/.web/g" /etc/init.d/hhvm.${_USER} &> /dev/null
+          wait
           chmod 755 /etc/init.d/hhvm.${_USER}
           chown root:root /etc/init.d/hhvm.${_USER}
           update-rc.d hhvm.${_USER} defaults &> /dev/null
@@ -1117,7 +1143,9 @@ switch_php() {
           mkdir -p /opt/hhvm
           cp -af /var/xdrago/conf/hhvm/server.foo.ini /opt/hhvm/server.${_USER}.ini
           sed -i "s/foo/${_USER}/g" /opt/hhvm/server.${_USER}.ini &> /dev/null
+          wait
           sed -i "s/.ftp/.web/g" /opt/hhvm/server.${_USER}.ini &> /dev/null
+          wait
           chmod 755 /opt/hhvm/server.${_USER}.ini
           chown root:root /opt/hhvm/server.${_USER}.ini
           mkdir -p /var/log/hhvm/${_USER}
@@ -1129,8 +1157,10 @@ switch_php() {
           ### update nginx configuration
           sed -i "s/\/var\/run\/${_USER}.fpm.socket/\/var\/run\/hhvm\/${_USER}\/hhvm.socket/g" \
             ${dscUsr}/config/includes/nginx_vhost_common.conf
+          wait
           sed -i "s/\/var\/run\/${_USER}.fpm.socket/\/var\/run\/hhvm\/${_USER}\/hhvm.socket/g" \
             ${dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php
+          wait
           ### reload nginx
           service nginx reload &> /dev/null
         fi
@@ -1154,8 +1184,10 @@ switch_php() {
         ### update nginx configuration
         sed -i "s/\/var\/run\/hhvm\/${_USER}\/hhvm.socket/\/var\/run\/${_USER}.fpm.socket/g" \
           ${dscUsr}/config/includes/nginx_vhost_common.conf
+        wait
         sed -i "s/\/var\/run\/hhvm\/${_USER}\/hhvm.socket/\/var\/run\/${_USER}.fpm.socket/g" \
           ${dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php
+        wait
         ### reload nginx
         service nginx reload &> /dev/null
         ### create dummy control file to enable PHP-FPM again
@@ -1256,6 +1288,7 @@ switch_php() {
           fi
           sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_T_FPM_VRN/g" \
             /root/.${_USER}.octopus.cnf &> /dev/null
+          wait
           echo $_T_FPM_VRN > ${dscUsr}/log/fpm.txt
           echo $_T_FPM_VRN > ${dscUsr}/static/control/fpm.info
           chown ${_USER}.ftp:${usrGroup} ${dscUsr}/static/control/fpm.info
@@ -1288,13 +1321,17 @@ switch_php() {
             /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
           sed -i "s/.ftp/.web/g" \
             /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+          wait
           sed -i "s/\/data\/disk\/foo\/.tmp/\/home\/foo.web\/.tmp/g" \
             /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+          wait
           sed -i "s/foo/${_USER}/g" \
             /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+          wait
           if [ ! -z "${_PHP_FPM_DENY}" ]; then
             sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
               /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+            wait
           else
             if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
               || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
@@ -1304,6 +1341,7 @@ switch_php() {
             else
               sed -i "s/passthru,//g" \
                 /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+              wait
             fi
           fi
           if [ "${_PHP_FPM_TIMEOUT}" = "AUTO" ] \
@@ -1321,10 +1359,12 @@ switch_php() {
             _PHP_TO="${_PHP_FPM_TIMEOUT}s"
             sed -i "s/180s/${_PHP_TO}/g" \
               /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+            wait
           fi
           if [ ! -z "${_CHILD_MAX_FPM}" ]; then
             sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
               /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+            wait
           fi
           if [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
             service php${_PHP_OLD_SV}-fpm reload &> /dev/null
@@ -1550,9 +1590,12 @@ else
     | cut -d: -f2 \
     | awk '{ print $1}' 2>&1)
   sed -i "s/8.8.8.8/${_THISHTIP}/g" ${_THIS_LTD_CONF}
+  wait
   if [ ! -e "/root/.allow.mc.cnf" ]; then
     sed -i "s/'mc', //g" ${_THIS_LTD_CONF}
+    wait
     sed -i "s/, 'mc':'mc -u'//g" ${_THIS_LTD_CONF}
+    wait
   fi
   add_ltd_group_if_not_exists
   kill_zombies >/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
@@ -1612,6 +1655,7 @@ else
     if [[ "$_SCOUT_CRON_OFF" =~ "OFFscoutOFF" ]]; then
       sleep 5
       sed -i "s/OFFscoutOFF/scout/g" /etc/crontab &> /dev/null
+      wait
     fi
   fi
   if [ -e "/var/backups/reports/up/barracuda" ]; then

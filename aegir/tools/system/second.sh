@@ -65,8 +65,10 @@ check_vhost_health() {
         s/allow .*;//g; \
         s/deny .*;//g; \
         s/ *$//g; /^$/d" $1* &> /dev/null
+      wait
       sed -i "s/limit_conn .*/limit_conn                   limreq 555;\n  \
         ### access none\n  deny                         all;/g" $1* &> /dev/null
+      wait
     fi
   else
     echo vhost $1 does not exist
@@ -82,9 +84,11 @@ update_ip_auth_access() {
         s/deny .*;//g; \
         s/ *$//g; /^$/d" \
         ${pthVhstd}/chive.* &> /dev/null
+      wait
       sed -i "s/limit_conn .*/limit_conn                   limreq 555;\n  \
         ### access update/g" \
         ${pthVhstd}/chive.* &> /dev/null
+      wait
     fi
     if [ -e "${pthVhstd}/cgp."* ]; then
       sed -i "s/### access .*//g; \
@@ -92,9 +96,11 @@ update_ip_auth_access() {
         s/deny .*;//g; \
         s/ *$//g; /^$/d" \
         ${pthVhstd}/cgp.* &> /dev/null
+      wait
       sed -i "s/limit_conn .*/limit_conn                   limreq 555;\n  \
         ### access update/g" \
         ${pthVhstd}/cgp.* &> /dev/null
+      wait
     fi
     if [ -e "${pthVhstd}/sqlbuddy."* ]; then
       sed -i "s/### access .*//g; \
@@ -102,17 +108,22 @@ update_ip_auth_access() {
         s/deny .*;//g; \
         s/ *$//g; /^$/d" \
         ${pthVhstd}/sqlbuddy.* &> /dev/null
+      wait
       sed -i "s/limit_conn .*/limit_conn                   limreq 555;\n  \
         ### access update/g" \
         ${pthVhstd}/sqlbuddy.* &> /dev/null
+      wait
     fi
     sleep 1
     sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
 d;};' ${pthVhstd}/chive.* &> /dev/null
+    wait
     sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
 d;};' ${pthVhstd}/cgp.* &> /dev/null
+    wait
     sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
 d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
+    wait
     mv -f ${pthVhstd}/sed* /var/backups/
     check_vhost_health "${pthVhstd}/chive."
     check_vhost_health "${pthVhstd}/cgp."
@@ -124,10 +135,13 @@ d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
       service nginx reload &> /var/backups/.auth.IP.list.ops
       sed -i "s/allow .*;//g; s/ *$//g; /^$/d" \
         ${pthVhstd}/chive.*    &> /dev/null
+      wait
       sed -i "s/allow .*;//g; s/ *$//g; /^$/d" \
         ${pthVhstd}/cgp.*      &> /dev/null
+      wait
       sed -i "s/allow .*;//g; s/ *$//g; /^$/d" \
         ${pthVhstd}/sqlbuddy.* &> /dev/null
+      wait
       check_vhost_health "${pthVhstd}/chive."
       check_vhost_health "${pthVhstd}/cgp."
       check_vhost_health "${pthVhstd}/sqlbuddy."
@@ -152,6 +166,7 @@ d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
   fi
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" \
     /var/backups/.auth.IP.list &> /dev/null
+  wait
   if [ -e "/var/backups/.auth.IP.list" ]; then
     allowTestList=$(grep allow /var/backups/.auth.IP.list 2>&1)
   fi
@@ -184,6 +199,7 @@ manage_ip_auth_access() {
   fi
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" \
     /var/backups/.auth.IP.list.tmp &> /dev/null
+  wait
   if [ -e "/var/backups/.auth.IP.list.tmp" ]; then
     allowTestTmp=$(grep allow /var/backups/.auth.IP.list.tmp 2>&1)
   fi

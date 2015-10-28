@@ -267,6 +267,7 @@ hostmaster_go_up() {
     get_dev_ext "clean_missing_modules.tar.gz"
     sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
       ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
+    wait
   fi
   cd ${_PREV_HM_ROOT}
 }
