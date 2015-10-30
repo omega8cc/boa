@@ -40,6 +40,18 @@ clean_pid_exit() {
   exit 1
 }
 
+system_check_clean() {
+  if [ -e "/etc/nginx" ] \
+    || [ -e "/etc/apache2" ] \
+    || [ -e "/etc/mysql" ] \
+    || [ -e "/var/lib/mysql" ] ; then
+    echo "ERROR: BOA requires minimal, supported OS, with no services installed"
+    echo "ERROR: The only acceptable exceptions are: sshd and mail servers"
+    echo "Bye"
+    clean_pid_exit
+  fi
+}
+
 satellite_check_id() {
   _USER=$1
   _ID_EXISTS=$(getent passwd ${_USER} 2>&1)
@@ -994,6 +1006,7 @@ check_fix_csf() {
 
 check_root() {
   if [ `whoami` = "root" ]; then
+    system_check_clean
     check_fix_csf
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
