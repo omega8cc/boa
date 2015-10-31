@@ -2079,6 +2079,11 @@ install_ssh_src() {
 #
 # Install cURL from sources.
 install_curl_src() {
+  if [ "${_OSV}" = "precise" ] \
+    || [ "${_OSV}" = "lucid" ]; then
+    touch /root/.use.curl.from.packages.cnf
+    _CURL_VRN=7.22.0
+  fi
   _CURL_INSTALL_REQUIRED=NO
   _CURL_GET_DPKG=$(dpkg --get-selections | grep curl | grep 'hold$' 2>&1)
   _CURL_ITD=$(curl --version 2>&1 \
@@ -2116,10 +2121,6 @@ install_curl_src() {
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version ${_CURL_ITD}, rebuild forced"
-  fi
-  if [ "${_OSV}" = "precise" ] \
-    || [ "${_OSV}" = "lucid" ]; then
-    touch /root/.use.curl.from.packages.cnf
   fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ]; then
     ###--------------------###
