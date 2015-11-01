@@ -40,8 +40,21 @@ clean_pid_exit() {
   exit 1
 }
 
+system_check_ready() {
+  if [ ! -e "/etc/nginx" ] \
+    || [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
+    || [ ! -e "/etc/mysql" ] \
+    || [ ! -e "/var/lib/mysql" ] ; then
+    echo "ERROR: Please install complete BOA system before trying"
+    echo "ERROR: to install additional Aegir / Octopus instances"
+    echo "Bye"
+    clean_pid_exit
+  fi
+}
+
 system_check_clean() {
   if [ -e "/etc/nginx" ] \
+    || [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
     || [ -e "/etc/apache2" ] \
     || [ -e "/etc/mysql" ] \
     || [ -e "/var/lib/mysql" ] ; then
@@ -1006,7 +1019,11 @@ check_fix_csf() {
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    system_check_clean
+    if [ "${cmmand}" = "in-octopus" ]; then
+      system_check_ready
+    else
+      system_check_clean
+    fi
     check_fix_csf
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
@@ -1135,6 +1152,8 @@ case "$1" in
              copt="$5"
              csub="$6"
              ccor="$7"
+             check_root
+             check_dns_curl
              init_setup
   ;;
   *)         echo
