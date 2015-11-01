@@ -26,8 +26,8 @@ if_running_as_root_barracuda() {
       _VMFAMILY="AWS"
     fi
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _VMFAMILY="VS"
       touch /var/run/cloud_vhost.pid
@@ -67,8 +67,8 @@ set_xterm() {
 # Kill nash-hotplug.
 kill_nash() {
   _L_VM_TEST=$(uname -a 2>&1)
-  if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
+  if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
+    || [[ "${_L_VM_TEST}" =~ "3.2.16-beng" ]] \
     || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _DO_NOTHING=YES
   else
@@ -239,8 +239,8 @@ tune_memory_limits() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   fi
@@ -940,8 +940,8 @@ barracuda_cnf() {
     _CHECK_HOST=$(uname -n 2>&1)
     _L_VMFAMILY=XEN
     _L_VM_TEST=$(uname -a 2>&1)
-    if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
+    if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_L_VM_TEST}" =~ "3.2.16-beng" ]] \
       || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _L_VMFAMILY="VS"
     fi
@@ -2925,8 +2925,8 @@ if_squeeze_to_wheezy() {
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     _L_VM_TEST=$(uname -a 2>&1)
-    if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
+    if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_L_VM_TEST}" =~ "3.2.16-beng" ]] \
       || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _PTMX=OK
       _REMOVE_LINKS="buagent \

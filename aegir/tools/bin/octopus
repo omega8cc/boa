@@ -30,8 +30,8 @@ _CHECK_HOST=$(uname -n 2>&1)
 _LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _L_VMFAMILY=XEN
 _L_VM_TEST=$(uname -a 2>&1)
-if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-  || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
+if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
+  || [[ "${_L_VM_TEST}" =~ "3.2.16-beng" ]] \
   || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _L_VMFAMILY="VS"
 fi

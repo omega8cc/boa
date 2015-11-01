@@ -11,8 +11,8 @@ satellite_tune_fpm_workers() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   fi
@@ -3374,8 +3374,8 @@ satellite_detect_vm_family() {
     _IFCONFIG="eth0"
   fi
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   else
@@ -4508,8 +4508,8 @@ satellite_child_b_aegir_ui_enhance() {
       ${_HM_ROOT}/${pthThis}/hosting_platform_pathauto.module &> /dev/null
 
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _VMFAMILY="VS"
     else
