@@ -158,8 +158,8 @@ else
   _D_8_ALLOW=NO
 fi
 #
-SHELL=/bin/bash
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
 #
 pthPch="/opt/tmp/boa/aegir/patches"
 urlDrp="http://ftp.drupal.org/files/projects"
@@ -329,9 +329,13 @@ create_d8_symlinks() {
 rename_drupal7_profiles() {
   for Files in `find ./profiles -type f`; do
     sed -i "s/name = Minimal/name = Vanilla Minimal/g"   $Files &> /dev/null
+    wait
     sed -i "s/name = Standard/name = Vanilla Standard/g" $Files &> /dev/null
+    wait
     sed -i "s/name = Testing/name = Vanilla Testing/g"   $Files &> /dev/null
+    wait
     sed -i "s/hidden = TRUE//g"                          $Files &> /dev/null
+    wait
   done
 }
 #
@@ -339,8 +343,11 @@ rename_drupal7_profiles() {
 rename_drupal8_profiles() {
   for Files in `find ./core/profiles -type f`; do
     sed -i "s/name: Minimal/name: Vanilla Minimal/g"   $Files &> /dev/null
+    wait
     sed -i "s/name: Standard/name: Vanilla Standard/g" $Files &> /dev/null
+    wait
     sed -i "s/name: Testing/name: Vanilla Testing/g"   $Files &> /dev/null
+    wait
   done
 }
 #
@@ -391,7 +398,7 @@ prepare_drupal7_core() {
     ln -s ${_CORE}/o_contrib_seven/js/js.php js.php
     rm -f -r ${_D7_CORE_DIR}/scripts
     cd ${_D7_CORE_DIR}/themes
-    get_dev_contrib "rubik-7.x-4.2.tar.gz"
+    get_dev_contrib "rubik-7.x-4.3.tar.gz"
     get_dev_contrib "tao-7.x-3.1.tar.gz"
     cd ${_CORE}
   fi
@@ -690,8 +697,8 @@ if [ "${_CLIENT_CORES}" -lt "1" ]; then
   _ALLOW_CIVICRM=NO
   _D_8_ALLOW=NO
 fi
-if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _VMFAMILY="VS"
   if [ ! -e "/data/conf/.d8allow.cnf" ]; then

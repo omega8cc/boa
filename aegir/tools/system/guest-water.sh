@@ -31,8 +31,10 @@ local_ip_rg() {
       csf -tr ${_IP} &> /dev/null
       echo removing ${_IP} from csf.ignore
       sed -i "s/^${_IP} .*//g" /etc/csf/csf.ignore
+      wait
       echo removing ${_IP} from csf.allow
       sed -i "s/^${_IP} .*//g" /etc/csf/csf.allow
+      wait
     done
   else
     echo "the file /root/.local.IP.list does not exist"
@@ -45,7 +47,9 @@ local_ip_rg() {
     rm -f /root/.tmp.IP.list*
   fi
   sed -i "/^$/d" /etc/csf/csf.ignore &> /dev/null
+  wait
   sed -i "/^$/d" /etc/csf/csf.allow &> /dev/null
+  wait
 }
 
 guard_stats() {
@@ -163,6 +167,7 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
   fi
   sed -i "s/param db_port.*/param db_port   3306;/g" \
     /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
+  wait
   n=$((RANDOM%800+80))
   echo Waiting $n seconds...
   sleep $n

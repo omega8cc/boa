@@ -98,6 +98,7 @@ if_install_jetty() {
           done
           sed -i "s/8983/8099/g" \
             /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
+          wait
           touch /opt/solr4/search_api_solr-7.x-1.9.log
         fi
         cp -af ${bldPth}/docs/SOLR.txt /opt/solr4/README.txt &> /dev/null
@@ -139,17 +140,22 @@ if_install_jetty() {
           _DO_NOTHING=YES
         else
           sed -i "s/8/9/g" /opt/jetty9/bin/jetty.sh &> /dev/null
+          wait
           sed -i "s/9090/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
+          wait
         fi
         if [ -e "/opt/jetty9/start.d/http.ini" ]; then
           sed -i "s/8080/8099/g" /opt/jetty9/start.d/http.ini &> /dev/null
+          wait
           touch /opt/jetty9/start.d/.fixed.http.ini.txt &> /dev/null
         fi
         if [ -e "/opt/jetty9/start.ini" ]; then
           sed -i "s/8080/8099/g" /opt/jetty9/start.ini &> /dev/null
+          wait
           touch /opt/jetty9/.fixed.start.ini.txt &> /dev/null
         fi
         sed -i "s/8080/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
+        wait
         ln -sf /opt/jetty9/bin/jetty.sh /etc/init.d/jetty9 &> /dev/null
         chmod 755 /etc/init.d/jetty9
         st_runner "update-rc.d jetty9 defaults" &> /dev/null
@@ -214,18 +220,23 @@ if_install_jetty() {
         get_dev_arch "jetty-distribution-${_JETTY_8_VRN}.tar.gz"
         mv /var/opt/jetty-distribution-${_JETTY_8_VRN} /opt/jetty9
         sed -i "s/8/9/g" /opt/jetty9/bin/jetty.sh &> /dev/null
+        wait
         sed -i "s/9090/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
+        wait
         echo ${_JETTY_8_VRN} > $_JETTY_CTRL
       fi
       if [ -e "/opt/jetty9/start.d/http.ini" ]; then
         sed -i "s/8080/8099/g" /opt/jetty9/start.d/http.ini &> /dev/null
+        wait
         touch /opt/jetty9/start.d/.fixed.http.ini.txt &> /dev/null
       fi
       if [ -e "/opt/jetty9/start.ini" ]; then
         sed -i "s/8080/8099/g" /opt/jetty9/start.ini &> /dev/null
+        wait
         touch /opt/jetty9/.fixed.start.ini.txt &> /dev/null
       fi
       sed -i "s/8080/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
+      wait
       get_dev_arch "solr-${_SOLR_4_VRN}.tgz"
       cp -af /var/opt/solr-${_SOLR_4_VRN}/dist/solr-${_SOLR_4_VRN}.war \
         /opt/jetty9/webapps/solr.war
@@ -301,6 +312,7 @@ if_install_jetty() {
           done
           sed -i "s/8983/8088/g" \
             /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
+          wait
           touch /opt/solr3/search_api_solr-7.x-1.9.log
         fi
         cp -af ${bldPth}/docs/SOLR.txt /opt/solr3/README.txt &> /dev/null
@@ -323,6 +335,7 @@ if_install_jetty() {
           -Dsolr.solr.home=/opt/solr3 \$JAVA_OPTIONS\" \
           # Options" | fmt -su -w 2500 >> /etc/default/jetty8
         sed -i "s/8080/8088/g" /opt/jetty8/bin/jetty.sh &> /dev/null
+        wait
         ln -sf /opt/jetty8/bin/jetty.sh /etc/init.d/jetty8 &> /dev/null
         chmod 755 /etc/init.d/jetty8
         st_runner "update-rc.d jetty8 defaults" &> /dev/null
@@ -423,6 +436,7 @@ if_install_jetty() {
           done
           sed -i "s/8983/8077/g" \
             /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
+          wait
           touch /opt/solr1/search_api_solr-7.x-1.9.log
         fi
         cp -af ${bldPth}/docs/SOLR.txt /opt/solr1/README.txt &> /dev/null
@@ -446,6 +460,7 @@ if_install_jetty() {
           -Dsolr.solr.home=/opt/solr1 \$JAVA_OPTIONS\" \
           # Options" | fmt -su -w 2500 >> /etc/default/jetty7
         sed -i "s/8080/8077/g" /opt/jetty7/bin/jetty.sh &> /dev/null
+        wait
         ln -sf /opt/jetty7/bin/jetty.sh /etc/init.d/jetty7 &> /dev/null
         chmod 755 /etc/init.d/jetty7
         st_runner "update-rc.d jetty7 defaults" &> /dev/null
@@ -477,17 +492,23 @@ if_install_jetty() {
     cp -af ${bldPth}/docs/SOLR.txt /opt/solr1/README.txt &> /dev/null
     chown -R jetty7:jetty7 /opt/solr1
     sed -i "s/8077/8080/g" /etc/default/jetty7 &> /dev/null
+    wait
     sed -i "s/8077/8080/g" \
       /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
+    wait
     sed -i "s/8077/8080/g" \
       /opt/solr1/site_00{1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
+    wait
     sed -i "s/8077/8080/g" \
       /opt/solr1/conf/solrcore.properties &> /dev/null
+    wait
     msg "INFO: Jetty 7 restart in progress - required after migration from Tomcat"
     kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
     mrun "service jetty7 start" &> /dev/null
     sed -i "s/^_TOMCAT_TO_JETTY.*//g" ${barCnf}
+    wait
     sed -i "/^$/d" ${barCnf}
+    wait
     msg "INFO: Tomcat 6 to Jetty 7 migration for Apache Solr 1 completed"
   fi
   if [ -e "/opt/jetty7/VERSION.txt" ]; then

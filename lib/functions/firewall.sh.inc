@@ -26,6 +26,7 @@ fix_lfd_uidignore() {
       fi
     fi
     sed -i "/^$/d" ${_THIS_FILE} &> /dev/null
+    wait
   fi
 }
 
@@ -39,7 +40,9 @@ fix_lfd_whitelist() {
       _DO_NOTHING=YES
     else
       sed -i "s/.*\/tmp\/.*//g" ${_THIS_FILE} &> /dev/null
+      wait
       sed -i "/^$/d"            ${_THIS_FILE} &> /dev/null
+      wait
       echo "/tmp/drush_tmp.*"      >> ${_THIS_FILE}
       echo "/tmp/drush_make_tmp.*" >> ${_THIS_FILE}
       echo "/tmp/make_tmp.*"       >> ${_THIS_FILE}
@@ -74,8 +77,11 @@ csf_install() {
   elif [[ "$_CSF_COMPATIBILITY_TEST" =~ "some features will not work" ]]; then
     _CSF_COMPATIBILITY=PARTIAL
     sed -i "s/^PORTFLOOD .*/PORTFLOOD = \"\"/g" /etc/csf/csf.conf &> /dev/null
+    wait
     sed -i "s/^CONNLIMIT .*/CONNLIMIT = \"\"/g" /etc/csf/csf.conf &> /dev/null
+    wait
     sed -i "s/^USE_CONNTRACK .*/USE_CONNTRACK = \"0\"/g" /etc/csf/csf.conf &> /dev/null
+    wait
   elif [[ "$_CSF_COMPATIBILITY_TEST" =~ "FATAL" ]]; then
     _CSF_COMPATIBILITY=NO
   else
@@ -92,16 +98,22 @@ csf_install() {
       /etc/csf/csf.conf-pre-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${locCnf}/csf.conf /etc/csf/csf.conf
     sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g" /etc/csf/csf.conf &> /dev/null
+    wait
     sed -i "s/TCP_IN = \"20,21,22,/TCP_IN = \"20,21,${_SSH_PORT},/g" \
       /etc/csf/csf.conf &> /dev/null
+    wait
     chmod 600 /etc/csf/csf.conf &> /dev/null
     if [ -e "/etc/ssh/sshd_config" ]; then
       sed -i "s/^Port.*/Port ${_SSH_PORT}/g"  /etc/ssh/sshd_config
+      wait
       sed -i "s/^#Port.*/Port ${_SSH_PORT}/g" /etc/ssh/sshd_config
+      wait
     fi
     if [ -e "/usr/etc/sshd_config" ]; then
       sed -i "s/^Port.*/Port ${_SSH_PORT}/g"  /usr/etc/sshd_config
+      wait
       sed -i "s/^#Port.*/Port ${_SSH_PORT}/g" /usr/etc/sshd_config
+      wait
     fi
     mrun "service ssh restart" &> /dev/null
     if [ "$_CSF_MODE" = "install" ]; then
@@ -173,12 +185,16 @@ install_upgrade_csf_lfd() {
         || [[ "${_CHECK_HOST}" =~ ".host8." ]]; then
         sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"1\"/g" \
           /etc/csf/csf.conf &> /dev/null
+        wait
       fi
       if [ "${_VMFAMILY}" = "VZ" ]; then
         sed -i "s/^PORTFLOOD .*/PORTFLOOD = \"\"/g" /etc/csf/csf.conf &> /dev/null
+        wait
         sed -i "s/^CONNLIMIT .*/CONNLIMIT = \"\"/g" /etc/csf/csf.conf &> /dev/null
+        wait
         sed -i "s/^USE_CONNTRACK .*/USE_CONNTRACK = \"0\"/g" \
           /etc/csf/csf.conf &> /dev/null
+        wait
       fi
       if [ -e "${pthLog}/lastFire" ]; then
         rm -f ${pthLog}/lastFire

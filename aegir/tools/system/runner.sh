@@ -1,9 +1,36 @@
 #!/bin/bash
 
-SHELL=/bin/bash
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
+SHELL=/bin/bash
 
 ###-------------SYSTEM-----------------###
+
+check_root() {
+  if [ `whoami` = "root" ]; then
+    ionice -c2 -n7 -p$$
+    chmod a+w /dev/null
+    if [ ! -e "/dev/fd" ]; then
+      if [ -e "/proc/self/fd" ]; then
+        rm -rf /dev/fd
+        ln -s /proc/self/fd /dev/fd
+      fi
+    fi
+  else
+    echo "ERROR: This script should be ran as a root user"
+    exit 1
+  fi
+  _DF_TEST=$(df -kTh / -l \
+    | grep '/' \
+    | sed 's/\%//g' \
+    | awk '{print $6}' 2> /dev/null)
+  _DF_TEST=${_DF_TEST//[^0-9]/}
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
+    exit 1
+  fi
+}
+check_root
 
 count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
