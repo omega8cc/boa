@@ -99,8 +99,8 @@ _OSV=$(lsb_release -sc 2>&1)
 _ROOT="${HOME}"
 _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
 #
-SHELL=/bin/bash
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
 #
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 gCb="git clone --branch"
@@ -230,6 +230,7 @@ else
 fi
 sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
   ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
+wait
 
 msg "INFO: Installing the frontend"
 ${_DRUSHCMD} cache-clear drush >${_ROOT}/install.log 2>&1

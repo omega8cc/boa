@@ -147,6 +147,7 @@ provision_backend_dbpass_sync() {
       WHERE User='$_ADBU';" &> /dev/null
     sed -i "s/mysql:\/\/$_ADBU:.*/mysql:\/\/$_ADBU:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
       /var/aegir/.drush/server_*.alias.drushrc.php &> /dev/null
+    wait
   fi
   mysqladmin flush-privileges &> /dev/null
   su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
@@ -259,6 +260,7 @@ upgrade_aegir_master() {
         /var/aegir/.drush/sys/provision &> /dev/null
       sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
         /var/aegir/.drush/sys/provision/aegir.make &> /dev/null
+      wait
       rm -f -r /var/aegir/drush
       cd /var/aegir
       get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
@@ -330,6 +332,7 @@ upgrade_aegir_master() {
       hostmaster_frontend_dbpass_sync
       sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" \
         /var/spool/cron/crontabs/aegir &> /dev/null
+      wait
     fi
     if [ ! -L "${mtrInc}/global.inc" ] && [ -e "${mtrInc}/global.inc" ]; then
       mv -f ${mtrInc}/global.inc \
@@ -338,6 +341,7 @@ upgrade_aegir_master() {
     mkdir -p /data/conf
     cp -af ${locCnf}/global.inc /data/conf/global.inc
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
+    wait
     if [ -e "${mtrInc}" ] && [ ! -L "${mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
       ln -sf /data/conf/global.inc ${mtrInc}/global.inc
@@ -378,15 +382,19 @@ update_php_cli_cron() {
   if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
     sed -i "s/^PATH=.*/PATH=\/opt\/php55\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
       /var/spool/cron/crontabs/aegir &> /dev/null
+    wait
   elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
     sed -i "s/^PATH=.*/PATH=\/opt\/php56\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
       /var/spool/cron/crontabs/aegir &> /dev/null
+    wait
   elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
     sed -i "s/^PATH=.*/PATH=\/opt\/php54\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
       /var/spool/cron/crontabs/aegir &> /dev/null
+    wait
   elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
     sed -i "s/^PATH=.*/PATH=\/opt\/php53\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
       /var/spool/cron/crontabs/aegir &> /dev/null
+    wait
   fi
   chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
 }
@@ -646,6 +654,7 @@ EOFMYSQL
     mkdir -p /data/conf
     cp -af ${locCnf}/global.inc /data/conf/global.inc
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
+    wait
     if [ -e "${mtrInc}" ] \
       && [ ! -L "${mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
@@ -825,11 +834,17 @@ update_php_cli_local_ini() {
       _INI=${_INI//\//\\\/}
       _QTP=${_U_TP//\//\\\/}
       sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_U_II}
+      wait
       sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
+      wait
       sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_U_II}
+      wait
       sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_U_II}
+      wait
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
+      wait
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
+      wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
       echo > ${_U_HD}/.ctrl.246stableU.txt
     fi

@@ -30,8 +30,8 @@ _LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
 _L_VMFAMILY=XEN
 _L_VM_TEST=$(uname -a 2>&1)
-if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-  || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
+if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
+  || [[ "${_L_VM_TEST}" =~ "3.2.16-beng" ]] \
   || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
   _L_VMFAMILY="VS"
 fi
@@ -93,7 +93,9 @@ fix_dns_settings() {
   if [ -e "/etc/pdnsd.conf" ]; then
     if [ -e "${dnsLi}" ]; then
       sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
+      wait
       sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
+      wait
       _BROKEN_DNS_TEST_X=$(grep "\." ${dnsLi} 2>&1)
       if [ -z "${_BROKEN_DNS_TEST_X}" ]; then
         echo "        label = \"google-servers\";" > ${dnsLi}
@@ -113,9 +115,13 @@ fix_dns_settings() {
         | cut -d ' ' -f2 \
         | sort \
         | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
+      wait
       sed -i "s/ip=.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
+      wait
       sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
+      wait
       sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
+      wait
       _BROKEN_DNS_TEST_Y=$(grep "\." ${dnsLi} 2>&1)
       if [ -z "${_BROKEN_DNS_TEST_Y}" ]; then
          echo "        ip=8.8.8.8;" >> ${dnsLi}
@@ -128,6 +134,7 @@ fix_dns_settings() {
         && [[ "${_DNS_RGX_TEST}" =~ "google-servers" ]]; then
         sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
 d;};' /etc/pdnsd.conf
+        wait
       fi
       resolvconf -u         &> /dev/null
       service pdnsd restart &> /dev/null
@@ -201,9 +208,13 @@ send_alert() {
 
 check_report() {
   sed -i "s/^_AWS_.*//g"         ${_UP_LOG}
+  wait
   sed -i "s/^_NEWRELIC_KEY.*//g" ${_UP_LOG}
+  wait
   sed -i "s/^_SCOUT_KEY.*//g"    ${_UP_LOG}
+  wait
   sed -i "/^$/d"                 ${_UP_LOG}
+  wait
   _SEND_ALERT=NO
   _RESULT_TEST_OK=$(grep "INFO: Test OK" ${_UP_LOG} 2>&1)
   _RESULT_TEST_CARD=$(grep "CARD: Now charging" ${_UP_LOG} 2>&1)
@@ -311,14 +322,20 @@ up_action() {
         phpS=ALL
       elif [ "${rkey}" = "nodns" ]; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${barName}
+        wait
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${barName}
+        wait
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"          ${barCnf}
+        wait
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"            ${barCnf}
+        wait
       else
         _L_KEY=$(echo ${#rkey} 2>&1)
         if [ ! -z "${_L_KEY}" ] && [ "${_L_KEY}" = "40" ]; then
           sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${rkey}\"/g"  ${vBs}/${barName}
+          wait
           sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${rkey}\"/g"          ${barCnf}
+          wait
         fi
       fi
 
@@ -339,6 +356,7 @@ up_action() {
       _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL ${barCnf} 2>&1)
       if [[ "${_PHP_SINGLE_INSTALL_TEST}" =~ "_PHP_SINGLE_INSTALL" ]]; then
         sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=${phpS}/g" ${barCnf}
+        wait
       else
         echo "_PHP_SINGLE_INSTALL=${phpS}" >> ${barCnf}
       fi
@@ -362,23 +380,36 @@ up_action() {
         sleep 3
         if [ -e "${vBs}/${filIncB}" ]; then
           sed -i "s/^_PHP_SIN.*/_PHP_SINGLE_INSTALL=${phpS}/g" ${vBs}/${filIncB}
+          wait
           sed -i "s/^_PHP_MUL.*/_PHP_MULTI_INSTALL=${phpS}/g"  ${vBs}/${filIncB}
+          wait
           sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"  ${vBs}/${filIncB}
+          wait
           sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"  ${vBs}/${filIncB}
         fi
         ### Legacy method
         sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=${phpS}/g" ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=${phpS}/g"  ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"    ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"    ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=${phpS}/g"         ${barCnf}
+        wait
         sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=${phpS}/g"          ${barCnf}
+        wait
         sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"            ${barCnf}
+        wait
         sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"            ${barCnf}
+        wait
         sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g" \
           /root/.*.octopus.cnf &> /dev/null
+        wait
         sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g" \
           /root/.*.octopus.cnf &> /dev/null
+        wait
         sleep 3
 
         ### Debugging
@@ -416,23 +447,37 @@ up_action() {
         sleep 3
         if [ -e "${vBs}/${filIncB}" ]; then
         sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=/g"       ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_MU.*/_PHP_MULTI_INSTALL=\"${phpM}\"/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"    ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"    ${vBs}/${filIncB}
+        wait
         fi
         ### Legacy method
         sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=/g"       ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_MU.*/_PHP_MULTI_INSTALL=\"${phpM}\"/g" ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"    ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"    ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=/g"                ${barCnf}
+        wait
         sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=\"${phpM}\"/g"      ${barCnf}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${phpS}/g"     ${barCnf}
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${phpS}/g"     ${barCnf}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${phpS}/g" \
           /root/.*.octopus.cnf &> /dev/null
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${phpS}/g" \
           /root/.*.octopus.cnf &> /dev/null
+        wait
         sleep 3
 
         ### Debugging
@@ -470,53 +515,81 @@ up_action() {
     fi
     if [ "${cmmand}" = "up-head" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
+      wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncB}
+      wait
       sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"     ${vBs}/${filIncB}
+      wait
       sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${filIncB}
+      wait
     else
       if [ -e "${vBs}/${filIncB}" ]; then
         sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncB}
+        wait
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncB}
+        wait
       fi
       ### Legacy method
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${barName}
+      wait
       sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${barName}
+      wait
       if [ "${cmmand}" = "up-legacy" ]; then
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcy}/g" ${vBs}/${barName}
+        wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcy}/g" ${vBs}/${barName}
+        wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcy}/g"         ${vBs}/${barName}
+        wait
       else
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${barName}
+        wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${barName}
+        wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${barName}
+        wait
       fi
     fi
     if [ "${cmmand}" = "up-head" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${filIncB}
+      wait
     elif [ "${cmmand}" = "up-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncB}
+      wait
     else
       if [ -e "${vBs}/${filIncB}" ]; then
         sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${filIncB}
+        wait
       fi
       ### Legacy method
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${barName}
+      wait
     fi
     if [ -e "${vBs}/${filIncB}" ]; then
       sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               ${vBs}/${filIncB}
+      wait
       sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"   ${vBs}/${filIncB}
+      wait
     fi
     ### Legacy method
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${barName}
+    wait
     sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"     ${vBs}/${barName}
+    wait
     ### Force HTTP/2 or SPDY plus PFS on supported systems
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                       ${barCnf}
+    wait
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"          ${barCnf}
+    wait
     sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g"           ${barCnf}
+    wait
     ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"           ${barCnf}
+    wait
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -527,10 +600,15 @@ up_action() {
       else
         if [ -e "${barCnf}" ]; then
           sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${barCnf}
+          wait
           sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=YES/g"         ${barCnf}
+          wait
           ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                  ${barCnf}
+          ### wait
           sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"        ${barCnf}
+          wait
           sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"     ${barCnf}
+          wait
           if [ -e "/root/.mstr.clstr.cnf" ] \
             || [ -e "/root/.wbhd.clstr.cnf" ] \
             || [ -e "/root/.dbhd.clstr.cnf" ] \
@@ -538,36 +616,50 @@ up_action() {
             _DO_NOTHING=YES
           else
             sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"    ${barCnf}
+            wait
           fi
           if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
             || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
             || [ "${_L_VMFAMILY}" = "VS" ]; then
             if [ "${_VMFAMILY}" = "VS" ]; then
               sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"       ${barCnf}
+              wait
               sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"         ${barCnf}
+              wait
               sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"   ${barCnf}
+              wait
               ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"              ${barCnf}
+              ### wait
             fi
             sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"             ${barCnf}
+            wait
             sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"     ${barCnf}
+            wait
             sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g" \
               /root/.*.octopus.cnf &> /dev/null
+            wait
             if [ -x "/opt/php55/bin/php" ] \
               && [ -z "${phpS}" ]; then
               sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"   ${barCnf}
+              wait
               sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"   ${barCnf}
+              wait
             fi
           fi
         fi
       fi
       sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${barCnf}
+      wait
       _THIS_RV=$(lsb_release -sc 2>&1)
       if [ "${_THIS_RV}" = "lenny" ] \
         && [ -e "${barCnf}" ]; then
         sed -i "s/^_LENNY_TO_SQUEEZE=.*/_LENNY_TO_SQUEEZE=YES/g" \
           ${vBs}/${barName}
+        wait
         sed -i "s/^_LENNY_TO_SQUEEZE.*//g" ${barCnf}
+        wait
         sed -i "/^$/d" ${barCnf}
+        wait
         echo "_LENNY_TO_SQUEEZE=YES" >> ${barCnf}
       fi
       if [ -e "/etc/default/tomcat" ] \
@@ -575,8 +667,11 @@ up_action() {
         && [ -e "${barCnf}" ]; then
         sed -i "s/^_TOMCAT_TO_JETTY=.*/_TOMCAT_TO_JETTY=YES/g" \
           ${vBs}/${barName}
+        wait
         sed -i "s/^_TOMCAT_TO_JETTY.*//g" ${barCnf}
+        wait
         sed -i "/^$/d" ${barCnf}
+        wait
         echo "_TOMCAT_TO_JETTY=YES" >> ${barCnf}
       fi
     fi
@@ -619,51 +714,70 @@ up_action() {
         echo "Starting the upgrade in silent mode now..."
         echo
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                     ${barCnf}
+        wait
         sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                 ${vBs}/${barName}
+        wait
         if [ "${silent}" = "system" ]; then
           touch /var/run/boa_system_wait.pid
           if [ "${cmmand}" = "up-legacy" ]; then
             sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"      ${vBs}/${barName}
+            wait
             sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"              ${barCnf}
+            wait
           else
             if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
               && [ -d "/var/aegir/config/server_master/nginx/subdir.d" ]; then
               if [ -e "${vBs}/${filIncB}" ]; then
                 sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"  ${vBs}/${filIncB}
+                wait
               fi
               ### Legacy method
               sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"    ${vBs}/${barName}
+              wait
               sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"            ${barCnf}
+              wait
             else
               if [[ "${_CHECK_HOST}" =~ "v55.lon." ]] \
                 || [[ "${_CHECK_HOST}" =~ ".lon1.h" ]]; then
                 if [ -e "${vBs}/${filIncB}" ]; then
                 sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"  ${vBs}/${filIncB}
+                wait
                 fi
                 ### Legacy method
                 sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"  ${vBs}/${barName}
+                wait
                 sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"          ${barCnf}
+                wait
               else
                 if [ -e "${vBs}/${filIncB}" ]; then
                   sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=NO/g" ${vBs}/${filIncB}
+                  wait
                 fi
                 ### Legacy method
                 sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=NO/g"   ${vBs}/${barName}
+                wait
                 sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=NO/g"           ${barCnf}
+                wait
               fi
             fi
           fi
           sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"  ${barCnf}
+          wait
         elif [ "${silent}" = "log" ]; then
           sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"            ${barCnf}
+          wait
           sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"  ${barCnf}
+          wait
         fi
         bash ${vBs}/${barName} >${_UP_LOG} 2>&1
         check_report
       else
-        sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g" ${barCnf}
+        sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"              ${barCnf}
+        wait
         sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"    ${barCnf}
+        wait
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                      ${barCnf}
+        wait
         bash ${vBs}/${barName}
       fi
     fi
@@ -861,6 +975,7 @@ check_fix_csf() {
 
 check_root() {
   if [ `whoami` = "root" ]; then
+    ionice -c2 -n7 -p$$
     check_fix_csf
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
@@ -870,8 +985,8 @@ check_root() {
       fi
     fi
     _L_VM_TEST=$(uname -a 2>&1)
-    if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
+    if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_L_VM_TEST}" =~ "3.2.16-beng" ]] \
       || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _PTMX=OK
     else
@@ -894,10 +1009,14 @@ check_root() {
       mount -t devpts devpts /dev/pts &> /dev/null
     fi
     sed -i "s/.*173.231.133.190.*//g" /etc/hosts
+    wait
     sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
+    wait
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
+    wait
     echo >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
+    wait
     if [ -e "/etc/init.d/postfix" ]; then
       service postfix restart &> /dev/null
     fi

@@ -111,7 +111,9 @@ fix_dns_settings() {
   if [ -e "/etc/pdnsd.conf" ]; then
     if [ -e "${dnsLi}" ]; then
       sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
+      wait
       sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
+      wait
       _BROKEN_DNS_TEST_X=$(grep "\." ${dnsLi} 2>&1)
       if [ -z "${_BROKEN_DNS_TEST_X}" ]; then
         echo "        label = \"google-servers\";" > ${dnsLi}
@@ -131,9 +133,13 @@ fix_dns_settings() {
         | cut -d ' ' -f2 \
         | sort \
         | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
+      wait
       sed -i "s/ip=.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
+      wait
       sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
+      wait
       sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
+      wait
       _BROKEN_DNS_TEST_Y=$(grep "\." ${dnsLi} 2>&1)
       if [ -z "${_BROKEN_DNS_TEST_Y}" ]; then
          echo "        ip=8.8.8.8;" >> ${dnsLi}
@@ -146,6 +152,7 @@ fix_dns_settings() {
         && [[ "${_DNS_RGX_TEST}" =~ "google-servers" ]]; then
         sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
 d;};' /etc/pdnsd.conf
+        wait
       fi
       resolvconf -u         &> /dev/null
       service pdnsd restart &> /dev/null
@@ -496,8 +503,8 @@ setup() {
   _BENG_VS=NO
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   else
@@ -510,8 +517,10 @@ setup() {
   fi
 
   sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
+  wait
   echo >>/etc/hosts
   sed -i "/^$/d" /etc/hosts
+  wait
   if [ ! -e "/etc/resolv.conf" ]; then
     rm -f /etc/resolv.conf
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then

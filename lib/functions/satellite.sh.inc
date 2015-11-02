@@ -11,8 +11,8 @@ satellite_tune_fpm_workers() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   fi
@@ -144,10 +144,15 @@ satellite_update_web_user() {
       _INI=${_INI//\//\\\/}
       _QTP=${_T_TP//\//\\\/}
       sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_T_II}
+      wait
       sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_T_II}
+      wait
       sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_T_II}
+      wait
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_T_II}
+      wait
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_T_II}
+      wait
       rm -f ${_T_HD}/.ctrl.php*
       echo > ${_T_HD}/.ctrl.php${_T_PV}.txt
     fi
@@ -269,21 +274,27 @@ satellite_tune_fpm_config() {
       ### create or update special system user if needed
       sed -i "s/.ftp/.web/g" \
         /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      wait
       sed -i "s/\/data\/disk\/foo\/.tmp/\/home\/foo.web\/.tmp/g" \
         /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      wait
       sed -i "s/foo/${_USER}/g" \
         /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      wait
       if [ ! -z "${_PHP_FPM_DENY}" ]; then
         sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
           /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+        wait
       fi
     fi
     _PHP_TO="${_PHP_FPM_TIMEOUT}s"
     sed -i "s/180s/${_PHP_TO}/g" \
       /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+    wait
     if [ ! -z "${_CHILD_MAX_FPM}" ]; then
       sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
         /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      wait
     fi
     if [ ! -d "${_ROOT}/tmp" ]; then
       mkdir -p ${_ROOT}/tmp
@@ -520,6 +531,7 @@ satellite_cnf() {
         fi
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_FPM_VERSION}/g" \
           ${octCnf} &> /dev/null
+        wait
         echo ${_PHP_FPM_VERSION} > ${_ROOT}/log/fpm.txt
         echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
         chown ${_USER}.ftp:users ${_ROOT}/static/control/fpm.info
@@ -572,6 +584,7 @@ satellite_cnf() {
           fi
           sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_FPM_VERSION}/g" \
             ${octCnf} &> /dev/null
+          wait
         fi
       fi
     fi
@@ -621,6 +634,7 @@ satellite_cnf() {
         fi
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_CLI_VERSION}/g" \
           ${octCnf} &> /dev/null
+        wait
         echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
         echo ${_PHP_CLI_VERSION} > ${_ROOT}/static/control/cli.info
         chown ${_USER}.ftp:users ${_ROOT}/static/control/cli.info
@@ -673,6 +687,7 @@ satellite_cnf() {
           fi
           sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_CLI_VERSION}/g" \
             ${octCnf} &> /dev/null
+          wait
         fi
       fi
     fi
@@ -680,25 +695,33 @@ satellite_cnf() {
     _O_CONTRIB_UP_TEST=$(grep _O_CONTRIB_UP ${octCnf} 2>&1)
     if [[ "$_O_CONTRIB_UP_TEST" =~ "_O_CONTRIB_UP" ]]; then
       sed -i "s/^_O_CONTRIB_UP.*//g" ${octCnf} &> /dev/null
+      wait
       sed -i "/^$/d" ${octCnf} &> /dev/null
+      wait
     fi
 
     _ALLOW_UNSUPPORTED_TEST=$(grep _ALLOW_UNSUPPORTED ${octCnf} 2>&1)
     if [[ "$_ALLOW_UNSUPPORTED_TEST" =~ "_ALLOW_UNSUPPORTED" ]]; then
       sed -i "s/^_ALLOW_UNSUPPORTED.*//g" ${octCnf} &> /dev/null
+      wait
       sed -i "/^$/d" ${octCnf} &> /dev/null
+      wait
     fi
 
     _USE_STOCK_TEST=$(grep _USE_STOCK ${octCnf} 2>&1)
     if [[ "${_USE_STOCK_TEST}" =~ "_USE_STOCK" ]]; then
       sed -i "s/^_USE_STOCK.*//g" ${octCnf} &> /dev/null
+      wait
       sed -i "/^$/d" ${octCnf} &> /dev/null
+      wait
     fi
 
     _HTTP_WILDCARD_TEST=$(grep _HTTP_WILDCARD ${octCnf} 2>&1)
     if [[ "$_HTTP_WILDCARD_TEST" =~ "_HTTP_WILDCARD" ]]; then
       sed -i "s/^_HTTP_WILDCARD.*//g" ${octCnf} &> /dev/null
+      wait
       sed -i "/^$/d" ${octCnf} &> /dev/null
+      wait
     fi
 
     _DEL_OLD_EMPTY_PLATFORMS_TEST=$(grep _DEL_OLD_EMPTY_PLATFORMS ${octCnf} 2>&1)
@@ -912,18 +935,24 @@ satellite_fix_multi_ip_cron_access() {
 
   sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" \
     ${octTpl}/Inc/vhost_include.tpl.php
+  wait
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
 d;};' ${octTpl}/Inc/vhost_include.tpl.php
+  wait
 
   sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" \
     ${octTpl}/subdir.tpl.php
+  wait
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
 d;};' ${octTpl}/subdir.tpl.php
+  wait
 
   sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" \
     ${octInc}/nginx_vhost_common.conf
+  wait
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
 d;};' ${octInc}/nginx_vhost_common.conf
+  wait
 }
 
 #
@@ -936,19 +965,31 @@ satellite_sub_satellite_force_advanced_nginx_config() {
     fi
     if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ]; then
       sed -i "s/EDIT_USER/${_USER}/g"                                              ${octTpl}/Inc/vhost_include.tpl.php &> /dev/null
+      wait
       sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g"             ${octTpl}/Inc/vhost_include.tpl.php &> /dev/null
+      wait
       sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" ${octTpl}/Inc/vhost_include.tpl.php &> /dev/null
+      wait
       sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g"  ${octTpl}/Inc/vhost_include.tpl.php &> /dev/null
+      wait
 
       sed -i "s/EDIT_USER/${_USER}/g"                                              ${octTpl}/subdir.tpl.php &> /dev/null
+      wait
       sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g"             ${octTpl}/subdir.tpl.php &> /dev/null
+      wait
       sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" ${octTpl}/subdir.tpl.php &> /dev/null
+      wait
       sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g"  ${octTpl}/subdir.tpl.php &> /dev/null
+      wait
 
       sed -i "s/EDIT_USER/${_USER}/g"                                              ${octInc}/nginx_vhost_common.conf &> /dev/null
+      wait
       sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g"             ${octInc}/nginx_vhost_common.conf &> /dev/null
+      wait
       sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" ${octInc}/nginx_vhost_common.conf &> /dev/null
+      wait
       sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g"  ${octInc}/nginx_vhost_common.conf &> /dev/null
+      wait
     fi
     _CRON_IP=${_THISHTIP//[^0-9.]/}
     if [ ! -e "/root/.local.IP.list" ]; then
@@ -1049,11 +1090,17 @@ satellite_child_b_update_ini_php_cli() {
       _INI=${_INI//\//\\\/}
       _QTP=${_U_TP//\//\\\/}
       sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_U_II}
+      wait
       sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
+      wait
       sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_U_II}
+      wait
       sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_U_II}
+      wait
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
+      wait
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
+      wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
       echo > ${_U_HD}/.ctrl.246stableU.txt
     fi
@@ -1270,7 +1317,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "display_cache-7.x-1.3.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/entitycache" ]; then
-        get_dev_contrib "entitycache-7.x-1.4.tar.gz"
+        get_dev_contrib "entitycache-7.x-1.5.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/filefield_nginx_progress" ]; then
         get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
@@ -1297,7 +1344,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/speedy" ]; then
-        get_dev_contrib "speedy-7.x-1.20.tar.gz"
+        get_dev_contrib "speedy-7.x-1.21.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/taxonomy_edge" ]; then
         get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
@@ -1367,7 +1414,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "config_perms-7.x-2.1.tar.gz"
   get_dev_contrib "css_emimage-7.x-1.x-dev.tar.gz"
   get_dev_contrib "display_cache-7.x-1.3.tar.gz"
-  get_dev_contrib "entitycache-7.x-1.4.tar.gz"
+  get_dev_contrib "entitycache-7.x-1.5.tar.gz"
   get_dev_contrib "esi-7.x-3.x-dev.tar.gz"
   get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
   get_dev_contrib "flood_control-7.x-1.x-dev.tar.gz"
@@ -1385,7 +1432,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
   get_dev_contrib "site_verify-7.x-1.1.tar.gz"
-  get_dev_contrib "speedy-7.x-1.20.tar.gz"
+  get_dev_contrib "speedy-7.x-1.21.tar.gz"
   get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
   get_dev_contrib "textile-7.x-2.0-rc11.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
@@ -1666,6 +1713,7 @@ satellite_hot_sauce_check() {
       _THIS_CORE="${_ALL_DISTRO}"
       msg "${_STATUS} A: ${mNewC}"
       sed -i "s/^_USE_CURRENT=.*/_USE_CURRENT=NO/g" ${vBs}/${filIncO}
+      wait
     else
       msg "${_STATUS} A: ${mLstC}"
     fi
@@ -1836,6 +1884,7 @@ provision_backend_dbpass_sync() {
     sed -i \
       "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
       ${_ROOT}/.drush/server_*.alias.drushrc.php &> /dev/null
+    wait
   fi
   mysqladmin flush-privileges &> /dev/null
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cache-clear drush &> /dev/null"
@@ -1983,6 +2032,7 @@ satellite_run_child_b() {
           ${_ROOT}/.drush/sys/provision &> /dev/null
         sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
           ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
+        wait
       fi
       rm -f -r ${_ROOT}/.drush/drush_make
       rm -f -r ${_ROOT}/.drush/sys/drush_make
@@ -2856,6 +2906,7 @@ satellite_if_add_update_backend_user_dirs_files_clean() {
     if [ ! -e "${_CORE}/javascript_aggregator.out.txt" ]; then
       sed -i "s/, 'javascript_aggregator'//g" \
         ${_CORE}/*/profiles/*/*.profile &> /dev/null
+      wait
       touch ${_CORE}/javascript_aggregator.out.txt
     fi
   fi
@@ -2864,7 +2915,9 @@ satellite_if_add_update_backend_user_dirs_files_clean() {
   #
   if [ ! -e "${_D}/000/old_cache.out2.txt" ] && [ -e "${_D}/000" ]; then
     sed -i "s/, 'cache'//g" ${_D}/*/*/profiles/*/*.profile &> /dev/null
+    wait
     sed -i "s/'cache', //g" ${_D}/*/*/profiles/*/*.profile &> /dev/null
+    wait
     rm -f -r ${_D}/*/o_contrib/cache
     touch ${_D}/000/old_cache.out2.txt
   fi
@@ -2890,10 +2943,15 @@ satellite_prepare_setup_email_tpl() {
         fi
         cp -af /opt/tmp/boa/aegir/conf/upgrademail.txt ./
         sed -i "s/aegir.url.name/${_DOMAIN}/g" ${_ROOT}/log/upgrademail.txt
+        wait
         sed -i "s/dragon/${_USER}/g" ${_ROOT}/log/upgrademail.txt
+        wait
         sed -i "s/FN8rXcQn/$_PASWD/g" ${_ROOT}/log/upgrademail.txt
+        wait
         sed -i "s/166.84.6.231/${_THISHTIP}/g" ${_ROOT}/log/upgrademail.txt
+        wait
         sed -i "s/boa.version/${_X_VERSION}/g" ${_ROOT}/log/upgrademail.txt
+        wait
       else
         _SEND_UPGRADE_EMAIL=NO
       fi
@@ -2901,10 +2959,15 @@ satellite_prepare_setup_email_tpl() {
      cd ${_ROOT}/log
      cp -af /opt/tmp/boa/aegir/conf/setupmail.txt ./
      sed -i "s/aegir.url.name/${_DOMAIN}/g" ${_ROOT}/log/setupmail.txt
+     wait
      sed -i "s/dragon/${_USER}/g" ${_ROOT}/log/setupmail.txt
+     wait
      sed -i "s/FN8rXcQn/$_PASWD/g" ${_ROOT}/log/setupmail.txt
+     wait
      sed -i "s/166.84.6.231/${_THISHTIP}/g" ${_ROOT}/log/setupmail.txt
+     wait
      sed -i "s/boa.version/${_X_VERSION}/g" ${_ROOT}/log/setupmail.txt
+     wait
     fi
   fi
 }
@@ -3117,6 +3180,7 @@ satellite_make() {
 
   cp -af ${bldPth}/aegir/scripts/run-xdrago /var/xdrago/run-${_USER}
   sed -i "s/EDIT_USER/${_USER}/g" /var/xdrago/run-${_USER}
+  wait
   chmod 700 /var/xdrago/run-${_USER} &> /dev/null
   chmod 700 ${bldPth}/aegir/scripts/* &> /dev/null
 
@@ -3310,8 +3374,8 @@ satellite_detect_vm_family() {
     _IFCONFIG="eth0"
   fi
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   else
@@ -4002,6 +4066,7 @@ satellite_child_b_drush_xts_install() {
   fi
   sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
     ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
+  wait
 }
 
 satellite_child_b_aegir_build() {
@@ -4099,12 +4164,19 @@ satellite_child_b_aegir_build() {
     if [ -e "${_ROOT}/log/imported.pid" ] || [ -e "${_ROOT}/log/exported.pid" ]; then
       if [ -e "${_ROOT}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
         sed -i "s/platform_0.*'/platform_hostmaster'/g"    ${_ROOT}/.drush/hostmaster.alias.drushrc.php
+        wait
         sed -i "s/distro\/0.*\/sites/distro\/001\/sites/g" ${_ROOT}/.drush/hostmaster.alias.drushrc.php
+        wait
         sed -i "s/distro\/01.*',/distro\/001',/g"          ${_ROOT}/.drush/hostmaster.alias.drushrc.php
+        wait
         sed -i "s/distro\/02.*',/distro\/001',/g"          ${_ROOT}/.drush/hostmaster.alias.drushrc.php
+        wait
         sed -i "s/distro\/03.*',/distro\/001',/g"          ${_ROOT}/.drush/hostmaster.alias.drushrc.php
+        wait
         sed -i "s/distro\/04.*',/distro\/001',/g"          ${_ROOT}/.drush/hostmaster.alias.drushrc.php
+        wait
         sed -i "s/distro\/05.*',/distro\/001',/g"          ${_ROOT}/.drush/hostmaster.alias.drushrc.php
+        wait
       fi
     fi
 
@@ -4436,8 +4508,8 @@ satellite_child_b_aegir_ui_enhance() {
       ${_HM_ROOT}/${pthThis}/hosting_platform_pathauto.module &> /dev/null
 
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _VMFAMILY="VS"
     else
@@ -4595,9 +4667,13 @@ satellite_child_b_vhosts_hotfix() {
   #
   rPth="${_ROOT}/config/server"
   sed -i "s/.*listen .*127.0.0.1:80;.*//g"           ${rPth}_*/nginx.conf
+  wait
   sed -i "s/listen .*:80;/listen        \*:80;/g"    ${rPth}_*/nginx.conf
+  wait
   sed -i "s/param db_port.*/param db_port   3306;/g" ${rPth}_*/nginx/vhost.d/*
+  wait
   sed -i "s/listen .*:80;/listen        \*:80;/g"    ${rPth}_*/nginx/vhost.d/*
+  wait
 }
 
 satellite_child_b_symlink_global_inc() {

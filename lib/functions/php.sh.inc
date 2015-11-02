@@ -5,6 +5,7 @@ fix_php_ini_ioncube() {
     _IONCUBE_INI_TEST=$(grep "ioncube_loader" ${_THIS_FILE} 2>&1)
     if [[ "$_IONCUBE_INI_TEST" =~ "ioncube_loader" ]]; then
       sed -i "s/.*ioncube_loader.*//g" ${_THIS_FILE} &> /dev/null
+      wait
     fi
   fi
 }
@@ -16,6 +17,7 @@ fix_php_ini_suhosin() {
     _SUHOSIN_INI_TEST=$(grep "extension=suhosin.so" ${_THIS_FILE} 2>&1)
     if [[ "$_SUHOSIN_INI_TEST" =~ "extension=suhosin.so" ]]; then
       sed -i "s/.*suhosin.*//g" ${_THIS_FILE} &> /dev/null
+      wait
     fi
   fi
 }
@@ -103,7 +105,9 @@ fix_php_ini_newrelic() {
       echo "newrelic.framework.drupal.modules = 1" >> ${_THIS_FILE}
     fi
     sed -i "/REPLACE_WITH_REAL_KEY//g" ${_THIS_FILE} &> /dev/null
+    wait
     sed -i "s/license_key=//g" ${_THIS_FILE} &> /dev/null
+    wait
   fi
 }
 
@@ -236,7 +240,9 @@ update_php_conf() {
   fi
   cp -af ${locCnf}/fpm-pool-common.conf /opt/etc/fpm/fpm-pool-common.conf
   sed -i "s/127.0.0.1/127.0.0.1,${_THISHTIP}/g" /opt/etc/fpm/fpm-pool-common.conf
+  wait
   sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
+  wait
   _PHP_V="56 55 54 53"
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
@@ -274,11 +280,15 @@ update_php_conf() {
     fix_php_ini_yaml
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g"       /opt/php${e}/etc/php${e}.ini
+      wait
       sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php${e}/etc/php${e}.ini
+      wait
     fi
     if [ -e "/opt/php${e}/lib/php.ini" ]; then
       sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g"       /opt/php${e}/lib/php.ini
+      wait
       sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php${e}/lib/php.ini
+      wait
     fi
   done
   rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
@@ -318,27 +328,39 @@ tune_web_server_config() {
   for e in ${_PHP_V}; do
     sed -i "s/process.max =.*/process.max = ${_PROCESS_MAX_FPM}/g" \
       /opt/php${e}/etc/php${e}-fpm.conf &> /dev/null
+    wait
     sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
       /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
+    wait
     if [ ! -z "${_PHP_FPM_DENY}" ]; then
       sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
         /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
+      wait
     fi
   done
   # PHP-FPM INI
   sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 180/g" /opt/php*/etc/php*.ini &> /dev/null
+  wait
   sed -i "s/^max_execution_time =.*/max_execution_time = 180/g" /opt/php*/etc/php*.ini         &> /dev/null
+  wait
   sed -i "s/^max_input_time =.*/max_input_time = 180/g" /opt/php*/etc/php*.ini                 &> /dev/null
+  wait
   # PHP-CLI INI
   sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 3600/g" /opt/php*/lib/php.ini &> /dev/null
+  wait
   sed -i "s/^max_execution_time =.*/max_execution_time = 3600/g" /opt/php*/lib/php.ini         &> /dev/null
+  wait
   sed -i "s/^max_input_time =.*/max_input_time = 3600/g" /opt/php*/lib/php.ini                 &> /dev/null
+  wait
   # Redis config should sync with PHP-CLI
   sed -i "s/^timeout .*/timeout 3600/g" /etc/redis/redis.conf                                  &> /dev/null
+  wait
   if [ ! -z "${_L_NGX_WRKS}" ]; then
     sed -i "s/worker_processes.*/worker_processes  ${_L_NGX_WRKS};/g" /etc/nginx/nginx.conf    &> /dev/null
+    wait
   else
     sed -i "s/worker_processes.*/worker_processes  4;/g" /etc/nginx/nginx.conf                 &> /dev/null
+    wait
   fi
 }
 
@@ -449,6 +471,7 @@ install_php_extensions() {
         if [ "$1" = "${e}" ]; then
           find . -type f -print0 \
             | xargs -0 sed -i 's/\/usr\/local/\/opt\/php${e}/g' &> /dev/null
+          wait
         fi
       done
       st_runner "sh ./configure --enable-php" 2> /dev/null
@@ -629,6 +652,7 @@ update_php_extensions() {
         if [ "$1" = "${e}" ]; then
           find . -type f -print0 \
             | xargs -0 sed -i 's/\/usr\/local/\/opt\/php${e}/g' &> /dev/null
+          wait
         fi
       done
       st_runner "sh ./configure --enable-php" 2> /dev/null
@@ -896,9 +920,11 @@ update_newrelic() {
       else
         sed -i "s/REPLACE_WITH_REAL_KEY/${_NEWRELIC_KEY}/g" \
           /etc/newrelic/newrelic.cfg &> /dev/null
+        wait
       fi
       sed -i "s/REPLACE_WITH_REAL_KEY/${_NEWRELIC_KEY}/g" \
         /etc/newrelic/nrsysmond.cfg &> /dev/null
+      wait
     fi
   fi
 }
@@ -1001,9 +1027,11 @@ install_newrelic() {
         else
           sed -i "s/REPLACE_WITH_REAL_KEY/${_NEWRELIC_KEY}/g" \
             /etc/newrelic/newrelic.cfg &> /dev/null
+          wait
         fi
         sed -i "s/REPLACE_WITH_REAL_KEY/${_NEWRELIC_KEY}/g" \
           /etc/newrelic/nrsysmond.cfg &> /dev/null
+        wait
       fi
     fi
     touch ${pthLog}/newrelic-${_X_VERSION}.log
