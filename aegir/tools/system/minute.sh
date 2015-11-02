@@ -1,7 +1,7 @@
 #!/bin/bash
 
-SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
 
 check_pdnsd() {
   if [ -e "/etc/resolv.conf" ]; then

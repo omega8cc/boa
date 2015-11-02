@@ -1,7 +1,7 @@
 #!/bin/bash
 
-SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
 _WEBG=www-data
 
 ###
@@ -289,9 +289,11 @@ migrate_sites() {
         chmod 600 ${Vht}
         if [ -e "${Dir}/drushrc.php" ]; then
           sed -i "s/\$options\['db_host'\] = '.*/\$options[\'db_host\'] = \'localhost\';/g" ${Dir}/drushrc.php
+          wait
         fi
         if [ -e "${Vht}" ]; then
           sed -i "s/.*fastcgi_param.*db_host.*;/  fastcgi_param db_host   localhost;/g" ${Vht}
+          wait
         fi
         echo "INFO: site ${Dom} db_host on ${_TGT_HM_USER} fixed"
         if [ ! -z "${_DBN}" ] && [ ! -z "${_DBP}" ]; then
@@ -351,7 +353,9 @@ EOFMYSQL
             mv -f ${Vht} $Vhd
             cp -a /var/xdrago/conf/proxy.conf ${Vht}
             sed -i "s/.*server_name.*;/  server_name                 ${_NMS};/g" ${Vht}
+            wait
             sed -i "s/target_ip/${tgt}/g" ${Vht}
+            wait
             chown ${oct}:users ${Vht}
             chmod 600 ${Vht}
             echo "INFO: site ${Dom} proxy conversion on ${oct} complete"
@@ -514,12 +518,19 @@ migrate_prepare() {
         if [ -e "${_USR}/log/imported.pid" ] || [ -e "${_USR}/log/exported.pid" ]; then
           if [ -e "${_USR}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
             sed -i "s/platform_0.*'/platform_hostmaster'/g"    ${_USR}/.drush/hostmaster.alias.drushrc.php
+            wait
             sed -i "s/distro\/0.*\/sites/distro\/001\/sites/g" ${_USR}/.drush/hostmaster.alias.drushrc.php
+            wait
             sed -i "s/distro\/01.*',/distro\/001',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
+            wait
             sed -i "s/distro\/02.*',/distro\/001',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
+            wait
             sed -i "s/distro\/03.*',/distro\/001',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
+            wait
             sed -i "s/distro\/04.*',/distro\/001',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
+            wait
             sed -i "s/distro\/05.*',/distro\/001',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
+            wait
           fi
         fi
 
@@ -902,21 +913,33 @@ sub_ssl_gen() {
       else
         cp -af /var/xdrago/conf/pln_proxy.conf     ${Pln}
         sed -i "s/domain_name/${domain_name}/g"    ${Pln}
+        wait
         sed -i "s/target_ip/${target_ip}/g"        ${Pln}
+        wait
         sed -i "s/oct_uid/${oct_uid}/g"            ${Pln}
+        wait
         sed -i "s/oct_mail/${oct_mail}/g"          ${Pln}
+        wait
         sed -i "s/dedicated_ip/${dedicated_ip}/g"  ${Pln}
+        wait
         sed -i "s/dedicated_sn/${dedicated_sn}/g"  ${Pln}
+        wait
         echo OK created ${Pln}
       fi
       ###
       cp -af /var/xdrago/conf/ssl_proxy.conf       ${Ssl}
       sed -i "s/domain_name/${domain_name}/g"      ${Ssl}
+      wait
       sed -i "s/target_ip/${target_ip}/g"          ${Ssl}
+      wait
       sed -i "s/oct_uid/${oct_uid}/g"              ${Ssl}
+      wait
       sed -i "s/oct_mail/${oct_mail}/g"            ${Ssl}
+      wait
       sed -i "s/dedicated_ip/${dedicated_ip}/g"    ${Ssl}
+      wait
       sed -i "s/dedicated_sn/${dedicated_sn}/g"    ${Ssl}
+      wait
       ###
       if [ -e "${Ssl}" ]; then
         sslFile="/etc/ssl/private/${domain_name}.dhp"
@@ -960,6 +983,7 @@ ssl_gen() {
 
 check_root() {
   if [ `whoami` = "root" ]; then
+    ionice -c2 -n7 -p$$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -973,7 +997,17 @@ check_root() {
       _BCC_EMAIL=${_MY_EMAIL//\\\@/\@}
     fi
   else
-    echo "ERROR: This script should be ran as a root user - please `sudo -i` first"
+    echo "ERROR: This script should be ran as a root user"
+    exit 1
+  fi
+  _DF_TEST=$(df -kTh / -l \
+    | grep '/' \
+    | sed 's/\%//g' \
+    | awk '{print $6}' 2> /dev/null)
+  _DF_TEST=${_DF_TEST//[^0-9]/}
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
 }
