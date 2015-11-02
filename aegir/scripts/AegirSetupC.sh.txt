@@ -158,8 +158,8 @@ else
   _D_8_ALLOW=NO
 fi
 #
-SHELL=/bin/bash
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
 #
 pthPch="/opt/tmp/boa/aegir/patches"
 urlDrp="http://ftp.drupal.org/files/projects"
