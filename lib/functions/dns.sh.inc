@@ -50,7 +50,9 @@ fix_dns_settings() {
   if [ -e "/etc/pdnsd.conf" ]; then
     if [ -e "${dnsLi}" ]; then
       sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
+      wait
       sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
+      wait
       _BROKEN_DNS_TEST_X=$(grep "\." ${dnsLi} 2>&1)
       if [ -z "${_BROKEN_DNS_TEST_X}" ]; then
         echo "        label = \"google-servers\";" > ${dnsLi}
@@ -70,9 +72,13 @@ fix_dns_settings() {
         | cut -d ' ' -f2 \
         | sort \
         | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
+      wait
       sed -i "s/ip=.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
+      wait
       sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
+      wait
       sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
+      wait
       _BROKEN_DNS_TEST_Y=$(grep "\." ${dnsLi} 2>&1)
       if [ -z "${_BROKEN_DNS_TEST_Y}" ]; then
          echo "        ip=8.8.8.8;" >> ${dnsLi}
@@ -85,6 +91,7 @@ fix_dns_settings() {
         && [[ "${_DNS_RGX_TEST}" =~ "google-servers" ]]; then
         sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
 d;};' /etc/pdnsd.conf
+        wait
       else
         if [ -e "${locCnf}/pdnsd.conf" ]; then
           cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
@@ -396,6 +403,7 @@ install_pdnsd_cache() {
   st_runner "${_INSTALL} resolvconf" &> /dev/null
   st_runner "${_INSTALL} pdnsd" &> /dev/null
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
+  wait
   cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
   check_dns_settings
   if [ ! -L "/etc/resolvconf/run" ] \
@@ -443,6 +451,7 @@ install_pdnsd_cache() {
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ]; then
     sed -i "s/^dns=.*/dns=pdnsd/g" \
       /etc/NetworkManager/NetworkManager.conf &> /dev/null
+    wait
     mrun "service network-manager restart" &> /dev/null
   fi
   resolvconf -u         &> /dev/null
@@ -550,8 +559,8 @@ check_ip_hostname() {
             _DO_NOTHING=YES
           else
             sed -i "s/^${_MY_OWNIP}.*//g" /etc/hosts &> /dev/null
-            echo "${_MY_OWNIP} ${_MY_HOSTN} chive.${_MY_HOSTN} sqlbuddy.${_MY_HOSTN} \
-              cgp.${_MY_HOSTN} $_S_E" >> /etc/hosts
+            wait
+            echo "${_MY_OWNIP} ${_MY_HOSTN} chive.${_MY_HOSTN} sqlbuddy.${_MY_HOSTN} cgp.${_MY_HOSTN} $_S_E" >> /etc/hosts
           fi
         fi
         hostname -b ${_MY_HOSTN} ### force our custom FQDN/local hostname
@@ -751,7 +760,9 @@ EOF
 install_upgrade_pdnsd() {
   if [ -f "/etc/default/dhcpcd" ]; then
     sed -i "s/.*SET_DNS/#SET_DNS/g" /etc/default/dhcpcd &> /dev/null
+    wait
     sed -i "s/.*SET_HOSTNAME/#SET_HOSTNAME/g" /etc/default/dhcpcd &> /dev/null
+    wait
   fi
   check_dns_settings
   if [ ! -e "/usr/sbin/pdnsd" ]; then

@@ -26,8 +26,8 @@ if_running_as_root_barracuda() {
       _VMFAMILY="AWS"
     fi
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _VMFAMILY="VS"
       touch /var/run/cloud_vhost.pid
@@ -58,6 +58,7 @@ set_xterm() {
     _XTERM_TEST=$(grep ${_X_VERSION} /root/.bashrc 2>&1)
     if [[ "$_XTERM_TEST" =~ "${_X_VERSION}" ]]; then
       sed -i "s/^export TERM=.*/export TERM=xterm-color/g" /root/.bashrc
+      wait
     fi
   fi
 }
@@ -66,8 +67,8 @@ set_xterm() {
 # Kill nash-hotplug.
 kill_nash() {
   _L_VM_TEST=$(uname -a 2>&1)
-  if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
+  if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
+    || [[ "${_L_VM_TEST}" =~ "3.2.16-beng" ]] \
     || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _DO_NOTHING=YES
   else
@@ -77,6 +78,7 @@ kill_nash() {
     else
       cp -af /etc/rc.local /etc/rc.local.bak.${_NOW}
       sed -i "s/exit 0//g" /etc/rc.local &> /dev/null
+      wait
       echo "killall -9 nash-hotplug" >> /etc/rc.local
       echo "exit 0" >> /etc/rc.local
       killall -9 nash-hotplug &> /dev/null
@@ -91,7 +93,9 @@ fix_ftps_pam() {
     cp -af ${locCnf}/ftpusers /etc/ftpusers
   fi
   sed -i "s/pam_stack.so/pam_unix.so/g" /etc/pam.d/pure-ftpd &> /dev/null
+  wait
   sed -i "s/ service=system-auth//g"    /etc/pam.d/pure-ftpd &> /dev/null
+  wait
 }
 
 #
@@ -125,10 +129,12 @@ fix_sftp_ftps_modern() {
     _MSS_TEST=$(grep "lshell" /etc/passwd 2>&1)
     if [[ "$_MSS_TEST" =~ "lshell" ]]; then
       sed -i "s/usr\/.*\/lshell/usr\/bin\/mysecureshell/g" /etc/passwd &> /dev/null
+      wait
     fi
     _MSS_TEST=$(grep "MySecureShell" /etc/passwd 2>&1)
     if [[ "$_MSS_TEST" =~ "MySecureShell" ]]; then
       sed -i "s/usr\/.*\/MySecureShell/usr\/bin\/mysecureshell/g" /etc/passwd &> /dev/null
+      wait
     fi
   fi
   _MSS_PATH_TEST=$(grep "/usr/bin/mysecureshell" /etc/shells 2>&1)
@@ -139,6 +145,7 @@ fix_sftp_ftps_modern() {
   fi
   if [ ! -e "${pthLog}/fixed-sftp-idle.log" ]; then
     sed -i "s/IdleTimeOut.*/IdleTimeOut            15m/g" /etc/ssh/sftp_config &> /dev/null
+    wait
     mrun "service ssh reload" &> /dev/null
     touch ${pthLog}/fixed-sftp-idle.log
   fi
@@ -152,7 +159,9 @@ disable_old_purge_cruft_machine() {
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ]; then
     sed -i "s/.*purge_cruft.*//g" /etc/crontab &> /dev/null
+    wait
     sed -i "/^$/d" /etc/crontab &> /dev/null
+    wait
   fi
 }
 
@@ -163,7 +172,9 @@ enable_weekly_usage_monitor() {
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     sed -i "s/.*weekly.sh.*//g" /etc/crontab &> /dev/null
+    wait
     sed -i "/^$/d" /etc/crontab &> /dev/null
+    wait
     echo "28 6    * * 7   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
   fi
 }
@@ -189,6 +200,7 @@ update_global_inc_conf() {
     mv -f /data/conf/global.inc /data/conf/global.inc-pre-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${locCnf}/global.inc /data/conf/global.inc
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
+    wait
   fi
 }
 
@@ -196,7 +208,9 @@ update_global_inc_conf() {
 # Fix this on upgrade.
 fix_on_upgrade() {
   sed -i "s/loglevel.*/loglevel warning/g" /etc/redis/redis.conf &> /dev/null
+  wait
   sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf &> /dev/null
+  wait
   cp -af ${locCnf}/clean-boa-env /etc/init.d/clean-boa-env
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
   st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
@@ -225,8 +239,8 @@ tune_memory_limits() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.6.14-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.2.12-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
     _VMFAMILY="VS"
   fi
@@ -344,9 +358,13 @@ tune_memory_limits() {
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
         sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini &> /dev/null
+        wait
         sed -i "s/64000/128000/g"  /opt/php55/etc/php55.ini &> /dev/null
+        wait
         sed -i "s/64000/128000/g"  /opt/php54/etc/php54.ini &> /dev/null
+        wait
         sed -i "s/64000/128000/g"  /opt/php53/etc/php53.ini &> /dev/null
+        wait
       else
         _USE_PHP=1024
         _USE_OPC=1024
@@ -424,51 +442,76 @@ tune_memory_limits() {
   chmod 644 /data/conf/hhvm_intercept.php
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
+    wait
   fi
   if [ -e "/opt/php56/etc/php56.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php56/etc/php56.ini &> /dev/null
+    wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php56/etc/php56.ini &> /dev/null
+    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php56/lib/php.ini   &> /dev/null
+    wait
   fi
   if [ -e "/opt/php55/etc/php55.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php55/etc/php55.ini &> /dev/null
+    wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php55/etc/php55.ini &> /dev/null
+    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php55/lib/php.ini   &> /dev/null
+    wait
   fi
   if [ -e "/opt/php54/etc/php54.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php54/etc/php54.ini &> /dev/null
+    wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php54/etc/php54.ini &> /dev/null
+    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php54/lib/php.ini   &> /dev/null
+    wait
   fi
   if [ -e "/opt/php53/etc/php53.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php53/etc/php53.ini &> /dev/null
+    wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php53/etc/php53.ini &> /dev/null
+    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php53/lib/php.ini   &> /dev/null
+    wait
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits
     _UXC_SQL=${_MXC_SQL}
     _UXC_SQL=$(( _MXC_SQL / 2 ))
     sed -i "s/= 191/= ${_UXC_SQL}/g"                                              /etc/mysql/my.cnf
+    wait
     sed -i "s/= 292/= ${_MXC_SQL}/g"                                              /etc/mysql/my.cnf
+    wait
     sed -i "s/^tmp_table_size.*/tmp_table_size          = ${_TMP_SQL}/g"          /etc/mysql/my.cnf
+    wait
     sed -i "s/^max_heap_table_size.*/max_heap_table_size     = ${_TMP_SQL}/g"     /etc/mysql/my.cnf
+    wait
     sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = ${_SRT_SQL}/g" /etc/mysql/my.cnf
+    wait
     sed -i "s/^query_cache_size.*/query_cache_size        = ${_QCE_SQL}/g"        /etc/mysql/my.cnf
+    wait
     sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = ${_RND_SQL}/g"    /etc/mysql/my.cnf
+    wait
     sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf
+    wait
   fi
   _MAX_MEM_REDIS="${_USE_OPC}MB"
   sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" \
     /etc/redis/redis.conf &> /dev/null
+  wait
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9
+    wait
   fi
   if [ -e "/etc/default/jetty8" ] && [ -e "/opt/solr3" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr3 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty8
+    wait
   fi
   if [ -e "/etc/default/jetty7" ] && [ -e "/opt/solr1" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr1 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty7
+    wait
   fi
   tune_web_server_config
 }
@@ -482,6 +525,7 @@ fix_locales() {
       _DO_NOTHING=YES
     else
       sed -i "s/.*AcceptEnv.*//g" /etc/ssh/sshd_config
+      wait
       echo "AcceptEnv LANG LC_*" >> /etc/ssh/sshd_config
     fi
   fi
@@ -491,6 +535,7 @@ fix_locales() {
       _DO_NOTHING=YES
     else
       sed -i "s/.*AcceptEnv.*//g" /usr/etc/sshd_config
+      wait
       echo "AcceptEnv LANG LC_*" >> /usr/etc/sshd_config
     fi
   fi
@@ -531,6 +576,7 @@ EOF
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
       fi
       sed -i "/^$/d" /etc/locale.gen
+      wait
       locale-gen &> /dev/null
     else
       locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
@@ -584,6 +630,7 @@ EOF
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
       fi
       sed -i "/^$/d" /etc/locale.gen
+      wait
       locale-gen &> /dev/null
     else
       locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
@@ -731,12 +778,17 @@ barracuda_cnf() {
     echo "###"                                                >> ${barCnf}
     _CHECK_HOST=$(uname -n 2>&1)
     sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"               ${barCnf}
+    wait
     ### Force HTTP/2 or SPDY plus PFS on supported systems
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
+    wait
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
+    wait
     sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g"     ${barCnf}
+    wait
     ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
+    wait
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -746,18 +798,32 @@ barracuda_cnf() {
         _DO_NOTHING=YES
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
+        wait
         sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                              ${barCnf}
+        wait
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                             ${barCnf}
+        wait
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                ${barCnf}
+        wait
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
+        wait
         sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"  ${barCnf}
+        wait
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
+        wait
         ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                                ${barCnf}
+        ### wait
+        wait
         sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
+        wait
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   ${barCnf}
+        wait
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                /root/.*.octopus.cnf &> /dev/null
+        wait
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  /root/.*.octopus.cnf &> /dev/null
+        wait
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   /root/.*.octopus.cnf &> /dev/null
+        wait
         if [ -e "/root/.mstr.clstr.cnf" ] \
           || [ -e "/root/.wbhd.clstr.cnf" ] \
           || [ -e "/root/.dbhd.clstr.cnf" ] \
@@ -765,22 +831,32 @@ barracuda_cnf() {
           _DO_NOTHING=YES
         else
           sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"            ${barCnf}
+          wait
         fi
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
           || [ "${_VMFAMILY}" = "VS" ]; then
           if [ "${_VMFAMILY}" = "VS" ]; then
             sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     ${barCnf}
+            wait
             sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                       ${barCnf}
+            wait
             sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
+            wait
             ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                            ${barCnf}
+            ### wait
           fi
           sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g"                            /root/.*.octopus.cnf &> /dev/null
+          wait
           sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                           ${barCnf}
+          wait
           sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                   ${barCnf}
+          wait
           if [ -x "/opt/php55/bin/php" ] && [ -z "${_PHP_SINGLE_INSTALL}" ]; then
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"                 ${barCnf}
+            wait
             sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                 ${barCnf}
+            wait
           fi
         fi
       fi
@@ -788,6 +864,7 @@ barracuda_cnf() {
     if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ]; then
       _LOCAL_DEBIAN_MIRROR="ftp.debian.org"
       sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"    ${barCnf}
+      wait
     fi
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -797,6 +874,7 @@ barracuda_cnf() {
       msg "NOTE! It will *override* all settings in the Barracuda script"
     fi
     sed -i "s/_SPEED_VALID_MAX=300/_SPEED_VALID_MAX=3600/g" ${barCnf}
+    wait
 
     _NGINX_WORKERS_TEST=$(grep _NGINX_WORKERS ${barCnf} 2>&1)
     if [[ "${_NGINX_WORKERS_TEST}" =~ "_NGINX_WORKERS" ]]; then
@@ -842,7 +920,9 @@ barracuda_cnf() {
       _R_M=5.2
       _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
       sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
+      wait
       sed -i "/^$/d" ${barCnf}
+      wait
     fi
 
     if [ -e "/etc/init.d/php-fpm" ]; then
@@ -860,8 +940,8 @@ barracuda_cnf() {
     _CHECK_HOST=$(uname -n 2>&1)
     _L_VMFAMILY=XEN
     _L_VM_TEST=$(uname -a 2>&1)
-    if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
+    if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_L_VM_TEST}" =~ "3.2.16-beng" ]] \
       || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _L_VMFAMILY="VS"
     fi
@@ -882,7 +962,9 @@ barracuda_cnf() {
       fi
       if [ ! -e "/root/.debug.cnf" ] || [ -e "/root/.default.cnf" ]; then
         sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
+        wait
         sed -i "/^$/d" ${barCnf}
+        wait
         _PHP_MULTI_INSTALL=""
       fi
     fi
@@ -1014,6 +1096,7 @@ barracuda_cnf() {
           _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
           echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}" >> ${barCnf}
           sed -i "s/license_key=//g" ${barCnf}
+          wait
         fi
       fi
     fi
@@ -1148,46 +1231,57 @@ barracuda_cnf() {
     _USE_STOCK_TEST=$(grep _USE_STOCK ${barCnf} 2>&1)
     if [[ "${_USE_STOCK_TEST}" =~ "_USE_STOCK" ]]; then
       sed -i "s/^_USE_STOCK.*//g" ${barCnf}
+      wait
     fi
     _HTTP_WILDCARD_TEST=$(grep _HTTP_WILDCARD ${barCnf} 2>&1)
     if [[ "${_HTTP_WILDCARD_TEST}" =~ "_HTTP_WILDCARD" ]]; then
       sed -i "s/^_HTTP_WILDCARD.*//g" ${barCnf}
+      wait
     fi
     _PHP_MODERN_ONLY_TEST=$(grep _PHP_MODERN_ONLY ${barCnf} 2>&1)
     if [[ "${_PHP_MODERN_ONLY_TEST}" =~ "_PHP_MODERN_ONLY" ]]; then
       sed -i "s/^_PHP_MODERN_ONLY.*//g" ${barCnf}
+      wait
     fi
     _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER ${barCnf} 2>&1)
     if [[ "${_USE_SPEED_BOOSTER_TEST}" =~ "_USE_SPEED_BOOSTER" ]]; then
       sed -i "s/^_USE_SPEED_BOOSTER.*//g" ${barCnf}
+      wait
     fi
     _PHP_INSTALL_NEW_TEST=$(grep _PHP_INSTALL_NEW ${barCnf} 2>&1)
     if [[ "${_PHP_INSTALL_NEW_TEST}" =~ "_PHP_INSTALL_NEW" ]]; then
       sed -i "s/^_PHP_INSTALL_NEW.*//g" ${barCnf}
+      wait
     fi
     _CUSTOM_CONFIG_PHP_TEST=$(grep _CUSTOM_CONFIG_PHP ${barCnf} 2>&1)
     if [[ "${_CUSTOM_CONFIG_PHP_TEST}" =~ "_CUSTOM_CONFIG_PHP" ]]; then
       sed -i "s/^_CUSTOM_CONFIG_PHP.*//g" ${barCnf}
+      wait
     fi
     _LOAD_LIMIT_ONE_TEST=$(grep _LOAD_LIMIT_ONE ${barCnf} 2>&1)
     if [[ "${_LOAD_LIMIT_ONE_TEST}" =~ "_LOAD_LIMIT_ONE" ]]; then
       sed -i "s/^_LOAD_LIMIT_ONE.*//g" ${barCnf}
+      wait
     fi
     _LOAD_LIMIT_TWO_TEST=$(grep _LOAD_LIMIT_TWO ${barCnf} 2>&1)
     if [[ "${_LOAD_LIMIT_TWO_TEST}" =~ "_LOAD_LIMIT_TWO" ]]; then
       sed -i "s/^_LOAD_LIMIT_TWO.*//g" ${barCnf}
+      wait
     fi
     _USE_MEMCACHED_TEST=$(grep _USE_MEMCACHED ${barCnf} 2>&1)
     if [[ "${_USE_MEMCACHED_TEST}" =~ "_USE_MEMCACHED" ]]; then
       sed -i "s/^_USE_MEMCACHED.*//g" ${barCnf}
+      wait
     fi
     _PHP_ZEND_OPCACHE_TEST=$(grep _PHP_ZEND_OPCACHE ${barCnf} 2>&1)
     if [[ "${_PHP_ZEND_OPCACHE_TEST}" =~ "_PHP_ZEND_OPCACHE" ]]; then
       sed -i "s/^_PHP_ZEND_OPCACHE.*//g" ${barCnf}
+      wait
     fi
     _BUILD_FROM_SRC_TEST=$(grep _BUILD_FROM_SRC ${barCnf} 2>&1)
     if [[ "${_BUILD_FROM_SRC_TEST}" =~ "_BUILD_FROM_SRC" ]]; then
       sed -i "s/^_BUILD_FROM_SRC.*//g" ${barCnf}
+      wait
     fi
     ###
     ### config cleanup end
@@ -1196,12 +1290,17 @@ barracuda_cnf() {
     sleep 1
     _CHECK_HOST=$(uname -n 2>&1)
     sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"               ${barCnf}
+    wait
     ### Force HTTP/2 or SPDY plus PFS on supported systems
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
+    wait
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
+    wait
     sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g"     ${barCnf}
+    wait
     ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
+    wait
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -1211,18 +1310,31 @@ barracuda_cnf() {
         _DO_NOTHING=YES
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
+        wait
         sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                              ${barCnf}
+        wait
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                             ${barCnf}
+        wait
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                ${barCnf}
+        wait
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
+        wait
         sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"  ${barCnf}
+        wait
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
+        wait
         ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                                ${barCnf}
+        ### wait
         sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
+        wait
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   ${barCnf}
+        wait
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                /root/.*.octopus.cnf &> /dev/null
+        wait
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  /root/.*.octopus.cnf &> /dev/null
+        wait
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   /root/.*.octopus.cnf &> /dev/null
+        wait
         if [ -e "/root/.mstr.clstr.cnf" ] \
           || [ -e "/root/.wbhd.clstr.cnf" ] \
           || [ -e "/root/.dbhd.clstr.cnf" ] \
@@ -1230,27 +1342,38 @@ barracuda_cnf() {
           _DO_NOTHING=YES
         else
           sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"            ${barCnf}
+          wait
         fi
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
           || [ "${_VMFAMILY}" = "VS" ]; then
           if [ "${_VMFAMILY}" = "VS" ]; then
             sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     ${barCnf}
+            wait
             sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                       ${barCnf}
+            wait
             sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
+            wait
             ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                            ${barCnf}
+            ### wait
           fi
           sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                           ${barCnf}
+          wait
           sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                   ${barCnf}
+          wait
           sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g"                            /root/.*.octopus.cnf &> /dev/null
+          wait
           if [ -x "/opt/php55/bin/php" ] && [ -z "${_PHP_SINGLE_INSTALL}" ]; then
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"                 ${barCnf}
+            wait
             sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                 ${barCnf}
+            wait
           fi
         fi
       fi
     fi
     sed -i "/^$/d" ${barCnf}
+    wait
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo " "
       while read line; do
@@ -1264,6 +1387,7 @@ barracuda_cnf() {
     if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ]; then
       _LOCAL_DEBIAN_MIRROR=ftp.debian.org
       sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"    ${barCnf}
+      wait
     fi
     if [ "${_DB_SERIES}" = "10.0" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
@@ -1306,10 +1430,15 @@ barracuda_cnf() {
         _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
         _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
         sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}/g" ${barCnf}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g"     ${barCnf}
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g"     ${barCnf}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.2/g" /root/.*.octopus.cnf &> /dev/null
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.2/g" /root/.*.octopus.cnf &> /dev/null
+        wait
         if [ -e "/data/disk" ] && [ -e "/data/conf/global.inc" ]; then
           for Ctrl in `find /data/disk/*/log -maxdepth 0 -mindepth 0 | sort`; do
             echo ${_PHP_SINGLE_INSTALL} > $Ctrl/fpm.txt
@@ -1337,46 +1466,57 @@ barracuda_cnf() {
     _NGX_FORCE_REINSTALL_TEST=$(grep _NGX_FORCE_REINSTALL ${barCnf} 2>&1)
     if [[ "${_NGX_FORCE_REINSTALL_TEST}" =~ "_NGX_FORCE_REINSTALL" ]]; then
       sed -i "s/^_NGX_FORCE_REINSTALL.*//g" ${barCnf}
+      wait
     fi
     _PHP_FORCE_REINSTALL_TEST=$(grep _PHP_FORCE_REINSTALL ${barCnf} 2>&1)
     if [[ "${_PHP_FORCE_REINSTALL_TEST}" =~ "_PHP_FORCE_REINSTALL" ]]; then
       sed -i "s/^_PHP_FORCE_REINSTALL.*//g" ${barCnf}
+      wait
     fi
     _SQL_FORCE_REINSTALL_TEST=$(grep _SQL_FORCE_REINSTALL ${barCnf} 2>&1)
     if [[ "${_SQL_FORCE_REINSTALL_TEST}" =~ "_SQL_FORCE_REINSTALL" ]]; then
       sed -i "s/^_SQL_FORCE_REINSTALL.*//g" ${barCnf}
+      wait
     fi
     _SSL_FORCE_REINSTALL_TEST=$(grep _SSL_FORCE_REINSTALL ${barCnf} 2>&1)
     if [[ "${_SSL_FORCE_REINSTALL_TEST}" =~ "_SSL_FORCE_REINSTALL" ]]; then
       sed -i "s/^_SSL_FORCE_REINSTALL.*//g" ${barCnf}
+      wait
     fi
     _SSH_FORCE_REINSTALL_TEST=$(grep _SSH_FORCE_REINSTALL ${barCnf} 2>&1)
     if [[ "${_SSH_FORCE_REINSTALL_TEST}" =~ "_SSH_FORCE_REINSTALL" ]]; then
       sed -i "s/^_SSH_FORCE_REINSTALL.*//g" ${barCnf}
+      wait
     fi
     _GIT_FORCE_REINSTALL_TEST=$(grep _GIT_FORCE_REINSTALL ${barCnf} 2>&1)
     if [[ "${_GIT_FORCE_REINSTALL_TEST}" =~ "_GIT_FORCE_REINSTALL" ]]; then
       sed -i "s/^_GIT_FORCE_REINSTALL.*//g" ${barCnf}
+      wait
     fi
     _FULL_FORCE_REINSTALL_TEST=$(grep _FULL_FORCE_REINSTALL ${barCnf} 2>&1)
     if [[ "${_FULL_FORCE_REINSTALL_TEST}" =~ "_FULL_FORCE_REINSTALL" ]]; then
       sed -i "s/^_FULL_FORCE_REINSTALL.*//g" ${barCnf}
+      wait
     fi
     _TOMCAT_TO_JETTY_TEST=$(grep _TOMCAT_TO_JETTY ${barCnf} 2>&1)
     if [[ "${_TOMCAT_TO_JETTY_TEST}" =~ "_TOMCAT_TO_JETTY" ]]; then
       if [ ! -e "/etc/init.d/tomcat" ]; then
         sed -i "s/^_TOMCAT_TO_JETTY.*//g" ${barCnf}
+        wait
       fi
     fi
     _SQUEEZE_TO_WHEEZY_TEST=$(grep _SQUEEZE_TO_WHEEZY ${barCnf} 2>&1)
     if [[ "${_SQUEEZE_TO_WHEEZY_TEST}" =~ "_SQUEEZE_TO_WHEEZY" ]]; then
       sed -i "s/^_SQUEEZE_TO_WHEEZY.*//g" ${barCnf}
+      wait
     fi
     _LENNY_TO_SQUEEZE_TEST=$(grep _LENNY_TO_SQUEEZE ${barCnf} 2>&1)
     if [[ "${_LENNY_TO_SQUEEZE_TEST}" =~ "_LENNY_TO_SQUEEZE" ]]; then
       sed -i "s/^_LENNY_TO_SQUEEZE.*//g" ${barCnf}
+      wait
     fi
     sed -i "/^$/d" ${barCnf}
+    wait
     ###
     ### config cleanup end
     ###
@@ -1835,6 +1975,7 @@ update_sources_list() {
           if [ -e "/etc/apt/apt.conf" ]; then
             sed -i "s/APT::Default-Release \"squeeze\";/APT::Default-Release \"squeeze-lts\";/g" \
               /etc/apt/apt.conf &> /dev/null
+            wait
           fi
           if [ -e "${locCnf}/etc-apt-preferences-squeeze.txt" ]; then
             cp -af ${locCnf}/etc-apt-preferences-squeeze.txt /etc/apt/preferences
@@ -1938,6 +2079,11 @@ install_ssh_src() {
 #
 # Install cURL from sources.
 install_curl_src() {
+  if [ "${_OSV}" = "precise" ] \
+    || [ "${_OSV}" = "lucid" ]; then
+    touch /root/.use.curl.from.packages.cnf
+    _CURL_VRN=7.22.0
+  fi
   _CURL_INSTALL_REQUIRED=NO
   _CURL_GET_DPKG=$(dpkg --get-selections | grep curl | grep 'hold$' 2>&1)
   _CURL_ITD=$(curl --version 2>&1 \
@@ -1975,10 +2121,6 @@ install_curl_src() {
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version ${_CURL_ITD}, rebuild forced"
-  fi
-  if [ "${_OSV}" = "precise" ] \
-    || [ "${_OSV}" = "lucid" ]; then
-    touch /root/.use.curl.from.packages.cnf
   fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ]; then
     ###--------------------###
@@ -2165,7 +2307,9 @@ switch_to_dash() {
               && [ "$f" != "/etc/init.d/clean-boa-env" ] \
               && [ "$f" != "/bin/websh" ]; then
               sed -i "s/^#\! \/.*/#\!\/bin\/dash/g" $f &> /dev/null
+              wait
               sed -i "s/\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
+              wait
             fi
           fi
         done
@@ -2218,7 +2362,9 @@ switch_to_bash() {
               && [ "$f" != "/etc/init.d/clean-boa-env" ] \
               && [ "$f" != "/bin/websh" ]; then
               sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" $f &> /dev/null
+              wait
               sed -i "s/\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
+              wait
             fi
           fi
         done
@@ -2464,10 +2610,13 @@ finale() {
   rm -f ${vBs}/.auth.IP.list*
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
     ${mtrNgx}/vhost.d/chive.* &> /dev/null
+  wait
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
     ${mtrNgx}/vhost.d/cgp.* &> /dev/null
+  wait
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
     ${mtrNgx}/vhost.d/sqlbuddy.* &> /dev/null
+  wait
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   chmod 700 /root
   if [ ! -e "/etc/init.d/buagent" ] \
@@ -2480,7 +2629,9 @@ finale() {
     && [ -e "/var/xdrago/guest-fire.sh" ] \
     && [ -e "/var/xdrago/guest-water.sh" ]; then
     sed -i "s/.*fire.*//g" /etc/crontab &> /dev/null
+    wait
     sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
+    wait
     if [[ "${_THISHOST}" =~ ".host8." ]] \
       || [[ "${_THISHOST}" =~ ".boa.io" ]] ; then
       if [ "${_VMFAMILY}" = "VS" ]; then
@@ -2494,10 +2645,14 @@ finale() {
       echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d" /etc/crontab &> /dev/null
+    wait
   else
     sed -i "s/.*fire.*//g" /etc/crontab &> /dev/null
+    wait
     sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
+    wait
     sed -i "/^$/d" /etc/crontab &> /dev/null
+    wait
   fi
   if [ -e "/root/.dbhd.clstr.cnf" ]; then
     service clean-boa-env stop &> /dev/null
@@ -2592,10 +2747,13 @@ more_packages_install_on_init() {
       _L_DEB_TEST=$(grep "^5." /etc/debian_version 2>&1)
       if [ ! -z "$_L_DEB_TEST" ]; then
         sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" ${aptLiSys} &> /dev/null
+        wait
         sed -i "s/ftp.*debian.org/archive.debian.org/g" \
           ${aptLiSys} &> /dev/null
+        wait
         sed -i "s/volatile.debian.org/archive.debian.org/g" \
           ${aptLiSys} &> /dev/null
+        wait
       fi
     fi
     rm -f /etc/apt/sources.list.d/openssl.list
@@ -2730,11 +2888,17 @@ if_squeeze_to_wheezy() {
     fi
     ### Switching gears on the fly
     sed -i "s/.*DEBIAN LTS.*//g"  /etc/apt/sources.list
+    wait
     sed -i "s/.*squeeze-lts.*//g" /etc/apt/sources.list
+    wait
     sed -i "s/.*PROPOSED.*//g"    /etc/apt/sources.list
+    wait
     sed -i "s/.*proposed.*//g"    /etc/apt/sources.list
+    wait
     sed -i "s/squeeze/wheezy/g"   /etc/apt/sources.list
+    wait
     sed -i "s/squeeze/wheezy/g"   /etc/apt/sources.list.d/*
+    wait
     rm -f /etc/apt/sources.list.d/openssl.list
     mrun "apt-get update -qq" 2> /dev/null
     ### Two step upgrade with apt-get only
@@ -2761,8 +2925,8 @@ if_squeeze_to_wheezy() {
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     _L_VM_TEST=$(uname -a 2>&1)
-    if [[ "${_L_VM_TEST}" =~ "3.6.14-beng" ]] \
-      || [[ "${_L_VM_TEST}" =~ "3.2.12-beng" ]] \
+    if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_L_VM_TEST}" =~ "3.2.16-beng" ]] \
       || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
       _PTMX=OK
       _REMOVE_LINKS="buagent \
@@ -3396,8 +3560,10 @@ EOF
     ###
     if [ ! -z "${_SMTP_RELAY_HOST}" ]; then
       sed -i "s/${_SMTP_RELAY_HOST}//g" /etc/postfix/main.cf &> /dev/null
+      wait
       sed -i "s/relayhost =/relayhost = ${_SMTP_RELAY_HOST}/g" \
         /etc/postfix/main.cf &> /dev/null
+      wait
       postfix reload &> /dev/null
     fi
   fi
@@ -3422,6 +3588,7 @@ install_vnstat() {
       chmod 755 /etc/init.d/vnstat &> /dev/null
       st_runner "update-rc.d vnstat defaults" &> /dev/null
       sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /etc/vnstat.conf
+      wait
       mrun "service vnstat start" &> /dev/null
       touch ${pthLog}/vnstat-${_VNSTAT_VRN}.log
       mrun "service vnstat restart" &> /dev/null
@@ -3493,14 +3660,17 @@ install_update_xdrago() {
     fi
     sed -i "s/= 150/= ${_NGINX_DOS_LIMIT}/g" \
       /var/xdrago/monitor/check/scan_nginx &> /dev/null
+    wait
     sed -i "s/= 200/= ${_NGINX_DOS_LIMIT}/g" \
       /var/xdrago/monitor/check/scan_nginx &> /dev/null
+    wait
     if [ ! -z "$_NGINX_DOS_KEYWORDS" ]; then
       _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|]/}
       if [ ! -z "$_NGINX_DOS_KEYWORDS" ]; then
         msg "INFO: Configured _NGINX_DOS_KEYWORDS: $_NGINX_DOS_KEYWORDS"
         sed -i "s/foobar/$_NGINX_DOS_KEYWORDS/g" \
           /var/xdrago/monitor/check/scan_nginx &> /dev/null
+        wait
       fi
     fi
     mv -f /etc/cron.daily/mlocate ${vBs}/ &> /dev/null
@@ -3520,18 +3690,24 @@ install_update_xdrago() {
           && [ ! -e "/root/.big_db.cnf" ] \
           && [ ! -e "/root/.tg.cnf" ]; then
           sed -i "s/3600/180/g" /var/xdrago/minute.sh &> /dev/null
+          wait
         elif [ -e "/root/.big_db.cnf" ] || [ -e "/root/.tg.cnf" ]; then
           _DO_NOTHING=YES
         else
           sed -i "s/3600/1800/g" /var/xdrago/minute.sh &> /dev/null
+          wait
         fi
         sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
+        wait
         sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
+        wait
         sed -i "s/INTERVAL 1 HOUR/INTERVAL 15 MINUTE/g" \
           /var/xdrago/purge_binlogs.sh &> /dev/null
+        wait
       fi
     else
       sed -i "s/log\/lshell/log\/lsh/g" /etc/logrotate.d/lshell &> /dev/null
+      wait
     fi
   fi
   if [ "${_STATUS}" = "INIT" ]; then
@@ -3566,14 +3742,17 @@ install_update_xdrago() {
     fi
     sed -i "s/= 150/= ${_NGINX_DOS_LIMIT}/g" \
       /var/xdrago/monitor/check/scan_nginx &> /dev/null
+    wait
     sed -i "s/= 200/= ${_NGINX_DOS_LIMIT}/g" \
       /var/xdrago/monitor/check/scan_nginx &> /dev/null
+    wait
     if [ ! -z "$_NGINX_DOS_KEYWORDS" ]; then
       _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|]/}
       if [ ! -z "$_NGINX_DOS_KEYWORDS" ]; then
         msg "INFO: Configured _NGINX_DOS_KEYWORDS: $_NGINX_DOS_KEYWORDS"
         sed -i "s/foobar/$_NGINX_DOS_KEYWORDS/g" \
           /var/xdrago/monitor/check/scan_nginx &> /dev/null
+        wait
       fi
     fi
     mv -f /etc/cron.daily/mlocate ${vBs}/ &> /dev/null
@@ -3587,13 +3766,17 @@ install_update_xdrago() {
           && [ ! -e "/root/.big_db.cnf" ] \
           && [ ! -e "/root/.tg.cnf" ]; then
           sed -i "s/3600/180/g" /var/xdrago/minute.sh &> /dev/null
+          wait
         elif [ -e "/root/.big_db.cnf" ] || [ -e "/root/.tg.cnf" ]; then
           _DO_NOTHING=YES
         else
           sed -i "s/3600/1800/g" /var/xdrago/minute.sh &> /dev/null
+          wait
         fi
         sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
+        wait
         sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
+        wait
       fi
     fi
   fi
@@ -3601,6 +3784,7 @@ install_update_xdrago() {
     cp -af /var/xdrago-pre-${_X_VERSION}-${_NOW}/run-* /var/xdrago/ &> /dev/null
   fi
   sed -i "s/firewall/monitor/g" /var/xdrago/minute.sh &> /dev/null
+  wait
   chmod -R 700 /var/xdrago/monitor/check &> /dev/null
   chmod 700 /var/xdrago/* &> /dev/null
   chmod 700 /var/xdrago &> /dev/null
@@ -3610,13 +3794,19 @@ check_fix_umask() {
   if [ ! -e "${pthLog}/umask_fixed_new.log" ]; then
     mkdir -p /var/www/nginx-default
     sed -i "s/^UMASK.*//g" /etc/default/login &> /dev/null
+    wait
     echo "UMASK=002" >> /etc/default/login
     sed -i "/^$/d" /etc/default/login &> /dev/null
+    wait
     sed -i "s/^UMASK.*/UMASK 002/g" /etc/login.defs &> /dev/null
+    wait
     sed -i "s/^umask.*022/umask 002/g" /etc/profile &> /dev/null
+    wait
     sed -i "s/^session optional pam_umask.*//g" /etc/pam.d/login &> /dev/null
+    wait
     echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/login
     sed -i "/^$/d" /etc/pam.d/login &> /dev/null
+    wait
     echo "umask 002" >> /var/www/.profile
     chown www-data:www-data /var/www/.profile &> /dev/null
     chown www-data:www-data /var/www/nginx-default &> /dev/null
@@ -3666,7 +3856,9 @@ install_update_lshell() {
     get_dev_src "lshell-${_LSHELL_VRN}.tar.gz"
     for Files in `find /var/opt/lshell-${_LSHELL_VRN} -type f`; do
       sed -i "s/kicked/logged/g" $Files &> /dev/null
+      wait
       sed -i "s/Kicked/Logged/g" $Files &> /dev/null
+      wait
     done
     cd /var/opt/lshell-${_LSHELL_VRN}
     rm -f -r /usr/local/lib/python2.6/dist-packages/lshell*
@@ -3766,8 +3958,10 @@ check_fix_newrelic() {
       && [ ! -z "${_NEWRELIC_KEY}" ]; then
       sed -i "s/REPLACE_WITH_REAL_KEY/${_NEWRELIC_KEY}/g" \
         $_NEWRELIC_APP_CFG &> /dev/null
+      wait
     fi
     sed -i "s/^loglevel=.*/loglevel=error/g" $_NEWRELIC_APP_CFG &> /dev/null
+    wait
     mrun "service newrelic-daemon restart" &> /dev/null
   else
     if [ -e "/etc/init.d/newrelic-daemon" ] \
@@ -3795,11 +3989,14 @@ check_fix_newrelic() {
       && [ ! -z "${_NEWRELIC_KEY}" ]; then
       sed -i "s/REPLACE_WITH_REAL_KEY/${_NEWRELIC_KEY}/g" \
         $_NEWRELIC_SYS_CFG &> /dev/null
+      wait
     fi
     sed -i "s/^loglevel=.*/loglevel=error/g" \
       $_NEWRELIC_SYS_CFG &> /dev/null
+    wait
     sed -i "s/.*pidfile=.*/pidfile=\/var\/run\/nrsysmond.pid/g" \
       $_NEWRELIC_SYS_CFG &> /dev/null
+    wait
     if [ -e "/root/.enable.newrelic.sysmond.cnf" ]; then
       mrun "service newrelic-sysmond restart" &> /dev/null
     else
@@ -3846,6 +4043,7 @@ update_initd() {
       _DO_NOTHING=YES
     elif [[ "$_SSH_USEDNS_TEST" =~ "UseDNS" ]]; then
       sed -i "s/.*UseDNS.*/UseDNS no/g" /etc/ssh/sshd_config &> /dev/null
+      wait
     else
       echo >> /etc/ssh/sshd_config
       echo "UseDNS no" >> /etc/ssh/sshd_config
@@ -3856,6 +4054,7 @@ update_initd() {
         _DO_NOTHING=YES
       elif [[ "$_SSH_USEDNS_TEST" =~ "UseDNS" ]]; then
         sed -i "s/.*UseDNS.*/UseDNS no/g" /usr/etc/sshd_config &> /dev/null
+        wait
       else
         echo >> /usr/etc/sshd_config
         echo "UseDNS no" >> /usr/etc/sshd_config
@@ -3907,12 +4106,18 @@ update_initd() {
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       sed -i "s/.*UseDNS.*//g" /etc/ssh/sshd_config &> /dev/null
+      wait
       sed -i "s/^ClientAliveCountMax.*//g" /etc/ssh/sshd_config &> /dev/null
+      wait
       sed -i "s/^ClientAliveInterval.*//g" /etc/ssh/sshd_config &> /dev/null
+      wait
       sed -i "s/^IgnoreUserKnownHosts.*//g" /etc/ssh/sshd_config &> /dev/null
+      wait
       sed -i "s/^PasswordAuthentication.*//g" /etc/ssh/sshd_config &> /dev/null
+      wait
       sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" \
         /etc/ssh/sshd_config &> /dev/null
+      wait
       echo >> /etc/ssh/sshd_config
       echo "IgnoreUserKnownHosts no" >> /etc/ssh/sshd_config
       echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
@@ -3920,14 +4125,21 @@ update_initd() {
       echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
       echo "ClientAliveCountMax 3" >> /etc/ssh/sshd_config
       sed -i "/^$/d" /etc/ssh/sshd_config &> /dev/null
+      wait
       if [ -e "/usr/etc/sshd_config" ]; then
         sed -i "s/.*UseDNS.*//g" /usr/etc/sshd_config &> /dev/null
+        wait
         sed -i "s/^ClientAliveCountMax.*//g" /usr/etc/sshd_config &> /dev/null
+        wait
         sed -i "s/^ClientAliveInterval.*//g" /usr/etc/sshd_config &> /dev/null
+        wait
         sed -i "s/^IgnoreUserKnownHosts.*//g" /usr/etc/sshd_config &> /dev/null
+        wait
         sed -i "s/^PasswordAuthentication.*//g" /usr/etc/sshd_config &> /dev/null
+        wait
         sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" \
           /usr/etc/sshd_config &> /dev/null
+        wait
         echo >> /usr/etc/sshd_config
         echo "IgnoreUserKnownHosts no" >> /usr/etc/sshd_config
         echo "PasswordAuthentication yes" >> /usr/etc/sshd_config
@@ -3935,6 +4147,7 @@ update_initd() {
         echo "ClientAliveInterval 300" >> /usr/etc/sshd_config
         echo "ClientAliveCountMax 3" >> /usr/etc/sshd_config
         sed -i "/^$/d" /usr/etc/sshd_config &> /dev/null
+        wait
       fi
       mrun "service ssh reload" &> /dev/null
     else
@@ -3943,6 +4156,7 @@ update_initd() {
         _DO_NOTHING=YES
       else
         sed -i "s/.*UseDNS.*/UseDNS no/g" /etc/ssh/sshd_config &> /dev/null
+        wait
       fi
       if [ -e "/usr/etc/sshd_config" ]; then
         _SSH_USEDNS_TEST=$(grep "^UseDNS no" /usr/etc/sshd_config 2>&1)
@@ -3950,6 +4164,7 @@ update_initd() {
           _DO_NOTHING=YES
         else
           sed -i "s/.*UseDNS.*/UseDNS no/g" /usr/etc/sshd_config &> /dev/null
+          wait
         fi
       fi
       mrun "service ssh reload" &> /dev/null
@@ -4062,40 +4277,54 @@ update_apticron() {
       if [[ "$_APTICRON_TEST" =~ "NOTIFY_HOLDS" ]]; then
         sed -i "s/^# NOTIFY_HOLDS=\"0\"/NOTIFY_HOLDS=\"0\"/g" \
           /etc/apticron/apticron.conf
+        wait
         sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g" \
           /etc/apticron/apticron.conf
+        wait
         sed -i "s/root/${_MY_EMAIL}/g" \
           /etc/apticron/apticron.conf
+        wait
         sed -i "s/^# be something like.*/# be something like ${_MY_EMAIL}/g" \
           /etc/apticron/apticron.conf
+        wait
       else
         mrun "apt-get remove apticron -y --force-yes -qq" &> /dev/null
         mrun "apt-get purge apticron -y --force-yes -qq"  &> /dev/null
         mrun "apt-get install apticron -y"                &> /dev/null
         sed -i "s/^# NOTIFY_HOLDS=\"0\"/NOTIFY_HOLDS=\"0\"/g" \
           /etc/apticron/apticron.conf
+        wait
         sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g" \
           /etc/apticron/apticron.conf
+        wait
         sed -i "s/root/${_MY_EMAIL}/g" \
           /etc/apticron/apticron.conf
+        wait
         sed -i "s/^# be something like.*/# be something like ${_MY_EMAIL}/g" \
           /etc/apticron/apticron.conf
+        wait
       fi
     fi
     if [[ "${_X_VERSION}" =~ "dev" ]] && [ "${_AEGIR_VERSION}" = "HEAD" ]; then
       sed -i "s/aptitude full-upgrade/barracuda up-head system/g" \
         /usr/sbin/apticron
+      wait
       sed -i "s/apt-get dist-upgrade/barracuda up-head system/g" \
         /usr/sbin/apticron
+      wait
       sed -i "s/barracuda up-head.*/barracuda up-head system/g" \
         /usr/sbin/apticron
+      wait
     else
       sed -i "s/aptitude full-upgrade/barracuda up-stable system/g" \
         /usr/sbin/apticron
+      wait
       sed -i "s/apt-get dist-upgrade/barracuda up-stable system/g" \
         /usr/sbin/apticron
+      wait
       sed -i "s/barracuda up-stable.*/barracuda up-stable system/g" \
         /usr/sbin/apticron
+      wait
     fi
   fi
 }

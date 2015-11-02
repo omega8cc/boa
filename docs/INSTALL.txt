@@ -1,6 +1,9 @@
 
 ### IMPORTANT!
 
+* BOA requires minimal, supported OS, with no services installed.
+  The only acceptable exceptions are: sshd and mail servers.
+
 * Don't run any installer via sudo.
   You must be logged in as root or `sudo -i` first.
 
