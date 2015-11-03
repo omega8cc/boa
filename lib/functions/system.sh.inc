@@ -2760,6 +2760,7 @@ more_packages_install_on_init() {
     apt-get update -qq &> /dev/null
     ${_INITINS} locales &> /dev/null
     fix_locales
+    ${_INITINS} git &> /dev/null
     ${_INITINS} git-core &> /dev/null
     ${_INITINS} aptitude &> /dev/null
     ${_INITINS} axel &> /dev/null
