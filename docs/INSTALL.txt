@@ -123,12 +123,8 @@
 
 ### Installing more Octopus instances
 
-You can either run OCTOPUS.sh.txt directly or just run the same boa command
-again with new usernames - it will run Barracuda upgrade first and then
-new Octopus instance install - automatically.
+It is now possible to add stable Octopus instances w/o forcing Barracuda
+upgrade, plus optionally with no platforms added by default -- usage:
 
-Example:
+   $ boa {in-octopus} {email} {o2} {mini|max|none}
 
-   $ boa in-stable public server.mydomain.org my@email o2 mini
-   $ boa in-stable public server.mydomain.org my@email o3
-   $ boa in-stable public server.mydomain.org my@email o4 max

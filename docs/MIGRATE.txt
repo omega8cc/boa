@@ -41,6 +41,13 @@
 
   Still scared? We can help! Let us know via: https://omega8.cc/sales
 
+@=> Before you begin
+
+  For Drupal 6 based sites which are configured to block IPs you may need
+  to whitelist source-ip at /admin/user/rules first, by adding the Allow
+  rule for Host rule type. Otherwise the site may block its old IP address
+  and you will be forced to remove it via Chive from the {access} table.
+
 @=> On the target-host
   echo "source-ip # Legacy Proxy" >> /etc/csf/csf.allow
   echo "source-ip # Legacy Proxy" >> /etc/csf/csf.ignore
@@ -73,6 +80,7 @@
 @=> On the target-host
   service cron stop
   (then wait 2 minutes)
+  chmod 644 /data/all/cpuinfo
 
 @=> On the source-host
   ### sync shared files again
