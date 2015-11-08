@@ -1148,7 +1148,7 @@ drupal8_install() {
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
   if [ "${_D_8_ALLOW}" = "YES" ]; then
-    if [[ "${_PLATFORMS_LIST}" =~ "D8B" ]]; then
+    if [[ "${_PLATFORMS_LIST}" =~ "D8R" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_DRUPAL8 - http://drupal.org" ; then
           true
@@ -1164,39 +1164,6 @@ drupal8_install() {
           _RUN_VERIFY=YES
         else
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL8 ${noT}"
-        fi
-      fi
-    fi
-  fi
-}
-
-
-dr8_dev_install() {
-###---### Drupal Edge 8
-### _D8_DEV_LABEL="8-dev-${_TODAY}"
-  _REAL_PRNAME="standard"
-  _SHRD_PLNAME="drupal-${_D8_DEV_LABEL}"
-  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
-  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
-  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
-  if [ "${_D_8_ALLOW}" = "YES" ]; then
-    if [[ "${_PLATFORMS_LIST}" =~ "D8D" ]]; then
-      if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_D8_DEV_LABEL - http://drupal.org" ; then
-          true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_D8_DEV_LABEL ${yOk}"
-          if [ ! -d "${_SHRD_PLPATH}" ]; then
-            cd ${_CORE}
-            _D8_CORE_DIR="${_D8_DEV_CORE_DIR}"
-            if [ ! -e "${_D8_CORE_DIR}" ]; then
-              prepare_dr8_dev_core
-            fi
-          fi
-          init_this_distro_root
-          msg "DISTRO: $_F_D8_DEV_LABEL installed"
-          _RUN_VERIFY=YES
-        else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_D8_DEV_LABEL ${noT}"
         fi
       fi
     fi
@@ -2495,7 +2462,6 @@ save_verify_platforms() {
 drupal6_install
 drupal7_install
 drupal8_install
-### dr8_dev_install
 
 agov_install
 commerce_7_1_install

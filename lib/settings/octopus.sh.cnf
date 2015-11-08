@@ -59,8 +59,7 @@ _PHP_CLI_VERSION=5.5
 ### control which platforms will be installed,
 ### using the symbols listed below.
 ###
-### D8B ----------- Drupal 8-beta (inactive)
-### D8D ----------- Drupal 8-dev  (inactive)
+### D8R ----------- Drupal 8 (inactive)
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
 ### AGV ----------- aGov
@@ -85,7 +84,7 @@ _PHP_CLI_VERSION=5.5
 ### Examples:
 ###
 ### _PLATFORMS_LIST=ALL
-### _PLATFORMS_LIST="ALL D8B"
+### _PLATFORMS_LIST="ALL D8R"
 ### _PLATFORMS_LIST="D7P D6P PPY RST OOH"
 ###
 _PLATFORMS_LIST="D7P D7S D7D D6P D6S D6D"
