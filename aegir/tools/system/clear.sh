@@ -35,6 +35,11 @@ find /var/run/manage*users.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/run/daily-fix.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
 
 #
+# Clean up postfix queue to get rid of bounced emails.
+# See also: https://omega8.cc/never-send-mailings-from-aegir-server-322
+sudo postsuper -d ALL &> /dev/null
+
+#
 # Find the fastest mirror.
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
