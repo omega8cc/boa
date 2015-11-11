@@ -704,7 +704,9 @@ if [ `whoami` = "root" ]; then
       fix_core_dgd
     fi
   fi
-  service cron reload
+  if [ ! -e "/root/.upstart.cnf" ]; then
+    service cron reload &> /dev/null
+  fi
   exit 0
 else
   echo "ERROR: This script should be ran as a root user"

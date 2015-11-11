@@ -5,7 +5,7 @@ SHELL=/bin/bash
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    ionice -c2 -n7 -p$$
+    ionice -c2 -n7 -p $$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -2913,9 +2913,6 @@ if [ ! -e "/var/backups/fix-sites-all-permsissions-${_X_SE}.txt" ]; then
   echo FIXED > /var/backups/fix-sites-all-permsissions-${_X_SE}.txt
   echo "Permissions in sites/all tree just fixed"
 fi
-if [ ! -e "/root/.upstart.cnf" ]; then
-  service cron reload &> /dev/null
-fi
 find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 find /var/backups/jetty* -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/backups/dragon/* -mtime +7 -exec rm -rf {} \; &> /dev/null
@@ -2939,10 +2936,13 @@ rm -f /data/disk/*/.tmp/.busy.*.pid
 ###
 find /var/run/*_backup.pid -mtime +1 -exec rm -rf {} \; &> /dev/null
 
-if [ ! -e "/root/.high_traffic.cnf" ]; then
-  echo "INFO: Redis server will be restarted in 5 minutes"
+if [ ! -e "/root/.high_traffic.cnf" ] \
+  && [ ! -e "/root/.giant_traffic.cnf" ]; then
+  ionice -c2 -n2 -p $$
+  renice 0 -p $$
+  echo "INFO: Redis server will be restarted in 60 seconds"
   touch /var/run/boa_wait.pid
-  sleep 300
+  sleep 60
   service nginx reload
   service redis-server stop
   killall -9 redis-server

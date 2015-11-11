@@ -5,7 +5,6 @@ SHELL=/bin/bash
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    ionice -c2 -n7 -p$$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -31,6 +30,12 @@ check_root() {
 check_root
 
 action() {
+  if [ ! -e "/root/.giant_traffic.cnf" ]; then
+    echo " " >> /var/log/nginx/speed_purge.log
+    echo "speed_purge start `date`" >> /var/log/nginx/speed_purge.log
+    find /var/lib/nginx/speed/* -mtime +1 -exec rm -rf {} \; &> /dev/null
+    echo "speed_purge complete `date`" >> /var/log/nginx/speed_purge.log
+  fi
   mkdir -p /usr/share/GeoIP
   chmod 755 /usr/share/GeoIP
   cd /tmp
@@ -57,6 +62,14 @@ action() {
   rm -f /root/ksplice-archive.asc
   rm -f /root/install-uptrack
   find /tmp/{.ICE-unix,.X11-unix,.webmin} -mtime +0 -type f -exec rm -rf {} \;
+  if [ -e "/var/log/newrelic" ]; then
+    echo rotate > /var/log/newrelic/nrsysmond.log
+    echo rotate > /var/log/newrelic/php_agent.log
+    echo rotate > /var/log/newrelic/newrelic-daemon.log
+  fi
+  ionice -c2 -n2 -p $$
+  renice 0 -p $$
+  service nginx reload
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
   rm -f -r /tmp/{drush*,pear,jetty*}
   rm -f /var/log/jetty{7,8,9}/*
@@ -68,18 +81,6 @@ action() {
   fi
   if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
     service jetty7 start
-  fi
-  if [ ! -e "/root/.giant_traffic.cnf" ]; then
-    echo " " >> /var/log/nginx/speed_purge.log
-    echo "speed_purge start `date`" >> /var/log/nginx/speed_purge.log
-    find /var/lib/nginx/speed/* -mtime +1 -exec rm -rf {} \; &> /dev/null
-    echo "speed_purge complete `date`" >> /var/log/nginx/speed_purge.log
-    service nginx reload
-  fi
-  if [ -e "/var/log/newrelic" ]; then
-    echo rotate > /var/log/newrelic/nrsysmond.log
-    echo rotate > /var/log/newrelic/php_agent.log
-    echo rotate > /var/log/newrelic/newrelic-daemon.log
   fi
   touch /var/xdrago/log/graceful.done
 }

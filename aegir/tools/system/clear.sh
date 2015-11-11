@@ -5,7 +5,6 @@ SHELL=/bin/bash
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    ionice -c2 -n7 -p$$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -33,11 +32,6 @@ check_root
 find /var/run/boa*.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/run/manage*users.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/run/daily-fix.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
-
-#
-# Clean up postfix queue to get rid of bounced emails.
-# See also: https://omega8.cc/never-send-mailings-from-aegir-server-322
-sudo postsuper -d ALL &> /dev/null
 
 #
 # Find the fastest mirror.
@@ -78,19 +72,6 @@ find_fast_mirror() {
   urlStb="http://${_USE_MIR}/versions/stable"
 }
 
-service ssh restart &> /dev/null
-rm -f /var/backups/.auth.IP.list*
-find /var/xdrago/log/*.pid -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
-
-if [ -e "/etc/cron.daily/logrotate" ]; then
-  _SYSLOG_SIZE_TEST=$(du -s -h /var/log/syslog)
-  if [[ "${_SYSLOG_SIZE_TEST}" =~ "G" ]]; then
-    echo ${_SYSLOG_SIZE_TEST} too big
-    bash /etc/cron.daily/logrotate &> /dev/null
-    echo system logs rotated
-  fi
-fi
-
 if [ -e "/var/run/boa_run.pid" ]; then
   sleep 1
 else
@@ -111,6 +92,29 @@ else
     rm -f /var/backups/BOA.sh.txt.hourly*
   fi
   bash /opt/local/bin/autoupboa
+fi
+
+#
+# Back to normal priority
+ionice -c2 -n1 -p $$
+renice 0 -p $$
+
+#
+# Clean up postfix queue to get rid of bounced emails.
+# See also: https://omega8.cc/never-send-mailings-from-aegir-server-322
+sudo postsuper -d ALL &> /dev/null
+
+service ssh restart &> /dev/null
+rm -f /var/backups/.auth.IP.list*
+find /var/xdrago/log/*.pid -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
+
+if [ -e "/etc/cron.daily/logrotate" ]; then
+  _SYSLOG_SIZE_TEST=$(du -s -h /var/log/syslog)
+  if [[ "${_SYSLOG_SIZE_TEST}" =~ "G" ]]; then
+    echo ${_SYSLOG_SIZE_TEST} too big
+    bash /etc/cron.daily/logrotate &> /dev/null
+    echo system logs rotated
+  fi
 fi
 
 if [ -d "/dev/disk" ]; then
