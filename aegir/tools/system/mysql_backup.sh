@@ -5,7 +5,6 @@ SHELL=/bin/bash
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    ionice -c2 -n7 -p$$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -127,15 +126,18 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
 done
 
 if [ "${_OPTIM}" = "YES" ]; then
+  ionice -c2 -n2 -p $$
+  renice 0 -p $$
   touch /var/run/boa_wait.pid
   touch /var/xdrago/log/mysql_restart_running.pid
-  sleep 3
+  sleep 10
   service mysql restart
   sleep 3
   rm -f /var/run/boa_wait.pid
   rm -f /var/xdrago/log/mysql_restart_running.pid
 fi
 
+ionice -c2 -n7 -p $$
 find ${_BACKUPDIR} -mtime +8 -type d -exec rm -rf {} \;
 echo "Backups older than 8 days deleted"
 

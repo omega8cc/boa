@@ -1089,6 +1089,7 @@ download_helpers_libs() {
     if [ ! -x "${isGit}" ] || [ -z "${isGit}" ]; then
       rm -f /etc/apt/sources.list.d/openssl.list
       apt-get update -qq &> /dev/null
+      apt-get install git -fuy --force-yes --reinstall &> /dev/null
       apt-get install git-core -fuy --force-yes --reinstall &> /dev/null
       sleep 3
     fi

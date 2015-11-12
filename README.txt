@@ -104,7 +104,7 @@ production settings.
 * All libraries & tools required to install and run Nginx based Aegir system.
 * Latest release of MariaDB 5.5 or 10.0 database server with Chive manager.
 * Latest version of Nginx web server.
-* SPDY Nginx support.
+* HTTP/2 or SPDY Nginx support.
 * PFS (Perfect Forward Secrecy) support in Nginx.
 * PHP-FPM 5.6, 5.5, 5.4, 5.3 - multi-install mode, configurable per Octopus.
 * PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse and ionCube.
@@ -159,9 +159,9 @@ Octopus can install the platforms listed below:
  Commons 3.32 ----------------- https://drupal.org/project/commons
  Drupal 7.41.1 ---------------- https://drupal.org/drupal-7.41
  ERPAL 2.2 -------------------- https://drupal.org/project/erpal
- Guardr 2.24 ------------------ https://drupal.org/project/guardr
+ Guardr 2.25 ------------------ https://drupal.org/project/guardr
  OpenAid 2.7 ------------------ https://drupal.org/project/openaid
- OpenAtrium 2.50-rc1 ---------- https://drupal.org/project/openatrium
+ OpenAtrium 2.50-rc2 ---------- https://drupal.org/project/openatrium
  OpenChurch 2.2 --------------- https://drupal.org/project/openchurch
  OpenOutreach 1.25 ------------ https://drupal.org/project/openoutreach
  OpenPublic 1.7 --------------- https://drupal.org/project/openpublic

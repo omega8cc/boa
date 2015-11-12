@@ -2222,7 +2222,8 @@ satellite_run_child_c() {
       fi
     fi
   fi
-  if [ ! -e "${_CORE}/dot-files-ctrl-${_X_VERSION}" ]; then
+  if [ ! -e "${_CORE}/dot-files-ctrl-${_X_VERSION}" ] \
+    && [ -e "${_CORE}" ]; then
     msg "${_STATUS} A: Cleaning up various dot files..."
     cd ${_CORE}
     mrun "find . -name .svn -exec rm -rf {} \;" &> /dev/null
