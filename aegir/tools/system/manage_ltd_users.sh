@@ -5,7 +5,7 @@ SHELL=/bin/bash
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    ionice -c2 -n7 -p$$
+    ionice -c2 -n7 -p $$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -1689,6 +1689,8 @@ else
       if [ -e "/var/spool/cron/crontabs/aegir" ]; then
         sleep 180
         rm -f /var/spool/cron/crontabs/aegir
+        ionice -c2 -n0 -p $$
+        renice 0 -p $$
         service cron reload &> /dev/null
       fi
     fi
@@ -1696,6 +1698,8 @@ else
       || [ -e "/root/.wbhd.clstr.cnf" ]; then
       if [ -e "/var/run/mysqld/mysqld.pid" ] \
         && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
+        ionice -c2 -n0 -p $$
+        renice 0 -p $$
         service cron stop &> /dev/null
         sleep 180
         touch /root/.remote.db.cnf
