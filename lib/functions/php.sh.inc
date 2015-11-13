@@ -539,7 +539,7 @@ install_php_extensions() {
     if [ "$_X86_64_TEST" = "x86_64" ]; then
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ] \
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.2" ]; then
-        mkdir p /var/backups/libyaml
+        mkdir -p /var/backups/libyaml
         cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/
         rm -f /usr/lib/x86_64-linux-gnu/libyaml*
         cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/
@@ -547,7 +547,7 @@ install_php_extensions() {
     else
       if [ ! -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.4" ] \
         || [ -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.2" ]; then
-        mkdir p /var/backups/libyaml
+        mkdir -p /var/backups/libyaml
         cp -af /usr/lib/i386-linux-gnu/libyaml* /var/backups/libyaml/
         rm -f /usr/lib/i386-linux-gnu/libyaml*
         cp -af /usr/lib/libyaml* /usr/lib/i386-linux-gnu/
@@ -730,7 +730,7 @@ update_php_extensions() {
     if [ "$_X86_64_TEST" = "x86_64" ]; then
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ] \
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.2" ]; then
-        mkdir p /var/backups/libyaml
+        mkdir -p /var/backups/libyaml
         cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/
         rm -f /usr/lib/x86_64-linux-gnu/libyaml*
         cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/
@@ -738,7 +738,7 @@ update_php_extensions() {
     else
       if [ ! -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.4" ] \
         || [ -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.2" ]; then
-        mkdir p /var/backups/libyaml
+        mkdir -p /var/backups/libyaml
         cp -af /usr/lib/i386-linux-gnu/libyaml* /var/backups/libyaml/
         rm -f /usr/lib/i386-linux-gnu/libyaml*
         cp -af /usr/lib/libyaml* /usr/lib/i386-linux-gnu/
