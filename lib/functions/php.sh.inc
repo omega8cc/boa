@@ -535,6 +535,7 @@ install_php_extensions() {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
+    rm -f ${pthLog}/yaml*.log
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "$_X86_64_TEST" = "x86_64" ]; then
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ] \
@@ -725,7 +726,7 @@ update_php_extensions() {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
-    rm -f ${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log
+    rm -f ${pthLog}/yaml*.log
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "$_X86_64_TEST" = "x86_64" ]; then
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ] \
