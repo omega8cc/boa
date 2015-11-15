@@ -127,7 +127,6 @@ done
 
 if [ "${_OPTIM}" = "YES" ]; then
   ionice -c2 -n2 -p $$
-  renice 0 -p $$
   touch /var/run/boa_wait.pid
   touch /var/xdrago/log/mysql_restart_running.pid
   sleep 10

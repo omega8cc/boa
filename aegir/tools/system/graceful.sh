@@ -68,7 +68,6 @@ action() {
     echo rotate > /var/log/newrelic/newrelic-daemon.log
   fi
   ionice -c2 -n2 -p $$
-  renice 0 -p $$
   service nginx reload
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
   rm -f -r /tmp/{drush*,pear,jetty*}

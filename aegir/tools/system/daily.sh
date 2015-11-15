@@ -2939,7 +2939,6 @@ find /var/run/*_backup.pid -mtime +1 -exec rm -rf {} \; &> /dev/null
 if [ ! -e "/root/.high_traffic.cnf" ] \
   && [ ! -e "/root/.giant_traffic.cnf" ]; then
   ionice -c2 -n2 -p $$
-  renice 0 -p $$
   echo "INFO: Redis server will be restarted in 60 seconds"
   touch /var/run/boa_wait.pid
   sleep 60

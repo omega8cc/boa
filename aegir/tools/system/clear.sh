@@ -95,11 +95,6 @@ else
 fi
 
 #
-# Back to normal priority
-ionice -c2 -n1 -p $$
-renice 0 -p $$
-
-#
 # Clean up postfix queue to get rid of bounced emails.
 # See also: https://omega8.cc/never-send-mailings-from-aegir-server-322
 sudo postsuper -d ALL &> /dev/null
