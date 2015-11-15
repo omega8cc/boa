@@ -125,7 +125,7 @@ if [ ! -e "/root/.giant_traffic.cnf" ]; then
   echo "speed_purge start `date`" >> /var/log/nginx/speed_purge.log
   ionice -c2 -n7 -p $$
   renice 19 -p $$
-  find /var/lib/nginx/speed/* -mtime +1 -exec rm -rf {} \; &> /dev/null
+  nice -n19 ionice -c2 -n7 find /var/lib/nginx/speed/* -mtime +1 -exec rm -rf {} \; &> /dev/null
   echo "speed_purge complete `date`" >> /var/log/nginx/speed_purge.log
 fi
 
