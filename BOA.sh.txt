@@ -195,14 +195,14 @@ update_agents() {
     if [ "${InTest}" -gt "5" ]; then
       echo ${InTest} > /root/.tg.cnf
       echo ${InTest} > /root/.high_traffic.cnf
-      echo ${InTest} > /root/.giant_traffic.cnf
       echo ${InTest} > /root/.skip_cleanup.cnf
+      rm -f /root/.giant_traffic.cnf
       rm -f /root/.intest.cnf
     else
       rm -f /root/.tg.cnf
       echo ${InTest} > /root/.high_traffic.cnf
-      echo ${InTest} > /root/.giant_traffic.cnf
       echo ${InTest} > /root/.skip_cleanup.cnf
+      rm -f /root/.giant_traffic.cnf
       rm -f /root/.intest.cnf
     fi
   fi

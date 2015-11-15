@@ -120,6 +120,15 @@ if [ -d "/dev/disk" ]; then
   fi
 fi
 
+if [ ! -e "/root/.giant_traffic.cnf" ]; then
+  echo " " >> /var/log/nginx/speed_purge.log
+  echo "speed_purge start `date`" >> /var/log/nginx/speed_purge.log
+  ionice -c2 -n7 -p $$
+  renice 19 -p $$
+  find /var/lib/nginx/speed/* -mtime +1 -exec rm -rf {} \; &> /dev/null
+  echo "speed_purge complete `date`" >> /var/log/nginx/speed_purge.log
+fi
+
 touch /var/xdrago/log/clear.done
 exit 0
 ###EOF2015###

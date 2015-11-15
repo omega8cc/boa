@@ -167,7 +167,7 @@ by the BOA install and upgrade tools exclusively.
  @=> /root/.giant_traffic.cnf
 
   Recommended if you have an extremely busy site(s) hosted. It prevents
-  the daily Speed Booster cache forced cleanup, which happens at midnight.
+  the Speed Booster (Nginx) cache forced cleanup, which happens at midnight.
   However, even with very busy sites hosted, it will be really rarely needed,
   since the daily Speed Booster cache forced cleanup procedure has been
   improved to not cause load spikes, even under "Giant Traffic" pressure.
