@@ -192,14 +192,14 @@ update_agents() {
   if [ "${_BENG_VS}" = "YES" ] \
     && [ -e "/var/xdrago" ]; then
     InTest=$(ls /data/disk/ | wc -l 2>&1)
-    if [ "${InTest}" -gt "10" ]; then
+    if [ "${InTest}" -gt "5" ]; then
       echo ${InTest} > /root/.tg.cnf
       echo ${InTest} > /root/.high_traffic.cnf
       echo ${InTest} > /root/.giant_traffic.cnf
       echo ${InTest} > /root/.skip_cleanup.cnf
       rm -f /root/.intest.cnf
     else
-      echo ${InTest} > /root/.tg.cnf
+      rm -f /root/.tg.cnf
       echo ${InTest} > /root/.high_traffic.cnf
       echo ${InTest} > /root/.giant_traffic.cnf
       echo ${InTest} > /root/.skip_cleanup.cnf
