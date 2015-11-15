@@ -81,6 +81,20 @@ action() {
   if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
     service jetty7 start
   fi
+  if [ ! -e "/root/.high_traffic.cnf" ] \
+    && [ ! -e "/root/.giant_traffic.cnf" ]; then
+    echo "INFO: Redis server will be restarted in 60 seconds"
+    touch /var/run/boa_wait.pid
+    sleep 60
+    service redis-server stop
+    killall -9 redis-server
+    rm -f /var/run/redis.pid
+    rm -f /var/lib/redis/*
+    rm -f /var/log/redis/redis-server.log
+    service redis-server start
+    rm -f /var/run/boa_wait.pid
+    echo "INFO: Redis server restarted OK"
+  fi
   touch /var/xdrago/log/graceful.done
 }
 

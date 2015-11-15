@@ -2935,24 +2935,6 @@ rm -f /data/disk/*/.tmp/.busy.*.pid
 ### Delete duplicity ghost pid file if older than 2 days
 ###
 find /var/run/*_backup.pid -mtime +1 -exec rm -rf {} \; &> /dev/null
-
-if [ ! -e "/root/.high_traffic.cnf" ] \
-  && [ ! -e "/root/.giant_traffic.cnf" ]; then
-  ionice -c2 -n2 -p $$
-  echo "INFO: Redis server will be restarted in 60 seconds"
-  touch /var/run/boa_wait.pid
-  sleep 60
-  service nginx reload
-  service redis-server stop
-  killall -9 redis-server
-  rm -f /var/run/redis.pid
-  rm -f /var/lib/redis/*
-  rm -f /var/log/redis/redis-server.log
-  service redis-server start
-  rm -f /var/run/boa_wait.pid
-  echo "INFO: Redis server restarted OK"
-fi
-
 rm -f /var/run/daily-fix.pid
 echo "INFO: Daily maintenance complete"
 exit 0

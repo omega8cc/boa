@@ -7,7 +7,7 @@
 * * * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/runner.sh             >/dev/null 2>&1
 * * * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/manage_ltd_users.sh   >/dev/null 2>&1
 18 * * * * /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/purge_binlogs.sh      >/dev/null 2>&1
-08 1 * * * /usr/bin/nice -n10 /usr/bin/ionice -c2 -n7 bash /var/xdrago/daily.sh              >/dev/null 2>&1
+08 1 * * * /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/daily.sh              >/dev/null 2>&1
 08 3 * * * /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/mysql_backup.sh       >/dev/null 2>&1
 08 5 * * * /usr/bin/nice -n10 /usr/bin/ionice -c2 -n7 bash /var/xdrago/graceful.sh           >/dev/null 2>&1
 08 6 * * * /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /opt/local/bin/backboa backup     >/dev/null 2>&1
