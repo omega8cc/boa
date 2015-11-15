@@ -2661,7 +2661,7 @@ else
   _VMFAMILY="XEN"
 fi
 #
-if [ "${_DOW}" = "6" ]; then
+if [ "${_DOW}" = "8" ]; then
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
   _MODULES_OFF_SEVEN="background_process coder dblog devel hacked l10n_update \
