@@ -1526,8 +1526,12 @@ fix_modules() {
               echo "WARNING: THIS PLATFORM IS NOT A VALID PRESSFLOW PLATFORM! ${Plr}"
             elif [ -e "${Plr}/modules/path_alias_cache" ] \
               && [ -e "${Plr}/modules/user" ]; then
-              disable_modules "$_MODULES_OFF_SIX"
-              enable_modules "$_MODULES_ON_SIX"
+              if [ ! -z "${_MODULES_OFF_SIX}" ]; then
+                disable_modules "${_MODULES_OFF_SIX}"
+              fi
+              if [ ! -z "${_MODULES_ON_SIX}" ]; then
+                enable_modules "${_MODULES_ON_SIX}"
+              fi
               run_drush7_cmd "sqlq \"UPDATE system SET weight = '-1' \
                 WHERE type = 'module' AND name = 'path_alias_cache'\""
             fi
@@ -1537,11 +1541,15 @@ fix_modules() {
               || [ ! -e "${Plr}/profiles" ]; then
               echo "WARNING: THIS PLATFORM IS BROKEN! ${Plr}"
             else
-              disable_modules "$_MODULES_OFF_SEVEN"
-              if [ "$_ENTITYCACHE_DONT_ENABLE" = "NO" ]; then
+              if [ ! -z "${_MODULES_OFF_SEVEN}" ]; then
+                disable_modules "${_MODULES_OFF_SEVEN}"
+              fi
+              if [ "${_ENTITYCACHE_DONT_ENABLE}" = "NO" ]; then
                 enable_modules "entitycache"
               fi
-              enable_modules "$_MODULES_ON_SEVEN"
+              if [ ! -z "${_MODULES_ON_SEVEN}" ]; then
+                enable_modules "${_MODULES_ON_SEVEN}"
+              fi
             fi
           fi
           if [ -e "${Dir}/modules/commerce_ubercart_check.info" ]; then
