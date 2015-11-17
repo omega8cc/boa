@@ -3707,7 +3707,7 @@ install_update_xdrago() {
         wait
       fi
     else
-      sed -i "s/log\/lshell/log\/lsh/g" /etc/logrotate.d/lshell &> /dev/null
+      rm -f /etc/logrotate.d/lshell
       wait
     fi
   fi
@@ -3841,8 +3841,7 @@ install_update_lshell() {
   else
     _PATH_LSHELL="/usr/local/bin/lshell"
   fi
-  if [ ! -e "/etc/logrotate.d/lshell" ] \
-    || [ ! -e "$_PATH_LSHELL" ] \
+  if [ ! -e "$_PATH_LSHELL" ] \
     || [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
@@ -3871,7 +3870,7 @@ install_update_lshell() {
       cp -af ${bldPth}/aegir/tools/system/conf/lshell.conf /etc/lshell.conf
       echo "$_PATH_LSHELL" >> /etc/shells
     fi
-    sed -i "s/log\/lshell/log\/lsh/g" /etc/logrotate.d/lshell &> /dev/null
+    rm -f /etc/logrotate.d/lshell
     addgroup --system lshellg &> /dev/null
     mkdir -p /var/log/lsh
     chown :lshellg /var/log/lsh
@@ -3890,11 +3889,6 @@ install_update_lshell() {
     if [ ! -L "/usr/bin/lshell" ]; then
       ln -sf /usr/local/bin/lshell /usr/bin/lshell &> /dev/null
     fi
-  fi
-  if [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-    || [ "${_VMFAMILY}" = "VS" ]; then
-    sed -i "s/rotate 12/rotate 50/g" /etc/logrotate.d/lshell &> /dev/null
   fi
 }
 
