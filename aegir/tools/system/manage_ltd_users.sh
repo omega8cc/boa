@@ -1690,7 +1690,6 @@ else
         sleep 180
         rm -f /var/spool/cron/crontabs/aegir
         ionice -c2 -n0 -p $$
-        renice 0 -p $$
         service cron reload &> /dev/null
       fi
     fi
@@ -1699,7 +1698,6 @@ else
       if [ -e "/var/run/mysqld/mysqld.pid" ] \
         && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
         ionice -c2 -n0 -p $$
-        renice 0 -p $$
         service cron stop &> /dev/null
         sleep 180
         touch /root/.remote.db.cnf
