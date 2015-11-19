@@ -423,25 +423,6 @@ prepare_drupal8_core() {
   fi
 }
 #
-# Prepare D8 dev core.
-prepare_dr8_dev_core() {
-  if [ ! -e "${_D8_DEV_CORE_DIR}" ]; then
-    rm -f -r ${_D8_DEV_CORE_DIR}
-    cd /data/all/000/core
-    curl ${crlGet} \
-      "http://${_USE_MIR}/core/drupal-${_D8_DEV_COMMIT}.tar.gz" \
-      | tar -xzf -
-    find ${_D8_DEV_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
-    find ${_D8_DEV_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
-    cd ${_D8_DEV_CORE_DIR}/
-    fix_dirs_files
-    rename_drupal8_profiles
-    ### rm -f modules/o_contrib_eight
-    ### ln -s ${_CORE}/o_contrib_eight modules/o_contrib_eight
-    cd ${_CORE}
-  fi
-}
-#
 # Remove D6 core from distro directory.
 nocore_d6_dist_clean() {
   rm -f ${_SHRD_PLPATH}/.gitignore
@@ -636,7 +617,6 @@ fi
 _D6_CORE_DIR="/data/all/000/core/pressflow-${_SMALLCORE6}"
 _D7_CORE_DIR="/data/all/000/core/drupal-${_SMALLCORE7}"
 _D8_CORE_DIR="/data/all/000/core/drupal-${_SMALLCORE8}"
-_D8_DEV_CORE_DIR="/data/all/000/core/drupal-${_D8_DEV_COMMIT}"
 
 
 ###---### Distributions full names.
@@ -649,7 +629,6 @@ _F_COMMERCE1="Commerce ${_COMMERCE1} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_COMMERCE2="Commerce ${_COMMERCE2} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_COMMONS2="Commons ${_COMMONS2} ${_SMALLCORE6} [${_THIS_CORE}]"
 _F_COMMONS3="Commons ${_COMMONS3} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_D8_DEV_LABEL="Drupal ${_D8_DEV_LABEL}"
 _F_DRUPAL6="Drupal ${_SMALLCORE6} [${_THIS_CORE}]"
 _F_DRUPAL7="Drupal ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_DRUPAL8="Drupal ${_SMALLCORE8} [${_THIS_CORE}]"
@@ -2284,12 +2263,6 @@ save_verify_platforms() {
     if [ ! -e "${pthDst}/drupal-${_SMALLCORE8}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL8" standard \
         ${pthDst}/drupal-${_SMALLCORE8} &> /dev/null
-    fi
-  fi
-  if [ -d "${pthDst}/drupal-${_D8_DEV_LABEL}" ]; then
-    if [ ! -e "${pthDst}/drupal-${_D8_DEV_LABEL}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_D8_DEV_LABEL" standard \
-        ${pthDst}/drupal-${_D8_DEV_LABEL} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/erpal-${_ERPAL}-${_SMALLCORE7}" ]; then

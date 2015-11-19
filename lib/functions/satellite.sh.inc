@@ -2674,13 +2674,6 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/drupal-${_D8_DEV_LABEL}/sites" ]; then
-      if [ ! -L "${_QH}/drupal-${_D8_DEV_LABEL}" ]; then
-        _A="${_QR}/drupal-${_D8_DEV_LABEL}/sites"
-        _B="${_QH}/drupal-${_D8_DEV_LABEL}"
-        ln -sf ${_A} ${_B}
-      fi
-    fi
     if [ -d "${_QR}/erpal-${_ERPAL}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/erpal-${_ERPAL}-${_SMALLCORE7}" ]; then
         _A="${_QR}/erpal-${_ERPAL}-${_SMALLCORE7}/sites"
@@ -3074,8 +3067,6 @@ satellite_make() {
   echo "_COMMERCE2=\"${_COMMERCE2}\""                 >> ${writeTo}
   echo "_COMMONS2=\"${_COMMONS2}\""                   >> ${writeTo}
   echo "_COMMONS3=\"${_COMMONS3}\""                   >> ${writeTo}
-  echo "_D8_DEV_COMMIT=\"${_D8_DEV_COMMIT}\""         >> ${writeTo}
-  echo "_D8_DEV_LABEL=\"${_D8_DEV_LABEL}\""           >> ${writeTo}
   echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${writeTo}
   echo "_DISTRO=\"${_DISTRO}\""                       >> ${writeTo}
   echo "_DOMAIN=\"${_DOMAIN}\""                       >> ${writeTo}
