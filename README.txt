@@ -158,7 +158,7 @@ Octopus can install the platforms listed below:
  Commerce 2.30 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.32 ----------------- https://drupal.org/project/commons
  Drupal 7.41.1 ---------------- https://drupal.org/drupal-7.41
- ERPAL 2.2 -------------------- https://drupal.org/project/erpal
+ ERPAL 2.3 -------------------- https://drupal.org/project/erpal
  Guardr 2.25 ------------------ https://drupal.org/project/guardr
  OpenAid 2.7 ------------------ https://drupal.org/project/openaid
  OpenAtrium 2.50-rc2 ---------- https://drupal.org/project/openatrium
