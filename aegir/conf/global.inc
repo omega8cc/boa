@@ -858,6 +858,9 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     }
     if ($conf['install_profile'] != 'hostmaster' && ($expire_in_seconds > -1)) {
       header("X-Accel-Expires: " . $expire_in_seconds);
+      if ($expire_in_seconds > -1 && $expire_in_seconds < 2) {
+        $conf['cache'] = 0; // Disable page caching on the fly
+      }
     }
   }
 }
