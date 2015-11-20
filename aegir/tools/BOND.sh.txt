@@ -853,7 +853,7 @@ tune_web_server_config() {
 #
 # Tune memory limits for SQL server.
 tune_sql_memory_limits() {
-  urlDld="https://raw.githubusercontent.com/major/MySQLTuner-perl/master"
+  # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
   pthTun="/var/opt/mysqltuner.pl"
   outTun="/var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt"
   if [ -e "/root/.mstr.clstr.cnf" ] \
@@ -868,7 +868,7 @@ tune_sql_memory_limits() {
     msg "NOTE! This step may take a LONG time, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
     rm -f /var/opt/mysqltuner*
-    curl ${crlGet} "${urlDld}/mysqltuner.pl" -o ${pthTun}
+    curl ${crlGet} "${urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${pthTun}
     if [ ! -e "${pthTun}" ]; then
       curl ${crlGet} "${urlDev}/mysqltuner.pl" -o ${pthTun}
     fi
