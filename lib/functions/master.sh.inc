@@ -150,7 +150,7 @@ provision_backend_dbpass_sync() {
     wait
   fi
   mysqladmin flush-privileges &> /dev/null
-  su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
+  su -s /bin/bash - aegir -c "drush cc drush &> /dev/null"
   rm -f -r /var/aegir/.tmp/cache
   if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ]; then
     su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_localhost \
@@ -607,7 +607,7 @@ EOFMYSQL
     fi
     _U_HD="/var/aegir/.drush"
     chattr +i ${_U_HD}/php.ini &> /dev/null
-    su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
+    su -s /bin/bash - aegir -c "drush cc drush &> /dev/null"
     rm -f -r /var/aegir/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Running hosting-dispatch (1/3)..."
