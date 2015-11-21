@@ -1887,7 +1887,7 @@ provision_backend_dbpass_sync() {
     wait
   fi
   mysqladmin flush-privileges &> /dev/null
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cache-clear drush &> /dev/null"
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush &> /dev/null"
   rm -f -r ${_ROOT}/.tmp/cache
   if [ -e "${_ROOT}/.drush/server_localhost.alias.drushrc.php" ]; then
     su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
@@ -4102,7 +4102,7 @@ satellite_child_b_aegir_build() {
     fi
 
     msg "${_STATUS} B: Running hostmaster-install, please wait..."
-    ${_DRUSHCMD} cache-clear drush >${_ROOT}/log/install.log 2>&1
+    ${_DRUSHCMD} cc drush >${_ROOT}/log/install.log 2>&1
     rm -f -r ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} hostmaster-install ${_DOMAIN} \
@@ -4141,7 +4141,7 @@ satellite_child_b_aegir_build() {
     ln -sf ${_HM_ROOT} ${_ROOT}/u/${_DOMAIN}
     rm -f /data/u/${_DOMAIN} &> /dev/null
     ln -sf ${_HM_ROOT} /data/u/${_DOMAIN}
-    ${_DRUSHCMD} cache-clear drush &> /dev/null
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} B: Running hosting-dispatch (1/3)..."
@@ -4161,7 +4161,7 @@ satellite_child_b_aegir_build() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} B: Testing previous install..."
     fi
-    ${_DRUSHCMD} cache-clear drush &> /dev/null
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
 
     ### Pre-Fix for migrated/merged instances
@@ -4210,7 +4210,7 @@ satellite_child_b_aegir_build() {
       ${_DRUSHCMD} @hostmaster pm-uninstall css_emimage -y &> /dev/null
     fi
     ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
-    ${_DRUSHCMD} cache-clear drush &> /dev/null
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
     if [ -d "${_HM_ROOT}/modules/o_contrib" ] \
       && [ ! -L "${_HM_ROOT}/modules/o_contrib" ]; then
@@ -4269,7 +4269,7 @@ satellite_child_b_aegir_build() {
       export TERM=vt100
     fi
     cd ${_PREV_HM_ROOT}
-    ${_DRUSHCMD} cache-clear drush &> /dev/null
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
 
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
@@ -4326,7 +4326,7 @@ satellite_child_b_aegir_build() {
           SET web_server='2' WHERE web_server='0'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE users_roles \
           SET rid='7' WHERE rid='5'" &> /dev/null
-        ${_DRUSHCMD} cache-clear drush &> /dev/null
+        ${_DRUSHCMD} cc drush &> /dev/null
         rm -f -r ${_ROOT}/.tmp/cache
         ${_DRUSHCMD} @hostmaster hosting-task @server_localhost \
           verify --force &> /dev/null
@@ -4374,7 +4374,7 @@ satellite_child_b_aegir_build() {
     fi
     ### Fix for old migrated/merged instances
 
-    ${_DRUSHCMD} cache-clear drush &> /dev/null
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y -d
@@ -4559,7 +4559,7 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster en path_alias_cache -y &> /dev/null
     rm -f -r ${_HM_ROOT}/profiles/hostmaster/modules/hosting_backup_gc
     rm -f -r ${_HM_ROOT}/modules/cookie_cache_bypass
-    ${_DRUSHCMD} cache-clear drush &> /dev/null
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
     ${_DRUSHCMD} @hostmaster en hosting_client \
       protect_critical_users \
