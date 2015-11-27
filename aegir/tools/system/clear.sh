@@ -122,13 +122,17 @@ fi
 
 _IF_BCP=$(ps aux | grep '[d]uplicity' | awk '{print $2}')
 
-if [ -z "${_IF_BCP}" ] && [ ! -e "/root/.giant_traffic.cnf" ]; then
+if [ -z "${_IF_BCP}" ] \
+  && [ ! -e "/var/run/speed_purge.pid" ] \
+  && [ ! -e "/root/.giant_traffic.cnf" ]; then
+  touch /var/run/speed_purge.pid
   echo " " >> /var/log/nginx/speed_purge.log
   echo "speed_purge start `date`" >> /var/log/nginx/speed_purge.log
   ionice -c2 -n7 -p $$
   renice 19 -p $$
   nice -n19 ionice -c2 -n7 find /var/lib/nginx/speed/* -mtime +1 -exec rm -rf {} \; &> /dev/null
   echo "speed_purge complete `date`" >> /var/log/nginx/speed_purge.log
+  rm -f /var/run/speed_purge.pid
 fi
 
 touch /var/xdrago/log/clear.done
