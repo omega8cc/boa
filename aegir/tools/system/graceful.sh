@@ -30,12 +30,6 @@ check_root() {
 check_root
 
 action() {
-  if [ ! -e "/root/.giant_traffic.cnf" ]; then
-    echo " " >> /var/log/nginx/speed_purge.log
-    echo "speed_purge start `date`" >> /var/log/nginx/speed_purge.log
-    nice -n19 ionice -c2 -n7 find /var/lib/nginx/speed/* -mtime +1 -exec rm -rf {} \; &> /dev/null
-    echo "speed_purge complete `date`" >> /var/log/nginx/speed_purge.log
-  fi
   mkdir -p /usr/share/GeoIP
   chmod 755 /usr/share/GeoIP
   cd /tmp

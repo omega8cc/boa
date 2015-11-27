@@ -120,7 +120,9 @@ if [ -d "/dev/disk" ]; then
   fi
 fi
 
-if [ ! -e "/root/.giant_traffic.cnf" ]; then
+_IF_BCP=$(ps aux | grep '[d]uplicity' | awk '{print $2}')
+
+if [ -z "${_IF_BCP}" ] && [ ! -e "/root/.giant_traffic.cnf" ]; then
   echo " " >> /var/log/nginx/speed_purge.log
   echo "speed_purge start `date`" >> /var/log/nginx/speed_purge.log
   ionice -c2 -n7 -p $$
