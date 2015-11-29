@@ -3324,6 +3324,7 @@ sys_packages_install() {
               libt1-5 \
               libt1-dev \
               libterm-readkey-perl \
+              libtext-template-perl \
               libtool \
               libwww-perl \
               libxcrypt1 \
