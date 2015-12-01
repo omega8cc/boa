@@ -3241,7 +3241,11 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  if [[ "${_XTRAS_LIST}" =~ "IMG" ]]; then
+  if [[ "${_XTRAS_LIST}" =~ "IMG" ]] \
+    || [[ "${_THISHOST}" =~ ".host8." ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+    || [ -e "/root/.auto.up.cnf" ] \
+    || [ -e "/root/.host8.cnf" ]; then
     _EXTRA_PACKAGES="advancecomp \
                      jpegoptim \
                      libjpeg-progs \

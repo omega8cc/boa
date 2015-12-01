@@ -201,23 +201,44 @@ satellite_create_web_user() {
 satellite_tune_fpm_config() {
   satellite_tune_fpm_workers
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
-  if [ "$_LIM_FPM" -lt "24" ]; then
-    if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
-      _LIM_FPM=24
+  if [[ "${_THISHOST}" =~ ".host8." ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+    || [ "${_VMFAMILY}" = "VS" ]; then
+    if [ "${_CLIENT_OPTION}" = "POWER" ]; then
+      _LIM_FPM=32
+      _PHP_FPM_WORKERS=64
+    elif [ "${_CLIENT_OPTION}" = "SSD" ] \
+      || [ "${_CLIENT_OPTION}" = "EDGE" ]; then
+      _LIM_FPM=4
+      _PHP_FPM_WORKERS=8
+    else
+      _LIM_FPM=2
+      _PHP_FPM_WORKERS=4
     fi
-  fi
-  if [ "${_CLIENT_OPTION}" = "MICRO" ]; then
-    _LIM_FPM=2
-    _PHP_FPM_WORKERS=4
+    if [ -e "/data/disk/${_USER}/log/cores.txt" ]; then
+      _CLIENT_CORES=$(cat /data/disk/${_USER}/log/cores.txt 2>&1)
+      _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
+    fi
+    _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
+    if [ ! -z "${_CLIENT_CORES}" ] \
+      && [ "${_CLIENT_CORES}" -gt "0" ]; then
+      _LIM_FPM=$(( _LIM_FPM *= _CLIENT_CORES ))
+      _PHP_FPM_WORKERS=$(( _PHP_FPM_WORKERS *= _CLIENT_CORES ))
+    fi
+    if [ "${_LIM_FPM}" -gt "100" ]; then
+      _LIM_FPM=100
+    fi
+    if [ "${_PHP_FPM_WORKERS}" -gt "200" ]; then
+      _PHP_FPM_WORKERS=200
+    fi
   fi
   _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
   if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
     _DO_NOTHING=YES
   else
     _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
-    if [ ! -z "${_PHP_FPM_WORKERS}" ] && [ "${_PHP_FPM_WORKERS}" -gt "0" ]; then
+    if [ ! -z "${_PHP_FPM_WORKERS}" ] \
+      && [ "${_PHP_FPM_WORKERS}" -gt "0" ]; then
       _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
     fi
   fi
