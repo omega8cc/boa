@@ -151,9 +151,6 @@ if [ "${_PHP_FPM_VERSION}" = "5.5" ] \
 elif [ "${_PHP_FPM_VERSION}" = "5.6" ] \
   && [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
   _D_8_ALLOW=YES
-elif [ "${_PHP_FPM_VERSION}" = "5.4" ] \
-  && [ "${_PHP_CLI_VERSION}" = "5.4" ]; then
-  _D_8_ALLOW=YES
 else
   _D_8_ALLOW=NO
 fi
