@@ -280,7 +280,7 @@ hostmaster_mi_up() {
   if [ -z "${TERM+x}" ]; then
     export TERM=vt100
   fi
-  ${_DRUSHCMD} cache-clear drush &> /dev/null
+  ${_DRUSHCMD} cc drush &> /dev/null
   rm -f -r ${_ROOT}/.tmp/cache
   ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
     WHERE task_type='delete' AND task_status='-1'" &> /dev/null

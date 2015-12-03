@@ -95,11 +95,6 @@ else
 fi
 
 #
-# Back to normal priority
-ionice -c2 -n1 -p $$
-renice 0 -p $$
-
-#
 # Clean up postfix queue to get rid of bounced emails.
 # See also: https://omega8.cc/never-send-mailings-from-aegir-server-322
 sudo postsuper -d ALL &> /dev/null
@@ -123,6 +118,19 @@ if [ -d "/dev/disk" ]; then
     swapoff -a
     swapon -a
   fi
+fi
+
+_IF_BCP=$(ps aux | grep '[d]uplicity' | awk '{print $2}')
+
+if [ -z "${_IF_BCP}" ] \
+  && [ ! -e "/var/run/speed_purge.pid" ] \
+  && [ ! -e "/root/.giant_traffic.cnf" ]; then
+  touch /var/run/speed_purge.pid
+  echo " " >> /var/log/nginx/speed_purge.log
+  echo "speed_purge start `date`" >> /var/log/nginx/speed_purge.log
+  nice -n19 ionice -c2 -n7 find /var/lib/nginx/speed/* -mtime +1 -exec rm -rf {} \; &> /dev/null
+  echo "speed_purge complete `date`" >> /var/log/nginx/speed_purge.log
+  rm -f /var/run/speed_purge.pid
 fi
 
 touch /var/xdrago/log/clear.done

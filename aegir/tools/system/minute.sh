@@ -11,6 +11,7 @@ check_pdnsd() {
       if [[ "${_THIS_DNS_TEST}" =~ "no servers could be reached" ]]; then
         service pdnsd stop &> /dev/null
         sleep 1
+        renice 10 -p $$
         perl /var/xdrago/proc_num_ctrl.cgi
       fi
     fi
@@ -25,6 +26,7 @@ if [ -e "/var/log/php" ]; then
     sleep 8
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
     rm -f /var/log/php/*
+    renice 10 -p $$
     if [ -e "/etc/init.d/php56-fpm" ]; then
       service php56-fpm start
     fi
@@ -48,6 +50,7 @@ if [ -e "/var/log/php" ]; then
     sleep 8
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
     rm -f /var/log/php/*
+    renice 10 -p $$
     if [ -e "/etc/init.d/php56-fpm" ]; then
       service php56-fpm start
     fi
@@ -72,6 +75,7 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]]; then
   echo $_PHPLOG_SIZE_TEST too big
   touch /var/run/fmp_wait.pid
   rm -f /var/log/php/*
+  renice 10 -p $$
   if [ -e "/etc/init.d/php56-fpm" ]; then
     service php56-fpm reload
   fi
@@ -138,6 +142,7 @@ jetty_restart() {
   sleep 5
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
   rm -f /var/log/jetty{7,8,9}/*
+  renice 10 -p $$
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
     service jetty9 start
   fi
@@ -184,9 +189,8 @@ if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt "4" 
     /var/xdrago/log/php-fpm-master-count.kill.log
 fi
 
-if [ -e "/root/.high_traffic.cnf" ]; then
-  _DO_NOTHING=YES
-else
+if [ ! -e "/root/.high_traffic.cnf" ] \
+  && [ ! -e "/root/.giant_traffic.cnf" ]; then
   perl /var/xdrago/monitor/check/segfault_alert
 fi
 
@@ -318,7 +322,8 @@ perl /var/xdrago/monitor/check/escapecheck
 perl /var/xdrago/monitor/check/hackcheck
 perl /var/xdrago/monitor/check/hackftp
 perl /var/xdrago/monitor/check/scan_nginx
-if [ ! -e "/root/.high_traffic.cnf" ]; then
+if [ ! -e "/root/.high_traffic.cnf" ] \
+  && [ ! -e "/root/.giant_traffic.cnf" ]; then
   perl /var/xdrago/monitor/check/locked
 fi
 perl /var/xdrago/monitor/check/sqlcheck

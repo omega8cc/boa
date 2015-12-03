@@ -13,6 +13,7 @@ else
   sleep 10
   service mysql stop
   sleep 10
+  renice 10 -p $$
   service mysql start
   sleep 30
   rm -f /var/run/boa_wait.pid

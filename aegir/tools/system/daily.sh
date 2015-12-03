@@ -1526,8 +1526,12 @@ fix_modules() {
               echo "WARNING: THIS PLATFORM IS NOT A VALID PRESSFLOW PLATFORM! ${Plr}"
             elif [ -e "${Plr}/modules/path_alias_cache" ] \
               && [ -e "${Plr}/modules/user" ]; then
-              disable_modules "$_MODULES_OFF_SIX"
-              enable_modules "$_MODULES_ON_SIX"
+              if [ ! -z "${_MODULES_OFF_SIX}" ]; then
+                disable_modules "${_MODULES_OFF_SIX}"
+              fi
+              if [ ! -z "${_MODULES_ON_SIX}" ]; then
+                enable_modules "${_MODULES_ON_SIX}"
+              fi
               run_drush7_cmd "sqlq \"UPDATE system SET weight = '-1' \
                 WHERE type = 'module' AND name = 'path_alias_cache'\""
             fi
@@ -1537,11 +1541,15 @@ fix_modules() {
               || [ ! -e "${Plr}/profiles" ]; then
               echo "WARNING: THIS PLATFORM IS BROKEN! ${Plr}"
             else
-              disable_modules "$_MODULES_OFF_SEVEN"
-              if [ "$_ENTITYCACHE_DONT_ENABLE" = "NO" ]; then
+              if [ ! -z "${_MODULES_OFF_SEVEN}" ]; then
+                disable_modules "${_MODULES_OFF_SEVEN}"
+              fi
+              if [ "${_ENTITYCACHE_DONT_ENABLE}" = "NO" ]; then
                 enable_modules "entitycache"
               fi
-              enable_modules "$_MODULES_ON_SEVEN"
+              if [ ! -z "${_MODULES_ON_SEVEN}" ]; then
+                enable_modules "${_MODULES_ON_SEVEN}"
+              fi
             fi
           fi
           if [ -e "${Dir}/modules/commerce_ubercart_check.info" ]; then
@@ -2672,7 +2680,7 @@ if [ "${_DOW}" = "6" ]; then
     memcache_admin performance poormanscron search_krumo security_review \
     stage_file_proxy supercron syslog ultimate_cron update varnish \
     watchdog_live xhprof"
-else
+elif [ "${_DOW}" = "8" ]; then
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
   _MODULES_OFF_SEVEN="background_process dblog syslog update"
@@ -2935,25 +2943,6 @@ rm -f /data/disk/*/.tmp/.busy.*.pid
 ### Delete duplicity ghost pid file if older than 2 days
 ###
 find /var/run/*_backup.pid -mtime +1 -exec rm -rf {} \; &> /dev/null
-
-if [ ! -e "/root/.high_traffic.cnf" ] \
-  && [ ! -e "/root/.giant_traffic.cnf" ]; then
-  ionice -c2 -n2 -p $$
-  renice 0 -p $$
-  echo "INFO: Redis server will be restarted in 60 seconds"
-  touch /var/run/boa_wait.pid
-  sleep 60
-  service nginx reload
-  service redis-server stop
-  killall -9 redis-server
-  rm -f /var/run/redis.pid
-  rm -f /var/lib/redis/*
-  rm -f /var/log/redis/redis-server.log
-  service redis-server start
-  rm -f /var/run/boa_wait.pid
-  echo "INFO: Redis server restarted OK"
-fi
-
 rm -f /var/run/daily-fix.pid
 echo "INFO: Daily maintenance complete"
 exit 0

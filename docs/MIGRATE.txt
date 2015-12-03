@@ -63,8 +63,6 @@
   ### test connection to target
     ssh root@target-ip
     exit
-  ### transfer shared files
-    xboa transfer shared target-ip
   ### enable site_readonly globally
     cp -af /data/conf/global.inc /data/conf/global.inc.bak
     echo >> /data/conf/global.inc
@@ -74,17 +72,16 @@
 
 @=> On the source-host
   xboa create o1 target-ip
-  xboa export o1 target-ip
-  xboa transfer o1 target-ip
 
 @=> On the target-host
   service cron stop
-  (then wait 2 minutes)
   chmod 644 /data/all/cpuinfo
+  (then wait 5 minutes)
 
 @=> On the source-host
-  ### sync shared files again
+  xboa export o1 target-ip
   xboa transfer shared target-ip
+  xboa transfer o1 target-ip
 
 @=> On the target-host
   ln -sf /bin/websh /bin/sh

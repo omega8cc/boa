@@ -303,7 +303,7 @@ update_php_conf() {
 # Tune Web Sever configuration.
 tune_web_server_config() {
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
-  if [ "$_LIM_FPM" -lt "24" ]; then
+  if [ "${_LIM_FPM}" -lt "24" ]; then
     if [[ "${_THISHOST}" =~ ".host8." ]] \
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
@@ -319,10 +319,6 @@ tune_web_server_config() {
     if [ ! -z "${_PHP_FPM_WORKERS}" ] && [ "${_PHP_FPM_WORKERS}" -gt "0" ]; then
       _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
     fi
-  fi
-  _START_LEGACY_FPM=$(( _LIM_FPM - 21 ))
-  if [ "$_START_LEGACY_FPM" -lt "3" ]; then
-    _START_LEGACY_FPM=3
   fi
   _PHP_V="56 55 54 53"
   for e in ${_PHP_V}; do
@@ -522,7 +518,9 @@ install_php_extensions() {
   st_runner "make --quiet install" 2> /dev/null
   touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
   ###--------------------###
-  if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ]; then
+  if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ] \
+    || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.2" ] \
+    || [ -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.2" ]; then
     msg "INFO: Installing LibYAML for PHP..."
     cd /var/opt
     rm -f -r yaml*
@@ -533,17 +531,20 @@ install_php_extensions() {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
+    rm -f ${pthLog}/yaml*.log
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "$_X86_64_TEST" = "x86_64" ]; then
-      if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ]; then
-        mkdir p /var/backups/libyaml
+      if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ] \
+        || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.2" ]; then
+        mkdir -p /var/backups/libyaml
         cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/
         rm -f /usr/lib/x86_64-linux-gnu/libyaml*
         cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/
       fi
     else
-      if [ ! -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.4" ]; then
-        mkdir p /var/backups/libyaml
+      if [ ! -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.4" ] \
+        || [ -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.2" ]; then
+        mkdir -p /var/backups/libyaml
         cp -af /usr/lib/i386-linux-gnu/libyaml* /var/backups/libyaml/
         rm -f /usr/lib/i386-linux-gnu/libyaml*
         cp -af /usr/lib/libyaml* /usr/lib/i386-linux-gnu/
@@ -708,7 +709,9 @@ update_php_extensions() {
     touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
-  if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ]; then
+  if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ] \
+    || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.2" ] \
+    || [ -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.2" ]; then
     msg "INFO: Installing LibYAML upgrade for PHP..."
     cd /var/opt
     rm -f -r yaml*
@@ -719,7 +722,25 @@ update_php_extensions() {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
-    rm -f ${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log
+    rm -f ${pthLog}/yaml*.log
+    _X86_64_TEST=$(uname -m 2>&1)
+    if [ "$_X86_64_TEST" = "x86_64" ]; then
+      if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ] \
+        || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.2" ]; then
+        mkdir -p /var/backups/libyaml
+        cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/
+        rm -f /usr/lib/x86_64-linux-gnu/libyaml*
+        cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/
+      fi
+    else
+      if [ ! -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.4" ] \
+        || [ -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.2" ]; then
+        mkdir -p /var/backups/libyaml
+        cp -af /usr/lib/i386-linux-gnu/libyaml* /var/backups/libyaml/
+        rm -f /usr/lib/i386-linux-gnu/libyaml*
+        cp -af /usr/lib/libyaml* /usr/lib/i386-linux-gnu/
+      fi
+    fi
   fi
   if [ ! -e "${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing YAML upgrade for PHP ${_T_PHP_VRN}..."
