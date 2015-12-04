@@ -136,9 +136,9 @@ _TUNE_PHP_CLI_TIMEOUT=7200
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_AEGIR_VERSION="BOA-2.4.6"
+_AEGIR_VERSION="BOA-2.4.7"
 _BRANCH_BOA="2.4.x-dev"
-_X_VERSION="BOA-2.4.6"
+_X_VERSION="BOA-2.4.7"
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)

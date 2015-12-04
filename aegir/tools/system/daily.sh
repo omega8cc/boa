@@ -32,7 +32,7 @@ check_root
 
 _WEBG=www-data
 _OPENSSL_VRN=1.0.2e
-_X_SE="2.4.6-stable"
+_X_SE="2.4.7-stable"
 _OSV=$(lsb_release -sc 2>&1)
 if [ "${_OSV}" = "squeeze" ]; then
   _OPENSSL_VRN=1.0.1p
