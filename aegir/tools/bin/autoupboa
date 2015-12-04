@@ -145,10 +145,10 @@ if [ -e "/data/disk/arch" ]; then
     || [ -e "/root/.host8.cnf" ] \
     || [ "${_AUTO_UP}" = "YES" ]; then
     _AUTO_UP_WEEKLY=7
-    _AUTO_UP_MONTH=7
-    _AUTO_UP_DAY=7
+    _AUTO_UP_MONTH=12
+    _AUTO_UP_DAY=5
     _AUTO_PHP="php-all"
-    _AUTO_VER="head"
+    _AUTO_VER="stable"
   fi
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
