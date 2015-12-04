@@ -166,7 +166,7 @@ Octopus can install the platforms listed below:
  OpenOutreach 1.25 ------------ https://drupal.org/project/openoutreach
  OpenPublic 1.7 --------------- https://drupal.org/project/openpublic
  Panopoly 1.29 ---------------- https://drupal.org/project/panopoly
- Ubercart 3.8 ----------------- https://drupal.org/project/ubercart
+ Ubercart 3.9 ----------------- https://drupal.org/project/ubercart
 
  @ Pressflow 6.37.1
 
