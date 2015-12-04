@@ -2245,13 +2245,13 @@ satellite_run_child_c() {
   fi
   if [ ! -e "${_CORE}/dot-files-ctrl-${_X_VERSION}" ] \
     && [ -e "${_CORE}" ]; then
-    msg "${_STATUS} A: Cleaning up various dot files..."
+    msg "${_STATUS} A: Cleaning up various dot files, please wait..."
     cd ${_CORE}
-    mrun "find . -name .svn -exec rm -rf {} \;" &> /dev/null
-    mrun "find . -name .bzr -exec rm -rf {} \;" &> /dev/null
-    mrun "find . -name .git -exec rm -rf {} \;" &> /dev/null
-    mrun "find . -name .DS_Store -exec rm -rf {} \;" &> /dev/null
-    mrun "find . -name "._*" -type f | xargs rm -rf" &> /dev/null
+    find . -name .svn -exec rm -rf {} \; &> /dev/null
+    find . -name .bzr -exec rm -rf {} \; &> /dev/null
+    find . -name .git -exec rm -rf {} \; &> /dev/null
+    find . -name .DS_Store -exec rm -rf {} \; &> /dev/null
+    find . -name "._*" -type f | xargs rm -rf &> /dev/null
     touch ${_CORE}/dot-files-ctrl-${_X_VERSION}
   fi
 }
