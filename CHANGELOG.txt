@@ -15,7 +15,7 @@
   @=> All supported Aegir platforms have been updated with latest Drupal cores
 
   @=> Drupal 8 support for custom platforms in the ~/static directory tree
-      will be included, along with Drush 8 and PHP 7 in the upcoming
+      will be included, along with Drush 8 and PHP 7 in the *upcoming*
       BOA-3.0.0 release: https://github.com/omega8cc/boa/milestones/3.0.0
 
   @=> This BOA release (2.4.7) is the last release which still supports

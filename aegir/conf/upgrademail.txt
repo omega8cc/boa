@@ -4,9 +4,27 @@ Your Aegir Hosting System has been upgraded to version boa.version
 
   https://aegir.url.name
 
-This BOA release includes several important system upgrades and
-bug fixes. All supported Aegir platforms have been updated with
-latest Drupal cores.
+This BOA release includes several important system upgrades and bug fixes,
+with most notable features and changes listed below.
+
+@=> All supported Aegir platforms have been updated with latest Drupal cores
+
+@=> Drupal 8 support for custom platforms in the ~/static directory tree
+    will be included, along with Drush 8 and PHP 7 in the *upcoming*
+    BOA-3.0.0 release: https://github.com/omega8cc/boa/milestones/3.0.0
+
+@=> This BOA release (2.4.7) is the last release which still supports
+    deprecated PHP versions: 5.3 and 5.4 -- You should switch to PHP 5.6
+    or at least 5.5 as soon as possible, or you will not be able to upgrade
+    to newer BOA versions after 2.4.7 -- https://omega8.cc/node/330
+
+@=> What are BOA plans for Drupal 6 support after February 24th, 2016?
+    We will support Drupal/Pressflow 6 in all new releases, as long as
+    available PHP versions will allow to use it (we run our own Pressflow 6
+    based site on PHP 5.6 for many months with zero issues). For more details
+    please check: https://github.com/omega8cc/boa/issues/824
+
+@=> BOA switched from SPDY to HTTP/2 + PFS on all supported OS versions
 
 We recommend that you upgrade your sites using this safe workflow:
 
@@ -15,7 +33,7 @@ We recommend that you upgrade your sites using this safe workflow:
 You can find all details on how to use new features, along with all
 other changes explained in the release notes and changelog available at:
 
-  https://omega8.cc/boa-246-full-edition-366
+  https://omega8.cc/boa-247-full-edition-371
 
 It is always highly recommended that you read extensive release notes
 and changelog posted on our website for previous BOA Editions, so you
