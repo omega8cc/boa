@@ -1,6 +1,6 @@
 
 ### Stable BOA-2.4.7 Release - Full Edition
-### Date: Fri Dec  4 04:24:09 PST 2015
+### Date: Fri Dec  4 08:09:21 PST 2015
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.7
 
   @=> Includes Aegir Hostmaster 2.x-head with improvements
