@@ -2,6 +2,7 @@
 ### Stable BOA-2.4.7 Release - Full Edition
 ### Date: Fri Dec  4 08:09:21 PST 2015
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.7
+### Latest hotfix added on: Fri Dec  4 09:04:45 PST 2015
 
   @=> Includes Aegir Hostmaster 2.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -75,6 +76,7 @@
   * Do not allow to install non-standard OpenSSH on Ubuntu
   * Do not break /data/all/cpuinfo permissions on Octopus upgrade
   * Do not run 'apt-get autoremove' automatically
+  * Do not use wrapper for dot-files cleanup
   * Document better BOA aggressive installation behavior -- fixes #811
   * Document boa in-octopus command -- fixes #817
   * Don't strip $args from $request_uri in redirects
