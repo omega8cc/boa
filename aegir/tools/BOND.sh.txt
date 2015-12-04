@@ -136,9 +136,9 @@ _TUNE_PHP_CLI_TIMEOUT=7200
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_AEGIR_VERSION="BOA-2.4.6"
+_AEGIR_VERSION="BOA-2.4.7"
 _BRANCH_BOA="2.4.x-dev"
-_X_VERSION="BOA-2.4.6"
+_X_VERSION="BOA-2.4.7"
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
@@ -156,7 +156,7 @@ _PHP54_VRN=5.4.45
 _PHP55_API=20121212
 _PHP55_VRN=5.5.30
 _PHP56_API=20131226
-_PHP56_VRN=5.6.15
+_PHP56_VRN=5.6.16
 
 ###
 ### Helper variables
@@ -790,7 +790,7 @@ restart_services() {
 # Tune Web Sever configuration.
 tune_web_server_config() {
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
-  if [ "$_LIM_FPM" -lt "24" ]; then
+  if [ "${_LIM_FPM}" -lt "24" ]; then
     if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
@@ -806,10 +806,6 @@ tune_web_server_config() {
     if [ ! -z "${_PHP_FPM_WORKERS}" ] && [ "${_PHP_FPM_WORKERS}" -gt "0" ]; then
       _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
     fi
-  fi
-  _START_LEGACY_FPM=$(( _LIM_FPM - 21 ))
-  if [ "$_START_LEGACY_FPM" -lt "3" ]; then
-    _START_LEGACY_FPM=3
   fi
   _PHP_V="56 55 54 53"
   for e in ${_PHP_V}; do
@@ -853,7 +849,7 @@ tune_web_server_config() {
 #
 # Tune memory limits for SQL server.
 tune_sql_memory_limits() {
-  urlDld="https://raw.githubusercontent.com/major/MySQLTuner-perl/master"
+  # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
   pthTun="/var/opt/mysqltuner.pl"
   outTun="/var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt"
   if [ -e "/root/.mstr.clstr.cnf" ] \
@@ -868,7 +864,7 @@ tune_sql_memory_limits() {
     msg "NOTE! This step may take a LONG time, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
     rm -f /var/opt/mysqltuner*
-    curl ${crlGet} "${urlDld}/mysqltuner.pl" -o ${pthTun}
+    curl ${crlGet} "${urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${pthTun}
     if [ ! -e "${pthTun}" ]; then
       curl ${crlGet} "${urlDev}/mysqltuner.pl" -o ${pthTun}
     fi

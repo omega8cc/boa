@@ -41,6 +41,13 @@
 
   Still scared? We can help! Let us know via: https://omega8.cc/sales
 
+@=> Before you begin
+
+  For Drupal 6 based sites which are configured to block IPs you may need
+  to whitelist source-ip at /admin/user/rules first, by adding the Allow
+  rule for Host rule type. Otherwise the site may block its old IP address
+  and you will be forced to remove it via Chive from the {access} table.
+
 @=> On the target-host
   echo "source-ip # Legacy Proxy" >> /etc/csf/csf.allow
   echo "source-ip # Legacy Proxy" >> /etc/csf/csf.ignore
@@ -56,8 +63,6 @@
   ### test connection to target
     ssh root@target-ip
     exit
-  ### transfer shared files
-    xboa transfer shared target-ip
   ### enable site_readonly globally
     cp -af /data/conf/global.inc /data/conf/global.inc.bak
     echo >> /data/conf/global.inc
@@ -67,16 +72,16 @@
 
 @=> On the source-host
   xboa create o1 target-ip
-  xboa export o1 target-ip
-  xboa transfer o1 target-ip
 
 @=> On the target-host
   service cron stop
-  (then wait 2 minutes)
+  chmod 644 /data/all/cpuinfo
+  (then wait 5 minutes)
 
 @=> On the source-host
-  ### sync shared files again
+  xboa export o1 target-ip
   xboa transfer shared target-ip
+  xboa transfer o1 target-ip
 
 @=> On the target-host
   ln -sf /bin/websh /bin/sh
