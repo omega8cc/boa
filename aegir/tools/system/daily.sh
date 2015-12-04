@@ -5,7 +5,7 @@ SHELL=/bin/bash
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    ionice -c2 -n7 -p$$
+    ionice -c2 -n7 -p $$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -31,8 +31,8 @@ check_root() {
 check_root
 
 _WEBG=www-data
-_OPENSSL_VRN=1.0.2d
-_X_SE="2.4.6-stable"
+_OPENSSL_VRN=1.0.2e
+_X_SE="2.4.7-stable"
 _OSV=$(lsb_release -sc 2>&1)
 if [ "${_OSV}" = "squeeze" ]; then
   _OPENSSL_VRN=1.0.1p
@@ -1526,8 +1526,12 @@ fix_modules() {
               echo "WARNING: THIS PLATFORM IS NOT A VALID PRESSFLOW PLATFORM! ${Plr}"
             elif [ -e "${Plr}/modules/path_alias_cache" ] \
               && [ -e "${Plr}/modules/user" ]; then
-              disable_modules "$_MODULES_OFF_SIX"
-              enable_modules "$_MODULES_ON_SIX"
+              if [ ! -z "${_MODULES_OFF_SIX}" ]; then
+                disable_modules "${_MODULES_OFF_SIX}"
+              fi
+              if [ ! -z "${_MODULES_ON_SIX}" ]; then
+                enable_modules "${_MODULES_ON_SIX}"
+              fi
               run_drush7_cmd "sqlq \"UPDATE system SET weight = '-1' \
                 WHERE type = 'module' AND name = 'path_alias_cache'\""
             fi
@@ -1537,11 +1541,15 @@ fix_modules() {
               || [ ! -e "${Plr}/profiles" ]; then
               echo "WARNING: THIS PLATFORM IS BROKEN! ${Plr}"
             else
-              disable_modules "$_MODULES_OFF_SEVEN"
-              if [ "$_ENTITYCACHE_DONT_ENABLE" = "NO" ]; then
+              if [ ! -z "${_MODULES_OFF_SEVEN}" ]; then
+                disable_modules "${_MODULES_OFF_SEVEN}"
+              fi
+              if [ "${_ENTITYCACHE_DONT_ENABLE}" = "NO" ]; then
                 enable_modules "entitycache"
               fi
-              enable_modules "$_MODULES_ON_SEVEN"
+              if [ ! -z "${_MODULES_ON_SEVEN}" ]; then
+                enable_modules "${_MODULES_ON_SEVEN}"
+              fi
             fi
           fi
           if [ -e "${Dir}/modules/commerce_ubercart_check.info" ]; then
@@ -2672,7 +2680,7 @@ if [ "${_DOW}" = "6" ]; then
     memcache_admin performance poormanscron search_krumo security_review \
     stage_file_proxy supercron syslog ultimate_cron update varnish \
     watchdog_live xhprof"
-else
+elif [ "${_DOW}" = "8" ]; then
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
   _MODULES_OFF_SEVEN="background_process dblog syslog update"
@@ -2913,9 +2921,6 @@ if [ ! -e "/var/backups/fix-sites-all-permsissions-${_X_SE}.txt" ]; then
   echo FIXED > /var/backups/fix-sites-all-permsissions-${_X_SE}.txt
   echo "Permissions in sites/all tree just fixed"
 fi
-if [ ! -e "/root/.upstart.cnf" ]; then
-  service cron reload &> /dev/null
-fi
 find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 find /var/backups/jetty* -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/backups/dragon/* -mtime +7 -exec rm -rf {} \; &> /dev/null
@@ -2938,22 +2943,6 @@ rm -f /data/disk/*/.tmp/.busy.*.pid
 ### Delete duplicity ghost pid file if older than 2 days
 ###
 find /var/run/*_backup.pid -mtime +1 -exec rm -rf {} \; &> /dev/null
-
-if [ ! -e "/root/.high_traffic.cnf" ]; then
-  echo "INFO: Redis server will be restarted in 5 minutes"
-  touch /var/run/boa_wait.pid
-  sleep 300
-  service nginx reload
-  service redis-server stop
-  killall -9 redis-server
-  rm -f /var/run/redis.pid
-  rm -f /var/lib/redis/*
-  rm -f /var/log/redis/redis-server.log
-  service redis-server start
-  rm -f /var/run/boa_wait.pid
-  echo "INFO: Redis server restarted OK"
-fi
-
 rm -f /var/run/daily-fix.pid
 echo "INFO: Daily maintenance complete"
 exit 0

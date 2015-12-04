@@ -230,7 +230,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             else
               _CORRECT=YES
             fi
-          elif [[ "${_ALL}" =~ "cache-clear drush" ]] \
+          elif [[ "${_ALL}" =~ "cc drush" ]] \
             || [[ "${_ALL}" =~ "drush7 site-alias" ]] \
             || [[ "${_ALL}" =~ "-c set -m; drush7 --version" ]] \
             || [[ "${_ALL}" =~ "-c set -m; drush7 help" ]] \
