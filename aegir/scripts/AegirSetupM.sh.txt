@@ -233,7 +233,7 @@ sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
 wait
 
 msg "INFO: Installing the frontend"
-${_DRUSHCMD} cache-clear drush >${_ROOT}/install.log 2>&1
+${_DRUSHCMD} cc drush >${_ROOT}/install.log 2>&1
 rm -f -r ${_ROOT}/.tmp/cache
 _HM_ROOT="${_ROOT}/hostmaster-${_AEGIR_VERSION}"
 

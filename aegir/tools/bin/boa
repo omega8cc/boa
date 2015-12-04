@@ -4,12 +4,12 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 branch="2.4.x-dev"
-cluster="BOA-2.4.6"
+cluster="BOA-2.4.7"
 hd="HEAD"
 lgcy="BOA-2.2.9"
 master="master"
 nextv="BOA-2.4.7-dev"
-stbl="BOA-2.4.6"
+stbl="BOA-2.4.7"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -862,7 +862,7 @@ init_setup() {
 
   if [ ! -z "${rkey}" ]; then
     if [ "${rkey}" = "2.4" ]; then
-      vn="BOA-2.4.6"
+      vn="BOA-2.4.7"
       branch="2.4.x-dev"
     elif [ "${rkey}" = "2.3" ]; then
       vn="BOA-2.3.8"
@@ -1019,7 +1019,7 @@ check_fix_csf() {
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    ionice -c2 -n7 -p$$
+    renice 10 -p $$
     if [ "${cmmand}" = "in-octopus" ]; then
       system_check_ready
     else

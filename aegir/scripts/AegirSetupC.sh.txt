@@ -1966,6 +1966,8 @@ restaurant_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
+              cd ${_SHRD_PRPATH}
+              patch -p1 < ${pthPch}/${_REAL_PRNAME}.patch &> /dev/null
               if [ -d "${_SHRD_PRPATH}/modules/restaurant/restaurant_demo/import" ]; then
                 cd ${_SHRD_PRPATH}/modules/restaurant/restaurant_demo/import
                 patch -p1 < ${pthPch}/restaurant_demo.patch &> /dev/null
@@ -2107,7 +2109,7 @@ ubercart7_install() {
               get_dev_contrib "rules-7.x-2.9.tar.gz"
               get_dev_contrib "token-7.x-1.5.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
-              get_dev_contrib "views-7.x-3.11.tar.gz"
+              get_dev_contrib "views-7.x-3.13.tar.gz"
               cd ${_SHRD_PRPATH}/modules/views
               # https://drupal.org/node/1766338#comment-6445882
               patch -p1 < \
@@ -2171,13 +2173,13 @@ ubercart7_testing_install() {
               get_dev_contrib "colorbox-7.x-2.9.tar.gz"
               get_dev_contrib "ctools-7.x-1.9.tar.gz"
               get_dev_contrib "entity-7.x-1.6.tar.gz"
-              get_dev_contrib "google_analytics-7.x-2.0.tar.gz"
+              get_dev_contrib "google_analytics-7.x-2.1.tar.gz"
               get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
               get_dev_contrib "pathauto-7.x-1.3.tar.gz"
               get_dev_contrib "rules-7.x-2.9.tar.gz"
               get_dev_contrib "token-7.x-1.5.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
-              get_dev_contrib "views-7.x-3.11.tar.gz"
+              get_dev_contrib "views-7.x-3.13.tar.gz"
               cd ${_SHRD_PRPATH}/modules/views
               # https://drupal.org/node/1766338#comment-6445882
               patch -p1 < \
@@ -2504,9 +2506,9 @@ commons_6_install
 
 _USE_DISTRO_CORE=YES
 commons_7_install
+erpal_install
 _USE_DISTRO_CORE=NO
 
-erpal_install
 guardr_install
 openaid_install
 openatrium7_install
@@ -2524,7 +2526,9 @@ panopoly_install
 ### recruiter_install
 ### TMP OFF -- version 1.7 has critical bugs and doesn't work properly
 
-restaurant_install
+### restaurant_install
+### TMP OFF -- version 1.0-rc2 fails to install in both quick and standard mode
+
 ubercart6_install
 ubercart7_install
 ubercart7_testing_install

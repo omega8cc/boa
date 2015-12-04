@@ -185,7 +185,7 @@ force_advanced_nginx_config() {
     cp -af ${locCnf}/nginx_high_load_off.conf /data/conf/nginx_high_load_off.conf
     chmod 644 /data/conf/nginx_high_load_off.conf &> /dev/null
   fi
-  if [ -e "/root/.high_traffic.cnf" ]; then
+  if [ -e "/root/.giant_traffic.cnf" ]; then
     sed -i "s/access_log .*/access_log             /var/log/nginx/access.log main buffer=32k;/g" ${mtrNgx}.conf &> /dev/null
     wait
   fi
@@ -252,9 +252,7 @@ install_upgrade_nginx() {
       msg "INFO: Installed Nginx version ${_NGINX_F_ITD}, upgrade required"
     fi
     if [ "${_NGINX_F_ITD}" = "${_NGINX_F_VERSION}" ]; then
-      if [[ "${_NGINX_V_ITD}" =~ "geoip" ]]; then
-        _DO_NOTHING=YES
-      else
+      if [[ ! "${_NGINX_V_ITD}" =~ "geoip" ]]; then
         _NGINX_INSTALL_REQUIRED=YES
         msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
         msg "INFO: Nginx forced rebuild to include geoip module"
@@ -263,45 +261,40 @@ install_upgrade_nginx() {
         _NGINX_INSTALL_REQUIRED=YES
         msg "INFO: Nginx rebuild required to avoid apt-get overwrite"
       fi
-      if [[ "${_NGINX_V_ITD}" =~ "http_flv_module" ]] \
-        && [[ "${_NGINX_V_ITD}" =~ "http_mp4_module" ]]; then
-        _DO_NOTHING=YES
-      else
+      if [[ ! "${_NGINX_V_ITD}" =~ "http_flv_module" ]] \
+        || [[ ! "${_NGINX_V_ITD}" =~ "http_mp4_module" ]]; then
         _NGINX_INSTALL_REQUIRED=YES
         msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
         msg "INFO: Nginx forced rebuild to include pseudo-streaming support"
       fi
+      if [[ ! "${_NGINX_V_ITD}" =~ "openssl-${_OPENSSL_NGX_VRN}" ]]; then
+        _NGINX_INSTALL_REQUIRED=YES
+        msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
+        msg "INFO: Nginx forced rebuild to include latest OpenSSL version"
+      fi
       if [ "${_NGINX_LDAP}" = "YES" ]; then
-        if [[ "${_NGINX_V_ITD}" =~ "nginx-auth-ldap" ]]; then
-          _DO_NOTHING=YES
-        else
+        if [[ ! "${_NGINX_V_ITD}" =~ "nginx-auth-ldap" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
           msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
           msg "INFO: Nginx forced rebuild to include LDAP support"
         fi
       fi
       if [ "${_PURGE_MODE}" = "ON" ]; then
-        if [[ "${_NGINX_V_ITD}" =~ "purge" ]]; then
-          _DO_NOTHING=YES
-        else
+        if [[ ! "${_NGINX_V_ITD}" =~ "purge" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
           msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
           msg "INFO: Nginx forced rebuild to include purge module"
         fi
       fi
       if [ "${_NGINX_NAXSI}" = "YES" ]; then
-        if [[ "${_NGINX_V_ITD}" =~ "naxsi" ]]; then
-          _DO_NOTHING=YES
-        else
+        if [[ ! "${_NGINX_V_ITD}" =~ "naxsi" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
           msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
           msg "INFO: Nginx forced rebuild to include NAXSI module"
         fi
       fi
       if [ "${_NGINX_SPDY}" = "YES" ]; then
-        if [[ "${_NGINX_V_ITD}" =~ "http_v2_module" ]]; then
-          _DO_NOTHING=YES
-        else
+        if [[ ! "${_NGINX_V_ITD}" =~ "http_v2_module" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
           msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
           msg "INFO: Nginx forced rebuild to include SPDY support"

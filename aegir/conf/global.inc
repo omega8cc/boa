@@ -63,7 +63,7 @@ if (function_exists('drush_get_command')) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.9.6';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.9.7';
   }
 }
 
@@ -269,6 +269,8 @@ else {
   $conf['composer_manager_vendor_dir'] = 'sites/' . $_SERVER['SERVER_NAME'] . '/vendor'; // Support for composer_manager
   $update_free_access = FALSE;
   $conf['webform_table'] = TRUE; // Workaround for SA-CONTRIB-2015-063 https://www.drupal.org/node/2445935
+  $conf['features_rebuild_on_flush'] = FALSE; // https://michaelshadle.com/2015/04/21/speeding-up-drupal-cache-flushing
+  $conf['entity_rebuild_on_flush'] = FALSE; // http://a-fro.com/speed-up-cache-clearing-on-drupal7
   // $conf['redis_eval_enabled'] = TRUE;
   // Use EVAL commands to greatly speed up cache clearing
   // Enable when https://www.drupal.org/node/2487333 is fixed
@@ -858,6 +860,9 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     }
     if ($conf['install_profile'] != 'hostmaster' && ($expire_in_seconds > -1)) {
       header("X-Accel-Expires: " . $expire_in_seconds);
+      if ($expire_in_seconds > -1 && $expire_in_seconds < 2) {
+        $conf['cache'] = 0; // Disable page caching on the fly
+      }
     }
   }
 }

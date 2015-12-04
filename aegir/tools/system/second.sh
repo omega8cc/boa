@@ -282,6 +282,7 @@ proc_control() {
     echo "load is ${_O_LOAD}:${_F_LOAD} while \
       maxload is ${_O_LOAD_MAX}:${_F_LOAD_MAX}"
     echo ...OK now running proc_num_ctrl...
+    renice 10 -p $$
     perl /var/xdrago/proc_num_ctrl.cgi
     touch /var/xdrago/log/proc_num_ctrl.done
     echo CTL done

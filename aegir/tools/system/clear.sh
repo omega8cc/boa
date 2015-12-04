@@ -5,7 +5,6 @@ SHELL=/bin/bash
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    ionice -c2 -n7 -p$$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -73,19 +72,6 @@ find_fast_mirror() {
   urlStb="http://${_USE_MIR}/versions/stable"
 }
 
-service ssh restart &> /dev/null
-rm -f /var/backups/.auth.IP.list*
-find /var/xdrago/log/*.pid -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
-
-if [ -e "/etc/cron.daily/logrotate" ]; then
-  _SYSLOG_SIZE_TEST=$(du -s -h /var/log/syslog)
-  if [[ "${_SYSLOG_SIZE_TEST}" =~ "G" ]]; then
-    echo ${_SYSLOG_SIZE_TEST} too big
-    bash /etc/cron.daily/logrotate &> /dev/null
-    echo system logs rotated
-  fi
-fi
-
 if [ -e "/var/run/boa_run.pid" ]; then
   sleep 1
 else
@@ -108,12 +94,43 @@ else
   bash /opt/local/bin/autoupboa
 fi
 
+#
+# Clean up postfix queue to get rid of bounced emails.
+# See also: https://omega8.cc/never-send-mailings-from-aegir-server-322
+sudo postsuper -d ALL &> /dev/null
+
+service ssh restart &> /dev/null
+rm -f /var/backups/.auth.IP.list*
+find /var/xdrago/log/*.pid -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
+
+if [ -e "/etc/cron.daily/logrotate" ]; then
+  _SYSLOG_SIZE_TEST=$(du -s -h /var/log/syslog)
+  if [[ "${_SYSLOG_SIZE_TEST}" =~ "G" ]]; then
+    echo ${_SYSLOG_SIZE_TEST} too big
+    bash /etc/cron.daily/logrotate &> /dev/null
+    echo system logs rotated
+  fi
+fi
+
 if [ -d "/dev/disk" ]; then
   _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')
   if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
     swapoff -a
     swapon -a
   fi
+fi
+
+_IF_BCP=$(ps aux | grep '[d]uplicity' | awk '{print $2}')
+
+if [ -z "${_IF_BCP}" ] \
+  && [ ! -e "/var/run/speed_purge.pid" ] \
+  && [ ! -e "/root/.giant_traffic.cnf" ]; then
+  touch /var/run/speed_purge.pid
+  echo " " >> /var/log/nginx/speed_purge.log
+  echo "speed_purge start `date`" >> /var/log/nginx/speed_purge.log
+  nice -n19 ionice -c2 -n7 find /var/lib/nginx/speed/* -mtime +1 -exec rm -rf {} \; &> /dev/null
+  echo "speed_purge complete `date`" >> /var/log/nginx/speed_purge.log
+  rm -f /var/run/speed_purge.pid
 fi
 
 touch /var/xdrago/log/clear.done

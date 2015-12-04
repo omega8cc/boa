@@ -201,23 +201,44 @@ satellite_create_web_user() {
 satellite_tune_fpm_config() {
   satellite_tune_fpm_workers
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
-  if [ "$_LIM_FPM" -lt "24" ]; then
-    if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
-      _LIM_FPM=24
+  if [[ "${_THISHOST}" =~ ".host8." ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+    || [ "${_VMFAMILY}" = "VS" ]; then
+    if [ "${_CLIENT_OPTION}" = "POWER" ]; then
+      _LIM_FPM=32
+      _PHP_FPM_WORKERS=64
+    elif [ "${_CLIENT_OPTION}" = "SSD" ] \
+      || [ "${_CLIENT_OPTION}" = "EDGE" ]; then
+      _LIM_FPM=4
+      _PHP_FPM_WORKERS=8
+    else
+      _LIM_FPM=2
+      _PHP_FPM_WORKERS=4
     fi
-  fi
-  if [ "${_CLIENT_OPTION}" = "MICRO" ]; then
-    _LIM_FPM=2
-    _PHP_FPM_WORKERS=4
+    if [ -e "/data/disk/${_USER}/log/cores.txt" ]; then
+      _CLIENT_CORES=$(cat /data/disk/${_USER}/log/cores.txt 2>&1)
+      _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
+    fi
+    _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
+    if [ ! -z "${_CLIENT_CORES}" ] \
+      && [ "${_CLIENT_CORES}" -gt "0" ]; then
+      _LIM_FPM=$(( _LIM_FPM *= _CLIENT_CORES ))
+      _PHP_FPM_WORKERS=$(( _PHP_FPM_WORKERS *= _CLIENT_CORES ))
+    fi
+    if [ "${_LIM_FPM}" -gt "100" ]; then
+      _LIM_FPM=100
+    fi
+    if [ "${_PHP_FPM_WORKERS}" -gt "200" ]; then
+      _PHP_FPM_WORKERS=200
+    fi
   fi
   _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
   if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
     _DO_NOTHING=YES
   else
     _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
-    if [ ! -z "${_PHP_FPM_WORKERS}" ] && [ "${_PHP_FPM_WORKERS}" -gt "0" ]; then
+    if [ ! -z "${_PHP_FPM_WORKERS}" ] \
+      && [ "${_PHP_FPM_WORKERS}" -gt "0" ]; then
       _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
     fi
   fi
@@ -1047,7 +1068,7 @@ satellite_child_b_update_ini_php_cli() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.246stableU.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.247stableU.txt" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1102,7 +1123,7 @@ satellite_child_b_update_ini_php_cli() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.246stableU.txt
+      echo > ${_U_HD}/.ctrl.247stableU.txt
     fi
   fi
 }
@@ -1887,7 +1908,7 @@ provision_backend_dbpass_sync() {
     wait
   fi
   mysqladmin flush-privileges &> /dev/null
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cache-clear drush &> /dev/null"
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush &> /dev/null"
   rm -f -r ${_ROOT}/.tmp/cache
   if [ -e "${_ROOT}/.drush/server_localhost.alias.drushrc.php" ]; then
     su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
@@ -2222,14 +2243,15 @@ satellite_run_child_c() {
       fi
     fi
   fi
-  if [ ! -e "${_CORE}/dot-files-ctrl-${_X_VERSION}" ]; then
-    msg "${_STATUS} A: Cleaning up various dot files..."
+  if [ ! -e "${_CORE}/dot-files-ctrl-${_X_VERSION}" ] \
+    && [ -e "${_CORE}" ]; then
+    msg "${_STATUS} A: Cleaning up various dot files, please wait..."
     cd ${_CORE}
-    mrun "find . -name .svn -exec rm -rf {} \;" &> /dev/null
-    mrun "find . -name .bzr -exec rm -rf {} \;" &> /dev/null
-    mrun "find . -name .git -exec rm -rf {} \;" &> /dev/null
-    mrun "find . -name .DS_Store -exec rm -rf {} \;" &> /dev/null
-    mrun "find . -name "._*" -type f | xargs rm -rf" &> /dev/null
+    find . -name .svn -exec rm -rf {} \; &> /dev/null
+    find . -name .bzr -exec rm -rf {} \; &> /dev/null
+    find . -name .git -exec rm -rf {} \; &> /dev/null
+    find . -name .DS_Store -exec rm -rf {} \; &> /dev/null
+    find . -name "._*" -type f | xargs rm -rf &> /dev/null
     touch ${_CORE}/dot-files-ctrl-${_X_VERSION}
   fi
 }
@@ -3215,7 +3237,7 @@ satellite_make() {
     echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
   fi
 
-  if [ ! -e "${_ROOT}/static/control/.ctrl.246stableU.txt" ] \
+  if [ ! -e "${_ROOT}/static/control/.ctrl.247stableU.txt" ] \
     || [ ! -e "${_ROOT}/static/control/README.txt" ]; then
     mkdir -p ${_ROOT}/static/control
     chmod 755 ${_ROOT}/static/control
@@ -3227,7 +3249,7 @@ satellite_make() {
     chown -R ${_USER}.ftp:${_USRG} \
       ${_ROOT}/static/control &> /dev/null
     rm -f ${_ROOT}/static/control/.ctrl.*
-    echo OK > ${_ROOT}/static/control/.ctrl.246stableU.txt
+    echo OK > ${_ROOT}/static/control/.ctrl.247stableU.txt
   fi
 
   if [ -d "/data/all/000" ]; then
@@ -3877,9 +3899,10 @@ satellite_child_b_prepare_dirs_permissions() {
   touch ${_ROOT}/aegir.sh
   chmod 0700 ${_ROOT}/aegir.sh &> /dev/null
   echo -e \
-    "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n${_DRUSHCMD} \
-    '@hostmaster' hosting-dispatch\ntouch ${_ROOT}/${_USER}-task.done" \
-     | fmt -su -w 2500 | tee -a ${_ROOT}/aegir.sh >/dev/null 2>&1
+    "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n\n${_DRUSHCMD} \
+     cc drush &> /dev/null\nrm -f -r ${_ROOT}/.tmp/cache\n${_DRUSHCMD} \
+     '@hostmaster' hosting-dispatch\ntouch ${_ROOT}/${_USER}-task.done" \
+    | fmt -su -w 2500 | tee -a ${_ROOT}/aegir.sh >/dev/null 2>&1
 
   mkdir -p ${_ROOT}/aegir/distro
   mkdir -p ${_ROOT}/distro/${_DISTRO}
@@ -4098,7 +4121,7 @@ satellite_child_b_aegir_build() {
     fi
 
     msg "${_STATUS} B: Running hostmaster-install, please wait..."
-    ${_DRUSHCMD} cache-clear drush >${_ROOT}/log/install.log 2>&1
+    ${_DRUSHCMD} cc drush >${_ROOT}/log/install.log 2>&1
     rm -f -r ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} hostmaster-install ${_DOMAIN} \
@@ -4137,7 +4160,7 @@ satellite_child_b_aegir_build() {
     ln -sf ${_HM_ROOT} ${_ROOT}/u/${_DOMAIN}
     rm -f /data/u/${_DOMAIN} &> /dev/null
     ln -sf ${_HM_ROOT} /data/u/${_DOMAIN}
-    ${_DRUSHCMD} cache-clear drush &> /dev/null
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} B: Running hosting-dispatch (1/3)..."
@@ -4157,7 +4180,7 @@ satellite_child_b_aegir_build() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} B: Testing previous install..."
     fi
-    ${_DRUSHCMD} cache-clear drush &> /dev/null
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
 
     ### Pre-Fix for migrated/merged instances
@@ -4206,7 +4229,7 @@ satellite_child_b_aegir_build() {
       ${_DRUSHCMD} @hostmaster pm-uninstall css_emimage -y &> /dev/null
     fi
     ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
-    ${_DRUSHCMD} cache-clear drush &> /dev/null
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
     if [ -d "${_HM_ROOT}/modules/o_contrib" ] \
       && [ ! -L "${_HM_ROOT}/modules/o_contrib" ]; then
@@ -4265,7 +4288,7 @@ satellite_child_b_aegir_build() {
       export TERM=vt100
     fi
     cd ${_PREV_HM_ROOT}
-    ${_DRUSHCMD} cache-clear drush &> /dev/null
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
 
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
@@ -4322,7 +4345,7 @@ satellite_child_b_aegir_build() {
           SET web_server='2' WHERE web_server='0'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE users_roles \
           SET rid='7' WHERE rid='5'" &> /dev/null
-        ${_DRUSHCMD} cache-clear drush &> /dev/null
+        ${_DRUSHCMD} cc drush &> /dev/null
         rm -f -r ${_ROOT}/.tmp/cache
         ${_DRUSHCMD} @hostmaster hosting-task @server_localhost \
           verify --force &> /dev/null
@@ -4370,7 +4393,7 @@ satellite_child_b_aegir_build() {
     fi
     ### Fix for old migrated/merged instances
 
-    ${_DRUSHCMD} cache-clear drush &> /dev/null
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y -d
@@ -4555,7 +4578,7 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster en path_alias_cache -y &> /dev/null
     rm -f -r ${_HM_ROOT}/profiles/hostmaster/modules/hosting_backup_gc
     rm -f -r ${_HM_ROOT}/modules/cookie_cache_bypass
-    ${_DRUSHCMD} cache-clear drush &> /dev/null
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
     ${_DRUSHCMD} @hostmaster en hosting_client \
       protect_critical_users \
