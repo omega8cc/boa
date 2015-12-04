@@ -1966,6 +1966,8 @@ restaurant_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
+              cd ${_SHRD_PRPATH}
+              patch -p1 < ${pthPch}/${_REAL_PRNAME}.patch &> /dev/null
               if [ -d "${_SHRD_PRPATH}/modules/restaurant/restaurant_demo/import" ]; then
                 cd ${_SHRD_PRPATH}/modules/restaurant/restaurant_demo/import
                 patch -p1 < ${pthPch}/restaurant_demo.patch &> /dev/null
@@ -2504,9 +2506,9 @@ commons_6_install
 
 _USE_DISTRO_CORE=YES
 commons_7_install
+erpal_install
 _USE_DISTRO_CORE=NO
 
-erpal_install
 guardr_install
 openaid_install
 openatrium7_install
@@ -2524,7 +2526,9 @@ panopoly_install
 ### recruiter_install
 ### TMP OFF -- version 1.7 has critical bugs and doesn't work properly
 
-restaurant_install
+### restaurant_install
+### TMP OFF -- version 1.0-rc2 fails to install in both quick and standard mode
+
 ubercart6_install
 ubercart7_install
 ubercart7_testing_install
