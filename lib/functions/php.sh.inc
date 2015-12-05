@@ -1141,7 +1141,7 @@ check_php_broken() {
     install_php_multi "$1"
     _PHP_ALREADY_REBUILT=$1
   else
-    _PHP_ALREADY_REBUILT=$1
+    _PHP_ALREADY_REBUILT=
   fi
 }
 

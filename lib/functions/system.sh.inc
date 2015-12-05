@@ -1631,7 +1631,7 @@ check_install_latest_git() {
 check_apt_updates() {
   for Update in `/usr/bin/apt-get -q -y --force-yes --allow-unauthenticated \
     -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`; do
-    case $Update in
+    case "${Update}" in
       *libcurl*)    _UP_PHP=YES ;;
       *libmysql*)   _UP_PHP=YES ;;
       *libssl*)     _UP_PHP=YES ;;
