@@ -369,7 +369,7 @@ install_ioncube() {
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     mkdir -p /usr/local/ioncube
     _X86_64_TEST=$(uname -m 2>&1)
-    if [ "$_X86_64_TEST" = "x86_64" ]; then
+    if [ "${_X86_64_TEST}" = "x86_64" ]; then
       SYSTEMARCH="x86_64"
       msg "INFO: Installing IonCube $SYSTEMARCH version for PHP..."
       cd /var/opt
@@ -533,7 +533,7 @@ install_php_extensions() {
     touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
     rm -f ${pthLog}/yaml*.log
     _X86_64_TEST=$(uname -m 2>&1)
-    if [ "$_X86_64_TEST" = "x86_64" ]; then
+    if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ] \
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.2" ]; then
         mkdir -p /var/backups/libyaml
@@ -724,7 +724,7 @@ update_php_extensions() {
     touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
     rm -f ${pthLog}/yaml*.log
     _X86_64_TEST=$(uname -m 2>&1)
-    if [ "$_X86_64_TEST" = "x86_64" ]; then
+    if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ] \
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.2" ]; then
         mkdir -p /var/backups/libyaml
@@ -901,7 +901,7 @@ update_newrelic() {
       export NR_INSTALL_SILENT="${NR_SILENT}"
       newrelic-install install &> /dev/null
       _X86_64_TEST=$(uname -m 2>&1)
-      if [ "$_X86_64_TEST" = "x86_64" ]; then
+      if [ "${_X86_64_TEST}" = "x86_64" ]; then
         _SYSTEM_ARCH="x64"
       else
         _SYSTEM_ARCH="x32"
@@ -1008,7 +1008,7 @@ install_newrelic() {
         export NR_INSTALL_SILENT="${NR_SILENT}"
         newrelic-install install &> /dev/null
         _X86_64_TEST=$(uname -m 2>&1)
-        if [ "$_X86_64_TEST" = "x86_64" ]; then
+        if [ "${_X86_64_TEST}" = "x86_64" ]; then
           _SYSTEM_ARCH="x64"
         else
           _SYSTEM_ARCH="x32"

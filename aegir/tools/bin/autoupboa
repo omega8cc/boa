@@ -132,7 +132,7 @@ if [ -e "/data/disk/arch" ]; then
       /etc/apticron/apticron.conf
     [ -r "/root/.auto.up.cnf" ] && rm -f /root/.auto.up.cnf
     _APTICRON_TEST=$(grep "omega8" /etc/apticron/apticron.conf 2>&1)
-    if [[ "$_APTICRON_TEST" =~ "omega8" ]]; then
+    if [[ "${_APTICRON_TEST}" =~ "omega8" ]]; then
       _AUTO_UP=YES
     fi
   fi

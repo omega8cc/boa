@@ -56,7 +56,7 @@ if_running_as_root_barracuda() {
 set_xterm() {
   if [ -e "/root/.bashrc" ]; then
     _XTERM_TEST=$(grep ${_X_VERSION} /root/.bashrc 2>&1)
-    if [[ "$_XTERM_TEST" =~ "${_X_VERSION}" ]]; then
+    if [[ "${_XTERM_TEST}" =~ "${_X_VERSION}" ]]; then
       sed -i "s/^export TERM=.*/export TERM=xterm-color/g" /root/.bashrc
       wait
     fi
@@ -73,9 +73,7 @@ kill_nash() {
     _DO_NOTHING=YES
   else
     _NASH_TEST=$(grep nash-hotplug /etc/rc.local 2>&1)
-    if [[ "$_NASH_TEST" =~ "nash-hotplug" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_NASH_TEST}" =~ "nash-hotplug" ]]; then
       cp -af /etc/rc.local /etc/rc.local.bak.${_NOW}
       sed -i "s/exit 0//g" /etc/rc.local &> /dev/null
       wait
@@ -103,9 +101,7 @@ fix_ftps_pam() {
 fix_sftp_ftps_modern() {
   if [ "${_OSV}" != "lenny" ]; then
     _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells 2>&1)
-    if [[ "$_LSHELL_PATH_TEST" =~ "/usr/bin/lshell" ]]; then
-      _DO_NOTHING=YES
-    else
+    if [[ ! "${_LSHELL_PATH_TEST}" =~ "/usr/bin/lshell" ]]; then
       echo "/usr/bin/lshell" >> /etc/shells
     fi
   fi
@@ -127,18 +123,18 @@ fix_sftp_ftps_modern() {
   fi
   if [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
     _MSS_TEST=$(grep "lshell" /etc/passwd 2>&1)
-    if [[ "$_MSS_TEST" =~ "lshell" ]]; then
+    if [[ "${_MSS_TEST}" =~ "lshell" ]]; then
       sed -i "s/usr\/.*\/lshell/usr\/bin\/mysecureshell/g" /etc/passwd &> /dev/null
       wait
     fi
     _MSS_TEST=$(grep "MySecureShell" /etc/passwd 2>&1)
-    if [[ "$_MSS_TEST" =~ "MySecureShell" ]]; then
+    if [[ "${_MSS_TEST}" =~ "MySecureShell" ]]; then
       sed -i "s/usr\/.*\/MySecureShell/usr\/bin\/mysecureshell/g" /etc/passwd &> /dev/null
       wait
     fi
   fi
   _MSS_PATH_TEST=$(grep "/usr/bin/mysecureshell" /etc/shells 2>&1)
-  if [[ "$_MSS_PATH_TEST" =~ "/usr/bin/mysecureshell" ]]; then
+  if [[ "${_MSS_PATH_TEST}" =~ "/usr/bin/mysecureshell" ]]; then
     _DO_NOTHING=YES
   else
     echo "/usr/bin/mysecureshell" >> /etc/shells
@@ -265,11 +261,11 @@ tune_memory_limits() {
     _CPU_NR=1
   fi
   _CPU_MX=$(( _CPU_NR * 2 ))
-  if [ "$_CPU_MX" -lt "4" ]; then
+  if [ "${_CPU_MX}" -lt "4" ]; then
     _CPU_MX=4
   fi
   _CPU_TG=$(( _CPU_NR / 2 ))
-  if [ "$_CPU_TG" -lt "4" ]; then
+  if [ "${_CPU_TG}" -lt "4" ]; then
     _CPU_TG=4
   fi
   _CPU_VS=$(( _CPU_NR / 12 ))
@@ -315,7 +311,7 @@ tune_memory_limits() {
     fi
     _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 2 ))
     if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-      _L_NGX_WRKS=$_CPU_MX
+      _L_NGX_WRKS=${_CPU_MX}
     else
       _L_NGX_WRKS=${_NGINX_WORKERS}
     fi
@@ -333,7 +329,7 @@ tune_memory_limits() {
       fi
       _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 2 ))
       if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-        _L_NGX_WRKS=$_CPU_MX
+        _L_NGX_WRKS=${_CPU_MX}
       else
         _L_NGX_WRKS=${_NGINX_WORKERS}
       fi
@@ -353,7 +349,7 @@ tune_memory_limits() {
         fi
         _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 2 ))
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-          _L_NGX_WRKS=$_CPU_TG
+          _L_NGX_WRKS=${_CPU_TG}
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
@@ -396,7 +392,7 @@ tune_memory_limits() {
       fi
       _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 2 ))
       if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-        _L_NGX_WRKS=$_CPU_MX
+        _L_NGX_WRKS=${_CPU_MX}
       else
         _L_NGX_WRKS=${_NGINX_WORKERS}
       fi
@@ -414,7 +410,7 @@ tune_memory_limits() {
     fi
     _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 2 ))
     if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-      _L_NGX_WRKS=$_CPU_MX
+      _L_NGX_WRKS=${_CPU_MX}
     else
       _L_NGX_WRKS=${_NGINX_WORKERS}
     fi
@@ -521,7 +517,7 @@ tune_memory_limits() {
 fix_locales() {
   if [ -e "/etc/ssh/sshd_config" ]; then
     _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /etc/ssh/sshd_config 2>&1)
-    if [[ "$_SSH_LC_TEST" =~ "AcceptEnv LANG LC_" ]]; then
+    if [[ "${_SSH_LC_TEST}" =~ "AcceptEnv LANG LC_" ]]; then
       _DO_NOTHING=YES
     else
       sed -i "s/.*AcceptEnv.*//g" /etc/ssh/sshd_config
@@ -531,7 +527,7 @@ fix_locales() {
   fi
   if [ -e "/usr/etc/sshd_config" ]; then
     _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /usr/etc/sshd_config 2>&1)
-    if [[ "$_SSH_LC_TEST" =~ "AcceptEnv LANG LC_" ]]; then
+    if [[ "${_SSH_LC_TEST}" =~ "AcceptEnv LANG LC_" ]]; then
       _DO_NOTHING=YES
     else
       sed -i "s/.*AcceptEnv.*//g" /usr/etc/sshd_config
@@ -541,10 +537,10 @@ fix_locales() {
   fi
   _LOCALE_TEST=BROKEN
   _LOC_TEST=$(locale 2>&1)
-  if [[ "$_LOC_TEST" =~ LANG=.*UTF-8 ]]; then
+  if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
     _LOCALE_TEST=OK
   fi
-  if [[ "$_LOC_TEST" =~ "Cannot" ]]; then
+  if [[ "${_LOC_TEST}" =~ "Cannot" ]]; then
     _LOCALE_TEST=BROKEN
   fi
   if [ "${_LOCALE_TEST}" = "BROKEN" ]; then
@@ -572,7 +568,7 @@ EOF
     sleep 5
     if [ "${_THIS_OS}" = "Debian" ]; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
-      if [[ ! "$_LOCALE_GEN_TEST" =~ "en_US.UTF-8 UTF-8" ]]; then
+      if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
       fi
       sed -i "/^$/d" /etc/locale.gen
@@ -626,7 +622,7 @@ EOF
     fi
     if [ "${_THIS_OS}" = "Debian" ]; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
-      if [[ ! "$_LOCALE_GEN_TEST" =~ "en_US.UTF-8 UTF-8" ]]; then
+      if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
       fi
       sed -i "/^$/d" /etc/locale.gen
@@ -893,9 +889,9 @@ barracuda_cnf() {
     _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.2" /data/disk/*/log/cli.txt 2>&1)
     _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.2" /data/disk/*/static/control/cli.info 2>&1)
     _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.2" /root/.*.octopus.cnf 2>&1)
-    if [[ "$_PHP_CLI_LEGACY_IF_USED_A" =~ "5.2" ]] \
-      || [[ "$_PHP_CLI_LEGACY_IF_USED_B" =~ "5.2" ]] \
-      || [[ "$_PHP_CLI_LEGACY_IF_USED_C" =~ "5.2" ]]; then
+    if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.2" ]] \
+      || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.2" ]] \
+      || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.2" ]]; then
       if [ -e "/opt/php52/bin/php" ] || [ -e "/etc/init.d/php52-fpm" ]; then
         echo " "
         msg "Legacy PHP-CLI 5.2 is used on this system but will be removed"
@@ -905,9 +901,9 @@ barracuda_cnf() {
     _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.2" /data/disk/*/log/fpm.txt 2>&1)
     _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.2" /data/disk/*/static/control/fpm.info 2>&1)
     _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.2" /root/.*.octopus.cnf 2>&1)
-    if [[ "$_PHP_FPM_LEGACY_IF_USED_A" =~ "5.2" ]] \
-      || [[ "$_PHP_FPM_LEGACY_IF_USED_B" =~ "5.2" ]] \
-      || [[ "$_PHP_FPM_LEGACY_IF_USED_C" =~ "5.2" ]]; then
+    if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.2" ]] \
+      || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.2" ]] \
+      || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.2" ]]; then
       if [ -e "/opt/php52/bin/php" ] || [ -e "/etc/init.d/php52-fpm" ]; then
         msg "Legacy PHP-FPM 5.2 is used on this system but will be removed"
         echo " "
@@ -1546,8 +1542,8 @@ run_aptitude_full_upgrade() {
   msg "INFO: Running aptitude full-upgrade..."
   rm -f /etc/apt/sources.list.d/openssl.list
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
-    || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
+  if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
+    || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
     msg "WARN: Installed keyring is broken, forced reinstall required"
     if [ "${_THIS_OS}" = "Debian" ]; then
       st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
@@ -1607,17 +1603,17 @@ do_install_latest_git() {
 # Check if latest Git should be installed.
 check_install_latest_git() {
   _GIT_ITD=$(git --version 2>&1)
-  if [[ "$_GIT_ITD" =~ "git version 1.9.1" ]]; then
+  if [[ "${_GIT_ITD}" =~ "git version 1.9.1" ]]; then
     _GIT_FORCE_REINSTALL=YES
   fi
   if [[ "${_XTRAS_LIST}" =~ "GIT" ]] \
     || [ "${_OSV}" = "lucid" ] \
-    || [ "$_SSB_SRC" = "YES" ] \
-    || [ "$_GIT_FORCE_REINSTALL" = "YES" ]; then
+    || [ "${_SSB_SRC}" = "YES" ] \
+    || [ "${_GIT_FORCE_REINSTALL}" = "YES" ]; then
     _GIT_TEST=$(git --version 2>&1)
-    if [[ "$_GIT_TEST" =~ "git version ${_GIT_VRN}" ]]; then
+    if [[ "${_GIT_TEST}" =~ "git version ${_GIT_VRN}" ]]; then
       if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
-        || [ "$_GIT_FORCE_REINSTALL" = "YES" ]; then
+        || [ "${_GIT_FORCE_REINSTALL}" = "YES" ]; then
         do_install_latest_git
       fi
     else
@@ -1653,7 +1649,7 @@ install_wkhtmltopdf() {
     || [ ! -x "/usr/bin/wkhtmltopdf" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     _X86_64_TEST=$(uname -m 2>&1)
-    if [ "$_X86_64_TEST" = "x86_64" ]; then
+    if [ "${_X86_64_TEST}" = "x86_64" ]; then
       SYSTEMARCH="x86_64"
       msg "INFO: Installing /usr/bin/wkhtmltopdf $SYSTEMARCH version..."
       cd /var/opt
@@ -1684,7 +1680,7 @@ install_wkhtmltoimage() {
     || [ ! -x "/usr/bin/wkhtmltoimage" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     _X86_64_TEST=$(uname -m 2>&1)
-    if [ "$_X86_64_TEST" = "x86_64" ]; then
+    if [ "${_X86_64_TEST}" = "x86_64" ]; then
       SYSTEMARCH="x86_64"
       msg "INFO: Installing /usr/bin/wkhtmltoimage $SYSTEMARCH version..."
       cd /var/opt
@@ -1786,19 +1782,19 @@ update_sources_list() {
     fi
     if [ "${_OSV}" = "squeeze" ]; then
       _LTS_TEST=$(grep "DEBIAN LTS UPDATES" ${aptLiSys} 2>&1)
-      if [[ "$_LTS_TEST" =~ "DEBIAN LTS UPDATES" ]]; then
+      if [[ "${_LTS_TEST}" =~ "DEBIAN LTS UPDATES" ]]; then
         _DO_NOTHING=YES
       else
         _APT_SOURCES_REWRITE=YES
       fi
       _PROPOSED_TEST=$(grep "DEBIAN PROPOSED UPDATES" ${aptLiSys} 2>&1)
-      if [[ "$_PROPOSED_TEST" =~ "DEBIAN PROPOSED UPDATES" ]]; then
+      if [[ "${_PROPOSED_TEST}" =~ "DEBIAN PROPOSED UPDATES" ]]; then
         _DO_NOTHING=YES
       else
         _APT_SOURCES_REWRITE=YES
       fi
       _VOLATILE_TEST=$(grep "MAJOR BUG FIX UPDATES" ${aptLiSys} 2>&1)
-      if [[ "$_VOLATILE_TEST" =~ "MAJOR BUG FIX UPDATES" ]]; then
+      if [[ "${_VOLATILE_TEST}" =~ "MAJOR BUG FIX UPDATES" ]]; then
         _DO_NOTHING=YES
       else
         _APT_SOURCES_REWRITE=YES
@@ -1810,7 +1806,7 @@ update_sources_list() {
   else
     _APT_SOURCES_REWRITE=YES
   fi
-  if [ "$_APT_SOURCES_REWRITE" = "YES" ]; then
+  if [ "${_APT_SOURCES_REWRITE}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Updating packages sources list..."
     fi
@@ -2032,16 +2028,16 @@ install_ssh_src() {
     | tr -d "," \
     | cut -d"_" -f2 \
     | awk '{ print $1}' 2>&1)
-  if [ "$_SSH_FORCE_REINSTALL" = "YES" ]; then
+  if [ "${_SSH_FORCE_REINSTALL}" = "YES" ]; then
     _SSH_INSTALL_REQUIRED=YES
-    msg "INFO: OpenSSH $_SSH_ITD, rebuild forced"
-  elif [ "$_SSH_ITD" = "${_OPENSSH_VRN}" ]; then
+    msg "INFO: OpenSSH ${_SSH_ITD}, rebuild forced"
+  elif [ "${_SSH_ITD}" = "${_OPENSSH_VRN}" ]; then
     _DO_NOTHING=YES
   else
     _SSH_INSTALL_REQUIRED=YES
-    msg "INFO: Installed OpenSSH version $_SSH_ITD, upgrade required"
+    msg "INFO: Installed OpenSSH version ${_SSH_ITD}, upgrade required"
   fi
-  if [ "$_SSH_INSTALL_REQUIRED" = "YES" ]; then
+  if [ "${_SSH_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources, please wait..."
     cd /var/opt
     rm -f -r openssh*
@@ -2055,7 +2051,7 @@ install_ssh_src() {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     mrun "service ssh restart" &> /dev/null
-    if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]]; then
+    if [[ ! "${_SSH_GET_DPKG}" =~ "hold" ]]; then
       ### aptitude hold openssh-server &> /dev/null
       ### aptitude hold openssh-client &> /dev/null
       ### aptitude hold ssh &> /dev/null
@@ -2064,7 +2060,7 @@ install_ssh_src() {
       echo "ssh hold" | dpkg --set-selections
     fi
   else
-    if [[ ! "$_SSH_GET_DPKG" =~ "hold" ]]; then
+    if [[ ! "${_SSH_GET_DPKG}" =~ "hold" ]]; then
       ### aptitude hold openssh-server &> /dev/null
       ### aptitude hold openssh-client &> /dev/null
       ### aptitude hold ssh &> /dev/null
@@ -2115,14 +2111,14 @@ install_curl_src() {
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed libcurl is broken, cURL ${_CURL_ITD} upgrade required"
   fi
-  if [ "${_PHP_BIN_BROKEN}" = "YES" ] && [ -z "$_CURL_ALREADY_REBUILT" ]; then
+  if [ "${_PHP_BIN_BROKEN}" = "YES" ] && [ -z "${_CURL_ALREADY_REBUILT}" ]; then
     _CURL_INSTALL_REQUIRED=YES
   fi
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version ${_CURL_ITD}, rebuild forced"
   fi
-  if [ "$_CURL_INSTALL_REQUIRED" = "YES" ]; then
+  if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
     echo "libcurl3 install" | dpkg --set-selections
     echo "libcurl3-gnutls install" | dpkg --set-selections
@@ -2134,7 +2130,7 @@ install_curl_src() {
       if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
         echo "curl install" | dpkg --set-selections
       fi
-      if [ -z "$_CURL_ALREADY_REBUILT" ]; then
+      if [ -z "${_CURL_ALREADY_REBUILT}" ]; then
         apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
       fi
     else
@@ -2168,7 +2164,7 @@ install_ssl_src() {
     | awk '{ print $1}' 2>&1)
   if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ]; then
     _SPDY_COMPATIBILITY_TEST=$(service nginx configtest 2>&1)
-    if [[ "$_SPDY_COMPATIBILITY_TEST" =~ "without OpenSSL ALPN or NPN" ]]; then
+    if [[ "${_SPDY_COMPATIBILITY_TEST}" =~ "without OpenSSL ALPN or NPN" ]]; then
       _SSL_FORCE_REINSTALL=YES
     fi
     if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
@@ -2212,7 +2208,7 @@ install_ssl_src() {
     get_dev_src "openssl-${_OPENSSL_VRN}.tar.gz"
     cd /var/opt/openssl-${_OPENSSL_VRN}
     _X86_64_IF=$(uname -m 2>&1)
-    if [ "$_X86_64_IF" = "x86_64" ]; then
+    if [ "${_X86_64_IF}" = "x86_64" ]; then
       mrun "sh ./config zlib-dynamic \
         --prefix=/usr \
         --openssldir=/usr \
@@ -2236,7 +2232,7 @@ install_ssl_src() {
     if [[ ! "${_SSL_GET_DPKG}" =~ "hold" ]]; then
       echo "openssl hold" | dpkg --set-selections
     fi
-    if [[ ! "$_ZLB_GET_DPKG" =~ "hold" ]]; then
+    if [[ ! "${_ZLB_GET_DPKG}" =~ "hold" ]]; then
       echo "zlibc hold" | dpkg --set-selections
       echo "zlib1g hold" | dpkg --set-selections
       echo "zlib1g-dev hold" | dpkg --set-selections
@@ -2294,7 +2290,7 @@ switch_to_dash() {
                   /usr/local/libexec/git-core \
                   /usr/local/sbin \
                   /usr/sbin"
-    for p in $_X_BIN_PATHS; do
+    for p in ${_X_BIN_PATHS}; do
       if [ -e "$p" ]; then
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f`; do
           if [[ "$f" =~ "drush"($) ]] \
@@ -2303,7 +2299,7 @@ switch_to_dash() {
             _SKIP_THIS=YES
           else
             _SHELL_TEST=$(grep -I -o "/bin/sh" $f 2>&1)
-            if [ ! -z "$_SHELL_TEST" ] \
+            if [ ! -z "${_SHELL_TEST}" ] \
               && [ "$f" != "/etc/init.d/clean-boa-env" ] \
               && [ "$f" != "/bin/websh" ]; then
               sed -i "s/^#\! \/.*/#\!\/bin\/dash/g" $f &> /dev/null
@@ -2349,7 +2345,7 @@ switch_to_bash() {
                   /usr/local/libexec/git-core \
                   /usr/local/sbin \
                   /usr/sbin"
-    for p in $_X_BIN_PATHS; do
+    for p in ${_X_BIN_PATHS}; do
       if [ -e "$p" ]; then
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f`; do
           if [[ "$f" =~ "drush"($) ]] \
@@ -2358,7 +2354,7 @@ switch_to_bash() {
             _SKIP_THIS=YES
           else
             _SHELL_TEST=$(grep -I -o "/bin/sh" $f 2>&1)
-            if [ ! -z "$_SHELL_TEST" ] \
+            if [ ! -z "${_SHELL_TEST}" ] \
               && [ "$f" != "/etc/init.d/clean-boa-env" ] \
               && [ "$f" != "/bin/websh" ]; then
               sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" $f &> /dev/null
@@ -2389,13 +2385,13 @@ strict_bin_permissions() {
               /usr/local/sbin \
               /usr/sbin"
 
-  for p in $_BIN_PATHS; do
+  for p in ${_BIN_PATHS}; do
     if [ -e "$p" ]; then
       chown root:root $p &> /dev/null
       chmod 711 $p &> /dev/null
     fi
   done
-  for p in $_BIN_PATHS; do
+  for p in ${_BIN_PATHS}; do
     if [ -e "$p" ]; then
       for f in `find $p -group users ! -perm -4000 ! -perm -2000 -type f`; do
         chgrp root $f &> /dev/null
@@ -2403,7 +2399,7 @@ strict_bin_permissions() {
       done
     fi
   done
-  for p in $_BIN_PATHS; do
+  for p in ${_BIN_PATHS}; do
     if [ -e "$p" ]; then
       for f in `find $p -group lshellg ! -perm -4000 ! -perm -2000 -type f`; do
         chgrp root $f &> /dev/null
@@ -2411,7 +2407,7 @@ strict_bin_permissions() {
       done
     fi
   done
-  for p in $_BIN_PATHS; do
+  for p in ${_BIN_PATHS}; do
     if [ -e "$p" ]; then
       for f in `find $p -group www-data ! -perm -4000 ! -perm -2000 -type f`; do
         chgrp root $f &> /dev/null
@@ -2419,7 +2415,7 @@ strict_bin_permissions() {
       done
     fi
   done
-  for p in $_BIN_PATHS; do
+  for p in ${_BIN_PATHS}; do
     if [ -e "$p" ]; then
       for f in `find $p -group root ! -perm -4000 ! -perm -2000 -type f`; do
         chgrp users $f &> /dev/null
@@ -2427,7 +2423,7 @@ strict_bin_permissions() {
       done
     fi
   done
-  for p in $_BIN_PATHS; do
+  for p in ${_BIN_PATHS}; do
     if [ -e "$p" ]; then
       for f in `find $p -group staff ! -perm -4000 ! -perm -2000 -type f`; do
         chgrp users $f &> /dev/null
@@ -2493,9 +2489,9 @@ strict_bin_permissions() {
   fi
   for i in ${_BACKEND_ITEMS}; do
     _BIN_ITEM=$(which $i 2>&1)
-    if [ -e "$_BIN_ITEM" ]; then
-      chgrp root $_BIN_ITEM &> /dev/null
-      chmod 755 $_BIN_ITEM &> /dev/null
+    if [ -e "${_BIN_ITEM}" ]; then
+      chgrp root ${_BIN_ITEM} &> /dev/null
+      chmod 755 ${_BIN_ITEM} &> /dev/null
     fi
   done
 
@@ -2517,9 +2513,9 @@ strict_bin_permissions() {
                     syncpass"
   for i in ${_PROTECTED_ITEMS}; do
     _BIN_ITEM=$(which $i 2>&1)
-    if [ -e "$_BIN_ITEM" ]; then
-      chown root:root $_BIN_ITEM &> /dev/null
-      chmod 700 $_BIN_ITEM &> /dev/null
+    if [ -e "${_BIN_ITEM}" ]; then
+      chown root:root ${_BIN_ITEM} &> /dev/null
+      chmod 700 ${_BIN_ITEM} &> /dev/null
     fi
   done
 
@@ -2550,7 +2546,7 @@ finale() {
   msg "JOKE: Just kidding !!! Enjoy your Aegir Hosting System :)"
   mrun "sleep 3"
   echo " "
-  if [ "$_UP_LNX" = "YES" ]; then
+  if [ "${_UP_LNX}" = "YES" ]; then
     msg "ALRT! Your OS kernel has been upgraded!"
     if [ ! -e "/usr/sbin/uptrack-upgrade" ]; then
       msg "ALRT! You *must* reboot immediately to stay secure!"
@@ -2719,8 +2715,8 @@ basic_packages_install_on_init() {
     msg "INFO: Installing some basic tools now, please wait..."
     rm -f /etc/apt/sources.list.d/openssl.list
     _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-    if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
-      || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
+    if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
+      || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
       msg "WARN: Installed keyring is broken, forced reinstall required"
       if [ "${_THIS_OS}" = "Debian" ]; then
         apt-get install debian-keyring ${forCer} &> /dev/null
@@ -2745,7 +2741,7 @@ more_packages_install_on_init() {
     msg "INFO: Installing more basic tools now, please wait..."
     if [ -e "/etc/debian_version" ]; then
       _L_DEB_TEST=$(grep "^5." /etc/debian_version 2>&1)
-      if [ ! -z "$_L_DEB_TEST" ]; then
+      if [ ! -z "${_L_DEB_TEST}" ]; then
         sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" ${aptLiSys} &> /dev/null
         wait
         sed -i "s/ftp.*debian.org/archive.debian.org/g" \
@@ -3023,8 +3019,8 @@ sys_packages_update() {
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
   rm -f /etc/apt/sources.list.d/openssl.list
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
-    || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
+  if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
+    || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
     msg "WARN: Installed keyring is broken, forced reinstall required"
     if [ "${_THIS_OS}" = "Debian" ]; then
       st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
@@ -3139,12 +3135,12 @@ sys_packages_install() {
     _APT_ELSE="netcat nginx"
   else
     _APT_ITEM=$(dpkg --get-selections | grep openjdk-6-jdk | grep install 2>&1)
-    if [[ "$_APT_ITEM" =~ "install" ]]; then
+    if [[ "${_APT_ITEM}" =~ "install" ]]; then
       mrun "apt-get remove openjdk-6-jdk -y --force-yes -qq" &> /dev/null
       mrun "apt-get purge openjdk-6-jdk -y --force-yes -qq" &> /dev/null
     fi
     _APT_ITEM=$(dpkg --get-selections | grep openjdk-7-jdk | grep install 2>&1)
-    if [[ "$_APT_ITEM" =~ "install" ]]; then
+    if [[ "${_APT_ITEM}" =~ "install" ]]; then
       mrun "apt-get remove openjdk-7-jdk -y --force-yes -qq" &> /dev/null
       mrun "apt-get purge openjdk-7-jdk -y --force-yes -qq" &> /dev/null
     fi
@@ -3167,8 +3163,8 @@ sys_packages_install() {
     _APT_ELSE="netcat"
     rm -f /etc/apt/sources.list.d/openssl.list
     _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-    if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
-      || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
+    if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
+      || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
       msg "WARN: Installed keyring is broken, forced reinstall required"
       if [ "${_THIS_OS}" = "Debian" ]; then
         st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
@@ -3199,7 +3195,7 @@ sys_packages_install() {
   else
     _IS_VZ=NO
   fi
-  if [ "$_IS_VZ" = "YES" ] \
+  if [ "${_IS_VZ}" = "YES" ] \
     || [ -e "/root/.use.sysklogd.cnf" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
@@ -3221,7 +3217,7 @@ sys_packages_install() {
   else
     _SSB_SRC=NO
   fi
-  if [ "$_SSB_SRC" = "YES" ]; then
+  if [ "${_SSB_SRC}" = "YES" ]; then
     _EXTRA_PACKAGES="libcurl4-openssl-dev \
                      ${_EXTRA_PACKAGES}"
   else
@@ -3261,10 +3257,10 @@ sys_packages_install() {
     || [ "${_OSV}" = "precise" ] \
     || [ "${_OSV}" = "lucid" ]; then
     _DEBDEPS="apticron \
-              $_APT_XTRA \
-              $_EXTRA_LIB_APT \
+              ${_APT_XTRA} \
+              ${_EXTRA_LIB_APT} \
               ${_EXTRA_PACKAGES} \
-              $_SYSLOGD \
+              ${_SYSLOGD} \
               aptitude \
               auditd \
               autoconf2.13 \
@@ -3397,11 +3393,11 @@ fix_postfix() {
     killall -9 sendmail &> /dev/null
   else
     _POSTFIX_TEST=$(grep "fatal: open lock file" /var/log/mail.log 2>&1)
-    if [[ "$_POSTFIX_TEST" =~ "fatal: open lock file" ]]; then
+    if [[ "${_POSTFIX_TEST}" =~ "fatal: open lock file" ]]; then
       rm -f /etc/apt/sources.list.d/openssl.list
       _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-      if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
-        || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
+      if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
+        || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
         msg "WARN: Installed keyring is broken, forced reinstall required"
         if [ "${_THIS_OS}" = "Debian" ]; then
           mrun "apt-get install debian-keyring ${forCer}" 2> /dev/null
@@ -3437,7 +3433,7 @@ fix_libs_php() {
       || [ ! -e "/usr/include/gmp.h" ]; then
       msg "INFO: Fix #1 for libs in ${_THIS_OS} ${_OSV}"
       _X86_64_TEST=$(uname -m 2>&1)
-      if [ "$_X86_64_TEST" = "x86_64" ]; then
+      if [ "${_X86_64_TEST}" = "x86_64" ]; then
         ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
         ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
         ln -sf /usr/lib/x86_64-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
@@ -3489,10 +3485,10 @@ fix_libssl() {
       fi
     fi
     if [ ! -e "/usr/lib/libssl.so.1.0.0" ] \
-      && [ "$_SSL_FIX_REQUIRED" = "YES" ]; then
+      && [ "${_SSL_FIX_REQUIRED}" = "YES" ]; then
       msg "INFO: Fix #2 for libs in ${_THIS_OS} ${_OSV}"
       _X86_64_TEST=$(uname -m 2>&1)
-      if [ "$_X86_64_TEST" = "x86_64" ]; then
+      if [ "${_X86_64_TEST}" = "x86_64" ]; then
         if [ -e "/usr/lib/x86_64-linux-gnu/libssl.so.1.0.0" ] \
           && [ ! -e "/usr/lib/libssl.so.1.0.0" ]; then
           ln -s /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0  \
@@ -3670,11 +3666,11 @@ install_update_xdrago() {
     sed -i "s/= 200/= ${_NGINX_DOS_LIMIT}/g" \
       /var/xdrago/monitor/check/scan_nginx &> /dev/null
     wait
-    if [ ! -z "$_NGINX_DOS_KEYWORDS" ]; then
+    if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
       _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|]/}
-      if [ ! -z "$_NGINX_DOS_KEYWORDS" ]; then
-        msg "INFO: Configured _NGINX_DOS_KEYWORDS: $_NGINX_DOS_KEYWORDS"
-        sed -i "s/foobar/$_NGINX_DOS_KEYWORDS/g" \
+      if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
+        msg "INFO: Configured _NGINX_DOS_KEYWORDS: ${_NGINX_DOS_KEYWORDS}"
+        sed -i "s/foobar/${_NGINX_DOS_KEYWORDS}/g" \
           /var/xdrago/monitor/check/scan_nginx &> /dev/null
         wait
       fi
@@ -3752,11 +3748,11 @@ install_update_xdrago() {
     sed -i "s/= 200/= ${_NGINX_DOS_LIMIT}/g" \
       /var/xdrago/monitor/check/scan_nginx &> /dev/null
     wait
-    if [ ! -z "$_NGINX_DOS_KEYWORDS" ]; then
+    if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
       _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|]/}
-      if [ ! -z "$_NGINX_DOS_KEYWORDS" ]; then
-        msg "INFO: Configured _NGINX_DOS_KEYWORDS: $_NGINX_DOS_KEYWORDS"
-        sed -i "s/foobar/$_NGINX_DOS_KEYWORDS/g" \
+      if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
+        msg "INFO: Configured _NGINX_DOS_KEYWORDS: ${_NGINX_DOS_KEYWORDS}"
+        sed -i "s/foobar/${_NGINX_DOS_KEYWORDS}/g" \
           /var/xdrago/monitor/check/scan_nginx &> /dev/null
         wait
       fi
@@ -3846,7 +3842,7 @@ install_update_lshell() {
   else
     _PATH_LSHELL="/usr/local/bin/lshell"
   fi
-  if [ ! -e "$_PATH_LSHELL" ] \
+  if [ ! -e "${_PATH_LSHELL}" ] \
     || [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
@@ -3873,7 +3869,7 @@ install_update_lshell() {
       cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
     else
       cp -af ${bldPth}/aegir/tools/system/conf/lshell.conf /etc/lshell.conf
-      echo "$_PATH_LSHELL" >> /etc/shells
+      echo "${_PATH_LSHELL}" >> /etc/shells
     fi
     rm -f /etc/logrotate.d/lshell
     addgroup --system lshellg &> /dev/null
@@ -3952,15 +3948,15 @@ if_install_ftpd() {
 
 check_fix_newrelic() {
   _NEWRELIC_APP_CFG="/etc/newrelic/newrelic.cfg"
-  if [ -e "$_NEWRELIC_APP_CFG" ]; then
-    _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" $_NEWRELIC_APP_CFG 2>&1)
+  if [ -e "${_NEWRELIC_APP_CFG}" ]; then
+    _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" ${_NEWRELIC_APP_CFG} 2>&1)
     if [[ "${_NEWRELIC_KEY_TEST}" =~ "REPLACE_WITH_REAL_KEY" ]] \
       && [ ! -z "${_NEWRELIC_KEY}" ]; then
       sed -i "s/REPLACE_WITH_REAL_KEY/${_NEWRELIC_KEY}/g" \
-        $_NEWRELIC_APP_CFG &> /dev/null
+        ${_NEWRELIC_APP_CFG} &> /dev/null
       wait
     fi
-    sed -i "s/^loglevel=.*/loglevel=error/g" $_NEWRELIC_APP_CFG &> /dev/null
+    sed -i "s/^loglevel=.*/loglevel=error/g" ${_NEWRELIC_APP_CFG} &> /dev/null
     wait
     mrun "service newrelic-daemon restart" &> /dev/null
   else
@@ -3983,19 +3979,19 @@ check_fix_newrelic() {
     fi
   fi
   _NEWRELIC_SYS_CFG="/etc/newrelic/nrsysmond.cfg"
-  if [ -e "$_NEWRELIC_SYS_CFG" ]; then
-    _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" $_NEWRELIC_SYS_CFG 2>&1)
+  if [ -e "${_NEWRELIC_SYS_CFG}" ]; then
+    _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" ${_NEWRELIC_SYS_CFG} 2>&1)
     if [[ "${_NEWRELIC_KEY_TEST}" =~ "REPLACE_WITH_REAL_KEY" ]] \
       && [ ! -z "${_NEWRELIC_KEY}" ]; then
       sed -i "s/REPLACE_WITH_REAL_KEY/${_NEWRELIC_KEY}/g" \
-        $_NEWRELIC_SYS_CFG &> /dev/null
+        ${_NEWRELIC_SYS_CFG} &> /dev/null
       wait
     fi
     sed -i "s/^loglevel=.*/loglevel=error/g" \
-      $_NEWRELIC_SYS_CFG &> /dev/null
+      ${_NEWRELIC_SYS_CFG} &> /dev/null
     wait
     sed -i "s/.*pidfile=.*/pidfile=\/var\/run\/nrsysmond.pid/g" \
-      $_NEWRELIC_SYS_CFG &> /dev/null
+      ${_NEWRELIC_SYS_CFG} &> /dev/null
     wait
     if [ -e "/root/.enable.newrelic.sysmond.cnf" ]; then
       mrun "service newrelic-sysmond restart" &> /dev/null
@@ -4039,9 +4035,9 @@ update_initd() {
     chmod 755 /etc/init.d/clean-boa-env &> /dev/null
     st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
     _SSH_USEDNS_TEST=$(grep "UseDNS" /etc/ssh/sshd_config 2>&1)
-    if [[ "$_SSH_USEDNS_TEST" =~ (^)"UseDNS no" ]]; then
+    if [[ "${_SSH_USEDNS_TEST}" =~ (^)"UseDNS no" ]]; then
       _DO_NOTHING=YES
-    elif [[ "$_SSH_USEDNS_TEST" =~ "UseDNS" ]]; then
+    elif [[ "${_SSH_USEDNS_TEST}" =~ "UseDNS" ]]; then
       sed -i "s/.*UseDNS.*/UseDNS no/g" /etc/ssh/sshd_config &> /dev/null
       wait
     else
@@ -4050,9 +4046,9 @@ update_initd() {
     fi
     if [ -e "/usr/etc/sshd_config" ]; then
       _SSH_USEDNS_TEST=$(grep "UseDNS" /usr/etc/sshd_config 2>&1)
-      if [[ "$_SSH_USEDNS_TEST" =~ (^)"UseDNS no" ]]; then
+      if [[ "${_SSH_USEDNS_TEST}" =~ (^)"UseDNS no" ]]; then
         _DO_NOTHING=YES
-      elif [[ "$_SSH_USEDNS_TEST" =~ "UseDNS" ]]; then
+      elif [[ "${_SSH_USEDNS_TEST}" =~ "UseDNS" ]]; then
         sed -i "s/.*UseDNS.*/UseDNS no/g" /usr/etc/sshd_config &> /dev/null
         wait
       else
@@ -4152,17 +4148,13 @@ update_initd() {
       mrun "service ssh reload" &> /dev/null
     else
       _SSH_USEDNS_TEST=$(grep "^UseDNS no" /etc/ssh/sshd_config 2>&1)
-      if [[ "$_SSH_USEDNS_TEST" =~ "UseDNS no" ]]; then
-        _DO_NOTHING=YES
-      else
+      if [[ ! "${_SSH_USEDNS_TEST}" =~ "UseDNS no" ]]; then
         sed -i "s/.*UseDNS.*/UseDNS no/g" /etc/ssh/sshd_config &> /dev/null
         wait
       fi
       if [ -e "/usr/etc/sshd_config" ]; then
         _SSH_USEDNS_TEST=$(grep "^UseDNS no" /usr/etc/sshd_config 2>&1)
-        if [[ "$_SSH_USEDNS_TEST" =~ "UseDNS no" ]]; then
-          _DO_NOTHING=YES
-        else
+        if [[ ! "${_SSH_USEDNS_TEST}" =~ "UseDNS no" ]]; then
           sed -i "s/.*UseDNS.*/UseDNS no/g" /usr/etc/sshd_config &> /dev/null
           wait
         fi
@@ -4235,7 +4227,7 @@ update_sysctl() {
     cp -af ${locCnf}/sysctl.conf /etc/sysctl.conf
     if [ -e "/etc/security/limits.conf" ]; then
       _IF_NF=$(grep '524288' /etc/security/limits.conf 2>&1)
-      if [ -z "$_IF_NF" ]; then
+      if [ -z "${_IF_NF}" ]; then
         echo "*         hard    nofile      524288"  >> /etc/security/limits.conf
         echo "*         soft    nofile      524288"  >> /etc/security/limits.conf
         echo "root      hard    nofile      1048576" >> /etc/security/limits.conf
@@ -4245,7 +4237,7 @@ update_sysctl() {
     if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ]; then
       sysctl -p /etc/sysctl.conf &> /dev/null
       _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}' 2>&1)
-      if [ -z "$_IF_CDP" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
+      if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
         msg "INFO: Cleaning up system swap, it may take a moment..."
         st_runner "swapoff -a" &> /dev/null
         st_runner "swapon -a" &> /dev/null
@@ -4274,7 +4266,7 @@ update_apticron() {
   if [ -e "/usr/sbin/apticron" ]; then
     if [ -e "/etc/apticron/apticron.conf" ]; then
       _APTICRON_TEST=$(grep "NOTIFY_HOLDS" /etc/apticron/apticron.conf 2>&1)
-      if [[ "$_APTICRON_TEST" =~ "NOTIFY_HOLDS" ]]; then
+      if [[ "${_APTICRON_TEST}" =~ "NOTIFY_HOLDS" ]]; then
         sed -i "s/^# NOTIFY_HOLDS=\"0\"/NOTIFY_HOLDS=\"0\"/g" \
           /etc/apticron/apticron.conf
         wait

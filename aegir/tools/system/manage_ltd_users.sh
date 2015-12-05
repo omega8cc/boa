@@ -134,7 +134,7 @@ sanitize_string() {
 # Add ltd-shell group if not exists.
 add_ltd_group_if_not_exists() {
   _LTD_EXISTS=$(getent group ltd-shell 2>&1)
-  if [[ "$_LTD_EXISTS" =~ "ltd-shell" ]]; then
+  if [[ "${_LTD_EXISTS}" =~ "ltd-shell" ]]; then
     _DO_NOTHING=YES
   else
     addgroup --system ltd-shell &> /dev/null
@@ -199,7 +199,7 @@ enable_chattr() {
       ${dscUsr}/tools/drush/drush.php 2>&1)
     _PHP_V="56 55 54 53"
     for e in ${_PHP_V}; do
-      if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] \
+      if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
         && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ]; then
         _PHP_CLI_UPDATE=YES
       fi
@@ -219,14 +219,14 @@ enable_chattr() {
       else
         _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
           ${dscUsr}/tools/drush/drush.php 2>&1)
-        echo "_CHECK_USE_PHP_CLI is $_CHECK_USE_PHP_CLI for $1 at ${_USER}"
-        if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]]; then
+        echo "_CHECK_USE_PHP_CLI is ${_CHECK_USE_PHP_CLI} for $1 at ${_USER}"
+        if [[ "${_CHECK_USE_PHP_CLI}" =~ "php55" ]]; then
           _USE_PHP_CLI=5.5
-        elif [[ "$_CHECK_USE_PHP_CLI" =~ "php56" ]]; then
+        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php56" ]]; then
           _USE_PHP_CLI=5.6
-        elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]]; then
+        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php54" ]]; then
           _USE_PHP_CLI=5.4
-        elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]]; then
+        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php53" ]]; then
           _USE_PHP_CLI=5.3
         fi
       fi
@@ -298,8 +298,8 @@ enable_chattr() {
       fi
       if [ ! -x "/home/${UQ}/.rvm/bin/rvm" ]; then
         touch /var/run/manage_rvm_users.pid
-        su -s /bin/bash - ${UQ} -c "$_GPG --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3"
-        su -s /bin/bash - ${UQ} -c "\curl -sSL https://rvm.io/mpapis.asc | $_GPG --import"
+        su -s /bin/bash - ${UQ} -c "${_GPG} --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3"
+        su -s /bin/bash - ${UQ} -c "\curl -sSL https://rvm.io/mpapis.asc | ${_GPG} --import"
         su -s /bin/bash   ${UQ} -c "\curl -sSL https://get.rvm.io | bash -s stable"
         su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles"
         su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
@@ -429,7 +429,7 @@ disable_chattr() {
 kill_zombies() {
 for Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`; do
   _SEC_IDY=$(id -nG ${Existing} 2>&1)
-  if [[ "$_SEC_IDY" =~ "ltd-shell" ]]; then
+  if [[ "${_SEC_IDY}" =~ "ltd-shell" ]]; then
     usrParent=$(echo ${Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
     _PAR_DIR="/data/disk/${usrParent}/clients"
     _SEC_SYM="/home/${Existing}/sites"
@@ -625,14 +625,14 @@ add_user_if_not_exists() {
   _ID_EXISTS=$(getent passwd ${usrLtd} 2>&1)
   _ID_SHELLS=$(id -nG ${usrLtd} 2>&1)
   echo "_ID_EXISTS is == ${_ID_EXISTS} == at add_user_if_not_exists"
-  echo "_ID_SHELLS is == $_ID_SHELLS == at add_user_if_not_exists"
+  echo "_ID_SHELLS is == ${_ID_SHELLS} == at add_user_if_not_exists"
   if [ -z "${_ID_EXISTS}" ]; then
     echo "We will create user == ${usrLtd} =="
     ok_create_user
     manage_sec_user_drush_aliases
     enable_chattr ${usrLtd}
   elif [[ "${_ID_EXISTS}" =~ "${usrLtd}" ]] \
-    && [[ "$_ID_SHELLS" =~ "ltd-shell" ]]; then
+    && [[ "${_ID_SHELLS}" =~ "ltd-shell" ]]; then
     echo "We will update user == ${usrLtd} =="
     disable_chattr ${usrLtd}
     rm -f -r /home/${usrLtd}/drush-backups
@@ -677,7 +677,7 @@ for Client in `find ${pthParentUsr}/clients/ -maxdepth 1 -mindepth 1 -type d | s
   cd $Client
   manage_sec_access_paths
   #_ALLD_DIR="${_ALLD_DIR}, '/home/${usrLtd}'"
-  if [ "$_ALLD_NUM" -ge "$_ALLD_CTL" ]; then
+  if [ "${_ALLD_NUM}" -ge "${_ALLD_CTL}" ]; then
     add_user_if_not_exists
     echo Done for $Client at ${pthParentUsr}
   else
@@ -698,7 +698,7 @@ update_php_cli_local_ini() {
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
   _PHP_V="56 55 54 53"
   for e in ${_PHP_V}; do
-    if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] \
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ]; then
       _PHP_CLI_UPDATE=YES
     fi
@@ -718,16 +718,16 @@ update_php_cli_local_ini() {
     chattr -i ${_U_II}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]]; then
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php55" ]]; then
       cp -af /opt/php55/lib/php.ini ${_U_II}
       _U_INI=55
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php56" ]]; then
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php56" ]]; then
       cp -af /opt/php56/lib/php.ini ${_U_II}
       _U_INI=56
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]]; then
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php54" ]]; then
       cp -af /opt/php54/lib/php.ini ${_U_II}
       _U_INI=54
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]]; then
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php53" ]]; then
       cp -af /opt/php53/lib/php.ini ${_U_II}
       _U_INI=53
     fi
@@ -881,13 +881,13 @@ disable_newrelic() {
     _PHP_SV=55
   fi
   _THIS_POOL_TPL="/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf"
-  if [ -e "$_THIS_POOL_TPL" ]; then
-    _CHECK_NEW_RELIC_KEY=$(grep "newrelic.enabled.*true" $_THIS_POOL_TPL 2>&1)
-    if [[ "$_CHECK_NEW_RELIC_KEY" =~ "newrelic.enabled" ]]; then
+  if [ -e "${_THIS_POOL_TPL}" ]; then
+    _CHECK_NEW_RELIC_KEY=$(grep "newrelic.enabled.*true" ${_THIS_POOL_TPL} 2>&1)
+    if [[ "${_CHECK_NEW_RELIC_KEY}" =~ "newrelic.enabled" ]]; then
       echo New Relic for ${_USER} will be disabled because newrelic.info does not exist
-      sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"\"/g" $_THIS_POOL_TPL
+      sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"\"/g" ${_THIS_POOL_TPL}
       wait
-      sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"false\"/g" $_THIS_POOL_TPL
+      sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"false\"/g" ${_THIS_POOL_TPL}
       wait
       if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ]; then
         service php${_PHP_SV}-fpm reload
@@ -900,8 +900,8 @@ disable_newrelic() {
 enable_newrelic() {
   _LOC_NEW_RELIC_KEY=$(cat ${dscUsr}/static/control/newrelic.info 2>&1)
   _LOC_NEW_RELIC_KEY=${_LOC_NEW_RELIC_KEY//[^0-9a-zA-Z]/}
-  _LOC_NEW_RELIC_KEY=$(echo -n $_LOC_NEW_RELIC_KEY | tr -d "\n" 2>&1)
-  if [ -z "$_LOC_NEW_RELIC_KEY" ]; then
+  _LOC_NEW_RELIC_KEY=$(echo -n ${_LOC_NEW_RELIC_KEY} | tr -d "\n" 2>&1)
+  if [ -z "${_LOC_NEW_RELIC_KEY}" ]; then
     disable_newrelic
   else
     _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
@@ -909,23 +909,23 @@ enable_newrelic() {
       _PHP_SV=55
     fi
     _THIS_POOL_TPL="/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf"
-    if [ -e "$_THIS_POOL_TPL" ]; then
-      _CHECK_NEW_RELIC_TPL=$(grep "newrelic.license" $_THIS_POOL_TPL 2>&1)
-      _CHECK_NEW_RELIC_KEY=$(grep "$_LOC_NEW_RELIC_KEY" $_THIS_POOL_TPL 2>&1)
-      if [[ "$_CHECK_NEW_RELIC_KEY" =~ "$_LOC_NEW_RELIC_KEY" ]]; then
+    if [ -e "${_THIS_POOL_TPL}" ]; then
+      _CHECK_NEW_RELIC_TPL=$(grep "newrelic.license" ${_THIS_POOL_TPL} 2>&1)
+      _CHECK_NEW_RELIC_KEY=$(grep "${_LOC_NEW_RELIC_KEY}" ${_THIS_POOL_TPL} 2>&1)
+      if [[ "${_CHECK_NEW_RELIC_KEY}" =~ "${_LOC_NEW_RELIC_KEY}" ]]; then
         echo "New Relic integration is already active for ${_USER}"
       else
-        if [[ "$_CHECK_NEW_RELIC_TPL" =~ "newrelic.license" ]]; then
+        if [[ "${_CHECK_NEW_RELIC_TPL}" =~ "newrelic.license" ]]; then
           echo "New Relic for ${_USER} update with key \
-            $_LOC_NEW_RELIC_KEY in php${_PHP_SV}"
-          sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"$_LOC_NEW_RELIC_KEY\"/g" $_THIS_POOL_TPL
+            ${_LOC_NEW_RELIC_KEY} in php${_PHP_SV}"
+          sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"${_LOC_NEW_RELIC_KEY}\"/g" ${_THIS_POOL_TPL}
           wait
-          sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"true\"/g" $_THIS_POOL_TPL
+          sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"true\"/g" ${_THIS_POOL_TPL}
           wait
         else
-          echo New Relic for ${_USER} setup with key $_LOC_NEW_RELIC_KEY in php${_PHP_SV}
-          echo "php_admin_value[newrelic.license] = \"$_LOC_NEW_RELIC_KEY\"" >> $_THIS_POOL_TPL
-          echo "php_admin_value[newrelic.enabled] = \"true\"" >> $_THIS_POOL_TPL
+          echo New Relic for ${_USER} setup with key ${_LOC_NEW_RELIC_KEY} in php${_PHP_SV}
+          echo "php_admin_value[newrelic.license] = \"${_LOC_NEW_RELIC_KEY}\"" >> ${_THIS_POOL_TPL}
+          echo "php_admin_value[newrelic.enabled] = \"true\"" >> ${_THIS_POOL_TPL}
         fi
         if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ]; then
           service php${_PHP_SV}-fpm reload
@@ -1230,13 +1230,13 @@ switch_php() {
       && [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
       _T_FPM_VRN=$(cat ${dscUsr}/static/control/fpm.info 2>&1)
       _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
-      _T_FPM_VRN=$(echo -n $_T_FPM_VRN | tr -d "\n" 2>&1)
-      if [ "$_T_FPM_VRN" = "5.6" ] \
-        || [ "$_T_FPM_VRN" = "5.5" ] \
-        || [ "$_T_FPM_VRN" = "5.4" ] \
-        || [ "$_T_FPM_VRN" = "5.3" ] \
-        || [ "$_T_FPM_VRN" = "5.2" ]; then
-        if [ "$_T_FPM_VRN" = "5.5" ] \
+      _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
+      if [ "${_T_FPM_VRN}" = "5.6" ] \
+        || [ "${_T_FPM_VRN}" = "5.5" ] \
+        || [ "${_T_FPM_VRN}" = "5.4" ] \
+        || [ "${_T_FPM_VRN}" = "5.3" ] \
+        || [ "${_T_FPM_VRN}" = "5.2" ]; then
+        if [ "${_T_FPM_VRN}" = "5.5" ] \
           && [ ! -x "/opt/php55/bin/php" ]; then
           if [ -x "/opt/php56/bin/php" ]; then
             _T_FPM_VRN=5.6
@@ -1245,7 +1245,7 @@ switch_php() {
           elif [ -x "/opt/php53/bin/php" ]; then
             _T_FPM_VRN=5.3
           fi
-        elif [ "$_T_FPM_VRN" = "5.6" ] \
+        elif [ "${_T_FPM_VRN}" = "5.6" ] \
           && [ ! -x "/opt/php56/bin/php" ]; then
           if [ -x "/opt/php55/bin/php" ]; then
             _T_FPM_VRN=5.5
@@ -1254,7 +1254,7 @@ switch_php() {
           elif [ -x "/opt/php53/bin/php" ]; then
             _T_FPM_VRN=5.3
           fi
-        elif [ "$_T_FPM_VRN" = "5.4" ] \
+        elif [ "${_T_FPM_VRN}" = "5.4" ] \
           && [ ! -x "/opt/php54/bin/php" ]; then
           if [ -x "/opt/php55/bin/php" ]; then
             _T_FPM_VRN=5.5
@@ -1263,7 +1263,7 @@ switch_php() {
           elif [ -x "/opt/php53/bin/php" ]; then
             _T_FPM_VRN=5.3
           fi
-        elif [ "$_T_FPM_VRN" = "5.3" ] \
+        elif [ "${_T_FPM_VRN}" = "5.3" ] \
           && [ ! -x "/opt/php53/bin/php" ]; then
           if [ -x "/opt/php55/bin/php" ]; then
             _T_FPM_VRN=5.5
@@ -1272,7 +1272,7 @@ switch_php() {
           elif [ -x "/opt/php54/bin/php" ]; then
             _T_FPM_VRN=5.4
           fi
-        elif [ "$_T_FPM_VRN" = "5.2" ]; then
+        elif [ "${_T_FPM_VRN}" = "5.2" ]; then
           if [ -x "/opt/php55/bin/php" ]; then
             _T_FPM_VRN=5.5
           elif [ -x "/opt/php56/bin/php" ]; then
@@ -1283,13 +1283,13 @@ switch_php() {
             _T_FPM_VRN=5.3
           fi
         fi
-        if [ "$_T_FPM_VRN" != "${_PHP_FPM_VERSION}" ] \
-          || [ "$_FORCE_FPM_SETUP" = "YES" ]; then
+        if [ "${_T_FPM_VRN}" != "${_PHP_FPM_VERSION}" ] \
+          || [ "${_FORCE_FPM_SETUP}" = "YES" ]; then
           _NEW_FPM_SETUP=YES
           _FORCE_FPM_SETUP=NO
         fi
-        if [ ! -z "$_T_FPM_VRN" ] \
-          && [ "$_NEW_FPM_SETUP" = "YES" ]; then
+        if [ ! -z "${_T_FPM_VRN}" ] \
+          && [ "${_NEW_FPM_SETUP}" = "YES" ]; then
           _NEW_FPM_SETUP=NO
           satellite_tune_fpm_workers
           _LIM_FPM="${_L_PHP_FPM_WORKERS}"
@@ -1334,11 +1334,11 @@ switch_php() {
               _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
             fi
           fi
-          sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=$_T_FPM_VRN/g" \
+          sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_T_FPM_VRN}/g" \
             /root/.${_USER}.octopus.cnf &> /dev/null
           wait
-          echo $_T_FPM_VRN > ${dscUsr}/log/fpm.txt
-          echo $_T_FPM_VRN > ${dscUsr}/static/control/fpm.info
+          echo ${_T_FPM_VRN} > ${dscUsr}/log/fpm.txt
+          echo ${_T_FPM_VRN} > ${dscUsr}/static/control/fpm.info
           chown ${_USER}.ftp:${usrGroup} ${dscUsr}/static/control/fpm.info
           _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
           _PHP_SV=${_T_FPM_VRN//[^0-9]/}
@@ -1634,7 +1634,7 @@ else
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   cat /var/xdrago/conf/lshell.conf > ${_THIS_LTD_CONF}
   _THISHTNM=$(hostname --fqdn 2>&1)
-  _THISHTIP=$(echo $(getent ahostsv4 $_THISHTNM) \
+  _THISHTIP=$(echo $(getent ahostsv4 ${_THISHTNM}) \
     | cut -d: -f2 \
     | awk '{ print $1}' 2>&1)
   sed -i "s/8.8.8.8/${_THISHTIP}/g" ${_THIS_LTD_CONF}
@@ -1682,7 +1682,7 @@ else
       chmod 755 /bin/websh
     fi
   fi
-  rm -f $_TMP/*.txt
+  rm -f ${_TMP}/*.txt
   if [ ! -e "/root/.home.no.wildcard.chmod.cnf" ]; then
     chmod 700 /home/* &> /dev/null
   fi
@@ -1700,7 +1700,7 @@ else
     -type f -exec chmod 0600 {} \; &> /dev/null
   if [ -e "/var/scout" ]; then
     _SCOUT_CRON_OFF=$(grep "OFFscoutOFF" /etc/crontab 2>&1)
-    if [[ "$_SCOUT_CRON_OFF" =~ "OFFscoutOFF" ]]; then
+    if [[ "${_SCOUT_CRON_OFF}" =~ "OFFscoutOFF" ]]; then
       sleep 5
       sed -i "s/OFFscoutOFF/scout/g" /etc/crontab &> /dev/null
       wait
