@@ -299,8 +299,8 @@ upgrade_aegir_master() {
     chown -R aegir:aegir /var/aegir/config
     chown -R aegir:aegir /var/aegir/drush
     chown -R aegir ${_THIS_HM_ROOT}
-    chown -R aegir:www-data $_THIS_HM_SITE/files
-    chmod -R 02775 $_THIS_HM_SITE/files
+    chown -R aegir:www-data ${_THIS_HM_SITE}/files
+    chmod -R 02775 ${_THIS_HM_SITE}/files
 
     echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${vBs}/${filIncB}
     echo "_AEGIR_XTS_VRN=\"${_AEGIR_XTS_VRN}\""         >> ${vBs}/${filIncB}
@@ -789,7 +789,7 @@ update_php_cli_local_ini() {
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
   _PHP_V="56 55 54 53"
   for e in ${_PHP_V}; do
-    if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] \
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ]; then
       _PHP_CLI_UPDATE=YES
     fi
@@ -805,16 +805,16 @@ update_php_cli_local_ini() {
     mkdir -p ${_U_HD}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]]; then
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php55" ]]; then
       cp -af /opt/php55/lib/php.ini ${_U_II}
       _U_INI=55
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php56" ]]; then
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php56" ]]; then
       cp -af /opt/php56/lib/php.ini ${_U_II}
       _U_INI=56
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]]; then
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php54" ]]; then
       cp -af /opt/php54/lib/php.ini ${_U_II}
       _U_INI=54
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]]; then
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php53" ]]; then
       cp -af /opt/php53/lib/php.ini ${_U_II}
       _U_INI=53
     fi

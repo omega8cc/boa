@@ -1060,7 +1060,7 @@ satellite_child_b_update_ini_php_cli() {
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
   _PHP_V="56 55 54 53"
   for e in ${_PHP_V}; do
-    if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] \
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ]; then
       _PHP_CLI_UPDATE=YES
     fi
@@ -1076,16 +1076,16 @@ satellite_child_b_update_ini_php_cli() {
     mkdir -p ${_U_HD}/{sys,xts,usr}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]]; then
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php55" ]]; then
       cp -af /opt/php55/lib/php.ini ${_U_II}
       _U_INI=55
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php56" ]]; then
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php56" ]]; then
       cp -af /opt/php56/lib/php.ini ${_U_II}
       _U_INI=56
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]]; then
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php54" ]]; then
       cp -af /opt/php54/lib/php.ini ${_U_II}
       _U_INI=54
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]]; then
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php53" ]]; then
       cp -af /opt/php53/lib/php.ini ${_U_II}
       _U_INI=53
     fi
@@ -1344,7 +1344,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/force_password_change" ]; then
-        get_dev_contrib "force_password_change-7.x-1.0-rc2.tar.gz"
+        get_dev_contrib "force_password_change-7.x-1.0.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/fpa" ]; then
         get_dev_contrib "fpa-7.x-2.6.tar.gz"
@@ -1439,7 +1439,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "esi-7.x-3.x-dev.tar.gz"
   get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
   get_dev_contrib "flood_control-7.x-1.x-dev.tar.gz"
-  get_dev_contrib "force_password_change-7.x-1.0-rc2.tar.gz"
+  get_dev_contrib "force_password_change-7.x-1.0.tar.gz"
   get_dev_contrib "fpa-7.x-2.6.tar.gz"
   get_dev_contrib "httprl-7.x-1.14.tar.gz"
   get_dev_contrib "js-7.x-1.x-dev.tar.gz"
@@ -2083,8 +2083,8 @@ satellite_run_child_b() {
       chown -R ${_USER}:${_USRG} ${_ROOT}/config
       chown -R ${_USER}:${_USRG} ${_ROOT}/tools
       chown -R ${_USER} ${_THIS_HM_ROOT}
-      chown -R ${_USER}:${_WEBG} $_THIS_HM_SITE/files
-      chmod -R 02775 $_THIS_HM_SITE/files
+      chown -R ${_USER}:${_WEBG} ${_THIS_HM_SITE}/files
+      chmod -R 02775 ${_THIS_HM_SITE}/files
       chown root:${_USRG} /data/u &> /dev/null
       chmod 0771 /data/u &> /dev/null
       su -s /bin/bash - ${_USER} -c "/bin/bash ${AegirSetupB} ${_USER}"
@@ -2295,7 +2295,7 @@ satellite_if_add_ftps_lshell_access() {
       msg "${_STATUS} A: Adding ftps/lshell user"
       # add user
       find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
-      useradd -d /home/${_USERFTP} -s $_PATH_LSHELL -m -N -r ${_USERFTP} &> /dev/null
+      useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r ${_USERFTP} &> /dev/null
       adduser ${_USERFTP} ${_WEBG} &> /dev/null
       # Make sure new file which contains password is private
       cd ${_ROOT}/log
@@ -2339,7 +2339,7 @@ satellite_if_add_ftps_lshell_access() {
       passwd -w 7 -x 90 ${_USERFTP} &> /dev/null
     fi
     usermod -aG lshellg ${_USERFTP} &> /dev/null
-    chsh -s $_PATH_LSHELL ${_USERFTP} &> /dev/null
+    chsh -s ${_PATH_LSHELL} ${_USERFTP} &> /dev/null
     echo >> /etc/lshell.conf
     echo "[${_USERFTP}]" >> /etc/lshell.conf
     echo "path : ['${_ROOT}/distro', '${_ROOT}/static', \
