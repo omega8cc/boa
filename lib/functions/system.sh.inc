@@ -2785,6 +2785,7 @@ if_squeeze_to_wheezy() {
         cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
       fi
     fi
+    rm -f ${pthLog}/ruby-root-clean-reload.log
     mv -f /var/xdrago /var/xdrago_wait &> /dev/null
     msg "WARN: Too late! Squeeze to Wheezy upgrade in progress..."
     msg "HINT: Run tail -f ${_LOG}"
