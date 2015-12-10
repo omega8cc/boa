@@ -1973,6 +1973,10 @@ satellite_run_pre_install() {
     provision_backend_dbpass_generate
     echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
   else
+    _VAR_IF_PRESENT=$(grep "${_USER} ALL=NOPASSWD" /etc/sudoers 2>&1)
+    if [[ ! "${_VAR_IF_PRESENT}" =~ "${_USER} ALL=NOPASSWD" ]]; then
+      echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+    fi
     mysqladmin flush-hosts &> /dev/null
     provision_backend_dbpass_sync
   fi
