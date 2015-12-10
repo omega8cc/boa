@@ -288,8 +288,8 @@ install_mariadb_sql() {
   echo "deb http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
   echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
-    || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
+  if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
+    || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
     msg "WARN: Installed keyring is broken, forced reinstall required"
     if [ "${_THIS_OS}" = "Debian" ]; then
       st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null

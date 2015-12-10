@@ -44,7 +44,7 @@ system_check_ready() {
   if [ ! -e "/etc/nginx" ] \
     || [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
     || [ ! -e "/etc/mysql" ] \
-    || [ ! -e "/var/lib/mysql" ] ; then
+    || [ ! -e "/var/lib/mysql" ]; then
     echo "ERROR: Please install complete BOA system before trying"
     echo "ERROR: to install additional Aegir / Octopus instances"
     echo "Bye"
@@ -57,9 +57,25 @@ system_check_clean() {
     || [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
     || [ -e "/etc/apache2" ] \
     || [ -e "/etc/mysql" ] \
-    || [ -e "/var/lib/mysql" ] ; then
+    || [ -e "/var/lib/mysql" ]; then
     echo "ERROR: BOA requires minimal, supported OS, with no services installed"
     echo "ERROR: The only acceptable exceptions are: sshd and mail servers"
+    echo "Bye"
+    clean_pid_exit
+  fi
+}
+
+check_root_keys_pwd() {
+  _S_TEST=$(grep "root:\*:" /etc/shadow 2>&1)
+  _R_TEST=CHECK
+  if [ -e "/root/.ssh/authorized_keys" ]; then
+    _R_TEST=$(grep "ssh-rsa" /root/.ssh/authorized_keys 2>&1)
+  fi
+  if [[ ! "${_S_TEST}" =~ "root:" ]] \
+    && [[ ! "${_R_TEST}" =~ "ssh-rsa" ]]; then
+    echo "ERROR: BOA requires working SSH keys for system root present"
+    echo "ERROR: Please add and test your SSH keys for root account"
+    echo "ERROR: before trying again"
     echo "Bye"
     clean_pid_exit
   fi
@@ -1024,6 +1040,7 @@ check_root() {
       system_check_ready
     else
       system_check_clean
+      check_root_keys_pwd
     fi
     check_fix_csf
     chmod a+w /dev/null

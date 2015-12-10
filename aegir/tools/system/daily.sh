@@ -170,47 +170,47 @@ run_drush7_nosilent_cmd() {
 check_if_required() {
   _REQ=YES
   _REI_TEST=$(run_drush7_nosilent_cmd "pmi $1 --fields=required_by" 2>&1)
-  _REL_TEST=$(echo "$_REI_TEST" | grep "Required by" 2>&1)
-  if [[ "$_REL_TEST" =~ "was not found" ]]; then
+  _REL_TEST=$(echo "${_REI_TEST}" | grep "Required by" 2>&1)
+  if [[ "${_REL_TEST}" =~ "was not found" ]]; then
     _REQ=NULL
-    echo "_REQ for $1 is ${_REQ} in ${Dom} == 0 == via $_REL_TEST"
+    echo "_REQ for $1 is ${_REQ} in ${Dom} == 0 == via ${_REL_TEST}"
   else
-    echo "CTRL _REL_TEST _REQ for $1 is ${_REQ} in ${Dom} == 0 == via $_REL_TEST"
-    _REN_TEST=$(echo "$_REI_TEST" | grep "Required by.*:.*none" 2>&1)
-    if [[ "$_REN_TEST" =~ "Required by" ]]; then
+    echo "CTRL _REL_TEST _REQ for $1 is ${_REQ} in ${Dom} == 0 == via ${_REL_TEST}"
+    _REN_TEST=$(echo "${_REI_TEST}" | grep "Required by.*:.*none" 2>&1)
+    if [[ "${_REN_TEST}" =~ "Required by" ]]; then
       _REQ=NO
-      echo "_REQ for $1 is ${_REQ} in ${Dom} == 1 == via $_REN_TEST"
+      echo "_REQ for $1 is ${_REQ} in ${Dom} == 1 == via ${_REN_TEST}"
     else
-      echo "CTRL _REN_TEST _REQ for $1 is ${_REQ} in ${Dom} == 1 == via $_REN_TEST"
-      _REM_TEST=$(echo "$_REI_TEST" | grep "Required by.*minimal" 2>&1)
-      if [[ "$_REM_TEST" =~ "Required by" ]]; then
+      echo "CTRL _REN_TEST _REQ for $1 is ${_REQ} in ${Dom} == 1 == via ${_REN_TEST}"
+      _REM_TEST=$(echo "${_REI_TEST}" | grep "Required by.*minimal" 2>&1)
+      if [[ "${_REM_TEST}" =~ "Required by" ]]; then
         _REQ=NO
-        echo "_REQ for $1 is ${_REQ} in ${Dom} == 2 == via $_REM_TEST"
+        echo "_REQ for $1 is ${_REQ} in ${Dom} == 2 == via ${_REM_TEST}"
       fi
-      _RES_TEST=$(echo "$_REI_TEST" | grep "Required by.*standard" 2>&1)
-      if [[ "$_RES_TEST" =~ "Required by" ]]; then
+      _RES_TEST=$(echo "${_REI_TEST}" | grep "Required by.*standard" 2>&1)
+      if [[ "${_RES_TEST}" =~ "Required by" ]]; then
         _REQ=NO
-        echo "_REQ for $1 is ${_REQ} in ${Dom} == 3 == via $_RES_TEST"
+        echo "_REQ for $1 is ${_REQ} in ${Dom} == 3 == via ${_RES_TEST}"
       fi
-      _RET_TEST=$(echo "$_REI_TEST" | grep "Required by.*testing" 2>&1)
-      if [[ "$_RET_TEST" =~ "Required by" ]]; then
+      _RET_TEST=$(echo "${_REI_TEST}" | grep "Required by.*testing" 2>&1)
+      if [[ "${_RET_TEST}" =~ "Required by" ]]; then
         _REQ=NO
-        "echo _REQ for $1 is ${_REQ} in ${Dom} == 4 == via $_RET_TEST"
+        "echo _REQ for $1 is ${_REQ} in ${Dom} == 4 == via ${_RET_TEST}"
       fi
-      _REH_TEST=$(echo "$_REI_TEST" | grep "Required by.*hacked" 2>&1)
-      if [[ "$_REH_TEST" =~ "Required by" ]]; then
+      _REH_TEST=$(echo "${_REI_TEST}" | grep "Required by.*hacked" 2>&1)
+      if [[ "${_REH_TEST}" =~ "Required by" ]]; then
         _REQ=NO
-        "echo _REQ for $1 is ${_REQ} in ${Dom} == 5 == via $_REH_TEST"
+        "echo _REQ for $1 is ${_REQ} in ${Dom} == 5 == via ${_REH_TEST}"
       fi
-      _RED_TEST=$(echo "$_REI_TEST" | grep "Required by.*devel" 2>&1)
-      if [[ "$_RED_TEST" =~ "Required by" ]]; then
+      _RED_TEST=$(echo "${_REI_TEST}" | grep "Required by.*devel" 2>&1)
+      if [[ "${_RED_TEST}" =~ "Required by" ]]; then
         _REQ=NO
-        "echo _REQ for $1 is ${_REQ} in ${Dom} == 6 == via $_RED_TEST"
+        "echo _REQ for $1 is ${_REQ} in ${Dom} == 6 == via ${_RED_TEST}"
       fi
-      _REW_TEST=$(echo "$_REI_TEST" | grep "Required by.*watchdog_live" 2>&1)
-      if [[ "$_REW_TEST" =~ "Required by" ]]; then
+      _REW_TEST=$(echo "${_REI_TEST}" | grep "Required by.*watchdog_live" 2>&1)
+      if [[ "${_REW_TEST}" =~ "Required by" ]]; then
         _REQ=NO
-        "echo _REQ for $1 is ${_REQ} in ${Dom} == 7 == via $_REW_TEST"
+        "echo _REQ for $1 is ${_REQ} in ${Dom} == 7 == via ${_REW_TEST}"
       fi
     fi
     Profile=$(run_drush7_nosilent_cmd "vget ^install_profile$" \
@@ -221,24 +221,24 @@ check_if_required() {
     Profile=${Profile//[^a-z_]/}
     echo "Profile is == ${Profile} =="
     if [ ! -z "${Profile}" ]; then
-      _REP_TEST=$(echo "$_REI_TEST" | grep "Required by.*:.*${Profile}" 2>&1)
-      if [[ "$_REP_TEST" =~ "Required by" ]]; then
+      _REP_TEST=$(echo "${_REI_TEST}" | grep "Required by.*:.*${Profile}" 2>&1)
+      if [[ "${_REP_TEST}" =~ "Required by" ]]; then
         _REQ=NO
-        echo "_REQ for $1 is ${_REQ} in ${Dom} == 7 == via $_REP_TEST"
+        echo "_REQ for $1 is ${_REQ} in ${Dom} == 7 == via ${_REP_TEST}"
       else
         echo "CTRL _REP_TEST _REQ for $1 is ${_REQ} \
-          in ${Dom} == 7 == via $_REP_TEST"
+          in ${Dom} == 7 == via ${_REP_TEST}"
       fi
     fi
-    _REA_TEST=$(echo "$_REI_TEST" | grep "Required by.*apps" 2>&1)
-    if [[ "$_REA_TEST" =~ "Required by" ]]; then
+    _REA_TEST=$(echo "${_REI_TEST}" | grep "Required by.*apps" 2>&1)
+    if [[ "${_REA_TEST}" =~ "Required by" ]]; then
       _REQ=YES
-      echo "_REQ for $1 is ${_REQ} in ${Dom} == 8 == via $_REA_TEST"
+      echo "_REQ for $1 is ${_REQ} in ${Dom} == 8 == via ${_REA_TEST}"
     fi
-    _REF_TEST=$(echo "$_REI_TEST" | grep "Required by.*features" 2>&1)
-    if [[ "$_REF_TEST" =~ "Required by" ]]; then
+    _REF_TEST=$(echo "${_REI_TEST}" | grep "Required by.*features" 2>&1)
+    if [[ "${_REF_TEST}" =~ "Required by" ]]; then
       _REQ=YES
-      echo "_REQ for $1 is ${_REQ} in ${Dom} == 9 == via $_REF_TEST"
+      echo "_REQ for $1 is ${_REQ} in ${Dom} == 9 == via ${_REF_TEST}"
     fi
   fi
 }
@@ -275,7 +275,7 @@ disable_modules() {
       _MODULE_T=$(run_drush7_nosilent_cmd "pml --status=enabled \
         --type=module | grep \($m\)" 2>&1)
       if [[ "${_MODULE_T}" =~ "($m)" ]]; then
-        if [ "$_FORCE" = "NO" ]; then
+        if [ "${_FORCE}" = "NO" ]; then
           check_if_required "$m"
         else
           echo "$m dependencies not checked in ${Dom}"
@@ -356,7 +356,7 @@ fix_user_register_protection() {
     _ENABLE_USER_REGISTER_PROTECTION=NO
   fi
 
-  if [ "$_ENABLE_USER_REGISTER_PROTECTION" = "NO" ] \
+  if [ "${_ENABLE_USER_REGISTER_PROTECTION}" = "NO" ] \
     && [ -e "${User}/static/control/enable_user_register_protection.info" ]; then
     sed -i "s/.*enable_user_register_protection.*/enable_user_register_protection = TRUE/g" \
       ${_PLR_CTRL_F} &> /dev/null
@@ -392,7 +392,7 @@ fix_user_register_protection() {
       | tr -d "\n" 2>&1)
     Prm=${Prm//[^0-2]/}
     echo "Prm user_register for ${Dom} is ${Prm}"
-    if [ "$_ENABLE_USER_REGISTER_PROTECTION" = "YES" ]; then
+    if [ "${_ENABLE_USER_REGISTER_PROTECTION}" = "YES" ]; then
       run_drush7_cmd "vset --always-set user_register 0"
     else
       if [ "${Prm}" = "1" ] || [ -z "${Prm}" ]; then
@@ -716,8 +716,8 @@ EOF
 
 check_site_status() {
   _SITE_TEST=$(run_drush7_nosilent_cmd "status" 2>&1)
-  if [[ "$_SITE_TEST" =~ "Error:" ]] \
-    || [[ "$_SITE_TEST" =~ "Drush was attempting to connect" ]]; then
+  if [[ "${_SITE_TEST}" =~ "Error:" ]] \
+    || [[ "${_SITE_TEST}" =~ "Drush was attempting to connect" ]]; then
     _SITE_TEST_RESULT=ERROR
   else
     _SITE_TEST_RESULT=OK
@@ -1005,7 +1005,7 @@ setup_solr() {
       echo ";solr_update_config = NO" >> ${_DIR_CTRL_F}
     fi
     _SOLR_UP_CFG_TT=$(grep "^solr_update_config = YES" ${_DIR_CTRL_F} 2>&1)
-    if [[ "$_SOLR_UP_CFG_TT" =~ "solr_update_config = YES" ]]; then
+    if [[ "${_SOLR_UP_CFG_TT}" =~ "solr_update_config = YES" ]]; then
       if [ "${_SLR_CM_CFG_RT}" = "YES" ] \
         || [ -e "${_SOLR_DIR}/conf/${_X_SE}.conf" ]; then
         _DO_NOTHING=YES
@@ -1040,7 +1040,7 @@ fix_modules() {
               _AUTO_CONFIG_ADVAGG=YES
             fi
           fi
-          if [ "$_AUTO_CONFIG_ADVAGG" = "YES" ]; then
+          if [ "${_AUTO_CONFIG_ADVAGG}" = "YES" ]; then
             if [ -e "/data/conf/default.boa_site_control.ini" ] \
               && [ ! -e "${_DIR_CTRL_F}" ]; then
               cp -af /data/conf/default.boa_site_control.ini \
@@ -1101,7 +1101,7 @@ fix_modules() {
               _AUTO_CONFIG_PURGE_EXPIRE=YES
             fi
           fi
-          if [ "$_AUTO_CONFIG_PURGE_EXPIRE" = "YES" ]; then
+          if [ "${_AUTO_CONFIG_PURGE_EXPIRE}" = "YES" ]; then
             if [ -e "/data/conf/default.boa_site_control.ini" ] \
               && [ ! -e "${_DIR_CTRL_F}" ]; then
               cp -af /data/conf/default.boa_site_control.ini \
@@ -1120,7 +1120,7 @@ fix_modules() {
                 ###
                 ### Do this only for the site level ini file.
                 ###
-                if [[ "$_AC_PE_P" =~ "purge_expire_auto_configuration" ]]; then
+                if [[ "${_AC_PE_P}" =~ "purge_expire_auto_configuration" ]]; then
                   sed -i "s/.*purge_expire_a.*/purge_expire_auto_configuration = TRUE/g" \
                     ${_DIR_CTRL_F} &> /dev/null
                   wait
@@ -1145,7 +1145,7 @@ fix_modules() {
               if [[ "${_AC_PE_T}" =~ "purge_expire_auto_configuration = FALSE" ]]; then
                 _DO_NOTHING=YES
               else
-                if [[ "$_AC_PE_P" =~ "purge_expire_auto_configuration" ]]; then
+                if [[ "${_AC_PE_P}" =~ "purge_expire_auto_configuration" ]]; then
                   sed -i "s/.*purge_expire_a.*/purge_expire_auto_configuration = FALSE/g" \
                     ${_DIR_CTRL_F} &> /dev/null
                   wait
@@ -1179,7 +1179,7 @@ fix_modules() {
                 _AUTO_CNF_PF_DL=YES
               fi
             fi
-            if [ "$_AUTO_CNF_PF_DL" = "YES" ]; then
+            if [ "${_AUTO_CNF_PF_DL}" = "YES" ]; then
               if [ -e "/data/conf/default.boa_site_control.ini" ] \
                 && [ ! -e "${_DIR_CTRL_F}" ]; then
                 cp -af /data/conf/default.boa_site_control.ini \
@@ -1229,16 +1229,16 @@ fix_modules() {
             _AUTO_DT_FB_INT=YES
           else
             check_file_with_wildcard_path "${Plr}/profiles/*/modules/fb/fb_settings.inc"
-            if [ "$_FILE_EXISTS" = "YES" ]; then
+            if [ "${_FILE_EXISTS}" = "YES" ]; then
               _AUTO_DT_FB_INT=YES
             else
               check_file_with_wildcard_path "${Plr}/profiles/*/modules/contrib/fb/fb_settings.inc"
-              if [ "$_FILE_EXISTS" = "YES" ]; then
+              if [ "${_FILE_EXISTS}" = "YES" ]; then
                 _AUTO_DT_FB_INT=YES
               fi
             fi
           fi
-          if [ "$_AUTO_DT_FB_INT" = "YES" ]; then
+          if [ "${_AUTO_DT_FB_INT}" = "YES" ]; then
             if [ -e "/data/conf/default.boa_platform_control.ini" ] \
               && [ ! -e "${_PLR_CTRL_F}" ]; then
               cp -af /data/conf/default.boa_platform_control.ini \
@@ -1249,7 +1249,7 @@ fix_modules() {
             if [ -e "${_PLR_CTRL_F}" ]; then
               _AD_FB_T=$(grep "^auto_detect_facebook_integration = TRUE" \
                 ${_PLR_CTRL_F} 2>&1)
-              if [[ "$_AD_FB_T" =~ "auto_detect_facebook_integration = TRUE" ]]; then
+              if [[ "${_AD_FB_T}" =~ "auto_detect_facebook_integration = TRUE" ]]; then
                 _DO_NOTHING=YES
               else
                 ###
@@ -1273,7 +1273,7 @@ fix_modules() {
             if [ -e "${_PLR_CTRL_F}" ]; then
               _AD_FB_T=$(grep "^auto_detect_facebook_integration = FALSE" \
                 ${_PLR_CTRL_F} 2>&1)
-              if [[ "$_AD_FB_T" =~ "auto_detect_facebook_integration = FALSE" ]]; then
+              if [[ "${_AD_FB_T}" =~ "auto_detect_facebook_integration = FALSE" ]]; then
                 _DO_NOTHING=YES
               else
                 sed -i "s/.*auto_detect_face.*/auto_detect_facebook_integration = FALSE/g" \
@@ -1289,16 +1289,16 @@ fix_modules() {
             _AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION=YES
           else
             check_file_with_wildcard_path "${Plr}/profiles/*/modules/domain/settings.inc"
-            if [ "$_FILE_EXISTS" = "YES" ]; then
+            if [ "${_FILE_EXISTS}" = "YES" ]; then
               _AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION=YES
             else
               check_file_with_wildcard_path "${Plr}/profiles/*/modules/contrib/domain/settings.inc"
-              if [ "$_FILE_EXISTS" = "YES" ]; then
+              if [ "${_FILE_EXISTS}" = "YES" ]; then
                 _AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION=YES
               fi
             fi
           fi
-          if [ "$_AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION" = "YES" ]; then
+          if [ "${_AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION}" = "YES" ]; then
             if [ -e "/data/conf/default.boa_platform_control.ini" ] \
               && [ ! -e "${_PLR_CTRL_F}" ]; then
               cp -af /data/conf/default.boa_platform_control.ini \
@@ -1309,7 +1309,7 @@ fix_modules() {
             if [ -e "${_PLR_CTRL_F}" ]; then
               _AD_DA_T=$(grep "^auto_detect_domain_access_integration = TRUE" \
                 ${_PLR_CTRL_F} 2>&1)
-              if [[ "$_AD_DA_T" =~ "auto_detect_domain_access_integration = TRUE" ]]; then
+              if [[ "${_AD_DA_T}" =~ "auto_detect_domain_access_integration = TRUE" ]]; then
                 _DO_NOTHING=YES
               else
                 ###
@@ -1333,7 +1333,7 @@ fix_modules() {
             if [ -e "${_PLR_CTRL_F}" ]; then
               _AD_DA_T=$(grep "^auto_detect_domain_access_integration = FALSE" \
                 ${_PLR_CTRL_F} 2>&1)
-              if [[ "$_AD_DA_T" =~ "auto_detect_domain_access_integration = FALSE" ]]; then
+              if [[ "${_AD_DA_T}" =~ "auto_detect_domain_access_integration = FALSE" ]]; then
                 _DO_NOTHING=YES
               else
                 sed -i "s/.*auto_detect_domain.*/auto_detect_domain_access_integration = FALSE/g" \
@@ -1348,73 +1348,73 @@ fix_modules() {
           ###
           if [ -e "${_PLR_CTRL_F}" ]; then
             _VAR_IF_PRESENT=$(grep "session_cookie_ttl" ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "session_cookie_ttl" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "session_cookie_ttl" ]]; then
               _DO_NOTHING=YES
             else
               echo ";session_cookie_ttl = 86400" >> ${_PLR_CTRL_F}
             fi
             _VAR_IF_PRESENT=$(grep "session_gc_eol" ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "session_gc_eol" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "session_gc_eol" ]]; then
               _DO_NOTHING=YES
             else
               echo ";session_gc_eol = 86400" >> ${_PLR_CTRL_F}
             fi
             _VAR_IF_PRESENT=$(grep "redis_use_modern" ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "redis_use_modern" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "redis_use_modern" ]]; then
               _DO_NOTHING=YES
             else
               echo ";redis_use_modern = TRUE" >> ${_PLR_CTRL_F}
             fi
             _VAR_IF_PRESENT=$(grep "redis_flush_forced_mode" ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "redis_flush_forced_mode" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "redis_flush_forced_mode" ]]; then
               _DO_NOTHING=YES
             else
               echo ";redis_flush_forced_mode = TRUE" >> ${_PLR_CTRL_F}
             fi
             _VAR_IF_PRESENT=$(grep "redis_lock_enable" ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "redis_lock_enable" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "redis_lock_enable" ]]; then
               _DO_NOTHING=YES
             else
               echo ";redis_lock_enable = TRUE" >> ${_PLR_CTRL_F}
             fi
             _VAR_IF_PRESENT=$(grep "redis_exclude_bins" ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "redis_exclude_bins" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "redis_exclude_bins" ]]; then
               _DO_NOTHING=YES
             else
               echo ";redis_exclude_bins = FALSE" >> ${_PLR_CTRL_F}
             fi
             _VAR_IF_PRESENT=$(grep "speed_booster_anon_cache_ttl" ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "speed_booster_anon_cache_ttl" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "speed_booster_anon_cache_ttl" ]]; then
               _DO_NOTHING=YES
             else
               echo ";speed_booster_anon_cache_ttl = 10" >> ${_PLR_CTRL_F}
             fi
             _VAR_IF_PRESENT=$(grep "disable_drupal_page_cache" ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "disable_drupal_page_cache" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "disable_drupal_page_cache" ]]; then
               _DO_NOTHING=YES
             else
               echo ";disable_drupal_page_cache = FALSE" >> ${_PLR_CTRL_F}
             fi
             _VAR_IF_PRESENT=$(grep "allow_private_file_downloads" ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "allow_private_file_downloads" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "allow_private_file_downloads" ]]; then
               _DO_NOTHING=YES
             else
               echo ";allow_private_file_downloads = FALSE" >> ${_PLR_CTRL_F}
             fi
             _VAR_IF_PRESENT=$(grep "entitycache_dont_enable" ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "entitycache_dont_enable" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "entitycache_dont_enable" ]]; then
               _DO_NOTHING=YES
             else
               echo ";entitycache_dont_enable = FALSE" >> ${_PLR_CTRL_F}
             fi
             _VAR_IF_PRESENT=$(grep "views_cache_bully_dont_enable" ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "views_cache_bully_dont_enable" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "views_cache_bully_dont_enable" ]]; then
               _DO_NOTHING=YES
             else
               echo ";views_cache_bully_dont_enable = FALSE" >> ${_PLR_CTRL_F}
             fi
             _VAR_IF_PRESENT=$(grep "views_content_cache_dont_enable" ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "views_content_cache_dont_enable" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "views_content_cache_dont_enable" ]]; then
               _DO_NOTHING=YES
             else
               echo ";views_content_cache_dont_enable = FALSE" >> ${_PLR_CTRL_F}
@@ -1422,55 +1422,55 @@ fix_modules() {
           fi
           if [ -e "${_DIR_CTRL_F}" ]; then
              _VAR_IF_PRESENT=$(grep "session_cookie_ttl" ${_DIR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "session_cookie_ttl" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "session_cookie_ttl" ]]; then
               _DO_NOTHING=YES
             else
               echo ";session_cookie_ttl = 86400" >> ${_DIR_CTRL_F}
             fi
             _VAR_IF_PRESENT=$(grep "session_gc_eol" ${_DIR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "session_gc_eol" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "session_gc_eol" ]]; then
               _DO_NOTHING=YES
             else
               echo ";session_gc_eol = 86400" >> ${_DIR_CTRL_F}
             fi
             _VAR_IF_PRESENT=$(grep "redis_use_modern" ${_DIR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "redis_use_modern" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "redis_use_modern" ]]; then
               _DO_NOTHING=YES
             else
               echo ";redis_use_modern = TRUE" >> ${_DIR_CTRL_F}
             fi
             _VAR_IF_PRESENT=$(grep "redis_flush_forced_mode" ${_DIR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "redis_flush_forced_mode" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "redis_flush_forced_mode" ]]; then
               _DO_NOTHING=YES
             else
               echo ";redis_flush_forced_mode = TRUE" >> ${_DIR_CTRL_F}
             fi
             _VAR_IF_PRESENT=$(grep "redis_lock_enable" ${_DIR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "redis_lock_enable" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "redis_lock_enable" ]]; then
               _DO_NOTHING=YES
             else
               echo ";redis_lock_enable = TRUE" >> ${_DIR_CTRL_F}
             fi
             _VAR_IF_PRESENT=$(grep "redis_exclude_bins" ${_DIR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "redis_exclude_bins" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "redis_exclude_bins" ]]; then
               _DO_NOTHING=YES
             else
               echo ";redis_exclude_bins = FALSE" >> ${_DIR_CTRL_F}
             fi
             _VAR_IF_PRESENT=$(grep "speed_booster_anon_cache_ttl" ${_DIR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "speed_booster_anon_cache_ttl" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "speed_booster_anon_cache_ttl" ]]; then
               _DO_NOTHING=YES
             else
               echo ";speed_booster_anon_cache_ttl = 10" >> ${_DIR_CTRL_F}
             fi
             _VAR_IF_PRESENT=$(grep "disable_drupal_page_cache" ${_DIR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "disable_drupal_page_cache" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "disable_drupal_page_cache" ]]; then
               _DO_NOTHING=YES
             else
               echo ";disable_drupal_page_cache = FALSE" >> ${_DIR_CTRL_F}
             fi
              _VAR_IF_PRESENT=$(grep "allow_private_file_downloads" ${_DIR_CTRL_F} 2>&1)
-            if [[ "$_VAR_IF_PRESENT" =~ "allow_private_file_downloads" ]]; then
+            if [[ "${_VAR_IF_PRESENT}" =~ "allow_private_file_downloads" ]]; then
               _DO_NOTHING=YES
             else
               echo ";allow_private_file_downloads = FALSE" >> ${_DIR_CTRL_F}
@@ -1480,7 +1480,7 @@ fix_modules() {
           if [ -e "${_PLR_CTRL_F}" ]; then
             _EC_DE_T=$(grep "^entitycache_dont_enable = TRUE" \
               ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_EC_DE_T" =~ "entitycache_dont_enable = TRUE" ]]; then
+            if [[ "${_EC_DE_T}" =~ "entitycache_dont_enable = TRUE" ]]; then
               _ENTITYCACHE_DONT_ENABLE=YES
             else
               _ENTITYCACHE_DONT_ENABLE=NO
@@ -1492,7 +1492,7 @@ fix_modules() {
           if [ -e "${_PLR_CTRL_F}" ]; then
             _VCB_DE_T=$(grep "^views_cache_bully_dont_enable = TRUE" \
               ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_VCB_DE_T" =~ "views_cache_bully_dont_enable = TRUE" ]]; then
+            if [[ "${_VCB_DE_T}" =~ "views_cache_bully_dont_enable = TRUE" ]]; then
               _VIEWS_CACHE_BULLY_DONT_ENABLE=YES
             else
               _VIEWS_CACHE_BULLY_DONT_ENABLE=NO
@@ -1504,7 +1504,7 @@ fix_modules() {
           if [ -e "${_PLR_CTRL_F}" ]; then
             _VCC_DE_T=$(grep "^views_content_cache_dont_enable = TRUE" \
               ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_VCC_DE_T" =~ "views_content_cache_dont_enable = TRUE" ]]; then
+            if [[ "${_VCC_DE_T}" =~ "views_content_cache_dont_enable = TRUE" ]]; then
               _VIEWS_CONTENT_CACHE_DONT_ENABLE=YES
             else
               _VIEWS_CONTENT_CACHE_DONT_ENABLE=NO
@@ -1561,8 +1561,8 @@ fix_modules() {
               --no-core --type=module | grep \(commerce\)" 2>&1)
             _UBERCART_TEST=$(run_drush7_nosilent_cmd "pml --status=enabled \
               --no-core --type=module | grep \(uc_cart\)" 2>&1)
-            if [[ "$_COMMERCE_TEST" =~ "Commerce" ]] \
-              || [[ "$_UBERCART_TEST" =~ "Ubercart" ]]; then
+            if [[ "${_COMMERCE_TEST}" =~ "Commerce" ]] \
+              || [[ "${_UBERCART_TEST}" =~ "Ubercart" ]]; then
               disable_modules "views_cache_bully"
             fi
             touch ${User}/log/ctrl/site.${Dom}.cart-check.info
@@ -1575,17 +1575,17 @@ fix_modules() {
               _CTOOLS_TEST=$(run_drush7_nosilent_cmd "pml --status=enabled \
                 --no-core --type=module | grep \(ctools\)" 2>&1)
             fi
-            if [[ "$_VIEWS_TEST" =~ "Views" ]] \
+            if [[ "${_VIEWS_TEST}" =~ "Views" ]] \
               && [ ! -e "${Plr}/profiles/hostmaster" ]; then
-              if [ "$_VIEWS_CACHE_BULLY_DONT_ENABLE" = "NO" ] \
+              if [ "${_VIEWS_CACHE_BULLY_DONT_ENABLE}" = "NO" ] \
                 && [ -e "${User}/static/control/enable_views_cache_bully.info" ]; then
                 if [ -e "${Plr}/modules/o_contrib_seven/views_cache_bully" ] \
                   || [ -e "${Plr}/modules/o_contrib/views_cache_bully" ]; then
                   enable_modules "views_cache_bully"
                 fi
               fi
-              if [[ "$_CTOOLS_TEST" =~ "Chaos" ]] \
-                && [ "$_VIEWS_CONTENT_CACHE_DONT_ENABLE" = "NO" ] \
+              if [[ "${_CTOOLS_TEST}" =~ "Chaos" ]] \
+                && [ "${_VIEWS_CONTENT_CACHE_DONT_ENABLE}" = "NO" ] \
                 && [ -e "${User}/static/control/enable_views_content_cache.info" ]; then
                 if [ -e "${Plr}/modules/o_contrib_seven/views_content_cache" ] \
                   || [ -e "${Plr}/modules/o_contrib/views_content_cache" ]; then
@@ -1602,14 +1602,14 @@ fix_modules() {
           if [ -e "${_PLR_CTRL_F}" ]; then
             _FIX_PERMISSIONS_PRESENT=$(grep "fix_files_permissions_daily" \
               ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_FIX_PERMISSIONS_PRESENT" =~ "fix_files_permissions_daily" ]]; then
+            if [[ "${_FIX_PERMISSIONS_PRESENT}" =~ "fix_files_permissions_daily" ]]; then
               _DO_NOTHING=YES
             else
               echo ";fix_files_permissions_daily = TRUE" >> ${_PLR_CTRL_F}
             fi
             _FIX_PERMISSIONS_TEST=$(grep "^fix_files_permissions_daily = FALSE" \
               ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_FIX_PERMISSIONS_TEST" =~ "fix_files_permissions_daily = FALSE" ]]; then
+            if [[ "${_FIX_PERMISSIONS_TEST}" =~ "fix_files_permissions_daily = FALSE" ]]; then
               _DONT_TOUCH_PERMISSIONS=YES
             fi
           fi
@@ -1620,38 +1620,38 @@ fix_modules() {
           if [ -e "${_PLR_CTRL_F}" ]; then
             _SQL_INDB_P=$(grep "sql_conversion_mode" \
               ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_SQL_INDB_P" =~ "sql_conversion_mode" ]]; then
+            if [[ "${_SQL_INDB_P}" =~ "sql_conversion_mode" ]]; then
               _DO_NOTHING=YES
             else
               echo ";sql_conversion_mode = NO" >> ${_PLR_CTRL_F}
             fi
             _SQL_INDB_T=$(grep "^sql_conversion_mode = innodb" \
               ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_SQL_INDB_T" =~ "sql_conversion_mode = innodb" ]]; then
+            if [[ "${_SQL_INDB_T}" =~ "sql_conversion_mode = innodb" ]]; then
               _SQL_CONVERT=innodb
             fi
             _SQL_MYSM_T=$(grep "^sql_conversion_mode = myisam" \
               ${_PLR_CTRL_F} 2>&1)
-            if [[ "$_SQL_MYSM_T" =~ "sql_conversion_mode = myisam" ]]; then
+            if [[ "${_SQL_MYSM_T}" =~ "sql_conversion_mode = myisam" ]]; then
               _SQL_CONVERT=myisam
             fi
           fi
           if [ -e "${_DIR_CTRL_F}" ]; then
             _SQL_INDB_P=$(grep "sql_conversion_mode" \
               ${_DIR_CTRL_F} 2>&1)
-            if [[ "$_SQL_INDB_P" =~ "sql_conversion_mode" ]]; then
+            if [[ "${_SQL_INDB_P}" =~ "sql_conversion_mode" ]]; then
               _DO_NOTHING=YES
             else
               echo ";sql_conversion_mode = NO" >> ${_DIR_CTRL_F}
             fi
             _SQL_INDB_T=$(grep "^sql_conversion_mode = innodb" \
               ${_DIR_CTRL_F} 2>&1)
-            if [[ "$_SQL_INDB_T" =~ "sql_conversion_mode = innodb" ]]; then
+            if [[ "${_SQL_INDB_T}" =~ "sql_conversion_mode = innodb" ]]; then
               _SQL_CONVERT=innodb
             fi
             _SQL_MYSM_T=$(grep "^sql_conversion_mode = myisam" \
               ${_DIR_CTRL_F} 2>&1)
-            if [[ "$_SQL_MYSM_T" =~ "sql_conversion_mode = myisam" ]]; then
+            if [[ "${_SQL_MYSM_T}" =~ "sql_conversion_mode = myisam" ]]; then
               _SQL_CONVERT=myisam
             fi
           fi
@@ -1691,7 +1691,7 @@ fix_seven_core_patch() {
   if [ ! -f "${Plr}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
     _PATCH_TEST=$(grep "foreach (array_values(\$data)" \
       ${Plr}/includes/database/database.inc 2>&1)
-    if [[ "$_PATCH_TEST" =~ "array_values" ]]; then
+    if [[ "${_PATCH_TEST}" =~ "array_values" ]]; then
       echo fixed > ${Plr}/profiles/SA-CORE-2014-005-D7-fix.info
     else
       cd ${Plr}
@@ -1860,7 +1860,7 @@ fix_permissions() {
     _DB_HOST_PRESENT=$(grep "^\$_SERVER\['db_host'\] = \$options\['db_host'\];" \
       ${Dir}/drushrc.php 2>&1)
     if [[ "${_DB_HOST_PRESENT}" =~ "db_host" ]]; then
-      if [ "$_FORCE_SITES_VERIFY" = "YES" ]; then
+      if [ "${_FORCE_SITES_VERIFY}" = "YES" ]; then
         run_drush7_hmr_cmd "hosting-task @${Dom} verify --force"
       fi
     else
@@ -1871,33 +1871,33 @@ fix_permissions() {
 }
 
 convert_controls_orig() {
-  if [ -e "$_CTRL_DIR/$1.info" ] \
+  if [ -e "${_CTRL_DIR}/$1.info" ] \
     || [ -e "${User}/static/control/$1.info" ]; then
-    if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F}_TPL" ]; then
-      cp -af ${_CTRL_F}_TPL ${_CTRL_F}
+    if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F_TPL}" ]; then
+      cp -af ${_CTRL_F_TPL} ${_CTRL_F}
     fi
     sed -i "s/.*$1.*/$1 = TRUE/g" ${_CTRL_F} &> /dev/null
     wait
-    rm -f $_CTRL_DIR/$1.info
+    rm -f ${_CTRL_DIR}/$1.info
   fi
 }
 
 convert_controls_orig_no_global() {
-  if [ -e "$_CTRL_DIR/$1.info" ]; then
-    if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F}_TPL" ]; then
-      cp -af ${_CTRL_F}_TPL ${_CTRL_F}
+  if [ -e "${_CTRL_DIR}/$1.info" ]; then
+    if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F_TPL}" ]; then
+      cp -af ${_CTRL_F_TPL} ${_CTRL_F}
     fi
     sed -i "s/.*$1.*/$1 = TRUE/g" ${_CTRL_F} &> /dev/null
     wait
-    rm -f $_CTRL_DIR/$1.info
+    rm -f ${_CTRL_DIR}/$1.info
   fi
 }
 
 convert_controls_value() {
-  if [ -e "$_CTRL_DIR/$1.info" ] \
+  if [ -e "${_CTRL_DIR}/$1.info" ] \
     || [ -e "${User}/static/control/$1.info" ]; then
-    if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F}_TPL" ]; then
-      cp -af ${_CTRL_F}_TPL ${_CTRL_F}
+    if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F_TPL}" ]; then
+      cp -af ${_CTRL_F_TPL} ${_CTRL_F}
     fi
     if [ "$1" = "nginx_cache_day" ]; then
       _TTL=86400
@@ -1909,21 +1909,21 @@ convert_controls_value() {
     sed -i "s/.*speed_booster_anon.*/speed_booster_anon_cache_ttl = ${_TTL}/g" \
       ${_CTRL_F} &> /dev/null
     wait
-    rm -f $_CTRL_DIR/$1.info
+    rm -f ${_CTRL_DIR}/$1.info
   fi
 }
 
 convert_controls_renamed() {
-  if [ -e "$_CTRL_DIR/$1.info" ]; then
-    if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F}_TPL" ]; then
-      cp -af ${_CTRL_F}_TPL ${_CTRL_F}
+  if [ -e "${_CTRL_DIR}/$1.info" ]; then
+    if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F_TPL}" ]; then
+      cp -af ${_CTRL_F_TPL} ${_CTRL_F}
     fi
     if [ "$1" = "cookie_domain" ]; then
       sed -i "s/.*server_name_cookie.*/server_name_cookie_domain = TRUE/g" \
         ${_CTRL_F} &> /dev/null
       wait
     fi
-    rm -f $_CTRL_DIR/$1.info
+    rm -f ${_CTRL_DIR}/$1.info
   fi
 }
 
@@ -1937,13 +1937,13 @@ fix_control_settings() {
     nginx_cache_hour \
     nginx_cache_quarter"
   _CTRL_NAME_RENAMED="cookie_domain"
-  for ctrl in $_CTRL_NAME_ORIG; do
+  for ctrl in ${_CTRL_NAME_ORIG}; do
     convert_controls_orig "$ctrl"
   done
-  for ctrl in $_CTRL_NAME_VALUE; do
+  for ctrl in ${_CTRL_NAME_VALUE}; do
     convert_controls_value "$ctrl"
   done
-  for ctrl in $_CTRL_NAME_RENAMED; do
+  for ctrl in ${_CTRL_NAME_RENAMED}; do
     convert_controls_renamed "$ctrl"
   done
 }
@@ -1953,14 +1953,14 @@ fix_platform_system_control_settings() {
      entitycache_dont_enable \
      views_cache_bully_dont_enable \
      views_content_cache_dont_enable"
-  for ctrl in $_CTRL_NAME_ORIG; do
+  for ctrl in ${_CTRL_NAME_ORIG}; do
     convert_controls_orig "$ctrl"
   done
 }
 
 fix_site_system_control_settings() {
   _CTRL_NAME_ORIG="disable_user_register_protection"
-  for ctrl in $_CTRL_NAME_ORIG; do
+  for ctrl in ${_CTRL_NAME_ORIG}; do
     convert_controls_orig_no_global "$ctrl"
   done
 }
@@ -2013,7 +2013,7 @@ add_note_site_ini() {
 fix_platform_control_files() {
   if [ -e "/data/conf/default.boa_platform_control.ini" ]; then
     if [ ! -e "${Plr}/sites/all/modules/default.boa_platform_control.ini" ] \
-      || [ "$_CTRL_TPL_FORCE_UPDATE" = "YES" ]; then
+      || [ "${_CTRL_TPL_FORCE_UPDATE}" = "YES" ]; then
       cp -af /data/conf/default.boa_platform_control.ini \
         ${Plr}/sites/all/modules/ &> /dev/null
       chown ${_HM_U}:users ${Plr}/sites/all/modules/default.boa_platform_control.ini &> /dev/null
@@ -2032,7 +2032,7 @@ fix_platform_control_files() {
 fix_site_control_files() {
   if [ -e "/data/conf/default.boa_site_control.ini" ]; then
     if [ ! -e "${Dir}/modules/default.boa_site_control.ini" ] \
-      || [ "$_CTRL_TPL_FORCE_UPDATE" = "YES" ]; then
+      || [ "${_CTRL_TPL_FORCE_UPDATE}" = "YES" ]; then
       cp -af /data/conf/default.boa_site_control.ini ${Dir}/modules/ &> /dev/null
       chown ${_HM_U}:users ${Dir}/modules/default.boa_site_control.ini &> /dev/null
       chmod 0664 ${Dir}/modules/default.boa_site_control.ini &> /dev/null
@@ -2222,7 +2222,7 @@ process() {
           && [ ! -f "${Plr}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
           _PATCH_TEST=$(grep "foreach (array_values(\$data)" \
             ${Plr}/includes/database/database.inc 2>&1)
-          if [[ "$_PATCH_TEST" =~ "array_values" ]]; then
+          if [[ "${_PATCH_TEST}" =~ "array_values" ]]; then
             _DONT_TOUCH_PERMISSIONS="${_DONT_TOUCH_PERMISSIONS}"
           else
             _DONT_TOUCH_PERMISSIONS=NO
@@ -2548,7 +2548,7 @@ action() {
           _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
           if [ -e "${User}/log/email.txt" ]; then
             _F_CLIENT_EMAIL=$(cat ${User}/log/email.txt 2>&1)
-            _F_CLIENT_EMAIL=$(echo -n $_F_CLIENT_EMAIL | tr -d "\n" 2>&1)
+            _F_CLIENT_EMAIL=$(echo -n ${_F_CLIENT_EMAIL} | tr -d "\n" 2>&1)
             _F_CLIENT_EMAIL=${_F_CLIENT_EMAIL//\\\@/\@}
           fi
           if [ ! -z "${_F_CLIENT_EMAIL}" ]; then
@@ -2566,8 +2566,8 @@ action() {
         fi
         disable_chattr ${_HM_U}.ftp
         rm -f -r /home/${_HM_U}.ftp/drush-backups
-        if [ -e "$_THIS_HM_SITE" ]; then
-          cd $_THIS_HM_SITE
+        if [ -e "${_THIS_HM_SITE}" ]; then
+          cd ${_THIS_HM_SITE}
           su -s /bin/bash ${_HM_U} -c "drush7 cc drush &> /dev/null"
           rm -f -r ${User}/.tmp/cache
           run_drush7_hmr_cmd "vset \
@@ -2603,10 +2603,10 @@ action() {
                 hosting_package pkg ON pkg.nid=pkgi.package_id \
                 WHERE pkg.short_name='hostmaster'\" 2>&1")
               _HM_NID=${_HM_NID//[^0-9]/}
-              if [ ! -z "$_HM_NID" ]; then
+              if [ ! -z "${_HM_NID}" ]; then
                 run_drush7_hmr_cmd "sqlq \"UPDATE hosting_context \
-                  SET name='hostmaster' WHERE nid='$_HM_NID'\""
-                echo $_HM_NID > ${User}/log/hosting_context.pid
+                  SET name='hostmaster' WHERE nid='${_HM_NID}'\""
+                echo ${_HM_NID} > ${User}/log/hosting_context.pid
               fi
             fi
           fi
