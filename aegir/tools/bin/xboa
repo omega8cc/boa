@@ -567,16 +567,16 @@ migrate_prepare() {
       run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET uid='1' WHERE uid='0'\"" &> /dev/null
       _HM_NID=$(run_drush7_hmr_cmd "@hostmaster sqlq \"SELECT site.nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'\"" 2>&1)
       _HM_NID=${_HM_NID//[^0-9]/}
-      if [ ! -z "$_HM_NID" ] ; then
-        echo "HOTFIX B: Hostmaster STATUS: Fix 1/2 hosting_context $_HM_NID"
+      if [ ! -z "${_HM_NID}" ] ; then
+        echo "HOTFIX B: Hostmaster STATUS: Fix 1/2 hosting_context ${_HM_NID}"
         if [ -e "${_USR}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
-          _HM_PLF=$(run_drush7_hmr_cmd "@hostmaster sqlq \"SELECT platform FROM hosting_site WHERE nid='$_HM_NID'\"" 2>&1)
+          _HM_PLF=$(run_drush7_hmr_cmd "@hostmaster sqlq \"SELECT platform FROM hosting_site WHERE nid='${_HM_NID}'\"" 2>&1)
           _HM_PLF=${_HM_PLF//[^0-9]/}
           run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context SET name='platform_hostmaster' WHERE nid='$_HM_PLF'\"" &> /dev/null
         fi
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context SET name='hostmaster' WHERE nid='$_HM_NID'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE node SET title='${_DOMAIN}' WHERE nid='$_HM_NID'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET title='${_DOMAIN}' WHERE nid='$_HM_NID'\"" &> /dev/null
+        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'\"" &> /dev/null
+        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
+        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
         run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
         echo FIXED > ${_USR}/log/post-merge-fix.pid
       else
