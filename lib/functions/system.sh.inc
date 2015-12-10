@@ -2774,7 +2774,7 @@ if_squeeze_to_wheezy() {
       mrun "sleep 60"
     fi
     check_dns_settings
-    if [ "${_USE_PROVIDER_DNS}" = "NO" ]; then
+    if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
       if [ -e "/etc/resolv.conf" ]; then
         mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
       fi
