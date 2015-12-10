@@ -8,7 +8,7 @@ cluster="BOA-2.4.7"
 hd="HEAD"
 lgcy="BOA-2.2.9"
 master="master"
-nextv="BOA-2.4.7-dev"
+nextv="BOA-3.0.0-dev"
 stbl="BOA-2.4.7"
 
 barCnf="/root/.barracuda.cnf"
