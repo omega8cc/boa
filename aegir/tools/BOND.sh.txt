@@ -1003,11 +1003,11 @@ tune_memory_limits() {
     _CPU_NR=1
   fi
   _CPU_MX=$(( _CPU_NR * 2 ))
-  if [ "$_CPU_MX" -lt "4" ]; then
+  if [ "${_CPU_MX}" -lt "4" ]; then
     _CPU_MX=4
   fi
   _CPU_TG=$(( _CPU_NR / 2 ))
-  if [ "$_CPU_TG" -lt "4" ]; then
+  if [ "${_CPU_TG}" -lt "4" ]; then
     _CPU_TG=4
   fi
   _CPU_VS=$(( _CPU_NR / 12 ))
@@ -1053,7 +1053,7 @@ tune_memory_limits() {
     fi
     _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 2 ))
     if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-      _L_NGX_WRKS=$_CPU_MX
+      _L_NGX_WRKS=${_CPU_MX}
     else
       _L_NGX_WRKS=${_NGINX_WORKERS}
     fi
@@ -1071,7 +1071,7 @@ tune_memory_limits() {
       fi
       _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 2 ))
       if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-        _L_NGX_WRKS=$_CPU_MX
+        _L_NGX_WRKS=${_CPU_MX}
       else
         _L_NGX_WRKS=${_NGINX_WORKERS}
       fi
@@ -1091,7 +1091,7 @@ tune_memory_limits() {
         fi
         _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 2 ))
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-          _L_NGX_WRKS=$_CPU_TG
+          _L_NGX_WRKS=${_CPU_TG}
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
@@ -1134,7 +1134,7 @@ tune_memory_limits() {
       fi
       _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 2 ))
       if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-        _L_NGX_WRKS=$_CPU_MX
+        _L_NGX_WRKS=${_CPU_MX}
       else
         _L_NGX_WRKS=${_NGINX_WORKERS}
       fi
@@ -1152,7 +1152,7 @@ tune_memory_limits() {
     fi
     _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 2 ))
     if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
-      _L_NGX_WRKS=$_CPU_MX
+      _L_NGX_WRKS=${_CPU_MX}
     else
       _L_NGX_WRKS=${_NGINX_WORKERS}
     fi

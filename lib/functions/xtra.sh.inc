@@ -366,8 +366,8 @@ if_install_rvm() {
             rm -f -r /usr/local/rvm
             touch ${pthLog}/ruby-root-clean-reload.log
           fi
-          $_GPG --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3 &> /dev/null
-          curl -sSL https://rvm.io/mpapis.asc | $_GPG --import - &> /dev/null
+          ${_GPG} --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3 &> /dev/null
+          curl -sSL https://rvm.io/mpapis.asc | ${_GPG} --import - &> /dev/null
           curl -sSL https://get.rvm.io | bash -s stable &> /dev/null
           echo rvm_autoupdate_flag=0 > ~/.rvmrc
           if [ -e "/etc/profile.d/rvm.sh" ]; then
@@ -400,7 +400,7 @@ if_install_rvm() {
           _GEM_PATH=${_GEM_FILE//\//\\\/}
           _GEM_CRON="/etc/crontab"
           _VAR_IF_PRESENT=$(grep "scout" $_GEM_CRON 2>&1)
-          if [[ "$_VAR_IF_PRESENT" =~ "scout" ]]; then
+          if [[ "${_VAR_IF_PRESENT}" =~ "scout" ]]; then
             if [ ! -e "$_GEM_FILE" ] && [ ! -z "${_SCOUT_KEY}" ]; then
               st_runner "rvm @global do gem install --conservative scout" 2> /dev/null
               adduser --system --group --home /var/scout scout &> /dev/null
@@ -408,7 +408,7 @@ if_install_rvm() {
               sed -i "s/\* \* \* \* \* scout .*/* * * * * scout $_GEM_PATH ${_SCOUT_KEY}/g" $_GEM_CRON &> /dev/null
             fi
             _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
-            if [[ ! "$_VAR_IF_PRESENT" =~ "scout ALL=NOPASSWD" ]]; then
+            if [[ ! "${_VAR_IF_PRESENT}" =~ "scout ALL=NOPASSWD" ]]; then
               echo "scout ALL=NOPASSWD: /usr/bin/mysql" >> /etc/sudoers
             fi
           else
@@ -419,7 +419,7 @@ if_install_rvm() {
               echo -e "* * * * * scout $_GEM_FILE ${_SCOUT_KEY}" \
                 | fmt -su -w 2500 | tee -a $_GEM_CRON >/dev/null 2>&1
               _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
-              if [[ ! "$_VAR_IF_PRESENT" =~ "scout ALL=NOPASSWD" ]]; then
+              if [[ ! "${_VAR_IF_PRESENT}" =~ "scout ALL=NOPASSWD" ]]; then
                 echo "scout ALL=NOPASSWD: /usr/bin/mysql" >> /etc/sudoers
               fi
             fi
@@ -439,7 +439,7 @@ if_install_rvm() {
   if [ -e "/var/scout" ]; then
     _SCOUT_CRON_OFF=$(grep "OFFscoutOFF" /etc/crontab 2>&1)
     _SCOUT_CRON=$(grep "scout" /etc/crontab 2>&1)
-    if [[ ! "$_SCOUT_CRON_OFF" =~ "OFFscoutOFF" ]] \
+    if [[ ! "${_SCOUT_CRON_OFF}" =~ "OFFscoutOFF" ]] \
       && [[ "$_SCOUT_CRON" =~ "scout" ]]; then
       sed -i "s/scout/OFFscoutOFF/g" /etc/crontab &> /dev/null
     fi
