@@ -2671,9 +2671,6 @@ finale() {
   chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt opt \
     sbin selinux srv sys usr var share run &> /dev/null
   chmod 700 root &> /dev/null
-  if [ "${_STATUS}" = "INIT" ]; then
-    killall -9 bash &> /dev/null
-  fi
   msg "BYE!"
 }
 
@@ -2778,7 +2775,7 @@ if_squeeze_to_wheezy() {
       mrun "sleep 60"
     fi
     check_dns_settings
-    if [ "${_USE_PROVIDER_DNS}" = "NO" ]; then
+    if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
       if [ -e "/etc/resolv.conf" ]; then
         mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
       fi
@@ -2789,6 +2786,7 @@ if_squeeze_to_wheezy() {
         cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
       fi
     fi
+    rm -f ${pthLog}/ruby-root-clean-reload.log
     mv -f /var/xdrago /var/xdrago_wait &> /dev/null
     msg "WARN: Too late! Squeeze to Wheezy upgrade in progress..."
     msg "HINT: Run tail -f ${_LOG}"

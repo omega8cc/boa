@@ -2,7 +2,7 @@
 ### Stable BOA-2.4.7 Release - Full Edition
 ### Date: Fri Dec  4 08:09:21 PST 2015
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.7
-### Latest hotfix added on: Fri Dec  4 18:21:20 PST 2015
+### Latest hotfix added on: Thu Dec 10 00:21:35 PST 2015
 
   @=> Includes Aegir Hostmaster 2.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -25,10 +25,22 @@
       to newer BOA versions after 2.4.7 -- https://omega8.cc/node/330
 
   @=> What are BOA plans for Drupal 6 support after February 24th, 2016?
+
       We will support Drupal/Pressflow 6 in all new releases, as long as
       available PHP versions will allow to use it (we run our own Pressflow 6
       based site on PHP 5.6 for many months with zero issues). For more details
       please check: https://github.com/omega8cc/boa/issues/824
+
+  @=> SSH keys for root are required by newer OpenSSH versions used in BOA
+
+      BOA installs SSH from sources by default (Debian only). This means that
+      password based access for root will not work once BOA is installed or
+      upgraded to current stable version. It is a result of OpenSSH changes
+      in recent releases and not BOA specific change. BOA will deny the initial
+      install and Barracuda will refuse to run upgrade if it detects that system
+      root has no SSH keys added and only password based access is available.
+      You can still modify this behaviour in /usr/etc/sshd_config but future
+      OpenSSH versions may still revert such changes, so it is not recommended.
 
   @=> BOA switched from SPDY to HTTP/2 + PFS on all supported OS versions
 
@@ -38,6 +50,7 @@
   * Disable page caching on the fly where needed
   * Disable temporarily support for broken Restaurant distro
   * Do not rebuild features and entities on cache clear
+  * Document new requirement: SSH keys for root -- fixes #786 #833
   * Make ioncube_loader optional and disable by default with _PHP_IONCUBE=NO
   * Nginx SSL: enable OCSP stapling by default
   * Nginx SSL: enable OCSP stapling for existing HTTPS vhosts
@@ -82,8 +95,10 @@
   * Don't strip $args from $request_uri in redirects
   * Fix cron schedule for upgrades
   * Fix for broken Git on Ubuntu
+  * Fix for DNS on _SQUEEZE_TO_WHEEZY
   * Fix for not working PHP rebuild check
   * Fix for not working syncpass tool
+  * Fix for Ruby rebuild on _SQUEEZE_TO_WHEEZY
   * Fix PHP deprecated warning in D8 -- fixes #804
   * Ignore 'env COLUMNS' sent by Drush remotely -- fixes #373
   * Ignore daily.sh in clear.sh
@@ -96,6 +111,7 @@
   * Improve system check -- fixes #811
   * Move Redis restart procedure to correct script
   * PHP: Add missing path to open_basedir for CLI
+  * Remove debug code to not kill the initial install
   * Remove not working /etc/logrotate.d/lshell -- fixes #823
   * Update advagg auto configuration variables -- fixes #792
   * Update boa/lib/functions/helper.sh.inc with current OS -- fixes #787

@@ -89,6 +89,7 @@ production settings.
 
 ### OTHER REQUIREMENTS
 
+* SSH keys for root are required by newer OpenSSH versions used in BOA.
 * Wget must be installed.
 * The outgoing TCP connections via ports: 25, 53, 80 and 443 must be open.
 * Minimum 1 GB of RAM

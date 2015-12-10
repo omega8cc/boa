@@ -43,6 +43,22 @@ clean_pid_exit() {
   exit 1
 }
 
+check_root_keys_pwd() {
+  _S_TEST=$(grep "root:\*:" /etc/shadow 2>&1)
+  _R_TEST=CHECK
+  if [ -e "/root/.ssh/authorized_keys" ]; then
+    _R_TEST=$(grep "ssh-rsa" /root/.ssh/authorized_keys 2>&1)
+  fi
+  if [[ ! "${_S_TEST}" =~ "root:" ]] \
+    && [[ ! "${_R_TEST}" =~ "ssh-rsa" ]]; then
+    echo "ERROR: BOA requires working SSH keys for system root present"
+    echo "ERROR: Please add and test your SSH keys for root account"
+    echo "ERROR: before trying again"
+    echo "Bye"
+    clean_pid_exit
+  fi
+}
+
 fix_dns_settings() {
   dnsLi="/root/.local.dns.IP.list"
   mkdir -p ${vBs}
@@ -1041,6 +1057,7 @@ check_root() {
 
 proceed() {
   check_root
+  check_root_keys_pwd
   check_dns_curl
   check_php_cli
   set_pin_priority
