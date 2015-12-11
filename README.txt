@@ -13,6 +13,7 @@ PHP-FPM, Zend OPcache, MariaDB and Redis.
 ### Installation instructions .........: docs/INSTALL.txt
 ### Other related information .........: docs/NOTES.txt
 ### Upgrade instructions ..............: docs/UPGRADE.txt
+### Bug reporting .....................: CONTRIBUTING.txt <----- Read This First
 ###
 ### Barracuda configuration template ..: docs/cnf/barracuda.cnf
 ### Octopus configuration template ....: docs/cnf/octopus.cnf
