@@ -13,6 +13,7 @@ PHP-FPM, Zend OPcache, MariaDB and Redis.
 ### Installation instructions .........: docs/INSTALL.txt
 ### Other related information .........: docs/NOTES.txt
 ### Upgrade instructions ..............: docs/UPGRADE.txt
+### Bug reporting .....................: CONTRIBUTING.txt <----- Read This First
 ###
 ### Barracuda configuration template ..: docs/cnf/barracuda.cnf
 ### Octopus configuration template ....: docs/cnf/octopus.cnf
@@ -154,10 +155,10 @@ Octopus can install the platforms listed below:
 
  @ Drupal 7.41.1
 
- aGov 2.1 --------------------- https://drupal.org/project/agov
+ aGov 3.0 --------------------- https://drupal.org/project/agov
  Commerce 1.40 ---------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.31 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.32 ----------------- https://drupal.org/project/commons
+ Commons 3.33 ----------------- https://drupal.org/project/commons
  Drupal 7.41.1 ---------------- https://drupal.org/drupal-7.41
  ERPAL 2.3 -------------------- https://drupal.org/project/erpal
  Guardr 2.26 ------------------ https://drupal.org/project/guardr
@@ -171,7 +172,7 @@ Octopus can install the platforms listed below:
 
  @ Pressflow 6.37.1
 
- Commons 2.26 ----------------- https://drupal.org/project/commons
+ Commons 2.27 ----------------- https://drupal.org/project/commons
  Pressflow 6.37.1 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
@@ -185,4 +186,30 @@ Octopus can install the platforms listed below:
   contrib modules - see docs/MODULES.txt for details.
 
 
-Join the chat at https://gitter.im/omega8cc/boa
+### MAINTAINERS
+
+BOA development is maintained and sponsored by Omega8.cc
+
+  https://omega8.cc/about
+
+
+### CREDITS
+
+* Aegir project --------------- http://www.aegirproject.org
+* Brian Mercer ---------------- https://drupal.org/node/244072#comment-1747170
+* Nice people who are submitting bugs and problems in the BOA issue queue.
+
+
+### DONATIONS
+
+If you wish to support BOA development or simply send a nice 'Thank you'
+to the Universe, please donate to the Aegir project. BOA devs participate
+in Aegir core development for years, and BOA project, which is maintained
+by Omega8.cc exists only thanks to Aegir project continued development.
+
+Please choose either PayPal or Gratipay option at:
+
+  http://www.aegirproject.org/donate
+
+Thank you!
+
