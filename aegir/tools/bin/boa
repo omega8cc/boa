@@ -1198,6 +1198,10 @@ display_info() {
     echo "  CRL ${_CRL}"
     echo "  SSH ${_SSH}"
     echo
+    if [ -e "/var/log/barracuda_log.txt" ]; then
+      cat /var/log/barracuda_log.txt | grep 2015
+    fi
+    echo
     echo "Please provide this information,"
     echo "along with your hosting provider name"
     echo "in the BOA issue queue on GitHub."
