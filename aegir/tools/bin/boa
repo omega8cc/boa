@@ -1152,6 +1152,27 @@ display_info() {
       && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt "0" ]; then
       _CPU_NR="${_CPU_INFO}"
     fi
+    if [ -x "/usr/sbin/nginx" ]; then
+      _NGX=$(/usr/sbin/nginx -v 2>&1 | tr -d "\n" \
+        | cut -d" " -f4 | awk '{ print $1}' 2>&1)
+      if [ -z "${_NGX}" ]; then
+        _NGX=$(/usr/sbin/nginx -v 2>&1 | tr -d "\n" \
+          | cut -d" " -f3 | awk '{ print $1}' 2>&1)
+      fi
+    fi
+    _SSL=$(openssl version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f2 \
+      | awk '{ print $1}' 2>&1)
+    _CRL=$(curl --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f2 \
+      | awk '{ print $1}' 2>&1)
+    _SSH=$(ssh -V 2>&1 \
+      | tr -d "\n" \
+      | tr -d "," \
+      | cut -d"_" -f2 \
+      | awk '{ print $1}' 2>&1)
     _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
     _XTR=$(grep _XTRAS_LIST /root/.barracuda.cnf 2>&1)
     _MFX=$(grep _MODULES_FIX /root/.barracuda.cnf 2>&1)
@@ -1172,6 +1193,10 @@ display_info() {
     echo "  DBS ${_DBS}"
     echo "  DNS ${_DNS}"
     echo "  PKG ${_PKG}"
+    echo "  NGX ${_NGX}"
+    echo "  SSL ${_SSL}"
+    echo "  CRL ${_CRL}"
+    echo "  SSH ${_SSH}"
     echo
     echo "Please provide this information,"
     echo "along with your hosting provider name"
