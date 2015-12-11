@@ -1161,7 +1161,7 @@ display_info() {
     echo "  RAM ${_RAM}"
     echo
     echo "Please provide this information,"
-    echo "along with your hosting company name"
+    echo "along with your hosting provider name"
     echo "in the BOA issue queue on GitHub."
     echo
     exit 0
