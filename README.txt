@@ -172,7 +172,7 @@ Octopus can install the platforms listed below:
 
  @ Pressflow 6.37.1
 
- Commons 2.26 ----------------- https://drupal.org/project/commons
+ Commons 2.27 ----------------- https://drupal.org/project/commons
  Pressflow 6.37.1 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
