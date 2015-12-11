@@ -101,14 +101,14 @@ vBs="/var/backups"
 ###
 ### Distributions
 ###
-_AGOV=2.1
+_AGOV=3.0
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
 _COD=1.0-alpha5
 _COMMERCE1=1.40
 _COMMERCE2=2.31
-_COMMONS2=2.26
-_COMMONS3=3.32
+_COMMONS2=2.27
+_COMMONS3=3.33
 _D8_DEV_LABEL="8-dev-${_TODAY}"
 _DRUPAL7="drupal-${_SMALLCORE7}"
 _DRUPAL8="drupal-${_SMALLCORE8}"

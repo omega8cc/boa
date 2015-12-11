@@ -10,18 +10,17 @@ Reporting bugs is a great way to contribute to BOA. Mis-reporting bugs or
 duplicating reports, however, can be a distraction to the development team
 and waste precious resources. So, help out by following these guidelines.
 
+!!! Every bug report must include a Gist link to output of `boa info` command.
+
 !!! Any bug report failing to follow the guidelines will be ignored and closed.
 
 Before reporting a bug always search for similar bug report before submitting
 your own, and include as much information about your context as possible,
 including your server/VPS parent system name (like Xen) and/or hosting provider
-name and URL. Especially please attach the contents (anonymized for security
-and privacy) of files listed below.
+name and URL.
 
-  /root/.barracuda.cnf
-  /var/log/barracuda_log.txt
-  /root/.USER.octopus.cnf
-  /data/disk/USER/log/octopus_log.txt
+Please always attach the output of `boa info` command, or for more detailed
+system configuration and history report, `boa info more` command.
 
 !!! Don't post your server or error logs in the issue directly. Instead use
 !!! services like http://gist.github.com and post the link in your submission.
@@ -40,6 +39,6 @@ Barracuda and Octopus projects on drupal.org:
 ### HELP OPTIONS
 
 * Docs and How-to ------------- https://omega8.cc/library/development
-* Community IRC channel ------- irc://irc.freenode.net/omega8cc
+* Gitter chat ----------------- https://gitter.im/omega8cc/boa
 * Commercial support ---------- https://omega8.cc
 

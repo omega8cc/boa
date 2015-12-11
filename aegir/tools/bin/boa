@@ -1117,7 +1117,109 @@ check_root() {
   fi
 }
 
+display_info() {
+  if [ `whoami` = "root" ]; then
+    _AWS_TEST_A=$(grep cloudimg /etc/fstab 2>&1)
+    _AWS_TEST_B=$(grep cloudconfig /etc/fstab 2>&1)
+    _ETH_TEST=$(ifconfig 2>&1)
+    _VM_TEST=$(uname -a 2>&1)
+    if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
+      _VMFAMILY="VZ"
+    elif [ -e "/proc/bean_counters" ]; then
+      _VMFAMILY="VZ"
+    else
+      _VMFAMILY="XEN"
+    fi
+    if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
+      _VMFAMILY="VS"
+    fi
+    if [[ "${_AWS_TEST_A}" =~ "cloudimg" ]] \
+      || [[ "${_AWS_TEST_B}" =~ "cloudconfig" ]]; then
+      _VMFAMILY="AWS"
+    fi
+    _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+    _CPU_INFO=${_CPU_INFO//[^0-9]/}
+    _NPROC_TEST=$(which nproc 2>&1)
+    if [ -z "${_NPROC_TEST}" ]; then
+      _CPU_NR="${_CPU_INFO}"
+    else
+      _CPU_NR=$(nproc 2>&1)
+    fi
+    _CPU_NR=${_CPU_NR//[^0-9]/}
+    if [ ! -z "${_CPU_NR}" ] && [ ! -z "${_CPU_INFO}" ] \
+      && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt "0" ]; then
+      _CPU_NR="${_CPU_INFO}"
+    fi
+    if [ -x "/usr/sbin/nginx" ]; then
+      _NGX=$(/usr/sbin/nginx -v 2>&1 | tr -d "\n" \
+        | cut -d" " -f4 | awk '{ print $1}' 2>&1)
+      if [ -z "${_NGX}" ]; then
+        _NGX=$(/usr/sbin/nginx -v 2>&1 | tr -d "\n" \
+          | cut -d" " -f3 | awk '{ print $1}' 2>&1)
+      fi
+    fi
+    _SSL=$(openssl version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f2 \
+      | awk '{ print $1}' 2>&1)
+    _CRL=$(curl --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f2 \
+      | awk '{ print $1}' 2>&1)
+    _SSH=$(ssh -V 2>&1 \
+      | tr -d "\n" \
+      | tr -d "," \
+      | cut -d"_" -f2 \
+      | awk '{ print $1}' 2>&1)
+    _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
+    _XTR=$(grep _XTRAS_LIST /root/.barracuda.cnf 2>&1)
+    _MFX=$(grep _MODULES_FIX /root/.barracuda.cnf 2>&1)
+    _PFX=$(grep _PERMISSIONS_FIX /root/.barracuda.cnf 2>&1)
+    _DBS=$(grep _DB_SERIES /root/.barracuda.cnf 2>&1)
+    _DNS=$(grep _DNS_SETUP_TEST /root/.barracuda.cnf 2>&1)
+    _PKG=$(grep _EXTRA_PACKAGES /root/.barracuda.cnf 2>&1)
+    clear
+    echo
+    thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
+    echo "Aegir on ${thiSys}"
+    echo "  VPS ${_VMFAMILY}"
+    echo "  CPU ${_CPU_NR}"
+    echo "  RAM ${_RAM}"
+    echo "  XTR ${_XTR}"
+    echo "  MFX ${_MFX}"
+    echo "  PFX ${_PFX}"
+    echo "  DBS ${_DBS}"
+    echo "  DNS ${_DNS}"
+    echo "  PKG ${_PKG}"
+    echo "  NGX ${_NGX}"
+    echo "  SSL ${_SSL}"
+    echo "  CRL ${_CRL}"
+    echo "  SSH ${_SSH}"
+    echo
+    if [ "${kind}" = "more" ] \
+      && [ -e "/var/log/barracuda_log.txt" ]; then
+      cat /var/log/barracuda_log.txt | grep 2015
+    fi
+    echo
+    echo "Please link this information in your submission,
+    echo "but only in a form of Gist snippet and not inline,"
+    echo "along with your hosting provider name"
+    echo "in the BOA issue queue on GitHub."
+    echo
+    exit 0
+  else
+    echo "ERROR: This script should be ran as a root user"
+    exit 1
+  fi
+}
+
 case "$1" in
+  info)      cmmand="$1"
+             kind="$2"
+             display_info
+  ;;
   in-head)   cmmand="$1"
              kind="$2"
              fqdn="$3"
