@@ -1198,11 +1198,13 @@ display_info() {
     echo "  CRL ${_CRL}"
     echo "  SSH ${_SSH}"
     echo
-    if [ -e "/var/log/barracuda_log.txt" ]; then
+    if [ "${kind}" = "more" ] \
+      && [ -e "/var/log/barracuda_log.txt" ]; then
       cat /var/log/barracuda_log.txt | grep 2015
     fi
     echo
-    echo "Please provide this information,"
+    echo "Please link this information in your submission,
+    echo "but only in a form of Gist snippet and not inline,"
     echo "along with your hosting provider name"
     echo "in the BOA issue queue on GitHub."
     echo
@@ -1215,6 +1217,7 @@ display_info() {
 
 case "$1" in
   info)      cmmand="$1"
+             kind="$2"
              display_info
   ;;
   in-head)   cmmand="$1"
