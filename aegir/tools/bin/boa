@@ -1203,7 +1203,7 @@ display_info() {
       cat /var/log/barracuda_log.txt | grep 2015
     fi
     echo
-    echo "Please link this information in your submission,
+    echo "Please link this information in your submission,"
     echo "but only in a form of Gist snippet and not inline,"
     echo "along with your hosting provider name"
     echo "in the BOA issue queue on GitHub."
