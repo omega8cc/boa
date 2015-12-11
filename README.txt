@@ -186,4 +186,30 @@ Octopus can install the platforms listed below:
   contrib modules - see docs/MODULES.txt for details.
 
 
-Join the chat at https://gitter.im/omega8cc/boa
+### MAINTAINERS
+
+BOA development is maintained and sponsored by Omega8.cc
+
+  https://omega8.cc/about
+
+
+### CREDITS
+
+* Aegir project --------------- http://www.aegirproject.org
+* Brian Mercer ---------------- https://drupal.org/node/244072#comment-1747170
+* Nice people who are submitting bugs and problems in the BOA issue queue.
+
+
+### DONATIONS
+
+If you wish to support BOA development or simply send a nice 'Thank you'
+to the Universe, please donate to the Aegir project. BOA devs participate
+in Aegir core development for years, and BOA project, which is maintained
+by Omega8.cc exists only thanks to Aegir project continued development.
+
+Please choose either PayPal or Gratipay option at:
+
+  http://www.aegirproject.org/donate
+
+Thank you!
+
