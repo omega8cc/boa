@@ -1153,6 +1153,7 @@ display_info() {
       _CPU_NR="${_CPU_INFO}"
     fi
     _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
+    clear
     echo
     thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
     echo "Aegir on ${thiSys}"
