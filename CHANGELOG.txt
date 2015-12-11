@@ -2,7 +2,7 @@
 ### Stable BOA-2.4.7 Release - Full Edition
 ### Date: Fri Dec  4 08:09:21 PST 2015
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.7
-### Latest hotfix added on: Thu Dec 10 00:21:35 PST 2015
+### Latest hotfix added on: Thu Dec 10 10:10:26 PST 2015
 
   @=> Includes Aegir Hostmaster 2.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -68,7 +68,7 @@
   * GEOS 3.5.0 (requires _PHP_GEOS=YES)
   * Git 2.6.1 (if installed from sources)
   * MariaDB 10.0.22
-  * MariaDB 5.5.46
+  * MariaDB 5.5.47
   * MariaDB Galera Cluster 10.0.22
   * Nginx 1.9.7
   * OpenSSL 1.0.2e (used only in custom built Nginx)
@@ -94,6 +94,7 @@
   * Document boa in-octopus command -- fixes #817
   * Don't strip $args from $request_uri in redirects
   * Fix cron schedule for upgrades
+  * Fix for /etc/sudoers on _SQUEEZE_TO_WHEEZY
   * Fix for broken Git on Ubuntu
   * Fix for DNS on _SQUEEZE_TO_WHEEZY
   * Fix for not working PHP rebuild check

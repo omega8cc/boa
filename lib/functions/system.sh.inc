@@ -2561,7 +2561,8 @@ finale() {
   msg "Final post-${_L_ST} cleaning, one moment..."
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _T_SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-    if [[ "${_T_SERIES_TEST}" =~ "BOA-2.4." ]] \
+    if [[ "${_T_SERIES_TEST}" =~ "BOA-3." ]] \
+      || [[ "${_T_SERIES_TEST}" =~ "BOA-2.4." ]] \
       || [[ "${_T_SERIES_TEST}" =~ "BOA-2.3.8" ]]; then
       _DO_NOTHING=YES
     else
@@ -2979,6 +2980,20 @@ if_squeeze_to_wheezy() {
         mount -t devpts devpts /dev/pts &> /dev/null
       fi
     fi
+    _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD" /etc/sudoers 2>&1)
+    if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
+      echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+    fi
+    for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+      if [ -e "${User}/config/server_master/nginx/vhost.d" ] \
+        && [ ! -e "${User}/log/CANCELLED" ]; then
+        _HM_U=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+        _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD" /etc/sudoers 2>&1)
+        if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
+          echo "${_HM_U} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+        fi
+      fi
+    done
     echo rotate > /var/log/syslog
     rm -f /var/xdrago/log/*.log
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null

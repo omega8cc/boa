@@ -252,6 +252,10 @@ upgrade_aegir_master() {
       service cron stop &> /dev/null
     fi
     usermod -aG users aegir &> /dev/null
+    _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD" /etc/sudoers 2>&1)
+    if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
+      echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+    fi
     if [ ! -d "/var/aegir/.drush/sys/provision/http" ]; then
       rm -f -r /var/aegir/.drush/{sys,xts,usr}
       rm -f -r /var/aegir/.drush/{provision,drush_make}
