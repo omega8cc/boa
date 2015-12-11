@@ -1153,6 +1153,12 @@ display_info() {
       _CPU_NR="${_CPU_INFO}"
     fi
     _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
+    _XTR=$(grep _XTRAS_LIST /root/.barracuda.cnf 2>&1)
+    _MFX=$(grep _MODULES_FIX /root/.barracuda.cnf 2>&1)
+    _PFX=$(grep _PERMISSIONS_FIX /root/.barracuda.cnf 2>&1)
+    _DBS=$(grep _DB_SERIES /root/.barracuda.cnf 2>&1)
+    _DNS=$(grep _DNS_SETUP_TEST /root/.barracuda.cnf 2>&1)
+    _PKG=$(grep _EXTRA_PACKAGES /root/.barracuda.cnf 2>&1)
     clear
     echo
     thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
@@ -1160,6 +1166,12 @@ display_info() {
     echo "  VPS ${_VMFAMILY}"
     echo "  CPU ${_CPU_NR}"
     echo "  RAM ${_RAM}"
+    echo "  XTR ${_XTR}"
+    echo "  MFX ${_MFX}"
+    echo "  PFX ${_PFX}"
+    echo "  DBS ${_DBS}"
+    echo "  DNS ${_DNS}"
+    echo "  PKG ${_PKG}"
     echo
     echo "Please provide this information,"
     echo "along with your hosting provider name"
