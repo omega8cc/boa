@@ -637,9 +637,12 @@ EOFMYSQL
   ###--------------------###
     if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
       _DO_NOTHING=YES
+      rm -f /root/.force.reinstall.cnf
     else
       msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed!"
-      msg "HINT: Please check /var/aegir/install.log for more information."
+      msg "HINT: Please check /var/aegir/install.log for details, and then"
+      msg "HINT: run the same install command again to complete installation."
+      touch /root/.force.reinstall.cnf
       clean_pid_exit
     fi
 
