@@ -1395,7 +1395,8 @@ install_update_php() {
       msg "INFO: PHP EXTRA is ${_PHP_EXTRA}"
     fi
   fi
-  if [ "${_OSV}" = "trusty" ]; then
+  if [ "${_OSV}" = "trusty" ] \
+    || [ "${_OSV}" = "jessie" ]; then
     ln -sf /usr/include/freetype2 /usr/include/freetype2/freetype
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "5.3" ]] \

@@ -3255,7 +3255,8 @@ sys_packages_install() {
                      libcurl4-openssl-dev \
                      ${_EXTRA_PACKAGES}"
   fi
-  if [ "${_OSV}" = "trusty" ]; then
+  if [ "${_OSV}" = "trusty" ] \
+    || [ "${_OSV}" = "jessie" ]; then
     _EXTRA_PACKAGES="libgd2-noxpm-dev \
                      libgd2-xpm-dev \
                      libgd2-dev \
