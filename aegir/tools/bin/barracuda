@@ -601,8 +601,6 @@ up_action() {
     wait
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"          ${barCnf}
     wait
-    sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g"           ${barCnf}
-    wait
     ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"           ${barCnf}
     wait

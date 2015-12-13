@@ -736,7 +736,6 @@ barracuda_cnf() {
     echo "_SPEED_VALID_MAX=${_SPEED_VALID_MAX}"               >> ${barCnf}
     echo "_SSH_FROM_SOURCES=${_SSH_FROM_SOURCES}"             >> ${barCnf}
     echo "_SSH_PORT=${_SSH_PORT}"                             >> ${barCnf}
-    echo "_SSL_FROM_SOURCES=${_SSL_FROM_SOURCES}"             >> ${barCnf}
     echo "_STRICT_BIN_PERMISSIONS=${_STRICT_BIN_PERMISSIONS}" >> ${barCnf}
     echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}"             >> ${barCnf}
 
@@ -757,8 +756,6 @@ barracuda_cnf() {
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
     wait
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
-    wait
-    sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g"     ${barCnf}
     wait
     ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
@@ -1170,11 +1167,6 @@ barracuda_cnf() {
       echo "_MODULES_SKIP=\"${_MODULES_SKIP}\"" >> ${barCnf}
     fi
 
-    _SSL_FROM_SOURCES_TEST=$(grep _SSL_FROM_SOURCES ${barCnf} 2>&1)
-    if [[ ! "${_SSL_FROM_SOURCES_TEST}" =~ "_SSL_FROM_SOURCES" ]]; then
-      echo "_SSL_FROM_SOURCES=${_SSL_FROM_SOURCES}" >> ${barCnf}
-    fi
-
     _SSH_FROM_SOURCES_TEST=$(grep _SSH_FROM_SOURCES ${barCnf} 2>&1)
     if [[ ! "${_SSH_FROM_SOURCES_TEST}" =~ "_SSH_FROM_SOURCES" ]]; then
       echo "_SSH_FROM_SOURCES=${_SSH_FROM_SOURCES}" >> ${barCnf}
@@ -1257,6 +1249,11 @@ barracuda_cnf() {
       sed -i "s/^_BUILD_FROM_SRC.*//g" ${barCnf}
       wait
     fi
+    _SSL_FROM_SOURCES_TEST=$(grep _SSL_FROM_SOURCES ${barCnf} 2>&1)
+    if [[ "${_SSL_FROM_SOURCES_TEST}" =~ "_SSL_FROM_SOURCES" ]]; then
+      sed -i "s/^_SSL_FROM_SOURCES.*//g" ${barCnf}
+      wait
+    fi
     ###
     ### config cleanup end
     ###
@@ -1269,8 +1266,6 @@ barracuda_cnf() {
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
     wait
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
-    wait
-    sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g"     ${barCnf}
     wait
     ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
@@ -3214,7 +3209,6 @@ sys_packages_install() {
     _SYSLOGD=rsyslog
   fi
   if [ "${_NGINX_SPDY}" = "YES" ] \
-    || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
     || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
     if [ "${_OSV}" = "stretch" ] \
       || [ "${_OSV}" = "wily" ]; then
@@ -3487,7 +3481,6 @@ fix_libssl() {
     || [ "${_OSV}" = "precise" ]; then
     _SSL_FIX_REQUIRED=YES
     if [ "${_NGINX_SPDY}" = "YES" ] \
-      || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
       || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
       if [ "${_OSV}" = "jessie" ] \
         || [ "${_OSV}" = "wheezy" ] \
