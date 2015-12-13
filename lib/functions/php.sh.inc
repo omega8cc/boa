@@ -537,7 +537,7 @@ install_php_extensions() {
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ] \
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.2" ]; then
         mkdir -p /var/backups/libyaml
-        cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/
+        cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/ &> /dev/null
         rm -f /usr/lib/x86_64-linux-gnu/libyaml*
         cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/
       fi
@@ -728,7 +728,7 @@ update_php_extensions() {
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ] \
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.2" ]; then
         mkdir -p /var/backups/libyaml
-        cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/
+        cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/ &> /dev/null
         rm -f /usr/lib/x86_64-linux-gnu/libyaml*
         cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/
       fi
