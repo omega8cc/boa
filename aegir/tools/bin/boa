@@ -1039,7 +1039,9 @@ check_root() {
     if [ "${cmmand}" = "in-octopus" ]; then
       system_check_ready
     else
-      system_check_clean
+      if [ ! -e "/root/.force.reinstall.cnf" ]; then
+        system_check_clean
+      fi
       check_root_keys_pwd
     fi
     check_fix_csf
