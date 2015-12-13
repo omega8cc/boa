@@ -141,7 +141,6 @@ fix_sftp_ftps_modern() {
   fi
   if [ ! -e "${pthLog}/fixed-sftp-idle.log" ]; then
     sed -i "s/IdleTimeOut.*/IdleTimeOut            15m/g" /etc/ssh/sftp_config &> /dev/null
-    wait
     mrun "service ssh reload" &> /dev/null
     touch ${pthLog}/fixed-sftp-idle.log
   fi
@@ -204,9 +203,7 @@ update_global_inc_conf() {
 # Fix this on upgrade.
 fix_on_upgrade() {
   sed -i "s/loglevel.*/loglevel warning/g" /etc/redis/redis.conf &> /dev/null
-  wait
   sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf &> /dev/null
-  wait
   cp -af ${locCnf}/clean-boa-env /etc/init.d/clean-boa-env
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
   st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
@@ -354,13 +351,9 @@ tune_memory_limits() {
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
         sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini &> /dev/null
-        wait
         sed -i "s/64000/128000/g"  /opt/php55/etc/php55.ini &> /dev/null
-        wait
         sed -i "s/64000/128000/g"  /opt/php54/etc/php54.ini &> /dev/null
-        wait
         sed -i "s/64000/128000/g"  /opt/php53/etc/php53.ini &> /dev/null
-        wait
       else
         _USE_PHP=1024
         _USE_OPC=1024
@@ -438,39 +431,30 @@ tune_memory_limits() {
   chmod 644 /data/conf/hhvm_intercept.php
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
-    wait
   fi
   if [ -e "/opt/php56/etc/php56.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php56/etc/php56.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php56/etc/php56.ini &> /dev/null
-    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php56/lib/php.ini   &> /dev/null
-    wait
   fi
   if [ -e "/opt/php55/etc/php55.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php55/etc/php55.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php55/etc/php55.ini &> /dev/null
-    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php55/lib/php.ini   &> /dev/null
-    wait
   fi
   if [ -e "/opt/php54/etc/php54.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php54/etc/php54.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php54/etc/php54.ini &> /dev/null
-    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php54/lib/php.ini   &> /dev/null
-    wait
   fi
   if [ -e "/opt/php53/etc/php53.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php53/etc/php53.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php53/etc/php53.ini &> /dev/null
-    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php53/lib/php.ini   &> /dev/null
-    wait
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits
@@ -496,18 +480,14 @@ tune_memory_limits() {
   _MAX_MEM_REDIS="${_USE_OPC}MB"
   sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" \
     /etc/redis/redis.conf &> /dev/null
-  wait
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9
-    wait
   fi
   if [ -e "/etc/default/jetty8" ] && [ -e "/opt/solr3" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr3 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty8
-    wait
   fi
   if [ -e "/etc/default/jetty7" ] && [ -e "/opt/solr1" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr1 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty7
-    wait
   fi
   tune_web_server_config
 }
@@ -572,7 +552,6 @@ EOF
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
       fi
       sed -i "/^$/d" /etc/locale.gen
-      wait
       locale-gen &> /dev/null
     else
       locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
@@ -626,7 +605,6 @@ EOF
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
       fi
       sed -i "/^$/d" /etc/locale.gen
-      wait
       locale-gen &> /dev/null
     else
       locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
@@ -3627,7 +3605,6 @@ install_vnstat() {
       chmod 755 /etc/init.d/vnstat &> /dev/null
       st_runner "update-rc.d vnstat defaults" &> /dev/null
       sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /etc/vnstat.conf
-      wait
       mrun "service vnstat start" &> /dev/null
       touch ${pthLog}/vnstat-${_VNSTAT_VRN}.log
       mrun "service vnstat restart" &> /dev/null
