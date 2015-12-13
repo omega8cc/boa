@@ -3261,6 +3261,8 @@ sys_packages_install() {
                      libgd2-xpm-dev \
                      libgd2-dev \
                      libgd3 \
+                     libkrb5-dev \
+                     libldap-dev \
                      libxpm-dev \
                      ${_EXTRA_PACKAGES}"
   else
