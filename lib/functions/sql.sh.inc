@@ -266,19 +266,19 @@ install_mariadb_sql() {
     else
       _MARIADB_VRN="${_MARIADB_10_VRN}"
     fi
-    msg "INFO: Forced MariaDB $_MARIADB_VRN in ${_THIS_OS}/${_OSV}"
+    msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
   else
     if [ "${_DB_SERIES}" = "10.0" ] || [ "${_DB_SERIES}" = "5.5" ]; then
       _DO_NOTHING=YES
     else
       _DB_SERIES=5.5
       _MARIADB_VRN="${_MARIADB_5_VRN}"
-      msg "INFO: Forced MariaDB $_MARIADB_VRN in ${_THIS_OS}/${_OSV}"
+      msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
     fi
     if [ -z "${_DB_SERIES}" ]; then
       _DB_SERIES=5.5
       _MARIADB_VRN="${_MARIADB_5_VRN}"
-      msg "INFO: Forced MariaDB $_MARIADB_VRN in ${_THIS_OS}/${_OSV}"
+      msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
     fi
   fi
   rm -f /etc/apt/sources.list.d/openssl.list
