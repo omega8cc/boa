@@ -841,7 +841,12 @@ install_php_multi() {
   _T_PHP_PTH="/opt/php$1/bin"
   _T_PHP_CFG="/opt/php$1/bin/php-config"
   install_php_extensions "$1"
-  touch ${pthLog}/installed-${_PHP_VERSION}-${_MARIADB_VRN}-MariaDB.log
+  if [ "${_DB_SERIES}" = "10.0" ]; then
+    _T_MARIADB_VRN="${_MARIADB_10_VRN}"
+  else
+    _T_MARIADB_VRN="${_MARIADB_VRN}"
+  fi
+  touch ${pthLog}/installed-${_PHP_VERSION}-${_T_MARIADB_VRN}-MariaDB.log
   rm -f /etc/init.d/php$1-fpm*
   cp -af ${locCnf}/php$1-fpm /etc/init.d/php$1-fpm
   chmod 755 /etc/init.d/php$1-fpm
@@ -1124,8 +1129,13 @@ check_php_rebuild() {
       install_php_multi "$1"
     fi
   fi
-  if [ ! -e "${pthLog}/installed-${_PHP_VERSION}-${_MARIADB_VRN}-MariaDB.log" ]; then
-    msg "INFO: PHP ${_PHP_VERSION} rebuild required for MariaDB ${_MARIADB_VRN}"
+  if [ "${_DB_SERIES}" = "10.0" ]; then
+    _T_MARIADB_VRN="${_MARIADB_10_VRN}"
+  else
+    _T_MARIADB_VRN="${_MARIADB_VRN}"
+  fi
+  if [ ! -e "${pthLog}/installed-${_PHP_VERSION}-${_T_MARIADB_VRN}-MariaDB.log" ]; then
+    msg "INFO: PHP ${_PHP_VERSION} rebuild required for MariaDB ${_T_MARIADB_VRN}"
     install_php_multi "$1"
   fi
 }
