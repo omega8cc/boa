@@ -1953,7 +1953,14 @@ update_sources_list() {
         echo "## DEBIAN PROPOSED UPDATES" >> ${aptLiSys}
         echo "deb http://${_MIRROR}/debian/ ${_OSV}-proposed-updates main" \
           >> ${aptLiSys}
-        if [ "${_OSV}" = "wheezy" ]; then
+        if [ "${_OSV}" = "jessie" ]; then
+          if [ -e "${locCnf}/etc-apt-preferences-jessie.txt" ]; then
+            cp -af ${locCnf}/etc-apt-preferences-jessie.txt /etc/apt/preferences
+          else
+            curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-jessie.txt" \
+              -o /etc/apt/preferences
+          fi
+        elif [ "${_OSV}" = "wheezy" ]; then
           if [ -e "${locCnf}/etc-apt-preferences-wheezy.txt" ]; then
             cp -af ${locCnf}/etc-apt-preferences-wheezy.txt /etc/apt/preferences
           else
@@ -1995,7 +2002,14 @@ update_sources_list() {
           -o /etc/apt/preferences
       fi
     else
-      if [ "${_OSV}" = "wheezy" ]; then
+      if [ "${_OSV}" = "jessie" ]; then
+        if [ -e "${locCnf}/etc-apt-preferences-jessie.txt" ]; then
+          cp -af ${locCnf}/etc-apt-preferences-jessie.txt /etc/apt/preferences
+        else
+          curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-jessie.txt" \
+            -o /etc/apt/preferences
+        fi
+      elif [ "${_OSV}" = "wheezy" ]; then
         if [ -e "${locCnf}/etc-apt-preferences-wheezy.txt" ]; then
           cp -af ${locCnf}/etc-apt-preferences-wheezy.txt /etc/apt/preferences
         else
@@ -2686,7 +2700,8 @@ install_with_aptitude_deps() {
     _GPG=gpg
   fi
   if [[ "${_XTRAS_LIST}" =~ "FMG" ]]; then
-    if [ "${_OSV}" = "wheezy" ] \
+    if [ "${_OSV}" = "jessie" ] \
+      || [ "${_OSV}" = "wheezy" ] \
       || [ "${_DO_FIX}" = "YES" ] \
       || [ "${_OSV}" = "trusty" ] \
       || [ "${_OSV}" = "precise" ]; then
@@ -3135,7 +3150,8 @@ sys_packages_install() {
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      if [ "${_OSV}" = "wheezy" ] \
+      if [ "${_OSV}" = "jessie" ] \
+        || [ "${_OSV}" = "wheezy" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
         _APT_XTRA="openjdk-7-jre-headless openjdk-6-jre-headless nginx"
@@ -3162,7 +3178,8 @@ sys_packages_install() {
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      if [ "${_OSV}" = "wheezy" ] \
+      if [ "${_OSV}" = "jessie" ] \
+        || [ "${_OSV}" = "wheezy" ] \
         || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
@@ -3264,7 +3281,8 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  if [ "${_OSV}" = "wheezy" ] \
+  if [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "wheezy" ] \
     || [ "${_OSV}" = "squeeze" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ] \
@@ -3437,7 +3455,8 @@ fix_libs_php() {
     && [ "${_LOC_OSV}" = "squeeze" ]; then
     _DO_FIX=YES
   fi
-  if [ "${_OSV}" = "wheezy" ] \
+  if [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "wheezy" ] \
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
@@ -3480,7 +3499,8 @@ fix_libssl() {
     && [ "${_LOC_OSV}" = "squeeze" ]; then
     _DO_FIX=YES
   fi
-  if [ "${_OSV}" = "wheezy" ] \
+  if [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "wheezy" ] \
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
@@ -3488,7 +3508,8 @@ fix_libssl() {
     if [ "${_NGINX_SPDY}" = "YES" ] \
       || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
       || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
-      if [ "${_OSV}" = "wheezy" ] \
+      if [ "${_OSV}" = "jessie" ] \
+        || [ "${_OSV}" = "wheezy" ] \
         || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then

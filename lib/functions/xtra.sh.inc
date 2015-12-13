@@ -226,9 +226,10 @@ if_install_hhvm() {
     _DO_FIX=YES
   fi
   if [[ "${_XTRAS_LIST}" =~ "HVM" ]]; then
-    if [ "${_OSV}" = "wheezy" ] \
-      || [ "${_DO_FIX}" = "YES" ] \
-      || [ "${_OSV}" = "trusty" ]; then
+    if [ "${_OSV}" = "jessie" ] \
+      || [ "${_OSV}" = "wheezy" ] \
+      || [ "${_OSV}" = "trusty" ] \
+      || [ "${_DO_FIX}" = "YES" ]; then
       if [ ! -x "/usr/bin/hhvm" ]; then
         echo " "
         if prompt_yes_no "Do you want to install HHVM Engine?" ; then
@@ -236,7 +237,10 @@ if_install_hhvm() {
           msg "INFO: Installing HHVM Engine..."
           cd /var/opt
           echo "## HHVM APT Repository" > ${aptLiSys}.d/hhvm.list
-          if [ "${_OSV}" = "wheezy" ] || [ "${_DO_FIX}" = "YES" ]; then
+          if [ "${_OSV}" = "jessie" ]; then
+            echo "deb http://dl.hhvm.com/debian jessie main" >> \
+              ${aptLiSys}.d/hhvm.list
+          elif [ "${_OSV}" = "wheezy" ] || [ "${_DO_FIX}" = "YES" ]; then
             echo "deb http://dl.hhvm.com/debian wheezy main" >> \
               ${aptLiSys}.d/hhvm.list
           elif [ "${_OSV}" = "trusty" ]; then

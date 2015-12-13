@@ -464,7 +464,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     if [[ "${_ALL}" =~ "-c set -m; " ]] \
       && [ -x "/home/${USER}/.rvm/bin/rvm" ]; then
       _THIS_RV=$(lsb_release -sc 2>&1)
-      if [ "${_THIS_RV}" = "wheezy" ] \
+      if [ "${_THIS_RV}" = "jessie" ] \
+        || [ "${_THIS_RV}" = "wheezy" ] \
         || [ "${_THIS_RV}" = "trusty" ] \
         || [ "${_THIS_RV}" = "precise" ]; then
         _DETECTED_RUBY_VP=$(grep 'RUBY_VERSION' \

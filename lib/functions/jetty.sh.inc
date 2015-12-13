@@ -4,7 +4,8 @@ if_install_jetty() {
     && [ "${_LOC_OSV}" = "squeeze" ]; then
     _DO_FIX=YES
   fi
-  if [ "${_OSV}" = "wheezy" ] \
+  if [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "wheezy" ] \
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
@@ -29,7 +30,8 @@ if_install_jetty() {
       && [ ! -e "/root/.mstr.clstr.cnf" ] \
       && [ ! -e "/root/.wbhd.clstr.cnf" ] \
       && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
-      if [ "${_OSV}" = "wheezy" ] \
+      if [ "${_OSV}" = "jessie" ] \
+        || [ "${_OSV}" = "wheezy" ] \
         || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
@@ -49,7 +51,8 @@ if_install_jetty() {
         rm -f -r /opt/solr4
         rm -f -r /opt/jetty9
         rm -f /etc/jetty.conf
-        if [ "${_OSV}" = "wheezy" ] \
+        if [ "${_OSV}" = "jessie" ] \
+          || [ "${_OSV}" = "wheezy" ] \
           || [ "${_DO_FIX}" = "YES" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
@@ -110,7 +113,8 @@ if_install_jetty() {
         chown -R jetty9:jetty9 /opt/solr4
         chown -R jetty9:jetty9 /opt/jetty9
         chown -R jetty9:jetty9 /var/log/jetty9
-        if [ "${_OSV}" = "wheezy" ] \
+        if [ "${_OSV}" = "jessie" ] \
+          || [ "${_OSV}" = "wheezy" ] \
           || [ "${_DO_FIX}" = "YES" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
@@ -133,7 +137,8 @@ if_install_jetty() {
         echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m -Djava.awt.headless=true \
           -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" \
           # Options" | fmt -su -w 2500 >> /etc/default/jetty9
-        if [ "${_OSV}" = "wheezy" ] \
+        if [ "${_OSV}" = "jessie" ] \
+          || [ "${_OSV}" = "wheezy" ] \
           || [ "${_DO_FIX}" = "YES" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
@@ -174,7 +179,8 @@ if_install_jetty() {
     msg "INFO: Jetty 9 restart completed"
   fi
   if [ -e "/opt/jetty9/VERSION.txt" ]; then
-    if [ "${_OSV}" = "wheezy" ] \
+    if [ "${_OSV}" = "jessie" ] \
+      || [ "${_OSV}" = "wheezy" ] \
       || [ "${_DO_FIX}" = "YES" ] \
       || [ "${_OSV}" = "trusty" ] \
       || [ "${_OSV}" = "precise" ]; then
@@ -209,7 +215,8 @@ if_install_jetty() {
       rm -f -r jetty-distribution-*
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
       mv -f /opt/jetty9 ${vBs}/jetty9-${_X_VERSION}-${_NOW}
-      if [ "${_OSV}" = "wheezy" ] \
+      if [ "${_OSV}" = "jessie" ] \
+        || [ "${_OSV}" = "wheezy" ] \
         || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then

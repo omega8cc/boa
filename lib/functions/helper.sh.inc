@@ -405,7 +405,13 @@ os_detection() {
       not_supported_os
     fi
   elif [ "${_THIS_OS}" = "Debian" ]; then
-    if [ "${_THIS_RV}" = "wheezy" ]; then
+    if [ "${_THIS_RV}" = "jessie" ]; then
+      _OSV="jessie"
+      _NGINX_FORWARD_SECRECY=YES
+      _NGINX_SPDY=YES
+      _SSH_FROM_SOURCES=YES
+      _SSL_FROM_SOURCES=YES
+    elif [ "${_THIS_RV}" = "wheezy" ]; then
       _OSV="wheezy"
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES

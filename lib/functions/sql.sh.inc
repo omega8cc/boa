@@ -327,6 +327,7 @@ install_mariadb_sql() {
 
 install_with_aptitude_sql() {
   if [ "${_OSV}" = "squeeze" ] \
+    || [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ] \
     || [ "${_OSV}" = "lucid" ]; then

@@ -774,7 +774,8 @@ install_php_multi() {
   msg "INFO: Building PHP ${_PHP_VERSION} part 1/3"
   cd /var/opt/php-${_PHP_VERSION}
   st_runner "sh ./buildconf --force" 2> /dev/null
-  if [ "${_OSV}" = "wheezy" ] \
+  if [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "wheezy" ] \
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
@@ -1377,7 +1378,8 @@ install_update_php() {
     st_runner "aptitude remove php5-sasl php5-suhosin -y" &> /dev/null
     st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
   fi
-  if [ "${_OSV}" = "wheezy" ] \
+  if [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "wheezy" ] \
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
