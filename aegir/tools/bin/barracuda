@@ -991,7 +991,7 @@ check_fix_csf() {
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    renice 10 -p $$
+    renice 10 -p $$ &> /dev/null
     check_fix_csf
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
