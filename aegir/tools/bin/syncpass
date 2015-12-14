@@ -84,6 +84,7 @@ do_syncpass() {
         sed -i \
           "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
           ${prH}/server_*.alias.drushrc.php &> /dev/null
+        wait
         mysqladmin flush-privileges &> /dev/null
       else
         echo "ERROR: Auto-generated password for aegir_root system user"
@@ -113,6 +114,7 @@ do_syncpass() {
           sed -i \
             "s/mysql:\/\/${uname}:.*/mysql:\/\/${uname}:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
             /data/disk/${uname}/.drush/server_*.alias.drushrc.php &> /dev/null
+          wait
           mysqladmin flush-privileges &> /dev/null
         else
           echo "ERROR: Auto-generated password for ${uname} system user"
@@ -145,10 +147,14 @@ check_root() {
       fi
     fi
     sed -i "s/.*173.231.133.190.*//g" /etc/hosts
+    wait
     sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
+    wait
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
+    wait
     echo >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
+    wait
     if [ -e "/etc/init.d/postfix" ]; then
       service postfix restart &> /dev/null
     fi

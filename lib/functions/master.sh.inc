@@ -147,6 +147,7 @@ provision_backend_dbpass_sync() {
       WHERE User='$_ADBU';" &> /dev/null
     sed -i "s/mysql:\/\/$_ADBU:.*/mysql:\/\/$_ADBU:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
       /var/aegir/.drush/server_*.alias.drushrc.php &> /dev/null
+    wait
   fi
   mysqladmin flush-privileges &> /dev/null
   su -s /bin/bash - aegir -c "drush cc drush &> /dev/null"
@@ -832,11 +833,17 @@ update_php_cli_local_ini() {
       _INI=${_INI//\//\\\/}
       _QTP=${_U_TP//\//\\\/}
       sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_U_II}
+      wait
       sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
+      wait
       sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_U_II}
+      wait
       sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_U_II}
+      wait
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
+      wait
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
+      wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
       echo > ${_U_HD}/.ctrl.247stableU.txt
     fi

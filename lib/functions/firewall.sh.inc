@@ -39,7 +39,9 @@ fix_lfd_whitelist() {
       _DO_NOTHING=YES
     else
       sed -i "s/.*\/tmp\/.*//g" ${_THIS_FILE} &> /dev/null
+      wait
       sed -i "/^$/d"            ${_THIS_FILE} &> /dev/null
+      wait
       echo "/tmp/drush_tmp.*"      >> ${_THIS_FILE}
       echo "/tmp/drush_make_tmp.*" >> ${_THIS_FILE}
       echo "/tmp/make_tmp.*"       >> ${_THIS_FILE}
@@ -74,8 +76,11 @@ csf_install() {
   elif [[ "$_CSF_COMPATIBILITY_TEST" =~ "some features will not work" ]]; then
     _CSF_COMPATIBILITY=PARTIAL
     sed -i "s/^PORTFLOOD .*/PORTFLOOD = \"\"/g" /etc/csf/csf.conf &> /dev/null
+    wait
     sed -i "s/^CONNLIMIT .*/CONNLIMIT = \"\"/g" /etc/csf/csf.conf &> /dev/null
+    wait
     sed -i "s/^USE_CONNTRACK .*/USE_CONNTRACK = \"0\"/g" /etc/csf/csf.conf &> /dev/null
+    wait
   elif [[ "$_CSF_COMPATIBILITY_TEST" =~ "FATAL" ]]; then
     _CSF_COMPATIBILITY=NO
   else

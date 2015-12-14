@@ -268,59 +268,81 @@ octopus_install() {
         fi
         if [ ! -z "${_MY_EMAIL}" ] && [ "${_MY_EMAIL}" = "${email}" ]; then
           sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"root\"/g"        ${vBs}/${octName}
+          wait
         else
           lml="${_MY_EMAIL}"
           if [ ! -z "${lml}" ]; then
             sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${lml}\"/g"    ${vBs}/${octName}
+            wait
           else
             sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"root\"/g"      ${vBs}/${octName}
+            wait
           fi
         fi
       fi
       sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                   ${vBs}/${octName}
+      wait
       if [ ! -z "${copt}" ]; then
         sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=${copt}/g" ${vBs}/${octName}
+        wait
       fi
       if [ ! -z "${csub}" ]; then
         sed -i "s/^_CLIENT_SUBSCR=.*/_CLIENT_SUBSCR=${csub}/g" ${vBs}/${octName}
+        wait
       fi
       if [ ! -z "${ccor}" ]; then
         sed -i "s/^_CLIENT_CORES=.*/_CLIENT_CORES=${ccor}/g"   ${vBs}/${octName}
+        wait
       fi
     else
       sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${email}\"/g"        ${vBs}/${octName}
+      wait
     fi
     sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"${email}\"/g"  ${vBs}/${octName}
+    wait
     sed -i "s/^_USER=.*/_USER=${user}/g"                       ${vBs}/${octName}
+    wait
 
     if [ "${mode}" = "mini" ]; then
       if [ -e "${vBs}/${filIncO}" ]; then
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
+        wait
       fi
       ### Legacy method
       sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${octName}
+      wait
     elif [ "${mode}" = "max" ]; then
       if [ -e "${vBs}/${filIncO}" ]; then
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
+        wait
         sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${vBs}/${filIncO}
+        wait
       fi
       ### Legacy method
       sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${octName}
+      wait
       sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     ${vBs}/${octName}
+      wait
     elif [ "${mode}" = "none" ]; then
       if [ -e "${vBs}/${filIncO}" ]; then
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
+        wait
         sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  ${vBs}/${filIncO}
+        wait
       fi
       ### Legacy method
       sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${octName}
+      wait
       sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"    ${vBs}/${octName}
+      wait
     else
       if [ -e "${vBs}/${filIncO}" ]; then
         sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${vBs}/${filIncO}
+        wait
       fi
       ### Legacy method
       sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     ${vBs}/${octName}
+      wait
     fi
 
     if [ -e "/root/.auto.up.cnf" ] \
@@ -331,65 +353,94 @@ octopus_install() {
       if [ ! -e "/root/.debug.cnf" ] || [ -e "/root/.default.cnf" ]; then
         if [ -e "${vBs}/${filIncO}" ]; then
           sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"           ${vBs}/${filIncO}
+          wait
           sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"   ${vBs}/${filIncO}
+          wait
         fi
         ### Legacy method
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${octName}
+        wait
         sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"     ${vBs}/${octName}
+        wait
       fi
     fi
 
     if [ "${cmmand}" = "in-head" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncO}
+      wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncO}
+      wait
       sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"     ${vBs}/${filIncO}
+      wait
       sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${filIncO}
+      wait
     else
       if [ -e "${vBs}/${filIncO}" ]; then
         sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncO}
+        wait
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncO}
+        wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${filIncO}
+        wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncO}
+        wait
       fi
       ### Legacy method
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${octName}
+      wait
       sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${octName}
+      wait
       if [ "${cmmand}" = "in-legacy" ]; then
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcy}/g" ${vBs}/${octName}
+        wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcy}/g" ${vBs}/${octName}
+        wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcy}/g"         ${vBs}/${octName}
+        wait
       else
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${octName}
+        wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${octName}
+        wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${octName}
+        wait
       fi
     fi
 
     if [ "${cmmand}" = "in-head" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"       ${vBs}/${filIncO}
+      wait
     elif [ "${cmmand}" = "in-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncO}
+      wait
     else
       if [ -e "${vBs}/${filIncO}" ]; then
         sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${filIncO}
+        wait
       fi
       ### Legacy method
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${octName}
+      wait
     fi
 
     if [ ! -z "${dbip}" ] && [ "${cmmand}" = "in-cluster" ]; then
       if [ "${kind}" = "mstr" ] || [ "${kind}" = "wbhd" ]; then
         if [ -e "${vBs}/${filIncO}" ]; then
           sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g" ${vBs}/${filIncO}
+          wait
           sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"           ${vBs}/${filIncO}
+          wait
           sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"   ${vBs}/${filIncO}
+          wait
         fi
       fi
     fi
 
     bash ${vBs}/${octName}
     sed -i "s/^127.0.1.1.*//g" /etc/hosts
+    wait
     sed -i "/^$/d" /etc/hosts
+    wait
   else
     echo "${octName} installer not available - try again"
     clean_pid_exit
@@ -400,37 +451,52 @@ barracuda_install() {
   if [ -e "${vBs}/${barName}" ]; then
 
     sed -i "s/^127.0.1.1.*//g" /etc/hosts
+    wait
 
     if [ -e "${vBs}/${filIncB}" ]; then
       sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${email}\"/g"        ${vBs}/${filIncB}
+      wait
       sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${filIncB}
+      wait
     fi
     ### Legacy method
     sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${email}\"/g"          ${vBs}/${barName}
+    wait
     sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                 ${vBs}/${barName}
+    wait
 
     if [ "${kind}" = "local" ]; then
       echo "127.0.1.1 aegir.local o1.sub.aegir.local \
         o2.sub.aegir.local o3.sub.aegir.local" >> /etc/hosts
       if [ -e "${vBs}/${filIncB}" ]; then
         sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g"         ${vBs}/${filIncB}
+        wait
       fi
       ### Legacy method
       sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g"           ${vBs}/${barName}
+      wait
       ### Legacy variables
       sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=YES/g"     ${vBs}/${barName}
+      wait
       sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"            ${vBs}/${barName}
+      wait
     elif [ "${kind}" = "public" ] && [ ! -z "${fqdn}" ]; then
       if [ -e "${vBs}/${filIncB}" ]; then
         sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        ${vBs}/${filIncB}
+        wait
         sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
+        wait
       fi
       ### Legacy method
       sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"          ${vBs}/${barName}
+      wait
       sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${barName}
+      wait
       ### Legacy variables
       sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"      ${vBs}/${barName}
+      wait
       sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"           ${vBs}/${barName}
+      wait
     elif [ "${kind}" = "mstr" ] \
       && [ ! -z "${fqdn}" ] \
       && [ ! -z "${dbip}" ] \
@@ -439,9 +505,13 @@ barracuda_install() {
       touch /root/.mstr.clstr.cnf
       if [ -e "${vBs}/${filIncB}" ]; then
         sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=MSTR/g"          ${vBs}/${filIncB}
+        wait
         sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"   ${vBs}/${filIncB}
+        wait
         sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"           ${vBs}/${filIncB}
+        wait
       fi
     elif [ "${kind}" = "dbhd" ] \
       && [ ! -z "${fqdn}" ] \
@@ -451,9 +521,13 @@ barracuda_install() {
       touch /root/.dbhd.clstr.cnf
       if [ -e "${vBs}/${filIncB}" ]; then
         sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=DBHD/g"          ${vBs}/${filIncB}
+        wait
         sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"   ${vBs}/${filIncB}
+        wait
         sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"           ${vBs}/${filIncB}
+        wait
       fi
     elif [ "${kind}" = "wbhd" ] \
       && [ ! -z "${fqdn}" ] \
@@ -463,21 +537,31 @@ barracuda_install() {
       touch /root/.wbhd.clstr.cnf
       if [ -e "${vBs}/${filIncB}" ]; then
         sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=WBHD/g"          ${vBs}/${filIncB}
+        wait
         sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"   ${vBs}/${filIncB}
+        wait
         sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"           ${vBs}/${filIncB}
+        wait
       fi
     else
       if [ -e "${vBs}/${filIncB}" ]; then
         sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        ${vBs}/${filIncB}
+        wait
         sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
+        wait
       fi
       ### Legacy method
       sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"          ${vBs}/${barName}
+      wait
       sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${barName}
+      wait
       ### Legacy variables
       sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"      ${vBs}/${barName}
+      wait
       sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"           ${vBs}/${barName}
+      wait
     fi
 
     if [ ! -z "${fqdn}" ] \
@@ -487,9 +571,11 @@ barracuda_install() {
         || [ "${kind}" = "dbhd" ] \
         || [ "${kind}" = "wbhd" ]; then
         sed -i "s/.*${loip}.*${fqdn}.*//g" /etc/hosts
+        wait
         echo >>/etc/hosts
         ### echo "${loip} ${fqdn}" >>/etc/hosts
         sed -i "/^$/d" /etc/hosts
+        wait
       fi
     fi
 
@@ -498,46 +584,79 @@ barracuda_install() {
       && [ -e "${vBs}/${filIncO}" ]; then
       if [ "${rkey}" = "php-55" ] || [ "${rkey}" = "php-5.5" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.5/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.5/g"   ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${filIncO}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${filIncO}
+        wait
       elif [ "${rkey}" = "php-56" ] || [ "${rkey}" = "php-5.6" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.6/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.6/g"   ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${filIncO}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${filIncO}
+        wait
       elif [ "${rkey}" = "php-54" ] || [ "${rkey}" = "php-5.4" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.4/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.4/g"   ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g" ${vBs}/${filIncO}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g" ${vBs}/${filIncO}
+        wait
       elif [ "${rkey}" = "php-53" ] || [ "${rkey}" = "php-5.3" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.3/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.3/g"   ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${vBs}/${filIncO}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" ${vBs}/${filIncO}
+        wait
       elif [ "${rkey}" = "php-all" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${filIncB}
         pA="5.6 5.5 5.4 5.3"
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${filIncO}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${filIncO}
+        wait
       elif [ "${rkey}" = "nodns" ]; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${filIncB}
+        wait
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${filIncB}
+        wait
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${filIncO}
+        wait
       else
         sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${rkey}\"/g"    ${vBs}/${filIncB}
+        wait
       fi
     fi
 
@@ -547,77 +666,122 @@ barracuda_install() {
       ### Legacy method
       if [ "${rkey}" = "php-55" ] || [ "${rkey}" = "php-5.5" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.5/g" ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.5/g"   ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${octName}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${octName}
+        wait
       elif [ "${rkey}" = "php-56" ] || [ "${rkey}" = "php-5.6" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.6/g" ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.6/g"   ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${octName}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${octName}
+        wait
       elif [ "${rkey}" = "php-54" ] || [ "${rkey}" = "php-5.4" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.4/g" ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.4/g"   ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g" ${vBs}/${octName}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g" ${vBs}/${octName}
+        wait
       elif [ "${rkey}" = "php-53" ] || [ "${rkey}" = "php-5.3" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.3/g" ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.3/g"   ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${vBs}/${octName}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" ${vBs}/${octName}
+        wait
       elif [ "${rkey}" = "php-all" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${barName}
         pA="5.6 5.5 5.4 5.3"
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${barName}
+        wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${octName}
+        wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${octName}
+        wait
       elif [ "${rkey}" = "nodns" ]; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${barName}
+        wait
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${barName}
+        wait
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${octName}
+        wait
       else
         sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${rkey}\"/g"    ${vBs}/${barName}
+        wait
       fi
     fi
 
     if [ "${cmmand}" = "in-head" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
+      wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncB}
+      wait
       sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"     ${vBs}/${filIncB}
+      wait
       sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${filIncB}
+      wait
     else
       if [ -e "${vBs}/${filIncB}" ]; then
         sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncB}
+        wait
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${filIncB}
+        wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncB}
+        wait
       fi
       ### Legacy method
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${barName}
+      wait
       sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${barName}
+      wait
       if [ "${cmmand}" = "in-legacy" ]; then
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcy}/g" ${vBs}/${barName}
+        wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcy}/g" ${vBs}/${barName}
+        wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcy}/g"         ${vBs}/${barName}
+        wait
       else
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${barName}
+        wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${barName}
+        wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${barName}
+        wait
       fi
     fi
 
     if [ "${cmmand}" = "in-head" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"       ${vBs}/${filIncB}
+      wait
     elif [ "${cmmand}" = "in-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncB}
+      wait
     else
       if [ -e "${vBs}/${filIncB}" ]; then
         sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${filIncB}
+        wait
       fi
       ### Legacy method
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${barName}
+      wait
     fi
 
     if [ -e "${vBs}/${barName}" ]; then
@@ -889,10 +1053,14 @@ check_root() {
       fi
     fi
     sed -i "s/.*173.231.133.190.*//g" /etc/hosts
+    wait
     sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
+    wait
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
+    wait
     echo >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
+    wait
   else
     echo "ERROR: This script should be ran as a root user"
     clean_pid_exit
