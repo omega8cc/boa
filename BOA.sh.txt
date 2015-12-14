@@ -681,6 +681,8 @@ if [ `whoami` = "root" ]; then
         echo "STATUS: ${barCnf} to disable me, if needed."
       fi
     fi
+  else
+    _SCREEN_INIT=YES
   fi
   if [ -d "/.newrelic" ]; then
     rm -rf /.newrelic
@@ -713,7 +715,18 @@ if [ `whoami` = "root" ]; then
   if [ ! -e "/root/.upstart.cnf" ]; then
     service cron reload &> /dev/null
   fi
-  exit 0
+  if [ "${_SCREEN_INIT}" = "YES" ]; then
+    apt-get clean -qq &> /dev/null
+    apt-get update -qq &> /dev/null
+    apt-get install screen ${forCer} &> /dev/null
+    screen && clear &> /dev/null
+    echo
+    echo "INFO: System is ready! Please start screen session before running the"
+    echo "INFO: boa install command to avoid problems with dropped connections."
+    echo
+  else
+    exit 0
+  fi
 else
   echo "ERROR: This script should be ran as a root user"
   exit 1
