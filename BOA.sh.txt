@@ -719,11 +719,25 @@ if [ `whoami` = "root" ]; then
     apt-get clean -qq &> /dev/null
     apt-get update -qq &> /dev/null
     apt-get install screen ${forCer} &> /dev/null
-    screen && clear &> /dev/null
+    sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
+    clear
     echo
-    echo "INFO: System is ready! Please start screen session before running the"
-    echo "INFO: boa install command to avoid problems with dropped connections."
+    echo "The system is ready for BOA installation!"
     echo
+    echo "We will start screen session for you in 15 seconds"
+    echo "to avoid problems with dropped SSH connections"
+    echo "during BOA stack installation, which may take up to"
+    echo "30-60 minutes, depending on your server speed."
+    echo
+    echo "If your connection will drop, simply log in again"
+    echo "and re-attach your session with 'screen -R' command."
+    echo
+    echo "Please wait a moment until this message disappears."
+    echo
+    echo "Enjoy!"
+    echo
+    sleep 15
+    screen
   else
     exit 0
   fi
