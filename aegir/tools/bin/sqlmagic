@@ -9,7 +9,6 @@ sqlmagic_fix() {
       s|/\*!50017 DEFINER=`[^`]*`@`[^`]*`\s*\*/||g' \
       | sed '/\*!50013 DEFINER=.*/ d' > $target
     sed -i "s/^INSERT INTO/INSERT IGNORE INTO/g" $target
-    wait
     echo "Fixed database dump stored as $target"
     exit 0
   else
@@ -38,13 +37,11 @@ sqlmagic_convert() {
         ${HOME}/static/to_myisam_alter_table.sql
       sed -i "s/.*TABLE_NAME.*//g; s/ *$//g; /^$/d" \
         ${HOME}/static/to_myisam_alter_table.sql &> /dev/null
-      wait
       perl -p -i -e \
         's/(ALTER TABLE \
         (cache_[a-z_]+|cache|sessions|users|watchdog|accesslog) \
         ENGINE=)MYISAM/\1INNODB/g' \
         ${HOME}/static/to_myisam_alter_table.sql &> /dev/null
-      wait
       drush sqlc < ${HOME}/static/to_myisam_alter_table.sql
       echo "This site database has been converted to MyISAM"
       rm -f ${HOME}/static/to_myisam_alter_table.sql
@@ -62,11 +59,9 @@ sqlmagic_convert() {
         ${HOME}/static/to_innodb_alter_table.sql
       sed -i "s/.*TABLE_NAME.*//g; s/ *$//g; /^$/d" \
         ${HOME}/static/to_innodb_alter_table.sql &> /dev/null
-      wait
       perl -p -i -e \
         's/(search_[a-z_]+ ENGINE=)INNODB/\1MYISAM/g' \
         ${HOME}/static/to_innodb_alter_table.sql &> /dev/null
-      wait
       drush sqlc < ${HOME}/static/to_innodb_alter_table.sql
       echo "This site database has been converted to InnoDB"
       rm -f ${HOME}/static/to_innodb_alter_table.sql

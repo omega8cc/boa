@@ -757,9 +757,7 @@ EOF
 install_upgrade_pdnsd() {
   if [ -f "/etc/default/dhcpcd" ]; then
     sed -i "s/.*SET_DNS/#SET_DNS/g" /etc/default/dhcpcd &> /dev/null
-    wait
     sed -i "s/.*SET_HOSTNAME/#SET_HOSTNAME/g" /etc/default/dhcpcd &> /dev/null
-    wait
   fi
   check_dns_settings
   if [ ! -e "/usr/sbin/pdnsd" ]; then

@@ -265,50 +265,36 @@ check_report() {
 up_mode() {
   if [ "${mcmode}" = "aegir" ]; then
     sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                     ${octCnf}
-    wait
     sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                     ${vBs}/${tocName}
-    wait
     if [ -e "${vBs}/${tocIncO}" ]; then
       sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                   ${vBs}/${tocIncO}
-      wait
     fi
     bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   elif [ "${mcmode}" = "platforms" ]; then
     sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"       ${octCnf}
-    wait
     sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"       ${vBs}/${tocName}
-    wait
     if [ -e "${vBs}/${tocIncO}" ]; then
       sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"     ${vBs}/${tocIncO}
-      wait
     fi
     bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   elif [ "${mcmode}" = "both" ]; then
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${octCnf}
-    wait
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${vBs}/${tocName}
-    wait
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${octCnf}
-    wait
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${vBs}/${tocName}
-    wait
     if [ -e "${vBs}/${tocIncO}" ]; then
       sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                   ${vBs}/${tocIncO}
-      wait
     fi
     if [ -e "${vBs}/${tocIncO}" ]; then
       sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"     ${vBs}/${tocIncO}
-      wait
     fi
     bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   else
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${octCnf}
-    wait
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${octCnf}
-    wait
     bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   fi
@@ -322,73 +308,48 @@ up_one() {
     fi
     if [ "${cmmand}" = "up-head" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${tocIncO}
-      wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${tocIncO}
-      wait
       sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"     ${vBs}/${tocIncO}
-      wait
       sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${tocIncO}
-      wait
     else
       if [ -e "${vBs}/${tocIncO}" ]; then
         sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${tocIncO}
-        wait
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${tocIncO}
-        wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${tocIncO}
-        wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${tocIncO}
-        wait
       fi
       ### Legacy method
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${tocName}
-      wait
       sed -i "s/^_BRANCH_PRO.*/_BRANCH_PROVISION=${brnch}/g"   ${vBs}/${tocName}
-      wait
       if [ "${cmmand}" = "up-legacy" ]; then
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcy}/g" ${vBs}/${tocName}
-        wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcy}/g" ${vBs}/${tocName}
-        wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcy}/g"         ${vBs}/${tocName}
-        wait
       else
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${tocName}
-        wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${tocName}
-        wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${tocName}
-        wait
       fi
     fi
     if [ "${cmmand}" = "up-head" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${tocIncO}
-      wait
     elif [ "${cmmand}" = "up-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${tocIncO}
-      wait
     else
       if [ -e "${vBs}/${tocIncO}" ]; then
         sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${tocIncO}
-        wait
       fi
       ### Legacy method
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${tocName}
-      wait
     fi
     if [ -e "${vBs}/${tocIncO}" ]; then
       sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               ${vBs}/${tocIncO}
-      wait
       sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"     ${vBs}/${tocIncO}
-      wait
     fi
     sed -i "s/^_USER=o1/_USER=${octUsr}/g"                     ${vBs}/${tocName}
-    wait
     ### Legacy method
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${tocName}
-    wait
     sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"       ${vBs}/${tocName}
-    wait
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -399,23 +360,15 @@ up_one() {
       else
         if [ -e "${vBs}/${tocIncO}" ]; then
           sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"  ${vBs}/${tocIncO}
-          wait
           sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g" ${vBs}/${tocIncO}
-          wait
         fi
         ### Legacy method
         sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${vBs}/${tocName}
-        wait
         sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${vBs}/${tocName}
-        wait
         sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${octCnf}
-        wait
         sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             ${octCnf}
-        wait
         sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"   ${octCnf}
-        wait
         sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${octCnf}
-        wait
       fi
     fi
     if [ -e "${vBs}/${tocName}" ]; then
@@ -562,7 +515,6 @@ up_action_all() {
           echo
           if [ -e "${vBs}/${octName}" ]; then
             sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"             ${vBs}/${octName}
-            wait
           fi
           up_one >>${_UP_LOG} 2>&1
           check_report
@@ -615,7 +567,6 @@ up_action_one() {
         echo
         if [ -e "${vBs}/${octName}" ]; then
           sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"               ${vBs}/${octName}
-          wait
         fi
         up_one >>${_UP_LOG} 2>&1
         check_report
@@ -842,14 +793,10 @@ check_root() {
       fi
     fi
     sed -i "s/.*173.231.133.190.*//g" /etc/hosts
-    wait
     sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
-    wait
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
-    wait
     echo >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
-    wait
     if [ -e "/etc/init.d/postfix" ]; then
       service postfix restart &> /dev/null
     fi

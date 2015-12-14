@@ -523,10 +523,8 @@ setup() {
   fi
 
   sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
-  wait
   echo >>/etc/hosts
   sed -i "/^$/d" /etc/hosts
-  wait
   if [ ! -e "/etc/resolv.conf" ]; then
     rm -f /etc/resolv.conf
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then

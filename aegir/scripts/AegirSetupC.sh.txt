@@ -329,13 +329,9 @@ create_d8_symlinks() {
 rename_drupal7_profiles() {
   for Files in `find ./profiles -type f`; do
     sed -i "s/name = Minimal/name = Vanilla Minimal/g"   $Files &> /dev/null
-    wait
     sed -i "s/name = Standard/name = Vanilla Standard/g" $Files &> /dev/null
-    wait
     sed -i "s/name = Testing/name = Vanilla Testing/g"   $Files &> /dev/null
-    wait
     sed -i "s/hidden = TRUE//g"                          $Files &> /dev/null
-    wait
   done
 }
 #
@@ -343,11 +339,8 @@ rename_drupal7_profiles() {
 rename_drupal8_profiles() {
   for Files in `find ./core/profiles -type f`; do
     sed -i "s/name: Minimal/name: Vanilla Minimal/g"   $Files &> /dev/null
-    wait
     sed -i "s/name: Standard/name: Vanilla Standard/g" $Files &> /dev/null
-    wait
     sed -i "s/name: Testing/name: Vanilla Testing/g"   $Files &> /dev/null
-    wait
   done
 }
 #

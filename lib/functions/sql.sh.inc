@@ -11,7 +11,6 @@ update_innodb_log_file_size() {
     mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
-    wait
     mrun "sleep 5"
   fi
   mrun "service mysql start" &> /dev/null
@@ -21,7 +20,6 @@ update_innodb_log_file_size() {
 # Update SQL Config.
 update_sql_conf() {
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
-  wait
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
@@ -46,60 +44,42 @@ update_sql_conf() {
         fi
       fi
       sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
-      wait
       sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf
-      wait
       sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
-      wait
       if [ ! -e "/etc/mysql/skip-name-resolve.txt" ]; then
         sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf
-        wait
       fi
     fi
   fi
   mv -f /etc/mysql/my.cnf-pre* ${vBs}/dragon/t/ &> /dev/null
   sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
-  wait
   sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
-  wait
   _THIS_DB_SERVER_TEST=$(mysql -V 2>&1)
   if [[ "${_THIS_DB_SERVER_TEST}" =~ "5.5." ]] \
     || [[ "${_THIS_DB_SERVER_TEST}" =~ "10.0" ]]; then
     _DO_NOTHING=YES
   else
     sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf
-    wait
     sed -i "s/.*lc_messages /#lc_messages /g"         /etc/mysql/my.cnf
-    wait
   fi
   if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
     sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf
-    wait
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
       bash /var/xdrago/purge_binlogs.sh &> /dev/null
       sed -i "s/.*purge_binlogs.*//g" /var/spool/cron/crontabs/root
-      wait
       sed -i "/^$/d"                  /var/spool/cron/crontabs/root
-      wait
       sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf
-      wait
       sed -i "s/^expire_logs_days/#expire_logs_days/g" /etc/mysql/my.cnf
-      wait
       sed -i "s/^max_binlog_size/#max_binlog_size/g"   /etc/mysql/my.cnf
-      wait
     elif [ "${_DB_BINARY_LOG}" = "YES" ]; then
       sed -i "s/.*log_bin/log_bin/g"                   /etc/mysql/my.cnf
-      wait
       sed -i "s/.*expire_logs_days/expire_logs_days/g" /etc/mysql/my.cnf
-      wait
       sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf
-      wait
     fi
     if [ "${_DB_ENGINE}" = "MyISAM" ] || [ "${_DB_ENGINE}" = "InnoDB" ]; then
       sed -i "s/^default_storage_engine.*/default_storage_engine  = ${_DB_ENGINE}/g" /etc/mysql/my.cnf
-      wait
     fi
     if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
       if [ "${_INNODB_LOG_FILE_SIZE}" -ge "10" ] \
@@ -112,7 +92,6 @@ update_sql_conf() {
         else
           if [ "${_INNODB_LOG_FILE_SIZE_SAME}" = "YES" ]; then
             sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
-            wait
           else
             update_innodb_log_file_size
           fi
@@ -188,14 +167,12 @@ tune_sql_memory_limits() {
       fi
       _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
       sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
-      wait
     else
       _USE_MYISAM_MEM="${_USE_SQL}M"
       if [ "$_MYSQLTUNER_TEST_RESULT" = "FAIL" ]; then
         msg "ALRT! _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
       fi
       sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
-      wait
     fi
     ###--------------------###
     if [ ! -z "$_REC_INNODB_MEM" ] && [ "$_MYSQLTUNER_TEST_RESULT" = "OK" ]; then
@@ -214,19 +191,16 @@ tune_sql_memory_limits() {
       _INNODB_BPI=$(echo "scale=0; ${_USE_INNODB_MEM}/1024" | bc 2>&1)
       if [ "$_INNODB_BPI" -gt "1" ]; then
         sed -i "s/innodb_file_per_table   = 1/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = $_INNODB_BPI/g" /etc/mysql/my.cnf
-        wait
       fi
       if [ "${_USE_INNODB_MEM}" -lt "256" ] || [ -z "${_USE_INNODB_MEM}" ]; then
         _USE_INNODB_MEM="${_USE_SQL}"
       fi
       _USE_INNODB_MEM="${_USE_INNODB_MEM}M"
       sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
-      wait
     else
       _USE_INNODB_MEM="${_USE_SQL}M"
       msg "ALRT! _USE_INNODB_MEM is ${_USE_INNODB_MEM} because _REC_INNODB_MEM was empty!"
       sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
-      wait
     fi
   else
     _THIS_USE_MEM="${_USE_SQL}M"
@@ -237,7 +211,6 @@ tune_sql_memory_limits() {
       msg "ALRT! _USE_INNODB_MEM is $_THIS_USE_MEM because _REC_INNODB_MEM was empty!"
     fi
     sed -i "s/= 181/= ${_USE_SQL}/g"  /etc/mysql/my.cnf
-    wait
   fi
 }
 
@@ -540,9 +513,7 @@ install_mariadb_server() {
       st_runner "apt-get update -qq" &> /dev/null
       cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
       sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
-      wait
       sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
-      wait
       rm -f /var/lib/mysql/debian-*.flag &> /dev/null
       rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
       install_with_aptitude_sql
@@ -552,14 +523,11 @@ install_mariadb_server() {
         _DO_NOTHING=YES
       else
         sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf
-        wait
         sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf
-        wait
       fi
       if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
         sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" \
           /etc/mysql/my.cnf
-        wait
       fi
       _PHP_FORCE_REINSTALL=YES
       mrun "sleep 8"
@@ -622,7 +590,6 @@ check_update_sql_credentials() {
   if [ -e "/root/.my.pass.txt" ]; then
     for Files in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f`; do
       sed -i "s/php-fpm nginx php/php-fpm php-cgi nginx php/g" $Files &> /dev/null
-      wait
     done
     if [ "${_STATUS}" = "INIT" ]; then
       msg "INFO: Updating ${_DB_SERVER} and PHP configuration"
@@ -699,7 +666,6 @@ finalize_sql_initial_setup() {
           chmod 400 ${vBs}/debian.cnf-pre-${_X_VERSION}-${_NOW}.txt
           sed -i "s/^password =.*/password = ${PASWD}/g" \
             /etc/mysql/debian.cnf &> /dev/null
-          wait
         fi
         if [ -e "/root/.remote.IP.list" ]; then
           _ESC="\`%\`.*"
@@ -742,11 +708,9 @@ finalize_sql_initial_setup() {
       echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
     else
       sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf
-      wait
     fi
     sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
       /etc/mysql/debian-start &> /dev/null
-    wait
     mrun "service mysql restart" &> /dev/null
     msg "INFO: ${_DB_SERVER} setup completed"
     msg "INFO: You can now log in as root by typing just 'mysql'"

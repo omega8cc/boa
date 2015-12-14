@@ -47,11 +47,8 @@ if_install_chive() {
         validate_xtras_ip &> /dev/null
         cp -af ${locCnf}/nginx_sql_chive.conf ${_CHIVE_VHOST}
         sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"            ${_CHIVE_VHOST}
-        wait
         sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g"          ${_CHIVE_VHOST}
-        wait
         sed -i "s/chive_name/chive.${_THIS_FRONT} ${_THISHTIP}/g"  ${_CHIVE_VHOST}
-        wait
         touch ${pthLog}/chive-${_CHIVE_VRN}.fix-dns-vhost-wildcard.log
         msg "INFO: Chive Manager installed"
       else
@@ -91,11 +88,8 @@ if_install_sqlbuddy() {
         validate_xtras_ip &> /dev/null
         cp -af ${locCnf}/nginx_sql_buddy.conf ${_SQLBUDDY_VHOST}
         sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"   ${_SQLBUDDY_VHOST}
-        wait
         sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_SQLBUDDY_VHOST}
-        wait
         sed -i "s/buddy_name/sqlbuddy.${_THIS_FRONT}/g"   ${_SQLBUDDY_VHOST}
-        wait
         touch ${pthLog}/sqlbuddy.fix-dns-vhost-wildcard.log
         msg "INFO: SQL Buddy Manager installed"
       else
@@ -148,7 +142,6 @@ fix_collectd_nginx() {
       echo "        VerifyHost false"                      >> ${_COLLECTD_CNF}
       echo "</Plugin>"                                     >> ${_COLLECTD_CNF}
       sed -i "s/^#LoadPlugin nginx/LoadPlugin nginx/g"        ${_COLLECTD_CNF}
-      wait
       mrun "service collectd restart" &> /dev/null
     fi
   fi
@@ -173,18 +166,13 @@ if_install_collectd() {
             mv -f cgp-${_CGP_VRN} cgp &> /dev/null
           fi
           sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php
-          wait
           sed -i "s/'uncategorized'/'Barracuda Server'/g" /var/www/cgp/index.php
-          wait
           validate_public_ip &> /dev/null
           validate_xtras_ip &> /dev/null
           cp -af ${locCnf}/nginx_sql_cgp.conf ${_CGP_VHOST}
           sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"    ${_CGP_VHOST}
-          wait
           sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g"  ${_CGP_VHOST}
-          wait
           sed -i "s/cgp_name/cgp.${_THIS_FRONT}/g"           ${_CGP_VHOST}
-          wait
           st_runner "update-rc.d collectd defaults" &> /dev/null
           touch ${pthLog}/cgp-${_CGP_VRN}.fix-dns-vhost-wildcard.log
           msg "INFO: Collectd Graph Panel installed"
@@ -333,9 +321,7 @@ if_install_bind() {
           ln -sf /etc/init.d/bind9 /etc/init.d/bind
         fi
         sed -i "s/.*bind.*//g" /etc/sudoers &> /dev/null
-        wait
         sed -i "/^$/d" /etc/sudoers &> /dev/null
-        wait
         msg "INFO: Bind9 DNS Server installed"
       else
         msg "INFO: Bind9 DNS Server installation skipped"
