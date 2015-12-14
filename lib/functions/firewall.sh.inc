@@ -26,7 +26,6 @@ fix_lfd_uidignore() {
       fi
     fi
     sed -i "/^$/d" ${_THIS_FILE} &> /dev/null
-    wait
   fi
 }
 
