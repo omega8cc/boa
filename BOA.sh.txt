@@ -716,8 +716,6 @@ if [ `whoami` = "root" ]; then
     service cron reload &> /dev/null
   fi
   if [ "${_SCREEN_INIT}" = "YES" ]; then
-    apt-get clean -qq &> /dev/null
-    apt-get update -qq &> /dev/null
     apt-get install screen ${forCer} &> /dev/null
     sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
     clear
