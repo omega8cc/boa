@@ -2719,6 +2719,18 @@ basic_packages_install_on_init() {
     ${_INITINS} netcat &> /dev/null
     ${_INITINS} curl &> /dev/null
     ${_INITINS} wget &> /dev/null
+    if [ "${_OSV}" = "jessie" ]; then
+      ${_INITINS} sysvinit-core &> /dev/null
+      ${_INITINS} sysvinit-utils &> /dev/null
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
+      fi
+      apt-get remove --purge --auto-remove systemd &> /dev/null
+      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+      ${_INITINS} sysvinit-core &> /dev/null
+      ${_INITINS} sysvinit-utils &> /dev/null
+    fi
   fi
 }
 
@@ -3367,6 +3379,7 @@ sys_packages_install() {
               sudo \
               symlinks \
               sysstat \
+              sysvinit-core \
               sysvinit-utils \
               t1lib-bin \
               telnet \
