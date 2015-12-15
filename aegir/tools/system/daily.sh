@@ -886,6 +886,7 @@ add_solr() {
       CHAR="[:alnum:]"
       rkey=32
       if [ "${_NEW_SSL}" = "YES" ] \
+        || [ "${_OSV}" = "jessie" ] \
         || [ "${_OSV}" = "wheezy" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
@@ -2178,6 +2179,7 @@ process() {
         | sed "s/[\,']//g" 2>&1)
       if [ -e "${Plr}" ]; then
         if [ "${_NEW_SSL}" = "YES" ] \
+          || [ "${_OSV}" = "jessie" ] \
           || [ "${_OSV}" = "wheezy" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then

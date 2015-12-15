@@ -403,7 +403,6 @@ install_pdnsd_cache() {
   st_runner "${_INSTALL} resolvconf" &> /dev/null
   st_runner "${_INSTALL} pdnsd" &> /dev/null
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
-  wait
   cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
   check_dns_settings
   if [ ! -L "/etc/resolvconf/run" ] \
@@ -451,7 +450,6 @@ install_pdnsd_cache() {
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ]; then
     sed -i "s/^dns=.*/dns=pdnsd/g" \
       /etc/NetworkManager/NetworkManager.conf &> /dev/null
-    wait
     mrun "service network-manager restart" &> /dev/null
   fi
   resolvconf -u         &> /dev/null
@@ -559,7 +557,6 @@ check_ip_hostname() {
             _DO_NOTHING=YES
           else
             sed -i "s/^${_MY_OWNIP}.*//g" /etc/hosts &> /dev/null
-            wait
             echo "${_MY_OWNIP} ${_MY_HOSTN} chive.${_MY_HOSTN} sqlbuddy.${_MY_HOSTN} cgp.${_MY_HOSTN} $_S_E" >> /etc/hosts
           fi
         fi

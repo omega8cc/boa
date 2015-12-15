@@ -520,9 +520,7 @@ EOF
         -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
       cp -af ${locCnf}/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
       sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST} &> /dev/null
-      wait
       sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST} &> /dev/null
-      wait
       mkdir -p /data/conf
       if [ -e "${locCnf}/global.inc" ]; then
         cp -af ${locCnf}/global.inc /data/conf/global.inc
@@ -533,7 +531,6 @@ EOF
         ln -sf /data/conf/global.inc ${mtrInc}/global.inc
       fi
       sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
-      wait
       update_redis_password
       killall -9 nginx &> /dev/null
       mrun "service nginx start" &> /dev/null
@@ -549,7 +546,6 @@ EOF
       sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST}
       wait
       sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST}
-      wait
     fi
   fi
 }
