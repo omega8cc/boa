@@ -46,7 +46,7 @@ SHELL=/bin/bash
 export DEBIAN_FRONTEND=noninteractive
 
 _TODAY=$(date +%y%m%d 2>&1)
-_X_VERSION="BOA-3.0.0-dev"
+_X_VERSION="BOA-2.4.7"
 #
 saCoreN="SA-CORE-2014-005"
 saCoreS="${saCoreN}-D7"
@@ -681,6 +681,8 @@ if [ `whoami` = "root" ]; then
         echo "STATUS: ${barCnf} to disable me, if needed."
       fi
     fi
+  else
+    _SCREEN_INIT=YES
   fi
   if [ -d "/.newrelic" ]; then
     rm -rf /.newrelic
@@ -707,13 +709,42 @@ if [ `whoami` = "root" ]; then
       fi
     else
       update_agents
-      fix_core_dgd
+      if [[ "${_VERSIONS_TEST}" =~ "BOA-3." ]] \
+        || [[ "${_VERSIONS_TEST}" =~ "BOA-2.4." ]] \
+        || [[ "${_VERSIONS_TEST}" =~ "BOA-2.3.8" ]]; then
+        _DO_NOTHING=YES
+      else
+        fix_core_dgd
+      fi
     fi
   fi
   if [ ! -e "/root/.upstart.cnf" ]; then
     service cron reload &> /dev/null
   fi
-  exit 0
+  if [ "${_SCREEN_INIT}" = "YES" ]; then
+    apt-get install screen ${forCer} &> /dev/null
+    sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
+    clear
+    echo
+    echo "The system is ready for BOA installation!"
+    echo
+    echo "We will start screen session for you in 15 seconds"
+    echo "to avoid problems with dropped SSH connections"
+    echo "during BOA stack installation, which may take up to"
+    echo "30-60 minutes, depending on your server speed."
+    echo
+    echo "If your connection will drop, simply log in again"
+    echo "and re-attach your session with 'screen -R' command."
+    echo
+    echo "Please wait a moment until this message disappears."
+    echo
+    echo "Enjoy!"
+    echo
+    sleep 15
+    screen
+  else
+    exit 0
+  fi
 else
   echo "ERROR: This script should be ran as a root user"
   exit 1

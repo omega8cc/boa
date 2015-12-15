@@ -224,7 +224,6 @@ mode_detection() {
     mv -f /root/.my.pass.txt $_ZOMBIE_HOME/ &> /dev/null
     cp -af /etc/sudoers $_ZOMBIE_HOME/ &> /dev/null
     sed -i "s/^aegir.*//g" /etc/sudoers &> /dev/null
-    wait
     deluser aegir &> /dev/null
     rm -f /usr/bin/drush
     if [ ! -z "${_EASY_SETUP}" ] && [[ ! "${_EASY_SETUP}" =~ "NO" ]]; then
@@ -400,24 +399,35 @@ os_detection() {
       _NGINX_FORWARD_SECRECY=NO
       _NGINX_SPDY=NO
       _SSH_FROM_SOURCES=NO
-      _SSL_FROM_SOURCES=NO
     else
       not_supported_os
     fi
   elif [ "${_THIS_OS}" = "Debian" ]; then
-    if [ "${_THIS_RV}" = "wheezy" ]; then
+    if [ "${_THIS_RV}" = "jessie" ]; then
+      _OSV="jessie"
+      _DB_SERIES=10.0
+      _NGINX_FORWARD_SECRECY=YES
+      _NGINX_SPDY=YES
+      _SSH_FROM_SOURCES=YES
+      if [ -e "/root/.mstr.clstr.cnf" ] \
+        || [ -e "/root/.wbhd.clstr.cnf" ] \
+        || [ -e "/root/.dbhd.clstr.cnf" ]; then
+        _MARIADB_VRN="${_GALERA_10_VRN}"
+      else
+        _MARIADB_VRN="${_MARIADB_10_VRN}"
+      fi
+      _SPINNER=NO
+    elif [ "${_THIS_RV}" = "wheezy" ]; then
       _OSV="wheezy"
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=YES
-      _SSL_FROM_SOURCES=YES
     elif [ "${_THIS_RV}" = "squeeze" ]; then
       _OSV="squeeze"
       _OPENSSL_VRN=1.0.1p
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=YES
-      _SSL_FROM_SOURCES=YES
     else
       not_supported_os
     fi
