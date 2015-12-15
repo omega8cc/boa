@@ -709,7 +709,13 @@ if [ `whoami` = "root" ]; then
       fi
     else
       update_agents
-      fix_core_dgd
+      if [[ "${_VERSIONS_TEST}" =~ "BOA-3." ]] \
+        || [[ "${_VERSIONS_TEST}" =~ "BOA-2.4." ]] \
+        || [[ "${_VERSIONS_TEST}" =~ "BOA-2.3.8" ]]; then
+        _DO_NOTHING=YES
+      else
+        fix_core_dgd
+      fi
     fi
   fi
   if [ ! -e "/root/.upstart.cnf" ]; then
