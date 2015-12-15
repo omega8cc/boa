@@ -2719,7 +2719,27 @@ basic_packages_install_on_init() {
     ${_INITINS} netcat &> /dev/null
     ${_INITINS} curl &> /dev/null
     ${_INITINS} wget &> /dev/null
-    if [ "${_OSV}" = "jessie" ]; then
+    if [ "${_OSV}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
+      msg "INFO: Installing sysvinit on ${_THIS_OS} ${_OSV}..."
+      ${_INITINS} sysvinit-core &> /dev/null
+      ${_INITINS} sysvinit-utils &> /dev/null
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
+      fi
+      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+      ${_INITINS} sysvinit-core &> /dev/null
+      ${_INITINS} sysvinit-utils &> /dev/null
+      echo
+      msg "NOTE: Please reboot and run barracuda upgrade"
+      msg "NOTE: when boa will complete initial installation"
+      msg "NOTE: to cleanly remove not used systemd packages!"
+      echo
+      mrun "sleep 8"
+    fi
+  else
+    if [ "${_OSV}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
+      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
       ${_INITINS} sysvinit-core &> /dev/null
       ${_INITINS} sysvinit-utils &> /dev/null
       if [ -e "/usr/share/sysvinit/inittab" ]; then
