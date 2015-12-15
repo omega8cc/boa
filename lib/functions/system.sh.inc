@@ -2725,7 +2725,7 @@ basic_packages_install_on_init() {
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
       fi
-      apt-get remove --purge --auto-remove systemd &> /dev/null
+      apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
       echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
       echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
       ${_INITINS} sysvinit-core &> /dev/null
