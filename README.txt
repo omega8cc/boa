@@ -85,7 +85,6 @@ production settings.
 * Debian 6 Squeeze (limited support)
 * Ubuntu Trusty 14.04 (limited support)
 * Ubuntu Precise 12.04 (limited support)
-* Ubuntu Lucid 10.04 (limited support)
 
 
 ### OTHER REQUIREMENTS
