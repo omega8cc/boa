@@ -193,8 +193,12 @@ update_agents() {
     && [ -e "/var/xdrago" ]; then
     PrTest=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
     InTest=$(ls /data/disk/ | wc -l 2>&1)
-    if [ "${InTest}" -gt "9" ] || [[ "${PrTest}" =~ "POWER" ]]; then
-      echo ${InTest} > /root/.tg.cnf
+    if [ "${InTest}" -gt "14" ] || [[ "${PrTest}" =~ "POWER" ]]; then
+      if [ "${InTest}" -gt "14" ]; then
+        echo ${InTest} > /root/.tg.cnf
+      else
+        rm -f /root/.tg.cnf
+      fi
       echo ${InTest} > /root/.high_traffic.cnf
       echo ${InTest} > /root/.skip_cleanup.cnf
       rm -f /root/.giant_traffic.cnf
