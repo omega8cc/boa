@@ -677,16 +677,17 @@ _LOCAL_NETWORK_HN=""
 ###----------------------------------------###
 
 ###
-### Change to YES if you prefer the running
-### daily script to fix permissions on all
+### Change to NO if you prefer the running
+### daily script to not fix permissions on all
 ### files belonging to hosted sites an their
 ### platforms (and any shared code).
 ###
-### Note that this feature is again disabled
-### by default, because it may cause critical
-### load and outages on some weak VPS hosts.
+### Note that this feature is again enabled
+### by default, because with current low
+### CPU and I/O priority it should not cause
+### any issues, even on weak systems.
 ###
-_PERMISSIONS_FIX=NO
+_PERMISSIONS_FIX=YES
 
 ###
 ### Change to NO if you prefer the skip running
