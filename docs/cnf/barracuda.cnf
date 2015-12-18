@@ -27,7 +27,7 @@ _DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
 _MY_EMAIL="my@email" #---------- System admin e-mail
 _XTRAS_LIST="" #---------------- See docs/NOTES.txt for details on add-ons
 ###
-_MODULES_FIX=NO #--------------- Runs daily modules enabling/disabling when YES
+_MODULES_FIX=YES #-------------- Runs weekly modules enabling/disabling when YES
 _MODULES_SKIP="" #-------------- Modules (machine names) to never auto-disable
 _PERMISSIONS_FIX=NO #----------- Allows to run daily permissions fix when YES
 ###

@@ -689,8 +689,8 @@ _LOCAL_NETWORK_HN=""
 _PERMISSIONS_FIX=NO
 
 ###
-### Change to YES if you prefer the running
-### daily script to enable/disable modules in
+### Change to NO if you prefer the skip running
+### weekly script to enable/disable modules in
 ### all hosted sites without '.testing.' or
 ### '.temporary.' keywords in their main name,
 ### as listed in the docs/MODULES.txt
@@ -702,12 +702,7 @@ _PERMISSIONS_FIX=NO
 ### innocent modules via feature or any other
 ### dependency.
 ###
-### Note that if you disable this option, you
-### will automatically disable also the user
-### register protection check/feature:
-### https://omega8.cc/node/273
-###
-_MODULES_FIX=NO
+_MODULES_FIX=YES
 
 ###
 ### List modules to never disable via running
