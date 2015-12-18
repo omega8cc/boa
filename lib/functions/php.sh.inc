@@ -176,6 +176,33 @@ fix_php_ini_opcache_all() {
 }
 
 #
+# Fix php.ini file to add php_tet.so
+fix_php_ini_tet() {
+  if [ -e "${_THIS_FILE}" ]; then
+    _TET_INI_TEST=$(grep "extension=php_tet.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_TET_INI_TEST" =~ "extension=php_tet.so" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=php_tet.so" >> ${_THIS_FILE}
+    fi
+  fi
+}
+
+#
+# Fix all php.ini files to add php_tet.so
+fix_php_ini_tet_all() {
+  if [ "${_PHP_TET}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "TET" ]]; then
+    _PHP_V="56 55"
+    for e in ${_PHP_V}; do
+      _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+      fix_php_ini_tet
+      _THIS_FILE=/opt/php${e}/lib/php.ini
+      fix_php_ini_tet
+    done
+  fi
+}
+
+#
 # Fix php.ini file to add geos.so
 fix_php_ini_geos() {
   if [ -e "${_THIS_FILE}" ]; then
@@ -297,6 +324,7 @@ update_php_conf() {
   fix_php_ini_geos_all
   fix_php_ini_mongo_all
   fix_php_ini_opcache_all
+  fix_php_ini_tet_all
 }
 
 #
