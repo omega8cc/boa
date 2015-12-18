@@ -191,8 +191,9 @@ update_agents() {
 
   if [ "${_BENG_VS}" = "YES" ] \
     && [ -e "/var/xdrago" ]; then
+    PrTest=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
     InTest=$(ls /data/disk/ | wc -l 2>&1)
-    if [ "${InTest}" -gt "5" ]; then
+    if [ "${InTest}" -gt "9" ] || [[ "${PrTest}" =~ "POWER" ]]; then
       echo ${InTest} > /root/.tg.cnf
       echo ${InTest} > /root/.high_traffic.cnf
       echo ${InTest} > /root/.skip_cleanup.cnf
