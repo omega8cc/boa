@@ -89,6 +89,7 @@ _ZLIB_VRN=1.2.8
 ### Default variables
 ###
 _CUSTOM_NAME="nginx"
+### placeholder for #729
 _DRUSH_VERSION="${_DRUSH8_VRN}"
 _FORCE_REDIS_RESTART=NO
 _LOC_OSV=""
