@@ -51,7 +51,6 @@ export _USER="${_USER}"
 ###
 ### Variables
 ###
-### placeholder for #729
 _DRUSH_VERSION=mini-8-19-11-2015
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _PLATFORMS_ONLY=NO
