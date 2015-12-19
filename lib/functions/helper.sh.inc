@@ -394,11 +394,6 @@ os_detection() {
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=NO
-    elif [ "${_THIS_RV}" = "lucid" ]; then
-      _OSV="lucid"
-      _NGINX_FORWARD_SECRECY=NO
-      _NGINX_SPDY=NO
-      _SSH_FROM_SOURCES=NO
     else
       not_supported_os
     fi
