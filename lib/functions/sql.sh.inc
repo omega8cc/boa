@@ -331,8 +331,7 @@ install_with_aptitude_sql() {
   if [ "${_OSV}" = "squeeze" ] \
     || [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "precise" ] \
-    || [ "${_OSV}" = "lucid" ]; then
+    || [ "${_OSV}" = "precise" ]; then
     if [ "${_EASY_SETUP}" = "MSTR" ] \
       || [ "${_EASY_SETUP}" = "DBHD" ] \
       || [ "${_EASY_SETUP}" = "WBHD" ] \

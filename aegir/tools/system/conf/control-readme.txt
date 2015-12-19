@@ -74,7 +74,7 @@
 ### also for the web server. But normally you should never need this unlock!
 ###
 ### Please note that this procedure will not affect any platform if you have
-### the default _PERMISSIONS_FIX=NO setting in your /root/.barracuda.cnf
+### the non-default _PERMISSIONS_FIX=NO setting in your /root/.barracuda.cnf
 ### file. It will also skip any platform with fix_files_permissions_daily
 ### variable set to FALSE in the given platform active INI file.
 ###

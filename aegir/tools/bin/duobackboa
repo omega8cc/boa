@@ -215,7 +215,9 @@ conn_test() {
   echo "Running AWS connection test, please wait..."
   ConnTest=$(duplicity -v 2 cleanup --dry-run \
     --timeout 1 ${_AWS_OPX} ${TARGET} 2>&1)
-  if [[ "$ConnTest" =~ "No connection to backend" ]]; then
+  ### echo ConnTest is STR ${ConnTest} END
+  if [[ "${ConnTest}" =~ "No connection to backend" ]] \
+    || [[ "${ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
     echo
     echo "  Sorry, I can't connect to ${TARGET}"
     echo "  Please check if the bucket has expected name: ${BUCKET}"

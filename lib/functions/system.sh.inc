@@ -99,11 +99,9 @@ fix_ftps_pam() {
 #
 # Fix FTPS and SFTP access on modern systems.
 fix_sftp_ftps_modern() {
-  if [ "${_OSV}" != "lenny" ]; then
-    _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells 2>&1)
-    if [[ ! "${_LSHELL_PATH_TEST}" =~ "/usr/bin/lshell" ]]; then
-      echo "/usr/bin/lshell" >> /etc/shells
-    fi
+  _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells 2>&1)
+  if [[ ! "${_LSHELL_PATH_TEST}" =~ "/usr/bin/lshell" ]]; then
+    echo "/usr/bin/lshell" >> /etc/shells
   fi
   if [ ! -e "${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log" ] \
     || [ ! -e "/etc/ssh/sftp_config" ] \
@@ -1580,7 +1578,6 @@ check_install_latest_git() {
     _GIT_FORCE_REINSTALL=YES
   fi
   if [[ "${_XTRAS_LIST}" =~ "GIT" ]] \
-    || [ "${_OSV}" = "lucid" ] \
     || [ "${_SSB_SRC}" = "YES" ] \
     || [ "${_GIT_FORCE_REINSTALL}" = "YES" ]; then
     _GIT_TEST=$(git --version 2>&1)
@@ -1855,7 +1852,7 @@ update_sources_list() {
       fi
     elif [ "${_THIS_OS}" = "Debian" ]; then
       _MIRROR_CHECK=NO
-      if [ "${_OSV}" = "lenny" ]; then
+      if [ "${_OSV}" = "deprecated" ]; then
         _MIRROR=archive.debian.org
       else
         if [ "${_AUTOPILOT}" = "YES" ]; then
@@ -1907,7 +1904,7 @@ update_sources_list() {
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" \
         >> ${aptLiSys}
-      if [ "${_OSV}" = "lenny" ]; then
+      if [ "${_OSV}" = "deprecated" ]; then
         echo "deb http://archive.debian.org/debian-volatile \
           ${_OSV}/volatile main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
         echo "deb-src http://archive.debian.org/debian-volatile \
@@ -2063,8 +2060,7 @@ install_ssh_src() {
 #
 # Install cURL from sources.
 install_curl_src() {
-  if [ "${_OSV}" = "precise" ] \
-    || [ "${_OSV}" = "lucid" ]; then
+  if [ "${_OSV}" = "precise" ]; then
     touch /root/.use.curl.from.packages.cnf
     _CURL_VRN=7.22.0
   fi
@@ -2682,8 +2678,6 @@ install_with_aptitude_deps() {
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-53"
     elif [ "${_OSV}" = "squeeze" ]; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec52"
-    elif [ "${_OSV}" = "lucid" ]; then
-      _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-52"
     else
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec51"
     fi
@@ -2720,6 +2714,38 @@ basic_packages_install_on_init() {
     ${_INITINS} netcat &> /dev/null
     ${_INITINS} curl &> /dev/null
     ${_INITINS} wget &> /dev/null
+    if [ "${_OSV}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
+      msg "INFO: Installing sysvinit on ${_THIS_OS} ${_OSV}..."
+      ${_INITINS} sysvinit-core &> /dev/null
+      ${_INITINS} sysvinit-utils &> /dev/null
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
+      fi
+      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+      ${_INITINS} sysvinit-core &> /dev/null
+      ${_INITINS} sysvinit-utils &> /dev/null
+      echo
+      msg "NOTE: Please reboot and run barracuda upgrade"
+      msg "NOTE: when boa will complete initial installation"
+      msg "NOTE: to cleanly remove not used systemd packages!"
+      echo
+      mrun "sleep 8"
+    fi
+  else
+    if [ "${_OSV}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
+      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
+      ${_INITINS} sysvinit-core &> /dev/null
+      ${_INITINS} sysvinit-utils &> /dev/null
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
+      fi
+      apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
+      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+      ${_INITINS} sysvinit-core &> /dev/null
+      ${_INITINS} sysvinit-utils &> /dev/null
+    fi
   fi
 }
 
@@ -2729,7 +2755,7 @@ more_packages_install_on_init() {
     if [ -e "/etc/debian_version" ]; then
       _L_DEB_TEST=$(grep "^5." /etc/debian_version 2>&1)
       if [ ! -z "${_L_DEB_TEST}" ]; then
-        sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" ${aptLiSys} &> /dev/null
+        sed -i "s/^deb.*security.debian.org.*/## security updates no longer available/g" ${aptLiSys} &> /dev/null
         wait
         sed -i "s/ftp.*debian.org/archive.debian.org/g" \
           ${aptLiSys} &> /dev/null
@@ -3261,8 +3287,7 @@ sys_packages_install() {
     || [ "${_OSV}" = "wheezy" ] \
     || [ "${_OSV}" = "squeeze" ] \
     || [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "precise" ] \
-    || [ "${_OSV}" = "lucid" ]; then
+    || [ "${_OSV}" = "precise" ]; then
     _DEBDEPS="apticron \
               ${_APT_XTRA} \
               ${_EXTRA_LIB_APT} \
@@ -3368,6 +3393,7 @@ sys_packages_install() {
               sudo \
               symlinks \
               sysstat \
+              sysvinit-core \
               sysvinit-utils \
               t1lib-bin \
               telnet \
@@ -3823,33 +3849,21 @@ check_fix_umask() {
     touch ${pthLog}/umask_fixed_new.log
   fi
   if [ ! -e "${pthLog}/umask_fixed_shell_sftp.log" ]; then
-    if [ "${_OSV}" = "lenny" ] || [ "${_OSV}" = "lucid" ]; then
-      _DO_NOTHING=YES
-    else
-      sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /etc/ssh/sshd_config
-    fi
+    sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /etc/ssh/sshd_config
     echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/sshd
     mrun "service ssh restart" &> /dev/null
     touch ${pthLog}/umask_fixed_shell_sftp.log
   fi
   if [ ! -e "${pthLog}/src_umask_fixed_shell_sftp.log" ] \
     && [ -e "/usr/etc/sshd_config" ]; then
-    if [ "${_OSV}" = "lenny" ] || [ "${_OSV}" = "lucid" ]; then
-      _DO_NOTHING=YES
-    else
-      sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /usr/etc/sshd_config
-    fi
+    sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /usr/etc/sshd_config
     mrun "service ssh restart" &> /dev/null
     touch ${pthLog}/src_umask_fixed_shell_sftp.log
   fi
 }
 
 install_update_lshell() {
-  if [ "${_OSV}" = "lenny" ]; then
-    _PATH_LSHELL="/usr/bin/lshell"
-  else
-    _PATH_LSHELL="/usr/local/bin/lshell"
-  fi
+  _PATH_LSHELL="/usr/local/bin/lshell"
   if [ ! -e "${_PATH_LSHELL}" ] \
     || [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
