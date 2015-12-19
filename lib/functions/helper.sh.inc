@@ -479,17 +479,17 @@ check_boa_version() {
     _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
      if [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
       if [[ ! "${_X_VERSION}" =~ "BOA-3." ]]; then
-        msg "ERROR: Your system has been already upgraded to modern BOA-3.x.x series"
-        msg "ERROR: You can not downgrade back to legacy or previous stable BOA version"
-        msg "ERROR: Please use barracuda up-stable to upgrade this system"
+        msg "ERROR: Your system has been already upgraded to BOA-3.x.x series"
+        msg "You can not downgrade back to legacy or previous stable version"
+        msg "Please use barracuda up-stable to upgrade this system"
         msg "Bye"
         clean_pid_exit
       fi
     elif [[ "${_SERIES_TEST}" =~ "BOA-2.4." ]]; then
       if [[ ! "${_X_VERSION}" =~ "BOA-2.4." ]]; then
-        msg "ERROR: Your system has been already upgraded to modern BOA-2.4.x series"
-        msg "ERROR: You can not downgrade back to legacy or previous stable BOA version"
-        msg "ERROR: Please use barracuda up-stable to upgrade this system"
+        msg "ERROR: Your system has been already upgraded to BOA-2.4.x series"
+        msg "You can not downgrade back to legacy or previous stable version"
+        msg "Please use barracuda up-stable to upgrade this system"
         msg "Bye"
         clean_pid_exit
       fi
