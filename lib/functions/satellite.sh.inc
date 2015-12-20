@@ -933,7 +933,7 @@ satellite_fix_advanced_cron_curl() {
       | cut -d: -f2 \
       | awk '{ print $3}' \
       | sed "s/[\,']//g" 2>&1)
-    pthA="profiles/hostmaster/modules/hosting_advanced_cron"
+    pthA="profiles/hostmaster/modules/contrib/hosting_advanced_cron"
     pthB="hosting_advanced_cron.module"
     if [ -e "${_THIS_HM_ROOT}/${pthA}/${pthB}" ]; then
       sed -i "s/127.0.0.1/${_CRON_IP}/g" ${_THIS_HM_ROOT}/${pthA}/${pthB}
@@ -1994,28 +1994,25 @@ satellite_download_for_local_build() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} A: Downloading hostmaster modules..."
     fi
-    get_dev_stc "admin_menu-6.x-1.9.tar.gz"
-    get_dev_stc "css_emimage.tar.gz"
-    get_dev_stc "ctools-6.x-1.14.tar.gz"
-    get_dev_stc "eldir.tar.gz"
-    get_dev_stc "features_extra-6.x-1.x-dev.tar.gz"
-    get_dev_stc "features-6.x-1.2.tar.gz"
-    get_dev_stc "hosting_backup_queue.tar.gz"
-    get_dev_stc "hosting_platform_pathauto.tar.gz"
-    get_dev_stc "hosting_task_gc.tar.gz"
-    get_dev_stc "hosting.tar.gz"
-    get_dev_stc "install_profile_api.tar.gz"
-    get_dev_stc "jquery_ui-6.x-1.5.tar.gz"
-    get_dev_stc "jquery_update-6.x-2.0-alpha1.tar.gz"
-    get_dev_stc "jquery-ui-1.7.3.zip"
-    get_dev_stc "modalframe-6.x-1.9.tar.gz"
-    get_dev_stc "openidadmin-6.x-1.2.tar.gz"
-    get_dev_stc "protect_critical_users-6.x-1.1.tar.gz"
-    get_dev_stc "revision_deletion-6.x-1.x-dev.tar.gz"
-    get_dev_stc "strongarm-6.x-2.2.tar.gz"
-    get_dev_stc "userprotect-6.x-1.5.tar.gz"
-    get_dev_stc "views_bulk_operations-6.x-1.17.tar.gz"
-    get_dev_stc "views-6.x-3.2.tar.gz"
+    ### Aegir Core
+    get_dev_stc "hosting-7.x-3.2.tar.gz"
+    get_dev_stc "eldir-7.x-3.2.tar.gz"
+    ### Aegir Drupal Contrib
+    get_dev_stc "admin_menu-7.x-3.0-rc5.tar.gz"
+    get_dev_stc "betterlogin-7.x-1.4.tar.gz"
+    get_dev_stc "ctools-7.x-1.9.tar.gz"
+    get_dev_stc "entity-7.x-1.6.tar.gz"
+    get_dev_stc "openidadmin-7.x-1.0.tar.gz"
+    get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
+    get_dev_stc "r4032login-7.x-1.8.tar.gz"
+    get_dev_stc "views_bulk_operations-7.x-3.3.tar.gz"
+    get_dev_stc "views-7.x-3.13.tar.gz"
+    ### BOA Drupal Contrib
+    get_dev_stc "features_extra-7.x-1.0.tar.gz"
+    get_dev_stc "features-7.x-2.7.tar.gz"
+    get_dev_stc "revision_deletion-7.x-1.x-dev.tar.gz"
+    get_dev_stc "strongarm-7.x-2.0.tar.gz"
+    get_dev_stc "userprotect-7.x-1.2.tar.gz"
   fi
   find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null
   find ${mL} -type f -exec chmod 0644 {} \; &> /dev/null
@@ -4062,18 +4059,6 @@ satellite_child_b_drush_xts_install() {
     rD="${_ROOT}/.drush"
     ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
       ${rD}/sys/provision &> /dev/null
-    ${gCb} 6.x-2.x ${gitHub}/provision_civicrm.git \
-      ${rD}/xts/provision_civicrm &> /dev/null
-    ${gCb} 6.x-2.x ${gitHub}/provision_cdn.git \
-      ${rD}/xts/provision_cdn &> /dev/null
-    ${gCb} 6.x-2.x ${gitHub}/provision_platform_git.git \
-      ${rD}/xts/provision_platform_git &> /dev/null
-    ${gCb} 6.x-2.x ${gitHub}/provision_site_backup.git \
-      ${rD}/xts/provision_site_backup &> /dev/null
-    ${gCb} 6.x-2.x ${gitHub}/remote_import.git \
-      ${rD}/sys/provision/remote_import &> /dev/null
-    ${gCb} ${_BRANCH_PRN} ${gitHub}/provision_tasks_extra.git \
-      ${rD}/xts/provision_tasks_extra &> /dev/null
     ${gCb} 7.x-1.x-dev ${gitHub}/drupalgeddon.git \
       ${rD}/usr/drupalgeddon &> /dev/null
     ${gCb} 7.x-1.x ${gitHub}/drush_ecl.git \
@@ -4084,31 +4069,25 @@ satellite_child_b_drush_xts_install() {
       ${rD}/xts/provision_boost &> /dev/null
     ${gCb} 7.x-2.x ${gitHub}/registry_rebuild.git \
       ${rD}/usr/registry_rebuild &> /dev/null
-    ${gCb} 7.x-1.0 ${gitHub}/safe_cache_form_clear.git \
+    ${gCb} 7.x-1.x ${gitHub}/safe_cache_form_clear.git \
       ${rD}/usr/safe_cache_form_clear &> /dev/null
     rm -f -r ${rD}/*/.git
     rm -f -r ${rD}/*/*/.git
     cd ${rD}/usr
     get_dev_ext "clean_missing_modules.tar.gz"
   else
+    msg "${_STATUS} B: Downloading Drush and Provision extensions..."
     cd ${_ROOT}/.drush/sys
     curl ${crlGet} "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
-    msg "${_STATUS} B: Downloading Drush and Provision extensions..."
-    cd ${_ROOT}/.drush/xts
-    _G_EXT="provision_boost provision_cdn provision_civicrm \
-      provision_platform_git provision_site_backup \
-      provision_tasks_extra security_review"
-    for e in ${_G_EXT}; do
-      get_dev_ext "$e.tar.gz"
-    done
     cd ${_ROOT}/.drush/usr
-    _G_EXT="clean_missing_modules drupalgeddon drush_ecl \
-      registry_rebuild safe_cache_form_clear"
-    for e in ${_G_EXT}; do
-      get_dev_ext "$e.tar.gz"
-    done
-    cd ${_ROOT}/.drush/sys/provision
-    get_dev_ext "remote_import.tar.gz"
+    get_dev_ext "clean_missing_modules.tar.gz"
+    get_dev_ext "drupalgeddon.tar.gz"
+    get_dev_ext "drush_ecl.tar.gz"
+    get_dev_ext "registry_rebuild.tar.gz"
+    get_dev_ext "safe_cache_form_clear.tar.gz"
+    cd ${_ROOT}/.drush/xts
+    get_dev_ext "provision_boost.tar.gz"
+    get_dev_ext "security_review.tar.gz"
     cd ${_ROOT}/.drush
   fi
   sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
@@ -4227,31 +4206,6 @@ satellite_child_b_aegir_build() {
       fi
     fi
 
-    if ${_DRUSHCMD} help clean-modules > /dev/null ; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "${_STATUS} B: Drush clean-modules is available"
-      fi
-      _CLEAN_MODULES=YES
-    else
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "${_STATUS} B: Drush clean-modules not available yet"
-      fi
-      _CLEAN_MODULES=NO
-    fi
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "${_STATUS} B: Uninstalling css_emimage module in debug mode b/u"
-      ${_DRUSHCMD} @hostmaster dis css_emimage -y
-      if [ "$_CLEAN_MODULES" = "YES" ]; then
-        ${_DRUSHCMD} @hostmaster clean-modules -y
-      fi
-      ${_DRUSHCMD} @hostmaster pm-uninstall css_emimage -y
-    else
-      ${_DRUSHCMD} @hostmaster dis css_emimage -y &> /dev/null
-      if [ "$_CLEAN_MODULES" = "YES" ]; then
-        ${_DRUSHCMD} @hostmaster clean-modules -y &> /dev/null
-      fi
-      ${_DRUSHCMD} @hostmaster pm-uninstall css_emimage -y &> /dev/null
-    fi
     ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
@@ -4262,6 +4216,14 @@ satellite_child_b_aegir_build() {
     if [ -d "${_PREV_HM_ROOT}/modules/o_contrib" ] \
       && [ ! -L "${_PREV_HM_ROOT}/modules/o_contrib" ]; then
       rm -f ${_PREV_HM_ROOT}/modules/o_contrib/{cache_backport,redis_edge,redis}
+    fi
+    if [ -d "${_HM_ROOT}/modules/o_contrib_seven" ] \
+      && [ ! -L "${_HM_ROOT}/modules/o_contrib_seven" ]; then
+      rm -f ${_HM_ROOT}/modules/o_contrib_seven/{cache_backport,redis_edge,redis}
+    fi
+    if [ -d "${_PREV_HM_ROOT}/modules/o_contrib_seven" ] \
+      && [ ! -L "${_PREV_HM_ROOT}/modules/o_contrib_seven" ]; then
+      rm -f ${_PREV_HM_ROOT}/modules/o_contrib_seven/{cache_backport,redis_edge,redis}
     fi
     if [ ! -e "${_PREV_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
       _DEBUG_MODE=YES
@@ -4515,45 +4477,31 @@ satellite_child_b_aegir_health_check() {
 satellite_child_b_aegir_ui_enhance() {
   msg "${_STATUS} B: Enhancing Aegir UI, please wait..."
   mkdir -p ${_HM_ROOT}/sites/all/{modules,themes,libraries}
-  cd ${_HM_ROOT}/profiles/hostmaster/modules
+  mkdir -p ${_HM_ROOT}/profiles/hostmaster/modules/{aegir,contrib}
+  cd ${_HM_ROOT}/profiles/hostmaster/modules/contrib
+  ### BOA Settings
   get_dev_ext "aegir_custom_settings-6.x-3.12.tar.gz"
+  ### Aegir Golden
   if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-    ${gCb} 6.x-2.x ${gitHub}/hosting_civicrm.git          &> /dev/null
-    ${gCb} 6.x-2.x ${gitHub}/hosting_remote_import.git    &> /dev/null
-    ${gCb} 6.x-2.x ${gitHub}/hosting_cdn.git              &> /dev/null
-    ${gCb} 6.x-2.x ${gitHub}/hosting_platform_git.git     &> /dev/null
-    ${gCb} 6.x-2.x ${gitHub}/hosting_site_backup.git      &> /dev/null
-    ${gCb} master  ${gitHub}/hosting_advanced_cron.git    &> /dev/null
-    ${gCb} 6.x-3.x ${gitHub}/hosting_tasks_extra.git      &> /dev/null
+    ${gCb} 7.x-3.x ${gitHub}/hosting_advanced_cron.git       &> /dev/null
+    cd ${_HM_ROOT}/profiles/hostmaster/modules/aegir
+    ${gCb} 7.x-3.x ${gitHub}/hosting_civicrm.git             &> /dev/null
+    ${gCb} 7.x-3.x ${gitHub}/hosting_git.git                 &> /dev/null
+    ${gCb} 7.x-3.x ${gitHub}/hosting_remote_import.git       &> /dev/null
+    ${gCb} 7.x-3.x ${gitHub}/hosting_site_backup_manager.git &> /dev/null
+    ${gCb} 7.x-3.x ${gitHub}/hosting_tasks_extra.git         &> /dev/null
     rm -f -r */.git
   else
     get_dev_ext "hosting_advanced_cron.tar.gz"
-    get_dev_ext "hosting_cdn.tar.gz"
+    cd ${_HM_ROOT}/profiles/hostmaster/modules/aegir
     get_dev_ext "hosting_civicrm.tar.gz"
-    get_dev_ext "hosting_platform_git.tar.gz"
+    get_dev_ext "hosting_git.tar.gz"
     get_dev_ext "hosting_remote_import.tar.gz"
-    get_dev_ext "hosting_site_backup.tar.gz"
+    get_dev_ext "hosting_site_backup_manager.tar.gz"
     get_dev_ext "hosting_tasks_extra.tar.gz"
   fi
   cd ${_HM_ROOT}/sites/${_DOMAIN}
   if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
-
-    pthThis="profiles/hostmaster/modules/hosting_backup_gc"
-    sed -i "s/backup_delete/backup-delete/g" \
-      ${_HM_ROOT}/${pthThis}/hosting_backup_gc.module &> /dev/null
-
-    pthThis="profiles/hostmaster/modules/hosting_platform_pathauto"
-    sed -i "s/Platform pathauto settings/Platform pathauto/g" \
-     ${_HM_ROOT}/${pthThis}/hosting_platform_pathauto.module &> /dev/null
-
-    pthThis="profiles/hostmaster/modules/hosting_backup_queue"
-    sed -i "s/Backup schedule settings/Backup schedule/g" \
-      ${_HM_ROOT}/${pthThis}/hosting_backup_queue.module &> /dev/null
-
-    pthThis="profiles/hostmaster/modules/hosting_platform_pathauto"
-    sed -i "s/Base path/Platforms path/g" \
-      ${_HM_ROOT}/${pthThis}/hosting_platform_pathauto.module &> /dev/null
-
     _VM_TEST=$(uname -a 2>&1)
     if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
@@ -4562,54 +4510,16 @@ satellite_child_b_aegir_ui_enhance() {
     else
       _VMFAMILY="XEN"
     fi
-    if [ "${_VMFAMILY}" = "VS" ]; then
-      if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
-        _DO_NOTHING=YES
-      else
-        ${_DRUSHCMD} @hostmaster dis hosting_cdn -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster pm-uninstall hosting_cdn -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster dis hosting_backup_queue -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster pm-uninstall hosting_backup_queue -y &> /dev/null
-        rm -f -r ${_HM_ROOT}/profiles/hostmaster/modules/hosting_backup_queue
-      fi
-    fi
     cd ${_HM_ROOT}/sites/${_DOMAIN}
-    if [ "${_CLIENT_CORES}" -ge "1" ]; then
-      _ALLOW_CIVICRM=YES
-    else
-      _ALLOW_CIVICRM=NO
-    fi
-    if [ "$_ALLOW_CIVICRM" = "YES" ]; then
-      ${_DRUSHCMD} @hostmaster en hosting_civicrm -y &> /dev/null
-      ${_DRUSHCMD} @hostmaster en hosting_civicrm_cron -y &> /dev/null
-    else
-      ${_DRUSHCMD} @hostmaster dis hosting_civicrm_cron -y &> /dev/null
-      ${_DRUSHCMD} @hostmaster dis hosting_civicrm -y &> /dev/null
-    fi
-    if [ "${_STATUS}" = "UPGRADE" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "${_STATUS} B: Uninstalling css_emimage module in debug mode a/u"
-        ${_DRUSHCMD} @hostmaster dis css_emimage -y
-        ${_DRUSHCMD} @hostmaster clean-modules -y
-        ${_DRUSHCMD} @hostmaster pm-uninstall css_emimage -y
-      else
-        ${_DRUSHCMD} @hostmaster dis css_emimage -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster clean-modules -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster pm-uninstall css_emimage -y &> /dev/null
-      fi
-    fi
-    ${_DRUSHCMD} @hostmaster dis hosting_backup_gc syslog dblog -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_civicrm -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en path_alias_cache -y &> /dev/null
-    rm -f -r ${_HM_ROOT}/profiles/hostmaster/modules/hosting_backup_gc
     rm -f -r ${_HM_ROOT}/modules/cookie_cache_bypass
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
     ${_DRUSHCMD} @hostmaster en hosting_client \
-      protect_critical_users \
       userprotect -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_advanced_cron \
       revision_deletion \
-      hosting_task_gc \
       hosting_tasks_extra -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_site_backup_manager -y &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_register_user 1 &> /dev/null
@@ -4731,16 +4641,15 @@ satellite_child_b_symlink_global_inc() {
 }
 
 satellite_child_b_redis_enable_finalize() {
-  if [ ! -e "${_HM_ROOT}/modules/o_contrib/redis_edge" ] \
-    || [ ! -e "${_HM_ROOT}/modules/o_contrib/cache_backport" ]; then
-    if [ -e "/data/all/000/modules/redis_edge" ] \
-      && [ -e "/data/all/000/modules/cache_backport" ]; then
-      mkdir -p ${_HM_ROOT}/modules/o_contrib
-      rm -f ${_HM_ROOT}/modules/o_contrib/{cache_backport,redis_edge,redis}
+  if [ -e "${_HM_ROOT}/modules/o_contrib" ]; then
+    rm -f -r ${_HM_ROOT}/modules/o_contrib
+  fi
+  if [ ! -e "${_HM_ROOT}/modules/o_contrib_seven/redis_edge" ]; then
+    if [ -e "/data/all/000/modules/redis_edge" ]; then
+      mkdir -p ${_HM_ROOT}/modules/o_contrib_seven
+      rm -f ${_HM_ROOT}/modules/o_contrib_seven/{redis_edge,redis}
       ln -s /data/all/000/modules/redis_edge \
-        ${_HM_ROOT}/modules/o_contrib/redis_edge
-      ln -s /data/all/000/modules/cache_backport \
-        ${_HM_ROOT}/modules/o_contrib/cache_backport
+        ${_HM_ROOT}/modules/o_contrib_seven/redis_edge
     fi
   fi
   touch /opt/tmp/status-AegirSetupB-OK

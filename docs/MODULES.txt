@@ -156,12 +156,6 @@ Drush [E]xtensions [M]aster [S]atellite:
 Provision [E]xtensions [M]aster [S]atellite:
 
  provision_boost ------------ [D7] ------ [S] [B] [EM,ES]
- provision_cdn -------------- [D7] ------ [S] [B] [EM,ES]
- provision_civicrm ---------- [D7] ------ [S] [B] [ES]
- provision_platform_git ----- [D7] ------ [S] [B] [ES]
- provision_site_backup ------ [D7] ------ [S] [B] [ES]
- provision_tasks_extra ------ [D7] ------ [S] [B] [ES]
- remote_import -------------- [D7] ------ [S] [B] [ES]
 
 Hostmaster [E]xtensions [S]atellite:
 
@@ -170,17 +164,10 @@ Hostmaster [E]xtensions [S]atellite:
  features ------------------- [D7] ------ [S] [B] [FE] [ES]
  features_extra ------------- [D7] ------ [S] [B] [FE] [ES]
  hosting_advanced_cron ------ [D7] ------ [S] [B] [FE] [ES]
- hosting_backup_queue ------- [D7] ------ [S] [B]      [ES]
- hosting_cdn ---------------- [D7] ------ [S] [B]      [ES]
  hosting_civicrm ------------ [D7] ------ [S] [B] [FE] [ES]
- hosting_civicrm_cron ------- [D7] ------ [S] [B] [FE] [ES]
- hosting_platform_git ------- [D7] ------ [S] [B]      [ES]
- hosting_platform_pathauto -- [D7] ------ [S] [B]      [ES]
  hosting_remote_import ------ [D7] ------ [S] [B]      [ES]
- hosting_site_backup -------- [D7] ------ [S] [B] [FE] [ES]
- hosting_task_gc ------------ [D7] ------ [S] [B] [FE] [ES]
+ hosting_site_backup_manager  [D7] ------ [S] [B] [FE] [ES]
  hosting_tasks_extra -------- [D7] ------ [S] [B] [FE] [ES]
- protect_critical_users ----- [D7] ------ [S] [B] [FE] [ES]
  revision_deletion ---------- [D7] ------ [S] [B] [FE] [ES]
  strongarm ------------------ [D7] ------ [S] [B] [FE] [ES]
  userprotect ---------------- [D7] ------ [S] [B] [FE] [ES]

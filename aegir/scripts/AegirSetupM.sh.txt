@@ -198,8 +198,6 @@ else
     rD="${_ROOT}/.drush"
     ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
       ${rD}/sys/provision &> /dev/null
-    ${gCb} 6.x-2.x ${gitHub}/provision_cdn.git \
-      ${rD}/xts/provision_cdn &> /dev/null
     ${gCb} 7.x-1.x-dev ${gitHub}/drupalgeddon.git \
       ${rD}/usr/drupalgeddon &> /dev/null
     ${gCb} 7.x-1.x ${gitHub}/drush_ecl.git \
@@ -210,7 +208,7 @@ else
       ${rD}/xts/provision_boost &> /dev/null
     ${gCb} 7.x-2.x ${gitHub}/registry_rebuild.git \
       ${rD}/usr/registry_rebuild &> /dev/null
-    ${gCb} 7.x-1.0 ${gitHub}/safe_cache_form_clear.git \
+    ${gCb} 7.x-1.x ${gitHub}/safe_cache_form_clear.git \
       ${rD}/usr/safe_cache_form_clear &> /dev/null
     rm -f -r ${rD}/*/.git
     rm -f -r ${rD}/*/*/.git
@@ -228,7 +226,6 @@ else
     get_dev_ext "safe_cache_form_clear.tar.gz"
     cd ${_ROOT}/.drush/xts
     get_dev_ext "provision_boost.tar.gz"
-    get_dev_ext "provision_cdn.tar.gz"
     get_dev_ext "security_review.tar.gz"
   fi
 fi

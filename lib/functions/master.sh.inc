@@ -213,28 +213,28 @@ master_download_for_local_build() {
     rm -f -r ${mL}
     mkdir -p ${mL}
     cd ${mL}
-    get_dev_stc "admin_menu-6.x-1.9.tar.gz"
-    get_dev_stc "css_emimage.tar.gz"
-    get_dev_stc "ctools-6.x-1.14.tar.gz"
-    get_dev_stc "eldir.tar.gz"
-    get_dev_stc "features_extra-6.x-1.x-dev.tar.gz"
-    get_dev_stc "features-6.x-1.2.tar.gz"
-    get_dev_stc "hosting_backup_queue.tar.gz"
-    get_dev_stc "hosting_platform_pathauto.tar.gz"
-    get_dev_stc "hosting_task_gc.tar.gz"
-    get_dev_stc "hosting.tar.gz"
-    get_dev_stc "install_profile_api.tar.gz"
-    get_dev_stc "jquery_ui-6.x-1.5.tar.gz"
-    get_dev_stc "jquery_update-6.x-2.0-alpha1.tar.gz"
-    get_dev_stc "jquery-ui-1.7.3.zip"
-    get_dev_stc "modalframe-6.x-1.9.tar.gz"
-    get_dev_stc "openidadmin-6.x-1.2.tar.gz"
-    get_dev_stc "protect_critical_users-6.x-1.1.tar.gz"
-    get_dev_stc "revision_deletion-6.x-1.x-dev.tar.gz"
-    get_dev_stc "strongarm-6.x-2.2.tar.gz"
-    get_dev_stc "userprotect-6.x-1.5.tar.gz"
-    get_dev_stc "views_bulk_operations-6.x-1.17.tar.gz"
-    get_dev_stc "views-6.x-3.2.tar.gz"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Downloading hostmaster modules..."
+    fi
+    ### Aegir Core
+    get_dev_stc "hosting-7.x-3.2.tar.gz"
+    get_dev_stc "eldir-7.x-3.2.tar.gz"
+    ### Aegir Drupal Contrib
+    get_dev_stc "admin_menu-7.x-3.0-rc5.tar.gz"
+    get_dev_stc "betterlogin-7.x-1.4.tar.gz"
+    get_dev_stc "ctools-7.x-1.9.tar.gz"
+    get_dev_stc "entity-7.x-1.6.tar.gz"
+    get_dev_stc "openidadmin-7.x-1.0.tar.gz"
+    get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
+    get_dev_stc "r4032login-7.x-1.8.tar.gz"
+    get_dev_stc "views_bulk_operations-7.x-3.3.tar.gz"
+    get_dev_stc "views-7.x-3.13.tar.gz"
+    ### BOA Drupal Contrib
+    get_dev_stc "features_extra-7.x-1.0.tar.gz"
+    get_dev_stc "features-7.x-2.7.tar.gz"
+    get_dev_stc "revision_deletion-7.x-1.x-dev.tar.gz"
+    get_dev_stc "strongarm-7.x-2.0.tar.gz"
+    get_dev_stc "userprotect-7.x-1.2.tar.gz"
   fi
   find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null
   find ${mL} -type f -exec chmod 0644 {} \; &> /dev/null

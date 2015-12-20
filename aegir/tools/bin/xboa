@@ -456,7 +456,6 @@ migrate_prepare() {
       comments \
       history \
       hosting_advanced_cron \
-      hosting_backup_gc_sites \
       hosting_client \
       hosting_client_user \
       hosting_context \

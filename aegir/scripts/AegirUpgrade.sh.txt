@@ -236,8 +236,6 @@ hostmaster_go_up() {
       rD="${_ROOT}/.drush"
       ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
         ${rD}/sys/provision &> /dev/null
-      ${gCb} 6.x-2.x ${gitHub}/provision_cdn.git \
-        ${rD}/xts/provision_cdn &> /dev/null
       ${gCb} 7.x-1.x-dev ${gitHub}/drupalgeddon.git \
         ${rD}/usr/drupalgeddon &> /dev/null
       ${gCb} 7.x-1.x ${gitHub}/drush_ecl.git \
@@ -248,23 +246,20 @@ hostmaster_go_up() {
         ${rD}/xts/provision_boost &> /dev/null
       ${gCb} 7.x-2.x ${gitHub}/registry_rebuild.git \
         ${rD}/usr/registry_rebuild &> /dev/null
-      ${gCb} 7.x-1.0 ${gitHub}/safe_cache_form_clear.git \
+      ${gCb} 7.x-1.x ${gitHub}/safe_cache_form_clear.git \
         ${rD}/usr/safe_cache_form_clear &> /dev/null
     else
+      msg "INFO: Downloading Drush and Provision extensions..."
       cd ${_ROOT}/.drush/sys
       curl ${crlGet} "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
-      msg "INFO: Downloading Drush and Provision extensions..."
-      cd ${_ROOT}/.drush/xts
-      _G_EXT="provision_boost provision_cdn security_review"
-      for e in ${_G_EXT}; do
-        get_dev_ext "$e.tar.gz"
-      done
       cd ${_ROOT}/.drush/usr
-      _G_EXT="drupalgeddon drush_ecl \
-        registry_rebuild safe_cache_form_clear"
-      for e in ${_G_EXT}; do
-        get_dev_ext "$e.tar.gz"
-      done
+      get_dev_ext "drupalgeddon.tar.gz"
+      get_dev_ext "drush_ecl.tar.gz"
+      get_dev_ext "registry_rebuild.tar.gz"
+      get_dev_ext "safe_cache_form_clear.tar.gz"
+      cd ${_ROOT}/.drush/xts
+      get_dev_ext "provision_boost.tar.gz"
+      get_dev_ext "security_review.tar.gz"
     fi
     rm -f -r ${_ROOT}/.drush/*/.git
     rm -f -r ${_ROOT}/.drush/*/*/.git
