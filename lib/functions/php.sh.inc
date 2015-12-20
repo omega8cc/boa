@@ -331,11 +331,11 @@ update_php_conf() {
 # Tune Web Sever configuration.
 tune_web_server_config() {
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
-  if [ "${_LIM_FPM}" -lt "24" ]; then
+  if [ "${_LIM_FPM}" -lt "48" ]; then
     if [[ "${_THISHOST}" =~ ".host8." ]] \
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
-      _LIM_FPM=24
+      _LIM_FPM=48
     fi
   fi
   _PROCESS_MAX_FPM=$(( _LIM_FPM * 5 ))
