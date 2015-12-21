@@ -212,7 +212,7 @@ sub global_action
       local($HOUR, $MIN) = split(/:/,${TIME});
       $MIN =~ s/^0//g;
 
-      if ($COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/)
+      if ($COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/ && $B !~ /php-fpm/)
       {
         $timedate=`date +%y%m%d-%H%M`;
         chomp($timedate);
