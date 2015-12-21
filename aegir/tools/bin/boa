@@ -6,7 +6,9 @@ SHELL=/bin/bash
 branch="2.4.x-dev"
 cluster="BOA-2.4.7"
 hd="HEAD"
-lgcy="BOA-2.2.9"
+lgcA="BOA-2.2.9"
+lgcB="BOA-2.3.8"
+lgcC="BOA-2.4.7"
 master="master"
 nextv="BOA-3.0.0-dev"
 stbl="BOA-2.4.7"
@@ -390,12 +392,26 @@ octopus_install() {
       wait
       sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${octName}
       wait
-      if [ "${cmmand}" = "in-legacy" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcy}/g" ${vBs}/${octName}
+      if [ "${cmmand}" = "in-2.2" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcA}/g" ${vBs}/${octName}
         wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcy}/g" ${vBs}/${octName}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcA}/g" ${vBs}/${octName}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcy}/g"         ${vBs}/${octName}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcA}/g"         ${vBs}/${octName}
+        wait
+      elif [ "${cmmand}" = "in-2.3" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcB}/g" ${vBs}/${octName}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcB}/g" ${vBs}/${octName}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcB}/g"         ${vBs}/${octName}
+        wait
+      elif [ "${cmmand}" = "in-2.4" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${octName}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${octName}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${octName}
         wait
       else
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${octName}
@@ -751,12 +767,26 @@ barracuda_install() {
       wait
       sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${barName}
       wait
-      if [ "${cmmand}" = "in-legacy" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcy}/g" ${vBs}/${barName}
+      if [ "${cmmand}" = "in-2.2" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcA}/g" ${vBs}/${barName}
         wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcy}/g" ${vBs}/${barName}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcA}/g" ${vBs}/${barName}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcy}/g"         ${vBs}/${barName}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcA}/g"         ${vBs}/${barName}
+        wait
+      elif [ "${cmmand}" = "in-2.3" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcB}/g" ${vBs}/${barName}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcB}/g" ${vBs}/${barName}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcB}/g"         ${vBs}/${barName}
+        wait
+      elif [ "${cmmand}" = "in-2.4" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${barName}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${barName}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${barName}
         wait
       else
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${barName}
@@ -876,56 +906,50 @@ init_setup() {
     satellite_check_id ${user}
   fi
 
-  if [ ! -z "${rkey}" ]; then
-    if [ "${rkey}" = "2.4" ]; then
-      vn="BOA-2.4.7"
+  if [[ "${cmmand}" =~ "in-2." ]]; then
+    if [ "${cmmand}" = "in-2.4" ]; then
       branch="2.4.x-dev"
-    elif [ "${rkey}" = "2.3" ]; then
-      vn="BOA-2.3.8"
+    elif [ "${cmmand}" = "in-2.3" ]; then
       branch="2.3.x-dev"
-    elif [ "${rkey}" = "2.2" ]; then
-      vn="BOA-2.2.9"
+    elif [ "${cmmand}" = "in-2.2" ]; then
       branch="2.2.x-legacy"
-    else
-      vn=
     fi
   fi
   brnch=${branch//\//\\\/}
 
   init_start
   set_pin_priority
-  if [ ! -z "${vn}" ]; then
-    curl ${crlGet} "${rgUrl}/${vn}/${barName}"        -o ${vBs}/${barName}
-    curl ${crlGet} "${rgUrl}/${vn}/${octName}"        -o ${vBs}/${octName}
-    if [ "${vn}" = "${stbl}" ]; then
-      curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
-      curl ${crlGet} "${rgUrl}/${stbl}/${pthIncO}"    -o ${vBs}/${filIncO}
-    fi
-  else
-    if [ "${cmmand}" = "in-head" ]; then
-      curl ${crlGet} "${rgUrl}/${master}/${barName}"  -o ${vBs}/${barName}
-      curl ${crlGet} "${rgUrl}/${master}/${octName}"  -o ${vBs}/${octName}
-      curl ${crlGet} "${rgUrl}/${master}/${pthIncB}"  -o ${vBs}/${filIncB}
-      curl ${crlGet} "${rgUrl}/${master}/${pthIncO}"  -o ${vBs}/${filIncO}
-    elif [ "${cmmand}" = "in-cluster" ]; then
-      curl ${crlGet} "${rgUrl}/${cluster}/${barName}" -o ${vBs}/${barName}
-      curl ${crlGet} "${rgUrl}/${cluster}/${octName}" -o ${vBs}/${octName}
-      curl ${crlGet} "${rgUrl}/${cluster}/${pthIncB}" -o ${vBs}/${filIncB}
-      curl ${crlGet} "${rgUrl}/${cluster}/${pthIncO}" -o ${vBs}/${filIncO}
-    elif [ "${cmmand}" = "in-stable" ]; then
-      curl ${crlGet} "${rgUrl}/${stbl}/${barName}"    -o ${vBs}/${barName}
-      curl ${crlGet} "${rgUrl}/${stbl}/${octName}"    -o ${vBs}/${octName}
-      curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
-      curl ${crlGet} "${rgUrl}/${stbl}/${pthIncO}"    -o ${vBs}/${filIncO}
-    elif [ "${cmmand}" = "in-octopus" ]; then
-      curl ${crlGet} "${rgUrl}/${stbl}/${barName}"    -o ${vBs}/${barName}
-      curl ${crlGet} "${rgUrl}/${stbl}/${octName}"    -o ${vBs}/${octName}
-      curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
-      curl ${crlGet} "${rgUrl}/${stbl}/${pthIncO}"    -o ${vBs}/${filIncO}
-    elif [ "${cmmand}" = "in-legacy" ]; then
-      curl ${crlGet} "${rgUrl}/${lgcy}/${barName}"    -o ${vBs}/${barName}
-      curl ${crlGet} "${rgUrl}/${lgcy}/${octName}"    -o ${vBs}/${octName}
-    fi
+  if [ "${cmmand}" = "in-head" ]; then
+    curl ${crlGet} "${rgUrl}/${master}/${barName}"  -o ${vBs}/${barName}
+    curl ${crlGet} "${rgUrl}/${master}/${octName}"  -o ${vBs}/${octName}
+    curl ${crlGet} "${rgUrl}/${master}/${pthIncB}"  -o ${vBs}/${filIncB}
+    curl ${crlGet} "${rgUrl}/${master}/${pthIncO}"  -o ${vBs}/${filIncO}
+  elif [ "${cmmand}" = "in-cluster" ]; then
+    curl ${crlGet} "${rgUrl}/${cluster}/${barName}" -o ${vBs}/${barName}
+    curl ${crlGet} "${rgUrl}/${cluster}/${octName}" -o ${vBs}/${octName}
+    curl ${crlGet} "${rgUrl}/${cluster}/${pthIncB}" -o ${vBs}/${filIncB}
+    curl ${crlGet} "${rgUrl}/${cluster}/${pthIncO}" -o ${vBs}/${filIncO}
+  elif [ "${cmmand}" = "in-stable" ]; then
+    curl ${crlGet} "${rgUrl}/${stbl}/${barName}"    -o ${vBs}/${barName}
+    curl ${crlGet} "${rgUrl}/${stbl}/${octName}"    -o ${vBs}/${octName}
+    curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
+    curl ${crlGet} "${rgUrl}/${stbl}/${pthIncO}"    -o ${vBs}/${filIncO}
+  elif [ "${cmmand}" = "in-octopus" ]; then
+    curl ${crlGet} "${rgUrl}/${stbl}/${barName}"    -o ${vBs}/${barName}
+    curl ${crlGet} "${rgUrl}/${stbl}/${octName}"    -o ${vBs}/${octName}
+    curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
+    curl ${crlGet} "${rgUrl}/${stbl}/${pthIncO}"    -o ${vBs}/${filIncO}
+  elif [ "${cmmand}" = "in-2.4" ]; then
+    curl ${crlGet} "${rgUrl}/${lgcC}/${barName}"    -o ${vBs}/${barName}
+    curl ${crlGet} "${rgUrl}/${lgcC}/${octName}"    -o ${vBs}/${octName}
+    curl ${crlGet} "${rgUrl}/${lgcC}/${pthIncB}"    -o ${vBs}/${filIncB}
+    curl ${crlGet} "${rgUrl}/${lgcC}/${pthIncO}"    -o ${vBs}/${filIncO}
+  elif [ "${cmmand}" = "in-2.3" ]; then
+    curl ${crlGet} "${rgUrl}/${lgcB}/${barName}"    -o ${vBs}/${barName}
+    curl ${crlGet} "${rgUrl}/${lgcB}/${octName}"    -o ${vBs}/${octName}
+  elif [ "${cmmand}" = "in-2.2" ]; then
+    curl ${crlGet} "${rgUrl}/${lgcA}/${barName}"    -o ${vBs}/${barName}
+    curl ${crlGet} "${rgUrl}/${lgcA}/${octName}"    -o ${vBs}/${octName}
   fi
   if [ "${cmmand}" = "in-octopus" ]; then
     _OCTOPUS_ONLY=YES
@@ -1256,7 +1280,29 @@ case "$1" in
              check_dns_curl
              init_setup
   ;;
-  in-legacy) cmmand="$1"
+  in-2.4)    cmmand="$1"
+             kind="$2"
+             fqdn="$3"
+             email="$4"
+             user="$5"
+             mode="$6"
+             rkey="$7"
+             check_root
+             check_dns_curl
+             init_setup
+  ;;
+  in-2.3)    cmmand="$1"
+             kind="$2"
+             fqdn="$3"
+             email="$4"
+             user="$5"
+             mode="$6"
+             rkey="$7"
+             check_root
+             check_dns_curl
+             init_setup
+  ;;
+  in-2.2)    cmmand="$1"
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -1288,8 +1334,10 @@ case "$1" in
   {version}
       in-stable <---- install current BOA stable release
       in-head <------ install BOA HEAD for testing
-      in-legacy <---- install old stable, not recommended
-      in-octopus <--- install extra Octopus instance (stable)
+      in-2.4 <------- install old stable 2.4 (for testing only)
+      in-2.3 <------- install old stable 2.3 (for testing only)
+      in-2.2 <------- install old stable 2.2 (for testing only)
+      in-octopus <--- install extra Octopus instance (stable: ${stbl})
 
   {mode}
       public <------- recommended for general use
@@ -1318,8 +1366,6 @@ case "$1" in
       php-5.3 <------ single PHP version to install and use
       php-all <------ all PHP versions to install, use 5.5 by default
       nodns <-------- disable DNS checks on the fly
-      2.2 <---------- legacy BOA version to install, overrides {version}
-      2.3 <---------- legacy BOA version to install, overrides {version}
 
   See docs/INSTALL.txt for more details.
 
