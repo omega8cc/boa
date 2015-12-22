@@ -196,6 +196,7 @@ backup() {
     --asynchronous-upload ${_AWS_OPX} \
     ${INCLUDE} ${EXCLUDE} --exclude '**' / ${TARGET} > ${LOGFILE}
   if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
+    && [ "${_DOW}" = "7" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
     duplicity -v ${_AWS_VLV} remove-older-than ${_AWS_TTL} \
       --force ${_AWS_OPX} ${TARGET} >> ${LOGFILE}
