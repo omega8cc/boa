@@ -4235,6 +4235,10 @@ satellite_child_b_aegir_build() {
     fi
 
     ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
+    if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
+      ${_DRUSHCMD} @hostmaster en ctools -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
+    fi
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
     if [ -d "${_HM_ROOT}/modules/o_contrib" ] \
