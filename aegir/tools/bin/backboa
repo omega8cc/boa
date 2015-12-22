@@ -353,7 +353,6 @@ if [ "$1" = "backup" ]; then
   n=$((RANDOM%1800+80))
   echo "waiting $n seconds before running backup..."
   sleep $n
-  conn_test
   if test -f /var/run/${_HST}_backup.pid ; then
     touch /var/xdrago/log/wait_${_HST}_backup.log
     echo "The duplicity backup is running already?"
@@ -371,13 +370,10 @@ if [ "$1" = "backup" ]; then
 elif [ "$1" = "install" ]; then
   install
 elif [ "$1" = "cleanup" ]; then
-  conn_test
   cleanup
 elif [ "$1" = "list" ]; then
-  conn_test
   list
 elif [ "$1" = "restore" ]; then
-  conn_test
   if [ $# = 3 ]; then
     restore $2 $3
   else
@@ -385,17 +381,14 @@ elif [ "$1" = "restore" ]; then
   fi
 elif [ "$1" = "retrieve" ]; then
   if [ $# = 4 ]; then
-    conn_test
     retrieve $2 $3 $4
   elif [ $# = 5 ]; then
-    conn_test $5
     retrieve $2 $3 $4 $5
   else
     echo "You have to specify also hostname of the backed up system"
     exit 1
   fi
 elif [ "$1" = "status" ]; then
-  conn_test
   status
 elif [ "$1" = "test" ]; then
   conn_test
