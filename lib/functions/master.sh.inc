@@ -217,8 +217,27 @@ master_download_for_local_build() {
       msg "INFO: Downloading hostmaster modules..."
     fi
     ### Aegir Core
-    get_dev_stc "hosting-7.x-3.2.tar.gz"
-    get_dev_stc "eldir-7.x-3.2.tar.gz"
+    get_dev_ext "hosting-7.x-3.2.tar.gz"
+    get_dev_ext "eldir-7.x-3.2.tar.gz"
+    ### BOA Settings
+    get_dev_ext "aegir_custom_settings-6.x-3.12.tar.gz"
+    ### Aegir Golden
+    if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+      ${gCb} 7.x-3.x ${gitHub}/hosting_advanced_cron.git       &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_civicrm.git             &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_git.git                 &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_remote_import.git       &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_site_backup_manager.git &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_tasks_extra.git         &> /dev/null
+      rm -f -r */.git
+    else
+      get_dev_ext "hosting_advanced_cron.tar.gz"
+      get_dev_ext "hosting_civicrm.tar.gz"
+      get_dev_ext "hosting_git.tar.gz"
+      get_dev_ext "hosting_remote_import.tar.gz"
+      get_dev_ext "hosting_site_backup_manager.tar.gz"
+      get_dev_ext "hosting_tasks_extra.tar.gz"
+    fi
     ### Aegir Drupal Contrib
     get_dev_stc "admin_menu-7.x-3.0-rc5.tar.gz"
     get_dev_stc "betterlogin-7.x-1.4.tar.gz"
