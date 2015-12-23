@@ -364,8 +364,6 @@ upgrade_aegir_master() {
     else
       chattr +i ${_U_HD}/php.ini &> /dev/null
       hostmaster_frontend_dbpass_sync
-      sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" \
-        /var/spool/cron/crontabs/aegir &> /dev/null
     fi
     if [ ! -L "${mtrInc}/global.inc" ] && [ -e "${mtrInc}/global.inc" ]; then
       mv -f ${mtrInc}/global.inc \
@@ -411,20 +409,37 @@ upgrade_aegir_master() {
 #
 # Update php-cli in the cron entry.
 update_php_cli_cron() {
-  if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
-    sed -i "s/^PATH=.*/PATH=\/opt\/php55\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-      /var/spool/cron/crontabs/aegir &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
-    sed -i "s/^PATH=.*/PATH=\/opt\/php56\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-      /var/spool/cron/crontabs/aegir &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
-    sed -i "s/^PATH=.*/PATH=\/opt\/php54\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-      /var/spool/cron/crontabs/aegir &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
-    sed -i "s/^PATH=.*/PATH=\/opt\/php53\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-      /var/spool/cron/crontabs/aegir &> /dev/null
+  if [ ! -e "/root/.mstr.clstr.cnf" ] \
+    && [ ! -e "/root/.wbhd.clstr.cnf" ] \
+    && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
+    if [ ! -e "/var/spool/cron/crontabs/aegir" ]; then
+      echo -e \
+        "SHELL=/bin/sh\nPATH=/opt/php55/bin:/usr/bin\n*/1 * * * * \
+        /usr/bin/env php /var/aegir/drush/drush.php '@hostmaster' \
+        hosting-dispatch >/dev/null 2>&1" \
+        | fmt -su -w 2500 \
+        | tee -a /var/spool/cron/crontabs/aegir >/dev/null 2>&1
+    fi
   fi
-  chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
+  if [ -e "/var/spool/cron/crontabs/aegir" ]; then
+    sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" \
+      /var/spool/cron/crontabs/aegir &> /dev/null
+    if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php55\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php56\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php54\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php53\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    fi
+    chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
+    chmod 600 /var/spool/cron/crontabs/aegir
+  fi
 }
 
 install_upgrade_aegir_master() {
