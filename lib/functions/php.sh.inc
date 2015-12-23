@@ -141,6 +141,7 @@ fix_php_ini_opcache() {
       echo "; Zend OPcache"                      >> ${_THIS_FILE}
       echo "zend_extension=\"$_OPCACHE_SO\""     >> ${_THIS_FILE}
       echo "opcache.enable=1"                    >> ${_THIS_FILE}
+      echo "opcache.restrict_api=/var/www"       >> ${_THIS_FILE}
       echo "opcache.memory_consumption=181"      >> ${_THIS_FILE}
       echo "opcache.interned_strings_buffer=8"   >> ${_THIS_FILE}
       echo "opcache.max_accelerated_files=64000" >> ${_THIS_FILE}
