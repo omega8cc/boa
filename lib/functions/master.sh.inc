@@ -217,10 +217,15 @@ master_download_for_local_build() {
       msg "INFO: Downloading hostmaster modules..."
     fi
     ### Aegir Core
-    get_dev_ext "hosting-7.x-3.2.tar.gz"
-    get_dev_ext "eldir-7.x-3.2.tar.gz"
+    if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+      ${gCb} feature/3.0.x-hosting ${gitHub}/hosting.git       &> /dev/null
+      ${gCb} feature/3.0.x-eldir ${gitHub}/eldir.git           &> /dev/null
+    else
+      get_dev_ext "hosting-7.x-3.2.tar.gz"
+      get_dev_ext "eldir-7.x-3.2.tar.gz"
+    fi
     ### BOA Settings
-    get_dev_ext "aegir_custom_settings-6.x-3.12.tar.gz"
+    get_dev_ext "aegir_custom_settings-7.x-3.0.tar.gz"
     ### Aegir Golden
     if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
       ${gCb} 7.x-3.x ${gitHub}/hosting_advanced_cron.git       &> /dev/null
