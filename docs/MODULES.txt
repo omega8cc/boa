@@ -157,14 +157,14 @@ Provision [E]xtensions [M]aster [S]atellite:
 
  provision_boost ------------ [D7] ------ [S] [B] [EM,ES]
 
-Hostmaster [E]xtensions [S]atellite:
+Hostmaster [E]xtensions [M]aster [S]atellite:
 
- aegir_custom_settings ------ [D7] ------ [S] [B] [FE] [ES]
  ctools --------------------- [D7] ------ [S] [B] [FE] [ES]
  features ------------------- [D7] ------ [S] [B] [FE] [ES]
  features_extra ------------- [D7] ------ [S] [B] [FE] [ES]
  hosting_advanced_cron ------ [D7] ------ [S] [B] [FE] [ES]
  hosting_civicrm ------------ [D7] ------ [S] [B] [FE] [ES]
+ hosting_custom_settings ---- [D7] ------ [S] [B] [FE] [ES]
  hosting_remote_import ------ [D7] ------ [S] [B]      [ES]
  hosting_site_backup_manager  [D7] ------ [S] [B] [FE] [ES]
  hosting_tasks_extra -------- [D7] ------ [S] [B] [FE] [ES]

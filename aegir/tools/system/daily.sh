@@ -2579,11 +2579,7 @@ action() {
             --always-set hosting_ignore_default_profiles 0"
           run_drush7_hmr_cmd "vset \
             --always-set hosting_queue_tasks_items 1"
-          run_drush7_hmr_cmd "fr aegir_custom_settings -y"
-          run_drush7_hmr_cmd "cc all"
-          run_drush7_hmr_cmd "fr aegir_custom_settings -y"
-          run_drush7_hmr_cmd "cc all"
-          run_drush7_hmr_cmd "fr aegir_custom_settings -y"
+          run_drush7_hmr_cmd "fr hosting_custom_settings -y"
           run_drush7_hmr_cmd "cc all"
           if [ -e "${User}/log/imported.pid" ] \
             || [ -e "${User}/log/exported.pid" ]; then

@@ -2002,12 +2002,11 @@ satellite_download_for_local_build() {
       get_dev_ext "hosting-7.x-3.2.tar.gz"
       get_dev_ext "eldir-7.x-3.2.tar.gz"
     fi
-    ### BOA Settings
-    get_dev_ext "aegir_custom_settings-7.x-3.0.tar.gz"
-    ### Aegir Golden
+    ### Aegir Golden + BOA Settings
     if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
       ${gCb} 7.x-3.x ${gitHub}/hosting_advanced_cron.git       &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_civicrm.git             &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_custom_settings.git     &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_git.git                 &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_remote_import.git       &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_site_backup_manager.git &> /dev/null
@@ -2016,6 +2015,7 @@ satellite_download_for_local_build() {
     else
       get_dev_ext "hosting_advanced_cron.tar.gz"
       get_dev_ext "hosting_civicrm.tar.gz"
+      get_dev_ext "hosting_custom_settings.tar.gz"
       get_dev_ext "hosting_git.tar.gz"
       get_dev_ext "hosting_remote_import.tar.gz"
       get_dev_ext "hosting_site_backup_manager.tar.gz"
@@ -4239,10 +4239,12 @@ satellite_child_b_aegir_build() {
       fi
     fi
 
-    ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
     if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
+      ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
       ${_DRUSHCMD} @hostmaster en ctools -y &> /dev/null
       ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
+    else
+      ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
     fi
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
@@ -4526,15 +4528,16 @@ satellite_child_b_aegir_ui_enhance() {
       _VMFAMILY="XEN"
     fi
     cd ${_HM_ROOT}/sites/${_DOMAIN}
-    ${_DRUSHCMD} @hostmaster en hosting_civicrm -y &> /dev/null
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
-    ${_DRUSHCMD} @hostmaster en hosting_client \
-      userprotect -y &> /dev/null
-    ${_DRUSHCMD} @hostmaster en hosting_advanced_cron \
-      revision_deletion \
-      hosting_tasks_extra -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_advanced_cron -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_civicrm -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_civicrm_cron -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_client -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_site_backup_manager -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en revision_deletion -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en userprotect -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_tasks_extra -y &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_register_user 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} hosting_admin_client 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_send_welcome 1 &> /dev/null
@@ -4542,9 +4545,6 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster ${vSet} hosting_feature_client 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} clone 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_send_welcome 1 &> /dev/null
-    if [ ! -e "${_ROOT}/log/custom_cron" ]; then
-      _DO_NOTHING=YES
-    fi
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_advanced_cron_default_interval 86400 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
@@ -4582,8 +4582,8 @@ satellite_child_b_aegir_ui_enhance() {
       WHERE link_path='hosting/platforms'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \
       WHERE link_path='hosting/sites'" &> /dev/null
-    ${_DRUSHCMD} @hostmaster en aegir_custom_settings -y &> /dev/null
-    ${_DRUSHCMD} @hostmaster fr aegir_custom_settings -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
     ${_DRUSHCMD} @hostmaster cc all &> /dev/null
     ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
     if [ "$_LOCAL_STATUS" = "INIT" ]; then
@@ -4621,11 +4621,11 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
       VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),\
       (1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" &> /dev/null
-    ${_DRUSHCMD} @hostmaster fr aegir_custom_settings -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
     ${_DRUSHCMD} @hostmaster cc all &> /dev/null
-    ${_DRUSHCMD} @hostmaster fr aegir_custom_settings -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
     ${_DRUSHCMD} @hostmaster cc all &> /dev/null
-    ${_DRUSHCMD} @hostmaster fr aegir_custom_settings -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
     ${_DRUSHCMD} @hostmaster cc all &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
       SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null

@@ -224,12 +224,11 @@ master_download_for_local_build() {
       get_dev_ext "hosting-7.x-3.2.tar.gz"
       get_dev_ext "eldir-7.x-3.2.tar.gz"
     fi
-    ### BOA Settings
-    get_dev_ext "aegir_custom_settings-7.x-3.0.tar.gz"
-    ### Aegir Golden
+    ### Aegir Golden + BOA Settings
     if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
       ${gCb} 7.x-3.x ${gitHub}/hosting_advanced_cron.git       &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_civicrm.git             &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_custom_settings.git     &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_git.git                 &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_remote_import.git       &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_site_backup_manager.git &> /dev/null
@@ -238,6 +237,7 @@ master_download_for_local_build() {
     else
       get_dev_ext "hosting_advanced_cron.tar.gz"
       get_dev_ext "hosting_civicrm.tar.gz"
+      get_dev_ext "hosting_custom_settings.tar.gz"
       get_dev_ext "hosting_git.tar.gz"
       get_dev_ext "hosting_remote_import.tar.gz"
       get_dev_ext "hosting_site_backup_manager.tar.gz"
