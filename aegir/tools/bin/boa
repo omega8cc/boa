@@ -861,7 +861,19 @@ init_finish() {
 
 init_setup() {
   if [ "${kind}" = "local" ]; then
-    mode="${email}"
+    if [ "${email}" = "ask" ] \
+      || [ "${email}" = "mini" ] \
+      || [ "${email}" = "max" ] \
+      || [ "${email}" = "none" ]; then
+      mode="${email}"
+    else
+      mode=
+    fi
+    if [ ! -z "${mode}" ] && [ ! -z "${user}" ]; then
+      rkey="${user}"
+    else
+      rkey="${email}"
+    fi
     email="${fqdn}"
   fi
   if [ "${kind}" = "public" ] || [ "${kind}" = "web" ]; then
