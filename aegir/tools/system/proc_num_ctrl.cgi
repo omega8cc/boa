@@ -212,7 +212,7 @@ sub global_action
       local($HOUR, $MIN) = split(/:/,${TIME});
       $MIN =~ s/^0//g;
 
-      if ($COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/)
+      if ($COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/ && $B !~ /php-fpm/)
       {
         $timedate=`date +%y%m%d-%H%M`;
         chomp($timedate);
@@ -287,7 +287,7 @@ sub global_action
          }
       }
 
-      if ($USER =~ /jetty/ && $COMMAND =~ /java/ && ($STAT =~ /R/ || ${TIME} !~ /^[0-5]{1}:/))
+      if ($USER =~ /jetty/ && $COMMAND =~ /java/ && $STAT =~ /R/)
       {
          system("kill -9 $PID");
          $timedate=`date +%y%m%d-%H%M%S`;

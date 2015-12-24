@@ -197,6 +197,7 @@ fi
 mysql_proc_kill() {
   if [ "$xtime" != "Time" ] \
     && [ "$xuser" != "root" ] \
+    && [ "$xuser" != "system" ] \
     && [ "$xtime" != "|" ] \
     && [[ "$xtime" -gt "$limit" ]]; then
     xkill=$(mysqladmin kill $each 2>&1)
@@ -216,27 +217,32 @@ mysql_proc_control() {
   for each in `mysqladmin proc \
     | awk '{print $2, $4, $8, $12}' \
     | awk '{print $1}'`; do
-    xtime=$(mysqladmin proc \
-      | awk '{print $2, $4, $8, $12}' \
-      | grep $each \
-      | awk '{print $4}' 2>&1)
-    if [ "$xtime" = "|" ]; then
+    if [ "$each" != "1" ] \
+      && [ "$each" != "2" ] \
+      && [ "$each" != "Id" ] \
+      && [ ! -z "$each" ]; then
       xtime=$(mysqladmin proc \
-        | awk '{print $2, $4, $8, $11}' \
+        | awk '{print $2, $4, $8, $12}' \
         | grep $each \
         | awk '{print $4}' 2>&1)
-    fi
-    xuser=$(mysqladmin proc \
-      | awk '{print $2, $4, $8, $12}' \
-      | grep $each \
-      | awk '{print $2}' 2>&1)
-    if [ "$xtime" != "Time" ]; then
-      if [ "$xuser" = "xabuse" ]; then
-        limit=60
-        mysql_proc_kill
-      else
-        limit=3600
-        mysql_proc_kill
+      if [ "$xtime" = "|" ]; then
+        xtime=$(mysqladmin proc \
+          | awk '{print $2, $4, $8, $11}' \
+          | grep $each \
+          | awk '{print $4}' 2>&1)
+      fi
+      xuser=$(mysqladmin proc \
+        | awk '{print $2, $4, $8, $12}' \
+        | grep $each \
+        | awk '{print $2}' 2>&1)
+      if [ "$xtime" != "Time" ]; then
+        if [ "$xuser" = "xabuse" ]; then
+          limit=60
+          mysql_proc_kill
+        else
+          limit=3600
+          mysql_proc_kill
+        fi
       fi
     fi;
   done
