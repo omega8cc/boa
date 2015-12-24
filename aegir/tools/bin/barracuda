@@ -601,8 +601,6 @@ up_action() {
     wait
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"          ${barCnf}
     wait
-    sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g"           ${barCnf}
-    wait
     ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"           ${barCnf}
     wait
@@ -651,6 +649,8 @@ up_action() {
             wait
             sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"     ${barCnf}
             wait
+            ### sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"   ${barCnf}
+            ### wait
             sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g" \
               /root/.*.octopus.cnf &> /dev/null
             wait
@@ -667,17 +667,6 @@ up_action() {
       sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${barCnf}
       wait
       _THIS_RV=$(lsb_release -sc 2>&1)
-      if [ "${_THIS_RV}" = "lenny" ] \
-        && [ -e "${barCnf}" ]; then
-        sed -i "s/^_LENNY_TO_SQUEEZE=.*/_LENNY_TO_SQUEEZE=YES/g" \
-          ${vBs}/${barName}
-        wait
-        sed -i "s/^_LENNY_TO_SQUEEZE.*//g" ${barCnf}
-        wait
-        sed -i "/^$/d" ${barCnf}
-        wait
-        echo "_LENNY_TO_SQUEEZE=YES" >> ${barCnf}
-      fi
       if [ -e "/etc/default/tomcat" ] \
         && [ -e "/etc/init.d/tomcat" ] \
         && [ -e "${barCnf}" ]; then
@@ -991,7 +980,7 @@ check_fix_csf() {
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    renice 10 -p $$
+    renice 10 -p $$ &> /dev/null
     check_fix_csf
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
