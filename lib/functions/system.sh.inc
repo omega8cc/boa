@@ -99,11 +99,9 @@ fix_ftps_pam() {
 #
 # Fix FTPS and SFTP access on modern systems.
 fix_sftp_ftps_modern() {
-  if [ "${_OSV}" != "lenny" ]; then
-    _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells 2>&1)
-    if [[ ! "${_LSHELL_PATH_TEST}" =~ "/usr/bin/lshell" ]]; then
-      echo "/usr/bin/lshell" >> /etc/shells
-    fi
+  _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells 2>&1)
+  if [[ ! "${_LSHELL_PATH_TEST}" =~ "/usr/bin/lshell" ]]; then
+    echo "/usr/bin/lshell" >> /etc/shells
   fi
   if [ ! -e "${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log" ] \
     || [ ! -e "/etc/ssh/sftp_config" ] \
@@ -141,7 +139,6 @@ fix_sftp_ftps_modern() {
   fi
   if [ ! -e "${pthLog}/fixed-sftp-idle.log" ]; then
     sed -i "s/IdleTimeOut.*/IdleTimeOut            15m/g" /etc/ssh/sftp_config &> /dev/null
-    wait
     mrun "service ssh reload" &> /dev/null
     touch ${pthLog}/fixed-sftp-idle.log
   fi
@@ -204,9 +201,7 @@ update_global_inc_conf() {
 # Fix this on upgrade.
 fix_on_upgrade() {
   sed -i "s/loglevel.*/loglevel warning/g" /etc/redis/redis.conf &> /dev/null
-  wait
   sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf &> /dev/null
-  wait
   cp -af ${locCnf}/clean-boa-env /etc/init.d/clean-boa-env
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
   st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
@@ -354,13 +349,9 @@ tune_memory_limits() {
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
         sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini &> /dev/null
-        wait
         sed -i "s/64000/128000/g"  /opt/php55/etc/php55.ini &> /dev/null
-        wait
         sed -i "s/64000/128000/g"  /opt/php54/etc/php54.ini &> /dev/null
-        wait
         sed -i "s/64000/128000/g"  /opt/php53/etc/php53.ini &> /dev/null
-        wait
       else
         _USE_PHP=1024
         _USE_OPC=1024
@@ -438,39 +429,30 @@ tune_memory_limits() {
   chmod 644 /data/conf/hhvm_intercept.php
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
-    wait
   fi
   if [ -e "/opt/php56/etc/php56.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php56/etc/php56.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php56/etc/php56.ini &> /dev/null
-    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php56/lib/php.ini   &> /dev/null
-    wait
   fi
   if [ -e "/opt/php55/etc/php55.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php55/etc/php55.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php55/etc/php55.ini &> /dev/null
-    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php55/lib/php.ini   &> /dev/null
-    wait
   fi
   if [ -e "/opt/php54/etc/php54.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php54/etc/php54.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php54/etc/php54.ini &> /dev/null
-    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php54/lib/php.ini   &> /dev/null
-    wait
   fi
   if [ -e "/opt/php53/etc/php53.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php53/etc/php53.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php53/etc/php53.ini &> /dev/null
-    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php53/lib/php.ini   &> /dev/null
-    wait
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits
@@ -496,18 +478,14 @@ tune_memory_limits() {
   _MAX_MEM_REDIS="${_USE_OPC}MB"
   sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" \
     /etc/redis/redis.conf &> /dev/null
-  wait
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9
-    wait
   fi
   if [ -e "/etc/default/jetty8" ] && [ -e "/opt/solr3" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr3 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty8
-    wait
   fi
   if [ -e "/etc/default/jetty7" ] && [ -e "/opt/solr1" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr1 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty7
-    wait
   fi
   tune_web_server_config
 }
@@ -572,7 +550,6 @@ EOF
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
       fi
       sed -i "/^$/d" /etc/locale.gen
-      wait
       locale-gen &> /dev/null
     else
       locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
@@ -626,7 +603,6 @@ EOF
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
       fi
       sed -i "/^$/d" /etc/locale.gen
-      wait
       locale-gen &> /dev/null
     else
       locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
@@ -758,7 +734,6 @@ barracuda_cnf() {
     echo "_SPEED_VALID_MAX=${_SPEED_VALID_MAX}"               >> ${barCnf}
     echo "_SSH_FROM_SOURCES=${_SSH_FROM_SOURCES}"             >> ${barCnf}
     echo "_SSH_PORT=${_SSH_PORT}"                             >> ${barCnf}
-    echo "_SSL_FROM_SOURCES=${_SSL_FROM_SOURCES}"             >> ${barCnf}
     echo "_STRICT_BIN_PERMISSIONS=${_STRICT_BIN_PERMISSIONS}" >> ${barCnf}
     echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}"             >> ${barCnf}
 
@@ -779,8 +754,6 @@ barracuda_cnf() {
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
     wait
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
-    wait
-    sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g"     ${barCnf}
     wait
     ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
@@ -1192,11 +1165,6 @@ barracuda_cnf() {
       echo "_MODULES_SKIP=\"${_MODULES_SKIP}\"" >> ${barCnf}
     fi
 
-    _SSL_FROM_SOURCES_TEST=$(grep _SSL_FROM_SOURCES ${barCnf} 2>&1)
-    if [[ ! "${_SSL_FROM_SOURCES_TEST}" =~ "_SSL_FROM_SOURCES" ]]; then
-      echo "_SSL_FROM_SOURCES=${_SSL_FROM_SOURCES}" >> ${barCnf}
-    fi
-
     _SSH_FROM_SOURCES_TEST=$(grep _SSH_FROM_SOURCES ${barCnf} 2>&1)
     if [[ ! "${_SSH_FROM_SOURCES_TEST}" =~ "_SSH_FROM_SOURCES" ]]; then
       echo "_SSH_FROM_SOURCES=${_SSH_FROM_SOURCES}" >> ${barCnf}
@@ -1279,6 +1247,11 @@ barracuda_cnf() {
       sed -i "s/^_BUILD_FROM_SRC.*//g" ${barCnf}
       wait
     fi
+    _SSL_FROM_SOURCES_TEST=$(grep _SSL_FROM_SOURCES ${barCnf} 2>&1)
+    if [[ "${_SSL_FROM_SOURCES_TEST}" =~ "_SSL_FROM_SOURCES" ]]; then
+      sed -i "s/^_SSL_FROM_SOURCES.*//g" ${barCnf}
+      wait
+    fi
     ###
     ### config cleanup end
     ###
@@ -1291,8 +1264,6 @@ barracuda_cnf() {
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
     wait
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
-    wait
-    sed -i "s/^_SSL_FROM_SOURCES=.*/_SSL_FROM_SOURCES=YES/g"     ${barCnf}
     wait
     ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
@@ -1607,7 +1578,6 @@ check_install_latest_git() {
     _GIT_FORCE_REINSTALL=YES
   fi
   if [[ "${_XTRAS_LIST}" =~ "GIT" ]] \
-    || [ "${_OSV}" = "lucid" ] \
     || [ "${_SSB_SRC}" = "YES" ] \
     || [ "${_GIT_FORCE_REINSTALL}" = "YES" ]; then
     _GIT_TEST=$(git --version 2>&1)
@@ -1881,7 +1851,7 @@ update_sources_list() {
       fi
     elif [ "${_THIS_OS}" = "Debian" ]; then
       _MIRROR_CHECK=NO
-      if [ "${_OSV}" = "lenny" ]; then
+      if [ "${_OSV}" = "deprecated" ]; then
         _MIRROR=archive.debian.org
       else
         if [ "${_AUTOPILOT}" = "YES" ]; then
@@ -1933,7 +1903,7 @@ update_sources_list() {
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" \
         >> ${aptLiSys}
-      if [ "${_OSV}" = "lenny" ]; then
+      if [ "${_OSV}" = "deprecated" ]; then
         echo "deb http://archive.debian.org/debian-volatile \
           ${_OSV}/volatile main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
         echo "deb-src http://archive.debian.org/debian-volatile \
@@ -1953,7 +1923,14 @@ update_sources_list() {
         echo "## DEBIAN PROPOSED UPDATES" >> ${aptLiSys}
         echo "deb http://${_MIRROR}/debian/ ${_OSV}-proposed-updates main" \
           >> ${aptLiSys}
-        if [ "${_OSV}" = "wheezy" ]; then
+        if [ "${_OSV}" = "jessie" ]; then
+          if [ -e "${locCnf}/etc-apt-preferences-jessie.txt" ]; then
+            cp -af ${locCnf}/etc-apt-preferences-jessie.txt /etc/apt/preferences
+          else
+            curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-jessie.txt" \
+              -o /etc/apt/preferences
+          fi
+        elif [ "${_OSV}" = "wheezy" ]; then
           if [ -e "${locCnf}/etc-apt-preferences-wheezy.txt" ]; then
             cp -af ${locCnf}/etc-apt-preferences-wheezy.txt /etc/apt/preferences
           else
@@ -1995,7 +1972,14 @@ update_sources_list() {
           -o /etc/apt/preferences
       fi
     else
-      if [ "${_OSV}" = "wheezy" ]; then
+      if [ "${_OSV}" = "jessie" ]; then
+        if [ -e "${locCnf}/etc-apt-preferences-jessie.txt" ]; then
+          cp -af ${locCnf}/etc-apt-preferences-jessie.txt /etc/apt/preferences
+        else
+          curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-jessie.txt" \
+            -o /etc/apt/preferences
+        fi
+      elif [ "${_OSV}" = "wheezy" ]; then
         if [ -e "${locCnf}/etc-apt-preferences-wheezy.txt" ]; then
           cp -af ${locCnf}/etc-apt-preferences-wheezy.txt /etc/apt/preferences
         else
@@ -2075,8 +2059,7 @@ install_ssh_src() {
 #
 # Install cURL from sources.
 install_curl_src() {
-  if [ "${_OSV}" = "precise" ] \
-    || [ "${_OSV}" = "lucid" ]; then
+  if [ "${_OSV}" = "precise" ]; then
     touch /root/.use.curl.from.packages.cnf
     _CURL_VRN=7.22.0
   fi
@@ -2686,15 +2669,14 @@ install_with_aptitude_deps() {
     _GPG=gpg
   fi
   if [[ "${_XTRAS_LIST}" =~ "FMG" ]]; then
-    if [ "${_OSV}" = "wheezy" ] \
+    if [ "${_OSV}" = "jessie" ] \
+      || [ "${_OSV}" = "wheezy" ] \
       || [ "${_DO_FIX}" = "YES" ] \
       || [ "${_OSV}" = "trusty" ] \
       || [ "${_OSV}" = "precise" ]; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-53"
     elif [ "${_OSV}" = "squeeze" ]; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec52"
-    elif [ "${_OSV}" = "lucid" ]; then
-      _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-52"
     else
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec51"
     fi
@@ -2731,6 +2713,38 @@ basic_packages_install_on_init() {
     ${_INITINS} netcat &> /dev/null
     ${_INITINS} curl &> /dev/null
     ${_INITINS} wget &> /dev/null
+    if [ "${_OSV}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
+      msg "INFO: Installing sysvinit on ${_THIS_OS} ${_OSV}..."
+      ${_INITINS} sysvinit-core &> /dev/null
+      ${_INITINS} sysvinit-utils &> /dev/null
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
+      fi
+      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+      ${_INITINS} sysvinit-core &> /dev/null
+      ${_INITINS} sysvinit-utils &> /dev/null
+      echo
+      msg "NOTE: Please reboot and run barracuda upgrade"
+      msg "NOTE: when boa will complete initial installation"
+      msg "NOTE: to cleanly remove not used systemd packages!"
+      echo
+      mrun "sleep 8"
+    fi
+  else
+    if [ "${_OSV}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
+      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
+      ${_INITINS} sysvinit-core &> /dev/null
+      ${_INITINS} sysvinit-utils &> /dev/null
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
+      fi
+      apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
+      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+      ${_INITINS} sysvinit-core &> /dev/null
+      ${_INITINS} sysvinit-utils &> /dev/null
+    fi
   fi
 }
 
@@ -2740,7 +2754,7 @@ more_packages_install_on_init() {
     if [ -e "/etc/debian_version" ]; then
       _L_DEB_TEST=$(grep "^5." /etc/debian_version 2>&1)
       if [ ! -z "${_L_DEB_TEST}" ]; then
-        sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" ${aptLiSys} &> /dev/null
+        sed -i "s/^deb.*security.debian.org.*/## security updates no longer available/g" ${aptLiSys} &> /dev/null
         wait
         sed -i "s/ftp.*debian.org/archive.debian.org/g" \
           ${aptLiSys} &> /dev/null
@@ -3135,7 +3149,8 @@ sys_packages_install() {
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      if [ "${_OSV}" = "wheezy" ] \
+      if [ "${_OSV}" = "jessie" ] \
+        || [ "${_OSV}" = "wheezy" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
         _APT_XTRA="openjdk-7-jre-headless openjdk-6-jre-headless nginx"
@@ -3162,7 +3177,8 @@ sys_packages_install() {
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      if [ "${_OSV}" = "wheezy" ] \
+      if [ "${_OSV}" = "jessie" ] \
+        || [ "${_OSV}" = "wheezy" ] \
         || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
@@ -3219,7 +3235,6 @@ sys_packages_install() {
     _SYSLOGD=rsyslog
   fi
   if [ "${_NGINX_SPDY}" = "YES" ] \
-    || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
     || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
     if [ "${_OSV}" = "stretch" ] \
       || [ "${_OSV}" = "wily" ]; then
@@ -3238,11 +3253,14 @@ sys_packages_install() {
                      libcurl4-openssl-dev \
                      ${_EXTRA_PACKAGES}"
   fi
-  if [ "${_OSV}" = "trusty" ]; then
+  if [ "${_OSV}" = "trusty" ] \
+    || [ "${_OSV}" = "jessie" ]; then
     _EXTRA_PACKAGES="libgd2-noxpm-dev \
                      libgd2-xpm-dev \
                      libgd2-dev \
                      libgd3 \
+                     libkrb5-dev \
+                     libldap-dev \
                      libxpm-dev \
                      ${_EXTRA_PACKAGES}"
   else
@@ -3264,11 +3282,11 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  if [ "${_OSV}" = "wheezy" ] \
+  if [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "wheezy" ] \
     || [ "${_OSV}" = "squeeze" ] \
     || [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "precise" ] \
-    || [ "${_OSV}" = "lucid" ]; then
+    || [ "${_OSV}" = "precise" ]; then
     _DEBDEPS="apticron \
               ${_APT_XTRA} \
               ${_EXTRA_LIB_APT} \
@@ -3374,6 +3392,7 @@ sys_packages_install() {
               sudo \
               symlinks \
               sysstat \
+              sysvinit-core \
               sysvinit-utils \
               t1lib-bin \
               telnet \
@@ -3437,7 +3456,8 @@ fix_libs_php() {
     && [ "${_LOC_OSV}" = "squeeze" ]; then
     _DO_FIX=YES
   fi
-  if [ "${_OSV}" = "wheezy" ] \
+  if [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "wheezy" ] \
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
@@ -3480,15 +3500,16 @@ fix_libssl() {
     && [ "${_LOC_OSV}" = "squeeze" ]; then
     _DO_FIX=YES
   fi
-  if [ "${_OSV}" = "wheezy" ] \
+  if [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "wheezy" ] \
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     _SSL_FIX_REQUIRED=YES
     if [ "${_NGINX_SPDY}" = "YES" ] \
-      || [ "${_SSL_FROM_SOURCES}" = "YES" ] \
       || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
-      if [ "${_OSV}" = "wheezy" ] \
+      if [ "${_OSV}" = "jessie" ] \
+        || [ "${_OSV}" = "wheezy" ] \
         || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
@@ -3603,7 +3624,6 @@ install_vnstat() {
       chmod 755 /etc/init.d/vnstat &> /dev/null
       st_runner "update-rc.d vnstat defaults" &> /dev/null
       sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /etc/vnstat.conf
-      wait
       mrun "service vnstat start" &> /dev/null
       touch ${pthLog}/vnstat-${_VNSTAT_VRN}.log
       mrun "service vnstat restart" &> /dev/null
@@ -3828,33 +3848,21 @@ check_fix_umask() {
     touch ${pthLog}/umask_fixed_new.log
   fi
   if [ ! -e "${pthLog}/umask_fixed_shell_sftp.log" ]; then
-    if [ "${_OSV}" = "lenny" ] || [ "${_OSV}" = "lucid" ]; then
-      _DO_NOTHING=YES
-    else
-      sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /etc/ssh/sshd_config
-    fi
+    sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /etc/ssh/sshd_config
     echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/sshd
     mrun "service ssh restart" &> /dev/null
     touch ${pthLog}/umask_fixed_shell_sftp.log
   fi
   if [ ! -e "${pthLog}/src_umask_fixed_shell_sftp.log" ] \
     && [ -e "/usr/etc/sshd_config" ]; then
-    if [ "${_OSV}" = "lenny" ] || [ "${_OSV}" = "lucid" ]; then
-      _DO_NOTHING=YES
-    else
-      sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /usr/etc/sshd_config
-    fi
+    sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /usr/etc/sshd_config
     mrun "service ssh restart" &> /dev/null
     touch ${pthLog}/src_umask_fixed_shell_sftp.log
   fi
 }
 
 install_update_lshell() {
-  if [ "${_OSV}" = "lenny" ]; then
-    _PATH_LSHELL="/usr/bin/lshell"
-  else
-    _PATH_LSHELL="/usr/local/bin/lshell"
-  fi
+  _PATH_LSHELL="/usr/local/bin/lshell"
   if [ ! -e "${_PATH_LSHELL}" ] \
     || [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \

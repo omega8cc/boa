@@ -27,9 +27,9 @@ _DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
 _MY_EMAIL="my@email" #---------- System admin e-mail
 _XTRAS_LIST="" #---------------- See docs/NOTES.txt for details on add-ons
 ###
-_MODULES_FIX=NO #--------------- Runs daily modules enabling/disabling when YES
+_MODULES_FIX=YES #-------------- Allows to skip weekly modules en/dis when NO
 _MODULES_SKIP="" #-------------- Modules (machine names) to never auto-disable
-_PERMISSIONS_FIX=NO #----------- Allows to run daily permissions fix when YES
+_PERMISSIONS_FIX=YES #---------- Allows to skip daily permissions fix when NO
 ###
 _CPU_CRIT_RATIO=9 #------------- Max load per CPU core before killing PHP/Drush
 _CPU_MAX_RATIO=6 #-------------- Max load per CPU core before disabling Nginx
@@ -73,7 +73,6 @@ _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
 _SPEED_VALID_MAX=3600 #--------- Defines Speed Booster hourly cache TTL in sec
 _SSH_FROM_SOURCES=YES #--------- Allows to build OpenSSH from sources on Debian
 _SSH_PORT=22 #------------------ Allows to configure non-standard SSH port
-_SSL_FROM_SOURCES=YES #--------- Allows to use latest OpenSSL from packages
 _STRICT_BIN_PERMISSIONS=YES #--- Aggressively protect all binaries when YES
 _STRONG_PASSWORDS=NO #---------- Configurable length: 8-128, YES (32), NO (8)
 ###

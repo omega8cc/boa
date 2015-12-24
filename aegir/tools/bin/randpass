@@ -36,6 +36,7 @@ randpass() {
   elif [ "${kind}" = "hash" ]; then
     CHAR="[:alnum:]"
     if [ "${_NEW_SSL}" = "YES" ] \
+      || [ "${_OSV}" = "jessie" ] \
       || [ "${_OSV}" = "wheezy" ] \
       || [ "${_OSV}" = "trusty" ] \
       || [ "${_OSV}" = "precise" ]; then

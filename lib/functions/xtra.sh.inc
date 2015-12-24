@@ -1,31 +1,27 @@
 
 if_install_bzr() {
   if [[ "${_XTRAS_LIST}" =~ "BZR" ]]; then
-    if [ "${_OSV}" = "lenny" ]; then
-      _DO_NOTHING=YES
-    else
-      _PATH_BZR="/usr/local/bin/bzr"
-      if [ ! -e "$_PATH_BZR" ] \
-        || [ ! -e "${pthLog}/bzr-${_BZR_VRN}.log" ] \
-        || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-        msg "INFO: Building Bazaar (bzr) ${_BZR_VRN} from sources, please wait..."
-        if [ -e "/usr/local/lib/python2.6/dist-packages/bzrlib" ]; then
-          rm -f -r /usr/local/lib/python2.6/dist-packages/bzrlib
-        fi
-        if [ -e "/usr/local/lib/python2.7/dist-packages/bzrlib" ]; then
-          rm -f -r /usr/local/lib/python2.7/dist-packages/bzrlib
-        fi
-        cd /var/opt
-        rm -f -r bzr*
-        get_dev_src "bzr-${_BZR_VRN}.tar.gz"
-        cd /var/opt/bzr-${_BZR_VRN}
-        st_runner "python setup.py --quiet install build_ext -\
-          -allow-python-fallback" 2> /dev/null
-        st_runner "make --quiet" 2> /dev/null
-        touch ${pthLog}/bzr-${_BZR_VRN}.log
-        mkdir -p /root/.bazaar
-        echo ignore_missing_extensions=True > /root/.bazaar/bazaar.conf
+    _PATH_BZR="/usr/local/bin/bzr"
+    if [ ! -e "$_PATH_BZR" ] \
+      || [ ! -e "${pthLog}/bzr-${_BZR_VRN}.log" ] \
+      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      msg "INFO: Building Bazaar (bzr) ${_BZR_VRN} from sources, please wait..."
+      if [ -e "/usr/local/lib/python2.6/dist-packages/bzrlib" ]; then
+        rm -f -r /usr/local/lib/python2.6/dist-packages/bzrlib
       fi
+      if [ -e "/usr/local/lib/python2.7/dist-packages/bzrlib" ]; then
+        rm -f -r /usr/local/lib/python2.7/dist-packages/bzrlib
+      fi
+      cd /var/opt
+      rm -f -r bzr*
+      get_dev_src "bzr-${_BZR_VRN}.tar.gz"
+      cd /var/opt/bzr-${_BZR_VRN}
+      st_runner "python setup.py --quiet install build_ext -\
+        -allow-python-fallback" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      touch ${pthLog}/bzr-${_BZR_VRN}.log
+      mkdir -p /root/.bazaar
+      echo ignore_missing_extensions=True > /root/.bazaar/bazaar.conf
     fi
   fi
 }
@@ -226,9 +222,10 @@ if_install_hhvm() {
     _DO_FIX=YES
   fi
   if [[ "${_XTRAS_LIST}" =~ "HVM" ]]; then
-    if [ "${_OSV}" = "wheezy" ] \
-      || [ "${_DO_FIX}" = "YES" ] \
-      || [ "${_OSV}" = "trusty" ]; then
+    if [ "${_OSV}" = "jessie" ] \
+      || [ "${_OSV}" = "wheezy" ] \
+      || [ "${_OSV}" = "trusty" ] \
+      || [ "${_DO_FIX}" = "YES" ]; then
       if [ ! -x "/usr/bin/hhvm" ]; then
         echo " "
         if prompt_yes_no "Do you want to install HHVM Engine?" ; then
@@ -236,7 +233,10 @@ if_install_hhvm() {
           msg "INFO: Installing HHVM Engine..."
           cd /var/opt
           echo "## HHVM APT Repository" > ${aptLiSys}.d/hhvm.list
-          if [ "${_OSV}" = "wheezy" ] || [ "${_DO_FIX}" = "YES" ]; then
+          if [ "${_OSV}" = "jessie" ]; then
+            echo "deb http://dl.hhvm.com/debian jessie main" >> \
+              ${aptLiSys}.d/hhvm.list
+          elif [ "${_OSV}" = "wheezy" ] || [ "${_DO_FIX}" = "YES" ]; then
             echo "deb http://dl.hhvm.com/debian wheezy main" >> \
               ${aptLiSys}.d/hhvm.list
           elif [ "${_OSV}" = "trusty" ]; then
@@ -341,98 +341,94 @@ if_install_bind() {
 }
 
 if_install_rvm() {
-  if [ "${_OSV}" = "lenny" ] || [ "${_OSV}" = "lucid" ]; then
-    _DO_NOTHING=YES
-  else
-    if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
-      || [[ "${_XTRAS_LIST}" =~ "CSS" ]] \
-      || [ ! -z "${_SCOUT_KEY}" ] \
-      || [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-      || [ -e "/root/.host8.cnf" ] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
-      if [ "${_STATUS}" = "INIT" ]; then
-        _L_ST="install"
-      else
-        _L_ST="upgrade"
-      fi
-      if [ ! -e "${pthLog}/compass-${_X_VERSION}-${_NOW}-ruby-${_RUBY_VRN}.log" ]; then
-        echo " "
-        if prompt_yes_no "Do you want to ${_L_ST} Ruby with RVM for root?" ; then
-          true
-          msg "INFO: Running Ruby with RVM ${_L_ST}..."
-          if [ ! -e "${pthLog}/ruby-root-clean-reload.log" ]; then
-            _RUBY_RELOAD=YES
-            rm -f -r /usr/local/rvm
-            touch ${pthLog}/ruby-root-clean-reload.log
+  if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
+    || [[ "${_XTRAS_LIST}" =~ "CSS" ]] \
+    || [ ! -z "${_SCOUT_KEY}" ] \
+    || [[ "${_THISHOST}" =~ ".host8." ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+    || [ -e "/root/.host8.cnf" ] \
+    || [ "${_VMFAMILY}" = "VS" ]; then
+    if [ "${_STATUS}" = "INIT" ]; then
+      _L_ST="install"
+    else
+      _L_ST="upgrade"
+    fi
+    if [ ! -e "${pthLog}/compass-${_X_VERSION}-${_NOW}-ruby-${_RUBY_VRN}.log" ]; then
+      echo " "
+      if prompt_yes_no "Do you want to ${_L_ST} Ruby with RVM for root?" ; then
+        true
+        msg "INFO: Running Ruby with RVM ${_L_ST}..."
+        if [ ! -e "${pthLog}/ruby-root-clean-reload.log" ]; then
+          _RUBY_RELOAD=YES
+          rm -f -r /usr/local/rvm
+          touch ${pthLog}/ruby-root-clean-reload.log
+        fi
+        ${_GPG} --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3 &> /dev/null
+        curl -sSL https://rvm.io/mpapis.asc | ${_GPG} --import - &> /dev/null
+        curl -sSL https://get.rvm.io | bash -s stable &> /dev/null
+        echo rvm_autoupdate_flag=0 > ~/.rvmrc
+        if [ -e "/etc/profile.d/rvm.sh" ]; then
+          source /etc/profile.d/rvm.sh
+        fi
+        if [ ! -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
+          _RUBY_UPGRADE=YES
+        fi
+        if [ "${_STATUS}" = "INIT" ] \
+          || [ "$_RUBY_UPGRADE" = "YES" ] \
+          || [ "$_RUBY_RELOAD" = "YES" ]; then
+          rm -f /etc/apt/sources.list.d/openssl.list
+          mrun "apt-get update -qq" &> /dev/null
+          mrun "apt-get remove rubygems \
+                               ruby1.9.1-dev \
+                               libruby1.9.1 \
+                               ruby1.9.1 \
+                               -y --force-yes -qq" &> /dev/null
+          mrun "rvm install ${_RUBY_VRN}" &> /dev/null
+          mrun "rvm use ${_RUBY_VRN} --default" &> /dev/null
+          mrun "rvm get stable" 2> /dev/null
+          mrun "rvm @global do gem update -q" 2> /dev/null
+        else
+          mrun "rvm get stable" 2> /dev/null
+          mrun "rvm @global do gem update -q" 2> /dev/null
+        fi
+        _RBY_FILE="/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/ruby"
+        _RBY_PATH=${_RBY_FILE//\//\\\/}
+        _GEM_FILE="/usr/local/rvm/gems/ruby-${_RUBY_VRN}@global/bin/scout"
+        _GEM_PATH=${_GEM_FILE//\//\\\/}
+        _GEM_CRON="/etc/crontab"
+        _VAR_IF_PRESENT=$(grep "scout" $_GEM_CRON 2>&1)
+        if [[ "${_VAR_IF_PRESENT}" =~ "scout" ]]; then
+          if [ ! -e "$_GEM_FILE" ] && [ ! -z "${_SCOUT_KEY}" ]; then
+            st_runner "rvm @global do gem install --conservative scout" 2> /dev/null
+            adduser --system --group --home /var/scout scout &> /dev/null
+            usermod -aG users scout &> /dev/null
+            sed -i "s/\* \* \* \* \* scout .*/* * * * * scout $_GEM_PATH ${_SCOUT_KEY}/g" $_GEM_CRON &> /dev/null
           fi
-          ${_GPG} --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3 &> /dev/null
-          curl -sSL https://rvm.io/mpapis.asc | ${_GPG} --import - &> /dev/null
-          curl -sSL https://get.rvm.io | bash -s stable &> /dev/null
-          echo rvm_autoupdate_flag=0 > ~/.rvmrc
-          if [ -e "/etc/profile.d/rvm.sh" ]; then
-            source /etc/profile.d/rvm.sh
+          _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
+          if [[ ! "${_VAR_IF_PRESENT}" =~ "scout ALL=NOPASSWD" ]]; then
+            echo "scout ALL=NOPASSWD: /usr/bin/mysql" >> /etc/sudoers
           fi
-          if [ ! -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
-            _RUBY_UPGRADE=YES
-          fi
-          if [ "${_STATUS}" = "INIT" ] \
-            || [ "$_RUBY_UPGRADE" = "YES" ] \
-            || [ "$_RUBY_RELOAD" = "YES" ]; then
-            rm -f /etc/apt/sources.list.d/openssl.list
-            mrun "apt-get update -qq" &> /dev/null
-            mrun "apt-get remove rubygems \
-                                 ruby1.9.1-dev \
-                                 libruby1.9.1 \
-                                 ruby1.9.1 \
-                                 -y --force-yes -qq" &> /dev/null
-            mrun "rvm install ${_RUBY_VRN}" &> /dev/null
-            mrun "rvm use ${_RUBY_VRN} --default" &> /dev/null
-            mrun "rvm get stable" 2> /dev/null
-            mrun "rvm @global do gem update -q" 2> /dev/null
-          else
-            mrun "rvm get stable" 2> /dev/null
-            mrun "rvm @global do gem update -q" 2> /dev/null
-          fi
-          _RBY_FILE="/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/ruby"
-          _RBY_PATH=${_RBY_FILE//\//\\\/}
-          _GEM_FILE="/usr/local/rvm/gems/ruby-${_RUBY_VRN}@global/bin/scout"
-          _GEM_PATH=${_GEM_FILE//\//\\\/}
-          _GEM_CRON="/etc/crontab"
-          _VAR_IF_PRESENT=$(grep "scout" $_GEM_CRON 2>&1)
-          if [[ "${_VAR_IF_PRESENT}" =~ "scout" ]]; then
-            if [ ! -e "$_GEM_FILE" ] && [ ! -z "${_SCOUT_KEY}" ]; then
-              st_runner "rvm @global do gem install --conservative scout" 2> /dev/null
-              adduser --system --group --home /var/scout scout &> /dev/null
-              usermod -aG users scout &> /dev/null
-              sed -i "s/\* \* \* \* \* scout .*/* * * * * scout $_GEM_PATH ${_SCOUT_KEY}/g" $_GEM_CRON &> /dev/null
-            fi
+        else
+          if [ ! -z "${_SCOUT_KEY}" ]; then
+            st_runner "rvm @global do gem install --conservative scout" 2> /dev/null
+            adduser --system --group --home /var/scout scout &> /dev/null
+            usermod -aG users scout &> /dev/null
+            echo -e "* * * * * scout $_GEM_FILE ${_SCOUT_KEY}" \
+              | fmt -su -w 2500 | tee -a $_GEM_CRON >/dev/null 2>&1
             _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
             if [[ ! "${_VAR_IF_PRESENT}" =~ "scout ALL=NOPASSWD" ]]; then
               echo "scout ALL=NOPASSWD: /usr/bin/mysql" >> /etc/sudoers
             fi
-          else
-            if [ ! -z "${_SCOUT_KEY}" ]; then
-              st_runner "rvm @global do gem install --conservative scout" 2> /dev/null
-              adduser --system --group --home /var/scout scout &> /dev/null
-              usermod -aG users scout &> /dev/null
-              echo -e "* * * * * scout $_GEM_FILE ${_SCOUT_KEY}" \
-                | fmt -su -w 2500 | tee -a $_GEM_CRON >/dev/null 2>&1
-              _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
-              if [[ ! "${_VAR_IF_PRESENT}" =~ "scout ALL=NOPASSWD" ]]; then
-                echo "scout ALL=NOPASSWD: /usr/bin/mysql" >> /etc/sudoers
-              fi
-            fi
           fi
-          if [ -e "$_GEM_FILE" ]; then
-            sed -i "s/^#\!\/.*/#\!$_RBY_PATH/g" $_GEM_FILE &> /dev/null
-          fi
-          PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin;export PATH
-          touch ${pthLog}/compass-${_X_VERSION}-${_NOW}-ruby-${_RUBY_VRN}.log
-          msg "INFO: Ruby with RVM ${_L_ST} for root completed"
-        else
-          msg "INFO: Ruby with RVM ${_L_ST} for root skipped"
         fi
+        if [ -e "$_GEM_FILE" ]; then
+          sed -i "s/^#\!\/.*/#\!$_RBY_PATH/g" $_GEM_FILE &> /dev/null
+        fi
+        PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin;export PATH
+        touch ${pthLog}/compass-${_X_VERSION}-${_NOW}-ruby-${_RUBY_VRN}.log
+        msg "INFO: Ruby with RVM ${_L_ST} for root completed"
+      else
+        msg "INFO: Ruby with RVM ${_L_ST} for root skipped"
       fi
     fi
   fi
