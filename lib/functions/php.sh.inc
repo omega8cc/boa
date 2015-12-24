@@ -1346,6 +1346,7 @@ switch_php_cli() {
 
 php_upgrade_all() {
   if [ -x "/opt/php53/bin/php" ] \
+    && [ "${_SKIP_LEGACY_PHP}" != "YES" ] \
     && [ -z "$_FRESH_PHP53_BUILD" ]; then
     _PHP_VERSION="${_PHP53_VRN}"
     _PHP_BIN_BROKEN=NO
@@ -1359,6 +1360,7 @@ php_upgrade_all() {
     _T_PHP_PTH=""
   fi
   if [ -x "/opt/php54/bin/php" ] \
+    && [ "${_SKIP_LEGACY_PHP}" != "YES" ] \
     && [ -z "$_FRESH_PHP54_BUILD" ]; then
     _PHP_VERSION="${_PHP54_VRN}"
     _PHP_BIN_BROKEN=NO
@@ -1438,6 +1440,7 @@ install_update_php() {
     ln -sf /usr/include/freetype2 /usr/include/freetype2/freetype
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "5.3" ]] \
+    && [ "${_SKIP_LEGACY_PHP}" != "YES" ] \
     && [ ! -x "/opt/php53/bin/php" ]; then
     _PHP_VERSION="${_PHP53_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
@@ -1449,6 +1452,7 @@ install_update_php() {
     _FRESH_PHP53_BUILD=53
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "5.4" ]] \
+    && [ "${_SKIP_LEGACY_PHP}" != "YES" ] \
     && [ ! -x "/opt/php54/bin/php" ]; then
     _PHP_VERSION="${_PHP54_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"

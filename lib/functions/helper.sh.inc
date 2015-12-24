@@ -408,6 +408,7 @@ os_detection() {
         _MARIADB_VRN="${_MARIADB_10_VRN}"
       fi
       _SPINNER=NO
+      _SKIP_LEGACY_PHP=YES
     elif [ "${_THIS_RV}" = "wheezy" ]; then
       _OSV="wheezy"
       _NGINX_FORWARD_SECRECY=YES
