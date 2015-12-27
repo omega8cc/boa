@@ -905,6 +905,7 @@ init_setup() {
       rkey="${email}"
     fi
     email="${fqdn}"
+    user="o1"
   fi
   if [ "${kind}" = "public" ] || [ "${kind}" = "web" ]; then
     if [ "${user}" = "ask" ] \
