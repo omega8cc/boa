@@ -2731,7 +2731,7 @@ else
     || [ "${_VMFAMILY}" = "VS" ]; then
     _PERMISSIONS_FIX=YES
     _MODULES_FIX=YES
-    n=$((RANDOM%800+80))
+    n=$((RANDOM%900+80))
     echo "waiting $n sec"
     sleep $n
   fi
