@@ -6,7 +6,9 @@ SHELL=/bin/bash
 branch="2.4.x-dev"
 cluster="BOA-2.4.7"
 hd="HEAD"
-lgcy="BOA-2.2.9"
+lgcA="BOA-2.2.9"
+lgcB="BOA-2.3.8"
+lgcC="BOA-2.4.7"
 master="master"
 nextv="BOA-3.0.0-dev"
 stbl="BOA-2.4.7"
@@ -554,12 +556,26 @@ up_action() {
       wait
       sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${barName}
       wait
-      if [ "${cmmand}" = "up-legacy" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcy}/g" ${vBs}/${barName}
+      if [ "${cmmand}" = "up-2.2" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcA}/g" ${vBs}/${barName}
         wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcy}/g" ${vBs}/${barName}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcA}/g" ${vBs}/${barName}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcy}/g"         ${vBs}/${barName}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcA}/g"         ${vBs}/${barName}
+        wait
+      elif [ "${cmmand}" = "up-2.3" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcB}/g" ${vBs}/${barName}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcB}/g" ${vBs}/${barName}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcB}/g"         ${vBs}/${barName}
+        wait
+      elif [ "${cmmand}" = "up-2.4" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${barName}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${barName}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${barName}
         wait
       else
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${barName}
@@ -701,7 +717,7 @@ up_action() {
           n=8
         fi
         if [ -e "/root/.dbhd.clstr.cnf" ]; then
-          n=$((RANDOM%1800+80))
+          n=$((RANDOM%900+80))
         fi
         echo
         echo "Preparing the upgrade in silent mode..."
@@ -724,7 +740,8 @@ up_action() {
         wait
         if [ "${silent}" = "system" ]; then
           touch /var/run/boa_system_wait.pid
-          if [ "${cmmand}" = "up-legacy" ]; then
+          if [ "${cmmand}" = "up-2.2" ] \
+            || [ "${cmmand}" = "up-2.3" ]; then
             sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"      ${vBs}/${barName}
             wait
             sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"              ${barCnf}
@@ -1072,11 +1089,16 @@ proceed() {
   elif [ "${cmmand}" = "up-stable" ]; then
     _SCRIPT_URL="$rgUrl/${stbl}/${barName}"
     curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
-  elif [ "${cmmand}" = "up-legacy" ]; then
-    _SCRIPT_URL="$rgUrl/${lgcy}/${barName}"
+  elif [ "${cmmand}" = "up-2.4" ]; then
+    _SCRIPT_URL="$rgUrl/${lgcC}/${barName}"
+    curl ${crlGet} "${rgUrl}/${lgcC}/${pthIncB}"    -o ${vBs}/${filIncB}
+  elif [ "${cmmand}" = "up-2.3" ]; then
+    _SCRIPT_URL="$rgUrl/${lgcB}/${barName}"
+  elif [ "${cmmand}" = "up-2.2" ]; then
+    _SCRIPT_URL="$rgUrl/${lgcA}/${barName}"
   else
     echo
-    echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log} {newrelickey|php-5.6|php-5.5|php-5.4|php-5.3|php-all|nodns}"
+    echo "Usage: $(basename "$0") {up-stable|up-head|up-2.4|up-2.3|up-2.2} {system|log} {newrelickey|php-5.6|php-5.5|php-5.4|php-5.3|php-all|nodns}"
     echo
     echo "  Silent Mode Option: system == OS only upgrade"
     echo "  Silent Mode Option: log ===== OS and Aegir Master Instance upgrade"

@@ -187,6 +187,7 @@ backup() {
     fi
   fi
   if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
+    && [ "${_DOW}" = "7" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
     duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
   fi
@@ -351,7 +352,7 @@ install() {
 }
 
 if [ "$1" = "backup" ]; then
-  n=$((RANDOM%1800+80))
+  n=$((RANDOM%900+80))
   echo "waiting $n seconds before running backup..."
   sleep $n
   if test -f /var/run/${_HST}_backup.pid ; then

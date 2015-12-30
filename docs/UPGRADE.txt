@@ -115,13 +115,13 @@
     $ octopus up-stable all platforms
 
  => To keep Legacy version instead of Stable, use the same commands, but
-    replace "up-stable" with "up-legacy".
+    replace "up-stable" with the legacy version you want to still use:
+    "up-2.4", "up-2.3" or "up-2.2".
 
-    The Legacy version is currently the last Edition in the 2.2.x series,
-    which is BOA-2.2.9
-
-    Note that once you will upgrade to current Stable or HEAD, you can't
-    downgrade back to Legacy version!
+    The oldest Legacy version (up-2.2) is the last Edition in the 2.2.x series
+    which still supported Drupal 5 and used Drush 4 with old Aegir version.
+    Note that once you have current stable or head installed, you can't
+    go back to any legacy version.
 
  => To use HEAD instead of Stable, use the same commands, but replace
     "up-stable" with "up-head". Please never use HEAD version on any production

@@ -42,9 +42,9 @@
 
 4. Install Barracuda and Octopus.
 
-   You must specify the kind of install with {in-stable|in-head|in-legacy},
-   location with {local|public}, your hostname and e-mail address,
-   as shown below.
+   You must specify the kind of install with {in-stable|in-head} or for
+   legacy versions with {in-2.4|in-2.3|in-2.2}, location with {local|public},
+   your hostname and e-mail address, as shown further below.
 
    Specifying Octopus username is optional. It will use "o1" if empty.
 
@@ -77,10 +77,7 @@
    replace "in-stable" with "in-head"
 
    To install Legacy version instead of Stable, use the same commands, but
-   replace "in-stable" with "in-legacy"
-
-   The Legacy version is currently the last Edition in the 2.2.x series,
-   which is BOA-2.2.9
+   replace "in-stable" with "in-2.4", "in-2.3" or "in-2.2".
 
    Note that once you will install current Stable or HEAD, you can't
    downgrade back to Legacy version!
@@ -101,15 +98,21 @@
    as shown below. For local installs you don't need to specify
    hostname and Octopus username, as it is fully automated.
 
-   The last {ask|mini|max} part is optional, if you wish to control
-   Octopus platforms install mode, as explained below - none is
-   the same as "ask".
+   The last {ask|mini|max|none} part is optional, if you wish to control
+   Octopus platforms install mode, as explained below.
+
+   You can also specify PHP version to install, as shown in examples below.
+   The {php-5.6|php-5.5|php-5.4|php-5.3|php-all} argument can be either added
+   after {ask|mini|max|none} or specified instead of {ask|mini|max|none}
 
    # Stable on localhost - prompt for every platform install
    $ boa in-stable local my@email
 
-   # Stable on localhost - no prompt with 3xD6 + 3xD7 only
-   $ boa in-stable local my@email mini
+   # Stable on localhost - prompt for every platform + install all PHP versions
+   $ boa in-stable local my@email php-all
+
+   # Stable on localhost - no prompt with 3xD6 + 3xD7 only + single PHP version
+   $ boa in-stable local my@email mini php-5.6
 
    # Stable on localhost - no prompt with all platforms installed
    $ boa in-stable local my@email max
@@ -118,12 +121,12 @@
    replace "in-stable" with "in-head"
 
    To install Legacy version instead of Stable, use the same commands, but
-   replace "in-stable" with "in-legacy"
+   replace "in-stable" with "in-2.4", "in-2.3" or "in-2.2".
 
-   The Legacy version is the last Edition in the 2.2.x series which still
-   supported Drupal 5 and used Drush 4 along with older Aegir version.
+   The oldest Legacy version (in-2.2) is the last Edition in the 2.2.x series
+   which still supported Drupal 5 and used Drush 4 along with old Aegir version.
    Note that once you have current stable or head installed, you can't
-   go back to legacy version.
+   go back to any legacy version.
 
 
 ### Installing more Octopus instances
