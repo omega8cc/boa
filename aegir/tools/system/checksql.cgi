@@ -91,4 +91,4 @@ sub repair_this_action
   system("echo \"/usr/bin/mysqlcheck -a $FIXTABLE\" >> $fixfile");
   system("echo \" \" >> $fixfile");
 }
-###EOF2015###
+###EOF2016###
