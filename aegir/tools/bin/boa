@@ -1240,6 +1240,7 @@ display_info() {
     if [ "${kind}" = "more" ] \
       && [ -e "/var/log/barracuda_log.txt" ]; then
       cat /var/log/barracuda_log.txt | grep 2015
+      cat /var/log/barracuda_log.txt | grep 2016
     fi
     echo
     echo "Please link this information in your submission,"
