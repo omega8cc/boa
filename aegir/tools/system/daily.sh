@@ -2635,7 +2635,7 @@ action() {
 echo "INFO: Daily maintenance start"
 #
 _NOW=$(date +%y%m%d-%H%M 2>&1)
-_DOW=$(date +%w 2>&1)
+_DOW=$(date +%u 2>&1)
 _CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
 if [ -e "/root/.force.sites.verify.cnf" ]; then

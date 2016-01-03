@@ -47,7 +47,7 @@ _DUPLICITY_VRN="0.7.05"
 _BOTO_VRN="2.36.0"
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
-_DOW=$(date +%w 2>&1)
+_DOW=$(date +%u 2>&1)
 _HST=$(uname -n 2>&1)
 _HST=${_HST//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
