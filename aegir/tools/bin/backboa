@@ -189,8 +189,10 @@ backup() {
   if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
     && [ "${_DOW}" = "7" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
+    echo "Running cleanup --force on `date`"
     duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
   fi
+  echo "Running standard backup on `date`"
   duplicity -v ${_AWS_VLV} --volsize 100 \
     --allow-source-mismatch \
     --full-if-older-than ${_AWS_FLC} \
@@ -199,11 +201,14 @@ backup() {
   if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
     && [ "${_DOW}" = "7" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
+    echo "Running remove-older-than on `date`"
     duplicity -v ${_AWS_VLV} remove-older-than ${_AWS_TTL} \
       --force ${_AWS_OPX} ${TARGET} >> ${LOGFILE}
+    echo "Running collection-status on `date`"
     duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET} >> ${LOGFILE}
   fi
   if [ -n "${_MY_EMAIL}" ] && [ "${_AWS_VLV}" -lt "3" ]; then
+    echo "Sending email report on `date`"
     mail -s "Daily backup: ${_HST} $(date 2>&1)" ${_MY_EMAIL} < ${LOGFILE}
   fi
   cat /var/xdrago/log/${BUCKET}.log >> /var/xdrago/log/${BUCKET}.archive.log
