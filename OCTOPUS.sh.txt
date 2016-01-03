@@ -53,6 +53,7 @@ export _USER="${_USER}"
 ###
 _DRUSH_VERSION=mini-8-19-11-2015
 _NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=${_NOW//[^0-9-]/}
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
 _REDIS_M_VERSION=mod-26-06-2015
@@ -62,6 +63,7 @@ _SMALLCORE8=8.0.1
 _SPINNER=YES
 _T_BUILD=HEAD
 _TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
 _F_TIME=$(date 2>&1)
 _USRG=users
 _WEBG=www-data

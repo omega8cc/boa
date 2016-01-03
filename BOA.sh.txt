@@ -46,6 +46,7 @@ SHELL=/bin/bash
 export DEBIAN_FRONTEND=noninteractive
 
 _TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
 _X_VERSION="BOA-2.4.7"
 #
 saCoreN="SA-CORE-2014-005"
