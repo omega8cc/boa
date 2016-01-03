@@ -2709,14 +2709,6 @@ fi
 #
 find_fast_mirror
 #
-if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ]; then
-  rm -f /var/backups/BOA.sh.txt-*
-  curl ${crlGet} "http://${_USE_MIR}/BOA.sh.txt" \
-    -o /var/backups/BOA.sh.txt-${_NOW}
-  bash /var/backups/BOA.sh.txt-${_NOW} &> /dev/null
-  rm -f /var/backups/BOA.sh.txt-${_NOW}
-fi
-#
 if [ -e "/var/run/boa_wait.pid" ] \
   && [ ! -e "/var/run/boa_system_wait.pid" ]; then
   touch /var/xdrago/log/wait-for-boa
