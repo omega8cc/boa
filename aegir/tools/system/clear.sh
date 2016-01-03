@@ -72,9 +72,7 @@ find_fast_mirror() {
   urlStb="http://${_USE_MIR}/versions/stable"
 }
 
-if [ -e "/var/run/boa_run.pid" ]; then
-  sleep 1
-else
+if [ ! -e "/var/run/boa_run.pid" ]; then
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
   fi
