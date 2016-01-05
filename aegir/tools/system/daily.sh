@@ -312,8 +312,6 @@ enable_modules() {
 
 fix_user_register_protection() {
 
-  _PLR_CTRL_F="${Plr}/sites/all/modules/boa_platform_control.ini"
-
   if [ -e "${User}/static/control/enable_user_register_protection.info" ] \
     && [ -e "/data/conf/default.boa_platform_control.ini" ] \
     && [ ! -e "${_PLR_CTRL_F}" ]; then
@@ -364,7 +362,6 @@ fix_user_register_protection() {
     _ENABLE_USER_REGISTER_PROTECTION=YES
   fi
 
-  _DIR_CTRL_F="${Dir}/modules/boa_site_control.ini"
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
     cp -af /data/conf/default.boa_site_control.ini ${_DIR_CTRL_F} &> /dev/null
@@ -943,7 +940,6 @@ check_solr() {
 
 setup_solr() {
 
-  _DIR_CTRL_F="${Dir}/modules/boa_site_control.ini"
   _SOLR_DIR="/opt/solr4/${_HM_U}.${Dom}"
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
@@ -2154,11 +2150,13 @@ process() {
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
+      _DIR_CTRL_F="${Dir}/modules/boa_site_control.ini"
       Plr=$(cat ${User}/.drush/${Dom}.alias.drushrc.php \
         | grep "root'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
+      _PLR_CTRL_F="${Plr}/sites/all/modules/boa_platform_control.ini"
       if [ -e "${Plr}" ]; then
         if [ "${_NEW_SSL}" = "YES" ] \
           || [ "${_OSV}" = "jessie" ] \
