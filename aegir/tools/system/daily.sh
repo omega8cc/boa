@@ -162,8 +162,6 @@ run_drush7_hmr_cmd() {
 }
 
 run_drush7_nosilent_cmd() {
-  su -s /bin/bash - ${_HM_U}.ftp -c "drush7 cc drush" &> /dev/null
-  rm -f -r ${User}/.tmp/cache
   su -s /bin/bash - ${_HM_U}.ftp -c "drush7 @${Dom} $1"
 }
 
@@ -312,8 +310,6 @@ enable_modules() {
 
 fix_user_register_protection() {
 
-  _PLR_CTRL_F="${Plr}/sites/all/modules/boa_platform_control.ini"
-
   if [ -e "${User}/static/control/enable_user_register_protection.info" ] \
     && [ -e "/data/conf/default.boa_platform_control.ini" ] \
     && [ ! -e "${_PLR_CTRL_F}" ]; then
@@ -364,7 +360,6 @@ fix_user_register_protection() {
     _ENABLE_USER_REGISTER_PROTECTION=YES
   fi
 
-  _DIR_CTRL_F="${Dir}/modules/boa_site_control.ini"
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
     cp -af /data/conf/default.boa_site_control.ini ${_DIR_CTRL_F} &> /dev/null
@@ -943,7 +938,6 @@ check_solr() {
 
 setup_solr() {
 
-  _DIR_CTRL_F="${Dir}/modules/boa_site_control.ini"
   _SOLR_DIR="/opt/solr4/${_HM_U}.${Dom}"
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
@@ -2154,11 +2148,13 @@ process() {
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
+      _DIR_CTRL_F="${Dir}/modules/boa_site_control.ini"
       Plr=$(cat ${User}/.drush/${Dom}.alias.drushrc.php \
         | grep "root'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
+      _PLR_CTRL_F="${Plr}/sites/all/modules/boa_platform_control.ini"
       if [ -e "${Plr}" ]; then
         if [ "${_NEW_SSL}" = "YES" ] \
           || [ "${_OSV}" = "jessie" ] \
@@ -2529,8 +2525,10 @@ action() {
         echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
         echo "User ${User}"
         mkdir -p ${User}/log/ctrl
-        su -s /bin/bash ${_HM_U} -c "drush7 cc drush &> /dev/null"
+        su -s /bin/bash ${_HM_U} -c "drush7 cc drush" &> /dev/null
         rm -f -r ${User}/.tmp/cache
+        su -s /bin/bash - ${_HM_U}.ftp -c "drush7 cc drush" &> /dev/null
+        rm -f -r /home/${_HM_U}.ftp/.tmp/cache
         _SQL_CONVERT=NO
         _DEL_OLD_EMPTY_PLATFORMS="0"
         if [ -e "/root/.${_HM_U}.octopus.cnf" ]; then
@@ -2560,7 +2558,7 @@ action() {
         rm -f -r /home/${_HM_U}.ftp/drush-backups
         if [ -e "${_THIS_HM_SITE}" ]; then
           cd ${_THIS_HM_SITE}
-          su -s /bin/bash ${_HM_U} -c "drush7 cc drush &> /dev/null"
+          su -s /bin/bash ${_HM_U} -c "drush7 cc drush" &> /dev/null
           rm -f -r ${User}/.tmp/cache
           run_drush7_hmr_cmd "vset \
             --always-set hosting_advanced_cron_default_interval 86400"
@@ -2669,7 +2667,7 @@ if [ "${_DOW}" = "6" ]; then
     memcache_admin performance poormanscron search_krumo security_review \
     stage_file_proxy supercron syslog ultimate_cron update varnish \
     watchdog_live xhprof"
-elif [ "${_DOW}" = "8" ]; then
+elif [ "${_DOW}" = "3" ]; then
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
   _MODULES_OFF_SEVEN="background_process dblog syslog update"
@@ -2703,14 +2701,6 @@ if [ -e "/root/.barracuda.cnf" ]; then
 fi
 #
 find_fast_mirror
-#
-if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ]; then
-  rm -f /var/backups/BOA.sh.txt-*
-  curl ${crlGet} "http://${_USE_MIR}/BOA.sh.txt" \
-    -o /var/backups/BOA.sh.txt-${_NOW}
-  bash /var/backups/BOA.sh.txt-${_NOW} &> /dev/null
-  rm -f /var/backups/BOA.sh.txt-${_NOW}
-fi
 #
 if [ -e "/var/run/boa_wait.pid" ] \
   && [ ! -e "/var/run/boa_system_wait.pid" ]; then

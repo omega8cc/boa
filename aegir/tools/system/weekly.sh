@@ -34,7 +34,7 @@ check_root
 ###-------------SYSTEM-----------------###
 fix_clear_cache() {
   if [ -e "${Plr}/profiles/hostmaster" ]; then
-    su -s /bin/bash - ${_THIS_U} -c "drush @hostmaster cc all &> /dev/null"
+    su -s /bin/bash - ${_THIS_U} -c "drush @hostmaster cc all" &> /dev/null
   fi
 }
 
@@ -809,17 +809,17 @@ action() {
               | LIVE Dbs <strong>${SumDatH}</strong> MB \
               | DEV Dbs <strong>${SkipDtH}</strong> MB \
               | <strong>${_CLIENT_CORES}</strong> \
-              Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}' &> /dev/null"
+              Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}'" &> /dev/null
             su -s /bin/bash - ${_THIS_U} \
-              -c "drush @hostmaster cc all &> /dev/null"
+              -c "drush @hostmaster cc all" &> /dev/null
           fi
         else
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} \
               -c "drush @hostmaster vset \
-              --always-set site_footer '' &> /dev/null"
+              --always-set site_footer ''" &> /dev/null
             su -s /bin/bash - ${_THIS_U} \
-              -c "drush @hostmaster cc all &> /dev/null"
+              -c "drush @hostmaster cc all" &> /dev/null
           fi
         fi
         echo "Done for ${User}"

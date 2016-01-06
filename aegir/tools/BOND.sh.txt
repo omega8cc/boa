@@ -767,7 +767,7 @@ restore_default_nginx() {
       wait
     done
   fi
-  su -s /bin/bash - aegir -c "drush @server_master provision-verify &> /dev/null"
+  su -s /bin/bash - aegir -c "drush @server_master provision-verify" &> /dev/null
   mrun "sleep 8"
 }
 #

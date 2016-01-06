@@ -360,7 +360,7 @@ install() {
 
 if [ "$1" = "backup" ]; then
   n=$((RANDOM%900+80))
-  echo "waiting $n seconds before running backup..."
+  echo "Waiting $n seconds before running backup..."
   sleep $n
   if test -f /var/run/${_HST}_backup.pid ; then
     touch /var/xdrago/log/wait_${_HST}_backup.log
