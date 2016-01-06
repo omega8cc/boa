@@ -78,7 +78,7 @@ do_syncpass() {
         su -s /bin/bash - ${uname} -c "drush @hostmaster \
           sqlq \"UPDATE hosting_db_server \
           SET db_passwd='${_ESC_APASS}' \
-          WHERE db_user='aegir_root'\" &> /dev/null"
+          WHERE db_user='aegir_root'\"" &> /dev/null
         mysql -u root -e "UPDATE mysql.user SET \
           Password=PASSWORD('${_ESC_APASS}') \
           WHERE User='aegir_root';" &> /dev/null
@@ -108,7 +108,7 @@ do_syncpass() {
           mysqladmin flush-hosts &> /dev/null
           su -s /bin/bash - ${uname} -c "drush @hostmaster \
             sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_APASS}' \
-            WHERE db_user='${uname}'\" &> /dev/null"
+            WHERE db_user='${uname}'\"" &> /dev/null
           mysql -u root -e "UPDATE mysql.user \
             SET Password=PASSWORD('${_ESC_APASS}') \
             WHERE User='${uname}';" &> /dev/null

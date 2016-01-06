@@ -1899,7 +1899,7 @@ provision_backend_dbpass_sync() {
   if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
-      WHERE db_user='${_USER}'\" &> /dev/null"
+      WHERE db_user='${_USER}'\"" &> /dev/null
     mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ESC_PASS}') \
       WHERE User='${_USER}';" &> /dev/null
     sed -i \
@@ -1908,32 +1908,32 @@ provision_backend_dbpass_sync() {
     wait
   fi
   mysqladmin flush-privileges &> /dev/null
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush &> /dev/null"
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush" &> /dev/null
   rm -f -r ${_ROOT}/.tmp/cache
   if [ -e "${_ROOT}/.drush/server_localhost.alias.drushrc.php" ]; then
     su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
-      hosting-task @server_localhost verify --force &> /dev/null"
+      hosting-task @server_localhost verify --force" &> /dev/null
   else
     su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
-      hosting-task @server_master verify --force &> /dev/null"
+      hosting-task @server_master verify --force" &> /dev/null
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Running hosting-dispatch (1/3)..."
   fi
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} '@hostmaster' \
-    hosting-dispatch &> /dev/null"
+    hosting-dispatch" &> /dev/null
   mrun "sleep 5"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Running hosting-dispatch (2/3)..."
   fi
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} '@hostmaster' \
-    hosting-dispatch &> /dev/null"
+    hosting-dispatch" &> /dev/null
   mrun "sleep 5"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Running hosting-dispatch (3/3)..."
   fi
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} '@hostmaster' \
-    hosting-dispatch &> /dev/null"
+    hosting-dispatch" &> /dev/null
 }
 
 #
