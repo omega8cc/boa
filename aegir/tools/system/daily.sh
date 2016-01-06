@@ -162,8 +162,6 @@ run_drush7_hmr_cmd() {
 }
 
 run_drush7_nosilent_cmd() {
-  su -s /bin/bash - ${_HM_U}.ftp -c "drush7 cc drush" &> /dev/null
-  rm -f -r ${User}/.tmp/cache
   su -s /bin/bash - ${_HM_U}.ftp -c "drush7 @${Dom} $1"
 }
 
@@ -2529,6 +2527,8 @@ action() {
         mkdir -p ${User}/log/ctrl
         su -s /bin/bash ${_HM_U} -c "drush7 cc drush &> /dev/null"
         rm -f -r ${User}/.tmp/cache
+        su -s /bin/bash - ${_HM_U}.ftp -c "drush7 cc drush" &> /dev/null
+        rm -f -r /home/${_HM_U}.ftp/.tmp/cache
         _SQL_CONVERT=NO
         _DEL_OLD_EMPTY_PLATFORMS="0"
         if [ -e "/root/.${_HM_U}.octopus.cnf" ]; then
