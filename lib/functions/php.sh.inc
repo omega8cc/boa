@@ -566,17 +566,19 @@ install_php_extensions() {
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ] \
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.2" ]; then
         mkdir -p /var/backups/libyaml
+        mkdir -p /usr/lib/x86_64-linux-gnu
         cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/ &> /dev/null
         rm -f /usr/lib/x86_64-linux-gnu/libyaml*
-        cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/
+        cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/ &> /dev/null
       fi
     else
       if [ ! -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.4" ] \
         || [ -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.2" ]; then
         mkdir -p /var/backups/libyaml
-        cp -af /usr/lib/i386-linux-gnu/libyaml* /var/backups/libyaml/
+        mkdir -p /usr/lib/i386-linux-gnu
+        cp -af /usr/lib/i386-linux-gnu/libyaml* /var/backups/libyaml/ &> /dev/null
         rm -f /usr/lib/i386-linux-gnu/libyaml*
-        cp -af /usr/lib/libyaml* /usr/lib/i386-linux-gnu/
+        cp -af /usr/lib/libyaml* /usr/lib/i386-linux-gnu/ &> /dev/null
       fi
     fi
   fi
