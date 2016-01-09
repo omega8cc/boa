@@ -527,9 +527,9 @@ install_php_extensions() {
   fi
   cd /var/opt
   rm -f -r imagick*
-  if [ "$1" != "53" ]; then
-    get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
-    cd /var/opt/imagick-${_IMAGICK_VRN}
+  if [ "$1" = "53" ]; then
+    get_dev_src "imagick-${_IMAGICK_OLD_VRN}.tgz"
+    cd /var/opt/imagick-${_IMAGICK_OLD_VRN}
   else
     get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
     cd /var/opt/imagick-${_IMAGICK_VRN}
@@ -724,6 +724,13 @@ update_php_extensions() {
     rm -f -r imagick*
     get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
     cd /var/opt/imagick-${_IMAGICK_VRN}
+    if [ "$1" = "53" ]; then
+      get_dev_src "imagick-${_IMAGICK_OLD_VRN}.tgz"
+      cd /var/opt/imagick-${_IMAGICK_OLD_VRN}
+    else
+      get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
+      cd /var/opt/imagick-${_IMAGICK_VRN}
+    fi
     st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
