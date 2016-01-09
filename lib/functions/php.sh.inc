@@ -722,8 +722,6 @@ update_php_extensions() {
     fi
     cd /var/opt
     rm -f -r imagick*
-    get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
-    cd /var/opt/imagick-${_IMAGICK_VRN}
     if [ "$1" = "53" ]; then
       get_dev_src "imagick-${_IMAGICK_OLD_VRN}.tgz"
       cd /var/opt/imagick-${_IMAGICK_OLD_VRN}
