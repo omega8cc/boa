@@ -168,6 +168,7 @@ gCb="git clone --branch"
 gitHub="https://github.com/omega8cc"
 gitLab="https://gitlab.com/omega8cc"
 libFnc="${bldPth}/lib/functions"
+locCnf="${bldPth}/aegir/conf"
 vBs="/var/backups"
 
 ###---### Functions
