@@ -582,14 +582,14 @@ update_php_conf() {
 #
 restore_default_php() {
   msg "INFO: Restoring default PHP configuration"
-  cp -af /opt/tmp/boa/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini &> /dev/null
-  cp -af /opt/tmp/boa/aegir/conf/php53.ini /opt/php53/etc/php53.ini   &> /dev/null
-  cp -af /opt/tmp/boa/aegir/conf/php54-cli.ini /opt/php54/lib/php.ini &> /dev/null
-  cp -af /opt/tmp/boa/aegir/conf/php54.ini /opt/php54/etc/php54.ini   &> /dev/null
-  cp -af /opt/tmp/boa/aegir/conf/php55-cli.ini /opt/php55/lib/php.ini &> /dev/null
-  cp -af /opt/tmp/boa/aegir/conf/php55.ini /opt/php55/etc/php55.ini   &> /dev/null
-  cp -af /opt/tmp/boa/aegir/conf/php56-cli.ini /opt/php56/lib/php.ini &> /dev/null
-  cp -af /opt/tmp/boa/aegir/conf/php56.ini /opt/php56/etc/php56.ini   &> /dev/null
+  cp -af ${bldPth}/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini &> /dev/null
+  cp -af ${bldPth}/aegir/conf/php53.ini /opt/php53/etc/php53.ini   &> /dev/null
+  cp -af ${bldPth}/aegir/conf/php54-cli.ini /opt/php54/lib/php.ini &> /dev/null
+  cp -af ${bldPth}/aegir/conf/php54.ini /opt/php54/etc/php54.ini   &> /dev/null
+  cp -af ${bldPth}/aegir/conf/php55-cli.ini /opt/php55/lib/php.ini &> /dev/null
+  cp -af ${bldPth}/aegir/conf/php55.ini /opt/php55/etc/php55.ini   &> /dev/null
+  cp -af ${bldPth}/aegir/conf/php56-cli.ini /opt/php56/lib/php.ini &> /dev/null
+  cp -af ${bldPth}/aegir/conf/php56.ini /opt/php56/etc/php56.ini   &> /dev/null
 }
 #
 tune_php() {
@@ -654,7 +654,7 @@ restore_default_sql() {
     else
       cp -af /etc/mysql/my.cnf \
         /var/backups/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW} &> /dev/null
-      cp -af /opt/tmp/boa/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
+      cp -af ${bldPth}/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
       _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
       if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         if [ "${_INNODB_LOG_FILE_SIZE}" -ge "10" ] \
@@ -759,7 +759,7 @@ tune_sql() {
 restore_default_nginx() {
   msg "INFO: Restoring default Nginx configuration"
   cd /var/xdrago/monitor/check
-  cp -af /opt/tmp/boa/aegir/tools/system/monitor/check/scan_nginx ./
+  cp -af ${bldPth}/aegir/tools/system/monitor/check/scan_nginx ./
   if [ -d "${_TUNE_HOSTMASTER}" ]; then
     for Files in `find ${_TUNE_HOSTMASTER}/config/server_master/nginx/vhost.d -type f`; do
       sed -i "s/#limit_conn /limit_conn /g" $Files &> /dev/null
@@ -1393,7 +1393,7 @@ _SRCDIR="/opt/tmp/files"
 mkdir -p ${_SRCDIR}
 chmod -R 777 /opt/tmp &> /dev/null
 cd /opt/tmp
-rm -f -r /opt/tmp/boa
+rm -f -r ${bldPth}
 if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
   ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
 else
@@ -1404,7 +1404,7 @@ fi
 # Get spinner
 cd ${_SRCDIR}
 rm -f spinner*
-cp -af /opt/tmp/boa/aegir/helpers/spinner ./
+cp -af ${bldPth}/aegir/helpers/spinner ./
 chmod +x spinner &> /dev/null
 #
 # Create tmp stuff
