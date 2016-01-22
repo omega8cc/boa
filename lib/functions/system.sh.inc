@@ -1563,6 +1563,7 @@ do_install_latest_git() {
     touch ${pthLog}/git-${_GIT_VRN}-${_X_VERSION}-${_NOW}.log
     echo "git hold" | dpkg --set-selections
     echo "git-core hold" | dpkg --set-selections
+    echo "git-man hold" | dpkg --set-selections
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Git ${_GIT_VRN} already installed from sources, OK"
@@ -2770,6 +2771,7 @@ more_packages_install_on_init() {
     fix_locales
     ${_INITINS} git &> /dev/null
     ${_INITINS} git-core &> /dev/null
+    ${_INITINS} git-man &> /dev/null
     ${_INITINS} aptitude &> /dev/null
     ${_INITINS} axel &> /dev/null
   fi
@@ -2853,6 +2855,7 @@ if_squeeze_to_wheezy() {
     echo "curl install"           | dpkg --set-selections
     echo "git install"            | dpkg --set-selections
     echo "git-core install"       | dpkg --set-selections
+    echo "git-man install"        | dpkg --set-selections
     echo "libssl-dev install"     | dpkg --set-selections
     echo "openssh-client install" | dpkg --set-selections
     echo "openssh-server install" | dpkg --set-selections
@@ -2869,6 +2872,7 @@ if_squeeze_to_wheezy() {
     mrun "apt-get install curl ${forCer}"           2> /dev/null
     mrun "apt-get install git ${forCer}"            2> /dev/null
     mrun "apt-get install git-core ${forCer}"       2> /dev/null
+    mrun "apt-get install git-man ${forCer}"        2> /dev/null
     mrun "apt-get install openssh-client ${forCer}" 2> /dev/null
     mrun "apt-get install openssh-server ${forCer}" 2> /dev/null
     mrun "apt-get install ssh ${forCer}"            2> /dev/null

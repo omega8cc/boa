@@ -331,11 +331,11 @@ update_php_conf() {
 # Tune Web Sever configuration.
 tune_web_server_config() {
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
-  if [ "${_LIM_FPM}" -lt "24" ]; then
+  if [ "${_LIM_FPM}" -lt "48" ]; then
     if [[ "${_THISHOST}" =~ ".host8." ]] \
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
-      _LIM_FPM=24
+      _LIM_FPM=48
     fi
   fi
   _PROCESS_MAX_FPM=$(( _LIM_FPM * 5 ))
@@ -527,8 +527,13 @@ install_php_extensions() {
   fi
   cd /var/opt
   rm -f -r imagick*
-  get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
-  cd /var/opt/imagick-${_IMAGICK_VRN}
+  if [ "$1" = "53" ]; then
+    get_dev_src "imagick-${_IMAGICK_OLD_VRN}.tgz"
+    cd /var/opt/imagick-${_IMAGICK_OLD_VRN}
+  else
+    get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
+    cd /var/opt/imagick-${_IMAGICK_VRN}
+  fi
   st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
@@ -565,17 +570,19 @@ install_php_extensions() {
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ] \
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.2" ]; then
         mkdir -p /var/backups/libyaml
+        mkdir -p /usr/lib/x86_64-linux-gnu
         cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/ &> /dev/null
         rm -f /usr/lib/x86_64-linux-gnu/libyaml*
-        cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/
+        cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/ &> /dev/null
       fi
     else
       if [ ! -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.4" ] \
         || [ -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.2" ]; then
         mkdir -p /var/backups/libyaml
-        cp -af /usr/lib/i386-linux-gnu/libyaml* /var/backups/libyaml/
+        mkdir -p /usr/lib/i386-linux-gnu
+        cp -af /usr/lib/i386-linux-gnu/libyaml* /var/backups/libyaml/ &> /dev/null
         rm -f /usr/lib/i386-linux-gnu/libyaml*
-        cp -af /usr/lib/libyaml* /usr/lib/i386-linux-gnu/
+        cp -af /usr/lib/libyaml* /usr/lib/i386-linux-gnu/ &> /dev/null
       fi
     fi
   fi
@@ -715,8 +722,13 @@ update_php_extensions() {
     fi
     cd /var/opt
     rm -f -r imagick*
-    get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
-    cd /var/opt/imagick-${_IMAGICK_VRN}
+    if [ "$1" = "53" ]; then
+      get_dev_src "imagick-${_IMAGICK_OLD_VRN}.tgz"
+      cd /var/opt/imagick-${_IMAGICK_OLD_VRN}
+    else
+      get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
+      cd /var/opt/imagick-${_IMAGICK_VRN}
+    fi
     st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null

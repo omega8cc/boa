@@ -142,7 +142,7 @@ provision_backend_dbpass_sync() {
   if [ ! -z "${_ESC_APASS}" ] && [ ! -z "${_ENC_APASS}" ]; then
     su -s /bin/bash - aegir -c "drush @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_APASS}' \
-      WHERE db_user='$_ADBU'\" &> /dev/null"
+      WHERE db_user='$_ADBU'\"" &> /dev/null
     mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ESC_APASS}') \
       WHERE User='$_ADBU';" &> /dev/null
     sed -i "s/mysql:\/\/$_ADBU:.*/mysql:\/\/$_ADBU:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
@@ -150,29 +150,29 @@ provision_backend_dbpass_sync() {
     wait
   fi
   mysqladmin flush-privileges &> /dev/null
-  su -s /bin/bash - aegir -c "drush cc drush &> /dev/null"
+  su -s /bin/bash - aegir -c "drush cc drush" &> /dev/null
   rm -f -r /var/aegir/.tmp/cache
   if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ]; then
     su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_localhost \
-      verify --force &> /dev/null"
+      verify --force" &> /dev/null
   else
     su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_master \
-      verify --force &> /dev/null"
+      verify --force" &> /dev/null
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Running hosting-dispatch (1/3)..."
   fi
-  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
   mrun "sleep 5"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Running hosting-dispatch (2/3)..."
   fi
-  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
   mrun "sleep 5"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Running hosting-dispatch (3/3)..."
   fi
-  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
 }
 
 #
@@ -604,22 +604,22 @@ EOFMYSQL
     fi
     _U_HD="/var/aegir/.drush"
     chattr +i ${_U_HD}/php.ini &> /dev/null
-    su -s /bin/bash - aegir -c "drush cc drush &> /dev/null"
+    su -s /bin/bash - aegir -c "drush cc drush" &> /dev/null
     rm -f -r /var/aegir/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Running hosting-dispatch (1/3)..."
     fi
-    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
     mrun "sleep 5"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Running hosting-dispatch (2/3)..."
     fi
-    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
     mrun "sleep 5"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Running hosting-dispatch (3/3)..."
     fi
-    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
     if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
       _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
         | grep "root'" \

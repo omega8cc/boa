@@ -47,7 +47,9 @@ _DUPLICITY_VRN="0.7.05"
 _BOTO_VRN="2.36.0"
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
-_DOW=$(date +%w 2>&1)
+_NOW=${_NOW//[^0-9-]/}
+_DOW=$(date +%u 2>&1)
+_DOW=${_DOW//[^1-7]/}
 _HST=$(uname -n 2>&1)
 _HST=${_HST//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
@@ -77,7 +79,7 @@ if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
     _AWS_PWD='Your Secret Password'       ### [R] Generate with 'openssl rand -base64 32'
     _AWS_REG='Your AWS Region ID'         ### [R] By default 'us-east-1'
     _AWS_TTL='Your Backup Rotation'       ### [O] By default '30D'
-    _AWS_FLC='Your Backup Full Cycle'     ### [O] By default '7D'
+    _AWS_FLC='Your Backup Full Cycle'     ### [O] By default '6D'
     _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default '1'
     _AWS_PRG='Your Backup Progress'       ### [O] By default 'NO' -- can be YES/NO
 
@@ -143,7 +145,7 @@ fi
 
 _AWS_FLC=${_AWS_FLC//[^A-Z0-9]/}
 if [ -z "${_AWS_FLC}" ]; then
-  _AWS_FLC="7D"
+  _AWS_FLC="6D"
 fi
 
 _AWS_VLV=${_AWS_VLV//[^0-9]/}
@@ -189,9 +191,22 @@ backup() {
   if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
     && [ "${_DOW}" = "7" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
+    echo "Running cleanup --force on `date`"
     duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
   fi
-  duplicity -v ${_AWS_VLV} --volsize 100 \
+  if [ "${_DOW}" = "7" ] && [ "${_AWS_FLC}" = "6D" ]; then
+    _MODE="full"
+    _AWS_FLC="1M"
+  else
+    if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
+      && [ "${_DO_CLEANUP}" = "YES" ]; then
+      _MODE="incr"
+    else
+      _MODE="full"
+    fi
+  fi
+  echo "Running standard backup on `date`"
+  duplicity ${_MODE} -v ${_AWS_VLV} --volsize 100 \
     --allow-source-mismatch \
     --full-if-older-than ${_AWS_FLC} \
     --asynchronous-upload ${_AWS_OPX} \
@@ -199,11 +214,14 @@ backup() {
   if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
     && [ "${_DOW}" = "7" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
+    echo "Running remove-older-than on `date`"
     duplicity -v ${_AWS_VLV} remove-older-than ${_AWS_TTL} \
       --force ${_AWS_OPX} ${TARGET} >> ${LOGFILE}
+    echo "Running collection-status on `date`"
     duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET} >> ${LOGFILE}
   fi
   if [ -n "${_MY_EMAIL}" ] && [ "${_AWS_VLV}" -lt "3" ]; then
+    echo "Sending email report on `date`"
     mail -s "Daily backup: ${_HST} $(date 2>&1)" ${_MY_EMAIL} < ${LOGFILE}
   fi
   cat /var/xdrago/log/${BUCKET}.log >> /var/xdrago/log/${BUCKET}.archive.log
@@ -353,7 +371,7 @@ install() {
 
 if [ "$1" = "backup" ]; then
   n=$((RANDOM%900+80))
-  echo "waiting $n seconds before running backup..."
+  echo "Waiting $n seconds before running backup..."
   sleep $n
   if test -f /var/run/${_HST}_backup.pid ; then
     touch /var/xdrago/log/wait_${_HST}_backup.log

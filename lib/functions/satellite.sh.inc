@@ -1899,7 +1899,7 @@ provision_backend_dbpass_sync() {
   if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
-      WHERE db_user='${_USER}'\" &> /dev/null"
+      WHERE db_user='${_USER}'\"" &> /dev/null
     mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ESC_PASS}') \
       WHERE User='${_USER}';" &> /dev/null
     sed -i \
@@ -1908,32 +1908,32 @@ provision_backend_dbpass_sync() {
     wait
   fi
   mysqladmin flush-privileges &> /dev/null
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush &> /dev/null"
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush" &> /dev/null
   rm -f -r ${_ROOT}/.tmp/cache
   if [ -e "${_ROOT}/.drush/server_localhost.alias.drushrc.php" ]; then
     su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
-      hosting-task @server_localhost verify --force &> /dev/null"
+      hosting-task @server_localhost verify --force" &> /dev/null
   else
     su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
-      hosting-task @server_master verify --force &> /dev/null"
+      hosting-task @server_master verify --force" &> /dev/null
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Running hosting-dispatch (1/3)..."
   fi
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} '@hostmaster' \
-    hosting-dispatch &> /dev/null"
+    hosting-dispatch" &> /dev/null
   mrun "sleep 5"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Running hosting-dispatch (2/3)..."
   fi
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} '@hostmaster' \
-    hosting-dispatch &> /dev/null"
+    hosting-dispatch" &> /dev/null
   mrun "sleep 5"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Running hosting-dispatch (3/3)..."
   fi
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} '@hostmaster' \
-    hosting-dispatch &> /dev/null"
+    hosting-dispatch" &> /dev/null
 }
 
 #
@@ -3425,11 +3425,57 @@ satellite_detect_vm_family() {
   fi
 }
 
+satellite_check_php_compatibility() {
+  if [ -e "${_ROOT}/static/control/fpm.info" ]; then
+    _T_FPM_VRN=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
+    _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
+    _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
+    if [ "${_T_FPM_VRN}" = "7.0" ] \
+      || [ "${_T_FPM_VRN}" = "5.6" ] \
+      || [ "${_T_FPM_VRN}" = "5.5" ]; then
+      _PHP_FPM_LEGACY_FREE=YES
+    else
+      _PHP_FPM_LEGACY_FREE=NO
+    fi
+  else
+    _PHP_FPM_LEGACY_FREE=YES
+  fi
+  if [ -e "${_ROOT}/static/control/cli.info" ]; then
+    _T_CLI_VRN=$(cat ${_ROOT}/static/control/cli.info 2>&1)
+    _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
+    _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
+    if [ "${_T_CLI_VRN}" = "7.0" ] \
+      || [ "${_T_CLI_VRN}" = "5.6" ] \
+      || [ "${_T_CLI_VRN}" = "5.5" ]; then
+      _PHP_CLI_LEGACY_FREE=YES
+    else
+      _PHP_CLI_LEGACY_FREE=NO
+    fi
+  else
+    _PHP_CLI_LEGACY_FREE=YES
+  fi
+  if [ "${_PHP_CLI_LEGACY_FREE}" = "YES" ] \
+    && [ "${_PHP_FPM_LEGACY_FREE}" = "YES" ] ; then
+    _PHP_LEGACY_FREE=YES
+  else
+    _PHP_LEGACY_FREE=NO
+  fi
+  if [ "${_PHP_LEGACY_FREE}" = "NO" ]; then
+    msg "ERROR: This instance ${_USER} still depends on the old PHP version"
+    msg "FPM.${_T_FPM_VRN} CLI.${_T_CLI_VRN}"
+    msg "It is not possible to upgrade it to ${_X_VERSION}"
+    msg "Please switch FPM and CLI on ${_USER} to PHP 5.5 or newer"
+    msg "Then please run the octopus upgrade again"
+    msg "Bye"
+    clean_pid_exit
+  fi
+}
+
 satellite_check_octopus_versus_barracuda_version() {
   if [ ! -f "/var/log/barracuda_log.txt" ]; then
-    msg "ERROR: This script should be used only when the same version of BOA"
-    msg "was used before. Your system has to be configured/upgraded by BOA"
-    msg "version ${_X_VERSION} first"
+    msg "ERROR: This octopus installer can be used only when the same version"
+    msg "of boa or barracuda installer was used before. Your system must be"
+    msg "upgraded with barracuda installer version ${_X_VERSION} first"
     msg "Bye"
     clean_pid_exit
   else
@@ -3437,37 +3483,27 @@ satellite_check_octopus_versus_barracuda_version() {
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
       _VERSIONS_TEST_RESULT=OK
     else
-      msg "ERROR: This script should be used only when the same version of BOA"
-      msg "was used before. Your system has to be configured/upgraded by BOA"
-      msg "version ${_X_VERSION} first"
+      msg "ERROR: This octopus installer can be used only when the same version"
+      msg "of boa or barracuda installer was used before. Your system must be"
+      msg "upgraded with barracuda installer version ${_X_VERSION} first"
       msg "Bye"
       clean_pid_exit
     fi
   fi
-  if [ -e "/var/log/barracuda_log.txt" ]; then
-    _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-    if [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
-      if [[ ! "${_X_VERSION}" =~ "BOA-3." ]]; then
-        msg "ERROR: Your system has been already upgraded to modern BOA-3.x.x series"
-        msg "ERROR: You can not downgrade back to legacy or previous stable BOA version"
-        msg "ERROR: Please use barracuda up-stable to upgrade this system"
-        msg "Bye"
-        clean_pid_exit
-      fi
-    elif [[ "${_SERIES_TEST}" =~ "BOA-2.4." ]]; then
-      if [[ ! "${_X_VERSION}" =~ "BOA-2.4." ]]; then
-        msg "ERROR: Your system has been already upgraded to BOA-2.4.x series"
-        msg "ERROR: You can not downgrade to legacy or previous stable version"
-        msg "ERROR: Please use barracuda up-stable to upgrade this system"
-        msg "Bye"
-        clean_pid_exit
-      fi
-    fi
-  fi
   if [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
+    if [[ "${_SERIES_TEST}" =~ "BOA-2.4.7" ]]; then
+      _VERSIONS_TEST_RESULT=OK
+    else
+      msg "ERROR: This octopus installer can be used only when the instance"
+      msg "has been already upgraded to previous stable BOA-2.4.7 version"
+      msg "Please run 'octopus up-2.4 ${_USER} aegir' upgrade first"
+      msg "Bye"
+      clean_pid_exit
+    fi
     if [[ "${_SERIES_TEST}" =~ "BOA-2.3." ]] \
-      || [[ "${_SERIES_TEST}" =~ "BOA-2.4." ]]; then
+      || [[ "${_SERIES_TEST}" =~ "BOA-2.4." ]] \
+      || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
       _SERIES_RESULT=OK
     fi
   fi
