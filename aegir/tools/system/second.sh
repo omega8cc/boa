@@ -28,9 +28,7 @@ hold() {
 }
 
 terminate() {
-  if [ -e "/var/run/boa_run.pid" ]; then
-    sleep 1
-  else
+  if [ ! -e "/var/run/boa_run.pid" ]; then
     killall -9 php drush.php wget curl &> /dev/null
     echo "$(date 2>&1)" >> /var/xdrago/log/second.terminate.log
   fi

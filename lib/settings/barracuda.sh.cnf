@@ -1078,6 +1078,7 @@ download_helpers_libs() {
       apt-get update -qq &> /dev/null
       apt-get install git -fuy --force-yes --reinstall &> /dev/null
       apt-get install git-core -fuy --force-yes --reinstall &> /dev/null
+      apt-get install git-man -fuy --force-yes --reinstall &> /dev/null
       sleep 3
     fi
     ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git \

@@ -26,7 +26,9 @@ rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
 vBs="/var/backups"
 
 _TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
 _NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=${_NOW//[^0-9-]/}
 _L_VMFAMILY=XEN
 _L_VM_TEST=$(uname -a 2>&1)
 if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -424,7 +426,7 @@ octopus_install() {
     fi
 
     if [ "${cmmand}" = "in-head" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"       ${vBs}/${filIncO}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${filIncO}
       wait
     elif [ "${cmmand}" = "in-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncO}
@@ -799,7 +801,7 @@ barracuda_install() {
     fi
 
     if [ "${cmmand}" = "in-head" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"       ${vBs}/${filIncB}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${filIncB}
       wait
     elif [ "${cmmand}" = "in-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncB}
@@ -907,7 +909,22 @@ init_setup() {
     email="${fqdn}"
     user="o1"
   fi
-  if [ "${kind}" = "public" ] || [ "${kind}" = "web" ]; then
+  if [ "${kind}" = "public" ] \
+    || [ "${kind}" = "backdrop" ] \
+    || [ "${kind}" = "cluster" ] \
+    || [ "${kind}" = "drush" ] \
+    || [ "${kind}" = "gravcms" ] \
+    || [ "${kind}" = "jessie" ] \
+    || [ "${kind}" = "system" ]; then
+    if [ "${kind}" != "public" ]; then
+      silent="${kind}"
+      echo "FEATURE MODE: ${silent}"
+      master="feature/${silent}"
+      branch="feature/${silent}"
+    else
+      silent=
+    fi
+    kind="public"
     if [ "${user}" = "ask" ] \
       || [ "${user}" = "mini" ] \
       || [ "${user}" = "max" ] \
@@ -929,14 +946,22 @@ init_setup() {
     fi
   fi
   brnch=${branch//\//\\\/}
+  mstr=${master//\//\\\/}
 
   init_start
   set_pin_priority
   if [ "${cmmand}" = "in-head" ]; then
-    curl ${crlGet} "${rgUrl}/${master}/${barName}"  -o ${vBs}/${barName}
-    curl ${crlGet} "${rgUrl}/${master}/${octName}"  -o ${vBs}/${octName}
-    curl ${crlGet} "${rgUrl}/${master}/${pthIncB}"  -o ${vBs}/${filIncB}
-    curl ${crlGet} "${rgUrl}/${master}/${pthIncO}"  -o ${vBs}/${filIncO}
+    if [ ! -z "${silent}" ]; then
+      curl ${crlGet} "${rgUrl}/feature/${silent}/${barName}" -o ${vBs}/${barName}
+      curl ${crlGet} "${rgUrl}/feature/${silent}/${octName}" -o ${vBs}/${octName}
+      curl ${crlGet} "${rgUrl}/feature/${silent}/${pthIncB}" -o ${vBs}/${filIncB}
+      curl ${crlGet} "${rgUrl}/feature/${silent}/${pthIncO}" -o ${vBs}/${filIncO}
+    else
+      curl ${crlGet} "${rgUrl}/${master}/${barName}"  -o ${vBs}/${barName}
+      curl ${crlGet} "${rgUrl}/${master}/${octName}"  -o ${vBs}/${octName}
+      curl ${crlGet} "${rgUrl}/${master}/${pthIncB}"  -o ${vBs}/${filIncB}
+      curl ${crlGet} "${rgUrl}/${master}/${pthIncO}"  -o ${vBs}/${filIncO}
+    fi
   elif [ "${cmmand}" = "in-cluster" ]; then
     curl ${crlGet} "${rgUrl}/${cluster}/${barName}" -o ${vBs}/${barName}
     curl ${crlGet} "${rgUrl}/${cluster}/${octName}" -o ${vBs}/${octName}
