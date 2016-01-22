@@ -72,9 +72,7 @@ find_fast_mirror() {
   urlStb="http://${_USE_MIR}/versions/stable"
 }
 
-if [ -e "/var/run/boa_run.pid" ]; then
-  sleep 1
-else
+if [ ! -e "/var/run/boa_run.pid" ]; then
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
   fi
@@ -99,6 +97,11 @@ fi
 # See also: https://omega8.cc/never-send-mailings-from-aegir-server-322
 sudo postsuper -d ALL &> /dev/null
 
+if [ -e "/etc/init.d/rsyslog" ]; then
+  service rsyslog restart &> /dev/null
+elif [ -e "/etc/init.d/sysklogd" ]; then
+  service sysklogd restart &> /dev/null
+fi
 service ssh restart &> /dev/null
 rm -f /var/backups/.auth.IP.list*
 find /var/xdrago/log/*.pid -mtime +0 -type f -exec rm -rf {} \; &> /dev/null

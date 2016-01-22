@@ -54,6 +54,7 @@ export _USER="${_USER}"
 _D8_DEV_COMMIT=8x_f49bb893
 _DRUSH_VERSION=mini-7-30-06-2015
 _NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=${_NOW//[^0-9-]/}
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
 _REDIS_M_VERSION=mod-26-06-2015
@@ -63,6 +64,7 @@ _SMALLCORE8=8.0.0-beta16
 _SPINNER=YES
 _T_BUILD=HEAD
 _TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
 _F_TIME=$(date 2>&1)
 _USRG=users
 _WEBG=www-data
@@ -106,7 +108,7 @@ _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
 _COD=1.0-alpha5
 _COMMERCE1=1.40
-_COMMERCE2=2.31
+_COMMERCE2=2.32
 _COMMONS2=2.27
 _COMMONS3=3.33
 _D8_DEV_LABEL="8-dev-${_TODAY}"
@@ -116,16 +118,16 @@ _ERPAL=2.3
 _GUARDR=2.26
 _OPENACADEMY=1.1
 _OPENAID=2.7
-_OPENATRIUM7=2.51
+_OPENATRIUM7=2.52
 _OPENBLOG=1.0-alpha3
 _OPENCHURCH1=1.17-beta2
 _OPENCHURCH2=2.2
 _OPENDEALS=1.35
-_OPENOUTREACH=1.25
+_OPENOUTREACH=1.26
 _OPENPUBLIC=1.7
 _OPENPUBLISH=1.0-beta7
 _OPENSCHOLAR=3.28.0
-_PANOPOLY=1.29
+_PANOPOLY=1.30
 _RECRUITER=1.7
 _RESTAURANT=1.0-rc2
 _UBERCART6=2.15
@@ -211,6 +213,7 @@ _STATUS=INIT
 ###
 ### Misc checks
 ###
+satellite_check_php_compatibility
 satellite_check_octopus_versus_barracuda_version
 satellite_if_head_github_connection_test
 satellite_if_sql_exception_test
