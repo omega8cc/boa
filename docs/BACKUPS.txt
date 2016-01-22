@@ -14,6 +14,8 @@
   all required _AWS_* variables in the /root/.barracuda.cnf file and run the
   special command 'backboa install' while logged in as root.
 
+  Full backups are scheduled on Sunday, unless _AWS_FLC is set to custom value.
+
   To restore any file from backups created with 'backboa' tool, you can use
   the same script on the same or any other BOA server.
 
@@ -30,7 +32,7 @@
     _AWS_PWD='Your Secret Password'       ### [R] Generate with 'openssl rand -base64 32'
     _AWS_REG='Your AWS Region ID'         ### [R] By default 'us-east-1'
     _AWS_TTL='Your Backup Rotation'       ### [O] By default '30D'
-    _AWS_FLC='Your Backup Full Cycle'     ### [O] By default '7D'
+    _AWS_FLC='Your Backup Full Cycle'     ### [O] By default '6D'
     _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default '1'
     _AWS_PRG='Your Backup Progress'       ### [O] By default 'NO' -- can be YES/NO
 
@@ -107,6 +109,7 @@
         * Separate configuration file: /root/.duobackboa.cnf
         * S3 bucket naming convention: daily.remote.srv.foo.bar
         * Cron entry set to start at 9:08 AM (server time)
+        * Full backups are scheduled on Saturday
 
         The 'duobackboa' script has also built-in how-to: just type `duobackboa`
         when logged in as system root.

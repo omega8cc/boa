@@ -96,7 +96,7 @@ if (!isset($_SERVER['MAIN_SITE_NAME']) && isset($_SERVER['SERVER_NAME'])) {
 /**
  * Site mode detection and cron protection - cron works only for live sites
  */
-if (preg_match("/^\/cron.php/", $_SERVER['REQUEST_URI']) ||
+if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) ||
     preg_match("/^\/cron\//", $_SERVER['REQUEST_URI'])) {
   if (isset($_SERVER['HTTP_HOST']) &&
       (preg_match("/(?:^dev\.|\.dev\.)/i", $_SERVER['HTTP_HOST']) ||
