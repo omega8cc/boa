@@ -2580,10 +2580,6 @@ action() {
           run_drush7_hmr_cmd "en path_alias_cache -y"
           run_drush7_hmr_cmd "fr aegir_custom_settings -y"
           run_drush7_hmr_cmd "cc all"
-          run_drush7_hmr_cmd "fr aegir_custom_settings -y"
-          run_drush7_hmr_cmd "cc all"
-          run_drush7_hmr_cmd "fr aegir_custom_settings -y"
-          run_drush7_hmr_cmd "cc all"
           if [ -e "${User}/log/imported.pid" ] \
             || [ -e "${User}/log/exported.pid" ]; then
             if [ ! -e "${User}/log/hosting_context.pid" ]; then
