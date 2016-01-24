@@ -3656,6 +3656,20 @@ satellite_if_init_or_upgrade() {
   fi
 }
 
+satellite_if_major_upgrade() {
+  if [ "${_CLIENT_OPTION}" = "POWER" ] \
+    && [ -e "${_ROOT}/log/octopus_log.txt" ]; then
+    _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
+    if [[ ! "${_SERIES_TEST}" =~ "BOA-3." ]] \
+      && [ ! -e "${_ROOT}/log/satellite_major_upgrade_ok.txt" ]; then
+      msg "ERROR: Major version upgrade requires control file:"
+      msg "${_ROOT}/log/satellite_major_upgrade_ok.txt"
+      msg "Bye"
+      clean_pid_exit
+    fi
+  fi
+}
+
 satellite_if_check_dns() {
   if [ "${_DNS_SETUP_TEST}" = "YES" ]; then
     if [ "${_VMFAMILY}" = "AWS" ]; then

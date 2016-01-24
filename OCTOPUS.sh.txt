@@ -228,6 +228,7 @@ check_git_repos
 ###
 satellite_cnf
 satellite_if_init_or_upgrade
+satellite_if_major_upgrade
 satellite_if_check_dns
 satellite_checkpoint
 satellite_pre_cleanup
