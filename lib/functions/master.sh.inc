@@ -216,13 +216,17 @@ master_download_for_local_build() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Downloading hostmaster modules..."
     fi
+    ### Drupal Core
+    get_dev_ext "drupal-${_SMALLCORE7}.tar.gz"
     ### Aegir Core
     if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+      ${gCb} feature/3.0.x-profile ${gitHub}/hostmaster.git    &> /dev/null
       ${gCb} feature/3.0.x-hosting ${gitHub}/hosting.git       &> /dev/null
       ${gCb} feature/3.0.x-eldir ${gitHub}/eldir.git           &> /dev/null
     else
-      get_dev_ext "hosting-7.x-3.2.tar.gz"
-      get_dev_ext "eldir-7.x-3.2.tar.gz"
+      get_dev_ext "hostmaster-${_AEGIR_VERSION}.tar.gz"
+      get_dev_ext "hosting-${_AEGIR_VERSION}.tar.gz"
+      get_dev_ext "eldir-${_AEGIR_VERSION}.tar.gz"
     fi
     ### Aegir Golden + BOA Settings
     if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
@@ -341,6 +345,7 @@ upgrade_aegir_master() {
     echo "_NOW=\"${_NOW}\""                             >> ${vBs}/${filIncB}
     echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${vBs}/${filIncB}
     echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${vBs}/${filIncB}
+    echo "_SMALLCORE7=\"${_SMALLCORE7}\""               >> ${vBs}/${filIncB}
     echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${vBs}/${filIncB}
     echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${vBs}/${filIncB}
     echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${vBs}/${filIncB}
