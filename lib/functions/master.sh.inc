@@ -218,6 +218,7 @@ master_download_for_local_build() {
     fi
     ### Drupal Core
     get_dev_ext "drupal-${_SMALLCORE7}.tar.gz"
+    mv -f ${mL}/drupal-${_SMALLCORE7} ${mL}/drupal
     ### Aegir Core
     if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
       ${gCb} feature/3.0.x-profile ${gitHub}/hostmaster.git    &> /dev/null
