@@ -191,6 +191,9 @@ backup() {
   if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
     && [ "${_DOW}" = "7" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
+    n=$((RANDOM%10800+8))
+    echo "Waiting $n seconds before running cleanup --force..."
+    sleep $n
     echo "Running cleanup --force on `date`"
     duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
   fi
@@ -205,6 +208,9 @@ backup() {
       _MODE="full"
     fi
   fi
+  n=$((RANDOM%10800+8))
+  echo "Waiting $n seconds before running ${_MODE} backup..."
+  sleep $n
   echo "Running standard backup on `date`"
   duplicity ${_MODE} -v ${_AWS_VLV} --volsize 100 \
     --allow-source-mismatch \
@@ -214,9 +220,15 @@ backup() {
   if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
     && [ "${_DOW}" = "7" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
+    n=$((RANDOM%10800+8))
+    echo "Waiting $n seconds before running remove-older-than ${_AWS_TTL}..."
+    sleep $n
     echo "Running remove-older-than on `date`"
     duplicity -v ${_AWS_VLV} remove-older-than ${_AWS_TTL} \
       --force ${_AWS_OPX} ${TARGET} >> ${LOGFILE}
+    n=$((RANDOM%10800+8))
+    echo "Waiting $n seconds before running collection-status..."
+    sleep $n
     echo "Running collection-status on `date`"
     duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET} >> ${LOGFILE}
   fi
@@ -370,9 +382,6 @@ install() {
 }
 
 if [ "$1" = "backup" ]; then
-  n=$((RANDOM%900+80))
-  echo "Waiting $n seconds before running backup..."
-  sleep $n
   if test -f /var/run/${_HST}_backup.pid ; then
     touch /var/xdrago/log/wait_${_HST}_backup.log
     echo "The duplicity backup is running already?"
