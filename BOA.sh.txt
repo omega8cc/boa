@@ -211,6 +211,13 @@ update_agents() {
       rm -f /root/.giant_traffic.cnf
       rm -f /root/.intest.cnf
     fi
+    if [ ! -e "/data/conf/override.global.inc" ]; then
+      echo "<?php" > /data/conf/override.global.inc.tmp
+      echo "" >> /data/conf/override.global.inc.tmp
+      echo "\$use_redis = TRUE;" >> /data/conf/override.global.inc.tmp
+      chmod 644 /data/conf/override.global.inc.tmp
+      mv -f /data/conf/override.global.inc.tmp /data/conf/override.global.inc
+    fi
   fi
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
