@@ -400,13 +400,13 @@ install_ioncube() {
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       SYSTEMARCH="x86_64"
-      msg "INFO: Installing IonCube $SYSTEMARCH version for PHP..."
+      msg "INFO: Installing IonCube ${SYSTEMARCH} version for PHP..."
       cd /var/opt
       rm -f -r ioncube_loaders*
       get_dev_arch "ioncube_loaders_lin_x86-64.tar.gz"
     else
       SYSTEMARCH="x86"
-      msg "INFO: Installing IonCube $SYSTEMARCH version for PHP..."
+      msg "INFO: Installing IonCube ${SYSTEMARCH} version for PHP..."
       cd /var/opt
       rm -f -r ioncube_loaders*
       get_dev_arch "ioncube_loaders_lin_x86.tar.gz"

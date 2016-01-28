@@ -1613,64 +1613,37 @@ check_apt_updates() {
 }
 
 #
-# Install wkhtmltopdf.
-install_wkhtmltopdf() {
+# Install wkhtmltopdf and wkhtmltoimage.
+install_wkhtmltopdf_wkhtmltoimage() {
   ###--------------------###
-  if [ ! -e "${pthLog}/wkhtmltopdf-fix10" ] \
+  if [ ! -e "${pthLog}/wkhtmltox-0.12.3" ] \
     || [ ! -x "/usr/bin/wkhtmltopdf" ] \
-    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-    _X86_64_TEST=$(uname -m 2>&1)
-    if [ "${_X86_64_TEST}" = "x86_64" ]; then
-      SYSTEMARCH="x86_64"
-      msg "INFO: Installing /usr/bin/wkhtmltopdf $SYSTEMARCH version..."
-      cd /var/opt
-      rm -f -r wkhtmltopdf*
-      get_dev_arch "wkhtmltopdf-0.10.0_rc2-static-amd64.tar.bz2"
-      cp -af wkhtmltopdf-amd64 /usr/bin/wkhtmltopdf &> /dev/null
-      chown root:root /usr/bin/wkhtmltopdf &> /dev/null
-      chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
-    else
-      SYSTEMARCH="x86"
-      msg "INFO: Installing /usr/bin/wkhtmltopdf $SYSTEMARCH version..."
-      cd /var/opt
-      rm -f -r wkhtmltopdf*
-      get_dev_arch "wkhtmltopdf-0.10.0_rc2-static-i386.tar.bz2"
-      cp -af wkhtmltopdf-i386 /usr/bin/wkhtmltopdf &> /dev/null
-      chown root:root /usr/bin/wkhtmltopdf &> /dev/null
-      chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
-    fi
-    touch ${pthLog}/wkhtmltopdf-fix10
-  fi
-}
-
-#
-# Install wkhtmltoimage.
-install_wkhtmltoimage() {
-  ###--------------------###
-  if [ ! -e "${pthLog}/wkhtmltoimage-fix10" ] \
     || [ ! -x "/usr/bin/wkhtmltoimage" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       SYSTEMARCH="x86_64"
-      msg "INFO: Installing /usr/bin/wkhtmltoimage $SYSTEMARCH version..."
+      msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
       cd /var/opt
-      rm -f -r wkhtmltoimage*
-      get_dev_arch "wkhtmltoimage-0.10.0_rc2-static-amd64.tar.bz2"
-      cp -af wkhtmltoimage-amd64 /usr/bin/wkhtmltoimage &> /dev/null
-      chown root:root /usr/bin/wkhtmltoimage &> /dev/null
-      chmod 755 /usr/bin/wkhtmltoimage &> /dev/null
+      rm -f -r wkhtmltox*
+      get_dev_arch "wkhtmltox-0.12.3_linux-generic-amd64.tar.gz"
+      cd wkhtmltox-0.12.3_linux-generic-amd64
     else
       SYSTEMARCH="x86"
-      msg "INFO: Installing /usr/bin/wkhtmltoimage $SYSTEMARCH version..."
+      msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
       cd /var/opt
-      rm -f -r wkhtmltoimage*
-      get_dev_arch "wkhtmltoimage-0.10.0_rc2-static-i386.tar.bz2"
-      cp -af wkhtmltoimage-i386 /usr/bin/wkhtmltoimage &> /dev/null
-      chown root:root /usr/bin/wkhtmltoimage &> /dev/null
-      chmod 755 /usr/bin/wkhtmltoimage &> /dev/null
+      rm -f -r wkhtmltox*
+      get_dev_arch "wkhtmltox-0.12.3_linux-generic-i386.tar.gz"
+      cd wkhtmltox-0.12.3_linux-generic-i386
     fi
-    touch ${pthLog}/wkhtmltoimage-fix10
+    cp -af wkhtmltopdf /usr/bin/wkhtmltopdf
+    cp -af wkhtmltoimage /usr/bin/wkhtmltoimage
+    chown root:root /usr/bin/wkhtmltopdf
+    chown root:root /usr/bin/wkhtmltoimage
+    chmod 755 /usr/bin/wkhtmltopdf
+    chmod 755 /usr/bin/wkhtmltoimage
+    touch ${pthLog}/wkhtmltox-0.12.3
+    cd /var/opt
   fi
 }
 
