@@ -5,6 +5,13 @@ SHELL=/bin/bash
 
 check_root() {
   if [ `whoami` = "root" ]; then
+    if [ -e "/root/.barracuda.cnf" ]; then
+      source /root/.barracuda.cnf
+      _B_NICE=${_B_NICE//[^0-9]/}
+    fi
+    if [ -z "${_B_NICE}" ]; then
+      _B_NICE=10
+    fi
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -62,6 +69,7 @@ action() {
     echo rotate > /var/log/newrelic/newrelic-daemon.log
   fi
   ionice -c2 -n2 -p $$
+  renice ${_B_NICE} -p $$ &> /dev/null
   service nginx reload
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
   rm -f -r /tmp/{drush*,pear,jetty*}
