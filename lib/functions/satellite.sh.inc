@@ -205,8 +205,10 @@ satellite_tune_fpm_config() {
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     if [ "${_CLIENT_OPTION}" = "POWER" ]; then
-      _LIM_FPM=32
-      _PHP_FPM_WORKERS=64
+      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+        _LIM_FPM=32
+        _PHP_FPM_WORKERS=64
+      fi
     elif [ "${_CLIENT_OPTION}" = "SSD" ] \
       || [ "${_CLIENT_OPTION}" = "EDGE" ]; then
       _LIM_FPM=4
