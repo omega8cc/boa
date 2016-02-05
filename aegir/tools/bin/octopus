@@ -869,7 +869,7 @@ check_root() {
       _B_NICE=10
     fi
     renice ${_B_NICE} -p $$ &> /dev/null
-    ionice -c2 -n7 -p $$ &> /dev/null
+    ionice -c2 -n7 -p $$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
