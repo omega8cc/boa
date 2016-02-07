@@ -4056,6 +4056,9 @@ satellite_child_b_install_drush() {
 
 satellite_child_b_drush_xts_cleanup() {
   if [ "${_STATUS}" = "UPGRADE" ]; then
+    ### hosting_civicrm breaks the upgrade if active
+    ${_DRUSHCMD} @hostmaster dis hosting_civicrm_cron -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster dis hosting_civicrm -y &> /dev/null
     mkdir -p ${_ROOT}/backups/system
     chmod 700 ${_ROOT}/backups/system
     mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/ &> /dev/null
@@ -4327,11 +4330,9 @@ satellite_child_b_aegir_build() {
       exit 1
     fi
     msg "${_STATUS} B: Hostmaster STATUS: Upgrade in progress..."
-    ### security_review and hosting_civicrm break the upgrade if active
+    ### security_review breaks the upgrade if active
     mv -f ${_ROOT}/.drush/xts/security_review/security_review.drush.inc \
       ${_ROOT}/.drush/xts/security_review/foo.txt  &> /dev/null
-    ${_DRUSHCMD} @hostmaster dis hosting_civicrm_cron -y &> /dev/null
-    ${_DRUSHCMD} @hostmaster dis hosting_civicrm -y &> /dev/null
     export DEBIAN_FRONTEND=noninteractive
     if [ -z "${TERM+x}" ]; then
       export TERM=vt100

@@ -178,7 +178,7 @@ if ${_DRUSHCMD} help > /dev/null ; then
     msg "INFO: Drush seems to be functioning properly"
   fi
 else
-  msg "FATAL ERROR: Drush is broken (${_DRUSH} help failed)"
+  msg "FATAL ERROR: Drush is broken (${_DRUSHCMD} help failed)"
   msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
   touch /opt/tmp/status-AegirSetupM-FAIL
   exit 1
