@@ -4056,9 +4056,6 @@ satellite_child_b_install_drush() {
 
 satellite_child_b_drush_xts_cleanup() {
   if [ "${_STATUS}" = "UPGRADE" ]; then
-    ### hosting_civicrm breaks the upgrade if active
-    ${_DRUSHCMD} @hostmaster dis hosting_civicrm_cron -y &> /dev/null
-    ${_DRUSHCMD} @hostmaster dis hosting_civicrm -y &> /dev/null
     mkdir -p ${_ROOT}/backups/system
     chmod 700 ${_ROOT}/backups/system
     mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/ &> /dev/null
@@ -4088,19 +4085,6 @@ satellite_child_b_drush_xts_cleanup() {
         mv -f ${_ROOT}/backups/$e-pre* ${_ROOT}/backups/system/ &> /dev/null
       fi
     done
-  fi
-}
-
-satellite_child_b_drush_test() {
-  if ${_DRUSHCMD} help > /dev/null ; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "${_STATUS} B: Drush seems to be functioning properly"
-    fi
-  else
-    msg "${_STATUS} B: FATAL ERROR: Drush is broken ($DRUSH help failed)"
-    msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
-    touch /opt/tmp/status-AegirSetupB-FAIL
-    exit 1
   fi
 }
 
@@ -4150,6 +4134,19 @@ satellite_child_b_drush_xts_install() {
   sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
     ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
   wait
+}
+
+satellite_child_b_drush_test() {
+  if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "${_STATUS} B: Drush test result OK"
+    fi
+  else
+    msg "${_STATUS} B: FATAL ERROR: Drush is broken (${_DRUSHCMD} help failed)"
+    msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
+    touch /opt/tmp/status-AegirSetupB-FAIL
+    exit 1
+  fi
 }
 
 satellite_child_b_aegir_build() {

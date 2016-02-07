@@ -173,9 +173,51 @@ chmod 755 ${_ROOT}/drush/examples/helloworld.script
 update_php_cli_drush
 update_php_cli_local_ini
 
-if ${_DRUSHCMD} help > /dev/null ; then
+msg "INFO: Installing Aegir Provision backend..."
+mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
+if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+  cd ${_ROOT}/.drush
+  msg "INFO: Downloading Drush and Provision extensions..."
+  rm -f -r ${_ROOT}/.drush/{sys,xts,usr}
+  rm -f -r ${_ROOT}/.drush/{provision,drush_make}
+  mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
+  rD="${_ROOT}/.drush"
+  ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
+    ${rD}/sys/provision &> /dev/null
+  ${gCb} 7.x-1.x-dev ${gitHub}/drupalgeddon.git \
+    ${rD}/usr/drupalgeddon &> /dev/null
+  ${gCb} 7.x-1.x ${gitHub}/drush_ecl.git \
+    ${rD}/usr/drush_ecl &> /dev/null
+  ${gCb} 7.x-1.x ${gitHub}/security_review.git \
+    ${rD}/xts/security_review &> /dev/null
+  ${gCb} 7.x-2.x ${gitHub}/provision_boost.git \
+    ${rD}/xts/provision_boost &> /dev/null
+  ${gCb} 7.x-2.x ${gitHub}/registry_rebuild.git \
+    ${rD}/usr/registry_rebuild &> /dev/null
+  ${gCb} 7.x-1.x ${gitHub}/safe_cache_form_clear.git \
+    ${rD}/usr/safe_cache_form_clear &> /dev/null
+  rm -f -r ${rD}/*/.git
+  rm -f -r ${rD}/*/*/.git
+  cd ${rD}/usr
+  get_dev_ext "clean_missing_modules.tar.gz"
+else
+  msg "INFO: Downloading Drush and Provision extensions..."
+  cd ${_ROOT}/.drush/sys
+  curl ${crlGet} "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
+  cd ${_ROOT}/.drush/usr
+  get_dev_ext "clean_missing_modules.tar.gz"
+  get_dev_ext "drupalgeddon.tar.gz"
+  get_dev_ext "drush_ecl.tar.gz"
+  get_dev_ext "registry_rebuild.tar.gz"
+  get_dev_ext "safe_cache_form_clear.tar.gz"
+  cd ${_ROOT}/.drush/xts
+  get_dev_ext "provision_boost.tar.gz"
+  get_dev_ext "security_review.tar.gz"
+fi
+
+if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush seems to be functioning properly"
+    msg "INFO: Drush test result OK"
   fi
 else
   msg "FATAL ERROR: Drush is broken (${_DRUSHCMD} help failed)"
@@ -184,51 +226,6 @@ else
   exit 1
 fi
 
-if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
-  msg "INFO: Provision already seems to be installed"
-else
-  msg "INFO: Installing Aegir Provision backend..."
-  mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
-  if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-    cd ${_ROOT}/.drush
-    msg "INFO: Downloading Drush and Provision extensions..."
-    rm -f -r ${_ROOT}/.drush/{sys,xts,usr}
-    rm -f -r ${_ROOT}/.drush/{provision,drush_make}
-    mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
-    rD="${_ROOT}/.drush"
-    ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
-      ${rD}/sys/provision &> /dev/null
-    ${gCb} 7.x-1.x-dev ${gitHub}/drupalgeddon.git \
-      ${rD}/usr/drupalgeddon &> /dev/null
-    ${gCb} 7.x-1.x ${gitHub}/drush_ecl.git \
-      ${rD}/usr/drush_ecl &> /dev/null
-    ${gCb} 7.x-1.x ${gitHub}/security_review.git \
-      ${rD}/xts/security_review &> /dev/null
-    ${gCb} 7.x-2.x ${gitHub}/provision_boost.git \
-      ${rD}/xts/provision_boost &> /dev/null
-    ${gCb} 7.x-2.x ${gitHub}/registry_rebuild.git \
-      ${rD}/usr/registry_rebuild &> /dev/null
-    ${gCb} 7.x-1.x ${gitHub}/safe_cache_form_clear.git \
-      ${rD}/usr/safe_cache_form_clear &> /dev/null
-    rm -f -r ${rD}/*/.git
-    rm -f -r ${rD}/*/*/.git
-    cd ${rD}/usr
-    get_dev_ext "clean_missing_modules.tar.gz"
-  else
-    msg "INFO: Downloading Drush and Provision extensions..."
-    cd ${_ROOT}/.drush/sys
-    curl ${crlGet} "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
-    cd ${_ROOT}/.drush/usr
-    get_dev_ext "clean_missing_modules.tar.gz"
-    get_dev_ext "drupalgeddon.tar.gz"
-    get_dev_ext "drush_ecl.tar.gz"
-    get_dev_ext "registry_rebuild.tar.gz"
-    get_dev_ext "safe_cache_form_clear.tar.gz"
-    cd ${_ROOT}/.drush/xts
-    get_dev_ext "provision_boost.tar.gz"
-    get_dev_ext "security_review.tar.gz"
-  fi
-fi
 sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
   ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
 wait
