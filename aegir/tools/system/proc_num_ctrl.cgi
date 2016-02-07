@@ -184,11 +184,13 @@ if ($dhcpcdlives) {
 }
 if (-f "/etc/init.d/rsyslog") {
   if (!$rsyslogdsumar || !-f "/var/run/rsyslogd.pid") {
+    system("killall -9 rsyslogd");
     system("service rsyslog restart");
   }
 }
 elsif (-f "/etc/init.d/sysklogd") {
   if (!$sysklogdsumar || !-f "/var/run/syslogd.pid") {
+    system("killall -9 sysklogd");
     system("service sysklogd restart");
   }
 }
