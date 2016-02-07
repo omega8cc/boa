@@ -5,7 +5,9 @@
   $node = new stdClass();
   $node->uid = 1;
   $node->type = 'platform';
+  node_object_prepare($node);
   $node->title = $_SERVER[argv][3];
+  $node->language = LANGUAGE_NONE;
   $node->publish_path = $_SERVER[argv][5];
   $node->web_server = variable_get('hosting_default_web_server', 2);
   $node->status = 1;
@@ -16,8 +18,10 @@
   // Create the platform profile node
   $node = new stdClass();
   $node->uid = 1;
-  $node->title = $_SERVER[argv][3];
   $node->type = 'package';
+  node_object_prepare($node);
+  $node->title = $_SERVER[argv][3];
+  $node->language = LANGUAGE_NONE;
   $node->package_type = 'profile';
   $node->short_name = $_SERVER[argv][4];
   $node->status = 1;
