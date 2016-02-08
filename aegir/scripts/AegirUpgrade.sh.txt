@@ -312,8 +312,6 @@ hostmaster_mi_up() {
   export DEBIAN_FRONTEND=text
   mv -f ${_ROOT}/.drush/xts/security_review/foo.txt \
     ${_ROOT}/.drush/xts/security_review/security_review.drush.inc &> /dev/null
-  ${_DRUSHCMD} @hostmaster en hosting_civicrm -y &> /dev/null
-  ${_DRUSHCMD} @hostmaster en hosting_civicrm_cron -y &> /dev/null
   mkdir -p ${_ROOT}/backups/system/old_hostmaster
   chmod 700 ${_ROOT}/backups/system/old_hostmaster
   chmod 700 ${_ROOT}/backups/system
