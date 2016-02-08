@@ -5,7 +5,6 @@
   $node = new stdClass();
   $node->uid = 1;
   $node->type = 'book';
-  node_object_prepare($node);
   $node->format = 2;
   $node->title = 'Welcome to the World of Aegir';
   $node->language = LANGUAGE_NONE;
