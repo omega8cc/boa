@@ -4595,7 +4595,7 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_upload_upload_path "sites/${_DOMAIN}/files/deployment" &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_platform_pathauto_base_path "${_ROOT}/static/" &> /dev/null
+      hosting_platform_base_path "${_ROOT}/static/" &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_site_backup_manager_base_path "${_ROOT}" &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
