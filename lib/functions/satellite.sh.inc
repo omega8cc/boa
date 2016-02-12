@@ -4334,6 +4334,14 @@ satellite_child_b_aegir_build() {
     if [ -z "${TERM+x}" ]; then
       export TERM=vt100
     fi
+    if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
+      ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster en ctools -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
+    else
+      ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
+    fi
+
     cd ${_PREV_HM_ROOT}
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
