@@ -4263,20 +4263,20 @@ satellite_child_b_aegir_build() {
     if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y
-        ${_DRUSHCMD} @hostmaster en ctools -y
-        ${_DRUSHCMD} @hostmaster registry-rebuild
+        ### ${_DRUSHCMD} @hostmaster en ctools -y
+        ${_DRUSHCMD} @hostmaster registry-rebuild --fire-bazooka
       else
         ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster en ctools -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
+        ### ${_DRUSHCMD} @hostmaster en ctools -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster registry-rebuild --fire-bazooka &> /dev/null
       fi
     else
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster registry-rebuild
+        ${_DRUSHCMD} @hostmaster registry-rebuild --fire-bazooka
       else
         ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
+        ${_DRUSHCMD} @hostmaster registry-rebuild --fire-bazooka &> /dev/null
       fi
     fi
     ${_DRUSHCMD} cc drush &> /dev/null
