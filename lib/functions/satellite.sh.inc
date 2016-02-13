@@ -4263,10 +4263,18 @@ satellite_child_b_aegir_build() {
     if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y
+        ${_DRUSHCMD} @hostmaster dis features -y
+        ${_DRUSHCMD} @hostmaster dis features_extra -y
+        ${_DRUSHCMD} @hostmaster pm-uninstall features -y
+        ${_DRUSHCMD} @hostmaster pm-uninstall features_extra -y
         ${_DRUSHCMD} @hostmaster en ctools -y
         ${_DRUSHCMD} @hostmaster registry-rebuild
       else
         ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster dis features -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster dis features_extra -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster pm-uninstall features -y  &> /dev/null
+        ${_DRUSHCMD} @hostmaster pm-uninstall features_extra -y  &> /dev/null
         ${_DRUSHCMD} @hostmaster en ctools -y &> /dev/null
         ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
       fi
