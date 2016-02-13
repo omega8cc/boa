@@ -4260,25 +4260,6 @@ satellite_child_b_aegir_build() {
       fi
     fi
 
-    if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y
-        ${_DRUSHCMD} @hostmaster en ctools -y
-        ${_DRUSHCMD} @hostmaster registry-rebuild
-      else
-        ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster en ctools -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
-      fi
-    else
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster registry-rebuild
-      else
-        ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
-      fi
-    fi
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
     if [ -d "${_HM_ROOT}/modules/o_contrib" ] \
@@ -4346,6 +4327,27 @@ satellite_child_b_aegir_build() {
     if [ -z "${TERM+x}" ]; then
       export TERM=vt100
     fi
+
+    if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y
+        ${_DRUSHCMD} @hostmaster en ctools -y
+        ${_DRUSHCMD} @hostmaster registry-rebuild
+      else
+        ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster en ctools -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
+      fi
+    else
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster registry-rebuild
+      else
+        ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
+      fi
+    fi
+
     cd ${_PREV_HM_ROOT}
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
