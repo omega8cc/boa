@@ -4273,8 +4273,10 @@ satellite_child_b_aegir_build() {
     else
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster registry-rebuild
       else
         ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
       fi
     fi
     ${_DRUSHCMD} cc drush &> /dev/null

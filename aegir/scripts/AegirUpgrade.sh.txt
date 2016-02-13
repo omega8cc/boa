@@ -280,11 +280,23 @@ hostmaster_mi_up() {
     export TERM=vt100
   fi
   if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
-    ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
-    ${_DRUSHCMD} @hostmaster en ctools -y &> /dev/null
-    ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y
+      ${_DRUSHCMD} @hostmaster en ctools -y
+      ${_DRUSHCMD} @hostmaster registry-rebuild
+    else
+      ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster en ctools -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
+    fi
   else
-    ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y
+      ${_DRUSHCMD} @hostmaster registry-rebuild
+    else
+      ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
+    fi
   fi
   ${_DRUSHCMD} cc drush &> /dev/null
   rm -f -r ${_ROOT}/.tmp/cache
