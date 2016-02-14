@@ -2558,11 +2558,9 @@ action() {
           su -s /bin/bash ${_HM_U} -c "drush7 cc drush" &> /dev/null
           rm -f -r ${User}/.tmp/cache
           run_drush7_hmr_cmd "vset \
-            --always-set hosting_advanced_cron_default_interval 86400"
+            --always-set hosting_cron_default_interval 86400"
           run_drush7_hmr_cmd "vset \
-            --always-set hosting_queue_advanced_cron_frequency 1"
-          run_drush7_hmr_cmd "vset \
-            --always-set hosting_queue_cron_frequency 53222400"
+            --always-set hosting_queue_cron_frequency 1"
           if [ -e "${User}/log/hosting_cron_use_backend.txt" ]; then
             run_drush7_hmr_cmd "vset \
               --always-set hosting_cron_use_backend 1"

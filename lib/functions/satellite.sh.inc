@@ -928,15 +928,15 @@ satellite_cnf() {
 
 #
 # Fix advanced cron IP for cURL requests.
-satellite_fix_advanced_cron_curl() {
+satellite_fix_cron_curl() {
   if [ -e "${_ROOT}/.drush/hostmaster.alias.drushrc.php" ]; then
     _THIS_HM_ROOT=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
       | grep "root'" \
       | cut -d: -f2 \
       | awk '{ print $3}' \
       | sed "s/[\,']//g" 2>&1)
-    pthA="profiles/hostmaster/modules/contrib/hosting_advanced_cron"
-    pthB="hosting_advanced_cron.module"
+    pthA="profiles/hostmaster/modules/aegir/hosting/cron"
+    pthB="hosting_cron.module"
     if [ -e "${_THIS_HM_ROOT}/${pthA}/${pthB}" ]; then
       sed -i "s/127.0.0.1/${_CRON_IP}/g" ${_THIS_HM_ROOT}/${pthA}/${pthB}
     fi
@@ -1034,7 +1034,7 @@ satellite_sub_satellite_force_advanced_nginx_config() {
       && [ "${_IP_PRESENT}" = "YES" ] \
       && [ -e "/root/.local.IP.list" ]; then
       satellite_fix_multi_ip_cron_access
-      satellite_fix_advanced_cron_curl
+      satellite_fix_cron_curl
     fi
   fi
 }
@@ -2011,7 +2011,6 @@ satellite_download_for_local_build() {
     fi
     ### Aegir Golden + BOA Settings
     if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-      ${gCb} 7.x-3.x ${gitHub}/hosting_advanced_cron.git       &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_civicrm.git             &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_custom_settings.git     &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_git.git                 &> /dev/null
@@ -2020,7 +2019,6 @@ satellite_download_for_local_build() {
       ${gCb} 7.x-3.x ${gitHub}/hosting_tasks_extra.git         &> /dev/null
       rm -f -r */.git
     else
-      get_dev_ext "hosting_advanced_cron.tar.gz"
       get_dev_ext "hosting_civicrm.tar.gz"
       get_dev_ext "hosting_custom_settings.tar.gz"
       get_dev_ext "hosting_git.tar.gz"
@@ -4331,10 +4329,12 @@ satellite_child_b_aegir_build() {
     if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y
+        ${_DRUSHCMD} @hostmaster dis hosting_advanced_cron -y
         ${_DRUSHCMD} @hostmaster en ctools -y
         ${_DRUSHCMD} @hostmaster registry-rebuild
       else
         ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster dis hosting_advanced_cron -y &> /dev/null
         ${_DRUSHCMD} @hostmaster en ctools -y &> /dev/null
         ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
       fi
@@ -4566,7 +4566,7 @@ satellite_child_b_aegir_ui_enhance() {
     cd ${_HM_ROOT}/sites/${_DOMAIN}
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
-    ${_DRUSHCMD} @hostmaster en hosting_advanced_cron -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_cron -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_civicrm -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_civicrm_cron -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_client -y &> /dev/null
@@ -4584,11 +4584,9 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster ${vSet} clone 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_send_welcome 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_advanced_cron_default_interval 86400 &> /dev/null
+      hosting_cron_default_interval 86400 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_queue_advanced_cron_frequency 1 &> /dev/null
-    ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_queue_cron_frequency 53222400 &> /dev/null
+      hosting_queue_cron_frequency 1 &> /dev/null
     if [ -e "${_ROOT}/log/hosting_cron_use_backend.txt" ]; then
       ${_DRUSHCMD} @hostmaster ${vSet} \
         hosting_cron_use_backend 1 &> /dev/null

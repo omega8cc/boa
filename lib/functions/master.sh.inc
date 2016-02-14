@@ -231,7 +231,6 @@ master_download_for_local_build() {
     fi
     ### Aegir Golden + BOA Settings
     if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-      ${gCb} 7.x-3.x ${gitHub}/hosting_advanced_cron.git       &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_civicrm.git             &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_custom_settings.git     &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_git.git                 &> /dev/null
@@ -240,7 +239,6 @@ master_download_for_local_build() {
       ${gCb} 7.x-3.x ${gitHub}/hosting_tasks_extra.git         &> /dev/null
       rm -f -r */.git
     else
-      get_dev_ext "hosting_advanced_cron.tar.gz"
       get_dev_ext "hosting_civicrm.tar.gz"
       get_dev_ext "hosting_custom_settings.tar.gz"
       get_dev_ext "hosting_git.tar.gz"

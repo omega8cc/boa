@@ -455,7 +455,7 @@ migrate_prepare() {
       --hex-blob ${_HDB} \
       comments \
       history \
-      hosting_advanced_cron \
+      hosting_cron \
       hosting_client \
       hosting_client_user \
       hosting_context \
