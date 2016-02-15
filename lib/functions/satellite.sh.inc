@@ -4352,6 +4352,7 @@ satellite_child_b_aegir_build() {
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
 
+    ${_DRUSHCMD} @hostmaster sqlc < ${bldPth}/aegir/helpers/hosting_cron.sql &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
       WHERE task_type='delete' AND task_status='-1'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
