@@ -4566,23 +4566,23 @@ satellite_child_b_aegir_ui_enhance() {
     cd ${_HM_ROOT}/sites/${_DOMAIN}
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -f -r ${_ROOT}/.tmp/cache
-    ${_DRUSHCMD} @hostmaster en hosting_cron -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_civicrm -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_civicrm_cron -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_client -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_cron -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_site_backup_manager -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_tasks_extra -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en overlay -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en overlay_paths -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en revision_deletion -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en userprotect -y &> /dev/null
-    ${_DRUSHCMD} @hostmaster en hosting_tasks_extra -y &> /dev/null
-    ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_register_user 1 &> /dev/null
-    ${_DRUSHCMD} @hostmaster ${vSet} hosting_admin_client 1 &> /dev/null
-    ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_send_welcome 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} client 1 &> /dev/null
-    ${_DRUSHCMD} @hostmaster ${vSet} hosting_feature_client 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} clone 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${vSet} hosting_admin_client 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_register_user 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_send_welcome 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_send_welcome 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${vSet} hosting_feature_client 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_cron_default_interval 86400 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
