@@ -4623,9 +4623,7 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y &> /dev/null
     ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
     ${_DRUSHCMD} @hostmaster cc all &> /dev/null
-    if [ ! -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
-      ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
-    fi
+    ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
     if [ "$_LOCAL_STATUS" = "INIT" ]; then
       pBy="Octopus System powered by Barracuda"
       ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
