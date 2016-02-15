@@ -327,9 +327,15 @@ hostmaster_mi_up() {
         ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries} &> /dev/null
     fi
   fi
-  ${_DRUSHCMD} @hostmaster en hosting_cron -y &> /dev/null
-  ${_DRUSHCMD} @hostmaster cc all &> /dev/null
-  ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    ${_DRUSHCMD} @hostmaster en hosting_cron -y
+    ${_DRUSHCMD} @hostmaster cc all
+    ${_DRUSHCMD} @hostmaster updb -y
+  else
+    ${_DRUSHCMD} @hostmaster en hosting_cron -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster cc all &> /dev/null
+    ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
+  fi
   export DEBIAN_FRONTEND=text
   mv -f ${_ROOT}/.drush/xts/security_review/foo.txt \
     ${_ROOT}/.drush/xts/security_review/security_review.drush.inc &> /dev/null
