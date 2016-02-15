@@ -283,20 +283,24 @@ hostmaster_mi_up() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y
       ${_DRUSHCMD} @hostmaster dis hosting_advanced_cron -y
+      ${_DRUSHCMD} @hostmaster dis hosting_cron -y
       ${_DRUSHCMD} @hostmaster en ctools -y
       ${_DRUSHCMD} @hostmaster registry-rebuild
     else
       ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
       ${_DRUSHCMD} @hostmaster dis hosting_advanced_cron -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster dis hosting_cron -y &> /dev/null
       ${_DRUSHCMD} @hostmaster en ctools -y &> /dev/null
       ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
     fi
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y
+      ${_DRUSHCMD} @hostmaster dis hosting_cron -y
       ${_DRUSHCMD} @hostmaster registry-rebuild
     else
       ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster dis hosting_cron -y &> /dev/null
       ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
     fi
   fi
@@ -323,6 +327,9 @@ hostmaster_mi_up() {
         ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries} &> /dev/null
     fi
   fi
+  ${_DRUSHCMD} @hostmaster en hosting_cron -y &> /dev/null
+  ${_DRUSHCMD} @hostmaster cc all &> /dev/null
+  ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
   export DEBIAN_FRONTEND=text
   mv -f ${_ROOT}/.drush/xts/security_review/foo.txt \
     ${_ROOT}/.drush/xts/security_review/security_review.drush.inc &> /dev/null
