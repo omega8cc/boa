@@ -480,6 +480,21 @@ fix_alt() {
   fi
 }
 
+force_rebuild() {
+  if [ ! -e "${pthLog}/forced.rebuild.glibc.txt" ] \
+    && [ -e "/var/log/barracuda_log.txt" ]; then
+    echo "_GIT_FORCE_REINSTALL=YES" >> ${barCnf}
+    echo "_NGX_FORCE_REINSTALL=YES" >> ${barCnf}
+    echo "_PHP_FORCE_REINSTALL=YES" >> ${barCnf}
+    echo "_SSH_FORCE_REINSTALL=YES" >> ${barCnf}
+    echo "_SSL_FORCE_REINSTALL=YES" >> ${barCnf}
+    rm -f ${pthLog}/pure-ftpd-build*
+    rm -f ${pthLog}/mss-build*
+    rm -f ${pthLog}/lshell-build
+    touch ${pthLog}/forced.rebuild.glibc.txt
+  fi
+}
+
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
@@ -709,6 +724,7 @@ if [ `whoami` = "root" ]; then
   fi
   setup
   fix_alt
+  force_rebuild
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
