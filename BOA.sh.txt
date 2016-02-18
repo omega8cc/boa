@@ -491,6 +491,7 @@ force_rebuild() {
     rm -f ${pthLog}/pure-ftpd-build*
     rm -f ${pthLog}/mss-build*
     rm -f ${pthLog}/lshell-build*
+    rm -f ${pthLog}/redis-*
     touch ${pthLog}/forced.rebuild.glibc.txt
   fi
 }
