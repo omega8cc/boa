@@ -27,7 +27,7 @@ crontab_update() {
       echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
-      echo "28 6    * * 7   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "08 8    * * 6   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d"                /etc/crontab &> /dev/null
     wait
@@ -144,11 +144,11 @@ if [ -e "/data/disk/arch" ]; then
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] \
     || [ "${_AUTO_UP}" = "YES" ]; then
-    _AUTO_UP_WEEKLY=7
+    _AUTO_UP_WEEKLY=4
     _AUTO_UP_MONTH=12
     _AUTO_UP_DAY=5
     _AUTO_PHP="php-all"
-    _AUTO_VER="stable"
+    _AUTO_VER="head"
   fi
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -184,4 +184,4 @@ if [ -e "/data/disk/arch" ]; then
     crontab_clean
   fi
 fi
-###EOF2015###
+###EOF2016###

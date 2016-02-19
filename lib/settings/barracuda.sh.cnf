@@ -677,20 +677,21 @@ _LOCAL_NETWORK_HN=""
 ###----------------------------------------###
 
 ###
-### Change to YES if you prefer the running
-### daily script to fix permissions on all
+### Change to NO if you prefer the running
+### daily script to not fix permissions on all
 ### files belonging to hosted sites an their
 ### platforms (and any shared code).
 ###
-### Note that this feature is again disabled
-### by default, because it may cause critical
-### load and outages on some weak VPS hosts.
+### Note that this feature is again enabled
+### by default, because with current low
+### CPU and I/O priority it should not cause
+### any issues, even on weak systems.
 ###
-_PERMISSIONS_FIX=NO
+_PERMISSIONS_FIX=YES
 
 ###
-### Change to YES if you prefer the running
-### daily script to enable/disable modules in
+### Change to NO if you prefer the skip running
+### weekly script to enable/disable modules in
 ### all hosted sites without '.testing.' or
 ### '.temporary.' keywords in their main name,
 ### as listed in the docs/MODULES.txt
@@ -702,12 +703,7 @@ _PERMISSIONS_FIX=NO
 ### innocent modules via feature or any other
 ### dependency.
 ###
-### Note that if you disable this option, you
-### will automatically disable also the user
-### register protection check/feature:
-### https://omega8.cc/node/273
-###
-_MODULES_FIX=NO
+_MODULES_FIX=YES
 
 ###
 ### List modules to never disable via running
@@ -975,15 +971,6 @@ _PHP_MONGODB=NO
 _PHP_GEOS=NO
 
 ###
-### When set to YES, it will also force
-### OpenSSL (packages), cURL (sources)
-### and OpenSSH (sources) re-install.
-### Note that OpenSSH will be upgraded
-### only on Debian.
-###
-_SSL_FROM_SOURCES=YES
-
-###
 ### When set to YES it will force OpenSSH
 ### re-install from sources (Debian only)
 ###
@@ -1091,6 +1078,7 @@ download_helpers_libs() {
       apt-get update -qq &> /dev/null
       apt-get install git -fuy --force-yes --reinstall &> /dev/null
       apt-get install git-core -fuy --force-yes --reinstall &> /dev/null
+      apt-get install git-man -fuy --force-yes --reinstall &> /dev/null
       sleep 3
     fi
     ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git \

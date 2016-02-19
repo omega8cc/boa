@@ -35,10 +35,11 @@ _VM_TEST=$(uname -a 2>&1)
 usrGroup=users
 _WEBG=www-data
 _THIS_RV=$(lsb_release -sc 2>&1)
-if [ "${_THIS_RV}" = "wheezy" ] \
+if [ "${_THIS_RV}" = "jessie" ] \
+  || [ "${_THIS_RV}" = "wheezy" ] \
   || [ "${_THIS_RV}" = "trusty" ] \
   || [ "${_THIS_RV}" = "precise" ]; then
-  _RUBY_VRN=2.2.3
+  _RUBY_VRN=2.3.0
 else
   _RUBY_VRN=2.0.0
 fi
@@ -1297,8 +1298,10 @@ switch_php() {
             || [[ "${_THISHOST}" =~ ".boa.io" ]] \
             || [ "${_VMFAMILY}" = "VS" ]; then
             if [ "${_CLIENT_OPTION}" = "POWER" ]; then
-              _LIM_FPM=32
-              _PHP_FPM_WORKERS=64
+              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+                _LIM_FPM=32
+                _PHP_FPM_WORKERS=64
+              fi
             elif [ "${_CLIENT_OPTION}" = "SSD" ] \
               || [ "${_CLIENT_OPTION}" = "EDGE" ]; then
               _LIM_FPM=4
@@ -1614,6 +1617,7 @@ if [ ! -L "/usr/bin/MySecureShell" ] && [ -x "/usr/bin/mysecureshell" ] ; then
 fi
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=${_NOW//[^0-9-]/}
 mkdir -p /var/backups/ltd/{conf,log,old}
 mkdir -p /var/backups/zombie/deleted
 _THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.${_NOW}"
@@ -1735,4 +1739,4 @@ else
   rm -f /var/run/manage_ltd_users.pid
   exit 0
 fi
-###EOF2015###
+###EOF2016###

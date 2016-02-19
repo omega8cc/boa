@@ -112,7 +112,7 @@ if (!-f "/root/.dbhd.clstr.cnf") {
     if (-f "/etc/init.d/redis-server") { system("service redis-server start"); }
     elsif (-f "/etc/init.d/redis") { system("service redis start"); }
   }
-  local(@RSARR) = system("grep -e redis_client_socket /data/conf/global.inc");
+  local(@RSARR)=`grep -e redis_client_socket /data/conf/global.inc`;
   foreach $line (@RSARR) {
     if ($line =~ /redis_client_socket/) {$redissocket = "YES";}
   }
@@ -174,21 +174,23 @@ if (-f "/usr/local/sbin/pure-config.pl") {
 }
 
 if ($mysqlsumar > 0) {
-  $resultmysql5 = system("mysqladmin flush-hosts 2>&1");
+ `mysqladmin flush-hosts &> /dev/null`;
   print "\n MySQL hosts flushed...\n";
 }
 if ($dhcpcdlives) {
-  $thishostname = `cat /etc/hostname`;
+  $thishostname=`cat /etc/hostname`;
   chomp($thishostname);
   system("hostname -b $thishostname");
 }
 if (-f "/etc/init.d/rsyslog") {
   if (!$rsyslogdsumar || !-f "/var/run/rsyslogd.pid") {
+    system("killall -9 rsyslogd");
     system("service rsyslog restart");
   }
 }
 elsif (-f "/etc/init.d/sysklogd") {
   if (!$sysklogdsumar || !-f "/var/run/syslogd.pid") {
+    system("killall -9 sysklogd");
     system("service sysklogd restart");
   }
 }
@@ -197,7 +199,7 @@ exit;
 #############################################################################
 sub global_action
 {
-  local(@MYARR) = `ps auxf 2>&1`;
+  local(@MYARR)=`ps auxf 2>&1`;
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,\?\=\|\\\+]//g;
     local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, ${TIME}, $COMMAND, $B, $K, $X, $Y, $Z, $T) = split(/\s+/,$line);
@@ -212,7 +214,7 @@ sub global_action
       local($HOUR, $MIN) = split(/:/,${TIME});
       $MIN =~ s/^0//g;
 
-      if ($COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/)
+      if ($COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/ && $B !~ /php-fpm/)
       {
         $timedate=`date +%y%m%d-%H%M`;
         chomp($timedate);
@@ -287,7 +289,7 @@ sub global_action
          }
       }
 
-      if ($USER =~ /jetty/ && $COMMAND =~ /java/ && ($STAT =~ /R/ || ${TIME} !~ /^[0-5]{1}:/))
+      if ($USER =~ /jetty/ && $COMMAND =~ /java/ && $STAT =~ /R/)
       {
          system("kill -9 $PID");
          $timedate=`date +%y%m%d-%H%M%S`;
@@ -320,7 +322,7 @@ sub global_action
 #############################################################################
 sub convert_action
 {
-  local(@MYARR) = `ps auxf 2>&1`;
+  local(@MYARR)=`ps auxf 2>&1`;
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,\?\=\|\\\+]//g;
     local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, ${TIME}, $COMMAND, $B, $K, $X, $Y, $Z, $T) = split(/\s+/,$line);
@@ -355,7 +357,7 @@ sub convert_action
 #############################################################################
 sub cpu_count_load
 {
-  local($PROCS) = `grep -c processor /proc/cpuinfo`;
+  local($PROCS)=`grep -c processor /proc/cpuinfo`;
   chomp($PROCS);
   $MAXSQLCPU = $PROCS."00";
   $MAXFPMCPU = $PROCS."00";
@@ -366,4 +368,4 @@ sub cpu_count_load
   $MAXSQLCPU = $MAXSQLCPU - 5;
   $MAXFPMCPU = $MAXFPMCPU - 5;
 }
-###EOF2015###
+###EOF2016###

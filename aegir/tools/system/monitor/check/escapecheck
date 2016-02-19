@@ -4,7 +4,7 @@
 
 $| = 1;
 $status="CLEAN";
-$server = system("uname -n 2>&1");
+$server=`uname -n 2>&1`;
 chomp($server);
 $date_is=`date +%Y-%m-%d`;
 chomp($date_is);
@@ -16,7 +16,7 @@ $logfile="/var/xdrago/log/last-shell-escape-log";
 `rm -f $logfile`;
 &makeactions;
 if ($status ne "CLEAN") {
-  $mailx_test = `mail -V 2>&1`;
+  $mailx_test=`mail -V 2>&1`;
   if ($mailx_test =~ /(invalid)/i || $mailx_test =~ /(GNU Mailutils)/i) {
     if ($status ne "CLEAN") {
       `cat $logfile | mail -a "From: notify\@omega8.cc" -e -s "Shell Escape Alert [$server] $now_is" notify\@omega8.cc`;
@@ -33,7 +33,7 @@ exit;
 #############################################################################
 sub makeactions
 {
-local(@MYARR) = `grep -i forbidden /var/log/lsh/*.log | tail --lines=999 2>&1`;
+local(@MYARR)=`grep -i forbidden /var/log/lsh/*.log | tail --lines=999 2>&1`;
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,\=]//g;
     if ($line =~ /(syntax|path|command)/i || ($line =~ /(shell escape)/i && $line !~ /exit/i)) {
@@ -61,4 +61,4 @@ local(@MYARR) = `grep -i forbidden /var/log/lsh/*.log | tail --lines=999 2>&1`;
     }
   }
 }
-###EOF2015###
+###EOF2016###

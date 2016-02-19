@@ -47,7 +47,9 @@ _DUPLICITY_VRN="0.7.05"
 _BOTO_VRN="2.36.0"
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
-_DOW=$(date +%w 2>&1)
+_NOW=${_NOW//[^0-9-]/}
+_DOW=$(date +%u 2>&1)
+_DOW=${_DOW//[^1-7]/}
 _HST=$(uname -n 2>&1)
 _HST=${_HST//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
@@ -187,24 +189,55 @@ backup() {
     fi
   fi
   if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
+    && [ "${_DOW}" = "6" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
+    n=$((RANDOM%10800+8))
+    echo "Waiting $n seconds on `date` before running cleanup --force" > ${LOGFILE}
+    sleep $n
+    echo "Running cleanup --force on `date`" >> ${LOGFILE}
     duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
   fi
-  duplicity -v ${_AWS_VLV} --volsize 100 \
+  if [ "${_DOW}" = "6" ] && [ "${_AWS_FLC}" = "7D" ]; then
+    _MODE="full"
+    _AWS_FLC="1M"
+  else
+    if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
+      && [ "${_DO_CLEANUP}" = "YES" ]; then
+      _MODE="incr"
+    else
+      _MODE="full"
+    fi
+  fi
+  n=$((RANDOM%10800+8))
+  echo "Waiting $n seconds on `date` before running ${_MODE} backup" >> ${LOGFILE}
+  sleep $n
+  echo "Running ${_MODE} backup on `date`" >> ${LOGFILE}
+  duplicity ${_MODE} -v ${_AWS_VLV} --volsize 100 \
     --allow-source-mismatch \
     --full-if-older-than ${_AWS_FLC} \
     --asynchronous-upload ${_AWS_OPX} \
-    ${INCLUDE} ${EXCLUDE} --exclude '**' / ${TARGET} > ${LOGFILE}
+    ${INCLUDE} ${EXCLUDE} --exclude '**' / ${TARGET} >> ${LOGFILE}
   if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
+    && [ "${_DOW}" = "6" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
+    n=$((RANDOM%10800+8))
+    echo "Waiting $n seconds on `date` before running remove-older-than ${_AWS_TTL}" >> ${LOGFILE}
+    sleep $n
+    echo "Running remove-older-than on `date`" >> ${LOGFILE}
     duplicity -v ${_AWS_VLV} remove-older-than ${_AWS_TTL} \
       --force ${_AWS_OPX} ${TARGET} >> ${LOGFILE}
+    n=$((RANDOM%10800+8))
+    echo "Waiting $n seconds on `date` before running collection-status" >> ${LOGFILE}
+    sleep $n
+    echo "Running collection-status on `date`" >> ${LOGFILE}
     duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET} >> ${LOGFILE}
   fi
   if [ -n "${_MY_EMAIL}" ] && [ "${_AWS_VLV}" -lt "3" ]; then
+    echo "Sending email report on `date`" >> ${LOGFILE}
     mail -s "Daily backup: ${_HST} $(date 2>&1)" ${_MY_EMAIL} < ${LOGFILE}
   fi
-  cat /var/xdrago/log/${BUCKET}.log >> /var/xdrago/log/${BUCKET}.archive.log
+  cat ${LOGFILE} >> /var/xdrago/log/${BUCKET}.archive.log
+  rm -f ${LOGFILE}
 }
 
 conn_test() {
@@ -215,7 +248,9 @@ conn_test() {
   echo "Running AWS connection test, please wait..."
   ConnTest=$(duplicity -v 2 cleanup --dry-run \
     --timeout 1 ${_AWS_OPX} ${TARGET} 2>&1)
-  if [[ "$ConnTest" =~ "No connection to backend" ]]; then
+  ### echo ConnTest is STR ${ConnTest} END
+  if [[ "${ConnTest}" =~ "No connection to backend" ]] \
+    || [[ "${ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
     echo
     echo "  Sorry, I can't connect to ${TARGET}"
     echo "  Please check if the bucket has expected name: ${BUCKET}"
@@ -348,10 +383,6 @@ install() {
 }
 
 if [ "$1" = "backup" ]; then
-  n=$((RANDOM%1800+80))
-  echo "waiting $n seconds before running backup..."
-  sleep $n
-  conn_test
   if test -f /var/run/${_HST}_backup.pid ; then
     touch /var/xdrago/log/wait_${_HST}_backup.log
     echo "The duplicity backup is running already?"
@@ -369,13 +400,10 @@ if [ "$1" = "backup" ]; then
 elif [ "$1" = "install" ]; then
   install
 elif [ "$1" = "cleanup" ]; then
-  conn_test
   cleanup
 elif [ "$1" = "list" ]; then
-  conn_test
   list
 elif [ "$1" = "restore" ]; then
-  conn_test
   if [ $# = 3 ]; then
     restore $2 $3
   else
@@ -383,17 +411,14 @@ elif [ "$1" = "restore" ]; then
   fi
 elif [ "$1" = "retrieve" ]; then
   if [ $# = 4 ]; then
-    conn_test
     retrieve $2 $3 $4
   elif [ $# = 5 ]; then
-    conn_test $5
     retrieve $2 $3 $4 $5
   else
     echo "You have to specify also hostname of the backed up system"
     exit 1
   fi
 elif [ "$1" = "status" ]; then
-  conn_test
   status
 elif [ "$1" = "test" ]; then
   conn_test

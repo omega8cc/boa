@@ -3,13 +3,10 @@ added to all 6.x and 7.x platforms -- even to your custom
 platforms created in the ~/static directory tree.
 
 Some core and contrib modules are either enabled or disabled
-by default, by running daily (at morning) maintenance monitor.
+by default, by running weekly (on Saturday) maintenance monitor.
 
 NOTE: You can disable this feature with _MODULES_FIX=NO in the
       standard Barracuda configuration file: /root/.barracuda.cnf
-      However, if you disable this option, you will automatically
-      disable also the user register protection check/feature:
-      https://omega8.cc/node/273
 
 There are also modules supported by Octopus, but not bundled
 by default and/or not enabled.
@@ -22,7 +19,7 @@ meaning of [S]upported flag here.
 
 Note that while some of them are enabled by default on initial
 install of "blank" site in the supported platform, they are
-not forced as enabled by the running daily maintenance monitor,
+not forced as enabled by the running weekly maintenance monitor,
 so we marked them as [S]oft[E]nabled.
 
 Here is a complete list with corresponding flags for every
@@ -31,13 +28,13 @@ module/theme: [S]upported, [B]undled, [F]orce[E]nabled,
 this module is used without the need to enable it.
 
 NOTE: Both [F]orce[E]nabled and [F]orce[D]isabled list can be skipped
-      with _MODULES_FIX=NO in /root/.barracuda.cnf (default since BOA-2.4.0)
+      with _MODULES_FIX=NO in /root/.barracuda.cnf (default is YES)
       However, this procedure is now smart enough to check if the module
       is defined as required by any other module or feature and will
       skip such module automatically, to avoid disabling innocent modules
       via feature or any other dependency. You can also use _MODULES_SKIP
       variable to list modules which should never be disabled by
-      the running daily maintenance agent.
+      the running weekly maintenance agent.
 
 Supported core version is listed for every module or theme
 as [D6] and/or [D7].

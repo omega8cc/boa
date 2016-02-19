@@ -45,7 +45,7 @@ exit;
 #############################################################################
 sub fpmcheck
 {
-local(@MYARR) = `grep " 499 0 " /var/log/nginx/access.log | tail --lines=999 2>&1`;
+local(@MYARR)=`grep " 499 0 " /var/log/nginx/access.log | tail --lines=999 2>&1`;
 local($sumar,$maxnumber);
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
@@ -92,7 +92,7 @@ local($sumar,$maxnumber);
 }
 sub javacheck
 {
-local(@MYARR) = `grep "Apache Solr" /var/log/syslog | tail --lines=999 2>&1`;
+local(@MYARR)=`grep "Apache Solr" /var/log/syslog | tail --lines=999 2>&1`;
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
     if ($line =~ /(timed out)/i || $line =~ /(Communication Error)/i) {
@@ -121,4 +121,4 @@ local(@MYARR) = `grep "Apache Solr" /var/log/syslog | tail --lines=999 2>&1`;
     }
   }
 }
-###EOF2015###
+###EOF2016###

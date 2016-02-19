@@ -5,7 +5,7 @@
 ###
 ###  Octopus Aegir Installer
 ###
-###  Copyright (C) 2010-2015 Omega8.cc
+###  Copyright (C) 2010-2016 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -54,15 +54,17 @@ export _USER="${_USER}"
 _D8_DEV_COMMIT=8x_f49bb893
 _DRUSH_VERSION=mini-7-30-06-2015
 _NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=${_NOW//[^0-9-]/}
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
 _REDIS_M_VERSION=mod-26-06-2015
 _SMALLCORE6=6.37.1
-_SMALLCORE7=7.41.1
+_SMALLCORE7=7.42.2
 _SMALLCORE8=8.0.0-beta16
 _SPINNER=YES
 _T_BUILD=HEAD
 _TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
 _F_TIME=$(date 2>&1)
 _USRG=users
 _WEBG=www-data
@@ -101,31 +103,31 @@ vBs="/var/backups"
 ###
 ### Distributions
 ###
-_AGOV=2.1
+_AGOV=3.0
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
 _COD=1.0-alpha5
 _COMMERCE1=1.40
-_COMMERCE2=2.31
-_COMMONS2=2.26
-_COMMONS3=3.32
+_COMMERCE2=2.33
+_COMMONS2=2.27
+_COMMONS3=3.34
 _D8_DEV_LABEL="8-dev-${_TODAY}"
 _DRUPAL7="drupal-${_SMALLCORE7}"
 _DRUPAL8="drupal-${_SMALLCORE8}"
 _ERPAL=2.3
-_GUARDR=2.26
+_GUARDR=2.27
 _OPENACADEMY=1.1
 _OPENAID=2.7
-_OPENATRIUM7=2.50
+_OPENATRIUM7=2.53
 _OPENBLOG=1.0-alpha3
 _OPENCHURCH1=1.17-beta2
 _OPENCHURCH2=2.2
 _OPENDEALS=1.35
-_OPENOUTREACH=1.25
+_OPENOUTREACH=1.26
 _OPENPUBLIC=1.7
 _OPENPUBLISH=1.0-beta7
 _OPENSCHOLAR=3.28.0
-_PANOPOLY=1.29
+_PANOPOLY=1.30
 _RECRUITER=1.7
 _RESTAURANT=1.0-rc2
 _UBERCART6=2.15
@@ -211,6 +213,7 @@ _STATUS=INIT
 ###
 ### Misc checks
 ###
+satellite_check_php_compatibility
 satellite_check_octopus_versus_barracuda_version
 satellite_if_head_github_connection_test
 satellite_if_sql_exception_test
@@ -238,7 +241,7 @@ exit 0
 ###----------------------------------------###
 ###
 ###  Octopus Aegir Installer
-###  Copyright (C) 2010-2015 Omega8.cc
+###  Copyright (C) 2010-2016 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

@@ -13,6 +13,7 @@ PHP-FPM, Zend OPcache, MariaDB and Redis.
 ### Installation instructions .........: docs/INSTALL.txt
 ### Other related information .........: docs/NOTES.txt
 ### Upgrade instructions ..............: docs/UPGRADE.txt
+### Bug reporting .....................: CONTRIBUTING.txt <----- Read This First
 ###
 ### Barracuda configuration template ..: docs/cnf/barracuda.cnf
 ### Octopus configuration template ....: docs/cnf/octopus.cnf
@@ -84,7 +85,6 @@ production settings.
 * Debian 6 Squeeze (limited support)
 * Ubuntu Trusty 14.04 (limited support)
 * Ubuntu Precise 12.04 (limited support)
-* Ubuntu Lucid 10.04 (limited support)
 
 
 ### OTHER REQUIREMENTS
@@ -152,30 +152,30 @@ production settings.
 
 Octopus can install the platforms listed below:
 
- @ Drupal 7.41.1
+ @ Drupal 7.42.2
 
- aGov 2.1 --------------------- https://drupal.org/project/agov
+ aGov 3.0 --------------------- https://drupal.org/project/agov
  Commerce 1.40 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.31 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.32 ----------------- https://drupal.org/project/commons
- Drupal 7.41.1 ---------------- https://drupal.org/drupal-7.41
+ Commerce 2.33 ---------------- https://drupal.org/project/commerce_kickstart
+ Commons 3.34 ----------------- https://drupal.org/project/commons
+ Drupal 7.42.2 ---------------- https://drupal.org/drupal-7.42
  ERPAL 2.3 -------------------- https://drupal.org/project/erpal
- Guardr 2.26 ------------------ https://drupal.org/project/guardr
+ Guardr 2.27 ------------------ https://drupal.org/project/guardr
  OpenAid 2.7 ------------------ https://drupal.org/project/openaid
- OpenAtrium 2.50 -------------- https://drupal.org/project/openatrium
+ OpenAtrium 2.53 -------------- https://drupal.org/project/openatrium
  OpenChurch 2.2 --------------- https://drupal.org/project/openchurch
- OpenOutreach 1.25 ------------ https://drupal.org/project/openoutreach
+ OpenOutreach 1.26 ------------ https://drupal.org/project/openoutreach
  OpenPublic 1.7 --------------- https://drupal.org/project/openpublic
- Panopoly 1.29 ---------------- https://drupal.org/project/panopoly
+ Panopoly 1.30 ---------------- https://drupal.org/project/panopoly
  Ubercart 3.9 ----------------- https://drupal.org/project/ubercart
 
  @ Pressflow 6.37.1
 
- Commons 2.26 ----------------- https://drupal.org/project/commons
+ Commons 2.27 ----------------- https://drupal.org/project/commons
  Pressflow 6.37.1 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.41.1 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.42.2 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
 * All D6 platforms have been enhanced using Pressflow 6.37.1 +Extra core:
@@ -185,4 +185,30 @@ Octopus can install the platforms listed below:
   contrib modules - see docs/MODULES.txt for details.
 
 
-Join the chat at https://gitter.im/omega8cc/boa
+### MAINTAINERS
+
+BOA development is maintained and sponsored by Omega8.cc
+
+  https://omega8.cc/about
+
+
+### CREDITS
+
+* Aegir project --------------- http://www.aegirproject.org
+* Brian Mercer ---------------- https://drupal.org/node/244072#comment-1747170
+* Nice people who are submitting bugs and problems in the BOA issue queue.
+
+
+### DONATIONS
+
+If you wish to support BOA development or simply send a nice 'Thank you'
+to the Universe, please donate to the Aegir project. BOA devs participate
+in Aegir core development for years, and BOA project, which is maintained
+by Omega8.cc exists only thanks to Aegir project continued development.
+
+Please choose either PayPal or Gratipay option at:
+
+  http://www.aegirproject.org/donate
+
+Thank you!
+

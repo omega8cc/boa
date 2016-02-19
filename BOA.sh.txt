@@ -5,7 +5,7 @@
 ###
 ###  BOA Meta Installer
 ###
-###  Copyright (C) 2010-2015 Omega8.cc
+###  Copyright (C) 2010-2016 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -46,7 +46,8 @@ SHELL=/bin/bash
 export DEBIAN_FRONTEND=noninteractive
 
 _TODAY=$(date +%y%m%d 2>&1)
-_X_VERSION="BOA-2.4.7-dev"
+_TODAY=${_TODAY//[^0-9]/}
+_X_VERSION="BOA-2.4.7"
 #
 saCoreN="SA-CORE-2014-005"
 saCoreS="${saCoreN}-D7"
@@ -191,9 +192,14 @@ update_agents() {
 
   if [ "${_BENG_VS}" = "YES" ] \
     && [ -e "/var/xdrago" ]; then
+    PrTest=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
     InTest=$(ls /data/disk/ | wc -l 2>&1)
-    if [ "${InTest}" -gt "5" ]; then
-      echo ${InTest} > /root/.tg.cnf
+    if [ "${InTest}" -gt "14" ] || [[ "${PrTest}" =~ "POWER" ]]; then
+      if [ "${InTest}" -gt "14" ]; then
+        echo ${InTest} > /root/.tg.cnf
+      else
+        rm -f /root/.tg.cnf
+      fi
       echo ${InTest} > /root/.high_traffic.cnf
       echo ${InTest} > /root/.skip_cleanup.cnf
       rm -f /root/.giant_traffic.cnf
@@ -204,6 +210,13 @@ update_agents() {
       echo ${InTest} > /root/.skip_cleanup.cnf
       rm -f /root/.giant_traffic.cnf
       rm -f /root/.intest.cnf
+    fi
+    if [ ! -e "/data/conf/override.global.inc" ]; then
+      echo "<?php" > /data/conf/override.global.inc.tmp
+      echo "" >> /data/conf/override.global.inc.tmp
+      echo "\$use_redis = TRUE;" >> /data/conf/override.global.inc.tmp
+      chmod 644 /data/conf/override.global.inc.tmp
+      mv -f /data/conf/override.global.inc.tmp /data/conf/override.global.inc
     fi
   fi
 
@@ -467,6 +480,22 @@ fix_alt() {
   fi
 }
 
+force_rebuild() {
+  if [ ! -e "${pthLog}/forced.rebuild.glibc.txt" ] \
+    && [ -e "/var/log/barracuda_log.txt" ]; then
+    echo "_GIT_FORCE_REINSTALL=YES" >> ${barCnf}
+    echo "_NGX_FORCE_REINSTALL=YES" >> ${barCnf}
+    echo "_PHP_FORCE_REINSTALL=YES" >> ${barCnf}
+    echo "_SSH_FORCE_REINSTALL=YES" >> ${barCnf}
+    echo "_SSL_FORCE_REINSTALL=YES" >> ${barCnf}
+    rm -f ${pthLog}/pure-ftpd-build*
+    rm -f ${pthLog}/mss-build*
+    rm -f ${pthLog}/lshell-build*
+    rm -f ${pthLog}/redis-*
+    touch ${pthLog}/forced.rebuild.glibc.txt
+  fi
+}
+
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
@@ -681,6 +710,8 @@ if [ `whoami` = "root" ]; then
         echo "STATUS: ${barCnf} to disable me, if needed."
       fi
     fi
+  else
+    _SCREEN_INIT=YES
   fi
   if [ -d "/.newrelic" ]; then
     rm -rf /.newrelic
@@ -694,6 +725,7 @@ if [ `whoami` = "root" ]; then
   fi
   setup
   fix_alt
+  force_rebuild
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
@@ -707,13 +739,42 @@ if [ `whoami` = "root" ]; then
       fi
     else
       update_agents
-      fix_core_dgd
+      if [[ "${_VERSIONS_TEST}" =~ "BOA-3." ]] \
+        || [[ "${_VERSIONS_TEST}" =~ "BOA-2.4." ]] \
+        || [[ "${_VERSIONS_TEST}" =~ "BOA-2.3.8" ]]; then
+        _DO_NOTHING=YES
+      else
+        fix_core_dgd
+      fi
     fi
   fi
   if [ ! -e "/root/.upstart.cnf" ]; then
     service cron reload &> /dev/null
   fi
-  exit 0
+  if [ "${_SCREEN_INIT}" = "YES" ]; then
+    apt-get install screen ${forCer} &> /dev/null
+    sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
+    clear
+    echo
+    echo "The system is ready for BOA installation!"
+    echo
+    echo "We will start screen session for you in 15 seconds"
+    echo "to avoid problems with dropped SSH connections"
+    echo "during BOA stack installation, which may take up to"
+    echo "30-60 minutes, depending on your server speed."
+    echo
+    echo "If your connection will drop, simply log in again"
+    echo "and re-attach your session with 'screen -R' command."
+    echo
+    echo "Please wait a moment until this message disappears."
+    echo
+    echo "Enjoy!"
+    echo
+    sleep 15
+    screen
+  else
+    exit 0
+  fi
 else
   echo "ERROR: This script should be ran as a root user"
   exit 1

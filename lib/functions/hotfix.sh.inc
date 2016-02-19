@@ -145,7 +145,6 @@ fix_cnf_postfix() {
     else
       sed -i "s/^inet_protocols.*/inet_protocols = ipv4/g" \
         /etc/postfix/main.cf &> /dev/null
-      wait
       _RELOAD_POSTFIX=YES
     fi
   else

@@ -5,6 +5,13 @@ SHELL=/bin/bash
 
 check_root() {
   if [ `whoami` = "root" ]; then
+    if [ -e "/root/.barracuda.cnf" ]; then
+      source /root/.barracuda.cnf
+      _B_NICE=${_B_NICE//[^0-9]/}
+    fi
+    if [ -z "${_B_NICE}" ]; then
+      _B_NICE=10
+    fi
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -72,9 +79,7 @@ find_fast_mirror() {
   urlStb="http://${_USE_MIR}/versions/stable"
 }
 
-if [ -e "/var/run/boa_run.pid" ]; then
-  sleep 1
-else
+if [ ! -e "/var/run/boa_run.pid" ]; then
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
   fi
@@ -99,7 +104,11 @@ fi
 # See also: https://omega8.cc/never-send-mailings-from-aegir-server-322
 sudo postsuper -d ALL &> /dev/null
 
-service ssh restart &> /dev/null
+if [ -e "/etc/init.d/rsyslog" ]; then
+  service rsyslog restart &> /dev/null
+elif [ -e "/etc/init.d/sysklogd" ]; then
+  service sysklogd restart &> /dev/null
+fi
 rm -f /var/backups/.auth.IP.list*
 find /var/xdrago/log/*.pid -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 
@@ -120,6 +129,9 @@ if [ -d "/dev/disk" ]; then
   fi
 fi
 
+renice ${_B_NICE} -p $$ &> /dev/null
+service ssh restart &> /dev/null
+
 _IF_BCP=$(ps aux | grep '[d]uplicity' | awk '{print $2}')
 
 if [ -z "${_IF_BCP}" ] \
@@ -135,4 +147,4 @@ fi
 
 touch /var/xdrago/log/clear.done
 exit 0
-###EOF2015###
+###EOF2016###

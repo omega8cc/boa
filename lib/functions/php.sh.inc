@@ -331,11 +331,11 @@ update_php_conf() {
 # Tune Web Sever configuration.
 tune_web_server_config() {
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
-  if [ "${_LIM_FPM}" -lt "24" ]; then
+  if [ "${_LIM_FPM}" -lt "48" ]; then
     if [[ "${_THISHOST}" =~ ".host8." ]] \
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
-      _LIM_FPM=24
+      _LIM_FPM=48
     fi
   fi
   _PROCESS_MAX_FPM=$(( _LIM_FPM * 5 ))
@@ -399,13 +399,13 @@ install_ioncube() {
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       SYSTEMARCH="x86_64"
-      msg "INFO: Installing IonCube $SYSTEMARCH version for PHP..."
+      msg "INFO: Installing IonCube ${SYSTEMARCH} version for PHP..."
       cd /var/opt
       rm -f -r ioncube_loaders*
       get_dev_arch "ioncube_loaders_lin_x86-64.tar.gz"
     else
       SYSTEMARCH="x86"
-      msg "INFO: Installing IonCube $SYSTEMARCH version for PHP..."
+      msg "INFO: Installing IonCube ${SYSTEMARCH} version for PHP..."
       cd /var/opt
       rm -f -r ioncube_loaders*
       get_dev_arch "ioncube_loaders_lin_x86.tar.gz"
@@ -527,8 +527,13 @@ install_php_extensions() {
   fi
   cd /var/opt
   rm -f -r imagick*
-  get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
-  cd /var/opt/imagick-${_IMAGICK_VRN}
+  if [ "$1" = "53" ]; then
+    get_dev_src "imagick-${_IMAGICK_OLD_VRN}.tgz"
+    cd /var/opt/imagick-${_IMAGICK_OLD_VRN}
+  else
+    get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
+    cd /var/opt/imagick-${_IMAGICK_VRN}
+  fi
   st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
@@ -565,17 +570,19 @@ install_php_extensions() {
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ] \
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.2" ]; then
         mkdir -p /var/backups/libyaml
-        cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/
+        mkdir -p /usr/lib/x86_64-linux-gnu
+        cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/ &> /dev/null
         rm -f /usr/lib/x86_64-linux-gnu/libyaml*
-        cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/
+        cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/ &> /dev/null
       fi
     else
       if [ ! -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.4" ] \
         || [ -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.2" ]; then
         mkdir -p /var/backups/libyaml
-        cp -af /usr/lib/i386-linux-gnu/libyaml* /var/backups/libyaml/
+        mkdir -p /usr/lib/i386-linux-gnu
+        cp -af /usr/lib/i386-linux-gnu/libyaml* /var/backups/libyaml/ &> /dev/null
         rm -f /usr/lib/i386-linux-gnu/libyaml*
-        cp -af /usr/lib/libyaml* /usr/lib/i386-linux-gnu/
+        cp -af /usr/lib/libyaml* /usr/lib/i386-linux-gnu/ &> /dev/null
       fi
     fi
   fi
@@ -715,8 +722,13 @@ update_php_extensions() {
     fi
     cd /var/opt
     rm -f -r imagick*
-    get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
-    cd /var/opt/imagick-${_IMAGICK_VRN}
+    if [ "$1" = "53" ]; then
+      get_dev_src "imagick-${_IMAGICK_OLD_VRN}.tgz"
+      cd /var/opt/imagick-${_IMAGICK_OLD_VRN}
+    else
+      get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
+      cd /var/opt/imagick-${_IMAGICK_VRN}
+    fi
     st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
@@ -756,7 +768,7 @@ update_php_extensions() {
       if [ ! -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ] \
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.2" ]; then
         mkdir -p /var/backups/libyaml
-        cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/
+        cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/ &> /dev/null
         rm -f /usr/lib/x86_64-linux-gnu/libyaml*
         cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/
       fi
@@ -802,7 +814,8 @@ install_php_multi() {
   msg "INFO: Building PHP ${_PHP_VERSION} part 1/3"
   cd /var/opt/php-${_PHP_VERSION}
   st_runner "sh ./buildconf --force" 2> /dev/null
-  if [ "${_OSV}" = "wheezy" ] \
+  if [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "wheezy" ] \
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
@@ -846,7 +859,6 @@ install_php_multi() {
                 --with-pdo-mysql=/usr \
                 --with-pear \
                 --with-png-dir=/usr \
-                --with-t1lib=/usr \
                 --with-xmlrpc \
                 --with-xsl \
                 --with-zlib \
@@ -869,7 +881,12 @@ install_php_multi() {
   _T_PHP_PTH="/opt/php$1/bin"
   _T_PHP_CFG="/opt/php$1/bin/php-config"
   install_php_extensions "$1"
-  touch ${pthLog}/installed-${_PHP_VERSION}-$_MARIADB_VRN-MariaDB.log
+  if [ "${_DB_SERIES}" = "10.0" ]; then
+    _T_MARIADB_VRN="${_MARIADB_10_VRN}"
+  else
+    _T_MARIADB_VRN="${_MARIADB_VRN}"
+  fi
+  touch ${pthLog}/installed-${_PHP_VERSION}-${_T_MARIADB_VRN}-MariaDB.log
   rm -f /etc/init.d/php$1-fpm*
   cp -af ${locCnf}/php$1-fpm /etc/init.d/php$1-fpm
   chmod 755 /etc/init.d/php$1-fpm
@@ -1152,8 +1169,13 @@ check_php_rebuild() {
       install_php_multi "$1"
     fi
   fi
-  if [ ! -e "${pthLog}/installed-${_PHP_VERSION}-$_MARIADB_VRN-MariaDB.log" ]; then
-    msg "INFO: PHP ${_PHP_VERSION} rebuild required for MariaDB $_MARIADB_VRN"
+  if [ "${_DB_SERIES}" = "10.0" ]; then
+    _T_MARIADB_VRN="${_MARIADB_10_VRN}"
+  else
+    _T_MARIADB_VRN="${_MARIADB_VRN}"
+  fi
+  if [ ! -e "${pthLog}/installed-${_PHP_VERSION}-${_T_MARIADB_VRN}-MariaDB.log" ]; then
+    msg "INFO: PHP ${_PHP_VERSION} rebuild required for MariaDB ${_T_MARIADB_VRN}"
     install_php_multi "$1"
   fi
 }
@@ -1335,6 +1357,7 @@ switch_php_cli() {
 
 php_upgrade_all() {
   if [ -x "/opt/php53/bin/php" ] \
+    && [ "${_SKIP_LEGACY_PHP}" != "YES" ] \
     && [ -z "$_FRESH_PHP53_BUILD" ]; then
     _PHP_VERSION="${_PHP53_VRN}"
     _PHP_BIN_BROKEN=NO
@@ -1348,6 +1371,7 @@ php_upgrade_all() {
     _T_PHP_PTH=""
   fi
   if [ -x "/opt/php54/bin/php" ] \
+    && [ "${_SKIP_LEGACY_PHP}" != "YES" ] \
     && [ -z "$_FRESH_PHP54_BUILD" ]; then
     _PHP_VERSION="${_PHP54_VRN}"
     _PHP_BIN_BROKEN=NO
@@ -1405,7 +1429,8 @@ install_update_php() {
     st_runner "aptitude remove php5-sasl php5-suhosin -y" &> /dev/null
     st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
   fi
-  if [ "${_OSV}" = "wheezy" ] \
+  if [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "wheezy" ] \
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
@@ -1421,10 +1446,12 @@ install_update_php() {
       msg "INFO: PHP EXTRA is ${_PHP_EXTRA}"
     fi
   fi
-  if [ "${_OSV}" = "trusty" ]; then
+  if [ "${_OSV}" = "trusty" ] \
+    || [ "${_OSV}" = "jessie" ]; then
     ln -sf /usr/include/freetype2 /usr/include/freetype2/freetype
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "5.3" ]] \
+    && [ "${_SKIP_LEGACY_PHP}" != "YES" ] \
     && [ ! -x "/opt/php53/bin/php" ]; then
     _PHP_VERSION="${_PHP53_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
@@ -1436,6 +1463,7 @@ install_update_php() {
     _FRESH_PHP53_BUILD=53
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "5.4" ]] \
+    && [ "${_SKIP_LEGACY_PHP}" != "YES" ] \
     && [ ! -x "/opt/php54/bin/php" ]; then
     _PHP_VERSION="${_PHP54_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"

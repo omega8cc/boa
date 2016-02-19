@@ -3,6 +3,14 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
+if [ -e "/root/.barracuda.cnf" ]; then
+  source /root/.barracuda.cnf
+  _B_NICE=${_B_NICE//[^0-9]/}
+fi
+if [ -z "${_B_NICE}" ]; then
+  _B_NICE=10
+fi
+
 check_pdnsd() {
   if [ -e "/etc/resolv.conf" ]; then
     _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
@@ -11,7 +19,7 @@ check_pdnsd() {
       if [[ "${_THIS_DNS_TEST}" =~ "no servers could be reached" ]]; then
         service pdnsd stop &> /dev/null
         sleep 1
-        renice 10 -p $$
+        renice ${_B_NICE} -p $$ &> /dev/null
         perl /var/xdrago/proc_num_ctrl.cgi
       fi
     fi
@@ -26,7 +34,7 @@ if [ -e "/var/log/php" ]; then
     sleep 8
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
     rm -f /var/log/php/*
-    renice 10 -p $$
+    renice ${_B_NICE} -p $$ &> /dev/null
     if [ -e "/etc/init.d/php56-fpm" ]; then
       service php56-fpm start
     fi
@@ -50,7 +58,7 @@ if [ -e "/var/log/php" ]; then
     sleep 8
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
     rm -f /var/log/php/*
-    renice 10 -p $$
+    renice ${_B_NICE} -p $$ &> /dev/null
     if [ -e "/etc/init.d/php56-fpm" ]; then
       service php56-fpm start
     fi
@@ -75,7 +83,7 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]]; then
   echo $_PHPLOG_SIZE_TEST too big
   touch /var/run/fmp_wait.pid
   rm -f /var/log/php/*
-  renice 10 -p $$
+  renice ${_B_NICE} -p $$ &> /dev/null
   if [ -e "/etc/init.d/php56-fpm" ]; then
     service php56-fpm reload
   fi
@@ -142,7 +150,7 @@ jetty_restart() {
   sleep 5
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
   rm -f /var/log/jetty{7,8,9}/*
-  renice 10 -p $$
+  renice ${_B_NICE} -p $$ &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
     service jetty9 start
   fi
@@ -197,6 +205,7 @@ fi
 mysql_proc_kill() {
   if [ "$xtime" != "Time" ] \
     && [ "$xuser" != "root" ] \
+    && [ "$xuser" != "system" ] \
     && [ "$xtime" != "|" ] \
     && [[ "$xtime" -gt "$limit" ]]; then
     xkill=$(mysqladmin kill $each 2>&1)
@@ -216,27 +225,32 @@ mysql_proc_control() {
   for each in `mysqladmin proc \
     | awk '{print $2, $4, $8, $12}' \
     | awk '{print $1}'`; do
-    xtime=$(mysqladmin proc \
-      | awk '{print $2, $4, $8, $12}' \
-      | grep $each \
-      | awk '{print $4}' 2>&1)
-    if [ "$xtime" = "|" ]; then
+    if [ "$each" != "1" ] \
+      && [ "$each" != "2" ] \
+      && [ "$each" != "Id" ] \
+      && [ ! -z "$each" ]; then
       xtime=$(mysqladmin proc \
-        | awk '{print $2, $4, $8, $11}' \
+        | awk '{print $2, $4, $8, $12}' \
         | grep $each \
         | awk '{print $4}' 2>&1)
-    fi
-    xuser=$(mysqladmin proc \
-      | awk '{print $2, $4, $8, $12}' \
-      | grep $each \
-      | awk '{print $2}' 2>&1)
-    if [ "$xtime" != "Time" ]; then
-      if [ "$xuser" = "xabuse" ]; then
-        limit=60
-        mysql_proc_kill
-      else
-        limit=3600
-        mysql_proc_kill
+      if [ "$xtime" = "|" ]; then
+        xtime=$(mysqladmin proc \
+          | awk '{print $2, $4, $8, $11}' \
+          | grep $each \
+          | awk '{print $4}' 2>&1)
+      fi
+      xuser=$(mysqladmin proc \
+        | awk '{print $2, $4, $8, $12}' \
+        | grep $each \
+        | awk '{print $2}' 2>&1)
+      if [ "$xtime" != "Time" ]; then
+        if [ "$xuser" = "xabuse" ]; then
+          limit=60
+          mysql_proc_kill
+        else
+          limit=3600
+          mysql_proc_kill
+        fi
       fi
     fi;
   done
@@ -329,4 +343,4 @@ fi
 perl /var/xdrago/monitor/check/sqlcheck
 echo DONE!
 exit 0
-###EOF2015###
+###EOF2016###

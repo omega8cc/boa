@@ -142,7 +142,7 @@ provision_backend_dbpass_sync() {
   if [ ! -z "${_ESC_APASS}" ] && [ ! -z "${_ENC_APASS}" ]; then
     su -s /bin/bash - aegir -c "drush @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_APASS}' \
-      WHERE db_user='$_ADBU'\" &> /dev/null"
+      WHERE db_user='$_ADBU'\"" &> /dev/null
     mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ESC_APASS}') \
       WHERE User='$_ADBU';" &> /dev/null
     sed -i "s/mysql:\/\/$_ADBU:.*/mysql:\/\/$_ADBU:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
@@ -150,29 +150,29 @@ provision_backend_dbpass_sync() {
     wait
   fi
   mysqladmin flush-privileges &> /dev/null
-  su -s /bin/bash - aegir -c "drush cc drush &> /dev/null"
+  su -s /bin/bash - aegir -c "drush cc drush" &> /dev/null
   rm -f -r /var/aegir/.tmp/cache
   if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ]; then
     su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_localhost \
-      verify --force &> /dev/null"
+      verify --force" &> /dev/null
   else
     su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_master \
-      verify --force &> /dev/null"
+      verify --force" &> /dev/null
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Running hosting-dispatch (1/3)..."
   fi
-  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
   mrun "sleep 5"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Running hosting-dispatch (2/3)..."
   fi
-  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
   mrun "sleep 5"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Running hosting-dispatch (3/3)..."
   fi
-  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
 }
 
 #
@@ -264,7 +264,6 @@ upgrade_aegir_master() {
         /var/aegir/.drush/sys/provision &> /dev/null
       sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
         /var/aegir/.drush/sys/provision/aegir.make &> /dev/null
-      wait
       rm -f -r /var/aegir/drush
       cd /var/aegir
       get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
@@ -336,7 +335,6 @@ upgrade_aegir_master() {
       hostmaster_frontend_dbpass_sync
       sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" \
         /var/spool/cron/crontabs/aegir &> /dev/null
-      wait
     fi
     if [ ! -L "${mtrInc}/global.inc" ] && [ -e "${mtrInc}/global.inc" ]; then
       mv -f ${mtrInc}/global.inc \
@@ -345,7 +343,6 @@ upgrade_aegir_master() {
     mkdir -p /data/conf
     cp -af ${locCnf}/global.inc /data/conf/global.inc
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
-    wait
     if [ -e "${mtrInc}" ] && [ ! -L "${mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
       ln -sf /data/conf/global.inc ${mtrInc}/global.inc
@@ -386,19 +383,15 @@ update_php_cli_cron() {
   if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
     sed -i "s/^PATH=.*/PATH=\/opt\/php55\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
       /var/spool/cron/crontabs/aegir &> /dev/null
-    wait
   elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
     sed -i "s/^PATH=.*/PATH=\/opt\/php56\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
       /var/spool/cron/crontabs/aegir &> /dev/null
-    wait
   elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
     sed -i "s/^PATH=.*/PATH=\/opt\/php54\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
       /var/spool/cron/crontabs/aegir &> /dev/null
-    wait
   elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
     sed -i "s/^PATH=.*/PATH=\/opt\/php53\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
       /var/spool/cron/crontabs/aegir &> /dev/null
-    wait
   fi
   chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
 }
@@ -611,22 +604,22 @@ EOFMYSQL
     fi
     _U_HD="/var/aegir/.drush"
     chattr +i ${_U_HD}/php.ini &> /dev/null
-    su -s /bin/bash - aegir -c "drush cc drush &> /dev/null"
+    su -s /bin/bash - aegir -c "drush cc drush" &> /dev/null
     rm -f -r /var/aegir/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Running hosting-dispatch (1/3)..."
     fi
-    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
     mrun "sleep 5"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Running hosting-dispatch (2/3)..."
     fi
-    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
     mrun "sleep 5"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Running hosting-dispatch (3/3)..."
     fi
-    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
     if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
       _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
         | grep "root'" \
@@ -644,9 +637,12 @@ EOFMYSQL
   ###--------------------###
     if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
       _DO_NOTHING=YES
+      rm -f /root/.force.reinstall.cnf
     else
       msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed!"
-      msg "HINT: Please check /var/aegir/install.log for more information."
+      msg "HINT: Please check /var/aegir/install.log for details, and then"
+      msg "HINT: run the same install command again to complete installation."
+      touch /root/.force.reinstall.cnf
       clean_pid_exit
     fi
 
@@ -658,7 +654,6 @@ EOFMYSQL
     mkdir -p /data/conf
     cp -af ${locCnf}/global.inc /data/conf/global.inc
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
-    wait
     if [ -e "${mtrInc}" ] \
       && [ ! -L "${mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then

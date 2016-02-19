@@ -224,7 +224,6 @@ mode_detection() {
     mv -f /root/.my.pass.txt $_ZOMBIE_HOME/ &> /dev/null
     cp -af /etc/sudoers $_ZOMBIE_HOME/ &> /dev/null
     sed -i "s/^aegir.*//g" /etc/sudoers &> /dev/null
-    wait
     deluser aegir &> /dev/null
     rm -f /usr/bin/drush
     if [ ! -z "${_EASY_SETUP}" ] && [[ ! "${_EASY_SETUP}" =~ "NO" ]]; then
@@ -395,29 +394,36 @@ os_detection() {
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=NO
-    elif [ "${_THIS_RV}" = "lucid" ]; then
-      _OSV="lucid"
-      _NGINX_FORWARD_SECRECY=NO
-      _NGINX_SPDY=NO
-      _SSH_FROM_SOURCES=NO
-      _SSL_FROM_SOURCES=NO
     else
       not_supported_os
     fi
   elif [ "${_THIS_OS}" = "Debian" ]; then
-    if [ "${_THIS_RV}" = "wheezy" ]; then
+    if [ "${_THIS_RV}" = "jessie" ]; then
+      _OSV="jessie"
+      _DB_SERIES=10.0
+      _NGINX_FORWARD_SECRECY=YES
+      _NGINX_SPDY=YES
+      _SSH_FROM_SOURCES=YES
+      if [ -e "/root/.mstr.clstr.cnf" ] \
+        || [ -e "/root/.wbhd.clstr.cnf" ] \
+        || [ -e "/root/.dbhd.clstr.cnf" ]; then
+        _MARIADB_VRN="${_GALERA_10_VRN}"
+      else
+        _MARIADB_VRN="${_MARIADB_10_VRN}"
+      fi
+      _SPINNER=NO
+      _SKIP_LEGACY_PHP=YES
+    elif [ "${_THIS_RV}" = "wheezy" ]; then
       _OSV="wheezy"
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=YES
-      _SSL_FROM_SOURCES=YES
     elif [ "${_THIS_RV}" = "squeeze" ]; then
       _OSV="squeeze"
       _OPENSSL_VRN=1.0.1p
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=YES
-      _SSL_FROM_SOURCES=YES
     else
       not_supported_os
     fi
@@ -471,11 +477,11 @@ check_boa_version() {
   fi
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-    if [[ "${_SERIES_TEST}" =~ "BOA-2.4." ]]; then
-      if [[ ! "${_X_VERSION}" =~ "BOA-2.4." ]]; then
-        msg "ERROR: Your system has been already upgraded to modern BOA-2.4.x series"
-        msg "ERROR: You can not downgrade back to legacy or previous stable BOA version"
-        msg "ERROR: Please use barracuda up-stable to upgrade this system"
+    if [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
+      if [[ ! "${_X_VERSION}" =~ "BOA-3." ]]; then
+        msg "ERROR: Your system has been already upgraded to BOA-3.x.x series"
+        msg "You can not downgrade back to legacy or previous stable version"
+        msg "Please use 'barracuda up-stable' to upgrade this system"
         msg "Bye"
         clean_pid_exit
       fi

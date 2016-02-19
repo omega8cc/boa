@@ -168,7 +168,7 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
   sed -i "s/param db_port.*/param db_port   3306;/g" \
     /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
   wait
-  n=$((RANDOM%800+80))
+  n=$((RANDOM%900+80))
   echo Waiting $n seconds...
   sleep $n
   touch /var/run/water.pid
@@ -193,4 +193,4 @@ else
   fi
 fi
 exit 0
-###EOF2015###
+###EOF2016###

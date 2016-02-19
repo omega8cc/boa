@@ -464,7 +464,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     if [[ "${_ALL}" =~ "-c set -m; " ]] \
       && [ -x "/home/${USER}/.rvm/bin/rvm" ]; then
       _THIS_RV=$(lsb_release -sc 2>&1)
-      if [ "${_THIS_RV}" = "wheezy" ] \
+      if [ "${_THIS_RV}" = "jessie" ] \
+        || [ "${_THIS_RV}" = "wheezy" ] \
         || [ "${_THIS_RV}" = "trusty" ] \
         || [ "${_THIS_RV}" = "precise" ]; then
         _DETECTED_RUBY_VP=$(grep 'RUBY_VERSION' \
@@ -477,7 +478,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ]; then
           _RUBY_VP="${_DETECTED_RUBY_VP}"
         else
-          _RUBY_VP=2.2.3
+          _RUBY_VP=2.3.0
         fi
       else
         _DETECTED_RUBY_VP=$(grep 'RUBY_VERSION' \
@@ -490,7 +491,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ]; then
           _RUBY_VP="${_DETECTED_RUBY_VP}"
         else
-          _RUBY_VP=2.0.0-p647
+          _RUBY_VP=2.0.0-p648
         fi
       fi
       _SP_A="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}/bin"

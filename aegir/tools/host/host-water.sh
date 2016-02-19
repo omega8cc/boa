@@ -175,7 +175,7 @@ if [ -e "/vservers" ] \
   sed -i "s/param db_port.*/param db_port   3306;/g" \
     /vservers/*/data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
   wait
-  n=$((RANDOM%800+80))
+  n=$((RANDOM%900+80))
   echo Waiting $n seconds...
   sleep $n
   touch /var/run/water.pid
@@ -199,4 +199,4 @@ if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
   swapon -a
 fi
 exit 0
-###EOF2015###
+###EOF2016###

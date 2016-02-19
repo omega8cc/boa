@@ -28,9 +28,7 @@ hold() {
 }
 
 terminate() {
-  if [ -e "/var/run/boa_run.pid" ]; then
-    sleep 1
-  else
+  if [ ! -e "/var/run/boa_run.pid" ]; then
     killall -9 php drush.php wget curl &> /dev/null
     echo "$(date 2>&1)" >> /var/xdrago/log/second.terminate.log
   fi
@@ -282,7 +280,7 @@ proc_control() {
     echo "load is ${_O_LOAD}:${_F_LOAD} while \
       maxload is ${_O_LOAD_MAX}:${_F_LOAD_MAX}"
     echo ...OK now running proc_num_ctrl...
-    renice 10 -p $$
+    renice ${_B_NICE} -p $$ &> /dev/null
     perl /var/xdrago/proc_num_ctrl.cgi
     touch /var/xdrago/log/proc_num_ctrl.done
     echo CTL done
@@ -370,6 +368,7 @@ if [ -e "/root/.barracuda.cnf" ]; then
   _CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO//[^0-9]/}
   _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
   _CPU_CRIT_RATIO=${_CPU_CRIT_RATIO//[^0-9]/}
+  _B_NICE=${_B_NICE//[^0-9]/}
 fi
 
 if [ -z "${_CPU_SPIDER_RATIO}" ]; then
@@ -380,6 +379,9 @@ if [ -z "${_CPU_MAX_RATIO}" ]; then
 fi
 if [ -z "${_CPU_CRIT_RATIO}" ]; then
   _CPU_CRIT_RATIO=9
+fi
+if [ -z "${_B_NICE}" ]; then
+  _B_NICE=10
 fi
 
 count_cpu
@@ -425,4 +427,4 @@ load_control
 manage_ip_auth_access
 echo Done !
 exit 0
-###EOF2015###
+###EOF2016###
