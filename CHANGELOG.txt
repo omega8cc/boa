@@ -2,6 +2,7 @@
 ### Stable BOA-2.4.8 Release - Full Edition
 ### Date: Sat Feb 20 11:28:05 GMT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.8
+### Latest hotfix added on: Sat Feb 20 15:38:25 GMT 2016
 
   @=> Includes Aegir Hostmaster 2.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -76,6 +77,7 @@
   * Add duobackboa docs
   * Add missing libs in Jessie
   * Allow to install a specific PHP version on a local install -- fixes #848
+  * Allow to run upgrade from not really 3.x HEAD to 2.4.8
   * Automate /root/.force.reinstall.cnf and improve docs
   * Disable spinner on Jessie
   * Do not kill long running php-fpm childs
