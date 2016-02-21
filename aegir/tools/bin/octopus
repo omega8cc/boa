@@ -4,14 +4,14 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 branch="2.4.x-dev"
-cluster="BOA-2.4.7"
+cluster="BOA-2.4.8"
 hd="HEAD"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
-lgcC="BOA-2.4.7"
+lgcC="BOA-2.4.8"
 master="master"
 nextv="BOA-3.0.0-dev"
-stbl="BOA-2.4.7"
+stbl="BOA-2.4.8"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -861,8 +861,15 @@ check_dns_curl() {
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    renice 10 -p $$ &> /dev/null
-    ionice -c2 -n7 -p $$ &> /dev/null
+    if [ -e "/root/.barracuda.cnf" ]; then
+      source /root/.barracuda.cnf
+      _B_NICE=${_B_NICE//[^0-9]/}
+    fi
+    if [ -z "${_B_NICE}" ]; then
+      _B_NICE=10
+    fi
+    renice ${_B_NICE} -p $$ &> /dev/null
+    ionice -c2 -n7 -p $$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then

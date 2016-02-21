@@ -3,6 +3,14 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
+if [ -e "/root/.barracuda.cnf" ]; then
+  source /root/.barracuda.cnf
+  _B_NICE=${_B_NICE//[^0-9]/}
+fi
+if [ -z "${_B_NICE}" ]; then
+  _B_NICE=10
+fi
+
 if [ -e "/var/run/boa_wait.pid" ]; then
   touch /var/xdrago/log/wait-for-mysql-restart
   exit 0
@@ -13,7 +21,7 @@ else
   sleep 10
   service mysql stop
   sleep 10
-  renice 10 -p $$
+  renice ${_B_NICE} -p $$ &> /dev/null
   service mysql start
   sleep 30
   rm -f /var/run/boa_wait.pid
