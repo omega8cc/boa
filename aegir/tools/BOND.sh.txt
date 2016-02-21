@@ -143,7 +143,7 @@ _X_VERSION="BOA-2.4.8"
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
-_CHECK_HOST=$(uname -n 2>&1)
+_THISHOST=$(uname -n 2>&1)
 _SPINNER=YES
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
@@ -384,7 +384,7 @@ fix_php_ini_newrelic_all() {
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
       _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
     fi
-    _PHP_V="70 56 55 54 53"
+    _PHP_V="56 55 54 53"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       fix_php_ini_newrelic
@@ -479,7 +479,7 @@ fix_php_ini_geos() {
 # Fix all php.ini files to add geos.so
 fix_php_ini_geos_all() {
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-    _PHP_V="70 56 55 54 53"
+    _PHP_V="56 55 54 53"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       fix_php_ini_geos
@@ -514,7 +514,7 @@ fix_php_ini_mongo_all() {
 # Update PHP Config.
 update_php_conf() {
   if [ -z "${_THISHTIP}" ]; then
-    _LOC_DOM="${_CHECK_HOST}"
+    _LOC_DOM="${_THISHOST}"
     find_correct_ip
     _THISHTIP="${_LOC_IP}"
   fi
@@ -547,20 +547,24 @@ update_php_conf() {
     cp -af ${locCnf}/php${e}-cli.ini /opt/php${e}/lib/php.ini
     cp -af ${locCnf}/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
-    fix_php_ini_redis
-    fix_php_ini_jsmin
+    if [ "${e}" != "70" ]; then
+      fix_php_ini_redis
+      fix_php_ini_jsmin
+      fix_php_ini_mailparse
+    fi
     fix_php_ini_twig
     fix_php_ini_ioncube
     fix_php_ini_suhosin
-    fix_php_ini_mailparse
     fix_php_ini_yaml
     _THIS_FILE=/opt/php${e}/lib/php.ini
-    fix_php_ini_redis
-    fix_php_ini_jsmin
+    if [ "${e}" != "70" ]; then
+      fix_php_ini_redis
+      fix_php_ini_jsmin
+      fix_php_ini_mailparse
+    fi
     fix_php_ini_twig
     fix_php_ini_ioncube
     fix_php_ini_suhosin
-    fix_php_ini_mailparse
     fix_php_ini_yaml
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g"       /opt/php${e}/etc/php${e}.ini
@@ -580,8 +584,8 @@ update_php_conf() {
   fix_php_ini_newrelic_all
   fix_php_ini_geos_all
   fix_php_ini_mongo_all
-  fix_php_ini_opcache_all
   fix_php_ini_tet_all
+  fix_php_ini_opcache_all
 }
 #
 restore_default_php() {
@@ -652,8 +656,8 @@ restore_default_sql() {
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
   wait
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
-    || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+    || [[ "${_THISHOST}" =~ ".host8." ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
       _DO_NOTHING=YES
@@ -827,8 +831,8 @@ restart_services() {
 tune_web_server_config() {
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
   if [ "${_LIM_FPM}" -lt "48" ]; then
-    if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+    if [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       _LIM_FPM=48
     fi
@@ -1056,8 +1060,8 @@ tune_memory_limits() {
   fi
   _USE=$(( _RAM / 4 ))
   if [ "${_VMFAMILY}" = "VS" ] \
-    || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]]; then
+    || [[ "${_THISHOST}" =~ ".host8." ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io" ]]; then
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.tg.cnf" ]; then
         _USE_SQL=$(( _RAM / 8 ))

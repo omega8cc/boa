@@ -119,7 +119,7 @@ fix_php_ini_newrelic_all() {
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
       _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
     fi
-    _PHP_V="70 56 55 54 53"
+    _PHP_V="56 55 54 53"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       fix_php_ini_newrelic
@@ -220,7 +220,7 @@ fix_php_ini_geos() {
 # Fix all php.ini files to add geos.so
 fix_php_ini_geos_all() {
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-    _PHP_V="70 56 55 54 53"
+    _PHP_V="56 55 54 53"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       fix_php_ini_geos
@@ -291,20 +291,24 @@ update_php_conf() {
     cp -af ${locCnf}/php${e}-cli.ini /opt/php${e}/lib/php.ini
     cp -af ${locCnf}/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
-    fix_php_ini_redis
-    fix_php_ini_jsmin
+    if [ "${e}" != "70" ]; then
+      fix_php_ini_redis
+      fix_php_ini_jsmin
+      fix_php_ini_mailparse
+    fi
     fix_php_ini_twig
     fix_php_ini_ioncube
     fix_php_ini_suhosin
-    fix_php_ini_mailparse
     fix_php_ini_yaml
     _THIS_FILE=/opt/php${e}/lib/php.ini
-    fix_php_ini_redis
-    fix_php_ini_jsmin
+    if [ "${e}" != "70" ]; then
+      fix_php_ini_redis
+      fix_php_ini_jsmin
+      fix_php_ini_mailparse
+    fi
     fix_php_ini_twig
     fix_php_ini_ioncube
     fix_php_ini_suhosin
-    fix_php_ini_mailparse
     fix_php_ini_yaml
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g"       /opt/php${e}/etc/php${e}.ini
@@ -324,8 +328,8 @@ update_php_conf() {
   fix_php_ini_newrelic_all
   fix_php_ini_geos_all
   fix_php_ini_mongo_all
-  fix_php_ini_opcache_all
   fix_php_ini_tet_all
+  fix_php_ini_opcache_all
 }
 
 #
@@ -434,38 +438,44 @@ install_php_extensions() {
     touch ${pthLog}/zendopcache-${_OPCACHE_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
-  msg "INFO: Installing PhpRedis for PHP ${_T_PHP_VRN}..."
-  cd /var/opt
-  rm -f -r phpredis*
-  get_dev_src "phpredis-${_PHPREDIS_VRN}.tar.gz"
-  cd /var/opt/phpredis
-  st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  touch ${pthLog}/phpredis-${_PHPREDIS_VRN}-${_T_PHP_VRN}.log
+  if [ "$1" != "70" ]; then
+    msg "INFO: Installing PhpRedis for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -f -r phpredis*
+    get_dev_src "phpredis-${_PHPREDIS_VRN}.tar.gz"
+    cd /var/opt/phpredis
+    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    touch ${pthLog}/phpredis-${_PHPREDIS_VRN}-${_T_PHP_VRN}.log
+  fi
   ###--------------------###
-  msg "INFO: Installing UploadProgress for PHP ${_T_PHP_VRN}..."
-  cd /var/opt
-  rm -f -r uploadprogress*
-  get_dev_src "uploadprogress-${_UPROGRESS_VRN}.tgz"
-  cd /var/opt/uploadprogress-${_UPROGRESS_VRN}
-  st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  touch ${pthLog}/uploadprogress-${_UPROGRESS_VRN}-${_T_PHP_VRN}.log
+  if [ "$1" != "70" ]; then
+    msg "INFO: Installing UploadProgress for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -f -r uploadprogress*
+    get_dev_src "uploadprogress-${_UPROGRESS_VRN}.tgz"
+    cd /var/opt/uploadprogress-${_UPROGRESS_VRN}
+    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    touch ${pthLog}/uploadprogress-${_UPROGRESS_VRN}-${_T_PHP_VRN}.log
+  fi
   ###--------------------###
-  msg "INFO: Installing JSMin for PHP ${_T_PHP_VRN}..."
-  cd /var/opt
-  rm -f -r pecl-jsmin*
-  get_dev_src "pecl-jsmin-${_JSMIN_VRN}.tar.gz"
-  cd /var/opt/pecl-jsmin-${_JSMIN_VRN}
-  st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
+  if [ "$1" != "70" ]; then
+    msg "INFO: Installing JSMin for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -f -r pecl-jsmin*
+    get_dev_src "pecl-jsmin-${_JSMIN_VRN}.tar.gz"
+    cd /var/opt/pecl-jsmin-${_JSMIN_VRN}
+    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
+  fi
   ###--------------------###
   msg "INFO: Installing Twig C for PHP ${_T_PHP_VRN}..."
   cd /var/opt
@@ -479,7 +489,7 @@ install_php_extensions() {
   touch ${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log
   ###--------------------###
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-    if [ "$1" != "52" ]; then
+    if [ "$1" != "52" ] && [ "$1" != "70" ]; then
       msg "INFO: Building GEOS extension for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
         rm -f /etc/apt/sources.list.d/openssl.list
@@ -521,36 +531,40 @@ install_php_extensions() {
     fi
   fi
   ###--------------------###
-  msg "INFO: Installing Imagick for PHP ${_T_PHP_VRN}..."
-  if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
-    mrun "apt-get install libmagickwand-dev ${forCer}" 2> /dev/null
-    touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
+  if [ "$1" != "70" ]; then
+    msg "INFO: Installing Imagick for PHP ${_T_PHP_VRN}..."
+    if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
+      mrun "apt-get install libmagickwand-dev ${forCer}" 2> /dev/null
+      touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
+    fi
+    cd /var/opt
+    rm -f -r imagick*
+    if [ "$1" = "53" ]; then
+      get_dev_src "imagick-${_IMAGICK_OLD_VRN}.tgz"
+      cd /var/opt/imagick-${_IMAGICK_OLD_VRN}
+    else
+      get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
+      cd /var/opt/imagick-${_IMAGICK_VRN}
+    fi
+    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    touch ${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
   fi
-  cd /var/opt
-  rm -f -r imagick*
-  if [ "$1" = "53" ]; then
-    get_dev_src "imagick-${_IMAGICK_OLD_VRN}.tgz"
-    cd /var/opt/imagick-${_IMAGICK_OLD_VRN}
-  else
-    get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
-    cd /var/opt/imagick-${_IMAGICK_VRN}
-  fi
-  st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  touch ${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
   ###--------------------###
-  msg "INFO: Installing MailParse for PHP ${_T_PHP_VRN}..."
-  cd /var/opt
-  rm -f -r mailparse*
-  get_dev_src "mailparse-${_MAILPARSE_VRN}.tgz"
-  cd /var/opt/mailparse-${_MAILPARSE_VRN}
-  st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
+  if [ "$1" != "70" ]; then
+    msg "INFO: Installing MailParse for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -f -r mailparse*
+    get_dev_src "mailparse-${_MAILPARSE_VRN}.tgz"
+    cd /var/opt/mailparse-${_MAILPARSE_VRN}
+    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
+  fi
   ###--------------------###
   if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ] \
     || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.2" ] \
@@ -590,8 +604,13 @@ install_php_extensions() {
   msg "INFO: Installing YAML for PHP ${_T_PHP_VRN}..."
   cd /var/opt
   rm -f -r yaml*
-  get_dev_src "yaml-${_YAML_VRN}.tgz"
-  cd /var/opt/yaml-${_YAML_VRN}
+  if [ "$1" = "70" ]; then
+    get_dev_src "yaml-${_YAML_PHP7_VRN}.tgz"
+    cd /var/opt/yaml-${_YAML_PHP7_VRN}
+  else
+    get_dev_src "yaml-${_YAML_VRN}.tgz"
+    cd /var/opt/yaml-${_YAML_VRN}
+  fi
   st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
@@ -618,43 +637,49 @@ update_php_extensions() {
     fi
   fi
   ###--------------------###
-  if [ ! -e "${pthLog}/phpredis-${_PHPREDIS_VRN}-${_T_PHP_VRN}.log" ]; then
-    msg "INFO: Installing PhpRedis upgrade for PHP ${_T_PHP_VRN}..."
-    cd /var/opt
-    rm -f -r phpredis*
-    get_dev_src "phpredis-${_PHPREDIS_VRN}.tar.gz"
-    cd /var/opt/phpredis
-    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    touch ${pthLog}/phpredis-${_PHPREDIS_VRN}-${_T_PHP_VRN}.log
+  if [ "$1" != "70" ]; then
+    if [ ! -e "${pthLog}/phpredis-${_PHPREDIS_VRN}-${_T_PHP_VRN}.log" ]; then
+      msg "INFO: Installing PhpRedis upgrade for PHP ${_T_PHP_VRN}..."
+      cd /var/opt
+      rm -f -r phpredis*
+      get_dev_src "phpredis-${_PHPREDIS_VRN}.tar.gz"
+      cd /var/opt/phpredis
+      st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+      st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      touch ${pthLog}/phpredis-${_PHPREDIS_VRN}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
-  if [ ! -e "${pthLog}/uploadprogress-${_UPROGRESS_VRN}-${_T_PHP_VRN}.log" ]; then
-    msg "INFO: Installing UploadProgress upgrade for PHP ${_T_PHP_VRN}..."
-    cd /var/opt
-    rm -f -r uploadprogress*
-    get_dev_src "uploadprogress-${_UPROGRESS_VRN}.tgz"
-    cd /var/opt/uploadprogress-${_UPROGRESS_VRN}
-    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    touch ${pthLog}/uploadprogress-${_UPROGRESS_VRN}-${_T_PHP_VRN}.log
+  if [ "$1" != "70" ]; then
+    if [ ! -e "${pthLog}/uploadprogress-${_UPROGRESS_VRN}-${_T_PHP_VRN}.log" ]; then
+      msg "INFO: Installing UploadProgress upgrade for PHP ${_T_PHP_VRN}..."
+      cd /var/opt
+      rm -f -r uploadprogress*
+      get_dev_src "uploadprogress-${_UPROGRESS_VRN}.tgz"
+      cd /var/opt/uploadprogress-${_UPROGRESS_VRN}
+      st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+      st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      touch ${pthLog}/uploadprogress-${_UPROGRESS_VRN}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
-  if [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log" ]; then
-    msg "INFO: Installing JSMin upgrade for PHP ${_T_PHP_VRN}..."
-    cd /var/opt
-    rm -f -r pecl-jsmin*
-    get_dev_src "pecl-jsmin-${_JSMIN_VRN}.tar.gz"
-    cd /var/opt/pecl-jsmin-${_JSMIN_VRN}
-    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
+  if [ "$1" != "70" ]; then
+    if [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log" ]; then
+      msg "INFO: Installing JSMin upgrade for PHP ${_T_PHP_VRN}..."
+      cd /var/opt
+      rm -f -r pecl-jsmin*
+      get_dev_src "pecl-jsmin-${_JSMIN_VRN}.tar.gz"
+      cd /var/opt/pecl-jsmin-${_JSMIN_VRN}
+      st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+      st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
   if [ ! -e "${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log" ]; then
@@ -670,7 +695,7 @@ update_php_extensions() {
     touch ${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
-  if [ "$1" != "52" ] \
+  if [ "$1" != "52" ] && [ "$1" != "70" ] \
     && [ ! -e "${pthLog}/php-geos-${_GEOS_VRN}-${_T_PHP_VRN}.log" ]; then
     if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
       msg "INFO: Building GEOS upgrade for PHP ${_T_PHP_VRN} from sources..."
@@ -715,39 +740,43 @@ update_php_extensions() {
     fi
   fi
   ###--------------------###
-  if [ ! -e "${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
-    msg "INFO: Installing Imagick upgrade for PHP ${_T_PHP_VRN}..."
-    if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
-      mrun "apt-get install libmagickwand-dev ${forCer}" 2> /dev/null
-      touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
+  if [ "$1" != "70" ]; then
+    if [ ! -e "${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
+      msg "INFO: Installing Imagick upgrade for PHP ${_T_PHP_VRN}..."
+      if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
+        mrun "apt-get install libmagickwand-dev ${forCer}" 2> /dev/null
+        touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
+      fi
+      cd /var/opt
+      rm -f -r imagick*
+      if [ "$1" = "53" ]; then
+        get_dev_src "imagick-${_IMAGICK_OLD_VRN}.tgz"
+        cd /var/opt/imagick-${_IMAGICK_OLD_VRN}
+      else
+        get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
+        cd /var/opt/imagick-${_IMAGICK_VRN}
+      fi
+      st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+      st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      touch ${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
     fi
-    cd /var/opt
-    rm -f -r imagick*
-    if [ "$1" = "53" ]; then
-      get_dev_src "imagick-${_IMAGICK_OLD_VRN}.tgz"
-      cd /var/opt/imagick-${_IMAGICK_OLD_VRN}
-    else
-      get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
-      cd /var/opt/imagick-${_IMAGICK_VRN}
-    fi
-    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    touch ${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
-  if [ ! -e "${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log" ]; then
-    msg "INFO: Installing MailParse upgrade for PHP ${_T_PHP_VRN}..."
-    cd /var/opt
-    rm -f -r mailparse*
-    get_dev_src "mailparse-${_MAILPARSE_VRN}.tgz"
-    cd /var/opt/mailparse-${_MAILPARSE_VRN}
-    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
+  if [ "$1" != "70" ]; then
+    if [ ! -e "${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log" ]; then
+      msg "INFO: Installing MailParse upgrade for PHP ${_T_PHP_VRN}..."
+      cd /var/opt
+      rm -f -r mailparse*
+      get_dev_src "mailparse-${_MAILPARSE_VRN}.tgz"
+      cd /var/opt/mailparse-${_MAILPARSE_VRN}
+      st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+      st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
   if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ] \
@@ -787,8 +816,13 @@ update_php_extensions() {
     msg "INFO: Installing YAML upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -f -r yaml*
-    get_dev_src "yaml-${_YAML_VRN}.tgz"
-    cd /var/opt/yaml-${_YAML_VRN}
+    if [ "$1" = "70" ]; then
+      get_dev_src "yaml-${_YAML_PHP7_VRN}.tgz"
+      cd /var/opt/yaml-${_YAML_PHP7_VRN}
+    else
+      get_dev_src "yaml-${_YAML_VRN}.tgz"
+      cd /var/opt/yaml-${_YAML_VRN}
+    fi
     st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
