@@ -295,8 +295,8 @@ update_php_conf() {
       fix_php_ini_redis
       fix_php_ini_jsmin
       fix_php_ini_mailparse
+      fix_php_ini_twig
     fi
-    fix_php_ini_twig
     fix_php_ini_ioncube
     fix_php_ini_suhosin
     fix_php_ini_yaml
@@ -305,8 +305,8 @@ update_php_conf() {
       fix_php_ini_redis
       fix_php_ini_jsmin
       fix_php_ini_mailparse
+      fix_php_ini_twig
     fi
-    fix_php_ini_twig
     fix_php_ini_ioncube
     fix_php_ini_suhosin
     fix_php_ini_yaml
@@ -477,16 +477,18 @@ install_php_extensions() {
     touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
-  msg "INFO: Installing Twig C for PHP ${_T_PHP_VRN}..."
-  cd /var/opt
-  rm -f -r twig*
-  get_dev_src "twig-${_TWIGC_VRN}.tar.gz"
-  cd /var/opt/twig-${_TWIGC_VRN}/ext/twig
-  st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  touch ${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log
+  if [ "$1" != "70" ]; then
+    msg "INFO: Installing Twig C for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -f -r twig*
+    get_dev_src "twig-${_TWIGC_VRN}.tar.gz"
+    cd /var/opt/twig-${_TWIGC_VRN}/ext/twig
+    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    touch ${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log
+  fi
   ###--------------------###
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
     if [ "$1" != "52" ] && [ "$1" != "70" ]; then
@@ -682,17 +684,19 @@ update_php_extensions() {
     fi
   fi
   ###--------------------###
-  if [ ! -e "${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log" ]; then
-    msg "INFO: Installing Twig C upgrade for PHP ${_T_PHP_VRN}..."
-    cd /var/opt
-    rm -f -r twig*
-    get_dev_src "twig-${_TWIGC_VRN}.tar.gz"
-    cd /var/opt/twig-${_TWIGC_VRN}/ext/twig
-    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    touch ${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log
+  if [ "$1" != "70" ]; then
+    if [ ! -e "${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log" ]; then
+      msg "INFO: Installing Twig C upgrade for PHP ${_T_PHP_VRN}..."
+      cd /var/opt
+      rm -f -r twig*
+      get_dev_src "twig-${_TWIGC_VRN}.tar.gz"
+      cd /var/opt/twig-${_TWIGC_VRN}/ext/twig
+      st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+      st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      touch ${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
   if [ "$1" != "52" ] && [ "$1" != "70" ] \
