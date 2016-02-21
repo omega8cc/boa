@@ -3497,15 +3497,15 @@ satellite_check_octopus_versus_barracuda_version() {
   fi
   if [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
-#     if [[ "${_SERIES_TEST}" =~ "BOA-2.4.8" ]]; then
-#       _VERSIONS_TEST_RESULT=OK
-#     else
-#       msg "ERROR: This octopus installer can be used only when the instance"
-#       msg "has been already upgraded to previous stable BOA-2.4.8 version"
-#       msg "Please run 'octopus up-2.4 ${_USER} aegir' upgrade first"
-#       msg "Bye"
-#       clean_pid_exit
-#     fi
+    if [[ "${_SERIES_TEST}" =~ "BOA-2.4.8" ]]; then
+      _VERSIONS_TEST_RESULT=OK
+    else
+      msg "ERROR: This octopus installer can be used only when the instance"
+      msg "has been already upgraded to previous stable BOA-2.4.8 version"
+      msg "Please run 'octopus up-2.4 ${_USER} aegir' upgrade first"
+      msg "Bye"
+      clean_pid_exit
+    fi
     if [[ "${_SERIES_TEST}" =~ "BOA-2.3." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-2.4." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
