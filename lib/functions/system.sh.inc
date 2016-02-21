@@ -348,6 +348,7 @@ tune_memory_limits() {
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
+        sed -i "s/64000/128000/g"  /opt/php70/etc/php70.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php55/etc/php55.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php54/etc/php54.ini &> /dev/null
@@ -429,6 +430,12 @@ tune_memory_limits() {
   chmod 644 /data/conf/hhvm_intercept.php
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
+  fi
+  if [ -e "/opt/php70/etc/php70.ini" ]; then
+    sed -i "s/256/${_USE_FPM}/g" /opt/php70/etc/php70.ini &> /dev/null
+    wait
+    sed -i "s/181/${_USE_OPC}/g" /opt/php70/etc/php70.ini &> /dev/null
+    sed -i "s/256/${_USE_PHP}/g" /opt/php70/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php56/etc/php56.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php56/etc/php56.ini &> /dev/null
@@ -821,10 +828,10 @@ barracuda_cnf() {
           wait
           sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                   ${barCnf}
           wait
-          if [ -x "/opt/php55/bin/php" ] && [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"                 ${barCnf}
+          if [ -x "/opt/php56/bin/php" ] && [ -z "${_PHP_SINGLE_INSTALL}" ]; then
+            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g"                 ${barCnf}
             wait
-            sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                 ${barCnf}
+            sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g"                 ${barCnf}
             wait
           fi
         fi
@@ -953,11 +960,12 @@ barracuda_cnf() {
           if [ ! -z "${_CLSTR_PHP_MULTI_INSTALL}" ]; then
             _PHP_MULTI_INSTALL="${_CLSTR_PHP_MULTI_INSTALL}"
           else
-            _PHP_MULTI_INSTALL="5.5"
+            _PHP_MULTI_INSTALL="5.6"
           fi
         else
           if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-            if [ "${_PHP_SINGLE_INSTALL}" = "5.6" ] \
+            if [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
+              || [ "${_PHP_SINGLE_INSTALL}" = "5.6" ] \
               || [ "${_PHP_SINGLE_INSTALL}" = "5.5" ] \
               || [ "${_PHP_SINGLE_INSTALL}" = "5.4" ] \
               || [ "${_PHP_SINGLE_INSTALL}" = "5.3" ]; then
@@ -967,13 +975,14 @@ barracuda_cnf() {
             fi
           else
             if [ ! -e "/root/.debug.cnf" ] || [ -e "/root/.default.cnf" ]; then
-              _PHP_MULTI_INSTALL="5.6 5.5 5.4 5.3"
+              _PHP_MULTI_INSTALL="7.0 5.6 5.5 5.4 5.3"
             fi
           fi
         fi
       fi
       if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-        if [ "${_PHP_SINGLE_INSTALL}" = "5.6" ] \
+        if [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
+          || [ "${_PHP_SINGLE_INSTALL}" = "5.6" ] \
           || [ "${_PHP_SINGLE_INSTALL}" = "5.5" ] \
           || [ "${_PHP_SINGLE_INSTALL}" = "5.4" ] \
           || [ "${_PHP_SINGLE_INSTALL}" = "5.3" ]; then
@@ -1330,10 +1339,10 @@ barracuda_cnf() {
           wait
           sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g"                            /root/.*.octopus.cnf &> /dev/null
           wait
-          if [ -x "/opt/php55/bin/php" ] && [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"                 ${barCnf}
+          if [ -x "/opt/php56/bin/php" ] && [ -z "${_PHP_SINGLE_INSTALL}" ]; then
+            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g"                 ${barCnf}
             wait
-            sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                 ${barCnf}
+            sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g"                 ${barCnf}
             wait
           fi
         fi
@@ -1389,7 +1398,8 @@ barracuda_cnf() {
 
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-      if [ "${_PHP_SINGLE_INSTALL}" = "5.6" ] \
+      if [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "5.6" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "5.5" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "5.4" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "5.3" ]; then
@@ -2238,6 +2248,7 @@ switch_to_dash() {
                   /opt/php54/bin \
                   /opt/php55/bin \
                   /opt/php56/bin \
+                  /opt/php70/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -2293,6 +2304,7 @@ switch_to_bash() {
                   /opt/php54/bin \
                   /opt/php55/bin \
                   /opt/php56/bin \
+                  /opt/php70/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -2337,6 +2349,7 @@ strict_bin_permissions() {
               /opt/php54/bin \
               /opt/php55/bin \
               /opt/php56/bin \
+              /opt/php70/bin \
               /sbin \
               /usr/bin \
               /usr/local/bin \
@@ -4077,6 +4090,10 @@ update_initd() {
       killall -9 nginx php-cgi php-fpm &> /dev/null
       st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
       st_runner "update-rc.d cron defaults" &> /dev/null
+      if [ -e "/etc/init.d/php70-fpm" ]; then
+        st_runner "update-rc.d php70-fpm defaults" &> /dev/null
+        mrun "service php70-fpm start" &> /dev/null
+      fi
       if [ -e "/etc/init.d/php56-fpm" ]; then
         st_runner "update-rc.d php56-fpm defaults" &> /dev/null
         mrun "service php56-fpm start" &> /dev/null
@@ -4180,6 +4197,10 @@ update_initd() {
       mrun "service redis-server restart" &> /dev/null
       st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
       mrun "service nginx stop" &> /dev/null
+      if [ -e "/etc/init.d/php70-fpm" ]; then
+        st_runner "update-rc.d php70-fpm defaults" &> /dev/null
+        mrun "service php70-fpm stop" &> /dev/null
+      fi
       if [ -e "/etc/init.d/php56-fpm" ]; then
         st_runner "update-rc.d php56-fpm defaults" &> /dev/null
         mrun "service php56-fpm stop" &> /dev/null
@@ -4201,6 +4222,9 @@ update_initd() {
       killall -9 pure-ftpd &> /dev/null
       msg "INFO: Restarting ${_DB_SERVER} server..."
       mrun "service mysql restart" &> /dev/null
+      if [ -e "/etc/init.d/php70-fpm" ]; then
+        mrun "service php70-fpm start" &> /dev/null
+      fi
       if [ -e "/etc/init.d/php56-fpm" ]; then
         mrun "service php56-fpm start" &> /dev/null
       fi

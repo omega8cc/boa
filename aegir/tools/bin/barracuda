@@ -294,10 +294,12 @@ check_report() {
 check_php_cli() {
   _PHP_CHECK=$(readlink -n /usr/bin/php 2>&1)
   if [ ! -x "$_PHP_CHECK" ]; then
-    if [ "${_PHP_CLI_VERSION}" = "5.5" ]; then
-      _PHP_CLI_PATH="/opt/php55/bin/php"
+    if [ "${_PHP_CLI_VERSION}" = "7.0" ]; then
+      _PHP_CLI_PATH="/opt/php70/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
       _PHP_CLI_PATH="/opt/php56/bin/php"
+    elif [ "${_PHP_CLI_VERSION}" = "5.5" ]; then
+      _PHP_CLI_PATH="/opt/php55/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "5.4" ]; then
       _PHP_CLI_PATH="/opt/php54/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "5.3" ]; then
@@ -308,10 +310,12 @@ check_php_cli() {
     if [ -x "$_PHP_CLI_PATH" ]; then
       _USE_PHP_CLI_PATH=$_PHP_CLI_PATH
     else
-      if  [ -x "/opt/php55/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php55/bin/php
+      if  [ -x "/opt/php70/bin/php" ]; then
+        _USE_PHP_CLI_PATH=/opt/php70/bin/php
       elif  [ -x "/opt/php56/bin/php" ]; then
         _USE_PHP_CLI_PATH=/opt/php56/bin/php
+      elif  [ -x "/opt/php55/bin/php" ]; then
+        _USE_PHP_CLI_PATH=/opt/php55/bin/php
       elif  [ -x "/opt/php54/bin/php" ]; then
         _USE_PHP_CLI_PATH=/opt/php54/bin/php
       elif [ -x "/opt/php53/bin/php" ]; then
@@ -330,10 +334,12 @@ check_php_cli() {
 up_action() {
   if [ -e "${vBs}/${barName}" ] && [ -e "${barCnf}" ]; then
     if [ ! -z "${rkey}" ]; then
-      if [ "${rkey}" = "php-55" ] || [ "${rkey}" = "php-5.5" ]; then
-        phpS=5.5
+      if [ "${rkey}" = "php-70" ] || [ "${rkey}" = "php-7.0" ]; then
+        phpS=7.0
       elif [ "${rkey}" = "php-56" ] || [ "${rkey}" = "php-5.6" ]; then
         phpS=5.6
+      elif [ "${rkey}" = "php-55" ] || [ "${rkey}" = "php-5.5" ]; then
+        phpS=5.5
       elif [ "${rkey}" = "php-54" ] || [ "${rkey}" = "php-5.4" ]; then
         phpS=5.4
       elif [ "${rkey}" = "php-53" ] || [ "${rkey}" = "php-5.3" ]; then
@@ -369,7 +375,8 @@ up_action() {
 
     fi
     ### Make sure that _PHP_SINGLE_INSTALL is set in ${barCnf}
-    if [ "${phpS}" = "5.6" ] \
+    if [ "${phpS}" = "7.0" ] \
+      || [ "${phpS}" = "5.6" ] \
       || [ "${phpS}" = "5.5" ] \
       || [ "${phpS}" = "5.4" ] \
       || [ "${phpS}" = "5.3" ]; then
@@ -383,7 +390,8 @@ up_action() {
     fi
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${phpS}" ]; then
-      if [ "${phpS}" = "5.6" ] \
+      if [ "${phpS}" = "7.0" ] \
+        || [ "${phpS}" = "5.6" ] \
         || [ "${phpS}" = "5.5" ] \
         || [ "${phpS}" = "5.4" ] \
         || [ "${phpS}" = "5.3" ]; then
@@ -452,8 +460,8 @@ up_action() {
           done
         fi
       elif [ "${phpS}" = "ALL" ]; then
-        phpM="5.6 5.5 5.4 5.3"
-        phpS=5.5
+        phpM="7.0 5.6 5.5 5.4 5.3"
+        phpS=5.6
 
         ### Debugging
         if [ "$debug" = "debug" ]; then
@@ -672,11 +680,11 @@ up_action() {
             sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g" \
               /root/.*.octopus.cnf &> /dev/null
             wait
-            if [ -x "/opt/php55/bin/php" ] \
+            if [ -x "/opt/php56/bin/php" ] \
               && [ -z "${phpS}" ]; then
-              sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"   ${barCnf}
+              sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g"   ${barCnf}
               wait
-              sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"   ${barCnf}
+              sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g"   ${barCnf}
               wait
             fi
           fi
@@ -1107,7 +1115,7 @@ proceed() {
     _SCRIPT_URL="$rgUrl/${lgcA}/${barName}"
   else
     echo
-    echo "Usage: $(basename "$0") {up-stable|up-head|up-2.4|up-2.3|up-2.2} {system|log} {newrelickey|php-5.6|php-5.5|php-5.4|php-5.3|php-all|nodns}"
+    echo "Usage: $(basename "$0") {up-stable|up-head|up-2.4|up-2.3|up-2.2} {system|log} {newrelickey|php-7.0|php-5.6|php-5.5|php-all|nodns}"
     echo
     echo "  Silent Mode Option: system == OS only upgrade"
     echo "  Silent Mode Option: log ===== OS and Aegir Master Instance upgrade"

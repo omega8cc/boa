@@ -57,16 +57,16 @@ _NGINX_NAXSI=NO #--------------- Installs NAXSI WAF when YES - experimental
 _NGINX_SPDY=YES #--------------- Installs SPDY Nginx support when YES (default)
 _NGINX_WORKERS=AUTO #----------- Allows to override AUTO with a valid integer
 ###
-_PHP_CLI_VERSION=5.5 #---------- PHP-CLI used by Master Instance: 5.{3,4,5,6}
+_PHP_CLI_VERSION=5.6 #---------- PHP-CLI for Master Instance: 7.0 5.{6,5,4,3}
 _PHP_EXTRA_CONF="" #------------ Allows to add custom options to PHP build
 _PHP_FPM_DENY="" #-------------- Modify disable_functions -- see info below
-_PHP_FPM_VERSION=5.5 #---------- PHP-FPM used by Master Instance: 5.{3,4,5,6}
+_PHP_FPM_VERSION=5.6 #---------- PHP-FPM for Master Instance: 7.0 5.{6,5,4,3}
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_IONCUBE=NO #--------------- Installs ionCube for all PHP versions when YES
 _PHP_GEOS=NO #------------------ Installs GEOS for all PHP versions when YES
-_PHP_MONGODB=NO #--------------- Installs MONGODB for PHP 5.3 only when YES
-_PHP_MULTI_INSTALL="5.5" #------ Lists PHP versions to install: 5.3 5.4 5.5 5.6
-_PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 5.5
+_PHP_MONGODB=NO #--------------- Installs MONGODB for PHP 5.3-only when YES
+_PHP_MULTI_INSTALL="5.6" #------ PHP versions to install: 7.0 5.6 5.5 5.4 5.3
+_PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 5.6
 ###
 _REDIS_LISTEN_MODE=PORT #------- Redis listen mode: PORT or SOCKET (recommended)
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps

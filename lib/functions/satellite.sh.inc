@@ -100,12 +100,15 @@ satellite_update_web_user() {
       cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
       ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_update_web_user D"
     else
-      if [ -e "/opt/php55/etc/php55.ini" ]; then
-        cp -af /opt/php55/etc/php55.ini ${_T_II}
-        _T_PV=55
+      if [ -e "/opt/php70/etc/php70.ini" ]; then
+        cp -af /opt/php70/etc/php70.ini ${_T_II}
+        _T_PV=70
       elif [ -e "/opt/php56/etc/php56.ini" ]; then
         cp -af /opt/php56/etc/php56.ini ${_T_II}
         _T_PV=56
+      elif [ -e "/opt/php55/etc/php55.ini" ]; then
+        cp -af /opt/php55/etc/php55.ini ${_T_II}
+        _T_PV=55
       elif [ -e "/opt/php54/etc/php54.ini" ]; then
         cp -af /opt/php54/etc/php54.ini ${_T_II}
         _T_PV=54
@@ -124,6 +127,7 @@ satellite_update_web_user() {
         /opt/php54:     \
         /opt/php55:     \
         /opt/php56:     \
+        /opt/php70:     \
         /opt/tika:      \
         /opt/tika7:     \
         /opt/tika8:     \
@@ -246,12 +250,14 @@ satellite_tune_fpm_config() {
   fi
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "${_PHP_SV}" ]; then
-    _PHP_SV=55
+    _PHP_SV=56
   fi
-  if [ -e "/opt/php55/etc/pool.d/${_USER}.conf" ]; then
-    _PHP_OLD_SV=55
+  if [ -e "/opt/php70/etc/pool.d/${_USER}.conf" ]; then
+    _PHP_OLD_SV=70
   elif [ -e "/opt/php56/etc/pool.d/${_USER}.conf" ]; then
     _PHP_OLD_SV=56
+  elif [ -e "/opt/php55/etc/pool.d/${_USER}.conf" ]; then
+    _PHP_OLD_SV=55
   elif [ -e "/opt/php54/etc/pool.d/${_USER}.conf" ]; then
     _PHP_OLD_SV=54
   elif [ -e "/opt/php53/etc/pool.d/${_USER}.conf" ]; then
@@ -281,7 +287,7 @@ satellite_tune_fpm_config() {
       ### create or update special system user if needed
       if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
         _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
-        _PHP_V="56 55 54 53"
+        _PHP_V="70 56 55 54 53"
         for e in ${_PHP_V}; do
           if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
             if [ "${e}" != "${_PHP_SV}" ] \
@@ -511,14 +517,17 @@ satellite_cnf() {
     if [ -e "${_ROOT}/static/control/fpm.info" ]; then
       _PHP_FPM_VERSION=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
       _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
-      if [ "${_PHP_FPM_VERSION}" = "5.6" ] \
+      if [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+        || [ "${_PHP_FPM_VERSION}" = "5.6" ] \
         || [ "${_PHP_FPM_VERSION}" = "5.5" ] \
         || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
         || [ "${_PHP_FPM_VERSION}" = "5.3" ]; then
-        if [ "${_PHP_FPM_VERSION}" = "5.5" ] \
-          && [ ! -x "/opt/php55/bin/php" ]; then
+        if [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+          && [ ! -x "/opt/php70/bin/php" ]; then
           if [ -x "/opt/php56/bin/php" ]; then
             _PHP_FPM_VERSION=5.6
+          elif [ -x "/opt/php55/bin/php" ]; then
+            _PHP_FPM_VERSION=5.5
           elif [ -x "/opt/php54/bin/php" ]; then
             _PHP_FPM_VERSION=5.4
           elif [ -x "/opt/php53/bin/php" ]; then
@@ -528,6 +537,15 @@ satellite_cnf() {
           && [ ! -x "/opt/php56/bin/php" ]; then
           if [ -x "/opt/php55/bin/php" ]; then
             _PHP_FPM_VERSION=5.5
+          elif [ -x "/opt/php54/bin/php" ]; then
+            _PHP_FPM_VERSION=5.4
+          elif [ -x "/opt/php53/bin/php" ]; then
+            _PHP_FPM_VERSION=5.3
+          fi
+        elif [ "${_PHP_FPM_VERSION}" = "5.5" ] \
+          && [ ! -x "/opt/php55/bin/php" ]; then
+          if [ -x "/opt/php56/bin/php" ]; then
+            _PHP_FPM_VERSION=5.6
           elif [ -x "/opt/php54/bin/php" ]; then
             _PHP_FPM_VERSION=5.4
           elif [ -x "/opt/php53/bin/php" ]; then
@@ -564,14 +582,17 @@ satellite_cnf() {
         && [ "${_LD_DOM}" = "YES" ]; then
         _PHP_FPM_VERSION=$(cat ${_ROOT}/log/fpm.txt 2>&1)
         _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
-        if [ "${_PHP_FPM_VERSION}" = "5.6" ] \
+        if [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+          || [ "${_PHP_FPM_VERSION}" = "5.6" ] \
           || [ "${_PHP_FPM_VERSION}" = "5.5" ] \
           || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
           || [ "${_PHP_FPM_VERSION}" = "5.3" ]; then
-          if [ "${_PHP_FPM_VERSION}" = "5.5" ] \
-            && [ ! -x "/opt/php55/bin/php" ]; then
+          if [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+            && [ ! -x "/opt/php70/bin/php" ]; then
             if [ -x "/opt/php56/bin/php" ]; then
               _PHP_FPM_VERSION=5.6
+            elif [ -x "/opt/php55/bin/php" ]; then
+              _PHP_FPM_VERSION=5.5
             elif [ -x "/opt/php54/bin/php" ]; then
               _PHP_FPM_VERSION=5.4
             elif [ -x "/opt/php53/bin/php" ]; then
@@ -581,6 +602,15 @@ satellite_cnf() {
             && [ ! -x "/opt/php56/bin/php" ]; then
             if [ -x "/opt/php55/bin/php" ]; then
               _PHP_FPM_VERSION=5.5
+            elif [ -x "/opt/php54/bin/php" ]; then
+              _PHP_FPM_VERSION=5.4
+            elif [ -x "/opt/php53/bin/php" ]; then
+              _PHP_FPM_VERSION=5.3
+            fi
+          elif [ "${_PHP_FPM_VERSION}" = "5.5" ] \
+            && [ ! -x "/opt/php55/bin/php" ]; then
+            if [ -x "/opt/php56/bin/php" ]; then
+              _PHP_FPM_VERSION=5.6
             elif [ -x "/opt/php54/bin/php" ]; then
               _PHP_FPM_VERSION=5.4
             elif [ -x "/opt/php53/bin/php" ]; then
@@ -614,14 +644,17 @@ satellite_cnf() {
     if [ -e "${_ROOT}/static/control/cli.info" ]; then
       _PHP_CLI_VERSION=$(cat ${_ROOT}/static/control/cli.info 2>&1)
       _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
-      if [ "${_PHP_CLI_VERSION}" = "5.6" ] \
+      if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+        || [ "${_PHP_CLI_VERSION}" = "5.6" ] \
         || [ "${_PHP_CLI_VERSION}" = "5.5" ] \
         || [ "${_PHP_CLI_VERSION}" = "5.4" ] \
         || [ "${_PHP_CLI_VERSION}" = "5.3" ]; then
-        if [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-          && [ ! -x "/opt/php55/bin/php" ]; then
+        if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+          && [ ! -x "/opt/php70/bin/php" ]; then
           if [ -x "/opt/php56/bin/php" ]; then
             _PHP_CLI_VERSION=5.6
+          elif [ -x "/opt/php55/bin/php" ]; then
+            _PHP_CLI_VERSION=5.5
           elif [ -x "/opt/php54/bin/php" ]; then
             _PHP_CLI_VERSION=5.4
           elif [ -x "/opt/php53/bin/php" ]; then
@@ -631,6 +664,15 @@ satellite_cnf() {
           && [ ! -x "/opt/php56/bin/php" ]; then
           if [ -x "/opt/php55/bin/php" ]; then
             _PHP_CLI_VERSION=5.5
+          elif [ -x "/opt/php54/bin/php" ]; then
+            _PHP_CLI_VERSION=5.4
+          elif [ -x "/opt/php53/bin/php" ]; then
+            _PHP_CLI_VERSION=5.3
+          fi
+        elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
+          && [ ! -x "/opt/php55/bin/php" ]; then
+          if [ -x "/opt/php56/bin/php" ]; then
+            _PHP_CLI_VERSION=5.6
           elif [ -x "/opt/php54/bin/php" ]; then
             _PHP_CLI_VERSION=5.4
           elif [ -x "/opt/php53/bin/php" ]; then
@@ -667,14 +709,17 @@ satellite_cnf() {
         && [ "${_LD_DOM}" = "YES" ]; then
         _PHP_CLI_VERSION=$(cat ${_ROOT}/log/cli.txt 2>&1)
         _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
-        if [ "${_PHP_CLI_VERSION}" = "5.6" ] \
+        if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+          || [ "${_PHP_CLI_VERSION}" = "5.6" ] \
           || [ "${_PHP_CLI_VERSION}" = "5.5" ] \
           || [ "${_PHP_CLI_VERSION}" = "5.4" ] \
           || [ "${_PHP_CLI_VERSION}" = "5.3" ]; then
-          if [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-            && [ ! -x "/opt/php55/bin/php" ]; then
+          if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+            && [ ! -x "/opt/php70/bin/php" ]; then
             if [ -x "/opt/php56/bin/php" ]; then
               _PHP_CLI_VERSION=5.6
+            elif [ -x "/opt/php55/bin/php" ]; then
+              _PHP_CLI_VERSION=5.5
             elif [ -x "/opt/php54/bin/php" ]; then
               _PHP_CLI_VERSION=5.4
             elif [ -x "/opt/php53/bin/php" ]; then
@@ -684,6 +729,15 @@ satellite_cnf() {
             && [ ! -x "/opt/php56/bin/php" ]; then
             if [ -x "/opt/php55/bin/php" ]; then
               _PHP_CLI_VERSION=5.5
+            elif [ -x "/opt/php54/bin/php" ]; then
+              _PHP_CLI_VERSION=5.4
+            elif [ -x "/opt/php53/bin/php" ]; then
+              _PHP_CLI_VERSION=5.3
+            fi
+          elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
+            && [ ! -x "/opt/php55/bin/php" ]; then
+            if [ -x "/opt/php56/bin/php" ]; then
+              _PHP_CLI_VERSION=5.6
             elif [ -x "/opt/php54/bin/php" ]; then
               _PHP_CLI_VERSION=5.4
             elif [ -x "/opt/php53/bin/php" ]; then
@@ -822,7 +876,27 @@ satellite_cnf() {
         clean_pid_exit
       fi
     fi
-    if [ "${_PHP_FPM_VERSION}" = "5.6" ] \
+    if [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+      || [ "${_PHP_CLI_VERSION}" = "7.0" ]; then
+      if [ ! -x "/opt/php70/bin/php" ]; then
+        if [ -x "/opt/php56/bin/php" ]; then
+          _PHP_FPM_VERSION=5.6
+          _PHP_CLI_VERSION=5.6
+        elif [ -x "/opt/php55/bin/php" ]; then
+          _PHP_FPM_VERSION=5.5
+          _PHP_CLI_VERSION=5.5
+        elif [ -x "/opt/php54/bin/php" ]; then
+          _PHP_FPM_VERSION=5.4
+          _PHP_CLI_VERSION=5.4
+        elif [ -x "/opt/php53/bin/php" ]; then
+          _PHP_FPM_VERSION=5.3
+          _PHP_CLI_VERSION=5.3
+        else
+          _PHP_FPM_VERSION=
+          _PHP_CLI_VERSION=
+        fi
+      fi
+    elif [ "${_PHP_FPM_VERSION}" = "5.6" ] \
       || [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
       if [ ! -x "/opt/php56/bin/php" ]; then
         if [ -x "/opt/php55/bin/php" ]; then
@@ -892,12 +966,15 @@ satellite_cnf() {
       fi
     elif [ "${_PHP_FPM_VERSION}" = "5.2" ] \
       || [ "${_PHP_CLI_VERSION}" = "5.2" ]; then
-      if [ -x "/opt/php55/bin/php" ]; then
-        _PHP_FPM_VERSION=5.5
-        _PHP_CLI_VERSION=5.5
+      if [ -x "/opt/php70/bin/php" ]; then
+        _PHP_FPM_VERSION=7.0
+        _PHP_CLI_VERSION=7.0
       elif [ -x "/opt/php56/bin/php" ]; then
         _PHP_FPM_VERSION=5.6
         _PHP_CLI_VERSION=5.6
+      elif [ -x "/opt/php55/bin/php" ]; then
+        _PHP_FPM_VERSION=5.5
+        _PHP_CLI_VERSION=5.5
       elif [ -x "/opt/php54/bin/php" ]; then
         _PHP_FPM_VERSION=5.4
         _PHP_CLI_VERSION=5.4
@@ -984,7 +1061,7 @@ satellite_sub_satellite_force_advanced_nginx_config() {
   if [ -d "${octInc}" ]; then
     _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
     if [ -z "${_PHP_SV}" ]; then
-      _PHP_SV=55
+      _PHP_SV=56
     fi
     if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ]; then
       sed -i "s/EDIT_USER/${_USER}/g"                                              ${octTpl}/Inc/vhost_include.tpl.php &> /dev/null
@@ -1060,7 +1137,7 @@ satellite_child_b_update_ini_php_cli() {
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="56 55 54 53"
+  _PHP_V="70 56 55 54 53"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ]; then
@@ -1078,12 +1155,15 @@ satellite_child_b_update_ini_php_cli() {
     mkdir -p ${_U_HD}/{sys,xts,usr}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php55" ]]; then
-      cp -af /opt/php55/lib/php.ini ${_U_II}
-      _U_INI=55
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php70" ]]; then
+      cp -af /opt/php70/lib/php.ini ${_U_II}
+      _U_INI=70
     elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php56" ]]; then
       cp -af /opt/php56/lib/php.ini ${_U_II}
       _U_INI=56
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php55" ]]; then
+      cp -af /opt/php55/lib/php.ini ${_U_II}
+      _U_INI=55
     elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php54" ]]; then
       cp -af /opt/php54/lib/php.ini ${_U_II}
       _U_INI=54
@@ -1100,6 +1180,7 @@ satellite_child_b_update_ini_php_cli() {
         /opt/php54:          \
         /opt/php55:          \
         /opt/php56:          \
+        /opt/php70:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \
@@ -1134,10 +1215,12 @@ satellite_child_b_update_ini_php_cli() {
 # Update php-cli for Drush.
 satellite_child_b_update_php_cli() {
   _DRUSH_FILE="${_ROOT}/tools/drush/drush.php"
-  if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+  if [ "${_PHP_CLI_VERSION}" = "7.0" ] && [ -x "/opt/php70/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php70\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php54\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
