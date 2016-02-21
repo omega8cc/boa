@@ -421,7 +421,7 @@ install_ioncube() {
 # Install PHP extensions.
 install_php_extensions() {
   ###--------------------###
-  if [ "$1" != "56" ] && [ "$1" != "55" ]; then
+  if [ "$1" != "70" ] && [ "$1" != "56" ] && [ "$1" != "55" ]; then
     msg "INFO: Installing Zend OPcache for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -f -r zendopcache*
@@ -603,7 +603,7 @@ install_php_extensions() {
 # Update extensions for PHP built from sources.
 update_php_extensions() {
   ###--------------------###
-  if [ "$1" != "56" ] && [ "$1" != "55" ]; then
+  if [ "$1" != "70" ] && [ "$1" != "56" ] && [ "$1" != "55" ]; then
     if [ ! -e "${pthLog}/zendopcache-${_OPCACHE_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing Zend OPcache upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
