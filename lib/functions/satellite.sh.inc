@@ -1328,13 +1328,13 @@ satellite_o_contrib_seven_update_global() {
       done
       cd ${_D}/$i/o_contrib_seven
       if [ ! -d "${_D}/$i/o_contrib_seven/advagg" ]; then
-        get_dev_contrib "advagg-7.x-2.16.tar.gz"
+        get_dev_contrib "advagg-7.x-2.17.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/boost" ]; then
         get_dev_contrib "boost-7.x-1.0.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/cdn" ]; then
-        get_dev_contrib "cdn-7.x-2.7-beta1.tar.gz"
+        get_dev_contrib "cdn-7.x-2.7.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/display_cache" ]; then
         get_dev_contrib "display_cache-7.x-1.3.tar.gz"
@@ -1430,10 +1430,10 @@ satellite_download_o_contrib_seven() {
     msg "${_STATUS} A: Downloading o_contrib_seven modules..."
   fi
   get_dev_contrib "admin-7.x-2.0-beta3.tar.gz"
-  get_dev_contrib "advagg-7.x-2.16.tar.gz"
+  get_dev_contrib "advagg-7.x-2.17.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.x-dev.tar.gz"
   get_dev_contrib "boost-7.x-1.0.tar.gz"
-  get_dev_contrib "cdn-7.x-2.7-beta1.tar.gz"
+  get_dev_contrib "cdn-7.x-2.7.tar.gz"
   get_dev_contrib "config_perms-7.x-2.1.tar.gz"
   get_dev_contrib "css_emimage-7.x-1.x-dev.tar.gz"
   get_dev_contrib "display_cache-7.x-1.3.tar.gz"
@@ -3497,15 +3497,15 @@ satellite_check_octopus_versus_barracuda_version() {
   fi
   if [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
-    if [[ "${_SERIES_TEST}" =~ "BOA-2.4.8" ]]; then
-      _VERSIONS_TEST_RESULT=OK
-    else
-      msg "ERROR: This octopus installer can be used only when the instance"
-      msg "has been already upgraded to previous stable BOA-2.4.8 version"
-      msg "Please run 'octopus up-2.4 ${_USER} aegir' upgrade first"
-      msg "Bye"
-      clean_pid_exit
-    fi
+#     if [[ "${_SERIES_TEST}" =~ "BOA-2.4.8" ]]; then
+#       _VERSIONS_TEST_RESULT=OK
+#     else
+#       msg "ERROR: This octopus installer can be used only when the instance"
+#       msg "has been already upgraded to previous stable BOA-2.4.8 version"
+#       msg "Please run 'octopus up-2.4 ${_USER} aegir' upgrade first"
+#       msg "Bye"
+#       clean_pid_exit
+#     fi
     if [[ "${_SERIES_TEST}" =~ "BOA-2.3." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-2.4." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
