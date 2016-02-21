@@ -1158,15 +1158,16 @@ check_php_rebuild() {
     fi
     msg "INFO: PHP to ${_PHP_VERSION} rebuild forced"
   else
-    if [ "$1" = "70" ]; then
-      _PHP_TV=7
-    else
-      _PHP_TV=5
-    fi
     _PHP_ITD=$(/opt/php$1/bin/php -v \
-      | grep 'PHP ${_PHP_TV}' \
+      | grep 'PHP 5' \
       | cut -d: -f1 \
       | awk '{ print $2}' 2>&1)
+    if [ -z "${_PHP_ITD}" ]; then
+      _PHP_ITD=$(/opt/php$1/bin/php -v \
+        | grep 'PHP 7' \
+        | cut -d: -f1 \
+        | awk '{ print $2}' 2>&1)
+    fi
   fi
   if [ "$1" = "70" ] || [ "$1" = "56" ] || [ "$1" = "55" ]; then
     if  [ -x "/opt/php$1/bin/php" ]; then
