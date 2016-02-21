@@ -158,6 +158,8 @@ _PHP55_API=20121212
 _PHP55_VRN=5.5.32
 _PHP56_API=20131226
 _PHP56_VRN=5.6.18
+_PHP70_API=20151012
+_PHP70_VRN=7.0.3
 
 ###
 ### Helper variables
@@ -382,7 +384,7 @@ fix_php_ini_newrelic_all() {
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
       _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
     fi
-    _PHP_V="56 55 54 53"
+    _PHP_V="70 56 55 54 53"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       fix_php_ini_newrelic
@@ -419,9 +421,10 @@ fix_php_ini_opcache() {
 #
 # Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all() {
-  _PHP_V="56 55 54 53"
+  _PHP_V="70 56 55 54 53"
   for e in ${_PHP_V}; do
     case "${e}" in
+      70) _P_API="${_PHP70_API}" ;;
       56) _P_API="${_PHP56_API}" ;;
       55) _P_API="${_PHP55_API}" ;;
       54) _P_API="${_PHP54_API}" ;;
@@ -476,7 +479,7 @@ fix_php_ini_geos() {
 # Fix all php.ini files to add geos.so
 fix_php_ini_geos_all() {
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-    _PHP_V="56 55 54 53"
+    _PHP_V="70 56 55 54 53"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       fix_php_ini_geos
@@ -524,7 +527,7 @@ update_php_conf() {
   wait
   sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
   wait
-  _PHP_V="56 55 54 53"
+  _PHP_V="70 56 55 54 53"
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
       adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
@@ -583,14 +586,16 @@ update_php_conf() {
 #
 restore_default_php() {
   msg "INFO: Restoring default PHP configuration"
-  cp -af ${locCnf}/php53-cli.ini /opt/php53/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php53.ini /opt/php53/etc/php53.ini   &> /dev/null
-  cp -af ${locCnf}/php54-cli.ini /opt/php54/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php54.ini /opt/php54/etc/php54.ini   &> /dev/null
-  cp -af ${locCnf}/php55-cli.ini /opt/php55/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php55.ini /opt/php55/etc/php55.ini   &> /dev/null
+  cp -af ${locCnf}/php70-cli.ini /opt/php70/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php70.ini /opt/php70/etc/php70.ini   &> /dev/null
   cp -af ${locCnf}/php56-cli.ini /opt/php56/lib/php.ini &> /dev/null
   cp -af ${locCnf}/php56.ini /opt/php56/etc/php56.ini   &> /dev/null
+  cp -af ${locCnf}/php55-cli.ini /opt/php55/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php55.ini /opt/php55/etc/php55.ini   &> /dev/null
+  cp -af ${locCnf}/php54-cli.ini /opt/php54/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php54.ini /opt/php54/etc/php54.ini   &> /dev/null
+  cp -af ${locCnf}/php53-cli.ini /opt/php53/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php53.ini /opt/php53/etc/php53.ini   &> /dev/null
 }
 #
 tune_php() {
@@ -795,6 +800,9 @@ tune_nginx() {
 #
 restart_services() {
   msg "INFO: Reloading services"
+  if [ -e "/etc/init.d/php70-fpm" ]; then
+    mrun "service php70-fpm reload" &> /dev/null
+  fi
   if [ -e "/etc/init.d/php56-fpm" ]; then
     mrun "service php56-fpm reload" &> /dev/null
   fi
@@ -835,7 +843,7 @@ tune_web_server_config() {
       _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
     fi
   fi
-  _PHP_V="56 55 54 53"
+  _PHP_V="70 56 55 54 53"
   for e in ${_PHP_V}; do
     sed -i "s/process.max =.*/process.max = ${_PROCESS_MAX_FPM}/g" \
       /opt/php${e}/etc/php${e}-fpm.conf &> /dev/null
@@ -1123,14 +1131,11 @@ tune_memory_limits() {
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
+        sed -i "s/64000/128000/g"  /opt/php70/etc/php70.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini &> /dev/null
-        wait
         sed -i "s/64000/128000/g"  /opt/php55/etc/php55.ini &> /dev/null
-        wait
         sed -i "s/64000/128000/g"  /opt/php54/etc/php54.ini &> /dev/null
-        wait
         sed -i "s/64000/128000/g"  /opt/php53/etc/php53.ini &> /dev/null
-        wait
       else
         _USE_PHP=1024
         _USE_OPC=1024
@@ -1210,37 +1215,35 @@ tune_memory_limits() {
     sed -i "s/256/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
     wait
   fi
+  if [ -e "/opt/php70/etc/php70.ini" ]; then
+    sed -i "s/256/${_USE_FPM}/g" /opt/php70/etc/php70.ini &> /dev/null
+    wait
+    sed -i "s/181/${_USE_OPC}/g" /opt/php70/etc/php70.ini &> /dev/null
+    sed -i "s/256/${_USE_PHP}/g" /opt/php70/lib/php.ini   &> /dev/null
+  fi
   if [ -e "/opt/php56/etc/php56.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php56/etc/php56.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php56/etc/php56.ini &> /dev/null
-    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php56/lib/php.ini   &> /dev/null
-    wait
   fi
   if [ -e "/opt/php55/etc/php55.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php55/etc/php55.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php55/etc/php55.ini &> /dev/null
-    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php55/lib/php.ini   &> /dev/null
-    wait
   fi
   if [ -e "/opt/php54/etc/php54.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php54/etc/php54.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php54/etc/php54.ini &> /dev/null
-    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php54/lib/php.ini   &> /dev/null
-    wait
   fi
   if [ -e "/opt/php53/etc/php53.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php53/etc/php53.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php53/etc/php53.ini &> /dev/null
-    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php53/lib/php.ini   &> /dev/null
-    wait
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits

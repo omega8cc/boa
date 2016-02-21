@@ -346,7 +346,7 @@ mode_detection() {
   fi
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "${_PHP_SV}" ] || [ "${_PHP_SV}" = "52" ]; then
-    _PHP_SV=55
+    _PHP_SV=56
   fi
   _PHP_CN="www${_PHP_SV}"
 }
