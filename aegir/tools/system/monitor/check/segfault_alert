@@ -8,7 +8,7 @@
 
 $| = 1;
 $this_filename = "segfault_alert";
-$s = system("uname -n 2>&1");
+$s=`uname -n 2>&1`;
 chomp($s);
 &makeactions;
 print " CONTROL 1 done_______________________\n ...\n";
@@ -50,7 +50,7 @@ INTROX
   open (NOT,"<$this_archive");
   @banetable = <NOT>;
   close (NOT);
-  local(@MYARR) = `tail --lines=999 /var/log/syslog 2>&1`;
+  local(@MYARR)=`tail --lines=999 /var/log/syslog 2>&1`;
   local($maxnumber,$critnumber,$alert);
   local($sumar,$li_cnt{$DOMAIN},$li_cndx{$DOMAIN});
   foreach $line (@MYARR) {
@@ -82,7 +82,7 @@ INTROX
 sub trash_it_action
 {
   local($CRASH,$COUNTER) = @_;
-  $now_is = `date +%y%m%d-%H%M%S`;
+  $now_is=`date +%y%m%d-%H%M%S`;
   chomp($now_is);
   &find_domain($CRASH);
   if ($found) {
@@ -180,7 +180,7 @@ sub send_alert
     $cmail="notify\@omega8.cc";
     print "\nlmail___[$cmail]___\n";
   }
-  $mailx_test = `mail -V 2>&1`;
+  $mailx_test=`mail -V 2>&1`;
   $t=`date +%y%m%d-%H%M`;
   chomp($t);
   if ($mailx_test =~ /(GNU Mailutils)/i) {

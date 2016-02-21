@@ -148,7 +148,7 @@ enable_chattr() {
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
-    if [ ! -e "${_U_HD}/.ctrl.247stableU.txt" ]; then
+    if [ ! -e "${_U_HD}/.ctrl.248stableU.txt" ]; then
       if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
@@ -209,7 +209,7 @@ enable_chattr() {
 
     if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
       || [ ! -e "${_U_II}" ] \
-      || [ ! -e "${_U_HD}/.ctrl.247stableU.txt" ]; then
+      || [ ! -e "${_U_HD}/.ctrl.248stableU.txt" ]; then
       mkdir -p ${_U_HD}
       rm -f ${_U_HD}/.ctrl.php*
       rm -f ${_U_II}
@@ -282,7 +282,7 @@ enable_chattr() {
         sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
         wait
         echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-        echo > ${_U_HD}/.ctrl.247stableU.txt
+        echo > ${_U_HD}/.ctrl.248stableU.txt
       fi
     fi
 
@@ -707,7 +707,7 @@ update_php_cli_local_ini() {
   if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.247stableU.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.248stableU.txt" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -766,7 +766,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.247stableU.txt
+      echo > ${_U_HD}/.ctrl.248stableU.txt
     fi
     chattr +i ${_U_II}
   fi
@@ -1298,8 +1298,10 @@ switch_php() {
             || [[ "${_THISHOST}" =~ ".boa.io" ]] \
             || [ "${_VMFAMILY}" = "VS" ]; then
             if [ "${_CLIENT_OPTION}" = "POWER" ]; then
-              _LIM_FPM=32
-              _PHP_FPM_WORKERS=64
+              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+                _LIM_FPM=32
+                _PHP_FPM_WORKERS=64
+              fi
             elif [ "${_CLIENT_OPTION}" = "SSD" ] \
               || [ "${_CLIENT_OPTION}" = "EDGE" ]; then
               _LIM_FPM=4
@@ -1528,16 +1530,16 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       -type d -exec chmod 0700 {} \; &> /dev/null
     find ${dscUsr}/config/server_master \
       -type f -exec chmod 0600 {} \; &> /dev/null
-    if [ ! -e "${dscUsr}/.tmp/.ctrl.247stableU.txt" ]; then
+    if [ ! -e "${dscUsr}/.tmp/.ctrl.248stableU.txt" ]; then
       rm -f -r ${dscUsr}/.drush/cache
       mkdir -p ${dscUsr}/.tmp
       touch ${dscUsr}/.tmp
       find ${dscUsr}/.tmp/ -mtime +0 -exec rm -rf {} \; &> /dev/null
       chown ${_USER}:${usrGroup} ${dscUsr}/.tmp &> /dev/null
       chmod 02755 ${dscUsr}/.tmp &> /dev/null
-      echo OK > ${dscUsr}/.tmp/.ctrl.247stableU.txt
+      echo OK > ${dscUsr}/.tmp/.ctrl.248stableU.txt
     fi
-    if [ ! -e "${dscUsr}/static/control/.ctrl.247stableU.txt" ]; then
+    if [ ! -e "${dscUsr}/static/control/.ctrl.248stableU.txt" ]; then
       mkdir -p ${dscUsr}/static/control
       chmod 755 ${dscUsr}/static/control
       if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
@@ -1548,7 +1550,7 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       chown -R ${_USER}.ftp:${usrGroup} \
         ${dscUsr}/static/control &> /dev/null
       rm -f ${dscUsr}/static/control/.ctrl.*
-      echo OK > ${dscUsr}/static/control/.ctrl.247stableU.txt
+      echo OK > ${dscUsr}/static/control/.ctrl.248stableU.txt
     fi
     if [ -e "/root/.${_USER}.octopus.cnf" ]; then
       source /root/.${_USER}.octopus.cnf
@@ -1585,13 +1587,13 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
           ln -sf ${dscUsr}/clients /home/${_USER}.ftp/clients
           ln -sf ${dscUsr}/static  /home/${_USER}.ftp/static
         fi
-        if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.247stableU.txt" ]; then
+        if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.248stableU.txt" ]; then
           rm -f -r /home/${_USER}.ftp/.drush/cache
           rm -f -r /home/${_USER}.ftp/.tmp
           mkdir -p /home/${_USER}.ftp/.tmp
           chown ${_USER}.ftp:${usrGroup} /home/${_USER}.ftp/.tmp &> /dev/null
           chmod 700 /home/${_USER}.ftp/.tmp &> /dev/null
-          echo OK > /home/${_USER}.ftp/.tmp/.ctrl.247stableU.txt
+          echo OK > /home/${_USER}.ftp/.tmp/.ctrl.248stableU.txt
         fi
         enable_chattr ${_USER}.ftp
         echo Done for ${pthParentUsr}

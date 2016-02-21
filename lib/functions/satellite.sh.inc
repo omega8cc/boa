@@ -205,8 +205,10 @@ satellite_tune_fpm_config() {
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     if [ "${_CLIENT_OPTION}" = "POWER" ]; then
-      _LIM_FPM=32
-      _PHP_FPM_WORKERS=64
+      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+        _LIM_FPM=32
+        _PHP_FPM_WORKERS=64
+      fi
     elif [ "${_CLIENT_OPTION}" = "SSD" ] \
       || [ "${_CLIENT_OPTION}" = "EDGE" ]; then
       _LIM_FPM=4
@@ -1068,7 +1070,7 @@ satellite_child_b_update_ini_php_cli() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.247stableU.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.248stableU.txt" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1123,7 +1125,7 @@ satellite_child_b_update_ini_php_cli() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.247stableU.txt
+      echo > ${_U_HD}/.ctrl.248stableU.txt
     fi
   fi
 }
@@ -1326,13 +1328,13 @@ satellite_o_contrib_seven_update_global() {
       done
       cd ${_D}/$i/o_contrib_seven
       if [ ! -d "${_D}/$i/o_contrib_seven/advagg" ]; then
-        get_dev_contrib "advagg-7.x-2.16.tar.gz"
+        get_dev_contrib "advagg-7.x-2.17.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/boost" ]; then
         get_dev_contrib "boost-7.x-1.0.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/cdn" ]; then
-        get_dev_contrib "cdn-7.x-2.7-beta1.tar.gz"
+        get_dev_contrib "cdn-7.x-2.7.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/display_cache" ]; then
         get_dev_contrib "display_cache-7.x-1.3.tar.gz"
@@ -1365,7 +1367,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/speedy" ]; then
-        get_dev_contrib "speedy-7.x-1.21.tar.gz"
+        get_dev_contrib "speedy-7.x-1.22.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/taxonomy_edge" ]; then
         get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
@@ -1428,10 +1430,10 @@ satellite_download_o_contrib_seven() {
     msg "${_STATUS} A: Downloading o_contrib_seven modules..."
   fi
   get_dev_contrib "admin-7.x-2.0-beta3.tar.gz"
-  get_dev_contrib "advagg-7.x-2.16.tar.gz"
+  get_dev_contrib "advagg-7.x-2.17.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.x-dev.tar.gz"
   get_dev_contrib "boost-7.x-1.0.tar.gz"
-  get_dev_contrib "cdn-7.x-2.7-beta1.tar.gz"
+  get_dev_contrib "cdn-7.x-2.7.tar.gz"
   get_dev_contrib "config_perms-7.x-2.1.tar.gz"
   get_dev_contrib "css_emimage-7.x-1.x-dev.tar.gz"
   get_dev_contrib "display_cache-7.x-1.3.tar.gz"
@@ -1453,7 +1455,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
   get_dev_contrib "site_verify-7.x-1.1.tar.gz"
-  get_dev_contrib "speedy-7.x-1.21.tar.gz"
+  get_dev_contrib "speedy-7.x-1.22.tar.gz"
   get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
   get_dev_contrib "textile-7.x-2.0-rc11.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
@@ -3241,7 +3243,7 @@ satellite_make() {
     echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
   fi
 
-  if [ ! -e "${_ROOT}/static/control/.ctrl.247stableU.txt" ] \
+  if [ ! -e "${_ROOT}/static/control/.ctrl.248stableU.txt" ] \
     || [ ! -e "${_ROOT}/static/control/README.txt" ]; then
     mkdir -p ${_ROOT}/static/control
     chmod 755 ${_ROOT}/static/control
@@ -3253,7 +3255,7 @@ satellite_make() {
     chown -R ${_USER}.ftp:${_USRG} \
       ${_ROOT}/static/control &> /dev/null
     rm -f ${_ROOT}/static/control/.ctrl.*
-    echo OK > ${_ROOT}/static/control/.ctrl.247stableU.txt
+    echo OK > ${_ROOT}/static/control/.ctrl.248stableU.txt
   fi
 
   if [ -d "/data/all/000" ]; then
@@ -3492,15 +3494,15 @@ satellite_check_octopus_versus_barracuda_version() {
   fi
   if [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
-    if [[ "${_SERIES_TEST}" =~ "BOA-2.4.7" ]]; then
-      _VERSIONS_TEST_RESULT=OK
-    else
-      msg "ERROR: This octopus installer can be used only when the instance"
-      msg "has been already upgraded to previous stable BOA-2.4.7 version"
-      msg "Please run 'octopus up-2.4 ${_USER} aegir' upgrade first"
-      msg "Bye"
-      clean_pid_exit
-    fi
+#     if [[ "${_SERIES_TEST}" =~ "BOA-2.4.8" ]]; then
+#       _VERSIONS_TEST_RESULT=OK
+#     else
+#       msg "ERROR: This octopus installer can be used only when the instance"
+#       msg "has been already upgraded to previous stable BOA-2.4.8 version"
+#       msg "Please run 'octopus up-2.4 ${_USER} aegir' upgrade first"
+#       msg "Bye"
+#       clean_pid_exit
+#     fi
     if [[ "${_SERIES_TEST}" =~ "BOA-2.3." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-2.4." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then

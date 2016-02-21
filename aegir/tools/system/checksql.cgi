@@ -6,11 +6,11 @@ $| = 1;
 if (-f "/var/run/boa_wait.pid") {
   exit;
 }
-$mailx_test = `mail -V 2>&1`;
+$mailx_test=`mail -V 2>&1`;
 $status="CLEAN";
 $fixfile = "/var/xdrago/acrashsql.sh";
 system("rm -f $fixfile");
-$server = system("uname -n 2>&1");
+$server=`uname -n 2>&1`;
 chomp($server);
 $timedate=`date +%y%m%d-%H%M`;
 chomp($timedate);
@@ -52,7 +52,7 @@ sub makeactions
   open (NOT,"<$fixfile");
   @rectable = <NOT>;
   close (NOT);
-  local(@MYARR) = `tail --lines=999999999 $logfile 2>&1`;
+  local(@MYARR)=`tail --lines=999999999 $logfile 2>&1`;
   local($maxnumber,$critnumber,$alert);
   local($sumar,$li_cnt{$DOMAIN},$li_cndx{$DOMAIN});
   foreach $line (@MYARR) {
