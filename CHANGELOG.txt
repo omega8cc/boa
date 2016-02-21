@@ -27,6 +27,8 @@
   @=> Drupal 8 support for custom platforms in the ~/static directory tree
       will be included, along with Drush 8 and PHP 7 in the *upcoming*
       BOA-3.0.0 release: https://github.com/omega8cc/boa/milestones/3.0.0
+      Note: BOA will not include built-in Drupal 8 platforms until Drupal 8
+      will support symlinks in the codebase, like all previous core versions
 
   @=> What are BOA plans for Drupal 6 support after February 24th, 2016?
 
