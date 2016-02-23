@@ -528,6 +528,9 @@ fix_locales() {
   if [[ "${_LOC_TEST}" =~ "Cannot" ]]; then
     _LOCALE_TEST=BROKEN
   fi
+  if [ -n "${STY+x}" ]; then
+    _LOCALE_TEST=OK
+  fi
   if [ "${_LOCALE_TEST}" = "BROKEN" ]; then
     msg "WARNING!"
     cat <<EOF

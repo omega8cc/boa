@@ -481,8 +481,7 @@ fix_alt() {
 }
 
 force_rebuild() {
-  if [ ! -e "${pthLog}/forced.rebuild.glibc.txt" ] \
-    && [ -e "/var/log/barracuda_log.txt" ]; then
+  if [ ! -e "${pthLog}/forced.rebuild.glibc.txt" ]; then
     echo "_GIT_FORCE_REINSTALL=YES" >> ${barCnf}
     echo "_NGX_FORCE_REINSTALL=YES" >> ${barCnf}
     echo "_PHP_FORCE_REINSTALL=YES" >> ${barCnf}
@@ -725,7 +724,6 @@ if [ `whoami` = "root" ]; then
   fi
   setup
   fix_alt
-  force_rebuild
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
@@ -739,6 +737,7 @@ if [ `whoami` = "root" ]; then
       fi
     else
       update_agents
+      force_rebuild
       if [[ "${_VERSIONS_TEST}" =~ "BOA-3." ]] \
         || [[ "${_VERSIONS_TEST}" =~ "BOA-2.4." ]] \
         || [[ "${_VERSIONS_TEST}" =~ "BOA-2.3.8" ]]; then
