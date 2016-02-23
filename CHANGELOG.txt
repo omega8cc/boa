@@ -2,7 +2,7 @@
 ### Stable BOA-2.4.8 Release - Full Edition
 ### Date: Sat Feb 20 11:28:05 GMT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.8
-### Latest hotfix added on: Sat Feb 20 16:18:27 GMT 2016
+### Latest hotfix added on: Mon Feb 22 18:28:51 GMT 2016
 
   @=> Includes Aegir Hostmaster 2.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -27,6 +27,8 @@
   @=> Drupal 8 support for custom platforms in the ~/static directory tree
       will be included, along with Drush 8 and PHP 7 in the *upcoming*
       BOA-3.0.0 release: https://github.com/omega8cc/boa/milestones/3.0.0
+      Note: BOA will not include built-in Drupal 8 platforms until Drupal 8
+      will support symlinks in the codebase, like all previous core versions
 
   @=> What are BOA plans for Drupal 6 support after February 24th, 2016?
 
@@ -81,6 +83,7 @@
   * Automate /root/.force.reinstall.cnf and improve docs
   * Disable Octopus 3.x specific version check (tmp) for 2.4.8
   * Disable spinner on Jessie
+  * Do not force rebuild on systems installed with 2.4.8
   * Do not kill long running php-fpm childs
   * Do not run the old D7 core fix on newer BOA versions -- fixes #842
   * Do not wait for simple sed replacements -- fixes #838
@@ -96,6 +99,7 @@
   * Force rebuild for affected services built from sources -- CVE-2015-7547
   * Improve backup sub-tasks randomized schedule
   * Improve initial install how-to with screen
+  * Locales check should not be used with screen session -- fixes #871
   * Nginx: Remove duplicate $args on redirects
   * Nginx: Workaround for broken autocomplete
   * Remove dependency on _MODULES_FIX=YES -- fixes #592
