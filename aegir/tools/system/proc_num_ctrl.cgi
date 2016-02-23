@@ -41,6 +41,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /sshd/) {$sshdlives = "YES"; $sshdsumar = $li_cnt{$COMMAND};}
 }
 foreach $X (sort keys %li_cnt) {
+  if ($X =~ /php70/) {$php70lives = "YES";}
   if ($X =~ /php56/) {$php56lives = "YES";}
   if ($X =~ /php55/) {$php55lives = "YES";}
   if ($X =~ /php54/) {$php54lives = "YES";}
@@ -59,6 +60,7 @@ print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
 print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
 print "\n $dhcpcdsumar dhcpcd procs\t\tGLOBAL" if ($dhcpcdlives);
 print "\n $fpmsumar FPM procs\t\tGLOBAL" if ($fpmlives);
+print "\n 1 FPM70 procs\t\tGLOBAL" if ($php70lives);
 print "\n 1 FPM56 procs\t\tGLOBAL" if ($php56lives);
 print "\n 1 FPM55 procs\t\tGLOBAL" if ($php55lives);
 print "\n 1 FPM54 procs\t\tGLOBAL" if ($php54lives);
@@ -140,7 +142,7 @@ if ($nginxsumar) {
 }
 
 if (-f "/root/.dbhd.clstr.cnf") {
-  if ($php56lives || $php55lives || $php54lives || $php53lives) {
+  if ($php70lives || $php56lives || $php55lives || $php54lives || $php53lives) {
     system("killall -9 php-fpm");
   }
   if ($redislives) {
