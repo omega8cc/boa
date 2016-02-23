@@ -149,11 +149,7 @@ get_dev_ext() {
 # Download and extract from dev/static.
 get_dev_stc() {
   if [ ! -z "$1" ]; then
-    if [ "$1" = "hosting.tar.gz" ]; then
-      curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/$1" -o "$1"
-    else
-      curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/static/$1" -o "$1"
-    fi
+    curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/static/$1" -o "$1"
     extract_archive "$1"
   fi
 }

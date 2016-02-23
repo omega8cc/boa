@@ -8,6 +8,7 @@
   $node->type = 'client';
   $node->email = $_SERVER[argv][3];
   $node->title = 'Octopus' . $number;
+  $node->language = LANGUAGE_NONE;
   $node->status = 1;
   node_save($node);
   $this_client_id = $node->nid;

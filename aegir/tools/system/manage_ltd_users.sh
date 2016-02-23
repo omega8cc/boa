@@ -186,10 +186,6 @@ enable_chattr() {
         ln -sf ${dscUsr}/.drush/usr/drush_ecl \
           ${_U_HD}/usr/drush_ecl
       fi
-      if [ ! -L "${_U_HD}/usr/make_local" ]; then
-        ln -sf ${dscUsr}/.drush/usr/make_local \
-          ${_U_HD}/usr/make_local
-      fi
       if [ ! -L "${_U_HD}/usr/safe_cache_form_clear" ]; then
         ln -sf ${dscUsr}/.drush/usr/safe_cache_form_clear \
           ${_U_HD}/usr/safe_cache_form_clear
