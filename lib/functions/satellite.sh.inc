@@ -1205,7 +1205,7 @@ satellite_o_contrib_update_global() {
       done
       cd ${_D}/$i/o_contrib
       if [ ! -d "${_D}/$i/o_contrib/advagg" ]; then
-        get_dev_contrib "advagg-6.x-1.x-dev.tar.gz"
+        get_dev_contrib "advagg-6.x-1.10.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib/boost" ]; then
         get_dev_contrib "boost-6.x-1.x.tar.gz"
@@ -1512,7 +1512,7 @@ satellite_download_o_contrib_six() {
     msg "${_STATUS} A: Downloading o_contrib modules..."
   fi
   get_dev_contrib "admin-6.x-2.0.tar.gz"
-  get_dev_contrib "advagg-6.x-1.x-dev.tar.gz"
+  get_dev_contrib "advagg-6.x-1.10.tar.gz"
   get_dev_contrib "blockcache_alter-6.x-1.6.tar.gz"
   get_dev_contrib "boost-6.x-1.x.tar.gz"
   get_dev_contrib "cdn-6.x-2.x-dev.tar.gz"
