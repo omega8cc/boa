@@ -170,16 +170,16 @@ Octopus can install the platforms listed below:
  Panopoly 1.30 ---------------- https://drupal.org/project/panopoly
  Ubercart 3.9 ----------------- https://drupal.org/project/ubercart
 
- @ Pressflow 6.37.1
+ @ Pressflow 6.38.1
 
  Commons 2.27 ----------------- https://drupal.org/project/commons
- Pressflow 6.37.1 ------------- http://pressflow.org
+ Pressflow 6.38.1 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
 * All D7 platforms have been enhanced using Drupal 7.43.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
-* All D6 platforms have been enhanced using Pressflow 6.37.1 +Extra core:
+* All D6 platforms have been enhanced using Pressflow 6.38.1 +Extra core:
   https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 * All D6 and D7 platforms include some useful and/all performance related
