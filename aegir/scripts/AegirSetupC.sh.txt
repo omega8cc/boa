@@ -2024,7 +2024,7 @@ ubercart6_install() {
             get_dev_contrib "cck-6.x-3.0-alpha4.tar.gz"
             get_dev_contrib "colorbox-6.x-1.4.tar.gz"
             get_dev_contrib "date-6.x-2.9.tar.gz"
-            get_dev_contrib "filefield-6.x-3.13.tar.gz"
+            get_dev_contrib "filefield-6.x-3.14.tar.gz"
             get_dev_contrib "google_analytics-6.x-4.1.tar.gz"
             get_dev_contrib "imageapi-6.x-1.10.tar.gz"
             get_dev_contrib "imagecache-6.x-2.x-dev.tar.gz"
