@@ -162,7 +162,7 @@ Octopus can install the platforms listed below:
  Drupal 7.43.1 ---------------- https://drupal.org/drupal-7.43-release-notes
  ERPAL 2.3 -------------------- https://drupal.org/project/erpal
  Guardr 2.28 ------------------ https://drupal.org/project/guardr
- OpenAid 2.7 ------------------ https://drupal.org/project/openaid
+ OpenAid 2.8 ------------------ https://drupal.org/project/openaid
  OpenAtrium 2.53 -------------- https://drupal.org/project/openatrium
  OpenChurch 2.2 --------------- https://drupal.org/project/openchurch
  OpenOutreach 1.27 ------------ https://drupal.org/project/openoutreach
