@@ -153,33 +153,33 @@ production settings.
 
 Octopus can install the platforms listed below:
 
- @ Drupal 7.42.2
+ @ Drupal 7.43.1
 
  aGov 3.0 --------------------- https://drupal.org/project/agov
- Commerce 1.40 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.33 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 1.41 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 2.34 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.34 ----------------- https://drupal.org/project/commons
- Drupal 7.42.2 ---------------- https://drupal.org/drupal-7.42
+ Drupal 7.43.1 ---------------- https://drupal.org/drupal-7.43-release-notes
  ERPAL 2.3 -------------------- https://drupal.org/project/erpal
- Guardr 2.27 ------------------ https://drupal.org/project/guardr
- OpenAid 2.7 ------------------ https://drupal.org/project/openaid
- OpenAtrium 2.53 -------------- https://drupal.org/project/openatrium
+ Guardr 2.28 ------------------ https://drupal.org/project/guardr
+ OpenAid 2.8 ------------------ https://drupal.org/project/openaid
+ OpenAtrium 2.54 -------------- https://drupal.org/project/openatrium
  OpenChurch 2.2 --------------- https://drupal.org/project/openchurch
- OpenOutreach 1.26 ------------ https://drupal.org/project/openoutreach
+ OpenOutreach 1.27 ------------ https://drupal.org/project/openoutreach
  OpenPublic 1.7 --------------- https://drupal.org/project/openpublic
- Panopoly 1.30 ---------------- https://drupal.org/project/panopoly
+ Panopoly 1.31 ---------------- https://drupal.org/project/panopoly
  Ubercart 3.9 ----------------- https://drupal.org/project/ubercart
 
- @ Pressflow 6.37.1
+ @ Pressflow 6.38.1
 
  Commons 2.27 ----------------- https://drupal.org/project/commons
- Pressflow 6.37.1 ------------- http://pressflow.org
+ Pressflow 6.38.1 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.42.2 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.43.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
-* All D6 platforms have been enhanced using Pressflow 6.37.1 +Extra core:
+* All D6 platforms have been enhanced using Pressflow 6.38.1 +Extra core:
   https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 * All D6 and D7 platforms include some useful and/all performance related
