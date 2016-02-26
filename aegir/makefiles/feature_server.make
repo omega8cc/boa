@@ -9,7 +9,7 @@ core = 6.x
 
 projects[pressflow][type] = "core"
 projects[pressflow][download][type] = "get"
-projects[pressflow][download][url] = "http://files.aegir.cc/core/pressflow-6.37.1.tar.gz"
+projects[pressflow][download][url] = "http://files.aegir.cc/core/pressflow-6.38.1.tar.gz"
 
 projects[cck][type] = "module"
 ;projects[cck][version] = "3.0"
@@ -34,7 +34,7 @@ projects[features][download][url] = "http://files.aegir.cc/dev/contrib/features-
 projects[filefield][type] = "module"
 ;projects[filefield][version] = "3.13"
 projects[filefield][download][type] = "get"
-projects[filefield][download][url] = "http://files.aegir.cc/dev/contrib/filefield-6.x-3.13.tar.gz"
+projects[filefield][download][url] = "http://files.aegir.cc/dev/contrib/filefield-6.x-3.14.tar.gz"
 
 projects[install_profile_api][type] = "module"
 ;projects[install_profile_api][version] = "2.2"

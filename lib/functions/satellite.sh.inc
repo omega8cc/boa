@@ -1205,7 +1205,7 @@ satellite_o_contrib_update_global() {
       done
       cd ${_D}/$i/o_contrib
       if [ ! -d "${_D}/$i/o_contrib/advagg" ]; then
-        get_dev_contrib "advagg-6.x-1.x-dev.tar.gz"
+        get_dev_contrib "advagg-6.x-1.10.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib/boost" ]; then
         get_dev_contrib "boost-6.x-1.x.tar.gz"
@@ -1328,7 +1328,7 @@ satellite_o_contrib_seven_update_global() {
       done
       cd ${_D}/$i/o_contrib_seven
       if [ ! -d "${_D}/$i/o_contrib_seven/advagg" ]; then
-        get_dev_contrib "advagg-7.x-2.17.tar.gz"
+        get_dev_contrib "advagg-7.x-2.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/boost" ]; then
         get_dev_contrib "boost-7.x-1.0.tar.gz"
@@ -1367,7 +1367,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/speedy" ]; then
-        get_dev_contrib "speedy-7.x-1.22.tar.gz"
+        get_dev_contrib "speedy-7.x-1.23.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/taxonomy_edge" ]; then
         get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
@@ -1430,7 +1430,7 @@ satellite_download_o_contrib_seven() {
     msg "${_STATUS} A: Downloading o_contrib_seven modules..."
   fi
   get_dev_contrib "admin-7.x-2.0-beta3.tar.gz"
-  get_dev_contrib "advagg-7.x-2.17.tar.gz"
+  get_dev_contrib "advagg-7.x-2.x-dev.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.x-dev.tar.gz"
   get_dev_contrib "boost-7.x-1.0.tar.gz"
   get_dev_contrib "cdn-7.x-2.7.tar.gz"
@@ -1455,7 +1455,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
   get_dev_contrib "site_verify-7.x-1.1.tar.gz"
-  get_dev_contrib "speedy-7.x-1.22.tar.gz"
+  get_dev_contrib "speedy-7.x-1.23.tar.gz"
   get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
   get_dev_contrib "textile-7.x-2.0-rc11.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
@@ -1512,7 +1512,7 @@ satellite_download_o_contrib_six() {
     msg "${_STATUS} A: Downloading o_contrib modules..."
   fi
   get_dev_contrib "admin-6.x-2.0.tar.gz"
-  get_dev_contrib "advagg-6.x-1.x-dev.tar.gz"
+  get_dev_contrib "advagg-6.x-1.10.tar.gz"
   get_dev_contrib "blockcache_alter-6.x-1.6.tar.gz"
   get_dev_contrib "boost-6.x-1.x.tar.gz"
   get_dev_contrib "cdn-6.x-2.x-dev.tar.gz"
