@@ -1087,7 +1087,7 @@ drupal7_install() {
     || [[ "${_PLATFORMS_LIST}" =~ "D7S" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "D7P" ]]; then
     if [ ! -d "${_ROOT}/distro/${_THIS_CORE}/${_DRUPAL7D}" ]; then
-      if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/drupal-7.42" ; then
+      if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/drupal-7.43-release-notes" ; then
         true
         ###---### Drupal 7 Development
         #
@@ -1282,7 +1282,7 @@ fserver_install() {
             echo "core = 6.x" >> fserver.make
             echo "projects[pressflow][type] = \"core\"" >> fserver.make
             echo "projects[pressflow][download][type] = \"get\"" >> fserver.make
-            echo "projects[pressflow][download][url] = \"http://${_USE_MIR}/core/pressflow-6.37.1.tar.gz\"" >> fserver.make
+            echo "projects[pressflow][download][url] = \"http://${_USE_MIR}/core/pressflow-6.38.1.tar.gz\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][type] = \"profile\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][download][type] = \"git\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][download][url] = \"https://github.com/omega8cc/${_REAL_PRNAME}.git\"" >> fserver.make
@@ -2024,7 +2024,7 @@ ubercart6_install() {
             get_dev_contrib "cck-6.x-3.0-alpha4.tar.gz"
             get_dev_contrib "colorbox-6.x-1.4.tar.gz"
             get_dev_contrib "date-6.x-2.9.tar.gz"
-            get_dev_contrib "filefield-6.x-3.13.tar.gz"
+            get_dev_contrib "filefield-6.x-3.14.tar.gz"
             get_dev_contrib "google_analytics-6.x-4.1.tar.gz"
             get_dev_contrib "imageapi-6.x-1.10.tar.gz"
             get_dev_contrib "imagecache-6.x-2.x-dev.tar.gz"
