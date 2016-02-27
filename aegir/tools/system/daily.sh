@@ -31,7 +31,7 @@ check_root() {
 check_root
 
 _WEBG=www-data
-_X_SE="2.4.8-stable"
+_X_SE="2.4.9-stable"
 _OSV=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
