@@ -1571,7 +1571,7 @@ satellite_download_o_contrib_seven() {
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -f -r ${_D}/000/modules/redis
-    get_dev_contrib "redis-7.x-2.x-o8-revert-A.tar.gz"
+    get_dev_contrib "redis-mod-26-06-2015.tar.gz"
     rm -f redis/redis.info
     echo update > redis/update-${_X_VERSION}.info
   fi
@@ -1660,7 +1660,7 @@ satellite_download_o_contrib_six() {
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -f -r ${_D}/000/modules/redis
-    get_dev_contrib "redis-7.x-2.x-o8-revert-A.tar.gz"
+    get_dev_contrib "redis-mod-26-06-2015.tar.gz"
     rm -f redis/redis.info
     echo update > redis/update-${_X_VERSION}.info
   fi
@@ -1720,7 +1720,7 @@ satellite_check_fix_o_contrib() {
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -f -r ${_D}/000/modules/redis
-    get_dev_contrib "redis-7.x-2.x-o8-revert-A.tar.gz"
+    get_dev_contrib "redis-mod-26-06-2015.tar.gz"
     rm -f redis/redis.info
     echo update > redis/update-${_X_VERSION}.info
   fi
