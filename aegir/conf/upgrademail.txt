@@ -4,23 +4,10 @@ Your Aegir Hosting System has been upgraded to version boa.version
 
   https://aegir.url.name
 
-This BOA release includes several important system upgrades and bug fixes,
-with most notable features and changes listed below.
+This BOA release includes latest Drupal 7 and Pressflow 6 security updates,
+along with bug fixes and other system software updates.
 
-@=> All supported Aegir platforms have been updated with latest Drupal cores
-
-@=> Even if deprecated PHP versions are still included in this release,
-    any Octopus instance running PHP older than 5.5 will not be able to
-    receive upgrade to BOA-2.4.8, as announced before -- Please switch your
-    Octopus to PHP 5.6 or at least 5.5 to be able to upgrade not only
-    the Barracuda system part of BOA, but also Octopus Satellite --
-    The how-to can be found at: https://omega8.cc/node/330
-
-@=> Drupal 8 support for custom platforms in the ~/static directory tree
-    will be included, along with Drush 8 and PHP 7 in the *upcoming*
-    BOA-3.0.0 release: https://github.com/omega8cc/boa/milestones/3.0.0
-    Note: BOA will not include built-in Drupal 8 platforms until Drupal 8
-    will support symlinks in the codebase, like all previous core versions
+@=> All supported Aegir platforms have been updated to their latest releases
 
 @=> What are BOA plans for Drupal 6 support after February 24th, 2016?
 
@@ -29,6 +16,19 @@ with most notable features and changes listed below.
     based site on PHP 5.6 for many months with zero issues). For more details
     please check: https://github.com/omega8cc/boa/issues/824
 
+@=> Even if deprecated PHP versions are still included in this release,
+    any Octopus instance running PHP older than 5.5 will not be able to
+    receive upgrade to BOA-2.4.9, as announced before -- Please switch your
+    Octopus to PHP 5.6 or at least 5.5 to be able to upgrade not only
+    the Barracuda system part of BOA, but also Octopus Satellite --
+    The how-to can be found at: https://omega8.cc/node/330
+
+@=> Drupal 8 support for custom platforms in the ~/static directory tree
+    will be included, along with Drush 8 and Hostmaster 3.x in the upcoming
+    BOA-3.0.0 release: https://github.com/omega8cc/boa/milestones/3.0.0
+    Note: BOA will not include built-in Drupal 8 platforms until Drupal 8
+    will support symlinks in the codebase, like all previous core versions
+
 We recommend that you upgrade your sites using this safe workflow:
 
   https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
@@ -36,7 +36,7 @@ We recommend that you upgrade your sites using this safe workflow:
 You can find all details on how to use new features, along with all
 other changes explained in the release notes and changelog available at:
 
-  https://omega8.cc/boa-248-full-edition-373
+  https://omega8.cc/boa-249-full-edition-374
 
 It is always highly recommended that you read extensive release notes
 and changelog posted on our website for previous BOA Editions, so you
