@@ -1998,7 +1998,7 @@ satellite_download_for_local_build() {
     fi
     get_dev_stc "admin_menu-6.x-1.9.tar.gz"
     get_dev_stc "css_emimage.tar.gz"
-    get_dev_stc "ctools-6.x-1.14.tar.gz"
+    get_dev_stc "ctools-6.x-1.15.tar.gz"
     get_dev_stc "eldir.tar.gz"
     get_dev_stc "features_extra-6.x-1.x-dev.tar.gz"
     get_dev_stc "features-6.x-1.2.tar.gz"
