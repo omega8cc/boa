@@ -43,8 +43,8 @@ check_root() {
 }
 check_root
 
-_DUPLICITY_VRN="0.7.05"
-_BOTO_VRN="2.36.0"
+_DUPLICITY_VRN="0.7.06"
+_BOTO_VRN="2.39.0"
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
