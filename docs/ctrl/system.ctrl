@@ -178,6 +178,20 @@ by the BOA install and upgrade tools exclusively.
   /var/xdrago/graceful.sh -- it works like /root/.giant_traffic.cnf and
   additionally disables /tmp/ and /opt/tmp/ cleanup and Jetty restart.
 
+ @=> /root/.skip_duplicity_monthly_cleanup.cnf
+
+  This file, if exists, allows to skip forced duplicity backup cleanup,
+  which is otherwise run at the end of each month.
+
+ @=> /root/.randomize_duplicity_full_backup_day.cnf
+
+  This file, if exists, allows to randomize duplicity full backup schedule,
+  which is otherwise set to run on Sunday for backboa and Saturday for
+  duobackboa. The full backup day (Mon-Sun) will be randomized monthly or
+  one-time if /root/.skip_duplicity_monthly_cleanup.cnf file exists.
+  This feature is useful when you have many VM/BOA instances running
+  on the same machine.
+
  @=> /root/.home.no.wildcard.chmod.cnf
 
   This file, if exists, allows to avoid setting restrictive (but recommended)

@@ -197,8 +197,10 @@ update_agents() {
     if [ "${InTest}" -gt "14" ] || [[ "${PrTest}" =~ "POWER" ]]; then
       if [ "${InTest}" -gt "14" ]; then
         echo ${InTest} > /root/.tg.cnf
+        echo ${InTest} > /root/.skip_duplicity_monthly_cleanup.cnf
       else
         rm -f /root/.tg.cnf
+        rm -f /root/.skip_duplicity_monthly_cleanup.cnf
       fi
       echo ${InTest} > /root/.high_traffic.cnf
       echo ${InTest} > /root/.skip_cleanup.cnf
@@ -211,6 +213,7 @@ update_agents() {
       rm -f /root/.giant_traffic.cnf
       rm -f /root/.intest.cnf
     fi
+    echo ${InTest} > /root/.randomize_duplicity_full_backup_day.cnf
     if [ ! -e "/data/conf/override.global.inc" ]; then
       echo "<?php" > /data/conf/override.global.inc.tmp
       echo "" >> /data/conf/override.global.inc.tmp
