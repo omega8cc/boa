@@ -50,9 +50,18 @@ _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
+_DOM=$(date +%e 2>&1)
+_DOM=${_DOM//[^0-9]/}
 _HST=$(uname -n 2>&1)
 _HST=${_HST//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
+
+if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
+  _RDW=$((RANDOM%7+1))
+  _RDW=${_RDW//[^1-7]/}
+else
+  _RDW=6
+fi
 
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 
@@ -160,11 +169,12 @@ export AWS_ACCESS_KEY_ID="${_AWS_KEY}"
 export AWS_SECRET_ACCESS_KEY="${_AWS_SEC}"
 export PASSPHRASE="${_AWS_PWD}"
 
+LOGPTH="/var/xdrago/log"
 SOURCE="/etc /var/aegir /var/www /home /data"
 EXCLUDE="--exclude /data/conf/arch"
 BUCKET="daily.remote.${_HST}"
 TARGET="s3://${_AWS_URL}/${BUCKET}"
-LOGFILE="/var/xdrago/log/${BUCKET}.log"
+LOGFILE="${LOGPTH}/${BUCKET}.log"
 
 backup() {
   if [ ! -z "${_AWS_PRG}" ] && [ "${_AWS_PRG}" = "YES" ]; then
@@ -188,20 +198,31 @@ backup() {
       _DO_CLEANUP=YES
     fi
   fi
-  if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
-    && [ "${_DOW}" = "6" ] \
+  if [ -e "${LOGPTH}/${BUCKET}.archive.log" ] \
+    && [ ! -e "/root/.skip_duplicity_monthly_cleanup.cnf" ] \
+    && [ "${_DOM}" = "28" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
     n=$((RANDOM%10800+8))
     echo "Waiting $n seconds on `date` before running cleanup --force" > ${LOGFILE}
     sleep $n
     echo "Running cleanup --force on `date`" >> ${LOGFILE}
     duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
+    rm -f ${LOGPTH}/${BUCKET}.randomize.init.log
   fi
-  if [ "${_DOW}" = "6" ] && [ "${_AWS_FLC}" = "7D" ]; then
-    _MODE="full"
-    _AWS_FLC="1M"
+  if [ "${_DOW}" = "${_RDW}" ] && [ "${_AWS_FLC}" = "7D" ]; then
+    if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
+      if [ -e "${LOGPTH}/${BUCKET}.randomize.init.log" ]; then
+        _MODE="incr"
+      else
+        _MODE="full"
+        echo ${_RDW} > ${LOGPTH}/${BUCKET}.randomize.init.log
+      fi
+    else
+      _MODE="full"
+      _AWS_FLC="1M"
+    fi
   else
-    if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
+    if [ -e "${LOGPTH}/${BUCKET}.archive.log" ] \
       && [ "${_DO_CLEANUP}" = "YES" ]; then
       _MODE="incr"
     else
@@ -217,8 +238,8 @@ backup() {
     --full-if-older-than ${_AWS_FLC} \
     --asynchronous-upload ${_AWS_OPX} \
     ${INCLUDE} ${EXCLUDE} --exclude '**' / ${TARGET} >> ${LOGFILE}
-  if [ -e "/var/xdrago/log/${BUCKET}.archive.log" ] \
-    && [ "${_DOW}" = "6" ] \
+  if [ -e "${LOGPTH}/${BUCKET}.archive.log" ] \
+    && [ "${_DOW}" = "${_RDW}" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
     n=$((RANDOM%10800+8))
     echo "Waiting $n seconds on `date` before running remove-older-than ${_AWS_TTL}" >> ${LOGFILE}
@@ -236,7 +257,7 @@ backup() {
     echo "Sending email report on `date`" >> ${LOGFILE}
     mail -s "Daily backup: ${_HST} $(date 2>&1)" ${_MY_EMAIL} < ${LOGFILE}
   fi
-  cat ${LOGFILE} >> /var/xdrago/log/${BUCKET}.archive.log
+  cat ${LOGFILE} >> ${LOGPTH}/${BUCKET}.archive.log
   rm -f ${LOGFILE}
 }
 
@@ -384,7 +405,7 @@ install() {
 
 if [ "$1" = "backup" ]; then
   if test -f /var/run/${_HST}_backup.pid ; then
-    touch /var/xdrago/log/wait_${_HST}_backup.log
+    touch ${LOGPTH}/wait_${_HST}_backup.log
     echo "The duplicity backup is running already?"
     echo "Existing /var/run/${_HST}_backup.pid found..."
     echo "But no active duplicity process detected..."
@@ -394,7 +415,7 @@ if [ "$1" = "backup" ]; then
     echo "The duplicity backup is starting now..."
     backup
     echo "The duplicity backup is complete!"
-    touch /var/xdrago/log/run_${_HST}_backup.log
+    touch ${LOGPTH}/run_${_HST}_backup.log
     rm -f /var/run/${_HST}_backup.pid
   fi
 elif [ "$1" = "install" ]; then
