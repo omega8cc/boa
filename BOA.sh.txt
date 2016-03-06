@@ -643,6 +643,11 @@ setup() {
     rm -f ${optBin}/{backboa,duobackboa}
     curl ${crlGet} "${urlHmr}/${tBn}/backboa"      -o ${optBin}/backboa
     curl ${crlGet} "${urlHmr}/${tBn}/duobackboa"   -o ${optBin}/duobackboa
+    chmod 700 ${optBin}/{backboa,duobackboa}
+    if [ "${_BENG_VS}" = "YES" ] \
+      && [ -e "/var/xdrago" ]; then
+      backboa install
+    fi
   fi
   chmod 700 ${optBin}/{autoupboa,backboa,barracuda,boa,duobackboa}
   chmod 700 ${optBin}/{ffmirror,octopus,syncpass,xboa}
