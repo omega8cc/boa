@@ -181,7 +181,7 @@ by the BOA install and upgrade tools exclusively.
  @=> /root/.skip_duplicity_monthly_cleanup.cnf
 
   This file, if exists, allows to skip forced duplicity backup cleanup,
-  which is otherwise run at the end of each month.
+  which is otherwise run at the beginning (randomly 1-5) of each month.
 
  @=> /root/.randomize_duplicity_full_backup_day.cnf
 
