@@ -69,6 +69,37 @@ system_check_clean() {
   fi
 }
 
+check_root_direct() {
+  _U_TEST=DENY
+  [ ${SUDO_USER} ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
+  _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
+  _U_TEST_LNE=$(logname 2>&1)
+  if [ ${_U_TEST_SDO} = "root" ] || [ ${_U_TEST_LNE} = "root" ]; then
+    if [ -z "${_U_TEST_WHO}" ]; then
+      _U_TEST=ALLOW
+      ### normal for root scripts running from cron
+    else
+      if [ ${_U_TEST_WHO} = "root" ]; then
+        _U_TEST=ALLOW
+      fi
+    fi
+  fi
+  if [ "${_U_TEST}" = "DENY" ]; then
+    echo
+    echo "ERROR: This script must be run as root directly,"
+    echo "ERROR: without sudo/su switch from regular system user"
+    echo "ERROR: Please add and test your SSH keys for root account"
+    echo "ERROR: with direct access before trying again"
+    echo
+    echo "HINT:  You can always restrict access later, or"
+    echo "       allow only SSH keys for root with directive"
+    echo "         PermitRootLogin without-password"
+    echo "       in the /usr/etc/sshd_config file"
+    echo "Bye"
+    clean_pid_exit
+  fi
+}
+
 check_root_keys_pwd() {
   _S_TEST=$(grep "root:\*:" /etc/shadow 2>&1)
   _R_TEST=CHECK
@@ -1286,6 +1317,9 @@ display_info() {
     exit 1
   fi
 }
+
+check_root_direct
+check_root_keys_pwd
 
 case "$1" in
   info)      cmmand="$1"
