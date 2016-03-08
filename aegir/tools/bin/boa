@@ -1142,7 +1142,6 @@ check_root() {
       if [ ! -e "/root/.force.reinstall.cnf" ]; then
         system_check_clean
       fi
-      check_root_keys_pwd
     fi
     check_fix_csf
     chmod a+w /dev/null
