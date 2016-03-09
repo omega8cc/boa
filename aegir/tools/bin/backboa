@@ -195,7 +195,7 @@ backup_prepare() {
 
 monthly_cleanup() {
   if [ -e "${LOGPTH}/${BUCKET}.randomize.cleanup.log" ]; then
-    _RCL=$(cat ${LOGPTH}/${BUCKET}.randomize.full.log 2>&1)
+    _RCL=$(cat ${LOGPTH}/${BUCKET}.randomize.cleanup.log 2>&1)
     _RCL=$(echo -n ${_RCL} | tr -d "\n" 2>&1)
     _RCL=${_RCL//[^1-5]/}
   else
