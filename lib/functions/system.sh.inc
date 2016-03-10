@@ -656,6 +656,25 @@ EOF
     export LC_NUMERIC=POSIX
     export LC_ALL=
   fi
+  _LOCALES_BASHRC_TEST=$(grep LC_COLLATE /root/.bashrc 2>&1)
+  if [[ ! "${_LOCALES_BASHRC_TEST}" =~ "LC_COLLATE" ]]; then
+    printf "\n" >> /root/.bashrc
+    echo "export LANG=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_CTYPE=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_COLLATE=POSIX" >> /root/.bashrc
+    echo "export LC_NUMERIC=POSIX" >> /root/.bashrc
+    echo "export LC_TIME=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_MONETARY=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_MESSAGES=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_PAPER=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_NAME=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_ADDRESS=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_TELEPHONE=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_MEASUREMENT=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_IDENTIFICATION=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_ALL=" >> /root/.bashrc
+    printf "\n" >> /root/.bashrc
+  fi
 }
 
 #
