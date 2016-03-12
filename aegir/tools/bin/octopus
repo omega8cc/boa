@@ -32,12 +32,15 @@ _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
-_L_VMFAMILY=XEN
-_L_VM_TEST=$(uname -a 2>&1)
-if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
-  || [[ "${_L_VM_TEST}" =~ "3.2.16-beng" ]] \
-  || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
-  _L_VMFAMILY="VS"
+_VMFAMILY=XEN
+_VM_TEST=$(uname -a 2>&1)
+if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+  _VMFAMILY="VS"
+else
+  _VMFAMILY="XEN"
 fi
 
 clean_pid_exit() {
@@ -207,7 +210,7 @@ send_report() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [ "${_L_VMFAMILY}" = "VS" ]; then
+      || [ "${_VMFAMILY}" = "VS" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
@@ -227,7 +230,7 @@ send_alert() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [ "${_L_VMFAMILY}" = "VS" ]; then
+      || [ "${_VMFAMILY}" = "VS" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
@@ -411,7 +414,7 @@ up_one() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [ "${_L_VMFAMILY}" = "VS" ]; then
+      || [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else

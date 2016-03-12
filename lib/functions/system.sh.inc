@@ -26,9 +26,10 @@ if_running_as_root_barracuda() {
       _VMFAMILY="AWS"
     fi
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
+    if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
       _VMFAMILY="VS"
       touch /var/run/cloud_vhost.pid
       if [ -d "/etc/webmin" ]; then
@@ -66,10 +67,11 @@ set_xterm() {
 #
 # Kill nash-hotplug.
 kill_nash() {
-  _L_VM_TEST=$(uname -a 2>&1)
-  if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
-    || [[ "${_L_VM_TEST}" =~ "3.2.16-beng" ]] \
-    || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
+  _VM_TEST=$(uname -a 2>&1)
+  if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
     _DO_NOTHING=YES
   else
     _NASH_TEST=$(grep nash-hotplug /etc/rc.local 2>&1)
@@ -230,9 +232,10 @@ tune_memory_limits() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
+  if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
     _VMFAMILY="VS"
   fi
   if [[ "${_AWS_TEST_A}" =~ "cloudimg" ]] \
@@ -957,17 +960,18 @@ barracuda_cnf() {
     killall -9 php-cgi &> /dev/null
 
     _CHECK_HOST=$(uname -n 2>&1)
-    _L_VMFAMILY=XEN
-    _L_VM_TEST=$(uname -a 2>&1)
-    if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
-      || [[ "${_L_VM_TEST}" =~ "3.2.16-beng" ]] \
-      || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
-      _L_VMFAMILY="VS"
+    _VMFAMILY=XEN
+    _VM_TEST=$(uname -a 2>&1)
+    if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+      _VMFAMILY="VS"
     fi
     if [ -e "/root/.auto.up.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [ "${_L_VMFAMILY}" = "VS" ] \
+      || [ "${_VMFAMILY}" = "VS" ] \
       || [ -e "/root/.host8.cnf" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -995,7 +999,7 @@ barracuda_cnf() {
       if [ -e "/root/.auto.up.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-        || [ "${_L_VMFAMILY}" = "VS" ] \
+        || [ "${_VMFAMILY}" = "VS" ] \
         || [ -e "/root/.host8.cnf" ]; then
         if [ -e "/root/.mstr.clstr.cnf" ] \
           || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -2968,10 +2972,11 @@ if_squeeze_to_wheezy() {
     mrun "apt-get install udev ${dstUpArg}" 2> /dev/null
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
-    _L_VM_TEST=$(uname -a 2>&1)
-    if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
-      || [[ "${_L_VM_TEST}" =~ "3.2.16-beng" ]] \
-      || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
+    _VM_TEST=$(uname -a 2>&1)
+    if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
       _PTMX=OK
       _REMOVE_LINKS="buagent \
                      fancontrol \
@@ -3252,7 +3257,6 @@ sys_packages_install() {
     _EXTRA_PACKAGES="screen"
   fi
   _ETH_TEST=$(ifconfig 2>&1)
-  _VM_TEST=$(uname -a 2>&1)
   if [[ "${_ETH_TEST}" =~ "venet0" ]] || [ -e "/proc/bean_counters" ]; then
     _IS_VZ=YES
   else

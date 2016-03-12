@@ -2633,22 +2633,25 @@ _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
+if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+  _VMFAMILY="VS"
+else
+  _VMFAMILY="XEN"
+fi
 if [ -e "/root/.force.sites.verify.cnf" ]; then
   _FORCE_SITES_VERIFY=YES
 else
   _FORCE_SITES_VERIFY=NO
 fi
 #
-if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
-  _VMFAMILY="VS"
+if [ "${_VMFAMILY}" = "VS" ]; then
   _MODULES_FORCE="background_process coder cookie_cache_bypass css_gzip hacked \
     javascript_aggregator memcache memcache_admin poormanscron search_krumo \
     security_review site_audit stage_file_proxy syslog supercron ultimate_cron \
     varnish watchdog_live xhprof"
-else
-  _VMFAMILY="XEN"
 fi
 #
 if [ "${_DOW}" = "6" ]; then
