@@ -294,7 +294,7 @@ backup() {
   fi
   if [ -n "${_MY_EMAIL}" ] && [ "${_AWS_VLV}" -lt "3" ]; then
     echo "Sending email report on `date`" >> ${LOGFILE}
-    mail -s "Daily backup: ${_HST} $(date 2>&1)" ${_MY_EMAIL} < ${LOGFILE}
+    mail -s "Daily backup: ${_MODE} ${_HST} $(date 2>&1)" ${_MY_EMAIL} < ${LOGFILE}
   fi
   cat ${LOGFILE} >> ${LOGPTH}/${BUCKET}.archive.log
   rm -f ${LOGFILE}
