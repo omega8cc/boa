@@ -2523,7 +2523,7 @@ action() {
         echo "User ${User}"
         mkdir -p ${User}/log/ctrl
         su -s /bin/bash ${_HM_U} -c "drush7 cc drush" &> /dev/null
-        ### rm -f -r ${User}/.tmp/cache
+        rm -f -r ${User}/.tmp/cache
         su -s /bin/bash - ${_HM_U}.ftp -c "drush7 cc drush" &> /dev/null
         rm -f -r /home/${_HM_U}.ftp/.tmp/cache
         _SQL_CONVERT=NO
@@ -2556,7 +2556,7 @@ action() {
         if [ -e "${_THIS_HM_SITE}" ]; then
           cd ${_THIS_HM_SITE}
           su -s /bin/bash ${_HM_U} -c "drush7 cc drush" &> /dev/null
-          ### rm -f -r ${User}/.tmp/cache
+          rm -f -r ${User}/.tmp/cache
           run_drush7_hmr_cmd "vset \
             --always-set hosting_advanced_cron_default_interval 86400"
           run_drush7_hmr_cmd "vset \
