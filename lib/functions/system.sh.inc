@@ -499,7 +499,12 @@ tune_memory_limits() {
     sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf
     wait
   fi
-  _MAX_MEM_REDIS="${_USE_OPC}MB"
+  if [ "${_USE_OPC}" -gt "512" ]; then
+    _MAX_MEM_REDIS=512
+  else
+    _MAX_MEM_REDIS="${_USE_OPC}"
+  fi
+  _MAX_MEM_REDIS="${_MAX_MEM_REDIS}MB"
   sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" \
     /etc/redis/redis.conf &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ]; then
