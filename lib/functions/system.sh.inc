@@ -40,6 +40,10 @@ if_running_as_root_barracuda() {
         mrun "apt-get remove udev -y --force-yes -qq" &> /dev/null
         mrun "apt-get purge udev -y --force-yes -qq" &> /dev/null
       fi
+      if [ -e "/sbin/auditd" ]; then
+        mrun "apt-get remove auditd -y --force-yes -qq" &> /dev/null
+        mrun "apt-get purge auditd -y --force-yes -qq" &> /dev/null
+      fi
       if [ -d "/etc/webmin" ]; then
         rm -f /etc/apt/sources.list.d/openssl.list
         mrun "dpkg --configure -a" &> /dev/null
@@ -2686,8 +2690,10 @@ finale() {
     service clean-boa-env stop &> /dev/null
   fi
   killall -9 memcached     &> /dev/null
-  chmod 0750 /sbin/audispd &> /dev/null
-  service auditd restart   &> /dev/null
+  if [ -e "/sbin/auditd" ]; then
+    chmod 0750 /sbin/audispd &> /dev/null
+    service auditd restart   &> /dev/null
+  fi
   php_single_initd_cleanup
   if [ ! -e "/root/.upstart.cnf" ]; then
     service cron start     &> /dev/null
@@ -3337,6 +3343,7 @@ sys_packages_install() {
 
   if [ "${_VMFAMILY}" != "VS" ]; then
     _EXTRA_PACKAGES="udev \
+                     auditd \
                      ${_EXTRA_PACKAGES}"
   fi
 
@@ -3351,7 +3358,6 @@ sys_packages_install() {
               ${_EXTRA_PACKAGES} \
               ${_SYSLOGD} \
               aptitude \
-              auditd \
               autoconf2.13 \
               automake \
               automake1.4 \
