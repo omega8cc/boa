@@ -26,11 +26,20 @@ if_running_as_root_barracuda() {
       _VMFAMILY="AWS"
     fi
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
+    if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
       _VMFAMILY="VS"
       touch /var/run/cloud_vhost.pid
+      if [ -e "/sbin/hdparm" ]; then
+        mrun "apt-get remove hdparm -y --force-yes -qq" &> /dev/null
+        mrun "apt-get purge hdparm -y --force-yes -qq" &> /dev/null
+      fi
+      if [ -e "/sbin/udevd" ]; then
+        mrun "apt-get remove udev -y --force-yes -qq" &> /dev/null
+        mrun "apt-get purge udev -y --force-yes -qq" &> /dev/null
+      fi
       if [ -d "/etc/webmin" ]; then
         rm -f /etc/apt/sources.list.d/openssl.list
         mrun "dpkg --configure -a" &> /dev/null
@@ -66,10 +75,11 @@ set_xterm() {
 #
 # Kill nash-hotplug.
 kill_nash() {
-  _L_VM_TEST=$(uname -a 2>&1)
-  if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
-    || [[ "${_L_VM_TEST}" =~ "3.2.16-beng" ]] \
-    || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
+  _VM_TEST=$(uname -a 2>&1)
+  if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
     _DO_NOTHING=YES
   else
     _NASH_TEST=$(grep nash-hotplug /etc/rc.local 2>&1)
@@ -230,9 +240,10 @@ tune_memory_limits() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
+  if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
     _VMFAMILY="VS"
   fi
   if [[ "${_AWS_TEST_A}" =~ "cloudimg" ]] \
@@ -496,7 +507,12 @@ tune_memory_limits() {
     sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf
     wait
   fi
-  _MAX_MEM_REDIS="${_USE_OPC}MB"
+  if [ "${_USE_OPC}" -gt "512" ]; then
+    _MAX_MEM_REDIS=512
+  else
+    _MAX_MEM_REDIS="${_USE_OPC}"
+  fi
+  _MAX_MEM_REDIS="${_MAX_MEM_REDIS}MB"
   sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" \
     /etc/redis/redis.conf &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ]; then
@@ -950,17 +966,18 @@ barracuda_cnf() {
     killall -9 php-cgi &> /dev/null
 
     _CHECK_HOST=$(uname -n 2>&1)
-    _L_VMFAMILY=XEN
-    _L_VM_TEST=$(uname -a 2>&1)
-    if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
-      || [[ "${_L_VM_TEST}" =~ "3.2.16-beng" ]] \
-      || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
-      _L_VMFAMILY="VS"
+    _VMFAMILY=XEN
+    _VM_TEST=$(uname -a 2>&1)
+    if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+      _VMFAMILY="VS"
     fi
     if [ -e "/root/.auto.up.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [ "${_L_VMFAMILY}" = "VS" ] \
+      || [ "${_VMFAMILY}" = "VS" ] \
       || [ -e "/root/.host8.cnf" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -988,7 +1005,7 @@ barracuda_cnf() {
       if [ -e "/root/.auto.up.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-        || [ "${_L_VMFAMILY}" = "VS" ] \
+        || [ "${_VMFAMILY}" = "VS" ] \
         || [ -e "/root/.host8.cnf" ]; then
         if [ -e "/root/.mstr.clstr.cnf" ] \
           || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -2951,13 +2968,16 @@ if_squeeze_to_wheezy() {
     if [ -d "/var/www/cgp" ]; then
       mrun "apt-get install collectd ${dstUpArg}" 2> /dev/null
     fi
-    mrun "apt-get install udev ${dstUpArg}" 2> /dev/null
+    if [ "${_VMFAMILY}" != "VS" ]; then
+      mrun "apt-get install udev ${dstUpArg}" 2> /dev/null
+    fi
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
-    _L_VM_TEST=$(uname -a 2>&1)
-    if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
-      || [[ "${_L_VM_TEST}" =~ "3.2.16-beng" ]] \
-      || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
+    _VM_TEST=$(uname -a 2>&1)
+    if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
       _PTMX=OK
       _REMOVE_LINKS="buagent \
                      fancontrol \
@@ -3238,7 +3258,6 @@ sys_packages_install() {
     _EXTRA_PACKAGES="screen"
   fi
   _ETH_TEST=$(ifconfig 2>&1)
-  _VM_TEST=$(uname -a 2>&1)
   if [[ "${_ETH_TEST}" =~ "venet0" ]] || [ -e "/proc/bean_counters" ]; then
     _IS_VZ=YES
   else
@@ -3299,6 +3318,11 @@ sys_packages_install() {
                      optipng \
                      pngcrush \
                      pngquant \
+                     ${_EXTRA_PACKAGES}"
+  fi
+
+  if [ "${_VMFAMILY}" != "VS" ]; then
+    _EXTRA_PACKAGES="udev \
                      ${_EXTRA_PACKAGES}"
   fi
 
@@ -3420,7 +3444,6 @@ sys_packages_install() {
               ttf-dejavu \
               ttf-dejavu-core \
               ttf-dejavu-extra \
-              udev \
               unrtf \
               unzip \
               vim \
