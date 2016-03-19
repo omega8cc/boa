@@ -1204,6 +1204,10 @@ check_root() {
       apt-get remove hdparm -y --force-yes -qq &> /dev/null
       apt-get purge hdparm -y --force-yes -qq &> /dev/null
     fi
+    if [ -e "/sbin/udevd" ]; then
+      apt-get remove udev -y --force-yes -qq &> /dev/null
+      apt-get purge udev -y --force-yes -qq &> /dev/null
+    fi
     _REMOVE_LINKS="buagent \
                    fancontrol \
                    halt \
