@@ -31,7 +31,6 @@ check_root() {
 check_root
 
 _CHECK_HOST=$(uname -n 2>&1)
-_VM_TEST=$(uname -a 2>&1)
 usrGroup=users
 _WEBG=www-data
 _THIS_RV=$(lsb_release -sc 2>&1)
@@ -43,9 +42,11 @@ if [ "${_THIS_RV}" = "jessie" ] \
 else
   _RUBY_VRN=2.0.0
 fi
-if [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]]; then
+_VM_TEST=$(uname -a 2>&1)
+if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
