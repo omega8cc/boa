@@ -32,12 +32,15 @@ _NOW=${_NOW//[^0-9-]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
-_L_VMFAMILY=XEN
-_L_VM_TEST=$(uname -a 2>&1)
-if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
-  || [[ "${_L_VM_TEST}" =~ "3.2.16-beng" ]] \
-  || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
-  _L_VMFAMILY="VS"
+_VMFAMILY=XEN
+_VM_TEST=$(uname -a 2>&1)
+if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+  _VMFAMILY="VS"
+else
+  _VMFAMILY="XEN"
 fi
 
 clean_pid_exit() {
@@ -226,7 +229,7 @@ send_report() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [ "${_L_VMFAMILY}" = "VS" ]; then
+      || [ "${_VMFAMILY}" = "VS" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
@@ -245,7 +248,7 @@ send_alert() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [ "${_L_VMFAMILY}" = "VS" ]; then
+      || [ "${_VMFAMILY}" = "VS" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
@@ -564,7 +567,7 @@ up_action() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [ "${_L_VMFAMILY}" = "VS" ]; then
+      || [ "${_VMFAMILY}" = "VS" ]; then
       _DO_NOTHING=YES
     else
       mkdir -p ${vBs}/old-firewall-monitor/${_NOW}
@@ -665,7 +668,7 @@ up_action() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [ "${_L_VMFAMILY}" = "VS" ]; then
+      || [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
@@ -691,7 +694,7 @@ up_action() {
           fi
           if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
             || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-            || [ "${_L_VMFAMILY}" = "VS" ]; then
+            || [ "${_VMFAMILY}" = "VS" ]; then
             if [ "${_VMFAMILY}" = "VS" ]; then
               sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"       ${barCnf}
               wait
@@ -748,7 +751,7 @@ up_action() {
         fi
       fi
       if [ "${silent}" = "log" ] || [ "${silent}" = "system" ]; then
-        if [ "${_L_VMFAMILY}" = "VS" ]; then
+        if [ "${_VMFAMILY}" = "VS" ]; then
           if [ -e "/root/.debug.cnf" ]; then
             n=8
           else
@@ -901,7 +904,7 @@ up_finish() {
   fi
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-    || [ "${_L_VMFAMILY}" = "VS" ]; then
+    || [ "${_VMFAMILY}" = "VS" ]; then
     service webmin stop &> /dev/null
     service usermin stop &> /dev/null
   fi
@@ -1054,11 +1057,16 @@ check_root() {
         ln -s /proc/self/fd /dev/fd
       fi
     fi
-    _L_VM_TEST=$(uname -a 2>&1)
-    if [[ "${_L_VM_TEST}" =~ "3.7.4-beng" ]] \
-      || [[ "${_L_VM_TEST}" =~ "3.2.16-beng" ]] \
-      || [[ "${_L_VM_TEST}" =~ "3.6.15-beng" ]]; then
+    if [ "${_VMFAMILY}" = "VS" ]; then
       _PTMX=OK
+      if [ -e "/sbin/hdparm" ]; then
+        apt-get remove hdparm -y --force-yes -qq &> /dev/null
+        apt-get purge hdparm -y --force-yes -qq &> /dev/null
+      fi
+      if [ -e "/sbin/udevd" ]; then
+        apt-get remove udev -y --force-yes -qq &> /dev/null
+        apt-get purge udev -y --force-yes -qq &> /dev/null
+      fi
     else
       _PTMX=CHECK
     fi
