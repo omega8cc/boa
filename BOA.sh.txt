@@ -323,6 +323,21 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/hackcheck.fixed.a249i.pid" ]; then
+    mv -f /var/xdrago/monitor/check/hackcheck /var/xdrago/monitor/check/hackcheck.old
+    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/hackcheck" \
+      -o /var/xdrago/monitor/check/hackcheck
+    if [ -e "/var/xdrago/monitor/check/hackcheck" ]; then
+      chmod 700 /var/xdrago/monitor/check/hackcheck
+      chown root:root /var/xdrago/monitor/check/hackcheck
+      touch ${pthLog}/hackcheck.fixed.a249i.pid
+    else
+      mv -f /var/xdrago/monitor/check/hackcheck.old /var/xdrago/monitor/check/hackcheck
+    fi
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
     && [ ! -e "${pthLog}/websh.fixed.a249i.pid" ]; then
     mv -f /bin/websh /var/xdrago/websh.sh.old
     curl ${crlGet} "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh
