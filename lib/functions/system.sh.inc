@@ -32,6 +32,14 @@ if_running_as_root_barracuda() {
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
       _VMFAMILY="VS"
       touch /var/run/cloud_vhost.pid
+      if [ -e "/sbin/hdparm" ]; then
+        mrun "apt-get remove hdparm -y --force-yes -qq" &> /dev/null
+        mrun "apt-get purge hdparm -y --force-yes -qq" &> /dev/null
+      fi
+      if [ -e "/sbin/udevd" ]; then
+        mrun "apt-get remove udev -y --force-yes -qq" &> /dev/null
+        mrun "apt-get purge udev -y --force-yes -qq" &> /dev/null
+      fi
       if [ -d "/etc/webmin" ]; then
         rm -f /etc/apt/sources.list.d/openssl.list
         mrun "dpkg --configure -a" &> /dev/null
@@ -2960,7 +2968,9 @@ if_squeeze_to_wheezy() {
     if [ -d "/var/www/cgp" ]; then
       mrun "apt-get install collectd ${dstUpArg}" 2> /dev/null
     fi
-    mrun "apt-get install udev ${dstUpArg}" 2> /dev/null
+    if [ "${_VMFAMILY}" != "VS" ]; then
+      mrun "apt-get install udev ${dstUpArg}" 2> /dev/null
+    fi
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     _VM_TEST=$(uname -a 2>&1)
@@ -3311,6 +3321,11 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
+  if [ "${_VMFAMILY}" != "VS" ]; then
+    _EXTRA_PACKAGES="udev \
+                     ${_EXTRA_PACKAGES}"
+  fi
+
   if [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "wheezy" ] \
     || [ "${_OSV}" = "squeeze" ] \
@@ -3429,7 +3444,6 @@ sys_packages_install() {
               ttf-dejavu \
               ttf-dejavu-core \
               ttf-dejavu-extra \
-              udev \
               unrtf \
               unzip \
               vim \
