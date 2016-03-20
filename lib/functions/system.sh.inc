@@ -492,8 +492,11 @@ tune_memory_limits() {
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits
-    _UXC_SQL=${_MXC_SQL}
-    _UXC_SQL=$(( _MXC_SQL / 2 ))
+    if [[ "${PrTest}" =~ "POWER" ]]; then
+      _UXC_SQL="${_MXC_SQL}"
+    else
+      _UXC_SQL=$(( _MXC_SQL / 2 ))
+    fi
     sed -i "s/= 191/= ${_UXC_SQL}/g"                                              /etc/mysql/my.cnf
     wait
     sed -i "s/= 292/= ${_MXC_SQL}/g"                                              /etc/mysql/my.cnf
