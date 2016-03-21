@@ -514,8 +514,8 @@ tune_memory_limits() {
     sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf
     wait
   fi
-  if [ "${_USE_OPC}" -gt "1024" ]; then
-    _MAX_MEM_REDIS=1024
+  if [ "${_USE_OPC}" -gt "2048" ]; then
+    _MAX_MEM_REDIS=2048
   else
     _MAX_MEM_REDIS="${_USE_OPC}"
   fi
