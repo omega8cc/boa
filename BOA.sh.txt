@@ -196,12 +196,11 @@ update_agents() {
     InTest=$(ls /data/disk/ | wc -l 2>&1)
     if [ "${InTest}" -gt "14" ] || [[ "${PrTest}" =~ "POWER" ]]; then
       if [ "${InTest}" -gt "14" ]; then
-        echo ${InTest} > /root/.tg.cnf
         echo ${InTest} > /root/.skip_duplicity_monthly_cleanup.cnf
       else
-        rm -f /root/.tg.cnf
         rm -f /root/.skip_duplicity_monthly_cleanup.cnf
       fi
+      echo ${InTest} > /root/.tg.cnf
     else
       rm -f /root/.tg.cnf
     fi
@@ -215,9 +214,9 @@ update_agents() {
       chmod 644 /data/conf/override.global.inc.tmp
       mv -f /data/conf/override.global.inc.tmp /data/conf/override.global.inc
     fi
-    if [ ! -e "${pthLog}/forced.redis.maxmemory.txt" ]; then
+    if [ ! -e "${pthLog}/forced.redis.maxmemory2048.txt" ]; then
       service redis-server restart &> /dev/null
-      touch ${pthLog}/forced.redis.maxmemory.txt
+      touch ${pthLog}/forced.redis.maxmemory2048.txt
     fi
   fi
 
