@@ -4749,6 +4749,8 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster cc all &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
       SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
+    ${_DRUSHCMD} @hostmaster sqlq "UPDATE menu_links \
+      SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'" &> /dev/null
   fi
 }
 
