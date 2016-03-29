@@ -502,13 +502,16 @@ fix_php_ini_mongo() {
   fi
 }
 #
-# Fix 5.3 php.ini files to add mongo.so
+# Fix all php.ini files to add mongo.so
 fix_php_ini_mongo_all() {
   if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
-    _THIS_FILE=/opt/php53/etc/php53.ini
-    fix_php_ini_mongo
-    _THIS_FILE=/opt/php53/lib/php.ini
-    fix_php_ini_mongo
+    _PHP_V="56 55 54 53"
+    for e in ${_PHP_V}; do
+      _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+      fix_php_ini_mongo
+      _THIS_FILE=/opt/php${e}/lib/php.ini
+      fix_php_ini_mongo
+    done
   fi
 }
 #
