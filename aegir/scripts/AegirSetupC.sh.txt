@@ -418,6 +418,8 @@ prepare_drupal8_core() {
     find ${_D8_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
     find ${_D8_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
     cd ${_D8_CORE_DIR}/
+    patchFile="0001-Symlink-core-support-test.patch"
+    patch -p1 < ${bldPth}/aegir/patches/8-core/${patchFile} &> /dev/null
     fix_dirs_files
     rename_drupal8_profiles
     ### rm -f modules/o_contrib_eight

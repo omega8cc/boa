@@ -2115,7 +2115,7 @@ satellite_download_for_local_build() {
     get_dev_stc "admin_menu-7.x-3.0-rc5.tar.gz"
     get_dev_stc "betterlogin-7.x-1.4.tar.gz"
     get_dev_stc "ctools-7.x-1.9.tar.gz"
-    get_dev_stc "entity-7.x-1.6.tar.gz"
+    get_dev_stc "entity-7.x-1.7.tar.gz"
     get_dev_stc "openidadmin-7.x-1.0.tar.gz"
     get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
     get_dev_stc "r4032login-7.x-1.8.tar.gz"
@@ -2123,7 +2123,7 @@ satellite_download_for_local_build() {
     get_dev_stc "views-7.x-3.13.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
-    get_dev_stc "features-7.x-2.7.tar.gz"
+    get_dev_stc "features-7.x-2.8.tar.gz"
     get_dev_stc "revision_deletion-7.x-1.x-dev.tar.gz"
     get_dev_stc "strongarm-7.x-2.0.tar.gz"
     get_dev_stc "userprotect-7.x-1.2.tar.gz"
@@ -3583,11 +3583,11 @@ satellite_check_octopus_versus_barracuda_version() {
   fi
   if [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
-    if [[ "${_SERIES_TEST}" =~ "BOA-2.4.8" ]]; then
+    if [[ "${_SERIES_TEST}" =~ "BOA-2.4.9" ]]; then
       _VERSIONS_TEST_RESULT=OK
     else
       msg "ERROR: This octopus installer can be used only when the instance"
-      msg "has been already upgraded to previous stable BOA-2.4.8 version"
+      msg "has been already upgraded to previous stable BOA-2.4.9 version"
       msg "Please run 'octopus up-2.4 ${_USER} aegir' upgrade first"
       msg "Bye"
       clean_pid_exit
@@ -4749,6 +4749,8 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster cc all &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
       SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
+    ${_DRUSHCMD} @hostmaster sqlq "UPDATE menu_links \
+      SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'" &> /dev/null
   fi
 }
 

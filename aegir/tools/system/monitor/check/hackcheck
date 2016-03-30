@@ -63,7 +63,7 @@ sub makeactions
         }
       }
     }
-    elsif ($line =~ /(Received disconnect)/i) {
+    elsif ($line =~ /(Received disconnect)/i && $line !~ /(disconnected by user)/i) {
       &verify_timestamp;
       if ($timestamp eq "NEW") {
         local($a, $b, $c, $d, $e, $f, $g, $h, $VISITOR, $rest) = split(/\s+/,$line);

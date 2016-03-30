@@ -245,13 +245,16 @@ fix_php_ini_mongo() {
 }
 
 #
-# Fix 5.3 php.ini files to add mongo.so
+# Fix all php.ini files to add mongo.so
 fix_php_ini_mongo_all() {
   if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
-    _THIS_FILE=/opt/php53/etc/php53.ini
-    fix_php_ini_mongo
-    _THIS_FILE=/opt/php53/lib/php.ini
-    fix_php_ini_mongo
+    _PHP_V="56 55 54 53"
+    for e in ${_PHP_V}; do
+      _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+      fix_php_ini_mongo
+      _THIS_FILE=/opt/php${e}/lib/php.ini
+      fix_php_ini_mongo
+    done
   fi
 }
 
@@ -525,7 +528,7 @@ install_php_extensions() {
   fi
   ###--------------------###
   if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
-    if [ "$1" = "53" ]; then
+    if [ "$1" != "70" ]; then
       msg "INFO: Installing MongoDB driver for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -f -r mongo*
@@ -739,7 +742,7 @@ update_php_extensions() {
     fi
   fi
   ###--------------------###
-  if [ "$1" = "53" ] \
+  if [ "$1" != "70" ] \
     && [ ! -e "${pthLog}/php-mongo-${_MONGO_VRN}-${_T_PHP_VRN}.log" ]; then
     if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
       msg "INFO: Installing MongoDB PHP driver upgrade for PHP ${_T_PHP_VRN}..."
