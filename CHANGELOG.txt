@@ -1,4 +1,72 @@
 
+### Stable BOA-3.0.0 Release - Full Edition
+### Date: Wed Mar 30 10:48:54 PDT 2016
+### Milestone URL: https://github.com/omega8cc/boa/milestones/3.0.0
+
+  @=> Includes Aegir Hostmaster 3.x-head with improvements
+  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Drush 8 customized for BOA
+
+# Release Notes:
+
+  This BOA release includes complete Aegir 3 with Drush 8, and introduces
+  full support for latest Drupal 8.0.5 and Drupal 8.1.0-beta2 as custom
+  platforms you can create in the ~/static directory tree.
+
+  @=> BOA will not include built-in Drupal 8 platforms until Drupal 8 will
+      support symlinks in the codebase, like all previous core versions.
+
+  @=> All supported Aegir platforms have been updated to their latest releases
+
+  @=> BOA Hosted on Power Engine based Octopus instances will *not* receive
+      upgrade to BOA-3.x unless requested via https://omega8.cc/support
+      to prevent issues with (often) customized Hostmaster modules not ready
+      for Drupal 7 based Aegir control panel.
+
+# New features and enhancements:
+
+  * Add mydropwizard module to D6 o_contrib by default
+  * Add support for ap-northeast-2 Asia Pacific (Seoul) S3
+  * Add support for PHP 7.0 -- experimental ! -- fixes #716
+  * Add support for VServer kernel 4.1.19-vs2.3.8.4-beng
+  * Allow to randomize duplicity full backup schedule
+  * Monitor and block SSH connections flood
+  * Run registry-rebuild in drush_provision_drupal_post_provision_deploy()
+
+# Changes:
+
+  * Add linkchecker module to Contrib [F]orce[D]isabled
+  * Deny sudo/su switch if used for root access - fixes #879
+  * Do not install / remove auditd on VServer systems
+  * Do not install / remove udev on VServer systems
+  * Merge hosting_advanced_cron into Aegir core cron
+  * Use Redis 7.x-3.x integration module
+
+# System upgrades:
+
+  * Boto 2.39.0-fix-python-2.7.9 (please run 'backboa install' to upgrade)
+  * CSF 8.16
+  * Drush mini-8-08-03-2016
+  * Duplicity 0.7.06 (please run 'backboa install' to upgrade)
+  * Lshell 0.9.18.2
+  * MongoDB database driver 1.6.13 for all PHP versions < 7 -- fixes #521
+  * Nginx 1.9.13
+  * OpenSSH 7.2p2 (if installed from sources)
+  * OpenSSL 1.0.2g (used only in custom built Nginx)
+  * PHP 5.5.33
+  * PHP 5.6.19
+  * PHP 7.0.4 (for testing only)
+  * Twig C extension for PHP - v.1.24.0
+  * Use PHP jsmin 2.0.1 ext with newer PHP versions - fixes #878
+
+# Fixes:
+
+  * [system] sync fix_locales for root -- fixes #880
+  * Restart rsyslog/sysklogd aggressively enough
+  * Sync max_user_connections
+  * Update map $http_user_agent $is_crawler
+
+
 ### Stable BOA-2.4.9 Release - Full Edition
 ### Date: Sat Feb 27 15:22:11 GMT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/2.4.9
