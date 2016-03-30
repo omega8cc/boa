@@ -3,7 +3,7 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-branch="2.4.x-dev"
+branch="3.x.x-dev"
 cluster="BOA-2.4.9"
 hd="HEAD"
 lgcA="BOA-2.2.9"
