@@ -196,12 +196,11 @@ update_agents() {
     InTest=$(ls /data/disk/ | wc -l 2>&1)
     if [ "${InTest}" -gt "14" ] || [[ "${PrTest}" =~ "POWER" ]]; then
       if [ "${InTest}" -gt "14" ]; then
-        echo ${InTest} > /root/.tg.cnf
         echo ${InTest} > /root/.skip_duplicity_monthly_cleanup.cnf
       else
-        rm -f /root/.tg.cnf
         rm -f /root/.skip_duplicity_monthly_cleanup.cnf
       fi
+      echo ${InTest} > /root/.tg.cnf
     else
       rm -f /root/.tg.cnf
     fi
@@ -215,9 +214,9 @@ update_agents() {
       chmod 644 /data/conf/override.global.inc.tmp
       mv -f /data/conf/override.global.inc.tmp /data/conf/override.global.inc
     fi
-    if [ ! -e "${pthLog}/forced.redis.maxmemory.txt" ]; then
+    if [ ! -e "${pthLog}/forced.redis.maxmemory2048.txt" ]; then
       service redis-server restart &> /dev/null
-      touch ${pthLog}/forced.redis.maxmemory.txt
+      touch ${pthLog}/forced.redis.maxmemory2048.txt
     fi
   fi
 
@@ -318,6 +317,21 @@ update_agents() {
       touch ${pthLog}/proc_num_ctrl.fixed.a249i.pid
     else
       mv -f /var/xdrago/proc_num_ctrl.cgi.old /var/xdrago/proc_num_ctrl.cgi
+    fi
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/hackcheck.fixed.a249i.pid" ]; then
+    mv -f /var/xdrago/monitor/check/hackcheck /var/xdrago/monitor/check/hackcheck.old
+    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/hackcheck" \
+      -o /var/xdrago/monitor/check/hackcheck
+    if [ -e "/var/xdrago/monitor/check/hackcheck" ]; then
+      chmod 700 /var/xdrago/monitor/check/hackcheck
+      chown root:root /var/xdrago/monitor/check/hackcheck
+      touch ${pthLog}/hackcheck.fixed.a249i.pid
+    else
+      mv -f /var/xdrago/monitor/check/hackcheck.old /var/xdrago/monitor/check/hackcheck
     fi
   fi
 

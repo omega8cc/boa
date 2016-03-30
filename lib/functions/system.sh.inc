@@ -40,6 +40,10 @@ if_running_as_root_barracuda() {
         mrun "apt-get remove udev -y --force-yes -qq" &> /dev/null
         mrun "apt-get purge udev -y --force-yes -qq" &> /dev/null
       fi
+      if [ -e "/sbin/auditd" ]; then
+        mrun "apt-get remove auditd -y --force-yes -qq" &> /dev/null
+        mrun "apt-get purge auditd -y --force-yes -qq" &> /dev/null
+      fi
       if [ -d "/etc/webmin" ]; then
         rm -f /etc/apt/sources.list.d/openssl.list
         mrun "dpkg --configure -a" &> /dev/null
@@ -495,8 +499,11 @@ tune_memory_limits() {
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits
-    _UXC_SQL=${_MXC_SQL}
-    _UXC_SQL=$(( _MXC_SQL / 2 ))
+    if [[ "${PrTest}" =~ "POWER" ]]; then
+      _UXC_SQL="${_MXC_SQL}"
+    else
+      _UXC_SQL=$(( _MXC_SQL / 2 ))
+    fi
     sed -i "s/= 191/= ${_UXC_SQL}/g"                                              /etc/mysql/my.cnf
     wait
     sed -i "s/= 292/= ${_MXC_SQL}/g"                                              /etc/mysql/my.cnf
@@ -514,8 +521,8 @@ tune_memory_limits() {
     sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf
     wait
   fi
-  if [ "${_USE_OPC}" -gt "512" ]; then
-    _MAX_MEM_REDIS=512
+  if [ "${_USE_OPC}" -gt "2048" ]; then
+    _MAX_MEM_REDIS=2048
   else
     _MAX_MEM_REDIS="${_USE_OPC}"
   fi
@@ -2686,8 +2693,10 @@ finale() {
     service clean-boa-env stop &> /dev/null
   fi
   killall -9 memcached     &> /dev/null
-  chmod 0750 /sbin/audispd &> /dev/null
-  service auditd restart   &> /dev/null
+  if [ -e "/sbin/auditd" ]; then
+    chmod 0750 /sbin/audispd &> /dev/null
+    service auditd restart   &> /dev/null
+  fi
   php_single_initd_cleanup
   if [ ! -e "/root/.upstart.cnf" ]; then
     service cron start     &> /dev/null
@@ -3337,6 +3346,7 @@ sys_packages_install() {
 
   if [ "${_VMFAMILY}" != "VS" ]; then
     _EXTRA_PACKAGES="udev \
+                     auditd \
                      ${_EXTRA_PACKAGES}"
   fi
 
@@ -3351,7 +3361,6 @@ sys_packages_install() {
               ${_EXTRA_PACKAGES} \
               ${_SYSLOGD} \
               aptitude \
-              auditd \
               autoconf2.13 \
               automake \
               automake1.4 \

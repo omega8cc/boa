@@ -1067,6 +1067,10 @@ check_root() {
         apt-get remove udev -y --force-yes -qq &> /dev/null
         apt-get purge udev -y --force-yes -qq &> /dev/null
       fi
+      if [ -e "/sbin/auditd" ]; then
+        apt-get remove auditd -y --force-yes -qq &> /dev/null
+        apt-get purge auditd -y --force-yes -qq &> /dev/null
+      fi
     else
       _PTMX=CHECK
     fi
