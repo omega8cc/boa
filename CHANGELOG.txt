@@ -25,10 +25,13 @@
 
 # New features and enhancements:
 
+  * Add Hosting Git optional feature -- fixes #753
   * Add mydropwizard module to D6 o_contrib by default
   * Add support for ap-northeast-2 Asia Pacific (Seoul) S3
   * Add support for PHP 7.0 -- experimental ! -- fixes #716
   * Add support for VServer kernel 4.1.19-vs2.3.8.4-beng
+  * BOA with Aegir Hostmaster 3.x -- fixes #715
+  * Switch to Drush 8 for Drupal 8 -- fixes #729
   * Allow to randomize duplicity full backup schedule
   * Monitor and block SSH connections flood
   * Run registry-rebuild in drush_provision_drupal_post_provision_deploy()
@@ -62,6 +65,7 @@
 # Fixes:
 
   * [system] sync fix_locales for root -- fixes #880
+  * Fix for entitycache 1.2 to 1.5 upgrade problem #868
   * Restart rsyslog/sysklogd aggressively enough
   * Sync max_user_connections
   * Update map $http_user_agent $is_crawler
