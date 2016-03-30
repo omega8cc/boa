@@ -225,9 +225,9 @@ master_download_for_local_build() {
       ${gCb} feature/3.0.x-hosting ${gitHub}/hosting.git       &> /dev/null
       ${gCb} feature/3.0.x-eldir ${gitHub}/eldir.git           &> /dev/null
     else
-      get_dev_ext "hostmaster-${_AEGIR_VERSION}.tar.gz"
-      get_dev_ext "hosting-${_AEGIR_VERSION}.tar.gz"
-      get_dev_ext "eldir-${_AEGIR_VERSION}.tar.gz"
+      get_dev_ext "hostmaster.tar.gz"
+      get_dev_ext "hosting.tar.gz"
+      get_dev_ext "eldir.tar.gz"
     fi
     ### Aegir Golden + BOA Settings
     if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
