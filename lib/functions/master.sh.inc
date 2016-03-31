@@ -213,28 +213,55 @@ master_download_for_local_build() {
     rm -f -r ${mL}
     mkdir -p ${mL}
     cd ${mL}
-    get_dev_stc "admin_menu-6.x-1.9.tar.gz"
-    get_dev_stc "css_emimage.tar.gz"
-    get_dev_stc "ctools-6.x-1.15.tar.gz"
-    get_dev_stc "eldir.tar.gz"
-    get_dev_stc "features_extra-6.x-1.x-dev.tar.gz"
-    get_dev_stc "features-6.x-1.2.tar.gz"
-    get_dev_stc "hosting_backup_queue.tar.gz"
-    get_dev_stc "hosting_platform_pathauto.tar.gz"
-    get_dev_stc "hosting_task_gc.tar.gz"
-    get_dev_stc "hosting.tar.gz"
-    get_dev_stc "install_profile_api.tar.gz"
-    get_dev_stc "jquery_ui-6.x-1.5.tar.gz"
-    get_dev_stc "jquery_update-6.x-2.0-alpha1.tar.gz"
-    get_dev_stc "jquery-ui-1.7.3.zip"
-    get_dev_stc "modalframe-6.x-1.9.tar.gz"
-    get_dev_stc "openidadmin-6.x-1.2.tar.gz"
-    get_dev_stc "protect_critical_users-6.x-1.1.tar.gz"
-    get_dev_stc "revision_deletion-6.x-1.x-dev.tar.gz"
-    get_dev_stc "strongarm-6.x-2.2.tar.gz"
-    get_dev_stc "userprotect-6.x-1.5.tar.gz"
-    get_dev_stc "views_bulk_operations-6.x-1.17.tar.gz"
-    get_dev_stc "views-6.x-3.2.tar.gz"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Downloading hostmaster modules..."
+    fi
+    ### Drupal Core
+    get_dev_ext "drupal-${_SMALLCORE7}.tar.gz"
+    mv -f ${mL}/drupal-${_SMALLCORE7} ${mL}/drupal
+    ### Aegir Core
+    if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+      ${gCb} feature/3.0.x-profile ${gitHub}/hostmaster.git    &> /dev/null
+      ${gCb} feature/3.0.x-hosting ${gitHub}/hosting.git       &> /dev/null
+      ${gCb} feature/3.0.x-eldir ${gitHub}/eldir.git           &> /dev/null
+    else
+      get_dev_ext "hostmaster.tar.gz"
+      get_dev_ext "hosting.tar.gz"
+      get_dev_ext "eldir.tar.gz"
+    fi
+    ### Aegir Golden + BOA Settings
+    if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+      ${gCb} 7.x-3.x ${gitHub}/hosting_civicrm.git             &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_custom_settings.git     &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_git.git                 &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_remote_import.git       &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_site_backup_manager.git &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_tasks_extra.git         &> /dev/null
+      rm -f -r */.git
+    else
+      get_dev_ext "hosting_civicrm.tar.gz"
+      get_dev_ext "hosting_custom_settings.tar.gz"
+      get_dev_ext "hosting_git.tar.gz"
+      get_dev_ext "hosting_remote_import.tar.gz"
+      get_dev_ext "hosting_site_backup_manager.tar.gz"
+      get_dev_ext "hosting_tasks_extra.tar.gz"
+    fi
+    ### Aegir Drupal Contrib
+    get_dev_stc "admin_menu-7.x-3.0-rc5.tar.gz"
+    get_dev_stc "betterlogin-7.x-1.4.tar.gz"
+    get_dev_stc "ctools-7.x-1.9.tar.gz"
+    get_dev_stc "entity-7.x-1.7.tar.gz"
+    get_dev_stc "openidadmin-7.x-1.0.tar.gz"
+    get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
+    get_dev_stc "r4032login-7.x-1.8.tar.gz"
+    get_dev_stc "views_bulk_operations-7.x-3.3.tar.gz"
+    get_dev_stc "views-7.x-3.13.tar.gz"
+    ### BOA Drupal Contrib
+    get_dev_stc "features_extra-7.x-1.0.tar.gz"
+    get_dev_stc "features-7.x-2.8.tar.gz"
+    get_dev_stc "revision_deletion-7.x-1.x-dev.tar.gz"
+    get_dev_stc "strongarm-7.x-2.0.tar.gz"
+    get_dev_stc "userprotect-7.x-1.2.tar.gz"
   fi
   find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null
   find ${mL} -type f -exec chmod 0644 {} \; &> /dev/null
@@ -273,7 +300,14 @@ upgrade_aegir_master() {
       find /var/aegir/drush -type d -exec chmod 0755 {} \; &> /dev/null
       find /var/aegir/drush -type f -exec chmod 0644 {} \; &> /dev/null
       chmod 755 /var/aegir/drush/drush
+      chmod 755 /var/aegir/drush/drush.bat
+      chmod 755 /var/aegir/drush/drush.complete.sh
+      chmod 755 /var/aegir/drush/drush.launcher
       chmod 755 /var/aegir/drush/drush.php
+      chmod 755 /var/aegir/drush/unish.sh
+      chmod 755 /var/aegir/drush/examples/drush.wrapper
+      chmod 755 /var/aegir/drush/examples/git-bisect.example.sh
+      chmod 755 /var/aegir/drush/examples/helloworld.script
     fi
     _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
       | grep "root'" \
@@ -310,6 +344,7 @@ upgrade_aegir_master() {
     echo "_NOW=\"${_NOW}\""                             >> ${vBs}/${filIncB}
     echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${vBs}/${filIncB}
     echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${vBs}/${filIncB}
+    echo "_SMALLCORE7=\"${_SMALLCORE7}\""               >> ${vBs}/${filIncB}
     echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${vBs}/${filIncB}
     echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${vBs}/${filIncB}
     echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${vBs}/${filIncB}
@@ -333,8 +368,6 @@ upgrade_aegir_master() {
     else
       chattr +i ${_U_HD}/php.ini &> /dev/null
       hostmaster_frontend_dbpass_sync
-      sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" \
-        /var/spool/cron/crontabs/aegir &> /dev/null
     fi
     if [ ! -L "${mtrInc}/global.inc" ] && [ -e "${mtrInc}/global.inc" ]; then
       mv -f ${mtrInc}/global.inc \
@@ -380,20 +413,40 @@ upgrade_aegir_master() {
 #
 # Update php-cli in the cron entry.
 update_php_cli_cron() {
-  if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
-    sed -i "s/^PATH=.*/PATH=\/opt\/php55\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-      /var/spool/cron/crontabs/aegir &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
-    sed -i "s/^PATH=.*/PATH=\/opt\/php56\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-      /var/spool/cron/crontabs/aegir &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
-    sed -i "s/^PATH=.*/PATH=\/opt\/php54\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-      /var/spool/cron/crontabs/aegir &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
-    sed -i "s/^PATH=.*/PATH=\/opt\/php53\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-      /var/spool/cron/crontabs/aegir &> /dev/null
+  if [ ! -e "/root/.mstr.clstr.cnf" ] \
+    && [ ! -e "/root/.wbhd.clstr.cnf" ] \
+    && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
+    if [ ! -e "/var/spool/cron/crontabs/aegir" ]; then
+      echo -e \
+        "SHELL=/bin/sh\nPATH=/opt/php56/bin:/usr/bin\n*/1 * * * * \
+        /usr/bin/env php /var/aegir/drush/drush.php '@hostmaster' \
+        hosting-dispatch >/dev/null 2>&1" \
+        | fmt -su -w 2500 \
+        | tee -a /var/spool/cron/crontabs/aegir >/dev/null 2>&1
+    fi
   fi
-  chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
+  if [ -e "/var/spool/cron/crontabs/aegir" ]; then
+    sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" \
+      /var/spool/cron/crontabs/aegir &> /dev/null
+    if [ "${_PHP_CLI_VERSION}" = "7.0" ] && [ -x "/opt/php70/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php70\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php56\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php55\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php54\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php53\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    fi
+    chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
+    chmod 600 /var/spool/cron/crontabs/aegir
+  fi
 }
 
 install_upgrade_aegir_master() {
@@ -779,7 +832,7 @@ update_php_cli_local_ini() {
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="56 55 54 53"
+  _PHP_V="70 56 55 54 53"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ]; then
@@ -789,7 +842,7 @@ update_php_cli_local_ini() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.249stableU.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.300stableU.txt" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -797,12 +850,15 @@ update_php_cli_local_ini() {
     mkdir -p ${_U_HD}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php55" ]]; then
-      cp -af /opt/php55/lib/php.ini ${_U_II}
-      _U_INI=55
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php70" ]]; then
+      cp -af /opt/php70/lib/php.ini ${_U_II}
+      _U_INI=70
     elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php56" ]]; then
       cp -af /opt/php56/lib/php.ini ${_U_II}
       _U_INI=56
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php55" ]]; then
+      cp -af /opt/php55/lib/php.ini ${_U_II}
+      _U_INI=55
     elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php54" ]]; then
       cp -af /opt/php54/lib/php.ini ${_U_II}
       _U_INI=54
@@ -819,6 +875,7 @@ update_php_cli_local_ini() {
         /opt/php54:          \
         /opt/php55:          \
         /opt/php56:          \
+        /opt/php70:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \
@@ -845,7 +902,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.249stableU.txt
+      echo > ${_U_HD}/.ctrl.300stableU.txt
     fi
   fi
 }

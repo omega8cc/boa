@@ -35,6 +35,9 @@ if [ -e "/var/log/php" ]; then
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
     rm -f /var/log/php/*
     renice ${_B_NICE} -p $$ &> /dev/null
+    if [ -e "/etc/init.d/php70-fpm" ]; then
+      service php70-fpm start
+    fi
     if [ -e "/etc/init.d/php56-fpm" ]; then
       service php56-fpm start
     fi
@@ -59,6 +62,9 @@ if [ -e "/var/log/php" ]; then
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
     rm -f /var/log/php/*
     renice ${_B_NICE} -p $$ &> /dev/null
+    if [ -e "/etc/init.d/php70-fpm" ]; then
+      service php70-fpm start
+    fi
     if [ -e "/etc/init.d/php56-fpm" ]; then
       service php56-fpm start
     fi
@@ -84,6 +90,9 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]]; then
   touch /var/run/fmp_wait.pid
   rm -f /var/log/php/*
   renice ${_B_NICE} -p $$ &> /dev/null
+  if [ -e "/etc/init.d/php70-fpm" ]; then
+    service php70-fpm reload
+  fi
   if [ -e "/etc/init.d/php56-fpm" ]; then
     service php56-fpm reload
   fi

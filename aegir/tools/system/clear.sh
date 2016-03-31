@@ -105,9 +105,11 @@ fi
 sudo postsuper -d ALL &> /dev/null
 
 if [ -e "/etc/init.d/rsyslog" ]; then
-  service rsyslog restart &> /dev/null
+  killall -9 rsyslogd &> /dev/null
+  service rsyslog start &> /dev/null
 elif [ -e "/etc/init.d/sysklogd" ]; then
-  service sysklogd restart &> /dev/null
+  killall -9 sysklogd &> /dev/null
+  service sysklogd start &> /dev/null
 fi
 rm -f /var/backups/.auth.IP.list*
 find /var/xdrago/log/*.pid -mtime +0 -type f -exec rm -rf {} \; &> /dev/null

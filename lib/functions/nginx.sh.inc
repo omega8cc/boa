@@ -769,9 +769,6 @@ fix_update_nginx_config() {
           sed -i "s/\!empty.*';/'*';/g" \
             $_OCT/.drush/sys/${pNx}/vhost_disabled.tpl.php &> /dev/null
           wait
-          sed -i "s/\!empty.*';/'*';/g" \
-            $_OCT/.drush/xts/provision_cdn/Provision/Config/cdn.tpl.php &> /dev/null
-          wait
         elif [ -e "$_OCT/.drush/drush_make" ]; then
           sed -i "s/\!empty.*';/'*';/g" \
             $_OCT/.drush/${pNx}/server.tpl.php &> /dev/null
@@ -781,9 +778,6 @@ fix_update_nginx_config() {
           wait
           sed -i "s/\!empty.*';/'*';/g" \
             $_OCT/.drush/${pNx}/vhost_disabled.tpl.php &> /dev/null
-          wait
-          sed -i "s/\!empty.*';/'*';/g" \
-            $_OCT/.drush/provision_cdn/Provision/Config/cdn.tpl.php &> /dev/null
           wait
         fi
       done

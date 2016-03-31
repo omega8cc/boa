@@ -129,12 +129,15 @@ _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
 _D="/data/all"
 _SRCDIR="/opt/tmp/files"
 _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
-if [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-  && [ -x "/opt/php55/bin/php" ]; then
-  _T_CLI=/opt/php55/bin
+if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+  && [ -x "/opt/php70/bin/php" ]; then
+  _T_CLI=/opt/php70/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
   && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
+elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
+  && [ -x "/opt/php55/bin/php" ]; then
+  _T_CLI=/opt/php55/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
   && [ -x "/opt/php54/bin/php" ]; then
   _T_CLI=/opt/php54/bin
@@ -177,8 +180,8 @@ fi
 satellite_child_b_prepare_dirs_permissions
 satellite_child_b_install_drush
 satellite_child_b_drush_xts_cleanup
-satellite_child_b_drush_test
 satellite_child_b_drush_xts_install
+satellite_child_b_drush_test
 satellite_child_b_aegir_build
 satellite_child_b_aegir_health_check
 satellite_child_b_aegir_ui_enhance

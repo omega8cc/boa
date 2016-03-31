@@ -130,12 +130,15 @@ _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
 _D="/data/all"
 _SRCDIR="/opt/tmp/files"
 _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
-if [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-  && [ -x "/opt/php55/bin/php" ]; then
-  _T_CLI=/opt/php55/bin
+if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+  && [ -x "/opt/php70/bin/php" ]; then
+  _T_CLI=/opt/php70/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
   && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
+elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
+  && [ -x "/opt/php55/bin/php" ]; then
+  _T_CLI=/opt/php55/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
   && [ -x "/opt/php54/bin/php" ]; then
   _T_CLI=/opt/php54/bin
@@ -145,14 +148,14 @@ elif [ "${_PHP_CLI_VERSION}" = "5.3" ] \
 fi
 _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
 #
-if [ "${_PHP_FPM_VERSION}" = "5.5" ] \
-  && [ "${_PHP_CLI_VERSION}" = "5.5" ]; then
+if [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+  && [ "${_PHP_CLI_VERSION}" = "7.0" ]; then
   _D_8_ALLOW=YES
 elif [ "${_PHP_FPM_VERSION}" = "5.6" ] \
   && [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
   _D_8_ALLOW=YES
-elif [ "${_PHP_FPM_VERSION}" = "5.4" ] \
-  && [ "${_PHP_CLI_VERSION}" = "5.4" ]; then
+elif [ "${_PHP_FPM_VERSION}" = "5.5" ] \
+  && [ "${_PHP_CLI_VERSION}" = "5.5" ]; then
   _D_8_ALLOW=YES
 else
   _D_8_ALLOW=NO
@@ -415,25 +418,8 @@ prepare_drupal8_core() {
     find ${_D8_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
     find ${_D8_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
     cd ${_D8_CORE_DIR}/
-    fix_dirs_files
-    rename_drupal8_profiles
-    ### rm -f modules/o_contrib_eight
-    ### ln -s ${_CORE}/o_contrib_eight modules/o_contrib_eight
-    cd ${_CORE}
-  fi
-}
-#
-# Prepare D8 dev core.
-prepare_dr8_dev_core() {
-  if [ ! -e "${_D8_DEV_CORE_DIR}" ]; then
-    rm -f -r ${_D8_DEV_CORE_DIR}
-    cd /data/all/000/core
-    curl ${crlGet} \
-      "http://${_USE_MIR}/core/drupal-${_D8_DEV_COMMIT}.tar.gz" \
-      | tar -xzf -
-    find ${_D8_DEV_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
-    find ${_D8_DEV_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
-    cd ${_D8_DEV_CORE_DIR}/
+    patchFile="0001-Symlink-core-support-test.patch"
+    patch -p1 < ${bldPth}/aegir/patches/8-core/${patchFile} &> /dev/null
     fix_dirs_files
     rename_drupal8_profiles
     ### rm -f modules/o_contrib_eight
@@ -551,7 +537,7 @@ upgrade_contrib_less() {
   rm -f -r {context,ctools,entity,entityreference,mimemail,og}
   get_dev_contrib "context-7.x-3.6.tar.gz"
   get_dev_contrib "ctools-7.x-1.9.tar.gz"
-  get_dev_contrib "entity-7.x-1.6.tar.gz"
+  get_dev_contrib "entity-7.x-1.7.tar.gz"
   get_dev_contrib "entityreference-7.x-1.1.tar.gz"
   get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz"
   get_dev_contrib "og-7.x-2.7.tar.gz"
@@ -636,7 +622,6 @@ fi
 _D6_CORE_DIR="/data/all/000/core/pressflow-${_SMALLCORE6}"
 _D7_CORE_DIR="/data/all/000/core/drupal-${_SMALLCORE7}"
 _D8_CORE_DIR="/data/all/000/core/drupal-${_SMALLCORE8}"
-_D8_DEV_CORE_DIR="/data/all/000/core/drupal-${_D8_DEV_COMMIT}"
 
 
 ###---### Distributions full names.
@@ -649,7 +634,6 @@ _F_COMMERCE1="Commerce ${_COMMERCE1} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_COMMERCE2="Commerce ${_COMMERCE2} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_COMMONS2="Commons ${_COMMONS2} ${_SMALLCORE6} [${_THIS_CORE}]"
 _F_COMMONS3="Commons ${_COMMONS3} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_D8_DEV_LABEL="Drupal ${_D8_DEV_LABEL}"
 _F_DRUPAL6="Drupal ${_SMALLCORE6} [${_THIS_CORE}]"
 _F_DRUPAL7="Drupal ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_DRUPAL8="Drupal ${_SMALLCORE8} [${_THIS_CORE}]"
@@ -691,10 +675,8 @@ chmod 0711 ${_ROOT}/distro/${_THIS_CORE} &> /dev/null
 
 ###---###
 _ALLOW_ALL=YES
-_ALLOW_CIVICRM=NO
 if [ "${_CLIENT_CORES}" -lt "1" ]; then
   _ALLOW_ALL=NO
-  _ALLOW_CIVICRM=NO
   _D_8_ALLOW=NO
 fi
 if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
@@ -1149,7 +1131,7 @@ drupal8_install() {
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
   if [ "${_D_8_ALLOW}" = "YES" ]; then
-    if [[ "${_PLATFORMS_LIST}" =~ "D8B" ]]; then
+    if [[ "${_PLATFORMS_LIST}" =~ "D8R" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_DRUPAL8 - http://drupal.org" ; then
           true
@@ -1165,39 +1147,6 @@ drupal8_install() {
           _RUN_VERIFY=YES
         else
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL8 ${noT}"
-        fi
-      fi
-    fi
-  fi
-}
-
-
-dr8_dev_install() {
-###---### Drupal Edge 8
-### _D8_DEV_LABEL="8-dev-${_TODAY}"
-  _REAL_PRNAME="standard"
-  _SHRD_PLNAME="drupal-${_D8_DEV_LABEL}"
-  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
-  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
-  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
-  if [ "${_D_8_ALLOW}" = "YES" ]; then
-    if [[ "${_PLATFORMS_LIST}" =~ "D8D" ]]; then
-      if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_D8_DEV_LABEL - http://drupal.org" ; then
-          true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_D8_DEV_LABEL ${yOk}"
-          if [ ! -d "${_SHRD_PLPATH}" ]; then
-            cd ${_CORE}
-            _D8_CORE_DIR="${_D8_DEV_CORE_DIR}"
-            if [ ! -e "${_D8_CORE_DIR}" ]; then
-              prepare_dr8_dev_core
-            fi
-          fi
-          init_this_distro_root
-          msg "DISTRO: $_F_D8_DEV_LABEL installed"
-          _RUN_VERIFY=YES
-        else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_D8_DEV_LABEL ${noT}"
         fi
       fi
     fi
@@ -2103,7 +2052,7 @@ ubercart7_install() {
               cd ${_SHRD_PRPATH}/modules
               get_dev_contrib "colorbox-7.x-2.10.tar.gz"
               get_dev_contrib "ctools-7.x-1.9.tar.gz"
-              get_dev_contrib "entity-7.x-1.6.tar.gz"
+              get_dev_contrib "entity-7.x-1.7.tar.gz"
               get_dev_contrib "google_analytics-7.x-2.1.tar.gz"
               get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
               get_dev_contrib "pathauto-7.x-1.3.tar.gz"
@@ -2173,7 +2122,7 @@ ubercart7_testing_install() {
               cd ${_SHRD_PRPATH}/modules
               get_dev_contrib "colorbox-7.x-2.10.tar.gz"
               get_dev_contrib "ctools-7.x-1.9.tar.gz"
-              get_dev_contrib "entity-7.x-1.6.tar.gz"
+              get_dev_contrib "entity-7.x-1.7.tar.gz"
               get_dev_contrib "google_analytics-7.x-2.1.tar.gz"
               get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
               get_dev_contrib "pathauto-7.x-1.3.tar.gz"
@@ -2320,12 +2269,6 @@ save_verify_platforms() {
     if [ ! -e "${pthDst}/drupal-${_SMALLCORE8}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL8" standard \
         ${pthDst}/drupal-${_SMALLCORE8} &> /dev/null
-    fi
-  fi
-  if [ -d "${pthDst}/drupal-${_D8_DEV_LABEL}" ]; then
-    if [ ! -e "${pthDst}/drupal-${_D8_DEV_LABEL}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_D8_DEV_LABEL" standard \
-        ${pthDst}/drupal-${_D8_DEV_LABEL} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/erpal-${_ERPAL}-${_SMALLCORE7}" ]; then
@@ -2498,7 +2441,6 @@ save_verify_platforms() {
 drupal6_install
 drupal7_install
 drupal8_install
-### dr8_dev_install
 
 agov_install
 commerce_7_1_install
