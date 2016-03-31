@@ -51,16 +51,15 @@ export _USER="${_USER}"
 ###
 ### Variables
 ###
-_D8_DEV_COMMIT=8x_f49bb893
-_DRUSH_VERSION=mini-7-30-06-2015
+_DRUSH_VERSION=mini-8-08-03-2016
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
-_REDIS_M_VERSION=mod-26-06-2015
+_REDIS_M_VERSION=mod-03-03-2016
 _SMALLCORE6=6.38.1
 _SMALLCORE7=7.43.1
-_SMALLCORE8=8.0.0-beta16
+_SMALLCORE8=8.0.5
 _SPINNER=YES
 _T_BUILD=HEAD
 _TODAY=$(date +%y%m%d 2>&1)
@@ -111,7 +110,6 @@ _COMMERCE1=1.41
 _COMMERCE2=2.34
 _COMMONS2=2.27
 _COMMONS3=3.35
-_D8_DEV_LABEL="8-dev-${_TODAY}"
 _DRUPAL7="drupal-${_SMALLCORE7}"
 _DRUPAL8="drupal-${_SMALLCORE8}"
 _ERPAL=2.3
@@ -230,6 +228,7 @@ check_git_repos
 ###
 satellite_cnf
 satellite_if_init_or_upgrade
+satellite_if_major_upgrade
 satellite_if_check_dns
 satellite_checkpoint
 satellite_pre_cleanup

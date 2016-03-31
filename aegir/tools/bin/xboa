@@ -455,8 +455,7 @@ migrate_prepare() {
       --hex-blob ${_HDB} \
       comments \
       history \
-      hosting_advanced_cron \
-      hosting_backup_gc_sites \
+      hosting_cron \
       hosting_client \
       hosting_client_user \
       hosting_context \
@@ -572,7 +571,7 @@ migrate_prepare() {
         if [ -e "${_USR}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
           _HM_PLF=$(run_drush7_hmr_cmd "@hostmaster sqlq \"SELECT platform FROM hosting_site WHERE nid='${_HM_NID}'\"" 2>&1)
           _HM_PLF=${_HM_PLF//[^0-9]/}
-          run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context SET name='platform_hostmaster' WHERE nid='$_HM_PLF'\"" &> /dev/null
+          run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context SET name='platform_hostmaster' WHERE nid='${_HM_PLF}'\"" &> /dev/null
         fi
         run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'\"" &> /dev/null
         run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null

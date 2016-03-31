@@ -40,5 +40,4 @@ fb_intercept('symlink', '__forbidden_function');
 fb_intercept('opcache_compile_file', '__forbidden_function');
 fb_intercept('opcache_get_configuration', '__forbidden_function');
 fb_intercept('opcache_get_status', '__forbidden_function');
-fb_intercept('opcache_invalidate', '__forbidden_function');
 fb_intercept('opcache_reset', '__forbidden_function');

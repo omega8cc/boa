@@ -146,8 +146,8 @@
 ### This allows to easily switch PHP version by the instance owner w/o system
 ### admin (root) help. All you need to do is to create ~/static/control/fpm.info
 ### and ~/static/control/cli.info file with a single line telling the system
-### which available PHP version should be used (if installed): 5.5 or 5.6 or
-### 5.4 or 5.3
+### which available PHP version should be used (if installed): 7.0 or 5.6 or
+### 5.5 or 5.4 or 5.3
 ###
 ### Only one of them can be set, but you can use separate versions for web
 ### access (fpm.info) and the Aegir backend (cli.info). The system will switch
@@ -158,7 +158,7 @@
 ###
 ### Note that the same version will be used in all platforms and all sites
 ### hosted on the same Octopus instance. Why not to try latest and greatest
-### PHP 5.5 now?
+### PHP 5.6 now?
 ###
 
 ###
@@ -179,8 +179,7 @@
 ### Supported values which can be written in this file, listed in a single line
 ### or one per line:
 ###
-### D8B ----------- Drupal 8-beta (inactive)
-### D8D ----------- Drupal 8-dev  (inactive)
+### D8R ----------- Drupal 8 (inactive)
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
 ### AGV ----------- aGov
@@ -211,6 +210,6 @@
 ### Examples:
 ###
 ### ALL
-### ALL D8B
+### ALL D8R
 ### D7P D6P OAM MNS OOH RST
 ###

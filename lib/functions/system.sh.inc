@@ -40,6 +40,10 @@ if_running_as_root_barracuda() {
         mrun "apt-get remove udev -y --force-yes -qq" &> /dev/null
         mrun "apt-get purge udev -y --force-yes -qq" &> /dev/null
       fi
+      if [ -e "/sbin/auditd" ]; then
+        mrun "apt-get remove auditd -y --force-yes -qq" &> /dev/null
+        mrun "apt-get purge auditd -y --force-yes -qq" &> /dev/null
+      fi
       if [ -d "/etc/webmin" ]; then
         rm -f /etc/apt/sources.list.d/openssl.list
         mrun "dpkg --configure -a" &> /dev/null
@@ -374,6 +378,7 @@ tune_memory_limits() {
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
+        sed -i "s/64000/128000/g"  /opt/php70/etc/php70.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php55/etc/php55.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php54/etc/php54.ini &> /dev/null
@@ -462,6 +467,12 @@ tune_memory_limits() {
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   fi
+  if [ -e "/opt/php70/etc/php70.ini" ]; then
+    sed -i "s/256/${_USE_FPM}/g" /opt/php70/etc/php70.ini &> /dev/null
+    wait
+    sed -i "s/181/${_USE_OPC}/g" /opt/php70/etc/php70.ini &> /dev/null
+    sed -i "s/256/${_USE_PHP}/g" /opt/php70/lib/php.ini   &> /dev/null
+  fi
   if [ -e "/opt/php56/etc/php56.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php56/etc/php56.ini &> /dev/null
     wait
@@ -488,8 +499,11 @@ tune_memory_limits() {
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits
-    _UXC_SQL=${_MXC_SQL}
-    _UXC_SQL=$(( _MXC_SQL / 2 ))
+    if [[ "${PrTest}" =~ "POWER" ]]; then
+      _UXC_SQL="${_MXC_SQL}"
+    else
+      _UXC_SQL=$(( _MXC_SQL / 2 ))
+    fi
     sed -i "s/= 191/= ${_UXC_SQL}/g"                                              /etc/mysql/my.cnf
     wait
     sed -i "s/= 292/= ${_MXC_SQL}/g"                                              /etc/mysql/my.cnf
@@ -507,8 +521,8 @@ tune_memory_limits() {
     sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf
     wait
   fi
-  if [ "${_USE_OPC}" -gt "512" ]; then
-    _MAX_MEM_REDIS=512
+  if [ "${_USE_OPC}" -gt "2048" ]; then
+    _MAX_MEM_REDIS=2048
   else
     _MAX_MEM_REDIS="${_USE_OPC}"
   fi
@@ -880,10 +894,10 @@ barracuda_cnf() {
           wait
           sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                   ${barCnf}
           wait
-          if [ -x "/opt/php55/bin/php" ] && [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"                 ${barCnf}
+          if [ -x "/opt/php56/bin/php" ] && [ -z "${_PHP_SINGLE_INSTALL}" ]; then
+            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g"                 ${barCnf}
             wait
-            sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                 ${barCnf}
+            sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g"                 ${barCnf}
             wait
           fi
         fi
@@ -1013,11 +1027,12 @@ barracuda_cnf() {
           if [ ! -z "${_CLSTR_PHP_MULTI_INSTALL}" ]; then
             _PHP_MULTI_INSTALL="${_CLSTR_PHP_MULTI_INSTALL}"
           else
-            _PHP_MULTI_INSTALL="5.5"
+            _PHP_MULTI_INSTALL="5.6"
           fi
         else
           if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-            if [ "${_PHP_SINGLE_INSTALL}" = "5.6" ] \
+            if [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
+              || [ "${_PHP_SINGLE_INSTALL}" = "5.6" ] \
               || [ "${_PHP_SINGLE_INSTALL}" = "5.5" ] \
               || [ "${_PHP_SINGLE_INSTALL}" = "5.4" ] \
               || [ "${_PHP_SINGLE_INSTALL}" = "5.3" ]; then
@@ -1027,13 +1042,14 @@ barracuda_cnf() {
             fi
           else
             if [ ! -e "/root/.debug.cnf" ] || [ -e "/root/.default.cnf" ]; then
-              _PHP_MULTI_INSTALL="5.6 5.5 5.4 5.3"
+              _PHP_MULTI_INSTALL="7.0 5.6 5.5 5.4 5.3"
             fi
           fi
         fi
       fi
       if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-        if [ "${_PHP_SINGLE_INSTALL}" = "5.6" ] \
+        if [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
+          || [ "${_PHP_SINGLE_INSTALL}" = "5.6" ] \
           || [ "${_PHP_SINGLE_INSTALL}" = "5.5" ] \
           || [ "${_PHP_SINGLE_INSTALL}" = "5.4" ] \
           || [ "${_PHP_SINGLE_INSTALL}" = "5.3" ]; then
@@ -1390,10 +1406,10 @@ barracuda_cnf() {
           wait
           sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g"                            /root/.*.octopus.cnf &> /dev/null
           wait
-          if [ -x "/opt/php55/bin/php" ] && [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"                 ${barCnf}
+          if [ -x "/opt/php56/bin/php" ] && [ -z "${_PHP_SINGLE_INSTALL}" ]; then
+            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g"                 ${barCnf}
             wait
-            sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                 ${barCnf}
+            sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g"                 ${barCnf}
             wait
           fi
         fi
@@ -1449,7 +1465,8 @@ barracuda_cnf() {
 
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-      if [ "${_PHP_SINGLE_INSTALL}" = "5.6" ] \
+      if [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "5.6" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "5.5" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "5.4" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "5.3" ]; then
@@ -1712,22 +1729,8 @@ install_wkhtmltopdf_wkhtmltoimage() {
 get_drush_versions() {
   msg "INFO: Installing extra Drush versions..."
   ###--------------------###
-  mkdir -p /opt/tools/drush/{4,6,7}
+  mkdir -p /opt/tools/drush/{7,8}
   chown -R root:root /opt/tools
-  rm -f -r /opt/tools/drush/4/*
-  cd /opt/tools/drush/4/
-  get_dev_ext "drush-${_DRUSH4_VRN}.tar.gz"
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush ${_DRUSH4_VRN} installation complete"
-  fi
-  rm -f -r /opt/tools/drush/6/*
-  cd /opt/tools/drush/6/
-  get_dev_ext "drush-${_DRUSH6_VRN}.tar.gz"
-  cd /opt/tools/drush/6/drush/lib
-  get_dev_ext "Console_Table-1.1.3.tgz"
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush ${_DRUSH6_VRN} installation complete"
-  fi
   rm -f -r /opt/tools/drush/7/*
   cd /opt/tools/drush/7/
   get_dev_ext "drush-${_DRUSH7_VRN}.tar.gz"
@@ -1737,32 +1740,47 @@ get_drush_versions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH7_VRN} installation complete"
   fi
+  rm -f -r /opt/tools/drush/8/*
+  cd /opt/tools/drush/8/
+  get_dev_ext "drush-${_DRUSH8_VRN}.tar.gz"
+  cd /opt/tools/drush/8/drush/
+  rm -f -r /opt/tools/drush/8/drush/vendor
+  get_dev_ext "vendor-${_DRUSH8_VRN}.tar.gz"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Drush ${_DRUSH8_VRN} installation complete"
+  fi
   find /opt/tools -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tools -type f -exec chmod 0644 {} \; &> /dev/null
   chmod 755 /opt/tools/drush/*/drush/drush
+  chmod 755 /opt/tools/drush/*/drush/drush.bat
+  chmod 755 /opt/tools/drush/*/drush/drush.complete.sh
+  chmod 755 /opt/tools/drush/*/drush/drush.launcher
   chmod 755 /opt/tools/drush/*/drush/drush.php
-  if [ -x "/opt/tools/drush/4/drush/drush" ]; then
-    rm -f /usr/bin/drush4
-    ln -s /opt/tools/drush/4/drush/drush /usr/bin/drush4
-  fi
-  if [ -x "/opt/tools/drush/6/drush/drush" ]; then
-    rm -f /usr/bin/drush6
-    ln -s /opt/tools/drush/6/drush/drush /usr/bin/drush6
-  fi
+  chmod 755 /opt/tools/drush/*/drush/unish.sh
+  chmod 755 /opt/tools/drush/*/drush/examples/drush.wrapper
+  chmod 755 /opt/tools/drush/*/drush/examples/git-bisect.example.sh
+  chmod 755 /opt/tools/drush/*/drush/examples/helloworld.script
   if [ -x "/opt/tools/drush/7/drush/drush" ]; then
     rm -f /usr/bin/drush7
-    rm -f /usr/bin/drush
     ln -s /opt/tools/drush/7/drush/drush /usr/bin/drush7
-    ln -s /opt/tools/drush/7/drush/drush /usr/bin/drush
-  else
-    rm -f /usr/bin/drush7
-    if [ -x "/opt/tools/drush/6/drush/drush" ]; then
-      ln -s /opt/tools/drush/6/drush/drush /usr/bin/drush7
-    fi
+  fi
+  if [ -x "/opt/tools/drush/8/drush/drush" ]; then
+    rm -f /usr/bin/drush8
+    rm -f /usr/bin/drush
+    ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush8
+    ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush
+  fi
+  if [ -e "/opt/tools/drush/6" ]; then
+    rm -f -r /opt/tools/drush/6
+    rm -f /usr/bin/drush6
   fi
   if [ -e "/opt/tools/drush/5" ]; then
     rm -f -r /opt/tools/drush/5
     rm -f /usr/bin/drush5
+  fi
+  if [ -e "/opt/tools/drush/4" ]; then
+    rm -f -r /opt/tools/drush/4
+    rm -f /usr/bin/drush4
   fi
   chown -R root:root /opt/tools/drush
   cd /opt/tmp
@@ -2297,6 +2315,7 @@ switch_to_dash() {
                   /opt/php54/bin \
                   /opt/php55/bin \
                   /opt/php56/bin \
+                  /opt/php70/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -2352,6 +2371,7 @@ switch_to_bash() {
                   /opt/php54/bin \
                   /opt/php55/bin \
                   /opt/php56/bin \
+                  /opt/php70/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -2396,6 +2416,7 @@ strict_bin_permissions() {
               /opt/php54/bin \
               /opt/php55/bin \
               /opt/php56/bin \
+              /opt/php70/bin \
               /sbin \
               /usr/bin \
               /usr/local/bin \
@@ -2672,8 +2693,10 @@ finale() {
     service clean-boa-env stop &> /dev/null
   fi
   killall -9 memcached     &> /dev/null
-  chmod 0750 /sbin/audispd &> /dev/null
-  service auditd restart   &> /dev/null
+  if [ -e "/sbin/auditd" ]; then
+    chmod 0750 /sbin/audispd &> /dev/null
+    service auditd restart   &> /dev/null
+  fi
   php_single_initd_cleanup
   if [ ! -e "/root/.upstart.cnf" ]; then
     service cron start     &> /dev/null
@@ -3323,6 +3346,7 @@ sys_packages_install() {
 
   if [ "${_VMFAMILY}" != "VS" ]; then
     _EXTRA_PACKAGES="udev \
+                     auditd \
                      ${_EXTRA_PACKAGES}"
   fi
 
@@ -3337,7 +3361,6 @@ sys_packages_install() {
               ${_EXTRA_PACKAGES} \
               ${_SYSLOGD} \
               aptitude \
-              auditd \
               autoconf2.13 \
               automake \
               automake1.4 \
@@ -4142,6 +4165,10 @@ update_initd() {
       killall -9 nginx php-cgi php-fpm &> /dev/null
       st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
       st_runner "update-rc.d cron defaults" &> /dev/null
+      if [ -e "/etc/init.d/php70-fpm" ]; then
+        st_runner "update-rc.d php70-fpm defaults" &> /dev/null
+        mrun "service php70-fpm start" &> /dev/null
+      fi
       if [ -e "/etc/init.d/php56-fpm" ]; then
         st_runner "update-rc.d php56-fpm defaults" &> /dev/null
         mrun "service php56-fpm start" &> /dev/null
@@ -4245,6 +4272,10 @@ update_initd() {
       mrun "service redis-server restart" &> /dev/null
       st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
       mrun "service nginx stop" &> /dev/null
+      if [ -e "/etc/init.d/php70-fpm" ]; then
+        st_runner "update-rc.d php70-fpm defaults" &> /dev/null
+        mrun "service php70-fpm stop" &> /dev/null
+      fi
       if [ -e "/etc/init.d/php56-fpm" ]; then
         st_runner "update-rc.d php56-fpm defaults" &> /dev/null
         mrun "service php56-fpm stop" &> /dev/null
@@ -4266,6 +4297,9 @@ update_initd() {
       killall -9 pure-ftpd &> /dev/null
       msg "INFO: Restarting ${_DB_SERVER} server..."
       mrun "service mysql restart" &> /dev/null
+      if [ -e "/etc/init.d/php70-fpm" ]; then
+        mrun "service php70-fpm start" &> /dev/null
+      fi
       if [ -e "/etc/init.d/php56-fpm" ]; then
         mrun "service php56-fpm start" &> /dev/null
       fi
