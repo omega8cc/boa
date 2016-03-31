@@ -367,18 +367,18 @@ up_one() {
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcB}/g"         ${vBs}/${tocName}
         wait
       elif [ "${cmmand}" = "up-2.4" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${tocName}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${tocIncO}
         wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${tocName}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${tocIncO}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${tocName}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${tocIncO}
         wait
       else
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${tocName}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${tocIncO}
         wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${tocName}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${tocIncO}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${tocName}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${tocIncO}
         wait
       fi
     fi
