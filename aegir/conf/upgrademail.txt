@@ -13,10 +13,14 @@ platforms you can create in the ~/static directory tree.
 
 @=> All supported Aegir platforms have been updated to their latest releases
 
-@=> BOA Hosted on Power Engine based Octopus instances will *not* receive
+@=> Octopus Aegir instances hosted on Power Engine option will *not* receive
     upgrade to BOA-3.x unless requested via https://omega8.cc/support
     to prevent issues with (often) customized Hostmaster modules not ready
-    for Drupal 7 based Aegir control panel.
+    for Drupal 7 based Aegir control panel. All hosted BOA systems will still
+    continue to receive the Barracuda system upgrades.
+
+@=> It is possible to host previous stable BOA-2.4.9 Octopus instances
+    on systems with Barracuda upgraded to BOA-3.0.0
 
 We recommend that you upgrade your sites using this safe workflow:
 
