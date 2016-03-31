@@ -136,14 +136,14 @@ _TUNE_PHP_CLI_TIMEOUT=7200
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_AEGIR_VERSION="BOA-2.4.9"
-_BRANCH_BOA="2.4.x-dev"
-_X_VERSION="BOA-2.4.9"
+_AEGIR_VERSION="BOA-3.0.0"
+_BRANCH_BOA="3.x.x-dev"
+_X_VERSION="BOA-3.0.0"
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
-_CHECK_HOST=$(uname -n 2>&1)
+_THISHOST=$(uname -n 2>&1)
 _SPINNER=YES
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
@@ -158,6 +158,8 @@ _PHP55_API=20121212
 _PHP55_VRN=5.5.33
 _PHP56_API=20131226
 _PHP56_VRN=5.6.19
+_PHP70_API=20151012
+_PHP70_VRN=7.0.4
 
 ###
 ### Helper variables
@@ -403,6 +405,7 @@ fix_php_ini_opcache() {
       echo "; Zend OPcache"                      >> ${_THIS_FILE}
       echo "zend_extension=\"$_OPCACHE_SO\""     >> ${_THIS_FILE}
       echo "opcache.enable=1"                    >> ${_THIS_FILE}
+      echo "opcache.restrict_api=/var/www"       >> ${_THIS_FILE}
       echo "opcache.memory_consumption=181"      >> ${_THIS_FILE}
       echo "opcache.interned_strings_buffer=8"   >> ${_THIS_FILE}
       echo "opcache.max_accelerated_files=64000" >> ${_THIS_FILE}
@@ -419,9 +422,10 @@ fix_php_ini_opcache() {
 #
 # Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all() {
-  _PHP_V="56 55 54 53"
+  _PHP_V="70 56 55 54 53"
   for e in ${_PHP_V}; do
     case "${e}" in
+      70) _P_API="${_PHP70_API}" ;;
       56) _P_API="${_PHP56_API}" ;;
       55) _P_API="${_PHP55_API}" ;;
       54) _P_API="${_PHP54_API}" ;;
@@ -498,20 +502,23 @@ fix_php_ini_mongo() {
   fi
 }
 #
-# Fix 5.3 php.ini files to add mongo.so
+# Fix all php.ini files to add mongo.so
 fix_php_ini_mongo_all() {
   if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
-    _THIS_FILE=/opt/php53/etc/php53.ini
-    fix_php_ini_mongo
-    _THIS_FILE=/opt/php53/lib/php.ini
-    fix_php_ini_mongo
+    _PHP_V="56 55 54 53"
+    for e in ${_PHP_V}; do
+      _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+      fix_php_ini_mongo
+      _THIS_FILE=/opt/php${e}/lib/php.ini
+      fix_php_ini_mongo
+    done
   fi
 }
 #
 # Update PHP Config.
 update_php_conf() {
   if [ -z "${_THISHTIP}" ]; then
-    _LOC_DOM="${_CHECK_HOST}"
+    _LOC_DOM="${_THISHOST}"
     find_correct_ip
     _THISHTIP="${_LOC_IP}"
   fi
@@ -524,7 +531,7 @@ update_php_conf() {
   wait
   sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
   wait
-  _PHP_V="56 55 54 53"
+  _PHP_V="70 56 55 54 53"
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
       adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
@@ -544,20 +551,24 @@ update_php_conf() {
     cp -af ${locCnf}/php${e}-cli.ini /opt/php${e}/lib/php.ini
     cp -af ${locCnf}/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
-    fix_php_ini_redis
-    fix_php_ini_jsmin
-    fix_php_ini_twig
+    if [ "${e}" != "70" ]; then
+      fix_php_ini_redis
+      fix_php_ini_jsmin
+      fix_php_ini_mailparse
+      fix_php_ini_twig
+    fi
     fix_php_ini_ioncube
     fix_php_ini_suhosin
-    fix_php_ini_mailparse
     fix_php_ini_yaml
     _THIS_FILE=/opt/php${e}/lib/php.ini
-    fix_php_ini_redis
-    fix_php_ini_jsmin
-    fix_php_ini_twig
+    if [ "${e}" != "70" ]; then
+      fix_php_ini_redis
+      fix_php_ini_jsmin
+      fix_php_ini_mailparse
+      fix_php_ini_twig
+    fi
     fix_php_ini_ioncube
     fix_php_ini_suhosin
-    fix_php_ini_mailparse
     fix_php_ini_yaml
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g"       /opt/php${e}/etc/php${e}.ini
@@ -577,20 +588,22 @@ update_php_conf() {
   fix_php_ini_newrelic_all
   fix_php_ini_geos_all
   fix_php_ini_mongo_all
-  fix_php_ini_opcache_all
   fix_php_ini_tet_all
+  fix_php_ini_opcache_all
 }
 #
 restore_default_php() {
   msg "INFO: Restoring default PHP configuration"
-  cp -af ${locCnf}/php53-cli.ini /opt/php53/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php53.ini /opt/php53/etc/php53.ini   &> /dev/null
-  cp -af ${locCnf}/php54-cli.ini /opt/php54/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php54.ini /opt/php54/etc/php54.ini   &> /dev/null
-  cp -af ${locCnf}/php55-cli.ini /opt/php55/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php55.ini /opt/php55/etc/php55.ini   &> /dev/null
+  cp -af ${locCnf}/php70-cli.ini /opt/php70/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php70.ini /opt/php70/etc/php70.ini   &> /dev/null
   cp -af ${locCnf}/php56-cli.ini /opt/php56/lib/php.ini &> /dev/null
   cp -af ${locCnf}/php56.ini /opt/php56/etc/php56.ini   &> /dev/null
+  cp -af ${locCnf}/php55-cli.ini /opt/php55/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php55.ini /opt/php55/etc/php55.ini   &> /dev/null
+  cp -af ${locCnf}/php54-cli.ini /opt/php54/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php54.ini /opt/php54/etc/php54.ini   &> /dev/null
+  cp -af ${locCnf}/php53-cli.ini /opt/php53/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php53.ini /opt/php53/etc/php53.ini   &> /dev/null
 }
 #
 tune_php() {
@@ -647,8 +660,8 @@ restore_default_sql() {
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
   wait
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
-    || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+    || [[ "${_THISHOST}" =~ ".host8." ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
       _DO_NOTHING=YES
@@ -795,6 +808,9 @@ tune_nginx() {
 #
 restart_services() {
   msg "INFO: Reloading services"
+  if [ -e "/etc/init.d/php70-fpm" ]; then
+    mrun "service php70-fpm reload" &> /dev/null
+  fi
   if [ -e "/etc/init.d/php56-fpm" ]; then
     mrun "service php56-fpm reload" &> /dev/null
   fi
@@ -819,8 +835,8 @@ restart_services() {
 tune_web_server_config() {
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
   if [ "${_LIM_FPM}" -lt "48" ]; then
-    if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+    if [[ "${_THISHOST}" =~ ".host8." ]] \
+      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       _LIM_FPM=48
     fi
@@ -835,7 +851,7 @@ tune_web_server_config() {
       _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
     fi
   fi
-  _PHP_V="56 55 54 53"
+  _PHP_V="70 56 55 54 53"
   for e in ${_PHP_V}; do
     sed -i "s/process.max =.*/process.max = ${_PROCESS_MAX_FPM}/g" \
       /opt/php${e}/etc/php${e}-fpm.conf &> /dev/null
@@ -1055,8 +1071,8 @@ tune_memory_limits() {
   fi
   _USE=$(( _RAM / 4 ))
   if [ "${_VMFAMILY}" = "VS" ] \
-    || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]]; then
+    || [[ "${_THISHOST}" =~ ".host8." ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io" ]]; then
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.tg.cnf" ]; then
         _USE_SQL=$(( _RAM / 8 ))
@@ -1139,14 +1155,11 @@ tune_memory_limits() {
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
+        sed -i "s/64000/128000/g"  /opt/php70/etc/php70.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini &> /dev/null
-        wait
         sed -i "s/64000/128000/g"  /opt/php55/etc/php55.ini &> /dev/null
-        wait
         sed -i "s/64000/128000/g"  /opt/php54/etc/php54.ini &> /dev/null
-        wait
         sed -i "s/64000/128000/g"  /opt/php53/etc/php53.ini &> /dev/null
-        wait
       else
         _USE_PHP=1024
         _USE_OPC=1024
@@ -1232,42 +1245,43 @@ tune_memory_limits() {
     sed -i "s/256/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
     wait
   fi
+  if [ -e "/opt/php70/etc/php70.ini" ]; then
+    sed -i "s/256/${_USE_FPM}/g" /opt/php70/etc/php70.ini &> /dev/null
+    wait
+    sed -i "s/181/${_USE_OPC}/g" /opt/php70/etc/php70.ini &> /dev/null
+    sed -i "s/256/${_USE_PHP}/g" /opt/php70/lib/php.ini   &> /dev/null
+  fi
   if [ -e "/opt/php56/etc/php56.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php56/etc/php56.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php56/etc/php56.ini &> /dev/null
-    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php56/lib/php.ini   &> /dev/null
-    wait
   fi
   if [ -e "/opt/php55/etc/php55.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php55/etc/php55.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php55/etc/php55.ini &> /dev/null
-    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php55/lib/php.ini   &> /dev/null
-    wait
   fi
   if [ -e "/opt/php54/etc/php54.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php54/etc/php54.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php54/etc/php54.ini &> /dev/null
-    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php54/lib/php.ini   &> /dev/null
-    wait
   fi
   if [ -e "/opt/php53/etc/php53.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php53/etc/php53.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php53/etc/php53.ini &> /dev/null
-    wait
     sed -i "s/256/${_USE_PHP}/g" /opt/php53/lib/php.ini   &> /dev/null
-    wait
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits
-    _UXC_SQL=${_MXC_SQL}
-    _UXC_SQL=$(( _MXC_SQL / 2 ))
+    if [[ "${PrTest}" =~ "POWER" ]]; then
+      _UXC_SQL="${_MXC_SQL}"
+    else
+      _UXC_SQL=$(( _MXC_SQL / 2 ))
+    fi
     sed -i "s/= 191/= ${_UXC_SQL}/g"                                              /etc/mysql/my.cnf
     wait
     sed -i "s/= 292/= ${_MXC_SQL}/g"                                              /etc/mysql/my.cnf
@@ -1285,8 +1299,8 @@ tune_memory_limits() {
     sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf
     wait
   fi
-  if [ "${_USE_OPC}" -gt "512" ]; then
-    _MAX_MEM_REDIS=512
+  if [ "${_USE_OPC}" -gt "2048" ]; then
+    _MAX_MEM_REDIS=2048
   else
     _MAX_MEM_REDIS="${_USE_OPC}"
   fi

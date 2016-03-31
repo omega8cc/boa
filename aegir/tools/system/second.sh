@@ -9,6 +9,9 @@ hold() {
   killall -9 nginx &> /dev/null
   sleep 1
   killall -9 nginx &> /dev/null
+  if [ -e "/etc/init.d/php70-fpm" ]; then
+    service php70-fpm stop &> /dev/null
+  fi
   if [ -e "/etc/init.d/php56-fpm" ]; then
     service php56-fpm stop &> /dev/null
   fi

@@ -82,12 +82,15 @@ done
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
   _THIS_DB_HOST=$(uname -n 2>&1)
 fi
-if [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-  && [ -x "/opt/php55/bin/php" ]; then
-  _T_CLI=/opt/php55/bin
+if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+  && [ -x "/opt/php70/bin/php" ]; then
+  _T_CLI=/opt/php70/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
   && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
+elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
+  && [ -x "/opt/php55/bin/php" ]; then
+  _T_CLI=/opt/php55/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
   && [ -x "/opt/php54/bin/php" ]; then
   _T_CLI=/opt/php54/bin
@@ -123,13 +126,17 @@ fi
 # Update php-cli for Drush.
 update_php_cli_drush() {
   _DRUSH_FILE="${_ROOT}/drush/drush.php"
-  if [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-    && [ -x "/opt/php55/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g" \
+  if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+    && [ -x "/opt/php70/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php70\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
     && [ -x "/opt/php56/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
+    && [ -x "/opt/php55/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
     && [ -x "/opt/php54/bin/php" ]; then
@@ -196,12 +203,71 @@ hostmaster_dr_up() {
   find ${_ROOT}/drush -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_ROOT}/drush -type f -exec chmod 0644 {} \; &> /dev/null
   chmod 755 ${_ROOT}/drush/drush
+  chmod 755 ${_ROOT}/drush/drush.bat
+  chmod 755 ${_ROOT}/drush/drush.complete.sh
+  chmod 755 ${_ROOT}/drush/drush.launcher
   chmod 755 ${_ROOT}/drush/drush.php
+  chmod 755 ${_ROOT}/drush/unish.sh
+  chmod 755 ${_ROOT}/drush/examples/drush.wrapper
+  chmod 755 ${_ROOT}/drush/examples/git-bisect.example.sh
+  chmod 755 ${_ROOT}/drush/examples/helloworld.script
   update_php_cli_drush
   update_php_cli_local_ini
-  if ${_DRUSHCMD} help > /dev/null ; then
+}
+#
+hostmaster_go_up() {
+  msg "INFO: Installing Aegir Provision backend..."
+  mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
+  rm -f -r ${_ROOT}/.drush/drush_make
+  rm -f -r ${_ROOT}/.drush/sys/drush_make
+  cd ${_ROOT}/.drush
+  if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+    cd ${_ROOT}/.drush
+    msg "INFO: Downloading Drush and Provision extensions..."
+    rm -f -r ${_ROOT}/.drush/{sys,xts,usr}
+    rm -f -r ${_ROOT}/.drush/{provision,drush_make}
+    mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
+    rD="${_ROOT}/.drush"
+    ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
+      ${rD}/sys/provision &> /dev/null
+    ${gCb} 7.x-1.x-dev ${gitHub}/drupalgeddon.git \
+      ${rD}/usr/drupalgeddon &> /dev/null
+    ${gCb} 7.x-1.x ${gitHub}/drush_ecl.git \
+      ${rD}/usr/drush_ecl &> /dev/null
+    ${gCb} 7.x-1.x ${gitHub}/security_review.git \
+      ${rD}/xts/security_review &> /dev/null
+    ${gCb} 7.x-2.x ${gitHub}/provision_boost.git \
+      ${rD}/xts/provision_boost &> /dev/null
+    ${gCb} 7.x-2.x ${gitHub}/registry_rebuild.git \
+      ${rD}/usr/registry_rebuild &> /dev/null
+    ${gCb} 7.x-1.x ${gitHub}/safe_cache_form_clear.git \
+      ${rD}/usr/safe_cache_form_clear &> /dev/null
+  else
+    msg "INFO: Downloading Drush and Provision extensions..."
+    cd ${_ROOT}/.drush/sys
+    curl ${crlGet} "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
+    cd ${_ROOT}/.drush/usr
+    get_dev_ext "drupalgeddon.tar.gz"
+    get_dev_ext "drush_ecl.tar.gz"
+    get_dev_ext "registry_rebuild.tar.gz"
+    get_dev_ext "safe_cache_form_clear.tar.gz"
+    cd ${_ROOT}/.drush/xts
+    get_dev_ext "provision_boost.tar.gz"
+    get_dev_ext "security_review.tar.gz"
+  fi
+  rm -f -r ${_ROOT}/.drush/*/.git
+  rm -f -r ${_ROOT}/.drush/*/*/.git
+  cd ${_ROOT}/.drush/usr
+  get_dev_ext "clean_missing_modules.tar.gz"
+  sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
+    ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
+  cd ${_PREV_HM_ROOT}
+}
+#
+hostmaster_dr_tt() {
+  if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Drush seems to be functioning properly"
+      msg "${_STATUS} B: Drush test result OK"
     fi
   else
     msg "FATAL ERROR: Drush is broken (${_DRUSHCMD} help failed)"
@@ -211,76 +277,39 @@ hostmaster_dr_up() {
   fi
 }
 #
-hostmaster_go_up() {
-  if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
-    msg "INFO: Provision seems to be installed already"
-  else
-    msg "INFO: Installing Aegir Provision backend..."
-    mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
-    rm -f -r ${_ROOT}/.drush/drush_make
-    rm -f -r ${_ROOT}/.drush/sys/drush_make
-    cd ${_ROOT}/.drush
-    if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-      cd ${_ROOT}/.drush
-      msg "INFO: Downloading Drush and Provision extensions..."
-      rm -f -r ${_ROOT}/.drush/{sys,xts,usr}
-      rm -f -r ${_ROOT}/.drush/{provision,drush_make}
-      mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
-      rD="${_ROOT}/.drush"
-      ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
-        ${rD}/sys/provision &> /dev/null
-      ${gCb} 6.x-2.x ${gitHub}/make_local.git \
-        ${rD}/usr/make_local &> /dev/null
-      ${gCb} 6.x-2.x ${gitHub}/provision_cdn.git \
-        ${rD}/xts/provision_cdn &> /dev/null
-      ${gCb} 7.x-1.x-dev ${gitHub}/drupalgeddon.git \
-        ${rD}/usr/drupalgeddon &> /dev/null
-      ${gCb} 7.x-1.x ${gitHub}/drush_ecl.git \
-        ${rD}/usr/drush_ecl &> /dev/null
-      ${gCb} 7.x-1.x ${gitHub}/security_review.git \
-        ${rD}/xts/security_review &> /dev/null
-      ${gCb} 7.x-2.x ${gitHub}/provision_boost.git \
-        ${rD}/xts/provision_boost &> /dev/null
-      ${gCb} 7.x-2.x ${gitHub}/registry_rebuild.git \
-        ${rD}/usr/registry_rebuild &> /dev/null
-      ${gCb} 7.x-1.0 ${gitHub}/safe_cache_form_clear.git \
-        ${rD}/usr/safe_cache_form_clear &> /dev/null
-    else
-      cd ${_ROOT}/.drush/sys
-      curl ${crlGet} "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
-      msg "INFO: Downloading Drush and Provision extensions..."
-      cd ${_ROOT}/.drush/xts
-      _G_EXT="provision_boost provision_cdn security_review"
-      for e in ${_G_EXT}; do
-        get_dev_ext "$e.tar.gz"
-      done
-      cd ${_ROOT}/.drush/usr
-      _G_EXT="drupalgeddon drush_ecl make_local \
-        registry_rebuild safe_cache_form_clear"
-      for e in ${_G_EXT}; do
-        get_dev_ext "$e.tar.gz"
-      done
-    fi
-    rm -f -r ${_ROOT}/.drush/*/.git
-    rm -f -r ${_ROOT}/.drush/*/*/.git
-    cd ${_ROOT}/.drush/usr
-    get_dev_ext "clean_missing_modules.tar.gz"
-    sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
-      ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
-  fi
-  cd ${_PREV_HM_ROOT}
-}
-#
 hostmaster_mi_up() {
   msg "INFO: Running hostmaster-migrate, please wait..."
+  ### security_review breaks the upgrade if active
   mv -f ${_ROOT}/.drush/xts/security_review/security_review.drush.inc \
     ${_ROOT}/.drush/xts/security_review/foo.txt  &> /dev/null
   export DEBIAN_FRONTEND=noninteractive
   if [ -z "${TERM+x}" ]; then
     export TERM=vt100
   fi
+  if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y
+      ${_DRUSHCMD} @hostmaster dis hosting_advanced_cron -y
+      ${_DRUSHCMD} @hostmaster en ctools -y
+      ${_DRUSHCMD} @hostmaster registry-rebuild
+    else
+      ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster dis hosting_advanced_cron -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster en ctools -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
+    fi
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y
+      ${_DRUSHCMD} @hostmaster registry-rebuild
+    else
+      ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
+    fi
+  fi
   ${_DRUSHCMD} cc drush &> /dev/null
   rm -f -r ${_ROOT}/.tmp/cache
+  ${_DRUSHCMD} @hostmaster sqlc < ${bldPth}/aegir/helpers/hosting_cron.sql &> /dev/null
   ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
     WHERE task_type='delete' AND task_status='-1'" &> /dev/null
   ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
@@ -301,6 +330,15 @@ hostmaster_mi_up() {
       mkdir -p \
         ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries} &> /dev/null
     fi
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    ${_DRUSHCMD} @hostmaster en hosting_cron -y
+    ${_DRUSHCMD} @hostmaster cc all
+    ${_DRUSHCMD} @hostmaster updb -y
+  else
+    ${_DRUSHCMD} @hostmaster en hosting_cron -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster cc all &> /dev/null
+    ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
   fi
   export DEBIAN_FRONTEND=text
   mv -f ${_ROOT}/.drush/xts/security_review/foo.txt \
@@ -414,6 +452,7 @@ if [ -e "${_PREV_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
   hostmaster_mv_up
   hostmaster_dr_up
   hostmaster_go_up
+  hostmaster_dr_tt
   hostmaster_mi_up
 else
   msg "FATAL ERROR: Your setup is probably broken because required file"

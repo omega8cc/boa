@@ -149,7 +149,7 @@ enable_chattr() {
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
-    if [ ! -e "${_U_HD}/.ctrl.249stableU.txt" ]; then
+    if [ ! -e "${_U_HD}/.ctrl.300stableU.txt" ]; then
       if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
@@ -187,10 +187,6 @@ enable_chattr() {
         ln -sf ${dscUsr}/.drush/usr/drush_ecl \
           ${_U_HD}/usr/drush_ecl
       fi
-      if [ ! -L "${_U_HD}/usr/make_local" ]; then
-        ln -sf ${dscUsr}/.drush/usr/make_local \
-          ${_U_HD}/usr/make_local
-      fi
       if [ ! -L "${_U_HD}/usr/safe_cache_form_clear" ]; then
         ln -sf ${dscUsr}/.drush/usr/safe_cache_form_clear \
           ${_U_HD}/usr/safe_cache_form_clear
@@ -199,7 +195,7 @@ enable_chattr() {
 
     _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
       ${dscUsr}/tools/drush/drush.php 2>&1)
-    _PHP_V="56 55 54 53"
+    _PHP_V="70 56 55 54 53"
     for e in ${_PHP_V}; do
       if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
         && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ]; then
@@ -210,7 +206,7 @@ enable_chattr() {
 
     if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
       || [ ! -e "${_U_II}" ] \
-      || [ ! -e "${_U_HD}/.ctrl.249stableU.txt" ]; then
+      || [ ! -e "${_U_HD}/.ctrl.300stableU.txt" ]; then
       mkdir -p ${_U_HD}
       rm -f ${_U_HD}/.ctrl.php*
       rm -f ${_U_II}
@@ -222,10 +218,12 @@ enable_chattr() {
         _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
           ${dscUsr}/tools/drush/drush.php 2>&1)
         echo "_CHECK_USE_PHP_CLI is ${_CHECK_USE_PHP_CLI} for $1 at ${_USER}"
-        if [[ "${_CHECK_USE_PHP_CLI}" =~ "php55" ]]; then
-          _USE_PHP_CLI=5.5
+        if [[ "${_CHECK_USE_PHP_CLI}" =~ "php70" ]]; then
+          _USE_PHP_CLI=7.0
         elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php56" ]]; then
           _USE_PHP_CLI=5.6
+        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php55" ]]; then
+          _USE_PHP_CLI=5.5
         elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php54" ]]; then
           _USE_PHP_CLI=5.4
         elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php53" ]]; then
@@ -233,12 +231,15 @@ enable_chattr() {
         fi
       fi
       echo _USE_PHP_CLI is ${_USE_PHP_CLI} for $1
-      if [ "${_USE_PHP_CLI}" = "5.5" ]; then
-        cp -af /opt/php55/lib/php.ini ${_U_II}
-        _U_INI=55
+      if [ "${_USE_PHP_CLI}" = "7.0" ]; then
+        cp -af /opt/php70/lib/php.ini ${_U_II}
+        _U_INI=70
       elif [ "${_USE_PHP_CLI}" = "5.6" ]; then
         cp -af /opt/php56/lib/php.ini ${_U_II}
         _U_INI=56
+      elif [ "${_USE_PHP_CLI}" = "5.5" ]; then
+        cp -af /opt/php55/lib/php.ini ${_U_II}
+        _U_INI=55
       elif [ "${_USE_PHP_CLI}" = "5.4" ]; then
         cp -af /opt/php54/lib/php.ini ${_U_II}
         _U_INI=54
@@ -256,6 +257,7 @@ enable_chattr() {
           /opt/php54:       \
           /opt/php55:       \
           /opt/php56:       \
+          /opt/php70:       \
           /opt/tika:        \
           /opt/tika7:       \
           /opt/tika8:       \
@@ -283,7 +285,7 @@ enable_chattr() {
         sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
         wait
         echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-        echo > ${_U_HD}/.ctrl.249stableU.txt
+        echo > ${_U_HD}/.ctrl.300stableU.txt
       fi
     fi
 
@@ -698,7 +700,7 @@ update_php_cli_local_ini() {
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="56 55 54 53"
+  _PHP_V="70 56 55 54 53"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ]; then
@@ -708,7 +710,7 @@ update_php_cli_local_ini() {
   if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.249stableU.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.300stableU.txt" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -720,12 +722,15 @@ update_php_cli_local_ini() {
     chattr -i ${_U_II}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php55" ]]; then
-      cp -af /opt/php55/lib/php.ini ${_U_II}
-      _U_INI=55
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php70" ]]; then
+      cp -af /opt/php70/lib/php.ini ${_U_II}
+      _U_INI=70
     elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php56" ]]; then
       cp -af /opt/php56/lib/php.ini ${_U_II}
       _U_INI=56
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php55" ]]; then
+      cp -af /opt/php55/lib/php.ini ${_U_II}
+      _U_INI=55
     elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php54" ]]; then
       cp -af /opt/php54/lib/php.ini ${_U_II}
       _U_INI=54
@@ -742,6 +747,7 @@ update_php_cli_local_ini() {
         /opt/php54:          \
         /opt/php55:          \
         /opt/php56:          \
+        /opt/php70:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \
@@ -767,7 +773,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.249stableU.txt
+      echo > ${_U_HD}/.ctrl.300stableU.txt
     fi
     chattr +i ${_U_II}
   fi
@@ -776,12 +782,15 @@ update_php_cli_local_ini() {
 # Update PHP-CLI for Drush.
 update_php_cli_drush() {
   _DRUSH_FILE="${dscUsr}/tools/drush/drush.php"
-  if [ "${_T_CLI_VRN}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-    _T_CLI=/opt/php55/bin
+  if [ "${_T_CLI_VRN}" = "7.0" ] && [ -x "/opt/php70/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php70\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    _T_CLI=/opt/php70/bin
   elif [ "${_T_CLI_VRN}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
     _T_CLI=/opt/php56/bin
+  elif [ "${_T_CLI_VRN}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    _T_CLI=/opt/php55/bin
   elif [ "${_T_CLI_VRN}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php54\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
     _T_CLI=/opt/php54/bin
@@ -880,7 +889,7 @@ satellite_tune_fpm_workers() {
 disable_newrelic() {
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "${_PHP_SV}" ]; then
-    _PHP_SV=55
+    _PHP_SV=56
   fi
   _THIS_POOL_TPL="/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf"
   if [ -e "${_THIS_POOL_TPL}" ]; then
@@ -908,7 +917,7 @@ enable_newrelic() {
   else
     _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
     if [ -z "${_PHP_SV}" ]; then
-      _PHP_SV=55
+      _PHP_SV=56
     fi
     _THIS_POOL_TPL="/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf"
     if [ -e "${_THIS_POOL_TPL}" ]; then
@@ -972,12 +981,15 @@ satellite_update_web_user() {
     if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
       cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
     else
-      if [ -e "/opt/php55/etc/php55.ini" ]; then
-        cp -af /opt/php55/etc/php55.ini ${_T_II}
-        _T_PV=55
+      if [ -e "/opt/php70/etc/php70.ini" ]; then
+        cp -af /opt/php70/etc/php70.ini ${_T_II}
+        _T_PV=70
       elif [ -e "/opt/php56/etc/php56.ini" ]; then
         cp -af /opt/php56/etc/php56.ini ${_T_II}
         _T_PV=56
+      elif [ -e "/opt/php55/etc/php55.ini" ]; then
+        cp -af /opt/php55/etc/php55.ini ${_T_II}
+        _T_PV=55
       elif [ -e "/opt/php54/etc/php54.ini" ]; then
         cp -af /opt/php54/etc/php54.ini ${_T_II}
         _T_PV=54
@@ -996,6 +1008,7 @@ satellite_update_web_user() {
         /opt/php54:     \
         /opt/php55:     \
         /opt/php56:     \
+        /opt/php70:     \
         /opt/tika:      \
         /opt/tika7:     \
         /opt/tika8:     \
@@ -1084,15 +1097,18 @@ switch_php() {
       _T_CLI_VRN=$(cat ${dscUsr}/static/control/cli.info 2>&1)
       _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
       _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-      if [ "${_T_CLI_VRN}" = "5.6" ] \
+      if [ "${_T_CLI_VRN}" = "7.0" ] \
+        || [ "${_T_CLI_VRN}" = "5.6" ] \
         || [ "${_T_CLI_VRN}" = "5.5" ] \
         || [ "${_T_CLI_VRN}" = "5.4" ] \
         || [ "${_T_CLI_VRN}" = "5.3" ] \
         || [ "${_T_CLI_VRN}" = "5.2" ]; then
-        if [ "${_T_CLI_VRN}" = "5.5" ] \
-          && [ ! -x "/opt/php55/bin/php" ]; then
+        if [ "${_T_CLI_VRN}" = "7.0" ] \
+          && [ ! -x "/opt/php70/bin/php" ]; then
           if [ -x "/opt/php56/bin/php" ]; then
             _T_CLI_VRN=5.6
+          elif [ -x "/opt/php55/bin/php" ]; then
+            _T_CLI_VRN=5.5
           elif [ -x "/opt/php54/bin/php" ]; then
             _T_CLI_VRN=5.4
           elif [ -x "/opt/php53/bin/php" ]; then
@@ -1107,29 +1123,40 @@ switch_php() {
           elif [ -x "/opt/php53/bin/php" ]; then
             _T_CLI_VRN=5.3
           fi
+        elif [ "${_T_CLI_VRN}" = "5.5" ] \
+          && [ ! -x "/opt/php55/bin/php" ]; then
+          if [ -x "/opt/php56/bin/php" ]; then
+            _T_CLI_VRN=5.6
+          elif [ -x "/opt/php54/bin/php" ]; then
+            _T_CLI_VRN=5.4
+          elif [ -x "/opt/php53/bin/php" ]; then
+            _T_CLI_VRN=5.3
+          fi
         elif [ "${_T_CLI_VRN}" = "5.4" ] \
           && [ ! -x "/opt/php54/bin/php" ]; then
-          if [ -x "/opt/php55/bin/php" ]; then
-            _T_CLI_VRN=5.5
-          elif [ -x "/opt/php56/bin/php" ]; then
+          if [ -x "/opt/php56/bin/php" ]; then
             _T_CLI_VRN=5.6
+          elif [ -x "/opt/php55/bin/php" ]; then
+            _T_CLI_VRN=5.5
           elif [ -x "/opt/php53/bin/php" ]; then
             _T_CLI_VRN=5.3
           fi
         elif [ "${_T_CLI_VRN}" = "5.3" ] \
           && [ ! -x "/opt/php53/bin/php" ]; then
-          if [ -x "/opt/php55/bin/php" ]; then
-            _T_CLI_VRN=5.5
-          elif [ -x "/opt/php56/bin/php" ]; then
+          if [ -x "/opt/php56/bin/php" ]; then
             _T_CLI_VRN=5.6
+          elif [ -x "/opt/php55/bin/php" ]; then
+            _T_CLI_VRN=5.5
           elif [ -x "/opt/php54/bin/php" ]; then
             _T_CLI_VRN=5.4
           fi
         elif [ "${_T_CLI_VRN}" = "5.2" ]; then
-          if [ -x "/opt/php55/bin/php" ]; then
-            _T_CLI_VRN=5.5
+          if [ -x "/opt/php70/bin/php" ]; then
+            _T_CLI_VRN=7.0
           elif [ -x "/opt/php56/bin/php" ]; then
             _T_CLI_VRN=5.6
+          elif [ -x "/opt/php55/bin/php" ]; then
+            _T_CLI_VRN=5.5
           elif [ -x "/opt/php54/bin/php" ]; then
             _T_CLI_VRN=5.4
           elif [ -x "/opt/php53/bin/php" ]; then
@@ -1233,15 +1260,18 @@ switch_php() {
       _T_FPM_VRN=$(cat ${dscUsr}/static/control/fpm.info 2>&1)
       _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
       _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-      if [ "${_T_FPM_VRN}" = "5.6" ] \
+      if [ "${_T_FPM_VRN}" = "7.0" ] \
+        || [ "${_T_FPM_VRN}" = "5.6" ] \
         || [ "${_T_FPM_VRN}" = "5.5" ] \
         || [ "${_T_FPM_VRN}" = "5.4" ] \
         || [ "${_T_FPM_VRN}" = "5.3" ] \
         || [ "${_T_FPM_VRN}" = "5.2" ]; then
-        if [ "${_T_FPM_VRN}" = "5.5" ] \
-          && [ ! -x "/opt/php55/bin/php" ]; then
+        if [ "${_T_FPM_VRN}" = "7.0" ] \
+          && [ ! -x "/opt/php70/bin/php" ]; then
           if [ -x "/opt/php56/bin/php" ]; then
             _T_FPM_VRN=5.6
+          elif [ -x "/opt/php55/bin/php" ]; then
+            _T_FPM_VRN=5.5
           elif [ -x "/opt/php54/bin/php" ]; then
             _T_FPM_VRN=5.4
           elif [ -x "/opt/php53/bin/php" ]; then
@@ -1251,6 +1281,15 @@ switch_php() {
           && [ ! -x "/opt/php56/bin/php" ]; then
           if [ -x "/opt/php55/bin/php" ]; then
             _T_FPM_VRN=5.5
+          elif [ -x "/opt/php54/bin/php" ]; then
+            _T_FPM_VRN=5.4
+          elif [ -x "/opt/php53/bin/php" ]; then
+            _T_FPM_VRN=5.3
+          fi
+        elif [ "${_T_FPM_VRN}" = "5.5" ] \
+          && [ ! -x "/opt/php55/bin/php" ]; then
+          if [ -x "/opt/php56/bin/php" ]; then
+            _T_FPM_VRN=5.6
           elif [ -x "/opt/php54/bin/php" ]; then
             _T_FPM_VRN=5.4
           elif [ -x "/opt/php53/bin/php" ]; then
@@ -1275,10 +1314,12 @@ switch_php() {
             _T_FPM_VRN=5.4
           fi
         elif [ "${_T_FPM_VRN}" = "5.2" ]; then
-          if [ -x "/opt/php55/bin/php" ]; then
-            _T_FPM_VRN=5.5
+          if [ -x "/opt/php70/bin/php" ]; then
+            _T_FPM_VRN=7.0
           elif [ -x "/opt/php56/bin/php" ]; then
             _T_FPM_VRN=5.6
+          elif [ -x "/opt/php55/bin/php" ]; then
+            _T_FPM_VRN=5.5
           elif [ -x "/opt/php54/bin/php" ]; then
             _T_FPM_VRN=5.4
           elif [ -x "/opt/php53/bin/php" ]; then
@@ -1347,12 +1388,12 @@ switch_php() {
           _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
           _PHP_SV=${_T_FPM_VRN//[^0-9]/}
           if [ -z "${_PHP_SV}" ]; then
-            _PHP_SV=55
+            _PHP_SV=56
           fi
           ### create or update special system user if needed
           if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
             _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
-            _PHP_V="56 55 54 53"
+            _PHP_V="70 56 55 54 53"
             for e in ${_PHP_V}; do
               if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
                 if [ "${e}" != "${_PHP_SV}" ] \
@@ -1531,16 +1572,16 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       -type d -exec chmod 0700 {} \; &> /dev/null
     find ${dscUsr}/config/server_master \
       -type f -exec chmod 0600 {} \; &> /dev/null
-    if [ ! -e "${dscUsr}/.tmp/.ctrl.249stableU.txt" ]; then
+    if [ ! -e "${dscUsr}/.tmp/.ctrl.300stableU.txt" ]; then
       rm -f -r ${dscUsr}/.drush/cache
       mkdir -p ${dscUsr}/.tmp
       touch ${dscUsr}/.tmp
       find ${dscUsr}/.tmp/ -mtime +0 -exec rm -rf {} \; &> /dev/null
       chown ${_USER}:${usrGroup} ${dscUsr}/.tmp &> /dev/null
       chmod 02755 ${dscUsr}/.tmp &> /dev/null
-      echo OK > ${dscUsr}/.tmp/.ctrl.249stableU.txt
+      echo OK > ${dscUsr}/.tmp/.ctrl.300stableU.txt
     fi
-    if [ ! -e "${dscUsr}/static/control/.ctrl.249stableU.txt" ]; then
+    if [ ! -e "${dscUsr}/static/control/.ctrl.300stableU.txt" ]; then
       mkdir -p ${dscUsr}/static/control
       chmod 755 ${dscUsr}/static/control
       if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
@@ -1551,7 +1592,7 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       chown -R ${_USER}.ftp:${usrGroup} \
         ${dscUsr}/static/control &> /dev/null
       rm -f ${dscUsr}/static/control/.ctrl.*
-      echo OK > ${dscUsr}/static/control/.ctrl.249stableU.txt
+      echo OK > ${dscUsr}/static/control/.ctrl.300stableU.txt
     fi
     if [ -e "/root/.${_USER}.octopus.cnf" ]; then
       source /root/.${_USER}.octopus.cnf
@@ -1588,13 +1629,13 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
           ln -sf ${dscUsr}/clients /home/${_USER}.ftp/clients
           ln -sf ${dscUsr}/static  /home/${_USER}.ftp/static
         fi
-        if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.249stableU.txt" ]; then
+        if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.300stableU.txt" ]; then
           rm -f -r /home/${_USER}.ftp/.drush/cache
           rm -f -r /home/${_USER}.ftp/.tmp
           mkdir -p /home/${_USER}.ftp/.tmp
           chown ${_USER}.ftp:${usrGroup} /home/${_USER}.ftp/.tmp &> /dev/null
           chmod 700 /home/${_USER}.ftp/.tmp &> /dev/null
-          echo OK > /home/${_USER}.ftp/.tmp/.ctrl.249stableU.txt
+          echo OK > /home/${_USER}.ftp/.tmp/.ctrl.300stableU.txt
         fi
         enable_chattr ${_USER}.ftp
         echo Done for ${pthParentUsr}

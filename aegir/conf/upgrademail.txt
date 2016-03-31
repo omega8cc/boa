@@ -4,30 +4,19 @@ Your Aegir Hosting System has been upgraded to version boa.version
 
   https://aegir.url.name
 
-This BOA release includes latest Drupal 7 and Pressflow 6 security updates,
-along with bug fixes and other system software updates.
+This BOA release includes complete Aegir 3 with Drush 8, and introduces
+full support for latest Drupal 8.0.5 and Drupal 8.1.0-beta2 as custom
+platforms you can create in the ~/static directory tree.
+
+@=> BOA will not include built-in Drupal 8 platforms until Drupal 8 will
+    support symlinks in the codebase, like all previous core versions.
 
 @=> All supported Aegir platforms have been updated to their latest releases
 
-@=> What are BOA plans for Drupal 6 support after February 24th, 2016?
-
-    We will support Drupal/Pressflow 6 in all new releases, as long as
-    available PHP versions will allow to use it (we run our own Pressflow 6
-    based site on PHP 5.6 for many months with zero issues). For more details
-    please check: https://github.com/omega8cc/boa/issues/824
-
-@=> Even if deprecated PHP versions are still included in this release,
-    any Octopus instance running PHP older than 5.5 will not be able to
-    receive upgrade to BOA-2.4.9, as announced before -- Please switch your
-    Octopus to PHP 5.6 or at least 5.5 to be able to upgrade not only
-    the Barracuda system part of BOA, but also Octopus Satellite --
-    The how-to can be found at: https://omega8.cc/node/330
-
-@=> Drupal 8 support for custom platforms in the ~/static directory tree
-    will be included, along with Drush 8 and Hostmaster 3.x in the upcoming
-    BOA-3.0.0 release: https://github.com/omega8cc/boa/milestones/3.0.0
-    Note: BOA will not include built-in Drupal 8 platforms until Drupal 8
-    will support symlinks in the codebase, like all previous core versions
+@=> BOA Hosted on Power Engine based Octopus instances will *not* receive
+    upgrade to BOA-3.x unless requested via https://omega8.cc/support
+    to prevent issues with (often) customized Hostmaster modules not ready
+    for Drupal 7 based Aegir control panel.
 
 We recommend that you upgrade your sites using this safe workflow:
 
@@ -36,7 +25,7 @@ We recommend that you upgrade your sites using this safe workflow:
 You can find all details on how to use new features, along with all
 other changes explained in the release notes and changelog available at:
 
-  https://omega8.cc/boa-249-full-edition-374
+  https://omega8.cc/boa-300-full-edition-377
 
 It is always highly recommended that you read extensive release notes
 and changelog posted on our website for previous BOA Editions, so you

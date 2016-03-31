@@ -149,11 +149,7 @@ get_dev_ext() {
 # Download and extract from dev/static.
 get_dev_stc() {
   if [ ! -z "$1" ]; then
-    if [ "$1" = "hosting.tar.gz" ]; then
-      curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/$1" -o "$1"
-    else
-      curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/static/$1" -o "$1"
-    fi
+    curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/static/$1" -o "$1"
     extract_archive "$1"
   fi
 }
@@ -346,7 +342,7 @@ mode_detection() {
   fi
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "${_PHP_SV}" ] || [ "${_PHP_SV}" = "52" ]; then
-    _PHP_SV=55
+    _PHP_SV=56
   fi
   _PHP_CN="www${_PHP_SV}"
 }
@@ -478,8 +474,7 @@ check_boa_version() {
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
-      if [[ ! "${_X_VERSION}" =~ "BOA-3." ]] \
-        && [[ ! "${_X_VERSION}" =~ "BOA-2.4.9" ]]; then
+      if [[ ! "${_X_VERSION}" =~ "BOA-3." ]]; then
         msg "ERROR: Your system has been already upgraded to BOA-3.x.x series"
         msg "You can not downgrade back to legacy or previous stable version"
         msg "Please use 'barracuda up-stable' to upgrade this system"
