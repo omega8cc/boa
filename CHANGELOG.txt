@@ -2,7 +2,7 @@
 ### Stable BOA-3.0.0 Release - Full Edition
 ### Date: Wed Mar 30 10:48:54 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.0.0
-### Latest hotfix added on: Thu Mar 31 18:47:35 PDT 2016
+### Latest hotfix added on: Thu Mar 31 19:05:02 PDT 2016
 
   @=> Includes Aegir Hostmaster 3.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -75,6 +75,7 @@
   * Restart rsyslog/sysklogd aggressively enough
   * Sync max_user_connections
   * Update map $http_user_agent $is_crawler
+  * Add mydropwizard-6.x-1.4 to all existing D6 platforms
 
 
 ### Stable BOA-2.4.9 Release - Full Edition
