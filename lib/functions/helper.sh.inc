@@ -473,6 +473,15 @@ check_boa_version() {
   fi
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+    if [[ "${_SERIES_TEST}" =~ "BOA-2.4.9" ]]; then
+      _VERSIONS_TEST_RESULT=OK
+    else
+      msg "ERROR: This barracuda installer can be used only when the instance"
+      msg "has been already upgraded to previous stable BOA-2.4.9 version"
+      msg "Please run 'barracuda up-2.4' full legacy upgrade first"
+      msg "Bye"
+      clean_pid_exit
+    fi
     if [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
       if [[ ! "${_X_VERSION}" =~ "BOA-3." ]]; then
         msg "ERROR: Your system has been already upgraded to BOA-3.x.x series"

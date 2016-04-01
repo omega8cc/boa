@@ -3594,7 +3594,7 @@ satellite_check_octopus_versus_barracuda_version() {
     else
       msg "ERROR: This octopus installer can be used only when the instance"
       msg "has been already upgraded to previous stable BOA-2.4.9 version"
-      msg "Please run 'octopus up-2.4 ${_USER} aegir' upgrade first"
+      msg "Please run 'octopus up-2.4 ${_USER} aegir' legacy upgrade first"
       msg "Bye"
       clean_pid_exit
     fi
