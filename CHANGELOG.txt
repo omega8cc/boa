@@ -2,7 +2,7 @@
 ### Stable BOA-3.0.0 Release - Full Edition
 ### Date: Wed Mar 30 10:48:54 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.0.0
-### Latest hotfix added on: Thu Mar 31 17:00:00 PDT 2016
+### Latest hotfix added on: Thu Mar 31 18:47:35 PDT 2016
 
   @=> Includes Aegir Hostmaster 3.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -71,6 +71,7 @@
 
   * [system] sync fix_locales for root -- fixes #880
   * Fix for entitycache 1.2 to 1.5 upgrade problem #868
+  * Fix for FPM master proc monitor
   * Restart rsyslog/sysklogd aggressively enough
   * Sync max_user_connections
   * Update map $http_user_agent $is_crawler
