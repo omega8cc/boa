@@ -1278,6 +1278,9 @@ satellite_o_contrib_update_global() {
     elif [ -e "${_D}/$i/o_contrib" ] \
       && [ ! -L "${_D}/$i/o_contrib/redis" ]; then
       _FORCE_UP_SIX=YES
+    elif [ -e "${_D}/$i/o_contrib" ] \
+      && [ ! -d "${_D}/$i/o_contrib/mydropwizard" ]; then
+      _FORCE_UP_SIX=YES
     else
       _FORCE_UP_SIX=NO
     fi
@@ -1308,6 +1311,9 @@ satellite_o_contrib_update_global() {
       fi
       if [ ! -d "${_D}/$i/o_contrib/js" ]; then
         get_dev_contrib "js-6.x-1.3.tar.gz"
+      fi
+      if [ ! -d "${_D}/$i/o_contrib/mydropwizard" ]; then
+        get_dev_contrib "mydropwizard-6.x-1.4.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib/panels_content_cache" ]; then
         get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
@@ -1611,7 +1617,7 @@ satellite_download_o_contrib_six() {
   get_dev_contrib "image-6.x-1.2.tar.gz"
   get_dev_contrib "js-6.x-1.3.tar.gz"
   get_dev_contrib "login_security-6.x-1.4.tar.gz"
-  get_dev_contrib "mydropwizard-6.x-1.3.tar.gz"
+  get_dev_contrib "mydropwizard-6.x-1.4.tar.gz"
   get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
   get_dev_contrib "phpass-6.x-2.1.tar.gz"
   get_dev_contrib "print-6.x-1.19.tar.gz"
