@@ -2,7 +2,7 @@
 ### Stable BOA-3.0.0 Release - Full Edition
 ### Date: Wed Mar 30 10:48:54 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.0.0
-### Latest hotfix added on: Thu Mar 31 14:08:48 PDT 2016
+### Latest hotfix added on: Thu Mar 31 17:00:00 PDT 2016
 
   @=> Includes Aegir Hostmaster 3.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -62,7 +62,7 @@
   * OpenSSH 7.2p2 (if installed from sources)
   * OpenSSL 1.0.2g (used only in custom built Nginx)
   * PHP 5.5.34
-  * PHP 5.6.19
+  * PHP 5.6.20
   * PHP 7.0.5 (for testing only)
   * Twig C extension for PHP - v.1.24.0
   * Use PHP jsmin 2.0.1 ext with newer PHP versions - fixes #878
