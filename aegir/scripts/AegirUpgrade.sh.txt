@@ -112,7 +112,6 @@ gitLab="https://gitlab.com/omega8cc"
 #
 urlDev="http://${_USE_MIR}/dev"
 urlHmr="http://${_USE_MIR}/versions/master/aegir"
-urlStb="http://${_USE_MIR}/versions/stable"
 
 
 ###---### Local functions
@@ -245,7 +244,7 @@ hostmaster_go_up() {
   else
     msg "INFO: Downloading Drush and Provision extensions..."
     cd ${_ROOT}/.drush/sys
-    curl ${crlGet} "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
+    get_dev_ext "provision.tar.gz"
     cd ${_ROOT}/.drush/usr
     get_dev_ext "drupalgeddon.tar.gz"
     get_dev_ext "drush_ecl.tar.gz"

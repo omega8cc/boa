@@ -1439,7 +1439,7 @@ rm -f -r ${bldPth}
 if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
   ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
 else
-  curl ${crlGet} "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
+  curl ${crlGet} "${urlDev}/${_AEGIR_VERSION}/boa.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"
 fi
 #

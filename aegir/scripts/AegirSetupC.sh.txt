@@ -100,7 +100,6 @@ fi
 ###
 urlDev="http://${_USE_MIR}/dev"
 urlHmr="http://${_USE_MIR}/versions/master/aegir"
-urlStb="http://${_USE_MIR}/versions/stable"
 
 
 ###

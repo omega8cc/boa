@@ -4209,7 +4209,7 @@ satellite_child_b_drush_xts_install() {
   else
     msg "${_STATUS} B: Downloading Drush and Provision extensions..."
     cd ${_ROOT}/.drush/sys
-    curl ${crlGet} "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
+    get_dev_ext "provision.tar.gz"
     cd ${_ROOT}/.drush/usr
     get_dev_ext "clean_missing_modules.tar.gz"
     get_dev_ext "drupalgeddon.tar.gz"

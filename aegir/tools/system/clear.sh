@@ -76,7 +76,6 @@ find_fast_mirror() {
   fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
-  urlStb="http://${_USE_MIR}/versions/stable"
 }
 
 if [ ! -e "/var/run/boa_run.pid" ]; then
