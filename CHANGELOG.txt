@@ -70,12 +70,12 @@
 # Fixes:
 
   * [system] sync fix_locales for root -- fixes #880
+  * Add mydropwizard-6.x-1.4 to all existing D6 platforms
   * Fix for entitycache 1.2 to 1.5 upgrade problem #868
   * Fix for FPM master proc monitor
   * Restart rsyslog/sysklogd aggressively enough
   * Sync max_user_connections
   * Update map $http_user_agent $is_crawler
-  * Add mydropwizard-6.x-1.4 to all existing D6 platforms
 
 
 ### Stable BOA-2.4.9 Release - Full Edition
