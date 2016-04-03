@@ -473,7 +473,8 @@ check_boa_version() {
   fi
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-    if [[ "${_SERIES_TEST}" =~ "BOA-2.4.9" ]]; then
+    if [[ "${_SERIES_TEST}" =~ "BOA-2.4.9" ]] \
+      || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
       _VERSIONS_TEST_RESULT=OK
     else
       msg "ERROR: This barracuda installer can be used only when the instance"
