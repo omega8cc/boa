@@ -330,11 +330,13 @@ up_mode() {
 satellite_check_switch_php() {
   if [ "${cmmand}" = "up-head" ] || [ "${cmmand}" = "up-stable" ]; then
     if [ -e "${User}/log/octopus_log.txt" ]; then
+      _SERIES_TEST_RESULT=
       _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
       if [[ "${_SERIES_TEST}" =~ "${lgcC}" ]] \
         || [[ "${_SERIES_TEST}" =~ "${nextv}" ]] \
         || [[ "${_SERIES_TEST}" =~ "${stbl}-dev" ]] \
         || [[ "${_SERIES_TEST}" =~ "${stbl}" ]]; then
+        _SERIES_TEST_RESULT=OK
         if [ "${orgMcmode}" != "force" ]; then
           mcmode=
           if [ ! -e "/root/.silent-octopus-upgrade.cnf" ]; then
@@ -395,7 +397,8 @@ satellite_check_switch_php() {
     else
       _PHP_LEGACY_FREE=NO
     fi
-    if [ "${_PHP_LEGACY_FREE}" = "NO" ]; then
+    if [ "${_PHP_LEGACY_FREE}" = "NO" ] \
+      && [ -z "${_SERIES_TEST_RESULT}" ]; then
       cmmand="up-2.4"
       switchFPMback="${_T_FPM_VRN}"
       if [ -z "${switchFPMback}" ]; then
