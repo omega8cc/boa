@@ -335,6 +335,21 @@ update_agents() {
     fi
   fi
 
+  if [ -e "/opt/tools/drush/8/drush/drush" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/lshell.fixed.a249i.pid" ]; then
+    mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
+    curl ${crlGet} "${urlHmr}/tools/system/conf/lshell.conf" \
+      -o /var/xdrago/conf/lshell.conf
+    if [ -e "/var/xdrago/conf/lshell.conf" ]; then
+      chmod 644 /var/xdrago/conf/lshell.conf
+      chown root:root /var/xdrago/conf/lshell.conf
+      touch ${pthLog}/lshell.fixed.a249i.pid
+    else
+      mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
+    fi
+  fi
+
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
     && [ ! -e "${pthLog}/websh.fixed.a249i.pid" ]; then
