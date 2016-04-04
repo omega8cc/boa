@@ -2,7 +2,7 @@
 ### Stable BOA-3.0.0 Release - Full Edition
 ### Date: Wed Mar 30 10:48:54 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.0.0
-### Latest hotfix added on: Fri Apr  1 13:27:13 PDT 2016
+### Latest hotfix added on: Mon Apr  4 03:09:01 PDT 2016
 
   @=> Includes Aegir Hostmaster 3.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -75,10 +75,13 @@
 
   * [system] sync fix_locales for root -- fixes #880
   * Add mydropwizard-6.x-1.4 to all existing D6 platforms
+  * Fix for 3.x to 3.x upgrades
   * Fix for entitycache 1.2 to 1.5 upgrade problem #868
   * Fix for FPM master proc monitor
+  * Fix for series test to avoid downgrade attempts
   * Require 2.4.9 before upgrade to 3.0.0 also in barracuda -- fixes #886
   * Restart rsyslog/sysklogd aggressively enough
+  * Switch octopus upgrade mode automatically to legacy if needed
   * Sync max_user_connections
   * Update map $http_user_agent $is_crawler
   * Use Drush 7 on command line until #887 is fixed
