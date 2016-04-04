@@ -28,6 +28,10 @@
   @=> It is possible to host previous stable BOA-2.4.9 Octopus instances
       on systems with Barracuda upgraded to BOA-3.0.0
 
+# Known problems:
+
+  https://github.com/omega8cc/boa/milestones/3.0.1
+
 # New features and enhancements:
 
   * Add Hosting Git optional feature -- fixes #753
