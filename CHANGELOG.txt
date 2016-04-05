@@ -2,7 +2,7 @@
 ### Stable BOA-3.0.0 Release - Full Edition
 ### Date: Wed Mar 30 10:48:54 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.0.0
-### Latest hotfix added on: Mon Apr  4 10:58:32 PDT 2016
+### Latest hotfix added on: Tue Apr  5 14:48:55 PDT 2016
 
   @=> Includes Aegir Hostmaster 3.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -31,6 +31,21 @@
 # Known problems:
 
   https://github.com/omega8cc/boa/milestones/3.0.1
+
+  While clean 3.0.0 install worked in our tests before the release, it doesn't
+  work for others. Until this problem is fixed properly without regressions,
+  we are switching boa installer back to 2.4.9, which makes getting 3.0.0
+  on initial installation a two step operation: first 'boa in-stable' install
+  to get 2.4.9, and then 'barracuda up-stable' plus 'octopus up-stable' upgrade
+  to get 3.0.0, because upgrades for barracuda and octopus from 2.4.9 to 3.0.0
+  work fine.
+
+  This also means that 'boa in-octopus' will still install the legacy 2.4.9
+  octopus extra instances, and you can upgrade them to 3.0.0 with standard
+  'octopus up-stable' mode.
+
+  It is still possible to test/debug boa 3.0.0 clean installs -- just create
+  an empty /root/.debug-boa-installer.cnf file before running the installer.
 
 # New features and enhancements:
 
@@ -83,6 +98,7 @@
   * Numerous lshell problems -- fixes #896 #895 #894 #893 #890
   * Require 2.4.9 before upgrade to 3.0.0 also in barracuda -- fixes #886
   * Restart rsyslog/sysklogd aggressively enough
+  * Switch boa meta installer to 2.4.9 until #899 is fixed
   * Switch octopus upgrade mode automatically to legacy if needed
   * Sync max_user_connections
   * Update map $http_user_agent $is_crawler
