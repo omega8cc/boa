@@ -100,7 +100,12 @@ elif [ "${_PHP_CLI_VERSION}" = "5.3" ] \
 fi
 _OSV=$(lsb_release -sc 2>&1)
 _ROOT="${HOME}"
-_DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
+if [ -e "/opt/tools/d7.ini" ] \
+  && [ -e "/opt/tools/drush/7/drush/drush.php" ]; then
+  _DRUSHCMD="${_T_CLI}/php /opt/tools/drush/7/drush/drush.php"
+else
+  _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
+fi
 #
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash

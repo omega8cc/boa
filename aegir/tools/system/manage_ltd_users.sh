@@ -800,7 +800,12 @@ update_php_cli_drush() {
     _T_CLI=/foo/bar
   fi
   if [ -x "${_T_CLI}/php" ]; then
-    _DRUSHCMD="${_T_CLI}/php ${dscUsr}/tools/drush/drush.php"
+    if [ -e "/opt/tools/d7.ini" ] \
+      && [ -e "/opt/tools/drush/7/drush/drush.php" ]; then
+      _DRUSHCMD="${_T_CLI}/php /opt/tools/drush/7/drush/drush.php"
+    else
+      _DRUSHCMD="${_T_CLI}/php ${dscUsr}/tools/drush/drush.php"
+    fi
     if [ -e "${dscUsr}/aegir.sh" ]; then
       rm -f ${dscUsr}/aegir.sh
     fi
