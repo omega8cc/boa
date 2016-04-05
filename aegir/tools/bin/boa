@@ -3,15 +3,27 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-branch="3.x.x-dev"
-cluster="BOA-2.4.9"
-hd="HEAD"
-lgcA="BOA-2.2.9"
-lgcB="BOA-2.3.8"
-lgcC="BOA-2.4.9"
-master="master"
-nextv="BOA-3.0.0-dev"
-stbl="BOA-3.0.0"
+if [ -e "/root/.debug-boa-installer.cnf" ]; then
+  branch="3.x.x-dev"
+  cluster="BOA-2.4.9"
+  hd="HEAD"
+  lgcA="BOA-2.2.9"
+  lgcB="BOA-2.3.8"
+  lgcC="BOA-2.4.9"
+  master="master"
+  nextv="BOA-3.0.0-dev"
+  stbl="BOA-3.0.0"
+else
+  branch="2.4.x-dev"
+  cluster="BOA-2.4.9"
+  hd="HEAD"
+  lgcA="BOA-2.2.9"
+  lgcB="BOA-2.3.8"
+  lgcC="BOA-2.4.9"
+  master="master"
+  nextv="BOA-3.0.0-dev"
+  stbl="BOA-2.4.9"
+fi
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
