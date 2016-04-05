@@ -4273,27 +4273,27 @@ satellite_child_b_aegir_build() {
     rm -f -r ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} hostmaster-install ${_DOMAIN} \
-        --aegir_host=${_USE_AEGIR_HOST} \
-        --aegir_db_user=${_USE_DB_USER} \
-        --aegir_db_pass=${_AGRPASWD} \
-        --aegir_root=${_ROOT} \
-        --root=${_HM_ROOT} \
-        --http_service_type=nginx \
         --aegir_db_host=${_THIS_DB_HOST} \
+        --aegir_db_pass=${_AGRPASWD} \
+        --aegir_db_user=${_USE_DB_USER} \
+        --aegir_host=${_USE_AEGIR_HOST} \
+        --aegir_root=${_ROOT} \
         --client_email=${_MY_EMAIL} \
+        --http_service_type=nginx \
+        --root=${_HM_ROOT} \
         --script_user=${_USER} \
         --web_group=${_WEBG} \
         --version=${_AEGIR_VERSION} -y -d
     else
       ${_DRUSHCMD} hostmaster-install ${_DOMAIN} \
-        --aegir_host=${_USE_AEGIR_HOST} \
-        --aegir_db_user=${_USE_DB_USER} \
-        --aegir_db_pass=${_AGRPASWD} \
-        --aegir_root=${_ROOT} \
-        --root=${_HM_ROOT} \
-        --http_service_type=nginx \
         --aegir_db_host=${_THIS_DB_HOST} \
+        --aegir_db_pass=${_AGRPASWD} \
+        --aegir_db_user=${_USE_DB_USER} \
+        --aegir_host=${_USE_AEGIR_HOST} \
+        --aegir_root=${_ROOT} \
         --client_email=${_MY_EMAIL} \
+        --http_service_type=nginx \
+        --root=${_HM_ROOT} \
         --script_user=${_USER} \
         --web_group=${_WEBG} \
         --version=${_AEGIR_VERSION} -y >${_ROOT}/log/install.log 2>&1
