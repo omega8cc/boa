@@ -77,7 +77,7 @@
   * Duplicity 0.7.06 (please run 'backboa install' to upgrade)
   * Lshell 0.9.18.3
   * MongoDB database driver 1.6.13 for all PHP versions < 7 -- fixes #521
-  * Nginx 1.9.13
+  * Nginx 1.9.14
   * OpenSSH 7.2p2 (if installed from sources)
   * OpenSSL 1.0.2g (used only in custom built Nginx)
   * PHP 5.5.34
