@@ -2,7 +2,7 @@
 ### Stable BOA-3.0.0 Release - Full Edition
 ### Date: Wed Mar 30 10:48:54 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.0.0
-### Latest hotfix added on: Tue Apr  5 14:48:55 PDT 2016
+### Latest hotfix added on: Wed Apr  6 17:40:12 PDT 2016
 
   @=> Includes Aegir Hostmaster 3.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -96,6 +96,7 @@
   * Fix for FPM master proc monitor
   * Fix for series test to avoid downgrade attempts
   * Numerous lshell problems -- fixes #896 #895 #894 #893 #890
+  * Problems installing rvm / compass -- fixes #895
   * Require 2.4.9 before upgrade to 3.0.0 also in barracuda -- fixes #886
   * Restart rsyslog/sysklogd aggressively enough
   * Switch boa meta installer to 2.4.9 until #899 is fixed
