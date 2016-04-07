@@ -75,7 +75,7 @@
   * CSF 8.16
   * Drush mini-8-08-03-2016
   * Duplicity 0.7.06 (please run 'backboa install' to upgrade)
-  * Lshell 0.9.18.2
+  * Lshell 0.9.18.3
   * MongoDB database driver 1.6.13 for all PHP versions < 7 -- fixes #521
   * Nginx 1.9.13
   * OpenSSH 7.2p2 (if installed from sources)
