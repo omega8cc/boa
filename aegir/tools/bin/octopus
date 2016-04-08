@@ -339,6 +339,7 @@ satellite_check_switch_php() {
         _SERIES_TEST_RESULT=OK
         if [ "${orgMcmode}" != "force" ]; then
           mcmode=
+          fmodey=force
           if [ ! -e "/root/.silent-octopus-upgrade.cnf" ]; then
             echo
             echo "This Aegir Instance ${octUsr} is already up to date!"
@@ -560,14 +561,16 @@ up_one() {
       if [ -z "${_IS_OLD}" ] \
         && [ -z "${mcmode}" ] \
         && [ -e "${User}/.drush/sys/provision" ]; then
-        echo
-        echo "This Aegir Instance is already up to date!"
-        echo "If you wish to run/force the upgrade again,"
-        echo "please specify desired upgrade mode:"
-        echo "aegir, platforms or both - as shown below"
-        echo
-        echo "Usage: $(basename "$0") ${cmmand} ${second} {aegir|platforms|both}"
-        echo
+        if [ -z "${fmodey}" ]; then
+          echo
+          echo "This Aegir Instance is already up to date!"
+          echo "If you wish to run/force the upgrade again,"
+          echo "please specify desired upgrade mode:"
+          echo "aegir, platforms or both - as shown below"
+          echo
+          echo "Usage: $(basename "$0") ${cmmand} ${second} {aegir|platforms|both}"
+          echo
+        fi
       else
         if [ -e "${User}/.drush/sys/provision" ]; then
           up_mode
