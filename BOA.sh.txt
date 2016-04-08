@@ -207,7 +207,7 @@ update_agents() {
     echo ${InTest} > /root/.high_traffic.cnf
     echo ${InTest} > /root/.skip_cleanup.cnf
     echo ${InTest} > /root/.randomize_duplicity_full_backup_day.cnf
-    echo ${InTest} > /root/.fast.cron.cnf
+    rm -f /root/.fast.cron.cnf
     if [ ! -e "/data/conf/override.global.inc" ]; then
       echo "<?php" > /data/conf/override.global.inc.tmp
       echo "" >> /data/conf/override.global.inc.tmp
