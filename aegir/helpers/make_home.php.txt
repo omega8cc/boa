@@ -11,7 +11,7 @@
   $node->status = 1;
   $node->body[$node->language][0]['value']   = $body_text;
   $node->body[$node->language][0]['summary'] = text_summary($body_text);
-  $node->body[$node->language][0]['format']  = 2;
+  $node->body[$node->language][0]['format']  = 'full_html';
   $path = 'welcome';
   $node->path = array('alias' => $path);
   node_save($node);
