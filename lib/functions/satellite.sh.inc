@@ -4764,6 +4764,8 @@ satellite_child_b_aegir_ui_enhance() {
       mv -f make_home.php.txt make_home.php &> /dev/null
       ${_DRUSHCMD} php-script make_home &> /dev/null
       rm -f make_home.php
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE field_data_body \
+      SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
       cp -af /opt/tmp/boa/aegir/helpers/make_client.php.txt ./
       mv -f make_client.php.txt make_client.php &> /dev/null
       if [ "${_THIS_DB_HOST}" = "localhost" ]; then
@@ -4787,6 +4789,8 @@ satellite_child_b_aegir_ui_enhance() {
         mv -f make_home.php.txt make_home.php &> /dev/null
         ${_DRUSHCMD} php-script make_home &> /dev/null
         rm -f make_home.php
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE field_data_body \
+          SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
       fi
     fi
   fi
