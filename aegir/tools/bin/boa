@@ -471,7 +471,7 @@ octopus_install() {
       fi
     fi
 
-    if [ "${cmmand}" = "in-head" ]; then
+    if [ "${cmmand}" = "in-head" ] || [ "${copt}" = "head" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${filIncO}
       wait
     elif [ "${cmmand}" = "in-cluster" ]; then
