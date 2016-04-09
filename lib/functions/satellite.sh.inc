@@ -4717,8 +4717,10 @@ satellite_child_b_aegir_ui_enhance() {
       WHERE link_path='hosting/platforms'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \
       WHERE link_path='hosting/sites'" &> /dev/null
-    if [ ! -e "/root/.debug-boa-installer.cnf" ]; then
+    if [ ! -e "/root/.debug-hosting-custom-settings.cnf" ]; then
       ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
       ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
     fi
     ${_DRUSHCMD} @hostmaster cc all &> /dev/null
@@ -4758,7 +4760,9 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
       VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),\
       (1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" &> /dev/null
-    if [ ! -e "/root/.debug-boa-installer.cnf" ]; then
+    if [ ! -e "/root/.debug-hosting-custom-settings.cnf" ]; then
+      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
       ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
     fi
     ${_DRUSHCMD} @hostmaster cc all &> /dev/null
