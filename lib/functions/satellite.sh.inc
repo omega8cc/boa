@@ -4780,7 +4780,7 @@ satellite_child_b_aegir_ui_enhance() {
       ${_DRUSHCMD} @hostmaster \
        urol "aegir account manager" --mail=${_CLIENT_EMAIL} &> /dev/null
     else
-      if [ "${_VMFAMILY}" = "VS" ]; then
+      if [ "${_VMFAMILY}" = "VS" ] || [ -e "/root/.debug-boa-installer.cnf" ]; then
         pBy="Octopus System powered by Barracuda"
         ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
         cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./
