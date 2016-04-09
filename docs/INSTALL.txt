@@ -131,8 +131,10 @@
 
 ### Installing more Octopus instances
 
-It is now possible to add stable Octopus instances w/o forcing Barracuda
-upgrade, plus optionally with no platforms added by default -- usage:
+It is now possible to add stable, head or legacy 2.4 Octopus instances w/o
+forcing Barracuda upgrade, plus optionally with no platforms added by default:
 
-   $ boa {in-octopus} {email} {o2} {mini|max|none}
+   $ boa {in-octopus} {email} {o2} {mini|max|none} {stable|head|2.4}
+
+If {stable|head|2.4} is not specified, it will use current stable.
 

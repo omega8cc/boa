@@ -1004,8 +1004,8 @@ init_setup() {
     satellite_check_id ${user}
   fi
 
-  if [[ "${cmmand}" =~ "in-2." ]]; then
-    if [ "${cmmand}" = "in-2.4" ]; then
+  if [[ "${cmmand}" =~ "in-2." ]] || [ "${copt}" = "2.4" ]; then
+    if [ "${cmmand}" = "in-2.4" ] || [ "${copt}" = "2.4" ]; then
       branch="2.4.x-dev"
     elif [ "${cmmand}" = "in-2.3" ]; then
       branch="2.3.x-dev"
@@ -1041,10 +1041,17 @@ init_setup() {
     curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
     curl ${crlGet} "${rgUrl}/${stbl}/${pthIncO}"    -o ${vBs}/${filIncO}
   elif [ "${cmmand}" = "in-octopus" ]; then
-    curl ${crlGet} "${rgUrl}/${stbl}/${barName}"    -o ${vBs}/${barName}
-    curl ${crlGet} "${rgUrl}/${stbl}/${octName}"    -o ${vBs}/${octName}
-    curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
-    curl ${crlGet} "${rgUrl}/${stbl}/${pthIncO}"    -o ${vBs}/${filIncO}
+    if [ "${copt}" = "head" ]; then
+      octb="${master}"
+    elif [ "${copt}" = "2.4" ]; then
+      octb="${lgcC}"
+    else
+      octb="${stbl}"
+    fi
+    curl ${crlGet} "${rgUrl}/${octb}/${barName}"    -o ${vBs}/${barName}
+    curl ${crlGet} "${rgUrl}/${octb}/${octName}"    -o ${vBs}/${octName}
+    curl ${crlGet} "${rgUrl}/${octb}/${pthIncB}"    -o ${vBs}/${filIncB}
+    curl ${crlGet} "${rgUrl}/${octb}/${pthIncO}"    -o ${vBs}/${filIncO}
   elif [ "${cmmand}" = "in-2.4" ]; then
     curl ${crlGet} "${rgUrl}/${lgcC}/${barName}"    -o ${vBs}/${barName}
     curl ${crlGet} "${rgUrl}/${lgcC}/${octName}"    -o ${vBs}/${octName}
@@ -1458,7 +1465,7 @@ case "$1" in
       in-2.4 <------- install old stable 2.4 (for testing only)
       in-2.3 <------- install old stable 2.3 (for testing only)
       in-2.2 <------- install old stable 2.2 (for testing only)
-      in-octopus <--- install extra Octopus instance (stable: ${stbl})
+      in-octopus <--- install extra Octopus instance (stable: ${stbl}, head or legacy 2.4)
 
   {mode}
       public <------- recommended for general use
