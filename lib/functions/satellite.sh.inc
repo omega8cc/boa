@@ -4718,13 +4718,22 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \
       WHERE link_path='hosting/sites'" &> /dev/null
     if [ ! -e "/root/.debug-hosting-custom-settings.cnf" ]; then
-      ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y &> /dev/null
-      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
-      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
-      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster cc all
+        ${_DRUSHCMD} @hostmaster updb -y
+      else
+        ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster cc all &> /dev/null
+        ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
+      fi
     fi
-    ${_DRUSHCMD} @hostmaster cc all &> /dev/null
-    ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
     if [ "$_LOCAL_STATUS" = "INIT" ]; then
       pBy="Octopus System powered by Barracuda"
       ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
@@ -4760,12 +4769,21 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
       VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),\
       (1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" &> /dev/null
-    if [ ! -e "/root/.debug-hosting-custom-settings.cnf" ]; then
-      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
-      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
-      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      if [ ! -e "/root/.debug-hosting-custom-settings.cnf" ]; then
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+      fi
+      ${_DRUSHCMD} @hostmaster cc all
+    else
+       if [ ! -e "/root/.debug-hosting-custom-settings.cnf" ]; then
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+      fi
+      ${_DRUSHCMD} @hostmaster cc all &> /dev/null
     fi
-    ${_DRUSHCMD} @hostmaster cc all &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
       SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "UPDATE menu_links \
