@@ -4713,8 +4713,10 @@ satellite_child_b_aegir_ui_enhance() {
       WHERE link_path='hosting/platforms'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \
       WHERE link_path='hosting/sites'" &> /dev/null
-    ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y &> /dev/null
-    ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+    if [ ! -e "/root/.debug-boa-installer.cnf" ]; then
+      ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+    fi
     ${_DRUSHCMD} @hostmaster cc all &> /dev/null
     ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
     if [ "$_LOCAL_STATUS" = "INIT" ]; then
@@ -4752,7 +4754,9 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
       VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),\
       (1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" &> /dev/null
-    ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+    if [ ! -e "/root/.debug-boa-installer.cnf" ]; then
+      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+    fi
     ${_DRUSHCMD} @hostmaster cc all &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
       SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
