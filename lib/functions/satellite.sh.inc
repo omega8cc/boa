@@ -4719,6 +4719,8 @@ satellite_child_b_aegir_ui_enhance() {
       WHERE link_path='hosting/sites'" &> /dev/null
     if [ ! -e "/root/.debug-hosting-custom-settings.cnf" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
+        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"
+        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"
         ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
         ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
         ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
@@ -4726,6 +4728,8 @@ satellite_child_b_aegir_ui_enhance() {
         ${_DRUSHCMD} @hostmaster cc all
         ${_DRUSHCMD} @hostmaster updb -y
       else
+        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format" &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter" &> /dev/null
         ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y &> /dev/null
         ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
         ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
@@ -4765,7 +4769,7 @@ satellite_child_b_aegir_ui_enhance() {
       ${_DRUSHCMD} php-script make_home &> /dev/null
       rm -f make_home.php
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE field_data_body \
-      SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
+        SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
       cp -af /opt/tmp/boa/aegir/helpers/make_client.php.txt ./
       mv -f make_client.php.txt make_client.php &> /dev/null
       if [ "${_THIS_DB_HOST}" = "localhost" ]; then
