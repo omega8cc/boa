@@ -1064,6 +1064,10 @@ init_setup() {
     curl ${crlGet} "${rgUrl}/${lgcA}/${barName}"    -o ${vBs}/${barName}
     curl ${crlGet} "${rgUrl}/${lgcA}/${octName}"    -o ${vBs}/${octName}
   fi
+  if [ -e "/root/.debug-boa-installer.cnf" ]; then
+    sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncB}
+    sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncO}
+  fi
   if [ "${cmmand}" = "in-octopus" ]; then
     _OCTOPUS_ONLY=YES
   else
