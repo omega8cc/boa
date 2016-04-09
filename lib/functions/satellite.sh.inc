@@ -4795,7 +4795,7 @@ satellite_child_b_aegir_ui_enhance() {
         rm -f make_home.php
       fi
       ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM field_data_body \
-        WHERE body_format='NULL' AND entity_type='node'" &> /dev/null
+        WHERE body_format IS NULL" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE field_data_body \
         SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
     fi
