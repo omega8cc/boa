@@ -4717,7 +4717,7 @@ satellite_child_b_aegir_ui_enhance() {
       WHERE link_path='hosting/platforms'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \
       WHERE link_path='hosting/sites'" &> /dev/null
-    if [ ! -e "/root/.debug-hosting-custom-settings.cnf" ]; then
+    if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"
         ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"
@@ -4742,14 +4742,14 @@ satellite_child_b_aegir_ui_enhance() {
       VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),\
       (1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" &> /dev/null
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      if [ ! -e "/root/.debug-hosting-custom-settings.cnf" ]; then
+      if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
         ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
         ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
         ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
       fi
       ${_DRUSHCMD} @hostmaster cc all
     else
-       if [ ! -e "/root/.debug-hosting-custom-settings.cnf" ]; then
+       if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
         ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
         ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
         ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
@@ -4786,16 +4786,18 @@ satellite_child_b_aegir_ui_enhance() {
       ${_DRUSHCMD} @hostmaster \
        urol "aegir account manager" --mail=${_CLIENT_EMAIL} &> /dev/null
     else
-      if [ "${_VMFAMILY}" = "VS" ] || [ -e "/root/.debug-boa-installer.cnf" ]; then
+      if [ "${_VMFAMILY}" = "VS" ]; then
         pBy="Octopus System powered by Barracuda"
         ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
         cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./
         mv -f make_home.php.txt make_home.php &> /dev/null
         ${_DRUSHCMD} php-script make_home &> /dev/null
         rm -f make_home.php
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE field_data_body \
-          SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
       fi
+      ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM field_data_body \
+        WHERE body_format='NULL' AND entity_type='node'" &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE field_data_body \
+        SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
     fi
   fi
 }

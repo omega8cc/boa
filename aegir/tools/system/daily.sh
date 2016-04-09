@@ -2571,7 +2571,7 @@ action() {
             --always-set hosting_ignore_default_profiles 0"
           run_drush8_hmr_cmd "vset \
             --always-set hosting_queue_tasks_items 1"
-          if [ ! -e "/root/.debug-hosting-custom-settings.cnf" ]; then
+          if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
             run_drush8_hmr_cmd "fr hosting_custom_settings -y"
           fi
           run_drush8_hmr_cmd "cc all"
