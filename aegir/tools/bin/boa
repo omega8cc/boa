@@ -415,7 +415,7 @@ octopus_install() {
       fi
     fi
 
-    if [ "${cmmand}" = "in-head" ]; then
+    if [ "${cmmand}" = "in-head" ] || [ "${copt}" = "head" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncO}
       wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncO}
@@ -454,7 +454,7 @@ octopus_install() {
         wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcB}/g"         ${vBs}/${octName}
         wait
-      elif [ "${cmmand}" = "in-2.4" ]; then
+      elif [ "${cmmand}" = "in-2.4" ] || [ "${copt}" = "2.4" ]; then
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${filIncO}
         wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${filIncO}
