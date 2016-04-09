@@ -4734,6 +4734,28 @@ satellite_child_b_aegir_ui_enhance() {
         ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
       fi
     fi
+    ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
+      VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),\
+      (1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" &> /dev/null
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      if [ ! -e "/root/.debug-hosting-custom-settings.cnf" ]; then
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+      fi
+      ${_DRUSHCMD} @hostmaster cc all
+    else
+       if [ ! -e "/root/.debug-hosting-custom-settings.cnf" ]; then
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+      fi
+      ${_DRUSHCMD} @hostmaster cc all &> /dev/null
+    fi
+    ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
+      SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
+    ${_DRUSHCMD} @hostmaster sqlq "UPDATE menu_links \
+      SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'" &> /dev/null
     if [ "$_LOCAL_STATUS" = "INIT" ]; then
       pBy="Octopus System powered by Barracuda"
       ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
@@ -4757,37 +4779,16 @@ satellite_child_b_aegir_ui_enhance() {
         urol "admin" --mail=${_CLIENT_EMAIL} &> /dev/null
       ${_DRUSHCMD} @hostmaster \
        urol "aegir account manager" --mail=${_CLIENT_EMAIL} &> /dev/null
-    fi
-    if [ "${_VMFAMILY}" = "VS" ]; then
-      pBy="Octopus System powered by Barracuda"
-      ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
-      cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./
-      mv -f make_home.php.txt make_home.php &> /dev/null
-      ${_DRUSHCMD} php-script make_home &> /dev/null
-      rm -f make_home.php
-    fi
-    ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
-      VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),\
-      (1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" &> /dev/null
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      if [ ! -e "/root/.debug-hosting-custom-settings.cnf" ]; then
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-      fi
-      ${_DRUSHCMD} @hostmaster cc all
     else
-       if [ ! -e "/root/.debug-hosting-custom-settings.cnf" ]; then
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+      if [ "${_VMFAMILY}" = "VS" ]; then
+        pBy="Octopus System powered by Barracuda"
+        ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
+        cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./
+        mv -f make_home.php.txt make_home.php &> /dev/null
+        ${_DRUSHCMD} php-script make_home &> /dev/null
+        rm -f make_home.php
       fi
-      ${_DRUSHCMD} @hostmaster cc all &> /dev/null
     fi
-    ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-      SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
-    ${_DRUSHCMD} @hostmaster sqlq "UPDATE menu_links \
-      SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'" &> /dev/null
   fi
 }
 
