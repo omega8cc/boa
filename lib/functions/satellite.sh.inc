@@ -2080,7 +2080,8 @@ satellite_run_pre_install() {
 # Download for Drush Make Local build.
 satellite_download_for_local_build() {
   mL="/opt/tmp/make_local"
-  if [ ! -e "${mL}/hosting/hosting.info" ]; then
+  if [ ! -e "${mL}/hosting/hosting.info" ] \
+    || [ ! -e "${mL}/hosting_custom_settings/hosting_custom_settings.info" ]; then
     rm -f -r ${mL}
     mkdir -p ${mL}
     cd ${mL}
