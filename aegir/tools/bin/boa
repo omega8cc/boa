@@ -10,8 +10,8 @@ lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
 master="master"
-nextv="BOA-3.0.0-dev"
-stbl="BOA-3.0.0"
+nextv="BOA-3.1.0-dev"
+stbl="BOA-3.0.1"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -403,7 +403,7 @@ octopus_install() {
       fi
     fi
 
-    if [ "${cmmand}" = "in-head" ]; then
+    if [ "${cmmand}" = "in-head" ] || [ "${copt}" = "head" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncO}
       wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncO}
@@ -442,24 +442,24 @@ octopus_install() {
         wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcB}/g"         ${vBs}/${octName}
         wait
-      elif [ "${cmmand}" = "in-2.4" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${octName}
+      elif [ "${cmmand}" = "in-2.4" ] || [ "${copt}" = "2.4" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${filIncO}
         wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${octName}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${filIncO}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${octName}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${filIncO}
         wait
       else
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${octName}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncO}
         wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${octName}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${filIncO}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${octName}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncO}
         wait
       fi
     fi
 
-    if [ "${cmmand}" = "in-head" ]; then
+    if [ "${cmmand}" = "in-head" ] || [ "${copt}" = "head" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${filIncO}
       wait
     elif [ "${cmmand}" = "in-cluster" ]; then
@@ -840,18 +840,18 @@ barracuda_install() {
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcB}/g"         ${vBs}/${barName}
         wait
       elif [ "${cmmand}" = "in-2.4" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${barName}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${barName}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${barName}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${filIncB}
         wait
       else
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${barName}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${barName}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${barName}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncB}
         wait
       fi
     fi
@@ -992,8 +992,8 @@ init_setup() {
     satellite_check_id ${user}
   fi
 
-  if [[ "${cmmand}" =~ "in-2." ]]; then
-    if [ "${cmmand}" = "in-2.4" ]; then
+  if [[ "${cmmand}" =~ "in-2." ]] || [ "${copt}" = "2.4" ]; then
+    if [ "${cmmand}" = "in-2.4" ] || [ "${copt}" = "2.4" ]; then
       branch="2.4.x-dev"
     elif [ "${cmmand}" = "in-2.3" ]; then
       branch="2.3.x-dev"
@@ -1029,10 +1029,17 @@ init_setup() {
     curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
     curl ${crlGet} "${rgUrl}/${stbl}/${pthIncO}"    -o ${vBs}/${filIncO}
   elif [ "${cmmand}" = "in-octopus" ]; then
-    curl ${crlGet} "${rgUrl}/${stbl}/${barName}"    -o ${vBs}/${barName}
-    curl ${crlGet} "${rgUrl}/${stbl}/${octName}"    -o ${vBs}/${octName}
-    curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
-    curl ${crlGet} "${rgUrl}/${stbl}/${pthIncO}"    -o ${vBs}/${filIncO}
+    if [ "${copt}" = "head" ]; then
+      octb="${master}"
+    elif [ "${copt}" = "2.4" ]; then
+      octb="${lgcC}"
+    else
+      octb="${stbl}"
+    fi
+    curl ${crlGet} "${rgUrl}/${octb}/${barName}"    -o ${vBs}/${barName}
+    curl ${crlGet} "${rgUrl}/${octb}/${octName}"    -o ${vBs}/${octName}
+    curl ${crlGet} "${rgUrl}/${octb}/${pthIncB}"    -o ${vBs}/${filIncB}
+    curl ${crlGet} "${rgUrl}/${octb}/${pthIncO}"    -o ${vBs}/${filIncO}
   elif [ "${cmmand}" = "in-2.4" ]; then
     curl ${crlGet} "${rgUrl}/${lgcC}/${barName}"    -o ${vBs}/${barName}
     curl ${crlGet} "${rgUrl}/${lgcC}/${octName}"    -o ${vBs}/${octName}
@@ -1044,6 +1051,10 @@ init_setup() {
   elif [ "${cmmand}" = "in-2.2" ]; then
     curl ${crlGet} "${rgUrl}/${lgcA}/${barName}"    -o ${vBs}/${barName}
     curl ${crlGet} "${rgUrl}/${lgcA}/${octName}"    -o ${vBs}/${octName}
+  fi
+  if [ -e "/root/.debug-boa-installer.cnf" ]; then
+    sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncB}
+    sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncO}
   fi
   if [ "${cmmand}" = "in-octopus" ]; then
     _OCTOPUS_ONLY=YES
@@ -1090,7 +1101,6 @@ find_fast_mirror() {
   fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
-  urlStb="http://${_USE_MIR}/versions/stable"
 }
 
 check_dns_curl() {
@@ -1447,7 +1457,7 @@ case "$1" in
       in-2.4 <------- install old stable 2.4 (for testing only)
       in-2.3 <------- install old stable 2.3 (for testing only)
       in-2.2 <------- install old stable 2.2 (for testing only)
-      in-octopus <--- install extra Octopus instance (stable: ${stbl})
+      in-octopus <--- install extra Octopus instance (stable: ${stbl}, head or legacy 2.4)
 
   {mode}
       public <------- recommended for general use

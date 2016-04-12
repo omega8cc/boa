@@ -10,6 +10,8 @@
   $node->title = 'Octopus' . $number;
   $node->language = LANGUAGE_NONE;
   $node->status = 1;
+  node_object_prepare($node);
+  $node = node_submit($node);
   node_save($node);
   $this_client_id = $node->nid;
   variable_set('hosting_default_client', $node->nid);
