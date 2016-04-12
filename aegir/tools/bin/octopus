@@ -351,16 +351,16 @@ satellite_check_switch_php() {
         fi
       else
         if [[ ! "${_SERIES_TEST}" =~ "${lgcC}" ]]; then
-#           cmmand="up-2.4"
-#           mcmode="${orgMcmode}"
-#           echo
-#           echo "This Aegir Instance ${octUsr} can not be upgraded"
-#           echo "via '$(basename "$0") ${orgCmmand}' mode"
-#           echo "We will run legacy upgrade to ${lgcC} instead"
-#           echo "Once the upgrade to ${lgcC} is complete, you will be able"
-#           echo "to use the '$(basename "$0") ${orgCmmand}' upgrade mode"
-#           echo "Please wait..."
-#           echo
+          cmmand="up-2.4"
+          mcmode="${orgMcmode}"
+          echo
+          echo "This Aegir Instance ${octUsr} can not be upgraded"
+          echo "via '$(basename "$0") ${orgCmmand}' mode"
+          echo "We will run legacy upgrade to ${lgcC} instead"
+          echo "Once the upgrade to ${lgcC} is complete, you will be able"
+          echo "to use the '$(basename "$0") ${orgCmmand}' upgrade mode"
+          echo "Please wait..."
+          echo
           sleep 5
         fi
       fi
@@ -438,7 +438,7 @@ up_one() {
     if [ -e "${vBs}/${filIncO}" ]; then
       cp -af ${vBs}/${filIncO}  ${vBs}/${tocIncO}
     fi
-    satellite_check_switch_php
+    ### satellite_check_switch_php
     if [ "${cmmand}" = "up-head" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${tocIncO}
       wait
