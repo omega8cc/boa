@@ -327,6 +327,24 @@ up_mode() {
   fi
 }
 
+satellite_check_up_php() {
+  if [ "${cmmand}" = "up-head" ] || [ "${cmmand}" = "up-stable" ]; then
+    if [ -e "${User}/log/octopus_log.txt" ]; then
+      _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
+      if [[ "${_SERIES_TEST}" =~ "BOA-3.0.0" ]]; then
+        if [ -x "/opt/php56/bin/php" ]; then
+          echo 5.6 > ${User}/static/control/fpm.info
+          echo 5.6 > ${User}/static/control/cli.info
+        elif [ -x "/opt/php55/bin/php" ]; then
+          echo 5.5 > ${User}/static/control/fpm.info
+          echo 5.5 > ${User}/static/control/cli.info
+        fi
+      fi
+    fi
+  fi
+  _SERIES_TEST=
+}
+
 satellite_check_switch_php() {
   if [ "${cmmand}" = "up-head" ] || [ "${cmmand}" = "up-stable" ]; then
     if [ -e "${User}/log/octopus_log.txt" ]; then
@@ -430,6 +448,7 @@ satellite_check_switch_php() {
       switchCLIback=""
     fi
   fi
+  _SERIES_TEST=
 }
 
 up_one() {
@@ -438,6 +457,7 @@ up_one() {
     if [ -e "${vBs}/${filIncO}" ]; then
       cp -af ${vBs}/${filIncO}  ${vBs}/${tocIncO}
     fi
+    satellite_check_up_php
     ### satellite_check_switch_php
     if [ "${cmmand}" = "up-head" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${tocIncO}
