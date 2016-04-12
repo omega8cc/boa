@@ -329,6 +329,9 @@ up_mode() {
 
 satellite_check_up_php() {
   if [ "${cmmand}" = "up-head" ] || [ "${cmmand}" = "up-stable" ]; then
+    fmodey=
+    _SERIES_TEST=
+    mcmode="${orgMcmode}"
     if [ -e "${User}/log/octopus_log.txt" ]; then
       _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
       if [[ "${_SERIES_TEST}" =~ "BOA-3.0.0" ]]; then
@@ -338,6 +341,21 @@ satellite_check_up_php() {
         elif [ -x "/opt/php55/bin/php" ]; then
           echo 5.5 > ${User}/static/control/fpm.info
           echo 5.5 > ${User}/static/control/cli.info
+        fi
+      fi
+      if [[ "${_SERIES_TEST}" =~ "BOA-3.0.1" ]]; then
+        if [ "${orgMcmode}" != "force" ]; then
+          mcmode=
+          fmodey=force
+          if [ ! -e "/root/.silent-octopus-upgrade.cnf" ]; then
+            echo
+            echo "This Aegir Instance ${octUsr} is already up to date!"
+            echo "If you wish to run/force the upgrade again,"
+            echo "please use the forced upgrade mode, as shown below"
+            echo
+            echo "Usage: $(basename "$0") ${orgCmmand} ${second} force"
+            echo
+          fi
         fi
       fi
     fi
