@@ -31,7 +31,7 @@ check_root() {
 check_root
 
 _WEBG=www-data
-_X_SE="3.0.0-stable"
+_X_SE="3.0.1-stable"
 _OSV=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
@@ -79,7 +79,6 @@ find_fast_mirror() {
   fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
-  urlStb="http://${_USE_MIR}/versions/stable"
 }
 
 extract_archive() {
@@ -2572,7 +2571,9 @@ action() {
             --always-set hosting_ignore_default_profiles 0"
           run_drush8_hmr_cmd "vset \
             --always-set hosting_queue_tasks_items 1"
-          run_drush8_hmr_cmd "fr hosting_custom_settings -y"
+          if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
+            run_drush8_hmr_cmd "fr hosting_custom_settings -y"
+          fi
           run_drush8_hmr_cmd "cc all"
           if [ -e "${User}/log/imported.pid" ] \
             || [ -e "${User}/log/exported.pid" ]; then

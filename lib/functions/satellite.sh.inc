@@ -1148,7 +1148,7 @@ satellite_child_b_update_ini_php_cli() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.300stableU.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.301stableU.txt" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1207,7 +1207,7 @@ satellite_child_b_update_ini_php_cli() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.300stableU.txt
+      echo > ${_U_HD}/.ctrl.301stableU.txt
     fi
   fi
 }
@@ -1278,6 +1278,9 @@ satellite_o_contrib_update_global() {
     elif [ -e "${_D}/$i/o_contrib" ] \
       && [ ! -L "${_D}/$i/o_contrib/redis" ]; then
       _FORCE_UP_SIX=YES
+    elif [ -e "${_D}/$i/o_contrib" ] \
+      && [ ! -d "${_D}/$i/o_contrib/mydropwizard" ]; then
+      _FORCE_UP_SIX=YES
     else
       _FORCE_UP_SIX=NO
     fi
@@ -1308,6 +1311,9 @@ satellite_o_contrib_update_global() {
       fi
       if [ ! -d "${_D}/$i/o_contrib/js" ]; then
         get_dev_contrib "js-6.x-1.3.tar.gz"
+      fi
+      if [ ! -d "${_D}/$i/o_contrib/mydropwizard" ]; then
+        get_dev_contrib "mydropwizard-6.x-1.4.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib/panels_content_cache" ]; then
         get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
@@ -1611,7 +1617,7 @@ satellite_download_o_contrib_six() {
   get_dev_contrib "image-6.x-1.2.tar.gz"
   get_dev_contrib "js-6.x-1.3.tar.gz"
   get_dev_contrib "login_security-6.x-1.4.tar.gz"
-  get_dev_contrib "mydropwizard-6.x-1.3.tar.gz"
+  get_dev_contrib "mydropwizard-6.x-1.4.tar.gz"
   get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
   get_dev_contrib "phpass-6.x-2.1.tar.gz"
   get_dev_contrib "print-6.x-1.19.tar.gz"
@@ -2074,7 +2080,8 @@ satellite_run_pre_install() {
 # Download for Drush Make Local build.
 satellite_download_for_local_build() {
   mL="/opt/tmp/make_local"
-  if [ ! -e "${mL}/hosting/hosting.info" ]; then
+  if [ ! -e "${mL}/hosting/hosting.info" ] \
+    || [ ! -e "${mL}/hosting_custom_settings/hosting_custom_settings.info" ]; then
     rm -f -r ${mL}
     mkdir -p ${mL}
     cd ${mL}
@@ -3331,7 +3338,7 @@ satellite_make() {
     echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
   fi
 
-  if [ ! -e "${_ROOT}/static/control/.ctrl.300stableU.txt" ] \
+  if [ ! -e "${_ROOT}/static/control/.ctrl.301stableU.txt" ] \
     || [ ! -e "${_ROOT}/static/control/README.txt" ]; then
     mkdir -p ${_ROOT}/static/control
     chmod 755 ${_ROOT}/static/control
@@ -3343,7 +3350,7 @@ satellite_make() {
     chown -R ${_USER}.ftp:${_USRG} \
       ${_ROOT}/static/control &> /dev/null
     rm -f ${_ROOT}/static/control/.ctrl.*
-    echo OK > ${_ROOT}/static/control/.ctrl.300stableU.txt
+    echo OK > ${_ROOT}/static/control/.ctrl.301stableU.txt
   fi
 
   if [ -d "/data/all/000" ]; then
@@ -3583,12 +3590,13 @@ satellite_check_octopus_versus_barracuda_version() {
   fi
   if [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
-    if [[ "${_SERIES_TEST}" =~ "BOA-2.4.9" ]]; then
+    if [[ "${_SERIES_TEST}" =~ "BOA-2.4.9" ]] \
+      || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
       _VERSIONS_TEST_RESULT=OK
     else
       msg "ERROR: This octopus installer can be used only when the instance"
       msg "has been already upgraded to previous stable BOA-2.4.9 version"
-      msg "Please run 'octopus up-2.4 ${_USER} aegir' upgrade first"
+      msg "Please run 'octopus up-2.4 ${_USER} aegir' legacy upgrade first"
       msg "Bye"
       clean_pid_exit
     fi
@@ -4203,7 +4211,7 @@ satellite_child_b_drush_xts_install() {
   else
     msg "${_STATUS} B: Downloading Drush and Provision extensions..."
     cd ${_ROOT}/.drush/sys
-    curl ${crlGet} "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
+    get_dev_ext "provision.tar.gz"
     cd ${_ROOT}/.drush/usr
     get_dev_ext "clean_missing_modules.tar.gz"
     get_dev_ext "drupalgeddon.tar.gz"
@@ -4266,27 +4274,27 @@ satellite_child_b_aegir_build() {
     rm -f -r ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} hostmaster-install ${_DOMAIN} \
-        --aegir_host=${_USE_AEGIR_HOST} \
-        --aegir_db_user=${_USE_DB_USER} \
-        --aegir_db_pass=${_AGRPASWD} \
-        --aegir_root=${_ROOT} \
-        --root=${_HM_ROOT} \
-        --http_service_type=nginx \
         --aegir_db_host=${_THIS_DB_HOST} \
+        --aegir_db_pass=${_AGRPASWD} \
+        --aegir_db_user=${_USE_DB_USER} \
+        --aegir_host=${_USE_AEGIR_HOST} \
+        --aegir_root=${_ROOT} \
         --client_email=${_MY_EMAIL} \
+        --http_service_type=nginx \
+        --root=${_HM_ROOT} \
         --script_user=${_USER} \
         --web_group=${_WEBG} \
         --version=${_AEGIR_VERSION} -y -d
     else
       ${_DRUSHCMD} hostmaster-install ${_DOMAIN} \
-        --aegir_host=${_USE_AEGIR_HOST} \
-        --aegir_db_user=${_USE_DB_USER} \
-        --aegir_db_pass=${_AGRPASWD} \
-        --aegir_root=${_ROOT} \
-        --root=${_HM_ROOT} \
-        --http_service_type=nginx \
         --aegir_db_host=${_THIS_DB_HOST} \
+        --aegir_db_pass=${_AGRPASWD} \
+        --aegir_db_user=${_USE_DB_USER} \
+        --aegir_host=${_USE_AEGIR_HOST} \
+        --aegir_root=${_ROOT} \
         --client_email=${_MY_EMAIL} \
+        --http_service_type=nginx \
+        --root=${_HM_ROOT} \
         --script_user=${_USER} \
         --web_group=${_WEBG} \
         --version=${_AEGIR_VERSION} -y >${_ROOT}/log/install.log 2>&1
@@ -4415,11 +4423,13 @@ satellite_child_b_aegir_build() {
     if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y
+        ${_DRUSHCMD} @hostmaster pm-uninstall aegir_custom_settings -y
         ${_DRUSHCMD} @hostmaster dis hosting_advanced_cron -y
         ${_DRUSHCMD} @hostmaster en ctools -y
         ${_DRUSHCMD} @hostmaster registry-rebuild
       else
         ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster pm-uninstall aegir_custom_settings -y &> /dev/null
         ${_DRUSHCMD} @hostmaster dis hosting_advanced_cron -y &> /dev/null
         ${_DRUSHCMD} @hostmaster en ctools -y &> /dev/null
         ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
@@ -4427,9 +4437,11 @@ satellite_child_b_aegir_build() {
     else
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y
         ${_DRUSHCMD} @hostmaster registry-rebuild
       else
         ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y &> /dev/null
         ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
       fi
     fi
@@ -4706,10 +4718,49 @@ satellite_child_b_aegir_ui_enhance() {
       WHERE link_path='hosting/platforms'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \
       WHERE link_path='hosting/sites'" &> /dev/null
-    ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y &> /dev/null
-    ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
-    ${_DRUSHCMD} @hostmaster cc all &> /dev/null
-    ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
+    if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"
+        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"
+        ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster cc all
+        ${_DRUSHCMD} @hostmaster updb -y
+      else
+        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format" &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter" &> /dev/null
+        ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster cc all &> /dev/null
+        ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
+      fi
+    fi
+    ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
+      VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),\
+      (1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" &> /dev/null
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+      fi
+      ${_DRUSHCMD} @hostmaster cc all
+    else
+       if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+      fi
+      ${_DRUSHCMD} @hostmaster cc all &> /dev/null
+    fi
+    ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
+      SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
+    ${_DRUSHCMD} @hostmaster sqlq "UPDATE menu_links \
+      SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'" &> /dev/null
     if [ "$_LOCAL_STATUS" = "INIT" ]; then
       pBy="Octopus System powered by Barracuda"
       ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
@@ -4718,6 +4769,8 @@ satellite_child_b_aegir_ui_enhance() {
       mv -f make_home.php.txt make_home.php &> /dev/null
       ${_DRUSHCMD} php-script make_home &> /dev/null
       rm -f make_home.php
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE field_data_body \
+        SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
       cp -af /opt/tmp/boa/aegir/helpers/make_client.php.txt ./
       mv -f make_client.php.txt make_client.php &> /dev/null
       if [ "${_THIS_DB_HOST}" = "localhost" ]; then
@@ -4733,24 +4786,20 @@ satellite_child_b_aegir_ui_enhance() {
         urol "admin" --mail=${_CLIENT_EMAIL} &> /dev/null
       ${_DRUSHCMD} @hostmaster \
        urol "aegir account manager" --mail=${_CLIENT_EMAIL} &> /dev/null
+    else
+      if [ "${_VMFAMILY}" = "VS" ]; then
+        pBy="Octopus System powered by Barracuda"
+        ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
+        cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./
+        mv -f make_home.php.txt make_home.php &> /dev/null
+        ${_DRUSHCMD} php-script make_home &> /dev/null
+        rm -f make_home.php
+      fi
+      ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM field_data_body \
+        WHERE body_format IS NULL" &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE field_data_body \
+        SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
     fi
-    if [ "${_VMFAMILY}" = "VS" ]; then
-      pBy="Octopus System powered by Barracuda"
-      ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
-      cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./
-      mv -f make_home.php.txt make_home.php &> /dev/null
-      ${_DRUSHCMD} php-script make_home &> /dev/null
-      rm -f make_home.php
-    fi
-    ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
-      VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),\
-      (1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" &> /dev/null
-    ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
-    ${_DRUSHCMD} @hostmaster cc all &> /dev/null
-    ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-      SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
-    ${_DRUSHCMD} @hostmaster sqlq "UPDATE menu_links \
-      SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'" &> /dev/null
   fi
 }
 

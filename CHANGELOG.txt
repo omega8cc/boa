@@ -1,7 +1,88 @@
 
+### Stable BOA-3.0.1 Release - Full Edition
+### Date: Mon Apr 11 18:49:43 PDT 2016
+### Milestone URL: https://github.com/omega8cc/boa/milestones/3.0.1
+
+  @=> Includes Aegir Hostmaster 3.x-head with improvements
+  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Drush 8 customized for BOA
+
+# Release Notes:
+
+  This BOA release includes important fixes and improvements in the upgrade
+  procedure from BOA-2.4.9 and in the initial install procedures, along with
+  support for latest Drupal 8.0.x and 8.1.x as custom platforms you can create
+  in the ~/static directory tree. We list here also all hot-fixes applied
+  after initial BOA-3.0.1 release.
+
+  @=> BOA will not include built-in Drupal 8 platforms until Drupal 8 will
+      support symlinks in the codebase, like all previous core versions.
+
+  @=> Octopus Aegir instances hosted on Power Engine option will *not* receive
+      upgrade to BOA-3.x unless requested via https://omega8.cc/support
+      to prevent issues with (often) customized Hostmaster modules not ready
+      for Drupal 7 based Aegir control panel. All hosted BOA systems will still
+      continue to receive the Barracuda system upgrades.
+
+  @=> It is possible to host previous stable BOA-2.4.9 Octopus instances
+      on systems with Barracuda upgraded to BOA-3.0.1
+
+# Known problems:
+
+  https://github.com/omega8cc/boa/milestones/3.0.2
+
+# New features and enhancements:
+
+  * Allow boa in-octopus to specify version {stable|head|2.4}
+
+# Changes:
+
+  * Allow to execute compass over SSH
+  * Allow to upload dot-files via SFTP
+  * Remove/don't install not used blocks in Hostmaster
+
+# System upgrades:
+
+  * Add mydropwizard-6.x-1.4 to all existing D6 platforms
+  * Drush micro-8-08-04-2016
+  * Lshell 0.9.18.3 -- #895
+  * Nginx 1.9.14
+  * PHP 5.5.34
+  * PHP 5.6.20
+  * PHP 7.0.5 (for testing only)
+  * Redis module 7.x-3.12
+
+# Fixes:
+
+  * 3.0.0 clean install is broken -- #899
+  * boa in-2.4 fails to install on Debian Jessie -- #898
+  * Can't git pull -- #890
+  * CiviCRM error on verification D6 site -- #897
+  * D7 API compatibility fix for node_save() in Hostmaster
+  * Do not switch default PHP to 7.0 if installed
+  * Drush issues: no aliases available -- #887
+  * Fix for 3.x to 3.x upgrades
+  * Fix for FPM master proc monitor
+  * Fix for input filters upgrade path
+  * Fix for series test to avoid downgrade attempts
+  * Fix the legacy install mode -- #898
+  * Less and more no longer allowed -- #896
+  * Limit the list of allowed_shell_escape commands
+  * Missing VBO options -- #892
+  * Overlay header title not showing -- #889
+  * Problems installing rvm / compass -- #895
+  * Remove deprecated sftp restriction
+  * Require BOA-2.4.9 before upgrade to BOA-3.x also in barracuda -- #886
+  * Switch octopus upgrade mode automatically to legacy if needed
+  * tar and gunzip fails because of permission denied -- #894
+  * Use Drush 8 on command line -- #887
+  * vi and vim both open nano instead of vim -- #893
+
+
 ### Stable BOA-3.0.0 Release - Full Edition
 ### Date: Wed Mar 30 10:48:54 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.0.0
+### Latest hotfix added on: Wed Apr  6 17:40:12 PDT 2016
 
   @=> Includes Aegir Hostmaster 3.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -26,6 +107,25 @@
 
   @=> It is possible to host previous stable BOA-2.4.9 Octopus instances
       on systems with Barracuda upgraded to BOA-3.0.0
+
+# Known problems:
+
+  https://github.com/omega8cc/boa/milestones/3.0.1
+
+  While clean 3.0.0 install worked in our tests before the release, it doesn't
+  work for others. Until this problem is fixed properly without regressions,
+  we are switching boa installer back to 2.4.9, which makes getting 3.0.0
+  on initial installation a two step operation: first 'boa in-stable' install
+  to get 2.4.9, and then 'barracuda up-stable' plus 'octopus up-stable' upgrade
+  to get 3.0.0, because upgrades for barracuda and octopus from 2.4.9 to 3.0.0
+  work fine.
+
+  This also means that 'boa in-octopus' will still install the legacy 2.4.9
+  octopus extra instances, and you can upgrade them to 3.0.0 with standard
+  'octopus up-stable' mode.
+
+  It is still possible to test/debug boa 3.0.0 clean installs -- just create
+  an empty /root/.debug-boa-installer.cnf file before running the installer.
 
 # New features and enhancements:
 
@@ -55,24 +155,35 @@
   * CSF 8.16
   * Drush mini-8-08-03-2016
   * Duplicity 0.7.06 (please run 'backboa install' to upgrade)
-  * Lshell 0.9.18.2
+  * Lshell 0.9.18.3
   * MongoDB database driver 1.6.13 for all PHP versions < 7 -- fixes #521
-  * Nginx 1.9.13
+  * Nginx 1.9.14
   * OpenSSH 7.2p2 (if installed from sources)
   * OpenSSL 1.0.2g (used only in custom built Nginx)
-  * PHP 5.5.33
-  * PHP 5.6.19
-  * PHP 7.0.4 (for testing only)
+  * PHP 5.5.34
+  * PHP 5.6.20
+  * PHP 7.0.5 (for testing only)
   * Twig C extension for PHP - v.1.24.0
   * Use PHP jsmin 2.0.1 ext with newer PHP versions - fixes #878
 
 # Fixes:
 
   * [system] sync fix_locales for root -- fixes #880
+  * Add mydropwizard-6.x-1.4 to all existing D6 platforms
+  * Auto-Update lshell.conf on all systems
+  * Fix for 3.x to 3.x upgrades
   * Fix for entitycache 1.2 to 1.5 upgrade problem #868
+  * Fix for FPM master proc monitor
+  * Fix for series test to avoid downgrade attempts
+  * Numerous lshell problems -- fixes #896 #895 #894 #893 #890
+  * Problems installing rvm / compass -- fixes #895
+  * Require 2.4.9 before upgrade to 3.0.0 also in barracuda -- fixes #886
   * Restart rsyslog/sysklogd aggressively enough
+  * Switch boa meta installer to 2.4.9 until #899 is fixed
+  * Switch octopus upgrade mode automatically to legacy if needed
   * Sync max_user_connections
   * Update map $http_user_agent $is_crawler
+  * Use Drush 7 on command line until #887 is fixed
 
 
 ### Stable BOA-2.4.9 Release - Full Edition
