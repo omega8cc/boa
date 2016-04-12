@@ -209,7 +209,8 @@ hostmaster_frontend_dbpass_sync() {
 # Download for Drush Make Local build.
 master_download_for_local_build() {
   mL="/opt/tmp/make_local"
-  if [ ! -e "${mL}/hosting/hosting.info" ]; then
+  if [ ! -e "${mL}/hosting/hosting.info" ] \
+    || [ ! -e "${mL}/hosting_custom_settings/hosting_custom_settings.info" ]; then
     rm -f -r ${mL}
     mkdir -p ${mL}
     cd ${mL}
@@ -842,7 +843,7 @@ update_php_cli_local_ini() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.300stableU.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.301stableU.txt" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -902,7 +903,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.300stableU.txt
+      echo > ${_U_HD}/.ctrl.301stableU.txt
     fi
   fi
 }

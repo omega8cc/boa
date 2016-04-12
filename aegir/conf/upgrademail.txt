@@ -4,19 +4,23 @@ Your Aegir Hosting System has been upgraded to version boa.version
 
   https://aegir.url.name
 
-This BOA release includes complete Aegir 3 with Drush 8, and introduces
-full support for latest Drupal 8.0.5 and Drupal 8.1.0-beta2 as custom
-platforms you can create in the ~/static directory tree.
+This BOA release includes important fixes and improvements in the upgrade
+procedure from BOA-2.4.9 and in the initial install procedures, along with
+support for latest Drupal 8.0.x and 8.1.x as custom platforms you can create
+in the ~/static directory tree. We list here also all hot-fixes applied
+after initial BOA-3.0.1 relese.
 
 @=> BOA will not include built-in Drupal 8 platforms until Drupal 8 will
     support symlinks in the codebase, like all previous core versions.
 
-@=> All supported Aegir platforms have been updated to their latest releases
-
-@=> BOA Hosted on Power Engine based Octopus instances will *not* receive
+@=> Octopus Aegir instances hosted on Power Engine option will *not* receive
     upgrade to BOA-3.x unless requested via https://omega8.cc/support
     to prevent issues with (often) customized Hostmaster modules not ready
-    for Drupal 7 based Aegir control panel.
+    for Drupal 7 based Aegir control panel. All hosted BOA systems will still
+    continue to receive the Barracuda system upgrades.
+
+@=> It is possible to host previous stable BOA-2.4.9 Octopus instances
+    on systems with Barracuda upgraded to BOA-3.0.1
 
 We recommend that you upgrade your sites using this safe workflow:
 
@@ -25,7 +29,7 @@ We recommend that you upgrade your sites using this safe workflow:
 You can find all details on how to use new features, along with all
 other changes explained in the release notes and changelog available at:
 
-  https://omega8.cc/boa-300-full-edition-377
+  https://omega8.cc/boa-301-full-edition-378
 
 It is always highly recommended that you read extensive release notes
 and changelog posted on our website for previous BOA Editions, so you

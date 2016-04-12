@@ -11,7 +11,7 @@
   Home                   /home/$USER
   IdleTimeOut            15m
   ResolveIP              false
-  IgnoreHidden           true
+  IgnoreHidden           false
   HideNoAccess           true
   DefaultRights          0664 0775
   MinimumRights          0664 0775

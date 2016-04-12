@@ -100,7 +100,12 @@ elif [ "${_PHP_CLI_VERSION}" = "5.3" ] \
 fi
 _OSV=$(lsb_release -sc 2>&1)
 _ROOT="${HOME}"
-_DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
+if [ -e "/opt/tools/d7.ini" ] \
+  && [ -e "/opt/tools/drush/7/drush/drush.php" ]; then
+  _DRUSHCMD="${_T_CLI}/php /opt/tools/drush/7/drush/drush.php"
+else
+  _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
+fi
 #
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
@@ -112,7 +117,6 @@ gitLab="https://gitlab.com/omega8cc"
 #
 urlDev="http://${_USE_MIR}/dev"
 urlHmr="http://${_USE_MIR}/versions/master/aegir"
-urlStb="http://${_USE_MIR}/versions/stable"
 
 
 ###---### Local functions
@@ -245,7 +249,7 @@ hostmaster_go_up() {
   else
     msg "INFO: Downloading Drush and Provision extensions..."
     cd ${_ROOT}/.drush/sys
-    curl ${crlGet} "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
+    get_dev_ext "provision.tar.gz"
     cd ${_ROOT}/.drush/usr
     get_dev_ext "drupalgeddon.tar.gz"
     get_dev_ext "drush_ecl.tar.gz"
@@ -289,11 +293,13 @@ hostmaster_mi_up() {
   if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y
+      ${_DRUSHCMD} @hostmaster pm-uninstall aegir_custom_settings -y
       ${_DRUSHCMD} @hostmaster dis hosting_advanced_cron -y
       ${_DRUSHCMD} @hostmaster en ctools -y
       ${_DRUSHCMD} @hostmaster registry-rebuild
     else
       ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster pm-uninstall aegir_custom_settings -y &> /dev/null
       ${_DRUSHCMD} @hostmaster dis hosting_advanced_cron -y &> /dev/null
       ${_DRUSHCMD} @hostmaster en ctools -y &> /dev/null
       ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
@@ -301,9 +307,11 @@ hostmaster_mi_up() {
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y
+      ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y
       ${_DRUSHCMD} @hostmaster registry-rebuild
     else
       ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y &> /dev/null
       ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
     fi
   fi

@@ -1545,7 +1545,7 @@ php_upgrade_all() {
     _PHP_VERSION="${_PHP70_VRN}"
     _PHP_BIN_BROKEN=NO
     _BROKEN_LIBCURL_TEST=""
-    switch_php_cli "70"
+    ### switch_php_cli "70"
     check_php_broken "70"
     check_php_rebuild "70"
     update_php_multi "70"
@@ -1643,7 +1643,7 @@ install_update_php() {
     && [ ! -x "/opt/php70/bin/php" ]; then
     _PHP_VERSION="${_PHP70_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    switch_php_cli "70"
+    ### switch_php_cli "70"
     install_php_multi "70"
     _PHP_VERSION=""
     _T_PHP_VRN=""

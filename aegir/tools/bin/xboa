@@ -244,8 +244,8 @@ disable_chattr() {
   fi
 }
 
-run_drush7_hmr_cmd() {
-  su -s /bin/bash - ${_THIS_HM_USER} -c "drush7 $1"
+run_drush8_hmr_cmd() {
+  su -s /bin/bash - ${_THIS_HM_USER} -c "drush8 $1"
 }
 
 migrate_sites() {
@@ -315,15 +315,15 @@ EOFMYSQL
             ###
             ### Activate readonly on source via global.inc and not via drush
             ###
-            ### run_drush7_hmr_cmd "@${Dom} vset --always-set site_readonly 0"
-            ### run_drush7_hmr_cmd "@${Dom} dis readonlymode -y"
+            ### run_drush8_hmr_cmd "@${Dom} vset --always-set site_readonly 0"
+            ### run_drush8_hmr_cmd "@${Dom} dis readonlymode -y"
             ### echo "INFO: site ${Dom} readonlymode on ${oct} disabled"
             ###
           else
             echo "ALRT: site ${Dom} db failure due to missing ${_USR}/src/${_DBN}.sql"
           fi
           if [ -e "${_USR}/.drush/${Dom}.alias.drushrc.php" ]; then
-            run_drush7_hmr_cmd "@hostmaster hosting-task @${Dom} verify --force"
+            run_drush8_hmr_cmd "@hostmaster hosting-task @${Dom} verify --force"
             echo "INFO: site ${Dom} verify on ${oct} scheduled"
           else
             echo "ALRT: site ${Dom} verify failure due to missing ${_USR}/.drush/${Dom}.alias.drushrc.php"
@@ -332,11 +332,11 @@ EOFMYSQL
           echo "ALRT: site ${Dom} db failure due to empty _DBN/${_DBN} or _DBP/${_DBP}"
         fi
       elif [ "${cmd}" = "export" ]; then
-        run_drush7_hmr_cmd "@${Dom} en readonlymode -y"
+        run_drush8_hmr_cmd "@${Dom} en readonlymode -y"
         ###
         ### Activate readonly on source via global.inc and not via drush
         ###
-        ### run_drush7_hmr_cmd "@${Dom} vset --always-set site_readonly 1"
+        ### run_drush8_hmr_cmd "@${Dom} vset --always-set site_readonly 1"
         ###
         echo "INFO: site ${Dom} readonlymode module on ${oct} enabled"
         mysqldump \
@@ -419,11 +419,11 @@ migrate_prepare() {
     send_notice_migration_start
   fi
 
-  su -s /bin/bash ${_THIS_HM_USER} -c "drush7 cc drush" &> /dev/null
+  su -s /bin/bash ${_THIS_HM_USER} -c "drush8 cc drush" &> /dev/null
   disable_chattr ${_THIS_HM_USER}.ftp &> /dev/null
   rm -f -r /home/${_THIS_HM_USER}.ftp/drush-backups
-  run_drush7_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
-  run_drush7_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
+  run_drush8_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
+  run_drush8_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
   rm -f -r ${_USR}/clients/*/backups
   symlinks -dr ${_USR}/clients &> /dev/null
   if [ -e "/home/${_THIS_HM_USER}.ftp" ]; then
@@ -480,7 +480,7 @@ migrate_prepare() {
       users \
       users_roles \
       > ${_USR}/src/prev_hostmaster.sql
-    run_drush7_hmr_cmd "@hostmaster vset --always-set maintenance_mode 1"
+    run_drush8_hmr_cmd "@hostmaster vset --always-set maintenance_mode 1"
     if [ -e "${_USR}/src/prev_hostmaster.sql" ]; then
       echo "INFO: hostmaster ${oct} db export complete"
       touch ${_USR}/log/exported.pid
@@ -497,12 +497,12 @@ migrate_prepare() {
     if [ ! -z "${dst}" ]; then
       if [ "${oct}" = "${dst}" ]; then
         mysql ${_HDB} < ${_USR}/src/prev_hostmaster.sql
-        run_drush7_hmr_cmd "@hostmaster vset --always-set site_frontpage 'hosting/sites'"
+        run_drush8_hmr_cmd "@hostmaster vset --always-set site_frontpage 'hosting/sites'"
         touch ${_USR}/log/imported.pid
       fi
     else
       mysql ${_HDB} < ${_USR}/src/prev_hostmaster.sql
-      run_drush7_hmr_cmd "@hostmaster vset --always-set site_frontpage 'hosting/sites'"
+      run_drush8_hmr_cmd "@hostmaster vset --always-set site_frontpage 'hosting/sites'"
       touch ${_USR}/log/imported.pid
     fi
 
@@ -533,57 +533,57 @@ migrate_prepare() {
           fi
         fi
 
-        run_drush7_hmr_cmd "@hostmaster sqlq \"REPLACE INTO hosting_context (nid, name) VALUES ('4', 'server_localhost'), ('2', 'server_master')\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"REPLACE INTO hosting_package (vid, nid, package_type, short_name, old_short_name, description) VALUES ('6', '6', 'platform', 'drupal', '', '')\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"REPLACE INTO node_revisions (nid, vid, uid, title, body, teaser, log, timestamp, format) VALUES ('6', '6', '1', 'drupal', '', '', '', '1412168340', '0')\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"REPLACE INTO node (nid, vid, type, language, title, uid, status, created, changed, comment, promote, moderate, sticky, tnid, translate) VALUES ('6', '6', 'package', '', 'drupal', '1', '1', '1412168321', '1412168340', '0', '0', '0', '0', '0', '0')\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_package WHERE nid='2' AND short_name='drupal'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_package WHERE nid='4' AND short_name='drupal'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"DELETE FROM node WHERE nid='8' AND type='site'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"DELETE FROM node_revisions WHERE nid='8'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE node SET type='server' WHERE nid='2'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE node SET type='server' WHERE nid='4'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE node SET title='$_USE_AEGIR_HOST' WHERE nid='2'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE node SET title='localhost' WHERE nid='4'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET type='server' WHERE nid='2'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET type='server' WHERE nid='4'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET title='$_USE_AEGIR_HOST' WHERE nid='2'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET title='localhost' WHERE nid='4'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_site SET db_server='4' WHERE db_server='2'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_platform SET web_server='2' WHERE web_server='0'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE users_roles SET rid='7' WHERE rid='5'\"" &> /dev/null
-        su -s /bin/bash ${_THIS_HM_USER} -c "drush7 cc drush" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"REPLACE INTO hosting_context (nid, name) VALUES ('4', 'server_localhost'), ('2', 'server_master')\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"REPLACE INTO hosting_package (vid, nid, package_type, short_name, old_short_name, description) VALUES ('6', '6', 'platform', 'drupal', '', '')\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"REPLACE INTO node_revisions (nid, vid, uid, title, body, teaser, log, timestamp, format) VALUES ('6', '6', '1', 'drupal', '', '', '', '1412168340', '0')\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"REPLACE INTO node (nid, vid, type, language, title, uid, status, created, changed, comment, promote, moderate, sticky, tnid, translate) VALUES ('6', '6', 'package', '', 'drupal', '1', '1', '1412168321', '1412168340', '0', '0', '0', '0', '0', '0')\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_package WHERE nid='2' AND short_name='drupal'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_package WHERE nid='4' AND short_name='drupal'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"DELETE FROM node WHERE nid='8' AND type='site'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"DELETE FROM node_revisions WHERE nid='8'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node SET type='server' WHERE nid='2'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node SET type='server' WHERE nid='4'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node SET title='$_USE_AEGIR_HOST' WHERE nid='2'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node SET title='localhost' WHERE nid='4'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET type='server' WHERE nid='2'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET type='server' WHERE nid='4'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET title='$_USE_AEGIR_HOST' WHERE nid='2'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET title='localhost' WHERE nid='4'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_site SET db_server='4' WHERE db_server='2'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_platform SET web_server='2' WHERE web_server='0'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE users_roles SET rid='7' WHERE rid='5'\"" &> /dev/null
+        su -s /bin/bash ${_THIS_HM_USER} -c "drush8 cc drush" &> /dev/null
         rm -f -r ${_USR}/.tmp/cache
-        run_drush7_hmr_cmd "@hostmaster hosting-task @server_localhost verify --force" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster hosting-dispatch" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster hosting-task @server_localhost verify --force" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster hosting-dispatch" &> /dev/null
         echo "HOTFIX B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 complete"
       fi
-      run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_site SET client='1' WHERE profile='7'\"" &> /dev/null
-      run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_site SET client='1' WHERE profile='9'\"" &> /dev/null
-      run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_site SET client='1' WHERE client='0'\"" &> /dev/null
-      run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_platform SET web_server='2' WHERE web_server='0'\"" &> /dev/null
-      run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE node SET uid='1' WHERE uid='0'\"" &> /dev/null
-      run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET uid='1' WHERE uid='0'\"" &> /dev/null
-      _HM_NID=$(run_drush7_hmr_cmd "@hostmaster sqlq \"SELECT site.nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'\"" 2>&1)
+      run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_site SET client='1' WHERE profile='7'\"" &> /dev/null
+      run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_site SET client='1' WHERE profile='9'\"" &> /dev/null
+      run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_site SET client='1' WHERE client='0'\"" &> /dev/null
+      run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_platform SET web_server='2' WHERE web_server='0'\"" &> /dev/null
+      run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node SET uid='1' WHERE uid='0'\"" &> /dev/null
+      run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET uid='1' WHERE uid='0'\"" &> /dev/null
+      _HM_NID=$(run_drush8_hmr_cmd "@hostmaster sqlq \"SELECT site.nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'\"" 2>&1)
       _HM_NID=${_HM_NID//[^0-9]/}
       if [ ! -z "${_HM_NID}" ] ; then
         echo "HOTFIX B: Hostmaster STATUS: Fix 1/2 hosting_context ${_HM_NID}"
         if [ -e "${_USR}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
-          _HM_PLF=$(run_drush7_hmr_cmd "@hostmaster sqlq \"SELECT platform FROM hosting_site WHERE nid='${_HM_NID}'\"" 2>&1)
+          _HM_PLF=$(run_drush8_hmr_cmd "@hostmaster sqlq \"SELECT platform FROM hosting_site WHERE nid='${_HM_NID}'\"" 2>&1)
           _HM_PLF=${_HM_PLF//[^0-9]/}
-          run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context SET name='platform_hostmaster' WHERE nid='${_HM_PLF}'\"" &> /dev/null
+          run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context SET name='platform_hostmaster' WHERE nid='${_HM_PLF}'\"" &> /dev/null
         fi
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
         echo FIXED > ${_USR}/log/post-merge-fix.pid
       else
         echo "HOTFIX B: Hostmaster STATUS: Fix 1/2 hosting_context _HM_NID empty!"
       fi
       if [ -e "${_USR}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ] \
         && [ ! -e "${_USR}/log/hmpathfix.pid" ]; then
-        run_drush7_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_platform SET publish_path='${_USR}/aegir/distro/001' WHERE publish_path LIKE '%/aegir/distro/%'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_platform SET publish_path='${_USR}/aegir/distro/001' WHERE publish_path LIKE '%/aegir/distro/%'\"" &> /dev/null
         touch ${_USR}/log/hmpathfix.pid
       fi
     fi
