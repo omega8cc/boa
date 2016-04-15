@@ -1435,7 +1435,7 @@ _SRCDIR="/opt/tmp/files"
 mkdir -p ${_SRCDIR}
 chmod -R 777 /opt/tmp &> /dev/null
 cd /opt/tmp
-rm -f -r ${bldPth}
+rm -rf /opt/tmp/boa
 if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
   ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
 else
@@ -1514,8 +1514,8 @@ else
   restart_services
   msg "INFO: Tuning stopped and default settings restored"
 fi
-rm -f -r /var/opt/*
-rm -f -r /opt/tmp/*
+rm -rf /var/opt/*
+rm -rf /opt/tmp/*
 rm -f /var/run/boa_run.pid
 if [ ! -e "/root/.upstart.cnf" ]; then
   service cron start &> /dev/null

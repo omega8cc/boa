@@ -191,7 +191,7 @@ fix_dirs_files() {
   rm -f ./*.txt
   rm -f ./modules/*.txt
   rm -f ./themes/*.txt
-  rm -f -r ./modules/cookie_cache_bypass
+  rm -rf ./modules/cookie_cache_bypass
   mkdir -p ./sites/default/files
   mkdir -p ./cache/{normal,perm}
   chmod -R 777 ./cache
@@ -239,7 +239,7 @@ create_d6_symlinks() {
     cp -af ${_D6_CORE_DIR}/sites ./
   fi
   if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
-    rm -f -r ${_OCTO_PLPATH}/profiles
+    rm -rf ${_OCTO_PLPATH}/profiles
     ln -s ${_SHRD_PLPATH}/profiles ${_OCTO_PLPATH}/profiles
   fi
 }
@@ -264,7 +264,7 @@ create_d7_symlinks() {
     cp -af ${_D7_CORE_DIR}/sites ./
   fi
   if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
-    rm -f -r ${_OCTO_PLPATH}/profiles
+    rm -rf ${_OCTO_PLPATH}/profiles
     ln -s ${_SHRD_PLPATH}/profiles ${_OCTO_PLPATH}/profiles
   fi
 }
@@ -298,7 +298,7 @@ create_distro_d7_symlinks() {
     cp -af ${_SHRD_PLPATH}/sites ./
   fi
   if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
-    rm -f -r ${_OCTO_PLPATH}/profiles
+    rm -rf ${_OCTO_PLPATH}/profiles
     ln -s ${_SHRD_PLPATH}/profiles ${_OCTO_PLPATH}/profiles
   fi
 }
@@ -327,7 +327,7 @@ create_d8_symlinks() {
     cp -af ${_D8_CORE_DIR}/sites ./
   fi
   if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
-    rm -f -r ${_OCTO_PLPATH}/profiles
+    rm -rf ${_OCTO_PLPATH}/profiles
     ln -s ${_SHRD_PLPATH}/profiles ${_OCTO_PLPATH}/profiles
   fi
 }
@@ -361,7 +361,9 @@ rename_drupal8_profiles() {
 # Prepare D6 core.
 prepare_drupal6_core() {
   if [ ! -e "${_D6_CORE_DIR}" ]; then
-    rm -f -r ${_D6_CORE_DIR}
+    if [ -L "${_D6_CORE_DIR}" ]; then
+      unlink ${_D6_CORE_DIR}
+    fi
     cd /data/all/000/core
     curl -L --max-redirs 10 -k -s -A iCab \
       "http://${_USE_MIR}/core/pressflow-${_SMALLCORE6}.tar.gz" | tar -xzf -
@@ -376,7 +378,7 @@ prepare_drupal6_core() {
     ln -s ${_CORE}/o_contrib/js/js.php js.php
     cp -af ${_CORE}/o_contrib/image/image.imagemagick.inc includes/
     cp -af ${_CORE}/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
-    rm -f -r ${_D6_CORE_DIR}/scripts
+    rm -rf ${_D6_CORE_DIR}/scripts
     cd ${_D6_CORE_DIR}/themes
     get_dev_contrib "rubik-6.x-3.0-beta5.tar.gz"
     get_dev_contrib "tao-6.x-3.3.tar.gz"
@@ -388,7 +390,9 @@ prepare_drupal6_core() {
 # Prepare D7 core.
 prepare_drupal7_core() {
   if [ ! -e "${_D7_CORE_DIR}" ]; then
-    rm -f -r ${_D7_CORE_DIR}
+    if [ -L "${_D7_CORE_DIR}" ]; then
+      unlink ${_D7_CORE_DIR}
+    fi
     cd /data/all/000/core
     curl ${crlGet} \
       "http://${_USE_MIR}/core/drupal-${_SMALLCORE7}.tar.gz" \
@@ -403,7 +407,7 @@ prepare_drupal7_core() {
     rm -f modules/o_contrib_seven
     ln -s ${_CORE}/o_contrib_seven modules/o_contrib_seven
     ln -s ${_CORE}/o_contrib_seven/js/js.php js.php
-    rm -f -r ${_D7_CORE_DIR}/scripts
+    rm -rf ${_D7_CORE_DIR}/scripts
     cd ${_D7_CORE_DIR}/themes
     get_dev_contrib "rubik-7.x-4.4.tar.gz"
     get_dev_contrib "tao-7.x-3.1.tar.gz"
@@ -414,7 +418,9 @@ prepare_drupal7_core() {
 # Prepare D8 core.
 prepare_drupal8_core() {
   if [ ! -e "${_D8_CORE_DIR}" ]; then
-    rm -f -r ${_D8_CORE_DIR}
+    if [ -L "${_D8_CORE_DIR}" ]; then
+      unlink ${_D8_CORE_DIR}
+    fi
     cd /data/all/000/core
     curl ${crlGet} \
       "http://${_USE_MIR}/core/drupal-${_SMALLCORE8}.tar.gz" \
@@ -439,15 +445,15 @@ nocore_d6_dist_clean() {
   rm -f ${_SHRD_PLPATH}/*.php
   rm -f ${_SHRD_PLPATH}/*.txt
   rm -f ${_SHRD_PLPATH}/*.xml
-  rm -f -r ${_SHRD_PLPATH}/cache
-  rm -f -r ${_SHRD_PLPATH}/includes
-  rm -f -r ${_SHRD_PLPATH}/misc
-  rm -f -r ${_SHRD_PLPATH}/modules
-  rm -f -r ${_SHRD_PLPATH}/sites
-  rm -f -r ${_SHRD_PLPATH}/scripts
-  rm -f -r ${_SHRD_PLPATH}/themes
+  rm -rf ${_SHRD_PLPATH}/cache
+  rm -rf ${_SHRD_PLPATH}/includes
+  rm -rf ${_SHRD_PLPATH}/misc
+  rm -rf ${_SHRD_PLPATH}/modules
+  rm -rf ${_SHRD_PLPATH}/sites
+  rm -rf ${_SHRD_PLPATH}/scripts
+  rm -rf ${_SHRD_PLPATH}/themes
   if [ ! -d "${_SHRD_PLPATH}/profiles" ] && [ -d "${_D6_CORE_DIR}/profiles" ]; then
-    rm -f -r ${_SHRD_PLPATH}/profiles
+    rm -rf ${_SHRD_PLPATH}/profiles
     cp -af ${_D6_CORE_DIR}/profiles ${_SHRD_PLPATH}/
   fi
   sed -i "s/'dblog'/'robotstxt', 'path_alias_cache'/g" \
@@ -463,13 +469,13 @@ nocore_d7_dist_clean() {
     rm -f ${_SHRD_PLPATH}/*.txt
     rm -f ${_SHRD_PLPATH}/*.xml
     rm -f ${_SHRD_PLPATH}/web.config
-    rm -f -r ${_SHRD_PLPATH}/cache
-    rm -f -r ${_SHRD_PLPATH}/includes
-    rm -f -r ${_SHRD_PLPATH}/misc
-    rm -f -r ${_SHRD_PLPATH}/modules
-    rm -f -r ${_SHRD_PLPATH}/sites
-    rm -f -r ${_SHRD_PLPATH}/scripts
-    rm -f -r ${_SHRD_PLPATH}/themes
+    rm -rf ${_SHRD_PLPATH}/cache
+    rm -rf ${_SHRD_PLPATH}/includes
+    rm -rf ${_SHRD_PLPATH}/misc
+    rm -rf ${_SHRD_PLPATH}/modules
+    rm -rf ${_SHRD_PLPATH}/sites
+    rm -rf ${_SHRD_PLPATH}/scripts
+    rm -rf ${_SHRD_PLPATH}/themes
     _REVISIONS="34 35 36 37 38 39"
     for i in $_REVISIONS; do
       if [ -d "${_CORE}/drupal-7.$i" ] && [ ! -e "${_SHRD_PLPATH}" ]; then
@@ -477,7 +483,7 @@ nocore_d7_dist_clean() {
       fi
     done
     if [ ! -d "${_SHRD_PLPATH}/profiles" ] && [ -d "${_D7_CORE_DIR}/profiles" ]; then
-      rm -f -r ${_SHRD_PLPATH}/profiles
+      rm -rf ${_SHRD_PLPATH}/profiles
       cp -af ${_D7_CORE_DIR}/profiles ${_SHRD_PLPATH}/
     fi
   fi
@@ -485,15 +491,15 @@ nocore_d7_dist_clean() {
 #
 # Remove D8 core from distro directory.
 nocore_d8_dist_clean() {
-  rm -f -r ${_SHRD_PLPATH}/cache
-  rm -f -r ${_SHRD_PLPATH}/core
-  rm -f -r ${_SHRD_PLPATH}/includes
-  rm -f -r ${_SHRD_PLPATH}/misc
-  rm -f -r ${_SHRD_PLPATH}/modules
-  rm -f -r ${_SHRD_PLPATH}/scripts
-  rm -f -r ${_SHRD_PLPATH}/sites
-  rm -f -r ${_SHRD_PLPATH}/themes
-  rm -f -r ${_SHRD_PLPATH}/vendor
+  rm -rf ${_SHRD_PLPATH}/cache
+  rm -rf ${_SHRD_PLPATH}/core
+  rm -rf ${_SHRD_PLPATH}/includes
+  rm -rf ${_SHRD_PLPATH}/misc
+  rm -rf ${_SHRD_PLPATH}/modules
+  rm -rf ${_SHRD_PLPATH}/scripts
+  rm -rf ${_SHRD_PLPATH}/sites
+  rm -rf ${_SHRD_PLPATH}/themes
+  rm -rf ${_SHRD_PLPATH}/vendor
   rm -f ${_SHRD_PLPATH}/.gitignore
   rm -f ${_SHRD_PLPATH}/.htaccess
   rm -f ${_SHRD_PLPATH}/*.php
@@ -501,7 +507,7 @@ nocore_d8_dist_clean() {
   rm -f ${_SHRD_PLPATH}/*.xml
   rm -f ${_SHRD_PLPATH}/web.config
   if [ ! -d "${_SHRD_PLPATH}/profiles" ] && [ -d "${_D8_CORE_DIR}/profiles" ]; then
-    rm -f -r ${_SHRD_PLPATH}/profiles
+    rm -rf ${_SHRD_PLPATH}/profiles
     cp -af ${_D8_CORE_DIR}/profiles ${_SHRD_PLPATH}/
   fi
 }
@@ -514,9 +520,9 @@ enable_drupal6_admin() {
 #
 # Remove default core seven profiles.
 remove_default_core_seven_profiles() {
-  rm -f -r ${_SHRD_PLPATH}/profiles/minimal
-  rm -f -r ${_SHRD_PLPATH}/profiles/standard
-  rm -f -r ${_SHRD_PLPATH}/profiles/testing
+  rm -rf ${_SHRD_PLPATH}/profiles/minimal
+  rm -rf ${_SHRD_PLPATH}/profiles/standard
+  rm -rf ${_SHRD_PLPATH}/profiles/testing
 }
 #
 # Init this distro root.
@@ -538,7 +544,7 @@ init_this_distro_root() {
 #
 # Upgrade contrib less.
 upgrade_contrib_less() {
-  rm -f -r {context,ctools,entity,entityreference,mimemail,og}
+  rm -rf {context,ctools,entity,entityreference,mimemail,og}
   get_dev_contrib "context-7.x-3.6.tar.gz"
   get_dev_contrib "ctools-7.x-1.9.tar.gz"
   get_dev_contrib "entity-7.x-1.7.tar.gz"
@@ -734,7 +740,7 @@ agov_install() {
               remove_default_core_seven_profiles
               sed -i "s/.*entitycache.*//g" \
                 ${_SHRD_PRPATH}/${_REAL_PRNAME}.info &> /dev/null
-              rm -f -r ${_SHRD_PRPATH}/modules/contrib/entitycache
+              rm -rf ${_SHRD_PRPATH}/modules/contrib/entitycache
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
@@ -786,7 +792,7 @@ commerce_7_1_install() {
               remove_default_core_seven_profiles
               if [ "${_COMMERCE1}" = "1.32" ]; then
                 cd ${_SHRD_PRPATH}/modules/
-                rm -f -r commerce
+                rm -rf commerce
                 get_dev_contrib "commerce-7.x-1.11.tar.gz"
               fi
             else
@@ -893,11 +899,11 @@ commons_6_install() {
               fi
               find ${_SHRD_PRPATH} -type f -exec sed -i \
                 "s/drupal_commons/commons/g" {} \; &> /dev/null
-              rm -f -r ${_SHRD_PLPATH}/profiles/default
+              rm -rf ${_SHRD_PLPATH}/profiles/default
               nocore_d6_dist_clean
               if [ "${_COMMONS2}" = "2.21" ]; then
                 cd ${_SHRD_PRPATH}/modules/contrib
-                rm -f -r {flag}
+                rm -rf flag
                 get_dev_contrib "flag-6.x-2.1.tar.gz"
               fi
             else
@@ -956,9 +962,9 @@ commons_7_install() {
               patch -p1 < ${pthPch}/commons_chicken_egg.patch &> /dev/null
               sed -i "s/.*entitycache.*//g" \
                 ${_SHRD_PRPATH}/${_REAL_PRNAME}.info &> /dev/null
-              rm -f -r ${_SHRD_PRPATH}/modules/contrib/entitycache
-              rm -f -r ${_SHRD_PRPATH}/modules/contrib/registry_rebuild
-              rm -f -r ${_SHRD_PRPATH}/modules/contrib/acquia_connector
+              rm -rf ${_SHRD_PRPATH}/modules/contrib/entitycache
+              rm -rf ${_SHRD_PRPATH}/modules/contrib/registry_rebuild
+              rm -rf ${_SHRD_PRPATH}/modules/contrib/acquia_connector
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
@@ -1243,7 +1249,7 @@ fserver_install() {
             ${_DRUSHCMD} make fserver.make ${_SHRD_PLNAME} &> /dev/null
             nocore_d6_dist_clean
             rm -f fserver.make
-            rm -f -r ${_SHRD_PLPATH}/profiles/default
+            rm -rf ${_SHRD_PLPATH}/profiles/default
             cd ${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}/themes
             patch -p0 \
               < ${pthPch}/singular.patch &> /dev/null
@@ -1297,7 +1303,7 @@ guardr_install() {
               remove_default_core_seven_profiles
               sed -i "s/.*entitycache.*//g" \
                 ${_SHRD_PRPATH}/${_REAL_PRNAME}.info &> /dev/null
-              rm -f -r ${_SHRD_PRPATH}/modules/contrib/entitycache
+              rm -rf ${_SHRD_PRPATH}/modules/contrib/entitycache
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
@@ -1390,7 +1396,7 @@ openaid_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              rm -f -r ${_SHRD_PRPATH}/libraries/plupload/examples
+              rm -rf ${_SHRD_PRPATH}/libraries/plupload/examples
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
@@ -1530,7 +1536,7 @@ openchurch1_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              rm -f -r ${_SHRD_PRPATH}/libraries/plupload/examples
+              rm -rf ${_SHRD_PRPATH}/libraries/plupload/examples
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
@@ -1577,7 +1583,7 @@ openchurch2_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              rm -f -r ${_SHRD_PRPATH}/libraries/plupload/examples
+              rm -rf ${_SHRD_PRPATH}/libraries/plupload/examples
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
@@ -1762,11 +1768,11 @@ openscholar_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              rm -f -r ${_SHRD_PRPATH}/modules/contrib/{entitycache,expire}
+              rm -rf ${_SHRD_PRPATH}/modules/contrib/{entitycache,expire}
               sed -i "s/.*entitycache.*//g" \
                 ${_SHRD_PRPATH}/${_REAL_PRNAME}.info &> /dev/null
               cd ${_SHRD_PRPATH}/modules/contrib
-              rm -f -r {biblio,boxes,entityreference_prepopulate,restws}
+              rm -rf {biblio,boxes,entityreference_prepopulate,restws}
               get_dev_contrib "biblio-7.x-1.0-rc7.tar.gz"
               get_dev_contrib "boxes-7.x-1.2.tar.gz"
               get_dev_contrib "entityreference_prepopulate-7.x-1.5.tar.gz"
@@ -1966,7 +1972,7 @@ ubercart6_install() {
             fi
             mkdir -p ${_SHRD_PLPATH}
             nocore_d6_dist_clean
-            rm -f -r ${_SHRD_PLPATH}/profiles/default
+            rm -rf ${_SHRD_PLPATH}/profiles/default
             cd ${_SHRD_PLPATH}/profiles
             get_dev_contrib "uberdrupal.tar.gz"
             cd ${_CORE}
@@ -2042,8 +2048,8 @@ ubercart7_install() {
               fi
               mkdir -p ${_SHRD_PLPATH}
               nocore_d7_dist_clean
-              rm -f -r ${_SHRD_PLPATH}/profiles/standard
-              rm -f -r ${_SHRD_PLPATH}/profiles/testing
+              rm -rf ${_SHRD_PLPATH}/profiles/standard
+              rm -rf ${_SHRD_PLPATH}/profiles/testing
               sed -i "s/version = VERSION/version = \"${_SMALLCORE7}\"/g" \
                 ${_SHRD_PLPATH}/profiles/minimal/minimal.info &> /dev/null
               mkdir -p ${_SHRD_PRPATH}/libraries
@@ -2112,8 +2118,8 @@ ubercart7_testing_install() {
               fi
               mkdir -p ${_SHRD_PLPATH}
               nocore_d7_dist_clean
-              rm -f -r ${_SHRD_PLPATH}/profiles/standard
-              rm -f -r ${_SHRD_PLPATH}/profiles/minimal
+              rm -rf ${_SHRD_PLPATH}/profiles/standard
+              rm -rf ${_SHRD_PLPATH}/profiles/minimal
               sed -i "s/version = VERSION/version = \"${_SMALLCORE7}\"/g" \
                 ${_SHRD_PLPATH}/profiles/testing/testing.info &> /dev/null
               mkdir -p ${_SHRD_PRPATH}/libraries
@@ -2492,8 +2498,10 @@ if [ "${_DEBUG_MODE}" = "YES" ]; then
   echo " "
   msg "${_STATUS} C: Removing some unused core files..."
 fi
-rm -f -r ${_CORE}/*/scripts
-rm -f ${_CORE}/*{.make,.tar,.tar.gz,.zip}
+if [[ "${_CORE}" =~ "/data/all/" ]]; then
+  rm -rf ${_CORE}/*/scripts
+  rm -f ${_CORE}/*{.make,.tar,.tar.gz,.zip}
+fi
 cd ${_CORE}
 
 

@@ -389,8 +389,8 @@ install_pdnsd_cache() {
   st_runner "apt-get update -qq" &> /dev/null
   st_runner "aptitude purge pdnsd -y" &> /dev/null
   st_runner "aptitude purge resolvconf -y" &> /dev/null
-  rm -f -r /lib/init/rw/resolvconf
-  rm -f -r /etc/resolvconf
+  rm -rf /lib/init/rw/resolvconf
+  rm -rf /etc/resolvconf
   st_runner "aptitude purge pdnsd -y" &> /dev/null
   st_runner "aptitude purge resolvconf -y" &> /dev/null
   if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
@@ -408,8 +408,8 @@ install_pdnsd_cache() {
   if [ ! -L "/etc/resolvconf/run" ] \
     || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] \
     || [ ! -e "/etc/resolvconf/resolv.conf.d/tail" ]; then
-    rm -f -r /run/resolvconf
-    rm -f -r /etc/resolvconf/run
+    rm -rf /run/resolvconf
+    rm -rf /etc/resolvconf/run
     ln -s /lib/init/rw/resolvconf /etc/resolvconf/run
     if [ ! -e "/lib/init/rw/resolvconf/interface" ]; then
       mkdir -p /lib/init/rw/resolvconf/interface
@@ -460,7 +460,7 @@ install_pdnsd_cache() {
 check_github_for_aegir_head_mode() {
   if [ "${_SYSTEM_UPGRADE_ONLY}" = "NO" ] \
     && [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-    rm -f -r /opt/tmp/test-*
+    rm -rf /opt/tmp/test-*
     check_connection
     _GITHUB_TEST=$(git clone ${gitHub}/provision.git \
       /opt/tmp/test-provision 2>&1)
@@ -470,7 +470,7 @@ check_github_for_aegir_head_mode() {
       msg "Please try to run this script again in a few minutes"
       msg "You may want to check https://status.github.com/messages"
       msg "Bye"
-      rm -f -r /opt/tmp/test-*
+      rm -rf /opt/tmp/test-*
       clean_pid_exit
     fi
     _GITHUB_TEST=$(git clone ${gitHub}/hostmaster.git \
@@ -481,13 +481,13 @@ check_github_for_aegir_head_mode() {
       msg "Please try to run this script again in a few minutes"
       msg "You may want to check https://status.github.com/messages"
       msg "Bye"
-      rm -f -r /opt/tmp/test-*
+      rm -rf /opt/tmp/test-*
       clean_pid_exit
     fi
-    rm -f -r /opt/tmp/test-*
+    rm -rf /opt/tmp/test-*
   fi
   if [[ "${_X_VERSION}" =~ "-dev" ]]; then
-    rm -f -r /opt/tmp/test-*
+    rm -rf /opt/tmp/test-*
     _GITHUB_TEST=$(git clone ${gitHub}/boa.git \
       /opt/tmp/test-boa 2>&1)
     if [[ "${_GITHUB_TEST}" =~ "fatal" ]]; then
@@ -496,10 +496,10 @@ check_github_for_aegir_head_mode() {
       msg "Please try to run this script again in a few minutes"
       msg "You may want to check https://status.github.com/messages"
       msg "Bye"
-      rm -f -r /opt/tmp/test-*
+      rm -rf /opt/tmp/test-*
       clean_pid_exit
     fi
-    rm -f -r /opt/tmp/test-*
+    rm -rf /opt/tmp/test-*
   fi
 }
 

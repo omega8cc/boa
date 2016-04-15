@@ -143,7 +143,7 @@ disable_chattr() {
     usrTgt="/home/$1/.drush/usr"
     if [ ! -L "${usrTgt}/drupalgeddon" ] \
       && [ -d "${usrSrc}/drupalgeddon" ]; then
-      rm -f -r ${usrTgt}/drupalgeddon
+      rm -rf ${usrTgt}/drupalgeddon
       ln -sf ${usrSrc}/drupalgeddon ${usrTgt}/drupalgeddon
     fi
   fi
@@ -422,7 +422,7 @@ fix_robots_txt() {
 
 fix_boost_cache() {
   if [ -e "${Plr}/cache" ]; then
-    rm -f -r ${Plr}/cache/*
+    rm -rf ${Plr}/cache/*
     rm -f ${Plr}/cache/{.boost,.htaccess}
   else
     if [ -e "${Plr}/sites/all/drush/drushrc.php" ]; then
@@ -872,7 +872,7 @@ add_solr() {
   # $2 is solr core path
   if [ ! -z "$1" ] && [ ! -z $2 ] && [ -e "/var/xdrago/conf/solr" ]; then
     if [ ! -e "$2" ]; then
-      rm -f -r /opt/solr4/core0/data/*
+      rm -rf /opt/solr4/core0/data/*
       cp -a /opt/solr4/core0 $2
       CHAR="[:alnum:]"
       rkey=32
@@ -904,12 +904,15 @@ add_solr() {
 
 delete_solr() {
   # $1 is solr core path
-  if [ ! -z "$1" ] && [ -e "/var/xdrago/conf/solr" ] && [ -e "$1/conf" ]; then
+  if [ ! -z "$1" ] \
+    && [[ "$1" =~ "/opt/solr4/" ]] \
+    && [ -e "/var/xdrago/conf/solr" ] \
+    && [ -e "$1/conf" ]; then
     sed -i "s/.*instanceDir=\"${_HM_U}.${Dom}\".*//g" /opt/solr4/solr.xml
     wait
     sed -i "/^$/d" /opt/solr4/solr.xml &> /dev/null
     wait
-    rm -f -r $1
+    rm -rf $1
     rm -f ${Dir}/solr.php
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
@@ -2395,7 +2398,7 @@ purge_cruft_machine() {
         && [ ! -z "${RevisionTest}" ]; then
         chattr -i /home/${_HM_U}.ftp/platforms   &> /dev/null
         chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
-        rm -f -r /home/${_HM_U}.ftp/platforms/$i
+        rm -rf /home/${_HM_U}.ftp/platforms/$i
       fi
     fi
   done
@@ -2522,9 +2525,9 @@ action() {
         echo "User ${User}"
         mkdir -p ${User}/log/ctrl
         su -s /bin/bash ${_HM_U} -c "drush8 cc drush" &> /dev/null
-        rm -f -r ${User}/.tmp/cache
+        rm -rf ${User}/.tmp/cache
         su -s /bin/bash - ${_HM_U}.ftp -c "drush8 cc drush" &> /dev/null
-        rm -f -r /home/${_HM_U}.ftp/.tmp/cache
+        rm -rf /home/${_HM_U}.ftp/.tmp/cache
         _SQL_CONVERT=NO
         _DEL_OLD_EMPTY_PLATFORMS="0"
         if [ -e "/root/.${_HM_U}.octopus.cnf" ]; then
@@ -2551,11 +2554,11 @@ action() {
           fi
         fi
         disable_chattr ${_HM_U}.ftp
-        rm -f -r /home/${_HM_U}.ftp/drush-backups
+        rm -rf /home/${_HM_U}.ftp/drush-backups
         if [ -e "${_THIS_HM_SITE}" ]; then
           cd ${_THIS_HM_SITE}
           su -s /bin/bash ${_HM_U} -c "drush8 cc drush" &> /dev/null
-          rm -f -r ${User}/.tmp/cache
+          rm -rf ${User}/.tmp/cache
           run_drush8_hmr_cmd "vset \
             --always-set hosting_cron_default_interval 86400"
           run_drush8_hmr_cmd "vset \
@@ -2602,11 +2605,11 @@ action() {
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
           || [ "${_VMFAMILY}" = "VS" ]; then
-          rm -f -r ${User}/clients/admin &> /dev/null
-          rm -f -r ${User}/clients/omega8ccgmailcom &> /dev/null
-          rm -f -r ${User}/clients/nocomega8cc &> /dev/null
+          rm -rf ${User}/clients/admin &> /dev/null
+          rm -rf ${User}/clients/omega8ccgmailcom &> /dev/null
+          rm -rf ${User}/clients/nocomega8cc &> /dev/null
         fi
-        rm -f -r ${User}/clients/*/backups &> /dev/null
+        rm -rf ${User}/clients/*/backups &> /dev/null
         symlinks -dr ${User}/clients &> /dev/null
         if [ -e "/home/${_HM_U}.ftp" ]; then
           symlinks -dr /home/${_HM_U}.ftp &> /dev/null

@@ -325,7 +325,7 @@ mode_detection() {
       -o Dpkg::Options::=--force-confold install"
   fi
   _SRCDIR="/opt/tmp/files"
-  rm -f -r /var/opt/*
+  rm -rf /var/opt/*
   mkdir -p ${_SRCDIR}
   chmod -R 777 /opt/tmp &> /dev/null
   find /opt/tmp/boa -type d -exec chmod 0755 {} \; &> /dev/null
@@ -499,7 +499,7 @@ check_prepare_dirs_permissions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Cleaning up temp files in /var/opt/"
   fi
-  rm -f -r /var/opt/*
+  rm -rf /var/opt/*
   mkdir -p /var/log/php
   chmod 777 /var/log/php* &> /dev/null
   mkdir -p ${vBs}/dragon/{x,z,t}

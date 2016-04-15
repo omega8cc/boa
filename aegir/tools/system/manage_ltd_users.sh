@@ -152,15 +152,15 @@ enable_chattr() {
       if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
-        rm -f -r ${_U_HD}/*
-        rm -f -r ${_U_HD}/.*
+        rm -rf ${_U_HD}/*
+        rm -rf ${_U_HD}/.*
       else
         rm -f ${_U_HD}/{drush_make,registry_rebuild,clean_missing_modules}
         rm -f ${_U_HD}/{drupalgeddon,drush_ecl,make_local,safe_cache_form*}
         rm -f ${_U_HD}/usr/{drush_make,registry_rebuild,clean_missing_modules}
         rm -f ${_U_HD}/usr/{drupalgeddon,drush_ecl,make_local,safe_cache_form*}
         rm -f ${_U_HD}/.ctrl*
-        rm -f -r ${_U_HD}/{cache,drush.ini,*drushrc*,*.inc}
+        rm -rf ${_U_HD}/{cache,drush.ini,*drushrc*,*.inc}
       fi
       mkdir -p ${_U_HD}/usr
       mkdir -p ${_U_TP}
@@ -291,13 +291,13 @@ enable_chattr() {
     UQ="$1"
     if [ -f "${dscUsr}/static/control/compass.info" ]; then
       if [ -d "/home/${UQ}/.rvm/src" ]; then
-        rm -f -r /home/${UQ}/.rvm/src/*
+        rm -rf /home/${UQ}/.rvm/src/*
       fi
       if [ -d "/home/${UQ}/.rvm/archives" ]; then
-        rm -f -r /home/${UQ}/.rvm/archives/*
+        rm -rf /home/${UQ}/.rvm/archives/*
       fi
       if [ -d "/home/${UQ}/.rvm/log" ]; then
-        rm -f -r /home/${UQ}/.rvm/log/*
+        rm -rf /home/${UQ}/.rvm/log/*
       fi
       if [ ! -x "/home/${UQ}/.rvm/bin/rvm" ]; then
         touch /var/run/manage_rvm_users.pid
@@ -366,21 +366,21 @@ enable_chattr() {
         ln -s /bin/websh /bin/sh
       fi
       if [ -d "/home/${UQ}/.rvm/src" ]; then
-        rm -f -r /home/${UQ}/.rvm/src/*
+        rm -rf /home/${UQ}/.rvm/src/*
       fi
       if [ -d "/home/${UQ}/.rvm/archives" ]; then
-        rm -f -r /home/${UQ}/.rvm/archives/*
+        rm -rf /home/${UQ}/.rvm/archives/*
       fi
       if [ -d "/home/${UQ}/.rvm/log" ]; then
-        rm -f -r /home/${UQ}/.rvm/log/*
+        rm -rf /home/${UQ}/.rvm/log/*
       fi
       rm -f /home/${UQ}/{.profile,.bash_logout,.bash_profile,.bashrc,.zlogin,.zshrc}
       rm -f /home/${UQ}/.rvm/scripts/notes
     else
       if [ -d "/home/${UQ}/.rvm" ] || [ -d "/home/${UQ}/.gem" ]; then
         rm -f ${dscUsr}/log/.gems.build*
-        rm -f -r /home/${UQ}/.rvm    &> /dev/null
-        rm -f -r /home/${UQ}/.gem    &> /dev/null
+        rm -rf /home/${UQ}/.rvm    &> /dev/null
+        rm -rf /home/${UQ}/.gem    &> /dev/null
       fi
     fi
 
@@ -421,7 +421,7 @@ disable_chattr() {
       fi
     else
       if [ ! -L "${usrTgt}/drupalgeddon" ] && [ -d "${usrDgn}" ]; then
-        rm -f -r ${usrTgt}/drupalgeddon
+        rm -rf ${usrTgt}/drupalgeddon
         ln -sf ${usrDgn} ${usrTgt}/drupalgeddon
       fi
     fi
@@ -495,7 +495,9 @@ fix_dot_dirs() {
       chmod 700 ${usrBzr}
     fi
   else
-    rm -f -r ${usrBzr}
+    if [ -d "${usrBzr}" ]; then
+      rm -rf ${usrBzr}
+    fi
   fi
 }
 #
@@ -638,7 +640,7 @@ add_user_if_not_exists() {
     && [[ "${_ID_SHELLS}" =~ "ltd-shell" ]]; then
     echo "We will update user == ${usrLtd} =="
     disable_chattr ${usrLtd}
-    rm -f -r /home/${usrLtd}/drush-backups
+    rm -rf /home/${usrLtd}/drush-backups
     usrTmp="/home/${usrLtd}/.tmp"
     if [ ! -d "${usrTmp}" ]; then
       mkdir -p ${usrTmp}
@@ -1069,7 +1071,7 @@ satellite_remove_web_user() {
       --remove-home \
       --backup-to /var/backups/zombie/deleted ${_WEB} &> /dev/null
     if [ -e "/home/${_WEB}" ]; then
-      rm -f -r /home/${_WEB} &> /dev/null
+      rm -rf /home/${_WEB} &> /dev/null
     fi
   fi
 }
@@ -1240,8 +1242,8 @@ switch_php() {
         satellite_remove_web_user "hhvm"
         ### delete leftovers
         rm -f /opt/hhvm/server.${_USER}.ini
-        rm -f -r /var/run/hhvm/${_USER}
-        rm -f -r /var/log/hhvm/${_USER}
+        rm -rf /var/run/hhvm/${_USER}
+        rm -rf /var/log/hhvm/${_USER}
         ### update nginx configuration
         sed -i "s/\/var\/run\/hhvm\/${_USER}\/hhvm.socket/\/var\/run\/${_USER}.fpm.socket/g" \
           ${dscUsr}/config/includes/nginx_vhost_common.conf
@@ -1499,7 +1501,7 @@ manage_site_drush_alias_mirror() {
     rm -f /data/disk/${_USER}/.drush/self.alias.drushrc.php
   fi
   if [ -e "/data/disk/${_USER}/config/self" ]; then
-    rm -f -r /data/disk/${_USER}/config/self
+    rm -rf /data/disk/${_USER}/config/self
   fi
 
   for Alias in `find ${pthParentUsr}/.drush/*.alias.drushrc.php \
@@ -1577,7 +1579,7 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     find ${dscUsr}/config/server_master \
       -type f -exec chmod 0600 {} \; &> /dev/null
     if [ ! -e "${dscUsr}/.tmp/.ctrl.301stableQ.txt" ]; then
-      rm -f -r ${dscUsr}/.drush/cache
+      rm -rf ${dscUsr}/.drush/cache
       mkdir -p ${dscUsr}/.tmp
       touch ${dscUsr}/.tmp
       find ${dscUsr}/.tmp/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1605,10 +1607,10 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     switch_newrelic
     if [ -e "${pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
       echo Managing Users for ${pthParentUsr} Instance
-      rm -f -r ${pthParentUsr}/clients/admin &> /dev/null
-      rm -f -r ${pthParentUsr}/clients/omega8ccgmailcom &> /dev/null
-      rm -f -r ${pthParentUsr}/clients/nocomega8cc &> /dev/null
-      rm -f -r ${pthParentUsr}/clients/*/backups &> /dev/null
+      rm -rf ${pthParentUsr}/clients/admin &> /dev/null
+      rm -rf ${pthParentUsr}/clients/omega8ccgmailcom &> /dev/null
+      rm -rf ${pthParentUsr}/clients/nocomega8cc &> /dev/null
+      rm -rf ${pthParentUsr}/clients/*/backups &> /dev/null
       symlinks -dr ${pthParentUsr}/clients &> /dev/null
       if [ -e "/home/${_USER}.ftp" ]; then
         disable_chattr ${_USER}.ftp
@@ -1634,8 +1636,8 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
           ln -sf ${dscUsr}/static  /home/${_USER}.ftp/static
         fi
         if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.301stableQ.txt" ]; then
-          rm -f -r /home/${_USER}.ftp/.drush/cache
-          rm -f -r /home/${_USER}.ftp/.tmp
+          rm -rf /home/${_USER}.ftp/.drush/cache
+          rm -rf /home/${_USER}.ftp/.tmp
           mkdir -p /home/${_USER}.ftp/.tmp
           chown ${_USER}.ftp:${usrGroup} /home/${_USER}.ftp/.tmp &> /dev/null
           chmod 700 /home/${_USER}.ftp/.tmp &> /dev/null

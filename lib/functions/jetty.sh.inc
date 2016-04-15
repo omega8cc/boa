@@ -47,9 +47,9 @@ if_install_jetty() {
         true
         msg "INFO: Installing MultiCore Apache Solr 4 with Jetty ${_R_JETTY}..."
         cd /var/opt
-        rm -f -r jetty-distribution-*
-        rm -f -r /opt/solr4
-        rm -f -r /opt/jetty9
+        rm -rf jetty-distribution-*
+        rm -rf /opt/solr4
+        rm -rf /opt/jetty9
         rm -f /etc/jetty.conf
         if [ "${_OSV}" = "jessie" ] \
           || [ "${_OSV}" = "wheezy" ] \
@@ -74,7 +74,7 @@ if_install_jetty() {
         mkdir -p /var/log/jetty9
         if [ ! -e "/opt/tika9" ]; then
           cd /var/opt
-          rm -f -r apachesolr_attachments*
+          rm -rf apachesolr_attachments*
           get_dev_contrib "apachesolr_attachments-7.x-1.x-dev.tar.gz"
           cd /var/opt/solr-${_SOLR_4_VRN}/example/solr/collection1/conf/
           patch -p0 < \
@@ -86,14 +86,16 @@ if_install_jetty() {
         fi
         for Dir in `find /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/ \
           -maxdepth 1 -mindepth 1 -type d | grep conf`; do
-          rm -f -r $Dir/*
+          if [[ "${Dir}" =~ "/opt/solr4/core" ]]; then
+            rm -rf $Dir/*
+          fi
           cp -af /var/opt/solr-${_SOLR_4_VRN}/example/solr/collection1/conf/* \
             $Dir/ &> /dev/null
         done
         adduser --system --group --home /opt/solr4 jetty9 &> /dev/null
         if [ ! -e "/opt/solr4/search_api_solr-7.x-1.10.log" ]; then
           cd /var/opt
-          rm -f -r search_api_solr*
+          rm -rf search_api_solr*
           get_dev_contrib "search_api_solr-7.x-1.10.tar.gz"
           for Dir in `find /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/ \
             -maxdepth 1 -mindepth 1 -type d | grep conf`; do
@@ -208,7 +210,7 @@ if_install_jetty() {
       || [ ! -e "$_SOLR_CTRL" ]; then
       msg "INFO: Upgrading MultiCore Apache Solr 4 with Jetty ${_R_JETTY}..."
       cd /var/opt
-      rm -f -r jetty-distribution-*
+      rm -rf jetty-distribution-*
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
       mv -f /opt/jetty9 ${vBs}/jetty9-${_X_VERSION}-${_NOW}
       if [ "${_OSV}" = "jessie" ] \
@@ -240,7 +242,7 @@ if_install_jetty() {
       get_dev_arch "solr-${_SOLR_4_VRN}.tgz"
       cp -af /var/opt/solr-${_SOLR_4_VRN}/dist/solr-${_SOLR_4_VRN}.war \
         /opt/jetty9/webapps/solr.war
-      rm -f -r /opt/jetty9/solr
+      rm -rf /opt/jetty9/solr
       cd /opt/jetty9/lib/
       wget -q -U iCab ${urlDev}/tika-app-1.3.jar
       wget -q -U iCab ${urlDev}/tika-app-1.1.jar
@@ -269,9 +271,9 @@ if_install_jetty() {
         true
         msg "INFO: Installing MultiCore Apache Solr 3 with Jetty 8..."
         cd /var/opt
-        rm -f -r jetty-distribution-*
-        rm -f -r /opt/solr3
-        rm -f -r /opt/jetty8
+        rm -rf jetty-distribution-*
+        rm -rf /opt/solr3
+        rm -rf /opt/jetty8
         rm -f /etc/jetty.conf
         get_dev_arch "jetty-distribution-${_JETTY_8_VRN}.tar.gz"
         mv /var/opt/jetty-distribution-${_JETTY_8_VRN} /opt/jetty8
@@ -285,7 +287,7 @@ if_install_jetty() {
         mkdir -p /var/log/jetty8
         if [ ! -e "/opt/tika8" ]; then
           cd /var/opt
-          rm -f -r apachesolr_attachments*
+          rm -rf apachesolr_attachments*
           get_dev_contrib "apachesolr_attachments-7.x-1.x-dev.tar.gz"
           cd /var/opt/apache-solr-${_SOLR_3_VRN}/example/solr/conf
           patch -p0 < \
@@ -297,14 +299,16 @@ if_install_jetty() {
         fi
         for Dir in `find /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/ \
           -maxdepth 1 -mindepth 1 -type d | grep conf`; do
-          rm -f -r $Dir/*
+          if [[ "${Dir}" =~ "/opt/solr3/core" ]]; then
+            rm -rf $Dir/*
+          fi
           cp -af /var/opt/apache-solr-${_SOLR_3_VRN}/example/solr/conf/* \
             $Dir/ &> /dev/null
         done
         adduser --system --group --home /opt/solr3 jetty8 &> /dev/null
         if [ ! -e "/opt/solr3/search_api_solr-7.x-1.10.log" ]; then
           cd /var/opt
-          rm -f -r search_api_solr*
+          rm -rf search_api_solr*
           get_dev_contrib "search_api_solr-7.x-1.10.tar.gz"
           for Dir in `find /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/ \
             -maxdepth 1 -mindepth 1 -type d | grep conf`; do
@@ -356,7 +360,7 @@ if_install_jetty() {
     if [ ! -e "$_JETTY_CTRL" ] || [ ! -e "$_SOLR_CTRL" ]; then
       msg "INFO: Upgrading MultiCore Apache Solr 3 with Jetty 8..."
       cd /var/opt
-      rm -f -r jetty-distribution-*
+      rm -rf jetty-distribution-*
       get_dev_arch "jetty-distribution-${_JETTY_8_VRN}.tar.gz"
       kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
       mv -f /opt/jetty8 ${vBs}/jetty8-${_X_VERSION}-${_NOW}
@@ -364,7 +368,7 @@ if_install_jetty() {
       get_dev_arch "apache-solr-${_SOLR_3_VRN}.tgz"
       cp -af /var/opt/apache-solr-${_SOLR_3_VRN}/dist/apache-solr-${_SOLR_3_VRN}.war \
         /opt/jetty8/webapps/solr.war
-      rm -f -r /opt/jetty8/solr
+      rm -rf /opt/jetty8/solr
       cd /opt/jetty8/lib/
       wget -q -U iCab ${urlDev}/tika-app-1.3.jar
       wget -q -U iCab ${urlDev}/tika-app-1.1.jar
@@ -390,9 +394,9 @@ if_install_jetty() {
         true
         msg "INFO: Installing MultiCore Apache Solr 1 with Jetty 7..."
         cd /var/opt
-        rm -f -r jetty-distribution-*
-        rm -f -r /opt/solr1
-        rm -f -r /opt/jetty7
+        rm -rf jetty-distribution-*
+        rm -rf /opt/solr1
+        rm -rf /opt/jetty7
         rm -f /etc/jetty.conf
         get_dev_arch "jetty-distribution-${_JETTY_7_VRN}.tar.gz"
         mv /var/opt/jetty-distribution-${_JETTY_7_VRN} /opt/jetty7
@@ -406,7 +410,7 @@ if_install_jetty() {
         mkdir -p /var/log/jetty7
         if [ ! -e "/opt/tika7" ]; then
           cd /var/opt
-          rm -f -r apachesolr_attachments*
+          rm -rf apachesolr_attachments*
           get_dev_contrib "apachesolr_attachments-7.x-1.x-dev.tar.gz"
           cd /var/opt/apache-solr-${_SOLR_1_VRN}/example/solr/conf
           patch -p0 < \
@@ -418,14 +422,16 @@ if_install_jetty() {
         fi
         for Dir in `find /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/ \
           -maxdepth 1 -mindepth 1 -type d | grep conf`; do
-          rm -f -r $Dir/*
+          if [[ "${Dir}" =~ "/opt/solr1/core" ]]; then
+            rm -rf $Dir/*
+          fi
           cp -af /var/opt/apache-solr-${_SOLR_1_VRN}/example/solr/conf/* \
           $Dir/ &> /dev/null
         done
         adduser --system --group --home /opt/solr1 jetty7 &> /dev/null
         if [ ! -e "/opt/solr1/search_api_solr-7.x-1.10.log" ]; then
           cd /var/opt
-          rm -f -r search_api_solr*
+          rm -rf search_api_solr*
           get_dev_contrib "search_api_solr-7.x-1.10.tar.gz"
           for Dir in `find /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/ \
             -maxdepth 1 -mindepth 1 -type d | grep conf`; do
@@ -437,7 +443,7 @@ if_install_jetty() {
           touch /opt/solr1/search_api_solr-7.x-1.10.log
         fi
         cp -af ${bldPth}/docs/SOLR.txt /opt/solr1/README.txt &> /dev/null
-        rm -f -r /opt/jetty7/solr
+        rm -rf /opt/jetty7/solr
         chown -R jetty7:jetty7 /opt/solr1
         chown -R jetty7:jetty7 /opt/jetty7
         chown -R jetty7:jetty7 /var/log/jetty7
@@ -509,7 +515,7 @@ if_install_jetty() {
     if [ ! -e "$_JETTY_CTRL" ] || [ ! -e "$_SOLR_CTRL" ]; then
       msg "INFO: Upgrading MultiCore Apache Solr 1 with Jetty 7..."
       cd /var/opt
-      rm -f -r jetty-distribution-*
+      rm -rf jetty-distribution-*
       get_dev_arch "jetty-distribution-${_JETTY_7_VRN}.tar.gz"
       kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
       mv -f /opt/jetty7 ${vBs}/jetty7-${_X_VERSION}-${_NOW}
@@ -517,7 +523,7 @@ if_install_jetty() {
       get_dev_arch "apache-solr-${_SOLR_1_VRN}.tgz"
       cp -af /var/opt/apache-solr-${_SOLR_1_VRN}/dist/apache-solr-${_SOLR_1_VRN}.war \
         /opt/jetty7/webapps/solr.war
-      rm -f -r /opt/jetty7/solr
+      rm -rf /opt/jetty7/solr
       cd /opt/jetty7/lib/
       wget -q -U iCab ${urlDev}/tika-app-1.3.jar
       wget -q -U iCab ${urlDev}/tika-app-1.1.jar

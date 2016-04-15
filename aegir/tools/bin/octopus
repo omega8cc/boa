@@ -617,8 +617,8 @@ up_one() {
           up_mode
         else
           echo "${User}/.drush/sys/provision does not exist!"
-          rm -f -r ${User}/.drush/{sys,xts,usr}
-          rm -f -r ${User}/.drush/{provision,drush_make}
+          rm -rf ${User}/.drush/{sys,xts,usr}
+          rm -rf ${User}/.drush/{provision,drush_make}
           mkdir -p ${User}/.drush/{sys,xts,usr}
           ${gCb} ${branch} https://github.com/omega8cc/provision.git \
             ${User}/.drush/sys/provision &> /dev/null
@@ -863,7 +863,7 @@ up_finish() {
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
   fi
-  rm -f -r /opt/tmp/*
+  rm -rf /opt/tmp/*
   echo
   echo OCTOPUS upgrade completed
   echo Bye

@@ -179,7 +179,7 @@ satellite_remove_web_user() {
     mkdir -p ${vBs}/zombie/deleted
     deluser --remove-home --backup-to ${vBs}/zombie/deleted ${_WEB} &> /dev/null
     if [ -e "/home/${_WEB}" ]; then
-      rm -f -r /home/${_WEB} &> /dev/null
+      rm -rf /home/${_WEB} &> /dev/null
     fi
   fi
 }
@@ -1241,7 +1241,7 @@ satellite_create_shared_dirs() {
     msg "${_STATUS} A: Creating shared directories..."
   fi
   mkdir -p ${_D}/000/{core,modules}
-  rm -f -r /data/src
+  rm -rf /data/src
   if [ ! -d "${_CORE}" ]; then
     mkdir -p ${_CORE}
   fi
@@ -1287,7 +1287,7 @@ satellite_o_contrib_update_global() {
     if [ "${_FORCE_UP_SIX}" = "YES" ] && [ -e "${_D}/$i/o_contrib" ]; then
       for m in ${_RMMODULES}; do
         if [ -d "${_D}/$i/o_contrib/$m" ]; then
-          rm -f -r ${_D}/$i/o_contrib/$m
+          rm -rf ${_D}/$i/o_contrib/$m
         fi
       done
       cd ${_D}/$i/o_contrib
@@ -1345,13 +1345,13 @@ satellite_o_contrib_update_global() {
         fi
       fi
       if [ -d "${_D}/$i/o_contrib/cache_backport" ]; then
-        rm -f -r ${_D}/$i/o_contrib/cache_backport
+        rm -rf ${_D}/$i/o_contrib/cache_backport
       fi
       if [ -d "${_D}/$i/o_contrib/redis" ]; then
-        rm -f -r ${_D}/$i/o_contrib/redis
+        rm -rf ${_D}/$i/o_contrib/redis
       fi
       if [ -d "${_D}/$i/o_contrib/redis_edge" ]; then
-        rm -f -r ${_D}/$i/o_contrib/redis_edge
+        rm -rf ${_D}/$i/o_contrib/redis_edge
       fi
       if [ -e "${_D}/000/modules/cache_backport" ] \
         && [ ! -L "${_D}/$i/o_contrib/cache_backport" ]; then
@@ -1372,7 +1372,7 @@ satellite_o_contrib_update_global() {
     if [ -d "${_D}/$i" ]; then
       for p in `find ${_D}/$i/ -maxdepth 1 -mindepth 1 -type d | sort`; do
         if [ -d "$p/modules/cookie_cache_bypass" ]; then
-          rm -f -r $p/modules/cookie_cache_bypass
+          rm -rf $p/modules/cookie_cache_bypass
         fi
       done
     fi
@@ -1413,7 +1413,7 @@ satellite_o_contrib_seven_update_global() {
       && [ -e "${_D}/$i/o_contrib_seven" ]; then
       for m in ${_RMMODULES}; do
         if [ -d "${_D}/$i/o_contrib_seven/$m" ]; then
-          rm -f -r ${_D}/$i/o_contrib_seven/$m
+          rm -rf ${_D}/$i/o_contrib_seven/$m
         fi
       done
       cd ${_D}/$i/o_contrib_seven
@@ -1481,10 +1481,10 @@ satellite_o_contrib_seven_update_global() {
         fi
       fi
       if [ -d "${_D}/$i/o_contrib_seven/redis" ]; then
-        rm -f -r ${_D}/$i/o_contrib_seven/redis
+        rm -rf ${_D}/$i/o_contrib_seven/redis
       fi
       if [ -d "${_D}/$i/o_contrib_seven/redis_edge" ]; then
-        rm -f -r ${_D}/$i/o_contrib_seven/redis_edge
+        rm -rf ${_D}/$i/o_contrib_seven/redis_edge
       fi
       if [ -e "${_D}/000/modules/redis" ] \
         && [ ! -L "${_D}/$i/o_contrib_seven/redis" ]; then
@@ -1555,14 +1555,14 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "views_content_cache-7.x-3.0-alpha3.tar.gz"
   get_dev_contrib "views404-7.x-1.0-beta1.tar.gz"
   if [ "${_PURGE_MODE}" = "ON" ] && [ "${_PURGE_FOR_SEVEN}" = "YES" ]; then
-    rm -f -r expire*
-    rm -f -r purge*
+    rm -rf expire*
+    rm -rf purge*
     get_dev_contrib "expire-7.x-2.0-rc4.tar.gz"
     get_dev_contrib "purge-7.x-1.7.tar.gz"
   else
-    rm -f -r nginx_accel_redirect*
-    rm -f -r purge*
-    rm -f -r expire*
+    rm -rf nginx_accel_redirect*
+    rm -rf purge*
+    rm -rf expire*
   fi
   find ./ -type d -exec chmod 0755 {} \; &> /dev/null
   find ./ -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1577,7 +1577,7 @@ satellite_download_o_contrib_seven() {
   if [ ! -e "${_D}/000/modules/redis/update-${_X_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
-    rm -f -r ${_D}/000/modules/redis
+    rm -rf ${_D}/000/modules/redis
     get_dev_contrib "redis-mod-26-06-2015.tar.gz"
     rm -f redis/redis.info
     echo update > redis/update-${_X_VERSION}.info
@@ -1585,7 +1585,7 @@ satellite_download_o_contrib_seven() {
   if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_M_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
-    rm -f -r ${_D}/000/modules/redis_edge
+    rm -rf ${_D}/000/modules/redis_edge
     get_dev_contrib "redis_edge-${_REDIS_M_VERSION}.tar.gz"
     rm -f redis_edge/redis.info
     echo update > redis_edge/${_REDIS_M_VERSION}.info
@@ -1635,14 +1635,14 @@ satellite_download_o_contrib_six() {
   get_dev_contrib "views_content_cache-6.x-2.x-dev.tar.gz"
   get_dev_contrib "views404-6.x-1.x-dev.tar.gz"
   if [ "${_PURGE_MODE}" = "ON" ]; then
-    rm -f -r purge*
-    rm -f -r expire*
+    rm -rf purge*
+    rm -rf expire*
     get_dev_contrib "purge-6.x-1.7.tar.gz"
     get_dev_contrib "expire-6.x-1.x-dev.tar.gz"
   else
-    rm -f -r nginx_accel_redirect*
-    rm -f -r purge*
-    rm -f -r expire*
+    rm -rf nginx_accel_redirect*
+    rm -rf purge*
+    rm -rf expire*
   fi
   find ./ -type d -exec chmod 0755 {} \; &> /dev/null
   find ./ -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1660,14 +1660,14 @@ satellite_download_o_contrib_six() {
   if [ ! -e "${_D}/000/modules/cache_backport/update-${_X_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
-    rm -f -r ${_D}/000/modules/cache_backport
+    rm -rf ${_D}/000/modules/cache_backport
     get_dev_contrib "cache_backport-6.x-1.0-rc4.tar.gz"
     echo update > cache_backport/update-${_X_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis/update-${_X_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
-    rm -f -r ${_D}/000/modules/redis
+    rm -rf ${_D}/000/modules/redis
     get_dev_contrib "redis-mod-26-06-2015.tar.gz"
     rm -f redis/redis.info
     echo update > redis/update-${_X_VERSION}.info
@@ -1675,7 +1675,7 @@ satellite_download_o_contrib_six() {
   if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_M_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
-    rm -f -r ${_D}/000/modules/redis_edge
+    rm -rf ${_D}/000/modules/redis_edge
     get_dev_contrib "redis_edge-${_REDIS_M_VERSION}.tar.gz"
     rm -f redis_edge/redis.info
     echo update > redis_edge/${_REDIS_M_VERSION}.info
@@ -1702,7 +1702,7 @@ satellite_check_fix_o_contrib() {
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       msg "${_STATUS} A: Running o_contrib forced upgrade..."
       cd ${_CORE}/o_contrib
-      rm -f -r *
+      rm -rf ${_CORE}/o_contrib/*
       satellite_download_o_contrib_six
       cd ${_CORE}/o_contrib
     fi
@@ -1712,7 +1712,7 @@ satellite_check_fix_o_contrib() {
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       msg "${_STATUS} A: Running o_contrib_seven forced upgrade..."
       cd ${_CORE}/o_contrib_seven
-      rm -f -r *
+      rm -rf ${_CORE}/o_contrib_seven/*
       satellite_download_o_contrib_seven
       cd ${_CORE}/o_contrib_seven
     fi
@@ -1720,14 +1720,14 @@ satellite_check_fix_o_contrib() {
   if [ ! -e "${_D}/000/modules/cache_backport/update-${_X_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
-    rm -f -r ${_D}/000/modules/cache_backport
+    rm -rf ${_D}/000/modules/cache_backport
     get_dev_contrib "cache_backport-6.x-1.0-rc4.tar.gz"
     echo update > cache_backport/update-${_X_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis/update-${_X_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
-    rm -f -r ${_D}/000/modules/redis
+    rm -rf ${_D}/000/modules/redis
     get_dev_contrib "redis-mod-26-06-2015.tar.gz"
     rm -f redis/redis.info
     echo update > redis/update-${_X_VERSION}.info
@@ -1735,7 +1735,7 @@ satellite_check_fix_o_contrib() {
   if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_M_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
-    rm -f -r ${_D}/000/modules/redis_edge
+    rm -rf ${_D}/000/modules/redis_edge
     get_dev_contrib "redis_edge-${_REDIS_M_VERSION}.tar.gz"
     rm -f redis_edge/redis.info
     echo update > redis_edge/${_REDIS_M_VERSION}.info
@@ -2002,7 +2002,7 @@ provision_backend_dbpass_sync() {
   fi
   mysqladmin flush-privileges &> /dev/null
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush" &> /dev/null
-  rm -f -r ${_ROOT}/.tmp/cache
+  rm -rf ${_ROOT}/.tmp/cache
   if [ -e "${_ROOT}/.drush/server_localhost.alias.drushrc.php" ]; then
     su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
       hosting-task @server_localhost verify --force" &> /dev/null
@@ -2082,7 +2082,7 @@ satellite_download_for_local_build() {
   mL="/opt/tmp/make_local"
   if [ ! -e "${mL}/hosting/hosting.info" ] \
     || [ ! -e "${mL}/hosting_custom_settings/hosting_custom_settings.info" ]; then
-    rm -f -r ${mL}
+    rm -rf ${mL}
     mkdir -p ${mL}
     cd ${mL}
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2109,7 +2109,7 @@ satellite_download_for_local_build() {
       ${gCb} 7.x-3.x ${gitHub}/hosting_remote_import.git       &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_site_backup_manager.git &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_tasks_extra.git         &> /dev/null
-      rm -f -r */.git
+      rm -rf */.git
     else
       get_dev_ext "hosting_civicrm.tar.gz"
       get_dev_ext "hosting_custom_settings.tar.gz"
@@ -2168,8 +2168,8 @@ satellite_run_child_b() {
     else
       if [ ! -d "${_ROOT}/.drush/sys/provision/http" ]; then
         mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
-        rm -f -r ${_ROOT}/.drush/provision
-        rm -f -r ${_ROOT}/.drush/sys/provision
+        rm -rf ${_ROOT}/.drush/provision
+        rm -rf ${_ROOT}/.drush/sys/provision
         ${gCb} ${_BRANCH_PRN} \
           https://github.com/omega8cc/provision.git \
           ${_ROOT}/.drush/sys/provision &> /dev/null
@@ -2177,8 +2177,8 @@ satellite_run_child_b() {
           ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
         wait
       fi
-      rm -f -r ${_ROOT}/.drush/drush_make
-      rm -f -r ${_ROOT}/.drush/sys/drush_make
+      rm -rf ${_ROOT}/.drush/drush_make
+      rm -rf ${_ROOT}/.drush/sys/drush_make
       hostmaster_frontend_dbpass_sync
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "${_STATUS} A: Switching user and running AegirSetupB..."
@@ -2265,11 +2265,11 @@ satellite_run_post_install() {
     fi
     chgrp -R ${_WEBG} ${_HM_ROOT}/sites/${_DOMAIN}/files
     chgrp ${_WEBG} ${_HM_ROOT}/sites/${_DOMAIN}/settings.php
-    rm -f -r ${_HM_ROOT}/profiles/default
-    rm -f -r ${_HM_ROOT}/themes/bluemarine
-    rm -f -r ${_HM_ROOT}/themes/chameleon
-    rm -f -r ${_HM_ROOT}/themes/pushbutton
-    rm -f -r ${_HM_ROOT}/scripts
+    rm -rf ${_HM_ROOT}/profiles/default
+    rm -rf ${_HM_ROOT}/themes/bluemarine
+    rm -rf ${_HM_ROOT}/themes/chameleon
+    rm -rf ${_HM_ROOT}/themes/pushbutton
+    rm -rf ${_HM_ROOT}/scripts
     rm -f ${_HM_ROOT}/themes/README.txt
     rm -f ${_HM_ROOT}/*.txt
     mrun "service nginx reload" &> /dev/null
@@ -2568,10 +2568,10 @@ satellite_if_add_update_user_symlinks() {
     msg "${_STATUS} A: Adding symlink to the clients directory"
     ln -sf ${_ROOT}/clients ${_USER_HD}/clients
   fi
-  rm -f -r ${_ROOT}/clients/admin &> /dev/null
-  rm -f -r ${_ROOT}/clients/omega8ccgmailcom &> /dev/null
-  rm -f -r ${_ROOT}/clients/nocomega8cc &> /dev/null
-  rm -f -r ${_ROOT}/clients/*/backups &> /dev/null
+  rm -rf ${_ROOT}/clients/admin &> /dev/null
+  rm -rf ${_ROOT}/clients/omega8ccgmailcom &> /dev/null
+  rm -rf ${_ROOT}/clients/nocomega8cc &> /dev/null
+  rm -rf ${_ROOT}/clients/*/backups &> /dev/null
   symlinks -dr ${_ROOT}/clients &> /dev/null
 }
 
@@ -2608,7 +2608,9 @@ satellite_if_add_update_user_dot_dirs() {
       chmod 700 ${_USER_BZR}
     fi
   else
-    rm -f -r ${_USER_BZR}
+    if [ -d "${_USER_BZR}" ]; then
+      rm -rf ${_USER_BZR}
+    fi
   fi
 
   ###---### Remove not used dot files.
@@ -2974,7 +2976,7 @@ satellite_if_add_update_backend_user_dirs_files_clean() {
   ###---### Create ~/.tmp dir if not exists.
   #
   if [ ! -d "${_ROOT}/.tmp" ]; then
-    rm -f -r ${_ROOT}/.tmp
+    rm -rf ${_ROOT}/.tmp
     mkdir -p ${_ROOT}/.tmp
     chown ${_USER}:users ${_ROOT}/.tmp
     chmod 02775 ${_ROOT}/.tmp
@@ -3009,7 +3011,9 @@ satellite_if_add_update_backend_user_dirs_files_clean() {
       chmod 700 $_SYSTEM_USER_BZR
     fi
   else
-    rm -f -r $_SYSTEM_USER_BZR
+    if [ -d "$_SYSTEM_USER_BZR" ]; then
+      rm -rf $_SYSTEM_USER_BZR
+    fi
   fi
 
   ###---### Create other dirs and symlinks if not exist.
@@ -3043,7 +3047,7 @@ satellite_if_add_update_backend_user_dirs_files_clean() {
     wait
     sed -i "s/'cache', //g" ${_D}/*/*/profiles/*/*.profile &> /dev/null
     wait
-    rm -f -r ${_D}/*/o_contrib/cache
+    rm -rf ${_D}/*/o_contrib/cache
     touch ${_D}/000/old_cache.out2.txt
   fi
 }
@@ -3371,7 +3375,7 @@ satellite_make() {
 satellite_if_head_github_connection_test() {
   ###--------------------###
   if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-    rm -f -r /opt/tmp/test-*
+    rm -rf /opt/tmp/test-*
     check_connection
     _GITHUB_TEST=$(git clone ${gitHub}/provision.git \
       /opt/tmp/test-provision 2>&1)
@@ -3381,7 +3385,7 @@ satellite_if_head_github_connection_test() {
       msg "Please try to run this script again in a few minutes"
       msg "You may want to check https://status.github.com/messages"
       msg "Bye"
-      rm -f -r /opt/tmp/test-*
+      rm -rf /opt/tmp/test-*
       clean_pid_exit
     fi
     _GITHUB_TEST=$(git clone ${gitHub}/hostmaster.git \
@@ -3392,13 +3396,13 @@ satellite_if_head_github_connection_test() {
       msg "Please try to run this script again in a few minutes"
       msg "You may want to check https://status.github.com/messages"
       msg "Bye"
-      rm -f -r /opt/tmp/test-*
+      rm -rf /opt/tmp/test-*
       clean_pid_exit
     fi
-    rm -f -r /opt/tmp/test-*
+    rm -rf /opt/tmp/test-*
   fi
   if [[ "${_X_VERSION}" =~ "-dev" ]]; then
-    rm -f -r /opt/tmp/test-*
+    rm -rf /opt/tmp/test-*
     _GITHUB_TEST=$(git clone ${gitHub}/boa.git \
       /opt/tmp/test-boa 2>&1)
     if [[ "${_GITHUB_TEST}" =~ "fatal" ]]; then
@@ -3407,10 +3411,10 @@ satellite_if_head_github_connection_test() {
       msg "Please try to run this script again in a few minutes"
       msg "You may want to check https://status.github.com/messages"
       msg "Bye"
-      rm -f -r /opt/tmp/test-*
+      rm -rf /opt/tmp/test-*
       clean_pid_exit
     fi
-    rm -f -r /opt/tmp/test-*
+    rm -rf /opt/tmp/test-*
   fi
 }
 
@@ -3882,8 +3886,8 @@ EOF
 satellite_pre_cleanup() {
   rm -f /tmp/cache.inc*
   rm -f /opt/tmp/status-*
-  rm -f -r /tmp/drush_make_tmp*
-  rm -f -r /tmp/make_tmp*
+  rm -rf /tmp/drush_make_tmp*
+  rm -rf /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
   if [ -e "/home/${_USER}.ftp" ]; then
     disable_chattr ${_USER}.ftp
@@ -3895,12 +3899,12 @@ satellite_post_cleanup() {
     enable_chattr ${_USER}.ftp
   fi
   rm -f /tmp/cache.inc*
-  rm -f -r /var/opt/*
-  rm -f -r /tmp/drush_make_tmp*
-  rm -f -r /tmp/make_tmp*
+  rm -rf /var/opt/*
+  rm -rf /tmp/drush_make_tmp*
+  rm -rf /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
   rm -f /var/run/boa_run.pid
-  rm -f -r ${_ROOT}/.tmp/cache
+  rm -rf ${_ROOT}/.tmp/cache
   rm -f /var/run/manage_ltd_users.pid
   rm -f /var/run/manage_rvm_users.pid
 }
@@ -4008,7 +4012,7 @@ satellite_batch_cleanup() {
   find ${_ROOT}/static/*/*/*/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
   if [ -d "${_CORE}/${_DRUPAL7}" ]; then
     mkdir -p /var/backups/trash
-    rm -f -r /var/backups/trash/*
+    rm -rf /var/backups/trash/*
     mv -f ${_CORE}/${_DRUPAL7} /var/backups/trash/ &> /dev/null
   fi
 }
@@ -4062,7 +4066,7 @@ satellite_child_b_prepare_dirs_permissions() {
   chmod 0700 ${_ROOT}/aegir.sh &> /dev/null
   echo -e \
     "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n\n${_DRUSHCMD} \
-     cc drush &> /dev/null\nrm -f -r ${_ROOT}/.tmp/cache\n${_DRUSHCMD} \
+     cc drush &> /dev/null\nrm -rf ${_ROOT}/.tmp/cache\n${_DRUSHCMD} \
      '@hostmaster' hosting-dispatch\ntouch ${_ROOT}/${_USER}-task.done" \
     | fmt -su -w 2500 | tee -a ${_ROOT}/aegir.sh >/dev/null 2>&1
 
@@ -4129,7 +4133,7 @@ satellite_child_b_install_drush() {
   msg "${_STATUS} B: Downloading drush ${_DRUSH_VERSION}..."
   get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
   cd ${_ROOT}/tools/drush/
-  rm -f -r ${_ROOT}/tools/drush/vendor
+  rm -rf ${_ROOT}/tools/drush/vendor
   get_dev_ext "vendor-${_DRUSH_VERSION}.tar.gz"
   find ${_ROOT}/tools -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_ROOT}/tools -type f -exec chmod 0644 {} \; &> /dev/null
@@ -4186,8 +4190,8 @@ satellite_child_b_drush_xts_install() {
   cd ${_ROOT}/.drush
   if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
     msg "${_STATUS} B: Downloading Drush and Provision extensions..."
-    rm -f -r ${_ROOT}/.drush/{sys,xts,usr}
-    rm -f -r ${_ROOT}/.drush/{provision,drush_make}
+    rm -rf ${_ROOT}/.drush/{sys,xts,usr}
+    rm -rf ${_ROOT}/.drush/{provision,drush_make}
     mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
     rD="${_ROOT}/.drush"
     ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
@@ -4204,8 +4208,8 @@ satellite_child_b_drush_xts_install() {
       ${rD}/usr/registry_rebuild &> /dev/null
     ${gCb} 7.x-1.x ${gitHub}/safe_cache_form_clear.git \
       ${rD}/usr/safe_cache_form_clear &> /dev/null
-    rm -f -r ${rD}/*/.git
-    rm -f -r ${rD}/*/*/.git
+    rm -rf ${rD}/*/.git
+    rm -rf ${rD}/*/*/.git
     cd ${rD}/usr
     get_dev_ext "clean_missing_modules.tar.gz"
   else
@@ -4271,7 +4275,7 @@ satellite_child_b_aegir_build() {
 
     msg "${_STATUS} B: Running hostmaster-install, please wait..."
     ${_DRUSHCMD} cc drush >${_ROOT}/log/install.log 2>&1
-    rm -f -r ${_ROOT}/.tmp/cache
+    rm -rf ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} hostmaster-install ${_DOMAIN} \
         --aegir_db_host=${_THIS_DB_HOST} \
@@ -4310,7 +4314,7 @@ satellite_child_b_aegir_build() {
     rm -f /data/u/${_DOMAIN} &> /dev/null
     ln -sf ${_HM_ROOT} /data/u/${_DOMAIN}
     ${_DRUSHCMD} cc drush &> /dev/null
-    rm -f -r ${_ROOT}/.tmp/cache
+    rm -rf ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} B: Running hosting-dispatch (1/3)..."
     fi
@@ -4330,7 +4334,7 @@ satellite_child_b_aegir_build() {
       msg "${_STATUS} B: Testing previous install..."
     fi
     ${_DRUSHCMD} cc drush &> /dev/null
-    rm -f -r ${_ROOT}/.tmp/cache
+    rm -rf ${_ROOT}/.tmp/cache
 
     ### Pre-Fix for migrated/merged instances
     if [ -e "${_ROOT}/log/imported.pid" ] || [ -e "${_ROOT}/log/exported.pid" ]; then
@@ -4353,7 +4357,7 @@ satellite_child_b_aegir_build() {
     fi
 
     ${_DRUSHCMD} cc drush &> /dev/null
-    rm -f -r ${_ROOT}/.tmp/cache
+    rm -rf ${_ROOT}/.tmp/cache
     if [ -d "${_HM_ROOT}/modules/o_contrib" ] \
       && [ ! -L "${_HM_ROOT}/modules/o_contrib" ]; then
       rm -f ${_HM_ROOT}/modules/o_contrib/{cache_backport,redis_edge,redis}
@@ -4448,7 +4452,7 @@ satellite_child_b_aegir_build() {
 
     cd ${_PREV_HM_ROOT}
     ${_DRUSHCMD} cc drush &> /dev/null
-    rm -f -r ${_ROOT}/.tmp/cache
+    rm -rf ${_ROOT}/.tmp/cache
 
     ${_DRUSHCMD} @hostmaster sqlc < ${bldPth}/aegir/helpers/hosting_cron.sql &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
@@ -4506,7 +4510,7 @@ satellite_child_b_aegir_build() {
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE users_roles \
           SET rid='7' WHERE rid='5'" &> /dev/null
         ${_DRUSHCMD} cc drush &> /dev/null
-        rm -f -r ${_ROOT}/.tmp/cache
+        rm -rf ${_ROOT}/.tmp/cache
         ${_DRUSHCMD} @hostmaster hosting-task @server_localhost \
           verify --force &> /dev/null
         ${_DRUSHCMD} '@hostmaster' hosting-dispatch &> /dev/null
@@ -4554,7 +4558,7 @@ satellite_child_b_aegir_build() {
     ### Fix for old migrated/merged instances
 
     ${_DRUSHCMD} cc drush &> /dev/null
-    rm -f -r ${_ROOT}/.tmp/cache
+    rm -rf ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y -d
     else
@@ -4665,7 +4669,7 @@ satellite_child_b_aegir_ui_enhance() {
     fi
     cd ${_HM_ROOT}/sites/${_DOMAIN}
     ${_DRUSHCMD} cc drush &> /dev/null
-    rm -f -r ${_ROOT}/.tmp/cache
+    rm -rf ${_ROOT}/.tmp/cache
     ${_DRUSHCMD} @hostmaster en hosting_civicrm -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_civicrm_cron -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_client -y &> /dev/null
@@ -4826,7 +4830,7 @@ satellite_child_b_symlink_global_inc() {
 
 satellite_child_b_redis_enable_finalize() {
   if [ -e "${_HM_ROOT}/modules/o_contrib" ]; then
-    rm -f -r ${_HM_ROOT}/modules/o_contrib
+    rm -rf ${_HM_ROOT}/modules/o_contrib
   fi
   if [ ! -e "${_HM_ROOT}/modules/o_contrib_seven/redis_edge" ]; then
     if [ -e "/data/all/000/modules/redis_edge" ]; then

@@ -908,7 +908,7 @@ up_finish() {
     service webmin stop &> /dev/null
     service usermin stop &> /dev/null
   fi
-  rm -f -r /opt/tmp/*
+  rm -rf /opt/tmp/*
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     csf -x  &> /dev/null
     csf -uf &> /dev/null
@@ -1082,7 +1082,7 @@ check_root() {
     if [ "${_PTMX}" = "CHECK" ] && [ "${_PTS}" = "FIX" ]; then
       echo "Required /dev/pts/ptmx does not exist! We will fix this now..."
       mkdir -p /dev/pts
-      rm -f -r /dev/pts/*
+      rm -rf /dev/pts/*
       rm -f /etc/apt/sources.list.d/openssl.list
       apt-get update -qq &> /dev/null
       apt-get install udev -y --force-yes &> /dev/null

@@ -200,7 +200,7 @@ detect_cdorked_malware() {
     ### msg "INFO: Checking for Linux/Cdorked.A malware..."
     chattr -ai $(which nginx) &> /dev/null
     cd ${vBs}
-    rm -f -r /var/opt/foo_bar*
+    rm -rf /var/opt/foo_bar*
     gcc -o /var/opt/foo_bar ${bldPth}/aegir/helpers/dump_cdorked_config.c &> /dev/null
     _C_DORKED_TEST=$(/var/opt/foo_bar 2>&1)
     if [[ "${_C_DORKED_TEST}" =~ "No shared memory matching Cdorked signature" ]]; then
@@ -317,7 +317,7 @@ install_upgrade_nginx() {
     else
       msg "INFO: Installing Nginx..."
     fi
-    cd /var/opt; rm -f -r nginx*
+    cd /var/opt; rm -rf nginx*
     get_dev_src "nginx-upload-progress-module.tar.gz"
     if [ "${_PURGE_MODE}" = "ON" ]; then
       get_dev_src "ngx-cache-purge.tar.gz"
@@ -340,7 +340,7 @@ install_upgrade_nginx() {
     fi
     if [ "${_NGINX_LDAP}" = "YES" ]; then
       cd /var/opt
-      rm -f -r /var/opt/nginx-auth-ldap*
+      rm -rf /var/opt/nginx-auth-ldap*
       get_dev_src "nginx-auth-ldap.tar.gz"
       if [ -e "/var/opt/nginx-auth-ldap" ]; then
         _NGINX_EXTRA="--add-module=/var/opt/nginx-auth-ldap/ ${_NGINX_EXTRA}"
@@ -348,7 +348,7 @@ install_upgrade_nginx() {
     fi
     if [ "${_NGINX_NAXSI}" = "YES" ]; then
       cd /var/opt
-      rm -f -r /var/opt/nginx-naxsi*
+      rm -rf /var/opt/nginx-naxsi*
       get_dev_src "nginx-naxsi.tar.gz"
       if [ -e "/var/opt/nginx-naxsi" ]; then
         _NGINX_EXTRA="--add-module=/var/opt/nginx-naxsi/naxsi_src/ ${_NGINX_EXTRA}"
@@ -363,7 +363,7 @@ install_upgrade_nginx() {
     fi
     if [ ! -e "/var/opt/openssl-${_OPENSSL_NGX_VRN}" ]; then
       cd /var/opt
-      rm -f -r openssl*
+      rm -rf openssl*
       get_dev_src "openssl-${_OPENSSL_NGX_VRN}.tar.gz"
     fi
     cd /var/opt/nginx-${_NGINX_VRN}

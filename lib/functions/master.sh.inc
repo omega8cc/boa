@@ -151,7 +151,7 @@ provision_backend_dbpass_sync() {
   fi
   mysqladmin flush-privileges &> /dev/null
   su -s /bin/bash - aegir -c "drush cc drush" &> /dev/null
-  rm -f -r /var/aegir/.tmp/cache
+  rm -rf /var/aegir/.tmp/cache
   if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ]; then
     su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_localhost \
       verify --force" &> /dev/null
@@ -211,7 +211,7 @@ master_download_for_local_build() {
   mL="/opt/tmp/make_local"
   if [ ! -e "${mL}/hosting/hosting.info" ] \
     || [ ! -e "${mL}/hosting_custom_settings/hosting_custom_settings.info" ]; then
-    rm -f -r ${mL}
+    rm -rf ${mL}
     mkdir -p ${mL}
     cd ${mL}
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -238,7 +238,7 @@ master_download_for_local_build() {
       ${gCb} 7.x-3.x ${gitHub}/hosting_remote_import.git       &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_site_backup_manager.git &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_tasks_extra.git         &> /dev/null
-      rm -f -r */.git
+      rm -rf */.git
     else
       get_dev_ext "hosting_civicrm.tar.gz"
       get_dev_ext "hosting_custom_settings.tar.gz"
@@ -285,18 +285,18 @@ upgrade_aegir_master() {
       echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     fi
     if [ ! -d "/var/aegir/.drush/sys/provision/http" ]; then
-      rm -f -r /var/aegir/.drush/{sys,xts,usr}
-      rm -f -r /var/aegir/.drush/{provision,drush_make}
+      rm -rf /var/aegir/.drush/{sys,xts,usr}
+      rm -rf /var/aegir/.drush/{provision,drush_make}
       mkdir -p /var/aegir/.drush/{sys,xts,usr}
       ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
         /var/aegir/.drush/sys/provision &> /dev/null
       sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
         /var/aegir/.drush/sys/provision/aegir.make &> /dev/null
-      rm -f -r /var/aegir/drush
+      rm -rf /var/aegir/drush
       cd /var/aegir
       get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
       cd /var/aegir/drush/
-      rm -f -r /var/aegir/drush/vendor
+      rm -rf /var/aegir/drush/vendor
       get_dev_ext "vendor-${_DRUSH_VERSION}.tar.gz"
       find /var/aegir/drush -type d -exec chmod 0755 {} \; &> /dev/null
       find /var/aegir/drush -type f -exec chmod 0644 {} \; &> /dev/null
@@ -389,7 +389,7 @@ upgrade_aegir_master() {
         cd ${mtrNgx}
         cp -a conf.d pre.d
       else
-        rm -f -r ${mtrNgx}/conf.d
+        rm -rf ${mtrNgx}/conf.d
       fi
       if [ -e "${mtrNgx}/pre.d/custom_nginx.conf" ]; then
         rm -f ${mtrNgx}/pre.d/custom_nginx.conf
@@ -659,7 +659,7 @@ EOFMYSQL
     _U_HD="/var/aegir/.drush"
     chattr +i ${_U_HD}/php.ini &> /dev/null
     su -s /bin/bash - aegir -c "drush cc drush" &> /dev/null
-    rm -f -r /var/aegir/.tmp/cache
+    rm -rf /var/aegir/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Running hosting-dispatch (1/3)..."
     fi

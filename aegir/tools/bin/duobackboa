@@ -110,17 +110,17 @@ install() {
     apt-get clean -qq                    &> /dev/null
     apt-get update -qq                   &> /dev/null
     aptitude purge duplicity -y          &> /dev/null
-    rm -f -r /usr/local/lib/python2.7/dist-packages/boto*
-    rm -f -r /usr/local/lib/python2.6/dist-packages/boto*
-    rm -f -r /usr/local/lib/python2.7/dist-packages/duplicity*
-    rm -f -r /usr/local/lib/python2.6/dist-packages/duplicity*
+    rm -rf /usr/local/lib/python2.7/dist-packages/boto*
+    rm -rf /usr/local/lib/python2.6/dist-packages/boto*
+    rm -rf /usr/local/lib/python2.7/dist-packages/duplicity*
+    rm -rf /usr/local/lib/python2.6/dist-packages/duplicity*
     apt-get install librsync-dev -y      &> /dev/null
     apt-get install python-dev -y        &> /dev/null
     apt-get install python-lockfile -y   &> /dev/null
     apt-get install python-setuptools -y &> /dev/null
     apt-get install s3cmd -y             &> /dev/null
     mkdir -p /var/opt
-    rm -f -r /var/opt/{boto*,duplicity*}
+    rm -rf /var/opt/{boto*,duplicity*}
     cd /var/opt
     fe="boto-${_BOTO_VRN}.tar.gz"
     curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
@@ -137,7 +137,7 @@ install() {
     python setup.py build &> /dev/null
     python setup.py install &> /dev/null
     cd
-    rm -f -r /var/opt/{boto*,duplicity*}
+    rm -rf /var/opt/{boto*,duplicity*}
     echo "Installation complete!"
   fi
 }
