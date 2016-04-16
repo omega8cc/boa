@@ -27,7 +27,7 @@ crontab_update() {
       echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
-      echo "28 6    * * 7   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "08 8    * * 7   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d"                /etc/crontab &> /dev/null
     wait
@@ -95,7 +95,7 @@ crontab_clean() {
       echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
-      echo "28 6    * * 7   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "08 8    * * 7   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d"                /etc/crontab &> /dev/null
     wait
