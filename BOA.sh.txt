@@ -296,13 +296,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/weekly.fixed.a301j.pid" ]; then
+    && [ ! -e "${pthLog}/weekly.fixed.a301k.pid" ]; then
     mv -f /var/xdrago/weekly.sh /var/xdrago/weekly.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/weekly.sh" -o /var/xdrago/weekly.sh
     if [ -e "/var/xdrago/weekly.sh" ]; then
       chmod 700 /var/xdrago/weekly.sh
       chown root:root /var/xdrago/weekly.sh
-      touch ${pthLog}/weekly.fixed.a301j.pid
+      touch ${pthLog}/weekly.fixed.a301k.pid
     else
       mv -f /var/xdrago/weekly.sh.old /var/xdrago/weekly.sh
     fi
