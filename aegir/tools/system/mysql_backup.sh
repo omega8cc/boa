@@ -58,6 +58,15 @@ EOFMYSQL
   done
 }
 
+truncate_watchdog_tables() {
+  _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^watchdog$ 2>&1)
+  for A in ${_TABLES}; do
+mysql --default-character-set=utf8 ${_DB}<<EOFMYSQL
+TRUNCATE ${A};
+EOFMYSQL
+  done
+}
+
 truncate_accesslog_tables() {
   _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^accesslog$ 2>&1)
   for A in ${_TABLES}; do
@@ -106,6 +115,11 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     && [ "${_DB}" != "performance_schema" ]; then
     if [ "${_DB}" != "mysql" ]; then
       truncate_cache_tables &> /dev/null
+      _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog* | grep "G" 2>&1)
+      if [[ "${_IS_GB}" =~ "watchdog" ]]; then
+        truncate_watchdog_tables &> /dev/null
+        echo "Truncated giant watchdog for ${_DB}"
+      fi
       if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
