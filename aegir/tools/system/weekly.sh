@@ -365,7 +365,7 @@ usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
 
 We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Sunday, but in return we expect
+between weekly checks which happen every Monday, but in return we expect
 that you will use this allowance responsibly and sparingly.
 
 If you have any questions, please don't respond to this message,
@@ -424,7 +424,7 @@ usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
 
 We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Sunday, but in return we expect
+between weekly checks which happen every Monday, but in return we expect
 that you will use this allowance responsibly and sparingly.
 
 If you have any questions, please don't respond to this message,
@@ -483,7 +483,7 @@ usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
 
 We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Sunday, but in return we expect
+between weekly checks which happen every Monday, but in return we expect
 that you will use this allowance responsibly and sparingly.
 
 If you have any questions, please don't respond to this message,
@@ -531,7 +531,7 @@ we count all your sites, including also all dev/tmp sites, if they exist,
 even if they are marked as disabled in your Aegir control panel.
 
 We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Sunday, but in return we expect
+between weekly checks which happen every Monday, but in return we expect
 that you will use this allowance responsibly and sparingly.
 
 If you have any questions, please don't respond to this message,
@@ -570,7 +570,7 @@ we count all your sites, including also all dev/tmp sites, if they exist,
 even if they are marked as disabled in your Aegir control panel.
 
 We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Sunday, but in return we expect
+between weekly checks which happen every Monday, but in return we expect
 that you will use this allowance responsibly and sparingly.
 
 If you have any questions, please don't respond to this message,
@@ -609,7 +609,7 @@ we count all your sites, including also all dev/tmp sites, if they exist,
 even if they are marked as disabled in your Aegir control panel.
 
 We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Sunday, but in return we expect
+between weekly checks which happen every Monday, but in return we expect
 that you will use this allowance responsibly and sparingly.
 
 If you have any questions, please don't respond to this message,
