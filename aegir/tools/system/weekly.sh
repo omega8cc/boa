@@ -812,6 +812,18 @@ action() {
               Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}'" &> /dev/null
             su -s /bin/bash - ${_THIS_U} \
               -c "drush @hostmaster cc all" &> /dev/null
+            TmDir="${Plr}/profiles/hostmaster/themes/aegir/eldir"
+            PgTpl="${TmDir}/page.tpl.php"
+            EldirF="0001-Print-site_footer-if-defined.patch"
+            TplPatch="/var/xdrago/conf/${EldirF}"
+            if [ -e "${PgTpl}" ] && [ -e "${TplPatch}" ]; then
+              _IS_SF=$(grep "site_footer" ${PgTpl} 2>&1)
+              if [[ ! "${_IS_SF}" =~ "site_footer" ]]; then
+                cd ${TmDir}
+                patch -p1 < ${TplPatch} &> /dev/null
+                cd
+              fi
+            fi
           fi
         else
           if [ -e "${_THIS_HM_SITE}" ]; then

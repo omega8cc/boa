@@ -61,6 +61,9 @@ optBin="/opt/local/bin"
 pthLog="/var/xdrago/log"
 tBn="tools/bin"
 vBs="/var/backups"
+#
+eldirF="0001-Print-site_footer-if-defined.patch"
+eldirP="/var/xdrago/conf/${eldirF}"
 
 fix_dns_settings() {
   dnsLi="/root/.local.dns.IP.list"
@@ -279,13 +282,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/weekly.fixed.a301i.pid" ]; then
+    && [ ! -e "${pthLog}/weekly.fixed.a301j.pid" ]; then
     mv -f /var/xdrago/weekly.sh /var/xdrago/weekly.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/weekly.sh" -o /var/xdrago/weekly.sh
     if [ -e "/var/xdrago/weekly.sh" ]; then
       chmod 700 /var/xdrago/weekly.sh
       chown root:root /var/xdrago/weekly.sh
-      touch ${pthLog}/weekly.fixed.a301i.pid
+      touch ${pthLog}/weekly.fixed.a301j.pid
     else
       mv -f /var/xdrago/weekly.sh.old /var/xdrago/weekly.sh
     fi
@@ -508,6 +511,14 @@ fix_alt() {
       ln -sf /etc/alternatives/java /usr/bin/java
       echo fixed java symlinks
     fi
+  fi
+}
+
+fix_eldir() {
+  if [ -e "/var/xdrago" ] \
+    && [ ! -e "${eldirP}" ]; then
+    mkdir -p /var/xdrago/conf
+    curl ${crlGet} "${urlHmr}/patches/${eldirF}" -o ${eldirP}
   fi
 }
 
@@ -760,6 +771,7 @@ if [ `whoami` = "root" ]; then
   fi
   setup
   fix_alt
+  fix_eldir
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then

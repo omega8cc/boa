@@ -1,0 +1,28 @@
+From c22f1e9aa41010d91f3105628a8652ef42e12efa Mon Sep 17 00:00:00 2001
+From: Barracuda Team <admin@omega8.cc>
+Date: Sat, 16 Apr 2016 18:11:35 +0200
+Subject: [PATCH] Print $site_footer if defined
+
+---
+ page.tpl.php | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/page.tpl.php b/page.tpl.php
+index 6a68dc4..a7eda81 100644
+--- a/page.tpl.php
++++ b/page.tpl.php
+@@ -51,6 +51,11 @@
+   </div></div>
+ 
+   <div id="footer" class='reverse'><div class='limiter'>
++
++    <?php if ($site_footer = variable_get('site_footer', '')): ?>
++    <?php print render($site_footer); ?>
++    <?php endif; ?>
++
+     <?php print render($page['footer']); ?>
+     <?php if ($secondary_menu): ?>
+         <?php print theme('links__system_secondary_menu', array('links' => $secondary_menu, 'attributes' => array('id' => 'secondary-menu', 'class' => array('links', 'inline')))); ?>
+-- 
+2.2.1
+
