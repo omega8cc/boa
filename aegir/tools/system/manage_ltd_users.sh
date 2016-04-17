@@ -1603,6 +1603,19 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     if [ -e "/root/.${_USER}.octopus.cnf" ]; then
       source /root/.${_USER}.octopus.cnf
     fi
+    _THIS_HM_PLR=$(cat ${dscUsr}/.drush/hostmaster.alias.drushrc.php \
+      | grep "root'" \
+      | cut -d: -f2 \
+      | awk '{ print $3}' \
+      | sed "s/[\,']//g" 2>&1)
+    if [ -e "${_THIS_HM_PLR}/modules/path_alias_cache" ] \
+      && [ -e "/opt/tools/drush/8/drush/drush" ]; then
+      if [ -x "/opt/php56/bin/php" ]; then
+        echo 5.6 > ${dscUsr}/static/control/cli.info
+      elif [ -x "/opt/php55/bin/php" ]; then
+        echo 5.5 > ${dscUsr}/static/control/cli.info
+      fi
+    fi
     switch_php
     switch_newrelic
     if [ -e "${pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
