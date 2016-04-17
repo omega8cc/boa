@@ -226,13 +226,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/mysql_backup.fixed.a301n.pid" ]; then
+    && [ ! -e "${pthLog}/mysql_backup.fixed.a301o.pid" ]; then
     mv -f /var/xdrago/mysql_backup.sh /var/xdrago/mysql_backup.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/mysql_backup.sh" -o /var/xdrago/mysql_backup.sh
     if [ -e "/var/xdrago/mysql_backup.sh" ]; then
       chmod 700 /var/xdrago/mysql_backup.sh
       chown root:root /var/xdrago/mysql_backup.sh
-      touch ${pthLog}/mysql_backup.fixed.a301n.pid
+      touch ${pthLog}/mysql_backup.fixed.a301o.pid
     else
       mv -f /var/xdrago/mysql_backup.sh.old /var/xdrago/mysql_backup.sh
     fi
@@ -240,13 +240,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/runner.fixed.a301n.pid" ]; then
+    && [ ! -e "${pthLog}/runner.fixed.a301o.pid" ]; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
     if [ -e "/var/xdrago/runner.sh" ]; then
       chmod 700 /var/xdrago/runner.sh
       chown root:root /var/xdrago/runner.sh
-      touch ${pthLog}/runner.fixed.a301n.pid
+      touch ${pthLog}/runner.fixed.a301o.pid
     else
       mv -f /var/xdrago/runner.sh.old /var/xdrago/runner.sh
     fi
@@ -254,13 +254,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/minute.fixed.a301n.pid" ]; then
+    && [ ! -e "${pthLog}/minute.fixed.a301o.pid" ]; then
     mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
     if [ -e "/var/xdrago/minute.sh" ]; then
       chmod 700 /var/xdrago/minute.sh
       chown root:root /var/xdrago/minute.sh
-      touch ${pthLog}/minute.fixed.a301n.pid
+      touch ${pthLog}/minute.fixed.a301o.pid
     else
       mv -f /var/xdrago/minute.sh.old /var/xdrago/minute.sh
     fi
@@ -268,13 +268,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/clear.fixed.a301n.pid" ]; then
+    && [ ! -e "${pthLog}/clear.fixed.a301o.pid" ]; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
     if [ -e "/var/xdrago/clear.sh" ]; then
       chmod 700 /var/xdrago/clear.sh
       chown root:root /var/xdrago/clear.sh
-      touch ${pthLog}/clear.fixed.a301n.pid
+      touch ${pthLog}/clear.fixed.a301o.pid
     else
       mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
     fi
@@ -282,13 +282,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/daily.fixed.a301n.pid" ]; then
+    && [ ! -e "${pthLog}/daily.fixed.a301o.pid" ]; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
     if [ -e "/var/xdrago/daily.sh" ]; then
       chmod 700 /var/xdrago/daily.sh
       chown root:root /var/xdrago/daily.sh
-      touch ${pthLog}/daily.fixed.a301n.pid
+      touch ${pthLog}/daily.fixed.a301o.pid
     else
       mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
     fi
@@ -296,13 +296,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/weekly.fixed.a301n.pid" ]; then
+    && [ ! -e "${pthLog}/weekly.fixed.a301o.pid" ]; then
     mv -f /var/xdrago/weekly.sh /var/xdrago/weekly.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/weekly.sh" -o /var/xdrago/weekly.sh
     if [ -e "/var/xdrago/weekly.sh" ]; then
       chmod 700 /var/xdrago/weekly.sh
       chown root:root /var/xdrago/weekly.sh
-      touch ${pthLog}/weekly.fixed.a301n.pid
+      touch ${pthLog}/weekly.fixed.a301o.pid
     else
       mv -f /var/xdrago/weekly.sh.old /var/xdrago/weekly.sh
     fi
@@ -310,14 +310,14 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/manage_ltd_users.fixed.a301n.pid" ]; then
+    && [ ! -e "${pthLog}/manage_ltd_users.fixed.a301o.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${pthLog}/manage_ltd_users.fixed.a301n.pid
+      touch ${pthLog}/manage_ltd_users.fixed.a301o.pid
     else
       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
     fi
@@ -325,14 +325,14 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/proc_num_ctrl.fixed.a301n.pid" ]; then
+    && [ ! -e "${pthLog}/proc_num_ctrl.fixed.a301o.pid" ]; then
     mv -f /var/xdrago/proc_num_ctrl.cgi /var/xdrago/proc_num_ctrl.cgi.old
     curl ${crlGet} "${urlHmr}/tools/system/proc_num_ctrl.cgi" \
       -o /var/xdrago/proc_num_ctrl.cgi
     if [ -e "/var/xdrago/proc_num_ctrl.cgi" ]; then
       chmod 700 /var/xdrago/proc_num_ctrl.cgi
       chown root:root /var/xdrago/proc_num_ctrl.cgi
-      touch ${pthLog}/proc_num_ctrl.fixed.a301n.pid
+      touch ${pthLog}/proc_num_ctrl.fixed.a301o.pid
     else
       mv -f /var/xdrago/proc_num_ctrl.cgi.old /var/xdrago/proc_num_ctrl.cgi
     fi
@@ -340,14 +340,14 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/hackcheck.fixed.a301n.pid" ]; then
+    && [ ! -e "${pthLog}/hackcheck.fixed.a301o.pid" ]; then
     mv -f /var/xdrago/monitor/check/hackcheck /var/xdrago/monitor/check/hackcheck.old
     curl ${crlGet} "${urlHmr}/tools/system/monitor/check/hackcheck" \
       -o /var/xdrago/monitor/check/hackcheck
     if [ -e "/var/xdrago/monitor/check/hackcheck" ]; then
       chmod 700 /var/xdrago/monitor/check/hackcheck
       chown root:root /var/xdrago/monitor/check/hackcheck
-      touch ${pthLog}/hackcheck.fixed.a301n.pid
+      touch ${pthLog}/hackcheck.fixed.a301o.pid
     else
       mv -f /var/xdrago/monitor/check/hackcheck.old /var/xdrago/monitor/check/hackcheck
     fi
@@ -355,14 +355,14 @@ update_agents() {
 
   if [ -e "/opt/tools/drush/8/drush/drush" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/lshell.fixed.a301n.pid" ]; then
+    && [ ! -e "${pthLog}/lshell.fixed.a301o.pid" ]; then
     mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
     curl ${crlGet} "${urlHmr}/tools/system/conf/lshell.conf" \
       -o /var/xdrago/conf/lshell.conf
     if [ -e "/var/xdrago/conf/lshell.conf" ]; then
       chmod 644 /var/xdrago/conf/lshell.conf
       chown root:root /var/xdrago/conf/lshell.conf
-      touch ${pthLog}/lshell.fixed.a301n.pid
+      touch ${pthLog}/lshell.fixed.a301o.pid
     else
       mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
     fi
@@ -370,13 +370,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/websh.fixed.a301n.pid" ]; then
+    && [ ! -e "${pthLog}/websh.fixed.a301o.pid" ]; then
     mv -f /bin/websh /var/xdrago/websh.sh.old
     curl ${crlGet} "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh
     if [ -e "/bin/websh" ]; then
       chmod 755 /bin/websh
       chown root:root /bin/websh
-      touch ${pthLog}/websh.fixed.a301n.pid
+      touch ${pthLog}/websh.fixed.a301o.pid
     else
       mv -f /var/xdrago/websh.sh.old /bin/websh
     fi
