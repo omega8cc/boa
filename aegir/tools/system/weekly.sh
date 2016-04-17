@@ -364,10 +364,6 @@ However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
 
-We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Sunday, but in return we expect
-that you will use this allowance responsibly and sparingly.
-
 If you have any questions, please don't respond to this message,
 since it was sent from our default system address -- please use
 our billing contact form instead:
@@ -377,7 +373,7 @@ our billing contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir resources usage weekly monitor.
+This e-mail has been sent by your Aegir resources usage daily monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
@@ -423,10 +419,6 @@ However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
 
-We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Sunday, but in return we expect
-that you will use this allowance responsibly and sparingly.
-
 If you have any questions, please don't respond to this message,
 since it was sent from our default system address -- please use
 our billing contact form instead:
@@ -436,7 +428,7 @@ our billing contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir resources usage weekly monitor.
+This e-mail has been sent by your Aegir resources usage daily monitor.
 
 EOF
   else
@@ -482,10 +474,6 @@ However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
 
-We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Sunday, but in return we expect
-that you will use this allowance responsibly and sparingly.
-
 If you have any questions, please don't respond to this message,
 since it was sent from our default system address -- please use
 our billing contact form instead:
@@ -495,7 +483,7 @@ our billing contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir resources usage weekly monitor.
+This e-mail has been sent by your Aegir resources usage daily monitor.
 
 EOF
   fi
@@ -530,10 +518,6 @@ Note that unlike with database space limits, for files related disk space
 we count all your sites, including also all dev/tmp sites, if they exist,
 even if they are marked as disabled in your Aegir control panel.
 
-We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Sunday, but in return we expect
-that you will use this allowance responsibly and sparingly.
-
 If you have any questions, please don't respond to this message,
 since it was sent from our default system address -- please use
 our billing contact form instead:
@@ -543,7 +527,7 @@ our billing contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir resources usage weekly monitor.
+This e-mail has been sent by your Aegir resources usage daily monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
@@ -569,10 +553,6 @@ Note that unlike with database space limits, for files related disk space
 we count all your sites, including also all dev/tmp sites, if they exist,
 even if they are marked as disabled in your Aegir control panel.
 
-We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Sunday, but in return we expect
-that you will use this allowance responsibly and sparingly.
-
 If you have any questions, please don't respond to this message,
 since it was sent from our default system address -- please use
 our billing contact form instead:
@@ -582,7 +562,7 @@ our billing contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir resources usage weekly monitor.
+This e-mail has been sent by your Aegir resources usage daily monitor.
 
 EOF
   else
@@ -608,10 +588,6 @@ Note that unlike with database space limits, for files related disk space
 we count all your sites, including also all dev/tmp sites, if they exist,
 even if they are marked as disabled in your Aegir control panel.
 
-We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Sunday, but in return we expect
-that you will use this allowance responsibly and sparingly.
-
 If you have any questions, please don't respond to this message,
 since it was sent from our default system address -- please use
 our billing contact form instead:
@@ -621,7 +597,7 @@ our billing contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir resources usage weekly monitor.
+This e-mail has been sent by your Aegir resources usage daily monitor.
 
 EOF
   fi
@@ -808,7 +784,7 @@ action() {
           check_limits
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} -c "drush @hostmaster \
-              vset --always-set site_footer 'Weekly Usage Monitor \
+              vset --always-set site_footer 'Daily Usage Monitor \
               | ${_DATE} \
               | ALL Files <strong>${HomSizH}</strong> MB \
               | LIVE Dbs <strong>${SumDatH}</strong> MB \
@@ -851,7 +827,7 @@ action() {
 }
 
 ###--------------------###
-echo "INFO: Weekly maintenance start"
+echo "INFO: Daily maintenance start"
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _DATE=$(date 2>&1)
@@ -867,6 +843,6 @@ else
 fi
 mkdir -p /var/xdrago/log/usage
 action >/var/xdrago/log/usage/usage-${_NOW}.log 2>&1
-echo "INFO: Weekly maintenance complete"
+echo "INFO: Daily maintenance complete"
 exit 0
 ###EOF2016###
