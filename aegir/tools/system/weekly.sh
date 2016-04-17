@@ -771,6 +771,11 @@ action() {
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
+        _THIS_HM_PLR=$(cat ${User}/.drush/hostmaster.alias.drushrc.php \
+          | grep "root'" \
+          | cut -d: -f2 \
+          | awk '{ print $3}' \
+          | sed "s/[\,']//g" 2>&1)
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
         echo Counting User ${User}
         count
@@ -810,9 +815,7 @@ action() {
               | DEV Dbs <strong>${SkipDtH}</strong> MB \
               | <strong>${_CLIENT_CORES}</strong> \
               Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}'" &> /dev/null
-            su -s /bin/bash - ${_THIS_U} \
-              -c "drush @hostmaster cc all" &> /dev/null
-            TmDir="${Plr}/profiles/hostmaster/themes/aegir/eldir"
+            TmDir="${_THIS_HM_PLR}/profiles/hostmaster/themes/aegir/eldir"
             PgTpl="${TmDir}/page.tpl.php"
             EldirF="0001-Print-site_footer-if-defined.patch"
             TplPatch="/var/xdrago/conf/${EldirF}"
@@ -824,6 +827,8 @@ action() {
                 cd
               fi
             fi
+            su -s /bin/bash - ${_THIS_U} \
+              -c "drush @hostmaster cc all" &> /dev/null
           fi
         else
           if [ -e "${_THIS_HM_SITE}" ]; then
