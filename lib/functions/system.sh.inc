@@ -2091,8 +2091,9 @@ install_ssh_src() {
       ### aptitude hold openssh-server &> /dev/null
       ### aptitude hold openssh-client &> /dev/null
       ### aptitude hold ssh &> /dev/null
-      echo "openssh-server hold" | dpkg --set-selections
       echo "openssh-client hold" | dpkg --set-selections
+      echo "openssh-server hold" | dpkg --set-selections
+      echo "openssh-sftp-server hold" | dpkg --set-selections
       echo "ssh hold" | dpkg --set-selections
     fi
   else
@@ -2100,8 +2101,9 @@ install_ssh_src() {
       ### aptitude hold openssh-server &> /dev/null
       ### aptitude hold openssh-client &> /dev/null
       ### aptitude hold ssh &> /dev/null
-      echo "openssh-server hold" | dpkg --set-selections
       echo "openssh-client hold" | dpkg --set-selections
+      echo "openssh-server hold" | dpkg --set-selections
+      echo "openssh-sftp-server hold" | dpkg --set-selections
       echo "ssh hold" | dpkg --set-selections
     fi
   fi
@@ -2915,6 +2917,7 @@ if_squeeze_to_wheezy() {
     echo "libssl-dev install"     | dpkg --set-selections
     echo "openssh-client install" | dpkg --set-selections
     echo "openssh-server install" | dpkg --set-selections
+    echo "openssh-sftp-server install" | dpkg --set-selections
     echo "openssl install"        | dpkg --set-selections
     echo "ssh install"            | dpkg --set-selections
     echo "zlib1g install"         | dpkg --set-selections
@@ -2931,6 +2934,7 @@ if_squeeze_to_wheezy() {
     mrun "apt-get install git-man ${forCer}"        2> /dev/null
     mrun "apt-get install openssh-client ${forCer}" 2> /dev/null
     mrun "apt-get install openssh-server ${forCer}" 2> /dev/null
+    mrun "apt-get install openssh-sftp-server ${forCer}" 2> /dev/null
     mrun "apt-get install ssh ${forCer}"            2> /dev/null
     mrun "apt-get upgrade ${nrmUpArg}"              2> /dev/null
     mrun "apt-get dist-upgrade ${nrmUpArg}"         2> /dev/null
