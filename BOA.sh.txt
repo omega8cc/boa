@@ -208,7 +208,8 @@ update_agents() {
       rm -f /root/.tg.cnf
     fi
     echo ${InTest} > /root/.high_traffic.cnf
-    echo ${InTest} > /root/.skip_cleanup.cnf
+    ### echo ${InTest} > /root/.skip_cleanup.cnf
+    rm -f /root/.skip_cleanup.cnf
     echo ${InTest} > /root/.randomize_duplicity_full_backup_day.cnf
     echo ${InTest} > /root/.my.optimize.cnf
     rm -f /root/.fast.cron.cnf
