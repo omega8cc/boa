@@ -1494,11 +1494,7 @@ fix_modules() {
     _VIEWS_CONTENT_CACHE_DONT_ENABLE=NO
   fi
 
-  if [ -e "${Plr}/profiles/hostmaster" ] \
-    && [ ! -f "${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info" ]; then
-    run_drush8_hmr_cmd "dis update syslog dblog -y"
-    touch ${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
-  elif [ -e "${Plr}/modules/o_contrib" ]; then
+  if [ -e "${Plr}/modules/o_contrib" ]; then
     if [ ! -e "${Plr}/modules/user" ] \
       || [ ! -e "${Plr}/sites/all/modules" ] \
       || [ ! -e "${Plr}/profiles" ]; then
@@ -2132,6 +2128,7 @@ process() {
     _MOMENT=$(date +%y%m%d-%H%M 2>&1)
     echo ${_MOMENT} Start Counting Site $Site
     Dom=$(echo $Site | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
+    Dan=
     if [ -e "${User}/config/server_master/nginx/vhost.d/${Dom}" ]; then
       Plx=$(cat ${User}/config/server_master/nginx/vhost.d/${Dom} \
         | grep "root " \
@@ -2185,8 +2182,18 @@ process() {
         fix_o_contrib_symlink
         if [ -e "${Dir}/drushrc.php" ]; then
           cd ${Dir}
-          check_site_status
-          if [ "${_STATUS}" = "OK" ]; then
+          if [ "${Dan}" = "hostmaster" ]; then
+            _STATUS=OK
+            if [ ! -f "${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info" ]; then
+              run_drush8_hmr_cmd "dis update syslog dblog -y"
+              touch ${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
+            fi
+          else
+            check_site_status
+          fi
+          if [ "${_STATUS}" = "OK" ] \
+            && [ ! -z "${Dan}" ] \
+            && [ "${Dan}" != "hostmaster" ]; then
             setup_solr
             searchStringB=".dev."
             searchStringC=".devel."
