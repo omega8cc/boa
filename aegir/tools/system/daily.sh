@@ -1496,7 +1496,7 @@ fix_modules() {
 
   if [ -e "${Plr}/profiles/hostmaster" ] \
     && [ ! -f "${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info" ]; then
-    run_drush8_hmr_cmd "dis cache syslog dblog -y"
+    run_drush8_hmr_cmd "dis update syslog dblog -y"
     touch ${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
   elif [ -e "${Plr}/modules/o_contrib" ]; then
     if [ ! -e "${Plr}/modules/user" ] \
@@ -2132,6 +2132,18 @@ process() {
     _MOMENT=$(date +%y%m%d-%H%M 2>&1)
     echo ${_MOMENT} Start Counting Site $Site
     Dom=$(echo $Site | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
+    if [ -e "${User}/config/server_master/nginx/vhost.d/${Dom}" ]; then
+      Plx=$(cat ${User}/config/server_master/nginx/vhost.d/${Dom} \
+        | grep "root " \
+        | cut -d: -f2 \
+        | awk '{ print $2}' \
+        | sed "s/[\;]//g" 2>&1)
+      if [[ "$Plx" =~ "aegir/distro" ]]; then
+        Dan=hostmaster
+      else
+        Dan="${Dom}"
+      fi
+    fi
     _STATUS_DISABLED=NO
     _STATUS_TEST=$(grep "Do not reveal Aegir front-end URL here" \
       ${User}/config/server_master/nginx/vhost.d/${Dom} 2>&1)
@@ -2139,16 +2151,16 @@ process() {
       _STATUS_DISABLED=YES
       echo "${Dom} site is DISABLED"
     fi
-    if [ -e "${User}/.drush/${Dom}.alias.drushrc.php" ] \
+    if [ -e "${User}/.drush/${Dan}.alias.drushrc.php" ] \
       && [ "${_STATUS_DISABLED}" = "NO" ]; then
       echo "Dom is ${Dom}"
-      Dir=$(cat ${User}/.drush/${Dom}.alias.drushrc.php \
+      Dir=$(cat ${User}/.drush/${Dan}.alias.drushrc.php \
         | grep "site_path'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
       _DIR_CTRL_F="${Dir}/modules/boa_site_control.ini"
-      Plr=$(cat ${User}/.drush/${Dom}.alias.drushrc.php \
+      Plr=$(cat ${User}/.drush/${Dan}.alias.drushrc.php \
         | grep "root'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
