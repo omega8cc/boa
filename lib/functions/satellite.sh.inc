@@ -1424,7 +1424,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "boost-7.x-1.1.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/cdn" ]; then
-        get_dev_contrib "cdn-7.x-2.7.tar.gz"
+        get_dev_contrib "cdn-7.x-2.8.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/display_cache" ]; then
         get_dev_contrib "display_cache-7.x-1.3.tar.gz"
@@ -1523,7 +1523,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "advagg-7.x-2.18.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.x-dev.tar.gz"
   get_dev_contrib "boost-7.x-1.1.tar.gz"
-  get_dev_contrib "cdn-7.x-2.7.tar.gz"
+  get_dev_contrib "cdn-7.x-2.8.tar.gz"
   get_dev_contrib "config_perms-7.x-2.1.tar.gz"
   get_dev_contrib "css_emimage-7.x-1.x-dev.tar.gz"
   get_dev_contrib "display_cache-7.x-1.3.tar.gz"
