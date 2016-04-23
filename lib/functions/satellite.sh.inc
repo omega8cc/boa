@@ -2298,9 +2298,14 @@ satellite_set_permissions_for_all() {
   find ${_ROOT}/.drush/usr -type d -exec chmod 0750 {} \; &> /dev/null
   find ${_ROOT}/.drush -type f -exec chmod 0640 {} \; &> /dev/null
   chmod 0440 ${_ROOT}/.drush/*.php &> /dev/null
+  if [ ! -e "${_ROOT}/.drush/hm.alias.drushrc.php" ]; then
+    cp -a ${_ROOT}/.drush/hostmaster.alias.drushrc.php ${_ROOT}/.drush/hm.alias.drushrc.php
+    sed -i "s/\['hostmaster'\]/['hm']/g" ${_ROOT}/.drush/hm.alias.drushrc.php
+  fi
   chmod 0400 ${_ROOT}/.drush/server_*.php &> /dev/null
   chmod 0400 ${_ROOT}/.drush/platform_*.php &> /dev/null
   chmod 0400 ${_ROOT}/.drush/hostmaster*.php &> /dev/null
+  chmod 0400 ${_ROOT}/.drush/hm.alias.drushrc.php &> /dev/null
   chmod 0710 ${_ROOT}/.drush &> /dev/null
 }
 
