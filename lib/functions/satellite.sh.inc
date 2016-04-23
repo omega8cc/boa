@@ -4722,7 +4722,7 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_site_backup_manager_base_path "${_ROOT}" &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_default_profile "minimal" &> /dev/null
+      hosting_default_profile "standard" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \
       WHERE link_path='hosting/platforms'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \
