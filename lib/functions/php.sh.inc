@@ -1496,6 +1496,7 @@ php_upgrade_all() {
     check_php_broken "53"
     check_php_rebuild "53"
     update_php_multi "53"
+    mrun "service php53-fpm restart" &> /dev/null
     _PHP_VERSION=""
     _T_PHP_VRN=""
     _T_PHP_PTH=""
@@ -1510,6 +1511,7 @@ php_upgrade_all() {
     check_php_broken "54"
     check_php_rebuild "54"
     update_php_multi "54"
+    mrun "service php54-fpm restart" &> /dev/null
     _PHP_VERSION=""
     _T_PHP_VRN=""
     _T_PHP_PTH=""
@@ -1523,6 +1525,7 @@ php_upgrade_all() {
     check_php_broken "55"
     check_php_rebuild "55"
     update_php_multi "55"
+    mrun "service php55-fpm restart" &> /dev/null
     _PHP_VERSION=""
     _T_PHP_VRN=""
     _T_PHP_PTH=""
@@ -1536,6 +1539,7 @@ php_upgrade_all() {
     check_php_broken "56"
     check_php_rebuild "56"
     update_php_multi "56"
+    mrun "service php56-fpm restart" &> /dev/null
     _PHP_VERSION=""
     _T_PHP_VRN=""
     _T_PHP_PTH=""
@@ -1549,6 +1553,7 @@ php_upgrade_all() {
     check_php_broken "70"
     check_php_rebuild "70"
     update_php_multi "70"
+    mrun "service php70-fpm restart" &> /dev/null
     _PHP_VERSION=""
     _T_PHP_VRN=""
     _T_PHP_PTH=""
