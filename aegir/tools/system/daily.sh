@@ -418,6 +418,19 @@ fix_robots_txt() {
       echo >> ${Dir}/files/robots.txt
     fi
   fi
+  _VAR_IF_PRESENT=
+  if [ -f "${Dir}/files/robots.txt" ]; then
+    _VAR_IF_PRESENT=$(grep "Disallow:" ${Dir}/files/robots.txt 2>&1)
+  fi
+  if [[ ! "${_VAR_IF_PRESENT}" =~ "Disallow:" ]]; then
+    rm -f ${Dir}/files/robots.txt
+  else
+    chown ${_HM_U}:www-data ${Dir}/files/robots.txt &> /dev/null
+    chmod 0664 ${Dir}/files/robots.txt &> /dev/null
+    if [ -f "${Plr}/robots.txt" ] || [ -L "${Plr}/robots.txt" ]; then
+      rm -f ${Plr}/robots.txt
+    fi
+  fi
 }
 
 fix_boost_cache() {
@@ -432,9 +445,6 @@ fix_boost_cache() {
   if [ -e "${Plr}/cache" ]; then
     chown ${_HM_U}.ftp:www-data ${Plr}/cache &> /dev/null
     chmod 02775 ${Plr}/cache &> /dev/null
-  fi
-  if [ -f "${Plr}/robots.txt" ] || [ -L "${Plr}/robots.txt" ]; then
-    rm -f ${Plr}/robots.txt
   fi
 }
 
@@ -2213,8 +2223,8 @@ process() {
               *)
               if [ "${_MODULES_FIX}" = "YES" ]; then
                 fix_modules
+                fix_robots_txt
               fi
-              fix_robots_txt
               ;;
             esac
             fix_boost_cache
