@@ -433,6 +433,27 @@ os_detection() {
   echo " "
 }
 
+check_boa_php_compatibility() {
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "5.6" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "5.5" ]]; then
+    _DO_NOTHING=YES
+  else
+    msg "ERROR: This BOA version depends on PHP 5.6 or 5.5"
+    msg "Please add '5.6' or '5.5' to _PHP_MULTI_INSTALL"
+    msg "in /root/.barracuda.cnf before trying again"
+    msg "Bye"
+    clean_pid_exit
+  fi
+  if [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+    || [ "${_PHP_CLI_VERSION}" = "7.0" ]; then
+    msg "ERROR: This BOA version depends on PHP 5.6 or 5.5"
+    msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to '5.6' or '5.5'"
+    msg "in /root/.barracuda.cnf before trying again"
+    msg "Bye"
+    clean_pid_exit
+  fi
+}
+
 check_boa_version() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Checking BARRACUDA version..."
