@@ -415,6 +415,7 @@ upgrade_aegir_master() {
 #
 # Update php-cli in the cron entry.
 update_php_cli_cron() {
+  rm -f /var/spool/cron/crontabs/aegir
   if [ ! -e "/root/.mstr.clstr.cnf" ] \
     && [ ! -e "/root/.wbhd.clstr.cnf" ] \
     && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
@@ -778,10 +779,11 @@ EOFMYSQL
         touch /data/conf/clstr.cnf &> /dev/null
       fi
       echo " "
+      update_php_cli_cron
       upgrade_aegir_master
+      update_php_cli_cron
     fi
   fi
-  update_php_cli_cron
 }
 
 if_upgrade_only_aegir_master() {
@@ -789,7 +791,9 @@ if_upgrade_only_aegir_master() {
     if [ "${_AEGIR_UPGRADE_ONLY}" = "YES" ] \
       && [ "${_SYSTEM_UPGRADE_ONLY}" = "NO" ]; then
       echo " "
+      update_php_cli_cron
       upgrade_aegir_master
+      update_php_cli_cron
       mrun "sleep 8"
       mrun "service nginx reload" &> /dev/null
       finale
