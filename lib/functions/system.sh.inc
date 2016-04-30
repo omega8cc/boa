@@ -68,13 +68,9 @@ if_running_as_root_barracuda() {
 # Set xterm.
 set_xterm() {
   if [ -e "/root/.bashrc" ]; then
-    _XTERM_TEST=$(grep ${_X_VERSION} /root/.bashrc 2>&1)
-    if [[ "${_XTERM_TEST}" =~ "${_X_VERSION}" ]]; then
-      if [ -e "/usr/share/terminfo/x/xterm+256color" ]; then
-        sed -i "s/^export TERM=.*/export TERM=xterm+256color/g" /root/.bashrc
-      else
-        sed -i "s/^export TERM=.*/export TERM=xterm-color/g" /root/.bashrc
-      fi
+    _XTERM_TEST=$(grep "export TERM" /root/.bashrc 2>&1)
+    if [[ "${_XTERM_TEST}" =~ "export TERM" ]]; then
+      sed -i "s/.*export TERM=.*//g" /root/.bashrc
       wait
     fi
   fi
