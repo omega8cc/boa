@@ -3290,13 +3290,18 @@ sys_packages_install() {
   else
     _IS_VZ=NO
   fi
-  if [ "${_IS_VZ}" = "YES" ] \
-    || [ -e "/root/.use.sysklogd.cnf" ] \
+  if [ "${_IS_VZ}" = "YES" ]; then
+    _SYSLOGD=inetutils-syslogd
+    mrun "apt-get purge sysklogd -y" &> /dev/null
+    mrun "apt-get purge rsyslog -y" &> /dev/null
+    mrun "killall -9 sysklogd" &> /dev/null
+    mrun "killall -9 rsyslogd" &> /dev/null
+  elif [ -e "/root/.use.sysklogd.cnf" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     _SYSLOGD=sysklogd
-     mrun "apt-get purge rsyslog -y" &> /dev/null
-     mrun "killall -9 rsyslogd" &> /dev/null
+    mrun "apt-get purge rsyslog -y" &> /dev/null
+    mrun "killall -9 rsyslogd" &> /dev/null
   else
     _SYSLOGD=rsyslog
   fi
