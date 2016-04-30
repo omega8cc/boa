@@ -539,6 +539,14 @@ fix_eldir() {
   fi
 }
 
+fix_pure_ftpd() {
+  _PAM_AUTH=$(grep "^PAMAuthentication" /usr/local/etc/pure-ftpd.conf 2>&1)
+  if [ ! -z "${_PAM_AUTH}" ]; then
+    sed -i "s/^PAMAuthentication/# PAMAuthentication/g" /usr/local/etc/pure-ftpd.conf
+    killall -9 pure-ftpd &> /dev/null
+  fi
+}
+
 force_rebuild() {
   if [ ! -e "${pthLog}/forced.rebuild.glibc.txt" ]; then
     echo "_GIT_FORCE_REINSTALL=YES" >> ${barCnf}
@@ -789,6 +797,7 @@ if [ `whoami` = "root" ]; then
   setup
   fix_alt
   fix_eldir
+  fix_pure_ftpd
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
