@@ -1298,7 +1298,7 @@ satellite_o_contrib_update_global() {
         get_dev_contrib "boost-6.x-1.22.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib/cdn" ]; then
-        get_dev_contrib "cdn-6.x-2.x-dev.tar.gz"
+        get_dev_contrib "cdn-6.x-2.7.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib/force_password_change" ]; then
         get_dev_contrib "force_password_change-6.x-3.4.tar.gz"
@@ -1605,7 +1605,7 @@ satellite_download_o_contrib_six() {
   get_dev_contrib "advagg-6.x-1.10.tar.gz"
   get_dev_contrib "blockcache_alter-6.x-1.6.tar.gz"
   get_dev_contrib "boost-6.x-1.22.tar.gz"
-  get_dev_contrib "cdn-6.x-2.x-dev.tar.gz"
+  get_dev_contrib "cdn-6.x-2.7.tar.gz"
   get_dev_contrib "config_perms-6.x-2.x-dev.tar.gz"
   get_dev_contrib "css_emimage-6.x-2.x-dev.tar.gz"
   get_dev_contrib "dbtuner-6.x-1.x-dev.tar.gz"
