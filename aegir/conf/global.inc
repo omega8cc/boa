@@ -947,6 +947,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
     $conf['redis_client_host']                = '127.0.0.1';
     $conf['redis_client_port']                = '6379';
     $conf['redis_client_password']            = 'isfoobared';
+    $conf['redis_client_base']                = '8';
     $conf['cache_prefix']                     = $this_prefix;
     $conf['page_cache_invoke_hooks']          = TRUE;  // D7 == Do not use Aggressive Mode
     $conf['page_cache_without_database']      = FALSE; // D7 == Do not use Aggressive Mode
