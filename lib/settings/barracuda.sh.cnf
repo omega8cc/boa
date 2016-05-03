@@ -313,11 +313,11 @@ _DB_SERIES=5.5
 ### REDIS LISTEN MODE                      ###
 ###----------------------------------------###
 ###
+### By default this option is set to SOCKET
+### to improve caching backend performance.
+###
 ### If set to PORT (old default) Redis will
 ### listen on standard port and 127.0.0.1 IP.
-###
-### You can also change this option to SOCKET
-### to improve caching backend performance.
 ###
 ### When set to any other IP address, it will
 ### switch ALL your Aegir Satellite Instances
@@ -330,7 +330,7 @@ _DB_SERIES=5.5
 ### modify /etc/csf/csf.conf to allow outgoing
 ### TCP connections via port 6379.
 ###
-_REDIS_LISTEN_MODE=PORT
+_REDIS_LISTEN_MODE=SOCKET
 
 
 ###----------------------------------------###

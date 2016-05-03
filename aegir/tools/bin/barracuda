@@ -663,6 +663,8 @@ up_action() {
     wait
     ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"           ${barCnf}
+    ### Force Redis SOCKET mode if PORT was used before
+    sed -i "s/^_REDIS_LISTEN_MODE=PORT/_REDIS_LISTEN_MODE=SOCKET/g"    ${barCnf}
     wait
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
