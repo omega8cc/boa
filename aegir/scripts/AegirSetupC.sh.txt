@@ -2460,9 +2460,10 @@ commerce_7_2_install
 commons_6_install
 commons_7_install
 
-_USE_DISTRO_CORE=YES
-erpal_install
-_USE_DISTRO_CORE=NO
+### _USE_DISTRO_CORE=YES
+### erpal_install
+### _USE_DISTRO_CORE=NO
+### TMP OFF -- doesn't work with latest core and comes with too old core version
 
 guardr_install
 openaid_install
