@@ -210,7 +210,12 @@ update_agents() {
     echo ${InTest} > /root/.high_traffic.cnf
     echo ${InTest} > /root/.skip_cleanup.cnf
     ### rm -f /root/.skip_cleanup.cnf
-    echo ${InTest} > /root/.randomize_duplicity_full_backup_day.cnf
+    if [ "${_RANDOMIZE}" = "YES" ]; then
+      echo ${InTest} > /root/.randomize_duplicity_full_backup_day.cnf
+      echo ${InTest} > /root/.skip_duplicity_monthly_cleanup.cnf
+    else
+      rm -f /root/.randomize_duplicity_full_backup_day.cnf
+    fi
     ### echo ${InTest} > /root/.my.optimize.cnf
     rm -f /root/.my.optimize.cnf
     rm -f /root/.fast.cron.cnf
@@ -617,6 +622,12 @@ setup() {
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     _BENG_VS=YES
+  fi
+  if [[ "${_CHECK_HOST}" =~ ".s8." ]] \
+    && [ "${_BENG_VS}" = "YES" ]; then
+    _RANDOMIZE=YES
+  else
+    _RANDOMIZE=NO
   fi
 
   sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
