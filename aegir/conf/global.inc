@@ -24,6 +24,7 @@ $is_install   = FALSE;
 $is_tmp       = FALSE;
 $raw_host     = FALSE;
 $redis_lock   = FALSE;
+$redis_path   = FALSE;
 $redis_up     = FALSE;
 $site_subdir  = FALSE;
 $use_redis    = FALSE;
@@ -346,6 +347,7 @@ $boa_ini = array(
   'redis_use_modern' => TRUE,
   'redis_flush_forced_mode' => TRUE,
   'redis_lock_enable' => TRUE,
+  'redis_path_enable' => TRUE,
   'redis_cache_disable' => FALSE,
   'redis_exclude_bins' => FALSE,
   'speed_booster_anon_cache_ttl' => FALSE,
@@ -407,6 +409,7 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Redis-Use-Modern: " . $all_ini['redis_use_modern']);
   header("X-Ini-Redis-Flush-Forced-Mode: " . $all_ini['redis_flush_forced_mode']);
   header("X-Ini-Redis-Lock-Enable: " . $all_ini['redis_lock_enable']);
+  header("X-Ini-Redis-Path-Enable: " . $all_ini['redis_path_enable']);
   header("X-Ini-Redis-Cache-Disable: " . $all_ini['redis_cache_disable']);
   header("X-Ini-Redis-Exclude-Bins: " . $all_ini['redis_exclude_bins']);
   header("X-Ini-Speed-Booster-Anon-Cache-Ttl: " . $all_ini['speed_booster_anon_cache_ttl']);
@@ -917,6 +920,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
     $cache_backport = FALSE;
     $cache_redis_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.autoload.inc';
     $cache_lock_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.lock.inc';
+    $cache_path_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.path.inc';
     if ($is_dev && !$is_backend) {
       header("X-Redis-Autoload-Is-Readable: " . $cache_redis_path);
     }
@@ -925,6 +929,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
     $cache_redis = TRUE;
     $cache_redis_path = 'modules/o_contrib/' . $redis_dirname . '/redis.autoload.inc';
     $cache_lock_path = 'modules/o_contrib/' . $redis_dirname . '/redis.lock.inc';
+    $cache_path_path = 'modules/o_contrib/' . $redis_dirname . '/redis.path.inc';
     if ($is_dev && !$is_backend) {
       header("X-Redis-Autoload-Is-Readable: " . $cache_redis_path);
     }
@@ -933,13 +938,25 @@ if ($redis_up && $use_redis && !$custom_cache) {
     if ($cache_backport) {
       $conf['cache_inc']                      = $cache_backport_path;
     }
-    if ($all_ini['redis_use_modern'] && $all_ini['redis_lock_enable']) {
-      $redis_lock = TRUE;
+    if ($all_ini['redis_use_modern']) {
+      if ($all_ini['redis_lock_enable']) {
+        $redis_lock = TRUE;
+      }
+      if ($all_ini['redis_path_enable']) {
+        $redis_path = TRUE;
+      }
     }
     if (is_readable($cache_lock_path) && $redis_lock) {
       $conf['lock_inc']                       = $cache_lock_path;
       if ($is_dev && !$is_backend) {
         header("X-Redis-Lock-Is-Readable: " . $cache_lock_path);
+      }
+    }
+    if (is_readable($cache_path_path) && $redis_path) {
+      $conf['path_inc']                       = $cache_path_path;
+      $conf['path_alias_admin_blacklist']     = FALSE;
+      if ($is_dev && !$is_backend) {
+        header("X-Redis-Path-Is-Readable: " . $cache_path_path);
       }
     }
     $conf['cache_backends'][]                 = $cache_redis_path;
