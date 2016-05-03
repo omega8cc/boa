@@ -442,18 +442,21 @@ install_php_extensions() {
     touch ${pthLog}/zendopcache-${_OPCACHE_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
-  if [ "$1" != "70" ]; then
-    msg "INFO: Installing PhpRedis for PHP ${_T_PHP_VRN}..."
-    cd /var/opt
-    rm -rf phpredis*
-    get_dev_src "phpredis-${_PHPREDIS_VRN}.tar.gz"
-    cd /var/opt/phpredis
-    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    touch ${pthLog}/phpredis-${_PHPREDIS_VRN}-${_T_PHP_VRN}.log
+  if [ "$1" = "70" ]; then
+    _USE_PHPREDIS="${_PHPREDIS_PHP7_VRN}"
+  else
+    _USE_PHPREDIS="${_PHPREDIS_VRN}"
   fi
+  msg "INFO: Installing PhpRedis for PHP ${_T_PHP_VRN}..."
+  cd /var/opt
+  rm -rf phpredis*
+  get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
+  cd /var/opt/phpredis
+  st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  touch ${pthLog}/phpredis-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
   ###--------------------###
   if [ "$1" != "70" ]; then
     msg "INFO: Installing UploadProgress for PHP ${_T_PHP_VRN}..."
@@ -648,19 +651,22 @@ update_php_extensions() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != "70" ]; then
-    if [ ! -e "${pthLog}/phpredis-${_PHPREDIS_VRN}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing PhpRedis upgrade for PHP ${_T_PHP_VRN}..."
-      cd /var/opt
-      rm -rf phpredis*
-      get_dev_src "phpredis-${_PHPREDIS_VRN}.tar.gz"
-      cd /var/opt/phpredis
-      st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
-      touch ${pthLog}/phpredis-${_PHPREDIS_VRN}-${_T_PHP_VRN}.log
-    fi
+  if [ "$1" = "70" ]; then
+    _USE_PHPREDIS="${_PHPREDIS_PHP7_VRN}"
+  else
+    _USE_PHPREDIS="${_PHPREDIS_VRN}"
+  fi
+  if [ ! -e "${pthLog}/phpredis-${_USE_PHPREDIS}-${_T_PHP_VRN}.log" ]; then
+    msg "INFO: Installing PhpRedis upgrade for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -rf phpredis*
+    get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
+    cd /var/opt/phpredis
+    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    touch ${pthLog}/phpredis-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
   if [ "$1" != "70" ]; then
