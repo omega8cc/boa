@@ -153,13 +153,13 @@ production settings.
 
 Octopus can install the platforms listed below:
 
- @ Drupal 7.43.1
+ @ Drupal 7.43.2
 
  aGov 3.0 --------------------- https://drupal.org/project/agov
  Commerce 1.42 ---------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.36 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.36 ----------------- https://drupal.org/project/commons
- Drupal 7.43.1 ---------------- https://drupal.org/drupal-7.43-release-notes
+ Drupal 7.43.2 ---------------- https://drupal.org/drupal-7.43-release-notes
  ERPAL 2.3 -------------------- https://drupal.org/project/erpal
  Guardr 2.28 ------------------ https://drupal.org/project/guardr
  OpenAid 2.8 ------------------ https://drupal.org/project/openaid
@@ -176,7 +176,7 @@ Octopus can install the platforms listed below:
  Pressflow 6.38.2 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.43.1 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.43.2 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
 * All D6 platforms have been enhanced using Pressflow 6.38.2 +Extra core:
