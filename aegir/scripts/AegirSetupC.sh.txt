@@ -962,6 +962,8 @@ commons_7_install() {
               patch -p1 < ${pthPch}/commons_chicken_egg.patch &> /dev/null
               sed -i "s/.*entitycache.*//g" \
                 ${_SHRD_PRPATH}/${_REAL_PRNAME}.info &> /dev/null
+              cd ${_SHRD_PRPATH}/modules/contrib/registration
+              patch -p1 < ${pthPch}/2106995-fatal-error-non-object-1.patch &> /dev/null
               rm -rf ${_SHRD_PRPATH}/modules/contrib/entitycache
               rm -rf ${_SHRD_PRPATH}/modules/contrib/registry_rebuild
               rm -rf ${_SHRD_PRPATH}/modules/contrib/acquia_connector
