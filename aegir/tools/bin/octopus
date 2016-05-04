@@ -331,16 +331,51 @@ satellite_check_up_php() {
   if [ "${cmmand}" = "up-head" ] || [ "${cmmand}" = "up-stable" ]; then
     fmodey=
     _SERIES_TEST=
+    _PHP_FPM_LEGACY_FREE=
+    _PHP_CLI_LEGACY_FREE=
     mcmode="${orgMcmode}"
     if [ -e "${User}/log/octopus_log.txt" ]; then
       _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
       if [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
-        if [ -x "/opt/php56/bin/php" ]; then
-          echo 5.6 > ${User}/static/control/fpm.info
-          echo 5.6 > ${User}/static/control/cli.info
-        elif [ -x "/opt/php55/bin/php" ]; then
-          echo 5.5 > ${User}/static/control/fpm.info
-          echo 5.5 > ${User}/static/control/cli.info
+        if [ -e "${User}/static/control/fpm.info" ]; then
+          _T_FPM_VRN=$(cat ${User}/static/control/fpm.info 2>&1)
+          _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
+          _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
+          if [ "${_T_FPM_VRN}" = "7.0" ] \
+            || [ "${_T_FPM_VRN}" = "5.6" ]; then
+            _PHP_FPM_LEGACY_FREE=YES
+          else
+            _PHP_FPM_LEGACY_FREE=NO
+          fi
+        else
+          _PHP_FPM_LEGACY_FREE=YES
+        fi
+        if [ -e "${User}/static/control/cli.info" ]; then
+          _T_CLI_VRN=$(cat ${User}/static/control/cli.info 2>&1)
+          _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
+          _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
+          if [ "${_T_CLI_VRN}" = "7.0" ] \
+            || [ "${_T_CLI_VRN}" = "5.6" ]; then
+            _PHP_CLI_LEGACY_FREE=YES
+          else
+            _PHP_CLI_LEGACY_FREE=NO
+          fi
+        else
+          _PHP_CLI_LEGACY_FREE=YES
+        fi
+        if [ "${_PHP_FPM_LEGACY_FREE}" = "NO" ]; then
+          if [ -x "/opt/php56/bin/php" ]; then
+            echo 5.6 > ${User}/static/control/fpm.info
+          elif [ -x "/opt/php55/bin/php" ]; then
+            echo 5.5 > ${User}/static/control/fpm.info
+          fi
+        fi
+        if [ "${_PHP_CLI_LEGACY_FREE}" = "NO" ]; then
+          if [ -x "/opt/php56/bin/php" ]; then
+            echo 5.6 > ${User}/static/control/cli.info
+          elif [ -x "/opt/php55/bin/php" ]; then
+            echo 5.5 > ${User}/static/control/cli.info
+          fi
         fi
       fi
       if [[ "${_SERIES_TEST}" =~ "${stbl}" ]]; then
