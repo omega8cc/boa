@@ -1460,9 +1460,7 @@ check_php_cli() {
     if [ -x "$_PHP_CLI_PATH" ]; then
       _USE_PHP_CLI_PATH=$_PHP_CLI_PATH
     else
-      if  [ -x "/opt/php70/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php70/bin/php
-      elif  [ -x "/opt/php56/bin/php" ]; then
+      if  [ -x "/opt/php56/bin/php" ]; then
         _USE_PHP_CLI_PATH=/opt/php56/bin/php
       elif  [ -x "/opt/php55/bin/php" ]; then
         _USE_PHP_CLI_PATH=/opt/php55/bin/php
@@ -1470,6 +1468,8 @@ check_php_cli() {
         _USE_PHP_CLI_PATH=/opt/php54/bin/php
       elif [ -x "/opt/php53/bin/php" ]; then
         _USE_PHP_CLI_PATH=/opt/php53/bin/php
+      elif  [ -x "/opt/php70/bin/php" ]; then
+        _USE_PHP_CLI_PATH=/opt/php70/bin/php
       fi
     fi
     if [ -x "${_USE_PHP_CLI_PATH}" ]; then
@@ -1492,6 +1492,20 @@ switch_php_cli() {
 }
 
 php_upgrade_all() {
+  if [ -x "/opt/php70/bin/php" ] \
+    && [ -z "$_FRESH_PHP70_BUILD" ]; then
+    _PHP_VERSION="${_PHP70_VRN}"
+    _PHP_BIN_BROKEN=NO
+    _BROKEN_LIBCURL_TEST=""
+    ### switch_php_cli "70"
+    check_php_broken "70"
+    check_php_rebuild "70"
+    update_php_multi "70"
+    mrun "service php70-fpm restart" &> /dev/null
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+  fi
   if [ -x "/opt/php53/bin/php" ] \
     && [ "${_SKIP_LEGACY_PHP}" != "YES" ] \
     && [ -z "$_FRESH_PHP53_BUILD" ]; then
@@ -1550,20 +1564,6 @@ php_upgrade_all() {
     _T_PHP_VRN=""
     _T_PHP_PTH=""
   fi
-  if [ -x "/opt/php70/bin/php" ] \
-    && [ -z "$_FRESH_PHP70_BUILD" ]; then
-    _PHP_VERSION="${_PHP70_VRN}"
-    _PHP_BIN_BROKEN=NO
-    _BROKEN_LIBCURL_TEST=""
-    ### switch_php_cli "70"
-    check_php_broken "70"
-    check_php_rebuild "70"
-    update_php_multi "70"
-    mrun "service php70-fpm restart" &> /dev/null
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-  fi
 }
 
 install_update_php() {
@@ -1603,6 +1603,17 @@ install_update_php() {
   if [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "jessie" ]; then
     ln -sf /usr/include/freetype2 /usr/include/freetype2/freetype
+  fi
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.0" ]] \
+    && [ ! -x "/opt/php70/bin/php" ]; then
+    _PHP_VERSION="${_PHP70_VRN}"
+    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+    ### switch_php_cli "70"
+    install_php_multi "70"
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+    _FRESH_PHP70_BUILD=70
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "5.3" ]] \
     && [ "${_SKIP_LEGACY_PHP}" != "YES" ] \
@@ -1649,17 +1660,6 @@ install_update_php() {
     _T_PHP_VRN=""
     _T_PHP_PTH=""
     _FRESH_PHP56_BUILD=56
-  fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.0" ]] \
-    && [ ! -x "/opt/php70/bin/php" ]; then
-    _PHP_VERSION="${_PHP70_VRN}"
-    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    ### switch_php_cli "70"
-    install_php_multi "70"
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-    _FRESH_PHP70_BUILD=70
   fi
 }
 

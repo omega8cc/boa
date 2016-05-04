@@ -1157,9 +1157,7 @@ switch_php() {
             _T_CLI_VRN=5.4
           fi
         elif [ "${_T_CLI_VRN}" = "5.2" ]; then
-          if [ -x "/opt/php70/bin/php" ]; then
-            _T_CLI_VRN=7.0
-          elif [ -x "/opt/php56/bin/php" ]; then
+          if [ -x "/opt/php56/bin/php" ]; then
             _T_CLI_VRN=5.6
           elif [ -x "/opt/php55/bin/php" ]; then
             _T_CLI_VRN=5.5
@@ -1167,6 +1165,8 @@ switch_php() {
             _T_CLI_VRN=5.4
           elif [ -x "/opt/php53/bin/php" ]; then
             _T_CLI_VRN=5.3
+          elif [ -x "/opt/php70/bin/php" ]; then
+            _T_CLI_VRN=7.0
           fi
         fi
         if [ "${_T_CLI_VRN}" != "${_PHP_CLI_VERSION}" ]; then
@@ -1320,9 +1320,7 @@ switch_php() {
             _T_FPM_VRN=5.4
           fi
         elif [ "${_T_FPM_VRN}" = "5.2" ]; then
-          if [ -x "/opt/php70/bin/php" ]; then
-            _T_FPM_VRN=7.0
-          elif [ -x "/opt/php56/bin/php" ]; then
+          if [ -x "/opt/php56/bin/php" ]; then
             _T_FPM_VRN=5.6
           elif [ -x "/opt/php55/bin/php" ]; then
             _T_FPM_VRN=5.5
@@ -1330,6 +1328,8 @@ switch_php() {
             _T_FPM_VRN=5.4
           elif [ -x "/opt/php53/bin/php" ]; then
             _T_FPM_VRN=5.3
+          elif [ -x "/opt/php70/bin/php" ]; then
+            _T_FPM_VRN=7.0
           fi
         fi
         if [ "${_T_FPM_VRN}" != "${_PHP_FPM_VERSION}" ] \
