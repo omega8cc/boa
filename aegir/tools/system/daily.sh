@@ -42,6 +42,7 @@ if [[ "${_SSL_ITD}" =~ "1.0.1" ]] \
   _NEW_SSL=YES
 fi
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+vSet="vset --always-set"
 
 ###-------------SYSTEM-----------------###
 
@@ -384,12 +385,12 @@ fix_user_register_protection() {
     Prm=${Prm//[^0-2]/}
     echo "Prm user_register for ${Dom} is ${Prm}"
     if [ "${_ENABLE_USER_REGISTER_PROTECTION}" = "YES" ]; then
-      run_drush8_cmd "vset --always-set user_register 0"
+      run_drush8_cmd "${vSet} user_register 0"
     else
       if [ "${Prm}" = "1" ] || [ -z "${Prm}" ]; then
-        run_drush8_cmd "vset --always-set user_register 2"
+        run_drush8_cmd "${vSet} user_register 2"
       fi
-      run_drush8_cmd "vset --always-set user_email_verification 1"
+      run_drush8_cmd "${vSet} user_email_verification 1"
     fi
   fi
 
@@ -400,7 +401,7 @@ fix_user_register_protection() {
       rm -f ${Dir}/modules/readonlymode_fix.info
     fi
     if [ ! -e "${User}/log/ctrl/site.${Dom}.rom-fix.info" ]; then
-      run_drush8_cmd "vset --always-set site_readonly 0"
+      run_drush8_cmd "${vSet} site_readonly 0"
       touch ${User}/log/ctrl/site.${Dom}.rom-fix.info
     fi
   fi
@@ -2600,21 +2601,16 @@ action() {
           cd ${_THIS_HM_SITE}
           su -s /bin/bash ${_HM_U} -c "drush8 cc drush" &> /dev/null
           rm -rf ${User}/.tmp/cache
-          run_drush8_hmr_cmd "vset \
-            --always-set hosting_cron_default_interval 86400"
-          run_drush8_hmr_cmd "vset \
-            --always-set hosting_queue_cron_frequency 1"
+          run_drush8_hmr_cmd "${vSet} hosting_cron_default_interval 86400"
+          run_drush8_hmr_cmd "${vSet} hosting_queue_cron_frequency 1"
           if [ -e "${User}/log/hosting_cron_use_backend.txt" ]; then
-            run_drush8_hmr_cmd "vset \
-              --always-set hosting_cron_use_backend 1"
+            run_drush8_hmr_cmd "${vSet} hosting_cron_use_backend 1"
           else
-             run_drush8_hmr_cmd "vset \
-              --always-set hosting_cron_use_backend 0"
+             run_drush8_hmr_cmd "${vSet} hosting_cron_use_backend 0"
           fi
-          run_drush8_hmr_cmd "vset \
-            --always-set hosting_ignore_default_profiles 0"
-          run_drush8_hmr_cmd "vset \
-            --always-set hosting_queue_tasks_items 1"
+          run_drush8_hmr_cmd "${vSet} hosting_ignore_default_profiles 0"
+          run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_items 1"
+          run_drush8_hmr_cmd "${vSet} aegir_backup_export_path ${User}/backup-exports"
           if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
             run_drush8_hmr_cmd "fr hosting_custom_settings -y"
           fi
