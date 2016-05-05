@@ -2,7 +2,7 @@
 ### Stable BOA-3.0.2 Release - Full Edition
 ### Date: Tue May  3 22:26:09 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.0.2
-### Latest hotfix added on: Wed May  4 16:14:25 PDT 2016
+### Latest hotfix added on: Wed May  4 19:35:45 PDT 2016
 
   @=> Includes Aegir Hostmaster 3.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -62,6 +62,7 @@
   * Add patch for registration error (Commons)
   * Avoid duplicate entries in hosting_cron on hostmaster install -- #928
   * Cron not running on cloned sites -- fixes #922
+  * Disable hosting-pause / Provision -- not needed in BOA, may hang upgrade
   * Do not force TERM
   * Experimental hosting_git error, platform not installed -- fixes #904
   * Improve the provision_autoload_register_prefix check
@@ -71,6 +72,7 @@
   * Restart php-fpm on upgrade as soon as possible
   * Run update_php_cli_cron() twice
   * Use inetutils-syslogd on VZ systems -- fixes #905
+  * Use syncpass during hostmaster upgrade
 
 
 ### Stable BOA-3.0.1 Release - Full Edition
