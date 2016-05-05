@@ -2071,6 +2071,7 @@ satellite_run_pre_install() {
       echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     fi
     mysqladmin flush-hosts &> /dev/null
+    _RST=$(syncpass fix ${_USER} 2>&1)
     provision_backend_dbpass_sync
   fi
   cd ${_ROOT}

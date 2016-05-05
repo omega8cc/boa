@@ -353,6 +353,7 @@ upgrade_aegir_master() {
     echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${vBs}/${filIncB}
 
     mysqladmin flush-hosts &> /dev/null
+    _RST=$(syncpass fix aegir 2>&1)
     provision_backend_dbpass_sync
     hostmaster_frontend_dbpass_sync
     master_download_for_local_build
