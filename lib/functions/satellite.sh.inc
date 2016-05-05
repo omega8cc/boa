@@ -4446,14 +4446,16 @@ satellite_child_b_aegir_build() {
         ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
       fi
     else
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster registry-rebuild
-      else
-        ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
+      if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y
+          ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y
+          ${_DRUSHCMD} @hostmaster registry-rebuild
+        else
+          ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
+          ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y &> /dev/null
+          ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
+        fi
       fi
     fi
 
@@ -4732,6 +4734,7 @@ satellite_child_b_aegir_ui_enhance() {
     if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"
+        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats"
         ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"
         ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
         ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
@@ -4740,12 +4743,13 @@ satellite_child_b_aegir_ui_enhance() {
         ${_DRUSHCMD} @hostmaster cc all
         ${_DRUSHCMD} @hostmaster updb -y
       else
-        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter" &> /dev/null
-        ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"  &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats" &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
+        ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y  &> /dev/null
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y  &> /dev/null
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y  &> /dev/null
+        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y  &> /dev/null
         ${_DRUSHCMD} @hostmaster cc all &> /dev/null
         ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
       fi
@@ -4761,7 +4765,7 @@ satellite_child_b_aegir_ui_enhance() {
       fi
       ${_DRUSHCMD} @hostmaster cc all
     else
-       if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
+      if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
         ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
         ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
         ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
