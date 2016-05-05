@@ -1071,7 +1071,7 @@ satellite_sub_satellite_force_advanced_nginx_config() {
       wait
       sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" ${octTpl}/Inc/vhost_include.tpl.php &> /dev/null
       wait
-      sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g"  ${octTpl}/Inc/vhost_include.tpl.php &> /dev/null
+      sed -i "s/unix:.*www56.fpm.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g"  ${octTpl}/Inc/vhost_include.tpl.php &> /dev/null
       wait
 
       sed -i "s/EDIT_USER/${_USER}/g"                                              ${octTpl}/subdir.tpl.php &> /dev/null
@@ -1080,7 +1080,7 @@ satellite_sub_satellite_force_advanced_nginx_config() {
       wait
       sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" ${octTpl}/subdir.tpl.php &> /dev/null
       wait
-      sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g"  ${octTpl}/subdir.tpl.php &> /dev/null
+      sed -i "s/unix:.*www56.fpm.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g"  ${octTpl}/subdir.tpl.php &> /dev/null
       wait
 
       sed -i "s/EDIT_USER/${_USER}/g"                                              ${octInc}/nginx_vhost_common.conf &> /dev/null
@@ -1089,7 +1089,7 @@ satellite_sub_satellite_force_advanced_nginx_config() {
       wait
       sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" ${octInc}/nginx_vhost_common.conf &> /dev/null
       wait
-      sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g"  ${octInc}/nginx_vhost_common.conf &> /dev/null
+      sed -i "s/unix:.*www56.fpm.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g"  ${octInc}/nginx_vhost_common.conf &> /dev/null
       wait
     fi
     _CRON_IP=${_THISHTIP//[^0-9.]/}
