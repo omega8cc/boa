@@ -497,6 +497,7 @@ ini_set('session.gc_maxlifetime', $all_ini['session_gc_eol']);
  */
 if ($conf['install_profile'] == 'hostmaster') {
   $conf['hosting_require_disable_before_delete'] = 0;
+  $conf['theme_link'] = FALSE;
   $conf['cache'] = 0;
   if (!$is_backend && isset($_SERVER['HTTP_USER_AGENT'])) {
     ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
