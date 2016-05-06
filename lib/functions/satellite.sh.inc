@@ -4381,6 +4381,9 @@ satellite_child_b_aegir_build() {
       && [ ! -L "${_PREV_HM_ROOT}/modules/o_contrib_seven" ]; then
       rm -f ${_PREV_HM_ROOT}/modules/o_contrib_seven/{cache_backport,redis_edge,redis}
     fi
+    if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
+      _DEBUG_MODE=YES
+    fi
     if [ ! -e "${_PREV_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
       _DEBUG_MODE=YES
       msg "${_STATUS} B: Testing previous install..."
