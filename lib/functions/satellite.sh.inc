@@ -4571,8 +4571,10 @@ satellite_child_b_aegir_build() {
     rm -rf ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y -d
+      ${_DRUSHCMD} @hostmaster registry-rebuild
     else
       ${_DRUSHCMD} hostmaster-migrate ${_DOMAIN} ${_HM_ROOT} -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
     fi
     cd ${_HM_ROOT}
     mkdir -p sites/all/{modules,themes,libraries}
