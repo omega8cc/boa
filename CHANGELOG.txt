@@ -34,7 +34,6 @@
   * Disable auto-upgrade for legacy Octopus instances
   * Disable page cache only in hostmaster
   * Disable PAMAuthentication in pure-ftpd
-  * Enable redis_eval_enabled
   * Force PHP 5.6 or 5.5 cli.info in Octopus 2.4.9
   * Force Redis SOCKET mode if PORT was used before
   * Redis module mod-03-05-2016
