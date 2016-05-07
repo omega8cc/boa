@@ -747,6 +747,9 @@ check_site_status() {
           elif [[ "${_DGDD_T}" =~ "The drush command" ]] \
             && [[ "${_DGDD_T}" =~ "could not be found" ]]; then
             _DO_NOTHING=YES
+          elif [[ "${_DGDD_T}" =~ "has a uid that is" ]] \
+            && [[ "${_DGDD_T}" =~ "higher than owner" ]]; then
+            _DO_NOTHING=YES
           elif [ -z "${_DGDD_T}" ]; then
             _DO_NOTHING=YES
           elif [[ "${_DGDD_T}" =~ "Drush command terminated" ]]; then
