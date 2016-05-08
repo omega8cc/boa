@@ -525,6 +525,14 @@ how to survive #Drupageddon, please read:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
+If you have any questions, please don't respond to this message,
+since it was sent from our default system address -- please use
+our support contact form instead:
+
+  https://omega8.cc/support
+
+Thank you in advance.
+
 --
 This e-mail has been sent by your Aegir system monitor.
 
@@ -562,6 +570,14 @@ how to survive #Drupageddon, please read:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
+If you have any questions, please don't respond to this message,
+since it was sent from our default system address -- please use
+our support contact form instead:
+
+  https://omega8.cc/support
+
+Thank you in advance.
+
 --
 This e-mail has been sent by your Aegir system monitor.
 
@@ -598,6 +614,14 @@ To learn more on what happened, how it was possible and
 how to survive #Drupageddon, please read:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
+
+If you have any questions, please don't respond to this message,
+since it was sent from our default system address -- please use
+our support contact form instead:
+
+  https://omega8.cc/support
+
+Thank you in advance.
 
 --
 This e-mail has been sent by your Aegir system monitor.
@@ -650,6 +674,26 @@ how to survive #Drupageddon, please read:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
+We have restarted daily checks on May 7, 2016 to make sure that
+no one stays on some too old Drupal version with many known security
+vulnerabilities.
+
+You will receive Drupageddon alert for every site with outdated and
+not secure codebase, even if it was not affected by Drupageddon bug
+directly.
+
+Please be a good web citizen and upgrade to latest Drupal core provided
+by BOA-3.0.2. As a bonus, you will be able to speed up your sites
+considerably by switching PHP-FPM to 7.0
+
+If you have any questions, please don't respond to this message,
+since it was sent from our default system address -- please use
+our support contact form instead:
+
+  https://omega8.cc/support
+
+Thank you in advance.
+
 --
 This e-mail has been sent by your Aegir system monitor.
 
@@ -679,6 +723,26 @@ how to survive #Drupageddon, please read:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
+We have restarted daily checks on May 7, 2016 to make sure that
+no one stays on some too old Drupal version with many known security
+vulnerabilities.
+
+You will receive Drupageddon alert for every site with outdated and
+not secure codebase, even if it was not affected by Drupageddon bug
+directly.
+
+Please be a good web citizen and upgrade to latest Drupal core provided
+by BOA-3.0.2. As a bonus, you will be able to speed up your sites
+considerably by switching PHP-FPM to 7.0
+
+If you have any questions, please don't respond to this message,
+since it was sent from our default system address -- please use
+our support contact form instead:
+
+  https://omega8.cc/support
+
+Thank you in advance.
+
 --
 This e-mail has been sent by your Aegir system monitor.
 
@@ -707,6 +771,26 @@ To learn more on what happened, how it was possible and
 how to survive #Drupageddon, please read:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
+
+We have restarted daily checks on May 7, 2016 to make sure that
+no one stays on some too old Drupal version with many known security
+vulnerabilities.
+
+You will receive Drupageddon alert for every site with outdated and
+not secure codebase, even if it was not affected by Drupageddon bug
+directly.
+
+Please be a good web citizen and upgrade to latest Drupal core provided
+by BOA-3.0.2. As a bonus, you will be able to speed up your sites
+considerably by switching PHP-FPM to 7.0
+
+If you have any questions, please don't respond to this message,
+since it was sent from our default system address -- please use
+our support contact form instead:
+
+  https://omega8.cc/support
+
+Thank you in advance.
 
 --
 This e-mail has been sent by your Aegir system monitor.
