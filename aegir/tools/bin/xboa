@@ -25,8 +25,8 @@ migration process to the new facility has been completed.
 
 # Caveats:
 
-  * New Aegir URL is listed in the new welcome e-mail
-  * New SSH/SFTP credentials are listed in the new welcome e-mail
+  * New Aegir URL is listed in the new welcome email
+  * New SSH/SFTP credentials are listed in the new welcome email
   * All cron tasks are paused during this migration and in the next 1-3 hours
   * The old Aegir control panel has been disabled to protect proxy vhosts
   * The main SSH account home directory contents has not been migrated
@@ -41,13 +41,13 @@ migration process to the new facility has been completed.
     and not rely on the provided proxy for too long.
 
   * For SSL-enabled sites with dedicated IP addresses - please
-    don't update their DNS until you will receive separate e-mail
+    don't update their DNS until you will receive separate email
     with new dedicated IP address to use. Your SSL certificates
     have been migrated automatically, so only DNS update will be needed
     once new IP address is provided.
 
   * You should use only the new SSH/SFTP credentials listed in the
-    new welcome e-mail, because this is your only access to all your
+    new welcome email, because this is your only access to all your
     migrated live/active sites and their files.
 
   * While Aegir control panel URL has changed, its access credentials
@@ -69,8 +69,8 @@ migration process to the new facility has been completed.
 
 # Caveats:
 
-  * New Aegir URL is listed in the new welcome e-mail
-  * New SSH/SFTP credentials are listed in the new welcome e-mail
+  * New Aegir URL is listed in the new welcome email
+  * New SSH/SFTP credentials are listed in the new welcome email
   * All cron tasks are paused during this migration and in the next 1-3 hours
   * The old Aegir control panel has been disabled to protect proxy vhosts
   * The main SSH account home directory contents has not been migrated
@@ -85,13 +85,13 @@ migration process to the new facility has been completed.
     and not rely on the provided proxy for too long.
 
   * For SSL-enabled sites with dedicated IP addresses - please
-    don't update their DNS until you will receive separate e-mail
+    don't update their DNS until you will receive separate email
     with new dedicated IP address to use. Your SSL certificates
     have been migrated automatically, so only DNS update will be needed
     once new IP address is provided.
 
   * You should use only the new SSH/SFTP credentials listed in the
-    new welcome e-mail, because this is your only access to all your
+    new welcome email, because this is your only access to all your
     migrated live/active sites and their files.
 
   * While Aegir control panel URL has changed, its access credentials
@@ -113,8 +113,8 @@ migration process to the new facility has been completed.
 
 # Caveats:
 
-  * New Aegir URL is listed in the new welcome e-mail
-  * New SSH/SFTP credentials are listed in the new welcome e-mail
+  * New Aegir URL is listed in the new welcome email
+  * New SSH/SFTP credentials are listed in the new welcome email
   * All cron tasks are paused during this migration and in the next 1-3 hours
   * The old Aegir control panel has been disabled to protect proxy vhosts
   * The main SSH account home directory contents has not been migrated
@@ -129,13 +129,13 @@ migration process to the new facility has been completed.
     and not rely on the provided proxy for too long.
 
   * For SSL-enabled sites with dedicated IP addresses - please
-    don't update their DNS until you will receive separate e-mail
+    don't update their DNS until you will receive separate email
     with new dedicated IP address to use. Your SSL certificates
     have been migrated automatically, so only DNS update will be needed
     once new IP address is provided.
 
   * You should use only the new SSH/SFTP credentials listed in the
-    new welcome e-mail, because this is your only access to all your
+    new welcome email, because this is your only access to all your
     migrated live/active sites and their files.
 
   * While Aegir control panel URL has changed, its access credentials
@@ -161,7 +161,7 @@ Hello,
 You are receiving this notification because your Aegir hosting system
 migration process to the new facility has been started.
 
-You will receive another e-mail when the migration is complete.
+You will receive another email when the migration is complete.
 
 WARNING! Please do not run any tasks in your old Aegir control panel.
 It could break special proxy vhosts we have created for you to provide
@@ -179,7 +179,7 @@ Hello,
 You are receiving this notification because your Aegir hosting system
 migration process to the new facility has been started.
 
-You will receive another e-mail when the migration is complete.
+You will receive another email when the migration is complete.
 
 WARNING! Please do not run any tasks in your old Aegir control panel.
 It could break special proxy vhosts we have created for you to provide
@@ -197,7 +197,7 @@ Hello,
 You are receiving this notification because your Aegir hosting system
 migration process to the new facility has been started.
 
-You will receive another e-mail when the migration is complete.
+You will receive another email when the migration is complete.
 
 WARNING! Please do not run any tasks in your old Aegir control panel.
 It could break special proxy vhosts we have created for you to provide

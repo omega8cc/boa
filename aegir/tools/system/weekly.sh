@@ -105,7 +105,7 @@ our support contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir platform core monitor.
+This email has been sent by your Aegir platform core monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
@@ -141,7 +141,7 @@ our support contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir platform core monitor.
+This email has been sent by your Aegir platform core monitor.
 
 EOF
   else
@@ -177,7 +177,7 @@ our support contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir platform core monitor.
+This email has been sent by your Aegir platform core monitor.
 
 EOF
   fi
@@ -373,7 +373,7 @@ our billing contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir resources usage daily monitor.
+This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
@@ -428,7 +428,7 @@ our billing contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir resources usage daily monitor.
+This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   else
@@ -483,7 +483,7 @@ our billing contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir resources usage daily monitor.
+This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   fi
@@ -527,7 +527,7 @@ our billing contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir resources usage daily monitor.
+This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
@@ -562,7 +562,7 @@ our billing contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir resources usage daily monitor.
+This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   else
@@ -597,7 +597,7 @@ our billing contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir resources usage daily monitor.
+This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   fi

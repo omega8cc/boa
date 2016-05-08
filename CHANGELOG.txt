@@ -1254,8 +1254,8 @@
   Please note that current version of Drupalgeddon Drush extension needs
   the 'update' module to be enabled to avoid even more false positives,
   so BOA will enable the 'update' module temporarily while running this
-  check, which in turn will result with even more e-mails notices sent
-  to the site admin e-mail, if these notices are enabled.
+  check, which in turn will result with even more emails notices sent
+  to the site admin email, if these notices are enabled.
 
 #-### Support for automated BOA upgrades: weekly and one-time
 
@@ -2732,7 +2732,7 @@
 
   * Add caveats to docs/REMOTE.txt
   * Add explicit whitelisting in websh wrapper to avoid any edge case problems.
-  * Add info about Two-Factor Auth for Chive in the welcome e-mail template.
+  * Add info about Two-Factor Auth for Chive in the welcome email template.
   * Add missing exceptions in global.inc and simplify docs/REMOTE.txt
   * Add missing wrapper exceptions required by daily.sh script.
   * Clean up packages cache on finale()
@@ -2796,7 +2796,7 @@
   $ barracuda up-stable
   $ octopus up-stable all both
 
-  For silent, logged mode with e-mail message sent once the upgrade is
+  For silent, logged mode with email message sent once the upgrade is
   complete, but no progress is displayed in the terminal window, you can run
   alternatively, starting with screen session to avoid incomplete upgrade
   if your SSH session will be closed for any reason before the upgrade
@@ -3072,7 +3072,7 @@
   $ screen
   $ barracuda up-stable system
 
-  The system will send you an e-mail with results when the upgrade is complete,
+  The system will send you an email with results when the upgrade is complete,
   but there will be no upgrade progress displayed in the console. You can watch
   it, if you prefer, with command (DATE/TIME are placeholders for real values):
 
@@ -4500,7 +4500,7 @@
   * Add all extra, non-standard options in the barracuda.cnf docs template.
   * Add built-in support for Domain Access also for sites/all/modules/contrib
   * Add exception to support commerce_multicurrency module properly.
-  * Add info about self-signed SSL certificate in the welcome e-mail (again).
+  * Add info about self-signed SSL certificate in the welcome email (again).
   * Add support for /usr/etc/sshd_config if exists.
   * Always force update_newrelic - even if there is no new PHP version.
   * Better check for GitHub partial downtime.
@@ -4574,7 +4574,7 @@
   * Lshell: version update and monitoring improvements.
   * Make sure o_contrib is updated also on head-to-head upgrades.
   * Make sure to rebuild PHP if cURL is installed from sources.
-  * Make the upgrade e-mail generic.
+  * Make the upgrade email generic.
   * More compact code for downloads.
   * Move csf/lfd corrections after pdnsd install.
   * Move the giant modules list from README.txt to docs/MODULES.txt
@@ -5052,7 +5052,7 @@
   * Sync generating secure passwords also for limited shell users.
   * Update csf.conf template.
   * Update self-healing for Tomcat/Jetty support.
-  * Update welcome e-mail template to better explain how to manage databases.
+  * Update welcome email template to better explain how to manage databases.
   * Use Boost with silenced false alarms.
   * Use Limited Shell branch with fixed tab completion.
   * Use public DNS during pdnsd (re)installation to avoid issues.
@@ -5468,10 +5468,10 @@
 
   * We have added segfault monitor for php-fpm and nginx, enabled by default.
     It is pretty aggressive, because it disables vhost of any site causing
-    segfault errors and sends e-mail alert to the Octopus instance owner
-    and server owner e-mail addresses. Simple site re-verify in Aegir enables
+    segfault errors and sends email alert to the Octopus instance owner
+    and server owner email addresses. Simple site re-verify in Aegir enables
     the site again - but until the next segfault only, so read the info
-    included in the e-mail alert message, if this will happen. If you prefer
+    included in the email alert message, if this will happen. If you prefer
     to not run this monitor: `rm -f /var/xdrago/monitor/check/segfault_alert`
 
   * Previously recommended site and platforms re-verify on Clone or Migrate
@@ -5634,7 +5634,7 @@
   * Disabled allow_url_fopen breaks drush dl.
   * Do not allow bots to create cache entries with long expire time.
   * Do not prompt for D6 or D7 vanilla platforms install if not defined in the config.
-  * Explain in the e-mail templates that plain FTP is no longer available.
+  * Explain in the email templates that plain FTP is no longer available.
   * Fix cart block issue in Ubercart.
   * Fix for Debian Lenny support - packages have been moved to archives.
   * Fix for slow networks/DNS in pdnsd cache default config.
@@ -5683,7 +5683,7 @@
   * Make default myisam_sort_buffer_size big enough to run repair if required.
   * Make sure that /dev/null has correct permissions.
   * Pass some expected headers when using local proxy.
-  * Remind people that they should use their own e-mail address or exit early.
+  * Remind people that they should use their own email address or exit early.
   * Remove deprecated Nginx config includes and use symlinks for backward compatibility.
   * Sanitize important variables early.
   * Save 330 seconds with 3x faster spinner.
@@ -6526,7 +6526,7 @@ Added/Fixed: (upgrade recommended)
     like "drush up" since they should never be used
     on sites managed in the Aegir system.
 
-2.  Octopus now by default sends a welcome e-mail
+2.  Octopus now by default sends a welcome email
     with some useful intro information and access
     details to the address defined as _CLIENT_EMAIL.
 

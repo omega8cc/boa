@@ -717,7 +717,7 @@ barracuda_cnf() {
           _DB_SERVER=MariaDB
         fi
       else
-        msg "EXIT: Invalid e-mail address defined in the _MY_EMAIL variable"
+        msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
         msg "EXIT: Bye (1)"
         clean_pid_exit
       fi
@@ -1457,7 +1457,7 @@ barracuda_cnf() {
           _DB_SERVER=MariaDB
         fi
       else
-        msg "EXIT: Invalid e-mail address defined in the _MY_EMAIL variable"
+        msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
         msg "EXIT: Bye (2)"
         clean_pid_exit
       fi
@@ -3651,7 +3651,7 @@ check_smtp() {
 
       Your outgoing SMTP port 25 doesn't work
       as expected, so your server can't send out
-      any e-mails directly.
+      any emails directly.
 
       It appears you need a SMTP relayhost added
       in your Postfix /etc/postfix/main.cf config.

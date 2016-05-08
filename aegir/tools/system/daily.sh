@@ -534,7 +534,7 @@ our support contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir system monitor.
+This email has been sent by your Aegir system monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
@@ -579,7 +579,7 @@ our support contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir system monitor.
+This email has been sent by your Aegir system monitor.
 
 EOF
   else
@@ -624,7 +624,7 @@ our support contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir system monitor.
+This email has been sent by your Aegir system monitor.
 
 EOF
   fi
@@ -695,7 +695,7 @@ our support contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir system monitor.
+This email has been sent by your Aegir system monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
@@ -744,7 +744,7 @@ our support contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir system monitor.
+This email has been sent by your Aegir system monitor.
 
 EOF
   else
@@ -793,7 +793,7 @@ our support contact form instead:
 Thank you in advance.
 
 --
-This e-mail has been sent by your Aegir system monitor.
+This email has been sent by your Aegir system monitor.
 
 EOF
   fi
@@ -2988,7 +2988,7 @@ if [ -e "/opt/tmp/barracuda-version.txt" ]; then
  Changelog: http://bit.ly/boa-changes
 
  --
- This e-mail has been sent by your Barracuda server upgrade monitor.
+ This email has been sent by your Barracuda server upgrade monitor.
 
 EOF
     echo "INFO: Update notice sent: OK"

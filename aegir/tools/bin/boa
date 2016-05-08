@@ -1467,7 +1467,7 @@ case "$1" in
       my.fqdn <------ valid subdomain to use as a hostname
 
   {email}
-      my@email <----- your valid e-mail address
+      my@email <----- your valid email address
 
   {user}
       o1 <----------- default Octopus system account

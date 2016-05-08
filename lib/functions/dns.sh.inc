@@ -703,7 +703,7 @@ EOF
     msg "INSTALL START -> checkpoint: "
     cat <<EOF
 
-    * Your e-mail address is ${_MY_EMAIL}
+    * Your email address is ${_MY_EMAIL}
     * Your IP address is ${_THISHTIP}
     * Your hostname is ${_THISHOST}
 EOF
@@ -737,7 +737,7 @@ EOF
       msg "UPGRADE START -> checkpoint: "
       cat <<EOF
 
-    * Your e-mail address is ${_MY_EMAIL}
+    * Your email address is ${_MY_EMAIL}
     * Your server hostname is ${_THISHOST}
     * Your Aegir control panel URL is https://${_THIS_FRONT}
 EOF

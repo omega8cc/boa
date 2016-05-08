@@ -769,7 +769,7 @@ up_action() {
         echo "Preparing the upgrade in silent mode..."
         echo
         echo "NOTE: There will be no progress displayed in the console"
-        echo "but you will receive an e-mail once the upgrade is complete"
+        echo "but you will receive an email once the upgrade is complete"
         echo
         sleep 5
         echo "You could watch the progress in another window with command:"

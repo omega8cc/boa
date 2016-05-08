@@ -8,7 +8,7 @@
 ### will *override* all listed here settings in the Octopus script.
 ###
 _USER="o1" #-------------------- Aegir Instance system account name
-_MY_EMAIL="my@email" #---------- Aegir Instance owner e-mail
+_MY_EMAIL="my@email" #---------- Aegir Instance owner email
 _PLATFORMS_LIST=ALL #----------- Platforms to install - see docs/PLATFORMS.txt
 _AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
 _HM_ONLY=NO #------------------- Allows to upgrade Aegir only (deprecated)

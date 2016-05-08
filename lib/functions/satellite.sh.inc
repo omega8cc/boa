@@ -424,7 +424,7 @@ satellite_cnf() {
         || [ "${_VMFAMILY}" = "VS" ]; then
         _DO_NOTHING=YES
       else
-        msg "EXIT: You must enter **your** valid e-mail address"
+        msg "EXIT: You must enter **your** valid email address"
         msg "EXIT: in the _MY_EMAIL **and** _CLIENT_EMAIL variables"
         clean_pid_exit
       fi
@@ -872,7 +872,7 @@ satellite_cnf() {
         || [ "${_VMFAMILY}" = "VS" ]; then
         _DO_NOTHING=YES
       else
-        msg "EXIT: You must enter **your** valid e-mail address in the"
+        msg "EXIT: You must enter **your** valid email address in the"
         msg "EXIT: _MY_EMAIL variable in the ${octCnf} file"
         clean_pid_exit
       fi
@@ -3108,13 +3108,13 @@ satellite_prepare_setup_email_tpl() {
   fi
 }
 
-###---### Sending setup e-mail.
+###---### Sending setup email.
 #
 satellite_send_welcome_email() {
   _MAILX_TEST=$(mail -V 2>&1)
   if [ "${_STATUS}" = "INIT" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "${_STATUS} A: Sending setup e-mail on init..."
+      msg "${_STATUS} A: Sending setup email on init..."
     fi
     TIME=$(date 2>&1)
     _Q="Your Aegir Install on ${TIME} [${_USER}]"
@@ -3138,7 +3138,7 @@ satellite_send_welcome_email() {
   else
     if [ "${_DIST_INSTALL}" = "YES" ] && [ "${_PLATFORMS_ONLY}" = "NO" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "${_STATUS} A: Resending setup e-mail on upgrade..."
+        msg "${_STATUS} A: Resending setup email on upgrade..."
       fi
       TIME=$(date 2>&1)
       _Q="Your Aegir Upgrade on ${TIME} [${_USER}]"
@@ -3678,7 +3678,7 @@ satellite_if_init_or_upgrade() {
         if [[ "${_CLIENT_EMAIL}" =~ "@" ]]; then
           _DO_NOTHING=YES
         else
-          msg "EXIT: You must enter your valid e-mail address in the"
+          msg "EXIT: You must enter your valid email address in the"
           msg "EXIT: _CLIENT_EMAIL variable written both in the"
           msg "EXIT: ${octCnf} file and in the"
           msg "EXIT: ${_ROOT}/log/email.txt file"
@@ -3696,7 +3696,7 @@ satellite_if_init_or_upgrade() {
           || [ "${_VMFAMILY}" = "VS" ]; then
           _DO_NOTHING=YES
         else
-          msg "EXIT: You must enter your valid e-mail address in the"
+          msg "EXIT: You must enter your valid email address in the"
           msg "EXIT: _CLIENT_EMAIL variable written both in the"
           msg "EXIT: ${octCnf} file and in the"
           msg "EXIT: ${_ROOT}/log/email.txt file"
@@ -3835,8 +3835,8 @@ satellite_checkpoint() {
     optInf="${_CLIENT_OPTION} / ${_CLIENT_SUBSCR} / ${_CLIENT_CORES} C"
     cat <<EOF
 
-    * Your e-mail address is ${_MY_EMAIL}
-    * Your client e-mail address is ${_CLIENT_EMAIL}
+    * Your email address is ${_MY_EMAIL}
+    * Your client email address is ${_CLIENT_EMAIL}
     * Your Aegir control panel for this instance will be available at:
         https://${_DOMAIN}
     * Your Aegir system user for this instance will be ${_USER}

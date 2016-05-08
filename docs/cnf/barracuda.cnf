@@ -24,7 +24,7 @@ _THIS_DB_HOST=localhost #------- Allows to use hostname in DB grants when FQDN
 ###
 _AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
 _DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
-_MY_EMAIL="my@email" #---------- System admin e-mail
+_MY_EMAIL="my@email" #---------- System admin email
 _XTRAS_LIST="" #---------------- See docs/NOTES.txt for details on add-ons
 ###
 _MODULES_FIX=YES #-------------- Allows to skip weekly modules en/dis when NO
