@@ -68,7 +68,7 @@ read_account_data() {
 }
 
 send_notice_core() {
-  _MY_EMAIL="notify@omega8.cc"
+  _MY_EMAIL="support@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(mail -V 2>&1)
@@ -95,14 +95,6 @@ We are working hard to deliver top performance hosting
 for your Drupal sites and we appreciate your efforts
 to meet the requirements, which are an integral part
 of the quality you can expect from Omega8.cc.
-
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our support contact form instead:
-
-  https://omega8.cc/support
-
-Thank you in advance.
 
 --
 This email has been sent by your Aegir platform core monitor.
@@ -132,14 +124,6 @@ for your Drupal sites and we appreciate your efforts
 to meet the requirements, which are an integral part
 of the quality you can expect from Omega8.cc.
 
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our support contact form instead:
-
-  https://omega8.cc/support
-
-Thank you in advance.
-
 --
 This email has been sent by your Aegir platform core monitor.
 
@@ -167,14 +151,6 @@ We are working hard to deliver top performance hosting
 for your Drupal sites and we appreciate your efforts
 to meet the requirements, which are an integral part
 of the quality you can expect from Omega8.cc.
-
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our support contact form instead:
-
-  https://omega8.cc/support
-
-Thank you in advance.
 
 --
 This email has been sent by your Aegir platform core monitor.
@@ -317,7 +293,7 @@ send_notice_sql() {
     _SQL_LIM=${_SQL_MIN_LIMIT}
     _SQL_NOW=${SumDatH}
   fi
-  _MY_EMAIL="notify@omega8.cc"
+  _MY_EMAIL="billing@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(mail -V 2>&1)
@@ -363,14 +339,6 @@ six times (6x) your limit for LIVE sites listed on our order pages.
 However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
-
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our billing contact form instead:
-
-  https://omega8.cc/billing
-
-Thank you in advance.
 
 --
 This email has been sent by your Aegir resources usage daily monitor.
@@ -419,14 +387,6 @@ However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
 
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our billing contact form instead:
-
-  https://omega8.cc/billing
-
-Thank you in advance.
-
 --
 This email has been sent by your Aegir resources usage daily monitor.
 
@@ -473,14 +433,6 @@ six times (6x) your limit for LIVE sites listed on our order pages.
 However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
-
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our billing contact form instead:
-
-  https://omega8.cc/billing
-
-Thank you in advance.
 
 --
 This email has been sent by your Aegir resources usage daily monitor.
@@ -491,7 +443,7 @@ EOF
 }
 
 send_notice_disk() {
-  _MY_EMAIL="notify@omega8.cc"
+  _MY_EMAIL="billing@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(mail -V 2>&1)
@@ -517,14 +469,6 @@ You can purchase more Aegir Engines easily online:
 Note that unlike with database space limits, for files related disk space
 we count all your sites, including also all dev/tmp sites, if they exist,
 even if they are marked as disabled in your Aegir control panel.
-
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our billing contact form instead:
-
-  https://omega8.cc/billing
-
-Thank you in advance.
 
 --
 This email has been sent by your Aegir resources usage daily monitor.
@@ -553,14 +497,6 @@ Note that unlike with database space limits, for files related disk space
 we count all your sites, including also all dev/tmp sites, if they exist,
 even if they are marked as disabled in your Aegir control panel.
 
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our billing contact form instead:
-
-  https://omega8.cc/billing
-
-Thank you in advance.
-
 --
 This email has been sent by your Aegir resources usage daily monitor.
 
@@ -587,14 +523,6 @@ You can purchase more Aegir Engines easily online:
 Note that unlike with database space limits, for files related disk space
 we count all your sites, including also all dev/tmp sites, if they exist,
 even if they are marked as disabled in your Aegir control panel.
-
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our billing contact form instead:
-
-  https://omega8.cc/billing
-
-Thank you in advance.
 
 --
 This email has been sent by your Aegir resources usage daily monitor.

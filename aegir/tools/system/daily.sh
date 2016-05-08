@@ -477,6 +477,9 @@ sql_convert() {
 send_shutdown_notice() {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+  if [ "${_MY_EMAIL}" =~ "omega8.cc" ]; then
+    _MY_EMAIL="support@omega8.cc"
+  fi
   if [ ! -z "${_CLIENT_EMAIL}" ] \
     && [[ ! "${_CLIENT_EMAIL}" =~ "${_MY_EMAIL}" ]]; then
     _ALRT_EMAIL="${_CLIENT_EMAIL}"
@@ -525,16 +528,8 @@ how to survive #Drupageddon, please read:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our support contact form instead:
-
-  https://omega8.cc/support
-
-Thank you in advance.
-
 --
-This email has been sent by your Aegir system monitor.
+This email has been sent by your Aegir automatic system monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
@@ -570,16 +565,8 @@ how to survive #Drupageddon, please read:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our support contact form instead:
-
-  https://omega8.cc/support
-
-Thank you in advance.
-
 --
-This email has been sent by your Aegir system monitor.
+This email has been sent by your Aegir automatic system monitor.
 
 EOF
   else
@@ -615,16 +602,8 @@ how to survive #Drupageddon, please read:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our support contact form instead:
-
-  https://omega8.cc/support
-
-Thank you in advance.
-
 --
-This email has been sent by your Aegir system monitor.
+This email has been sent by your Aegir automatic system monitor.
 
 EOF
   fi
@@ -634,6 +613,9 @@ EOF
 send_hacked_alert() {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+  if [ "${_MY_EMAIL}" =~ "omega8.cc" ]; then
+    _MY_EMAIL="support@omega8.cc"
+  fi
   if [ ! -z "${_CLIENT_EMAIL}" ] \
     && [[ ! "${_CLIENT_EMAIL}" =~ "${_MY_EMAIL}" ]]; then
     _ALRT_EMAIL="${_CLIENT_EMAIL}"
@@ -686,16 +668,8 @@ Please be a good web citizen and upgrade to latest Drupal core provided
 by BOA-3.0.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our support contact form instead:
-
-  https://omega8.cc/support
-
-Thank you in advance.
-
 --
-This email has been sent by your Aegir system monitor.
+This email has been sent by your Aegir automatic system monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
@@ -735,16 +709,8 @@ Please be a good web citizen and upgrade to latest Drupal core provided
 by BOA-3.0.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our support contact form instead:
-
-  https://omega8.cc/support
-
-Thank you in advance.
-
 --
-This email has been sent by your Aegir system monitor.
+This email has been sent by your Aegir automatic system monitor.
 
 EOF
   else
@@ -784,16 +750,8 @@ Please be a good web citizen and upgrade to latest Drupal core provided
 by BOA-3.0.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our support contact form instead:
-
-  https://omega8.cc/support
-
-Thank you in advance.
-
 --
-This email has been sent by your Aegir system monitor.
+This email has been sent by your Aegir automatic system monitor.
 
 EOF
   fi
@@ -803,6 +761,9 @@ EOF
 send_core_alert() {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+  if [ "${_MY_EMAIL}" =~ "omega8.cc" ]; then
+    _MY_EMAIL="support@omega8.cc"
+  fi
   if [ ! -z "${_CLIENT_EMAIL}" ] \
     && [[ ! "${_CLIENT_EMAIL}" =~ "${_MY_EMAIL}" ]]; then
     _ALRT_EMAIL="${_CLIENT_EMAIL}"
@@ -864,16 +825,8 @@ Please be a good web citizen and upgrade to latest Drupal core provided
 by BOA-3.0.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our support contact form instead:
-
-  https://omega8.cc/support
-
-Thank you in advance.
-
 --
-This email has been sent by your Aegir system monitor.
+This email has been sent by your Aegir automatic system monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
@@ -922,16 +875,8 @@ Please be a good web citizen and upgrade to latest Drupal core provided
 by BOA-3.0.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our support contact form instead:
-
-  https://omega8.cc/support
-
-Thank you in advance.
-
 --
-This email has been sent by your Aegir system monitor.
+This email has been sent by your Aegir automatic system monitor.
 
 EOF
   else
@@ -980,16 +925,8 @@ Please be a good web citizen and upgrade to latest Drupal core provided
 by BOA-3.0.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our support contact form instead:
-
-  https://omega8.cc/support
-
-Thank you in advance.
-
 --
-This email has been sent by your Aegir system monitor.
+This email has been sent by your Aegir automatic system monitor.
 
 EOF
   fi
