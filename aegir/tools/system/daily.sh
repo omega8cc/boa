@@ -651,11 +651,11 @@ send_hacked_alert() {
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
   cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "URGENT: The ${Dom} site on "${_CHECK_HOST}" has been HACKED!" \
+    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} has been HACKED!" \
     ${_ALRT_EMAIL}
 Hello,
 
-Our system detected that the site ${Dom} has been hacked!
+Our monitoring detected that the site ${Dom} has been hacked!
 
 Common signatures of an attack which triggered this alert:
 
@@ -700,11 +700,11 @@ This email has been sent by your Aegir system monitor.
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
   cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "URGENT: The ${Dom} site on "${_CHECK_HOST}" has been HACKED!" \
+    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} has been HACKED!" \
     ${_ALRT_EMAIL}
 Hello,
 
-Our system detected that the site ${Dom} has been hacked!
+Our monitoring detected that the site ${Dom} has been hacked!
 
 Common signatures of an attack which triggered this alert:
 
@@ -749,11 +749,11 @@ This email has been sent by your Aegir system monitor.
 EOF
   else
   cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
-    -s "URGENT: The ${Dom} site on "${_CHECK_HOST}" has been HACKED!" \
+    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} has been HACKED!" \
     ${_ALRT_EMAIL}
 Hello,
 
-Our system detected that the site ${Dom} has been hacked!
+Our monitoring detected that the site ${Dom} has been hacked!
 
 Common signatures of an attack which triggered this alert:
 
@@ -798,6 +798,202 @@ This email has been sent by your Aegir system monitor.
 EOF
   fi
   echo "ALERT: HACKED notice sent to ${_CLIENT_EMAIL} [${_HM_U}]: OK"
+}
+
+send_core_alert() {
+  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+  if [ ! -z "${_CLIENT_EMAIL}" ] \
+    && [[ ! "${_CLIENT_EMAIL}" =~ "${_MY_EMAIL}" ]]; then
+    _ALRT_EMAIL="${_CLIENT_EMAIL}"
+  else
+    _ALRT_EMAIL="${_MY_EMAIL}"
+  fi
+  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+    || [ "${_VMFAMILY}" = "VS" ] \
+    || [ -e "/root/.host8.cnf" ]; then
+    _BCC_EMAIL="omega8cc@gmail.com"
+  else
+    _BCC_EMAIL="${_MY_EMAIL}"
+  fi
+  _MAILX_TEST=$(mail -V 2>&1)
+  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
+  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
+    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core" \
+    ${_ALRT_EMAIL}
+Hello,
+
+Our monitoring detected that the site ${Dom} runs on not secure Drupal core!
+
+The Drupageddon check result which triggered this alert:
+
+${_DETECTED}
+
+The platform root directory for this site is:
+
+  ${Plr}
+
+The system hostname is:
+
+  ${_CHECK_HOST}
+
+Does it mean that your site is vulnerable to Drupageddon attack, recently
+made famous again by Panama Papers leak? -- https://www.drupal.org/node/2718467
+
+It depends on the Drupal core version you are using, and if it has been
+patched to close the known attack vectors.
+
+You can read more details on our website at:
+
+  https://omega8.cc/drupageddon-psa-2014-003-342
+
+Even if the Drupal core version used in ${Dom} is not vulnerable to
+Drupageddon attack, it is still vulnerable to other attacks, because
+you have missed Drupal core security releases.
+
+We have restarted these daily checks on May 7, 2016 to make sure that
+no one stays on some too old Drupal version with many known security
+vulnerabilities.
+
+You will receive Drupageddon alert for every site with outdated and
+not secure codebase, even if it was not affected by Drupageddon bug
+directly.
+
+Please be a good web citizen and upgrade to latest Drupal core provided
+by BOA-3.0.2. As a bonus, you will be able to speed up your sites
+considerably by switching PHP-FPM to 7.0
+
+If you have any questions, please don't respond to this message,
+since it was sent from our default system address -- please use
+our support contact form instead:
+
+  https://omega8.cc/support
+
+Thank you in advance.
+
+--
+This email has been sent by your Aegir system monitor.
+
+EOF
+  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
+  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
+    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core" \
+    ${_ALRT_EMAIL}
+Hello,
+
+Our monitoring detected that the site ${Dom} runs on not secure Drupal core!
+
+The Drupageddon check result which triggered this alert:
+
+${_DETECTED}
+
+The platform root directory for this site is:
+
+  ${Plr}
+
+The system hostname is:
+
+  ${_CHECK_HOST}
+
+Does it mean that your site is vulnerable to Drupageddon attack, recently
+made famous again by Panama Papers leak? -- https://www.drupal.org/node/2718467
+
+It depends on the Drupal core version you are using, and if it has been
+patched to close the known attack vectors.
+
+You can read more details on our website at:
+
+  https://omega8.cc/drupageddon-psa-2014-003-342
+
+Even if the Drupal core version used in ${Dom} is not vulnerable to
+Drupageddon attack, it is still vulnerable to other attacks, because
+you have missed Drupal core security releases.
+
+We have restarted these daily checks on May 7, 2016 to make sure that
+no one stays on some too old Drupal version with many known security
+vulnerabilities.
+
+You will receive Drupageddon alert for every site with outdated and
+not secure codebase, even if it was not affected by Drupageddon bug
+directly.
+
+Please be a good web citizen and upgrade to latest Drupal core provided
+by BOA-3.0.2. As a bonus, you will be able to speed up your sites
+considerably by switching PHP-FPM to 7.0
+
+If you have any questions, please don't respond to this message,
+since it was sent from our default system address -- please use
+our support contact form instead:
+
+  https://omega8.cc/support
+
+Thank you in advance.
+
+--
+This email has been sent by your Aegir system monitor.
+
+EOF
+  else
+  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core" \
+    ${_ALRT_EMAIL}
+Hello,
+
+Our monitoring detected that the site ${Dom} runs on not secure Drupal core!
+
+The Drupageddon check result which triggered this alert:
+
+${_DETECTED}
+
+The platform root directory for this site is:
+
+  ${Plr}
+
+The system hostname is:
+
+  ${_CHECK_HOST}
+
+Does it mean that your site is vulnerable to Drupageddon attack, recently
+made famous again by Panama Papers leak? -- https://www.drupal.org/node/2718467
+
+It depends on the Drupal core version you are using, and if it has been
+patched to close the known attack vectors.
+
+You can read more details on our website at:
+
+  https://omega8.cc/drupageddon-psa-2014-003-342
+
+Even if the Drupal core version used in ${Dom} is not vulnerable to
+Drupageddon attack, it is still vulnerable to other attacks, because
+you have missed Drupal core security releases.
+
+We have restarted these daily checks on May 7, 2016 to make sure that
+no one stays on some too old Drupal version with many known security
+vulnerabilities.
+
+You will receive Drupageddon alert for every site with outdated and
+not secure codebase, even if it was not affected by Drupageddon bug
+directly.
+
+Please be a good web citizen and upgrade to latest Drupal core provided
+by BOA-3.0.2. As a bonus, you will be able to speed up your sites
+considerably by switching PHP-FPM to 7.0
+
+If you have any questions, please don't respond to this message,
+since it was sent from our default system address -- please use
+our support contact form instead:
+
+  https://omega8.cc/support
+
+Thank you in advance.
+
+--
+This email has been sent by your Aegir system monitor.
+
+EOF
+  fi
+  echo "ALERT: Core notice sent to ${_CLIENT_EMAIL} [${_HM_U}]: OK"
 }
 
 check_site_status() {
@@ -859,7 +1055,11 @@ check_site_status() {
                   send_shutdown_notice
                 fi
               else
-                send_hacked_alert
+                if [[ "${_DGDD_T}" =~ "has security vulnerabilities" ]]; then
+                  send_core_alert
+                else
+                  send_hacked_alert
+                fi
               fi
             fi
           fi
