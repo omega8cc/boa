@@ -22,34 +22,19 @@ update_nginx_conf() {
 # Sub Force advanced Nginx configuration.
 sub_force_advanced_nginx_config() {
   if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ]; then
-    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrInc}/nginx_compact_include.conf &> /dev/null
-    wait
-
-    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrInc}/nginx_vhost_common.conf &> /dev/null
-    wait
     sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${mtrInc}/nginx_vhost_common.conf &> /dev/null
     wait
-    sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" ${mtrInc}/nginx_vhost_common.conf &> /dev/null
-    wait
-    sed -i "s/unix:.*www56.fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"  ${mtrInc}/nginx_vhost_common.conf &> /dev/null
+    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${mtrInc}/nginx_vhost_common.conf &> /dev/null
     wait
 
-    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrTpl}/subdir.tpl.php &> /dev/null
-    wait
     sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${mtrTpl}/subdir.tpl.php &> /dev/null
     wait
-    sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" ${mtrTpl}/subdir.tpl.php &> /dev/null
-    wait
-    sed -i "s/unix:.*www56.fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"  ${mtrTpl}/subdir.tpl.php &> /dev/null
+    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${mtrTpl}/subdir.tpl.php &> /dev/null
     wait
 
-    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
-    wait
     sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
     wait
-    sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
-    wait
-    sed -i "s/unix:.*www56.fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"  ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
+    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
     wait
   fi
 }
