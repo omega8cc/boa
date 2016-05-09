@@ -809,9 +809,9 @@ You can read more details on our website at:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
-Even if the Drupal core version used in ${Dom} is not vulnerable to
-Drupageddon attack, it is still vulnerable to other attacks, because
-you have missed Drupal core security releases.
+Even if the Drupal core version used in ${Dom}
+is not vulnerable to Drupageddon attack, it is still vulnerable to
+other attacks, because you have missed Drupal core security releases.
 
 We have restarted these daily checks on May 7, 2016 to make sure that
 no one stays on some too old Drupal version with many known security
@@ -859,9 +859,9 @@ You can read more details on our website at:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
-Even if the Drupal core version used in ${Dom} is not vulnerable to
-Drupageddon attack, it is still vulnerable to other attacks, because
-you have missed Drupal core security releases.
+Even if the Drupal core version used in ${Dom}
+is not vulnerable to Drupageddon attack, it is still vulnerable to
+other attacks, because you have missed Drupal core security releases.
 
 We have restarted these daily checks on May 7, 2016 to make sure that
 no one stays on some too old Drupal version with many known security
@@ -909,9 +909,9 @@ You can read more details on our website at:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
-Even if the Drupal core version used in ${Dom} is not vulnerable to
-Drupageddon attack, it is still vulnerable to other attacks, because
-you have missed Drupal core security releases.
+Even if the Drupal core version used in ${Dom}
+is not vulnerable to Drupageddon attack, it is still vulnerable to
+other attacks, because you have missed Drupal core security releases.
 
 We have restarted these daily checks on May 7, 2016 to make sure that
 no one stays on some too old Drupal version with many known security
