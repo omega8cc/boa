@@ -108,9 +108,13 @@ if_install_jetty() {
         cp -af ${bldPth}/docs/SOLR.txt /opt/solr4/README.txt &> /dev/null
         cd /var/opt
         get_dev_arch "slf4j-${_SLF4J_VRN}.tar.gz"
-        mv -f /var/opt/slf4j-${_SLF4J_VRN}/*.jar /opt/jetty9/lib/ext/ &> /dev/null
-        rm -f /opt/jetty9/lib/ext/*sources.jar
-        rm -f /opt/jetty9/lib/ext/*android*
+        slf4jPth="/var/opt/slf4j-${_SLF4J_VRN}"
+        cp -af ${slf4jPth}/jcl-over-slf4j* /opt/jetty9/lib/ext/ &> /dev/null
+        cp -af ${slf4jPth}/jul-to-slf4j*   /opt/jetty9/lib/ext/ &> /dev/null
+        cp -af ${slf4jPth}/slf4j-api*      /opt/jetty9/lib/ext/ &> /dev/null
+        cp -af ${slf4jPth}/slf4j-log4j12*  /opt/jetty9/lib/ext/ &> /dev/null
+        get_dev_arch "log4j-${_LOGJ4_VRN}.tar.gz"
+        cp -af /var/opt/log4j-${_LOGJ4_VRN}/*.jar /opt/jetty9/lib/ext/
         chown -R jetty9:jetty9 /opt/solr4
         chown -R jetty9:jetty9 /opt/jetty9
         chown -R jetty9:jetty9 /var/log/jetty9
@@ -248,9 +252,13 @@ if_install_jetty() {
       wget -q -U iCab ${urlDev}/tika-app-1.1.jar
       cd /var/opt
       get_dev_arch "slf4j-${_SLF4J_VRN}.tar.gz"
-      mv -f /var/opt/slf4j-${_SLF4J_VRN}/*.jar /opt/jetty9/lib/ext/ &> /dev/null
-      rm -f /opt/jetty9/lib/ext/*sources.jar
-      rm -f /opt/jetty9/lib/ext/*android*
+      slf4jPth="/var/opt/slf4j-${_SLF4J_VRN}"
+      cp -af ${slf4jPth}/jcl-over-slf4j* /opt/jetty9/lib/ext/ &> /dev/null
+      cp -af ${slf4jPth}/jul-to-slf4j*   /opt/jetty9/lib/ext/ &> /dev/null
+      cp -af ${slf4jPth}/slf4j-api*      /opt/jetty9/lib/ext/ &> /dev/null
+      cp -af ${slf4jPth}/slf4j-log4j12*  /opt/jetty9/lib/ext/ &> /dev/null
+      get_dev_arch "log4j-${_LOGJ4_VRN}.tar.gz"
+      cp -af /var/opt/log4j-${_LOGJ4_VRN}/*.jar /opt/jetty9/lib/ext/ 
       chown -R jetty9:jetty9 /opt/jetty9
       mrun "service jetty9 start" &> /dev/null
       echo ${_SOLR_4_VRN} > $_SOLR_CTRL
