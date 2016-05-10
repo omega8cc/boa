@@ -477,7 +477,7 @@ sql_convert() {
 send_shutdown_notice() {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
-  if [ "${_MY_EMAIL}" =~ "omega8.cc" ]; then
+  if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
     _MY_EMAIL="support@omega8.cc"
   fi
   if [ ! -z "${_CLIENT_EMAIL}" ] \
@@ -613,7 +613,7 @@ EOF
 send_hacked_alert() {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
-  if [ "${_MY_EMAIL}" =~ "omega8.cc" ]; then
+  if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
     _MY_EMAIL="support@omega8.cc"
   fi
   if [ ! -z "${_CLIENT_EMAIL}" ] \
@@ -800,7 +800,7 @@ EOF
 send_core_alert() {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
-  if [ "${_MY_EMAIL}" =~ "omega8.cc" ]; then
+  if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
     _MY_EMAIL="support@omega8.cc"
   fi
   if [ ! -z "${_CLIENT_EMAIL}" ] \
