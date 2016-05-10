@@ -175,6 +175,7 @@ if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
     _AWS_FLC='Your Backup Full Cycle'     ### [O] By default '7D'
     _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default '1'
     _AWS_PRG='Your Backup Progress'       ### [O] By default 'NO' -- can be YES/NO
+    _AWS_EXB='Exclude Drush Archives'     ### [O] By default 'NO' -- can be YES/NO
 
     Supported values to use as _AWS_REG:
 
@@ -248,6 +249,12 @@ if [ -z "${_AWS_VLV}" ]; then
   _AWS_VLV="1"
 fi
 
+if [ "${_AWS_EXB}" = "YES" ]; then
+  EXCLUDE="--exclude /data/conf/arch --exclude /data/disk/*/backups/*.tar.gz"
+else
+  EXCLUDE="--exclude /data/conf/arch"
+fi
+
 _AWS_PRG=${_AWS_PRG//[^A-Z]/}
 _AWS_OPX="--s3-use-new-style"
 
@@ -256,7 +263,6 @@ export AWS_SECRET_ACCESS_KEY="${_AWS_SEC}"
 export PASSPHRASE="${_AWS_PWD}"
 
 SOURCE="/etc /var/aegir /var/www /home /data"
-EXCLUDE="--exclude /data/conf/arch"
 BUCKET="daily.boa.${_HST}"
 TARGET="s3://${_AWS_URL}/${BUCKET}"
 LOGFILE="${_LOGPTH}/${BUCKET}.log"
