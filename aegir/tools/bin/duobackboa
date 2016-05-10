@@ -249,7 +249,7 @@ if [ -z "${_AWS_VLV}" ]; then
   _AWS_VLV="1"
 fi
 
-if [ "${_AWS_EXB}" = "YES" ]; then
+if [ ! -z "${_AWS_EXB}" ] && [ "${_AWS_EXB}" = "YES" ]; then
   EXCLUDE="--exclude /data/conf/arch --exclude /data/disk/*/backups/*.tar.gz"
 else
   EXCLUDE="--exclude /data/conf/arch"
