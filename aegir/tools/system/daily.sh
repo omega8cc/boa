@@ -656,7 +656,7 @@ how to survive #Drupageddon, please read:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
-We have restarted daily checks on May 7, 2016 to make sure that
+We have restarted these daily checks on May 7, 2016 to make sure that
 no one stays on some too old Drupal version with many known security
 vulnerabilities.
 
@@ -667,6 +667,19 @@ directly.
 Please be a good web citizen and upgrade to latest Drupal core provided
 by BOA-3.0.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
+
+We recommend to follow this upgrade how-to:
+
+  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
+The how-to for PHP-FPM version switch can be found at:
+
+  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
+
+Note: while we don't provide Drupal sites upgrade service, we can
+recommend myDropWizard, if you need to outsource this task:
+
+  https://www.mydropwizard.com
 
 --
 This email has been sent by your Aegir automatic system monitor.
@@ -697,7 +710,7 @@ how to survive #Drupageddon, please read:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
-We have restarted daily checks on May 7, 2016 to make sure that
+We have restarted these daily checks on May 7, 2016 to make sure that
 no one stays on some too old Drupal version with many known security
 vulnerabilities.
 
@@ -708,6 +721,19 @@ directly.
 Please be a good web citizen and upgrade to latest Drupal core provided
 by BOA-3.0.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
+
+We recommend to follow this upgrade how-to:
+
+  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
+The how-to for PHP-FPM version switch can be found at:
+
+  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
+
+Note: while we don't provide Drupal sites upgrade service, we can
+recommend myDropWizard, if you need to outsource this task:
+
+  https://www.mydropwizard.com
 
 --
 This email has been sent by your Aegir automatic system monitor.
@@ -738,7 +764,7 @@ how to survive #Drupageddon, please read:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
-We have restarted daily checks on May 7, 2016 to make sure that
+We have restarted these daily checks on May 7, 2016 to make sure that
 no one stays on some too old Drupal version with many known security
 vulnerabilities.
 
@@ -749,6 +775,19 @@ directly.
 Please be a good web citizen and upgrade to latest Drupal core provided
 by BOA-3.0.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
+
+We recommend to follow this upgrade how-to:
+
+  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
+The how-to for PHP-FPM version switch can be found at:
+
+  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
+
+Note: while we don't provide Drupal sites upgrade service, we can
+recommend myDropWizard, if you need to outsource this task:
+
+  https://www.mydropwizard.com
 
 --
 This email has been sent by your Aegir automatic system monitor.
@@ -781,11 +820,13 @@ send_core_alert() {
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
   cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core" \
+    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core!" \
     ${_ALRT_EMAIL}
 Hello,
 
-Our monitoring detected that the site ${Dom} runs on not secure Drupal core!
+Our monitoring detected that this site runs on not secure Drupal core:
+
+  ${Dom}
 
 The Drupageddon check result which triggered this alert:
 
@@ -800,18 +841,19 @@ The system hostname is:
   ${_CHECK_HOST}
 
 Does it mean that your site is vulnerable to Drupageddon attack, recently
-made famous again by Panama Papers leak? -- https://www.drupal.org/node/2718467
+made famous again by Panama Papers leak?
+
+  https://www.drupal.org/node/2718467
 
 It depends on the Drupal core version you are using, and if it has been
-patched to close the known attack vectors.
-
-You can read more details on our website at:
+patched already to close the known attack vectors. You can find more
+details on our website at:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
-Even if the Drupal core version used in ${Dom}
-is not vulnerable to Drupageddon attack, it is still vulnerable to
-other attacks, because you have missed Drupal core security releases.
+Even if the Drupal core version used in this site is not vulnerable
+to Drupageddon attack, it is still vulnerable to other attacks,
+because you have missed Drupal core security release(s).
 
 We have restarted these daily checks on May 7, 2016 to make sure that
 no one stays on some too old Drupal version with many known security
@@ -824,6 +866,19 @@ directly.
 Please be a good web citizen and upgrade to latest Drupal core provided
 by BOA-3.0.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
+
+We recommend to follow this upgrade how-to:
+
+  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
+The how-to for PHP-FPM version switch can be found at:
+
+  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
+
+Note: while we don't provide Drupal sites upgrade service, we can
+recommend myDropWizard, if you need to outsource this task:
+
+  https://www.mydropwizard.com
 
 --
 This email has been sent by your Aegir automatic system monitor.
@@ -831,11 +886,13 @@ This email has been sent by your Aegir automatic system monitor.
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
   cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core" \
+    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core!" \
     ${_ALRT_EMAIL}
 Hello,
 
-Our monitoring detected that the site ${Dom} runs on not secure Drupal core!
+Our monitoring detected that this site runs on not secure Drupal core:
+
+  ${Dom}
 
 The Drupageddon check result which triggered this alert:
 
@@ -850,18 +907,19 @@ The system hostname is:
   ${_CHECK_HOST}
 
 Does it mean that your site is vulnerable to Drupageddon attack, recently
-made famous again by Panama Papers leak? -- https://www.drupal.org/node/2718467
+made famous again by Panama Papers leak?
+
+  https://www.drupal.org/node/2718467
 
 It depends on the Drupal core version you are using, and if it has been
-patched to close the known attack vectors.
-
-You can read more details on our website at:
+patched already to close the known attack vectors. You can find more
+details on our website at:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
-Even if the Drupal core version used in ${Dom}
-is not vulnerable to Drupageddon attack, it is still vulnerable to
-other attacks, because you have missed Drupal core security releases.
+Even if the Drupal core version used in this site is not vulnerable
+to Drupageddon attack, it is still vulnerable to other attacks,
+because you have missed Drupal core security release(s).
 
 We have restarted these daily checks on May 7, 2016 to make sure that
 no one stays on some too old Drupal version with many known security
@@ -874,6 +932,19 @@ directly.
 Please be a good web citizen and upgrade to latest Drupal core provided
 by BOA-3.0.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
+
+We recommend to follow this upgrade how-to:
+
+  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
+The how-to for PHP-FPM version switch can be found at:
+
+  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
+
+Note: while we don't provide Drupal sites upgrade service, we can
+recommend myDropWizard, if you need to outsource this task:
+
+  https://www.mydropwizard.com
 
 --
 This email has been sent by your Aegir automatic system monitor.
@@ -881,11 +952,13 @@ This email has been sent by your Aegir automatic system monitor.
 EOF
   else
   cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
-    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core" \
+    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core!" \
     ${_ALRT_EMAIL}
 Hello,
 
-Our monitoring detected that the site ${Dom} runs on not secure Drupal core!
+Our monitoring detected that this site runs on not secure Drupal core:
+
+  ${Dom}
 
 The Drupageddon check result which triggered this alert:
 
@@ -900,18 +973,19 @@ The system hostname is:
   ${_CHECK_HOST}
 
 Does it mean that your site is vulnerable to Drupageddon attack, recently
-made famous again by Panama Papers leak? -- https://www.drupal.org/node/2718467
+made famous again by Panama Papers leak?
+
+  https://www.drupal.org/node/2718467
 
 It depends on the Drupal core version you are using, and if it has been
-patched to close the known attack vectors.
-
-You can read more details on our website at:
+patched already to close the known attack vectors. You can find more
+details on our website at:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
-Even if the Drupal core version used in ${Dom}
-is not vulnerable to Drupageddon attack, it is still vulnerable to
-other attacks, because you have missed Drupal core security releases.
+Even if the Drupal core version used in this site is not vulnerable
+to Drupageddon attack, it is still vulnerable to other attacks,
+because you have missed Drupal core security release(s).
 
 We have restarted these daily checks on May 7, 2016 to make sure that
 no one stays on some too old Drupal version with many known security
@@ -924,6 +998,19 @@ directly.
 Please be a good web citizen and upgrade to latest Drupal core provided
 by BOA-3.0.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
+
+We recommend to follow this upgrade how-to:
+
+  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
+The how-to for PHP-FPM version switch can be found at:
+
+  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
+
+Note: while we don't provide Drupal sites upgrade service, we can
+recommend myDropWizard, if you need to outsource this task:
+
+  https://www.mydropwizard.com
 
 --
 This email has been sent by your Aegir automatic system monitor.
