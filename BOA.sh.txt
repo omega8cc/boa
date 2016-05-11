@@ -216,7 +216,8 @@ update_agents() {
     else
       rm -f /root/.randomize_duplicity_full_backup_day.cnf
     fi
-    echo ${InTest} > /root/.force.drupalgeddon.cnf
+    ### echo ${InTest} > /root/.force.drupalgeddon.cnf
+    rm -f /root/.force.drupalgeddon.cnf
     ### echo ${InTest} > /root/.my.optimize.cnf
     rm -f /root/.my.optimize.cnf
     rm -f /root/.fast.cron.cnf
