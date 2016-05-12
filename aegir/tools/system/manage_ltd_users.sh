@@ -1299,43 +1299,30 @@ switch_php() {
       && [ -e "${dscUsr}/static/control/fpm.info" ] \
       && [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
       _PHP_FPM_MULTI=NO
+      if [ -f "${dscUsr}/static/control/multi-fpm.info" ]; then
+        _PHP_FPM_MULTI=YES
+        if [ ! -e "${dscUsr}/static/control/.multi-fpm.pid" ]; then
+          _FORCE_FPM_SETUP=YES
+        fi
+      else
+        if [ -e "${dscUsr}/static/control/.multi-fpm.pid" ]; then
+          rm -f ${dscUsr}/static/control/.multi-fpm.pid
+        fi
+        if [ -e "${dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc" ]; then
+          rm -f ${dscUsr}/config/server_master/nginx/post.d/fpm_include_*
+          service nginx reload &> /dev/null
+        fi
+      fi
       _T_FPM_VRN=$(cat ${dscUsr}/static/control/fpm.info 2>&1)
       _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
       _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-      if [ "${_T_FPM_VRN}" = "8.8" ] \
-        || [ "${_T_FPM_VRN}" = "7.0" ] \
+      if [ "${_T_FPM_VRN}" = "7.0" ] \
         || [ "${_T_FPM_VRN}" = "5.6" ] \
         || [ "${_T_FPM_VRN}" = "5.5" ] \
         || [ "${_T_FPM_VRN}" = "5.4" ] \
         || [ "${_T_FPM_VRN}" = "5.3" ] \
         || [ "${_T_FPM_VRN}" = "5.2" ]; then
-        if [ "${_T_FPM_VRN}" = "8.8" ]; then
-          if [ -f "${dscUsr}/static/control/multi-fpm.info" ]; then
-            _PHP_FPM_MULTI=YES
-            if [ ! -e "${dscUsr}/static/control/.multi-fpm.pid" ]; then
-              _FORCE_FPM_SETUP=YES
-            fi
-            if [ -x "/opt/php56/bin/php" ]; then
-              _T_FPM_VRN=5.6
-            elif [ -x "/opt/php55/bin/php" ]; then
-              _T_FPM_VRN=5.5
-            elif [ -x "/opt/php54/bin/php" ]; then
-              _T_FPM_VRN=5.4
-            elif [ -x "/opt/php53/bin/php" ]; then
-              _T_FPM_VRN=5.3
-            fi
-          else
-            if [ -x "/opt/php56/bin/php" ]; then
-              _T_FPM_VRN=5.6
-            elif [ -x "/opt/php55/bin/php" ]; then
-              _T_FPM_VRN=5.5
-            elif [ -x "/opt/php54/bin/php" ]; then
-              _T_FPM_VRN=5.4
-            elif [ -x "/opt/php53/bin/php" ]; then
-              _T_FPM_VRN=5.3
-            fi
-          fi
-        elif [ "${_T_FPM_VRN}" = "7.0" ] \
+        if [ "${_T_FPM_VRN}" = "7.0" ] \
           && [ ! -x "/opt/php70/bin/php" ]; then
           if [ -x "/opt/php56/bin/php" ]; then
             _T_FPM_VRN=5.6

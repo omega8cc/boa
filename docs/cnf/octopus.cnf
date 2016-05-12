@@ -68,7 +68,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### there to avoid doing it over and over again every 5 minutes.
 ###
 ### IMPORTANT: If used, it will switch PHP-FPM for all D7 *and* D6 sites
-### hosted on the instance, unless special magic value 8.8 is used instead.
+### hosted on the instance, unless multi-fpm.info control file exists.
 ###
 ### Supported values for single PHP-FPM mode which can be written in this file:
 ###
@@ -82,21 +82,22 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### Otherwise it will be ignored.
 ###
 ### It is now possible to make all installed PHP-FPM versions available
-### simultaneously for sites on the Octopus instance with special value
-### entered in the fpm.info file:
-###
-### 8.8
-###
-### This special magic value will switch all hosted sites to highest
-### available PHP-FPM version within the 5.3-5.6 range, with ability
-### to set/overwrite it per site, if the site's name is listed in the
-### control file, as shown below:
+### simultaneously for sites on the Octopus instance with additional
+### control file:
 ###
 ### /data/disk/${_USER}/static/control/multi-fpm.info
+###
+### This file, if exists, will switch all hosted sites to highest
+### available PHP-FPM version within the 5.3-5.6 range, with ability
+### to override PHP-FPM version per site, if the site's name is listed
+### in this additional control file, as shown below:
 ###
 ### foo.com 7.0
 ### bar.com 5.5
 ### old.com 5.3
+###
+### NOTE: Each line in the multi-fpm.info file must start with main site name,
+### followed by single space, and then the PHP-FPM version to use.
 ###
 
 ###
