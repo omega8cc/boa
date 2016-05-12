@@ -1092,7 +1092,8 @@ satellite_create_web_user() {
 #
 # Add site specific socket config include.
 site_socket_inc_gen() {
-  if [ -f "${dscUsr}/static/control/multi-fpm.info" ]; then
+  if [ -f "${dscUsr}/static/control/multi-fpm.info" ] \
+    && [ ! -f "${dscUsr}/static/control/.multi-fpm-nginx.pid" ]; then
     rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_site_*
     IFS=$'\12'
     for p in `cat ${dscUsr}/static/control/multi-fpm.info`;do
@@ -1116,8 +1117,11 @@ site_socket_inc_gen() {
         fi
       fi
     done
+    touch ${dscUsr}/static/control/.multi-fpm-nginx.pid
     ### reload nginx
     service nginx reload &> /dev/null
+  else
+    rm -f ${dscUsr}/static/control/.multi-fpm-nginx.pid
   fi
 }
 #
@@ -1306,16 +1310,30 @@ switch_php() {
         || [ "${_T_FPM_VRN}" = "5.3" ] \
         || [ "${_T_FPM_VRN}" = "5.2" ]; then
         if [ "${_T_FPM_VRN}" = "8.8" ]; then
-          _PHP_FPM_MULTI=YES
-          _FORCE_FPM_SETUP=YES
-          if [ -x "/opt/php56/bin/php" ]; then
-            _T_FPM_VRN=5.6
-          elif [ -x "/opt/php55/bin/php" ]; then
-            _T_FPM_VRN=5.5
-          elif [ -x "/opt/php54/bin/php" ]; then
-            _T_FPM_VRN=5.4
-          elif [ -x "/opt/php53/bin/php" ]; then
-            _T_FPM_VRN=5.3
+          if [ -f "${dscUsr}/static/control/multi-fpm.info" ]; then
+            _PHP_FPM_MULTI=YES
+            if [ ! -e "${dscUsr}/static/control/.multi-fpm.pid" ]; then
+              _FORCE_FPM_SETUP=YES
+            fi
+            if [ -x "/opt/php56/bin/php" ]; then
+              _T_FPM_VRN=5.6
+            elif [ -x "/opt/php55/bin/php" ]; then
+              _T_FPM_VRN=5.5
+            elif [ -x "/opt/php54/bin/php" ]; then
+              _T_FPM_VRN=5.4
+            elif [ -x "/opt/php53/bin/php" ]; then
+              _T_FPM_VRN=5.3
+            fi
+          else
+            if [ -x "/opt/php56/bin/php" ]; then
+              _T_FPM_VRN=5.6
+            elif [ -x "/opt/php55/bin/php" ]; then
+              _T_FPM_VRN=5.5
+            elif [ -x "/opt/php54/bin/php" ]; then
+              _T_FPM_VRN=5.4
+            elif [ -x "/opt/php53/bin/php" ]; then
+              _T_FPM_VRN=5.3
+            fi
           fi
         elif [ "${_T_FPM_VRN}" = "7.0" ] \
           && [ ! -x "/opt/php70/bin/php" ]; then
@@ -1444,15 +1462,18 @@ switch_php() {
             _PHP_SV=56
           fi
           ### create or update special system user if needed
+          _FMP_D_INC="/data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc"
           if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
             _PHP_M_V="70 56 55 54 53"
             _D_POOL="${_USER}.${_PHP_SV}"
-            _FMP_D_INC="/data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc"
             if [ ! -e "${_FMP_D_INC}" ]; then
               echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
+              touch ${dscUsr}/static/control/.multi-fpm.pid
             fi
           else
             _PHP_M_V="${_PHP_SV}"
+            rm -f ${dscUsr}/static/control/.multi-fpm.pid
+            rm -f ${_FMP_D_INC}
           fi
           for m in ${_PHP_M_V}; do
             if [ -x "/opt/php${m}/bin/php" ]; then
@@ -1481,36 +1502,40 @@ switch_php() {
           ### create or update special system user if needed
           if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
             _PHP_M_V="70 56 55 54 53"
+            rm -f /opt/php*/etc/pool.d/${_USER}.conf
           else
             _PHP_M_V="${_PHP_SV}"
-            rm -f /opt/php*/etc/pool.d/${_USER}.conf
+            rm -f /opt/php*/etc/pool.d/${_USER}.*.conf
           fi
           for m in ${_PHP_M_V}; do
             if [ -x "/opt/php${m}/bin/php" ]; then
               if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
                 _WEB="${_USER}.${m}.web"
                 _POOL="${_USER}.${m}"
+              else
+                _WEB="${_USER}.web"
+                _POOL="${_USER}"
               fi
               cp -af /var/xdrago/conf/fpm-pool-foo.conf \
-                /opt/php${m}/etc/pool.d/${_USER}.conf
+                /opt/php${m}/etc/pool.d/${_POOL}.conf
               sed -i "s/.ftp/.web/g" \
-                /opt/php${m}/etc/pool.d/${_USER}.conf &> /dev/null
+                /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
               wait
               sed -i "s/\/data\/disk\/foo\/.tmp/\/home\/foo.web\/.tmp/g" \
-                /opt/php${m}/etc/pool.d/${_USER}.conf &> /dev/null
+                /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
               wait
               sed -i "s/foo.web/${_WEB}/g" \
-                /opt/php${m}/etc/pool.d/${_USER}.conf &> /dev/null
+                /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
               wait
               sed -i "s/THISPOOL/${_POOL}/g" \
-                /opt/php${m}/etc/pool.d/${_USER}.conf &> /dev/null
+                /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
               wait
               sed -i "s/foo/${_USER}/g" \
-                /opt/php${m}/etc/pool.d/${_USER}.conf &> /dev/null
+                /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
               wait
               if [ ! -z "${_PHP_FPM_DENY}" ]; then
                 sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
-                  /opt/php${m}/etc/pool.d/${_USER}.conf &> /dev/null
+                  /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
                 wait
               else
                 if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -1520,7 +1545,7 @@ switch_php() {
                   _DO_NOTHING=YES
                 else
                   sed -i "s/passthru,//g" \
-                    /opt/php${m}/etc/pool.d/${_USER}.conf &> /dev/null
+                    /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
                   wait
                 fi
               fi
@@ -1538,12 +1563,12 @@ switch_php() {
               if [ ! -z "${_PHP_FPM_TIMEOUT}" ]; then
                 _PHP_TO="${_PHP_FPM_TIMEOUT}s"
                 sed -i "s/180s/${_PHP_TO}/g" \
-                  /opt/php${m}/etc/pool.d/${_USER}.conf &> /dev/null
+                  /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
                 wait
               fi
               if [ ! -z "${_CHILD_MAX_FPM}" ]; then
                 sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
-                  /opt/php${m}/etc/pool.d/${_USER}.conf &> /dev/null
+                  /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
                 wait
               fi
               if [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
@@ -1644,7 +1669,7 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     _USER=""
     _USER=$(echo ${pthParentUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
     echo "_USER is == ${_USER} == at manage_user"
-    _WEB="${_USER}.web"
+    ### _WEB="${_USER}.web"
     dscUsr="/data/disk/${_USER}"
     octInc="${dscUsr}/config/includes"
     octTpl="${dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx"
