@@ -3350,7 +3350,9 @@ satellite_make() {
   fi
 
   if [ -e "${_ROOT}/log/email.txt" ]; then
-    satellite_tune_fpm_config
+    if [ ! -f "${_ROOT}/static/control/multi-fpm.info" ]; then
+      satellite_tune_fpm_config
+    fi
     satellite_force_advanced_nginx_config
     mrun "service nginx reload" &> /dev/null
   fi
