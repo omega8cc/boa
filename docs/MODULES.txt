@@ -42,7 +42,6 @@ as [D6] and/or [D7].
 Contrib [S]upported:
 
  ais ------------------------ [D7] ------ [S]
- audio ---------------------- [D5,D6] --- [S]
  backup_migrate ------------- [D6,D7] --- [S]
  ckeditor ------------------- [D6,D7] --- [S]
  fbconnect ------------------ [D6,D7] --- [S]
