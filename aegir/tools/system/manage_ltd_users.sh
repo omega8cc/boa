@@ -1106,6 +1106,7 @@ site_socket_inc_gen() {
       _SOCKET_L_NAME="${_USER}.${_SITE_SOCKET}"
       if [ ! -z "${_SITE_NAME}" ] \
         && [ ! -z "${_SITE_SOCKET}" ] \
+        && [ -e "/data/disk/${_USER}/.drush/${_SITE_NAME}.alias.drushrc.php" ] \
         && [ -e "/var/run/${_SOCKET_L_NAME}.fpm.socket" ]; then
         _FMP_L_INC="/data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_site_${_SITE_NAME}.inc"
         if [ ! -e "${_FMP_L_INC}" ]; then
