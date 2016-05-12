@@ -1218,10 +1218,10 @@ switch_php() {
           ### remove fpm control file to avoid confusion
           rm -f ${dscUsr}/static/control/fpm.info
           ### update nginx configuration
-          sed -i "s/\/var\/run\/${_USER}.fpm.socket/\/var\/run\/hhvm\/${_USER}\/hhvm.socket/g" \
+          sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/hhvm\/${_USER}\/hhvm.socket;/g" \
             ${dscUsr}/config/includes/nginx_vhost_common.conf
           wait
-          sed -i "s/\/var\/run\/${_USER}.fpm.socket/\/var\/run\/hhvm\/${_USER}\/hhvm.socket/g" \
+          sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/hhvm\/${_USER}\/hhvm.socket;/g" \
             ${dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php
           wait
           ### reload nginx
@@ -1245,10 +1245,10 @@ switch_php() {
         rm -rf /var/run/hhvm/${_USER}
         rm -rf /var/log/hhvm/${_USER}
         ### update nginx configuration
-        sed -i "s/\/var\/run\/hhvm\/${_USER}\/hhvm.socket/\/var\/run\/${_USER}.fpm.socket/g" \
+        sed -i "s/\/var\/run\/hhvm\/${_USER}\/hhvm.socket;/\/var\/run\/\$user_socket.fpm.socket;/g" \
           ${dscUsr}/config/includes/nginx_vhost_common.conf
         wait
-        sed -i "s/\/var\/run\/hhvm\/${_USER}\/hhvm.socket/\/var\/run\/${_USER}.fpm.socket/g" \
+        sed -i "s/\/var\/run\/hhvm\/${_USER}\/hhvm.socket;/\/var\/run\/\$user_socket.fpm.socket;/g" \
           ${dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php
         wait
         ### reload nginx
