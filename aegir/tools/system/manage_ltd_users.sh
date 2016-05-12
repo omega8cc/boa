@@ -1090,6 +1090,34 @@ satellite_create_web_user() {
   fi
 }
 #
+# Add site specific socket config include.
+site_socket_inc_gen() {
+  if [ -f "${dscUsr}/static/control/multi-fpm.info" ]; then
+    rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_site_*
+    IFS=$'\12'
+    for p in `cat ${dscUsr}/static/control/multi-fpm.info`;do
+      _SITE_NAME=`echo $p | cut -d' ' -f1 | awk '{ print $1}'`
+      _SITE_NAME=${_SITE_NAME//[^a-zA-Z0-9-.]/}
+      _SITE_NAME=$(echo -n ${_SITE_NAME} | tr A-Z a-z 2>&1)
+      _SITE_NAME=$(echo -n ${_SITE_NAME} | tr -d "\n" 2>&1)
+      _SITE_SOCKET=`echo $p | cut -d' ' -f2 | awk '{ print $1}'`
+      _SITE_SOCKET=${_SITE_SOCKET//[^0-9]/}
+      _SITE_SOCKET=$(echo -n ${_SITE_SOCKET} | tr -d "\n" 2>&1)
+      _SOCKET_L_NAME="${_USER}.${_SITE_SOCKET}"
+      if [ ! -z "${_SITE_NAME}" ] \
+        && [ ! -z "${_SITE_SOCKET}" ] \
+        && [ -e "/var/run/${_SOCKET_L_NAME}.fpm.socket" ]; then
+        _FMP_L_INC="/data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_site_${_SITE_NAME}.inc"
+        if [ ! -e "${_FMP_L_INC}" ]; then
+          echo "if ( \$main_site_name = ${_SITE_NAME} ) {" > ${_FMP_L_INC}
+          echo "  set \$user_socket \"${_SOCKET_L_NAME}\";" >> ${_FMP_L_INC}
+          echo "}" >> ${_FMP_L_INC}
+        fi
+      fi
+    done
+  fi
+}
+#
 # Switch PHP Version.
 switch_php() {
   _PHP_CLI_UPDATE=NO
@@ -1263,16 +1291,30 @@ switch_php() {
     if [ ! -e "${dscUsr}/static/control/hhvm.info" ] \
       && [ -e "${dscUsr}/static/control/fpm.info" ] \
       && [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
+      _PHP_FPM_MULTI=NO
       _T_FPM_VRN=$(cat ${dscUsr}/static/control/fpm.info 2>&1)
       _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
       _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-      if [ "${_T_FPM_VRN}" = "7.0" ] \
+      if [ "${_T_FPM_VRN}" = "8.8" ] \
+        || [ "${_T_FPM_VRN}" = "7.0" ] \
         || [ "${_T_FPM_VRN}" = "5.6" ] \
         || [ "${_T_FPM_VRN}" = "5.5" ] \
         || [ "${_T_FPM_VRN}" = "5.4" ] \
         || [ "${_T_FPM_VRN}" = "5.3" ] \
         || [ "${_T_FPM_VRN}" = "5.2" ]; then
-        if [ "${_T_FPM_VRN}" = "7.0" ] \
+        if [ "${_T_FPM_VRN}" = "8.8" ]; then
+          _PHP_FPM_MULTI=YES
+          _FORCE_FPM_SETUP=YES
+          if [ -x "/opt/php56/bin/php" ]; then
+            _T_FPM_VRN=5.6
+          elif [ -x "/opt/php55/bin/php" ]; then
+            _T_FPM_VRN=5.5
+          elif [ -x "/opt/php54/bin/php" ]; then
+            _T_FPM_VRN=5.4
+          elif [ -x "/opt/php53/bin/php" ]; then
+            _T_FPM_VRN=5.3
+          fi
+        elif [ "${_T_FPM_VRN}" = "7.0" ] \
           && [ ! -x "/opt/php70/bin/php" ]; then
           if [ -x "/opt/php56/bin/php" ]; then
             _T_FPM_VRN=5.6
@@ -1389,7 +1431,9 @@ switch_php() {
             /root/.${_USER}.octopus.cnf &> /dev/null
           wait
           echo ${_T_FPM_VRN} > ${dscUsr}/log/fpm.txt
-          echo ${_T_FPM_VRN} > ${dscUsr}/static/control/fpm.info
+          if [ "${_PHP_FPM_MULTI}" = "NO" ]; then
+            echo ${_T_FPM_VRN} > ${dscUsr}/static/control/fpm.info
+          fi
           chown ${_USER}.ftp:${usrGroup} ${dscUsr}/static/control/fpm.info
           _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
           _PHP_SV=${_T_FPM_VRN//[^0-9]/}
@@ -1397,80 +1441,116 @@ switch_php() {
             _PHP_SV=56
           fi
           ### create or update special system user if needed
-          if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
-            _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
-            _PHP_V="70 56 55 54 53"
-            for e in ${_PHP_V}; do
-              if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
-                if [ "${e}" != "${_PHP_SV}" ] \
-                  || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.txt" ]; then
-                  echo _OLD_PHP_IN_USE is ${_OLD_PHP_IN_USE} for ${_WEB} update
-                  echo _NEW_PHP_TO_USE is ${_PHP_SV} for ${_WEB} update
-                  satellite_update_web_user "${_PHP_SV}"
+          if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
+            _PHP_M_V="70 56 55 54 53"
+            _D_POOL="${_USER}.${_PHP_SV}"
+            _FMP_D_INC="/data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc"
+            if [ ! -e "${_FMP_D_INC}" ]; then
+              echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
+            fi
+          else
+            _PHP_M_V="${_PHP_SV}"
+          fi
+          for m in ${_PHP_M_V}; do
+            if [ -x "/opt/php${m}/bin/php" ]; then
+              if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
+                _WEB="${_USER}.${m}.web"
+              fi
+              if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
+                _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
+                _PHP_V="70 56 55 54 53"
+                for e in ${_PHP_V}; do
+                  if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
+                    if [ "${e}" != "${m}" ] \
+                      || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${m}.txt" ]; then
+                      echo _OLD_PHP_IN_USE is ${_OLD_PHP_IN_USE} for ${_WEB} update
+                      echo _NEW_PHP_TO_USE is ${m} for ${_WEB} update
+                      satellite_update_web_user "${m}"
+                    fi
+                  fi
+                done
+              else
+                echo _NEW_PHP_TO_USE is ${m} for ${_WEB} create
+                satellite_create_web_user "${m}"
+              fi
+            fi
+          done
+          ### create or update special system user if needed
+          if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
+            _PHP_M_V="70 56 55 54 53"
+          else
+            _PHP_M_V="${_PHP_SV}"
+            rm -f /opt/php*/etc/pool.d/${_USER}.conf
+          fi
+          for m in ${_PHP_M_V}; do
+            if [ -x "/opt/php${m}/bin/php" ]; then
+              if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
+                _WEB="${_USER}.${m}.web"
+                _POOL="${_USER}.${m}"
+              fi
+              cp -af /var/xdrago/conf/fpm-pool-foo.conf \
+                /opt/php${m}/etc/pool.d/${_USER}.conf
+              sed -i "s/.ftp/.web/g" \
+                /opt/php${m}/etc/pool.d/${_USER}.conf &> /dev/null
+              wait
+              sed -i "s/\/data\/disk\/foo\/.tmp/\/home\/foo.web\/.tmp/g" \
+                /opt/php${m}/etc/pool.d/${_USER}.conf &> /dev/null
+              wait
+              sed -i "s/foo.web/${_WEB}/g" \
+                /opt/php${m}/etc/pool.d/${_USER}.conf &> /dev/null
+              wait
+              sed -i "s/THISPOOL/${_POOL}/g" \
+                /opt/php${m}/etc/pool.d/${_USER}.conf &> /dev/null
+              wait
+              sed -i "s/foo/${_USER}/g" \
+                /opt/php${m}/etc/pool.d/${_USER}.conf &> /dev/null
+              wait
+              if [ ! -z "${_PHP_FPM_DENY}" ]; then
+                sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
+                  /opt/php${m}/etc/pool.d/${_USER}.conf &> /dev/null
+                wait
+              else
+                if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+                  || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+                  || [ "${_VMFAMILY}" = "VS" ] \
+                  || [ -e "/root/.host8.cnf" ]; then
+                  _DO_NOTHING=YES
+                else
+                  sed -i "s/passthru,//g" \
+                    /opt/php${m}/etc/pool.d/${_USER}.conf &> /dev/null
+                  wait
                 fi
               fi
-            done
-          else
-            echo _NEW_PHP_TO_USE is ${_PHP_SV} for ${_WEB} create
-            satellite_create_web_user "${_PHP_SV}"
-          fi
-          ### create or update special system user if needed
-          rm -f /opt/php*/etc/pool.d/${_USER}.conf
-          cp -af /var/xdrago/conf/fpm-pool-foo.conf \
-            /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
-          sed -i "s/.ftp/.web/g" \
-            /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-          wait
-          sed -i "s/\/data\/disk\/foo\/.tmp/\/home\/foo.web\/.tmp/g" \
-            /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-          wait
-          sed -i "s/foo/${_USER}/g" \
-            /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-          wait
-          if [ ! -z "${_PHP_FPM_DENY}" ]; then
-            sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
-              /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-            wait
-          else
-            if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-              || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-              || [ "${_VMFAMILY}" = "VS" ] \
-              || [ -e "/root/.host8.cnf" ]; then
-              _DO_NOTHING=YES
-            else
-              sed -i "s/passthru,//g" \
-                /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-              wait
+              if [ "${_PHP_FPM_TIMEOUT}" = "AUTO" ] \
+                || [ -z "${_PHP_FPM_TIMEOUT}" ]; then
+                _PHP_FPM_TIMEOUT=180
+              fi
+              _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
+              if [ "${_PHP_FPM_TIMEOUT}" -lt "60" ]; then
+                _PHP_FPM_TIMEOUT=60
+              fi
+              if [ "${_PHP_FPM_TIMEOUT}" -gt "180" ]; then
+                _PHP_FPM_TIMEOUT=180
+              fi
+              if [ ! -z "${_PHP_FPM_TIMEOUT}" ]; then
+                _PHP_TO="${_PHP_FPM_TIMEOUT}s"
+                sed -i "s/180s/${_PHP_TO}/g" \
+                  /opt/php${m}/etc/pool.d/${_USER}.conf &> /dev/null
+                wait
+              fi
+              if [ ! -z "${_CHILD_MAX_FPM}" ]; then
+                sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
+                  /opt/php${m}/etc/pool.d/${_USER}.conf &> /dev/null
+                wait
+              fi
+              if [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
+                service php${_PHP_OLD_SV}-fpm reload &> /dev/null
+              fi
+              if [ -e "/etc/init.d/php${m}-fpm" ]; then
+                service php${m}-fpm reload &> /dev/null
+              fi
             fi
-          fi
-          if [ "${_PHP_FPM_TIMEOUT}" = "AUTO" ] \
-            || [ -z "${_PHP_FPM_TIMEOUT}" ]; then
-            _PHP_FPM_TIMEOUT=180
-          fi
-          _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
-          if [ "${_PHP_FPM_TIMEOUT}" -lt "60" ]; then
-            _PHP_FPM_TIMEOUT=60
-          fi
-          if [ "${_PHP_FPM_TIMEOUT}" -gt "180" ]; then
-            _PHP_FPM_TIMEOUT=180
-          fi
-          if [ ! -z "${_PHP_FPM_TIMEOUT}" ]; then
-            _PHP_TO="${_PHP_FPM_TIMEOUT}s"
-            sed -i "s/180s/${_PHP_TO}/g" \
-              /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-            wait
-          fi
-          if [ ! -z "${_CHILD_MAX_FPM}" ]; then
-            sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
-              /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-            wait
-          fi
-          if [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
-            service php${_PHP_OLD_SV}-fpm reload &> /dev/null
-          fi
-          if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ]; then
-            service php${_PHP_SV}-fpm reload &> /dev/null
-          fi
+          done
         fi
       fi
     fi
@@ -1617,6 +1697,7 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       fi
     fi
     switch_php
+    site_socket_inc_gen
     switch_newrelic
     if [ -e "${pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
       echo Managing Users for ${pthParentUsr} Instance
