@@ -1116,6 +1116,8 @@ site_socket_inc_gen() {
         fi
       fi
     done
+    ### reload nginx
+    service nginx reload &> /dev/null
   fi
 }
 #
