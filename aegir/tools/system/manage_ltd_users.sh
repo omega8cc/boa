@@ -1129,6 +1129,8 @@ site_socket_inc_gen() {
         fi
       done
       touch ${mltNgx}
+      rm -rf ${preFpm}
+      cp -af ${mltFpm} ${preFpm}
       ### reload nginx
       service nginx reload &> /dev/null
     fi
