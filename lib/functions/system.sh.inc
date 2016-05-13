@@ -849,7 +849,7 @@ barracuda_cnf() {
         wait
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
         wait
-        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"  ${barCnf}
+        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=httpredir.debian.org/g"  ${barCnf}
         wait
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
         wait
@@ -904,8 +904,8 @@ barracuda_cnf() {
       fi
     fi
     if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ]; then
-      _LOCAL_DEBIAN_MIRROR="ftp.debian.org"
-      sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"    ${barCnf}
+      _LOCAL_DEBIAN_MIRROR="httpredir.debian.org"
+      sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=httpredir.debian.org/g"    ${barCnf}
       wait
     fi
   else
@@ -1362,7 +1362,7 @@ barracuda_cnf() {
         wait
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
         wait
-        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"  ${barCnf}
+        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=httpredir.debian.org/g"  ${barCnf}
         wait
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
         wait
@@ -1428,8 +1428,8 @@ barracuda_cnf() {
       source ${barCnf}
     fi
     if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ]; then
-      _LOCAL_DEBIAN_MIRROR=ftp.debian.org
-      sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"    ${barCnf}
+      _LOCAL_DEBIAN_MIRROR=httpredir.debian.org
+      sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=httpredir.debian.org/g"    ${barCnf}
       wait
     fi
     if [ "${_DB_SERIES}" = "10.0" ]; then
@@ -1908,7 +1908,7 @@ update_sources_list() {
       else
         if [ "${_AUTOPILOT}" = "YES" ]; then
           if [ -z "${_LOCAL_DEBIAN_MIRROR}" ]; then
-            _MIRROR=ftp.debian.org
+            _MIRROR=httpredir.debian.org
           else
             _MIRROR=${_LOCAL_DEBIAN_MIRROR}
           fi
@@ -1940,7 +1940,7 @@ update_sources_list() {
         fi
         if ! netcat -w 5 -z ${_MIRROR} 80 ; then
           msg "INFO: The mirror ${_MIRROR} doesn't respond, let's try default"
-          _MIRROR=ftp.debian.org
+          _MIRROR=httpredir.debian.org
         fi
       fi
       if [ "${_DEBUG_MODE}" = "YES" ]; then

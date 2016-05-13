@@ -375,7 +375,7 @@ _SSH_PORT=22
 ### to use reliable mirrors you know,
 ### or leave default values.
 ###
-_LOCAL_DEBIAN_MIRROR=ftp.debian.org
+_LOCAL_DEBIAN_MIRROR=httpredir.debian.org
 _LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
 
 
