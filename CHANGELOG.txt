@@ -77,6 +77,10 @@
   * Use syncpass during hostmaster upgrade
   * Workaround for hostmaster upgrade from 2.x
 
+# Known problems:
+
+  https://github.com/omega8cc/boa/milestones/3.0.3
+
 
 ### Stable BOA-3.0.1 Release - Full Edition
 ### Date: Mon Apr 11 18:49:43 PDT 2016
@@ -6869,4 +6873,3 @@ Added/Fixed:
 2. Json cache for Boost added.
 3. Fix for xml/feed Boost cache files with .html extension.
 4. Fix for xml/feed Boost cache correct mime type.
-
