@@ -67,7 +67,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### _PHP_FPM_VERSION variable. It will also overwrite _PHP_FPM_VERSION value
 ### there to avoid doing it over and over again every 5 minutes.
 ###
-### IMPORTANT: If used, it will switch PHP-FPM for all D7 *and* D6 sites
+### IMPORTANT: If used, it will switch PHP-FPM for all Drupal sites
 ### hosted on the instance, unless multi-fpm.info control file exists.
 ###
 ### Supported values for single PHP-FPM mode which can be written in this file:
@@ -110,9 +110,12 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### _PHP_CLI_VERSION variable. It will also overwrite _PHP_CLI_VERSION value
 ### there to avoid doing it over and over again every 5 minutes.
 ###
-### Note that it is not guaranteed that current Aegir version included in BOA
-### will work with any PHP version newer than 5.6, hence the ability to switch
-### CLI and FPM versions separately.
+### NOTE: While current Aegir version 3.x included in BOA works fine with
+### latest PHP 7.0, many hosted sites, especially using Drupal 6 core or
+### older Drupal 7 core without required patch we have included since 7.43.2,
+### will not work properly and Aegir tasks run against these sites may fail,
+### so it is recommended to use PHP-CLI 5.6, unless you have verified that all
+### sites on the instance support PHP 7.0 without issues.
 ###
 ### Supported values which can be written in this file:
 ###
