@@ -1468,7 +1468,7 @@ switch_php() {
             _PHP_SV=56
           fi
           ### create or update special system user if needed
-          _FMP_D_INC="/data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc"
+          _FMP_D_INC="${dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
           if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
             _PHP_M_V="70 56 55 54 53"
             _D_POOL="${_USER}.${_PHP_SV}"
