@@ -2985,6 +2985,7 @@ if_squeeze_to_wheezy() {
     rm -f /etc/apt/sources.list.d/openssl.list
     mrun "apt-get update -qq" 2> /dev/null
     ### Two step upgrade with apt-get only
+    mrun "apt-get install apt -t wheezy" 2> /dev/null
     mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
     mrun "apt-get install apt dpkg aptitude util-linux ${dstUpArg}" 2> /dev/null
     mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
