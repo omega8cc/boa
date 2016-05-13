@@ -839,6 +839,7 @@ barracuda_cnf() {
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
+        debM="httpredir.debian.org"
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
         wait
         sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                              ${barCnf}
@@ -849,7 +850,7 @@ barracuda_cnf() {
         wait
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
         wait
-        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=httpredir.debian.org/g"  ${barCnf}
+        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=${debM}/g"         ${barCnf}
         wait
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
         wait
@@ -903,9 +904,10 @@ barracuda_cnf() {
         fi
       fi
     fi
-    if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ]; then
+    if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ] \
+      || [ "${_LOCAL_DEBIAN_MIRROR}" = "ftp.debian.org" ]; then
       _LOCAL_DEBIAN_MIRROR="httpredir.debian.org"
-      sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=httpredir.debian.org/g"    ${barCnf}
+      sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=httpredir.debian.org/g"     ${barCnf}
       wait
     fi
   else
@@ -1352,6 +1354,7 @@ barracuda_cnf() {
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
+        debM="httpredir.debian.org"
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
         wait
         sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                              ${barCnf}
@@ -1362,7 +1365,7 @@ barracuda_cnf() {
         wait
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
         wait
-        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=httpredir.debian.org/g"  ${barCnf}
+        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=${debM}/g"         ${barCnf}
         wait
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
         wait
@@ -1427,9 +1430,10 @@ barracuda_cnf() {
     if [ -e "${barCnf}" ]; then
       source ${barCnf}
     fi
-    if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ]; then
-      _LOCAL_DEBIAN_MIRROR=httpredir.debian.org
-      sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=httpredir.debian.org/g"    ${barCnf}
+    if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ] \
+      || [ "${_LOCAL_DEBIAN_MIRROR}" = "ftp.debian.org" ]; then
+      _LOCAL_DEBIAN_MIRROR="httpredir.debian.org"
+      sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=httpredir.debian.org/g"     ${barCnf}
       wait
     fi
     if [ "${_DB_SERIES}" = "10.0" ]; then
