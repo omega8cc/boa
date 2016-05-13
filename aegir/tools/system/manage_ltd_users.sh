@@ -1092,11 +1092,24 @@ satellite_create_web_user() {
 #
 # Add site specific socket config include.
 site_socket_inc_gen() {
-  if [ -f "${dscUsr}/static/control/multi-fpm.info" ]; then
-    if [ ! -f "${dscUsr}/static/control/.multi-fpm-nginx.pid" ]; then
-      rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_site_*
+  mltFpm="${dscUsr}/static/control/multi-fpm.info"
+  preFpm="${dscUsr}/static/control/.multi-fpm-pre.info"
+  mltNgx="${dscUsr}/static/control/.multi-fpm-nginx.pid"
+  fpmPth="${dscUsr}/config/server_master/nginx/post.d"
+  if [ -f "${mltFpm}" ]; then
+    mltFpmUpdate=NO
+    if [ ! -f "${preFpm}" ]; then
+      rm -rf ${preFpm}
+      cp -af ${mltFpm} ${preFpm}
+    fi
+    diffFpmTest=$(diff ${mltFpm} ${preFpm} 2>&1)
+    if [ ! -z "${diffFpmTest}" ]; then
+      mltFpmUpdate=YES
+    fi
+    if [ ! -f "${mltNgx}" ] || [ "${mltFpmUpdate}" = "YES" ]; then
+      rm -f ${fpmPth}/fpm_include_site_*
       IFS=$'\12'
-      for p in `cat ${dscUsr}/static/control/multi-fpm.info`;do
+      for p in `cat ${mltFpm}`;do
         _SITE_NAME=`echo $p | cut -d' ' -f1 | awk '{ print $1}'`
         _SITE_NAME=${_SITE_NAME//[^a-zA-Z0-9-.]/}
         _SITE_NAME=$(echo -n ${_SITE_NAME} | tr A-Z a-z 2>&1)
@@ -1107,22 +1120,25 @@ site_socket_inc_gen() {
         _SOCKET_L_NAME="${_USER}.${_SITE_SOCKET}"
         if [ ! -z "${_SITE_NAME}" ] \
           && [ ! -z "${_SITE_SOCKET}" ] \
-          && [ -e "/data/disk/${_USER}/.drush/${_SITE_NAME}.alias.drushrc.php" ] \
+          && [ -e "${dscUsr}/.drush/${_SITE_NAME}.alias.drushrc.php" ] \
           && [ -e "/var/run/${_SOCKET_L_NAME}.fpm.socket" ]; then
-          _FMP_L_INC="/data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_site_${_SITE_NAME}.inc"
-          if [ ! -e "${_FMP_L_INC}" ]; then
-            echo "if ( \$main_site_name = ${_SITE_NAME} ) {" > ${_FMP_L_INC}
-            echo "  set \$user_socket \"${_SOCKET_L_NAME}\";" >> ${_FMP_L_INC}
-            echo "}" >> ${_FMP_L_INC}
-          fi
+          fpmInc="${fpmPth}/fpm_include_site_${_SITE_NAME}.inc"
+          echo "if ( \$main_site_name = ${_SITE_NAME} ) {" > ${fpmInc}
+          echo "  set \$user_socket \"${_SOCKET_L_NAME}\";" >> ${fpmInc}
+          echo "}" >> ${fpmInc}
         fi
       done
-      touch ${dscUsr}/static/control/.multi-fpm-nginx.pid
+      touch ${mltNgx}
       ### reload nginx
       service nginx reload &> /dev/null
     fi
   else
-    rm -f ${dscUsr}/static/control/.multi-fpm-nginx.pid
+    if [ -f "${mltNgx}" ]; then
+      rm -f ${mltNgx}
+    fi
+    if [ -f "${preFpm}" ]; then
+      rm -f ${preFpm}
+    fi
   fi
 }
 #
