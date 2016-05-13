@@ -2973,6 +2973,11 @@ if_squeeze_to_wheezy() {
     wait
     sed -i "s/squeeze/wheezy/g"   /etc/apt/sources.list.d/*
     wait
+    if [ -e "/etc/apt/apt.conf" ]; then
+      sed -i "s/APT::Default-Release.*/APT::Default-Release \"wheezy\";/g" \
+        /etc/apt/apt.conf &> /dev/null
+      wait
+    fi
     rm -f /etc/apt/sources.list.d/openssl.list
     mrun "apt-get update -qq" 2> /dev/null
     ### Two step upgrade with apt-get only
