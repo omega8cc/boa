@@ -1965,10 +1965,10 @@ update_sources_list() {
         echo "deb-src http://archive.debian.org/debian-volatile \
           ${_OSV}/volatile main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       else
-        echo "deb http://${_MIRROR}/debian/ ${_OSV}-updates main" \
-          >> ${aptLiSys}
-        echo "deb-src http://${_MIRROR}/debian/ ${_OSV}-updates main" \
-          >> ${aptLiSys}
+        echo "deb http://${_MIRROR}/debian/ ${_OSV}-updates main \
+          contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+        echo "deb-src http://${_MIRROR}/debian/ ${_OSV}-updates main \
+          contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
         echo "" >> ${aptLiSys}
         echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
         echo "deb http://security.debian.org/ ${_OSV}/updates main \
@@ -1977,8 +1977,8 @@ update_sources_list() {
           contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
         echo "" >> ${aptLiSys}
         echo "## DEBIAN PROPOSED UPDATES" >> ${aptLiSys}
-        echo "deb http://${_MIRROR}/debian/ ${_OSV}-proposed-updates main" \
-          >> ${aptLiSys}
+        echo "deb http://${_MIRROR}/debian/ ${_OSV}-proposed-updates main \
+          contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
         if [ "${_OSV}" = "jessie" ]; then
           if [ -e "${locCnf}/etc-apt-preferences-jessie.txt" ]; then
             cp -af ${locCnf}/etc-apt-preferences-jessie.txt /etc/apt/preferences
