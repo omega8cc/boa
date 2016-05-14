@@ -1065,9 +1065,9 @@ satellite_sub_satellite_force_advanced_nginx_config() {
       _PHP_SV=56
     fi
     if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ]; then
-      sed -i "s/EDIT_USER/${_USER}/g"  ${octTpl}/Inc/vhost_include.tpl.php &> /dev/null
-      sed -i "s/EDIT_USER/${_USER}/g"  ${octTpl}/subdir.tpl.php &> /dev/null
-      sed -i "s/EDIT_USER/${_USER}/g"  ${octInc}/nginx_vhost_common.conf &> /dev/null
+      sed -i "s/set.*user_socket.*/set \$user_socket \"${_USER}\";/g" ${octTpl}/Inc/vhost_include.tpl.php &> /dev/null
+      sed -i "s/set.*user_socket.*/set \$user_socket \"${_USER}\";/g" ${octTpl}/subdir.tpl.php            &> /dev/null
+      sed -i "s/set.*user_socket.*/set \$user_socket \"${_USER}\";/g" ${octInc}/nginx_vhost_common.conf   &> /dev/null
     fi
     _CRON_IP=${_THISHTIP//[^0-9.]/}
     if [ ! -e "/root/.local.IP.list" ]; then

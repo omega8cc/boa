@@ -30,7 +30,7 @@ sub_force_advanced_nginx_config() {
     wait
     sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${mtrInc}/nginx_vhost_common.conf &> /dev/null
     wait
-    sed -i "s/EDIT_USER/${_PHP_CN}/g"                                              ${mtrInc}/nginx_vhost_common.conf &> /dev/null
+    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${mtrInc}/nginx_vhost_common.conf &> /dev/null
 
     sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrTpl}/subdir.tpl.php &> /dev/null
     wait
@@ -38,7 +38,7 @@ sub_force_advanced_nginx_config() {
     wait
     sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${mtrTpl}/subdir.tpl.php &> /dev/null
     wait
-    sed -i "s/EDIT_USER/${_PHP_CN}/g"                                              ${mtrTpl}/subdir.tpl.php &> /dev/null
+    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${mtrTpl}/subdir.tpl.php &> /dev/null
 
     sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
     wait
@@ -46,7 +46,7 @@ sub_force_advanced_nginx_config() {
     wait
     sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
     wait
-    sed -i "s/EDIT_USER/${_PHP_CN}/g"                                              ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
+    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
   fi
 }
 
