@@ -746,7 +746,10 @@ fix_update_nginx_config() {
       sed -i "s/listen .*/listen        \*:80;/g" \
         /data/disk/*/config/server_*/nginx.conf &> /dev/null
       wait
-      sed -i "s/listen .*/listen        \*:80;/g" \
+      sed -i "s/.*listen .*:80;/  listen        \*:80;/g" \
+        /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
+      wait
+      sed -i "s/.*listen .*:443/  listen        \*:443/g" \
         /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
       wait
       sed -i "s/param db_port.*/param db_port   3306;/g" \
