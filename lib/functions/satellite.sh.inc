@@ -4732,9 +4732,9 @@ satellite_child_b_aegir_ui_enhance() {
       WHERE link_path='hosting/sites'" &> /dev/null
     if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"
-        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats"
-        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"
+        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"  &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats" &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
         ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
         ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
         ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
