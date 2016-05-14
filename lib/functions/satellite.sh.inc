@@ -2084,6 +2084,7 @@ satellite_download_for_local_build() {
       ${gCb} 7.x-3.x ${gitHub}/hosting_civicrm.git             &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_custom_settings.git     &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_git.git                 &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_le.git                  &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_remote_import.git       &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_site_backup_manager.git &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_tasks_extra.git         &> /dev/null
@@ -2092,6 +2093,7 @@ satellite_download_for_local_build() {
       get_dev_ext "hosting_civicrm.tar.gz"
       get_dev_ext "hosting_custom_settings.tar.gz"
       get_dev_ext "hosting_git.tar.gz"
+      get_dev_ext "hosting_le.tar.gz"
       get_dev_ext "hosting_remote_import.tar.gz"
       get_dev_ext "hosting_site_backup_manager.tar.gz"
       get_dev_ext "hosting_tasks_extra.tar.gz"
@@ -4115,6 +4117,19 @@ satellite_child_b_install_drush() {
         ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
     fi
   fi
+  exeLe="${_ROOT}/tools/le/letsencrypt.sh"
+  pthLe="${_ROOT}/backups/system/letsencrypt.sh"
+  mkdir -p ${_ROOT}/backups/system
+  chmod 700 ${_ROOT}/backups/system
+  rm -f ${_ROOT}/backups/system/letsencrypt*
+  curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/letsencrypt.sh" -o ${pthLe}
+  if [ -e "${pthLe}" ]; then
+    mkdir -p ${_ROOT}/tools/le/.acme-challenges
+    chmod 0711 ${_ROOT}/tools/le/.acme-challenges
+    chmod 0711 ${_ROOT}/tools/le
+    cp -af ${pthLe} ${exeLe}
+    chmod 0700 ${exeLe}
+  fi
   cd ${_ROOT}/tools
   msg "${_STATUS} B: Downloading drush ${_DRUSH_VERSION}..."
   get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
@@ -4760,6 +4775,13 @@ satellite_child_b_aegir_ui_enhance() {
       SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "UPDATE menu_links \
       SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'" &> /dev/null
+
+    if [ ! -e "${_ROOT}/log/hosting_le_enable.txt" ]; then
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx_ssl' WHERE service='http'" &> /dev/null
+      ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force &> /dev/null
+      touch ${_ROOT}/log/hosting_le_enable.txt
+    fi
+
     if [ "$_LOCAL_STATUS" = "INIT" ]; then
       pBy="Octopus System powered by Barracuda"
       ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
