@@ -4117,6 +4117,23 @@ satellite_child_b_install_drush() {
         ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
     fi
   fi
+  cd ${_ROOT}/tools
+  msg "${_STATUS} B: Downloading drush ${_DRUSH_VERSION}..."
+  get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
+  cd ${_ROOT}/tools/drush/
+  rm -rf ${_ROOT}/tools/drush/vendor
+  get_dev_ext "vendor-${_DRUSH_VERSION}.tar.gz"
+  find ${_ROOT}/tools/drush -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_ROOT}/tools/drush -type f -exec chmod 0644 {} \; &> /dev/null
+  chmod 755 ${_ROOT}/tools/drush/drush
+  chmod 755 ${_ROOT}/tools/drush/drush.bat
+  chmod 755 ${_ROOT}/tools/drush/drush.complete.sh
+  chmod 755 ${_ROOT}/tools/drush/drush.launcher
+  chmod 755 ${_ROOT}/tools/drush/drush.php
+  chmod 755 ${_ROOT}/tools/drush/unish.sh
+  chmod 755 ${_ROOT}/tools/drush/examples/drush.wrapper
+  chmod 755 ${_ROOT}/tools/drush/examples/git-bisect.example.sh
+  chmod 755 ${_ROOT}/tools/drush/examples/helloworld.script
   exeLe="${_ROOT}/tools/le/letsencrypt.sh"
   pthLe="${_ROOT}/backups/system/letsencrypt.sh"
   mkdir -p ${_ROOT}/backups/system
@@ -4130,23 +4147,6 @@ satellite_child_b_install_drush() {
     cp -af ${pthLe} ${exeLe}
     chmod 0700 ${exeLe}
   fi
-  cd ${_ROOT}/tools
-  msg "${_STATUS} B: Downloading drush ${_DRUSH_VERSION}..."
-  get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
-  cd ${_ROOT}/tools/drush/
-  rm -rf ${_ROOT}/tools/drush/vendor
-  get_dev_ext "vendor-${_DRUSH_VERSION}.tar.gz"
-  find ${_ROOT}/tools -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${_ROOT}/tools -type f -exec chmod 0644 {} \; &> /dev/null
-  chmod 755 ${_ROOT}/tools/drush/drush
-  chmod 755 ${_ROOT}/tools/drush/drush.bat
-  chmod 755 ${_ROOT}/tools/drush/drush.complete.sh
-  chmod 755 ${_ROOT}/tools/drush/drush.launcher
-  chmod 755 ${_ROOT}/tools/drush/drush.php
-  chmod 755 ${_ROOT}/tools/drush/unish.sh
-  chmod 755 ${_ROOT}/tools/drush/examples/drush.wrapper
-  chmod 755 ${_ROOT}/tools/drush/examples/git-bisect.example.sh
-  chmod 755 ${_ROOT}/tools/drush/examples/helloworld.script
   satellite_child_b_update_php_cli
   satellite_child_b_update_ini_php_cli
 }
