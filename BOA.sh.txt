@@ -836,6 +836,15 @@ if [ `whoami` = "root" ]; then
       fi
     fi
   fi
+  if [ ! -e "/etc/ssl/private/4096.dhp" ] && [ -d "/var/xdrago" ]; then
+    echo "Generating 4096.dhp -- it may take a very long time..."
+    openssl dhparam -out /etc/ssl/private/4096.dhp 4096 > /dev/null 2>&1 &
+  fi
+  if [ -e "/etc/ssl/private/4096.dhp" ]; then
+    chown -R root:ssl-cert /etc/ssl/private
+    chmod 640 /etc/ssl/private/*
+    chmod 710 /etc/ssl/private
+  fi
   if [ ! -e "/root/.upstart.cnf" ]; then
     service cron reload &> /dev/null
   fi

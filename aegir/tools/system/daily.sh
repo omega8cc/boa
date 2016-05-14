@@ -3110,6 +3110,9 @@ else
   fi
   action >/var/xdrago/log/daily/daily-${_NOW}.log 2>&1
   if [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
+    if [ ! -e "/etc/ssl/private/4096.dhp" ]; then
+      openssl dhparam -out /etc/ssl/private/4096.dhp 4096 &> /dev/null
+    fi
     for f in `find /etc/ssl/private/*.crt -type f`; do
       sslName=$(echo ${f} | cut -d'/' -f5 | awk '{ print $1}' | sed "s/.crt//g")
       sslFile="/etc/ssl/private/${sslName}.dhp"
