@@ -4143,6 +4143,8 @@ satellite_child_b_install_drush() {
   if [ -e "${pthLe}" ]; then
     mkdir -p ${_ROOT}/tools/le/.acme-challenges
     chmod 0711 ${_ROOT}/tools/le/.acme-challenges
+    mkdir -p ${_ROOT}/tools/le/certs
+    chmod 0700 ${_ROOT}/tools/le/certs
     chmod 0711 ${_ROOT}/tools/le
     cp -af ${pthLe} ${exeLe}
     chmod 0700 ${exeLe}
