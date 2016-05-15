@@ -109,12 +109,13 @@ if_install_jetty() {
         cd /var/opt
         get_dev_arch "slf4j-${_SLF4J_VRN}.tar.gz"
         slf4jPth="/var/opt/slf4j-${_SLF4J_VRN}"
-        cp -af ${slf4jPth}/jcl-over-slf4j* /opt/jetty9/lib/ext/ &> /dev/null
-        cp -af ${slf4jPth}/jul-to-slf4j*   /opt/jetty9/lib/ext/ &> /dev/null
-        cp -af ${slf4jPth}/slf4j-api*      /opt/jetty9/lib/ext/ &> /dev/null
-        cp -af ${slf4jPth}/slf4j-log4j12*  /opt/jetty9/lib/ext/ &> /dev/null
+        cp -af ${slf4jPth}/jcl-over-slf4j*.jar /opt/jetty9/lib/ext/
+        cp -af ${slf4jPth}/jul-to-slf4j*.jar   /opt/jetty9/lib/ext/
+        cp -af ${slf4jPth}/slf4j-api*.jar      /opt/jetty9/lib/ext/
+        cp -af ${slf4jPth}/slf4j-log4j12*.jar  /opt/jetty9/lib/ext/
         get_dev_arch "log4j-${_LOGJ4_VRN}.tar.gz"
         cp -af /var/opt/log4j-${_LOGJ4_VRN}/*.jar /opt/jetty9/lib/ext/
+        rm -f /opt/jetty9/lib/ext/*sources.jar
         chown -R jetty9:jetty9 /opt/solr4
         chown -R jetty9:jetty9 /opt/jetty9
         chown -R jetty9:jetty9 /var/log/jetty9
@@ -210,6 +211,7 @@ if_install_jetty() {
     if [ ! -e "$_PORT_CTRL" ] \
       || [ ! -e "/opt/jetty9/lib/ext/slf4j-api-${_SLF4J_VRN}.jar" ] \
       || [ ! -e "/opt/jetty9/.fixed.start.ini.txt" ] \
+      || [ ! -e "/opt/jetty9/lib/ext/log4j-1.2.17.jar" ] \
       || [ ! -e "$_JETTY_CTRL" ] \
       || [ ! -e "$_SOLR_CTRL" ]; then
       msg "INFO: Upgrading MultiCore Apache Solr 4 with Jetty ${_R_JETTY}..."
@@ -253,12 +255,13 @@ if_install_jetty() {
       cd /var/opt
       get_dev_arch "slf4j-${_SLF4J_VRN}.tar.gz"
       slf4jPth="/var/opt/slf4j-${_SLF4J_VRN}"
-      cp -af ${slf4jPth}/jcl-over-slf4j* /opt/jetty9/lib/ext/ &> /dev/null
-      cp -af ${slf4jPth}/jul-to-slf4j*   /opt/jetty9/lib/ext/ &> /dev/null
-      cp -af ${slf4jPth}/slf4j-api*      /opt/jetty9/lib/ext/ &> /dev/null
-      cp -af ${slf4jPth}/slf4j-log4j12*  /opt/jetty9/lib/ext/ &> /dev/null
+      cp -af ${slf4jPth}/jcl-over-slf4j*.jar /opt/jetty9/lib/ext/
+      cp -af ${slf4jPth}/jul-to-slf4j*.jar   /opt/jetty9/lib/ext/
+      cp -af ${slf4jPth}/slf4j-api*.jar      /opt/jetty9/lib/ext/
+      cp -af ${slf4jPth}/slf4j-log4j12*.jar  /opt/jetty9/lib/ext/
       get_dev_arch "log4j-${_LOGJ4_VRN}.tar.gz"
-      cp -af /var/opt/log4j-${_LOGJ4_VRN}/*.jar /opt/jetty9/lib/ext/ 
+      cp -af /var/opt/log4j-${_LOGJ4_VRN}/*.jar /opt/jetty9/lib/ext/
+      rm -f /opt/jetty9/lib/ext/*sources.jar
       chown -R jetty9:jetty9 /opt/jetty9
       mrun "service jetty9 start" &> /dev/null
       echo ${_SOLR_4_VRN} > $_SOLR_CTRL
