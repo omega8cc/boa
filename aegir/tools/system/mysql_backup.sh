@@ -140,7 +140,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
   fi
 done
 
-if [ "${_OPTIM}" = "YES" ]; then
+if [ "${_OPTIM}" = "YES" ] && [ ! -e "/var/run/boa_run.pid" ]; then
   ionice -c2 -n2 -p $$
   touch /var/run/boa_wait.pid
   touch /var/xdrago/log/mysql_restart_running.pid
