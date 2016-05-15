@@ -109,6 +109,7 @@ if_install_jetty() {
         cd /var/opt
         get_dev_arch "slf4j-${_SLF4J_VRN}.tar.gz"
         slf4jPth="/var/opt/slf4j-${_SLF4J_VRN}"
+        rm -rf /opt/jetty9/lib/ext/*
         cp -af ${slf4jPth}/jcl-over-slf4j*.jar /opt/jetty9/lib/ext/
         cp -af ${slf4jPth}/jul-to-slf4j*.jar   /opt/jetty9/lib/ext/
         cp -af ${slf4jPth}/slf4j-api*.jar      /opt/jetty9/lib/ext/
@@ -255,6 +256,7 @@ if_install_jetty() {
       cd /var/opt
       get_dev_arch "slf4j-${_SLF4J_VRN}.tar.gz"
       slf4jPth="/var/opt/slf4j-${_SLF4J_VRN}"
+      rm -rf /opt/jetty9/lib/ext/*
       cp -af ${slf4jPth}/jcl-over-slf4j*.jar /opt/jetty9/lib/ext/
       cp -af ${slf4jPth}/jul-to-slf4j*.jar   /opt/jetty9/lib/ext/
       cp -af ${slf4jPth}/slf4j-api*.jar      /opt/jetty9/lib/ext/
