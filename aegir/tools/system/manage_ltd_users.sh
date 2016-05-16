@@ -963,130 +963,136 @@ switch_newrelic() {
 #
 # Update web user.
 satellite_update_web_user() {
-  _T_HD="/home/${_WEB}/.drush"
-  _T_TP="/home/${_WEB}/.tmp"
-  _T_TS="/home/${_WEB}/.aws"
-  _T_II="${_T_HD}/php.ini"
-  if [ -e "/home/${_WEB}" ]; then
-    chattr -i /home/${_WEB} &> /dev/null
-    chattr -i /home/${_WEB}/.drush &> /dev/null
-    mkdir -p /home/${_WEB}/.{tmp,drush,aws}
-    if [ ! -z "$1" ]; then
-      if [ "$1" = "hhvm" ]; then
-        if [ -e "/opt/php56/etc/php56.ini" ] \
-          && [ -x "/opt/php56/bin/php" ]; then
-          _T_PV=56
-        elif [ -e "/opt/php55/etc/php55.ini" ] \
-          && [ -x "/opt/php55/bin/php" ]; then
-          _T_PV=55
+  if [ ! -z "${_WEB}" ] && [[ ! "${_WEB}" =~ ".ftp" ]]; then
+    _T_HD="/home/${_WEB}/.drush"
+    _T_TP="/home/${_WEB}/.tmp"
+    _T_TS="/home/${_WEB}/.aws"
+    _T_II="${_T_HD}/php.ini"
+    if [ -e "/home/${_WEB}" ]; then
+      chattr -i /home/${_WEB} &> /dev/null
+      chattr -i /home/${_WEB}/.drush &> /dev/null
+      mkdir -p /home/${_WEB}/.{tmp,drush,aws}
+      if [ ! -z "$1" ]; then
+        if [ "$1" = "hhvm" ]; then
+          if [ -e "/opt/php56/etc/php56.ini" ] \
+            && [ -x "/opt/php56/bin/php" ]; then
+            _T_PV=56
+          elif [ -e "/opt/php55/etc/php55.ini" ] \
+            && [ -x "/opt/php55/bin/php" ]; then
+            _T_PV=55
+          fi
+        else
+          _T_PV=$1
         fi
+      fi
+      if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
+        cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
       else
-        _T_PV=$1
+        if [ -e "/opt/php70/etc/php70.ini" ]; then
+          cp -af /opt/php70/etc/php70.ini ${_T_II}
+          _T_PV=70
+        elif [ -e "/opt/php56/etc/php56.ini" ]; then
+          cp -af /opt/php56/etc/php56.ini ${_T_II}
+          _T_PV=56
+        elif [ -e "/opt/php55/etc/php55.ini" ]; then
+          cp -af /opt/php55/etc/php55.ini ${_T_II}
+          _T_PV=55
+        elif [ -e "/opt/php54/etc/php54.ini" ]; then
+          cp -af /opt/php54/etc/php54.ini ${_T_II}
+          _T_PV=54
+        elif [ -e "/opt/php53/etc/php53.ini" ]; then
+          cp -af /opt/php53/etc/php53.ini ${_T_II}
+          _T_PV=53
+        fi
       fi
-    fi
-    if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
-      cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
-    else
-      if [ -e "/opt/php70/etc/php70.ini" ]; then
-        cp -af /opt/php70/etc/php70.ini ${_T_II}
-        _T_PV=70
-      elif [ -e "/opt/php56/etc/php56.ini" ]; then
-        cp -af /opt/php56/etc/php56.ini ${_T_II}
-        _T_PV=56
-      elif [ -e "/opt/php55/etc/php55.ini" ]; then
-        cp -af /opt/php55/etc/php55.ini ${_T_II}
-        _T_PV=55
-      elif [ -e "/opt/php54/etc/php54.ini" ]; then
-        cp -af /opt/php54/etc/php54.ini ${_T_II}
-        _T_PV=54
-      elif [ -e "/opt/php53/etc/php53.ini" ]; then
-        cp -af /opt/php53/etc/php53.ini ${_T_II}
-        _T_PV=53
-      fi
-    fi
-    if [ -e "${_T_II}" ]; then
-      _INI="open_basedir = \".: \
-        /data/all:      \
-        /data/conf:     \
-        /data/disk/all: \
-        /mnt:           \
-        /opt/php53:     \
-        /opt/php54:     \
-        /opt/php55:     \
-        /opt/php56:     \
-        /opt/php70:     \
-        /opt/tika:      \
-        /opt/tika7:     \
-        /opt/tika8:     \
-        /opt/tika9:     \
-        /srv:           \
-        /usr/bin:       \
-        /var/second/${_USER}:     \
-        ${dscUsr}/aegir:          \
-        ${dscUsr}/backup-exports: \
-        ${dscUsr}/distro:         \
-        ${dscUsr}/platforms:      \
-        ${dscUsr}/static:         \
-        ${_T_HD}:                 \
-        ${_T_TP}:                 \
-        ${_T_TS}\""
-      _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
-      _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
-      _INI=${_INI//\//\\\/}
-      _QTP=${_T_TP//\//\\\/}
-      sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_T_II}
-      wait
-      sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_T_II}
-      wait
-      sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_T_II}
-      wait
-      sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_T_II}
-      wait
-      sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_T_II}
-      wait
-      if [ "$1" = "hhvm" ]; then
-        sed -i "s/.*ioncube.*//g" ${_T_II}
+      if [ -e "${_T_II}" ]; then
+        _INI="open_basedir = \".: \
+          /data/all:      \
+          /data/conf:     \
+          /data/disk/all: \
+          /mnt:           \
+          /opt/php53:     \
+          /opt/php54:     \
+          /opt/php55:     \
+          /opt/php56:     \
+          /opt/php70:     \
+          /opt/tika:      \
+          /opt/tika7:     \
+          /opt/tika8:     \
+          /opt/tika9:     \
+          /srv:           \
+          /usr/bin:       \
+          /var/second/${_USER}:     \
+          ${dscUsr}/aegir:          \
+          ${dscUsr}/backup-exports: \
+          ${dscUsr}/distro:         \
+          ${dscUsr}/platforms:      \
+          ${dscUsr}/static:         \
+          ${_T_HD}:                 \
+          ${_T_TP}:                 \
+          ${_T_TS}\""
+        _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
+        _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
+        _INI=${_INI//\//\\\/}
+        _QTP=${_T_TP//\//\\\/}
+        sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_T_II}
         wait
-        sed -i "s/.*opcache.*//g" ${_T_II}
+        sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_T_II}
         wait
+        sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_T_II}
+        wait
+        sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_T_II}
+        wait
+        sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_T_II}
+        wait
+        if [ "$1" = "hhvm" ]; then
+          sed -i "s/.*ioncube.*//g" ${_T_II}
+          wait
+          sed -i "s/.*opcache.*//g" ${_T_II}
+          wait
+        fi
+        rm -f ${_T_HD}/.ctrl.php*
+        echo > ${_T_HD}/.ctrl.php${_T_PV}.txt
       fi
-      rm -f ${_T_HD}/.ctrl.php*
-      echo > ${_T_HD}/.ctrl.php${_T_PV}.txt
+      chmod 700 /home/${_WEB}
+      chown -R ${_WEB}:${_WEBG} /home/${_WEB}
+      chmod 550 /home/${_WEB}/.drush
+      chmod 440 /home/${_WEB}/.drush/php.ini
+      chattr +i /home/${_WEB} &> /dev/null
+      chattr +i /home/${_WEB}/.drush &> /dev/null
     fi
-    chmod 700 /home/${_WEB}
-    chown -R ${_WEB}:${_WEBG} /home/${_WEB}
-    chmod 550 /home/${_WEB}/.drush
-    chmod 440 /home/${_WEB}/.drush/php.ini
-    chattr +i /home/${_WEB} &> /dev/null
-    chattr +i /home/${_WEB}/.drush &> /dev/null
   fi
 }
 #
 # Remove web user.
 satellite_remove_web_user() {
-  if [ -e "/home/${_WEB}/.tmp" ] || [ "$1" = "clean" ]; then
-    chattr -i /home/${_WEB} &> /dev/null
-    chattr -i /home/${_WEB}/.drush &> /dev/null
-    deluser \
-      --remove-home \
-      --backup-to /var/backups/zombie/deleted ${_WEB} &> /dev/null
-    if [ -e "/home/${_WEB}" ]; then
-      rm -rf /home/${_WEB} &> /dev/null
+  if [ ! -z "${_WEB}" ] && [[ ! "${_WEB}" =~ ".ftp" ]]; then
+    if [ -e "/home/${_WEB}/.tmp" ] || [ "$1" = "clean" ]; then
+      chattr -i /home/${_WEB} &> /dev/null
+      chattr -i /home/${_WEB}/.drush &> /dev/null
+      deluser \
+        --remove-home \
+        --backup-to /var/backups/zombie/deleted ${_WEB} &> /dev/null
+      if [ -e "/home/${_WEB}" ]; then
+        rm -rf /home/${_WEB} &> /dev/null
+      fi
     fi
   fi
 }
 #
 # Add web user.
 satellite_create_web_user() {
-  _T_HD="/home/${_WEB}/.drush"
-  _T_II="${_T_HD}/php.ini"
-  _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
-  if [ ! -z "${_T_ID_EXISTS}" ] && [ -e "${_T_II}" ]; then
-    satellite_update_web_user "$1"
-  elif [ -z "${_T_ID_EXISTS}" ] || [ ! -e "${_T_II}" ]; then
-    satellite_remove_web_user "clean"
-    adduser --force-badname --system --ingroup www-data ${_WEB} &> /dev/null
-    satellite_update_web_user "$1"
+  if [ ! -z "${_WEB}" ] && [[ ! "${_WEB}" =~ ".ftp" ]]; then
+    _T_HD="/home/${_WEB}/.drush"
+    _T_II="${_T_HD}/php.ini"
+    _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
+    if [ ! -z "${_T_ID_EXISTS}" ] && [ -e "${_T_II}" ]; then
+      satellite_update_web_user "$1"
+    elif [ -z "${_T_ID_EXISTS}" ] || [ ! -e "${_T_II}" ]; then
+      satellite_remove_web_user "clean"
+      adduser --force-badname --system --ingroup www-data ${_WEB} &> /dev/null
+      satellite_update_web_user "$1"
+    fi
   fi
 }
 #
@@ -1485,6 +1491,10 @@ switch_php() {
             if [ -x "/opt/php${m}/bin/php" ]; then
               if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
                 _WEB="${_USER}.${m}.web"
+                _POOL="${_USER}.${m}"
+              else
+                _WEB="${_USER}.web"
+                _POOL="${_USER}"
               fi
               if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
                 _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
