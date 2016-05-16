@@ -1427,8 +1427,8 @@ switch_php() {
               _LIM_FPM=2
               _PHP_FPM_WORKERS=4
             fi
-            if [ -e "/data/disk/${_USER}/log/cores.txt" ]; then
-              _CLIENT_CORES=$(cat /data/disk/${_USER}/log/cores.txt 2>&1)
+            if [ -e "${dscUsr}/log/cores.txt" ]; then
+              _CLIENT_CORES=$(cat ${dscUsr}/log/cores.txt 2>&1)
               _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
             fi
             _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
@@ -1608,14 +1608,14 @@ manage_site_drush_alias_mirror() {
   if [ -e "/home/${_USER}.ftp/.drush/self.alias.drushrc.php" ]; then
     rm -f /home/${_USER}.ftp/.drush/self.alias.drushrc.php
   fi
-  if [ -e "/data/disk/${_USER}/.drush/.alias.drushrc.php" ]; then
-    rm -f /data/disk/${_USER}/.drush/.alias.drushrc.php
+  if [ -e "${dscUsr}/.drush/.alias.drushrc.php" ]; then
+    rm -f ${dscUsr}/.drush/.alias.drushrc.php
   fi
-  if [ -e "/data/disk/${_USER}/.drush/self.alias.drushrc.php" ]; then
-    rm -f /data/disk/${_USER}/.drush/self.alias.drushrc.php
+  if [ -e "${dscUsr}/.drush/self.alias.drushrc.php" ]; then
+    rm -f ${dscUsr}/.drush/self.alias.drushrc.php
   fi
-  if [ -e "/data/disk/${_USER}/config/self" ]; then
-    rm -rf /data/disk/${_USER}/config/self
+  if [ -e "${dscUsr}/config/self" ]; then
+    rm -rf ${dscUsr}/config/self
   fi
 
   for Alias in `find ${pthParentUsr}/.drush/*.alias.drushrc.php \
