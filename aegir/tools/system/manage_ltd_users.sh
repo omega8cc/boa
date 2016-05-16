@@ -1522,6 +1522,7 @@ switch_php() {
           else
             _PHP_M_V="${_PHP_SV}"
             rm -f /opt/php*/etc/pool.d/${_USER}.*.conf
+            rm -f /opt/php*/etc/pool.d/${_USER}.conf
           fi
           for m in ${_PHP_M_V}; do
             if [ -x "/opt/php${m}/bin/php" ]; then
