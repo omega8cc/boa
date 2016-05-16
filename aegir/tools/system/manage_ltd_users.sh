@@ -1675,7 +1675,7 @@ for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     _USER=""
     _USER=$(echo ${pthParentUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
     echo "_USER is == ${_USER} == at manage_user"
-    ### _WEB="${_USER}.web"
+    _WEB="${_USER}.web"
     dscUsr="/data/disk/${_USER}"
     octInc="${dscUsr}/config/includes"
     octTpl="${dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx"
