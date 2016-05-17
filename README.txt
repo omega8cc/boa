@@ -83,7 +83,7 @@ production settings.
 
 * Debian 8 Jessie (recommended)
 * Debian 7 Wheezy
-* Debian 6 Squeeze (easy upgrade to Wheezy with _SQUEEZE_TO_WHEEZY=YES)
+* Debian 6 Squeeze (limited to upgrade to Wheezy with _SQUEEZE_TO_WHEEZY=YES)
 * Ubuntu Trusty 14.04 (limited support)
 * Ubuntu Precise 12.04 (limited support)
 
@@ -212,4 +212,3 @@ Please choose either PayPal or Gratipay option at:
   http://www.aegirproject.org/donate
 
 Thank you!
-
