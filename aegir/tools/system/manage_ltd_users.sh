@@ -430,26 +430,43 @@ disable_chattr() {
 #
 # Kill zombies.
 kill_zombies() {
-for Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`; do
-  _SEC_IDY=$(id -nG ${Existing} 2>&1)
-  if [[ "${_SEC_IDY}" =~ "ltd-shell" ]]; then
-    usrParent=$(echo ${Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
-    _PAR_DIR="/data/disk/${usrParent}/clients"
-    _SEC_SYM="/home/${Existing}/sites"
-    _SEC_DIR=$(readlink -n ${_SEC_SYM} 2>&1)
-    _SEC_DIR=$(echo -n ${_SEC_DIR} | tr -d "\n" 2>&1)
-    if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
-      || [ ! -e "/home/${usrParent}.ftp/users/${Existing}" ]; then
+  for Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`; do
+    _SEC_IDY=$(id -nG ${Existing} 2>&1)
+    if [[ "${_SEC_IDY}" =~ "ltd-shell" ]]; then
+      usrParent=$(echo ${Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
+      _PAR_DIR="/data/disk/${usrParent}/clients"
+      _SEC_SYM="/home/${Existing}/sites"
+      _SEC_DIR=$(readlink -n ${_SEC_SYM} 2>&1)
+      _SEC_DIR=$(echo -n ${_SEC_DIR} | tr -d "\n" 2>&1)
+      if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
+        || [ ! -e "/home/${usrParent}.ftp/users/${Existing}" ]; then
+        mkdir -p /var/backups/zombie/deleted/${_NOW}
+        disable_chattr ${Existing}
+        deluser \
+          --remove-home \
+          --backup-to /var/backups/zombie/deleted/${_NOW} ${Existing} &> /dev/null
+        rm -f /home/${usrParent}.ftp/users/${Existing}
+        echo Zombie from etc.passwd ${Existing} killed
+        echo
+      fi
+    fi
+  done
+  for Existing in `ls /home | cut -d '/' -f1 | sort`; do
+    _SEC_IDY=$(id -nG ${Existing} 2>&1)
+    if [[ "${_SEC_IDY}" =~ "No such user" ]] \
+      && [[ ! "${Existing}" =~ ".ftp" ]] \
+      && [[ ! "${Existing}" =~ ".web" ]]; then
       disable_chattr ${Existing}
-      deluser \
-        --remove-home \
-        --backup-to /var/backups/zombie/deleted ${Existing} &> /dev/null
-      rm -f /home/${usrParent}.ftp/users/${Existing}
-      echo Zombie ${Existing} killed
+      mkdir -p /var/backups/zombie/deleted/${_NOW}
+      mv /home/${Existing} /var/backups/zombie/deleted/${_NOW}/.leftover-${Existing}
+      usrParent=$(echo ${Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
+      if [ -e "/home/${usrParent}.ftp/users/${Existing}" ]; then
+        rm -f /home/${usrParent}.ftp/users/${Existing}
+      fi
+      echo Zombie from home.dir ${Existing} killed
       echo
     fi
-  fi
-done
+  done
 }
 #
 # Fix dot dirs.
