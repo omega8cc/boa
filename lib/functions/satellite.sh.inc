@@ -3018,7 +3018,8 @@ satellite_if_add_update_backend_user_dirs_files_clean() {
       fi
     fi
     rm -f ${_QR}/*/robots.txt &> /dev/null
-    if [ ! -e "${_CORE}/javascript_aggregator.out.txt" ]; then
+    if [ ! -e "${_CORE}/javascript_aggregator.out.txt" ] \
+      && [ -e "${_CORE}" ]; then
       sed -i "s/, 'javascript_aggregator'//g" \
         ${_CORE}/*/profiles/*/*.profile &> /dev/null
       wait
