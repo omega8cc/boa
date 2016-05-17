@@ -432,7 +432,9 @@ disable_chattr() {
 kill_zombies() {
   for Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`; do
     _SEC_IDY=$(id -nG ${Existing} 2>&1)
-    if [[ "${_SEC_IDY}" =~ "ltd-shell" ]]; then
+    if [[ "${_SEC_IDY}" =~ "ltd-shell" ]] \
+      && [[ ! "${Existing}" =~ ".ftp"($) ]] \
+      && [[ ! "${Existing}" =~ ".web"($) ]]; then
       usrParent=$(echo ${Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
       _PAR_DIR="/data/disk/${usrParent}/clients"
       _SEC_SYM="/home/${Existing}/sites"
@@ -454,8 +456,8 @@ kill_zombies() {
   for Existing in `ls /home | cut -d '/' -f1 | sort`; do
     _SEC_IDY=$(id -nG ${Existing} 2>&1)
     if [[ "${_SEC_IDY}" =~ "No such user" ]] \
-      && [[ ! "${Existing}" =~ ".ftp" ]] \
-      && [[ ! "${Existing}" =~ ".web" ]]; then
+      && [[ ! "${Existing}" =~ ".ftp"($) ]] \
+      && [[ ! "${Existing}" =~ ".web"($) ]]; then
       disable_chattr ${Existing}
       mkdir -p /var/backups/zombie/deleted/${_NOW}
       mv /home/${Existing} /var/backups/zombie/deleted/${_NOW}/.leftover-${Existing}
