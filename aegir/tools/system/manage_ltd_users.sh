@@ -144,7 +144,9 @@ add_ltd_group_if_not_exists() {
 #
 # Enable chattr.
 enable_chattr() {
-  if [ ! -z "$1" ] && [ -d "/home/$1" ]; then
+  isTest="$1"
+  isTest=${isTest//[^a-z0-9]/}
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
@@ -401,7 +403,9 @@ enable_chattr() {
 #
 # Disable chattr.
 disable_chattr() {
-  if [ ! -z "$1" ] && [ -d "/home/$1" ]; then
+  isTest="$1"
+  isTest=${isTest//[^a-z0-9]/}
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
     if [ "$1" != "${_USER}.ftp" ]; then
       chattr -i /home/$1             &> /dev/null
     else
@@ -436,86 +440,95 @@ kill_zombies() {
       && [[ ! "${Existing}" =~ ".ftp"($) ]] \
       && [[ ! "${Existing}" =~ ".web"($) ]]; then
       usrParent=$(echo ${Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
-      _PAR_DIR="/data/disk/${usrParent}/clients"
-      _SEC_SYM="/home/${Existing}/sites"
-      _SEC_DIR=$(readlink -n ${_SEC_SYM} 2>&1)
-      _SEC_DIR=$(echo -n ${_SEC_DIR} | tr -d "\n" 2>&1)
-      if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
-        || [ ! -e "/home/${usrParent}.ftp/users/${Existing}" ]; then
-        mkdir -p /var/backups/zombie/deleted/${_NOW}
-        disable_chattr ${Existing}
-        deluser \
-          --remove-home \
-          --backup-to /var/backups/zombie/deleted/${_NOW} ${Existing} &> /dev/null
-        rm -f /home/${usrParent}.ftp/users/${Existing}
-        echo Zombie from etc.passwd ${Existing} killed
-        echo
+      usrParentTest=${usrParent//[^a-z0-9]/}
+      if [ ! -z "${usrParentTest}" ]; then
+        _PAR_DIR="/data/disk/${usrParent}/clients"
+        _SEC_SYM="/home/${Existing}/sites"
+        _SEC_DIR=$(readlink -n ${_SEC_SYM} 2>&1)
+        _SEC_DIR=$(echo -n ${_SEC_DIR} | tr -d "\n" 2>&1)
+        if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
+          || [ ! -e "/home/${usrParent}.ftp/users/${Existing}" ]; then
+          mkdir -p /var/backups/zombie/deleted/${_NOW}
+          disable_chattr ${Existing}
+          deluser \
+            --remove-home \
+            --backup-to /var/backups/zombie/deleted/${_NOW} ${Existing} &> /dev/null
+          rm -f /home/${usrParent}.ftp/users/${Existing}
+          echo Zombie from etc.passwd ${Existing} killed
+          echo
+        fi
       fi
     fi
   done
   for Existing in `ls /home | cut -d '/' -f1 | sort`; do
-    _SEC_IDY=$(id -nG ${Existing} 2>&1)
-    if [[ "${_SEC_IDY}" =~ "No such user" ]] \
-      && [[ ! "${Existing}" =~ ".ftp"($) ]] \
-      && [[ ! "${Existing}" =~ ".web"($) ]]; then
-      disable_chattr ${Existing}
-      mkdir -p /var/backups/zombie/deleted/${_NOW}
-      mv /home/${Existing} /var/backups/zombie/deleted/${_NOW}/.leftover-${Existing}
-      usrParent=$(echo ${Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
-      if [ -e "/home/${usrParent}.ftp/users/${Existing}" ]; then
-        rm -f /home/${usrParent}.ftp/users/${Existing}
+    isTest=${Existing//[^a-z0-9]/}
+    if [ ! -z "${isTest}" ]; then
+      _SEC_IDY=$(id -nG ${Existing} 2>&1)
+      if [[ "${_SEC_IDY}" =~ "No such user" ]] \
+        && [[ ! "${Existing}" =~ ".ftp"($) ]] \
+        && [[ ! "${Existing}" =~ ".web"($) ]]; then
+        disable_chattr ${Existing}
+        mkdir -p /var/backups/zombie/deleted/${_NOW}
+        mv /home/${Existing} /var/backups/zombie/deleted/${_NOW}/.leftover-${Existing}
+        usrParent=$(echo ${Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
+        if [ -e "/home/${usrParent}.ftp/users/${Existing}" ]; then
+          rm -f /home/${usrParent}.ftp/users/${Existing}
+        fi
+        echo Zombie from home.dir ${Existing} killed
+        echo
       fi
-      echo Zombie from home.dir ${Existing} killed
-      echo
     fi
   done
 }
 #
 # Fix dot dirs.
 fix_dot_dirs() {
-  usrTmp="/home/${usrLtd}/.tmp"
-  if [ ! -d "${usrTmp}" ]; then
-    mkdir -p ${usrTmp}
-    chown ${usrLtd}:${usrGroup} ${usrTmp}
-    chmod 02755 ${usrTmp}
-  fi
-  usrLftp="/home/${usrLtd}/.lftp"
-  if [ ! -d "${usrLftp}" ]; then
-    mkdir -p ${usrLftp}
-    chown ${usrLtd}:${usrGroup} ${usrLftp}
-    chmod 02755 ${usrLftp}
-  fi
-  usrLhist="/home/${usrLtd}/.lhistory"
-  if [ ! -e "${usrLhist}" ]; then
-    touch ${usrLhist}
-    chown ${usrLtd}:${usrGroup} ${usrLhist}
-    chmod 644 ${usrLhist}
-  fi
-  usrDrush="/home/${usrLtd}/.drush"
-  if [ ! -d "${usrDrush}" ]; then
-    mkdir -p ${usrDrush}
-    chown ${usrLtd}:${usrGroup} ${usrDrush}
-    chmod 700 ${usrDrush}
-  fi
-  usrSsh="/home/${usrLtd}/.ssh"
-  if [ ! -d "${usrSsh}" ]; then
-    mkdir -p ${usrSsh}
-    chown -R ${usrLtd}:${usrGroup} ${usrSsh}
-    chmod 700 ${usrSsh}
-  fi
-  chmod 600 ${usrSsh}/id_{r,d}sa &> /dev/null
-  chmod 600 ${usrSsh}/known_hosts &> /dev/null
-  usrBzr="/home/${usrLtd}/.bazaar"
-  if [ -x "/usr/local/bin/bzr" ]; then
-    if [ ! -e "${usrBzr}/bazaar.conf" ]; then
-      mkdir -p ${usrBzr}
-      echo ignore_missing_extensions=True > ${usrBzr}/bazaar.conf
-      chown -R ${usrLtd}:${usrGroup} ${usrBzr}
-      chmod 700 ${usrBzr}
+  usrLtdTest=${usrLtd//[^a-z0-9]/}
+  if [ ! -z "${usrLtdTest}" ]; then
+    usrTmp="/home/${usrLtd}/.tmp"
+    if [ ! -d "${usrTmp}" ]; then
+      mkdir -p ${usrTmp}
+      chown ${usrLtd}:${usrGroup} ${usrTmp}
+      chmod 02755 ${usrTmp}
     fi
-  else
-    if [ -d "${usrBzr}" ]; then
-      rm -rf ${usrBzr}
+    usrLftp="/home/${usrLtd}/.lftp"
+    if [ ! -d "${usrLftp}" ]; then
+      mkdir -p ${usrLftp}
+      chown ${usrLtd}:${usrGroup} ${usrLftp}
+      chmod 02755 ${usrLftp}
+    fi
+    usrLhist="/home/${usrLtd}/.lhistory"
+    if [ ! -e "${usrLhist}" ]; then
+      touch ${usrLhist}
+      chown ${usrLtd}:${usrGroup} ${usrLhist}
+      chmod 644 ${usrLhist}
+    fi
+    usrDrush="/home/${usrLtd}/.drush"
+    if [ ! -d "${usrDrush}" ]; then
+      mkdir -p ${usrDrush}
+      chown ${usrLtd}:${usrGroup} ${usrDrush}
+      chmod 700 ${usrDrush}
+    fi
+    usrSsh="/home/${usrLtd}/.ssh"
+    if [ ! -d "${usrSsh}" ]; then
+      mkdir -p ${usrSsh}
+      chown -R ${usrLtd}:${usrGroup} ${usrSsh}
+      chmod 700 ${usrSsh}
+    fi
+    chmod 600 ${usrSsh}/id_{r,d}sa &> /dev/null
+    chmod 600 ${usrSsh}/known_hosts &> /dev/null
+    usrBzr="/home/${usrLtd}/.bazaar"
+    if [ -x "/usr/local/bin/bzr" ]; then
+      if [ ! -z "${usrLtd}" ] && [ ! -e "${usrBzr}/bazaar.conf" ]; then
+        mkdir -p ${usrBzr}
+        echo ignore_missing_extensions=True > ${usrBzr}/bazaar.conf
+        chown -R ${usrLtd}:${usrGroup} ${usrBzr}
+        chmod 700 ${usrBzr}
+      fi
+    else
+      if [ ! -z "${usrLtd}" ] && [ -d "${usrBzr}" ]; then
+        rm -rf ${usrBzr}
+      fi
     fi
   fi
 }
@@ -558,118 +571,127 @@ manage_sec_user_drush_aliases() {
 #
 # OK, create user.
 ok_create_user() {
-  _ADMIN="${_USER}.ftp"
-  echo "_ADMIN is == ${_ADMIN} == at ok_create_user"
-  usrLtdRoot="/home/${usrLtd}"
-  _SEC_SYM="${usrLtdRoot}/sites"
-  _TMP="/var/tmp"
-  if [ ! -L "${_SEC_SYM}" ]; then
-    mkdir -p /var/backups/zombie/deleted/${_NOW}
-    mv -f ${usrLtdRoot} /var/backups/zombie/deleted/${_NOW}/ &> /dev/null
-  fi
-  if [ ! -d "${usrLtdRoot}" ]; then
-    if [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
-      useradd -d ${usrLtdRoot} -s /usr/bin/mysecureshell -m -N -r ${usrLtd}
-      echo "usrLtdRoot is == ${usrLtdRoot} == at ok_create_user"
-    else
-      useradd -d ${usrLtdRoot} -s /usr/bin/lshell -m -N -r ${usrLtd}
+  usrLtdTest=${usrLtd//[^a-z0-9]/}
+  if [ ! -z "${usrLtdTest}" ]; then
+    _ADMIN="${_USER}.ftp"
+    echo "_ADMIN is == ${_ADMIN} == at ok_create_user"
+    usrLtdRoot="/home/${usrLtd}"
+    _SEC_SYM="${usrLtdRoot}/sites"
+    _TMP="/var/tmp"
+    if [ ! -L "${_SEC_SYM}" ]; then
+      mkdir -p /var/backups/zombie/deleted/${_NOW}
+      mv -f ${usrLtdRoot} /var/backups/zombie/deleted/${_NOW}/ &> /dev/null
     fi
-    adduser ${usrLtd} ${_WEBG}
-    _ESC_LUPASS=""
-    _LEN_LUPASS=0
-    if [ "${_STRONG_PASSWORDS}" = "YES" ]  ; then
-      _PWD_CHARS=32
-    elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
-      _PWD_CHARS=8
-    else
-      _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
-      if [ ! -z "${_STRONG_PASSWORDS}" ] \
-        && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
-        _PWD_CHARS="${_STRONG_PASSWORDS}"
+    if [ ! -d "${usrLtdRoot}" ]; then
+      if [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
+        useradd -d ${usrLtdRoot} -s /usr/bin/mysecureshell -m -N -r ${usrLtd}
+        echo "usrLtdRoot is == ${usrLtdRoot} == at ok_create_user"
       else
+        useradd -d ${usrLtdRoot} -s /usr/bin/lshell -m -N -r ${usrLtd}
+      fi
+      adduser ${usrLtd} ${_WEBG}
+      _ESC_LUPASS=""
+      _LEN_LUPASS=0
+      if [ "${_STRONG_PASSWORDS}" = "YES" ]  ; then
+        _PWD_CHARS=32
+      elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
         _PWD_CHARS=8
+      else
+        _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+        if [ ! -z "${_STRONG_PASSWORDS}" ] \
+          && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+          _PWD_CHARS="${_STRONG_PASSWORDS}"
+        else
+          _PWD_CHARS=8
+        fi
+        if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
+          _PWD_CHARS=128
+        fi
       fi
-      if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
-        _PWD_CHARS=128
+      if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ]; then
+        _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+        _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
+        _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
       fi
+      if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ]; then
+        _ESC_LUPASS=$(pwgen -v -s -1 2>&1)
+        _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
+        _ESC_LUPASS=$(sanitize_string "${_ESC_LUPASS}" 2>&1)
+      fi
+      ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" \
+        $(openssl rand -base64 16 | tr -d '+=' | head -c 16) 2>&1)
+      usermod -p $ph ${usrLtd}
+      passwd -w 7 -x 90 ${usrLtd}
+      usermod -aG lshellg ${usrLtd}
+      usermod -aG ltd-shell ${usrLtd}
     fi
-    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ]; then
-      _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
-      _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
-      _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
+    if [ ! -e "/home/${_ADMIN}/users/${usrLtd}" ] \
+      && [ ! -z "${_ESC_LUPASS}" ]; then
+      if [ -e "/usr/bin/mysecureshell" ] \
+        && [ -e "/etc/ssh/sftp_config" ]; then
+        chsh -s /usr/bin/mysecureshell ${usrLtd}
+      else
+        chsh -s /usr/bin/lshell ${usrLtd}
+      fi
+      echo >> ${_THIS_LTD_CONF}
+      echo "[${usrLtd}]" >> ${_THIS_LTD_CONF}
+      echo "path : [${_ALLD_DIR}]" >> ${_THIS_LTD_CONF}
+      chmod 700 ${usrLtdRoot}
+      mkdir -p /home/${_ADMIN}/users
+      echo "${_ESC_LUPASS}" > /home/${_ADMIN}/users/${usrLtd}
     fi
-    if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ]; then
-      _ESC_LUPASS=$(pwgen -v -s -1 2>&1)
-      _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
-      _ESC_LUPASS=$(sanitize_string "${_ESC_LUPASS}" 2>&1)
-    fi
-    ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" \
-      $(openssl rand -base64 16 | tr -d '+=' | head -c 16) 2>&1)
-    usermod -p $ph ${usrLtd}
-    passwd -w 7 -x 90 ${usrLtd}
-    usermod -aG lshellg ${usrLtd}
-    usermod -aG ltd-shell ${usrLtd}
+    fix_dot_dirs
+    rm -f ${usrLtdRoot}/{.profile,.bash_logout,.bash_profile,.bashrc}
   fi
-  if [ ! -e "/home/${_ADMIN}/users/${usrLtd}" ] \
-    && [ ! -z "${_ESC_LUPASS}" ]; then
-    if [ -e "/usr/bin/mysecureshell" ] \
-      && [ -e "/etc/ssh/sftp_config" ]; then
-      chsh -s /usr/bin/mysecureshell ${usrLtd}
-    else
-      chsh -s /usr/bin/lshell ${usrLtd}
-    fi
-    echo >> ${_THIS_LTD_CONF}
-    echo "[${usrLtd}]" >> ${_THIS_LTD_CONF}
-    echo "path : [${_ALLD_DIR}]" >> ${_THIS_LTD_CONF}
-    chmod 700 ${usrLtdRoot}
-    mkdir -p /home/${_ADMIN}/users
-    echo "${_ESC_LUPASS}" > /home/${_ADMIN}/users/${usrLtd}
-  fi
-  fix_dot_dirs
-  rm -f ${usrLtdRoot}/{.profile,.bash_logout,.bash_profile,.bashrc}
 }
 #
 # OK, update user.
 ok_update_user() {
-  _ADMIN="${_USER}.ftp"
-  usrLtdRoot="/home/${usrLtd}"
-  if [ -e "/home/${_ADMIN}/users/${usrLtd}" ]; then
-    echo >> ${_THIS_LTD_CONF}
-    echo "[${usrLtd}]" >> ${_THIS_LTD_CONF}
-    echo "path : [${_ALLD_DIR}]" >> ${_THIS_LTD_CONF}
-    manage_sec_user_drush_aliases
-    chmod 700 ${usrLtdRoot}
+  usrLtdTest=${usrLtd//[^a-z0-9]/}
+  if [ ! -z "${usrLtdTest}" ]; then
+    _ADMIN="${_USER}.ftp"
+    usrLtdRoot="/home/${usrLtd}"
+    if [ -e "/home/${_ADMIN}/users/${usrLtd}" ]; then
+      echo >> ${_THIS_LTD_CONF}
+      echo "[${usrLtd}]" >> ${_THIS_LTD_CONF}
+      echo "path : [${_ALLD_DIR}]" >> ${_THIS_LTD_CONF}
+      manage_sec_user_drush_aliases
+      chmod 700 ${usrLtdRoot}
+    fi
+    fix_dot_dirs
+    rm -f ${usrLtdRoot}/{.profile,.bash_logout,.bash_profile,.bashrc}
   fi
-  fix_dot_dirs
-  rm -f ${usrLtdRoot}/{.profile,.bash_logout,.bash_profile,.bashrc}
 }
 #
 # Add user if not exists.
 add_user_if_not_exists() {
-  _ID_EXISTS=$(getent passwd ${usrLtd} 2>&1)
-  _ID_SHELLS=$(id -nG ${usrLtd} 2>&1)
-  echo "_ID_EXISTS is == ${_ID_EXISTS} == at add_user_if_not_exists"
-  echo "_ID_SHELLS is == ${_ID_SHELLS} == at add_user_if_not_exists"
-  if [ -z "${_ID_EXISTS}" ]; then
-    echo "We will create user == ${usrLtd} =="
-    ok_create_user
-    manage_sec_user_drush_aliases
-    enable_chattr ${usrLtd}
-  elif [[ "${_ID_EXISTS}" =~ "${usrLtd}" ]] \
-    && [[ "${_ID_SHELLS}" =~ "ltd-shell" ]]; then
-    echo "We will update user == ${usrLtd} =="
-    disable_chattr ${usrLtd}
-    rm -rf /home/${usrLtd}/drush-backups
-    usrTmp="/home/${usrLtd}/.tmp"
-    if [ ! -d "${usrTmp}" ]; then
-      mkdir -p ${usrTmp}
-      chown ${usrLtd}:${usrGroup} ${usrTmp}
-      chmod 02755 ${usrTmp}
+  usrLtdTest=${usrLtd//[^a-z0-9]/}
+  if [ ! -z "${usrLtdTest}" ]; then
+    _ID_EXISTS=$(getent passwd ${usrLtd} 2>&1)
+    _ID_SHELLS=$(id -nG ${usrLtd} 2>&1)
+    echo "_ID_EXISTS is == ${_ID_EXISTS} == at add_user_if_not_exists"
+    echo "_ID_SHELLS is == ${_ID_SHELLS} == at add_user_if_not_exists"
+    if [ -z "${_ID_EXISTS}" ]; then
+      echo "We will create user == ${usrLtd} =="
+      ok_create_user
+      manage_sec_user_drush_aliases
+      enable_chattr ${usrLtd}
+    elif [[ "${_ID_EXISTS}" =~ "${usrLtd}" ]] \
+      && [[ "${_ID_SHELLS}" =~ "ltd-shell" ]]; then
+      echo "We will update user == ${usrLtd} =="
+      disable_chattr ${usrLtd}
+      rm -rf /home/${usrLtd}/drush-backups
+      usrTmp="/home/${usrLtd}/.tmp"
+      if [ ! -d "${usrTmp}" ]; then
+        mkdir -p ${usrTmp}
+        chown ${usrLtd}:${usrGroup} ${usrTmp}
+        chmod 02755 ${usrTmp}
+      fi
+      touch ${usrTmp}
+      find ${usrTmp}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
+      ok_update_user
+      enable_chattr ${usrLtd}
     fi
-    touch ${usrTmp}
-    find ${usrTmp}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
-    ok_update_user
-    enable_chattr ${usrLtd}
   fi
 }
 #
@@ -693,21 +715,23 @@ for Client in `find ${pthParentUsr}/clients/ -maxdepth 1 -mindepth 1 -type d | s
   usrLtd=$(echo $Client | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
   usrLtd=${usrLtd//[^a-zA-Z0-9]/}
   usrLtd=$(echo -n ${usrLtd} | tr A-Z a-z 2>&1)
-  usrLtd="${_USER}.${usrLtd}"
-  echo "usrLtd is == ${usrLtd} == at manage_sec"
-  _ALLD_NUM="0"
-  _ALLD_CTL="1"
-  _ALLD_DIR="'$Client'"
-  cd $Client
-  manage_sec_access_paths
-  #_ALLD_DIR="${_ALLD_DIR}, '/home/${usrLtd}'"
-  if [ "${_ALLD_NUM}" -ge "${_ALLD_CTL}" ]; then
-    add_user_if_not_exists
-    echo Done for $Client at ${pthParentUsr}
-  else
-    echo Empty $Client at ${pthParentUsr} - deleting now
-    if [ -e "$Client" ]; then
-      rmdir $Client
+  if [ ! -z "${usrLtd}" ]; then
+    usrLtd="${_USER}.${usrLtd}"
+    echo "usrLtd is == ${usrLtd} == at manage_sec"
+    _ALLD_NUM="0"
+    _ALLD_CTL="1"
+    _ALLD_DIR="'$Client'"
+    cd $Client
+    manage_sec_access_paths
+    #_ALLD_DIR="${_ALLD_DIR}, '/home/${usrLtd}'"
+    if [ "${_ALLD_NUM}" -ge "${_ALLD_CTL}" ]; then
+      add_user_if_not_exists
+      echo Done for $Client at ${pthParentUsr}
+    else
+      echo Empty $Client at ${pthParentUsr} - deleting now
+      if [ -e "$Client" ]; then
+        rmdir $Client
+      fi
     fi
   fi
 done
@@ -982,7 +1006,9 @@ switch_newrelic() {
 #
 # Update web user.
 satellite_update_web_user() {
-  if [ ! -z "${_WEB}" ] && [[ ! "${_WEB}" =~ ".ftp" ]]; then
+  isTest="${_WEB}"
+  isTest=${isTest//[^a-z0-9]/}
+  if [ ! -z "${isTest}" ] && [[ ! "${_WEB}" =~ ".ftp"($) ]]; then
     _T_HD="/home/${_WEB}/.drush"
     _T_TP="/home/${_WEB}/.tmp"
     _T_TS="/home/${_WEB}/.aws"
@@ -991,7 +1017,9 @@ satellite_update_web_user() {
       chattr -i /home/${_WEB} &> /dev/null
       chattr -i /home/${_WEB}/.drush &> /dev/null
       mkdir -p /home/${_WEB}/.{tmp,drush,aws}
-      if [ ! -z "$1" ]; then
+      isTest="$1"
+      isTest=${isTest//[^a-z0-9]/}
+      if [ ! -z "${isTest}" ]; then
         if [ "$1" = "hhvm" ]; then
           if [ -e "/opt/php56/etc/php56.ini" ] \
             && [ -x "/opt/php56/bin/php" ]; then
@@ -1085,7 +1113,9 @@ satellite_update_web_user() {
 #
 # Remove web user.
 satellite_remove_web_user() {
-  if [ ! -z "${_WEB}" ] && [[ ! "${_WEB}" =~ ".ftp" ]]; then
+  isTest="${_WEB}"
+  isTest=${isTest//[^a-z0-9]/}
+  if [ ! -z "${isTest}" ] && [[ ! "${_WEB}" =~ ".ftp"($) ]]; then
     if [ -e "/home/${_WEB}/.tmp" ] || [ "$1" = "clean" ]; then
       chattr -i /home/${_WEB} &> /dev/null
       chattr -i /home/${_WEB}/.drush &> /dev/null
@@ -1101,7 +1131,9 @@ satellite_remove_web_user() {
 #
 # Add web user.
 satellite_create_web_user() {
-  if [ ! -z "${_WEB}" ] && [[ ! "${_WEB}" =~ ".ftp" ]]; then
+  isTest="${_WEB}"
+  isTest=${isTest//[^a-z0-9]/}
+  if [ ! -z "${isTest}" ] && [[ ! "${_WEB}" =~ ".ftp"($) ]]; then
     _T_HD="/home/${_WEB}/.drush"
     _T_II="${_T_HD}/php.ini"
     _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
@@ -1698,121 +1730,121 @@ manage_site_drush_alias_mirror() {
 #
 # Manage Primary Users.
 manage_user() {
-for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
-  if [ -e "${pthParentUsr}/config/server_master/nginx/vhost.d" ] \
-    && [ -e "${pthParentUsr}/log/fpm.txt" ] \
-    && [ ! -e "${pthParentUsr}/log/CANCELLED" ]; then
-    _USER=""
-    _USER=$(echo ${pthParentUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-    echo "_USER is == ${_USER} == at manage_user"
-    _WEB="${_USER}.web"
-    dscUsr="/data/disk/${_USER}"
-    octInc="${dscUsr}/config/includes"
-    octTpl="${dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx"
-    usrDgn="${dscUsr}/.drush/usr/drupalgeddon"
-    rm -f ${dscUsr}/*.php* &> /dev/null
-    chmod 0440 ${dscUsr}/.drush/*.php &> /dev/null
-    chmod 0400 ${dscUsr}/.drush/drushrc.php &> /dev/null
-    chmod 0400 ${dscUsr}/.drush/hm.alias.drushrc.php &> /dev/null
-    chmod 0400 ${dscUsr}/.drush/hostmaster*.php &> /dev/null
-    chmod 0400 ${dscUsr}/.drush/platform_*.php &> /dev/null
-    chmod 0400 ${dscUsr}/.drush/server_*.php &> /dev/null
-    chmod 0710 ${dscUsr}/.drush &> /dev/null
-    find ${dscUsr}/config/server_master \
-      -type d -exec chmod 0700 {} \; &> /dev/null
-    find ${dscUsr}/config/server_master \
-      -type f -exec chmod 0600 {} \; &> /dev/null
-    if [ ! -e "${dscUsr}/.tmp/.ctrl.302stableQ.txt" ]; then
-      rm -rf ${dscUsr}/.drush/cache
-      mkdir -p ${dscUsr}/.tmp
-      touch ${dscUsr}/.tmp
-      find ${dscUsr}/.tmp/ -mtime +0 -exec rm -rf {} \; &> /dev/null
-      chown ${_USER}:${usrGroup} ${dscUsr}/.tmp &> /dev/null
-      chmod 02755 ${dscUsr}/.tmp &> /dev/null
-      echo OK > ${dscUsr}/.tmp/.ctrl.302stableQ.txt
-    fi
-    if [ ! -e "${dscUsr}/static/control/.ctrl.302stableQ.txt" ]; then
-      mkdir -p ${dscUsr}/static/control
-      chmod 755 ${dscUsr}/static/control
-      if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
-        cp -af /var/xdrago/conf/control-readme.txt \
-          ${dscUsr}/static/control/README.txt &> /dev/null
-        chmod 0644 ${dscUsr}/static/control/README.txt
+  for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+    if [ -e "${pthParentUsr}/config/server_master/nginx/vhost.d" ] \
+      && [ -e "${pthParentUsr}/log/fpm.txt" ] \
+      && [ ! -e "${pthParentUsr}/log/CANCELLED" ]; then
+      _USER=""
+      _USER=$(echo ${pthParentUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+      echo "_USER is == ${_USER} == at manage_user"
+      _WEB="${_USER}.web"
+      dscUsr="/data/disk/${_USER}"
+      octInc="${dscUsr}/config/includes"
+      octTpl="${dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx"
+      usrDgn="${dscUsr}/.drush/usr/drupalgeddon"
+      rm -f ${dscUsr}/*.php* &> /dev/null
+      chmod 0440 ${dscUsr}/.drush/*.php &> /dev/null
+      chmod 0400 ${dscUsr}/.drush/drushrc.php &> /dev/null
+      chmod 0400 ${dscUsr}/.drush/hm.alias.drushrc.php &> /dev/null
+      chmod 0400 ${dscUsr}/.drush/hostmaster*.php &> /dev/null
+      chmod 0400 ${dscUsr}/.drush/platform_*.php &> /dev/null
+      chmod 0400 ${dscUsr}/.drush/server_*.php &> /dev/null
+      chmod 0710 ${dscUsr}/.drush &> /dev/null
+      find ${dscUsr}/config/server_master \
+        -type d -exec chmod 0700 {} \; &> /dev/null
+      find ${dscUsr}/config/server_master \
+        -type f -exec chmod 0600 {} \; &> /dev/null
+      if [ ! -e "${dscUsr}/.tmp/.ctrl.302stableQ.txt" ]; then
+        rm -rf ${dscUsr}/.drush/cache
+        mkdir -p ${dscUsr}/.tmp
+        touch ${dscUsr}/.tmp
+        find ${dscUsr}/.tmp/ -mtime +0 -exec rm -rf {} \; &> /dev/null
+        chown ${_USER}:${usrGroup} ${dscUsr}/.tmp &> /dev/null
+        chmod 02755 ${dscUsr}/.tmp &> /dev/null
+        echo OK > ${dscUsr}/.tmp/.ctrl.302stableQ.txt
       fi
-      chown -R ${_USER}.ftp:${usrGroup} \
-        ${dscUsr}/static/control &> /dev/null
-      rm -f ${dscUsr}/static/control/.ctrl.*
-      echo OK > ${dscUsr}/static/control/.ctrl.302stableQ.txt
-    fi
-    if [ -e "/root/.${_USER}.octopus.cnf" ]; then
-      source /root/.${_USER}.octopus.cnf
-    fi
-    _THIS_HM_PLR=$(cat ${dscUsr}/.drush/hostmaster.alias.drushrc.php \
-      | grep "root'" \
-      | cut -d: -f2 \
-      | awk '{ print $3}' \
-      | sed "s/[\,']//g" 2>&1)
-    if [ -e "${_THIS_HM_PLR}/modules/path_alias_cache" ] \
-      && [ -e "/opt/tools/drush/8/drush/drush" ]; then
-      if [ -x "/opt/php56/bin/php" ]; then
-        echo 5.6 > ${dscUsr}/static/control/cli.info
-      elif [ -x "/opt/php55/bin/php" ]; then
-        echo 5.5 > ${dscUsr}/static/control/cli.info
+      if [ ! -e "${dscUsr}/static/control/.ctrl.302stableQ.txt" ]; then
+        mkdir -p ${dscUsr}/static/control
+        chmod 755 ${dscUsr}/static/control
+        if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
+          cp -af /var/xdrago/conf/control-readme.txt \
+            ${dscUsr}/static/control/README.txt &> /dev/null
+          chmod 0644 ${dscUsr}/static/control/README.txt
+        fi
+        chown -R ${_USER}.ftp:${usrGroup} \
+          ${dscUsr}/static/control &> /dev/null
+        rm -f ${dscUsr}/static/control/.ctrl.*
+        echo OK > ${dscUsr}/static/control/.ctrl.302stableQ.txt
       fi
-    fi
-    switch_php
-    site_socket_inc_gen
-    switch_newrelic
-    if [ -e "${pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
-      echo Managing Users for ${pthParentUsr} Instance
-      rm -rf ${pthParentUsr}/clients/admin &> /dev/null
-      rm -rf ${pthParentUsr}/clients/omega8ccgmailcom &> /dev/null
-      rm -rf ${pthParentUsr}/clients/nocomega8cc &> /dev/null
-      rm -rf ${pthParentUsr}/clients/*/backups &> /dev/null
-      symlinks -dr ${pthParentUsr}/clients &> /dev/null
-      if [ -e "/home/${_USER}.ftp" ]; then
-        disable_chattr ${_USER}.ftp
-        symlinks -dr /home/${_USER}.ftp &> /dev/null
-        echo >> ${_THIS_LTD_CONF}
-        echo "[${_USER}.ftp]" >> ${_THIS_LTD_CONF}
-        echo "path : ['${dscUsr}/distro', \
-                      '${dscUsr}/static', \
-                      '${dscUsr}/backups', \
-                      '${dscUsr}/clients']" \
-                      | fmt -su -w 2500 >> ${_THIS_LTD_CONF}
-        manage_site_drush_alias_mirror
-        manage_sec
-        if [ -e "/home/${_USER}.ftp/users" ]; then
-          chown -R ${_USER}.ftp:${usrGroup} /home/${_USER}.ftp/users
-          chmod 700 /home/${_USER}.ftp/users
-          chmod 600 /home/${_USER}.ftp/users/*
+      if [ -e "/root/.${_USER}.octopus.cnf" ]; then
+        source /root/.${_USER}.octopus.cnf
+      fi
+      _THIS_HM_PLR=$(cat ${dscUsr}/.drush/hostmaster.alias.drushrc.php \
+        | grep "root'" \
+        | cut -d: -f2 \
+        | awk '{ print $3}' \
+        | sed "s/[\,']//g" 2>&1)
+      if [ -e "${_THIS_HM_PLR}/modules/path_alias_cache" ] \
+        && [ -e "/opt/tools/drush/8/drush/drush" ]; then
+        if [ -x "/opt/php56/bin/php" ]; then
+          echo 5.6 > ${dscUsr}/static/control/cli.info
+        elif [ -x "/opt/php55/bin/php" ]; then
+          echo 5.5 > ${dscUsr}/static/control/cli.info
         fi
-        if [ ! -L "/home/${_USER}.ftp/static" ]; then
-          rm -f /home/${_USER}.ftp/{backups,clients,static}
-          ln -sf ${dscUsr}/backups /home/${_USER}.ftp/backups
-          ln -sf ${dscUsr}/clients /home/${_USER}.ftp/clients
-          ln -sf ${dscUsr}/static  /home/${_USER}.ftp/static
+      fi
+      switch_php
+      site_socket_inc_gen
+      switch_newrelic
+      if [ -e "${pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
+        echo Managing Users for ${pthParentUsr} Instance
+        rm -rf ${pthParentUsr}/clients/admin &> /dev/null
+        rm -rf ${pthParentUsr}/clients/omega8ccgmailcom &> /dev/null
+        rm -rf ${pthParentUsr}/clients/nocomega8cc &> /dev/null
+        rm -rf ${pthParentUsr}/clients/*/backups &> /dev/null
+        symlinks -dr ${pthParentUsr}/clients &> /dev/null
+        if [ -e "/home/${_USER}.ftp" ]; then
+          disable_chattr ${_USER}.ftp
+          symlinks -dr /home/${_USER}.ftp &> /dev/null
+          echo >> ${_THIS_LTD_CONF}
+          echo "[${_USER}.ftp]" >> ${_THIS_LTD_CONF}
+          echo "path : ['${dscUsr}/distro', \
+                        '${dscUsr}/static', \
+                        '${dscUsr}/backups', \
+                        '${dscUsr}/clients']" \
+                        | fmt -su -w 2500 >> ${_THIS_LTD_CONF}
+          manage_site_drush_alias_mirror
+          manage_sec
+          if [ -e "/home/${_USER}.ftp/users" ]; then
+            chown -R ${_USER}.ftp:${usrGroup} /home/${_USER}.ftp/users
+            chmod 700 /home/${_USER}.ftp/users
+            chmod 600 /home/${_USER}.ftp/users/*
+          fi
+          if [ ! -L "/home/${_USER}.ftp/static" ]; then
+            rm -f /home/${_USER}.ftp/{backups,clients,static}
+            ln -sf ${dscUsr}/backups /home/${_USER}.ftp/backups
+            ln -sf ${dscUsr}/clients /home/${_USER}.ftp/clients
+            ln -sf ${dscUsr}/static  /home/${_USER}.ftp/static
+          fi
+          if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.302stableQ.txt" ]; then
+            rm -rf /home/${_USER}.ftp/.drush/cache
+            rm -rf /home/${_USER}.ftp/.tmp
+            mkdir -p /home/${_USER}.ftp/.tmp
+            chown ${_USER}.ftp:${usrGroup} /home/${_USER}.ftp/.tmp &> /dev/null
+            chmod 700 /home/${_USER}.ftp/.tmp &> /dev/null
+            echo OK > /home/${_USER}.ftp/.tmp/.ctrl.302stableQ.txt
+          fi
+          enable_chattr ${_USER}.ftp
+          echo Done for ${pthParentUsr}
+        else
+          echo Directory /home/${_USER}.ftp not available
         fi
-        if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.302stableQ.txt" ]; then
-          rm -rf /home/${_USER}.ftp/.drush/cache
-          rm -rf /home/${_USER}.ftp/.tmp
-          mkdir -p /home/${_USER}.ftp/.tmp
-          chown ${_USER}.ftp:${usrGroup} /home/${_USER}.ftp/.tmp &> /dev/null
-          chmod 700 /home/${_USER}.ftp/.tmp &> /dev/null
-          echo OK > /home/${_USER}.ftp/.tmp/.ctrl.302stableQ.txt
-        fi
-        enable_chattr ${_USER}.ftp
-        echo Done for ${pthParentUsr}
+        echo
       else
-        echo Directory /home/${_USER}.ftp not available
+        echo Directory ${pthParentUsr}/clients not available
       fi
       echo
-    else
-      echo Directory ${pthParentUsr}/clients not available
     fi
-    echo
-  fi
-done
+  done
 }
 
 ###-------------SYSTEM-----------------###

@@ -213,7 +213,9 @@ EOF
 }
 
 enable_chattr() {
-  if [ ! -z "$1" ] && [ -d "/home/$1" ]; then
+  isTest="$1"
+  isTest=${isTest//[^a-z0-9]/}
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
     if [ "$1" != "${_THIS_HM_USER}.ftp" ]; then
       chattr +i /home/$1
     else
@@ -229,7 +231,9 @@ enable_chattr() {
 }
 
 disable_chattr() {
-  if [ ! -z "$1" ] && [ -d "/home/$1" ]; then
+  isTest="$1"
+  isTest=${isTest//[^a-z0-9]/}
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
     if [ "$1" != "${_THIS_HM_USER}.ftp" ]; then
       chattr -i /home/$1
     else

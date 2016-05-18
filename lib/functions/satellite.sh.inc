@@ -74,99 +74,105 @@ satellite_tune_fpm_workers() {
 #
 # Update web user.
 satellite_update_web_user() {
-  _T_HD="/home/${_WEB}/.drush"
-  _T_TP="/home/${_WEB}/.tmp"
-  _T_TS="/home/${_WEB}/.aws"
-  _T_II="${_T_HD}/php.ini"
-  ### msg "DEBUG: ${_WEB} in satellite_update_web_user A"
-  if [ -e "/home/${_WEB}" ]; then
-    chattr -i /home/${_WEB} &> /dev/null
-    chattr -i /home/${_WEB}/.drush &> /dev/null
-    mkdir -p /home/${_WEB}/.{tmp,drush,aws}
-    ### msg "DEBUG: ${_WEB} in satellite_update_web_user B"
-    ### msg "DEBUG: ARG1 is $1 in satellite_update_web_user B"
-    if [ ! -z "$1" ]; then
-      if [ "$1" = "hhvm" ]; then
-        if [ -e "/opt/php56/etc/php56.ini" ]; then
+  isTest="${_WEB}"
+  isTest=${isTest//[^a-z0-9]/}
+  if [ ! -z "${isTest}" ]; then
+    _T_HD="/home/${_WEB}/.drush"
+    _T_TP="/home/${_WEB}/.tmp"
+    _T_TS="/home/${_WEB}/.aws"
+    _T_II="${_T_HD}/php.ini"
+    ### msg "DEBUG: ${_WEB} in satellite_update_web_user A"
+    if [ -e "/home/${_WEB}" ]; then
+      chattr -i /home/${_WEB} &> /dev/null
+      chattr -i /home/${_WEB}/.drush &> /dev/null
+      mkdir -p /home/${_WEB}/.{tmp,drush,aws}
+      ### msg "DEBUG: ${_WEB} in satellite_update_web_user B"
+      ### msg "DEBUG: ARG1 is $1 in satellite_update_web_user B"
+      isTest="$1"
+      isTest=${isTest//[^a-z0-9]/}
+      if [ ! -z "${isTest}" ]; then
+        if [ "$1" = "hhvm" ]; then
+          if [ -e "/opt/php56/etc/php56.ini" ]; then
+            _T_PV=56
+          elif [ -e "/opt/php55/etc/php55.ini" ]; then
+            _T_PV=55
+          fi
+        else
+          _T_PV=$1
+          ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_update_web_user C"
+        fi
+      fi
+      if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
+        cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
+        ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_update_web_user D"
+      else
+        if [ -e "/opt/php70/etc/php70.ini" ]; then
+          cp -af /opt/php70/etc/php70.ini ${_T_II}
+          _T_PV=70
+        elif [ -e "/opt/php56/etc/php56.ini" ]; then
+          cp -af /opt/php56/etc/php56.ini ${_T_II}
           _T_PV=56
         elif [ -e "/opt/php55/etc/php55.ini" ]; then
+          cp -af /opt/php55/etc/php55.ini ${_T_II}
           _T_PV=55
+        elif [ -e "/opt/php54/etc/php54.ini" ]; then
+          cp -af /opt/php54/etc/php54.ini ${_T_II}
+          _T_PV=54
+        elif [ -e "/opt/php53/etc/php53.ini" ]; then
+          cp -af /opt/php53/etc/php53.ini ${_T_II}
+          _T_PV=53
         fi
-      else
-        _T_PV=$1
-        ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_update_web_user C"
       fi
-    fi
-    if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
-      cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
-      ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_update_web_user D"
-    else
-      if [ -e "/opt/php70/etc/php70.ini" ]; then
-        cp -af /opt/php70/etc/php70.ini ${_T_II}
-        _T_PV=70
-      elif [ -e "/opt/php56/etc/php56.ini" ]; then
-        cp -af /opt/php56/etc/php56.ini ${_T_II}
-        _T_PV=56
-      elif [ -e "/opt/php55/etc/php55.ini" ]; then
-        cp -af /opt/php55/etc/php55.ini ${_T_II}
-        _T_PV=55
-      elif [ -e "/opt/php54/etc/php54.ini" ]; then
-        cp -af /opt/php54/etc/php54.ini ${_T_II}
-        _T_PV=54
-      elif [ -e "/opt/php53/etc/php53.ini" ]; then
-        cp -af /opt/php53/etc/php53.ini ${_T_II}
-        _T_PV=53
+      if [ -e "${_T_II}" ]; then
+        _INI="open_basedir = \".: \
+          /data/all:      \
+          /data/conf:     \
+          /data/disk/all: \
+          /mnt:           \
+          /opt/php53:     \
+          /opt/php54:     \
+          /opt/php55:     \
+          /opt/php56:     \
+          /opt/php70:     \
+          /opt/tika:      \
+          /opt/tika7:     \
+          /opt/tika8:     \
+          /opt/tika9:     \
+          /srv:           \
+          /usr/bin:       \
+          /var/second/${_USER}:    \
+          ${_ROOT}/aegir:          \
+          ${_ROOT}/backup-exports: \
+          ${_ROOT}/distro:         \
+          ${_ROOT}/platforms:      \
+          ${_ROOT}/static:         \
+          ${_T_HD}:                \
+          ${_T_TP}:                \
+          ${_T_TS}\""
+        _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
+        _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
+        _INI=${_INI//\//\\\/}
+        _QTP=${_T_TP//\//\\\/}
+        sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_T_II}
+        wait
+        sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_T_II}
+        wait
+        sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_T_II}
+        wait
+        sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_T_II}
+        wait
+        sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_T_II}
+        wait
+        rm -f ${_T_HD}/.ctrl.php*
+        echo > ${_T_HD}/.ctrl.php${_T_PV}.txt
       fi
+      chmod 700 /home/${_WEB}
+      chown -R ${_WEB}:www-data /home/${_WEB}
+      chmod 550 /home/${_WEB}/.drush
+      chmod 440 /home/${_WEB}/.drush/php.ini
+      chattr +i /home/${_WEB} &> /dev/null
+      chattr +i /home/${_WEB}/.drush &> /dev/null
     fi
-    if [ -e "${_T_II}" ]; then
-      _INI="open_basedir = \".: \
-        /data/all:      \
-        /data/conf:     \
-        /data/disk/all: \
-        /mnt:           \
-        /opt/php53:     \
-        /opt/php54:     \
-        /opt/php55:     \
-        /opt/php56:     \
-        /opt/php70:     \
-        /opt/tika:      \
-        /opt/tika7:     \
-        /opt/tika8:     \
-        /opt/tika9:     \
-        /srv:           \
-        /usr/bin:       \
-        /var/second/${_USER}:    \
-        ${_ROOT}/aegir:          \
-        ${_ROOT}/backup-exports: \
-        ${_ROOT}/distro:         \
-        ${_ROOT}/platforms:      \
-        ${_ROOT}/static:         \
-        ${_T_HD}:                \
-        ${_T_TP}:                \
-        ${_T_TS}\""
-      _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
-      _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
-      _INI=${_INI//\//\\\/}
-      _QTP=${_T_TP//\//\\\/}
-      sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_T_II}
-      wait
-      sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_T_II}
-      wait
-      sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_T_II}
-      wait
-      sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_T_II}
-      wait
-      sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_T_II}
-      wait
-      rm -f ${_T_HD}/.ctrl.php*
-      echo > ${_T_HD}/.ctrl.php${_T_PV}.txt
-    fi
-    chmod 700 /home/${_WEB}
-    chown -R ${_WEB}:www-data /home/${_WEB}
-    chmod 550 /home/${_WEB}/.drush
-    chmod 440 /home/${_WEB}/.drush/php.ini
-    chattr +i /home/${_WEB} &> /dev/null
-    chattr +i /home/${_WEB}/.drush &> /dev/null
   fi
 }
 
@@ -383,7 +389,9 @@ satellite_check_id() {
 #
 # Enable chattr.
 enable_chattr() {
-  if [ ! -z "$1" ] && [ -d "/home/$1" ]; then
+  isTest="$1"
+  isTest=${isTest//[^a-z0-9]/}
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
     chattr +i /home/$1/platforms    &> /dev/null
     chattr +i /home/$1/platforms/*  &> /dev/null
     if [ -d "/home/$1/.bazaar" ]; then
@@ -398,7 +406,9 @@ enable_chattr() {
 #
 # Disable chattr.
 disable_chattr() {
-  if [ ! -z "$1" ] && [ -d "/home/$1" ]; then
+  isTest="$1"
+  isTest=${isTest//[^a-z0-9]/}
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
     chattr -i /home/$1/platforms    &> /dev/null
     chattr -i /home/$1/platforms/*  &> /dev/null
     if [ -d "/home/$1/.bazaar" ]; then

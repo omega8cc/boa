@@ -1481,7 +1481,9 @@ check_php_cli() {
 }
 
 switch_php_cli() {
-  if [ ! -z "$1" ]; then
+  isTest="$1"
+  isTest=${isTest//[^0-9]/}
+  if [ ! -z "${isTest}" ]; then
     rm -f /usr/bin/php-cli
     ln -s /opt/php$1/bin/php /usr/bin/php-cli
     rm -f /usr/bin/php

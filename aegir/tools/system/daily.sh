@@ -110,7 +110,9 @@ get_dev_ext() {
 }
 
 enable_chattr() {
-  if [ ! -z "$1" ] && [ -d "/home/$1" ]; then
+  isTest="$1"
+  isTest=${isTest//[^a-z0-9]/}
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
     if [ "$1" != "${_HM_U}.ftp" ]; then
       chattr +i /home/$1             &> /dev/null
     else
