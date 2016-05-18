@@ -1849,6 +1849,36 @@ manage_user() {
 
 ###-------------SYSTEM-----------------###
 
+chattr -i /home
+chmod 0711 /home
+chown root:root /home
+
+while IFS=':' read -r login pass uid gid uname homedir shell; do
+  if [[ "${homedir}" = **/home/** ]]; then
+    if [ -d "${homedir}" ]; then
+      chattr -i ${homedir} &> /dev/null
+      chown ${uid}:${gid} ${homedir} &> /dev/null
+      if [ -d "${homedir}/.ssh" ]; then
+        chattr -i ${homedir}/.ssh &> /dev/null
+        chown -R ${uid}:${gid} ${homedir}/.ssh &> /dev/null
+      fi
+      if [ -d "${homedir}/.tmp" ]; then
+        chattr -i ${homedir}/.tmp &> /dev/null
+        chown -R ${uid}:${gid} ${homedir}/.tmp &> /dev/null
+      fi
+      if [ -d "${homedir}/.drush" ]; then
+        chattr +i ${homedir}/.drush &> /dev/null
+        chattr +i ${homedir}/.drush/usr &> /dev/null
+        chattr +i ${homedir}/.drush/*.ini &> /dev/null
+      fi
+      if [[ ! "${login}" =~ ".ftp"($) ]] \
+        && [[ ! "${login}" =~ ".web"($) ]]; then
+        chattr +i ${homedir} &> /dev/null
+      fi
+    fi
+  fi
+done < /etc/passwd
+
 if [ ! -L "/usr/bin/MySecureShell" ] && [ -x "/usr/bin/mysecureshell" ] ; then
   mv -f /usr/bin/MySecureShell /var/backups/legacy-MySecureShell-bin
   ln -sf /usr/bin/mysecureshell /usr/bin/MySecureShell
