@@ -2458,6 +2458,16 @@ cleanup_ghost_drushrc() {
   done
 }
 
+check_update_le_ssl() {
+  if [ "${_DOW}" = "3" ]; then
+    if [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
+      echo Running LE cert check via Verify task for ${Dom}
+      run_drush8_hmr_cmd "hosting-task @${Dom} verify --force"
+      sleep 5
+    fi
+  fi
+}
+
 process() {
   cleanup_ghost_vhosts
   cleanup_ghost_drushrc
@@ -2540,6 +2550,8 @@ process() {
             searchStringF=".temporary."
             searchStringG=".test."
             searchStringH=".testing."
+            searchStringI=".stage."
+            searchStringJ=".staging."
             case ${Dom} in
               *"$searchStringB"*) ;;
               *"$searchStringC"*) ;;
@@ -2548,11 +2560,14 @@ process() {
               *"$searchStringF"*) ;;
               *"$searchStringG"*) ;;
               *"$searchStringH"*) ;;
+              *"$searchStringI"*) ;;
+              *"$searchStringJ"*) ;;
               *)
               if [ "${_MODULES_FIX}" = "YES" ]; then
                 fix_modules
                 fix_robots_txt
               fi
+              check_update_le_ssl
               ;;
             esac
             fix_boost_cache

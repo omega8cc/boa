@@ -212,6 +212,8 @@ count() {
     searchStringF=".temporary."
     searchStringG=".test."
     searchStringH=".testing."
+    searchStringI=".stage."
+    searchStringJ=".staging."
     case ${Dom} in
       *"$searchStringB"*) _DEV_URL=YES ;;
       *"$searchStringC"*) _DEV_URL=YES ;;
@@ -220,6 +222,8 @@ count() {
       *"$searchStringF"*) _DEV_URL=YES ;;
       *"$searchStringG"*) _DEV_URL=YES ;;
       *"$searchStringH"*) _DEV_URL=YES ;;
+      *"$searchStringI"*) _DEV_URL=YES ;;
+      *"$searchStringJ"*) _DEV_URL=YES ;;
       *)
       ;;
     esac
