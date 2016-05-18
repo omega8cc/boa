@@ -318,20 +318,21 @@ update_agents() {
     fi
   fi
 
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/manage_ltd_users.fixed.a302o.pid" ]; then
-    mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/manage_ltd_users.sh" \
-      -o /var/xdrago/manage_ltd_users.sh
-    if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
-      chmod 700 /var/xdrago/manage_ltd_users.sh
-      chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${pthLog}/manage_ltd_users.fixed.a302o.pid
-    else
-      mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
-    fi
-  fi
+  # if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+  #   && [ -e "/var/xdrago" ] \
+  #   && [ ! -e "${pthLog}/manage_ltd_users.fixed.a302o.pid" ]; then
+  #   mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
+  #   curl ${crlGet} "${urlHmr}/tools/system/manage_ltd_users.sh" \
+  #     -o /var/xdrago/manage_ltd_users.sh
+  #   if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
+  #     chmod 700 /var/xdrago/manage_ltd_users.sh
+  #     chown root:root /var/xdrago/manage_ltd_users.sh
+  #     touch ${pthLog}/manage_ltd_users.fixed.a302o.pid
+  #   else
+  #     mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
+  #   fi
+  # fi
+  rm -f /var/xdrago/manage_ltd_users.sh
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
