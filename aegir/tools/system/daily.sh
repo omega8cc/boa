@@ -444,7 +444,7 @@ fix_boost_cache() {
     fi
   fi
   if [ -e "${Plr}/cache" ]; then
-    chown ${_HM_U}.ftp:www-data ${Plr}/cache &> /dev/null
+    chown ${_HM_U}:www-data ${Plr}/cache &> /dev/null
     chmod 02775 ${Plr}/cache &> /dev/null
   fi
 }
@@ -2110,7 +2110,7 @@ fix_permissions() {
     fix_expected_symlinks
     ### known exceptions
     chmod -R 775 ${Plr}/sites/all/libraries/tcpdf/cache &> /dev/null
-    chown -R ${_HM_U}.ftp:www-data \
+    chown -R ${_HM_U}:www-data \
       ${Plr}/sites/all/libraries/tcpdf/cache &> /dev/null
     touch ${User}/log/ctrl/plr.${PlrID}.perm-fix-${_NOW}.info
   fi
@@ -2146,7 +2146,7 @@ fix_permissions() {
     find ${Dir}/{modules,themes,libraries} -type f -exec \
       chmod 0664 {} \; &> /dev/null
     ### files - site level
-    chown -L -R ${_HM_U}.ftp:www-data ${Dir}/files &> /dev/null
+    chown -L -R ${_HM_U}:www-data ${Dir}/files &> /dev/null
     find ${Dir}/files/* -type d -exec chmod 02775 {} \; &> /dev/null
     find ${Dir}/files/* -type f -exec chmod 0664 {} \; &> /dev/null
     chmod 02775 ${Dir}/files &> /dev/null
@@ -2159,7 +2159,7 @@ fix_permissions() {
     chown ${_HM_U}:www-data ${Dir}/files/{civicrm/upload,civicrm/persist} &> /dev/null
     chown ${_HM_U}:www-data ${Dir}/files/{civicrm/custom,civicrm/dynamic} &> /dev/null
     ### private - site level
-    chown -L -R ${_HM_U}.ftp:www-data ${Dir}/private &> /dev/null
+    chown -L -R ${_HM_U}:www-data ${Dir}/private &> /dev/null
     find ${Dir}/private -type d -exec chmod 02775 {} \; &> /dev/null
     find ${Dir}/private -type f -exec chmod 0664 {} \; &> /dev/null
     chown ${_HM_U}:www-data ${Dir}/private &> /dev/null
