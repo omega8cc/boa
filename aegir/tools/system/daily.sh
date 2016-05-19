@@ -2461,7 +2461,22 @@ cleanup_ghost_drushrc() {
 }
 
 check_update_le_ssl() {
-  if [ "${_DOW}" = "3" ]; then
+  if [[ "${Dom}" =~ ^(a|b|c|d|e) ]]; then
+    runDay="1"
+  elif [[ "${Dom}" =~ ^(f|g|h|i) ]]; then
+    runDay="2"
+  elif [[ "${Dom}" =~ ^(j|k|l|m) ]]; then
+    runDay="3"
+  elif [[ "${Dom}" =~ ^(n|o|p|q) ]]; then
+    runDay="4"
+  elif [[ "${Dom}" =~ ^(r|s|t|u) ]]; then
+    runDay="5"
+  elif [[ "${Dom}" =~ ^(v|w|x|y) ]]; then
+    runDay="6"
+  else
+    runDay="7"
+  fi
+  if [ "${_DOW}" = "${runDay}" ]; then
     if [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
       echo Running LE cert check via Verify task for ${Dom}
       run_drush8_hmr_cmd "hosting-task @${Dom} verify --force"
