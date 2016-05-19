@@ -379,6 +379,36 @@ update_agents() {
     fi
   fi
 
+  if [ -e "/opt/tools/drush/8/drush/drush" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/multi.fixed.a302o.pid" ]; then
+    mv -f /var/xdrago/conf/fpm-pool-foo-multi.conf /var/xdrago/conf/fpm-pool-foo-multi.conf.old
+    curl ${crlGet} "${urlHmr}/tools/system/conf/fpm-pool-foo-multi.conf" \
+      -o /var/xdrago/conf/fpm-pool-foo-multi.conf
+    if [ -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
+      chmod 644 /var/xdrago/conf/fpm-pool-foo-multi.conf
+      chown root:root /var/xdrago/conf/fpm-pool-foo-multi.conf
+      touch ${pthLog}/multi.fixed.a302o.pid
+    else
+      mv -f /var/xdrago/conf/fpm-pool-foo-multi.conf.old /var/xdrago/conf/fpm-pool-foo-multi.conf
+    fi
+  fi
+
+  if [ -e "/opt/tools/drush" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/single.fixed.a302o.pid" ]; then
+    mv -f /var/xdrago/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf.old
+    curl ${crlGet} "${urlHmr}/tools/system/conf/fpm-pool-foo.conf" \
+      -o /var/xdrago/conf/fpm-pool-foo.conf
+    if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
+      chmod 644 /var/xdrago/conf/fpm-pool-foo.conf
+      chown root:root /var/xdrago/conf/fpm-pool-foo.conf
+      touch ${pthLog}/single.fixed.a302o.pid
+    else
+      mv -f /var/xdrago/conf/fpm-pool-foo.conf.old /var/xdrago/conf/fpm-pool-foo.conf
+    fi
+  fi
+
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
     && [ ! -e "${pthLog}/websh.fixed.a302o.pid" ]; then

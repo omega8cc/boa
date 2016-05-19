@@ -1584,8 +1584,13 @@ switch_php() {
                 _WEB="${_USER}.web"
                 _POOL="${_USER}"
               fi
-              cp -af /var/xdrago/conf/fpm-pool-foo-multi.conf \
-                /opt/php${m}/etc/pool.d/${_POOL}.conf
+              if [ -d "${dscUsr}/tools/le" ]; then
+                cp -af /var/xdrago/conf/fpm-pool-foo-multi.conf \
+                  /opt/php${m}/etc/pool.d/${_POOL}.conf
+              else
+                cp -af /var/xdrago/conf/fpm-pool-foo.conf \
+                  /opt/php${m}/etc/pool.d/${_POOL}.conf
+              fi
               sed -i "s/.ftp/.web/g" \
                 /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
               wait

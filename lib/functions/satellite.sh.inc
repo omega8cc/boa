@@ -228,8 +228,8 @@ satellite_tune_fpm_config() {
       _LIM_FPM=2
       _PHP_FPM_WORKERS=4
     fi
-    if [ -e "/data/disk/${_USER}/log/cores.txt" ]; then
-      _CLIENT_CORES=$(cat /data/disk/${_USER}/log/cores.txt 2>&1)
+    if [ -e "${_ROOT}/log/cores.txt" ]; then
+      _CLIENT_CORES=$(cat ${_ROOT}/log/cores.txt 2>&1)
       _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
     fi
     _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
@@ -282,13 +282,18 @@ satellite_tune_fpm_config() {
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
     mkdir -p /var/xdrago/conf
   fi
-  cp -af ${bldPth}/aegir/conf/fpm-pool-foo.conf \
-    /var/xdrago/conf/fpm-pool-foo-multi.conf
+  cp -af ${bldPth}/aegir/conf/fpm-pool-foo-multi.conf /var/xdrago/conf/
+  cp -af ${bldPth}/aegir/conf/fpm-pool-foo.conf /var/xdrago/conf/
   if [ ! -z "${_PHP_FPM_TIMEOUT}" ] && [ ! -z "${_PHP_SV}" ]; then
     if [ -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
       rm -f /opt/php*/etc/pool.d/${_USER}.conf
-      cp -af /var/xdrago/conf/fpm-pool-foo-multi.conf \
-        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
+      if [ -d "${_ROOT}/tools/le" ]; then
+        cp -af /var/xdrago/conf/fpm-pool-foo-multi.conf \
+          /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
+      else
+        cp -af /var/xdrago/conf/fpm-pool-foo.conf \
+          /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
+      fi
     fi
     if [ -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ]; then
       ### create or update special system user if needed
