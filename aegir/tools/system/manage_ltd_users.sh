@@ -1373,7 +1373,7 @@ switch_php() {
     sleep 5
     if [ ! -e "${dscUsr}/static/control/hhvm.info" ] \
       && [ -e "${dscUsr}/static/control/fpm.info" ] \
-      && [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
+      && [ -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
       _PHP_FPM_MULTI=NO
       if [ -f "${dscUsr}/static/control/multi-fpm.info" ]; then
         _PHP_FPM_MULTI=YES
@@ -1584,7 +1584,7 @@ switch_php() {
                 _WEB="${_USER}.web"
                 _POOL="${_USER}"
               fi
-              cp -af /var/xdrago/conf/fpm-pool-foo.conf \
+              cp -af /var/xdrago/conf/fpm-pool-foo-multi.conf \
                 /opt/php${m}/etc/pool.d/${_POOL}.conf
               sed -i "s/.ftp/.web/g" \
                 /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null

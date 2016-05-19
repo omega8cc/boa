@@ -279,15 +279,15 @@ satellite_tune_fpm_config() {
   if [ "${_PHP_FPM_TIMEOUT}" -lt "60" ]; then
     _PHP_FPM_TIMEOUT=60
   fi
-  if [ ! -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
+  if [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
     mkdir -p /var/xdrago/conf
   fi
   cp -af ${bldPth}/aegir/conf/fpm-pool-foo.conf \
-    /var/xdrago/conf/fpm-pool-foo.conf
+    /var/xdrago/conf/fpm-pool-foo-multi.conf
   if [ ! -z "${_PHP_FPM_TIMEOUT}" ] && [ ! -z "${_PHP_SV}" ]; then
-    if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
+    if [ -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
       rm -f /opt/php*/etc/pool.d/${_USER}.conf
-      cp -af /var/xdrago/conf/fpm-pool-foo.conf \
+      cp -af /var/xdrago/conf/fpm-pool-foo-multi.conf \
         /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
     fi
     if [ -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ]; then
