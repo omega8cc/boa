@@ -535,9 +535,22 @@ fix_dot_dirs() {
 #
 # Manage Drush Aliases.
 manage_sec_user_drush_aliases() {
-  rm -f ${usrLtdRoot}/sites
-  ln -sf $Client ${usrLtdRoot}/sites
-  mkdir -p ${usrLtdRoot}/.drush
+  if [ -e "$Client" ]; then
+    if [ -L "${usrLtdRoot}/sites" ]; then
+      symTgt=$(readlink -n ${usrLtdRoot}/sites 2>&1)
+      symTgt=$(echo -n ${symTgt} | tr -d "\n" 2>&1)
+    else
+      rm -f ${usrLtdRoot}/sites
+    fi
+    if [ "${symTgt}" != "$Client" ] \
+      || [ ! -e "${usrLtdRoot}/sites" ]; then
+      rm -f ${usrLtdRoot}/sites
+      ln -sf $Client ${usrLtdRoot}/sites
+    fi
+  fi
+  if [ ! -e "${usrLtdRoot}/.drush" ]; then
+    mkdir -p ${usrLtdRoot}/.drush
+  fi
   for Alias in `find ${usrLtdRoot}/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
     AliasName=$(echo "$Alias" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
@@ -1854,35 +1867,38 @@ manage_user() {
 
 ###-------------SYSTEM-----------------###
 
-chattr -i /home
-chmod 0711 /home
-chown root:root /home
-
-while IFS=':' read -r login pass uid gid uname homedir shell; do
-  if [[ "${homedir}" = **/home/** ]]; then
-    if [ -d "${homedir}" ]; then
-      chattr -i ${homedir} &> /dev/null
-      chown ${uid}:${gid} ${homedir} &> /dev/null
-      if [ -d "${homedir}/.ssh" ]; then
-        chattr -i ${homedir}/.ssh &> /dev/null
-        chown -R ${uid}:${gid} ${homedir}/.ssh &> /dev/null
-      fi
-      if [ -d "${homedir}/.tmp" ]; then
-        chattr -i ${homedir}/.tmp &> /dev/null
-        chown -R ${uid}:${gid} ${homedir}/.tmp &> /dev/null
-      fi
-      if [ -d "${homedir}/.drush" ]; then
-        chattr +i ${homedir}/.drush/usr &> /dev/null
-        chattr +i ${homedir}/.drush/*.ini &> /dev/null
-        chattr +i ${homedir}/.drush &> /dev/null
-      fi
-      if [[ ! "${login}" =~ ".ftp"($) ]] \
-        && [[ ! "${login}" =~ ".web"($) ]]; then
-        chattr +i ${homedir} &> /dev/null
+if [ ! -e "/home/.ctrl.302stableQ.txt" ]; then
+  chattr -i /home
+  chmod 0711 /home
+  chown root:root /home
+  rm -f /home/.ctrl.*
+  while IFS=':' read -r login pass uid gid uname homedir shell; do
+    if [[ "${homedir}" = **/home/** ]]; then
+      if [ -d "${homedir}" ]; then
+        chattr -i ${homedir} &> /dev/null
+        chown ${uid}:${gid} ${homedir} &> /dev/null
+        if [ -d "${homedir}/.ssh" ]; then
+          chattr -i ${homedir}/.ssh &> /dev/null
+          chown -R ${uid}:${gid} ${homedir}/.ssh &> /dev/null
+        fi
+        if [ -d "${homedir}/.tmp" ]; then
+          chattr -i ${homedir}/.tmp &> /dev/null
+          chown -R ${uid}:${gid} ${homedir}/.tmp &> /dev/null
+        fi
+        if [ -d "${homedir}/.drush" ]; then
+          chattr +i ${homedir}/.drush/usr &> /dev/null
+          chattr +i ${homedir}/.drush/*.ini &> /dev/null
+          chattr +i ${homedir}/.drush &> /dev/null
+        fi
+        if [[ ! "${login}" =~ ".ftp"($) ]] \
+          && [[ ! "${login}" =~ ".web"($) ]]; then
+          chattr +i ${homedir} &> /dev/null
+        fi
       fi
     fi
-  fi
-done < /etc/passwd
+  done < /etc/passwd
+  touch /home/.ctrl.302stableQ.txt
+fi
 
 if [ ! -L "/usr/bin/MySecureShell" ] && [ -x "/usr/bin/mysecureshell" ]; then
   mv -f /usr/bin/MySecureShell /var/backups/legacy-MySecureShell-bin
