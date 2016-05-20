@@ -2673,7 +2673,7 @@ finale() {
     sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
     wait
     if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io" ]] ; then
+      || [[ "${_THISHOST}" =~ ".boa.io" ]]; then
       if [ "${_VMFAMILY}" = "VS" ]; then
         _DO_NOTHING=YES
       else

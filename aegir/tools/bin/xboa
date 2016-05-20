@@ -511,7 +511,7 @@ migrate_prepare() {
     fi
 
     if [ "${fix}" = "fix" ]; then
-      if [ ! -e "${_USR}/log/post-merge-fix.pid" ] ; then
+      if [ ! -e "${_USR}/log/post-merge-fix.pid" ]; then
         echo "HOTFIX B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 start"
         _DOMAIN=`cat ${_USR}/log/domain.txt`
         _DOMAIN=`echo -n ${_DOMAIN} | tr -d "\n"`
@@ -570,7 +570,7 @@ migrate_prepare() {
       run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET uid='1' WHERE uid='0'\"" &> /dev/null
       _HM_NID=$(run_drush8_hmr_cmd "@hostmaster sqlq \"SELECT site.nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'\"" 2>&1)
       _HM_NID=${_HM_NID//[^0-9]/}
-      if [ ! -z "${_HM_NID}" ] ; then
+      if [ ! -z "${_HM_NID}" ]; then
         echo "HOTFIX B: Hostmaster STATUS: Fix 1/2 hosting_context ${_HM_NID}"
         if [ -e "${_USR}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
           _HM_PLF=$(run_drush8_hmr_cmd "@hostmaster sqlq \"SELECT platform FROM hosting_site WHERE nid='${_HM_NID}'\"" 2>&1)

@@ -77,7 +77,7 @@ fix_dns_settings() {
     done
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ] \
-    && [ -e "${vBs}/resolv.conf.tmp" ] ; then
+    && [ -e "${vBs}/resolv.conf.tmp" ]; then
     if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
       cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
@@ -465,7 +465,7 @@ satellite_check_switch_php() {
       _PHP_CLI_LEGACY_FREE=YES
     fi
     if [ "${_PHP_CLI_LEGACY_FREE}" = "YES" ] \
-      && [ "${_PHP_FPM_LEGACY_FREE}" = "YES" ] ; then
+      && [ "${_PHP_FPM_LEGACY_FREE}" = "YES" ]; then
       _PHP_LEGACY_FREE=YES
     else
       _PHP_LEGACY_FREE=NO

@@ -1884,7 +1884,7 @@ while IFS=':' read -r login pass uid gid uname homedir shell; do
   fi
 done < /etc/passwd
 
-if [ ! -L "/usr/bin/MySecureShell" ] && [ -x "/usr/bin/mysecureshell" ] ; then
+if [ ! -L "/usr/bin/MySecureShell" ] && [ -x "/usr/bin/mysecureshell" ]; then
   mv -f /usr/bin/MySecureShell /var/backups/legacy-MySecureShell-bin
   ln -sf /usr/bin/mysecureshell /usr/bin/MySecureShell
 fi

@@ -3561,7 +3561,7 @@ satellite_check_php_compatibility() {
     _PHP_CLI_LEGACY_FREE=YES
   fi
   if [ "${_PHP_CLI_LEGACY_FREE}" = "YES" ] \
-    && [ "${_PHP_FPM_LEGACY_FREE}" = "YES" ] ; then
+    && [ "${_PHP_FPM_LEGACY_FREE}" = "YES" ]; then
     _PHP_LEGACY_FREE=YES
   else
     _PHP_LEGACY_FREE=NO
