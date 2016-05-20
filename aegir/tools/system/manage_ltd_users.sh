@@ -700,8 +700,7 @@ add_user_if_not_exists() {
         chown ${usrLtd}:${usrGroup} ${usrTmp}
         chmod 02755 ${usrTmp}
       fi
-      touch ${usrTmp}
-      find ${usrTmp}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
+      find ${usrTmp} -mtime +0 -exec rm -rf {} \; &> /dev/null
       ok_update_user
       enable_chattr ${usrLtd}
     fi
