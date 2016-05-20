@@ -1872,9 +1872,9 @@ while IFS=':' read -r login pass uid gid uname homedir shell; do
         chown -R ${uid}:${gid} ${homedir}/.tmp &> /dev/null
       fi
       if [ -d "${homedir}/.drush" ]; then
-        chattr +i ${homedir}/.drush &> /dev/null
         chattr +i ${homedir}/.drush/usr &> /dev/null
         chattr +i ${homedir}/.drush/*.ini &> /dev/null
+        chattr +i ${homedir}/.drush &> /dev/null
       fi
       if [[ ! "${login}" =~ ".ftp"($) ]] \
         && [[ ! "${login}" =~ ".web"($) ]]; then
