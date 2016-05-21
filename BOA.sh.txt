@@ -397,6 +397,13 @@ update_agents() {
     fi
   fi
 
+  if [ -e "/opt/tools/drush" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/dispatch.fixed.a302w.pid" ]; then
+    sed -i "s/.*cache.*//g; s/.*cc drush.*//g; s/ *$//g; /^$/d" /data/disk/*/aegir.sh
+    touch ${pthLog}/dispatch.fixed.a302w.pid
+  fi
+
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
     && [ ! -e "${pthLog}/websh.fixed.a302w.pid" ]; then
