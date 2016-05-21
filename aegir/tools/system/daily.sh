@@ -2460,6 +2460,30 @@ cleanup_ghost_drushrc() {
   done
 }
 
+check_update_le_hm_ssl() {
+  exeLe="${User}/tools/le/letsencrypt.sh"
+  if [ -e "${User}/log/domain.txt" ]; then
+    hmFront=$(cat ${User}/log/domain.txt 2>&1)
+    hmFront=$(echo -n ${hmFront} | tr -d "\n" 2>&1)
+  fi
+  if [ -z "${hmFront}" ]; then
+    if [ -e "${User}/.drush/hostmaster.alias.drushrc.php" ]; then
+      hmFront=$(cat ${User}/.drush/hostmaster.alias.drushrc.php \
+        | grep "uri'" \
+        | cut -d: -f2 \
+        | awk '{ print $3}' \
+        | sed "s/[\,']//g" 2>&1)
+    fi
+  fi
+  if [ -x "${exeLe}" ] \
+    && [ ! -z "${hmFront}" ] \
+    && [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
+    echo "Running LE cert check directly for hostmaster ${_HM_U}"
+    su -s /bin/bash - ${_HM_U} -c "${exeLe} -c -d ${hmFront}"
+    sleep 5
+  fi
+}
+
 check_update_le_ssl() {
   if [[ "${Dom}" =~ ^(a|b|c|d|e) ]]; then
     runDay="1"
@@ -2478,7 +2502,7 @@ check_update_le_ssl() {
   fi
   if [ "${_DOW}" = "${runDay}" ]; then
     if [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
-      echo Running LE cert check via Verify task for ${Dom}
+      echo "Running LE cert check via Verify task for ${Dom}"
       run_drush8_hmr_cmd "hosting-task @${Dom} verify --force"
       sleep 5
     fi
@@ -2999,6 +3023,7 @@ action() {
           symlinks -dr /home/${_HM_U}.ftp &> /dev/null
           rm -f /home/${_HM_U}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
         fi
+        check_update_le_hm_ssl ${_HM_U}
         echo "Done for ${User}"
         enable_chattr ${_HM_U}.ftp
       else
