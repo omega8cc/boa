@@ -44,7 +44,7 @@
 
    You must specify the kind of install with {in-stable|in-head} or for
    legacy versions with {in-2.4|in-2.3|in-2.2}, location with {local|public},
-   your hostname and e-mail address, as shown further below.
+   your hostname and email address, as shown further below.
 
    Specifying Octopus username is optional. It will use "o1" if empty.
 
@@ -94,7 +94,7 @@
 3. Install Barracuda and Octopus.
 
    You must specify the kind of install with {in-stable|in-head},
-   location with {local|public}, and your e-mail address,
+   location with {local|public}, and your email address,
    as shown below. For local installs you don't need to specify
    hostname and Octopus username, as it is fully automated.
 

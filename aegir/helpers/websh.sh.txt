@@ -470,8 +470,12 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     fi
   fi
   if [ "${_IN_PATH}" = "YES" ]; then
-    if [[ "${_ALL}" =~ "-c set -m; " ]] \
-      && [ -x "/home/${USER}/.rvm/bin/rvm" ]; then
+    if [ -x "/home/${USER}/.rvm/bin/rvm" ]; then
+      if [[ "${_ALL}" =~ "-c set -m; " ]] || [ ! -z "${SSH_CLIENT}" ]; then
+        _RUBY_ALLOW=YES
+      fi
+    fi
+    if [ "${_RUBY_ALLOW}" = "YES" ]; then
       _THIS_RV=$(lsb_release -sc 2>&1)
       if [ "${_THIS_RV}" = "jessie" ] \
         || [ "${_THIS_RV}" = "wheezy" ] \
@@ -487,7 +491,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ]; then
           _RUBY_VP="${_DETECTED_RUBY_VP}"
         else
-          _RUBY_VP=2.3.0
+          _RUBY_VP=2.3.1
         fi
       else
         _DETECTED_RUBY_VP=$(grep 'RUBY_VERSION' \
@@ -549,6 +553,7 @@ else
       || [[ "$2" =~ "drush" ]]; then
       if [[ "$2" =~ "uli" ]] \
         || [[ "$2" =~ "vget" ]] \
+        || [[ "$2" =~ "--version" ]] \
         || [[ "$2" =~ "vset" ]] \
         || [[ "$2" =~ "status" ]]; then
         _ALLOW=YES

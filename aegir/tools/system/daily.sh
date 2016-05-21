@@ -31,7 +31,7 @@ check_root() {
 check_root
 
 _WEBG=www-data
-_X_SE="3.0.1-stable"
+_X_SE="3.0.2-stable"
 _OSV=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
@@ -42,6 +42,7 @@ if [[ "${_SSL_ITD}" =~ "1.0.1" ]] \
   _NEW_SSL=YES
 fi
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+vSet="vset --always-set"
 
 ###-------------SYSTEM-----------------###
 
@@ -109,7 +110,9 @@ get_dev_ext() {
 }
 
 enable_chattr() {
-  if [ ! -z "$1" ] && [ -d "/home/$1" ]; then
+  isTest="$1"
+  isTest=${isTest//[^a-z0-9]/}
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
     if [ "$1" != "${_HM_U}.ftp" ]; then
       chattr +i /home/$1             &> /dev/null
     else
@@ -143,7 +146,7 @@ disable_chattr() {
     usrTgt="/home/$1/.drush/usr"
     if [ ! -L "${usrTgt}/drupalgeddon" ] \
       && [ -d "${usrSrc}/drupalgeddon" ]; then
-      rm -f -r ${usrTgt}/drupalgeddon
+      rm -rf ${usrTgt}/drupalgeddon
       ln -sf ${usrSrc}/drupalgeddon ${usrTgt}/drupalgeddon
     fi
   fi
@@ -384,12 +387,12 @@ fix_user_register_protection() {
     Prm=${Prm//[^0-2]/}
     echo "Prm user_register for ${Dom} is ${Prm}"
     if [ "${_ENABLE_USER_REGISTER_PROTECTION}" = "YES" ]; then
-      run_drush8_cmd "vset --always-set user_register 0"
+      run_drush8_cmd "${vSet} user_register 0"
     else
       if [ "${Prm}" = "1" ] || [ -z "${Prm}" ]; then
-        run_drush8_cmd "vset --always-set user_register 2"
+        run_drush8_cmd "${vSet} user_register 2"
       fi
-      run_drush8_cmd "vset --always-set user_email_verification 1"
+      run_drush8_cmd "${vSet} user_email_verification 1"
     fi
   fi
 
@@ -400,7 +403,7 @@ fix_user_register_protection() {
       rm -f ${Dir}/modules/readonlymode_fix.info
     fi
     if [ ! -e "${User}/log/ctrl/site.${Dom}.rom-fix.info" ]; then
-      run_drush8_cmd "vset --always-set site_readonly 0"
+      run_drush8_cmd "${vSet} site_readonly 0"
       touch ${User}/log/ctrl/site.${Dom}.rom-fix.info
     fi
   fi
@@ -418,11 +421,24 @@ fix_robots_txt() {
       echo >> ${Dir}/files/robots.txt
     fi
   fi
+  _VAR_IF_PRESENT=
+  if [ -f "${Dir}/files/robots.txt" ]; then
+    _VAR_IF_PRESENT=$(grep "Disallow:" ${Dir}/files/robots.txt 2>&1)
+  fi
+  if [[ ! "${_VAR_IF_PRESENT}" =~ "Disallow:" ]]; then
+    rm -f ${Dir}/files/robots.txt
+  else
+    chown ${_HM_U}:www-data ${Dir}/files/robots.txt &> /dev/null
+    chmod 0664 ${Dir}/files/robots.txt &> /dev/null
+    if [ -f "${Plr}/robots.txt" ] || [ -L "${Plr}/robots.txt" ]; then
+      rm -f ${Plr}/robots.txt
+    fi
+  fi
 }
 
 fix_boost_cache() {
   if [ -e "${Plr}/cache" ]; then
-    rm -f -r ${Plr}/cache/*
+    rm -rf ${Plr}/cache/*
     rm -f ${Plr}/cache/{.boost,.htaccess}
   else
     if [ -e "${Plr}/sites/all/drush/drushrc.php" ]; then
@@ -430,11 +446,8 @@ fix_boost_cache() {
     fi
   fi
   if [ -e "${Plr}/cache" ]; then
-    chown ${_HM_U}.ftp:www-data ${Plr}/cache &> /dev/null
+    chown ${_HM_U}:www-data ${Plr}/cache &> /dev/null
     chmod 02775 ${Plr}/cache &> /dev/null
-  fi
-  if [ -f "${Plr}/robots.txt" ] || [ -L "${Plr}/robots.txt" ]; then
-    rm -f ${Plr}/robots.txt
   fi
 }
 
@@ -466,6 +479,9 @@ sql_convert() {
 send_shutdown_notice() {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+  if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
+    _MY_EMAIL="support@omega8.cc"
+  fi
   if [ ! -z "${_CLIENT_EMAIL}" ] \
     && [[ ! "${_CLIENT_EMAIL}" =~ "${_MY_EMAIL}" ]]; then
     _ALRT_EMAIL="${_CLIENT_EMAIL}"
@@ -515,7 +531,7 @@ how to survive #Drupageddon, please read:
   https://omega8.cc/drupageddon-psa-2014-003-342
 
 --
-This e-mail has been sent by your Aegir system monitor.
+This email has been sent by your Aegir automatic system monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
@@ -552,7 +568,7 @@ how to survive #Drupageddon, please read:
   https://omega8.cc/drupageddon-psa-2014-003-342
 
 --
-This e-mail has been sent by your Aegir system monitor.
+This email has been sent by your Aegir automatic system monitor.
 
 EOF
   else
@@ -589,7 +605,7 @@ how to survive #Drupageddon, please read:
   https://omega8.cc/drupageddon-psa-2014-003-342
 
 --
-This e-mail has been sent by your Aegir system monitor.
+This email has been sent by your Aegir automatic system monitor.
 
 EOF
   fi
@@ -599,6 +615,9 @@ EOF
 send_hacked_alert() {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+  if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
+    _MY_EMAIL="support@omega8.cc"
+  fi
   if [ ! -z "${_CLIENT_EMAIL}" ] \
     && [[ ! "${_CLIENT_EMAIL}" =~ "${_MY_EMAIL}" ]]; then
     _ALRT_EMAIL="${_CLIENT_EMAIL}"
@@ -616,11 +635,11 @@ send_hacked_alert() {
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
   cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "URGENT: The ${Dom} site on "${_CHECK_HOST}" has been HACKED!" \
+    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} has been HACKED!" \
     ${_ALRT_EMAIL}
 Hello,
 
-Our system detected that the site ${Dom} has been hacked!
+Our monitoring detected that the site ${Dom} has been hacked!
 
 Common signatures of an attack which triggered this alert:
 
@@ -639,17 +658,42 @@ how to survive #Drupageddon, please read:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
+We have restarted these daily checks on May 7, 2016 to make sure that
+no one stays on some too old Drupal version with many known security
+vulnerabilities.
+
+You will receive Drupageddon alert for every site with outdated and
+not secure codebase, even if it was not affected by Drupageddon bug
+directly.
+
+Please be a good web citizen and upgrade to latest Drupal core provided
+by BOA-3.0.2. As a bonus, you will be able to speed up your sites
+considerably by switching PHP-FPM to 7.0
+
+We recommend to follow this upgrade how-to:
+
+  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
+The how-to for PHP-FPM version switch can be found at:
+
+  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
+
+Note: while we don't provide Drupal sites upgrade service, we can
+recommend myDropWizard, if you need to outsource this task:
+
+  https://www.mydropwizard.com
+
 --
-This e-mail has been sent by your Aegir system monitor.
+This email has been sent by your Aegir automatic system monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
   cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "URGENT: The ${Dom} site on "${_CHECK_HOST}" has been HACKED!" \
+    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} has been HACKED!" \
     ${_ALRT_EMAIL}
 Hello,
 
-Our system detected that the site ${Dom} has been hacked!
+Our monitoring detected that the site ${Dom} has been hacked!
 
 Common signatures of an attack which triggered this alert:
 
@@ -668,17 +712,42 @@ how to survive #Drupageddon, please read:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
+We have restarted these daily checks on May 7, 2016 to make sure that
+no one stays on some too old Drupal version with many known security
+vulnerabilities.
+
+You will receive Drupageddon alert for every site with outdated and
+not secure codebase, even if it was not affected by Drupageddon bug
+directly.
+
+Please be a good web citizen and upgrade to latest Drupal core provided
+by BOA-3.0.2. As a bonus, you will be able to speed up your sites
+considerably by switching PHP-FPM to 7.0
+
+We recommend to follow this upgrade how-to:
+
+  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
+The how-to for PHP-FPM version switch can be found at:
+
+  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
+
+Note: while we don't provide Drupal sites upgrade service, we can
+recommend myDropWizard, if you need to outsource this task:
+
+  https://www.mydropwizard.com
+
 --
-This e-mail has been sent by your Aegir system monitor.
+This email has been sent by your Aegir automatic system monitor.
 
 EOF
   else
   cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
-    -s "URGENT: The ${Dom} site on "${_CHECK_HOST}" has been HACKED!" \
+    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} has been HACKED!" \
     ${_ALRT_EMAIL}
 Hello,
 
-Our system detected that the site ${Dom} has been hacked!
+Our monitoring detected that the site ${Dom} has been hacked!
 
 Common signatures of an attack which triggered this alert:
 
@@ -697,12 +766,260 @@ how to survive #Drupageddon, please read:
 
   https://omega8.cc/drupageddon-psa-2014-003-342
 
+We have restarted these daily checks on May 7, 2016 to make sure that
+no one stays on some too old Drupal version with many known security
+vulnerabilities.
+
+You will receive Drupageddon alert for every site with outdated and
+not secure codebase, even if it was not affected by Drupageddon bug
+directly.
+
+Please be a good web citizen and upgrade to latest Drupal core provided
+by BOA-3.0.2. As a bonus, you will be able to speed up your sites
+considerably by switching PHP-FPM to 7.0
+
+We recommend to follow this upgrade how-to:
+
+  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
+The how-to for PHP-FPM version switch can be found at:
+
+  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
+
+Note: while we don't provide Drupal sites upgrade service, we can
+recommend myDropWizard, if you need to outsource this task:
+
+  https://www.mydropwizard.com
+
 --
-This e-mail has been sent by your Aegir system monitor.
+This email has been sent by your Aegir automatic system monitor.
 
 EOF
   fi
   echo "ALERT: HACKED notice sent to ${_CLIENT_EMAIL} [${_HM_U}]: OK"
+}
+
+send_core_alert() {
+  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+  if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
+    _MY_EMAIL="support@omega8.cc"
+  fi
+  if [ ! -z "${_CLIENT_EMAIL}" ] \
+    && [[ ! "${_CLIENT_EMAIL}" =~ "${_MY_EMAIL}" ]]; then
+    _ALRT_EMAIL="${_CLIENT_EMAIL}"
+  else
+    _ALRT_EMAIL="${_MY_EMAIL}"
+  fi
+  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+    || [ "${_VMFAMILY}" = "VS" ] \
+    || [ -e "/root/.host8.cnf" ]; then
+    _BCC_EMAIL="omega8cc@gmail.com"
+  else
+    _BCC_EMAIL="${_MY_EMAIL}"
+  fi
+  _MAILX_TEST=$(mail -V 2>&1)
+  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
+  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
+    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core!" \
+    ${_ALRT_EMAIL}
+Hello,
+
+Our monitoring detected that this site runs on not secure Drupal core:
+
+  ${Dom}
+
+The Drupageddon check result which triggered this alert:
+
+${_DETECTED}
+
+The platform root directory for this site is:
+
+  ${Plr}
+
+The system hostname is:
+
+  ${_CHECK_HOST}
+
+Does it mean that your site is vulnerable to Drupageddon attack, recently
+made famous again by Panama Papers leak?
+
+  https://www.drupal.org/node/2718467
+
+It depends on the Drupal core version you are using, and if it has been
+patched already to close the known attack vectors. You can find more
+details on our website at:
+
+  https://omega8.cc/drupageddon-psa-2014-003-342
+
+Even if the Drupal core version used in this site is not vulnerable
+to Drupageddon attack, it is still vulnerable to other attacks,
+because you have missed Drupal core security release(s).
+
+We have restarted these daily checks on May 7, 2016 to make sure that
+no one stays on some too old Drupal version with many known security
+vulnerabilities.
+
+You will receive Drupageddon alert for every site with outdated and
+not secure codebase, even if it was not affected by Drupageddon bug
+directly.
+
+Please be a good web citizen and upgrade to latest Drupal core provided
+by BOA-3.0.2. As a bonus, you will be able to speed up your sites
+considerably by switching PHP-FPM to 7.0
+
+We recommend to follow this upgrade how-to:
+
+  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
+The how-to for PHP-FPM version switch can be found at:
+
+  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
+
+Note: while we don't provide Drupal sites upgrade service, we can
+recommend myDropWizard, if you need to outsource this task:
+
+  https://www.mydropwizard.com
+
+--
+This email has been sent by your Aegir automatic system monitor.
+
+EOF
+  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
+  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
+    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core!" \
+    ${_ALRT_EMAIL}
+Hello,
+
+Our monitoring detected that this site runs on not secure Drupal core:
+
+  ${Dom}
+
+The Drupageddon check result which triggered this alert:
+
+${_DETECTED}
+
+The platform root directory for this site is:
+
+  ${Plr}
+
+The system hostname is:
+
+  ${_CHECK_HOST}
+
+Does it mean that your site is vulnerable to Drupageddon attack, recently
+made famous again by Panama Papers leak?
+
+  https://www.drupal.org/node/2718467
+
+It depends on the Drupal core version you are using, and if it has been
+patched already to close the known attack vectors. You can find more
+details on our website at:
+
+  https://omega8.cc/drupageddon-psa-2014-003-342
+
+Even if the Drupal core version used in this site is not vulnerable
+to Drupageddon attack, it is still vulnerable to other attacks,
+because you have missed Drupal core security release(s).
+
+We have restarted these daily checks on May 7, 2016 to make sure that
+no one stays on some too old Drupal version with many known security
+vulnerabilities.
+
+You will receive Drupageddon alert for every site with outdated and
+not secure codebase, even if it was not affected by Drupageddon bug
+directly.
+
+Please be a good web citizen and upgrade to latest Drupal core provided
+by BOA-3.0.2. As a bonus, you will be able to speed up your sites
+considerably by switching PHP-FPM to 7.0
+
+We recommend to follow this upgrade how-to:
+
+  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
+The how-to for PHP-FPM version switch can be found at:
+
+  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
+
+Note: while we don't provide Drupal sites upgrade service, we can
+recommend myDropWizard, if you need to outsource this task:
+
+  https://www.mydropwizard.com
+
+--
+This email has been sent by your Aegir automatic system monitor.
+
+EOF
+  else
+  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core!" \
+    ${_ALRT_EMAIL}
+Hello,
+
+Our monitoring detected that this site runs on not secure Drupal core:
+
+  ${Dom}
+
+The Drupageddon check result which triggered this alert:
+
+${_DETECTED}
+
+The platform root directory for this site is:
+
+  ${Plr}
+
+The system hostname is:
+
+  ${_CHECK_HOST}
+
+Does it mean that your site is vulnerable to Drupageddon attack, recently
+made famous again by Panama Papers leak?
+
+  https://www.drupal.org/node/2718467
+
+It depends on the Drupal core version you are using, and if it has been
+patched already to close the known attack vectors. You can find more
+details on our website at:
+
+  https://omega8.cc/drupageddon-psa-2014-003-342
+
+Even if the Drupal core version used in this site is not vulnerable
+to Drupageddon attack, it is still vulnerable to other attacks,
+because you have missed Drupal core security release(s).
+
+We have restarted these daily checks on May 7, 2016 to make sure that
+no one stays on some too old Drupal version with many known security
+vulnerabilities.
+
+You will receive Drupageddon alert for every site with outdated and
+not secure codebase, even if it was not affected by Drupageddon bug
+directly.
+
+Please be a good web citizen and upgrade to latest Drupal core provided
+by BOA-3.0.2. As a bonus, you will be able to speed up your sites
+considerably by switching PHP-FPM to 7.0
+
+We recommend to follow this upgrade how-to:
+
+  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
+The how-to for PHP-FPM version switch can be found at:
+
+  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
+
+Note: while we don't provide Drupal sites upgrade service, we can
+recommend myDropWizard, if you need to outsource this task:
+
+  https://www.mydropwizard.com
+
+--
+This email has been sent by your Aegir automatic system monitor.
+
+EOF
+  fi
+  echo "ALERT: Core notice sent to ${_CLIENT_EMAIL} [${_HM_U}]: OK"
 }
 
 check_site_status() {
@@ -736,6 +1053,13 @@ check_site_status() {
           elif [[ "${_DGDD_T}" =~ "The drush command" ]] \
             && [[ "${_DGDD_T}" =~ "could not be found" ]]; then
             _DO_NOTHING=YES
+          elif [[ "${_DGDD_T}" =~ "has a uid that is" ]] \
+            && [[ ! "${_DGDD_T}" =~ "has security vulnerabilities" ]] \
+            && [[ "${_DGDD_T}" =~ "higher than" ]]; then
+            _DO_NOTHING=YES
+          elif [[ "${_DGDD_T}" =~ "has a created timestamp before" ]] \
+            && [[ ! "${_DGDD_T}" =~ "has security vulnerabilities" ]]; then
+            _DO_NOTHING=YES
           elif [ -z "${_DGDD_T}" ]; then
             _DO_NOTHING=YES
           elif [[ "${_DGDD_T}" =~ "Drush command terminated" ]]; then
@@ -757,7 +1081,11 @@ check_site_status() {
                   send_shutdown_notice
                 fi
               else
-                send_hacked_alert
+                if [[ "${_DGDD_T}" =~ "has security vulnerabilities" ]]; then
+                  send_core_alert
+                else
+                  send_hacked_alert
+                fi
               fi
             fi
           fi
@@ -872,7 +1200,7 @@ add_solr() {
   # $2 is solr core path
   if [ ! -z "$1" ] && [ ! -z $2 ] && [ -e "/var/xdrago/conf/solr" ]; then
     if [ ! -e "$2" ]; then
-      rm -f -r /opt/solr4/core0/data/*
+      rm -rf /opt/solr4/core0/data/*
       cp -a /opt/solr4/core0 $2
       CHAR="[:alnum:]"
       rkey=32
@@ -904,12 +1232,15 @@ add_solr() {
 
 delete_solr() {
   # $1 is solr core path
-  if [ ! -z "$1" ] && [ -e "/var/xdrago/conf/solr" ] && [ -e "$1/conf" ]; then
+  if [ ! -z "$1" ] \
+    && [[ "$1" =~ "/opt/solr4/" ]] \
+    && [ -e "/var/xdrago/conf/solr" ] \
+    && [ -e "$1/conf" ]; then
     sed -i "s/.*instanceDir=\"${_HM_U}.${Dom}\".*//g" /opt/solr4/solr.xml
     wait
     sed -i "/^$/d" /opt/solr4/solr.xml &> /dev/null
     wait
-    rm -f -r $1
+    rm -rf $1
     rm -f ${Dir}/solr.php
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
@@ -1355,6 +1686,12 @@ fix_modules() {
     else
       echo ";redis_lock_enable = TRUE" >> ${_PLR_CTRL_F}
     fi
+    _VAR_IF_PRESENT=$(grep "redis_path_enable" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_path_enable" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_path_enable = TRUE" >> ${_PLR_CTRL_F}
+    fi
     _VAR_IF_PRESENT=$(grep "redis_exclude_bins" ${_PLR_CTRL_F} 2>&1)
     if [[ "${_VAR_IF_PRESENT}" =~ "redis_exclude_bins" ]]; then
       _DO_NOTHING=YES
@@ -1429,6 +1766,12 @@ fix_modules() {
     else
       echo ";redis_lock_enable = TRUE" >> ${_DIR_CTRL_F}
     fi
+    _VAR_IF_PRESENT=$(grep "redis_path_enable" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_path_enable" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_path_enable = TRUE" >> ${_DIR_CTRL_F}
+    fi
     _VAR_IF_PRESENT=$(grep "redis_exclude_bins" ${_DIR_CTRL_F} 2>&1)
     if [[ "${_VAR_IF_PRESENT}" =~ "redis_exclude_bins" ]]; then
       _DO_NOTHING=YES
@@ -1491,11 +1834,7 @@ fix_modules() {
     _VIEWS_CONTENT_CACHE_DONT_ENABLE=NO
   fi
 
-  if [ -e "${Plr}/profiles/hostmaster" ] \
-    && [ ! -f "${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info" ]; then
-    run_drush8_hmr_cmd "dis cache syslog dblog -y"
-    touch ${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
-  elif [ -e "${Plr}/modules/o_contrib" ]; then
+  if [ -e "${Plr}/modules/o_contrib" ]; then
     if [ ! -e "${Plr}/modules/user" ] \
       || [ ! -e "${Plr}/sites/all/modules" ] \
       || [ ! -e "${Plr}/profiles" ]; then
@@ -1773,7 +2112,7 @@ fix_permissions() {
     fix_expected_symlinks
     ### known exceptions
     chmod -R 775 ${Plr}/sites/all/libraries/tcpdf/cache &> /dev/null
-    chown -R ${_HM_U}.ftp:www-data \
+    chown -R ${_HM_U}:www-data \
       ${Plr}/sites/all/libraries/tcpdf/cache &> /dev/null
     touch ${User}/log/ctrl/plr.${PlrID}.perm-fix-${_NOW}.info
   fi
@@ -1809,7 +2148,7 @@ fix_permissions() {
     find ${Dir}/{modules,themes,libraries} -type f -exec \
       chmod 0664 {} \; &> /dev/null
     ### files - site level
-    chown -L -R ${_HM_U}.ftp:www-data ${Dir}/files &> /dev/null
+    chown -L -R ${_HM_U}:www-data ${Dir}/files &> /dev/null
     find ${Dir}/files/* -type d -exec chmod 02775 {} \; &> /dev/null
     find ${Dir}/files/* -type f -exec chmod 0664 {} \; &> /dev/null
     chmod 02775 ${Dir}/files &> /dev/null
@@ -1822,7 +2161,7 @@ fix_permissions() {
     chown ${_HM_U}:www-data ${Dir}/files/{civicrm/upload,civicrm/persist} &> /dev/null
     chown ${_HM_U}:www-data ${Dir}/files/{civicrm/custom,civicrm/dynamic} &> /dev/null
     ### private - site level
-    chown -L -R ${_HM_U}.ftp:www-data ${Dir}/private &> /dev/null
+    chown -L -R ${_HM_U}:www-data ${Dir}/private &> /dev/null
     find ${Dir}/private -type d -exec chmod 02775 {} \; &> /dev/null
     find ${Dir}/private -type f -exec chmod 0664 {} \; &> /dev/null
     chown ${_HM_U}:www-data ${Dir}/private &> /dev/null
@@ -2121,6 +2460,31 @@ cleanup_ghost_drushrc() {
   done
 }
 
+check_update_le_ssl() {
+  if [[ "${Dom}" =~ ^(a|b|c|d|e) ]]; then
+    runDay="1"
+  elif [[ "${Dom}" =~ ^(f|g|h|i) ]]; then
+    runDay="2"
+  elif [[ "${Dom}" =~ ^(j|k|l|m) ]]; then
+    runDay="3"
+  elif [[ "${Dom}" =~ ^(n|o|p|q) ]]; then
+    runDay="4"
+  elif [[ "${Dom}" =~ ^(r|s|t|u) ]]; then
+    runDay="5"
+  elif [[ "${Dom}" =~ ^(v|w|x|y) ]]; then
+    runDay="6"
+  else
+    runDay="7"
+  fi
+  if [ "${_DOW}" = "${runDay}" ]; then
+    if [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
+      echo Running LE cert check via Verify task for ${Dom}
+      run_drush8_hmr_cmd "hosting-task @${Dom} verify --force"
+      sleep 5
+    fi
+  fi
+}
+
 process() {
   cleanup_ghost_vhosts
   cleanup_ghost_drushrc
@@ -2129,6 +2493,19 @@ process() {
     _MOMENT=$(date +%y%m%d-%H%M 2>&1)
     echo ${_MOMENT} Start Counting Site $Site
     Dom=$(echo $Site | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
+    Dan=
+    if [ -e "${User}/config/server_master/nginx/vhost.d/${Dom}" ]; then
+      Plx=$(cat ${User}/config/server_master/nginx/vhost.d/${Dom} \
+        | grep "root " \
+        | cut -d: -f2 \
+        | awk '{ print $2}' \
+        | sed "s/[\;]//g" 2>&1)
+      if [[ "$Plx" =~ "aegir/distro" ]]; then
+        Dan=hostmaster
+      else
+        Dan="${Dom}"
+      fi
+    fi
     _STATUS_DISABLED=NO
     _STATUS_TEST=$(grep "Do not reveal Aegir front-end URL here" \
       ${User}/config/server_master/nginx/vhost.d/${Dom} 2>&1)
@@ -2136,16 +2513,16 @@ process() {
       _STATUS_DISABLED=YES
       echo "${Dom} site is DISABLED"
     fi
-    if [ -e "${User}/.drush/${Dom}.alias.drushrc.php" ] \
+    if [ -e "${User}/.drush/${Dan}.alias.drushrc.php" ] \
       && [ "${_STATUS_DISABLED}" = "NO" ]; then
       echo "Dom is ${Dom}"
-      Dir=$(cat ${User}/.drush/${Dom}.alias.drushrc.php \
+      Dir=$(cat ${User}/.drush/${Dan}.alias.drushrc.php \
         | grep "site_path'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
       _DIR_CTRL_F="${Dir}/modules/boa_site_control.ini"
-      Plr=$(cat ${User}/.drush/${Dom}.alias.drushrc.php \
+      Plr=$(cat ${User}/.drush/${Dan}.alias.drushrc.php \
         | grep "root'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
@@ -2170,8 +2547,18 @@ process() {
         fix_o_contrib_symlink
         if [ -e "${Dir}/drushrc.php" ]; then
           cd ${Dir}
-          check_site_status
-          if [ "${_STATUS}" = "OK" ]; then
+          if [ "${Dan}" = "hostmaster" ]; then
+            _STATUS=OK
+            if [ ! -f "${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info" ]; then
+              run_drush8_hmr_cmd "dis update syslog dblog -y"
+              touch ${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
+            fi
+          else
+            check_site_status
+          fi
+          if [ "${_STATUS}" = "OK" ] \
+            && [ ! -z "${Dan}" ] \
+            && [ "${Dan}" != "hostmaster" ]; then
             setup_solr
             searchStringB=".dev."
             searchStringC=".devel."
@@ -2180,6 +2567,8 @@ process() {
             searchStringF=".temporary."
             searchStringG=".test."
             searchStringH=".testing."
+            searchStringI=".stage."
+            searchStringJ=".staging."
             case ${Dom} in
               *"$searchStringB"*) ;;
               *"$searchStringC"*) ;;
@@ -2188,11 +2577,14 @@ process() {
               *"$searchStringF"*) ;;
               *"$searchStringG"*) ;;
               *"$searchStringH"*) ;;
+              *"$searchStringI"*) ;;
+              *"$searchStringJ"*) ;;
               *)
               if [ "${_MODULES_FIX}" = "YES" ]; then
                 fix_modules
+                fix_robots_txt
               fi
-              fix_robots_txt
+              check_update_le_ssl
               ;;
             esac
             fix_boost_cache
@@ -2395,7 +2787,7 @@ purge_cruft_machine() {
         && [ ! -z "${RevisionTest}" ]; then
         chattr -i /home/${_HM_U}.ftp/platforms   &> /dev/null
         chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
-        rm -f -r /home/${_HM_U}.ftp/platforms/$i
+        rm -rf /home/${_HM_U}.ftp/platforms/$i
       fi
     fi
   done
@@ -2522,9 +2914,9 @@ action() {
         echo "User ${User}"
         mkdir -p ${User}/log/ctrl
         su -s /bin/bash ${_HM_U} -c "drush8 cc drush" &> /dev/null
-        rm -f -r ${User}/.tmp/cache
+        rm -rf ${User}/.tmp/cache
         su -s /bin/bash - ${_HM_U}.ftp -c "drush8 cc drush" &> /dev/null
-        rm -f -r /home/${_HM_U}.ftp/.tmp/cache
+        rm -rf /home/${_HM_U}.ftp/.tmp/cache
         _SQL_CONVERT=NO
         _DEL_OLD_EMPTY_PLATFORMS="0"
         if [ -e "/root/.${_HM_U}.octopus.cnf" ]; then
@@ -2551,26 +2943,21 @@ action() {
           fi
         fi
         disable_chattr ${_HM_U}.ftp
-        rm -f -r /home/${_HM_U}.ftp/drush-backups
+        rm -rf /home/${_HM_U}.ftp/drush-backups
         if [ -e "${_THIS_HM_SITE}" ]; then
           cd ${_THIS_HM_SITE}
           su -s /bin/bash ${_HM_U} -c "drush8 cc drush" &> /dev/null
-          rm -f -r ${User}/.tmp/cache
-          run_drush8_hmr_cmd "vset \
-            --always-set hosting_cron_default_interval 86400"
-          run_drush8_hmr_cmd "vset \
-            --always-set hosting_queue_cron_frequency 1"
+          rm -rf ${User}/.tmp/cache
+          run_drush8_hmr_cmd "${vSet} hosting_cron_default_interval 86400"
+          run_drush8_hmr_cmd "${vSet} hosting_queue_cron_frequency 1"
           if [ -e "${User}/log/hosting_cron_use_backend.txt" ]; then
-            run_drush8_hmr_cmd "vset \
-              --always-set hosting_cron_use_backend 1"
+            run_drush8_hmr_cmd "${vSet} hosting_cron_use_backend 1"
           else
-             run_drush8_hmr_cmd "vset \
-              --always-set hosting_cron_use_backend 0"
+             run_drush8_hmr_cmd "${vSet} hosting_cron_use_backend 0"
           fi
-          run_drush8_hmr_cmd "vset \
-            --always-set hosting_ignore_default_profiles 0"
-          run_drush8_hmr_cmd "vset \
-            --always-set hosting_queue_tasks_items 1"
+          run_drush8_hmr_cmd "${vSet} hosting_ignore_default_profiles 0"
+          run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_items 1"
+          run_drush8_hmr_cmd "${vSet} aegir_backup_export_path ${User}/backup-exports"
           if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
             run_drush8_hmr_cmd "fr hosting_custom_settings -y"
           fi
@@ -2602,11 +2989,11 @@ action() {
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
           || [ "${_VMFAMILY}" = "VS" ]; then
-          rm -f -r ${User}/clients/admin &> /dev/null
-          rm -f -r ${User}/clients/omega8ccgmailcom &> /dev/null
-          rm -f -r ${User}/clients/nocomega8cc &> /dev/null
+          rm -rf ${User}/clients/admin &> /dev/null
+          rm -rf ${User}/clients/omega8ccgmailcom &> /dev/null
+          rm -rf ${User}/clients/nocomega8cc &> /dev/null
         fi
-        rm -f -r ${User}/clients/*/backups &> /dev/null
+        rm -rf ${User}/clients/*/backups &> /dev/null
         symlinks -dr ${User}/clients &> /dev/null
         if [ -e "/home/${_HM_U}.ftp" ]; then
           symlinks -dr /home/${_HM_U}.ftp &> /dev/null
@@ -2755,6 +3142,9 @@ else
   fi
   action >/var/xdrago/log/daily/daily-${_NOW}.log 2>&1
   if [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
+    if [ ! -e "/etc/ssl/private/4096.dhp" ]; then
+      openssl dhparam -out /etc/ssl/private/4096.dhp 4096 &> /dev/null
+    fi
     for f in `find /etc/ssl/private/*.crt -type f`; do
       sslName=$(echo ${f} | cut -d'/' -f5 | awk '{ print $1}' | sed "s/.crt//g")
       sslFile="/etc/ssl/private/${sslName}.dhp"
@@ -2857,7 +3247,7 @@ if [ -e "/opt/tmp/barracuda-version.txt" ]; then
  Changelog: http://bit.ly/boa-changes
 
  --
- This e-mail has been sent by your Barracuda server upgrade monitor.
+ This email has been sent by your Barracuda server upgrade monitor.
 
 EOF
     echo "INFO: Update notice sent: OK"

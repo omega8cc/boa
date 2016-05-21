@@ -11,7 +11,7 @@ lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
 master="master"
 nextv="BOA-3.1.0-dev"
-stbl="BOA-3.0.1"
+stbl="BOA-3.0.2"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -77,7 +77,7 @@ fix_dns_settings() {
     done
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ] \
-    && [ -e "${vBs}/resolv.conf.tmp" ] ; then
+    && [ -e "${vBs}/resolv.conf.tmp" ]; then
     if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
       cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
@@ -327,6 +327,77 @@ up_mode() {
   fi
 }
 
+satellite_check_up_php() {
+  if [ "${cmmand}" = "up-head" ] || [ "${cmmand}" = "up-stable" ]; then
+    fmodey=
+    _SERIES_TEST=
+    _PHP_FPM_LEGACY_FREE=
+    _PHP_CLI_LEGACY_FREE=
+    mcmode="${orgMcmode}"
+    if [ -e "${User}/log/octopus_log.txt" ]; then
+      _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
+      if [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
+        if [ -e "${User}/static/control/fpm.info" ]; then
+          _T_FPM_VRN=$(cat ${User}/static/control/fpm.info 2>&1)
+          _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
+          _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
+          if [ "${_T_FPM_VRN}" = "7.0" ] \
+            || [ "${_T_FPM_VRN}" = "5.6" ]; then
+            _PHP_FPM_LEGACY_FREE=YES
+          else
+            _PHP_FPM_LEGACY_FREE=NO
+          fi
+        else
+          _PHP_FPM_LEGACY_FREE=YES
+        fi
+        if [ -e "${User}/static/control/cli.info" ]; then
+          _T_CLI_VRN=$(cat ${User}/static/control/cli.info 2>&1)
+          _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
+          _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
+          if [ "${_T_CLI_VRN}" = "7.0" ] \
+            || [ "${_T_CLI_VRN}" = "5.6" ]; then
+            _PHP_CLI_LEGACY_FREE=YES
+          else
+            _PHP_CLI_LEGACY_FREE=NO
+          fi
+        else
+          _PHP_CLI_LEGACY_FREE=YES
+        fi
+        if [ "${_PHP_FPM_LEGACY_FREE}" = "NO" ]; then
+          if [ -x "/opt/php56/bin/php" ]; then
+            echo 5.6 > ${User}/static/control/fpm.info
+          elif [ -x "/opt/php55/bin/php" ]; then
+            echo 5.5 > ${User}/static/control/fpm.info
+          fi
+        fi
+        if [ "${_PHP_CLI_LEGACY_FREE}" = "NO" ]; then
+          if [ -x "/opt/php56/bin/php" ]; then
+            echo 5.6 > ${User}/static/control/cli.info
+          elif [ -x "/opt/php55/bin/php" ]; then
+            echo 5.5 > ${User}/static/control/cli.info
+          fi
+        fi
+      fi
+      if [[ "${_SERIES_TEST}" =~ "${stbl}" ]]; then
+        if [ "${orgMcmode}" != "force" ]; then
+          mcmode=
+          fmodey=force
+          if [ ! -e "/root/.silent-octopus-upgrade.cnf" ]; then
+            echo
+            echo "This Aegir Instance ${octUsr} is already up to date!"
+            echo "If you wish to run/force the upgrade again,"
+            echo "please use the forced upgrade mode, as shown below"
+            echo
+            echo "Usage: $(basename "$0") ${orgCmmand} ${second} force"
+            echo
+          fi
+        fi
+      fi
+    fi
+  fi
+  _SERIES_TEST=
+}
+
 satellite_check_switch_php() {
   if [ "${cmmand}" = "up-head" ] || [ "${cmmand}" = "up-stable" ]; then
     if [ -e "${User}/log/octopus_log.txt" ]; then
@@ -394,7 +465,7 @@ satellite_check_switch_php() {
       _PHP_CLI_LEGACY_FREE=YES
     fi
     if [ "${_PHP_CLI_LEGACY_FREE}" = "YES" ] \
-      && [ "${_PHP_FPM_LEGACY_FREE}" = "YES" ] ; then
+      && [ "${_PHP_FPM_LEGACY_FREE}" = "YES" ]; then
       _PHP_LEGACY_FREE=YES
     else
       _PHP_LEGACY_FREE=NO
@@ -430,6 +501,7 @@ satellite_check_switch_php() {
       switchCLIback=""
     fi
   fi
+  _SERIES_TEST=
 }
 
 up_one() {
@@ -438,7 +510,8 @@ up_one() {
     if [ -e "${vBs}/${filIncO}" ]; then
       cp -af ${vBs}/${filIncO}  ${vBs}/${tocIncO}
     fi
-    satellite_check_switch_php
+    satellite_check_up_php
+    ### satellite_check_switch_php
     if [ "${cmmand}" = "up-head" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${tocIncO}
       wait
@@ -579,8 +652,8 @@ up_one() {
           up_mode
         else
           echo "${User}/.drush/sys/provision does not exist!"
-          rm -f -r ${User}/.drush/{sys,xts,usr}
-          rm -f -r ${User}/.drush/{provision,drush_make}
+          rm -rf ${User}/.drush/{sys,xts,usr}
+          rm -rf ${User}/.drush/{provision,drush_make}
           mkdir -p ${User}/.drush/{sys,xts,usr}
           ${gCb} ${branch} https://github.com/omega8cc/provision.git \
             ${User}/.drush/sys/provision &> /dev/null
@@ -686,7 +759,7 @@ up_action_all() {
           echo "Preparing the upgrade in silent mode..."
           echo
           echo "NOTE: There will be no progress displayed in the console"
-          echo "but you will receive an e-mail once the upgrade is complete"
+          echo "but you will receive an email once the upgrade is complete"
           echo
           sleep 5
           echo "You could watch the progress in another window with command:"
@@ -739,7 +812,7 @@ up_action_one() {
         echo "Preparing the upgrade in silent mode..."
         echo
         echo "NOTE: There will be no progress displayed in the console"
-        echo "but you will receive an e-mail once the upgrade is complete"
+        echo "but you will receive an email once the upgrade is complete"
         echo
         sleep 5
         echo "You could watch the progress in another window with command:"
@@ -825,7 +898,7 @@ up_finish() {
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
   fi
-  rm -f -r /opt/tmp/*
+  rm -rf /opt/tmp/*
   echo
   echo OCTOPUS upgrade completed
   echo Bye

@@ -24,6 +24,7 @@ $is_install   = FALSE;
 $is_tmp       = FALSE;
 $raw_host     = FALSE;
 $redis_lock   = FALSE;
+$redis_path   = FALSE;
 $redis_up     = FALSE;
 $site_subdir  = FALSE;
 $use_redis    = FALSE;
@@ -63,7 +64,7 @@ if (function_exists('drush_get_command')) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.9.14';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.9.15';
   }
 }
 
@@ -346,6 +347,7 @@ $boa_ini = array(
   'redis_use_modern' => TRUE,
   'redis_flush_forced_mode' => TRUE,
   'redis_lock_enable' => TRUE,
+  'redis_path_enable' => TRUE,
   'redis_cache_disable' => FALSE,
   'redis_exclude_bins' => FALSE,
   'speed_booster_anon_cache_ttl' => FALSE,
@@ -407,6 +409,7 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Redis-Use-Modern: " . $all_ini['redis_use_modern']);
   header("X-Ini-Redis-Flush-Forced-Mode: " . $all_ini['redis_flush_forced_mode']);
   header("X-Ini-Redis-Lock-Enable: " . $all_ini['redis_lock_enable']);
+  header("X-Ini-Redis-Path-Enable: " . $all_ini['redis_path_enable']);
   header("X-Ini-Redis-Cache-Disable: " . $all_ini['redis_cache_disable']);
   header("X-Ini-Redis-Exclude-Bins: " . $all_ini['redis_exclude_bins']);
   header("X-Ini-Speed-Booster-Anon-Cache-Ttl: " . $all_ini['speed_booster_anon_cache_ttl']);
@@ -494,8 +497,8 @@ ini_set('session.gc_maxlifetime', $all_ini['session_gc_eol']);
  */
 if ($conf['install_profile'] == 'hostmaster') {
   $conf['hosting_require_disable_before_delete'] = 0;
-  $conf['features_rebuild_on_flush'] = TRUE;
-  $conf['cache'] = 1;
+  $conf['theme_link'] = FALSE;
+  $conf['cache'] = 0;
   if (!$is_backend && isset($_SERVER['HTTP_USER_AGENT'])) {
     ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
     header('X-Accel-Expires: 1');
@@ -525,7 +528,7 @@ if ($conf['install_profile'] == 'hostmaster') {
     }
   }
   else {
-    $use_redis = FALSE;
+    $use_redis = TRUE;
   }
 }
 
@@ -918,6 +921,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
     $cache_backport = FALSE;
     $cache_redis_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.autoload.inc';
     $cache_lock_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.lock.inc';
+    $cache_path_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.path.inc';
     if ($is_dev && !$is_backend) {
       header("X-Redis-Autoload-Is-Readable: " . $cache_redis_path);
     }
@@ -926,6 +930,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
     $cache_redis = TRUE;
     $cache_redis_path = 'modules/o_contrib/' . $redis_dirname . '/redis.autoload.inc';
     $cache_lock_path = 'modules/o_contrib/' . $redis_dirname . '/redis.lock.inc';
+    $cache_path_path = 'modules/o_contrib/' . $redis_dirname . '/redis.path.inc';
     if ($is_dev && !$is_backend) {
       header("X-Redis-Autoload-Is-Readable: " . $cache_redis_path);
     }
@@ -934,8 +939,13 @@ if ($redis_up && $use_redis && !$custom_cache) {
     if ($cache_backport) {
       $conf['cache_inc']                      = $cache_backport_path;
     }
-    if ($all_ini['redis_use_modern'] && $all_ini['redis_lock_enable']) {
-      $redis_lock = TRUE;
+    if ($all_ini['redis_use_modern']) {
+      if ($all_ini['redis_lock_enable']) {
+        $redis_lock = TRUE;
+      }
+      if ($all_ini['redis_path_enable']) {
+        $redis_path = TRUE;
+      }
     }
     if (is_readable($cache_lock_path) && $redis_lock) {
       $conf['lock_inc']                       = $cache_lock_path;
@@ -943,11 +953,19 @@ if ($redis_up && $use_redis && !$custom_cache) {
         header("X-Redis-Lock-Is-Readable: " . $cache_lock_path);
       }
     }
+    if (is_readable($cache_path_path) && $redis_path) {
+      $conf['path_inc']                       = $cache_path_path;
+      $conf['path_alias_admin_blacklist']     = FALSE;
+      if ($is_dev && !$is_backend) {
+        header("X-Redis-Path-Is-Readable: " . $cache_path_path);
+      }
+    }
     $conf['cache_backends'][]                 = $cache_redis_path;
     $conf['redis_client_interface']           = 'PhpRedis';
     $conf['redis_client_host']                = '127.0.0.1';
     $conf['redis_client_port']                = '6379';
     $conf['redis_client_password']            = 'isfoobared';
+    $conf['redis_client_base']                = '8';
     $conf['cache_prefix']                     = $this_prefix;
     $conf['page_cache_invoke_hooks']          = TRUE;  // D7 == Do not use Aggressive Mode
     $conf['page_cache_without_database']      = FALSE; // D7 == Do not use Aggressive Mode
@@ -956,10 +974,6 @@ if ($redis_up && $use_redis && !$custom_cache) {
     $conf['cache_lifetime']                   = 0;     // D7 == BOA uses Speed Booster / Nginx micro-caching instead
     $conf['page_cache_lifetime']              = 0;     // D6 == BOA uses Speed Booster / Nginx micro-caching instead
     $conf['cache_default_class']              = 'Redis_Cache';
-    $conf['cache_class_cache_form']           = 'DrupalDatabaseCache';
-    if ($conf['install_profile'] == 'hostmaster') {
-      $conf['cache_default_class']            = 'DrupalDatabaseCache';
-    }
     if ($all_ini['redis_exclude_bins']) {
       $excludes = array();
       $excludes = explode(",", $all_ini['redis_exclude_bins']);

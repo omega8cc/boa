@@ -9,8 +9,8 @@ if_running_as_root_barracuda() {
       fi
     fi
     chmod a+rw /dev/null
-    rm -f -r /tmp/drush_make_tmp*
-    rm -f -r /tmp/make_tmp*
+    rm -rf /tmp/drush_make_tmp*
+    rm -rf /tmp/make_tmp*
     rm -f /tmp/pm-updatecode*
     rm -f /tmp/cache.inc*
     if [ ! -e "/root/.upstart.cnf" ]; then
@@ -51,7 +51,7 @@ if_running_as_root_barracuda() {
         mrun "apt-get update -qq"  &> /dev/null
         mrun "apt-get remove webmin -y --force-yes -qq" &> /dev/null
         mrun "apt-get purge webmin -y --force-yes -qq"  &> /dev/null
-        rm -f -r /usr/share/webmin
+        rm -rf /usr/share/webmin
       fi
       rm -f ${aptLiSys}.d/ksplice.list
       rm -f ${aptLiSys}.d/longview.list
@@ -68,9 +68,9 @@ if_running_as_root_barracuda() {
 # Set xterm.
 set_xterm() {
   if [ -e "/root/.bashrc" ]; then
-    _XTERM_TEST=$(grep ${_X_VERSION} /root/.bashrc 2>&1)
-    if [[ "${_XTERM_TEST}" =~ "${_X_VERSION}" ]]; then
-      sed -i "s/^export TERM=.*/export TERM=xterm-color/g" /root/.bashrc
+    _XTERM_TEST=$(grep "export TERM" /root/.bashrc 2>&1)
+    if [[ "${_XTERM_TEST}" =~ "export TERM" ]]; then
+      sed -i "s/.*export TERM=.*//g" /root/.bashrc
       wait
     fi
   fi
@@ -123,7 +123,7 @@ fix_sftp_ftps_modern() {
     || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Installing MySecureShell ${_MSS_VRN}..."
     cd /var/opt
-    rm -f -r mysecureshell*
+    rm -rf mysecureshell*
     get_dev_src "mysecureshell-${_MSS_VRN}.tar.gz"
     cd /var/opt/mysecureshell
     st_runner "sh ./configure" 2> /dev/null
@@ -182,7 +182,7 @@ enable_weekly_usage_monitor() {
     wait
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
-    echo "28 6    * * 7   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
+    echo "08 8    * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
   fi
 }
 
@@ -360,7 +360,7 @@ tune_memory_limits() {
         || [ -e "/boot/grub/menu.lst" ] \
         || [ -e "/root/.tg.cnf" ]; then
         _USE_PHP=2048
-        _USE_OPC=2048
+        _USE_OPC=4096
         _QCE_SQL=256M
         _RND_SQL=8M
         _JBF_SQL=4M
@@ -454,13 +454,14 @@ tune_memory_limits() {
   if [ "${_USE_PHP}" -lt "196" ]; then
     _USE_PHP=196
   fi
-  if [ ! -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
+  if [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
     mkdir -p /var/xdrago/conf
   fi
   if [ ! -e "/data/conf" ]; then
     mkdir -p /data/conf
   fi
-  cp -af ${locCnf}/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf
+  cp -af ${locCnf}/fpm-pool-foo-multi.conf /var/xdrago/conf/
+  cp -af ${locCnf}/fpm-pool-foo.conf /var/xdrago/conf/
   cp -af ${locCnf}/hhvm /var/xdrago/conf/
   cp -af ${locCnf}/hhvm/hhvm_intercept.php /data/conf/hhvm_intercept.php
   chmod 644 /data/conf/hhvm_intercept.php
@@ -521,8 +522,8 @@ tune_memory_limits() {
     sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf
     wait
   fi
-  if [ "${_USE_OPC}" -gt "2048" ]; then
-    _MAX_MEM_REDIS=2048
+  if [ "${_USE_OPC}" -gt "4096" ]; then
+    _MAX_MEM_REDIS=4096
   else
     _MAX_MEM_REDIS="${_USE_OPC}"
   fi
@@ -717,7 +718,7 @@ barracuda_cnf() {
           _DB_SERVER=MariaDB
         fi
       else
-        msg "EXIT: Invalid e-mail address defined in the _MY_EMAIL variable"
+        msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
         msg "EXIT: Bye (1)"
         clean_pid_exit
       fi
@@ -839,6 +840,7 @@ barracuda_cnf() {
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
+        debM="httpredir.debian.org"
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
         wait
         sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                              ${barCnf}
@@ -849,7 +851,7 @@ barracuda_cnf() {
         wait
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
         wait
-        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"  ${barCnf}
+        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=${debM}/g"         ${barCnf}
         wait
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
         wait
@@ -903,9 +905,10 @@ barracuda_cnf() {
         fi
       fi
     fi
-    if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ]; then
-      _LOCAL_DEBIAN_MIRROR="ftp.debian.org"
-      sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"    ${barCnf}
+    if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ] \
+      || [ "${_LOCAL_DEBIAN_MIRROR}" = "ftp.debian.org" ]; then
+      _LOCAL_DEBIAN_MIRROR="httpredir.debian.org"
+      sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=httpredir.debian.org/g"     ${barCnf}
       wait
     fi
   else
@@ -1352,6 +1355,7 @@ barracuda_cnf() {
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
+        debM="httpredir.debian.org"
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
         wait
         sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                              ${barCnf}
@@ -1362,7 +1366,7 @@ barracuda_cnf() {
         wait
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
         wait
-        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"  ${barCnf}
+        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=${debM}/g"         ${barCnf}
         wait
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
         wait
@@ -1427,9 +1431,10 @@ barracuda_cnf() {
     if [ -e "${barCnf}" ]; then
       source ${barCnf}
     fi
-    if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ]; then
-      _LOCAL_DEBIAN_MIRROR=ftp.debian.org
-      sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"    ${barCnf}
+    if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ] \
+      || [ "${_LOCAL_DEBIAN_MIRROR}" = "ftp.debian.org" ]; then
+      _LOCAL_DEBIAN_MIRROR="httpredir.debian.org"
+      sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=httpredir.debian.org/g"     ${barCnf}
       wait
     fi
     if [ "${_DB_SERIES}" = "10.0" ]; then
@@ -1457,7 +1462,7 @@ barracuda_cnf() {
           _DB_SERVER=MariaDB
         fi
       else
-        msg "EXIT: Invalid e-mail address defined in the _MY_EMAIL variable"
+        msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
         msg "EXIT: Bye (2)"
         clean_pid_exit
       fi
@@ -1627,7 +1632,7 @@ do_install_latest_git() {
   if [ ! -e "${pthLog}/git-${_GIT_VRN}-${_X_VERSION}-${_NOW}.log" ]; then
     msg "INFO: Building Git ${_GIT_VRN} from sources, please wait..."
     cd /var/opt
-    rm -f -r git*
+    rm -rf git*
     get_dev_src "git-${_GIT_VRN}.tar.gz"
     cd /var/opt/git-${_GIT_VRN}
     st_runner "make configure" 2> /dev/null
@@ -1702,14 +1707,14 @@ install_wkhtmltopdf_wkhtmltoimage() {
       SYSTEMARCH="x86_64"
       msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
       cd /var/opt
-      rm -f -r wkhtmltox*
+      rm -rf wkhtmltox*
       get_dev_arch "wkhtmltox-0.12.3_linux-generic-amd64.tar.gz"
       cd wkhtmltox-0.12.3_linux-generic-amd64
     else
       SYSTEMARCH="x86"
       msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
       cd /var/opt
-      rm -f -r wkhtmltox*
+      rm -rf wkhtmltox*
       get_dev_arch "wkhtmltox-0.12.3_linux-generic-i386.tar.gz"
       cd wkhtmltox-0.12.3_linux-generic-i386
     fi
@@ -1731,20 +1736,20 @@ get_drush_versions() {
   ###--------------------###
   mkdir -p /opt/tools/drush/{7,8}
   chown -R root:root /opt/tools
-  rm -f -r /opt/tools/drush/7/*
+  rm -rf /opt/tools/drush/7/*
   cd /opt/tools/drush/7/
   get_dev_ext "drush-${_DRUSH7_VRN}.tar.gz"
   cd /opt/tools/drush/7/drush/
-  rm -f -r /opt/tools/drush/7/drush/vendor
+  rm -rf /opt/tools/drush/7/drush/vendor
   get_dev_ext "vendor-${_DRUSH7_VRN}.tar.gz"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH7_VRN} installation complete"
   fi
-  rm -f -r /opt/tools/drush/8/*
+  rm -rf /opt/tools/drush/8/*
   cd /opt/tools/drush/8/
   get_dev_ext "drush-${_DRUSH8_VRN}.tar.gz"
   cd /opt/tools/drush/8/drush/
-  rm -f -r /opt/tools/drush/8/drush/vendor
+  rm -rf /opt/tools/drush/8/drush/vendor
   get_dev_ext "vendor-${_DRUSH8_VRN}.tar.gz"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH8_VRN} installation complete"
@@ -1771,15 +1776,15 @@ get_drush_versions() {
     ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush
   fi
   if [ -e "/opt/tools/drush/6" ]; then
-    rm -f -r /opt/tools/drush/6
+    rm -rf /opt/tools/drush/6
     rm -f /usr/bin/drush6
   fi
   if [ -e "/opt/tools/drush/5" ]; then
-    rm -f -r /opt/tools/drush/5
+    rm -rf /opt/tools/drush/5
     rm -f /usr/bin/drush5
   fi
   if [ -e "/opt/tools/drush/4" ]; then
-    rm -f -r /opt/tools/drush/4
+    rm -rf /opt/tools/drush/4
     rm -f /usr/bin/drush4
   fi
   chown -R root:root /opt/tools/drush
@@ -1908,7 +1913,7 @@ update_sources_list() {
       else
         if [ "${_AUTOPILOT}" = "YES" ]; then
           if [ -z "${_LOCAL_DEBIAN_MIRROR}" ]; then
-            _MIRROR=ftp.debian.org
+            _MIRROR=httpredir.debian.org
           else
             _MIRROR=${_LOCAL_DEBIAN_MIRROR}
           fi
@@ -1940,7 +1945,7 @@ update_sources_list() {
         fi
         if ! netcat -w 5 -z ${_MIRROR} 80 ; then
           msg "INFO: The mirror ${_MIRROR} doesn't respond, let's try default"
-          _MIRROR=ftp.debian.org
+          _MIRROR=httpredir.debian.org
         fi
       fi
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1961,10 +1966,10 @@ update_sources_list() {
         echo "deb-src http://archive.debian.org/debian-volatile \
           ${_OSV}/volatile main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       else
-        echo "deb http://${_MIRROR}/debian/ ${_OSV}-updates main" \
-          >> ${aptLiSys}
-        echo "deb-src http://${_MIRROR}/debian/ ${_OSV}-updates main" \
-          >> ${aptLiSys}
+        echo "deb http://${_MIRROR}/debian/ ${_OSV}-updates main \
+          contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+        echo "deb-src http://${_MIRROR}/debian/ ${_OSV}-updates main \
+          contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
         echo "" >> ${aptLiSys}
         echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
         echo "deb http://security.debian.org/ ${_OSV}/updates main \
@@ -1973,8 +1978,8 @@ update_sources_list() {
           contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
         echo "" >> ${aptLiSys}
         echo "## DEBIAN PROPOSED UPDATES" >> ${aptLiSys}
-        echo "deb http://${_MIRROR}/debian/ ${_OSV}-proposed-updates main" \
-          >> ${aptLiSys}
+        echo "deb http://${_MIRROR}/debian/ ${_OSV}-proposed-updates main \
+          contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
         if [ "${_OSV}" = "jessie" ]; then
           if [ -e "${locCnf}/etc-apt-preferences-jessie.txt" ]; then
             cp -af ${locCnf}/etc-apt-preferences-jessie.txt /etc/apt/preferences
@@ -2076,7 +2081,7 @@ install_ssh_src() {
   if [ "${_SSH_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources, please wait..."
     cd /var/opt
-    rm -f -r openssh*
+    rm -rf openssh*
     get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
     cd /var/opt/openssh-${_OPENSSH_VRN}
     st_runner "sh ./configure \
@@ -2091,8 +2096,8 @@ install_ssh_src() {
       ### aptitude hold openssh-server &> /dev/null
       ### aptitude hold openssh-client &> /dev/null
       ### aptitude hold ssh &> /dev/null
-      echo "openssh-server hold" | dpkg --set-selections
       echo "openssh-client hold" | dpkg --set-selections
+      echo "openssh-server hold" | dpkg --set-selections
       echo "ssh hold" | dpkg --set-selections
     fi
   else
@@ -2100,8 +2105,8 @@ install_ssh_src() {
       ### aptitude hold openssh-server &> /dev/null
       ### aptitude hold openssh-client &> /dev/null
       ### aptitude hold ssh &> /dev/null
-      echo "openssh-server hold" | dpkg --set-selections
       echo "openssh-client hold" | dpkg --set-selections
+      echo "openssh-server hold" | dpkg --set-selections
       echo "ssh hold" | dpkg --set-selections
     fi
   fi
@@ -2174,7 +2179,7 @@ install_curl_src() {
       fi
       msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
       cd /var/opt
-      rm -f -r curl*
+      rm -rf curl*
       wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
       extract_archive "curl-${_CURL_VRN}.tar.gz"
       cd /var/opt/curl-${_CURL_VRN}
@@ -2230,7 +2235,7 @@ install_ssl_src() {
     ###--------------------###
     msg "INFO: Building zlib ${_ZLIB_VRN} from sources, please wait..."
     cd /var/opt
-    rm -f -r zlib*
+    rm -rf zlib*
     get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
     cd /var/opt/zlib-${_ZLIB_VRN}
     st_runner "./configure --prefix=/usr" 2> /dev/null
@@ -2239,7 +2244,7 @@ install_ssl_src() {
     ###--------------------###
     msg "INFO: Building OpenSSL ${_OPENSSL_VRN} from sources, please wait..."
     cd /var/opt
-    rm -f -r openssl*
+    rm -rf openssl*
     get_dev_src "openssl-${_OPENSSL_VRN}.tar.gz"
     cd /var/opt/openssl-${_OPENSSL_VRN}
     _X86_64_IF=$(uname -m 2>&1)
@@ -2624,17 +2629,17 @@ finale() {
   mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
   rm -f /tmp/cache.inc*
   rm -f /var/opt/._zendopcache*
-  rm -f -r /var/opt/*
+  rm -rf /var/opt/*
   rm -f /var/xdrago/monitor/acrashsql.sh
   rm -f /var/xdrago/acrashsql.sh
   rm -f /var/xdrago/usage.sh
   rm -f /var/xdrago/memcache.sh*
   rm -f /var/xdrago/purge_cruft.sh
   rm -f /var/xdrago/*.old
-  rm -f -r /tmp/drush_make_tmp*
-  rm -f -r /tmp/make_tmp*
+  rm -rf /tmp/drush_make_tmp*
+  rm -rf /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
-  rm -f -r /var/aegir/.tmp/cache
+  rm -rf /var/aegir/.tmp/cache
   rm -f /var/run/boa_run.pid
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/manage_ltd_users.pid
@@ -2668,7 +2673,7 @@ finale() {
     sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
     wait
     if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io" ]] ; then
+      || [[ "${_THISHOST}" =~ ".boa.io" ]]; then
       if [ "${_VMFAMILY}" = "VS" ]; then
         _DO_NOTHING=YES
       else
@@ -2969,9 +2974,15 @@ if_squeeze_to_wheezy() {
     wait
     sed -i "s/squeeze/wheezy/g"   /etc/apt/sources.list.d/*
     wait
+    if [ -e "/etc/apt/apt.conf" ]; then
+      sed -i "s/APT::Default-Release.*/APT::Default-Release \"wheezy\";/g" \
+        /etc/apt/apt.conf &> /dev/null
+      wait
+    fi
     rm -f /etc/apt/sources.list.d/openssl.list
     mrun "apt-get update -qq" 2> /dev/null
     ### Two step upgrade with apt-get only
+    mrun "apt-get install apt -t wheezy ${dstUpArg}" 2> /dev/null
     mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
     mrun "apt-get install apt dpkg aptitude util-linux ${dstUpArg}" 2> /dev/null
     mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
@@ -3048,7 +3059,7 @@ if_squeeze_to_wheezy() {
       if [ "${_PTMX}" = "CHECK" ] && [ "${_PTS}" = "FIX" ]; then
         msg "WARN: Required /dev/pts/ptmx does not exist! We will fix this now..."
         mkdir -p /dev/pts
-        rm -f -r /dev/pts/*
+        rm -rf /dev/pts/*
         rm -f /etc/apt/sources.list.d/openssl.list
         apt-get update -qq &> /dev/null
         apt-get install udev -y --force-yes &> /dev/null
@@ -3286,13 +3297,18 @@ sys_packages_install() {
   else
     _IS_VZ=NO
   fi
-  if [ "${_IS_VZ}" = "YES" ] \
-    || [ -e "/root/.use.sysklogd.cnf" ] \
+  if [ "${_IS_VZ}" = "YES" ]; then
+    _SYSLOGD=inetutils-syslogd
+    mrun "apt-get purge sysklogd -y" &> /dev/null
+    mrun "apt-get purge rsyslog -y" &> /dev/null
+    mrun "killall -9 sysklogd" &> /dev/null
+    mrun "killall -9 rsyslogd" &> /dev/null
+  elif [ -e "/root/.use.sysklogd.cnf" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     _SYSLOGD=sysklogd
-     mrun "apt-get purge rsyslog -y" &> /dev/null
-     mrun "killall -9 rsyslogd" &> /dev/null
+    mrun "apt-get purge rsyslog -y" &> /dev/null
+    mrun "killall -9 rsyslogd" &> /dev/null
   else
     _SYSLOGD=rsyslog
   fi
@@ -3487,7 +3503,7 @@ fix_postfix() {
     st_runner "apt-get purge exim4 exim4-base exim4-config sendmail \
       sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
     rm -f /etc/aliases
-    rm -f -r /etc/mail
+    rm -rf /etc/mail
     killall -9 sendmail &> /dev/null
   else
     _POSTFIX_TEST=$(grep "fatal: open lock file" /var/log/mail.log 2>&1)
@@ -3642,7 +3658,7 @@ check_smtp() {
 
       Your outgoing SMTP port 25 doesn't work
       as expected, so your server can't send out
-      any e-mails directly.
+      any emails directly.
 
       It appears you need a SMTP relayhost added
       in your Postfix /etc/postfix/main.cf config.
@@ -3678,7 +3694,7 @@ install_vnstat() {
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       msg "INFO: Installing VnStat monitor..."
       cd /var/opt
-      rm -f -r vnstat*
+      rm -rf vnstat*
       get_dev_src "vnstat-${_VNSTAT_VRN}.tar.gz"
       cd vnstat-${_VNSTAT_VRN}
       st_runner "make --quiet" 2> /dev/null
@@ -3703,7 +3719,7 @@ install_vnstat() {
     update-rc.d -f vnstat remove &> /dev/null
     rm -f /etc/init.d/vnstat
     rm -f /usr/bin/vnstat
-    rm -f -r /var/lib/vnstat
+    rm -rf /var/lib/vnstat
   fi
 }
 
@@ -3715,8 +3731,8 @@ install_update_xdrago() {
       msg "INFO: Upgrading a few more tools..."
     fi
     mv -f /var/xdrago-pre* ${vBs}/dragon/x/ &> /dev/null
-    rm -f -r ${pthLog}/init.d-pre*
-    rm -f -r ${vBs}/dragon/z/init.d-pre-*
+    rm -rf ${pthLog}/init.d-pre*
+    rm -rf ${vBs}/dragon/z/init.d-pre-*
     rm -f ${pthLog}/cron-root-pre*
     cp -af /var/xdrago \
       ${vBs}/dragon/x/xdrago-pre-${_X_VERSION}-${_NOW} &> /dev/null
@@ -3940,7 +3956,7 @@ install_update_lshell() {
       msg "INFO: Installing Limited Shell ${_LSHELL_VRN}..."
     fi
     cd /var/opt
-    rm -f -r lshell*
+    rm -rf lshell*
     get_dev_src "lshell-${_LSHELL_VRN}.tar.gz"
     for Files in `find /var/opt/lshell-${_LSHELL_VRN} -type f`; do
       sed -i "s/kicked/logged/g" $Files &> /dev/null
@@ -3949,8 +3965,8 @@ install_update_lshell() {
       wait
     done
     cd /var/opt/lshell-${_LSHELL_VRN}
-    rm -f -r /usr/local/lib/python2.6/dist-packages/lshell*
-    rm -f -r /usr/local/lib/python2.7/dist-packages/lshell*
+    rm -rf /usr/local/lib/python2.6/dist-packages/lshell*
+    rm -rf /usr/local/lib/python2.7/dist-packages/lshell*
     st_runner "python setup.py install --no-compile" 2> /dev/null
     if [ "${_STATUS}" = "UPGRADE" ]; then
       cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
@@ -4007,7 +4023,7 @@ if_install_ftpd() {
         -out /etc/ssl/private/pure-ftpd.pem -batch" 2> /dev/null
       chmod 600 /etc/ssl/private/pure-ftpd.pem &> /dev/null
       cd /var/opt
-      rm -f -r pure-ftpd*
+      rm -rf pure-ftpd*
       mkdir -p /usr/local/etc
       get_dev_src "pure-ftpd-${_PURE_FTPD_VRN}.tar.gz"
       cd pure-ftpd-${_PURE_FTPD_VRN}

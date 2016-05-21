@@ -109,6 +109,9 @@ if [ -e "/etc/init.d/rsyslog" ]; then
 elif [ -e "/etc/init.d/sysklogd" ]; then
   killall -9 sysklogd &> /dev/null
   service sysklogd start &> /dev/null
+elif [ -e "/etc/init.d/inetutils-syslogd" ]; then
+  killall -9 syslogd &> /dev/null
+  service inetutils-syslogd start &> /dev/null
 fi
 rm -f /var/backups/.auth.IP.list*
 find /var/xdrago/log/*.pid -mtime +0 -type f -exec rm -rf {} \; &> /dev/null

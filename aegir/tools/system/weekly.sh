@@ -68,7 +68,7 @@ read_account_data() {
 }
 
 send_notice_core() {
-  _MY_EMAIL="notify@omega8.cc"
+  _MY_EMAIL="support@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(mail -V 2>&1)
@@ -96,16 +96,8 @@ for your Drupal sites and we appreciate your efforts
 to meet the requirements, which are an integral part
 of the quality you can expect from Omega8.cc.
 
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our support contact form instead:
-
-  https://omega8.cc/support
-
-Thank you in advance.
-
 --
-This e-mail has been sent by your Aegir platform core monitor.
+This email has been sent by your Aegir platform core monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
@@ -132,16 +124,8 @@ for your Drupal sites and we appreciate your efforts
 to meet the requirements, which are an integral part
 of the quality you can expect from Omega8.cc.
 
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our support contact form instead:
-
-  https://omega8.cc/support
-
-Thank you in advance.
-
 --
-This e-mail has been sent by your Aegir platform core monitor.
+This email has been sent by your Aegir platform core monitor.
 
 EOF
   else
@@ -168,16 +152,8 @@ for your Drupal sites and we appreciate your efforts
 to meet the requirements, which are an integral part
 of the quality you can expect from Omega8.cc.
 
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our support contact form instead:
-
-  https://omega8.cc/support
-
-Thank you in advance.
-
 --
-This e-mail has been sent by your Aegir platform core monitor.
+This email has been sent by your Aegir platform core monitor.
 
 EOF
   fi
@@ -236,6 +212,8 @@ count() {
     searchStringF=".temporary."
     searchStringG=".test."
     searchStringH=".testing."
+    searchStringI=".stage."
+    searchStringJ=".staging."
     case ${Dom} in
       *"$searchStringB"*) _DEV_URL=YES ;;
       *"$searchStringC"*) _DEV_URL=YES ;;
@@ -244,6 +222,8 @@ count() {
       *"$searchStringF"*) _DEV_URL=YES ;;
       *"$searchStringG"*) _DEV_URL=YES ;;
       *"$searchStringH"*) _DEV_URL=YES ;;
+      *"$searchStringI"*) _DEV_URL=YES ;;
+      *"$searchStringJ"*) _DEV_URL=YES ;;
       *)
       ;;
     esac
@@ -317,7 +297,7 @@ send_notice_sql() {
     _SQL_LIM=${_SQL_MIN_LIMIT}
     _SQL_NOW=${SumDatH}
   fi
-  _MY_EMAIL="notify@omega8.cc"
+  _MY_EMAIL="billing@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(mail -V 2>&1)
@@ -364,20 +344,8 @@ However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
 
-We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Sunday, but in return we expect
-that you will use this allowance responsibly and sparingly.
-
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our billing contact form instead:
-
-  https://omega8.cc/billing
-
-Thank you in advance.
-
 --
-This e-mail has been sent by your Aegir resources usage weekly monitor.
+This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
@@ -423,20 +391,8 @@ However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
 
-We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Sunday, but in return we expect
-that you will use this allowance responsibly and sparingly.
-
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our billing contact form instead:
-
-  https://omega8.cc/billing
-
-Thank you in advance.
-
 --
-This e-mail has been sent by your Aegir resources usage weekly monitor.
+This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   else
@@ -482,20 +438,8 @@ However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
 
-We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Sunday, but in return we expect
-that you will use this allowance responsibly and sparingly.
-
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our billing contact form instead:
-
-  https://omega8.cc/billing
-
-Thank you in advance.
-
 --
-This e-mail has been sent by your Aegir resources usage weekly monitor.
+This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   fi
@@ -503,7 +447,7 @@ EOF
 }
 
 send_notice_disk() {
-  _MY_EMAIL="notify@omega8.cc"
+  _MY_EMAIL="billing@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(mail -V 2>&1)
@@ -530,20 +474,8 @@ Note that unlike with database space limits, for files related disk space
 we count all your sites, including also all dev/tmp sites, if they exist,
 even if they are marked as disabled in your Aegir control panel.
 
-We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Sunday, but in return we expect
-that you will use this allowance responsibly and sparingly.
-
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our billing contact form instead:
-
-  https://omega8.cc/billing
-
-Thank you in advance.
-
 --
-This e-mail has been sent by your Aegir resources usage weekly monitor.
+This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
@@ -569,20 +501,8 @@ Note that unlike with database space limits, for files related disk space
 we count all your sites, including also all dev/tmp sites, if they exist,
 even if they are marked as disabled in your Aegir control panel.
 
-We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Sunday, but in return we expect
-that you will use this allowance responsibly and sparingly.
-
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our billing contact form instead:
-
-  https://omega8.cc/billing
-
-Thank you in advance.
-
 --
-This e-mail has been sent by your Aegir resources usage weekly monitor.
+This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   else
@@ -608,20 +528,8 @@ Note that unlike with database space limits, for files related disk space
 we count all your sites, including also all dev/tmp sites, if they exist,
 even if they are marked as disabled in your Aegir control panel.
 
-We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Sunday, but in return we expect
-that you will use this allowance responsibly and sparingly.
-
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our billing contact form instead:
-
-  https://omega8.cc/billing
-
-Thank you in advance.
-
 --
-This e-mail has been sent by your Aegir resources usage weekly monitor.
+This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   fi
@@ -771,6 +679,11 @@ action() {
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
+        _THIS_HM_PLR=$(cat ${User}/.drush/hostmaster.alias.drushrc.php \
+          | grep "root'" \
+          | cut -d: -f2 \
+          | awk '{ print $3}' \
+          | sed "s/[\,']//g" 2>&1)
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
         echo Counting User ${User}
         count
@@ -803,13 +716,25 @@ action() {
           check_limits
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} -c "drush @hostmaster \
-              vset --always-set site_footer 'Weekly Usage Monitor \
+              vset --always-set site_footer 'Daily Usage Monitor \
               | ${_DATE} \
               | ALL Files <strong>${HomSizH}</strong> MB \
               | LIVE Dbs <strong>${SumDatH}</strong> MB \
               | DEV Dbs <strong>${SkipDtH}</strong> MB \
               | <strong>${_CLIENT_CORES}</strong> \
               Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}'" &> /dev/null
+            TmDir="${_THIS_HM_PLR}/profiles/hostmaster/themes/aegir/eldir"
+            PgTpl="${TmDir}/page.tpl.php"
+            EldirF="0001-Print-site_footer-if-defined.patch"
+            TplPatch="/var/xdrago/conf/${EldirF}"
+            if [ -e "${PgTpl}" ] && [ -e "${TplPatch}" ]; then
+              _IS_SF=$(grep "site_footer" ${PgTpl} 2>&1)
+              if [[ ! "${_IS_SF}" =~ "site_footer" ]]; then
+                cd ${TmDir}
+                patch -p1 < ${TplPatch} &> /dev/null
+                cd
+              fi
+            fi
             su -s /bin/bash - ${_THIS_U} \
               -c "drush @hostmaster cc all" &> /dev/null
           fi
@@ -834,7 +759,7 @@ action() {
 }
 
 ###--------------------###
-echo "INFO: Weekly maintenance start"
+echo "INFO: Daily maintenance start"
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _DATE=$(date 2>&1)
@@ -850,6 +775,6 @@ else
 fi
 mkdir -p /var/xdrago/log/usage
 action >/var/xdrago/log/usage/usage-${_NOW}.log 2>&1
-echo "INFO: Weekly maintenance complete"
+echo "INFO: Daily maintenance complete"
 exit 0
 ###EOF2016###

@@ -35,6 +35,7 @@
     _AWS_FLC='Your Backup Full Cycle'     ### [O] By default '7D'
     _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default '1'
     _AWS_PRG='Your Backup Progress'       ### [O] By default 'NO' -- can be YES/NO
+    _AWS_EXB='Exclude Drush Archives'     ### [O] By default 'NO' -- can be YES/NO
 
     Supported values to use as _AWS_REG:
 

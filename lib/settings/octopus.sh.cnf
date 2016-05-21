@@ -643,7 +643,7 @@ download_helpers_libs() {
   find_fast_mirror
   mkdir -p /opt/tmp
   cd /opt/tmp
-  rm -f -r ${bldPth}
+  rm -rf /opt/tmp/boa
   if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
     isGit=$(which git 2>&1)
     if [ ! -x "${isGit}" ] || [ -z "${isGit}" ]; then
@@ -686,7 +686,7 @@ download_helpers_libs() {
   touch ${_LOG}
   chmod 646 ${_LOG}
   mkdir -p /var/opt
-  rm -f -r /var/opt/*
+  rm -rf /var/opt/*
   _SRCDIR="/opt/tmp/files"
   mkdir -p ${_SRCDIR}
   cd ${_SRCDIR}

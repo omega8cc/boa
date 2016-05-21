@@ -234,7 +234,7 @@ manage_ip_auth_access() {
       /var/backups/.vhost.d.mstr 2>&1)
     if [ ! -z "${diffClstrTest}" ]; then
       service nginx reload &> /dev/null
-      rm -f -r /var/backups/.vhost.d.wbhd
+      rm -rf /var/backups/.vhost.d.wbhd
       mkdir -p /var/backups/.vhost.d.wbhd
       chmod 700 /var/backups/.vhost.d.wbhd
       cp -af /var/backups/.vhost.d.mstr/* /var/backups/.vhost.d.wbhd/

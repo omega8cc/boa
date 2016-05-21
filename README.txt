@@ -83,7 +83,7 @@ production settings.
 
 * Debian 8 Jessie (recommended)
 * Debian 7 Wheezy
-* Debian 6 Squeeze (easy upgrade to Wheezy with _SQUEEZE_TO_WHEEZY=YES)
+* Debian 6 Squeeze (limited to upgrade to Wheezy with _SQUEEZE_TO_WHEEZY=YES)
 * Ubuntu Trusty 14.04 (limited support)
 * Ubuntu Precise 12.04 (limited support)
 
@@ -153,33 +153,34 @@ production settings.
 
 Octopus can install the platforms listed below:
 
- @ Drupal 7.43.1
+ @ Drupal 7.43.2
 
- aGov 3.0 --------------------- https://drupal.org/project/agov
+ aGov 3.1 --------------------- https://drupal.org/project/agov
  Commerce 1.42 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.35 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.35 ----------------- https://drupal.org/project/commons
- Drupal 7.43.1 ---------------- https://drupal.org/drupal-7.43-release-notes
+ Commerce 2.37 ---------------- https://drupal.org/project/commerce_kickstart
+ Commons 3.36 ----------------- https://drupal.org/project/commons
+ Drupal 7.43.2 ---------------- https://drupal.org/drupal-7.43-release-notes
  ERPAL 2.3 -------------------- https://drupal.org/project/erpal
  Guardr 2.28 ------------------ https://drupal.org/project/guardr
  OpenAid 2.8 ------------------ https://drupal.org/project/openaid
- OpenAtrium 2.60 -------------- https://drupal.org/project/openatrium
+ OpenAtrium 2.63 -------------- https://drupal.org/project/openatrium
  OpenChurch 2.2 --------------- https://drupal.org/project/openchurch
- OpenOutreach 1.27 ------------ https://drupal.org/project/openoutreach
+ OpenOutreach 1.28 ------------ https://drupal.org/project/openoutreach
  OpenPublic 1.8 --------------- https://drupal.org/project/openpublic
- Panopoly 1.32 ---------------- https://drupal.org/project/panopoly
+ Panopoly 1.35 ---------------- https://drupal.org/project/panopoly
+ Restaurant 1.11 -------------- https://drupal.org/project/restaurant
  Ubercart 3.9 ----------------- https://drupal.org/project/ubercart
 
- @ Pressflow 6.38.1
+ @ Pressflow 6.38.2
 
  Commons 2.27 ----------------- https://drupal.org/project/commons
- Pressflow 6.38.1 ------------- http://pressflow.org
+ Pressflow 6.38.2 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.43.1 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.43.2 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
-* All D6 platforms have been enhanced using Pressflow 6.38.1 +Extra core:
+* All D6 platforms have been enhanced using Pressflow 6.38.2 +Extra core:
   https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 * All D6 and D7 platforms include some useful and/all performance related
@@ -212,4 +213,3 @@ Please choose either PayPal or Gratipay option at:
   http://www.aegirproject.org/donate
 
 Thank you!
-
