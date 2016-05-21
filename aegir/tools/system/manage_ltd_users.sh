@@ -948,21 +948,17 @@ satellite_tune_fpm_workers() {
 #
 # Disable New Relic per Octopus instance.
 disable_newrelic() {
-  _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
-  if [ -z "${_PHP_SV}" ]; then
-    _PHP_SV=56
-  fi
-  _THIS_POOL_TPL="/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf"
+  _THIS_POOL_TPL="/opt/php$1/etc/pool.d/$2.conf"
   if [ -e "${_THIS_POOL_TPL}" ]; then
     _CHECK_NEW_RELIC_KEY=$(grep "newrelic.enabled.*true" ${_THIS_POOL_TPL} 2>&1)
     if [[ "${_CHECK_NEW_RELIC_KEY}" =~ "newrelic.enabled" ]]; then
-      echo New Relic for ${_USER} will be disabled because newrelic.info does not exist
+      echo "New Relic for $2 will be disabled because newrelic.info does not exist"
       sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"\"/g" ${_THIS_POOL_TPL}
       wait
       sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"false\"/g" ${_THIS_POOL_TPL}
       wait
-      if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ]; then
-        service php${_PHP_SV}-fpm reload
+      if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
+        service php$1-fpm reload &> /dev/null
       fi
     fi
   fi
@@ -974,33 +970,28 @@ enable_newrelic() {
   _LOC_NEW_RELIC_KEY=${_LOC_NEW_RELIC_KEY//[^0-9a-zA-Z]/}
   _LOC_NEW_RELIC_KEY=$(echo -n ${_LOC_NEW_RELIC_KEY} | tr -d "\n" 2>&1)
   if [ -z "${_LOC_NEW_RELIC_KEY}" ]; then
-    disable_newrelic
+    disable_newrelic $1 $2 $3
   else
-    _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
-    if [ -z "${_PHP_SV}" ]; then
-      _PHP_SV=56
-    fi
-    _THIS_POOL_TPL="/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf"
+    _THIS_POOL_TPL="/opt/php$1/etc/pool.d/$2.conf"
     if [ -e "${_THIS_POOL_TPL}" ]; then
       _CHECK_NEW_RELIC_TPL=$(grep "newrelic.license" ${_THIS_POOL_TPL} 2>&1)
       _CHECK_NEW_RELIC_KEY=$(grep "${_LOC_NEW_RELIC_KEY}" ${_THIS_POOL_TPL} 2>&1)
       if [[ "${_CHECK_NEW_RELIC_KEY}" =~ "${_LOC_NEW_RELIC_KEY}" ]]; then
-        echo "New Relic integration is already active for ${_USER}"
+        echo "New Relic integration is already active for $2"
       else
         if [[ "${_CHECK_NEW_RELIC_TPL}" =~ "newrelic.license" ]]; then
-          echo "New Relic for ${_USER} update with key \
-            ${_LOC_NEW_RELIC_KEY} in php${_PHP_SV}"
+          echo "New Relic for $2 update with key ${_LOC_NEW_RELIC_KEY} in php$1"
           sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"${_LOC_NEW_RELIC_KEY}\"/g" ${_THIS_POOL_TPL}
           wait
           sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"true\"/g" ${_THIS_POOL_TPL}
           wait
         else
-          echo New Relic for ${_USER} setup with key ${_LOC_NEW_RELIC_KEY} in php${_PHP_SV}
+          echo "New Relic for $2 setup with key ${_LOC_NEW_RELIC_KEY} in php$1"
           echo "php_admin_value[newrelic.license] = \"${_LOC_NEW_RELIC_KEY}\"" >> ${_THIS_POOL_TPL}
           echo "php_admin_value[newrelic.enabled] = \"true\"" >> ${_THIS_POOL_TPL}
         fi
-        if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ]; then
-          service php${_PHP_SV}-fpm reload
+        if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
+          service php$1-fpm reload &> /dev/null
         fi
       fi
     fi
@@ -1009,10 +1000,18 @@ enable_newrelic() {
 #
 # Switch New Relic on or off per Octopus instance.
 switch_newrelic() {
-  if [ -e "${dscUsr}/static/control/newrelic.info" ]; then
-    enable_newrelic
-  else
-    disable_newrelic
+  isPhp="$1"
+  isPhp=${isPhp//[^0-9]/}
+  isUsr="$2"
+  isUsr=${isUsr//[^a-z0-9]/}
+  isRld="$3"
+  isRld=${isRld//[^0-1]/}
+  if [ ! -z "${isPhp}" ] && [ ! -z "${isUsr}" ] && [ ! -z "${isRld}" ]; then
+    if [ -e "${dscUsr}/static/control/newrelic.info" ]; then
+      enable_newrelic $1 $2 $3
+    else
+      disable_newrelic $1 $2 $3
+    fi
   fi
 }
 #
@@ -1220,8 +1219,7 @@ switch_php() {
   if [ -e "${dscUsr}/static/control/fpm.info" ] \
     || [ -e "${dscUsr}/static/control/cli.info" ] \
     || [ -e "${dscUsr}/static/control/hhvm.info" ]; then
-    echo "Custom FPM, HHVM or CLI settings for ${_USER} exist, \
-      running switch_php checks"
+    echo "Custom FPM, HHVM or CLI settings for ${_USER} exist, running switch_php checks"
     if [ -e "${dscUsr}/static/control/cli.info" ]; then
       _T_CLI_VRN=$(cat ${dscUsr}/static/control/cli.info 2>&1)
       _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
@@ -1656,6 +1654,8 @@ switch_php() {
                   /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
                 wait
               fi
+              switch_newrelic ${m} ${_POOL} 0
+              nrCheck=YES
               if [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
                 service php${_PHP_OLD_SV}-fpm reload &> /dev/null
               fi
@@ -1809,9 +1809,31 @@ manage_user() {
           echo 5.5 > ${dscUsr}/static/control/cli.info
         fi
       fi
+      nrCheck=
       switch_php
+      if [ -z ${nrCheck} ]; then
+        if [ -z ${_PHP_SV} ]; then
+          _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
+          if [ -z "${_PHP_SV}" ]; then
+            _PHP_SV=56
+          fi
+        fi
+        if [ -f "${dscUsr}/static/control/multi-fpm.info" ]; then
+          _PHP_M_V="70 56 55 54 53"
+          for m in ${_PHP_M_V}; do
+            if [ -x "/opt/php${m}/bin/php" ] \
+              && [ -e "/opt/php${m}/etc/pool.d/${_USER}.${m}.conf" ]; then
+              switch_newrelic ${m} ${_USER}.${m} 1
+            fi
+          done
+        else
+          if [ -x "/opt/php${_PHP_SV}/bin/php" ] \
+            && [ -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ]; then
+            switch_newrelic ${_PHP_SV} ${_USER} 1
+          fi
+        fi
+      fi
       site_socket_inc_gen
-      switch_newrelic
       if [ -e "${pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
         echo Managing Users for ${pthParentUsr} Instance
         rm -rf ${pthParentUsr}/clients/admin &> /dev/null
