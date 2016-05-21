@@ -171,7 +171,7 @@ install_upgrade_csf_lfd() {
       rm -f /etc/cron.d/{csf,lfd}*
       rm -f /usr/sbin/{csf,lfd}
       rm -f /etc/init.d/{csf,lfd}
-      rm -f -r /etc/csf
+      rm -rf /etc/csf
     else
       if [ "${_CUSTOM_CONFIG_CSF}" = "YES" ]; then
         _DO_NOTHING=YES

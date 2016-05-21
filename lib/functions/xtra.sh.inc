@@ -7,13 +7,13 @@ if_install_bzr() {
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       msg "INFO: Building Bazaar (bzr) ${_BZR_VRN} from sources, please wait..."
       if [ -e "/usr/local/lib/python2.6/dist-packages/bzrlib" ]; then
-        rm -f -r /usr/local/lib/python2.6/dist-packages/bzrlib
+        rm -rf /usr/local/lib/python2.6/dist-packages/bzrlib
       fi
       if [ -e "/usr/local/lib/python2.7/dist-packages/bzrlib" ]; then
-        rm -f -r /usr/local/lib/python2.7/dist-packages/bzrlib
+        rm -rf /usr/local/lib/python2.7/dist-packages/bzrlib
       fi
       cd /var/opt
-      rm -f -r bzr*
+      rm -rf bzr*
       get_dev_src "bzr-${_BZR_VRN}.tar.gz"
       cd /var/opt/bzr-${_BZR_VRN}
       st_runner "python setup.py --quiet install build_ext -\
@@ -37,7 +37,7 @@ if_install_chive() {
         true
         msg "INFO: Installing Chive Manager..."
         cd /var/www
-        rm -f -r /var/www/chive &> /dev/null
+        rm -rf /var/www/chive &> /dev/null
         get_dev_arch "chive_${_CHIVE_VRN}.tar.gz"
         validate_public_ip &> /dev/null
         validate_xtras_ip &> /dev/null
@@ -80,7 +80,7 @@ if_install_sqlbuddy() {
       if prompt_yes_no "Do you want to install SQL Buddy Manager?" ; then
         true
         msg "INFO: Installing SQL Buddy Manager..."
-        rm -f -r /var/www/sqlbuddy
+        rm -rf /var/www/sqlbuddy
         cd /var/www
         get_dev_arch "sqlbuddy_1_3_3.tar.gz"
         validate_public_ip &> /dev/null
@@ -162,7 +162,7 @@ if_install_collectd() {
           true
           msg "INFO: Installing Collectd Graph Panel..."
           st_runner "${_INSTAPP} collectd" 2> /dev/null
-          rm -f -r /var/www/cgp
+          rm -rf /var/www/cgp
           cd /var/www
           get_dev_arch "cgp-${_CGP_VRN}.tar.gz"
           if [ -e "/var/www/cgp-${_CGP_VRN}" ]; then
@@ -197,7 +197,7 @@ if_install_collectd() {
     rm -f ${mtrNgx}/vhost.d/cgp*
     mrun "apt-get remove collectd -y --force-yes -qq" &> /dev/null
     mrun "apt-get purge collectd -y --force-yes -qq" &> /dev/null
-    rm -f -r /var/www/cgp
+    rm -rf /var/www/cgp
   fi
   if [ -d "/var/www/cgp" ]; then
     if [ ! -z "${_PHP_CN}" ]; then
@@ -360,7 +360,7 @@ if_install_rvm() {
         msg "INFO: Running Ruby with RVM ${_L_ST}..."
         if [ ! -e "${pthLog}/ruby-root-clean-reload.log" ]; then
           _RUBY_RELOAD=YES
-          rm -f -r /usr/local/rvm
+          rm -rf /usr/local/rvm
           touch ${pthLog}/ruby-root-clean-reload.log
         fi
         ${_GPG} --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3 &> /dev/null

@@ -202,7 +202,7 @@ hostmaster_dr_up() {
   mv -f drush ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
   get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
   cd ${_ROOT}/drush/
-  rm -f -r ${_ROOT}/drush/vendor
+  rm -rf ${_ROOT}/drush/vendor
   get_dev_ext "vendor-${_DRUSH_VERSION}.tar.gz"
   find ${_ROOT}/drush -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_ROOT}/drush -type f -exec chmod 0644 {} \; &> /dev/null
@@ -222,14 +222,14 @@ hostmaster_dr_up() {
 hostmaster_go_up() {
   msg "INFO: Installing Aegir Provision backend..."
   mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
-  rm -f -r ${_ROOT}/.drush/drush_make
-  rm -f -r ${_ROOT}/.drush/sys/drush_make
+  rm -rf ${_ROOT}/.drush/drush_make
+  rm -rf ${_ROOT}/.drush/sys/drush_make
   cd ${_ROOT}/.drush
   if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
     cd ${_ROOT}/.drush
     msg "INFO: Downloading Drush and Provision extensions..."
-    rm -f -r ${_ROOT}/.drush/{sys,xts,usr}
-    rm -f -r ${_ROOT}/.drush/{provision,drush_make}
+    rm -rf ${_ROOT}/.drush/{sys,xts,usr}
+    rm -rf ${_ROOT}/.drush/{provision,drush_make}
     mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
     rD="${_ROOT}/.drush"
     ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
@@ -259,8 +259,8 @@ hostmaster_go_up() {
     get_dev_ext "provision_boost.tar.gz"
     get_dev_ext "security_review.tar.gz"
   fi
-  rm -f -r ${_ROOT}/.drush/*/.git
-  rm -f -r ${_ROOT}/.drush/*/*/.git
+  rm -rf ${_ROOT}/.drush/*/.git
+  rm -rf ${_ROOT}/.drush/*/*/.git
   cd ${_ROOT}/.drush/usr
   get_dev_ext "clean_missing_modules.tar.gz"
   sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
@@ -316,7 +316,7 @@ hostmaster_mi_up() {
     fi
   fi
   ${_DRUSHCMD} cc drush &> /dev/null
-  rm -f -r ${_ROOT}/.tmp/cache
+  rm -rf ${_ROOT}/.tmp/cache
   ${_DRUSHCMD} @hostmaster sqlc < ${bldPth}/aegir/helpers/hosting_cron.sql &> /dev/null
   ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
     WHERE task_type='delete' AND task_status='-1'" &> /dev/null
@@ -340,10 +340,12 @@ hostmaster_mi_up() {
     fi
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
+    ${_DRUSHCMD} @hostmaster registry-rebuild
     ${_DRUSHCMD} @hostmaster en hosting_cron -y
     ${_DRUSHCMD} @hostmaster cc all
     ${_DRUSHCMD} @hostmaster updb -y
   else
+    ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_cron -y &> /dev/null
     ${_DRUSHCMD} @hostmaster cc all &> /dev/null
     ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
@@ -390,6 +392,9 @@ if [ -d "${_ROOT}/host_master/000" ]; then
   if [ -e "${_PREV_HM_ROOT_TEST}/sites/${_DOMAIN}/settings.php" ]; then
     _DISTRO=${nextnum}
     _PREV_HM_ROOT="${_ROOT}/host_master/${_LASTNUM}"
+    if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
+      _DEBUG_MODE=YES
+    fi
   else
     _DEBUG_MODE=YES
     msg "INFO: Testing previous install..."

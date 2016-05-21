@@ -23,34 +23,30 @@ update_nginx_conf() {
 sub_force_advanced_nginx_config() {
   if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ]; then
     sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrInc}/nginx_compact_include.conf &> /dev/null
-    wait
 
     sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrInc}/nginx_vhost_common.conf &> /dev/null
     wait
     sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${mtrInc}/nginx_vhost_common.conf &> /dev/null
     wait
-    sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" ${mtrInc}/nginx_vhost_common.conf &> /dev/null
+    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${mtrInc}/nginx_vhost_common.conf &> /dev/null
     wait
-    sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"  ${mtrInc}/nginx_vhost_common.conf &> /dev/null
-    wait
+    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${mtrInc}/nginx_vhost_common.conf &> /dev/null
 
     sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrTpl}/subdir.tpl.php &> /dev/null
     wait
     sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${mtrTpl}/subdir.tpl.php &> /dev/null
     wait
-    sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" ${mtrTpl}/subdir.tpl.php &> /dev/null
+    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${mtrTpl}/subdir.tpl.php &> /dev/null
     wait
-    sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"  ${mtrTpl}/subdir.tpl.php &> /dev/null
-    wait
+    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${mtrTpl}/subdir.tpl.php &> /dev/null
 
     sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
     wait
     sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
     wait
-    sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
+    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
     wait
-    sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"  ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
-    wait
+    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
   fi
 }
 
@@ -111,7 +107,7 @@ force_advanced_nginx_config() {
   if [ "${_PFS_READY}" = "YES" ] \
     && [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
     _ALLOW_NGINX_FORWARD_SECRECY=YES
-    _SSL_PROTOCOLS="TLSv1 TLSv1.1 TLSv1.2;"
+    _SSL_PROTOCOLS="TLSv1.1 TLSv1.2;"
     _SSL_CIPHERS="ECDHE-RSA-AES128-GCM-SHA256:  \
       ECDHE-ECDSA-AES128-GCM-SHA256:  \
       ECDHE-RSA-AES256-GCM-SHA384:    \
@@ -200,7 +196,7 @@ detect_cdorked_malware() {
     ### msg "INFO: Checking for Linux/Cdorked.A malware..."
     chattr -ai $(which nginx) &> /dev/null
     cd ${vBs}
-    rm -f -r /var/opt/foo_bar*
+    rm -rf /var/opt/foo_bar*
     gcc -o /var/opt/foo_bar ${bldPth}/aegir/helpers/dump_cdorked_config.c &> /dev/null
     _C_DORKED_TEST=$(/var/opt/foo_bar 2>&1)
     if [[ "${_C_DORKED_TEST}" =~ "No shared memory matching Cdorked signature" ]]; then
@@ -317,7 +313,7 @@ install_upgrade_nginx() {
     else
       msg "INFO: Installing Nginx..."
     fi
-    cd /var/opt; rm -f -r nginx*
+    cd /var/opt; rm -rf nginx*
     get_dev_src "nginx-upload-progress-module.tar.gz"
     if [ "${_PURGE_MODE}" = "ON" ]; then
       get_dev_src "ngx-cache-purge.tar.gz"
@@ -340,7 +336,7 @@ install_upgrade_nginx() {
     fi
     if [ "${_NGINX_LDAP}" = "YES" ]; then
       cd /var/opt
-      rm -f -r /var/opt/nginx-auth-ldap*
+      rm -rf /var/opt/nginx-auth-ldap*
       get_dev_src "nginx-auth-ldap.tar.gz"
       if [ -e "/var/opt/nginx-auth-ldap" ]; then
         _NGINX_EXTRA="--add-module=/var/opt/nginx-auth-ldap/ ${_NGINX_EXTRA}"
@@ -348,7 +344,7 @@ install_upgrade_nginx() {
     fi
     if [ "${_NGINX_NAXSI}" = "YES" ]; then
       cd /var/opt
-      rm -f -r /var/opt/nginx-naxsi*
+      rm -rf /var/opt/nginx-naxsi*
       get_dev_src "nginx-naxsi.tar.gz"
       if [ -e "/var/opt/nginx-naxsi" ]; then
         _NGINX_EXTRA="--add-module=/var/opt/nginx-naxsi/naxsi_src/ ${_NGINX_EXTRA}"
@@ -363,7 +359,7 @@ install_upgrade_nginx() {
     fi
     if [ ! -e "/var/opt/openssl-${_OPENSSL_NGX_VRN}" ]; then
       cd /var/opt
-      rm -f -r openssl*
+      rm -rf openssl*
       get_dev_src "openssl-${_OPENSSL_NGX_VRN}.tar.gz"
     fi
     cd /var/opt/nginx-${_NGINX_VRN}
@@ -576,9 +572,11 @@ fix_update_nginx_config() {
       wait
       sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
       wait
-      sed -i "s/SSLv3 TLSv1;/TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf       &> /dev/null
+      sed -i "s/SSLv3 TLSv1;/TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf             &> /dev/null
       wait
-      sed -i "s/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      wait
+      sed -i "s/TLSv1 TLSv1.1 TLSv1.2;/TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf   &> /dev/null
       wait
       sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                           &> /dev/null
       wait
@@ -667,7 +665,7 @@ fix_update_nginx_config() {
     if [ "${_PFS_READY}" = "YES" ] \
       && [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
       _ALLOW_NGINX_FORWARD_SECRECY=YES
-      _SSL_PROTOCOLS="TLSv1 TLSv1.1 TLSv1.2;"
+      _SSL_PROTOCOLS="TLSv1.1 TLSv1.2;"
       _SSL_CIPHERS="ECDHE-RSA-AES128-GCM-SHA256:  \
         ECDHE-ECDSA-AES128-GCM-SHA256:  \
         ECDHE-RSA-AES256-GCM-SHA384:    \
@@ -748,7 +746,10 @@ fix_update_nginx_config() {
       sed -i "s/listen .*/listen        \*:80;/g" \
         /data/disk/*/config/server_*/nginx.conf &> /dev/null
       wait
-      sed -i "s/listen .*/listen        \*:80;/g" \
+      sed -i "s/.*listen .*:80;/  listen        \*:80;/g" \
+        /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
+      wait
+      sed -i "s/.*listen .*:443/  listen        \*:443/g" \
         /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
       wait
       sed -i "s/param db_port.*/param db_port   3306;/g" \

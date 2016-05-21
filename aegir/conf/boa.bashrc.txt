@@ -20,8 +20,6 @@ unset MAILCHECK
 
 HISTCONTROL=ignoredups:ignorespace
 
-#export TERM=xterm-color
-
 export PATH=$PATH:/usr/local/bin:/opt/local/bin
 
 case "$TERM" in

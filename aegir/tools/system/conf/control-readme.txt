@@ -17,8 +17,8 @@
 ### Please note that current version of Drupalgeddon Drush extension needs
 ### the 'update' module to be enabled to avoid even more false positives,
 ### so BOA will enable the 'update' module temporarily while running this
-### check, which in turn will result with even more e-mails notices sent
-### to the site admin e-mail, if these notices are enabled.
+### check, which in turn will result with even more emails notices sent
+### to the site admin email, if these notices are enabled.
 ###
 
 ###

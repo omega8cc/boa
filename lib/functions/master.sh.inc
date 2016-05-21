@@ -151,7 +151,7 @@ provision_backend_dbpass_sync() {
   fi
   mysqladmin flush-privileges &> /dev/null
   su -s /bin/bash - aegir -c "drush cc drush" &> /dev/null
-  rm -f -r /var/aegir/.tmp/cache
+  rm -rf /var/aegir/.tmp/cache
   if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ]; then
     su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_localhost \
       verify --force" &> /dev/null
@@ -211,7 +211,7 @@ master_download_for_local_build() {
   mL="/opt/tmp/make_local"
   if [ ! -e "${mL}/hosting/hosting.info" ] \
     || [ ! -e "${mL}/hosting_custom_settings/hosting_custom_settings.info" ]; then
-    rm -f -r ${mL}
+    rm -rf ${mL}
     mkdir -p ${mL}
     cd ${mL}
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -235,14 +235,16 @@ master_download_for_local_build() {
       ${gCb} 7.x-3.x ${gitHub}/hosting_civicrm.git             &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_custom_settings.git     &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_git.git                 &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_le.git                  &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_remote_import.git       &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_site_backup_manager.git &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_tasks_extra.git         &> /dev/null
-      rm -f -r */.git
+      rm -rf */.git
     else
       get_dev_ext "hosting_civicrm.tar.gz"
       get_dev_ext "hosting_custom_settings.tar.gz"
       get_dev_ext "hosting_git.tar.gz"
+      get_dev_ext "hosting_le.tar.gz"
       get_dev_ext "hosting_remote_import.tar.gz"
       get_dev_ext "hosting_site_backup_manager.tar.gz"
       get_dev_ext "hosting_tasks_extra.tar.gz"
@@ -259,7 +261,8 @@ master_download_for_local_build() {
     get_dev_stc "views-7.x-3.13.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
-    get_dev_stc "features-7.x-2.8.tar.gz"
+    get_dev_stc "features-7.x-2.10.tar.gz"
+    get_dev_stc "idna_convert-7.x-1.0.tar.gz"
     get_dev_stc "revision_deletion-7.x-1.x-dev.tar.gz"
     get_dev_stc "strongarm-7.x-2.0.tar.gz"
     get_dev_stc "userprotect-7.x-1.2.tar.gz"
@@ -285,18 +288,18 @@ upgrade_aegir_master() {
       echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     fi
     if [ ! -d "/var/aegir/.drush/sys/provision/http" ]; then
-      rm -f -r /var/aegir/.drush/{sys,xts,usr}
-      rm -f -r /var/aegir/.drush/{provision,drush_make}
+      rm -rf /var/aegir/.drush/{sys,xts,usr}
+      rm -rf /var/aegir/.drush/{provision,drush_make}
       mkdir -p /var/aegir/.drush/{sys,xts,usr}
       ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
         /var/aegir/.drush/sys/provision &> /dev/null
       sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
         /var/aegir/.drush/sys/provision/aegir.make &> /dev/null
-      rm -f -r /var/aegir/drush
+      rm -rf /var/aegir/drush
       cd /var/aegir
       get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
       cd /var/aegir/drush/
-      rm -f -r /var/aegir/drush/vendor
+      rm -rf /var/aegir/drush/vendor
       get_dev_ext "vendor-${_DRUSH_VERSION}.tar.gz"
       find /var/aegir/drush -type d -exec chmod 0755 {} \; &> /dev/null
       find /var/aegir/drush -type f -exec chmod 0644 {} \; &> /dev/null
@@ -352,6 +355,7 @@ upgrade_aegir_master() {
     echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${vBs}/${filIncB}
 
     mysqladmin flush-hosts &> /dev/null
+    _RST=$(syncpass fix aegir 2>&1)
     provision_backend_dbpass_sync
     hostmaster_frontend_dbpass_sync
     master_download_for_local_build
@@ -389,7 +393,7 @@ upgrade_aegir_master() {
         cd ${mtrNgx}
         cp -a conf.d pre.d
       else
-        rm -f -r ${mtrNgx}/conf.d
+        rm -rf ${mtrNgx}/conf.d
       fi
       if [ -e "${mtrNgx}/pre.d/custom_nginx.conf" ]; then
         rm -f ${mtrNgx}/pre.d/custom_nginx.conf
@@ -414,6 +418,7 @@ upgrade_aegir_master() {
 #
 # Update php-cli in the cron entry.
 update_php_cli_cron() {
+  rm -f /var/spool/cron/crontabs/aegir
   if [ ! -e "/root/.mstr.clstr.cnf" ] \
     && [ ! -e "/root/.wbhd.clstr.cnf" ] \
     && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
@@ -659,7 +664,7 @@ EOFMYSQL
     _U_HD="/var/aegir/.drush"
     chattr +i ${_U_HD}/php.ini &> /dev/null
     su -s /bin/bash - aegir -c "drush cc drush" &> /dev/null
-    rm -f -r /var/aegir/.tmp/cache
+    rm -rf /var/aegir/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Running hosting-dispatch (1/3)..."
     fi
@@ -777,10 +782,11 @@ EOFMYSQL
         touch /data/conf/clstr.cnf &> /dev/null
       fi
       echo " "
+      update_php_cli_cron
       upgrade_aegir_master
+      update_php_cli_cron
     fi
   fi
-  update_php_cli_cron
 }
 
 if_upgrade_only_aegir_master() {
@@ -788,7 +794,9 @@ if_upgrade_only_aegir_master() {
     if [ "${_AEGIR_UPGRADE_ONLY}" = "YES" ] \
       && [ "${_SYSTEM_UPGRADE_ONLY}" = "NO" ]; then
       echo " "
+      update_php_cli_cron
       upgrade_aegir_master
+      update_php_cli_cron
       mrun "sleep 8"
       mrun "service nginx reload" &> /dev/null
       finale
@@ -843,7 +851,7 @@ update_php_cli_local_ini() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.301stableU.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.302stableQ.txt" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -903,8 +911,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.301stableU.txt
+      echo > ${_U_HD}/.ctrl.302stableQ.txt
     fi
   fi
 }
-

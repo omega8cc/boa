@@ -49,8 +49,8 @@ action() {
   gunzip GeoIPv6.dat.gz &> /dev/null
   cp -af GeoIPv6.dat /usr/share/GeoIP/
   chmod 644 /usr/share/GeoIP/*
-  rm -f -r /tmp/GeoIP*
-  rm -f -r /opt/tmp
+  rm -rf /tmp/GeoIP*
+  rm -rf /opt/tmp
   mkdir -p /opt/tmp
   chmod 777 /opt/tmp
   rm -f /opt/tmp/sess*
@@ -72,7 +72,7 @@ action() {
   renice ${_B_NICE} -p $$ &> /dev/null
   service nginx reload
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
-  rm -f -r /tmp/{drush*,pear,jetty*}
+  rm -rf /tmp/{drush*,pear,jetty*}
   rm -f /var/log/jetty{7,8,9}/*
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
     service jetty9 start

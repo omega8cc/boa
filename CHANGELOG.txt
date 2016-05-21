@@ -1,4 +1,87 @@
 
+### Stable BOA-3.0.2 Release - Full Edition
+### Date: Tue May  3 22:26:09 PDT 2016
+### Milestone URL: https://github.com/omega8cc/boa/milestones/3.0.2
+### Latest hotfix added on: Fri May  6 08:42:13 PDT 2016
+
+  @=> Includes Aegir Hostmaster 3.x-head with improvements
+  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Drush 8 customized for BOA
+
+# Release Notes:
+
+  This BOA release includes several important system upgrades, improvements
+  and bug fixes. All supported platforms have been updated to latest versions.
+
+  @=> Latest Drupal 7 core version used in BOA in all built-in platforms is
+      compatible with latest PHP 7.0.6 -- you can switch your Octopus instance
+      easily via fpm.info control file: https://omega8.cc/node/330 but please
+      don't use 7.0 in cli.info, because it is not supported in the Aegir
+      backend yet. PHP 7.0 can't be used if you have any Pressflow 6 site.
+
+# New features and enhancements:
+
+  * Add idna_convert to hostmaster for IDN domain names auto-conversion -- #916
+  * Allow to disable redis.path.inc feature via INI variable -- #815
+  * Drupal 7.43.2 (with PHP 7 compatibility patch)
+  * PHP 7 compatibility improvements -- #716
+  * Pressflow 6.38.2 (only version update)
+  * Truncate giant watchdog tables
+
+# Changes:
+
+  * Disable (temporarily) support for outdated ERPAL distro
+  * Disable auto-upgrade for legacy Octopus instances
+  * Disable page cache only in hostmaster
+  * Disable PAMAuthentication in pure-ftpd
+  * Force PHP 5.6 or 5.5 cli.info in Octopus 2.4.9
+  * Force Redis SOCKET mode if PORT was used before
+  * Redis module mod-03-05-2016
+  * Redis: Limit methods to define site prefix
+  * Redis: Use maxmemory-policy volatile-ttl
+  * Set redis_client_base
+  * Use Redis in hostmaster
+  * Use standard profile by default
+
+# System upgrades:
+
+  * Drush micro-8-24-04-2016
+  * MariaDB 10.0.25
+  * MariaDB 5.5.49
+  * MariaDB Galera Cluster 10.0.25
+  * Nginx 1.9.15
+  * OpenSSL 1.0.2h (used only in custom built Nginx)
+  * PHP 5.5.35
+  * PHP 5.6.21
+  * PHP 7.0.6
+
+# Fixes:
+
+  * Add check_boa_php_compatibility() procedure -- fixes #906
+  * Add patch for registration error (Commons)
+  * Avoid duplicate entries in hosting_cron on hostmaster install -- #928
+  * Cron not running on cloned sites -- fixes #922
+  * Disable hosting-pause / Provision -- not needed in BOA, may hang upgrade
+  * Do not force TERM
+  * Do not set $conf['redis_eval_enabled'] = TRUE;
+  * Enable _DEBUG_MODE=YES on Octopus upgrade from BOA-2.4.9
+  * Experimental hosting_git error, platform not installed -- fixes #904
+  * Improve the provision_autoload_register_prefix check
+  * Make sure that auto-generated robots.txt is OK -- fixes #925
+  * Make sure that hostmaster cron is never disabled
+  * Make sure to not set PHP 7 as system default
+  * Restart php-fpm on upgrade as soon as possible
+  * Run registry-rebuild directly after hostmaster-migrate
+  * Run update_php_cli_cron() twice
+  * Use inetutils-syslogd on VZ systems -- fixes #905
+  * Use syncpass during hostmaster upgrade
+  * Workaround for hostmaster upgrade from 2.x
+
+# Known problems:
+
+  https://github.com/omega8cc/boa/milestones/3.0.3
+
+
 ### Stable BOA-3.0.1 Release - Full Edition
 ### Date: Mon Apr 11 18:49:43 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.0.1
@@ -1175,8 +1258,8 @@
   Please note that current version of Drupalgeddon Drush extension needs
   the 'update' module to be enabled to avoid even more false positives,
   so BOA will enable the 'update' module temporarily while running this
-  check, which in turn will result with even more e-mails notices sent
-  to the site admin e-mail, if these notices are enabled.
+  check, which in turn will result with even more emails notices sent
+  to the site admin email, if these notices are enabled.
 
 #-### Support for automated BOA upgrades: weekly and one-time
 
@@ -2653,7 +2736,7 @@
 
   * Add caveats to docs/REMOTE.txt
   * Add explicit whitelisting in websh wrapper to avoid any edge case problems.
-  * Add info about Two-Factor Auth for Chive in the welcome e-mail template.
+  * Add info about Two-Factor Auth for Chive in the welcome email template.
   * Add missing exceptions in global.inc and simplify docs/REMOTE.txt
   * Add missing wrapper exceptions required by daily.sh script.
   * Clean up packages cache on finale()
@@ -2717,7 +2800,7 @@
   $ barracuda up-stable
   $ octopus up-stable all both
 
-  For silent, logged mode with e-mail message sent once the upgrade is
+  For silent, logged mode with email message sent once the upgrade is
   complete, but no progress is displayed in the terminal window, you can run
   alternatively, starting with screen session to avoid incomplete upgrade
   if your SSH session will be closed for any reason before the upgrade
@@ -2993,7 +3076,7 @@
   $ screen
   $ barracuda up-stable system
 
-  The system will send you an e-mail with results when the upgrade is complete,
+  The system will send you an email with results when the upgrade is complete,
   but there will be no upgrade progress displayed in the console. You can watch
   it, if you prefer, with command (DATE/TIME are placeholders for real values):
 
@@ -4421,7 +4504,7 @@
   * Add all extra, non-standard options in the barracuda.cnf docs template.
   * Add built-in support for Domain Access also for sites/all/modules/contrib
   * Add exception to support commerce_multicurrency module properly.
-  * Add info about self-signed SSL certificate in the welcome e-mail (again).
+  * Add info about self-signed SSL certificate in the welcome email (again).
   * Add support for /usr/etc/sshd_config if exists.
   * Always force update_newrelic - even if there is no new PHP version.
   * Better check for GitHub partial downtime.
@@ -4495,7 +4578,7 @@
   * Lshell: version update and monitoring improvements.
   * Make sure o_contrib is updated also on head-to-head upgrades.
   * Make sure to rebuild PHP if cURL is installed from sources.
-  * Make the upgrade e-mail generic.
+  * Make the upgrade email generic.
   * More compact code for downloads.
   * Move csf/lfd corrections after pdnsd install.
   * Move the giant modules list from README.txt to docs/MODULES.txt
@@ -4973,7 +5056,7 @@
   * Sync generating secure passwords also for limited shell users.
   * Update csf.conf template.
   * Update self-healing for Tomcat/Jetty support.
-  * Update welcome e-mail template to better explain how to manage databases.
+  * Update welcome email template to better explain how to manage databases.
   * Use Boost with silenced false alarms.
   * Use Limited Shell branch with fixed tab completion.
   * Use public DNS during pdnsd (re)installation to avoid issues.
@@ -5389,10 +5472,10 @@
 
   * We have added segfault monitor for php-fpm and nginx, enabled by default.
     It is pretty aggressive, because it disables vhost of any site causing
-    segfault errors and sends e-mail alert to the Octopus instance owner
-    and server owner e-mail addresses. Simple site re-verify in Aegir enables
+    segfault errors and sends email alert to the Octopus instance owner
+    and server owner email addresses. Simple site re-verify in Aegir enables
     the site again - but until the next segfault only, so read the info
-    included in the e-mail alert message, if this will happen. If you prefer
+    included in the email alert message, if this will happen. If you prefer
     to not run this monitor: `rm -f /var/xdrago/monitor/check/segfault_alert`
 
   * Previously recommended site and platforms re-verify on Clone or Migrate
@@ -5555,7 +5638,7 @@
   * Disabled allow_url_fopen breaks drush dl.
   * Do not allow bots to create cache entries with long expire time.
   * Do not prompt for D6 or D7 vanilla platforms install if not defined in the config.
-  * Explain in the e-mail templates that plain FTP is no longer available.
+  * Explain in the email templates that plain FTP is no longer available.
   * Fix cart block issue in Ubercart.
   * Fix for Debian Lenny support - packages have been moved to archives.
   * Fix for slow networks/DNS in pdnsd cache default config.
@@ -5604,7 +5687,7 @@
   * Make default myisam_sort_buffer_size big enough to run repair if required.
   * Make sure that /dev/null has correct permissions.
   * Pass some expected headers when using local proxy.
-  * Remind people that they should use their own e-mail address or exit early.
+  * Remind people that they should use their own email address or exit early.
   * Remove deprecated Nginx config includes and use symlinks for backward compatibility.
   * Sanitize important variables early.
   * Save 330 seconds with 3x faster spinner.
@@ -6447,7 +6530,7 @@ Added/Fixed: (upgrade recommended)
     like "drush up" since they should never be used
     on sites managed in the Aegir system.
 
-2.  Octopus now by default sends a welcome e-mail
+2.  Octopus now by default sends a welcome email
     with some useful intro information and access
     details to the address defined as _CLIENT_EMAIL.
 
@@ -6790,4 +6873,3 @@ Added/Fixed:
 2. Json cache for Boost added.
 3. Fix for xml/feed Boost cache files with .html extension.
 4. Fix for xml/feed Boost cache correct mime type.
-

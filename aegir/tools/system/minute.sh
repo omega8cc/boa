@@ -34,6 +34,7 @@ if [ -e "/var/log/php" ]; then
     sleep 8
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
     rm -f /var/log/php/*
+    rm -f /var/run/*.fpm.socket
     renice ${_B_NICE} -p $$ &> /dev/null
     if [ -e "/etc/init.d/php70-fpm" ]; then
       service php70-fpm start

@@ -203,7 +203,7 @@ install_redis_src() {
     st_runner "adduser --system --group redis" 2> /dev/null
   fi
   cd /var/opt
-  rm -f -r redis*
+  rm -rf redis*
   get_dev_src "redis-${_REDIS_VRN}.tar.gz"
   if [ -e "/var/lib/redis" ]; then
     mrun "service redis-server stop" &> /dev/null

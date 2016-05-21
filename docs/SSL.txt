@@ -79,7 +79,7 @@
   ### Optional permanent redirect to HTTPS per domain/regex
   ###
   if ($host ~* ^(www\.)?((foo|bar)\.com)$) {
-    rewrite ^ https://$host$request_uri? permanent;
+    return 301 https://$host$request_uri;
   }
 
   Make sure that all dots in all aliases are escaped, as shown above.

@@ -35,7 +35,8 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /newrelic-daemon/) {$newrelicdaemonlives = "YES"; $newrelicdaemonsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /nrsysmond/) {$newrelicsysmondlives = "YES"; $newrelicsysmondsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /rsyslogd/) {$rsyslogdlives = "YES"; $rsyslogdsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /sbin\/syslogd/) {$sysklogdlives = "YES"; $sysklogdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /sbin\/syslogd/ && -f "/var/run/syslogd.pid") {$sysklogdlives = "YES"; $sysklogdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /sbin\/syslogd/ && -f "/var/run/syslog.pid") {$syslogdlives = "YES"; $syslogdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /xinetd/) {$xinetdlives = "YES"; $xinetdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /lsyncd/) {$lsyncdlives = "YES"; $lsyncdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /sshd/) {$sshdlives = "YES"; $sshdsumar = $li_cnt{$COMMAND};}
@@ -79,6 +80,7 @@ print "\n $jetty8sumar Jetty8 procs\t\tGLOBAL" if ($jetty8lives);
 print "\n $jetty9sumar Jetty9 procs\t\tGLOBAL" if ($jetty9lives);
 print "\n $rsyslogdsumar Syslog procs\t\tGLOBAL" if ($rsyslogdlives);
 print "\n $sysklogdsumar Syslog procs\t\tGLOBAL" if ($sysklogdlives);
+print "\n $syslogdsumar Syslog procs\t\tGLOBAL" if ($syslogdlives);
 print "\n $convertsumar Convert procs\t\tGLOBAL" if ($convertlives);
 print "\n $xinetdsumar Xinetd procs\t\tGLOBAL" if ($xinetdlives);
 print "\n $lsyncdsumar Lsyncd procs\t\tGLOBAL" if ($lsyncdlives);
@@ -195,6 +197,12 @@ elsif (-f "/etc/init.d/sysklogd") {
   if (!$sysklogdsumar || !-f "/var/run/syslogd.pid") {
     system("killall -9 sysklogd");
     system("service sysklogd restart");
+  }
+}
+elsif (-f "/etc/init.d/inetutils-syslogd") {
+  if (!$syslogdsumar || !-f "/var/run/syslog.pid") {
+    system("killall -9 syslogd");
+    system("service inetutils-syslogd restart");
   }
 }
 exit;
