@@ -3913,11 +3913,71 @@ satellite_post_cleanup() {
   rm -f /var/run/manage_rvm_users.pid
 }
 
+satellite_letsencrypt_vhost_setup() {
+  if [ -e "${_ROOT}/tools/le/certs/${_DOMAIN}/fullchain.pem" ] \
+    || [ -e "${_ROOT}/tools/le/certs/${_DOMAIN}/cert.pem" ]; then
+    Ssl="/var/aegir/config/server_master/nginx/pre.d/z_${_DOMAIN}_ssl_proxy.conf"
+    if [ -e "${Ssl}" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf exists, OK!"
+      fi
+    else
+      msg "${_STATUS} A: Creating Letsencrypt SSL vhost for Hostmaster, please wait..."
+      echo "${_DOMAIN} ${_THISHTIP} ${_USER} ${_CLIENT_EMAIL} ${_THISHTIP}" > /root/.ssl.proxy.cnf
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        bash /opt/local/bin/xboa ssl-gen
+      else
+        mrun "bash /opt/local/bin/xboa ssl-gen" &> /dev/null
+      fi
+      if [ -e "${Ssl}" ]; then
+        rm -f /root/.ssl.proxy.cnf
+        if [ -e "${_ROOT}/tools/le/certs/${_DOMAIN}/fullchain.pem" ]; then
+          crtPath="${_ROOT}/tools/le/certs/${_DOMAIN}/fullchain.pem"
+        elif [ -e "${_ROOT}/tools/le/certs/${_DOMAIN}/cert.pem" ]; then
+          crtPath="${_ROOT}/tools/le/certs/${_DOMAIN}/cert.pem"
+        fi
+        if [ -e "${crtPath}" ]; then
+          crtPath=${crtPath//\//\\\/}
+          sed -i "s/ssl_certificate .*/ssl_certificate              ${crtPath};/g" ${Ssl}
+          wait
+        fi
+        keyPath="${_ROOT}/tools/le/certs/${_DOMAIN}/privkey.pem"
+        if [ -e "${keyPath}" ]; then
+          keyPath=${keyPath//\//\\\/}
+          sed -i "s/ssl_certificate_key .*/ssl_certificate_key          ${keyPath};/g" ${Ssl}
+          wait
+        fi
+        if [ -e "/etc/ssl/private/4096.dhp" ]; then
+          dhpPath="/etc/ssl/private/4096.dhp"
+        elif [ -e "/etc/ssl/private/${_DOMAIN}.dhp" ]; then
+          dhpPath="/etc/ssl/private/${_DOMAIN}.dhp"
+        fi
+        if [ -e "${dhpPath}" ]; then
+          dhpPath=${dhpPath//\//\\\/}
+          sed -i "s/ssl_dhparam .*/ssl_dhparam                  ${dhpPath};/g" ${Ssl}
+        fi
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "${_STATUS} B: Reloading Nginx..."
+          service nginx reload
+        else
+          service nginx reload &> /dev/null
+        fi
+      else
+        msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf doesn't exist!"
+      fi
+    fi
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "${_STATUS} A: le/certs/${_DOMAIN}/fullchain.pem doesn't exist!"
+    fi
+  fi
+}
+
 satellite_log_update() {
   if [ "${_STATUS}" = "INIT" ]; then
-   echo ${_F_TIME} > ${_ROOT}/log/date-init.txt
+    echo ${_F_TIME} > ${_ROOT}/log/date-init.txt
   else
-   echo ${_F_TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
+    echo ${_F_TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
   fi
   _OCTOPUS_VERSION_INFO="${_F_TIME} / \
     ${_THIS_OS}.${_OSV} $(uname -m 2>&1) \
@@ -4149,21 +4209,6 @@ satellite_child_b_install_drush() {
   chmod 755 ${_ROOT}/tools/drush/examples/drush.wrapper
   chmod 755 ${_ROOT}/tools/drush/examples/git-bisect.example.sh
   chmod 755 ${_ROOT}/tools/drush/examples/helloworld.script
-  exeLe="${_ROOT}/tools/le/letsencrypt.sh"
-  pthLe="${_ROOT}/backups/system/letsencrypt.sh"
-  mkdir -p ${_ROOT}/backups/system
-  chmod 700 ${_ROOT}/backups/system
-  rm -f ${_ROOT}/backups/system/letsencrypt*
-  curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/letsencrypt.sh" -o ${pthLe}
-  if [ -e "${pthLe}" ]; then
-    mkdir -p ${_ROOT}/tools/le/.acme-challenges
-    chmod 0711 ${_ROOT}/tools/le/.acme-challenges
-    mkdir -p ${_ROOT}/tools/le/certs
-    chmod 0700 ${_ROOT}/tools/le/certs
-    chmod 0711 ${_ROOT}/tools/le
-    cp -af ${pthLe} ${exeLe}
-    chmod 0700 ${exeLe}
-  fi
   satellite_child_b_update_php_cli
   satellite_child_b_update_ini_php_cli
 }
@@ -4665,8 +4710,12 @@ satellite_child_b_aegir_health_check() {
     msg "${_STATUS} B: Simple check if Aegir $_MSG_STATUS is successful"
   fi
   if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
+    msg "${_STATUS} B: Aegir $_MSG_STATUS test result: OK"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "${_STATUS} B: Aegir $_MSG_STATUS test result: OK"
+      msg "${_STATUS} B: Reloading Nginx..."
+      sudo /etc/init.d/nginx reload
+    else
+      sudo /etc/init.d/nginx reload &> /dev/null
     fi
   else
     msg "${_STATUS} B: FATAL ERROR: Required file does not exist:"
@@ -4674,6 +4723,36 @@ satellite_child_b_aegir_health_check() {
     msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
     touch /opt/tmp/status-AegirSetupB-FAIL
     exit 1
+  fi
+}
+
+satellite_child_b_letsencrypt() {
+  exeLe="${_ROOT}/tools/le/letsencrypt.sh"
+  pthLe="${_ROOT}/backups/system/letsencrypt.sh"
+  mkdir -p ${_ROOT}/backups/system
+  chmod 700 ${_ROOT}/backups/system
+  rm -f ${_ROOT}/backups/system/letsencrypt*
+  curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/letsencrypt.sh" -o ${pthLe}
+  if [ -e "${pthLe}" ]; then
+    mkdir -p ${_ROOT}/tools/le/.acme-challenges
+    chmod 0711 ${_ROOT}/tools/le/.acme-challenges
+    mkdir -p ${_ROOT}/tools/le/certs
+    chmod 0700 ${_ROOT}/tools/le/certs
+    chmod 0711 ${_ROOT}/tools/le
+    cp -af ${pthLe} ${exeLe}
+    chmod 0700 ${exeLe}
+  fi
+  if [ -x "${exeLe}" ]; then
+    if [ -e "${_ROOT}/tools/le/certs/${_DOMAIN}/fullchain.pem" ]; then
+      msg "${_STATUS} B: Updating Letsencrypt cert for Hostmaster..."
+    else
+      msg "${_STATUS} B: Creating Letsencrypt cert for Hostmaster..."
+    fi
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      bash ${exeLe} -c -d ${_DOMAIN}
+    else
+      bash ${exeLe} -c -d ${_DOMAIN} 2>&1
+    fi
   fi
 }
 
