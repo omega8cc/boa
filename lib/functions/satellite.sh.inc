@@ -3914,8 +3914,8 @@ satellite_post_cleanup() {
 }
 
 satellite_letsencrypt_vhost_setup() {
-  if [ -e "${_ROOT}/tools/le/certs/${_DOMAIN}/fullchain.pem" ] \
-    || [ -e "${_ROOT}/tools/le/certs/${_DOMAIN}/cert.pem" ]; then
+  leCrtPath="${_ROOT}/tools/le/certs/${_DOMAIN}"
+  if [ -e "${leCrtPath}/fullchain.pem" ] || [ -e "${leCrtPath}/cert.pem" ]; then
     Ssl="/var/aegir/config/server_master/nginx/pre.d/z_${_DOMAIN}_ssl_proxy.conf"
     if [ -e "${Ssl}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -3923,6 +3923,18 @@ satellite_letsencrypt_vhost_setup() {
       fi
     else
       msg "${_STATUS} A: Creating Letsencrypt SSL vhost for Hostmaster, please wait..."
+      if [ -e "${leCrtPath}/fullchain.pem" ]; then
+        crtPath="${leCrtPath}/fullchain.pem"
+      elif [ -e "${leCrtPath}/cert.pem" ]; then
+        crtPath="${leCrtPath}/cert.pem"
+      fi
+      if [ -e "${crtPath}" ]; then
+        cp -a ${crtPath} /etc/ssl/private/${_DOMAIN}.crt
+      fi
+      keyPath="${leCrtPath}/privkey.pem"
+      if [ -e "${keyPath}" ]; then
+        cp -a ${keyPath} /etc/ssl/private/${_DOMAIN}.key
+      fi
       echo "${_DOMAIN} ${_THISHTIP} ${_USER} ${_CLIENT_EMAIL} ${_THISHTIP}" > /root/.ssl.proxy.cnf
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         bash /opt/local/bin/xboa ssl-gen
@@ -3931,17 +3943,11 @@ satellite_letsencrypt_vhost_setup() {
       fi
       if [ -e "${Ssl}" ]; then
         rm -f /root/.ssl.proxy.cnf
-        if [ -e "${_ROOT}/tools/le/certs/${_DOMAIN}/fullchain.pem" ]; then
-          crtPath="${_ROOT}/tools/le/certs/${_DOMAIN}/fullchain.pem"
-        elif [ -e "${_ROOT}/tools/le/certs/${_DOMAIN}/cert.pem" ]; then
-          crtPath="${_ROOT}/tools/le/certs/${_DOMAIN}/cert.pem"
-        fi
         if [ -e "${crtPath}" ]; then
           crtPath=${crtPath//\//\\\/}
           sed -i "s/ssl_certificate .*/ssl_certificate              ${crtPath};/g" ${Ssl}
           wait
         fi
-        keyPath="${_ROOT}/tools/le/certs/${_DOMAIN}/privkey.pem"
         if [ -e "${keyPath}" ]; then
           keyPath=${keyPath//\//\\\/}
           sed -i "s/ssl_certificate_key .*/ssl_certificate_key          ${keyPath};/g" ${Ssl}
@@ -4727,6 +4733,7 @@ satellite_child_b_aegir_health_check() {
 }
 
 satellite_child_b_letsencrypt() {
+  leCrtPath="${_ROOT}/tools/le/certs/${_DOMAIN}"
   exeLe="${_ROOT}/tools/le/letsencrypt.sh"
   pthLe="${_ROOT}/backups/system/letsencrypt.sh"
   mkdir -p ${_ROOT}/backups/system
@@ -4743,7 +4750,7 @@ satellite_child_b_letsencrypt() {
     chmod 0700 ${exeLe}
   fi
   if [ -x "${exeLe}" ]; then
-    if [ -e "${_ROOT}/tools/le/certs/${_DOMAIN}/fullchain.pem" ]; then
+    if [ -e "${leCrtPath}/fullchain.pem" ]; then
       msg "${_STATUS} B: Updating Letsencrypt cert for Hostmaster..."
     else
       msg "${_STATUS} B: Creating Letsencrypt cert for Hostmaster..."
@@ -4751,7 +4758,8 @@ satellite_child_b_letsencrypt() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       bash ${exeLe} -c -d ${_DOMAIN}
     else
-      bash ${exeLe} -c -d ${_DOMAIN} 2>&1
+      bash ${exeLe} -c -d ${_DOMAIN}
+      # bash ${exeLe} -c -d ${_DOMAIN} 2>&1
     fi
   fi
 }
