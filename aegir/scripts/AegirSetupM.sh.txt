@@ -167,7 +167,7 @@ msg "INFO: Installing drush in ${_ROOT}"
 cd ${_ROOT}
 get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
 cd ${_ROOT}/drush/
-rm -f -r ${_ROOT}/drush/vendor
+rm -rf ${_ROOT}/drush/vendor
 get_dev_ext "vendor-${_DRUSH_VERSION}.tar.gz"
 find ${_ROOT}/drush -type d -exec chmod 0755 {} \; &> /dev/null
 find ${_ROOT}/drush -type f -exec chmod 0644 {} \; &> /dev/null
@@ -189,8 +189,8 @@ mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
 if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
   cd ${_ROOT}/.drush
   msg "INFO: Downloading Drush and Provision extensions..."
-  rm -f -r ${_ROOT}/.drush/{sys,xts,usr}
-  rm -f -r ${_ROOT}/.drush/{provision,drush_make}
+  rm -rf ${_ROOT}/.drush/{sys,xts,usr}
+  rm -rf ${_ROOT}/.drush/{provision,drush_make}
   mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
   rD="${_ROOT}/.drush"
   ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
@@ -207,8 +207,8 @@ if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
     ${rD}/usr/registry_rebuild &> /dev/null
   ${gCb} 7.x-1.x ${gitHub}/safe_cache_form_clear.git \
     ${rD}/usr/safe_cache_form_clear &> /dev/null
-  rm -f -r ${rD}/*/.git
-  rm -f -r ${rD}/*/*/.git
+  rm -rf ${rD}/*/.git
+  rm -rf ${rD}/*/*/.git
   cd ${rD}/usr
   get_dev_ext "clean_missing_modules.tar.gz"
 else
@@ -243,7 +243,7 @@ wait
 
 msg "INFO: Installing the frontend"
 ${_DRUSHCMD} cc drush >${_ROOT}/install.log 2>&1
-rm -f -r ${_ROOT}/.tmp/cache
+rm -rf ${_ROOT}/.tmp/cache
 _HM_ROOT="${_ROOT}/hostmaster-${_AEGIR_VERSION}"
 
 ${_DRUSHCMD} hostmaster-install \

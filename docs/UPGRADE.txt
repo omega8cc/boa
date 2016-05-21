@@ -14,7 +14,7 @@
     $ bash /var/xdrago/manage_ltd_users.sh (recommended on major upgrade)
     $ bash /var/xdrago/daily.sh            (recommended on major upgrade)
 
-    For silent, logged mode with e-mail message sent once the upgrade is
+    For silent, logged mode with email message sent once the upgrade is
     complete, but no progress is displayed in the terminal window, you can run
     alternatively, starting with screen session to avoid incomplete upgrade
     if your SSH session will be closed for any reason before the upgrade
@@ -92,7 +92,7 @@
     $ barracuda up-stable system
 
     Note that while both "log" and "system" modes are "silent", because they
-    don't display anything in your console, they will send the log via e-mail
+    don't display anything in your console, they will send the log via email
     to your address specified in the config file: /root/.barracuda.cnf
 
     It is recommended that you start `screen` before running commands using

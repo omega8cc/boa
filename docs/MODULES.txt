@@ -42,7 +42,6 @@ as [D6] and/or [D7].
 Contrib [S]upported:
 
  ais ------------------------ [D7] ------ [S]
- audio ---------------------- [D5,D6] --- [S]
  backup_migrate ------------- [D6,D7] --- [S]
  ckeditor ------------------- [D6,D7] --- [S]
  fbconnect ------------------ [D6,D7] --- [S]
@@ -161,15 +160,13 @@ Provision [E]xtensions [M]aster [S]atellite:
 
 Hostmaster [E]xtensions [M]aster [S]atellite:
 
- ctools --------------------- [D7] ------ [S] [B] [FE] [ES]
- features ------------------- [D7] ------ [S] [B] [FE] [ES]
- features_extra ------------- [D7] ------ [S] [B] [FE] [ES]
  hosting_civicrm ------------ [D7] ------ [S] [B] [FE] [ES]
  hosting_custom_settings ---- [D7] ------ [S] [B] [FE] [ES]
+ hosting_git ---------------- [D7] ------ [S] [B]      [ES]
+ hosting_le ----------------- [D7] ------ [S] [B] [FE] [ES]
  hosting_remote_import ------ [D7] ------ [S] [B]      [ES]
  hosting_site_backup_manager  [D7] ------ [S] [B] [FE] [ES]
  hosting_tasks_extra -------- [D7] ------ [S] [B] [FE] [ES]
+ idna_convert --------------- [D7] ------ [S] [B] [FE] [ES]
  revision_deletion ---------- [D7] ------ [S] [B] [FE] [ES]
- strongarm ------------------ [D7] ------ [S] [B] [FE] [ES]
  userprotect ---------------- [D7] ------ [S] [B] [FE] [ES]
-

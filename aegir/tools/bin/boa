@@ -11,7 +11,7 @@ lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
 master="master"
 nextv="BOA-3.1.0-dev"
-stbl="BOA-3.0.1"
+stbl="BOA-3.0.2"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -186,7 +186,7 @@ fix_dns_settings() {
     done
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ] \
-    && [ -e "${vBs}/resolv.conf.tmp" ] ; then
+    && [ -e "${vBs}/resolv.conf.tmp" ]; then
     if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
       cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
@@ -940,7 +940,7 @@ init_finish() {
   rm -f ${vBs}/BARRACUDA.sh*
   rm -f ${vBs}/OCTOPUS.sh*
   echo
-  rm -f -r /opt/tmp/*
+  rm -rf /opt/tmp/*
   echo BOA ${cmmand} completed
   echo Bye
   echo
@@ -1467,7 +1467,7 @@ case "$1" in
       my.fqdn <------ valid subdomain to use as a hostname
 
   {email}
-      my@email <----- your valid e-mail address
+      my@email <----- your valid email address
 
   {user}
       o1 <----------- default Octopus system account

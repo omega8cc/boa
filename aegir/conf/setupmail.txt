@@ -23,7 +23,7 @@ The following topics are covered within this email:
 5. Advanced user information
 6. Articles and video tutorials
 
-Please read this e-mail in its entirety. It contains
+Please read this email in its entirety. It contains
 important information required to properly leverage
 all your available Aegir features.
 
@@ -34,7 +34,7 @@ all your available Aegir features.
 
 To gain access, please visit your control panel site
 using one-time login link you should receive shortly
-in a separate e-mail.
+in a separate email.
 
 Once in your control panel, you'll find a number of
 Drupal platforms ready to deploy.
@@ -67,7 +67,7 @@ the "Reset password" task on the site's node, and when the task is
 complete, click on the Home icon again.
 
 Please note that once you create any site, Aegir also sends
-a standard one-time login link to your e-mail address.
+a standard one-time login link to your email address.
 
 You can also use "drush @foo.com uli" command on command line
 when logged in via SSH to create this one-time login link, anytime.

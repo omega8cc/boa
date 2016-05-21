@@ -3,8 +3,8 @@
 ###
 ### Acknowledgements
 ###
-### Thomas Sileo @ http://thomassileo.com
-### Original recipe: http://bit.ly/Zi9mZX
+### Thomas Sileo @ https://thomassileo.name
+### Original recipe: http://bit.ly/1QX462w
 ###
 ### Extended by Barracuda Team for BOA project
 ###
@@ -110,17 +110,17 @@ install() {
     apt-get clean -qq                    &> /dev/null
     apt-get update -qq                   &> /dev/null
     aptitude purge duplicity -y          &> /dev/null
-    rm -f -r /usr/local/lib/python2.7/dist-packages/boto*
-    rm -f -r /usr/local/lib/python2.6/dist-packages/boto*
-    rm -f -r /usr/local/lib/python2.7/dist-packages/duplicity*
-    rm -f -r /usr/local/lib/python2.6/dist-packages/duplicity*
+    rm -rf /usr/local/lib/python2.7/dist-packages/boto*
+    rm -rf /usr/local/lib/python2.6/dist-packages/boto*
+    rm -rf /usr/local/lib/python2.7/dist-packages/duplicity*
+    rm -rf /usr/local/lib/python2.6/dist-packages/duplicity*
     apt-get install librsync-dev -y      &> /dev/null
     apt-get install python-dev -y        &> /dev/null
     apt-get install python-lockfile -y   &> /dev/null
     apt-get install python-setuptools -y &> /dev/null
     apt-get install s3cmd -y             &> /dev/null
     mkdir -p /var/opt
-    rm -f -r /var/opt/{boto*,duplicity*}
+    rm -rf /var/opt/{boto*,duplicity*}
     cd /var/opt
     fe="boto-${_BOTO_VRN}.tar.gz"
     curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
@@ -137,7 +137,7 @@ install() {
     python setup.py build &> /dev/null
     python setup.py install &> /dev/null
     cd
-    rm -f -r /var/opt/{boto*,duplicity*}
+    rm -rf /var/opt/{boto*,duplicity*}
     echo "Installation complete!"
   fi
 }
@@ -175,6 +175,7 @@ if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
     _AWS_FLC='Your Backup Full Cycle'     ### [O] By default '7D'
     _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default '1'
     _AWS_PRG='Your Backup Progress'       ### [O] By default 'NO' -- can be YES/NO
+    _AWS_EXB='Exclude Drush Archives'     ### [O] By default 'NO' -- can be YES/NO
 
     Supported values to use as _AWS_REG:
 
@@ -248,6 +249,12 @@ if [ -z "${_AWS_VLV}" ]; then
   _AWS_VLV="1"
 fi
 
+if [ ! -z "${_AWS_EXB}" ] && [ "${_AWS_EXB}" = "YES" ]; then
+  EXCLUDE="--exclude /data/conf/arch --exclude /data/disk/*/backups/*.tar.gz"
+else
+  EXCLUDE="--exclude /data/conf/arch"
+fi
+
 _AWS_PRG=${_AWS_PRG//[^A-Z]/}
 _AWS_OPX="--s3-use-new-style"
 
@@ -256,7 +263,6 @@ export AWS_SECRET_ACCESS_KEY="${_AWS_SEC}"
 export PASSPHRASE="${_AWS_PWD}"
 
 SOURCE="/etc /var/aegir /var/www /home /data"
-EXCLUDE="--exclude /data/conf/arch"
 BUCKET="daily.boa.${_HST}"
 TARGET="s3://${_AWS_URL}/${BUCKET}"
 LOGFILE="${_LOGPTH}/${BUCKET}.log"
@@ -299,9 +305,11 @@ monthly_cleanup() {
     && [ ! -e "/root/.skip_duplicity_monthly_cleanup.cnf" ] \
     && [ "${_DOM}" = "${_RCL}" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
-    n=$((RANDOM%10800+8))
-    echo "Waiting $n seconds on `date` before running cleanup --force" > ${LOGFILE}
-    sleep $n
+    if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
+      n=$((RANDOM%10800+8))
+      echo "Waiting $n seconds on `date` before running cleanup --force" > ${LOGFILE}
+      sleep $n
+    fi
     echo "Running cleanup --force on `date`" >> ${LOGFILE}
     duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
     rm -f ${_LOGPTH}/${BUCKET}.randomize.full.log
@@ -344,9 +352,15 @@ set_mode() {
 }
 
 run_backup() {
-  n=$((RANDOM%10800+8))
-  echo "Waiting $n seconds on `date` before running ${_MODE} backup" >> ${LOGFILE}
-  sleep $n
+  if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
+    n=$((RANDOM%10800+8))
+    echo "Waiting $n seconds on `date` before running restore home 7D tmp/home" >> ${LOGFILE}
+    sleep $n
+    restore home 7D tmp/home >> ${LOGFILE}
+    n=$((RANDOM%10800+8))
+    echo "Waiting $n seconds on `date` before running ${_MODE} backup" >> ${LOGFILE}
+    sleep $n
+  fi
   echo "Running ${_MODE} backup on `date`" >> ${LOGFILE}
   duplicity ${_MODE} -v ${_AWS_VLV} --volsize 100 \
     --allow-source-mismatch \
@@ -356,18 +370,22 @@ run_backup() {
 }
 
 remove_older_than() {
-  n=$((RANDOM%10800+8))
-  echo "Waiting $n seconds on `date` before running remove-older-than ${_AWS_TTL}" >> ${LOGFILE}
-  sleep $n
+  if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
+    n=$((RANDOM%10800+8))
+    echo "Waiting $n seconds on `date` before running remove-older-than ${_AWS_TTL}" >> ${LOGFILE}
+    sleep $n
+  fi
   echo "Running remove-older-than on `date`" >> ${LOGFILE}
   duplicity -v ${_AWS_VLV} remove-older-than ${_AWS_TTL} \
     --force ${_AWS_OPX} ${TARGET} >> ${LOGFILE}
 }
 
 collection_status() {
-  n=$((RANDOM%10800+8))
-  echo "Waiting $n seconds on `date` before running collection-status" >> ${LOGFILE}
-  sleep $n
+  if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
+    n=$((RANDOM%10800+8))
+    echo "Waiting $n seconds on `date` before running collection-status" >> ${LOGFILE}
+    sleep $n
+  fi
   echo "Running collection-status on `date`" >> ${LOGFILE}
   duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET} >> ${LOGFILE}
 }

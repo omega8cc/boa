@@ -11,7 +11,7 @@ lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
 master="master"
 nextv="BOA-3.1.0-dev"
-stbl="BOA-3.0.1"
+stbl="BOA-3.0.2"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -124,7 +124,7 @@ fix_dns_settings() {
     done
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ] \
-    && [ -e "${vBs}/resolv.conf.tmp" ] ; then
+    && [ -e "${vBs}/resolv.conf.tmp" ]; then
     if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
       cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
@@ -344,9 +344,7 @@ check_php_cli() {
     if [ -x "$_PHP_CLI_PATH" ]; then
       _USE_PHP_CLI_PATH=$_PHP_CLI_PATH
     else
-      if  [ -x "/opt/php70/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php70/bin/php
-      elif  [ -x "/opt/php56/bin/php" ]; then
+      if  [ -x "/opt/php56/bin/php" ]; then
         _USE_PHP_CLI_PATH=/opt/php56/bin/php
       elif  [ -x "/opt/php55/bin/php" ]; then
         _USE_PHP_CLI_PATH=/opt/php55/bin/php
@@ -354,6 +352,8 @@ check_php_cli() {
         _USE_PHP_CLI_PATH=/opt/php54/bin/php
       elif [ -x "/opt/php53/bin/php" ]; then
         _USE_PHP_CLI_PATH=/opt/php53/bin/php
+      elif  [ -x "/opt/php70/bin/php" ]; then
+        _USE_PHP_CLI_PATH=/opt/php70/bin/php
       fi
     fi
     if [ -x "${_USE_PHP_CLI_PATH}" ]; then
@@ -663,6 +663,8 @@ up_action() {
     wait
     ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"           ${barCnf}
+    ### Force Redis SOCKET mode if PORT was used before
+    sed -i "s/^_REDIS_LISTEN_MODE=PORT/_REDIS_LISTEN_MODE=SOCKET/g"    ${barCnf}
     wait
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
@@ -767,7 +769,7 @@ up_action() {
         echo "Preparing the upgrade in silent mode..."
         echo
         echo "NOTE: There will be no progress displayed in the console"
-        echo "but you will receive an e-mail once the upgrade is complete"
+        echo "but you will receive an email once the upgrade is complete"
         echo
         sleep 5
         echo "You could watch the progress in another window with command:"
@@ -908,7 +910,7 @@ up_finish() {
     service webmin stop &> /dev/null
     service usermin stop &> /dev/null
   fi
-  rm -f -r /opt/tmp/*
+  rm -rf /opt/tmp/*
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     csf -x  &> /dev/null
     csf -uf &> /dev/null
@@ -1082,7 +1084,7 @@ check_root() {
     if [ "${_PTMX}" = "CHECK" ] && [ "${_PTS}" = "FIX" ]; then
       echo "Required /dev/pts/ptmx does not exist! We will fix this now..."
       mkdir -p /dev/pts
-      rm -f -r /dev/pts/*
+      rm -rf /dev/pts/*
       rm -f /etc/apt/sources.list.d/openssl.list
       apt-get update -qq &> /dev/null
       apt-get install udev -y --force-yes &> /dev/null

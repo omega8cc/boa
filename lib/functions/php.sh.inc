@@ -14,7 +14,7 @@ fix_php_ini_ioncube() {
 # Fix php.ini files to remove suhosin.so
 fix_php_ini_suhosin() {
   if [ -e "${_THIS_FILE}" ]; then
-    _SUHOSIN_INI_TEST=$(grep "extension=suhosin.so" ${_THIS_FILE} 2>&1)
+    _SUHOSIN_INI_TEST=$(grep "^extension=suhosin.so" ${_THIS_FILE} 2>&1)
     if [[ "$_SUHOSIN_INI_TEST" =~ "extension=suhosin.so" ]]; then
       sed -i "s/.*suhosin.*//g" ${_THIS_FILE} &> /dev/null
       wait
@@ -26,7 +26,7 @@ fix_php_ini_suhosin() {
 # Fix php.ini files to add mailparse.so
 fix_php_ini_mailparse() {
   if [ -e "${_THIS_FILE}" ]; then
-    _MAILPARSE_INI_TEST=$(grep "extension=mailparse.so" ${_THIS_FILE} 2>&1)
+    _MAILPARSE_INI_TEST=$(grep "^extension=mailparse.so" ${_THIS_FILE} 2>&1)
     if [[ "$_MAILPARSE_INI_TEST" =~ "extension=mailparse.so" ]]; then
       _DO_NOTHING=YES
     else
@@ -39,7 +39,7 @@ fix_php_ini_mailparse() {
 # Fix php.ini files to add yaml.so
 fix_php_ini_yaml() {
   if [ -e "${_THIS_FILE}" ]; then
-    _YAML_INI_TEST=$(grep "extension=yaml.so" ${_THIS_FILE} 2>&1)
+    _YAML_INI_TEST=$(grep "^extension=yaml.so" ${_THIS_FILE} 2>&1)
     if [[ "$_YAML_INI_TEST" =~ "extension=yaml.so" ]]; then
       _DO_NOTHING=YES
     else
@@ -52,7 +52,7 @@ fix_php_ini_yaml() {
 # Fix php.ini files to add jsmin.so
 fix_php_ini_jsmin() {
   if [ -e "${_THIS_FILE}" ]; then
-    _JSMIN_INI_TEST=$(grep "extension=jsmin.so" ${_THIS_FILE} 2>&1)
+    _JSMIN_INI_TEST=$(grep "^extension=jsmin.so" ${_THIS_FILE} 2>&1)
     if [[ "$_JSMIN_INI_TEST" =~ "extension=jsmin.so" ]]; then
       _DO_NOTHING=YES
     else
@@ -65,7 +65,7 @@ fix_php_ini_jsmin() {
 # Fix php.ini files to add twig.so
 fix_php_ini_twig() {
   if [ -e "${_THIS_FILE}" ]; then
-    _TWIG_INI_TEST=$(grep "extension=twig.so" ${_THIS_FILE} 2>&1)
+    _TWIG_INI_TEST=$(grep "^extension=twig.so" ${_THIS_FILE} 2>&1)
     if [[ "$_TWIG_INI_TEST" =~ "extension=twig.so" ]]; then
       _DO_NOTHING=YES
     else
@@ -78,7 +78,7 @@ fix_php_ini_twig() {
 # Fix php.ini files to add redis.so
 fix_php_ini_redis() {
   if [ -e "${_THIS_FILE}" ]; then
-    _REDIS_INI_TEST=$(grep "extension=redis.so" ${_THIS_FILE} 2>&1)
+    _REDIS_INI_TEST=$(grep "^extension=redis.so" ${_THIS_FILE} 2>&1)
     if [[ "$_REDIS_INI_TEST" =~ "extension=redis.so" ]]; then
       _DO_NOTHING=YES
     else
@@ -92,7 +92,7 @@ fix_php_ini_redis() {
 fix_php_ini_newrelic() {
   _NR_TPL="${locCnf}/newrelic.ini"
   if [ -e "${_THIS_FILE}" ]; then
-    _NEWRELIC_INI_TEST_A=$(grep "extension=newrelic.so" ${_THIS_FILE} 2>&1)
+    _NEWRELIC_INI_TEST_A=$(grep "^extension=newrelic.so" ${_THIS_FILE} 2>&1)
     if [[ "$_NEWRELIC_INI_TEST_A" =~ "extension=newrelic.so" ]]; then
       _DO_NOTHING=YES
     else
@@ -181,7 +181,7 @@ fix_php_ini_opcache_all() {
 # Fix php.ini file to add php_tet.so
 fix_php_ini_tet() {
   if [ -e "${_THIS_FILE}" ]; then
-    _TET_INI_TEST=$(grep "extension=php_tet.so" ${_THIS_FILE} 2>&1)
+    _TET_INI_TEST=$(grep "^extension=php_tet.so" ${_THIS_FILE} 2>&1)
     if [[ "$_TET_INI_TEST" =~ "extension=php_tet.so" ]]; then
       _DO_NOTHING=YES
     else
@@ -208,7 +208,7 @@ fix_php_ini_tet_all() {
 # Fix php.ini file to add geos.so
 fix_php_ini_geos() {
   if [ -e "${_THIS_FILE}" ]; then
-    _GEOS_INI_TEST=$(grep "extension=geos.so" ${_THIS_FILE} 2>&1)
+    _GEOS_INI_TEST=$(grep "^extension=geos.so" ${_THIS_FILE} 2>&1)
     if [[ "$_GEOS_INI_TEST" =~ "extension=geos.so" ]]; then
       _DO_NOTHING=YES
     else
@@ -235,7 +235,7 @@ fix_php_ini_geos_all() {
 # Fix php.ini file to add mongo.so
 fix_php_ini_mongo() {
   if [ -e "${_THIS_FILE}" ]; then
-    _MONGODB_INI_TEST=$(grep "extension=mongo.so" ${_THIS_FILE} 2>&1)
+    _MONGODB_INI_TEST=$(grep "^extension=mongo.so" ${_THIS_FILE} 2>&1)
     if [[ "$_MONGODB_INI_TEST" =~ "extension=mongo.so" ]]; then
       _DO_NOTHING=YES
     else
@@ -296,21 +296,21 @@ update_php_conf() {
     cp -af ${locCnf}/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     if [ "${e}" != "70" ]; then
-      fix_php_ini_redis
       fix_php_ini_jsmin
       fix_php_ini_mailparse
       fix_php_ini_twig
     fi
+    fix_php_ini_redis
     fix_php_ini_ioncube
     fix_php_ini_suhosin
     fix_php_ini_yaml
     _THIS_FILE=/opt/php${e}/lib/php.ini
     if [ "${e}" != "70" ]; then
-      fix_php_ini_redis
       fix_php_ini_jsmin
       fix_php_ini_mailparse
       fix_php_ini_twig
     fi
+    fix_php_ini_redis
     fix_php_ini_ioncube
     fix_php_ini_suhosin
     fix_php_ini_yaml
@@ -410,13 +410,13 @@ install_ioncube() {
       SYSTEMARCH="x86_64"
       msg "INFO: Installing IonCube ${_IONCUBE_VRN} for PHP..."
       cd /var/opt
-      rm -f -r ioncube_loaders*
+      rm -rf ioncube_loaders*
       get_dev_arch "ioncube_loaders_lin_x86-64_${_IONCUBE_VRN}.tar.gz"
     else
       SYSTEMARCH="x86"
       msg "INFO: Installing IonCube ${_IONCUBE_VRN} for PHP..."
       cd /var/opt
-      rm -f -r ioncube_loaders*
+      rm -rf ioncube_loaders*
       get_dev_arch "ioncube_loaders_lin_x86_${_IONCUBE_VRN}.tar.gz"
     fi
     rm -f /usr/local/ioncube/*
@@ -432,7 +432,7 @@ install_php_extensions() {
   if [ "$1" != "70" ] && [ "$1" != "56" ] && [ "$1" != "55" ]; then
     msg "INFO: Installing Zend OPcache for PHP ${_T_PHP_VRN}..."
     cd /var/opt
-    rm -f -r zendopcache*
+    rm -rf zendopcache*
     get_dev_src "zendopcache-${_OPCACHE_VRN}.tar.gz"
     cd /var/opt/zendopcache-${_OPCACHE_VRN}
     st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
@@ -442,23 +442,26 @@ install_php_extensions() {
     touch ${pthLog}/zendopcache-${_OPCACHE_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
-  if [ "$1" != "70" ]; then
-    msg "INFO: Installing PhpRedis for PHP ${_T_PHP_VRN}..."
-    cd /var/opt
-    rm -f -r phpredis*
-    get_dev_src "phpredis-${_PHPREDIS_VRN}.tar.gz"
-    cd /var/opt/phpredis
-    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    touch ${pthLog}/phpredis-${_PHPREDIS_VRN}-${_T_PHP_VRN}.log
+  if [ "$1" = "70" ]; then
+    _USE_PHPREDIS="${_PHPREDIS_PHP7_VRN}"
+  else
+    _USE_PHPREDIS="${_PHPREDIS_VRN}"
   fi
+  msg "INFO: Installing PhpRedis for PHP ${_T_PHP_VRN}..."
+  cd /var/opt
+  rm -rf phpredis*
+  get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
+  cd /var/opt/phpredis
+  st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  touch ${pthLog}/phpredis-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
   ###--------------------###
   if [ "$1" != "70" ]; then
     msg "INFO: Installing UploadProgress for PHP ${_T_PHP_VRN}..."
     cd /var/opt
-    rm -f -r uploadprogress*
+    rm -rf uploadprogress*
     get_dev_src "uploadprogress-${_UPROGRESS_VRN}.tgz"
     cd /var/opt/uploadprogress-${_UPROGRESS_VRN}
     st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
@@ -471,7 +474,7 @@ install_php_extensions() {
   if [ "$1" != "70" ]; then
     msg "INFO: Installing JSMin for PHP ${_T_PHP_VRN}..."
     cd /var/opt
-    rm -f -r pecl-jsmin*
+    rm -rf pecl-jsmin*
     if [ "$1" = "56" ] || [ "$1" = "55" ]; then
       get_dev_src "pecl-jsmin-${_JSMIN_VRN}.tar.gz"
       cd /var/opt/pecl-jsmin-${_JSMIN_VRN}
@@ -489,7 +492,7 @@ install_php_extensions() {
   if [ "$1" != "70" ]; then
     msg "INFO: Installing Twig C for PHP ${_T_PHP_VRN}..."
     cd /var/opt
-    rm -f -r twig*
+    rm -rf twig*
     get_dev_src "twig-${_TWIGC_VRN}.tar.gz"
     cd /var/opt/twig-${_TWIGC_VRN}/ext/twig
     st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
@@ -509,7 +512,7 @@ install_php_extensions() {
         touch ${pthLog}/geos-${_X_VERSION}.log
       fi
       cd /var/opt
-      rm -f -r geos*
+      rm -rf geos*
       get_dev_src "geos-${_GEOS_VRN}.tar.bz2"
       cd geos-${_GEOS_VRN}
       _PHP_V="70 56 55 54 53"
@@ -531,7 +534,7 @@ install_php_extensions() {
     if [ "$1" != "70" ]; then
       msg "INFO: Installing MongoDB driver for PHP ${_T_PHP_VRN}..."
       cd /var/opt
-      rm -f -r mongo*
+      rm -rf mongo*
       get_dev_src "mongo-${_MONGO_VRN}.tgz"
       cd /var/opt/mongo-${_MONGO_VRN}
       st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
@@ -549,7 +552,7 @@ install_php_extensions() {
       touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
     fi
     cd /var/opt
-    rm -f -r imagick*
+    rm -rf imagick*
     if [ "$1" = "53" ]; then
       get_dev_src "imagick-${_IMAGICK_OLD_VRN}.tgz"
       cd /var/opt/imagick-${_IMAGICK_OLD_VRN}
@@ -567,7 +570,7 @@ install_php_extensions() {
   if [ "$1" != "70" ]; then
     msg "INFO: Installing MailParse for PHP ${_T_PHP_VRN}..."
     cd /var/opt
-    rm -f -r mailparse*
+    rm -rf mailparse*
     get_dev_src "mailparse-${_MAILPARSE_VRN}.tgz"
     cd /var/opt/mailparse-${_MAILPARSE_VRN}
     st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
@@ -582,7 +585,7 @@ install_php_extensions() {
     || [ -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.2" ]; then
     msg "INFO: Installing LibYAML for PHP..."
     cd /var/opt
-    rm -f -r yaml*
+    rm -rf yaml*
     get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
     cd /var/opt/yaml-${_LIB_YAML_VRN}
     st_runner "sh ./bootstrap" 2> /dev/null
@@ -614,7 +617,7 @@ install_php_extensions() {
   fi
   msg "INFO: Installing YAML for PHP ${_T_PHP_VRN}..."
   cd /var/opt
-  rm -f -r yaml*
+  rm -rf yaml*
   if [ "$1" = "70" ]; then
     get_dev_src "yaml-${_YAML_PHP7_VRN}.tgz"
     cd /var/opt/yaml-${_YAML_PHP7_VRN}
@@ -637,7 +640,7 @@ update_php_extensions() {
     if [ ! -e "${pthLog}/zendopcache-${_OPCACHE_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing Zend OPcache upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
-      rm -f -r zendopcache*
+      rm -rf zendopcache*
       get_dev_src "zendopcache-${_OPCACHE_VRN}.tar.gz"
       cd /var/opt/zendopcache-${_OPCACHE_VRN}
       st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
@@ -648,26 +651,29 @@ update_php_extensions() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != "70" ]; then
-    if [ ! -e "${pthLog}/phpredis-${_PHPREDIS_VRN}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing PhpRedis upgrade for PHP ${_T_PHP_VRN}..."
-      cd /var/opt
-      rm -f -r phpredis*
-      get_dev_src "phpredis-${_PHPREDIS_VRN}.tar.gz"
-      cd /var/opt/phpredis
-      st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
-      touch ${pthLog}/phpredis-${_PHPREDIS_VRN}-${_T_PHP_VRN}.log
-    fi
+  if [ "$1" = "70" ]; then
+    _USE_PHPREDIS="${_PHPREDIS_PHP7_VRN}"
+  else
+    _USE_PHPREDIS="${_PHPREDIS_VRN}"
+  fi
+  if [ ! -e "${pthLog}/phpredis-${_USE_PHPREDIS}-${_T_PHP_VRN}.log" ]; then
+    msg "INFO: Installing PhpRedis upgrade for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -rf phpredis*
+    get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
+    cd /var/opt/phpredis
+    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    touch ${pthLog}/phpredis-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
   if [ "$1" != "70" ]; then
     if [ ! -e "${pthLog}/uploadprogress-${_UPROGRESS_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing UploadProgress upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
-      rm -f -r uploadprogress*
+      rm -rf uploadprogress*
       get_dev_src "uploadprogress-${_UPROGRESS_VRN}.tgz"
       cd /var/opt/uploadprogress-${_UPROGRESS_VRN}
       st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
@@ -682,7 +688,7 @@ update_php_extensions() {
     if [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing JSMin upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
-      rm -f -r pecl-jsmin*
+      rm -rf pecl-jsmin*
       if [ "$1" = "56" ] || [ "$1" = "55" ]; then
         get_dev_src "pecl-jsmin-${_JSMIN_VRN}.tar.gz"
         cd /var/opt/pecl-jsmin-${_JSMIN_VRN}
@@ -702,7 +708,7 @@ update_php_extensions() {
     if [ ! -e "${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing Twig C upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
-      rm -f -r twig*
+      rm -rf twig*
       get_dev_src "twig-${_TWIGC_VRN}.tar.gz"
       cd /var/opt/twig-${_TWIGC_VRN}/ext/twig
       st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
@@ -724,7 +730,7 @@ update_php_extensions() {
         touch ${pthLog}/geos-${_X_VERSION}.log
       fi
       cd /var/opt
-      rm -f -r geos*
+      rm -rf geos*
       get_dev_src "geos-${_GEOS_VRN}.tar.bz2"
       cd geos-${_GEOS_VRN}
       _PHP_V="70 56 55 54 53"
@@ -747,7 +753,7 @@ update_php_extensions() {
     if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
       msg "INFO: Installing MongoDB PHP driver upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
-      rm -f -r mongo*
+      rm -rf mongo*
       get_dev_src "mongo-${_MONGO_VRN}.tgz"
       cd /var/opt/mongo-${_MONGO_VRN}
       st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
@@ -766,7 +772,7 @@ update_php_extensions() {
         touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
       fi
       cd /var/opt
-      rm -f -r imagick*
+      rm -rf imagick*
       if [ "$1" = "53" ]; then
         get_dev_src "imagick-${_IMAGICK_OLD_VRN}.tgz"
         cd /var/opt/imagick-${_IMAGICK_OLD_VRN}
@@ -786,7 +792,7 @@ update_php_extensions() {
     if [ ! -e "${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing MailParse upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
-      rm -f -r mailparse*
+      rm -rf mailparse*
       get_dev_src "mailparse-${_MAILPARSE_VRN}.tgz"
       cd /var/opt/mailparse-${_MAILPARSE_VRN}
       st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
@@ -802,7 +808,7 @@ update_php_extensions() {
     || [ -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.2" ]; then
     msg "INFO: Installing LibYAML upgrade for PHP..."
     cd /var/opt
-    rm -f -r yaml*
+    rm -rf yaml*
     get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
     cd /var/opt/yaml-${_LIB_YAML_VRN}
     st_runner "sh ./bootstrap" 2> /dev/null
@@ -833,7 +839,7 @@ update_php_extensions() {
   if [ ! -e "${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing YAML upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
-    rm -f -r yaml*
+    rm -rf yaml*
     if [ "$1" = "70" ]; then
       get_dev_src "yaml-${_YAML_PHP7_VRN}.tgz"
       cd /var/opt/yaml-${_YAML_PHP7_VRN}
@@ -862,7 +868,7 @@ install_php_multi() {
   ###--------------------###
   msg "INFO: Building PHP ${_PHP_VERSION} from sources, please wait..."
   cd /var/opt
-  rm -f -r php*
+  rm -rf php*
   get_dev_src "php-${_PHP_VERSION}.tar.bz2"
   msg "INFO: Building PHP ${_PHP_VERSION} part 1/3"
   cd /var/opt/php-${_PHP_VERSION}
@@ -1454,9 +1460,7 @@ check_php_cli() {
     if [ -x "$_PHP_CLI_PATH" ]; then
       _USE_PHP_CLI_PATH=$_PHP_CLI_PATH
     else
-      if  [ -x "/opt/php70/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php70/bin/php
-      elif  [ -x "/opt/php56/bin/php" ]; then
+      if  [ -x "/opt/php56/bin/php" ]; then
         _USE_PHP_CLI_PATH=/opt/php56/bin/php
       elif  [ -x "/opt/php55/bin/php" ]; then
         _USE_PHP_CLI_PATH=/opt/php55/bin/php
@@ -1464,6 +1468,8 @@ check_php_cli() {
         _USE_PHP_CLI_PATH=/opt/php54/bin/php
       elif [ -x "/opt/php53/bin/php" ]; then
         _USE_PHP_CLI_PATH=/opt/php53/bin/php
+      elif  [ -x "/opt/php70/bin/php" ]; then
+        _USE_PHP_CLI_PATH=/opt/php70/bin/php
       fi
     fi
     if [ -x "${_USE_PHP_CLI_PATH}" ]; then
@@ -1475,7 +1481,9 @@ check_php_cli() {
 }
 
 switch_php_cli() {
-  if [ ! -z "$1" ]; then
+  isTest="$1"
+  isTest=${isTest//[^0-9]/}
+  if [ ! -z "${isTest}" ]; then
     rm -f /usr/bin/php-cli
     ln -s /opt/php$1/bin/php /usr/bin/php-cli
     rm -f /usr/bin/php
@@ -1486,6 +1494,20 @@ switch_php_cli() {
 }
 
 php_upgrade_all() {
+  if [ -x "/opt/php70/bin/php" ] \
+    && [ -z "$_FRESH_PHP70_BUILD" ]; then
+    _PHP_VERSION="${_PHP70_VRN}"
+    _PHP_BIN_BROKEN=NO
+    _BROKEN_LIBCURL_TEST=""
+    ### switch_php_cli "70"
+    check_php_broken "70"
+    check_php_rebuild "70"
+    update_php_multi "70"
+    mrun "service php70-fpm restart" &> /dev/null
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+  fi
   if [ -x "/opt/php53/bin/php" ] \
     && [ "${_SKIP_LEGACY_PHP}" != "YES" ] \
     && [ -z "$_FRESH_PHP53_BUILD" ]; then
@@ -1496,6 +1518,7 @@ php_upgrade_all() {
     check_php_broken "53"
     check_php_rebuild "53"
     update_php_multi "53"
+    mrun "service php53-fpm restart" &> /dev/null
     _PHP_VERSION=""
     _T_PHP_VRN=""
     _T_PHP_PTH=""
@@ -1510,6 +1533,7 @@ php_upgrade_all() {
     check_php_broken "54"
     check_php_rebuild "54"
     update_php_multi "54"
+    mrun "service php54-fpm restart" &> /dev/null
     _PHP_VERSION=""
     _T_PHP_VRN=""
     _T_PHP_PTH=""
@@ -1523,6 +1547,7 @@ php_upgrade_all() {
     check_php_broken "55"
     check_php_rebuild "55"
     update_php_multi "55"
+    mrun "service php55-fpm restart" &> /dev/null
     _PHP_VERSION=""
     _T_PHP_VRN=""
     _T_PHP_PTH=""
@@ -1536,19 +1561,7 @@ php_upgrade_all() {
     check_php_broken "56"
     check_php_rebuild "56"
     update_php_multi "56"
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-  fi
-  if [ -x "/opt/php70/bin/php" ] \
-    && [ -z "$_FRESH_PHP70_BUILD" ]; then
-    _PHP_VERSION="${_PHP70_VRN}"
-    _PHP_BIN_BROKEN=NO
-    _BROKEN_LIBCURL_TEST=""
-    ### switch_php_cli "70"
-    check_php_broken "70"
-    check_php_rebuild "70"
-    update_php_multi "70"
+    mrun "service php56-fpm restart" &> /dev/null
     _PHP_VERSION=""
     _T_PHP_VRN=""
     _T_PHP_PTH=""
@@ -1592,6 +1605,17 @@ install_update_php() {
   if [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "jessie" ]; then
     ln -sf /usr/include/freetype2 /usr/include/freetype2/freetype
+  fi
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.0" ]] \
+    && [ ! -x "/opt/php70/bin/php" ]; then
+    _PHP_VERSION="${_PHP70_VRN}"
+    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+    ### switch_php_cli "70"
+    install_php_multi "70"
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+    _FRESH_PHP70_BUILD=70
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "5.3" ]] \
     && [ "${_SKIP_LEGACY_PHP}" != "YES" ] \
@@ -1639,17 +1663,6 @@ install_update_php() {
     _T_PHP_PTH=""
     _FRESH_PHP56_BUILD=56
   fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.0" ]] \
-    && [ ! -x "/opt/php70/bin/php" ]; then
-    _PHP_VERSION="${_PHP70_VRN}"
-    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    ### switch_php_cli "70"
-    install_php_multi "70"
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-    _FRESH_PHP70_BUILD=70
-  fi
 }
 
 check_fix_php() {
@@ -1694,7 +1707,7 @@ install_update_composer() {
   if [ ! -x "/usr/local/bin/composer" ] || [ ! -L "/usr/bin/composer" ]; then
     rm -f /usr/local/bin/composer
     rm -f /usr/bin/composer
-    rm -f -r /root/.composer
+    rm -rf /root/.composer
     mkdir -p /var/opt
     cd /var/opt
     curl -sS https://getcomposer.org/installer | php &> /dev/null

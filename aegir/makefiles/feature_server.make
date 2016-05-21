@@ -9,7 +9,7 @@ core = 6.x
 
 projects[pressflow][type] = "core"
 projects[pressflow][download][type] = "get"
-projects[pressflow][download][url] = "http://files.aegir.cc/core/pressflow-6.38.1.tar.gz"
+projects[pressflow][download][url] = "http://files.aegir.cc/core/pressflow-6.38.2.tar.gz"
 
 projects[cck][type] = "module"
 ;projects[cck][version] = "3.0"
@@ -32,7 +32,7 @@ projects[features][download][type] = "get"
 projects[features][download][url] = "http://files.aegir.cc/dev/contrib/features-6.x-1.2.tar.gz"
 
 projects[filefield][type] = "module"
-;projects[filefield][version] = "3.13"
+;projects[filefield][version] = "3.14"
 projects[filefield][download][type] = "get"
 projects[filefield][download][url] = "http://files.aegir.cc/dev/contrib/filefield-6.x-3.14.tar.gz"
 
@@ -47,9 +47,9 @@ projects[strongarm][download][type] = "get"
 projects[strongarm][download][url] = "http://files.aegir.cc/dev/contrib/strongarm-6.x-2.2.tar.gz"
 
 projects[views][type] = "module"
-;projects[views][version] = "2.18"
+;projects[views][version] = "2.19"
 projects[views][download][type] = "get"
-projects[views][download][url] = "http://files.aegir.cc/dev/contrib/views-6.x-2.18.tar.gz"
+projects[views][download][url] = "http://files.aegir.cc/dev/contrib/views-6.x-2.19.tar.gz"
 
 projects[nodereference_url][type] = "module"
 ;projects[nodereference_url][version] = "1.11"
