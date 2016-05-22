@@ -847,6 +847,7 @@ if [ `whoami` = "root" ]; then
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
+        || [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ] \
         || [ "${_BENG_VS}" = "YES" ]; then
         update_agents
       fi
