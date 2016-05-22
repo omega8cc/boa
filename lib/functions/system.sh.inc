@@ -3022,7 +3022,7 @@ if_wheezy_to_jessie() {
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
       fi
-      apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
+      mrun "apt-get remove systemd -y --force-yes -qq --purge --auto-remove" 2> /dev/null
       echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
       echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
       ${_INSTALL} sysvinit-core &> /dev/null
