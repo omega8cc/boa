@@ -4304,6 +4304,8 @@ satellite_child_b_drush_xts_install() {
 }
 
 satellite_child_b_drush_test() {
+  drush8 cc drush &> /dev/null
+  rm -rf ${_ROOT}/.tmp/cache
   if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} B: Drush test result OK"
