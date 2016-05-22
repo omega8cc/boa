@@ -3112,7 +3112,7 @@ if_wheezy_to_jessie() {
   fi
 }
 
-if_squeeze_to_jessie() {
+if_squeeze_to_wheezy() {
   if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
     && [ "${_OSV}" = "squeeze" ]; then
     _LOC_OSV=squeeze
