@@ -4734,21 +4734,28 @@ satellite_child_b_aegir_health_check() {
 }
 
 satellite_child_b_letsencrypt() {
-  leCrtPath="${_ROOT}/tools/le/certs/${_DOMAIN}"
-  exeLe="${_ROOT}/tools/le/letsencrypt.sh"
+  leRoot="${_ROOT}/tools/le"
+  leCrtPath="${leRoot}/certs/${_DOMAIN}"
+  exeLe="${leRoot}/letsencrypt.sh"
   pthLe="${_ROOT}/backups/system/letsencrypt.sh"
   mkdir -p ${_ROOT}/backups/system
   chmod 700 ${_ROOT}/backups/system
   rm -f ${_ROOT}/backups/system/letsencrypt*
   curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/letsencrypt.sh" -o ${pthLe}
   if [ -e "${pthLe}" ]; then
-    mkdir -p ${_ROOT}/tools/le/.acme-challenges
-    chmod 0711 ${_ROOT}/tools/le/.acme-challenges
-    mkdir -p ${_ROOT}/tools/le/certs
-    chmod 0700 ${_ROOT}/tools/le/certs
-    chmod 0711 ${_ROOT}/tools/le
+    mkdir -p ${leRoot}/.ctrl
+    chmod 0711 ${leRoot}/.ctrl
+    mkdir -p ${leRoot}/.acme-challenges
+    chmod 0711 ${leRoot}/.acme-challenges
+    mkdir -p ${leRoot}/certs
+    chmod 0700 ${leRoot}/certs
+    chmod 0711 ${leRoot}
     cp -af ${pthLe} ${exeLe}
     chmod 0700 ${exeLe}
+    if [ "${_STATUS}" = "INIT" ] || [ -e "${leRoot}/.ctrl/ssl-demo-mode.pid" ]; then
+      touch ${leRoot}/.ctrl/ssl-demo-mode.pid
+      echo -e '#!/usr/bin/env bash\n\nCA="https://acme-staging.api.letsencrypt.org/directory"\n' > ${leRoot}/config.sh
+    fi
   fi
   if [ -x "${exeLe}" ]; then
     if [ -e "${leCrtPath}/fullchain.pem" ]; then
