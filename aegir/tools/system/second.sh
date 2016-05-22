@@ -151,19 +151,19 @@ d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
   fi
   rm -f /var/backups/.auth.IP.list
   for _IP in `who --ips \
-    | sed 's/.*tty.*//g; s/.*root.*hvc.*//g' \
+    | sed 's/.*tty.*//g; s/.*root.*hvc.*//g; s/^[0-9]+$//g' \
     | cut -d: -f2 \
     | cut -d' ' -f2 \
     | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' \
     | tr -d "\s" \
     | sort \
-    | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
-      >> /var/backups/.auth.IP.list;done
+    | uniq`;do _IP=${_IP//[^0-9.]/}; if [[ "${_IP}" =~ "." ]]; then echo "  allow                        ${_IP};" \
+      >> /var/backups/.auth.IP.list;fi;done
   if [ -e "/root/.ip.protected.vhost.whitelist.cnf" ]; then
     for _IP in `cat /root/.ip.protected.vhost.whitelist.cnf \
       | sort \
-      | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
-        >> /var/backups/.auth.IP.list;done
+      | uniq`;do _IP=${_IP//[^0-9.]/}; if [[ "${_IP}" =~ "." ]]; then echo "  allow                        ${_IP};" \
+        >> /var/backups/.auth.IP.list;fi;done
   fi
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" \
     /var/backups/.auth.IP.list &> /dev/null
@@ -184,19 +184,19 @@ d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
 
 manage_ip_auth_access() {
   for _IP in `who --ips \
-    | sed 's/.*tty.*//g; s/.*root.*hvc.*//g' \
+    | sed 's/.*tty.*//g; s/.*root.*hvc.*//g; s/^[0-9]+$//g' \
     | cut -d: -f2 \
     | cut -d' ' -f2 \
     | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' \
     | tr -d "\s" \
     | sort \
-    | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
-      >> /var/backups/.auth.IP.list.tmp;done
+    | uniq`;do _IP=${_IP//[^0-9.]/}; if [[ "${_IP}" =~ "." ]]; then echo "  allow                        ${_IP};" \
+      >> /var/backups/.auth.IP.list.tmp;fi;done
   if [ -e "/root/.ip.protected.vhost.whitelist.cnf" ]; then
     for _IP in `cat /root/.ip.protected.vhost.whitelist.cnf \
       | sort \
-      | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
-        >> /var/backups/.auth.IP.list.tmp;done
+      | uniq`;do _IP=${_IP//[^0-9.]/}; if [[ "${_IP}" =~ "." ]]; then echo "  allow                        ${_IP};" \
+        >> /var/backups/.auth.IP.list.tmp;fi;done
   fi
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" \
     /var/backups/.auth.IP.list.tmp &> /dev/null
