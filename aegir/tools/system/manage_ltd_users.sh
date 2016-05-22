@@ -1594,7 +1594,8 @@ switch_php() {
                 _WEB="${_USER}.web"
                 _POOL="${_USER}"
               fi
-              if [ -d "${dscUsr}/tools/le" ]; then
+              if [ "${_PHP_FPM_MULTI}" = "YES" ] \
+                && [ -d "${dscUsr}/tools/le" ]; then
                 cp -af /var/xdrago/conf/fpm-pool-foo-multi.conf \
                   /opt/php${m}/etc/pool.d/${_POOL}.conf
               else

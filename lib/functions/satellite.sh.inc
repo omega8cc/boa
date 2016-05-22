@@ -285,15 +285,10 @@ satellite_tune_fpm_config() {
   cp -af ${bldPth}/aegir/conf/fpm-pool-foo-multi.conf /var/xdrago/conf/
   cp -af ${bldPth}/aegir/conf/fpm-pool-foo.conf /var/xdrago/conf/
   if [ ! -z "${_PHP_FPM_TIMEOUT}" ] && [ ! -z "${_PHP_SV}" ]; then
-    if [ -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
+    if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
       rm -f /opt/php*/etc/pool.d/${_USER}.conf
-      if [ -d "${_ROOT}/tools/le" ]; then
-        cp -af /var/xdrago/conf/fpm-pool-foo-multi.conf \
-          /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
-      else
-        cp -af /var/xdrago/conf/fpm-pool-foo.conf \
-          /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
-      fi
+      cp -af /var/xdrago/conf/fpm-pool-foo.conf \
+        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
     fi
     if [ -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ]; then
       ### create or update special system user if needed
@@ -320,6 +315,9 @@ satellite_tune_fpm_config() {
         /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       wait
       sed -i "s/foo/${_USER}/g" \
+        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      wait
+      sed -i "s/THISPOOL/${_USER}/g" \
         /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       wait
       if [ ! -z "${_PHP_FPM_DENY}" ]; then
@@ -3368,7 +3366,11 @@ satellite_make() {
   fi
 
   if [ -e "${_ROOT}/log/email.txt" ]; then
-    if [ ! -f "${_ROOT}/static/control/multi-fpm.info" ]; then
+    _PHP_FPM_MULTI=NO
+    if [ -f "${_ROOT}/static/control/multi-fpm.info" ]; then
+      _PHP_FPM_MULTI=YES
+    fi
+    if [ "${_PHP_FPM_MULTI}" = "NO" ]; then
       satellite_tune_fpm_config
     fi
     satellite_force_advanced_nginx_config
