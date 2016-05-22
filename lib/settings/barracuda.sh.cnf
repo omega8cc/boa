@@ -261,6 +261,12 @@ _FULL_FORCE_REINSTALL=NO
 
 ###
 ### Use YES to run major system upgrade
+### from Debian Wheezy to Debian Jessie.
+###
+_WHEEZY_TO_JESSIE=NO
+
+###
+### Use YES to run major system upgrade
 ### from Debian Squeeze to Debian Wheezy.
 ###
 _SQUEEZE_TO_WHEEZY=NO
@@ -1132,4 +1138,3 @@ download_helpers_libs() {
     cd /opt/tmp
   fi
 }
-

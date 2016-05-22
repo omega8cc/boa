@@ -217,7 +217,10 @@ if_install_collectd() {
 }
 
 if_install_hhvm() {
-  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+  if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "wheezy" ]; then
+    _DO_FIX=YES
+  elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
     && [ "${_LOC_OSV}" = "squeeze" ]; then
     _DO_FIX=YES
   fi

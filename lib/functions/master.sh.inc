@@ -742,7 +742,15 @@ EOFMYSQL
     msg "INFO: Aegir Master Instance installed"
   else
     echo " "
-    if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
+      && [ "${_LOC_OSV}" = "wheezy" ]; then
+      msg "INFO: Aegir Master Instance upgrade skipped!"
+      echo " "
+      msg "NOTE! You must reboot the server and run barracuda upgrade"
+      msg "NOTE! again to complete all system upgrades and upgrade also"
+      msg "NOTE! Aegir Master Instance."
+      echo " "
+    elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
       && [ "${_LOC_OSV}" = "squeeze" ]; then
       msg "INFO: Aegir Master Instance upgrade skipped!"
       echo " "

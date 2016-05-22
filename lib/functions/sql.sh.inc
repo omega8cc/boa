@@ -493,7 +493,10 @@ install_mariadb_server() {
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       _SQL_UPGRADE=YES
     fi
-    if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
+      && [ "${_LOC_OSV}" = "wheezy" ]; then
+      _SQL_UPGRADE=NO
+    elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
       && [ "${_LOC_OSV}" = "squeeze" ]; then
       _SQL_UPGRADE=NO
     fi

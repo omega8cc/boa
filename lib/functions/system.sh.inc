@@ -1554,6 +1554,11 @@ barracuda_cnf() {
         wait
       fi
     fi
+    _WHEEZY_TO_JESSIE_TEST=$(grep _WHEEZY_TO_JESSIE ${barCnf} 2>&1)
+    if [[ "${_WHEEZY_TO_JESSIE_TEST}" =~ "_WHEEZY_TO_JESSIE" ]]; then
+      sed -i "s/^_WHEEZY_TO_JESSIE.*//g" ${barCnf}
+      wait
+    fi
     _SQUEEZE_TO_WHEEZY_TEST=$(grep _SQUEEZE_TO_WHEEZY ${barCnf} 2>&1)
     if [[ "${_SQUEEZE_TO_WHEEZY_TEST}" =~ "_SQUEEZE_TO_WHEEZY" ]]; then
       sed -i "s/^_SQUEEZE_TO_WHEEZY.*//g" ${barCnf}
@@ -2720,7 +2725,10 @@ finale() {
 }
 
 install_with_aptitude_deps() {
-  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+  if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "wheezy" ]; then
+    _DO_FIX=YES
+  elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
     && [ "${_LOC_OSV}" = "squeeze" ]; then
     _DO_FIX=YES
   fi
@@ -2796,16 +2804,16 @@ basic_packages_install_on_init() {
   else
     if [ "${_OSV}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
-      ${_INITINS} sysvinit-core &> /dev/null
-      ${_INITINS} sysvinit-utils &> /dev/null
+      ${_INSTALL} sysvinit-core &> /dev/null
+      ${_INSTALL} sysvinit-utils &> /dev/null
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
       fi
       apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
       echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
       echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-      ${_INITINS} sysvinit-core &> /dev/null
-      ${_INITINS} sysvinit-utils &> /dev/null
+      ${_INSTALL} sysvinit-core &> /dev/null
+      ${_INSTALL} sysvinit-utils &> /dev/null
     fi
   fi
 }
@@ -2838,7 +2846,273 @@ more_packages_install_on_init() {
   fi
 }
 
-if_squeeze_to_wheezy() {
+if_wheezy_to_jessie() {
+  if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
+    && [ "${_OSV}" = "wheezy" ]; then
+    _LOC_OSV=wheezy
+  fi
+  if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "wheezy" ]; then
+    msg "WARN: Wheezy to Jessie upgrade will start in 60 seconds..."
+    msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
+    if [ ! -e "/root/.upstart.cnf" ]; then
+      service cron stop &> /dev/null
+      mrun "sleep 60"
+    fi
+    check_dns_settings
+    if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
+      if [ -e "/etc/resolv.conf" ]; then
+        mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
+      fi
+      rm -f /etc/resolv.conf
+      echo "nameserver 8.8.8.8" >/etc/resolv.conf
+      echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+      if [ -e "/etc/resolv.conf.pre-dist-upgrade" ]; then
+        cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
+      fi
+    fi
+    rm -f ${pthLog}/ruby-root-clean-reload.log
+    mv -f /var/xdrago /var/xdrago_wait &> /dev/null
+    msg "WARN: Too late! Wheezy to Jessie upgrade in progress..."
+    msg "HINT: Run tail -f ${_LOG}"
+    msg "HINT: in another terminal window to watch details"
+    _FULL_FORCE_REINSTALL=YES
+    _PURGE_MODE=OFF
+    rm -f ${mtrNgx}/pre.d/nginx_speed_purge.conf
+    if [ -e "/etc/init.d/bind" ]; then
+      rm -f /etc/init.d/bind
+    fi
+    if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ]; then
+      service tomcat stop &> /dev/null
+      mv /etc/init.d/tomcat /etc/init.d/offtomcat
+      kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
+    fi
+    mrun "apt-get update -qq" 2> /dev/null
+    mrun "apt-get remove collectd      -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove libc-client2007b-dev -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove nginx-extras  -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove nginx         -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove nginx-common  -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove nginx-full    -y --force-yes -qq" 2> /dev/null
+    if [ -e "/etc/php5/conf.d" ]; then
+      touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
+      touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
+    fi
+    mrun "apt-get remove php5 \
+                         php5-cgi \
+                         php5-curl \
+                         php5-fpm \
+                         php5-gd \
+                         php5-geoip \
+                         php5-gmp \
+                         php5-imagick \
+                         php5-imap \
+                         php5-ldap \
+                         php5-mcrypt \
+                         php5-memcache \
+                         php5-mysql \
+                         php5-sqlite \
+                         php5-xmlrpc \
+                         php5-xsl      -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove phpunit       -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php-pear      -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php-benchmark -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php5-cli      -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php5-common   -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php5-apc      -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php-apc       -y --force-yes -qq" 2> /dev/null
+    echo "curl install"           | dpkg --set-selections
+    echo "git install"            | dpkg --set-selections
+    echo "git-core install"       | dpkg --set-selections
+    echo "git-man install"        | dpkg --set-selections
+    echo "libssl-dev install"     | dpkg --set-selections
+    echo "openssh-client install" | dpkg --set-selections
+    echo "openssh-server install" | dpkg --set-selections
+    echo "openssl install"        | dpkg --set-selections
+    echo "ssh install"            | dpkg --set-selections
+    echo "zlib1g install"         | dpkg --set-selections
+    echo "zlib1g-dev install"     | dpkg --set-selections
+    echo "zlibc install"          | dpkg --set-selections
+    mrun "${_INSTALL} zlib1g"     2> /dev/null
+    mrun "${_INSTALL} zlib1g-dev" 2> /dev/null
+    mrun "${_INSTALL} zlibc"      2> /dev/null
+    mrun "${_INSTALL} openssl"    2> /dev/null
+    mrun "${_INSTALL} libssl-dev" 2> /dev/null
+    mrun "apt-get install curl ${forCer}"           2> /dev/null
+    mrun "apt-get install git ${forCer}"            2> /dev/null
+    mrun "apt-get install git-core ${forCer}"       2> /dev/null
+    mrun "apt-get install git-man ${forCer}"        2> /dev/null
+    mrun "apt-get install openssh-client ${forCer}" 2> /dev/null
+    mrun "apt-get install openssh-server ${forCer}" 2> /dev/null
+    mrun "apt-get install ssh ${forCer}"            2> /dev/null
+    mrun "apt-get upgrade ${nrmUpArg}"              2> /dev/null
+    mrun "apt-get dist-upgrade ${nrmUpArg}"         2> /dev/null
+    ### Check if we can continue
+    _AUDIT_DPKG=$(dpkg --audit 2>&1)
+    if [ ! -z "${_AUDIT_DPKG}" ]; then
+      msg "ALRT! I can not continue until dpkg --audit is clean"
+      msg "ALRT! ${_AUDIT_DPKG}"
+      msg "ALRT! Aborting installer NOW!"
+      clean_pid_exit
+    fi
+    _HOLD_TEST_DPKG=$(dpkg --get-selections | grep 'hold$' 2>&1)
+    if [ ! -z "${_HOLD_TEST_DPKG}" ]; then
+      msg "ALRT! I can not continue until these packages are un-hold"
+      msg "ALRT! ${_HOLD_TEST_DPKG}"
+      msg "ALRT! Aborting installer NOW!"
+      clean_pid_exit
+    fi
+    _HOLD_TEST_ATE=$(aptitude search "~ahold" 2>&1)
+    if [ ! -z "${_HOLD_TEST_ATE}" ]; then
+      msg "ALRT! I can not continue until these packages are un-hold"
+      msg "ALRT! ${_HOLD_TEST_ATE}"
+      msg "ALRT! Aborting installer NOW!"
+      clean_pid_exit
+    fi
+    ### Switching gears on the fly
+    sed -i "s/.*DEBIAN LTS.*//g" /etc/apt/sources.list
+    wait
+    sed -i "s/.*wheezy-lts.*//g" /etc/apt/sources.list
+    wait
+    sed -i "s/.*PROPOSED.*//g"   /etc/apt/sources.list
+    wait
+    sed -i "s/.*proposed.*//g"   /etc/apt/sources.list
+    wait
+    sed -i "s/wheezy/jessie/g"   /etc/apt/sources.list
+    wait
+    sed -i "s/wheezy/jessie/g"   /etc/apt/sources.list.d/*
+    wait
+    if [ -e "/etc/apt/apt.conf" ]; then
+      sed -i "s/APT::Default-Release.*/APT::Default-Release \"jessie\";/g" \
+        /etc/apt/apt.conf &> /dev/null
+      wait
+    fi
+    rm -f /etc/apt/sources.list.d/openssl.list
+    mrun "apt-get update -qq" 2> /dev/null
+    ### Two step upgrade with apt-get only
+    mrun "apt-get install apt -t jessie ${dstUpArg}" 2> /dev/null
+    mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
+    mrun "apt-get install apt dpkg aptitude util-linux ${dstUpArg}" 2> /dev/null
+    mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
+    mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+    touch ${mtrNgx}/pre.d/nginx_speed_purge.conf
+    install_upgrade_nginx
+    if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
+      ln -sf /etc/init.d/bind9 /etc/init.d/bind
+    fi
+    if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
+      if [ -e "/root/.debug.cnf" ]; then
+        mv -f /etc/init.d/networking /etc/init.d/networking.bak
+        cp -af /etc/init.d/networking.dpkg-dist /etc/init.d/networking
+        chmod 755 /etc/init.d/networking
+      fi
+    fi
+    if [ -d "/var/www/cgp" ]; then
+      mrun "apt-get install collectd ${dstUpArg}" 2> /dev/null
+    fi
+    if [ "${_VMFAMILY}" != "VS" ]; then
+      mrun "apt-get install udev ${dstUpArg}" 2> /dev/null
+    fi
+    mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
+    mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
+    if [ -x "/lib/systemd/systemd" ]; then
+      msg "INFO: Removing systemd on ${_THIS_OS} jessie..."
+      ${_INSTALL} sysvinit-core &> /dev/null
+      ${_INSTALL} sysvinit-utils &> /dev/null
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
+      fi
+      apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
+      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+      ${_INSTALL} sysvinit-core &> /dev/null
+      ${_INSTALL} sysvinit-utils &> /dev/null
+    fi
+    _VM_TEST=$(uname -a 2>&1)
+    if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+      _PTMX=OK
+      _REMOVE_LINKS="buagent \
+                     fancontrol \
+                     halt \
+                     hwclock.sh \
+                     hwclockfirst.sh \
+                     ifupdown \
+                     ifupdown-clean \
+                     kerneloops \
+                     klogd \
+                     mountall-bootclean.sh \
+                     mountall.sh \
+                     mountdevsubfs.sh \
+                     mountkernfs.sh \
+                     mountnfs-bootclean.sh \
+                     mountnfs.sh \
+                     mountoverflowtmp \
+                     mountvirtfs \
+                     mtab.sh \
+                     networking \
+                     reboot \
+                     setserial \
+                     svscan \
+                     sysstat \
+                     umountfs \
+                     umountnfs.sh \
+                     umountroot \
+                     urandom \
+                     vnstat"
+      for link in ${_REMOVE_LINKS}; do
+        if [ -e "/etc/init.d/${link}" ]; then
+          update-rc.d -f ${link} remove &> /dev/null
+        fi
+      done
+    else
+      _PTMX=CHECK
+    fi
+    if [ -e "/root/.debug.cnf" ]; then
+      _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
+      if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then
+        _PTS=FIX
+      else
+        _PTS=OK
+      fi
+      if [ "${_PTMX}" = "CHECK" ] && [ "${_PTS}" = "FIX" ]; then
+        msg "WARN: Required /dev/pts/ptmx does not exist! We will fix this now..."
+        mkdir -p /dev/pts
+        rm -rf /dev/pts/*
+        rm -f /etc/apt/sources.list.d/openssl.list
+        apt-get update -qq &> /dev/null
+        apt-get install udev -y --force-yes &> /dev/null
+        echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
+        mount -t devpts devpts /dev/pts &> /dev/null
+      fi
+    fi
+    _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD" /etc/sudoers 2>&1)
+    if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
+      echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+    fi
+    for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+      if [ -e "${User}/config/server_master/nginx/vhost.d" ] \
+        && [ ! -e "${User}/log/CANCELLED" ]; then
+        _HM_U=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+        _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD" /etc/sudoers 2>&1)
+        if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
+          echo "${_HM_U} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+        fi
+      fi
+    done
+    echo rotate > /var/log/syslog
+    rm -f /var/xdrago/log/*.log
+    mv -f /var/xdrago_wait /var/xdrago &> /dev/null
+    echo " "
+    msg "INFO: No errors? Then Wheezy to Jessie upgrade was successful :)"
+    msg "INFO: REBOOT your system once Barracuda will complete all upgrades!"
+    echo " "
+  fi
+}
+
+if_squeeze_to_jessie() {
   if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
     && [ "${_OSV}" = "squeeze" ]; then
     _LOC_OSV=squeeze
@@ -2891,21 +3165,21 @@ if_squeeze_to_wheezy() {
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
     mrun "apt-get remove php5 \
-                          php5-cgi \
-                          php5-curl \
-                          php5-fpm \
-                          php5-gd \
-                          php5-geoip \
-                          php5-gmp \
-                          php5-imagick \
-                          php5-imap \
-                          php5-ldap \
-                          php5-mcrypt \
-                          php5-memcache \
-                          php5-mysql \
-                          php5-sqlite \
-                          php5-xmlrpc \
-                          php5-xsl     -y --force-yes -qq" 2> /dev/null
+                         php5-cgi \
+                         php5-curl \
+                         php5-fpm \
+                         php5-gd \
+                         php5-geoip \
+                         php5-gmp \
+                         php5-imagick \
+                         php5-imap \
+                         php5-ldap \
+                         php5-mcrypt \
+                         php5-memcache \
+                         php5-mysql \
+                         php5-sqlite \
+                         php5-xmlrpc \
+                         php5-xsl      -y --force-yes -qq" 2> /dev/null
     mrun "apt-get remove phpunit       -y --force-yes -qq" 2> /dev/null
     mrun "apt-get remove php-pear      -y --force-yes -qq" 2> /dev/null
     mrun "apt-get remove php-benchmark -y --force-yes -qq" 2> /dev/null

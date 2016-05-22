@@ -82,7 +82,7 @@ production settings.
 ### SUPPORTED LTS OS {c} please read also: docs/CAVEATS.txt
 
 * Debian 8 Jessie (recommended)
-* Debian 7 Wheezy
+* Debian 7 Wheezy (upgrade to Jessie with _WHEEZY_TO_JESSIE=YES)
 * Debian 6 Squeeze (limited to upgrade to Wheezy with _SQUEEZE_TO_WHEEZY=YES)
 * Ubuntu Trusty 14.04 (limited support)
 * Ubuntu Precise 12.04 (limited support)

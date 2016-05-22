@@ -246,6 +246,7 @@ check_prepare_dirs_permissions
 ###
 ### Optional major system upgrades
 ###
+if_wheezy_to_jessie
 if_squeeze_to_wheezy
 
 
