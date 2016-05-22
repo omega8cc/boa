@@ -4721,8 +4721,9 @@ satellite_child_b_aegir_health_check() {
       msg "${_STATUS} B: Reloading Nginx..."
       sudo /etc/init.d/nginx reload
     else
-      sudo /etc/init.d/nginx reload &> /dev/null
+      sudo /etc/init.d/nginx reload
     fi
+    sleep 5
   else
     msg "${_STATUS} B: FATAL ERROR: Required file does not exist:"
     msg "${_STATUS} B: FATAL ERROR: ${_HM_ROOT}/sites/${_DOMAIN}/settings.php"
