@@ -67,8 +67,13 @@ load_control() {
 action() {
   if [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ]; then
     ### echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_SPR}"
-    su -s /bin/bash - EDIT_USER -c "bash /data/disk/EDIT_USER/aegir.sh"
-    touch /var/xdrago/log/last-run-EDIT_USER
+    if [ ! -e "/data/disk/EDIT_USER/.tmp/cache/download" ]; then
+      su -s /bin/bash - EDIT_USER -c "drush8 cc drush" &> /dev/null
+      su -s /bin/bash - EDIT_USER -c "bash /data/disk/EDIT_USER/aegir.sh"
+      touch /var/xdrago/log/last-run-EDIT_USER
+    else
+      touch /var/xdrago/log/skip-run-EDIT_USER
+    fi
   fi
 }
 
