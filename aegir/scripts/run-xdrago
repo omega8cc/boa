@@ -68,10 +68,15 @@ load_control() {
 action() {
   if [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ]; then
     ### echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_SPR}"
+    buildTest=
     dlDir="/data/disk/${_H_USER}/.tmp/cache/download"
-    buildTest=$(ls ${dlDir} | wc -l | tr -d "\n" 2>&1)
-    buildTest=${buildTest//[^0-9]/}
-    if [ "${buildTest}" -lt "1" ] || [ -z "${buildTest}" ]; then
+    if [ -e "${dlDir}" ]; then
+      buildTest=$(ls ${dlDir} | wc -l | tr -d "\n" 2>&1)
+      buildTest=${buildTest//[^0-9]/}
+    fi
+    if [ "${buildTest}" -lt "1" ] \
+      || [ -z "${buildTest}" ] \
+      || [ ! -e "${dlDir}" ]; then
       su -s /bin/bash - ${_H_USER} -c "drush8 cc drush" &> /dev/null
       su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir.sh"
       touch /var/xdrago/log/last-run-${_H_USER}
