@@ -4725,7 +4725,7 @@ satellite_child_b_aegir_health_check() {
       msg "${_STATUS} B: Reloading Nginx..."
       sudo /etc/init.d/nginx reload
     else
-      sudo /etc/init.d/nginx reload
+      sudo /etc/init.d/nginx reload &> /dev/null
     fi
     sleep 5
   else
@@ -4739,6 +4739,8 @@ satellite_child_b_aegir_health_check() {
 
 satellite_child_b_letsencrypt() {
   leRoot="${_ROOT}/tools/le"
+  leKeyJ="${leRoot}/tools/le/private_key.json"
+  leKeyP="${leRoot}/tools/le/private_key.pem"
   leCrtPath="${leRoot}/certs/${_DOMAIN}"
   exeLe="${leRoot}/letsencrypt.sh"
   pthLe="${_ROOT}/backups/system/letsencrypt.sh"
@@ -4746,6 +4748,9 @@ satellite_child_b_letsencrypt() {
   chmod 700 ${_ROOT}/backups/system
   rm -f ${_ROOT}/backups/system/letsencrypt*
   curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/letsencrypt.sh" -o ${pthLe}
+  if [ ! -e "${leRoot}" ]; then
+    leSetup="YES"
+  fi
   if [ -e "${pthLe}" ]; then
     mkdir -p ${leRoot}/.ctrl
     chmod 0711 ${leRoot}/.ctrl
@@ -4755,10 +4760,39 @@ satellite_child_b_letsencrypt() {
     chmod 0700 ${leRoot}/certs
     chmod 0711 ${leRoot}
     cp -af ${pthLe} ${exeLe}
-    chmod 0700 ${exeLe}
-    if [ "${_STATUS}" = "INIT" ] || [ -e "${leRoot}/.ctrl/ssl-demo-mode.pid" ]; then
-      touch ${leRoot}/.ctrl/ssl-demo-mode.pid
-      echo -e '#!/usr/bin/env bash\n\nCA="https://acme-staging.api.letsencrypt.org/directory"\n' > ${leRoot}/config.sh
+    if [ -e "${exeLe}" ]; then
+      chmod 0700 ${exeLe}
+      if [ "${_STATUS}" = "INIT" ] \
+        || [ "${leSetup}" = "YES" ] \
+        || [ -e "${leRoot}/.ctrl/ssl-demo-mode.pid" ]; then
+        touch ${leRoot}/.ctrl/ssl-demo-mode.pid
+        echo -e '#!/usr/bin/env bash\n\nCA="https://acme-staging.api.letsencrypt.org/directory"\n' > ${leRoot}/config.sh
+        if [ -e "${leKeyJ}" ]; then
+          mv -f ${leKeyJ} "${leKeyJ}-prev"
+        fi
+        if [ -e "${leKeyP}" ]; then
+          mv -f ${leKeyP} "${leKeyP}-prev"
+        fi
+        echo ""
+        msg "${_STATUS} B: Letsencrypt SSL initial mode: DEMO"
+        msg "${_STATUS} B: LE -- No real SSL certs will be generated"
+        msg "${_STATUS} B: LE -- To enable live SSL mode, please delete file:"
+        msg "${_STATUS} B: LE -- ${leRoot}/.ctrl/ssl-demo-mode.pid"
+        msg "${_STATUS} B: LE -- Then run octopus forced upgrade"
+        echo ""
+      fi
+    else
+      msg "${_STATUS} B: LE -- Missing ${exeLe} file?"
+    fi
+  fi
+  if [ ! -e "${leRoot}/.ctrl/ssl-demo-mode.pid" ] \
+    && [ -e "${leRoot}/config.sh" ]; then
+    rm -f ${leRoot}/config.sh
+    if [ -e "${leKeyJ}" ]; then
+      mv -f ${leKeyJ} "${leKeyJ}-prev"
+    fi
+    if [ -e "${leKeyP}" ]; then
+      mv -f ${leKeyP} "${leKeyP}-prev"
     fi
   fi
   if [ -x "${exeLe}" ]; then
@@ -4770,8 +4804,8 @@ satellite_child_b_letsencrypt() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       bash ${exeLe} -c -d ${_DOMAIN}
     else
-      bash ${exeLe} -c -d ${_DOMAIN}
-      # bash ${exeLe} -c -d ${_DOMAIN} 2>&1
+      mkdir -p ${_ROOT}/log
+      bash ${exeLe} -c -d ${_DOMAIN} >${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
     fi
   fi
 }
@@ -4896,7 +4930,9 @@ satellite_child_b_aegir_ui_enhance() {
 
     if [ ! -e "${_ROOT}/log/hosting_le_enable.txt" ]; then
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx_ssl' WHERE service='http'" &> /dev/null
+      sleep 5
       ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force &> /dev/null
+      mkdir -p ${_ROOT}/log
       touch ${_ROOT}/log/hosting_le_enable.txt
     fi
 
