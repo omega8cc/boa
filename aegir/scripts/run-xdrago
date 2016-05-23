@@ -82,6 +82,10 @@ action() {
       rm -rf ${ceDir}
       buildTest="0"
     fi
+    if [ "${buildTest}" = "0" ] && [ -e "${gtDir}" ]; then
+      rm -rf ${gtDir}
+      rm -rf ${dlDir}
+    fi
     if [ "${buildTest}" = "0" ] \
       || [ -z "${buildTest}" ] \
       || [ ! -e "${ceDir}" ]; then
