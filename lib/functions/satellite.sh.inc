@@ -3924,7 +3924,7 @@ satellite_letsencrypt_vhost_setup() {
         msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf exists, OK!"
       fi
     else
-      msg "${_STATUS} A: Creating Letsencrypt SSL vhost for Hostmaster, please wait..."
+      msg "${_STATUS} A: Creating LE vhost for Hostmaster, please wait..."
       if [ -e "${leCrtPath}/fullchain.pem" ]; then
         crtPath="${leCrtPath}/fullchain.pem"
       elif [ -e "${leCrtPath}/cert.pem" ]; then
