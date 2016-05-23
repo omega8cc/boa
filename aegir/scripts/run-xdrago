@@ -68,21 +68,23 @@ load_control() {
 action() {
   if [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ]; then
     ### echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_SPR}"
-    buildTest=
-    ceDir="/data/disk/${_H_USER}/.tmp/cache"
+    buildTest="1"
+    tpDir="/data/disk/${_H_USER}/.tmp"
+    ceDir="${tpDir}/cache"
     dlDir="${ceDir}/download"
     gtDir="${ceDir}/git"
     clCtr="/data/disk/${_H_USER}/static/control/clear-drush-cache.info"
-    if [ -e "${clCtr}" ] && [ -e "${gtDir}" ]; then
-      rm -rf ${ceDir}
-    fi
-    if [ -e "${dlDir}" ]; then
-      buildTest=$(ls ${dlDir} | wc -l | tr -d "\n" 2>&1)
+    if [ -e "${tpDir}" ]; then
+      buildTest=$(ls ${tpDir} | grep "_tmp_" | wc -l | tr -d "\n" 2>&1)
       buildTest=${buildTest//[^0-9]/}
     fi
-    if [ "${buildTest}" -lt "1" ] \
+    if [ -e "${clCtr}" ] && [ -e "${gtDir}" ]; then
+      rm -rf ${ceDir}
+      buildTest="0"
+    fi
+    if [ "${buildTest}" = "0" ] \
       || [ -z "${buildTest}" ] \
-      || [ ! -e "${dlDir}" ]; then
+      || [ ! -e "${ceDir}" ]; then
       su -s /bin/bash - ${_H_USER} -c "drush8 cc drush" &> /dev/null
       su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir.sh"
       touch /var/xdrago/log/last-run-${_H_USER}
