@@ -2,6 +2,7 @@
 
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
+_H_USER=EDIT_USER
 
 check_root() {
   if [ `whoami` = "root" ]; then
@@ -67,19 +68,22 @@ load_control() {
 action() {
   if [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ]; then
     ### echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_SPR}"
-    if [ ! -e "/data/disk/EDIT_USER/.tmp/cache/download" ]; then
-      su -s /bin/bash - EDIT_USER -c "drush8 cc drush" &> /dev/null
-      su -s /bin/bash - EDIT_USER -c "bash /data/disk/EDIT_USER/aegir.sh"
-      touch /var/xdrago/log/last-run-EDIT_USER
+    dlDir="/data/disk/${_H_USER}/.tmp/cache/download"
+    buildTest=$(ls ${dlDir} | wc -l | tr -d "\n" 2>&1)
+    buildTest=${buildTest//[^0-9]/}
+    if [ "${buildTest}" -lt "1" ] || [ -z "${buildTest}" ]; then
+      su -s /bin/bash - ${_H_USER} -c "drush8 cc drush" &> /dev/null
+      su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir.sh"
+      touch /var/xdrago/log/last-run-${_H_USER}
     else
-      touch /var/xdrago/log/skip-run-EDIT_USER
+      touch /var/xdrago/log/skip-run-${_H_USER}
     fi
   fi
 }
 
 if [ -e "/var/run/boa_wait.pid" ] \
   || [ -e "/var/run/manage_rvm_users.pid" ]; then
-  touch /var/xdrago/log/wait-EDIT_USER
+  touch /var/xdrago/log/wait-${_H_USER}
   exit 0
 else
   count_cpu
