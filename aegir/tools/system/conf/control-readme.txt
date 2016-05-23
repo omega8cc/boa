@@ -1,3 +1,29 @@
+
+###
+### Support for forced Drush cache clear in the Aegir backend
+###
+### ~/static/control/clear-drush-cache.info
+###
+### Octopus instance will pause all scheduled tasks in its queue, if it will
+### detect a platform build from the makefile in progress, to make sure
+### that no other running task could break the build.
+###
+### This is great, until there will be a broken build, and Drush will fail
+### to clean up all leftovers from its .tmp/cache directory, which in turn
+### will pause all tasks in the queue for up to 24-48 hours, until the cache
+### directory will be automatically purged by running daily cleanup tasks,
+### designed to not touch anything not old enough (24 hours at minimum)
+### to not break any running builds.
+###
+### If you need to unlock the tasks queue by forcefully removing everything
+### from the Aegir backend Drush cache, you can create an empty control file:
+### ~/static/control/clear-drush-cache.info
+###
+### You have to delete this file once the tasks queue is unlocked again,
+### or it will forcefully clear Drupal cache on every run, which in turn will
+### break all future attempts to build the platform from makefile.
+###
+
 ###
 ### Support for optional Drupalgeddon daily checks on all hosted D7 sites
 ###

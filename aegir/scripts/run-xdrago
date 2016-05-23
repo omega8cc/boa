@@ -69,7 +69,13 @@ action() {
   if [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ]; then
     ### echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_SPR}"
     buildTest=
-    dlDir="/data/disk/${_H_USER}/.tmp/cache/download"
+    ceDir="/data/disk/${_H_USER}/.tmp/cache"
+    dlDir="${ceDir}/download"
+    gtDir="${ceDir}/git"
+    clCtr="/data/disk/${_H_USER}/static/control/clear-drush-cache.info"
+    if [ -e "${clCtr}" ] && [ -e "${gtDir}" ]; then
+      rm -rf ${ceDir}
+    fi
     if [ -e "${dlDir}" ]; then
       buildTest=$(ls ${dlDir} | wc -l | tr -d "\n" 2>&1)
       buildTest=${buildTest//[^0-9]/}
