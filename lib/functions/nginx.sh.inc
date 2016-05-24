@@ -489,51 +489,29 @@ nginx_wildcard_ssl() {
   _WILD_SSL_VHOST="${mtrNgx}/pre.d/nginx_wild_ssl.conf"
   if [ ! -e "${_WILD_SSL_VHOST}" ]; then
     msg "INFO: Installing default SSL Wildcard Nginx Proxy..."
-    _HTTPS_TEST=$(netstat -ln | grep :443 2>&1)
-    if [[ "$_HTTPS_TEST" =~ "443" ]]; then
-      _HTTPS_TEST=EXIST
-      msg "WARNING!"
-      cat <<EOF
-
-    We can't enable Wildcard HTTPS Proxy for all your hosted sites,
-    including all Aegir Satellite Instances, because you have already
-    enabled SSL on the IP address used by your Aegir Master Instance.
-
-    If you wish to use provided now by Barracuda Wildcard HTTPS Proxy,
-    please disable the SSL you enabled, or use the built-in Aegir SSL
-    feature on another IP address available and not used by the Hostmaster,
-    and other hosted sites.
-
-    We will continue in 10 seconds...
-
-EOF
-      mrun "sleep 10"
-    else
-      _HTTPS_TEST=FREE
-      validate_public_ip &> /dev/null
-      validate_xtras_ip &> /dev/null
-      openssl req -x509 -nodes -sha256 -days 7300 \
-        -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.${_THISHOST}" \
-        -newkey rsa:2048 \
-        -keyout /etc/ssl/private/nginx-wild-ssl.key \
-        -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
-      cp -af ${locCnf}/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
-      sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST} &> /dev/null
-      sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST} &> /dev/null
-      mkdir -p /data/conf
-      if [ -e "${locCnf}/global.inc" ]; then
-        cp -af ${locCnf}/global.inc /data/conf/global.inc
-      fi
-      if [ -e "${mtrInc}" ] \
-        && [ ! -L "${mtrInc}/global.inc" ] \
-        && [ -e "/data/conf/global.inc" ]; then
-        ln -sf /data/conf/global.inc ${mtrInc}/global.inc
-      fi
-      sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
-      update_redis_password
-      killall -9 nginx &> /dev/null
-      mrun "service nginx start" &> /dev/null
+    validate_public_ip &> /dev/null
+    validate_xtras_ip &> /dev/null
+    openssl req -x509 -nodes -sha256 -days 7300 \
+      -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.${_THISHOST}" \
+      -newkey rsa:2048 \
+      -keyout /etc/ssl/private/nginx-wild-ssl.key \
+      -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
+    cp -af ${locCnf}/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
+    sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST} &> /dev/null
+    sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST} &> /dev/null
+    mkdir -p /data/conf
+    if [ -e "${locCnf}/global.inc" ]; then
+      cp -af ${locCnf}/global.inc /data/conf/global.inc
     fi
+    if [ -e "${mtrInc}" ] \
+      && [ ! -L "${mtrInc}/global.inc" ] \
+      && [ -e "/data/conf/global.inc" ]; then
+      ln -sf /data/conf/global.inc ${mtrInc}/global.inc
+    fi
+    sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
+    update_redis_password
+    killall -9 nginx &> /dev/null
+    mrun "service nginx start" &> /dev/null
   else
     _WILDCARD_SSL_TEST=$(grep "localhost:80" ${_WILD_SSL_VHOST} 2>&1)
     if [[ "${_WILDCARD_SSL_TEST}" =~ "localhost:80" ]]; then
