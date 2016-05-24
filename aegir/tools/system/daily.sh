@@ -3165,10 +3165,22 @@ else
       echo fixed > /data/disk/all/permissions-fix-post-up-${_X_SE}.info
     fi
   fi
+
   action >/var/xdrago/log/daily/daily-${_NOW}.log 2>&1
+
+  dhpWildPath="/etc/ssl/private/nginx-wild-ssl.dhp"
+  if [ -e "/etc/ssl/private/4096.dhp" ]; then
+    dhpPath="/etc/ssl/private/4096.dhp"
+    _DIFF_T=$(diff ${dhpPath} ${dhpWildPath} 2>&1)
+    if [ ! -z "${_DIFF_T}" ]; then
+      cp -af ${dhpPath} ${dhpWildPath}
+    fi
+  fi
+
   if [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
     if [ ! -e "/etc/ssl/private/4096.dhp" ]; then
-      openssl dhparam -out /etc/ssl/private/4096.dhp 4096 &> /dev/null
+      echo "Generating 4096.dhp -- it may take a very long time..."
+      openssl dhparam -out /etc/ssl/private/4096.dhp 4096 > /dev/null 2>&1 &
     fi
     for f in `find /etc/ssl/private/*.crt -type f`; do
       sslName=$(echo ${f} | cut -d'/' -f5 | awk '{ print $1}' | sed "s/.crt//g")
