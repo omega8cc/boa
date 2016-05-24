@@ -3916,71 +3916,97 @@ satellite_post_cleanup() {
 }
 
 satellite_letsencrypt_vhost_setup() {
-  leCrtPath="${_ROOT}/tools/le/certs/${_DOMAIN}"
-  if [ -e "${leCrtPath}/fullchain.pem" ] || [ -e "${leCrtPath}/cert.pem" ]; then
-    Ssl="/var/aegir/config/server_master/nginx/pre.d/z_${_DOMAIN}_ssl_proxy.conf"
+  ifvHst="YES"
+  leRoot="${_ROOT}/tools/le"
+  leKeyJ="${leRoot}/tools/le/private_key.json"
+  leKeyP="${leRoot}/tools/le/private_key.pem"
+  leCrtPath="${leRoot}/certs/${_DOMAIN}"
+  exeLe="${leRoot}/letsencrypt.sh"
+  Ssl="/var/aegir/config/server_master/nginx/pre.d/z_${_DOMAIN}_ssl_proxy.conf"
+  if [ -e "${leRoot}/.ctrl/ssl-demo-mode.pid" ] \
+    && [ -e "${leRoot}/config.sh" ]; then
     if [ -e "${Ssl}" ]; then
+      rm -f ${Ssl}
+      ifvHst="NO"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf exists, OK!"
-      fi
-    else
-      msg "${_STATUS} A: Creating LE vhost for Hostmaster, please wait..."
-      if [ -e "${leCrtPath}/fullchain.pem" ]; then
-        crtPath="${leCrtPath}/fullchain.pem"
-      elif [ -e "${leCrtPath}/cert.pem" ]; then
-        crtPath="${leCrtPath}/cert.pem"
-      fi
-      if [ -e "${crtPath}" ]; then
-        cp -a ${crtPath} /etc/ssl/private/${_DOMAIN}.crt
-      fi
-      keyPath="${leCrtPath}/privkey.pem"
-      if [ -e "${keyPath}" ]; then
-        cp -a ${keyPath} /etc/ssl/private/${_DOMAIN}.key
-      fi
-      echo "${_DOMAIN} ${_THISHTIP} ${_USER} ${_CLIENT_EMAIL} ${_THISHTIP}" > /root/.ssl.proxy.cnf
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        bash /opt/local/bin/xboa ssl-gen
+        msg "${_STATUS} A: Reloading Nginx..."
+        service nginx reload
       else
-        mrun "bash /opt/local/bin/xboa ssl-gen" &> /dev/null
-      fi
-      if [ -e "${Ssl}" ]; then
-        rm -f /root/.ssl.proxy.cnf
-        if [ -e "${crtPath}" ]; then
-          crtPath=${crtPath//\//\\\/}
-          sed -i "s/ssl_certificate .*/ssl_certificate              ${crtPath};/g" ${Ssl}
-          wait
-        fi
-        if [ -e "${keyPath}" ]; then
-          keyPath=${keyPath//\//\\\/}
-          sed -i "s/ssl_certificate_key .*/ssl_certificate_key          ${keyPath};/g" ${Ssl}
-          wait
-        fi
-        if [ -e "/etc/ssl/private/4096.dhp" ]; then
-          dhpPath="/etc/ssl/private/4096.dhp"
-        elif [ -e "/etc/ssl/private/${_DOMAIN}.dhp" ]; then
-          dhpPath="/etc/ssl/private/${_DOMAIN}.dhp"
-        elif [ -e "/etc/ssl/private/nginx-wild-ssl.dhp" ]; then
-          dhpPath="/etc/ssl/private/nginx-wild-ssl.dhp"
-        fi
-        if [ -e "${dhpPath}" ]; then
-          dhpPath=${dhpPath//\//\\\/}
-          sed -i "s/ssl_dhparam .*/ssl_dhparam                  ${dhpPath};/g" ${Ssl}
-        else
-          sed -i "s/.*ssl_dhparam .*//g" ${Ssl}
-        fi
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "${_STATUS} B: Reloading Nginx..."
-          service nginx reload
-        else
-          service nginx reload &> /dev/null
-        fi
-      else
-        msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf doesn't exist!"
+        service nginx reload &> /dev/null
       fi
     fi
-  else
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "${_STATUS} A: le/certs/${_DOMAIN}/fullchain.pem doesn't exist!"
+  fi
+  if [ "${ifvHst}" = "YES" ]; then
+    if [ -e "${leCrtPath}/fullchain.pem" ] \
+      || [ -e "${leCrtPath}/cert.pem" ]; then
+      if [ -e "${Ssl}" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf exists, OK!"
+        fi
+      else
+        msg "${_STATUS} A: Creating LE vhost for Hostmaster, please wait..."
+        if [ -e "${leCrtPath}/fullchain.pem" ]; then
+          crtPath="${leCrtPath}/fullchain.pem"
+        elif [ -e "${leCrtPath}/cert.pem" ]; then
+          crtPath="${leCrtPath}/cert.pem"
+        fi
+        if [ -e "${crtPath}" ]; then
+          cp -a ${crtPath} /etc/ssl/private/${_DOMAIN}.crt
+        fi
+        keyPath="${leCrtPath}/privkey.pem"
+        if [ -e "${keyPath}" ]; then
+          cp -a ${keyPath} /etc/ssl/private/${_DOMAIN}.key
+        fi
+        echo "${_DOMAIN} ${_THISHTIP} ${_USER} ${_CLIENT_EMAIL} ${_THISHTIP}" > /root/.ssl.proxy.cnf
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          bash /opt/local/bin/xboa ssl-gen
+        else
+          mrun "bash /opt/local/bin/xboa ssl-gen" &> /dev/null
+        fi
+        if [ -e "${Ssl}" ]; then
+          rm -f /root/.ssl.proxy.cnf
+          if [ -e "${crtPath}" ]; then
+            crtPath=${crtPath//\//\\\/}
+            sed -i "s/ssl_certificate .*/ssl_certificate              ${crtPath};/g" ${Ssl}
+            wait
+          fi
+          if [ -e "${keyPath}" ]; then
+            keyPath=${keyPath//\//\\\/}
+            sed -i "s/ssl_certificate_key .*/ssl_certificate_key          ${keyPath};/g" ${Ssl}
+            wait
+          fi
+          dhpWildPath="/etc/ssl/private/nginx-wild-ssl.dhp"
+          if [ -e "/etc/ssl/private/4096.dhp" ]; then
+            dhpPath="/etc/ssl/private/4096.dhp"
+            _DIFF_T=$(diff ${dhpPath} ${dhpWildPath} 2>&1)
+            if [ ! -z "${_DIFF_T}" ]; then
+              cp -af ${dhpPath} ${dhpWildPath}
+            fi
+          elif [ -e "/etc/ssl/private/${_DOMAIN}.dhp" ]; then
+            dhpPath="/etc/ssl/private/${_DOMAIN}.dhp"
+          elif [ -e "${dhpWildPath}" ]; then
+            dhpPath="${dhpWildPath}"
+          fi
+          if [ -e "${dhpPath}" ]; then
+            dhpPath=${dhpPath//\//\\\/}
+            sed -i "s/ssl_dhparam .*/ssl_dhparam                  ${dhpPath};/g" ${Ssl}
+          else
+            sed -i "s/.*ssl_dhparam .*//g" ${Ssl}
+          fi
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "${_STATUS} A: Reloading Nginx..."
+            service nginx reload
+          else
+            service nginx reload &> /dev/null
+          fi
+        else
+          msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf doesn't exist!"
+        fi
+      fi
+    else
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "${_STATUS} A: le/certs/${_DOMAIN}/fullchain.pem doesn't exist!"
+      fi
     fi
   fi
 }
@@ -4799,7 +4825,9 @@ satellite_child_b_letsencrypt() {
       mv -f ${leKeyP} "${leKeyP}-prev"
     fi
   fi
-  if [ -x "${exeLe}" ]; then
+  if [ -x "${exeLe}" ] \
+    && [ ! -e "${leRoot}/.ctrl/ssl-demo-mode.pid" ] \
+    && [ ! -e "${leRoot}/config.sh" ]; then
     if [ -e "${leCrtPath}/fullchain.pem" ]; then
       msg "${_STATUS} B: Updating Letsencrypt cert for Hostmaster..."
     else
@@ -4810,6 +4838,10 @@ satellite_child_b_letsencrypt() {
     else
       mkdir -p ${_ROOT}/log
       bash ${exeLe} -c -d ${_DOMAIN} >${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+    fi
+  else
+    if [ -e "${leCrtPath}/fullchain.pem" ]; then
+      rm -rf ${leCrtPath}
     fi
   fi
 }
