@@ -3959,10 +3959,14 @@ satellite_letsencrypt_vhost_setup() {
           dhpPath="/etc/ssl/private/4096.dhp"
         elif [ -e "/etc/ssl/private/${_DOMAIN}.dhp" ]; then
           dhpPath="/etc/ssl/private/${_DOMAIN}.dhp"
+        elif [ -e "/etc/ssl/private/nginx-wild-ssl.dhp" ]; then
+          dhpPath="/etc/ssl/private/nginx-wild-ssl.dhp"
         fi
         if [ -e "${dhpPath}" ]; then
           dhpPath=${dhpPath//\//\\\/}
           sed -i "s/ssl_dhparam .*/ssl_dhparam                  ${dhpPath};/g" ${Ssl}
+        else
+          sed -i "s/.*ssl_dhparam .*//g" ${Ssl}
         fi
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "${_STATUS} B: Reloading Nginx..."
