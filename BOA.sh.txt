@@ -355,15 +355,18 @@ update_agents() {
   if [ -e "/opt/tools/drush/8/drush/drush" ] \
     && [ -e "/var/xdrago" ] \
     && [ ! -e "${pthLog}/lshell.fixed.a302x.pid" ]; then
-    mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
-    curl ${crlGet} "${urlHmr}/tools/system/conf/lshell.conf" \
-      -o /var/xdrago/conf/lshell.conf
-    if [ -e "/var/xdrago/conf/lshell.conf" ]; then
-      chmod 644 /var/xdrago/conf/lshell.conf
-      chown root:root /var/xdrago/conf/lshell.conf
-      touch ${pthLog}/lshell.fixed.a302x.pid
-    else
-      mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
+    if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
+      || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
+      mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
+      curl ${crlGet} "${urlHmr}/tools/system/conf/lshell.conf" \
+        -o /var/xdrago/conf/lshell.conf
+      if [ -e "/var/xdrago/conf/lshell.conf" ]; then
+        chmod 644 /var/xdrago/conf/lshell.conf
+        chown root:root /var/xdrago/conf/lshell.conf
+        touch ${pthLog}/lshell.fixed.a302x.pid
+      else
+        mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
+      fi
     fi
   fi
 
