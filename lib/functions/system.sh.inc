@@ -2195,7 +2195,6 @@ install_curl_src() {
       mrun "make --quiet install" 2> /dev/null
     fi
     _CURL_ALREADY_REBUILT=YES
-    _UP_PHP=YES
   fi
 }
 
