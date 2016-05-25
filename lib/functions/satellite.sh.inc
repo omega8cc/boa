@@ -4797,6 +4797,7 @@ satellite_child_b_letsencrypt() {
         || [ -e "${leRoot}/.ctrl/ssl-demo-mode.pid" ]; then
         touch ${leRoot}/.ctrl/ssl-demo-mode.pid
         echo -e '#!/usr/bin/env bash\n\nCA="https://acme-staging.api.letsencrypt.org/directory"\n' > ${leRoot}/config.sh
+        cp -af ${leRoot}/config.sh ${leRoot}/config
         if [ -e "${leKeyJ}" ]; then
           mv -f ${leKeyJ} "${leKeyJ}-prev"
         fi
@@ -4818,6 +4819,7 @@ satellite_child_b_letsencrypt() {
   if [ ! -e "${leRoot}/.ctrl/ssl-demo-mode.pid" ] \
     && [ -e "${leRoot}/config.sh" ]; then
     rm -f ${leRoot}/config.sh
+    rm -f ${leRoot}/config
     if [ -e "${leKeyJ}" ]; then
       mv -f ${leKeyJ} "${leKeyJ}-prev"
     fi
