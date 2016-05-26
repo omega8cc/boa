@@ -4,32 +4,23 @@ Your Aegir Hosting System has been upgraded to version boa.version
 
   https://aegir.url.name
 
-This BOA release includes several important system upgrades, improvements
-and bug fixes. All supported platforms have been updated to latest versions.
+This BOA release includes new features, system upgrades, improvements
+and bug fixes, with most notable features and changes listed below.
+All supported Drupal platforms have been updated to latest versions.
 
-@=> Latest Drupal 7 core version used in BOA in all built-in platforms is
-    compatible with latest PHP 7.0.6 -- you can switch your Octopus instance
-    easily via fpm.info control file: https://omega8.cc/node/330 but please
-    don't use 7.0 in cli.info, because it is not supported in the Aegir
-    backend yet. PHP 7.0 can't be used if you have any Pressflow 6 site.
+@=> Let’s Encrypt free SSL certificates are supported directly in Aegir
+@=> PHP-FPM version can be switched per site hosted on the same instance
+@=> Both Aegir control panel and its backend are compatible with PHP 7.0.7
+@=> Support for forced Drush cache clear in the Aegir backend
+@=> BOA can run Debian Wheezy to Debian Jessie upgrades easily
+
+More details on new features, enhancements and changes can be found at:
+
+  https://omega8.cc/boa-310-full-edition-380
 
 We recommend that you upgrade your sites using this safe workflow:
 
   https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
-
-You can find all details on how to use new features, along with all
-other changes explained in the release notes and changelog available at:
-
-  https://omega8.cc/boa-302-full-edition-379
-
-It is always highly recommended that you read extensive release notes
-and changelog posted on our website for previous BOA Editions, so you
-could keep track on the progress and learn more about great features
-and improvements we have made over the last few years, no matter when
-you have started using Aegir powered by BOA:
-
-  https://omega8.cc/updates
-
 
 Questions? Comments? Please contact us:
 
