@@ -3915,6 +3915,43 @@ satellite_post_cleanup() {
   rm -f /var/run/manage_rvm_users.pid
 }
 
+satellite_letsencrypt_crt_key_copy() {
+  if [ -e "${leCrtPath}/fullchain.pem" ]; then
+    crtPath="${leCrtPath}/fullchain.pem"
+  elif [ -e "${leCrtPath}/cert.pem" ]; then
+    crtPath="${leCrtPath}/cert.pem"
+  fi
+  if [ -e "${crtPath}" ]; then
+    if [ -L "${crtPath}" ]; then
+      crtPathR=$(readlink -n ${crtPath} 2>&1)
+      crtPathR=$(echo -n ${crtPathR} | tr -d "\n" 2>&1)
+      if [ -f "${crtPathR}" ]; then
+        rm -f /etc/ssl/private/${_DOMAIN}.crt
+        cd ${leCrtPath}
+        cp -a ${crtPathR} /etc/ssl/private/${_DOMAIN}.crt
+      fi
+    else
+      rm -f /etc/ssl/private/${_DOMAIN}.crt
+      cp -a ${crtPath} /etc/ssl/private/${_DOMAIN}.crt
+    fi
+  fi
+  keyPath="${leCrtPath}/privkey.pem"
+  if [ -e "${keyPath}" ]; then
+    if [ -L "${keyPath}" ]; then
+      keyPathR=$(readlink -n ${keyPath} 2>&1)
+      keyPathR=$(echo -n ${keyPathR} | tr -d "\n" 2>&1)
+      if [ -f "${keyPathR}" ]; then
+        rm -f /etc/ssl/private/${_DOMAIN}.key
+        cd ${leCrtPath}
+        cp -a ${keyPathR} /etc/ssl/private/${_DOMAIN}.key
+      fi
+    else
+      rm -f /etc/ssl/private/${_DOMAIN}.key
+      cp -a ${keyPath} /etc/ssl/private/${_DOMAIN}.key
+    fi
+  fi
+}
+
 satellite_letsencrypt_vhost_setup() {
   ifvHst="YES"
   leRoot="${_ROOT}/tools/le"
@@ -3943,20 +3980,10 @@ satellite_letsencrypt_vhost_setup() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf exists, OK!"
         fi
+        satellite_letsencrypt_crt_key_copy
       else
         msg "${_STATUS} A: Creating LE vhost for Hostmaster, please wait..."
-        if [ -e "${leCrtPath}/fullchain.pem" ]; then
-          crtPath="${leCrtPath}/fullchain.pem"
-        elif [ -e "${leCrtPath}/cert.pem" ]; then
-          crtPath="${leCrtPath}/cert.pem"
-        fi
-        if [ -e "${crtPath}" ]; then
-          cp -a ${crtPath} /etc/ssl/private/${_DOMAIN}.crt
-        fi
-        keyPath="${leCrtPath}/privkey.pem"
-        if [ -e "${keyPath}" ]; then
-          cp -a ${keyPath} /etc/ssl/private/${_DOMAIN}.key
-        fi
+        satellite_letsencrypt_crt_key_copy
         echo "${_DOMAIN} ${_THISHTIP} ${_USER} ${_CLIENT_EMAIL} ${_THISHTIP}" > /root/.ssl.proxy.cnf
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           bash /opt/local/bin/xboa ssl-gen
