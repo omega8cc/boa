@@ -1,6 +1,6 @@
 
 ###
-### Support for PHP-FPM version safe switch per Octopus instance (also per site)
+### Support for PHP-FPM version switch per Octopus instance (also per site)
 ###
 ### ~/static/control/fpm.info
 ###
@@ -42,7 +42,7 @@
 ###
 
 ###
-### Support for PHP-CLI version safe switch per Octopus instance (all sites)
+### Support for PHP-CLI version switch per Octopus instance (all sites)
 ###
 ### ~/static/control/cli.info
 ###
