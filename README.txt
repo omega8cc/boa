@@ -76,7 +76,7 @@ production settings.
 
 ### SUPPORTED PARENT SYSTEMS {c} please read also: docs/CAVEATS.txt
 
-* Xen, VServer, Linux KVM or VMware based VPS or a dedicated box.
+* Xen, VServer, Linux KVM or VMware based VPS, or a dedicated box.
 
 
 ### SUPPORTED LTS OS {c} please read also: docs/CAVEATS.txt
@@ -93,7 +93,7 @@ production settings.
 * SSH keys for root are required by newer OpenSSH versions used in BOA.
 * Wget must be installed.
 * The outgoing TCP connections via ports: 25, 53, 80 and 443 must be open.
-* Minimum 1 GB of RAM
+* Minimum 1 GB of RAM (at least 2GB of RAM + at least 2 CPU recommended)
 * Locales with UTF-8 support, otherwise en_US.UTF-8 (default) is forced.
 * Basic sysadmin skills and experience.
 * Willingness to accept BOA PI (paranoid idiosyncrasies).
@@ -106,6 +106,7 @@ production settings.
 * All libraries & tools required to install and run Nginx based Aegir system.
 * Latest release of MariaDB 5.5 or 10.0 database server with Chive manager.
 * Latest version of Nginx web server.
+* Letsencrypt.org SSL certificates support, with demo mode enabled by default.
 * HTTP/2 or SPDY Nginx support.
 * PFS (Perfect Forward Secrecy) support in Nginx.
 * PHP-FPM 7.0, 5.6, 5.5, 5.4, 5.3 multi-install mode, configurable per Octopus.
@@ -127,7 +128,7 @@ production settings.
 * Boost, AdvAgg, Domain Access and Drupal for Facebook built-in support.
 * Built-in collection of useful modules available in all platforms.
 * Autonomous Maintenance & Auto-Healing scripts in /var/xdrago.
-* Every 10 seconds uptime/self-healing local monitoring.
+* Every 3 seconds uptime/self-healing local monitoring.
 * Automated, rotated daily backups for all databases in /data/disk/arch/sql.
 
 === Optional add-ons - see docs/NOTES.txt for details
