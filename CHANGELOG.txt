@@ -1,4 +1,84 @@
 
+
+### Stable BOA-3.1.0 Release - Full Edition
+### Date: TBD
+### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.0
+
+  @=> Includes Aegir Hostmaster 3.x-head with improvements
+  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Drush 8 customized for BOA
+
+# Release Notes:
+
+  This BOA release includes new features, system upgrades, improvements
+  and bug fixes, with most notable features and changes listed below.
+  All supported Drupal platforms have been updated to latest versions.
+
+  @=> Let’s Encrypt free SSL certificates are supported directly in Aegir
+  @=> PHP-FPM version can be switched per site hosted on the same instance
+  @=> BOA can run Debian Wheezy to Debian Jessie upgrades easily
+  @=> Both Aegir control panel and its backend are compatible with PHP 7.0.6
+
+  More details on new features, enhancements and changes can be found below.
+
+# New features and enhancements:
+
+  * Add all aliases as Subject Alternative Names in Let's encrypt certs -- #941
+  * Add auto-renewal procedure for Let's encrypt certs -- #942
+  * Add option to exclude *.tar.gz Drush archives in backboa -- #936
+  * Add Restaurant 1.11
+  * Allow to define PHP-FPM version per site hosted -- #935
+  * Allow to use drush7 and drush8 on command line directly
+  * Feature: _WHEEZY_TO_JESSIE major upgrade procedure -- #870
+  * Let's encrypt support -- #500
+  * New Relic integration compatibility with multi-FPM mode
+  * Support for forced Drush cache clear in the Aegir backend
+  * Use Let's encrypt for Hostmaster site (after Octopus upgrade) -- #940
+
+# Changes:
+
+  * Do not allow XtraDB to crash the server due to single broken cache table
+  * Nginx: Use faster 301/302 redirects
+  * Nginx: Use only TLSv1.1 TLSv1.2
+  * Redis: Exclude cache_form bin again to avoid rare issues with contrib
+  * Use dynamic httpredir.debian.org mirrors
+
+# System upgrades:
+
+  * cURL 7.49.0 (if installed from sources)
+  * Jetty 9.2.16.v20160414
+  * Nginx 1.11.0
+  * Redis 3.2.0
+  * SLF4J 1.7.21
+
+# Fixes:
+
+  * Add compatibility with "config.sh" renamed to "config" in letsencrypt.sh
+  * Check if parent dir exists before touching ctrl file -- fixes #945
+  * Do not clear drush cache on every hosting-dispatch -- #943
+  * Do not create Letsencrypt cert for Hostmaster if still in demo mode
+  * Drush is broken error -- clear drush cache before testing it -- #946
+  * Fix for backward compatibility with FPM pool tpl in 2.4
+  * Fix for Chive auth (via SSH) access filtering
+  * Fix for conflicting Jetty libs
+  * Fix ownership and attr on usr home dirs / subdirs
+  * Improve sub-accounts zombie cleanup
+  * Make backboa sub-tasks delays optional and disable them by default -- #919
+  * Nginx: Fix for ssl_dhparam if/else logic
+  * Remove deprecated wildcard HTTPS warning
+  * Run registry-rebuild before updatedb with --no-cache-clear -- #938
+  * Set LE mode to DEMO on initial setup -- both on octopus install and upgrade
+  * Skynet upgrades for limited shell configuration -- #950
+  * Something is stuck after BOA upgrade to 3.0.2 -- #951
+  * The makefile based platform creation fails with permissions error -- #943
+  * The site's files should have Aegir backend user as an owner
+  * Use strict paths checks to avoid running chown/chmod on parent dirs
+
+# Known problems:
+
+  https://github.com/omega8cc/boa/milestones/3.1.1
+
+
 ### Stable BOA-3.0.2 Release - Full Edition
 ### Date: Tue May  3 22:26:09 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.0.2
