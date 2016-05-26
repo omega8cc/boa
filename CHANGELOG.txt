@@ -1,6 +1,6 @@
 
 ### Stable BOA-3.1.0 Release - Full Edition
-### Date: TBD
+### Date: Thu May 26 16:41:40 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.0
 
   @=> Includes Aegir Hostmaster 3.x-head with improvements
