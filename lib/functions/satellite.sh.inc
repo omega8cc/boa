@@ -3925,10 +3925,9 @@ satellite_letsencrypt_crt_key_copy() {
     if [ -L "${crtPath}" ]; then
       crtPathR=$(readlink -n ${crtPath} 2>&1)
       crtPathR=$(echo -n ${crtPathR} | tr -d "\n" 2>&1)
-      if [ -f "${crtPathR}" ]; then
+      if [ -f "${leCrtPath}/${crtPathR}" ]; then
         rm -f /etc/ssl/private/${_DOMAIN}.crt
-        cd ${leCrtPath}
-        cp -a ${crtPathR} /etc/ssl/private/${_DOMAIN}.crt
+        cp -a ${leCrtPath}/${crtPathR} /etc/ssl/private/${_DOMAIN}.crt
       fi
     else
       rm -f /etc/ssl/private/${_DOMAIN}.crt
@@ -3940,10 +3939,9 @@ satellite_letsencrypt_crt_key_copy() {
     if [ -L "${keyPath}" ]; then
       keyPathR=$(readlink -n ${keyPath} 2>&1)
       keyPathR=$(echo -n ${keyPathR} | tr -d "\n" 2>&1)
-      if [ -f "${keyPathR}" ]; then
+      if [ -f "${leCrtPath}/${keyPathR}" ]; then
         rm -f /etc/ssl/private/${_DOMAIN}.key
-        cd ${leCrtPath}
-        cp -a ${keyPathR} /etc/ssl/private/${_DOMAIN}.key
+        cp -a ${leCrtPath}/${keyPathR} /etc/ssl/private/${_DOMAIN}.key
       fi
     else
       rm -f /etc/ssl/private/${_DOMAIN}.key
