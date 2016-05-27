@@ -136,6 +136,28 @@
     NOTE: You may find some helpful details in the Verify task log -- look for
     lines with `[hosting_le]` prefix.
 
+  * How to replace Let's Encrypt certificate with custom certificate?
+
+    1. Create an empty control file (replace `example.com` with your site name):
+
+       `[aegir_root]/tools/le/.ctrl/dont-overwrite-example.com.pid`
+
+    2. Replace `privkey.pem` symlink with single file containing your custom
+       certificate key -- use `privkey.pem` as a filename in the directory:
+
+       `[aegir_root]/tools/le/certs/example.com/`
+
+    3. Replace `fullchain.pem` symlink with single file containing your custom
+       certificate and all intermediate certificates beneath it -- use
+       `fullchain.pem` as a filename in the same directory:
+
+       `[aegir_root]/tools/le/certs/example.com/`
+
+    4. Run Verify task for your site in the Aegir control panel. Done!
+
+    NOTE: If you are on hosted BOA, you don't have an access to this location
+    on your system, so please open a ticket at: https://omega8.cc/support
+
 
   ###
 #-### Support for PHP-FPM version switch per Octopus instance (also per site)
