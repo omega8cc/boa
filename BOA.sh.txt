@@ -64,6 +64,9 @@ vBs="/var/backups"
 #
 eldirF="0001-Print-site_footer-if-defined.patch"
 eldirP="/var/xdrago/conf/${eldirF}"
+#
+hstngLeF="provision_hosting_le.drush.inc"
+hstngLeP="/var/xdrago/conf/${hstngLeF}"
 
 fix_dns_settings() {
   dnsLi="/root/.local.dns.IP.list"
@@ -407,6 +410,31 @@ update_agents() {
     touch ${pthLog}/dispatch.fixed.a302x.pid
   fi
 
+  if [ -e "/opt/tools/drush/8/drush/drush" ] \
+    && [ -e "${hstngLeP}" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/hosting_le.fixed.a302x.pid" ]; then
+    lePath="profiles/hostmaster/modules/aegir/hosting_le/drush/${hstngLeF}"
+    for pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+      if [ -e "${pthSysUsr}/config/server_master/nginx/vhost.d" ] \
+        && [ ! -e "${pthSysUsr}/log/CANCELLED" ]; then
+        tUsr=
+        tUsr=$(echo ${pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+        dscUsr="/data/disk/${tUsr}"
+        hmPf=$(cat ${dscUsr}/.drush/hostmaster.alias.drushrc.php \
+          | grep "root'" \
+          | cut -d: -f2 \
+          | awk '{ print $3}' \
+          | sed "s/[\,']//g" 2>&1)
+        locFile="${dscUsr}/${hmPf}/${lePath}"
+        cp -af ${hstngLeP} ${locFile}
+        chown ${tUsr}:users ${locFile}
+        chmod 0644 ${locFile}
+      fi
+    done
+    touch ${pthLog}/hosting_le.fixed.a302x.pid
+  fi
+
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
     && [ ! -e "${pthLog}/websh.fixed.a302x.pid" ]; then
@@ -582,6 +610,14 @@ fix_pure_ftpd() {
       sed -i "s/^PAMAuthentication/# PAMAuthentication/g" /usr/local/etc/pure-ftpd.conf
       killall -9 pure-ftpd &> /dev/null
     fi
+  fi
+}
+
+fix_hosting_le() {
+  if [ -e "/var/xdrago" ] \
+    && [ ! -e "${hstngLeP}" ]; then
+    mkdir -p /var/xdrago/conf
+    curl ${crlGet} "${urlHmr}/patches/${hstngLeF}" -o ${hstngLeP}
   fi
 }
 
@@ -842,6 +878,7 @@ if [ `whoami` = "root" ]; then
   fix_alt
   fix_eldir
   fix_pure_ftpd
+  fix_hosting_le
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
