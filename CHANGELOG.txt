@@ -2,6 +2,7 @@
 ### Stable BOA-3.1.0 Release - Full Edition
 ### Date: Thu May 26 16:41:40 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.0
+### Latest hotfix added on: Sat May 28 08:42:09 PDT 2016
 
   @=> Includes Aegir Hostmaster 3.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -353,7 +354,7 @@
 # Fixes:
 
   * Add compatibility with "config.sh" renamed to "config" in letsencrypt.sh
-  * Check if parent dir exists before touching ctrl file -- fixes #945
+  * Check if parent dir exists before touching ctrl file -- #945
   * Do not clear drush cache on every hosting-dispatch -- #943
   * Do not create Letsencrypt cert for Hostmaster if still in demo mode
   * Do not force PHP rebuild on new cURL install from sources
@@ -363,6 +364,7 @@
   * Fix for conflicting Jetty libs
   * Fix ownership and attr on usr home dirs / subdirs
   * Improve sub-accounts zombie cleanup
+  * Let's Encrypt SSL - switching from demo to live -- #959
   * Make backboa sub-tasks delays optional and disable them by default -- #919
   * Nginx: Fix for ssl_dhparam if/else logic
   * Remove deprecated wildcard HTTPS warning
