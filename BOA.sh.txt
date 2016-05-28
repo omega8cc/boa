@@ -426,7 +426,7 @@ update_agents() {
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
-        locFile="${dscUsr}/${hmPf}/${lePath}"
+        locFile="${hmPf}/${lePath}"
         cp -af ${hstngLeP} ${locFile}
         chown ${tUsr}:users ${locFile}
         chmod 0644 ${locFile}
