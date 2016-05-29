@@ -59,11 +59,9 @@ as explained in this document further below.
   Yes, there are some:
 
   * All aliases must have valid DNS names pointing to your server IP address
-  * If redirection is used, only redirection target must have a valid DNS name
-  * Aliases redirection must be disabled if you want them listed as SAN names
-  * If aliases redirection is enabled, only redirection target will be listed
-  * Before you rename site, disable SSL first; then re-enable once it's renamed
-  * Avoid renaming SSL enabled sites; move aliases between site's clones instead
+  * Even with aliases redirection enabled all aliases are listed as SAN names
+  * Avoid renaming SSL-enabled sites; move aliases between site's clones instead
+  * Before you rename a site, disable SSL first; then re-enable once it's renamed
 
   NOTE: The Subject Alternative Names (SAN) is a feature which allows to issue
   multi-domain / multi-subdomain SSL certificates -- it is automated in BOA.
@@ -90,8 +88,7 @@ as explained in this document further below.
 
   NOTE: This exception rule doesn't apply to aliases which are not used
   as a redirection target. Even aliases with listed special keywords in their
-  names will be listed as SAN entries, as long as they are valid DNS names,
-  and no redirection is enabled.
+  names will be listed as SAN entries, as long as they are valid DNS names.
 
 * How to enable live mode?
 
