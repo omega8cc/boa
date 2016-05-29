@@ -4836,6 +4836,11 @@ satellite_child_b_letsencrypt() {
         msg "${_STATUS} B: LE -- ${leRoot}/.ctrl/ssl-demo-mode.pid"
         msg "${_STATUS} B: LE -- Then run octopus forced upgrade"
         echo ""
+        msg "${_STATUS} B: LE -- !!! WARNING"
+        msg "${_STATUS} B: LE -- Don't enable SSL option for the Hostmaster site in Aegir"
+        msg "${_STATUS} B: LE -- SSL for Aegir control panel is handled outside of it"
+        msg "${_STATUS} B: LE -- !!! WARNING"
+        echo ""
       fi
     else
       msg "${_STATUS} B: LE -- Missing ${exeLe} file?"

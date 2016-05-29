@@ -65,6 +65,23 @@
 
     NOTE: SSL Settings are not available in the Add Site form, only in Edit.
 
+  * How to add Letsencrypt.org SSL certificate to the Aegir Hostmaster site?
+
+    !!! WARNING
+    !!! ###===>>> Don't enable SSL option for the Hostmaster site in Aegir
+    !!! WARNING
+
+    Let’s Encrypt SSL for Aegir control panel is handled in BOA outside of
+    the control panel, and you should never enable it within control panel.
+
+    During octopus upgrade you will see this message, explaining what to do:
+
+      BOA [02:44:59] ==> UPGRADE B: Letsencrypt SSL initial mode: DEMO
+      BOA [02:44:59] ==> UPGRADE B: LE -- No real SSL certs will be generated
+      BOA [02:44:59] ==> UPGRADE B: LE -- To enable live SSL mode, please delete file:
+      BOA [02:44:59] ==> UPGRADE B: LE -- /data/disk/o1/tools/le/.ctrl/ssl-demo-mode.pid
+      BOA [02:44:59] ==> UPGRADE B: LE -- Then run octopus forced upgrade
+
   * How to modify/renew Letsencrypt.org SSL certificate for SSL enabled site?
 
     When you modify aliases or redirections, Aegir will re-create the SSL
