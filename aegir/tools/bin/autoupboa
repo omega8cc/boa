@@ -51,7 +51,7 @@ crontab_update() {
         _BCDA_FULL="up-${_AUTO_VER} log"
         _BCDA_SYST="up-${_AUTO_VER} system"
       fi
-      _OCTO_FULL="up-stable all both log"
+      _OCTO_FULL="up-stable all force log"
     fi
     echo "# Barracuda weekly system only upgrade" >> /etc/crontab
     echo "10 1    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
@@ -146,9 +146,9 @@ if [ -e "/data/disk/arch" ]; then
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] \
     || [ "${_AUTO_UP}" = "YES" ]; then
-    _AUTO_UP_WEEKLY=1
-    _AUTO_UP_MONTH=1
-    _AUTO_UP_DAY=1
+    _AUTO_UP_WEEKLY=6
+    _AUTO_UP_MONTH=5
+    _AUTO_UP_DAY=30
     _AUTO_PHP="php-all"
     _AUTO_VER="stable"
   fi
