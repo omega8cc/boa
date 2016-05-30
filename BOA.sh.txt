@@ -65,8 +65,11 @@ vBs="/var/backups"
 eldirF="0001-Print-site_footer-if-defined.patch"
 eldirP="/var/xdrago/conf/${eldirF}"
 #
-hstngLeF="provision_hosting_le.drush.inc"
-hstngLeP="/var/xdrago/conf/${hstngLeF}"
+hLeF="provision_hosting_le.drush.inc"
+hLeP="/var/xdrago/conf/${hLeF}"
+#
+hLeVtF="hosting_le_vhost.drush.inc"
+hLeVtP="/var/xdrago/conf/${hLeVtF}"
 
 fix_dns_settings() {
   dnsLi="/root/.local.dns.IP.list"
@@ -411,10 +414,12 @@ update_agents() {
   fi
 
   if [ -e "/opt/tools/drush/8/drush/drush" ] \
-    && [ -e "${hstngLeP}" ] \
+    && [ -e "${hLeP}" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/hosting_le.fixed.a310c.pid" ]; then
-    lePath="profiles/hostmaster/modules/aegir/hosting_le/drush/${hstngLeF}"
+    && [ ! -e "${pthLog}/hosting_le_vt.fixed.a310c.pid" ]; then
+    leBasePath="profiles/hostmaster/modules/aegir/hosting_le"
+    lePath="${leBasePath}/drush/${hLeF}"
+    leVhPath="${leBasePath}/hosting_le_vhost/drush/${hLeVtF}"
     for pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       if [ -e "${pthSysUsr}/config/server_master/nginx/vhost.d" ] \
         && [ ! -e "${pthSysUsr}/log/CANCELLED" ]; then
@@ -427,14 +432,20 @@ update_agents() {
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
         locFile="${hmPf}/${lePath}"
-        if [ -e "${locFile}" ] && [ -e "${hstngLeP}" ]; then
-          cp -af ${hstngLeP} ${locFile}
+        if [ -e "${locFile}" ] && [ -e "${hLeP}" ]; then
+          cp -af ${hLeP} ${locFile}
           chown ${tUsr}:users ${locFile}
           chmod 0644 ${locFile}
         fi
+        locVhFile="${hmPf}/${leVhPath}"
+        if [ -e "${locVhFile}" ] && [ -e "${hLeVtP}" ]; then
+          cp -af ${hLeVtP} ${locVhFile}
+          chown ${tUsr}:users ${locVhFile}
+          chmod 0644 ${locVhFile}
+        fi
       fi
     done
-    touch ${pthLog}/hosting_le.fixed.a310c.pid
+    touch ${pthLog}/hosting_le_vt.fixed.a310c.pid
   fi
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
@@ -616,11 +627,17 @@ fix_pure_ftpd() {
 }
 
 fix_hosting_le() {
-  if [ -e "/var/xdrago" ] \
-    && [ ! -e "${hstngLeP}.fixed.a310c.pid" ]; then
-    mkdir -p /var/xdrago/conf
-    curl ${crlGet} "${urlHmr}/patches/${hstngLeF}" -o ${hstngLeP}.fixed.a310c.pid
-    cp -af ${hstngLeP}.fixed.a310c.pid ${hstngLeP}
+  if [ -e "/var/xdrago" ]; then
+    if [ ! -e "${hLeVtP}.fixed.a310c.pid" ] \
+      || [ ! -e "${hLeF}.fixed.a310c.pid" ]; then
+      mkdir -p /var/xdrago/conf
+      rm -f ${hLeVtF}.fixed.a310c.pid
+      rm -f ${hLeP}.fixed.a310c.pid
+      curl ${crlGet} "${urlHmr}/patches/${hLeVtF}" -o ${hLeVtF}.fixed.a310c.pid
+      cp -af ${hLeVtF}.fixed.a310c.pid ${hLeVtF}
+      curl ${crlGet} "${urlHmr}/patches/${hLeF}" -o ${hLeP}.fixed.a310c.pid
+      cp -af ${hLeP}.fixed.a310c.pid ${hLeP}
+    fi
   fi
 }
 
