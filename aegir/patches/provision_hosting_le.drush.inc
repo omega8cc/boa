@@ -16,21 +16,40 @@ function drush_provision_hosting_le_post_provision_verify() {
     $le_keyj = d('@server_master')->aegir_root . "/tools/le/private_key.json";
     $le_keyp = d('@server_master')->aegir_root . "/tools/le/private_key.pem";
 
+    $is_boa = FALSE;
+    $is_boa_ctrl = "/data/conf/global.inc";
+
+    if (provision_file()->exists($is_boa_ctrl)->status()) {
+      $is_boa = TRUE;
+    }
+
     $real_name = substr(d()->name, 1);
 
     if (d()->redirection) {
-      $main_name = d()->redirection;
       drush_log('[hosting_le] This sitename redirection target is ' . d()->redirection);
-      drush_log('[hosting_le] LE SSL certificate will be valid only for ' . d()->redirection);
+      $main_name = d()->redirection;
+      if ($is_boa) {
+        $cert_dir = $le_cert . "/" . $real_name;
+      }
+      else {
+        $cert_dir = $le_cert . "/" . $main_name;
+        drush_log('[hosting_le] LE SSL certificate will be valid only for ' . d()->redirection);
+      }
     }
     else {
       $main_name = substr(d()->name, 1);
+      $cert_dir = $le_cert . "/" . $main_name;
     }
 
-    drush_log('[hosting_le] This site main SSL name is ' . $main_name);
-
-    $cert_dir = $le_cert . "/" . $main_name;
     drush_log('[hosting_le] This cert_dir is ' . $cert_dir);
+
+    if ($is_boa) {
+      drush_log('[hosting_le] This site main SSL name is ' . $real_name);
+      drush_log('[hosting_le] BOA system detected, congrats!');
+    }
+    else {
+      drush_log('[hosting_le] This site main SSL name is ' . $main_name);
+    }
 
     $no_san_ctrl = d('@server_master')->aegir_root . "/static/control/ssl-no-san-" . $main_name . ".info";
     drush_log('[hosting_le] The optional no-SAN flag is ' . $no_san_ctrl);
@@ -170,7 +189,7 @@ function drush_provision_hosting_le_post_provision_verify() {
       $redirect_result = implode(' ', $grep_output);
       drush_log('[hosting_le] Redirect check result for ' . $main_name . ' : ' . $redirect_result);
 
-      if ($redirect_result && !$no_alt_names) {
+      if ($redirect_result && !$no_alt_names && !$is_boa) {
         drush_log("[hosting_le] Aliases redirection must be disabled if all aliases are expected to be listed as SAN names.", 'info');
         drush_log("[hosting_le] The alternative is to disable SAN mode for this site with empty ctrl file: " . $no_san_ctrl, 'info');
         drush_log('[hosting_le] Forcing no-SAN-mode for ' . $main_name);
@@ -203,7 +222,7 @@ function drush_provision_hosting_le_post_provision_verify() {
           exec("/bin/bash " . $le_exec . " -c -x -d " . $main_name, $output);
         }
         else {
-          exec("/bin/bash " . $le_exec . " -c -x -d " . $main_name . " -d " . $alt_names, $output);
+          exec("/bin/bash " . $le_exec . " -c -x -d " . $real_name . " -d " . $alt_names, $output);
         }
       }
       else {
@@ -211,7 +230,7 @@ function drush_provision_hosting_le_post_provision_verify() {
           exec("/bin/bash " . $le_exec . " -c -d " . $main_name, $output);
         }
         else {
-          exec("/bin/bash " . $le_exec . " -c -d " . $main_name . " -d " . $alt_names, $output);
+          exec("/bin/bash " . $le_exec . " -c -d " . $real_name . " -d " . $alt_names, $output);
         }
       }
       $acme_result = implode(' ', $output);
