@@ -2098,11 +2098,14 @@ fix_permissions() {
     chown ${_HM_U}:users \
       ${Plr}/sites/all/drush/drushrc.php \
       ${Plr}/sites \
+      ${Plr}/sites/* \
       ${Plr}/sites/sites.php \
       ${Plr}/sites/all \
       ${Plr}/sites/all/{modules,themes,libraries,drush} &> /dev/null
     chmod 0751 ${Plr}/sites &> /dev/null
-    chmod 0755 ${Plr}/sites/all &> /dev/null
+    chmod 0755 ${Plr}/sites/* &> /dev/null
+    chmod 0644 ${Plr}/sites/*.php &> /dev/null
+    chmod 0644 ${Plr}/sites/*.txt &> /dev/null
     chmod 0700 ${Plr}/sites/all/drush &> /dev/null
     find ${Plr}/sites/all/{modules,themes,libraries} -type d -exec \
       chmod 02775 {} \; &> /dev/null
