@@ -2,7 +2,7 @@
 ### Stable BOA-3.1.0 Release - Full Edition
 ### Date: Thu May 26 16:41:40 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.0
-### Latest hotfix added on: Sun May 29 12:36:31 PDT 2016
+### Latest hotfix added on: Mon May 30 08:55:03 PDT 2016
 
   @=> Includes Aegir Hostmaster 3.x-head with improvements
   @=> Includes Aegir Provision 3.x-head with improvements
@@ -378,6 +378,7 @@
 # Fixes:
 
   * Add compatibility with "config.sh" renamed to "config" in letsencrypt.sh
+  * Add ssl_trusted_certificate directive required by ssl_stapling
   * Add warning: "Don't enable SSL option for the Hostmaster site in Aegir" -- #962
   * Check if parent dir exists before touching ctrl file -- #945
   * Do not clear drush cache on every hosting-dispatch -- #943
