@@ -545,6 +545,19 @@ migrate_prepare() {
             wait
             sed -i "s/distro\/05.*',/distro\/001',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
             wait
+            sed -i "s/platform_0.*'/platform_hostmaster'/g"    ${_USR}/.drush/hm.alias.drushrc.php
+            wait
+            sed -i "s/distro\/0.*\/sites/distro\/001\/sites/g" ${_USR}/.drush/hm.alias.drushrc.php
+            wait
+            sed -i "s/distro\/01.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
+            wait
+            sed -i "s/distro\/02.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
+            wait
+            sed -i "s/distro\/03.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
+            wait
+            sed -i "s/distro\/04.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
+            wait
+            sed -i "s/distro\/05.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
           fi
         fi
 
