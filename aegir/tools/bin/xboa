@@ -550,20 +550,18 @@ migrate_prepare() {
 
         run_drush8_hmr_cmd "@hostmaster sqlq \"REPLACE INTO hosting_context (nid, name) VALUES ('4', 'server_localhost'), ('2', 'server_master')\"" &> /dev/null
         run_drush8_hmr_cmd "@hostmaster sqlq \"REPLACE INTO hosting_package (vid, nid, package_type, short_name, old_short_name, description) VALUES ('6', '6', 'platform', 'drupal', '', '')\"" &> /dev/null
-        run_drush8_hmr_cmd "@hostmaster sqlq \"REPLACE INTO node_revisions (nid, vid, uid, title, body, teaser, log, timestamp, format) VALUES ('6', '6', '1', 'drupal', '', '', '', '1412168340', '0')\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"REPLACE INTO node_revision (nid, vid, uid, title, body, teaser, log, timestamp, format) VALUES ('6', '6', '1', 'drupal', '', '', '', '1412168340', '0')\"" &> /dev/null
         run_drush8_hmr_cmd "@hostmaster sqlq \"REPLACE INTO node (nid, vid, type, language, title, uid, status, created, changed, comment, promote, moderate, sticky, tnid, translate) VALUES ('6', '6', 'package', '', 'drupal', '1', '1', '1412168321', '1412168340', '0', '0', '0', '0', '0', '0')\"" &> /dev/null
         run_drush8_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_package WHERE nid='2' AND short_name='drupal'\"" &> /dev/null
         run_drush8_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_package WHERE nid='4' AND short_name='drupal'\"" &> /dev/null
         run_drush8_hmr_cmd "@hostmaster sqlq \"DELETE FROM node WHERE nid='8' AND type='site'\"" &> /dev/null
-        run_drush8_hmr_cmd "@hostmaster sqlq \"DELETE FROM node_revisions WHERE nid='8'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"DELETE FROM node_revision WHERE nid='8'\"" &> /dev/null
         run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node SET type='server' WHERE nid='2'\"" &> /dev/null
         run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node SET type='server' WHERE nid='4'\"" &> /dev/null
         run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node SET title='$_USE_AEGIR_HOST' WHERE nid='2'\"" &> /dev/null
         run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node SET title='localhost' WHERE nid='4'\"" &> /dev/null
-        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET type='server' WHERE nid='2'\"" &> /dev/null
-        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET type='server' WHERE nid='4'\"" &> /dev/null
-        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET title='$_USE_AEGIR_HOST' WHERE nid='2'\"" &> /dev/null
-        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET title='localhost' WHERE nid='4'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node_revision SET title='$_USE_AEGIR_HOST' WHERE nid='2'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node_revision SET title='localhost' WHERE nid='4'\"" &> /dev/null
         run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_site SET db_server='4' WHERE db_server='2'\"" &> /dev/null
         run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_platform SET web_server='2' WHERE web_server='0'\"" &> /dev/null
         run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE users_roles SET rid='7' WHERE rid='5'\"" &> /dev/null
@@ -578,7 +576,7 @@ migrate_prepare() {
       run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_site SET client='1' WHERE client='0'\"" &> /dev/null
       run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_platform SET web_server='2' WHERE web_server='0'\"" &> /dev/null
       run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node SET uid='1' WHERE uid='0'\"" &> /dev/null
-      run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET uid='1' WHERE uid='0'\"" &> /dev/null
+      run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node_revision SET uid='1' WHERE uid='0'\"" &> /dev/null
       _HM_NID=$(run_drush8_hmr_cmd "@hostmaster sqlq \"SELECT site.nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'\"" 2>&1)
       _HM_NID=${_HM_NID//[^0-9]/}
       if [ ! -z "${_HM_NID}" ]; then
@@ -590,7 +588,7 @@ migrate_prepare() {
         fi
         run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'\"" &> /dev/null
         run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
-        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node_revisions SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
+        run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE node_revision SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
         run_drush8_hmr_cmd "@hostmaster sqlq \"UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
         echo FIXED > ${_USR}/log/post-merge-fix.pid
       else

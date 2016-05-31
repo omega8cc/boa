@@ -4628,13 +4628,9 @@ satellite_child_b_aegir_build() {
           SET title='${_USE_AEGIR_HOST}' WHERE nid='2'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
           SET title='localhost' WHERE nid='4'" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revisions \
-          SET type='server' WHERE nid='2'" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revisions \
-          SET type='server' WHERE nid='4'" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revisions \
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision \
           SET title='${_USE_AEGIR_HOST}' WHERE nid='2'" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revisions \
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision \
           SET title='localhost' WHERE nid='4'" &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
           SET db_server='4' WHERE db_server='2'" &> /dev/null
@@ -4659,7 +4655,7 @@ satellite_child_b_aegir_build() {
         SET web_server='2' WHERE web_server='0'" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
         SET uid='1' WHERE uid='0'" &> /dev/null
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revisions \
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision \
         SET uid='1' WHERE uid='0'" &> /dev/null
       _HM_NID=$(${_DRUSHCMD} @hostmaster sqlq "SELECT site.nid \
         FROM hosting_site site JOIN hosting_package_instance pkgi \
@@ -4675,7 +4671,7 @@ satellite_child_b_aegir_build() {
         fi
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'"         &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"                   &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revisions SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"         &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"          &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid='${_HM_NID}'" &> /dev/null
       else
         msg "${_STATUS} B: Hostmaster STATUS: Fix 1/2 hosting_context ${_HM_NID} empty!"
@@ -4730,7 +4726,7 @@ satellite_child_b_aegir_build() {
         SET web_server='2' WHERE web_server='0'" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE node \
         SET uid='1' WHERE uid='0'" &> /dev/null
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revisions \
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision \
         SET uid='1' WHERE uid='0'" &> /dev/null
       _HM_NID=$(${_DRUSHCMD} @hostmaster sqlq "SELECT site.nid \
         FROM hosting_site site JOIN hosting_package_instance pkgi \
@@ -4746,7 +4742,7 @@ satellite_child_b_aegir_build() {
         fi
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'"         &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"                   &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revisions SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"         &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "UPDATE node_revision SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'"          &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid='${_HM_NID}'" &> /dev/null
       else
         msg "${_STATUS} B: Hostmaster STATUS: Fix 2/2 hosting_context ${_HM_NID} empty!"
