@@ -3,6 +3,17 @@
 #-### Let’s Encrypt free SSL certificates are supported directly in Aegir
   ###
 
+  You can find these important Let’s Encrypt topics discussed below:
+
+  # Introduction
+  # How it works?
+  # How to add Letsencrypt.org SSL certificate to hosted site?
+  # How to add Letsencrypt.org SSL certificate to the Aegir Hostmaster site?
+  # How to modify/renew Letsencrypt.org SSL certificate for SSL enabled site?
+  # Are there any requirements, limitations or exceptions?
+  # How to enable live mode?
+  # How to replace Let's Encrypt certificate with custom certificate?
+
 BOA-3.1.0 release opens a new era in SSL support for all hosted Drupal sites.
 The old method of creating SSL proxy vhosts is officially deprecated,
 as explained in this document further below.
