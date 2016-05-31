@@ -795,6 +795,16 @@ migrate_init() {
 
           rsync -aAXqu \
             --ignore-errors \
+            -e ssh ${_USR}/config/ssl.d/* \
+            root@${tgt}:${_DST}/config/ssl.d/ &> /dev/null
+
+          rsync -aAXqu \
+            --ignore-errors \
+            -e ssh ${_USR}/config/server_master/ssl.d/* \
+            root@${tgt}:${_DST}/config/server_master/ssl.d/ &> /dev/null
+
+          rsync -aAXqu \
+            --ignore-errors \
             -e ssh ${_USR}/tools/le \
             root@${tgt}:${_DST}/tools/ &> /dev/null
 
