@@ -259,7 +259,9 @@ function drush_provision_hosting_le_post_provision_verify() {
           $needs_update = FALSE;
           drush_log("[hosting_le] The LE Certificate attempted update looks incomplete in " . $cert_dir, 'warning');
           drush_log("[hosting_le] Make sure that all aliases have valid DNS names pointing to your instance IP address.", 'warning');
-          drush_log("[hosting_le] Aliases redirection must be disabled, or the LE agent will not be able to proceed.", 'warning');
+          if (!$is_boa) {
+            drush_log("[hosting_le] Aliases redirection must be disabled, or the LE agent will not be able to proceed.", 'warning');
+          }
           drush_log("[hosting_le] The alternative is to disable SAN mode for this site with empty ctrl file: " . $no_san_ctrl, 'warning');
         }
         elseif (preg_match("/Requesting.*challenge/i", $acme_result) &&
@@ -268,7 +270,9 @@ function drush_provision_hosting_le_post_provision_verify() {
           $needs_update = FALSE;
           drush_log("[hosting_le] The LE Certificate attempted creation failed in " . $cert_dir, 'warning');
           drush_log("[hosting_le] Make sure that all aliases have valid DNS names pointing to your instance IP address.", 'warning');
-          drush_log("[hosting_le] Aliases redirection must be disabled, or the LE agent will not be able to proceed.", 'warning');
+          if (!$is_boa) {
+            drush_log("[hosting_le] Aliases redirection must be disabled, or the LE agent will not be able to proceed.", 'warning');
+          }
           drush_log("[hosting_le] The alternative is to disable SAN mode for this site with empty ctrl file: " . $no_san_ctrl, 'warning');
         }
         else {
