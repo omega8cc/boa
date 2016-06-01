@@ -627,16 +627,22 @@ fix_pure_ftpd() {
 }
 
 fix_hosting_le() {
-  if [ -e "/var/xdrago" ]; then
-    if [ ! -e "${hLeVtP}.fixed.a310c.pid" ] \
-      || [ ! -e "${hLeF}.fixed.a310c.pid" ]; then
+  if [ -d "/var/xdrago/conf" ]; then
+    if [ ! -e "${hLeVtP}.fixed.a310d.pid" ] \
+      || [ -e "/var/xdrago/${hLeF}" ] \
+      || [ -e "/var/xdrago/${hLeVtF}" ] \
+      || [ -e "/root/${hLeF}" ] \
+      || [ -e "/root/${hLeVtF}" ] \
+      || [ ! -e "${hLeP}.fixed.a310d.pid" ]; then
       mkdir -p /var/xdrago/conf
-      rm -f ${hLeVtF}.fixed.a310c.pid
-      rm -f ${hLeP}.fixed.a310c.pid
-      curl ${crlGet} "${urlHmr}/patches/${hLeVtF}" -o ${hLeVtF}.fixed.a310c.pid
-      cp -af ${hLeVtF}.fixed.a310c.pid ${hLeVtF}
-      curl ${crlGet} "${urlHmr}/patches/${hLeF}" -o ${hLeP}.fixed.a310c.pid
-      cp -af ${hLeP}.fixed.a310c.pid ${hLeP}
+      rm -f /var/xdrago/*.drush.inc
+      rm -f /root/*.drush.inc
+      rm -f ${hLeVtP}.fixed.a310d.pid
+      rm -f ${hLeP}.fixed.a310d.pid
+      curl ${crlGet} "${urlHmr}/patches/${hLeVtF}" -o ${hLeVtP}.fixed.a310d.pid
+      cp -af ${hLeVtP}.fixed.a310d.pid ${hLeVtP}
+      curl ${crlGet} "${urlHmr}/patches/${hLeF}" -o ${hLeP}.fixed.a310d.pid
+      cp -af ${hLeP}.fixed.a310d.pid ${hLeP}
     fi
   fi
 }
