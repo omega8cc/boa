@@ -377,6 +377,8 @@ EOFMYSQL
 delete_this_platform() {
   run_drush8_hmr_cmd "hosting-task @platform_${_T_PFM_NAME} delete --force"
   echo "Old empty platform_${_T_PFM_NAME} will be deleted"
+  run_drush8_hmr_cmd "@hostmaster hosting-dispatch"
+  sleep 5
 }
 
 migrate_prepare() {
