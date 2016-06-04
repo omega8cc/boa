@@ -1161,6 +1161,7 @@ update_solr() {
   # $1 is module
   # $2 is solr core path
   if [ ! -z "$1" ] \
+    && [ ! -e "$2/conf/.protected.conf" ] \
     && [ ! -e "$2/conf/${_X_SE}.conf" ] \
     && [ -e "/var/xdrago/conf/solr" ] \
     && [ -e "$2/conf" ]; then
@@ -1283,10 +1284,19 @@ setup_solr() {
     else
       echo ";solr_custom_config = NO" >> ${_DIR_CTRL_F}
     fi
+    _SLR_CM_CFG_RT=NO
+    _SOLR_PROTECT_CTRL="${_SOLR_DIR}/conf/.protected.conf"
     _SLR_CM_CFG_T=$(grep "^solr_custom_config = YES" ${_DIR_CTRL_F} 2>&1)
     if [[ "${_SLR_CM_CFG_T}" =~ "solr_custom_config = YES" ]]; then
       _SLR_CM_CFG_RT=YES
+      if [ ! -e "${_SOLR_PROTECT_CTRL}" ]; then
+        touch ${_SOLR_PROTECT_CTRL}
+      fi
       echo "Solr config for ${_SOLR_DIR} is protected"
+    else
+      if [ -e "${_SOLR_PROTECT_CTRL}" ]; then
+        rm -f ${_SOLR_PROTECT_CTRL}
+      fi
     fi
   fi
   ###
@@ -1328,11 +1338,11 @@ setup_solr() {
     fi
     _SOLR_UP_CFG_TT=$(grep "^solr_update_config = YES" ${_DIR_CTRL_F} 2>&1)
     if [[ "${_SOLR_UP_CFG_TT}" =~ "solr_update_config = YES" ]]; then
-      if [ "${_SLR_CM_CFG_RT}" = "YES" ] \
-        || [ -e "${_SOLR_DIR}/conf/${_X_SE}.conf" ]; then
-        _DO_NOTHING=YES
-      else
-        update_solr ${_SOLR_MODULE} ${_SOLR_DIR}
+      if [ ! -e "${_SOLR_DIR}/conf/${_X_SE}.conf" ]; then
+        if [ "${_SLR_CM_CFG_RT}" = "NO" ] \
+          && [ ! -e "${_SOLR_PROTECT_CTRL}" ]; then
+          update_solr ${_SOLR_MODULE} ${_SOLR_DIR}
+        fi
       fi
     fi
   fi
