@@ -444,3 +444,9 @@ if_install_rvm() {
     fi
   fi
 }
+
+if_install_magick() {
+  if [ "${_MAGICK_FROM_SOURCES}" = "YES" ]; then
+    install_magick_src
+  fi
+}

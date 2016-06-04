@@ -1249,6 +1249,11 @@ barracuda_cnf() {
       echo "_SSH_FROM_SOURCES=${_SSH_FROM_SOURCES}" >> ${barCnf}
     fi
 
+    _MAGICK_FROM_SOURCES_TEST=$(grep _MAGICK_FROM_SOURCES ${barCnf} 2>&1)
+    if [[ ! "${_MAGICK_FROM_SOURCES_TEST}" =~ "_MAGICK_FROM_SOURCES" ]]; then
+      echo "_MAGICK_FROM_SOURCES=${_MAGICK_FROM_SOURCES}" >> ${barCnf}
+    fi
+
     _RESERVED_RAM_TEST=$(grep _RESERVED_RAM ${barCnf} 2>&1)
     if [[ ! "${_RESERVED_RAM_TEST}" =~ "_RESERVED_RAM" ]]; then
       echo "_RESERVED_RAM=${_RESERVED_RAM}" >> ${barCnf}
@@ -2116,6 +2121,40 @@ install_ssh_src() {
     fi
   fi
   _SSH_FORCE_REINSTALL=NO
+}
+
+#
+# Install ImageMagick from sources.
+install_magick_src() {
+  _MAGICK_INSTALL_REQUIRED=NO
+  _MAGICK_ITD=$(convert --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f3 \
+    | awk '{ print $1}' 2>&1)
+  if [ "${_MAGICK_ITD}" != "${_IMAGE_MAGICK_VRN}" ]; then
+    if [ "${_OSV}" = "none" ]; then
+      _MAGICK_INSTALL_REQUIRED=NO
+    else
+      _MAGICK_INSTALL_REQUIRED=YES
+      msg "INFO: Installed ImageMagick version ${_MAGICK_ITD}, upgrade required"
+    fi
+  fi
+  if [ "${_MAGICK_INSTALL_REQUIRED}" = "YES" ]; then
+    msg "INFO: Building ImageMagick ${_IMAGE_MAGICK_VRN} from sources, please wait..."
+    cd /var/opt
+    rm -rf ImageMagick*
+    get_dev_src "ImageMagick-${_IMAGE_MAGICK_VRN}.tar.gz"
+    cd /var/opt/ImageMagick-${_IMAGE_MAGICK_VRN}
+    mrun "sh ./configure --prefix=/usr" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    if [ ! -e "/etc/.ImageMagick" ]; then
+      cp -a /etc/ImageMagick /etc/.ImageMagick
+    fi
+    mrun "apt-get remove imagemagick" 2> /dev/null
+    mrun "apt-get purge imagemagick" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    msg "HINT: Please modify /usr/etc/ImageMagick-7/policy.xml file, if needed"
+  fi
 }
 
 #
@@ -3640,6 +3679,12 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
+  if [ "${_MAGICK_FROM_SOURCES}" = "NO" ] \
+    || [ -z "${_MAGICK_FROM_SOURCES}"]; then
+    _EXTRA_PACKAGES="imagemagick \
+                     ${_EXTRA_PACKAGES}"
+  fi
+
   if [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "wheezy" ] \
     || [ "${_OSV}" = "squeeze" ] \
@@ -3676,7 +3721,6 @@ sys_packages_install() {
               gnupg2 \
               htop \
               ifstat \
-              imagemagick \
               iptables \
               ldap-utils \
               lemon \
