@@ -55,7 +55,7 @@ sub_force_advanced_nginx_config() {
 force_advanced_nginx_config() {
   if [ ! -e "/etc/ssl/private/nginx-wild-ssl.dhp" ]; then
     msg "INFO: Generating DH parameters, 2048 bit, please wait..."
-    st_runner "openssl dhparam \
+    mrun "openssl dhparam \
       -out /etc/ssl/private/nginx-wild-ssl.dhp 2048" 2> /dev/null
   fi
   cp -af ${locCnf}/nginx_compact_include.conf ${mtrInc}/nginx_compact_include.conf
@@ -363,7 +363,7 @@ install_upgrade_nginx() {
       get_dev_src "openssl-${_OPENSSL_NGX_VRN}.tar.gz"
     fi
     cd /var/opt/nginx-${_NGINX_VRN}
-    st_runner "sh ./configure \
+    mrun "sh ./configure \
       --prefix=/usr \
       --sbin-path=/usr/sbin/nginx \
       --conf-path=/etc/nginx/nginx.conf \
@@ -389,8 +389,8 @@ install_upgrade_nginx() {
       --with-http_geoip_module \
       --with-openssl=/var/opt/openssl-${_OPENSSL_NGX_VRN} \
       --with-debug ${_NGINX_EXTRA}" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
       && [ "${_LOC_OSV}" = "wheezy" ]; then
       _DO_NOTHING=YES

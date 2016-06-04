@@ -170,7 +170,7 @@ if_install_jetty() {
         sed -i "s/8080/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
         ln -sf /opt/jetty9/bin/jetty.sh /etc/init.d/jetty9 &> /dev/null
         chmod 755 /etc/init.d/jetty9
-        st_runner "update-rc.d jetty9 defaults" &> /dev/null
+        mrun "update-rc.d jetty9 defaults" &> /dev/null
         mrun "service jetty9 start" &> /dev/null
         echo ${_SOLR_4_VRN} > $_SOLR_CTRL
         msg "INFO: MultiCore Apache Solr 4 with Jetty ${_R_JETTY} installed"
@@ -356,7 +356,7 @@ if_install_jetty() {
         sed -i "s/8080/8088/g" /opt/jetty8/bin/jetty.sh &> /dev/null
         ln -sf /opt/jetty8/bin/jetty.sh /etc/init.d/jetty8 &> /dev/null
         chmod 755 /etc/init.d/jetty8
-        st_runner "update-rc.d jetty8 defaults" &> /dev/null
+        mrun "update-rc.d jetty8 defaults" &> /dev/null
         mrun "service jetty8 start" &> /dev/null
         echo ${_JETTY_8_VRN} > $_JETTY_CTRL
         echo ${_SOLR_3_VRN}  > $_SOLR_CTRL
@@ -481,7 +481,7 @@ if_install_jetty() {
         sed -i "s/8080/8077/g" /opt/jetty7/bin/jetty.sh &> /dev/null
         ln -sf /opt/jetty7/bin/jetty.sh /etc/init.d/jetty7 &> /dev/null
         chmod 755 /etc/init.d/jetty7
-        st_runner "update-rc.d jetty7 defaults" &> /dev/null
+        mrun "update-rc.d jetty7 defaults" &> /dev/null
         mrun "service jetty7 start" &> /dev/null
         echo ${_JETTY_7_VRN} > $_JETTY_CTRL
         echo ${_SOLR_1_VRN}  > $_SOLR_CTRL
@@ -503,7 +503,7 @@ if_install_jetty() {
     && [ -e "/etc/init.d/tomcat" ]; then
     msg "INFO: Tomcat 6 to Jetty 7 migration for Apache Solr 1 in progress..."
     mrun "service tomcat stop" &> /dev/null
-    st_runner "update-rc.d tomcat remove" &> /dev/null
+    mrun "update-rc.d tomcat remove" &> /dev/null
     mv -f /etc/init.d/tomcat /etc/init.d/offtomcat &> /dev/null
     mv -f /opt/solr1/solr.xml /opt/solr1/vanilla-solr.xml
     mv -f /opt/solr/* /opt/solr1/

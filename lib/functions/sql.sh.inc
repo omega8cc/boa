@@ -369,9 +369,9 @@ install_with_aptitude_sql() {
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
     msg "INFO: Running MariaDB system tables upgrade, please wait..."
     if [ -x "/usr/bin/mariadb_upgrade" ]; then
-      st_runner "mariadb_upgrade --force" &> /dev/null
+      mrun "mariadb_upgrade --force" &> /dev/null
     elif [ -x "/usr/bin/mysql_upgrade" ]; then
-      st_runner "mysql_upgrade --force" &> /dev/null
+      mrun "mysql_upgrade --force" &> /dev/null
     fi
   fi
 }

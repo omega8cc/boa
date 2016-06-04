@@ -126,8 +126,8 @@ fix_sftp_ftps_modern() {
     rm -rf mysecureshell*
     get_dev_src "mysecureshell-${_MSS_VRN}.tar.gz"
     cd /var/opt/mysecureshell
-    st_runner "sh ./configure" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
+    mrun "sh ./configure" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
     st_runner "sh ./install.sh yesall" 2> /dev/null
     touch ${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log
     cp -af ${locCnf}/sftp_config /etc/ssh/sftp_config
@@ -218,7 +218,7 @@ fix_on_upgrade() {
   sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf &> /dev/null
   cp -af ${locCnf}/clean-boa-env /etc/init.d/clean-boa-env
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
-  st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
+  mrun "update-rc.d clean-boa-env defaults" &> /dev/null
   kill_nash
   fix_sftp_ftps_modern
   fix_ftps_pam
@@ -1645,10 +1645,10 @@ do_install_latest_git() {
     rm -rf git*
     get_dev_src "git-${_GIT_VRN}.tar.gz"
     cd /var/opt/git-${_GIT_VRN}
-    st_runner "make configure" 2> /dev/null
-    st_runner "sh ./configure --without-tcltk --quiet" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    mrun "make configure" 2> /dev/null
+    mrun "sh ./configure --without-tcltk --quiet" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mv -f /usr/bin/git /usr/bin/git-old
     ln -sf /usr/local/bin/git /usr/bin/git
     cd /var/opt
@@ -2094,13 +2094,13 @@ install_ssh_src() {
     rm -rf openssh*
     get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
     cd /var/opt/openssh-${_OPENSSH_VRN}
-    st_runner "sh ./configure \
+    mrun "sh ./configure \
       --with-openssl \
       --without-openssl-header-check \
       --prefix=/usr \
       --with-pam" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mrun "service ssh restart" &> /dev/null
     if [[ ! "${_SSH_GET_DPKG}" =~ "hold" ]]; then
       ### aptitude hold openssh-server &> /dev/null
@@ -2282,8 +2282,8 @@ install_ssl_src() {
     get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
     cd /var/opt/zlib-${_ZLIB_VRN}
     st_runner "./configure --prefix=/usr" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     ###--------------------###
     msg "INFO: Building OpenSSL ${_OPENSSL_VRN} from sources, please wait..."
     cd /var/opt
@@ -4015,14 +4015,14 @@ install_vnstat() {
       rm -rf vnstat*
       get_dev_src "vnstat-${_VNSTAT_VRN}.tar.gz"
       cd vnstat-${_VNSTAT_VRN}
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       for INF in `vnstat --iflist | sed "s/Available interfaces//g" \
         | cut -d: -f2` ;do vnstat -u -i $INF &> /dev/null;done
       cp -af /var/opt/vnstat-${_VNSTAT_VRN}/examples/init.d/debian/vnstat \
         /etc/init.d/vnstat
       chmod 755 /etc/init.d/vnstat &> /dev/null
-      st_runner "update-rc.d vnstat defaults" &> /dev/null
+      mrun "update-rc.d vnstat defaults" &> /dev/null
       sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /etc/vnstat.conf
       mrun "service vnstat start" &> /dev/null
       touch ${pthLog}/vnstat-${_VNSTAT_VRN}.log
@@ -4285,7 +4285,7 @@ install_update_lshell() {
     cd /var/opt/lshell-${_LSHELL_VRN}
     rm -rf /usr/local/lib/python2.6/dist-packages/lshell*
     rm -rf /usr/local/lib/python2.7/dist-packages/lshell*
-    st_runner "python setup.py install --no-compile" 2> /dev/null
+    mrun "python setup.py install --no-compile" 2> /dev/null
     if [ "${_STATUS}" = "UPGRADE" ]; then
       cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
     else
@@ -4345,10 +4345,10 @@ if_install_ftpd() {
       mkdir -p /usr/local/etc
       get_dev_src "pure-ftpd-${_PURE_FTPD_VRN}.tar.gz"
       cd pure-ftpd-${_PURE_FTPD_VRN}
-      st_runner "sh ./configure --with-everything --with-virtualchroot \
+      mrun "sh ./configure --with-everything --with-virtualchroot \
         --without-humor --with-tls --with-diraliases --with-pam \
         --with-certfile=/etc/ssl/private/pure-ftpd.pem" 2> /dev/null
-      st_runner "make install-strip" 2> /dev/null
+      mrun "make install-strip" 2> /dev/null
       cd /usr/local/sbin/
       cp -af ${locCnf}/pure-config.pl.txt ./
       mv -f pure-config.pl.txt pure-config.pl &> /dev/null
@@ -4454,7 +4454,7 @@ update_initd() {
     msg "INFO: Updating init scripts"
     cp -af ${locCnf}/clean-boa-env /etc/init.d/clean-boa-env
     chmod 755 /etc/init.d/clean-boa-env &> /dev/null
-    st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
+    mrun "update-rc.d clean-boa-env defaults" &> /dev/null
     _SSH_USEDNS_TEST=$(grep "UseDNS" /etc/ssh/sshd_config 2>&1)
     if [[ "${_SSH_USEDNS_TEST}" =~ (^)"UseDNS no" ]]; then
       _DO_NOTHING=YES
@@ -4497,29 +4497,29 @@ update_initd() {
       msg "INFO: Starting Redis, PHP-FPM and Nginx"
       mrun "service redis-server start" &> /dev/null
       killall -9 nginx php-cgi php-fpm &> /dev/null
-      st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
-      st_runner "update-rc.d cron defaults" &> /dev/null
+      mrun "update-rc.d -f php5-fpm remove" &> /dev/null
+      mrun "update-rc.d cron defaults" &> /dev/null
       if [ -e "/etc/init.d/php70-fpm" ]; then
-        st_runner "update-rc.d php70-fpm defaults" &> /dev/null
+        mrun "update-rc.d php70-fpm defaults" &> /dev/null
         mrun "service php70-fpm start" &> /dev/null
       fi
       if [ -e "/etc/init.d/php56-fpm" ]; then
-        st_runner "update-rc.d php56-fpm defaults" &> /dev/null
+        mrun "update-rc.d php56-fpm defaults" &> /dev/null
         mrun "service php56-fpm start" &> /dev/null
       fi
       if [ -e "/etc/init.d/php55-fpm" ]; then
-        st_runner "update-rc.d php55-fpm defaults" &> /dev/null
+        mrun "update-rc.d php55-fpm defaults" &> /dev/null
         mrun "service php55-fpm start" &> /dev/null
       fi
       if [ -e "/etc/init.d/php54-fpm" ]; then
-        st_runner "update-rc.d php54-fpm defaults" &> /dev/null
+        mrun "update-rc.d php54-fpm defaults" &> /dev/null
         mrun "service php54-fpm start" &> /dev/null
       fi
       if [ -e "/etc/init.d/php53-fpm" ]; then
-        st_runner "update-rc.d php53-fpm defaults" &> /dev/null
+        mrun "update-rc.d php53-fpm defaults" &> /dev/null
         mrun "service php53-fpm start" &> /dev/null
       fi
-      st_runner "update-rc.d nginx defaults" &> /dev/null
+      mrun "update-rc.d nginx defaults" &> /dev/null
       mrun "service nginx start" &> /dev/null
     fi
   else
@@ -4604,26 +4604,26 @@ update_initd() {
     if [ ! -e "/var/run/aegir_upgrade.pid" ]; then
       msg "INFO: Restarting Redis, PHP-FPM and Nginx..."
       mrun "service redis-server restart" &> /dev/null
-      st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
+      mrun "update-rc.d -f php5-fpm remove" &> /dev/null
       mrun "service nginx stop" &> /dev/null
       if [ -e "/etc/init.d/php70-fpm" ]; then
-        st_runner "update-rc.d php70-fpm defaults" &> /dev/null
+        mrun "update-rc.d php70-fpm defaults" &> /dev/null
         mrun "service php70-fpm stop" &> /dev/null
       fi
       if [ -e "/etc/init.d/php56-fpm" ]; then
-        st_runner "update-rc.d php56-fpm defaults" &> /dev/null
+        mrun "update-rc.d php56-fpm defaults" &> /dev/null
         mrun "service php56-fpm stop" &> /dev/null
       fi
       if [ -e "/etc/init.d/php55-fpm" ]; then
-        st_runner "update-rc.d php55-fpm defaults" &> /dev/null
+        mrun "update-rc.d php55-fpm defaults" &> /dev/null
         mrun "service php55-fpm stop" &> /dev/null
       fi
       if [ -e "/etc/init.d/php54-fpm" ]; then
-        st_runner "update-rc.d php54-fpm defaults" &> /dev/null
+        mrun "update-rc.d php54-fpm defaults" &> /dev/null
         mrun "service php54-fpm stop" &> /dev/null
       fi
       if [ -e "/etc/init.d/php53-fpm" ]; then
-        st_runner "update-rc.d php53-fpm defaults" &> /dev/null
+        mrun "update-rc.d php53-fpm defaults" &> /dev/null
         mrun "service php53-fpm stop" &> /dev/null
       fi
       killall -9 php-fpm &> /dev/null

@@ -16,9 +16,9 @@ if_install_bzr() {
       rm -rf bzr*
       get_dev_src "bzr-${_BZR_VRN}.tar.gz"
       cd /var/opt/bzr-${_BZR_VRN}
-      st_runner "python setup.py --quiet install build_ext -\
+      mrun "python setup.py --quiet install build_ext -\
         -allow-python-fallback" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
       touch ${pthLog}/bzr-${_BZR_VRN}.log
       mkdir -p /root/.bazaar
       echo ignore_missing_extensions=True > /root/.bazaar/bazaar.conf
@@ -181,7 +181,7 @@ if_install_collectd() {
           wait
           sed -i "s/cgp_name/cgp.${_THIS_FRONT}/g"           ${_CGP_VHOST}
           wait
-          st_runner "update-rc.d collectd defaults" &> /dev/null
+          mrun "update-rc.d collectd defaults" &> /dev/null
           touch ${pthLog}/cgp-${_CGP_VRN}.fix-dns-vhost-wildcard.log
           msg "INFO: Collectd Graph Panel installed"
         else
@@ -402,7 +402,7 @@ if_install_rvm() {
         _VAR_IF_PRESENT=$(grep "scout" $_GEM_CRON 2>&1)
         if [[ "${_VAR_IF_PRESENT}" =~ "scout" ]]; then
           if [ ! -e "$_GEM_FILE" ] && [ ! -z "${_SCOUT_KEY}" ]; then
-            st_runner "rvm @global do gem install --conservative scout" 2> /dev/null
+            mrun "rvm @global do gem install --conservative scout" 2> /dev/null
             adduser --system --group --home /var/scout scout &> /dev/null
             usermod -aG users scout &> /dev/null
             sed -i "s/\* \* \* \* \* scout .*/* * * * * scout $_GEM_PATH ${_SCOUT_KEY}/g" $_GEM_CRON &> /dev/null
@@ -413,7 +413,7 @@ if_install_rvm() {
           fi
         else
           if [ ! -z "${_SCOUT_KEY}" ]; then
-            st_runner "rvm @global do gem install --conservative scout" 2> /dev/null
+            mrun "rvm @global do gem install --conservative scout" 2> /dev/null
             adduser --system --group --home /var/scout scout &> /dev/null
             usermod -aG users scout &> /dev/null
             echo -e "* * * * * scout $_GEM_FILE ${_SCOUT_KEY}" \
