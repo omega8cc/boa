@@ -2516,6 +2516,7 @@ strict_bin_permissions() {
                   jpegoptim \
                   jpegtran \
                   logger \
+                  magick \
                   newrelic-daemon \
                   nrsysmond \
                   optipng \
