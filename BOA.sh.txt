@@ -633,11 +633,12 @@ fix_hosting_le() {
       || [ -e "/var/xdrago/${hLeF}" ] \
       || [ -e "/var/xdrago/${hLeVtF}" ] \
       || [ -e "/root/${hLeF}" ] \
+      || [ -e "/root/hosting_le_vhost.drush.inc.fixed.a310c.pid" ] \
       || [ -e "/root/${hLeVtF}" ] \
       || [ ! -e "${hLeP}.fixed.a310d.pid" ]; then
       mkdir -p /var/xdrago/conf
-      rm -f /var/xdrago/*.drush.inc
-      rm -f /root/*.drush.inc
+      rm -f /var/xdrago/*.drush.inc*
+      rm -f /root/*.drush.inc*
       rm -f ${hLeVtP}.fixed.a310d.pid
       rm -f ${hLeP}.fixed.a310d.pid
       curl ${crlGet} "${urlHmr}/patches/${hLeVtF}" -o ${hLeVtP}.fixed.a310d.pid

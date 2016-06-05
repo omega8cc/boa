@@ -70,7 +70,7 @@ function drush_provision_hosting_le_post_provision_verify() {
      !d()->ssl_enabled &&
      !provision_file()->exists($immutable)->status()) {
     if (file_exists($cert_dir)) {
-      exec("/bin/bash " . $le_exec . " -gc", $output_b);
+      exec("/bin/bash " . $le_exec . " --cleanup", $output_b);
       $acme_result_b = implode(' ', $output_b);
       drush_log('[hosting_le] ACME Cleanup Output: ' . $acme_result_b);
 
@@ -168,8 +168,8 @@ function drush_provision_hosting_le_post_provision_verify() {
     }
     else {
       $no_alt_names = FALSE;
-      $alt_names = implode(' -d ', str_replace('/', '.', d()->aliases));
-      drush_log('[hosting_le] ALT names: -d ' . $alt_names);
+      $alt_names = implode(' --domain ', str_replace('/', '.', d()->aliases));
+      drush_log('[hosting_le] ALT names: --domain ' . $alt_names);
     }
 
     $site_vhost = d('@server_master')->http_vhostd_path . "/" . $real_name;
@@ -218,19 +218,19 @@ function drush_provision_hosting_le_post_provision_verify() {
       drush_log("[hosting_le] NOTE: On hosted Aegir service you need to contact your host support for further assistance.", 'info');
       $output = '';
       if ($force_renew) {
-        if ($no_alt_names) {
-          exec("/bin/bash " . $le_exec . " -c -x -d " . $main_name, $output);
+        if ($no_alt_names || empty($alt_names)) {
+          exec("/bin/bash " . $le_exec . " --cron --force --domain " . $main_name. ' 2>&1', $output);
         }
         else {
-          exec("/bin/bash " . $le_exec . " -c -x -d " . $real_name . " -d " . $alt_names, $output);
+          exec("/bin/bash " . $le_exec . " --cron --force --domain " . $real_name . " --domain " . $alt_names . ' 2>&1', $output);
         }
       }
       else {
-        if ($no_alt_names) {
-          exec("/bin/bash " . $le_exec . " -c -d " . $main_name, $output);
+        if ($no_alt_names || empty($alt_names)) {
+          exec("/bin/bash " . $le_exec . " --cron --domain " . $main_name . ' 2>&1', $output);
         }
         else {
-          exec("/bin/bash " . $le_exec . " -c -d " . $real_name . " -d " . $alt_names, $output);
+          exec("/bin/bash " . $le_exec . " --cron --domain " . $real_name . " --domain " . $alt_names . ' 2>&1', $output);
         }
       }
       $acme_result = implode(' ', $output);
@@ -284,7 +284,7 @@ function drush_provision_hosting_le_post_provision_verify() {
 
     if ($needs_update && !provision_file()->exists($immutable)->status()) {
 
-      exec("/bin/bash " . $le_exec . " -gc", $output_clean);
+      exec("/bin/bash " . $le_exec . " --cleanup", $output_clean);
       $acme_result_clean = implode(' ', $output_clean);
       drush_log('[hosting_le] ACME Cleanup Output: ' . $acme_result_clean);
 
