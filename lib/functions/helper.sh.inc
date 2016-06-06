@@ -44,12 +44,23 @@ prompt_confirm_choice() {
 }
 
 #
+# Not supported virtualization system.
+not_supported_virt() {
+  msg "== FATAL ERROR =="
+  msg "Not supported virtualization system:"
+  msg "$1"
+  msg "If you wish to try BOA on this system anyway,"
+  msg "please create an empty control file:"
+  msg "/root/.allow.any.virt.cnf"
+  clean_pid_exit
+}
+
+#
 # Not supported OS.
 not_supported_os() {
   msg "== FATAL ERROR =="
-  msg "Invalid install script or OS used"
   msg "It is not any supported Debian or Ubuntu version"
-  msg "You need Debian Wheezy (recommended) or Squeeze,"
+  msg "You need Debian Jessie (recommended) or Wheezy,"
   msg "or Ubuntu -- Trusty or Precise."
   clean_pid_exit
 }
@@ -364,6 +375,55 @@ check_exception_mycnf() {
 EOF
     msg "EXIT on error due to not found file with your ${_DB_SERVER} root password"
     clean_pid_exit
+    fi
+  fi
+}
+
+virt_detection() {
+  _VIRT_TOOL=$(which virt-what 2> /dev/null)
+  if [ -x "${_VIRT_TOOL}" ]; then
+    _VIRT_TEST=$(virt-what 2> /dev/null)
+    if [ ! -e "/root/.allow.any.virt.cnf" ]; then
+      if [ -e "/proc/self/status" ]; then
+        _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
+        _VS_HOST_TEST=$(grep -E "VxID:[[:space:]]*0$" /proc/self/status 2> /dev/null)
+        if [ -z "${_VS_HOST_TEST}" ] && [ ! -z "${_VS_GUEST_TEST}" ]; then
+          _VIRT_IS="Linux VServer container"
+        else
+          if [ ! -z "${_VS_HOST_TEST}" ]; then
+            not_supported_virt "Linux VServer host"
+          else
+            not_supported_virt "unknown / not a virtual machine"
+          fi
+        fi
+      else
+        if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
+          not_supported_virt "unknown / not a virtual machine"
+        elif [[ "${_VIRT_TEST}" =~ "xen-dom0" ]]; then
+          not_supported_virt "Xen privileged domain"
+        elif [[ "${_VIRT_TEST}" =~ "linux_vserver-host" ]]; then
+          not_supported_virt "Linux VServer host"
+        else
+          case "${_VIRT_TEST}" in
+            kvm)                 _VIRT_IS="Linux KVM guest" ;;
+            linux_vserver-guest) _VIRT_IS="Linux VServer guest" ;;
+            parallels)           _VIRT_IS="Parallels guest" ;;
+            virtualbox)          _VIRT_IS="VirtualBox guest" ;;
+            vmware)              _VIRT_IS="VMware ESXi guest" ;;
+            xen)                 _VIRT_IS="Xen guest" ;;
+            xen-domU)            _VIRT_IS="Xen paravirtualized guest domain" ;;
+            xen-hvm)             _VIRT_IS="Xen guest fully virtualized (HVM)" ;;
+            *)  not_supported_virt "${_VIRT_TEST}"
+            ;;
+          esac
+        fi
+      fi
+      msg "VIRT: This system is supported: ${_VIRT_IS}"
+    else
+      if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
+        _VIRT_TEST="unknown / not a virtual machine"
+      fi
+      msg "WARN: This system is not supported: ${_VIRT_TEST}"
     fi
   fi
 }

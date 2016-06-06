@@ -74,9 +74,14 @@ system tuning for development and switching it back easily to the standard
 production settings.
 
 
-### SUPPORTED PARENT SYSTEMS {c} please read also: docs/CAVEATS.txt
+### SUPPORTED VIRTUALIZATION SYSTEMS {c} please read also: docs/CAVEATS.txt
 
-* Xen, VServer, Linux KVM or VMware based VPS, or a dedicated box.
+* Linux KVM guest
+* Linux VServer guest
+* Parallels guest
+* VirtualBox guest
+* VMware ESXi guest
+* Xen guest
 
 
 ### SUPPORTED LTS OS {c} please read also: docs/CAVEATS.txt

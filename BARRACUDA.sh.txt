@@ -221,6 +221,7 @@ sleep 3
 normalize_ip_name_variables
 mode_detection
 check_exception_mycnf
+virt_detection
 os_detection
 
 
