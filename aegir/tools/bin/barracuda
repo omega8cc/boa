@@ -1005,8 +1005,8 @@ check_dns_curl() {
   fi
   find_fast_mirror
   isCurl=$(curl --version 2>&1)
-  if [[ ! "$isCurl" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-    if [[ ! "$isCurl" =~ "GnuTLS" ]] || [ -z "${isCurl}" ]; then
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+    if [[ ! "${isCurl}" =~ "GnuTLS" ]] || [ -z "${isCurl}" ]; then
       echo "ERROR: Required cURL package is not available"
       echo "ERROR: Please install it manually with 'apt-get install curl'"
       clean_pid_exit
