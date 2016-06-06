@@ -388,7 +388,7 @@ virt_detection() {
         _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
         _VS_HOST_TEST=$(grep -E "VxID:[[:space:]]*0$" /proc/self/status 2> /dev/null)
         if [ -z "${_VS_HOST_TEST}" ] && [ ! -z "${_VS_GUEST_TEST}" ]; then
-          _VIRT_IS="Linux VServer container"
+          _VIRT_IS="Linux VServer guest"
         else
           if [ ! -z "${_VS_HOST_TEST}" ]; then
             not_supported_virt "Linux VServer host"
@@ -418,11 +418,13 @@ virt_detection() {
           esac
         fi
       fi
+      echo
       msg "VIRT: This system is supported: ${_VIRT_IS}"
     else
       if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
         _VIRT_TEST="unknown / not a virtual machine"
       fi
+      echo
       msg "WARN: This system is not supported: ${_VIRT_TEST}"
     fi
   fi
