@@ -858,8 +858,6 @@ barracuda_cnf() {
         wait
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
         wait
-        ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                                ${barCnf}
-        ### wait
         wait
         sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
         wait
@@ -1378,8 +1376,6 @@ barracuda_cnf() {
         wait
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
         wait
-        ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                                ${barCnf}
-        ### wait
         sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
         wait
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   ${barCnf}
