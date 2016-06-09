@@ -49,6 +49,8 @@ _LOCAL_UBUNTU_MIRROR= #--------- Allows to force non-default Ubuntu mirror
 _NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
 _SCOUT_KEY= #------------------- Installs Scout App when license key is set
 ###
+_MAGICK_FROM_SOURCES=NO #------- Builds ImageMagick from sources when YES
+###
 _NGINX_DOS_LIMIT=300 #---------- Allows to override default 250/300 limit
 _NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
 _NGINX_FORWARD_SECRECY=YES #---- Installs PFS Nginx support when YES (default)
@@ -72,7 +74,6 @@ _REDIS_LISTEN_MODE=SOCKET #----- Redis listen mode: SOCKET (recommended) or PORT
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
 _SPEED_VALID_MAX=3600 #--------- Defines Speed Booster hourly cache TTL in sec
 _SSH_FROM_SOURCES=YES #--------- Allows to build OpenSSH from sources on Debian
-_MAGICK_FROM_SOURCES=NO #------- Builds ImageMagick from sources when YES
 _SSH_PORT=22 #------------------ Allows to configure non-standard SSH port
 _STRICT_BIN_PERMISSIONS=YES #--- Aggressively protect all binaries when YES
 _STRONG_PASSWORDS=NO #---------- Configurable length: 8-128, YES (32), NO (8)
