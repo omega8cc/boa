@@ -782,6 +782,9 @@ barracuda_cnf() {
     echo "_SCOUT_KEY=${_SCOUT_KEY}"                           >> ${barCnf}
 
     echo "###"                                                >> ${barCnf}
+    echo "_MAGICK_FROM_SOURCES=${_MAGICK_FROM_SOURCES}"       >> ${barCnf}
+
+    echo "###"                                                >> ${barCnf}
     echo "_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}"               >> ${barCnf}
     echo "_NGINX_EXTRA_CONF=\"${_NGINX_EXTRA_CONF}\""         >> ${barCnf}
     echo "_NGINX_FORWARD_SECRECY=${_NGINX_FORWARD_SECRECY}"   >> ${barCnf}
