@@ -985,6 +985,13 @@ _PHP_GEOS=NO
 _SSH_FROM_SOURCES=YES
 
 ###
+### When set to YES it will force OpenSSH
+### armoured configuration, if the option
+### _SSH_FROM_SOURCES is set to YES
+###
+_SSH_ARMOUR=NO
+
+###
 ### When set to YES it will force ImageMagick
 ### re-install from sources
 ###

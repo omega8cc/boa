@@ -809,6 +809,7 @@ barracuda_cnf() {
     echo "_REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE}"           >> ${barCnf}
     echo "_RESERVED_RAM=${_RESERVED_RAM}"                     >> ${barCnf}
     echo "_SPEED_VALID_MAX=${_SPEED_VALID_MAX}"               >> ${barCnf}
+    echo "_SSH_ARMOUR=${_SSH_ARMOUR}"                         >> ${barCnf}
     echo "_SSH_FROM_SOURCES=${_SSH_FROM_SOURCES}"             >> ${barCnf}
     echo "_SSH_PORT=${_SSH_PORT}"                             >> ${barCnf}
     echo "_STRICT_BIN_PERMISSIONS=${_STRICT_BIN_PERMISSIONS}" >> ${barCnf}
@@ -858,6 +859,7 @@ barracuda_cnf() {
         wait
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
         wait
+        sed -i "s/^_SSH_ARMOUR=.*/_SSH_ARMOUR=YES/g"                               ${barCnf}
         wait
         sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
         wait
@@ -1250,6 +1252,11 @@ barracuda_cnf() {
       echo "_SSH_FROM_SOURCES=${_SSH_FROM_SOURCES}" >> ${barCnf}
     fi
 
+    _SSH_ARMOUR_TEST=$(grep _SSH_ARMOUR ${barCnf} 2>&1)
+    if [[ ! "${_SSH_ARMOUR_TEST}" =~ "_SSH_ARMOUR" ]]; then
+      echo "_SSH_ARMOUR=${_SSH_ARMOUR}" >> ${barCnf}
+    fi
+
     _MAGICK_FROM_SOURCES_TEST=$(grep _MAGICK_FROM_SOURCES ${barCnf} 2>&1)
     if [[ ! "${_MAGICK_FROM_SOURCES_TEST}" =~ "_MAGICK_FROM_SOURCES" ]]; then
       echo "_MAGICK_FROM_SOURCES=${_MAGICK_FROM_SOURCES}" >> ${barCnf}
@@ -1375,6 +1382,8 @@ barracuda_cnf() {
         sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=${debM}/g"         ${barCnf}
         wait
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
+        wait
+        sed -i "s/^_SSH_ARMOUR=.*/_SSH_ARMOUR=YES/g"                               ${barCnf}
         wait
         sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
         wait
@@ -4445,6 +4454,151 @@ check_fix_java() {
   if [ ! -e "/usr/bin/java7" ] \
     && [ -e "/usr/lib/jvm/java-7-openjdk-i386/jre/bin/java" ]; then
     ln -sf /usr/lib/jvm/java-7-openjdk-i386/jre/bin/java /usr/bin/java7
+  fi
+}
+
+sshd_armour() {
+  ###
+  ### See: https://stribika.github.io/2015/01/04/secure-secure-shell.html
+  ### Also: https://github.com/stribika/stribika.github.io/wiki/Secure-Secure-Shell
+  ###
+  if [ -e "/usr/etc/sshd_config" ]; then
+    if [ "${_SSH_ARMOUR}" = "NO" ] \
+      || [ -z "${_SSH_ARMOUR}" ]; then
+      if [ -e "/usr/etc/.vanilla.sshd_config" ]; then
+        mv -f /usr/etc/.vanilla.sshd_config /usr/etc/sshd_config
+      fi
+      if [ -e "/usr/etc/.vanilla.ssh_config" ]; then
+        mv -f /usr/etc/.vanilla.ssh_config /usr/etc/ssh_config
+      fi
+    else
+      if [ ! -e "/usr/etc/.vanilla.sshd_config" ]; then
+        cp -a /usr/etc/sshd_config /usr/etc/.vanilla.sshd_config
+      fi
+      if [ ! -e "/usr/etc/.vanilla.ssh_config" ]; then
+        cp -a /usr/etc/ssh_config /usr/etc/.vanilla.ssh_config
+      fi
+      _SSH_PROTOCOL_TEST=$(grep "Protocol" /usr/etc/sshd_config 2>&1)
+      if [[ "${_SSH_PROTOCOL_TEST}" =~ (^)"Protocol 2" ]]; then
+        _DO_NOTHING=YES
+      elif [[ "${_SSH_PROTOCOL_TEST}" =~ "Protocol" ]]; then
+        sed -i "s/.*Protocol.*/Protocol 2/g" /usr/etc/sshd_config &> /dev/null
+        wait
+      else
+        echo >> /usr/etc/sshd_config
+        echo "Protocol 2" >> /usr/etc/sshd_config
+      fi
+      _SSH_ALGO_TEST=$(grep "KexAlgorithms" /usr/etc/sshd_config 2>&1)
+      if [[ "${_SSH_ALGO_TEST}" =~ (^)"KexAlgorithms curve25519-sha256" ]]; then
+        _DO_NOTHING=YES
+      elif [[ "${_SSH_ALGO_TEST}" =~ "KexAlgorithms" ]]; then
+        sed -i "s/.*KexAlgorithms.*//g" /usr/etc/sshd_config &> /dev/null
+        wait
+        echo "KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /usr/etc/sshd_config
+      else
+        echo >> /usr/etc/sshd_config
+        echo "KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /usr/etc/sshd_config
+      fi
+      _SSH_CIPHERS_TEST=$(grep "Ciphers" /usr/etc/sshd_config 2>&1)
+      if [[ "${_SSH_CIPHERS_TEST}" =~ (^)"Ciphers chacha20-poly1305" ]]; then
+        _DO_NOTHING=YES
+      elif [[ "${_SSH_CIPHERS_TEST}" =~ "Ciphers" ]]; then
+        sed -i "s/.*Ciphers.*//g" /usr/etc/sshd_config &> /dev/null
+        wait
+        echo "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /usr/etc/sshd_config
+      else
+        echo >> /usr/etc/sshd_config
+        echo "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /usr/etc/sshd_config
+      fi
+      _SSH_MACS_TEST=$(grep "MACs" /usr/etc/sshd_config 2>&1)
+      if [[ "${_SSH_MACS_TEST}" =~ (^)"MACs hmac-sha2-512-etm" ]]; then
+        _DO_NOTHING=YES
+      elif [[ "${_SSH_MACS_TEST}" =~ "MACs" ]]; then
+        sed -i "s/.*MACs.*//g" /usr/etc/sshd_config &> /dev/null
+        wait
+        echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-ripemd160-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-ripemd160,umac-128@openssh.com" >> /usr/etc/sshd_config
+      else
+        echo >> /usr/etc/sshd_config
+        echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-ripemd160-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-ripemd160,umac-128@openssh.com" >> /usr/etc/sshd_config
+      fi
+      _SSH_HKEY_TEST=$(grep "HostKey" /usr/etc/sshd_config 2>&1)
+      if [[ "${_SSH_HKEY_TEST}" =~ (^)"HostKey" ]] \
+        && [[ "${_SSH_HKEY_TEST}" =~ "ssh_host_ed25519_key" ]]; then
+        _DO_NOTHING=YES
+      elif [[ "${_SSH_HKEY_TEST}" =~ "HostKey" ]]; then
+        sed -i "s/.*HostKey.*//g" /usr/etc/sshd_config &> /dev/null
+        wait
+        echo "HostKey /usr/etc/ssh_host_ed25519_key" >> /usr/etc/sshd_config
+        echo "HostKey /usr/etc/ssh_host_rsa_key" >> /usr/etc/sshd_config
+      else
+        echo >> /usr/etc/sshd_config
+        echo "HostKey /usr/etc/ssh_host_ed25519_key" >> /usr/etc/sshd_config
+        echo "HostKey /usr/etc/ssh_host_rsa_key" >> /usr/etc/sshd_config
+      fi
+      if [ ! -e "/usr/etc/.ssh_host_ed25519_key.pid" ]; then
+        mkdir -p /var/backups/sshd
+        mv -f /usr/etc/ssh_host_*key* /var/backups/sshd/
+        msg "INFO: Generating new ssh_host_ed25519_key..."
+        ssh-keygen -t ed25519 -N "" -q -f /usr/etc/ssh_host_ed25519_key < /dev/null
+        touch /usr/etc/.ssh_host_ed25519_key.pid
+      fi
+      if [ ! -e "/usr/etc/.ssh_host_rsa_key4096.pid" ]; then
+        msg "INFO: Generating new ssh_host_rsa_key..."
+        ssh-keygen -t rsa -b 4096 -N "" -q -f /usr/etc/ssh_host_rsa_key < /dev/null
+        touch /usr/etc/.ssh_host_rsa_key4096.pid
+        msg "NOTE: You will be asked to accept the new SSH fingerprint the next time you connect"
+      fi
+      if [ ! -e "/usr/etc/.moduli.pid" ]; then
+        if [ -e "/usr/etc/moduli" ]; then
+          mv -f /usr/etc/moduli /usr/etc/.old.moduli
+          awk '$5 > 2000' /usr/etc/.old.moduli > /usr/etc/.tmp.moduli
+          mv -f /usr/etc/.tmp.moduli /usr/etc/moduli
+          touch /usr/etc/.moduli.pid
+        else
+          msg "INFO: Generating new SSH moduli, this may take 1-2 hours :/ please wait..."
+          mrun "ssh-keygen -G /usr/etc/moduli.all -b 4096" &> /dev/null
+          mrun "ssh-keygen -T /usr/etc/moduli.safe -f /usr/etc/moduli.all" &> /dev/null
+          mv -f /usr/etc/moduli.safe /usr/etc/moduli
+          rm -f /usr/etc/moduli.all
+          touch /usr/etc/.moduli.pid
+        fi
+      fi
+      _SSH_KEXALGO_TEST=$(grep "KexAlgorithms" /usr/etc/ssh_config 2>&1)
+      if [[ "${_SSH_KEXALGO_TEST}" =~ "KexAlgorithms curve25519-sha256" ]]; then
+        _DO_NOTHING=YES
+      elif [[ "${_SSH_KEXALGO_TEST}" =~ "KexAlgorithms" ]]; then
+        sed -i "s/.*PubkeyAuthentication.*//g" /usr/etc/ssh_config &> /dev/null
+        wait
+        sed -i "s/.*UseRoaming.*//g" /usr/etc/ssh_config &> /dev/null
+        wait
+        sed -i "s/.*Ciphers.*//g" /usr/etc/ssh_config &> /dev/null
+        wait
+        sed -i "s/.*HostKeyAlgorithms.*//g" /usr/etc/ssh_config &> /dev/null
+        wait
+        sed -i "s/.*KexAlgorithms.*//g" /usr/etc/ssh_config &> /dev/null
+        wait
+        sed -i "s/.*MACs.*//g" /usr/etc/ssh_config &> /dev/null
+        wait
+        echo >> /usr/etc/ssh_config
+        echo "Host *" >> /usr/etc/ssh_config
+        echo "  PubkeyAuthentication yes" >> /usr/etc/ssh_config
+        echo "  UseRoaming no" >> /usr/etc/ssh_config
+        echo "  Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /usr/etc/ssh_config
+        echo "  HostKeyAlgorithms ssh-ed25519-cert-v01@openssh.com,ssh-rsa-cert-v01@openssh.com,ssh-ed25519,ssh-rsa" >> /usr/etc/ssh_config
+        echo "  KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /usr/etc/ssh_config
+        echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-ripemd160-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-ripemd160,umac-128@openssh.com" >> /usr/etc/ssh_config
+      else
+        echo >> /usr/etc/ssh_config
+        echo "Host *" >> /usr/etc/ssh_config
+        echo "  PubkeyAuthentication yes" >> /usr/etc/ssh_config
+        echo "  UseRoaming no" >> /usr/etc/ssh_config
+        echo "  Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /usr/etc/ssh_config
+        echo "  HostKeyAlgorithms ssh-ed25519-cert-v01@openssh.com,ssh-rsa-cert-v01@openssh.com,ssh-ed25519,ssh-rsa" >> /usr/etc/ssh_config
+        echo "  KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /usr/etc/ssh_config
+        echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-ripemd160-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-ripemd160,umac-128@openssh.com" >> /usr/etc/ssh_config
+      fi
+    fi
+    mrun "service ssh reload" &> /dev/null
   fi
 }
 

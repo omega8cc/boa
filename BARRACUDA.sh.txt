@@ -391,6 +391,12 @@ update_initd
 
 
 ###
+### Make sshd armoured
+###
+sshd_armour
+
+
+###
 ### Finalize initial MariaDB server setup
 ###
 finalize_sql_initial_setup
