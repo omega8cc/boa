@@ -209,6 +209,7 @@ update_agents() {
       rm -f /root/.tg.cnf
     fi
     echo ${InTest} > /root/.high_traffic.cnf
+    echo ${InTest} > /root/.my.optimize.cnf
     if [ "${_RANDOMIZE}" = "YES" ]; then
       echo ${InTest} > /root/.randomize_duplicity_full_backup_day.cnf
       echo ${InTest} > /root/.skip_duplicity_monthly_cleanup.cnf
@@ -218,7 +219,6 @@ update_agents() {
     fi
     rm -f /root/.fast.cron.cnf
     rm -f /root/.force.drupalgeddon.cnf
-    rm -f /root/.my.optimize.cnf
     rm -f /root/.skip_cleanup.cnf
     if [ ! -e "/data/conf/override.global.inc" ]; then
       echo "<?php" > /data/conf/override.global.inc.tmp
