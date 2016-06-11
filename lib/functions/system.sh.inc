@@ -4598,6 +4598,8 @@ sshd_armour() {
         echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-ripemd160-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-ripemd160,umac-128@openssh.com" >> /usr/etc/ssh_config
       fi
     fi
+    sed -i "/^$/d" /usr/etc/sshd_config &> /dev/nul
+    sed -i "/^$/d" /usr/etc/ssh_config &> /dev/null
     mrun "service ssh reload" &> /dev/null
   fi
 }
@@ -4628,6 +4630,16 @@ update_initd() {
       else
         echo >> /usr/etc/sshd_config
         echo "UseDNS no" >> /usr/etc/sshd_config
+      fi
+      _SSH_USEPAM_TEST=$(grep "UsePAM" /usr/etc/sshd_config 2>&1)
+      if [[ "${_SSH_USEPAM_TEST}" =~ (^)"UsePAM no" ]]; then
+        _DO_NOTHING=YES
+      elif [[ "${_SSH_USEPAM_TEST}" =~ "UsePAM" ]]; then
+        sed -i "s/.*UsePAM.*/UsePAM no/g" /usr/etc/sshd_config &> /dev/null
+        wait
+      else
+        echo >> /usr/etc/sshd_config
+        echo "UsePAM no" >> /usr/etc/sshd_config
       fi
     fi
     mrun "service ssh reload" &> /dev/null
@@ -4681,6 +4693,8 @@ update_initd() {
       || [ "${_VMFAMILY}" = "VS" ]; then
       sed -i "s/.*UseDNS.*//g" /etc/ssh/sshd_config &> /dev/null
       wait
+      sed -i "s/.*UsePAM.*//g" /etc/ssh/sshd_config &> /dev/null
+      wait
       sed -i "s/^ClientAliveCountMax.*//g" /etc/ssh/sshd_config &> /dev/null
       wait
       sed -i "s/^ClientAliveInterval.*//g" /etc/ssh/sshd_config &> /dev/null
@@ -4689,19 +4703,22 @@ update_initd() {
       wait
       sed -i "s/^PasswordAuthentication.*//g" /etc/ssh/sshd_config &> /dev/null
       wait
-      sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" \
+      sed -i "s/^PermitRootLogin.*/PermitRootLogin prohibit-password/g" \
         /etc/ssh/sshd_config &> /dev/null
       wait
       echo >> /etc/ssh/sshd_config
       echo "IgnoreUserKnownHosts no" >> /etc/ssh/sshd_config
       echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
       echo "UseDNS no" >> /etc/ssh/sshd_config
+      echo "UsePAM no" >> /etc/ssh/sshd_config
       echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
       echo "ClientAliveCountMax 3" >> /etc/ssh/sshd_config
       sed -i "/^$/d" /etc/ssh/sshd_config &> /dev/null
       wait
       if [ -e "/usr/etc/sshd_config" ]; then
         sed -i "s/.*UseDNS.*//g" /usr/etc/sshd_config &> /dev/null
+        wait
+        sed -i "s/.*UsePAM.*//g" /usr/etc/sshd_config &> /dev/null
         wait
         sed -i "s/^ClientAliveCountMax.*//g" /usr/etc/sshd_config &> /dev/null
         wait
@@ -4711,13 +4728,17 @@ update_initd() {
         wait
         sed -i "s/^PasswordAuthentication.*//g" /usr/etc/sshd_config &> /dev/null
         wait
-        sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" \
+        sed -i "s/^#PermitRootLogin.*/PermitRootLogin prohibit-password/g" \
+          /usr/etc/sshd_config &> /dev/null
+        wait
+        sed -i "s/^PermitRootLogin.*/PermitRootLogin prohibit-password/g" \
           /usr/etc/sshd_config &> /dev/null
         wait
         echo >> /usr/etc/sshd_config
         echo "IgnoreUserKnownHosts no" >> /usr/etc/sshd_config
         echo "PasswordAuthentication yes" >> /usr/etc/sshd_config
         echo "UseDNS no" >> /usr/etc/sshd_config
+        echo "UsePAM no" >> /usr/etc/sshd_config
         echo "ClientAliveInterval 300" >> /usr/etc/sshd_config
         echo "ClientAliveCountMax 3" >> /usr/etc/sshd_config
         sed -i "/^$/d" /usr/etc/sshd_config &> /dev/null
