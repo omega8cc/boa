@@ -679,11 +679,13 @@ up_action() {
           wait
           sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=YES/g"         ${barCnf}
           wait
-          ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                  ${barCnf}
-          ### wait
           sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"        ${barCnf}
           wait
           sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"     ${barCnf}
+          wait
+          sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"               ${barCnf}
+          wait
+          sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"       ${barCnf}
           wait
           if [ -e "/root/.mstr.clstr.cnf" ] \
             || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -704,13 +706,7 @@ up_action() {
               wait
               sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"   ${barCnf}
               wait
-              ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"              ${barCnf}
-              ### wait
             fi
-            sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"             ${barCnf}
-            wait
-            sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"     ${barCnf}
-            wait
             sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"       ${barCnf}
             wait
             sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g" \

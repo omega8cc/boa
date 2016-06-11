@@ -220,6 +220,8 @@ update_agents() {
     rm -f /root/.fast.cron.cnf
     rm -f /root/.force.drupalgeddon.cnf
     rm -f /root/.skip_cleanup.cnf
+    rm -f /root/.default.cnf
+    rm -f /root/.debug.cnf
     if [ ! -e "/data/conf/override.global.inc" ]; then
       echo "<?php" > /data/conf/override.global.inc.tmp
       echo "" >> /data/conf/override.global.inc.tmp
