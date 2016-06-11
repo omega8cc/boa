@@ -164,7 +164,7 @@ satellite_update_web_user() {
         sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_T_II}
         wait
         rm -f ${_T_HD}/.ctrl.php*
-        echo > ${_T_HD}/.ctrl.php${_T_PV}.txt
+        echo > ${_T_HD}/.ctrl.php${_T_PV}.pid
       fi
       chmod 700 /home/${_WEB}
       chown -R ${_WEB}:www-data /home/${_WEB}
@@ -298,7 +298,7 @@ satellite_tune_fpm_config() {
         for e in ${_PHP_V}; do
           if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
             if [ "${e}" != "${_PHP_SV}" ] \
-              || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.txt" ]; then
+              || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.pid" ]; then
               satellite_update_web_user "${_PHP_SV}"
             fi
           fi
@@ -1131,14 +1131,14 @@ satellite_child_b_update_ini_php_cli() {
   _PHP_V="70 56 55 54 53"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ]; then
+      && [ ! -e "${_U_HD}/.ctrl.php${e}.pid" ]; then
       _PHP_CLI_UPDATE=YES
     fi
   done
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.320headQ.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.320headQ1.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1196,8 +1196,8 @@ satellite_child_b_update_ini_php_cli() {
       wait
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
-      echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.320headQ.txt
+      echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
+      echo > ${_U_HD}/.ctrl.320headQ1.pid
     fi
   fi
 }
@@ -3342,7 +3342,7 @@ satellite_make() {
     echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
   fi
 
-  if [ ! -e "${_ROOT}/static/control/.ctrl.320headQ.txt" ] \
+  if [ ! -e "${_ROOT}/static/control/.ctrl.320headQ1.pid" ] \
     || [ ! -e "${_ROOT}/static/control/README.txt" ]; then
     mkdir -p ${_ROOT}/static/control
     chmod 755 ${_ROOT}/static/control
@@ -3354,7 +3354,7 @@ satellite_make() {
     chown -R ${_USER}.ftp:${_USRG} \
       ${_ROOT}/static/control &> /dev/null
     rm -f ${_ROOT}/static/control/.ctrl.*
-    echo OK > ${_ROOT}/static/control/.ctrl.320headQ.txt
+    echo OK > ${_ROOT}/static/control/.ctrl.320headQ1.pid
   fi
 
   if [ -d "/data/all/000" ]; then

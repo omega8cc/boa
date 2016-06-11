@@ -852,14 +852,14 @@ update_php_cli_local_ini() {
   _PHP_V="70 56 55 54 53"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ]; then
+      && [ ! -e "${_U_HD}/.ctrl.php${e}.pid" ]; then
       _PHP_CLI_UPDATE=YES
     fi
   done
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.320headQ.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.320headQ1.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -918,8 +918,8 @@ update_php_cli_local_ini() {
       wait
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
-      echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.320headQ.txt
+      echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
+      echo > ${_U_HD}/.ctrl.320headQ1.pid
     fi
   fi
 }
