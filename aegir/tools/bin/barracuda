@@ -614,7 +614,7 @@ up_action() {
         wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcB}/g"         ${vBs}/${barName}
         wait
-      elif [ "${cmmand}" = "up-2.4" ]; then
+      elif [ "${cmmand}" = "up-2.4" ] || [ "${cmmand}" = "up-cluster" ]; then
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${filIncB}
@@ -1152,7 +1152,7 @@ proceed() {
   elif [ "${cmmand}" = "up-stable" ]; then
     _SCRIPT_URL="$rgUrl/${stbl}/${barName}"
     curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
-  elif [ "${cmmand}" = "up-2.4" ]; then
+  elif [ "${cmmand}" = "up-2.4" ] || [ "${cmmand}" = "up-cluster" ]; then
     branch="2.4.x-dev"
     _SCRIPT_URL="$rgUrl/${lgcC}/${barName}"
     curl ${crlGet} "${rgUrl}/${lgcC}/${pthIncB}"    -o ${vBs}/${filIncB}

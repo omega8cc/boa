@@ -551,7 +551,7 @@ up_one() {
         wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcB}/g"         ${vBs}/${tocName}
         wait
-      elif [ "${cmmand}" = "up-2.4" ]; then
+      elif [ "${cmmand}" = "up-2.4" ] || [ "${cmmand}" = "up-cluster" ]; then
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${tocIncO}
         wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${tocIncO}
@@ -955,7 +955,7 @@ up_stable() {
 
 up_legacy() {
   up_start
-  if [ "${cmmand}" = "up-2.4" ]; then
+  if [ "${cmmand}" = "up-2.4" ] || [ "${cmmand}" = "up-cluster" ]; then
     branch="2.4.x-dev"
     curl ${crlGet} "${rgUrl}/${lgcC}/${octName}"  -o ${vBs}/${octName}
     curl ${crlGet} "${rgUrl}/${lgcC}/${pthIncO}"  -o ${vBs}/${filIncO}
