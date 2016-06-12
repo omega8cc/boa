@@ -1152,7 +1152,7 @@ proceed() {
   elif [ "${cmmand}" = "up-stable" ]; then
     _SCRIPT_URL="$rgUrl/${stbl}/${barName}"
     curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
-  elif [ "${cmmand}" = "up-2.4" ] || [ "${cmmand}" = "up-cluster" ]; then
+  elif [ "${cmmand}" = "up-2.4" ]; then
     branch="2.4.x-dev"
     _SCRIPT_URL="$rgUrl/${lgcC}/${barName}"
     curl ${crlGet} "${rgUrl}/${lgcC}/${pthIncB}"    -o ${vBs}/${filIncB}

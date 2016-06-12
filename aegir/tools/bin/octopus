@@ -931,6 +931,7 @@ up_head() {
 
 up_cluster() {
   up_start
+  branch="2.4.x-dev"
   curl ${crlGet} "${rgUrl}/${cluster}/${octName}" -o ${vBs}/${octName}
   curl ${crlGet} "${rgUrl}/${cluster}/${pthIncO}" -o ${vBs}/${filIncO}
   if [ "${second}" = "all" ]; then
@@ -955,7 +956,7 @@ up_stable() {
 
 up_legacy() {
   up_start
-  if [ "${cmmand}" = "up-2.4" ] || [ "${cmmand}" = "up-cluster" ]; then
+  if [ "${cmmand}" = "up-2.4" ]; then
     branch="2.4.x-dev"
     curl ${crlGet} "${rgUrl}/${lgcC}/${octName}"  -o ${vBs}/${octName}
     curl ${crlGet} "${rgUrl}/${lgcC}/${pthIncO}"  -o ${vBs}/${filIncO}
