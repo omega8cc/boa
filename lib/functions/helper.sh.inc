@@ -383,6 +383,7 @@ virt_detection() {
   _VIRT_TOOL=$(which virt-what 2> /dev/null)
   if [ -x "${_VIRT_TOOL}" ]; then
     _VIRT_TEST=$(virt-what 2> /dev/null)
+    _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
     if [ ! -e "/root/.allow.any.virt.cnf" ]; then
       if [ -e "/proc/self/status" ]; then
         _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
@@ -412,9 +413,9 @@ virt_detection() {
             parallels)           _VIRT_IS="Parallels guest" ;;
             virtualbox)          _VIRT_IS="VirtualBox guest" ;;
             vmware)              _VIRT_IS="VMware ESXi guest" ;;
-            xen)                 _VIRT_IS="Xen guest" ;;
             xen-domU)            _VIRT_IS="Xen paravirtualized guest domain" ;;
             xen-hvm)             _VIRT_IS="Xen guest fully virtualized (HVM)" ;;
+            xen)                 _VIRT_IS="Xen guest" ;;
             *)  not_supported_virt "${_VIRT_TEST}"
             ;;
           esac
