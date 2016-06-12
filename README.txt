@@ -114,7 +114,7 @@ production settings.
 * Letsencrypt.org SSL certificates support, with demo mode enabled by default.
 * HTTP/2 or SPDY Nginx support.
 * PFS (Perfect Forward Secrecy) support in Nginx.
-* PHP-FPM 7.0, 5.6, 5.5, 5.4, 5.3 multi-install mode, configurable per Octopus.
+* PHP-FPM 7.0, 5.6, 5.5, 5.4, 5.3 multi-install mode, configurable per site.
 * PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse and ionCube.
 * Fast Redis Cache with DB auto-failover for all 6.x and 7.x platforms.
 * Fast Redis Lock support with DB auto-failover for all 6.x and 7.x platforms.
