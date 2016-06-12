@@ -169,9 +169,9 @@ if [ -e "/data/disk/arch" ]; then
     sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" ${barCnf}
     wait
   fi
-  if [[ "${_CHECK_HOST}" =~ "v251a.a" ]] \
-    || [[ "${_VM_VERSION}" =~ "LEGACY" ]] \
+  if [[ "${_VM_VERSION}" =~ "LEGACY" ]] \
     || [ ! -e "/etc/init.d/ssh" ] \
+    || [ ! -e "/etc/init.d/redis-server" ] \
     || [[ "${_CHECK_HOST}" =~ "v5.s8." ]]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=

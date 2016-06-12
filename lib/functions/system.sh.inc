@@ -4084,7 +4084,7 @@ install_update_xdrago() {
       || [ "${_VMFAMILY}" = "VS" ] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      if [[ "${_THISHOST}" =~ "v251a.ams." ]]; then
+      if [ ! -e "/etc/init.d/redis-server" ]; then
         _NGINX_DOS_LIMIT=888
       else
         if [ -z "${_NGINX_DOS_LIMIT}" ] \
@@ -4166,7 +4166,7 @@ install_update_xdrago() {
       || [ "${_VMFAMILY}" = "VS" ] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      if [[ "${_THISHOST}" =~ "v251a.ams." ]]; then
+      if [ ! -e "/etc/init.d/redis-server" ]; then
         _NGINX_DOS_LIMIT=888
       else
         if [ -z "${_NGINX_DOS_LIMIT}" ] \
