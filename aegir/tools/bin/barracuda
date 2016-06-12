@@ -707,7 +707,11 @@ up_action() {
               sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"   ${barCnf}
               wait
             fi
-            sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"       ${barCnf}
+            if [ -e "/etc/init.d/redis-server" ]; then
+              sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"     ${barCnf}
+            else
+              sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"      ${barCnf}
+            fi
             wait
             sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g" \
               /root/.*.octopus.cnf &> /dev/null
