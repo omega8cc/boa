@@ -140,9 +140,7 @@ production settings.
 
 * Compass Tools.
 * HHVM support - see docs/HHVM.txt for details.
-* MultiCore Apache Solr 1.4.1 with Jetty 7 - see docs/SOLR.txt for details.
-* MultiCore Apache Solr 3.6.2 with Jetty 8 - see docs/SOLR.txt for details.
-* MultiCore Apache Solr 4.9.1 with Jetty 8 or Jetty 9 on Precise and Wheezy.
+* MultiCore Apache Solr 4.9.1 with Jetty 9 - see docs/SOLR.txt for details.
 * New Relic Apps Monitor with per Octopus license and per Site reporting.
 * Image Optimize toolkit binaries.
 * FFmpeg support.
