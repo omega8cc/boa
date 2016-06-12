@@ -2034,6 +2034,10 @@ else
     fi
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ]; then
+      if [ ! -e "/root/.remote.db.cnf" ] \
+        && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
+        touch /root/.remote.db.cnf
+      fi
       if [ -e "/var/run/mysqld/mysqld.pid" ] \
         && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
         ionice -c2 -n0 -p $$
