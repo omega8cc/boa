@@ -51,22 +51,24 @@ crontab_update() {
         _BCDA_FULL="up-${_AUTO_VER} log"
         _BCDA_SYST="up-${_AUTO_VER} system"
       fi
-      _OCTO_FULL="up-stable all force log"
+      _OCTO_FULL="up-${_AUTO_VER} all force log"
     fi
     echo "# Barracuda weekly system only upgrade" >> /etc/crontab
     echo "10 1    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
     echo "15 1    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
-    echo "# Barracuda stable full upgrade" >> /etc/crontab
+    echo "# Barracuda ${_AUTO_VER} full upgrade" >> /etc/crontab
     echo "05 1  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
     echo "09 1  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
-    echo "# Barracuda stable system only upgrade" >> /etc/crontab
+    echo "# Barracuda ${_AUTO_VER} system only upgrade" >> /etc/crontab
     echo "35 1  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
     echo "39 1  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
     if [ ! -e "/root/.wbhd.clstr.cnf" ] && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
-      echo "# Octopus stable full upgrade" >> /etc/crontab
-      echo "05 7  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
-      echo "09 7  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
-      echo "55 9  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
+      if [ ! -z "${_OCTO_FULL}" ]; then
+        echo "# Octopus ${_AUTO_VER} full upgrade" >> /etc/crontab
+        echo "05 7  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
+        echo "09 7  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
+        echo "55 9  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
+      fi
     fi
     echo Cron Update Completed
   fi
@@ -155,16 +157,12 @@ if [ -e "/data/disk/arch" ]; then
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    _AUTO_UP_WEEKLY=
-    _AUTO_UP_MONTH=
-    _AUTO_UP_DAY=
+    _AUTO_UP_WEEKLY=5
+    _AUTO_UP_MONTH=1
+    _AUTO_UP_DAY=1
     _AUTO_PHP=
     _AUTO_VER="stable"
     sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"5.6 5.5 5.3\"/g" ${barCnf}
-    wait
-    sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" ${barCnf}
-    wait
-    sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${barCnf}
     wait
     sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" ${barCnf}
     wait
