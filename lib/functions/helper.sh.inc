@@ -407,15 +407,19 @@ virt_detection() {
         elif [[ "${_VIRT_TEST}" =~ "linux_vserver-host" ]]; then
           not_supported_virt "Linux VServer host"
         else
+          if [[ "${_VIRT_TEST}" =~ "xen xen-hvm" ]]; then
+            _VIRT_TEST="xen-hvm"
+          elif [[ "${_VIRT_TEST}" =~ "xen xen-domU" ]]; then
+            _VIRT_TEST="xen-domU"
+          fi
           case "${_VIRT_TEST}" in
-            kvm)                 _VIRT_IS="Linux KVM guest" ;;
-            linux_vserver-guest) _VIRT_IS="Linux VServer guest" ;;
-            parallels)           _VIRT_IS="Parallels guest" ;;
-            virtualbox)          _VIRT_IS="VirtualBox guest" ;;
-            vmware)              _VIRT_IS="VMware ESXi guest" ;;
-            xen-domU)            _VIRT_IS="Xen paravirtualized guest domain" ;;
-            xen-hvm)             _VIRT_IS="Xen guest fully virtualized (HVM)" ;;
-            xen)                 _VIRT_IS="Xen guest" ;;
+            kvm)         _VIRT_IS="Linux KVM guest" ;;
+            parallels)   _VIRT_IS="Parallels guest" ;;
+            virtualbox)  _VIRT_IS="VirtualBox guest" ;;
+            vmware)      _VIRT_IS="VMware ESXi guest" ;;
+            xen-domU)    _VIRT_IS="Xen paravirtualized guest domain" ;;
+            xen-hvm)     _VIRT_IS="Xen guest fully virtualized (HVM)" ;;
+            xen)         _VIRT_IS="Xen guest" ;;
             *)  not_supported_virt "${_VIRT_TEST}"
             ;;
           esac
