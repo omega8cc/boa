@@ -161,12 +161,12 @@ Octopus can install and/or support the platforms listed below:
 
  @ Drupal 8
 
-  Drupal 8 support for custom platforms in the ~/static directory tree
-  has been added, along with Drush 8, in the BOA-3.0.0 release.
-  Note: BOA will not include built-in Drupal 8 platforms until Drupal 8
-  will support symlinks in the codebase, like all previous core versions.
+ Drupal 8 support for custom platforms in the ~/static directory tree
+ has been added, along with Drush 8, in the BOA-3.0.0 release.
+ Note: BOA will not include built-in Drupal 8 platforms until Drupal 8
+ will support symlinks in the codebase, like all previous core versions.
 
-  See also: https://omega8.cc/how-to-add-custom-platform-properly-140
+ See also: https://omega8.cc/how-to-add-custom-platform-properly-140
 
  @ Drupal 7.43.2
 
