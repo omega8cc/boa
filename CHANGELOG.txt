@@ -417,7 +417,7 @@
 
 # Known problems:
 
-  https://github.com/omega8cc/boa/milestones/3.1.1
+  https://github.com/omega8cc/boa/milestones/3.1.x
 
 
 ### Stable BOA-3.0.2 Release - Full Edition
