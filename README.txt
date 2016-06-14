@@ -111,13 +111,15 @@ production settings.
 * All libraries & tools required to install and run Nginx based Aegir system.
 * Latest release of MariaDB 5.5 or 10.0 database server with Chive manager.
 * Latest version of Nginx web server.
-* Letsencrypt.org SSL certificates support, with demo mode enabled by default.
+* Letsencrypt.org SSL support - see docs/SSL.txt for details.
+* HTTPS access with self-signed certificate for all hosted sites.
 * HTTP/2 or SPDY Nginx support.
 * PFS (Perfect Forward Secrecy) support in Nginx.
 * PHP-FPM 7.0, 5.6, 5.5, 5.4, 5.3 multi-install mode, configurable per site.
 * PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse and ionCube.
 * Fast Redis Cache with DB auto-failover for all 6.x and 7.x platforms.
 * Fast Redis Lock support with DB auto-failover for all 6.x and 7.x platforms.
+* Fast Redis Path support with DB auto-failover for all 6.x and 7.x platforms.
 * Fast proxy DNS server (pdnsd) with permanent caching.
 * Limited Shell, SFTP and FTPS separate accounts per Octopus instance.
 * Limited Shell, SFTP and FTPS accounts per Aegir Client with per site access.
@@ -125,7 +127,6 @@ production settings.
 * Drush Make access on command line for main shell account only.
 * Support for New Relic monitoring with per Octopus instance license key.
 * Solr 4 cores can be added/updated/deleted via site level INI settings.
-* HTTPS access with self-signed certificate for all hosted sites.
 * Magic Speed Booster cache, working like a Boost + AuthCache, but per user.
 * Entry level XSS built-in protection on the Nginx level.
 * Firewall csf/lfd integrated with Nginx abuse guard.
@@ -138,7 +139,7 @@ production settings.
 
 === Optional add-ons - see docs/NOTES.txt for details
 
-* Compass Tools.
+* Compass Tools - see https://omega8.cc/node/329 for details.
 * HHVM support - see docs/HHVM.txt for details.
 * MultiCore Apache Solr 4.9.1 with Jetty 9 - see docs/SOLR.txt for details.
 * New Relic Apps Monitor with per Octopus license and per Site reporting.
