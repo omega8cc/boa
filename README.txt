@@ -181,7 +181,7 @@ Octopus can install and/or support the platforms listed below:
  OpenOutreach 1.29 ------------ https://drupal.org/project/openoutreach
  OpenPublic 1.8 --------------- https://drupal.org/project/openpublic
  Panopoly 1.36 ---------------- https://drupal.org/project/panopoly
- Restaurant 1.12 -------------- https://drupal.org/project/restaurant
+ Restaurant 1.13 -------------- https://drupal.org/project/restaurant
  Ubercart 3.9 ----------------- https://drupal.org/project/ubercart
 
  @ Pressflow 6.38.2
