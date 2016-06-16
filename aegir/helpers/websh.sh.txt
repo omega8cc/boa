@@ -5,7 +5,7 @@ _ALL="$@"
 ### echo _ALL is ${_ALL}
 _ARR=
 if [[ "${_ALL}" =~ "true COLUMNS=" ]]; then
-  _R_M=`echo -n "${_ALL}" | grep -o "\-c set -m\; true COLUMNS=[0-9]\+ drush"`
+  _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; true COLUMNS=[0-9]\+ drush"`
   ### echo _R_M is $_R_M
   _CLR=`echo ${_ALL} | sed "s/\$_R_M//g"`
   _ARR=() # the buffer array for filtered parameters
