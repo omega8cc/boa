@@ -209,6 +209,7 @@ update_agents() {
       rm -f /root/.tg.cnf
     fi
     echo ${InTest} > /root/.high_traffic.cnf
+    echo ${InTest} > /root/.giant_traffic.cnf
     # echo ${InTest} > /root/.my.optimize.cnf
     if [ "${_RANDOMIZE}" = "YES" ]; then
       echo ${InTest} > /root/.randomize_duplicity_full_backup_day.cnf
