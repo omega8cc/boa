@@ -80,7 +80,7 @@ as explained in this document further below.
   Let's Encrypt API for live, real certificates has its own requirements
   and limits you should be aware of. Please visit their website for details:
 
-    https://community.letsencrypt.org/t/rate-limits-for-lets-encrypt/6769
+    https://letsencrypt.org/docs/rate-limits/
 
   To make this new BOA feature easy to test before you will be ready to
   generate real, live SSL certificates, BOA comes with Let's Encrypt demo
