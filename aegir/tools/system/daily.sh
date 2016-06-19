@@ -2116,7 +2116,7 @@ fix_permissions() {
     chmod 0755 ${Plr}/sites/* &> /dev/null
     chmod 0644 ${Plr}/sites/*.php &> /dev/null
     chmod 0644 ${Plr}/sites/*.txt &> /dev/null
-    chmod 0700 ${Plr}/sites/all/drush &> /dev/null
+    chmod 0755 ${Plr}/sites/all/drush &> /dev/null
     find ${Plr}/sites/all/{modules,themes,libraries} -type d -exec \
       chmod 02775 {} \; &> /dev/null
     find ${Plr}/sites/all/{modules,themes,libraries} -type f -exec \
