@@ -46,19 +46,21 @@ prompt_confirm_choice() {
 #
 # Not supported virtualization system.
 not_supported_virt() {
-  msg "== FATAL ERROR =="
+  msg "== SERIOUS SHOWSTOPPER =="
   msg "Not supported virtualization system:"
-  msg "$1"
+  msg "  $1"
   msg "If you wish to try BOA on this system anyway,"
   msg "please create an empty control file:"
-  msg "/root/.allow.any.virt.cnf"
+  msg "  /root/.allow.any.virt.cnf"
+  msg "Please be aware that it may not work at all,"
+  msg "or you can experience errors breaking BOA"
   clean_pid_exit
 }
 
 #
 # Not supported OS.
 not_supported_os() {
-  msg "== FATAL ERROR =="
+  msg "== TOTAL SHOWSTOPPER =="
   msg "It is not any supported Debian or Ubuntu version"
   msg "You need Debian Jessie (recommended) or Wheezy,"
   msg "or Ubuntu -- Trusty or Precise."
