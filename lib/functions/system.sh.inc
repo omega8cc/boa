@@ -2988,6 +2988,9 @@ if_wheezy_to_jessie() {
     mrun "apt-get install openssh-client ${forCer}" 2> /dev/null
     mrun "apt-get install openssh-server ${forCer}" 2> /dev/null
     mrun "apt-get install ssh ${forCer}"            2> /dev/null
+    if [ -e "/usr/bin/java" ] || [ -e "/usr/bin/java7" ]; then
+      mrun "apt-get install default-jre ${forCer}"  2> /dev/null
+    fi
     mrun "apt-get upgrade ${nrmUpArg}"              2> /dev/null
     mrun "apt-get dist-upgrade ${nrmUpArg}"         2> /dev/null
     ### Check if we can continue
@@ -3254,6 +3257,9 @@ if_squeeze_to_wheezy() {
     mrun "apt-get install openssh-client ${forCer}" 2> /dev/null
     mrun "apt-get install openssh-server ${forCer}" 2> /dev/null
     mrun "apt-get install ssh ${forCer}"            2> /dev/null
+    if [ -e "/usr/bin/java" ] || [ -e "/usr/bin/java7" ]; then
+      mrun "apt-get install default-jre ${forCer}"  2> /dev/null
+    fi
     mrun "apt-get upgrade ${nrmUpArg}"              2> /dev/null
     mrun "apt-get dist-upgrade ${nrmUpArg}"         2> /dev/null
     ### Check if we can continue
