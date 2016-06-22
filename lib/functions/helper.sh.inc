@@ -68,8 +68,8 @@ not_supported_virt() {
   echo " * Xen guest"
   echo
   echo "BOA is not designed to run directly on a bare metal."
-  echo "We recommend to install Linux VServer if you plan to use"
-  echo "BOA on a dedicated machine -- server or laptop, etc."
+  echo "We recommend to install Linux VServer if you plan to"
+  echo "use BOA on a dedicated machine -- server or laptop."
   echo
   echo "Note: There are plans to support Linux VServer installation"
   echo "via BOA tools: https://github.com/omega8cc/boa/issues/980"
