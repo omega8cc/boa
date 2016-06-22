@@ -2673,7 +2673,7 @@ check_old_empty_platforms() {
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
           || [ "${_VMFAMILY}" = "VS" ]; then
-          _DEL_OLD_EMPTY_PLATFORMS="30"
+          _DEL_OLD_EMPTY_PLATFORMS="7"
         else
           _DEL_OLD_EMPTY_PLATFORMS="60"
         fi
