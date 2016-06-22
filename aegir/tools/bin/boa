@@ -47,6 +47,98 @@ clean_pid_exit() {
   exit 1
 }
 
+not_supported_virt() {
+  echo
+  echo "=== OOPS! ==="
+  echo
+  echo "You are running not supported virtualization system:"
+  echo "  $1"
+  echo
+  echo "If you wish to try BOA on this system anyway,"
+  echo "please create an empty control file:"
+  echo "  /root/.allow.any.virt.cnf"
+  echo
+  echo "Please be aware that it may not work at all,"
+  echo "or you can experience errors breaking BOA."
+  echo
+  echo "BOA is known to work well on:"
+  echo " * Linux KVM guest"
+  echo " * Linux VServer guest"
+  echo " * Parallels guest"
+  echo " * VirtualBox guest"
+  echo " * VMware ESXi guest"
+  echo " * Xen guest"
+  echo
+  echo "BOA is not designed to run directly on a bare metal."
+  echo "We recommend to install Linux VServer if you plan to use"
+  echo "BOA on a dedicated machine (server or laptop, etc.)"
+  echo
+  echo "Note: There are plans to support Linux VServer installation"
+  echo "via BOA tools: https://github.com/omega8cc/boa/issues/980"
+  echo
+  echo "Bye"
+  echo
+  clean_pid_exit
+}
+
+check_virt() {
+  _VIRT_TOOL=$(which virt-what 2> /dev/null)
+  if [ -x "${_VIRT_TOOL}" ]; then
+    _VIRT_TEST=$(virt-what 2> /dev/null)
+    _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
+    if [ ! -e "/root/.allow.any.virt.cnf" ]; then
+      if [ -e "/proc/self/status" ]; then
+        _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
+        _VS_HOST_TEST=$(grep -E "VxID:[[:space:]]*0$" /proc/self/status 2> /dev/null)
+      fi
+      if [ ! -z "${_VS_HOST_TEST}" ] || [ ! -z "${_VS_GUEST_TEST}" ]; then
+        if [ -z "${_VS_HOST_TEST}" ] && [ ! -z "${_VS_GUEST_TEST}" ]; then
+          _VIRT_IS="Linux VServer guest"
+        else
+          if [ ! -z "${_VS_HOST_TEST}" ]; then
+            not_supported_virt "Linux VServer host"
+          else
+            not_supported_virt "unknown / not a virtual machine"
+          fi
+        fi
+      else
+        if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
+          not_supported_virt "unknown / not a virtual machine"
+        elif [[ "${_VIRT_TEST}" =~ "xen-dom0" ]]; then
+          not_supported_virt "Xen privileged domain"
+        elif [[ "${_VIRT_TEST}" =~ "linux_vserver-host" ]]; then
+          not_supported_virt "Linux VServer host"
+        else
+          if [[ "${_VIRT_TEST}" =~ "xen xen-hvm" ]]; then
+            _VIRT_TEST="xen-hvm"
+          elif [[ "${_VIRT_TEST}" =~ "xen xen-domU" ]]; then
+            _VIRT_TEST="xen-domU"
+          fi
+          case "${_VIRT_TEST}" in
+            kvm)         _VIRT_IS="Linux KVM guest" ;;
+            parallels)   _VIRT_IS="Parallels guest" ;;
+            virtualbox)  _VIRT_IS="VirtualBox guest" ;;
+            vmware)      _VIRT_IS="VMware ESXi guest" ;;
+            xen-domU)    _VIRT_IS="Xen paravirtualized guest domain" ;;
+            xen-hvm)     _VIRT_IS="Xen guest fully virtualized (HVM)" ;;
+            xen)         _VIRT_IS="Xen guest" ;;
+            *)  not_supported_virt "${_VIRT_TEST}"
+            ;;
+          esac
+        fi
+      fi
+      echo
+      echo "VIRT: This system is supported: ${_VIRT_IS}"
+    else
+      if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
+        _VIRT_TEST="unknown / not a virtual machine"
+      fi
+      echo
+      echo "WARN: This system is not supported: ${_VIRT_TEST}"
+    fi
+  fi
+}
+
 system_check_ready() {
   if [ ! -e "/etc/nginx" ] \
     || [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
@@ -1260,27 +1352,6 @@ check_root() {
 
 display_info() {
   if [ `whoami` = "root" ]; then
-    _AWS_TEST_A=$(grep cloudimg /etc/fstab 2>&1)
-    _AWS_TEST_B=$(grep cloudconfig /etc/fstab 2>&1)
-    _ETH_TEST=$(ifconfig 2>&1)
-    _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
-      _VMFAMILY="VZ"
-    elif [ -e "/proc/bean_counters" ]; then
-      _VMFAMILY="VZ"
-    else
-      _VMFAMILY="XEN"
-    fi
-    if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
-      _VMFAMILY="VS"
-    fi
-    if [[ "${_AWS_TEST_A}" =~ "cloudimg" ]] \
-      || [[ "${_AWS_TEST_B}" =~ "cloudconfig" ]]; then
-      _VMFAMILY="AWS"
-    fi
     _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
     _CPU_INFO=${_CPU_INFO//[^0-9]/}
     _NPROC_TEST=$(which nproc 2>&1)
@@ -1326,7 +1397,7 @@ display_info() {
     echo
     thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
     echo "Aegir on ${thiSys}"
-    echo "  VPS ${_VMFAMILY}"
+    echo "  VPS ${_VIRT_TEST}"
     echo "  CPU ${_CPU_NR}"
     echo "  RAM ${_RAM}"
     echo "  XTR ${_XTR}"
@@ -1360,6 +1431,7 @@ display_info() {
 
 check_root_direct
 check_root_keys_pwd
+check_virt
 
 case "$1" in
   info)      cmmand="$1"

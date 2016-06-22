@@ -46,24 +46,54 @@ prompt_confirm_choice() {
 #
 # Not supported virtualization system.
 not_supported_virt() {
-  msg "== SERIOUS SHOWSTOPPER =="
-  msg "Not supported virtualization system:"
-  msg "  $1"
-  msg "If you wish to try BOA on this system anyway,"
-  msg "please create an empty control file:"
-  msg "  /root/.allow.any.virt.cnf"
-  msg "Please be aware that it may not work at all,"
-  msg "or you can experience errors breaking BOA"
+  echo
+  echo "=== OOPS! ==="
+  echo
+  echo "You are running not supported virtualization system:"
+  echo "  $1"
+  echo
+  echo "If you wish to try BOA on this system anyway,"
+  echo "please create an empty control file:"
+  echo "  /root/.allow.any.virt.cnf"
+  echo
+  echo "Please be aware that it may not work at all,"
+  echo "or you can experience errors breaking BOA."
+  echo
+  echo "BOA is known to work well on:"
+  echo " * Linux KVM guest"
+  echo " * Linux VServer guest"
+  echo " * Parallels guest"
+  echo " * VirtualBox guest"
+  echo " * VMware ESXi guest"
+  echo " * Xen guest"
+  echo
+  echo "BOA is not designed to run directly on a bare metal."
+  echo "We recommend to install Linux VServer if you plan to use"
+  echo "BOA on a dedicated machine -- server or laptop, etc."
+  echo
+  echo "Note: There are plans to support Linux VServer installation"
+  echo "via BOA tools: https://github.com/omega8cc/boa/issues/980"
+  echo
+  echo "Bye"
+  echo
   clean_pid_exit
 }
 
 #
 # Not supported OS.
 not_supported_os() {
-  msg "== TOTAL SHOWSTOPPER =="
-  msg "It is not any supported Debian or Ubuntu version"
-  msg "You need Debian Jessie (recommended) or Wheezy,"
-  msg "or Ubuntu -- Trusty or Precise."
+  echo
+  echo "=== OOPS! ==="
+  echo
+  echo "It is not any supported Debian or Ubuntu version."
+  echo
+  echo "You need Debian Jessie (recommended) or Wheezy."
+  echo
+  echo "Also Ubuntu (Trusty or Precise) should work fine,"
+  echo "although BOA developers use and test only Debian."
+  echo
+  echo "Bye"
+  echo
   clean_pid_exit
 }
 
@@ -637,7 +667,7 @@ update_barracuda_log() {
     | sed "s/[\,']//g" 2>&1)
   _BARRACUDA_VERSION_INFO="$(date 2>&1) / \
     $(lsb_release -si 2>&1).$(lsb_release -sc 2>&1) \
-    $(uname -m 2>&1) ${_VMFAMILY} / \
+    $(uname -m 2>&1) ${_VIRT_TEST} / \
     Aegir ${_AEGIR_VERSION} / \
     Barracuda ${_X_VERSION}${_LOG_GIT_MIRROR} / \
     Nginx ${_NGINX_VRN} / \
