@@ -665,7 +665,7 @@ update_barracuda_log() {
     | sed "s/[\,']//g" 2>&1)
   _BARRACUDA_VERSION_INFO="$(date 2>&1) / \
     $(lsb_release -si 2>&1).$(lsb_release -sc 2>&1) \
-    $(uname -m 2>&1) ${_VIRT_TEST} / \
+    $(uname -m 2>&1) ${_VIRT_IS} / \
     Aegir ${_AEGIR_VERSION} / \
     Barracuda ${_X_VERSION}${_LOG_GIT_MIRROR} / \
     Nginx ${_NGINX_VRN} / \
