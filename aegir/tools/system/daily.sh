@@ -2662,7 +2662,7 @@ check_old_empty_platforms() {
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ]; then
-    if [[ "${_CHECK_HOST}" =~ "v189q.nyc." ]] \
+    if [[ "${_CHECK_HOST}" =~ "demo.aegir.cc" ]] \
       || [ -e "/root/.debug.cnf" ]; then
       _DO_NOTHING=YES
     else
