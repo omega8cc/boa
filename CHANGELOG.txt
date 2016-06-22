@@ -29,9 +29,7 @@
 
 # Fixes:
 
-  * ~/static/control/README.txt is not updated on octopus upgrade #965
   * Add compatibility with magick src
-  * Add ssl.d dirs in xboa migrate
   * Add ToC (Table of Contents) for the Let’s Encrypt section in docs/SSL.txt
   * Fix for legacy cluster support
   * Fix permissions on sites directories
@@ -40,6 +38,7 @@
   * Migration: xboa supports only Aegir 2.x -- #960
   * Reinstall default-jre on major OS upgrade, if needed -- fixes #986
   * Remote Drush support regression -- fixes #984
+  * The ~/static/control/README.txt is not updated on octopus upgrade #965
   * Update docs/SOLR.txt to match currently supported procedures -- fixes #963
   * Use st_runner() wrapper only for apt-get/aptitude
 
