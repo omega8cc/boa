@@ -1,4 +1,53 @@
 
+### Stable BOA-3.1.1 Release - Full Edition
+### Date: Wed Jun 22 12:24:17 PDT 2016
+### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.1
+
+# Release Notes:
+
+  This BOA release provides system security upgrades, improvements
+  and bug fixes, plus all supported Drupal platforms updated to latest
+  versions, and supplied with latest Drupal 7 core (security release).
+
+# New features and enhancements:
+
+  * Add _SSH_ARMOUR feature
+  * Add strict check for supported virtualization systems
+  * Allow to install ImageMagick from sources when _MAGICK_FROM_SOURCES=YES
+
+# Changes:
+
+  * Deprecate support for old Solr versions <4
+  * Switch cluster support to 3.x
+
+# System upgrades:
+
+  * Drush micro-8-15-06-2016
+  * MariaDB 5.5.50
+  * Nginx 1.11.1
+  * Redis 3.2.1
+
+# Fixes:
+
+  * ~/static/control/README.txt is not updated on octopus upgrade #965
+  * Add compatibility with magick src
+  * Add ssl.d dirs in xboa migrate
+  * Add ToC (Table of Contents) for the Let’s Encrypt section in docs/SSL.txt
+  * Fix for legacy cluster support
+  * Fix permissions on sites directories
+  * Fix sites/all/drush permissions compatibility with Drush 8.2
+  * Improve protection for custom solrconfig.xml and schema.xml -- fixes #969
+  * Migration: xboa supports only Aegir 2.x -- #960
+  * Reinstall default-jre on major OS upgrade, if needed -- fixes #986
+  * Remote Drush support regression -- fixes #984
+  * Update docs/SOLR.txt to match currently supported procedures -- fixes #963
+  * Use st_runner() wrapper only for apt-get/aptitude
+
+# Known problems:
+
+  https://github.com/omega8cc/boa/milestones/3.1.x
+
+
 ### Stable BOA-3.1.0 Release - Full Edition
 ### Date: Thu May 26 16:41:40 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.0
