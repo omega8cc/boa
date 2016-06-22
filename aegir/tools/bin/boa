@@ -1416,14 +1416,14 @@ display_info() {
     echo "  SSL ${_SSL}"
     echo "  CRL ${_CRL}"
     echo "  SSH ${_SSH}"
-    echo "  ARM ${_ARM}"
+    [ ! -z "${_ARM}" ] && echo "  ARM ${_ARM}"
     echo "  STG ${_STG}"
     echo "  CSF ${_CSF}"
     echo "  LSH ${_LSH}"
     echo "  RIS ${_RIS}"
     echo "  SQL ${_SQL}"
-    echo "  BIL ${_BIL}"
-    echo "  SKY ${_SKY}"
+    [ ! -z "${_BIL}" ] && echo "  BIL ${_BIL}"
+    [ ! -z "${_SKY}" ] && echo "  SKY ${_SKY}"
     echo "  BIN ${_BIN}"
     echo
     if [ -e "/var/log/barracuda_log.txt" ]; then
