@@ -2,6 +2,7 @@
 ### Stable BOA-3.1.1 Release - Full Edition
 ### Date: Wed Jun 22 12:24:17 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.1
+### Latest hotfix added on: Thu Jun 23 06:30:03 PDT 2016
 
 # Release Notes:
 
@@ -25,6 +26,7 @@
   * Drush micro-8-15-06-2016
   * MariaDB 5.5.50
   * Nginx 1.11.1
+  * PHP 7.0.8
   * Redis 3.2.1
 
 # Fixes:
@@ -32,6 +34,7 @@
   * Add compatibility with magick src
   * Add ToC (Table of Contents) for the Let’s Encrypt section in docs/SSL.txt
   * Fix for legacy cluster support
+  * Fix for virtualbox detection -- see #972
   * Fix permissions on sites directories
   * Fix sites/all/drush permissions compatibility with Drush 8.2
   * Improve protection for custom solrconfig.xml and schema.xml -- fixes #969
