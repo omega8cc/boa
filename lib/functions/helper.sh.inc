@@ -443,6 +443,8 @@ virt_detection() {
             _VIRT_TEST="xen-hvm"
           elif [[ "${_VIRT_TEST}" =~ "xen xen-domU" ]]; then
             _VIRT_TEST="xen-domU"
+          elif [[ "${_VIRT_TEST}" =~ "virtualbox kvm" ]]; then
+            _VIRT_TEST="virtualbox"
           fi
           case "${_VIRT_TEST}" in
             kvm)         _VIRT_IS="Linux KVM guest" ;;
