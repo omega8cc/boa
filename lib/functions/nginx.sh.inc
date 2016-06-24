@@ -194,7 +194,7 @@ detect_cdorked_malware() {
   _C_FILE=${bldPth}/aegir/helpers/dump_cdorked_config.c
   if [ -e "$_C_FILE" ]; then
     ### msg "INFO: Checking for Linux/Cdorked.A malware..."
-    chattr -ai $(which nginx)
+    chattr -ai /usr/sbin/nginx
     cd ${vBs}
     rm -rf /var/opt/foo_bar*
     gcc -o /var/opt/foo_bar ${bldPth}/aegir/helpers/dump_cdorked_config.c &> /dev/null
