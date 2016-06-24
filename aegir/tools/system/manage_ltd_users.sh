@@ -387,17 +387,17 @@ enable_chattr() {
     fi
 
     if [ "$1" != "${_USER}.ftp" ]; then
-      chattr +i /home/$1             &> /dev/null
+      chattr +i /home/$1
     else
-      chattr +i /home/$1/platforms   &> /dev/null
-      chattr +i /home/$1/platforms/* &> /dev/null
+      chattr +i /home/$1/platforms
+      chattr +i /home/$1/platforms/*
     fi
     if [ -d "/home/$1/.bazaar" ]; then
-      chattr +i /home/$1/.bazaar     &> /dev/null
+      chattr +i /home/$1/.bazaar
     fi
-    chattr +i /home/$1/.drush        &> /dev/null
-    chattr +i /home/$1/.drush/usr    &> /dev/null
-    chattr +i /home/$1/.drush/*.ini  &> /dev/null
+    chattr +i /home/$1/.drush
+    chattr +i /home/$1/.drush/usr
+    chattr +i /home/$1/.drush/*.ini
   fi
 }
 #
@@ -407,17 +407,17 @@ disable_chattr() {
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
     if [ "$1" != "${_USER}.ftp" ]; then
-      chattr -i /home/$1             &> /dev/null
+      chattr -i /home/$1
     else
-      chattr -i /home/$1/platforms   &> /dev/null
-      chattr -i /home/$1/platforms/* &> /dev/null
+      chattr -i /home/$1/platforms
+      chattr -i /home/$1/platforms/*
     fi
     if [ -d "/home/$1/.bazaar" ]; then
-      chattr -i /home/$1/.bazaar     &> /dev/null
+      chattr -i /home/$1/.bazaar
     fi
-    chattr -i /home/$1/.drush        &> /dev/null
-    chattr -i /home/$1/.drush/usr    &> /dev/null
-    chattr -i /home/$1/.drush/*.ini  &> /dev/null
+    chattr -i /home/$1/.drush
+    chattr -i /home/$1/.drush/usr
+    chattr -i /home/$1/.drush/*.ini
     usrTgt="/home/$1/.drush/usr"
     if [ "$1" != "${_USER}.ftp" ]; then
       if [ ! -L "${usrTgt}/drupalgeddon" ] && [ -d "${usrDgn}" ]; then
@@ -1025,8 +1025,8 @@ satellite_update_web_user() {
     _T_TS="/home/${_WEB}/.aws"
     _T_II="${_T_HD}/php.ini"
     if [ -e "/home/${_WEB}" ]; then
-      chattr -i /home/${_WEB} &> /dev/null
-      chattr -i /home/${_WEB}/.drush &> /dev/null
+      chattr -i /home/${_WEB}
+      chattr -i /home/${_WEB}/.drush
       mkdir -p /home/${_WEB}/.{tmp,drush,aws}
       isTest="$1"
       isTest=${isTest//[^a-z0-9]/}
@@ -1116,8 +1116,8 @@ satellite_update_web_user() {
       chown -R ${_WEB}:${_WEBG} /home/${_WEB}
       chmod 550 /home/${_WEB}/.drush
       chmod 440 /home/${_WEB}/.drush/php.ini
-      chattr +i /home/${_WEB} &> /dev/null
-      chattr +i /home/${_WEB}/.drush &> /dev/null
+      chattr +i /home/${_WEB}
+      chattr +i /home/${_WEB}/.drush
     fi
   fi
 }
@@ -1128,8 +1128,8 @@ satellite_remove_web_user() {
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [[ ! "${_WEB}" =~ ".ftp"($) ]]; then
     if [ -e "/home/${_WEB}/.tmp" ] || [ "$1" = "clean" ]; then
-      chattr -i /home/${_WEB} &> /dev/null
-      chattr -i /home/${_WEB}/.drush &> /dev/null
+      chattr -i /home/${_WEB}
+      chattr -i /home/${_WEB}/.drush
       deluser \
         --remove-home \
         --backup-to /var/backups/zombie/deleted ${_WEB} &> /dev/null
@@ -1897,24 +1897,24 @@ if [ ! -e "/home/.ctrl.311stableQ1.pid" ]; then
   while IFS=':' read -r login pass uid gid uname homedir shell; do
     if [[ "${homedir}" = **/home/** ]]; then
       if [ -d "${homedir}" ]; then
-        chattr -i ${homedir} &> /dev/null
+        chattr -i ${homedir}
         chown ${uid}:${gid} ${homedir} &> /dev/null
         if [ -d "${homedir}/.ssh" ]; then
-          chattr -i ${homedir}/.ssh &> /dev/null
+          chattr -i ${homedir}/.ssh
           chown -R ${uid}:${gid} ${homedir}/.ssh &> /dev/null
         fi
         if [ -d "${homedir}/.tmp" ]; then
-          chattr -i ${homedir}/.tmp &> /dev/null
+          chattr -i ${homedir}/.tmp
           chown -R ${uid}:${gid} ${homedir}/.tmp &> /dev/null
         fi
         if [ -d "${homedir}/.drush" ]; then
-          chattr +i ${homedir}/.drush/usr &> /dev/null
-          chattr +i ${homedir}/.drush/*.ini &> /dev/null
-          chattr +i ${homedir}/.drush &> /dev/null
+          chattr +i ${homedir}/.drush/usr
+          chattr +i ${homedir}/.drush/*.ini
+          chattr +i ${homedir}/.drush
         fi
         if [[ ! "${login}" =~ ".ftp"($) ]] \
           && [[ ! "${login}" =~ ".web"($) ]]; then
-          chattr +i ${homedir} &> /dev/null
+          chattr +i ${homedir}
         fi
       fi
     fi

@@ -114,34 +114,34 @@ enable_chattr() {
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
     if [ "$1" != "${_HM_U}.ftp" ]; then
-      chattr +i /home/$1             &> /dev/null
+      chattr +i /home/$1
     else
-      chattr +i /home/$1/platforms   &> /dev/null
-      chattr +i /home/$1/platforms/* &> /dev/null
+      chattr +i /home/$1/platforms
+      chattr +i /home/$1/platforms/*
     fi
     if [ -d "/home/$1/.bazaar" ]; then
-      chattr +i /home/$1/.bazaar     &> /dev/null
+      chattr +i /home/$1/.bazaar
     fi
-    chattr +i /home/$1/.drush        &> /dev/null
-    chattr +i /home/$1/.drush/usr    &> /dev/null
-    chattr +i /home/$1/.drush/*.ini  &> /dev/null
+    chattr +i /home/$1/.drush
+    chattr +i /home/$1/.drush/usr
+    chattr +i /home/$1/.drush/*.ini
   fi
 }
 
 disable_chattr() {
   if [ ! -z "$1" ] && [ -d "/home/$1" ]; then
     if [ "$1" != "${_HM_U}.ftp" ]; then
-      chattr -i /home/$1             &> /dev/null
+      chattr -i /home/$1
     else
-      chattr -i /home/$1/platforms   &> /dev/null
-      chattr -i /home/$1/platforms/* &> /dev/null
+      chattr -i /home/$1/platforms
+      chattr -i /home/$1/platforms/*
     fi
     if [ -d "/home/$1/.bazaar" ]; then
-      chattr -i /home/$1/.bazaar     &> /dev/null
+      chattr -i /home/$1/.bazaar
     fi
-    chattr -i /home/$1/.drush        &> /dev/null
-    chattr -i /home/$1/.drush/usr    &> /dev/null
-    chattr -i /home/$1/.drush/*.ini  &> /dev/null
+    chattr -i /home/$1/.drush
+    chattr -i /home/$1/.drush/usr
+    chattr -i /home/$1/.drush/*.ini
     usrSrc="${User}/.drush/usr"
     usrTgt="/home/$1/.drush/usr"
     if [ ! -L "${usrTgt}/drupalgeddon" ] \
@@ -2822,8 +2822,8 @@ purge_cruft_machine() {
         | tr -d "\n" 2>&1)
       if [ "${RevisionTest}" -lt "${_LOW_NR}" ] \
         && [ ! -z "${RevisionTest}" ]; then
-        chattr -i /home/${_HM_U}.ftp/platforms   &> /dev/null
-        chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
+        chattr -i /home/${_HM_U}.ftp/platforms
+        chattr -i /home/${_HM_U}.ftp/platforms/*
         rm -rf /home/${_HM_U}.ftp/platforms/$i
       fi
     fi
@@ -2846,8 +2846,8 @@ purge_cruft_machine() {
   for i in ${_REVISIONS}; do
     if [ -e "${User}/distro/$i" ] \
       && [ ! -e "/home/${_HM_U}.ftp/platforms/$i" ]; then
-      chattr -i /home/${_HM_U}.ftp/platforms   &> /dev/null
-      chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
+      chattr -i /home/${_HM_U}.ftp/platforms
+      chattr -i /home/${_HM_U}.ftp/platforms/*
       mkdir -p /home/${_HM_U}.ftp/platforms/$i
       mkdir -p ${User}/distro/$i/keys
       chown ${_HM_U}.ftp:${_WEBG} ${User}/distro/$i/keys &> /dev/null

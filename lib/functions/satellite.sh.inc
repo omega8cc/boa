@@ -83,8 +83,8 @@ satellite_update_web_user() {
     _T_II="${_T_HD}/php.ini"
     ### msg "DEBUG: ${_WEB} in satellite_update_web_user A"
     if [ -e "/home/${_WEB}" ]; then
-      chattr -i /home/${_WEB} &> /dev/null
-      chattr -i /home/${_WEB}/.drush &> /dev/null
+      chattr -i /home/${_WEB}
+      chattr -i /home/${_WEB}/.drush
       mkdir -p /home/${_WEB}/.{tmp,drush,aws}
       ### msg "DEBUG: ${_WEB} in satellite_update_web_user B"
       ### msg "DEBUG: ARG1 is $1 in satellite_update_web_user B"
@@ -170,8 +170,8 @@ satellite_update_web_user() {
       chown -R ${_WEB}:www-data /home/${_WEB}
       chmod 550 /home/${_WEB}/.drush
       chmod 440 /home/${_WEB}/.drush/php.ini
-      chattr +i /home/${_WEB} &> /dev/null
-      chattr +i /home/${_WEB}/.drush &> /dev/null
+      chattr +i /home/${_WEB}
+      chattr +i /home/${_WEB}/.drush
     fi
   fi
 }
@@ -180,8 +180,8 @@ satellite_update_web_user() {
 # Remove web user.
 satellite_remove_web_user() {
   if [ -e "/home/${_WEB}/.tmp" ] || [ "$1" = "clean" ]; then
-    chattr -i /home/${_WEB} &> /dev/null
-    chattr -i /home/${_WEB}/.drush &> /dev/null
+    chattr -i /home/${_WEB}
+    chattr -i /home/${_WEB}/.drush
     mkdir -p ${vBs}/zombie/deleted
     deluser --remove-home --backup-to ${vBs}/zombie/deleted ${_WEB} &> /dev/null
     if [ -e "/home/${_WEB}" ]; then
@@ -395,14 +395,14 @@ enable_chattr() {
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
-    chattr +i /home/$1/platforms    &> /dev/null
-    chattr +i /home/$1/platforms/*  &> /dev/null
+    chattr +i /home/$1/platforms
+    chattr +i /home/$1/platforms/*
     if [ -d "/home/$1/.bazaar" ]; then
-      chattr +i /home/$1/.bazaar    &> /dev/null
+      chattr +i /home/$1/.bazaar
     fi
-    chattr +i /home/$1/.drush       &> /dev/null
-    chattr +i /home/$1/.drush/usr   &> /dev/null
-    chattr +i /home/$1/.drush/*.ini &> /dev/null
+    chattr +i /home/$1/.drush
+    chattr +i /home/$1/.drush/usr
+    chattr +i /home/$1/.drush/*.ini
   fi
 }
 
@@ -412,14 +412,14 @@ disable_chattr() {
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
-    chattr -i /home/$1/platforms    &> /dev/null
-    chattr -i /home/$1/platforms/*  &> /dev/null
+    chattr -i /home/$1/platforms
+    chattr -i /home/$1/platforms/*
     if [ -d "/home/$1/.bazaar" ]; then
-      chattr -i /home/$1/.bazaar    &> /dev/null
+      chattr -i /home/$1/.bazaar
     fi
-    chattr -i /home/$1/.drush       &> /dev/null
-    chattr -i /home/$1/.drush/usr   &> /dev/null
-    chattr -i /home/$1/.drush/*.ini &> /dev/null
+    chattr -i /home/$1/.drush
+    chattr -i /home/$1/.drush/usr
+    chattr -i /home/$1/.drush/*.ini
   fi
 }
 
@@ -2152,7 +2152,7 @@ satellite_run_child_b() {
       exit 1
     fi
     _U_HD="${_ROOT}/.drush"
-    chattr +i ${_U_HD}/php.ini &> /dev/null
+    chattr +i ${_U_HD}/php.ini
     chmod 0700 /data/u &> /dev/null
     chown root:root /data/u &> /dev/null
     msg "${_STATUS} A: Aegir Satellite Instance installed"
@@ -2192,7 +2192,7 @@ satellite_run_child_b() {
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
       _U_HD="${_ROOT}/.drush"
-      chattr -i ${_U_HD}/php.ini &> /dev/null
+      chattr -i ${_U_HD}/php.ini
       chown -R ${_USER}:${_USRG} ${_ROOT}/.drush
       chown -R ${_USER}:${_USRG} ${_ROOT}/backups
       chown -R ${_USER}:${_USRG} ${_ROOT}/clients
@@ -2210,7 +2210,7 @@ satellite_run_child_b() {
         touch /opt/tmp/status-AegirSetupA-FAIL
         exit 1
       else
-        chattr +i ${_U_HD}/php.ini &> /dev/null
+        chattr +i ${_U_HD}/php.ini
         mkdir -p ${_ROOT}/backups/system/old_hostmaster
         chmod 700 ${_ROOT}/backups/system/old_hostmaster
         chmod 700 ${_ROOT}/backups/system
