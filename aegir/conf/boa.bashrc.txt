@@ -1,5 +1,5 @@
 #-------------------------------------------------------------
-# BOA-2.4.0 default .bashrc
+# BOA default .bashrc
 #-------------------------------------------------------------
 
 ulimit -S -c 0
@@ -19,8 +19,6 @@ shopt -u mailwarn
 unset MAILCHECK
 
 HISTCONTROL=ignoredups:ignorespace
-
-#export TERM=xterm-color
 
 export PATH=$PATH:/usr/local/bin:/opt/local/bin
 

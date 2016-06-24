@@ -47,6 +47,11 @@ by the BOA install and upgrade tools exclusively.
 
  ### All other (empty) .cnf control files
 
+ @=> /root/.mysqladmin.monitor.cnf
+
+  This file, if exists, allows to log the output of `mysqladmin proc` command
+  in the /var/xdrago/log/mysqladmin.monitor.log file, every 5 seconds.
+
  @=> /root/.fast.cron.cnf
 
   This file, if exists, allows to speed up the Aegir tasks and sites cron queues
@@ -66,7 +71,7 @@ by the BOA install and upgrade tools exclusively.
 
   This file, if exists, will result with all sites hosted on all Octopus
   instances on the same BOA system being re-verified daily. Note that it works
-  only if _PERMISSIONS_FIX=YES is set in /root/.barracuda.cnf (default is NO)
+  only if _PERMISSIONS_FIX=YES is set in /root/.barracuda.cnf (default)
 
  @=> /root/.enable.newrelic.sysmond.cnf
 
@@ -76,15 +81,25 @@ by the BOA install and upgrade tools exclusively.
 
  @=> /root/.use.local.nameservers.cnf
 
-  This file, if exists, allows to use original nameservers provided on the
-  system install by your hosting provider. It will automatically configure
-  pdnsd cache server to use these IPs instead of public Google DNS servers.
+  This file, if exists, allows to use original (or custom) nameservers
+  provided on the system install by your hosting provider. It will automatically
+  configure pdnsd server to use these IPs instead of public Google DNS servers.
 
-  This file will be created automatically if BOA will detect that default Google
-  DNS servers can't be used because of parent network forced DNS configuration.
+  It depends on existence of another file with custom name servers to use
+  listed, one per line: /var/backups/resolv.conf.vanilla -- for example:
 
-  You can further customize name servers to use by editing template file:
-  /var/backups/resolv.conf.vanilla
+    nameserver 12.34.56.78
+    nameserver 12.34.56.00
+
+  The change will take effect on barracuda upgrade.
+
+ @=> /root/.use.default.nameservers.cnf
+
+  This file, if exists, allows to revert pdnsd cache server configuration
+  to use Google DNS again (which is BOA default).
+
+  Note that to restore default DNS cache configuration on barracuda upgrade,
+  you must delete the /root/.use.local.nameservers.cnf file, if still exists.
 
  @=> /root/.hr.monitor.cnf
 
@@ -97,15 +112,33 @@ by the BOA install and upgrade tools exclusively.
   This file, if exists, allows to disable aggressive php-fpm processes
   monitoring and killing if any is using really too much CPU power.
 
+ @=> /root/.no.sql.cpu.limit.cnf
+
+  This file, if exists, allows to disable mysql processes monitoring
+  and restarting mysql server if any is using really too much CPU power.
+
  @=> /root/.no.swap.clear.cnf
 
   This file, if exists, allows to skip the otherwise default procedure
   designed to clear system (memory) swap hourly.
 
+ @=> /root/.no.sysctl.update.cnf
+
+  This file, if exists, allows to skip /etc/sysctl.conf update procedure
+  designed to adjust it on every barracuda upgrade, if needed.
+
+ @=> /root/.mysql.yes.new.password.cnf
+
+  This file, if exists, allows to automatically generate random, new mysql
+  root password on every barracuda upgrade. This file is ignored if
+  /root/.mysql.no.new.password.cnf file also exists. Warning: this may cause
+  problems reported at: https://github.com/omega8cc/boa/issues/642
+
  @=> /root/.mysql.no.new.password.cnf
 
-  This file, if exists, allows to skip the otherwise default procedure
-  designed to generate new mysql root password on every barracuda upgrade.
+  This file, if exists, allows to ignore /root/.mysql.yes.new.password.cnf
+  for backward compatibility and configuration consistency -- by default
+  BOA (since 2.4.4) doesn't change mysql root password.
 
  @=> /root/.redis.no.new.password.cnf
 
@@ -125,11 +158,39 @@ by the BOA install and upgrade tools exclusively.
 
  @=> /root/.high_traffic.cnf
 
-  This file, if exists, will result with Nginx access log cleared hourly.
-  Recommended if you have a very busy site(s) hosted. It also prevents
-  the daily Speed Booster cache forced cleanup, which happens at midnight.
-  Furthermore, it prevents PHP-FPM restarts when the system detects segfault.
-  It also allows to skip daily Redis restarts.
+  Recommended if you have a very busy site(s) hosted. It prevents PHP-FPM
+  restarts when the system detects segfault. It also allows to skip daily Redis
+  restarts. Note that unlike before, even without this file, PHP-FPM will not
+  be restarted at midnight, thanks to some improvements elsewhere in the
+  self-healing procedures.
+
+ @=> /root/.giant_traffic.cnf
+
+  Recommended if you have an extremely busy site(s) hosted. It prevents
+  the Speed Booster (Nginx) cache cleanup (for entries older than 1 day),
+  which happens hourly. However, even with very busy sites hosted, it will be
+  very rarely needed, since the cleanup procedure has been improved
+  to not cause load spikes, even under "Giant Traffic" pressure.
+
+ @=> /root/.skip_cleanup.cnf
+
+  This file, if exists, allows to skip all daily cleanup otherwise run via
+  /var/xdrago/graceful.sh -- it works like /root/.giant_traffic.cnf and
+  additionally disables /tmp/ and /opt/tmp/ cleanup and Jetty restart.
+
+ @=> /root/.skip_duplicity_monthly_cleanup.cnf
+
+  This file, if exists, allows to skip forced duplicity backup cleanup,
+  which is otherwise run at the beginning (randomly 1-5) of each month.
+
+ @=> /root/.randomize_duplicity_full_backup_day.cnf
+
+  This file, if exists, allows to randomize duplicity full backup schedule,
+  which is otherwise set to run on Sunday for backboa and Saturday for
+  duobackboa. The full backup day (Mon-Sun) will be randomized monthly or
+  one-time if /root/.skip_duplicity_monthly_cleanup.cnf file exists.
+  This feature is useful when you have many VM/BOA instances running
+  on the same machine.
 
  @=> /root/.home.no.wildcard.chmod.cnf
 
@@ -162,11 +223,11 @@ by the BOA install and upgrade tools exclusively.
   performed via 'sqlmagic' tool, and since it uses the 'ALTER TABLE' command,
   in turn it performs auto-optimization on the fly.
 
-  This optional conversion starts daily at 4:18 AM and runs until the agent
-  completes all tasks included in the /var/xdrago/daily.sh script.
+  This optional conversion starts every Saturday at 2:58 AM and runs until
+  the agent completes all tasks included in the /var/xdrago/daily.sh script.
 
-  If _SQL_CONVERT=NO is set, the conversion mode can be individually enabled and
-  more precisely configured with variable:
+  If _SQL_CONVERT=NO is set, the conversion mode can be individually enabled
+  and more precisely configured with variable:
 
     sql_conversion_mode
 

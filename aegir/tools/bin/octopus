@@ -3,12 +3,15 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-branch="2.4.x-dev"
-cluster="BOA-2.4.0"
-devel="2.4.x-dev"
-legacy="BOA-2.2.9"
+branch="3.x.x-dev"
+cluster="BOA-3.1.1"
+hd="HEAD"
+lgcA="BOA-2.2.9"
+lgcB="BOA-2.3.8"
+lgcC="BOA-2.4.9"
 master="master"
-stable="BOA-2.4.0"
+nextv="BOA-3.2.0-dev"
+stbl="BOA-3.1.1"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -24,13 +27,20 @@ rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
 vBs="/var/backups"
 
 _TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
 _NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=${_NOW//[^0-9-]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
-_L_VMFAMILY=XEN
-_L_VM_TEST=$(uname -a 2>&1)
-if [[ "${_L_VM_TEST}" =~ beng ]]; then
-  _L_VMFAMILY="VS"
+_VMFAMILY=XEN
+_VM_TEST=$(uname -a 2>&1)
+if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+  _VMFAMILY="VS"
+else
+  _VMFAMILY="XEN"
 fi
 
 clean_pid_exit() {
@@ -45,7 +55,19 @@ fix_dns_settings() {
   mkdir -p ${vBs}
   rm -f ${vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
-    cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    if [ -L "/etc/resolv.conf" ]; then
+      rslvT=`readlink -n /etc/resolv.conf`
+      if [ ! -e "${rslvT}" ]; then
+        rm -f /etc/resolv.conf
+      fi
+    fi
+    if [ -e "/etc/resolv.conf" ]; then
+      cp -a /etc/resolv.conf ${vBs}/resolv.conf.tmp
+    fi
+  fi
+  if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
+    echo "nameserver 8.8.8.8" >${vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.4.4" >>${vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
     for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
@@ -54,33 +76,35 @@ fix_dns_settings() {
       fi
     done
   fi
-  if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
-    rm -f /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.tmp ${vBs}/resolv.conf.vanilla
+  if [ ! -e "${vBs}/resolv.conf.vanilla" ] \
+    && [ -e "${vBs}/resolv.conf.tmp" ]; then
+    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
+      rm -f /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.tmp ${vBs}/resolv.conf.vanilla
+    fi
   fi
   sed -i "/^$/d" ${vBs}/resolv.conf.vanilla &> /dev/null
-  rm -f /etc/resolv.conf
-  echo "nameserver 8.8.8.8" > /etc/resolv.conf
-  echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-  _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "${_BROKEN_DNS_TEST}" =~ "no servers could be reached" ]] \
-    && [ -e "${vBs}/resolv.conf.vanilla" ]; then
-    touch /root/.use.local.nameservers.cnf
-    rm -f /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.vanilla /etc/resolv.conf
-    echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  if [ -e "${vBs}/resolv.conf.vanilla" ]; then
+    if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
+      rm -f /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.vanilla /etc/resolv.conf
+    fi
   else
-    rm -f /etc/resolv.conf
-    cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
+    if [ -e "${vBs}/resolv.conf.tmp" ] \
+      && [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
+      rm -f /etc/resolv.conf
+      cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
+    fi
   fi
   if [ -e "/etc/pdnsd.conf" ]; then
     if [ -e "${dnsLi}" ]; then
       sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
+      wait
       sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
-      _BROKEN_DNS_TEST=$(grep "\." ${dnsLi} 2>&1)
-      if [ -z "${_BROKEN_DNS_TEST}" ]; then
+      wait
+      _BROKEN_DNS_TEST_X=$(grep "\." ${dnsLi} 2>&1)
+      if [ -z "${_BROKEN_DNS_TEST_X}" ]; then
         echo "        label = \"google-servers\";" > ${dnsLi}
         echo "        ip=8.8.8.8;" >> ${dnsLi}
         echo "        ip=8.8.4.4;" >> ${dnsLi}
@@ -89,42 +113,66 @@ fix_dns_settings() {
     _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
     _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
     if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
+      || [ -e "/root/.use.default.nameservers.cnf" ] \
+      || [ -e "/root/.use.local.nameservers.cnf" ] \
       || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]]; then
-      if [ -e "/root/.use.local.nameservers.cnf" ]; then
-        echo "        label = \"google-servers\";" > ${dnsLi}
-        for _IP in `cat /etc/resolv.conf \
-          | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
-          | cut -d ' ' -f2 \
-          | sort \
-          | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
-        sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-        sed -i "s/ip=127.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-        sed -i "s/ip=Dyn.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-        sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
-        sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
-        _BROKEN_DNS_TEST=$(grep "\." ${dnsLi} 2>&1)
-        if [ -z "${_BROKEN_DNS_TEST}" ]; then
-           echo "        ip=8.8.8.8;" >> ${dnsLi}
-           echo "        ip=8.8.4.4;" >> ${dnsLi}
-        fi
-        sed -i '/        label = \"google-servers\";/ {r ${dnsLi}
-d;};' /etc/pdnsd.conf
-        resolvconf -u         &> /dev/null
-        service pdnsd restart &> /dev/null
-        pdnsd-ctl empty-cache &> /dev/null
+      echo "        label = \"google-servers\";" > ${dnsLi}
+      for _IP in `cat /etc/resolv.conf \
+        | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
+        | cut -d ' ' -f2 \
+        | sort \
+        | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
+      wait
+      sed -i "s/ip=.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
+      wait
+      sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
+      wait
+      sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
+      wait
+      _BROKEN_DNS_TEST_Y=$(grep "\." ${dnsLi} 2>&1)
+      if [ -z "${_BROKEN_DNS_TEST_Y}" ]; then
+         echo "        ip=8.8.8.8;" >> ${dnsLi}
+         echo "        ip=8.8.4.4;" >> ${dnsLi}
       fi
+      ### echo debug dns A
+      _DNS_TPL_TEST=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
+      _DNS_RGX_TEST=$(grep "google-servers" /root/.local.dns.IP.list 2>&1)
+      if [[ "${_DNS_TPL_TEST}" =~ "google-servers" ]] \
+        && [[ "${_DNS_RGX_TEST}" =~ "google-servers" ]]; then
+        sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+d;};' /etc/pdnsd.conf
+        wait
+      fi
+      resolvconf -u         &> /dev/null
+      service pdnsd restart &> /dev/null
+      pdnsd-ctl empty-cache &> /dev/null
     fi
   fi
 }
 
 check_dns_settings() {
-  _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 10 2>&1)
-  if [[ "${_BROKEN_DNS_TEST}" =~ "no servers could be reached" ]] \
-    || [ -e "/root/.use.local.nameservers.cnf" ]; then
+  if [ -e "/root/.use.default.nameservers.cnf" ]; then
+    _USE_DEFAULT_DNS=YES
+    rm -f /root/.local.dns.IP.list
+  fi
+  if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
-    fix_dns_settings
   else
-    _USE_PROVIDER_DNS=NO
+    _REMOTE_DNS_TEST=$(host -a files.aegir.cc 8.8.8.8 -w 10 2>&1)
+  fi
+  if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
+    || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
+    || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
+    _CTRL_DNS_TEST=$(host -a files.aegir.cc 2>&1)
+    if [[ ! "${_CTRL_DNS_TEST}" =~ "104.245.208.226" ]] \
+      || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
+      || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
+      || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
+      fix_dns_settings
+      if [ -e "/etc/init.d/postfix" ]; then
+        service postfix restart &> /dev/null
+      fi
+    fi
   fi
 }
 
@@ -162,7 +210,7 @@ send_report() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [ "${_L_VMFAMILY}" = "VS" ]; then
+      || [ "${_VMFAMILY}" = "VS" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
@@ -182,7 +230,7 @@ send_alert() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [ "${_L_VMFAMILY}" = "VS" ]; then
+      || [ "${_VMFAMILY}" = "VS" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
@@ -224,39 +272,236 @@ check_report() {
 up_mode() {
   if [ "${mcmode}" = "aegir" ]; then
     sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                     ${octCnf}
+    wait
     sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                     ${vBs}/${tocName}
+    wait
     if [ -e "${vBs}/${tocIncO}" ]; then
       sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                   ${vBs}/${tocIncO}
+      wait
     fi
     bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   elif [ "${mcmode}" = "platforms" ]; then
     sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"       ${octCnf}
+    wait
     sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"       ${vBs}/${tocName}
+    wait
     if [ -e "${vBs}/${tocIncO}" ]; then
       sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"     ${vBs}/${tocIncO}
+      wait
     fi
     bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
-  elif [ "${mcmode}" = "both" ]; then
+  elif [ "${mcmode}" = "both" ] || [ "${mcmode}" = "force" ]; then
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${octCnf}
+    wait
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${vBs}/${tocName}
+    wait
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${octCnf}
+    wait
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${vBs}/${tocName}
+    wait
     if [ -e "${vBs}/${tocIncO}" ]; then
       sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                   ${vBs}/${tocIncO}
+      wait
     fi
     if [ -e "${vBs}/${tocIncO}" ]; then
       sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"     ${vBs}/${tocIncO}
+      wait
     fi
     bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   else
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                     ${octCnf}
+    wait
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"       ${octCnf}
+    wait
     bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   fi
+  if [ ! -z "${switchCLIback}" ]; then
+    echo "${switchCLIback}" > ${User}/static/control/cli.info
+  fi
+  if [ ! -z "${switchFPMback}" ]; then
+    echo "${switchFPMback}" > ${User}/static/control/fpm.info
+  fi
+}
+
+satellite_check_up_php() {
+  if [ "${cmmand}" = "up-head" ] || [ "${cmmand}" = "up-stable" ]; then
+    fmodey=
+    _SERIES_TEST=
+    _PHP_FPM_LEGACY_FREE=
+    _PHP_CLI_LEGACY_FREE=
+    mcmode="${orgMcmode}"
+    if [ -e "${User}/log/octopus_log.txt" ]; then
+      _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
+      if [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
+        if [ -e "${User}/static/control/fpm.info" ]; then
+          _T_FPM_VRN=$(cat ${User}/static/control/fpm.info 2>&1)
+          _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
+          _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
+          if [ "${_T_FPM_VRN}" = "7.0" ] \
+            || [ "${_T_FPM_VRN}" = "5.6" ]; then
+            _PHP_FPM_LEGACY_FREE=YES
+          else
+            _PHP_FPM_LEGACY_FREE=NO
+          fi
+        else
+          _PHP_FPM_LEGACY_FREE=YES
+        fi
+        if [ -e "${User}/static/control/cli.info" ]; then
+          _T_CLI_VRN=$(cat ${User}/static/control/cli.info 2>&1)
+          _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
+          _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
+          if [ "${_T_CLI_VRN}" = "7.0" ] \
+            || [ "${_T_CLI_VRN}" = "5.6" ]; then
+            _PHP_CLI_LEGACY_FREE=YES
+          else
+            _PHP_CLI_LEGACY_FREE=NO
+          fi
+        else
+          _PHP_CLI_LEGACY_FREE=YES
+        fi
+        if [ "${_PHP_FPM_LEGACY_FREE}" = "NO" ]; then
+          if [ -x "/opt/php56/bin/php" ]; then
+            echo 5.6 > ${User}/static/control/fpm.info
+          elif [ -x "/opt/php55/bin/php" ]; then
+            echo 5.5 > ${User}/static/control/fpm.info
+          fi
+        fi
+        if [ "${_PHP_CLI_LEGACY_FREE}" = "NO" ]; then
+          if [ -x "/opt/php56/bin/php" ]; then
+            echo 5.6 > ${User}/static/control/cli.info
+          elif [ -x "/opt/php55/bin/php" ]; then
+            echo 5.5 > ${User}/static/control/cli.info
+          fi
+        fi
+      fi
+      if [[ "${_SERIES_TEST}" =~ "${stbl}" ]]; then
+        if [ "${orgMcmode}" != "force" ]; then
+          mcmode=
+          fmodey=force
+          if [ ! -e "/root/.silent-octopus-upgrade.cnf" ]; then
+            echo
+            echo "This Aegir Instance ${octUsr} is already up to date!"
+            echo "If you wish to run/force the upgrade again,"
+            echo "please use the forced upgrade mode, as shown below"
+            echo
+            echo "Usage: $(basename "$0") ${orgCmmand} ${second} force"
+            echo
+          fi
+        fi
+      fi
+    fi
+  fi
+  _SERIES_TEST=
+}
+
+satellite_check_switch_php() {
+  if [ "${cmmand}" = "up-head" ] || [ "${cmmand}" = "up-stable" ]; then
+    if [ -e "${User}/log/octopus_log.txt" ]; then
+      _SERIES_TEST_RESULT=
+      _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
+      if [[ "${_SERIES_TEST}" =~ "${nextv}" ]] \
+        || [[ "${_SERIES_TEST}" =~ "${stbl}-dev" ]] \
+        || [[ "${_SERIES_TEST}" =~ "${stbl}" ]]; then
+        _SERIES_TEST_RESULT=OK
+        if [ "${orgMcmode}" != "force" ]; then
+          mcmode=
+          fmodey=force
+          if [ ! -e "/root/.silent-octopus-upgrade.cnf" ]; then
+            echo
+            echo "This Aegir Instance ${octUsr} is already up to date!"
+            echo "If you wish to run/force the upgrade again,"
+            echo "please use the forced upgrade mode, as shown below"
+            echo
+            echo "Usage: $(basename "$0") ${orgCmmand} ${second} force"
+            echo
+          fi
+        fi
+      else
+        if [[ ! "${_SERIES_TEST}" =~ "${lgcC}" ]]; then
+          cmmand="up-2.4"
+          mcmode="${orgMcmode}"
+          echo
+          echo "This Aegir Instance ${octUsr} can not be upgraded"
+          echo "via '$(basename "$0") ${orgCmmand}' mode"
+          echo "We will run legacy upgrade to ${lgcC} instead"
+          echo "Once the upgrade to ${lgcC} is complete, you will be able"
+          echo "to use the '$(basename "$0") ${orgCmmand}' upgrade mode"
+          echo "Please wait..."
+          echo
+          sleep 5
+        fi
+      fi
+    fi
+    if [ -e "${User}/static/control/fpm.info" ]; then
+      _T_FPM_VRN=$(cat ${User}/static/control/fpm.info 2>&1)
+      _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
+      _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
+      if [ "${_T_FPM_VRN}" = "7.0" ] \
+        || [ "${_T_FPM_VRN}" = "5.6" ] \
+        || [ "${_T_FPM_VRN}" = "5.5" ]; then
+        _PHP_FPM_LEGACY_FREE=YES
+      else
+        _PHP_FPM_LEGACY_FREE=NO
+      fi
+    else
+      _PHP_FPM_LEGACY_FREE=YES
+    fi
+    if [ -e "${User}/static/control/cli.info" ]; then
+      _T_CLI_VRN=$(cat ${User}/static/control/cli.info 2>&1)
+      _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
+      _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
+      if [ "${_T_CLI_VRN}" = "7.0" ] \
+        || [ "${_T_CLI_VRN}" = "5.6" ] \
+        || [ "${_T_CLI_VRN}" = "5.5" ]; then
+        _PHP_CLI_LEGACY_FREE=YES
+      else
+        _PHP_CLI_LEGACY_FREE=NO
+      fi
+    else
+      _PHP_CLI_LEGACY_FREE=YES
+    fi
+    if [ "${_PHP_CLI_LEGACY_FREE}" = "YES" ] \
+      && [ "${_PHP_FPM_LEGACY_FREE}" = "YES" ]; then
+      _PHP_LEGACY_FREE=YES
+    else
+      _PHP_LEGACY_FREE=NO
+    fi
+    if [ "${_PHP_LEGACY_FREE}" = "NO" ] \
+      && [ -z "${_SERIES_TEST_RESULT}" ]; then
+      cmmand="up-2.4"
+      switchFPMback="${_T_FPM_VRN}"
+      if [ -z "${switchFPMback}" ]; then
+        switchFPMback="5.3"
+      fi
+      switchCLIback="${_T_CLI_VRN}"
+      if [ -z "${switchCLIback}" ]; then
+        switchCLIback="5.3"
+      fi
+      if [ -x "/opt/php55/bin/php" ]; then
+        echo 5.5 > ${User}/static/control/fpm.info
+        echo 5.5 > ${User}/static/control/cli.info
+      elif [ -x "/opt/php56/bin/php" ]; then
+        echo 5.6 > ${User}/static/control/fpm.info
+        echo 5.6 > ${User}/static/control/cli.info
+      fi
+      echo
+      echo "This instance ${octUsr} still depends on the old PHP version"
+      echo "FPM.${_T_FPM_VRN} CLI.${_T_CLI_VRN}"
+      echo "We will switch FPM and CLI on ${octUsr} to PHP 5.5 temporarily"
+      echo "Then we will run legacy upgrade to ${lgcC}"
+      echo "Please wait..."
+      echo
+      sleep 5
+    else
+      switchFPMback=""
+      switchCLIback=""
+    fi
+  fi
+  _SERIES_TEST=
 }
 
 up_one() {
@@ -265,58 +510,118 @@ up_one() {
     if [ -e "${vBs}/${filIncO}" ]; then
       cp -af ${vBs}/${filIncO}  ${vBs}/${tocIncO}
     fi
+    satellite_check_up_php
+    ### satellite_check_switch_php
     if [ "${cmmand}" = "up-head" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${tocIncO}
-    elif [ "${cmmand}" = "up-modern" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${devel}/g"        ${vBs}/${tocIncO}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${tocIncO}
+      wait
+      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${tocIncO}
+      wait
+      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"     ${vBs}/${tocIncO}
+      wait
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${tocIncO}
+      wait
     else
       if [ -e "${vBs}/${tocIncO}" ]; then
-        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"     ${vBs}/${tocIncO}
+        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${tocIncO}
+        wait
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${tocIncO}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${tocIncO}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${tocIncO}
+        wait
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${branch}/g"       ${vBs}/${tocName}
-      sed -i "s/^_BRANCH_PRO.*/_BRANCH_PROVISION=${branch}/g"  ${vBs}/${tocName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${tocName}
+      wait
+      sed -i "s/^_BRANCH_PRO.*/_BRANCH_PROVISION=${brnch}/g"   ${vBs}/${tocName}
+      wait
+      if [ "${cmmand}" = "up-2.2" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcA}/g" ${vBs}/${tocName}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcA}/g" ${vBs}/${tocName}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcA}/g"         ${vBs}/${tocName}
+        wait
+      elif [ "${cmmand}" = "up-2.3" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcB}/g" ${vBs}/${tocName}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcB}/g" ${vBs}/${tocName}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcB}/g"         ${vBs}/${tocName}
+        wait
+      elif [ "${cmmand}" = "up-2.4" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${tocIncO}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${tocIncO}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${tocIncO}
+        wait
+      else
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${tocIncO}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${tocIncO}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${tocIncO}
+        wait
+      fi
     fi
     if [ "${cmmand}" = "up-head" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${master}/g"       ${vBs}/${tocIncO}
-    elif [ "${cmmand}" = "up-modern" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${devel}/g"        ${vBs}/${tocIncO}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${tocIncO}
+      wait
     elif [ "${cmmand}" = "up-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${tocIncO}
+      wait
     else
       if [ -e "${vBs}/${tocIncO}" ]; then
-        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"     ${vBs}/${tocIncO}
+        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${tocIncO}
+        wait
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${branch}/g"       ${vBs}/${tocName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${tocName}
+      wait
     fi
     if [ -e "${vBs}/${tocIncO}" ]; then
       sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               ${vBs}/${tocIncO}
+      wait
       sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"     ${vBs}/${tocIncO}
+      wait
     fi
     sed -i "s/^_USER=o1/_USER=${octUsr}/g"                     ${vBs}/${tocName}
+    wait
     ### Legacy method
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${tocName}
+    wait
     sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"       ${vBs}/${tocName}
+    wait
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [ "${_L_VMFAMILY}" = "VS" ]; then
-      if [ -e "/root/.debug.cnf" ]; then
+      || [ "${_VMFAMILY}" = "VS" ]; then
+      if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
         if [ -e "${vBs}/${tocIncO}" ]; then
           sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"  ${vBs}/${tocIncO}
+          wait
           sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g" ${vBs}/${tocIncO}
+          wait
         fi
         ### Legacy method
         sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${vBs}/${tocName}
+        wait
         sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${vBs}/${tocName}
+        wait
         sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${octCnf}
+        wait
         sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             ${octCnf}
+        wait
         sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"   ${octCnf}
+        wait
         sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${octCnf}
+        wait
       fi
     fi
     if [ -e "${vBs}/${tocName}" ]; then
@@ -330,14 +635,16 @@ up_one() {
       if [ -z "${_IS_OLD}" ] \
         && [ -z "${mcmode}" ] \
         && [ -e "${User}/.drush/sys/provision" ]; then
-        echo
-        echo "This Aegir Instance is already up to date!"
-        echo "If you wish to run/force the upgrade again,"
-        echo "please specify desired upgrade mode:"
-        echo "aegir, platforms or both - as shown below"
-        echo
-        echo "Usage: $(basename "$0") ${cmmand} ${second} {aegir|platforms|both}"
-        echo
+        if [ -z "${fmodey}" ]; then
+          echo
+          echo "This Aegir Instance is already up to date!"
+          echo "If you wish to run/force the upgrade again,"
+          echo "please specify desired upgrade mode:"
+          echo "aegir, platforms or both - as shown below"
+          echo
+          echo "Usage: $(basename "$0") ${cmmand} ${second} {aegir|platforms|both}"
+          echo
+        fi
       else
         if [ -e "${User}/.drush/sys/provision" ]; then
           up_mode
@@ -345,10 +652,10 @@ up_one() {
           up_mode
         else
           echo "${User}/.drush/sys/provision does not exist!"
-          rm -f -r ${User}/.drush/{sys,xts,usr}
-          rm -f -r ${User}/.drush/{provision,drush_make}
+          rm -rf ${User}/.drush/{sys,xts,usr}
+          rm -rf ${User}/.drush/{provision,drush_make}
           mkdir -p ${User}/.drush/{sys,xts,usr}
-          ${gCb} ${devel} git://github.com/omega8cc/provision.git \
+          ${gCb} ${branch} https://github.com/omega8cc/provision.git \
             ${User}/.drush/sys/provision &> /dev/null
           chown -R ${octUsr}:users ${User}/.drush/sys
           up_mode
@@ -452,7 +759,7 @@ up_action_all() {
           echo "Preparing the upgrade in silent mode..."
           echo
           echo "NOTE: There will be no progress displayed in the console"
-          echo "but you will receive an e-mail once the upgrade is complete"
+          echo "but you will receive an email once the upgrade is complete"
           echo
           sleep 5
           echo "You could watch the progress in another window with command:"
@@ -463,6 +770,7 @@ up_action_all() {
           echo
           if [ -e "${vBs}/${octName}" ]; then
             sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"             ${vBs}/${octName}
+            wait
           fi
           up_one >>${_UP_LOG} 2>&1
           check_report
@@ -504,7 +812,7 @@ up_action_one() {
         echo "Preparing the upgrade in silent mode..."
         echo
         echo "NOTE: There will be no progress displayed in the console"
-        echo "but you will receive an e-mail once the upgrade is complete"
+        echo "but you will receive an email once the upgrade is complete"
         echo
         sleep 5
         echo "You could watch the progress in another window with command:"
@@ -515,6 +823,7 @@ up_action_one() {
         echo
         if [ -e "${vBs}/${octName}" ]; then
           sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"               ${vBs}/${octName}
+          wait
         fi
         up_one >>${_UP_LOG} 2>&1
         check_report
@@ -558,6 +867,7 @@ up_start() {
   fi
   if [ ! -z "${cmmode}" ] && [ "${cmmode}" != "log" ]; then
     mcmode="${cmmode}"
+    orgMcmode="${mcmode}"
   fi
   if [ -e "/opt/local/bin/php" ] || [ -e "/usr/local/bin/php" ]; then
     rm -f /opt/local/bin/php
@@ -572,6 +882,8 @@ up_start() {
       service mysql start &> /dev/null
     fi
   fi
+  orgCmmand="${cmmand}"
+  brnch=${branch//\//\\\/}
 }
 
 up_finish() {
@@ -586,7 +898,7 @@ up_finish() {
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
   fi
-  rm -f -r /opt/tmp/*
+  rm -rf /opt/tmp/*
   echo
   echo OCTOPUS upgrade completed
   echo Bye
@@ -596,20 +908,19 @@ up_finish() {
 
 up_head() {
   up_start
+  if [ "${silent}" = "backdrop" ] \
+    || [ "${silent}" = "cluster" ] \
+    || [ "${silent}" = "drush" ] \
+    || [ "${silent}" = "gravcms" ] \
+    || [ "${silent}" = "jessie" ]; then
+    echo "FEATURE MODE: ${silent}"
+    master="feature/${silent}"
+    branch="feature/${silent}"
+  fi
   curl ${crlGet} "${rgUrl}/${master}/${octName}"  -o ${vBs}/${octName}
   curl ${crlGet} "${rgUrl}/${master}/${pthIncO}"  -o ${vBs}/${filIncO}
-  if [ "${second}" = "all" ]; then
-    up_action_all
-  else
-    up_action_one
-  fi
-  up_finish
-}
-
-up_modern() {
-  up_start
-  curl ${crlGet} "${rgUrl}/${devel}/${octName}"   -o ${vBs}/${octName}
-  curl ${crlGet} "${rgUrl}/${devel}/${pthIncO}"   -o ${vBs}/${filIncO}
+  mstr=${master//\//\\\/}
+  brnch=${branch//\//\\\/}
   if [ "${second}" = "all" ]; then
     up_action_all
   else
@@ -620,6 +931,7 @@ up_modern() {
 
 up_cluster() {
   up_start
+  branch="2.4.x-dev"
   curl ${crlGet} "${rgUrl}/${cluster}/${octName}" -o ${vBs}/${octName}
   curl ${crlGet} "${rgUrl}/${cluster}/${pthIncO}" -o ${vBs}/${filIncO}
   if [ "${second}" = "all" ]; then
@@ -632,8 +944,8 @@ up_cluster() {
 
 up_stable() {
   up_start
-  curl ${crlGet} "${rgUrl}/${stable}/${octName}"  -o ${vBs}/${octName}
-  curl ${crlGet} "${rgUrl}/${stable}/${pthIncO}"  -o ${vBs}/${filIncO}
+  curl ${crlGet} "${rgUrl}/${stbl}/${octName}"    -o ${vBs}/${octName}
+  curl ${crlGet} "${rgUrl}/${stbl}/${pthIncO}"    -o ${vBs}/${filIncO}
   if [ "${second}" = "all" ]; then
     up_action_all
   else
@@ -644,7 +956,18 @@ up_stable() {
 
 up_legacy() {
   up_start
-  curl ${crlGet} "${rgUrl}/${legacy}/${octName}"  -o ${vBs}/${octName}
+  if [ "${cmmand}" = "up-2.4" ]; then
+    branch="2.4.x-dev"
+    curl ${crlGet} "${rgUrl}/${lgcC}/${octName}"  -o ${vBs}/${octName}
+    curl ${crlGet} "${rgUrl}/${lgcC}/${pthIncO}"  -o ${vBs}/${filIncO}
+  elif [ "${cmmand}" = "up-2.3" ]; then
+    branch="2.3.x-dev"
+    curl ${crlGet} "${rgUrl}/${lgcB}/${octName}"  -o ${vBs}/${octName}
+  elif [ "${cmmand}" = "up-2.2" ]; then
+    branch="2.2.x-legacy"
+    curl ${crlGet} "${rgUrl}/${lgcA}/${octName}"  -o ${vBs}/${octName}
+  fi
+  brnch=${branch//\//\\\/}
   if [ "${second}" = "all" ]; then
     up_action_all
   else
@@ -656,8 +979,9 @@ up_legacy() {
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -686,11 +1010,11 @@ find_fast_mirror() {
   fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
-  urlStb="http://${_USE_MIR}/versions/stable"
 }
 
 check_dns_curl() {
   if [ ! -e "/etc/resolv.conf" ]; then
+    rm -f /etc/resolv.conf
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then
       cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
     fi
@@ -706,7 +1030,7 @@ check_dns_curl() {
   fi
   find_fast_mirror
   isCurl=$(curl --version 2>&1)
-  if [[ ! "$isCurl" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     echo "ERROR: Required cURL package is not available"
     echo "ERROR: Please install it manually with 'apt-get install curl'"
     clean_pid_exit
@@ -717,13 +1041,74 @@ check_dns_curl() {
     --retry-delay 10 \
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
+    if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
+      echo "curl install" | dpkg --set-selections
+      apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
+      touch /root/.use.curl.from.packages.cnf
+    fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
+    clean_pid_exit
+  fi
+}
+
+check_root_direct() {
+  _U_TEST=DENY
+  [ ${SUDO_USER} ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
+  _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
+  _U_TEST_LNE=$(logname 2>&1)
+  if [ ${_U_TEST_SDO} = "root" ] || [ ${_U_TEST_LNE} = "root" ]; then
+    if [ -z "${_U_TEST_WHO}" ]; then
+      _U_TEST=ALLOW
+      ### normal for root scripts running from cron
+    else
+      if [ ${_U_TEST_WHO} = "root" ]; then
+        _U_TEST=ALLOW
+      fi
+    fi
+  fi
+  if [ "${_U_TEST}" = "DENY" ]; then
+    echo
+    echo "ERROR: This script must be run as root directly,"
+    echo "ERROR: without sudo/su switch from regular system user"
+    echo "ERROR: Please add and test your SSH keys for root account"
+    echo "ERROR: with direct access before trying again"
+    echo
+    echo "HINT:  You can always restrict access later, or"
+    echo "       allow only SSH keys for root with directive"
+    echo "         PermitRootLogin prohibit-password"
+    echo "       in the /usr/etc/sshd_config file"
+    echo "Bye"
+    clean_pid_exit
+  fi
+}
+
+check_root_keys_pwd() {
+  _S_TEST=$(grep "root:\*:" /etc/shadow 2>&1)
+  _R_TEST=CHECK
+  if [ -e "/root/.ssh/authorized_keys" ]; then
+    _R_TEST=$(grep "ssh-rsa" /root/.ssh/authorized_keys 2>&1)
+  fi
+  if [[ ! "${_S_TEST}" =~ "root:" ]] \
+    && [[ ! "${_R_TEST}" =~ "ssh-rsa" ]]; then
+    echo "ERROR: BOA requires working SSH keys for system root present"
+    echo "ERROR: Please add and test your SSH keys for root account"
+    echo "ERROR: before trying again"
+    echo "Bye"
     clean_pid_exit
   fi
 }
 
 check_root() {
   if [ `whoami` = "root" ]; then
+    if [ -e "/root/.barracuda.cnf" ]; then
+      source /root/.barracuda.cnf
+      _B_NICE=${_B_NICE//[^0-9]/}
+    fi
+    if [ -z "${_B_NICE}" ]; then
+      _B_NICE=10
+    fi
+    renice ${_B_NICE} -p $$ &> /dev/null
+    ionice -c2 -n7 -p $$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -732,10 +1117,17 @@ check_root() {
       fi
     fi
     sed -i "s/.*173.231.133.190.*//g" /etc/hosts
+    wait
     sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
+    wait
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
+    wait
     echo >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
+    wait
+    if [ -e "/etc/init.d/postfix" ]; then
+      service postfix restart &> /dev/null
+    fi
   else
     echo "ERROR: This script should be ran as a root user"
     clean_pid_exit
@@ -746,55 +1138,56 @@ check_root() {
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
-    echo "ERROR: Your disk space is almost full - \
-      we can not proceed until it is below 90/100"
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
     clean_pid_exit
   fi
 }
+
+check_root_direct
+check_root_keys_pwd
+check_root
+check_dns_curl
 
 case "$1" in
   up-head)   cmmand="$1"
              second="$2"
              cmmode="$3"
              silent="$4"
-             check_root
-             check_dns_curl
              up_head
-  ;;
-  up-modern) cmmand="$1"
-             second="$2"
-             cmmode="$3"
-             silent="$4"
-             check_root
-             check_dns_curl
-             up_modern
   ;;
   up-cluster) cmmand="$1"
              second="$2"
              cmmode="$3"
              silent="$4"
-             check_root
-             check_dns_curl
              up_cluster
   ;;
   up-stable) cmmand="$1"
              second="$2"
              cmmode="$3"
              silent="$4"
-             check_root
-             check_dns_curl
              up_stable
   ;;
-  up-legacy) cmmand="$1"
+  up-2.4)    cmmand="$1"
              second="$2"
              cmmode="$3"
              silent="$4"
-             check_root
-             check_dns_curl
-             up_legacy
+             up_legacy "2.4"
+  ;;
+  up-2.3)    cmmand="$1"
+             second="$2"
+             cmmode="$3"
+             silent="$4"
+             up_legacy "2.3"
+  ;;
+  up-2.2)    cmmand="$1"
+             second="$2"
+             cmmode="$3"
+             silent="$4"
+             up_legacy "2.2"
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {all|o1} {aegir|platforms|both}"
+             echo "Usage: $(basename "$0") {up-stable|up-head|up-2.4|up-2.3|up-2.2} {all|o1} {aegir|platforms|both|force}"
              echo
              clean_pid_exit
   ;;

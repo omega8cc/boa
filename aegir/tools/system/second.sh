@@ -1,7 +1,7 @@
 #!/bin/bash
 
-SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
 pthVhstd="/var/aegir/config/server_master/nginx/vhost.d"
 
 hold() {
@@ -9,6 +9,9 @@ hold() {
   killall -9 nginx &> /dev/null
   sleep 1
   killall -9 nginx &> /dev/null
+  if [ -e "/etc/init.d/php70-fpm" ]; then
+    service php70-fpm stop &> /dev/null
+  fi
   if [ -e "/etc/init.d/php56-fpm" ]; then
     service php56-fpm stop &> /dev/null
   fi
@@ -28,9 +31,7 @@ hold() {
 }
 
 terminate() {
-  if [ -e "/var/run/boa_run.pid" ]; then
-    sleep 1
-  else
+  if [ ! -e "/var/run/boa_run.pid" ]; then
     killall -9 php drush.php wget curl &> /dev/null
     echo "$(date 2>&1)" >> /var/xdrago/log/second.terminate.log
   fi
@@ -65,8 +66,10 @@ check_vhost_health() {
         s/allow .*;//g; \
         s/deny .*;//g; \
         s/ *$//g; /^$/d" $1* &> /dev/null
+      wait
       sed -i "s/limit_conn .*/limit_conn                   limreq 555;\n  \
         ### access none\n  deny                         all;/g" $1* &> /dev/null
+      wait
     fi
   else
     echo vhost $1 does not exist
@@ -82,9 +85,11 @@ update_ip_auth_access() {
         s/deny .*;//g; \
         s/ *$//g; /^$/d" \
         ${pthVhstd}/chive.* &> /dev/null
+      wait
       sed -i "s/limit_conn .*/limit_conn                   limreq 555;\n  \
         ### access update/g" \
         ${pthVhstd}/chive.* &> /dev/null
+      wait
     fi
     if [ -e "${pthVhstd}/cgp."* ]; then
       sed -i "s/### access .*//g; \
@@ -92,9 +97,11 @@ update_ip_auth_access() {
         s/deny .*;//g; \
         s/ *$//g; /^$/d" \
         ${pthVhstd}/cgp.* &> /dev/null
+      wait
       sed -i "s/limit_conn .*/limit_conn                   limreq 555;\n  \
         ### access update/g" \
         ${pthVhstd}/cgp.* &> /dev/null
+      wait
     fi
     if [ -e "${pthVhstd}/sqlbuddy."* ]; then
       sed -i "s/### access .*//g; \
@@ -102,17 +109,22 @@ update_ip_auth_access() {
         s/deny .*;//g; \
         s/ *$//g; /^$/d" \
         ${pthVhstd}/sqlbuddy.* &> /dev/null
+      wait
       sed -i "s/limit_conn .*/limit_conn                   limreq 555;\n  \
         ### access update/g" \
         ${pthVhstd}/sqlbuddy.* &> /dev/null
+      wait
     fi
     sleep 1
     sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
 d;};' ${pthVhstd}/chive.* &> /dev/null
+    wait
     sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
 d;};' ${pthVhstd}/cgp.* &> /dev/null
+    wait
     sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
 d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
+    wait
     mv -f ${pthVhstd}/sed* /var/backups/
     check_vhost_health "${pthVhstd}/chive."
     check_vhost_health "${pthVhstd}/cgp."
@@ -124,10 +136,13 @@ d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
       service nginx reload &> /var/backups/.auth.IP.list.ops
       sed -i "s/allow .*;//g; s/ *$//g; /^$/d" \
         ${pthVhstd}/chive.*    &> /dev/null
+      wait
       sed -i "s/allow .*;//g; s/ *$//g; /^$/d" \
         ${pthVhstd}/cgp.*      &> /dev/null
+      wait
       sed -i "s/allow .*;//g; s/ *$//g; /^$/d" \
         ${pthVhstd}/sqlbuddy.* &> /dev/null
+      wait
       check_vhost_health "${pthVhstd}/chive."
       check_vhost_health "${pthVhstd}/cgp."
       check_vhost_health "${pthVhstd}/sqlbuddy."
@@ -136,22 +151,23 @@ d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
   fi
   rm -f /var/backups/.auth.IP.list
   for _IP in `who --ips \
-    | sed 's/.*tty.*//g; s/.*root.*hvc.*//g' \
+    | sed 's/.*tty.*//g; s/.*root.*hvc.*//g; s/^[0-9]+$//g' \
     | cut -d: -f2 \
     | cut -d' ' -f2 \
     | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' \
     | tr -d "\s" \
     | sort \
-    | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
-      >> /var/backups/.auth.IP.list;done
+    | uniq`;do _IP=${_IP//[^0-9.]/}; if [[ "${_IP}" =~ "." ]]; then echo "  allow                        ${_IP};" \
+      >> /var/backups/.auth.IP.list;fi;done
   if [ -e "/root/.ip.protected.vhost.whitelist.cnf" ]; then
     for _IP in `cat /root/.ip.protected.vhost.whitelist.cnf \
       | sort \
-      | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
-        >> /var/backups/.auth.IP.list;done
+      | uniq`;do _IP=${_IP//[^0-9.]/}; if [[ "${_IP}" =~ "." ]]; then echo "  allow                        ${_IP};" \
+        >> /var/backups/.auth.IP.list;fi;done
   fi
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" \
     /var/backups/.auth.IP.list &> /dev/null
+  wait
   if [ -e "/var/backups/.auth.IP.list" ]; then
     allowTestList=$(grep allow /var/backups/.auth.IP.list 2>&1)
   fi
@@ -168,22 +184,23 @@ d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
 
 manage_ip_auth_access() {
   for _IP in `who --ips \
-    | sed 's/.*tty.*//g; s/.*root.*hvc.*//g' \
+    | sed 's/.*tty.*//g; s/.*root.*hvc.*//g; s/^[0-9]+$//g' \
     | cut -d: -f2 \
     | cut -d' ' -f2 \
     | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' \
     | tr -d "\s" \
     | sort \
-    | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
-      >> /var/backups/.auth.IP.list.tmp;done
+    | uniq`;do _IP=${_IP//[^0-9.]/}; if [[ "${_IP}" =~ "." ]]; then echo "  allow                        ${_IP};" \
+      >> /var/backups/.auth.IP.list.tmp;fi;done
   if [ -e "/root/.ip.protected.vhost.whitelist.cnf" ]; then
     for _IP in `cat /root/.ip.protected.vhost.whitelist.cnf \
       | sort \
-      | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
-        >> /var/backups/.auth.IP.list.tmp;done
+      | uniq`;do _IP=${_IP//[^0-9.]/}; if [[ "${_IP}" =~ "." ]]; then echo "  allow                        ${_IP};" \
+        >> /var/backups/.auth.IP.list.tmp;fi;done
   fi
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" \
     /var/backups/.auth.IP.list.tmp &> /dev/null
+  wait
   if [ -e "/var/backups/.auth.IP.list.tmp" ]; then
     allowTestTmp=$(grep allow /var/backups/.auth.IP.list.tmp 2>&1)
   fi
@@ -217,7 +234,7 @@ manage_ip_auth_access() {
       /var/backups/.vhost.d.mstr 2>&1)
     if [ ! -z "${diffClstrTest}" ]; then
       service nginx reload &> /dev/null
-      rm -f -r /var/backups/.vhost.d.wbhd
+      rm -rf /var/backups/.vhost.d.wbhd
       mkdir -p /var/backups/.vhost.d.wbhd
       chmod 700 /var/backups/.vhost.d.wbhd
       cp -af /var/backups/.vhost.d.mstr/* /var/backups/.vhost.d.wbhd/
@@ -266,6 +283,7 @@ proc_control() {
     echo "load is ${_O_LOAD}:${_F_LOAD} while \
       maxload is ${_O_LOAD_MAX}:${_F_LOAD_MAX}"
     echo ...OK now running proc_num_ctrl...
+    renice ${_B_NICE} -p $$ &> /dev/null
     perl /var/xdrago/proc_num_ctrl.cgi
     touch /var/xdrago/log/proc_num_ctrl.done
     echo CTL done
@@ -353,6 +371,7 @@ if [ -e "/root/.barracuda.cnf" ]; then
   _CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO//[^0-9]/}
   _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
   _CPU_CRIT_RATIO=${_CPU_CRIT_RATIO//[^0-9]/}
+  _B_NICE=${_B_NICE//[^0-9]/}
 fi
 
 if [ -z "${_CPU_SPIDER_RATIO}" ]; then
@@ -363,6 +382,9 @@ if [ -z "${_CPU_MAX_RATIO}" ]; then
 fi
 if [ -z "${_CPU_CRIT_RATIO}" ]; then
   _CPU_CRIT_RATIO=9
+fi
+if [ -z "${_B_NICE}" ]; then
+  _B_NICE=10
 fi
 
 count_cpu
@@ -408,4 +430,4 @@ load_control
 manage_ip_auth_access
 echo Done !
 exit 0
-###EOF2015###
+###EOF2016###

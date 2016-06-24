@@ -8,7 +8,7 @@
 
 $| = 1;
 $this_filename = "hackftp";
-$times = `date +%y%m%d-%H%M%S`;
+$times=`date +%y%m%d-%H%M%S`;
 chomp($times);
 $now_is=`date +%b:%d:%H:%M`;
 chomp($now_is);
@@ -26,7 +26,7 @@ sub makeactions
     @banetable = <NOT>;
     close (NOT);
   }
-  local(@MYARR) = `tail --lines=999 /var/log/messages 2>&1`;
+  local(@MYARR)=`tail --lines=999 /var/log/messages 2>&1`;
   local($sumar,$maxnumber);
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
@@ -107,4 +107,4 @@ sub check_ip
     }
   }
 }
-###EOF2015###
+###EOF2016###

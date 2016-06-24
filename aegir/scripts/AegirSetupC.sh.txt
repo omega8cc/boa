@@ -5,7 +5,7 @@
 ###
 ###  Octopus Aegir Installer
 ###
-###  Copyright (C) 2010-2015 Omega8.cc
+###  Copyright (C) 2010-2016 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -25,7 +25,7 @@
 ###  GNU GPL along with this program.
 ###  If not, see http://www.gnu.org/licenses/
 ###
-###  Code: https://code.aegir.cc/aegir
+###  Code: https://github.com/omega8cc/boa
 ###
 ###----------------------------------------###
 
@@ -42,7 +42,8 @@ bldPth="/opt/tmp/boa"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncO="octopus.sh.cnf"
 gCb="git clone --branch"
-gitHub="git://github.com/omega8cc"
+gitHub="https://github.com/omega8cc"
+gitLab="https://gitlab.com/omega8cc"
 libFnc="${bldPth}/lib/functions"
 tocIncO="${filIncO}.$1"
 vBs="/var/backups"
@@ -99,7 +100,6 @@ fi
 ###
 urlDev="http://${_USE_MIR}/dev"
 urlHmr="http://${_USE_MIR}/versions/master/aegir"
-urlStb="http://${_USE_MIR}/versions/stable"
 
 
 ###
@@ -120,6 +120,7 @@ if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
 fi
 _DIST_INSTALL=NO
 _STATUS=INIT
+_USE_DISTRO_CORE=NO
 _LOCAL_STATUS="${_STATUS}"
 _ROOT="/data/disk/${_USER}"
 _HM_ROOT="${_ROOT}/aegir/distro/${_HM_DISTRO}"
@@ -128,12 +129,15 @@ _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
 _D="/data/all"
 _SRCDIR="/opt/tmp/files"
 _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
-if [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-  && [ -x "/opt/php55/bin/php" ]; then
-  _T_CLI=/opt/php55/bin
+if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+  && [ -x "/opt/php70/bin/php" ]; then
+  _T_CLI=/opt/php70/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
   && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
+elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
+  && [ -x "/opt/php55/bin/php" ]; then
+  _T_CLI=/opt/php55/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
   && [ -x "/opt/php54/bin/php" ]; then
   _T_CLI=/opt/php54/bin
@@ -141,23 +145,28 @@ elif [ "${_PHP_CLI_VERSION}" = "5.3" ] \
   && [ -x "/opt/php53/bin/php" ]; then
   _T_CLI=/opt/php53/bin
 fi
-_DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
+if [ -e "/opt/tools/d7.ini" ] \
+  && [ -e "/opt/tools/drush/7/drush/drush.php" ]; then
+  _DRUSHCMD="${_T_CLI}/php /opt/tools/drush/7/drush/drush.php"
+else
+  _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
+fi
 #
-if [ "${_PHP_FPM_VERSION}" = "5.5" ] \
-  && [ "${_PHP_CLI_VERSION}" = "5.5" ]; then
+if [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+  && [ "${_PHP_CLI_VERSION}" = "7.0" ]; then
   _D_8_ALLOW=YES
 elif [ "${_PHP_FPM_VERSION}" = "5.6" ] \
   && [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
   _D_8_ALLOW=YES
-elif [ "${_PHP_FPM_VERSION}" = "5.4" ] \
-  && [ "${_PHP_CLI_VERSION}" = "5.4" ]; then
+elif [ "${_PHP_FPM_VERSION}" = "5.5" ] \
+  && [ "${_PHP_CLI_VERSION}" = "5.5" ]; then
   _D_8_ALLOW=YES
 else
   _D_8_ALLOW=NO
 fi
 #
-SHELL=/bin/bash
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
 #
 pthPch="/opt/tmp/boa/aegir/patches"
 urlDrp="http://ftp.drupal.org/files/projects"
@@ -182,7 +191,7 @@ fix_dirs_files() {
   rm -f ./*.txt
   rm -f ./modules/*.txt
   rm -f ./themes/*.txt
-  rm -f -r ./modules/cookie_cache_bypass
+  rm -rf ./modules/cookie_cache_bypass
   mkdir -p ./sites/default/files
   mkdir -p ./cache/{normal,perm}
   chmod -R 777 ./cache
@@ -230,7 +239,7 @@ create_d6_symlinks() {
     cp -af ${_D6_CORE_DIR}/sites ./
   fi
   if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
-    rm -f -r ${_OCTO_PLPATH}/profiles
+    rm -rf ${_OCTO_PLPATH}/profiles
     ln -s ${_SHRD_PLPATH}/profiles ${_OCTO_PLPATH}/profiles
   fi
 }
@@ -255,7 +264,41 @@ create_d7_symlinks() {
     cp -af ${_D7_CORE_DIR}/sites ./
   fi
   if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
-    rm -f -r ${_OCTO_PLPATH}/profiles
+    rm -rf ${_OCTO_PLPATH}/profiles
+    ln -s ${_SHRD_PLPATH}/profiles ${_OCTO_PLPATH}/profiles
+  fi
+}
+#
+# Create distro own D7 core symlinks.
+create_distro_d7_symlinks() {
+  if [ ! -L "web.config" ]; then
+    if [ ! -f "${_SHRD_PLPATH}/crossdomain.xml" ]; then
+      rm -f ${_SHRD_PLPATH}/crossdomain.xml
+      cd ${_SHRD_PLPATH}
+      fix_dirs_files
+    fi
+    if [ ! -L "${_SHRD_PLPATH}/modules/o_contrib_seven" ]; then
+      ln -sf ${_CORE}/o_contrib_seven ${_SHRD_PLPATH}/modules/o_contrib_seven
+    fi
+    cd ${_OCTO_PLPATH}
+    ln -sf ${_SHRD_PLPATH}/.htaccess .htaccess
+    ln -sf ${_SHRD_PLPATH}/authorize.php authorize.php
+    ln -sf ${_SHRD_PLPATH}/cron.php cron.php
+    ln -sf ${_SHRD_PLPATH}/crossdomain.xml crossdomain.xml
+    ln -sf ${_SHRD_PLPATH}/includes includes
+    ln -sf ${_SHRD_PLPATH}/index.php index.php
+    ln -sf ${_SHRD_PLPATH}/install.php install.php
+    ln -sf ${_CORE}/o_contrib_seven/js/js.php js.php
+    ln -sf ${_SHRD_PLPATH}/misc misc
+    ln -sf ${_SHRD_PLPATH}/modules modules
+    ln -sf ${_SHRD_PLPATH}/themes themes
+    ln -sf ${_SHRD_PLPATH}/update.php update.php
+    ln -sf ${_SHRD_PLPATH}/web.config web.config
+    ln -sf ${_SHRD_PLPATH}/xmlrpc.php xmlrpc.php
+    cp -af ${_SHRD_PLPATH}/sites ./
+  fi
+  if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
+    rm -rf ${_OCTO_PLPATH}/profiles
     ln -s ${_SHRD_PLPATH}/profiles ${_OCTO_PLPATH}/profiles
   fi
 }
@@ -267,19 +310,24 @@ create_d8_symlinks() {
     ln -sf ${_D8_CORE_DIR}/.editorconfig .editorconfig
     ln -sf ${_D8_CORE_DIR}/.eslintignore .eslintignore
     ln -sf ${_D8_CORE_DIR}/.eslintrc .eslintrc
+    ln -sf ${_D8_CORE_DIR}/.gitattributes .gitattributes
     ln -sf ${_D8_CORE_DIR}/.htaccess .htaccess
+    ln -sf ${_D8_CORE_DIR}/autoload.php autoload.php
     ln -sf ${_D8_CORE_DIR}/composer.json composer.json
     ln -sf ${_D8_CORE_DIR}/core core
     ln -sf ${_D8_CORE_DIR}/crossdomain.xml crossdomain.xml
+    ln -sf ${_D8_CORE_DIR}/example.gitignore example.gitignore
     ln -sf ${_D8_CORE_DIR}/index.php index.php
     ln -sf ${_D8_CORE_DIR}/modules modules
     ln -sf ${_D8_CORE_DIR}/profiles profiles
     ln -sf ${_D8_CORE_DIR}/themes themes
+    ln -sf ${_D8_CORE_DIR}/update.php update.php
+    ln -sf ${_D8_CORE_DIR}/vendor vendor
     ln -sf ${_D8_CORE_DIR}/web.config web.config
     cp -af ${_D8_CORE_DIR}/sites ./
   fi
   if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
-    rm -f -r ${_OCTO_PLPATH}/profiles
+    rm -rf ${_OCTO_PLPATH}/profiles
     ln -s ${_SHRD_PLPATH}/profiles ${_OCTO_PLPATH}/profiles
   fi
 }
@@ -288,9 +336,13 @@ create_d8_symlinks() {
 rename_drupal7_profiles() {
   for Files in `find ./profiles -type f`; do
     sed -i "s/name = Minimal/name = Vanilla Minimal/g"   $Files &> /dev/null
+    wait
     sed -i "s/name = Standard/name = Vanilla Standard/g" $Files &> /dev/null
+    wait
     sed -i "s/name = Testing/name = Vanilla Testing/g"   $Files &> /dev/null
+    wait
     sed -i "s/hidden = TRUE//g"                          $Files &> /dev/null
+    wait
   done
 }
 #
@@ -298,15 +350,20 @@ rename_drupal7_profiles() {
 rename_drupal8_profiles() {
   for Files in `find ./core/profiles -type f`; do
     sed -i "s/name: Minimal/name: Vanilla Minimal/g"   $Files &> /dev/null
+    wait
     sed -i "s/name: Standard/name: Vanilla Standard/g" $Files &> /dev/null
+    wait
     sed -i "s/name: Testing/name: Vanilla Testing/g"   $Files &> /dev/null
+    wait
   done
 }
 #
 # Prepare D6 core.
 prepare_drupal6_core() {
   if [ ! -e "${_D6_CORE_DIR}" ]; then
-    rm -f -r ${_D6_CORE_DIR}
+    if [ -L "${_D6_CORE_DIR}" ]; then
+      unlink ${_D6_CORE_DIR}
+    fi
     cd /data/all/000/core
     curl -L --max-redirs 10 -k -s -A iCab \
       "http://${_USE_MIR}/core/pressflow-${_SMALLCORE6}.tar.gz" | tar -xzf -
@@ -321,8 +378,7 @@ prepare_drupal6_core() {
     ln -s ${_CORE}/o_contrib/js/js.php js.php
     cp -af ${_CORE}/o_contrib/image/image.imagemagick.inc includes/
     cp -af ${_CORE}/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
-    rm -f -r ${_D6_CORE_DIR}/scripts
-    rm -f -r ${_D6_CORE_DIR}/themes/{bluemarine,chameleon,pushbutton,README.txt}
+    rm -rf ${_D6_CORE_DIR}/scripts
     cd ${_D6_CORE_DIR}/themes
     get_dev_contrib "rubik-6.x-3.0-beta5.tar.gz"
     get_dev_contrib "tao-6.x-3.3.tar.gz"
@@ -334,7 +390,9 @@ prepare_drupal6_core() {
 # Prepare D7 core.
 prepare_drupal7_core() {
   if [ ! -e "${_D7_CORE_DIR}" ]; then
-    rm -f -r ${_D7_CORE_DIR}
+    if [ -L "${_D7_CORE_DIR}" ]; then
+      unlink ${_D7_CORE_DIR}
+    fi
     cd /data/all/000/core
     curl ${crlGet} \
       "http://${_USE_MIR}/core/drupal-${_SMALLCORE7}.tar.gz" \
@@ -349,9 +407,9 @@ prepare_drupal7_core() {
     rm -f modules/o_contrib_seven
     ln -s ${_CORE}/o_contrib_seven modules/o_contrib_seven
     ln -s ${_CORE}/o_contrib_seven/js/js.php js.php
-    rm -f -r ${_D7_CORE_DIR}/scripts
+    rm -rf ${_D7_CORE_DIR}/scripts
     cd ${_D7_CORE_DIR}/themes
-    get_dev_contrib "rubik-7.x-4.2.tar.gz"
+    get_dev_contrib "rubik-7.x-4.4.tar.gz"
     get_dev_contrib "tao-7.x-3.1.tar.gz"
     cd ${_CORE}
   fi
@@ -360,7 +418,9 @@ prepare_drupal7_core() {
 # Prepare D8 core.
 prepare_drupal8_core() {
   if [ ! -e "${_D8_CORE_DIR}" ]; then
-    rm -f -r ${_D8_CORE_DIR}
+    if [ -L "${_D8_CORE_DIR}" ]; then
+      unlink ${_D8_CORE_DIR}
+    fi
     cd /data/all/000/core
     curl ${crlGet} \
       "http://${_USE_MIR}/core/drupal-${_SMALLCORE8}.tar.gz" \
@@ -368,25 +428,8 @@ prepare_drupal8_core() {
     find ${_D8_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
     find ${_D8_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
     cd ${_D8_CORE_DIR}/
-    fix_dirs_files
-    rename_drupal8_profiles
-    ### rm -f modules/o_contrib_eight
-    ### ln -s ${_CORE}/o_contrib_eight modules/o_contrib_eight
-    cd ${_CORE}
-  fi
-}
-#
-# Prepare D8 dev core.
-prepare_dr8_dev_core() {
-  if [ ! -e "${_D8_DEV_CORE_DIR}" ]; then
-    rm -f -r ${_D8_DEV_CORE_DIR}
-    cd /data/all/000/core
-    curl ${crlGet} \
-      "http://${_USE_MIR}/core/drupal-${_D8_DEV_COMMIT}.tar.gz" \
-      | tar -xzf -
-    find ${_D8_DEV_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
-    find ${_D8_DEV_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
-    cd ${_D8_DEV_CORE_DIR}/
+    patchFile="0001-Symlink-core-support-test.patch"
+    patch -p1 < ${bldPth}/aegir/patches/8-core/${patchFile} &> /dev/null
     fix_dirs_files
     rename_drupal8_profiles
     ### rm -f modules/o_contrib_eight
@@ -402,15 +445,15 @@ nocore_d6_dist_clean() {
   rm -f ${_SHRD_PLPATH}/*.php
   rm -f ${_SHRD_PLPATH}/*.txt
   rm -f ${_SHRD_PLPATH}/*.xml
-  rm -f -r ${_SHRD_PLPATH}/cache
-  rm -f -r ${_SHRD_PLPATH}/includes
-  rm -f -r ${_SHRD_PLPATH}/misc
-  rm -f -r ${_SHRD_PLPATH}/modules
-  rm -f -r ${_SHRD_PLPATH}/sites
-  rm -f -r ${_SHRD_PLPATH}/scripts
-  rm -f -r ${_SHRD_PLPATH}/themes
+  rm -rf ${_SHRD_PLPATH}/cache
+  rm -rf ${_SHRD_PLPATH}/includes
+  rm -rf ${_SHRD_PLPATH}/misc
+  rm -rf ${_SHRD_PLPATH}/modules
+  rm -rf ${_SHRD_PLPATH}/sites
+  rm -rf ${_SHRD_PLPATH}/scripts
+  rm -rf ${_SHRD_PLPATH}/themes
   if [ ! -d "${_SHRD_PLPATH}/profiles" ] && [ -d "${_D6_CORE_DIR}/profiles" ]; then
-    rm -f -r ${_SHRD_PLPATH}/profiles
+    rm -rf ${_SHRD_PLPATH}/profiles
     cp -af ${_D6_CORE_DIR}/profiles ${_SHRD_PLPATH}/
   fi
   sed -i "s/'dblog'/'robotstxt', 'path_alias_cache'/g" \
@@ -419,49 +462,52 @@ nocore_d6_dist_clean() {
 #
 # Remove D7 core from distro directory.
 nocore_d7_dist_clean() {
-  rm -f ${_SHRD_PLPATH}/.gitignore
-  rm -f ${_SHRD_PLPATH}/.htaccess
-  rm -f ${_SHRD_PLPATH}/*.php
-  rm -f ${_SHRD_PLPATH}/*.txt
-  rm -f ${_SHRD_PLPATH}/*.xml
-  rm -f ${_SHRD_PLPATH}/web.config
-  rm -f -r ${_SHRD_PLPATH}/cache
-  rm -f -r ${_SHRD_PLPATH}/includes
-  rm -f -r ${_SHRD_PLPATH}/misc
-  rm -f -r ${_SHRD_PLPATH}/modules
-  rm -f -r ${_SHRD_PLPATH}/sites
-  rm -f -r ${_SHRD_PLPATH}/scripts
-  rm -f -r ${_SHRD_PLPATH}/themes
-  _REVISIONS="34 35 36 37 38 39"
-  for i in $_REVISIONS; do
-    if [ -d "${_CORE}/drupal-7.$i" ] && [ ! -e "${_SHRD_PLPATH}" ]; then
-      mv ${_CORE}/drupal-7.$i ${_SHRD_PLPATH}
+  if [ "${_USE_DISTRO_CORE}" = "NO" ]; then
+    rm -f ${_SHRD_PLPATH}/.gitignore
+    rm -f ${_SHRD_PLPATH}/.htaccess
+    rm -f ${_SHRD_PLPATH}/*.php
+    rm -f ${_SHRD_PLPATH}/*.txt
+    rm -f ${_SHRD_PLPATH}/*.xml
+    rm -f ${_SHRD_PLPATH}/web.config
+    rm -rf ${_SHRD_PLPATH}/cache
+    rm -rf ${_SHRD_PLPATH}/includes
+    rm -rf ${_SHRD_PLPATH}/misc
+    rm -rf ${_SHRD_PLPATH}/modules
+    rm -rf ${_SHRD_PLPATH}/sites
+    rm -rf ${_SHRD_PLPATH}/scripts
+    rm -rf ${_SHRD_PLPATH}/themes
+    _REVISIONS="34 35 36 37 38 39"
+    for i in $_REVISIONS; do
+      if [ -d "${_CORE}/drupal-7.$i" ] && [ ! -e "${_SHRD_PLPATH}" ]; then
+        mv ${_CORE}/drupal-7.$i ${_SHRD_PLPATH}
+      fi
+    done
+    if [ ! -d "${_SHRD_PLPATH}/profiles" ] && [ -d "${_D7_CORE_DIR}/profiles" ]; then
+      rm -rf ${_SHRD_PLPATH}/profiles
+      cp -af ${_D7_CORE_DIR}/profiles ${_SHRD_PLPATH}/
     fi
-  done
-  if [ ! -d "${_SHRD_PLPATH}/profiles" ] && [ -d "${_D7_CORE_DIR}/profiles" ]; then
-    rm -f -r ${_SHRD_PLPATH}/profiles
-    cp -af ${_D7_CORE_DIR}/profiles ${_SHRD_PLPATH}/
   fi
 }
 #
 # Remove D8 core from distro directory.
 nocore_d8_dist_clean() {
+  rm -rf ${_SHRD_PLPATH}/cache
+  rm -rf ${_SHRD_PLPATH}/core
+  rm -rf ${_SHRD_PLPATH}/includes
+  rm -rf ${_SHRD_PLPATH}/misc
+  rm -rf ${_SHRD_PLPATH}/modules
+  rm -rf ${_SHRD_PLPATH}/scripts
+  rm -rf ${_SHRD_PLPATH}/sites
+  rm -rf ${_SHRD_PLPATH}/themes
+  rm -rf ${_SHRD_PLPATH}/vendor
   rm -f ${_SHRD_PLPATH}/.gitignore
   rm -f ${_SHRD_PLPATH}/.htaccess
   rm -f ${_SHRD_PLPATH}/*.php
   rm -f ${_SHRD_PLPATH}/*.txt
   rm -f ${_SHRD_PLPATH}/*.xml
   rm -f ${_SHRD_PLPATH}/web.config
-  rm -f -r ${_SHRD_PLPATH}/cache
-  rm -f -r ${_SHRD_PLPATH}/core
-  rm -f -r ${_SHRD_PLPATH}/includes
-  rm -f -r ${_SHRD_PLPATH}/misc
-  rm -f -r ${_SHRD_PLPATH}/modules
-  rm -f -r ${_SHRD_PLPATH}/scripts
-  rm -f -r ${_SHRD_PLPATH}/sites
-  rm -f -r ${_SHRD_PLPATH}/themes
   if [ ! -d "${_SHRD_PLPATH}/profiles" ] && [ -d "${_D8_CORE_DIR}/profiles" ]; then
-    rm -f -r ${_SHRD_PLPATH}/profiles
+    rm -rf ${_SHRD_PLPATH}/profiles
     cp -af ${_D8_CORE_DIR}/profiles ${_SHRD_PLPATH}/
   fi
 }
@@ -474,30 +520,34 @@ enable_drupal6_admin() {
 #
 # Remove default core seven profiles.
 remove_default_core_seven_profiles() {
-  rm -f -r ${_SHRD_PLPATH}/profiles/minimal
-  rm -f -r ${_SHRD_PLPATH}/profiles/standard
-  rm -f -r ${_SHRD_PLPATH}/profiles/testing
+  rm -rf ${_SHRD_PLPATH}/profiles/minimal
+  rm -rf ${_SHRD_PLPATH}/profiles/standard
+  rm -rf ${_SHRD_PLPATH}/profiles/testing
 }
 #
 # Init this distro root.
 init_this_distro_root() {
   mkdir -p ${_OCTO_PLPATH}
   cd ${_OCTO_PLPATH}
-  if [[ "${_SHRD_PLNAME}" =~ "-${_SMALLCORE6}" ]]; then
-    create_d6_symlinks
-  elif [[ "${_SHRD_PLNAME}" =~ "-${_SMALLCORE7}" ]]; then
-    create_d7_symlinks
+  if [[ "${_USE_DISTRO_CORE}" = "YES" ]]; then
+    create_distro_d7_symlinks
   else
-    create_d8_symlinks
+    if [[ "${_SHRD_PLNAME}" =~ "-${_SMALLCORE6}" ]]; then
+      create_d6_symlinks
+    elif [[ "${_SHRD_PLNAME}" =~ "-${_SMALLCORE7}" ]]; then
+      create_d7_symlinks
+    else
+      create_d8_symlinks
+    fi
   fi
 }
 #
 # Upgrade contrib less.
 upgrade_contrib_less() {
-  rm -f -r {context,ctools,entity,entityreference,mimemail,og}
+  rm -rf {context,ctools,entity,entityreference,mimemail,og}
   get_dev_contrib "context-7.x-3.6.tar.gz"
-  get_dev_contrib "ctools-7.x-1.6.tar.gz"
-  get_dev_contrib "entity-7.x-1.5.tar.gz"
+  get_dev_contrib "ctools-7.x-1.9.tar.gz"
+  get_dev_contrib "entity-7.x-1.7.tar.gz"
   get_dev_contrib "entityreference-7.x-1.1.tar.gz"
   get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz"
   get_dev_contrib "og-7.x-2.7.tar.gz"
@@ -582,7 +632,6 @@ fi
 _D6_CORE_DIR="/data/all/000/core/pressflow-${_SMALLCORE6}"
 _D7_CORE_DIR="/data/all/000/core/drupal-${_SMALLCORE7}"
 _D8_CORE_DIR="/data/all/000/core/drupal-${_SMALLCORE8}"
-_D8_DEV_CORE_DIR="/data/all/000/core/drupal-${_D8_DEV_COMMIT}"
 
 
 ###---### Distributions full names.
@@ -595,18 +644,18 @@ _F_COMMERCE1="Commerce ${_COMMERCE1} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_COMMERCE2="Commerce ${_COMMERCE2} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_COMMONS2="Commons ${_COMMONS2} ${_SMALLCORE6} [${_THIS_CORE}]"
 _F_COMMONS3="Commons ${_COMMONS3} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_D8_DEV_LABEL="Drupal ${_D8_DEV_LABEL}"
 _F_DRUPAL6="Drupal ${_SMALLCORE6} [${_THIS_CORE}]"
 _F_DRUPAL7="Drupal ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_DRUPAL8="Drupal ${_SMALLCORE8} [${_THIS_CORE}]"
 _F_ERPAL="ERPAL ${_ERPAL} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_FSERVER="Feature Server 1.2 ${_SMALLCORE6} [${_THIS_CORE}]"
+_F_FSERVER="Feature Server 1.3 ${_SMALLCORE6} [${_THIS_CORE}]"
 _F_GUARDR="Guardr ${_GUARDR} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENACADEMY="OpenAcademy ${_OPENACADEMY} ${_SMALLCORE7} [${_THIS_CORE}]"
+_F_OPENAID="OpenAid ${_OPENAID} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENATRIUM7="OpenAtrium ${_OPENATRIUM7} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENBLOG="OpenBlog 1.0-v3 ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_OPENCHURCH1="OpenChurch 1.17-b1 ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_OPENCHURCH2="OpenChurch 2.1-b5 ${_SMALLCORE7} [${_THIS_CORE}]"
+_F_OPENCHURCH1="OpenChurch 1.17-b2 ${_SMALLCORE7} [${_THIS_CORE}]"
+_F_OPENCHURCH2="OpenChurch ${_OPENCHURCH2} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENDEALS="OpenDeals ${_OPENDEALS} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENOUTREACH="OpenOutreach ${_OPENOUTREACH} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENPUBLIC="OpenPublic ${_OPENPUBLIC} ${_SMALLCORE7} [${_THIS_CORE}]"
@@ -614,7 +663,7 @@ _F_OPENPUBLISH="OpenPublish 3.0-b7 ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENSCHOLAR="OpenScholar ${_OPENSCHOLAR} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_PANOPOLY="Panopoly ${_PANOPOLY} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_RECRUITER="Recruiter ${_RECRUITER} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_RESTAURANT="Restaurant 1.0-b10 ${_SMALLCORE7} [${_THIS_CORE}]"
+_F_RESTAURANT="Restaurant ${_RESTAURANT} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_UBER_CART_T="Ubercart ${_UBERCART7} [ud2] ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_UBERCART6="Ubercart ${_UBERCART6} ${_SMALLCORE6} [${_THIS_CORE}]"
 _F_UBERCART7="Ubercart ${_UBERCART7} [aq3] ${_SMALLCORE7} [${_THIS_CORE}]"
@@ -636,14 +685,18 @@ chmod 0711 ${_ROOT}/distro/${_THIS_CORE} &> /dev/null
 
 ###---###
 _ALLOW_ALL=YES
-_ALLOW_CIVICRM=NO
 if [ "${_CLIENT_CORES}" -lt "1" ]; then
   _ALLOW_ALL=NO
-  _ALLOW_CIVICRM=NO
   _D_8_ALLOW=NO
 fi
-if [[ "${_VM_TEST}" =~ beng ]]; then
+if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
   _VMFAMILY="VS"
+  if [ ! -e "/data/conf/.d8allow.cnf" ]; then
+    _D_8_ALLOW=NO
+  fi
 else
   _VMFAMILY="XEN"
 fi
@@ -687,7 +740,7 @@ agov_install() {
               remove_default_core_seven_profiles
               sed -i "s/.*entitycache.*//g" \
                 ${_SHRD_PRPATH}/${_REAL_PRNAME}.info &> /dev/null
-              rm -f -r ${_SHRD_PRPATH}/modules/contrib/entitycache
+              rm -rf ${_SHRD_PRPATH}/modules/contrib/entitycache
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
@@ -737,11 +790,9 @@ commerce_7_1_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              cd ${_SHRD_PRPATH}
-              patch -p1 < ${pthPch}/${_REAL_PRNAME}.patch &> /dev/null
               if [ "${_COMMERCE1}" = "1.32" ]; then
                 cd ${_SHRD_PRPATH}/modules/
-                rm -f -r commerce
+                rm -rf commerce
                 get_dev_contrib "commerce-7.x-1.11.tar.gz"
               fi
             else
@@ -793,8 +844,10 @@ commerce_7_2_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              cd ${_SHRD_PRPATH}
-              patch -p1 < ${pthPch}/${_REAL_PRNAME}.patch &> /dev/null
+              if [ "${_COMMERCE2}" = "2.22" ]; then
+                cd ${_SHRD_PLPATH}
+                patch -p1 < ${pthPch}/${_REAL_PRNAME}.patch &> /dev/null
+              fi
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
@@ -846,11 +899,11 @@ commons_6_install() {
               fi
               find ${_SHRD_PRPATH} -type f -exec sed -i \
                 "s/drupal_commons/commons/g" {} \; &> /dev/null
-              rm -f -r ${_SHRD_PLPATH}/profiles/default
+              rm -rf ${_SHRD_PLPATH}/profiles/default
               nocore_d6_dist_clean
               if [ "${_COMMONS2}" = "2.21" ]; then
                 cd ${_SHRD_PRPATH}/modules/contrib
-                rm -f -r {flag}
+                rm -rf flag
                 get_dev_contrib "flag-6.x-2.1.tar.gz"
               fi
             else
@@ -909,9 +962,11 @@ commons_7_install() {
               patch -p1 < ${pthPch}/commons_chicken_egg.patch &> /dev/null
               sed -i "s/.*entitycache.*//g" \
                 ${_SHRD_PRPATH}/${_REAL_PRNAME}.info &> /dev/null
-              rm -f -r ${_SHRD_PRPATH}/modules/contrib/entitycache
-              rm -f -r ${_SHRD_PRPATH}/modules/contrib/registry_rebuild
-              rm -f -r ${_SHRD_PRPATH}/modules/contrib/acquia_connector
+              cd ${_SHRD_PRPATH}/modules/contrib/registration
+              patch -p1 < ${pthPch}/2106995-fatal-error-non-object-1.patch &> /dev/null
+              rm -rf ${_SHRD_PRPATH}/modules/contrib/entitycache
+              rm -rf ${_SHRD_PRPATH}/modules/contrib/registry_rebuild
+              rm -rf ${_SHRD_PRPATH}/modules/contrib/acquia_connector
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
@@ -935,7 +990,7 @@ drupal6_install() {
     || [[ "${_PLATFORMS_LIST}" =~ "D6D" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "D6S" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "D6P" ]]; then
-    pthPfw="pressflow-${_SMALLCORE6}-prod/modules/path_alias_cache"
+    pthPfw="pressflow-${_SMALLCORE6}-dev/modules/path_alias_cache"
     if [ ! -d "${_ROOT}/distro/${_THIS_CORE}/${pthPfw}" ]; then
       if prompt_yes_no "$_F_DRUPAL6 - http://pressflow.org" ; then
         true
@@ -1026,8 +1081,8 @@ drupal7_install() {
     || [[ "${_PLATFORMS_LIST}" =~ "D7D" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "D7S" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "D7P" ]]; then
-    if [ ! -d "${_ROOT}/distro/${_THIS_CORE}/${_DRUPAL7P}" ]; then
-      if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/drupal-7.34" ; then
+    if [ ! -d "${_ROOT}/distro/${_THIS_CORE}/${_DRUPAL7D}" ]; then
+      if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/drupal-7.43-release-notes" ; then
         true
         ###---### Drupal 7 Development
         #
@@ -1088,7 +1143,7 @@ drupal8_install() {
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
   if [ "${_D_8_ALLOW}" = "YES" ]; then
-    if [[ "${_PLATFORMS_LIST}" =~ "D8B" ]]; then
+    if [[ "${_PLATFORMS_LIST}" =~ "D8R" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_DRUPAL8 - http://drupal.org" ; then
           true
@@ -1104,39 +1159,6 @@ drupal8_install() {
           _RUN_VERIFY=YES
         else
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL8 ${noT}"
-        fi
-      fi
-    fi
-  fi
-}
-
-
-dr8_dev_install() {
-###---### Drupal Edge 8
-### _D8_DEV_LABEL="8-dev-${_TODAY}"
-  _REAL_PRNAME="standard"
-  _SHRD_PLNAME="drupal-${_D8_DEV_LABEL}"
-  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
-  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
-  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
-  if [ "${_D_8_ALLOW}" = "YES" ]; then
-    if [[ "${_PLATFORMS_LIST}" =~ "D8D" ]]; then
-      if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_D8_DEV_LABEL - http://drupal.org" ; then
-          true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_D8_DEV_LABEL ${yOk}"
-          if [ ! -d "${_SHRD_PLPATH}" ]; then
-            cd ${_CORE}
-            _D8_CORE_DIR="${_D8_DEV_CORE_DIR}"
-            if [ ! -e "${_D8_CORE_DIR}" ]; then
-              prepare_dr8_dev_core
-            fi
-          fi
-          init_this_distro_root
-          msg "DISTRO: $_F_D8_DEV_LABEL installed"
-          _RUN_VERIFY=YES
-        else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_D8_DEV_LABEL ${noT}"
         fi
       fi
     fi
@@ -1222,14 +1244,14 @@ fserver_install() {
             echo "core = 6.x" >> fserver.make
             echo "projects[pressflow][type] = \"core\"" >> fserver.make
             echo "projects[pressflow][download][type] = \"get\"" >> fserver.make
-            echo "projects[pressflow][download][url] = \"http://${_USE_MIR}/core/pressflow-6.34.1.tar.gz\"" >> fserver.make
+            echo "projects[pressflow][download][url] = \"http://${_USE_MIR}/core/pressflow-6.38.2.tar.gz\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][type] = \"profile\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][download][type] = \"git\"" >> fserver.make
-            echo "projects[${_REAL_PRNAME}][download][url] = \"git://github.com/omega8cc/${_REAL_PRNAME}.git\"" >> fserver.make
+            echo "projects[${_REAL_PRNAME}][download][url] = \"https://github.com/omega8cc/${_REAL_PRNAME}.git\"" >> fserver.make
             ${_DRUSHCMD} make fserver.make ${_SHRD_PLNAME} &> /dev/null
             nocore_d6_dist_clean
             rm -f fserver.make
-            rm -f -r ${_SHRD_PLPATH}/profiles/default
+            rm -rf ${_SHRD_PLPATH}/profiles/default
             cd ${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}/themes
             patch -p0 \
               < ${pthPch}/singular.patch &> /dev/null
@@ -1283,7 +1305,7 @@ guardr_install() {
               remove_default_core_seven_profiles
               sed -i "s/.*entitycache.*//g" \
                 ${_SHRD_PRPATH}/${_REAL_PRNAME}.info &> /dev/null
-              rm -f -r ${_SHRD_PRPATH}/modules/contrib/entitycache
+              rm -rf ${_SHRD_PRPATH}/modules/contrib/entitycache
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
@@ -1339,6 +1361,53 @@ openacademy_install() {
           _RUN_VERIFY=YES
         else
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENACADEMY ${noT}"
+        fi
+      fi
+    fi
+  fi
+}
+
+
+openaid_install() {
+###---### OpenAid
+#
+  _REAL_PRNAME="openaid"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENAID}-${_SMALLCORE7}"
+  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
+  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
+  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
+  if [ "${_ALLOW_ALL}" = "YES" ]; then
+    if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+      || [[ "${_PLATFORMS_LIST}" =~ "OAD" ]]; then
+      if [ ! -d "${_OCTO_PLPATH}" ]; then
+        if prompt_yes_no "$_F_OPENAID - ${urlPrt}/openaid" ; then
+          true
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENAID ${yOk}"
+          if [ ! -d "${_SHRD_PLPATH}" ]; then
+            cd ${_CORE}
+            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+              && [ "${_T_BUILD}" = "HEAD" ]; then
+              if [ ! -e "${_D7_CORE_DIR}" ]; then
+                prepare_drupal7_core
+              fi
+              curl ${crlGet} \
+                "${urlDrp}/${_REAL_PRNAME}-7.x-${_OPENAID}-core.tar.gz" \
+                | tar -xzf -
+              if [ -d "${_CORE}/${_REAL_PRNAME}-7.x-${_OPENAID}" ]; then
+                mv ${_REAL_PRNAME}-7.x-${_OPENAID} ${_SHRD_PLNAME}
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+              rm -rf ${_SHRD_PRPATH}/libraries/plupload/examples
+            else
+              get_distro_ext "${_SHRD_PLNAME}.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_OPENAID installed"
+          _RUN_VERIFY=YES
+        else
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENAID ${noT}"
         fi
       fi
     fi
@@ -1469,7 +1538,7 @@ openchurch1_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              rm -f -r ${_SHRD_PRPATH}/libraries/plupload/examples
+              rm -rf ${_SHRD_PRPATH}/libraries/plupload/examples
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
@@ -1516,7 +1585,7 @@ openchurch2_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              rm -f -r ${_SHRD_PRPATH}/libraries/plupload/examples
+              rm -rf ${_SHRD_PRPATH}/libraries/plupload/examples
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
@@ -1701,11 +1770,11 @@ openscholar_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              rm -f -r ${_SHRD_PRPATH}/modules/contrib/{entitycache,expire}
+              rm -rf ${_SHRD_PRPATH}/modules/contrib/{entitycache,expire}
               sed -i "s/.*entitycache.*//g" \
                 ${_SHRD_PRPATH}/${_REAL_PRNAME}.info &> /dev/null
               cd ${_SHRD_PRPATH}/modules/contrib
-              rm -f -r {biblio,boxes,entityreference_prepopulate,restws}
+              rm -rf {biblio,boxes,entityreference_prepopulate,restws}
               get_dev_contrib "biblio-7.x-1.0-rc7.tar.gz"
               get_dev_contrib "boxes-7.x-1.2.tar.gz"
               get_dev_contrib "entityreference_prepopulate-7.x-1.5.tar.gz"
@@ -1716,6 +1785,7 @@ openscholar_install() {
             fi
           fi
           init_this_distro_root
+          mkdir -p ${_OCTO_PLPATH}/sites/all/libraries
           msg "DISTRO: $_F_OPENSCHOLAR installed"
           _RUN_VERIFY=YES
         else
@@ -1757,18 +1827,13 @@ panopoly_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              if [ "${_PANOPOLY}" = "1.4" ]; then
-                cd ${_SHRD_PRPATH}/modules/contrib
-                rm -f -r {fape}
-                get_dev_contrib "fape-7.x-1.2.tar.gz"
-              fi
               if [ ! -d "${_SHRD_PRPATH}/modules/panopoly/panopoly_demo" ]; then
                 if [ -d "${_SHRD_PLPATH}/sites/all/modules/panopoly_demo" ]; then
                   mv -f ${_SHRD_PLPATH}/sites/all/modules/panopoly_demo \
                     ${_SHRD_PRPATH}/modules/panopoly/ &> /dev/null
                 else
                   cd ${_SHRD_PRPATH}/modules/panopoly
-                  get_dev_contrib "panopoly_demo-7.x-1.17.tar.gz"
+                  get_dev_contrib "panopoly_demo-7.x-${_PANOPOLY}.tar.gz"
                 fi
               fi
             else
@@ -1863,8 +1928,12 @@ restaurant_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              cd ${_SHRD_PRPATH}/modules/restaurant/restaurant_demo/import
-              patch -p1 < ${pthPch}/restaurant_demo.patch &> /dev/null
+              # cd ${_SHRD_PRPATH}
+              # patch -p1 < ${pthPch}/${_REAL_PRNAME}.patch &> /dev/null
+              # if [ -d "${_SHRD_PRPATH}/modules/restaurant/restaurant_demo/import" ]; then
+              #   cd ${_SHRD_PRPATH}/modules/restaurant/restaurant_demo/import
+              #   patch -p1 < ${pthPch}/restaurant_demo.patch &> /dev/null
+              # fi
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
@@ -1905,7 +1974,7 @@ ubercart6_install() {
             fi
             mkdir -p ${_SHRD_PLPATH}
             nocore_d6_dist_clean
-            rm -f -r ${_SHRD_PLPATH}/profiles/default
+            rm -rf ${_SHRD_PLPATH}/profiles/default
             cd ${_SHRD_PLPATH}/profiles
             get_dev_contrib "uberdrupal.tar.gz"
             cd ${_CORE}
@@ -1914,10 +1983,10 @@ ubercart6_install() {
             get_dev_contrib "colorbox-1.3.18.zip"
             cd ${_SHRD_PRPATH}/modules
             get_dev_contrib "admin_menu-6.x-3.x-dev.tar.gz"
-            get_dev_contrib "cck-6.x-2.9.tar.gz"
+            get_dev_contrib "cck-6.x-3.0-alpha4.tar.gz"
             get_dev_contrib "colorbox-6.x-1.4.tar.gz"
             get_dev_contrib "date-6.x-2.9.tar.gz"
-            get_dev_contrib "filefield-6.x-3.13.tar.gz"
+            get_dev_contrib "filefield-6.x-3.14.tar.gz"
             get_dev_contrib "google_analytics-6.x-4.1.tar.gz"
             get_dev_contrib "imageapi-6.x-1.10.tar.gz"
             get_dev_contrib "imagecache-6.x-2.x-dev.tar.gz"
@@ -1929,8 +1998,8 @@ ubercart6_install() {
             get_dev_contrib "skinr-6.x-1.7.tar.gz"
             get_dev_contrib "token-6.x-1.19.tar.gz"
             get_dev_contrib "ubercart-6.x-${_UBERCART6}.tar.gz"
-            get_dev_contrib "views-6.x-3.0.tar.gz"
-            get_dev_contrib "webform-6.x-3.20.tar.gz"
+            get_dev_contrib "views-6.x-3.3.tar.gz"
+            get_dev_contrib "webform-6.x-3.23.tar.gz"
             ### https://drupal.org/node/1167276#comment-5138248
             cd ${_SHRD_PRPATH}/modules/$_VIRT_PRNAME
             patch -p1 < ${pthPch}/$_VIRT_PRNAME-1167276-reroll.patch &> /dev/null
@@ -1981,8 +2050,8 @@ ubercart7_install() {
               fi
               mkdir -p ${_SHRD_PLPATH}
               nocore_d7_dist_clean
-              rm -f -r ${_SHRD_PLPATH}/profiles/standard
-              rm -f -r ${_SHRD_PLPATH}/profiles/testing
+              rm -rf ${_SHRD_PLPATH}/profiles/standard
+              rm -rf ${_SHRD_PLPATH}/profiles/testing
               sed -i "s/version = VERSION/version = \"${_SMALLCORE7}\"/g" \
                 ${_SHRD_PLPATH}/profiles/minimal/minimal.info &> /dev/null
               mkdir -p ${_SHRD_PRPATH}/libraries
@@ -1993,16 +2062,16 @@ ubercart7_install() {
               fi
               mkdir -p ${_SHRD_PRPATH}/modules
               cd ${_SHRD_PRPATH}/modules
-              get_dev_contrib "colorbox-7.x-2.8.tar.gz"
-              get_dev_contrib "ctools-7.x-1.6.tar.gz"
-              get_dev_contrib "entity-7.x-1.5.tar.gz"
+              get_dev_contrib "colorbox-7.x-2.10.tar.gz"
+              get_dev_contrib "ctools-7.x-1.9.tar.gz"
+              get_dev_contrib "entity-7.x-1.7.tar.gz"
               get_dev_contrib "google_analytics-7.x-2.1.tar.gz"
               get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
-              get_dev_contrib "pathauto-7.x-1.2.tar.gz"
-              get_dev_contrib "rules-7.x-2.7.tar.gz"
-              get_dev_contrib "token-7.x-1.5.tar.gz"
+              get_dev_contrib "pathauto-7.x-1.3.tar.gz"
+              get_dev_contrib "rules-7.x-2.9.tar.gz"
+              get_dev_contrib "token-7.x-1.6.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
-              get_dev_contrib "views-7.x-3.8.tar.gz"
+              get_dev_contrib "views-7.x-3.14.tar.gz"
               cd ${_SHRD_PRPATH}/modules/views
               # https://drupal.org/node/1766338#comment-6445882
               patch -p1 < \
@@ -2051,8 +2120,8 @@ ubercart7_testing_install() {
               fi
               mkdir -p ${_SHRD_PLPATH}
               nocore_d7_dist_clean
-              rm -f -r ${_SHRD_PLPATH}/profiles/standard
-              rm -f -r ${_SHRD_PLPATH}/profiles/minimal
+              rm -rf ${_SHRD_PLPATH}/profiles/standard
+              rm -rf ${_SHRD_PLPATH}/profiles/minimal
               sed -i "s/version = VERSION/version = \"${_SMALLCORE7}\"/g" \
                 ${_SHRD_PLPATH}/profiles/testing/testing.info &> /dev/null
               mkdir -p ${_SHRD_PRPATH}/libraries
@@ -2063,16 +2132,16 @@ ubercart7_testing_install() {
               fi
               mkdir -p ${_SHRD_PRPATH}/modules
               cd ${_SHRD_PRPATH}/modules
-              get_dev_contrib "colorbox-7.x-2.8.tar.gz"
-              get_dev_contrib "ctools-7.x-1.6.tar.gz"
-              get_dev_contrib "entity-7.x-1.5.tar.gz"
-              get_dev_contrib "google_analytics-7.x-2.0.tar.gz"
+              get_dev_contrib "colorbox-7.x-2.10.tar.gz"
+              get_dev_contrib "ctools-7.x-1.9.tar.gz"
+              get_dev_contrib "entity-7.x-1.7.tar.gz"
+              get_dev_contrib "google_analytics-7.x-2.1.tar.gz"
               get_dev_contrib "libraries-7.x-2.x-dev.tar.gz"
-              get_dev_contrib "pathauto-7.x-1.2.tar.gz"
-              get_dev_contrib "rules-7.x-2.7.tar.gz"
-              get_dev_contrib "token-7.x-1.5.tar.gz"
+              get_dev_contrib "pathauto-7.x-1.3.tar.gz"
+              get_dev_contrib "rules-7.x-2.9.tar.gz"
+              get_dev_contrib "token-7.x-1.6.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
-              get_dev_contrib "views-7.x-3.8.tar.gz"
+              get_dev_contrib "views-7.x-3.14.tar.gz"
               cd ${_SHRD_PRPATH}/modules/views
               # https://drupal.org/node/1766338#comment-6445882
               patch -p1 < \
@@ -2214,12 +2283,6 @@ save_verify_platforms() {
         ${pthDst}/drupal-${_SMALLCORE8} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/drupal-${_D8_DEV_LABEL}" ]; then
-    if [ ! -e "${pthDst}/drupal-${_D8_DEV_LABEL}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_D8_DEV_LABEL" standard \
-        ${pthDst}/drupal-${_D8_DEV_LABEL} &> /dev/null
-    fi
-  fi
   if [ -d "${pthDst}/erpal-${_ERPAL}-${_SMALLCORE7}" ]; then
     if [ ! -e "${pthDst}/erpal-${_ERPAL}-${_SMALLCORE7}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_ERPAL" erpal \
@@ -2242,6 +2305,12 @@ save_verify_platforms() {
     if [ ! -e "${pthDst}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPENACADEMY" openacademy \
         ${pthDst}/openacademy-${_OPENACADEMY}-${_SMALLCORE7} &> /dev/null
+    fi
+  fi
+  if [ -d "${pthDst}/openaid-${_OPENAID}-${_SMALLCORE7}" ]; then
+    if [ ! -e "${pthDst}/openaid-${_OPENAID}-${_SMALLCORE7}/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "$_F_OPENAID" openaid \
+        ${pthDst}/openaid-${_OPENAID}-${_SMALLCORE7} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7}" ]; then
@@ -2384,32 +2453,45 @@ save_verify_platforms() {
 drupal6_install
 drupal7_install
 drupal8_install
-dr8_dev_install
 
 agov_install
 commerce_7_1_install
 commerce_7_2_install
 commons_6_install
 commons_7_install
-erpal_install
-fserver_install
+
+### _USE_DISTRO_CORE=YES
+### erpal_install
+### _USE_DISTRO_CORE=NO
+### TMP OFF -- doesn't work with latest core and comes with too old core version
+
 guardr_install
-openacademy_install
+openaid_install
 openatrium7_install
-openblog_install
-openchurch1_install
 openchurch2_install
-opendeals_install
 openoutreach_install
 openpublic_install
-openscholar_install
+
+### _USE_DISTRO_CORE=YES
+### openscholar_install
+### _USE_DISTRO_CORE=NO
+### TMP OFF -- doesn't work with latest core and comes with too old core version
+
 panopoly_install
-recruiter_install
 restaurant_install
+
+### recruiter_install
+### TMP OFF -- version 1.7 has critical bugs and doesn't work properly
+
 ubercart6_install
 ubercart7_install
 ubercart7_testing_install
 
+### openacademy_install
+### openblog_install
+### openchurch1_install
+### opendeals_install
+### fserver_install
 
 ###---### Remove some unused core files.
 #
@@ -2417,9 +2499,10 @@ if [ "${_DEBUG_MODE}" = "YES" ]; then
   echo " "
   msg "${_STATUS} C: Removing some unused core files..."
 fi
-rm -f -r ${_CORE}/*/themes/{bluemarine,chameleon,pushbutton,README.txt}
-rm -f -r ${_CORE}/*/scripts
-rm -f ${_CORE}/*{.make,.tar,.tar.gz,.zip}
+if [[ "${_CORE}" =~ "/data/all/" ]]; then
+  rm -rf ${_CORE}/*/scripts
+  rm -f ${_CORE}/*{.make,.tar,.tar.gz,.zip}
+fi
 cd ${_CORE}
 
 
@@ -2440,7 +2523,7 @@ touch /opt/tmp/status-AegirSetupC-OK
 ###----------------------------------------###
 ###
 ###  Octopus Aegir Installer
-###  Copyright (C) 2010-2015 Omega8.cc
+###  Copyright (C) 2010-2016 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

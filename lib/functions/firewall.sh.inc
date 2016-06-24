@@ -7,22 +7,22 @@ fix_lfd_uidignore() {
     if [[ "$_CSF_UIDIGNORE_TEST" =~ "pdnsd" ]]; then
       _DO_NOTHING=YES
     else
-      echo "#root"          >> /etc/csf/csf.uidignore &> /dev/null
-      echo `id -u root`     >> /etc/csf/csf.uidignore &> /dev/null
-      echo "#pdnsd"         >> /etc/csf/csf.uidignore &> /dev/null
-      echo `id -u pdnsd`    >> /etc/csf/csf.uidignore &> /dev/null
-      echo "#postfix"       >> /etc/csf/csf.uidignore &> /dev/null
-      echo `id -u postfix`  >> /etc/csf/csf.uidignore &> /dev/null
-      echo "#www-data"      >> /etc/csf/csf.uidignore &> /dev/null
-      echo `id -u www-data` >> /etc/csf/csf.uidignore &> /dev/null
+      echo "#root"          >> /etc/csf/csf.uidignore
+      echo `id -u root`     >> /etc/csf/csf.uidignore
+      echo "#pdnsd"         >> /etc/csf/csf.uidignore
+      echo `id -u pdnsd`    >> /etc/csf/csf.uidignore
+      echo "#postfix"       >> /etc/csf/csf.uidignore
+      echo `id -u postfix`  >> /etc/csf/csf.uidignore
+      echo "#www-data"      >> /etc/csf/csf.uidignore
+      echo `id -u www-data` >> /etc/csf/csf.uidignore
     fi
     if [ -e "/usr/sbin/named" ]; then
       _CSF_UIDIGNORE_TEST=$(grep "bind" ${_THIS_FILE} 2>&1)
       if [[ "$_CSF_UIDIGNORE_TEST" =~ "bind" ]]; then
         _DO_NOTHING=YES
       else
-        echo "#bind"        >> /etc/csf/csf.uidignore &> /dev/null
-        echo `id -u bind`   >> /etc/csf/csf.uidignore &> /dev/null
+        echo "#bind"        >> /etc/csf/csf.uidignore
+        echo `id -u bind`   >> /etc/csf/csf.uidignore
       fi
     fi
     sed -i "/^$/d" ${_THIS_FILE} &> /dev/null
@@ -39,7 +39,9 @@ fix_lfd_whitelist() {
       _DO_NOTHING=YES
     else
       sed -i "s/.*\/tmp\/.*//g" ${_THIS_FILE} &> /dev/null
+      wait
       sed -i "/^$/d"            ${_THIS_FILE} &> /dev/null
+      wait
       echo "/tmp/drush_tmp.*"      >> ${_THIS_FILE}
       echo "/tmp/drush_make_tmp.*" >> ${_THIS_FILE}
       echo "/tmp/make_tmp.*"       >> ${_THIS_FILE}
@@ -59,14 +61,10 @@ csf_install() {
   fi
   cd /var/opt
   rm -f ${pthLog}/lastFire
-  if ! netcat -w 14 -z www.configserver.com 80 ; then
-    get_dev_arch "csf.tgz"
-  else
-    curl ${crlGet} "http://www.configserver.com/free/csf.tgz" -o "csf.tgz"
-    extract_archive "csf.tgz"
-  fi
+  ### from https://download.configserver.com/csf.tgz
+  get_dev_arch "csf-${_CSF_VRN}.tgz"
   cd csf
-  st_runner "sh install.sh" 2> /dev/null
+  mrun "sh install.sh" 2> /dev/null
   cd /var/opt
   if [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
@@ -79,8 +77,11 @@ csf_install() {
   elif [[ "$_CSF_COMPATIBILITY_TEST" =~ "some features will not work" ]]; then
     _CSF_COMPATIBILITY=PARTIAL
     sed -i "s/^PORTFLOOD .*/PORTFLOOD = \"\"/g" /etc/csf/csf.conf &> /dev/null
+    wait
     sed -i "s/^CONNLIMIT .*/CONNLIMIT = \"\"/g" /etc/csf/csf.conf &> /dev/null
+    wait
     sed -i "s/^USE_CONNTRACK .*/USE_CONNTRACK = \"0\"/g" /etc/csf/csf.conf &> /dev/null
+    wait
   elif [[ "$_CSF_COMPATIBILITY_TEST" =~ "FATAL" ]]; then
     _CSF_COMPATIBILITY=NO
   else
@@ -97,16 +98,22 @@ csf_install() {
       /etc/csf/csf.conf-pre-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${locCnf}/csf.conf /etc/csf/csf.conf
     sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g" /etc/csf/csf.conf &> /dev/null
+    wait
     sed -i "s/TCP_IN = \"20,21,22,/TCP_IN = \"20,21,${_SSH_PORT},/g" \
       /etc/csf/csf.conf &> /dev/null
+    wait
     chmod 600 /etc/csf/csf.conf &> /dev/null
     if [ -e "/etc/ssh/sshd_config" ]; then
       sed -i "s/^Port.*/Port ${_SSH_PORT}/g"  /etc/ssh/sshd_config
+      wait
       sed -i "s/^#Port.*/Port ${_SSH_PORT}/g" /etc/ssh/sshd_config
+      wait
     fi
     if [ -e "/usr/etc/sshd_config" ]; then
       sed -i "s/^Port.*/Port ${_SSH_PORT}/g"  /usr/etc/sshd_config
+      wait
       sed -i "s/^#Port.*/Port ${_SSH_PORT}/g" /usr/etc/sshd_config
+      wait
     fi
     mrun "service ssh restart" &> /dev/null
     if [ "$_CSF_MODE" = "install" ]; then
@@ -164,7 +171,7 @@ install_upgrade_csf_lfd() {
       rm -f /etc/cron.d/{csf,lfd}*
       rm -f /usr/sbin/{csf,lfd}
       rm -f /etc/init.d/{csf,lfd}
-      rm -f -r /etc/csf
+      rm -rf /etc/csf
     else
       if [ "${_CUSTOM_CONFIG_CSF}" = "YES" ]; then
         _DO_NOTHING=YES
@@ -178,12 +185,16 @@ install_upgrade_csf_lfd() {
         || [[ "${_CHECK_HOST}" =~ ".host8." ]]; then
         sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"1\"/g" \
           /etc/csf/csf.conf &> /dev/null
+        wait
       fi
       if [ "${_VMFAMILY}" = "VZ" ]; then
         sed -i "s/^PORTFLOOD .*/PORTFLOOD = \"\"/g" /etc/csf/csf.conf &> /dev/null
+        wait
         sed -i "s/^CONNLIMIT .*/CONNLIMIT = \"\"/g" /etc/csf/csf.conf &> /dev/null
+        wait
         sed -i "s/^USE_CONNTRACK .*/USE_CONNTRACK = \"0\"/g" \
           /etc/csf/csf.conf &> /dev/null
+        wait
       fi
       if [ -e "${pthLog}/lastFire" ]; then
         rm -f ${pthLog}/lastFire

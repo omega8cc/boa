@@ -1,7 +1,34 @@
 #!/bin/bash
 
-SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
+
+check_root() {
+  if [ `whoami` = "root" ]; then
+    chmod a+w /dev/null
+    if [ ! -e "/dev/fd" ]; then
+      if [ -e "/proc/self/fd" ]; then
+        rm -rf /dev/fd
+        ln -s /proc/self/fd /dev/fd
+      fi
+    fi
+  else
+    echo "ERROR: This script should be ran as a root user"
+    exit 1
+  fi
+  _DF_TEST=$(df -kTh / -l \
+    | grep '/' \
+    | sed 's/\%//g' \
+    | awk '{print $6}' 2> /dev/null)
+  _DF_TEST=${_DF_TEST//[^0-9]/}
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
+    exit 1
+  fi
+}
+check_root
+
 _BACKUPDIR=/data/disk/arch/sql
 _CHECK_HOST=$(uname -n 2>&1)
 _DATE=$(date +%y%m%d-%H%M 2>&1)
@@ -12,7 +39,10 @@ else
   _OPTIM=NO
 fi
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ beng ]]; then
+if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
@@ -24,6 +54,15 @@ truncate_cache_tables() {
   for C in ${_TABLES}; do
 mysql --default-character-set=utf8 ${_DB}<<EOFMYSQL
 TRUNCATE ${C};
+EOFMYSQL
+  done
+}
+
+truncate_watchdog_tables() {
+  _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^watchdog$ 2>&1)
+  for A in ${_TABLES}; do
+mysql --default-character-set=utf8 ${_DB}<<EOFMYSQL
+TRUNCATE ${A};
 EOFMYSQL
   done
 }
@@ -76,6 +115,11 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     && [ "${_DB}" != "performance_schema" ]; then
     if [ "${_DB}" != "mysql" ]; then
       truncate_cache_tables &> /dev/null
+      _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog* | grep "G" 2>&1)
+      if [[ "${_IS_GB}" =~ "watchdog" ]]; then
+        truncate_watchdog_tables &> /dev/null
+        echo "Truncated giant watchdog for ${_DB}"
+      fi
       if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
@@ -96,16 +140,18 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
   fi
 done
 
-if [ "${_OPTIM}" = "YES" ]; then
+if [ "${_OPTIM}" = "YES" ] && [ ! -e "/var/run/boa_run.pid" ]; then
+  ionice -c2 -n2 -p $$
   touch /var/run/boa_wait.pid
   touch /var/xdrago/log/mysql_restart_running.pid
-  sleep 3
-  /etc/init.d/mysql restart
+  sleep 10
+  service mysql restart
   sleep 3
   rm -f /var/run/boa_wait.pid
   rm -f /var/xdrago/log/mysql_restart_running.pid
 fi
 
+ionice -c2 -n7 -p $$
 find ${_BACKUPDIR} -mtime +8 -type d -exec rm -rf {} \;
 echo "Backups older than 8 days deleted"
 
@@ -119,4 +165,4 @@ rm -f /var/run/boa_sql_backup.pid
 touch /var/xdrago/log/last-run-backup
 echo "COMPLETED ALL"
 exit 0
-###EOF2015###
+###EOF2016###

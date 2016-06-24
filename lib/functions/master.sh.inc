@@ -142,36 +142,37 @@ provision_backend_dbpass_sync() {
   if [ ! -z "${_ESC_APASS}" ] && [ ! -z "${_ENC_APASS}" ]; then
     su -s /bin/bash - aegir -c "drush @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_APASS}' \
-      WHERE db_user='$_ADBU'\" &> /dev/null"
+      WHERE db_user='$_ADBU'\"" &> /dev/null
     mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ESC_APASS}') \
       WHERE User='$_ADBU';" &> /dev/null
     sed -i "s/mysql:\/\/$_ADBU:.*/mysql:\/\/$_ADBU:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
       /var/aegir/.drush/server_*.alias.drushrc.php &> /dev/null
+    wait
   fi
   mysqladmin flush-privileges &> /dev/null
-  su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
-  rm -f -r /var/aegir/.tmp/cache
+  su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
+  rm -rf /var/aegir/.tmp/cache
   if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ]; then
     su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_localhost \
-      verify --force &> /dev/null"
+      verify --force" &> /dev/null
   else
     su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_master \
-      verify --force &> /dev/null"
+      verify --force" &> /dev/null
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Running hosting-dispatch (1/3)..."
   fi
-  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
   mrun "sleep 5"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Running hosting-dispatch (2/3)..."
   fi
-  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
   mrun "sleep 5"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Running hosting-dispatch (3/3)..."
   fi
-  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
 }
 
 #
@@ -208,32 +209,63 @@ hostmaster_frontend_dbpass_sync() {
 # Download for Drush Make Local build.
 master_download_for_local_build() {
   mL="/opt/tmp/make_local"
-  if [ ! -e "${mL}/hosting/hosting.info" ]; then
-    rm -f -r ${mL}
+  if [ ! -e "${mL}/hosting/hosting.info" ] \
+    || [ ! -e "${mL}/hosting_custom_settings/hosting_custom_settings.info" ]; then
+    rm -rf ${mL}
     mkdir -p ${mL}
     cd ${mL}
-    get_dev_stc "hosting.tar.gz"
-    get_dev_stc "eldir.tar.gz"
-    get_dev_stc "views-6.x-3.0.tar.gz"
-    get_dev_stc "views_bulk_operations-6.x-1.16.tar.gz"
-    get_dev_stc "admin_menu.tar.gz"
-    get_dev_stc "install_profile_api.tar.gz"
-    get_dev_stc "jquery_ui.tar.gz"
-    get_dev_stc "jquery_update.tar.gz"
-    get_dev_stc "modalframe.tar.gz"
-    get_dev_stc "openidadmin.tar.gz"
-    get_dev_stc "css_emimage.tar.gz"
-    get_dev_stc "ctools.tar.gz"
-    get_dev_stc "features_extra.tar.gz"
-    get_dev_stc "features.tar.gz"
-    get_dev_stc "hosting_backup_queue.tar.gz"
-    get_dev_stc "hosting_platform_pathauto.tar.gz"
-    get_dev_stc "hosting_task_gc.tar.gz"
-    get_dev_stc "protect_critical_users.tar.gz"
-    get_dev_stc "revision_deletion.tar.gz"
-    get_dev_stc "strongarm.tar.gz"
-    get_dev_stc "userprotect.tar.gz"
-    get_dev_stc "jquery-ui-1.7.3.zip"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Downloading hostmaster modules..."
+    fi
+    ### Drupal Core
+    get_dev_ext "drupal-${_SMALLCORE7}.tar.gz"
+    mv -f ${mL}/drupal-${_SMALLCORE7} ${mL}/drupal
+    ### Aegir Core
+    if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+      ${gCb} feature/3.0.x-profile ${gitHub}/hostmaster.git    &> /dev/null
+      ${gCb} feature/3.0.x-hosting ${gitHub}/hosting.git       &> /dev/null
+      ${gCb} feature/3.0.x-eldir ${gitHub}/eldir.git           &> /dev/null
+    else
+      get_dev_ext "hostmaster.tar.gz"
+      get_dev_ext "hosting.tar.gz"
+      get_dev_ext "eldir.tar.gz"
+    fi
+    ### Aegir Golden + BOA Settings
+    if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+      ${gCb} 7.x-3.x ${gitHub}/hosting_civicrm.git             &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_custom_settings.git     &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_git.git                 &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_le.git                  &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_remote_import.git       &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_site_backup_manager.git &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_tasks_extra.git         &> /dev/null
+      rm -rf */.git
+    else
+      get_dev_ext "hosting_civicrm.tar.gz"
+      get_dev_ext "hosting_custom_settings.tar.gz"
+      get_dev_ext "hosting_git.tar.gz"
+      get_dev_ext "hosting_le.tar.gz"
+      get_dev_ext "hosting_remote_import.tar.gz"
+      get_dev_ext "hosting_site_backup_manager.tar.gz"
+      get_dev_ext "hosting_tasks_extra.tar.gz"
+    fi
+    ### Aegir Drupal Contrib
+    get_dev_stc "admin_menu-7.x-3.0-rc5.tar.gz"
+    get_dev_stc "betterlogin-7.x-1.4.tar.gz"
+    get_dev_stc "ctools-7.x-1.9.tar.gz"
+    get_dev_stc "entity-7.x-1.7.tar.gz"
+    get_dev_stc "openidadmin-7.x-1.0.tar.gz"
+    get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
+    get_dev_stc "r4032login-7.x-1.8.tar.gz"
+    get_dev_stc "views_bulk_operations-7.x-3.3.tar.gz"
+    get_dev_stc "views-7.x-3.14.tar.gz"
+    ### BOA Drupal Contrib
+    get_dev_stc "features_extra-7.x-1.0.tar.gz"
+    get_dev_stc "features-7.x-2.10.tar.gz"
+    get_dev_stc "idna_convert-7.x-1.0.tar.gz"
+    get_dev_stc "revision_deletion-7.x-1.x-dev.tar.gz"
+    get_dev_stc "strongarm-7.x-2.0.tar.gz"
+    get_dev_stc "userprotect-7.x-1.2.tar.gz"
   fi
   find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null
   find ${mL} -type f -exec chmod 0644 {} \; &> /dev/null
@@ -251,24 +283,35 @@ upgrade_aegir_master() {
       service cron stop &> /dev/null
     fi
     usermod -aG users aegir &> /dev/null
+    _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD" /etc/sudoers 2>&1)
+    if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
+      echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+    fi
     if [ ! -d "/var/aegir/.drush/sys/provision/http" ]; then
-      rm -f -r /var/aegir/.drush/{sys,xts,usr}
-      rm -f -r /var/aegir/.drush/{provision,drush_make}
+      rm -rf /var/aegir/.drush/{sys,xts,usr}
+      rm -rf /var/aegir/.drush/{provision,drush_make}
       mkdir -p /var/aegir/.drush/{sys,xts,usr}
       ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
         /var/aegir/.drush/sys/provision &> /dev/null
       sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
         /var/aegir/.drush/sys/provision/aegir.make &> /dev/null
-      rm -f -r /var/aegir/drush
+      rm -rf /var/aegir/drush
       cd /var/aegir
       get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
       cd /var/aegir/drush/
-      rm -f -r /var/aegir/drush/vendor
+      rm -rf /var/aegir/drush/vendor
       get_dev_ext "vendor-${_DRUSH_VERSION}.tar.gz"
       find /var/aegir/drush -type d -exec chmod 0755 {} \; &> /dev/null
       find /var/aegir/drush -type f -exec chmod 0644 {} \; &> /dev/null
       chmod 755 /var/aegir/drush/drush
+      chmod 755 /var/aegir/drush/drush.bat
+      chmod 755 /var/aegir/drush/drush.complete.sh
+      chmod 755 /var/aegir/drush/drush.launcher
       chmod 755 /var/aegir/drush/drush.php
+      chmod 755 /var/aegir/drush/unish.sh
+      chmod 755 /var/aegir/drush/examples/drush.wrapper
+      chmod 755 /var/aegir/drush/examples/git-bisect.example.sh
+      chmod 755 /var/aegir/drush/examples/helloworld.script
     fi
     _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
       | grep "root'" \
@@ -290,8 +333,8 @@ upgrade_aegir_master() {
     chown -R aegir:aegir /var/aegir/config
     chown -R aegir:aegir /var/aegir/drush
     chown -R aegir ${_THIS_HM_ROOT}
-    chown -R aegir:www-data $_THIS_HM_SITE/files
-    chmod -R 02775 $_THIS_HM_SITE/files
+    chown -R aegir:www-data ${_THIS_HM_SITE}/files
+    chmod -R 02775 ${_THIS_HM_SITE}/files
 
     echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${vBs}/${filIncB}
     echo "_AEGIR_XTS_VRN=\"${_AEGIR_XTS_VRN}\""         >> ${vBs}/${filIncB}
@@ -305,12 +348,14 @@ upgrade_aegir_master() {
     echo "_NOW=\"${_NOW}\""                             >> ${vBs}/${filIncB}
     echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${vBs}/${filIncB}
     echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${vBs}/${filIncB}
+    echo "_SMALLCORE7=\"${_SMALLCORE7}\""               >> ${vBs}/${filIncB}
     echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${vBs}/${filIncB}
     echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${vBs}/${filIncB}
     echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${vBs}/${filIncB}
     echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${vBs}/${filIncB}
 
     mysqladmin flush-hosts &> /dev/null
+    _RST=$(syncpass fix aegir 2>&1)
     provision_backend_dbpass_sync
     hostmaster_frontend_dbpass_sync
     master_download_for_local_build
@@ -328,8 +373,6 @@ upgrade_aegir_master() {
     else
       chattr +i ${_U_HD}/php.ini &> /dev/null
       hostmaster_frontend_dbpass_sync
-      sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" \
-        /var/spool/cron/crontabs/aegir &> /dev/null
     fi
     if [ ! -L "${mtrInc}/global.inc" ] && [ -e "${mtrInc}/global.inc" ]; then
       mv -f ${mtrInc}/global.inc \
@@ -350,7 +393,7 @@ upgrade_aegir_master() {
         cd ${mtrNgx}
         cp -a conf.d pre.d
       else
-        rm -f -r ${mtrNgx}/conf.d
+        rm -rf ${mtrNgx}/conf.d
       fi
       if [ -e "${mtrNgx}/pre.d/custom_nginx.conf" ]; then
         rm -f ${mtrNgx}/pre.d/custom_nginx.conf
@@ -375,20 +418,41 @@ upgrade_aegir_master() {
 #
 # Update php-cli in the cron entry.
 update_php_cli_cron() {
-  if [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
-    sed -i "s/^PATH=.*/PATH=\/opt\/php55\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-      /var/spool/cron/crontabs/aegir &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
-    sed -i "s/^PATH=.*/PATH=\/opt\/php56\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-      /var/spool/cron/crontabs/aegir &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
-    sed -i "s/^PATH=.*/PATH=\/opt\/php54\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-      /var/spool/cron/crontabs/aegir &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
-    sed -i "s/^PATH=.*/PATH=\/opt\/php53\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-      /var/spool/cron/crontabs/aegir &> /dev/null
+  rm -f /var/spool/cron/crontabs/aegir
+  if [ ! -e "/root/.mstr.clstr.cnf" ] \
+    && [ ! -e "/root/.wbhd.clstr.cnf" ] \
+    && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
+    if [ ! -e "/var/spool/cron/crontabs/aegir" ]; then
+      echo -e \
+        "SHELL=/bin/sh\nPATH=/opt/php56/bin:/usr/bin\n*/1 * * * * \
+        /usr/bin/env php /var/aegir/drush/drush.php '@hostmaster' \
+        hosting-dispatch >/dev/null 2>&1" \
+        | fmt -su -w 2500 \
+        | tee -a /var/spool/cron/crontabs/aegir >/dev/null 2>&1
+    fi
   fi
-  chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
+  if [ -e "/var/spool/cron/crontabs/aegir" ]; then
+    sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" \
+      /var/spool/cron/crontabs/aegir &> /dev/null
+    if [ "${_PHP_CLI_VERSION}" = "7.0" ] && [ -x "/opt/php70/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php70\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php56\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php55\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php54\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php53\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    fi
+    chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
+    chmod 600 /var/spool/cron/crontabs/aegir
+  fi
 }
 
 install_upgrade_aegir_master() {
@@ -599,22 +663,22 @@ EOFMYSQL
     fi
     _U_HD="/var/aegir/.drush"
     chattr +i ${_U_HD}/php.ini &> /dev/null
-    su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
-    rm -f -r /var/aegir/.tmp/cache
+    su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
+    rm -rf /var/aegir/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Running hosting-dispatch (1/3)..."
     fi
-    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
     mrun "sleep 5"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Running hosting-dispatch (2/3)..."
     fi
-    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
     mrun "sleep 5"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Running hosting-dispatch (3/3)..."
     fi
-    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
     if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
       _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
         | grep "root'" \
@@ -632,9 +696,12 @@ EOFMYSQL
   ###--------------------###
     if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
       _DO_NOTHING=YES
+      rm -f /root/.force.reinstall.cnf
     else
       msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed!"
-      msg "HINT: Please check /var/aegir/install.log for more information."
+      msg "HINT: Please check /var/aegir/install.log for details, and then"
+      msg "HINT: run the same install command again to complete installation."
+      touch /root/.force.reinstall.cnf
       clean_pid_exit
     fi
 
@@ -675,21 +742,21 @@ EOFMYSQL
     msg "INFO: Aegir Master Instance installed"
   else
     echo " "
-    if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
+      && [ "${_LOC_OSV}" = "wheezy" ]; then
+      msg "INFO: Aegir Master Instance upgrade skipped!"
+      echo " "
+      msg "NOTE! You must reboot the server and run barracuda upgrade"
+      msg "NOTE! again to complete all system upgrades and upgrade also"
+      msg "NOTE! Aegir Master Instance."
+      echo " "
+    elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
       && [ "${_LOC_OSV}" = "squeeze" ]; then
       msg "INFO: Aegir Master Instance upgrade skipped!"
       echo " "
-      msg "NOTE! You *must* reboot the server and then run boa up-stable *again*"
-      msg "NOTE! to complete all system upgrades and upgrade also"
-      msg "NOTE! Aegir Master Instance securely"
-      echo " "
-    elif [ "${_LENNY_TO_SQUEEZE}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "lenny" ]; then
-      msg "INFO: Aegir Master Instance upgrade skipped!"
-      echo " "
-      msg "NOTE! You *must* reboot the server and then run boa up-stable *again*"
-      msg "NOTE! to complete all system upgrades and upgrade also"
-      msg "NOTE! Aegir Master Instance securely"
+      msg "NOTE! You must reboot the server and run barracuda upgrade"
+      msg "NOTE! again to complete all system upgrades and upgrade also"
+      msg "NOTE! Aegir Master Instance."
       echo " "
     elif [ "${_SYSTEM_UPGRADE_ONLY}" = "YES" ]; then
       msg "INFO: Aegir Master Instance upgrade skipped"
@@ -723,10 +790,11 @@ EOFMYSQL
         touch /data/conf/clstr.cnf &> /dev/null
       fi
       echo " "
+      update_php_cli_cron
       upgrade_aegir_master
+      update_php_cli_cron
     fi
   fi
-  update_php_cli_cron
 }
 
 if_upgrade_only_aegir_master() {
@@ -734,7 +802,9 @@ if_upgrade_only_aegir_master() {
     if [ "${_AEGIR_UPGRADE_ONLY}" = "YES" ] \
       && [ "${_SYSTEM_UPGRADE_ONLY}" = "NO" ]; then
       echo " "
+      update_php_cli_cron
       upgrade_aegir_master
+      update_php_cli_cron
       mrun "sleep 8"
       mrun "service nginx reload" &> /dev/null
       finale
@@ -779,66 +849,77 @@ update_php_cli_local_ini() {
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="56 55 54 53"
+  _PHP_V="70 56 55 54 53"
   for e in ${_PHP_V}; do
-    if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ]; then
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
+      && [ ! -e "${_U_HD}/.ctrl.php${e}.pid" ]; then
       _PHP_CLI_UPDATE=YES
     fi
   done
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.240stableA.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.311stableQ1.pid" ]; then
     mkdir -p ${_U_TP}
+    touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
     chmod 02755 ${_U_TP}
     mkdir -p ${_U_HD}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]]; then
-      cp -af /opt/php55/lib/php.ini ${_U_II}
-      _U_INI=55
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php56" ]]; then
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php70" ]]; then
+      cp -af /opt/php70/lib/php.ini ${_U_II}
+      _U_INI=70
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php56" ]]; then
       cp -af /opt/php56/lib/php.ini ${_U_II}
       _U_INI=56
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]]; then
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php55" ]]; then
+      cp -af /opt/php55/lib/php.ini ${_U_II}
+      _U_INI=55
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php54" ]]; then
       cp -af /opt/php54/lib/php.ini ${_U_II}
       _U_INI=54
-    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]]; then
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php53" ]]; then
       cp -af /opt/php53/lib/php.ini ${_U_II}
       _U_INI=53
     fi
     if [ -e "${_U_II}" ]; then
       _INI="open_basedir = \".: \
-        /data/all:        \
-        /data/conf:       \
-        /data/disk/all:   \
-        /opt/php53:       \
-        /opt/php54:       \
-        /opt/php55:       \
-        /opt/php56:       \
-        /opt/tika:        \
-        /opt/tika7:       \
-        /opt/tika8:       \
-        /opt/tika9:       \
-        /opt/tools/drush: \
-        /tmp:             \
-        /usr/bin:         \
+        /data/all:           \
+        /data/conf:          \
+        /data/disk/all:      \
+        /opt/php53:          \
+        /opt/php54:          \
+        /opt/php55:          \
+        /opt/php56:          \
+        /opt/php70:          \
+        /opt/tika:           \
+        /opt/tika7:          \
+        /opt/tika8:          \
+        /opt/tika9:          \
+        /opt/tmp/make_local: \
+        /opt/tools/drush:    \
+        /tmp:                \
+        /usr/bin:            \
         /var/aegir\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
       _INI=${_INI//\//\\\/}
       _QTP=${_U_TP//\//\\\/}
       sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_U_II}
+      wait
       sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
+      wait
       sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_U_II}
+      wait
       sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_U_II}
+      wait
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
+      wait
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
-      echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.240stableA.txt
+      wait
+      echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
+      echo > ${_U_HD}/.ctrl.311stableQ1.pid
     fi
   fi
 }
-

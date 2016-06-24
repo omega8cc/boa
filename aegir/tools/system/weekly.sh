@@ -1,12 +1,40 @@
 #!/bin/bash
 
-SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
+
+check_root() {
+  if [ `whoami` = "root" ]; then
+    ionice -c2 -n7 -p $$
+    renice 19 -p $$
+    chmod a+w /dev/null
+    if [ ! -e "/dev/fd" ]; then
+      if [ -e "/proc/self/fd" ]; then
+        rm -rf /dev/fd
+        ln -s /proc/self/fd /dev/fd
+      fi
+    fi
+  else
+    echo "ERROR: This script should be ran as a root user"
+    exit 1
+  fi
+  _DF_TEST=$(df -kTh / -l \
+    | grep '/' \
+    | sed 's/\%//g' \
+    | awk '{print $6}' 2> /dev/null)
+  _DF_TEST=${_DF_TEST//[^0-9]/}
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
+    exit 1
+  fi
+}
+check_root
 
 ###-------------SYSTEM-----------------###
 fix_clear_cache() {
   if [ -e "${Plr}/profiles/hostmaster" ]; then
-    su -s /bin/bash - ${_THIS_U} -c "drush @hostmaster cc all &> /dev/null"
+    su -s /bin/bash - ${_THIS_U} -c "drush @hostmaster cc all" &> /dev/null
   fi
 }
 
@@ -14,6 +42,9 @@ read_account_data() {
   if [ -e "/data/disk/${_THIS_U}/log/email.txt" ]; then
     _CLIENT_EMAIL=$(cat /data/disk/${_THIS_U}/log/email.txt 2>&1)
     _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
+  fi
+  if [ -e "/root/.debug.email.txt" ]; then
+    _CLIENT_EMAIL="omega8cc@gmail.com"
   fi
   if [ -e "/data/disk/${_THIS_U}/log/cores.txt" ]; then
     _CLIENT_CORES=$(cat /data/disk/${_THIS_U}/log/cores.txt 2>&1)
@@ -37,7 +68,7 @@ read_account_data() {
 }
 
 send_notice_core() {
-  _MY_EMAIL="notify@omega8.cc"
+  _MY_EMAIL="support@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(mail -V 2>&1)
@@ -65,16 +96,8 @@ for your Drupal sites and we appreciate your efforts
 to meet the requirements, which are an integral part
 of the quality you can expect from Omega8.cc.
 
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our support contact form instead:
-
-  https://omega8.cc/support
-
-Thank you in advance.
-
 --
-This e-mail has been sent by your Aegir platform core monitor.
+This email has been sent by your Aegir platform core monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
@@ -101,16 +124,8 @@ for your Drupal sites and we appreciate your efforts
 to meet the requirements, which are an integral part
 of the quality you can expect from Omega8.cc.
 
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our support contact form instead:
-
-  https://omega8.cc/support
-
-Thank you in advance.
-
 --
-This e-mail has been sent by your Aegir platform core monitor.
+This email has been sent by your Aegir platform core monitor.
 
 EOF
   else
@@ -137,16 +152,8 @@ for your Drupal sites and we appreciate your efforts
 to meet the requirements, which are an integral part
 of the quality you can expect from Omega8.cc.
 
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our support contact form instead:
-
-  https://omega8.cc/support
-
-Thank you in advance.
-
 --
-This e-mail has been sent by your Aegir platform core monitor.
+This email has been sent by your Aegir platform core monitor.
 
 EOF
   fi
@@ -198,11 +205,25 @@ count() {
     Dom=$(echo $Site | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
     #echo "${_THIS_U},${Dom},vhost-exists"
     _DEV_URL=NO
-    searchStringA=".temporary."
-    searchStringB=".testing."
+    searchStringB=".dev."
+    searchStringC=".devel."
+    searchStringD=".temp."
+    searchStringE=".tmp."
+    searchStringF=".temporary."
+    searchStringG=".test."
+    searchStringH=".testing."
+    searchStringI=".stage."
+    searchStringJ=".staging."
     case ${Dom} in
-      *"$searchStringA"*) _DEV_URL=YES ;;
       *"$searchStringB"*) _DEV_URL=YES ;;
+      *"$searchStringC"*) _DEV_URL=YES ;;
+      *"$searchStringD"*) _DEV_URL=YES ;;
+      *"$searchStringE"*) _DEV_URL=YES ;;
+      *"$searchStringF"*) _DEV_URL=YES ;;
+      *"$searchStringG"*) _DEV_URL=YES ;;
+      *"$searchStringH"*) _DEV_URL=YES ;;
+      *"$searchStringI"*) _DEV_URL=YES ;;
+      *"$searchStringJ"*) _DEV_URL=YES ;;
       *)
       ;;
     esac
@@ -243,12 +264,8 @@ count() {
             | cut -d'/' -f1 \
             | awk '{ print $1}' \
             | sed "s/[\/\s+]//g" 2>&1)
-          if [ "${_DEV_URL}" = "YES" ]; then
-            echo "${_THIS_U},${Dom},DirSize:${DirSize},skip"
-          else
-            SumDir=$(( SumDir + DirSize ))
-            echo "${_THIS_U},${Dom},DirSize:${DirSize}"
-          fi
+          SumDir=$(( SumDir + DirSize ))
+          echo "${_THIS_U},${Dom},DirSize:${DirSize}"
         fi
         if [ ! -z "${Dat}" ] && [ -e "/var/lib/mysql/${Dat}" ]; then
           DatSize=$(du -s /var/lib/mysql/${Dat} 2>&1)
@@ -257,6 +274,7 @@ count() {
             | awk '{ print $1}' \
             | sed "s/[\/\s+]//g" 2>&1)
           if [ "${_DEV_URL}" = "YES" ]; then
+            SkipDt=$(( SkipDt + DatSize ))
             echo "${_THIS_U},${Dom},DatSize:${DatSize}:${Dat},skip"
           else
             SumDat=$(( SumDat + DatSize ))
@@ -271,20 +289,28 @@ count() {
 }
 
 send_notice_sql() {
-  _MY_EMAIL="notify@omega8.cc"
+  _MODE=$1
+  if [ "${_MODE}" = "DEV" ]; then
+    _SQL_LIM=${_SQL_DEV_LIMIT}
+    _SQL_NOW=${SkipDtH}
+  else
+    _SQL_LIM=${_SQL_MIN_LIMIT}
+    _SQL_NOW=${SumDatH}
+  fi
+  _MY_EMAIL="billing@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
   cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "NOTICE: Your DB Usage on [${_THIS_U}] is too high" ${_CLIENT_EMAIL}
+    -s "NOTICE: Your ${_MODE} DB Usage on [${_THIS_U}] is too high: ${_SQL_NOW} MB" ${_CLIENT_EMAIL}
 Hello,
 
 You are using more resources than allocated in your subscription.
 You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 
-Your allowed databases space is ${_SQL_MIN_LIMIT} MB.
-You are currently using ${SumDatH} MB of databases space.
+Your allowed databases space for ${_MODE} sites is ${_SQL_LIM} MB,
+but you are currently using ${_SQL_NOW} MB of databases space.
 
 Please reduce your usage by deleting no longer used sites,
 or by converting their tables to MyISAM format on command line
@@ -292,61 +318,46 @@ when in the site directory with:
 
   $ sqlmagic convert to-myisam
 
-or purchase enough Aegir Engines to cover your current usage.
+Or purchase enough Aegir Engines to cover your current usage.
 
 You can purchase more Aegir Engines easily online:
 
   https://omega8.cc/buy
 
-Note that we do not count any site identified as temporary dev/test,
+Note that we do not count(*) any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
 
-  .temporary. .testing.
+  .dev.
+  .devel.
+  .temp.
+  .tmp.
+  .temporary.
+  .test.
+  .testing.
 
-For example, a site with main name: abc.testing.foo.com is by default excluded
-from your allocated resources limits (not counted for billing purposes).
+For example, a site with main name: abc.test.foo.com is by default excluded
+from your allocated resources limits (not counted for billing purposes),
+as long as the total databases space used by such sites is no greater than
+six times (6x) your limit for LIVE sites listed on our order pages.
 
-However, if we discover that someone is using this method to hide real
+However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
 
-Please also note that you can not keep such tmp/test/dev sites forever.
-We allow to exclude them from the usage limits only because it is expected
-that these sites will be deleted as soon as possible - in a matter of days
-or a few weeks, but not any longer. If you will ignore this rule, we reserve
-the right to remove ability to exclude tmp/test/dev sites on your system.
-
-If you are using more (counted) resources than allocated in your subscription
-for more than 30 calendar days without purchasing an upgrade, your instance
-will be suspended without further notice, and to restore it you will have to
-pay for all past due overages plus \$152 USD reconnection fee.
-
-We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Monday, but in return we expect
-that you will use this allowance responsibly and sparingly.
-
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our billing contact form instead:
-
-  https://omega8.cc/billing
-
-Thank you in advance.
-
 --
-This e-mail has been sent by your Aegir resources usage weekly monitor.
+This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
   cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "NOTICE: Your DB Usage on [${_THIS_U}] is too high" ${_CLIENT_EMAIL}
+    -s "NOTICE: Your ${_MODE} DB Usage on [${_THIS_U}] is too high: ${_SQL_NOW} MB" ${_CLIENT_EMAIL}
 Hello,
 
 You are using more resources than allocated in your subscription.
 You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 
-Your allowed databases space is ${_SQL_MIN_LIMIT} MB.
-You are currently using ${SumDatH} MB of databases space.
+Your allowed databases space for ${_MODE} sites is ${_SQL_LIM} MB,
+but you are currently using ${_SQL_NOW} MB of databases space.
 
 Please reduce your usage by deleting no longer used sites,
 or by converting their tables to MyISAM format on command line
@@ -354,55 +365,46 @@ when in the site directory with:
 
   $ sqlmagic convert to-myisam
 
-or purchase enough Aegir Engines to cover your current usage.
+Or purchase enough Aegir Engines to cover your current usage.
 
 You can purchase more Aegir Engines easily online:
 
   https://omega8.cc/buy
 
-Note that we do not count any site identified as temporary dev/test,
+Note that we do not count(*) any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
 
-  .temporary. .testing.
+  .dev.
+  .devel.
+  .temp.
+  .tmp.
+  .temporary.
+  .test.
+  .testing.
 
-For example, a site with main name: abc.testing.foo.com is by default excluded
-from your allocated resources limits (not counted for billing purposes).
+For example, a site with main name: abc.test.foo.com is by default excluded
+from your allocated resources limits (not counted for billing purposes),
+as long as the total databases space used by such sites is no greater than
+six times (6x) your limit for LIVE sites listed on our order pages.
 
-However, if we discover that someone is using this method to hide real
+However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
 
-Please also note that you can not keep such tmp/test/dev sites forever.
-We allow to exclude them from the usage limits only because it is expected
-that these sites will be deleted as soon as possible - in a matter of days
-or a few weeks, but not any longer. If you will ignore this rule, we reserve
-the right to remove ability to exclude tmp/test/dev sites on your system.
-
-If you are using more (counted) resources than allocated in your subscription
-for more than 30 calendar days without purchasing an upgrade, your instance
-will be suspended without further notice, and to restore it you will have to
-pay for all past due overages plus \$152 USD reconnection fee.
-
-We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Monday, but in return we expect
-that you will use this allowance responsibly and sparingly.
-
-Thank you in advance.
-
 --
-This e-mail has been sent by your Aegir resources usage weekly monitor.
+This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   else
   cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
-    -s "NOTICE: Your DB Usage on [${_THIS_U}] is too high" ${_CLIENT_EMAIL}
+    -s "NOTICE: Your ${_MODE} DB Usage on [${_THIS_U}] is too high: ${_SQL_NOW} MB" ${_CLIENT_EMAIL}
 Hello,
 
 You are using more resources than allocated in your subscription.
 You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 
-Your allowed databases space is ${_SQL_MIN_LIMIT} MB.
-You are currently using ${SumDatH} MB of databases space.
+Your allowed databases space for ${_MODE} sites is ${_SQL_LIM} MB,
+but you are currently using ${_SQL_NOW} MB of databases space.
 
 Please reduce your usage by deleting no longer used sites,
 or by converting their tables to MyISAM format on command line
@@ -410,43 +412,34 @@ when in the site directory with:
 
   $ sqlmagic convert to-myisam
 
-or purchase enough Aegir Engines to cover your current usage.
+Or purchase enough Aegir Engines to cover your current usage.
 
 You can purchase more Aegir Engines easily online:
 
   https://omega8.cc/buy
 
-Note that we do not count any site identified as temporary dev/test,
+Note that we do not count(*) any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
 
-  .temporary. .testing.
+  .dev.
+  .devel.
+  .temp.
+  .tmp.
+  .temporary.
+  .test.
+  .testing.
 
-For example, a site with main name: abc.testing.foo.com is by default excluded
-from your allocated resources limits (not counted for billing purposes).
+For example, a site with main name: abc.test.foo.com is by default excluded
+from your allocated resources limits (not counted for billing purposes),
+as long as the total databases space used by such sites is no greater than
+six times (6x) your limit for LIVE sites listed on our order pages.
 
-However, if we discover that someone is using this method to hide real
+However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
 
-Please also note that you can not keep such tmp/test/dev sites forever.
-We allow to exclude them from the usage limits only because it is expected
-that these sites will be deleted as soon as possible - in a matter of days
-or a few weeks, but not any longer. If you will ignore this rule, we reserve
-the right to remove ability to exclude tmp/test/dev sites on your system.
-
-If you are using more (counted) resources than allocated in your subscription
-for more than 30 calendar days without purchasing an upgrade, your instance
-will be suspended without further notice, and to restore it you will have to
-pay for all past due overages plus \$152 USD reconnection fee.
-
-We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Monday, but in return we expect
-that you will use this allowance responsibly and sparingly.
-
-Thank you in advance.
-
 --
-This e-mail has been sent by your Aegir resources usage weekly monitor.
+This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   fi
@@ -454,7 +447,7 @@ EOF
 }
 
 send_notice_disk() {
-  _MY_EMAIL="notify@omega8.cc"
+  _MY_EMAIL="billing@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(mail -V 2>&1)
@@ -477,43 +470,12 @@ You can purchase more Aegir Engines easily online:
 
   https://omega8.cc/buy
 
-Note that we do not count any site identified as temporary dev/test,
-by having in its main name a special keyword with two dots on both sides:
-
-  .temporary. .testing.
-
-For example, a site with main name: abc.testing.foo.com is by default excluded
-from your allocated resources limits (not counted for billing purposes).
-
-However, if we discover that someone is using this method to hide real
-usage via listed keywords in the main site name and adding live domain(s)
-as aliases, such account will be suspended without any warning.
-
-Please also note that you can not keep such tmp/test/dev sites forever.
-We allow to exclude them from the usage limits only because it is expected
-that these sites will be deleted as soon as possible - in a matter of days
-or a few weeks, but not any longer. If you will ignore this rule, we reserve
-the right to remove ability to exclude tmp/test/dev sites on your system.
-
-If you are using more (counted) resources than allocated in your subscription
-for more than 30 calendar days without purchasing an upgrade, your instance
-will be suspended without further notice, and to restore it you will have to
-pay for all past due overages plus \$152 USD reconnection fee.
-
-We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Monday, but in return we expect
-that you will use this allowance responsibly and sparingly.
-
-If you have any questions, please don't respond to this message,
-since it was sent from our default system address -- please use
-our billing contact form instead:
-
-  https://omega8.cc/billing
-
-Thank you in advance.
+Note that unlike with database space limits, for files related disk space
+we count all your sites, including also all dev/tmp sites, if they exist,
+even if they are marked as disabled in your Aegir control panel.
 
 --
-This e-mail has been sent by your Aegir resources usage weekly monitor.
+This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
@@ -535,31 +497,12 @@ You can purchase more Aegir Engines easily online:
 
   https://omega8.cc/buy
 
-Note that we do not count any site identified as temporary dev/test,
-by having in its main name a special keyword with two dots on both sides:
-
-  .temporary. .testing.
-
-For example, a site with main name: abc.testing.foo.com is by default excluded
-from your allocated resources limits (not counted for billing purposes).
-
-However, if we discover that someone is using this method to hide real
-usage via listed keywords in the main site name and adding live domain(s)
-as aliases, such account will be suspended without any warning.
-
-If you are using more (counted) resources than allocated in your subscription
-for more than 30 calendar days without purchasing an upgrade, your instance
-will be suspended without further notice, and to restore it you will have to
-pay for all past due overages plus \$152 USD reconnection fee.
-
-We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Monday, but in return we expect
-that you will use this allowance responsibly and sparingly.
-
-Thank you in advance.
+Note that unlike with database space limits, for files related disk space
+we count all your sites, including also all dev/tmp sites, if they exist,
+even if they are marked as disabled in your Aegir control panel.
 
 --
-This e-mail has been sent by your Aegir resources usage weekly monitor.
+This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   else
@@ -581,31 +524,12 @@ You can purchase more Aegir Engines easily online:
 
   https://omega8.cc/buy
 
-Note that we do not count any site identified as temporary dev/test,
-by having in its main name a special keyword with two dots on both sides:
-
-  .temporary. .testing.
-
-For example, a site with main name: abc.testing.foo.com is by default excluded
-from your allocated resources limits (not counted for billing purposes).
-
-However, if we discover that someone is using this method to hide real
-usage via listed keywords in the main site name and adding live domain(s)
-as aliases, such account will be suspended without any warning.
-
-If you are using more (counted) resources than allocated in your subscription
-for more than 30 calendar days without purchasing an upgrade, your instance
-will be suspended without further notice, and to restore it you will have to
-pay for all past due overages plus \$152 USD reconnection fee.
-
-We provide very generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Monday, but in return we expect
-that you will use this allowance responsibly and sparingly.
-
-Thank you in advance.
+Note that unlike with database space limits, for files related disk space
+we count all your sites, including also all dev/tmp sites, if they exist,
+even if they are marked as disabled in your Aegir control panel.
 
 --
-This e-mail has been sent by your Aegir resources usage weekly monitor.
+This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   fi
@@ -613,6 +537,11 @@ EOF
 }
 
 check_limits() {
+  _SQL_MIN_LIMIT=0
+  _SQL_MAX_LIMIT=0
+  _SQL_DEV_LIMIT=0
+  _DSK_MIN_LIMIT=0
+  _DSK_MAX_LIMIT=0
   read_account_data
   if [ "${_CLIENT_OPTION}" = "POWER" ]; then
     _SQL_MIN_LIMIT=5120
@@ -633,7 +562,7 @@ check_limits() {
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 640 ))
   else
     _SQL_MIN_LIMIT=256
-    _DSK_MIN_LIMIT=5120
+    _DSK_MIN_LIMIT=7680
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 64 ))
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 640 ))
   fi
@@ -641,6 +570,10 @@ check_limits() {
   _DSK_MIN_LIMIT=$(( _DSK_MIN_LIMIT *= _CLIENT_CORES ))
   _SQL_MAX_LIMIT=$(( _SQL_MAX_LIMIT *= _CLIENT_CORES ))
   _DSK_MAX_LIMIT=$(( _DSK_MAX_LIMIT *= _CLIENT_CORES ))
+  _SQL_DEV_LIMIT=${_SQL_MIN_LIMIT}
+  _SQL_DEV_EXTRA=6
+  _SQL_DEV_LIMIT=$(( _SQL_DEV_LIMIT *= _CLIENT_CORES ))
+  _SQL_DEV_LIMIT=$(( _SQL_DEV_LIMIT *= _SQL_DEV_EXTRA ))
   if [ ! -z "${_EXTRA_ENGINE}" ]; then
     _SQL_ADD_LIMIT=512
     _DSK_ADD_LIMIT=15360
@@ -655,11 +588,17 @@ check_limits() {
   echo _CLIENT_CORES is ${_CLIENT_CORES}
   echo _SQL_MIN_LIMIT is ${_SQL_MIN_LIMIT}
   echo _SQL_MAX_LIMIT is ${_SQL_MAX_LIMIT}
+  echo _SQL_DEV_LIMIT is ${_SQL_DEV_LIMIT}
   echo _DSK_MIN_LIMIT is ${_DSK_MIN_LIMIT}
   echo _DSK_MAX_LIMIT is ${_DSK_MAX_LIMIT}
   if [ "${SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
     if [ ! -e "${User}/log/CANCELLED" ]; then
-      send_notice_sql
+      send_notice_sql "LIVE"
+    fi
+    echo SQL Usage for ${_THIS_U} above limits
+  elif [ "${SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
+    if [ ! -e "${User}/log/CANCELLED" ]; then
+      send_notice_sql "DEV"
     fi
     echo SQL Usage for ${_THIS_U} above limits
   else
@@ -709,6 +648,19 @@ load_control() {
   _O_LOAD_MAX=$(( 100 * _CPU_MAX_RATIO ))
 }
 
+sub_count_usr_home() {
+  if [ -e "$1" ]; then
+    HqmSiz=$(du -s $1 2>&1)
+    HqmSiz=$(echo "${HqmSiz}" \
+      | cut -d'/' -f1 \
+      | awk '{ print $1}' \
+      | sed "s/[\/\s+]//g" 2>&1)
+    HxmSiz=$(( HxmSiz + HqmSiz ))
+    ### echo $1 disk usage is $HqmSiz
+    ### echo HxmSiz total is $HxmSiz
+  fi
+}
+
 action() {
   for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     count_cpu
@@ -717,11 +669,18 @@ action() {
       if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ]; then
         SumDir=0
         SumDat=0
+        SkipDt=0
         HomSiz=0
         HxmSiz=0
+        HqmSiz=0
         _THIS_U=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         _THIS_HM_SITE=$(cat ${User}/.drush/hostmaster.alias.drushrc.php \
           | grep "site_path'" \
+          | cut -d: -f2 \
+          | awk '{ print $3}' \
+          | sed "s/[\,']//g" 2>&1)
+        _THIS_HM_PLR=$(cat ${User}/.drush/hostmaster.alias.drushrc.php \
+          | grep "root'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
@@ -729,11 +688,9 @@ action() {
         echo Counting User ${User}
         count
         if [ -e "/home/${_THIS_U}.ftp" ]; then
-          HxmSiz=$(du -s /home/${_THIS_U}.ftp 2>&1)
-          HxmSiz=$(echo "${HxmSiz}" \
-            | cut -d'/' -f1 \
-            | awk '{ print $1}' \
-            | sed "s/[\/\s+]//g" 2>&1)
+          for uH in `find /home/${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
+            sub_count_usr_home ${uH}
+          done
         fi
         if [ -L "${User}" ]; then
           HomSiz=$(du -D -s ${User} 2>&1)
@@ -747,32 +704,47 @@ action() {
         HomSiz=$(( HomSiz + HxmSiz ))
         HomSizH=$(echo "scale=0; ${HomSiz}/1024" | bc 2>&1)
         SumDatH=$(echo "scale=0; ${SumDat}/1024" | bc 2>&1)
+        SkipDtH=$(echo "scale=0; ${SkipDt}/1024" | bc 2>&1)
         SumDirH=$(echo "scale=0; ${SumDir}/1024" | bc 2>&1)
         echo HomSiz is ${HomSiz} or ${HomSizH} MB
         echo SumDir is ${SumDir} or ${SumDirH} MB
         echo SumDat is ${SumDat} or ${SumDatH} MB
+        echo SkipDt is ${SkipDt} or ${SkipDtH} MB
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
           || [ "${_VMFAMILY}" = "VS" ]; then
           check_limits
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} -c "drush @hostmaster \
-              vset --always-set site_footer 'Weekly Usage Monitor \
+              vset --always-set site_footer 'Daily Usage Monitor \
               | ${_DATE} \
-              | Disk <strong>${HomSizH}</strong> MB \
-              | Databases <strong>${SumDatH}</strong> MB \
+              | ALL Files <strong>${HomSizH}</strong> MB \
+              | LIVE Dbs <strong>${SumDatH}</strong> MB \
+              | DEV Dbs <strong>${SkipDtH}</strong> MB \
               | <strong>${_CLIENT_CORES}</strong> \
-              Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}' &> /dev/null"
+              Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}'" &> /dev/null
+            TmDir="${_THIS_HM_PLR}/profiles/hostmaster/themes/aegir/eldir"
+            PgTpl="${TmDir}/page.tpl.php"
+            EldirF="0001-Print-site_footer-if-defined.patch"
+            TplPatch="/var/xdrago/conf/${EldirF}"
+            if [ -e "${PgTpl}" ] && [ -e "${TplPatch}" ]; then
+              _IS_SF=$(grep "site_footer" ${PgTpl} 2>&1)
+              if [[ ! "${_IS_SF}" =~ "site_footer" ]]; then
+                cd ${TmDir}
+                patch -p1 < ${TplPatch} &> /dev/null
+                cd
+              fi
+            fi
             su -s /bin/bash - ${_THIS_U} \
-              -c "drush @hostmaster cc all &> /dev/null"
+              -c "drush @hostmaster cc all" &> /dev/null
           fi
         else
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} \
               -c "drush @hostmaster vset \
-              --always-set site_footer '' &> /dev/null"
+              --always-set site_footer ''" &> /dev/null
             su -s /bin/bash - ${_THIS_U} \
-              -c "drush @hostmaster cc all &> /dev/null"
+              -c "drush @hostmaster cc all" &> /dev/null
           fi
         fi
         echo "Done for ${User}"
@@ -787,18 +759,22 @@ action() {
 }
 
 ###--------------------###
-echo "INFO: Weekly maintenance start"
+echo "INFO: Daily maintenance start"
 _NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=${_NOW//[^0-9-]/}
 _DATE=$(date 2>&1)
 _CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ beng ]]; then
+if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
 fi
 mkdir -p /var/xdrago/log/usage
 action >/var/xdrago/log/usage/usage-${_NOW}.log 2>&1
-echo "INFO: Weekly maintenance complete"
+echo "INFO: Daily maintenance complete"
 exit 0
-###EOF2015###
+###EOF2016###

@@ -3,7 +3,7 @@
 ### EDITME                                 ###
 ###----------------------------------------###
 ###
-### Enter your valid e-mail address below.
+### Enter your valid email address below.
 ###
 _MY_EMAIL="notify@omega8.cc"
 
@@ -52,7 +52,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### PHP MULTI INSTALL                      ###
 ###----------------------------------------###
 ###
-### By default Barracuda installs only PHP 5.5
+### By default Barracuda installs only PHP 5.6
 ### but this option allows you to install also
 ### other experimental PHP versions and then
 ### choose different version for PHP and
@@ -60,9 +60,9 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### Instance with variables: _PHP_FPM_VERSION
 ### and _PHP_CLI_VERSION.
 ###
-### Available options: 5.6, 5.5, 5.4, 5.3
+### Available options: 7.0, 5.6, 5.5, 5.4, 5.3
 ###
-### Example: _PHP_MULTI_INSTALL="5.3 5.5"
+### Example: _PHP_MULTI_INSTALL="5.6 5.5"
 ###
 ### Note that removing any version from this
 ### list once it is already installed, will
@@ -73,7 +73,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### which are used to define version to be
 ### used by Master or Satellite Instance.
 ###
-_PHP_MULTI_INSTALL="5.5"
+_PHP_MULTI_INSTALL="5.6"
 
 
 ###----------------------------------------###
@@ -87,9 +87,9 @@ _PHP_MULTI_INSTALL="5.5"
 ### _PHP_CLI_VERSION
 ### _PHP_MULTI_INSTALL
 ###
-### Available options: 5.6, 5.5, 5.4 or 5.3
+### Available options: 7.0, 5.6, 5.5, 5.4, 5.3
 ###
-### Example: _PHP_SINGLE_INSTALL=5.5
+### Example: _PHP_SINGLE_INSTALL=5.6
 ###
 _PHP_SINGLE_INSTALL=
 
@@ -104,16 +104,17 @@ _PHP_SINGLE_INSTALL=
 ###
 ### Available options (if installed):
 ###
+### _PHP_FPM_VERSION=7.0
 ### _PHP_FPM_VERSION=5.6
 ### _PHP_FPM_VERSION=5.5
 ### _PHP_FPM_VERSION=5.4
 ### _PHP_FPM_VERSION=5.3
 ###
-### Note that 5.5 will be set automatically
+### Note that 5.6 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_FPM_VERSION=5.5
+_PHP_FPM_VERSION=5.6
 
 
 ###----------------------------------------###
@@ -126,16 +127,17 @@ _PHP_FPM_VERSION=5.5
 ###
 ### Available options (if installed):
 ###
+### _PHP_CLI_VERSION=7.0
 ### _PHP_CLI_VERSION=5.6
 ### _PHP_CLI_VERSION=5.5
 ### _PHP_CLI_VERSION=5.4
 ### _PHP_CLI_VERSION=5.3
 ###
-### Note that 5.5 will be set automatically
+### Note that 5.6 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_CLI_VERSION=5.5
+_PHP_CLI_VERSION=5.6
 
 
 ###----------------------------------------###
@@ -259,15 +261,15 @@ _FULL_FORCE_REINSTALL=NO
 
 ###
 ### Use YES to run major system upgrade
-### from Debian Squeeze to Debian Wheezy.
+### from Debian Wheezy to Debian Jessie.
 ###
-_SQUEEZE_TO_WHEEZY=NO
+_WHEEZY_TO_JESSIE=NO
 
 ###
 ### Use YES to run major system upgrade
-### from Debian Lenny to Debian Squeeze.
+### from Debian Squeeze to Debian Wheezy.
 ###
-_LENNY_TO_SQUEEZE=NO
+_SQUEEZE_TO_WHEEZY=NO
 
 ###
 ### Use YES to run migration from Tomcat 6
@@ -317,11 +319,11 @@ _DB_SERIES=5.5
 ### REDIS LISTEN MODE                      ###
 ###----------------------------------------###
 ###
+### By default this option is set to SOCKET
+### to improve caching backend performance.
+###
 ### If set to PORT (old default) Redis will
 ### listen on standard port and 127.0.0.1 IP.
-###
-### You can also change this option to SOCKET
-### to improve caching backend performance.
 ###
 ### When set to any other IP address, it will
 ### switch ALL your Aegir Satellite Instances
@@ -334,7 +336,7 @@ _DB_SERIES=5.5
 ### modify /etc/csf/csf.conf to allow outgoing
 ### TCP connections via port 6379.
 ###
-_REDIS_LISTEN_MODE=PORT
+_REDIS_LISTEN_MODE=SOCKET
 
 
 ###----------------------------------------###
@@ -379,7 +381,7 @@ _SSH_PORT=22
 ### to use reliable mirrors you know,
 ### or leave default values.
 ###
-_LOCAL_DEBIAN_MIRROR=ftp.debian.org
+_LOCAL_DEBIAN_MIRROR=httpredir.debian.org
 _LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
 
 
@@ -392,7 +394,7 @@ _LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
 ### repository. Valid options:
 ###
 ### _FORCE_GIT_MIRROR=github
-### _FORCE_GIT_MIRROR=gitorious
+### _FORCE_GIT_MIRROR=gitlab
 ###
 ### Note: with forced mirror the script will
 ### not try to connect and then switch to
@@ -683,20 +685,21 @@ _LOCAL_NETWORK_HN=""
 ###----------------------------------------###
 
 ###
-### Change to YES if you prefer the running
-### daily script to fix permissions on all
+### Change to NO if you prefer the running
+### daily script to not fix permissions on all
 ### files belonging to hosted sites an their
 ### platforms (and any shared code).
 ###
-### Note that this feature is again disabled
-### by default, because it may cause critical
-### load and outages on some weak VPS hosts.
+### Note that this feature is again enabled
+### by default, because with current low
+### CPU and I/O priority it should not cause
+### any issues, even on weak systems.
 ###
-_PERMISSIONS_FIX=NO
+_PERMISSIONS_FIX=YES
 
 ###
-### Change to YES if you prefer the running
-### daily script to enable/disable modules in
+### Change to NO if you prefer the skip running
+### weekly script to enable/disable modules in
 ### all hosted sites without '.testing.' or
 ### '.temporary.' keywords in their main name,
 ### as listed in the docs/MODULES.txt
@@ -708,12 +711,7 @@ _PERMISSIONS_FIX=NO
 ### innocent modules via feature or any other
 ### dependency.
 ###
-### Note that if you disable this option, you
-### will automatically disable also the user
-### register protection check/feature:
-### https://omega8.cc/node/273
-###
-_MODULES_FIX=NO
+_MODULES_FIX=YES
 
 ###
 ### List modules to never disable via running
@@ -748,10 +746,7 @@ _STRONG_PASSWORDS=NO
 
 ###
 ### Extra packages to install. Useful to
-### specify packages not included by default
-### which could be otherwise removed because
-### of some conflicts due to the aggressive
-### Barracuda behaviour: apt-get autoremove -y
+### specify packages not included by default.
 ###
 _EXTRA_PACKAGES=""
 
@@ -942,21 +937,17 @@ _NGINX_NAXSI=NO
 
 ###
 ### When set to YES, it will also force
-### OpenSSL ans cURL re-install from sources
-### on systems other than Debian Wheezy,
-### which already comes with required
-### OpenSSL 1.0.1+ by default.
+### OpenSSL (packages) and cURL (sources)
+### upgrade / re-install.
 ###
-_NGINX_SPDY=NO
+_NGINX_SPDY=YES
 
 ###
 ### When set to YES, it will also force
-### OpenSSL ans cURL re-install from sources
-### on systems other than Debian Wheezy,
-### which already comes with required
-### OpenSSL 1.0.1+ by default.
+### OpenSSL (packages) and cURL (sources)
+### upgrade / re-install.
 ###
-_NGINX_FORWARD_SECRECY=NO
+_NGINX_FORWARD_SECRECY=YES
 
 ###
 ### Use this only when you need to always
@@ -971,6 +962,11 @@ _NGINX_EXTRA_CONF=""
 _PHP_EXTRA_CONF=""
 
 ###
+### Change to YES to enable ionCube.
+###
+_PHP_IONCUBE=NO
+
+###
 ### Change to YES to always compile in
 ### MongoDB driver. Works for PHP 5.3 only.
 ###
@@ -983,23 +979,23 @@ _PHP_MONGODB=NO
 _PHP_GEOS=NO
 
 ###
-### When set to YES, it will force
-### OpenSSL, OpenSSH and cURL re-install
-### from sources.
+### When set to YES it will force OpenSSH
+### re-install from sources (Debian only)
 ###
-### Debian Wheezy already comes with latest
-### OpenSSL 1.0.1+ by default, so this option
-### will be ignored on this system.
-###
-_SSL_FROM_SOURCES=NO
+_SSH_FROM_SOURCES=YES
 
 ###
 ### When set to YES it will force OpenSSH
-### re-install from sources. Do NOT use
-### if you don't have a serial console
-### access to the machine or VPS!
+### armoured configuration, if the option
+### _SSH_FROM_SOURCES is set to YES
 ###
-_SSH_FROM_SOURCES=NO
+_SSH_ARMOUR=NO
+
+###
+### When set to YES it will force ImageMagick
+### re-install from sources
+###
+_MAGICK_FROM_SOURCES=NO
 
 ###
 ### AUTO will default to values calculated
@@ -1024,11 +1020,11 @@ _SPEED_VALID_MAX=3600
 ###----------------------------------------###
 
 
-_AEGIR_VERSION="HEAD"
-_AEGIR_XTS_VRN="BOA-2.4.0"
-_BRANCH_BOA="2.4.x-dev"
-_BRANCH_PRN="2.4.x-dev"
-_X_VERSION="BOA-2.4.1-dev"
+_AEGIR_VERSION="AUTO"
+_AEGIR_XTS_VRN="AUTO"
+_BRANCH_BOA="AUTO"
+_BRANCH_PRN="AUTO"
+_X_VERSION="AUTO"
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${gitHub}"
 
@@ -1037,9 +1033,10 @@ _BOA_REPO_GIT_URL="${gitHub}"
 ### Commands shortcuts
 ###
 gCb="git clone --branch"
+dstUpArg="-fuy --force-yes -q --config-file /opt/tmp/apt.conf.noi.dist"
+nrmUpArg="-fuy --force-yes -q --config-file /opt/tmp/apt.conf.noi.nrml"
 _INITINS="/usr/bin/apt-get -y --force-yes install"
-_INSTALL="/usr/bin/apt-get -y --force-yes \
-  --config-file /opt/tmp/apt.conf.noninteractive install"
+_INSTALL="/usr/bin/apt-get ${nrmUpArg} install"
 
 
 ###
@@ -1052,8 +1049,9 @@ find_fast_mirror() {
   fi
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -1082,7 +1080,6 @@ find_fast_mirror() {
   fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
-  urlStb="http://${_USE_MIR}/versions/stable"
 }
 
 
@@ -1093,34 +1090,39 @@ download_helpers_libs() {
   find_fast_mirror
   mkdir -p /opt/tmp
   cd /opt/tmp
-  rm -f -r ${bldPth}
+  rm -rf /opt/tmp/boa
   if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
     isGit=$(which git 2>&1)
     if [ ! -x "${isGit}" ] || [ -z "${isGit}" ]; then
+      rm -f /etc/apt/sources.list.d/openssl.list
       apt-get update -qq &> /dev/null
-      apt-get install git-core -y --force-yes --reinstall &> /dev/null
+      apt-get install git -fuy --force-yes --reinstall &> /dev/null
+      apt-get install git-core -fuy --force-yes --reinstall &> /dev/null
+      apt-get install git-man -fuy --force-yes --reinstall &> /dev/null
       sleep 3
     fi
     ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git \
       ${bldPth} &> /dev/null
   else
-    curl ${crlGet} "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
+    curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/boa.tar.gz" | tar -xzf -
     _BOA_REPO_NAME="boa"
     _THIS_CNF="${bldPth}/aegir/conf"
   fi
   #
-  if [ ! -e "${bldPth}/aegir/helpers/apt.conf.noninteractive" ]; then
+  if [ ! -e "${bldPth}/aegir/helpers/apt.conf.noi.nrml" ] \
+    || [ ! -e "${bldPth}/aegir/helpers/apt.conf.noi.dist" ]; then
     echo " "
     echo "EXIT on error due to missing helpers"
     echo "Please try to run this script again in a few minutes"
-    echo "Also, make sure that the git port 9418 is open"
+    echo "Also, make sure that the outgoing connections via port 443 work"
     echo "Bye"
     echo " "
     clean_pid_exit
   fi
-  # Get apt helper
-  rm -f apt.conf.noninteractive*
-  cp -af ${bldPth}/aegir/helpers/apt.conf.noninteractive ./
+  # Get apt helpers
+  rm -f apt.conf.noi*
+  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.nrml ./
+  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.dist ./
   #
   # Create tmp stuff
   if [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
@@ -1131,7 +1133,7 @@ download_helpers_libs() {
   touch ${_LOG}
   chmod 600 ${_LOG}
   mkdir -p /var/opt
-  rm -f -r /var/opt/*
+  rm -rf /var/opt/*
   _SRCDIR="/opt/tmp/files"
   mkdir -p ${_SRCDIR}
   cd ${_SRCDIR}
@@ -1149,4 +1151,3 @@ download_helpers_libs() {
     cd /opt/tmp
   fi
 }
-

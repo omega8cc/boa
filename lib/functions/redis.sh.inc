@@ -54,8 +54,10 @@ forced_redis_password_update() {
     _FORCE_REDIS_RESTART=YES
     sed -i "s/^# requirepass /requirepass /g" \
       /etc/redis/redis.conf &> /dev/null
+    wait
     sed -i "s/^requirepass.*/requirepass ${_ESC_RPASS}/g" \
       /etc/redis/redis.conf &> /dev/null
+    wait
     chown redis:redis /etc/redis/redis.conf
     chmod 0600 /etc/redis/redis.conf
   fi
@@ -83,10 +85,15 @@ fix_redis_mode() {
     fi
     if [ "${_REDIS_LISTEN_MODE}" = "SOCKET" ]; then
       sed -i "s/redis_client_host/redis_client_socket/g"               /data/conf/global.inc &> /dev/null
+      wait
       sed -i "s/  = '127.0.0.1';/= '\/var\/run\/redis\/redis.sock';/g" /data/conf/global.inc &> /dev/null
+      wait
       sed -i "s/^port 0/port 6379/g"                                   /etc/redis/redis.conf &> /dev/null
+      wait
       sed -i "s/^# bind 127.0.0.1/bind 127.0.0.1/g"                    /etc/redis/redis.conf &> /dev/null
+      wait
       sed -i "s/^# unixsocket/unixsocket/g"                            /etc/redis/redis.conf &> /dev/null
+      wait
     elif [ "${_REDIS_LISTEN_MODE}" = "PORT" ] \
       || [ "${_REDIS_LISTEN_MODE}" = "127.0.0.1" ]; then
       _DO_NOTHING=YES
@@ -107,11 +114,14 @@ fix_redis_mode() {
           if [ "$_REDIS_HOST" = "LOCAL" ]; then
             sed -i "s/^bind 127.0.0.1/bind ${_REDIS_LISTEN_MODE}/g" \
               /etc/redis/redis.conf &> /dev/null
+            wait
             sed -i "s/'127.0.0.1'/'${_REDIS_LISTEN_MODE}'/g" \
               /data/conf/global.inc &> /dev/null
+            wait
           else
             sed -i "s/'127.0.0.1'/'${_REDIS_LISTEN_MODE}'/g" \
               /data/conf/global.inc &> /dev/null
+            wait
             service redis-server stop &> /dev/null
             update-rc.d -f redis-server remove &> /dev/null
             service redis stop &> /dev/null
@@ -129,6 +139,7 @@ fix_redis_mode() {
         else
           sed -i "s/'127.0.0.1'/'${_REDIS_LISTEN_MODE}'/g" \
             /data/conf/global.inc &> /dev/null
+          wait
           service redis-server stop &> /dev/null
           update-rc.d -f redis-server remove &> /dev/null
           service redis stop &> /dev/null
@@ -173,6 +184,7 @@ update_redis_password() {
         mkdir -p /data/conf
         cp -af ${locCnf}/global.inc /data/conf/global.inc
         sed -i "s/isfoobared/$RPASS/g" /data/conf/global.inc &> /dev/null
+        wait
       fi
     fi
     if [ -e "${mtrInc}" ] \
@@ -186,12 +198,12 @@ update_redis_password() {
 #
 # Install Redis from sources.
 install_redis_src() {
-  msg "INFO: Installing Redis update for ${_THIS_OS}/$_THIS_RV..."
+  msg "INFO: Installing Redis update for ${_THIS_OS}/${_THIS_RV}..."
   if [ ! -e "/var/lib/redis" ]; then
-    st_runner "adduser --system --group redis" 2> /dev/null
+    mrun "adduser --system --group redis" 2> /dev/null
   fi
   cd /var/opt
-  rm -f -r redis*
+  rm -rf redis*
   get_dev_src "redis-${_REDIS_VRN}.tar.gz"
   if [ -e "/var/lib/redis" ]; then
     mrun "service redis-server stop" &> /dev/null
@@ -200,11 +212,11 @@ install_redis_src() {
   rm -f /usr/local/bin/redis*
   rm -f /usr/bin/redis*
   cd redis-${_REDIS_VRN}
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet PREFIX=/usr install" 2> /dev/null
+  mrun "make --quiet" 2> /dev/null
+  mrun "make --quiet PREFIX=/usr install" 2> /dev/null
   cp -af ${locCnf}/redis-server /etc/init.d/redis-server
   chmod 755 /etc/init.d/redis-server &> /dev/null
-  st_runner "update-rc.d redis-server defaults" &> /dev/null
+  mrun "update-rc.d redis-server defaults" &> /dev/null
   mkdir -p /var/run/redis
   chown redis:redis /var/run/redis
   mkdir -p /var/log/redis

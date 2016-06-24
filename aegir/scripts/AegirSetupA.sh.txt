@@ -5,7 +5,7 @@
 ###
 ###  Octopus Aegir Installer
 ###
-###  Copyright (C) 2010-2015 Omega8.cc
+###  Copyright (C) 2010-2016 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -25,7 +25,7 @@
 ###  GNU GPL along with this program.
 ###  If not, see http://www.gnu.org/licenses/
 ###
-###  Code: https://code.aegir.cc/aegir
+###  Code: https://github.com/omega8cc/boa
 ###
 ###----------------------------------------###
 
@@ -42,7 +42,8 @@ bldPth="/opt/tmp/boa"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncO="octopus.sh.cnf"
 gCb="git clone --branch"
-gitHub="git://github.com/omega8cc"
+gitHub="https://github.com/omega8cc"
+gitLab="https://gitlab.com/omega8cc"
 libFnc="${bldPth}/lib/functions"
 tocIncO="${filIncO}.$1"
 vBs="/var/backups"
@@ -99,7 +100,6 @@ fi
 ###
 urlDev="http://${_USE_MIR}/dev"
 urlHmr="http://${_USE_MIR}/versions/master/aegir"
-urlStb="http://${_USE_MIR}/versions/stable"
 
 
 ###
@@ -127,12 +127,15 @@ _DISTRO_ROOT="${_ROOT}/distro/${_DISTRO}"
 _D="/data/all"
 _SRCDIR="/opt/tmp/files"
 _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
-if [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-  && [ -x "/opt/php55/bin/php" ]; then
-  _T_CLI=/opt/php55/bin
+if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+  && [ -x "/opt/php70/bin/php" ]; then
+  _T_CLI=/opt/php70/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
   && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
+elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
+  && [ -x "/opt/php55/bin/php" ]; then
+  _T_CLI=/opt/php55/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
   && [ -x "/opt/php54/bin/php" ]; then
   _T_CLI=/opt/php54/bin
@@ -140,7 +143,12 @@ elif [ "${_PHP_CLI_VERSION}" = "5.3" ] \
   && [ -x "/opt/php53/bin/php" ]; then
   _T_CLI=/opt/php53/bin
 fi
-_DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
+if [ -e "/opt/tools/d7.ini" ] \
+  && [ -e "/opt/tools/drush/7/drush/drush.php" ]; then
+  _DRUSHCMD="${_T_CLI}/php /opt/tools/drush/7/drush/drush.php"
+else
+  _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
+fi
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
@@ -199,6 +207,7 @@ satellite_if_add_update_user_platforms_symlinks
 satellite_if_add_update_backend_user_dirs_files_clean
 satellite_prepare_setup_email_tpl
 satellite_send_welcome_email
+satellite_letsencrypt_vhost_setup
 satellite_log_update
 satellite_batch_cleanup
 satellite_display_url_finalize
@@ -207,7 +216,7 @@ satellite_display_url_finalize
 ###----------------------------------------###
 ###
 ###  Octopus Aegir Installer
-###  Copyright (C) 2010-2015 Omega8.cc
+###  Copyright (C) 2010-2016 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

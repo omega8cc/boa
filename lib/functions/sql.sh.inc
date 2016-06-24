@@ -11,6 +11,7 @@ update_innodb_log_file_size() {
     mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+    wait
     mrun "sleep 5"
   fi
   mrun "service mysql start" &> /dev/null
@@ -20,6 +21,7 @@ update_innodb_log_file_size() {
 # Update SQL Config.
 update_sql_conf() {
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
+  wait
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
@@ -44,42 +46,60 @@ update_sql_conf() {
         fi
       fi
       sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
+      wait
       sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf
+      wait
       sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
+      wait
       if [ ! -e "/etc/mysql/skip-name-resolve.txt" ]; then
         sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf
+        wait
       fi
     fi
   fi
   mv -f /etc/mysql/my.cnf-pre* ${vBs}/dragon/t/ &> /dev/null
   sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
+  wait
   sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
+  wait
   _THIS_DB_SERVER_TEST=$(mysql -V 2>&1)
   if [[ "${_THIS_DB_SERVER_TEST}" =~ "5.5." ]] \
     || [[ "${_THIS_DB_SERVER_TEST}" =~ "10.0" ]]; then
     _DO_NOTHING=YES
   else
     sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf
+    wait
     sed -i "s/.*lc_messages /#lc_messages /g"         /etc/mysql/my.cnf
+    wait
   fi
   if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
     sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf
+    wait
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
       bash /var/xdrago/purge_binlogs.sh &> /dev/null
       sed -i "s/.*purge_binlogs.*//g" /var/spool/cron/crontabs/root
+      wait
       sed -i "/^$/d"                  /var/spool/cron/crontabs/root
+      wait
       sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf
+      wait
       sed -i "s/^expire_logs_days/#expire_logs_days/g" /etc/mysql/my.cnf
+      wait
       sed -i "s/^max_binlog_size/#max_binlog_size/g"   /etc/mysql/my.cnf
+      wait
     elif [ "${_DB_BINARY_LOG}" = "YES" ]; then
       sed -i "s/.*log_bin/log_bin/g"                   /etc/mysql/my.cnf
+      wait
       sed -i "s/.*expire_logs_days/expire_logs_days/g" /etc/mysql/my.cnf
+      wait
       sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf
+      wait
     fi
     if [ "${_DB_ENGINE}" = "MyISAM" ] || [ "${_DB_ENGINE}" = "InnoDB" ]; then
       sed -i "s/^default_storage_engine.*/default_storage_engine  = ${_DB_ENGINE}/g" /etc/mysql/my.cnf
+      wait
     fi
     if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
       if [ "${_INNODB_LOG_FILE_SIZE}" -ge "10" ] \
@@ -92,6 +112,7 @@ update_sql_conf() {
         else
           if [ "${_INNODB_LOG_FILE_SIZE_SAME}" = "YES" ]; then
             sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+            wait
           else
             update_innodb_log_file_size
           fi
@@ -104,7 +125,7 @@ update_sql_conf() {
 #
 # Tune memory limits for SQL server.
 tune_sql_memory_limits() {
-  urlDld="https://raw.githubusercontent.com/major/MySQLTuner-perl/master"
+  # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
   pthTun="/var/opt/mysqltuner.pl"
   outTun="/var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt"
   if [ -e "/root/.mstr.clstr.cnf" ] \
@@ -120,7 +141,7 @@ tune_sql_memory_limits() {
     msg "NOTE! This step may take a LONG time, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
     rm -f /var/opt/mysqltuner*
-    curl ${crlGet} "${urlDld}/mysqltuner.pl" -o ${pthTun}
+    curl ${crlGet} "${urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${pthTun}
     if [ ! -e "${pthTun}" ]; then
       curl ${crlGet} "${urlDev}/mysqltuner.pl" -o ${pthTun}
     fi
@@ -167,12 +188,14 @@ tune_sql_memory_limits() {
       fi
       _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
       sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
+      wait
     else
       _USE_MYISAM_MEM="${_USE_SQL}M"
       if [ "$_MYSQLTUNER_TEST_RESULT" = "FAIL" ]; then
         msg "ALRT! _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
       fi
       sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
+      wait
     fi
     ###--------------------###
     if [ ! -z "$_REC_INNODB_MEM" ] && [ "$_MYSQLTUNER_TEST_RESULT" = "OK" ]; then
@@ -191,16 +214,19 @@ tune_sql_memory_limits() {
       _INNODB_BPI=$(echo "scale=0; ${_USE_INNODB_MEM}/1024" | bc 2>&1)
       if [ "$_INNODB_BPI" -gt "1" ]; then
         sed -i "s/innodb_file_per_table   = 1/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = $_INNODB_BPI/g" /etc/mysql/my.cnf
+        wait
       fi
       if [ "${_USE_INNODB_MEM}" -lt "256" ] || [ -z "${_USE_INNODB_MEM}" ]; then
         _USE_INNODB_MEM="${_USE_SQL}"
       fi
       _USE_INNODB_MEM="${_USE_INNODB_MEM}M"
       sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
+      wait
     else
       _USE_INNODB_MEM="${_USE_SQL}M"
       msg "ALRT! _USE_INNODB_MEM is ${_USE_INNODB_MEM} because _REC_INNODB_MEM was empty!"
       sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
+      wait
     fi
   else
     _THIS_USE_MEM="${_USE_SQL}M"
@@ -211,26 +237,29 @@ tune_sql_memory_limits() {
       msg "ALRT! _USE_INNODB_MEM is $_THIS_USE_MEM because _REC_INNODB_MEM was empty!"
     fi
     sed -i "s/= 181/= ${_USE_SQL}/g"  /etc/mysql/my.cnf
+    wait
   fi
 }
 
 install_mariadb_sql() {
   cd /var/opt
   _KEYS_SERVER_TEST=FALSE
-  until [[ "$_KEYS_SERVER_TEST" =~ "MariaDB" ]]; do
+  until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
     _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
       --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
     sleep 2
   done
-  if [ "${_OSV}" = "trusty" ]; then
-    st_runner "$_INSTAPP software-properties-common" 2> /dev/null
+  if [ "${_OSV}" = "trusty" ] \
+    || [ "${_OSV}" = "jessie" ]; then
+    st_runner "${_INSTAPP} software-properties-common" 2> /dev/null
   fi
   if [ "${_THIS_OS}" = "Debian" ]; then
     _OSN=debian
   elif [ "${_THIS_OS}" = "Ubuntu" ]; then
     _OSN=ubuntu
   fi
-  if [ "${_OSV}" = "trusty" ]; then
+  if [ "${_OSV}" = "trusty" ] \
+    || [ "${_OSV}" = "jessie" ]; then
     _DB_SERIES=10.0
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -239,33 +268,30 @@ install_mariadb_sql() {
     else
       _MARIADB_VRN="${_MARIADB_10_VRN}"
     fi
-    msg "INFO: Forced MariaDB $_MARIADB_VRN in ${_THIS_OS}/${_OSV}"
-  elif [ "${_OSV}" = "lenny" ]; then
-    _DB_SERIES=5.3
-    _MARIADB_VRN=5.3.12
-    msg "INFO: Forced MariaDB $_MARIADB_VRN in ${_THIS_OS}/${_OSV}"
+    msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
   else
     if [ "${_DB_SERIES}" = "10.0" ] || [ "${_DB_SERIES}" = "5.5" ]; then
       _DO_NOTHING=YES
     else
       _DB_SERIES=5.5
       _MARIADB_VRN="${_MARIADB_5_VRN}"
-      msg "INFO: Forced MariaDB $_MARIADB_VRN in ${_THIS_OS}/${_OSV}"
+      msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
     fi
     if [ -z "${_DB_SERIES}" ]; then
       _DB_SERIES=5.5
       _MARIADB_VRN="${_MARIADB_5_VRN}"
-      msg "INFO: Forced MariaDB $_MARIADB_VRN in ${_THIS_OS}/${_OSV}"
+      msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
     fi
   fi
+  rm -f /etc/apt/sources.list.d/openssl.list
   aptRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
   aptLiDb="${aptLiSys}.d/mariadb.list"
   echo "## MariaDB APT Repository" > ${aptLiDb}
   echo "deb http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
   echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]] \
-    || [[ "$_BROKEN_KEYRING_TEST" =~ "GPG error" ]]; then
+  if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
+    || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
     msg "WARN: Installed keyring is broken, forced reinstall required"
     if [ "${_THIS_OS}" = "Debian" ]; then
       st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
@@ -277,11 +303,9 @@ install_mariadb_sql() {
   st_runner "aptitude remove mytop -y"                     &> /dev/null
   st_runner "apt-get purge mytop -y"                       &> /dev/null
   rm -f /usr/bin/mytop
-  st_runner "apt-get autoremove -y --force-yes -qq"        &> /dev/null
   st_runner "aptitude remove mysql-common -y"              &> /dev/null
   st_runner "apt-get purge mysql-common -y"                &> /dev/null
-  st_runner "apt-get autoremove -y --force-yes -qq"        &> /dev/null
-  st_runner "apt-get update -y --force-yes"                &> /dev/null
+  st_runner "apt-get update -qq"                           &> /dev/null
   if [ "${_EASY_SETUP}" = "MSTR" ] \
     || [ "${_EASY_SETUP}" = "DBHD" ] \
     || [ "${_EASY_SETUP}" = "WBHD" ] \
@@ -289,8 +313,7 @@ install_mariadb_sql() {
     || [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ]; then
-    SQLDEB="galera \
-            mariadb-galera-server"
+    SQLDEB="mariadb-galera-server"
   else
     SQLDEB="mariadb-server-${_DB_SERIES} \
             mariadb-client-${_DB_SERIES} \
@@ -306,9 +329,9 @@ install_mariadb_sql() {
 
 install_with_aptitude_sql() {
   if [ "${_OSV}" = "squeeze" ] \
+    || [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "precise" ] \
-    || [ "${_OSV}" = "lucid" ]; then
+    || [ "${_OSV}" = "precise" ]; then
     if [ "${_EASY_SETUP}" = "MSTR" ] \
       || [ "${_EASY_SETUP}" = "DBHD" ] \
       || [ "${_EASY_SETUP}" = "WBHD" ] \
@@ -334,19 +357,21 @@ install_with_aptitude_sql() {
     fi
   fi
   install_mariadb_sql
-  st_runner "$_INSTAPP mytop" 2> /dev/null
-  touch ${pthLog}/fixed-mytop-mariadb.log
-  st_runner "$_INSTAPP $SQLDEB" 2> /dev/null
-  st_runner "$_INSTAPP $SQLADD" 2> /dev/null
-  st_runner "$_INSTAPP $SQLDEB" 2> /dev/null
+  st_runner "${_INSTAPP} mytop" 2> /dev/null
+  if [ -e "${pthLog}" ]; then
+    touch ${pthLog}/fixed-mytop-mariadb.log
+  fi
+  st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
+  st_runner "${_INSTAPP} ${SQLADD}" 2> /dev/null
+  st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
   if [ "${_EASY_SETUP}" = "DBHD" ] \
     || [ -e "/etc/mysql/conf.d/galera.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
     msg "INFO: Running MariaDB system tables upgrade, please wait..."
     if [ -x "/usr/bin/mariadb_upgrade" ]; then
-      st_runner "mariadb_upgrade --force" &> /dev/null
+      mrun "mariadb_upgrade --force" &> /dev/null
     elif [ -x "/usr/bin/mysql_upgrade" ]; then
-      st_runner "mysql_upgrade --force" &> /dev/null
+      mrun "mysql_upgrade --force" &> /dev/null
     fi
   fi
 }
@@ -468,12 +493,11 @@ install_mariadb_server() {
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       _SQL_UPGRADE=YES
     fi
-    if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "squeeze" ]; then
+    if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
+      && [ "${_LOC_OSV}" = "wheezy" ]; then
       _SQL_UPGRADE=NO
-    fi
-    if [ "${_LENNY_TO_SQUEEZE}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "lenny" ]; then
+    elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+      && [ "${_LOC_OSV}" = "squeeze" ]; then
       _SQL_UPGRADE=NO
     fi
     _SQL_DEB_SRC_TEST=$(grep ${_DB_SRC} \
@@ -492,7 +516,8 @@ install_mariadb_server() {
       echo "## MariaDB APT Repository" > ${aptLiDb}
       echo "deb http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
       echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
-      st_runner "aptitude update -y" &> /dev/null
+      rm -f /etc/apt/sources.list.d/openssl.list
+      st_runner "apt-get update -qq" &> /dev/null
       touch ${pthLog}/mariadb-apt-fixed-${_X_VERSION}.log
     fi
     if [ "$_SQL_UPGRADE" = "YES" ]; then
@@ -506,17 +531,20 @@ install_mariadb_server() {
       rm -f ${aptLiSys}.d/percona.list
       rm -f ${aptLiSys}.d/ourdelta.list
       _KEYS_SERVER_TEST=FALSE
-      until [[ "$_KEYS_SERVER_TEST" =~ "MariaDB" ]]; do
+      until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
         _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
           --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
         sleep 2
       done
+      rm -f /etc/apt/sources.list.d/openssl.list
       st_runner "aptitude autoclean -y" &> /dev/null
       st_runner "apt-get clean -qq" &> /dev/null
-      st_runner "apt-get update -y --force-yes" &> /dev/null
+      st_runner "apt-get update -qq" &> /dev/null
       cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
       sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
+      wait
       sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
+      wait
       rm -f /var/lib/mysql/debian-*.flag &> /dev/null
       rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
       install_with_aptitude_sql
@@ -526,11 +554,14 @@ install_mariadb_server() {
         _DO_NOTHING=YES
       else
         sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf
+        wait
         sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf
+        wait
       fi
       if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
         sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" \
           /etc/mysql/my.cnf
+        wait
       fi
       _PHP_FORCE_REINSTALL=YES
       mrun "sleep 8"
@@ -593,6 +624,7 @@ check_update_sql_credentials() {
   if [ -e "/root/.my.pass.txt" ]; then
     for Files in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f`; do
       sed -i "s/php-fpm nginx php/php-fpm php-cgi nginx php/g" $Files &> /dev/null
+      wait
     done
     if [ "${_STATUS}" = "INIT" ]; then
       msg "INFO: Updating ${_DB_SERVER} and PHP configuration"
@@ -669,6 +701,7 @@ finalize_sql_initial_setup() {
           chmod 400 ${vBs}/debian.cnf-pre-${_X_VERSION}-${_NOW}.txt
           sed -i "s/^password =.*/password = ${PASWD}/g" \
             /etc/mysql/debian.cnf &> /dev/null
+          wait
         fi
         if [ -e "/root/.remote.IP.list" ]; then
           _ESC="\`%\`.*"
@@ -711,9 +744,11 @@ finalize_sql_initial_setup() {
       echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
     else
       sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf
+      wait
     fi
     sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
       /etc/mysql/debian-start &> /dev/null
+    wait
     mrun "service mysql restart" &> /dev/null
     msg "INFO: ${_DB_SERVER} setup completed"
     msg "INFO: You can now log in as root by typing just 'mysql'"
@@ -750,7 +785,9 @@ finalize_sql_initial_setup() {
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ ! -e "/root/.mysql.no.new.password.cnf" ]; then
-        forced_mysql_root_password_update
+        if [ -e "/root/.mysql.yes.new.password.cnf" ]; then
+          forced_mysql_root_password_update
+        fi
       fi
     fi
   fi

@@ -8,7 +8,7 @@
 
 $| = 1;
 $this_filename = "hackcheck";
-$times = `date +%y%m%d-%H%M%S`;
+$times=`date +%y%m%d-%H%M%S`;
 chomp($times);
 $now_is=`date +%b:%d:%H:%M`;
 chomp($now_is);
@@ -26,7 +26,7 @@ sub makeactions
     @banetable = <NOT>;
     close (NOT);
   }
-  local(@MYARR) = `tail --lines=999 /var/log/auth.log 2>&1`;
+  local(@MYARR)=`tail --lines=999 /var/log/auth.log 2>&1`;
   local($sumar,$maxnumber);
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
@@ -56,6 +56,17 @@ sub makeactions
       &verify_timestamp;
       if ($timestamp eq "NEW") {
         local($a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $VISITOR, $rest) = split(/\s+/,$line);
+        $VISITOR =~ s/[^0-9\.]//g;
+        if ($VISITOR =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
+          chomp($line);
+          $li_cnt{$VISITOR}++;
+        }
+      }
+    }
+    elsif ($line =~ /(Received disconnect)/i && $line !~ /(disconnected by user)/i) {
+      &verify_timestamp;
+      if ($timestamp eq "NEW") {
+        local($a, $b, $c, $d, $e, $f, $g, $h, $VISITOR, $rest) = split(/\s+/,$line);
         $VISITOR =~ s/[^0-9\.]//g;
         if ($VISITOR =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
           chomp($line);
@@ -127,4 +138,4 @@ sub check_ip
     }
   }
 }
-###EOF2015###
+###EOF2016###

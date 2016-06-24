@@ -1,0 +1,1168 @@
+#!/bin/bash
+
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
+_WEBG=www-data
+
+###
+### Avoid too many questions
+###
+export DEBIAN_FRONTEND=noninteractive
+if [ -z "${TERM+x}" ]; then
+  export TERM=vt100
+fi
+
+###-------------SYSTEM-----------------###
+
+send_notice_migration_complete() {
+  _MAILX_TEST=`mail -V 2>&1`
+  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
+  cat <<EOF | mail -e -a "From: ${_ADM_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" -s "IMPORTANT: Completed migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
+Hello,
+
+You are receiving this notification because your Aegir hosting system
+migration process to the new facility has been completed.
+
+# Caveats:
+
+  * New Aegir URL is listed in the new welcome email
+  * New SSH/SFTP credentials are listed in the new welcome email
+  * All cron tasks are paused during this migration and in the next 1-3 hours
+  * The old Aegir control panel has been disabled to protect proxy vhosts
+  * The main SSH account home directory contents has not been migrated
+  * SSH keys have been transferred, but only for the main SSH account
+  * SSH sub-accounts (Clients), if used, will be recreated from scratch
+  * The Aegir backend USER.id_rsa.pub public SSH key has changed
+
+  * NOTE! YOUR **NEW** WELCOME EMAIL CONTAINS THE NEW DEFAULT IP ADDRESS
+    of your Aegir instance in the new facility. It is recommended
+    that you update DNS for all non-SSL-enabled sites as soon
+    as possible, to point the traffic directly to the new servers
+    and not rely on the provided proxy for too long.
+
+  * For SSL-enabled sites with dedicated IP addresses - please
+    don't update their DNS until you will receive separate email
+    with new dedicated IP address to use. Your SSL certificates
+    have been migrated automatically, so only DNS update will be needed
+    once new IP address is provided.
+
+  * You should use only the new SSH/SFTP credentials listed in the
+    new welcome email, because this is your only access to all your
+    migrated live/active sites and their files.
+
+  * While Aegir control panel URL has changed, its access credentials
+    are still the same as before, in contrast to SSH/SFTP credentials.
+    This is to preserve your Aegir control panel tasks history,
+    all sites<-->clients associations and domain aliases/redirects.
+
+Kind Regards,
+--
+Your BOA Server Skynet Agent
+
+EOF
+  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
+  cat <<EOF | mail -a "From: ${_ADM_EMAIL}" -e -b ${_BCC_EMAIL} -s "IMPORTANT: Completed migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
+Hello,
+
+You are receiving this notification because your Aegir hosting system
+migration process to the new facility has been completed.
+
+# Caveats:
+
+  * New Aegir URL is listed in the new welcome email
+  * New SSH/SFTP credentials are listed in the new welcome email
+  * All cron tasks are paused during this migration and in the next 1-3 hours
+  * The old Aegir control panel has been disabled to protect proxy vhosts
+  * The main SSH account home directory contents has not been migrated
+  * SSH keys have been transferred, but only for the main SSH account
+  * SSH sub-accounts (Clients), if used, will be recreated from scratch
+  * The Aegir backend USER.id_rsa.pub public SSH key has changed
+
+  * NOTE! YOUR **NEW** WELCOME EMAIL CONTAINS THE NEW DEFAULT IP ADDRESS
+    of your Aegir instance in the new facility. It is recommended
+    that you update DNS for all non-SSL-enabled sites as soon
+    as possible, to point the traffic directly to the new servers
+    and not rely on the provided proxy for too long.
+
+  * For SSL-enabled sites with dedicated IP addresses - please
+    don't update their DNS until you will receive separate email
+    with new dedicated IP address to use. Your SSL certificates
+    have been migrated automatically, so only DNS update will be needed
+    once new IP address is provided.
+
+  * You should use only the new SSH/SFTP credentials listed in the
+    new welcome email, because this is your only access to all your
+    migrated live/active sites and their files.
+
+  * While Aegir control panel URL has changed, its access credentials
+    are still the same as before, in contrast to SSH/SFTP credentials.
+    This is to preserve your Aegir control panel tasks history,
+    all sites<-->clients associations and domain aliases/redirects.
+
+Kind Regards,
+--
+Your BOA Server Skynet Agent
+
+EOF
+  else
+  cat <<EOF | mail -r ${_ADM_EMAIL} -e -b ${_BCC_EMAIL} -s "IMPORTANT: Completed migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
+Hello,
+
+You are receiving this notification because your Aegir hosting system
+migration process to the new facility has been completed.
+
+# Caveats:
+
+  * New Aegir URL is listed in the new welcome email
+  * New SSH/SFTP credentials are listed in the new welcome email
+  * All cron tasks are paused during this migration and in the next 1-3 hours
+  * The old Aegir control panel has been disabled to protect proxy vhosts
+  * The main SSH account home directory contents has not been migrated
+  * SSH keys have been transferred, but only for the main SSH account
+  * SSH sub-accounts (Clients), if used, will be recreated from scratch
+  * The Aegir backend USER.id_rsa.pub public SSH key has changed
+
+  * NOTE! YOUR **NEW** WELCOME EMAIL CONTAINS THE NEW DEFAULT IP ADDRESS
+    of your Aegir instance in the new facility. It is recommended
+    that you update DNS for all non-SSL-enabled sites as soon
+    as possible, to point the traffic directly to the new servers
+    and not rely on the provided proxy for too long.
+
+  * For SSL-enabled sites with dedicated IP addresses - please
+    don't update their DNS until you will receive separate email
+    with new dedicated IP address to use. Your SSL certificates
+    have been migrated automatically, so only DNS update will be needed
+    once new IP address is provided.
+
+  * You should use only the new SSH/SFTP credentials listed in the
+    new welcome email, because this is your only access to all your
+    migrated live/active sites and their files.
+
+  * While Aegir control panel URL has changed, its access credentials
+    are still the same as before, in contrast to SSH/SFTP credentials.
+    This is to preserve your Aegir control panel tasks history,
+    all sites<-->clients associations and domain aliases/redirects.
+
+Kind Regards,
+--
+Your BOA Server Skynet Agent
+
+EOF
+  fi
+  echo "INFO: Migration complete notice sent to ${_CLIENT_EMAIL} [${_THIS_HM_USER}]: OK"
+}
+
+send_notice_migration_start() {
+  _MAILX_TEST=`mail -V 2>&1`
+  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
+  cat <<EOF | mail -e -a "From: ${_ADM_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" -s "STATUS: Running migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
+Hello,
+
+You are receiving this notification because your Aegir hosting system
+migration process to the new facility has been started.
+
+You will receive another email when the migration is complete.
+
+WARNING! Please do not run any tasks in your old Aegir control panel.
+It could break special proxy vhosts we have created for you to provide
+service continuity during this migration.
+
+Kind Regards,
+--
+Your BOA Server Skynet Agent
+
+EOF
+  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
+  cat <<EOF | mail -a "From: ${_ADM_EMAIL}" -e -b ${_BCC_EMAIL} -s "STATUS: Running migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
+Hello,
+
+You are receiving this notification because your Aegir hosting system
+migration process to the new facility has been started.
+
+You will receive another email when the migration is complete.
+
+WARNING! Please do not run any tasks in your old Aegir control panel.
+It could break special proxy vhosts we have created for you to provide
+service continuity during this migration.
+
+Kind Regards,
+--
+Your BOA Server Skynet Agent
+
+EOF
+  else
+  cat <<EOF | mail -r ${_ADM_EMAIL} -e -b ${_BCC_EMAIL} -s "STATUS: Running migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
+Hello,
+
+You are receiving this notification because your Aegir hosting system
+migration process to the new facility has been started.
+
+You will receive another email when the migration is complete.
+
+WARNING! Please do not run any tasks in your old Aegir control panel.
+It could break special proxy vhosts we have created for you to provide
+service continuity during this migration.
+
+Kind Regards,
+--
+Your BOA Server Skynet Agent
+
+EOF
+  fi
+  echo "INFO: Migration start notice sent to ${_CLIENT_EMAIL} [${_THIS_HM_USER}]: OK"
+}
+
+enable_chattr() {
+  isTest="$1"
+  isTest=${isTest//[^a-z0-9]/}
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
+    if [ "$1" != "${_THIS_HM_USER}.ftp" ]; then
+      chattr +i /home/$1
+    else
+      chattr +i /home/$1/platforms
+      chattr +i /home/$1/platforms/*
+    fi
+    if [ -d "/home/$1/.bazaar" ]; then
+      chattr +i /home/$1/.bazaar
+    fi
+    chattr +i /home/$1/.drush
+    chattr +i /home/$1/.drush/*.ini
+  fi
+}
+
+disable_chattr() {
+  isTest="$1"
+  isTest=${isTest//[^a-z0-9]/}
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
+    if [ "$1" != "${_THIS_HM_USER}.ftp" ]; then
+      chattr -i /home/$1
+    else
+      chattr -i /home/$1/platforms
+      chattr -i /home/$1/platforms/*
+    fi
+    if [ -d "/home/$1/.bazaar" ]; then
+      chattr -i /home/$1/.bazaar
+    fi
+    chattr -i /home/$1/.drush
+    chattr -i /home/$1/.drush/*.ini
+  fi
+}
+
+run_drush8_hmr_cmd() {
+  su -s /bin/bash - ${_THIS_HM_USER} -c "drush8 @hostmaster $1"
+}
+
+run_drush8_nosilent_cmd() {
+  su -s /bin/bash - ${_THIS_HM_USER} -c "drush8 @${Dom} $1"
+}
+
+migrate_sites() {
+  for Site in `find ${_USR}/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
+  do
+    Dom=`echo $Site | cut -d'/' -f9 | awk '{ print $1}'`
+    Vht="${_USR}/config/server_master/nginx/vhost.d/${Dom}"
+    Vhd="${_USR}/config/server_master/nginx/vhost.d/.${Dom}"
+    if [ -e "${Vht}" ] && [ ! -z "${oct}" ]; then
+      chown ${oct}:users ${Vht}
+      chmod 600 ${Vht}
+    fi
+    if [ -e "${Vhd}" ] && [ ! -z "${oct}" ]; then
+      chown ${oct}:users ${Vhd}
+      chmod 600 ${Vhd}
+    fi
+    if [ -e "${_USR}/.drush/${Dom}.alias.drushrc.php" ]; then
+      echo Dom is ${Dom}
+      Dir=`cat ${_USR}/.drush/${Dom}.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+      Plr=`cat ${_USR}/.drush/${Dom}.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+      if [ "${cmd}" = "import" ] || [ "${cmd}" = "export" ]; then
+        _DBN=`cat ${Dir}/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
+        echo "site ${Dom} raw _DBN is $_DBN"
+        _DBN=${_DBN//[^a-zA-Z0-9_]/}
+        echo "site ${Dom} clean _DBN is $_DBN"
+      fi
+      if [ "${cmd}" = "import" ]; then
+        _DBP=`cat ${Dir}/drushrc.php | grep "options\['db_passwd'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
+        echo "site ${Dom} raw _DBP is $_DBP"
+        _DBP=${_DBP//[^a-zA-Z0-9_]/}
+        echo "site ${Dom} clean _DBP is $_DBP"
+        if [ -e "${Vhd}" ]; then
+          mv -f ${Vhd} ${Vht}
+        fi
+        if [ ! -z "${dst}" ]; then
+          _TGT_HM_USER="${dst}"
+        else
+          _TGT_HM_USER="${oct}"
+        fi
+        chown ${_TGT_HM_USER}:users ${Vht}
+        chmod 600 ${Vht}
+        if [ -e "${Dir}/drushrc.php" ]; then
+          sed -i "s/\$options\['db_host'\] = '.*/\$options[\'db_host\'] = \'localhost\';/g" ${Dir}/drushrc.php
+          wait
+        fi
+        if [ -e "${Vht}" ]; then
+          sed -i "s/.*fastcgi_param.*db_host.*;/  fastcgi_param db_host   localhost;/g" ${Vht}
+          wait
+        fi
+        echo "INFO: site ${Dom} db_host on ${_TGT_HM_USER} fixed"
+        if [ ! -z "${_DBN}" ] && [ ! -z "${_DBP}" ]; then
+          if [ ! -d "/var/lib/mysql/${_DBN}" ]; then
+            mysqladmin flush-privileges
+            mysql -uroot mysql<<EOFMYSQL
+CREATE DATABASE ${_DBN} CHARACTER SET utf8;
+GRANT ALL PRIVILEGES ON ${_DBN}.* TO '${_DBN}'@'127.0.0.1' IDENTIFIED BY '${_DBP}';
+GRANT ALL PRIVILEGES ON ${_DBN}.* TO '${_DBN}'@'localhost' IDENTIFIED BY '${_DBP}';
+EOFMYSQL
+            mysqladmin flush-privileges
+            echo "INFO: site ${Dom} db setup on ${oct} complete"
+          else
+            echo "ALRT: site ${Dom} db ${_DBN} already exists!"
+          fi
+          if [ -e "${_USR}/src/${_DBN}.sql" ]; then
+            mysql ${_DBN} < ${_USR}/src/${_DBN}.sql
+            echo "INFO: site ${Dom} db import on ${oct} complete"
+            ###
+            ### Activate readonly on source via global.inc and not via drush
+            ###
+            ### run_drush8_nosilent_cmd "vset --always-set site_readonly 0"
+            ### run_drush8_nosilent_cmd "dis readonlymode -y"
+            ### echo "INFO: site ${Dom} readonlymode on ${oct} disabled"
+            ###
+          else
+            echo "ALRT: site ${Dom} db failure due to missing ${_USR}/src/${_DBN}.sql"
+          fi
+          if [ -e "${_USR}/.drush/${Dom}.alias.drushrc.php" ]; then
+            run_drush8_hmr_cmd "hosting-task @${Dom} verify --force"
+            echo "INFO: site ${Dom} verify on ${oct} scheduled"
+          else
+            echo "ALRT: site ${Dom} verify failure due to missing ${_USR}/.drush/${Dom}.alias.drushrc.php"
+          fi
+        else
+          echo "ALRT: site ${Dom} db failure due to empty _DBN/${_DBN} or _DBP/${_DBP}"
+        fi
+      elif [ "${cmd}" = "export" ]; then
+        run_drush8_nosilent_cmd "en readonlymode -y"
+        ###
+        ### Activate readonly on source via global.inc and not via drush
+        ###
+        ### run_drush8_nosilent_cmd "vset --always-set site_readonly 1"
+        ###
+        echo "INFO: site ${Dom} readonlymode module on ${oct} enabled"
+        mysqldump \
+          --single-transaction \
+          --quick \
+          --no-autocommit \
+          --default-character-set=utf8 \
+          --hex-blob ${_DBN} > ${_USR}/src/${_DBN}.sql
+        echo "INFO: site ${Dom} db export on ${oct} complete"
+      elif [ "${cmd}" = "proxy" ]; then
+        if [ -e "${_USR}/log/exported.pid" ] && [ ! -z "${tgt}" ]; then
+          if [ -e "${Vht}" ]; then
+            _NMS=`cat ${Vht} | grep "server_name" | sed "s/server_name//g; s/;//g" | tr -d "\n" | sed "s/  / /g; s/  / /g; s/  / /g" | uniq`
+            mv -f ${Vht} $Vhd
+            cp -a /var/xdrago/conf/proxy.conf ${Vht}
+            sed -i "s/.*server_name.*;/  server_name                 ${_NMS};/g" ${Vht}
+            wait
+            sed -i "s/target_ip/${tgt}/g" ${Vht}
+            wait
+            chown ${oct}:users ${Vht}
+            chmod 600 ${Vht}
+            echo "INFO: site ${Dom} proxy conversion on ${oct} complete"
+          else
+            echo "ALRT: site ${Dom} proxy conversion on ${oct} failed due to missing ${Vht}"
+          fi
+        else
+          echo "ALRT: site ${Dom} proxy conversion on ${oct} failed due to empty tgt/${tgt}"
+        fi
+      fi
+    fi
+  done
+}
+
+delete_this_platform() {
+  run_drush8_hmr_cmd "hosting-task @platform_${_T_PFM_NAME} delete --force"
+  echo "Old empty platform_${_T_PFM_NAME} will be deleted"
+  run_drush8_hmr_cmd "hosting-dispatch"
+  sleep 5
+}
+
+migrate_prepare() {
+  _THIS_HM_USER=${oct}
+  _USR=/data/disk/${oct}
+  _THIS_HM_SITE=`cat ${_USR}/.drush/hostmaster.alias.drushrc.php \
+    | grep "site_path'" \
+    | cut -d: -f2 \
+    | awk '{ print $3}' \
+    | sed "s/[\,']//g"`
+  echo _THIS_HM_USER ${_THIS_HM_USER}
+  echo _USR ${_USR}
+  echo _THIS_HM_SITE ${_THIS_HM_SITE}
+  if [ -e "${_USR}/log/option.txt" ]; then
+    _CLIENT_OPTION=`cat ${_USR}/log/option.txt`
+    _CLIENT_OPTION=`echo -n ${_CLIENT_OPTION} | tr -d "\n"`
+  fi
+  if [ -e "${_USR}/log/cores.txt" ]; then
+    _CLIENT_CORES=`cat ${_USR}/log/cores.txt`
+    _CLIENT_CORES=`echo -n ${_CLIENT_CORES} | tr -d "\n"`
+  fi
+  if [ -e "${_USR}/log/subscr.txt" ]; then
+    _CLIENT_SUBSCR=`cat ${_USR}/log/subscr.txt`
+    _CLIENT_SUBSCR=`echo -n ${_CLIENT_SUBSCR} | tr -d "\n"`
+  fi
+  if [ -e "${_USR}/log/email.txt" ]; then
+    _CLIENT_EMAIL=`cat ${_USR}/log/email.txt`
+    _CLIENT_EMAIL=`echo -n ${_CLIENT_EMAIL} | tr -d "\n"`
+    if [[ "${_CLIENT_EMAIL}" =~ "@" ]]; then
+      _DO_NOTHING=YES
+    else
+      _CLIENT_EMAIL="omega8cc@gmail.com"
+    fi
+    _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  fi
+
+  [ -z "${_CLIENT_OPTION}" ] && _CLIENT_OPTION=EDGE
+  [ -z "${_CLIENT_SUBSCR}" ] && _CLIENT_SUBSCR=M
+  [ -z "${_CLIENT_CORES}" ]  && _CLIENT_CORES=1
+  [ -z "${_CLIENT_EMAIL}" ]  && _CLIENT_EMAIL="omega8cc@gmail.com"
+
+  echo "_CLIENT_EMAIL is ${_CLIENT_EMAIL}"
+  echo "_THIS_HM_USER is ${_THIS_HM_USER}"
+  echo "_CLIENT_OPTION is ${_CLIENT_OPTION}"
+  echo "_CLIENT_SUBSCR is ${_CLIENT_SUBSCR}"
+  echo "_CLIENT_CORES is ${_CLIENT_CORES}"
+
+  if [ "${cmd}" = "export" ] && [ ! -z "${_CLIENT_EMAIL}" ]; then
+    send_notice_migration_start
+  fi
+
+  su -s /bin/bash ${_THIS_HM_USER} -c "drush8 cc drush" &> /dev/null
+  disable_chattr ${_THIS_HM_USER}.ftp &> /dev/null
+  rm -rf /home/${_THIS_HM_USER}.ftp/drush-backups
+  run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
+  run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
+  rm -rf ${_USR}/clients/*/backups
+  symlinks -dr ${_USR}/clients &> /dev/null
+  if [ -e "/home/${_THIS_HM_USER}.ftp" ]; then
+    symlinks -dr /home/${_THIS_HM_USER}.ftp &> /dev/null
+    rm -f /home/${_THIS_HM_USER}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
+  fi
+  if [ -e "${_THIS_HM_SITE}/drushrc.php" ]; then
+    _HDB=`cat ${_THIS_HM_SITE}/drushrc.php \
+      | grep "options\['db_name'\] = " \
+      | cut -d: -f2 \
+      | awk '{ print $3}' \
+      | sed "s/[\,';]//g"`
+    echo "raw _HDB is ${_HDB}"
+    _HDB=${_HDB//[^a-zA-Z0-9_]/}
+    echo "clean _HDB is ${_HDB}"
+  else
+    echo "no ${_THIS_HM_SITE}/drushrc.php found"
+  fi
+  mkdir -p ${_USR}/src
+  if [ "${cmd}" = "export" ] \
+    && [ ! -z "${_HDB}" ] \
+    && [ ! -e "${_USR}/src/prev_hostmaster.sql" ] \
+    && [ ! -e "${_USR}/log/exported.pid" ]; then
+      mysqldump \
+        --single-transaction \
+        --quick \
+        --no-autocommit \
+        --default-character-set=utf8 \
+        --hex-blob ${_HDB} \
+        field_data_body \
+        field_data_comment_body \
+        field_revision_body \
+        field_revision_comment_body \
+        filter \
+        filter_format \
+        history \
+        hosting_backup_gc_sites \
+        hosting_client \
+        hosting_client_user \
+        hosting_context \
+        hosting_cron \
+        hosting_package \
+        hosting_package_instance \
+        hosting_package_languages \
+        hosting_platform \
+        hosting_platform_client_access \
+        hosting_site \
+        hosting_site_alias \
+        hosting_site_backups \
+        hosting_ssl_cert \
+        hosting_ssl_cert_ips \
+        hosting_ssl_site \
+        hosting_task \
+        hosting_task_arguments \
+        hosting_task_log \
+        node \
+        node_access \
+        node_comment_statistics \
+        node_revision \
+        node_type \
+        role \
+        role_permission \
+        url_alias \
+        userprotect \
+        users \
+        users_roles \
+        > ${_USR}/src/prev_hostmaster.sql
+    run_drush8_hmr_cmd "vset --always-set maintenance_mode 1"
+    if [ -e "${_USR}/src/prev_hostmaster.sql" ]; then
+      echo "INFO: hostmaster ${oct} db export complete"
+      touch ${_USR}/log/exported.pid
+    else
+      echo "ALRT: no ${_USR}/src/prev_hostmaster.sql exists!"
+      exit 1
+    fi
+  fi
+  if [ "${cmd}" = "import" ] \
+    && [ -e "${_USR}/config/includes/nginx_vhost_common.conf" ] \
+    && [ ! -z "${_HDB}" ] \
+    && [ -e "${_USR}/src/prev_hostmaster.sql" ] \
+    && [ ! -e "${_USR}/log/imported.pid" ]; then
+    if [ ! -z "${dst}" ]; then
+      if [ "${oct}" = "${dst}" ]; then
+        mysql ${_HDB} < ${_USR}/src/prev_hostmaster.sql
+        run_drush8_hmr_cmd "vset --always-set site_frontpage 'hosting/sites'"
+        touch ${_USR}/log/imported.pid
+      fi
+    else
+      mysql ${_HDB} < ${_USR}/src/prev_hostmaster.sql
+      run_drush8_hmr_cmd "vset --always-set site_frontpage 'hosting/sites'"
+      touch ${_USR}/log/imported.pid
+    fi
+
+    if [ "${fix}" = "fix" ]; then
+      if [ ! -e "${_USR}/log/post-merge-fix.pid" ]; then
+        echo "HOTFIX B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 start"
+        _DOMAIN=`cat ${_USR}/log/domain.txt`
+        _DOMAIN=`echo -n ${_DOMAIN} | tr -d "\n"`
+        _USE_AEGIR_HOST=`uname -n`
+
+        ### Pre-Fix for migrated/merged instances
+        if [ -e "${_USR}/log/imported.pid" ] || [ -e "${_USR}/log/exported.pid" ]; then
+          if [ -e "${_USR}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
+            sed -i "s/platform_0.*'/platform_hostmaster'/g"    ${_USR}/.drush/hostmaster.alias.drushrc.php
+            wait
+            sed -i "s/distro\/0.*\/sites/distro\/001\/sites/g" ${_USR}/.drush/hostmaster.alias.drushrc.php
+            wait
+            sed -i "s/distro\/01.*',/distro\/001',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
+            wait
+            sed -i "s/distro\/02.*',/distro\/001',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
+            wait
+            sed -i "s/distro\/03.*',/distro\/001',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
+            wait
+            sed -i "s/distro\/04.*',/distro\/001',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
+            wait
+            sed -i "s/distro\/05.*',/distro\/001',/g"          ${_USR}/.drush/hostmaster.alias.drushrc.php
+            wait
+            sed -i "s/platform_0.*'/platform_hostmaster'/g"    ${_USR}/.drush/hm.alias.drushrc.php
+            wait
+            sed -i "s/distro\/0.*\/sites/distro\/001\/sites/g" ${_USR}/.drush/hm.alias.drushrc.php
+            wait
+            sed -i "s/distro\/01.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
+            wait
+            sed -i "s/distro\/02.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
+            wait
+            sed -i "s/distro\/03.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
+            wait
+            sed -i "s/distro\/04.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
+            wait
+            sed -i "s/distro\/05.*',/distro\/001',/g"          ${_USR}/.drush/hm.alias.drushrc.php
+            for Platform in `find ${_USR}/.drush/platform_* -maxdepth 1 -type f | sort`; do
+              _T_PFM_NAME=$(echo "${Platform}" \
+                | sed "s/.*platform_//g; s/.alias.drushrc.php//g" \
+                | awk '{ print $1}' 2>&1)
+              _T_PFM_ROOT=$(cat ${Platform} \
+                | grep "root'" \
+                | cut -d: -f2 \
+                | awk '{ print $3}' \
+                | sed "s/[\,']//g" 2>&1)
+              _T_PFM_SITE=$(grep "${_T_PFM_ROOT}/sites/" \
+                ${_USR}/.drush/*.drushrc.php \
+                | grep site_path 2>&1)
+              if [ ! -e "${_T_PFM_ROOT}/sites/all" ] \
+                && [ "${_T_PFM_NAME}" != "hostmaster" ]; then
+                delete_this_platform
+                mkdir -p ${_USR}/undo
+                mv -f ${_USR}/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php \
+                  ${_USR}/undo/ &> /dev/null
+                echo "GHOST platform ${_T_PFM_ROOT} detected and moved to ${_USR}/undo/"
+              fi
+              if [[ "${_T_PFM_SITE}" =~ ".restore" ]]; then
+                echo "WARNING: ghost site leftover found: ${_T_PFM_SITE}"
+              fi
+              if [ -z "${_T_PFM_SITE}" ] \
+                && [ "${_T_PFM_NAME}" != "hostmaster" ] \
+                && [ -e "${_T_PFM_ROOT}/sites/all" ]; then
+                delete_this_platform
+              fi
+            done
+          fi
+        fi
+
+        run_drush8_hmr_cmd "sqlq \"REPLACE INTO hosting_context (nid, name) VALUES ('4', 'server_localhost'), ('2', 'server_master')\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"REPLACE INTO hosting_package (vid, nid, package_type, short_name, old_short_name, description) VALUES ('6', '6', 'platform', 'drupal', '', '')\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"REPLACE INTO node_revision (nid, vid, uid, title, body, teaser, log, timestamp, format) VALUES ('6', '6', '1', 'drupal', '', '', '', '1412168340', '0')\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"REPLACE INTO node (nid, vid, type, language, title, uid, status, created, changed, comment, promote, moderate, sticky, tnid, translate) VALUES ('6', '6', 'package', '', 'drupal', '1', '1', '1412168321', '1412168340', '0', '0', '0', '0', '0', '0')\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_package WHERE nid='2' AND short_name='drupal'\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_package WHERE nid='4' AND short_name='drupal'\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"DELETE FROM node WHERE nid='8' AND type='site'\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"DELETE FROM node_revision WHERE nid='8'\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"UPDATE node SET type='server' WHERE nid='2'\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"UPDATE node SET type='server' WHERE nid='4'\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='$_USE_AEGIR_HOST' WHERE nid='2'\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='localhost' WHERE nid='4'\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='$_USE_AEGIR_HOST' WHERE nid='2'\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='localhost' WHERE nid='4'\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET db_server='4' WHERE db_server='2'\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET web_server='2' WHERE web_server='0'\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"UPDATE users_roles SET rid='7' WHERE rid='5'\"" &> /dev/null
+        su -s /bin/bash ${_THIS_HM_USER} -c "drush8 cc drush" &> /dev/null
+        rm -rf ${_USR}/.tmp/cache
+        run_drush8_hmr_cmd "hosting-task @server_localhost verify --force" &> /dev/null
+        run_drush8_hmr_cmd "hosting-dispatch" &> /dev/null
+        echo "HOTFIX B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 complete"
+      fi
+      run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client='1' WHERE profile='7'\"" &> /dev/null
+      run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client='1' WHERE profile='9'\"" &> /dev/null
+      run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client='1' WHERE client='0'\"" &> /dev/null
+      run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET web_server='2' WHERE web_server='0'\"" &> /dev/null
+      run_drush8_hmr_cmd "sqlq \"UPDATE node SET uid='1' WHERE uid='0'\"" &> /dev/null
+      run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET uid='1' WHERE uid='0'\"" &> /dev/null
+      _HM_NID=$(run_drush8_hmr_cmd "sqlq \"SELECT site.nid FROM hosting_site site JOIN hosting_package_instance pkgi ON pkgi.rid=site.nid JOIN hosting_package pkg ON pkg.nid=pkgi.package_id WHERE pkg.short_name='hostmaster'\"" 2>&1)
+      _HM_NID=${_HM_NID//[^0-9]/}
+      if [ ! -z "${_HM_NID}" ]; then
+        echo "HOTFIX B: Hostmaster STATUS: Fix 1/2 hosting_context ${_HM_NID}"
+        if [ -e "${_USR}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ]; then
+          _HM_PLF=$(run_drush8_hmr_cmd "sqlq \"SELECT platform FROM hosting_site WHERE nid='${_HM_NID}'\"" 2>&1)
+          _HM_PLF=${_HM_PLF//[^0-9]/}
+          run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_context WHERE name='platform_hostmaster' AND nid != '${_HM_PLF}'\"" &> /dev/null
+          run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context SET name='platform_hostmaster' WHERE nid='${_HM_PLF}'\"" &> /dev/null
+        fi
+        run_drush8_hmr_cmd "sqlq \"UPDATE hosting_context SET name='hostmaster' WHERE nid='${_HM_NID}'\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site_alias SET alias='www.${_DOMAIN}' WHERE nid='${_HM_NID}'\"" &> /dev/null
+        echo FIXED > ${_USR}/log/post-merge-fix.pid
+      else
+        echo "HOTFIX B: Hostmaster STATUS: Fix 1/2 hosting_context _HM_NID empty!"
+      fi
+      if [ -e "${_USR}/aegir/distro/001/sites/${_DOMAIN}/drushrc.php" ] \
+        && [ ! -e "${_USR}/log/hmpathfix.pid" ]; then
+        run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET publish_path='${_USR}/aegir/distro/001' WHERE publish_path LIKE '%/aegir/distro/%'\"" &> /dev/null
+        touch ${_USR}/log/hmpathfix.pid
+      fi
+    fi
+
+  fi
+  if [ "${cmd}" = "create" ]; then
+    if [ ! -z "${dst}" ]; then
+      _TGT_HM_USER="${dst}"
+    else
+      _TGT_HM_USER="${oct}"
+    fi
+    if [ ! -z "${_CLIENT_EMAIL}" ] \
+      && [ ! -z "${_TGT_HM_USER}" ] \
+      && [ ! -z "${_CLIENT_OPTION}" ] \
+      && [ ! -z "${_CLIENT_SUBSCR}" ] \
+      && [ ! -z "${_CLIENT_CORES}" ]; then
+      ssh root@${tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} none ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES}"
+      ssh root@${tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/.ctrl/ssl-demo-mode.pid"
+      echo "INFO: new octopus ${_TGT_HM_USER} setup on ${tgt} complete"
+    else
+      echo "ALRT: new octopus ${_TGT_HM_USER} setup on ${tgt} failed because of missing arguments"
+      exit 1
+    fi
+  fi
+  if [ "${cmd}" = "import" ] \
+    || [ "${cmd}" = "export" ] \
+    || [ "${cmd}" = "proxy" ]; then
+    migrate_sites
+  fi
+  echo Done ${cmd} for ${_USR}
+  enable_chattr ${_THIS_HM_USER}.ftp &> /dev/null
+}
+
+migrate_init() {
+  _USR=/data/disk/${oct}
+  if [ ! -e "${_USR}/tools/le/letsencrypt.sh" ] && [ "${oct}" != "shared" ]; then
+    echo
+    echo "ERROR: This version of xboa migration tool supports only BOA-3.1.1 or newer"
+    echo "ERROR: Please upgrade ${oct} instance to current BOA stable before trying again"
+    echo "Bye."
+    echo
+    exit 1
+  fi
+  rm -f /root/scentral_migration_notice.sh.txt
+  if [ "${oct}" = "xusage" ]; then
+    echo "INFO: ${cmd} for ${oct} to ${tgt} start"
+    if [ -e "/var/xdrago/log/usage" ]; then
+      rsync -aAXq  --ignore-errors -e ssh /var/xdrago/log/usage/* root@${tgt}:/var/xdrago/log/usage/
+      echo "INFO: ${cmd} for ${oct} /var/xdrago/log/usage complete"
+    fi
+    echo "INFO: ${cmd} for ${oct} to ${tgt} complete"
+  elif [ "${oct}" = "shared" ]; then
+    echo "INFO: ${cmd} for ${oct} to ${tgt} start"
+    if [ -d "/data/all" ] && [ ! -L "/data/all" ]; then
+      rsync -aAXqu --ignore-errors -e ssh /data/all  root@${tgt}:/data/
+      echo "INFO: ${cmd} for ${oct} /data/all complete"
+    fi
+    if [ -d "/data/disk/all" ]; then
+      rsync -aAXqu --ignore-errors -e ssh /data/disk/all  root@${tgt}:/data/
+      echo "INFO: ${cmd} for ${oct} /data/disk/all complete"
+    fi
+    if [ -e "/data/disk/arch" ]; then
+      rsync -aAXqu --ignore-errors -e ssh /data/disk/arch  root@${tgt}:/data/disk/
+      echo "INFO: ${cmd} for ${oct} /data/disk/arch complete"
+    fi
+    if [ -e "/opt/solr4" ]; then
+      rsync -aAXq  --ignore-errors -e ssh /opt/solr4 root@${tgt}:/opt/
+      echo "INFO: ${cmd} for ${oct} /opt/solr4 complete"
+    fi
+    if [ -e "/var/www/static" ]; then
+      rsync -aAXq  --ignore-errors -e ssh /var/www/static root@${tgt}:/var/www/
+      echo "INFO: ${cmd} for ${oct} /var/www/static complete"
+    fi
+    if [ -e "/etc/bind" ]; then
+      rsync -aAXq  --ignore-errors -e ssh /etc/bind root@${tgt}:/etc/
+      echo "INFO: ${cmd} for ${oct} /etc/bind complete"
+    fi
+    if [ -e "/var/xdrago/log/usage" ]; then
+      rsync -aAXq  --ignore-errors -e ssh /var/xdrago/log/usage root@${tgt}:/var/xdrago/log/
+      echo "INFO: ${cmd} for ${oct} /var/xdrago/log/usage complete"
+    fi
+    if [ -e "/data/disk/legacy" ]; then
+      echo "INFO: ${cmd} for ${oct} /data/disk/legacy start"
+      rsync -aAXq  --ignore-errors -e ssh /data/disk/legacy root@${tgt}:/data/disk/
+      echo "INFO: ${cmd} for ${oct} /data/disk/legacy complete"
+    fi
+    echo "INFO: ${cmd} for ${oct} to ${tgt} complete"
+  else
+    _USR=/data/disk/${oct}
+    if [ -e "${_USR}/log/email.txt" ]; then
+      _CHECK_EMAIL=`cat ${_USR}/log/email.txt`
+      _CHECK_EMAIL=`echo -n ${_CHECK_EMAIL} | tr -d "\n"`
+      _CHECK_EMAIL=${_CHECK_EMAIL//\\\@/\@}
+      if [ "${_CHECK_EMAIL}" = "omega8cc@gmail.com" ] \
+        || [[ "${_CHECK_EMAIL}" =~ "@omega8.cc" ]]; then
+        _RESULT_EMAIL=OUR
+      else
+        _RESULT_EMAIL=OK
+      fi
+    fi
+    if [ "${oct}" = "arch" ] \
+      || [ "${oct}" = "all" ] \
+      || [ "${oct}" = "lost+found" ] \
+      || [ "${oct}" = "lostfound" ] \
+      || [ "${oct}" = "backups" ] \
+      || [ "${oct}" = "codebases-cleanup" ]; then
+      echo "_USR ${oct} is not eligible for migration: system dir"
+      exit 1
+    elif [ ! -e "${_USR}/log/cores.txt" ] \
+      || [ ! -e "${_USR}/log/option.txt" ] \
+      || [ ! -e "${_USR}/log/email.txt" ]; then
+      echo "_USR ${oct} is not eligible for migration: broken"
+      exit 1
+    elif [ -e "${_USR}/log/CANCELLED" ]; then
+      echo "_USR ${oct} is not eligible for migration: cancelled"
+      exit 1
+    elif [ -e "${_USR}/log/proxied.pid" ]; then
+      echo "_USR ${oct} is not eligible for migration: already migrated"
+      exit 1
+    elif [ "${cmd}" = "create" ] && [ -e "${_USR}/log/exported.pid" ]; then
+      echo "_USR ${oct} is not eligible for migration: already created"
+      exit 1
+    elif [ "${cmd}" = "export" ] && [ -e "${_USR}/log/exported.pid" ]; then
+      echo "_USR ${oct} is not eligible for migration: already exported"
+      exit 1
+    elif [ "${cmd}" = "transfer" ] && [ -e "${_USR}/log/transferred.pid" ]; then
+      echo "_USR ${oct} is not eligible for migration: already transferred"
+      exit 1
+    elif [ "${cmd}" = "import" ] && [ -e "${_USR}/log/imported.pid" ]; then
+      echo "_USR ${oct} is not eligible for migration: already imported"
+      exit 1
+    elif [ "${cmd}" = "proxy" ] && [ -e "${_USR}/log/proxied.pid" ]; then
+      echo "_USR ${oct} is not eligible for migration: already proxied"
+      exit 1
+    elif [ "${_RESULT_EMAIL}" = "OUR" ]; then
+      echo "_USR ${oct} is not eligible for migration: internal only"
+      exit 1
+    else
+      echo "INFO: ${cmd} for ${oct} to ${tgt} ${dst} start"
+      if [ "${cmd}" = "transfer" ]; then
+        if [ ! -z "${dst}" ]; then
+          _DST=/data/disk/${dst}
+        else
+          _DST=/data/disk/${oct}
+        fi
+        if [ -e "${_USR}" ]; then
+          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/distro/*         root@${tgt}:${_DST}/distro/
+          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/src/*            root@${tgt}:${_DST}/src/
+          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/static/*         root@${tgt}:${_DST}/static/
+          #
+          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/clients/*        root@${tgt}:${_DST}/clients/        &> /dev/null
+          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/log/*            root@${tgt}:${_DST}/log/
+          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/static/control/* root@${tgt}:${_DST}/static/control/ &> /dev/null
+          #
+          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/backups/*        root@${tgt}:${_DST}/backups/        &> /dev/null
+          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/undo/*           root@${tgt}:${_DST}/undo/           &> /dev/null
+          if [ ! -z "${dst}" ]; then
+            rsync -aAXqu  --ignore-errors -e ssh /home/${oct}.ftp/.ssh  root@${tgt}:/home/${dst}.ftp/
+          else
+            rsync -aAXqu  --ignore-errors -e ssh /home/${oct}.ftp/.ssh  root@${tgt}:/home/${oct}.ftp/
+          fi
+
+          rsync -aAXqu \
+            --ignore-errors \
+            --exclude=server_ \
+            --exclude=hostmaster \
+            -e ssh ${_USR}/.drush/*.alias.drushrc.php \
+            root@${tgt}:${_DST}/.drush/
+
+          rsync -aAXqu \
+            --ignore-errors \
+            --exclude=host8.biz \
+            --exclude=boa.io \
+            -e ssh ${_USR}/config/server_master/nginx/vhost.d/* \
+            root@${tgt}:${_DST}/config/server_master/nginx/vhost.d/
+
+          rsync -aAXqu \
+            --ignore-errors \
+            -e ssh ${_USR}/config/server_master/nginx/pre.d/* \
+            root@${tgt}:${_DST}/config/server_master/nginx/pre.d/ &> /dev/null
+
+          rsync -aAXqu \
+            --ignore-errors \
+            -e ssh ${_USR}/config/server_master/nginx/post.d/* \
+            root@${tgt}:${_DST}/config/server_master/nginx/post.d/ &> /dev/null
+
+          rsync -aAXqu \
+            --ignore-errors \
+            -e ssh ${_USR}/config/server_master/nginx/subdir.d/* \
+            root@${tgt}:${_DST}/config/server_master/nginx/subdir.d/ &> /dev/null
+
+          rsync -aAXqu \
+            --ignore-errors \
+            -e ssh ${_USR}/config/server_master/nginx/platform.d/* \
+            root@${tgt}:${_DST}/config/server_master/nginx/platform.d/ &> /dev/null
+
+          rsync -aAXqu \
+            --ignore-errors \
+            -e ssh ${_USR}/config/ssl.d/* \
+            root@${tgt}:${_DST}/config/ssl.d/ &> /dev/null
+
+          rsync -aAXqu \
+            --ignore-errors \
+            -e ssh ${_USR}/config/server_master/ssl.d/* \
+            root@${tgt}:${_DST}/config/server_master/ssl.d/ &> /dev/null
+
+          rsync -aAXqu \
+            --ignore-errors \
+            -e ssh ${_USR}/tools/le \
+            root@${tgt}:${_DST}/tools/ &> /dev/null
+
+          echo "INFO: ${cmd} for ${oct} to ${tgt} ${dst} complete"
+          touch ${_USR}/log/transferred.pid
+        fi
+      else
+        if [ -e "/root/.${oct}.octopus.cnf" ]; then
+          source /root/.${oct}.octopus.cnf
+        fi
+        ### We are using max verbose mode by default
+        migrate_prepare
+          ### _NOW=`date +%y%m%d-%H%M`
+          ### mkdir -p /var/xdrago/log/migrate
+          ### migrate_prepare >/var/xdrago/log/migrate/migrate-${oct}-${cmd}-${_NOW}.log 2>&1
+        if [ "${cmd}" = "proxy" ]; then
+          service nginx reload
+          send_notice_migration_complete
+          echo COMPLETE > ${_USR}/log/proxied.pid
+        fi
+      fi
+      echo "INFO: ${cmd} for ${oct} to ${tgt} ${dst} complete"
+      exit 0
+    fi
+  fi
+}
+
+post_mig() {
+  if [ -e "/vservers" ]; then
+    echo You can not run post_mig on the parent system
+    echo Exit now
+    exit 1
+  else
+    echo Running post_mig inside vm `hostname`
+    service jetty9 restart
+    service nginx reload
+    rm -f /var/run/boa_wait.pid
+    if [ ! -e "/var/xdrago/runner.sh" ] && [ -e "/var/xdrago/.runner.sh.off" ]; then
+      mv -f /var/xdrago/.runner.sh.off /var/xdrago/runner.sh
+    fi
+    if [ ! -e "/var/xdrago/daily.sh" ] && [ -e "/var/xdrago/.daily.sh.off" ]; then
+      mv -f /var/xdrago/.daily.sh.off /var/xdrago/daily.sh
+    fi
+    if [ ! -e "/var/xdrago/weekly.sh" ] && [ -e "/var/xdrago/.weekly.sh.off" ]; then
+      mv -f /var/xdrago/.weekly.sh.off /var/xdrago/weekly.sh
+    fi
+    if [ ! -e "/var/xdrago/graceful.sh" ] && [ -e "/var/xdrago/.graceful.sh.off" ]; then
+      mv -f /var/xdrago/.graceful.sh.off /var/xdrago/graceful.sh
+    fi
+    if [ ! -e "/var/xdrago/manage_ltd_users.sh" ] && [ -e "/var/xdrago/.manage_ltd_users.sh.off" ]; then
+      mv -f /var/xdrago/.manage_ltd_users.sh.off /var/xdrago/manage_ltd_users.sh
+    fi
+    exit 0
+  fi
+}
+
+pre_mig() {
+  if [ -e "/vservers" ]; then
+    echo You can not run pre_mig on the parent system
+    echo Exit now
+    exit 1
+  else
+    echo Running pre_mig inside vm `hostname`
+    if [ -e "/var/xdrago/runner.sh" ]; then
+      mv -f /var/xdrago/runner.sh /var/xdrago/.runner.sh.off
+      kill -9 $(ps aux | grep '[r]unner' | awk '{print $2}') &> /dev/null
+    fi
+    if [ -e "/var/xdrago/daily.sh" ]; then
+      mv -f /var/xdrago/daily.sh /var/xdrago/.daily.sh.off
+      kill -9 $(ps aux | grep '[d]aily' | awk '{print $2}') &> /dev/null
+    fi
+    if [ -e "/var/xdrago/weekly.sh" ]; then
+      mv -f /var/xdrago/weekly.sh /var/xdrago/.weekly.sh.off
+      kill -9 $(ps aux | grep '[w]eekly' | awk '{print $2}') &> /dev/null
+    fi
+    if [ -e "/var/xdrago/graceful.sh" ]; then
+      mv -f /var/xdrago/graceful.sh /var/xdrago/.graceful.sh.off
+      kill -9 $(ps aux | grep '[g]raceful' | awk '{print $2}') &> /dev/null
+    fi
+    if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
+      mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/.manage_ltd_users.sh.off
+      kill -9 $(ps aux | grep '[m]anage_ltd_users' | awk '{print $2}') &> /dev/null
+    fi
+    if [ `hostname` = "${hst}" ]; then
+      echo Preparing source `hostname` for outgoing migration...
+      if [ ! -e "/root/.ssh/id_rsa.pub" ]; then
+        echo Create id_rsa.pub...
+        ssh-keygen -b 4096 -t rsa -N "" -f ~/.ssh/id_rsa &> /dev/null
+      fi
+      if [ -e "/root/.ssh/id_rsa.pub" ]; then
+        mkdir -p /var/www/nginx-default
+        cp -af /root/.ssh/id_rsa.pub /var/www/nginx-default/auth_undefined_keys.txt
+      else
+        echo Ops.. /root/.ssh/id_rsa.pub does not exist in `hostname`
+      fi
+    else
+      echo Preparing target `hostname` for incoming migration...
+      echo Add remote id_rsa.pub to authorized_keys here...
+      mkdir -p /root/.ssh
+      rm -f /root/.ssh/auth_undefined_keys.txt*
+      rm -f /var/www/nginx-default/auth_undefined_keys.txt*
+      curl -s -A iCab "http://undefined.${hst}/auth_undefined_keys.txt" -o /root/.ssh/auth_undefined_keys.txt
+      if [ -e "/root/.ssh/auth_undefined_keys.txt" ]; then
+        cat /root/.ssh/auth_undefined_keys.txt >> /root/.ssh/authorized_keys
+        chmod 600 /root/.ssh/authorized_keys
+      else
+        echo Ops.. /root/.ssh/auth_undefined_keys.txt does not exist in `hostname`
+      fi
+    fi
+  fi
+  echo All done!
+}
+
+sub_ssl_gen() {
+  IFS=$'\12'
+  for p in `cat /root/.ssl.proxy.cnf`;do
+    domain_name=`echo $p | cut -d' ' -f1 | awk '{ print $1}'`
+    target_ip=`echo $p | cut -d' ' -f2 | awk '{ print $1}'`
+    oct_uid=`echo $p | cut -d' ' -f3 | awk '{ print $1}'`
+    oct_mail=`echo $p | cut -d' ' -f4 | awk '{ print $1}'`
+    dedicated_ip=`echo $p | cut -d' ' -f5 | awk '{ print $1}'`
+    echo domain_name.${domain_name} target_ip.${target_ip} oct_uid.${oct_uid} oct_mail.${oct_mail} dedicated_ip.${dedicated_ip}
+    if [ ! -z "${domain_name}" ] \
+      && [ ! -z "${target_ip}" ] \
+      && [ ! -z "${oct_uid}" ] \
+      && [ ! -z "${oct_mail}" ] \
+      && [ ! -z "${dedicated_ip}" ]; then
+      oct_mail=`echo $oct_mail | sed "s/\@/\\\@/g"`;
+      if [ "${target_ip}" = "${dedicated_ip}" ]; then
+        dedicated_ip="*"
+        dedicated_sn="${domain_name} www.${domain_name}"
+        single=YES
+      else
+        dedicated_sn="_"
+        single=NO
+      fi
+      ###
+      Pln="/var/aegir/config/server_master/nginx/pre.d/z_${domain_name}_pln_proxy.conf"
+      Ssl="/var/aegir/config/server_master/nginx/pre.d/z_${domain_name}_ssl_proxy.conf"
+      ###
+      if [ "${single}" = "YES" ]; then
+        rm -f ${Pln}
+      else
+        cp -af /var/xdrago/conf/pln_proxy.conf     ${Pln}
+        sed -i "s/domain_name/${domain_name}/g"    ${Pln}
+        wait
+        sed -i "s/target_ip/${target_ip}/g"        ${Pln}
+        wait
+        sed -i "s/oct_uid/${oct_uid}/g"            ${Pln}
+        wait
+        sed -i "s/oct_mail/${oct_mail}/g"          ${Pln}
+        wait
+        sed -i "s/dedicated_ip/${dedicated_ip}/g"  ${Pln}
+        wait
+        sed -i "s/dedicated_sn/${dedicated_sn}/g"  ${Pln}
+        wait
+        echo OK created ${Pln}
+      fi
+      ###
+      cp -af /var/xdrago/conf/ssl_proxy.conf       ${Ssl}
+      sed -i "s/domain_name/${domain_name}/g"      ${Ssl}
+      wait
+      sed -i "s/target_ip/${target_ip}/g"          ${Ssl}
+      wait
+      sed -i "s/oct_uid/${oct_uid}/g"              ${Ssl}
+      wait
+      sed -i "s/oct_mail/${oct_mail}/g"            ${Ssl}
+      wait
+      sed -i "s/dedicated_ip/${dedicated_ip}/g"    ${Ssl}
+      wait
+      sed -i "s/dedicated_sn/${dedicated_sn}/g"    ${Ssl}
+      wait
+      ###
+      if [ -e "${Ssl}" ]; then
+        sslFile="/etc/ssl/private/${domain_name}.dhp"
+        if [ ! -e "${sslFile}" ]; then
+          echo "We will generate .dhp file now, please wait..."
+          openssl dhparam -out ${sslFile} 2048 &> /dev/null
+        else
+          _PFS_TEST=$(grep "DH PARAMETERS" ${sslFile} 2>&1)
+          if [[ ! "${_PFS_TEST}" =~ "DH PARAMETERS" ]]; then
+            echo "We will generate .dhp file now, please wait..."
+            openssl dhparam -out ${sslFile} 2048 &> /dev/null
+          fi
+        fi
+      fi
+      ###
+      echo OK created ${Ssl}
+      service nginx reload
+    else
+      echo some variables missing in the record: $p
+    fi
+  done
+}
+
+ssl_gen() {
+  if [ ! -e "/root/.ssl.proxy.cnf" ]; then
+    echo "please create /root/.ssl.proxy.cnf first"
+    exit 1
+  elif [ ! -e "/var/xdrago/conf/pln_proxy.conf" ]; then
+    echo "file /var/xdrago/conf/pln_proxy.conf does not exist"
+    exit 1
+  elif [ ! -e "/var/xdrago/conf/ssl_proxy.conf" ]; then
+    echo "file /var/xdrago/conf/ssl_proxy.conf does not exist"
+    exit 1
+  elif [ ! -e "/var/aegir/config/server_master/nginx/pre.d" ]; then
+    echo "vm $vm aegir master not ready"
+    exit 1
+  else
+    [ -e "/root/.ssl.proxy.cnf" ] && sub_ssl_gen
+  fi
+}
+
+check_root() {
+  if [ `whoami` = "root" ]; then
+    ionice -c2 -n7 -p $$
+    chmod a+w /dev/null
+    if [ ! -e "/dev/fd" ]; then
+      if [ -e "/proc/self/fd" ]; then
+        rm -rf /dev/fd
+        ln -s /proc/self/fd /dev/fd
+      fi
+    fi
+    if [ -e "/root/.barracuda.cnf" ]; then
+      source /root/.barracuda.cnf
+      _ADM_EMAIL=${_MY_EMAIL//\\\@/\@}
+      _BCC_EMAIL=${_MY_EMAIL//\\\@/\@}
+    fi
+  else
+    echo "ERROR: This script should be ran as a root user"
+    exit 1
+  fi
+  _DF_TEST=$(df -kTh / -l \
+    | grep '/' \
+    | sed 's/\%//g' \
+    | awk '{print $6}' 2> /dev/null)
+  _DF_TEST=${_DF_TEST//[^0-9]/}
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
+    exit 1
+  fi
+}
+
+case "$1" in
+  export)   cmd="$1"
+            oct="$2"
+            tgt="$3"
+            dst="$4"
+            check_root
+            migrate_init
+  ;;
+  create)   cmd="$1"
+            oct="$2"
+            tgt="$3"
+            dst="$4"
+            check_root
+            migrate_init
+  ;;
+  import)   cmd="$1"
+            oct="$2"
+            tgt="$3"
+            dst="$4"
+            fix="fix"
+            check_root
+            migrate_init
+  ;;
+  transfer) cmd="$1"
+            oct="$2"
+            tgt="$3"
+            dst="$4"
+            check_root
+            migrate_init
+  ;;
+  proxy)    cmd="$1"
+            oct="$2"
+            tgt="$3"
+            dst="$4"
+            check_root
+            migrate_init
+  ;;
+  pre-mig)  cmd="$1"
+            hst="$2"
+            check_root
+            pre_mig
+  ;;
+  post-mig) cmd="$1"
+            hst="$2"
+            check_root
+            post_mig
+  ;;
+  ssl-gen) cmd="$1"
+            vm="$2"
+            check_root
+            ssl_gen
+  ;;
+  *)        echo
+            echo "Usage: xboa {pre-mig} {fqdn} (source+target vm)"
+            echo "Usage: xboa {export|create|transfer|proxy} {o1|shared} {target-ip} {o2}"
+            echo "Usage: xboa {import} {o1} {target-ip} (target vm)"
+            echo "Usage: xboa {post-mig} {fqdn} (source+target vm)"
+            echo
+            echo "Usage: xboa {ssl-gen}"
+            echo
+            exit 1
+  ;;
+esac

@@ -1,7 +1,15 @@
 #!/bin/bash
 
-SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
+
+if [ -e "/root/.barracuda.cnf" ]; then
+  source /root/.barracuda.cnf
+  _B_NICE=${_B_NICE//[^0-9]/}
+fi
+if [ -z "${_B_NICE}" ]; then
+  _B_NICE=10
+fi
 
 if [ -e "/var/run/boa_wait.pid" ]; then
   touch /var/xdrago/log/wait-for-mysql-restart
@@ -9,15 +17,16 @@ if [ -e "/var/run/boa_wait.pid" ]; then
 else
   touch /var/run/boa_wait.pid
   touch /var/xdrago/log/mysql_restart_running.pid
-  /etc/init.d/mysql stop
+  service mysql stop
   sleep 10
-  /etc/init.d/mysql stop
+  service mysql stop
   sleep 10
-  /etc/init.d/mysql start
+  renice ${_B_NICE} -p $$ &> /dev/null
+  service mysql start
   sleep 30
   rm -f /var/run/boa_wait.pid
   rm -f /var/xdrago/log/mysql_restart_running.pid
   touch /var/xdrago/log/last-mysql-restart-done
   exit 0
 fi
-###EOF2015###
+###EOF2016###

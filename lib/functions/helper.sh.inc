@@ -44,13 +44,56 @@ prompt_confirm_choice() {
 }
 
 #
+# Not supported virtualization system.
+not_supported_virt() {
+  echo
+  echo "=== OOPS! ==="
+  echo
+  echo "You are running not supported virtualization system:"
+  echo "  $1"
+  echo
+  echo "If you wish to try BOA on this system anyway,"
+  echo "please create an empty control file:"
+  echo "  /root/.allow.any.virt.cnf"
+  echo
+  echo "Please be aware that it may not work at all,"
+  echo "or you can experience errors breaking BOA."
+  echo
+  echo "BOA is known to work well on:"
+  echo " * Linux KVM guest"
+  echo " * Linux VServer guest"
+  echo " * Parallels guest"
+  echo " * VirtualBox guest"
+  echo " * VMware ESXi guest"
+  echo " * Xen guest"
+  echo
+  echo "BOA is not designed to run directly on a bare metal."
+  echo "We recommend to install Linux VServer if you plan to"
+  echo "use BOA on a dedicated machine -- server or laptop."
+  echo
+  echo "Note: There are plans to support Linux VServer installation"
+  echo "via BOA tools: https://github.com/omega8cc/boa/issues/980"
+  echo
+  echo "Bye"
+  echo
+  clean_pid_exit
+}
+
+#
 # Not supported OS.
 not_supported_os() {
-  msg "== FATAL ERROR =="
-  msg "Invalid install script or OS used"
-  msg "It is not any supported Debian or Ubuntu version"
-  msg "You need Debian - Squeeze (recommended) or Wheezy"
-  msg "or Ubuntu - Precise or Lucid"
+  echo
+  echo "=== OOPS! ==="
+  echo
+  echo "It is not any supported Debian or Ubuntu version."
+  echo
+  echo "You need Debian Jessie (recommended) or Wheezy."
+  echo
+  echo "Also Ubuntu (Trusty or Precise) should work fine,"
+  echo "although BOA developers use and test only Debian."
+  echo
+  echo "Bye"
+  echo
   clean_pid_exit
 }
 
@@ -149,11 +192,7 @@ get_dev_ext() {
 # Download and extract from dev/static.
 get_dev_stc() {
   if [ ! -z "$1" ]; then
-    if [ "$1" = "hosting.tar.gz" ]; then
-      curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/$1" -o "$1"
-    else
-      curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/static/$1" -o "$1"
-    fi
+    curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/static/$1" -o "$1"
     extract_archive "$1"
   fi
 }
@@ -314,7 +353,7 @@ mode_detection() {
     barracuda_cnf
   fi
   if [ "${_AEGIR_VERSION}" = "HEAD" ] && [ ! -z "${_FORCE_GIT_MIRROR}" ]; then
-    if [ "${_FORCE_GIT_MIRROR}" = "gitorious" ]; then
+    if [ "${_FORCE_GIT_MIRROR}" = "gitlab" ]; then
       _INSTAPP="/usr/bin/aptitude-fast -f -y -q \
         -o Dpkg::Options::=--force-confdef \
         -o Dpkg::Options::=--force-confold install"
@@ -329,7 +368,7 @@ mode_detection() {
       -o Dpkg::Options::=--force-confold install"
   fi
   _SRCDIR="/opt/tmp/files"
-  rm -f -r /var/opt/*
+  rm -rf /var/opt/*
   mkdir -p ${_SRCDIR}
   chmod -R 777 /opt/tmp &> /dev/null
   find /opt/tmp/boa -type d -exec chmod 0755 {} \; &> /dev/null
@@ -346,7 +385,7 @@ mode_detection() {
   fi
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "${_PHP_SV}" ] || [ "${_PHP_SV}" = "52" ]; then
-    _PHP_SV=55
+    _PHP_SV=56
   fi
   _PHP_CN="www${_PHP_SV}"
 }
@@ -372,14 +411,74 @@ EOF
   fi
 }
 
+virt_detection() {
+  _VIRT_TOOL=$(which virt-what 2> /dev/null)
+  if [ -x "${_VIRT_TOOL}" ]; then
+    _VIRT_TEST=$(virt-what 2> /dev/null)
+    _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
+    if [ ! -e "/root/.allow.any.virt.cnf" ]; then
+      if [ -e "/proc/self/status" ]; then
+        _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
+        _VS_HOST_TEST=$(grep -E "VxID:[[:space:]]*0$" /proc/self/status 2> /dev/null)
+      fi
+      if [ ! -z "${_VS_HOST_TEST}" ] || [ ! -z "${_VS_GUEST_TEST}" ]; then
+        if [ -z "${_VS_HOST_TEST}" ] && [ ! -z "${_VS_GUEST_TEST}" ]; then
+          _VIRT_IS="Linux VServer guest"
+        else
+          if [ ! -z "${_VS_HOST_TEST}" ]; then
+            not_supported_virt "Linux VServer host"
+          else
+            not_supported_virt "unknown / not a virtual machine"
+          fi
+        fi
+      else
+        if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
+          not_supported_virt "unknown / not a virtual machine"
+        elif [[ "${_VIRT_TEST}" =~ "xen-dom0" ]]; then
+          not_supported_virt "Xen privileged domain"
+        elif [[ "${_VIRT_TEST}" =~ "linux_vserver-host" ]]; then
+          not_supported_virt "Linux VServer host"
+        else
+          if [[ "${_VIRT_TEST}" =~ "xen xen-hvm" ]]; then
+            _VIRT_TEST="xen-hvm"
+          elif [[ "${_VIRT_TEST}" =~ "xen xen-domU" ]]; then
+            _VIRT_TEST="xen-domU"
+          elif [[ "${_VIRT_TEST}" =~ "virtualbox kvm" ]]; then
+            _VIRT_TEST="virtualbox"
+          fi
+          case "${_VIRT_TEST}" in
+            kvm)         _VIRT_IS="Linux KVM guest" ;;
+            parallels)   _VIRT_IS="Parallels guest" ;;
+            virtualbox)  _VIRT_IS="VirtualBox guest" ;;
+            vmware)      _VIRT_IS="VMware ESXi guest" ;;
+            xen-domU)    _VIRT_IS="Xen paravirtualized guest domain" ;;
+            xen-hvm)     _VIRT_IS="Xen guest fully virtualized (HVM)" ;;
+            xen)         _VIRT_IS="Xen guest" ;;
+            *)  not_supported_virt "${_VIRT_TEST}"
+            ;;
+          esac
+        fi
+      fi
+      msg "VIRT: This system is supported: ${_VIRT_IS}"
+    else
+      if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
+        _VIRT_TEST="unknown / not a virtual machine"
+      fi
+      msg "WARN: This system is not supported: ${_VIRT_TEST}"
+    fi
+  fi
+}
+
 os_detection() {
   _THIS_OS=$(lsb_release -si 2>&1)
   _THIS_RV=$(lsb_release -sc 2>&1)
   if [ "${_THIS_OS}" = "Ubuntu" ]; then
-    if [ "$_THIS_RV" = "trusty" ]; then
+    if [ "${_THIS_RV}" = "trusty" ]; then
       _OSV="trusty"
-      _DB_SERVER=MariaDB
       _DB_SERIES=10.0
+      _NGINX_FORWARD_SECRECY=YES
+      _NGINX_SPDY=YES
+      _SSH_FROM_SOURCES=NO
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
@@ -387,24 +486,41 @@ os_detection() {
       else
         _MARIADB_VRN="${_MARIADB_10_VRN}"
       fi
-    elif [ "$_THIS_RV" = "precise" ]; then
+    elif [ "${_THIS_RV}" = "precise" ]; then
       _OSV="precise"
-    elif [ "$_THIS_RV" = "lucid" ]; then
-      _OSV="lucid"
+      _NGINX_FORWARD_SECRECY=YES
+      _NGINX_SPDY=YES
+      _SSH_FROM_SOURCES=NO
     else
       not_supported_os
     fi
   elif [ "${_THIS_OS}" = "Debian" ]; then
-    if [ "$_THIS_RV" = "wheezy" ]; then
+    if [ "${_THIS_RV}" = "jessie" ]; then
+      _OSV="jessie"
+      _DB_SERIES=10.0
+      _NGINX_FORWARD_SECRECY=YES
+      _NGINX_SPDY=YES
+      _SSH_FROM_SOURCES=YES
+      if [ -e "/root/.mstr.clstr.cnf" ] \
+        || [ -e "/root/.wbhd.clstr.cnf" ] \
+        || [ -e "/root/.dbhd.clstr.cnf" ]; then
+        _MARIADB_VRN="${_GALERA_10_VRN}"
+      else
+        _MARIADB_VRN="${_MARIADB_10_VRN}"
+      fi
+      _SPINNER=NO
+      _SKIP_LEGACY_PHP=YES
+    elif [ "${_THIS_RV}" = "wheezy" ]; then
       _OSV="wheezy"
-      _DB_SERVER=MariaDB
-    elif [ "$_THIS_RV" = "squeeze" ]; then
+      _NGINX_FORWARD_SECRECY=YES
+      _NGINX_SPDY=YES
+      _SSH_FROM_SOURCES=YES
+    elif [ "${_THIS_RV}" = "squeeze" ]; then
       _OSV="squeeze"
-    elif [ "$_THIS_RV" = "lenny" ]; then
-      _OSV="lenny"
-      _DB_SERVER=MariaDB
-      _DB_SERIES=5.3
-      _MARIADB_VRN=5.3.12
+      _OPENSSL_VRN=1.0.1p
+      _NGINX_FORWARD_SECRECY=YES
+      _NGINX_SPDY=YES
+      _SSH_FROM_SOURCES=YES
     else
       not_supported_os
     fi
@@ -416,6 +532,27 @@ os_detection() {
   thiSys="$(uname -n 2>&1) ${thiSys} PHP ${_PHP_FPM_VERSION}"
   msg "Aegir on ${thiSys}"
   echo " "
+}
+
+check_boa_php_compatibility() {
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "5.6" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "5.5" ]]; then
+    _DO_NOTHING=YES
+  else
+    msg "ERROR: This BOA version depends on PHP 5.6 or 5.5"
+    msg "Please add '5.6' or '5.5' to _PHP_MULTI_INSTALL"
+    msg "in /root/.barracuda.cnf before trying again"
+    msg "Bye"
+    clean_pid_exit
+  fi
+  if [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+    || [ "${_PHP_CLI_VERSION}" = "7.0" ]; then
+    msg "ERROR: This BOA version depends on PHP 5.6 or 5.5"
+    msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to '5.6' or '5.5'"
+    msg "in /root/.barracuda.cnf before trying again"
+    msg "Bye"
+    clean_pid_exit
+  fi
 }
 
 check_boa_version() {
@@ -458,11 +595,21 @@ check_boa_version() {
   fi
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-    if [[ "${_SERIES_TEST}" =~ "BOA-2.4." ]]; then
-      if [[ ! "${_X_VERSION}" =~ "BOA-2.4." ]]; then
-        msg "ERROR: Your system has been already upgraded to modern BOA-2.4.x series"
-        msg "ERROR: You can not downgrade back to legacy or previous stable BOA version"
-        msg "ERROR: Please use barracuda up-stable to upgrade this system"
+    if [[ "${_SERIES_TEST}" =~ "BOA-2.4.9" ]] \
+      || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
+      _VERSIONS_TEST_RESULT=OK
+    else
+      msg "ERROR: This barracuda installer can be used only when the instance"
+      msg "has been already upgraded to previous stable BOA-2.4.9 version"
+      msg "Please run 'barracuda up-2.4' full legacy upgrade first"
+      msg "Bye"
+      clean_pid_exit
+    fi
+    if [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
+      if [[ ! "${_X_VERSION}" =~ "BOA-3." ]]; then
+        msg "ERROR: Your system has been already upgraded to BOA-3.x.x series"
+        msg "You can not downgrade back to legacy or previous stable version"
+        msg "Please use 'barracuda up-stable' to upgrade this system"
         msg "Bye"
         clean_pid_exit
       fi
@@ -474,7 +621,7 @@ check_prepare_dirs_permissions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Cleaning up temp files in /var/opt/"
   fi
-  rm -f -r /var/opt/*
+  rm -rf /var/opt/*
   mkdir -p /var/log/php
   chmod 777 /var/log/php* &> /dev/null
   mkdir -p ${vBs}/dragon/{x,z,t}
@@ -520,7 +667,7 @@ update_barracuda_log() {
     | sed "s/[\,']//g" 2>&1)
   _BARRACUDA_VERSION_INFO="$(date 2>&1) / \
     $(lsb_release -si 2>&1).$(lsb_release -sc 2>&1) \
-    $(uname -m 2>&1) ${_VMFAMILY} / \
+    $(uname -m 2>&1) ${_VIRT_IS} / \
     Aegir ${_AEGIR_VERSION} / \
     Barracuda ${_X_VERSION}${_LOG_GIT_MIRROR} / \
     Nginx ${_NGINX_VRN} / \

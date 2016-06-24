@@ -9,16 +9,17 @@
 ###
 ### Available options (if installed):
 ###
+### _PHP_FPM_VERSION=7.0
 ### _PHP_FPM_VERSION=5.6
 ### _PHP_FPM_VERSION=5.5
 ### _PHP_FPM_VERSION=5.4
 ### _PHP_FPM_VERSION=5.3
 ###
-### Note that 5.5 will be set automatically
+### Note that 5.6 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_FPM_VERSION=5.5
+_PHP_FPM_VERSION=5.6
 
 
 ###----------------------------------------###
@@ -31,16 +32,17 @@ _PHP_FPM_VERSION=5.5
 ###
 ### Available options (if installed):
 ###
+### _PHP_CLI_VERSION=7.0
 ### _PHP_CLI_VERSION=5.6
 ### _PHP_CLI_VERSION=5.5
 ### _PHP_CLI_VERSION=5.4
 ### _PHP_CLI_VERSION=5.3
 ###
-### Note that 5.5 will be set automatically
+### Note that 5.6 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_CLI_VERSION=5.5
+_PHP_CLI_VERSION=5.6
 
 
 ###----------------------------------------###
@@ -59,8 +61,7 @@ _PHP_CLI_VERSION=5.5
 ### control which platforms will be installed,
 ### using the symbols listed below.
 ###
-### D8B ----------- Drupal 8-beta
-### D8D ----------- Drupal 8-dev
+### D8R ----------- Drupal 8 (inactive)
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
 ### AGV ----------- aGov
@@ -69,14 +70,10 @@ _PHP_CLI_VERSION=5.5
 ### DCE ----------- Commerce v.1
 ### DCS ----------- Commons 6
 ### ERP ----------- ERPAL
-### FSR ----------- Feature Server
 ### GDR ----------- Guardr
 ### OA7 ----------- OpenAtrium D7
-### OAY ----------- OpenAcademy
-### OBG ----------- OpenBlog
-### OCH ----------- OpenChurch 1
+### OAD ----------- OpenAid
 ### CH2 ----------- OpenChurch 2
-### ODS ----------- OpenDeals
 ### OOH ----------- OpenOutreach
 ### OPC ----------- OpenPublic
 ### OSR ----------- OpenScholar
@@ -89,7 +86,7 @@ _PHP_CLI_VERSION=5.5
 ### Examples:
 ###
 ### _PLATFORMS_LIST=ALL
-### _PLATFORMS_LIST="ALL D8B"
+### _PLATFORMS_LIST="ALL D8R"
 ### _PLATFORMS_LIST="D7P D6P PPY RST OOH"
 ###
 _PLATFORMS_LIST="D7P D7S D7D D6P D6S D6D"
@@ -158,7 +155,7 @@ _MY_OWNIP=""
 ### repository. Valid options:
 ###
 ### _FORCE_GIT_MIRROR=github
-### _FORCE_GIT_MIRROR=gitorious
+### _FORCE_GIT_MIRROR=gitlab
 ###
 ### Note: with forced mirror the script will
 ### not try to connect and then switch to
@@ -476,7 +473,7 @@ _STRONG_PASSWORDS=NO
 ### DB ENGINE AUTO-CONVERSION              ###
 ###----------------------------------------###
 ###
-### Automatic, running daily DB conversion to
+### Automatic, running weekly DB conversion to
 ### InnoDB or MyISAM for all sites hosted on
 ### the instance via the 'sqlmagic' tool.
 ###
@@ -501,7 +498,7 @@ _STRONG_PASSWORDS=NO
 ### force conversion to InnoDB format in all
 ### sites hosted on this instance.
 ###
-### Note that it will run daily on all sites
+### Note that it will run weekly on all sites
 ### even if all tables have been already
 ### converted to the desired format/engine.
 ###
@@ -537,7 +534,8 @@ _PHP_FPM_WORKERS=AUTO
 
 ###
 ### AUTO will not modify default TTL (180).
-### You can lower it to any number < 180.
+### You can lower it to any number which is
+### < 180 and > 60.
 ###
 _PHP_FPM_TIMEOUT=AUTO
 
@@ -585,11 +583,11 @@ _RESERVED_RAM=0
 ###----------------------------------------###
 
 
-_AEGIR_VERSION="HEAD"
-_AEGIR_XTS_VRN="BOA-2.4.0"
-_BRANCH_BOA="2.4.x-dev"
-_BRANCH_PRN="2.4.x-dev"
-_X_VERSION="BOA-2.4.1-dev"
+_AEGIR_VERSION="AUTO"
+_AEGIR_XTS_VRN="AUTO"
+_BRANCH_BOA="AUTO"
+_BRANCH_PRN="AUTO"
+_X_VERSION="AUTO"
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${gitHub}"
 
@@ -604,8 +602,9 @@ find_fast_mirror() {
   fi
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -y --force-yes --reinstall &> /dev/null
+    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -634,7 +633,6 @@ find_fast_mirror() {
   fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
-  urlStb="http://${_USE_MIR}/versions/stable"
 }
 
 
@@ -645,34 +643,39 @@ download_helpers_libs() {
   find_fast_mirror
   mkdir -p /opt/tmp
   cd /opt/tmp
-  rm -f -r ${bldPth}
+  rm -rf /opt/tmp/boa
   if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
     isGit=$(which git 2>&1)
     if [ ! -x "${isGit}" ] || [ -z "${isGit}" ]; then
+      rm -f /etc/apt/sources.list.d/openssl.list
       apt-get update -qq &> /dev/null
-      apt-get install git-core -y --force-yes --reinstall &> /dev/null
+      apt-get install git -fuy --force-yes --reinstall &> /dev/null
+      apt-get install git-core -fuy --force-yes --reinstall &> /dev/null
+      apt-get install git-man -fuy --force-yes --reinstall &> /dev/null
       sleep 3
     fi
     ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git \
       ${bldPth} &> /dev/null
   else
-    curl ${crlGet} "${urlStb}/tar/boa-${_X_VERSION}.tar.gz" | tar -xzf -
+    curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/boa.tar.gz" | tar -xzf -
     _BOA_REPO_NAME="boa"
     _THIS_CNF="${bldPth}/aegir/conf"
   fi
   #
-  if [ ! -e "${bldPth}/aegir/helpers/apt.conf.noninteractive" ]; then
+  if [ ! -e "${bldPth}/aegir/helpers/apt.conf.noi.nrml" ] \
+    || [ ! -e "${bldPth}/aegir/helpers/apt.conf.noi.dist" ]; then
     echo " "
     echo "EXIT on error due to missing helpers"
     echo "Please try to run this script again in a few minutes"
-    echo "Also, make sure that the git port 9418 is open"
+    echo "Also, make sure that the outgoing connections via port 443 work"
     echo "Bye"
     echo " "
     clean_pid_exit
   fi
   # Get apt helper
-  rm -f apt.conf.noninteractive*
-  cp -af ${bldPth}/aegir/helpers/apt.conf.noninteractive ./
+  rm -f apt.conf.noi*
+  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.nrml ./
+  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.dist ./
   #
   # Create tmp stuff
   if [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
@@ -683,7 +686,7 @@ download_helpers_libs() {
   touch ${_LOG}
   chmod 646 ${_LOG}
   mkdir -p /var/opt
-  rm -f -r /var/opt/*
+  rm -rf /var/opt/*
   _SRCDIR="/opt/tmp/files"
   mkdir -p ${_SRCDIR}
   cd ${_SRCDIR}

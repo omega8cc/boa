@@ -5,7 +5,7 @@
 ###
 ###  Octopus Aegir Installer
 ###
-###  Copyright (C) 2010-2015 Omega8.cc
+###  Copyright (C) 2010-2016 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -25,7 +25,7 @@
 ###  GNU GPL along with this program.
 ###  If not, see http://www.gnu.org/licenses/
 ###
-###  Code: https://code.aegir.cc/aegir
+###  Code: https://github.com/omega8cc/boa
 ###
 ###----------------------------------------###
 
@@ -51,18 +51,19 @@ export _USER="${_USER}"
 ###
 ### Variables
 ###
-_D8_DEV_COMMIT=8x_827e3461
-_DRUSH_VERSION=mini-7-17-02-2015
+_DRUSH_VERSION=micro-8-15-06-2016
 _NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=${_NOW//[^0-9-]/}
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
-_REDIS_M_VERSION=mod-14-12-2014
-_SMALLCORE6=6.34.1
-_SMALLCORE7=7.34.1
-_SMALLCORE8=8.0.0-beta6
+_REDIS_M_VERSION=mod-03-05-2016
+_SMALLCORE6=6.38.2
+_SMALLCORE7=7.44.1
+_SMALLCORE8=8.0.5
 _SPINNER=YES
 _T_BUILD=HEAD
 _TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
 _F_TIME=$(date 2>&1)
 _USRG=users
 _WEBG=www-data
@@ -91,7 +92,8 @@ bldPth="/opt/tmp/boa"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 filIncO="octopus.sh.cnf"
 gCb="git clone --branch"
-gitHub="git://github.com/omega8cc"
+gitHub="https://github.com/omega8cc"
+gitLab="https://gitlab.com/omega8cc"
 libFnc="${bldPth}/lib/functions"
 tocIncO="${filIncO}.${_USER}"
 vBs="/var/backups"
@@ -100,34 +102,34 @@ vBs="/var/backups"
 ###
 ### Distributions
 ###
-_AGOV=1.6
+_AGOV=3.2
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
 _COD=1.0-alpha5
-_COMMERCE1=1.33
-_COMMERCE2=2.21
-_COMMONS2=2.21
-_COMMONS3=3.20
-_D8_DEV_LABEL="8-dev-${_TODAY}"
+_COMMERCE1=1.42
+_COMMERCE2=2.38
+_COMMONS2=2.27
+_COMMONS3=3.38
 _DRUPAL7="drupal-${_SMALLCORE7}"
 _DRUPAL8="drupal-${_SMALLCORE8}"
-_ERPAL=2.2
-_GUARDR=2.7
+_ERPAL=2.3
+_GUARDR=2.30
 _OPENACADEMY=1.1
-_OPENATRIUM7=2.30
+_OPENAID=2.8
+_OPENATRIUM7=2.64
 _OPENBLOG=1.0-alpha3
-_OPENCHURCH1=1.17-beta1
-_OPENCHURCH2=2.1-beta5
+_OPENCHURCH1=1.17-beta2
+_OPENCHURCH2=2.2
 _OPENDEALS=1.35
-_OPENOUTREACH=1.15
-_OPENPUBLIC=1.4
+_OPENOUTREACH=1.30
+_OPENPUBLIC=1.8
 _OPENPUBLISH=1.0-beta7
-_OPENSCHOLAR=3.16.0
-_PANOPOLY=1.17
-_RECRUITER=1.4
-_RESTAURANT=1.0-beta10
-_UBERCART6=2.14
-_UBERCART7=3.8
+_OPENSCHOLAR=3.28.0
+_PANOPOLY=1.37
+_RECRUITER=1.7
+_RESTAURANT=1.13
+_UBERCART6=2.15
+_UBERCART7=3.9
 
 
 ###
@@ -209,6 +211,7 @@ _STATUS=INIT
 ###
 ### Misc checks
 ###
+satellite_check_php_compatibility
 satellite_check_octopus_versus_barracuda_version
 satellite_if_head_github_connection_test
 satellite_if_sql_exception_test
@@ -217,7 +220,7 @@ satellite_check_sanitize_user_name
 satellite_if_localhost_mode_magic
 satellite_check_sanitize_domain_name
 satellite_detect_vm_family
-dns_check_git_repos_status
+check_git_repos
 
 
 ###
@@ -225,6 +228,7 @@ dns_check_git_repos_status
 ###
 satellite_cnf
 satellite_if_init_or_upgrade
+satellite_if_major_upgrade
 satellite_if_check_dns
 satellite_checkpoint
 satellite_pre_cleanup
@@ -236,7 +240,7 @@ exit 0
 ###----------------------------------------###
 ###
 ###  Octopus Aegir Installer
-###  Copyright (C) 2010-2015 Omega8.cc
+###  Copyright (C) 2010-2016 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

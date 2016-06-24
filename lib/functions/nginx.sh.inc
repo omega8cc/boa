@@ -25,39 +25,81 @@ sub_force_advanced_nginx_config() {
     sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrInc}/nginx_compact_include.conf &> /dev/null
 
     sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrInc}/nginx_vhost_common.conf &> /dev/null
+    wait
     sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${mtrInc}/nginx_vhost_common.conf &> /dev/null
-    sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" ${mtrInc}/nginx_vhost_common.conf &> /dev/null
-    sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"  ${mtrInc}/nginx_vhost_common.conf &> /dev/null
+    wait
+    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${mtrInc}/nginx_vhost_common.conf &> /dev/null
+    wait
+    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${mtrInc}/nginx_vhost_common.conf &> /dev/null
 
     sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrTpl}/subdir.tpl.php &> /dev/null
+    wait
     sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${mtrTpl}/subdir.tpl.php &> /dev/null
-    sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" ${mtrTpl}/subdir.tpl.php &> /dev/null
-    sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"  ${mtrTpl}/subdir.tpl.php &> /dev/null
+    wait
+    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${mtrTpl}/subdir.tpl.php &> /dev/null
+    wait
+    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${mtrTpl}/subdir.tpl.php &> /dev/null
 
     sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
+    wait
     sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
-    sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
-    sed -i "s/unix:.*www53.fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"  ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
+    wait
+    sed -i "s/unix:.*fpm.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"        ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
+    wait
+    sed -i "s/set.*user_socket.*/set \$user_socket \"${_PHP_CN}\";/g"              ${mtrTpl}/Inc/vhost_include.tpl.php &> /dev/null
   fi
 }
 
 #
 # Force advanced Nginx configuration.
 force_advanced_nginx_config() {
+  if [ ! -e "/etc/ssl/private/nginx-wild-ssl.dhp" ]; then
+    msg "INFO: Generating DH parameters, 2048 bit, please wait..."
+    mrun "openssl dhparam \
+      -out /etc/ssl/private/nginx-wild-ssl.dhp 2048" 2> /dev/null
+  fi
   cp -af ${locCnf}/nginx_compact_include.conf ${mtrInc}/nginx_compact_include.conf
   validate_local_ip &> /dev/null
   sub_force_advanced_nginx_config
   sed -i "s/ 90;/ 180;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
+  wait
   if [ "${_NGINX_SPDY}" = "YES" ]; then
-    sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
-    sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/vhost.d/*    &> /dev/null
+    if [ "${_OSV}" = "none" ]; then
+      sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/pre.d/*.conf           &> /dev/null
+      wait
+      sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/vhost.d/*              &> /dev/null
+      wait
+      sed -i "s/:443 ssl http2;/:443 ssl spdy;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
+      wait
+      sed -i "s/:443 ssl http2;/:443 ssl spdy;/g" ${mtrNgx}/vhost.d/*    &> /dev/null
+      wait
+    else
+      sed -i "s/:443;/:443 ssl http2;/g" ${mtrNgx}/pre.d/*.conf          &> /dev/null
+      wait
+      sed -i "s/:443;/:443 ssl http2;/g" ${mtrNgx}/vhost.d/*             &> /dev/null
+      wait
+      sed -i "s/:443 ssl spdy;/:443 ssl http2;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
+      wait
+      sed -i "s/:443 ssl spdy;/:443 ssl http2;/g" ${mtrNgx}/vhost.d/*    &> /dev/null
+      wait
+    fi
+  else
+    sed -i "s/:443 ssl http2;/:443;/g" ${mtrNgx}/pre.d/*.conf            &> /dev/null
+    wait
+    sed -i "s/:443 ssl http2;/:443;/g" ${mtrNgx}/vhost.d/*               &> /dev/null
+    wait
+    sed -i "s/:443 ssl spdy;/:443;/g"  ${mtrNgx}/pre.d/*.conf            &> /dev/null
+    wait
+    sed -i "s/:443 ssl spdy;/:443;/g"  ${mtrNgx}/vhost.d/*               &> /dev/null
+    wait
   fi
   _SSL_ITD=$(openssl version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
   if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ] \
-    || [[ "${_SSL_ITD}" =~ "1.0.1" ]]; then
+    || [[ "${_SSL_ITD}" =~ "1.0.1" ]] \
+    || [[ "${_SSL_ITD}" =~ "1.0.2" ]]; then
     _PFS_READY=YES
   else
     _PFS_READY=NO
@@ -65,38 +107,65 @@ force_advanced_nginx_config() {
   if [ "${_PFS_READY}" = "YES" ] \
     && [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
     _ALLOW_NGINX_FORWARD_SECRECY=YES
-    _SSL_PROTOCOLS="TLSv1 TLSv1.1 TLSv1.2;"
-    _SSL_CIPHERS="EECDH+ECDSA+AESGCM: \
-      EECDH+aRSA+AESGCM:  \
-      EECDH+ECDSA+SHA384: \
-      EECDH+ECDSA+SHA256: \
-      EECDH+aRSA+SHA384:  \
-      EECDH+aRSA+SHA256:  \
-      EECDH:    \
-      EDH+aRSA: \
-      \!aNULL:  \
-      \!eNULL:  \
-      \!LOW:    \
-      \!3DES:   \
-      \!MD5:    \
-      \!EXP:    \
-      \!PSK:    \
-      \!SRP:    \
-      \!DSS:    \
-      \!RC4;"
+    _SSL_PROTOCOLS="TLSv1.1 TLSv1.2;"
+    _SSL_CIPHERS="ECDHE-RSA-AES128-GCM-SHA256:  \
+      ECDHE-ECDSA-AES128-GCM-SHA256:  \
+      ECDHE-RSA-AES256-GCM-SHA384:    \
+      ECDHE-ECDSA-AES256-GCM-SHA384:  \
+      DHE-RSA-AES128-GCM-SHA256:  \
+      DHE-DSS-AES128-GCM-SHA256:  \
+      kEDH+AESGCM:                \
+      ECDHE-RSA-AES128-SHA256:    \
+      ECDHE-ECDSA-AES128-SHA256:  \
+      ECDHE-RSA-AES128-SHA:       \
+      ECDHE-ECDSA-AES128-SHA:     \
+      ECDHE-RSA-AES256-SHA384:    \
+      ECDHE-ECDSA-AES256-SHA384:  \
+      ECDHE-RSA-AES256-SHA:       \
+      ECDHE-ECDSA-AES256-SHA:     \
+      DHE-RSA-AES128-SHA256:      \
+      DHE-RSA-AES128-SHA:         \
+      DHE-DSS-AES128-SHA256:      \
+      DHE-RSA-AES256-SHA256:      \
+      DHE-DSS-AES256-SHA:  \
+      DHE-RSA-AES256-SHA:  \
+      AES128-GCM-SHA256:   \
+      AES256-GCM-SHA384:   \
+      AES128-SHA256:  \
+      AES256-SHA256:  \
+      AES128-SHA:     \
+      AES256-SHA:     \
+      AES:            \
+      CAMELLIA:       \
+      DES-CBC3-SHA:   \
+      \!aNULL:   \
+      \!eNULL:   \
+      \!EXPORT:  \
+      \!DES:     \
+      \!RC4:     \
+      \!MD5:     \
+      \!PSK:     \
+      \!aECDH:   \
+      \!EDH-DSS-DES-CBC3-SHA:  \
+      \!EDH-RSA-DES-CBC3-SHA:  \
+      \!KRB5-DES-CBC3-SHA;"
     _SSL_CIPHERS=$(echo "${_SSL_CIPHERS}" | sed "s/ //g" 2>&1)
   else
     _ALLOW_NGINX_FORWARD_SECRECY=NO
   fi
-  if [ "$_ALLOW_NGINX_FORWARD_SECRECY" = "YES" ]; then
-    sed -i "s/ssl_protocols .*/ssl_protocols                $_SSL_PROTOCOLS/g" \
+  if [ "${_ALLOW_NGINX_FORWARD_SECRECY}" = "YES" ]; then
+    sed -i "s/ssl_protocols .*/ssl_protocols                ${_SSL_PROTOCOLS}/g" \
       ${mtrNgx}/pre.d/*.conf &> /dev/null
-    sed -i "s/ssl_protocols .*/ssl_protocols                $_SSL_PROTOCOLS/g" \
+    wait
+    sed -i "s/ssl_protocols .*/ssl_protocols                ${_SSL_PROTOCOLS}/g" \
       ${mtrNgx}/vhost.d/* &> /dev/null
-    sed -i "s/ssl_ciphers .*/ssl_ciphers                  $_SSL_CIPHERS/g" \
+    wait
+    sed -i "s/ssl_ciphers .*/ssl_ciphers                  ${_SSL_CIPHERS}/g" \
       ${mtrNgx}/pre.d/*.conf &> /dev/null
-    sed -i "s/ssl_ciphers .*/ssl_ciphers                  $_SSL_CIPHERS/g" \
+    wait
+    sed -i "s/ssl_ciphers .*/ssl_ciphers                  ${_SSL_CIPHERS}/g" \
       ${mtrNgx}/vhost.d/* &> /dev/null
+    wait
   fi
   if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
     rm -f ${mtrInc}/nginx_advanced_include.conf
@@ -112,8 +181,9 @@ force_advanced_nginx_config() {
     cp -af ${locCnf}/nginx_high_load_off.conf /data/conf/nginx_high_load_off.conf
     chmod 644 /data/conf/nginx_high_load_off.conf &> /dev/null
   fi
-  if [ -e "/root/.high_traffic.cnf" ]; then
+  if [ -e "/root/.giant_traffic.cnf" ]; then
     sed -i "s/access_log .*/access_log             /var/log/nginx/access.log main buffer=32k;/g" ${mtrNgx}.conf &> /dev/null
+    wait
   fi
 }
 
@@ -126,10 +196,10 @@ detect_cdorked_malware() {
     ### msg "INFO: Checking for Linux/Cdorked.A malware..."
     chattr -ai $(which nginx) &> /dev/null
     cd ${vBs}
-    rm -f -r /var/opt/foo_bar*
+    rm -rf /var/opt/foo_bar*
     gcc -o /var/opt/foo_bar ${bldPth}/aegir/helpers/dump_cdorked_config.c &> /dev/null
     _C_DORKED_TEST=$(/var/opt/foo_bar 2>&1)
-    if [[ "$_C_DORKED_TEST" =~ "No shared memory matching Cdorked signature" ]]; then
+    if [[ "${_C_DORKED_TEST}" =~ "No shared memory matching Cdorked signature" ]]; then
       _DO_NOTHING=YES
       ### msg "INFO: No Linux/Cdorked.A malware traces found - system clean"
     else
@@ -156,80 +226,73 @@ install_upgrade_nginx() {
     _NGINX_F_ITD=$(/usr/sbin/nginx -v 2>&1 | tr -d "\n" \
       | cut -d" " -f4 | awk '{ print $1}' 2>&1)
     _NGINX_V_ITD=$(/usr/sbin/nginx -V 2>&1)
-    if [ -z "$_NGINX_F_ITD" ]; then
+    if [ -z "${_NGINX_F_ITD}" ]; then
       _NGINX_F_ITD=$(/usr/sbin/nginx -v 2>&1 | tr -d "\n" \
         | cut -d" " -f3 | awk '{ print $1}' 2>&1)
     fi
     _NGINX_F_VERSION="${_CUSTOM_NAME}/${_NGINX_VRN}"
-    if [ "$_NGINX_F_ITD" = "$_NGINX_F_VERSION" ] \
+    if [ "${_NGINX_F_ITD}" = "${_NGINX_F_VERSION}" ] \
       && [ "${_STATUS}" = "UPGRADE" ]; then
       _NGINX_INSTALL_REQUIRED=NO
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed Nginx version $_NGINX_F_ITD, OK"
+        msg "INFO: Installed Nginx version ${_NGINX_F_ITD}, OK"
       fi
-    elif [ "$_NGINX_F_ITD" = "$_NGINX_F_VERSION" ] \
+    elif [ "${_NGINX_F_ITD}" = "${_NGINX_F_VERSION}" ] \
       && [ "${_STATUS}" = "INIT" ]; then
       _NGINX_INSTALL_REQUIRED=NO
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed Nginx version $_NGINX_F_ITD, OK"
+        msg "INFO: Installed Nginx version ${_NGINX_F_ITD}, OK"
       fi
-    elif [ "$_NGINX_F_ITD" != "$_NGINX_F_VERSION" ]; then
+    elif [ "${_NGINX_F_ITD}" != "${_NGINX_F_VERSION}" ]; then
       _NGINX_INSTALL_REQUIRED=YES
-      msg "INFO: Installed Nginx version $_NGINX_F_ITD, upgrade required"
+      msg "INFO: Installed Nginx version ${_NGINX_F_ITD}, upgrade required"
     fi
-    if [ "$_NGINX_F_ITD" = "$_NGINX_F_VERSION" ]; then
-      if [[ "$_NGINX_V_ITD" =~ "geoip" ]]; then
-        _DO_NOTHING=YES
-      else
+    if [ "${_NGINX_F_ITD}" = "${_NGINX_F_VERSION}" ]; then
+      if [[ ! "${_NGINX_V_ITD}" =~ "geoip" ]]; then
         _NGINX_INSTALL_REQUIRED=YES
-        msg "INFO: Installed Nginx version $_NGINX_F_ITD"
+        msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
         msg "INFO: Nginx forced rebuild to include geoip module"
       fi
-      if [[ "$_NGINX_V_ITD" =~ "nginx-development-kit" ]]; then
+      if [[ "${_NGINX_V_ITD}" =~ "nginx-development-kit" ]]; then
         _NGINX_INSTALL_REQUIRED=YES
         msg "INFO: Nginx rebuild required to avoid apt-get overwrite"
       fi
-      if [[ "$_NGINX_V_ITD" =~ "http_flv_module" ]] \
-        && [[ "$_NGINX_V_ITD" =~ "http_mp4_module" ]]; then
-        _DO_NOTHING=YES
-      else
+      if [[ ! "${_NGINX_V_ITD}" =~ "http_flv_module" ]] \
+        || [[ ! "${_NGINX_V_ITD}" =~ "http_mp4_module" ]]; then
         _NGINX_INSTALL_REQUIRED=YES
-        msg "INFO: Installed Nginx version $_NGINX_F_ITD"
+        msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
         msg "INFO: Nginx forced rebuild to include pseudo-streaming support"
       fi
+      if [[ ! "${_NGINX_V_ITD}" =~ "openssl-${_OPENSSL_NGX_VRN}" ]]; then
+        _NGINX_INSTALL_REQUIRED=YES
+        msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
+        msg "INFO: Nginx forced rebuild to include latest OpenSSL version"
+      fi
       if [ "${_NGINX_LDAP}" = "YES" ]; then
-        if [[ "$_NGINX_V_ITD" =~ "nginx-auth-ldap" ]]; then
-          _DO_NOTHING=YES
-        else
+        if [[ ! "${_NGINX_V_ITD}" =~ "nginx-auth-ldap" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
-          msg "INFO: Installed Nginx version $_NGINX_F_ITD"
+          msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
           msg "INFO: Nginx forced rebuild to include LDAP support"
         fi
       fi
       if [ "${_PURGE_MODE}" = "ON" ]; then
-        if [[ "$_NGINX_V_ITD" =~ "purge" ]]; then
-          _DO_NOTHING=YES
-        else
+        if [[ ! "${_NGINX_V_ITD}" =~ "purge" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
-          msg "INFO: Installed Nginx version $_NGINX_F_ITD"
+          msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
           msg "INFO: Nginx forced rebuild to include purge module"
         fi
       fi
       if [ "${_NGINX_NAXSI}" = "YES" ]; then
-        if [[ "$_NGINX_V_ITD" =~ "naxsi" ]]; then
-          _DO_NOTHING=YES
-        else
+        if [[ ! "${_NGINX_V_ITD}" =~ "naxsi" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
-          msg "INFO: Installed Nginx version $_NGINX_F_ITD"
+          msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
           msg "INFO: Nginx forced rebuild to include NAXSI module"
         fi
       fi
       if [ "${_NGINX_SPDY}" = "YES" ]; then
-        if [[ "$_NGINX_V_ITD" =~ "http_spdy_module" ]]; then
-          _DO_NOTHING=YES
-        else
+        if [[ ! "${_NGINX_V_ITD}" =~ "http_v2_module" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
-          msg "INFO: Installed Nginx version $_NGINX_F_ITD"
+          msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
           msg "INFO: Nginx forced rebuild to include SPDY support"
         fi
       fi
@@ -242,7 +305,7 @@ install_upgrade_nginx() {
     _NGINX_INSTALL_REQUIRED=YES
     msg "INFO: Nginx rebuild required to remove possible Linux/Cdorked.A malware"
   fi
-  if [ "$_NGINX_INSTALL_REQUIRED" = "YES" ] \
+  if [ "${_NGINX_INSTALL_REQUIRED}" = "YES" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_NGX_FORCE_REINSTALL}" = "YES" ]; then
     if [ "${_STATUS}" = "UPGRADE" ]; then
@@ -250,7 +313,7 @@ install_upgrade_nginx() {
     else
       msg "INFO: Installing Nginx..."
     fi
-    cd /var/opt; rm -f -r nginx*
+    cd /var/opt; rm -rf nginx*
     get_dev_src "nginx-upload-progress-module.tar.gz"
     if [ "${_PURGE_MODE}" = "ON" ]; then
       get_dev_src "ngx-cache-purge.tar.gz"
@@ -258,6 +321,7 @@ install_upgrade_nginx() {
     get_dev_src "nginx-${_NGINX_VRN}.tar.gz"
     sed -i "s/nginx/${_CUSTOM_NAME}/g" \
       /var/opt/nginx-${_NGINX_VRN}/src/core/nginx.h &> /dev/null
+    wait
     if [ "${_PURGE_MODE}" = "ON" ] && [ -z "${_NGINX_EXTRA_CONF}" ]; then
       _NGINX_EXTRA="--add-module=/var/opt/ngx-cache-purge/"
     elif [ ! -z "${_NGINX_EXTRA_CONF}" ] && [ "${_PURGE_MODE}" = "OFF" ]; then
@@ -268,29 +332,38 @@ install_upgrade_nginx() {
       _NGINX_EXTRA=""
     fi
     if [ -e "/var/opt/nginx-upload-progress-module" ]; then
-      _NGINX_EXTRA="--add-module=/var/opt/nginx-upload-progress-module/ $_NGINX_EXTRA"
+      _NGINX_EXTRA="--add-module=/var/opt/nginx-upload-progress-module/ ${_NGINX_EXTRA}"
     fi
     if [ "${_NGINX_LDAP}" = "YES" ]; then
       cd /var/opt
-      rm -f -r /var/opt/nginx-auth-ldap*
+      rm -rf /var/opt/nginx-auth-ldap*
       get_dev_src "nginx-auth-ldap.tar.gz"
       if [ -e "/var/opt/nginx-auth-ldap" ]; then
-        _NGINX_EXTRA="--add-module=/var/opt/nginx-auth-ldap/ $_NGINX_EXTRA"
+        _NGINX_EXTRA="--add-module=/var/opt/nginx-auth-ldap/ ${_NGINX_EXTRA}"
       fi
     fi
     if [ "${_NGINX_NAXSI}" = "YES" ]; then
       cd /var/opt
-      rm -f -r /var/opt/nginx-naxsi*
+      rm -rf /var/opt/nginx-naxsi*
       get_dev_src "nginx-naxsi.tar.gz"
       if [ -e "/var/opt/nginx-naxsi" ]; then
-        _NGINX_EXTRA="--add-module=/var/opt/nginx-naxsi/naxsi_src/ $_NGINX_EXTRA"
+        _NGINX_EXTRA="--add-module=/var/opt/nginx-naxsi/naxsi_src/ ${_NGINX_EXTRA}"
       fi
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
-      _NGINX_EXTRA="--with-http_spdy_module $_NGINX_EXTRA"
+      if [ "${_OSV}" = "none" ]; then
+        _NGINX_EXTRA="--with-http_spdy_module ${_NGINX_EXTRA}"
+      else
+        _NGINX_EXTRA="--with-http_v2_module ${_NGINX_EXTRA}"
+      fi
+    fi
+    if [ ! -e "/var/opt/openssl-${_OPENSSL_NGX_VRN}" ]; then
+      cd /var/opt
+      rm -rf openssl*
+      get_dev_src "openssl-${_OPENSSL_NGX_VRN}.tar.gz"
     fi
     cd /var/opt/nginx-${_NGINX_VRN}
-    st_runner "sh ./configure \
+    mrun "sh ./configure \
       --prefix=/usr \
       --sbin-path=/usr/sbin/nginx \
       --conf-path=/etc/nginx/nginx.conf \
@@ -314,14 +387,15 @@ install_upgrade_nginx() {
       --without-http_uwsgi_module \
       --with-ipv6 \
       --with-http_geoip_module \
-      --with-debug $_NGINX_EXTRA" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "squeeze" ]; then
+      --with-openssl=/var/opt/openssl-${_OPENSSL_NGX_VRN} \
+      --with-debug ${_NGINX_EXTRA}" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
+      && [ "${_LOC_OSV}" = "wheezy" ]; then
       _DO_NOTHING=YES
-    elif [ "${_LENNY_TO_SQUEEZE}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "lenny" ]; then
+    elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+      && [ "${_LOC_OSV}" = "squeeze" ]; then
       _DO_NOTHING=YES
     else
       mrun "service nginx stop" &> /dev/null
@@ -350,23 +424,31 @@ master_fix_multi_ip_cron_access() {
 
   sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" \
     ${mtrTpl}/Inc/vhost_include.tpl.php
+  wait
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
 d;};' ${mtrTpl}/Inc/vhost_include.tpl.php
+  wait
 
   sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" \
     ${mtrTpl}/subdir.tpl.php
+  wait
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
 d;};' ${mtrTpl}/subdir.tpl.php
+  wait
 
   sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" \
     ${mtrInc}/nginx_vhost_common.conf
+  wait
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
 d;};' ${mtrInc}/nginx_vhost_common.conf
+  wait
 
   sed -i "s/allow .*;//g; s/ *$//g; /^$/d" \
     ${mtrNgx}/pre.d/nginx_speed_purge.conf
+  wait
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
 d;};' ${mtrNgx}/pre.d/nginx_speed_purge.conf
+  wait
 }
 
 check_nginx_initd() {
@@ -405,63 +487,42 @@ fix_nginx_mime() {
 
 nginx_wildcard_ssl() {
   _WILD_SSL_VHOST="${mtrNgx}/pre.d/nginx_wild_ssl.conf"
-  if [ ! -e "$_WILD_SSL_VHOST" ]; then
+  if [ ! -e "${_WILD_SSL_VHOST}" ]; then
     msg "INFO: Installing default SSL Wildcard Nginx Proxy..."
-    _HTTPS_TEST=$(netstat -ln | grep :443 2>&1)
-    if [[ "$_HTTPS_TEST" =~ "443" ]]; then
-      _HTTPS_TEST=EXIST
-      msg "WARNING!"
-      cat <<EOF
-
-    We can't enable Wildcard HTTPS Proxy for all your hosted sites,
-    including all Aegir Satellite Instances, because you have already
-    enabled SSL on the IP address used by your Aegir Master Instance.
-
-    If you wish to use provided now by Barracuda Wildcard HTTPS Proxy,
-    please disable the SSL you enabled, or use the built-in Aegir SSL
-    feature on another IP address available and not used by the Hostmaster,
-    and other hosted sites.
-
-    We will continue in 10 seconds...
-
-EOF
-      mrun "sleep 10"
-    else
-      _HTTPS_TEST=FREE
-      validate_public_ip &> /dev/null
-      validate_xtras_ip &> /dev/null
-      openssl req -x509 -nodes -days 7300 \
-        -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.${_THISHOST}" \
-        -newkey rsa:4096 \
-        -keyout /etc/ssl/private/nginx-wild-ssl.key \
-        -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
-      cp -af ${locCnf}/nginx_wild_ssl.conf $_WILD_SSL_VHOST
-      sed -i "s/127.0.0.1:80/localhost:80/g" $_WILD_SSL_VHOST &> /dev/null
-      sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_WILD_SSL_VHOST &> /dev/null
-      mkdir -p /data/conf
-      if [ -e "${locCnf}/global.inc" ]; then
-        cp -af ${locCnf}/global.inc /data/conf/global.inc
-      fi
-      if [ -e "${mtrInc}" ] \
-        && [ ! -L "${mtrInc}/global.inc" ] \
-        && [ -e "/data/conf/global.inc" ]; then
-        ln -sf /data/conf/global.inc ${mtrInc}/global.inc
-      fi
-      sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
-      update_redis_password
-      killall -9 nginx &> /dev/null
-      mrun "service nginx start" &> /dev/null
+    validate_public_ip &> /dev/null
+    validate_xtras_ip &> /dev/null
+    openssl req -x509 -nodes -sha256 -days 7300 \
+      -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.${_THISHOST}" \
+      -newkey rsa:2048 \
+      -keyout /etc/ssl/private/nginx-wild-ssl.key \
+      -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
+    cp -af ${locCnf}/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
+    sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST} &> /dev/null
+    sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST} &> /dev/null
+    mkdir -p /data/conf
+    if [ -e "${locCnf}/global.inc" ]; then
+      cp -af ${locCnf}/global.inc /data/conf/global.inc
     fi
+    if [ -e "${mtrInc}" ] \
+      && [ ! -L "${mtrInc}/global.inc" ] \
+      && [ -e "/data/conf/global.inc" ]; then
+      ln -sf /data/conf/global.inc ${mtrInc}/global.inc
+    fi
+    sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
+    update_redis_password
+    killall -9 nginx &> /dev/null
+    mrun "service nginx start" &> /dev/null
   else
-    _WILDCARD_SSL_TEST=$(grep "localhost:80" $_WILD_SSL_VHOST 2>&1)
-    if [[ "$_WILDCARD_SSL_TEST" =~ "localhost:80" ]]; then
+    _WILDCARD_SSL_TEST=$(grep "localhost:80" ${_WILD_SSL_VHOST} 2>&1)
+    if [[ "${_WILDCARD_SSL_TEST}" =~ "localhost:80" ]]; then
       _DO_NOTHING=YES
     else
       validate_public_ip &> /dev/null
       validate_xtras_ip &> /dev/null
-      cp -af ${locCnf}/nginx_wild_ssl.conf $_WILD_SSL_VHOST
-      sed -i "s/127.0.0.1:80/localhost:80/g" $_WILD_SSL_VHOST
-      sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_WILD_SSL_VHOST
+      cp -af ${locCnf}/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
+      sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST}
+      wait
+      sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST}
     fi
   fi
 }
@@ -485,38 +546,99 @@ fix_update_nginx_config() {
   else
     if [ -e "/var/aegir/config" ]; then
       sed -i "s/.*listen .*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/*          &> /dev/null
+      wait
       sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
+      wait
       sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/chive.*    &> /dev/null
+      wait
       sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
-      sed -i "s/SSLv3 TLSv1;/TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf       &> /dev/null
-      sed -i "s/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
-      sed -i "s/HIGH:\!ADH:\!MD5;/RC4:HIGH:\!aNULL:\!MD5;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      wait
+      sed -i "s/SSLv3 TLSv1;/TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf             &> /dev/null
+      wait
+      sed -i "s/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      wait
+      sed -i "s/TLSv1 TLSv1.1 TLSv1.2;/TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf   &> /dev/null
+      wait
       sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                           &> /dev/null
+      wait
       sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/vhost.d/*                              &> /dev/null
+      wait
       sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                   &> /dev/null
+      wait
       sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_*/nginx/vhost.d/*                      &> /dev/null
+      wait
       sed -i "s/.*proxy_buffers .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                       &> /dev/null
+      wait
       sed -i "s/.*proxy_buffers .*//g" /var/aegir/config/server_*/nginx/vhost.d/*                          &> /dev/null
+      wait
       sed -i "s/.*proxy_busy_buffers_size .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf             &> /dev/null
+      wait
       sed -i "s/.*proxy_busy_buffers_size .*//g" /var/aegir/config/server_*/nginx/vhost.d/*                &> /dev/null
+      wait
       sed -i "s/.*proxy_temp_file_write_size .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf          &> /dev/null
+      wait
       sed -i "s/.*proxy_temp_file_write_size .*//g" /var/aegir/config/server_*/nginx/vhost.d/*             &> /dev/null
+      wait
       sed -i "s/.*proxy_buffering .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                     &> /dev/null
+      wait
       sed -i "s/.*proxy_buffering .*//g" /var/aegir/config/server_*/nginx/vhost.d/*                        &> /dev/null
+      wait
       sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;\n    proxy_buffering            off;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      wait
       sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;\n    proxy_buffering            off;/g" /var/aegir/config/server_*/nginx/vhost.d/*    &> /dev/null
+      wait
+      sed -i "s/.*ssl_stapling .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf               &> /dev/null
+      wait
+      sed -i "s/.*ssl_stapling_verify .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf        &> /dev/null
+      wait
+      sed -i "s/.*resolver .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                   &> /dev/null
+      wait
+      sed -i "s/.*resolver_timeout .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf           &> /dev/null
+      wait
+      sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n  resolver 8.8.8.8 8.8.4.4 valid=300s;\n  resolver_timeout 5s;/g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
+      wait
       sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*.conf                               &> /dev/null
+      wait
       sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/vhost.d/*                                  &> /dev/null
+      wait
       sed -i "s/add_header Vary .*//g" /var/aegir/config/server_*/nginx.conf                               &> /dev/null
+      wait
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
-      sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
-      sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/vhost.d/*    &> /dev/null
+      if [ "${_OSV}" = "none" ]; then
+        sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf           &> /dev/null
+        wait
+        sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/vhost.d/*              &> /dev/null
+        wait
+        sed -i "s/:443 ssl http2;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+        wait
+        sed -i "s/:443 ssl http2;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/vhost.d/*    &> /dev/null
+        wait
+      else
+        sed -i "s/:443;/:443 ssl http2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf          &> /dev/null
+        wait
+        sed -i "s/:443;/:443 ssl http2;/g" /var/aegir/config/server_*/nginx/vhost.d/*             &> /dev/null
+        wait
+        sed -i "s/:443 ssl spdy;/:443 ssl http2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+        wait
+        sed -i "s/:443 ssl spdy;/:443 ssl http2;/g" /var/aegir/config/server_*/nginx/vhost.d/*    &> /dev/null
+        wait
+      fi
+    else
+      sed -i "s/:443 ssl http2;/:443;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf            &> /dev/null
+      wait
+      sed -i "s/:443 ssl http2;/:443;/g" /var/aegir/config/server_*/nginx/vhost.d/*               &> /dev/null
+      wait
+      sed -i "s/:443 ssl spdy;/:443;/g"  /var/aegir/config/server_*/nginx/pre.d/*.conf            &> /dev/null
+      wait
+      sed -i "s/:443 ssl spdy;/:443;/g"  /var/aegir/config/server_*/nginx/vhost.d/*               &> /dev/null
+      wait
     fi
     _SSL_ITD=$(openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}' 2>&1)
 
     if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ] \
-      || [[ "${_SSL_ITD}" =~ "1.0.1" ]]; then
+      || [[ "${_SSL_ITD}" =~ "1.0.1" ]] \
+      || [[ "${_SSL_ITD}" =~ "1.0.2" ]]; then
       _PFS_READY=YES
     else
       _PFS_READY=NO
@@ -524,38 +646,65 @@ fix_update_nginx_config() {
     if [ "${_PFS_READY}" = "YES" ] \
       && [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
       _ALLOW_NGINX_FORWARD_SECRECY=YES
-      _SSL_PROTOCOLS="TLSv1 TLSv1.1 TLSv1.2;"
-      _SSL_CIPHERS="EECDH+ECDSA+AESGCM: \
-        EECDH+aRSA+AESGCM:  \
-        EECDH+ECDSA+SHA384: \
-        EECDH+ECDSA+SHA256: \
-        EECDH+aRSA+SHA384:  \
-        EECDH+aRSA+SHA256:  \
-        EECDH:    \
-        EDH+aRSA: \
-        \!aNULL:  \
-        \!eNULL:  \
-        \!LOW:    \
-        \!3DES:   \
-        \!MD5:    \
-        \!EXP:    \
-        \!PSK:    \
-        \!SRP:    \
-        \!DSS:    \
-        \!RC4;"
+      _SSL_PROTOCOLS="TLSv1.1 TLSv1.2;"
+      _SSL_CIPHERS="ECDHE-RSA-AES128-GCM-SHA256:  \
+        ECDHE-ECDSA-AES128-GCM-SHA256:  \
+        ECDHE-RSA-AES256-GCM-SHA384:    \
+        ECDHE-ECDSA-AES256-GCM-SHA384:  \
+        DHE-RSA-AES128-GCM-SHA256:  \
+        DHE-DSS-AES128-GCM-SHA256:  \
+        kEDH+AESGCM:                \
+        ECDHE-RSA-AES128-SHA256:    \
+        ECDHE-ECDSA-AES128-SHA256:  \
+        ECDHE-RSA-AES128-SHA:       \
+        ECDHE-ECDSA-AES128-SHA:     \
+        ECDHE-RSA-AES256-SHA384:    \
+        ECDHE-ECDSA-AES256-SHA384:  \
+        ECDHE-RSA-AES256-SHA:       \
+        ECDHE-ECDSA-AES256-SHA:     \
+        DHE-RSA-AES128-SHA256:      \
+        DHE-RSA-AES128-SHA:         \
+        DHE-DSS-AES128-SHA256:      \
+        DHE-RSA-AES256-SHA256:      \
+        DHE-DSS-AES256-SHA:  \
+        DHE-RSA-AES256-SHA:  \
+        AES128-GCM-SHA256:   \
+        AES256-GCM-SHA384:   \
+        AES128-SHA256:  \
+        AES256-SHA256:  \
+        AES128-SHA:     \
+        AES256-SHA:     \
+        AES:            \
+        CAMELLIA:       \
+        DES-CBC3-SHA:   \
+        \!aNULL:   \
+        \!eNULL:   \
+        \!EXPORT:  \
+        \!DES:     \
+        \!RC4:     \
+        \!MD5:     \
+        \!PSK:     \
+        \!aECDH:   \
+        \!EDH-DSS-DES-CBC3-SHA:  \
+        \!EDH-RSA-DES-CBC3-SHA:  \
+        \!KRB5-DES-CBC3-SHA;"
       _SSL_CIPHERS=$(echo "${_SSL_CIPHERS}" | sed "s/ //g" 2>&1)
     else
       _ALLOW_NGINX_FORWARD_SECRECY=NO
     fi
-    if [ "$_ALLOW_NGINX_FORWARD_SECRECY" = "YES" ]; then
-      sed -i "s/ssl_protocols .*/ssl_protocols                $_SSL_PROTOCOLS/g" \
+    if [ "${_ALLOW_NGINX_FORWARD_SECRECY}" = "YES" ]; then
+      sed -i "s/ssl_protocols .*/ssl_protocols                ${_SSL_PROTOCOLS}/g" \
         /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
-      sed -i "s/ssl_protocols .*/ssl_protocols                $_SSL_PROTOCOLS/g" \
+      wait
+      sed -i "s/ssl_protocols .*/ssl_protocols                ${_SSL_PROTOCOLS}/g" \
         /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
-      sed -i "s/ssl_ciphers .*/ssl_ciphers                  $_SSL_CIPHERS/g" \
+      wait
+      sed -i "s/ssl_ciphers .*/ssl_ciphers                  ${_SSL_CIPHERS}/g" \
         /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
-      sed -i "s/ssl_ciphers .*/ssl_ciphers                  $_SSL_CIPHERS/g" \
+      wait
+      sed -i "s/ssl_ciphers .*/ssl_ciphers                  ${_SSL_CIPHERS}/g" \
         /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+      wait
     fi
 
     ###
@@ -566,18 +715,27 @@ fix_update_nginx_config() {
     if [ -e "/var/aegir" ]; then
       sed -i "s/.*listen.*127.0.0.1:80;.*//g" \
         /var/aegir/config/server_*/nginx.conf &> /dev/null
+      wait
       sed -i "s/listen .*/listen        \*:80;/g" \
         /var/aegir/config/server_*/nginx.conf &> /dev/null
+      wait
     fi
     if [ -e "/data/disk" ]; then
       sed -i "s/.*listen.*127.0.0.1:80;.*//g" \
         /data/disk/*/config/server_*/nginx.conf &> /dev/null
+      wait
       sed -i "s/listen .*/listen        \*:80;/g" \
         /data/disk/*/config/server_*/nginx.conf &> /dev/null
-      sed -i "s/listen .*/listen        \*:80;/g" \
+      wait
+      sed -i "s/.*listen .*:80;/  listen        \*:80;/g" \
         /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
+      wait
+      sed -i "s/.*listen .*:443/  listen        \*:443/g" \
+        /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
+      wait
       sed -i "s/param db_port.*/param db_port   3306;/g" \
         /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
+      wait
     fi
 
     if [ -e "/data/disk" ]; then
@@ -586,21 +744,23 @@ fix_update_nginx_config() {
         if [ -e "$_OCT/.drush/sys/drush_make" ]; then
           sed -i "s/\!empty.*';/'*';/g" \
             $_OCT/.drush/sys/${pNx}/server.tpl.php &> /dev/null
+          wait
           sed -i "s/\!empty.*';/'*';/g" \
             $_OCT/.drush/sys/${pNx}/vhost.tpl.php &> /dev/null
+          wait
           sed -i "s/\!empty.*';/'*';/g" \
             $_OCT/.drush/sys/${pNx}/vhost_disabled.tpl.php &> /dev/null
-          sed -i "s/\!empty.*';/'*';/g" \
-            $_OCT/.drush/xts/provision_cdn/Provision/Config/cdn.tpl.php &> /dev/null
+          wait
         elif [ -e "$_OCT/.drush/drush_make" ]; then
           sed -i "s/\!empty.*';/'*';/g" \
             $_OCT/.drush/${pNx}/server.tpl.php &> /dev/null
+          wait
           sed -i "s/\!empty.*';/'*';/g" \
             $_OCT/.drush/${pNx}/vhost.tpl.php &> /dev/null
+          wait
           sed -i "s/\!empty.*';/'*';/g" \
             $_OCT/.drush/${pNx}/vhost_disabled.tpl.php &> /dev/null
-          sed -i "s/\!empty.*';/'*';/g" \
-            $_OCT/.drush/provision_cdn/Provision/Config/cdn.tpl.php &> /dev/null
+          wait
         fi
       done
     fi
@@ -622,16 +782,24 @@ fix_update_nginx_config() {
       done
       wildPth="/data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf"
       sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${wildPth} &> /dev/null
+      wait
       sed -i "s/OctopusNCookie/AegirCookie/g"      ${wildPth} &> /dev/null
+      wait
       sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${wildPth} &> /dev/null
+      wait
     fi
     if [ -e "/var/aegir" ]; then
       wildPth="/var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf"
       sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${wildPth} &> /dev/null
+      wait
       sed -i "s/OctopusNCookie/AegirCookie/g"      ${wildPth} &> /dev/null
+      wait
       sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${wildPth} &> /dev/null
+      wait
       sed -i "s/60/180/g" /var/aegir/config/server_*/nginx.conf  &> /dev/null
+      wait
       sed -i "s/300/180/g" /var/aegir/config/server_*/nginx.conf &> /dev/null
+      wait
     fi
     validate_public_ip &> /dev/null
     _CRON_IP=${_THISHTIP//[^0-9.]/}

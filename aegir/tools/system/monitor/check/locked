@@ -12,17 +12,20 @@ chomp($now_is);
 &javacheck;
 if ($fpm_status ne "CLEAN") {
   `kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')`;
+  if (-f "/etc/init.d/php70-fpm") {
+    `service php70-fpm restart`;
+  }
   if (-f "/etc/init.d/php56-fpm") {
-    `/etc/init.d/php56-fpm restart`;
+    `service php56-fpm restart`;
   }
   if (-f "/etc/init.d/php55-fpm") {
-    `/etc/init.d/php55-fpm restart`;
+    `service php55-fpm restart`;
   }
   if (-f "/etc/init.d/php54-fpm") {
-    `/etc/init.d/php54-fpm restart`;
+    `service php54-fpm restart`;
   }
   if (-f "/etc/init.d/php53-fpm") {
-    `/etc/init.d/php53-fpm restart`;
+    `service php53-fpm restart`;
   }
   sleep(2);
 }
@@ -30,13 +33,13 @@ if ($java_status ne "CLEAN") {
   `kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')`;
   sleep(2);
   if (-f "/etc/default/jetty9" && -f "/etc/init.d/jetty9") {
-    `/etc/init.d/jetty9 start`;
+    `service jetty9 start`;
   }
   if (-f "/etc/default/jetty8" && -f "/etc/init.d/jetty8") {
-    `/etc/init.d/jetty8 start`;
+    `service jetty8 start`;
   }
   if (-f "/etc/default/jetty7" && -f "/etc/init.d/jetty7") {
-    `/etc/init.d/jetty7 start`;
+    `service jetty7 start`;
   }
 }
 `touch /var/xdrago/log/last-run-locked`;
@@ -45,7 +48,7 @@ exit;
 #############################################################################
 sub fpmcheck
 {
-local(@MYARR) = `grep " 499 0 " /var/log/nginx/access.log | tail --lines=999 2>&1`;
+local(@MYARR)=`grep " 499 0 " /var/log/nginx/access.log | tail --lines=999 2>&1`;
 local($sumar,$maxnumber);
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
@@ -92,7 +95,7 @@ local($sumar,$maxnumber);
 }
 sub javacheck
 {
-local(@MYARR) = `grep "Apache Solr" /var/log/syslog | tail --lines=999 2>&1`;
+local(@MYARR)=`grep "Apache Solr" /var/log/syslog | tail --lines=999 2>&1`;
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
     if ($line =~ /(timed out)/i || $line =~ /(Communication Error)/i) {
@@ -121,4 +124,4 @@ local(@MYARR) = `grep "Apache Solr" /var/log/syslog | tail --lines=999 2>&1`;
     }
   }
 }
-###EOF2015###
+###EOF2016###

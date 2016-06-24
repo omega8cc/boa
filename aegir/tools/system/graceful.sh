@@ -1,7 +1,40 @@
 #!/bin/bash
 
-SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
+
+check_root() {
+  if [ `whoami` = "root" ]; then
+    if [ -e "/root/.barracuda.cnf" ]; then
+      source /root/.barracuda.cnf
+      _B_NICE=${_B_NICE//[^0-9]/}
+    fi
+    if [ -z "${_B_NICE}" ]; then
+      _B_NICE=10
+    fi
+    chmod a+w /dev/null
+    if [ ! -e "/dev/fd" ]; then
+      if [ -e "/proc/self/fd" ]; then
+        rm -rf /dev/fd
+        ln -s /proc/self/fd /dev/fd
+      fi
+    fi
+  else
+    echo "ERROR: This script should be ran as a root user"
+    exit 1
+  fi
+  _DF_TEST=$(df -kTh / -l \
+    | grep '/' \
+    | sed 's/\%//g' \
+    | awk '{print $6}' 2> /dev/null)
+  _DF_TEST=${_DF_TEST//[^0-9]/}
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
+    exit 1
+  fi
+}
+check_root
 
 action() {
   mkdir -p /usr/share/GeoIP
@@ -16,8 +49,8 @@ action() {
   gunzip GeoIPv6.dat.gz &> /dev/null
   cp -af GeoIPv6.dat /usr/share/GeoIP/
   chmod 644 /usr/share/GeoIP/*
-  rm -f -r /tmp/GeoIP*
-  rm -f -r /opt/tmp
+  rm -rf /tmp/GeoIP*
+  rm -rf /opt/tmp
   mkdir -p /opt/tmp
   chmod 777 /opt/tmp
   rm -f /opt/tmp/sess*
@@ -30,61 +63,58 @@ action() {
   rm -f /root/ksplice-archive.asc
   rm -f /root/install-uptrack
   find /tmp/{.ICE-unix,.X11-unix,.webmin} -mtime +0 -type f -exec rm -rf {} \;
-  kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
-  rm -f -r /tmp/{drush*,pear,jetty*}
-  rm -f /var/log/jetty{7,8,9}/*
-  if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
-    /etc/init.d/jetty9 start
-  fi
-  if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
-    /etc/init.d/jetty8 start
-  fi
-  if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
-    /etc/init.d/jetty7 start
-  fi
-  touch /var/run/fmp_wait.pid
-  rm -f /var/log/php/*
-  rm -f /var/log/mysql/sql-slow-query.log
-  if [ -e "/etc/init.d/php56-fpm" ]; then
-    /etc/init.d/php56-fpm reload
-  fi
-  if [ -e "/etc/init.d/php55-fpm" ]; then
-    /etc/init.d/php55-fpm reload
-  fi
-  if [ -e "/etc/init.d/php54-fpm" ]; then
-    /etc/init.d/php54-fpm reload
-  fi
-  if [ -e "/etc/init.d/php53-fpm" ]; then
-    /etc/init.d/php53-fpm reload
-  fi
-  sleep 8
-  rm -f /var/run/fmp_wait.pid
-  if [ -e "/root/.high_traffic.cnf" ]; then
-    _DO_NOTHING=YES
-  else
-    rm -f -r /var/lib/nginx/speed/*
-  fi
-  /etc/init.d/nginx reload
-  echo rotate > /var/log/nginx/speed_purge.log
   if [ -e "/var/log/newrelic" ]; then
     echo rotate > /var/log/newrelic/nrsysmond.log
     echo rotate > /var/log/newrelic/php_agent.log
     echo rotate > /var/log/newrelic/newrelic-daemon.log
+  fi
+  ionice -c2 -n2 -p $$
+  renice ${_B_NICE} -p $$ &> /dev/null
+  service nginx reload
+  kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
+  rm -rf /tmp/{drush*,pear,jetty*}
+  rm -f /var/log/jetty{7,8,9}/*
+  if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
+    service jetty9 start
+  fi
+  if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
+    service jetty8 start
+  fi
+  if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
+    service jetty7 start
+  fi
+  if [ ! -e "/root/.high_traffic.cnf" ] \
+    && [ ! -e "/root/.giant_traffic.cnf" ]; then
+    echo "INFO: Redis server will be restarted in 60 seconds"
+    touch /var/run/boa_wait.pid
+    sleep 60
+    service redis-server stop
+    killall -9 redis-server
+    rm -f /var/run/redis.pid
+    rm -f /var/lib/redis/*
+    rm -f /var/log/redis/redis-server.log
+    service redis-server start
+    rm -f /var/run/boa_wait.pid
+    echo "INFO: Redis server restarted OK"
   fi
   touch /var/xdrago/log/graceful.done
 }
 
 ###--------------------###
 _NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=${_NOW//[^0-9-]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ beng ]]; then
+if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
 fi
 
-if [ -e "/var/run/boa_run.pid" ]; then
+if [ -e "/var/run/boa_run.pid" ] || [ -e "/root/.skip_cleanup.cnf" ]; then
   exit 0
 else
   touch /var/run/boa_wait.pid
@@ -93,4 +123,4 @@ else
   rm -f /var/run/boa_wait.pid
   exit 0
 fi
-###EOF2015###
+###EOF2016###

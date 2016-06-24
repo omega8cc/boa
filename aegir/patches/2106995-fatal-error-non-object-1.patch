@@ -1,0 +1,20 @@
+diff -urp a/registration.install b/registration.install
+--- a/registration.install      2016-04-22 17:11:27.000000000 +0000
++++ b/registration.install      2016-05-03 19:36:33.000000000 +0000
+@@ -5,6 +5,16 @@
+  * Schema and installation hooks for registration module.
+  */
+
++// https://www.drupal.org/node/542202#comment-6065048
++module_load_include('inc','registration','lib/registration.entity');
++module_load_include('inc','registration','lib/registration_state.ui_controller');
++module_load_include('inc','registration','lib/registration.metadata');
++module_load_include('inc','registration','lib/registration_type.controller');
++module_load_include('inc','registration','lib/registration_state.controller');
++module_load_include('inc','registration','lib/registration_type.entity');
++module_load_include('inc','registration','lib/registration_state.entity');
++module_load_include('inc','registration','lib/registration_type.ui_controller');
++
+ /**
+  * Implements hook_schema().
+  */

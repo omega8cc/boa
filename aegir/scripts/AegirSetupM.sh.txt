@@ -5,7 +5,7 @@
 ###
 ###  Barracuda Aegir Installer
 ###
-###  Copyright (C) 2010-2015 Omega8.cc
+###  Copyright (C) 2010-2016 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -25,7 +25,7 @@
 ###  GNU GPL along with this program.
 ###  If not, see http://www.gnu.org/licenses/
 ###
-###  Code: https://code.aegir.cc/aegir
+###  Code: https://github.com/omega8cc/boa
 ###
 ###----------------------------------------###
 
@@ -82,12 +82,15 @@ done
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
   _THIS_DB_HOST=$(uname -n 2>&1)
 fi
-if [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-  && [ -x "/opt/php55/bin/php" ]; then
-  _T_CLI=/opt/php55/bin
+if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+  && [ -x "/opt/php70/bin/php" ]; then
+  _T_CLI=/opt/php70/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
   && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
+elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
+  && [ -x "/opt/php55/bin/php" ]; then
+  _T_CLI=/opt/php55/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
   && [ -x "/opt/php54/bin/php" ]; then
   _T_CLI=/opt/php54/bin
@@ -97,18 +100,23 @@ elif [ "${_PHP_CLI_VERSION}" = "5.3" ] \
 fi
 _OSV=$(lsb_release -sc 2>&1)
 _ROOT="${HOME}"
-_DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
+if [ -e "/opt/tools/d7.ini" ] \
+  && [ -e "/opt/tools/drush/7/drush/drush.php" ]; then
+  _DRUSHCMD="${_T_CLI}/php /opt/tools/drush/7/drush/drush.php"
+else
+  _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
+fi
 #
-SHELL=/bin/bash
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
 #
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 gCb="git clone --branch"
-gitHub="git://github.com/omega8cc"
+gitHub="https://github.com/omega8cc"
+gitLab="https://gitlab.com/omega8cc"
 #
 urlDev="http://${_USE_MIR}/dev"
 urlHmr="http://${_USE_MIR}/versions/master/aegir"
-urlStb="http://${_USE_MIR}/versions/stable"
 
 
 ###---### Local functions
@@ -117,13 +125,17 @@ urlStb="http://${_USE_MIR}/versions/stable"
 # Update php-cli for Drush.
 update_php_cli_drush() {
   _DRUSH_FILE="${_ROOT}/drush/drush.php"
-  if [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-    && [ -x "/opt/php55/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g" \
+  if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+    && [ -x "/opt/php70/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php70\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
     && [ -x "/opt/php56/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
+    && [ -x "/opt/php55/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
     && [ -x "/opt/php54/bin/php" ]; then
@@ -155,84 +167,83 @@ msg "INFO: Installing drush in ${_ROOT}"
 cd ${_ROOT}
 get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
 cd ${_ROOT}/drush/
-rm -f -r ${_ROOT}/drush/vendor
+rm -rf ${_ROOT}/drush/vendor
 get_dev_ext "vendor-${_DRUSH_VERSION}.tar.gz"
 find ${_ROOT}/drush -type d -exec chmod 0755 {} \; &> /dev/null
 find ${_ROOT}/drush -type f -exec chmod 0644 {} \; &> /dev/null
 chmod 755 ${_ROOT}/drush/drush
+chmod 755 ${_ROOT}/drush/drush.bat
+chmod 755 ${_ROOT}/drush/drush.complete.sh
+chmod 755 ${_ROOT}/drush/drush.launcher
 chmod 755 ${_ROOT}/drush/drush.php
+chmod 755 ${_ROOT}/drush/unish.sh
+chmod 755 ${_ROOT}/drush/examples/drush.wrapper
+chmod 755 ${_ROOT}/drush/examples/git-bisect.example.sh
+chmod 755 ${_ROOT}/drush/examples/helloworld.script
 
 update_php_cli_drush
 update_php_cli_local_ini
 
-if ${_DRUSHCMD} help > /dev/null ; then
+msg "INFO: Installing Aegir Provision backend..."
+mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
+if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+  cd ${_ROOT}/.drush
+  msg "INFO: Downloading Drush and Provision extensions..."
+  rm -rf ${_ROOT}/.drush/{sys,xts,usr}
+  rm -rf ${_ROOT}/.drush/{provision,drush_make}
+  mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
+  rD="${_ROOT}/.drush"
+  ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
+    ${rD}/sys/provision &> /dev/null
+  ${gCb} 7.x-1.x-dev ${gitHub}/drupalgeddon.git \
+    ${rD}/usr/drupalgeddon &> /dev/null
+  ${gCb} 7.x-1.x ${gitHub}/drush_ecl.git \
+    ${rD}/usr/drush_ecl &> /dev/null
+  ${gCb} 7.x-1.x ${gitHub}/security_review.git \
+    ${rD}/xts/security_review &> /dev/null
+  ${gCb} 7.x-2.x ${gitHub}/provision_boost.git \
+    ${rD}/xts/provision_boost &> /dev/null
+  ${gCb} 7.x-2.x ${gitHub}/registry_rebuild.git \
+    ${rD}/usr/registry_rebuild &> /dev/null
+  ${gCb} 7.x-1.x ${gitHub}/safe_cache_form_clear.git \
+    ${rD}/usr/safe_cache_form_clear &> /dev/null
+  rm -rf ${rD}/*/.git
+  rm -rf ${rD}/*/*/.git
+  cd ${rD}/usr
+  get_dev_ext "clean_missing_modules.tar.gz"
+else
+  msg "INFO: Downloading Drush and Provision extensions..."
+  cd ${_ROOT}/.drush/sys
+  get_dev_ext "provision.tar.gz"
+  cd ${_ROOT}/.drush/usr
+  get_dev_ext "clean_missing_modules.tar.gz"
+  get_dev_ext "drupalgeddon.tar.gz"
+  get_dev_ext "drush_ecl.tar.gz"
+  get_dev_ext "registry_rebuild.tar.gz"
+  get_dev_ext "safe_cache_form_clear.tar.gz"
+  cd ${_ROOT}/.drush/xts
+  get_dev_ext "provision_boost.tar.gz"
+  get_dev_ext "security_review.tar.gz"
+fi
+
+if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush seems to be functioning properly"
+    msg "INFO: Drush test result OK"
   fi
 else
-  msg "FATAL ERROR: Drush is broken (${_DRUSH} help failed)"
+  msg "FATAL ERROR: Drush is broken (${_DRUSHCMD} help failed)"
   msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
   touch /opt/tmp/status-AegirSetupM-FAIL
   exit 1
 fi
 
-if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
-  msg "INFO: Provision already seems to be installed"
-else
-  msg "INFO: Installing Aegir Provision backend..."
-  mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
-  if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-    cd ${_ROOT}/.drush
-    msg "INFO: Downloading Drush and Provision extensions..."
-    rm -f -r ${_ROOT}/.drush/{sys,xts,usr}
-    rm -f -r ${_ROOT}/.drush/{provision,drush_make}
-    mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
-    rD="${_ROOT}/.drush"
-    ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
-      ${rD}/sys/provision &> /dev/null
-    ${gCb} 6.x-2.x ${gitHub}/make_local.git \
-      ${rD}/usr/make_local &> /dev/null
-    ${gCb} 6.x-2.x ${gitHub}/provision_cdn.git \
-      ${rD}/xts/provision_cdn &> /dev/null
-    ${gCb} 7.x-1.x-dev ${gitHub}/drupalgeddon.git \
-      ${rD}/usr/drupalgeddon &> /dev/null
-    ${gCb} 7.x-1.x ${gitHub}/drush_ecl.git \
-      ${rD}/usr/drush_ecl &> /dev/null
-    ${gCb} 7.x-1.x ${gitHub}/security_review.git \
-      ${rD}/xts/security_review &> /dev/null
-    ${gCb} 7.x-2.x ${gitHub}/provision_boost.git \
-      ${rD}/xts/provision_boost &> /dev/null
-    ${gCb} 7.x-2.x ${gitHub}/registry_rebuild.git \
-      ${rD}/usr/registry_rebuild &> /dev/null
-    ${gCb} 7.x-1.0 ${gitHub}/safe_cache_form_clear.git \
-      ${rD}/usr/safe_cache_form_clear &> /dev/null
-    rm -f -r ${rD}/*/.git
-    rm -f -r ${rD}/*/*/.git
-    cd ${rD}/usr
-    get_dev_ext "clean_missing_modules.tar.gz"
-  else
-    msg "INFO: Downloading Drush and Provision extensions..."
-    cd ${_ROOT}/.drush/sys
-    curl ${crlGet} "${urlStb}/tar/provision-${_AEGIR_VERSION}.tar.gz" | tar -xzf -
-    cd ${_ROOT}/.drush/usr
-    get_dev_ext "clean_missing_modules.tar.gz"
-    get_dev_ext "drupalgeddon.tar.gz"
-    get_dev_ext "drush_ecl.tar.gz"
-    get_dev_ext "make_local.tar.gz"
-    get_dev_ext "registry_rebuild.tar.gz"
-    get_dev_ext "safe_cache_form_clear.tar.gz"
-    cd ${_ROOT}/.drush/xts
-    get_dev_ext "provision_boost.tar.gz"
-    get_dev_ext "provision_cdn.tar.gz"
-    get_dev_ext "security_review.tar.gz"
-  fi
-fi
 sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
   ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
+wait
 
 msg "INFO: Installing the frontend"
-${_DRUSHCMD} cache-clear drush >${_ROOT}/install.log 2>&1
-rm -f -r ${_ROOT}/.tmp/cache
+${_DRUSHCMD} cc drush >${_ROOT}/install.log 2>&1
+rm -rf ${_ROOT}/.tmp/cache
 _HM_ROOT="${_ROOT}/hostmaster-${_AEGIR_VERSION}"
 
 ${_DRUSHCMD} hostmaster-install \
@@ -252,7 +263,7 @@ chmod 0600 ${_L_SYS}
 ###----------------------------------------###
 ###
 ###  Barracuda Aegir Installer
-###  Copyright (C) 2010-2015 Omega8.cc
+###  Copyright (C) 2010-2016 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

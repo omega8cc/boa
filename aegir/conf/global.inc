@@ -24,6 +24,7 @@ $is_install   = FALSE;
 $is_tmp       = FALSE;
 $raw_host     = FALSE;
 $redis_lock   = FALSE;
+$redis_path   = FALSE;
 $redis_up     = FALSE;
 $site_subdir  = FALSE;
 $use_redis    = FALSE;
@@ -63,7 +64,7 @@ if (function_exists('drush_get_command')) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.7.10.1';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.11.1';
   }
 }
 
@@ -78,11 +79,16 @@ if (isset($_SERVER['HTTP_USER_AGENT']) &&
 
 
 /**
- * Use Aegir/BOA specific variable as a reverse fallback
+ * Use Aegir/BOA specific MAIN_SITE_NAME instead of possibly fake SERVER_NAME
  */
-if (isset($_SERVER['MAIN_SITE_NAME']) && !isset($_SERVER['SERVER_NAME'])) {
+if (isset($_SERVER['MAIN_SITE_NAME'])) {
   $_SERVER['SERVER_NAME'] = $_SERVER['MAIN_SITE_NAME'];
 }
+
+
+/**
+ * Set MAIN_SITE_NAME to match SERVER_NAME, if MAIN_SITE_NAME is not set
+ */
 if (!isset($_SERVER['MAIN_SITE_NAME']) && isset($_SERVER['SERVER_NAME'])) {
   $_SERVER['MAIN_SITE_NAME'] = $_SERVER['SERVER_NAME'];
 }
@@ -91,7 +97,7 @@ if (!isset($_SERVER['MAIN_SITE_NAME']) && isset($_SERVER['SERVER_NAME'])) {
 /**
  * Site mode detection and cron protection - cron works only for live sites
  */
-if (preg_match("/^\/cron.php/", $_SERVER['REQUEST_URI']) ||
+if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) ||
     preg_match("/^\/cron\//", $_SERVER['REQUEST_URI'])) {
   if (isset($_SERVER['HTTP_HOST']) &&
       (preg_match("/(?:^dev\.|\.dev\.)/i", $_SERVER['HTTP_HOST']) ||
@@ -144,7 +150,7 @@ if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
  */
 if (file_exists('web.config')) {
   if (file_exists('core')) {
-    if (file_exists('core/vendor/symfony')) {
+    if (file_exists('vendor/symfony') || file_exists('core/vendor/symfony')) {
       $drupal_eight = TRUE;
       if ($is_dev && !$is_backend) {
         header('X-Backend: A');
@@ -263,6 +269,12 @@ else {
   $conf['theme_cloudy_settings']['omega_rebuild_theme_registry'] = FALSE; // Do not allow to turn it on by default
   $conf['composer_manager_vendor_dir'] = 'sites/' . $_SERVER['SERVER_NAME'] . '/vendor'; // Support for composer_manager
   $update_free_access = FALSE;
+  $conf['webform_table'] = TRUE; // Workaround for SA-CONTRIB-2015-063 https://www.drupal.org/node/2445935
+  $conf['features_rebuild_on_flush'] = FALSE; // https://michaelshadle.com/2015/04/21/speeding-up-drupal-cache-flushing
+  $conf['entity_rebuild_on_flush'] = FALSE; // http://a-fro.com/speed-up-cache-clearing-on-drupal7
+  // $conf['redis_eval_enabled'] = TRUE;
+  // Use EVAL commands to greatly speed up cache clearing
+  // Enable when https://www.drupal.org/node/2487333 is fixed
 }
 
 
@@ -296,10 +308,10 @@ if (!$is_backend) {
     ini_set('display_startup_errors', TRUE);
     ini_set('opcache.revalidate_freq', '1');
     if ($drupal_eight) {
-      unset($config['system.logging']['error_level']);                 // Stop hardcoding no errors on screen
-      unset($config['system.performance']['cache.page.use_internal']); // Stop hardcoding internal page cache
-      unset($config['system.performance']['css']['preprocess']);       // Stop hardcoding CSS aggregation
-      unset($config['system.performance']['js']['preprocess']);        // Stop hardcoding JS aggregation
+      unset($config['system.logging']['error_level']);            // Stop hardcoding no errors on screen
+      unset($config['system.performance']['cache.page.max_age']); // Stop hardcoding internal page cache
+      unset($config['system.performance']['css']['preprocess']);  // Stop hardcoding CSS aggregation
+      unset($config['system.performance']['js']['preprocess']);   // Stop hardcoding JS aggregation
     }
     else {
       $conf['xmlsitemap_submit'] = 0; // Disable XML Sitemap for foo.dev.domain
@@ -335,6 +347,7 @@ $boa_ini = array(
   'redis_use_modern' => TRUE,
   'redis_flush_forced_mode' => TRUE,
   'redis_lock_enable' => TRUE,
+  'redis_path_enable' => TRUE,
   'redis_cache_disable' => FALSE,
   'redis_exclude_bins' => FALSE,
   'speed_booster_anon_cache_ttl' => FALSE,
@@ -396,6 +409,7 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Redis-Use-Modern: " . $all_ini['redis_use_modern']);
   header("X-Ini-Redis-Flush-Forced-Mode: " . $all_ini['redis_flush_forced_mode']);
   header("X-Ini-Redis-Lock-Enable: " . $all_ini['redis_lock_enable']);
+  header("X-Ini-Redis-Path-Enable: " . $all_ini['redis_path_enable']);
   header("X-Ini-Redis-Cache-Disable: " . $all_ini['redis_cache_disable']);
   header("X-Ini-Redis-Exclude-Bins: " . $all_ini['redis_exclude_bins']);
   header("X-Ini-Speed-Booster-Anon-Cache-Ttl: " . $all_ini['speed_booster_anon_cache_ttl']);
@@ -426,7 +440,7 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
 if (!$is_backend && !$is_dev) {
   if (!$is_bot && $all_ini['disable_drupal_page_cache']) {
     if ($drupal_eight) {
-      $config['system.performance']['cache.page.use_internal'] = FALSE;
+      $config['system.performance']['cache.page.max_age'] = 0;
     }
     else {
       $conf['cache'] = 0;
@@ -434,7 +448,7 @@ if (!$is_backend && !$is_dev) {
   }
   else {
     if ($drupal_eight) {
-      $config['system.performance']['cache.page.use_internal'] = TRUE;
+      $config['system.performance']['cache.page.max_age'] = 60;
     }
     else {
       $conf['cache'] = 1;
@@ -449,7 +463,7 @@ if (!$is_backend && !$is_dev) {
 if (!$is_bot && isset($_SERVER['REQUEST_URI']) &&
     preg_match("/nocache=1/", $_SERVER['REQUEST_URI'])) {
   if ($drupal_eight) {
-    $config['system.performance']['cache.page.use_internal'] = FALSE;
+    $config['system.performance']['cache.page.max_age'] = 0;
   }
   else {
     $conf['cache'] = 0;
@@ -483,7 +497,8 @@ ini_set('session.gc_maxlifetime', $all_ini['session_gc_eol']);
  */
 if ($conf['install_profile'] == 'hostmaster') {
   $conf['hosting_require_disable_before_delete'] = 0;
-  $conf['cache'] = 1;
+  $conf['theme_link'] = FALSE;
+  $conf['cache'] = 0;
   if (!$is_backend && isset($_SERVER['HTTP_USER_AGENT'])) {
     ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
     header('X-Accel-Expires: 1');
@@ -511,6 +526,9 @@ if ($conf['install_profile'] == 'hostmaster') {
         exit;
       }
     }
+  }
+  else {
+    $use_redis = TRUE;
   }
 }
 
@@ -599,7 +617,7 @@ if (!$is_dev) {
         $conf['preprocess_css'] = 0; // CSS aggregation disabled
         $conf['preprocess_js'] = 0;  // JS aggregation disabled
         $conf['advagg_aggregate_mode'] = 1;
-        $conf['advagg_async_generation'] = 0;
+        $conf['advagg_async_generation'] = 1;
         $conf['advagg_checksum_mode'] = "md5";
         $conf['advagg_closure'] = 1;
         $conf['advagg_css_compress_agg_files'] = 1;
@@ -624,19 +642,19 @@ if (!$is_dev) {
       if (is_readable('modules/o_contrib_seven/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')) {
         $conf['advagg_bundler_active'] = 1;
-        $conf['advagg_cache_level'] = 1;
+        $conf['advagg_cache_level'] = 3;
         $conf['advagg_combine_css_media'] = 0;
         $conf['advagg_core_groups'] = 0;
         $conf['advagg_css_compressor'] = 2;
-        $conf['advagg_css_inline_compressor'] = 2;
-        $conf['advagg_css_inline_compress_if_not_cacheable'] = 1;
+        $conf['advagg_css_compress_inline'] = 2;
+        $conf['advagg_css_compress_inline_if_not_cacheable'] = 1;
         $conf['advagg_enabled'] = 1;
         $conf['advagg_gzip'] = 1;
         $conf['advagg_ie_css_selector_limiter'] = 1;
         $conf['advagg_js_compressor'] = 3;
         $conf['advagg_js_compress_packer'] = 0;
-        $conf['advagg_js_inline_compressor'] = 3;
-        $conf['advagg_js_inline_compress_if_not_cacheable'] = 1;
+        $conf['advagg_js_compress_inline'] = 3;
+        $conf['advagg_js_compress_inline_if_not_cacheable'] = 1;
         $conf['preprocess_css'] = 1;
         $conf['preprocess_js'] = 1;
       }
@@ -803,13 +821,9 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
       $conf['user_register'] = 0; // Force "Only site administrators can create new user accounts"
     }
     if (!$is_bot && !$high_traffic && !$deny_anon) {
-      if (preg_match("/^\/(?:[a-z]{2}\/)?(?:user|admin|cart|checkout|logout|privatemsg)/", $_SERVER['REQUEST_URI']) ||
-          preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users|ajax_comments|commerce_currency_select)/", $_SERVER['REQUEST_URI']) ||
+      if (preg_match("/^\/(?:[a-z]{2}\/)?(?:admin|cart|checkout|logout|privatemsg)/", $_SERVER['REQUEST_URI']) ||
+          preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|ajax_comments|commerce_currency_select)/", $_SERVER['REQUEST_URI']) ||
           preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/", $_SERVER['HTTP_HOST'])) {
-        if (!isset($_COOKIE['NoCacheID'])) {
-          $lifetime = '15';
-          setcookie('NoCacheID', 'NC' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
-        }
         $expire_in_seconds = '1';
         header('X-Limit-Booster: 1');
       }
@@ -850,6 +864,9 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     }
     if ($conf['install_profile'] != 'hostmaster' && ($expire_in_seconds > -1)) {
       header("X-Accel-Expires: " . $expire_in_seconds);
+      if ($expire_in_seconds > -1 && $expire_in_seconds < 2) {
+        $conf['cache'] = 0; // Disable page caching on the fly
+      }
     }
   }
 }
@@ -904,6 +921,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
     $cache_backport = FALSE;
     $cache_redis_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.autoload.inc';
     $cache_lock_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.lock.inc';
+    $cache_path_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.path.inc';
     if ($is_dev && !$is_backend) {
       header("X-Redis-Autoload-Is-Readable: " . $cache_redis_path);
     }
@@ -912,6 +930,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
     $cache_redis = TRUE;
     $cache_redis_path = 'modules/o_contrib/' . $redis_dirname . '/redis.autoload.inc';
     $cache_lock_path = 'modules/o_contrib/' . $redis_dirname . '/redis.lock.inc';
+    $cache_path_path = 'modules/o_contrib/' . $redis_dirname . '/redis.path.inc';
     if ($is_dev && !$is_backend) {
       header("X-Redis-Autoload-Is-Readable: " . $cache_redis_path);
     }
@@ -920,8 +939,13 @@ if ($redis_up && $use_redis && !$custom_cache) {
     if ($cache_backport) {
       $conf['cache_inc']                      = $cache_backport_path;
     }
-    if ($all_ini['redis_use_modern'] && $all_ini['redis_lock_enable']) {
-      $redis_lock = TRUE;
+    if ($all_ini['redis_use_modern']) {
+      if ($all_ini['redis_lock_enable']) {
+        $redis_lock = TRUE;
+      }
+      if ($all_ini['redis_path_enable']) {
+        $redis_path = TRUE;
+      }
     }
     if (is_readable($cache_lock_path) && $redis_lock) {
       $conf['lock_inc']                       = $cache_lock_path;
@@ -929,11 +953,19 @@ if ($redis_up && $use_redis && !$custom_cache) {
         header("X-Redis-Lock-Is-Readable: " . $cache_lock_path);
       }
     }
+    if (is_readable($cache_path_path) && $redis_path) {
+      $conf['path_inc']                       = $cache_path_path;
+      $conf['path_alias_admin_blacklist']     = FALSE;
+      if ($is_dev && !$is_backend) {
+        header("X-Redis-Path-Is-Readable: " . $cache_path_path);
+      }
+    }
     $conf['cache_backends'][]                 = $cache_redis_path;
     $conf['redis_client_interface']           = 'PhpRedis';
     $conf['redis_client_host']                = '127.0.0.1';
     $conf['redis_client_port']                = '6379';
     $conf['redis_client_password']            = 'isfoobared';
+    $conf['redis_client_base']                = '8';
     $conf['cache_prefix']                     = $this_prefix;
     $conf['page_cache_invoke_hooks']          = TRUE;  // D7 == Do not use Aggressive Mode
     $conf['page_cache_without_database']      = FALSE; // D7 == Do not use Aggressive Mode
@@ -943,9 +975,6 @@ if ($redis_up && $use_redis && !$custom_cache) {
     $conf['page_cache_lifetime']              = 0;     // D6 == BOA uses Speed Booster / Nginx micro-caching instead
     $conf['cache_default_class']              = 'Redis_Cache';
     $conf['cache_class_cache_form']           = 'DrupalDatabaseCache';
-    if ($conf['install_profile'] == 'hostmaster') {
-      $conf['cache_default_class']            = 'DrupalDatabaseCache';
-    }
     if ($all_ini['redis_exclude_bins']) {
       $excludes = array();
       $excludes = explode(",", $all_ini['redis_exclude_bins']);

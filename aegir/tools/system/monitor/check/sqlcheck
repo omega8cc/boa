@@ -19,7 +19,7 @@ exit;
 #############################################################################
 sub makeactions
 {
-local(@MYARR) = `grep mysql /var/log/syslog | tail --lines=999 2>&1`;
+local(@MYARR)=`grep mysql /var/log/syslog | tail --lines=999 2>&1`;
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
     if ($line =~ /(Checking table)/i || $line =~ /(is marked as crashed)/i) {
@@ -47,4 +47,4 @@ local(@MYARR) = `grep mysql /var/log/syslog | tail --lines=999 2>&1`;
     }
   }
 }
-###EOF2015###
+###EOF2016###
