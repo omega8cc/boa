@@ -326,7 +326,7 @@ upgrade_aegir_master() {
     mkdir -p ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries}
     chown -R aegir:aegir ${_THIS_HM_ROOT}/sites/all
     _U_HD="/var/aegir/.drush"
-    chattr -i ${_U_HD}/php.ini &> /dev/null
+    chattr -i ${_U_HD}/php.ini
     chown -R aegir:aegir /var/aegir/.drush
     chown -R aegir:aegir /var/aegir/backups
     chown -R aegir:aegir /var/aegir/clients
@@ -371,7 +371,7 @@ upgrade_aegir_master() {
       touch /opt/tmp/status-Barracuda-FAIL
       clean_pid_exit
     else
-      chattr +i ${_U_HD}/php.ini &> /dev/null
+      chattr +i ${_U_HD}/php.ini
       hostmaster_frontend_dbpass_sync
     fi
     if [ ! -L "${mtrInc}/global.inc" ] && [ -e "${mtrInc}/global.inc" ]; then
@@ -662,7 +662,7 @@ EOFMYSQL
       fi
     fi
     _U_HD="/var/aegir/.drush"
-    chattr +i ${_U_HD}/php.ini &> /dev/null
+    chattr +i ${_U_HD}/php.ini
     su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
     rm -rf /var/aegir/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
