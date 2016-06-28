@@ -69,6 +69,8 @@ as explained in this document further below.
 
   Yes, there are some:
 
+  * Let's Encrypt doesn't support wildcard names
+  * Let's Encrypt doesn't support IDN names (for now)
   * All aliases must have valid DNS names pointing to your server IP address
   * Even with aliases redirection enabled all aliases are listed as SAN names
   * Avoid renaming SSL-enabled sites; move aliases between site's clones instead
