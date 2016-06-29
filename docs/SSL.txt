@@ -13,6 +13,7 @@
   # Are there any requirements, limitations or exceptions?
   # How to enable live mode?
   # How to replace Let's Encrypt certificate with custom certificate?
+  # How to replace existing custom certificates with Let's Encrypt certificates?
 
 BOA-3.1.0 release opens a new era in SSL support for all hosted Drupal sites.
 The old method of creating SSL proxy vhosts is officially deprecated,
@@ -154,6 +155,26 @@ as explained in this document further below.
 
   NOTE: If you are on hosted BOA, you don't have an access to this location
   on your system, so please open a ticket at: https://omega8.cc/support
+
+* How to replace existing custom certificates with Let's Encrypt certificates?
+
+  Here are the steps to start using Let's Encrypt certificates on sites
+  previously running SSL on dedicated IP as well as shared (default) IP via
+  legacy `xboa ssl-gen` command:
+
+  1. Disable all HTTPS redirects, if configured within these sites.
+
+  2. Update DNS for domains using custom certificates to point them to default
+     instance/server IP address, if they have used dedicated IP before,
+     and run the `service nginx reload` command once DNS update is propagated.
+
+  3. Move away previous HTTP/HTTPS proxy vhosts for those sites, if they
+     still exist in the /var/aegir/config/server_master/nginx/pre.d/ directory,
+     but only if they already use the default IP address, and reload nginx.
+
+  4. Remove `[aegir_root]/tools/le/.ctrl/ssl-demo-mode.pid` file.
+
+  5. Enable SSL in Aegir for those sites.
 
 
 NOTE ###===>>>
