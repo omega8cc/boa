@@ -78,9 +78,12 @@ action() {
       buildTest=$(ls ${tpDir} | grep "_tmp_" | wc -l | tr -d "\n" 2>&1)
       buildTest=${buildTest//[^0-9]/}
     fi
-    if [ -e "${clCtr}" ] && [ -e "${gtDir}" ]; then
-      rm -rf ${ceDir}
-      buildTest="0"
+    if [ -e "${clCtr}" ]; then
+      if [ -e "${gtDir}" ] || [ "${buildTest}" -ge "2" ]; then
+        rm -rf ${tpDir}/*
+        rm -f ${clCtr}
+        buildTest="0"
+      fi
     fi
     if [ "${buildTest}" = "0" ] && [ -e "${gtDir}" ]; then
       rm -rf ${gtDir}
