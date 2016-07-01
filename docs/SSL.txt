@@ -109,8 +109,11 @@ as explained in this document further below.
   It is enough to delete the `[aegir_root]/tools/le/.ctrl/ssl-demo-mode.pid`
   control file and run Verify task on any SSL enabled site again.
 
-  NOTE: If you are on hosted BOA, you don't have an access to this location
-  on your system, so please open a ticket at: https://omega8.cc/support
+  NOTE: If you are on hosted BOA, please create an empty control file instead:
+  ~/static/control/ssl-live-mode.info and then wait a few minutes before
+  running Verify task. It is a one-time operation, and even if you will delete
+  this control file later, the system will not switch your instance back to
+  Let's Encrypt demo mode.
 
   You could switch it back and forth to demo/live mode by adding and deleting
   the control file, and it will re-register your system via Let's Encrypt API,
@@ -172,9 +175,12 @@ as explained in this document further below.
      still exist in the /var/aegir/config/server_master/nginx/pre.d/ directory,
      but only if they already use the default IP address, and reload nginx.
 
-  4. Remove `[aegir_root]/tools/le/.ctrl/ssl-demo-mode.pid` file.
+  4. Create an empty ~/static/control/ssl-live-mode.info file and wait 5 min.
 
   5. Enable SSL in Aegir for those sites.
+
+  NOTE: If you are on hosted BOA, all you need to do are steps: 1, 2, 4 and 5
+  from the list above. You don't need to reload nginx, move vhosts, etc.
 
 
 NOTE ###===>>>
