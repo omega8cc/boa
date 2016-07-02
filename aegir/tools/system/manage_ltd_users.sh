@@ -1024,10 +1024,11 @@ satellite_update_web_user() {
     _T_TP="/home/${_WEB}/.tmp"
     _T_TS="/home/${_WEB}/.aws"
     _T_II="${_T_HD}/php.ini"
-    if [ -e "/home/${_WEB}" ]; then
+    if [ -e "/home/${_WEB}" ] && [ ! -e "/home/${_WEB}/.lock" ]; then
       chattr -i /home/${_WEB}
       chattr -i /home/${_WEB}/.drush
       mkdir -p /home/${_WEB}/.{tmp,drush,aws}
+      touch /home/${_WEB}/.lock
       isTest="$1"
       isTest=${isTest//[^a-z0-9]/}
       if [ ! -z "${isTest}" ]; then
@@ -1116,6 +1117,7 @@ satellite_update_web_user() {
       chown -R ${_WEB}:${_WEBG} /home/${_WEB}
       chmod 550 /home/${_WEB}/.drush
       chmod 440 /home/${_WEB}/.drush/php.ini
+      rm -f /home/${_WEB}/.lock
       chattr +i /home/${_WEB}
       chattr +i /home/${_WEB}/.drush
     fi
