@@ -1027,6 +1027,9 @@ satellite_update_web_user() {
     if [ -e "/home/${_WEB}" ] && [ ! -e "/home/${_WEB}/.lock" ]; then
       chattr -i /home/${_WEB}
       chattr -i /home/${_WEB}/.drush
+      if [ -e "${_T_II}" ]; then
+        chattr -i ${_T_II}
+      fi
       mkdir -p /home/${_WEB}/.{tmp,drush,aws}
       touch /home/${_WEB}/.lock
       isTest="$1"
@@ -1120,6 +1123,7 @@ satellite_update_web_user() {
       rm -f /home/${_WEB}/.lock
       chattr +i /home/${_WEB}
       chattr +i /home/${_WEB}/.drush
+      chattr +i ${_T_II}
     fi
   fi
 }
