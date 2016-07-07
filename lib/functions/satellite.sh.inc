@@ -17,8 +17,8 @@ satellite_tune_fpm_workers() {
     || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
     _VMFAMILY="VS"
   fi
-  if [[ "${_AWS_TEST_A}" =~ "cloudimg" ]] \
-    || [[ "${_AWS_TEST_B}" =~ "cloudconfig" ]]; then
+  if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
+    || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
     _VMFAMILY="AWS"
   fi
   _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
@@ -3521,10 +3521,10 @@ satellite_detect_vm_family() {
   else
     _VMFAMILY="XEN"
   fi
-  _AWS_TEST_A=$(grep cloudimg /etc/fstab 2>&1)
-  _AWS_TEST_B=$(grep cloudconfig /etc/fstab 2>&1)
-  if [[ "${_AWS_TEST_A}" =~ "cloudimg" ]] \
-    || [[ "${_AWS_TEST_B}" =~ "cloudconfig" ]]; then
+  _AWS_TEST_A=$(dmidecode -s bios-version 2>&1)
+  _AWS_TEST_B=$(head -c 3 /sys/hypervisor/uuid 2>&1)
+  if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
+    || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
     _VMFAMILY="AWS"
     if [ "${_STATUS}" = "INIT" ]; then
       _THIS_DB_HOST=localhost
