@@ -459,10 +459,16 @@ virt_detection() {
           esac
         fi
       fi
+      if [ "${_AUTOPILOT}" = "NO" ]; then
+        echo
+      fi
       msg "VIRT: This system is supported: ${_VIRT_IS}"
     else
       if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
         _VIRT_TEST="unknown / not a virtual machine"
+      fi
+      if [ "${_AUTOPILOT}" = "NO" ]; then
+        echo
       fi
       msg "WARN: This system is not supported: ${_VIRT_TEST}"
     fi
