@@ -2804,6 +2804,12 @@ install_with_aptitude_deps() {
 }
 
 basic_packages_install_on_init() {
+  if [ "${_OSV}" = "jessie" ]; then
+    _GRUB_TEST=$(grep systemd /etc/default/grub 2>&1)
+    if [[ "${_GRUB_TEST}" =~ "systemd" ]]; then
+      _GRUB_FIX=YES
+    fi
+  fi
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Installing some basic tools now, please wait..."
     rm -f /etc/apt/sources.list.d/openssl.list
@@ -2835,8 +2841,12 @@ basic_packages_install_on_init() {
       fi
       echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
       echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-      ${_INITINS} sysvinit-core &> /dev/null
-      ${_INITINS} sysvinit-utils &> /dev/null
+      if [ "${_GRUB_FIX}" = "YES" ] \
+        && [ -x "/lib/sysvinit/init" ] \
+        && [ -e "/etc/default/grub" ]; then
+        sed -i "s/init=\/bin\/systemd/init=\/lib\/sysvinit\/init/g" /etc/default/grub
+        update-grub &> /dev/null
+      fi
       echo
       msg "NOTE: Please reboot and run barracuda upgrade"
       msg "NOTE: when boa will complete initial installation"
@@ -2846,17 +2856,29 @@ basic_packages_install_on_init() {
     fi
   else
     if [ "${_OSV}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
-      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
-      ${_INSTALL} sysvinit-core &> /dev/null
-      ${_INSTALL} sysvinit-utils &> /dev/null
+      msg "INFO: Installing sysvinit on ${_THIS_OS} ${_OSV}..."
+      ${_INITINS} sysvinit-core &> /dev/null
+      ${_INITINS} sysvinit-utils &> /dev/null
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
       fi
-      apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
       echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
       echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-      ${_INSTALL} sysvinit-core &> /dev/null
-      ${_INSTALL} sysvinit-utils &> /dev/null
+      if [ "${_GRUB_FIX}" = "YES" ]; then
+        if [ -x "/lib/sysvinit/init" ] \
+          && [ -e "/etc/default/grub" ]; then
+          sed -i "s/init=\/bin\/systemd/init=\/lib\/sysvinit\/init/g" /etc/default/grub
+          update-grub &> /dev/null
+          echo
+          msg "NOTE: Please reboot and run barracuda upgrade again"
+          msg "NOTE: to cleanly remove not used systemd packages!"
+          echo
+          mrun "sleep 8"
+        fi
+      else
+        msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
+        apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
+      fi
     fi
   fi
 }
