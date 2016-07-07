@@ -2836,6 +2836,7 @@ basic_packages_install_on_init() {
       msg "INFO: Installing sysvinit on ${_THIS_OS} ${_OSV}..."
       ${_INITINS} sysvinit-core &> /dev/null
       ${_INITINS} sysvinit-utils &> /dev/null
+      ${_INITINS} sysvinit &> /dev/null
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
       fi
@@ -2859,6 +2860,7 @@ basic_packages_install_on_init() {
       msg "INFO: Installing sysvinit on ${_THIS_OS} ${_OSV}..."
       ${_INITINS} sysvinit-core &> /dev/null
       ${_INITINS} sysvinit-utils &> /dev/null
+      ${_INITINS} sysvinit &> /dev/null
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
       fi
