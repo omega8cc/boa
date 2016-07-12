@@ -1309,7 +1309,7 @@ satellite_o_contrib_update_global() {
         get_dev_contrib "js-6.x-1.3.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib/mydropwizard" ]; then
-        get_dev_contrib "mydropwizard-6.x-1.4.tar.gz"
+        get_dev_contrib "mydropwizard-6.x-1.5.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib/panels_content_cache" ]; then
         get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
@@ -1613,7 +1613,7 @@ satellite_download_o_contrib_six() {
   get_dev_contrib "image-6.x-1.2.tar.gz"
   get_dev_contrib "js-6.x-1.3.tar.gz"
   get_dev_contrib "login_security-6.x-1.4.tar.gz"
-  get_dev_contrib "mydropwizard-6.x-1.4.tar.gz"
+  get_dev_contrib "mydropwizard-6.x-1.5.tar.gz"
   get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
   get_dev_contrib "phpass-6.x-2.1.tar.gz"
   get_dev_contrib "print-6.x-1.19.tar.gz"
@@ -2507,10 +2507,14 @@ satellite_if_add_update_user_symlinks() {
   if [ -e "${_USER_DS}/safe_cache_form_clear" ]; then
     rm -f ${_USER_DS}/safe_cache_form_clear
   fi
+  if [ -e "${_USER_DS}/mydropwizard" ]; then
+    rm -f ${_USER_DS}/mydropwizard
+  fi
 
   ###---### Add symlink to the system registry_rebuild.
   #
-  if [ ! -L "${_USER_DS}/usr/registry_rebuild" ]; then
+  if [ ! -L "${_USER_DS}/usr/registry_rebuild" ] \
+    && [ -e "${_ROOT}/.drush/usr/registry_rebuild" ]; then
     msg "${_STATUS} A: Adding symlink to the system registry_rebuild"
     mkdir -p ${_USER_DS}/usr
     chown ${_USERFTP}:${_USRG} ${_USER_DS}
@@ -2522,7 +2526,8 @@ satellite_if_add_update_user_symlinks() {
 
   ###---### Add symlink to the system clean_missing_modules.
   #
-  if [ ! -L "${_USER_DS}/usr/clean_missing_modules" ]; then
+  if [ ! -L "${_USER_DS}/usr/clean_missing_modules" ] \
+    && [ -e "${_ROOT}/.drush/usr/clean_missing_modules" ]; then
     msg "${_STATUS} A: Adding symlink to the system clean_missing_modules"
     mkdir -p ${_USER_DS}/usr
     chown ${_USERFTP}:${_USRG} ${_USER_DS}
@@ -2534,7 +2539,8 @@ satellite_if_add_update_user_symlinks() {
 
   ###---### Add symlink to the system drupalgeddon.
   #
-  if [ ! -L "${_USER_DS}/usr/drupalgeddon" ]; then
+  if [ ! -L "${_USER_DS}/usr/drupalgeddon" ] \
+    && [ -e "${_ROOT}/.drush/usr/drupalgeddon" ]; then
     msg "${_STATUS} A: Adding symlink to the system drupalgeddon"
     mkdir -p ${_USER_DS}/usr
     chown ${_USERFTP}:${_USRG} ${_USER_DS}
@@ -2546,7 +2552,8 @@ satellite_if_add_update_user_symlinks() {
 
   ###---### Add symlink to the system drush_ecl.
   #
-  if [ ! -L "${_USER_DS}/usr/drush_ecl" ]; then
+  if [ ! -L "${_USER_DS}/usr/drush_ecl" ] \
+    && [ -e "${_ROOT}/.drush/usr/drush_ecl" ]; then
     msg "${_STATUS} A: Adding symlink to the system drush_ecl"
     mkdir -p ${_USER_DS}/usr
     chown ${_USERFTP}:${_USRG} ${_USER_DS}
@@ -2558,7 +2565,8 @@ satellite_if_add_update_user_symlinks() {
 
   ###---### Add symlink to the system safe_cache_form_clear.
   #
-  if [ ! -L "${_USER_DS}/usr/safe_cache_form_clear" ]; then
+  if [ ! -L "${_USER_DS}/usr/safe_cache_form_clear" ] \
+    && [ -e "${_ROOT}/.drush/usr/safe_cache_form_clear" ]; then
     msg "${_STATUS} A: Adding symlink to the system safe_cache_form_clear"
     mkdir -p ${_USER_DS}/usr
     chown ${_USERFTP}:${_USRG} ${_USER_DS}
@@ -2566,6 +2574,19 @@ satellite_if_add_update_user_symlinks() {
     chmod 700 ${_USER_DS}
     ln -sf ${_ROOT}/.drush/usr/safe_cache_form_clear \
       ${_USER_DS}/usr/safe_cache_form_clear
+  fi
+
+  ###---### Add symlink to the system mydropwizard.
+  #
+  if [ ! -L "${_USER_DS}/usr/mydropwizard" ] \
+    && [ -e "${_ROOT}/.drush/usr/mydropwizard" ]; then
+    msg "${_STATUS} A: Adding symlink to the system mydropwizard"
+    mkdir -p ${_USER_DS}/usr
+    chown ${_USERFTP}:${_USRG} ${_USER_DS}
+    chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
+    chmod 700 ${_USER_DS}
+    ln -sf ${_ROOT}/.drush/usr/mydropwizard \
+      ${_USER_DS}/usr/mydropwizard
   fi
 
   ###---### Add symlink to the clients directory.
@@ -4136,6 +4157,7 @@ satellite_batch_cleanup() {
   mv -f ${_ROOT}/backups/provision-pre* ${_ROOT}/backups/system/ &> /dev/null
   mv -f ${_ROOT}/backups/registry_rebuild-pre* ${_ROOT}/backups/system/ &> /dev/null
   mv -f ${_ROOT}/backups/safe_cache_form_clear-pre* ${_ROOT}/backups/system/ &> /dev/null
+  mv -f ${_ROOT}/backups/mydropwizard-pre* ${_ROOT}/backups/system/ &> /dev/null
   mkdir -p /data/conf/arch
   mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
   mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
@@ -4290,7 +4312,7 @@ satellite_child_b_drush_xts_cleanup() {
     mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/ &> /dev/null
     _B_EXT="provision clean_missing_modules drupalgeddon drush_ecl make_local \
       provision_boost provision_cdn provision_civicrm provision_platform_git \
-      provision_site_backup provision_tasks_extra remote_import \
+      provision_site_backup provision_tasks_extra remote_import mydropwizard \
       registry_rebuild safe_cache_form_clear security_check security_review"
     for e in ${_B_EXT}; do
       if [ -e "${_ROOT}/.drush/$e" ]; then
@@ -4345,6 +4367,7 @@ satellite_child_b_drush_xts_install() {
     rm -rf ${rD}/*/*/.git
     cd ${rD}/usr
     get_dev_ext "clean_missing_modules.tar.gz"
+    get_dev_contrib "mydropwizard-6.x-1.5.tar.gz"
   else
     msg "${_STATUS} B: Downloading Drush and Provision extensions..."
     cd ${_ROOT}/.drush/sys
@@ -4355,6 +4378,7 @@ satellite_child_b_drush_xts_install() {
     get_dev_ext "drush_ecl.tar.gz"
     get_dev_ext "registry_rebuild.tar.gz"
     get_dev_ext "safe_cache_form_clear.tar.gz"
+    get_dev_contrib "mydropwizard-6.x-1.5.tar.gz"
     cd ${_ROOT}/.drush/xts
     get_dev_ext "provision_boost.tar.gz"
     get_dev_ext "security_review.tar.gz"

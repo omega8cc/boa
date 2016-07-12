@@ -161,6 +161,7 @@ enable_chattr() {
         rm -f ${_U_HD}/{drupalgeddon,drush_ecl,make_local,safe_cache_form*}
         rm -f ${_U_HD}/usr/{drush_make,registry_rebuild,clean_missing_modules}
         rm -f ${_U_HD}/usr/{drupalgeddon,drush_ecl,make_local,safe_cache_form*}
+        rm -f ${_U_HD}/usr/{mydropwizard}
         rm -f ${_U_HD}/.ctrl*
         rm -rf ${_U_HD}/{cache,drush.ini,*drushrc*,*.inc}
       fi
@@ -172,25 +173,35 @@ enable_chattr() {
       chown $1:${usrGroup} ${_U_HD}
       chmod 02755 ${_U_TP}
       chmod 02755 ${_U_HD}
-      if [ ! -L "${_U_HD}/usr/registry_rebuild" ]; then
+      if [ ! -L "${_U_HD}/usr/registry_rebuild" ] \
+        && [ -e "${dscUsr}/.drush/usr/registry_rebuild" ]; then
         ln -sf ${dscUsr}/.drush/usr/registry_rebuild \
           ${_U_HD}/usr/registry_rebuild
       fi
-      if [ ! -L "${_U_HD}/usr/clean_missing_modules" ]; then
+      if [ ! -L "${_U_HD}/usr/clean_missing_modules" ] \
+        && [ -e "${dscUsr}/.drush/usr/clean_missing_modules" ]; then
         ln -sf ${dscUsr}/.drush/usr/clean_missing_modules \
           ${_U_HD}/usr/clean_missing_modules
       fi
-      if [ ! -L "${_U_HD}/usr/drupalgeddon" ]; then
+      if [ ! -L "${_U_HD}/usr/drupalgeddon" ] \
+        && [ -e "${dscUsr}/.drush/usr/drupalgeddon" ]; then
         ln -sf ${dscUsr}/.drush/usr/drupalgeddon \
           ${_U_HD}/usr/drupalgeddon
       fi
-      if [ ! -L "${_U_HD}/usr/drush_ecl" ]; then
+      if [ ! -L "${_U_HD}/usr/drush_ecl" ] \
+        && [ -e "${dscUsr}/.drush/usr/drush_ecl" ]; then
         ln -sf ${dscUsr}/.drush/usr/drush_ecl \
           ${_U_HD}/usr/drush_ecl
       fi
-      if [ ! -L "${_U_HD}/usr/safe_cache_form_clear" ]; then
+      if [ ! -L "${_U_HD}/usr/safe_cache_form_clear" ] \
+        && [ -e "${dscUsr}/.drush/usr/safe_cache_form_clear" ]; then
         ln -sf ${dscUsr}/.drush/usr/safe_cache_form_clear \
           ${_U_HD}/usr/safe_cache_form_clear
+      fi
+      if [ ! -L "${_U_HD}/usr/mydropwizard" ] \
+        && [ -e "${dscUsr}/.drush/usr/mydropwizard" ]; then
+        ln -sf ${dscUsr}/.drush/usr/mydropwizard \
+          ${_U_HD}/usr/mydropwizard
       fi
     fi
 
