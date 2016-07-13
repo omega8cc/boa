@@ -3095,7 +3095,7 @@ if [ "${_DOW}" = "4" ] || [ "${_DOW}" = "6" ]; then
 elif [ "${_DOW}" = "3" ]; then
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
-  _MODULES_OFF_SEVEN="background_process dblog syslog update"
+  _MODULES_OFF_SEVEN="background_process dblog syslog update webform_multifile restws"
   _MODULES_OFF_SIX="background_process dblog syslog update"
 fi
 #
