@@ -3077,16 +3077,16 @@ if [ "${_VMFAMILY}" = "VS" ]; then
   _MODULES_FORCE="background_process coder cookie_cache_bypass css_gzip hacked \
     javascript_aggregator memcache memcache_admin poormanscron search_krumo \
     security_review site_audit stage_file_proxy syslog supercron ultimate_cron \
-    varnish watchdog_live xhprof"
+    varnish watchdog_live xhprof webform_multifile restws"
 fi
 #
-if [ "${_DOW}" = "6" ]; then
+if [ "${_DOW}" = "4" ] || [ "${_DOW}" = "6" ]; then
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
   _MODULES_OFF_SEVEN="background_process coder dblog devel hacked l10n_update \
    linkchecker memcache memcache_admin performance search_krumo \
    security_review site_audit stage_file_proxy syslog ultimate_cron update \
-   varnish watchdog_live xhprof"
+   varnish watchdog_live xhprof webform_multifile restws"
   _MODULES_OFF_SIX="background_process coder cookie_cache_bypass css_gzip \
     dblog devel hacked javascript_aggregator linkchecker l10n_update memcache \
     memcache_admin performance poormanscron search_krumo security_review \
