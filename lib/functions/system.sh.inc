@@ -2561,6 +2561,7 @@ strict_bin_permissions() {
                   logger \
                   magick \
                   newrelic-daemon \
+                  node \
                   npm \
                   nrsysmond \
                   optipng \
