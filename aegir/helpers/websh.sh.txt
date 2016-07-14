@@ -526,6 +526,17 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       unset RBXOPT
       export RUBY_VERSION="ruby-${_RUBY_VP}"
     fi
+    if [ -x "/usr/bin/npm" ] && [ -d "/home/${USER}/.npm-packages" ]; then
+      if [[ "${_ALL}" =~ "-c set -m; " ]] || [ ! -z "${SSH_CLIENT}" ]; then
+        _NPM_ALLOW=YES
+      fi
+    fi
+    if [ "${_NPM_ALLOW}" = "YES" ]; then
+      export NPM_PACKAGES="/home/${USER}/.npm-packages"
+      export PATH="${NPM_PACKAGES}/bin:${PATH}"
+      export MANPATH="${NPM_PACKAGES}/share/man:$(manpath)"
+      export NODE_PATH="${NPM_PACKAGES}/lib/node_modules:${NODE_PATH}"
+    fi
     if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ]; then
       if [ -x "/bin/dash" ]; then
         if [ ! -z "${_ARR}" ]; then
