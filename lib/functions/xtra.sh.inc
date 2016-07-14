@@ -390,9 +390,13 @@ if_install_rvm() {
           mrun "rvm use ${_RUBY_VRN} --default" &> /dev/null
           mrun "rvm get stable" 2> /dev/null
           mrun "rvm @global do gem update -q" 2> /dev/null
+          curl -sL https://deb.nodesource.com/setup_4.x | sudo -E bash - &> /dev/null
+          mrun "apt-get install -y nodejs" &> /dev/null
         else
           mrun "rvm get stable" 2> /dev/null
           mrun "rvm @global do gem update -q" 2> /dev/null
+          curl -sL https://deb.nodesource.com/setup_4.x | sudo -E bash - &> /dev/null
+          mrun "apt-get install -y nodejs" &> /dev/null
         fi
         _RBY_FILE="/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/ruby"
         _RBY_PATH=${_RBY_FILE//\//\\\/}

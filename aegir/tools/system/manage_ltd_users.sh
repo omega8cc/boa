@@ -387,6 +387,10 @@ enable_chattr() {
       if [ -d "/home/${UQ}/.rvm/log" ]; then
         rm -rf /home/${UQ}/.rvm/log/*
       fi
+      if [ ! -d "/home/${UQ}/.npm-packages" ]; then
+        su -s /bin/bash - ${UQ} -c "mkdir ~/.npm-packages"
+        su -s /bin/bash - ${UQ} -c "echo prefix = /home/${UQ}/.npm-packages > ~/.npmrc"
+      fi
       rm -f /home/${UQ}/{.profile,.bash_logout,.bash_profile,.bashrc,.zlogin,.zshrc}
       rm -f /home/${UQ}/.rvm/scripts/notes
     else
@@ -394,6 +398,11 @@ enable_chattr() {
         rm -f ${dscUsr}/log/.gems.build*
         rm -rf /home/${UQ}/.rvm    &> /dev/null
         rm -rf /home/${UQ}/.gem    &> /dev/null
+      fi
+      if [ -d "/home/${UQ}/.npm" ] || [ -d "/home/${UQ}/.npm-packages" ]; then
+        rm -f /home/${UQ}/.npmrc
+        rm -rf /home/${UQ}/.npm             &> /dev/null
+        rm -rf /home/${UQ}/.npm-packages    &> /dev/null
       fi
     fi
 
