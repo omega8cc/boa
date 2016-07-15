@@ -921,6 +921,7 @@ install_php_multi() {
                 --with-pdo-mysql=/usr \
                 --with-pear \
                 --with-png-dir=/usr \
+                --with-tidy \
                 --with-xmlrpc \
                 --with-xsl \
                 --with-zlib \
