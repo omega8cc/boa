@@ -1778,7 +1778,7 @@ openscholar_install() {
               get_dev_contrib "biblio-7.x-1.0-rc7.tar.gz"
               get_dev_contrib "boxes-7.x-1.2.tar.gz"
               get_dev_contrib "entityreference_prepopulate-7.x-1.5.tar.gz"
-              get_dev_contrib "restws-7.x-2.2.tar.gz"
+              get_dev_contrib "restws-7.x-2.6.tar.gz"
               upgrade_contrib_less
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
