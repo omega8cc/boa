@@ -1,5 +1,5 @@
 
-  @=> How to use NPM to install Gulp/Bower or RVM to install Compass Tools
+  @=> How to use RVM to install Compass Tools or NPM to install Gulp/Bower
 
   Since BOA no longer install Compass Tools nor any related gems by default,
   you need to initialize your account first to auto-install Ruby Version Manager
@@ -25,6 +25,8 @@
              Note that not all Drush commands are available
        Use RVM and Bundler to manage all your Compass gems! Example:
              `rvm all do gem install --conservative compass`
+              Use NPM to manage all your packages! Example:
+                        `npm install -g gulp`
     To install RVM and NPM use control file and re-login after 15 minutes
                  `touch ~/static/control/compass.info`
 
