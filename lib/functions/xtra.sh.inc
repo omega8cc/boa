@@ -454,3 +454,57 @@ if_install_magick() {
     install_magick_src
   fi
 }
+
+if_install_ffmpeg() {
+  if [[ "${_XTRAS_LIST}" =~ "FMG" ]]; then
+    if [ ! -x "/usr/bin/ffmpeg" ]; then
+      echo " "
+      if prompt_yes_no "Do you want to install FFmpeg?" ; then
+        true
+        msg "INFO: Installing FFmpeg..."
+        cd /var/opt
+        if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "wheezy" ]; then
+          echo "## deb-multimedia APT Repository for FFmpeg" > ${aptLiSys}.d/ffmpeg.list
+          if [ "${_OSV}" = "jessie" ]; then
+            echo "deb http://www.deb-multimedia.org jessie main non-free" >> ${aptLiSys}.d/ffmpeg.list
+            echo "deb http://www.deb-multimedia.org jessie-backports main" >> ${aptLiSys}.d/ffmpeg.list
+          elif [ "${_OSV}" = "wheezy" ]; then
+            echo "deb http://www.deb-multimedia.org wheezy main non-free" >> ${aptLiSys}.d/ffmpeg.list
+            echo "deb http://www.deb-multimedia.org wheezy-backports main" >> ${aptLiSys}.d/ffmpeg.list
+          fi
+          st_runner "apt-get update -qq" &> /dev/null
+          st_runner "${_INSTAPP} deb-multimedia-keyring" 2> /dev/null
+          st_runner "apt-get update -qq" &> /dev/null
+          st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
+        elif [ "${_OSV}" = "squeeze" ] || [ "${_OSV}" = "trusty" ] || [ "${_OSV}" = "precise" ]; then
+          _X86_64_TEST=$(uname -m 2>&1)
+          rm -rf ffmpeg*
+          if [ "${_X86_64_TEST}" = "x86_64" ]; then
+            SYSTEMARCH="x86_64"
+            msg "INFO: Installing ffmpeg ${SYSTEMARCH}..."
+            curl ${crlGet} "http://johnvansickle.com/ffmpeg/releases/ffmpeg-release-64bit-static.tar.xz" -o "ffmpeg-release-64bit-static.tar.xz"
+            unxz "ffmpeg-release-64bit-static.tar.xz"
+            mkdir ffmpeg-release-64bit-static
+            tar -xf ffmpeg-release-64bit-static.tar --strip-components 1 -C ffmpeg-release-64bit-static
+            cd ffmpeg-release-64bit-static
+          else 
+            SYSTEMARCH="x86"
+            msg "INFO: Installing ffmpeg ${SYSTEMARCH}..."
+            curl ${crlGet} "http://johnvansickle.com/ffmpeg/releases/ffmpeg-release-32bit-static.tar.xz" -o "ffmpeg-release-32bit-static.tar.xz"
+            unxz "ffmpeg-release-32bit-static.tar.xz"
+            mkdir ffmpeg-release-32bit-static
+            tar -xf ffmpeg-release-32bit-static.tar --strip-components 1 -C ffmpeg-release-32bit-static
+            cd ffmpeg-release-32bit-static
+          fi
+          chown root:root {ffmpeg,ffmpeg-10bit,ffprobe,ffserver,qt-faststart}
+          chmod 755 {ffmpeg,ffmpeg-10bit,ffprobe,ffserver,qt-faststart}
+          cp -af {ffmpeg,ffmpeg-10bit,ffprobe,ffserver,qt-faststart} /usr/bin/
+          cd /var/opt
+        fi
+        msg "INFO: FFmpeg installed"
+      else
+        msg "INFO: FFmpeg installation skipped"
+      fi
+    fi
+  fi
+}

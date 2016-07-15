@@ -371,6 +371,7 @@ nginx_wildcard_ssl
 ###
 ### Optional add-on services
 ###
+if_install_ffmpeg
 if_install_magick
 if_install_bzr
 if_install_ftpd
