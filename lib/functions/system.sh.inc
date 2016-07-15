@@ -2783,21 +2783,7 @@ install_with_aptitude_deps() {
   else
     _GPG=gpg
   fi
-  if [[ "${_XTRAS_LIST}" =~ "FMG" ]]; then
-    if [ "${_OSV}" = "jessie" ] \
-      || [ "${_OSV}" = "wheezy" ] \
-      || [ "${_DO_FIX}" = "YES" ] \
-      || [ "${_OSV}" = "trusty" ] \
-      || [ "${_OSV}" = "precise" ]; then
-      _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-53"
-    elif [ "${_OSV}" = "squeeze" ]; then
-      _EXTRA_APT="tree ffmpeg flvtool2 libavcodec52"
-    else
-      _EXTRA_APT="tree ffmpeg flvtool2 libavcodec51"
-    fi
-  else
-    _EXTRA_APT="tree"
-  fi
+  _EXTRA_APT="tree"
   st_runner "apt-get install ${_EXTRA_APT} ${nrmUpArg}" 2> /dev/null
   if [ -e "/etc/init.d/php5-fpm" ]; then
     mrun "service php5-fpm stop" &> /dev/null
