@@ -48,9 +48,9 @@
   $ npm install -g foo_bar
 
   The special, single control file ~/static/control/compass.info will enable
-  RVM also in all extra SSH accounts on your instance. If you delete this file,
-  the system will remove RVM with all gems from all SSH accounts on your Aegir
-  Octopus Instance.
+  RVM and NPM also in all extra SSH accounts on your instance. If you delete 
+  this file, the system will remove RVM with all gems and npm packages from 
+  all SSH accounts on your Aegir Octopus Instance.
 
   Some gems may require ability to build their native binaries during the
   install, which is not possible in the limited shell. When you initialize your
