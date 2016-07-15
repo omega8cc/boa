@@ -41,7 +41,7 @@ if_install_adminer() {
         mkdir adminer
         cd adminer
         curl ${crlGet} "https://www.adminer.org/static/download/${_ADMINER_VRN}/adminer-${_ADMINER_VRN}.php" -o "adminer-${_ADMINER_VRN}.php"
-        curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/master/designs/nette/adminer.css" -o "adminer.css"
+        curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/designs/nette/adminer.css" -o "adminer.css"
         ln -s /var/www/adminer/adminer-${_ADMINER_VRN}.php /var/www/adminer/index.php
         validate_public_ip &> /dev/null
         validate_xtras_ip &> /dev/null
