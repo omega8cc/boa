@@ -32,7 +32,7 @@ PHP-FPM, Zend OPcache, MariaDB and Redis.
 ### Octopus batch migration ...........: docs/MIGRATE.txt
 ### Platforms configuration symbols ...: docs/PLATFORMS.txt
 ### Remote S3 backups .................: docs/BACKUPS.txt
-### RVM and Compass Tools .............: docs/RVM.txt
+### RVM, Compass Tools, and NPM .......: docs/RVM.txt
 ### Security related settings .........: docs/SECURITY.txt
 ### Single site migration .............: docs/REMOTE.txt
 ### SSL with single or extra IP .......: docs/SSL.txt
