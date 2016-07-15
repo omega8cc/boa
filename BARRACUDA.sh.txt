@@ -33,6 +33,7 @@
 ###
 ### Software versions
 ###
+_ADMINER_VRN=4.2.5
 _BZR_VRN=2.6.0
 _CGP_VRN=master-30-03-2014
 _CHIVE_VRN=1.3
@@ -376,6 +377,7 @@ if_install_magick
 if_install_bzr
 if_install_ftpd
 if_install_jetty
+if_install_adminer
 if_install_chive
 if_install_sqlbuddy
 if_install_collectd

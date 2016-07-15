@@ -56,6 +56,7 @@ Contrib [S]upported:
 
 Contrib [S]upported and [B]undled:
 
+ adminer -------------------- [D7] ------ [S] [B]
  advagg --------------------- [D6,D7] --- [S] [B]
  blockcache_alter ----------- [D6,D7] --- [S] [B]
  boost ---------------------- [D6,D7] --- [S] [B]
