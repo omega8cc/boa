@@ -122,37 +122,11 @@
 ###
 
 ###
-### Support for Compass Tools via RVM and Bundler with local user gems
+### Support for RVM to install Compass Tools or NPM to install Gulp/Bower
 ###
 ### ~/static/control/compass.info
 ###
-### This allows to easily install Ruby Version Manager (RVM) by the instance
-### owner w/o system admin (root) help. All you need to do is to create empty
-### ~/static/control/compass.info file.
-###
-### The system will check for this file existence every five minutes and will
-### Install latest RVM stable with Ruby, so you can easily add and manage
-### custom gems and bundles, with exact versions required by various themes
-### which depend on Compass Tools.
-###
-### Note that initial RVM install may take 15 minutes or longer, so remember
-### to wait until it is complete and then re-login. Once the initial install
-### is complete, you will be able to run 'rvm --version' command, but if it is
-### still not available, you just need to wait a bit longer. It may take even
-### longer if you have extra SSH sub-accounts, because the system needs to
-### install separate RVM along with some problematic gems in every sub-account,
-### so the effective wait time will be multiplied.
-###
-### You can then install and update gems using standard rvm commands. Examples:
-###
-### rvm all do gem install compass
-### rvm all do gem install --conservative toolkit
-### rvm all do gem install --conservative --version 3.0.3 compass_radix
-###
-### Note that this single control file will enable RVM also in all extra
-### SSH accounts on your instance, if used. If you will delete this file,
-### the system will remove RVM with all gems from all SSH accounts on your
-### Aegir Satellite Instance.
+### Details: https://github.com/omega8cc/boa/blob/master/docs/RVM.txt
 ###
 
 ###
