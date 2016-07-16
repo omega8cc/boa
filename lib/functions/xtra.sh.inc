@@ -40,17 +40,17 @@ if_install_adminer() {
         rm -rf /var/www/adminer &> /dev/null
         mkdir adminer
         cd adminer
-        curl ${crlGet} "https://www.adminer.org/static/download/${_ADMINER_VRN}/adminer-${_ADMINER_VRN}.php" -o "adminer-${_ADMINER_VRN}.php"
-        curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/designs/nette/adminer.css" -o "adminer.css"
-        ln -s /var/www/adminer/adminer-${_ADMINER_VRN}.php /var/www/adminer/index.php
+        get_dev_ext "adminer-${_ADMINER_VRN}.php"
+        get_dev_ext "adminer.css"
+        mv -f adminer-${_ADMINER_VRN}.php index.php
         validate_public_ip &> /dev/null
         validate_xtras_ip &> /dev/null
         cp -af ${locCnf}/nginx_sql_adminer.conf ${_ADMINER_VHOST}
-        sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"   ${_ADMINER_VHOST}
+        sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"               ${_ADMINER_VHOST}
         wait
-        sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_ADMINER_VHOST}
+        sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g"             ${_ADMINER_VHOST}
         wait
-        sed -i "s/adminer_name/adminer.${_THIS_FRONT}/g"   ${_ADMINER_VHOST}
+        sed -i "s/adminer_name/adminer.${_THIS_FRONT} ${_THISHTIP}/g" ${_ADMINER_VHOST}
         wait
         touch ${pthLog}/adminer-${_ADMINER_VRN}.log
         msg "INFO: Adminer Manager installed"
@@ -66,20 +66,21 @@ if_install_adminer() {
       fi
       chown -R ${_PHP_CN}:www-data /var/www/adminer
     else
-      msg "NOTE: _PHP_CN not set for Chive Manager"
+      msg "NOTE: _PHP_CN not set for Adminer Manager"
       chown -R www-data:www-data /var/www/adminer
     fi
-    find /var/www/adminer -type d -exec chmod 0775 {} \; &> /dev/null
-    find /var/www/adminer -type f -exec chmod 0664 {} \; &> /dev/null
+    find /var/www/adminer -type d -exec chmod 0755 {} \; &> /dev/null
+    find /var/www/adminer -type f -exec chmod 0644 {} \; &> /dev/null
+    chmod 0440 /var/www/adminer/index.php
   fi
 }
 
 if_install_chive() {
-  if [[ "${_XTRAS_LIST}" =~ "CHV" ]]; then
+  if [[ "${_XTRAS_LIST}" =~ "CHV" ]] || [ -d "/var/www/chive" ]; then
     _CHIVE_VHOST="${mtrNgx}/vhost.d/chive.${_THIS_FRONT}"
     if [ ! -d "/var/www/chive" ] \
       || [ ! -f "${_CHIVE_VHOST}" ] \
-      || [ ! -f "${pthLog}/chive-${_CHIVE_VRN}.fix-dns-vhost-wildcard.log" ]; then
+      || [ ! -f "${pthLog}/chive-${_CHIVE_VRN}.switch-to-adminer.log" ]; then
       echo " "
       if prompt_yes_no "Do you want to install Chive Manager?" ; then
         true
@@ -90,13 +91,13 @@ if_install_chive() {
         validate_public_ip &> /dev/null
         validate_xtras_ip &> /dev/null
         cp -af ${locCnf}/nginx_sql_chive.conf ${_CHIVE_VHOST}
-        sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"            ${_CHIVE_VHOST}
+        sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"    ${_CHIVE_VHOST}
         wait
-        sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g"          ${_CHIVE_VHOST}
+        sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g"  ${_CHIVE_VHOST}
         wait
-        sed -i "s/chive_name/chive.${_THIS_FRONT} ${_THISHTIP}/g"  ${_CHIVE_VHOST}
+        sed -i "s/chive_name/chive.${_THIS_FRONT}/g"       ${_CHIVE_VHOST}
         wait
-        touch ${pthLog}/chive-${_CHIVE_VRN}.fix-dns-vhost-wildcard.log
+        touch ${pthLog}/chive-${_CHIVE_VRN}.switch-to-adminer.log
         msg "INFO: Chive Manager installed"
       else
         msg "INFO: Chive Manager installation skipped"

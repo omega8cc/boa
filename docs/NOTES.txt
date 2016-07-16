@@ -9,7 +9,7 @@
     ### ADM --- Adminer DB Manager
     ### CGP --- Collectd Graph Panel
     ### CSF --- Firewall
-    ### CSS --- Compass Tools (available on Squeeze, Wheezy, Precise and Trusty)
+    ### CSS --- RVM for Compass + NPM for Gulp/Bower
     ### FTP --- Pure-FTPd server with forced FTPS
     ### WMN --- Webmin Control Panel
     ###
@@ -34,7 +34,7 @@
     ### _XTRAS_LIST=""
     ### _XTRAS_LIST="ALL"
     ### _XTRAS_LIST="ALL GIT SR3"
-    ### _XTRAS_LIST="CSF CGP CHV FTP"
+    ### _XTRAS_LIST="ADM CSF CGP CHV FTP"
     ###
 
   * Configuration file template: docs/cnf/barracuda.cnf
