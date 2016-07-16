@@ -26,8 +26,56 @@ if_install_bzr() {
   fi
 }
 
+if_install_adminer() {
+  if [[ "${_XTRAS_LIST}" =~ "ALL" ]] || [[ "${_XTRAS_LIST}" =~ "ADM" ]]; then
+    _ADMINER_VHOST="${mtrNgx}/vhost.d/chive.${_THIS_FRONT}"
+    if [ ! -d "/var/www/adminer" ] \
+      || [ ! -f "${_ADMINER_VHOST}" ] \
+      || [ ! -f "${pthLog}/adminer-${_ADMINER_VRN}.log" ]; then
+      echo " "
+      if prompt_yes_no "Do you want to install Adminer Manager?" ; then
+        true
+        msg "INFO: Installing Adminer Manager..."
+        cd /var/www
+        rm -rf /var/www/adminer &> /dev/null
+        mkdir adminer
+        cd adminer
+        curl ${crlGet} "https://www.adminer.org/static/download/${_ADMINER_VRN}/adminer-${_ADMINER_VRN}.php" -o "adminer-${_ADMINER_VRN}.php"
+        curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/designs/nette/adminer.css" -o "adminer.css"
+        ln -s /var/www/adminer/adminer-${_ADMINER_VRN}.php /var/www/adminer/index.php
+        validate_public_ip &> /dev/null
+        validate_xtras_ip &> /dev/null
+        cp -af ${locCnf}/nginx_sql_adminer.conf ${_ADMINER_VHOST}
+        sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"   ${_ADMINER_VHOST}
+        wait
+        sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_ADMINER_VHOST}
+        wait
+        sed -i "s/adminer_name/adminer.${_THIS_FRONT}/g"   ${_ADMINER_VHOST}
+        wait
+        touch ${pthLog}/adminer-${_ADMINER_VRN}.log
+        msg "INFO: Adminer Manager installed"
+      else
+        msg "INFO: Adminer Manager installation skipped"
+      fi
+    fi
+  fi
+  if [ -d "/var/www/adminer" ]; then
+    if [ ! -z "${_PHP_CN}" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: _PHP_CN set to ${_PHP_CN} for Adminer Manager"
+      fi
+      chown -R ${_PHP_CN}:www-data /var/www/adminer
+    else
+      msg "NOTE: _PHP_CN not set for Chive Manager"
+      chown -R www-data:www-data /var/www/adminer
+    fi
+    find /var/www/adminer -type d -exec chmod 0775 {} \; &> /dev/null
+    find /var/www/adminer -type f -exec chmod 0664 {} \; &> /dev/null
+  fi
+}
+
 if_install_chive() {
-  if [[ "${_XTRAS_LIST}" =~ "ALL" ]] || [[ "${_XTRAS_LIST}" =~ "CHV" ]]; then
+  if [[ "${_XTRAS_LIST}" =~ "CHV" ]]; then
     _CHIVE_VHOST="${mtrNgx}/vhost.d/chive.${_THIS_FRONT}"
     if [ ! -d "/var/www/chive" ] \
       || [ ! -f "${_CHIVE_VHOST}" ] \

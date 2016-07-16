@@ -109,7 +109,7 @@ production settings.
 === Included/enabled by default - see docs/NOTES.txt for details
 
 * All libraries & tools required to install and run Nginx based Aegir system.
-* Latest release of MariaDB 5.5 or 10.0 database server with Chive manager.
+* Latest release of MariaDB 5.5 or 10.0 database server with Adminer manager.
 * Latest version of Nginx web server.
 * Letsencrypt.org SSL support - see docs/SSL.txt for details.
 * HTTPS access with self-signed certificate for all hosted sites.
@@ -147,6 +147,7 @@ production settings.
 * FFmpeg support.
 * Bind9 DNS server.
 * Webmin Control Panel.
+* Chive database manager
 * SQL Buddy database manager.
 * Collectd server monitor.
 * LDAP Nginx support via third-party module (experimental).
