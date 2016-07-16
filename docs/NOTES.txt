@@ -73,7 +73,7 @@
 
   NOTE: If your outgoing SMTP requires using relayhost, define _SMTP_RELAY_HOST first.
 
-  NOTE: Adminer, Chive, SQL Buddy and Collectd will work only if adminer. chive. sqlbuddy. 
+  NOTE: Adminer, Chive, SQL Buddy and Collectd will work only if adminer. chive. sqlbuddy.
         and cgp. subdomains point to your IP (we recommend using wildcard DNS to simplify it).
         But don't worry, you can add proper DNS entries for those subdomains later,
         if you didn't enable wildcard DNS before running Barracuda installer.
@@ -106,4 +106,3 @@
         etc.
 
         Please read docs/UPGRADE.txt for simple upgrades how-to.
-

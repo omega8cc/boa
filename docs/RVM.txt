@@ -4,7 +4,7 @@
   Since BOA no longer install Compass Tools nor any related gems by default,
   you need to initialize your account first to auto-install Ruby Version Manager
   (RVM) and then use rvm to install Compass, Bundler and any other gems
-  required by your theme. 
+  required by your theme.
 
   Similarly, you need to initialize your account first to auto-install a user-
   level NPM package directory and then use NPM to install Gulp and/or Bower.
@@ -50,8 +50,8 @@
   $ npm install -g foo_bar
 
   The special, single control file ~/static/control/compass.info will enable
-  RVM and NPM also in all extra SSH accounts on your instance. If you delete 
-  this file, the system will remove RVM with all gems and npm packages from 
+  RVM and NPM also in all extra SSH accounts on your instance. If you delete
+  this file, the system will remove RVM with all gems and npm packages from
   all SSH accounts on your Aegir Octopus Instance.
 
   Some gems may require ability to build their native binaries during the

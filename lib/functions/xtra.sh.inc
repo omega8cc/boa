@@ -535,7 +535,7 @@ if_install_ffmpeg() {
             mkdir ffmpeg-release-64bit-static
             tar -xf ffmpeg-release-64bit-static.tar --strip-components 1 -C ffmpeg-release-64bit-static
             cd ffmpeg-release-64bit-static
-          else 
+          else
             SYSTEMARCH="x86"
             msg "INFO: Installing ffmpeg ${SYSTEMARCH}..."
             curl ${crlGet} "http://johnvansickle.com/ffmpeg/releases/ffmpeg-release-32bit-static.tar.xz" -o "ffmpeg-release-32bit-static.tar.xz"
