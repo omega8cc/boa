@@ -547,11 +547,13 @@ fix_update_nginx_config() {
     if [ -e "/var/aegir/config" ]; then
       sed -i "s/.*listen .*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/*          &> /dev/null
       wait
-      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
+      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/adminer.*  &> /dev/null
+      wait
+      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
       wait
       sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/chive.*    &> /dev/null
       wait
-      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
+      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
       wait
       sed -i "s/SSLv3 TLSv1;/TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf             &> /dev/null
       wait

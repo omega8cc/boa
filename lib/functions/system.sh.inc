@@ -2699,10 +2699,13 @@ finale() {
   rm -f ${pthLog}/protected-vhosts-clean.log
   rm -f ${vBs}/.auth.IP.list*
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
-    ${mtrNgx}/vhost.d/chive.* &> /dev/null
+    ${mtrNgx}/vhost.d/adminer.* &> /dev/null
   wait
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
     ${mtrNgx}/vhost.d/cgp.* &> /dev/null
+  wait
+  sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
+    ${mtrNgx}/vhost.d/chive.* &> /dev/null
   wait
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
     ${mtrNgx}/vhost.d/sqlbuddy.* &> /dev/null

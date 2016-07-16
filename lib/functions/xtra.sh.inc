@@ -28,7 +28,7 @@ if_install_bzr() {
 
 if_install_adminer() {
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] || [[ "${_XTRAS_LIST}" =~ "ADM" ]]; then
-    _ADMINER_VHOST="${mtrNgx}/vhost.d/chive.${_THIS_FRONT}"
+    _ADMINER_VHOST="${mtrNgx}/vhost.d/adminer.${_THIS_FRONT}"
     if [ ! -d "/var/www/adminer" ] \
       || [ ! -f "${_ADMINER_VHOST}" ] \
       || [ ! -f "${pthLog}/adminer-${_ADMINER_VRN}.log" ]; then
