@@ -42,7 +42,7 @@ if_install_adminer() {
         rm -rf /var/www/adminer &> /dev/null
         get_dev_ext "adminer-${_ADMINER_VRN}.tar.gz"
         cd /var/www/adminer
-        mv -f adminer-${_ADMINER_VRN}.php index.php
+        mv -f adminer-${_ADMINER_VRN}-mysql.php index.php
         validate_public_ip &> /dev/null
         validate_xtras_ip &> /dev/null
         cp -af ${locCnf}/nginx_sql_adminer.conf ${_ADMINER_VHOST}
