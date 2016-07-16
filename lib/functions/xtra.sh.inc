@@ -31,7 +31,7 @@ if_install_adminer() {
     || [[ "${_XTRAS_LIST}" =~ "ADM" ]] \
     || [ -d "/var/www/chive" ]; then
     _ADMINER_VHOST="${mtrNgx}/vhost.d/adminer.${_THIS_FRONT}"
-    if [ ! -d "/var/www/adminer" ] \
+    if [ ! -e "/var/www/adminer/index.php" ] \
       || [ ! -f "${_ADMINER_VHOST}" ] \
       || [ ! -f "${pthLog}/adminer-${_ADMINER_VRN}.log" ]; then
       echo " "
@@ -40,10 +40,8 @@ if_install_adminer() {
         msg "INFO: Installing Adminer Manager..."
         cd /var/www
         rm -rf /var/www/adminer &> /dev/null
-        mkdir adminer
-        cd adminer
-        get_dev_ext "adminer-${_ADMINER_VRN}.php"
-        get_dev_ext "adminer.css"
+        get_dev_ext "adminer-${_ADMINER_VRN}.tar.gz"
+        cd /var/www/adminer
         mv -f adminer-${_ADMINER_VRN}.php index.php
         validate_public_ip &> /dev/null
         validate_xtras_ip &> /dev/null
