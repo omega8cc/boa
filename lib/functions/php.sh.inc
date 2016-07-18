@@ -870,6 +870,25 @@ install_php_multi() {
   fi
   ###--------------------###
   msg "INFO: Building PHP ${_PHP_VERSION} from sources, please wait..."
+  if [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
+    if [ -e "/usr/lib/libtidy.so" ]; then
+      mrun "apt-get remove libtidy-dev -y --force-yes -qq" &> /dev/null
+      mrun "apt-get remove libtidy-0.99-0 -y --force-yes -qq" &> /dev/null
+    fi
+    cd /var/opt
+    rm -rf tidy*
+    _X86_64_TEST=$(uname -m 2>&1)
+    if [ "${_X86_64_TEST}" = "x86_64" ]; then
+      get_dev_src "tidy-${_LIB_TIDY_VRN}-64bit.deb.gz"
+      mrun "dpkg -i tidy-${_LIB_TIDY_VRN}-64bit.deb" 2> /dev/null
+    else
+      get_dev_src "tidy-${_LIB_TIDY_VRN}-32bit.deb.gz"
+      mrun "dpkg -i tidy-${_LIB_TIDY_VRN}-32bit.deb" 2> /dev/null
+    fi
+    if [ -e "/usr/lib/libtidy.so" ]; then
+      touch ${pthLog}/libtidy-${_LIB_TIDY_VRN}.log
+    fi
+  fi
   cd /var/opt
   rm -rf php*
   get_dev_src "php-${_PHP_VERSION}.tar.bz2"
@@ -1692,6 +1711,27 @@ check_fix_php() {
   if [ "$_CURLWRAPPERS_REBUILD" = "YES" ] \
     && [[ ! "${_PHP_EXTRA_CONF}" =~ "with-curlwrappers" ]]; then
     msg "INFO: PHP rebuild required to remove --with-curlwrappers option..."
+    _PHP_FORCE_REINSTALL=YES
+    php_upgrade_all
+  fi
+  if [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
+    if [ -e "/usr/lib/libtidy.so" ]; then
+      mrun "apt-get remove libtidy-dev -y --force-yes -qq" &> /dev/null
+      mrun "apt-get remove libtidy-0.99-0 -y --force-yes -qq" &> /dev/null
+    fi
+    cd /var/opt
+    rm -rf tidy*
+    _X86_64_TEST=$(uname -m 2>&1)
+    if [ "${_X86_64_TEST}" = "x86_64" ]; then
+      get_dev_src "tidy-${_LIB_TIDY_VRN}-64bit.deb.gz"
+      mrun "dpkg -i tidy-${_LIB_TIDY_VRN}-64bit.deb" 2> /dev/null
+    else
+      get_dev_src "tidy-${_LIB_TIDY_VRN}-32bit.deb.gz"
+      mrun "dpkg -i tidy-${_LIB_TIDY_VRN}-32bit.deb" 2> /dev/null
+    fi
+    if [ -e "/usr/lib/libtidy.so" ]; then
+      touch ${pthLog}/libtidy-${_LIB_TIDY_VRN}.log
+    fi
     _PHP_FORCE_REINSTALL=YES
     php_upgrade_all
   fi
