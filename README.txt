@@ -180,7 +180,7 @@ Octopus can install and/or support the platforms listed below:
  OpenAtrium 2.64 -------------- https://drupal.org/project/openatrium
  OpenChurch 2.2 --------------- https://drupal.org/project/openchurch
  OpenOutreach 1.30 ------------ https://drupal.org/project/openoutreach
- OpenPublic 1.8 --------------- https://drupal.org/project/openpublic
+ OpenPublic 1.9 --------------- https://drupal.org/project/openpublic
  Panopoly 1.37 ---------------- https://drupal.org/project/panopoly
  Restaurant 1.13 -------------- https://drupal.org/project/restaurant
  Ubercart 3.10 ---------------- https://drupal.org/project/ubercart
