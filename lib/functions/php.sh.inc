@@ -870,7 +870,8 @@ install_php_multi() {
   fi
   ###--------------------###
   msg "INFO: Building PHP ${_PHP_VERSION} from sources, please wait..."
-  if [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
+  if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
+    && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
     if [ -e "/usr/lib/libtidy.so" ]; then
       mrun "apt-get remove libtidy-dev -y --force-yes -qq" &> /dev/null
       mrun "apt-get remove libtidy-0.99-0 -y --force-yes -qq" &> /dev/null
@@ -878,14 +879,12 @@ install_php_multi() {
     fi
     cd /var/opt
     rm -rf tidy*
-    _X86_64_TEST=$(uname -m 2>&1)
-    if [ "${_X86_64_TEST}" = "x86_64" ]; then
-      get_dev_src "tidy-${_LIB_TIDY_VRN}-64bit.deb.gz"
-      mrun "dpkg -i tidy-${_LIB_TIDY_VRN}-64bit.deb" 2> /dev/null
-    else
-      get_dev_src "tidy-${_LIB_TIDY_VRN}-32bit.deb.gz"
-      mrun "dpkg -i tidy-${_LIB_TIDY_VRN}-32bit.deb" 2> /dev/null
-    fi
+    mrun "${_INSTALL} cmake" 2> /dev/null
+    get_dev_src "tidy-html5-${_LIB_TIDY_VRN}.tar.gz"
+    cd tidy-html5-${_LIB_TIDY_VRN}/build/cmake
+    mrun "cmake ../.. -DCMAKE_INSTALL_PREFIX=/usr/" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     if [ -e "/usr/lib/libtidy.so" ]; then
       cd /usr/lib
       ln -sf libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
@@ -943,7 +942,6 @@ install_php_multi() {
                 --with-pdo-mysql=/usr \
                 --with-pear \
                 --with-png-dir=/usr \
-                --with-tidy \
                 --with-xmlrpc \
                 --with-xsl \
                 --with-zlib \
@@ -1717,7 +1715,8 @@ check_fix_php() {
     _PHP_FORCE_REINSTALL=YES
     php_upgrade_all
   fi
-  if [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
+  if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
+    && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
     if [ -e "/usr/lib/libtidy.so" ]; then
       mrun "apt-get remove libtidy-dev -y --force-yes -qq" &> /dev/null
       mrun "apt-get remove libtidy-0.99-0 -y --force-yes -qq" &> /dev/null
@@ -1725,14 +1724,12 @@ check_fix_php() {
     fi
     cd /var/opt
     rm -rf tidy*
-    _X86_64_TEST=$(uname -m 2>&1)
-    if [ "${_X86_64_TEST}" = "x86_64" ]; then
-      get_dev_src "tidy-${_LIB_TIDY_VRN}-64bit.deb.gz"
-      mrun "dpkg -i tidy-${_LIB_TIDY_VRN}-64bit.deb" 2> /dev/null
-    else
-      get_dev_src "tidy-${_LIB_TIDY_VRN}-32bit.deb.gz"
-      mrun "dpkg -i tidy-${_LIB_TIDY_VRN}-32bit.deb" 2> /dev/null
-    fi
+    mrun "${_INSTALL} cmake" 2> /dev/null
+    get_dev_src "tidy-html5-${_LIB_TIDY_VRN}.tar.gz"
+    cd tidy-html5-${_LIB_TIDY_VRN}/build/cmake
+    mrun "cmake ../.. -DCMAKE_INSTALL_PREFIX=/usr/" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     if [ -e "/usr/lib/libtidy.so" ]; then
       cd /usr/lib
       ln -sf libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
