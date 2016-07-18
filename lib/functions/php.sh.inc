@@ -888,7 +888,7 @@ install_php_multi() {
     fi
     if [ -e "/usr/lib/libtidy.so" ]; then
       cd /usr/lib
-      ln -s libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
+      ln -sf libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
       touch ${pthLog}/libtidy-${_LIB_TIDY_VRN}.log
     fi
   fi
@@ -1735,7 +1735,7 @@ check_fix_php() {
     fi
     if [ -e "/usr/lib/libtidy.so" ]; then
       cd /usr/lib
-      ln -s libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
+      ln -sf libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
       touch ${pthLog}/libtidy-${_LIB_TIDY_VRN}.log
     fi
     _PHP_FORCE_REINSTALL=YES
