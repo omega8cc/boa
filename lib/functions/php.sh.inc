@@ -887,6 +887,8 @@ install_php_multi() {
       mrun "dpkg -i tidy-${_LIB_TIDY_VRN}-32bit.deb" 2> /dev/null
     fi
     if [ -e "/usr/lib/libtidy.so" ]; then
+      cd /usr/lib
+      ln -s libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
       touch ${pthLog}/libtidy-${_LIB_TIDY_VRN}.log
     fi
   fi
@@ -1732,6 +1734,8 @@ check_fix_php() {
       mrun "dpkg -i tidy-${_LIB_TIDY_VRN}-32bit.deb" 2> /dev/null
     fi
     if [ -e "/usr/lib/libtidy.so" ]; then
+      cd /usr/lib
+      ln -s libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
       touch ${pthLog}/libtidy-${_LIB_TIDY_VRN}.log
     fi
     _PHP_FORCE_REINSTALL=YES
