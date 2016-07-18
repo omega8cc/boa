@@ -874,6 +874,7 @@ install_php_multi() {
     if [ -e "/usr/lib/libtidy.so" ]; then
       mrun "apt-get remove libtidy-dev -y --force-yes -qq" &> /dev/null
       mrun "apt-get remove libtidy-0.99-0 -y --force-yes -qq" &> /dev/null
+      mrun "apt-get remove tidy -y --force-yes -qq" &> /dev/null
     fi
     cd /var/opt
     rm -rf tidy*
@@ -1718,6 +1719,7 @@ check_fix_php() {
     if [ -e "/usr/lib/libtidy.so" ]; then
       mrun "apt-get remove libtidy-dev -y --force-yes -qq" &> /dev/null
       mrun "apt-get remove libtidy-0.99-0 -y --force-yes -qq" &> /dev/null
+      mrun "apt-get remove tidy -y --force-yes -qq" &> /dev/null
     fi
     cd /var/opt
     rm -rf tidy*
