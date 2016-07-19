@@ -929,7 +929,7 @@ if [ `whoami` = "root" ]; then
       fi
     else
       update_agents
-      force_rebuild
+      # force_rebuild
       if [[ "${_VERSIONS_TEST}" =~ "BOA-3." ]] \
         || [[ "${_VERSIONS_TEST}" =~ "BOA-2.4." ]] \
         || [[ "${_VERSIONS_TEST}" =~ "BOA-2.3.8" ]]; then
