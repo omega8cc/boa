@@ -874,20 +874,20 @@ install_php_multi() {
     && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
     if [ -e "/usr/lib/libtidy.so" ]; then
       mrun "apt-get remove libtidy-dev -y --force-yes -qq" &> /dev/null
-      ### mrun "apt-get remove libtidy-0.99-0 -y --force-yes -qq" &> /dev/null
+      mrun "apt-get remove libtidy-0.99-0 -y --force-yes -qq" &> /dev/null
       mrun "apt-get remove tidy -y --force-yes -qq" &> /dev/null
     fi
     cd /var/opt
     rm -rf tidy*
-    mrun "${_INSTALL} cmake libtidy-0.99-0" 2> /dev/null
+    mrun "${_INSTALL} cmake" 2> /dev/null
     get_dev_src "tidy-html5-${_LIB_TIDY_VRN}.tar.gz"
     cd tidy-html5-${_LIB_TIDY_VRN}/build/cmake
     mrun "cmake ../.. -DCMAKE_INSTALL_PREFIX=/usr/" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     if [ -e "/usr/lib/libtidy.so" ]; then
-      ### cd /usr/lib
-      ### ln -sf libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
+      cd /usr/lib
+      ln -sf libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
       touch ${pthLog}/libtidy-${_LIB_TIDY_VRN}.log
     fi
   fi
@@ -1719,20 +1719,20 @@ check_fix_php() {
     && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
     if [ -e "/usr/lib/libtidy.so" ]; then
       mrun "apt-get remove libtidy-dev -y --force-yes -qq" &> /dev/null
-      ### mrun "apt-get remove libtidy-0.99-0 -y --force-yes -qq" &> /dev/null
+      mrun "apt-get remove libtidy-0.99-0 -y --force-yes -qq" &> /dev/null
       mrun "apt-get remove tidy -y --force-yes -qq" &> /dev/null
     fi
     cd /var/opt
     rm -rf tidy*
-    mrun "${_INSTALL} cmake libtidy-0.99-0" 2> /dev/null
+    mrun "${_INSTALL} cmake" 2> /dev/null
     get_dev_src "tidy-html5-${_LIB_TIDY_VRN}.tar.gz"
     cd tidy-html5-${_LIB_TIDY_VRN}/build/cmake
     mrun "cmake ../.. -DCMAKE_INSTALL_PREFIX=/usr/" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     if [ -e "/usr/lib/libtidy.so" ]; then
-      ### cd /usr/lib
-      ### ln -sf libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
+      cd /usr/lib
+      ln -sf libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
       touch ${pthLog}/libtidy-${_LIB_TIDY_VRN}.log
     fi
     _PHP_FORCE_REINSTALL=YES
