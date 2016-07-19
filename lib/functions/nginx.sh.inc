@@ -190,25 +190,27 @@ force_advanced_nginx_config() {
 #
 # Check for Linux/Cdorked.A malware and delete if discovered.
 detect_cdorked_malware() {
-  _C_DORKED=NO
-  _C_FILE=${bldPth}/aegir/helpers/dump_cdorked_config.c
-  if [ -e "$_C_FILE" ]; then
-    ### msg "INFO: Checking for Linux/Cdorked.A malware..."
-    chattr -ai /usr/sbin/nginx
-    cd ${vBs}
-    rm -rf /var/opt/foo_bar*
-    gcc -o /var/opt/foo_bar ${bldPth}/aegir/helpers/dump_cdorked_config.c &> /dev/null
-    _C_DORKED_TEST=$(/var/opt/foo_bar 2>&1)
-    if [[ "${_C_DORKED_TEST}" =~ "No shared memory matching Cdorked signature" ]]; then
-      _DO_NOTHING=YES
-      ### msg "INFO: No Linux/Cdorked.A malware traces found - system clean"
-    else
-      msg "ALRT! Your system is probably infected by Linux/Cdorked.A malware!"
-      msg "ALRT! Please send the ${vBs}/httpd_cdorked_config.bin file"
-      msg "ALRT! to leveille@eset.com for investigation"
-      rm -f $(which nginx)
-      _NGX_FORCE_REINSTALL=YES
-      _C_DORKED=YES
+  if [ -x "/usr/sbin/nginx" ]; then
+    _C_DORKED=NO
+    _C_FILE=${bldPth}/aegir/helpers/dump_cdorked_config.c
+    if [ -e "$_C_FILE" ]; then
+      ### msg "INFO: Checking for Linux/Cdorked.A malware..."
+      chattr -ai /usr/sbin/nginx
+      cd ${vBs}
+      rm -rf /var/opt/foo_bar*
+      gcc -o /var/opt/foo_bar ${bldPth}/aegir/helpers/dump_cdorked_config.c &> /dev/null
+      _C_DORKED_TEST=$(/var/opt/foo_bar 2>&1)
+      if [[ "${_C_DORKED_TEST}" =~ "No shared memory matching Cdorked signature" ]]; then
+        _DO_NOTHING=YES
+        ### msg "INFO: No Linux/Cdorked.A malware traces found - system clean"
+      else
+        msg "ALRT! Your system is probably infected by Linux/Cdorked.A malware!"
+        msg "ALRT! Please send the ${vBs}/httpd_cdorked_config.bin file"
+        msg "ALRT! to leveille@eset.com for investigation"
+        rm -f $(which nginx)
+        _NGX_FORCE_REINSTALL=YES
+        _C_DORKED=YES
+      fi
     fi
   fi
 }
