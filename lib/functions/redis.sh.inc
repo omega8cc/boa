@@ -86,6 +86,8 @@ fix_redis_mode() {
     if [ "${_REDIS_LISTEN_MODE}" = "SOCKET" ]; then
       sed -i "s/redis_client_host/redis_client_socket/g"               /data/conf/global.inc &> /dev/null
       wait
+      sed -i "s/'host'/'socket'/g"                                     /data/conf/global.inc &> /dev/null
+      wait
       sed -i "s/  = '127.0.0.1';/= '\/var\/run\/redis\/redis.sock';/g" /data/conf/global.inc &> /dev/null
       wait
       sed -i "s/^port 0/port 6379/g"                                   /etc/redis/redis.conf &> /dev/null

@@ -1510,6 +1510,52 @@ satellite_o_contrib_seven_update_global() {
 }
 
 #
+# Update o_contrib_eight.
+satellite_o_contrib_eight_update_global() {
+
+  _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 \
+    017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 \
+    035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+
+  _RMMODULES="some_foo_bar"
+
+  for i in ${_REVISIONS}; do
+    if [ -e "${_D}/$i/o_contrib_eight" ] \
+      && [ ! -e "${_D}/$i/o_contrib_eight/update-${_X_VERSION}.info" ]; then
+      _FORCE_UP_EIGHT=YES
+    elif [ -e "${_D}/$i/o_contrib_eight" ] \
+      && [ ! -e "${_D}/000/modules/redis_eight" ]; then
+      _FORCE_UP_EIGHT=YES
+    elif [ -e "${_D}/$i/o_contrib_eight" ] \
+      && [ ! -L "${_D}/$i/o_contrib_eight/redis_eight" ]; then
+      _FORCE_UP_EIGHT=YES
+    else
+      _FORCE_UP_EIGHT=NO
+    fi
+    if [ "${_FORCE_UP_EIGHT}" = "YES" ] \
+      && [ -e "${_D}/$i/o_contrib_eight" ]; then
+      for m in ${_RMMODULES}; do
+        if [ -d "${_D}/$i/o_contrib_eight/$m" ]; then
+          rm -rf ${_D}/$i/o_contrib_eight/$m
+        fi
+      done
+      cd ${_D}/$i/o_contrib_eight
+      if [ -d "${_D}/$i/o_contrib_eight/redis_eight" ]; then
+        rm -rf ${_D}/$i/o_contrib_eight/redis_eight
+      fi
+      if [ -e "${_D}/000/modules/redis_eight" ] \
+        && [ ! -L "${_D}/$i/o_contrib_eight/redis_eight" ]; then
+        ln -sf ${_D}/000/modules/redis_eight ${_D}/$i/o_contrib_eight/redis_eight
+      fi
+      find ${_D}/$i/o_contrib_eight -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${_D}/$i/o_contrib_eight -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${_D}/$i/o_contrib_eight/update-${_X_VERSION}.info
+    fi
+  done
+  cd
+}
+
+#
 # Download Textile.
 satellite_download_textile() {
   cd textile
@@ -1518,6 +1564,26 @@ satellite_download_textile() {
   cd ../
   patch -p1 < /opt/tmp/boa/aegir/patches/textile.patch &> /dev/null
 }
+
+#
+# Download o_contrib_eight.
+satellite_download_o_contrib_eight() {
+  touch update-${_X_VERSION}.info
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "${_STATUS} A: Downloading o_contrib_eight modules..."
+  fi
+  if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_E_VERSION}.info" ]; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -rf ${_D}/000/modules/redis_eight
+    get_dev_contrib "redis_eight-${_REDIS_E_VERSION}.tar.gz"
+    rm -f redis_eight/redis.info
+    echo update > redis_eight/${_REDIS_E_VERSION}.info
+  fi
+  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
+  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+}
+
 
 #
 # Download o_contrib_seven.
@@ -1703,24 +1769,24 @@ satellite_download_o_contrib_six() {
 #
 # Upgrade o_contrib.
 satellite_check_fix_o_contrib() {
-  if [ -e "${_CORE}/o_contrib" ]; then
-    if [ ! -e "${_CORE}/o_contrib/textile/include/classTextile.php" ]; then
-      _O_CONTRIB_FORCED_UP=YES
-    fi
-  fi
   if [ -e "${_CORE}/o_contrib_seven" ]; then
     if [ ! -e "${_CORE}/o_contrib_seven/textile/include/classTextile.php" ]; then
       _O_CONTRIB_FORCED_UP=YES
     fi
   fi
   if [ -e "${_CORE}/o_contrib" ]; then
-    if [ ! -d "${_CORE}/o_contrib/robotstxt" ] \
+    if [ ! -e "${_CORE}/o_contrib/textile/include/classTextile.php" ]; then
+      _O_CONTRIB_FORCED_UP=YES
+    fi
+  fi
+  if [ -e "${_CORE}/o_contrib_eight" ]; then
+    if [ ! -d "${_CORE}/o_contrib_eight/redis_eight" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
-      msg "${_STATUS} A: Running o_contrib forced upgrade..."
-      cd ${_CORE}/o_contrib
-      rm -rf ${_CORE}/o_contrib/*
-      satellite_download_o_contrib_six
-      cd ${_CORE}/o_contrib
+      msg "${_STATUS} A: Running o_contrib_eight forced upgrade..."
+      cd ${_CORE}/o_contrib_eight
+      rm -rf ${_CORE}/o_contrib_eight/*
+      satellite_download_o_contrib_eight
+      cd ${_CORE}/o_contrib_eight
     fi
   fi
   if [ -e "${_CORE}/o_contrib_seven" ]; then
@@ -1731,6 +1797,16 @@ satellite_check_fix_o_contrib() {
       rm -rf ${_CORE}/o_contrib_seven/*
       satellite_download_o_contrib_seven
       cd ${_CORE}/o_contrib_seven
+    fi
+  fi
+  if [ -e "${_CORE}/o_contrib" ]; then
+    if [ ! -d "${_CORE}/o_contrib/robotstxt" ] \
+      || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
+      msg "${_STATUS} A: Running o_contrib forced upgrade..."
+      cd ${_CORE}/o_contrib
+      rm -rf ${_CORE}/o_contrib/*
+      satellite_download_o_contrib_six
+      cd ${_CORE}/o_contrib
     fi
   fi
   if [ ! -e "${_D}/000/modules/cache_backport/update-${_X_VERSION}.info" ]; then
@@ -1756,6 +1832,14 @@ satellite_check_fix_o_contrib() {
     rm -f redis_edge/redis.info
     echo update > redis_edge/${_REDIS_M_VERSION}.info
   fi
+  if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_E_VERSION}.info" ]; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -rf ${_D}/000/modules/redis_eight
+    get_dev_contrib "redis_eight-${_REDIS_E_VERSION}.tar.gz"
+    rm -f redis_eight/redis.info
+    echo update > redis_eight/${_REDIS_E_VERSION}.info
+  fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
 }
@@ -1763,6 +1847,12 @@ satellite_check_fix_o_contrib() {
 #
 # Manage o_contrib.
 satellite_manage_o_contrib() {
+  if [ ! -e "${_CORE}/o_contrib_eight" ]; then
+    mkdir -p ${_CORE}/o_contrib_eight
+    cd ${_CORE}/o_contrib_eight
+    satellite_download_o_contrib_eight
+    cd ${_CORE}/o_contrib_eight
+  fi
   if [ ! -e "${_CORE}/o_contrib_seven" ]; then
     mkdir -p ${_CORE}/o_contrib_seven
     cd ${_CORE}/o_contrib_seven
@@ -1776,6 +1866,8 @@ satellite_manage_o_contrib() {
     cd ${_CORE}/o_contrib
   fi
   mkdir -p ${_D}/000/modules
+  rm -f ${_D}/000/modules/o_contrib_eight
+  ln -s ${_CORE}/o_contrib_eight ${_D}/000/modules/o_contrib_eight
   rm -f ${_D}/000/modules/o_contrib_seven
   ln -s ${_CORE}/o_contrib_seven ${_D}/000/modules/o_contrib_seven
   rm -f ${_D}/000/modules/o_contrib
@@ -4215,6 +4307,7 @@ satellite_display_url_finalize() {
   else
     satellite_o_contrib_update_global
     satellite_o_contrib_seven_update_global
+    satellite_o_contrib_eight_update_global
   fi
   if [ ! -e "/root/.upstart.cnf" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then

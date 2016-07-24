@@ -432,8 +432,8 @@ prepare_drupal8_core() {
     patch -p1 < ${bldPth}/aegir/patches/8-core/${patchFile} &> /dev/null
     fix_dirs_files
     rename_drupal8_profiles
-    ### rm -f modules/o_contrib_eight
-    ### ln -s ${_CORE}/o_contrib_eight modules/o_contrib_eight
+    rm -f modules/o_contrib_eight
+    ln -s ${_CORE}/o_contrib_eight modules/o_contrib_eight
     cd ${_CORE}
   fi
 }
