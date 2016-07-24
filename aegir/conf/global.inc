@@ -152,6 +152,7 @@ if (file_exists('web.config')) {
   if (file_exists('core')) {
     if (file_exists('vendor/symfony') || file_exists('core/vendor/symfony')) {
       $drupal_eight = TRUE;
+      $use_redis = TRUE;
       if ($is_dev && !$is_backend) {
         header('X-Backend: A');
       }
