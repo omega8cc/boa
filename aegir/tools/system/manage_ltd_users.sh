@@ -1411,7 +1411,8 @@ switch_php() {
       && [ -e "${dscUsr}/static/control/fpm.info" ] \
       && [ -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
       _PHP_FPM_MULTI=NO
-      if [ -f "${dscUsr}/static/control/multi-fpm.info" ]; then
+      if [ -f "${dscUsr}/static/control/multi-fpm.info" ] \
+        && [ -d "${dscUsr}/tools/le" ]; then
         _PHP_FPM_MULTI=YES
         if [ ! -e "${dscUsr}/static/control/.multi-fpm.pid" ]; then
           _FORCE_FPM_SETUP=YES
@@ -1562,7 +1563,8 @@ switch_php() {
           fi
           ### create or update special system user if needed
           _FMP_D_INC="${dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
-          if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
+          if [ "${_PHP_FPM_MULTI}" = "YES" ] \
+            && [ -d "${dscUsr}/tools/le" ]; then
             _PHP_M_V="70 56 55 54 53"
             _D_POOL="${_USER}.${_PHP_SV}"
             if [ ! -e "${_FMP_D_INC}" ]; then
@@ -1576,7 +1578,8 @@ switch_php() {
           fi
           for m in ${_PHP_M_V}; do
             if [ -x "/opt/php${m}/bin/php" ]; then
-              if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
+              if [ "${_PHP_FPM_MULTI}" = "YES" ] \
+                && [ -d "${dscUsr}/tools/le" ]; then
                 _WEB="${_USER}.${m}.web"
                 _POOL="${_USER}.${m}"
               else
@@ -1603,7 +1606,8 @@ switch_php() {
             fi
           done
           ### create or update special system user if needed
-          if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
+          if [ "${_PHP_FPM_MULTI}" = "YES" ] \
+            && [ -d "${dscUsr}/tools/le" ]; then
             _PHP_M_V="70 56 55 54 53"
             rm -f /opt/php*/etc/pool.d/${_USER}.conf
           else
@@ -1613,7 +1617,8 @@ switch_php() {
           fi
           for m in ${_PHP_M_V}; do
             if [ -x "/opt/php${m}/bin/php" ]; then
-              if [ "${_PHP_FPM_MULTI}" = "YES" ]; then
+              if [ "${_PHP_FPM_MULTI}" = "YES" ] \
+                && [ -d "${dscUsr}/tools/le" ]; then
                 _WEB="${_USER}.${m}.web"
                 _POOL="${_USER}.${m}"
               else

@@ -3508,7 +3508,8 @@ satellite_make() {
 
   if [ -e "${_ROOT}/log/email.txt" ]; then
     _PHP_FPM_MULTI=NO
-    if [ -f "${_ROOT}/static/control/multi-fpm.info" ]; then
+    if [ -f "${_ROOT}/static/control/multi-fpm.info" ] \
+      && [ -d "${_ROOT}/tools/le" ]; then
       _PHP_FPM_MULTI=YES
     fi
     if [ "${_PHP_FPM_MULTI}" = "NO" ]; then
