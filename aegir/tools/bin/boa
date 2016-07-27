@@ -1401,6 +1401,7 @@ display_info() {
     _BIL=$(grep _BACKEND_ITEMS_LIST /root/.barracuda.cnf 2>&1)
     _SKY=$(grep _SKYNET_MODE /root/.barracuda.cnf 2>&1)
     _BIN=$(grep _STRICT_BIN_PERMISSIONS /root/.barracuda.cnf 2>&1)
+    _TUN=$(grep _USE_MYSQLTUNER /root/.barracuda.cnf 2>&1)
     clear
     echo
     thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
@@ -1424,6 +1425,7 @@ display_info() {
     echo "  LSH ${_LSH}"
     echo "  RIS ${_RIS}"
     echo "  SQL ${_SQL}"
+    [ ! -z "${_TUN}" ] && echo "  TUN ${_TUN}"
     [ ! -z "${_BIL}" ] && echo "  BIL ${_BIL}"
     [ ! -z "${_SKY}" ] && echo "  SKY ${_SKY}"
     echo "  BIN ${_BIN}"
