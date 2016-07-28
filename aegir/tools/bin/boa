@@ -1406,7 +1406,8 @@ display_info() {
     echo
     thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
     echo "Aegir on ${thiSys}"
-    echo "  VPS ${_VIRT_IS}"
+    [ ! -z "${_VIRT_IS}" ] && echo "  VPS ${_VIRT_IS}"
+    [ -z "${_VIRT_IS}" ] && echo "  VPS unknown / not a virtual machine"
     echo "  CPU ${_CPU_NR}"
     echo "  RAM ${_RAM}"
     echo "  XTR ${_XTR}"
