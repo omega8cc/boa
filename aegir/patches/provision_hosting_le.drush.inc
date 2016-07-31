@@ -15,6 +15,7 @@ function drush_provision_hosting_le_post_provision_verify() {
     $le_cnfx = d('@server_master')->aegir_root . "/tools/le/config";
     $le_keyj = d('@server_master')->aegir_root . "/tools/le/private_key.json";
     $le_keyp = d('@server_master')->aegir_root . "/tools/le/private_key.pem";
+    $le_hook = d('@server_master')->aegir_root . "/tools/le/letsencrypt-sh-hooks.sh";
 
     $is_boa = FALSE;
     $is_boa_ctrl = "/data/conf/global.inc";
@@ -23,7 +24,10 @@ function drush_provision_hosting_le_post_provision_verify() {
       $is_boa = TRUE;
     }
 
-    $real_name = substr(d()->name, 1);
+    $main_name = $real_name = substr(d()->name, 1);
+    if ($real_name == 'hostmaster') {
+      $real_name = $main_name = d()->uri;
+    }
 
     if (d()->redirection) {
       drush_log('[hosting_le] This sitename redirection target is ' . d()->redirection);
@@ -37,7 +41,6 @@ function drush_provision_hosting_le_post_provision_verify() {
       }
     }
     else {
-      $main_name = substr(d()->name, 1);
       $cert_dir = $le_cert . "/" . $main_name;
     }
 
@@ -64,6 +67,8 @@ function drush_provision_hosting_le_post_provision_verify() {
     $site_mode_live_ctrl = $le_ctrl . "/live-" . $main_name . ".pid";
 
     $force_renew = FALSE;
+
+    $on_remote_server = !provision_is_local_host(d()->platform->web_server->remote_host);
   }
 
   if (d()->type == 'site' &&
@@ -93,10 +98,15 @@ function drush_provision_hosting_le_post_provision_verify() {
       return FALSE;
     }
 
+    if ($on_remote_server && !provision_file()->exists($le_hook)->status()) {
+      drush_log('[hosting_le] Please copy letsencrypt-sh-hooks.sh to ' . $le_root, 'warning');
+      return FALSE;
+    }
+
     if (preg_match("/\.(?:host8|boa)\.(?:biz|io)$/", $main_name) ||
         preg_match("/\.(?:dev|devel|temp|tmp|temporary)\./", $main_name) ||
-        preg_match("/\.(?:test|testing|stage|staging)\./", $main_name) ||
-        $real_name == 'hostmaster') {
+        preg_match("/\.(?:test|testing|stage|staging)\./", $main_name)
+       ) {
       drush_log('[hosting_le] Skipping LE setup for ' . $main_name);
       return FALSE;
     }
@@ -149,7 +159,7 @@ function drush_provision_hosting_le_post_provision_verify() {
     }
     else {
       if (file_exists($site_mode_demo_ctrl) || !file_exists($site_mode_live_ctrl)) {
-        unlink($site_mode_demo_ctrl);
+        @unlink($site_mode_demo_ctrl);
         $force_renew = TRUE;
         drush_log('[hosting_le] Forcing LIVE certificate renew for ' . $main_name);
       }
@@ -159,6 +169,9 @@ function drush_provision_hosting_le_post_provision_verify() {
           ->fail('[hosting_le] Could not create pid ' . $site_mode_live_ctrl);
       }
     }
+
+    // WIP: needed after certs deleted
+    // $force_renew = TRUE;
 
     drush_log('[hosting_le] LE certificate for ' . $main_name);
 
@@ -172,12 +185,13 @@ function drush_provision_hosting_le_post_provision_verify() {
       drush_log('[hosting_le] ALT names: --domain ' . $alt_names);
     }
 
-    $site_vhost = d('@server_master')->http_vhostd_path . "/" . $real_name;
+    $web_server = d()->platform->web_server;
+    $site_vhost = $web_server->http_vhostd_path . "/" . $real_name;
 
     if (provision_file()->exists($site_vhost)->status()) {
       $grep_output = '';
       $redirect_result = '';
-      $http_service_type = d('@server_master')->http_service_type;
+      $http_service_type = $web_server->http_service_type;
 
       if ($http_service_type == 'nginx_ssl') {
         exec("/bin/grep  \"alias redirection virtual host\" " . $site_vhost, $grep_output);
@@ -205,6 +219,7 @@ function drush_provision_hosting_le_post_provision_verify() {
 
     if (provision_file()->exists($immutable)->status() &&
         provision_file()->exists($cert_dir)->status()) {
+      $needs_update = FALSE;
       drush_log("[hosting_le] Immutable protection mode detected for this domain: " . $cert_dir, 'info');
       drush_log("[hosting_le] SSL Certificate for this domain already exists in: " . $cert_dir, 'info');
       drush_log("[hosting_le] You can replace it with any other certificate since it will be left here as-is forever.", 'info');
@@ -217,20 +232,24 @@ function drush_provision_hosting_le_post_provision_verify() {
       drush_log("[hosting_le] You could then replace existing cert with any other cert since it will be left here as-is forever.", 'info');
       drush_log("[hosting_le] NOTE: On hosted Aegir service you need to contact your host support for further assistance.", 'info');
       $output = '';
+      $le_options = '--cron';
+      if ($on_remote_server) {
+        $le_options .= ' --hook ' . $le_hook;
+      }
       if ($force_renew) {
         if ($no_alt_names || empty($alt_names)) {
-          exec("/bin/bash " . $le_exec . " --cron --force --domain " . $main_name. ' 2>&1', $output);
+          exec("/bin/bash " . $le_exec . " $le_options --force --domain " . $main_name. ' 2>&1', $output);
         }
         else {
-          exec("/bin/bash " . $le_exec . " --cron --force --domain " . $real_name . " --domain " . $alt_names . ' 2>&1', $output);
+          exec("/bin/bash " . $le_exec . " $le_options --force --domain " . $real_name . " --domain " . $alt_names . ' 2>&1', $output);
         }
       }
       else {
         if ($no_alt_names || empty($alt_names)) {
-          exec("/bin/bash " . $le_exec . " --cron --domain " . $main_name . ' 2>&1', $output);
+          exec("/bin/bash " . $le_exec . " $le_options --domain " . $main_name . ' 2>&1', $output);
         }
         else {
-          exec("/bin/bash " . $le_exec . " --cron --domain " . $real_name . " --domain " . $alt_names . ' 2>&1', $output);
+          exec("/bin/bash " . $le_exec . " $le_options --domain " . $real_name . " --domain " . $alt_names . ' 2>&1', $output);
         }
       }
       $acme_result = implode(' ', $output);
@@ -288,8 +307,8 @@ function drush_provision_hosting_le_post_provision_verify() {
       $acme_result_clean = implode(' ', $output_clean);
       drush_log('[hosting_le] ACME Cleanup Output: ' . $acme_result_clean);
 
-      $ssl_symlinks[] = d('@server_master')->aegir_root . "/config/ssl.d/" . $real_name;
-      $ssl_symlinks[] = d('@server_master')->aegir_root . "/config/server_master/ssl.d/" . $real_name;
+      $ssl_symlinks[] = d('@server_master')->ssld_path . "/" . $real_name;
+      $ssl_symlinks[] = $web_server->http_ssld_path . "/" . $real_name;
 
       foreach ($ssl_symlinks as $symlink) {
         if (provision_file()->exists($symlink)->status()) {
@@ -332,7 +351,7 @@ function drush_provision_hosting_le_post_provision_verify() {
         // Remove current symlink or file (this would have been generated by
         // Aegir AFTER the original dir symlinking, meaning it's self-generated
         // and therefore unimportant.
-        unlink($cert_dir . "/" . $original);
+        @unlink($cert_dir . "/" . $original);
 
         $success = ($success && symlink($cert_dir . "/" . $target, $cert_dir . "/" . $original));
       }
@@ -344,9 +363,12 @@ function drush_provision_hosting_le_post_provision_verify() {
         drush_log('[hosting_le] Could not replace one or more symlinks. Check ' . $certdir, 'warning');
       }
 
+      $web_server->sync($le_cert . '/' . $real_name);
+      $web_server->sync($web_server->http_ssld_path);
+
       $pid = $le_ctrl . "/" . $main_name . ".pid";
 
-      if ($real_name != 'hostmaster' && file_exists($cert_dir) && !file_exists($pid)) {
+      if (file_exists($cert_dir) && !file_exists($pid)) {
         provision_file()->file_put_contents($pid, $main_name)
           ->succeed('[hosting_le] Created pid ' . $pid)
           ->fail('[hosting_le] Could not create pid ' . $pid);
@@ -362,9 +384,8 @@ function drush_provision_hosting_le_post_provision_verify() {
         }
       }
 
-      $http_reload = d('@server_master')->http_restart_cmd;
-      drush_log('[hosting_le] Running ' . $http_reload);
-      shell_exec($http_reload);
+      drush_log('[hosting_le] Restarting webserver');
+      $web_server->restart();
     }
   }
 }
