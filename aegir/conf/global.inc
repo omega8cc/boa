@@ -121,6 +121,7 @@ if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) ||
  * Dev mode detection and URLs protection - works only for aliases
  */
 if (isset($_SERVER['HTTP_HOST']) &&
+    isset($_SERVER['MAIN_SITE_NAME']) &&
     preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) &&
     $_SERVER['HTTP_HOST'] != $_SERVER['MAIN_SITE_NAME'] &&
     $_SERVER['HTTP_HOST'] != $_SERVER['SERVER_NAME'] &&
