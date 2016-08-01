@@ -452,7 +452,7 @@ update_agents() {
           chown ${tUsr}:users ${locVhFile}
           chmod 0644 ${locVhFile}
         fi
-        locLeShFile="${dscUsr}/tools/le/{hLeShF}"
+        locLeShFile="${dscUsr}/tools/le/${hLeShF}"
         if [ -e "${locLeShFile}" ] && [ -e "${hLeShP}" ]; then
           cp -af ${hLeShP} ${locLeShFile}
           chown ${tUsr}:users ${locLeShFile}
