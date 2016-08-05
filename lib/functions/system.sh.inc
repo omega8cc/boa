@@ -2192,7 +2192,7 @@ install_curl_src() {
       _CURL_INSTALL_REQUIRED=NO
     else
       _CURL_INSTALL_REQUIRED=YES
-      msg "INFO: Installed cURL version ${_CURL_ITD}, upgrade required"
+      # msg "INFO: Installed cURL version ${_CURL_ITD}, upgrade required"
     fi
   fi
   _BROKEN_CURL_TEST=$(curl --version 2>&1)
@@ -2205,7 +2205,7 @@ install_curl_src() {
   fi
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     _CURL_INSTALL_REQUIRED=YES
-    msg "INFO: Installed cURL version ${_CURL_ITD}, rebuild forced"
+    # msg "INFO: Installed cURL version ${_CURL_ITD}, rebuild forced"
   fi
   if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
