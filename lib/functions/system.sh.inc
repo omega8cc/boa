@@ -2164,6 +2164,7 @@ install_magick_src() {
 #
 # Install cURL from sources.
 install_curl_src() {
+  touch /root/.use.curl.from.packages.cnf
   if [ "${_OSV}" = "precise" ]; then
     touch /root/.use.curl.from.packages.cnf
     _CURL_VRN=7.22.0
@@ -2208,18 +2209,20 @@ install_curl_src() {
   fi
   if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
-    echo "libcurl3 install" | dpkg --set-selections
-    echo "libcurl3-gnutls install" | dpkg --set-selections
-    echo "libcurl4-openssl-dev install" | dpkg --set-selections
-    mrun "${_INSTALL} libcurl3" 2> /dev/null
-    mrun "${_INSTALL} libcurl3-gnutls" 2> /dev/null
-    mrun "${_INSTALL} libcurl4-openssl-dev" 2> /dev/null
     if [ -e "/root/.use.curl.from.packages.cnf" ]; then
       if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
         echo "curl install" | dpkg --set-selections
       fi
       if [ -z "${_CURL_ALREADY_REBUILT}" ]; then
-        apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
+        echo "libcurl3 install" | dpkg --set-selections
+        echo "libcurl3-gnutls install" | dpkg --set-selections
+        echo "libcurl4-openssl-dev install" | dpkg --set-selections
+        mrun "apt-get clean -qq" 2> /dev/null
+        mrun "apt-get update -qq" 2> /dev/null
+        mrun "apt-get install libcurl3 ${forCer}" 2> /dev/null
+        mrun "apt-get install libcurl3-gnutls ${forCer}" 2> /dev/null
+        mrun "apt-get install libcurl4-openssl-dev ${forCer}" 2> /dev/null
+        mrun "apt-get install curl ${forCer}" 2> /dev/null
       fi
     else
       if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
