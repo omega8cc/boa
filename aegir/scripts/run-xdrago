@@ -79,7 +79,7 @@ action() {
       buildTest=${buildTest//[^0-9]/}
     fi
     if [ -e "${clCtr}" ]; then
-      if [ -e "${gtDir}" ] || [ "${buildTest}" -ge "2" ]; then
+      if [ -e "${gtDir}" ] || [ "${buildTest}" -ge "1" ]; then
         rm -rf ${tpDir}/*
         rm -f ${clCtr}
         buildTest="0"
