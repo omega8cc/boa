@@ -385,8 +385,8 @@ if ($ini_plr_src) {
   $usr_plr_ini = array();
   $usr_plr_ini = parse_ini_file($ini_plr_src);
 }
-if (is_readable('sites/'. $_SERVER['SERVER_NAME'] .'/modules/boa_site_control.ini')) {
-  $ini_loc_src = 'sites/'. $_SERVER['SERVER_NAME'] .'/modules/boa_site_control.ini';
+if (is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/modules/boa_site_control.ini')) {
+  $ini_loc_src = 'sites/' . $_SERVER['SERVER_NAME'] . '/modules/boa_site_control.ini';
 }
 if ($ini_loc_src) {
   $usr_loc_ini = array();
@@ -766,10 +766,10 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
   }
 
   if ($all_ini['server_name_cookie_domain'] || $site_subdir) {
-    $domain = '.'. preg_replace('`^www\.`', '', $_SERVER['SERVER_NAME']);
+    $domain = '.' . preg_replace('`^www\.`', '', $_SERVER['SERVER_NAME']);
   }
   else {
-    $domain = '.'. preg_replace('`^www\.`', '', $_SERVER['HTTP_HOST']);
+    $domain = '.' . preg_replace('`^www\.`', '', $_SERVER['HTTP_HOST']);
   }
   $domain = str_replace('..', '.', $domain);
   if (count(explode('.', $domain)) > 2 &&
@@ -789,14 +789,14 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
       isset($_SERVER['HTTP_USER_AGENT']) &&
       !preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
     $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['SERVER_NAME'] . $_SERVER['HTTP_USER_AGENT'];
-    $identity = 'BD'. md5("$identity");
+    $identity = 'BD' . md5("$identity");
     if ($drupal_seven || $drupal_eight) {
       $conf['https'] = TRUE;
       $sess_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $sess_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
     }
     else {
-      $test_sess_name = 'SESS'. md5($cookie_domain);
+      $test_sess_name = 'SESS' . md5($cookie_domain);
     }
     if (!isset($_COOKIE[$test_sess_name]) && !$drupal_eight) {
       if ($all_ini['speed_booster_anon_cache_ttl'] && preg_match("/^[0-9]{2,}$/", $all_ini['speed_booster_anon_cache_ttl'])) {
