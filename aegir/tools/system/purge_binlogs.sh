@@ -71,7 +71,7 @@ action() {
   load_control
   if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ]; then
     echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
-/usr/bin/mysql --default-character-set=utf8 mysql<<EOFMYSQL
+/usr/bin/mysql mysql<<EOFMYSQL
 PURGE MASTER LOGS BEFORE DATE_SUB( NOW( ), INTERVAL 1 HOUR);
 EOFMYSQL
     touch /var/xdrago/log/purge_binlogs.done

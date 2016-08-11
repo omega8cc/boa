@@ -308,7 +308,7 @@ migrate_sites() {
           if [ ! -d "/var/lib/mysql/${_DBN}" ]; then
             mysqladmin flush-privileges
             mysql -uroot mysql<<EOFMYSQL
-CREATE DATABASE ${_DBN} CHARACTER SET utf8;
+CREATE DATABASE ${_DBN} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 GRANT ALL PRIVILEGES ON ${_DBN}.* TO '${_DBN}'@'127.0.0.1' IDENTIFIED BY '${_DBP}';
 GRANT ALL PRIVILEGES ON ${_DBN}.* TO '${_DBN}'@'localhost' IDENTIFIED BY '${_DBP}';
 EOFMYSQL
@@ -351,7 +351,6 @@ EOFMYSQL
           --single-transaction \
           --quick \
           --no-autocommit \
-          --default-character-set=utf8 \
           --hex-blob ${_DBN} > ${_USR}/src/${_DBN}.sql
         echo "INFO: site ${Dom} db export on ${oct} complete"
       elif [ "${cmd}" = "proxy" ]; then
@@ -466,7 +465,6 @@ migrate_prepare() {
         --single-transaction \
         --quick \
         --no-autocommit \
-        --default-character-set=utf8 \
         --hex-blob ${_HDB} \
         field_data_body \
         field_data_comment_body \

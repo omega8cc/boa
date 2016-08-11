@@ -52,7 +52,7 @@ touch /var/run/boa_sql_backup.pid
 truncate_cache_tables() {
   _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
   for C in ${_TABLES}; do
-mysql --default-character-set=utf8 ${_DB}<<EOFMYSQL
+mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${C};
 EOFMYSQL
   done
@@ -61,7 +61,7 @@ EOFMYSQL
 truncate_watchdog_tables() {
   _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^watchdog$ 2>&1)
   for A in ${_TABLES}; do
-mysql --default-character-set=utf8 ${_DB}<<EOFMYSQL
+mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${A};
 EOFMYSQL
   done
@@ -70,7 +70,7 @@ EOFMYSQL
 truncate_accesslog_tables() {
   _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^accesslog$ 2>&1)
   for A in ${_TABLES}; do
-mysql --default-character-set=utf8 ${_DB}<<EOFMYSQL
+mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${A};
 EOFMYSQL
   done
@@ -79,7 +79,7 @@ EOFMYSQL
 truncate_queue_tables() {
   _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^queue$ 2>&1)
   for Q in ${_TABLES}; do
-mysql --default-character-set=utf8 ${_DB}<<EOFMYSQL
+mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${Q};
 EOFMYSQL
   done
@@ -88,7 +88,7 @@ EOFMYSQL
 optimize_this_database() {
   _TABLES=$(mysql ${_DB} -e "show tables" -s | uniq | sort 2>&1)
   for T in ${_TABLES}; do
-mysql --default-character-set=utf8 ${_DB}<<EOFMYSQL
+mysql ${_DB}<<EOFMYSQL
 OPTIMIZE TABLE ${T};
 EOFMYSQL
   done
@@ -102,7 +102,6 @@ backup_this_database() {
     --single-transaction \
     --quick \
     --no-autocommit \
-    --default-character-set=utf8 \
     --hex-blob ${_DB} \
     | gzip -c > ${_SAVELOCATION}/${_DB}.sql.gz
 }
