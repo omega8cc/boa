@@ -405,7 +405,7 @@ if_install_rvm() {
     else
       _L_ST="upgrade"
     fi
-    if [ ! -e "${pthLog}/compass-${_X_VERSION}-ruby-${_RUBY_VRN}.log" ]; then
+    if [ ! -e "${pthLog}/compass-${_X_VERSION}-ruby-${_RUBY_VRN}-nodejs.log" ]; then
       echo " "
       if prompt_yes_no "Do you want to ${_L_ST} Ruby with RVM for root?" ; then
         true
@@ -481,7 +481,7 @@ if_install_rvm() {
           sed -i "s/^#\!\/.*/#\!$_RBY_PATH/g" $_GEM_FILE &> /dev/null
         fi
         PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin;export PATH
-        touch ${pthLog}/compass-${_X_VERSION}-ruby-${_RUBY_VRN}.log
+        touch ${pthLog}/compass-${_X_VERSION}-ruby-${_RUBY_VRN}-nodejs.log
         msg "INFO: Ruby with RVM ${_L_ST} for root completed"
       else
         msg "INFO: Ruby with RVM ${_L_ST} for root skipped"
