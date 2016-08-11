@@ -473,7 +473,7 @@ fix_o_contrib_symlink() {
 }
 
 sql_convert() {
-  sudo -u ${_HM_U}.ftp -H /opt/local/bin/sqlmagic convert to-${_SQL_CONVERT}
+  sudo -u ${_HM_U}.ftp -H /opt/local/bin/sqlmagic convert @${Dom} to-${_SQL_CONVERT}
 }
 
 send_shutdown_notice() {

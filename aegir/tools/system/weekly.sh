@@ -312,17 +312,12 @@ You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 Your allowed databases space for ${_MODE} sites is ${_SQL_LIM} MB,
 but you are currently using ${_SQL_NOW} MB of databases space.
 
-Please reduce your usage by deleting no longer used sites,
-or by converting their tables to MyISAM format on command line
-when in the site directory with:
-
-  $ sqlmagic convert to-myisam
-
-Or purchase enough Aegir Engines to cover your current usage.
+Please reduce your usage by deleting no longer used sites, or purchase
+enough Aegir Engines to cover your current usage.
 
 You can purchase more Aegir Engines easily online:
 
-  https://omega8.cc/buy
+  https://omega8.cc/pricing
 
 Note that we do not count(*) any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
@@ -359,17 +354,12 @@ You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 Your allowed databases space for ${_MODE} sites is ${_SQL_LIM} MB,
 but you are currently using ${_SQL_NOW} MB of databases space.
 
-Please reduce your usage by deleting no longer used sites,
-or by converting their tables to MyISAM format on command line
-when in the site directory with:
-
-  $ sqlmagic convert to-myisam
-
-Or purchase enough Aegir Engines to cover your current usage.
+Please reduce your usage by deleting no longer used sites, or purchase
+enough Aegir Engines to cover your current usage.
 
 You can purchase more Aegir Engines easily online:
 
-  https://omega8.cc/buy
+  https://omega8.cc/pricing
 
 Note that we do not count(*) any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
@@ -406,17 +396,12 @@ You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 Your allowed databases space for ${_MODE} sites is ${_SQL_LIM} MB,
 but you are currently using ${_SQL_NOW} MB of databases space.
 
-Please reduce your usage by deleting no longer used sites,
-or by converting their tables to MyISAM format on command line
-when in the site directory with:
-
-  $ sqlmagic convert to-myisam
-
-Or purchase enough Aegir Engines to cover your current usage.
+Please reduce your usage by deleting no longer used sites, or purchase
+enough Aegir Engines to cover your current usage.
 
 You can purchase more Aegir Engines easily online:
 
-  https://omega8.cc/buy
+  https://omega8.cc/pricing
 
 Note that we do not count(*) any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
