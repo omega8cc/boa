@@ -314,6 +314,39 @@ if (!$is_backend) {
       unset($config['system.performance']['cache.page.max_age']); // Stop hardcoding internal page cache
       unset($config['system.performance']['css']['preprocess']);  // Stop hardcoding CSS aggregation
       unset($config['system.performance']['js']['preprocess']);   // Stop hardcoding JS aggregation
+      if (is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/files/development.services.yml')) {
+        //
+        // This file, if exists, disables Redis on the fly!
+        //
+        $settings['container_yamls'][] = 'sites/' . $_SERVER['SERVER_NAME'] . '/files/development.services.yml';
+        //
+        // The two settings below make sense only if the development.services.yml file
+        // located in the sites/domain/files/ dir contains at least these three lines:
+        //
+        // services:
+        //   cache.backend.null:
+        //     class: Drupal\Core\Cache\NullBackendFactory
+        //
+        $settings['cache']['bins']['render'] = 'cache.backend.null';
+        $settings['cache']['bins']['dynamic_page_cache'] = 'cache.backend.null';
+        //
+        // Warning: you must clear caches via Aegir interface or with Drush
+        // before these lines will start working on .dev. alias without error 500
+        // saying: You have requested a non-existent service "cache.backend.null"
+        //
+        // To enable Twig debugging add in the development.services.yml file also lines:
+        //
+        // parameters:
+        //   twig.config:
+        //     debug: true
+        //     auto_reload: true
+        //     cache: true
+        //
+        // Note that normally you should not disable Twig cache, since auto_reload
+        // is enough for development and debugging, withot slowing down everything;
+        // see also: https://www.drupal.org/node/1903374
+        //
+      }
     }
     else {
       $conf['xmlsitemap_submit'] = 0; // Disable XML Sitemap for foo.dev.domain
@@ -937,11 +970,13 @@ if ($redis_up && $use_redis && !$custom_cache) {
     }
   }
   if ($drupal_eight) {
-    if (is_readable('modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml')) {
-      $cache_redis = TRUE;
-      $cache_services_path = 'modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml';
-      if ($is_dev && !$is_backend) {
-        header("X-Redis-Services-Is-Readable: " . $cache_services_path);
+    if (!is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/files/development.services.yml')) {
+      if (is_readable('modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml')) {
+        $cache_redis = TRUE;
+        $cache_services_path = 'modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml';
+        if ($is_dev && !$is_backend) {
+          header("X-Redis-Services-Is-Readable: " . $cache_services_path);
+        }
       }
     }
   }
