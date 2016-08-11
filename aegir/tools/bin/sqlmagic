@@ -103,10 +103,6 @@ sqlmagic_convert() {
       sed -i "s/.*TABLE_NAME.*//g; s/ *$//g; /^$/d" \
         ${HOME}/static/to_innodb_alter_table.sql &> /dev/null
       wait
-      perl -p -i -e \
-        's/(search_[a-z_]+ ENGINE=)INNODB/\1MYISAM/g' \
-        ${HOME}/static/to_innodb_alter_table.sql &> /dev/null
-      wait
       if [ -s "${HOME}/static/to_innodb_alter_table.sql" ]; then
         drush ${alias} sqlc < ${HOME}/static/to_innodb_alter_table.sql
         echo "Site ${alias} status: database converted to InnoDB"
