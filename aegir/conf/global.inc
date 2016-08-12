@@ -970,13 +970,13 @@ if ($redis_up && $use_redis && !$custom_cache) {
     }
   }
   if ($drupal_eight) {
-    if (is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/.redisOff')) {
+    if (file_exists('sites/' . $_SERVER['SERVER_NAME'] . '/.redisOff')) {
       if ($is_dev && !$is_backend) {
         header("X-Redis-Off-Ctrl-Exists: .redisOff");
       }
     }
     else {
-      if (is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/.redisOn')) {
+      if (file_exists('sites/' . $_SERVER['SERVER_NAME'] . '/.redisOn')) {
         if ($is_dev && !$is_backend) {
           header("X-Redis-On-Ctrl-Exists: .redisOn");
         }

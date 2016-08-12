@@ -1903,7 +1903,8 @@ fix_modules() {
       if [ ! -e "${Dir}/.redisOn" ]; then
         mkdir ${Dir}/.redisOn
         chown -R ${_HM_U}:users ${Dir}/.redisOn &> /dev/null
-        chmod 0711 ${Dir}/.redisOn &> /dev/null
+        chmod 0755 ${Dir}/.redisOn &> /dev/null
+        run_drush8_cmd "cache-rebuild"
       fi
       if [ -d "${Dir}/.redisOff" ]; then
         rmdir ${Dir}/.redisOff
