@@ -258,6 +258,42 @@ check_if_force() {
   done
 }
 
+uninstall_modules() {
+  for m in $1; do
+    _SKIP=NO
+    _FORCE=NO
+    if [ ! -z "${_MODULES_SKIP}" ]; then
+      check_if_skip "$m"
+    fi
+    if [ ! -z "${_MODULES_FORCE}" ]; then
+      check_if_force "$m"
+    fi
+    if [ "${_SKIP}" = "NO" ]; then
+      _MODULE_T=$(run_drush8_nosilent_cmd "pml --status=enabled \
+        --type=module | grep \($m\)" 2>&1)
+      if [[ "${_MODULE_T}" =~ "($m)" ]]; then
+        if [ "${_FORCE}" = "NO" ]; then
+          check_if_required "$m"
+        else
+          echo "$m dependencies not checked in ${Dom}"
+          _REQ=FCE
+        fi
+        if [ "${_REQ}" = "FCE" ]; then
+          run_drush8_cmd "pmu $m -y"
+          echo "$m FCE uninstalled in ${Dom}"
+        elif [ "${_REQ}" = "NO" ]; then
+          run_drush8_cmd "pmu $m -y"
+          echo "$m uninstalled in ${Dom}"
+        elif [ "${_REQ}" = "NULL" ]; then
+          echo "$m is not used in ${Dom}"
+        else
+          echo "$m is required and can not be uninstalled in ${Dom}"
+        fi
+      fi
+    fi
+  done
+}
+
 disable_modules() {
   for m in $1; do
     _SKIP=NO
@@ -1894,7 +1930,7 @@ fix_modules() {
       echo "WARNING: THIS PLATFORM IS BROKEN! ${Plr}"
     else
       if [ ! -z "${_MODULES_OFF_EIGHT}" ]; then
-        disable_modules "${_MODULES_OFF_EIGHT}"
+        uninstall_modules "${_MODULES_OFF_EIGHT}"
       fi
       if [ ! -z "${_MODULES_ON_EIGHT}" ]; then
         enable_modules "${_MODULES_ON_EIGHT}"
