@@ -452,11 +452,19 @@ fix_boost_cache() {
 }
 
 fix_o_contrib_symlink() {
-  if [ "${_O_CONTRIB}" != "NO" ] && [ ! -e "${Plr}/core" ]; then
+  if [ "${_O_CONTRIB_SEVEN}" != "NO" ]; then
     symlinks -d ${Plr}/modules &> /dev/null
-    if [ -e "${Plr}/web.config" ]; then
+    if [ -e "${Plr}/web.config" ] \
+      && [ -e "${_O_CONTRIB_SEVEN}" ] \
+      && [ ! -e "${Plr}/core" ]; then
       if [ ! -e "${Plr}/modules/o_contrib_seven" ]; then
         ln -sf ${_O_CONTRIB_SEVEN} ${Plr}/modules/o_contrib_seven &> /dev/null
+      fi
+    elif [ -e "${Plr}/web.config" ] \
+      && [ -e "${Plr}/core" ] \
+      && [ -e "${_O_CONTRIB_EIGHT}" ]; then
+      if [ ! -e "${Plr}/modules/o_contrib_eight" ]; then
+        ln -sf ${_O_CONTRIB_EIGHT} ${Plr}/modules/o_contrib_eight &> /dev/null
       fi
     else
       if [ -e "${Plr}/modules/watchdog" ]; then
@@ -464,7 +472,8 @@ fix_o_contrib_symlink() {
           rm -f ${Plr}/modules/o_contrib &> /dev/null
         fi
       else
-        if [ ! -e "${Plr}/modules/o_contrib" ]; then
+        if [ ! -e "${Plr}/modules/o_contrib" ] \
+          && [ -e "${_O_CONTRIB}" ]; then
           ln -sf ${_O_CONTRIB} ${Plr}/modules/o_contrib &> /dev/null
         fi
       fi
@@ -1878,6 +1887,28 @@ fix_modules() {
         enable_modules "${_MODULES_ON_SEVEN}"
       fi
     fi
+  elif [ -e "${Plr}/modules/o_contrib_eight" ]; then
+    if [ ! -e "${Plr}/core/modules/node" ] \
+      || [ ! -e "${Plr}/sites/all/drush" ] \
+      || [ ! -e "${Plr}/profiles" ]; then
+      echo "WARNING: THIS PLATFORM IS BROKEN! ${Plr}"
+    else
+      if [ ! -z "${_MODULES_OFF_EIGHT}" ]; then
+        disable_modules "${_MODULES_OFF_EIGHT}"
+      fi
+      if [ ! -z "${_MODULES_ON_EIGHT}" ]; then
+        enable_modules "${_MODULES_ON_EIGHT}"
+      fi
+      enable_modules "redis"
+      if [ ! -e "${Dir}/.redisOn" ]; then
+        mkdir ${Dir}/.redisOn
+        chown -R ${_HM_U}:users ${Dir}/.redisOn &> /dev/null
+        chmod 0711 ${Dir}/.redisOn &> /dev/null
+      fi
+      if [ -d "${Dir}/.redisOff" ]; then
+        rmdir ${Dir}/.redisOff
+      fi
+    fi
   fi
   if [ -e "${Dir}/modules/commerce_ubercart_check.info" ]; then
     touch ${User}/log/ctrl/site.${Dom}.cart-check.info
@@ -2030,7 +2061,7 @@ fix_seven_core_patch() {
 fix_static_permissions() {
   cleanup_ghost_platforms
   if [ -e "${Plr}/profiles" ]; then
-    if [ -e "${Plr}/web.config" ] && [ ! -d "${Plr}/core" ]; then
+    if [ -e "${Plr}/web.config" ] && [ ! -e "${Plr}/core" ]; then
       fix_seven_core_patch
     fi
     if [ ! -e "${User}/static/control/unlock.info" ] \
@@ -3081,8 +3112,10 @@ if [ "${_VMFAMILY}" = "VS" ]; then
 fi
 #
 if [ "${_DOW}" = "7" ]; then
+  _MODULES_ON_EIGHT=
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
+  _MODULES_OFF_EIGHT=
   _MODULES_OFF_SEVEN="background_process coder dblog devel hacked l10n_update \
    linkchecker memcache memcache_admin performance search_krumo \
    security_review site_audit stage_file_proxy syslog ultimate_cron update \
@@ -3092,9 +3125,11 @@ if [ "${_DOW}" = "7" ]; then
     memcache_admin performance poormanscron search_krumo security_review \
     stage_file_proxy supercron syslog ultimate_cron update varnish \
     watchdog_live xhprof"
-elif [ "${_DOW}" = "3" ]; then
+else
+  _MODULES_ON_EIGHT=
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
+  _MODULES_OFF_EIGHT=
   _MODULES_OFF_SEVEN="background_process dblog syslog update"
   _MODULES_OFF_SIX="background_process dblog syslog update"
 fi
@@ -3108,15 +3143,18 @@ if [ -e "/data/all" ]; then
   _LAST_ALL=${listl[@]: -1}
   _O_CONTRIB="/data/all/${_LAST_ALL}/o_contrib"
   _O_CONTRIB_SEVEN="/data/all/${_LAST_ALL}/o_contrib_seven"
+  _O_CONTRIB_EIGHT="/data/all/${_LAST_ALL}/o_contrib_eight"
 elif [ -e "/data/disk/all" ]; then
   cd /data/disk/all
   listl=([0-9]*)
   _LAST_ALL=${listl[@]: -1}
   _O_CONTRIB="/data/disk/all/${_LAST_ALL}/o_contrib"
   _O_CONTRIB_SEVEN="/data/disk/all/${_LAST_ALL}/o_contrib_seven"
+  _O_CONTRIB_EIGHT="/data/disk/all/${_LAST_ALL}/o_contrib_eight"
 else
   _O_CONTRIB=NO
   _O_CONTRIB_SEVEN=NO
+  _O_CONTRIB_EIGHT=NO
 fi
 #
 mkdir -p /var/xdrago/log/daily

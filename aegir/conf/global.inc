@@ -970,12 +970,29 @@ if ($redis_up && $use_redis && !$custom_cache) {
     }
   }
   if ($drupal_eight) {
-    if (!is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/files/development.services.yml')) {
-      if (is_readable('modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml')) {
-        $cache_redis = TRUE;
-        $cache_services_path = 'modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml';
+    if (is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/.redisOff')) {
+      if ($is_dev && !$is_backend) {
+        header("X-Redis-Off-Ctrl-Exists: .redisOff");
+      }
+    }
+    else {
+      if (is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/.redisOn')) {
         if ($is_dev && !$is_backend) {
-          header("X-Redis-Services-Is-Readable: " . $cache_services_path);
+          header("X-Redis-On-Ctrl-Exists: .redisOn");
+        }
+        if (is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/files/development.services.yml')) {
+          if ($is_dev && !$is_backend) {
+            header("X-Dev-Services-Yml-Is-Readable: development.services.yml");
+          }
+        }
+        else {
+          if (is_readable('modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml')) {
+            $cache_redis = TRUE;
+            $cache_services_path = 'modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml';
+            if ($is_dev && !$is_backend) {
+              header("X-Redis-Services-Is-Readable: " . $cache_services_path);
+            }
+          }
         }
       }
     }

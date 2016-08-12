@@ -37,7 +37,7 @@ fix_core_dgd() {
         Core=$(echo $File \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] && [ ! -d "${Core}/core" ]; then
+        if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
         fi
@@ -50,7 +50,7 @@ fix_core_dgd() {
         Core=$(echo $File \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] && [ ! -d "${Core}/core" ]; then
+        if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
         fi
@@ -70,7 +70,7 @@ fix_core_dgd() {
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
-          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/core" ] \
           && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
@@ -83,7 +83,7 @@ fix_core_dgd() {
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
-          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/core" ] \
           && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
@@ -96,7 +96,7 @@ fix_core_dgd() {
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
-          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/core" ] \
           && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
@@ -109,7 +109,7 @@ fix_core_dgd() {
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
-          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/core" ] \
           && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
@@ -122,7 +122,7 @@ fix_core_dgd() {
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
-          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/core" ] \
           && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
