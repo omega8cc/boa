@@ -3274,7 +3274,7 @@ satellite_send_welcome_email() {
         msg "${_STATUS} A: Resending setup email on upgrade..."
       fi
       TIME=$(date 2>&1)
-      _Q="Your Aegir Upgrade on ${TIME} [${_USER}]"
+      _Q="Speed up all your Drupal sites with Let’s Encrypt SSL [${_USER}]"
       echo ${TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
       if [ -e "${_ROOT}/log/upgrademail.txt" ]; then
         if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
