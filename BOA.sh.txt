@@ -613,6 +613,14 @@ fix_core_dgd() {
   fi
 }
 
+fix_tcp() {
+  _TCP_FIX=$(grep "tcp_challenge_ack_limit" /etc/sysctl.conf 2>&1)
+  if [ -z "${_TCP_FIX}" ]; then
+    sysctl net.ipv4.tcp_challenge_ack_limit=1073741823;
+    echo "net.ipv4.tcp_challenge_ack_limit = 1073741823" >> /etc/sysctl.conf
+  fi
+}
+
 fix_alt() {
   if [ -x "/usr/lib/jvm/java-6-openjdk/jre/bin/java" ]; then
     if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
@@ -926,6 +934,7 @@ if [ `whoami` = "root" ]; then
     fi
   fi
   setup
+  fix_tcp
   fix_alt
   fix_eldir
   fix_pure_ftpd
