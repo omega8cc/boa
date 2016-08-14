@@ -2076,7 +2076,11 @@ update_sources_list() {
 #
 # Install OpenSSH from sources.
 install_ssh_src() {
-  _SSH_GET_DPKG=$(dpkg --get-selections | grep ssh | grep 'hold$' 2>&1)
+  if [ "${_OSV}" = "jessie" ]; then
+    _SSH_GET_DPKG=$(dpkg --get-selections | grep openssh-sftp-server | grep 'hold$' 2>&1)
+  else
+    _SSH_GET_DPKG=$(dpkg --get-selections | grep ssh | grep 'hold$' 2>&1)
+  fi
   _SSH_INSTALL_REQUIRED=NO
   _SSH_ITD=$(ssh -V 2>&1 \
     | tr -d "\n" \
@@ -2113,6 +2117,9 @@ install_ssh_src() {
       echo "openssh-client hold" | dpkg --set-selections
       echo "openssh-server hold" | dpkg --set-selections
       echo "ssh hold" | dpkg --set-selections
+      if [ "${_OSV}" = "jessie" ]; then
+        echo "openssh-sftp-server hold" | dpkg --set-selections
+      fi
     fi
   else
     if [[ ! "${_SSH_GET_DPKG}" =~ "hold" ]]; then
@@ -2122,6 +2129,9 @@ install_ssh_src() {
       echo "openssh-client hold" | dpkg --set-selections
       echo "openssh-server hold" | dpkg --set-selections
       echo "ssh hold" | dpkg --set-selections
+      if [ "${_OSV}" = "jessie" ]; then
+        echo "openssh-sftp-server hold" | dpkg --set-selections
+      fi
     fi
   fi
   _SSH_FORCE_REINSTALL=NO
