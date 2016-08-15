@@ -534,7 +534,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     if [ "${_NPM_ALLOW}" = "YES" ]; then
       export NPM_PACKAGES="/home/${USER}/.npm-packages"
       export PATH="${NPM_PACKAGES}/bin:${PATH}"
-      export MANPATH="${NPM_PACKAGES}/share/man:$(manpath)"
       export NODE_PATH="${NPM_PACKAGES}/lib/node_modules:${NODE_PATH}"
     fi
     if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ]; then
