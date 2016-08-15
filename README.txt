@@ -117,9 +117,9 @@ production settings.
 * PFS (Perfect Forward Secrecy) support in Nginx.
 * PHP-FPM 7.0, 5.6, 5.5, 5.4, 5.3 multi-install mode, configurable per site.
 * PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse and ionCube.
-* Fast Redis Cache with DB auto-failover for all 6.x and 7.x platforms.
-* Fast Redis Lock support with DB auto-failover for all 6.x and 7.x platforms.
-* Fast Redis Path support with DB auto-failover for all 6.x and 7.x platforms.
+* Fast Redis Cache with DB auto-failover for all Drupal core versions.
+* Fast Redis Lock support with DB auto-failover.
+* Fast Redis Path support with DB auto-failover.
 * Fast proxy DNS server (pdnsd) with permanent caching.
 * Limited Shell, SFTP and FTPS separate accounts per Octopus instance.
 * Limited Shell, SFTP and FTPS accounts per Aegir Client with per site access.
