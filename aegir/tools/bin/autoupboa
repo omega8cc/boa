@@ -110,7 +110,7 @@ crontab_clean() {
 if [ -e "/data/disk/arch" ]; then
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
-  _AUTO_VER="stable"
+  [ -z "${_AUTO_VER}" ] && _AUTO_VER="stable"
   if [[ "${_VM_TEST}" =~ "beng" ]]; then
     _VMFAMILY="VS"
     _VM_VERSION_T_A=$(uname -a | grep "3.8.4-beng" 2>&1)
