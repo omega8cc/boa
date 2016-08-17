@@ -103,12 +103,14 @@ function drush_provision_hosting_le_post_provision_verify() {
       return FALSE;
     }
 
-    if (preg_match("/\.(?:host8|boa)\.(?:biz|io)$/", $main_name) ||
-        preg_match("/\.(?:dev|devel|temp|tmp|temporary)\./", $main_name) ||
-        preg_match("/\.(?:test|testing|stage|staging)\./", $main_name)
-       ) {
-      drush_log('[hosting_le] Skipping LE setup for ' . $main_name);
-      return FALSE;
+    if ($is_boa) {
+      if (preg_match("/\.(?:host8|boa)\.(?:biz|io)$/", $main_name) ||
+          preg_match("/\.(?:dev|devel|temp|tmp|temporary)\./", $main_name) ||
+          preg_match("/\.(?:test|testing|stage|staging)\./", $main_name)
+         ) {
+        drush_log('[hosting_le] Skipping LE setup for ' . $main_name);
+        return FALSE;
+      }
     }
 
     if (provision_file()->exists($demo_mode_ctrl)->status()) {
@@ -181,8 +183,22 @@ function drush_provision_hosting_le_post_provision_verify() {
     }
     else {
       $no_alt_names = FALSE;
-      $alt_names = implode(' --domain ', str_replace('/', '.', d()->aliases));
-      drush_log('[hosting_le] ALT names: --domain ' . $alt_names);
+      if ($is_boa) {
+        if (sizeof(d()->aliases)) {
+          foreach (d()->aliases as $alias) {
+            if (!preg_match("/\.(?:host8|boa)\.(?:biz|io)$/", $alias)) {
+              $alt_names .= ' --domain ' . str_replace('/', '.', $alias);
+            }
+          }
+        }
+      }
+      else {
+        if (sizeof(d()->aliases)) {
+          $alt_names = implode(' --domain ', str_replace('/', '.', d()->aliases));
+          $alt_names = ' --domain ' . $alt_names;
+        }
+      }
+      drush_log('[hosting_le] ALT names:' . $alt_names);
     }
 
     $web_server = d()->platform->web_server;
@@ -241,7 +257,7 @@ function drush_provision_hosting_le_post_provision_verify() {
           exec("/bin/bash " . $le_exec . " $le_options --force --domain " . $main_name. ' 2>&1', $output);
         }
         else {
-          exec("/bin/bash " . $le_exec . " $le_options --force --domain " . $real_name . " --domain " . $alt_names . ' 2>&1', $output);
+          exec("/bin/bash " . $le_exec . " $le_options --force --domain " . $real_name . $alt_names . ' 2>&1', $output);
         }
       }
       else {
@@ -249,7 +265,7 @@ function drush_provision_hosting_le_post_provision_verify() {
           exec("/bin/bash " . $le_exec . " $le_options --domain " . $main_name . ' 2>&1', $output);
         }
         else {
-          exec("/bin/bash " . $le_exec . " $le_options --domain " . $real_name . " --domain " . $alt_names . ' 2>&1', $output);
+          exec("/bin/bash " . $le_exec . " $le_options --domain " . $real_name . $alt_names . ' 2>&1', $output);
         }
       }
       $acme_result = implode(' ', $output);
