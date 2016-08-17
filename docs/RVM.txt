@@ -46,9 +46,6 @@
   7. Install Grunt: 'npm install -g grunt'
   8. Install Gulp: 'npm install -g gulp'
   9. Install Bower: 'npm install -g bower'
-  10. Continue with installing packages manually, for example:
-
-  $ npm install -g foo_bar
 
   The special, single control file ~/static/control/compass.info will enable
   RVM and NPM also in all extra SSH accounts on your instance. If you delete
