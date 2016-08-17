@@ -1,4 +1,99 @@
 
+### Stable BOA-3.1.2 Release - Full Edition
+### Date: TBD
+### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.2
+
+# Release Notes:
+
+  This BOA release provides system security upgrades, improvements
+  and bug fixes, plus all supported Drupal platforms updated to latest
+  versions, and supplied with latest Drupal 7 core.
+
+@=> You can use NPM to install Grunt/Gulp/Bower -- #1028 by @pricejn2 (thanks!)
+
+  Now the same ~/static/control/compass.info file will activate not only
+  RVM, which can be used to install Compass Tools, but also NPM, which
+  can be used to install Grunt/Gulp/Bower.
+
+  You will need to re-initialize your account to have it added, by
+  deleting the control file, and adding it again after ~10 minutes.
+
+  More details: https://github.com/omega8cc/boa/blob/master/docs/RVM.txt
+
+@=> Redis integration works with Drupal 8 -- with no effort on your side
+
+  We have added smart activation procedure, to meet the D8 Redis module
+  requirements. The system will add Redis integration to your Drupal 8
+  sites automatically, but will keep it inactive, until the module will be
+  installed properly, during nightly system autonomous maintenance.
+
+  This means that Redis will start working in every existing and newly
+  installed Drupal 8 site with some initial delay, to get things installed
+  in the correct order, and still without any effort on your side.
+
+# Other enhancements:
+
+  * Add mydropwizard to Drush extensions for Drush Make D6 support
+  * Add support for Drupal 8 specific development.services.yml file
+  * Allow to configure stable/head BOA auto-upgrades via _AUTO_VER variable
+  * Compatibility with Multi-byte UTF-8 support in Drupal 7
+
+# Changes:
+
+  * Add Adminer database manager and deprecate Chive manager -- #1036
+  * Enable Let's Encrypt LIVE mode via ~/static/control/ssl-live-mode.info
+  * Force /root/.use.curl.from.packages.cnf to install cURL from packages
+
+# System upgrades:
+
+  * CSF 9.11
+  * Drush micro-8-23-07-2016
+  * Lshell 0.9.18.4
+  * MariaDB 10.0.26
+  * MariaDB 5.5.51
+  * Mysqltuner v1.6.14
+  * Nginx 1.11.3
+  * OpenSSH 7.3p1 (if installed from sources)
+  * PHP 5.5.38
+  * PHP 5.6.24
+  * PHP 7.0.9
+  * PHPRedis dev5-11-08-2016
+  * PHPRedis dev7-11-08-2016
+  * Redis 3.2.3
+  * Redis D8 integration mod-12-08-2016
+
+# Fixes:
+
+  * Avoid race conditions on web system user update
+  * Debian Jessie 8.3+ needs grub update -- fixes #912
+  * Detection of Amazon AWS / EC2 instance -- fixes #930
+  * Disable Redis integration until module is installed (D8 only)
+  * Do not force --default-character-set=utf8 -- see #1020
+  * Don’t set $MANPATH when npm support is enabled
+  * Fix for openssh-sftp-server status on Jessie
+  * Force InnoDB in sqlmagic for Drupal 7+ -- see #1020
+  * Ignore ~/control/multi-fpm.info on too old Octopus (2.4) instances
+  * Linux Kernel CVE-2016-5696 mitigation
+  * Mitigate httpoxy vulnerability
+  * Nginx: Fix for not working autodiscover flood protection
+  * Nginx: Fix for the add_header inheritance
+  * Nginx: Improve fastcgi_cache_valid TTL settings
+  * Octopus auto-upgrade should set _AUTOPILOT=YES on the fly -- fixes #1041
+  * Remove deprecated MyISAM exceptions in sqlmagic command
+  * Run detect_cdorked_malware() only if /usr/sbin/nginx exists
+  * Run registry-rebuild directly after hostmaster upgrade
+  * Single _tmp_ dir is enough to require forced cleanup (Drush cache)
+  * Sync modules auto en/dis for Drupal 8
+  * Update check_boa_php_compatibility()
+  * Upgrade to panels-7.x-3.6 (security) in all distros using the module
+  * Whitelist elFinder requests
+  * Workaround for aegir_backup_export_path
+
+# Known problems:
+
+  https://github.com/omega8cc/boa/milestones/3.1.x
+
+
 ### Stable BOA-3.1.1 Release - Full Edition
 ### Date: Wed Jun 22 12:24:17 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.1
