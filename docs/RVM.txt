@@ -1,5 +1,5 @@
 
-  @=> How to use RVM to install Compass Tools or NPM to install Gulp/Bower
+  @=> How to use RVM to install Compass Tools or NPM to install Grunt/Gulp/Bower
 
   Since BOA no longer install Compass Tools nor any related gems by default,
   you need to initialize your account first to auto-install Ruby Version Manager
@@ -7,7 +7,7 @@
   required by your theme.
 
   Similarly, you need to initialize your account first to auto-install a user-
-  level NPM package directory and then use NPM to install Gulp and/or Bower.
+  level NPM package directory and then use NPM to install Grunt, Gulp, and/or Bower.
 
   NOTE! On self-hosted BOA you must add the non-default CSS symbol to the
   _XTRAS_LIST variable in your /root/.barracuda.cnf file and then run the
@@ -43,9 +43,10 @@
   $ rvm all do gem install --conservative toolkit
   $ rvm all do gem install --conservative --version 3.0.3 compass_radix
 
-  7. Install Gulp: 'npm install -g gulp'
-  8. Install Bower: 'npm install -g bower'
-  9. Continue with installing packages manually, for example:
+  7. Install Grunt: 'npm install -g grunt'
+  8. Install Gulp: 'npm install -g gulp'
+  9. Install Bower: 'npm install -g bower'
+  10. Continue with installing packages manually, for example:
 
   $ npm install -g foo_bar
 
