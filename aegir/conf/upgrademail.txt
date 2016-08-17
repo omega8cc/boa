@@ -3,8 +3,8 @@ Hello,
 If you are still running any Drupal site without Let’s Encrypt Free SSL
 enabled in your Aegir control panel, you may want to read two articles:
 
-  HTTPS' massive speed advantage -> http://bit.ly/2b42lqV
-  HTTP/2 makes media loading 3–15 times faster -> http://bit.ly/2aW1u9V
+  HTTPS' massive speed advantage: http://bit.ly/2b42lqV
+  HTTP/2 makes media loading 3–15 times faster: http://bit.ly/2aW1u9V
 
 The Let’s Encrypt certs are free, and very easy to use! Just follow the docs:
 
@@ -25,8 +25,8 @@ Note: If you have used SSL add-on with dedicated IP address before,
 you need to update DNS to point it to your instance default IP address,
 which can be found in your (long) welcome email, in the section #2
 
-@=> Speaking of docs; be the change you want to see, and participate in
-    the BOA docs rewrite: http://bit.ly/2aK0Vli <- your input is welcome!
+@=> Speaking of docs. Be the change you want to see, and participate in
+@=> the BOA docs rewrite: http://bit.ly/2aK0Vli - your input is welcome!
 
 Also, your Aegir instance has been upgraded to version boa.version
 
