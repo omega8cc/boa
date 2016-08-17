@@ -139,7 +139,7 @@ production settings.
 
 === Optional add-ons - see docs/NOTES.txt for details
 
-* Compass Tools - see https://omega8.cc/node/329 for details.
+* RVM, Compass Tools, and NPM - see docs/RVM.txt for details.
 * HHVM support - see docs/HHVM.txt for details.
 * MultiCore Apache Solr 4.9.1 with Jetty 9 - see docs/SOLR.txt for details.
 * New Relic Apps Monitor with per Octopus license and per Site reporting.
