@@ -22,7 +22,7 @@
 
 @=> Redis integration works with Drupal 8 -- with no effort on your side
 
-  We have added smart activation procedure, to meet the D8 Redis module
+  We have added a smart activation procedure, to meet the D8 Redis module
   requirements. The system will add Redis integration to your Drupal 8
   sites automatically, but will keep it inactive, until the module will be
   installed properly, during nightly system autonomous maintenance.
