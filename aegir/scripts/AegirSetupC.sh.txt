@@ -1818,7 +1818,6 @@ panopoly_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              upgrade_contrib_less
               if [ ! -d "${_SHRD_PRPATH}/modules/panopoly/panopoly_demo" ]; then
                 if [ -d "${_SHRD_PLPATH}/sites/all/modules/panopoly_demo" ]; then
                   mv -f ${_SHRD_PLPATH}/sites/all/modules/panopoly_demo \
