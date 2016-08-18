@@ -1434,7 +1434,6 @@ openatrium7_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
-              upgrade_contrib_less
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
