@@ -61,6 +61,7 @@
   * PHPRedis dev7-11-08-2016
   * Redis 3.2.3
   * Redis D8 integration mod-12-08-2016
+  * vnStat 1.15
 
 # Fixes:
 
