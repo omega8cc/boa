@@ -4059,7 +4059,8 @@ install_vnstat() {
       mrun "sh ./configure --prefix=/usr" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
-      for INF in `vnstat --iflist | sed "s/Available interfaces//g" \
+      for INF in `vnstat --iflist \
+        | sed "s/Available interfaces//g; s/(1000 Mbit)//g; s/(100 Mbit)//g; s/ lo//g;" \
         | cut -d: -f2` ;do vnstat -u -i $INF &> /dev/null;done
       cp -af /var/opt/vnstat-${_VNSTAT_VRN}/examples/init.d/debian/vnstat \
         /etc/init.d/vnstat
