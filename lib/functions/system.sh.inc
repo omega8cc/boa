@@ -4056,6 +4056,7 @@ install_vnstat() {
       rm -rf vnstat*
       get_dev_src "vnstat-${_VNSTAT_VRN}.tar.gz"
       cd vnstat-${_VNSTAT_VRN}
+      mrun "sh ./configure --prefix=/usr" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       for INF in `vnstat --iflist | sed "s/Available interfaces//g" \
