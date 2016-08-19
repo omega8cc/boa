@@ -55,7 +55,7 @@
   * Nginx 1.11.3
   * OpenSSH 7.3p1 (if installed from sources)
   * PHP 5.5.38
-  * PHP 5.6.24
+  * PHP 5.6.25
   * PHP 7.0.10
   * PHPRedis dev5-11-08-2016
   * PHPRedis dev7-11-08-2016
