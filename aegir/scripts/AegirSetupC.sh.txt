@@ -547,9 +547,9 @@ upgrade_contrib_less() {
   if [ -e "${_SHRD_PRPATH}/modules/contrib/panels" ]; then
     rm -rf ${_SHRD_PRPATH}/modules/contrib/panels
     cd ${_SHRD_PRPATH}/modules/contrib
-    get_dev_contrib "panels-7.x-3.6-hotfix.tar.gz"
+    get_dev_contrib "panels-7.x-3.7.tar.gz"
     if [ ! -e "${_SHRD_PRPATH}/modules/contrib/panels" ]; then
-      get_dev_contrib "panels-7.x-3.6-hotfix.tar.gz"
+      get_dev_contrib "panels-7.x-3.7.tar.gz"
     fi
     cd ${_CORE}
   fi
@@ -1434,6 +1434,7 @@ openatrium7_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
+              upgrade_contrib_less
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
@@ -1667,6 +1668,7 @@ openoutreach_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
+              upgrade_contrib_less
               cd ${_SHRD_PRPATH}
               patch -p1 < ${pthPch}/${_REAL_PRNAME}.patch &> /dev/null
             else
@@ -1817,6 +1819,7 @@ panopoly_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
+              upgrade_contrib_less
               if [ ! -d "${_SHRD_PRPATH}/modules/panopoly/panopoly_demo" ]; then
                 if [ -d "${_SHRD_PLPATH}/sites/all/modules/panopoly_demo" ]; then
                   mv -f ${_SHRD_PLPATH}/sites/all/modules/panopoly_demo \

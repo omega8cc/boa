@@ -86,7 +86,7 @@
   * Single _tmp_ dir is enough to require forced cleanup (Drush cache)
   * Sync modules auto en/dis for Drupal 8
   * Update check_boa_php_compatibility()
-  * Upgrade to panels-7.x-3.6 (security) in all distros using the module
+  * Upgrade to panels-7.x-3.7 (security) in all distros using the module
   * Whitelist elFinder requests
   * Workaround for aegir_backup_export_path
 
