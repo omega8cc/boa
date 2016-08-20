@@ -706,6 +706,8 @@ up_action() {
               wait
               sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"   ${barCnf}
               wait
+              sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.0/g"              ${barCnf}
+              wait
             fi
             if [ -e "/etc/init.d/redis-server" ]; then
               sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"     ${barCnf}
