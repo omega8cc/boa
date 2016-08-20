@@ -51,7 +51,7 @@
   * Lshell 0.9.18.4
   * MariaDB 10.0.26
   * MariaDB 5.5.51
-  * Mysqltuner v1.6.14
+  * Mysqltuner v1.6.15
   * Nginx 1.11.3
   * OpenSSH 7.3p1 (if installed from sources)
   * PHP 5.5.38
