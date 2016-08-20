@@ -687,6 +687,8 @@ up_action() {
           wait
           sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"       ${barCnf}
           wait
+          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.0/g"                  ${barCnf}
+          wait
           if [ -e "/root/.mstr.clstr.cnf" ] \
             || [ -e "/root/.wbhd.clstr.cnf" ] \
             || [ -e "/root/.dbhd.clstr.cnf" ] \
@@ -705,8 +707,6 @@ up_action() {
               sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"         ${barCnf}
               wait
               sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"   ${barCnf}
-              wait
-              sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.0/g"              ${barCnf}
               wait
             fi
             if [ -e "/etc/init.d/redis-server" ]; then
