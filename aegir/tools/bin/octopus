@@ -481,12 +481,12 @@ satellite_check_switch_php() {
       if [ -z "${switchCLIback}" ]; then
         switchCLIback="5.3"
       fi
-      if [ -x "/opt/php55/bin/php" ]; then
-        echo 5.5 > ${User}/static/control/fpm.info
-        echo 5.5 > ${User}/static/control/cli.info
-      elif [ -x "/opt/php56/bin/php" ]; then
+      if [ -x "/opt/php56/bin/php" ]; then
         echo 5.6 > ${User}/static/control/fpm.info
         echo 5.6 > ${User}/static/control/cli.info
+      elif [ -x "/opt/php55/bin/php" ]; then
+        echo 5.5 > ${User}/static/control/fpm.info
+        echo 5.5 > ${User}/static/control/cli.info
       fi
       echo
       echo "This instance ${octUsr} still depends on the old PHP version"
