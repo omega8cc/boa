@@ -2008,7 +2008,9 @@ fix_modules() {
       _DONT_TOUCH_PERMISSIONS=YES
     fi
   fi
+}
 
+if_site_db_conversion() {
   ###
   ### Detect db conversion mode, if set per platform or per site.
   ###
@@ -2665,6 +2667,7 @@ process() {
             && [ ! -z "${Dan}" ] \
             && [ "${Dan}" != "hostmaster" ]; then
             setup_solr
+            if_site_db_conversion
             searchStringB=".dev."
             searchStringC=".devel."
             searchStringD=".temp."
