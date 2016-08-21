@@ -522,7 +522,7 @@ if_install_ffmpeg() {
             echo "deb http://www.deb-multimedia.org wheezy-backports main" >> ${aptLiSys}.d/ffmpeg.list
           fi
           st_runner "apt-get update -qq" &> /dev/null
-          st_runner "${_INSTAPP} deb-multimedia-keyring" 2> /dev/null
+          st_runner "apt-get -y --force-yes -qq install deb-multimedia-keyring" 2> /dev/null
           st_runner "apt-get update -qq" &> /dev/null
           st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
         elif [ "${_OSV}" = "squeeze" ] || [ "${_OSV}" = "trusty" ] || [ "${_OSV}" = "precise" ]; then
