@@ -895,7 +895,8 @@ barracuda_cnf() {
             sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
             wait
           fi
-          sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g"                            /root/.*.octopus.cnf &> /dev/null
+          sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=YES/g" \
+            /root/.*.octopus.cnf &> /dev/null
           wait
           if [ -x "/opt/php56/bin/php" ] && [ -z "${_PHP_SINGLE_INSTALL}" ]; then
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g"                 ${barCnf}
@@ -1417,7 +1418,8 @@ barracuda_cnf() {
             sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
             wait
           fi
-          sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g"                            /root/.*.octopus.cnf &> /dev/null
+          sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=YES/g" \
+            /root/.*.octopus.cnf &> /dev/null
           wait
           if [ -x "/opt/php56/bin/php" ] && [ -z "${_PHP_SINGLE_INSTALL}" ]; then
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g"                 ${barCnf}
