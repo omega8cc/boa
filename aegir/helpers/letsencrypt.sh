@@ -118,7 +118,7 @@ load_config() {
   KEYSIZE="4096"
   WELLKNOWN=
   PRIVATE_KEY_RENEW="yes"
-  KEY_ALGO=rsa
+  KEY_ALGO=secp384r1
   OPENSSL_CNF="$(openssl version -d | cut -d\" -f2)/openssl.cnf"
   CONTACT_EMAIL=
   LOCKFILE=
