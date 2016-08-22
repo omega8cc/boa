@@ -2,6 +2,7 @@
 ### Stable BOA-3.1.2 Release - Full Edition
 ### Date: Sat Aug 20 14:43:43 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.2
+### Latest hotfix added on: Mon Aug 22 04:45:53 PDT 2016
 
 # Release Notes:
 
@@ -43,6 +44,7 @@
   * Add Adminer database manager and deprecate Chive manager -- #1036
   * Enable Let's Encrypt LIVE mode via ~/static/control/ssl-live-mode.info
   * Force /root/.use.curl.from.packages.cnf to install cURL from packages
+  * Run db sqlmagic auto conversion also on test/dev sites, if activated
 
 # System upgrades:
 
@@ -72,6 +74,7 @@
   * Do not force --default-character-set=utf8 -- see #1020
   * Don’t set $MANPATH when npm support is enabled
   * Fix for openssh-sftp-server status on Jessie
+  * FMG installation hangs on keyring install -- fixes #1050
   * Force InnoDB in sqlmagic for Drupal 7+ -- see #1020
   * Ignore ~/control/multi-fpm.info on too old Octopus (2.4) instances
   * Linux Kernel CVE-2016-5696 mitigation
@@ -84,6 +87,7 @@
   * Run detect_cdorked_malware() only if /usr/sbin/nginx exists
   * Run registry-rebuild directly after hostmaster upgrade
   * Single _tmp_ dir is enough to require forced cleanup (Drush cache)
+  * Sync keyring install command with BOA standard -- #1052
   * Sync modules auto en/dis for Drupal 8
   * Update check_boa_php_compatibility()
   * Upgrade to panels-7.x-3.7 (security) in all distros using the module
