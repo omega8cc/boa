@@ -2,7 +2,7 @@
 ### Stable BOA-3.1.2 Release - Full Edition
 ### Date: Sat Aug 20 14:43:43 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.2
-### Latest hotfix added on: Mon Aug 22 04:45:53 PDT 2016
+### Latest hotfix added on: Mon Aug 22 08:23:01 PDT 2016
 
 # Release Notes:
 
