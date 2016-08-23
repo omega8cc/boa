@@ -2055,6 +2055,8 @@ if_site_db_conversion() {
   if [ ! -z "${_SQL_CONVERT}" ] && [ "${_DOW}" = "7" ]; then
     if [ "${_SQL_CONVERT}" = "YES" ]; then
       _SQL_CONVERT=innodb
+    elif [ "${_SQL_CONVERT}" = "NO" ]; then
+      _SQL_CONVERT=
     fi
     if [ "${_SQL_CONVERT}" = "myisam" ] \
       || [ "${_SQL_CONVERT}" = "innodb" ]; then
