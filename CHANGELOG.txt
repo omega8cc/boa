@@ -50,7 +50,7 @@
 
   * CSF 9.11
   * Drush micro-8-23-07-2016
-  * Lshell 0.9.18.5
+  * Lshell 0.9.18.6 (security update for shell escalation issues)
   * MariaDB 10.0.26
   * MariaDB 5.5.51
   * Mysqltuner v1.6.15
