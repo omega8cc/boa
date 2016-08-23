@@ -3221,8 +3221,6 @@ else
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
-    _PERMISSIONS_FIX=YES
-    _MODULES_FIX=YES
     n=$((RANDOM%900+80))
     echo "waiting $n sec"
     sleep $n

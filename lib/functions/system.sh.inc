@@ -865,8 +865,6 @@ barracuda_cnf() {
         wait
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   ${barCnf}
         wait
-        sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                             ${barCnf}
-        wait
         sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                     ${barCnf}
         wait
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                /root/.*.octopus.cnf &> /dev/null
@@ -1387,8 +1385,6 @@ barracuda_cnf() {
         sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
         wait
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   ${barCnf}
-        wait
-        sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                             ${barCnf}
         wait
         sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                     ${barCnf}
         wait
