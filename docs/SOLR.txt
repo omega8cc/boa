@@ -50,10 +50,6 @@ level via INI files, check our docs at https://omega8.cc/node/293
 ;;  To delete existing Solr core simply comment out this line.
 ;;  The system will cleanly delete existing Solr core next morning.
 ;;
-;;  IMPORTANT if you are using self-hosted BOA: _MODULES_FIX=YES must be set
-;;  in the /root/.barracuda.cnf file (default is NO) to make this
-;;  feature active.
-;;
 ;solr_integration_module = your_module_name_here
 
 ;;
