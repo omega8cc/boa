@@ -2704,7 +2704,7 @@ process() {
         fi
         if [ -e "${Plr}/profiles" ] \
           && [ -e "${Plr}/web.config" ] \
-          && [ ! -d "${Plr}/core" ] \
+          && [ ! -e "${Plr}/core" ] \
           && [ ! -f "${Plr}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
           _PATCH_TEST=$(grep "foreach (array_values(\$data)" \
             ${Plr}/includes/database/database.inc 2>&1)
