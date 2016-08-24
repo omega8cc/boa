@@ -333,7 +333,7 @@ by having in its main name a special keyword with two dots on both sides:
 For example, a site with main name: abc.test.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes),
 as long as the total databases space used by such sites is no greater than
-six times (6x) your limit for LIVE sites listed on our order pages.
+three times (3x) your limit for LIVE sites listed on our order pages.
 
 However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
@@ -375,7 +375,7 @@ by having in its main name a special keyword with two dots on both sides:
 For example, a site with main name: abc.test.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes),
 as long as the total databases space used by such sites is no greater than
-six times (6x) your limit for LIVE sites listed on our order pages.
+three times (3x) your limit for LIVE sites listed on our order pages.
 
 However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
@@ -417,7 +417,7 @@ by having in its main name a special keyword with two dots on both sides:
 For example, a site with main name: abc.test.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes),
 as long as the total databases space used by such sites is no greater than
-six times (6x) your limit for LIVE sites listed on our order pages.
+three times (3x) your limit for LIVE sites listed on our order pages.
 
 However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
