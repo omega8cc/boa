@@ -536,7 +536,7 @@ check_limits() {
   elif [ "${_CLIENT_OPTION}" = "SSD" ] \
     || [ "${_CLIENT_OPTION}" = "EDGE" ]; then
     _CLIENT_OPTION=EDGE
-    _SQL_MIN_LIMIT=512
+    _SQL_MIN_LIMIT=1024
     _DSK_MIN_LIMIT=15360
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 128 ))
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 1280 ))
@@ -560,7 +560,7 @@ check_limits() {
   _SQL_DEV_LIMIT=$(( _SQL_DEV_LIMIT *= _CLIENT_CORES ))
   _SQL_DEV_LIMIT=$(( _SQL_DEV_LIMIT *= _SQL_DEV_EXTRA ))
   if [ ! -z "${_EXTRA_ENGINE}" ]; then
-    _SQL_ADD_LIMIT=512
+    _SQL_ADD_LIMIT=1024
     _DSK_ADD_LIMIT=15360
     _SQL_ADD_LIMIT=$(( _SQL_ADD_LIMIT *= _EXTRA_ENGINE ))
     _DSK_ADD_LIMIT=$(( _DSK_ADD_LIMIT *= _EXTRA_ENGINE ))
