@@ -2,7 +2,7 @@
 ### Stable BOA-3.1.2 Release - Full Edition
 ### Date: Sat Aug 20 14:43:43 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.2
-### Latest hotfix added on: Thu Aug 25 08:45:47 PDT 2016
+### Latest hotfix added on: Thu Aug 25 09:17:59 PDT 2016
 
 # Release Notes:
 
@@ -50,7 +50,7 @@
 
   * CSF 9.11
   * Drush micro-8-23-07-2016
-  * Lshell 0.9.18.7 (security update for shell escalation issues)
+  * Lshell 0.9.18.8 (security update for shell escalation issues)
   * MariaDB 10.0.26
   * MariaDB 5.5.51
   * Mysqltuner v1.6.15
