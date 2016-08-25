@@ -173,7 +173,7 @@ Octopus can install and/or support the platforms listed below:
  aGov 3.3 --------------------- https://drupal.org/project/agov
  Commerce 1.43 ---------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.39 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.38 ----------------- https://drupal.org/project/commons
+ Commons 3.39 ----------------- https://drupal.org/project/commons
  Drupal 7.50.1 ---------------- https://drupal.org/blog/drupal-7-50
  Guardr 2.35 ------------------ https://drupal.org/project/guardr
  OpenAid 2.8 ------------------ https://drupal.org/project/openaid
