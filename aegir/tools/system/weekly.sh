@@ -59,8 +59,7 @@ read_account_data() {
     _CLIENT_OPTION=$(cat /data/disk/${_THIS_U}/log/option.txt 2>&1)
     _CLIENT_OPTION=$(echo -n ${_CLIENT_OPTION} | tr -d "\n" 2>&1)
   fi
-  if [ -e "/data/disk/${_THIS_U}/log/extra.txt" ] \
-    && [ "${_CLIENT_OPTION}" = "POWER" ]; then
+  if [ -e "/data/disk/${_THIS_U}/log/extra.txt" ]; then
     _EXTRA_ENGINE=$(cat /data/disk/${_THIS_U}/log/extra.txt 2>&1)
     _EXTRA_ENGINE=$(echo -n ${_EXTRA_ENGINE} | tr -d "\n" 2>&1)
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x EDGE"
