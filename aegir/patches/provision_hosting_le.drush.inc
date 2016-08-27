@@ -13,8 +13,7 @@ function drush_provision_hosting_le_post_provision_verify() {
     $le_exec = d('@server_master')->aegir_root . "/tools/le/letsencrypt.sh";
     $le_conf = d('@server_master')->aegir_root . "/tools/le/config.sh";
     $le_cnfx = d('@server_master')->aegir_root . "/tools/le/config";
-    $le_keyj = d('@server_master')->aegir_root . "/tools/le/private_key.json";
-    $le_keyp = d('@server_master')->aegir_root . "/tools/le/private_key.pem";
+    $le_acct = d('@server_master')->aegir_root . "/tools/le/accounts";
     $le_hook = d('@server_master')->aegir_root . "/tools/le/letsencrypt-sh-hooks.sh";
 
     $is_boa = FALSE;
@@ -124,10 +123,9 @@ function drush_provision_hosting_le_post_provision_verify() {
 
         copy($le_conf, $le_cnfx);
 
-        if (provision_file()->exists($le_keyp)->status()) {
+        if (provision_file()->exists($le_acct)->status()) {
           drush_log('[hosting_le] Demo LE account will be created.');
-          rename($le_keyp, $le_keyp . "-live");
-          rename($le_keyj, $le_keyj . "-live");
+          rename($le_acct, $le_acct . "-live");
         }
       }
       drush_log('[hosting_le] Demo LE mode active. No real LE certs will be generated.');
@@ -137,9 +135,8 @@ function drush_provision_hosting_le_post_provision_verify() {
       if (provision_file()->exists($le_conf)->status()) {
         unlink($le_conf);
         unlink($le_cnfx);
-        if (provision_file()->exists($le_keyp)->status()) {
-          rename($le_keyp, $le_keyp . "-demo");
-          rename($le_keyj, $le_keyj . "-demo");
+        if (provision_file()->exists($le_acct)->status()) {
+          rename($le_acct, $le_acct . "-demo");
         }
         drush_log('[hosting_le] Live LE account will be registered.');
       }
