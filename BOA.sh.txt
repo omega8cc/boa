@@ -644,8 +644,8 @@ fix_lshell() {
   _LSHELL_VRN=0.9.18.8
   _PATH_LSHELL="/usr/local/bin/lshell"
   if [ -e "${_PATH_LSHELL}" ] \
-    && [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}-hotfix1" ]; then
-    cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix1
+    && [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}-hotfix2" ]; then
+    cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix2
     cd /var/opt
     rm -rf lshell*
     get_dev_src "lshell-${_LSHELL_VRN}.tar.gz"
@@ -659,13 +659,14 @@ fix_lshell() {
     rm -rf /usr/local/lib/python2.6/dist-packages/lshell*
     rm -rf /usr/local/lib/python2.7/dist-packages/lshell*
     python setup.py install --no-compile 2> /dev/null
-    cp -af /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix1 /etc/lshell.conf
+    cp -af /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix2 /etc/lshell.conf
     rm -f /etc/logrotate.d/lshell
     addgroup --system lshellg &> /dev/null
     mkdir -p /var/log/lsh
     chown :lshellg /var/log/lsh
     chmod 770 /var/log/lsh &> /dev/null
-    touch ${pthLog}/lshell-build-${_LSHELL_VRN}-hotfix1
+    touch ${pthLog}/lshell-build-${_LSHELL_VRN}-hotfix2
+    who | awk '$1 !~ /root/{ cmd="pkill -KILL -u " $1; system(cmd) }'
   fi
   if [ -f "/usr/local/bin/lshell" ]; then
     if [ ! -L "/usr/bin/lshell" ]; then
