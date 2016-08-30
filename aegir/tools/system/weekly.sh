@@ -39,6 +39,11 @@ fix_clear_cache() {
 }
 
 read_account_data() {
+  _CLIENT_CORES=
+  _EXTRA_ENGINE=
+  _ENGINE_NR=
+  _CLIENT_EMAIL=
+  _CLIENT_OPTION=
   if [ -e "/data/disk/${_THIS_U}/log/email.txt" ]; then
     _CLIENT_EMAIL=$(cat /data/disk/${_THIS_U}/log/email.txt 2>&1)
     _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
