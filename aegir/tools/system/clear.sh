@@ -135,23 +135,6 @@ fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
 service ssh restart &> /dev/null
-
-_IF_BCP=$(ps aux | grep '[d]uplicity' | awk '{print $2}')
-
-if [ -z "${_IF_BCP}" ] \
-  && [ ! -e "/var/run/speed_cleanup.pid" ] \
-  && [ ! -e "/root/.giant_traffic.cnf" ]; then
-  touch /var/run/speed_cleanup.pid
-  echo " " >> /var/log/nginx/speed_cleanup.log
-  sed -i "s/levels=2:2:2/levels=2:2/g" /var/aegir/config/server_master/nginx.conf
-  service nginx reload &> /dev/null
-  echo "speed_purge start `date`" >> /var/log/nginx/speed_cleanup.log
-  nice -n19 ionice -c2 -n7 find /var/lib/nginx/speed/* -mtime +1 -exec rm -rf {} \; &> /dev/null
-  echo "speed_purge complete `date`" >> /var/log/nginx/speed_cleanup.log
-  service nginx reload &> /dev/null
-  rm -f /var/run/speed_cleanup.pid
-fi
-
 touch /var/xdrago/log/clear.done
 exit 0
 ###EOF2016###
