@@ -1989,25 +1989,6 @@ fix_modules() {
       fi
     fi
   fi
-
-  ###
-  ### Detect permissions fix overrides, if set per platform.
-  ###
-  _DONT_TOUCH_PERMISSIONS=NO
-  if [ -e "${_PLR_CTRL_F}" ]; then
-    _FIX_PERMISSIONS_PRESENT=$(grep "fix_files_permissions_daily" \
-      ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_FIX_PERMISSIONS_PRESENT}" =~ "fix_files_permissions_daily" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";fix_files_permissions_daily = TRUE" >> ${_PLR_CTRL_F}
-    fi
-    _FIX_PERMISSIONS_TEST=$(grep "^fix_files_permissions_daily = FALSE" \
-      ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_FIX_PERMISSIONS_TEST}" =~ "fix_files_permissions_daily = FALSE" ]]; then
-      _DONT_TOUCH_PERMISSIONS=YES
-    fi
-  fi
 }
 
 if_site_db_conversion() {
@@ -2701,6 +2682,24 @@ process() {
             fix_boost_cache
             fix_site_control_files
             fix_user_register_protection
+          fi
+        fi
+        ###
+        ### Detect permissions fix overrides, if set per platform.
+        ###
+        _DONT_TOUCH_PERMISSIONS=NO
+        if [ -e "${_PLR_CTRL_F}" ]; then
+          _FIX_PERMISSIONS_PRESENT=$(grep "fix_files_permissions_daily" \
+            ${_PLR_CTRL_F} 2>&1)
+          if [[ "${_FIX_PERMISSIONS_PRESENT}" =~ "fix_files_permissions_daily" ]]; then
+            _DO_NOTHING=YES
+          else
+            echo ";fix_files_permissions_daily = TRUE" >> ${_PLR_CTRL_F}
+          fi
+          _FIX_PERMISSIONS_TEST=$(grep "^fix_files_permissions_daily = FALSE" \
+            ${_PLR_CTRL_F} 2>&1)
+          if [[ "${_FIX_PERMISSIONS_TEST}" =~ "fix_files_permissions_daily = FALSE" ]]; then
+            _DONT_TOUCH_PERMISSIONS=YES
           fi
         fi
         if [ -e "${Plr}/profiles" ] \
