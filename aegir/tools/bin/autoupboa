@@ -55,8 +55,8 @@ crontab_update() {
       _OCTO_FULL="up-${_AUTO_VER} all force log"
     fi
     echo "# Barracuda weekly system only upgrade" >> /etc/crontab
-    echo "10 4    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
-    echo "15 4    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
+    echo "10 1    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
+    echo "15 1    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
     echo "# Barracuda ${_AUTO_VER} full upgrade" >> /etc/crontab
     echo "05 1  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
     echo "09 1  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
