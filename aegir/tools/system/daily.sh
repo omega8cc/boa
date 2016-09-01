@@ -3150,7 +3150,7 @@ if [ "${_VMFAMILY}" = "VS" ]; then
   _MODULES_FORCE="background_process coder cookie_cache_bypass css_gzip hacked \
     javascript_aggregator memcache memcache_admin poormanscron search_krumo \
     security_review site_audit stage_file_proxy syslog supercron ultimate_cron \
-    varnish watchdog_live xhprof"
+    varnish watchdog_live xhprof automated_cron"
 fi
 #
 if [ "${_DOW}" = "7" ]; then
@@ -3171,9 +3171,9 @@ else
   _MODULES_ON_EIGHT=
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
-  _MODULES_OFF_EIGHT="automated_cron dblog syslog simpletest update"
-  _MODULES_OFF_SEVEN="background_process dblog syslog update"
-  _MODULES_OFF_SIX="background_process dblog syslog update"
+  _MODULES_OFF_EIGHT="dblog syslog update"
+  _MODULES_OFF_SEVEN="dblog syslog update"
+  _MODULES_OFF_SIX="dblog syslog update"
 fi
 #
 _CTRL_TPL_FORCE_UPDATE=YES
