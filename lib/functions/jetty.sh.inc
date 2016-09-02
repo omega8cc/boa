@@ -83,6 +83,7 @@ if_install_jetty() {
           patch -p0 < \
             /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
           ln -sf /opt/jetty9/lib /opt/tika9
+          ln -sf /opt/jetty9/lib /opt/tika
           cd /opt/tika9
           rm -f tika-app*
           _TIKA_V="1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 1.10 1.11 1.12 1.13"
