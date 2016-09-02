@@ -84,8 +84,11 @@ if_install_jetty() {
             /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
           ln -sf /opt/jetty9/lib /opt/tika9
           cd /opt/tika9
-          wget -q -U iCab ${urlDev}/tika-app-1.3.jar
-          wget -q -U iCab ${urlDev}/tika-app-1.1.jar
+          rm -f tika-app*
+          _TIKA_V="1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 1.10 1.11 1.12 1.13"
+          for e in ${_TIKA_V}; do
+            wget -q -U iCab ${urlDev}/tika-app-${e}.jar
+          done
         fi
         for Dir in `find /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/ \
           -maxdepth 1 -mindepth 1 -type d | grep conf`; do
@@ -215,6 +218,7 @@ if_install_jetty() {
     if [ ! -e "$_PORT_CTRL" ] \
       || [ ! -e "/opt/jetty9/lib/ext/slf4j-api-${_SLF4J_VRN}.jar" ] \
       || [ ! -e "/opt/jetty9/.fixed.start.ini.txt" ] \
+      || [ ! -e "/opt/jetty9/lib/tika-app-1.13.jar" ] \
       || [ ! -e "/opt/jetty9/lib/ext/log4j-1.2.17.jar" ] \
       || [ ! -e "$_JETTY_CTRL" ] \
       || [ ! -e "$_SOLR_CTRL" ]; then
@@ -254,8 +258,11 @@ if_install_jetty() {
         /opt/jetty9/webapps/solr.war
       rm -rf /opt/jetty9/solr
       cd /opt/jetty9/lib/
-      wget -q -U iCab ${urlDev}/tika-app-1.3.jar
-      wget -q -U iCab ${urlDev}/tika-app-1.1.jar
+      rm -f tika-app*
+      _TIKA_V="1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 1.10 1.11 1.12 1.13"
+      for e in ${_TIKA_V}; do
+        wget -q -U iCab ${urlDev}/tika-app-${e}.jar
+      done
       cd /var/opt
       get_dev_arch "slf4j-${_SLF4J_VRN}.tar.gz"
       slf4jPth="/var/opt/slf4j-${_SLF4J_VRN}"
@@ -310,8 +317,11 @@ if_install_jetty() {
             /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
           ln -sf /opt/jetty8/lib /opt/tika8
           cd /opt/tika8
-          wget -q -U iCab ${urlDev}/tika-app-1.3.jar
-          wget -q -U iCab ${urlDev}/tika-app-1.1.jar
+          rm -f tika-app*
+          _TIKA_V="1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 1.10 1.11 1.12 1.13"
+          for e in ${_TIKA_V}; do
+            wget -q -U iCab ${urlDev}/tika-app-${e}.jar
+          done
         fi
         for Dir in `find /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/ \
           -maxdepth 1 -mindepth 1 -type d | grep conf`; do
@@ -386,8 +396,11 @@ if_install_jetty() {
         /opt/jetty8/webapps/solr.war
       rm -rf /opt/jetty8/solr
       cd /opt/jetty8/lib/
-      wget -q -U iCab ${urlDev}/tika-app-1.3.jar
-      wget -q -U iCab ${urlDev}/tika-app-1.1.jar
+      rm -f tika-app*
+      _TIKA_V="1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 1.10 1.11 1.12 1.13"
+      for e in ${_TIKA_V}; do
+        wget -q -U iCab ${urlDev}/tika-app-${e}.jar
+      done
       cd /var/opt
       chown -R jetty8:jetty8 /opt/jetty8
       mrun "service jetty8 start" &> /dev/null
@@ -433,8 +446,11 @@ if_install_jetty() {
             /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
           ln -sf /opt/jetty7/lib /opt/tika7
           cd /opt/tika7
-          wget -q -U iCab ${urlDev}/tika-app-1.3.jar
-          wget -q -U iCab ${urlDev}/tika-app-1.1.jar
+          rm -f tika-app*
+          _TIKA_V="1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 1.10 1.11 1.12 1.13"
+          for e in ${_TIKA_V}; do
+            wget -q -U iCab ${urlDev}/tika-app-${e}.jar
+          done
         fi
         for Dir in `find /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/ \
           -maxdepth 1 -mindepth 1 -type d | grep conf`; do
@@ -541,8 +557,11 @@ if_install_jetty() {
         /opt/jetty7/webapps/solr.war
       rm -rf /opt/jetty7/solr
       cd /opt/jetty7/lib/
-      wget -q -U iCab ${urlDev}/tika-app-1.3.jar
-      wget -q -U iCab ${urlDev}/tika-app-1.1.jar
+      rm -f tika-app*
+      _TIKA_V="1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 1.10 1.11 1.12 1.13"
+      for e in ${_TIKA_V}; do
+        wget -q -U iCab ${urlDev}/tika-app-${e}.jar
+      done
       cd /var/opt
       chown -R jetty7:jetty7 /opt/jetty7
       mrun "service jetty7 start" &> /dev/null
