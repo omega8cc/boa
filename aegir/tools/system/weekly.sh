@@ -535,7 +535,7 @@ check_limits() {
   if [ "${_CLIENT_OPTION}" = "POWER" ]; then
     _SQL_MIN_LIMIT=5120
     _DSK_MIN_LIMIT=51200
-    _SQL_DEV_EXTRA=5
+    _SQL_DEV_EXTRA=3
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 1024 ))
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 2560 ))
   elif [ "${_CLIENT_OPTION}" = "SSD" ] \
