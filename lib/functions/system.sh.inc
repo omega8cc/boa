@@ -1673,7 +1673,6 @@ check_install_latest_git() {
     _GIT_FORCE_REINSTALL=YES
   fi
   if [[ "${_XTRAS_LIST}" =~ "GIT" ]] \
-    || [ "${_SSB_SRC}" = "YES" ] \
     || [ "${_GIT_FORCE_REINSTALL}" = "YES" ]; then
     _GIT_TEST=$(git --version 2>&1)
     if [[ "${_GIT_TEST}" =~ "git version ${_GIT_VRN}" ]]; then
@@ -3663,25 +3662,6 @@ sys_packages_install() {
   else
     _SYSLOGD=rsyslog
   fi
-  if [ "${_NGINX_SPDY}" = "YES" ] \
-    || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
-    if [ "${_OSV}" = "stretch" ] \
-      || [ "${_OSV}" = "wily" ]; then
-      _SSB_SRC=NO
-    else
-      _SSB_SRC=YES
-    fi
-  else
-    _SSB_SRC=NO
-  fi
-  if [ "${_SSB_SRC}" = "YES" ]; then
-    _EXTRA_PACKAGES="libcurl4-openssl-dev \
-                     ${_EXTRA_PACKAGES}"
-  else
-    _EXTRA_PACKAGES="curl \
-                     libcurl4-openssl-dev \
-                     ${_EXTRA_PACKAGES}"
-  fi
   if [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "jessie" ]; then
     _EXTRA_PACKAGES="libgd2-noxpm-dev \
@@ -3743,6 +3723,7 @@ sys_packages_install() {
               build-essential \
               catdoc \
               cron \
+              curl \
               cvs \
               cython \
               defoma \
@@ -3768,6 +3749,9 @@ sys_packages_install() {
               libc-client-dev \
               libc-client2007e \
               libc-client2007e-dev \
+              libcurl3 \
+              libcurl3-gnutls \
+              libcurl4-openssl-dev \
               libfilesys-diskspace-perl \
               libfontconfig1 \
               libfreetype6 \
