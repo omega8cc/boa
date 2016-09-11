@@ -2033,7 +2033,14 @@ if_site_db_conversion() {
       _SQL_CONVERT=myisam
     fi
   fi
-  if [ ! -z "${_SQL_CONVERT}" ] && [ "${_DOW}" = "7" ]; then
+  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+    || [ "${_VMFAMILY}" = "VS" ]; then
+    _ALLOW_SQL_CONVERT=NO
+  fi
+  if [ -z "${_ALLOW_SQL_CONVERT}" ] \
+    && [ ! -z "${_SQL_CONVERT}" ] \
+    && [ "${_DOW}" = "7" ]; then
     if [ "${_SQL_CONVERT}" = "YES" ]; then
       _SQL_CONVERT=innodb
     elif [ "${_SQL_CONVERT}" = "NO" ]; then
