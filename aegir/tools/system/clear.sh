@@ -83,6 +83,15 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
     source /root/.barracuda.cnf
   fi
   if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ]; then
+    isCurl=$(curl --version 2>&1)
+    if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+      if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ]; then
+        apt-get clean -qq &> /dev/null
+        apt-get update -qq &> /dev/null
+        forCer="-fuy --force-yes --reinstall"
+        apt-get install curl ${forCer} &> /dev/null
+      fi
+    fi
     rm -f /tmp/*error*
     rm -f /var/backups/BOA.sh.txt.hourly*
     find_fast_mirror
