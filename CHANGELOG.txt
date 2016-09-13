@@ -9,8 +9,8 @@
   You should upgrade via 'barracuda up-stable system' immediately.
   Note: Octopus upgrade is **not** included in this BOA release.
 
-  Technically, even running normal system update with previous BOA release
-  would apply all security upgrades, since they are provided by MariaDB
+  Technically, even by running normal system update with previous BOA release
+  you would apply all security upgrades, since they are provided by MariaDB
   packages, and thus enforced no matter if we release new BOA version, or not,
   so we are doing this purely to make sure that all users have been alerted
   about the situation affecting their systems.
