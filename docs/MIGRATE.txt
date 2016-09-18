@@ -71,6 +71,8 @@
     grep site_readonly /data/conf/global.inc
 
 @=> On the source-host
+  rm -f /data/disk/o1/src/.*.sql
+  rm -f /data/disk/o1/log/.*.pid
   xboa create o1 target-ip
 
 @=> On the target-host
@@ -79,8 +81,6 @@
   (then wait 5 minutes)
 
 @=> On the source-host
-  rm -f /data/disk/o1/src/.*.sql
-  rm -f /data/disk/o1/log/.*.pid
   xboa export o1 target-ip
   xboa transfer shared target-ip
   xboa transfer o1 target-ip
