@@ -137,12 +137,13 @@ fix_dns_settings() {
     _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
     _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
     if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
+      || [ ! -e "${dnsLi}" ] \
       || [ -e "/root/.use.default.nameservers.cnf" ] \
       || [ -e "/root/.use.local.nameservers.cnf" ] \
       || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]]; then
       echo "        label = \"google-servers\";" > ${dnsLi}
       for _IP in `cat /etc/resolv.conf \
-        | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
+        | sed 's/.*127.0.0.1.*//g; s/.*search.*//g; s/.*Dynamic.*//g' \
         | cut -d ' ' -f2 \
         | sort \
         | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
