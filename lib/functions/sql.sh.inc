@@ -574,6 +574,12 @@ install_mariadb_server() {
       fi
       _PHP_FORCE_REINSTALL=YES
       mrun "sleep 8"
+      msg "INFO: Running ${_DB_SERVER} system tables upgrade, please wait..."
+      if [ -x "/usr/bin/mariadb_upgrade" ]; then
+        mrun "mariadb_upgrade --force" &> /dev/null
+      elif [ -x "/usr/bin/mysql_upgrade" ]; then
+        mrun "mysql_upgrade --force" &> /dev/null
+      fi
       msg "INFO: Restarting ${_DB_SERVER} server..."
       mrun "service mysql restart" &> /dev/null
       mrun "service nginx start" &> /dev/null

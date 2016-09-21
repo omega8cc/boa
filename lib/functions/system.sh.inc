@@ -4814,8 +4814,14 @@ update_initd() {
       killall -9 php-fpm &> /dev/null
       killall -9 php-cgi &> /dev/null
       killall -9 pure-ftpd &> /dev/null
-      msg "INFO: Restarting ${_DB_SERVER} server..."
       rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
+      msg "INFO: Running ${_DB_SERVER} system tables upgrade, please wait..."
+      if [ -x "/usr/bin/mariadb_upgrade" ]; then
+        mrun "mariadb_upgrade --force" &> /dev/null
+      elif [ -x "/usr/bin/mysql_upgrade" ]; then
+        mrun "mysql_upgrade --force" &> /dev/null
+      fi
+      msg "INFO: Restarting ${_DB_SERVER} server..."
       mrun "service mysql restart" &> /dev/null
       if [ -e "/etc/init.d/php70-fpm" ]; then
         mrun "service php70-fpm start" &> /dev/null
