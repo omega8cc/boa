@@ -4815,6 +4815,7 @@ update_initd() {
       killall -9 php-cgi &> /dev/null
       killall -9 pure-ftpd &> /dev/null
       msg "INFO: Restarting ${_DB_SERVER} server..."
+      rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
       mrun "service mysql restart" &> /dev/null
       if [ -e "/etc/init.d/php70-fpm" ]; then
         mrun "service php70-fpm start" &> /dev/null
