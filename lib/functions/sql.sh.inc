@@ -260,7 +260,7 @@ install_mariadb_sql() {
   fi
   if [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "jessie" ]; then
-    _DB_SERIES=10.0
+    _DB_SERIES=10.1
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
@@ -270,16 +270,18 @@ install_mariadb_sql() {
     fi
     msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
   else
-    if [ "${_DB_SERIES}" = "10.0" ] || [ "${_DB_SERIES}" = "5.5" ]; then
+    if [ "${_DB_SERIES}" = "10.1" ] \
+      || [ "${_DB_SERIES}" = "10.0" ] \
+      || [ "${_DB_SERIES}" = "5.5" ]; then
       _DO_NOTHING=YES
     else
-      _DB_SERIES=5.5
-      _MARIADB_VRN="${_MARIADB_5_VRN}"
+      _DB_SERIES=10.1
+      _MARIADB_VRN="${_MARIADB_10_VRN}"
       msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
     fi
     if [ -z "${_DB_SERIES}" ]; then
-      _DB_SERIES=5.5
-      _MARIADB_VRN="${_MARIADB_5_VRN}"
+      _DB_SERIES=10.1
+      _MARIADB_VRN="${_MARIADB_10_VRN}"
       msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
     fi
   fi
@@ -472,7 +474,13 @@ install_mariadb_server() {
         || [[ "${_DB_SERVER_TEST}" =~ " 5.2." ]]; then
         _SQL_UPGRADE=YES
       fi
-      if [ "${_DB_SERIES}" = "10.0" ]; then
+      if [ "${_DB_SERIES}" = "10.1" ]; then
+        if [[ "${_DB_SERVER_TEST}" =~ "10.1." ]]; then
+          _DO_NOTHING=YES
+        else
+          _SQL_UPGRADE=YES
+        fi
+      elif [ "${_DB_SERIES}" = "10.0" ]; then
         if [[ "${_DB_SERVER_TEST}" =~ "10.0." ]]; then
           _DO_NOTHING=YES
         else
@@ -484,7 +492,8 @@ install_mariadb_server() {
         else
           _SQL_UPGRADE=YES
         fi
-        if [[ "${_DB_SERVER_TEST}" =~ "10.0." ]]; then
+        if [[ "${_DB_SERVER_TEST}" =~ "10.1." ]] \
+          || [[ "${_DB_SERVER_TEST}" =~ "10.0." ]]; then
           _SQL_UPGRADE=NO
         fi
       fi
