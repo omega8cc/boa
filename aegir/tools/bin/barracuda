@@ -687,6 +687,8 @@ up_action() {
           wait
           sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.1/g"                  ${barCnf}
           wait
+          sed -i "s/^_INNODB_LOG.*/_INNODB_LOG_FILE_SIZE=200/g"        ${barCnf}
+          wait
           if [ -e "/root/.mstr.clstr.cnf" ] \
             || [ -e "/root/.wbhd.clstr.cnf" ] \
             || [ -e "/root/.dbhd.clstr.cnf" ] \
