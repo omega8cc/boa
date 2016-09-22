@@ -80,15 +80,6 @@ update_sql_conf() {
   sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
   wait
   _THIS_DB_SERVER_TEST=$(mysql -V 2>&1)
-  if [[ "${_THIS_DB_SERVER_TEST}" =~ "5.5." ]] \
-    || [[ "${_THIS_DB_SERVER_TEST}" =~ "10.0" ]]; then
-    _DO_NOTHING=YES
-  else
-    sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf
-    wait
-    sed -i "s/.*lc_messages /#lc_messages /g"         /etc/mysql/my.cnf
-    wait
-  fi
   if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
     sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf
     wait
@@ -575,15 +566,6 @@ install_mariadb_server() {
       rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
       install_with_aptitude_sql
       _THIS_DB_SERVER_TEST=$(mysql -V 2>&1)
-      if [[ "${_THIS_DB_SERVER_TEST}" =~ "5.5." ]] \
-        || [[ "${_THIS_DB_SERVER_TEST}" =~ "10.0" ]]; then
-        _DO_NOTHING=YES
-      else
-        sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf
-        wait
-        sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf
-        wait
-      fi
       if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
         sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" \
           /etc/mysql/my.cnf
