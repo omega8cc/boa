@@ -770,7 +770,7 @@ EOFMYSQL
       fi
       msg "INFO: Restarting ${_DB_SERVER} server..."
       mrun "service mysql restart" &> /dev/null
-      mrun "sleep 8"
+      mrun "sleep 60"
       msg "INFO: Upgrading ${_DB_SERVER} tables if necessary..."
       mrun "sleep 180"
       if [ ! -e "/var/run/mysqld/mysqld.pid" ] \

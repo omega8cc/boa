@@ -143,9 +143,9 @@ if [ "${_OPTIM}" = "YES" ] && [ ! -e "/var/run/boa_run.pid" ]; then
   ionice -c2 -n2 -p $$
   touch /var/run/boa_wait.pid
   touch /var/xdrago/log/mysql_restart_running.pid
-  sleep 10
+  sleep 180
   service mysql restart
-  sleep 3
+  sleep 900
   rm -f /var/run/boa_wait.pid
   rm -f /var/xdrago/log/mysql_restart_running.pid
 fi

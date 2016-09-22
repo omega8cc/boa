@@ -3,18 +3,35 @@
 update_innodb_log_file_size() {
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   mrun "service mysql stop" &> /dev/null
-  mrun "sleep 5"
+  mrun "sleep 60"
   if [ ! -e "/var/run/mysqld/mysqld.sock" ] \
     && [ ! -e "/var/run/mysqld/mysqld.pid" ]; then
     mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
-    mrun "sleep 5"
+    mrun "sleep 10"
     mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
     wait
-    mrun "sleep 5"
+    mrun "sleep 10"
+    mrun "service mysql start" &> /dev/null
+  else
+    msg "INFO: Waiting for ${_DB_SERVER} clean shutdown..."
+    mrun "sleep 180"
+    if [ ! -e "/var/run/mysqld/mysqld.sock" ] \
+      && [ ! -e "/var/run/mysqld/mysqld.pid" ]; then
+      mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
+      mrun "sleep 10"
+      mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+      mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+      sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+      wait
+      mrun "sleep 10"
+      mrun "service mysql start" &> /dev/null
+    else
+      msg "WARN: ${_DB_SERVER} refused to stop, InnoDB log file size not updated"
+      mrun "sleep 10"
+    fi
   fi
-  mrun "service mysql start" &> /dev/null
 }
 
 #
