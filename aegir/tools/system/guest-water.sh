@@ -71,8 +71,8 @@ guard_stats() {
       fi
       if [ ! -z ${_NR_TEST} ] && [ ${_NR_TEST} -ge "24" ]; then
         echo ${_IP} ${_NR_TEST}
-        _FW_TEST=$(iptables --list -n | grep ${_IP} 2>&1)
-        if [[ "${_FW_TEST}" =~ "${_IP}" ]]; then
+        _FW_TEST=$(csf -g ${_IP} 2>&1)
+        if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
           echo "${_IP} already denied or allowed on port 22"
         else
           if [ ${_NR_TEST} -ge "64" ]; then
@@ -90,18 +90,18 @@ guard_stats() {
     for _IP in `cat ${_WA} | cut -d '#' -f1 | sort | uniq`; do
       _NR_TEST="0"
       _NR_TEST=$(tr -s ' ' '\n' < ${_WA} | grep -c ${_IP} 2>&1)
-      _CF_TEST=
-      _CF_TEST=$(whois ${_IP} | grep cloudflare.com 2>&1)
-      if [[ "${_CF_TEST}" =~ "cloudflare" ]]; then
-        _NR_TEST="0"
-        echo "${_IP} is a cloudflare IP address, ignoring ${_HA}"
-      fi
-      _SC_TEST=
-      _SC_TEST=$(whois ${_IP} | grep sucuri.net 2>&1)
-      if [[ "${_SC_TEST}" =~ "sucuri" ]]; then
-        _NR_TEST="0"
-        echo "${_IP} is a sucuri IP address, ignoring ${_HA}"
-      fi
+      # _CF_TEST=
+      # _CF_TEST=$(whois ${_IP} | grep cloudflare.com 2>&1)
+      # if [[ "${_CF_TEST}" =~ "cloudflare" ]]; then
+      #   _NR_TEST="0"
+      #   echo "${_IP} is a cloudflare IP address, ignoring ${_HA}"
+      # fi
+      # _SC_TEST=
+      # _SC_TEST=$(whois ${_IP} | grep sucuri.net 2>&1)
+      # if [[ "${_SC_TEST}" =~ "sucuri" ]]; then
+      #   _NR_TEST="0"
+      #   echo "${_IP} is a sucuri IP address, ignoring ${_HA}"
+      # fi
       if [ -e "/root/.local.IP.list" ]; then
         _IP_CHECK=$(cat /root/.local.IP.list \
           | cut -d '#' -f1 \
@@ -116,8 +116,8 @@ guard_stats() {
       fi
       if [ ! -z ${_NR_TEST} ] && [ ${_NR_TEST} -ge "24" ]; then
         echo ${_IP} ${_NR_TEST}
-        _FW_TEST=$(iptables --list -n | grep ${_IP} 2>&1)
-        if [[ "${_FW_TEST}" =~ "${_IP}" ]]; then
+        _FW_TEST=$(csf -g ${_IP} 2>&1)
+        if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
           echo "${_IP} already denied or allowed on port 80"
         else
           if [ ${_NR_TEST} -ge "64" ]; then
@@ -149,8 +149,8 @@ guard_stats() {
       fi
       if [ ! -z ${_NR_TEST} ] && [ ${_NR_TEST} -ge "24" ]; then
         echo ${_IP} ${_NR_TEST}
-        _FW_TEST=$(iptables --list -n | grep ${_IP} 2>&1)
-        if [[ "${_FW_TEST}" =~ "${_IP}" ]]; then
+        _FW_TEST=$(csf -g ${_IP} 2>&1)
+        if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
           echo "${_IP} already denied or allowed on port 21"
         else
           if [ ${_NR_TEST} -ge "64" ]; then

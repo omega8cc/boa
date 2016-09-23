@@ -381,19 +381,78 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
-    && [ ! -e "${pthLog}/guest-water.ctrl.313stableQ1.pid" ]; then
+    && [ ! -e "${pthLog}/guest-fire-sh.ctrl.313stableQ1.pid" ]; then
+    mv -f /var/xdrago/guest-fire.sh /var/xdrago/guest-fire.sh.old
+    curl ${crlGet} "${urlHmr}/tools/system/guest-fire.sh" \
+      -o /var/xdrago/guest-fire.sh
+    if [ -e "/var/xdrago/guest-fire.sh" ]; then
+      chmod 700 /var/xdrago/guest-fire.sh
+      chown root:root /var/xdrago/guest-fire.sh
+      touch ${pthLog}/guest-fire-sh.ctrl.313stableQ1.pid
+    else
+      mv -f /var/xdrago/guest-fire.sh.old /var/xdrago/guest-fire.sh
+    fi
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ -e "/usr/sbin/csf" ] \
+    && [ -e "/etc/csf/csf.deny" ] \
+    && [ ! -e "${pthLog}/guest-water-sh.ctrl.313stableQ1.pid" ]; then
     mv -f /var/xdrago/guest-water.sh /var/xdrago/guest-water.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/guest-water.sh" \
       -o /var/xdrago/guest-water.sh
     if [ -e "/var/xdrago/guest-water.sh" ]; then
       chmod 700 /var/xdrago/guest-water.sh
       chown root:root /var/xdrago/guest-water.sh
-      touch ${pthLog}/guest-water.ctrl.313stableQ1.pid
-      csf -df &> /dev/null
-      csf -tf &> /dev/null
-      csf -x  &> /dev/null
-      csf -e  &> /dev/null
-      csf -q  &> /dev/null
+      touch ${pthLog}/guest-water-sh.ctrl.313stableQ1.pid
+      sed -i "s/.*cloudflare.*//g"  /etc/csf/csf.allow
+      sed -i "s/.*cloudflare.*//g"  /etc/csf/csf.ignore
+      sed -i "/^$/d" /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=103.21.244.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=103.22.200.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=103.31.4.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=104.16.0.0/12 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=108.162.192.0/18 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=131.0.72.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=141.101.64.0/18 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=162.158.0.0/15 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=172.64.0.0/13 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=173.245.48.0/20 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=188.114.96.0/20 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=190.93.240.0/20 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=197.234.240.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=198.41.128.0/17 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=199.27.128.0/21 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=103.21.244.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=103.22.200.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=103.31.4.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=104.16.0.0/12 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=108.162.192.0/18 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=131.0.72.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=141.101.64.0/18 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=162.158.0.0/15 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=172.64.0.0/13 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=173.245.48.0/20 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=188.114.96.0/20 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=190.93.240.0/20 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=197.234.240.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=198.41.128.0/17 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=199.27.128.0/21 # cloudflare ips" >> /etc/csf/csf.allow
+      sed -i "s/.*sucuri.*//g"  /etc/csf/csf.allow
+      sed -i "s/.*sucuri.*//g"  /etc/csf/csf.ignore
+      sed -i "/^$/d" /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=192.88.134.0/23 # sucuri ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=185.93.228.0/22 # sucuri ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=192.124.249.0/24 # sucuri ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=66.248.200.0/22 # sucuri ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=192.88.134.0/23 # sucuri ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=185.93.228.0/22 # sucuri ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=192.124.249.0/24 # sucuri ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=66.248.200.0/22 # sucuri ips" >> /etc/csf/csf.allow
+      csf -df
+      csf -tf
+      csf -q
     else
       mv -f /var/xdrago/guest-water.sh.old /var/xdrago/guest-water.sh
     fi
