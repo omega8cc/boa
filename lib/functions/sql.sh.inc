@@ -377,7 +377,7 @@ install_with_aptitude_sql() {
   if [ "${_EASY_SETUP}" = "DBHD" ] \
     || [ -e "/etc/mysql/conf.d/galera.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    msg "INFO: Running MariaDB system tables upgrade, please wait..."
+    msg "INFO: Running ${_DB_SERVER} system tables upgrade, please wait..."
     if [ -x "/usr/bin/mariadb_upgrade" ]; then
       mrun "mariadb_upgrade --force" &> /dev/null
     elif [ -x "/usr/bin/mysql_upgrade" ]; then
@@ -482,27 +482,18 @@ install_mariadb_server() {
         || [[ "${_DB_SERVER_TEST}" =~ " 5.2." ]]; then
         _SQL_UPGRADE=YES
       fi
-      if [ "${_DB_SERIES}" = "10.1" ]; then
-        if [[ "${_DB_SERVER_TEST}" =~ "10.1." ]]; then
-          _DO_NOTHING=YES
-        else
-          _SQL_UPGRADE=YES
-        fi
-      elif [ "${_DB_SERIES}" = "10.0" ]; then
-        if [[ "${_DB_SERVER_TEST}" =~ "10.0." ]]; then
-          _DO_NOTHING=YES
-        else
-          _SQL_UPGRADE=YES
-        fi
-      elif [ "${_DB_SERIES}" = "5.5" ]; then
-        if [[ "${_DB_SERVER_TEST}" =~ "5.5." ]]; then
-          _DO_NOTHING=YES
-        else
+      if [ "${_DB_SERIES}" = "5.5" ]; then
+        if [[ ! "${_DB_SERVER_TEST}" =~ "5.5." ]]; then
           _SQL_UPGRADE=YES
         fi
         if [[ "${_DB_SERVER_TEST}" =~ "10.1." ]] \
           || [[ "${_DB_SERVER_TEST}" =~ "10.0." ]]; then
           _SQL_UPGRADE=NO
+        fi
+      elif [ "${_DB_SERIES}" = "10.1" ] \
+        || [ "${_DB_SERIES}" = "10.0" ]; then
+        if [[ ! "${_DB_SERVER_TEST}" =~ "10.1." ]]; then
+          _SQL_UPGRADE=YES
         fi
       fi
     fi
@@ -543,7 +534,7 @@ install_mariadb_server() {
         csf -x &> /dev/null
       fi
       msg "INFO: Running ${_DB_SERVER} upgrade and then PHP forced rebuild..."
-      mrun "sleep 50"
+      mrun "sleep 120"
       mrun "service nginx stop" &> /dev/null
       rm -f ${aptLiSys}.d/percona.list
       rm -f ${aptLiSys}.d/ourdelta.list

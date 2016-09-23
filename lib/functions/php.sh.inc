@@ -964,6 +964,10 @@ install_php_multi() {
   _T_PHP_PTH="/opt/php$1/bin"
   _T_PHP_CFG="/opt/php$1/bin/php-config"
   install_php_extensions "$1"
+  if [ "${_DB_SERIES}" = "10.0" ]; then
+    sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.1/g" ${barCnf}
+    _DB_SERIES=10.1
+  fi
   if [ "${_DB_SERIES}" = "10.1" ] || [ "${_DB_SERIES}" = "10.0" ]; then
     _T_MARIADB_VRN="${_MARIADB_10_VRN}"
   else

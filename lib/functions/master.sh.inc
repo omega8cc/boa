@@ -768,10 +768,8 @@ EOFMYSQL
       elif [ -x "/usr/bin/mysql_upgrade" ]; then
         mrun "mysql_upgrade --force" &> /dev/null
       fi
-      msg "INFO: Restarting ${_DB_SERVER} server..."
+      msg "INFO: Restarting ${_DB_SERVER} server, please wait..."
       mrun "service mysql restart" &> /dev/null
-      mrun "sleep 60"
-      msg "INFO: Upgrading ${_DB_SERVER} tables if necessary..."
       mrun "sleep 180"
       if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
         || [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
