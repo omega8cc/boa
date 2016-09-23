@@ -379,6 +379,28 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
+    && [ -e "/usr/sbin/csf" ] \
+    && [ -e "/etc/csf/csf.deny" ] \
+    && [ ! -e "${pthLog}/guest-water.ctrl.313stableQ1.pid" ]; then
+    mv -f /var/xdrago/guest-water.sh /var/xdrago/guest-water.sh.old
+    curl ${crlGet} "${urlHmr}/tools/system/guest-water.sh" \
+      -o /var/xdrago/guest-water.sh
+    if [ -e "/var/xdrago/guest-water.sh" ]; then
+      chmod 700 /var/xdrago/guest-water.sh
+      chown root:root /var/xdrago/guest-water.sh
+      touch ${pthLog}/guest-water.ctrl.313stableQ1.pid
+      csf -df &> /dev/null
+      csf -tf &> /dev/null
+      csf -x  &> /dev/null
+      csf -e  &> /dev/null
+      csf -q  &> /dev/null
+    else
+      mv -f /var/xdrago/guest-water.sh.old /var/xdrago/guest-water.sh
+    fi
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
     && [ ! -e "${pthLog}/hackcheck.ctrl.313stableQ1.pid" ]; then
     mv -f /var/xdrago/monitor/check/hackcheck /var/xdrago/monitor/check/hackcheck.old
     curl ${crlGet} "${urlHmr}/tools/system/monitor/check/hackcheck" \
