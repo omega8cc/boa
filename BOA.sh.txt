@@ -381,14 +381,14 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
-    && [ ! -e "${pthLog}/guest-fire-sh.ctrl.313stableQ1.pid" ]; then
+    && [ ! -e "${pthLog}/guest-fire-sh2.ctrl.313stableQ1.pid" ]; then
     mv -f /var/xdrago/guest-fire.sh /var/xdrago/guest-fire.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/guest-fire.sh" \
       -o /var/xdrago/guest-fire.sh
     if [ -e "/var/xdrago/guest-fire.sh" ]; then
       chmod 700 /var/xdrago/guest-fire.sh
       chown root:root /var/xdrago/guest-fire.sh
-      touch ${pthLog}/guest-fire-sh.ctrl.313stableQ1.pid
+      touch ${pthLog}/guest-fire-sh2.ctrl.313stableQ1.pid
     else
       mv -f /var/xdrago/guest-fire.sh.old /var/xdrago/guest-fire.sh
     fi
@@ -398,14 +398,14 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
-    && [ ! -e "${pthLog}/guest-water-sh.ctrl.313stableQ1.pid" ]; then
+    && [ ! -e "${pthLog}/guest-water-sh2.ctrl.313stableQ1.pid" ]; then
     mv -f /var/xdrago/guest-water.sh /var/xdrago/guest-water.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/guest-water.sh" \
       -o /var/xdrago/guest-water.sh
     if [ -e "/var/xdrago/guest-water.sh" ]; then
       chmod 700 /var/xdrago/guest-water.sh
       chown root:root /var/xdrago/guest-water.sh
-      touch ${pthLog}/guest-water-sh.ctrl.313stableQ1.pid
+      touch ${pthLog}/guest-water-sh2.ctrl.313stableQ1.pid
       sed -i "s/.*cloudflare.*//g"  /etc/csf/csf.allow
       sed -i "s/.*cloudflare.*//g"  /etc/csf/csf.ignore
       sed -i "/^$/d" /etc/csf/csf.allow
@@ -452,6 +452,8 @@ update_agents() {
       echo "tcp|in|d=443|s=66.248.200.0/22 # sucuri ips" >> /etc/csf/csf.allow
       csf -df
       csf -tf
+      sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
+      sed -i "/^$/d" /etc/csf/csf.deny
       csf -q
     else
       mv -f /var/xdrago/guest-water.sh.old /var/xdrago/guest-water.sh
