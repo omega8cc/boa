@@ -2036,11 +2036,12 @@ if_site_db_conversion() {
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
-    _ALLOW_SQL_CONVERT=NO
+    _DENY_SQL_CONVERT=
+    _SQL_CONVERT=innodb
   fi
-  if [ -z "${_ALLOW_SQL_CONVERT}" ] \
+  if [ -z "${_DENY_SQL_CONVERT}" ] \
     && [ ! -z "${_SQL_CONVERT}" ] \
-    && [ "${_DOW}" = "7" ]; then
+    && [ "${_DOW}" = "3" ]; then
     if [ "${_SQL_CONVERT}" = "YES" ]; then
       _SQL_CONVERT=innodb
     elif [ "${_SQL_CONVERT}" = "NO" ]; then
