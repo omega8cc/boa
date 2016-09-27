@@ -1163,8 +1163,8 @@ check_site_status() {
       echo "WARNING: THIS SITE IS BROKEN! ${Dir}"
     fi
   else
-    _STATUS=BROKEN
-    echo "WARNING: THIS SITE IS PROBABLY BROKEN! ${Dir}"
+    _STATUS=UNKNOWN
+    echo "WARNING: THIS SITE IS PROBABLY BROKEN? ${Dir}"
   fi
 }
 
@@ -2041,7 +2041,7 @@ if_site_db_conversion() {
   fi
   if [ -z "${_DENY_SQL_CONVERT}" ] \
     && [ ! -z "${_SQL_CONVERT}" ] \
-    && [ "${_DOW}" = "3" ]; then
+    && [ "${_DOW}" = "7" ]; then
     if [ "${_SQL_CONVERT}" = "YES" ]; then
       _SQL_CONVERT=innodb
     elif [ "${_SQL_CONVERT}" = "NO" ]; then
