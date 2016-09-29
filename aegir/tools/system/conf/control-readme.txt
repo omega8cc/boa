@@ -91,11 +91,6 @@
 ### from the Aegir backend Drush cache, you can create an empty control file:
 ### ~/static/control/clear-drush-cache.info
 ###
-### You have to delete this file once the tasks queue is unlocked again,
-### or it will forcefully clear Drupal cache on every run, which in turn will
-### break all future attempts to build the platform from makefile via Aegir
-### control panel interface.
-###
 
 ###
 ### Support for New Relic monitoring with per Octopus instance license key
