@@ -4822,6 +4822,7 @@ update_initd() {
         mrun "mysql_upgrade --force" &> /dev/null
       fi
       msg "INFO: Restarting ${_DB_SERVER} server..."
+      mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
       mrun "service mysql restart" &> /dev/null
       if [ -e "/etc/init.d/php70-fpm" ]; then
         mrun "service php70-fpm start" &> /dev/null

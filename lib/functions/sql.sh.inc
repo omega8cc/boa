@@ -571,6 +571,7 @@ install_mariadb_server() {
         mrun "mysql_upgrade --force" &> /dev/null
       fi
       msg "INFO: Restarting ${_DB_SERVER} server..."
+      mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
       mrun "service mysql restart" &> /dev/null
       mrun "service nginx start" &> /dev/null
       if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
@@ -755,6 +756,7 @@ finalize_sql_initial_setup() {
       /etc/mysql/debian-start &> /dev/null
     wait
     mrun "service mysql restart" &> /dev/null
+    mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
     msg "INFO: ${_DB_SERVER} setup completed"
     msg "INFO: You can now log in as root by typing just 'mysql'"
   else
