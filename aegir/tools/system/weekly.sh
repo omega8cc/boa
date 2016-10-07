@@ -71,6 +71,134 @@ read_account_data() {
   fi
 }
 
+send_notice_php() {
+  _MY_EMAIL="support@omega8.cc"
+  _BCC_EMAIL="omega8cc@gmail.com"
+  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _MAILX_TEST=$(mail -V 2>&1)
+  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
+  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
+    -s "URGENT: Please switch your Aegir instance to PHP 5.6 [${_THIS_U}]" ${_CLIENT_EMAIL}
+Hello,
+
+Our monitoring detected that you are still using deprecated
+and no longer supported PHP version: $1
+
+We have provided over a year of extended support for
+this PHP version, but now we can't extend it any further,
+because your system has to be upgraded to Debian Jessie,
+which doesn't support deprecated PHP versions.
+
+The upgrade will happen in the first week of December, 2016,
+and there are no exceptions possible to avoid it.
+
+This means that all Aegir instances still running PHP $1
+will stop working if not switched to one of currently
+supported versions: 5.6, 7.0 or 5.5
+
+To switch PHP-FPM version on command line, please type:
+
+  echo 5.6 > ~/static/control/fpm.info
+
+You can find more details at: https://learn.omega8.cc/node/330
+
+We are working hard to provide secure and fast hosting
+for your Drupal sites, and we appreciate your efforts
+to meet the requirements, which are an integral part
+of the quality you can expect from Omega8.cc
+
+--
+This email has been sent by your Aegir system monitor
+
+EOF
+  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
+  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
+    -s "URGENT: Please switch your Aegir instance to PHP 5.6 [${_THIS_U}]" ${_CLIENT_EMAIL}
+Hello,
+
+Our monitoring detected that you are still using deprecated
+and no longer supported PHP version: $1
+
+We have provided over a year of extended support for
+this PHP version, but now we can't extend it any further,
+because your system has to be upgraded to Debian Jessie,
+which doesn't support deprecated PHP versions.
+
+The upgrade will happen in the first week of December, 2016,
+and there are no exceptions possible to avoid it.
+
+This means that all Aegir instances still running PHP $1
+will stop working if not switched to one of currently
+supported versions: 5.6, 7.0 or 5.5
+
+To switch PHP-FPM version on command line, please type:
+
+  echo 5.6 > ~/static/control/fpm.info
+
+You can find more details at: https://learn.omega8.cc/node/330
+
+We are working hard to provide secure and fast hosting
+for your Drupal sites, and we appreciate your efforts
+to meet the requirements, which are an integral part
+of the quality you can expect from Omega8.cc
+
+--
+This email has been sent by your Aegir system monitor
+
+EOF
+  else
+  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+    -s "URGENT: Please switch your Aegir instance to PHP 5.6 [${_THIS_U}]" ${_CLIENT_EMAIL}
+Hello,
+
+Our monitoring detected that you are still using deprecated
+and no longer supported PHP version: $1
+
+We have provided over a year of extended support for
+this PHP version, but now we can't extend it any further,
+because your system has to be upgraded to Debian Jessie,
+which doesn't support deprecated PHP versions.
+
+The upgrade will happen in the first week of December, 2016,
+and there are no exceptions possible to avoid it.
+
+This means that all Aegir instances still running PHP $1
+will stop working if not switched to one of currently
+supported versions: 5.6, 7.0 or 5.5
+
+To switch PHP-FPM version on command line, please type:
+
+  echo 5.6 > ~/static/control/fpm.info
+
+You can find more details at: https://learn.omega8.cc/node/330
+
+We are working hard to provide secure and fast hosting
+for your Drupal sites, and we appreciate your efforts
+to meet the requirements, which are an integral part
+of the quality you can expect from Omega8.cc
+
+--
+This email has been sent by your Aegir system monitor
+
+EOF
+  fi
+  echo "INFO: PHP notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
+}
+
+detect_deprecated_php() {
+  _PHP_FPM_VERSION=
+  if [ -e "${User}/static/control/fpm.info" ]; then
+    _PHP_FPM_VERSION=$(cat ${User}/static/control/fpm.info 2>&1)
+    _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
+    if [ "${_PHP_FPM_VERSION}" = "5.4" ] \
+      || [ "${_PHP_FPM_VERSION}" = "5.3" ]; then
+      echo Deprecated PHP-FPM ${_PHP_FPM_VERSION} detected in ${_THIS_U}
+      read_account_data
+      send_notice_php ${_PHP_FPM_VERSION}
+    fi
+  fi
+}
+
 send_notice_core() {
   _MY_EMAIL="support@omega8.cc"
   _BCC_EMAIL="omega8cc@gmail.com"
@@ -678,6 +806,7 @@ action() {
           | sed "s/[\,']//g" 2>&1)
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
         echo Counting User ${User}
+        detect_deprecated_php
         count
         if [ -e "/home/${_THIS_U}.ftp" ]; then
           for uH in `find /home/${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
