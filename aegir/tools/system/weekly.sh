@@ -805,6 +805,21 @@ action() {
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
+        if [ ! -e "${User}/log/skip-force-cleanup.txt" ]; then
+          cd ${User}
+          echo "Remove various tmp/dot files breaking du command"
+          find . -name ".DS_Store" -type f | xargs rm -rf &> /dev/null
+          find . -name "*~" -type f | xargs rm -rf &> /dev/null
+          find . -name "*#" -type f | xargs rm -rf &> /dev/null
+          find . -name ".#*" -type f | xargs rm -rf &> /dev/null
+          find . -name "*--" -type f | xargs rm -rf &> /dev/null
+          find . -name "._*" -type f | xargs rm -rf &> /dev/null
+          find . -name "*~" -type l | xargs rm -rf &> /dev/null
+          find . -name "*#" -type l | xargs rm -rf &> /dev/null
+          find . -name ".#*" -type l | xargs rm -rf &> /dev/null
+          find . -name "*--" -type l | xargs rm -rf &> /dev/null
+          find . -name "._*" -type l | xargs rm -rf &> /dev/null
+        fi
         echo Counting User ${User}
         detect_deprecated_php
         count
