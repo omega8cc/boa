@@ -1369,7 +1369,9 @@ display_version() {
             fi
           fi
         else
-          if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
+          if [ -z "${_VIRT_TEST}" ] \
+            || [ "${_VIRT_TEST}" = "0" ] \
+            || [ "${_VIRT_TEST}" = " " ]; then
             _VIRT_IS="unknown / not a virtual machine"
           elif [[ "${_VIRT_TEST}" =~ "xen-dom0" ]]; then
             _VIRT_IS="Xen privileged domain"
@@ -1398,7 +1400,9 @@ display_version() {
           fi
         fi
       else
-        if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
+        if [ -z "${_VIRT_TEST}" ] \
+          || [ "${_VIRT_TEST}" = "0" ] \
+          || [ "${_VIRT_TEST}" = " " ]; then
           _VIRT_IS="unknown / not a virtual machine"
         fi
         _VIRT_IS="${_VIRT_TEST} not supported"
