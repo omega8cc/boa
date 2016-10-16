@@ -1357,6 +1357,7 @@ display_version() {
       crlBoav=`tail --lines=1 /var/log/barracuda_log.txt \
         | cut -d '/' -f4 \
         | sed "s/ Barracuda //g"`
+      crlBoav=${crlBoav//[^a-zA-Z0-9-.]/}
     fi
     echo "${crlBoav} on ${thiSys}"
     exit 0
