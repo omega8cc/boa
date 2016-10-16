@@ -1038,6 +1038,7 @@ dstUpArg="-fuy --force-yes -q --config-file /opt/tmp/apt.conf.noi.dist"
 nrmUpArg="-fuy --force-yes -q --config-file /opt/tmp/apt.conf.noi.nrml"
 _INITINS="/usr/bin/apt-get -y --force-yes install"
 _INSTALL="/usr/bin/apt-get ${nrmUpArg} install"
+forCer="-fuy --force-yes --reinstall"
 
 
 ###
@@ -1052,7 +1053,7 @@ find_fast_mirror() {
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
+    apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)

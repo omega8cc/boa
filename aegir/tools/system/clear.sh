@@ -3,6 +3,8 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
+forCer="-fuy --force-yes --reinstall"
+
 check_root() {
   if [ `whoami` = "root" ]; then
     if [ -e "/root/.barracuda.cnf" ]; then
@@ -47,7 +49,7 @@ find_fast_mirror() {
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
+    apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -82,7 +84,6 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
     isCurl=$(curl --version 2>&1)
-    forCer="-fuy --force-yes --reinstall"
     if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
       rm -f /etc/apt/sources.list.d/openssl.list
       echo "curl install" | dpkg --set-selections
