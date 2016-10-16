@@ -43,7 +43,8 @@ else
   _RUBY_VRN=2.0.0
 fi
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then

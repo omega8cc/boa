@@ -26,7 +26,8 @@ if_running_as_root_barracuda() {
       _VMFAMILY="AWS"
     fi
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
@@ -80,7 +81,8 @@ set_xterm() {
 # Kill nash-hotplug.
 kill_nash() {
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
@@ -244,7 +246,8 @@ tune_memory_limits() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
@@ -982,7 +985,8 @@ barracuda_cnf() {
     _CHECK_HOST=$(uname -n 2>&1)
     _VMFAMILY=XEN
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
@@ -3096,7 +3100,8 @@ if_wheezy_to_jessie() {
       ${_INSTALL} sysvinit-utils &> /dev/null
     fi
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
@@ -3352,7 +3357,8 @@ if_squeeze_to_wheezy() {
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
