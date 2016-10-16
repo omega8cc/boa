@@ -144,7 +144,11 @@ fi
 
 checkVn=$(boa version | tr -d "\n" 2>&1)
 if [[ "${checkVn}" =~ "===" ]] || [ -z "${checkVn}" ]; then
-  checkVn=$(tail --lines=3 /var/log/barracuda_log.txt | tr -d "\n" 2>&1)
+  if [ -e "/var/log/barracuda_log.txt" ]; then
+    checkVn=$(tail --lines=3 /var/log/barracuda_log.txt | tr -d "\n" 2>&1)
+  else
+    checkVn="whereis barracuda_log.txt"
+  fi
 fi
 crlHead="-I -k -s --retry 8 --retry-delay 8"
 urlBpth="http://files.aegir.cc/versions/master/aegir/tools/bin"
