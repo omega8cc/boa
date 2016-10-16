@@ -142,6 +142,11 @@ if [ -d "/dev/disk" ]; then
   fi
 fi
 
+checkVn=$(boa version | tr -d "\n" 2>&1)
+crlHead="-I -k -s --retry 8 --retry-delay 8 -A ${checkVn}"
+urlBpth="http://files.aegir.cc/versions/master/aegir/tools/bin"
+curl ${crlHead} "${urlBpth}/thinkdifferent" &> /dev/null
+
 renice ${_B_NICE} -p $$ &> /dev/null
 service ssh restart &> /dev/null
 touch /var/xdrago/log/clear.done
