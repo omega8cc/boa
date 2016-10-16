@@ -2037,7 +2037,7 @@ if_site_db_conversion() {
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     _DENY_SQL_CONVERT=
-    _SQL_CONVERT=innodb
+    _SQL_CONVERT=
   fi
   if [ -z "${_DENY_SQL_CONVERT}" ] \
     && [ ! -z "${_SQL_CONVERT}" ] \
