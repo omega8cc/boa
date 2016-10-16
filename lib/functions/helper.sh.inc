@@ -447,6 +447,7 @@ virt_detection() {
             _VIRT_TEST="virtualbox"
           fi
           case "${_VIRT_TEST}" in
+            hyperv)      _VIRT_IS="Microsoft Hyper-V" ;;
             kvm)         _VIRT_IS="Linux KVM guest" ;;
             parallels)   _VIRT_IS="Parallels guest" ;;
             virtualbox)  _VIRT_IS="VirtualBox guest" ;;

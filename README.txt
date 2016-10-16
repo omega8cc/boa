@@ -78,6 +78,7 @@ production settings.
 
 * Linux KVM guest
 * Linux VServer guest
+* Microsoft Hyper-V
 * Parallels guest
 * VirtualBox guest
 * VMware ESXi guest
