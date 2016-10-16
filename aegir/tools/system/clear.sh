@@ -142,7 +142,7 @@ if [ -d "/dev/disk" ]; then
   fi
 fi
 
-checkVn=$(boa version | tr -d "\n" 2>&1)
+checkVn=$(/opt/local/bin/boa version | tr -d "\n" 2>&1)
 if [[ "${checkVn}" =~ "===" ]] || [ -z "${checkVn}" ]; then
   if [ -e "/var/log/barracuda_log.txt" ]; then
     checkVn=$(tail --lines=3 /var/log/barracuda_log.txt | tr -d "\n" 2>&1)
