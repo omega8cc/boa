@@ -1349,6 +1349,22 @@ check_root() {
   fi
 }
 
+display_version() {
+  if [ `whoami` = "root" ]; then
+    thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
+    if [ -e "/var/log/barracuda_log.txt" ]; then
+      crlBoav=`tail --lines=1 /var/log/barracuda_log.txt \
+        | cut -d '/' -f4 \
+        | sed "s/ Barracuda //g"`
+    fi
+    echo "${crlBoav} on ${thiSys}"
+    exit 0
+  else
+    echo "ERROR: This script should be ran as a root user"
+    exit 1
+  fi
+}
+
 display_info() {
   if [ `whoami` = "root" ]; then
     _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
@@ -1458,6 +1474,10 @@ case "$1" in
   info)      cmmand="$1"
              kind="$2"
              display_info
+  ;;
+  version)   cmmand="$1"
+             kind="$2"
+             display_version
   ;;
   in-head)   cmmand="$1"
              kind="$2"
