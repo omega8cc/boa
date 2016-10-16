@@ -1348,6 +1348,60 @@ check_root() {
 
 display_version() {
   if [ `whoami` = "root" ]; then
+    _VIRT_TOOL=$(which virt-what 2> /dev/null)
+    if [ -x "${_VIRT_TOOL}" ]; then
+      _VIRT_TEST=$(virt-what 2> /dev/null)
+      _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
+      if [ ! -e "/root/.allow.any.virt.cnf" ]; then
+        if [ -e "/proc/self/status" ]; then
+          _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
+          _VS_HOST_TEST=$(grep -E "VxID:[[:space:]]*0$" /proc/self/status 2> /dev/null)
+        fi
+        if [ ! -z "${_VS_HOST_TEST}" ] || [ ! -z "${_VS_GUEST_TEST}" ]; then
+          if [ -z "${_VS_HOST_TEST}" ] && [ ! -z "${_VS_GUEST_TEST}" ]; then
+            _VIRT_IS="Linux VServer guest"
+          else
+            if [ ! -z "${_VS_HOST_TEST}" ]; then
+              _VIRT_IS="Linux VServer host"
+            else
+              _VIRT_IS="unknown / not a virtual machine"
+            fi
+          fi
+        else
+          if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
+            _VIRT_IS="unknown / not a virtual machine"
+          elif [[ "${_VIRT_TEST}" =~ "xen-dom0" ]]; then
+            _VIRT_IS="Xen privileged domain"
+          elif [[ "${_VIRT_TEST}" =~ "linux_vserver-host" ]]; then
+            _VIRT_IS="Linux VServer host"
+          else
+            if [[ "${_VIRT_TEST}" =~ "xen xen-hvm" ]]; then
+              _VIRT_TEST="xen-hvm"
+            elif [[ "${_VIRT_TEST}" =~ "xen xen-domU" ]]; then
+              _VIRT_TEST="xen-domU"
+            elif [[ "${_VIRT_TEST}" =~ "virtualbox kvm" ]]; then
+              _VIRT_TEST="virtualbox"
+            fi
+            case "${_VIRT_TEST}" in
+              kvm)         _VIRT_IS="Linux KVM guest" ;;
+              parallels)   _VIRT_IS="Parallels guest" ;;
+              virtualbox)  _VIRT_IS="VirtualBox guest" ;;
+              vmware)      _VIRT_IS="VMware ESXi guest" ;;
+              xen-domU)    _VIRT_IS="Xen paravirtualized guest domain" ;;
+              xen-hvm)     _VIRT_IS="Xen guest fully virtualized (HVM)" ;;
+              xen)         _VIRT_IS="Xen guest" ;;
+              *)  _VIRT_IS="${_VIRT_TEST} not supported"
+              ;;
+            esac
+          fi
+        fi
+      else
+        if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
+          _VIRT_IS="unknown / not a virtual machine"
+        fi
+        _VIRT_IS="${_VIRT_TEST} not supported"
+      fi
+    fi
     thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
     if [ -e "/var/log/barracuda_log.txt" ]; then
       crlBoav=`tail --lines=1 /var/log/barracuda_log.txt \
@@ -1355,7 +1409,7 @@ display_version() {
         | sed "s/ Barracuda //g"`
       crlBoav=${crlBoav//[^a-zA-Z0-9-.]/}
     fi
-    echo "${crlBoav} on ${thiSys}"
+    echo "${crlBoav} on ${thiSys} on ${_VIRT_IS}"
     exit 0
   else
     echo "ERROR: This script should be ran as a root user"
@@ -1466,11 +1520,11 @@ display_info() {
 
 check_root_direct
 check_root_keys_pwd
-check_virt
 
 case "$1" in
   info)      cmmand="$1"
              kind="$2"
+             check_virt
              display_info
   ;;
   version)   cmmand="$1"
@@ -1485,6 +1539,7 @@ case "$1" in
              mode="$6"
              rkey="$7"
              check_root
+             check_virt
              check_dns_curl
              init_setup
   ;;
@@ -1497,6 +1552,7 @@ case "$1" in
              dbip="$7"
              loip="$8"
              check_root
+             check_virt
              check_dns_curl
              init_setup
   ;;
@@ -1508,6 +1564,7 @@ case "$1" in
              mode="$6"
              rkey="$7"
              check_root
+             check_virt
              check_dns_curl
              init_setup
   ;;
@@ -1519,6 +1576,7 @@ case "$1" in
              mode="$6"
              rkey="$7"
              check_root
+             check_virt
              check_dns_curl
              init_setup
   ;;
@@ -1530,6 +1588,7 @@ case "$1" in
              mode="$6"
              rkey="$7"
              check_root
+             check_virt
              check_dns_curl
              init_setup
   ;;
@@ -1541,6 +1600,7 @@ case "$1" in
              mode="$6"
              rkey="$7"
              check_root
+             check_virt
              check_dns_curl
              init_setup
   ;;
@@ -1552,6 +1612,7 @@ case "$1" in
              csub="$6"
              ccor="$7"
              check_root
+             check_virt
              check_dns_curl
              init_setup
   ;;
