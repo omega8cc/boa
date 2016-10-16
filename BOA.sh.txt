@@ -872,8 +872,79 @@ find_fast_mirror() {
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
 }
 
-setup() {
+update_wrappers() {
+  sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
+  wait
+  echo >>/etc/hosts
+  sed -i "/^$/d" /etc/hosts
+  wait
+  if [ ! -e "/etc/resolv.conf" ]; then
+    rm -f /etc/resolv.conf
+    if [ -e "${vBs}/resolv.conf.vanilla" ]; then
+      cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
+    fi
+    echo "nameserver 8.8.8.8" >>/etc/resolv.conf
+    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    check_dns_settings
+  else
+    check_dns_settings
+  fi
+  if [ -d "/var/cache/pdnsd" ] \
+    && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+    pdnsd-ctl empty-cache &> /dev/null
+  fi
+  find_fast_mirror
+  isCurl=$(curl --version 2>&1)
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
+    echo "curl install" | dpkg --set-selections
+    apt-get clean -qq &> /dev/null
+    apt-get update -qq &> /dev/null
+    apt-get install curl ${forCer} &> /dev/null
+    touch /root/.use.curl.from.packages.cnf
+  fi
+  _CURL_TEST=$(curl -L -k -s \
+    --max-redirs 10 \
+    --retry 3 \
+    --retry-delay 10 \
+    -I "http://${_USE_MIR}" 2> /dev/null)
+  if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
+    if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
+      echo "curl install" | dpkg --set-selections
+      apt-get install curl ${forCer} &> /dev/null
+      touch /root/.use.curl.from.packages.cnf
+    fi
+    echo "ERROR: ${_USE_MIR} is not available, please try later"
+    exit 1
+  else
+    urlHmr="http://${_USE_MIR}/versions/master/aegir"
+  fi
+  _LSB_TEST=$(which lsb_release 2> /dev/null)
+  if [ ! -x "${_LSB_TEST}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
+    apt-get clean -qq &> /dev/null
+    apt-get update -qq &> /dev/null
+    apt-get install lsb-release ${forCer} &> /dev/null
+  fi
+  mkdir -p /usr/local/bin
+  mkdir -p ${optBin}
+  rm -f /usr/local/bin/{barracuda*,boa*,octopus*}
+  if [ ! -e "/data/disk" ]; then
+    ln -s ${optBin}/boa       /usr/local/bin/boa
+    ln -s ${optBin}/barracuda /usr/local/bin/barracuda
+    ln -s ${optBin}/octopus   /usr/local/bin/octopus
+  fi
+  rm -f ${optBin}/{barracuda*,boa*,octopus*}
+  curl ${crlGet} "${urlHmr}/${tBn}/barracuda"      -o ${optBin}/barracuda
+  curl ${crlGet} "${urlHmr}/${tBn}/boa"            -o ${optBin}/boa
+  curl ${crlGet} "${urlHmr}/${tBn}/octopus"        -o ${optBin}/octopus
+  echo "### ${_TODAY} ###" >> ${optBin}/boa
+  echo "### ${_TODAY} ###" >> ${optBin}/barracuda
+  echo "### ${_TODAY} ###" >> ${optBin}/octopus
+  chmod 700 ${optBin}/{barracuda*,boa*,octopus*}
+}
 
+setup() {
   _BENG_VS=NO
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
@@ -1052,7 +1123,11 @@ if [ `whoami` = "root" ]; then
         echo "STATUS: Skynet Agent is Inactive!"
         echo "STATUS: Please remove the _SKYNET_MODE=OFF line from"
         echo "STATUS: ${barCnf} to enable me again."
+        echo "NOTE: Only barracuda, boa and octopus wrappers will be updated"
+        update_wrappers
+        exit 0
       else
+        update_wrappers
         exit 0
       fi
     else

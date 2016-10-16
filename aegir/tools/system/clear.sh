@@ -81,29 +81,28 @@ find_fast_mirror() {
 if [ ! -e "/var/run/boa_run.pid" ]; then
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
-  fi
-  if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ]; then
     isCurl=$(curl --version 2>&1)
+    forCer="-fuy --force-yes --reinstall"
     if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-      if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ]; then
-        apt-get clean -qq &> /dev/null
-        apt-get update -qq &> /dev/null
-        forCer="-fuy --force-yes --reinstall"
-        apt-get install curl ${forCer} &> /dev/null
-      fi
+      rm -f /etc/apt/sources.list.d/openssl.list
+      echo "curl install" | dpkg --set-selections
+      apt-get clean -qq &> /dev/null
+      apt-get update -qq &> /dev/null
+      apt-get install curl ${forCer} &> /dev/null
+      touch /root/.use.curl.from.packages.cnf
     fi
-    rm -f /tmp/*error*
-    rm -f /var/backups/BOA.sh.txt.hourly*
-    find_fast_mirror
-    curl -L -k -s \
-      --max-redirs 10 \
-      --retry 10 \
-      --retry-delay 5 \
-      -A iCab "http://${_USE_MIR}/BOA.sh.txt" \
-      -o /var/backups/BOA.sh.txt.hourly
-    bash /var/backups/BOA.sh.txt.hourly &> /dev/null
-    rm -f /var/backups/BOA.sh.txt.hourly*
   fi
+  rm -f /tmp/*error*
+  rm -f /var/backups/BOA.sh.txt.hourly*
+  find_fast_mirror
+  curl -L -k -s \
+    --max-redirs 10 \
+    --retry 10 \
+    --retry-delay 5 \
+    -A iCab "http://${_USE_MIR}/BOA.sh.txt" \
+    -o /var/backups/BOA.sh.txt.hourly
+  bash /var/backups/BOA.sh.txt.hourly &> /dev/null
+  rm -f /var/backups/BOA.sh.txt.hourly*
   bash /opt/local/bin/autoupboa
 fi
 
