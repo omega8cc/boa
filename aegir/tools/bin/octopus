@@ -17,6 +17,7 @@ barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
 bldPth="/opt/tmp/boa"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+forCer="-fuy --force-yes --reinstall"
 filIncB="barracuda.sh.cnf"
 filIncO="octopus.sh.cnf"
 gCb="git clone --branch"
@@ -1044,9 +1045,12 @@ check_dns_curl() {
   find_fast_mirror
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-    echo "ERROR: Required cURL package is not available"
-    echo "ERROR: Please install it manually with 'apt-get install curl'"
-    clean_pid_exit
+    rm -f /etc/apt/sources.list.d/openssl.list
+    echo "curl install" | dpkg --set-selections
+    apt-get clean -qq &> /dev/null
+    apt-get update -qq &> /dev/null
+    apt-get install curl ${forCer} &> /dev/null
+    touch /root/.use.curl.from.packages.cnf
   fi
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
@@ -1056,7 +1060,7 @@ check_dns_curl() {
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "curl install" | dpkg --set-selections
-      apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
+      apt-get install curl ${forCer} &> /dev/null
       touch /root/.use.curl.from.packages.cnf
     fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
