@@ -821,7 +821,11 @@ action() {
           find . -name "._*" -type l | xargs rm -rf &> /dev/null
         fi
         echo Counting User ${User}
-        detect_deprecated_php
+        _DOW=$(date +%u 2>&1)
+        _DOW=${_DOW//[^1-7]/}
+        if [ "${_DOW}" = "2" ]; then
+          detect_deprecated_php
+        fi
         count
         if [ -e "/home/${_THIS_U}.ftp" ]; then
           for uH in `find /home/${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
