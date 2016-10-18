@@ -874,20 +874,6 @@ _DB_BINARY_LOG=NO
 _DB_ENGINE=InnoDB
 
 ###
-### Allows to change InnoDB log file size,
-### which requires special procedure.
-###
-### Accepted value must be an integer between
-### 10 and 500 (in megabytes).
-###
-### Note: if _CUSTOM_CONFIG_SQL is set to YES,
-### this option will be ignored.
-###
-### Example: _INNODB_LOG_FILE_SIZE=50
-###
-_INNODB_LOG_FILE_SIZE=AUTO
-
-###
 ### Set max 1 min load per CPU core before blocking
 ### spiders temporarily, until the load stabilizes.
 ###

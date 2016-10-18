@@ -773,7 +773,6 @@ barracuda_cnf() {
     echo "_DB_ENGINE=${_DB_ENGINE}"                           >> ${barCnf}
     echo "_DB_SERIES=${_DB_SERIES}"                           >> ${barCnf}
     echo "_DB_SERVER=${_DB_SERVER}"                           >> ${barCnf}
-    echo "_INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE}"     >> ${barCnf}
 
     echo "###"                                                >> ${barCnf}
     echo "_DNS_SETUP_TEST=${_DNS_SETUP_TEST}"                 >> ${barCnf}
@@ -1180,11 +1179,6 @@ barracuda_cnf() {
       echo "_DB_BINARY_LOG=${_DB_BINARY_LOG}" >> ${barCnf}
     fi
 
-    _INNODB_LOG_FILE_SIZE_TEST=$(grep _INNODB_LOG_FILE_SIZE ${barCnf} 2>&1)
-    if [[ ! "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "_INNODB_LOG_FILE_SIZE" ]]; then
-      echo "_INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE}" >> ${barCnf}
-    fi
-
     _DB_ENGINE_TEST=$(grep _DB_ENGINE ${barCnf} 2>&1)
     if [[ ! "${_DB_ENGINE_TEST}" =~ "_DB_ENGINE" ]]; then
       echo "_DB_ENGINE=${_DB_ENGINE}" >> ${barCnf}
@@ -1282,6 +1276,11 @@ barracuda_cnf() {
     ###
     ### config cleanup start
     ###
+    _INNODB_LOG_FILE_SIZE_TEST=$(grep _INNODB_LOG_FILE_SIZE ${barCnf} 2>&1)
+    if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "_INNODB_LOG_FILE_SIZE" ]]; then
+      sed -i "s/^_INNODB_LOG_FILE_SIZE.*//g" ${barCnf}
+      wait
+    fi
     _USE_STOCK_TEST=$(grep _USE_STOCK ${barCnf} 2>&1)
     if [[ "${_USE_STOCK_TEST}" =~ "_USE_STOCK" ]]; then
       sed -i "s/^_USE_STOCK.*//g" ${barCnf}

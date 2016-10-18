@@ -39,7 +39,6 @@ _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
 _DB_ENGINE=InnoDB #------------- Allows to specify default engine for Drupal 6
 _DB_SERIES=10.1 #--------------- Allows to install old MariaDB version when 5.5
 _DB_SERVER=MariaDB #------------ Allows to install only MariaDB DB server
-_INNODB_LOG_FILE_SIZE=AUTO #---- Allows to change InnoDB log file size: 10-500
 ###
 _DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO
 _EXTRA_PACKAGES="" #------------ Installs listed extra packages with apt-get

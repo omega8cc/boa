@@ -50,8 +50,7 @@ update_sql_conf() {
       cp -af ${locCnf}/my.cnf.txt /etc/mysql/my.cnf
       _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
       if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "10" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "501" ]; then
+        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
           _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
             ${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW} 2>&1)
@@ -110,8 +109,7 @@ update_sql_conf() {
       wait
     fi
     if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "10" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "501" ]; then
+      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
         _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
         _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
           /etc/mysql/my.cnf 2>&1)
@@ -227,11 +225,19 @@ tune_sql_memory_limits() {
       if [ "${_USE_INNODB_MEM}" -lt "256" ] || [ -z "${_USE_INNODB_MEM}" ]; then
         _USE_INNODB_MEM="${_USE_SQL}"
       fi
+      _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_INNODB_MEM}/4" | bc 2>&1)
+      if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
+        _INNODB_LOG_FILE_SIZE=64
+      fi
       _USE_INNODB_MEM="${_USE_INNODB_MEM}M"
       sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
       wait
     else
       _USE_INNODB_MEM="${_USE_SQL}M"
+      _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4" | bc 2>&1)
+      if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
+        _INNODB_LOG_FILE_SIZE=64
+      fi
       msg "ALRT! _USE_INNODB_MEM is ${_USE_INNODB_MEM} because _REC_INNODB_MEM was empty!"
       sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
       wait
@@ -243,6 +249,10 @@ tune_sql_memory_limits() {
       && [ -z "$_GALERA_COMP" ]; then
       msg "ALRT! _USE_MYISAM_MEM is $_THIS_USE_MEM because _REC_MYISAM_MEM was empty!"
       msg "ALRT! _USE_INNODB_MEM is $_THIS_USE_MEM because _REC_INNODB_MEM was empty!"
+    fi
+    _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4" | bc 2>&1)
+    if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
+      _INNODB_LOG_FILE_SIZE=64
     fi
     sed -i "s/= 181/= ${_USE_SQL}/g"  /etc/mysql/my.cnf
     wait

@@ -673,8 +673,7 @@ restore_default_sql() {
       cp -af ${locCnf}/my.cnf.txt /etc/mysql/my.cnf
       _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
       if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "10" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "501" ]; then
+        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
           _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
             /var/backups/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW} 2>&1)
@@ -735,8 +734,7 @@ restore_default_sql() {
       wait
     fi
     if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "10" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "501" ]; then
+      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
         _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
         _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" /etc/mysql/my.cnf 2>&1)
         if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
