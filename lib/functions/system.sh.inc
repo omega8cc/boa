@@ -228,7 +228,6 @@ fix_on_upgrade() {
   enable_weekly_usage_monitor
   update_php_conf
   update_ini_tpl
-  update_sql_conf
   update_nginx_conf
   update_global_inc_conf
   update_redis_password
@@ -320,7 +319,7 @@ tune_memory_limits() {
   if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "1024" ]; then
     _USE_PHP=512
     _USE_OPC=512
-    _QCE_SQL=128M
+    _QCE_SQL=64M
     _RND_SQL=8M
     _JBF_SQL=4M
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
@@ -341,7 +340,7 @@ tune_memory_limits() {
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
       _USE_PHP=1024
       _USE_OPC=1024
-      _QCE_SQL=128M
+      _QCE_SQL=64M
       _RND_SQL=8M
       _JBF_SQL=4M
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
@@ -364,7 +363,7 @@ tune_memory_limits() {
         || [ -e "/root/.tg.cnf" ]; then
         _USE_PHP=2048
         _USE_OPC=4096
-        _QCE_SQL=256M
+        _QCE_SQL=64M
         _RND_SQL=8M
         _JBF_SQL=4M
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
@@ -503,6 +502,7 @@ tune_memory_limits() {
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits
+    update_sql_conf
     if [[ "${PrTest}" =~ "POWER" ]]; then
       _UXC_SQL="${_MXC_SQL}"
     else
@@ -4660,6 +4660,7 @@ update_initd() {
       fi
     fi
     mrun "service ssh reload" &> /dev/null
+    tune_memory_limits
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       msg "INFO: Restarting Jetty 9"
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null

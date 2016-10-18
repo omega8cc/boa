@@ -571,6 +571,7 @@ install_mariadb_server() {
         mrun "mysql_upgrade --force" &> /dev/null
       fi
       msg "INFO: Restarting ${_DB_SERVER} server..."
+      tune_memory_limits
       mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
       mrun "service mysql restart" &> /dev/null
       mrun "service nginx start" &> /dev/null
@@ -633,21 +634,9 @@ check_update_sql_credentials() {
       wait
     done
     if [ "${_STATUS}" = "INIT" ]; then
-      msg "INFO: Updating ${_DB_SERVER} and PHP configuration"
-      update_sql_conf
-      update_php_conf
-      update_ini_tpl
-      tune_memory_limits
+      msg "INFO: Updating ${_DB_SERVER} configuration"
       msg "INFO: Restarting ${_DB_SERVER} server..."
       mrun "service mysql restart" &> /dev/null
-      msg "INFO: OS and services installed"
-    else
-      msg "INFO: Updating ${_DB_SERVER} and PHP configuration"
-      update_sql_conf
-      update_php_conf
-      update_ini_tpl
-      tune_memory_limits
-      msg "INFO: OS and services upgrade completed"
     fi
   else
     msg "EXIT on error due to not found file with your ${_DB_SERVER} root password"

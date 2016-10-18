@@ -139,6 +139,7 @@ _TUNE_PHP_CLI_TIMEOUT=7200
 _AEGIR_VERSION="BOA-3.1.3"
 _BRANCH_BOA="3.x.x-dev"
 _X_VERSION="BOA-3.1.3"
+_MYSQLTUNER_VRN=1.7.0
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
@@ -1087,7 +1088,7 @@ tune_memory_limits() {
   if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "1024" ]; then
     _USE_PHP=512
     _USE_OPC=512
-    _QCE_SQL=128M
+    _QCE_SQL=64M
     _RND_SQL=8M
     _JBF_SQL=4M
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
@@ -1108,7 +1109,7 @@ tune_memory_limits() {
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
       _USE_PHP=1024
       _USE_OPC=1024
-      _QCE_SQL=128M
+      _QCE_SQL=64M
       _RND_SQL=8M
       _JBF_SQL=4M
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
@@ -1131,7 +1132,7 @@ tune_memory_limits() {
         || [ -e "/root/.tg.cnf" ]; then
         _USE_PHP=2048
         _USE_OPC=4096
-        _QCE_SQL=256M
+        _QCE_SQL=64M
         _RND_SQL=8M
         _JBF_SQL=4M
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
