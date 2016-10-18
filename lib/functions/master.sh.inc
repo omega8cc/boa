@@ -783,7 +783,6 @@ EOFMYSQL
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
         touch /data/conf/clstr.cnf &> /dev/null
       fi
-      echo " "
       update_php_cli_cron
       upgrade_aegir_master
       update_php_cli_cron
@@ -795,7 +794,6 @@ if_upgrade_only_aegir_master() {
   if [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_AEGIR_UPGRADE_ONLY}" = "YES" ] \
       && [ "${_SYSTEM_UPGRADE_ONLY}" = "NO" ]; then
-      echo " "
       update_php_cli_cron
       upgrade_aegir_master
       update_php_cli_cron
