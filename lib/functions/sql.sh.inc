@@ -37,8 +37,6 @@ update_innodb_log_file_size() {
 #
 # Update SQL Config.
 update_sql_conf() {
-  sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
-  wait
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
@@ -46,8 +44,6 @@ update_sql_conf() {
     if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
       _DO_NOTHING=YES
     else
-      cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}
-      cp -af ${locCnf}/my.cnf.txt /etc/mysql/my.cnf
       _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
       if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
@@ -131,6 +127,14 @@ update_sql_conf() {
 #
 # Tune memory limits for SQL server.
 tune_sql_memory_limits() {
+  sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
+  wait
+  if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
+    _DO_NOTHING=YES
+  else
+    cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}
+    cp -af ${locCnf}/my.cnf.txt /etc/mysql/my.cnf
+  fi
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
   pthTun="/var/opt/mysqltuner.pl"
   outTun="/var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt"
