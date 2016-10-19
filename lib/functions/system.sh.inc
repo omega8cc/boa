@@ -770,7 +770,6 @@ barracuda_cnf() {
 
     echo "###"                                                >> ${barCnf}
     echo "_DB_BINARY_LOG=${_DB_BINARY_LOG}"                   >> ${barCnf}
-    echo "_DB_ENGINE=${_DB_ENGINE}"                           >> ${barCnf}
     echo "_DB_SERIES=${_DB_SERIES}"                           >> ${barCnf}
     echo "_DB_SERVER=${_DB_SERVER}"                           >> ${barCnf}
     echo "_USE_MYSQLTUNER=${_USE_MYSQLTUNER}"                 >> ${barCnf}
@@ -849,8 +848,6 @@ barracuda_cnf() {
       else
         debM="httpredir.debian.org"
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
-        wait
-        sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                              ${barCnf}
         wait
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                             ${barCnf}
         wait
@@ -1180,11 +1177,6 @@ barracuda_cnf() {
       echo "_DB_BINARY_LOG=${_DB_BINARY_LOG}" >> ${barCnf}
     fi
 
-    _DB_ENGINE_TEST=$(grep _DB_ENGINE ${barCnf} 2>&1)
-    if [[ ! "${_DB_ENGINE_TEST}" =~ "_DB_ENGINE" ]]; then
-      echo "_DB_ENGINE=${_DB_ENGINE}" >> ${barCnf}
-    fi
-
     _USE_MYSQLTUNER_TEST=$(grep _USE_MYSQLTUNER ${barCnf} 2>&1)
     if [[ ! "${_USE_MYSQLTUNER_TEST}" =~ "_USE_MYSQLTUNER" ]]; then
       echo "_USE_MYSQLTUNER=${_USE_MYSQLTUNER}" >> ${barCnf}
@@ -1282,6 +1274,11 @@ barracuda_cnf() {
     ###
     ### config cleanup start
     ###
+    _DB_ENGINE_TEST=$(grep _DB_ENGINE ${barCnf} 2>&1)
+    if [[ "${_DB_ENGINE_TEST}" =~ "_DB_ENGINE" ]]; then
+      sed -i "s/^_DB_ENGINE.*//g" ${barCnf}
+      wait
+    fi
     _INNODB_LOG_FILE_SIZE_TEST=$(grep _INNODB_LOG_FILE_SIZE ${barCnf} 2>&1)
     if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "_INNODB_LOG_FILE_SIZE" ]]; then
       sed -i "s/^_INNODB_LOG_FILE_SIZE.*//g" ${barCnf}
@@ -1373,8 +1370,6 @@ barracuda_cnf() {
       else
         debM="httpredir.debian.org"
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
-        wait
-        sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                              ${barCnf}
         wait
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                             ${barCnf}
         wait

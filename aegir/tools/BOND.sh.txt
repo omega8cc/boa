@@ -728,11 +728,6 @@ restore_default_sql() {
       sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
       wait
     fi
-    if [ "${_DB_ENGINE}" = "MyISAM" ] || [ "${_DB_ENGINE}" = "InnoDB" ]; then
-      sed -i "s/^default_storage_engine.*/default_storage_engine  = ${_DB_ENGINE}/g" \
-        /etc/mysql/my.cnf &> /dev/null
-      wait
-    fi
     if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
       if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
         _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"

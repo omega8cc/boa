@@ -848,39 +848,12 @@ _RESERVED_RAM=0
 ###
 _DB_BINARY_LOG=NO
 
-
 ###
 ### Use MySQLTuner to configure SQL limits.
 ### Can be disabled when set to NO, if causes
 ### too high load spikes on too weak systems.
 ###
 _USE_MYSQLTUNER=YES
-
-
-###
-### BOA already outsources most of cache*
-### tables to Redis, disables accesslog and
-### dblog by default, so for many typical
-### Drupal sites MyISAM will provide better
-### speed and much lower memory usage -
-### typically only 1/3 of memory and binary
-### space used by InnoDB.
-###
-### However, MyISAM can't recover itself
-### on the fly like InnoDB, and if it will
-### crash, it will have to wait for the
-### self-healing monitor to detect the crash
-### and run auto-repair.
-###
-### Note that Drupal 7 forces InnoDB.
-###
-### You can easily convert any site to-MyISAM
-### or to-InnoDB with `sqlmagic` tool.
-###
-### Note: this option is ignored if the option
-### _CUSTOM_CONFIG_SQL is set to YES.
-###
-_DB_ENGINE=InnoDB
 
 ###
 ### Set max 1 min load per CPU core before blocking
