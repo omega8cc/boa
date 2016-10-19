@@ -848,6 +848,15 @@ _RESERVED_RAM=0
 ###
 _DB_BINARY_LOG=NO
 
+
+###
+### Use MySQLTuner to configure SQL limits.
+### Can be disabled when set to NO, if causes
+### too high load spikes on too weak systems.
+###
+_USE_MYSQLTUNER=YES
+
+
 ###
 ### BOA already outsources most of cache*
 ### tables to Redis, disables accesslog and

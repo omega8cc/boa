@@ -773,6 +773,7 @@ barracuda_cnf() {
     echo "_DB_ENGINE=${_DB_ENGINE}"                           >> ${barCnf}
     echo "_DB_SERIES=${_DB_SERIES}"                           >> ${barCnf}
     echo "_DB_SERVER=${_DB_SERVER}"                           >> ${barCnf}
+    echo "_USE_MYSQLTUNER=${_USE_MYSQLTUNER}"                 >> ${barCnf}
 
     echo "###"                                                >> ${barCnf}
     echo "_DNS_SETUP_TEST=${_DNS_SETUP_TEST}"                 >> ${barCnf}
@@ -1182,6 +1183,11 @@ barracuda_cnf() {
     _DB_ENGINE_TEST=$(grep _DB_ENGINE ${barCnf} 2>&1)
     if [[ ! "${_DB_ENGINE_TEST}" =~ "_DB_ENGINE" ]]; then
       echo "_DB_ENGINE=${_DB_ENGINE}" >> ${barCnf}
+    fi
+
+    _USE_MYSQLTUNER_TEST=$(grep _USE_MYSQLTUNER ${barCnf} 2>&1)
+    if [[ ! "${_USE_MYSQLTUNER_TEST}" =~ "_USE_MYSQLTUNER" ]]; then
+      echo "_USE_MYSQLTUNER=${_USE_MYSQLTUNER}" >> ${barCnf}
     fi
 
     _REDIS_LISTEN_MODE_TEST=$(grep _REDIS_LISTEN_MODE ${barCnf} 2>&1)
