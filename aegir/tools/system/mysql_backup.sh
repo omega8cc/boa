@@ -32,6 +32,8 @@ check_root
 _BACKUPDIR=/data/disk/arch/sql
 _CHECK_HOST=$(uname -n 2>&1)
 _DATE=$(date +%y%m%d-%H%M 2>&1)
+_DOW=$(date +%u 2>&1)
+_DOW=${_DOW//[^1-7]/}
 _SAVELOCATION=${_BACKUPDIR}/${_CHECK_HOST}-$_DATE
 if [ -e "/root/.my.optimize.cnf" ]; then
   _OPTIM=YES
@@ -95,6 +97,15 @@ EOFMYSQL
   done
 }
 
+convert_to_innodb() {
+  _TABLES=$(mysql ${_DB} -e "show tables" -s | uniq | sort 2>&1)
+  for T in ${_TABLES}; do
+mysql ${_DB}<<EOFMYSQL
+ALTER TABLE ${T} ENGINE=INNODB;
+EOFMYSQL
+  done
+}
+
 backup_this_database() {
   n=$((RANDOM%15+5))
   echo waiting ${n} sec
@@ -127,9 +138,13 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         echo "Truncated not used accesslog for ${_DB}"
         truncate_queue_tables &> /dev/null
         echo "Truncated queue for ${_DB}"
+        if [ "${_DOW}" = "7" ] || [ -e "/root/.batch_innodb.cnf" ]; then
+          convert_to_innodb &> /dev/null
+          echo "InnoDB conversion for ${_DB} completed"
+        fi
       fi
       echo "All cache tables truncated in ${_DB}"
-      if [ "${_OPTIM}" = "YES" ]; then
+      if [ "${_OPTIM}" = "YES" ] && [ "${_DOW}" = "7" ]; then
         optimize_this_database &> /dev/null
         echo "Optimize completed for ${_DB}"
       fi
@@ -140,7 +155,9 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
   fi
 done
 
-if [ "${_OPTIM}" = "YES" ] && [ ! -e "/var/run/boa_run.pid" ]; then
+if [ "${_OPTIM}" = "YES" ] \
+  && [ "${_DOW}" = "7" ] \
+  && [ ! -e "/var/run/boa_run.pid" ]; then
   ionice -c2 -n2 -p $$
   touch /var/run/boa_wait.pid
   touch /var/xdrago/log/mysql_restart_running.pid

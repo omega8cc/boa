@@ -2037,7 +2037,7 @@ if_site_db_conversion() {
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
-    _DENY_SQL_CONVERT=
+    _DENY_SQL_CONVERT=YES
     _SQL_CONVERT=
   fi
   if [ -z "${_DENY_SQL_CONVERT}" ] \
