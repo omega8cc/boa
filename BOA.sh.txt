@@ -879,6 +879,8 @@ update_wrappers() {
   if [[ ! "${_GH_TEST}" =~ "github.com" ]]; then
     echo "192.30.253.113 github.com" >> /etc/hosts
     wait
+    echo "151.101.32.133 raw.githubusercontent.com" >> /etc/hosts
+    wait
     echo >>/etc/hosts
     wait
     service pdnsd restart &> /dev/null
@@ -987,6 +989,8 @@ setup() {
   _GH_TEST=$(cat /etc/hosts | grep github 2>&1)
   if [[ ! "${_GH_TEST}" =~ "github.com" ]]; then
     echo "192.30.253.113 github.com" >> /etc/hosts
+    wait
+    echo "151.101.32.133 raw.githubusercontent.com" >> /etc/hosts
     wait
     echo >>/etc/hosts
     wait
