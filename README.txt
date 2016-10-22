@@ -110,7 +110,7 @@ production settings.
 === Included/enabled by default - see docs/NOTES.txt for details
 
 * All libraries & tools required to install and run Nginx based Aegir system.
-* Latest release of MariaDB 5.5 or 10.0 database server with Adminer manager.
+* Latest release of MariaDB 5.5 or 10.1 database server with Adminer manager.
 * Latest version of Nginx web server.
 * Letsencrypt.org SSL support - see docs/SSL.txt for details.
 * HTTPS access with self-signed certificate for all hosted sites.
