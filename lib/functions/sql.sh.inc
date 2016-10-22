@@ -577,6 +577,7 @@ install_mariadb_server() {
         wait
       fi
       _PHP_FORCE_REINSTALL=YES
+      _CUSTOM_CONFIG_SQL=NO
       mrun "sleep 8"
       msg "INFO: Running ${_DB_SERVER} system tables upgrade, please wait..."
       if [ -x "/usr/bin/mariadb_upgrade" ]; then
