@@ -57,6 +57,7 @@ open_files_limit        = 196608
 #long_query_time         = 10
 #slow_query_log_file     = /var/log/mysql/sql-slow-query.log
 #log_queries_not_using_indexes
+#innodb-defragment       = 1
 
 
 # * InnoDB

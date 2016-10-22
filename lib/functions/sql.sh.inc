@@ -37,6 +37,10 @@ update_innodb_log_file_size() {
 #
 # Update SQL Config.
 update_sql_conf() {
+  if [ "${_DB_SERIES}" = "10.1" ]; then
+    sed -i "s/.*innodb-defragment/innodb-defragment/g" /etc/mysql/my.cnf
+    wait
+  fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
