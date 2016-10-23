@@ -254,12 +254,15 @@ update_agents() {
     rm -f /root/.default.cnf
     rm -f /root/.debug.cnf
     rm -f /root/.my.optimize.cnf
-    if [ ! -e "/data/conf/override.global.inc" ]; then
-      echo "<?php" > /data/conf/override.global.inc.tmp
-      echo "" >> /data/conf/override.global.inc.tmp
-      echo "\$use_redis = TRUE;" >> /data/conf/override.global.inc.tmp
-      chmod 644 /data/conf/override.global.inc.tmp
-      mv -f /data/conf/override.global.inc.tmp /data/conf/override.global.inc
+    # if [ ! -e "/data/conf/override.global.inc" ]; then
+    #   echo "<?php" > /data/conf/override.global.inc.tmp
+    #   echo "" >> /data/conf/override.global.inc.tmp
+    #   echo "\$use_redis = TRUE;" >> /data/conf/override.global.inc.tmp
+    #   chmod 644 /data/conf/override.global.inc.tmp
+    #   mv -f /data/conf/override.global.inc.tmp /data/conf/override.global.inc
+    # fi
+    if [ -e "/data/conf/override.global.inc" ]; then
+      mv -f /data/conf/override.global.inc /data/conf/override.global.inc.off
     fi
   fi
 
