@@ -229,7 +229,7 @@ tune_sql_memory_limits() {
       if [ "${_USE_INNODB_MEM}" -lt "256" ] || [ -z "${_USE_INNODB_MEM}" ]; then
         _USE_INNODB_MEM="${_USE_SQL}"
       fi
-      _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_INNODB_MEM}/4" | bc 2>&1)
+      _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_INNODB_MEM}/4/40*40" | bc 2>&1)
       if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         _INNODB_LOG_FILE_SIZE=64
       fi
@@ -238,7 +238,7 @@ tune_sql_memory_limits() {
       wait
     else
       _USE_INNODB_MEM="${_USE_SQL}M"
-      _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4" | bc 2>&1)
+      _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
       if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         _INNODB_LOG_FILE_SIZE=64
       fi
@@ -254,7 +254,7 @@ tune_sql_memory_limits() {
       msg "ALRT! _USE_MYISAM_MEM is $_THIS_USE_MEM because _REC_MYISAM_MEM was empty!"
       msg "ALRT! _USE_INNODB_MEM is $_THIS_USE_MEM because _REC_INNODB_MEM was empty!"
     fi
-    _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4" | bc 2>&1)
+    _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
     if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
       _INNODB_LOG_FILE_SIZE=64
     fi
