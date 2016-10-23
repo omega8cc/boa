@@ -138,7 +138,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         echo "Truncated not used accesslog for ${_DB}"
         truncate_queue_tables &> /dev/null
         echo "Truncated queue for ${_DB}"
-        if [ "${_DOW}" = "7" ] || [ -e "/root/.batch_innodb.cnf" ]; then
+        if [ "${_DOW}" = "6" ] && [ -e "/root/.batch_innodb.cnf" ]; then
           convert_to_innodb &> /dev/null
           echo "InnoDB conversion for ${_DB} completed"
         fi
