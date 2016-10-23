@@ -193,7 +193,8 @@ tune_sql_memory_limits() {
       else
         _USE_MYISAM_MEM="$_RAW_MYISAM_MEM"
       fi
-      if [ "${_USE_MYISAM_MEM}" -lt "256" ] || [ -z "${_USE_MYISAM_MEM}" ]; then
+      if [ "${_USE_MYISAM_MEM}" -lt "256" ] \
+        || [ -z "${_USE_MYISAM_MEM}" ]; then
         _USE_MYISAM_MEM="${_USE_SQL}"
       fi
       _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
@@ -208,7 +209,8 @@ tune_sql_memory_limits() {
       wait
     fi
     ###--------------------###
-    if [ ! -z "$_REC_INNODB_MEM" ] && [ "$_MYSQLTUNER_TEST_RESULT" = "OK" ]; then
+    if [ ! -z "$_REC_INNODB_MEM" ] \
+      && [ "$_MYSQLTUNER_TEST_RESULT" = "OK" ]; then
       _RAW_INNODB_MEM=$(echo $_REC_INNODB_MEM | sed "s/[A-Z]//g" 2>&1)
       if [[ "$_REC_INNODB_MEM" =~ "G" ]]; then
         _RAW_INNODB_MEM=$(echo "$_RAW_INNODB_MEM * 1024" | bc -l 2>&1)
@@ -226,11 +228,13 @@ tune_sql_memory_limits() {
       fi
       sed -i "s/innodb_file_per_table   = 1/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = $_INNODB_BPI/g" /etc/mysql/my.cnf
       wait
-      if [ "${_USE_INNODB_MEM}" -lt "256" ] || [ -z "${_USE_INNODB_MEM}" ]; then
+      if [ "${_USE_INNODB_MEM}" -lt "256" ] \
+        || [ -z "${_USE_INNODB_MEM}" ]; then
         _USE_INNODB_MEM="${_USE_SQL}"
       fi
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_INNODB_MEM}/4/40*40" | bc 2>&1)
-      if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
+      if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] \
+        || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         _INNODB_LOG_FILE_SIZE=64
       fi
       _USE_INNODB_MEM="${_USE_INNODB_MEM}M"
@@ -239,7 +243,8 @@ tune_sql_memory_limits() {
     else
       _USE_INNODB_MEM="${_USE_SQL}M"
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
-      if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
+      if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] \
+        || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         _INNODB_LOG_FILE_SIZE=64
       fi
       msg "ALRT! _USE_INNODB_MEM is ${_USE_INNODB_MEM} because _REC_INNODB_MEM was empty!"
@@ -255,7 +260,8 @@ tune_sql_memory_limits() {
       msg "ALRT! _USE_INNODB_MEM is $_THIS_USE_MEM because _REC_INNODB_MEM was empty!"
     fi
     _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
-    if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
+    if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] \
+      || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
       _INNODB_LOG_FILE_SIZE=64
     fi
     sed -i "s/= 181/= ${_USE_SQL}/g"  /etc/mysql/my.cnf
@@ -324,12 +330,12 @@ install_mariadb_sql() {
       st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
     fi
   fi
-  st_runner "aptitude remove mytop -y"                     &> /dev/null
-  st_runner "apt-get purge mytop -y"                       &> /dev/null
+  st_runner "aptitude remove mytop -y" &> /dev/null
+  st_runner "apt-get purge mytop -y" &> /dev/null
   rm -f /usr/bin/mytop
-  st_runner "aptitude remove mysql-common -y"              &> /dev/null
-  st_runner "apt-get purge mysql-common -y"                &> /dev/null
-  st_runner "apt-get update -qq"                           &> /dev/null
+  st_runner "aptitude remove mysql-common -y" &> /dev/null
+  st_runner "apt-get purge mysql-common -y" &> /dev/null
+  st_runner "apt-get update -qq" &> /dev/null
   if [ "${_EASY_SETUP}" = "MSTR" ] \
     || [ "${_EASY_SETUP}" = "DBHD" ] \
     || [ "${_EASY_SETUP}" = "WBHD" ] \
@@ -421,11 +427,13 @@ forced_mysql_root_password_update() {
     else
       _PWD_CHARS=8
     fi
-    if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
+    if [ ! -z "${_PWD_CHARS}" ] \
+      && [ "${_PWD_CHARS}" -gt "128" ]; then
       _PWD_CHARS=128
     fi
   fi
-  if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ]; then
+  if [ "${_STRONG_PASSWORDS}" = "YES" ] \
+    || [ "${_PWD_CHARS}" -gt "8" ]; then
     _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
@@ -469,7 +477,8 @@ forced_mysql_root_password_update() {
 install_mariadb_server() {
   if [ "${_STATUS}" = "INIT" ]; then
     service cron stop &> /dev/null
-    if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+    if [ -e "/usr/sbin/csf" ] \
+      && [ -e "/etc/csf/csf.deny" ]; then
       csf -x &> /dev/null
     fi
     install_with_aptitude_sql
@@ -483,7 +492,8 @@ install_mariadb_server() {
     else
       _SQL_TEST_UPGRADE=YES
     fi
-    if [ "$_SQL_TEST_UPGRADE" = "YES" ] && [ "${_DB_SERVER}" = "MariaDB" ]; then
+    if [ "$_SQL_TEST_UPGRADE" = "YES" ] \
+      && [ "${_DB_SERVER}" = "MariaDB" ]; then
       _SQL_UPGRADE=YES
     fi
     if [ "${_OSV}" = "squeeze" ] \
@@ -544,7 +554,8 @@ install_mariadb_server() {
     fi
     if [ "$_SQL_UPGRADE" = "YES" ]; then
       service cron stop &> /dev/null
-      if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+      if [ -e "/usr/sbin/csf" ] \
+        && [ -e "/etc/csf/csf.deny" ]; then
         csf -x &> /dev/null
       fi
       msg "INFO: Running ${_DB_SERVER} upgrade and then PHP forced rebuild..."
@@ -624,11 +635,13 @@ check_update_sql_credentials() {
         else
           _PWD_CHARS=8
         fi
-        if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
+        if [ ! -z "${_PWD_CHARS}" ] \
+          && [ "${_PWD_CHARS}" -gt "128" ]; then
           _PWD_CHARS=128
         fi
       fi
-      if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ]; then
+      if [ "${_STRONG_PASSWORDS}" = "YES" ] \
+        || [ "${_PWD_CHARS}" -gt "8" ]; then
         _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
         _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
         _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
