@@ -261,9 +261,9 @@ update_agents() {
     #   chmod 644 /data/conf/override.global.inc.tmp
     #   mv -f /data/conf/override.global.inc.tmp /data/conf/override.global.inc
     # fi
-    if [ -e "/data/conf/override.global.inc" ]; then
-      mv -f /data/conf/override.global.inc /data/conf/override.global.inc.off
-    fi
+    # if [ -e "/data/conf/override.global.inc" ]; then
+    #   mv -f /data/conf/override.global.inc /data/conf/override.global.inc.off
+    # fi
   fi
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
