@@ -233,6 +233,28 @@ tune_sql_memory_limits() {
         _USE_INNODB_MEM="${_USE_SQL}"
       fi
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_INNODB_MEM}/4/40*40" | bc 2>&1)
+      _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
+      if [ "${_DB_COUNT}" -gt "100" ]; then
+        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "2000" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "2500" ]; then
+          _INNODB_LOG_FILE_SIZE=2500
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "2500" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "3000" ]; then
+          _INNODB_LOG_FILE_SIZE=3000
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "3000" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "3500" ]; then
+          _INNODB_LOG_FILE_SIZE=3500
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "3500" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4000" ]; then
+          _INNODB_LOG_FILE_SIZE=4000
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4000" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4500" ]; then
+          _INNODB_LOG_FILE_SIZE=4500
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4500" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "5000" ]; then
+          _INNODB_LOG_FILE_SIZE=5000
+        fi
+      fi
       if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] \
         || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         _INNODB_LOG_FILE_SIZE=64
@@ -243,6 +265,28 @@ tune_sql_memory_limits() {
     else
       _USE_INNODB_MEM="${_USE_SQL}M"
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
+      _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
+      if [ "${_DB_COUNT}" -gt "100" ]; then
+        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "2000" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "2500" ]; then
+          _INNODB_LOG_FILE_SIZE=2500
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "2500" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "3000" ]; then
+          _INNODB_LOG_FILE_SIZE=3000
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "3000" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "3500" ]; then
+          _INNODB_LOG_FILE_SIZE=3500
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "3500" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4000" ]; then
+          _INNODB_LOG_FILE_SIZE=4000
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4000" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4500" ]; then
+          _INNODB_LOG_FILE_SIZE=4500
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4500" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "5000" ]; then
+          _INNODB_LOG_FILE_SIZE=5000
+        fi
+      fi
       if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] \
         || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         _INNODB_LOG_FILE_SIZE=64
@@ -260,6 +304,28 @@ tune_sql_memory_limits() {
       msg "ALRT! _USE_INNODB_MEM is $_THIS_USE_MEM because _REC_INNODB_MEM was empty!"
     fi
     _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
+    _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
+    if [ "${_DB_COUNT}" -gt "100" ]; then
+      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "2000" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "2500" ]; then
+        _INNODB_LOG_FILE_SIZE=2500
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "2500" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "3000" ]; then
+        _INNODB_LOG_FILE_SIZE=3000
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "3000" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "3500" ]; then
+        _INNODB_LOG_FILE_SIZE=3500
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "3500" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4000" ]; then
+        _INNODB_LOG_FILE_SIZE=4000
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4000" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4500" ]; then
+        _INNODB_LOG_FILE_SIZE=4500
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4500" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "5000" ]; then
+        _INNODB_LOG_FILE_SIZE=5000
+      fi
+    fi
     if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] \
       || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
       _INNODB_LOG_FILE_SIZE=64
