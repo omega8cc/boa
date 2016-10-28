@@ -28,6 +28,7 @@ if_running_as_root_barracuda() {
     _VM_TEST=$(uname -a 2>&1)
     if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
@@ -83,6 +84,7 @@ kill_nash() {
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
@@ -247,6 +249,7 @@ tune_memory_limits() {
   fi
   if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
@@ -984,6 +987,7 @@ barracuda_cnf() {
     _VM_TEST=$(uname -a 2>&1)
     if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
@@ -3102,6 +3106,7 @@ if_wheezy_to_jessie() {
     _VM_TEST=$(uname -a 2>&1)
     if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
@@ -3359,6 +3364,7 @@ if_squeeze_to_wheezy() {
     _VM_TEST=$(uname -a 2>&1)
     if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
