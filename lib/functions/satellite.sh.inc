@@ -1311,7 +1311,7 @@ satellite_o_contrib_update_global() {
         get_dev_contrib "js-6.x-1.3.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib/mydropwizard" ]; then
-        get_dev_contrib "mydropwizard-6.x-1.5.tar.gz"
+        get_dev_contrib "mydropwizard-6.x-1.6.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib/panels_content_cache" ]; then
         get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
@@ -1701,7 +1701,7 @@ satellite_download_o_contrib_six() {
   get_dev_contrib "image-6.x-1.2.tar.gz"
   get_dev_contrib "js-6.x-1.3.tar.gz"
   get_dev_contrib "login_security-6.x-1.4.tar.gz"
-  get_dev_contrib "mydropwizard-6.x-1.5.tar.gz"
+  get_dev_contrib "mydropwizard-6.x-1.6.tar.gz"
   get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
   get_dev_contrib "phpass-6.x-2.1.tar.gz"
   get_dev_contrib "print-6.x-1.19.tar.gz"
@@ -4486,7 +4486,7 @@ satellite_child_b_drush_xts_install() {
     rm -rf ${rD}/*/*/.git
     cd ${rD}/usr
     get_dev_ext "clean_missing_modules.tar.gz"
-    get_dev_contrib "mydropwizard-6.x-1.5.tar.gz"
+    get_dev_contrib "mydropwizard-6.x-1.6.tar.gz"
   else
     msg "${_STATUS} B: Downloading Drush and Provision extensions..."
     cd ${_ROOT}/.drush/sys
@@ -4497,7 +4497,7 @@ satellite_child_b_drush_xts_install() {
     get_dev_ext "drush_ecl.tar.gz"
     get_dev_ext "registry_rebuild.tar.gz"
     get_dev_ext "safe_cache_form_clear.tar.gz"
-    get_dev_contrib "mydropwizard-6.x-1.5.tar.gz"
+    get_dev_contrib "mydropwizard-6.x-1.6.tar.gz"
     cd ${_ROOT}/.drush/xts
     get_dev_ext "provision_boost.tar.gz"
     get_dev_ext "security_review.tar.gz"
