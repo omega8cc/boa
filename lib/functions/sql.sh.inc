@@ -576,10 +576,6 @@ install_mariadb_server() {
         if [[ ! "${_DB_SERVER_TEST}" =~ "5.5." ]]; then
           _SQL_UPGRADE=YES
         fi
-        if [[ "${_DB_SERVER_TEST}" =~ "10.1." ]] \
-          || [[ "${_DB_SERVER_TEST}" =~ "10.0." ]]; then
-          _SQL_UPGRADE=NO
-        fi
       elif [ "${_DB_SERIES}" = "10.1" ] \
         || [ "${_DB_SERIES}" = "10.0" ]; then
         if [[ ! "${_DB_SERVER_TEST}" =~ "10.1." ]]; then
