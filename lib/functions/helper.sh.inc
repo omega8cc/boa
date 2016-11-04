@@ -304,7 +304,7 @@ mode_detection() {
       _AUTOPILOT=YES
       _DEBUG_MODE=NO
       _DB_SERVER=MariaDB
-      _DB_SERIES=10.1
+      _DB_SERIES=10.0
       _SSH_PORT=22
       _DNS_SETUP_TEST=NO
       _SMTP_RELAY_TEST=NO
@@ -321,7 +321,7 @@ mode_detection() {
       _AUTOPILOT=YES
       _DEBUG_MODE=NO
       _DB_SERVER=MariaDB
-      _DB_SERIES=10.1
+      _DB_SERIES=10.0
       _SSH_PORT=22
       _DNS_SETUP_TEST=NO
       _SMTP_RELAY_TEST=NO
@@ -338,7 +338,7 @@ mode_detection() {
       _AUTOPILOT=YES
       _DEBUG_MODE=NO
       _DB_SERVER=MariaDB
-      _DB_SERIES=10.1
+      _DB_SERIES=10.0
       _SSH_PORT=22
       _DNS_SETUP_TEST=NO
       _SMTP_RELAY_TEST=NO
