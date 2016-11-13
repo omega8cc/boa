@@ -989,6 +989,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
           if (is_readable('modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml')) {
             $cache_redis = TRUE;
             $cache_services_path = 'modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml';
+            $cache_gzip_path = 'modules/o_contrib_eight/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
             if ($is_dev && !$is_backend) {
               header("X-Redis-Services-Is-Readable: " . $cache_services_path);
             }
@@ -1004,6 +1005,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $cache_redis_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.autoload.inc';
       $cache_lock_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.lock.inc';
       $cache_path_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.path.inc';
+      $cache_gzip_path = 'modules/o_contrib_seven/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
       if ($is_dev && !$is_backend) {
         header("X-Redis-Autoload-Is-Readable: " . $cache_redis_path);
       }
@@ -1022,6 +1024,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $cache_redis_path = 'modules/o_contrib/' . $redis_dirname . '/redis.autoload.inc';
       $cache_lock_path = 'modules/o_contrib/' . $redis_dirname . '/redis.lock.inc';
       $cache_path_path = 'modules/o_contrib/' . $redis_dirname . '/redis.path.inc';
+      $cache_gzip_path = 'modules/o_contrib/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
       if ($is_dev && !$is_backend) {
         header("X-Redis-Autoload-Is-Readable: " . $cache_redis_path);
       }
@@ -1080,7 +1083,12 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $conf['page_cache_max_age']               = 0;     // D6 == max-age in the Cache-Control header (ignored by Speed Booster)
       $conf['cache_lifetime']                   = 0;     // D7 == BOA uses Speed Booster / Nginx micro-caching instead
       $conf['page_cache_lifetime']              = 0;     // D6 == BOA uses Speed Booster / Nginx micro-caching instead
-      $conf['cache_default_class']              = 'Redis_Cache';
+      if (is_readable($cache_gzip_path)) {
+        $conf['cache_default_class']            = 'Redis_CacheCompressed';
+      }
+      else {
+        $conf['cache_default_class']            = 'Redis_Cache';
+      }
       $conf['cache_class_cache_form']           = 'DrupalDatabaseCache';
     }
     if ($all_ini['redis_exclude_bins']) {
