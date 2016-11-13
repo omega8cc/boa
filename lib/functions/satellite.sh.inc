@@ -4412,7 +4412,6 @@ satellite_child_b_install_drush() {
   find ${_ROOT}/tools/drush -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_ROOT}/tools/drush -type f -exec chmod 0644 {} \; &> /dev/null
   chmod 755 ${_ROOT}/tools/drush/drush
-  chmod 755 ${_ROOT}/tools/drush/drush.bat
   chmod 755 ${_ROOT}/tools/drush/drush.complete.sh
   chmod 755 ${_ROOT}/tools/drush/drush.launcher
   chmod 755 ${_ROOT}/tools/drush/drush.php

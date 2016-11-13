@@ -1770,7 +1770,6 @@ get_drush_versions() {
   find /opt/tools -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tools -type f -exec chmod 0644 {} \; &> /dev/null
   chmod 755 /opt/tools/drush/*/drush/drush
-  chmod 755 /opt/tools/drush/*/drush/drush.bat
   chmod 755 /opt/tools/drush/*/drush/drush.complete.sh
   chmod 755 /opt/tools/drush/*/drush/drush.launcher
   chmod 755 /opt/tools/drush/*/drush/drush.php

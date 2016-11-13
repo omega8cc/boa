@@ -207,7 +207,6 @@ hostmaster_dr_up() {
   find ${_ROOT}/drush -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_ROOT}/drush -type f -exec chmod 0644 {} \; &> /dev/null
   chmod 755 ${_ROOT}/drush/drush
-  chmod 755 ${_ROOT}/drush/drush.bat
   chmod 755 ${_ROOT}/drush/drush.complete.sh
   chmod 755 ${_ROOT}/drush/drush.launcher
   chmod 755 ${_ROOT}/drush/drush.php

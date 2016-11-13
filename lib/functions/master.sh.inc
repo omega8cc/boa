@@ -304,7 +304,6 @@ upgrade_aegir_master() {
       find /var/aegir/drush -type d -exec chmod 0755 {} \; &> /dev/null
       find /var/aegir/drush -type f -exec chmod 0644 {} \; &> /dev/null
       chmod 755 /var/aegir/drush/drush
-      chmod 755 /var/aegir/drush/drush.bat
       chmod 755 /var/aegir/drush/drush.complete.sh
       chmod 755 /var/aegir/drush/drush.launcher
       chmod 755 /var/aegir/drush/drush.php
