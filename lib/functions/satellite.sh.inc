@@ -1557,15 +1557,6 @@ satellite_o_contrib_eight_update_global() {
   cd
 }
 
-#
-# Download Textile.
-satellite_download_textile() {
-  cd textile
-  cp -af /opt/tmp/boa/aegir/helpers/classTextile.php ./
-  cp -af classTextile.php include/ &> /dev/null
-  cd ../
-  patch -p1 < /opt/tmp/boa/aegir/patches/textile.patch &> /dev/null
-}
 
 #
 # Download o_contrib_eight.
@@ -1631,9 +1622,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "site_verify-7.x-1.1.tar.gz"
   get_dev_contrib "speedy-7.x-1.26.tar.gz"
   get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
-  get_dev_contrib "textile-7.x-2.0-rc11.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
-  get_dev_contrib "vars-7.x-2.0-alpha10.tar.gz"
   get_dev_contrib "views_accelerator-7.x-1.0-beta1.tar.gz"
   get_dev_contrib "views_cache_bully-7.x-3.1.tar.gz"
   get_dev_contrib "views_content_cache-7.x-3.0-alpha3.tar.gz"
@@ -1657,7 +1646,6 @@ satellite_download_o_contrib_seven() {
   if [ ! -L "./redis_edge" ]; then
     ln -sf ${_D}/000/modules/redis_edge redis_edge
   fi
-  satellite_download_textile
   if [ ! -e "${_D}/000/modules/redis/update-${_X_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -1713,7 +1701,6 @@ satellite_download_o_contrib_six() {
   get_dev_contrib "session_expire-6.x-1.x-dev.tar.gz"
   get_dev_contrib "site_verify-6.x-1.0.tar.gz"
   get_dev_contrib "taxonomy_edge-6.x-1.7.tar.gz"
-  get_dev_contrib "textile-6.x-2.4.tar.gz"
   get_dev_contrib "variable_clean-6.x-1.x-dev.tar.gz"
   get_dev_contrib "views_cache_bully-6.x-3.1.tar.gz"
   get_dev_contrib "views_content_cache-6.x-2.x-dev.tar.gz"
@@ -1740,7 +1727,6 @@ satellite_download_o_contrib_six() {
   if [ ! -L "./cache_backport" ]; then
     ln -sf ${_D}/000/modules/cache_backport cache_backport
   fi
-  satellite_download_textile
   if [ ! -e "${_D}/000/modules/cache_backport/update-${_X_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -1771,16 +1757,6 @@ satellite_download_o_contrib_six() {
 #
 # Upgrade o_contrib.
 satellite_check_fix_o_contrib() {
-  if [ -e "${_CORE}/o_contrib_seven" ]; then
-    if [ ! -e "${_CORE}/o_contrib_seven/textile/include/classTextile.php" ]; then
-      _O_CONTRIB_FORCED_UP=YES
-    fi
-  fi
-  if [ -e "${_CORE}/o_contrib" ]; then
-    if [ ! -e "${_CORE}/o_contrib/textile/include/classTextile.php" ]; then
-      _O_CONTRIB_FORCED_UP=YES
-    fi
-  fi
   if [ -e "${_CORE}/o_contrib_eight" ]; then
     if [ ! -d "${_CORE}/o_contrib_eight/redis_eight" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then

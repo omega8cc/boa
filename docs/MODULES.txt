@@ -88,7 +88,6 @@ Contrib [S]upported and [B]undled:
  site_verify ---------------- [D6,D7] --- [S] [B]
  speedy --------------------- [D7] ------ [S] [B]
  taxonomy_edge -------------- [D6,D7] --- [S] [B]
- textile -------------------- [D6,D7] --- [S] [B]
  variable_clean ------------- [D6,D7] --- [S] [B]
  vars ----------------------- [D7] ------ [S] [B]
  views_accelerator ---------- [D7] ------ [S] [B]
