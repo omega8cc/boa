@@ -2572,6 +2572,7 @@ satellite_if_add_update_user_symlinks() {
   _USERFTP="${_USER}.ftp"
   _USER_HD="/home/${_USERFTP}"
   _USER_DS="${_USER_HD}/.drush"
+  disable_chattr ${_USERFTP}
   if [ ! -L "${_USER_HD}/backups" ]; then
     msg "${_STATUS} A: Adding symlink to the sites backups"
     ln -sf ${_ROOT}/backups ${_USER_HD}/backups
