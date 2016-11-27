@@ -155,7 +155,13 @@ as explained in this document further below.
 
      `[aegir_root]/tools/le/certs/example.com/`
 
-  4. Run Verify task for your site in the Aegir control panel. Done!
+  4. Replace `chain.pem` symlink with single file containing your custom
+     intermediate certificates only -- use `chain.pem` as a filename
+     in the same directory:
+
+     `[aegir_root]/tools/le/certs/example.com/`
+
+  5. Run Verify task for your site in the Aegir control panel. Done!
 
   NOTE: If you are on hosted BOA, you don't have an access to this location
   on your system, so please open a ticket at: https://omega8.cc/support
