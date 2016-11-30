@@ -187,7 +187,8 @@ EOF
 
 detect_deprecated_php() {
   _PHP_FPM_VERSION=
-  if [ -e "${User}/static/control/fpm.info" ]; then
+  if [ -e "${User}/static/control/fpm.info" ] \
+    && [ ! -e "${User}/log/CANCELLED" ]; then
     _PHP_FPM_VERSION=$(cat ${User}/static/control/fpm.info 2>&1)
     _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
     if [ "${_PHP_FPM_VERSION}" = "5.4" ] \
