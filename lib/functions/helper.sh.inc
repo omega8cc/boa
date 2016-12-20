@@ -654,6 +654,22 @@ check_fix_avatars() {
   fi
 }
 
+check_fix_bin_extra() {
+  SDIR="${bldPth}/aegir/var/bin"
+  SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
+  if [ ! -x "/usr/local/bin/fix-drupal-site-permissions.sh" ] \
+    || [ ! -e "/var/xdrago/log/fix-drupal-site-permissions-${_X_VERSION}.log" ]; then
+    if [ -e "${SDIR}/fix-drupal-site-permissions.sh" ]; then
+      for SCRIPT in ${SCRIPTS[@]}; do
+        cp -af ${SDIR}/${SCRIPT}.sh /usr/local/bin/
+        chown root:root /usr/local/bin/${SCRIPT}.sh
+        chmod 700 /usr/local/bin/${SCRIPT}.sh
+      done
+      touch /var/xdrago/log/fix-drupal-site-permissions-${_X_VERSION}.log
+    fi
+  fi
+}
+
 update_barracuda_log() {
   if [ -L "${mtrInc}/barracuda_log.txt" ]; then
     rm -f ${mtrInc}/barracuda_log.txt

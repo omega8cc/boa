@@ -351,6 +351,7 @@ check_fix_php
 install_update_composer
 check_fix_avatars
 check_fix_umask
+check_fix_bin_extra
 install_update_lshell
 install_update_redis
 check_fix_newrelic

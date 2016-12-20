@@ -2602,6 +2602,10 @@ strict_bin_permissions() {
   _PROTECTED_ITEMS="backboa \
                     barracuda \
                     boa \
+                    fix-drupal-platform-ownership.sh \
+                    fix-drupal-platform-permissions.sh \
+                    fix-drupal-site-ownership.sh \
+                    fix-drupal-site-permissions.sh \
                     named \
                     octopus \
                     redis-benchmark \
@@ -3168,6 +3172,14 @@ if_wheezy_to_jessie() {
     if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
       echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     fi
+    SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
+    for SCRIPT in ${SCRIPTS[@]}; do
+      _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
+      if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
+        echo "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
+        chmod 0440 /etc/sudoers.d/${SCRIPT}
+      fi
+    done
     for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       if [ -e "${User}/config/server_master/nginx/vhost.d" ] \
         && [ ! -e "${User}/log/CANCELLED" ]; then
@@ -3176,6 +3188,14 @@ if_wheezy_to_jessie() {
         if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
           echo "${_HM_U} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
         fi
+		SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
+		for SCRIPT in ${SCRIPTS[@]}; do
+		  _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
+		  if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
+			echo "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
+			chmod 0440 /etc/sudoers.d/${SCRIPT}
+		  fi
+		done
       fi
     done
     echo rotate > /var/log/syslog
@@ -3426,6 +3446,14 @@ if_squeeze_to_wheezy() {
     if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
       echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     fi
+    SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
+    for SCRIPT in ${SCRIPTS[@]}; do
+      _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
+      if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
+        echo "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
+        chmod 0440 /etc/sudoers.d/${SCRIPT}
+      fi
+    done
     for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       if [ -e "${User}/config/server_master/nginx/vhost.d" ] \
         && [ ! -e "${User}/log/CANCELLED" ]; then
@@ -3434,6 +3462,14 @@ if_squeeze_to_wheezy() {
         if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
           echo "${_HM_U} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
         fi
+		SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
+		for SCRIPT in ${SCRIPTS[@]}; do
+		  _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
+		  if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
+			echo "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
+			chmod 0440 /etc/sudoers.d/${SCRIPT}
+		  fi
+		done
       fi
     done
     echo rotate > /var/log/syslog
