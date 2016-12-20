@@ -686,7 +686,7 @@ migrate_init() {
   _USR=/data/disk/${oct}
   if [ ! -e "${_USR}/tools/le/letsencrypt.sh" ] && [ "${oct}" != "shared" ]; then
     echo
-    echo "ERROR: This version of xboa migration tool supports only BOA-3.1.3 or newer"
+    echo "ERROR: This version of xboa migration tool supports only BOA-3.1.4 or newer"
     echo "ERROR: Please upgrade ${oct} instance to current BOA stable before trying again"
     echo "Bye."
     echo
