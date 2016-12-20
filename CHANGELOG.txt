@@ -1,4 +1,92 @@
 
+### Stable BOA-3.1.4 Release - Full Edition
+### Date: Tue Dec 20 14:09:21 PST 2016
+### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.4
+
+# Release Notes:
+
+  This BOA release provides system security upgrades, many improvements
+  and bug fixes, latest Aegir version, plus all supported Drupal platforms
+  updated to latest versions, and supplied with latest Drupal 7 core,
+  if possible.
+
+@=> Magic permissions fix now happens on-the-fly
+
+  The most interesting new Aegir feature included in this release is probably
+  the ability to fix files permissions and ownership on any site and platform,
+  without waiting for the running daily magic fix. Now it happens on-the-fly,
+  when you run normal platform and site Verify tasks.
+
+@=> MariaDB 10.1 is now the new default version
+
+  If you are already running _DB_SERIES=10.0, this BOA release will upgrade it
+  to _DB_SERIES=10.1 -- but if you still run _DB_SERIES=5.5 it will continue
+  to use MariaDB 5.5 on your system.
+
+# New features and enhancements:
+
+  * Add Microsoft Hyper-V to supported virtualization systems
+  * Add support for ‘boa version’ command
+  * Add support for fix_ownership and fix_permissions on-the-fly
+  * Add support for latest 3.18.44-vs2.3.7.5-beng VS kernel
+  * Add support for latest 4.1.33-vs2.3.8.5.2-beng VS kernel
+  * Automatically whitelist CloudFlare and Sucuri IPs (faster version)
+  * Configure _INNODB_LOG_FILE_SIZE automatically
+  * MariaDB 10.1 support (new default version) -- #866
+  * Use Redis_CacheCompressed mode, if available (saves a ton of RAM)
+
+# Changes:
+
+  * Always update barracuda, boa and octopus wrappers, ignore _SKYNET_MODE=OFF
+  * Enable ARCHIVE Storage Engine in MariaDB 10.1
+  * Force _CUSTOM_CONFIG_SQL=NO on MariaDB major upgrade/reinstall
+  * Remove no longer supported textile module
+  * Run db OPTIMIZE only weekly, if configured
+  * Use MySQLTuner to configure SQL limits — enabled by default
+
+# System upgrades:
+
+  * CSF 9.28
+  * Drush micro-8-17-12-2016
+  * MariaDB 10.1.20
+  * MariaDB Galera Cluster 10.0.28
+  * Nginx 1.11.7
+  * OpenSSH 7.4p1 (if installed from sources)
+  * OpenSSL 1.0.2j (used only in Nginx)
+  * PHP 5.6.29
+  * PHP 7.0.14
+  * PHPRedis 3.1.0
+  * Redis 3.2.6
+  * Use mydropwizard-6.x-1.6
+  * Use Redis module mod-20-12-2016
+
+# Fixes:
+
+  * Allow to run downgrade to _DB_SERIES 5.5 (experimental, not recommended!)
+  * Always reinstall cURL from packages if broken
+  * AMP support -- #948
+  * Archive PHP logs in /var/backups/php-logs/
+  * Check if bind should be installed early enough
+  * Do not enable innodb-defragment — it may crash the server
+  * Fix for check_root_keys_pwd()
+  * Fix the check in detect_deprecated_php()
+  * Ignore search lines to avoid breaking pdnsd config -- #1069
+  * Improve SQL defaults
+  * Make sure innodb_buffer_pool_instances is always defined
+  * Migration between installation profiles -- #1076
+  * Monitor more lines when /root/.hr.monitor.cnf exists
+  * Multiply already high opcache.max_accelerated_files
+  * Nginx: Set Access-Control-Allow-Origin header only for static files
+  * Remove duplicate config updates and restarts
+  * Remove various tmp/dot files breaking du command
+  * The .git/* files are downloadable -- #1091
+  * Triple check that all sql tables are upgraded
+  * Update JS module to 7.x-2.1 -- #586
+  * Update migrate docs to avoid issues with already migrated instances
+  * Use long enough wait times for big SQL servers restarts
+  * Use Open Atrium own patched Drupal core -- #1083
+
+
 ### Stable BOA-3.1.3 Release - Barracuda Edition
 ### Date: Mon Sep 12 17:54:50 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.3
