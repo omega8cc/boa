@@ -655,7 +655,7 @@ check_fix_avatars() {
 }
 
 check_fix_bin_extra() {
-  SDIR="${bldPth}/aegir/var/bin"
+  SDIR="${bldPth}/aegir/tools/bin"
   SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
   if [ ! -x "/usr/local/bin/fix-drupal-site-permissions.sh" ] \
     || [ ! -e "/var/xdrago/log/fix-drupal-site-permissions-${_X_VERSION}.log" ]; then

@@ -58,6 +58,7 @@ barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 forCer="-fuy --force-yes --reinstall"
 optBin="/opt/local/bin"
+usrBin="/usr/local/bin"
 pthLog="/var/xdrago/log"
 tBn="tools/bin"
 vBs="/var/backups"
@@ -728,7 +729,7 @@ fix_core_dgd() {
 
 fix_lshell() {
   _LSHELL_VRN=0.9.18.8
-  _PATH_LSHELL="/usr/local/bin/lshell"
+  _PATH_LSHELL="${usrBin}/lshell"
   if [ -e "${_PATH_LSHELL}" ] \
     && [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}-hotfix4" ]; then
     cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix4
@@ -754,9 +755,9 @@ fix_lshell() {
     touch ${pthLog}/lshell-build-${_LSHELL_VRN}-hotfix4
     who | awk '$1 !~ /root/{ cmd="pkill -KILL -u " $1; system(cmd) }'
   fi
-  if [ -f "/usr/local/bin/lshell" ]; then
+  if [ -f "${usrBin}/lshell" ]; then
     if [ ! -L "/usr/bin/lshell" ]; then
-      ln -sf /usr/local/bin/lshell /usr/bin/lshell &> /dev/null
+      ln -sf ${usrBin}/lshell /usr/bin/lshell &> /dev/null
     fi
   fi
 }
@@ -940,13 +941,24 @@ update_wrappers() {
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${forCer} &> /dev/null
   fi
-  mkdir -p /usr/local/bin
+  mkdir -p ${usrBin}
+  if [ ! -x "${pthLog}/fixPSop.ctrl.314stableQ1.pid" ]; then
+    fxPp="fix-drupal-platform-permissions.sh"
+    fxSp="fix-drupal-site-permissions.sh"
+    fxPo="fix-drupal-platform-ownership.sh"
+    fxSo="fix-drupal-site-ownership.sh"
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxPp}" -o ${usrBin}/${fxPp}
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxSp}" -o ${usrBin}/${fxSp}
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxPo}" -o ${usrBin}/${fxPo}
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxSo}" -o ${usrBin}/${fxSo}
+    touch ${pthLog}/fixPSop.ctrl.314stableQ1.pid
+  fi
   mkdir -p ${optBin}
-  rm -f /usr/local/bin/{barracuda*,boa*,octopus*}
+  rm -f ${usrBin}/{barracuda*,boa*,octopus*}
   if [ ! -e "/data/disk" ]; then
-    ln -s ${optBin}/boa       /usr/local/bin/boa
-    ln -s ${optBin}/barracuda /usr/local/bin/barracuda
-    ln -s ${optBin}/octopus   /usr/local/bin/octopus
+    ln -s ${optBin}/boa       ${usrBin}/boa
+    ln -s ${optBin}/barracuda ${usrBin}/barracuda
+    ln -s ${optBin}/octopus   ${usrBin}/octopus
   fi
   rm -f ${optBin}/{barracuda*,boa*,octopus*}
   curl ${crlGet} "${urlHmr}/${tBn}/barracuda"      -o ${optBin}/barracuda
@@ -1058,15 +1070,26 @@ setup() {
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${forCer} &> /dev/null
   fi
-  mkdir -p /usr/local/bin
+  mkdir -p ${usrBin}
+  if [ ! -x "${pthLog}/fixPSop.ctrl.314stableQ1.pid" ]; then
+    fxPp="fix-drupal-platform-permissions.sh"
+    fxSp="fix-drupal-site-permissions.sh"
+    fxPo="fix-drupal-platform-ownership.sh"
+    fxSo="fix-drupal-site-ownership.sh"
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxPp}" -o ${usrBin}/${fxPp}
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxSp}" -o ${usrBin}/${fxSp}
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxPo}" -o ${usrBin}/${fxPo}
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxSo}" -o ${usrBin}/${fxSo}
+    touch ${pthLog}/fixPSop.ctrl.314stableQ1.pid
+  fi
   mkdir -p ${optBin}
   rm -f ${optBin}/.{boa*,fix*}
-  rm -f /usr/local/bin/{autoupboa*,barracuda*,boa*,ffmirror*}
-  rm -f /usr/local/bin/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
+  rm -f ${usrBin}/{autoupboa*,barracuda*,boa*,ffmirror*}
+  rm -f ${usrBin}/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   if [ ! -e "/data/disk" ]; then
-    ln -s ${optBin}/boa       /usr/local/bin/boa
-    ln -s ${optBin}/barracuda /usr/local/bin/barracuda
-    ln -s ${optBin}/octopus   /usr/local/bin/octopus
+    ln -s ${optBin}/boa       ${usrBin}/boa
+    ln -s ${optBin}/barracuda ${usrBin}/barracuda
+    ln -s ${optBin}/octopus   ${usrBin}/octopus
   fi
   rm -f ${optBin}/{autoupboa*,barracuda*,boa*,ffmirror*,xboa*}
   rm -f ${optBin}/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
