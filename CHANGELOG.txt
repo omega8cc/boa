@@ -2,6 +2,7 @@
 ### Stable BOA-3.1.4 Release - Full Edition
 ### Date: Tue Dec 20 14:09:21 PST 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.4
+### Latest hotfix added on: Wed Dec 21 12:44:58 PST 2016
 
 # Release Notes:
 
@@ -69,6 +70,9 @@
   * Check if bind should be installed early enough
   * Do not enable innodb-defragment — it may crash the server
   * Fix for check_root_keys_pwd()
+  * Fix for disable_chattr()
+  * Fix for missing PHP config regression -- #1105
+  * Fix for VnStat sysconfdir
   * Fix the check in detect_deprecated_php()
   * Ignore search lines to avoid breaking pdnsd config -- #1069
   * Improve SQL defaults
@@ -79,6 +83,7 @@
   * Nginx: Set Access-Control-Allow-Origin header only for static files
   * Remove duplicate config updates and restarts
   * Remove various tmp/dot files breaking du command
+  * Sync the new on-the-fly permissions magic with BOA daily.sh logic
   * The .git/* files are downloadable -- #1091
   * Triple check that all sql tables are upgraded
   * Update JS module to 7.x-2.1 -- #586
