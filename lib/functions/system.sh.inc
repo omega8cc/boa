@@ -4079,7 +4079,7 @@ install_vnstat() {
       rm -rf vnstat*
       get_dev_src "vnstat-${_VNSTAT_VRN}.tar.gz"
       cd vnstat-${_VNSTAT_VRN}
-      mrun "sh ./configure --prefix=/usr" 2> /dev/null
+      mrun "sh ./configure --prefix=/usr --sysconfdir=/etc" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       for INF in `vnstat --iflist \
@@ -4089,7 +4089,12 @@ install_vnstat() {
         /etc/init.d/vnstat
       chmod 755 /etc/init.d/vnstat &> /dev/null
       mrun "update-rc.d vnstat defaults" &> /dev/null
-      sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /etc/vnstat.conf
+      if [ -e "/usr/etc/vnstat.conf" ]; then
+        sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /usr/etc/vnstat.conf
+      fi
+      if [ -e "/etc/vnstat.conf" ]; then
+        sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /etc/vnstat.conf
+      fi
       mrun "service vnstat start" &> /dev/null
       touch ${pthLog}/vnstat-${_VNSTAT_VRN}.log
       mrun "service vnstat restart" &> /dev/null
@@ -4104,6 +4109,10 @@ install_vnstat() {
     rm -f /etc/init.d/vnstat
     rm -f /usr/bin/vnstat
     rm -rf /var/lib/vnstat
+  fi
+  if [ -e "/usr/etc/vnstat.conf" ]; then
+    sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /usr/etc/vnstat.conf
+    mrun "service vnstat restart" &> /dev/null
   fi
 }
 
