@@ -46,21 +46,36 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-if [ -z "${drupal_root}" ] || [ ! -d "${drupal_root}/sites" ] || [ ! -f "${drupal_root}/core/modules/system/system.module" ] && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
-  printf "Error: Please provide a valid Drupal root directory.\n"
-  exit 1
+if [ -z "${drupal_root}" ] \
+  || [ ! -d "${drupal_root}/sites" ] \
+  || [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
+  && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
+    printf "Error: Please provide a valid Drupal root directory.\n"
+    exit 1
 fi
 
-if [ -z "${script_user}" ] || [[ $(id -un "${script_user}" 2> /dev/null) != "${script_user}" ]]; then
-  printf "Error: Please provide a valid user.\n"
-  exit 1
+if [ -z "${script_user}" ] \
+  || [[ $(id -un "${script_user}" 2> /dev/null) != "${script_user}" ]]; then
+    printf "Error: Please provide a valid user.\n"
+    exit 1
 fi
 
-cd $drupal_root
+cd ${drupal_root}
 
-printf "Changing ownership of all contents of "${drupal_root}":\n user => "${script_user}" \t group => "${web_group}"\n"
-find . \( -path "./sites" -prune \) -exec chown ${script_user}:${web_group} '{}' \+
-chown ${script_user}:${web_group} ./sites/sites.php
-chown -R ${script_user}:${web_group} ./sites/all
+printf "Setting ownership of "${drupal_root}" to: user => "${script_user}" group => "users"\n"
+mkdir -p ${drupal_root}/sites/all/{modules,themes,libraries,drush}
+chown -R ${script_user}:users \
+  ${drupal_root}/sites/all/{modules,themes,libraries}/*
+chown ${script_user}:users \
+  ${drupal_root}/sites/all/drush/drushrc.php \
+  ${drupal_root}/sites \
+  ${drupal_root}/sites/* \
+  ${drupal_root}/sites/sites.php \
+  ${drupal_root}/sites/all \
+  ${drupal_root}/sites/all/{modules,themes,libraries,drush}
+
+### known exceptions
+chown -R ${script_user}:www-data \
+  ${drupal_root}/sites/all/libraries/tcpdf/cache &> /dev/null
 
 echo "Done setting proper ownership of platform files and directories."

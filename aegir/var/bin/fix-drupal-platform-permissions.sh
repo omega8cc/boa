@@ -35,20 +35,33 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-if [ -z "${drupal_root}" ] || [ ! -d "${drupal_root}/sites" ] || [ ! -f "${drupal_root}/core/modules/system/system.module" ] && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
-  printf "Error: Please provide a valid Drupal root directory.\n"
-  exit 1
+if [ -z "${drupal_root}" ] \
+  || [ ! -d "${drupal_root}/sites" ] \
+  || [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
+  && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
+    printf "Error: Please provide a valid Drupal root directory.\n"
+    exit 1
 fi
 
-cd $drupal_root
+cd ${drupal_root}
 
-printf "Changing permissions of all directories inside "${drupal_root}" to "750"...\n"
-find . \( -path "./sites" -prune \) -type d -exec chmod 750 '{}' \+
-find ./sites/all/ -type d -exec chmod 750 '{}' \+
-chmod 750 ./sites/all/
+printf "Setting main permissions inside "${drupal_root}"...\n"
+mkdir -p ${drupal_root}/sites/all/{modules,themes,libraries,drush}
+chmod 0751 ${drupal_root}/sites
+chmod 0755 ${drupal_root}/sites/*
+chmod 0644 ${drupal_root}/sites/*.php
+chmod 0644 ${drupal_root}/sites/*.txt
+chmod 0755 ${drupal_root}/sites/all/drush
 
-printf "Changing permissions of all files inside "${drupal_root}" to "640"...\n"
-find . \( -path "./sites" -prune \) -type f -exec chmod 640 '{}' \+
-find ./sites/all/ -type f -exec chmod 640 '{}' \+
+printf "Setting permissions of all codebase directories inside "${drupal_root}"...\n"
+find ${drupal_root}/sites/all/{modules,themes,libraries} -type d -exec \
+  chmod 02775 {} \;
+
+printf "Setting permissions of all codebase files inside "${drupal_root}"...\n"
+find ${drupal_root}/sites/all/{modules,themes,libraries} -type f -exec \
+  chmod 0664 {} \;
+
+### known exceptions
+chmod -R 775 ${drupal_root}/sites/all/libraries/tcpdf/cache &> /dev/null
 
 echo "Done setting proper permissions on platform files and directories."

@@ -40,30 +40,23 @@ if [ -z "${site_path}" ] || [ ! -f "${site_path}/settings.php" ] ; then
   exit 1
 fi
 
-cd $site_path
+cd ${site_path}
 
-printf "Changing permissions of all directories inside \"${site_path}\" to \"750\"...\n"
-find . \( -path "./files" -o -path "./private" -prune \) -type d -exec chmod 750 '{}' \+
-
-printf "Changing permissions of all files inside \"${site_path}\" to \"640\"...\n"
-find . \( -path "./files" -o -path "./private" -prune \) -type f -exec chmod 640 '{}' \+
-
-printf "Changing permissions of \"files\" directory in \"${site_path}/sites\" to \"770\"...\n"
-chmod 770 files
-
-printf "Changing permissions of all files inside \"files\" directory in \"${site_path}\" to \"660\"...\n"
-find ./files -type f -exec chmod 660 '{}' \+
-
-printf "Changing permissions of all directories inside \"files\" directory in \"${site_path}\" to \"770\"...\n"
-find ./files -type d -exec chmod 770 '{}' \+
-
-printf "Changing permissions of \"private\" directory in \"${site_path}/sites\" to \"770\"...\n"
-chmod 770 private
-
-printf "Changing permissions of all files inside \"private\" directory in \"${site_path}\" to \"660\"...\n"
-find ./private -type f -exec chmod 660 '{}' \+
-
-printf "Changing permissions of all directories inside \"private\" directory in \"${site_path}\" to \"770\"...\n"
-find ./private -type d -exec chmod 770 '{}' \+
+printf "Setting correct permissions on all files and directories inside "${site_path}"...\n"
+### directory and settings files - site level
+find ${site_path}/*.php -type f -exec chmod 0440 {} \; &> /dev/null
+chmod 0640 ${site_path}/civicrm.settings.php &> /dev/null
+### modules,themes,libraries - site level
+find ${site_path}/{modules,themes,libraries} -type d -exec \
+  chmod 02775 {} \; &> /dev/null
+find ${site_path}/{modules,themes,libraries} -type f -exec \
+  chmod 0664 {} \; &> /dev/null
+### files - site level
+find ${site_path}/files/* -type d -exec chmod 02775 {} \; &> /dev/null
+find ${site_path}/files/* -type f -exec chmod 0664 {} \; &> /dev/null
+chmod 02775 ${site_path}/files &> /dev/null
+### private - site level
+find ${site_path}/private -type d -exec chmod 02775 {} \; &> /dev/null
+find ${site_path}/private -type f -exec chmod 0664 {} \; &> /dev/null
 
 echo "Done setting proper permissions on site files and directories."
