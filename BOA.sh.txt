@@ -942,7 +942,7 @@ update_wrappers() {
     apt-get install lsb-release ${forCer} &> /dev/null
   fi
   mkdir -p ${usrBin}
-  if [ ! -x "${pthLog}/fixPSop.ctrl.314stableQ1.pid" ]; then
+  if [ ! -e "${pthLog}/fixPSop.ctrl.314stableQ1.pid" ]; then
     fxPp="fix-drupal-platform-permissions.sh"
     fxSp="fix-drupal-site-permissions.sh"
     fxPo="fix-drupal-platform-ownership.sh"
@@ -951,6 +951,10 @@ update_wrappers() {
     curl ${crlGet} "${urlHmr}/${tBn}/${fxSp}" -o ${usrBin}/${fxSp}
     curl ${crlGet} "${urlHmr}/${tBn}/${fxPo}" -o ${usrBin}/${fxPo}
     curl ${crlGet} "${urlHmr}/${tBn}/${fxSo}" -o ${usrBin}/${fxSo}
+    chmod 700 ${usrBin}/${fxPp}
+    chmod 700 ${usrBin}/${fxSp}
+    chmod 700 ${usrBin}/${fxPo}
+    chmod 700 ${usrBin}/${fxSo}
     touch ${pthLog}/fixPSop.ctrl.314stableQ1.pid
   fi
   mkdir -p ${optBin}
@@ -1071,7 +1075,7 @@ setup() {
     apt-get install lsb-release ${forCer} &> /dev/null
   fi
   mkdir -p ${usrBin}
-  if [ ! -x "${pthLog}/fixPSop.ctrl.314stableQ1.pid" ]; then
+  if [ ! -e "${pthLog}/fixPSop.ctrl.314stableQ1.pid" ]; then
     fxPp="fix-drupal-platform-permissions.sh"
     fxSp="fix-drupal-site-permissions.sh"
     fxPo="fix-drupal-platform-ownership.sh"
@@ -1080,6 +1084,10 @@ setup() {
     curl ${crlGet} "${urlHmr}/${tBn}/${fxSp}" -o ${usrBin}/${fxSp}
     curl ${crlGet} "${urlHmr}/${tBn}/${fxPo}" -o ${usrBin}/${fxPo}
     curl ${crlGet} "${urlHmr}/${tBn}/${fxSo}" -o ${usrBin}/${fxSo}
+    chmod 700 ${usrBin}/${fxPp}
+    chmod 700 ${usrBin}/${fxSp}
+    chmod 700 ${usrBin}/${fxPo}
+    chmod 700 ${usrBin}/${fxSo}
     touch ${pthLog}/fixPSop.ctrl.314stableQ1.pid
   fi
   mkdir -p ${optBin}
