@@ -412,15 +412,23 @@ enable_chattr() {
     if [ "$1" != "${_USER}.ftp" ]; then
       chattr +i /home/$1
     else
-      chattr +i /home/$1/platforms
-      chattr +i /home/$1/platforms/*
+      if [ -d "/home/$1/platforms" ]; then
+        chattr +i /home/$1/platforms
+        chattr +i /home/$1/platforms/*
+      fi
+    fi
+    if [ -d "/home/$1/.drush" ]; then
+      chattr +i /home/$1/.drush
+    fi
+    if [ -d "/home/$1/.drush/usr" ]; then
+      chattr +i /home/$1/.drush/usr
+    fi
+    if [ -f "/home/$1/.drush/php.ini" ]; then
+      chattr +i /home/$1/.drush/*.ini
     fi
     if [ -d "/home/$1/.bazaar" ]; then
       chattr +i /home/$1/.bazaar
     fi
-    chattr +i /home/$1/.drush
-    chattr +i /home/$1/.drush/usr
-    chattr +i /home/$1/.drush/*.ini
   fi
 }
 #
@@ -432,15 +440,23 @@ disable_chattr() {
     if [ "$1" != "${_USER}.ftp" ]; then
       chattr -i /home/$1
     else
-      chattr -i /home/$1/platforms
-      chattr -i /home/$1/platforms/*
+      if [ -d "/home/$1/platforms" ]; then
+        chattr -i /home/$1/platforms
+        chattr -i /home/$1/platforms/*
+      fi
+    fi
+    if [ -d "/home/$1/.drush" ]; then
+      chattr -i /home/$1/.drush
+    fi
+    if [ -d "/home/$1/.drush/usr" ]; then
+      chattr -i /home/$1/.drush/usr
+    fi
+    if [ -f "/home/$1/.drush/php.ini" ]; then
+      chattr -i /home/$1/.drush/*.ini
     fi
     if [ -d "/home/$1/.bazaar" ]; then
       chattr -i /home/$1/.bazaar
     fi
-    chattr -i /home/$1/.drush
-    chattr -i /home/$1/.drush/usr
-    chattr -i /home/$1/.drush/*.ini
     usrTgt="/home/$1/.drush/usr"
     if [ "$1" != "${_USER}.ftp" ]; then
       if [ ! -L "${usrTgt}/drupalgeddon" ] && [ -d "${usrDgn}" ]; then
