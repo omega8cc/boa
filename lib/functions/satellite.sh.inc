@@ -420,14 +420,18 @@ disable_chattr() {
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
-    chattr -i /home/$1/platforms
-    chattr -i /home/$1/platforms/*
+    if [ -d "/home/$1/platforms" ]; then
+      chattr -i /home/$1/platforms
+      chattr -i /home/$1/platforms/*
+    fi
     if [ -d "/home/$1/.bazaar" ]; then
       chattr -i /home/$1/.bazaar
     fi
-    chattr -i /home/$1/.drush
-    chattr -i /home/$1/.drush/usr
-    chattr -i /home/$1/.drush/*.ini
+    if [ -d "/home/$1/.drush/usr" ]; then
+      chattr -i /home/$1/.drush
+      chattr -i /home/$1/.drush/usr
+      chattr -i /home/$1/.drush/*.ini
+    fi
   fi
 }
 
