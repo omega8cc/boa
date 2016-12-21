@@ -259,6 +259,13 @@ fix_php_ini_mongo_all() {
 }
 
 #
+# Check PHP Config.
+check_update_php_config() {
+  update_php_conf
+  update_ini_tpl
+}
+
+#
 # Update PHP Config.
 update_php_conf() {
   if [ -z "${_THISHTIP}" ]; then

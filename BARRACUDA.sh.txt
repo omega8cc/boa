@@ -359,9 +359,10 @@ check_fix_java
 
 
 ###
-### SQL credentials update
+### SQL credentials and PHP config update
 ###
 check_update_sql_credentials
+check_update_php_config
 
 
 ###
