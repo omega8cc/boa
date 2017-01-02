@@ -52,11 +52,11 @@ find ${site_path}/{modules,themes,libraries} -type d -exec \
 find ${site_path}/{modules,themes,libraries} -type f -exec \
   chmod 0664 {} \; &> /dev/null
 ### files - site level
-find ${site_path}/files/* -type d -exec chmod 02775 {} \; &> /dev/null
-find ${site_path}/files/* -type f -exec chmod 0664 {} \; &> /dev/null
+find ${site_path}/files/ -type d -exec chmod 02775 {} \; &> /dev/null
+find ${site_path}/files/ -type f -exec chmod 0664 {} \; &> /dev/null
 chmod 02775 ${site_path}/files &> /dev/null
 ### private - site level
-find ${site_path}/private -type d -exec chmod 02775 {} \; &> /dev/null
-find ${site_path}/private -type f -exec chmod 0664 {} \; &> /dev/null
+find ${site_path}/private/ -type d -exec chmod 02775 {} \; &> /dev/null
+find ${site_path}/private/ -type f -exec chmod 0664 {} \; &> /dev/null
 
 echo "Done setting proper permissions on site files and directories."

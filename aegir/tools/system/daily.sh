@@ -2240,8 +2240,8 @@ fix_permissions() {
       chmod 0664 {} \; &> /dev/null
     ### files - site level
     chown -L -R ${_HM_U}:www-data ${Dir}/files &> /dev/null
-    find ${Dir}/files/* -type d -exec chmod 02775 {} \; &> /dev/null
-    find ${Dir}/files/* -type f -exec chmod 0664 {} \; &> /dev/null
+    find ${Dir}/files/ -type d -exec chmod 02775 {} \; &> /dev/null
+    find ${Dir}/files/ -type f -exec chmod 0664 {} \; &> /dev/null
     chmod 02775 ${Dir}/files &> /dev/null
     chown ${_HM_U}:www-data ${Dir}/files &> /dev/null
     chown ${_HM_U}:www-data ${Dir}/files/{tmp,images,pictures,css,js} &> /dev/null
@@ -2253,8 +2253,8 @@ fix_permissions() {
     chown ${_HM_U}:www-data ${Dir}/files/{civicrm/custom,civicrm/dynamic} &> /dev/null
     ### private - site level
     chown -L -R ${_HM_U}:www-data ${Dir}/private &> /dev/null
-    find ${Dir}/private -type d -exec chmod 02775 {} \; &> /dev/null
-    find ${Dir}/private -type f -exec chmod 0664 {} \; &> /dev/null
+    find ${Dir}/private/ -type d -exec chmod 02775 {} \; &> /dev/null
+    find ${Dir}/private/ -type f -exec chmod 0664 {} \; &> /dev/null
     chown ${_HM_U}:www-data ${Dir}/private &> /dev/null
     chown ${_HM_U}:www-data ${Dir}/private/{files,temp} &> /dev/null
     chown ${_HM_U}:www-data ${Dir}/private/files/backup_migrate &> /dev/null
