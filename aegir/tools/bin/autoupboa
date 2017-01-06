@@ -156,11 +156,11 @@ if [ -e "/data/disk/arch" ]; then
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] \
     || [ "${_AUTO_UP}" = "YES" ]; then
-    _AUTO_UP_WEEKLY=
-    _AUTO_UP_MONTH=
-    _AUTO_UP_DAY=
+    _AUTO_UP_WEEKLY=6
+    _AUTO_UP_MONTH=1
+    _AUTO_UP_DAY=1
     _AUTO_PHP="php-all"
-    _AUTO_VER="stable"
+    _AUTO_VER="head"
   fi
   if [[ "${_VM_VERSION}" =~ "LEGACY" ]] \
     || [ ! -e "/etc/init.d/ssh" ] \
