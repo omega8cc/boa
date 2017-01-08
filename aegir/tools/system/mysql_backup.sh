@@ -126,7 +126,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     && [ "${_DB}" != "information_schema" ] \
     && [ "${_DB}" != "performance_schema" ]; then
     if [ "${_DB}" != "mysql" ]; then
-      truncate_cache_tables &> /dev/null
+      # truncate_cache_tables &> /dev/null
       _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog* | grep "G" 2>&1)
       if [[ "${_IS_GB}" =~ "watchdog" ]]; then
         truncate_watchdog_tables &> /dev/null
