@@ -4096,6 +4096,7 @@ install_vnstat() {
         sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /etc/vnstat.conf
       fi
       mrun "service vnstat start" &> /dev/null
+      mrun "killall vnstatd" &> /dev/null
       touch ${pthLog}/vnstat-${_VNSTAT_VRN}.log
       mrun "service vnstat restart" &> /dev/null
     fi
