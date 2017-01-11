@@ -379,7 +379,7 @@ EOFMYSQL
             if [ -e "${_USR}/config/server_master/ssl.d/${Dom}/openssl.key" ] \
               && [ -e "/var/xdrago/conf/https_proxy_le.conf" ]; then
               cp -a /var/xdrago/conf/https_proxy_le.conf ${Vhs}
-              sed -i "s/.*server_name.*;/  server_name                  ${_NMS};/g" ${Vhs}
+              sed -i "s/.*server_name.*;/  server_name                 ${_NMS};/g" ${Vhs}
               wait
               sed -i "s/target_ip/${tgt}/g" ${Vhs}
               wait
@@ -392,7 +392,7 @@ EOFMYSQL
             fi
             mv -f ${Vht} $Vhd
             cp -a /var/xdrago/conf/proxy.conf ${Vht}
-            sed -i "s/.*server_name.*;/  server_name                  ${_NMS};/g" ${Vht}
+            sed -i "s/.*server_name.*;/  server_name                 ${_NMS};/g" ${Vht}
             wait
             sed -i "s/target_ip/${tgt}/g" ${Vht}
             wait
