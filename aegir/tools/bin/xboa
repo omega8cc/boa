@@ -280,6 +280,7 @@ migrate_sites() {
     Dom=`echo $Site | cut -d'/' -f9 | awk '{ print $1}'`
     Vht="${_USR}/config/server_master/nginx/vhost.d/${Dom}"
     Vhd="${_USR}/config/server_master/nginx/vhost.d/.${Dom}"
+    Vhs="${_USR}/config/server_master/nginx/vhost.d/https.${Dom}"
     if [ -e "${Vht}" ] && [ ! -z "${oct}" ]; then
       chown ${oct}:users ${Vht}
       chmod 600 ${Vht}
@@ -375,9 +376,23 @@ EOFMYSQL
         if [ -e "${_USR}/log/exported.pid" ] && [ ! -z "${tgt}" ]; then
           if [ -e "${Vht}" ]; then
             _NMS=`cat ${Vht} | grep "server_name" | sed "s/server_name//g; s/;//g" | tr -d "\n" | sed "s/  / /g; s/  / /g; s/  / /g" | uniq`
+            if [ -e "${_USR}/config/server_master/ssl.d/${Dom}/openssl.key" ] \
+              && [ -e "/var/xdrago/conf/https_proxy_le.conf" ]; then
+              cp -a /var/xdrago/conf/https_proxy_le.conf ${Vhs}
+              sed -i "s/.*server_name.*;/  server_name                  ${_NMS};/g" ${Vhs}
+              wait
+              sed -i "s/target_ip/${tgt}/g" ${Vhs}
+              wait
+              sed -i "s/oct_uid/${oct}/g" ${Vhs}
+              wait
+              sed -i "s/domain_name/${Dom}/g" ${Vhs}
+              wait
+              chown ${oct}:users ${Vhs}
+              chmod 600 ${Vhs}
+            fi
             mv -f ${Vht} $Vhd
             cp -a /var/xdrago/conf/proxy.conf ${Vht}
-            sed -i "s/.*server_name.*;/  server_name                 ${_NMS};/g" ${Vht}
+            sed -i "s/.*server_name.*;/  server_name                  ${_NMS};/g" ${Vht}
             wait
             sed -i "s/target_ip/${tgt}/g" ${Vht}
             wait
