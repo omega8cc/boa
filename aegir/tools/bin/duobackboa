@@ -178,18 +178,22 @@ if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
     _AWS_PRG='Your Backup Progress'       ### [O] By default 'NO' -- can be YES/NO
     _AWS_EXB='Exclude Drush Archives'     ### [O] By default 'NO' -- can be YES/NO
 
-    Supported values to use as _AWS_REG:
+    Supported values to use as _AWS_REG (without the # comment):
 
-      us-east-1
-      us-west-2
-      us-west-1
-      eu-west-1
-      eu-central-1
-      ap-southeast-1
-      ap-southeast-2
-      ap-northeast-1
-      ap-northeast-2
-      sa-east-1
+      us-east-1        # US East (N. Virginia)
+      us-east-2        # US East (Ohio)
+      us-west-1        # US West (N. California)
+      us-west-2        # US West (Oregon)
+      ca-central-1     # Canada (Central)
+      ap-south-1       # Asia Pacific (Mumbai)
+      ap-northeast-2   # Asia Pacific (Seoul)
+      ap-southeast-1   # Asia Pacific (Singapore)
+      ap-southeast-2   # Asia Pacific (Sydney)
+      ap-northeast-1   # Asia Pacific (Tokyo)
+      eu-central-1     # EU (Frankfurt)
+      eu-west-1        # EU (Ireland)
+      eu-west-2        # EU (London)
+      sa-east-1        # South America (São Paulo)
 
     Source: http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
 
@@ -213,16 +217,20 @@ if [ -z "${_AWS_REG}" ]; then
 fi
 
 if [ "${_AWS_REG}" = "us-east-1" ] \
+  || [ "${_AWS_REG}" = "us-east-2" ] \
+  || [ "${_AWS_REG}" = "us-west-1" ] \
   || [ "${_AWS_REG}" = "us-west-2" ] \
-  || [ "${_AWS_REG}" = "us-west-1" ]; then
+  || [ "${_AWS_REG}" = "ca-central-1" ]; then
   _GOOD_AWS_REG=YES
-elif [ "${_AWS_REG}" = "eu-west-1" ] \
-  || [ "${_AWS_REG}" = "eu-central-1" ] \
-  || [ "${_AWS_REG}" = "ap-southeast-1" ]; then
-  _GOOD_AWS_REG=YES
-elif [ "${_AWS_REG}" = "ap-southeast-2" ] \
-  || [ "${_AWS_REG}" = "ap-northeast-1" ] \
+elif [ "${_AWS_REG}" = "ap-south-1" ] \
   || [ "${_AWS_REG}" = "ap-northeast-2" ] \
+  || [ "${_AWS_REG}" = "ap-southeast-1" ] \
+  || [ "${_AWS_REG}" = "ap-southeast-2" ] \
+  || [ "${_AWS_REG}" = "ap-northeast-1" ]; then
+  _GOOD_AWS_REG=YES
+elif [ "${_AWS_REG}" = "eu-central-1" ] \
+  || [ "${_AWS_REG}" = "eu-west-1" ] \
+  || [ "${_AWS_REG}" = "eu-west-2" ] \
   || [ "${_AWS_REG}" = "sa-east-1" ]; then
   _GOOD_AWS_REG=YES
 else
