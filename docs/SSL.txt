@@ -66,6 +66,15 @@ as explained in this document further below.
 
   Also every Verify task against SSL enabled site runs this check on the fly.
 
+* How to rename a site with SSL enabled?
+
+  If you need to rename a site, you must first disable SSL and alias redirection,
+  run the migrate task to rename the site, then re-enable SSL and alias redirection.
+  
+  Owing to this requirement, workflows that require renaming sites often, e.g. for
+  dev/staging/production environments, are usually better served by moving aliases
+  between site clones per https://learn.omega8.cc/how-to-debug-failed-migrate-task-328.
+
 * Are there any requirements, limitations or exceptions?
 
   Yes, there are some:
@@ -75,8 +84,6 @@ as explained in this document further below.
   * Let's Encrypt doesn't support IDN names (for now)
   * All aliases must have valid DNS names pointing to your server IP address
   * Even with aliases redirection enabled all aliases are listed as SAN names
-  * Avoid renaming SSL-enabled sites; move aliases between site's clones instead
-  * Before you rename a site, disable SSL first; then re-enable once it's renamed
 
   NOTE: The Subject Alternative Names (SAN) is a feature which allows to issue
   multi-domain / multi-subdomain SSL certificates -- it is automated in BOA.
