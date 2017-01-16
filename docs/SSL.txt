@@ -10,6 +10,7 @@
   # How to add Letsencrypt.org SSL certificate to hosted site?
   # How to add Letsencrypt.org SSL certificate to the Aegir Hostmaster site?
   # How to modify/renew Letsencrypt.org SSL certificate for SSL enabled site?
+  # How to rename a site with SSL enabled?
   # Are there any requirements, limitations or exceptions?
   # How to enable live mode?
   # How to replace Let's Encrypt certificate with custom certificate?
@@ -70,7 +71,7 @@ as explained in this document further below.
 
   If you need to rename a site, you must first disable SSL and alias redirection,
   run the migrate task to rename the site, then re-enable SSL and alias redirection.
-  
+
   Owing to this requirement, workflows that require renaming sites often, e.g. for
   dev/staging/production environments, are usually better served by moving aliases
   between site clones per https://learn.omega8.cc/how-to-debug-failed-migrate-task-328.
@@ -81,7 +82,6 @@ as explained in this document further below.
 
   * Let's Encrypt leverages TLS/SNI, which works only with modern browsers
   * Let's Encrypt doesn't support wildcard names
-  * Let's Encrypt doesn't support IDN names (for now)
   * All aliases must have valid DNS names pointing to your server IP address
   * Even with aliases redirection enabled all aliases are listed as SAN names
 
