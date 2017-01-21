@@ -277,6 +277,7 @@ enable_chattr() {
           /opt/tika7:       \
           /opt/tika8:       \
           /opt/tika9:       \
+          /dev/urandom:     \
           /opt/tools/drush: \
           /usr/bin:         \
           ${dscUsr}/.drush/usr: \
@@ -847,6 +848,7 @@ update_php_cli_local_ini() {
         /opt/tika7:          \
         /opt/tika8:          \
         /opt/tika9:          \
+        /dev/urandom:        \
         /opt/tmp/make_local: \
         /opt/tools/drush:    \
         ${dscUsr}:           \
@@ -1124,6 +1126,7 @@ satellite_update_web_user() {
           /opt/tika7:     \
           /opt/tika8:     \
           /opt/tika9:     \
+          /dev/urandom:   \
           /srv:           \
           /usr/bin:       \
           /var/second/${_USER}:     \

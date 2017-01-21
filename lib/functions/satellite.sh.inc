@@ -144,6 +144,7 @@ satellite_update_web_user() {
           /opt/tika7:     \
           /opt/tika8:     \
           /opt/tika9:     \
+          /dev/urandom:   \
           /srv:           \
           /usr/bin:       \
           /var/second/${_USER}:    \
@@ -1200,6 +1201,7 @@ satellite_child_b_update_ini_php_cli() {
         /opt/tika7:          \
         /opt/tika8:          \
         /opt/tika9:          \
+        /dev/urandom:        \
         /opt/tmp/make_local: \
         /opt/tools/drush:    \
         ${_ROOT}:            \

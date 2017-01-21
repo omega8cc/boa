@@ -896,6 +896,7 @@ update_php_cli_local_ini() {
         /opt/tika7:          \
         /opt/tika8:          \
         /opt/tika9:          \
+        /dev/urandom:        \
         /opt/tmp/make_local: \
         /opt/tools/drush:    \
         /tmp:                \
