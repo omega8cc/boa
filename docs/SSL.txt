@@ -5,8 +5,8 @@
 
   You can find these important Let’s Encrypt topics discussed below:
 
-  # Before we begin... what is the most common mistake and how to avoid it?
   # Introduction
+  # Before we begin... what is the most common mistake and how to avoid it?
   # How it works?
   # How to add Letsencrypt.org SSL certificate to hosted site?
   # How to add Letsencrypt.org SSL certificate to the Aegir Hostmaster site?
