@@ -5,6 +5,7 @@
 
   You can find these important Let’s Encrypt topics discussed below:
 
+  # Before we begin... what is the most common mistake and how to avoid it?
   # Introduction
   # How it works?
   # How to add Letsencrypt.org SSL certificate to hosted site?
@@ -19,6 +20,20 @@
 BOA-3.1.0 release opens a new era in SSL support for all hosted Drupal sites.
 The old method of creating SSL proxy vhosts is officially deprecated,
 as explained in this document further below.
+
+# Before we begin... what is the most common mistake and how to avoid it?
+
+  Thinking that you don't need to actually read everything here, and instead
+  quickly scanning this documentation, and assuming that you know it already.
+  Specifically, people tend to ignore this line, listed in *requirements* below:
+
+  * All aliases must have valid DNS names pointing to your server IP address
+
+  Note that it says *ALL ALIASES* -- not just the aliases you have added!
+  This means that also the "Auto Alias" Aegir generates for you -- like
+  www.foo.com when your site's name is foo.com, or like foo.com when the main
+  site name is www.foo.com -- these aliases also must have a valid DNS,
+  already pointing to your Aegir default IP address.
 
 * How it works?
 
