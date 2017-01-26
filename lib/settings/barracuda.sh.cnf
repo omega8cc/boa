@@ -157,10 +157,10 @@ _PHP_CLI_VERSION=5.6
 ###
 ### Xtras included with "ALL" wildcard:
 ###
+### ADM --- Adminer DB Manager
 ### CGP --- Collectd Graph Panel
-### CHV --- Chive DB Manager
 ### CSF --- Firewall
-### CSS --- Compass Tools
+### CSS --- RVM + NPM for Gulp/Bower
 ### FTP --- Pure-FTPd server with forced FTPS
 ### WMN --- Webmin Control Panel
 ###
@@ -169,6 +169,7 @@ _PHP_CLI_VERSION=5.6
 ### BDD --- SQL Buddy DB Manager
 ### BND --- Bind9 DNS Server
 ### BZR --- Bazaar
+### CHV --- Chive DB Manager
 ### FMG --- FFmpeg support
 ### GIT --- Latest Git from sources
 ### IMG --- Image Optimize binaries
@@ -181,13 +182,13 @@ _PHP_CLI_VERSION=5.6
 ### _XTRAS_LIST=""
 ### _XTRAS_LIST="ALL"
 ### _XTRAS_LIST="ALL GIT SR3"
-### _XTRAS_LIST="CSF CGP CHV FTP"
+### _XTRAS_LIST="ADM CSF CGP CHV FTP"
 ###
 ### Note that removing any item from this
 ### list once it is already installed, will
 ### NOT uninstall anything.
 ###
-_XTRAS_LIST="CSF CHV FTP"
+_XTRAS_LIST="ADM CSF FTP"
 
 
 ###----------------------------------------###
@@ -261,6 +262,12 @@ _FULL_FORCE_REINSTALL=NO
 
 ###
 ### Use YES to run major system upgrade
+### from Debian Wheezy to Debian Jessie.
+###
+_WHEEZY_TO_JESSIE=NO
+
+###
+### Use YES to run major system upgrade
 ### from Debian Squeeze to Debian Wheezy.
 ###
 _SQUEEZE_TO_WHEEZY=NO
@@ -301,12 +308,12 @@ _DB_SERVER=MariaDB
 ### DB SERIES                              ###
 ###----------------------------------------###
 ###
-### You can choose MariaDB 5.5 or new 10.0
+### You can choose MariaDB 5.5 or new 10.1
 ###
 ### Note that on Ubuntu 14.04 LTS Trusty we
-### force the only available 10.0 version.
+### force the only available 10.1 version.
 ###
-_DB_SERIES=5.5
+_DB_SERIES=10.1
 
 
 ###----------------------------------------###
@@ -842,43 +849,11 @@ _RESERVED_RAM=0
 _DB_BINARY_LOG=NO
 
 ###
-### BOA already outsources most of cache*
-### tables to Redis, disables accesslog and
-### dblog by default, so for many typical
-### Drupal sites MyISAM will provide better
-### speed and much lower memory usage -
-### typically only 1/3 of memory and binary
-### space used by InnoDB.
+### Use MySQLTuner to configure SQL limits.
+### Can be disabled when set to NO, if causes
+### too high load spikes on too weak systems.
 ###
-### However, MyISAM can't recover itself
-### on the fly like InnoDB, and if it will
-### crash, it will have to wait for the
-### self-healing monitor to detect the crash
-### and run auto-repair.
-###
-### Note that Drupal 7 forces InnoDB.
-###
-### You can easily convert any site to-MyISAM
-### or to-InnoDB with `sqlmagic` tool.
-###
-### Note: this option is ignored if the option
-### _CUSTOM_CONFIG_SQL is set to YES.
-###
-_DB_ENGINE=InnoDB
-
-###
-### Allows to change InnoDB log file size,
-### which requires special procedure.
-###
-### Accepted value must be an integer between
-### 10 and 500 (in megabytes).
-###
-### Note: if _CUSTOM_CONFIG_SQL is set to YES,
-### this option will be ignored.
-###
-### Example: _INNODB_LOG_FILE_SIZE=50
-###
-_INNODB_LOG_FILE_SIZE=AUTO
+_USE_MYSQLTUNER=YES
 
 ###
 ### Set max 1 min load per CPU core before blocking
@@ -962,7 +937,7 @@ _PHP_IONCUBE=NO
 
 ###
 ### Change to YES to always compile in
-### MongoDB driver. Works for PHP 5.3 only.
+### MongoDB driver. Works for PHP < 7.0 only.
 ###
 _PHP_MONGODB=NO
 
@@ -977,6 +952,19 @@ _PHP_GEOS=NO
 ### re-install from sources (Debian only)
 ###
 _SSH_FROM_SOURCES=YES
+
+###
+### When set to YES it will force OpenSSH
+### armoured configuration, if the option
+### _SSH_FROM_SOURCES is set to YES
+###
+_SSH_ARMOUR=NO
+
+###
+### When set to YES it will force ImageMagick
+### re-install from sources
+###
+_MAGICK_FROM_SOURCES=NO
 
 ###
 ### AUTO will default to values calculated
@@ -1018,6 +1006,7 @@ dstUpArg="-fuy --force-yes -q --config-file /opt/tmp/apt.conf.noi.dist"
 nrmUpArg="-fuy --force-yes -q --config-file /opt/tmp/apt.conf.noi.nrml"
 _INITINS="/usr/bin/apt-get -y --force-yes install"
 _INSTALL="/usr/bin/apt-get ${nrmUpArg} install"
+forCer="-fuy --force-yes --reinstall"
 
 
 ###
@@ -1032,7 +1021,7 @@ find_fast_mirror() {
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
+    apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -1132,4 +1121,3 @@ download_helpers_libs() {
     cd /opt/tmp
   fi
 }
-

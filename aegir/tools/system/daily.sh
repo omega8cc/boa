@@ -31,7 +31,7 @@ check_root() {
 check_root
 
 _WEBG=www-data
-_X_SE="3.0.2-stable"
+_X_SE="3.1.4-stable"
 _OSV=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
@@ -42,6 +42,7 @@ if [[ "${_SSL_ITD}" =~ "1.0.1" ]] \
   _NEW_SSL=YES
 fi
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+forCer="-fuy --force-yes --reinstall"
 vSet="vset --always-set"
 
 ###-------------SYSTEM-----------------###
@@ -51,7 +52,7 @@ find_fast_mirror() {
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
+    apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -114,34 +115,50 @@ enable_chattr() {
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
     if [ "$1" != "${_HM_U}.ftp" ]; then
-      chattr +i /home/$1             &> /dev/null
+      chattr +i /home/$1
     else
-      chattr +i /home/$1/platforms   &> /dev/null
-      chattr +i /home/$1/platforms/* &> /dev/null
+      if [ -d "/home/$1/platforms" ]; then
+        chattr +i /home/$1/platforms
+        chattr +i /home/$1/platforms/*
+      fi
+    fi
+    if [ -d "/home/$1/.drush" ]; then
+      chattr +i /home/$1/.drush
+    fi
+    if [ -d "/home/$1/.drush/usr" ]; then
+      chattr +i /home/$1/.drush/usr
+    fi
+    if [ -f "/home/$1/.drush/php.ini" ]; then
+      chattr +i /home/$1/.drush/*.ini
     fi
     if [ -d "/home/$1/.bazaar" ]; then
-      chattr +i /home/$1/.bazaar     &> /dev/null
+      chattr +i /home/$1/.bazaar
     fi
-    chattr +i /home/$1/.drush        &> /dev/null
-    chattr +i /home/$1/.drush/usr    &> /dev/null
-    chattr +i /home/$1/.drush/*.ini  &> /dev/null
   fi
 }
 
 disable_chattr() {
   if [ ! -z "$1" ] && [ -d "/home/$1" ]; then
     if [ "$1" != "${_HM_U}.ftp" ]; then
-      chattr -i /home/$1             &> /dev/null
+      chattr -i /home/$1
     else
-      chattr -i /home/$1/platforms   &> /dev/null
-      chattr -i /home/$1/platforms/* &> /dev/null
+      if [ -d "/home/$1/platforms" ]; then
+        chattr -i /home/$1/platforms
+        chattr -i /home/$1/platforms/*
+      fi
+    fi
+    if [ -d "/home/$1/.drush" ]; then
+      chattr -i /home/$1/.drush
+    fi
+    if [ -d "/home/$1/.drush/usr" ]; then
+      chattr -i /home/$1/.drush/usr
+    fi
+    if [ -f "/home/$1/.drush/php.ini" ]; then
+      chattr -i /home/$1/.drush/*.ini
     fi
     if [ -d "/home/$1/.bazaar" ]; then
-      chattr -i /home/$1/.bazaar     &> /dev/null
+      chattr -i /home/$1/.bazaar
     fi
-    chattr -i /home/$1/.drush        &> /dev/null
-    chattr -i /home/$1/.drush/usr    &> /dev/null
-    chattr -i /home/$1/.drush/*.ini  &> /dev/null
     usrSrc="${User}/.drush/usr"
     usrTgt="/home/$1/.drush/usr"
     if [ ! -L "${usrTgt}/drupalgeddon" ] \
@@ -253,7 +270,43 @@ check_if_force() {
   for s in ${_MODULES_FORCE}; do
     if [ ! -z "$1" ] && [ "$s" = "$1" ]; then
       _FORCE=YES
-      #echo $1 is blacklisted and will be forcefully disabled in ${Dom}
+      echo $1 is blacklisted and will be forcefully disabled in ${Dom}
+    fi
+  done
+}
+
+uninstall_modules() {
+  for m in $1; do
+    _SKIP=NO
+    _FORCE=NO
+    if [ ! -z "${_MODULES_SKIP}" ]; then
+      check_if_skip "$m"
+    fi
+    if [ ! -z "${_MODULES_FORCE}" ]; then
+      check_if_force "$m"
+    fi
+    if [ "${_SKIP}" = "NO" ]; then
+      _MODULE_T=$(run_drush8_nosilent_cmd "pml --status=enabled \
+        --type=module | grep \($m\)" 2>&1)
+      if [[ "${_MODULE_T}" =~ "($m)" ]]; then
+        if [ "${_FORCE}" = "NO" ]; then
+          check_if_required "$m"
+        else
+          echo "$m dependencies not checked in ${Dom}"
+          _REQ=FCE
+        fi
+        if [ "${_REQ}" = "FCE" ]; then
+          run_drush8_cmd "pmu $m -y"
+          echo "$m FCE uninstalled in ${Dom}"
+        elif [ "${_REQ}" = "NO" ]; then
+          run_drush8_cmd "pmu $m -y"
+          echo "$m uninstalled in ${Dom}"
+        elif [ "${_REQ}" = "NULL" ]; then
+          echo "$m is not used in ${Dom}"
+        else
+          echo "$m is required and can not be uninstalled in ${Dom}"
+        fi
+      fi
     fi
   done
 }
@@ -452,11 +505,19 @@ fix_boost_cache() {
 }
 
 fix_o_contrib_symlink() {
-  if [ "${_O_CONTRIB}" != "NO" ] && [ ! -e "${Plr}/core" ]; then
+  if [ "${_O_CONTRIB_SEVEN}" != "NO" ]; then
     symlinks -d ${Plr}/modules &> /dev/null
-    if [ -e "${Plr}/web.config" ]; then
+    if [ -e "${Plr}/web.config" ] \
+      && [ -e "${_O_CONTRIB_SEVEN}" ] \
+      && [ ! -e "${Plr}/core" ]; then
       if [ ! -e "${Plr}/modules/o_contrib_seven" ]; then
         ln -sf ${_O_CONTRIB_SEVEN} ${Plr}/modules/o_contrib_seven &> /dev/null
+      fi
+    elif [ -e "${Plr}/web.config" ] \
+      && [ -e "${Plr}/core" ] \
+      && [ -e "${_O_CONTRIB_EIGHT}" ]; then
+      if [ ! -e "${Plr}/modules/o_contrib_eight" ]; then
+        ln -sf ${_O_CONTRIB_EIGHT} ${Plr}/modules/o_contrib_eight &> /dev/null
       fi
     else
       if [ -e "${Plr}/modules/watchdog" ]; then
@@ -464,7 +525,8 @@ fix_o_contrib_symlink() {
           rm -f ${Plr}/modules/o_contrib &> /dev/null
         fi
       else
-        if [ ! -e "${Plr}/modules/o_contrib" ]; then
+        if [ ! -e "${Plr}/modules/o_contrib" ] \
+          && [ -e "${_O_CONTRIB}" ]; then
           ln -sf ${_O_CONTRIB} ${Plr}/modules/o_contrib &> /dev/null
         fi
       fi
@@ -473,7 +535,7 @@ fix_o_contrib_symlink() {
 }
 
 sql_convert() {
-  sudo -u ${_HM_U}.ftp -H /opt/local/bin/sqlmagic convert to-${_SQL_CONVERT}
+  sudo -u ${_HM_U}.ftp -H /opt/local/bin/sqlmagic convert @${Dom} to-${_SQL_CONVERT}
 }
 
 send_shutdown_notice() {
@@ -667,7 +729,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.0.2. As a bonus, you will be able to speed up your sites
+by BOA-3.1.4. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -721,7 +783,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.0.2. As a bonus, you will be able to speed up your sites
+by BOA-3.1.4. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -775,7 +837,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.0.2. As a bonus, you will be able to speed up your sites
+by BOA-3.1.4. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -866,7 +928,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.0.2. As a bonus, you will be able to speed up your sites
+by BOA-3.1.4. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -932,7 +994,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.0.2. As a bonus, you will be able to speed up your sites
+by BOA-3.1.4. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -998,7 +1060,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.0.2. As a bonus, you will be able to speed up your sites
+by BOA-3.1.4. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -1118,8 +1180,8 @@ check_site_status() {
       echo "WARNING: THIS SITE IS BROKEN! ${Dir}"
     fi
   else
-    _STATUS=BROKEN
-    echo "WARNING: THIS SITE IS PROBABLY BROKEN! ${Dir}"
+    _STATUS=UNKNOWN
+    echo "WARNING: THIS SITE IS PROBABLY BROKEN? ${Dir}"
   fi
 }
 
@@ -1161,6 +1223,7 @@ update_solr() {
   # $1 is module
   # $2 is solr core path
   if [ ! -z "$1" ] \
+    && [ ! -e "$2/conf/.protected.conf" ] \
     && [ ! -e "$2/conf/${_X_SE}.conf" ] \
     && [ -e "/var/xdrago/conf/solr" ] \
     && [ -e "$2/conf" ]; then
@@ -1283,10 +1346,19 @@ setup_solr() {
     else
       echo ";solr_custom_config = NO" >> ${_DIR_CTRL_F}
     fi
+    _SLR_CM_CFG_RT=NO
+    _SOLR_PROTECT_CTRL="${_SOLR_DIR}/conf/.protected.conf"
     _SLR_CM_CFG_T=$(grep "^solr_custom_config = YES" ${_DIR_CTRL_F} 2>&1)
     if [[ "${_SLR_CM_CFG_T}" =~ "solr_custom_config = YES" ]]; then
       _SLR_CM_CFG_RT=YES
+      if [ ! -e "${_SOLR_PROTECT_CTRL}" ]; then
+        touch ${_SOLR_PROTECT_CTRL}
+      fi
       echo "Solr config for ${_SOLR_DIR} is protected"
+    else
+      if [ -e "${_SOLR_PROTECT_CTRL}" ]; then
+        rm -f ${_SOLR_PROTECT_CTRL}
+      fi
     fi
   fi
   ###
@@ -1328,11 +1400,11 @@ setup_solr() {
     fi
     _SOLR_UP_CFG_TT=$(grep "^solr_update_config = YES" ${_DIR_CTRL_F} 2>&1)
     if [[ "${_SOLR_UP_CFG_TT}" =~ "solr_update_config = YES" ]]; then
-      if [ "${_SLR_CM_CFG_RT}" = "YES" ] \
-        || [ -e "${_SOLR_DIR}/conf/${_X_SE}.conf" ]; then
-        _DO_NOTHING=YES
-      else
-        update_solr ${_SOLR_MODULE} ${_SOLR_DIR}
+      if [ ! -e "${_SOLR_DIR}/conf/${_X_SE}.conf" ]; then
+        if [ "${_SLR_CM_CFG_RT}" = "NO" ] \
+          && [ ! -e "${_SOLR_PROTECT_CTRL}" ]; then
+          update_solr ${_SOLR_MODULE} ${_SOLR_DIR}
+        fi
       fi
     fi
   fi
@@ -1868,6 +1940,29 @@ fix_modules() {
         enable_modules "${_MODULES_ON_SEVEN}"
       fi
     fi
+  elif [ -e "${Plr}/modules/o_contrib_eight" ]; then
+    if [ ! -e "${Plr}/core/modules/node" ] \
+      || [ ! -e "${Plr}/sites/all/drush" ] \
+      || [ ! -e "${Plr}/profiles" ]; then
+      echo "WARNING: THIS PLATFORM IS BROKEN! ${Plr}"
+    else
+      if [ ! -z "${_MODULES_OFF_EIGHT}" ]; then
+        uninstall_modules "${_MODULES_OFF_EIGHT}"
+      fi
+      if [ ! -z "${_MODULES_ON_EIGHT}" ]; then
+        enable_modules "${_MODULES_ON_EIGHT}"
+      fi
+      enable_modules "redis"
+      if [ ! -e "${Dir}/.redisOn" ]; then
+        mkdir ${Dir}/.redisOn
+        chown -R ${_HM_U}:users ${Dir}/.redisOn &> /dev/null
+        chmod 0755 ${Dir}/.redisOn &> /dev/null
+        run_drush8_cmd "cache-rebuild"
+      fi
+      if [ -d "${Dir}/.redisOff" ]; then
+        rmdir ${Dir}/.redisOff
+      fi
+    fi
   fi
   if [ -e "${Dir}/modules/commerce_ubercart_check.info" ]; then
     touch ${User}/log/ctrl/site.${Dom}.cart-check.info
@@ -1911,26 +2006,9 @@ fix_modules() {
       fi
     fi
   fi
+}
 
-  ###
-  ### Detect permissions fix overrides, if set per platform.
-  ###
-  _DONT_TOUCH_PERMISSIONS=NO
-  if [ -e "${_PLR_CTRL_F}" ]; then
-    _FIX_PERMISSIONS_PRESENT=$(grep "fix_files_permissions_daily" \
-      ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_FIX_PERMISSIONS_PRESENT}" =~ "fix_files_permissions_daily" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";fix_files_permissions_daily = TRUE" >> ${_PLR_CTRL_F}
-    fi
-    _FIX_PERMISSIONS_TEST=$(grep "^fix_files_permissions_daily = FALSE" \
-      ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_FIX_PERMISSIONS_TEST}" =~ "fix_files_permissions_daily = FALSE" ]]; then
-      _DONT_TOUCH_PERMISSIONS=YES
-    fi
-  fi
-
+if_site_db_conversion() {
   ###
   ### Detect db conversion mode, if set per platform or per site.
   ###
@@ -1972,9 +2050,19 @@ fix_modules() {
       _SQL_CONVERT=myisam
     fi
   fi
-  if [ ! -z "${_SQL_CONVERT}" ] && [ "${_DOW}" = "6" ]; then
+  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+    || [ "${_VMFAMILY}" = "VS" ]; then
+    _DENY_SQL_CONVERT=YES
+    _SQL_CONVERT=
+  fi
+  if [ -z "${_DENY_SQL_CONVERT}" ] \
+    && [ ! -z "${_SQL_CONVERT}" ] \
+    && [ "${_DOW}" = "7" ]; then
     if [ "${_SQL_CONVERT}" = "YES" ]; then
       _SQL_CONVERT=innodb
+    elif [ "${_SQL_CONVERT}" = "NO" ]; then
+      _SQL_CONVERT=
     fi
     if [ "${_SQL_CONVERT}" = "myisam" ] \
       || [ "${_SQL_CONVERT}" = "innodb" ]; then
@@ -2020,7 +2108,7 @@ fix_seven_core_patch() {
 fix_static_permissions() {
   cleanup_ghost_platforms
   if [ -e "${Plr}/profiles" ]; then
-    if [ -e "${Plr}/web.config" ] && [ ! -d "${Plr}/core" ]; then
+    if [ -e "${Plr}/web.config" ] && [ ! -e "${Plr}/core" ]; then
       fix_seven_core_patch
     fi
     if [ ! -e "${User}/static/control/unlock.info" ] \
@@ -2098,12 +2186,15 @@ fix_permissions() {
     chown ${_HM_U}:users \
       ${Plr}/sites/all/drush/drushrc.php \
       ${Plr}/sites \
+      ${Plr}/sites/* \
       ${Plr}/sites/sites.php \
       ${Plr}/sites/all \
       ${Plr}/sites/all/{modules,themes,libraries,drush} &> /dev/null
     chmod 0751 ${Plr}/sites &> /dev/null
-    chmod 0755 ${Plr}/sites/all &> /dev/null
-    chmod 0700 ${Plr}/sites/all/drush &> /dev/null
+    chmod 0755 ${Plr}/sites/* &> /dev/null
+    chmod 0644 ${Plr}/sites/*.php &> /dev/null
+    chmod 0644 ${Plr}/sites/*.txt &> /dev/null
+    chmod 0755 ${Plr}/sites/all/drush &> /dev/null
     find ${Plr}/sites/all/{modules,themes,libraries} -type d -exec \
       chmod 02775 {} \; &> /dev/null
     find ${Plr}/sites/all/{modules,themes,libraries} -type f -exec \
@@ -2149,8 +2240,8 @@ fix_permissions() {
       chmod 0664 {} \; &> /dev/null
     ### files - site level
     chown -L -R ${_HM_U}:www-data ${Dir}/files &> /dev/null
-    find ${Dir}/files/* -type d -exec chmod 02775 {} \; &> /dev/null
-    find ${Dir}/files/* -type f -exec chmod 0664 {} \; &> /dev/null
+    find ${Dir}/files/ -type d -exec chmod 02775 {} \; &> /dev/null
+    find ${Dir}/files/ -type f -exec chmod 0664 {} \; &> /dev/null
     chmod 02775 ${Dir}/files &> /dev/null
     chown ${_HM_U}:www-data ${Dir}/files &> /dev/null
     chown ${_HM_U}:www-data ${Dir}/files/{tmp,images,pictures,css,js} &> /dev/null
@@ -2162,8 +2253,8 @@ fix_permissions() {
     chown ${_HM_U}:www-data ${Dir}/files/{civicrm/custom,civicrm/dynamic} &> /dev/null
     ### private - site level
     chown -L -R ${_HM_U}:www-data ${Dir}/private &> /dev/null
-    find ${Dir}/private -type d -exec chmod 02775 {} \; &> /dev/null
-    find ${Dir}/private -type f -exec chmod 0664 {} \; &> /dev/null
+    find ${Dir}/private/ -type d -exec chmod 02775 {} \; &> /dev/null
+    find ${Dir}/private/ -type f -exec chmod 0664 {} \; &> /dev/null
     chown ${_HM_U}:www-data ${Dir}/private &> /dev/null
     chown ${_HM_U}:www-data ${Dir}/private/{files,temp} &> /dev/null
     chown ${_HM_U}:www-data ${Dir}/private/files/backup_migrate &> /dev/null
@@ -2460,6 +2551,30 @@ cleanup_ghost_drushrc() {
   done
 }
 
+check_update_le_hm_ssl() {
+  exeLe="${User}/tools/le/letsencrypt.sh"
+  if [ -e "${User}/log/domain.txt" ]; then
+    hmFront=$(cat ${User}/log/domain.txt 2>&1)
+    hmFront=$(echo -n ${hmFront} | tr -d "\n" 2>&1)
+  fi
+  if [ -z "${hmFront}" ]; then
+    if [ -e "${User}/.drush/hostmaster.alias.drushrc.php" ]; then
+      hmFront=$(cat ${User}/.drush/hostmaster.alias.drushrc.php \
+        | grep "uri'" \
+        | cut -d: -f2 \
+        | awk '{ print $3}' \
+        | sed "s/[\,']//g" 2>&1)
+    fi
+  fi
+  if [ -x "${exeLe}" ] \
+    && [ ! -z "${hmFront}" ] \
+    && [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
+    echo "Running LE cert check directly for hostmaster ${_HM_U}"
+    su -s /bin/bash - ${_HM_U} -c "${exeLe} -c -d ${hmFront}"
+    sleep 5
+  fi
+}
+
 check_update_le_ssl() {
   if [[ "${Dom}" =~ ^(a|b|c|d|e) ]]; then
     runDay="1"
@@ -2478,8 +2593,9 @@ check_update_le_ssl() {
   fi
   if [ "${_DOW}" = "${runDay}" ]; then
     if [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
-      echo Running LE cert check via Verify task for ${Dom}
+      echo "Running LE cert check via Verify task for ${Dom}"
       run_drush8_hmr_cmd "hosting-task @${Dom} verify --force"
+      echo ${_MOMENT} >> /var/xdrago/log/le/${Dom}
       sleep 5
     fi
   fi
@@ -2560,6 +2676,7 @@ process() {
             && [ ! -z "${Dan}" ] \
             && [ "${Dan}" != "hostmaster" ]; then
             setup_solr
+            if_site_db_conversion
             searchStringB=".dev."
             searchStringC=".devel."
             searchStringD=".temp."
@@ -2592,9 +2709,27 @@ process() {
             fix_user_register_protection
           fi
         fi
+        ###
+        ### Detect permissions fix overrides, if set per platform.
+        ###
+        _DONT_TOUCH_PERMISSIONS=NO
+        if [ -e "${_PLR_CTRL_F}" ]; then
+          _FIX_PERMISSIONS_PRESENT=$(grep "fix_files_permissions_daily" \
+            ${_PLR_CTRL_F} 2>&1)
+          if [[ "${_FIX_PERMISSIONS_PRESENT}" =~ "fix_files_permissions_daily" ]]; then
+            _DO_NOTHING=YES
+          else
+            echo ";fix_files_permissions_daily = TRUE" >> ${_PLR_CTRL_F}
+          fi
+          _FIX_PERMISSIONS_TEST=$(grep "^fix_files_permissions_daily = FALSE" \
+            ${_PLR_CTRL_F} 2>&1)
+          if [[ "${_FIX_PERMISSIONS_TEST}" =~ "fix_files_permissions_daily = FALSE" ]]; then
+            _DONT_TOUCH_PERMISSIONS=YES
+          fi
+        fi
         if [ -e "${Plr}/profiles" ] \
           && [ -e "${Plr}/web.config" ] \
-          && [ ! -d "${Plr}/core" ] \
+          && [ ! -e "${Plr}/core" ] \
           && [ ! -f "${Plr}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
           _PATCH_TEST=$(grep "foreach (array_values(\$data)" \
             ${Plr}/includes/database/database.inc 2>&1)
@@ -2625,7 +2760,7 @@ check_old_empty_platforms() {
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ]; then
-    if [[ "${_CHECK_HOST}" =~ "v189q.nyc." ]] \
+    if [[ "${_CHECK_HOST}" =~ "demo.aegir.cc" ]] \
       || [ -e "/root/.debug.cnf" ]; then
       _DO_NOTHING=YES
     else
@@ -2636,7 +2771,7 @@ check_old_empty_platforms() {
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
           || [ "${_VMFAMILY}" = "VS" ]; then
-          _DEL_OLD_EMPTY_PLATFORMS="30"
+          _DEL_OLD_EMPTY_PLATFORMS="60"
         else
           _DEL_OLD_EMPTY_PLATFORMS="60"
         fi
@@ -2785,8 +2920,8 @@ purge_cruft_machine() {
         | tr -d "\n" 2>&1)
       if [ "${RevisionTest}" -lt "${_LOW_NR}" ] \
         && [ ! -z "${RevisionTest}" ]; then
-        chattr -i /home/${_HM_U}.ftp/platforms   &> /dev/null
-        chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
+        chattr -i /home/${_HM_U}.ftp/platforms
+        chattr -i /home/${_HM_U}.ftp/platforms/*
         rm -rf /home/${_HM_U}.ftp/platforms/$i
       fi
     fi
@@ -2809,8 +2944,8 @@ purge_cruft_machine() {
   for i in ${_REVISIONS}; do
     if [ -e "${User}/distro/$i" ] \
       && [ ! -e "/home/${_HM_U}.ftp/platforms/$i" ]; then
-      chattr -i /home/${_HM_U}.ftp/platforms   &> /dev/null
-      chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
+      chattr -i /home/${_HM_U}.ftp/platforms
+      chattr -i /home/${_HM_U}.ftp/platforms/*
       mkdir -p /home/${_HM_U}.ftp/platforms/$i
       mkdir -p ${User}/distro/$i/keys
       chown ${_HM_U}.ftp:${_WEBG} ${User}/distro/$i/keys &> /dev/null
@@ -2999,6 +3134,7 @@ action() {
           symlinks -dr /home/${_HM_U}.ftp &> /dev/null
           rm -f /home/${_HM_U}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
         fi
+        check_update_le_hm_ssl ${_HM_U}
         echo "Done for ${User}"
         enable_chattr ${_HM_U}.ftp
       else
@@ -3021,7 +3157,9 @@ _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
@@ -3039,12 +3177,14 @@ if [ "${_VMFAMILY}" = "VS" ]; then
   _MODULES_FORCE="background_process coder cookie_cache_bypass css_gzip hacked \
     javascript_aggregator memcache memcache_admin poormanscron search_krumo \
     security_review site_audit stage_file_proxy syslog supercron ultimate_cron \
-    varnish watchdog_live xhprof"
+    varnish watchdog_live xhprof automated_cron"
 fi
 #
-if [ "${_DOW}" = "6" ]; then
+if [ "${_DOW}" = "7" ]; then
+  _MODULES_ON_EIGHT=
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
+  _MODULES_OFF_EIGHT="automated_cron dblog syslog simpletest update"
   _MODULES_OFF_SEVEN="background_process coder dblog devel hacked l10n_update \
    linkchecker memcache memcache_admin performance search_krumo \
    security_review site_audit stage_file_proxy syslog ultimate_cron update \
@@ -3054,11 +3194,13 @@ if [ "${_DOW}" = "6" ]; then
     memcache_admin performance poormanscron search_krumo security_review \
     stage_file_proxy supercron syslog ultimate_cron update varnish \
     watchdog_live xhprof"
-elif [ "${_DOW}" = "3" ]; then
+else
+  _MODULES_ON_EIGHT=
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
-  _MODULES_OFF_SEVEN="background_process dblog syslog update"
-  _MODULES_OFF_SIX="background_process dblog syslog update"
+  _MODULES_OFF_EIGHT="dblog syslog update"
+  _MODULES_OFF_SEVEN="dblog syslog update"
+  _MODULES_OFF_SIX="dblog syslog update"
 fi
 #
 _CTRL_TPL_FORCE_UPDATE=YES
@@ -3070,18 +3212,22 @@ if [ -e "/data/all" ]; then
   _LAST_ALL=${listl[@]: -1}
   _O_CONTRIB="/data/all/${_LAST_ALL}/o_contrib"
   _O_CONTRIB_SEVEN="/data/all/${_LAST_ALL}/o_contrib_seven"
+  _O_CONTRIB_EIGHT="/data/all/${_LAST_ALL}/o_contrib_eight"
 elif [ -e "/data/disk/all" ]; then
   cd /data/disk/all
   listl=([0-9]*)
   _LAST_ALL=${listl[@]: -1}
   _O_CONTRIB="/data/disk/all/${_LAST_ALL}/o_contrib"
   _O_CONTRIB_SEVEN="/data/disk/all/${_LAST_ALL}/o_contrib_seven"
+  _O_CONTRIB_EIGHT="/data/disk/all/${_LAST_ALL}/o_contrib_eight"
 else
   _O_CONTRIB=NO
   _O_CONTRIB_SEVEN=NO
+  _O_CONTRIB_EIGHT=NO
 fi
 #
 mkdir -p /var/xdrago/log/daily
+mkdir -p /var/xdrago/log/le
 #
 if [ -e "/root/.barracuda.cnf" ]; then
   source /root/.barracuda.cnf
@@ -3103,8 +3249,6 @@ else
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
-    _PERMISSIONS_FIX=YES
-    _MODULES_FIX=YES
     n=$((RANDOM%900+80))
     echo "waiting $n sec"
     sleep $n
@@ -3140,10 +3284,22 @@ else
       echo fixed > /data/disk/all/permissions-fix-post-up-${_X_SE}.info
     fi
   fi
+
   action >/var/xdrago/log/daily/daily-${_NOW}.log 2>&1
+
+  dhpWildPath="/etc/ssl/private/nginx-wild-ssl.dhp"
+  if [ -e "/etc/ssl/private/4096.dhp" ]; then
+    dhpPath="/etc/ssl/private/4096.dhp"
+    _DIFF_T=$(diff ${dhpPath} ${dhpWildPath} 2>&1)
+    if [ ! -z "${_DIFF_T}" ]; then
+      cp -af ${dhpPath} ${dhpWildPath}
+    fi
+  fi
+
   if [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
     if [ ! -e "/etc/ssl/private/4096.dhp" ]; then
-      openssl dhparam -out /etc/ssl/private/4096.dhp 4096 &> /dev/null
+      echo "Generating 4096.dhp -- it may take a very long time..."
+      openssl dhparam -out /etc/ssl/private/4096.dhp 4096 > /dev/null 2>&1 &
     fi
     for f in `find /etc/ssl/private/*.crt -type f`; do
       sslName=$(echo ${f} | cut -d'/' -f5 | awk '{ print $1}' | sed "s/.crt//g")

@@ -18,9 +18,9 @@ else
   touch /var/run/boa_wait.pid
   touch /var/xdrago/log/mysql_restart_running.pid
   service mysql stop
-  sleep 10
+  sleep 15
   service mysql stop
-  sleep 10
+  sleep 15
   renice ${_B_NICE} -p $$ &> /dev/null
   service mysql start
   sleep 30

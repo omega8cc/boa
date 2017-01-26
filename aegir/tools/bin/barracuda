@@ -4,18 +4,19 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 branch="3.x.x-dev"
-cluster="BOA-2.4.9"
+cluster="BOA-3.1.4"
 hd="HEAD"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
 master="master"
-nextv="BOA-3.1.0-dev"
-stbl="BOA-3.0.2"
+nextv="BOA-3.2.0-dev"
+stbl="BOA-3.1.4"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+forCer="-fuy --force-yes --reinstall"
 filIncB="barracuda.sh.cnf"
 filIncO="octopus.sh.cnf"
 octName="OCTOPUS.sh.txt"
@@ -34,7 +35,9 @@ _LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
 _VMFAMILY=XEN
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
@@ -74,7 +77,7 @@ check_root_direct() {
     echo
     echo "HINT:  You can always restrict access later, or"
     echo "       allow only SSH keys for root with directive"
-    echo "         PermitRootLogin without-password"
+    echo "         PermitRootLogin prohibit-password"
     echo "       in the /usr/etc/sshd_config file"
     echo "Bye"
     clean_pid_exit
@@ -165,7 +168,7 @@ fix_dns_settings() {
       || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]]; then
       echo "        label = \"google-servers\";" > ${dnsLi}
       for _IP in `cat /etc/resolv.conf \
-        | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
+        | sed 's/.*127.0.0.1.*//g; s/.*search.*//g; s/.*Dynamic.*//g' \
         | cut -d ' ' -f2 \
         | sort \
         | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
@@ -679,12 +682,14 @@ up_action() {
           wait
           sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=YES/g"         ${barCnf}
           wait
-          ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                  ${barCnf}
-          ### wait
           sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"        ${barCnf}
           wait
           sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"     ${barCnf}
           wait
+          sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"       ${barCnf}
+          wait
+          # sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.1/g"                  ${barCnf}
+          # wait
           if [ -e "/root/.mstr.clstr.cnf" ] \
             || [ -e "/root/.wbhd.clstr.cnf" ] \
             || [ -e "/root/.dbhd.clstr.cnf" ] \
@@ -697,24 +702,19 @@ up_action() {
           if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
             || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
             || [ "${_VMFAMILY}" = "VS" ]; then
-            if [ "${_VMFAMILY}" = "VS" ]; then
-              sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"       ${barCnf}
-              wait
-              sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"         ${barCnf}
-              wait
-              sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"   ${barCnf}
-              wait
-              ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"              ${barCnf}
-              ### wait
+            # if [ "${_VMFAMILY}" = "VS" ]; then
+            #   sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"       ${barCnf}
+            #   wait
+            #   sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"         ${barCnf}
+            #   wait
+            #   sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"   ${barCnf}
+            #   wait
+            # fi
+            if [ -e "/etc/init.d/redis-server" ]; then
+              sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"     ${barCnf}
+            else
+              sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"      ${barCnf}
             fi
-            sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"             ${barCnf}
-            wait
-            sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"     ${barCnf}
-            wait
-            ### sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"   ${barCnf}
-            ### wait
-            sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g" \
-              /root/.*.octopus.cnf &> /dev/null
             wait
             if [ -x "/opt/php56/bin/php" ] \
               && [ -z "${phpS}" ]; then
@@ -956,7 +956,7 @@ find_fast_mirror() {
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
+    apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -1005,12 +1005,13 @@ check_dns_curl() {
   fi
   find_fast_mirror
   isCurl=$(curl --version 2>&1)
-  if [[ ! "$isCurl" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-    if [[ ! "$isCurl" =~ "GnuTLS" ]] || [ -z "${isCurl}" ]; then
-      echo "ERROR: Required cURL package is not available"
-      echo "ERROR: Please install it manually with 'apt-get install curl'"
-      clean_pid_exit
-    fi
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
+    echo "curl install" | dpkg --set-selections
+    apt-get clean -qq &> /dev/null
+    apt-get update -qq &> /dev/null
+    apt-get install curl ${forCer} &> /dev/null
+    touch /root/.use.curl.from.packages.cnf
   fi
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
@@ -1020,7 +1021,7 @@ check_dns_curl() {
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "curl install" | dpkg --set-selections
-      apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
+      apt-get install curl ${forCer} &> /dev/null
       touch /root/.use.curl.from.packages.cnf
     fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
@@ -1097,6 +1098,17 @@ check_root() {
     wait
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
     wait
+    _GH_TEST=$(cat /etc/hosts | grep github 2>&1)
+    if [[ ! "${_GH_TEST}" =~ "github.com" ]]; then
+      echo "192.30.253.113 github.com" >> /etc/hosts
+      wait
+      echo "151.101.32.133 raw.githubusercontent.com" >> /etc/hosts
+      wait
+      echo >>/etc/hosts
+      wait
+      service pdnsd restart &> /dev/null
+      pdnsd-ctl empty-cache &> /dev/null
+    fi
     echo >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
     wait
@@ -1146,7 +1158,6 @@ proceed() {
       curl ${crlGet} "${rgUrl}/${master}/${pthIncB}"  -o ${vBs}/${filIncB}
     fi
   elif [ "${cmmand}" = "up-cluster" ]; then
-    branch="2.4.x-dev"
     _SCRIPT_URL="$rgUrl/${cluster}/${barName}"
     curl ${crlGet} "${rgUrl}/${cluster}/${pthIncB}" -o ${vBs}/${filIncB}
   elif [ "${cmmand}" = "up-stable" ]; then

@@ -86,6 +86,8 @@ fix_redis_mode() {
     if [ "${_REDIS_LISTEN_MODE}" = "SOCKET" ]; then
       sed -i "s/redis_client_host/redis_client_socket/g"               /data/conf/global.inc &> /dev/null
       wait
+      sed -i "s/'host'/'socket'/g"                                     /data/conf/global.inc &> /dev/null
+      wait
       sed -i "s/  = '127.0.0.1';/= '\/var\/run\/redis\/redis.sock';/g" /data/conf/global.inc &> /dev/null
       wait
       sed -i "s/^port 0/port 6379/g"                                   /etc/redis/redis.conf &> /dev/null
@@ -200,7 +202,7 @@ update_redis_password() {
 install_redis_src() {
   msg "INFO: Installing Redis update for ${_THIS_OS}/${_THIS_RV}..."
   if [ ! -e "/var/lib/redis" ]; then
-    st_runner "adduser --system --group redis" 2> /dev/null
+    mrun "adduser --system --group redis" 2> /dev/null
   fi
   cd /var/opt
   rm -rf redis*
@@ -212,11 +214,11 @@ install_redis_src() {
   rm -f /usr/local/bin/redis*
   rm -f /usr/bin/redis*
   cd redis-${_REDIS_VRN}
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet PREFIX=/usr install" 2> /dev/null
+  mrun "make --quiet" 2> /dev/null
+  mrun "make --quiet PREFIX=/usr install" 2> /dev/null
   cp -af ${locCnf}/redis-server /etc/init.d/redis-server
   chmod 755 /etc/init.d/redis-server &> /dev/null
-  st_runner "update-rc.d redis-server defaults" &> /dev/null
+  mrun "update-rc.d redis-server defaults" &> /dev/null
   mkdir -p /var/run/redis
   chown redis:redis /var/run/redis
   mkdir -p /var/log/redis

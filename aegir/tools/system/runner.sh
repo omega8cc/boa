@@ -55,14 +55,14 @@ count_cpu() {
 load_control() {
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
-    _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
+    _CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO//[^0-9]/}
   fi
-  if [ -z "${_CPU_MAX_RATIO}" ]; then
-    _CPU_MAX_RATIO=6
+  if [ -z "${_CPU_SPIDER_RATIO}" ]; then
+    _CPU_SPIDER_RATIO=6
   fi
   _O_LOAD=$(awk '{print $1*100}' /proc/loadavg 2>&1)
   _O_LOAD=$(( _O_LOAD / _CPU_NR ))
-  _O_LOAD_MAX=$(( 100 * _CPU_MAX_RATIO ))
+  _O_LOAD_MAX=$(( 100 * _CPU_SPIDER_RATIO ))
 }
 
 action() {
@@ -95,7 +95,7 @@ if [ -e "/var/run/boa_wait.pid" ] \
   touch /var/xdrago/log/wait-runner
   exit 0
 elif [ `ps aux | grep -v "grep" \
-  | grep --count "c bash.*runner"` -gt "2" ]; then
+  | grep --count "n7 bash.*runner"` -gt "2" ]; then
   touch /var/xdrago/log/wait-runner
   exit 0
 else

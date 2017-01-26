@@ -55,7 +55,7 @@ sub_force_advanced_nginx_config() {
 force_advanced_nginx_config() {
   if [ ! -e "/etc/ssl/private/nginx-wild-ssl.dhp" ]; then
     msg "INFO: Generating DH parameters, 2048 bit, please wait..."
-    st_runner "openssl dhparam \
+    mrun "openssl dhparam \
       -out /etc/ssl/private/nginx-wild-ssl.dhp 2048" 2> /dev/null
   fi
   cp -af ${locCnf}/nginx_compact_include.conf ${mtrInc}/nginx_compact_include.conf
@@ -190,25 +190,27 @@ force_advanced_nginx_config() {
 #
 # Check for Linux/Cdorked.A malware and delete if discovered.
 detect_cdorked_malware() {
-  _C_DORKED=NO
-  _C_FILE=${bldPth}/aegir/helpers/dump_cdorked_config.c
-  if [ -e "$_C_FILE" ]; then
-    ### msg "INFO: Checking for Linux/Cdorked.A malware..."
-    chattr -ai $(which nginx) &> /dev/null
-    cd ${vBs}
-    rm -rf /var/opt/foo_bar*
-    gcc -o /var/opt/foo_bar ${bldPth}/aegir/helpers/dump_cdorked_config.c &> /dev/null
-    _C_DORKED_TEST=$(/var/opt/foo_bar 2>&1)
-    if [[ "${_C_DORKED_TEST}" =~ "No shared memory matching Cdorked signature" ]]; then
-      _DO_NOTHING=YES
-      ### msg "INFO: No Linux/Cdorked.A malware traces found - system clean"
-    else
-      msg "ALRT! Your system is probably infected by Linux/Cdorked.A malware!"
-      msg "ALRT! Please send the ${vBs}/httpd_cdorked_config.bin file"
-      msg "ALRT! to leveille@eset.com for investigation"
-      rm -f $(which nginx)
-      _NGX_FORCE_REINSTALL=YES
-      _C_DORKED=YES
+  if [ -x "/usr/sbin/nginx" ]; then
+    _C_DORKED=NO
+    _C_FILE=${bldPth}/aegir/helpers/dump_cdorked_config.c
+    if [ -e "$_C_FILE" ]; then
+      ### msg "INFO: Checking for Linux/Cdorked.A malware..."
+      chattr -ai /usr/sbin/nginx
+      cd ${vBs}
+      rm -rf /var/opt/foo_bar*
+      gcc -o /var/opt/foo_bar ${bldPth}/aegir/helpers/dump_cdorked_config.c &> /dev/null
+      _C_DORKED_TEST=$(/var/opt/foo_bar 2>&1)
+      if [[ "${_C_DORKED_TEST}" =~ "No shared memory matching Cdorked signature" ]]; then
+        _DO_NOTHING=YES
+        ### msg "INFO: No Linux/Cdorked.A malware traces found - system clean"
+      else
+        msg "ALRT! Your system is probably infected by Linux/Cdorked.A malware!"
+        msg "ALRT! Please send the ${vBs}/httpd_cdorked_config.bin file"
+        msg "ALRT! to leveille@eset.com for investigation"
+        rm -f $(which nginx)
+        _NGX_FORCE_REINSTALL=YES
+        _C_DORKED=YES
+      fi
     fi
   fi
 }
@@ -363,7 +365,7 @@ install_upgrade_nginx() {
       get_dev_src "openssl-${_OPENSSL_NGX_VRN}.tar.gz"
     fi
     cd /var/opt/nginx-${_NGINX_VRN}
-    st_runner "sh ./configure \
+    mrun "sh ./configure \
       --prefix=/usr \
       --sbin-path=/usr/sbin/nginx \
       --conf-path=/etc/nginx/nginx.conf \
@@ -389,9 +391,12 @@ install_upgrade_nginx() {
       --with-http_geoip_module \
       --with-openssl=/var/opt/openssl-${_OPENSSL_NGX_VRN} \
       --with-debug ${_NGINX_EXTRA}" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
+      && [ "${_LOC_OSV}" = "wheezy" ]; then
+      _DO_NOTHING=YES
+    elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
       && [ "${_LOC_OSV}" = "squeeze" ]; then
       _DO_NOTHING=YES
     else
@@ -486,51 +491,29 @@ nginx_wildcard_ssl() {
   _WILD_SSL_VHOST="${mtrNgx}/pre.d/nginx_wild_ssl.conf"
   if [ ! -e "${_WILD_SSL_VHOST}" ]; then
     msg "INFO: Installing default SSL Wildcard Nginx Proxy..."
-    _HTTPS_TEST=$(netstat -ln | grep :443 2>&1)
-    if [[ "$_HTTPS_TEST" =~ "443" ]]; then
-      _HTTPS_TEST=EXIST
-      msg "WARNING!"
-      cat <<EOF
-
-    We can't enable Wildcard HTTPS Proxy for all your hosted sites,
-    including all Aegir Satellite Instances, because you have already
-    enabled SSL on the IP address used by your Aegir Master Instance.
-
-    If you wish to use provided now by Barracuda Wildcard HTTPS Proxy,
-    please disable the SSL you enabled, or use the built-in Aegir SSL
-    feature on another IP address available and not used by the Hostmaster,
-    and other hosted sites.
-
-    We will continue in 10 seconds...
-
-EOF
-      mrun "sleep 10"
-    else
-      _HTTPS_TEST=FREE
-      validate_public_ip &> /dev/null
-      validate_xtras_ip &> /dev/null
-      openssl req -x509 -nodes -sha256 -days 7300 \
-        -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.${_THISHOST}" \
-        -newkey rsa:2048 \
-        -keyout /etc/ssl/private/nginx-wild-ssl.key \
-        -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
-      cp -af ${locCnf}/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
-      sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST} &> /dev/null
-      sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST} &> /dev/null
-      mkdir -p /data/conf
-      if [ -e "${locCnf}/global.inc" ]; then
-        cp -af ${locCnf}/global.inc /data/conf/global.inc
-      fi
-      if [ -e "${mtrInc}" ] \
-        && [ ! -L "${mtrInc}/global.inc" ] \
-        && [ -e "/data/conf/global.inc" ]; then
-        ln -sf /data/conf/global.inc ${mtrInc}/global.inc
-      fi
-      sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
-      update_redis_password
-      killall -9 nginx &> /dev/null
-      mrun "service nginx start" &> /dev/null
+    validate_public_ip &> /dev/null
+    validate_xtras_ip &> /dev/null
+    openssl req -x509 -nodes -sha256 -days 7300 \
+      -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.${_THISHOST}" \
+      -newkey rsa:2048 \
+      -keyout /etc/ssl/private/nginx-wild-ssl.key \
+      -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
+    cp -af ${locCnf}/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
+    sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST} &> /dev/null
+    sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST} &> /dev/null
+    mkdir -p /data/conf
+    if [ -e "${locCnf}/global.inc" ]; then
+      cp -af ${locCnf}/global.inc /data/conf/global.inc
     fi
+    if [ -e "${mtrInc}" ] \
+      && [ ! -L "${mtrInc}/global.inc" ] \
+      && [ -e "/data/conf/global.inc" ]; then
+      ln -sf /data/conf/global.inc ${mtrInc}/global.inc
+    fi
+    sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
+    update_redis_password
+    killall -9 nginx &> /dev/null
+    mrun "service nginx start" &> /dev/null
   else
     _WILDCARD_SSL_TEST=$(grep "localhost:80" ${_WILD_SSL_VHOST} 2>&1)
     if [[ "${_WILDCARD_SSL_TEST}" =~ "localhost:80" ]]; then
@@ -566,11 +549,13 @@ fix_update_nginx_config() {
     if [ -e "/var/aegir/config" ]; then
       sed -i "s/.*listen .*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/*          &> /dev/null
       wait
-      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
+      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/adminer.*  &> /dev/null
+      wait
+      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
       wait
       sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/chive.*    &> /dev/null
       wait
-      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
+      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
       wait
       sed -i "s/SSLv3 TLSv1;/TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf             &> /dev/null
       wait

@@ -5,7 +5,11 @@ _ALL="$@"
 ### echo _ALL is ${_ALL}
 _ARR=
 if [[ "${_ALL}" =~ "true COLUMNS=" ]]; then
-  _R_M=`echo -n "${_ALL}" | grep -o "\-c set -m\; true COLUMNS=[0-9]\+ drush"`
+  if [[ "${_ALL}" =~ "-c set -m" ]]; then
+    _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; true COLUMNS=[0-9]\+ drush"`
+  else
+    _R_M=`echo -n ${_ALL} | grep -o "\-c true COLUMNS=[0-9]\+ drush"`
+  fi
   ### echo _R_M is $_R_M
   _CLR=`echo ${_ALL} | sed "s/\$_R_M//g"`
   _ARR=() # the buffer array for filtered parameters
@@ -521,6 +525,16 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       unset MAGLEV_HOME
       unset RBXOPT
       export RUBY_VERSION="ruby-${_RUBY_VP}"
+    fi
+    if [ -x "/usr/bin/npm" ] && [ -d "/home/${USER}/.npm-packages" ]; then
+      if [[ "${_ALL}" =~ "-c set -m; " ]] || [ ! -z "${SSH_CLIENT}" ]; then
+        _NPM_ALLOW=YES
+      fi
+    fi
+    if [ "${_NPM_ALLOW}" = "YES" ]; then
+      export NPM_PACKAGES="/home/${USER}/.npm-packages"
+      export PATH="${NPM_PACKAGES}/bin:${PATH}"
+      export NODE_PATH="${NPM_PACKAGES}/lib/node_modules:${NODE_PATH}"
     fi
     if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ]; then
       if [ -x "/bin/dash" ]; then

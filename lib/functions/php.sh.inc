@@ -137,21 +137,21 @@ fix_php_ini_opcache() {
     if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]]; then
       _DO_NOTHING=YES
     else
-      echo ";"                                   >> ${_THIS_FILE}
-      echo "; Zend OPcache"                      >> ${_THIS_FILE}
-      echo "zend_extension=\"$_OPCACHE_SO\""     >> ${_THIS_FILE}
-      echo "opcache.enable=1"                    >> ${_THIS_FILE}
-      echo "opcache.restrict_api=/var/www"       >> ${_THIS_FILE}
-      echo "opcache.memory_consumption=181"      >> ${_THIS_FILE}
-      echo "opcache.interned_strings_buffer=8"   >> ${_THIS_FILE}
-      echo "opcache.max_accelerated_files=64000" >> ${_THIS_FILE}
-      echo "opcache.revalidate_freq=60"          >> ${_THIS_FILE}
-      echo "opcache.enable_file_override=1"      >> ${_THIS_FILE}
-      echo "opcache.inherited_hack=1"            >> ${_THIS_FILE}
-      echo "opcache.dups_fix=1"                  >> ${_THIS_FILE}
-      echo "opcache.log_verbosity_level=0"       >> ${_THIS_FILE}
-      echo "opcache.fast_shutdown=1"             >> ${_THIS_FILE}
-      echo ";"                                   >> ${_THIS_FILE}
+      echo ";"                                    >> ${_THIS_FILE}
+      echo "; Zend OPcache"                       >> ${_THIS_FILE}
+      echo "zend_extension=\"$_OPCACHE_SO\""      >> ${_THIS_FILE}
+      echo "opcache.enable=1"                     >> ${_THIS_FILE}
+      echo "opcache.restrict_api=/var/www"        >> ${_THIS_FILE}
+      echo "opcache.memory_consumption=181"       >> ${_THIS_FILE}
+      echo "opcache.interned_strings_buffer=8"    >> ${_THIS_FILE}
+      echo "opcache.max_accelerated_files=256000" >> ${_THIS_FILE}
+      echo "opcache.revalidate_freq=60"           >> ${_THIS_FILE}
+      echo "opcache.enable_file_override=1"       >> ${_THIS_FILE}
+      echo "opcache.inherited_hack=1"             >> ${_THIS_FILE}
+      echo "opcache.dups_fix=1"                   >> ${_THIS_FILE}
+      echo "opcache.log_verbosity_level=0"        >> ${_THIS_FILE}
+      echo "opcache.fast_shutdown=1"              >> ${_THIS_FILE}
+      echo ";"                                    >> ${_THIS_FILE}
     fi
   fi
 }
@@ -256,6 +256,13 @@ fix_php_ini_mongo_all() {
       fix_php_ini_mongo
     done
   fi
+}
+
+#
+# Check PHP Config.
+check_update_php_config() {
+  update_php_conf
+  update_ini_tpl
 }
 
 #
@@ -435,10 +442,10 @@ install_php_extensions() {
     rm -rf zendopcache*
     get_dev_src "zendopcache-${_OPCACHE_VRN}.tar.gz"
     cd /var/opt/zendopcache-${_OPCACHE_VRN}
-    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     touch ${pthLog}/zendopcache-${_OPCACHE_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
@@ -452,10 +459,10 @@ install_php_extensions() {
   rm -rf phpredis*
   get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
   cd /var/opt/phpredis
-  st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
+  mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+  mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+  mrun "make --quiet" 2> /dev/null
+  mrun "make --quiet install" 2> /dev/null
   touch ${pthLog}/phpredis-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
   ###--------------------###
   if [ "$1" != "70" ]; then
@@ -464,10 +471,10 @@ install_php_extensions() {
     rm -rf uploadprogress*
     get_dev_src "uploadprogress-${_UPROGRESS_VRN}.tgz"
     cd /var/opt/uploadprogress-${_UPROGRESS_VRN}
-    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     touch ${pthLog}/uploadprogress-${_UPROGRESS_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
@@ -482,10 +489,10 @@ install_php_extensions() {
       get_dev_src "pecl-jsmin-${_JSMIN_LEGACY_VRN}.tar.gz"
       cd /var/opt/pecl-jsmin-${_JSMIN_LEGACY_VRN}
     fi
-    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
@@ -495,10 +502,10 @@ install_php_extensions() {
     rm -rf twig*
     get_dev_src "twig-${_TWIGC_VRN}.tar.gz"
     cd /var/opt/twig-${_TWIGC_VRN}/ext/twig
-    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     touch ${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
@@ -523,9 +530,9 @@ install_php_extensions() {
           wait
         fi
       done
-      st_runner "sh ./configure --enable-php" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
+      mrun "sh ./configure --enable-php" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       touch ${pthLog}/php-geos-${_GEOS_VRN}-${_T_PHP_VRN}.log
     fi
   fi
@@ -537,10 +544,10 @@ install_php_extensions() {
       rm -rf mongo*
       get_dev_src "mongo-${_MONGO_VRN}.tgz"
       cd /var/opt/mongo-${_MONGO_VRN}
-      st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
+      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       touch ${pthLog}/php-mongo-${_MONGO_VRN}-${_T_PHP_VRN}.log
     fi
   fi
@@ -560,10 +567,10 @@ install_php_extensions() {
       get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
       cd /var/opt/imagick-${_IMAGICK_VRN}
     fi
-    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     touch ${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
@@ -573,10 +580,10 @@ install_php_extensions() {
     rm -rf mailparse*
     get_dev_src "mailparse-${_MAILPARSE_VRN}.tgz"
     cd /var/opt/mailparse-${_MAILPARSE_VRN}
-    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
@@ -588,10 +595,10 @@ install_php_extensions() {
     rm -rf yaml*
     get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
     cd /var/opt/yaml-${_LIB_YAML_VRN}
-    st_runner "sh ./bootstrap" 2> /dev/null
-    st_runner "sh ./configure --prefix=/usr" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    mrun "sh ./bootstrap" 2> /dev/null
+    mrun "sh ./configure --prefix=/usr" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
     rm -f ${pthLog}/yaml*.log
     _X86_64_TEST=$(uname -m 2>&1)
@@ -625,10 +632,10 @@ install_php_extensions() {
     get_dev_src "yaml-${_YAML_VRN}.tgz"
     cd /var/opt/yaml-${_YAML_VRN}
   fi
-  st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
+  mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+  mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+  mrun "make --quiet" 2> /dev/null
+  mrun "make --quiet install" 2> /dev/null
   touch ${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log
 }
 
@@ -643,10 +650,10 @@ update_php_extensions() {
       rm -rf zendopcache*
       get_dev_src "zendopcache-${_OPCACHE_VRN}.tar.gz"
       cd /var/opt/zendopcache-${_OPCACHE_VRN}
-      st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
+      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       touch ${pthLog}/zendopcache-${_OPCACHE_VRN}-${_T_PHP_VRN}.log
     fi
   fi
@@ -662,10 +669,10 @@ update_php_extensions() {
     rm -rf phpredis*
     get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
     cd /var/opt/phpredis
-    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     touch ${pthLog}/phpredis-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
@@ -676,10 +683,10 @@ update_php_extensions() {
       rm -rf uploadprogress*
       get_dev_src "uploadprogress-${_UPROGRESS_VRN}.tgz"
       cd /var/opt/uploadprogress-${_UPROGRESS_VRN}
-      st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
+      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       touch ${pthLog}/uploadprogress-${_UPROGRESS_VRN}-${_T_PHP_VRN}.log
     fi
   fi
@@ -696,10 +703,10 @@ update_php_extensions() {
         get_dev_src "pecl-jsmin-${_JSMIN_LEGACY_VRN}.tar.gz"
         cd /var/opt/pecl-jsmin-${_JSMIN_LEGACY_VRN}
       fi
-       st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
+      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
     fi
   fi
@@ -711,10 +718,10 @@ update_php_extensions() {
       rm -rf twig*
       get_dev_src "twig-${_TWIGC_VRN}.tar.gz"
       cd /var/opt/twig-${_TWIGC_VRN}/ext/twig
-      st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
+      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       touch ${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log
     fi
   fi
@@ -741,9 +748,9 @@ update_php_extensions() {
           wait
         fi
       done
-      st_runner "sh ./configure --enable-php" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
+      mrun "sh ./configure --enable-php" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       touch ${pthLog}/php-geos-${_GEOS_VRN}-${_T_PHP_VRN}.log
     fi
   fi
@@ -756,10 +763,10 @@ update_php_extensions() {
       rm -rf mongo*
       get_dev_src "mongo-${_MONGO_VRN}.tgz"
       cd /var/opt/mongo-${_MONGO_VRN}
-      st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
+      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       touch ${pthLog}/php-mongo-${_MONGO_VRN}-${_T_PHP_VRN}.log
     fi
   fi
@@ -780,10 +787,10 @@ update_php_extensions() {
         get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
         cd /var/opt/imagick-${_IMAGICK_VRN}
       fi
-      st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
+      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       touch ${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
     fi
   fi
@@ -795,10 +802,10 @@ update_php_extensions() {
       rm -rf mailparse*
       get_dev_src "mailparse-${_MAILPARSE_VRN}.tgz"
       cd /var/opt/mailparse-${_MAILPARSE_VRN}
-      st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
+      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
     fi
   fi
@@ -811,10 +818,10 @@ update_php_extensions() {
     rm -rf yaml*
     get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
     cd /var/opt/yaml-${_LIB_YAML_VRN}
-    st_runner "sh ./bootstrap" 2> /dev/null
-    st_runner "sh ./configure --prefix=/usr" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    mrun "sh ./bootstrap" 2> /dev/null
+    mrun "sh ./configure --prefix=/usr" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     touch ${pthLog}/libyaml-${_LIB_YAML_VRN}.log
     rm -f ${pthLog}/yaml*.log
     _X86_64_TEST=$(uname -m 2>&1)
@@ -847,10 +854,10 @@ update_php_extensions() {
       get_dev_src "yaml-${_YAML_VRN}.tgz"
       cd /var/opt/yaml-${_YAML_VRN}
     fi
-    st_runner "${_T_PHP_PTH}/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     touch ${pthLog}/yaml-${_YAML_VRN}-${_T_PHP_VRN}.log
   fi
 }
@@ -858,7 +865,10 @@ update_php_extensions() {
 #
 # Install modern PHP version
 install_php_multi() {
-  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+  if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "wheezy" ]; then
+    _DO_FIX=YES
+  elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
     && [ "${_LOC_OSV}" = "squeeze" ]; then
     _DO_FIX=YES
   fi
@@ -867,12 +877,33 @@ install_php_multi() {
   fi
   ###--------------------###
   msg "INFO: Building PHP ${_PHP_VERSION} from sources, please wait..."
+  if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
+    && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
+    if [ -e "/usr/lib/libtidy.so" ]; then
+      mrun "apt-get remove libtidy-dev -y --force-yes -qq" &> /dev/null
+      mrun "apt-get remove libtidy-0.99-0 -y --force-yes -qq" &> /dev/null
+      mrun "apt-get remove tidy -y --force-yes -qq" &> /dev/null
+    fi
+    cd /var/opt
+    rm -rf tidy*
+    mrun "${_INSTALL} cmake" 2> /dev/null
+    get_dev_src "tidy-html5-${_LIB_TIDY_VRN}.tar.gz"
+    cd tidy-html5-${_LIB_TIDY_VRN}/build/cmake
+    mrun "cmake ../.. -DCMAKE_INSTALL_PREFIX=/usr/" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    if [ -e "/usr/lib/libtidy.so" ]; then
+      cd /usr/lib
+      ln -sf libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
+      touch ${pthLog}/libtidy-${_LIB_TIDY_VRN}.log
+    fi
+  fi
   cd /var/opt
   rm -rf php*
   get_dev_src "php-${_PHP_VERSION}.tar.bz2"
   msg "INFO: Building PHP ${_PHP_VERSION} part 1/3"
   cd /var/opt/php-${_PHP_VERSION}
-  st_runner "sh ./buildconf --force" 2> /dev/null
+  mrun "sh ./buildconf --force" 2> /dev/null
   if [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "wheezy" ] \
     || [ "${_DO_FIX}" = "YES" ] \
@@ -888,7 +919,7 @@ install_php_multi() {
   if [ "$1" = "70" ] || [ "$1" = "56" ] || [ "$1" = "55" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --enable-opcache"
   fi
-  st_runner "sh ./configure \
+  mrun "sh ./configure \
                 --quiet \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
@@ -924,8 +955,8 @@ install_php_multi() {
                 ${_PHP_EXTRA}" 2> /dev/null
   msg "INFO: Building PHP ${_PHP_VERSION} part 3/3"
   sed -i "s/^EXTRA_LIBS = -lcrypt/EXTRA_LIBS = -llber -lcrypt/g" Makefile
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
+  mrun "make --quiet" 2> /dev/null
+  mrun "make --quiet install" 2> /dev/null
   if [ -f "/usr/bin/php" ] && [ -f "/opt/php$1/bin/php" ]; then
     mv -f /usr/bin/php /usr/bin/php-old &> /dev/null
     ln -sf /opt/php$1/bin/php /usr/bin/php
@@ -940,16 +971,26 @@ install_php_multi() {
   _T_PHP_PTH="/opt/php$1/bin"
   _T_PHP_CFG="/opt/php$1/bin/php-config"
   install_php_extensions "$1"
-  if [ "${_DB_SERIES}" = "10.0" ]; then
-    _T_MARIADB_VRN="${_MARIADB_10_VRN}"
+  if [ -e "/root/.mstr.clstr.cnf" ] \
+    || [ -e "/root/.wbhd.clstr.cnf" ] \
+    || [ -e "/root/.dbhd.clstr.cnf" ]; then
+    _T_MARIADB_VRN="${_GALERA_10_VRN}"
   else
-    _T_MARIADB_VRN="${_MARIADB_VRN}"
+    if [ "${_DB_SERIES}" = "10.0" ]; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.1/g" ${barCnf}
+      _DB_SERIES=10.1
+    fi
+    if [ "${_DB_SERIES}" = "10.1" ] || [ "${_DB_SERIES}" = "10.0" ]; then
+      _T_MARIADB_VRN="${_MARIADB_10_VRN}"
+    else
+      _T_MARIADB_VRN="${_MARIADB_VRN}"
+    fi
   fi
   touch ${pthLog}/installed-${_PHP_VERSION}-${_T_MARIADB_VRN}-MariaDB.log
   rm -f /etc/init.d/php$1-fpm*
   cp -af ${locCnf}/php$1-fpm /etc/init.d/php$1-fpm
   chmod 755 /etc/init.d/php$1-fpm
-  st_runner "update-rc.d php$1-fpm defaults" &> /dev/null
+  mrun "update-rc.d php$1-fpm defaults" &> /dev/null
 }
 
 #
@@ -1236,7 +1277,7 @@ check_php_rebuild() {
       install_php_multi "$1"
     fi
   fi
-  if [ "${_DB_SERIES}" = "10.0" ]; then
+  if [ "${_DB_SERIES}" = "10.1" ] || [ "${_DB_SERIES}" = "10.0" ]; then
     _T_MARIADB_VRN="${_MARIADB_10_VRN}"
   else
     _T_MARIADB_VRN="${_MARIADB_VRN}"
@@ -1569,11 +1610,18 @@ php_upgrade_all() {
 }
 
 install_update_php() {
-  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+  if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "wheezy" ]; then
+    _DO_FIX=YES
+  elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
     && [ "${_LOC_OSV}" = "squeeze" ]; then
     _DO_FIX=YES
   fi
-  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+  if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "wheezy" ]; then
+    mrun "service nginx stop" &> /dev/null
+    killall -9 nginx &> /dev/null
+  elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
     && [ "${_LOC_OSV}" = "squeeze" ]; then
     mrun "service nginx stop" &> /dev/null
     killall -9 nginx &> /dev/null
@@ -1681,6 +1729,29 @@ check_fix_php() {
   if [ "$_CURLWRAPPERS_REBUILD" = "YES" ] \
     && [[ ! "${_PHP_EXTRA_CONF}" =~ "with-curlwrappers" ]]; then
     msg "INFO: PHP rebuild required to remove --with-curlwrappers option..."
+    _PHP_FORCE_REINSTALL=YES
+    php_upgrade_all
+  fi
+  if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
+    && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
+    if [ -e "/usr/lib/libtidy.so" ]; then
+      mrun "apt-get remove libtidy-dev -y --force-yes -qq" &> /dev/null
+      mrun "apt-get remove libtidy-0.99-0 -y --force-yes -qq" &> /dev/null
+      mrun "apt-get remove tidy -y --force-yes -qq" &> /dev/null
+    fi
+    cd /var/opt
+    rm -rf tidy*
+    mrun "${_INSTALL} cmake" 2> /dev/null
+    get_dev_src "tidy-html5-${_LIB_TIDY_VRN}.tar.gz"
+    cd tidy-html5-${_LIB_TIDY_VRN}/build/cmake
+    mrun "cmake ../.. -DCMAKE_INSTALL_PREFIX=/usr/" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    if [ -e "/usr/lib/libtidy.so" ]; then
+      cd /usr/lib
+      ln -sf libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
+      touch ${pthLog}/libtidy-${_LIB_TIDY_VRN}.log
+    fi
     _PHP_FORCE_REINSTALL=YES
     php_upgrade_all
   fi

@@ -1,41 +1,45 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version boa.version
+If you are still running any Drupal site without Let’s Encrypt Free SSL
+enabled in your Aegir control panel, you may want to read two articles:
+
+  HTTPS' massive speed advantage: http://bit.ly/2b42lqV
+  HTTP/2 makes media loading 3–15 times faster: http://bit.ly/2aW1u9V
+
+The Let’s Encrypt certs are free, and very easy to use! Just follow the docs:
+
+  https://github.com/omega8cc/boa/blob/master/docs/SSL.txt
+
+In short, here is all you need to do:
+
+  1. Create ~/static/control/ssl-live-mode.info file, and wait a few minutes
+  2. Edit any hosted site node to set SSL to "Enabled", and hit Save
+  3. Repeat step #2 for every other site you host in Aegir
+
+Congrats!
+
+Now enjoy HTTPS with free Let’s Encrypt certs for all hosted sites, with
+HTTP/2 for speed, and Perfect Forward Secrecy for security, auto-enabled!
+
+Note: If you have used SSL add-on with dedicated IP address before,
+you need to update DNS to point it to your instance default IP address,
+which can be found in your (long) welcome email, in the section #2
+
+@=> Speaking of docs. Be the change you want to see, and participate in
+@=> the BOA docs rewrite: http://bit.ly/2aK0Vli - your input is welcome!
+
+Also, your Aegir instance has been upgraded to version boa.version
 
   https://aegir.url.name
 
-This BOA release includes several important system upgrades, improvements
-and bug fixes. All supported platforms have been updated to latest versions.
+Please read about all improvements and changes at:
 
-@=> Latest Drupal 7 core version used in BOA in all built-in platforms is
-    compatible with latest PHP 7.0.6 -- you can switch your Octopus instance
-    easily via fpm.info control file: https://omega8.cc/node/330 but please
-    don't use 7.0 in cli.info, because it is not supported in the Aegir
-    backend yet. PHP 7.0 can't be used if you have any Pressflow 6 site.
+  https://github.com/omega8cc/boa/blob/master/CHANGELOG.txt
 
-We recommend that you upgrade your sites using this safe workflow:
+Questions? Comments? Join us on Gitter and GitHub:
 
-  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
-
-You can find all details on how to use new features, along with all
-other changes explained in the release notes and changelog available at:
-
-  https://omega8.cc/boa-302-full-edition-379
-
-It is always highly recommended that you read extensive release notes
-and changelog posted on our website for previous BOA Editions, so you
-could keep track on the progress and learn more about great features
-and improvements we have made over the last few years, no matter when
-you have started using Aegir powered by BOA:
-
-  https://omega8.cc/updates
-
-
-Questions? Comments? Please contact us:
-
-  https://omega8.cc/support
-  https://omega8.cc/sales
-  https://omega8.cc/billing
+  https://gitter.im/omega8cc/boa
 
 Thank you!
+
 Omega8.cc Team

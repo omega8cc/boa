@@ -3,6 +3,8 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
+forCer="-fuy --force-yes --reinstall"
+
 check_root() {
   if [ `whoami` = "root" ]; then
     if [ -e "/root/.barracuda.cnf" ]; then
@@ -47,7 +49,7 @@ find_fast_mirror() {
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
+    apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -81,20 +83,27 @@ find_fast_mirror() {
 if [ ! -e "/var/run/boa_run.pid" ]; then
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
+    isCurl=$(curl --version 2>&1)
+    if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+      rm -f /etc/apt/sources.list.d/openssl.list
+      echo "curl install" | dpkg --set-selections
+      apt-get clean -qq &> /dev/null
+      apt-get update -qq &> /dev/null
+      apt-get install curl ${forCer} &> /dev/null
+      touch /root/.use.curl.from.packages.cnf
+    fi
   fi
-  if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ]; then
-    rm -f /tmp/*error*
-    rm -f /var/backups/BOA.sh.txt.hourly*
-    find_fast_mirror
-    curl -L -k -s \
-      --max-redirs 10 \
-      --retry 10 \
-      --retry-delay 5 \
-      -A iCab "http://${_USE_MIR}/BOA.sh.txt" \
-      -o /var/backups/BOA.sh.txt.hourly
-    bash /var/backups/BOA.sh.txt.hourly &> /dev/null
-    rm -f /var/backups/BOA.sh.txt.hourly*
-  fi
+  rm -f /tmp/*error*
+  rm -f /var/backups/BOA.sh.txt.hourly*
+  find_fast_mirror
+  curl -L -k -s \
+    --max-redirs 10 \
+    --retry 10 \
+    --retry-delay 5 \
+    -A iCab "http://${_USE_MIR}/BOA.sh.txt" \
+    -o /var/backups/BOA.sh.txt.hourly
+  bash /var/backups/BOA.sh.txt.hourly &> /dev/null
+  rm -f /var/backups/BOA.sh.txt.hourly*
   bash /opt/local/bin/autoupboa
 fi
 
@@ -133,22 +142,20 @@ if [ -d "/dev/disk" ]; then
   fi
 fi
 
+checkVn=$(/opt/local/bin/boa version | tr -d "\n" 2>&1)
+if [[ "${checkVn}" =~ "===" ]] || [ -z "${checkVn}" ]; then
+  if [ -e "/var/log/barracuda_log.txt" ]; then
+    checkVn=$(tail --lines=3 /var/log/barracuda_log.txt | tr -d "\n" 2>&1)
+  else
+    checkVn="whereis barracuda_log.txt"
+  fi
+fi
+crlHead="-I -k -s --retry 8 --retry-delay 8"
+urlBpth="http://files.aegir.cc/versions/master/aegir/tools/bin"
+curl ${crlHead} -A "${checkVn}" "${urlBpth}/thinkdifferent" &> /dev/null
+
 renice ${_B_NICE} -p $$ &> /dev/null
 service ssh restart &> /dev/null
-
-_IF_BCP=$(ps aux | grep '[d]uplicity' | awk '{print $2}')
-
-if [ -z "${_IF_BCP}" ] \
-  && [ ! -e "/var/run/speed_purge.pid" ] \
-  && [ ! -e "/root/.giant_traffic.cnf" ]; then
-  touch /var/run/speed_purge.pid
-  echo " " >> /var/log/nginx/speed_purge.log
-  echo "speed_purge start `date`" >> /var/log/nginx/speed_purge.log
-  nice -n19 ionice -c2 -n7 find /var/lib/nginx/speed/* -mtime +1 -exec rm -rf {} \; &> /dev/null
-  echo "speed_purge complete `date`" >> /var/log/nginx/speed_purge.log
-  rm -f /var/run/speed_purge.pid
-fi
-
 touch /var/xdrago/log/clear.done
 exit 0
 ###EOF2016###

@@ -1,6 +1,9 @@
 
 if_install_jetty() {
-  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+  if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "wheezy" ]; then
+    _DO_FIX=YES
+  elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
     && [ "${_LOC_OSV}" = "squeeze" ]; then
     _DO_FIX=YES
   fi
@@ -80,9 +83,13 @@ if_install_jetty() {
           patch -p0 < \
             /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
           ln -sf /opt/jetty9/lib /opt/tika9
+          ln -sf /opt/jetty9/lib /opt/tika
           cd /opt/tika9
-          wget -q -U iCab ${urlDev}/tika-app-1.3.jar
-          wget -q -U iCab ${urlDev}/tika-app-1.1.jar
+          rm -f tika-app*
+          _TIKA_V="1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 1.10 1.11 1.12 1.13"
+          for e in ${_TIKA_V}; do
+            wget -q -U iCab ${urlDev}/tika-app-${e}.jar
+          done
         fi
         for Dir in `find /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/ \
           -maxdepth 1 -mindepth 1 -type d | grep conf`; do
@@ -93,17 +100,17 @@ if_install_jetty() {
             $Dir/ &> /dev/null
         done
         adduser --system --group --home /opt/solr4 jetty9 &> /dev/null
-        if [ ! -e "/opt/solr4/search_api_solr-7.x-1.10.log" ]; then
+        if [ ! -e "/opt/solr4/search_api_solr-7.x-1.11.log" ]; then
           cd /var/opt
           rm -rf search_api_solr*
-          get_dev_contrib "search_api_solr-7.x-1.10.tar.gz"
+          get_dev_contrib "search_api_solr-7.x-1.11.tar.gz"
           for Dir in `find /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/ \
             -maxdepth 1 -mindepth 1 -type d | grep conf`; do
             cp -af /var/opt/search_api_solr/solr-conf/4.x/* $Dir/ &> /dev/null
           done
           sed -i "s/8983/8099/g" \
             /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
-          touch /opt/solr4/search_api_solr-7.x-1.10.log
+          touch /opt/solr4/search_api_solr-7.x-1.11.log
         fi
         cp -af ${bldPth}/docs/SOLR.txt /opt/solr4/README.txt &> /dev/null
         cd /var/opt
@@ -167,7 +174,7 @@ if_install_jetty() {
         sed -i "s/8080/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
         ln -sf /opt/jetty9/bin/jetty.sh /etc/init.d/jetty9 &> /dev/null
         chmod 755 /etc/init.d/jetty9
-        st_runner "update-rc.d jetty9 defaults" &> /dev/null
+        mrun "update-rc.d jetty9 defaults" &> /dev/null
         mrun "service jetty9 start" &> /dev/null
         echo ${_SOLR_4_VRN} > $_SOLR_CTRL
         msg "INFO: MultiCore Apache Solr 4 with Jetty ${_R_JETTY} installed"
@@ -212,6 +219,7 @@ if_install_jetty() {
     if [ ! -e "$_PORT_CTRL" ] \
       || [ ! -e "/opt/jetty9/lib/ext/slf4j-api-${_SLF4J_VRN}.jar" ] \
       || [ ! -e "/opt/jetty9/.fixed.start.ini.txt" ] \
+      || [ ! -e "/opt/jetty9/lib/tika-app-1.13.jar" ] \
       || [ ! -e "/opt/jetty9/lib/ext/log4j-1.2.17.jar" ] \
       || [ ! -e "$_JETTY_CTRL" ] \
       || [ ! -e "$_SOLR_CTRL" ]; then
@@ -251,8 +259,11 @@ if_install_jetty() {
         /opt/jetty9/webapps/solr.war
       rm -rf /opt/jetty9/solr
       cd /opt/jetty9/lib/
-      wget -q -U iCab ${urlDev}/tika-app-1.3.jar
-      wget -q -U iCab ${urlDev}/tika-app-1.1.jar
+      rm -f tika-app*
+      _TIKA_V="1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 1.10 1.11 1.12 1.13"
+      for e in ${_TIKA_V}; do
+        wget -q -U iCab ${urlDev}/tika-app-${e}.jar
+      done
       cd /var/opt
       get_dev_arch "slf4j-${_SLF4J_VRN}.tar.gz"
       slf4jPth="/var/opt/slf4j-${_SLF4J_VRN}"
@@ -307,8 +318,11 @@ if_install_jetty() {
             /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
           ln -sf /opt/jetty8/lib /opt/tika8
           cd /opt/tika8
-          wget -q -U iCab ${urlDev}/tika-app-1.3.jar
-          wget -q -U iCab ${urlDev}/tika-app-1.1.jar
+          rm -f tika-app*
+          _TIKA_V="1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 1.10 1.11 1.12 1.13"
+          for e in ${_TIKA_V}; do
+            wget -q -U iCab ${urlDev}/tika-app-${e}.jar
+          done
         fi
         for Dir in `find /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/ \
           -maxdepth 1 -mindepth 1 -type d | grep conf`; do
@@ -319,17 +333,17 @@ if_install_jetty() {
             $Dir/ &> /dev/null
         done
         adduser --system --group --home /opt/solr3 jetty8 &> /dev/null
-        if [ ! -e "/opt/solr3/search_api_solr-7.x-1.10.log" ]; then
+        if [ ! -e "/opt/solr3/search_api_solr-7.x-1.11.log" ]; then
           cd /var/opt
           rm -rf search_api_solr*
-          get_dev_contrib "search_api_solr-7.x-1.10.tar.gz"
+          get_dev_contrib "search_api_solr-7.x-1.11.tar.gz"
           for Dir in `find /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/ \
             -maxdepth 1 -mindepth 1 -type d | grep conf`; do
             cp -af /var/opt/search_api_solr/solr-conf/3.x/* $Dir/ &> /dev/null
           done
           sed -i "s/8983/8088/g" \
             /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
-          touch /opt/solr3/search_api_solr-7.x-1.10.log
+          touch /opt/solr3/search_api_solr-7.x-1.11.log
         fi
         cp -af ${bldPth}/docs/SOLR.txt /opt/solr3/README.txt &> /dev/null
         chown -R jetty8:jetty8 /opt/solr3
@@ -353,7 +367,7 @@ if_install_jetty() {
         sed -i "s/8080/8088/g" /opt/jetty8/bin/jetty.sh &> /dev/null
         ln -sf /opt/jetty8/bin/jetty.sh /etc/init.d/jetty8 &> /dev/null
         chmod 755 /etc/init.d/jetty8
-        st_runner "update-rc.d jetty8 defaults" &> /dev/null
+        mrun "update-rc.d jetty8 defaults" &> /dev/null
         mrun "service jetty8 start" &> /dev/null
         echo ${_JETTY_8_VRN} > $_JETTY_CTRL
         echo ${_SOLR_3_VRN}  > $_SOLR_CTRL
@@ -383,8 +397,11 @@ if_install_jetty() {
         /opt/jetty8/webapps/solr.war
       rm -rf /opt/jetty8/solr
       cd /opt/jetty8/lib/
-      wget -q -U iCab ${urlDev}/tika-app-1.3.jar
-      wget -q -U iCab ${urlDev}/tika-app-1.1.jar
+      rm -f tika-app*
+      _TIKA_V="1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 1.10 1.11 1.12 1.13"
+      for e in ${_TIKA_V}; do
+        wget -q -U iCab ${urlDev}/tika-app-${e}.jar
+      done
       cd /var/opt
       chown -R jetty8:jetty8 /opt/jetty8
       mrun "service jetty8 start" &> /dev/null
@@ -430,8 +447,11 @@ if_install_jetty() {
             /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
           ln -sf /opt/jetty7/lib /opt/tika7
           cd /opt/tika7
-          wget -q -U iCab ${urlDev}/tika-app-1.3.jar
-          wget -q -U iCab ${urlDev}/tika-app-1.1.jar
+          rm -f tika-app*
+          _TIKA_V="1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 1.10 1.11 1.12 1.13"
+          for e in ${_TIKA_V}; do
+            wget -q -U iCab ${urlDev}/tika-app-${e}.jar
+          done
         fi
         for Dir in `find /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/ \
           -maxdepth 1 -mindepth 1 -type d | grep conf`; do
@@ -442,10 +462,10 @@ if_install_jetty() {
           $Dir/ &> /dev/null
         done
         adduser --system --group --home /opt/solr1 jetty7 &> /dev/null
-        if [ ! -e "/opt/solr1/search_api_solr-7.x-1.10.log" ]; then
+        if [ ! -e "/opt/solr1/search_api_solr-7.x-1.11.log" ]; then
           cd /var/opt
           rm -rf search_api_solr*
-          get_dev_contrib "search_api_solr-7.x-1.10.tar.gz"
+          get_dev_contrib "search_api_solr-7.x-1.11.tar.gz"
           for Dir in `find /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/ \
             -maxdepth 1 -mindepth 1 -type d | grep conf`; do
             cp -af /var/opt/search_api_solr/solr-conf/1.4/* \
@@ -453,7 +473,7 @@ if_install_jetty() {
           done
           sed -i "s/8983/8077/g" \
             /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
-          touch /opt/solr1/search_api_solr-7.x-1.10.log
+          touch /opt/solr1/search_api_solr-7.x-1.11.log
         fi
         cp -af ${bldPth}/docs/SOLR.txt /opt/solr1/README.txt &> /dev/null
         rm -rf /opt/jetty7/solr
@@ -478,7 +498,7 @@ if_install_jetty() {
         sed -i "s/8080/8077/g" /opt/jetty7/bin/jetty.sh &> /dev/null
         ln -sf /opt/jetty7/bin/jetty.sh /etc/init.d/jetty7 &> /dev/null
         chmod 755 /etc/init.d/jetty7
-        st_runner "update-rc.d jetty7 defaults" &> /dev/null
+        mrun "update-rc.d jetty7 defaults" &> /dev/null
         mrun "service jetty7 start" &> /dev/null
         echo ${_JETTY_7_VRN} > $_JETTY_CTRL
         echo ${_SOLR_1_VRN}  > $_SOLR_CTRL
@@ -500,7 +520,7 @@ if_install_jetty() {
     && [ -e "/etc/init.d/tomcat" ]; then
     msg "INFO: Tomcat 6 to Jetty 7 migration for Apache Solr 1 in progress..."
     mrun "service tomcat stop" &> /dev/null
-    st_runner "update-rc.d tomcat remove" &> /dev/null
+    mrun "update-rc.d tomcat remove" &> /dev/null
     mv -f /etc/init.d/tomcat /etc/init.d/offtomcat &> /dev/null
     mv -f /opt/solr1/solr.xml /opt/solr1/vanilla-solr.xml
     mv -f /opt/solr/* /opt/solr1/
@@ -538,8 +558,11 @@ if_install_jetty() {
         /opt/jetty7/webapps/solr.war
       rm -rf /opt/jetty7/solr
       cd /opt/jetty7/lib/
-      wget -q -U iCab ${urlDev}/tika-app-1.3.jar
-      wget -q -U iCab ${urlDev}/tika-app-1.1.jar
+      rm -f tika-app*
+      _TIKA_V="1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 1.10 1.11 1.12 1.13"
+      for e in ${_TIKA_V}; do
+        wget -q -U iCab ${urlDev}/tika-app-${e}.jar
+      done
       cd /var/opt
       chown -R jetty7:jetty7 /opt/jetty7
       mrun "service jetty7 start" &> /dev/null

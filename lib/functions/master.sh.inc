@@ -150,7 +150,7 @@ provision_backend_dbpass_sync() {
     wait
   fi
   mysqladmin flush-privileges &> /dev/null
-  su -s /bin/bash - aegir -c "drush cc drush" &> /dev/null
+  su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
   rm -rf /var/aegir/.tmp/cache
   if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ]; then
     su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_localhost \
@@ -252,13 +252,13 @@ master_download_for_local_build() {
     ### Aegir Drupal Contrib
     get_dev_stc "admin_menu-7.x-3.0-rc5.tar.gz"
     get_dev_stc "betterlogin-7.x-1.4.tar.gz"
-    get_dev_stc "ctools-7.x-1.9.tar.gz"
-    get_dev_stc "entity-7.x-1.7.tar.gz"
+    get_dev_stc "ctools-7.x-1.12.tar.gz"
+    get_dev_stc "entity-7.x-1.8.tar.gz"
     get_dev_stc "openidadmin-7.x-1.0.tar.gz"
     get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
     get_dev_stc "r4032login-7.x-1.8.tar.gz"
     get_dev_stc "views_bulk_operations-7.x-3.3.tar.gz"
-    get_dev_stc "views-7.x-3.13.tar.gz"
+    get_dev_stc "views-7.x-3.14.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
     get_dev_stc "features-7.x-2.10.tar.gz"
@@ -287,6 +287,14 @@ upgrade_aegir_master() {
     if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
       echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     fi
+    SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
+    for SCRIPT in ${SCRIPTS[@]}; do
+      _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
+      if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
+        echo "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
+        chmod 0440 /etc/sudoers.d/${SCRIPT}
+      fi
+    done
     if [ ! -d "/var/aegir/.drush/sys/provision/http" ]; then
       rm -rf /var/aegir/.drush/{sys,xts,usr}
       rm -rf /var/aegir/.drush/{provision,drush_make}
@@ -304,7 +312,6 @@ upgrade_aegir_master() {
       find /var/aegir/drush -type d -exec chmod 0755 {} \; &> /dev/null
       find /var/aegir/drush -type f -exec chmod 0644 {} \; &> /dev/null
       chmod 755 /var/aegir/drush/drush
-      chmod 755 /var/aegir/drush/drush.bat
       chmod 755 /var/aegir/drush/drush.complete.sh
       chmod 755 /var/aegir/drush/drush.launcher
       chmod 755 /var/aegir/drush/drush.php
@@ -326,7 +333,7 @@ upgrade_aegir_master() {
     mkdir -p ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries}
     chown -R aegir:aegir ${_THIS_HM_ROOT}/sites/all
     _U_HD="/var/aegir/.drush"
-    chattr -i ${_U_HD}/php.ini &> /dev/null
+    chattr -i ${_U_HD}/php.ini
     chown -R aegir:aegir /var/aegir/.drush
     chown -R aegir:aegir /var/aegir/backups
     chown -R aegir:aegir /var/aegir/clients
@@ -371,7 +378,7 @@ upgrade_aegir_master() {
       touch /opt/tmp/status-Barracuda-FAIL
       clean_pid_exit
     else
-      chattr +i ${_U_HD}/php.ini &> /dev/null
+      chattr +i ${_U_HD}/php.ini
       hostmaster_frontend_dbpass_sync
     fi
     if [ ! -L "${mtrInc}/global.inc" ] && [ -e "${mtrInc}/global.inc" ]; then
@@ -662,8 +669,8 @@ EOFMYSQL
       fi
     fi
     _U_HD="/var/aegir/.drush"
-    chattr +i ${_U_HD}/php.ini &> /dev/null
-    su -s /bin/bash - aegir -c "drush cc drush" &> /dev/null
+    chattr +i ${_U_HD}/php.ini
+    su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
     rm -rf /var/aegir/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Running hosting-dispatch (1/3)..."
@@ -742,7 +749,15 @@ EOFMYSQL
     msg "INFO: Aegir Master Instance installed"
   else
     echo " "
-    if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+    if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
+      && [ "${_LOC_OSV}" = "wheezy" ]; then
+      msg "INFO: Aegir Master Instance upgrade skipped!"
+      echo " "
+      msg "NOTE! You must reboot the server and run barracuda upgrade"
+      msg "NOTE! again to complete all system upgrades and upgrade also"
+      msg "NOTE! Aegir Master Instance."
+      echo " "
+    elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
       && [ "${_LOC_OSV}" = "squeeze" ]; then
       msg "INFO: Aegir Master Instance upgrade skipped!"
       echo " "
@@ -753,12 +768,6 @@ EOFMYSQL
     elif [ "${_SYSTEM_UPGRADE_ONLY}" = "YES" ]; then
       msg "INFO: Aegir Master Instance upgrade skipped"
     else
-      msg "INFO: Restarting ${_DB_SERVER} server..."
-      rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-      mrun "service mysql restart" &> /dev/null
-      mrun "sleep 8"
-      msg "INFO: Upgrading ${_DB_SERVER} tables if necessary..."
-      mrun "sleep 60"
       if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
         || [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
         _DB_SERVER_TEST=$(mysql -V 2>&1)
@@ -781,7 +790,6 @@ EOFMYSQL
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
         touch /data/conf/clstr.cnf &> /dev/null
       fi
-      echo " "
       update_php_cli_cron
       upgrade_aegir_master
       update_php_cli_cron
@@ -793,7 +801,6 @@ if_upgrade_only_aegir_master() {
   if [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_AEGIR_UPGRADE_ONLY}" = "YES" ] \
       && [ "${_SYSTEM_UPGRADE_ONLY}" = "NO" ]; then
-      echo " "
       update_php_cli_cron
       upgrade_aegir_master
       update_php_cli_cron
@@ -844,14 +851,14 @@ update_php_cli_local_ini() {
   _PHP_V="70 56 55 54 53"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.txt" ]; then
+      && [ ! -e "${_U_HD}/.ctrl.php${e}.pid" ]; then
       _PHP_CLI_UPDATE=YES
     fi
   done
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.302stableQ.txt" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.314stableQ3.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -889,6 +896,7 @@ update_php_cli_local_ini() {
         /opt/tika7:          \
         /opt/tika8:          \
         /opt/tika9:          \
+        /dev/urandom:        \
         /opt/tmp/make_local: \
         /opt/tools/drush:    \
         /tmp:                \
@@ -910,8 +918,8 @@ update_php_cli_local_ini() {
       wait
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
-      echo > ${_U_HD}/.ctrl.php${_U_INI}.txt
-      echo > ${_U_HD}/.ctrl.302stableQ.txt
+      echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
+      echo > ${_U_HD}/.ctrl.314stableQ3.pid
     fi
   fi
 }

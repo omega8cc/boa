@@ -39,6 +39,11 @@ fix_clear_cache() {
 }
 
 read_account_data() {
+  _CLIENT_CORES=
+  _EXTRA_ENGINE=
+  _ENGINE_NR=
+  _CLIENT_EMAIL=
+  _CLIENT_OPTION=
   if [ -e "/data/disk/${_THIS_U}/log/email.txt" ]; then
     _CLIENT_EMAIL=$(cat /data/disk/${_THIS_U}/log/email.txt 2>&1)
     _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
@@ -59,11 +64,139 @@ read_account_data() {
     _CLIENT_OPTION=$(cat /data/disk/${_THIS_U}/log/option.txt 2>&1)
     _CLIENT_OPTION=$(echo -n ${_CLIENT_OPTION} | tr -d "\n" 2>&1)
   fi
-  if [ -e "/data/disk/${_THIS_U}/log/extra.txt" ] \
-    && [ "${_CLIENT_OPTION}" = "POWER" ]; then
+  if [ -e "/data/disk/${_THIS_U}/log/extra.txt" ]; then
     _EXTRA_ENGINE=$(cat /data/disk/${_THIS_U}/log/extra.txt 2>&1)
     _EXTRA_ENGINE=$(echo -n ${_EXTRA_ENGINE} | tr -d "\n" 2>&1)
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x EDGE"
+  fi
+}
+
+send_notice_php() {
+  _MY_EMAIL="support@omega8.cc"
+  _BCC_EMAIL="omega8cc@gmail.com"
+  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _MAILX_TEST=$(mail -V 2>&1)
+  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
+  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
+    -s "URGENT: Please switch your Aegir instance to PHP 5.6 [${_THIS_U}]" ${_CLIENT_EMAIL}
+Hello,
+
+Our monitoring detected that you are still using deprecated
+and no longer supported PHP version: $1
+
+We have provided over a year of extended support for
+this PHP version, but now we can't extend it any further,
+because your system has to be upgraded to Debian Jessie,
+which doesn't support deprecated PHP versions.
+
+The upgrade will happen in the first week of December, 2016,
+and there are no exceptions possible to avoid it.
+
+This means that all Aegir instances still running PHP $1
+will stop working if not switched to one of currently
+supported versions: 5.6, 7.0 or 5.5
+
+To switch PHP-FPM version on command line, please type:
+
+  echo 5.6 > ~/static/control/fpm.info
+
+You can find more details at: https://learn.omega8.cc/node/330
+
+We are working hard to provide secure and fast hosting
+for your Drupal sites, and we appreciate your efforts
+to meet the requirements, which are an integral part
+of the quality you can expect from Omega8.cc
+
+--
+This email has been sent by your Aegir system monitor
+
+EOF
+  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
+  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
+    -s "URGENT: Please switch your Aegir instance to PHP 5.6 [${_THIS_U}]" ${_CLIENT_EMAIL}
+Hello,
+
+Our monitoring detected that you are still using deprecated
+and no longer supported PHP version: $1
+
+We have provided over a year of extended support for
+this PHP version, but now we can't extend it any further,
+because your system has to be upgraded to Debian Jessie,
+which doesn't support deprecated PHP versions.
+
+The upgrade will happen in the first week of December, 2016,
+and there are no exceptions possible to avoid it.
+
+This means that all Aegir instances still running PHP $1
+will stop working if not switched to one of currently
+supported versions: 5.6, 7.0 or 5.5
+
+To switch PHP-FPM version on command line, please type:
+
+  echo 5.6 > ~/static/control/fpm.info
+
+You can find more details at: https://learn.omega8.cc/node/330
+
+We are working hard to provide secure and fast hosting
+for your Drupal sites, and we appreciate your efforts
+to meet the requirements, which are an integral part
+of the quality you can expect from Omega8.cc
+
+--
+This email has been sent by your Aegir system monitor
+
+EOF
+  else
+  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+    -s "URGENT: Please switch your Aegir instance to PHP 5.6 [${_THIS_U}]" ${_CLIENT_EMAIL}
+Hello,
+
+Our monitoring detected that you are still using deprecated
+and no longer supported PHP version: $1
+
+We have provided over a year of extended support for
+this PHP version, but now we can't extend it any further,
+because your system has to be upgraded to Debian Jessie,
+which doesn't support deprecated PHP versions.
+
+The upgrade will happen in the first week of December, 2016,
+and there are no exceptions possible to avoid it.
+
+This means that all Aegir instances still running PHP $1
+will stop working if not switched to one of currently
+supported versions: 5.6, 7.0 or 5.5
+
+To switch PHP-FPM version on command line, please type:
+
+  echo 5.6 > ~/static/control/fpm.info
+
+You can find more details at: https://learn.omega8.cc/node/330
+
+We are working hard to provide secure and fast hosting
+for your Drupal sites, and we appreciate your efforts
+to meet the requirements, which are an integral part
+of the quality you can expect from Omega8.cc
+
+--
+This email has been sent by your Aegir system monitor
+
+EOF
+  fi
+  echo "INFO: PHP notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
+}
+
+detect_deprecated_php() {
+  _PHP_FPM_VERSION=
+  if [ -e "${User}/static/control/fpm.info" ] \
+    && [ ! -e "${User}/log/CANCELLED" ]; then
+    _PHP_FPM_VERSION=$(cat ${User}/static/control/fpm.info 2>&1)
+    _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
+    if [ "${_PHP_FPM_VERSION}" = "5.4" ] \
+      || [ "${_PHP_FPM_VERSION}" = "5.3" ]; then
+      echo Deprecated PHP-FPM ${_PHP_FPM_VERSION} detected in ${_THIS_U}
+      read_account_data
+      send_notice_php ${_PHP_FPM_VERSION}
+    fi
   fi
 }
 
@@ -312,17 +445,12 @@ You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 Your allowed databases space for ${_MODE} sites is ${_SQL_LIM} MB,
 but you are currently using ${_SQL_NOW} MB of databases space.
 
-Please reduce your usage by deleting no longer used sites,
-or by converting their tables to MyISAM format on command line
-when in the site directory with:
-
-  $ sqlmagic convert to-myisam
-
-Or purchase enough Aegir Engines to cover your current usage.
+Please reduce your usage by deleting no longer used sites, or purchase
+enough Aegir Engines to cover your current usage.
 
 You can purchase more Aegir Engines easily online:
 
-  https://omega8.cc/buy
+  https://omega8.cc/pricing
 
 Note that we do not count(*) any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
@@ -338,7 +466,7 @@ by having in its main name a special keyword with two dots on both sides:
 For example, a site with main name: abc.test.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes),
 as long as the total databases space used by such sites is no greater than
-six times (6x) your limit for LIVE sites listed on our order pages.
+three times (3x) your limit for LIVE sites listed on our order pages.
 
 However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
@@ -359,17 +487,12 @@ You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 Your allowed databases space for ${_MODE} sites is ${_SQL_LIM} MB,
 but you are currently using ${_SQL_NOW} MB of databases space.
 
-Please reduce your usage by deleting no longer used sites,
-or by converting their tables to MyISAM format on command line
-when in the site directory with:
-
-  $ sqlmagic convert to-myisam
-
-Or purchase enough Aegir Engines to cover your current usage.
+Please reduce your usage by deleting no longer used sites, or purchase
+enough Aegir Engines to cover your current usage.
 
 You can purchase more Aegir Engines easily online:
 
-  https://omega8.cc/buy
+  https://omega8.cc/pricing
 
 Note that we do not count(*) any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
@@ -385,7 +508,7 @@ by having in its main name a special keyword with two dots on both sides:
 For example, a site with main name: abc.test.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes),
 as long as the total databases space used by such sites is no greater than
-six times (6x) your limit for LIVE sites listed on our order pages.
+three times (3x) your limit for LIVE sites listed on our order pages.
 
 However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
@@ -406,17 +529,12 @@ You have currently ${_CLIENT_CORES} Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}.
 Your allowed databases space for ${_MODE} sites is ${_SQL_LIM} MB,
 but you are currently using ${_SQL_NOW} MB of databases space.
 
-Please reduce your usage by deleting no longer used sites,
-or by converting their tables to MyISAM format on command line
-when in the site directory with:
-
-  $ sqlmagic convert to-myisam
-
-Or purchase enough Aegir Engines to cover your current usage.
+Please reduce your usage by deleting no longer used sites, or purchase
+enough Aegir Engines to cover your current usage.
 
 You can purchase more Aegir Engines easily online:
 
-  https://omega8.cc/buy
+  https://omega8.cc/pricing
 
 Note that we do not count(*) any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
@@ -432,7 +550,7 @@ by having in its main name a special keyword with two dots on both sides:
 For example, a site with main name: abc.test.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes),
 as long as the total databases space used by such sites is no greater than
-six times (6x) your limit for LIVE sites listed on our order pages.
+three times (3x) your limit for LIVE sites listed on our order pages.
 
 However, if we discover that anyone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
@@ -546,24 +664,28 @@ check_limits() {
   if [ "${_CLIENT_OPTION}" = "POWER" ]; then
     _SQL_MIN_LIMIT=5120
     _DSK_MIN_LIMIT=51200
-    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 256 ))
+    _SQL_DEV_EXTRA=3
+    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 1024 ))
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 2560 ))
   elif [ "${_CLIENT_OPTION}" = "SSD" ] \
     || [ "${_CLIENT_OPTION}" = "EDGE" ]; then
     _CLIENT_OPTION=EDGE
-    _SQL_MIN_LIMIT=512
+    _SQL_MIN_LIMIT=1024
     _DSK_MIN_LIMIT=15360
-    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 128 ))
+    _SQL_DEV_EXTRA=3
+    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 512 ))
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 1280 ))
   elif [ "${_CLIENT_OPTION}" = "MICRO" ]; then
-    _SQL_MIN_LIMIT=256
+    _SQL_MIN_LIMIT=512
     _DSK_MIN_LIMIT=4096
-    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 64 ))
+    _SQL_DEV_EXTRA=1
+    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 256 ))
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 640 ))
   else
-    _SQL_MIN_LIMIT=256
+    _SQL_MIN_LIMIT=512
     _DSK_MIN_LIMIT=7680
-    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 64 ))
+    _SQL_DEV_EXTRA=1
+    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 256 ))
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 640 ))
   fi
   _SQL_MIN_LIMIT=$(( _SQL_MIN_LIMIT *= _CLIENT_CORES ))
@@ -571,11 +693,10 @@ check_limits() {
   _SQL_MAX_LIMIT=$(( _SQL_MAX_LIMIT *= _CLIENT_CORES ))
   _DSK_MAX_LIMIT=$(( _DSK_MAX_LIMIT *= _CLIENT_CORES ))
   _SQL_DEV_LIMIT=${_SQL_MIN_LIMIT}
-  _SQL_DEV_EXTRA=6
   _SQL_DEV_LIMIT=$(( _SQL_DEV_LIMIT *= _CLIENT_CORES ))
   _SQL_DEV_LIMIT=$(( _SQL_DEV_LIMIT *= _SQL_DEV_EXTRA ))
   if [ ! -z "${_EXTRA_ENGINE}" ]; then
-    _SQL_ADD_LIMIT=512
+    _SQL_ADD_LIMIT=1024
     _DSK_ADD_LIMIT=15360
     _SQL_ADD_LIMIT=$(( _SQL_ADD_LIMIT *= _EXTRA_ENGINE ))
     _DSK_ADD_LIMIT=$(( _DSK_ADD_LIMIT *= _EXTRA_ENGINE ))
@@ -685,7 +806,27 @@ action() {
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
+        if [ ! -e "${User}/log/skip-force-cleanup.txt" ]; then
+          cd ${User}
+          echo "Remove various tmp/dot files breaking du command"
+          find . -name ".DS_Store" -type f | xargs rm -rf &> /dev/null
+          find . -name "*~" -type f | xargs rm -rf &> /dev/null
+          find . -name "*#" -type f | xargs rm -rf &> /dev/null
+          find . -name ".#*" -type f | xargs rm -rf &> /dev/null
+          find . -name "*--" -type f | xargs rm -rf &> /dev/null
+          find . -name "._*" -type f | xargs rm -rf &> /dev/null
+          find . -name "*~" -type l | xargs rm -rf &> /dev/null
+          find . -name "*#" -type l | xargs rm -rf &> /dev/null
+          find . -name ".#*" -type l | xargs rm -rf &> /dev/null
+          find . -name "*--" -type l | xargs rm -rf &> /dev/null
+          find . -name "._*" -type l | xargs rm -rf &> /dev/null
+        fi
         echo Counting User ${User}
+        _DOW=$(date +%u 2>&1)
+        _DOW=${_DOW//[^1-7]/}
+        if [ "${_DOW}" = "2" ]; then
+          detect_deprecated_php
+        fi
         count
         if [ -e "/home/${_THIS_U}.ftp" ]; then
           for uH in `find /home/${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
@@ -765,7 +906,9 @@ _NOW=${_NOW//[^0-9-]/}
 _DATE=$(date 2>&1)
 _CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then

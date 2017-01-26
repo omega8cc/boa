@@ -47,7 +47,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_VERSION="BOA-3.0.2"
+_X_VERSION="BOA-3.1.4"
 #
 saCoreN="SA-CORE-2014-005"
 saCoreS="${saCoreN}-D7"
@@ -58,12 +58,22 @@ barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 forCer="-fuy --force-yes --reinstall"
 optBin="/opt/local/bin"
+usrBin="/usr/local/bin"
 pthLog="/var/xdrago/log"
 tBn="tools/bin"
 vBs="/var/backups"
 #
 eldirF="0001-Print-site_footer-if-defined.patch"
 eldirP="/var/xdrago/conf/${eldirF}"
+#
+hLeF="provision_hosting_le.drush.inc"
+hLeP="/var/xdrago/conf/${hLeF}"
+#
+hLeVtF="hosting_le_vhost.drush.inc"
+hLeVtP="/var/xdrago/conf/${hLeVtF}"
+#
+hLeShF="letsencrypt.sh"
+hLeShP="/var/xdrago/conf/${hLeShF}"
 
 fix_dns_settings() {
   dnsLi="/root/.local.dns.IP.list"
@@ -128,12 +138,13 @@ fix_dns_settings() {
     _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
     _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
     if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
+      || [ ! -e "${dnsLi}" ] \
       || [ -e "/root/.use.default.nameservers.cnf" ] \
       || [ -e "/root/.use.local.nameservers.cnf" ] \
       || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]]; then
       echo "        label = \"google-servers\";" > ${dnsLi}
       for _IP in `cat /etc/resolv.conf \
-        | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
+        | sed 's/.*127.0.0.1.*//g; s/.*search.*//g; s/.*Dynamic.*//g' \
         | cut -d ' ' -f2 \
         | sort \
         | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
@@ -191,6 +202,33 @@ check_dns_settings() {
   fi
 }
 
+extract_archive() {
+  if [ ! -z "$1" ]; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1    ;;
+      *.tar.gz)    tar xzf $1    ;;
+      *.bz2)       bunzip2 $1    ;;
+      *.rar)       unrar x $1    ;;
+      *.gz)        gunzip -q $1  ;;
+      *.tar)       tar xf $1     ;;
+      *.tbz2)      tar xjf $1    ;;
+      *.tgz)       tar xzf $1    ;;
+      *.zip)       unzip -qq $1  ;;
+      *.Z)         uncompress $1 ;;
+      *.7z)        7z x $1       ;;
+      *)           echo "'$1' cannot be extracted via >extract<" ;;
+    esac
+    rm -f $1
+  fi
+}
+
+get_dev_src() {
+  if [ ! -z "$1" ]; then
+    curl ${crlGet} "${urlDev}/src/$1" -o "$1"
+    extract_archive "$1"
+  fi
+}
+
 update_agents() {
 
   if [ "${_BENG_VS}" = "YES" ] \
@@ -203,6 +241,7 @@ update_agents() {
       rm -f /root/.tg.cnf
     fi
     echo ${InTest} > /root/.high_traffic.cnf
+    echo ${InTest} > /root/.my.optimize.cnf
     if [ "${_RANDOMIZE}" = "YES" ]; then
       echo ${InTest} > /root/.randomize_duplicity_full_backup_day.cnf
       echo ${InTest} > /root/.skip_duplicity_monthly_cleanup.cnf
@@ -212,26 +251,31 @@ update_agents() {
     fi
     rm -f /root/.fast.cron.cnf
     rm -f /root/.force.drupalgeddon.cnf
-    rm -f /root/.my.optimize.cnf
     rm -f /root/.skip_cleanup.cnf
-    if [ ! -e "/data/conf/override.global.inc" ]; then
-      echo "<?php" > /data/conf/override.global.inc.tmp
-      echo "" >> /data/conf/override.global.inc.tmp
-      echo "\$use_redis = TRUE;" >> /data/conf/override.global.inc.tmp
-      chmod 644 /data/conf/override.global.inc.tmp
-      mv -f /data/conf/override.global.inc.tmp /data/conf/override.global.inc
-    fi
+    rm -f /root/.giant_traffic.cnf
+    rm -f /root/.default.cnf
+    rm -f /root/.debug.cnf
+    # if [ ! -e "/data/conf/override.global.inc" ]; then
+    #   echo "<?php" > /data/conf/override.global.inc.tmp
+    #   echo "" >> /data/conf/override.global.inc.tmp
+    #   echo "\$use_redis = TRUE;" >> /data/conf/override.global.inc.tmp
+    #   chmod 644 /data/conf/override.global.inc.tmp
+    #   mv -f /data/conf/override.global.inc.tmp /data/conf/override.global.inc
+    # fi
+    # if [ -e "/data/conf/override.global.inc" ]; then
+    #   mv -f /data/conf/override.global.inc /data/conf/override.global.inc.off
+    # fi
   fi
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/mysql_backup.fixed.a302w.pid" ]; then
+    && [ ! -e "${pthLog}/mysql_backup.ctrl.314stableQ3.pid" ]; then
     mv -f /var/xdrago/mysql_backup.sh /var/xdrago/mysql_backup.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/mysql_backup.sh" -o /var/xdrago/mysql_backup.sh
     if [ -e "/var/xdrago/mysql_backup.sh" ]; then
       chmod 700 /var/xdrago/mysql_backup.sh
       chown root:root /var/xdrago/mysql_backup.sh
-      touch ${pthLog}/mysql_backup.fixed.a302w.pid
+      touch ${pthLog}/mysql_backup.ctrl.314stableQ3.pid
     else
       mv -f /var/xdrago/mysql_backup.sh.old /var/xdrago/mysql_backup.sh
     fi
@@ -239,13 +283,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/runner.fixed.a302w.pid" ]; then
+    && [ ! -e "${pthLog}/runner.ctrl.314stableQ3.pid" ]; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
     if [ -e "/var/xdrago/runner.sh" ]; then
       chmod 700 /var/xdrago/runner.sh
       chown root:root /var/xdrago/runner.sh
-      touch ${pthLog}/runner.fixed.a302w.pid
+      touch ${pthLog}/runner.ctrl.314stableQ3.pid
     else
       mv -f /var/xdrago/runner.sh.old /var/xdrago/runner.sh
     fi
@@ -253,13 +297,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/minute.fixed.a302w.pid" ]; then
+    && [ ! -e "${pthLog}/minute.ctrl.314stableQ3.pid" ]; then
     mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
     if [ -e "/var/xdrago/minute.sh" ]; then
       chmod 700 /var/xdrago/minute.sh
       chown root:root /var/xdrago/minute.sh
-      touch ${pthLog}/minute.fixed.a302w.pid
+      touch ${pthLog}/minute.ctrl.314stableQ3.pid
     else
       mv -f /var/xdrago/minute.sh.old /var/xdrago/minute.sh
     fi
@@ -267,13 +311,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/clear.fixed.a302w.pid" ]; then
+    && [ ! -e "${pthLog}/clear.ctrl.314stableQ3.pid" ]; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
     if [ -e "/var/xdrago/clear.sh" ]; then
       chmod 700 /var/xdrago/clear.sh
       chown root:root /var/xdrago/clear.sh
-      touch ${pthLog}/clear.fixed.a302w.pid
+      touch ${pthLog}/clear.ctrl.314stableQ3.pid
     else
       mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
     fi
@@ -281,13 +325,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/daily.fixed.a302w.pid" ]; then
+    && [ ! -e "${pthLog}/daily.ctrl.314stableQ3.pid" ]; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
     if [ -e "/var/xdrago/daily.sh" ]; then
       chmod 700 /var/xdrago/daily.sh
       chown root:root /var/xdrago/daily.sh
-      touch ${pthLog}/daily.fixed.a302w.pid
+      touch ${pthLog}/daily.ctrl.314stableQ3.pid
     else
       mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
     fi
@@ -295,13 +339,13 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/weekly.fixed.a302w.pid" ]; then
+    && [ ! -e "${pthLog}/weekly.ctrl.314stableQ3.pid" ]; then
     mv -f /var/xdrago/weekly.sh /var/xdrago/weekly.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/weekly.sh" -o /var/xdrago/weekly.sh
     if [ -e "/var/xdrago/weekly.sh" ]; then
       chmod 700 /var/xdrago/weekly.sh
       chown root:root /var/xdrago/weekly.sh
-      touch ${pthLog}/weekly.fixed.a302w.pid
+      touch ${pthLog}/weekly.ctrl.314stableQ3.pid
     else
       mv -f /var/xdrago/weekly.sh.old /var/xdrago/weekly.sh
     fi
@@ -309,14 +353,14 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/manage_ltd_users.fixed.a302w.pid" ]; then
+    && [ ! -e "${pthLog}/manage_ltd_users.ctrl.314stableQ3.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${pthLog}/manage_ltd_users.fixed.a302w.pid
+      touch ${pthLog}/manage_ltd_users.ctrl.314stableQ3.pid
     else
       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
     fi
@@ -324,14 +368,14 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/proc_num_ctrl.fixed.a302w.pid" ]; then
+    && [ ! -e "${pthLog}/proc_num_ctrl.ctrl.314stableQ3.pid" ]; then
     mv -f /var/xdrago/proc_num_ctrl.cgi /var/xdrago/proc_num_ctrl.cgi.old
     curl ${crlGet} "${urlHmr}/tools/system/proc_num_ctrl.cgi" \
       -o /var/xdrago/proc_num_ctrl.cgi
     if [ -e "/var/xdrago/proc_num_ctrl.cgi" ]; then
       chmod 700 /var/xdrago/proc_num_ctrl.cgi
       chown root:root /var/xdrago/proc_num_ctrl.cgi
-      touch ${pthLog}/proc_num_ctrl.fixed.a302w.pid
+      touch ${pthLog}/proc_num_ctrl.ctrl.314stableQ3.pid
     else
       mv -f /var/xdrago/proc_num_ctrl.cgi.old /var/xdrago/proc_num_ctrl.cgi
     fi
@@ -339,14 +383,97 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/hackcheck.fixed.a302w.pid" ]; then
+    && [ -e "/usr/sbin/csf" ] \
+    && [ -e "/etc/csf/csf.deny" ] \
+    && [ ! -e "${pthLog}/guest-fire-sh2.ctrl.314stableQ3.pid" ]; then
+    mv -f /var/xdrago/guest-fire.sh /var/xdrago/guest-fire.sh.old
+    curl ${crlGet} "${urlHmr}/tools/system/guest-fire.sh" \
+      -o /var/xdrago/guest-fire.sh
+    if [ -e "/var/xdrago/guest-fire.sh" ]; then
+      chmod 700 /var/xdrago/guest-fire.sh
+      chown root:root /var/xdrago/guest-fire.sh
+      touch ${pthLog}/guest-fire-sh2.ctrl.314stableQ3.pid
+    else
+      mv -f /var/xdrago/guest-fire.sh.old /var/xdrago/guest-fire.sh
+    fi
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ -e "/usr/sbin/csf" ] \
+    && [ -e "/etc/csf/csf.deny" ] \
+    && [ ! -e "${pthLog}/guest-water-sh2.ctrl.314stableQ3.pid" ]; then
+    mv -f /var/xdrago/guest-water.sh /var/xdrago/guest-water.sh.old
+    curl ${crlGet} "${urlHmr}/tools/system/guest-water.sh" \
+      -o /var/xdrago/guest-water.sh
+    if [ -e "/var/xdrago/guest-water.sh" ]; then
+      chmod 700 /var/xdrago/guest-water.sh
+      chown root:root /var/xdrago/guest-water.sh
+      touch ${pthLog}/guest-water-sh2.ctrl.314stableQ3.pid
+      sed -i "s/.*cloudflare.*//g"  /etc/csf/csf.allow
+      sed -i "s/.*cloudflare.*//g"  /etc/csf/csf.ignore
+      sed -i "/^$/d" /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=103.21.244.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=103.22.200.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=103.31.4.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=104.16.0.0/12 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=108.162.192.0/18 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=131.0.72.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=141.101.64.0/18 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=162.158.0.0/15 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=172.64.0.0/13 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=173.245.48.0/20 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=188.114.96.0/20 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=190.93.240.0/20 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=197.234.240.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=198.41.128.0/17 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=199.27.128.0/21 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=103.21.244.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=103.22.200.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=103.31.4.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=104.16.0.0/12 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=108.162.192.0/18 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=131.0.72.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=141.101.64.0/18 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=162.158.0.0/15 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=172.64.0.0/13 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=173.245.48.0/20 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=188.114.96.0/20 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=190.93.240.0/20 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=197.234.240.0/22 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=198.41.128.0/17 # cloudflare ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=199.27.128.0/21 # cloudflare ips" >> /etc/csf/csf.allow
+      sed -i "s/.*sucuri.*//g"  /etc/csf/csf.allow
+      sed -i "s/.*sucuri.*//g"  /etc/csf/csf.ignore
+      sed -i "/^$/d" /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=192.88.134.0/23 # sucuri ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=185.93.228.0/22 # sucuri ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=192.124.249.0/24 # sucuri ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=66.248.200.0/22 # sucuri ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=192.88.134.0/23 # sucuri ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=185.93.228.0/22 # sucuri ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=192.124.249.0/24 # sucuri ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=66.248.200.0/22 # sucuri ips" >> /etc/csf/csf.allow
+      csf -df
+      csf -tf
+      sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
+      sed -i "/^$/d" /etc/csf/csf.deny
+      csf -q
+    else
+      mv -f /var/xdrago/guest-water.sh.old /var/xdrago/guest-water.sh
+    fi
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/hackcheck.ctrl.314stableQ3.pid" ]; then
     mv -f /var/xdrago/monitor/check/hackcheck /var/xdrago/monitor/check/hackcheck.old
     curl ${crlGet} "${urlHmr}/tools/system/monitor/check/hackcheck" \
       -o /var/xdrago/monitor/check/hackcheck
     if [ -e "/var/xdrago/monitor/check/hackcheck" ]; then
       chmod 700 /var/xdrago/monitor/check/hackcheck
       chown root:root /var/xdrago/monitor/check/hackcheck
-      touch ${pthLog}/hackcheck.fixed.a302w.pid
+      touch ${pthLog}/hackcheck.ctrl.314stableQ3.pid
     else
       mv -f /var/xdrago/monitor/check/hackcheck.old /var/xdrago/monitor/check/hackcheck
     fi
@@ -354,29 +481,32 @@ update_agents() {
 
   if [ -e "/opt/tools/drush/8/drush/drush" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/lshell.fixed.a302w.pid" ]; then
-    mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
-    curl ${crlGet} "${urlHmr}/tools/system/conf/lshell.conf" \
-      -o /var/xdrago/conf/lshell.conf
-    if [ -e "/var/xdrago/conf/lshell.conf" ]; then
-      chmod 644 /var/xdrago/conf/lshell.conf
-      chown root:root /var/xdrago/conf/lshell.conf
-      touch ${pthLog}/lshell.fixed.a302w.pid
-    else
-      mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
+    && [ ! -e "${pthLog}/lshell.ctrl.314stableQ3.pid" ]; then
+    if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
+      || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
+      mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
+      curl ${crlGet} "${urlHmr}/tools/system/conf/lshell.conf" \
+        -o /var/xdrago/conf/lshell.conf
+      if [ -e "/var/xdrago/conf/lshell.conf" ]; then
+        chmod 644 /var/xdrago/conf/lshell.conf
+        chown root:root /var/xdrago/conf/lshell.conf
+        touch ${pthLog}/lshell.ctrl.314stableQ3.pid
+      else
+        mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
+      fi
     fi
   fi
 
   if [ -e "/opt/tools/drush/8/drush/drush" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/multi.fixed.a302w.pid" ]; then
+    && [ ! -e "${pthLog}/multi.ctrl.314stableQ3.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-foo-multi.conf /var/xdrago/conf/fpm-pool-foo-multi.conf.old
     curl ${crlGet} "${urlHmr}/conf/fpm-pool-foo-multi.conf" \
       -o /var/xdrago/conf/fpm-pool-foo-multi.conf
     if [ -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
       chmod 644 /var/xdrago/conf/fpm-pool-foo-multi.conf
       chown root:root /var/xdrago/conf/fpm-pool-foo-multi.conf
-      touch ${pthLog}/multi.fixed.a302w.pid
+      touch ${pthLog}/multi.ctrl.314stableQ3.pid
     else
       mv -f /var/xdrago/conf/fpm-pool-foo-multi.conf.old /var/xdrago/conf/fpm-pool-foo-multi.conf
     fi
@@ -384,28 +514,78 @@ update_agents() {
 
   if [ -e "/opt/tools/drush" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/single.fixed.a302w.pid" ]; then
+    && [ ! -e "${pthLog}/single.ctrl.314stableQ3.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf.old
     curl ${crlGet} "${urlHmr}/conf/fpm-pool-foo.conf" \
       -o /var/xdrago/conf/fpm-pool-foo.conf
     if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
       chmod 644 /var/xdrago/conf/fpm-pool-foo.conf
       chown root:root /var/xdrago/conf/fpm-pool-foo.conf
-      touch ${pthLog}/single.fixed.a302w.pid
+      touch ${pthLog}/single.ctrl.314stableQ3.pid
     else
       mv -f /var/xdrago/conf/fpm-pool-foo.conf.old /var/xdrago/conf/fpm-pool-foo.conf
     fi
   fi
 
+  if [ -e "/opt/tools/drush" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/dispatch.ctrl.314stableQ3.pid" ]; then
+    sed -i "s/.*cache.*//g; s/.*cc drush.*//g; s/ *$//g; /^$/d" /data/disk/*/aegir.sh
+    touch ${pthLog}/dispatch.ctrl.314stableQ3.pid
+  fi
+
+  if [ -e "/opt/tools/drush/8/drush/drush" ] \
+    && [ -e "${hLeP}" ] \
+    && [ -e "${hLeVtP}" ] \
+    && [ -e "${hLeShP}" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/hosting_le_vt.ctrl.314stableQ3.pid" ]; then
+    leBasePath="profiles/hostmaster/modules/aegir/hosting_le"
+    lePath="${leBasePath}/drush/${hLeF}"
+    leVhPath="${leBasePath}/hosting_le_vhost/drush/${hLeVtF}"
+    for pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+      if [ -e "${pthSysUsr}/config/server_master/nginx/vhost.d" ] \
+        && [ ! -e "${pthSysUsr}/log/CANCELLED" ]; then
+        tUsr=
+        tUsr=$(echo ${pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+        dscUsr="/data/disk/${tUsr}"
+        hmPf=$(cat ${dscUsr}/.drush/hostmaster.alias.drushrc.php \
+          | grep "root'" \
+          | cut -d: -f2 \
+          | awk '{ print $3}' \
+          | sed "s/[\,']//g" 2>&1)
+        locFile="${hmPf}/${lePath}"
+        if [ -e "${locFile}" ] && [ -e "${hLeP}" ]; then
+          cp -af ${hLeP} ${locFile}
+          chown ${tUsr}:users ${locFile}
+          chmod 0644 ${locFile}
+        fi
+        locVhFile="${hmPf}/${leVhPath}"
+        if [ -e "${locVhFile}" ] && [ -e "${hLeVtP}" ]; then
+          cp -af ${hLeVtP} ${locVhFile}
+          chown ${tUsr}:users ${locVhFile}
+          chmod 0644 ${locVhFile}
+        fi
+        locLeShFile="${dscUsr}/tools/le/${hLeShF}"
+        if [ -e "${locLeShFile}" ] && [ -e "${hLeShP}" ]; then
+          cp -af ${hLeShP} ${locLeShFile}
+          chown ${tUsr}:users ${locLeShFile}
+          chmod 0700 ${locLeShFile}
+        fi
+      fi
+    done
+    touch ${pthLog}/hosting_le_vt.ctrl.314stableQ3.pid
+  fi
+
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/websh.fixed.a302w.pid" ]; then
+    && [ ! -e "${pthLog}/websh.ctrl.314stableQ3.pid" ]; then
     mv -f /bin/websh /var/xdrago/websh.sh.old
     curl ${crlGet} "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh
     if [ -e "/bin/websh" ]; then
       chmod 755 /bin/websh
       chown root:root /bin/websh
-      touch ${pthLog}/websh.fixed.a302w.pid
+      touch ${pthLog}/websh.ctrl.314stableQ3.pid
     else
       mv -f /var/xdrago/websh.sh.old /bin/websh
     fi
@@ -449,7 +629,7 @@ fix_core_dgd() {
         Core=$(echo $File \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] && [ ! -d "${Core}/core" ]; then
+        if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
         fi
@@ -462,7 +642,7 @@ fix_core_dgd() {
         Core=$(echo $File \
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
-        if [ -d "${Core}" ] && [ ! -d "${Core}/core" ]; then
+        if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
         fi
@@ -482,7 +662,7 @@ fix_core_dgd() {
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
-          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/core" ] \
           && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
@@ -495,7 +675,7 @@ fix_core_dgd() {
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
-          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/core" ] \
           && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
@@ -508,7 +688,7 @@ fix_core_dgd() {
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
-          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/core" ] \
           && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
@@ -521,7 +701,7 @@ fix_core_dgd() {
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
-          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/core" ] \
           && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
@@ -534,7 +714,7 @@ fix_core_dgd() {
           | sed 's/\/includes.*//g' \
           | awk '{print $1}' 2> /dev/null)
         if [ -d "${Core}" ] \
-          && [ ! -d "${Core}/core" ] \
+          && [ ! -e "${Core}/core" ] \
           && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
@@ -544,6 +724,49 @@ fix_core_dgd() {
     fi
     cd
     touch ${pthLog}/batch-custom-${saCoreN}-fixed-d7.log
+  fi
+}
+
+fix_lshell() {
+  _LSHELL_VRN=0.9.18.8
+  _PATH_LSHELL="${usrBin}/lshell"
+  if [ -e "${_PATH_LSHELL}" ] \
+    && [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}-hotfix4" ]; then
+    cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix4
+    cd /var/opt
+    rm -rf lshell*
+    get_dev_src "lshell-${_LSHELL_VRN}.tar.gz"
+    for Files in `find /var/opt/lshell-${_LSHELL_VRN} -type f`; do
+      sed -i "s/kicked/logged/g" $Files &> /dev/null
+      wait
+      sed -i "s/Kicked/Logged/g" $Files &> /dev/null
+      wait
+    done
+    cd /var/opt/lshell-${_LSHELL_VRN}
+    rm -rf /usr/local/lib/python2.6/dist-packages/lshell*
+    rm -rf /usr/local/lib/python2.7/dist-packages/lshell*
+    python setup.py install --no-compile 2> /dev/null
+    cp -af /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix4 /etc/lshell.conf
+    rm -f /etc/logrotate.d/lshell
+    addgroup --system lshellg &> /dev/null
+    mkdir -p /var/log/lsh
+    chown :lshellg /var/log/lsh
+    chmod 770 /var/log/lsh &> /dev/null
+    touch ${pthLog}/lshell-build-${_LSHELL_VRN}-hotfix4
+    who | awk '$1 !~ /root/{ cmd="pkill -KILL -u " $1; system(cmd) }'
+  fi
+  if [ -f "${usrBin}/lshell" ]; then
+    if [ ! -L "/usr/bin/lshell" ]; then
+      ln -sf ${usrBin}/lshell /usr/bin/lshell &> /dev/null
+    fi
+  fi
+}
+
+fix_tcp() {
+  _TCP_FIX=$(grep "tcp_challenge_ack_limit" /etc/sysctl.conf 2>&1)
+  if [ -z "${_TCP_FIX}" ]; then
+    sysctl net.ipv4.tcp_challenge_ack_limit=1073741823;
+    echo "net.ipv4.tcp_challenge_ack_limit = 1073741823" >> /etc/sysctl.conf
   fi
 }
 
@@ -571,6 +794,33 @@ fix_pure_ftpd() {
     if [ ! -z "${_PAM_AUTH}" ]; then
       sed -i "s/^PAMAuthentication/# PAMAuthentication/g" /usr/local/etc/pure-ftpd.conf
       killall -9 pure-ftpd &> /dev/null
+    fi
+  fi
+}
+
+fix_hosting_le() {
+  if [ -d "/var/xdrago/conf" ]; then
+    if [ ! -e "${hLeVtP}.ctrl.314stableQ3.pid" ] \
+      || [ -e "/var/xdrago/${hLeF}" ] \
+      || [ -e "/var/xdrago/${hLeVtF}" ] \
+      || [ -e "/var/xdrago/${hLeShF}" ] \
+      || [ -e "/root/${hLeF}" ] \
+      || [ -e "/root/hosting_le_vhost.drush.inc.ctrl.314stableQ3.pid" ] \
+      || [ -e "/root/${hLeVtF}" ] \
+      || [ ! -e "${hLeShP}" ] \
+      || [ ! -e "${hLeP}.ctrl.314stableQ3.pid" ]; then
+      mkdir -p /var/xdrago/conf
+      rm -f /var/xdrago/*.drush.inc*
+      rm -f /root/*.drush.inc*
+      rm -f ${hLeShP}.ctrl.314stableQ3.pid
+      rm -f ${hLeVtP}.ctrl.314stableQ3.pid
+      rm -f ${hLeP}.ctrl.314stableQ3.pid
+      curl ${crlGet} "${urlHmr}/helpers/${hLeShF}" -o ${hLeShP}.ctrl.314stableQ3.pid
+      cp -af ${hLeShP}.ctrl.314stableQ3.pid ${hLeShP}
+      curl ${crlGet} "${urlHmr}/patches/${hLeVtF}" -o ${hLeVtP}.ctrl.314stableQ3.pid
+      cp -af ${hLeVtP}.ctrl.314stableQ3.pid ${hLeVtP}
+      curl ${crlGet} "${urlHmr}/patches/${hLeF}" -o ${hLeP}.ctrl.314stableQ3.pid
+      cp -af ${hLeP}.ctrl.314stableQ3.pid ${hLeP}
     fi
   fi
 }
@@ -626,33 +876,20 @@ find_fast_mirror() {
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
 }
 
-setup() {
-
-  _BENG_VS=NO
-  _CHECK_HOST=$(uname -n 2>&1)
-  _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
-    _VMFAMILY="VS"
-  else
-    _VMFAMILY="XEN"
-  fi
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-    || [ "${_VMFAMILY}" = "VS" ]; then
-    _BENG_VS=YES
-  fi
-  if [[ "${_CHECK_HOST}" =~ ".s8." ]] \
-    && [ "${_BENG_VS}" = "YES" ]; then
-    _RANDOMIZE=YES
-  else
-    _RANDOMIZE=YES
-  fi
-
+update_wrappers() {
   sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
   wait
+  _GH_TEST=$(cat /etc/hosts | grep github 2>&1)
+  if [[ ! "${_GH_TEST}" =~ "github.com" ]]; then
+    echo "192.30.253.113 github.com" >> /etc/hosts
+    wait
+    echo "151.101.32.133 raw.githubusercontent.com" >> /etc/hosts
+    wait
+    echo >>/etc/hosts
+    wait
+    service pdnsd restart &> /dev/null
+    pdnsd-ctl empty-cache &> /dev/null
+  fi
   echo >>/etc/hosts
   sed -i "/^$/d" /etc/hosts
   wait
@@ -673,17 +910,13 @@ setup() {
   fi
   find_fast_mirror
   isCurl=$(curl --version 2>&1)
-  if [[ ! "$isCurl" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-    if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ]; then
-      echo "ERROR: Required cURL package is not available"
-      echo "ERROR: Please install it manually with 'apt-get install curl'"
-      exit 1
-    else
-      rm -f /etc/apt/sources.list.d/openssl.list
-      apt-get clean -qq &> /dev/null
-      apt-get update -qq &> /dev/null
-      apt-get install curl ${forCer} &> /dev/null
-    fi
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
+    echo "curl install" | dpkg --set-selections
+    apt-get clean -qq &> /dev/null
+    apt-get update -qq &> /dev/null
+    apt-get install curl ${forCer} &> /dev/null
+    touch /root/.use.curl.from.packages.cnf
   fi
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
@@ -693,7 +926,7 @@ setup() {
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "curl install" | dpkg --set-selections
-      apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
+      apt-get install curl ${forCer} &> /dev/null
       touch /root/.use.curl.from.packages.cnf
     fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
@@ -702,23 +935,169 @@ setup() {
     urlHmr="http://${_USE_MIR}/versions/master/aegir"
   fi
   _LSB_TEST=$(which lsb_release 2> /dev/null)
-  if [[ "$_LSB_TEST" =~ "lsb_release" ]]; then
-    _DO_NOTHING=YES
-  else
+  if [ ! -x "${_LSB_TEST}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
     apt-get clean -qq &> /dev/null
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${forCer} &> /dev/null
   fi
-  mkdir -p /usr/local/bin
+  mkdir -p ${usrBin}
+  if [ ! -e "${pthLog}/fixPSop.ctrl.314stableQ3.pid" ]; then
+    fxPp="fix-drupal-platform-permissions.sh"
+    fxSp="fix-drupal-site-permissions.sh"
+    fxPo="fix-drupal-platform-ownership.sh"
+    fxSo="fix-drupal-site-ownership.sh"
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxPp}" -o ${usrBin}/${fxPp}
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxSp}" -o ${usrBin}/${fxSp}
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxPo}" -o ${usrBin}/${fxPo}
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxSo}" -o ${usrBin}/${fxSo}
+    chmod 700 ${usrBin}/${fxPp}
+    chmod 700 ${usrBin}/${fxSp}
+    chmod 700 ${usrBin}/${fxPo}
+    chmod 700 ${usrBin}/${fxSo}
+    touch ${pthLog}/fixPSop.ctrl.314stableQ3.pid
+  fi
+  mkdir -p ${optBin}
+  rm -f ${usrBin}/{barracuda*,boa*,octopus*}
+  if [ ! -e "/data/disk" ]; then
+    ln -s ${optBin}/boa       ${usrBin}/boa
+    ln -s ${optBin}/barracuda ${usrBin}/barracuda
+    ln -s ${optBin}/octopus   ${usrBin}/octopus
+  fi
+  rm -f ${optBin}/{barracuda*,boa*,octopus*}
+  curl ${crlGet} "${urlHmr}/${tBn}/barracuda"      -o ${optBin}/barracuda
+  curl ${crlGet} "${urlHmr}/${tBn}/boa"            -o ${optBin}/boa
+  curl ${crlGet} "${urlHmr}/${tBn}/octopus"        -o ${optBin}/octopus
+  echo "### ${_TODAY} ###" >> ${optBin}/boa
+  echo "### ${_TODAY} ###" >> ${optBin}/barracuda
+  echo "### ${_TODAY} ###" >> ${optBin}/octopus
+  chmod 700 ${optBin}/{barracuda*,boa*,octopus*}
+}
+
+setup() {
+  _BENG_VS=NO
+  _CHECK_HOST=$(uname -n 2>&1)
+  _VM_TEST=$(uname -a 2>&1)
+  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+    _VMFAMILY="VS"
+  else
+    _VMFAMILY="XEN"
+  fi
+  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+    || [ "${_VMFAMILY}" = "VS" ]; then
+    _BENG_VS=YES
+  fi
+  if [[ "${_CHECK_HOST}" =~ ".s8." ]] \
+    && [ "${_BENG_VS}" = "YES" ]; then
+    _RANDOMIZE=YES
+  else
+    _RANDOMIZE=YES
+  fi
+
+  if [ "${_BENG_VS}" != "YES" ]; then
+    ntpdate pool.ntp.org &> /dev/null
+  fi
+
+  sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
+  wait
+  _GH_TEST=$(cat /etc/hosts | grep github 2>&1)
+  if [[ ! "${_GH_TEST}" =~ "github.com" ]]; then
+    echo "192.30.253.113 github.com" >> /etc/hosts
+    wait
+    echo "151.101.32.133 raw.githubusercontent.com" >> /etc/hosts
+    wait
+    echo >>/etc/hosts
+    wait
+    service pdnsd restart &> /dev/null
+    pdnsd-ctl empty-cache &> /dev/null
+  fi
+  echo >>/etc/hosts
+  sed -i "/^$/d" /etc/hosts
+  wait
+  if [ ! -e "/etc/resolv.conf" ]; then
+    rm -f /etc/resolv.conf
+    if [ -e "${vBs}/resolv.conf.vanilla" ]; then
+      cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
+    fi
+    echo "nameserver 8.8.8.8" >>/etc/resolv.conf
+    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    check_dns_settings
+  else
+    check_dns_settings
+  fi
+  if [ -d "/var/cache/pdnsd" ] \
+    && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+    pdnsd-ctl empty-cache &> /dev/null
+  fi
+  find_fast_mirror
+  isCurl=$(curl --version 2>&1)
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
+    echo "curl install" | dpkg --set-selections
+    apt-get clean -qq &> /dev/null
+    apt-get update -qq &> /dev/null
+    apt-get install curl ${forCer} &> /dev/null
+    touch /root/.use.curl.from.packages.cnf
+  fi
+  _CURL_TEST=$(curl -L -k -s \
+    --max-redirs 10 \
+    --retry 3 \
+    --retry-delay 10 \
+    -I "http://${_USE_MIR}" 2> /dev/null)
+  if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
+    if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
+      echo "curl install" | dpkg --set-selections
+      apt-get install curl ${forCer} &> /dev/null
+      touch /root/.use.curl.from.packages.cnf
+    fi
+    echo "ERROR: ${_USE_MIR} is not available, please try later"
+    exit 1
+  else
+    urlHmr="http://${_USE_MIR}/versions/master/aegir"
+  fi
+  _VIRT_TEST=$(which virt-what 2> /dev/null)
+  if [ ! -x "${_VIRT_TEST}" ]; then
+    apt-get clean -qq &> /dev/null
+    apt-get update -qq &> /dev/null
+    apt-get install virt-what ${forCer} &> /dev/null
+  fi
+  _LSB_TEST=$(which lsb_release 2> /dev/null)
+  if [ ! -x "${_LSB_TEST}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
+    apt-get clean -qq &> /dev/null
+    apt-get update -qq &> /dev/null
+    apt-get install lsb-release ${forCer} &> /dev/null
+  fi
+  mkdir -p ${usrBin}
+  if [ ! -e "${pthLog}/fixPSop.ctrl.314stableQ3.pid" ]; then
+    fxPp="fix-drupal-platform-permissions.sh"
+    fxSp="fix-drupal-site-permissions.sh"
+    fxPo="fix-drupal-platform-ownership.sh"
+    fxSo="fix-drupal-site-ownership.sh"
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxPp}" -o ${usrBin}/${fxPp}
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxSp}" -o ${usrBin}/${fxSp}
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxPo}" -o ${usrBin}/${fxPo}
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxSo}" -o ${usrBin}/${fxSo}
+    chmod 700 ${usrBin}/${fxPp}
+    chmod 700 ${usrBin}/${fxSp}
+    chmod 700 ${usrBin}/${fxPo}
+    chmod 700 ${usrBin}/${fxSo}
+    touch ${pthLog}/fixPSop.ctrl.314stableQ3.pid
+  fi
   mkdir -p ${optBin}
   rm -f ${optBin}/.{boa*,fix*}
-  rm -f /usr/local/bin/{autoupboa*,barracuda*,boa*,ffmirror*}
-  rm -f /usr/local/bin/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
+  rm -f ${usrBin}/{autoupboa*,barracuda*,boa*,ffmirror*}
+  rm -f ${usrBin}/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   if [ ! -e "/data/disk" ]; then
-    ln -s ${optBin}/boa       /usr/local/bin/boa
-    ln -s ${optBin}/barracuda /usr/local/bin/barracuda
-    ln -s ${optBin}/octopus   /usr/local/bin/octopus
+    ln -s ${optBin}/boa       ${usrBin}/boa
+    ln -s ${optBin}/barracuda ${usrBin}/barracuda
+    ln -s ${optBin}/octopus   ${usrBin}/octopus
   fi
   rm -f ${optBin}/{autoupboa*,barracuda*,boa*,ffmirror*,xboa*}
   rm -f ${optBin}/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
@@ -805,7 +1184,11 @@ if [ `whoami` = "root" ]; then
         echo "STATUS: Skynet Agent is Inactive!"
         echo "STATUS: Please remove the _SKYNET_MODE=OFF line from"
         echo "STATUS: ${barCnf} to enable me again."
+        echo "NOTE: Only barracuda, boa and octopus wrappers will be updated"
+        update_wrappers
+        exit 0
       else
+        update_wrappers
         exit 0
       fi
     else
@@ -829,9 +1212,12 @@ if [ `whoami` = "root" ]; then
     fi
   fi
   setup
+  fix_lshell
+  fix_tcp
   fix_alt
   fix_eldir
   fix_pure_ftpd
+  fix_hosting_le
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
@@ -840,12 +1226,13 @@ if [ `whoami` = "root" ]; then
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
+        || [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ] \
         || [ "${_BENG_VS}" = "YES" ]; then
         update_agents
       fi
     else
       update_agents
-      force_rebuild
+      # force_rebuild
       if [[ "${_VERSIONS_TEST}" =~ "BOA-3." ]] \
         || [[ "${_VERSIONS_TEST}" =~ "BOA-2.4." ]] \
         || [[ "${_VERSIONS_TEST}" =~ "BOA-2.3.8" ]]; then

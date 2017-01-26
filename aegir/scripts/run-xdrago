@@ -2,6 +2,7 @@
 
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
+_H_USER=EDIT_USER
 
 check_root() {
   if [ `whoami` = "root" ]; then
@@ -67,14 +68,42 @@ load_control() {
 action() {
   if [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ]; then
     ### echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_SPR}"
-    su -s /bin/bash - EDIT_USER -c "bash /data/disk/EDIT_USER/aegir.sh"
-    touch /var/xdrago/log/last-run-EDIT_USER
+    buildTest="1"
+    tpDir="/data/disk/${_H_USER}/.tmp"
+    ceDir="${tpDir}/cache"
+    dlDir="${ceDir}/download"
+    gtDir="${ceDir}/git"
+    clCtr="/data/disk/${_H_USER}/static/control/clear-drush-cache.info"
+    if [ -e "${tpDir}" ]; then
+      buildTest=$(ls ${tpDir} | grep "_tmp_" | wc -l | tr -d "\n" 2>&1)
+      buildTest=${buildTest//[^0-9]/}
+    fi
+    if [ -e "${clCtr}" ]; then
+      if [ -e "${gtDir}" ] || [ "${buildTest}" -ge "1" ]; then
+        rm -rf ${tpDir}/*
+        rm -f ${clCtr}
+        buildTest="0"
+      fi
+    fi
+    if [ "${buildTest}" = "0" ] && [ -e "${gtDir}" ]; then
+      rm -rf ${gtDir}
+      rm -rf ${dlDir}
+    fi
+    if [ "${buildTest}" = "0" ] \
+      || [ -z "${buildTest}" ] \
+      || [ ! -e "${ceDir}" ]; then
+      su -s /bin/bash - ${_H_USER} -c "drush8 cc drush" &> /dev/null
+      su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir.sh"
+      touch /var/xdrago/log/last-run-${_H_USER}
+    else
+      touch /var/xdrago/log/skip-run-${_H_USER}
+    fi
   fi
 }
 
 if [ -e "/var/run/boa_wait.pid" ] \
   || [ -e "/var/run/manage_rvm_users.pid" ]; then
-  touch /var/xdrago/log/wait-EDIT_USER
+  touch /var/xdrago/log/wait-${_H_USER}
   exit 0
 else
   count_cpu

@@ -11,28 +11,56 @@ sqlmagic_fix() {
     sed -i "s/^INSERT INTO/INSERT IGNORE INTO/g" $target
     wait
     echo "Fixed database dump stored as $target"
+    echo "Bye"
     exit 0
   else
     echo "ERROR: specified file $source does not exist"
+    echo "Bye"
     exit 1
   fi
 }
 
 sqlmagic_convert() {
   if [ ! -L "${HOME}/static" ]; then
-    echo "ERROR: you must be logged in as a lshell main user, typically o1.ftp"
+    echo "ERROR: you must be logged in as a main user, typically o1.ftp"
+    echo "Bye"
     exit 1
   fi
-  if drush status | grep "Successful" > /dev/null \
+  if [ -z "${alias}" ]; then
+    echo "You must specify a correct drush alias for this site, for example:"
+    echo "  sqlmagic convert @sitename to-innodb"
+    echo "Bye"
+    exit 1
+  fi
+  if drush ${alias} status | grep "Successful" 2>&1 \
     && [ -e "${HOME}/static" ]; then
+    _THIS_VN=$(drush ${alias} status \
+      | grep "Drupal version" \
+      | cut -d: -f2 | awk '{ print $1}')
+    if [ -z "${_THIS_VN}" ]; then
+      echo "ERROR: Drupal version couldn't be determined, so we can't proceed"
+      echo "Bye"
+      exit 1
+    fi
+    if [[ "${_THIS_VN}" =~ (^)"6" ]]; then
+      echo "Drupal ${_THIS_VN} detected, ${kind} mode allowed"
+    else
+      kind="to-innodb"
+      echo "Drupal ${_THIS_VN} detected, ${kind} mode forced"
+    fi
     echo "It may take a long time, please wait..."
     if [ "${kind}" = "to-myisam" ]; then
-      _THIS_DB=$(drush status \
+      _THIS_DB=$(drush ${alias} status \
         | grep "Database name" \
         | cut -d: -f2 | awk '{ print $1}')
+      if [ -z "${_THIS_DB}" ]; then
+        echo "ERROR: Database name couldn't be determined, so we can't proceed"
+        echo "Bye"
+        exit 1
+      fi
       _THIS_SHOW="select TABLE_NAME FROM information_schema.TABLES \
         WHERE TABLE_SCHEMA = '${_THIS_DB}' and TABLE_TYPE = 'BASE TABLE'"
-      drush sql-query "${_THIS_SHOW}" \
+      drush ${alias} sql-query "${_THIS_SHOW}" \
         | tail -n +2 \
         | xargs -I '{}' echo "ALTER TABLE {} ENGINE=MYISAM;" > \
         ${HOME}/static/to_myisam_alter_table.sql
@@ -45,39 +73,55 @@ sqlmagic_convert() {
         ENGINE=)MYISAM/\1INNODB/g' \
         ${HOME}/static/to_myisam_alter_table.sql &> /dev/null
       wait
-      drush sqlc < ${HOME}/static/to_myisam_alter_table.sql
-      echo "This site database has been converted to MyISAM"
+      if [ -s "${HOME}/static/to_myisam_alter_table.sql" ]; then
+        drush ${alias} sqlc < ${HOME}/static/to_myisam_alter_table.sql
+        echo "Site ${alias} status: database converted to MyISAM"
+        echo "Bye"
+      else
+        echo "ERROR: resulting sql file is empty, so we can't proceed!"
+        echo "Bye"
+        exit 1
+      fi
       rm -f ${HOME}/static/to_myisam_alter_table.sql
       exit 0
     elif [ "${kind}" = "to-innodb" ]; then
-      _THIS_DB=$(drush status \
+      _THIS_DB=$(drush ${alias} status \
         | grep "Database name" \
         | cut -d: -f2 \
         | awk '{ print $1}')
+      if [ -z "${_THIS_DB}" ]; then
+        echo "ERROR: Database name couldn't be determined, so we can't proceed"
+        echo "Bye"
+        exit 1
+      fi
       _THIS_SHOW="select TABLE_NAME FROM information_schema.TABLES \
         WHERE TABLE_SCHEMA = '${_THIS_DB}' and TABLE_TYPE = 'BASE TABLE'"
-      drush sql-query "${_THIS_SHOW}" \
+      drush ${alias} sql-query "${_THIS_SHOW}" \
         | tail -n +2 \
         | xargs -I '{}' echo "ALTER TABLE {} ENGINE=INNODB;" > \
         ${HOME}/static/to_innodb_alter_table.sql
       sed -i "s/.*TABLE_NAME.*//g; s/ *$//g; /^$/d" \
         ${HOME}/static/to_innodb_alter_table.sql &> /dev/null
       wait
-      perl -p -i -e \
-        's/(search_[a-z_]+ ENGINE=)INNODB/\1MYISAM/g' \
-        ${HOME}/static/to_innodb_alter_table.sql &> /dev/null
-      wait
-      drush sqlc < ${HOME}/static/to_innodb_alter_table.sql
-      echo "This site database has been converted to InnoDB"
+      if [ -s "${HOME}/static/to_innodb_alter_table.sql" ]; then
+        drush ${alias} sqlc < ${HOME}/static/to_innodb_alter_table.sql
+        echo "Site ${alias} status: database converted to InnoDB"
+        echo "Bye"
+      else
+        echo "ERROR: resulting sql file is empty, so we can't proceed!"
+        echo "Bye"
+        exit 1
+      fi
       rm -f ${HOME}/static/to_innodb_alter_table.sql
       exit 0
     else
       echo "Invalid target format - use either to-myisam or to-innodb"
+      echo "Bye"
       exit 1
     fi
   else
-    echo "ERROR: you must run this command from the site directory"
-    echo "ERROR: cd /path/to/platform/sites/domain first"
+    echo "ERROR: Drush couldn't determine this site's status"
+    echo "Bye"
     exit 1
   fi
 }
@@ -87,10 +131,11 @@ case "$1" in
        target="./fixed-$2"
        sqlmagic_fix
   ;;
-  convert) kind="$2"
+  convert) alias="$2"
+       kind="$3"
        sqlmagic_convert
   ;;
-  *)   echo "Usage: sqlmagic {fix file.sql|convert to-myisam|convert to-innodb}"
+  *)   echo "Usage: sqlmagic { fix file.sql | convert @sitename ( to-myisam | to-innodb ) }"
        exit 1
   ;;
 esac
