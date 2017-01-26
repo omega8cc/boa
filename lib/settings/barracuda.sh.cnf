@@ -733,6 +733,24 @@ _MODULES_FIX=YES
 _MODULES_SKIP=""
 
 ###
+### Control if and how often the boost caches
+### are clear. By default they are cleared
+### daily.
+###
+### Supported options:
+###
+### _CLEAR_BOOST="DAILY"
+### _CLEAR_BOOST="WEEKLY"
+### _CLEAR_BOOST="NEVER"
+###
+### If you choose NEVER make sure that boost cron
+### and/or expire module are removing the boost
+### caches when needed.
+###
+_CLEAR_BOOST="DAILY"
+
+
+###
 ### Use YES only if both "randpass 32 esc"
 ### and "randpass 32 alnum" commands produce
 ### well looking, strong passwords and not
