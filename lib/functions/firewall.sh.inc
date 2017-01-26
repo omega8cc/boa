@@ -64,7 +64,7 @@ csf_install() {
   ### from https://download.configserver.com/csf.tgz
   get_dev_arch "csf-${_CSF_VRN}.tgz"
   cd csf
-  st_runner "sh install.sh" 2> /dev/null
+  mrun "sh install.sh" 2> /dev/null
   cd /var/opt
   if [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \

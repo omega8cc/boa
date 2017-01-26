@@ -136,9 +136,10 @@ _TUNE_PHP_CLI_TIMEOUT=7200
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_AEGIR_VERSION="BOA-3.0.2"
+_AEGIR_VERSION="BOA-3.1.4"
 _BRANCH_BOA="3.x.x-dev"
-_X_VERSION="BOA-3.0.2"
+_X_VERSION="BOA-3.1.4"
+_MYSQLTUNER_VRN=1.7.0
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
@@ -155,17 +156,18 @@ _PHP53_VRN=5.3.29
 _PHP54_API=20100525
 _PHP54_VRN=5.4.45
 _PHP55_API=20121212
-_PHP55_VRN=5.5.35
+_PHP55_VRN=5.5.38
 _PHP56_API=20131226
-_PHP56_VRN=5.6.21
+_PHP56_VRN=5.6.30
 _PHP70_API=20151012
-_PHP70_VRN=7.0.6
+_PHP70_VRN=7.0.15
 
 ###
 ### Helper variables
 ###
 bldPth="/opt/tmp/boa"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+forCer="-fuy --force-yes --reinstall"
 gCb="git clone --branch"
 gitHub="https://github.com/omega8cc"
 gitLab="https://gitlab.com/omega8cc"
@@ -233,7 +235,7 @@ find_fast_mirror() {
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
-    apt-get install netcat -fuy --force-yes --reinstall &> /dev/null
+    apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -401,21 +403,21 @@ fix_php_ini_opcache() {
     if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]]; then
       _DO_NOTHING=YES
     else
-      echo ";"                                   >> ${_THIS_FILE}
-      echo "; Zend OPcache"                      >> ${_THIS_FILE}
-      echo "zend_extension=\"$_OPCACHE_SO\""     >> ${_THIS_FILE}
-      echo "opcache.enable=1"                    >> ${_THIS_FILE}
-      echo "opcache.restrict_api=/var/www"       >> ${_THIS_FILE}
-      echo "opcache.memory_consumption=181"      >> ${_THIS_FILE}
-      echo "opcache.interned_strings_buffer=8"   >> ${_THIS_FILE}
-      echo "opcache.max_accelerated_files=64000" >> ${_THIS_FILE}
-      echo "opcache.revalidate_freq=60"          >> ${_THIS_FILE}
-      echo "opcache.enable_file_override=1"      >> ${_THIS_FILE}
-      echo "opcache.inherited_hack=1"            >> ${_THIS_FILE}
-      echo "opcache.dups_fix=1"                  >> ${_THIS_FILE}
-      echo "opcache.log_verbosity_level=0"       >> ${_THIS_FILE}
-      echo "opcache.fast_shutdown=1"             >> ${_THIS_FILE}
-      echo ";"                                   >> ${_THIS_FILE}
+      echo ";"                                    >> ${_THIS_FILE}
+      echo "; Zend OPcache"                       >> ${_THIS_FILE}
+      echo "zend_extension=\"$_OPCACHE_SO\""      >> ${_THIS_FILE}
+      echo "opcache.enable=1"                     >> ${_THIS_FILE}
+      echo "opcache.restrict_api=/var/www"        >> ${_THIS_FILE}
+      echo "opcache.memory_consumption=181"       >> ${_THIS_FILE}
+      echo "opcache.interned_strings_buffer=8"    >> ${_THIS_FILE}
+      echo "opcache.max_accelerated_files=256000" >> ${_THIS_FILE}
+      echo "opcache.revalidate_freq=60"           >> ${_THIS_FILE}
+      echo "opcache.enable_file_override=1"       >> ${_THIS_FILE}
+      echo "opcache.inherited_hack=1"             >> ${_THIS_FILE}
+      echo "opcache.dups_fix=1"                   >> ${_THIS_FILE}
+      echo "opcache.log_verbosity_level=0"        >> ${_THIS_FILE}
+      echo "opcache.fast_shutdown=1"              >> ${_THIS_FILE}
+      echo ";"                                    >> ${_THIS_FILE}
     fi
   fi
 }
@@ -671,8 +673,7 @@ restore_default_sql() {
       cp -af ${locCnf}/my.cnf.txt /etc/mysql/my.cnf
       _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
       if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "10" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "501" ]; then
+        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
           _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
             /var/backups/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW} 2>&1)
@@ -701,15 +702,6 @@ restore_default_sql() {
   sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
   wait
   _THIS_DB_SERVER_TEST=$(mysql -V 2>&1)
-  if [[ "${_THIS_DB_SERVER_TEST}" =~ "5.5." ]] \
-    || [[ "${_THIS_DB_SERVER_TEST}" =~ "10.0" ]]; then
-    _DO_NOTHING=YES
-  else
-    sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf &> /dev/null
-    wait
-    sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf &> /dev/null
-    wait
-  fi
   if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
     sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" \
       /etc/mysql/my.cnf &> /dev/null
@@ -736,14 +728,8 @@ restore_default_sql() {
       sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
       wait
     fi
-    if [ "${_DB_ENGINE}" = "MyISAM" ] || [ "${_DB_ENGINE}" = "InnoDB" ]; then
-      sed -i "s/^default_storage_engine.*/default_storage_engine  = ${_DB_ENGINE}/g" \
-        /etc/mysql/my.cnf &> /dev/null
-      wait
-    fi
     if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "10" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "501" ]; then
+      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
         _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
         _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" /etc/mysql/my.cnf 2>&1)
         if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
@@ -976,12 +962,12 @@ tune_sql_memory_limits() {
         _RAW_INNODB_MEM=$(echo "scale=2; ($_RAW_INNODB_MEM * 1.1)" | bc 2>&1)
         _USE_INNODB_MEM=$(echo "($_RAW_INNODB_MEM+0.5)/1" | bc 2>&1)
       fi
-      _INNODB_BPI="0"
       _INNODB_BPI=$(echo "scale=0; ${_USE_INNODB_MEM}/1024" | bc 2>&1)
-      if [ "$_INNODB_BPI" -gt "1" ]; then
-        sed -i "s/innodb_file_per_table   = 1/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = $_INNODB_BPI/g" /etc/mysql/my.cnf
-        wait
+      if [ "$_INNODB_BPI" -lt "1" ] || [ -z "$_INNODB_BPI" ]; then
+        _INNODB_BPI="1"
       fi
+      sed -i "s/innodb_file_per_table   = 1/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = $_INNODB_BPI/g" /etc/mysql/my.cnf
+      wait
       if [ "${_USE_INNODB_MEM}" -lt "256" ] || [ -z "${_USE_INNODB_MEM}" ]; then
         _USE_INNODB_MEM="${_USE_SQL}"
       fi
@@ -1010,8 +996,8 @@ tune_sql_memory_limits() {
 # Tune memory limits for PHP, Nginx and MariaDB.
 tune_memory_limits() {
   msg "INFO: Default Memory Tuning"
-  _AWS_TEST_A=$(grep cloudimg /etc/fstab 2>&1)
-  _AWS_TEST_B=$(grep cloudconfig /etc/fstab 2>&1)
+  _AWS_TEST_A=$(dmidecode -s bios-version 2>&1)
+  _AWS_TEST_B=$(head -c 3 /sys/hypervisor/uuid 2>&1)
   _ETH_TEST=$(ifconfig 2>&1)
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
@@ -1021,14 +1007,16 @@ tune_memory_limits() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
     _VMFAMILY="VS"
   fi
-  if [[ "${_AWS_TEST_A}" =~ "cloudimg" ]] \
-    || [[ "${_AWS_TEST_B}" =~ "cloudconfig" ]]; then
+  if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
+    || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
     _VMFAMILY="AWS"
   fi
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
@@ -1094,7 +1082,7 @@ tune_memory_limits() {
   if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "1024" ]; then
     _USE_PHP=512
     _USE_OPC=512
-    _QCE_SQL=128M
+    _QCE_SQL=64M
     _RND_SQL=8M
     _JBF_SQL=4M
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
@@ -1115,7 +1103,7 @@ tune_memory_limits() {
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
       _USE_PHP=1024
       _USE_OPC=1024
-      _QCE_SQL=128M
+      _QCE_SQL=64M
       _RND_SQL=8M
       _JBF_SQL=4M
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
@@ -1138,7 +1126,7 @@ tune_memory_limits() {
         || [ -e "/root/.tg.cnf" ]; then
         _USE_PHP=2048
         _USE_OPC=4096
-        _QCE_SQL=256M
+        _QCE_SQL=64M
         _RND_SQL=8M
         _JBF_SQL=4M
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
@@ -1300,8 +1288,8 @@ tune_memory_limits() {
     sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf
     wait
   fi
-  if [ "${_USE_OPC}" -gt "4096" ]; then
-    _MAX_MEM_REDIS=4096
+  if [ "${_USE_OPC}" -gt "2048" ]; then
+    _MAX_MEM_REDIS=2048
   else
     _MAX_MEM_REDIS="${_USE_OPC}"
   fi

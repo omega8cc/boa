@@ -56,14 +56,14 @@ count_cpu() {
 load_control() {
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
-    _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
+    _CPU_SPIDER_RATIO=${_CPU_SPIDER_RATIO//[^0-9]/}
   fi
-  if [ -z "${_CPU_MAX_RATIO}" ]; then
-    _CPU_MAX_RATIO=6
+  if [ -z "${_CPU_SPIDER_RATIO}" ]; then
+    _CPU_SPIDER_RATIO=6
   fi
   _O_LOAD=$(awk '{print $1*100}' /proc/loadavg 2>&1)
   _O_LOAD=$(( _O_LOAD / _CPU_NR ))
-  _O_LOAD_MAX=$(( 100 * _CPU_MAX_RATIO ))
+  _O_LOAD_MAX=$(( 100 * _CPU_SPIDER_RATIO ))
 }
 
 action() {
@@ -71,7 +71,7 @@ action() {
   load_control
   if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ]; then
     echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
-/usr/bin/mysql --default-character-set=utf8 mysql<<EOFMYSQL
+/usr/bin/mysql mysql<<EOFMYSQL
 PURGE MASTER LOGS BEFORE DATE_SUB( NOW( ), INTERVAL 1 HOUR);
 EOFMYSQL
     touch /var/xdrago/log/purge_binlogs.done

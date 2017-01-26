@@ -9,8 +9,8 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
   for i in `dir -d /vservers/*`; do
     if [ -e "$i/var/xdrago/monitor/ssh.log" ]; then
       for _IP in `cat $i/var/xdrago/monitor/ssh.log | cut -d '#' -f1 | sort`; do
-        _FW_TEST=$(iptables --list -n | grep ${_IP} 2>&1)
-        if [[ "${_FW_TEST}" =~ "${_IP}" ]]; then
+        _FW_TEST=$(csf -g ${_IP} 2>&1)
+        if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
           echo "${_IP} already denied or allowed on port 22"
         else
           echo "Deny ${_IP} on ports 21,22,443,80 in the next 1h"
@@ -23,8 +23,8 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
     fi
     if [ -e "$i/var/xdrago/monitor/web.log" ]; then
       for _IP in `cat $i/var/xdrago/monitor/web.log | cut -d '#' -f1 | sort`; do
-        _FW_TEST=$(iptables --list -n | grep ${_IP} 2>&1)
-        if [[ "${_FW_TEST}" =~ "${_IP}" ]]; then
+        _FW_TEST=$(csf -g ${_IP} 2>&1)
+        if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
           echo "${_IP} already denied or allowed on port 80"
         else
           echo "Deny ${_IP} on ports 21,22,443,80 in the next 1h"
@@ -37,8 +37,8 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
     fi
     if [ -e "$i/var/xdrago/monitor/ftp.log" ]; then
       for _IP in `cat $i/var/xdrago/monitor/ftp.log | cut -d '#' -f1 | sort`; do
-        _FW_TEST=$(iptables --list -n | grep ${_IP} 2>&1)
-        if [[ "${_FW_TEST}" =~ "${_IP}" ]]; then
+        _FW_TEST=$(csf -g ${_IP} 2>&1)
+        if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
           echo "${_IP} already denied or allowed on port 21"
         else
           echo "Deny ${_IP} on ports 21,22,443,80 in the next 1h"

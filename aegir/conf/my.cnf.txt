@@ -20,7 +20,6 @@ skip-external-locking
 skip-name-resolve
 connect_timeout         = 60
 join_buffer_size        = 1M
-key_buffer              = 2M
 key_buffer_size         = 181M
 log_warnings            = 2
 max_allowed_packet      = 32M
@@ -48,7 +47,7 @@ concurrent_insert       = 2
 userstat                = 1
 max_tmp_tables          = 16384
 server-id               = 8
-myisam-recover          = BACKUP
+myisam-recover-options  = BACKUP
 log_bin                 = /var/log/mysql/mariadb-bin
 log_bin_index           = /var/log/mysql/mariadb-bin.index
 expire_logs_days        = 1
@@ -58,6 +57,7 @@ open_files_limit        = 196608
 #long_query_time         = 10
 #slow_query_log_file     = /var/log/mysql/sql-slow-query.log
 #log_queries_not_using_indexes
+#innodb-defragment       = 1
 
 
 # * InnoDB
@@ -70,6 +70,8 @@ sql_mode                = NO_ENGINE_SUBSTITUTION
 innodb_buffer_pool_size = 181M
 innodb_log_buffer_size  = 4M
 innodb_file_per_table   = 1
+innodb_large_prefix     = 1
+innodb_file_format      = Barracuda
 innodb_open_files       = 256
 innodb_io_capacity      = 512
 innodb_flush_method     = O_DIRECT

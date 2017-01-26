@@ -19,14 +19,16 @@ if_running_as_root_barracuda() {
     touch /var/run/boa_run.pid
     mkdir -p ${pthLog}
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
-    _AWS_TEST_A=$(grep cloudimg /etc/fstab 2>&1)
-    _AWS_TEST_B=$(grep cloudconfig /etc/fstab 2>&1)
-    if [[ "${_AWS_TEST_A}" =~ "cloudimg" ]] \
-      || [[ "${_AWS_TEST_B}" =~ "cloudconfig" ]]; then
+    _AWS_TEST_A=$(dmidecode -s bios-version 2>&1)
+    _AWS_TEST_B=$(head -c 3 /sys/hypervisor/uuid 2>&1)
+    if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
+      || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
       _VMFAMILY="AWS"
     fi
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
@@ -80,7 +82,9 @@ set_xterm() {
 # Kill nash-hotplug.
 kill_nash() {
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
@@ -126,8 +130,8 @@ fix_sftp_ftps_modern() {
     rm -rf mysecureshell*
     get_dev_src "mysecureshell-${_MSS_VRN}.tar.gz"
     cd /var/opt/mysecureshell
-    st_runner "sh ./configure" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
+    mrun "sh ./configure" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
     st_runner "sh ./install.sh yesall" 2> /dev/null
     touch ${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log
     cp -af ${locCnf}/sftp_config /etc/ssh/sftp_config
@@ -218,7 +222,7 @@ fix_on_upgrade() {
   sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf &> /dev/null
   cp -af ${locCnf}/clean-boa-env /etc/init.d/clean-boa-env
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
-  st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
+  mrun "update-rc.d clean-boa-env defaults" &> /dev/null
   kill_nash
   fix_sftp_ftps_modern
   fix_ftps_pam
@@ -226,7 +230,6 @@ fix_on_upgrade() {
   enable_weekly_usage_monitor
   update_php_conf
   update_ini_tpl
-  update_sql_conf
   update_nginx_conf
   update_global_inc_conf
   update_redis_password
@@ -244,14 +247,16 @@ tune_memory_limits() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
     _VMFAMILY="VS"
   fi
-  if [[ "${_AWS_TEST_A}" =~ "cloudimg" ]] \
-    || [[ "${_AWS_TEST_B}" =~ "cloudconfig" ]]; then
+  if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
+    || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
     _VMFAMILY="AWS"
   fi
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
@@ -317,7 +322,7 @@ tune_memory_limits() {
   if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "1024" ]; then
     _USE_PHP=512
     _USE_OPC=512
-    _QCE_SQL=128M
+    _QCE_SQL=64M
     _RND_SQL=8M
     _JBF_SQL=4M
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
@@ -338,7 +343,7 @@ tune_memory_limits() {
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
       _USE_PHP=1024
       _USE_OPC=1024
-      _QCE_SQL=128M
+      _QCE_SQL=64M
       _RND_SQL=8M
       _JBF_SQL=4M
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
@@ -361,7 +366,7 @@ tune_memory_limits() {
         || [ -e "/root/.tg.cnf" ]; then
         _USE_PHP=2048
         _USE_OPC=4096
-        _QCE_SQL=256M
+        _QCE_SQL=64M
         _RND_SQL=8M
         _JBF_SQL=4M
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
@@ -500,6 +505,7 @@ tune_memory_limits() {
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits
+    update_sql_conf
     if [[ "${PrTest}" =~ "POWER" ]]; then
       _UXC_SQL="${_MXC_SQL}"
     else
@@ -522,8 +528,8 @@ tune_memory_limits() {
     sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf
     wait
   fi
-  if [ "${_USE_OPC}" -gt "4096" ]; then
-    _MAX_MEM_REDIS=4096
+  if [ "${_USE_OPC}" -gt "2048" ]; then
+    _MAX_MEM_REDIS=2048
   else
     _MAX_MEM_REDIS="${_USE_OPC}"
   fi
@@ -723,7 +729,7 @@ barracuda_cnf() {
         clean_pid_exit
       fi
     fi
-    if [ "${_DB_SERIES}" = "10.0" ]; then
+    if [ "${_DB_SERIES}" = "10.1" ] || [ "${_DB_SERIES}" = "10.0" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
@@ -767,10 +773,9 @@ barracuda_cnf() {
 
     echo "###"                                                >> ${barCnf}
     echo "_DB_BINARY_LOG=${_DB_BINARY_LOG}"                   >> ${barCnf}
-    echo "_DB_ENGINE=${_DB_ENGINE}"                           >> ${barCnf}
     echo "_DB_SERIES=${_DB_SERIES}"                           >> ${barCnf}
     echo "_DB_SERVER=${_DB_SERVER}"                           >> ${barCnf}
-    echo "_INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE}"     >> ${barCnf}
+    echo "_USE_MYSQLTUNER=${_USE_MYSQLTUNER}"                 >> ${barCnf}
 
     echo "###"                                                >> ${barCnf}
     echo "_DNS_SETUP_TEST=${_DNS_SETUP_TEST}"                 >> ${barCnf}
@@ -780,6 +785,9 @@ barracuda_cnf() {
     echo "_LOCAL_UBUNTU_MIRROR=${_LOCAL_UBUNTU_MIRROR}"       >> ${barCnf}
     echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}"                     >> ${barCnf}
     echo "_SCOUT_KEY=${_SCOUT_KEY}"                           >> ${barCnf}
+
+    echo "###"                                                >> ${barCnf}
+    echo "_MAGICK_FROM_SOURCES=${_MAGICK_FROM_SOURCES}"       >> ${barCnf}
 
     echo "###"                                                >> ${barCnf}
     echo "_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}"               >> ${barCnf}
@@ -806,6 +814,7 @@ barracuda_cnf() {
     echo "_REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE}"           >> ${barCnf}
     echo "_RESERVED_RAM=${_RESERVED_RAM}"                     >> ${barCnf}
     echo "_SPEED_VALID_MAX=${_SPEED_VALID_MAX}"               >> ${barCnf}
+    echo "_SSH_ARMOUR=${_SSH_ARMOUR}"                         >> ${barCnf}
     echo "_SSH_FROM_SOURCES=${_SSH_FROM_SOURCES}"             >> ${barCnf}
     echo "_SSH_PORT=${_SSH_PORT}"                             >> ${barCnf}
     echo "_STRICT_BIN_PERMISSIONS=${_STRICT_BIN_PERMISSIONS}" >> ${barCnf}
@@ -843,8 +852,6 @@ barracuda_cnf() {
         debM="httpredir.debian.org"
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
         wait
-        sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                              ${barCnf}
-        wait
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                             ${barCnf}
         wait
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                ${barCnf}
@@ -855,12 +862,13 @@ barracuda_cnf() {
         wait
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
         wait
-        ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                                ${barCnf}
-        ### wait
-        wait
+        # sed -i "s/^_SSH_ARMOUR=.*/_SSH_ARMOUR=YES/g"                               ${barCnf}
+        # wait
         sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
         wait
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   ${barCnf}
+        wait
+        sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                     ${barCnf}
         wait
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                /root/.*.octopus.cnf &> /dev/null
         wait
@@ -887,15 +895,7 @@ barracuda_cnf() {
             wait
             sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
             wait
-            ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                            ${barCnf}
-            ### wait
           fi
-          sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g"                            /root/.*.octopus.cnf &> /dev/null
-          wait
-          sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                           ${barCnf}
-          wait
-          sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                   ${barCnf}
-          wait
           if [ -x "/opt/php56/bin/php" ] && [ -z "${_PHP_SINGLE_INSTALL}" ]; then
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g"                 ${barCnf}
             wait
@@ -985,7 +985,9 @@ barracuda_cnf() {
     _CHECK_HOST=$(uname -n 2>&1)
     _VMFAMILY=XEN
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
@@ -1179,14 +1181,9 @@ barracuda_cnf() {
       echo "_DB_BINARY_LOG=${_DB_BINARY_LOG}" >> ${barCnf}
     fi
 
-    _INNODB_LOG_FILE_SIZE_TEST=$(grep _INNODB_LOG_FILE_SIZE ${barCnf} 2>&1)
-    if [[ ! "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "_INNODB_LOG_FILE_SIZE" ]]; then
-      echo "_INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE}" >> ${barCnf}
-    fi
-
-    _DB_ENGINE_TEST=$(grep _DB_ENGINE ${barCnf} 2>&1)
-    if [[ ! "${_DB_ENGINE_TEST}" =~ "_DB_ENGINE" ]]; then
-      echo "_DB_ENGINE=${_DB_ENGINE}" >> ${barCnf}
+    _USE_MYSQLTUNER_TEST=$(grep _USE_MYSQLTUNER ${barCnf} 2>&1)
+    if [[ ! "${_USE_MYSQLTUNER_TEST}" =~ "_USE_MYSQLTUNER" ]]; then
+      echo "_USE_MYSQLTUNER=${_USE_MYSQLTUNER}" >> ${barCnf}
     fi
 
     _REDIS_LISTEN_MODE_TEST=$(grep _REDIS_LISTEN_MODE ${barCnf} 2>&1)
@@ -1249,6 +1246,16 @@ barracuda_cnf() {
       echo "_SSH_FROM_SOURCES=${_SSH_FROM_SOURCES}" >> ${barCnf}
     fi
 
+    _SSH_ARMOUR_TEST=$(grep _SSH_ARMOUR ${barCnf} 2>&1)
+    if [[ ! "${_SSH_ARMOUR_TEST}" =~ "_SSH_ARMOUR" ]]; then
+      echo "_SSH_ARMOUR=${_SSH_ARMOUR}" >> ${barCnf}
+    fi
+
+    _MAGICK_FROM_SOURCES_TEST=$(grep _MAGICK_FROM_SOURCES ${barCnf} 2>&1)
+    if [[ ! "${_MAGICK_FROM_SOURCES_TEST}" =~ "_MAGICK_FROM_SOURCES" ]]; then
+      echo "_MAGICK_FROM_SOURCES=${_MAGICK_FROM_SOURCES}" >> ${barCnf}
+    fi
+
     _RESERVED_RAM_TEST=$(grep _RESERVED_RAM ${barCnf} 2>&1)
     if [[ ! "${_RESERVED_RAM_TEST}" =~ "_RESERVED_RAM" ]]; then
       echo "_RESERVED_RAM=${_RESERVED_RAM}" >> ${barCnf}
@@ -1271,6 +1278,16 @@ barracuda_cnf() {
     ###
     ### config cleanup start
     ###
+    _DB_ENGINE_TEST=$(grep _DB_ENGINE ${barCnf} 2>&1)
+    if [[ "${_DB_ENGINE_TEST}" =~ "_DB_ENGINE" ]]; then
+      sed -i "s/^_DB_ENGINE.*//g" ${barCnf}
+      wait
+    fi
+    _INNODB_LOG_FILE_SIZE_TEST=$(grep _INNODB_LOG_FILE_SIZE ${barCnf} 2>&1)
+    if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "_INNODB_LOG_FILE_SIZE" ]]; then
+      sed -i "s/^_INNODB_LOG_FILE_SIZE.*//g" ${barCnf}
+      wait
+    fi
     _USE_STOCK_TEST=$(grep _USE_STOCK ${barCnf} 2>&1)
     if [[ "${_USE_STOCK_TEST}" =~ "_USE_STOCK" ]]; then
       sed -i "s/^_USE_STOCK.*//g" ${barCnf}
@@ -1358,8 +1375,6 @@ barracuda_cnf() {
         debM="httpredir.debian.org"
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
         wait
-        sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                              ${barCnf}
-        wait
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                             ${barCnf}
         wait
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                ${barCnf}
@@ -1370,11 +1385,13 @@ barracuda_cnf() {
         wait
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
         wait
-        ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                                ${barCnf}
-        ### wait
+        # sed -i "s/^_SSH_ARMOUR=.*/_SSH_ARMOUR=YES/g"                               ${barCnf}
+        # wait
         sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
         wait
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   ${barCnf}
+        wait
+        sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                     ${barCnf}
         wait
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                /root/.*.octopus.cnf &> /dev/null
         wait
@@ -1401,15 +1418,7 @@ barracuda_cnf() {
             wait
             sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
             wait
-            ### sed -i "s/^_PHP_GEOS=.*/_PHP_GEOS=NO/g"                            ${barCnf}
-            ### wait
           fi
-          sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                           ${barCnf}
-          wait
-          sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                   ${barCnf}
-          wait
-          sed -i "s/^_SQL_CONVERT=.*/_SQL_CONVERT=NO/g"                            /root/.*.octopus.cnf &> /dev/null
-          wait
           if [ -x "/opt/php56/bin/php" ] && [ -z "${_PHP_SINGLE_INSTALL}" ]; then
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g"                 ${barCnf}
             wait
@@ -1437,7 +1446,7 @@ barracuda_cnf() {
       sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=httpredir.debian.org/g"     ${barCnf}
       wait
     fi
-    if [ "${_DB_SERIES}" = "10.0" ]; then
+    if [ "${_DB_SERIES}" = "10.1" ] || [ "${_DB_SERIES}" = "10.0" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
@@ -1554,6 +1563,11 @@ barracuda_cnf() {
         wait
       fi
     fi
+    _WHEEZY_TO_JESSIE_TEST=$(grep _WHEEZY_TO_JESSIE ${barCnf} 2>&1)
+    if [[ "${_WHEEZY_TO_JESSIE_TEST}" =~ "_WHEEZY_TO_JESSIE" ]]; then
+      sed -i "s/^_WHEEZY_TO_JESSIE.*//g" ${barCnf}
+      wait
+    fi
     _SQUEEZE_TO_WHEEZY_TEST=$(grep _SQUEEZE_TO_WHEEZY ${barCnf} 2>&1)
     if [[ "${_SQUEEZE_TO_WHEEZY_TEST}" =~ "_SQUEEZE_TO_WHEEZY" ]]; then
       sed -i "s/^_SQUEEZE_TO_WHEEZY.*//g" ${barCnf}
@@ -1635,10 +1649,10 @@ do_install_latest_git() {
     rm -rf git*
     get_dev_src "git-${_GIT_VRN}.tar.gz"
     cd /var/opt/git-${_GIT_VRN}
-    st_runner "make configure" 2> /dev/null
-    st_runner "sh ./configure --without-tcltk --quiet" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    mrun "make configure" 2> /dev/null
+    mrun "sh ./configure --without-tcltk --quiet" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mv -f /usr/bin/git /usr/bin/git-old
     ln -sf /usr/local/bin/git /usr/bin/git
     cd /var/opt
@@ -1661,7 +1675,6 @@ check_install_latest_git() {
     _GIT_FORCE_REINSTALL=YES
   fi
   if [[ "${_XTRAS_LIST}" =~ "GIT" ]] \
-    || [ "${_SSB_SRC}" = "YES" ] \
     || [ "${_GIT_FORCE_REINSTALL}" = "YES" ]; then
     _GIT_TEST=$(git --version 2>&1)
     if [[ "${_GIT_TEST}" =~ "git version ${_GIT_VRN}" ]]; then
@@ -1757,7 +1770,6 @@ get_drush_versions() {
   find /opt/tools -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tools -type f -exec chmod 0644 {} \; &> /dev/null
   chmod 755 /opt/tools/drush/*/drush/drush
-  chmod 755 /opt/tools/drush/*/drush/drush.bat
   chmod 755 /opt/tools/drush/*/drush/drush.complete.sh
   chmod 755 /opt/tools/drush/*/drush/drush.launcher
   chmod 755 /opt/tools/drush/*/drush/drush.php
@@ -2062,7 +2074,11 @@ update_sources_list() {
 #
 # Install OpenSSH from sources.
 install_ssh_src() {
-  _SSH_GET_DPKG=$(dpkg --get-selections | grep ssh | grep 'hold$' 2>&1)
+  if [ "${_OSV}" = "jessie" ]; then
+    _SSH_GET_DPKG=$(dpkg --get-selections | grep openssh-sftp-server | grep 'hold$' 2>&1)
+  else
+    _SSH_GET_DPKG=$(dpkg --get-selections | grep ssh | grep 'hold$' 2>&1)
+  fi
   _SSH_INSTALL_REQUIRED=NO
   _SSH_ITD=$(ssh -V 2>&1 \
     | tr -d "\n" \
@@ -2084,13 +2100,13 @@ install_ssh_src() {
     rm -rf openssh*
     get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
     cd /var/opt/openssh-${_OPENSSH_VRN}
-    st_runner "sh ./configure \
+    mrun "sh ./configure \
       --with-openssl \
       --without-openssl-header-check \
       --prefix=/usr \
       --with-pam" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mrun "service ssh restart" &> /dev/null
     if [[ ! "${_SSH_GET_DPKG}" =~ "hold" ]]; then
       ### aptitude hold openssh-server &> /dev/null
@@ -2099,6 +2115,9 @@ install_ssh_src() {
       echo "openssh-client hold" | dpkg --set-selections
       echo "openssh-server hold" | dpkg --set-selections
       echo "ssh hold" | dpkg --set-selections
+      if [ "${_OSV}" = "jessie" ]; then
+        echo "openssh-sftp-server hold" | dpkg --set-selections
+      fi
     fi
   else
     if [[ ! "${_SSH_GET_DPKG}" =~ "hold" ]]; then
@@ -2108,14 +2127,52 @@ install_ssh_src() {
       echo "openssh-client hold" | dpkg --set-selections
       echo "openssh-server hold" | dpkg --set-selections
       echo "ssh hold" | dpkg --set-selections
+      if [ "${_OSV}" = "jessie" ]; then
+        echo "openssh-sftp-server hold" | dpkg --set-selections
+      fi
     fi
   fi
   _SSH_FORCE_REINSTALL=NO
 }
 
 #
+# Install ImageMagick from sources.
+install_magick_src() {
+  _MAGICK_INSTALL_REQUIRED=NO
+  _MAGICK_ITD=$(convert --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f3 \
+    | awk '{ print $1}' 2>&1)
+  if [ "${_MAGICK_ITD}" != "${_IMAGE_MAGICK_VRN}" ]; then
+    if [ "${_OSV}" = "none" ]; then
+      _MAGICK_INSTALL_REQUIRED=NO
+    else
+      _MAGICK_INSTALL_REQUIRED=YES
+      msg "INFO: Installed ImageMagick version ${_MAGICK_ITD}, upgrade required"
+    fi
+  fi
+  if [ "${_MAGICK_INSTALL_REQUIRED}" = "YES" ]; then
+    msg "INFO: Building ImageMagick ${_IMAGE_MAGICK_VRN} from sources, please wait..."
+    cd /var/opt
+    rm -rf ImageMagick*
+    get_dev_src "ImageMagick-${_IMAGE_MAGICK_VRN}.tar.gz"
+    cd /var/opt/ImageMagick-${_IMAGE_MAGICK_VRN}
+    mrun "sh ./configure --prefix=/usr" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    if [ ! -e "/etc/.ImageMagick" ]; then
+      cp -a /etc/ImageMagick /etc/.ImageMagick
+    fi
+    mrun "apt-get remove imagemagick" 2> /dev/null
+    mrun "apt-get purge imagemagick" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    msg "HINT: Please modify /usr/etc/ImageMagick-7/policy.xml file, if needed"
+  fi
+}
+
+#
 # Install cURL from sources.
 install_curl_src() {
+  touch /root/.use.curl.from.packages.cnf
   if [ "${_OSV}" = "precise" ]; then
     touch /root/.use.curl.from.packages.cnf
     _CURL_VRN=7.22.0
@@ -2143,7 +2200,7 @@ install_curl_src() {
       _CURL_INSTALL_REQUIRED=NO
     else
       _CURL_INSTALL_REQUIRED=YES
-      msg "INFO: Installed cURL version ${_CURL_ITD}, upgrade required"
+      # msg "INFO: Installed cURL version ${_CURL_ITD}, upgrade required"
     fi
   fi
   _BROKEN_CURL_TEST=$(curl --version 2>&1)
@@ -2156,22 +2213,24 @@ install_curl_src() {
   fi
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     _CURL_INSTALL_REQUIRED=YES
-    msg "INFO: Installed cURL version ${_CURL_ITD}, rebuild forced"
+    # msg "INFO: Installed cURL version ${_CURL_ITD}, rebuild forced"
   fi
   if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
-    echo "libcurl3 install" | dpkg --set-selections
-    echo "libcurl3-gnutls install" | dpkg --set-selections
-    echo "libcurl4-openssl-dev install" | dpkg --set-selections
-    mrun "${_INSTALL} libcurl3" 2> /dev/null
-    mrun "${_INSTALL} libcurl3-gnutls" 2> /dev/null
-    mrun "${_INSTALL} libcurl4-openssl-dev" 2> /dev/null
     if [ -e "/root/.use.curl.from.packages.cnf" ]; then
       if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
         echo "curl install" | dpkg --set-selections
-      fi
-      if [ -z "${_CURL_ALREADY_REBUILT}" ]; then
-        apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
+        if [ -z "${_CURL_ALREADY_REBUILT}" ]; then
+          echo "libcurl3 install" | dpkg --set-selections
+          echo "libcurl3-gnutls install" | dpkg --set-selections
+          echo "libcurl4-openssl-dev install" | dpkg --set-selections
+          mrun "apt-get clean -qq" 2> /dev/null
+          mrun "apt-get update -qq" 2> /dev/null
+          mrun "apt-get install libcurl3 ${forCer}" 2> /dev/null
+          mrun "apt-get install libcurl3-gnutls ${forCer}" 2> /dev/null
+          mrun "apt-get install libcurl4-openssl-dev ${forCer}" 2> /dev/null
+          mrun "apt-get install curl ${forCer}" 2> /dev/null
+        fi
       fi
     else
       if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
@@ -2190,7 +2249,6 @@ install_curl_src() {
       mrun "make --quiet install" 2> /dev/null
     fi
     _CURL_ALREADY_REBUILT=YES
-    _UP_PHP=YES
   fi
 }
 
@@ -2239,8 +2297,8 @@ install_ssl_src() {
     get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
     cd /var/opt/zlib-${_ZLIB_VRN}
     st_runner "./configure --prefix=/usr" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     ###--------------------###
     msg "INFO: Building OpenSSL ${_OPENSSL_VRN} from sources, please wait..."
     cd /var/opt
@@ -2512,7 +2570,10 @@ strict_bin_permissions() {
                   jpegoptim \
                   jpegtran \
                   logger \
+                  magick \
                   newrelic-daemon \
+                  node \
+                  npm \
                   nrsysmond \
                   optipng \
                   pngcrush \
@@ -2541,6 +2602,10 @@ strict_bin_permissions() {
   _PROTECTED_ITEMS="backboa \
                     barracuda \
                     boa \
+                    fix-drupal-platform-ownership.sh \
+                    fix-drupal-platform-permissions.sh \
+                    fix-drupal-site-ownership.sh \
+                    fix-drupal-site-permissions.sh \
                     named \
                     octopus \
                     redis-benchmark \
@@ -2649,10 +2714,13 @@ finale() {
   rm -f ${pthLog}/protected-vhosts-clean.log
   rm -f ${vBs}/.auth.IP.list*
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
-    ${mtrNgx}/vhost.d/chive.* &> /dev/null
+    ${mtrNgx}/vhost.d/adminer.* &> /dev/null
   wait
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
     ${mtrNgx}/vhost.d/cgp.* &> /dev/null
+  wait
+  sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
+    ${mtrNgx}/vhost.d/chive.* &> /dev/null
   wait
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
     ${mtrNgx}/vhost.d/sqlbuddy.* &> /dev/null
@@ -2720,7 +2788,10 @@ finale() {
 }
 
 install_with_aptitude_deps() {
-  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
+  if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "wheezy" ]; then
+    _DO_FIX=YES
+  elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
     && [ "${_LOC_OSV}" = "squeeze" ]; then
     _DO_FIX=YES
   fi
@@ -2730,21 +2801,7 @@ install_with_aptitude_deps() {
   else
     _GPG=gpg
   fi
-  if [[ "${_XTRAS_LIST}" =~ "FMG" ]]; then
-    if [ "${_OSV}" = "jessie" ] \
-      || [ "${_OSV}" = "wheezy" ] \
-      || [ "${_DO_FIX}" = "YES" ] \
-      || [ "${_OSV}" = "trusty" ] \
-      || [ "${_OSV}" = "precise" ]; then
-      _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-53"
-    elif [ "${_OSV}" = "squeeze" ]; then
-      _EXTRA_APT="tree ffmpeg flvtool2 libavcodec52"
-    else
-      _EXTRA_APT="tree ffmpeg flvtool2 libavcodec51"
-    fi
-  else
-    _EXTRA_APT="tree"
-  fi
+  _EXTRA_APT="tree"
   st_runner "apt-get install ${_EXTRA_APT} ${nrmUpArg}" 2> /dev/null
   if [ -e "/etc/init.d/php5-fpm" ]; then
     mrun "service php5-fpm stop" &> /dev/null
@@ -2753,6 +2810,12 @@ install_with_aptitude_deps() {
 }
 
 basic_packages_install_on_init() {
+  if [ "${_OSV}" = "jessie" ]; then
+    _GRUB_TEST=$(grep systemd /etc/default/grub 2>&1)
+    if [[ "${_GRUB_TEST}" =~ "systemd" ]]; then
+      _GRUB_FIX=YES
+    fi
+  fi
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Installing some basic tools now, please wait..."
     rm -f /etc/apt/sources.list.d/openssl.list
@@ -2777,6 +2840,7 @@ basic_packages_install_on_init() {
     ${_INITINS} wget &> /dev/null
     if [ "${_OSV}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Installing sysvinit on ${_THIS_OS} ${_OSV}..."
+      ${_INITINS} sysvinit &> /dev/null
       ${_INITINS} sysvinit-core &> /dev/null
       ${_INITINS} sysvinit-utils &> /dev/null
       if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -2784,8 +2848,12 @@ basic_packages_install_on_init() {
       fi
       echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
       echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-      ${_INITINS} sysvinit-core &> /dev/null
-      ${_INITINS} sysvinit-utils &> /dev/null
+      if [ "${_GRUB_FIX}" = "YES" ] \
+        && [ -x "/lib/sysvinit/init" ] \
+        && [ -e "/etc/default/grub" ]; then
+        sed -i "s/init=\/bin\/systemd/init=\/lib\/sysvinit\/init/g" /etc/default/grub
+        update-grub &> /dev/null
+      fi
       echo
       msg "NOTE: Please reboot and run barracuda upgrade"
       msg "NOTE: when boa will complete initial installation"
@@ -2795,17 +2863,30 @@ basic_packages_install_on_init() {
     fi
   else
     if [ "${_OSV}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
-      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
+      msg "INFO: Installing sysvinit on ${_THIS_OS} ${_OSV}..."
+      ${_INITINS} sysvinit &> /dev/null
       ${_INITINS} sysvinit-core &> /dev/null
       ${_INITINS} sysvinit-utils &> /dev/null
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
       fi
-      apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
       echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
       echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-      ${_INITINS} sysvinit-core &> /dev/null
-      ${_INITINS} sysvinit-utils &> /dev/null
+      if [ "${_GRUB_FIX}" = "YES" ]; then
+        if [ -x "/lib/sysvinit/init" ] \
+          && [ -e "/etc/default/grub" ]; then
+          sed -i "s/init=\/bin\/systemd/init=\/lib\/sysvinit\/init/g" /etc/default/grub
+          update-grub &> /dev/null
+          echo
+          msg "NOTE: Please reboot and run barracuda upgrade again"
+          msg "NOTE: to cleanly remove not used systemd packages!"
+          echo
+          mrun "sleep 8"
+        fi
+      else
+        msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
+        apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
+      fi
     fi
   fi
 }
@@ -2835,6 +2916,295 @@ more_packages_install_on_init() {
     ${_INITINS} git-man &> /dev/null
     ${_INITINS} aptitude &> /dev/null
     ${_INITINS} axel &> /dev/null
+  fi
+}
+
+if_wheezy_to_jessie() {
+  if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
+    && [ "${_OSV}" = "wheezy" ]; then
+    _LOC_OSV=wheezy
+  fi
+  if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "wheezy" ]; then
+    msg "WARN: Wheezy to Jessie upgrade will start in 60 seconds..."
+    msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
+    if [ ! -e "/root/.upstart.cnf" ]; then
+      service cron stop &> /dev/null
+      mrun "sleep 60"
+    fi
+    check_dns_settings
+    if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
+      if [ -e "/etc/resolv.conf" ]; then
+        mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
+      fi
+      rm -f /etc/resolv.conf
+      echo "nameserver 8.8.8.8" >/etc/resolv.conf
+      echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+      if [ -e "/etc/resolv.conf.pre-dist-upgrade" ]; then
+        cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
+      fi
+    fi
+    rm -f ${pthLog}/ruby-root-clean-reload.log
+    mv -f /var/xdrago /var/xdrago_wait &> /dev/null
+    msg "WARN: Too late! Wheezy to Jessie upgrade in progress..."
+    msg "HINT: Run tail -f ${_LOG}"
+    msg "HINT: in another terminal window to watch details"
+    _FULL_FORCE_REINSTALL=YES
+    _PURGE_MODE=OFF
+    rm -f ${mtrNgx}/pre.d/nginx_speed_purge.conf
+    if [ -e "/etc/init.d/bind" ]; then
+      rm -f /etc/init.d/bind
+    fi
+    if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ]; then
+      service tomcat stop &> /dev/null
+      mv /etc/init.d/tomcat /etc/init.d/offtomcat
+      kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
+    fi
+    mrun "apt-get update -qq" 2> /dev/null
+    mrun "apt-get remove collectd      -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove libc-client2007b-dev -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove nginx-extras  -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove nginx         -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove nginx-common  -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove nginx-full    -y --force-yes -qq" 2> /dev/null
+    if [ -e "/etc/php5/conf.d" ]; then
+      touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
+      touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
+    fi
+    mrun "apt-get remove php5 \
+                         php5-cgi \
+                         php5-curl \
+                         php5-fpm \
+                         php5-gd \
+                         php5-geoip \
+                         php5-gmp \
+                         php5-imagick \
+                         php5-imap \
+                         php5-ldap \
+                         php5-mcrypt \
+                         php5-memcache \
+                         php5-mysql \
+                         php5-sqlite \
+                         php5-xmlrpc \
+                         php5-xsl      -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove phpunit       -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php-pear      -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php-benchmark -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php5-cli      -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php5-common   -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php5-apc      -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove php-apc       -y --force-yes -qq" 2> /dev/null
+    echo "curl install"           | dpkg --set-selections
+    echo "git install"            | dpkg --set-selections
+    echo "git-core install"       | dpkg --set-selections
+    echo "git-man install"        | dpkg --set-selections
+    echo "libssl-dev install"     | dpkg --set-selections
+    echo "openssh-client install" | dpkg --set-selections
+    echo "openssh-server install" | dpkg --set-selections
+    echo "openssl install"        | dpkg --set-selections
+    echo "ssh install"            | dpkg --set-selections
+    echo "zlib1g install"         | dpkg --set-selections
+    echo "zlib1g-dev install"     | dpkg --set-selections
+    echo "zlibc install"          | dpkg --set-selections
+    mrun "${_INSTALL} zlib1g"     2> /dev/null
+    mrun "${_INSTALL} zlib1g-dev" 2> /dev/null
+    mrun "${_INSTALL} zlibc"      2> /dev/null
+    mrun "${_INSTALL} openssl"    2> /dev/null
+    mrun "${_INSTALL} libssl-dev" 2> /dev/null
+    mrun "apt-get install curl ${forCer}"           2> /dev/null
+    mrun "apt-get install git ${forCer}"            2> /dev/null
+    mrun "apt-get install git-core ${forCer}"       2> /dev/null
+    mrun "apt-get install git-man ${forCer}"        2> /dev/null
+    mrun "apt-get install openssh-client ${forCer}" 2> /dev/null
+    mrun "apt-get install openssh-server ${forCer}" 2> /dev/null
+    mrun "apt-get install ssh ${forCer}"            2> /dev/null
+    if [ -e "/usr/bin/java" ] || [ -e "/usr/bin/java7" ]; then
+      mrun "apt-get install default-jre ${forCer}"  2> /dev/null
+    fi
+    mrun "apt-get upgrade ${nrmUpArg}"              2> /dev/null
+    mrun "apt-get dist-upgrade ${nrmUpArg}"         2> /dev/null
+    ### Check if we can continue
+    _AUDIT_DPKG=$(dpkg --audit 2>&1)
+    if [ ! -z "${_AUDIT_DPKG}" ]; then
+      msg "ALRT! I can not continue until dpkg --audit is clean"
+      msg "ALRT! ${_AUDIT_DPKG}"
+      msg "ALRT! Aborting installer NOW!"
+      clean_pid_exit
+    fi
+    _HOLD_TEST_DPKG=$(dpkg --get-selections | grep 'hold$' 2>&1)
+    if [ ! -z "${_HOLD_TEST_DPKG}" ]; then
+      msg "ALRT! I can not continue until these packages are un-hold"
+      msg "ALRT! ${_HOLD_TEST_DPKG}"
+      msg "ALRT! Aborting installer NOW!"
+      clean_pid_exit
+    fi
+    _HOLD_TEST_ATE=$(aptitude search "~ahold" 2>&1)
+    if [ ! -z "${_HOLD_TEST_ATE}" ]; then
+      msg "ALRT! I can not continue until these packages are un-hold"
+      msg "ALRT! ${_HOLD_TEST_ATE}"
+      msg "ALRT! Aborting installer NOW!"
+      clean_pid_exit
+    fi
+    ### Switching gears on the fly
+    sed -i "s/.*DEBIAN LTS.*//g" /etc/apt/sources.list
+    wait
+    sed -i "s/.*wheezy-lts.*//g" /etc/apt/sources.list
+    wait
+    sed -i "s/.*PROPOSED.*//g"   /etc/apt/sources.list
+    wait
+    sed -i "s/.*proposed.*//g"   /etc/apt/sources.list
+    wait
+    sed -i "s/wheezy/jessie/g"   /etc/apt/sources.list
+    wait
+    sed -i "s/wheezy/jessie/g"   /etc/apt/sources.list.d/*
+    wait
+    if [ -e "/etc/apt/apt.conf" ]; then
+      sed -i "s/APT::Default-Release.*/APT::Default-Release \"jessie\";/g" \
+        /etc/apt/apt.conf &> /dev/null
+      wait
+    fi
+    rm -f /etc/apt/sources.list.d/openssl.list
+    mrun "apt-get update -qq" 2> /dev/null
+    ### Two step upgrade with apt-get only
+    mrun "apt-get install apt -t jessie ${dstUpArg}" 2> /dev/null
+    mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
+    mrun "apt-get install apt dpkg aptitude util-linux ${dstUpArg}" 2> /dev/null
+    mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
+    mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+    touch ${mtrNgx}/pre.d/nginx_speed_purge.conf
+    install_upgrade_nginx
+    if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
+      ln -sf /etc/init.d/bind9 /etc/init.d/bind
+    fi
+    if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
+      if [ -e "/root/.debug.cnf" ]; then
+        mv -f /etc/init.d/networking /etc/init.d/networking.bak
+        cp -af /etc/init.d/networking.dpkg-dist /etc/init.d/networking
+        chmod 755 /etc/init.d/networking
+      fi
+    fi
+    if [ -d "/var/www/cgp" ]; then
+      mrun "apt-get install collectd ${dstUpArg}" 2> /dev/null
+    fi
+    if [ "${_VMFAMILY}" != "VS" ]; then
+      mrun "apt-get install udev ${dstUpArg}" 2> /dev/null
+    fi
+    mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
+    mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
+    if [ -x "/lib/systemd/systemd" ]; then
+      msg "INFO: Removing systemd on ${_THIS_OS} jessie..."
+      ${_INSTALL} sysvinit &> /dev/null
+      ${_INSTALL} sysvinit-core &> /dev/null
+      ${_INSTALL} sysvinit-utils &> /dev/null
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
+      fi
+      mrun "apt-get remove systemd -y --force-yes -qq --purge --auto-remove" 2> /dev/null
+      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+      ${_INSTALL} sysvinit &> /dev/null
+      ${_INSTALL} sysvinit-core &> /dev/null
+      ${_INSTALL} sysvinit-utils &> /dev/null
+    fi
+    _VM_TEST=$(uname -a 2>&1)
+    if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+      _PTMX=OK
+      _REMOVE_LINKS="buagent \
+                     fancontrol \
+                     halt \
+                     hwclock.sh \
+                     hwclockfirst.sh \
+                     ifupdown \
+                     ifupdown-clean \
+                     kerneloops \
+                     klogd \
+                     mountall-bootclean.sh \
+                     mountall.sh \
+                     mountdevsubfs.sh \
+                     mountkernfs.sh \
+                     mountnfs-bootclean.sh \
+                     mountnfs.sh \
+                     mountoverflowtmp \
+                     mountvirtfs \
+                     mtab.sh \
+                     networking \
+                     reboot \
+                     setserial \
+                     svscan \
+                     sysstat \
+                     umountfs \
+                     umountnfs.sh \
+                     umountroot \
+                     urandom \
+                     vnstat"
+      for link in ${_REMOVE_LINKS}; do
+        if [ -e "/etc/init.d/${link}" ]; then
+          update-rc.d -f ${link} remove &> /dev/null
+        fi
+      done
+    else
+      _PTMX=CHECK
+    fi
+    if [ -e "/root/.debug.cnf" ]; then
+      _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
+      if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then
+        _PTS=FIX
+      else
+        _PTS=OK
+      fi
+      if [ "${_PTMX}" = "CHECK" ] && [ "${_PTS}" = "FIX" ]; then
+        msg "WARN: Required /dev/pts/ptmx does not exist! We will fix this now..."
+        mkdir -p /dev/pts
+        rm -rf /dev/pts/*
+        rm -f /etc/apt/sources.list.d/openssl.list
+        apt-get update -qq &> /dev/null
+        apt-get install udev -y --force-yes &> /dev/null
+        echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
+        mount -t devpts devpts /dev/pts &> /dev/null
+      fi
+    fi
+    _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD" /etc/sudoers 2>&1)
+    if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
+      echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+    fi
+    SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
+    for SCRIPT in ${SCRIPTS[@]}; do
+      _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
+      if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
+        echo "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
+        chmod 0440 /etc/sudoers.d/${SCRIPT}
+      fi
+    done
+    for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+      if [ -e "${User}/config/server_master/nginx/vhost.d" ] \
+        && [ ! -e "${User}/log/CANCELLED" ]; then
+        _HM_U=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+        _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD" /etc/sudoers 2>&1)
+        if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
+          echo "${_HM_U} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+        fi
+		SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
+		for SCRIPT in ${SCRIPTS[@]}; do
+		  _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
+		  if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
+			echo "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
+			chmod 0440 /etc/sudoers.d/${SCRIPT}
+		  fi
+		done
+      fi
+    done
+    echo rotate > /var/log/syslog
+    rm -f /var/xdrago/log/*.log
+    mv -f /var/xdrago_wait /var/xdrago &> /dev/null
+    echo " "
+    msg "INFO: No errors? Then Wheezy to Jessie upgrade was successful :)"
+    msg "INFO: REBOOT your system once Barracuda will complete all upgrades!"
+    echo " "
   fi
 }
 
@@ -2891,21 +3261,21 @@ if_squeeze_to_wheezy() {
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
     mrun "apt-get remove php5 \
-                          php5-cgi \
-                          php5-curl \
-                          php5-fpm \
-                          php5-gd \
-                          php5-geoip \
-                          php5-gmp \
-                          php5-imagick \
-                          php5-imap \
-                          php5-ldap \
-                          php5-mcrypt \
-                          php5-memcache \
-                          php5-mysql \
-                          php5-sqlite \
-                          php5-xmlrpc \
-                          php5-xsl     -y --force-yes -qq" 2> /dev/null
+                         php5-cgi \
+                         php5-curl \
+                         php5-fpm \
+                         php5-gd \
+                         php5-geoip \
+                         php5-gmp \
+                         php5-imagick \
+                         php5-imap \
+                         php5-ldap \
+                         php5-mcrypt \
+                         php5-memcache \
+                         php5-mysql \
+                         php5-sqlite \
+                         php5-xmlrpc \
+                         php5-xsl      -y --force-yes -qq" 2> /dev/null
     mrun "apt-get remove phpunit       -y --force-yes -qq" 2> /dev/null
     mrun "apt-get remove php-pear      -y --force-yes -qq" 2> /dev/null
     mrun "apt-get remove php-benchmark -y --force-yes -qq" 2> /dev/null
@@ -2937,6 +3307,9 @@ if_squeeze_to_wheezy() {
     mrun "apt-get install openssh-client ${forCer}" 2> /dev/null
     mrun "apt-get install openssh-server ${forCer}" 2> /dev/null
     mrun "apt-get install ssh ${forCer}"            2> /dev/null
+    if [ -e "/usr/bin/java" ] || [ -e "/usr/bin/java7" ]; then
+      mrun "apt-get install default-jre ${forCer}"  2> /dev/null
+    fi
     mrun "apt-get upgrade ${nrmUpArg}"              2> /dev/null
     mrun "apt-get dist-upgrade ${nrmUpArg}"         2> /dev/null
     ### Check if we can continue
@@ -3008,7 +3381,9 @@ if_squeeze_to_wheezy() {
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
@@ -3071,6 +3446,14 @@ if_squeeze_to_wheezy() {
     if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
       echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     fi
+    SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
+    for SCRIPT in ${SCRIPTS[@]}; do
+      _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
+      if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
+        echo "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
+        chmod 0440 /etc/sudoers.d/${SCRIPT}
+      fi
+    done
     for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       if [ -e "${User}/config/server_master/nginx/vhost.d" ] \
         && [ ! -e "${User}/log/CANCELLED" ]; then
@@ -3079,6 +3462,14 @@ if_squeeze_to_wheezy() {
         if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
           echo "${_HM_U} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
         fi
+		SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
+		for SCRIPT in ${SCRIPTS[@]}; do
+		  _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
+		  if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
+			echo "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
+			chmod 0440 /etc/sudoers.d/${SCRIPT}
+		  fi
+		done
       fi
     done
     echo rotate > /var/log/syslog
@@ -3312,25 +3703,6 @@ sys_packages_install() {
   else
     _SYSLOGD=rsyslog
   fi
-  if [ "${_NGINX_SPDY}" = "YES" ] \
-    || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
-    if [ "${_OSV}" = "stretch" ] \
-      || [ "${_OSV}" = "wily" ]; then
-      _SSB_SRC=NO
-    else
-      _SSB_SRC=YES
-    fi
-  else
-    _SSB_SRC=NO
-  fi
-  if [ "${_SSB_SRC}" = "YES" ]; then
-    _EXTRA_PACKAGES="libcurl4-openssl-dev \
-                     ${_EXTRA_PACKAGES}"
-  else
-    _EXTRA_PACKAGES="curl \
-                     libcurl4-openssl-dev \
-                     ${_EXTRA_PACKAGES}"
-  fi
   if [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "jessie" ]; then
     _EXTRA_PACKAGES="libgd2-noxpm-dev \
@@ -3366,6 +3738,12 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
+  if [ "${_MAGICK_FROM_SOURCES}" = "NO" ] \
+    || [ -z "${_MAGICK_FROM_SOURCES}" ]; then
+    _EXTRA_PACKAGES="imagemagick \
+                     ${_EXTRA_PACKAGES}"
+  fi
+
   if [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "wheezy" ] \
     || [ "${_OSV}" = "squeeze" ] \
@@ -3386,6 +3764,7 @@ sys_packages_install() {
               build-essential \
               catdoc \
               cron \
+              curl \
               cvs \
               cython \
               defoma \
@@ -3402,7 +3781,6 @@ sys_packages_install() {
               gnupg2 \
               htop \
               ifstat \
-              imagemagick \
               iptables \
               ldap-utils \
               lemon \
@@ -3412,6 +3790,9 @@ sys_packages_install() {
               libc-client-dev \
               libc-client2007e \
               libc-client2007e-dev \
+              libcurl3 \
+              libcurl3-gnutls \
+              libcurl4-openssl-dev \
               libfilesys-diskspace-perl \
               libfontconfig1 \
               libfreetype6 \
@@ -3475,6 +3856,7 @@ sys_packages_install() {
               sudo \
               symlinks \
               sysstat \
+              sysvinit \
               sysvinit-core \
               sysvinit-utils \
               t1lib-bin \
@@ -3697,16 +4079,24 @@ install_vnstat() {
       rm -rf vnstat*
       get_dev_src "vnstat-${_VNSTAT_VRN}.tar.gz"
       cd vnstat-${_VNSTAT_VRN}
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
-      for INF in `vnstat --iflist | sed "s/Available interfaces//g" \
+      mrun "sh ./configure --prefix=/usr --sysconfdir=/etc" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
+      for INF in `vnstat --iflist \
+        | sed "s/Available interfaces//g; s/(1000 Mbit)//g; s/(100 Mbit)//g; s/ lo//g;" \
         | cut -d: -f2` ;do vnstat -u -i $INF &> /dev/null;done
       cp -af /var/opt/vnstat-${_VNSTAT_VRN}/examples/init.d/debian/vnstat \
         /etc/init.d/vnstat
       chmod 755 /etc/init.d/vnstat &> /dev/null
-      st_runner "update-rc.d vnstat defaults" &> /dev/null
-      sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /etc/vnstat.conf
+      mrun "update-rc.d vnstat defaults" &> /dev/null
+      if [ -e "/usr/etc/vnstat.conf" ]; then
+        sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /usr/etc/vnstat.conf
+      fi
+      if [ -e "/etc/vnstat.conf" ]; then
+        sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /etc/vnstat.conf
+      fi
       mrun "service vnstat start" &> /dev/null
+      mrun "killall vnstatd" &> /dev/null
       touch ${pthLog}/vnstat-${_VNSTAT_VRN}.log
       mrun "service vnstat restart" &> /dev/null
     fi
@@ -3720,6 +4110,10 @@ install_vnstat() {
     rm -f /etc/init.d/vnstat
     rm -f /usr/bin/vnstat
     rm -rf /var/lib/vnstat
+  fi
+  if [ -e "/usr/etc/vnstat.conf" ]; then
+    sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /usr/etc/vnstat.conf
+    mrun "service vnstat restart" &> /dev/null
   fi
 }
 
@@ -3762,15 +4156,15 @@ install_update_xdrago() {
       || [ "${_VMFAMILY}" = "VS" ] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      if [[ "${_THISHOST}" =~ "v251a.ams." ]]; then
+      if [ ! -e "/etc/init.d/redis-server" ]; then
         _NGINX_DOS_LIMIT=888
       else
         if [ -z "${_NGINX_DOS_LIMIT}" ] \
           || [ "${_NGINX_DOS_LIMIT}" = "300" ]; then
           if [ "${_VMFAMILY}" = "VS" ]; then
-            _NGINX_DOS_LIMIT=149
+            _NGINX_DOS_LIMIT=249
           else
-            _NGINX_DOS_LIMIT=188
+            _NGINX_DOS_LIMIT=288
           fi
         fi
       fi
@@ -3844,15 +4238,15 @@ install_update_xdrago() {
       || [ "${_VMFAMILY}" = "VS" ] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      if [[ "${_THISHOST}" =~ "v251a.ams." ]]; then
+      if [ ! -e "/etc/init.d/redis-server" ]; then
         _NGINX_DOS_LIMIT=888
       else
         if [ -z "${_NGINX_DOS_LIMIT}" ] \
           || [ "${_NGINX_DOS_LIMIT}" = "300" ]; then
           if [ "${_VMFAMILY}" = "VS" ]; then
-            _NGINX_DOS_LIMIT=149
+            _NGINX_DOS_LIMIT=249
           else
-            _NGINX_DOS_LIMIT=188
+            _NGINX_DOS_LIMIT=288
           fi
         fi
       fi
@@ -3967,7 +4361,7 @@ install_update_lshell() {
     cd /var/opt/lshell-${_LSHELL_VRN}
     rm -rf /usr/local/lib/python2.6/dist-packages/lshell*
     rm -rf /usr/local/lib/python2.7/dist-packages/lshell*
-    st_runner "python setup.py install --no-compile" 2> /dev/null
+    mrun "python setup.py install --no-compile" 2> /dev/null
     if [ "${_STATUS}" = "UPGRADE" ]; then
       cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
     else
@@ -4027,10 +4421,10 @@ if_install_ftpd() {
       mkdir -p /usr/local/etc
       get_dev_src "pure-ftpd-${_PURE_FTPD_VRN}.tar.gz"
       cd pure-ftpd-${_PURE_FTPD_VRN}
-      st_runner "sh ./configure --with-everything --with-virtualchroot \
+      mrun "sh ./configure --with-everything --with-virtualchroot \
         --without-humor --with-tls --with-diraliases --with-pam \
         --with-certfile=/etc/ssl/private/pure-ftpd.pem" 2> /dev/null
-      st_runner "make install-strip" 2> /dev/null
+      mrun "make install-strip" 2> /dev/null
       cd /usr/local/sbin/
       cp -af ${locCnf}/pure-config.pl.txt ./
       mv -f pure-config.pl.txt pure-config.pl &> /dev/null
@@ -4131,12 +4525,159 @@ check_fix_java() {
   fi
 }
 
+sshd_armour() {
+  ###
+  ### See: https://stribika.github.io/2015/01/04/secure-secure-shell.html
+  ### Also: https://github.com/stribika/stribika.github.io/wiki/Secure-Secure-Shell
+  ###
+  if [ -e "/usr/etc/sshd_config" ]; then
+    if [ "${_SSH_ARMOUR}" = "NO" ] \
+      || [ -z "${_SSH_ARMOUR}" ]; then
+      if [ -e "/usr/etc/.vanilla.sshd_config" ]; then
+        mv -f /usr/etc/.vanilla.sshd_config /usr/etc/sshd_config
+      fi
+      if [ -e "/usr/etc/.vanilla.ssh_config" ]; then
+        mv -f /usr/etc/.vanilla.ssh_config /usr/etc/ssh_config
+      fi
+    else
+      if [ ! -e "/usr/etc/.vanilla.sshd_config" ]; then
+        cp -a /usr/etc/sshd_config /usr/etc/.vanilla.sshd_config
+      fi
+      if [ ! -e "/usr/etc/.vanilla.ssh_config" ]; then
+        cp -a /usr/etc/ssh_config /usr/etc/.vanilla.ssh_config
+      fi
+      _SSH_PROTOCOL_TEST=$(grep "Protocol" /usr/etc/sshd_config 2>&1)
+      if [[ "${_SSH_PROTOCOL_TEST}" =~ (^)"Protocol 2" ]]; then
+        _DO_NOTHING=YES
+      elif [[ "${_SSH_PROTOCOL_TEST}" =~ "Protocol" ]]; then
+        sed -i "s/.*Protocol.*/Protocol 2/g" /usr/etc/sshd_config &> /dev/null
+        wait
+      else
+        echo >> /usr/etc/sshd_config
+        echo "Protocol 2" >> /usr/etc/sshd_config
+      fi
+      _SSH_ALGO_TEST=$(grep "KexAlgorithms" /usr/etc/sshd_config 2>&1)
+      if [[ "${_SSH_ALGO_TEST}" =~ (^)"KexAlgorithms curve25519-sha256" ]]; then
+        _DO_NOTHING=YES
+      elif [[ "${_SSH_ALGO_TEST}" =~ "KexAlgorithms" ]]; then
+        sed -i "s/.*KexAlgorithms.*//g" /usr/etc/sshd_config &> /dev/null
+        wait
+        echo "KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /usr/etc/sshd_config
+      else
+        echo >> /usr/etc/sshd_config
+        echo "KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /usr/etc/sshd_config
+      fi
+      _SSH_CIPHERS_TEST=$(grep "Ciphers" /usr/etc/sshd_config 2>&1)
+      if [[ "${_SSH_CIPHERS_TEST}" =~ (^)"Ciphers chacha20-poly1305" ]]; then
+        _DO_NOTHING=YES
+      elif [[ "${_SSH_CIPHERS_TEST}" =~ "Ciphers" ]]; then
+        sed -i "s/.*Ciphers.*//g" /usr/etc/sshd_config &> /dev/null
+        wait
+        echo "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /usr/etc/sshd_config
+      else
+        echo >> /usr/etc/sshd_config
+        echo "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /usr/etc/sshd_config
+      fi
+      _SSH_MACS_TEST=$(grep "MACs" /usr/etc/sshd_config 2>&1)
+      if [[ "${_SSH_MACS_TEST}" =~ (^)"MACs hmac-sha2-512-etm" ]]; then
+        _DO_NOTHING=YES
+      elif [[ "${_SSH_MACS_TEST}" =~ "MACs" ]]; then
+        sed -i "s/.*MACs.*//g" /usr/etc/sshd_config &> /dev/null
+        wait
+        echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-ripemd160-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-ripemd160,umac-128@openssh.com" >> /usr/etc/sshd_config
+      else
+        echo >> /usr/etc/sshd_config
+        echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-ripemd160-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-ripemd160,umac-128@openssh.com" >> /usr/etc/sshd_config
+      fi
+      _SSH_HKEY_TEST=$(grep "HostKey" /usr/etc/sshd_config 2>&1)
+      if [[ "${_SSH_HKEY_TEST}" =~ (^)"HostKey" ]] \
+        && [[ "${_SSH_HKEY_TEST}" =~ "ssh_host_ed25519_key" ]]; then
+        _DO_NOTHING=YES
+      elif [[ "${_SSH_HKEY_TEST}" =~ "HostKey" ]]; then
+        sed -i "s/.*HostKey.*//g" /usr/etc/sshd_config &> /dev/null
+        wait
+        echo "HostKey /usr/etc/ssh_host_ed25519_key" >> /usr/etc/sshd_config
+        echo "HostKey /usr/etc/ssh_host_rsa_key" >> /usr/etc/sshd_config
+      else
+        echo >> /usr/etc/sshd_config
+        echo "HostKey /usr/etc/ssh_host_ed25519_key" >> /usr/etc/sshd_config
+        echo "HostKey /usr/etc/ssh_host_rsa_key" >> /usr/etc/sshd_config
+      fi
+      if [ ! -e "/usr/etc/.ssh_host_ed25519_key.pid" ]; then
+        mkdir -p /var/backups/sshd
+        mv -f /usr/etc/ssh_host_*key* /var/backups/sshd/
+        msg "INFO: Generating new ssh_host_ed25519_key..."
+        ssh-keygen -t ed25519 -N "" -q -f /usr/etc/ssh_host_ed25519_key < /dev/null
+        touch /usr/etc/.ssh_host_ed25519_key.pid
+      fi
+      if [ ! -e "/usr/etc/.ssh_host_rsa_key4096.pid" ]; then
+        msg "INFO: Generating new ssh_host_rsa_key..."
+        ssh-keygen -t rsa -b 4096 -N "" -q -f /usr/etc/ssh_host_rsa_key < /dev/null
+        touch /usr/etc/.ssh_host_rsa_key4096.pid
+        msg "NOTE: You will be asked to accept the new SSH fingerprint the next time you connect"
+      fi
+      if [ ! -e "/usr/etc/.moduli.pid" ]; then
+        if [ -e "/usr/etc/moduli" ]; then
+          mv -f /usr/etc/moduli /usr/etc/.old.moduli
+          awk '$5 > 2000' /usr/etc/.old.moduli > /usr/etc/.tmp.moduli
+          mv -f /usr/etc/.tmp.moduli /usr/etc/moduli
+          touch /usr/etc/.moduli.pid
+        else
+          msg "INFO: Generating new SSH moduli, this may take 1-2 hours :/ please wait..."
+          mrun "ssh-keygen -G /usr/etc/moduli.all -b 4096" &> /dev/null
+          mrun "ssh-keygen -T /usr/etc/moduli.safe -f /usr/etc/moduli.all" &> /dev/null
+          mv -f /usr/etc/moduli.safe /usr/etc/moduli
+          rm -f /usr/etc/moduli.all
+          touch /usr/etc/.moduli.pid
+        fi
+      fi
+      _SSH_KEXALGO_TEST=$(grep "KexAlgorithms" /usr/etc/ssh_config 2>&1)
+      if [[ "${_SSH_KEXALGO_TEST}" =~ "KexAlgorithms curve25519-sha256" ]]; then
+        _DO_NOTHING=YES
+      elif [[ "${_SSH_KEXALGO_TEST}" =~ "KexAlgorithms" ]]; then
+        sed -i "s/.*PubkeyAuthentication.*//g" /usr/etc/ssh_config &> /dev/null
+        wait
+        sed -i "s/.*UseRoaming.*//g" /usr/etc/ssh_config &> /dev/null
+        wait
+        sed -i "s/.*Ciphers.*//g" /usr/etc/ssh_config &> /dev/null
+        wait
+        sed -i "s/.*HostKeyAlgorithms.*//g" /usr/etc/ssh_config &> /dev/null
+        wait
+        sed -i "s/.*KexAlgorithms.*//g" /usr/etc/ssh_config &> /dev/null
+        wait
+        sed -i "s/.*MACs.*//g" /usr/etc/ssh_config &> /dev/null
+        wait
+        echo >> /usr/etc/ssh_config
+        echo "Host *" >> /usr/etc/ssh_config
+        echo "  PubkeyAuthentication yes" >> /usr/etc/ssh_config
+        echo "  UseRoaming no" >> /usr/etc/ssh_config
+        echo "  Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /usr/etc/ssh_config
+        echo "  HostKeyAlgorithms ssh-ed25519-cert-v01@openssh.com,ssh-rsa-cert-v01@openssh.com,ssh-ed25519,ssh-rsa" >> /usr/etc/ssh_config
+        echo "  KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /usr/etc/ssh_config
+        echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-ripemd160-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-ripemd160,umac-128@openssh.com" >> /usr/etc/ssh_config
+      else
+        echo >> /usr/etc/ssh_config
+        echo "Host *" >> /usr/etc/ssh_config
+        echo "  PubkeyAuthentication yes" >> /usr/etc/ssh_config
+        echo "  UseRoaming no" >> /usr/etc/ssh_config
+        echo "  Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /usr/etc/ssh_config
+        echo "  HostKeyAlgorithms ssh-ed25519-cert-v01@openssh.com,ssh-rsa-cert-v01@openssh.com,ssh-ed25519,ssh-rsa" >> /usr/etc/ssh_config
+        echo "  KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /usr/etc/ssh_config
+        echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-ripemd160-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-ripemd160,umac-128@openssh.com" >> /usr/etc/ssh_config
+      fi
+    fi
+    sed -i "/^$/d" /usr/etc/sshd_config &> /dev/nul
+    sed -i "/^$/d" /usr/etc/ssh_config &> /dev/null
+    mrun "service ssh reload" &> /dev/null
+  fi
+}
+
 update_initd() {
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Updating init scripts"
     cp -af ${locCnf}/clean-boa-env /etc/init.d/clean-boa-env
     chmod 755 /etc/init.d/clean-boa-env &> /dev/null
-    st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
+    mrun "update-rc.d clean-boa-env defaults" &> /dev/null
     _SSH_USEDNS_TEST=$(grep "UseDNS" /etc/ssh/sshd_config 2>&1)
     if [[ "${_SSH_USEDNS_TEST}" =~ (^)"UseDNS no" ]]; then
       _DO_NOTHING=YES
@@ -4158,8 +4699,19 @@ update_initd() {
         echo >> /usr/etc/sshd_config
         echo "UseDNS no" >> /usr/etc/sshd_config
       fi
+      _SSH_USEPAM_TEST=$(grep "UsePAM" /usr/etc/sshd_config 2>&1)
+      if [[ "${_SSH_USEPAM_TEST}" =~ (^)"UsePAM no" ]]; then
+        _DO_NOTHING=YES
+      elif [[ "${_SSH_USEPAM_TEST}" =~ "UsePAM" ]]; then
+        sed -i "s/.*UsePAM.*/UsePAM no/g" /usr/etc/sshd_config &> /dev/null
+        wait
+      else
+        echo >> /usr/etc/sshd_config
+        echo "UsePAM no" >> /usr/etc/sshd_config
+      fi
     fi
     mrun "service ssh reload" &> /dev/null
+    tune_memory_limits
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       msg "INFO: Restarting Jetty 9"
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
@@ -4179,29 +4731,29 @@ update_initd() {
       msg "INFO: Starting Redis, PHP-FPM and Nginx"
       mrun "service redis-server start" &> /dev/null
       killall -9 nginx php-cgi php-fpm &> /dev/null
-      st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
-      st_runner "update-rc.d cron defaults" &> /dev/null
+      mrun "update-rc.d -f php5-fpm remove" &> /dev/null
+      mrun "update-rc.d cron defaults" &> /dev/null
       if [ -e "/etc/init.d/php70-fpm" ]; then
-        st_runner "update-rc.d php70-fpm defaults" &> /dev/null
+        mrun "update-rc.d php70-fpm defaults" &> /dev/null
         mrun "service php70-fpm start" &> /dev/null
       fi
       if [ -e "/etc/init.d/php56-fpm" ]; then
-        st_runner "update-rc.d php56-fpm defaults" &> /dev/null
+        mrun "update-rc.d php56-fpm defaults" &> /dev/null
         mrun "service php56-fpm start" &> /dev/null
       fi
       if [ -e "/etc/init.d/php55-fpm" ]; then
-        st_runner "update-rc.d php55-fpm defaults" &> /dev/null
+        mrun "update-rc.d php55-fpm defaults" &> /dev/null
         mrun "service php55-fpm start" &> /dev/null
       fi
       if [ -e "/etc/init.d/php54-fpm" ]; then
-        st_runner "update-rc.d php54-fpm defaults" &> /dev/null
+        mrun "update-rc.d php54-fpm defaults" &> /dev/null
         mrun "service php54-fpm start" &> /dev/null
       fi
       if [ -e "/etc/init.d/php53-fpm" ]; then
-        st_runner "update-rc.d php53-fpm defaults" &> /dev/null
+        mrun "update-rc.d php53-fpm defaults" &> /dev/null
         mrun "service php53-fpm start" &> /dev/null
       fi
-      st_runner "update-rc.d nginx defaults" &> /dev/null
+      mrun "update-rc.d nginx defaults" &> /dev/null
       mrun "service nginx start" &> /dev/null
     fi
   else
@@ -4209,6 +4761,8 @@ update_initd() {
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       sed -i "s/.*UseDNS.*//g" /etc/ssh/sshd_config &> /dev/null
+      wait
+      sed -i "s/.*UsePAM.*//g" /etc/ssh/sshd_config &> /dev/null
       wait
       sed -i "s/^ClientAliveCountMax.*//g" /etc/ssh/sshd_config &> /dev/null
       wait
@@ -4218,19 +4772,22 @@ update_initd() {
       wait
       sed -i "s/^PasswordAuthentication.*//g" /etc/ssh/sshd_config &> /dev/null
       wait
-      sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" \
+      sed -i "s/^PermitRootLogin.*/PermitRootLogin prohibit-password/g" \
         /etc/ssh/sshd_config &> /dev/null
       wait
       echo >> /etc/ssh/sshd_config
       echo "IgnoreUserKnownHosts no" >> /etc/ssh/sshd_config
       echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
       echo "UseDNS no" >> /etc/ssh/sshd_config
+      echo "UsePAM no" >> /etc/ssh/sshd_config
       echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
       echo "ClientAliveCountMax 3" >> /etc/ssh/sshd_config
       sed -i "/^$/d" /etc/ssh/sshd_config &> /dev/null
       wait
       if [ -e "/usr/etc/sshd_config" ]; then
         sed -i "s/.*UseDNS.*//g" /usr/etc/sshd_config &> /dev/null
+        wait
+        sed -i "s/.*UsePAM.*//g" /usr/etc/sshd_config &> /dev/null
         wait
         sed -i "s/^ClientAliveCountMax.*//g" /usr/etc/sshd_config &> /dev/null
         wait
@@ -4240,13 +4797,17 @@ update_initd() {
         wait
         sed -i "s/^PasswordAuthentication.*//g" /usr/etc/sshd_config &> /dev/null
         wait
-        sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" \
+        sed -i "s/^#PermitRootLogin.*/PermitRootLogin prohibit-password/g" \
+          /usr/etc/sshd_config &> /dev/null
+        wait
+        sed -i "s/^PermitRootLogin.*/PermitRootLogin prohibit-password/g" \
           /usr/etc/sshd_config &> /dev/null
         wait
         echo >> /usr/etc/sshd_config
         echo "IgnoreUserKnownHosts no" >> /usr/etc/sshd_config
         echo "PasswordAuthentication yes" >> /usr/etc/sshd_config
         echo "UseDNS no" >> /usr/etc/sshd_config
+        echo "UsePAM no" >> /usr/etc/sshd_config
         echo "ClientAliveInterval 300" >> /usr/etc/sshd_config
         echo "ClientAliveCountMax 3" >> /usr/etc/sshd_config
         sed -i "/^$/d" /usr/etc/sshd_config &> /dev/null
@@ -4286,32 +4847,40 @@ update_initd() {
     if [ ! -e "/var/run/aegir_upgrade.pid" ]; then
       msg "INFO: Restarting Redis, PHP-FPM and Nginx..."
       mrun "service redis-server restart" &> /dev/null
-      st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
+      mrun "update-rc.d -f php5-fpm remove" &> /dev/null
       mrun "service nginx stop" &> /dev/null
       if [ -e "/etc/init.d/php70-fpm" ]; then
-        st_runner "update-rc.d php70-fpm defaults" &> /dev/null
+        mrun "update-rc.d php70-fpm defaults" &> /dev/null
         mrun "service php70-fpm stop" &> /dev/null
       fi
       if [ -e "/etc/init.d/php56-fpm" ]; then
-        st_runner "update-rc.d php56-fpm defaults" &> /dev/null
+        mrun "update-rc.d php56-fpm defaults" &> /dev/null
         mrun "service php56-fpm stop" &> /dev/null
       fi
       if [ -e "/etc/init.d/php55-fpm" ]; then
-        st_runner "update-rc.d php55-fpm defaults" &> /dev/null
+        mrun "update-rc.d php55-fpm defaults" &> /dev/null
         mrun "service php55-fpm stop" &> /dev/null
       fi
       if [ -e "/etc/init.d/php54-fpm" ]; then
-        st_runner "update-rc.d php54-fpm defaults" &> /dev/null
+        mrun "update-rc.d php54-fpm defaults" &> /dev/null
         mrun "service php54-fpm stop" &> /dev/null
       fi
       if [ -e "/etc/init.d/php53-fpm" ]; then
-        st_runner "update-rc.d php53-fpm defaults" &> /dev/null
+        mrun "update-rc.d php53-fpm defaults" &> /dev/null
         mrun "service php53-fpm stop" &> /dev/null
       fi
       killall -9 php-fpm &> /dev/null
       killall -9 php-cgi &> /dev/null
       killall -9 pure-ftpd &> /dev/null
+      rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
+      msg "INFO: Running ${_DB_SERVER} system tables upgrade, please wait..."
+      if [ -x "/usr/bin/mariadb_upgrade" ]; then
+        mrun "mariadb_upgrade --force" &> /dev/null
+      elif [ -x "/usr/bin/mysql_upgrade" ]; then
+        mrun "mysql_upgrade --force" &> /dev/null
+      fi
       msg "INFO: Restarting ${_DB_SERVER} server..."
+      mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
       mrun "service mysql restart" &> /dev/null
       if [ -e "/etc/init.d/php70-fpm" ]; then
         mrun "service php70-fpm start" &> /dev/null

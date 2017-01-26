@@ -36,10 +36,9 @@ _CPU_MAX_RATIO=6 #-------------- Max load per CPU core before disabling Nginx
 _CPU_SPIDER_RATIO=3 #----------- Max load per CPU core before blocking spiders
 ###
 _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
-_DB_ENGINE=InnoDB #------------- Allows to specify default engine for Drupal 6
-_DB_SERIES=5.5 #---------------- Allows to install new MariaDB version when 10.0
+_DB_SERIES=10.1 #--------------- Allows to install old MariaDB version when 5.5
 _DB_SERVER=MariaDB #------------ Allows to install only MariaDB DB server
-_INNODB_LOG_FILE_SIZE=AUTO #---- Allows to change InnoDB log file size: 10-500
+_USE_MYSQLTUNER=YES #----------- Use MySQLTuner to configure SQL limits when YES
 ###
 _DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO
 _EXTRA_PACKAGES="" #------------ Installs listed extra packages with apt-get
@@ -48,6 +47,8 @@ _LOCAL_DEBIAN_MIRROR= #--------- Allows to force non-default Debian mirror
 _LOCAL_UBUNTU_MIRROR= #--------- Allows to force non-default Ubuntu mirror
 _NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
 _SCOUT_KEY= #------------------- Installs Scout App when license key is set
+###
+_MAGICK_FROM_SOURCES=NO #------- Builds ImageMagick from sources when YES
 ###
 _NGINX_DOS_LIMIT=300 #---------- Allows to override default 250/300 limit
 _NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
@@ -64,13 +65,14 @@ _PHP_FPM_VERSION=5.6 #---------- PHP-FPM for Master Instance: 7.0 5.{6,5,4,3}
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_IONCUBE=NO #--------------- Installs ionCube for all PHP versions when YES
 _PHP_GEOS=NO #------------------ Installs GEOS for all PHP versions when YES
-_PHP_MONGODB=NO #--------------- Installs MONGODB for PHP 5.3-only when YES
+_PHP_MONGODB=NO #--------------- Installs MONGODB for all PHP < 7.0 when YES
 _PHP_MULTI_INSTALL="5.6" #------ PHP versions to install: 7.0 5.6 5.5 5.4 5.3
 _PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 5.6
 ###
 _REDIS_LISTEN_MODE=SOCKET #----- Redis listen mode: SOCKET (recommended) or PORT
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
 _SPEED_VALID_MAX=3600 #--------- Defines Speed Booster hourly cache TTL in sec
+_SSH_ARMOUR=NO #---------------- Allows to enhance OpenSSH security when YES
 _SSH_FROM_SOURCES=YES #--------- Allows to build OpenSSH from sources on Debian
 _SSH_PORT=22 #------------------ Allows to configure non-standard SSH port
 _STRICT_BIN_PERMISSIONS=YES #--- Aggressively protect all binaries when YES
@@ -94,15 +96,6 @@ _SYSTEM_UPGRADE_ONLY=NO #------- Managed on the fly with 'system' keyword
 ###
 ### Extra, special purpose settings are listed below.
 ###
-
-###
-### By default BOA configures your system to use as much RAM as safely available
-### but if you want to make the configuration more precize, add this extra
-### variable to use MySQLTuner on the fly to detect optimal memory allocation.
-### This check is no longer enabled by default, because it is very expensive
-### method on systems with not enough resources and many sites hosted.
-###
-_USE_MYSQLTUNER=NO #------------ Use MySQLTuner to configure SQL limits when YES
 
 ###
 ### You can configure BOA to run automated upgrades to latest stable version
@@ -203,6 +196,12 @@ _GIT_FORCE_REINSTALL=NO
 ### no updates available.
 ###
 _FULL_FORCE_REINSTALL=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Wheezy to Debian Jessie.
+###
+_WHEEZY_TO_JESSIE=NO
 
 ###
 ### Use YES to run major system upgrade

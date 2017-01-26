@@ -97,6 +97,20 @@ action() {
     rm -f /var/run/boa_wait.pid
     echo "INFO: Redis server restarted OK"
   fi
+  _IF_BCP=$(ps aux | grep '[d]uplicity' | awk '{print $2}')
+  if [ -z "${_IF_BCP}" ] \
+    && [ ! -e "/var/run/speed_cleanup.pid" ] \
+    && [ ! -e "/root/.giant_traffic.cnf" ]; then
+    touch /var/run/speed_cleanup.pid
+    echo " " >> /var/log/nginx/speed_cleanup.log
+    sed -i "s/levels=2:2:2/levels=2:2/g" /var/aegir/config/server_master/nginx.conf
+    service nginx reload &> /dev/null
+    echo "speed_purge start `date`" >> /var/log/nginx/speed_cleanup.log
+    nice -n19 ionice -c2 -n7 find /var/lib/nginx/speed/* -mtime +1 -exec rm -rf {} \; &> /dev/null
+    echo "speed_purge complete `date`" >> /var/log/nginx/speed_cleanup.log
+    service nginx reload &> /dev/null
+    rm -f /var/run/speed_cleanup.pid
+  fi
   touch /var/xdrago/log/graceful.done
 }
 
@@ -105,7 +119,9 @@ _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then

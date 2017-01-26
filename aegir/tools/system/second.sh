@@ -79,6 +79,18 @@ check_vhost_health() {
 update_ip_auth_access() {
   touch /var/run/.auth.IP.list.pid
   if [ -e "/var/backups/.auth.IP.list.tmp" ]; then
+    if [ -e "${pthVhstd}/adminer."* ]; then
+      sed -i "s/### access .*//g; \
+        s/allow .*;//g; \
+        s/deny .*;//g; \
+        s/ *$//g; /^$/d" \
+        ${pthVhstd}/adminer.* &> /dev/null
+      wait
+      sed -i "s/limit_conn .*/limit_conn                   limreq 555;\n  \
+        ### access update/g" \
+        ${pthVhstd}/adminer.* &> /dev/null
+      wait
+    fi
     if [ -e "${pthVhstd}/chive."* ]; then
       sed -i "s/### access .*//g; \
         s/allow .*;//g; \
@@ -117,6 +129,9 @@ update_ip_auth_access() {
     fi
     sleep 1
     sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
+d;};' ${pthVhstd}/adminer.* &> /dev/null
+    wait
+    sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
 d;};' ${pthVhstd}/chive.* &> /dev/null
     wait
     sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
@@ -126,6 +141,7 @@ d;};' ${pthVhstd}/cgp.* &> /dev/null
 d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
     wait
     mv -f ${pthVhstd}/sed* /var/backups/
+    check_vhost_health "${pthVhstd}/adminer."
     check_vhost_health "${pthVhstd}/chive."
     check_vhost_health "${pthVhstd}/cgp."
     check_vhost_health "${pthVhstd}/sqlbuddy."
@@ -135,6 +151,9 @@ d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
     else
       service nginx reload &> /var/backups/.auth.IP.list.ops
       sed -i "s/allow .*;//g; s/ *$//g; /^$/d" \
+        ${pthVhstd}/adminer.*    &> /dev/null
+      wait
+      sed -i "s/allow .*;//g; s/ *$//g; /^$/d" \
         ${pthVhstd}/chive.*    &> /dev/null
       wait
       sed -i "s/allow .*;//g; s/ *$//g; /^$/d" \
@@ -143,6 +162,7 @@ d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
       sed -i "s/allow .*;//g; s/ *$//g; /^$/d" \
         ${pthVhstd}/sqlbuddy.* &> /dev/null
       wait
+      check_vhost_health "${pthVhstd}/adminer."
       check_vhost_health "${pthVhstd}/chive."
       check_vhost_health "${pthVhstd}/cgp."
       check_vhost_health "${pthVhstd}/sqlbuddy."
@@ -151,19 +171,19 @@ d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
   fi
   rm -f /var/backups/.auth.IP.list
   for _IP in `who --ips \
-    | sed 's/.*tty.*//g; s/.*root.*hvc.*//g' \
+    | sed 's/.*tty.*//g; s/.*root.*hvc.*//g; s/^[0-9]+$//g' \
     | cut -d: -f2 \
     | cut -d' ' -f2 \
     | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' \
     | tr -d "\s" \
     | sort \
-    | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
-      >> /var/backups/.auth.IP.list;done
+    | uniq`;do _IP=${_IP//[^0-9.]/}; if [[ "${_IP}" =~ "." ]]; then echo "  allow                        ${_IP};" \
+      >> /var/backups/.auth.IP.list;fi;done
   if [ -e "/root/.ip.protected.vhost.whitelist.cnf" ]; then
     for _IP in `cat /root/.ip.protected.vhost.whitelist.cnf \
       | sort \
-      | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
-        >> /var/backups/.auth.IP.list;done
+      | uniq`;do _IP=${_IP//[^0-9.]/}; if [[ "${_IP}" =~ "." ]]; then echo "  allow                        ${_IP};" \
+        >> /var/backups/.auth.IP.list;fi;done
   fi
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" \
     /var/backups/.auth.IP.list &> /dev/null
@@ -184,19 +204,19 @@ d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
 
 manage_ip_auth_access() {
   for _IP in `who --ips \
-    | sed 's/.*tty.*//g; s/.*root.*hvc.*//g' \
+    | sed 's/.*tty.*//g; s/.*root.*hvc.*//g; s/^[0-9]+$//g' \
     | cut -d: -f2 \
     | cut -d' ' -f2 \
     | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' \
     | tr -d "\s" \
     | sort \
-    | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
-      >> /var/backups/.auth.IP.list.tmp;done
+    | uniq`;do _IP=${_IP//[^0-9.]/}; if [[ "${_IP}" =~ "." ]]; then echo "  allow                        ${_IP};" \
+      >> /var/backups/.auth.IP.list.tmp;fi;done
   if [ -e "/root/.ip.protected.vhost.whitelist.cnf" ]; then
     for _IP in `cat /root/.ip.protected.vhost.whitelist.cnf \
       | sort \
-      | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        ${_IP};" \
-        >> /var/backups/.auth.IP.list.tmp;done
+      | uniq`;do _IP=${_IP//[^0-9.]/}; if [[ "${_IP}" =~ "." ]]; then echo "  allow                        ${_IP};" \
+        >> /var/backups/.auth.IP.list.tmp;fi;done
   fi
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" \
     /var/backups/.auth.IP.list.tmp &> /dev/null
@@ -241,9 +261,17 @@ manage_ip_auth_access() {
     fi
   fi
   if [[ "${allowTestTmp}" =~ "allow" ]]; then
+    vhostStatusAdminer=TRUE
     vhostStatusChive=TRUE
     vhostStatusCgp=TRUE
     vhostStatusBuddy=TRUE
+    if [ -e "${pthVhstd}/adminer."* ]; then
+      vhostStatusAdminer=FALSE
+      vhostTestAdminer=$(grep allow ${pthVhstd}/adminer.* 2>&1)
+      if [[ "${vhostTestAdminer}" =~ "allow" ]]; then
+        vhostStatusAdminer=TRUE
+      fi
+    fi
     if [ -e "${pthVhstd}/chive."* ]; then
       vhostStatusChive=FALSE
       vhostTestChive=$(grep allow ${pthVhstd}/chive.* 2>&1)
@@ -265,7 +293,8 @@ manage_ip_auth_access() {
         vhostStatusBuddy=TRUE
       fi
     fi
-    if [ "${vhostStatusChive}" = "FALSE" ] \
+    if [ "${vhostStatusAdminer}" = "FALSE" ] \
+      || [ "${vhostStatusChive}" = "FALSE" ] \
       || [ "${vhostStatusCgp}" = "FALSE" ] \
       || [ "${vhostStatusBuddy}" = "FALSE" ]; then
       update_ip_auth_access

@@ -64,7 +64,7 @@ if (function_exists('drush_get_command')) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.9.15';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.11.9';
   }
 }
 
@@ -121,6 +121,7 @@ if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) ||
  * Dev mode detection and URLs protection - works only for aliases
  */
 if (isset($_SERVER['HTTP_HOST']) &&
+    isset($_SERVER['MAIN_SITE_NAME']) &&
     preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) &&
     $_SERVER['HTTP_HOST'] != $_SERVER['MAIN_SITE_NAME'] &&
     $_SERVER['HTTP_HOST'] != $_SERVER['SERVER_NAME'] &&
@@ -152,6 +153,7 @@ if (file_exists('web.config')) {
   if (file_exists('core')) {
     if (file_exists('vendor/symfony') || file_exists('core/vendor/symfony')) {
       $drupal_eight = TRUE;
+      $use_redis = TRUE;
       if ($is_dev && !$is_backend) {
         header('X-Backend: A');
       }
@@ -312,6 +314,39 @@ if (!$is_backend) {
       unset($config['system.performance']['cache.page.max_age']); // Stop hardcoding internal page cache
       unset($config['system.performance']['css']['preprocess']);  // Stop hardcoding CSS aggregation
       unset($config['system.performance']['js']['preprocess']);   // Stop hardcoding JS aggregation
+      if (is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/files/development.services.yml')) {
+        //
+        // This file, if exists, disables Redis on the fly!
+        //
+        $settings['container_yamls'][] = 'sites/' . $_SERVER['SERVER_NAME'] . '/files/development.services.yml';
+        //
+        // The two settings below make sense only if the development.services.yml file
+        // located in the sites/domain/files/ dir contains at least these three lines:
+        //
+        // services:
+        //   cache.backend.null:
+        //     class: Drupal\Core\Cache\NullBackendFactory
+        //
+        $settings['cache']['bins']['render'] = 'cache.backend.null';
+        $settings['cache']['bins']['dynamic_page_cache'] = 'cache.backend.null';
+        //
+        // Warning: you must clear caches via Aegir interface or with Drush
+        // before these lines will start working on .dev. alias without error 500
+        // saying: You have requested a non-existent service "cache.backend.null"
+        //
+        // To enable Twig debugging add in the development.services.yml file also lines:
+        //
+        // parameters:
+        //   twig.config:
+        //     debug: true
+        //     auto_reload: true
+        //     cache: true
+        //
+        // Note that normally you should not disable Twig cache, since auto_reload
+        // is enough for development and debugging, withot slowing down everything;
+        // see also: https://www.drupal.org/node/1903374
+        //
+      }
     }
     else {
       $conf['xmlsitemap_submit'] = 0; // Disable XML Sitemap for foo.dev.domain
@@ -383,8 +418,8 @@ if ($ini_plr_src) {
   $usr_plr_ini = array();
   $usr_plr_ini = parse_ini_file($ini_plr_src);
 }
-if (is_readable('sites/'. $_SERVER['SERVER_NAME'] .'/modules/boa_site_control.ini')) {
-  $ini_loc_src = 'sites/'. $_SERVER['SERVER_NAME'] .'/modules/boa_site_control.ini';
+if (is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/modules/boa_site_control.ini')) {
+  $ini_loc_src = 'sites/' . $_SERVER['SERVER_NAME'] . '/modules/boa_site_control.ini';
 }
 if ($ini_loc_src) {
   $usr_loc_ini = array();
@@ -677,18 +712,34 @@ if (!$is_dev) {
   }
 }
 
-if ($all_ini['purge_expire_auto_configuration']) {
-  if (is_readable('modules/o_contrib/purge/purge.inc')) {
-    $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
-    if ($is_dev && !$is_backend) {
-      header('X-Purge-Level: 6');
+if ($drupal_six || $drupal_seven) {
+  if ($all_ini['purge_expire_auto_configuration']) {
+    if ($drupal_six) {
+      if (is_readable('modules/o_contrib/purge/purge.inc')) {
+        $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
+        if ($is_dev && !$is_backend) {
+          header('X-Purge-Level: 6');
+        }
+      }
+      else {
+        if ($is_dev && !$is_backend) {
+          header('X-Purge-Level: none');
+        }
+      }
     }
-  }
-  elseif (is_readable('modules/o_contrib_seven/purge/purge.inc')) {
-    $conf['expire_flush_node_terms'] = 0; // Disable this to avoid WSOD - see https://drupal.org/node/1151686#comment-5556544
-    $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
-    if ($is_dev && !$is_backend) {
-      header('X-Purge-Level: 7');
+    if ($drupal_seven) {
+      if (is_readable('modules/o_contrib_seven/purge/purge.inc')) {
+        $conf['expire_flush_node_terms'] = 0; // Disable this to avoid WSOD - see https://drupal.org/node/1151686#comment-5556544
+        $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
+        if ($is_dev && !$is_backend) {
+          header('X-Purge-Level: 7');
+        }
+      }
+      else {
+        if ($is_dev && !$is_backend) {
+          header('X-Purge-Level: none');
+        }
+      }
     }
   }
   else {
@@ -697,12 +748,6 @@ if ($all_ini['purge_expire_auto_configuration']) {
     }
   }
 }
-else {
-  if ($is_dev && !$is_backend) {
-    header('X-Purge-Level: none');
-  }
-}
-
 
 /**
  * More logic for the front-end only
@@ -754,10 +799,10 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
   }
 
   if ($all_ini['server_name_cookie_domain'] || $site_subdir) {
-    $domain = '.'. preg_replace('`^www\.`', '', $_SERVER['SERVER_NAME']);
+    $domain = '.' . preg_replace('`^www\.`', '', $_SERVER['SERVER_NAME']);
   }
   else {
-    $domain = '.'. preg_replace('`^www\.`', '', $_SERVER['HTTP_HOST']);
+    $domain = '.' . preg_replace('`^www\.`', '', $_SERVER['HTTP_HOST']);
   }
   $domain = str_replace('..', '.', $domain);
   if (count(explode('.', $domain)) > 2 &&
@@ -777,14 +822,14 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
       isset($_SERVER['HTTP_USER_AGENT']) &&
       !preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
     $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['SERVER_NAME'] . $_SERVER['HTTP_USER_AGENT'];
-    $identity = 'BD'. md5("$identity");
+    $identity = 'BD' . md5("$identity");
     if ($drupal_seven || $drupal_eight) {
       $conf['https'] = TRUE;
       $sess_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $sess_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
     }
     else {
-      $test_sess_name = 'SESS'. md5($cookie_domain);
+      $test_sess_name = 'SESS' . md5($cookie_domain);
     }
     if (!isset($_COOKIE[$test_sess_name]) && !$drupal_eight) {
       if ($all_ini['speed_booster_anon_cache_ttl'] && preg_match("/^[0-9]{2,}$/", $all_ini['speed_booster_anon_cache_ttl'])) {
@@ -886,17 +931,32 @@ if ($redis_up && $use_redis && !$custom_cache) {
   $cache_backport = FALSE;
   $cache_redis = FALSE;
   if ($all_ini['redis_use_modern']) {
-    $redis_dirname = 'redis_edge';
+    if ($drupal_eight) {
+      $redis_dirname = 'redis_eight';
+    }
+    else {
+      $redis_dirname = 'redis_edge';
+    }
     if ($is_dev && !$is_backend) {
       header("X-Redis-Version-Is: Modern");
     }
     if ($all_ini['redis_flush_forced_mode']) {
-      $conf['redis_perm_ttl']                 = 21600; // 6 hours max
-      $conf['redis_flush_mode']               = 1; // Redis default is 0
-      $conf['redis_flush_mode_cache_page']    = 2; // Redis default is 1
-      $conf['redis_flush_mode_cache_block']   = 2; // Redis default is 1
-      $conf['redis_flush_mode_cache_menu']    = 2; // Redis default is 0
-      $conf['redis_flush_mode_cache_metatag'] = 2; // Redis default is 0
+      if ($drupal_eight) {
+        $settings['redis_perm_ttl']                 = 21600; // 6 hours max
+        $settings['redis_flush_mode']               = 1; // Redis default is 0
+        $settings['redis_flush_mode_cache_page']    = 2; // Redis default is 1
+        $settings['redis_flush_mode_cache_block']   = 2; // Redis default is 1
+        $settings['redis_flush_mode_cache_menu']    = 2; // Redis default is 0
+        $settings['redis_flush_mode_cache_metatag'] = 2; // Redis default is 0
+      }
+      else {
+        $conf['redis_perm_ttl']                 = 21600; // 6 hours max
+        $conf['redis_flush_mode']               = 1; // Redis default is 0
+        $conf['redis_flush_mode_cache_page']    = 2; // Redis default is 1
+        $conf['redis_flush_mode_cache_block']   = 2; // Redis default is 1
+        $conf['redis_flush_mode_cache_menu']    = 2; // Redis default is 0
+        $conf['redis_flush_mode_cache_metatag'] = 2; // Redis default is 0
+      }
       // See http://bit.ly/1drmi35 for more information
       if ($is_dev && !$is_backend) {
         header("X-Redis-Flush-Forced-Mode: Forced");
@@ -909,79 +969,142 @@ if ($redis_up && $use_redis && !$custom_cache) {
       header("X-Redis-Version-Is: Legacy");
     }
   }
-  if (is_readable('modules/o_contrib/cache_backport/cache.inc')) {
-    $cache_backport = TRUE;
-    $cache_backport_path = 'modules/o_contrib/cache_backport/cache.inc';
-    if ($is_dev && !$is_backend) {
-      header("X-Redis-Cache-Backport-Is-Readable: " . $cache_backport_path);
+  if ($drupal_eight) {
+    if (file_exists('sites/' . $_SERVER['SERVER_NAME'] . '/.redisOff')) {
+      if ($is_dev && !$is_backend) {
+        header("X-Redis-Off-Ctrl-Exists: .redisOff");
+      }
+    }
+    else {
+      if (file_exists('sites/' . $_SERVER['SERVER_NAME'] . '/.redisOn')) {
+        if ($is_dev && !$is_backend) {
+          header("X-Redis-On-Ctrl-Exists: .redisOn");
+        }
+        if (is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/files/development.services.yml')) {
+          if ($is_dev && !$is_backend) {
+            header("X-Dev-Services-Yml-Is-Readable: development.services.yml");
+          }
+        }
+        else {
+          if (is_readable('modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml')) {
+            $cache_redis = TRUE;
+            $cache_services_path = 'modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml';
+            $cache_gzip_path = 'modules/o_contrib_eight/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
+            if ($is_dev && !$is_backend) {
+              header("X-Redis-Services-Is-Readable: " . $cache_services_path);
+            }
+          }
+        }
+      }
     }
   }
-  if (is_readable('modules/o_contrib_seven/' . $redis_dirname . '/redis.autoload.inc')) {
-    $cache_redis = TRUE;
-    $cache_backport = FALSE;
-    $cache_redis_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.autoload.inc';
-    $cache_lock_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.lock.inc';
-    $cache_path_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.path.inc';
-    if ($is_dev && !$is_backend) {
-      header("X-Redis-Autoload-Is-Readable: " . $cache_redis_path);
+  elseif ($drupal_seven) {
+    if (is_readable('modules/o_contrib_seven/' . $redis_dirname . '/redis.autoload.inc')) {
+      $cache_redis = TRUE;
+      $cache_backport = FALSE;
+      $cache_redis_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.autoload.inc';
+      $cache_lock_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.lock.inc';
+      $cache_path_path = 'modules/o_contrib_seven/' . $redis_dirname . '/redis.path.inc';
+      $cache_gzip_path = 'modules/o_contrib_seven/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
+      if ($is_dev && !$is_backend) {
+        header("X-Redis-Autoload-Is-Readable: " . $cache_redis_path);
+      }
     }
   }
-  elseif (is_readable('modules/o_contrib/' . $redis_dirname . '/redis.autoload.inc')) {
-    $cache_redis = TRUE;
-    $cache_redis_path = 'modules/o_contrib/' . $redis_dirname . '/redis.autoload.inc';
-    $cache_lock_path = 'modules/o_contrib/' . $redis_dirname . '/redis.lock.inc';
-    $cache_path_path = 'modules/o_contrib/' . $redis_dirname . '/redis.path.inc';
-    if ($is_dev && !$is_backend) {
-      header("X-Redis-Autoload-Is-Readable: " . $cache_redis_path);
+  elseif ($drupal_six) {
+    if (is_readable('modules/o_contrib/cache_backport/cache.inc')) {
+      $cache_backport = TRUE;
+      $cache_backport_path = 'modules/o_contrib/cache_backport/cache.inc';
+      if ($is_dev && !$is_backend) {
+        header("X-Redis-Cache-Backport-Is-Readable: " . $cache_backport_path);
+      }
+    }
+    if (is_readable('modules/o_contrib/' . $redis_dirname . '/redis.autoload.inc')) {
+      $cache_redis = TRUE;
+      $cache_redis_path = 'modules/o_contrib/' . $redis_dirname . '/redis.autoload.inc';
+      $cache_lock_path = 'modules/o_contrib/' . $redis_dirname . '/redis.lock.inc';
+      $cache_path_path = 'modules/o_contrib/' . $redis_dirname . '/redis.path.inc';
+      $cache_gzip_path = 'modules/o_contrib/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
+      if ($is_dev && !$is_backend) {
+        header("X-Redis-Autoload-Is-Readable: " . $cache_redis_path);
+      }
     }
   }
   if ($cache_redis) {
-    if ($cache_backport) {
-      $conf['cache_inc']                      = $cache_backport_path;
+    if ($drupal_eight) {
+      $settings['redis.connection']['interface'] = 'PhpRedis';
+      $settings['redis.connection']['host']      = '127.0.0.1';
+      $settings['redis.connection']['port']      = '6379';
+      $settings['redis.connection']['password']  = 'isfoobared';
+      $settings['redis.connection']['base']      = '8';
+      $settings['cache_prefix']                  = $this_prefix;
+      $settings['cache']['default']              = 'cache.backend.redis';
+      $settings['cache']['bins']['bootstrap']    = 'cache.backend.chainedfast';
+      $settings['cache']['bins']['discovery']    = 'cache.backend.chainedfast';
+      $settings['cache']['bins']['config']       = 'cache.backend.chainedfast';
+      $settings['container_yamls'][]             = $cache_services_path;
+      $settings['queue_default']                 = 'queue.redis';
     }
-    if ($all_ini['redis_use_modern']) {
-      if ($all_ini['redis_lock_enable']) {
-        $redis_lock = TRUE;
+    else {
+      if ($cache_backport) {
+        $conf['cache_inc']                      = $cache_backport_path;
       }
-      if ($all_ini['redis_path_enable']) {
-        $redis_path = TRUE;
+      if ($all_ini['redis_use_modern']) {
+        if ($all_ini['redis_lock_enable']) {
+          $redis_lock = TRUE;
+        }
+        if ($all_ini['redis_path_enable']) {
+          $redis_path = TRUE;
+        }
       }
+      if (is_readable($cache_lock_path) && $redis_lock) {
+        $conf['lock_inc']                       = $cache_lock_path;
+        if ($is_dev && !$is_backend) {
+          header("X-Redis-Lock-Is-Readable: " . $cache_lock_path);
+        }
+      }
+      if (is_readable($cache_path_path) && $redis_path) {
+        $conf['path_inc']                       = $cache_path_path;
+        $conf['path_alias_admin_blacklist']     = FALSE;
+        if ($is_dev && !$is_backend) {
+          header("X-Redis-Path-Is-Readable: " . $cache_path_path);
+        }
+      }
+      $conf['cache_backends'][]                 = $cache_redis_path;
+      $conf['redis_client_interface']           = 'PhpRedis';
+      $conf['redis_client_host']                = '127.0.0.1';
+      $conf['redis_client_port']                = '6379';
+      $conf['redis_client_password']            = 'isfoobared';
+      $conf['redis_client_base']                = '8';
+      $conf['cache_prefix']                     = $this_prefix;
+      $conf['page_cache_invoke_hooks']          = TRUE;  // D7 == Do not use Aggressive Mode
+      $conf['page_cache_without_database']      = FALSE; // D7 == Do not use Aggressive Mode
+      $conf['page_cache_maximum_age']           = 0;     // D7 == max-age in the Cache-Control header (ignored by Speed Booster)
+      $conf['page_cache_max_age']               = 0;     // D6 == max-age in the Cache-Control header (ignored by Speed Booster)
+      $conf['cache_lifetime']                   = 0;     // D7 == BOA uses Speed Booster / Nginx micro-caching instead
+      $conf['page_cache_lifetime']              = 0;     // D6 == BOA uses Speed Booster / Nginx micro-caching instead
+      if (is_readable($cache_gzip_path)) {
+        $conf['cache_default_class']            = 'Redis_CacheCompressed';
+      }
+      else {
+        $conf['cache_default_class']            = 'Redis_Cache';
+      }
+      $conf['cache_class_cache_form']           = 'DrupalDatabaseCache';
     }
-    if (is_readable($cache_lock_path) && $redis_lock) {
-      $conf['lock_inc']                       = $cache_lock_path;
-      if ($is_dev && !$is_backend) {
-        header("X-Redis-Lock-Is-Readable: " . $cache_lock_path);
-      }
-    }
-    if (is_readable($cache_path_path) && $redis_path) {
-      $conf['path_inc']                       = $cache_path_path;
-      $conf['path_alias_admin_blacklist']     = FALSE;
-      if ($is_dev && !$is_backend) {
-        header("X-Redis-Path-Is-Readable: " . $cache_path_path);
-      }
-    }
-    $conf['cache_backends'][]                 = $cache_redis_path;
-    $conf['redis_client_interface']           = 'PhpRedis';
-    $conf['redis_client_host']                = '127.0.0.1';
-    $conf['redis_client_port']                = '6379';
-    $conf['redis_client_password']            = 'isfoobared';
-    $conf['redis_client_base']                = '8';
-    $conf['cache_prefix']                     = $this_prefix;
-    $conf['page_cache_invoke_hooks']          = TRUE;  // D7 == Do not use Aggressive Mode
-    $conf['page_cache_without_database']      = FALSE; // D7 == Do not use Aggressive Mode
-    $conf['page_cache_maximum_age']           = 0;     // D7 == max-age in the Cache-Control header (ignored by Speed Booster)
-    $conf['page_cache_max_age']               = 0;     // D6 == max-age in the Cache-Control header (ignored by Speed Booster)
-    $conf['cache_lifetime']                   = 0;     // D7 == BOA uses Speed Booster / Nginx micro-caching instead
-    $conf['page_cache_lifetime']              = 0;     // D6 == BOA uses Speed Booster / Nginx micro-caching instead
-    $conf['cache_default_class']              = 'Redis_Cache';
     if ($all_ini['redis_exclude_bins']) {
       $excludes = array();
       $excludes = explode(",", $all_ini['redis_exclude_bins']);
       foreach ($excludes as $exclude) {
         $exclude = rtrim($exclude);
         $exclude = ltrim($exclude);
-        $bin_exclude = 'cache_class_' . $exclude;
-        $conf[$bin_exclude] = 'DrupalDatabaseCache';
+        if ($drupal_eight) {
+          $bin_exclude = $exclude;
+          $settings['cache']['bins'][$bin_exclude] = 'cache.backend.database';
+        }
+        else {
+          $bin_exclude = 'cache_class_' . $exclude;
+          $conf[$bin_exclude] = 'DrupalDatabaseCache';
+        }
         if ($is_dev && !$is_backend) {
           header("X-Ini-Redis-Exclude-Bin-" . $exclude . ": " . $bin_exclude);
         }
