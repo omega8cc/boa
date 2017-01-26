@@ -32,7 +32,7 @@ PHP-FPM, Zend OPcache, MariaDB and Redis.
 ### Octopus batch migration ...........: docs/MIGRATE.txt
 ### Platforms configuration symbols ...: docs/PLATFORMS.txt
 ### Remote S3 backups .................: docs/BACKUPS.txt
-### RVM and Compass Tools .............: docs/RVM.txt
+### RVM, Compass Tools, and NPM .......: docs/RVM.txt
 ### Security related settings .........: docs/SECURITY.txt
 ### Single site migration .............: docs/REMOTE.txt
 ### SSL with single or extra IP .......: docs/SSL.txt
@@ -74,15 +74,21 @@ system tuning for development and switching it back easily to the standard
 production settings.
 
 
-### SUPPORTED PARENT SYSTEMS {c} please read also: docs/CAVEATS.txt
+### SUPPORTED VIRTUALIZATION SYSTEMS {c} please read also: docs/CAVEATS.txt
 
-* Xen, VServer, Linux KVM or VMware based VPS or a dedicated box.
+* Linux KVM guest
+* Linux VServer guest
+* Microsoft Hyper-V
+* Parallels guest
+* VirtualBox guest
+* VMware ESXi guest
+* Xen guest
 
 
 ### SUPPORTED LTS OS {c} please read also: docs/CAVEATS.txt
 
 * Debian 8 Jessie (recommended)
-* Debian 7 Wheezy
+* Debian 7 Wheezy (upgrade to Jessie with _WHEEZY_TO_JESSIE=YES)
 * Debian 6 Squeeze (limited to upgrade to Wheezy with _SQUEEZE_TO_WHEEZY=YES)
 * Ubuntu Trusty 14.04 (limited support)
 * Ubuntu Precise 12.04 (limited support)
@@ -93,7 +99,7 @@ production settings.
 * SSH keys for root are required by newer OpenSSH versions used in BOA.
 * Wget must be installed.
 * The outgoing TCP connections via ports: 25, 53, 80 and 443 must be open.
-* Minimum 1 GB of RAM
+* Minimum 1 GB of RAM (at least 2GB of RAM + at least 2 CPU recommended)
 * Locales with UTF-8 support, otherwise en_US.UTF-8 (default) is forced.
 * Basic sysadmin skills and experience.
 * Willingness to accept BOA PI (paranoid idiosyncrasies).
@@ -104,14 +110,17 @@ production settings.
 === Included/enabled by default - see docs/NOTES.txt for details
 
 * All libraries & tools required to install and run Nginx based Aegir system.
-* Latest release of MariaDB 5.5 or 10.0 database server with Chive manager.
+* Latest release of MariaDB 5.5 or 10.1 database server with Adminer manager.
 * Latest version of Nginx web server.
+* Letsencrypt.org SSL support - see docs/SSL.txt for details.
+* HTTPS access with self-signed certificate for all hosted sites.
 * HTTP/2 or SPDY Nginx support.
 * PFS (Perfect Forward Secrecy) support in Nginx.
-* PHP-FPM 7.0, 5.6, 5.5, 5.4, 5.3 multi-install mode, configurable per Octopus.
+* PHP-FPM 7.0, 5.6, 5.5, 5.4, 5.3 multi-install mode, configurable per site.
 * PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse and ionCube.
-* Fast Redis Cache with DB auto-failover for all 6.x and 7.x platforms.
-* Fast Redis Lock support with DB auto-failover for all 6.x and 7.x platforms.
+* Fast Redis Cache with DB auto-failover for all Drupal core versions.
+* Fast Redis Lock support with DB auto-failover.
+* Fast Redis Path support with DB auto-failover.
 * Fast proxy DNS server (pdnsd) with permanent caching.
 * Limited Shell, SFTP and FTPS separate accounts per Octopus instance.
 * Limited Shell, SFTP and FTPS accounts per Aegir Client with per site access.
@@ -119,7 +128,6 @@ production settings.
 * Drush Make access on command line for main shell account only.
 * Support for New Relic monitoring with per Octopus instance license key.
 * Solr 4 cores can be added/updated/deleted via site level INI settings.
-* HTTPS access with self-signed certificate for all hosted sites.
 * Magic Speed Booster cache, working like a Boost + AuthCache, but per user.
 * Entry level XSS built-in protection on the Nginx level.
 * Firewall csf/lfd integrated with Nginx abuse guard.
@@ -127,21 +135,20 @@ production settings.
 * Boost, AdvAgg, Domain Access and Drupal for Facebook built-in support.
 * Built-in collection of useful modules available in all platforms.
 * Autonomous Maintenance & Auto-Healing scripts in /var/xdrago.
-* Every 10 seconds uptime/self-healing local monitoring.
+* Every 3 seconds uptime/self-healing local monitoring.
 * Automated, rotated daily backups for all databases in /data/disk/arch/sql.
 
 === Optional add-ons - see docs/NOTES.txt for details
 
-* Compass Tools.
+* RVM, Compass Tools, and NPM - see docs/RVM.txt for details.
 * HHVM support - see docs/HHVM.txt for details.
-* MultiCore Apache Solr 1.4.1 with Jetty 7 - see docs/SOLR.txt for details.
-* MultiCore Apache Solr 3.6.2 with Jetty 8 - see docs/SOLR.txt for details.
-* MultiCore Apache Solr 4.9.1 with Jetty 8 or Jetty 9 on Precise and Wheezy.
+* MultiCore Apache Solr 4.9.1 with Jetty 9 - see docs/SOLR.txt for details.
 * New Relic Apps Monitor with per Octopus license and per Site reporting.
 * Image Optimize toolkit binaries.
 * FFmpeg support.
 * Bind9 DNS server.
 * Webmin Control Panel.
+* Chive database manager
 * SQL Buddy database manager.
 * Collectd server monitor.
 * LDAP Nginx support via third-party module (experimental).
@@ -151,25 +158,33 @@ production settings.
 
 ### OCTOPUS PLATFORMS
 
-Octopus can install the platforms listed below:
+Octopus can install and/or support the platforms listed below:
 
- @ Drupal 7.43.2
+ @ Drupal 8
 
- aGov 3.1 --------------------- https://drupal.org/project/agov
- Commerce 1.42 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.37 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.36 ----------------- https://drupal.org/project/commons
- Drupal 7.43.2 ---------------- https://drupal.org/drupal-7.43-release-notes
- ERPAL 2.3 -------------------- https://drupal.org/project/erpal
- Guardr 2.28 ------------------ https://drupal.org/project/guardr
+ Drupal 8 support for custom platforms in the ~/static directory tree
+ has been added, along with Drush 8, in the BOA-3.0.0 release.
+ Note: BOA will not include built-in Drupal 8 platforms until Drupal 8
+ will support symlinks in the codebase, like all previous core versions.
+
+ See also: https://omega8.cc/how-to-add-custom-platform-properly-140
+
+ @ Drupal 7.53.1
+
+ aGov 3.5 --------------------- https://drupal.org/project/agov
+ Commerce 1.46 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 2.42 ---------------- https://drupal.org/project/commerce_kickstart
+ Commons 3.41 ----------------- https://drupal.org/project/commons
+ Drupal 7.53.1 ---------------- https://drupal.org/project/drupal/releases/7.53
+ Guardr 2.36 ------------------ https://drupal.org/project/guardr
  OpenAid 2.8 ------------------ https://drupal.org/project/openaid
- OpenAtrium 2.63 -------------- https://drupal.org/project/openatrium
+ OpenAtrium 2.612 ------------- https://drupal.org/project/openatrium
  OpenChurch 2.2 --------------- https://drupal.org/project/openchurch
- OpenOutreach 1.28 ------------ https://drupal.org/project/openoutreach
- OpenPublic 1.8 --------------- https://drupal.org/project/openpublic
- Panopoly 1.35 ---------------- https://drupal.org/project/panopoly
- Restaurant 1.11 -------------- https://drupal.org/project/restaurant
- Ubercart 3.9 ----------------- https://drupal.org/project/ubercart
+ OpenOutreach 1.36 ------------ https://drupal.org/project/openoutreach
+ OpenPublic 1.10 -------------- https://drupal.org/project/openpublic
+ Panopoly 1.41 ---------------- https://drupal.org/project/panopoly
+ Restaurant 1.14 -------------- https://drupal.org/project/restaurant
+ Ubercart 3.10 ---------------- https://drupal.org/project/ubercart
 
  @ Pressflow 6.38.2
 
@@ -177,7 +192,7 @@ Octopus can install the platforms listed below:
  Pressflow 6.38.2 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.43.2 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.53.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
 * All D6 platforms have been enhanced using Pressflow 6.38.2 +Extra core:

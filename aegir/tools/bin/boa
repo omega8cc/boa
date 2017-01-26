@@ -4,21 +4,21 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 branch="3.x.x-dev"
-cluster="BOA-2.4.9"
+cluster="BOA-3.1.4"
 hd="HEAD"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
 master="master"
-nextv="BOA-3.1.0-dev"
-stbl="BOA-3.0.2"
+nextv="BOA-3.2.0-dev"
+stbl="BOA-3.1.4"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+forCer="-fuy --force-yes --reinstall"
 filIncB="barracuda.sh.cnf"
 filIncO="octopus.sh.cnf"
-forCer="-fuy --force-yes --reinstall"
 octName="OCTOPUS.sh.txt"
 pthIncB="lib/settings/${filIncB}"
 pthIncO="lib/settings/${filIncO}"
@@ -31,7 +31,9 @@ _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _VMFAMILY=XEN
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
@@ -45,6 +47,98 @@ clean_pid_exit() {
   rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
   exit 1
+}
+
+not_supported_virt() {
+  echo
+  echo "=== OOPS! ==="
+  echo
+  echo "You are running not supported virtualization system:"
+  echo "  $1"
+  echo
+  echo "If you wish to try BOA on this system anyway,"
+  echo "please create an empty control file:"
+  echo "  /root/.allow.any.virt.cnf"
+  echo
+  echo "Please be aware that it may not work at all,"
+  echo "or you can experience errors breaking BOA."
+  echo
+  echo "BOA is known to work well on:"
+  echo " * Linux KVM guest"
+  echo " * Linux VServer guest"
+  echo " * Parallels guest"
+  echo " * VirtualBox guest"
+  echo " * VMware ESXi guest"
+  echo " * Xen guest"
+  echo
+  echo "BOA is not designed to run directly on a bare metal."
+  echo "We recommend to install Linux VServer if you plan to"
+  echo "use BOA on a dedicated machine -- server or laptop."
+  echo
+  echo "Note: There are plans to support Linux VServer installation"
+  echo "via BOA tools: https://github.com/omega8cc/boa/issues/980"
+  echo
+  echo "Bye"
+  echo
+  clean_pid_exit
+}
+
+check_virt() {
+  _VIRT_TOOL=$(which virt-what 2> /dev/null)
+  if [ -x "${_VIRT_TOOL}" ]; then
+    _VIRT_TEST=$(virt-what 2> /dev/null)
+    _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
+    if [ ! -e "/root/.allow.any.virt.cnf" ]; then
+      if [ -e "/proc/self/status" ]; then
+        _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
+        _VS_HOST_TEST=$(grep -E "VxID:[[:space:]]*0$" /proc/self/status 2> /dev/null)
+      fi
+      if [ ! -z "${_VS_HOST_TEST}" ] || [ ! -z "${_VS_GUEST_TEST}" ]; then
+        if [ -z "${_VS_HOST_TEST}" ] && [ ! -z "${_VS_GUEST_TEST}" ]; then
+          _VIRT_IS="Linux VServer guest"
+        else
+          if [ ! -z "${_VS_HOST_TEST}" ]; then
+            not_supported_virt "Linux VServer host"
+          else
+            not_supported_virt "unknown / not a virtual machine"
+          fi
+        fi
+      else
+        if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
+          not_supported_virt "unknown / not a virtual machine"
+        elif [[ "${_VIRT_TEST}" =~ "xen-dom0" ]]; then
+          not_supported_virt "Xen privileged domain"
+        elif [[ "${_VIRT_TEST}" =~ "linux_vserver-host" ]]; then
+          not_supported_virt "Linux VServer host"
+        else
+          if [[ "${_VIRT_TEST}" =~ "xen xen-hvm" ]]; then
+            _VIRT_TEST="xen-hvm"
+          elif [[ "${_VIRT_TEST}" =~ "xen xen-domU" ]]; then
+            _VIRT_TEST="xen-domU"
+          elif [[ "${_VIRT_TEST}" =~ "virtualbox kvm" ]]; then
+            _VIRT_TEST="virtualbox"
+          fi
+          case "${_VIRT_TEST}" in
+            hyperv)      _VIRT_IS="Microsoft Hyper-V" ;;
+            kvm)         _VIRT_IS="Linux KVM guest" ;;
+            parallels)   _VIRT_IS="Parallels guest" ;;
+            virtualbox)  _VIRT_IS="VirtualBox guest" ;;
+            vmware)      _VIRT_IS="VMware ESXi guest" ;;
+            xen-domU)    _VIRT_IS="Xen paravirtualized guest domain" ;;
+            xen-hvm)     _VIRT_IS="Xen guest fully virtualized (HVM)" ;;
+            xen)         _VIRT_IS="Xen guest" ;;
+            *)  not_supported_virt "${_VIRT_TEST}"
+            ;;
+          esac
+        fi
+      fi
+    else
+      if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
+        _VIRT_TEST="unknown / not a virtual machine"
+      fi
+      echo "WARN: This system is not supported: ${_VIRT_TEST}"
+    fi
+  fi
 }
 
 system_check_ready() {
@@ -96,7 +190,7 @@ check_root_direct() {
     echo
     echo "HINT:  You can always restrict access later, or"
     echo "       allow only SSH keys for root with directive"
-    echo "         PermitRootLogin without-password"
+    echo "         PermitRootLogin prohibit-password"
     echo "       in the /usr/etc/sshd_config file"
     echo "Bye"
     clean_pid_exit
@@ -227,7 +321,7 @@ fix_dns_settings() {
       || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]]; then
       echo "        label = \"google-servers\";" > ${dnsLi}
       for _IP in `cat /etc/resolv.conf \
-        | sed 's/.*127.0.0.1.*//g; s/.*Dynamic.*//g' \
+        | sed 's/.*127.0.0.1.*//g; s/.*search.*//g; s/.*Dynamic.*//g' \
         | cut -d ' ' -f2 \
         | sort \
         | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
@@ -1121,17 +1215,13 @@ check_dns_curl() {
   fi
   find_fast_mirror
   isCurl=$(curl --version 2>&1)
-  if [[ ! "$isCurl" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-    if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] && [ -e "/var/xdrago" ]; then
-      echo "ERROR: Required cURL package is not available"
-      echo "ERROR: Please install it manually with 'apt-get install curl'"
-      clean_pid_exit
-    else
-      rm -f /etc/apt/sources.list.d/openssl.list
-      apt-get clean -qq &> /dev/null
-      apt-get update -qq &> /dev/null
-      apt-get install curl ${forCer} &> /dev/null
-    fi
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
+    echo "curl install" | dpkg --set-selections
+    apt-get clean -qq &> /dev/null
+    apt-get update -qq &> /dev/null
+    apt-get install curl ${forCer} &> /dev/null
+    touch /root/.use.curl.from.packages.cnf
   fi
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
@@ -1141,7 +1231,7 @@ check_dns_curl() {
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "curl install" | dpkg --set-selections
-      apt-get install curl -fuy --force-yes --reinstall 2> /dev/null
+      apt-get install curl ${forCer} &> /dev/null
       touch /root/.use.curl.from.packages.cnf
     fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
@@ -1192,6 +1282,17 @@ check_root() {
     wait
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
     wait
+    _GH_TEST=$(cat /etc/hosts | grep github 2>&1)
+    if [[ ! "${_GH_TEST}" =~ "github.com" ]]; then
+      echo "192.30.253.113 github.com" >> /etc/hosts
+      wait
+      echo "151.101.32.133 raw.githubusercontent.com" >> /etc/hosts
+      wait
+      echo >>/etc/hosts
+      wait
+      service pdnsd restart &> /dev/null
+      pdnsd-ctl empty-cache &> /dev/null
+    fi
     echo >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
     wait
@@ -1258,29 +1359,84 @@ check_root() {
   fi
 }
 
+display_version() {
+  if [ `whoami` = "root" ]; then
+    _VIRT_TOOL=$(which virt-what 2> /dev/null)
+    if [ -x "${_VIRT_TOOL}" ]; then
+      _VIRT_TEST=$(virt-what 2> /dev/null)
+      _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
+      if [ ! -e "/root/.allow.any.virt.cnf" ]; then
+        if [ -e "/proc/self/status" ]; then
+          _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
+          _VS_HOST_TEST=$(grep -E "VxID:[[:space:]]*0$" /proc/self/status 2> /dev/null)
+        fi
+        if [ ! -z "${_VS_HOST_TEST}" ] || [ ! -z "${_VS_GUEST_TEST}" ]; then
+          if [ -z "${_VS_HOST_TEST}" ] && [ ! -z "${_VS_GUEST_TEST}" ]; then
+            _VIRT_IS="Linux VServer guest"
+          else
+            if [ ! -z "${_VS_HOST_TEST}" ]; then
+              _VIRT_IS="Linux VServer host"
+            else
+              _VIRT_IS="unknown / not a virtual machine"
+            fi
+          fi
+        else
+          if [ -z "${_VIRT_TEST}" ] \
+            || [ "${_VIRT_TEST}" = "0" ] \
+            || [ "${_VIRT_TEST}" = " " ]; then
+            _VIRT_IS="unknown / not a virtual machine"
+          elif [[ "${_VIRT_TEST}" =~ "xen-dom0" ]]; then
+            _VIRT_IS="Xen privileged domain"
+          elif [[ "${_VIRT_TEST}" =~ "linux_vserver-host" ]]; then
+            _VIRT_IS="Linux VServer host"
+          else
+            if [[ "${_VIRT_TEST}" =~ "xen xen-hvm" ]]; then
+              _VIRT_TEST="xen-hvm"
+            elif [[ "${_VIRT_TEST}" =~ "xen xen-domU" ]]; then
+              _VIRT_TEST="xen-domU"
+            elif [[ "${_VIRT_TEST}" =~ "virtualbox kvm" ]]; then
+              _VIRT_TEST="virtualbox"
+            fi
+            case "${_VIRT_TEST}" in
+              hyperv)      _VIRT_IS="Microsoft Hyper-V" ;;
+              kvm)         _VIRT_IS="Linux KVM guest" ;;
+              parallels)   _VIRT_IS="Parallels guest" ;;
+              virtualbox)  _VIRT_IS="VirtualBox guest" ;;
+              vmware)      _VIRT_IS="VMware ESXi guest" ;;
+              xen-domU)    _VIRT_IS="Xen paravirtualized guest domain" ;;
+              xen-hvm)     _VIRT_IS="Xen guest fully virtualized (HVM)" ;;
+              xen)         _VIRT_IS="Xen guest" ;;
+              *)  _VIRT_IS="${_VIRT_TEST} not supported"
+              ;;
+            esac
+          fi
+        fi
+      else
+        if [ -z "${_VIRT_TEST}" ] \
+          || [ "${_VIRT_TEST}" = "0" ] \
+          || [ "${_VIRT_TEST}" = " " ]; then
+          _VIRT_IS="unknown / not a virtual machine"
+        fi
+        _VIRT_IS="${_VIRT_TEST} not supported"
+      fi
+    fi
+    thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
+    if [ -e "/var/log/barracuda_log.txt" ]; then
+      crlBoav=`tail --lines=1 /var/log/barracuda_log.txt \
+        | cut -d '/' -f4 \
+        | sed "s/ Barracuda //g"`
+      crlBoav=${crlBoav//[^a-zA-Z0-9-.]/}
+    fi
+    echo "${crlBoav} on ${thiSys} on ${_VIRT_IS}"
+    exit 0
+  else
+    echo "ERROR: This script should be ran as a root user"
+    exit 1
+  fi
+}
+
 display_info() {
   if [ `whoami` = "root" ]; then
-    _AWS_TEST_A=$(grep cloudimg /etc/fstab 2>&1)
-    _AWS_TEST_B=$(grep cloudconfig /etc/fstab 2>&1)
-    _ETH_TEST=$(ifconfig 2>&1)
-    _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
-      _VMFAMILY="VZ"
-    elif [ -e "/proc/bean_counters" ]; then
-      _VMFAMILY="VZ"
-    else
-      _VMFAMILY="XEN"
-    fi
-    if [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
-      _VMFAMILY="VS"
-    fi
-    if [[ "${_AWS_TEST_A}" =~ "cloudimg" ]] \
-      || [[ "${_AWS_TEST_B}" =~ "cloudconfig" ]]; then
-      _VMFAMILY="AWS"
-    fi
     _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
     _CPU_INFO=${_CPU_INFO//[^0-9]/}
     _NPROC_TEST=$(which nproc 2>&1)
@@ -1322,11 +1478,22 @@ display_info() {
     _DBS=$(grep _DB_SERIES /root/.barracuda.cnf 2>&1)
     _DNS=$(grep _DNS_SETUP_TEST /root/.barracuda.cnf 2>&1)
     _PKG=$(grep _EXTRA_PACKAGES /root/.barracuda.cnf 2>&1)
+    _ARM=$(grep _SSH_ARMOUR /root/.barracuda.cnf 2>&1)
+    _STG=$(grep _STRONG_PASSWORDS /root/.barracuda.cnf 2>&1)
+    _CSF=$(grep _CUSTOM_CONFIG_CSF /root/.barracuda.cnf 2>&1)
+    _LSH=$(grep _CUSTOM_CONFIG_LSHELL /root/.barracuda.cnf 2>&1)
+    _RIS=$(grep _CUSTOM_CONFIG_REDIS /root/.barracuda.cnf 2>&1)
+    _SQL=$(grep _CUSTOM_CONFIG_SQL /root/.barracuda.cnf 2>&1)
+    _BIL=$(grep _BACKEND_ITEMS_LIST /root/.barracuda.cnf 2>&1)
+    _SKY=$(grep _SKYNET_MODE /root/.barracuda.cnf 2>&1)
+    _BIN=$(grep _STRICT_BIN_PERMISSIONS /root/.barracuda.cnf 2>&1)
+    _TUN=$(grep _USE_MYSQLTUNER /root/.barracuda.cnf 2>&1)
     clear
     echo
     thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
     echo "Aegir on ${thiSys}"
-    echo "  VPS ${_VMFAMILY}"
+    [ ! -z "${_VIRT_IS}" ] && echo "  VPS ${_VIRT_IS}"
+    [ -z "${_VIRT_IS}" ] && echo "  VPS unknown / not a virtual machine"
     echo "  CPU ${_CPU_NR}"
     echo "  RAM ${_RAM}"
     echo "  XTR ${_XTR}"
@@ -1339,10 +1506,21 @@ display_info() {
     echo "  SSL ${_SSL}"
     echo "  CRL ${_CRL}"
     echo "  SSH ${_SSH}"
+    [ ! -z "${_ARM}" ] && echo "  ARM ${_ARM}"
+    echo "  STG ${_STG}"
+    echo "  CSF ${_CSF}"
+    echo "  LSH ${_LSH}"
+    echo "  RIS ${_RIS}"
+    echo "  SQL ${_SQL}"
+    [ ! -z "${_TUN}" ] && echo "  TUN ${_TUN}"
+    [ ! -z "${_BIL}" ] && echo "  BIL ${_BIL}"
+    [ ! -z "${_SKY}" ] && echo "  SKY ${_SKY}"
+    echo "  BIN ${_BIN}"
     echo
-    if [ "${kind}" = "more" ] \
-      && [ -e "/var/log/barracuda_log.txt" ]; then
-      cat /var/log/barracuda_log.txt | grep 2015
+    if [ -e "/var/log/barracuda_log.txt" ]; then
+      if [ "${kind}" = "more" ]; then
+        cat /var/log/barracuda_log.txt | grep 2015
+      fi
       cat /var/log/barracuda_log.txt | grep 2016
     fi
     echo
@@ -1359,12 +1537,17 @@ display_info() {
 }
 
 check_root_direct
-check_root_keys_pwd
 
 case "$1" in
   info)      cmmand="$1"
              kind="$2"
+             check_root_keys_pwd
+             check_virt
              display_info
+  ;;
+  version)   cmmand="$1"
+             kind="$2"
+             display_version
   ;;
   in-head)   cmmand="$1"
              kind="$2"
@@ -1374,6 +1557,8 @@ case "$1" in
              mode="$6"
              rkey="$7"
              check_root
+             check_root_keys_pwd
+             check_virt
              check_dns_curl
              init_setup
   ;;
@@ -1386,6 +1571,8 @@ case "$1" in
              dbip="$7"
              loip="$8"
              check_root
+             check_root_keys_pwd
+             check_virt
              check_dns_curl
              init_setup
   ;;
@@ -1397,6 +1584,8 @@ case "$1" in
              mode="$6"
              rkey="$7"
              check_root
+             check_root_keys_pwd
+             check_virt
              check_dns_curl
              init_setup
   ;;
@@ -1408,6 +1597,8 @@ case "$1" in
              mode="$6"
              rkey="$7"
              check_root
+             check_root_keys_pwd
+             check_virt
              check_dns_curl
              init_setup
   ;;
@@ -1419,6 +1610,8 @@ case "$1" in
              mode="$6"
              rkey="$7"
              check_root
+             check_root_keys_pwd
+             check_virt
              check_dns_curl
              init_setup
   ;;
@@ -1430,6 +1623,8 @@ case "$1" in
              mode="$6"
              rkey="$7"
              check_root
+             check_root_keys_pwd
+             check_virt
              check_dns_curl
              init_setup
   ;;
@@ -1441,6 +1636,8 @@ case "$1" in
              csub="$6"
              ccor="$7"
              check_root
+             check_root_keys_pwd
+             check_virt
              check_dns_curl
              init_setup
   ;;

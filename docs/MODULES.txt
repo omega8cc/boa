@@ -56,6 +56,7 @@ Contrib [S]upported:
 
 Contrib [S]upported and [B]undled:
 
+ adminer -------------------- [D7] ------ [S] [B]
  advagg --------------------- [D6,D7] --- [S] [B]
  blockcache_alter ----------- [D6,D7] --- [S] [B]
  boost ---------------------- [D6,D7] --- [S] [B]
@@ -87,7 +88,6 @@ Contrib [S]upported and [B]undled:
  site_verify ---------------- [D6,D7] --- [S] [B]
  speedy --------------------- [D7] ------ [S] [B]
  taxonomy_edge -------------- [D6,D7] --- [S] [B]
- textile -------------------- [D6,D7] --- [S] [B]
  variable_clean ------------- [D6,D7] --- [S] [B]
  vars ----------------------- [D7] ------ [S] [B]
  views_accelerator ---------- [D7] ------ [S] [B]
@@ -150,6 +150,7 @@ Drush [E]xtensions [M]aster [S]atellite:
  clean_missing_modules ------ [D6,D7] --- [S] [B] [EM,ES]
  drupalgeddon --------------- [D7] ------ [S] [B] [EM,ES]
  drush_ecl ------------------ [D7] ------ [S] [B] [EM,ES]
+ mydropwizard --------------- [D6] ------ [S] [B] [EM,ES]
  registry_rebuild ----------- [D6,D7] --- [S] [B] [EM,ES]
  safe_cache_form_clear ------ [D7] ------ [S] [B] [EM,ES]
  security_review ------------ [D6,D7] --- [S] [B] [EM,ES]

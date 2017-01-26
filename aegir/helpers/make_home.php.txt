@@ -17,6 +17,6 @@
   $node->body[$node->language][0]['format']  = 'full_html';
   $node = node_submit($node);
   node_save($node);
-  variable_set('site_frontpage', 'node/'. $node->nid);
+  variable_set('site_frontpage', 'node/' . $node->nid);
 
 ?>

@@ -6,10 +6,10 @@
     ###
     ### Xtras included with "ALL" wildcard:
     ###
+    ### ADM --- Adminer DB Manager
     ### CGP --- Collectd Graph Panel
-    ### CHV --- Chive DB Manager
     ### CSF --- Firewall
-    ### CSS --- Compass Tools (available on Squeeze, Wheezy, Precise and Trusty)
+    ### CSS --- RVM for Compass + NPM for Gulp/Bower
     ### FTP --- Pure-FTPd server with forced FTPS
     ### WMN --- Webmin Control Panel
     ###
@@ -21,6 +21,7 @@
     ### BDD --- SQL Buddy DB Manager
     ### BND --- Bind9 DNS Server (available on Debian only)
     ### BZR --- Bazaar
+    ### CHV --- Chive DB Manager
     ### FMG --- FFmpeg support
     ### GIT --- Latest Git from sources
     ### IMG --- Image Optimize binaries: advdef advpng jpegoptim jpegtran optipng pngcrush pngquant
@@ -33,7 +34,7 @@
     ### _XTRAS_LIST=""
     ### _XTRAS_LIST="ALL"
     ### _XTRAS_LIST="ALL GIT SR3"
-    ### _XTRAS_LIST="CSF CGP CHV FTP"
+    ### _XTRAS_LIST="ADM CSF CGP CHV FTP"
     ###
 
   * Configuration file template: docs/cnf/barracuda.cnf
@@ -51,7 +52,7 @@
 
   * Your Aegir Master Instance control panel will be available at https://master.f-q-d-n
   * Your Fast DNS Cache Server (pdnsd) will listen on 127.0.0.1:53
-  * Your Chive MariaDB Manager will be available at https://chive.master.f-q-d-n
+  * Your Adminer MariaDB Manager will be available at https://adminer.master.f-q-d-n
   * Your CSF/LFD Firewall will support integrated Nginx Abuse Guard.
 
   NOTE: With _EASY_SETUP=NO option (default is PUBLIC) Barracuda will offer installation
@@ -59,6 +60,7 @@
 
   * Your Aegir Master Instance control panel will be available at https://master.f-q-d-n
   * Your Fast DNS Cache Server (pdnsd) will listen on 127.0.0.1:53
+  * Your (optional) Adminer MariaDB Manager will be available at https://adminer.master.f-q-d-n
   * Your (optional) Bind9 DNS Server will listen on 123.45.67.89:53
   * Your (optional) Chive MariaDB Manager will be available at https://chive.master.f-q-d-n
   * Your (optional) Collectd Graph Panel will be available at https://cgp.master.f-q-d-n
@@ -71,8 +73,8 @@
 
   NOTE: If your outgoing SMTP requires using relayhost, define _SMTP_RELAY_HOST first.
 
-  NOTE: Chive, SQL Buddy and Collectd will work only if chive. sqlbuddy. and cgp.
-        subdomains point to your IP (we recommend using wildcard DNS to simplify it).
+  NOTE: Adminer, Chive, SQL Buddy and Collectd will work only if adminer. chive. sqlbuddy.
+        and cgp. subdomains point to your IP (we recommend using wildcard DNS to simplify it).
         But don't worry, you can add proper DNS entries for those subdomains later,
         if you didn't enable wildcard DNS before running Barracuda installer.
         Only system hostname must have proper DNS configuration before installing Barracuda.
@@ -88,7 +90,7 @@
 
   * Your Aegir Master Instance control panel will be available at https://aegir.local
   * Your Fast DNS Cache Server (pdnsd) will listen on 127.0.0.1:53
-  * Your Chive MariaDB Manager will be available at https://chive.aegir.local
+  * Your Adminer MariaDB Manager will be available at https://adminer.aegir.local
 
 
 # Notes related to Barracuda and Octopus customized install and upgrades
@@ -104,4 +106,3 @@
         etc.
 
         Please read docs/UPGRADE.txt for simple upgrades how-to.
-

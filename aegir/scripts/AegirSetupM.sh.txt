@@ -172,7 +172,6 @@ get_dev_ext "vendor-${_DRUSH_VERSION}.tar.gz"
 find ${_ROOT}/drush -type d -exec chmod 0755 {} \; &> /dev/null
 find ${_ROOT}/drush -type f -exec chmod 0644 {} \; &> /dev/null
 chmod 755 ${_ROOT}/drush/drush
-chmod 755 ${_ROOT}/drush/drush.bat
 chmod 755 ${_ROOT}/drush/drush.complete.sh
 chmod 755 ${_ROOT}/drush/drush.launcher
 chmod 755 ${_ROOT}/drush/drush.php
@@ -211,6 +210,7 @@ if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
   rm -rf ${rD}/*/*/.git
   cd ${rD}/usr
   get_dev_ext "clean_missing_modules.tar.gz"
+  get_dev_contrib "mydropwizard-6.x-1.6.tar.gz"
 else
   msg "INFO: Downloading Drush and Provision extensions..."
   cd ${_ROOT}/.drush/sys
@@ -221,6 +221,7 @@ else
   get_dev_ext "drush_ecl.tar.gz"
   get_dev_ext "registry_rebuild.tar.gz"
   get_dev_ext "safe_cache_form_clear.tar.gz"
+  get_dev_contrib "mydropwizard-6.x-1.6.tar.gz"
   cd ${_ROOT}/.drush/xts
   get_dev_ext "provision_boost.tar.gz"
   get_dev_ext "security_review.tar.gz"

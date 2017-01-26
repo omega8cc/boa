@@ -44,13 +44,56 @@ prompt_confirm_choice() {
 }
 
 #
+# Not supported virtualization system.
+not_supported_virt() {
+  echo
+  echo "=== OOPS! ==="
+  echo
+  echo "You are running not supported virtualization system:"
+  echo "  $1"
+  echo
+  echo "If you wish to try BOA on this system anyway,"
+  echo "please create an empty control file:"
+  echo "  /root/.allow.any.virt.cnf"
+  echo
+  echo "Please be aware that it may not work at all,"
+  echo "or you can experience errors breaking BOA."
+  echo
+  echo "BOA is known to work well on:"
+  echo " * Linux KVM guest"
+  echo " * Linux VServer guest"
+  echo " * Parallels guest"
+  echo " * VirtualBox guest"
+  echo " * VMware ESXi guest"
+  echo " * Xen guest"
+  echo
+  echo "BOA is not designed to run directly on a bare metal."
+  echo "We recommend to install Linux VServer if you plan to"
+  echo "use BOA on a dedicated machine -- server or laptop."
+  echo
+  echo "Note: There are plans to support Linux VServer installation"
+  echo "via BOA tools: https://github.com/omega8cc/boa/issues/980"
+  echo
+  echo "Bye"
+  echo
+  clean_pid_exit
+}
+
+#
 # Not supported OS.
 not_supported_os() {
-  msg "== FATAL ERROR =="
-  msg "Invalid install script or OS used"
-  msg "It is not any supported Debian or Ubuntu version"
-  msg "You need Debian Wheezy (recommended) or Squeeze,"
-  msg "or Ubuntu -- Trusty or Precise."
+  echo
+  echo "=== OOPS! ==="
+  echo
+  echo "It is not any supported Debian or Ubuntu version."
+  echo
+  echo "You need Debian Jessie (recommended) or Wheezy."
+  echo
+  echo "Also Ubuntu (Trusty or Precise) should work fine,"
+  echo "although BOA developers use and test only Debian."
+  echo
+  echo "Bye"
+  echo
   clean_pid_exit
 }
 
@@ -233,7 +276,7 @@ mode_detection() {
     fi
     if [ "${_EASY_SETUP}" = "LOCAL" ]; then
       msg "INFO: Localhost Setup Mode Active"
-      _XTRAS_LIST="CHV"
+      _XTRAS_LIST="ADM"
       _AUTOPILOT=YES
       _DEBUG_MODE=NO
       _DB_SERVER=MariaDB
@@ -244,7 +287,7 @@ mode_detection() {
       _LOCAL_NETWORK_HN="aegir.local"
     elif [ "${_EASY_SETUP}" = "PUBLIC" ]; then
       msg "INFO: Public Setup Mode Active"
-      _XTRAS_LIST="CSF CHV FTP"
+      _XTRAS_LIST="ADM CSF FTP"
       _AUTOPILOT=YES
       _DEBUG_MODE=NO
       _DB_SERVER=MariaDB
@@ -368,13 +411,78 @@ EOF
   fi
 }
 
+virt_detection() {
+  _VIRT_TOOL=$(which virt-what 2> /dev/null)
+  if [ -x "${_VIRT_TOOL}" ]; then
+    _VIRT_TEST=$(virt-what 2> /dev/null)
+    _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
+    if [ ! -e "/root/.allow.any.virt.cnf" ]; then
+      if [ -e "/proc/self/status" ]; then
+        _VS_GUEST_TEST=$(grep -E "VxID:[[:space:]]*[0-9]{2,}$" /proc/self/status 2> /dev/null)
+        _VS_HOST_TEST=$(grep -E "VxID:[[:space:]]*0$" /proc/self/status 2> /dev/null)
+      fi
+      if [ ! -z "${_VS_HOST_TEST}" ] || [ ! -z "${_VS_GUEST_TEST}" ]; then
+        if [ -z "${_VS_HOST_TEST}" ] && [ ! -z "${_VS_GUEST_TEST}" ]; then
+          _VIRT_IS="Linux VServer guest"
+        else
+          if [ ! -z "${_VS_HOST_TEST}" ]; then
+            not_supported_virt "Linux VServer host"
+          else
+            not_supported_virt "unknown / not a virtual machine"
+          fi
+        fi
+      else
+        if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
+          not_supported_virt "unknown / not a virtual machine"
+        elif [[ "${_VIRT_TEST}" =~ "xen-dom0" ]]; then
+          not_supported_virt "Xen privileged domain"
+        elif [[ "${_VIRT_TEST}" =~ "linux_vserver-host" ]]; then
+          not_supported_virt "Linux VServer host"
+        else
+          if [[ "${_VIRT_TEST}" =~ "xen xen-hvm" ]]; then
+            _VIRT_TEST="xen-hvm"
+          elif [[ "${_VIRT_TEST}" =~ "xen xen-domU" ]]; then
+            _VIRT_TEST="xen-domU"
+          elif [[ "${_VIRT_TEST}" =~ "virtualbox kvm" ]]; then
+            _VIRT_TEST="virtualbox"
+          fi
+          case "${_VIRT_TEST}" in
+            hyperv)      _VIRT_IS="Microsoft Hyper-V" ;;
+            kvm)         _VIRT_IS="Linux KVM guest" ;;
+            parallels)   _VIRT_IS="Parallels guest" ;;
+            virtualbox)  _VIRT_IS="VirtualBox guest" ;;
+            vmware)      _VIRT_IS="VMware ESXi guest" ;;
+            xen-domU)    _VIRT_IS="Xen paravirtualized guest domain" ;;
+            xen-hvm)     _VIRT_IS="Xen guest fully virtualized (HVM)" ;;
+            xen)         _VIRT_IS="Xen guest" ;;
+            *)  not_supported_virt "${_VIRT_TEST}"
+            ;;
+          esac
+        fi
+      fi
+      if [ "${_AUTOPILOT}" = "NO" ]; then
+        echo
+      fi
+      msg "VIRT: This system is supported: ${_VIRT_IS}"
+    else
+      if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
+        _VIRT_TEST="unknown / not a virtual machine"
+      fi
+      if [ "${_AUTOPILOT}" = "NO" ]; then
+        echo
+      fi
+      msg "WARN: This system is not supported: ${_VIRT_TEST}"
+    fi
+  fi
+}
+
 os_detection() {
   _THIS_OS=$(lsb_release -si 2>&1)
   _THIS_RV=$(lsb_release -sc 2>&1)
   if [ "${_THIS_OS}" = "Ubuntu" ]; then
     if [ "${_THIS_RV}" = "trusty" ]; then
       _OSV="trusty"
-      _DB_SERIES=10.0
+      _DB_SERIES=10.1
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=NO
@@ -396,7 +504,7 @@ os_detection() {
   elif [ "${_THIS_OS}" = "Debian" ]; then
     if [ "${_THIS_RV}" = "jessie" ]; then
       _OSV="jessie"
-      _DB_SERIES=10.0
+      _DB_SERIES=10.1
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=YES
@@ -434,20 +542,23 @@ os_detection() {
 }
 
 check_boa_php_compatibility() {
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "5.6" ]] \
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.0" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "5.6" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "5.5" ]]; then
     _DO_NOTHING=YES
   else
-    msg "ERROR: This BOA version depends on PHP 5.6 or 5.5"
-    msg "Please add '5.6' or '5.5' to _PHP_MULTI_INSTALL"
+    msg "ERROR: This BOA version depends on PHP 5.5 or newer"
+    msg "Please add 5.6 or 7.0 to _PHP_MULTI_INSTALL"
     msg "in /root/.barracuda.cnf before trying again"
     msg "Bye"
     clean_pid_exit
   fi
-  if [ "${_PHP_FPM_VERSION}" = "7.0" ] \
-    || [ "${_PHP_CLI_VERSION}" = "7.0" ]; then
-    msg "ERROR: This BOA version depends on PHP 5.6 or 5.5"
-    msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to '5.6' or '5.5'"
+  if [ "${_PHP_FPM_VERSION}" = "5.3" ] \
+    || [ "${_PHP_CLI_VERSION}" = "5.3" ] \
+    || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
+    || [ "${_PHP_CLI_VERSION}" = "5.4" ]; then
+    msg "ERROR: This BOA version depends on PHP 5.5 or newer"
+    msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 5.6 or 7.0"
     msg "in /root/.barracuda.cnf before trying again"
     msg "Bye"
     clean_pid_exit
@@ -543,6 +654,22 @@ check_fix_avatars() {
   fi
 }
 
+check_fix_bin_extra() {
+  SDIR="${bldPth}/aegir/tools/bin"
+  SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
+  if [ ! -x "/usr/local/bin/fix-drupal-site-permissions.sh" ] \
+    || [ ! -e "/var/xdrago/log/fix-drupal-site-permissions-${_X_VERSION}.log" ]; then
+    if [ -e "${SDIR}/fix-drupal-site-permissions.sh" ]; then
+      for SCRIPT in ${SCRIPTS[@]}; do
+        cp -af ${SDIR}/${SCRIPT}.sh /usr/local/bin/
+        chown root:root /usr/local/bin/${SCRIPT}.sh
+        chmod 700 /usr/local/bin/${SCRIPT}.sh
+      done
+      touch /var/xdrago/log/fix-drupal-site-permissions-${_X_VERSION}.log
+    fi
+  fi
+}
+
 update_barracuda_log() {
   if [ -L "${mtrInc}/barracuda_log.txt" ]; then
     rm -f ${mtrInc}/barracuda_log.txt
@@ -566,7 +693,7 @@ update_barracuda_log() {
     | sed "s/[\,']//g" 2>&1)
   _BARRACUDA_VERSION_INFO="$(date 2>&1) / \
     $(lsb_release -si 2>&1).$(lsb_release -sc 2>&1) \
-    $(uname -m 2>&1) ${_VMFAMILY} / \
+    $(uname -m 2>&1) ${_VIRT_IS} / \
     Aegir ${_AEGIR_VERSION} / \
     Barracuda ${_X_VERSION}${_LOG_GIT_MIRROR} / \
     Nginx ${_NGINX_VRN} / \

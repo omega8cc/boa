@@ -1,4 +1,710 @@
 
+### Stable BOA-3.1.4 Release - Full Edition
+### Date: Tue Dec 20 14:09:21 PST 2016
+### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.4
+### Latest hotfix added on: Wed Dec 21 12:44:58 PST 2016
+
+# Release Notes:
+
+  This BOA release provides system security upgrades, many improvements
+  and bug fixes, latest Aegir version, plus all supported Drupal platforms
+  updated to latest versions, and supplied with latest Drupal 7 core,
+  if possible.
+
+@=> Magic permissions fix now happens on-the-fly
+
+  The most interesting new Aegir feature included in this release is probably
+  the ability to fix files permissions and ownership on any site and platform,
+  without waiting for the running daily magic fix. Now it happens on-the-fly,
+  when you run normal platform and site Verify tasks.
+
+@=> MariaDB 10.1 is now the new default version
+
+  If you are already running _DB_SERIES=10.0, this BOA release will upgrade it
+  to _DB_SERIES=10.1 -- but if you still run _DB_SERIES=5.5 it will continue
+  to use MariaDB 5.5 on your system.
+
+# New features and enhancements:
+
+  * Add Microsoft Hyper-V to supported virtualization systems
+  * Add support for ‘boa version’ command
+  * Add support for fix_ownership and fix_permissions on-the-fly
+  * Add support for latest 3.18.44-vs2.3.7.5-beng VS kernel
+  * Add support for latest 4.1.33-vs2.3.8.5.2-beng VS kernel
+  * Automatically whitelist CloudFlare and Sucuri IPs (faster version)
+  * Configure _INNODB_LOG_FILE_SIZE automatically
+  * MariaDB 10.1 support (new default version) -- #866
+  * Use Redis_CacheCompressed mode, if available (saves a ton of RAM)
+
+# Changes:
+
+  * Always update barracuda, boa and octopus wrappers, ignore _SKYNET_MODE=OFF
+  * Enable ARCHIVE Storage Engine in MariaDB 10.1
+  * Force _CUSTOM_CONFIG_SQL=NO on MariaDB major upgrade/reinstall
+  * Remove no longer supported textile module
+  * Run db OPTIMIZE only weekly, if configured
+  * Use MySQLTuner to configure SQL limits — enabled by default
+
+# System upgrades:
+
+  * CSF 9.28
+  * Drush micro-8-17-12-2016
+  * MariaDB 10.1.20
+  * MariaDB Galera Cluster 10.0.28
+  * Nginx 1.11.7
+  * OpenSSH 7.4p1 (if installed from sources)
+  * OpenSSL 1.0.2j (used only in Nginx)
+  * PHP 5.6.29
+  * PHP 7.0.14
+  * PHPRedis 3.1.0
+  * Redis 3.2.6
+  * Use mydropwizard-6.x-1.6
+  * Use Redis module mod-20-12-2016
+
+# Fixes:
+
+  * Allow to run downgrade to _DB_SERIES 5.5 (experimental, not recommended!)
+  * Always reinstall cURL from packages if broken
+  * AMP support -- #948
+  * Archive PHP logs in /var/backups/php-logs/
+  * Check if bind should be installed early enough
+  * Do not enable innodb-defragment — it may crash the server
+  * Fix for check_root_keys_pwd()
+  * Fix for disable_chattr()
+  * Fix for missing PHP config regression -- #1105
+  * Fix for VnStat sysconfdir
+  * Fix the check in detect_deprecated_php()
+  * Ignore search lines to avoid breaking pdnsd config -- #1069
+  * Improve SQL defaults
+  * Make sure innodb_buffer_pool_instances is always defined
+  * Migration between installation profiles -- #1076
+  * Monitor more lines when /root/.hr.monitor.cnf exists
+  * Multiply already high opcache.max_accelerated_files
+  * Nginx: Set Access-Control-Allow-Origin header only for static files
+  * Remove duplicate config updates and restarts
+  * Remove various tmp/dot files breaking du command
+  * Sync the new on-the-fly permissions magic with BOA daily.sh logic
+  * The .git/* files are downloadable -- #1091
+  * Triple check that all sql tables are upgraded
+  * Update JS module to 7.x-2.1 -- #586
+  * Update migrate docs to avoid issues with already migrated instances
+  * Use long enough wait times for big SQL servers restarts
+  * Use Open Atrium own patched Drupal core -- #1083
+
+
+### Stable BOA-3.1.3 Release - Barracuda Edition
+### Date: Mon Sep 12 17:54:50 PDT 2016
+### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.3
+
+# Release Notes:
+
+  This BOA release provides important security upgrades and bug fixes.
+  You should upgrade via 'barracuda up-stable system' immediately.
+  Note: Octopus upgrade is **not** included in this BOA release.
+
+  Technically, even by running normal system update with previous BOA release
+  you would apply all security upgrades, since they are provided by MariaDB
+  packages, and thus enforced no matter if we release new BOA version, or not,
+  so we are doing this purely to make sure that all users have been alerted
+  about the situation affecting their systems.
+
+# Changes:
+
+  * Move Nginx cache cleanup to daily cleanup procedure
+  * Use standard hourly schedule for self-update in clear.sh
+
+# System upgrades:
+
+  * Add all Tika versions from 1.1 to 1.13 in /opt/tika9/
+  * MariaDB 10.0.27 (critical security upgrade)
+  * MariaDB Galera Cluster 10.0.27 (critical security upgrade)
+  * MongoDB database driver 1.6.14 for all PHP versions < 7 -- fixes #981
+  * Pure-FTPd 1.0.43
+
+# Fixes:
+
+  * Check if curl works and re-install if needed before running auto-update
+  * Log LE renewal attempts
+  * Log out all users after lshell em upgrade
+  * Make sure that cURL is always listed in packages
+  * Move permissions fix overrides check to the correct place
+  * Nginx: default FastCGI cache levels value may exhaust all inodes -- #2791885
+
+# Known problems:
+
+  https://github.com/omega8cc/boa/milestones/3.1.x
+
+
+### Stable BOA-3.1.2 Release - Full Edition
+### Date: Sat Aug 20 14:43:43 PDT 2016
+### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.2
+### Latest hotfix added on: Thu Aug 25 09:17:59 PDT 2016
+
+# Release Notes:
+
+  This BOA release provides system security upgrades, improvements
+  and bug fixes, plus all supported Drupal platforms updated to latest
+  versions, and supplied with latest Drupal 7 core.
+
+@=> You can use NPM to install Grunt/Gulp/Bower -- #1028 by @pricejn2 (thanks!)
+
+  Now the same ~/static/control/compass.info file will activate not only
+  RVM, which can be used to install Compass Tools, but also NPM, which
+  can be used to install Grunt/Gulp/Bower.
+
+  You will need to re-initialize your account to have it added, by
+  deleting the control file, and adding it again after ~10 minutes.
+
+  More details: https://github.com/omega8cc/boa/blob/master/docs/RVM.txt
+
+@=> Redis integration works with Drupal 8 -- with no effort on your side
+
+  We have added a smart activation procedure, to meet the D8 Redis module
+  requirements. The system will add Redis integration to your Drupal 8
+  sites automatically, but will keep it inactive, until the module will be
+  installed properly, during nightly system autonomous maintenance.
+
+  This means that Redis will start working in every existing and newly
+  installed Drupal 8 site with some initial delay, to get things installed
+  in the correct order, and still without any effort on your side.
+
+# Other enhancements:
+
+  * Add mydropwizard to Drush extensions for Drush Make D6 support
+  * Add support for Drupal 8 specific development.services.yml file
+  * Allow to configure stable/head BOA auto-upgrades via _AUTO_VER variable
+  * Compatibility with Multi-byte UTF-8 support in Drupal 7
+
+# Changes:
+
+  * Add Adminer database manager and deprecate Chive manager -- #1036
+  * Enable Let's Encrypt LIVE mode via ~/static/control/ssl-live-mode.info
+  * Force /root/.use.curl.from.packages.cnf to install cURL from packages
+  * Run db sqlmagic auto conversion also on test/dev sites, if activated
+
+# System upgrades:
+
+  * CSF 9.11
+  * Drush micro-8-23-07-2016
+  * Lshell 0.9.18.8 (security update for shell escalation issues)
+  * MariaDB 10.0.26
+  * MariaDB 5.5.51
+  * Mysqltuner v1.6.15
+  * Nginx 1.11.3
+  * OpenSSH 7.3p1 (if installed from sources)
+  * PHP 5.5.38
+  * PHP 5.6.25
+  * PHP 7.0.10
+  * PHPRedis dev5-11-08-2016
+  * PHPRedis dev7-11-08-2016
+  * Redis 3.2.3
+  * Redis D8 integration mod-12-08-2016
+  * vnStat 1.15
+
+# Fixes:
+
+  * Avoid race conditions on web system user update
+  * Debian Jessie 8.3+ needs grub update -- fixes #912
+  * Detection of Amazon AWS / EC2 instance -- fixes #930
+  * Disable Redis integration until module is installed (D8 only)
+  * Do not force --default-character-set=utf8 -- see #1020
+  * Don’t set $MANPATH when npm support is enabled
+  * Fix for openssh-sftp-server status on Jessie
+  * FMG installation hangs on keyring install -- fixes #1050
+  * Force InnoDB in sqlmagic for Drupal 7+ -- see #1020
+  * Ignore ~/control/multi-fpm.info on too old Octopus (2.4) instances
+  * Linux Kernel CVE-2016-5696 mitigation
+  * Mitigate httpoxy vulnerability
+  * Nginx: Fix for not working autodiscover flood protection
+  * Nginx: Fix for the add_header inheritance
+  * Nginx: Improve fastcgi_cache_valid TTL settings
+  * Octopus auto-upgrade should set _AUTOPILOT=YES on the fly -- fixes #1041
+  * Remove deprecated MyISAM exceptions in sqlmagic command
+  * Run detect_cdorked_malware() only if /usr/sbin/nginx exists
+  * Run registry-rebuild directly after hostmaster upgrade
+  * Single _tmp_ dir is enough to require forced cleanup (Drush cache)
+  * Sync keyring install command with BOA standard -- #1052
+  * Sync modules auto en/dis for Drupal 8
+  * Update check_boa_php_compatibility()
+  * Upgrade to panels-7.x-3.7 (security) in all distros using the module
+  * Whitelist elFinder requests
+  * Workaround for aegir_backup_export_path
+
+# Known problems:
+
+  https://github.com/omega8cc/boa/milestones/3.1.x
+
+
+### Stable BOA-3.1.1 Release - Full Edition
+### Date: Wed Jun 22 12:24:17 PDT 2016
+### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.1
+### Latest hotfix added on: Fri Jun 24 06:01:07 PDT 2016
+
+# Release Notes:
+
+  This BOA release provides system security upgrades, improvements
+  and bug fixes, plus all supported Drupal platforms updated to latest
+  versions, and supplied with latest Drupal 7 core (security release).
+
+# New features and enhancements:
+
+  * Add _SSH_ARMOUR feature
+  * Add strict check for supported virtualization systems
+  * Allow to install ImageMagick from sources when _MAGICK_FROM_SOURCES=YES
+
+# Changes:
+
+  * Deprecate support for old Solr versions <4
+  * Switch cluster support to 3.x
+
+# System upgrades:
+
+  * Drush micro-8-15-06-2016
+  * MariaDB 5.5.50
+  * Nginx 1.11.1
+  * PHP 5.5.37
+  * PHP 5.6.23
+  * PHP 7.0.8
+  * Redis 3.2.1
+
+# Fixes:
+
+  * Add compatibility with magick src
+  * Add ToC (Table of Contents) for the Let’s Encrypt section in docs/SSL.txt
+  * Downgrade JSmin from 2.0.1 to 2.0.0 -- fixes #993
+  * Fix for legacy cluster support
+  * Fix for virtualbox detection -- see #972
+  * Fix permissions on sites directories
+  * Fix sites/all/drush permissions compatibility with Drush 8.2
+  * Improve protection for custom solrconfig.xml and schema.xml -- fixes #969
+  * Migration: xboa supports only Aegir 2.x -- #960
+  * Reinstall default-jre on major OS upgrade, if needed -- fixes #986
+  * Remote Drush support regression -- fixes #984
+  * The ~/static/control/README.txt is not updated on octopus upgrade #965
+  * Update docs/SOLR.txt to match currently supported procedures -- fixes #963
+  * Use st_runner() wrapper only for apt-get/aptitude
+
+# Known problems:
+
+  https://github.com/omega8cc/boa/milestones/3.1.x
+
+
+### Stable BOA-3.1.0 Release - Full Edition
+### Date: Thu May 26 16:41:40 PDT 2016
+### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.0
+### Latest hotfix added on: Mon May 30 08:55:03 PDT 2016
+
+  @=> Includes Aegir Hostmaster 3.x-head with improvements
+  @=> Includes Aegir Provision 3.x-head with improvements
+  @=> Includes Drush 8 customized for BOA
+
+# Release Notes:
+
+  This BOA release includes new features, system upgrades, improvements
+  and bug fixes, with most notable features and changes listed below.
+  All supported Drupal platforms have been updated to latest versions.
+
+  @=> Let’s Encrypt free SSL certificates are supported directly in Aegir
+  @=> PHP-FPM version can be switched per site hosted on the same instance
+  @=> Both Aegir control panel and its backend are compatible with PHP 7.0.7
+  @=> Support for forced Drush cache clear in the Aegir backend
+  @=> BOA can run Debian Wheezy to Debian Jessie upgrades easily
+
+  More details on new features, enhancements and changes can be found below.
+
+
+  ###
+#-### Let’s Encrypt free SSL certificates are supported directly in Aegir
+  ###
+
+  You can find these important Let’s Encrypt topics discussed below:
+
+  # Introduction
+  # How it works?
+  # How to add Letsencrypt.org SSL certificate to hosted site?
+  # How to add Letsencrypt.org SSL certificate to the Aegir Hostmaster site?
+  # How to modify/renew Letsencrypt.org SSL certificate for SSL enabled site?
+  # Are there any requirements, limitations or exceptions?
+  # How to enable live mode?
+  # How to replace Let's Encrypt certificate with custom certificate?
+
+    [ Available also at: https://omega8.cc/node/381 ]
+
+  This BOA release opens a new era in SSL support for all hosted Drupal sites.
+  The old method of creating SSL proxy vhosts is officially deprecated,
+  as explained in the docs/SSL.txt how-to:
+
+  NOTE ###===>>>
+
+  The old how-to is still useful if you prefer to use SSL termination separated
+  from your Aegir system, or if you don't want to use built-in Letsencrypt.org
+  SSL certificates support (available since BOA-3.1.0).
+
+  But if you can use Letsencrypt.org SSL certificates, or you are willing to use
+  also built-in BOA feature which allows you to replace Letsencrypt.org SSL
+  certificate with any third-party certificate per site, while still managing SSL
+  via Aegir control panel (for redirects, forced/required SSL mode), we highly
+  recommend to use Aegir built-in SSL support, which is enabled and ready to use
+  in all Octopus instances since BOA-3.1.0 release.
+
+  NOTE ###===>>>
+
+  * How it works?
+
+    BOA leverages letsencrypt.sh utility to talk to Letsencrypt.org servers,
+    and on the Aegir side it's using new `hosting_le` extension, which replaces
+    self-signed SSL certificates generated by Aegir with Let's Encrypt ones.
+    You can find more information on both at these URLs:
+
+      https://github.com/lukas2511/letsencrypt.sh
+      https://github.com/omega8cc/hosting_le
+
+  * How to add Letsencrypt.org SSL certificate to hosted site?
+
+    In your Aegir control panel please go to the site's node Edit tab, then
+    under `SSL Settings > Encryption` choose either `Enabled` or `Required`,
+    if you want to enable HTTP->HTTPS redirection on the fly. Now click `Save`
+    and wait until you will see the Verify task completed. Done!
+
+    NOTE: SSL Settings are not available in the Add Site form, only in Edit.
+
+  * How to add Letsencrypt.org SSL certificate to the Aegir Hostmaster site?
+
+    !!! WARNING
+    !!! ###===>>> Don't enable SSL option for the Hostmaster site in Aegir
+    !!! WARNING
+
+    Let’s Encrypt SSL for Aegir control panel is handled in BOA outside of
+    the control panel, and you should never enable it within control panel.
+
+    During octopus upgrade you will see this message, explaining what to do:
+
+      BOA [02:44:59] ==> UPGRADE B: Letsencrypt SSL initial mode: DEMO
+      BOA [02:44:59] ==> UPGRADE B: LE -- No real SSL certs will be generated
+      BOA [02:44:59] ==> UPGRADE B: LE -- To enable live SSL mode, please delete file:
+      BOA [02:44:59] ==> UPGRADE B: LE -- /data/disk/o1/tools/le/.ctrl/ssl-demo-mode.pid
+      BOA [02:44:59] ==> UPGRADE B: LE -- Then run octopus forced upgrade
+
+  * How to modify/renew Letsencrypt.org SSL certificate for SSL enabled site?
+
+    When you modify aliases or redirections, Aegir will re-create the SSL
+    certificate on the fly, to match current settings and aliases to list.
+
+    BOA runs auto-renewal checks for you weekly, and forces renewal if there is
+    less than 30 days to the certificate expiration date (Let’s Encrypt certs
+    are valid for up to 90 days before they have to be renewed).
+
+    Also every Verify task against SSL enabled site runs this check on the fly.
+
+  * Are there any requirements, limitations or exceptions?
+
+    Yes, there are some:
+
+    * All aliases must have valid DNS names pointing to your server IP address
+    * Even with aliases redirection enabled all aliases are listed as SAN names
+    * Avoid renaming SSL-enabled sites; move aliases between site's clones instead
+    * Before you rename a site, disable SSL first; then re-enable once it's renamed
+
+    NOTE: The Subject Alternative Names (SAN) is a feature which allows to issue
+    multi-domain / multi-subdomain SSL certificates -- it is automated in BOA.
+
+    Let's Encrypt API for live, real certificates has its own requirements
+    and limits you should be aware of. Please visit their website for details:
+
+      https://letsencrypt.org/docs/rate-limits/
+
+    To make this new BOA feature easy to test before you will be ready to
+    generate real, live SSL certificates, BOA comes with Let's Encrypt demo
+    mode enabled by default, so it will not hit limits enforced for live,
+    real Let's Encrypt SSL certificates. It allows to generate "fake" certs,
+    similar to self-signed certificate used in BOA by default.
+
+    NOTE: All sites with one or more keywords (listed below) in the site's
+    main name (this exception rule doesn't apply to aliases) will be ignored,
+    and they will receive only self-signed SSL certificates generated by Aegir,
+    once you will switch their SSL settings to `Enabled` or `Required`.
+
+      `.(dev|devel|temp|tmp|temporary|test|testing|stage|staging).`
+
+    Examples: `foo.temp.bar.org`, `foo.test.bar.org`, `foo.dev.bar.org`
+
+    NOTE: This exception rule doesn't apply to aliases which are not used
+    as a redirection target. Even aliases with listed special keywords in their
+    names will be listed as SAN entries, as long as they are valid DNS names.
+
+  * How to enable live mode?
+
+    It is enough to delete the `[aegir_root]/tools/le/.ctrl/ssl-demo-mode.pid`
+    control file and run Verify task on any SSL enabled site again.
+
+    NOTE: If you are on hosted BOA, you don't have an access to this location
+    on your system, so please open a ticket at: https://omega8.cc/support
+
+    You could switch it back and forth to demo/live mode by adding and deleting
+    the control file, and it will re-register your system via Let's Encrypt API,
+    but we have not tested how it may affect already generated live certificates
+    once you will run the switch many times, so please try not to abuse
+    this feature.
+
+    It is important to remember that once you will switch the Let's Encrypt mode
+    to demo from live, or from live to demo, by adding or removing the
+    `[aegir_root]/tools/le/.ctrl/ssl-demo-mode.pid` control file, it will not
+    replace all previously issued certificates instantly, because certificates
+    are updated, if needed, only when you (or the BOA system for you during its
+    daily maintenance, if used) will run Verify tasks on SSL enabled sites.
+
+    These BOA specific Verify tasks are normally scheduled to run weekly,
+    between Monday and Sunday, depending on the first character in the site's
+    main name, so both live and demo certificates may still work in parallel
+    for SSL enabled sites until it will be their turn to run Verify and update
+    the certificate according to currently set Let's Encrypt mode.
+
+    NOTE: You may find some helpful details in the Verify task log -- look for
+    lines with `[hosting_le]` prefix.
+
+  * How to replace Let's Encrypt certificate with custom certificate?
+
+    1. Create an empty control file (replace `example.com` with your site name):
+
+       `[aegir_root]/tools/le/.ctrl/dont-overwrite-example.com.pid`
+
+    2. Replace `privkey.pem` symlink with single file containing your custom
+       certificate key -- use `privkey.pem` as a filename in the directory:
+
+       `[aegir_root]/tools/le/certs/example.com/`
+
+    3. Replace `fullchain.pem` symlink with single file containing your custom
+       certificate and all intermediate certificates beneath it -- use
+       `fullchain.pem` as a filename in the same directory:
+
+       `[aegir_root]/tools/le/certs/example.com/`
+
+    4. Run Verify task for your site in the Aegir control panel. Done!
+
+    NOTE: If you are on hosted BOA, you don't have an access to this location
+    on your system, so please open a ticket at: https://omega8.cc/support
+
+
+  ###
+#-### Support for PHP-FPM version switch per Octopus instance (also per site)
+  ###
+
+  ### ~/static/control/fpm.info
+  ###
+  ### This file, if exists and contains supported and installed PHP-FPM version,
+  ### will be used by running every 2-3 minutes system agent to switch PHP-FPM
+  ### version used for serving web requests by this Octopus instance.
+  ###
+  ### IMPORTANT: If used, it will switch PHP-FPM for all Drupal sites
+  ### hosted on the instance, unless multi-fpm.info control file also exists.
+  ###
+  ### Supported values for single PHP-FPM mode which can be written in this file:
+  ###
+  ### 7.0
+  ### 5.6
+  ### 5.5
+  ### 5.4
+  ### 5.3
+  ###
+  ### NOTE: There must be only one line and one value (like: 7.0) in this file.
+  ### Otherwise it will be ignored.
+  ###
+  ### It is now possible to make all installed PHP-FPM versions available
+  ### simultaneously for sites on the Octopus instance with additional
+  ### control file:
+  ###
+  ### ~/static/control/multi-fpm.info
+  ###
+  ### This file, if exists, will switch all hosted sites to highest
+  ### available PHP-FPM version within the 5.3-5.6 range, with ability
+  ### to override PHP-FPM version per site, if the site's name is listed
+  ### in this additional control file, as shown below:
+  ###
+  ### foo.com 7.0
+  ### bar.com 5.5
+  ### old.com 5.3
+  ###
+  ### NOTE: Each line in the multi-fpm.info file must start with main site name,
+  ### followed by single space, and then the PHP-FPM version to use.
+  ###
+
+
+  ###
+#-### Support for PHP-CLI version switch per Octopus instance (all sites)
+  ###
+
+  ### ~/static/control/cli.info
+  ###
+  ### This file, while similar to fpm.info, if exists and contains supported
+  ### and installed PHP version, will be used by running every 2-3 minutes
+  ### system agent to switch PHP-CLI version for this Octopus instance, but
+  ### it will do this for all hosted sites. There is no option to switch this
+  ### or override per site hosted.
+  ###
+  ### NOTE: While current Aegir version 3.x included in BOA works fine with
+  ### latest PHP 7.0, many hosted sites, especially using Pressflow 6 core or
+  ### older Drupal 7 core without required patch we have included since 7.43.2,
+  ### will not work properly and Aegir tasks run against those sites may fail,
+  ### so it's recommended to use PHP-CLI 5.6, unless you have verified that all
+  ### sites on the instance support PHP 7.0 without issues.
+  ###
+  ### Supported values which can be written in this file:
+  ###
+  ### 7.0
+  ### 5.6
+  ### 5.5
+  ### 5.4
+  ### 5.3
+  ###
+  ### There must be only one line and one value (like: 5.6) in this control file.
+  ### Otherwise it will be ignored.
+  ###
+
+
+  ###
+#-### Support for forced Drush cache clear in the Aegir backend
+  ###
+
+  ### ~/static/control/clear-drush-cache.info
+  ###
+  ### Octopus instance will pause all scheduled tasks in its queue, if it will
+  ### detect a platform build from the makefile in progress, to make sure
+  ### that no other running task could break the build.
+  ###
+  ### This is great, until there will be a broken build, and Drush will fail
+  ### to clean up all leftovers from its .tmp/cache directory, which in turn
+  ### will pause all tasks in the queue for up to 24-48 hours, until the cache
+  ### directory will be automatically purged by running daily cleanup tasks,
+  ### designed to not touch anything not old enough (24 hours at minimum)
+  ### to not break any running builds.
+  ###
+  ### If you need to unlock the tasks queue by forcefully removing everything
+  ### from the Aegir backend Drush cache, you can create an empty control file:
+  ### ~/static/control/clear-drush-cache.info
+  ###
+
+
+  ###
+#-### BOA can run Debian Wheezy to Debian Jessie upgrades easily
+  ###
+
+  This feature works like it worked before for `_LENNY_TO_SQUEEZE=YES` and then
+  for `_SQUEEZE_TO_WHEEZY=YES`. But make sure you follow all the steps exactly
+  as listed below:
+
+  1. Upgrade both barracuda and octopus to current stable:
+
+    $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+    $ barracuda up-stable
+    $ octopus up-stable all both
+
+    NOTE: You can upgrade octopus selectively, if you still need one running
+    the old stable BOA-2.4.9 version, example:
+
+    $ octopus up-2.4 o1 force
+    $ octopus up-stable o2 force
+    $ octopus up-stable o3 force
+
+  2. Add to your /root/.barracuda.cnf this line:
+
+    _WHEEZY_TO_JESSIE=YES
+
+  3. Run another barracuda upgrade with command:
+
+    $ barracuda up-stable
+
+  4. If there are no errors reported, try to run manual update:
+
+    $ aptitude update
+    $ aptitude full-upgrade
+
+    It should tell you that there are no packages to upgrade left.
+
+  5. Reboot your system (preferably via remote console)
+
+    $ reboot
+
+  6. Run barracuda upgrade again:
+
+    $ barracuda up-stable
+
+  7. Try to run manual update:
+
+    $ aptitude update
+    $ aptitude full-upgrade
+
+    It should tell you that there are no packages to upgrade left.
+
+  8. Congrats! You are running BOA stable on Debian Jessie.
+
+
+# New features and enhancements:
+
+  * Add all aliases as Subject Alternative Names in Let's encrypt certs -- #941
+  * Add auto-renewal procedure for Let's encrypt certs -- #942
+  * Add option to exclude *.tar.gz Drush archives in backboa -- #936
+  * Add Restaurant 1.11
+  * Add support for arbitrarily selected redirection targets as valid SSL names
+  * Allow to define PHP-FPM version per site hosted -- #935
+  * Allow to use drush7 and drush8 on command line directly
+  * Even with redirection enabled all aliases are listed as SAN names -- #964
+  * Feature: _WHEEZY_TO_JESSIE major upgrade procedure -- #870
+  * Let's encrypt support -- #500
+  * New Relic integration compatibility with multi-FPM mode
+  * Support for forced Drush cache clear in the Aegir backend
+  * Use Let's encrypt for Hostmaster site (after Octopus upgrade) -- #940
+
+# Changes:
+
+  * Do not allow XtraDB to crash the server due to single broken cache table
+  * Nginx: Use faster 301/302 redirects
+  * Nginx: Use only TLSv1.1 TLSv1.2
+  * Redis: Exclude cache_form bin again to avoid rare issues with contrib
+  * Use dynamic httpredir.debian.org mirrors
+
+# System upgrades:
+
+  * cURL 7.49.0 (if installed from sources)
+  * Jetty 9.2.16.v20160414
+  * Nginx 1.11.0
+  * PHP 5.5.36
+  * PHP 5.6.22
+  * PHP 7.0.7
+  * Redis 3.2.0
+  * SLF4J 1.7.21
+
+# Fixes:
+
+  * Add compatibility with "config.sh" renamed to "config" in letsencrypt.sh
+  * Add ssl_trusted_certificate directive required by ssl_stapling
+  * Add warning: "Don't enable SSL option for the Hostmaster site in Aegir" -- #962
+  * Check if parent dir exists before touching ctrl file -- #945
+  * Do not clear drush cache on every hosting-dispatch -- #943
+  * Do not create Letsencrypt cert for Hostmaster if still in demo mode
+  * Do not force PHP rebuild on new cURL install from sources
+  * Drush is broken error -- clear drush cache before testing it -- #946
+  * Fix for backward compatibility with FPM pool tpl in 2.4
+  * Fix for Chive auth (via SSH) access filtering
+  * Fix for conflicting Jetty libs
+  * Fix ownership and attr on usr home dirs / subdirs
+  * Improve sub-accounts zombie cleanup
+  * Let's Encrypt SSL - switching from demo to live -- #959
+  * Make backboa sub-tasks delays optional and disable them by default -- #919
+  * Nginx: Fix for ssl_dhparam if/else logic
+  * Remove deprecated wildcard HTTPS warning
+  * Run registry-rebuild before updatedb with --no-cache-clear -- #938
+  * Set LE mode to DEMO on initial setup -- both on octopus install and upgrade
+  * Skynet upgrades for limited shell configuration -- #950
+  * Something is stuck after BOA upgrade to 3.0.2 -- #951
+  * The makefile based platform creation fails with permissions error -- #943
+  * The site's files should have Aegir backend user as an owner
+  * Use strict paths checks to avoid running chown/chmod on parent dirs
+
+# Known problems:
+
+  https://github.com/omega8cc/boa/milestones/3.1.x
+
+
 ### Stable BOA-3.0.2 Release - Full Edition
 ### Date: Tue May  3 22:26:09 PDT 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.0.2
@@ -79,7 +785,7 @@
 
 # Known problems:
 
-  https://github.com/omega8cc/boa/milestones/3.0.3
+  https://github.com/omega8cc/boa/milestones/3.1.1
 
 
 ### Stable BOA-3.0.1 Release - Full Edition
