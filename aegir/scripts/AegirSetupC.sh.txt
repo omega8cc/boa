@@ -649,6 +649,7 @@ _F_OPENOUTREACH="OpenOutreach ${_OPENOUTREACH} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENPUBLIC="OpenPublic ${_OPENPUBLIC} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENPUBLISH="OpenPublish 3.0-b7 ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENSCHOLAR="OpenScholar ${_OPENSCHOLAR} ${_SMALLCORE7} [${_THIS_CORE}]"
+_F_OPIGNOLMS="Opigno LMS ${_OPIGNOLMS} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_PANOPOLY="Panopoly ${_PANOPOLY} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_RECRUITER="Recruiter ${_RECRUITER} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_RESTAURANT="Restaurant ${_RESTAURANT} ${_SMALLCORE7} [${_THIS_CORE}]"
@@ -1672,7 +1673,6 @@ openlucius_install() {
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
               upgrade_contrib_less
-              cd ${_SHRD_PRPATH}
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
@@ -1833,6 +1833,53 @@ openscholar_install() {
           _RUN_VERIFY=YES
         else
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENSCHOLAR ${noT}"
+        fi
+      fi
+    fi
+  fi
+}
+
+
+opigno_lms_install() {
+###---### Opigno LMS
+#
+  _REAL_PRNAME="opigno_lms"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPIGNOLMS}-${_SMALLCORE7}"
+  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
+  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
+  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
+  if [ "${_ALLOW_ALL}" = "YES" ]; then
+    if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+      || [[ "${_PLATFORMS_LIST}" =~ "OOH" ]]; then
+      if [ ! -d "${_OCTO_PLPATH}" ]; then
+        if prompt_yes_no "$_F_OPIGNOLMS - http://opigno.org" ; then
+          true
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPIGNOLMS ${yOk}"
+          if [ ! -d "${_SHRD_PLPATH}" ]; then
+            cd ${_CORE}
+            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+              && [ "${_T_BUILD}" = "HEAD" ]; then
+              if [ ! -e "${_D7_CORE_DIR}" ]; then
+                prepare_drupal7_core
+              fi
+              curl ${crlGet} \
+                "${urlDrp}/${_REAL_PRNAME}-7.x-${_OPIGNOLMS}-core.tar.gz" \
+                | tar -xzf -
+              if [ -d "${_CORE}/${_REAL_PRNAME}-7.x-${_OPIGNOLMS}" ]; then
+                mv ${_REAL_PRNAME}-7.x-${_OPIGNOLMS} ${_SHRD_PLNAME}
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+              upgrade_contrib_less
+            else
+              get_distro_ext "${_SHRD_PLNAME}.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_OPIGNOLMS installed"
+          _RUN_VERIFY=YES
+        else
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPIGNOLMS ${noT}"
         fi
       fi
     fi
@@ -2416,6 +2463,12 @@ save_verify_platforms() {
     if [ ! -e "${pthDst}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPENSCHOLAR" openscholar \
         ${pthDst}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7} &> /dev/null
+    fi
+  fi
+  if [ -d "${pthDst}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}" ]; then
+    if [ ! -e "${pthDst}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "$_F_OPIGNOLMS" opigno_lms \
+        ${pthDst}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/panopoly-${_PANOPOLY}-${_SMALLCORE7}" ]; then

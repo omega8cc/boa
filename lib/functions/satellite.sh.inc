@@ -3073,6 +3073,13 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
+    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}/sites" ]; then
+      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}" ]; then
+        _A="${_QR}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}/sites"
+        _B="${_QH}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}"
+        ln -sf ${_A} ${_B}
+      fi
+    fi
     if [ -d "${_QR}/panopoly-${_PANOPOLY}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/panopoly-${_PANOPOLY}-${_SMALLCORE7}" ]; then
         _A="${_QR}/panopoly-${_PANOPOLY}-${_SMALLCORE7}/sites"
@@ -3404,6 +3411,7 @@ satellite_make() {
   echo "_OPENPUBLIC=\"${_OPENPUBLIC}\""               >> ${writeTo}
   echo "_OPENPUBLISH=\"${_OPENPUBLISH}\""             >> ${writeTo}
   echo "_OPENSCHOLAR=\"${_OPENSCHOLAR}\""             >> ${writeTo}
+  echo "_OPIGNOLMS=\"${_OPIGNOLMS}\""                 >> ${writeTo}
   echo "_OSV=\"${_OSV}\""                             >> ${writeTo}
   echo "_PANOPOLY=\"${_PANOPOLY}\""                   >> ${writeTo}
   echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${writeTo}
