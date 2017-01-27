@@ -547,9 +547,9 @@ upgrade_contrib_less() {
   if [ -e "${_SHRD_PRPATH}/modules/contrib/panels" ]; then
     rm -rf ${_SHRD_PRPATH}/modules/contrib/panels
     cd ${_SHRD_PRPATH}/modules/contrib
-    get_dev_contrib "panels-7.x-3.7.tar.gz"
+    get_dev_contrib "panels-7.x-3.8.tar.gz"
     if [ ! -e "${_SHRD_PRPATH}/modules/contrib/panels" ]; then
-      get_dev_contrib "panels-7.x-3.7.tar.gz"
+      get_dev_contrib "panels-7.x-3.8.tar.gz"
     fi
     cd ${_CORE}
   fi
