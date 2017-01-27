@@ -2704,7 +2704,9 @@ process() {
               check_update_le_ssl
               ;;
             esac
-            fix_boost_cache
+            if [ "${_CLEAR_BOOST}" = "YES" ]; then
+              fix_boost_cache
+            fi
             fix_site_control_files
             fix_user_register_protection
           fi
@@ -3258,6 +3260,9 @@ else
   fi
   if [ -z "${_MODULES_FIX}" ]; then
     _MODULES_FIX=YES
+  fi
+  if [ -z "${_CLEAR_BOOST}" ]; then
+    _CLEAR_BOOST=YES
   fi
   if [ -e "/data/all" ]; then
     find /data/all -type f -name "*.info" -print0 | xargs -0 sed -i \
