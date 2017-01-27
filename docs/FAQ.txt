@@ -45,7 +45,7 @@ A: Theoretically yes, but Drush should never be available for web requests,
    with contrib or custom modules and never attempt to call Drush from PHP-FPM.
 
 
-Q: How to increase PHP-FPM memory_limit after BOA-2.2.0 upgrade?
+Q: How to increase PHP-FPM memory_limit?
 
 A: While limits are still auto-configured, depending on available RAM and CPU
    cores and written in the respective PHP ini files, the only place to modify
@@ -63,7 +63,7 @@ A: While limits are still auto-configured, depending on available RAM and CPU
      php_admin_value[default_socket_timeout] = 180
 
    NOTE: You can modify this file, but your changes will be overwritten
-         during barracuda upgrade.
+         on every barracuda upgrade.
 
 Q: Why `drush4` command no longer works?
 
