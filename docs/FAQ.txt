@@ -56,8 +56,15 @@ A: While limits are still auto-configured, depending on available RAM and CPU
    `service php53-fpm reload`, `service php55-fpm reload`, etc.
    Check also: https://drupal.org/comment/8689745#comment-8689745
 
+   The same applies to some other hardcoded/enforced limits:
+
+     php_admin_value[max_execution_time] = 180
+     php_admin_value[max_input_time] = 180
+     php_admin_value[default_socket_timeout] = 180
+
+   NOTE: You can modify this file, but your changes will be overwritten
+         during barracuda upgrade.
 
 Q: Why `drush4` command no longer works?
 
 A: Please read: https://drupal.org/comment/8691511#comment-8691511
-
