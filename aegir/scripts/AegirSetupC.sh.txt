@@ -644,6 +644,7 @@ _F_OPENBLOG="OpenBlog 1.0-v3 ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENCHURCH1="OpenChurch 1.17-b2 ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENCHURCH2="OpenChurch ${_OPENCHURCH2} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENDEALS="OpenDeals ${_OPENDEALS} ${_SMALLCORE7} [${_THIS_CORE}]"
+_F_OPENLUCIUS="OpenLucius ${_OPENLUCIUS} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENOUTREACH="OpenOutreach ${_OPENOUTREACH} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENPUBLIC="OpenPublic ${_OPENPUBLIC} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENPUBLISH="OpenPublish 3.0-b7 ${_SMALLCORE7} [${_THIS_CORE}]"
@@ -1640,6 +1641,54 @@ opendeals_install() {
 }
 
 
+openlucius_install() {
+###---### OpenLucius
+#
+  _REAL_PRNAME="openlucius"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENLUCIUS}-${_SMALLCORE7}"
+  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
+  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
+  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
+  if [ "${_ALLOW_ALL}" = "YES" ]; then
+    if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+      || [[ "${_PLATFORMS_LIST}" =~ "OLS" ]]; then
+      if [ ! -d "${_OCTO_PLPATH}" ]; then
+        if prompt_yes_no "$_F_OPENLUCIUS - http://openlucius.com" ; then
+          true
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENLUCIUS ${yOk}"
+          if [ ! -d "${_SHRD_PLPATH}" ]; then
+            cd ${_CORE}
+            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+              && [ "${_T_BUILD}" = "HEAD" ]; then
+              if [ ! -e "${_D7_CORE_DIR}" ]; then
+                prepare_drupal7_core
+              fi
+              curl ${crlGet} \
+                "${urlDrp}/${_REAL_PRNAME}-7.x-${_OPENLUCIUS}-core.tar.gz" \
+                | tar -xzf -
+              if [ -d "${_CORE}/${_REAL_PRNAME}-7.x-${_OPENLUCIUS}" ]; then
+                mv ${_REAL_PRNAME}-7.x-${_OPENLUCIUS} ${_SHRD_PLNAME}
+              fi
+              nocore_d7_dist_clean
+              remove_default_core_seven_profiles
+              upgrade_contrib_less
+              cd ${_SHRD_PRPATH}
+            else
+              get_distro_ext "${_SHRD_PLNAME}.tar.gz"
+            fi
+          fi
+          init_this_distro_root
+          msg "DISTRO: $_F_OPENLUCIUS installed"
+          _RUN_VERIFY=YES
+        else
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENLUCIUS ${noT}"
+        fi
+      fi
+    fi
+  fi
+}
+
+
 openoutreach_install() {
 ###---### OpenOutreach
 #
@@ -2339,6 +2388,12 @@ save_verify_platforms() {
         opendeals ${pthDst}/opendeals-${_OPENDEALS}-${_SMALLCORE7} &> /dev/null
     fi
   fi
+  if [ -d "${pthDst}/openlucius-${_OPENLUCIUS}-${_SMALLCORE7}" ]; then
+    if [ ! -e "${pthDst}/openlucius-${_OPENLUCIUS}-${_SMALLCORE7}/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "$_F_OPENLUCIUS" openlucius \
+        ${pthDst}/openlucius-${_OPENLUCIUS}-${_SMALLCORE7} &> /dev/null
+    fi
+  fi
   if [ -d "${pthDst}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7}" ]; then
     if [ ! -e "${pthDst}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPENOUTREACH" openoutreach \
@@ -2469,6 +2524,7 @@ openatrium7_install
 _USE_DISTRO_CORE=NO
 
 openchurch2_install
+openlucius_install
 openoutreach_install
 openpublic_install
 

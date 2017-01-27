@@ -155,6 +155,7 @@
 ### OA7 ----------- OpenAtrium D7
 ### OAD ----------- OpenAid
 ### CH2 ----------- OpenChurch 2
+### OLS ----------- OpenLucius
 ### OOH ----------- OpenOutreach
 ### OPC ----------- OpenPublic
 ### OSR ----------- OpenScholar

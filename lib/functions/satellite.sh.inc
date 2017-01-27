@@ -3038,6 +3038,13 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
+    if [ -d "${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE7}/sites" ]; then
+      if [ ! -L "${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE7}" ]; then
+        _A="${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE7}/sites"
+        _B="${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE7}"
+        ln -sf ${_A} ${_B}
+      fi
+    fi
     if [ -d "${_QR}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7}" ]; then
         _A="${_QR}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7}/sites"
@@ -3392,6 +3399,7 @@ satellite_make() {
   echo "_OPENCHURCH1=\"${_OPENCHURCH1}\""             >> ${writeTo}
   echo "_OPENCHURCH2=\"${_OPENCHURCH2}\""             >> ${writeTo}
   echo "_OPENDEALS=\"${_OPENDEALS}\""                 >> ${writeTo}
+  echo "_OPENLUCIUS=\"${_OPENLUCIUS}\""               >> ${writeTo}
   echo "_OPENOUTREACH=\"${_OPENOUTREACH}\""           >> ${writeTo}
   echo "_OPENPUBLIC=\"${_OPENPUBLIC}\""               >> ${writeTo}
   echo "_OPENPUBLISH=\"${_OPENPUBLISH}\""             >> ${writeTo}
