@@ -374,9 +374,6 @@ count() {
         | sed "s/[\,']//g" 2>&1)
       detect_vanilla_core
       fix_clear_cache
-      if [ "${_CLEAR_BOOST}" = "WEEKLY" ]; then
-        fix_boost_cache
-      fi
       #echo Dir is ${Dir}
       if [ -e "${Dir}/drushrc.php" ] \
         && [ -e "${Dir}/files" ] \

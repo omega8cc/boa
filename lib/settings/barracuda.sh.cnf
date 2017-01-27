@@ -735,19 +735,14 @@ _MODULES_SKIP=""
 ###
 ### Control if and how often the boost caches
 ### are clear. By default they are cleared
-### daily.
+### daily. Change to NO if you prefer to 
+### never clear the boost cache files.
 ###
-### Supported options:
-###
-### _CLEAR_BOOST="DAILY"
-### _CLEAR_BOOST="WEEKLY"
-### _CLEAR_BOOST="NEVER"
-###
-### If you choose NEVER make sure that boost cron
+### If you choose NO make sure that boost cron
 ### and/or expire module are removing the boost
 ### caches when needed.
 ###
-_CLEAR_BOOST="DAILY"
+_CLEAR_BOOST="YES"
 
 
 ###

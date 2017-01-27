@@ -360,21 +360,6 @@ enable_modules() {
   done
 }
 
-fix_boost_cache() {
-  if [ -e "${Plr}/cache" ]; then
-    rm -rf ${Plr}/cache/*
-    rm -f ${Plr}/cache/{.boost,.htaccess}
-  else
-    if [ -e "${Plr}/sites/all/drush/drushrc.php" ]; then
-      mkdir -p ${Plr}/cache
-    fi
-  fi
-  if [ -e "${Plr}/cache" ]; then
-    chown ${_HM_U}:www-data ${Plr}/cache &> /dev/null
-    chmod 02775 ${Plr}/cache &> /dev/null
-  fi
-}
-
 fix_user_register_protection() {
 
   if [ -e "${User}/static/control/enable_user_register_protection.info" ] \
@@ -2719,7 +2704,7 @@ process() {
               check_update_le_ssl
               ;;
             esac
-            if [ "${_CLEAR_BOOST}" = "DAILY" ]; then
+            if [ "${_CLEAR_BOOST}" = "YES" ]; then
               fix_boost_cache
             fi
             fix_site_control_files
@@ -3277,7 +3262,7 @@ else
     _MODULES_FIX=YES
   fi
   if [ -z "${_CLEAR_BOOST}" ]; then
-    _CLEAR_BOOST=DAILY
+    _CLEAR_BOOST=YES
   fi
   if [ -e "/data/all" ]; then
     find /data/all -type f -name "*.info" -print0 | xargs -0 sed -i \
