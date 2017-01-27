@@ -2602,16 +2602,22 @@ strict_bin_permissions() {
   _PROTECTED_ITEMS="backboa \
                     barracuda \
                     boa \
+                    clamconf \
+                    clamd \
+                    clamdscan \
+                    clamscan \
                     fix-drupal-platform-ownership.sh \
                     fix-drupal-platform-permissions.sh \
                     fix-drupal-site-ownership.sh \
                     fix-drupal-site-permissions.sh \
+                    freshclam \
                     named \
                     octopus \
                     redis-benchmark \
                     redis-check-aof \
                     redis-check-dump \
                     redis-cli \
+                    rkhunter \
                     sftp-admin \
                     sftp-kill \
                     sftp-state \
@@ -3763,6 +3769,7 @@ sys_packages_install() {
               bison \
               build-essential \
               catdoc \
+              clamav \
               cron \
               curl \
               cvs \
@@ -3845,6 +3852,7 @@ sys_packages_install() {
               python-dev \
               python-software-properties \
               re2c \
+              rkhunter \
               rrdtool \
               rsync \
               s3cmd \
