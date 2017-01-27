@@ -1850,7 +1850,7 @@ opigno_lms_install() {
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
   if [ "${_ALLOW_ALL}" = "YES" ]; then
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
-      || [[ "${_PLATFORMS_LIST}" =~ "OOH" ]]; then
+      || [[ "${_PLATFORMS_LIST}" =~ "OPO" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
         if prompt_yes_no "$_F_OPIGNOLMS - http://opigno.org" ; then
           true
