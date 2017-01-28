@@ -18,7 +18,8 @@ if [ -e "/var/xdrago/log/mysql_restart_running.pid" ]; then
 else
   touch /var/run/boa_wait.pid
   touch /var/xdrago/log/mysql_restart_running.pid
-  mysql -u root -e "set global innodb_max_dirty_pages_pct = 0;"
+  mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;"
+  mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;"
   service mysql stop
   sleep 15
   if [ -e "/var/run/mysqld/mysqld.pid" ] \

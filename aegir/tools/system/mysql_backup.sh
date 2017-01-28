@@ -160,7 +160,8 @@ if [ "${_OPTIM}" = "YES" ] \
   && [ "${_DOW}" = "7" ] \
   && [ ! -e "/var/run/boa_run.pid" ]; then
   ionice -c2 -n2 -p $$
-  mysql -u root -e "set global innodb_max_dirty_pages_pct = 0;"
+  mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;"
+  mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;"
   bash /var/xdrago/move_sql.sh
 fi
 

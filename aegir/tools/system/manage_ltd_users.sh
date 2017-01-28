@@ -2105,7 +2105,8 @@ else
         service cron stop &> /dev/null
         sleep 180
         touch /root/.remote.db.cnf
-        mysql -u root -e "set global innodb_max_dirty_pages_pct = 0;"
+        mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;"
+        mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;"
         service mysql stop &> /dev/null
         sleep 5
         service cron start &> /dev/null
