@@ -642,8 +642,9 @@ tune_php() {
 # Update innodb_log_file_size.
 update_innodb_log_file_size() {
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
+  mysql -u root -e "set global innodb_max_dirty_pages_pct = 0;"
   mrun "service mysql stop" &> /dev/null
-  mrun "sleep 5"
+  mrun "sleep 15"
   if [ ! -e "/var/run/mysqld/mysqld.sock" ] \
     && [ ! -e "/var/run/mysqld/mysqld.pid" ]; then
     mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
@@ -652,9 +653,11 @@ update_innodb_log_file_size() {
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
     wait
-    mrun "sleep 5"
+    mrun "sleep 15"
   fi
-  mrun "service mysql start" &> /dev/null
+  if [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
+    service mysql start &> /dev/null
+  fi
 }
 #
 restore_default_sql() {
@@ -809,7 +812,7 @@ restart_services() {
   if [ -e "/etc/init.d/php53-fpm" ]; then
     mrun "service php53-fpm reload" &> /dev/null
   fi
-  mrun "service mysql restart" &> /dev/null
+  mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
   mrun "service nginx reload" &> /dev/null
   mrun "service redis-server restart" &> /dev/null
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then

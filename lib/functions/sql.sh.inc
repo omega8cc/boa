@@ -2,6 +2,7 @@
 # Update innodb_log_file_size.
 update_innodb_log_file_size() {
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
+  mysql -u root -e "set global innodb_max_dirty_pages_pct = 0;"
   mrun "service mysql stop" &> /dev/null
   mrun "sleep 60"
   if [ ! -e "/var/run/mysqld/mysqld.sock" ] \
@@ -13,7 +14,9 @@ update_innodb_log_file_size() {
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
     wait
     mrun "sleep 10"
-    mrun "service mysql start" &> /dev/null
+    if [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
+      service mysql start &> /dev/null
+    fi
   else
     msg "INFO: Waiting for ${_DB_SERVER} clean shutdown..."
     mrun "sleep 180"
@@ -26,7 +29,9 @@ update_innodb_log_file_size() {
       sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
       wait
       mrun "sleep 10"
-      mrun "service mysql start" &> /dev/null
+      if [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
+        service mysql start &> /dev/null
+      fi
     else
       msg "WARN: ${_DB_SERVER} refused to stop, InnoDB log file size not updated"
       mrun "sleep 10"
@@ -691,7 +696,7 @@ install_mariadb_server() {
       msg "INFO: Restarting ${_DB_SERVER} server..."
       tune_memory_limits
       mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
-      mrun "service mysql restart" &> /dev/null
+      mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
       mrun "service nginx start" &> /dev/null
       if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
         mrun "csf -e" &> /dev/null
@@ -756,7 +761,7 @@ check_update_sql_credentials() {
     if [ "${_STATUS}" = "INIT" ]; then
       msg "INFO: Updating ${_DB_SERVER} configuration"
       msg "INFO: Restarting ${_DB_SERVER} server..."
-      mrun "service mysql restart" &> /dev/null
+      mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
     fi
   else
     msg "EXIT on error due to not found file with your ${_DB_SERVER} root password"
@@ -864,7 +869,7 @@ finalize_sql_initial_setup() {
     sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
       /etc/mysql/debian-start &> /dev/null
     wait
-    mrun "service mysql restart" &> /dev/null
+    mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
     mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
     msg "INFO: ${_DB_SERVER} setup completed"
     msg "INFO: You can now log in as root by typing just 'mysql'"

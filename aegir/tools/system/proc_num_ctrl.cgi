@@ -98,11 +98,12 @@ if (-e "/usr/sbin/pdnsd" && (!$pdnsdsumar || !-e "/etc/resolvconf/run/interface/
 }
 
 if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid" && !-f "/root/.remote.db.cnf") {
-  `bash /var/xdrago/move_sql.sh`;
+  system("bash /var/xdrago/move_sql.sh");
 }
 
 if (-f "/root/.mstr.clstr.cnf" || -f "/root/.wbhd.clstr.cnf") {
   if ($mysqlives && -f "/root/.remote.db.cnf") {
+    system("mysql -u root -e \"set global innodb_max_dirty_pages_pct = 0;\"");
     system("service mysql stop");
   }
 }

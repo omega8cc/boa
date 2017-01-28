@@ -749,7 +749,9 @@ up_action() {
           && [ -e "/etc/init.d/mysql" ]; then
           rm -f /root/.remote.db.cnf
           sleep 5
-          service mysql start &> /dev/null
+          if [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
+            service mysql start &> /dev/null
+          fi
         fi
       fi
       if [ "${silent}" = "log" ] || [ "${silent}" = "system" ]; then
