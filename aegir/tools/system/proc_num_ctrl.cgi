@@ -106,6 +106,7 @@ if (-f "/root/.mstr.clstr.cnf" || -f "/root/.wbhd.clstr.cnf") {
     system("mysql -u root -e \"SET GLOBAL innodb_max_dirty_pages_pct = 0\;\"");
     system("mysql -u root -e \"SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1\;\"");
     system("mysql -u root -e \"SET GLOBAL innodb_io_capacity = 8000\;\"");
+    system("mysql -u root -e \"SET GLOBAL innodb_buffer_pool_dump_pct = 100\;\"");
     system("service mysql stop");
   }
 }
