@@ -103,7 +103,9 @@ if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/var/xdrago/log/mysql_restart_ru
 
 if (-f "/root/.mstr.clstr.cnf" || -f "/root/.wbhd.clstr.cnf") {
   if ($mysqlives && -f "/root/.remote.db.cnf") {
-    system("mysql -u root -e \"set global innodb_max_dirty_pages_pct = 0;\"");
+    system("mysql -u root -e \"SET GLOBAL innodb_max_dirty_pages_pct = 0\;\"");
+    system("mysql -u root -e \"SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1\;\"");
+    system("mysql -u root -e \"SET GLOBAL innodb_io_capacity = 8000\;\"");
     system("service mysql stop");
   }
 }

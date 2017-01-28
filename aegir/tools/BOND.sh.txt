@@ -644,6 +644,7 @@ update_innodb_log_file_size() {
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;"
   mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;"
+  mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;"
   mrun "service mysql stop" &> /dev/null
   mrun "sleep 15"
   if [ ! -e "/var/run/mysqld/mysqld.sock" ] \

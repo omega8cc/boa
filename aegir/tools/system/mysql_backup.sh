@@ -162,6 +162,7 @@ if [ "${_OPTIM}" = "YES" ] \
   ionice -c2 -n2 -p $$
   mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;"
   mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;"
+  mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;"
   bash /var/xdrago/move_sql.sh
 fi
 
