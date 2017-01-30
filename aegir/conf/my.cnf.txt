@@ -53,6 +53,7 @@ log_bin_index           = /var/log/mysql/mariadb-bin.index
 expire_logs_days        = 1
 max_binlog_size         = 100M
 open_files_limit        = 196608
+sync_binlog             = 0
 #slow_query_log          = 1
 #long_query_time         = 10
 #slow_query_log_file     = /var/log/mysql/sql-slow-query.log
@@ -83,6 +84,7 @@ innodb_corrupt_table_action = warn
 innodb_buffer_pool_dump_at_shutdown = 1
 innodb_buffer_pool_load_at_startup = 1
 innodb_buffer_pool_dump_pct = 100
+innodb_stats_on_metadata = OFF
 
 
 [mysqld_safe]
