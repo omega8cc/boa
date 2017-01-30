@@ -29,6 +29,14 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.barracuda.cnf" ]; then
+  source /root/.barracuda.cnf
+  _B_NICE=${_B_NICE//[^0-9]/}
+fi
+if [ -z "${_B_NICE}" ]; then
+  _B_NICE=10
+fi
+
 _BACKUPDIR=/data/disk/arch/sql
 _CHECK_HOST=$(uname -n 2>&1)
 _DATE=$(date +%y%m%d-%H%M 2>&1)
@@ -160,10 +168,12 @@ if [ "${_OPTIM}" = "YES" ] \
   && [ "${_DOW}" = "7" ] \
   && [ ! -e "/var/run/boa_run.pid" ]; then
   ionice -c2 -n2 -p $$
-  mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-  mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-  mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
-  mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+  if [ "${_DB_SERIES}" = "10.1" ]; then
+    mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+  fi
   bash /var/xdrago/move_sql.sh
 fi
 
