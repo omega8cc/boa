@@ -29,6 +29,14 @@ check_root() {
 }
 check_root
 
+n=$((RANDOM%3600+8))
+echo "Waiting $n seconds 1/2 on `date` before running backup..."
+sleep $n
+n=$((RANDOM%1800+8))
+echo "Waiting $n seconds 2/2 on `date` before running backup..."
+sleep $n
+echo "Starting backup on `date`"
+
 if [ -e "/root/.barracuda.cnf" ]; then
   source /root/.barracuda.cnf
   _B_NICE=${_B_NICE//[^0-9]/}
