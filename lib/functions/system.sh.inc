@@ -2553,6 +2553,7 @@ strict_bin_permissions() {
                   advpng \
                   avconv \
                   bash \
+                  clamscan \
                   compass \
                   convert \
                   curl \
@@ -2605,7 +2606,6 @@ strict_bin_permissions() {
                     clamconf \
                     clamd \
                     clamdscan \
-                    clamscan \
                     fix-drupal-platform-ownership.sh \
                     fix-drupal-platform-permissions.sh \
                     fix-drupal-site-ownership.sh \
