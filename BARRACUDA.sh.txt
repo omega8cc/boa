@@ -5,7 +5,7 @@
 ###
 ###  Barracuda Aegir Installer
 ###
-###  Copyright (C) 2010-2016 Omega8.cc
+###  Copyright (C) 2010-2017 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -107,7 +107,7 @@ _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _PURGE_ALL_THISHTIP=NO
 _PURGE_MODE=ON
-_SMALLCORE7=7.53.1
+_SMALLCORE7=7.54.1
 _SPINNER=YES
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
@@ -441,7 +441,7 @@ exit 0
 ###----------------------------------------###
 ###
 ###  Barracuda Aegir Installer
-###  Copyright (C) 2010-2016 Omega8.cc
+###  Copyright (C) 2010-2017 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

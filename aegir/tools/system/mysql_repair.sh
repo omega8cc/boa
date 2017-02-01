@@ -40,4 +40,4 @@ mkdir -p $dir
 /usr/bin/mysqlcheck -Ao >> $dir/all.o.`date +%y%m%d-%H%M%S`
 rm -f /var/run/boa_wait.pid
 exit 0
-###EOF2016###
+###EOF2017###

@@ -5,7 +5,7 @@
 ###
 ###  Octopus Aegir Installer
 ###
-###  Copyright (C) 2010-2016 Omega8.cc
+###  Copyright (C) 2010-2017 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -59,7 +59,7 @@ _PURGE_FOR_SEVEN=YES
 _REDIS_E_VERSION=mod-12-08-2016
 _REDIS_M_VERSION=mod-20-12-2016
 _SMALLCORE6=6.38.2
-_SMALLCORE7=7.53.1
+_SMALLCORE7=7.54.1
 _SMALLCORE8=8.0.5
 _SPINNER=YES
 _T_BUILD=HEAD
@@ -243,7 +243,7 @@ exit 0
 ###----------------------------------------###
 ###
 ###  Octopus Aegir Installer
-###  Copyright (C) 2010-2016 Omega8.cc
+###  Copyright (C) 2010-2017 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

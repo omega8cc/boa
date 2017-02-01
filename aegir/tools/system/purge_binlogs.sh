@@ -86,4 +86,4 @@ else
   touch /var/xdrago/log/last-run-purge
   exit 0
 fi
-###EOF2016###
+###EOF2017###

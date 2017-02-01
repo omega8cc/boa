@@ -158,4 +158,4 @@ renice ${_B_NICE} -p $$ &> /dev/null
 service ssh restart &> /dev/null
 touch /var/xdrago/log/clear.done
 exit 0
-###EOF2016###
+###EOF2017###
