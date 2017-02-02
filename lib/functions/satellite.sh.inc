@@ -1484,7 +1484,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/speedy" ]; then
-        get_dev_contrib "speedy-7.x-1.27.tar.gz"
+        get_dev_contrib "speedy-7.x-1.28.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/taxonomy_edge" ]; then
         get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
@@ -1638,7 +1638,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
   get_dev_contrib "site_verify-7.x-1.1.tar.gz"
-  get_dev_contrib "speedy-7.x-1.27.tar.gz"
+  get_dev_contrib "speedy-7.x-1.28.tar.gz"
   get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
   get_dev_contrib "views_accelerator-7.x-1.0-beta1.tar.gz"
