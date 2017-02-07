@@ -84,9 +84,11 @@ satellite_update_web_user() {
     _T_TS="/home/${_WEB}/.aws"
     _T_II="${_T_HD}/php.ini"
     ### msg "DEBUG: ${_WEB} in satellite_update_web_user A"
-    if [ -e "/home/${_WEB}" ] && [ ! -e "/home/${_WEB}/.lock" ]; then
+    if [ -d "/home/${_WEB}" ] && [ ! -e "/home/${_WEB}/.lock" ]; then
       chattr -i /home/${_WEB}
-      chattr -i /home/${_WEB}/.drush
+      if [ -d "/home/${_WEB}/.drush" ]; then
+        chattr -i /home/${_WEB}/.drush
+      fi
       if [ -e "${_T_II}" ]; then
         chattr -i ${_T_II}
       fi
@@ -178,9 +180,15 @@ satellite_update_web_user() {
       chmod 550 /home/${_WEB}/.drush
       chmod 440 /home/${_WEB}/.drush/php.ini
       rm -f /home/${_WEB}/.lock
-      chattr +i /home/${_WEB}
-      chattr +i /home/${_WEB}/.drush
-      chattr +i ${_T_II}
+      if [ -d "/home/${_WEB}" ]; then
+        chattr +i /home/${_WEB}
+      fi
+      if [ -d "/home/${_WEB}/.drush" ]; then
+        chattr +i /home/${_WEB}/.drush
+      fi
+      if [ -e "${_T_II}" ]; then
+        chattr +i ${_T_II}
+      fi
     fi
   fi
 }
@@ -190,7 +198,9 @@ satellite_update_web_user() {
 satellite_remove_web_user() {
   if [ -e "/home/${_WEB}/.tmp" ] || [ "$1" = "clean" ]; then
     chattr -i /home/${_WEB}
-    chattr -i /home/${_WEB}/.drush
+    if [ -d "/home/${_WEB}/.drush" ]; then
+      chattr -i /home/${_WEB}/.drush
+    fi
     mkdir -p ${vBs}/zombie/deleted
     deluser --remove-home --backup-to ${vBs}/zombie/deleted ${_WEB} &> /dev/null
     if [ -e "/home/${_WEB}" ]; then

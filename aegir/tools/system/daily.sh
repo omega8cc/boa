@@ -2922,8 +2922,10 @@ purge_cruft_machine() {
         | tr -d "\n" 2>&1)
       if [ "${RevisionTest}" -lt "${_LOW_NR}" ] \
         && [ ! -z "${RevisionTest}" ]; then
-        chattr -i /home/${_HM_U}.ftp/platforms
-        chattr -i /home/${_HM_U}.ftp/platforms/*
+        if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
+          chattr -i /home/${_HM_U}.ftp/platforms
+          chattr -i /home/${_HM_U}.ftp/platforms/*
+        fi
         rm -rf /home/${_HM_U}.ftp/platforms/$i
       fi
     fi
@@ -2946,8 +2948,10 @@ purge_cruft_machine() {
   for i in ${_REVISIONS}; do
     if [ -e "${User}/distro/$i" ] \
       && [ ! -e "/home/${_HM_U}.ftp/platforms/$i" ]; then
-      chattr -i /home/${_HM_U}.ftp/platforms
-      chattr -i /home/${_HM_U}.ftp/platforms/*
+      if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
+        chattr -i /home/${_HM_U}.ftp/platforms
+        chattr -i /home/${_HM_U}.ftp/platforms/*
+      fi
       mkdir -p /home/${_HM_U}.ftp/platforms/$i
       mkdir -p ${User}/distro/$i/keys
       chown ${_HM_U}.ftp:${_WEBG} ${User}/distro/$i/keys &> /dev/null
