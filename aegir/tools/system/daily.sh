@@ -3136,7 +3136,7 @@ action() {
         fi
         rm -rf ${User}/clients/*/backups &> /dev/null
         symlinks -dr ${User}/clients &> /dev/null
-        if [ -e "/home/${_HM_U}.ftp" ]; then
+        if [ -d "/home/${_HM_U}.ftp" ]; then
           symlinks -dr /home/${_HM_U}.ftp &> /dev/null
           rm -f /home/${_HM_U}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
         fi

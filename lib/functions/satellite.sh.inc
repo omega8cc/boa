@@ -196,14 +196,14 @@ satellite_update_web_user() {
 #
 # Remove web user.
 satellite_remove_web_user() {
-  if [ -e "/home/${_WEB}/.tmp" ] || [ "$1" = "clean" ]; then
+  if [ -d "/home/${_WEB}" ] || [ "$1" = "clean" ]; then
     chattr -i /home/${_WEB}
     if [ -d "/home/${_WEB}/.drush" ]; then
       chattr -i /home/${_WEB}/.drush
     fi
     mkdir -p ${vBs}/zombie/deleted
     deluser --remove-home --backup-to ${vBs}/zombie/deleted ${_WEB} &> /dev/null
-    if [ -e "/home/${_WEB}" ]; then
+    if [ -d "/home/${_WEB}" ]; then
       rm -rf /home/${_WEB} &> /dev/null
     fi
   fi
@@ -4075,13 +4075,13 @@ satellite_pre_cleanup() {
   rm -rf /tmp/drush_make_tmp*
   rm -rf /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
-  if [ -e "/home/${_USER}.ftp" ]; then
+  if [ -d "/home/${_USER}.ftp" ]; then
     disable_chattr ${_USER}.ftp
   fi
 }
 
 satellite_post_cleanup() {
-  if [ -e "/home/${_USER}.ftp" ]; then
+  if [ -d "/home/${_USER}.ftp" ]; then
     enable_chattr ${_USER}.ftp
   fi
   rm -f /tmp/cache.inc*

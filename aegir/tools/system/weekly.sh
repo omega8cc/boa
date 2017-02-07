@@ -828,7 +828,7 @@ action() {
           detect_deprecated_php
         fi
         count
-        if [ -e "/home/${_THIS_U}.ftp" ]; then
+        if [ -d "/home/${_THIS_U}.ftp" ]; then
           for uH in `find /home/${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
             sub_count_usr_home ${uH}
           done

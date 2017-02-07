@@ -411,7 +411,9 @@ enable_chattr() {
     fi
 
     if [ "$1" != "${_USER}.ftp" ]; then
-      chattr +i /home/$1
+      if [ -d "/home/$1" ]; then
+        chattr +i /home/$1
+      fi
     else
       if [ -d "/home/$1/platforms" ]; then
         chattr +i /home/$1/platforms
@@ -439,7 +441,9 @@ disable_chattr() {
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
     if [ "$1" != "${_USER}.ftp" ]; then
-      chattr -i /home/$1
+      if [ -d "/home/$1" ]; then
+        chattr -i /home/$1
+      fi
     else
       if [ -d "/home/$1/platforms" ]; then
         chattr -i /home/$1/platforms
@@ -1186,7 +1190,7 @@ satellite_remove_web_user() {
   isTest="${_WEB}"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [[ ! "${_WEB}" =~ ".ftp"($) ]]; then
-    if [ -e "/home/${_WEB}/.tmp" ] || [ "$1" = "clean" ]; then
+    if [ -d "/home/${_WEB}" ] || [ "$1" = "clean" ]; then
       chattr -i /home/${_WEB}
       if [ -d "/home/${_WEB}/.drush" ]; then
         chattr -i /home/${_WEB}/.drush
@@ -1194,7 +1198,7 @@ satellite_remove_web_user() {
       deluser \
         --remove-home \
         --backup-to /var/backups/zombie/deleted ${_WEB} &> /dev/null
-      if [ -e "/home/${_WEB}" ]; then
+      if [ -d "/home/${_WEB}" ]; then
         rm -rf /home/${_WEB} &> /dev/null
       fi
     fi
@@ -1913,7 +1917,7 @@ manage_user() {
         rm -rf ${pthParentUsr}/clients/nocomega8cc &> /dev/null
         rm -rf ${pthParentUsr}/clients/*/backups &> /dev/null
         symlinks -dr ${pthParentUsr}/clients &> /dev/null
-        if [ -e "/home/${_USER}.ftp" ]; then
+        if [ -d "/home/${_USER}.ftp" ]; then
           disable_chattr ${_USER}.ftp
           symlinks -dr /home/${_USER}.ftp &> /dev/null
           echo >> ${_THIS_LTD_CONF}
@@ -1925,7 +1929,7 @@ manage_user() {
                         | fmt -su -w 2500 >> ${_THIS_LTD_CONF}
           manage_site_drush_alias_mirror
           manage_sec
-          if [ -e "/home/${_USER}.ftp/users" ]; then
+          if [ -d "/home/${_USER}.ftp/users" ]; then
             chown -R ${_USER}.ftp:${usrGroup} /home/${_USER}.ftp/users
             chmod 700 /home/${_USER}.ftp/users
             chmod 600 /home/${_USER}.ftp/users/*
