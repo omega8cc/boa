@@ -84,10 +84,12 @@ satellite_update_web_user() {
     _T_TS="/home/${_WEB}/.aws"
     _T_II="${_T_HD}/php.ini"
     ### msg "DEBUG: ${_WEB} in satellite_update_web_user A"
-    if [ -d "/home/${_WEB}" ] && [ ! -e "/home/${_WEB}/.lock" ]; then
-      chattr -i /home/${_WEB}
-      if [ -d "/home/${_WEB}/.drush" ]; then
-        chattr -i /home/${_WEB}/.drush
+    if [ -d "/home/${_WEB}/" ] && [ ! -e "/home/${_WEB}/.lock" ]; then
+      if [ -d "/home/${_WEB}/" ]; then
+        chattr -i /home/${_WEB}/
+      fi
+      if [ -d "/home/${_WEB}/.drush/" ]; then
+        chattr -i /home/${_WEB}/.drush/
       fi
       if [ -e "${_T_II}" ]; then
         chattr -i ${_T_II}
@@ -177,14 +179,14 @@ satellite_update_web_user() {
       fi
       chmod 700 /home/${_WEB}
       chown -R ${_WEB}:www-data /home/${_WEB}
-      chmod 550 /home/${_WEB}/.drush
+      chmod 550 /home/${_WEB}/.drush/
       chmod 440 /home/${_WEB}/.drush/php.ini
       rm -f /home/${_WEB}/.lock
-      if [ -d "/home/${_WEB}" ]; then
-        chattr +i /home/${_WEB}
+      if [ -d "/home/${_WEB}/" ]; then
+        chattr +i /home/${_WEB}/
       fi
-      if [ -d "/home/${_WEB}/.drush" ]; then
-        chattr +i /home/${_WEB}/.drush
+      if [ -d "/home/${_WEB}/.drush/" ]; then
+        chattr +i /home/${_WEB}/.drush/
       fi
       if [ -e "${_T_II}" ]; then
         chattr +i ${_T_II}
@@ -196,15 +198,15 @@ satellite_update_web_user() {
 #
 # Remove web user.
 satellite_remove_web_user() {
-  if [ -d "/home/${_WEB}" ] || [ "$1" = "clean" ]; then
+  if [ -d "/home/${_WEB}/" ] || [ "$1" = "clean" ]; then
     chattr -i /home/${_WEB}
-    if [ -d "/home/${_WEB}/.drush" ]; then
-      chattr -i /home/${_WEB}/.drush
+    if [ -d "/home/${_WEB}/.drush/" ]; then
+      chattr -i /home/${_WEB}/.drush/
     fi
     mkdir -p ${vBs}/zombie/deleted
     deluser --remove-home --backup-to ${vBs}/zombie/deleted ${_WEB} &> /dev/null
-    if [ -d "/home/${_WEB}" ]; then
-      rm -rf /home/${_WEB} &> /dev/null
+    if [ -d "/home/${_WEB}/" ]; then
+      rm -rf /home/${_WEB}/ &> /dev/null
     fi
   fi
 }
@@ -414,21 +416,21 @@ enable_chattr() {
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
-    if [ -d "/home/$1/platforms" ]; then
-      chattr +i /home/$1/platforms
+    if [ -d "/home/$1/platforms/" ]; then
+      chattr +i /home/$1/platforms/
       chattr +i /home/$1/platforms/*
     fi
-    if [ -d "/home/$1/.drush" ]; then
-      chattr +i /home/$1/.drush
+    if [ -d "/home/$1/.drush/" ]; then
+      chattr +i /home/$1/.drush/
     fi
-    if [ -d "/home/$1/.drush/usr" ]; then
-      chattr +i /home/$1/.drush/usr
+    if [ -d "/home/$1/.drush/usr/" ]; then
+      chattr +i /home/$1/.drush/usr/
     fi
     if [ -f "/home/$1/.drush/php.ini" ]; then
       chattr +i /home/$1/.drush/*.ini
     fi
-    if [ -d "/home/$1/.bazaar" ]; then
-      chattr +i /home/$1/.bazaar
+    if [ -d "/home/$1/.bazaar/" ]; then
+      chattr +i /home/$1/.bazaar/
     fi
   fi
 }
@@ -438,22 +440,22 @@ enable_chattr() {
 disable_chattr() {
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
-    if [ -d "/home/$1/platforms" ]; then
-      chattr -i /home/$1/platforms
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
+    if [ -d "/home/$1/platforms/" ]; then
+      chattr -i /home/$1/platforms/
       chattr -i /home/$1/platforms/*
     fi
-    if [ -d "/home/$1/.drush" ]; then
-      chattr -i /home/$1/.drush
+    if [ -d "/home/$1/.drush/" ]; then
+      chattr -i /home/$1/.drush/
     fi
-    if [ -d "/home/$1/.drush/usr" ]; then
-      chattr -i /home/$1/.drush/usr
+    if [ -d "/home/$1/.drush/usr/" ]; then
+      chattr -i /home/$1/.drush/usr/
     fi
     if [ -f "/home/$1/.drush/php.ini" ]; then
       chattr -i /home/$1/.drush/*.ini
     fi
-    if [ -d "/home/$1/.bazaar" ]; then
-      chattr -i /home/$1/.bazaar
+    if [ -d "/home/$1/.bazaar/" ]; then
+      chattr -i /home/$1/.bazaar/
     fi
   fi
 }
@@ -4075,13 +4077,13 @@ satellite_pre_cleanup() {
   rm -rf /tmp/drush_make_tmp*
   rm -rf /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
-  if [ -d "/home/${_USER}.ftp" ]; then
+  if [ -d "/home/${_USER}.ftp/" ]; then
     disable_chattr ${_USER}.ftp
   fi
 }
 
 satellite_post_cleanup() {
-  if [ -d "/home/${_USER}.ftp" ]; then
+  if [ -d "/home/${_USER}.ftp/" ]; then
     enable_chattr ${_USER}.ftp
   fi
   rm -f /tmp/cache.inc*

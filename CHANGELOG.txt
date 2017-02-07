@@ -1,4 +1,69 @@
 
+### Stable BOA-3.2.0 Release - Full Edition
+### Date: TBD
+### Milestone URL: https://github.com/omega8cc/boa/milestones/3.2.0
+
+# Release Notes:
+
+  This BOA release provides some new features, system security upgrades, many
+  improvements and bug fixes, latest Aegir version, plus all supported Drupal
+  platforms updated to latest versions, and supplied with latest Drupal 7 core,
+  if possible.
+
+  The reason we list here also new features and changes already listed in
+  previous BOA-3.1.4 version is that they were supposed to be included in this
+  (3.2.0) release, since we normally don't include new features in bugfix
+  releases, but we had to publish more bugfix/security releases in the 3.1.x
+  series than initially expected, while new features were already pushed to HEAD
+  in anticipation of delayed 3.2.0 release.
+
+  We have also moved some new features originally intended to be included
+  in the (3.2.0) release to the next 3.3.0 milestone, which is expected
+  in about one month after 3.2.0 release.
+
+@=> Magic permissions fix now happens on-the-fly
+
+  The most interesting new Aegir feature is probably the ability to fix files
+  permissions and ownership on any site and platform, without waiting for
+  the running daily magic fix. Now it happens on-the-fly, when you run normal
+  platform and site Verify tasks.
+
+@=> MariaDB 10.1 is now the new default version
+
+  If you are already running 10.0, BOA will upgrade it to _DB_SERIES=10.1
+  but if you still run _DB_SERIES=5.5 it will continue to use MariaDB 5.5
+  on your system (not recommended).
+
+# New features and enhancements:
+
+  * Add Microsoft Hyper-V to supported virtualization systems
+  * Add support for ‘boa version’ command
+  * Add support for fix_ownership and fix_permissions on-the-fly
+  * Add support for latest 3.18.44-vs2.3.7.5-beng VS kernel
+  * Add support for latest 4.1.33-vs2.3.8.5.2-beng VS kernel
+  * Automatically whitelist CloudFlare and Sucuri IPs (faster version)
+  * Configure _INNODB_LOG_FILE_SIZE automatically
+  * MariaDB 10.1 support (new default version) -- #866
+  * Use Redis_CacheCompressed mode, if available (saves a ton of RAM)
+
+# Changes:
+
+  * Always update barracuda, boa and octopus wrappers, ignore _SKYNET_MODE=OFF
+  * Enable ARCHIVE Storage Engine in MariaDB 10.1
+  * Force _CUSTOM_CONFIG_SQL=NO on MariaDB major upgrade/reinstall
+  * Remove no longer supported textile module
+  * Run db OPTIMIZE only weekly, if configured
+  * Use MySQLTuner to configure SQL limits — enabled by default
+
+# System upgrades:
+
+  *
+
+# Fixes:
+
+  *
+
+
 ### Stable BOA-3.1.4 Release - Full Edition
 ### Date: Tue Dec 20 14:09:21 PST 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.4
