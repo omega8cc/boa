@@ -2586,6 +2586,7 @@ openpublic_install
 ### _USE_DISTRO_CORE=NO
 ### TMP OFF -- doesn't work with latest core and comes with too old core version
 
+opigno_lms_install
 panopoly_install
 restaurant_install
 
