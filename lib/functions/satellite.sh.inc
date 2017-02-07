@@ -86,7 +86,7 @@ satellite_update_web_user() {
     ### msg "DEBUG: ${_WEB} in satellite_update_web_user A"
     if [ -d "/home/${_WEB}/" ] && [ ! -e "/home/${_WEB}/.lock" ]; then
       if [ -d "/home/${_WEB}/" ]; then
-        chattr -i /home/${_WEB}/
+        chattr -i -R /home/${_WEB}/ &> /dev/null
       fi
       if [ -d "/home/${_WEB}/.drush/" ]; then
         chattr -i /home/${_WEB}/.drush/
@@ -177,8 +177,8 @@ satellite_update_web_user() {
         rm -f ${_T_HD}/.ctrl.php*
         echo > ${_T_HD}/.ctrl.php${_T_PV}.pid
       fi
-      chmod 700 /home/${_WEB}
-      chown -R ${_WEB}:www-data /home/${_WEB}
+      chmod 700 /home/${_WEB}/
+      chown -R ${_WEB}:www-data /home/${_WEB}/
       chmod 550 /home/${_WEB}/.drush/
       chmod 440 /home/${_WEB}/.drush/php.ini
       rm -f /home/${_WEB}/.lock
@@ -199,7 +199,7 @@ satellite_update_web_user() {
 # Remove web user.
 satellite_remove_web_user() {
   if [ -d "/home/${_WEB}/" ] || [ "$1" = "clean" ]; then
-    chattr -i /home/${_WEB}
+    chattr -i -R /home/${_WEB}/ &> /dev/null
     if [ -d "/home/${_WEB}/.drush/" ]; then
       chattr -i /home/${_WEB}/.drush/
     fi
