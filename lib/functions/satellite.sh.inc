@@ -5160,9 +5160,9 @@ satellite_child_b_aegir_ui_enhance() {
         ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
       fi
     fi
-    ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
-      VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),\
-      (1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" &> /dev/null
+    # ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
+    #   VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),\
+    #   (1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" &> /dev/null
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
         ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
