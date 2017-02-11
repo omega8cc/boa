@@ -858,7 +858,7 @@ update_php_cli_local_ini() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.314stableQ5.pid" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.314stableQ6.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -919,7 +919,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
-      echo > ${_U_HD}/.ctrl.314stableQ5.pid
+      echo > ${_U_HD}/.ctrl.314stableQ6.pid
     fi
   fi
 }
