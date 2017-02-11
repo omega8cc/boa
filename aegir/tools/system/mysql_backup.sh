@@ -50,6 +50,8 @@ _CHECK_HOST=$(uname -n 2>&1)
 _DATE=$(date +%y%m%d-%H%M 2>&1)
 _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
+_DOM=$(date +%e 2>&1)
+_DOM=${_DOM//[^0-9]/}
 _SAVELOCATION=${_BACKUPDIR}/${_CHECK_HOST}-$_DATE
 if [ -e "/root/.my.optimize.cnf" ]; then
   _OPTIM=YES
@@ -164,7 +166,10 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         fi
       fi
       echo "All ephemeral tables truncated in ${_DB}"
-      if [ "${_OPTIM}" = "YES" ] && [ "${_DOW}" = "7" ]; then
+      if [ "${_OPTIM}" = "YES" ] \
+        && [ "${_DOW}" = "7" ] \
+        && [ "${_DOM}" -ge "24" ] \
+        && [ "${_DOM}" -lt "31" ]; then
         optimize_this_database &> /dev/null
         truncate_cache_tables &> /dev/null
         echo "Optimize completed for ${_DB}"
