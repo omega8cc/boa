@@ -75,6 +75,7 @@ truncate_cache_tables() {
 mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${C};
 EOFMYSQL
+    sleep 1
   done
 }
 
@@ -84,6 +85,7 @@ truncate_watchdog_tables() {
 mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${A};
 EOFMYSQL
+    sleep 1
   done
 }
 
@@ -93,6 +95,7 @@ truncate_accesslog_tables() {
 mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${A};
 EOFMYSQL
+    sleep 1
   done
 }
 
@@ -102,6 +105,7 @@ truncate_queue_tables() {
 mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${Q};
 EOFMYSQL
+    sleep 1
   done
 }
 
@@ -142,7 +146,6 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     && [ "${_DB}" != "information_schema" ] \
     && [ "${_DB}" != "performance_schema" ]; then
     if [ "${_DB}" != "mysql" ]; then
-      # truncate_cache_tables &> /dev/null
       _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog* | grep "G" 2>&1)
       if [[ "${_IS_GB}" =~ "watchdog" ]]; then
         truncate_watchdog_tables &> /dev/null
@@ -160,9 +163,10 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
           echo "InnoDB conversion for ${_DB} completed"
         fi
       fi
-      echo "All cache tables truncated in ${_DB}"
+      echo "All ephemeral tables truncated in ${_DB}"
       if [ "${_OPTIM}" = "YES" ] && [ "${_DOW}" = "7" ]; then
         optimize_this_database &> /dev/null
+        truncate_cache_tables &> /dev/null
         echo "Optimize completed for ${_DB}"
       fi
     fi

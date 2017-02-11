@@ -242,6 +242,7 @@ update_agents() {
     fi
     echo ${InTest} > /root/.high_traffic.cnf
     echo ${InTest} > /root/.my.optimize.cnf
+    echo ${InTest} > /root/.fast.cron.cnf
     if [ "${_RANDOMIZE}" = "YES" ]; then
       echo ${InTest} > /root/.randomize_duplicity_full_backup_day.cnf
       echo ${InTest} > /root/.skip_duplicity_monthly_cleanup.cnf
@@ -249,7 +250,6 @@ update_agents() {
       rm -f /root/.randomize_duplicity_full_backup_day.cnf
       rm -f /root/.skip_duplicity_monthly_cleanup.cnf
     fi
-    rm -f /root/.fast.cron.cnf
     rm -f /root/.force.drupalgeddon.cnf
     rm -f /root/.skip_cleanup.cnf
     rm -f /root/.giant_traffic.cnf

@@ -203,7 +203,9 @@ by the BOA install and upgrade tools exclusively.
  @=> /root/.my.optimize.cnf
 
   This file, if exists, will enable non-standard procedure during nightly
-  (global) databases backup, which normally starts at 1:18 AM.
+  (global) databases backup, which normally starts at 3:01 AM.
+
+  Note that this special task will be run only once per week, on Sunday.
 
   It will run 'OPTIMIZE TABLE foo;' on every table in every database.
 
@@ -254,4 +256,3 @@ by the BOA install and upgrade tools exclusively.
   the auto-healing to run all the time. Note that it may break upgrade
   if the auto-healing will act too fast to bring up a service which is
   stopped and started during the upgrade.
-
