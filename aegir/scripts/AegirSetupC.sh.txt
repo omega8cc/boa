@@ -1871,6 +1871,14 @@ opigno_lms_install() {
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
               upgrade_contrib_less
+              if [ ! -e "${_SHRD_PLPATH}/sites/all/libraries/TinCanPHP" ]; then
+                cd ${_SHRD_PLPATH}/sites/all/libraries/
+                get_dev_contrib "TinCanPHP.tar.gz"
+              fi
+              if [ ! -e "${_SHRD_PLPATH}/sites/all/libraries/pdf.js" ]; then
+                cd ${_SHRD_PLPATH}/sites/all/libraries/
+                get_dev_contrib "pdf.js.tar.gz"
+              fi
             else
               get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
