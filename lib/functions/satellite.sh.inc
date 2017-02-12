@@ -5151,18 +5151,12 @@ satellite_child_b_aegir_ui_enhance() {
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
           SET status=-1 WHERE nid=5" &> /dev/null
       fi
-      ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL} &> /dev/null
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL}
+      else
+        ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL} &> /dev/null
+      fi
       rm -f make_client.php
-      ${_DRUSHCMD} @hostmaster \
-        urol "admin" --mail=${_CLIENT_EMAIL} &> /dev/null
-      ${_DRUSHCMD} @hostmaster \
-       urol "aegir account manager" --mail=${_CLIENT_EMAIL} &> /dev/null
-      ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
-        (uid, up_name, up_mail, up_pass, up_status, up_roles, up_cancel, up_edit, up_type, up_openid) VALUES \
-        ('0', '0', '0', '0', '0', '0', '1', '1', 'user', '1'),\
-        ('1', '1', '1', '1', '1', '1', '1', '1', 'admin', '1'),\
-        ('1', '1', '1', '1', '1', '1', '1', '1', 'user', '1'),\
-        ('2', '0', '0', '0', '1', '1', '1', '0', 'user', '0');"
     else
       if [ "${_VMFAMILY}" = "VS" ]; then
         pBy="Octopus System powered by Barracuda"
@@ -5200,9 +5194,39 @@ satellite_child_b_aegir_ui_enhance() {
       ${_DRUSHCMD} @hostmaster en hosting_le -y &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y  &> /dev/null
-      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y  &> /dev/null
       ${_DRUSHCMD} @hostmaster cc all &> /dev/null
       ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
+    fi
+
+    if [ "$_LOCAL_STATUS" = "INIT" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        ${_DRUSHCMD} @hostmaster \
+          urol "admin" --mail=${_CLIENT_EMAIL}
+        ${_DRUSHCMD} @hostmaster \
+          urol "aegir account manager" --mail=${_CLIENT_EMAIL}
+        ${_DRUSHCMD} @hostmaster \
+          urol "aegir client" --mail=${_CLIENT_EMAIL}
+        ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
+          (uid, up_name, up_mail, up_pass, up_status, up_roles, up_cancel, up_edit, up_type, up_openid) VALUES \
+          ('0', '0', '0', '0', '0', '0', '1', '1', 'user', '1'),\
+          ('1', '0', '0', '0', '0', '0', '0', '0', 'admin', '0'),\
+          ('1', '1', '1', '1', '1', '1', '1', '1', 'user', '1'),\
+          ('2', '0', '0', '0', '1', '1', '1', '0', 'user', '1');"
+      else
+        ${_DRUSHCMD} @hostmaster \
+          urol "admin" --mail=${_CLIENT_EMAIL} &> /dev/null
+        ${_DRUSHCMD} @hostmaster \
+          urol "aegir account manager" --mail=${_CLIENT_EMAIL} &> /dev/null
+        ${_DRUSHCMD} @hostmaster \
+          urol "aegir client" --mail=${_CLIENT_EMAIL} &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
+          (uid, up_name, up_mail, up_pass, up_status, up_roles, up_cancel, up_edit, up_type, up_openid) VALUES \
+          ('0', '0', '0', '0', '0', '0', '1', '1', 'user', '1'),\
+          ('1', '0', '0', '0', '0', '0', '0', '0', 'admin', '0'),\
+          ('1', '1', '1', '1', '1', '1', '1', '1', 'user', '1'),\
+          ('2', '0', '0', '0', '1', '1', '1', '0', 'user', '1');" &> /dev/null
+      fi
     fi
 
     if [ ! -e "${_ROOT}/log/hosting_le_enable.txt" ]; then
@@ -5249,9 +5273,11 @@ satellite_child_b_redis_enable_finalize() {
     fi
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
+    ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
     ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
     ${_DRUSHCMD} @hostmaster cc all
   else
+    ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y &> /dev/null
     ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
     ${_DRUSHCMD} @hostmaster cc all &> /dev/null
   fi
