@@ -5213,7 +5213,7 @@ satellite_child_b_aegir_ui_enhance() {
         urol "admin" --mail=${_CLIENT_EMAIL} &> /dev/null
       ${_DRUSHCMD} @hostmaster \
        urol "aegir account manager" --mail=${_CLIENT_EMAIL} &> /dev/null
-      ${_DRUSHCMD} @hostmaster sqlq "REPLACE IGNORE INTO userprotect \
+      ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
         (uid, up_name, up_mail, up_pass, up_status, up_roles, up_cancel, up_edit, up_type, up_openid) VALUES \
         ('0', '0', '0', '0', '0', '0', '1', '1', 'user', '1'),\
         ('1', '1', '1', '1', '1', '1', '1', '1', 'admin', '1'),\
