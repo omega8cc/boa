@@ -5248,5 +5248,12 @@ satellite_child_b_redis_enable_finalize() {
         ${_HM_ROOT}/modules/o_contrib_seven/redis_edge
     fi
   fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+    ${_DRUSHCMD} @hostmaster cc all
+  else
+    ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster cc all &> /dev/null
+  fi
   touch /opt/tmp/status-AegirSetupB-OK
 }
