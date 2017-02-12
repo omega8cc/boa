@@ -5160,9 +5160,6 @@ satellite_child_b_aegir_ui_enhance() {
         ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
       fi
     fi
-    # ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
-    #   VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),\
-    #   (1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" &> /dev/null
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
         ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
@@ -5216,6 +5213,12 @@ satellite_child_b_aegir_ui_enhance() {
         urol "admin" --mail=${_CLIENT_EMAIL} &> /dev/null
       ${_DRUSHCMD} @hostmaster \
        urol "aegir account manager" --mail=${_CLIENT_EMAIL} &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "REPLACE IGNORE INTO userprotect \
+        (uid, up_name, up_mail, up_pass, up_status, up_roles, up_cancel, up_edit, up_type, up_openid) VALUES \
+        ('0', '0', '0', '0', '0', '0', '1', '1', 'user', '1'),\
+        ('1', '1', '1', '1', '1', '1', '1', '1', 'admin', '1'),\
+        ('1', '1', '1', '1', '1', '1', '1', '1', 'user', '1'),\
+        ('2', '0', '0', '0', '0', '1', '1', '0', 'user', '0');"
     else
       if [ "${_VMFAMILY}" = "VS" ]; then
         pBy="Octopus System powered by Barracuda"
