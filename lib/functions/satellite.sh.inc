@@ -4755,16 +4755,14 @@ satellite_child_b_aegir_build() {
         ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
       fi
     else
-      if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y
-          ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y
-          ${_DRUSHCMD} @hostmaster registry-rebuild
-        else
-          ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
-          ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y &> /dev/null
-          ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
-        fi
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster registry-rebuild
+      else
+        ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
       fi
     fi
 
@@ -5133,60 +5131,6 @@ satellite_child_b_aegir_ui_enhance() {
       WHERE link_path='hosting/platforms'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \
       WHERE link_path='hosting/sites'" &> /dev/null
-    if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"  &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
-        ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster en hosting_le -y
-        ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y
-        ${_DRUSHCMD} @hostmaster cc all
-        ${_DRUSHCMD} @hostmaster updb -y
-      else
-        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"  &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
-        ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y  &> /dev/null
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y  &> /dev/null
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y  &> /dev/null
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y  &> /dev/null
-        ${_DRUSHCMD} @hostmaster en hosting_le -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster cc all &> /dev/null
-        ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
-      fi
-    fi
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-      fi
-      ${_DRUSHCMD} @hostmaster cc all
-    else
-      if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
-      fi
-      ${_DRUSHCMD} @hostmaster cc all &> /dev/null
-    fi
-    ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-      SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
-    ${_DRUSHCMD} @hostmaster sqlq "UPDATE menu_links \
-      SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'" &> /dev/null
-
-    if [ ! -e "${_ROOT}/log/hosting_le_enable.txt" ]; then
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx_ssl' WHERE service='http'" &> /dev/null
-      sleep 5
-      ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force &> /dev/null
-      mkdir -p ${_ROOT}/log
-      touch ${_ROOT}/log/hosting_le_enable.txt
-    fi
 
     if [ "$_LOCAL_STATUS" = "INIT" ]; then
       pBy="Octopus System powered by Barracuda"
@@ -5232,6 +5176,41 @@ satellite_child_b_aegir_ui_enhance() {
         WHERE body_format IS NULL" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE field_data_body \
         SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
+    fi
+
+    ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
+      SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
+    ${_DRUSHCMD} @hostmaster sqlq "UPDATE menu_links \
+      SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'" &> /dev/null
+
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats"
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"
+      ${_DRUSHCMD} @hostmaster en hosting_le -y
+      ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y
+      ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
+      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+      ${_DRUSHCMD} @hostmaster cc all
+      ${_DRUSHCMD} @hostmaster updb -y
+    else
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"  &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats" &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
+      ${_DRUSHCMD} @hostmaster en hosting_le -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y  &> /dev/null
+      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster cc all &> /dev/null
+      ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
+    fi
+
+    if [ ! -e "${_ROOT}/log/hosting_le_enable.txt" ]; then
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx_ssl' WHERE service='http'" &> /dev/null
+      sleep 5
+      ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force &> /dev/null
+      mkdir -p ${_ROOT}/log
+      touch ${_ROOT}/log/hosting_le_enable.txt
     fi
   fi
 }

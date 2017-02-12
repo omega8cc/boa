@@ -3099,9 +3099,7 @@ action() {
           run_drush8_hmr_cmd "${vSet} hosting_ignore_default_profiles 0"
           run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_items 1"
           run_drush8_hmr_cmd "${vSet} aegir_backup_export_path ${User}/backup-exports"
-          if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
-            run_drush8_hmr_cmd "fr hosting_custom_settings -y"
-          fi
+          run_drush8_hmr_cmd "fr hosting_custom_settings -y"
           run_drush8_hmr_cmd "cc all"
           if [ -e "${User}/log/imported.pid" ] \
             || [ -e "${User}/log/exported.pid" ]; then
