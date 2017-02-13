@@ -2568,7 +2568,7 @@ check_update_le_hm_ssl() {
   fi
   if [ -x "${exeLe}" ] \
     && [ ! -z "${hmFront}" ] \
-    && [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
+    && [ -e "${User}/tools/le/certs/${hmFront}/fullchain.pem" ]; then
     echo "Running LE cert check directly for hostmaster ${_HM_U}"
     su -s /bin/bash - ${_HM_U} -c "${exeLe} -c -d ${hmFront}"
     sleep 5
