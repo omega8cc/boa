@@ -1764,6 +1764,12 @@ fix_modules() {
     else
       echo ";redis_path_enable = TRUE" >> ${_PLR_CTRL_F}
     fi
+    _VAR_IF_PRESENT=$(grep "redis_scan_enable" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_scan_enable" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_scan_enable = TRUE" >> ${_PLR_CTRL_F}
+    fi
     _VAR_IF_PRESENT=$(grep "redis_exclude_bins" ${_PLR_CTRL_F} 2>&1)
     if [[ "${_VAR_IF_PRESENT}" =~ "redis_exclude_bins" ]]; then
       _DO_NOTHING=YES
@@ -1843,6 +1849,12 @@ fix_modules() {
       _DO_NOTHING=YES
     else
       echo ";redis_path_enable = TRUE" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_scan_enable" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_scan_enable" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_scan_enable = TRUE" >> ${_DIR_CTRL_F}
     fi
     _VAR_IF_PRESENT=$(grep "redis_exclude_bins" ${_DIR_CTRL_F} 2>&1)
     if [[ "${_VAR_IF_PRESENT}" =~ "redis_exclude_bins" ]]; then

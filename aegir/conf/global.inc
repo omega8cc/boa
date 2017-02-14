@@ -383,6 +383,7 @@ $boa_ini = array(
   'redis_flush_forced_mode' => TRUE,
   'redis_lock_enable' => TRUE,
   'redis_path_enable' => TRUE,
+  'redis_scan_enable' => TRUE,
   'redis_cache_disable' => FALSE,
   'redis_exclude_bins' => FALSE,
   'speed_booster_anon_cache_ttl' => FALSE,
@@ -445,6 +446,7 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Redis-Flush-Forced-Mode: " . $all_ini['redis_flush_forced_mode']);
   header("X-Ini-Redis-Lock-Enable: " . $all_ini['redis_lock_enable']);
   header("X-Ini-Redis-Path-Enable: " . $all_ini['redis_path_enable']);
+  header("X-Ini-Redis-Scan-Enable: " . $all_ini['redis_scan_enable']);
   header("X-Ini-Redis-Cache-Disable: " . $all_ini['redis_cache_disable']);
   header("X-Ini-Redis-Exclude-Bins: " . $all_ini['redis_exclude_bins']);
   header("X-Ini-Speed-Booster-Anon-Cache-Ttl: " . $all_ini['speed_booster_anon_cache_ttl']);
@@ -1069,6 +1071,9 @@ if ($redis_up && $use_redis && !$custom_cache) {
         if ($is_dev && !$is_backend) {
           header("X-Redis-Path-Is-Readable: " . $cache_path_path);
         }
+      }
+      if ($all_ini['redis_scan_enable']) {
+        $conf['redis_scan_delete']              = TRUE;
       }
       $conf['cache_backends'][]                 = $cache_redis_path;
       $conf['redis_client_interface']           = 'PhpRedis';
