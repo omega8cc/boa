@@ -95,7 +95,7 @@ if [ -e "/var/run/boa_wait.pid" ] \
   touch /var/xdrago/log/wait-runner
   exit 0
 elif [ `ps aux | grep -v "grep" \
-  | grep --count "n7 bash.*runner"` -gt "2" ]; then
+  | grep --count "n7 bash.*runner"` -gt "8" ]; then
   touch /var/xdrago/log/wait-runner
   exit 0
 else
