@@ -3465,6 +3465,7 @@ if [ ! -e "/var/backups/fix-sites-all-permsissions-${_X_SE}.txt" ]; then
   echo FIXED > /var/backups/fix-sites-all-permsissions-${_X_SE}.txt
   echo "Permissions in sites/all tree just fixed"
 fi
+find /var/backups/old-sql* -mtime +1 -exec rm -rf {} \; &> /dev/null
 find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 find /var/backups/jetty* -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/backups/dragon/* -mtime +7 -exec rm -rf {} \; &> /dev/null
