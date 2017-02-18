@@ -154,6 +154,10 @@ crlHead="-I -k -s --retry 8 --retry-delay 8"
 urlBpth="http://files.aegir.cc/versions/master/aegir/tools/bin"
 curl ${crlHead} -A "${checkVn}" "${urlBpth}/thinkdifferent" &> /dev/null
 
+if [ -e "/var/xdrago/mysql_hourly.sh" ]; then
+  bash /var/xdrago/mysql_hourly.sh
+fi
+
 renice ${_B_NICE} -p $$ &> /dev/null
 service ssh restart &> /dev/null
 touch /var/xdrago/log/clear.done
