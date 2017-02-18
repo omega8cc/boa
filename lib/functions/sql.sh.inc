@@ -391,6 +391,15 @@ install_mariadb_sql() {
       --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
     sleep 2
   done
+  _KEYS_SERVER_TEST=FALSE
+  until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
+    rm -f xtrabackup.gpg*
+    wget -q -U iCab ${urlDev}/xtrabackup.gpg
+    _KEYS_SERVER_TEST=$(grep GnuPG xtrabackup.gpg 2>&1)
+    sleep 2
+  done
+  cat xtrabackup.gpg | apt-key add - &> /dev/null
+  rm -f xtrabackup.gpg*
   if [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "jessie" ]; then
     st_runner "${_INSTAPP} software-properties-common" 2> /dev/null
@@ -433,6 +442,11 @@ install_mariadb_sql() {
   echo "## MariaDB APT Repository" > ${aptLiDb}
   echo "deb http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
   echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+  xtraRepo="repo.percona.com/apt"
+  xtraList="${aptLiSys}.d/xtrabackup.list"
+  echo "## Percona XtraBackup APT Repository" > ${xtraList}
+  echo "deb http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
+  echo "deb-src http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
     || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
@@ -467,6 +481,7 @@ install_mariadb_sql() {
           libmariadbclient16 \
           libmariadbd-dev \
           libdbd-mysql-perl \
+          percona-xtrabackup \
           python-mysqldb \
           libdbi-perl"
 }

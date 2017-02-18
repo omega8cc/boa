@@ -1841,6 +1841,9 @@ update_sources_list() {
       if [ ! -e "${aptLiSys}.d/mariadb.list" ]; then
         _APT_SOURCES_REWRITE=YES
       fi
+      if [ ! -e "${aptLiSys}.d/xtrabackup.list" ]; then
+        _APT_SOURCES_REWRITE=YES
+      fi
     fi
   else
     _APT_SOURCES_REWRITE=YES
@@ -3499,13 +3502,13 @@ update_webmin_apt() {
         sarge contrib" | fmt -su -w 2500 >> ${aptLiSys}.d/webmin.list
       _KEYS_SERVER_TEST=FALSE
       until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
-        rm -f jcameron-key.asc*
-        wget -q -U iCab ${urlDev}/jcameron-key.asc
-        _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.asc 2>&1)
+        rm -f jcameron-key.gpg*
+        wget -q -U iCab ${urlDev}/jcameron-key.gpg
+        _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.gpg 2>&1)
         sleep 2
       done
-      cat jcameron-key.asc | apt-key add - &> /dev/null
-      rm -f jcameron-key.asc*
+      cat jcameron-key.gpg | apt-key add - &> /dev/null
+      rm -f jcameron-key.gpg*
       touch ${pthLog}/webmin_update_apt_src.log
     fi
   fi
@@ -3593,6 +3596,22 @@ sys_packages_update() {
         --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
       sleep 2
     done
+    _KEYS_SERVER_TEST=FALSE
+    until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
+      rm -f xtrabackup.gpg*
+      wget -q -U iCab ${urlDev}/xtrabackup.gpg
+      _KEYS_SERVER_TEST=$(grep GnuPG xtrabackup.gpg 2>&1)
+      sleep 2
+    done
+    cat xtrabackup.gpg | apt-key add - &> /dev/null
+    rm -f xtrabackup.gpg*
+    if [ ! -e "${aptLiSys}.d/xtrabackup.list" ]; then
+      xtraRepo="repo.percona.com/apt"
+      xtraList="${aptLiSys}.d/xtrabackup.list"
+      echo "## Percona XtraBackup APT Repository" > ${xtraList}
+      echo "deb http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
+      echo "deb-src http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
+    fi
     _UP_JDK=NO
     _UP_LNX=NO
     _UP_NRC=NO
@@ -3846,6 +3865,7 @@ sys_packages_install() {
               ntpdate \
               p7zip-full \
               pdftk \
+              percona-xtrabackup \
               postfix \
               postfix-pcre \
               pwgen \

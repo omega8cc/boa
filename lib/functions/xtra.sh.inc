@@ -331,13 +331,13 @@ if_install_webmin() {
           sarge contrib" | fmt -su -w 2500 >> ${aptLiSys}.d/webmin.list
         _KEYS_SERVER_TEST=FALSE
         until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
-          rm -f jcameron-key.asc*
-          wget -q -U iCab ${urlDev}/jcameron-key.asc
-          _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.asc 2>&1)
+          rm -f jcameron-key.gpg*
+          wget -q -U iCab ${urlDev}/jcameron-key.gpg
+          _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.gpg 2>&1)
           sleep 2
         done
-        cat jcameron-key.asc | apt-key add - &> /dev/null
-        rm -f jcameron-key.asc*
+        cat jcameron-key.gpg | apt-key add - &> /dev/null
+        rm -f jcameron-key.gpg*
         touch ${pthLog}/webmin_update_apt_src.log
         rm -f /etc/apt/sources.list.d/openssl.list
         st_runner "apt-get update -qq" &> /dev/null
