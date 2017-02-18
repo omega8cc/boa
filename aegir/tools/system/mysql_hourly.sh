@@ -57,6 +57,7 @@ _DOM=${_DOM//[^0-9]/}
 _SAVELOCATION=${_BACKUPDIR}/${_CHECK_HOST}-${_DATE}
 _VM_TEST=$(uname -a 2>&1)
 _LOGDIR="/var/xdrago/log/hourly"
+_OSV=$(lsb_release -sc 2>&1)
 if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
