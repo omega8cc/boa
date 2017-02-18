@@ -3597,14 +3597,11 @@ sys_packages_update() {
       sleep 2
     done
     _KEYS_SERVER_TEST=FALSE
-    until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
-      rm -f xtrabackup.gpg*
-      wget -q -U iCab ${urlDev}/xtrabackup.gpg
-      _KEYS_SERVER_TEST=$(grep GnuPG xtrabackup.gpg 2>&1)
+    until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
+      _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
+        --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5 2>&1)
       sleep 2
     done
-    cat xtrabackup.gpg | apt-key add - &> /dev/null
-    rm -f xtrabackup.gpg*
     if [ ! -e "${aptLiSys}.d/xtrabackup.list" ]; then
       xtraRepo="repo.percona.com/apt"
       xtraList="${aptLiSys}.d/xtrabackup.list"
