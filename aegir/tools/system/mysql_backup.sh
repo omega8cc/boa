@@ -138,7 +138,7 @@ backup_this_database() {
     --quick \
     --no-autocommit \
     --hex-blob ${_DB} \
-    | gzip -c > ${_SAVELOCATION}/${_DB}.sql.gz
+    | bzip2 -c > ${_SAVELOCATION}/${_DB}.sql.bz2
 }
 
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
