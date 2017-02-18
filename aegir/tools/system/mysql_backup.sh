@@ -52,7 +52,7 @@ _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)
 _DOM=${_DOM//[^0-9]/}
-_SAVELOCATION=${_BACKUPDIR}/${_CHECK_HOST}-$_DATE
+_SAVELOCATION=${_BACKUPDIR}/${_CHECK_HOST}-${_DATE}
 if [ -e "/root/.my.optimize.cnf" ]; then
   _OPTIM=YES
 else
@@ -148,10 +148,12 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     && [ "${_DB}" != "information_schema" ] \
     && [ "${_DB}" != "performance_schema" ]; then
     if [ "${_DB}" != "mysql" ]; then
-      _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog* | grep "G" 2>&1)
-      if [[ "${_IS_GB}" =~ "watchdog" ]]; then
-        truncate_watchdog_tables &> /dev/null
-        echo "Truncated giant watchdog for ${_DB}"
+      if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ]; then
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>&1)
+        if [[ "${_IS_GB}" =~ "watchdog" ]]; then
+          truncate_watchdog_tables &> /dev/null
+          echo "Truncated giant watchdog for ${_DB}"
+        fi
       fi
       if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
@@ -200,9 +202,9 @@ ionice -c2 -n7 -p $$
 find ${_BACKUPDIR} -mtime +8 -type d -exec rm -rf {} \;
 echo "Backups older than 8 days deleted"
 
-chmod 600 /data/disk/arch/sql/*/*
-chmod 700 /data/disk/arch/sql/*
-chmod 700 /data/disk/arch/sql
+chmod 600 ${_BACKUPDIR}/*/*
+chmod 700 ${_BACKUPDIR}/*
+chmod 700 ${_BACKUPDIR}
 chmod 700 /data/disk/arch
 echo "Permissions fixed"
 
