@@ -4,6 +4,7 @@
 * * * * *  bash /var/xdrago/second.sh >/dev/null 2>&1
 * * * * *  bash /var/xdrago/minute.sh >/dev/null 2>&1
 01 * * * * bash /var/xdrago/clear.sh >/dev/null 2>&1
+30 * * * * bash /var/xdrago/mysql_hourly.sh >/dev/null 2>&1
 * * * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/runner.sh             >/dev/null 2>&1
 * * * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/manage_ltd_users.sh   >/dev/null 2>&1
 01 * * * * /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/purge_binlogs.sh      >/dev/null 2>&1
