@@ -288,6 +288,20 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/mysql_hourly.ctrl.314stableQ8.pid" ]; then
+    mv -f /var/xdrago/mysql_hourly.sh /var/xdrago/mysql_hourly.sh.old
+    curl ${crlGet} "${urlHmr}/tools/system/mysql_hourly.sh" -o /var/xdrago/mysql_hourly.sh
+    if [ -e "/var/xdrago/mysql_hourly.sh" ]; then
+      chmod 700 /var/xdrago/mysql_hourly.sh
+      chown root:root /var/xdrago/mysql_hourly.sh
+      touch ${pthLog}/mysql_hourly.ctrl.314stableQ8.pid
+    else
+      mv -f /var/xdrago/mysql_hourly.sh.old /var/xdrago/mysql_hourly.sh
+    fi
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
     && [ ! -e "${pthLog}/runner.ctrl.314stableQ8.pid" ]; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
