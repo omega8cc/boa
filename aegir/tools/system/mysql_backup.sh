@@ -111,6 +111,10 @@ EOFMYSQL
   done
 }
 
+repair_this_database() {
+  mysqlcheck --repair --silent ${_DB}
+}
+
 optimize_this_database() {
   _TABLES=$(mysql ${_DB} -e "show tables" -s | uniq | sort 2>&1)
   for T in ${_TABLES}; do
@@ -143,6 +147,13 @@ backup_this_database() {
 
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
+if [ "${_DB_SERIES}" = "10.1" ]; then
+  mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+  mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
+  mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
+  mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+fi
+
 for _DB in `mysql -e "show databases" -s | uniq | sort`; do
   if [ "${_DB}" != "Database" ] \
     && [ "${_DB}" != "information_schema" ] \
@@ -163,6 +174,8 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         truncate_queue_tables &> /dev/null
         echo "Truncated queue for ${_DB}"
         if [ "${_DOW}" = "6" ] && [ -e "/root/.batch_innodb.cnf" ]; then
+          repair_this_database &> /dev/null
+          truncate_cache_tables &> /dev/null
           convert_to_innodb &> /dev/null
           echo "InnoDB conversion for ${_DB} completed"
         fi
@@ -172,8 +185,9 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         && [ "${_DOW}" = "7" ] \
         && [ "${_DOM}" -ge "24" ] \
         && [ "${_DOM}" -lt "31" ]; then
-        optimize_this_database &> /dev/null
+        repair_this_database &> /dev/null
         truncate_cache_tables &> /dev/null
+        optimize_this_database &> /dev/null
         echo "Optimize completed for ${_DB}"
       fi
     fi
