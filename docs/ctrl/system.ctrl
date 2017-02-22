@@ -214,9 +214,6 @@ by the BOA install and upgrade tools exclusively.
   system load (and slowdown) if you happen to host many sites on a weak
   VPS or machine with slow disks or not fast enough CPU etc.
 
-  It will also restart database server once all tables in all databases
-  are optimized.
-
   Note: this is a system-wide setting.
 
   There is a similar option: _SQL_CONVERT (defaults to NO), available in every
@@ -248,6 +245,12 @@ by the BOA install and upgrade tools exclusively.
   and exceptions are defined with regex:
 
   (cache_[a-z_]+|cache|sessions|users|watchdog|accesslog)
+
+ @=> /root/.my.restart-after-optimize.cnf
+
+  This file, if exists, will trigger database server restart once all tables
+  in all databases are optimized. It will be ignored unless the previous
+  /root/.my.optimize.cnf control file also exists.
 
  @=> /root/.upstart.cnf
 

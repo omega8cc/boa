@@ -187,6 +187,7 @@ if [ "${_OPTIM}" = "YES" ] \
   && [ "${_DOW}" = "7" ] \
   && [ "${_DOM}" -ge "24" ] \
   && [ "${_DOM}" -lt "31" ] \
+  && [ -e "/root/.my.restart-after-optimize.cnf" ] \
   && [ ! -e "/var/run/boa_run.pid" ]; then
   ionice -c2 -n2 -p $$
   if [ "${_DB_SERIES}" = "10.1" ]; then
