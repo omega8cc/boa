@@ -2564,6 +2564,7 @@ strict_bin_permissions() {
                   env \
                   ffmpeg \
                   flvtool2 \
+                  freshclam \
                   git \
                   gs \
                   hhvm \
@@ -2613,7 +2614,6 @@ strict_bin_permissions() {
                     fix-drupal-platform-permissions.sh \
                     fix-drupal-site-ownership.sh \
                     fix-drupal-site-permissions.sh \
-                    freshclam \
                     named \
                     octopus \
                     redis-benchmark \
