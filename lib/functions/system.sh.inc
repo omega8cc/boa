@@ -2563,6 +2563,7 @@ strict_bin_permissions() {
                   dash \
                   env \
                   ffmpeg \
+                  ffprobe \
                   flvtool2 \
                   freshclam \
                   git \
