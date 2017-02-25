@@ -1414,7 +1414,8 @@ fix_modules() {
   _AUTO_CONFIG_ADVAGG=NO
   if [ -e "${Plr}/sites/all/modules/advagg" ] \
     || [ -e "${Plr}/modules/o_contrib/advagg" ] \
-    || [ -e "${Plr}/modules/o_contrib_seven/advagg" ]; then
+    || [ -e "${Plr}/modules/o_contrib_seven/advagg" ] \
+    || [ -e "${Plr}/modules/o_contrib_eight/advagg" ]; then
     _MODULE_T=$(run_drush8_nosilent_cmd "pml --status=enabled \
       --type=module | grep \(advagg\)" 2>&1)
     if [[ "${_MODULE_T}" =~ "(advagg)" ]]; then
@@ -3197,7 +3198,7 @@ if [ "${_VMFAMILY}" = "VS" ]; then
 fi
 #
 if [ "${_DOW}" = "7" ]; then
-  _MODULES_ON_EIGHT=
+  _MODULES_ON_EIGHT="robotstxt"
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
   _MODULES_OFF_EIGHT="automated_cron dblog syslog simpletest update"
@@ -3211,7 +3212,7 @@ if [ "${_DOW}" = "7" ]; then
     stage_file_proxy supercron syslog ultimate_cron update varnish \
     watchdog_live xhprof"
 else
-  _MODULES_ON_EIGHT=
+  _MODULES_ON_EIGHT="robotstxt"
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
   _MODULES_OFF_EIGHT="dblog syslog update"

@@ -696,6 +696,22 @@ if (!$is_dev) {
         $conf['preprocess_js'] = 1;
       }
     }
+    elseif ($drupal_eight) {
+      if (is_readable('modules/o_contrib_eight/advagg/advagg_bundler/advagg_bundler.module') ||
+          is_readable('modules/advagg/advagg_bundler/advagg_bundler.module') ||
+          is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')) {
+        $config['advagg.settings']['css']['combine_media'] = false;
+        $config['advagg.settings']['css']['ie']['limit_selectors'] = true;
+        $config['advagg.settings']['cache_level'] = 3;
+        $config['advagg.settings']['core_groups'] = false;
+        $config['advagg.settings']['enabled'] = true;
+        $config['advagg_bundler.settings']['active'] = true;
+        $config['advagg_css_minify.settings']['minifier'] = 2;
+        $config['advagg_js_minify.settings']['minifier'] = 3;
+        $config['system.performance']['css']['preprocess'] = true;
+        $config['system.performance']['js']['preprocess'] = true;
+      }
+    }
 
     if ($drupal_six || $drupal_seven) {
       if (is_readable('modules/o_contrib/httprl/httprl.module') ||
