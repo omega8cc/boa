@@ -178,7 +178,6 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         convert_to_innodb &> /dev/null
         echo "InnoDB conversion task for ${_DB} completed"
       fi
-
       if [ "${_OPTIM}" = "YES" ] \
         && [ "${_DOW}" = "7" ] \
         && [ "${_DOM}" -ge "24" ] \
