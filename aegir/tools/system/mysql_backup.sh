@@ -163,32 +163,32 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "watchdog" ]]; then
           truncate_watchdog_tables &> /dev/null
-          echo "Truncated giant watchdog for ${_DB}"
+          echo "Truncated giant watchdog in ${_DB}"
         fi
       fi
-      if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-        || [ "${_VMFAMILY}" = "VS" ]; then
-        truncate_accesslog_tables &> /dev/null
-        echo "Truncated not used accesslog for ${_DB}"
-        truncate_queue_tables &> /dev/null
-        echo "Truncated queue for ${_DB}"
-        if [ "${_DOW}" = "6" ] && [ -e "/root/.batch_innodb.cnf" ]; then
-          repair_this_database &> /dev/null
-          truncate_cache_tables &> /dev/null
-          convert_to_innodb &> /dev/null
-          echo "InnoDB conversion for ${_DB} completed"
-        fi
+      truncate_accesslog_tables &> /dev/null
+      echo "Truncated not used accesslog in ${_DB}"
+      truncate_queue_tables &> /dev/null
+      echo "Truncated queue table in ${_DB}"
+      if [ "${_DOW}" = "6" ] && [ -e "/root/.my.batch_innodb.cnf" ]; then
+        repair_this_database &> /dev/null
+        echo "Repair task for ${_DB} completed"
+        truncate_cache_tables &> /dev/null
+        echo "All cache tables in ${_DB} truncated"
+        convert_to_innodb &> /dev/null
+        echo "InnoDB conversion task for ${_DB} completed"
       fi
-      echo "All ephemeral tables truncated in ${_DB}"
+
       if [ "${_OPTIM}" = "YES" ] \
         && [ "${_DOW}" = "7" ] \
         && [ "${_DOM}" -ge "24" ] \
         && [ "${_DOM}" -lt "31" ]; then
         repair_this_database &> /dev/null
+        echo "Repair task for ${_DB} completed"
         truncate_cache_tables &> /dev/null
+        echo "All cache tables in ${_DB} truncated"
         optimize_this_database &> /dev/null
-        echo "Optimize completed for ${_DB}"
+        echo "Optimize task for ${_DB} completed"
       fi
     fi
     backup_this_database &> /dev/null
@@ -214,8 +214,8 @@ if [ "${_OPTIM}" = "YES" ] \
 fi
 
 ionice -c2 -n7 -p $$
-find ${_BACKUPDIR} -mtime +8 -type d -exec rm -rf {} \;
-echo "Backups older than 8 days deleted"
+find ${_BACKUPDIR} -mtime +6 -type d -exec rm -rf {} \;
+echo "Backups older than 7 days deleted"
 
 chmod 600 ${_BACKUPDIR}/*/*
 chmod 700 ${_BACKUPDIR}/*
@@ -225,6 +225,6 @@ echo "Permissions fixed"
 
 rm -f /var/run/boa_sql_backup.pid
 touch /var/xdrago/log/last-run-backup
-echo "COMPLETED ALL"
+echo "ALL TASKS COMPLETED"
 exit 0
 ###EOF2017###

@@ -200,14 +200,26 @@ by the BOA install and upgrade tools exclusively.
 
   Without this file the system will run 'chmod 700 /home/*' every 5 minutes.
 
+ @=> /root/.my.batch_innodb.cnf
+
+  This file, if exists, will enable non-standard procedure during nightly
+  (global) databases backup, which normally starts at 3:01 AM.
+
+  This special procedure will be run only once per week, on Saturday.
+
+  It will run a three-step sequence on every database: repair/rebuild all
+  tables, truncate all cache* tables, plus convert all tables to InnoDB,
+  which in turn runs also optimize.
+
  @=> /root/.my.optimize.cnf
 
   This file, if exists, will enable non-standard procedure during nightly
   (global) databases backup, which normally starts at 3:01 AM.
 
-  This special task will be run only once per month, on the last Sunday.
+  This special procedure will be run only once per month, on the last Sunday.
 
-  It will run 'OPTIMIZE TABLE foo;' on every table in every database.
+  It will run a three-step sequence on every database: repair/rebuild all
+  tables, truncate all cache* tables, and optimize all tables.
 
   While it usually allows to defragment and shrink the binary space used
   by database tables, it may easily cause serious I/O load and subsequent
@@ -222,7 +234,7 @@ by the BOA install and upgrade tools exclusively.
   performed via 'sqlmagic' tool, and since it uses the 'ALTER TABLE' command,
   in turn it performs auto-optimization on the fly.
 
-  This optional conversion starts every Saturday at 2:58 AM and runs until
+  This optional conversion starts every Saturday at 3:01 AM and runs until
   the agent completes all tasks included in the /var/xdrago/daily.sh script.
 
   If _SQL_CONVERT=NO is set, the conversion mode can be individually enabled

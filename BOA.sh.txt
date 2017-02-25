@@ -242,7 +242,7 @@ update_agents() {
     fi
     echo ${InTest} > /root/.high_traffic.cnf
     echo ${InTest} > /root/.my.optimize.cnf
-    echo ${InTest} > /root/.batch_innodb.cnf
+    echo ${InTest} > /root/.my.batch_innodb.cnf
     # if [[ "${_CHECK_HOST}" =~ ".va." ]]; then
     #   rm -f /root/.fast.cron.cnf
     # else
@@ -256,6 +256,7 @@ update_agents() {
       rm -f /root/.skip_duplicity_monthly_cleanup.cnf
     fi
     rm -f /root/.fast.cron.cnf
+    rm -f /root/.batch_innodb.cnf
     rm -f /root/.force.drupalgeddon.cnf
     rm -f /root/.skip_cleanup.cnf
     rm -f /root/.giant_traffic.cnf

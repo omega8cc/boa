@@ -185,6 +185,6 @@ echo "Permissions fixed"
 rm -f -r ${_CHECK_HOST}-${_DATE}
 rm -f /var/run/boa_live_sql_backup.pid
 touch /var/xdrago/log/last-run-live-mysql-backup
-echo "COMPLETED ALL"
+echo "ALL TASKS COMPLETED"
 exit 0
 ###EOF2017###
