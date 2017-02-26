@@ -258,7 +258,7 @@ by the BOA install and upgrade tools exclusively.
 
   (cache_[a-z_]+|cache|sessions|users|watchdog|accesslog)
 
- @=> /root/.my.restart-after-optimize.cnf
+ @=> /root/.my.restart_after_optimize.cnf
 
   This file, if exists, will trigger database server restart once all tables
   in all databases are optimized. It will be ignored unless the previous
