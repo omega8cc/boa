@@ -96,6 +96,7 @@
 
 # Fixes:
 
+  * Can't add clients on BOA3 -- #926
   * Do not add newer InnoDB settings when old server version is in use -- #1122
   * Do not disable site_readonly daily on migrated instances
   * Fix the not working hostmaster LE cert auto-update (typo)
@@ -103,6 +104,7 @@
   * Improve disable_chattr() and enable_chattr() logic
   * Improve docs/FAQ.txt as suggested in #1119
   * Improve userprotect initial-only setup -- #926
+  * MariaDB server not running properly alert -- #1122
   * Migration should re-use Let's Encrypt certs in HTTPS proxy vhosts -- #1106
   * Randomize SQL backup schedule
   * Rebuild hosting_custom_settings feature after enabling Redis on install
