@@ -199,6 +199,11 @@ function drush_provision_hosting_le_post_provision_verify() {
     }
 
     $web_server = d()->platform->web_server;
+    // check if server is a pack
+    if ($web_server->master_web_servers) {
+      // use pack master
+      $web_server = d(reset($web_server->master_web_servers));
+    }
     $site_vhost = $web_server->http_vhostd_path . "/" . $real_name;
 
     if (provision_file()->exists($site_vhost)->status()) {

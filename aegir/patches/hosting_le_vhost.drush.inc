@@ -108,7 +108,10 @@ function hosting_le_vhost_provision_apache_vhost_config($uri, $data) {
     $lines[] = "";
     $lines[] = "  # Allow access to letsencrypt.org ACME challenges directory.";
     $lines[] = "  <Directory \"$aegir_root/tools/le/.acme-challenges\">";
+    $lines[] = "    Order allow,deny";
+    $lines[] = "    Allow from all";
     $lines[] = "    Require all granted";
+    $lines[] = "    Satisfy Any";
     $lines[] = "  </Directory>";
     $lines[] = "\n";
 
