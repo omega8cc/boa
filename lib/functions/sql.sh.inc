@@ -252,7 +252,7 @@ tune_sql_memory_limits() {
       fi
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_INNODB_MEM}/4/40*40" | bc 2>&1)
       _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
-      if [ "${_DB_COUNT}" -gt "50" ]; then
+      if [ "${_DB_COUNT}" -gt "3" ]; then
         if [ "${_INNODB_LOG_FILE_SIZE}" -ge "64" ] \
           && [ "${_INNODB_LOG_FILE_SIZE}" -lt "256" ]; then
           _INNODB_LOG_FILE_SIZE=256
@@ -277,7 +277,7 @@ tune_sql_memory_limits() {
       _USE_INNODB_MEM="${_USE_SQL}M"
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
       _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
-      if [ "${_DB_COUNT}" -gt "100" ]; then
+      if [ "${_DB_COUNT}" -gt "3" ]; then
         if [ "${_INNODB_LOG_FILE_SIZE}" -ge "64" ] \
           && [ "${_INNODB_LOG_FILE_SIZE}" -lt "256" ]; then
           _INNODB_LOG_FILE_SIZE=256
@@ -309,7 +309,7 @@ tune_sql_memory_limits() {
     fi
     _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
     _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
-    if [ "${_DB_COUNT}" -gt "100" ]; then
+    if [ "${_DB_COUNT}" -gt "3" ]; then
       if [ "${_INNODB_LOG_FILE_SIZE}" -ge "64" ] \
         && [ "${_INNODB_LOG_FILE_SIZE}" -lt "256" ]; then
         _INNODB_LOG_FILE_SIZE=256
