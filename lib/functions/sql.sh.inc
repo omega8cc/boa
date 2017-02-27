@@ -671,7 +671,6 @@ install_mariadb_server() {
       tune_memory_limits
       mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
       mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
-      mrun "service nginx start" &> /dev/null
       if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
         mrun "csf -e" &> /dev/null
       fi
@@ -843,6 +842,7 @@ finalize_sql_initial_setup() {
     sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
       /etc/mysql/debian-start &> /dev/null
     wait
+    msg "INFO: Restarting ${_DB_SERVER} server..."
     mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
     mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
     msg "INFO: ${_DB_SERVER} setup completed"
