@@ -63,7 +63,7 @@ load_control() {
   fi
   _O_LOAD=$(awk '{print $1*100}' /proc/loadavg 2>&1)
   _O_LOAD=$(( _O_LOAD / _CPU_NR ))
-  _O_LOAD_MAX=$(( 50 * _CPU_SPIDER_RATIO ))
+  _O_LOAD_MAX=$(( 75 * _CPU_SPIDER_RATIO ))
 }
 
 action() {
