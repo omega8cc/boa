@@ -65,7 +65,7 @@ _PHP_FPM_VERSION=5.6 #---------- PHP-FPM for Master Instance: 7.0 5.{6,5,4,3}
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_IONCUBE=NO #--------------- Installs ionCube for all PHP versions when YES
 _PHP_GEOS=NO #------------------ Installs GEOS for all PHP versions when YES
-_PHP_MONGODB=NO #--------------- Installs MONGODB for all PHP < 7.0 when YES
+_PHP_MONGODB=NO #--------------- Installs MONGODB for all PHP versions when YES
 _PHP_MULTI_INSTALL="5.6" #------ PHP versions to install: 7.0 5.6 5.5 5.4 5.3
 _PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 5.6
 ###

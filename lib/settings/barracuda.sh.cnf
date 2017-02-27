@@ -950,7 +950,9 @@ _PHP_IONCUBE=NO
 
 ###
 ### Change to YES to always compile in
-### MongoDB driver. Works for PHP < 7.0 only.
+### MongoDB driver. 
+### mongo.so for PHP < 7.0
+### mongodb.so for PHP 7.0
 ###
 _PHP_MONGODB=NO
 

@@ -235,8 +235,8 @@ fix_php_ini_geos_all() {
 # Fix php.ini file to add mongo.so
 fix_php_ini_mongo() {
   if [ -e "${_THIS_FILE}" ]; then
-    _MONGODB_INI_TEST=$(grep "^extension=mongo.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_MONGODB_INI_TEST" =~ "extension=mongo.so" ]]; then
+    _MONGO_INI_TEST=$(grep "^extension=mongo.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_MONGO_INI_TEST" =~ "extension=mongo.so" ]]; then
       _DO_NOTHING=YES
     else
       echo "extension=mongo.so" >> ${_THIS_FILE}
@@ -245,7 +245,20 @@ fix_php_ini_mongo() {
 }
 
 #
-# Fix all php.ini files to add mongo.so
+# Fix php.ini file to add mongodb.so
+fix_php_ini_mongodb() {
+  if [ -e "${_THIS_FILE}" ]; then
+    _MONGODB_INI_TEST=$(grep "^extension=mongodb.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_MONGODB_INI_TEST" =~ "extension=mongodb.so" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=mongodb.so" >> ${_THIS_FILE}
+    fi
+  fi
+}
+
+#
+# Fix all php.ini files to add mongo.so or mongodb.so
 fix_php_ini_mongo_all() {
   if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
     _PHP_V="56 55 54 53"
@@ -254,6 +267,13 @@ fix_php_ini_mongo_all() {
       fix_php_ini_mongo
       _THIS_FILE=/opt/php${e}/lib/php.ini
       fix_php_ini_mongo
+    done
+    _PHP_V="70"
+    for e in ${_PHP_V}; do
+      _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+      fix_php_ini_mongodb
+      _THIS_FILE=/opt/php${e}/lib/php.ini
+      fix_php_ini_mongodb
     done
   fi
 }
@@ -550,6 +570,18 @@ install_php_extensions() {
       mrun "make --quiet install" 2> /dev/null
       touch ${pthLog}/php-mongo-${_MONGO_VRN}-${_T_PHP_VRN}.log
     fi
+    if [ "$1" = "70" ]; then
+      msg "INFO: Installing MongoDB driver for PHP ${_T_PHP_VRN}..."
+      cd /var/opt
+      rm -rf mongodb*
+      get_dev_src "mongodb-${_MONGODB_VRN}.tgz"
+      cd /var/opt/mongodb-${_MONGODB_VRN}
+      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
+      touch ${pthLog}/php-mongodb-${_MONGODB_VRN}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
   if [ "$1" != "70" ]; then
@@ -768,6 +800,21 @@ update_php_extensions() {
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       touch ${pthLog}/php-mongo-${_MONGO_VRN}-${_T_PHP_VRN}.log
+    fi
+  fi
+  if [ "$1" = "70" ] \
+    && [ ! -e "${pthLog}/php-mongodb-${_MONGODB_VRN}-${_T_PHP_VRN}.log" ]; then
+    if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
+      msg "INFO: Installing MongoDB PHP driver upgrade for PHP ${_T_PHP_VRN}..."
+      cd /var/opt
+      rm -rf mongodb*
+      get_dev_src "mongodb-${_MONGODB_VRN}.tgz"
+      cd /var/opt/mongodb-${_MONGODB_VRN}
+      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
+      touch ${pthLog}/php-mongodb-${_MONGODB_VRN}-${_T_PHP_VRN}.log
     fi
   fi
   ###--------------------###

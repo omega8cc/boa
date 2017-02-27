@@ -495,8 +495,8 @@ fix_php_ini_geos_all() {
 # Fix php.ini file to add mongo.so
 fix_php_ini_mongo() {
   if [ -e "${_THIS_FILE}" ]; then
-    _MONGODB_INI_TEST=$(grep "^extension=mongo.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_MONGODB_INI_TEST" =~ "extension=mongo.so" ]]; then
+    _MONGO_INI_TEST=$(grep "^extension=mongo.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_MONGO_INI_TEST" =~ "extension=mongo.so" ]]; then
       _DO_NOTHING=YES
     else
       echo "extension=mongo.so" >> ${_THIS_FILE}
@@ -504,7 +504,19 @@ fix_php_ini_mongo() {
   fi
 }
 #
-# Fix all php.ini files to add mongo.so
+# Fix php.ini file to add mongodb.so
+fix_php_ini_mongodb() {
+  if [ -e "${_THIS_FILE}" ]; then
+    _MONGODB_INI_TEST=$(grep "^extension=mongodb.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_MONGODB_INI_TEST" =~ "extension=mongodb.so" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=mongodb.so" >> ${_THIS_FILE}
+    fi
+  fi
+}
+#
+# Fix all php.ini files to add mongo.so or mongodb.so
 fix_php_ini_mongo_all() {
   if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
     _PHP_V="56 55 54 53"
@@ -513,6 +525,13 @@ fix_php_ini_mongo_all() {
       fix_php_ini_mongo
       _THIS_FILE=/opt/php${e}/lib/php.ini
       fix_php_ini_mongo
+    done
+    _PHP_V="70"
+    for e in ${_PHP_V}; do
+      _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+      fix_php_ini_mongodb
+      _THIS_FILE=/opt/php${e}/lib/php.ini
+      fix_php_ini_mongodb
     done
   fi
 }
