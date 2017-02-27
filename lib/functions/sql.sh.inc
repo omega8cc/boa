@@ -262,14 +262,8 @@ tune_sql_memory_limits() {
         elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "512" ] \
           && [ "${_INNODB_LOG_FILE_SIZE}" -lt "1024" ]; then
           _INNODB_LOG_FILE_SIZE=1024
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "1024" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "2048" ]; then
-          _INNODB_LOG_FILE_SIZE=2048
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "2048" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4096" ]; then
-          _INNODB_LOG_FILE_SIZE=4096
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4096" ]; then
-          _INNODB_LOG_FILE_SIZE=4096
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "1024" ]; then
+          _INNODB_LOG_FILE_SIZE=1024
         fi
       fi
       if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] \
@@ -293,14 +287,8 @@ tune_sql_memory_limits() {
         elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "512" ] \
           && [ "${_INNODB_LOG_FILE_SIZE}" -lt "1024" ]; then
           _INNODB_LOG_FILE_SIZE=1024
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "1024" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "2048" ]; then
-          _INNODB_LOG_FILE_SIZE=2048
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "2048" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4096" ]; then
-          _INNODB_LOG_FILE_SIZE=4096
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4096" ]; then
-          _INNODB_LOG_FILE_SIZE=4096
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "1024" ]; then
+          _INNODB_LOG_FILE_SIZE=1024
         fi
       fi
       if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] \
@@ -331,14 +319,8 @@ tune_sql_memory_limits() {
       elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "512" ] \
         && [ "${_INNODB_LOG_FILE_SIZE}" -lt "1024" ]; then
         _INNODB_LOG_FILE_SIZE=1024
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "1024" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "2048" ]; then
-        _INNODB_LOG_FILE_SIZE=2048
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "2048" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4096" ]; then
-        _INNODB_LOG_FILE_SIZE=4096
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4096" ]; then
-        _INNODB_LOG_FILE_SIZE=4096
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "1024" ]; then
+        _INNODB_LOG_FILE_SIZE=1024
       fi
     fi
     if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] \
