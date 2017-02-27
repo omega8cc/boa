@@ -253,54 +253,23 @@ tune_sql_memory_limits() {
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_INNODB_MEM}/4/40*40" | bc 2>&1)
       _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
       if [ "${_DB_COUNT}" -gt "50" ]; then
-        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "2000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "2500" ]; then
-          _INNODB_LOG_FILE_SIZE=2500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "2500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "3000" ]; then
-          _INNODB_LOG_FILE_SIZE=3000
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "3000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "3500" ]; then
-          _INNODB_LOG_FILE_SIZE=3500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "3500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4000" ]; then
-          _INNODB_LOG_FILE_SIZE=4000
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4500" ]; then
-          _INNODB_LOG_FILE_SIZE=4500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "5000" ]; then
-          _INNODB_LOG_FILE_SIZE=5000
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "5000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "5500" ]; then
-          _INNODB_LOG_FILE_SIZE=5500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "5500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "6000" ]; then
-          _INNODB_LOG_FILE_SIZE=6000
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "6000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "6500" ]; then
-          _INNODB_LOG_FILE_SIZE=6500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "6500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "7000" ]; then
-          _INNODB_LOG_FILE_SIZE=7000
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "7000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "7500" ]; then
-          _INNODB_LOG_FILE_SIZE=7500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "7500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "8000" ]; then
-          _INNODB_LOG_FILE_SIZE=8000
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "8000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "8500" ]; then
-          _INNODB_LOG_FILE_SIZE=8500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "8500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "9000" ]; then
-          _INNODB_LOG_FILE_SIZE=9000
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "9000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "9500" ]; then
-          _INNODB_LOG_FILE_SIZE=9500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "9500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "9999" ]; then
-          _INNODB_LOG_FILE_SIZE=9999
+        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "64" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "256" ]; then
+          _INNODB_LOG_FILE_SIZE=256
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "256" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "512" ]; then
+          _INNODB_LOG_FILE_SIZE=512
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "512" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "1024" ]; then
+          _INNODB_LOG_FILE_SIZE=1024
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "1024" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "2048" ]; then
+          _INNODB_LOG_FILE_SIZE=2048
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "2048" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4096" ]; then
+          _INNODB_LOG_FILE_SIZE=4096
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4096" ]; then
+          _INNODB_LOG_FILE_SIZE=4096
         fi
       fi
       if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] \
@@ -315,24 +284,23 @@ tune_sql_memory_limits() {
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
       _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
       if [ "${_DB_COUNT}" -gt "100" ]; then
-        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "2000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "2500" ]; then
-          _INNODB_LOG_FILE_SIZE=2500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "2500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "3000" ]; then
-          _INNODB_LOG_FILE_SIZE=3000
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "3000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "3500" ]; then
-          _INNODB_LOG_FILE_SIZE=3500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "3500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4000" ]; then
-          _INNODB_LOG_FILE_SIZE=4000
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4500" ]; then
-          _INNODB_LOG_FILE_SIZE=4500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "5000" ]; then
-          _INNODB_LOG_FILE_SIZE=5000
+        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "64" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "256" ]; then
+          _INNODB_LOG_FILE_SIZE=256
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "256" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "512" ]; then
+          _INNODB_LOG_FILE_SIZE=512
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "512" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "1024" ]; then
+          _INNODB_LOG_FILE_SIZE=1024
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "1024" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "2048" ]; then
+          _INNODB_LOG_FILE_SIZE=2048
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "2048" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4096" ]; then
+          _INNODB_LOG_FILE_SIZE=4096
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4096" ]; then
+          _INNODB_LOG_FILE_SIZE=4096
         fi
       fi
       if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] \
@@ -354,24 +322,23 @@ tune_sql_memory_limits() {
     _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
     _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
     if [ "${_DB_COUNT}" -gt "100" ]; then
-      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "2000" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "2500" ]; then
-        _INNODB_LOG_FILE_SIZE=2500
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "2500" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "3000" ]; then
-        _INNODB_LOG_FILE_SIZE=3000
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "3000" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "3500" ]; then
-        _INNODB_LOG_FILE_SIZE=3500
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "3500" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4000" ]; then
-        _INNODB_LOG_FILE_SIZE=4000
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4000" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4500" ]; then
-        _INNODB_LOG_FILE_SIZE=4500
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4500" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "5000" ]; then
-        _INNODB_LOG_FILE_SIZE=5000
+      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "64" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "256" ]; then
+        _INNODB_LOG_FILE_SIZE=256
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "256" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "512" ]; then
+        _INNODB_LOG_FILE_SIZE=512
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "512" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "1024" ]; then
+        _INNODB_LOG_FILE_SIZE=1024
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "1024" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "2048" ]; then
+        _INNODB_LOG_FILE_SIZE=2048
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "2048" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4096" ]; then
+        _INNODB_LOG_FILE_SIZE=4096
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4096" ]; then
+        _INNODB_LOG_FILE_SIZE=4096
       fi
     fi
     if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] \
