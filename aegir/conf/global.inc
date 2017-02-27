@@ -1110,6 +1110,11 @@ if ($redis_up && $use_redis && !$custom_cache) {
       else {
         $conf['cache_default_class']            = 'Redis_Cache';
       }
+      $conf['cache_class_ctools_css_cache']                = 'Redis_Cache';
+      $conf['cache_class_ctools_object_cache']             = 'Redis_Cache';
+      $conf['cache_class_views_block_cache_optimizer']     = 'Redis_Cache';
+      $conf['cache_class_views_content_cache']             = 'Redis_Cache';
+      $conf['cache_class_views_data_export_object_cache']  = 'Redis_Cache';
     }
     if ($all_ini['redis_exclude_bins']) {
       $excludes = array();
