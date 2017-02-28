@@ -2,44 +2,32 @@
 # Update innodb_log_file_size.
 update_innodb_log_file_size() {
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
-  if [ "${_DB_SERIES}" = "10.1" ]; then
-    mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-  fi
-  mrun "service mysql stop" &> /dev/null
-  mrun "sleep 60"
-  if [ ! -e "/var/run/mysqld/mysqld.sock" ] \
-    && [ ! -e "/var/run/mysqld/mysqld.pid" ]; then
+  mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
+  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+  if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
     mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
-    mrun "sleep 10"
+    mrun "sleep 1"
     mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
     wait
-    mrun "sleep 10"
-    if [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
-      service mysql start &> /dev/null
-    fi
+    mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
   else
-    msg "INFO: Waiting for ${_DB_SERVER} clean shutdown..."
+    msg "INFO: Waiting 180s for ${_DB_SERVER} clean shutdown..."
+    mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
     mrun "sleep 180"
-    if [ ! -e "/var/run/mysqld/mysqld.sock" ] \
-      && [ ! -e "/var/run/mysqld/mysqld.pid" ]; then
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
-      mrun "sleep 10"
+      mrun "sleep 1"
       mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
       wait
-      mrun "sleep 10"
-      if [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
-        service mysql start &> /dev/null
-      fi
+      mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
     else
       msg "WARN: ${_DB_SERVER} refused to stop, InnoDB log file size not updated"
-      mrun "sleep 10"
+      mrun "sleep 5"
     fi
   fi
 }
