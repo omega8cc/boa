@@ -83,8 +83,7 @@ action() {
   if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
     service jetty7 start
   fi
-  if [ ! -e "/root/.high_traffic.cnf" ] \
-    && [ ! -e "/root/.giant_traffic.cnf" ]; then
+  if [ ! -e "/root/.giant_traffic.cnf" ]; then
     echo "INFO: Redis server will be restarted in 60 seconds"
     touch /var/run/boa_wait.pid
     sleep 60
