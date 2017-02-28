@@ -2680,6 +2680,8 @@ process() {
             _STATUS=OK
             if [ ! -f "${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info" ]; then
               run_drush8_hmr_cmd "dis update syslog dblog -y"
+              run_drush8_hmr_cmd "cron"
+              run_drush8_hmr_cmd "cc all"
               touch ${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
             fi
           else
