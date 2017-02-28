@@ -1090,6 +1090,15 @@ if ($redis_up && $use_redis && !$custom_cache) {
       }
       if ($all_ini['redis_scan_enable']) {
         $conf['redis_scan_delete']              = TRUE;
+        $gzip_mode = FALSE;
+      }
+      else {
+        if (is_readable($cache_gzip_path)) {
+          $gzip_mode = TRUE;
+        }
+        else {
+          $gzip_mode = FALSE;
+        }
       }
       $conf['cache_backends'][]                 = $cache_redis_path;
       $conf['redis_client_interface']           = 'PhpRedis';
@@ -1104,7 +1113,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $conf['page_cache_max_age']               = 0;     // D6 == max-age in the Cache-Control header (ignored by Speed Booster)
       $conf['cache_lifetime']                   = 0;     // D7 == BOA uses Speed Booster / Nginx micro-caching instead
       $conf['page_cache_lifetime']              = 0;     // D6 == BOA uses Speed Booster / Nginx micro-caching instead
-      if (is_readable($cache_gzip_path)) {
+      if ($gzip_mode) {
         $conf['cache_default_class']            = 'Redis_CacheCompressed';
         $conf['cache_class_ctools_css_cache']                = 'Redis_CacheCompressed';
         $conf['cache_class_ctools_object_cache']             = 'Redis_CacheCompressed';
