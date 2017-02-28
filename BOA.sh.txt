@@ -360,6 +360,20 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/graceful.ctrl.320stableQ3.pid" ]; then
+    mv -f /var/xdrago/graceful.sh /var/xdrago/graceful.sh.old
+    curl ${crlGet} "${urlHmr}/tools/system/graceful.sh" -o /var/xdrago/graceful.sh
+    if [ -e "/var/xdrago/graceful.sh" ]; then
+      chmod 700 /var/xdrago/graceful.sh
+      chown root:root /var/xdrago/graceful.sh
+      touch ${pthLog}/graceful.ctrl.320stableQ3.pid
+    else
+      mv -f /var/xdrago/graceful.sh.old /var/xdrago/graceful.sh
+    fi
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
     && [ ! -e "${pthLog}/weekly.ctrl.320stableQ3.pid" ]; then
     mv -f /var/xdrago/weekly.sh /var/xdrago/weekly.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/weekly.sh" -o /var/xdrago/weekly.sh
