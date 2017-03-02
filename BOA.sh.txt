@@ -433,16 +433,6 @@ update_agents() {
     fi
   fi
 
-  if [ -e "/data/conf/global.inc" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/redis_scan_enable.ctrl.320stableQ3.pid" ]; then
-    sed -i "s/'redis_scan_enable' => TRUE,/'redis_scan_enable' => FALSE,/g" /data/conf/global.inc &> /dev/null
-    wait
-    service redis-server stop &> /dev/null
-    killall -9 redis-server &> /dev/null
-    touch ${pthLog}/redis_scan_enable.ctrl.320stableQ3.pid
-  fi
-
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/usr/sbin/csf" ] \
