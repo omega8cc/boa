@@ -4,6 +4,10 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 pthVhstd="/var/aegir/config/server_master/nginx/vhost.d"
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 hold() {
   service nginx stop &> /dev/null
   killall -9 nginx &> /dev/null

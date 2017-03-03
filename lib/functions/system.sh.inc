@@ -4870,7 +4870,8 @@ update_initd() {
       msg "INFO: Restarting Jetty 7"
       mrun "service jetty7 start" &> /dev/null
     fi
-    if [ ! -e "/var/run/aegir_upgrade.pid" ]; then
+    if [ ! -e "/var/run/aegir_upgrade.pid" ] \
+      && [ ! -e "/root/.proxy.cnf" ]; then
       msg "INFO: Restarting Redis, PHP-FPM and Nginx..."
       mrun "service redis-server restart" &> /dev/null
       mrun "update-rc.d -f php5-fpm remove" &> /dev/null

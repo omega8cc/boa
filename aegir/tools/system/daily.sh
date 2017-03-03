@@ -30,6 +30,10 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 _WEBG=www-data
 _X_SE="3.2.0-stable"
 _OSV=$(lsb_release -sc 2>&1)

@@ -38,6 +38,10 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 find /var/run/boa*.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/run/manage*users.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/run/daily-fix.pid -mtime +0 -exec rm -rf {} \; &> /dev/null

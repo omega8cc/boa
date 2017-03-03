@@ -3,6 +3,10 @@
 ### TODO - rewrite this legacy script in bash
 
 $| = 1;
+
+if (-f "/root/.proxy.cnf") {
+  exit;
+}
 if (-f "/var/run/boa_wait.pid") {
   exit;
 }

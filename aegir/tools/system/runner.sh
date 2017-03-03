@@ -31,6 +31,10 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}

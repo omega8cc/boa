@@ -36,6 +36,10 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 action() {
   mkdir -p /usr/share/GeoIP
   chmod 755 /usr/share/GeoIP

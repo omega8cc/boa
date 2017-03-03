@@ -3,6 +3,10 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 if [ -e "/root/.barracuda.cnf" ]; then
   source /root/.barracuda.cnf
   _B_NICE=${_B_NICE//[^0-9]/}

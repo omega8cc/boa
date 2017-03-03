@@ -31,6 +31,10 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 ###-------------SYSTEM-----------------###
 fix_clear_cache() {
   if [ -e "${Plr}/profiles/hostmaster" ]; then

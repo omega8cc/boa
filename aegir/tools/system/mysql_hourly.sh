@@ -29,6 +29,10 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 truncate_watchdog_tables() {
   _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^watchdog$ 2>&1)
   for A in ${_TABLES}; do

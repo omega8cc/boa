@@ -29,6 +29,10 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 n=$((RANDOM%3600+8))
 echo "Waiting $n seconds 1/2 on `date` before running backup..."
 sleep $n

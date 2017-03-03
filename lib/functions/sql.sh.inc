@@ -618,8 +618,10 @@ install_mariadb_server() {
         csf -x &> /dev/null
       fi
       msg "INFO: Running ${_DB_SERVER} upgrade and then PHP forced rebuild..."
-      mrun "sleep 120"
-      mrun "service nginx stop" &> /dev/null
+      if [ ! -e "/root/.proxy.cnf" ]; then
+        mrun "sleep 120"
+        mrun "service nginx stop" &> /dev/null
+      fi
       rm -f ${aptLiSys}.d/percona.list
       rm -f ${aptLiSys}.d/ourdelta.list
       _KEYS_SERVER_TEST=FALSE

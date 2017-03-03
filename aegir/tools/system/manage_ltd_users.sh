@@ -30,6 +30,10 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 _CHECK_HOST=$(uname -n 2>&1)
 usrGroup=users
 _WEBG=www-data
