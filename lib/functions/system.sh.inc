@@ -4919,7 +4919,9 @@ update_initd() {
           myCnfUpdate=YES
         fi
       fi
-      if [ "${myCnfUpdate}" = "YES" ]; then
+      _DB_SERVER_UPTIME=$(mysqladmin version | grep -i uptime -V 2>&1)
+      if [ "${myCnfUpdate}" = "YES" ] \
+        || [[ ! "${_DB_SERVER_UPTIME}" =~ "hours" ]]; then
         msg "INFO: Restarting ${_DB_SERVER} server..."
         mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
         mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
