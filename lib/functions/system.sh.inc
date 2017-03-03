@@ -4906,9 +4906,25 @@ update_initd() {
       elif [ -x "/usr/bin/mysql_upgrade" ]; then
         mrun "mysql_upgrade --force" &> /dev/null
       fi
-      msg "INFO: Restarting ${_DB_SERVER} server..."
-      mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
-      mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+      myCnf="/etc/mysql/my.cnf"
+      preCnf="${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}"
+      if [ -f "${myCnf}" ]; then
+        myCnfUpdate=NO
+        if [ ! -f "${preCnf}" ]; then
+          mkdir -p ${vBs}/dragon/t/
+          cp -af ${myCnf} ${preCnf}
+        fi
+        diffMyTest=$(diff ${myCnf} ${preCnf} 2>&1)
+        if [ ! -z "${diffMyTest}" ]; then
+          myCnfUpdate=YES
+        fi
+      fi
+      if [ "${myCnfUpdate}" = "YES" ]; then
+        msg "INFO: Restarting ${_DB_SERVER} server..."
+        mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
+        mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+        msg "INFO: ${_DB_SERVER} server restart completed"
+      fi
       if [ -e "/etc/init.d/php70-fpm" ]; then
         mrun "service php70-fpm start" &> /dev/null
       fi
