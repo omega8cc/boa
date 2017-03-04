@@ -4919,6 +4919,7 @@ update_initd() {
           myCnfUpdate=YES
         fi
       fi
+      myCnfUpdate=NO
       _DB_SERVER_UPTIME=$(mysqladmin version | grep -i uptime -V 2>&1)
       if [ "${myCnfUpdate}" = "YES" ] \
         || [[ ! "${_DB_SERVER_UPTIME}" =~ "hours" ]]; then
