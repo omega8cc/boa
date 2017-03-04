@@ -666,12 +666,11 @@ install_mariadb_server() {
           mkdir -p ${vBs}/dragon/t/
           cp -af ${myCnf} ${preCnf}
         fi
-        diffMyTest=$(diff ${myCnf} ${preCnf} 2>&1)
+        diffMyTest=$(diff -w -B -I innodb_buffer_pool_size ${myCnf} ${preCnf} 2>&1)
         if [ ! -z "${diffMyTest}" ]; then
           myCnfUpdate=YES
         fi
       fi
-      myCnfUpdate=NO
       _DB_SERVER_UPTIME=$(mysqladmin version | grep -i uptime 2>&1)
       if [ "${myCnfUpdate}" = "YES" ] \
         || [[ ! "${_DB_SERVER_UPTIME}" =~ "hours" ]]; then
