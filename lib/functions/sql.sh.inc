@@ -672,7 +672,7 @@ install_mariadb_server() {
         fi
       fi
       myCnfUpdate=NO
-      _DB_SERVER_UPTIME=$(mysqladmin version | grep -i uptime -V 2>&1)
+      _DB_SERVER_UPTIME=$(mysqladmin version | grep -i uptime 2>&1)
       if [ "${myCnfUpdate}" = "YES" ] \
         || [[ ! "${_DB_SERVER_UPTIME}" =~ "hours" ]]; then
         msg "INFO: Restarting ${_DB_SERVER} server..."
