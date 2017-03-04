@@ -3316,7 +3316,7 @@ else
   dhpWildPath="/etc/ssl/private/nginx-wild-ssl.dhp"
   if [ -e "/etc/ssl/private/4096.dhp" ]; then
     dhpPath="/etc/ssl/private/4096.dhp"
-    _DIFF_T=$(diff ${dhpPath} ${dhpWildPath} 2>&1)
+    _DIFF_T=$(diff -w -B ${dhpPath} ${dhpWildPath} 2>&1)
     if [ ! -z "${_DIFF_T}" ]; then
       cp -af ${dhpPath} ${dhpWildPath}
     fi

@@ -621,7 +621,7 @@ manage_sec_user_drush_aliases() {
       cp -af ${pthAliasMain} ${pthAliasCopy}
       chmod 440 ${pthAliasCopy}
     elif [ ! -z "$SiteName" ]  && [ -e "${pthAliasCopy}" ]; then
-      _DIFF_T=$(diff ${pthAliasCopy} ${pthAliasMain} 2>&1)
+      _DIFF_T=$(diff -w -B ${pthAliasCopy} ${pthAliasMain} 2>&1)
       if [ ! -z "${_DIFF_T}" ]; then
         cp -af ${pthAliasMain} ${pthAliasCopy}
         chmod 440 ${pthAliasCopy}
@@ -1239,7 +1239,7 @@ site_socket_inc_gen() {
       rm -rf ${preFpm}
       cp -af ${mltFpm} ${preFpm}
     fi
-    diffFpmTest=$(diff ${mltFpm} ${preFpm} 2>&1)
+    diffFpmTest=$(diff -w -B ${mltFpm} ${preFpm} 2>&1)
     if [ ! -z "${diffFpmTest}" ]; then
       mltFpmUpdate=YES
     fi
@@ -1805,7 +1805,7 @@ manage_site_drush_alias_mirror() {
             cp -af ${pthAliasMain} ${pthAliasCopy}
             chmod 440 ${pthAliasCopy}
           else
-            _DIFF_T=$(diff ${pthAliasCopy} ${pthAliasMain} 2>&1)
+            _DIFF_T=$(diff -w -B ${pthAliasCopy} ${pthAliasMain} 2>&1)
             if [ ! -z "${_DIFF_T}" ]; then
               cp -af ${pthAliasMain} ${pthAliasCopy}
               chmod 440 ${pthAliasCopy}
@@ -2043,7 +2043,7 @@ else
   kill_zombies >/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   manage_user >/var/backups/ltd/log/users-${_NOW}.log 2>&1
   if [ -e "${_THIS_LTD_CONF}" ]; then
-    _DIFF_T=$(diff ${_THIS_LTD_CONF} /etc/lshell.conf 2>&1)
+    _DIFF_T=$(diff -w -B ${_THIS_LTD_CONF} /etc/lshell.conf 2>&1)
     if [ ! -z "${_DIFF_T}" ]; then
       cp -af /etc/lshell.conf /var/backups/ltd/old/lshell.conf-before-${_NOW}
       cp -af ${_THIS_LTD_CONF} /etc/lshell.conf

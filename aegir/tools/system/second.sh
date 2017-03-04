@@ -240,7 +240,7 @@ manage_ip_auth_access() {
       update_ip_auth_access
     else
       if [ -e "/var/backups/.auth.IP.list.tmp" ]; then
-        diffTestIf=$(diff /var/backups/.auth.IP.list.tmp \
+        diffTestIf=$(diff -w -B /var/backups/.auth.IP.list.tmp \
           /var/backups/.auth.IP.list 2>&1)
         if [ ! -z "${diffTestIf}" ]; then
           update_ip_auth_access
@@ -254,7 +254,7 @@ manage_ip_auth_access() {
       chmod 700 /var/backups/.vhost.d.wbhd
       cp -af /var/backups/.vhost.d.mstr/* /var/backups/.vhost.d.wbhd/
     fi
-    diffClstrTest=$(diff /var/backups/.vhost.d.wbhd \
+    diffClstrTest=$(diff -w -B /var/backups/.vhost.d.wbhd \
       /var/backups/.vhost.d.mstr 2>&1)
     if [ ! -z "${diffClstrTest}" ]; then
       service nginx reload &> /dev/null
