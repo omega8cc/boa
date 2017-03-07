@@ -1199,6 +1199,21 @@ count_cpu() {
 ###--------------------###
 if [ `whoami` = "root" ]; then
 
+  ### Linux kernel CVE-2017-6074 hotfix
+  if [ -e "/etc/modprobe.d" ] \
+    && [ ! -e "/etc/modprobe.d/blacklist-dccp-all.conf" ]; then
+    echo "install dccp /bin/true" > /etc/modprobe.d/blacklist-dccp-all.conf
+    echo "install dccp_diag /bin/true" >> /etc/modprobe.d/blacklist-dccp-all.conf
+    echo "install dccp_ipv4 /bin/true" >> /etc/modprobe.d/blacklist-dccp-all.conf
+    echo "install dccp_ipv6 /bin/true" >> /etc/modprobe.d/blacklist-dccp-all.conf
+    echo "install dccp_probe /bin/true" >> /etc/modprobe.d/blacklist-dccp-all.conf
+    rmmod dccp &> /dev/null
+    rmmod dccp_diag &> /dev/null
+    rmmod dccp_ipv4 &> /dev/null
+    rmmod dccp_ipv6 &> /dev/null
+    rmmod dccp_probe &> /dev/null
+  fi
+
   if [ -e "/var/run/pdnsd.pid" ] \
     && [ -e "/var/xdrago" ] \
     && [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
