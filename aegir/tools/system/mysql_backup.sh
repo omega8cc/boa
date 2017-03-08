@@ -170,6 +170,10 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
           echo "Truncated giant watchdog in ${_DB}"
         fi
       fi
+      if [ "${_DOW}" != "6" ] && [ "${_DOW}" != "7" ]; then
+        truncate_cache_tables &> /dev/null
+        echo "All cache tables in ${_DB} truncated"
+      fi
       # truncate_accesslog_tables &> /dev/null
       # echo "Truncated not used accesslog in ${_DB}"
       # truncate_queue_tables &> /dev/null
