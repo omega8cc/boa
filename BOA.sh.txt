@@ -1199,6 +1199,13 @@ count_cpu() {
 ###--------------------###
 if [ `whoami` = "root" ]; then
 
+  ### Linux kernel CVE-2017-2636 hotfix
+  if [ -e "/etc/modprobe.d" ] \
+    && [ ! -e "/etc/modprobe.d/blacklist-n_hdlc.conf" ]; then
+    echo "install n_hdlc /bin/true" > /etc/modprobe.d/blacklist-n_hdlc.conf
+    rmmod n_hdlc &> /dev/null
+  fi
+
   ### Linux kernel CVE-2017-6074 hotfix
   if [ -e "/etc/modprobe.d" ] \
     && [ ! -e "/etc/modprobe.d/blacklist-dccp-all.conf" ]; then
