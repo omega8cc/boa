@@ -673,6 +673,8 @@ install_mariadb_server() {
         diffMyTest=$(diff -w -B \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \
+          -I tmp_table_size \
+          -I max_heap_table_size \
           -I myisam_sort_buffer_size \
           -I key_buffer_size ${myCnf} ${preCnf} 2>&1)
         if [ -z "${diffMyTest}" ]; then
