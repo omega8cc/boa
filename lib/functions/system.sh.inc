@@ -1695,16 +1695,19 @@ check_apt_updates() {
     -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`; do
     case "${Update}" in
       *libcurl*)    _UP_PHP=YES ;;
-      *libmysql*)   _UP_PHP=YES ;;
+      *libmysql*)   _UP_SQL=YES ;;
       *libssl*)     _UP_PHP=YES ;;
       *linux-*)     _UP_LNX=YES ;;
-      *mariadb*)    _UP_PHP=YES ;;
+      *mariadb*)    _UP_SQL=YES ;;
       *newrelic*)   _UP_NRC=YES ;;
       *openjdk*)    _UP_JDK=YES ;;
       *openssl*)    _UP_PHP=YES ;;
       *)  ;;
     esac
   done
+  if [ "${_UP_SQL}" = "YES" ]; then
+    _UP_PHP=YES
+  fi
 }
 
 #
@@ -4932,18 +4935,20 @@ update_initd() {
           msg "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
         fi
       fi
+      if [ "${_UP_SQL}" = "YES" ]; then
+        myVnTest=$(mysql -V 2>&1)
+        if [[ "${myVnTest}" =~ "${_MARIADB_VRN}" ]]; then
+          msg "INFO: ${_DB_SERVER} ${_MARIADB_VRN} already up to date"
+          myCnfUpdate=YES
+          msg "INFO: ${_DB_SERVER} restart after upgrade forced"
+        fi
+      fi
       myUptime=$(mysqladmin version | grep -i uptime 2>&1)
       myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
       msg "INFO: ${_DB_SERVER} ${myUptime}"
-      if [[ ! "${myUptime}" =~ "days" ]] \
-        && [[ "${myUptime}" =~ "Uptime" ]] \
-        && [ "${myRstrd}" != "YES" ]; then
-        myCnfUpdate=YES
-        msg "INFO: ${_DB_SERVER} another restart forced"
-      fi
       if [ "${myRstrd}" = "YES" ]; then
         myCnfUpdate=NO
-        msg "INFO: ${_DB_SERVER} already restarted"
+        msg "INFO: ${_DB_SERVER} already restarted!"
       fi
       if [ "${myCnfUpdate}" = "YES" ]; then
         msg "INFO: Restarting ${_DB_SERVER} server..."

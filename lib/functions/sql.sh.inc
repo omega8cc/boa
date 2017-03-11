@@ -691,11 +691,6 @@ install_mariadb_server() {
       myUptime=$(mysqladmin version | grep -i uptime 2>&1)
       myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
       msg "INFO: ${_DB_SERVER} ${myUptime}"
-      if [[ ! "${myUptime}" =~ "days" ]] \
-        && [[ "${myUptime}" =~ "Uptime" ]]; then
-        myCnfUpdate=YES
-        msg "INFO: ${_DB_SERVER} restart forced on rebuild"
-      fi
       if [ "${myCnfUpdate}" = "YES" ]; then
         msg "INFO: Restarting ${_DB_SERVER} server..."
         mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
