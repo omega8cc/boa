@@ -4929,7 +4929,7 @@ update_initd() {
           msg "INFO: ${_DB_SERVER} diff0 empty"
         else
           myCnfUpdate=YES
-          diffMyTest=$(echo -n ${diffMyTest} | fmt -su -w 2500 2>&1)
+          # diffMyTest=$(echo -n ${diffMyTest} | fmt -su -w 2500 2>&1)
           msg "INFO: ${_DB_SERVER} diff1 ${diffMyTest}"
         fi
         if [[ "${diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
