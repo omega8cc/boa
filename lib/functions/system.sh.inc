@@ -4915,22 +4915,37 @@ update_initd() {
           cp -af ${myCnf} ${preCnf}
         fi
         diffMyTest=$(diff -w -B -I innodb_buffer_pool_size ${myCnf} ${preCnf} 2>&1)
-        if [ ! -z "${diffMyTest}" ]; then
+        if [ -z "${diffMyTest}" ]; then
+          myCnfUpdate=NO
+          msg "INFO: ${_DB_SERVER} diff0 empty"
+        else
           myCnfUpdate=YES
-          msg "INFO: ${_DB_SERVER} cnf diff 1/3 ${diffMyTest}"
+          diffMyTest=$(echo -n ${diffMyTest} | fmt -su -w 2500 2>&1)
+          msg "INFO: ${_DB_SERVER} diff1 ${diffMyTest}"
         fi
         if [[ "${diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
           myCnfUpdate=NO
-          msg "INFO: ${_DB_SERVER} cnf diff 2/3 ${diffMyTest}"
+          msg "INFO: ${_DB_SERVER} diff2 ${diffMyTest}"
         fi
         if [[ "${diffMyTest}" =~ "No such file or directory" ]]; then
           myCnfUpdate=NO
-          msg "INFO: ${_DB_SERVER} cnf diff 3/3 ${diffMyTest}"
+          msg "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
         fi
       fi
-      _DB_SERVER_UPTIME=$(mysqladmin version | grep -i uptime 2>&1)
-      if [ "${myCnfUpdate}" = "YES" ] \
-        || [[ ! "${_DB_SERVER_UPTIME}" =~ "hours" ]]; then
+      myUptime=$(mysqladmin version | grep -i uptime 2>&1)
+      myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
+      msg "INFO: ${_DB_SERVER} ${myUptime}"
+      if [[ ! "${myUptime}" =~ "days" ]] \
+        && [[ "${myUptime}" =~ "Uptime" ]] \
+        && [ "${myRstrd}" != "YES" ]; then
+        myCnfUpdate=YES
+        msg "INFO: ${_DB_SERVER} another restart forced"
+      fi
+      if [ "${myRstrd}" = "YES" ]; then
+        myCnfUpdate=NO
+        msg "INFO: ${_DB_SERVER} already restarted"
+      fi
+      if [ "${myCnfUpdate}" = "YES" ]; then
         msg "INFO: Restarting ${_DB_SERVER} server..."
         mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
         mrun "bash /var/xdrago/move_sql.sh" &> /dev/null

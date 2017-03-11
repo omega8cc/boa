@@ -135,10 +135,13 @@ update_sql_conf() {
 tune_sql_memory_limits() {
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
   wait
+  if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}" ]; then
+    mkdir -p ${vBs}/dragon/t/
+    cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}
+  fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
     _DO_NOTHING=YES
   else
-    cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}
     cp -af ${locCnf}/my.cnf.txt /etc/mysql/my.cnf
   fi
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
@@ -662,31 +665,43 @@ install_mariadb_server() {
       preCnf="${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}"
       if [ -f "${myCnf}" ]; then
         myCnfUpdate=NO
+        myRstrd=NO
         if [ ! -f "${preCnf}" ]; then
           mkdir -p ${vBs}/dragon/t/
           cp -af ${myCnf} ${preCnf}
         fi
         diffMyTest=$(diff -w -B -I innodb_buffer_pool_size ${myCnf} ${preCnf} 2>&1)
-        if [ ! -z "${diffMyTest}" ]; then
+        if [ -z "${diffMyTest}" ]; then
+          myCnfUpdate=NO
+          msg "INFO: ${_DB_SERVER} diff0 empty"
+        else
           myCnfUpdate=YES
-          msg "INFO: ${_DB_SERVER} cnf diff 1/3 ${diffMyTest}"
+          diffMyTest=$(echo -n ${diffMyTest} | fmt -su -w 2500 2>&1)
+          msg "INFO: ${_DB_SERVER} diff1 ${diffMyTest}"
         fi
         if [[ "${diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
           myCnfUpdate=NO
-          msg "INFO: ${_DB_SERVER} cnf diff 2/3 ${diffMyTest}"
+          msg "INFO: ${_DB_SERVER} diff2 ${diffMyTest}"
         fi
         if [[ "${diffMyTest}" =~ "No such file or directory" ]]; then
           myCnfUpdate=NO
-          msg "INFO: ${_DB_SERVER} cnf diff 3/3 ${diffMyTest}"
+          msg "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
         fi
       fi
-      _DB_SERVER_UPTIME=$(mysqladmin version | grep -i uptime 2>&1)
-      if [ "${myCnfUpdate}" = "YES" ] \
-        || [[ ! "${_DB_SERVER_UPTIME}" =~ "hours" ]]; then
+      myUptime=$(mysqladmin version | grep -i uptime 2>&1)
+      myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
+      msg "INFO: ${_DB_SERVER} ${myUptime}"
+      if [[ ! "${myUptime}" =~ "days" ]] \
+        && [[ "${myUptime}" =~ "Uptime" ]]; then
+        myCnfUpdate=YES
+        msg "INFO: ${_DB_SERVER} restart forced on rebuild"
+      fi
+      if [ "${myCnfUpdate}" = "YES" ]; then
         msg "INFO: Restarting ${_DB_SERVER} server..."
         mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
         mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
         msg "INFO: ${_DB_SERVER} server restart completed"
+        myRstrd=YES
       fi
       if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
         mrun "csf -e" &> /dev/null
