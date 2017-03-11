@@ -669,6 +669,15 @@ install_mariadb_server() {
         diffMyTest=$(diff -w -B -I innodb_buffer_pool_size ${myCnf} ${preCnf} 2>&1)
         if [ ! -z "${diffMyTest}" ]; then
           myCnfUpdate=YES
+          msg "INFO: ${_DB_SERVER} cnf diff 1/3 ${diffMyTest}"
+        fi
+        if [[ "${diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
+          myCnfUpdate=NO
+          msg "INFO: ${_DB_SERVER} cnf diff 2/3 ${diffMyTest}"
+        fi
+        if [[ "${diffMyTest}" =~ "No such file or directory" ]]; then
+          myCnfUpdate=NO
+          msg "INFO: ${_DB_SERVER} cnf diff 3/3 ${diffMyTest}"
         fi
       fi
       _DB_SERVER_UPTIME=$(mysqladmin version | grep -i uptime 2>&1)
