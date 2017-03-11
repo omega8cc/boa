@@ -519,8 +519,8 @@ tune_memory_limits() {
     wait
     sed -i "s/^max_heap_table_size.*/max_heap_table_size     = ${_TMP_SQL}/g"     /etc/mysql/my.cnf
     wait
-    sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = ${_SRT_SQL}/g" /etc/mysql/my.cnf
-    wait
+    # sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = ${_SRT_SQL}/g" /etc/mysql/my.cnf
+    # wait
     sed -i "s/^query_cache_size.*/query_cache_size        = ${_QCE_SQL}/g"        /etc/mysql/my.cnf
     wait
     sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = ${_RND_SQL}/g"    /etc/mysql/my.cnf
@@ -4920,6 +4920,7 @@ update_initd() {
         diffMyTest=$(diff -w -B \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \
+          -I myisam_sort_buffer_size \
           -I key_buffer_size ${myCnf} ${preCnf} 2>&1)
         if [ -z "${diffMyTest}" ]; then
           myCnfUpdate=NO

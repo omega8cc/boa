@@ -673,6 +673,7 @@ install_mariadb_server() {
         diffMyTest=$(diff -w -B \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \
+          -I myisam_sort_buffer_size \
           -I key_buffer_size ${myCnf} ${preCnf} 2>&1)
         if [ -z "${diffMyTest}" ]; then
           myCnfUpdate=NO
