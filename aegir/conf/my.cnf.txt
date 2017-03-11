@@ -20,7 +20,7 @@ skip-external-locking
 skip-name-resolve
 connect_timeout         = 60
 join_buffer_size        = 1M
-key_buffer_size         = 181M
+key_buffer_size         = 64M
 log_warnings            = 2
 max_allowed_packet      = 32M
 max_connect_errors      = 191

@@ -207,14 +207,14 @@ tune_sql_memory_limits() {
         _USE_MYISAM_MEM="${_USE_SQL}"
       fi
       _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
-      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
+      # sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
       wait
     else
       _USE_MYISAM_MEM="${_USE_SQL}M"
       if [ "$_MYSQLTUNER_TEST_RESULT" = "FAIL" ]; then
         msg "ALRT! _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
       fi
-      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
+      # sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
       wait
     fi
     ###--------------------###
@@ -670,7 +670,10 @@ install_mariadb_server() {
           mkdir -p ${vBs}/dragon/t/
           cp -af ${myCnf} ${preCnf}
         fi
-        diffMyTest=$(diff -w -B -I innodb_buffer_pool_size ${myCnf} ${preCnf} 2>&1)
+        diffMyTest=$(diff -w -B \
+          -I innodb_buffer_pool_size \
+          -I innodb_buffer_pool_instances \
+          -I key_buffer_size ${myCnf} ${preCnf} 2>&1)
         if [ -z "${diffMyTest}" ]; then
           myCnfUpdate=NO
           msg "INFO: ${_DB_SERVER} diff0 empty"

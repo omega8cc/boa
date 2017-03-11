@@ -4917,7 +4917,10 @@ update_initd() {
           mkdir -p ${vBs}/dragon/t/
           cp -af ${myCnf} ${preCnf}
         fi
-        diffMyTest=$(diff -w -B -I innodb_buffer_pool_size ${myCnf} ${preCnf} 2>&1)
+        diffMyTest=$(diff -w -B \
+          -I innodb_buffer_pool_size \
+          -I innodb_buffer_pool_instances \
+          -I key_buffer_size ${myCnf} ${preCnf} 2>&1)
         if [ -z "${diffMyTest}" ]; then
           myCnfUpdate=NO
           msg "INFO: ${_DB_SERVER} diff0 empty"
