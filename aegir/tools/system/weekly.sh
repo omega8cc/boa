@@ -466,6 +466,8 @@ by having in its main name a special keyword with two dots on both sides:
   .temporary.
   .test.
   .testing.
+  .stage.
+  .staging.
 
 For example, a site with main name: abc.test.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes),
@@ -508,6 +510,8 @@ by having in its main name a special keyword with two dots on both sides:
   .temporary.
   .test.
   .testing.
+  .stage.
+  .staging.
 
 For example, a site with main name: abc.test.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes),
@@ -550,6 +554,8 @@ by having in its main name a special keyword with two dots on both sides:
   .temporary.
   .test.
   .testing.
+  .stage.
+  .staging.
 
 For example, a site with main name: abc.test.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes),
