@@ -2788,10 +2788,15 @@ finale() {
     service cron start     &> /dev/null
   fi
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+    service lfd stop &> /dev/null
+    sleep 3
+    rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
     csf -uf &> /dev/null
     csf -e  &> /dev/null
     csf -q  &> /dev/null
+    sleep 3
+    service lfd start &> /dev/null
   fi
   cd /
   chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt opt \
@@ -3593,6 +3598,9 @@ sys_packages_update() {
       service cron stop &> /dev/null
     fi
     if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+      service lfd stop &> /dev/null
+      sleep 3
+      rm -f /etc/csf/csf.error
       csf -x &> /dev/null
     fi
     until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do

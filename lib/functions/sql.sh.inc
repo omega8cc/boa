@@ -545,6 +545,9 @@ install_mariadb_server() {
     service cron stop &> /dev/null
     if [ -e "/usr/sbin/csf" ] \
       && [ -e "/etc/csf/csf.deny" ]; then
+      service lfd stop &> /dev/null
+      sleep 3
+      rm -f /etc/csf/csf.error
       csf -x &> /dev/null
     fi
     install_with_aptitude_sql
@@ -618,6 +621,9 @@ install_mariadb_server() {
       service cron stop &> /dev/null
       if [ -e "/usr/sbin/csf" ] \
         && [ -e "/etc/csf/csf.deny" ]; then
+        service lfd stop &> /dev/null
+        sleep 3
+        rm -f /etc/csf/csf.error
         csf -x &> /dev/null
       fi
       msg "INFO: Running ${_DB_SERVER} upgrade and then PHP forced rebuild..."
@@ -706,6 +712,8 @@ install_mariadb_server() {
       fi
       if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
         mrun "csf -e" &> /dev/null
+        sleep 3
+        service lfd start &> /dev/null
       fi
     fi
   fi

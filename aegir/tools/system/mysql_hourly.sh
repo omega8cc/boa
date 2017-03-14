@@ -100,6 +100,9 @@ if [ ! -e "${xtraList}" ] \
   echo "deb-src http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
   if [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
+    service lfd stop &> /dev/null
+    sleep 3
+    rm -f /etc/csf/csf.error
     csf -x &> /dev/null
   fi
   _KEYS_SERVER_TEST=FALSE
@@ -111,6 +114,8 @@ if [ ! -e "${xtraList}" ] \
   if [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
     csf -e &> /dev/null
+    sleep 3
+    service lfd start &> /dev/null
   fi
   apt-get update -qq
   apt-get install percona-xtrabackup -y
