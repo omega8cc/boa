@@ -490,13 +490,18 @@ update_agents() {
       sed -i "s/.*googlebot.*//g"  /etc/csf/csf.allow
       sed -i "s/.*googlebot.*//g"  /etc/csf/csf.ignore
       sed -i "s/66.249..*//g"      /etc/csf/csf.deny
+      wait
       echo "tcp|in|d=80|s=66.249.64.0/19 # googlebot ips" >> /etc/csf/csf.allow
       echo "tcp|in|d=443|s=66.249.64.0/19 # googlebot ips" >> /etc/csf/csf.allow
       sed -i "s/65.5.*//g"         /etc/csf/csf.deny
+      wait
+      sed -i "s/199.30..*//g"      /etc/csf/csf.deny
       sed -i "s/.*microsoft.*//g"  /etc/csf/csf.allow
       sed -i "s/.*microsoft.*//g"  /etc/csf/csf.ignore
       echo "tcp|in|d=80|s=65.52.0.0/14 # microsoft ips" >> /etc/csf/csf.allow
       echo "tcp|in|d=443|s=65.52.0.0/14 # microsoft ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=199.30.16.0/20 # microsoft ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=199.30.16.0/20 # microsoft ips" >> /etc/csf/csf.allow
       sed -i "/^$/d" /etc/csf/csf.allow
       sed -i "/^$/d" /etc/csf/csf.deny
       csf -df
