@@ -447,7 +447,6 @@ update_agents() {
       touch ${pthLog}/guest-water-sh2.ctrl.320stableQ6.pid
       sed -i "s/.*cloudflare.*//g"  /etc/csf/csf.allow
       sed -i "s/.*cloudflare.*//g"  /etc/csf/csf.ignore
-      sed -i "/^$/d" /etc/csf/csf.allow
       echo "tcp|in|d=80|s=103.21.244.0/22 # cloudflare ips" >> /etc/csf/csf.allow
       echo "tcp|in|d=80|s=103.22.200.0/22 # cloudflare ips" >> /etc/csf/csf.allow
       echo "tcp|in|d=80|s=103.31.4.0/22 # cloudflare ips" >> /etc/csf/csf.allow
@@ -480,7 +479,6 @@ update_agents() {
       echo "tcp|in|d=443|s=199.27.128.0/21 # cloudflare ips" >> /etc/csf/csf.allow
       sed -i "s/.*sucuri.*//g"  /etc/csf/csf.allow
       sed -i "s/.*sucuri.*//g"  /etc/csf/csf.ignore
-      sed -i "/^$/d" /etc/csf/csf.allow
       echo "tcp|in|d=80|s=192.88.134.0/23 # sucuri ips" >> /etc/csf/csf.allow
       echo "tcp|in|d=80|s=185.93.228.0/22 # sucuri ips" >> /etc/csf/csf.allow
       echo "tcp|in|d=80|s=192.124.249.0/24 # sucuri ips" >> /etc/csf/csf.allow
@@ -489,6 +487,18 @@ update_agents() {
       echo "tcp|in|d=443|s=185.93.228.0/22 # sucuri ips" >> /etc/csf/csf.allow
       echo "tcp|in|d=443|s=192.124.249.0/24 # sucuri ips" >> /etc/csf/csf.allow
       echo "tcp|in|d=443|s=66.248.200.0/22 # sucuri ips" >> /etc/csf/csf.allow
+      sed -i "s/.*googlebot.*//g"  /etc/csf/csf.allow
+      sed -i "s/.*googlebot.*//g"  /etc/csf/csf.ignore
+      sed -i "s/66.249..*//g"      /etc/csf/csf.deny
+      echo "tcp|in|d=80|s=66.249.64.0/19 # googlebot ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=66.249.64.0/19 # googlebot ips" >> /etc/csf/csf.allow
+      sed -i "s/65.5.*//g"         /etc/csf/csf.deny
+      sed -i "s/.*microsoft.*//g"  /etc/csf/csf.allow
+      sed -i "s/.*microsoft.*//g"  /etc/csf/csf.ignore
+      echo "tcp|in|d=80|s=65.52.0.0/14 # microsoft ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=443|s=65.52.0.0/14 # microsoft ips" >> /etc/csf/csf.allow
+      sed -i "/^$/d" /etc/csf/csf.allow
+      sed -i "/^$/d" /etc/csf/csf.deny
       csf -df
       csf -tf
       sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
