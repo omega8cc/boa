@@ -3173,6 +3173,10 @@ action() {
 
 ###--------------------###
 echo "INFO: Daily maintenance start"
+until [ ! -e "/var/run/boa_wait.pid" ]; do
+  echo "Waiting for BOA queue availability.."
+  sleep 5
+done
 #
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
@@ -3258,11 +3262,7 @@ fi
 #
 find_fast_mirror
 #
-if [ -e "/var/run/boa_wait.pid" ] \
-  && [ ! -e "/var/run/boa_system_wait.pid" ]; then
-  touch /var/xdrago/log/wait-for-boa
-  exit 1
-elif [ -e "/var/run/daily-fix.pid" ]; then
+if [ -e "/var/run/daily-fix.pid" ]; then
   touch /var/xdrago/log/wait-for-daily
   exit 1
 elif [ -e "/root/.wbhd.clstr.cnf" ]; then

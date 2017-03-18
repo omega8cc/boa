@@ -2016,11 +2016,11 @@ if [ -e "/var/run/manage_rvm_users.pid" ] \
   || [ -e "/var/run/boa_run.pid" ] \
   || [ -e "/var/run/boa_wait.pid" ]; then
   touch /var/xdrago/log/wait-manage-ltd-users
-  echo Another BOA task is running, we have to wait
+  echo "Another BOA task is running, we have to wait"
   sleep 10
   exit 0
 elif [ ! -e "/var/xdrago/conf/lshell.conf" ]; then
-  echo Missing /var/xdrago/conf/lshell.conf template
+  echo "Missing /var/xdrago/conf/lshell.conf template"
   exit 0
 else
   touch /var/run/manage_ltd_users.pid

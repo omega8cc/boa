@@ -82,10 +82,12 @@ for Runner in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f \
       && [ ! -e "/var/run/manage_rvm_users.pid" ]; then
       echo running ${Runner}
       bash ${Runner}
+      n=$((RANDOM%9+2))
+      echo waiting $n sec
+      sleep $n
+    else
+      echo "Another BOA task is running, we have to wait.."
     fi
-    n=$((RANDOM%9+2))
-    echo waiting $n sec
-    sleep $n
   else
     echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
   fi
@@ -97,14 +99,17 @@ done
 if [ -e "/var/run/boa_wait.pid" ] \
   || [ -e "/var/run/manage_rvm_users.pid" ]; then
   touch /var/xdrago/log/wait-runner
+  echo "Another BOA task is running, we will try again later.."
   exit 0
 elif [ `ps aux | grep -v "grep" \
   | grep --count "n7 bash.*runner"` -gt "8" ]; then
   touch /var/xdrago/log/wait-runner
+  echo "Too many Aegir tasks running now, we will try again later.."
   exit 0
 else
   if [ -e "/root/.wbhd.clstr.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
+    echo "Aegir tasks ignored on this cluster node"
     exit 0
   fi
   if [ -e "/root/.fast.cron.cnf" ]; then
