@@ -75,7 +75,29 @@ else
 fi
 touch /var/run/boa_sql_backup.pid
 
+create_locks() {
+  echo "Creating locks.."
+  touch /var/run/boa_wait.pid
+  touch /var/run/mysql_backup_running.pid
+}
+
+remove_locks() {
+  echo "Removing locks.."
+  rm -f /var/run/boa_wait.pid
+  rm -f /var/run/mysql_backup_running.pid
+}
+
+check_running() {
+  until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
+    && [ -e "/var/run/mysqld/mysqld.sock" ]; do
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    echo "Waiting for MySQLD availability.."
+    sleep 3
+  done
+}
+
 truncate_cache_tables() {
+  check_running
   _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
   for C in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
@@ -86,6 +108,7 @@ EOFMYSQL
 }
 
 truncate_watchdog_tables() {
+  check_running
   _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^watchdog$ 2>&1)
   for A in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
@@ -96,6 +119,7 @@ EOFMYSQL
 }
 
 truncate_accesslog_tables() {
+  check_running
   _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^accesslog$ 2>&1)
   for A in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
@@ -106,6 +130,7 @@ EOFMYSQL
 }
 
 truncate_queue_tables() {
+  check_running
   _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^queue$ 2>&1)
   for Q in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
@@ -116,10 +141,12 @@ EOFMYSQL
 }
 
 repair_this_database() {
+  check_running
   mysqlcheck --repair --silent ${_DB}
 }
 
 optimize_this_database() {
+  check_running
   _TABLES=$(mysql ${_DB} -e "show tables" -s | uniq | sort 2>&1)
   for T in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
@@ -129,6 +156,7 @@ EOFMYSQL
 }
 
 convert_to_innodb() {
+  check_running
   _TABLES=$(mysql ${_DB} -e "show tables" -s | uniq | sort 2>&1)
   for T in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
@@ -141,6 +169,7 @@ backup_this_database() {
   n=$((RANDOM%15+5))
   echo waiting ${n} sec
   sleep ${n}
+  check_running
   mysqldump \
     --single-transaction \
     --quick \
@@ -152,6 +181,7 @@ backup_this_database() {
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
 if [ "${_DB_SERIES}" = "10.1" ]; then
+  check_running
   mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
   mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
   mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
@@ -162,6 +192,8 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
   if [ "${_DB}" != "Database" ] \
     && [ "${_DB}" != "information_schema" ] \
     && [ "${_DB}" != "performance_schema" ]; then
+    check_running
+    create_locks
     if [ "${_DB}" != "mysql" ]; then
       if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>&1)
@@ -202,6 +234,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
       fi
     fi
     backup_this_database &> /dev/null
+    remove_locks
     echo "Backup completed for ${_DB}"
     echo " "
   fi
@@ -215,6 +248,7 @@ if [ "${_OPTIM}" = "YES" ] \
   && [ ! -e "/var/run/boa_run.pid" ]; then
   ionice -c2 -n2 -p $$
   if [ "${_DB_SERIES}" = "10.1" ]; then
+    check_running
     mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
