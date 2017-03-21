@@ -416,8 +416,6 @@ install_mariadb_sql() {
   rm -f /usr/bin/mytop
   st_runner "aptitude remove mysql-common -y" &> /dev/null
   st_runner "apt-get purge mysql-common -y" &> /dev/null
-  st_runner "aptitude remove libmariadbclient-dev -y" &> /dev/null
-  st_runner "apt-get purge libmariadbclient-dev -y" &> /dev/null
   st_runner "apt-get update -qq" &> /dev/null
   if [ "${_EASY_SETUP}" = "MSTR" ] \
     || [ "${_EASY_SETUP}" = "DBHD" ] \
@@ -432,8 +430,7 @@ install_mariadb_sql() {
             mariadb-client-${_DB_SERIES} \
             mariadb-common"
   fi
-  SQLADD="libmariadbd-dev \
-          libmariadb-dev \
+  SQLADD="libmariadbclient-dev \
           libdbd-mysql-perl \
           percona-xtrabackup \
           python-mysqldb \
