@@ -3607,7 +3607,6 @@ sys_packages_update() {
       fi
     fi
     rm -f /var/lib/mysql/debian-*.flag &> /dev/null
-    _KEYS_SERVER_TEST=FALSE
     if [ ! -e "/root/.upstart.cnf" ]; then
       service cron stop &> /dev/null
     fi
@@ -3617,6 +3616,13 @@ sys_packages_update() {
       rm -f /etc/csf/csf.error
       csf -x &> /dev/null
     fi
+    _KEYS_SERVER_TEST=FALSE
+    until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
+      _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
+        --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 2>&1)
+      sleep 2
+    done
+    _KEYS_SERVER_TEST=FALSE
     until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
       _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
         --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
