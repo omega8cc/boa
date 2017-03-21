@@ -39,7 +39,8 @@ update_sql_conf() {
   #   sed -i "s/.*innodb-defragment/innodb-defragment/g" /etc/mysql/my.cnf
   #   wait
   # fi
-  if [ "${_DB_SERIES}" != "10.1" ]; then
+  if [ "${_DB_SERIES}" != "10.2" ] \
+    && [ "${_DB_SERIES}" != "10.1" ]; then
     sed -i "s/.*innodb_buffer_pool_dump_at_shutdown/#innodb_buffer_pool_dump_at_shutdown/g" /etc/mysql/my.cnf
     wait
     sed -i "s/.*innodb_buffer_pool_load_at_startup/#innodb_buffer_pool_load_at_startup/g" /etc/mysql/my.cnf
@@ -348,28 +349,33 @@ install_mariadb_sql() {
   fi
   if [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "jessie" ]; then
-    _DB_SERIES=10.1
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
       _MARIADB_VRN="${_GALERA_10_VRN}"
     else
-      _MARIADB_VRN="${_MARIADB_10_VRN}"
+      if [ "${_DB_SERIES}" = "10.2" ]; then
+        _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+      else
+        _DB_SERIES=10.1
+        _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+      fi
     fi
     msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
   else
-    if [ "${_DB_SERIES}" = "10.1" ] \
+    if [ "${_DB_SERIES}" = "10.2" ] \
+      || [ "${_DB_SERIES}" = "10.1" ] \
       || [ "${_DB_SERIES}" = "10.0" ] \
       || [ "${_DB_SERIES}" = "5.5" ]; then
       _DO_NOTHING=YES
     else
       _DB_SERIES=10.1
-      _MARIADB_VRN="${_MARIADB_10_VRN}"
+      _MARIADB_VRN="${_MARIADB_10_1_VRN}"
       msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
     fi
     if [ -z "${_DB_SERIES}" ]; then
       _DB_SERIES=10.1
-      _MARIADB_VRN="${_MARIADB_10_VRN}"
+      _MARIADB_VRN="${_MARIADB_10_1_VRN}"
       msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
     fi
   fi
@@ -582,6 +588,10 @@ install_mariadb_server() {
       elif [ "${_DB_SERIES}" = "10.1" ] \
         || [ "${_DB_SERIES}" = "10.0" ]; then
         if [[ ! "${_DB_SERVER_TEST}" =~ "10.1." ]]; then
+          _SQL_UPGRADE=YES
+        fi
+      elif [ "${_DB_SERIES}" = "10.2" ]; then
+        if [[ ! "${_DB_SERVER_TEST}" =~ "10.2." ]]; then
           _SQL_UPGRADE=YES
         fi
       fi
