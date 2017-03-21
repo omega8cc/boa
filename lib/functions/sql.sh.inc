@@ -39,6 +39,10 @@ update_sql_conf() {
   #   sed -i "s/.*innodb-defragment/innodb-defragment/g" /etc/mysql/my.cnf
   #   wait
   # fi
+  if [ "${_DB_SERIES}" = "10.2" ]; then
+    sed -i "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" /etc/mysql/my.cnf
+    wait
+  fi
   if [ "${_DB_SERIES}" != "10.2" ] \
     && [ "${_DB_SERIES}" != "10.1" ]; then
     sed -i "s/.*innodb_buffer_pool_dump_at_shutdown/#innodb_buffer_pool_dump_at_shutdown/g" /etc/mysql/my.cnf
