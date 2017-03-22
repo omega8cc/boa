@@ -431,6 +431,7 @@ install_mariadb_sql() {
             mariadb-common"
   fi
   SQLADD="libmariadbclient-dev \
+          libmysqlclient18.1 \
           libdbd-mysql-perl \
           percona-xtrabackup \
           python-mysqldb \
