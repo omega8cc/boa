@@ -3311,6 +3311,10 @@ else
     fi
   fi
 
+  su -s /bin/bash - aegir -c "drush @hostmaster dis update syslog dblog -y" &> /dev/null
+  su -s /bin/bash - aegir -c "drush @hostmaster cron" &> /dev/null
+  su -s /bin/bash - aegir -c "drush @hostmaster cc all" &> /dev/null
+
   action >/var/xdrago/log/daily/daily-${_NOW}.log 2>&1
 
   dhpWildPath="/etc/ssl/private/nginx-wild-ssl.dhp"
