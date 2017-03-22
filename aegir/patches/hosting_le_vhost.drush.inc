@@ -67,6 +67,7 @@ function hosting_le_vhost_provision_nginx_vhost_config($uri, $data) {
     }
 
     $chain_pem = $cert_dir . "/chain.pem";
+    $legacy_tls_ctrl = d('@server_master')->aegir_root . "/static/control/tls-legacy-enable-" . $main_name . ".info";
 
     $lines = array();
 
@@ -74,6 +75,10 @@ function hosting_le_vhost_provision_nginx_vhost_config($uri, $data) {
     if (d()->ssl_enabled) {
       if (provision_file()->exists($chain_pem)->status()) {
         $lines[] = "  ssl_trusted_certificate    $chain_pem;";
+        $lines[] = "";
+      }
+      if (provision_file()->exists($legacy_tls_ctrl)->status()) {
+        $lines[] = "  ssl_protocols              TLSv1 TLSv1.1 TLSv1.2;";
         $lines[] = "";
       }
     }
