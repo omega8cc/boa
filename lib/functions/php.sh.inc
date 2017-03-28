@@ -1082,6 +1082,7 @@ update_newrelic() {
       mv -f /etc/newrelic \
         ${vBs}/nr/etc-newrelic-pre-${_X_VERSION}-${_NOW} &> /dev/null
       pthNrx="lib/php/extensions/no-debug-non-zts"
+      _PHP_EXT_DIR_70="/opt/php70/${pthNrx}-${_PHP70_API}"
       _PHP_EXT_DIR_56="/opt/php56/${pthNrx}-${_PHP56_API}"
       _PHP_EXT_DIR_55="/opt/php55/${pthNrx}-${_PHP55_API}"
       _PHP_EXT_DIR_54="/opt/php54/${pthNrx}-${_PHP54_API}"
@@ -1094,7 +1095,7 @@ update_newrelic() {
       st_runner "apt-get update -qq" &> /dev/null
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
       st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
-      NR_PHPLIST="/opt/php53/bin:/opt/php54/bin:/opt/php55/bin:/opt/php56/bin"
+      NR_PHPLIST="/opt/php53/bin:/opt/php54/bin:/opt/php55/bin:/opt/php56/bin:/opt/php70/bin"
       NR_SILENT="silent"
       export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
       export NR_INSTALL_SILENT="${NR_SILENT}"
@@ -1106,6 +1107,11 @@ update_newrelic() {
         _SYSTEM_ARCH="x32"
       fi
       pthNra="/usr/lib/newrelic-php5/agent"
+      if [ -e "$_PHP_EXT_DIR_70" ] && [ ! -e "$_PHP_EXT_DIR_70/newrelic.so" ] \
+        && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP70_API}.so" ]; then
+        ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP70_API}.so \
+          $_PHP_EXT_DIR_70/newrelic.so
+      fi
       if [ -e "$_PHP_EXT_DIR_56" ] && [ ! -e "$_PHP_EXT_DIR_56/newrelic.so" ] \
         && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP56_API}.so" ]; then
         ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP56_API}.so \
@@ -1155,10 +1161,15 @@ install_newrelic() {
   ###--------------------###
   if [ ! -z "${_NEWRELIC_KEY}" ]; then
     _MULTI_NR=NO
+    _PHP_EXT_DIR_70="/opt/php70/lib/php/extensions/no-debug-non-zts-${_PHP70_API}"
     _PHP_EXT_DIR_56="/opt/php56/lib/php/extensions/no-debug-non-zts-${_PHP56_API}"
     _PHP_EXT_DIR_55="/opt/php55/lib/php/extensions/no-debug-non-zts-${_PHP55_API}"
     _PHP_EXT_DIR_54="/opt/php54/lib/php/extensions/no-debug-non-zts-${_PHP54_API}"
     _PHP_EXT_DIR_53="/opt/php53/lib/php/extensions/no-debug-non-zts-${_PHP53_API}"
+    if [ -e "$_PHP_EXT_DIR_70" ] \
+      && [ ! -e "$_PHP_EXT_DIR_70/newrelic.so" ]; then
+      _MULTI_NR=YES
+    fi
     if [ -e "$_PHP_EXT_DIR_56" ] \
       && [ ! -e "$_PHP_EXT_DIR_56/newrelic.so" ]; then
       _MULTI_NR=YES
@@ -1201,7 +1212,7 @@ install_newrelic() {
       st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
       if [ "$_MULTI_NR" = "YES" ]; then
         msg "INFO: Installing latest version of New Relic Apps Monitor..."
-        NR_PHPLIST="/opt/php53/bin:/opt/php54/bin:/opt/php55/bin:/opt/php56/bin"
+        NR_PHPLIST="/opt/php53/bin:/opt/php54/bin:/opt/php55/bin:/opt/php56/bin:/opt/php70/bin"
         NR_SILENT="silent"
         export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
         export NR_INSTALL_SILENT="${NR_SILENT}"
@@ -1213,6 +1224,11 @@ install_newrelic() {
           _SYSTEM_ARCH="x32"
         fi
         pthNra="/usr/lib/newrelic-php5/agent"
+        if [ -e "$_PHP_EXT_DIR_70" ] && [ ! -e "$_PHP_EXT_DIR_70/newrelic.so" ] \
+          && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP70_API}.so" ]; then
+          ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP70_API}.so \
+            $_PHP_EXT_DIR_70/newrelic.so
+        fi
         if [ -e "$_PHP_EXT_DIR_56" ] && [ ! -e "$_PHP_EXT_DIR_56/newrelic.so" ] \
           && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP56_API}.so" ]; then
           ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP56_API}.so \
