@@ -30,8 +30,12 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 _WEBG=www-data
-_X_SE="3.1.4-stable"
+_X_SE="3.2.0-stable"
 _OSV=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
@@ -449,17 +453,17 @@ fix_user_register_protection() {
     fi
   fi
 
-  if [ -e "${User}/log/imported.pid" ] \
-    || [ -e "${User}/log/exported.pid" ]; then
-    if [ -e "${Dir}/modules/readonlymode_fix.info" ]; then
-      touch ${User}/log/ctrl/site.${Dom}.rom-fix.info
-      rm -f ${Dir}/modules/readonlymode_fix.info
-    fi
-    if [ ! -e "${User}/log/ctrl/site.${Dom}.rom-fix.info" ]; then
-      run_drush8_cmd "${vSet} site_readonly 0"
-      touch ${User}/log/ctrl/site.${Dom}.rom-fix.info
-    fi
-  fi
+  # if [ -e "${User}/log/imported.pid" ] \
+  #   || [ -e "${User}/log/exported.pid" ]; then
+  #   if [ -e "${Dir}/modules/readonlymode_fix.info" ]; then
+  #     touch ${User}/log/ctrl/site.${Dom}.rom-fix.info
+  #     rm -f ${Dir}/modules/readonlymode_fix.info
+  #   fi
+  #   if [ ! -e "${User}/log/ctrl/site.${Dom}.rom-fix.info" ]; then
+  #     run_drush8_cmd "${vSet} site_readonly 0"
+  #     touch ${User}/log/ctrl/site.${Dom}.rom-fix.info
+  #   fi
+  # fi
 }
 
 fix_robots_txt() {
@@ -729,7 +733,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.1.4. As a bonus, you will be able to speed up your sites
+by BOA-3.2.0. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -783,7 +787,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.1.4. As a bonus, you will be able to speed up your sites
+by BOA-3.2.0. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -837,7 +841,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.1.4. As a bonus, you will be able to speed up your sites
+by BOA-3.2.0. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -928,7 +932,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.1.4. As a bonus, you will be able to speed up your sites
+by BOA-3.2.0. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -994,7 +998,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.1.4. As a bonus, you will be able to speed up your sites
+by BOA-3.2.0. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -1060,7 +1064,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.1.4. As a bonus, you will be able to speed up your sites
+by BOA-3.2.0. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -1414,7 +1418,8 @@ fix_modules() {
   _AUTO_CONFIG_ADVAGG=NO
   if [ -e "${Plr}/sites/all/modules/advagg" ] \
     || [ -e "${Plr}/modules/o_contrib/advagg" ] \
-    || [ -e "${Plr}/modules/o_contrib_seven/advagg" ]; then
+    || [ -e "${Plr}/modules/o_contrib_seven/advagg" ] \
+    || [ -e "${Plr}/modules/o_contrib_eight/advagg" ]; then
     _MODULE_T=$(run_drush8_nosilent_cmd "pml --status=enabled \
       --type=module | grep \(advagg\)" 2>&1)
     if [[ "${_MODULE_T}" =~ "(advagg)" ]]; then
@@ -1764,6 +1769,12 @@ fix_modules() {
     else
       echo ";redis_path_enable = TRUE" >> ${_PLR_CTRL_F}
     fi
+    _VAR_IF_PRESENT=$(grep "redis_scan_enable" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_scan_enable" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_scan_enable = FALSE" >> ${_PLR_CTRL_F}
+    fi
     _VAR_IF_PRESENT=$(grep "redis_exclude_bins" ${_PLR_CTRL_F} 2>&1)
     if [[ "${_VAR_IF_PRESENT}" =~ "redis_exclude_bins" ]]; then
       _DO_NOTHING=YES
@@ -1843,6 +1854,12 @@ fix_modules() {
       _DO_NOTHING=YES
     else
       echo ";redis_path_enable = TRUE" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_scan_enable" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_scan_enable" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_scan_enable = FALSE" >> ${_DIR_CTRL_F}
     fi
     _VAR_IF_PRESENT=$(grep "redis_exclude_bins" ${_DIR_CTRL_F} 2>&1)
     if [[ "${_VAR_IF_PRESENT}" =~ "redis_exclude_bins" ]]; then
@@ -2568,7 +2585,7 @@ check_update_le_hm_ssl() {
   fi
   if [ -x "${exeLe}" ] \
     && [ ! -z "${hmFront}" ] \
-    && [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
+    && [ -e "${User}/tools/le/certs/${hmFront}/fullchain.pem" ]; then
     echo "Running LE cert check directly for hostmaster ${_HM_U}"
     su -s /bin/bash - ${_HM_U} -c "${exeLe} -c -d ${hmFront}"
     sleep 5
@@ -2667,6 +2684,8 @@ process() {
             _STATUS=OK
             if [ ! -f "${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info" ]; then
               run_drush8_hmr_cmd "dis update syslog dblog -y"
+              run_drush8_hmr_cmd "cron"
+              run_drush8_hmr_cmd "cc all"
               touch ${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
             fi
           else
@@ -2704,7 +2723,9 @@ process() {
               check_update_le_ssl
               ;;
             esac
-            fix_boost_cache
+            if [ "${_CLEAR_BOOST}" = "YES" ]; then
+              fix_boost_cache
+            fi
             fix_site_control_files
             fix_user_register_protection
           fi
@@ -2920,8 +2941,10 @@ purge_cruft_machine() {
         | tr -d "\n" 2>&1)
       if [ "${RevisionTest}" -lt "${_LOW_NR}" ] \
         && [ ! -z "${RevisionTest}" ]; then
-        chattr -i /home/${_HM_U}.ftp/platforms
-        chattr -i /home/${_HM_U}.ftp/platforms/*
+        if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
+          chattr -i /home/${_HM_U}.ftp/platforms
+          chattr -i /home/${_HM_U}.ftp/platforms/*
+        fi
         rm -rf /home/${_HM_U}.ftp/platforms/$i
       fi
     fi
@@ -2944,8 +2967,10 @@ purge_cruft_machine() {
   for i in ${_REVISIONS}; do
     if [ -e "${User}/distro/$i" ] \
       && [ ! -e "/home/${_HM_U}.ftp/platforms/$i" ]; then
-      chattr -i /home/${_HM_U}.ftp/platforms
-      chattr -i /home/${_HM_U}.ftp/platforms/*
+      if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
+        chattr -i /home/${_HM_U}.ftp/platforms
+        chattr -i /home/${_HM_U}.ftp/platforms/*
+      fi
       mkdir -p /home/${_HM_U}.ftp/platforms/$i
       mkdir -p ${User}/distro/$i/keys
       chown ${_HM_U}.ftp:${_WEBG} ${User}/distro/$i/keys &> /dev/null
@@ -3093,9 +3118,7 @@ action() {
           run_drush8_hmr_cmd "${vSet} hosting_ignore_default_profiles 0"
           run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_items 1"
           run_drush8_hmr_cmd "${vSet} aegir_backup_export_path ${User}/backup-exports"
-          if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
-            run_drush8_hmr_cmd "fr hosting_custom_settings -y"
-          fi
+          run_drush8_hmr_cmd "fr hosting_custom_settings -y"
           run_drush8_hmr_cmd "cc all"
           if [ -e "${User}/log/imported.pid" ] \
             || [ -e "${User}/log/exported.pid" ]; then
@@ -3130,7 +3153,7 @@ action() {
         fi
         rm -rf ${User}/clients/*/backups &> /dev/null
         symlinks -dr ${User}/clients &> /dev/null
-        if [ -e "/home/${_HM_U}.ftp" ]; then
+        if [ -d "/home/${_HM_U}.ftp" ]; then
           symlinks -dr /home/${_HM_U}.ftp &> /dev/null
           rm -f /home/${_HM_U}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
         fi
@@ -3150,6 +3173,10 @@ action() {
 
 ###--------------------###
 echo "INFO: Daily maintenance start"
+until [ ! -e "/var/run/boa_wait.pid" ]; do
+  echo "Waiting for BOA queue availability.."
+  sleep 5
+done
 #
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
@@ -3181,7 +3208,7 @@ if [ "${_VMFAMILY}" = "VS" ]; then
 fi
 #
 if [ "${_DOW}" = "7" ]; then
-  _MODULES_ON_EIGHT=
+  _MODULES_ON_EIGHT="robotstxt"
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
   _MODULES_OFF_EIGHT="automated_cron dblog syslog simpletest update"
@@ -3195,7 +3222,7 @@ if [ "${_DOW}" = "7" ]; then
     stage_file_proxy supercron syslog ultimate_cron update varnish \
     watchdog_live xhprof"
 else
-  _MODULES_ON_EIGHT=
+  _MODULES_ON_EIGHT="robotstxt"
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
   _MODULES_OFF_EIGHT="dblog syslog update"
@@ -3235,11 +3262,7 @@ fi
 #
 find_fast_mirror
 #
-if [ -e "/var/run/boa_wait.pid" ] \
-  && [ ! -e "/var/run/boa_system_wait.pid" ]; then
-  touch /var/xdrago/log/wait-for-boa
-  exit 1
-elif [ -e "/var/run/daily-fix.pid" ]; then
+if [ -e "/var/run/daily-fix.pid" ]; then
   touch /var/xdrago/log/wait-for-daily
   exit 1
 elif [ -e "/root/.wbhd.clstr.cnf" ]; then
@@ -3258,6 +3281,9 @@ else
   fi
   if [ -z "${_MODULES_FIX}" ]; then
     _MODULES_FIX=YES
+  fi
+  if [ -z "${_CLEAR_BOOST}" ]; then
+    _CLEAR_BOOST=YES
   fi
   if [ -e "/data/all" ]; then
     find /data/all -type f -name "*.info" -print0 | xargs -0 sed -i \
@@ -3285,12 +3311,16 @@ else
     fi
   fi
 
+  su -s /bin/bash - aegir -c "drush @hostmaster dis update syslog dblog -y" &> /dev/null
+  su -s /bin/bash - aegir -c "drush @hostmaster cron" &> /dev/null
+  su -s /bin/bash - aegir -c "drush @hostmaster cc all" &> /dev/null
+
   action >/var/xdrago/log/daily/daily-${_NOW}.log 2>&1
 
   dhpWildPath="/etc/ssl/private/nginx-wild-ssl.dhp"
   if [ -e "/etc/ssl/private/4096.dhp" ]; then
     dhpPath="/etc/ssl/private/4096.dhp"
-    _DIFF_T=$(diff ${dhpPath} ${dhpWildPath} 2>&1)
+    _DIFF_T=$(diff -w -B ${dhpPath} ${dhpWildPath} 2>&1)
     if [ ! -z "${_DIFF_T}" ]; then
       cp -af ${dhpPath} ${dhpWildPath}
     fi
@@ -3446,6 +3476,7 @@ if [ ! -e "/var/backups/fix-sites-all-permsissions-${_X_SE}.txt" ]; then
   echo FIXED > /var/backups/fix-sites-all-permsissions-${_X_SE}.txt
   echo "Permissions in sites/all tree just fixed"
 fi
+find /var/backups/old-sql* -mtime +1 -exec rm -rf {} \; &> /dev/null
 find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 find /var/backups/jetty* -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/backups/dragon/* -mtime +7 -exec rm -rf {} \; &> /dev/null
@@ -3471,4 +3502,4 @@ find /var/run/*_backup.pid -mtime +1 -exec rm -rf {} \; &> /dev/null
 rm -f /var/run/daily-fix.pid
 echo "INFO: Daily maintenance complete"
 exit 0
-###EOF2016###
+###EOF2017###

@@ -165,6 +165,9 @@ install_upgrade_csf_lfd() {
       _REMOVE_CSF=YES
     fi
     if [ "$_REMOVE_CSF" = "YES" ]; then
+      service lfd stop &> /dev/null
+      sleep 3
+      rm -f /etc/csf/csf.error
       csf -x &> /dev/null
       update-rc.d -f csf remove &> /dev/null
       update-rc.d -f lfd remove &> /dev/null
@@ -198,9 +201,14 @@ install_upgrade_csf_lfd() {
       fi
       if [ -e "${pthLog}/lastFire" ]; then
         rm -f ${pthLog}/lastFire
+        service lfd stop &> /dev/null
+        sleep 3
+        rm -f /etc/csf/csf.error
         mrun "csf -x" &> /dev/null
         mrun "csf -e" &> /dev/null
         mrun "csf -q" &> /dev/null
+        sleep 3
+        service lfd start &> /dev/null
       fi
     fi
   fi

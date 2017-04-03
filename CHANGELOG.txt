@@ -1,4 +1,120 @@
 
+### Stable BOA-3.2.0 Release - Full Edition
+### Date: Sun Feb 26 09:11:39 PST 2017
+### Milestone URL: https://github.com/omega8cc/boa/milestones/3.2.0
+
+# Release Notes:
+
+  This BOA release provides many new features, system security upgrades, many
+  improvements and bug fixes, latest Aegir version, plus all supported Drupal
+  platforms updated to latest versions, and supplied with latest Drupal 7 core,
+  if possible.
+
+  The reason we list here also new features and changes already listed in
+  previous BOA-3.1.4 version is that they were supposed to be included in this
+  (3.2.0) release, since we normally don't include new features in bugfix
+  releases, but we had to publish more bugfix/security releases in the 3.1.x
+  series than initially expected, while new features were already pushed to HEAD
+  in anticipation of delayed 3.2.0 release.
+
+  We have also moved some new features originally intended to be included
+  in the (3.2.0) release to the next 3.3.0 milestone, which is expected
+  in about one month after 3.2.0 release.
+
+@=> Magic permissions fix now happens on-the-fly
+
+  The most interesting new Aegir feature is probably the ability to fix files
+  permissions and ownership on any site and platform, without waiting for
+  the running daily magic fix. Now it happens on-the-fly, when you run normal
+  platform and site Verify tasks.
+
+@=> MariaDB 10.1 is now the new default version
+
+  If you are already running 10.0, BOA will upgrade it to _DB_SERIES=10.1
+  but if you still run _DB_SERIES=5.5 it will continue to use MariaDB 5.5
+  on your system (not recommended).
+
+# New features and enhancements:
+
+  * Add Microsoft Hyper-V to supported virtualization systems
+  * Add support for _HOURLY_DB_BACKUPS=YES via Percona XtraBackup
+  * Add support for ‘boa version’ command
+  * Add support for /root/.my.batch_innodb.cnf weekly procedure
+  * Add support for /root/.my.restart_after_optimize.cnf procedure
+  * Add support for fix_ownership and fix_permissions on-the-fly
+  * Add support for latest 3.18.44-vs2.3.7.5-beng VS kernel
+  * Add support for latest 4.1.33-vs2.3.8.5.2-beng VS kernel
+  * Add support for the Open Lucius Distribution to Aegir —- #888
+  * Add support for the Opigno LMS Distribution to Aegir —- #953
+  * Automatically whitelist CloudFlare and Sucuri IPs (faster version)
+  * Bundle Opigno LMS dependencies: TinCanPHP and pdf.js
+  * Configure _INNODB_LOG_FILE_SIZE automatically
+  * Docs for Twig Debbuging in Drupal 8.2.x and BOA #1085
+  * Improve InnoDB performance
+  * Improve Let's Encrypt docs
+  * Include advagg, cdn, and robotstxt in o_contrib_eight -- #1096
+  * Install ClamAV and RKhunter by default —- #1019
+  * Make boost cache clearing configurable via _CLEAR_BOOST variable -- #1115
+  * MariaDB 10.1 support (new default version) -- #866
+  * Open LDAP ports 389 and 3268 for outgoing TCP connections
+  * Speed up mysql stop/start
+  * Update S3 regions list for backboa backups
+  * Use blazing fast Redis (SCAN) method on wildcard cache delete
+  * Use Redis_CacheCompressed mode, if available (saves a ton of RAM)
+
+# Changes:
+
+  * Allow to run global OPTIMIZE only once per month, on the last Sunday
+  * Always update barracuda, boa and octopus wrappers, ignore _SKYNET_MODE=OFF
+  * Enable ARCHIVE Storage Engine in MariaDB 10.1
+  * Force _CUSTOM_CONFIG_SQL=NO on MariaDB major upgrade/reinstall
+  * Remove exception for cache_form bin in Redis configuration
+  * Remove no longer supported textile module
+  * Run db OPTIMIZE only weekly, if configured
+  * Use bzip2 also for standard db backups
+  * Use lower system load limit for queue runner
+  * Use MySQLTuner to configure SQL limits — enabled by default
+
+# System upgrades:
+
+  * CSF/LFD 9.30
+  * Drupal 7.54.2
+  * Drush micro-8-07-02-2017
+  * Duplicity 0.7.11 (please run 'backboa install' to upgrade)
+  * MariaDB 10.1.21
+  * MariaDB 5.5.54
+  * MariaDB Galera Cluster 10.0.29
+  * Nginx 1.11.10
+  * OpenSSL 1.0.2k (used only in Nginx)
+  * PHP 5.6.30
+  * PHP 7.0.16
+  * Pure-FTPd 1.0.45
+  * Redis 3.2.8
+  * Redis D8/D7 integration mod-09-02-2017
+  * Use ImageMagick 7.0.4-6 if built from sources
+  * Use Redis integration mod-14-02-2017 (D7)
+
+# Fixes:
+
+  * Can't add clients on BOA3 -- #926
+  * Do not add newer InnoDB settings when old server version is in use -- #1122
+  * Do not disable site_readonly daily on migrated instances
+  * Fix the not working hostmaster LE cert auto-update (typo)
+  * Force vnstat restart on version upgrade
+  * Improve disable_chattr() and enable_chattr() logic
+  * Improve docs/FAQ.txt as suggested in #1119
+  * Improve userprotect initial-only setup -- #926
+  * MariaDB server not running properly alert -- #1122
+  * Migration should re-use Let's Encrypt certs in HTTPS proxy vhosts -- #1106
+  * Randomize SQL backup schedule
+  * Rebuild hosting_custom_settings feature after enabling Redis on install
+  * Sync db server (optional) restart with optimize
+  * Sync max_execution_time for PHP-FPM
+  * Sync max_input_time for PHP-FPM
+  * Update docs/SSL.txt -- #1109
+  * Whitelist /dev/urandom in open_basedir
+
+
 ### Stable BOA-3.1.4 Release - Full Edition
 ### Date: Tue Dec 20 14:09:21 PST 2016
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.1.4

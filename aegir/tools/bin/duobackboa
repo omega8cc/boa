@@ -15,8 +15,8 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-_DUPLICITY_VRN="0.7.06"
-_BOTO_VRN="2.39.0-fix-python-2.7.9"
+_DUPLICITY_VRN="0.7.12"
+_BOTO_VRN="2.46.1"
 _LOGPTH="/var/xdrago/log"
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
@@ -58,6 +58,28 @@ check_root() {
   fi
 }
 check_root
+
+check_vps() {
+  _BENG_VS=NO
+  _CHECK_HOST=$(uname -n 2>&1)
+  _VM_TEST=$(uname -a 2>&1)
+  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+    _VMFAMILY="VS"
+  else
+    _VMFAMILY="ALIEN"
+  fi
+  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+    || [ "${_VMFAMILY}" = "VS" ]; then
+    _BENG_VS=YES
+  fi
+}
+check_vps
 
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
@@ -165,7 +187,7 @@ if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
 
   CONFIGURATION REQUIRED!
 
-  Add listed below eight (8) lines to your /root/.duobackboa.cnf file.
+  Add listed below four (4) required lines to your /root/.duobackboa.cnf file.
   Required lines are marked with [R] and optional with [O]:
 
     _AWS_KEY='Your AWS Access Key ID'     ### [R] From your AWS S3 settings
@@ -251,6 +273,11 @@ fi
 _AWS_FLC=${_AWS_FLC//[^A-Z0-9]/}
 if [ -z "${_AWS_FLC}" ]; then
   _AWS_FLC="7D"
+fi
+
+if [ "${_BENG_VS}" = "YES" ] \
+  && [ -e "/var/xdrago" ]; then
+  _AWS_FLC="21D"
 fi
 
 _AWS_VLV=${_AWS_VLV//[^0-9]/}
@@ -362,6 +389,12 @@ set_mode() {
 
 run_backup() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
+    if [ ! -e "/root/tmp/home/" ]; then
+      n=$((RANDOM%10800+8))
+      echo "Waiting $n seconds on `date` before running restore home 7D tmp/home" >> ${LOGFILE}
+      sleep $n
+      restore home 7D tmp/home >> ${LOGFILE}
+    fi
     n=$((RANDOM%10800+8))
     echo "Waiting $n seconds on `date` before running ${_MODE} backup" >> ${LOGFILE}
     sleep $n

@@ -36,6 +36,10 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 action() {
   mkdir -p /usr/share/GeoIP
   chmod 755 /usr/share/GeoIP
@@ -83,8 +87,7 @@ action() {
   if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
     service jetty7 start
   fi
-  if [ ! -e "/root/.high_traffic.cnf" ] \
-    && [ ! -e "/root/.giant_traffic.cnf" ]; then
+  if [ ! -e "/root/.giant_traffic.cnf" ]; then
     echo "INFO: Redis server will be restarted in 60 seconds"
     touch /var/run/boa_wait.pid
     sleep 60
@@ -139,4 +142,4 @@ else
   rm -f /var/run/boa_wait.pid
   exit 0
 fi
-###EOF2016###
+###EOF2017###

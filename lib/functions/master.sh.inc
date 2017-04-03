@@ -143,8 +143,22 @@ provision_backend_dbpass_sync() {
     su -s /bin/bash - aegir -c "drush @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_APASS}' \
       WHERE db_user='$_ADBU'\"" &> /dev/null
-    mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ESC_APASS}') \
-      WHERE User='$_ADBU';" &> /dev/null
+    _SQL_CONNECT=localhost
+    _ESC="\`%\`.*"
+    _USE_DB_USER="${_ADBU}"
+    _USE_AEGIR_HOST="$(uname -n 2>&1)"
+    _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
+      | cut -d: -f2 | awk '{ print $1}' 2>&1)"
+    mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
+DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
+DROP USER '${_USE_DB_USER}'@'localhost';
+EOFMYSQL
+    mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+EOFMYSQL
     sed -i "s/mysql:\/\/$_ADBU:.*/mysql:\/\/$_ADBU:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
       /var/aegir/.drush/server_*.alias.drushrc.php &> /dev/null
     wait
@@ -199,8 +213,22 @@ hostmaster_frontend_dbpass_sync() {
   if [ -e "$_THIS_HM_SPTH" ] \
     && [ ! -z "$_THIS_HM_DBUR" ] \
     && [ ! -z "$_THIS_HM_DBPD" ]; then
-    mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_THIS_HM_DBPD') \
-      WHERE User='$_THIS_HM_DBUR';" &> /dev/null
+    _SQL_CONNECT=localhost
+    _ESC="\`%\`.*"
+    _USE_DB_USER="${_THIS_HM_DBUR}"
+    _USE_AEGIR_HOST="$(uname -n 2>&1)"
+    _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
+      | cut -d: -f2 | awk '{ print $1}' 2>&1)"
+    mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
+DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
+DROP USER '${_USE_DB_USER}'@'localhost';
+EOFMYSQL
+    mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+EOFMYSQL
   fi
   mysqladmin flush-privileges &> /dev/null
 }
@@ -257,8 +285,8 @@ master_download_for_local_build() {
     get_dev_stc "openidadmin-7.x-1.0.tar.gz"
     get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
     get_dev_stc "r4032login-7.x-1.8.tar.gz"
-    get_dev_stc "views_bulk_operations-7.x-3.3.tar.gz"
-    get_dev_stc "views-7.x-3.14.tar.gz"
+    get_dev_stc "views_bulk_operations-7.x-3.4.tar.gz"
+    get_dev_stc "views-7.x-3.15.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
     get_dev_stc "features-7.x-2.10.tar.gz"
@@ -858,7 +886,7 @@ update_php_cli_local_ini() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.314stableQ3.pid" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.320stableQ10.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -919,7 +947,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
-      echo > ${_U_HD}/.ctrl.314stableQ3.pid
+      echo > ${_U_HD}/.ctrl.320stableQ10.pid
     fi
   fi
 }
