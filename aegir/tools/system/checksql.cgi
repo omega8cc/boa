@@ -3,6 +3,10 @@
 ### TODO - rewrite this legacy script in bash
 
 $| = 1;
+
+if (-f "/root/.proxy.cnf") {
+  exit;
+}
 if (-f "/var/run/boa_wait.pid") {
   exit;
 }
@@ -91,4 +95,4 @@ sub repair_this_action
   system("echo \"/usr/bin/mysqlcheck -a $FIXTABLE\" >> $fixfile");
   system("echo \" \" >> $fixfile");
 }
-###EOF2016###
+###EOF2017###

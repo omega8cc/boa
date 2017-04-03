@@ -65,7 +65,7 @@ _PHP_FPM_VERSION=5.6 #---------- PHP-FPM for Master Instance: 7.0 5.{6,5,4,3}
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_IONCUBE=NO #--------------- Installs ionCube for all PHP versions when YES
 _PHP_GEOS=NO #------------------ Installs GEOS for all PHP versions when YES
-_PHP_MONGODB=NO #--------------- Installs MONGODB for all PHP < 7.0 when YES
+_PHP_MONGODB=NO #--------------- Installs MONGODB for all PHP versions when YES
 _PHP_MULTI_INSTALL="5.6" #------ PHP versions to install: 7.0 5.6 5.5 5.4 5.3
 _PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 5.6
 ###
@@ -215,3 +215,45 @@ _SQUEEZE_TO_WHEEZY=NO
 ### See also docs/SOLR.txt
 ###
 _TOMCAT_TO_JETTY=NO
+
+###
+### Use YES to enable The Hourly Hot DB Server Backups with Percona XtraBackup
+###
+### Once enabled, the system will use XtraBackup to create complete and very
+### fast, non-blocking backups of all databases on the system, every hour.
+### These backups will be compressed and rotated after 2 days.
+###
+### The recovery procedure shown below uses the latest, hourly, complete backup
+### of all databases hosted on the system. It should be used only for global
+### data recovery, as there is no option to reliably recover data per database,
+### so this method should be used as a last resort, when trying to recover from
+### disaster or human error - see the GitLab horror story: http://bit.ly/2jvJ5YG
+###
+### In theory you could try to copy over the data only from the affected
+### database directory manually, but then there will be conflicts in the binary
+### log which may even prevent the db server from starting properly,
+### and another InnoDB recovery procedure may be required.
+###
+### If you are not sure what to do, and you have never tried this before
+### at least few times with good results, it's probably better to ask someone
+### more experienced for assistance.
+###
+### You can use any other existing hourly backup you can find in the
+### /data/disk/arch/hourly/ directory and replace the "latest" keyword
+### with the correct filename, for example: "server.name.foo-170218-1518"
+###
+### $ cd /data/disk/arch/hourly/
+### $ tar xjf latest.tar.bz2
+### $ service cron stop
+### $ sleep 180
+### $ service mysql stop
+### $ mkdir /tmp/mysql
+### $ mv /var/lib/mysql/* /tmp/mysql/
+### $ innobackupex --copy-back /data/disk/arch/hourly/latest
+### $ chown -R mysql:mysql: /var/lib/mysql
+### $ chown -R mysql:mysql: /var/log/mysql
+### $ chown -R mysql:mysql: /var/run/mysqld
+### $ service mysql start
+### $ service cron start
+###
+_HOURLY_DB_BACKUPS=NO

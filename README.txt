@@ -169,21 +169,23 @@ Octopus can install and/or support the platforms listed below:
 
  See also: https://omega8.cc/how-to-add-custom-platform-properly-140
 
- @ Drupal 7.53.1
+ @ Drupal 7.54.2
 
  aGov 3.5 --------------------- https://drupal.org/project/agov
- Commerce 1.46 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.42 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.41 ----------------- https://drupal.org/project/commons
- Drupal 7.53.1 ---------------- https://drupal.org/project/drupal/releases/7.53
+ Commerce 1.47 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 2.45 ---------------- https://drupal.org/project/commerce_kickstart
+ Commons 3.43 ----------------- https://drupal.org/project/commons
+ Drupal 7.54.2 ---------------- https://drupal.org/project/drupal/releases/7.54
  Guardr 2.36 ------------------ https://drupal.org/project/guardr
  OpenAid 2.8 ------------------ https://drupal.org/project/openaid
- OpenAtrium 2.612 ------------- https://drupal.org/project/openatrium
+ OpenAtrium 2.614 ------------- https://drupal.org/project/openatrium
  OpenChurch 2.2 --------------- https://drupal.org/project/openchurch
- OpenOutreach 1.36 ------------ https://drupal.org/project/openoutreach
+ OpenLucius 1.7 --------------- https://drupal.org/project/openlucius
+ OpenOutreach 1.38 ------------ https://drupal.org/project/openoutreach
  OpenPublic 1.10 -------------- https://drupal.org/project/openpublic
- Panopoly 1.41 ---------------- https://drupal.org/project/panopoly
- Restaurant 1.14 -------------- https://drupal.org/project/restaurant
+ Opigno LMS 1.25 -------------- https://drupal.org/project/opigno_lms
+ Panopoly 1.43 ---------------- https://drupal.org/project/panopoly
+ Restaurant 1.15 -------------- https://drupal.org/project/restaurant
  Ubercart 3.10 ---------------- https://drupal.org/project/ubercart
 
  @ Pressflow 6.38.2
@@ -192,7 +194,7 @@ Octopus can install and/or support the platforms listed below:
  Pressflow 6.38.2 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.53.1 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.54.2 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
 * All D6 platforms have been enhanced using Pressflow 6.38.2 +Extra core:

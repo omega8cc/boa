@@ -5,7 +5,7 @@
 ###
 ###  Octopus Aegir Installer
 ###
-###  Copyright (C) 2010-2016 Omega8.cc
+###  Copyright (C) 2010-2017 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -51,15 +51,15 @@ export _USER="${_USER}"
 ###
 ### Variables
 ###
-_DRUSH_VERSION=micro-8-17-12-2016
+_DRUSH_VERSION=micro-8-07-02-2017
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
-_REDIS_E_VERSION=mod-12-08-2016
-_REDIS_M_VERSION=mod-20-12-2016
+_REDIS_E_VERSION=mod-09-02-2017
+_REDIS_M_VERSION=mod-14-02-2017
 _SMALLCORE6=6.38.2
-_SMALLCORE7=7.53.1
+_SMALLCORE7=7.54.2
 _SMALLCORE8=8.0.5
 _SPINNER=YES
 _T_BUILD=HEAD
@@ -107,28 +107,30 @@ _AGOV=3.5
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
 _COD=1.0-alpha5
-_COMMERCE1=1.46
-_COMMERCE2=2.42
+_COMMERCE1=1.47
+_COMMERCE2=2.45
 _COMMONS2=2.27
-_COMMONS3=3.41
+_COMMONS3=3.43
 _DRUPAL7="drupal-${_SMALLCORE7}"
 _DRUPAL8="drupal-${_SMALLCORE8}"
 _ERPAL=2.3
 _GUARDR=2.36
 _OPENACADEMY=1.1
 _OPENAID=2.8
-_OPENATRIUM7=2.612
+_OPENATRIUM7=2.614
 _OPENBLOG=1.0-alpha3
 _OPENCHURCH1=1.17-beta2
 _OPENCHURCH2=2.2
 _OPENDEALS=1.35
-_OPENOUTREACH=1.36
+_OPENLUCIUS=1.7
+_OPENOUTREACH=1.38
 _OPENPUBLIC=1.10
 _OPENPUBLISH=1.0-beta7
 _OPENSCHOLAR=3.28.0
-_PANOPOLY=1.41
+_OPIGNOLMS=1.25
+_PANOPOLY=1.43
 _RECRUITER=1.7
-_RESTAURANT=1.14
+_RESTAURANT=1.15
 _UBERCART6=2.15
 _UBERCART7=3.10
 
@@ -241,7 +243,7 @@ exit 0
 ###----------------------------------------###
 ###
 ###  Octopus Aegir Installer
-###  Copyright (C) 2010-2016 Omega8.cc
+###  Copyright (C) 2010-2017 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

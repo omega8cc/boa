@@ -31,6 +31,10 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 ###-------------SYSTEM-----------------###
 fix_clear_cache() {
   if [ -e "${Plr}/profiles/hostmaster" ]; then
@@ -462,6 +466,8 @@ by having in its main name a special keyword with two dots on both sides:
   .temporary.
   .test.
   .testing.
+  .stage.
+  .staging.
 
 For example, a site with main name: abc.test.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes),
@@ -504,6 +510,8 @@ by having in its main name a special keyword with two dots on both sides:
   .temporary.
   .test.
   .testing.
+  .stage.
+  .staging.
 
 For example, a site with main name: abc.test.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes),
@@ -546,6 +554,8 @@ by having in its main name a special keyword with two dots on both sides:
   .temporary.
   .test.
   .testing.
+  .stage.
+  .staging.
 
 For example, a site with main name: abc.test.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes),
@@ -828,7 +838,7 @@ action() {
           detect_deprecated_php
         fi
         count
-        if [ -e "/home/${_THIS_U}.ftp" ]; then
+        if [ -d "/home/${_THIS_U}.ftp" ]; then
           for uH in `find /home/${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
             sub_count_usr_home ${uH}
           done
@@ -920,4 +930,4 @@ mkdir -p /var/xdrago/log/usage
 action >/var/xdrago/log/usage/usage-${_NOW}.log 2>&1
 echo "INFO: Daily maintenance complete"
 exit 0
-###EOF2016###
+###EOF2017###

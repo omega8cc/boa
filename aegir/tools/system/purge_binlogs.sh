@@ -31,6 +31,10 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -63,7 +67,7 @@ load_control() {
   fi
   _O_LOAD=$(awk '{print $1*100}' /proc/loadavg 2>&1)
   _O_LOAD=$(( _O_LOAD / _CPU_NR ))
-  _O_LOAD_MAX=$(( 100 * _CPU_SPIDER_RATIO ))
+  _O_LOAD_MAX=$(( 75 * _CPU_SPIDER_RATIO ))
 }
 
 action() {
@@ -86,4 +90,4 @@ else
   touch /var/xdrago/log/last-run-purge
   exit 0
 fi
-###EOF2016###
+###EOF2017###

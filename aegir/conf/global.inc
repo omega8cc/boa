@@ -64,7 +64,7 @@ if (function_exists('drush_get_command')) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.11.9';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.11.12';
   }
 }
 
@@ -383,6 +383,7 @@ $boa_ini = array(
   'redis_flush_forced_mode' => TRUE,
   'redis_lock_enable' => TRUE,
   'redis_path_enable' => TRUE,
+  'redis_scan_enable' => FALSE,
   'redis_cache_disable' => FALSE,
   'redis_exclude_bins' => FALSE,
   'speed_booster_anon_cache_ttl' => FALSE,
@@ -445,6 +446,7 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Redis-Flush-Forced-Mode: " . $all_ini['redis_flush_forced_mode']);
   header("X-Ini-Redis-Lock-Enable: " . $all_ini['redis_lock_enable']);
   header("X-Ini-Redis-Path-Enable: " . $all_ini['redis_path_enable']);
+  header("X-Ini-Redis-Scan-Enable: " . $all_ini['redis_scan_enable']);
   header("X-Ini-Redis-Cache-Disable: " . $all_ini['redis_cache_disable']);
   header("X-Ini-Redis-Exclude-Bins: " . $all_ini['redis_exclude_bins']);
   header("X-Ini-Speed-Booster-Anon-Cache-Ttl: " . $all_ini['speed_booster_anon_cache_ttl']);
@@ -692,6 +694,22 @@ if (!$is_dev) {
         $conf['advagg_js_compress_inline_if_not_cacheable'] = 1;
         $conf['preprocess_css'] = 1;
         $conf['preprocess_js'] = 1;
+      }
+    }
+    elseif ($drupal_eight) {
+      if (is_readable('modules/o_contrib_eight/advagg/advagg_bundler/advagg_bundler.module') ||
+          is_readable('modules/advagg/advagg_bundler/advagg_bundler.module') ||
+          is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')) {
+        $config['advagg.settings']['css']['combine_media'] = false;
+        $config['advagg.settings']['css']['ie']['limit_selectors'] = true;
+        $config['advagg.settings']['cache_level'] = 3;
+        $config['advagg.settings']['core_groups'] = false;
+        $config['advagg.settings']['enabled'] = true;
+        $config['advagg_bundler.settings']['active'] = true;
+        $config['advagg_css_minify.settings']['minifier'] = 2;
+        $config['advagg_js_minify.settings']['minifier'] = 3;
+        $config['system.performance']['css']['preprocess'] = true;
+        $config['system.performance']['js']['preprocess'] = true;
       }
     }
 
@@ -1070,6 +1088,18 @@ if ($redis_up && $use_redis && !$custom_cache) {
           header("X-Redis-Path-Is-Readable: " . $cache_path_path);
         }
       }
+      if ($all_ini['redis_scan_enable']) {
+        $conf['redis_scan_delete']              = TRUE;
+        $gzip_mode = FALSE;
+      }
+      else {
+        if (is_readable($cache_gzip_path)) {
+          $gzip_mode = TRUE;
+        }
+        else {
+          $gzip_mode = FALSE;
+        }
+      }
       $conf['cache_backends'][]                 = $cache_redis_path;
       $conf['redis_client_interface']           = 'PhpRedis';
       $conf['redis_client_host']                = '127.0.0.1';
@@ -1083,13 +1113,12 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $conf['page_cache_max_age']               = 0;     // D6 == max-age in the Cache-Control header (ignored by Speed Booster)
       $conf['cache_lifetime']                   = 0;     // D7 == BOA uses Speed Booster / Nginx micro-caching instead
       $conf['page_cache_lifetime']              = 0;     // D6 == BOA uses Speed Booster / Nginx micro-caching instead
-      if (is_readable($cache_gzip_path)) {
+      if ($gzip_mode) {
         $conf['cache_default_class']            = 'Redis_CacheCompressed';
       }
       else {
         $conf['cache_default_class']            = 'Redis_Cache';
       }
-      $conf['cache_class_cache_form']           = 'DrupalDatabaseCache';
     }
     if ($all_ini['redis_exclude_bins']) {
       $excludes = array();

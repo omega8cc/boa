@@ -119,7 +119,7 @@ fix_php_ini_newrelic_all() {
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
       _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
     fi
-    _PHP_V="56 55 54 53"
+    _PHP_V="70 56 55 54 53"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       fix_php_ini_newrelic
@@ -235,8 +235,8 @@ fix_php_ini_geos_all() {
 # Fix php.ini file to add mongo.so
 fix_php_ini_mongo() {
   if [ -e "${_THIS_FILE}" ]; then
-    _MONGODB_INI_TEST=$(grep "^extension=mongo.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_MONGODB_INI_TEST" =~ "extension=mongo.so" ]]; then
+    _MONGO_INI_TEST=$(grep "^extension=mongo.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_MONGO_INI_TEST" =~ "extension=mongo.so" ]]; then
       _DO_NOTHING=YES
     else
       echo "extension=mongo.so" >> ${_THIS_FILE}
@@ -245,7 +245,20 @@ fix_php_ini_mongo() {
 }
 
 #
-# Fix all php.ini files to add mongo.so
+# Fix php.ini file to add mongodb.so
+fix_php_ini_mongodb() {
+  if [ -e "${_THIS_FILE}" ]; then
+    _MONGODB_INI_TEST=$(grep "^extension=mongodb.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_MONGODB_INI_TEST" =~ "extension=mongodb.so" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=mongodb.so" >> ${_THIS_FILE}
+    fi
+  fi
+}
+
+#
+# Fix all php.ini files to add mongo.so or mongodb.so
 fix_php_ini_mongo_all() {
   if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
     _PHP_V="56 55 54 53"
@@ -254,6 +267,13 @@ fix_php_ini_mongo_all() {
       fix_php_ini_mongo
       _THIS_FILE=/opt/php${e}/lib/php.ini
       fix_php_ini_mongo
+    done
+    _PHP_V="70"
+    for e in ${_PHP_V}; do
+      _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+      fix_php_ini_mongodb
+      _THIS_FILE=/opt/php${e}/lib/php.ini
+      fix_php_ini_mongodb
     done
   fi
 }
@@ -550,6 +570,18 @@ install_php_extensions() {
       mrun "make --quiet install" 2> /dev/null
       touch ${pthLog}/php-mongo-${_MONGO_VRN}-${_T_PHP_VRN}.log
     fi
+    if [ "$1" = "70" ]; then
+      msg "INFO: Installing MongoDB driver for PHP ${_T_PHP_VRN}..."
+      cd /var/opt
+      rm -rf mongodb*
+      get_dev_src "mongodb-${_MONGODB_VRN}.tgz"
+      cd /var/opt/mongodb-${_MONGODB_VRN}
+      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
+      touch ${pthLog}/php-mongodb-${_MONGODB_VRN}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
   if [ "$1" != "70" ]; then
@@ -770,6 +802,21 @@ update_php_extensions() {
       touch ${pthLog}/php-mongo-${_MONGO_VRN}-${_T_PHP_VRN}.log
     fi
   fi
+  if [ "$1" = "70" ] \
+    && [ ! -e "${pthLog}/php-mongodb-${_MONGODB_VRN}-${_T_PHP_VRN}.log" ]; then
+    if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
+      msg "INFO: Installing MongoDB PHP driver upgrade for PHP ${_T_PHP_VRN}..."
+      cd /var/opt
+      rm -rf mongodb*
+      get_dev_src "mongodb-${_MONGODB_VRN}.tgz"
+      cd /var/opt/mongodb-${_MONGODB_VRN}
+      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
+      touch ${pthLog}/php-mongodb-${_MONGODB_VRN}-${_T_PHP_VRN}.log
+    fi
+  fi
   ###--------------------###
   if [ "$1" != "70" ]; then
     if [ ! -e "${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
@@ -980,8 +1027,15 @@ install_php_multi() {
       sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.1/g" ${barCnf}
       _DB_SERIES=10.1
     fi
-    if [ "${_DB_SERIES}" = "10.1" ] || [ "${_DB_SERIES}" = "10.0" ]; then
-      _T_MARIADB_VRN="${_MARIADB_10_VRN}"
+    if [ "${_DB_SERIES}" = "10.2" ] \
+      || [ "${_DB_SERIES}" = "10.1" ] \
+      || [ "${_DB_SERIES}" = "10.0" ]; then
+      if [ "${_DB_SERIES}" = "10.2" ]; then
+        _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+      else
+        _DB_SERIES=10.1
+        _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+      fi
     else
       _T_MARIADB_VRN="${_MARIADB_VRN}"
     fi
@@ -1028,6 +1082,7 @@ update_newrelic() {
       mv -f /etc/newrelic \
         ${vBs}/nr/etc-newrelic-pre-${_X_VERSION}-${_NOW} &> /dev/null
       pthNrx="lib/php/extensions/no-debug-non-zts"
+      _PHP_EXT_DIR_70="/opt/php70/${pthNrx}-${_PHP70_API}"
       _PHP_EXT_DIR_56="/opt/php56/${pthNrx}-${_PHP56_API}"
       _PHP_EXT_DIR_55="/opt/php55/${pthNrx}-${_PHP55_API}"
       _PHP_EXT_DIR_54="/opt/php54/${pthNrx}-${_PHP54_API}"
@@ -1040,7 +1095,7 @@ update_newrelic() {
       st_runner "apt-get update -qq" &> /dev/null
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
       st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
-      NR_PHPLIST="/opt/php53/bin:/opt/php54/bin:/opt/php55/bin:/opt/php56/bin"
+      NR_PHPLIST="/opt/php53/bin:/opt/php54/bin:/opt/php55/bin:/opt/php56/bin:/opt/php70/bin"
       NR_SILENT="silent"
       export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
       export NR_INSTALL_SILENT="${NR_SILENT}"
@@ -1052,6 +1107,11 @@ update_newrelic() {
         _SYSTEM_ARCH="x32"
       fi
       pthNra="/usr/lib/newrelic-php5/agent"
+      if [ -e "$_PHP_EXT_DIR_70" ] && [ ! -e "$_PHP_EXT_DIR_70/newrelic.so" ] \
+        && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP70_API}.so" ]; then
+        ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP70_API}.so \
+          $_PHP_EXT_DIR_70/newrelic.so
+      fi
       if [ -e "$_PHP_EXT_DIR_56" ] && [ ! -e "$_PHP_EXT_DIR_56/newrelic.so" ] \
         && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP56_API}.so" ]; then
         ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP56_API}.so \
@@ -1101,10 +1161,15 @@ install_newrelic() {
   ###--------------------###
   if [ ! -z "${_NEWRELIC_KEY}" ]; then
     _MULTI_NR=NO
+    _PHP_EXT_DIR_70="/opt/php70/lib/php/extensions/no-debug-non-zts-${_PHP70_API}"
     _PHP_EXT_DIR_56="/opt/php56/lib/php/extensions/no-debug-non-zts-${_PHP56_API}"
     _PHP_EXT_DIR_55="/opt/php55/lib/php/extensions/no-debug-non-zts-${_PHP55_API}"
     _PHP_EXT_DIR_54="/opt/php54/lib/php/extensions/no-debug-non-zts-${_PHP54_API}"
     _PHP_EXT_DIR_53="/opt/php53/lib/php/extensions/no-debug-non-zts-${_PHP53_API}"
+    if [ -e "$_PHP_EXT_DIR_70" ] \
+      && [ ! -e "$_PHP_EXT_DIR_70/newrelic.so" ]; then
+      _MULTI_NR=YES
+    fi
     if [ -e "$_PHP_EXT_DIR_56" ] \
       && [ ! -e "$_PHP_EXT_DIR_56/newrelic.so" ]; then
       _MULTI_NR=YES
@@ -1147,7 +1212,7 @@ install_newrelic() {
       st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
       if [ "$_MULTI_NR" = "YES" ]; then
         msg "INFO: Installing latest version of New Relic Apps Monitor..."
-        NR_PHPLIST="/opt/php53/bin:/opt/php54/bin:/opt/php55/bin:/opt/php56/bin"
+        NR_PHPLIST="/opt/php53/bin:/opt/php54/bin:/opt/php55/bin:/opt/php56/bin:/opt/php70/bin"
         NR_SILENT="silent"
         export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
         export NR_INSTALL_SILENT="${NR_SILENT}"
@@ -1159,6 +1224,11 @@ install_newrelic() {
           _SYSTEM_ARCH="x32"
         fi
         pthNra="/usr/lib/newrelic-php5/agent"
+        if [ -e "$_PHP_EXT_DIR_70" ] && [ ! -e "$_PHP_EXT_DIR_70/newrelic.so" ] \
+          && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP70_API}.so" ]; then
+          ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP70_API}.so \
+            $_PHP_EXT_DIR_70/newrelic.so
+        fi
         if [ -e "$_PHP_EXT_DIR_56" ] && [ ! -e "$_PHP_EXT_DIR_56/newrelic.so" ] \
           && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP56_API}.so" ]; then
           ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP56_API}.so \
@@ -1277,8 +1347,15 @@ check_php_rebuild() {
       install_php_multi "$1"
     fi
   fi
-  if [ "${_DB_SERIES}" = "10.1" ] || [ "${_DB_SERIES}" = "10.0" ]; then
-    _T_MARIADB_VRN="${_MARIADB_10_VRN}"
+  if [ "${_DB_SERIES}" = "10.2" ] \
+    || [ "${_DB_SERIES}" = "10.1" ] \
+    || [ "${_DB_SERIES}" = "10.0" ]; then
+    if [ "${_DB_SERIES}" = "10.2" ]; then
+      _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+    else
+      _DB_SERIES=10.1
+      _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+    fi
   else
     _T_MARIADB_VRN="${_MARIADB_VRN}"
   fi

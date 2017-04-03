@@ -191,6 +191,10 @@ if [ -e "/vservers" ] \
   echo Waiting $n seconds...
   sleep $n
   touch /var/run/water.pid
+  service lfd stop &> /dev/null
+  sleep 3
+  rm -f /etc/csf/csf.error
+  csf -q
   sleep 10
   local_ip_rg
   _HA=var/xdrago/monitor/hackcheck.archive.log
@@ -202,6 +206,8 @@ if [ -e "/vservers" ] \
   rm -f /vservers/*/var/xdrago/monitor/ftp.log
   csf -e
   csf -q
+  sleep 3
+  service lfd start &> /dev/null
   rm -f /var/run/water.pid
 fi
 ntpdate pool.ntp.org
@@ -211,4 +217,4 @@ if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
   swapon -a
 fi
 exit 0
-###EOF2016###
+###EOF2017###

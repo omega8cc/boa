@@ -97,12 +97,16 @@ if (-e "/usr/sbin/pdnsd" && (!$pdnsdsumar || !-e "/etc/resolvconf/run/interface/
   system("pdnsd-ctl empty-cache");
 }
 
-if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid" && !-f "/root/.remote.db.cnf") {
-  `bash /var/xdrago/move_sql.sh`;
+if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/var/run/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid" && !-f "/root/.remote.db.cnf") {
+  system("bash /var/xdrago/move_sql.sh");
 }
 
 if (-f "/root/.mstr.clstr.cnf" || -f "/root/.wbhd.clstr.cnf") {
   if ($mysqlives && -f "/root/.remote.db.cnf") {
+    system("mysql -u root -e \"SET GLOBAL innodb_max_dirty_pages_pct = 0\;\"");
+    system("mysql -u root -e \"SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1\;\"");
+    system("mysql -u root -e \"SET GLOBAL innodb_io_capacity = 8000\;\"");
+    system("mysql -u root -e \"SET GLOBAL innodb_buffer_pool_dump_pct = 100\;\"");
     system("service mysql stop");
   }
 }
@@ -244,7 +248,7 @@ sub global_action
         chomp($timedate);
         if ($CPU > $MAXSQLCPU && $HOUR > 1 && ($STAT =~ /R/ || $STAT =~ /Z/))
         {
-          if (!-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid" && !-e "/root/.no.sql.cpu.limit.cnf") {
+          if (!-f "/var/run/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid" && !-e "/root/.no.sql.cpu.limit.cnf") {
             system("bash /var/xdrago/move_sql.sh");
             $timedate=`date +%y%m%d-%H%M%S`;
             chomp($timedate);
@@ -379,4 +383,4 @@ sub cpu_count_load
   $MAXSQLCPU = $MAXSQLCPU - 5;
   $MAXFPMCPU = $MAXFPMCPU - 5;
 }
-###EOF2016###
+###EOF2017###
