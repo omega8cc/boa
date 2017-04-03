@@ -2112,8 +2112,21 @@ provision_backend_dbpass_sync() {
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
       WHERE db_user='${_USER}'\"" &> /dev/null
-    mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ESC_PASS}') \
-      WHERE User='${_USER}';" &> /dev/null
+    _ESC="\`%\`.*"
+    _USE_DB_USER="${_USER}"
+    _USE_AEGIR_HOST="$(uname -n 2>&1)"
+    _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
+      | cut -d: -f2 | awk '{ print $1}' 2>&1)"
+    mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
+DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
+DROP USER '${_USE_DB_USER}'@'localhost';
+EOFMYSQL
+    mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
+EOFMYSQL
     sed -i \
       "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
       ${_ROOT}/.drush/server_*.alias.drushrc.php &> /dev/null
@@ -2172,9 +2185,21 @@ hostmaster_frontend_dbpass_sync() {
   if [ -e "$_THIS_HM_SPTH" ] \
     && [ ! -z "$_THIS_HM_DBUR" ] \
     && [ ! -z "$_THIS_HM_DBPD" ]; then
-    mysql -u root -e "UPDATE mysql.user SET \
-      Password=PASSWORD('$_THIS_HM_DBPD') \
-      WHERE User='$_THIS_HM_DBUR';" &> /dev/null
+    _ESC="\`%\`.*"
+    _USE_DB_USER="${_THIS_HM_DBUR}"
+    _USE_AEGIR_HOST="$(uname -n 2>&1)"
+    _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
+      | cut -d: -f2 | awk '{ print $1}' 2>&1)"
+    mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
+DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
+DROP USER '${_USE_DB_USER}'@'localhost';
+EOFMYSQL
+    mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+EOFMYSQL
   fi
   mysqladmin flush-privileges &> /dev/null
 }
