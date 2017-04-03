@@ -174,6 +174,7 @@ backup_this_database() {
     --single-transaction \
     --quick \
     --no-autocommit \
+    --skip-add-locks \
     --hex-blob ${_DB} \
     | bzip2 -c > ${_SAVELOCATION}/${_DB}.sql.bz2
 }

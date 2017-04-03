@@ -372,6 +372,7 @@ EOFMYSQL
           --single-transaction \
           --quick \
           --no-autocommit \
+          --skip-add-locks \
           --hex-blob ${_DBN} > ${_USR}/src/${_DBN}.sql
         echo "INFO: site ${Dom} db export on ${oct} complete"
       elif [ "${cmd}" = "proxy" ]; then
@@ -500,6 +501,7 @@ migrate_prepare() {
         --single-transaction \
         --quick \
         --no-autocommit \
+        --skip-add-locks \
         --hex-blob ${_HDB} \
         field_data_body \
         field_data_comment_body \
