@@ -31,6 +31,10 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 touch /var/run/boa_wait.pid
 sleep 8
 dir=/var/xdrago/log/mysql_optimize
@@ -40,4 +44,4 @@ mkdir -p $dir
 /usr/bin/mysqlcheck -Ao >> $dir/all.o.`date +%y%m%d-%H%M%S`
 rm -f /var/run/boa_wait.pid
 exit 0
-###EOF2016###
+###EOF2017###

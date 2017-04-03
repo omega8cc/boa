@@ -53,6 +53,9 @@ function drush_provision_hosting_le_post_provision_verify() {
       drush_log('[hosting_le] This site main SSL name is ' . $main_name);
     }
 
+    $legacy_tls_ctrl = d('@server_master')->aegir_root . "/static/control/tls-legacy-enable-" . $main_name . ".info";
+    drush_log('[hosting_le] The optional legacy TLSv1 flag is ' . $legacy_tls_ctrl);
+
     $no_san_ctrl = d('@server_master')->aegir_root . "/static/control/ssl-no-san-" . $main_name . ".info";
     drush_log('[hosting_le] The optional no-SAN flag is ' . $no_san_ctrl);
 
@@ -199,6 +202,11 @@ function drush_provision_hosting_le_post_provision_verify() {
     }
 
     $web_server = d()->platform->web_server;
+    // check if server is a pack
+    if ($web_server->master_web_servers) {
+      // use pack master
+      $web_server = d(reset($web_server->master_web_servers));
+    }
     $site_vhost = $web_server->http_vhostd_path . "/" . $real_name;
 
     if (provision_file()->exists($site_vhost)->status()) {

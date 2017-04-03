@@ -482,7 +482,6 @@ os_detection() {
   if [ "${_THIS_OS}" = "Ubuntu" ]; then
     if [ "${_THIS_RV}" = "trusty" ]; then
       _OSV="trusty"
-      _DB_SERIES=10.1
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=NO
@@ -491,7 +490,12 @@ os_detection() {
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
         _MARIADB_VRN="${_GALERA_10_VRN}"
       else
-        _MARIADB_VRN="${_MARIADB_10_VRN}"
+        if [ "${_DB_SERIES}" = "10.2" ]; then
+          _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+        else
+          _DB_SERIES=10.1
+          _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+        fi
       fi
     elif [ "${_THIS_RV}" = "precise" ]; then
       _OSV="precise"
@@ -504,7 +508,6 @@ os_detection() {
   elif [ "${_THIS_OS}" = "Debian" ]; then
     if [ "${_THIS_RV}" = "jessie" ]; then
       _OSV="jessie"
-      _DB_SERIES=10.1
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=YES
@@ -513,7 +516,12 @@ os_detection() {
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
         _MARIADB_VRN="${_GALERA_10_VRN}"
       else
-        _MARIADB_VRN="${_MARIADB_10_VRN}"
+        if [ "${_DB_SERIES}" = "10.2" ]; then
+          _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+        else
+          _DB_SERIES=10.1
+          _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+        fi
       fi
       _SPINNER=NO
       _SKIP_LEGACY_PHP=YES

@@ -84,9 +84,13 @@ satellite_update_web_user() {
     _T_TS="/home/${_WEB}/.aws"
     _T_II="${_T_HD}/php.ini"
     ### msg "DEBUG: ${_WEB} in satellite_update_web_user A"
-    if [ -e "/home/${_WEB}" ] && [ ! -e "/home/${_WEB}/.lock" ]; then
-      chattr -i /home/${_WEB}
-      chattr -i /home/${_WEB}/.drush
+    if [ -d "/home/${_WEB}/" ] && [ ! -e "/home/${_WEB}/.lock" ]; then
+      if [ -d "/home/${_WEB}/" ]; then
+        chattr -i -R /home/${_WEB}/ &> /dev/null
+      fi
+      if [ -d "/home/${_WEB}/.drush/" ]; then
+        chattr -i /home/${_WEB}/.drush/
+      fi
       if [ -e "${_T_II}" ]; then
         chattr -i ${_T_II}
       fi
@@ -173,14 +177,20 @@ satellite_update_web_user() {
         rm -f ${_T_HD}/.ctrl.php*
         echo > ${_T_HD}/.ctrl.php${_T_PV}.pid
       fi
-      chmod 700 /home/${_WEB}
-      chown -R ${_WEB}:www-data /home/${_WEB}
-      chmod 550 /home/${_WEB}/.drush
+      chmod 700 /home/${_WEB}/
+      chown -R ${_WEB}:www-data /home/${_WEB}/
+      chmod 550 /home/${_WEB}/.drush/
       chmod 440 /home/${_WEB}/.drush/php.ini
       rm -f /home/${_WEB}/.lock
-      chattr +i /home/${_WEB}
-      chattr +i /home/${_WEB}/.drush
-      chattr +i ${_T_II}
+      if [ -d "/home/${_WEB}/" ]; then
+        chattr +i /home/${_WEB}/
+      fi
+      if [ -d "/home/${_WEB}/.drush/" ]; then
+        chattr +i /home/${_WEB}/.drush/
+      fi
+      if [ -e "${_T_II}" ]; then
+        chattr +i ${_T_II}
+      fi
     fi
   fi
 }
@@ -188,13 +198,15 @@ satellite_update_web_user() {
 #
 # Remove web user.
 satellite_remove_web_user() {
-  if [ -e "/home/${_WEB}/.tmp" ] || [ "$1" = "clean" ]; then
-    chattr -i /home/${_WEB}
-    chattr -i /home/${_WEB}/.drush
+  if [ -d "/home/${_WEB}/" ] || [ "$1" = "clean" ]; then
+    chattr -i -R /home/${_WEB}/ &> /dev/null
+    if [ -d "/home/${_WEB}/.drush/" ]; then
+      chattr -i /home/${_WEB}/.drush/
+    fi
     mkdir -p ${vBs}/zombie/deleted
     deluser --remove-home --backup-to ${vBs}/zombie/deleted ${_WEB} &> /dev/null
-    if [ -e "/home/${_WEB}" ]; then
-      rm -rf /home/${_WEB} &> /dev/null
+    if [ -d "/home/${_WEB}/" ]; then
+      rm -rf /home/${_WEB}/ &> /dev/null
     fi
   fi
 }
@@ -404,21 +416,21 @@ enable_chattr() {
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
-    if [ -d "/home/$1/platforms" ]; then
-      chattr +i /home/$1/platforms
+    if [ -d "/home/$1/platforms/" ]; then
+      chattr +i /home/$1/platforms/
       chattr +i /home/$1/platforms/*
     fi
-    if [ -d "/home/$1/.drush" ]; then
-      chattr +i /home/$1/.drush
+    if [ -d "/home/$1/.drush/" ]; then
+      chattr +i /home/$1/.drush/
     fi
-    if [ -d "/home/$1/.drush/usr" ]; then
-      chattr +i /home/$1/.drush/usr
+    if [ -d "/home/$1/.drush/usr/" ]; then
+      chattr +i /home/$1/.drush/usr/
     fi
     if [ -f "/home/$1/.drush/php.ini" ]; then
       chattr +i /home/$1/.drush/*.ini
     fi
-    if [ -d "/home/$1/.bazaar" ]; then
-      chattr +i /home/$1/.bazaar
+    if [ -d "/home/$1/.bazaar/" ]; then
+      chattr +i /home/$1/.bazaar/
     fi
   fi
 }
@@ -428,22 +440,22 @@ enable_chattr() {
 disable_chattr() {
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
-    if [ -d "/home/$1/platforms" ]; then
-      chattr -i /home/$1/platforms
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
+    if [ -d "/home/$1/platforms/" ]; then
+      chattr -i /home/$1/platforms/
       chattr -i /home/$1/platforms/*
     fi
-    if [ -d "/home/$1/.drush" ]; then
-      chattr -i /home/$1/.drush
+    if [ -d "/home/$1/.drush/" ]; then
+      chattr -i /home/$1/.drush/
     fi
-    if [ -d "/home/$1/.drush/usr" ]; then
-      chattr -i /home/$1/.drush/usr
+    if [ -d "/home/$1/.drush/usr/" ]; then
+      chattr -i /home/$1/.drush/usr/
     fi
     if [ -f "/home/$1/.drush/php.ini" ]; then
       chattr -i /home/$1/.drush/*.ini
     fi
-    if [ -d "/home/$1/.bazaar" ]; then
-      chattr -i /home/$1/.bazaar
+    if [ -d "/home/$1/.bazaar/" ]; then
+      chattr -i /home/$1/.bazaar/
     fi
   fi
 }
@@ -1163,7 +1175,7 @@ satellite_child_b_update_ini_php_cli() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.314stableQ3.pid" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.320stableQ10.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1223,7 +1235,7 @@ satellite_child_b_update_ini_php_cli() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
-      echo > ${_U_HD}/.ctrl.314stableQ3.pid
+      echo > ${_U_HD}/.ctrl.320stableQ10.pid
     fi
   fi
 }
@@ -1484,7 +1496,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/speedy" ]; then
-        get_dev_contrib "speedy-7.x-1.27.tar.gz"
+        get_dev_contrib "speedy-7.x-1.28.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/taxonomy_edge" ]; then
         get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
@@ -1583,6 +1595,9 @@ satellite_download_o_contrib_eight() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_eight modules..."
   fi
+  get_dev_contrib "advagg-8.x-2.0.tar.gz"
+  get_dev_contrib "cdn-8.x-3.0.tar.gz"
+  get_dev_contrib "robotstxt-8.x-1.0.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_E_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -1638,7 +1653,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
   get_dev_contrib "site_verify-7.x-1.1.tar.gz"
-  get_dev_contrib "speedy-7.x-1.27.tar.gz"
+  get_dev_contrib "speedy-7.x-1.28.tar.gz"
   get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
   get_dev_contrib "views_accelerator-7.x-1.0-beta1.tar.gz"
@@ -2097,8 +2112,21 @@ provision_backend_dbpass_sync() {
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
       WHERE db_user='${_USER}'\"" &> /dev/null
-    mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ESC_PASS}') \
-      WHERE User='${_USER}';" &> /dev/null
+    _ESC="\`%\`.*"
+    _USE_DB_USER="${_USER}"
+    _USE_AEGIR_HOST="$(uname -n 2>&1)"
+    _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
+      | cut -d: -f2 | awk '{ print $1}' 2>&1)"
+    mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
+DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
+DROP USER '${_USE_DB_USER}'@'localhost';
+EOFMYSQL
+    mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
+EOFMYSQL
     sed -i \
       "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
       ${_ROOT}/.drush/server_*.alias.drushrc.php &> /dev/null
@@ -2157,9 +2185,21 @@ hostmaster_frontend_dbpass_sync() {
   if [ -e "$_THIS_HM_SPTH" ] \
     && [ ! -z "$_THIS_HM_DBUR" ] \
     && [ ! -z "$_THIS_HM_DBPD" ]; then
-    mysql -u root -e "UPDATE mysql.user SET \
-      Password=PASSWORD('$_THIS_HM_DBPD') \
-      WHERE User='$_THIS_HM_DBUR';" &> /dev/null
+    _ESC="\`%\`.*"
+    _USE_DB_USER="${_THIS_HM_DBUR}"
+    _USE_AEGIR_HOST="$(uname -n 2>&1)"
+    _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
+      | cut -d: -f2 | awk '{ print $1}' 2>&1)"
+    mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
+DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
+DROP USER '${_USE_DB_USER}'@'localhost';
+EOFMYSQL
+    mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+EOFMYSQL
   fi
   mysqladmin flush-privileges &> /dev/null
 }
@@ -2246,8 +2286,8 @@ satellite_download_for_local_build() {
     get_dev_stc "openidadmin-7.x-1.0.tar.gz"
     get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
     get_dev_stc "r4032login-7.x-1.8.tar.gz"
-    get_dev_stc "views_bulk_operations-7.x-3.3.tar.gz"
-    get_dev_stc "views-7.x-3.14.tar.gz"
+    get_dev_stc "views_bulk_operations-7.x-3.4.tar.gz"
+    get_dev_stc "views-7.x-3.15.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
     get_dev_stc "features-7.x-2.10.tar.gz"
@@ -3038,6 +3078,13 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
+    if [ -d "${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE7}/sites" ]; then
+      if [ ! -L "${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE7}" ]; then
+        _A="${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE7}/sites"
+        _B="${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE7}"
+        ln -sf ${_A} ${_B}
+      fi
+    fi
     if [ -d "${_QR}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7}" ]; then
         _A="${_QR}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7}/sites"
@@ -3063,6 +3110,13 @@ satellite_if_add_update_user_platforms_symlinks() {
       if [ ! -L "${_QH}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7}" ]; then
         _A="${_QR}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7}/sites"
         _B="${_QH}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7}"
+        ln -sf ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}/sites" ]; then
+      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}" ]; then
+        _A="${_QR}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}/sites"
+        _B="${_QH}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}"
         ln -sf ${_A} ${_B}
       fi
     fi
@@ -3392,10 +3446,12 @@ satellite_make() {
   echo "_OPENCHURCH1=\"${_OPENCHURCH1}\""             >> ${writeTo}
   echo "_OPENCHURCH2=\"${_OPENCHURCH2}\""             >> ${writeTo}
   echo "_OPENDEALS=\"${_OPENDEALS}\""                 >> ${writeTo}
+  echo "_OPENLUCIUS=\"${_OPENLUCIUS}\""               >> ${writeTo}
   echo "_OPENOUTREACH=\"${_OPENOUTREACH}\""           >> ${writeTo}
   echo "_OPENPUBLIC=\"${_OPENPUBLIC}\""               >> ${writeTo}
   echo "_OPENPUBLISH=\"${_OPENPUBLISH}\""             >> ${writeTo}
   echo "_OPENSCHOLAR=\"${_OPENSCHOLAR}\""             >> ${writeTo}
+  echo "_OPIGNOLMS=\"${_OPIGNOLMS}\""                 >> ${writeTo}
   echo "_OSV=\"${_OSV}\""                             >> ${writeTo}
   echo "_PANOPOLY=\"${_PANOPOLY}\""                   >> ${writeTo}
   echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${writeTo}
@@ -3493,7 +3549,7 @@ satellite_make() {
     echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
   fi
 
-  if [ ! -e "${_ROOT}/static/control/.ctrl.314stableQ3.pid" ] \
+  if [ ! -e "${_ROOT}/static/control/.ctrl.320stableQ10.pid" ] \
     || [ ! -e "${_ROOT}/static/control/README.txt" ]; then
     mkdir -p ${_ROOT}/static/control
     chmod 755 ${_ROOT}/static/control
@@ -3505,7 +3561,7 @@ satellite_make() {
     chown -R ${_USER}.ftp:${_USRG} \
       ${_ROOT}/static/control &> /dev/null
     rm -f ${_ROOT}/static/control/.ctrl.*
-    echo OK > ${_ROOT}/static/control/.ctrl.314stableQ3.pid
+    echo OK > ${_ROOT}/static/control/.ctrl.320stableQ10.pid
   fi
 
   if [ -d "/data/all/000" ]; then
@@ -4049,13 +4105,13 @@ satellite_pre_cleanup() {
   rm -rf /tmp/drush_make_tmp*
   rm -rf /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
-  if [ -e "/home/${_USER}.ftp" ]; then
+  if [ -d "/home/${_USER}.ftp/" ]; then
     disable_chattr ${_USER}.ftp
   fi
 }
 
 satellite_post_cleanup() {
-  if [ -e "/home/${_USER}.ftp" ]; then
+  if [ -d "/home/${_USER}.ftp/" ]; then
     enable_chattr ${_USER}.ftp
   fi
   rm -f /tmp/cache.inc*
@@ -4157,7 +4213,7 @@ satellite_letsencrypt_vhost_setup() {
           dhpWildPath="/etc/ssl/private/nginx-wild-ssl.dhp"
           if [ -e "/etc/ssl/private/4096.dhp" ]; then
             dhpPath="/etc/ssl/private/4096.dhp"
-            _DIFF_T=$(diff ${dhpPath} ${dhpWildPath} 2>&1)
+            _DIFF_T=$(diff -w -B ${dhpPath} ${dhpWildPath} 2>&1)
             if [ ! -z "${_DIFF_T}" ]; then
               cp -af ${dhpPath} ${dhpWildPath}
             fi
@@ -4727,16 +4783,14 @@ satellite_child_b_aegir_build() {
         ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
       fi
     else
-      if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y
-          ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y
-          ${_DRUSHCMD} @hostmaster registry-rebuild
-        else
-          ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
-          ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y &> /dev/null
-          ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
-        fi
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y
+        ${_DRUSHCMD} @hostmaster registry-rebuild
+      else
+        ${_DRUSHCMD} @hostmaster dis hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster pm-uninstall hosting_custom_settings -y &> /dev/null
+        ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
       fi
     fi
 
@@ -5105,63 +5159,6 @@ satellite_child_b_aegir_ui_enhance() {
       WHERE link_path='hosting/platforms'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \
       WHERE link_path='hosting/sites'" &> /dev/null
-    if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"  &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
-        ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster en hosting_le -y
-        ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y
-        ${_DRUSHCMD} @hostmaster cc all
-        ${_DRUSHCMD} @hostmaster updb -y
-      else
-        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"  &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats" &> /dev/null
-        ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
-        ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y  &> /dev/null
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y  &> /dev/null
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y  &> /dev/null
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y  &> /dev/null
-        ${_DRUSHCMD} @hostmaster en hosting_le -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster cc all &> /dev/null
-        ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
-      fi
-    fi
-    ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
-      VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),\
-      (1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" &> /dev/null
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-      fi
-      ${_DRUSHCMD} @hostmaster cc all
-    else
-      if [ ! -e "/data/conf/.debug-hosting-custom-settings.cnf" ]; then
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
-        ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
-      fi
-      ${_DRUSHCMD} @hostmaster cc all &> /dev/null
-    fi
-    ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-      SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
-    ${_DRUSHCMD} @hostmaster sqlq "UPDATE menu_links \
-      SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'" &> /dev/null
-
-    if [ ! -e "${_ROOT}/log/hosting_le_enable.txt" ]; then
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx_ssl' WHERE service='http'" &> /dev/null
-      sleep 5
-      ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force &> /dev/null
-      mkdir -p ${_ROOT}/log
-      touch ${_ROOT}/log/hosting_le_enable.txt
-    fi
 
     if [ "$_LOCAL_STATUS" = "INIT" ]; then
       pBy="Octopus System powered by Barracuda"
@@ -5182,12 +5179,12 @@ satellite_child_b_aegir_ui_enhance() {
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
           SET status=-1 WHERE nid=5" &> /dev/null
       fi
-      ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL} &> /dev/null
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL}
+      else
+        ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL} &> /dev/null
+      fi
       rm -f make_client.php
-      ${_DRUSHCMD} @hostmaster \
-        urol "admin" --mail=${_CLIENT_EMAIL} &> /dev/null
-      ${_DRUSHCMD} @hostmaster \
-       urol "aegir account manager" --mail=${_CLIENT_EMAIL} &> /dev/null
     else
       if [ "${_VMFAMILY}" = "VS" ]; then
         pBy="Octopus System powered by Barracuda"
@@ -5201,6 +5198,71 @@ satellite_child_b_aegir_ui_enhance() {
         WHERE body_format IS NULL" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE field_data_body \
         SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
+    fi
+
+    ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
+      SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
+    ${_DRUSHCMD} @hostmaster sqlq "UPDATE menu_links \
+      SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'" &> /dev/null
+
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats"
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"
+      ${_DRUSHCMD} @hostmaster en hosting_le -y
+      ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y
+      ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
+      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+      ${_DRUSHCMD} @hostmaster cc all
+      ${_DRUSHCMD} @hostmaster updb -y
+    else
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"  &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats" &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
+      ${_DRUSHCMD} @hostmaster en hosting_le -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y  &> /dev/null
+      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y  &> /dev/null
+      ${_DRUSHCMD} @hostmaster cc all &> /dev/null
+      ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
+    fi
+
+    if [ "$_LOCAL_STATUS" = "INIT" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        ${_DRUSHCMD} @hostmaster \
+          urol "admin" --mail=${_CLIENT_EMAIL}
+        ${_DRUSHCMD} @hostmaster \
+          urol "aegir account manager" --mail=${_CLIENT_EMAIL}
+        ${_DRUSHCMD} @hostmaster \
+          urol "aegir client" --mail=${_CLIENT_EMAIL}
+        ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
+          (uid, up_name, up_mail, up_pass, up_status, up_roles, up_cancel, up_edit, up_type, up_openid) VALUES \
+          ('0', '0', '0', '0', '0', '0', '1', '1', 'user', '1'),\
+          ('1', '0', '0', '0', '0', '0', '0', '0', 'admin', '0'),\
+          ('1', '1', '1', '1', '1', '1', '1', '1', 'user', '1'),\
+          ('2', '0', '0', '0', '1', '1', '1', '0', 'user', '1');"
+      else
+        ${_DRUSHCMD} @hostmaster \
+          urol "admin" --mail=${_CLIENT_EMAIL} &> /dev/null
+        ${_DRUSHCMD} @hostmaster \
+          urol "aegir account manager" --mail=${_CLIENT_EMAIL} &> /dev/null
+        ${_DRUSHCMD} @hostmaster \
+          urol "aegir client" --mail=${_CLIENT_EMAIL} &> /dev/null
+        ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
+          (uid, up_name, up_mail, up_pass, up_status, up_roles, up_cancel, up_edit, up_type, up_openid) VALUES \
+          ('0', '0', '0', '0', '0', '0', '1', '1', 'user', '1'),\
+          ('1', '0', '0', '0', '0', '0', '0', '0', 'admin', '0'),\
+          ('1', '1', '1', '1', '1', '1', '1', '1', 'user', '1'),\
+          ('2', '0', '0', '0', '1', '1', '1', '0', 'user', '1');" &> /dev/null
+      fi
+    fi
+
+    if [ ! -e "${_ROOT}/log/hosting_le_enable.txt" ]; then
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx_ssl' WHERE service='http'" &> /dev/null
+      sleep 5
+      ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force &> /dev/null
+      mkdir -p ${_ROOT}/log
+      touch ${_ROOT}/log/hosting_le_enable.txt
     fi
   fi
 }
@@ -5237,6 +5299,15 @@ satellite_child_b_redis_enable_finalize() {
       ln -s /data/all/000/modules/redis_edge \
         ${_HM_ROOT}/modules/o_contrib_seven/redis_edge
     fi
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
+    ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
+    ${_DRUSHCMD} @hostmaster cc all
+  else
+    ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster cc all &> /dev/null
   fi
   touch /opt/tmp/status-AegirSetupB-OK
 }

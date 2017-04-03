@@ -4,14 +4,14 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 branch="3.x.x-dev"
-cluster="BOA-3.1.4"
+cluster="BOA-3.2.0"
 hd="HEAD"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
 master="master"
-nextv="BOA-3.2.0-dev"
-stbl="BOA-3.1.4"
+nextv="BOA-3.3.0-dev"
+stbl="BOA-3.2.0"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -1245,9 +1245,14 @@ check_fix_csf() {
     csf -a 50.31.233.231 nl.files.aegir.cc   &> /dev/null
     csf -a 134.19.164.236 uk.files.aegir.cc  &> /dev/null
     csf -a 104.245.208.226 us.files.aegir.cc &> /dev/null
+    service lfd stop &> /dev/null
+    sleep 3
+    rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
     csf -uf &> /dev/null
     csf -e  &> /dev/null
+    sleep 3
+    service lfd start &> /dev/null
   fi
 }
 

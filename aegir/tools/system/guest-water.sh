@@ -184,6 +184,10 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
   echo Waiting $n seconds...
   sleep $n
   touch /var/run/water.pid
+  service lfd stop &> /dev/null
+  sleep 3
+  rm -f /etc/csf/csf.error
+  csf -q
   sleep 10
   local_ip_rg
   _HA=/var/xdrago/monitor/hackcheck.archive.log
@@ -196,6 +200,8 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
   ntpdate pool.ntp.org
   csf -e
   csf -q
+  sleep 3
+  service lfd start &> /dev/null
   rm -f /var/run/water.pid
 else
   if [ -e "/root/.mstr.clstr.cnf" ] \
@@ -205,4 +211,4 @@ else
   fi
 fi
 exit 0
-###EOF2016###
+###EOF2017###

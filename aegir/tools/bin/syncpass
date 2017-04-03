@@ -79,9 +79,21 @@ do_syncpass() {
           sqlq \"UPDATE hosting_db_server \
           SET db_passwd='${_ESC_APASS}' \
           WHERE db_user='aegir_root'\"" &> /dev/null
-        mysql -u root -e "UPDATE mysql.user SET \
-          Password=PASSWORD('${_ESC_APASS}') \
-          WHERE User='aegir_root';" &> /dev/null
+        _ESC="\`%\`.*"
+        _USE_DB_USER="aegir_root"
+        _USE_AEGIR_HOST="$(uname -n 2>&1)"
+        _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
+          | cut -d: -f2 | awk '{ print $1}' 2>&1)"
+        mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
+DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
+DROP USER '${_USE_DB_USER}'@'localhost';
+EOFMYSQL
+        mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+EOFMYSQL
         sed -i \
           "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
           ${prH}/server_*.alias.drushrc.php &> /dev/null
@@ -109,9 +121,21 @@ do_syncpass() {
           su -s /bin/bash - ${uname} -c "drush @hostmaster \
             sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_APASS}' \
             WHERE db_user='${uname}'\"" &> /dev/null
-          mysql -u root -e "UPDATE mysql.user \
-            SET Password=PASSWORD('${_ESC_APASS}') \
-            WHERE User='${uname}';" &> /dev/null
+          _ESC="\`%\`.*"
+          _USE_DB_USER="${uname}"
+          _USE_AEGIR_HOST="$(uname -n 2>&1)"
+          _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
+            | cut -d: -f2 | awk '{ print $1}' 2>&1)"
+          mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
+DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
+DROP USER '${_USE_DB_USER}'@'localhost';
+EOFMYSQL
+          mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+EOFMYSQL
           sed -i \
             "s/mysql:\/\/${uname}:.*/mysql:\/\/${uname}:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
             /data/disk/${uname}/.drush/server_*.alias.drushrc.php &> /dev/null

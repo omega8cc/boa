@@ -331,13 +331,13 @@ if_install_webmin() {
           sarge contrib" | fmt -su -w 2500 >> ${aptLiSys}.d/webmin.list
         _KEYS_SERVER_TEST=FALSE
         until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
-          rm -f jcameron-key.asc*
-          wget -q -U iCab ${urlDev}/jcameron-key.asc
-          _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.asc 2>&1)
+          rm -f jcameron-key.gpg*
+          wget -q -U iCab ${urlDev}/jcameron-key.gpg
+          _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.gpg 2>&1)
           sleep 2
         done
-        cat jcameron-key.asc | apt-key add - &> /dev/null
-        rm -f jcameron-key.asc*
+        cat jcameron-key.gpg | apt-key add - &> /dev/null
+        rm -f jcameron-key.gpg*
         touch ${pthLog}/webmin_update_apt_src.log
         rm -f /etc/apt/sources.list.d/openssl.list
         st_runner "apt-get update -qq" &> /dev/null
@@ -439,12 +439,12 @@ if_install_rvm() {
           mrun "rvm use ${_RUBY_VRN} --default" &> /dev/null
           mrun "rvm get stable" 2> /dev/null
           mrun "rvm @global do gem update -q" 2> /dev/null
-          curl -sL https://deb.nodesource.com/setup_4.x | sudo -E bash - &> /dev/null
+          curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash - &> /dev/null
           mrun "${_INSTALL} nodejs" 2> /dev/null
         else
           mrun "rvm get stable" 2> /dev/null
           mrun "rvm @global do gem update -q" 2> /dev/null
-          curl -sL https://deb.nodesource.com/setup_4.x | sudo -E bash - &> /dev/null
+          curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash - &> /dev/null
           mrun "${_INSTALL} nodejs" 2> /dev/null
         fi
         _RBY_FILE="/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/ruby"

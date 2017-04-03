@@ -519,8 +519,8 @@ tune_memory_limits() {
     wait
     sed -i "s/^max_heap_table_size.*/max_heap_table_size     = ${_TMP_SQL}/g"     /etc/mysql/my.cnf
     wait
-    sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = ${_SRT_SQL}/g" /etc/mysql/my.cnf
-    wait
+    # sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = ${_SRT_SQL}/g" /etc/mysql/my.cnf
+    # wait
     sed -i "s/^query_cache_size.*/query_cache_size        = ${_QCE_SQL}/g"        /etc/mysql/my.cnf
     wait
     sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = ${_RND_SQL}/g"    /etc/mysql/my.cnf
@@ -729,13 +729,20 @@ barracuda_cnf() {
         clean_pid_exit
       fi
     fi
-    if [ "${_DB_SERIES}" = "10.1" ] || [ "${_DB_SERIES}" = "10.0" ]; then
+    if [ "${_DB_SERIES}" = "10.2" ] \
+      || [ "${_DB_SERIES}" = "10.1" ] \
+      || [ "${_DB_SERIES}" = "10.0" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
         _MARIADB_VRN="${_GALERA_10_VRN}"
       else
-        _MARIADB_VRN="${_MARIADB_10_VRN}"
+        if [ "${_DB_SERIES}" = "10.2" ]; then
+          _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+        else
+          _DB_SERIES=10.1
+          _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+        fi
       fi
     else
       _DB_SERIES=5.5
@@ -1446,13 +1453,20 @@ barracuda_cnf() {
       sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=httpredir.debian.org/g"     ${barCnf}
       wait
     fi
-    if [ "${_DB_SERIES}" = "10.1" ] || [ "${_DB_SERIES}" = "10.0" ]; then
+    if [ "${_DB_SERIES}" = "10.2" ] \
+      || [ "${_DB_SERIES}" = "10.1" ] \
+      || [ "${_DB_SERIES}" = "10.0" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
         _MARIADB_VRN="${_GALERA_10_VRN}"
       else
-        _MARIADB_VRN="${_MARIADB_10_VRN}"
+        if [ "${_DB_SERIES}" = "10.2" ]; then
+          _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+        else
+          _DB_SERIES=10.1
+          _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+        fi
       fi
     else
       _DB_SERIES=5.5
@@ -1695,16 +1709,19 @@ check_apt_updates() {
     -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`; do
     case "${Update}" in
       *libcurl*)    _UP_PHP=YES ;;
-      *libmysql*)   _UP_PHP=YES ;;
+      *libmysql*)   _UP_SQL=YES ;;
       *libssl*)     _UP_PHP=YES ;;
       *linux-*)     _UP_LNX=YES ;;
-      *mariadb*)    _UP_PHP=YES ;;
+      *mariadb*)    _UP_SQL=YES ;;
       *newrelic*)   _UP_NRC=YES ;;
       *openjdk*)    _UP_JDK=YES ;;
       *openssl*)    _UP_PHP=YES ;;
       *)  ;;
     esac
   done
+  if [ "${_UP_SQL}" = "YES" ]; then
+    _UP_PHP=YES
+  fi
 }
 
 #
@@ -1839,6 +1856,9 @@ update_sources_list() {
         _APT_SOURCES_REWRITE=YES
       fi
       if [ ! -e "${aptLiSys}.d/mariadb.list" ]; then
+        _APT_SOURCES_REWRITE=YES
+      fi
+      if [ ! -e "${aptLiSys}.d/xtrabackup.list" ]; then
         _APT_SOURCES_REWRITE=YES
       fi
     fi
@@ -2553,13 +2573,16 @@ strict_bin_permissions() {
                   advpng \
                   avconv \
                   bash \
+                  clamscan \
                   compass \
                   convert \
                   curl \
                   dash \
                   env \
                   ffmpeg \
+                  ffprobe \
                   flvtool2 \
+                  freshclam \
                   git \
                   gs \
                   hhvm \
@@ -2602,6 +2625,9 @@ strict_bin_permissions() {
   _PROTECTED_ITEMS="backboa \
                     barracuda \
                     boa \
+                    clamconf \
+                    clamd \
+                    clamdscan \
                     fix-drupal-platform-ownership.sh \
                     fix-drupal-platform-permissions.sh \
                     fix-drupal-site-ownership.sh \
@@ -2612,6 +2638,7 @@ strict_bin_permissions() {
                     redis-check-aof \
                     redis-check-dump \
                     redis-cli \
+                    rkhunter \
                     sftp-admin \
                     sftp-kill \
                     sftp-state \
@@ -2775,10 +2802,15 @@ finale() {
     service cron start     &> /dev/null
   fi
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+    service lfd stop &> /dev/null
+    sleep 3
+    rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
     csf -uf &> /dev/null
     csf -e  &> /dev/null
     csf -q  &> /dev/null
+    sleep 3
+    service lfd start &> /dev/null
   fi
   cd /
   chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt opt \
@@ -3493,13 +3525,13 @@ update_webmin_apt() {
         sarge contrib" | fmt -su -w 2500 >> ${aptLiSys}.d/webmin.list
       _KEYS_SERVER_TEST=FALSE
       until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
-        rm -f jcameron-key.asc*
-        wget -q -U iCab ${urlDev}/jcameron-key.asc
-        _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.asc 2>&1)
+        rm -f jcameron-key.gpg*
+        wget -q -U iCab ${urlDev}/jcameron-key.gpg
+        _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.gpg 2>&1)
         sleep 2
       done
-      cat jcameron-key.asc | apt-key add - &> /dev/null
-      rm -f jcameron-key.asc*
+      cat jcameron-key.gpg | apt-key add - &> /dev/null
+      rm -f jcameron-key.gpg*
       touch ${pthLog}/webmin_update_apt_src.log
     fi
   fi
@@ -3575,18 +3607,40 @@ sys_packages_update() {
       fi
     fi
     rm -f /var/lib/mysql/debian-*.flag &> /dev/null
-    _KEYS_SERVER_TEST=FALSE
     if [ ! -e "/root/.upstart.cnf" ]; then
       service cron stop &> /dev/null
     fi
     if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+      service lfd stop &> /dev/null
+      sleep 3
+      rm -f /etc/csf/csf.error
       csf -x &> /dev/null
     fi
+    _KEYS_SERVER_TEST=FALSE
+    until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
+      _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
+        --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 2>&1)
+      sleep 2
+    done
+    _KEYS_SERVER_TEST=FALSE
     until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
       _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
         --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
       sleep 2
     done
+    _KEYS_SERVER_TEST=FALSE
+    until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
+      _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
+        --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5 2>&1)
+      sleep 2
+    done
+    if [ ! -e "${aptLiSys}.d/xtrabackup.list" ]; then
+      xtraRepo="repo.percona.com/apt"
+      xtraList="${aptLiSys}.d/xtrabackup.list"
+      echo "## Percona XtraBackup APT Repository" > ${xtraList}
+      echo "deb http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
+      echo "deb-src http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
+    fi
     _UP_JDK=NO
     _UP_LNX=NO
     _UP_NRC=NO
@@ -3763,6 +3817,7 @@ sys_packages_install() {
               bison \
               build-essential \
               catdoc \
+              clamav \
               cron \
               curl \
               cvs \
@@ -3839,12 +3894,14 @@ sys_packages_install() {
               ntpdate \
               p7zip-full \
               pdftk \
+              percona-xtrabackup \
               postfix \
               postfix-pcre \
               pwgen \
               python-dev \
               python-software-properties \
               re2c \
+              rkhunter \
               rrdtool \
               rsync \
               s3cmd \
@@ -4844,7 +4901,8 @@ update_initd() {
       msg "INFO: Restarting Jetty 7"
       mrun "service jetty7 start" &> /dev/null
     fi
-    if [ ! -e "/var/run/aegir_upgrade.pid" ]; then
+    if [ ! -e "/var/run/aegir_upgrade.pid" ] \
+      && [ ! -e "/root/.proxy.cnf" ]; then
       msg "INFO: Restarting Redis, PHP-FPM and Nginx..."
       mrun "service redis-server restart" &> /dev/null
       mrun "update-rc.d -f php5-fpm remove" &> /dev/null
@@ -4879,9 +4937,59 @@ update_initd() {
       elif [ -x "/usr/bin/mysql_upgrade" ]; then
         mrun "mysql_upgrade --force" &> /dev/null
       fi
-      msg "INFO: Restarting ${_DB_SERVER} server..."
-      mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
-      mrun "service mysql restart" &> /dev/null
+      myCnf="/etc/mysql/my.cnf"
+      preCnf="${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}"
+      if [ -f "${myCnf}" ]; then
+        myCnfUpdate=NO
+        if [ ! -f "${preCnf}" ]; then
+          mkdir -p ${vBs}/dragon/t/
+          cp -af ${myCnf} ${preCnf}
+        fi
+        diffMyTest=$(diff -w -B \
+          -I innodb_buffer_pool_size \
+          -I innodb_buffer_pool_instances \
+          -I tmp_table_size \
+          -I max_heap_table_size \
+          -I myisam_sort_buffer_size \
+          -I key_buffer_size ${myCnf} ${preCnf} 2>&1)
+        if [ -z "${diffMyTest}" ]; then
+          myCnfUpdate=NO
+          msg "INFO: ${_DB_SERVER} diff0 empty"
+        else
+          myCnfUpdate=YES
+          # diffMyTest=$(echo -n ${diffMyTest} | fmt -su -w 2500 2>&1)
+          msg "INFO: ${_DB_SERVER} diff1 ${diffMyTest}"
+        fi
+        if [[ "${diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
+          myCnfUpdate=NO
+          msg "INFO: ${_DB_SERVER} diff2 ${diffMyTest}"
+        fi
+        if [[ "${diffMyTest}" =~ "No such file or directory" ]]; then
+          myCnfUpdate=NO
+          msg "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
+        fi
+      fi
+      if [ "${_UP_SQL}" = "YES" ]; then
+        myVnTest=$(mysql -V 2>&1)
+        if [[ "${myVnTest}" =~ "${_MARIADB_VRN}" ]]; then
+          msg "INFO: ${_DB_SERVER} ${_MARIADB_VRN} already up to date"
+          myCnfUpdate=YES
+          msg "INFO: ${_DB_SERVER} restart after upgrade forced"
+        fi
+      fi
+      myUptime=$(mysqladmin version | grep -i uptime 2>&1)
+      myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
+      msg "INFO: ${_DB_SERVER} ${myUptime}"
+      if [ "${myRstrd}" = "YES" ]; then
+        myCnfUpdate=NO
+        msg "INFO: ${_DB_SERVER} already restarted!"
+      fi
+      if [ "${myCnfUpdate}" = "YES" ]; then
+        msg "INFO: Restarting ${_DB_SERVER} server..."
+        mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
+        mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+        msg "INFO: ${_DB_SERVER} server restart completed"
+      fi
       if [ -e "/etc/init.d/php70-fpm" ]; then
         mrun "service php70-fpm start" &> /dev/null
       fi

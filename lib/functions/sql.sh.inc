@@ -2,34 +2,32 @@
 # Update innodb_log_file_size.
 update_innodb_log_file_size() {
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
-  mrun "service mysql stop" &> /dev/null
-  mrun "sleep 60"
-  if [ ! -e "/var/run/mysqld/mysqld.sock" ] \
-    && [ ! -e "/var/run/mysqld/mysqld.pid" ]; then
+  mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
+  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+  if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
     mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
-    mrun "sleep 10"
+    mrun "sleep 1"
     mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
     wait
-    mrun "sleep 10"
-    mrun "service mysql start" &> /dev/null
+    mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
   else
-    msg "INFO: Waiting for ${_DB_SERVER} clean shutdown..."
+    msg "INFO: Waiting 180s for ${_DB_SERVER} clean shutdown..."
+    mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
     mrun "sleep 180"
-    if [ ! -e "/var/run/mysqld/mysqld.sock" ] \
-      && [ ! -e "/var/run/mysqld/mysqld.pid" ]; then
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
-      mrun "sleep 10"
+      mrun "sleep 1"
       mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
       wait
-      mrun "sleep 10"
-      mrun "service mysql start" &> /dev/null
+      mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
     else
       msg "WARN: ${_DB_SERVER} refused to stop, InnoDB log file size not updated"
-      mrun "sleep 10"
+      mrun "sleep 5"
     fi
   fi
 }
@@ -41,6 +39,19 @@ update_sql_conf() {
   #   sed -i "s/.*innodb-defragment/innodb-defragment/g" /etc/mysql/my.cnf
   #   wait
   # fi
+  if [ "${_DB_SERIES}" = "10.2" ]; then
+    sed -i "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" /etc/mysql/my.cnf
+    wait
+  fi
+  if [ "${_DB_SERIES}" != "10.2" ] \
+    && [ "${_DB_SERIES}" != "10.1" ]; then
+    sed -i "s/.*innodb_buffer_pool_dump_at_shutdown/#innodb_buffer_pool_dump_at_shutdown/g" /etc/mysql/my.cnf
+    wait
+    sed -i "s/.*innodb_buffer_pool_load_at_startup/#innodb_buffer_pool_load_at_startup/g" /etc/mysql/my.cnf
+    wait
+    sed -i "s/.*innodb_buffer_pool_dump_pct/#innodb_buffer_pool_dump_pct/g" /etc/mysql/my.cnf
+    wait
+  fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
@@ -129,10 +140,13 @@ update_sql_conf() {
 tune_sql_memory_limits() {
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
   wait
+  if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}" ]; then
+    mkdir -p ${vBs}/dragon/t/
+    cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}
+  fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
     _DO_NOTHING=YES
   else
-    cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}
     cp -af ${locCnf}/my.cnf.txt /etc/mysql/my.cnf
   fi
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
@@ -198,14 +212,14 @@ tune_sql_memory_limits() {
         _USE_MYISAM_MEM="${_USE_SQL}"
       fi
       _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
-      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
+      # sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
       wait
     else
       _USE_MYISAM_MEM="${_USE_SQL}M"
       if [ "$_MYSQLTUNER_TEST_RESULT" = "FAIL" ]; then
         msg "ALRT! _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
       fi
-      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
+      # sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
       wait
     fi
     ###--------------------###
@@ -234,55 +248,18 @@ tune_sql_memory_limits() {
       fi
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_INNODB_MEM}/4/40*40" | bc 2>&1)
       _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
-      if [ "${_DB_COUNT}" -gt "50" ]; then
-        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "2000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "2500" ]; then
-          _INNODB_LOG_FILE_SIZE=2500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "2500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "3000" ]; then
-          _INNODB_LOG_FILE_SIZE=3000
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "3000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "3500" ]; then
-          _INNODB_LOG_FILE_SIZE=3500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "3500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4000" ]; then
-          _INNODB_LOG_FILE_SIZE=4000
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4500" ]; then
-          _INNODB_LOG_FILE_SIZE=4500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "5000" ]; then
-          _INNODB_LOG_FILE_SIZE=5000
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "5000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "5500" ]; then
-          _INNODB_LOG_FILE_SIZE=5500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "5500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "6000" ]; then
-          _INNODB_LOG_FILE_SIZE=6000
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "6000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "6500" ]; then
-          _INNODB_LOG_FILE_SIZE=6500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "6500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "7000" ]; then
-          _INNODB_LOG_FILE_SIZE=7000
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "7000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "7500" ]; then
-          _INNODB_LOG_FILE_SIZE=7500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "7500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "8000" ]; then
-          _INNODB_LOG_FILE_SIZE=8000
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "8000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "8500" ]; then
-          _INNODB_LOG_FILE_SIZE=8500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "8500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "9000" ]; then
-          _INNODB_LOG_FILE_SIZE=9000
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "9000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "9500" ]; then
-          _INNODB_LOG_FILE_SIZE=9500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "9500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "9999" ]; then
-          _INNODB_LOG_FILE_SIZE=9999
+      if [ "${_DB_COUNT}" -gt "3" ]; then
+        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "64" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "256" ]; then
+          _INNODB_LOG_FILE_SIZE=256
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "256" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "512" ]; then
+          _INNODB_LOG_FILE_SIZE=512
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "512" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "1024" ]; then
+          _INNODB_LOG_FILE_SIZE=1024
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "1024" ]; then
+          _INNODB_LOG_FILE_SIZE=1024
         fi
       fi
       if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] \
@@ -296,25 +273,18 @@ tune_sql_memory_limits() {
       _USE_INNODB_MEM="${_USE_SQL}M"
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
       _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
-      if [ "${_DB_COUNT}" -gt "100" ]; then
-        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "2000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "2500" ]; then
-          _INNODB_LOG_FILE_SIZE=2500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "2500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "3000" ]; then
-          _INNODB_LOG_FILE_SIZE=3000
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "3000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "3500" ]; then
-          _INNODB_LOG_FILE_SIZE=3500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "3500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4000" ]; then
-          _INNODB_LOG_FILE_SIZE=4000
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4000" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4500" ]; then
-          _INNODB_LOG_FILE_SIZE=4500
-        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4500" ] \
-          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "5000" ]; then
-          _INNODB_LOG_FILE_SIZE=5000
+      if [ "${_DB_COUNT}" -gt "3" ]; then
+        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "64" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "256" ]; then
+          _INNODB_LOG_FILE_SIZE=256
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "256" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "512" ]; then
+          _INNODB_LOG_FILE_SIZE=512
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "512" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -lt "1024" ]; then
+          _INNODB_LOG_FILE_SIZE=1024
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "1024" ]; then
+          _INNODB_LOG_FILE_SIZE=1024
         fi
       fi
       if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] \
@@ -335,25 +305,18 @@ tune_sql_memory_limits() {
     fi
     _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
     _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
-    if [ "${_DB_COUNT}" -gt "100" ]; then
-      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "2000" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "2500" ]; then
-        _INNODB_LOG_FILE_SIZE=2500
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "2500" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "3000" ]; then
-        _INNODB_LOG_FILE_SIZE=3000
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "3000" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "3500" ]; then
-        _INNODB_LOG_FILE_SIZE=3500
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "3500" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4000" ]; then
-        _INNODB_LOG_FILE_SIZE=4000
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4000" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "4500" ]; then
-        _INNODB_LOG_FILE_SIZE=4500
-      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "4500" ] \
-        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "5000" ]; then
-        _INNODB_LOG_FILE_SIZE=5000
+    if [ "${_DB_COUNT}" -gt "3" ]; then
+      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "64" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "256" ]; then
+        _INNODB_LOG_FILE_SIZE=256
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "256" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "512" ]; then
+        _INNODB_LOG_FILE_SIZE=512
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "512" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -lt "1024" ]; then
+        _INNODB_LOG_FILE_SIZE=1024
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -ge "1024" ]; then
+        _INNODB_LOG_FILE_SIZE=1024
       fi
     fi
     if [ "${_INNODB_LOG_FILE_SIZE}" -lt "64" ] \
@@ -370,7 +333,19 @@ install_mariadb_sql() {
   _KEYS_SERVER_TEST=FALSE
   until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
     _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
+      --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 2>&1)
+    sleep 2
+  done
+  _KEYS_SERVER_TEST=FALSE
+  until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
+    _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
       --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
+    sleep 2
+  done
+  _KEYS_SERVER_TEST=FALSE
+  until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
+    _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
+      --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5 2>&1)
     sleep 2
   done
   if [ "${_OSV}" = "trusty" ] \
@@ -384,28 +359,33 @@ install_mariadb_sql() {
   fi
   if [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "jessie" ]; then
-    _DB_SERIES=10.1
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
       _MARIADB_VRN="${_GALERA_10_VRN}"
     else
-      _MARIADB_VRN="${_MARIADB_10_VRN}"
+      if [ "${_DB_SERIES}" = "10.2" ]; then
+        _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+      else
+        _DB_SERIES=10.1
+        _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+      fi
     fi
     msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
   else
-    if [ "${_DB_SERIES}" = "10.1" ] \
+    if [ "${_DB_SERIES}" = "10.2" ] \
+      || [ "${_DB_SERIES}" = "10.1" ] \
       || [ "${_DB_SERIES}" = "10.0" ] \
       || [ "${_DB_SERIES}" = "5.5" ]; then
       _DO_NOTHING=YES
     else
       _DB_SERIES=10.1
-      _MARIADB_VRN="${_MARIADB_10_VRN}"
+      _MARIADB_VRN="${_MARIADB_10_1_VRN}"
       msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
     fi
     if [ -z "${_DB_SERIES}" ]; then
       _DB_SERIES=10.1
-      _MARIADB_VRN="${_MARIADB_10_VRN}"
+      _MARIADB_VRN="${_MARIADB_10_1_VRN}"
       msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
     fi
   fi
@@ -415,6 +395,11 @@ install_mariadb_sql() {
   echo "## MariaDB APT Repository" > ${aptLiDb}
   echo "deb http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
   echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+  xtraRepo="repo.percona.com/apt"
+  xtraList="${aptLiSys}.d/xtrabackup.list"
+  echo "## Percona XtraBackup APT Repository" > ${xtraList}
+  echo "deb http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
+  echo "deb-src http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
     || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
@@ -446,9 +431,9 @@ install_mariadb_sql() {
             mariadb-common"
   fi
   SQLADD="libmariadbclient-dev \
-          libmariadbclient16 \
-          libmariadbd-dev \
+          libmysqlclient18.1 \
           libdbd-mysql-perl \
+          percona-xtrabackup \
           python-mysqldb \
           libdbi-perl"
 }
@@ -575,6 +560,9 @@ install_mariadb_server() {
     service cron stop &> /dev/null
     if [ -e "/usr/sbin/csf" ] \
       && [ -e "/etc/csf/csf.deny" ]; then
+      service lfd stop &> /dev/null
+      sleep 3
+      rm -f /etc/csf/csf.error
       csf -x &> /dev/null
     fi
     install_with_aptitude_sql
@@ -609,6 +597,10 @@ install_mariadb_server() {
       elif [ "${_DB_SERIES}" = "10.1" ] \
         || [ "${_DB_SERIES}" = "10.0" ]; then
         if [[ ! "${_DB_SERVER_TEST}" =~ "10.1." ]]; then
+          _SQL_UPGRADE=YES
+        fi
+      elif [ "${_DB_SERIES}" = "10.2" ]; then
+        if [[ ! "${_DB_SERVER_TEST}" =~ "10.2." ]]; then
           _SQL_UPGRADE=YES
         fi
       fi
@@ -648,13 +640,24 @@ install_mariadb_server() {
       service cron stop &> /dev/null
       if [ -e "/usr/sbin/csf" ] \
         && [ -e "/etc/csf/csf.deny" ]; then
+        service lfd stop &> /dev/null
+        sleep 3
+        rm -f /etc/csf/csf.error
         csf -x &> /dev/null
       fi
       msg "INFO: Running ${_DB_SERVER} upgrade and then PHP forced rebuild..."
-      mrun "sleep 120"
-      mrun "service nginx stop" &> /dev/null
+      if [ ! -e "/root/.proxy.cnf" ]; then
+        mrun "sleep 120"
+        mrun "service nginx stop" &> /dev/null
+      fi
       rm -f ${aptLiSys}.d/percona.list
       rm -f ${aptLiSys}.d/ourdelta.list
+      _KEYS_SERVER_TEST=FALSE
+      until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
+        _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
+          --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 2>&1)
+        sleep 2
+      done
       _KEYS_SERVER_TEST=FALSE
       until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
         _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
@@ -688,15 +691,55 @@ install_mariadb_server() {
       elif [ -x "/usr/bin/mysql_upgrade" ]; then
         mrun "mysql_upgrade --force" &> /dev/null
       fi
-      msg "INFO: Restarting ${_DB_SERVER} server..."
       tune_memory_limits
-      mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
-      mrun "service mysql restart" &> /dev/null
-      mrun "service nginx start" &> /dev/null
+      myCnf="/etc/mysql/my.cnf"
+      preCnf="${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}"
+      if [ -f "${myCnf}" ]; then
+        myCnfUpdate=NO
+        myRstrd=NO
+        if [ ! -f "${preCnf}" ]; then
+          mkdir -p ${vBs}/dragon/t/
+          cp -af ${myCnf} ${preCnf}
+        fi
+        diffMyTest=$(diff -w -B \
+          -I innodb_buffer_pool_size \
+          -I innodb_buffer_pool_instances \
+          -I tmp_table_size \
+          -I max_heap_table_size \
+          -I myisam_sort_buffer_size \
+          -I key_buffer_size ${myCnf} ${preCnf} 2>&1)
+        if [ -z "${diffMyTest}" ]; then
+          myCnfUpdate=NO
+          msg "INFO: ${_DB_SERVER} diff0 empty"
+        else
+          myCnfUpdate=YES
+          # diffMyTest=$(echo -n ${diffMyTest} | fmt -su -w 2500 2>&1)
+          msg "INFO: ${_DB_SERVER} diff1 ${diffMyTest}"
+        fi
+        if [[ "${diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
+          myCnfUpdate=NO
+          msg "INFO: ${_DB_SERVER} diff2 ${diffMyTest}"
+        fi
+        if [[ "${diffMyTest}" =~ "No such file or directory" ]]; then
+          myCnfUpdate=NO
+          msg "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
+        fi
+      fi
+      myUptime=$(mysqladmin version | grep -i uptime 2>&1)
+      myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
+      msg "INFO: ${_DB_SERVER} ${myUptime}"
+      if [ "${myCnfUpdate}" = "YES" ]; then
+        msg "INFO: Restarting ${_DB_SERVER} server..."
+        mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
+        mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+        msg "INFO: ${_DB_SERVER} server restart completed"
+        myRstrd=YES
+      fi
       if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
         mrun "csf -e" &> /dev/null
+        sleep 3
+        service lfd start &> /dev/null
       fi
-      msg "INFO: ${_DB_SERVER} server restart completed"
     fi
   fi
 }
@@ -756,7 +799,7 @@ check_update_sql_credentials() {
     if [ "${_STATUS}" = "INIT" ]; then
       msg "INFO: Updating ${_DB_SERVER} configuration"
       msg "INFO: Restarting ${_DB_SERVER} server..."
-      mrun "service mysql restart" &> /dev/null
+      mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
     fi
   else
     msg "EXIT on error due to not found file with your ${_DB_SERVER} root password"
@@ -864,7 +907,8 @@ finalize_sql_initial_setup() {
     sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
       /etc/mysql/debian-start &> /dev/null
     wait
-    mrun "service mysql restart" &> /dev/null
+    msg "INFO: Restarting ${_DB_SERVER} server..."
+    mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
     mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
     msg "INFO: ${_DB_SERVER} setup completed"
     msg "INFO: You can now log in as root by typing just 'mysql'"

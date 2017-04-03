@@ -4,6 +4,8 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 _WEBG=www-data
 
+ieni="--ignore-errors --numeric-ids"
+
 ###
 ### Avoid too many questions
 ###
@@ -370,6 +372,7 @@ EOFMYSQL
           --single-transaction \
           --quick \
           --no-autocommit \
+          --skip-add-locks \
           --hex-blob ${_DBN} > ${_USR}/src/${_DBN}.sql
         echo "INFO: site ${Dom} db export on ${oct} complete"
       elif [ "${cmd}" = "proxy" ]; then
@@ -473,7 +476,7 @@ migrate_prepare() {
   run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
   rm -rf ${_USR}/clients/*/backups
   symlinks -dr ${_USR}/clients &> /dev/null
-  if [ -e "/home/${_THIS_HM_USER}.ftp" ]; then
+  if [ -d "/home/${_THIS_HM_USER}.ftp" ]; then
     symlinks -dr /home/${_THIS_HM_USER}.ftp &> /dev/null
     rm -f /home/${_THIS_HM_USER}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
   fi
@@ -498,6 +501,7 @@ migrate_prepare() {
         --single-transaction \
         --quick \
         --no-autocommit \
+        --skip-add-locks \
         --hex-blob ${_HDB} \
         field_data_body \
         field_data_comment_body \
@@ -721,7 +725,7 @@ migrate_init() {
   _USR=/data/disk/${oct}
   if [ ! -e "${_USR}/tools/le/letsencrypt.sh" ] && [ "${oct}" != "shared" ]; then
     echo
-    echo "ERROR: This version of xboa migration tool supports only BOA-3.1.4 or newer"
+    echo "ERROR: This version of xboa migration tool supports only BOA-3.2.0 or newer"
     echo "ERROR: Please upgrade ${oct} instance to current BOA stable before trying again"
     echo "Bye."
     echo
@@ -731,43 +735,43 @@ migrate_init() {
   if [ "${oct}" = "xusage" ]; then
     echo "INFO: ${cmd} for ${oct} to ${tgt} start"
     if [ -e "/var/xdrago/log/usage" ]; then
-      rsync -aAXq  --ignore-errors -e ssh /var/xdrago/log/usage/* root@${tgt}:/var/xdrago/log/usage/
+      rsync -aEAXq ${ieni} -e ssh /var/xdrago/log/usage/* root@${tgt}:/var/xdrago/log/usage/
       echo "INFO: ${cmd} for ${oct} /var/xdrago/log/usage complete"
     fi
     echo "INFO: ${cmd} for ${oct} to ${tgt} complete"
   elif [ "${oct}" = "shared" ]; then
     echo "INFO: ${cmd} for ${oct} to ${tgt} start"
     if [ -d "/data/all" ] && [ ! -L "/data/all" ]; then
-      rsync -aAXqu --ignore-errors -e ssh /data/all  root@${tgt}:/data/
+      rsync -aEAXqu ${ieni} -e ssh /data/all  root@${tgt}:/data/
       echo "INFO: ${cmd} for ${oct} /data/all complete"
     fi
     if [ -d "/data/disk/all" ]; then
-      rsync -aAXqu --ignore-errors -e ssh /data/disk/all  root@${tgt}:/data/
+      rsync -aEAXqu ${ieni} -e ssh /data/disk/all  root@${tgt}:/data/
       echo "INFO: ${cmd} for ${oct} /data/disk/all complete"
     fi
     if [ -e "/data/disk/arch" ]; then
-      rsync -aAXqu --ignore-errors -e ssh /data/disk/arch  root@${tgt}:/data/disk/
+      rsync -aEAXqu ${ieni} -e ssh /data/disk/arch  root@${tgt}:/data/disk/
       echo "INFO: ${cmd} for ${oct} /data/disk/arch complete"
     fi
     if [ -e "/opt/solr4" ]; then
-      rsync -aAXq  --ignore-errors -e ssh /opt/solr4 root@${tgt}:/opt/
+      rsync -aEAXq ${ieni} -e ssh /opt/solr4 root@${tgt}:/opt/
       echo "INFO: ${cmd} for ${oct} /opt/solr4 complete"
     fi
     if [ -e "/var/www/static" ]; then
-      rsync -aAXq  --ignore-errors -e ssh /var/www/static root@${tgt}:/var/www/
+      rsync -aEAXq ${ieni} -e ssh /var/www/static root@${tgt}:/var/www/
       echo "INFO: ${cmd} for ${oct} /var/www/static complete"
     fi
     if [ -e "/etc/bind" ]; then
-      rsync -aAXq  --ignore-errors -e ssh /etc/bind root@${tgt}:/etc/
+      rsync -aEAXq ${ieni} -e ssh /etc/bind root@${tgt}:/etc/
       echo "INFO: ${cmd} for ${oct} /etc/bind complete"
     fi
     if [ -e "/var/xdrago/log/usage" ]; then
-      rsync -aAXq  --ignore-errors -e ssh /var/xdrago/log/usage root@${tgt}:/var/xdrago/log/
+      rsync -aEAXq ${ieni} -e ssh /var/xdrago/log/usage root@${tgt}:/var/xdrago/log/
       echo "INFO: ${cmd} for ${oct} /var/xdrago/log/usage complete"
     fi
     if [ -e "/data/disk/legacy" ]; then
       echo "INFO: ${cmd} for ${oct} /data/disk/legacy start"
-      rsync -aAXq  --ignore-errors -e ssh /data/disk/legacy root@${tgt}:/data/disk/
+      rsync -aEAXq ${ieni} -e ssh /data/disk/legacy root@${tgt}:/data/disk/
       echo "INFO: ${cmd} for ${oct} /data/disk/legacy complete"
     fi
     echo "INFO: ${cmd} for ${oct} to ${tgt} complete"
@@ -830,68 +834,68 @@ migrate_init() {
           _DST=/data/disk/${oct}
         fi
         if [ -e "${_USR}" ]; then
-          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/distro/*         root@${tgt}:${_DST}/distro/
-          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/src/*            root@${tgt}:${_DST}/src/
-          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/static/*         root@${tgt}:${_DST}/static/
+          rsync -aEAXqu ${ieni} -e ssh ${_USR}/distro/*         root@${tgt}:${_DST}/distro/
+          rsync -aEAXqu ${ieni} -e ssh ${_USR}/src/*            root@${tgt}:${_DST}/src/
+          rsync -aEAXqu ${ieni} -e ssh ${_USR}/static/*         root@${tgt}:${_DST}/static/
           #
-          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/clients/*        root@${tgt}:${_DST}/clients/        &> /dev/null
-          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/log/*            root@${tgt}:${_DST}/log/
-          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/static/control/* root@${tgt}:${_DST}/static/control/ &> /dev/null
+          rsync -aEAXqu ${ieni} -e ssh ${_USR}/clients/*        root@${tgt}:${_DST}/clients/        &> /dev/null
+          rsync -aEAXqu ${ieni} -e ssh ${_USR}/log/*            root@${tgt}:${_DST}/log/
+          rsync -aEAXqu ${ieni} -e ssh ${_USR}/static/control/* root@${tgt}:${_DST}/static/control/ &> /dev/null
           #
-          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/backups/*        root@${tgt}:${_DST}/backups/        &> /dev/null
-          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/undo/*           root@${tgt}:${_DST}/undo/           &> /dev/null
+          rsync -aEAXqu ${ieni} -e ssh ${_USR}/backups/*        root@${tgt}:${_DST}/backups/        &> /dev/null
+          rsync -aEAXqu ${ieni} -e ssh ${_USR}/undo/*           root@${tgt}:${_DST}/undo/           &> /dev/null
           if [ ! -z "${dst}" ]; then
-            rsync -aAXqu  --ignore-errors -e ssh /home/${oct}.ftp/.ssh  root@${tgt}:/home/${dst}.ftp/
+            rsync -aEAXqu ${ieni} -e ssh /home/${oct}.ftp/.ssh  root@${tgt}:/home/${dst}.ftp/
           else
-            rsync -aAXqu  --ignore-errors -e ssh /home/${oct}.ftp/.ssh  root@${tgt}:/home/${oct}.ftp/
+            rsync -aEAXqu ${ieni} -e ssh /home/${oct}.ftp/.ssh  root@${tgt}:/home/${oct}.ftp/
           fi
 
-          rsync -aAXqu \
-            --ignore-errors \
+          rsync -aEAXqu \
+            ${ieni} \
             --exclude=server_ \
             --exclude=hostmaster \
             -e ssh ${_USR}/.drush/*.alias.drushrc.php \
             root@${tgt}:${_DST}/.drush/
 
-          rsync -aAXqu \
-            --ignore-errors \
+          rsync -aEAXqu \
+            ${ieni} \
             --exclude=host8.biz \
             --exclude=boa.io \
             -e ssh ${_USR}/config/server_master/nginx/vhost.d/* \
             root@${tgt}:${_DST}/config/server_master/nginx/vhost.d/
 
-          rsync -aAXqu \
-            --ignore-errors \
+          rsync -aEAXqu \
+            ${ieni} \
             -e ssh ${_USR}/config/server_master/nginx/pre.d/* \
             root@${tgt}:${_DST}/config/server_master/nginx/pre.d/ &> /dev/null
 
-          rsync -aAXqu \
-            --ignore-errors \
+          rsync -aEAXqu \
+            ${ieni} \
             -e ssh ${_USR}/config/server_master/nginx/post.d/* \
             root@${tgt}:${_DST}/config/server_master/nginx/post.d/ &> /dev/null
 
-          rsync -aAXqu \
-            --ignore-errors \
+          rsync -aEAXqu \
+            ${ieni} \
             -e ssh ${_USR}/config/server_master/nginx/subdir.d/* \
             root@${tgt}:${_DST}/config/server_master/nginx/subdir.d/ &> /dev/null
 
-          rsync -aAXqu \
-            --ignore-errors \
+          rsync -aEAXqu \
+            ${ieni} \
             -e ssh ${_USR}/config/server_master/nginx/platform.d/* \
             root@${tgt}:${_DST}/config/server_master/nginx/platform.d/ &> /dev/null
 
-          rsync -aAXqu \
-            --ignore-errors \
+          rsync -aEAXqu \
+            ${ieni} \
             -e ssh ${_USR}/config/ssl.d/* \
             root@${tgt}:${_DST}/config/ssl.d/ &> /dev/null
 
-          rsync -aAXqu \
-            --ignore-errors \
+          rsync -aEAXqu \
+            ${ieni} \
             -e ssh ${_USR}/config/server_master/ssl.d/* \
             root@${tgt}:${_DST}/config/server_master/ssl.d/ &> /dev/null
 
-          rsync -aAXqu \
-            --ignore-errors \
+          rsync -aEAXqu \
+            ${ieni} \
             -e ssh ${_USR}/tools/le \
             root@${tgt}:${_DST}/tools/ &> /dev/null
 
