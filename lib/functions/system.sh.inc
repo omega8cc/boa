@@ -38,10 +38,10 @@ if_running_as_root_barracuda() {
       apt-get purge fuse -y --force-yes -qq &> /dev/null
       apt-get remove libsane:amd64 -y --force-yes -qq &> /dev/null
       apt-get purge libsane:amd64 -y --force-yes -qq &> /dev/null
-      apt-get remove makedev -y --force-yes -qq &> /dev/null
-      apt-get purge makedev -y --force-yes -qq &> /dev/null
       apt-get remove udev -y --force-yes -qq &> /dev/null
       apt-get purge udev -y --force-yes -qq &> /dev/null
+      apt-get remove makedev -y --force-yes -qq &> /dev/null
+      apt-get purge makedev -y --force-yes -qq &> /dev/null
       if [ -e "/sbin/hdparm" ]; then
         mrun "apt-get remove hdparm -y --force-yes -qq" &> /dev/null
         mrun "apt-get purge hdparm -y --force-yes -qq" &> /dev/null
