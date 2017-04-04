@@ -3982,7 +3982,7 @@ fix_libs_php() {
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
-    if [ ! -L "/usr/lib/libXpm.so" ] \
+    if [ ! -L "/usr/lib/librtmp.so" ] \
       || [ ! -e "/usr/lib/libgmp.so.3" ] \
       || [ ! -e "/usr/include/gmp.h" ]; then
       msg "INFO: Fix #1 for libs in ${_THIS_OS} ${_OSV}"
@@ -3995,6 +3995,7 @@ fix_libs_php() {
         ln -sf /usr/lib/x86_64-linux-gnu/libldap.so /usr/lib/libldap.so
         ln -sf /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
         ln -sf /usr/lib/x86_64-linux-gnu/libXpm.so  /usr/lib/libXpm.so
+        ln -sf /usr/lib/x86_64-linux-gnu/librtmp.so /usr/lib/librtmp.so
         if [ ! -e "/usr/include/gmp.h" ] \
           && [ -e "/usr/include/x86_64-linux-gnu/gmp.h" ]; then
           ln -sf /usr/include/x86_64-linux-gnu/gmp.h  /usr/include/gmp.h
@@ -4007,6 +4008,7 @@ fix_libs_php() {
         ln -sf /usr/lib/i386-linux-gnu/libldap.so /usr/lib/libldap.so
         ln -sf /usr/lib/i386-linux-gnu/libpng.so  /usr/lib/libpng.so
         ln -sf /usr/lib/i386-linux-gnu/libXpm.so  /usr/lib/libXpm.so
+        ln -sf /usr/lib/i386-linux-gnu/librtmp.so /usr/lib/librtmp.so
         if [ ! -e "/usr/include/gmp.h" ] \
           && [ -e "/usr/include/i386-linux-gnu/gmp.h" ]; then
           ln -sf /usr/include/i386-linux-gnu/gmp.h  /usr/include/gmp.h
