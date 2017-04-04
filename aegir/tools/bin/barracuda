@@ -1072,20 +1072,23 @@ check_root() {
       fi
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
-      if [ ! -e "/etc/apt/preferences.d/udev" ]; then
-        mkdir -p /etc/apt/preferences.d/
-        echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
-        apt-get update -qq &> /dev/null
-      fi
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
         apt-get update -qq &> /dev/null
       fi
+      if [ ! -e "/etc/apt/preferences.d/udev" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
+        apt-get update -qq &> /dev/null
+      fi
+      if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
+        apt-get update -qq &> /dev/null
+      fi
       apt-get remove fuse -y --force-yes -qq &> /dev/null
       apt-get purge fuse -y --force-yes -qq &> /dev/null
-      apt-get remove libsane:amd64 -y --force-yes -qq &> /dev/null
-      apt-get purge libsane:amd64 -y --force-yes -qq &> /dev/null
       apt-get remove udev -y --force-yes -qq &> /dev/null
       apt-get purge udev -y --force-yes -qq &> /dev/null
       apt-get remove makedev -y --force-yes -qq &> /dev/null
