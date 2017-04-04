@@ -34,13 +34,17 @@ if_running_as_root_barracuda() {
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
       _VMFAMILY="VS"
       touch /var/run/cloud_vhost.pid
+      apt-get remove fuse -y --force-yes -qq &> /dev/null
+      apt-get purge fuse -y --force-yes -qq &> /dev/null
+      apt-get remove libsane:amd64 -y --force-yes -qq &> /dev/null
+      apt-get purge libsane:amd64 -y --force-yes -qq &> /dev/null
+      apt-get remove makedev -y --force-yes -qq &> /dev/null
+      apt-get purge makedev -y --force-yes -qq &> /dev/null
+      apt-get remove udev -y --force-yes -qq &> /dev/null
+      apt-get purge udev -y --force-yes -qq &> /dev/null
       if [ -e "/sbin/hdparm" ]; then
         mrun "apt-get remove hdparm -y --force-yes -qq" &> /dev/null
         mrun "apt-get purge hdparm -y --force-yes -qq" &> /dev/null
-      fi
-      if [ -e "/sbin/udevd" ]; then
-        mrun "apt-get remove udev -y --force-yes -qq" &> /dev/null
-        mrun "apt-get purge udev -y --force-yes -qq" &> /dev/null
       fi
       if [ -e "/sbin/auditd" ]; then
         mrun "apt-get remove auditd -y --force-yes -qq" &> /dev/null

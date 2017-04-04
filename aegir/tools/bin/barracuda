@@ -1072,14 +1072,18 @@ check_root() {
       fi
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
+      apt-get remove fuse -y --force-yes -qq &> /dev/null
+      apt-get purge fuse -y --force-yes -qq &> /dev/null
+      apt-get remove libsane:amd64 -y --force-yes -qq &> /dev/null
+      apt-get purge libsane:amd64 -y --force-yes -qq &> /dev/null
+      apt-get remove makedev -y --force-yes -qq &> /dev/null
+      apt-get purge makedev -y --force-yes -qq &> /dev/null
+      apt-get remove udev -y --force-yes -qq &> /dev/null
+      apt-get purge udev -y --force-yes -qq &> /dev/null
       _PTMX=OK
       if [ -e "/sbin/hdparm" ]; then
         apt-get remove hdparm -y --force-yes -qq &> /dev/null
         apt-get purge hdparm -y --force-yes -qq &> /dev/null
-      fi
-      if [ -e "/sbin/udevd" ]; then
-        apt-get remove udev -y --force-yes -qq &> /dev/null
-        apt-get purge udev -y --force-yes -qq &> /dev/null
       fi
       if [ -e "/sbin/auditd" ]; then
         apt-get remove auditd -y --force-yes -qq &> /dev/null
