@@ -4017,6 +4017,11 @@ fix_libs_php() {
           && [ -e "/usr/include/x86_64-linux-gnu/gmp.h" ]; then
           ln -sf /usr/include/x86_64-linux-gnu/gmp.h  /usr/include/gmp.h
         fi
+        if [ ! -e "/usr/lib/x86_64-linux-gnu/librtmp.so.0" ] \
+          && [ -e "/usr/lib/x86_64-linux-gnu/librtmp.so.1" ]; then
+          cd /usr/lib/x86_64-linux-gnu
+          ln -sf librtmp.so.1 librtmp.so.0
+        fi
       else
         ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so
         ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
@@ -4029,6 +4034,11 @@ fix_libs_php() {
         if [ ! -e "/usr/include/gmp.h" ] \
           && [ -e "/usr/include/i386-linux-gnu/gmp.h" ]; then
           ln -sf /usr/include/i386-linux-gnu/gmp.h  /usr/include/gmp.h
+        fi
+        if [ ! -e "/usr/lib/i386-linux-gnu/librtmp.so.0" ] \
+          && [ -e "/usr/lib/i386-linux-gnu/librtmp.so.1" ]; then
+          cd /usr/lib/i386-linux-gnu
+          ln -sf librtmp.so.1 librtmp.so.0
         fi
       fi
     fi
