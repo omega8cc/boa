@@ -34,6 +34,16 @@ if_running_as_root_barracuda() {
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
       _VMFAMILY="VS"
       touch /var/run/cloud_vhost.pid
+      if [ ! -e "/etc/apt/preferences.d/udev" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
+        apt-get update -qq &> /dev/null
+      fi
+      if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
+        apt-get update -qq &> /dev/null
+      fi
       apt-get remove fuse -y --force-yes -qq &> /dev/null
       apt-get purge fuse -y --force-yes -qq &> /dev/null
       apt-get remove libsane:amd64 -y --force-yes -qq &> /dev/null
