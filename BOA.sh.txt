@@ -1171,9 +1171,11 @@ setup() {
     curl ${crlGet} "${urlHmr}/${tBn}/backboa"      -o ${optBin}/backboa
     curl ${crlGet} "${urlHmr}/${tBn}/duobackboa"   -o ${optBin}/duobackboa
     chmod 700 ${optBin}/{backboa,duobackboa}
-    if [ "${_BENG_VS}" = "YES" ] \
+    if [ ! -e "${pthLog}/duplicity.ctrl.320stableQ10.pid" ] \
+      && [ -x "/usr/local/bin/duplicity" ] \
       && [ -e "/var/xdrago" ]; then
       backboa install
+      touch ${pthLog}/duplicity.ctrl.320stableQ10.pid
     fi
   fi
   chmod 700 ${optBin}/{autoupboa,backboa,barracuda,boa,duobackboa}
