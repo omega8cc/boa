@@ -32,7 +32,7 @@ migration process to the new facility has been completed.
   * All cron tasks are paused during this migration and in the next 1-3 hours
   * The old Aegir control panel has been disabled to protect proxy vhosts
   * The main SSH account home directory contents has not been migrated
-  * SSH keys have been transferred, but only for the main SSH account
+  * SSH (RSA) keys have been transferred, but only for the main SSH account
   * SSH sub-accounts (Clients), if used, will be recreated from scratch
   * The Aegir backend USER.id_rsa.pub public SSH key has changed
 
@@ -76,7 +76,7 @@ migration process to the new facility has been completed.
   * All cron tasks are paused during this migration and in the next 1-3 hours
   * The old Aegir control panel has been disabled to protect proxy vhosts
   * The main SSH account home directory contents has not been migrated
-  * SSH keys have been transferred, but only for the main SSH account
+  * SSH (RSA) keys have been transferred, but only for the main SSH account
   * SSH sub-accounts (Clients), if used, will be recreated from scratch
   * The Aegir backend USER.id_rsa.pub public SSH key has changed
 
@@ -120,7 +120,7 @@ migration process to the new facility has been completed.
   * All cron tasks are paused during this migration and in the next 1-3 hours
   * The old Aegir control panel has been disabled to protect proxy vhosts
   * The main SSH account home directory contents has not been migrated
-  * SSH keys have been transferred, but only for the main SSH account
+  * SSH (RSA) keys have been transferred, but only for the main SSH account
   * SSH sub-accounts (Clients), if used, will be recreated from scratch
   * The Aegir backend USER.id_rsa.pub public SSH key has changed
 

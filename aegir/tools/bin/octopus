@@ -1090,11 +1090,11 @@ check_root_direct() {
     echo
     echo "ERROR: This script must be run as root directly,"
     echo "ERROR: without sudo/su switch from regular system user"
-    echo "ERROR: Please add and test your SSH keys for root account"
+    echo "ERROR: Please add and test your SSH (RSA) keys for root account"
     echo "ERROR: with direct access before trying again"
     echo
     echo "HINT:  You can always restrict access later, or"
-    echo "       allow only SSH keys for root with directive"
+    echo "       allow only SSH (RSA) keys for root with directive"
     echo "         PermitRootLogin prohibit-password"
     echo "       in the /usr/etc/sshd_config file"
     echo "Bye"
@@ -1110,10 +1110,20 @@ check_root_keys_pwd() {
   fi
   if [[ ! "${_S_TEST}" =~ "root:" ]] \
     && [[ ! "${_R_TEST}" =~ "ssh-rsa" ]]; then
-    echo "ERROR: BOA requires working SSH keys for system root present"
-    echo "ERROR: Please add and test your SSH keys for root account"
+    echo
+    echo "ERROR: BOA requires working SSH (RSA) keys for system root present"
+    echo "ERROR: Please add and test your SSH (RSA) keys for root account"
     echo "ERROR: before trying again"
+    echo
+    echo "HINTS: Run this command on your local PC machine:"
+    echo "HINTS:   ssh-keygen -b 4096 -t rsa -N '' -f ~/.ssh/id_rsa"
+    echo "HINTS: Then copy the ~/.ssh/id_rsa.pub file from your PC"
+    echo "HINTS: to ~/.ssh/authorized_keys file on the server"
+    echo "HINTS: Make sure the key is not split into more than 1 line"
+    echo "HINTS: Remember to run: chmod 600 ~/.ssh/authorized_keys"
+    echo
     echo "Bye"
+    echo
     clean_pid_exit
   fi
 }
