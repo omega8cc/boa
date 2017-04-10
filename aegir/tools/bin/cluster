@@ -814,15 +814,15 @@ interactive-timeout
 
   done
 
-  echo "Waiting for ${_DB_NODE_IP[1]} DB node bootstrap-pxc..."
-  sleep 15
-  ##ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
-  ##ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1" &> /dev/null
-  ##sleep 25
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "service mysql bootstrap-pxc"
+  echo "Waiting ~5 minutes for ${_DB_NODE_IP[1]} DB node bootstrap-pxc..."
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "service mysql stop" &> /dev/null
   sleep 25
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1" &> /dev/null
+  sleep 25
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "service mysql bootstrap-pxc"
+  sleep 180
 
-  ##ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"CREATE USER ’sstuser’@’localhost’ IDENTIFIED BY ’${_MAINT_USER_PWD}’;\""
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’localhost’ IDENTIFIED BY '${_MAINT_USER_PWD}';\""
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’127.0.0.1’ IDENTIFIED BY '${_MAINT_USER_PWD}';\""
   for IP in "${_DB_NODE_IP[@]}"; do
@@ -840,15 +840,14 @@ interactive-timeout
 
   for IP in "${_DB_NODE_IP[@]}"; do
     if [ "${IP}" != "${_DB_NODE_IP[1]}" ]; then
-      echo "Waiting for ${IP} DB node start..."
+      echo "Waiting ~5 minutes for ${IP} DB node restart..."
+      ssh ${_NOSTRICT} root@${IP} "service mysql stop" &> /dev/null
       sleep 25
-      ##ssh ${_NOSTRICT} root@${IP} "service mysql stop" &> /dev/null
-      ##sleep 5
-      ##ssh ${_NOSTRICT} root@${IP} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
-      ##ssh ${_NOSTRICT} root@${IP} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1" &> /dev/null
-      ##sleep 5
+      ssh ${_NOSTRICT} root@${IP} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
+      ssh ${_NOSTRICT} root@${IP} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1" &> /dev/null
+      sleep 25
       ssh ${_NOSTRICT} root@${IP} "service mysql start"
-      sleep 15
+      sleep 180
       ssh ${_NOSTRICT} root@${IP} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep%';\""
     fi
   done
