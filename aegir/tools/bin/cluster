@@ -395,16 +395,16 @@ install_vps() {
     echo "Running post-install Galera VPS upgrade..."
     if [ "${osx}" = "jessie" ] && [ -x "/vservers/${idn}/lib/systemd/systemd" ]; then
       echo "Removing systemd on ${osx}..."
-      vserver ${idn} exec ${_INST} sysvinit-core &> /dev/null
-      vserver ${idn} exec ${_INST} sysvinit-utils &> /dev/null
+      vserver ${idn} exec ${_INST} sysvinit-core
+      vserver ${idn} exec ${_INST} sysvinit-utils
       if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
         cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
       fi
-      vserver ${idn} exec apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
+      vserver ${idn} exec apt-get remove systemd -y --force-yes -qq --purge --auto-remove
       vserver ${idn} exec echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
       vserver ${idn} exec echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-      vserver ${idn} exec ${_INST} sysvinit-core &> /dev/null
-      vserver ${idn} exec ${_INST} sysvinit-utils &> /dev/null
+      vserver ${idn} exec ${_INST} sysvinit-core
+      vserver ${idn} exec ${_INST} sysvinit-utils
     fi
   else
     echo "Running post-install Barracuda upgrade..."
@@ -423,7 +423,7 @@ install_vps() {
       vserver ${idn} exec echo "<?php" > /data/conf/proxysql_adm_pwd.inc
       vserver ${idn} exec echo "\$prxy_adm_paswd = \"${_PRXY_ADM_PASWD}\";" >> /data/conf/proxysql_adm_pwd.inc
       vserver ${idn} exec echo "ProxySQL" > /data/conf/clstr.cnf
-      vserver ${idn} exec ${_INST} proxysql sysbench &> /dev/null
+      vserver ${idn} exec ${_INST} proxysql sysbench
       vserver ${idn} exec mkdir -p /var/log/proxysql
       vserver ${idn} exec chown -R proxysql:proxysql /var/log/proxysql
       vserver ${idn} exec chmod 700 /var/log/proxysql
@@ -576,38 +576,46 @@ install_db_cluster() {
     if [ ! -e "/vservers/${idn}/" ] \
       && [ ! -z "${idn}" ]; then
       install_vps
+      echo
+      echo "Basic installation of VPS ${idn} complete"
+      echo
+      sleep 8
+      echo "Installing Percona Cluster on VPS ${idn}..."
+      sleep 8
+      echo
     fi
     inc=$((inc+1))
-    ssh root@${IP} "echo \"${_MAINT_USER_PWD}\" > /root/.my.cluster_maint_pwd.txt" &> /dev/null
-    ssh root@${IP} "echo \"${_ROOT_SQL_PASWD}\" > /root/.my.cluster_root_pwd.txt" &> /dev/null
+    vserver ${idn} exec echo "${_MAINT_USER_PWD}" > /root/.my.cluster_maint_pwd.txt
+    vserver ${idn} exec echo "${_ROOT_SQL_PASWD}" > /root/.my.cluster_root_pwd.txt
   	vserver ${idn} exec apt-get update -qq
   	vserver ${idn} exec apt-get upgrade -y -qq
   	vserver ${idn} exec apt-get remove apparmor -y -qq
   	vserver ${idn} exec ${_INST} software-properties-common
-    ssh root@${IP} "echo '## Percona Cluster APT Repository' > ${xtraList}" &> /dev/null
-    ssh root@${IP} "echo 'deb http://${xtraRepo}/ ${_OSR} main' >> ${xtraList}" &> /dev/null
-    ssh root@${IP} "echo 'deb-src http://${xtraRepo}/ ${_OSR} main' >> ${xtraList}" &> /dev/null
-    vserver ${idn} exec apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5 &> /dev/null
+    vserver ${idn} exec echo '## Percona Cluster APT Repository' > ${xtraList}
+    vserver ${idn} exec echo 'deb http://${xtraRepo}/ ${_OSR} main' >> ${xtraList}
+    vserver ${idn} exec echo 'deb-src http://${xtraRepo}/ ${_OSR} main' >> ${xtraList}
+    vserver ${idn} exec apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5
   	vserver ${idn} exec apt-get update -qq
-  	vserver ${idn} exec ${_INST} percona-xtradb-cluster-57 percona-xtrabackup
+  	vserver ${idn} exec ${_INST} percona-xtradb-cluster-57
+  	vserver ${idn} exec ${_INST} percona-xtrabackup
 
-  	vserver ${idn} exec mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
-    ssh root@${IP} "echo \"[client]\" > /root/.my.cnf" &> /dev/null
-    ssh root@${IP} "echo \"user=root\" >> /root/.my.cnf" &> /dev/null
-    ssh root@${IP} "echo \"password=${_ROOT_SQL_PASWD}\" >> /root/.my.cnf" &> /dev/null
-    ssh root@${IP} "chmod 0600 /root/.my.cnf" &> /dev/null
-    ssh root@${IP} "echo \"db=mysql\" > /root/.mytop" &> /dev/null
-    ssh root@${IP} "chmod 0600 /root/.mytop" &> /dev/null
+  	vserver ${idn} exec mysql -u root -e "INSTALL SONAME 'ha_archive';"
+    vserver ${idn} exec echo "[client]" > /root/.my.cnf"
+    vserver ${idn} exec echo "user=root" >> /root/.my.cnf"
+    vserver ${idn} exec echo "password=${_ROOT_SQL_PASWD}" >> /root/.my.cnf"
+    vserver ${idn} exec chmod 0600 /root/.my.cnf"
+    vserver ${idn} exec echo "db=mysql" > /root/.mytop"
+    vserver ${idn} exec chmod 0600 /root/.mytop"
 
     echo "Running mysql_secure_installation procedure on ${IP} DB node..."
-    vserver ${idn} exec mysql -u root -e "FLUSH HOSTS;" &> /dev/null
-    vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='';" &> /dev/null
-    vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
-    vserver ${idn} exec mysql -u root -e "DROP DATABASE test;" &> /dev/null
-    vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" &> /dev/null
-    vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ROOT_SQL_PASWD}') WHERE User='root';" &> /dev/null
-    vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_MAINT_USER_PWD}') WHERE User='debian-sys-maint';" &> /dev/null
-    vserver ${idn} exec sed -i "s/^password =.*/password = ${_MAINT_USER_PWD}/g" /etc/mysql/debian.cnf &> /dev/null
+    vserver ${idn} exec mysql -u root -e "FLUSH HOSTS;"
+    vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='';"
+    vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
+    vserver ${idn} exec mysql -u root -e "DROP DATABASE test;"
+    vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
+    vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ROOT_SQL_PASWD}') WHERE User='root';"
+    vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_MAINT_USER_PWD}') WHERE User='debian-sys-maint';"
+    vserver ${idn} exec sed -i "s/^password =.*/password = ${_MAINT_USER_PWD}/g" /etc/mysql/debian.cnf
     vserver ${idn} exec mysql -u root -e "FLUSH PRIVILEGES;"
 
   	ssh root@${IP} "echo '
@@ -790,7 +798,7 @@ interactive-timeout
 
   done
 
-  ssh root@${_DB_NODE_IP[1]} "service mysql stop"
+  ssh root@${_DB_NODE_IP[1]} "service mysql stop" &> /dev/null
   echo "Waiting for ${_DB_NODE_IP[1]} DB node bootstrap-pxc..."
   sleep 5
   ssh root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
@@ -817,7 +825,7 @@ interactive-timeout
       ssh root@${IP} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
       ssh root@${IP} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1" &> /dev/null
       sleep 5
-      ssh root@${IP} "service mysql start"
+      ssh root@${IP} "service mysql start" &> /dev/null
       sleep 55
       ssh root@${IP} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep%';\""
     fi
@@ -868,17 +876,23 @@ install_host() {
   cat /etc/apt/sources.list
 
   echo "Installing basic tools..."
-  apt-get update -qq &> /dev/null
-  apt-get upgrade -y -qq &> /dev/null
-  apt-get update -qq &> /dev/null
-  ${_INST} locales &> /dev/null
-  ${_INST} lsb-release &> /dev/null
-  ${_INST} dnsutils &> /dev/null
-  ${_INST} netcat &> /dev/null
-  ${_INST} curl &> /dev/null
-  ${_INST} wget &> /dev/null
-  ${_INST} libwww-perl mc htop screen hdparm iotop ntpdate parted &> /dev/null
-  ${_INST} build-essential &> /dev/null
+  apt-get update -qq
+  apt-get upgrade -y -qq
+  apt-get update -qq
+  ${_INST} locales
+  ${_INST} lsb-release
+  ${_INST} dnsutils
+  ${_INST} netcat
+  ${_INST} curl
+  ${_INST} wget
+  ${_INST} libwww-perl
+  ${_INST} mc
+  ${_INST} screen
+  ${_INST} hdparm
+  ${_INST} iotop
+  ${_INST} ntpdate
+  ${_INST} parted
+  ${_INST} build-essential
 
   echo "Setting hostname to ${hst}"
   echo ${hst} > /etc/hostname
@@ -949,25 +963,25 @@ install_host() {
     echo "Installing beng vserver kernel..."
     echo "deb http://repo.psand.net/ ${_OSR} main" > /etc/apt/sources.list.d/vserver.list
     wget -q -O - http://repo.psand.net/pubkey.txt | apt-key add - &> /dev/null
-    apt-get update -qq &> /dev/null
-    ${_INST} build-essential &> /dev/null
-    ${_INST} linux-headers-vserver-${_BENG_SERIES}-beng &> /dev/null
-    ${_INST} linux-image-vserver-${_BENG_SERIES}-beng &> /dev/null
-    ${_INST} linux-source-vserver-${_BENG_SERIES}-beng &> /dev/null
+    apt-get update -qq
+    ${_INST} build-essential
+    ${_INST} linux-headers-vserver-${_BENG_SERIES}-beng
+    ${_INST} linux-image-vserver-${_BENG_SERIES}-beng
+    ${_INST} linux-source-vserver-${_BENG_SERIES}-beng
     ls -la /boot
   fi
 
   if [ "${_OSR}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
     echo "Installing sysvinit on ${_OSV} ${_OSR}..."
-    ${_INST} sysvinit-core &> /dev/null
-    ${_INST} sysvinit-utils &> /dev/null
+    ${_INST} sysvinit-core
+    ${_INST} sysvinit-utils
     if [ -e "/usr/share/sysvinit/inittab" ]; then
       cp -af /usr/share/sysvinit/inittab /etc/inittab
     fi
     echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
     echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-    ${_INST} sysvinit-core &> /dev/null
-    ${_INST} sysvinit-utils &> /dev/null
+    ${_INST} sysvinit-core
+    ${_INST} sysvinit-utils
     echo
     echo "NOTE: Please reboot and then run 'cluster up-host'"
     echo "NOTE: once cluster script completes initial installation"
@@ -998,36 +1012,41 @@ upgrade_host() {
 
   if [ "${_OSR}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
     echo "Removing systemd on ${_OSV} ${_OSR}..."
-    ${_INST} sysvinit-core &> /dev/null
-    ${_INST} sysvinit-utils &> /dev/null
+    ${_INST} sysvinit-core
+    ${_INST} sysvinit-utils
     if [ -e "/usr/share/sysvinit/inittab" ]; then
       cp -af /usr/share/sysvinit/inittab /etc/inittab
     fi
     apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
     echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
     echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-    ${_INST} sysvinit-core &> /dev/null
-    ${_INST} sysvinit-utils &> /dev/null
+    ${_INST} sysvinit-core
+    ${_INST} sysvinit-utils
   fi
 
   echo "Installing vserver tools dependencies..."
-  apt-get update -qq &> /dev/null
-  ${_INST} vlan e2fslibs-dev libnss3-dev libvserver0-dev libvserver0 debootstrap &> /dev/null
+  apt-get update -qq
+  ${_INST} vlan
+  ${_INST} e2fslibs-dev
+  ${_INST} libnss3-dev
+  ${_INST} libvserver0-dev
+  ${_INST} libvserver0
+  ${_INST} debootstrap
   if [ -e "/etc/cron.daily/mlocate" ]; then
     mv -f /etc/cron.daily/mlocate /var/backups/
   fi
 
   echo "Installing otherwise uninstalled stuff..."
-  ${_INST} irqbalance &> /dev/null
-  ${_INST} libuuid-perl &> /dev/null
-  ${_INST} linux-base &> /dev/null
+  ${_INST} irqbalance
+  ${_INST} libuuid-perl
+  ${_INST} linux-base
   echo "OPTIONS=\"--hintpolicy=ignore\"" >> /etc/default/irqbalance
   service irqbalance stop &> /dev/null
   service irqbalance start &> /dev/null
 
   echo "Installing vserver tools..."
-  apt-get remove util-vserver -y &> /dev/null
-  apt-get autoremove -y &> /dev/null
+  apt-get remove util-vserver -y -qq
+  apt-get autoremove -y -qq
   cd /var/opt
   rm -f -r util-vserver*
   wget -q -U iCab http://files.aegir.cc/dev/src/util-vserver-${_UTIL_VRN}.tar.gz
@@ -1111,7 +1130,7 @@ upgrade_host() {
   chmod 755 /vservers
 
   echo "Installing Postfix locally..."
-  ${_INST} postfix &> /dev/null
+  ${_INST} postfix
   lSmtp="localhost:25      inet  n       -       -       -       -       smtpd"
   sed -i "s/^smtp.*inet.*n.*smtpd/${lSmtp}/g" /etc/postfix/master.cf
   apt-get remove exim -y &> /dev/null
@@ -1123,7 +1142,7 @@ upgrade_host() {
   apt-get update -y -qq \
     && apt-get upgrade -y -qq \
     && apt-get dist-upgrade -y -qq \
-    && ${_INST} rkhunter &> /dev/null
+    && ${_INST} rkhunter
 
   if_firewall_update
 
