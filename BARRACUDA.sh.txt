@@ -111,6 +111,7 @@ _PURGE_ALL_THISHTIP=NO
 _PURGE_MODE=ON
 _SMALLCORE7=7.54.2
 _SPINNER=YES
+_THIS_DB_PORT=3306
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 if [ -n "${STY+x}" ]; then

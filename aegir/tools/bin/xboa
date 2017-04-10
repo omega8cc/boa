@@ -3,7 +3,7 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 _WEBG=www-data
-
+_THIS_DB_PORT=3306
 ieni="--ignore-errors --numeric-ids"
 
 ###
@@ -327,19 +327,19 @@ migrate_sites() {
         echo "INFO: site ${Dom} db_host on ${_TGT_HM_USER} fixed"
         if [ ! -z "${_DBN}" ] && [ ! -z "${_DBP}" ]; then
           if [ ! -d "/var/lib/mysql/${_DBN}" ]; then
-            mysqladmin flush-privileges
-            mysql -uroot mysql<<EOFMYSQL
+            mysqladmin -P ${_THIS_DB_PORT} flush-privileges
+            mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
 CREATE DATABASE ${_DBN} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 GRANT ALL PRIVILEGES ON ${_DBN}.* TO '${_DBN}'@'127.0.0.1' IDENTIFIED BY '${_DBP}';
 GRANT ALL PRIVILEGES ON ${_DBN}.* TO '${_DBN}'@'localhost' IDENTIFIED BY '${_DBP}';
 EOFMYSQL
-            mysqladmin flush-privileges
+            mysqladmin -P ${_THIS_DB_PORT} flush-privileges
             echo "INFO: site ${Dom} db setup on ${oct} complete"
           else
             echo "ALRT: site ${Dom} db ${_DBN} already exists!"
           fi
           if [ -e "${_USR}/src/${_DBN}.sql" ]; then
-            mysql ${_DBN} < ${_USR}/src/${_DBN}.sql
+            mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} ${_DBN} < ${_USR}/src/${_DBN}.sql
             echo "INFO: site ${Dom} db import on ${oct} complete"
             ###
             ### Activate readonly on source via global.inc and not via drush
@@ -368,7 +368,7 @@ EOFMYSQL
         ### run_drush8_nosilent_cmd "vset --always-set site_readonly 1"
         ###
         echo "INFO: site ${Dom} readonlymode module on ${oct} enabled"
-        mysqldump \
+        mysqldump -P ${_THIS_DB_PORT} \
           --single-transaction \
           --quick \
           --no-autocommit \
@@ -454,6 +454,7 @@ migrate_prepare() {
     _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   fi
 
+  [ -z "${_THIS_DB_PORT}" ] && _THIS_DB_PORT=3306
   [ -z "${_CLIENT_OPTION}" ] && _CLIENT_OPTION=EDGE
   [ -z "${_CLIENT_SUBSCR}" ] && _CLIENT_SUBSCR=M
   [ -z "${_CLIENT_CORES}" ]  && _CLIENT_CORES=1
@@ -497,7 +498,7 @@ migrate_prepare() {
     && [ ! -z "${_HDB}" ] \
     && [ ! -e "${_USR}/src/prev_hostmaster.sql" ] \
     && [ ! -e "${_USR}/log/exported.pid" ]; then
-      mysqldump \
+      mysqldump -P ${_THIS_DB_PORT} \
         --single-transaction \
         --quick \
         --no-autocommit \
@@ -557,12 +558,12 @@ migrate_prepare() {
     && [ ! -e "${_USR}/log/imported.pid" ]; then
     if [ ! -z "${dst}" ]; then
       if [ "${oct}" = "${dst}" ]; then
-        mysql ${_HDB} < ${_USR}/src/prev_hostmaster.sql
+        mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} ${_HDB} < ${_USR}/src/prev_hostmaster.sql
         run_drush8_hmr_cmd "vset --always-set site_frontpage 'hosting/sites'"
         touch ${_USR}/log/imported.pid
       fi
     else
-      mysql ${_HDB} < ${_USR}/src/prev_hostmaster.sql
+      mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} ${_HDB} < ${_USR}/src/prev_hostmaster.sql
       run_drush8_hmr_cmd "vset --always-set site_frontpage 'hosting/sites'"
       touch ${_USR}/log/imported.pid
     fi
@@ -730,6 +731,9 @@ migrate_init() {
     echo "Bye."
     echo
     exit 1
+  fi
+  if [ -e "${_USR}/log/use_proxysql.txt" ]; then
+    _THIS_DB_PORT=6033
   fi
   rm -f /root/scentral_migration_notice.sh.txt
   if [ "${oct}" = "xusage" ]; then
@@ -1123,6 +1127,15 @@ check_root() {
       source /root/.barracuda.cnf
       _ADM_EMAIL=${_MY_EMAIL//\\\@/\@}
       _BCC_EMAIL=${_MY_EMAIL//\\\@/\@}
+      if [ "${_THIS_DB_HOST}" = "localhost" ] \
+        || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+        _SQL_CONNECT=localhost
+      else
+        _SQL_CONNECT="${_THIS_DB_HOST}"
+      fi
+      if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
+        _SQL_CONNECT=localhost
+      fi
     fi
   else
     echo "ERROR: This script should be ran as a root user"

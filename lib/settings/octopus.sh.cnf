@@ -314,6 +314,21 @@ _THIS_DB_HOST=localhost
 
 
 ###----------------------------------------###
+### DATABASE DEFAULT PORT                  ###
+###----------------------------------------###
+###
+### This variable is managed automatically,
+### to use ProxySQL default port, if needed.
+###
+### Supported values:
+###
+### _THIS_DB_PORT=3306
+### _THIS_DB_PORT=6033
+###
+_THIS_DB_PORT=3306
+
+
+###----------------------------------------###
 ### DISTRO INITIAL VERSION NR              ###
 ###----------------------------------------###
 ###

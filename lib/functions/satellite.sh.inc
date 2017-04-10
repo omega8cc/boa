@@ -494,6 +494,7 @@ satellite_cnf() {
     echo "_MY_OWNIP=${_MY_OWNIP}"                               >> ${octCnf}
     echo "_FORCE_GIT_MIRROR=\"${_FORCE_GIT_MIRROR}\""           >> ${octCnf}
     echo "_THIS_DB_HOST=${_THIS_DB_HOST}"                       >> ${octCnf}
+    echo "_THIS_DB_PORT=${_THIS_DB_PORT}"                       >> ${octCnf}
     echo "_DNS_SETUP_TEST=${_DNS_SETUP_TEST}"                   >> ${octCnf}
     echo "_HOT_SAUCE=${_HOT_SAUCE}"                             >> ${octCnf}
     echo "_USE_CURRENT=${_USE_CURRENT}"                         >> ${octCnf}
@@ -2048,7 +2049,7 @@ provision_backend_dbpass_generate() {
   chmod 0600 ${_ROOT}/.${_USER}.pass.txt
 
   _ESC="\`%\`.*"
-  mysqladmin flush-privileges &> /dev/null
+  mysqladmin -P ${_THIS_DB_PORT} flush-privileges &> /dev/null
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
     || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
@@ -2075,7 +2076,7 @@ provision_backend_dbpass_generate() {
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
     || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
     if [ "${_STATUS}" = "INIT" ]; then
-      mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+      mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
@@ -2083,12 +2084,12 @@ EOFMYSQL
     else
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-        mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+        mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
 DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
 DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
 DROP USER '${_USE_DB_USER}'@'localhost';
 EOFMYSQL
-        mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+        mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
@@ -2096,7 +2097,7 @@ EOFMYSQL
       fi
     fi
   fi
-  mysqladmin flush-privileges &> /dev/null
+  mysqladmin -P ${_THIS_DB_PORT} flush-privileges &> /dev/null
 }
 
 #
@@ -2117,12 +2118,12 @@ provision_backend_dbpass_sync() {
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
     _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
       | cut -d: -f2 | awk '{ print $1}' 2>&1)"
-    mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+    mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
 DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
 DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
 DROP USER '${_USE_DB_USER}'@'localhost';
 EOFMYSQL
-    mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+    mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
@@ -2132,7 +2133,7 @@ EOFMYSQL
       ${_ROOT}/.drush/server_*.alias.drushrc.php &> /dev/null
     wait
   fi
-  mysqladmin flush-privileges &> /dev/null
+  mysqladmin -P ${_THIS_DB_PORT} flush-privileges &> /dev/null
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush" &> /dev/null
   rm -rf ${_ROOT}/.tmp/cache
   if [ -e "${_ROOT}/.drush/server_localhost.alias.drushrc.php" ]; then
@@ -2190,23 +2191,23 @@ hostmaster_frontend_dbpass_sync() {
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
     _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
       | cut -d: -f2 | awk '{ print $1}' 2>&1)"
-    mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+    mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
 DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
 DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
 DROP USER '${_USE_DB_USER}'@'localhost';
 EOFMYSQL
-    mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+    mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 EOFMYSQL
   fi
-  mysqladmin flush-privileges &> /dev/null
+  mysqladmin -P ${_THIS_DB_PORT} flush-privileges &> /dev/null
 }
 
 satellite_run_pre_install() {
   if [ "${_STATUS}" = "INIT" ]; then
-    mysqladmin flush-hosts &> /dev/null
+    mysqladmin -P ${_THIS_DB_PORT} flush-hosts &> /dev/null
     provision_backend_dbpass_generate
     echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
@@ -2227,7 +2228,7 @@ satellite_run_pre_install() {
         chmod 0440 /etc/sudoers.d/${SCRIPT}
       fi
     done
-    mysqladmin flush-hosts &> /dev/null
+    mysqladmin -P ${_THIS_DB_PORT} flush-hosts &> /dev/null
     _RST=$(syncpass fix ${_USER} 2>&1)
     provision_backend_dbpass_sync
   fi
@@ -3472,6 +3473,7 @@ satellite_make() {
   echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${writeTo}
   echo "_T_BUILD=\"${_T_BUILD}\""                     >> ${writeTo}
   echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${writeTo}
+  echo "_THIS_DB_PORT=\"${_THIS_DB_PORT}\""           >> ${writeTo}
   echo "_THIS_OS=\"${_THIS_OS}\""                     >> ${writeTo}
   echo "_THISHTIP=\"${_THISHTIP}\""                   >> ${writeTo}
   echo "_TODAY=\"${_TODAY}\""                         >> ${writeTo}
@@ -4620,6 +4622,7 @@ satellite_child_b_aegir_build() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} hostmaster-install ${_DOMAIN} \
         --aegir_db_host=${_THIS_DB_HOST} \
+        --aegir_db_port=${_THIS_DB_PORT} \
         --aegir_db_pass=${_AGRPASWD} \
         --aegir_db_user=${_USE_DB_USER} \
         --aegir_host=${_USE_AEGIR_HOST} \
@@ -4633,6 +4636,7 @@ satellite_child_b_aegir_build() {
     else
       ${_DRUSHCMD} hostmaster-install ${_DOMAIN} \
         --aegir_db_host=${_THIS_DB_HOST} \
+        --aegir_db_port=${_THIS_DB_PORT} \
         --aegir_db_pass=${_AGRPASWD} \
         --aegir_db_user=${_USE_DB_USER} \
         --aegir_host=${_USE_AEGIR_HOST} \
@@ -5271,13 +5275,17 @@ satellite_child_b_vhosts_hotfix() {
   ###---### Make sure there are no ghost or disabled vhost which still listen on IP.
   #
   rPth="${_ROOT}/config/server"
-  sed -i "s/.*listen .*127.0.0.1:80;.*//g"           ${rPth}_*/nginx.conf
+  sed -i "s/.*listen .*127.0.0.1:80;.*//g"             ${rPth}_*/nginx.conf
   wait
-  sed -i "s/listen .*:80;/listen        \*:80;/g"    ${rPth}_*/nginx.conf
+  sed -i "s/listen .*:80;/listen        \*:80;/g"      ${rPth}_*/nginx.conf
   wait
-  sed -i "s/param db_port.*/param db_port   3306;/g" ${rPth}_*/nginx/vhost.d/*
+  if [ -e "${_ROOT}/log/use_proxysql.txt" ]; then
+    sed -i "s/param db_port.*/param db_port   6033;/g" ${rPth}_*/nginx/vhost.d/*
+  else
+    sed -i "s/param db_port.*/param db_port   3306;/g" ${rPth}_*/nginx/vhost.d/*
+  fi
   wait
-  sed -i "s/listen .*:80;/listen        \*:80;/g"    ${rPth}_*/nginx/vhost.d/*
+  sed -i "s/listen .*:80;/listen        \*:80;/g"      ${rPth}_*/nginx/vhost.d/*
   wait
 }
 

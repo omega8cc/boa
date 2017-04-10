@@ -81,6 +81,7 @@ fi
 _WEB="${_USER}.web"
 _DOMAIN="${_USER}.$(uname -n 2>&1)"
 _ROOT="/data/disk/${_USER}"
+_THIS_DB_PORT=3306
 octCnf="/root/.${_USER}.octopus.cnf"
 octInc="${_ROOT}/config/includes"
 octTpl="${_ROOT}/.drush/sys/provision/http/Provision/Config/Nginx"

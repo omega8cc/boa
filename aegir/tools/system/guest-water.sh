@@ -177,9 +177,6 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
       csf -tr ${_IP} &> /dev/null
     done
   fi
-  sed -i "s/param db_port.*/param db_port   3306;/g" \
-    /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
-  wait
   n=$((RANDOM%900+80))
   echo Waiting $n seconds...
   sleep $n

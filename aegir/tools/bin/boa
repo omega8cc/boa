@@ -397,7 +397,7 @@ octopus_install() {
     fi
     _CHECK_HOST=$(uname -n 2>&1)
 
-    if [ "${cmmand}" = "in-octopus" ]; then
+    if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -424,6 +424,14 @@ octopus_install() {
       fi
       sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                   ${vBs}/${octName}
       wait
+      if [ ! -z "${pxyc}" ] && [ -e "/root/.cluster.cnf" ]; then
+        sed -i "s/^_THIS_DB_PORT=.*/_THIS_DB_PORT=${pxyc}/g"   ${vBs}/${octName}
+        wait
+        if [ -e "${vBs}/${filIncO}" ]; then
+          sed -i "s/^_THIS_DB_PORT=.*/_THIS_DB_PORT=${pxyc}/g" ${vBs}/${filIncO}
+          wait
+        fi
+      fi
       if [ ! -z "${copt}" ]; then
         sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=${copt}/g" ${vBs}/${octName}
         wait
@@ -593,6 +601,14 @@ octopus_install() {
     fi
 
     bash ${vBs}/${octName}
+
+    if [ ! -z "${pxyc}" ] && [ -e "/root/.cluster.cnf" ]; then
+      if [ -e "/data/disk/${user}/log/octopus_log.txt" ]; then
+        echo "ProxySQL" > /data/disk/${user}/log/use_proxysql.txt
+        echo "ProxySQL" > /data/conf/clstr.cnf
+      fi
+    fi
+
     sed -i "s/^127.0.1.1.*//g" /etc/hosts
     wait
     sed -i "/^$/d" /etc/hosts
@@ -1132,7 +1148,8 @@ init_setup() {
     curl ${crlGet} "${rgUrl}/${stbl}/${octName}"    -o ${vBs}/${octName}
     curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
     curl ${crlGet} "${rgUrl}/${stbl}/${pthIncO}"    -o ${vBs}/${filIncO}
-  elif [ "${cmmand}" = "in-octopus" ]; then
+  elif [ "${cmmand}" = "in-octopus" ] \
+    || [ "${cmmand}" = "in-oct" ]; then
     if [ "${copt}" = "head" ]; then
       octb="${master}"
     elif [ "${copt}" = "2.4" ]; then
@@ -1160,7 +1177,7 @@ init_setup() {
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncB}
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncO}
   fi
-  if [ "${cmmand}" = "in-octopus" ]; then
+  if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
     _OCTOPUS_ONLY=YES
   else
     barracuda_install
@@ -1276,7 +1293,7 @@ check_root() {
       _B_NICE=10
     fi
     renice ${_B_NICE} -p $$ &> /dev/null
-    if [ "${cmmand}" = "in-octopus" ]; then
+    if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
       system_check_ready
     else
       if [ ! -e "/root/.force.reinstall.cnf" ]; then
@@ -1667,6 +1684,20 @@ case "$1" in
              copt="$5"
              csub="$6"
              ccor="$7"
+             check_root
+             check_root_keys_pwd
+             check_virt
+             check_dns_curl
+             init_setup
+  ;;
+  in-oct)    cmmand="$1"
+             email="$2"
+             user="$3"
+             mode="$4"
+             copt="$5"
+             csub="$6"
+             ccor="$7"
+             pxyc="6033"
              check_root
              check_root_keys_pwd
              check_virt
