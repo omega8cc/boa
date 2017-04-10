@@ -218,7 +218,7 @@ check_config_cluster() {
        #
       _CLUSTER_PREFIX=c1r ### [O] For Linux VServer guests short names
       _CLUSTER_SUFFIX=    ### [O] For DB nodes FQDN hostnames: example.com
-      _CLUSTER_OS=jetty   ### [O] Debian version: jetty
+      _CLUSTER_OS=jessie  ### [O] Debian version: jessie
        #
 
 "
