@@ -295,10 +295,10 @@ install_vps() {
   echo "Installing vps ${idn}..."
 
   if [ "${osx}" = "jessie" ]; then
-    incl="sysvinit-core,sysvinit,sysvinit-utils,ssh,locales,lsb-release,dnsutils,netcat,curl,wget"
+    incl="sysvinit-core,sysvinit,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget"
     excl="systemd,udev,makedev,fuse"
   else
-    incl="sysvinit,sysvinit-utils,ssh,locales,lsb-release,dnsutils,netcat,curl,wget"
+    incl="sysvinit,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget"
     excl="udev,makedev,fuse"
   fi
 
@@ -330,6 +330,40 @@ install_vps() {
     vserver ${idn} exec bash /root/BOA.sh.txt
     vserver ${idn} exec which boa
     vserver ${idn} exec /opt/local/bin/boa in-${ver} public ${hst} ${eml} o8 mini
+  else
+    _REMOVE_LINKS="buagent \
+                   fancontrol \
+                   halt \
+                   hwclock.sh \
+                   hwclockfirst.sh \
+                   ifupdown \
+                   ifupdown-clean \
+                   kerneloops \
+                   klogd \
+                   mountall-bootclean.sh \
+                   mountall.sh \
+                   mountdevsubfs.sh \
+                   mountkernfs.sh \
+                   mountnfs-bootclean.sh \
+                   mountnfs.sh \
+                   mountoverflowtmp \
+                   mountvirtfs \
+                   mtab.sh \
+                   networking \
+                   reboot \
+                   setserial \
+                   svscan \
+                   sysstat \
+                   umountfs \
+                   umountnfs.sh \
+                   umountroot \
+                   urandom \
+                   vnstat"
+    for link in ${_REMOVE_LINKS}; do
+      if [ -e "/vservers/${idn}/etc/init.d/${link}" ]; then
+        vserver ${idn} exec update-rc.d -f ${link} remove &> /dev/null
+      fi
+    done
   fi
 
   echo "Stopping vps ${idn}..."
@@ -544,41 +578,37 @@ install_db_cluster() {
       install_vps
     fi
     inc=$((inc+1))
-    ssh root@${IP} "echo \"${_MAINT_USER_PWD}\" > /root/.my.cluster_maint_pwd.txt"
-    ssh root@${IP} "echo \"${_ROOT_SQL_PASWD}\" > /root/.my.cluster_root_pwd.txt"
-  	ssh root@${IP} "apt-get update -qq"
-  	ssh root@${IP} "apt-get upgrade -y -qq"
-  	ssh root@${IP} "apt-get remove apparmor -y -qq"
-  	ssh root@${IP} "${_INST} software-properties-common"
-    ssh root@${IP} "echo '## Percona Cluster APT Repository' > ${xtraList}"
-    ssh root@${IP} "echo 'deb http://${xtraRepo}/ ${_OSR} main' >> ${xtraList}"
-    ssh root@${IP} "echo 'deb-src http://${xtraRepo}/ ${_OSR} main' >> ${xtraList}"
-    ssh root@${IP} "service lfd stop &> /dev/null"
-    ssh root@${IP} "csf -x &> /dev/null"
-    ssh root@${IP} "apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5 &> /dev/null"
-    ssh root@${IP} "service lfd start &> /dev/null"
-    ssh root@${IP} "csf -e &> /dev/null"
-  	ssh root@${IP} "apt-get update -qq"
-  	ssh root@${IP} "${_INST} percona-xtradb-cluster-57 percona-xtrabackup"
+    ssh root@${IP} "echo \"${_MAINT_USER_PWD}\" > /root/.my.cluster_maint_pwd.txt" &> /dev/null
+    ssh root@${IP} "echo \"${_ROOT_SQL_PASWD}\" > /root/.my.cluster_root_pwd.txt" &> /dev/null
+  	vserver ${idn} exec apt-get update -qq
+  	vserver ${idn} exec apt-get upgrade -y -qq
+  	vserver ${idn} exec apt-get remove apparmor -y -qq
+  	vserver ${idn} exec ${_INST} software-properties-common
+    ssh root@${IP} "echo '## Percona Cluster APT Repository' > ${xtraList}" &> /dev/null
+    ssh root@${IP} "echo 'deb http://${xtraRepo}/ ${_OSR} main' >> ${xtraList}" &> /dev/null
+    ssh root@${IP} "echo 'deb-src http://${xtraRepo}/ ${_OSR} main' >> ${xtraList}" &> /dev/null
+    vserver ${idn} exec apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5 &> /dev/null
+  	vserver ${idn} exec apt-get update -qq
+  	vserver ${idn} exec ${_INST} percona-xtradb-cluster-57 percona-xtrabackup
 
-  	ssh root@${IP} "mysql -u root -e \"INSTALL SONAME 'ha_archive';\" &> /dev/null"
-    ssh root@${IP} "echo \"[client]\" > /root/.my.cnf"
-    ssh root@${IP} "echo \"user=root\" >> /root/.my.cnf"
-    ssh root@${IP} "echo \"password=${_ROOT_SQL_PASWD}\" >> /root/.my.cnf"
-    ssh root@${IP} "chmod 0600 /root/.my.cnf"
-    ssh root@${IP} "echo \"db=mysql\" > /root/.mytop"
-    ssh root@${IP} "chmod 0600 /root/.mytop"
+  	vserver ${idn} exec mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
+    ssh root@${IP} "echo \"[client]\" > /root/.my.cnf" &> /dev/null
+    ssh root@${IP} "echo \"user=root\" >> /root/.my.cnf" &> /dev/null
+    ssh root@${IP} "echo \"password=${_ROOT_SQL_PASWD}\" >> /root/.my.cnf" &> /dev/null
+    ssh root@${IP} "chmod 0600 /root/.my.cnf" &> /dev/null
+    ssh root@${IP} "echo \"db=mysql\" > /root/.mytop" &> /dev/null
+    ssh root@${IP} "chmod 0600 /root/.mytop" &> /dev/null
 
     echo "Running mysql_secure_installation procedure on ${IP} DB node..."
-    ssh root@${IP} "mysql -u root -e \"FLUSH HOSTS;\" &> /dev/null"
-    ssh root@${IP} "mysql -u root -e \"DELETE FROM mysql.user WHERE User='';\" &> /dev/null"
-    ssh root@${IP} "mysql -u root -e \"DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');\" &> /dev/null"
-    ssh root@${IP} "mysql -u root -e \"DROP DATABASE test;\" &> /dev/null"
-    ssh root@${IP} "mysql -u root -e \"DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';\" &> /dev/null"
-    ssh root@${IP} "mysql -u root -e \"UPDATE mysql.user SET Password=PASSWORD('${_ROOT_SQL_PASWD}') WHERE User='root';\" &> /dev/null"
-    ssh root@${IP} "mysql -u root -e \"UPDATE mysql.user SET Password=PASSWORD('${_MAINT_USER_PWD}') WHERE User='debian-sys-maint';\" &> /dev/null"
-    ssh root@${IP} "sed -i \"s/^password =.*/password = ${_MAINT_USER_PWD}/g\" /etc/mysql/debian.cnf &> /dev/null"
-    ssh root@${IP} "mysql -u root -e \"FLUSH PRIVILEGES;\""
+    vserver ${idn} exec mysql -u root -e "FLUSH HOSTS;" &> /dev/null
+    vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='';" &> /dev/null
+    vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
+    vserver ${idn} exec mysql -u root -e "DROP DATABASE test;" &> /dev/null
+    vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" &> /dev/null
+    vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ROOT_SQL_PASWD}') WHERE User='root';" &> /dev/null
+    vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_MAINT_USER_PWD}') WHERE User='debian-sys-maint';" &> /dev/null
+    vserver ${idn} exec sed -i "s/^password =.*/password = ${_MAINT_USER_PWD}/g" /etc/mysql/debian.cnf &> /dev/null
+    vserver ${idn} exec mysql -u root -e "FLUSH PRIVILEGES;"
 
   	ssh root@${IP} "echo '
 [client]
@@ -763,29 +793,29 @@ interactive-timeout
   ssh root@${_DB_NODE_IP[1]} "service mysql stop"
   echo "Waiting for ${_DB_NODE_IP[1]} DB node bootstrap-pxc..."
   sleep 5
-  ssh root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0 &> /dev/null"
-  ssh root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1 &> /dev/null"
+  ssh root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
+  ssh root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1" &> /dev/null
   sleep 25
   ssh root@${_DB_NODE_IP[1]} "service mysql bootstrap-pxc"
   sleep 30
 
-  ssh root@${_DB_NODE_IP[1]} "mysql -u root -e \"CREATE USER ’sstuser’@’%’ IDENTIFIED BY ’${_MAINT_USER_PWD}’;\""
-  ssh root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’%’;\""
+  ssh root@${_DB_NODE_IP[1]} "mysql -u root -e \"CREATE USER ’sstuser’@’%’ IDENTIFIED BY ’${_MAINT_USER_PWD}’;\"" &> /dev/null
+  ssh root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’%’;\"" &> /dev/null
   for IP in "${_DB_NODE_IP[@]}"; do
-    ssh root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${IP}';\" &> /dev/null"
+    ssh root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${IP}';\"" &> /dev/null
   done
-  ssh root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}';\" &> /dev/null"
-  ssh root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\""
+  ssh root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}';\"" &> /dev/null
+  ssh root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\"" &> /dev/null
   ssh root@${_DB_NODE_IP[1]} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep_%';\""
 
   for IP in "${_DB_NODE_IP[@]}"; do
     if [ "${IP}" != "${_DB_NODE_IP[1]}" ]; then
       echo "Waiting 2 minutes for ${IP} DB node restart..."
       sleep 25
-      ssh root@${IP} "service mysql stop"
+      ssh root@${IP} "service mysql stop" &> /dev/null
       sleep 5
-      ssh root@${IP} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0 &> /dev/null"
-      ssh root@${IP} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1 &> /dev/null"
+      ssh root@${IP} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
+      ssh root@${IP} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1" &> /dev/null
       sleep 5
       ssh root@${IP} "service mysql start"
       sleep 55
