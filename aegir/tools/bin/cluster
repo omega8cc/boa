@@ -607,17 +607,17 @@ install_db_cluster() {
     echo "db=mysql" > /vservers/${idn}/root/.mytop
     vserver ${idn} exec chmod 0600 /root/.mytop
 
-    echo "Running mysql_secure_installation procedure on ${IP} DB node..."
+    ##echo "Running mysql_secure_installation procedure on ${IP} DB node..."
     ##vserver ${idn} exec mysql -u root -e "FLUSH HOSTS;" &> /dev/null
     ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='';" &> /dev/null
     ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
     ##vserver ${idn} exec mysql -u root -e "DROP DATABASE test;" &> /dev/null
     ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" &> /dev/null
-    vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ROOT_SQL_PASWD}') WHERE User='root';"
-    vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_MAINT_USER_PWD}') WHERE User='debian-sys-maint';"
-    if [ -e "/vservers/${idn}/etc/mysql/debian.cnf" ]; then
-      sed -i "s/^password =.*/password = ${_MAINT_USER_PWD}/g" /vservers/${idn}/etc/mysql/debian.cnf
-    fi
+    ##vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ROOT_SQL_PASWD}') WHERE User='root';"
+    ##vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_MAINT_USER_PWD}') WHERE User='debian-sys-maint';"
+    ##if [ -e "/vservers/${idn}/etc/mysql/debian.cnf" ]; then
+    ##  sed -i "s/^password =.*/password = ${_MAINT_USER_PWD}/g" /vservers/${idn}/etc/mysql/debian.cnf
+    ##fi
     vserver ${idn} exec mysql -u root -e "FLUSH PRIVILEGES;"
 
   	ssh ${_NOSTRICT} root@${IP} "echo '
@@ -643,13 +643,13 @@ basedir  = /usr
 ###
 
 # Data directory
-datadir=/var/lib/mysql
+#datadir=/var/lib/mysql
 
 # Temp directory
-tmpdir=/tmp
+#tmpdir=/tmp
 
 # MySQL User
-user=mysql
+#user=mysql
 
 # Mandatory for Galera
 binlog_format=ROW
@@ -661,10 +661,10 @@ innodb_flush_log_at_trx_commit=0
 query_cache_size=0
 query_cache_type=0
 binlog_row_image=minimal
-bind-address=0.0.0.0
-wsrep_slave_threads=8
-wsrep_log_conflicts
-pxc_strict_mode=ENFORCING
+#bind-address=0.0.0.0
+#wsrep_slave_threads=8
+#wsrep_log_conflicts
+#pxc_strict_mode=ENFORCING
 ### pxc_strict_mode=PERMISSIVE
 
 # Galera Provider Configuration
@@ -673,11 +673,11 @@ wsrep_provider=/usr/lib/galera3/libgalera_smm.so
 
 # Galera Cluster Configuration
 wsrep_cluster_name=\"'${_CLUSTER_NAME}'\"
-wsrep_cluster_address=\"'${_CLUSTER_STRING}'\"
+wsrep_cluster_address=\"'${_CLUSTER_STRING}',...?pc.wait_prim=no\"
 
 # Galera Synchronization Congifuration
 wsrep_sst_method=xtrabackup-v2
-wsrep_sst_auth=\"sstuser:'${_MAINT_USER_PWD}'\"
+wsrep_sst_auth=sstuser:'${_MAINT_USER_PWD}'
 
 # Galera Node Configuration
 wsrep_node_address=\"'${IP}'\"
@@ -811,21 +811,26 @@ interactive-timeout
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "service mysql bootstrap-pxc"
   sleep 25
 
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"CREATE USER ’sstuser’@’%’ IDENTIFIED BY ’${_MAINT_USER_PWD}’;\""
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’%’;\""
+  ##ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"CREATE USER ’sstuser’@’localhost’ IDENTIFIED BY ’${_MAINT_USER_PWD}’;\""
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’localhost’ IDENTIFIED BY '${_MAINT_USER_PWD}';\""
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’127.0.0.1’ IDENTIFIED BY '${_MAINT_USER_PWD}';\""
   for IP in "${_DB_NODE_IP[@]}"; do
-    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${IP}';\""
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${IP}' IDENTIFIED BY '${_ROOT_SQL_PASWD}';\""
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’${IP}’ IDENTIFIED BY '${_MAINT_USER_PWD}';\""
   done
+
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'debian-sys-maint'@'localhost' IDENTIFIED BY '${_MAINT_USER_PWD}';\""
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'debian-sys-maint'@'127.0.0.1' IDENTIFIED BY '${_MAINT_USER_PWD}';\""
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'localhost';\""
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'127.0.0.1';\""
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}';\""
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_ROOT_SQL_PASWD}';\""
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\""
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep_%';\""
 
   for IP in "${_DB_NODE_IP[@]}"; do
     if [ "${IP}" != "${_DB_NODE_IP[1]}" ]; then
       echo "Waiting for ${IP} DB node start..."
-      sleep 15
+      sleep 25
       ##ssh ${_NOSTRICT} root@${IP} "service mysql stop" &> /dev/null
       ##sleep 5
       ##ssh ${_NOSTRICT} root@${IP} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
