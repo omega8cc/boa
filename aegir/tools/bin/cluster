@@ -601,11 +601,11 @@ install_db_cluster() {
   	vserver ${idn} exec apt-get update -qq
   	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
   	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup
-  	vserver ${idn} exec mysql -u root -e "INSTALL SONAME 'ha_archive';
+  	vserver ${idn} exec mysql -u root -e "INSTALL SONAME 'ha_archive';"
     echo "[client]" > /vservers/${idn}/root/.my.cnf
     echo "user=root" >> /vservers/${idn}/root/.my.cnf
-    echo "password=${_ROOT_SQL_PASWD}" >> /vservers/${idn}/root/.my.cnf"
-    vserver ${idn} exec chmod 0600 /root/.my.cnf"
+    echo "password=${_ROOT_SQL_PASWD}" >> /vservers/${idn}/root/.my.cnf
+    vserver ${idn} exec chmod 0600 /root/.my.cnf
     echo "db=mysql" > /vservers/${idn}/root/.mytop
     vserver ${idn} exec chmod 0600 /root/.mytop
 
