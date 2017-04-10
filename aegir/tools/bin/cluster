@@ -187,6 +187,10 @@ check_config_cluster() {
     _CLUSTER_SUFFIX="example.com"
   fi
 
+  if [ -z "${_CLUSTER_OS}" ]; then
+    _CLUSTER_OS="jessie"
+  fi
+
   if [ -z "${_CLUSTER_EMAIL}" ] \
      || [ -z "${_CLUSTER_PREFIX}" ] \
      || [ -z "${_CLUSTER_SUFFIX}" ] \
