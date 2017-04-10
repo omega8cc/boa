@@ -642,7 +642,7 @@ user     = debian-sys-maint
 password = '${_MAINT_USER_PWD}'
 socket   = /var/run/mysqld/mysqld.sock
 basedir  = /usr
-' > /etc/mysql/.custom.debian.cnf"
+' > /etc/mysql/debian.cnf"
 
   	ssh ${_NOSTRICT} root@${IP} "echo '
 [mysqld]
@@ -686,7 +686,8 @@ wsrep_cluster_name=\"'${_CLUSTER_NAME}'\"
 wsrep_cluster_address=\"'${_CLUSTER_STRING}',...?pc.wait_prim=no\"
 
 # Galera Synchronization Congifuration
-wsrep_sst_method=xtrabackup-v2
+wsrep_sst_method=rsync
+#wsrep_sst_method=xtrabackup-v2
 wsrep_sst_auth=sstuser:'${_MAINT_USER_PWD}'
 
 # Galera Node Configuration
@@ -807,7 +808,7 @@ write_buffer            = 4M
 interactive-timeout
 
 !includedir /etc/mysql/conf.d/
-' > /etc/mysql/.custom.my.cnf"
+' > /etc/mysql/my.cnf"
 
     ssh ${_NOSTRICT} root@${IP} "service mysql stop"
 
