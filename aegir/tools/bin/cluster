@@ -1046,7 +1046,7 @@ upgrade_host() {
   wget -q -U iCab http://files.aegir.cc/dev/src/vnstat-${_VNSTAT_VRN}.tar.gz
   tar -xzf vnstat-${_VNSTAT_VRN}.tar.gz
   cd vnstat-${_VNSTAT_VRN}
-  sh ./configure --prefix=/usr 2> /dev/null
+  sh ./configure --prefix=/usr &> /dev/null
   make --quiet &> /dev/null
   make --quiet install &> /dev/null
   for INF in `vnstat --iflist \
