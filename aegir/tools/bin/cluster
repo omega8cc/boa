@@ -1146,9 +1146,8 @@ case "$1" in
            echo "Usage: cluster {in-vps} {id} {fqdn} {ip} {os} {stable|head|galera} {email}"
            echo "Usage: cluster {in-all} {stable|head}"
            echo "Usage: cluster {up-all} {stable|head}"
-           echo "Usage: cluster {in-oct} {email} {o2} {mini|max|none} {stable|head}
+           echo "Usage: cluster {in-oct} {email} {o2} {mini|max|none} {stable|head}"
            echo
            exit 1
   ;;
 esac
-
