@@ -203,7 +203,7 @@ check_config_cluster() {
     Required lines are marked with [R] and optional with [O]:
 
        #
-      _CLUSTER_EMAIL=""   ### [R] Technical contact email
+      _CLUSTER_EMAIL=     ### [R] Technical contact email
        #
        # Public IP and hostname with working DNS for the main web node
        #
