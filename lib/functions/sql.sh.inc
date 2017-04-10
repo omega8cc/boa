@@ -433,7 +433,7 @@ install_mariadb_sql() {
   SQLADD="libmariadbclient-dev \
           libmysqlclient18.1 \
           libdbd-mysql-perl \
-          percona-xtrabackup \
+          percona-xtrabackup-24 \
           python-mysqldb \
           libdbi-perl"
 }

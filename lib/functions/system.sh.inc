@@ -3911,7 +3911,7 @@ sys_packages_install() {
               ntpdate \
               p7zip-full \
               pdftk \
-              percona-xtrabackup \
+              percona-xtrabackup-24 \
               postfix \
               postfix-pcre \
               pwgen \

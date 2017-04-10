@@ -600,7 +600,7 @@ install_db_cluster() {
     vserver ${idn} exec apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5 &> /dev/null
   	vserver ${idn} exec apt-get update -qq
   	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
-  	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup
+  	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24
   	vserver ${idn} exec mysql -u root -e "INSTALL SONAME 'ha_archive';"
     echo "[client]" > /vservers/${idn}/root/.my.cnf
     echo "user=root" >> /vservers/${idn}/root/.my.cnf
