@@ -400,16 +400,16 @@ install_vps() {
     echo "Running post-install Galera VPS upgrade..."
     if [ "${osx}" = "jessie" ] || [ -x "/vservers/${idn}/lib/systemd/systemd" ]; then
       echo "Removing systemd on ${osx}..."
-      vserver ${idn} exec ${_INSTAPP} sysvinit-core
-      vserver ${idn} exec ${_INSTAPP} sysvinit-utils
+      vserver ${idn} exec ${_INSTAPP} sysvinit-core &> /dev/null
+      vserver ${idn} exec ${_INSTAPP} sysvinit-utils &> /dev/null
       if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
         cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
       fi
       vserver ${idn} exec apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
       echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /vservers/${idn}/etc/apt/preferences.d/systemd
       echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /vservers/${idn}/etc/apt/preferences.d/systemd
-      vserver ${idn} exec ${_INSTAPP} sysvinit-core
-      vserver ${idn} exec ${_INSTAPP} sysvinit-utils
+      vserver ${idn} exec ${_INSTAPP} sysvinit-core &> /dev/null
+      vserver ${idn} exec ${_INSTAPP} sysvinit-utils &> /dev/null
     fi
   else
     echo "Running post-install Barracuda upgrade..."
@@ -582,27 +582,24 @@ install_db_cluster() {
     if [ ! -e "/vservers/${idn}/" ] \
       && [ ! -z "${idn}" ]; then
       install_vps
-      echo
       echo "Installing Percona Cluster on VPS ${idn}..."
-      sleep 8
-      echo
     fi
     inc=$((inc+1))
     echo "${_MAINT_USER_PWD}" > /vservers/${idn}/root/.my.cluster_maint_pwd.txt
     echo "${_ROOT_SQL_PASWD}" > /vservers/${idn}/root/.my.cluster_root_pwd.txt
-  	vserver ${idn} exec apt-get update -qq
-    vserver ${idn} exec ${_INSTAPP} debian-keyring
-    vserver ${idn} exec ${_INSTAPP} debian-archive-keyring
-  	vserver ${idn} exec apt-get upgrade -y -qq
+  	vserver ${idn} exec apt-get update -qq &> /dev/null
+    vserver ${idn} exec ${_INSTAPP} debian-keyring &> /dev/null
+    vserver ${idn} exec ${_INSTAPP} debian-archive-keyring &> /dev/null
+  	vserver ${idn} exec apt-get upgrade -y -qq &> /dev/null
   	vserver ${idn} exec apt-get remove apparmor -y -qq &> /dev/null
-  	vserver ${idn} exec ${_INSTAPP} software-properties-common
+  	vserver ${idn} exec ${_INSTAPP} software-properties-common &> /dev/null
     echo "## Percona Cluster APT Repository" > /vservers/${idn}${xtraList}
     echo "deb http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
     echo "deb-src http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
     vserver ${idn} exec apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5 &> /dev/null
-  	vserver ${idn} exec apt-get update -qq
-  	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
-  	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24
+  	vserver ${idn} exec apt-get update -qq &> /dev/null
+  	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57 &> /dev/null
+  	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24 &> /dev/null
   	vserver ${idn} exec mysql -u root -e "INSTALL SONAME 'ha_archive';"
     echo "[client]" > /vservers/${idn}/root/.my.cnf
     echo "user=root" >> /vservers/${idn}/root/.my.cnf
@@ -612,11 +609,11 @@ install_db_cluster() {
     vserver ${idn} exec chmod 0600 /root/.mytop
 
     echo "Running mysql_secure_installation procedure on ${IP} DB node..."
-    vserver ${idn} exec mysql -u root -e "FLUSH HOSTS;"
-    vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='';"
-    vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
-    vserver ${idn} exec mysql -u root -e "DROP DATABASE test;"
-    vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
+    vserver ${idn} exec mysql -u root -e "FLUSH HOSTS;" &> /dev/null
+    vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='';" &> /dev/null
+    vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
+    vserver ${idn} exec mysql -u root -e "DROP DATABASE test;" &> /dev/null
+    vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" &> /dev/null
     vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ROOT_SQL_PASWD}') WHERE User='root';"
     vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_MAINT_USER_PWD}') WHERE User='debian-sys-maint';"
     vserver ${idn} exec sed -i "s/^password =.*/password = ${_MAINT_USER_PWD}/g" /etc/mysql/debian.cnf
@@ -880,23 +877,23 @@ install_host() {
   cat /etc/apt/sources.list
 
   echo "Installing basic tools..."
-  apt-get update -qq
-  apt-get upgrade -y -qq
-  apt-get update -qq
-  ${_INSTAPP} locales
-  ${_INSTAPP} lsb-release
-  ${_INSTAPP} dnsutils
-  ${_INSTAPP} netcat
-  ${_INSTAPP} curl
-  ${_INSTAPP} wget
-  ${_INSTAPP} libwww-perl
-  ${_INSTAPP} mc
-  ${_INSTAPP} screen
-  ${_INSTAPP} hdparm
-  ${_INSTAPP} iotop
-  ${_INSTAPP} ntpdate
-  ${_INSTAPP} parted
-  ${_INSTAPP} build-essential
+  apt-get update -qq &> /dev/null
+  apt-get upgrade -y -qq &> /dev/null
+  apt-get update -qq &> /dev/null
+  ${_INSTAPP} locales &> /dev/null
+  ${_INSTAPP} lsb-release &> /dev/null
+  ${_INSTAPP} dnsutils &> /dev/null
+  ${_INSTAPP} netcat &> /dev/null
+  ${_INSTAPP} curl &> /dev/null
+  ${_INSTAPP} wget &> /dev/null
+  ${_INSTAPP} libwww-perl &> /dev/null
+  ${_INSTAPP} mc &> /dev/null
+  ${_INSTAPP} screen &> /dev/null
+  ${_INSTAPP} hdparm &> /dev/null
+  ${_INSTAPP} iotop &> /dev/null
+  ${_INSTAPP} ntpdate &> /dev/null
+  ${_INSTAPP} parted &> /dev/null
+  ${_INSTAPP} build-essential &> /dev/null
 
   echo "Setting hostname to ${hst}"
   echo ${hst} > /etc/hostname
@@ -967,25 +964,25 @@ install_host() {
     echo "Installing beng vserver kernel..."
     echo "deb http://repo.psand.net/ ${_OSR} main" > /etc/apt/sources.list.d/vserver.list
     wget -q -O - http://repo.psand.net/pubkey.txt | apt-key add - &> /dev/null
-    apt-get update -qq
-    ${_INSTAPP} build-essential
-    ${_INSTAPP} linux-headers-vserver-${_BENG_SERIES}-beng
-    ${_INSTAPP} linux-image-vserver-${_BENG_SERIES}-beng
-    ${_INSTAPP} linux-source-vserver-${_BENG_SERIES}-beng
+    apt-get update -qq &> /dev/null
+    ${_INSTAPP} build-essential &> /dev/null
+    ${_INSTAPP} linux-headers-vserver-${_BENG_SERIES}-beng &> /dev/null
+    ${_INSTAPP} linux-image-vserver-${_BENG_SERIES}-beng &> /dev/null
+    ${_INSTAPP} linux-source-vserver-${_BENG_SERIES}-beng &> /dev/null
     ls -la /boot
   fi
 
   if [ "${_OSR}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
     echo "Installing sysvinit on ${_OSV} ${_OSR}..."
-    ${_INSTAPP} sysvinit-core
-    ${_INSTAPP} sysvinit-utils
+    ${_INSTAPP} sysvinit-core &> /dev/null
+    ${_INSTAPP} sysvinit-utils &> /dev/null
     if [ -e "/usr/share/sysvinit/inittab" ]; then
       cp -af /usr/share/sysvinit/inittab /etc/inittab
     fi
     echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
     echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-    ${_INSTAPP} sysvinit-core
-    ${_INSTAPP} sysvinit-utils
+    ${_INSTAPP} sysvinit-core &> /dev/null
+    ${_INSTAPP} sysvinit-utils &> /dev/null
     echo
     echo "NOTE: Please reboot and then run 'cluster up-host'"
     echo "NOTE: once cluster script completes initial installation"
@@ -1016,41 +1013,41 @@ upgrade_host() {
 
   if [ "${_OSR}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
     echo "Removing systemd on ${_OSV} ${_OSR}..."
-    ${_INSTAPP} sysvinit-core
-    ${_INSTAPP} sysvinit-utils
+    ${_INSTAPP} sysvinit-core &> /dev/null
+    ${_INSTAPP} sysvinit-utils &> /dev/null
     if [ -e "/usr/share/sysvinit/inittab" ]; then
       cp -af /usr/share/sysvinit/inittab /etc/inittab
     fi
     apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
     echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
     echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-    ${_INSTAPP} sysvinit-core
-    ${_INSTAPP} sysvinit-utils
+    ${_INSTAPP} sysvinit-core &> /dev/null
+    ${_INSTAPP} sysvinit-utils &> /dev/null
   fi
 
   echo "Installing vserver tools dependencies..."
-  apt-get update -qq
-  ${_INSTAPP} vlan
-  ${_INSTAPP} e2fslibs-dev
-  ${_INSTAPP} libnss3-dev
-  ${_INSTAPP} libvserver0-dev
-  ${_INSTAPP} libvserver0
-  ${_INSTAPP} debootstrap
+  apt-get update -qq &> /dev/null
+  ${_INSTAPP} vlan &> /dev/null
+  ${_INSTAPP} e2fslibs-dev &> /dev/null
+  ${_INSTAPP} libnss3-dev &> /dev/null
+  ${_INSTAPP} libvserver0-dev &> /dev/null
+  ${_INSTAPP} libvserver0 &> /dev/null
+  ${_INSTAPP} debootstrap &> /dev/null
   if [ -e "/etc/cron.daily/mlocate" ]; then
     mv -f /etc/cron.daily/mlocate /var/backups/
   fi
 
   echo "Installing otherwise uninstalled stuff..."
-  ${_INSTAPP} irqbalance
-  ${_INSTAPP} libuuid-perl
-  ${_INSTAPP} linux-base
+  ${_INSTAPP} irqbalance &> /dev/null
+  ${_INSTAPP} libuuid-perl &> /dev/null
+  ${_INSTAPP} linux-base &> /dev/null
   echo "OPTIONS=\"--hintpolicy=ignore\"" >> /etc/default/irqbalance
   service irqbalance stop &> /dev/null
   service irqbalance start &> /dev/null
 
   echo "Installing vserver tools..."
-  apt-get remove util-vserver -y -qq
-  apt-get autoremove -y -qq
+  apt-get remove util-vserver -y -qq &> /dev/null
+  apt-get autoremove -y -qq &> /dev/null
   cd /var/opt
   rm -f -r util-vserver*
   wget -q -U iCab http://files.aegir.cc/dev/src/util-vserver-${_UTIL_VRN}.tar.gz
@@ -1134,7 +1131,7 @@ upgrade_host() {
   chmod 755 /vservers
 
   echo "Installing Postfix locally..."
-  ${_INSTAPP} postfix
+  ${_INSTAPP} postfix &> /dev/null
   lSmtp="localhost:25      inet  n       -       -       -       -       smtpd"
   sed -i "s/^smtp.*inet.*n.*smtpd/${lSmtp}/g" /etc/postfix/master.cf
   apt-get remove exim -y &> /dev/null
@@ -1143,10 +1140,10 @@ upgrade_host() {
   service postfix restart &> /dev/null
 
   echo "Updating packages on this system..."
-  apt-get update -y -qq \
-    && apt-get upgrade -y -qq \
-    && apt-get dist-upgrade -y -qq \
-    && ${_INSTAPP} rkhunter
+  apt-get update -y -qq &> /dev/null \
+    && apt-get upgrade -y -qq &> /dev/null \
+    && apt-get dist-upgrade -y -qq &> /dev/null \
+    && ${_INSTAPP} rkhunter &> /dev/null
 
   if_firewall_update
 
