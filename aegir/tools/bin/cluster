@@ -528,7 +528,7 @@ install_web_node() {
   hst="${_WEB_FQDN}"
   vip="${_WEB_NODE_IP}"
   osx="${_CLUSTER_OS}"
-  if [ -z "${ver}" ]; then
+  if [ -z "${ver}" ] || [ "${ver}" = "galera" ]; then
     ver="head"
   fi
   eml="${_CLUSTER_EMAIL}"
@@ -600,7 +600,6 @@ install_db_cluster() {
   	vserver ${idn} exec apt-get update -qq &> /dev/null
   	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57 &> /dev/null
   	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24 &> /dev/null
-  	vserver ${idn} exec mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
     echo "[client]" > /vservers/${idn}/root/.my.cnf
     echo "user=root" >> /vservers/${idn}/root/.my.cnf
     echo "password=${_ROOT_SQL_PASWD}" >> /vservers/${idn}/root/.my.cnf
@@ -609,14 +608,16 @@ install_db_cluster() {
     vserver ${idn} exec chmod 0600 /root/.mytop
 
     echo "Running mysql_secure_installation procedure on ${IP} DB node..."
-    vserver ${idn} exec mysql -u root -e "FLUSH HOSTS;" &> /dev/null
-    vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='';" &> /dev/null
-    vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
-    vserver ${idn} exec mysql -u root -e "DROP DATABASE test;" &> /dev/null
-    vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" &> /dev/null
+    ##vserver ${idn} exec mysql -u root -e "FLUSH HOSTS;" &> /dev/null
+    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='';" &> /dev/null
+    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
+    ##vserver ${idn} exec mysql -u root -e "DROP DATABASE test;" &> /dev/null
+    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" &> /dev/null
     vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ROOT_SQL_PASWD}') WHERE User='root';"
     vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_MAINT_USER_PWD}') WHERE User='debian-sys-maint';"
-    vserver ${idn} exec sed -i "s/^password =.*/password = ${_MAINT_USER_PWD}/g" /etc/mysql/debian.cnf
+    if [ -e "/vservers/${idn}/etc/mysql/debian.cnf" ]; then
+      sed -i "s/^password =.*/password = ${_MAINT_USER_PWD}/g" /vservers/${idn}/etc/mysql/debian.cnf
+    fi
     vserver ${idn} exec mysql -u root -e "FLUSH PRIVILEGES;"
 
   	ssh ${_NOSTRICT} root@${IP} "echo '
@@ -631,7 +632,7 @@ user     = debian-sys-maint
 password = '${_MAINT_USER_PWD}'
 socket   = /var/run/mysqld/mysqld.sock
 basedir  = /usr
-' > /etc/mysql/debian.cnf"
+' > /etc/mysql/.custom.debian.cnf"
 
   	ssh ${_NOSTRICT} root@${IP} "echo '
 [mysqld]
@@ -724,7 +725,6 @@ table_open_cache        = 256
 table_definition_cache  = 512
 thread_stack            = 256K
 thread_cache_size       = 128
-thread_concurrency      = 8
 wait_timeout            = 3600
 tmp_table_size          = 1024M
 max_heap_table_size     = 1024M
@@ -797,39 +797,42 @@ write_buffer            = 4M
 interactive-timeout
 
 !includedir /etc/mysql/conf.d/
-' > /etc/mysql/my.cnf"
+' > /etc/mysql/.custom.my.cnf"
+
+    ssh ${_NOSTRICT} root@${IP} "service mysql stop"
 
   done
 
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "service mysql stop" &> /dev/null
   echo "Waiting for ${_DB_NODE_IP[1]} DB node bootstrap-pxc..."
-  sleep 5
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1" &> /dev/null
-  sleep 25
+  sleep 15
+  ##ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
+  ##ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1" &> /dev/null
+  ##sleep 25
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "service mysql bootstrap-pxc"
-  sleep 30
+  sleep 25
 
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"CREATE USER ’sstuser’@’%’ IDENTIFIED BY ’${_MAINT_USER_PWD}’;\"" &> /dev/null
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’%’;\"" &> /dev/null
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"CREATE USER ’sstuser’@’%’ IDENTIFIED BY ’${_MAINT_USER_PWD}’;\""
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’%’;\""
   for IP in "${_DB_NODE_IP[@]}"; do
-    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${IP}';\"" &> /dev/null
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${IP}';\""
   done
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}';\"" &> /dev/null
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\"" &> /dev/null
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'localhost';\""
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'127.0.0.1';\""
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}';\""
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\""
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep_%';\""
 
   for IP in "${_DB_NODE_IP[@]}"; do
     if [ "${IP}" != "${_DB_NODE_IP[1]}" ]; then
-      echo "Waiting 2 minutes for ${IP} DB node restart..."
-      sleep 25
-      ssh ${_NOSTRICT} root@${IP} "service mysql stop" &> /dev/null
-      sleep 5
-      ssh ${_NOSTRICT} root@${IP} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
-      ssh ${_NOSTRICT} root@${IP} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1" &> /dev/null
-      sleep 5
-      ssh ${_NOSTRICT} root@${IP} "service mysql start" &> /dev/null
-      sleep 55
+      echo "Waiting for ${IP} DB node start..."
+      sleep 15
+      ##ssh ${_NOSTRICT} root@${IP} "service mysql stop" &> /dev/null
+      ##sleep 5
+      ##ssh ${_NOSTRICT} root@${IP} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
+      ##ssh ${_NOSTRICT} root@${IP} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1" &> /dev/null
+      ##sleep 5
+      ssh ${_NOSTRICT} root@${IP} "service mysql start"
+      sleep 15
       ssh ${_NOSTRICT} root@${IP} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep%';\""
     fi
   done
