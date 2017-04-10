@@ -14,6 +14,8 @@ _INSTAPP="/usr/bin/aptitude -f -y -q \
   -o Dpkg::Options::=--force-confdef \
   -o Dpkg::Options::=--force-confold install"
 
+_NOSTRICT="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+
 ###
 ### Avoid too many questions
 ###
@@ -620,7 +622,7 @@ install_db_cluster() {
     vserver ${idn} exec sed -i "s/^password =.*/password = ${_MAINT_USER_PWD}/g" /etc/mysql/debian.cnf
     vserver ${idn} exec mysql -u root -e "FLUSH PRIVILEGES;"
 
-  	ssh root@${IP} "echo '
+  	ssh ${_NOSTRICT} root@${IP} "echo '
 [client]
 host     = localhost
 user     = debian-sys-maint
@@ -634,7 +636,7 @@ socket   = /var/run/mysqld/mysqld.sock
 basedir  = /usr
 ' > /etc/mysql/debian.cnf"
 
-  	ssh root@${IP} "echo '
+  	ssh ${_NOSTRICT} root@${IP} "echo '
 [mysqld]
 
 ###
@@ -682,7 +684,7 @@ wsrep_node_address=\"'${IP}'\"
 wsrep_node_name=\"'${IP}'\"
 ' > /etc/mysql/conf.d/galera.cnf"
 
-  	ssh root@${IP} "echo '
+  	ssh ${_NOSTRICT} root@${IP} "echo '
 [client]
 port                    = 3306
 socket                  = /var/run/mysqld/mysqld.sock
@@ -800,36 +802,36 @@ interactive-timeout
 
   done
 
-  ssh root@${_DB_NODE_IP[1]} "service mysql stop" &> /dev/null
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "service mysql stop" &> /dev/null
   echo "Waiting for ${_DB_NODE_IP[1]} DB node bootstrap-pxc..."
   sleep 5
-  ssh root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
-  ssh root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1" &> /dev/null
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1" &> /dev/null
   sleep 25
-  ssh root@${_DB_NODE_IP[1]} "service mysql bootstrap-pxc"
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "service mysql bootstrap-pxc"
   sleep 30
 
-  ssh root@${_DB_NODE_IP[1]} "mysql -u root -e \"CREATE USER ’sstuser’@’%’ IDENTIFIED BY ’${_MAINT_USER_PWD}’;\"" &> /dev/null
-  ssh root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’%’;\"" &> /dev/null
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"CREATE USER ’sstuser’@’%’ IDENTIFIED BY ’${_MAINT_USER_PWD}’;\"" &> /dev/null
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’%’;\"" &> /dev/null
   for IP in "${_DB_NODE_IP[@]}"; do
-    ssh root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${IP}';\"" &> /dev/null
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${IP}';\"" &> /dev/null
   done
-  ssh root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}';\"" &> /dev/null
-  ssh root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\"" &> /dev/null
-  ssh root@${_DB_NODE_IP[1]} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep_%';\""
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}';\"" &> /dev/null
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\"" &> /dev/null
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep_%';\""
 
   for IP in "${_DB_NODE_IP[@]}"; do
     if [ "${IP}" != "${_DB_NODE_IP[1]}" ]; then
       echo "Waiting 2 minutes for ${IP} DB node restart..."
       sleep 25
-      ssh root@${IP} "service mysql stop" &> /dev/null
+      ssh ${_NOSTRICT} root@${IP} "service mysql stop" &> /dev/null
       sleep 5
-      ssh root@${IP} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
-      ssh root@${IP} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1" &> /dev/null
+      ssh ${_NOSTRICT} root@${IP} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
+      ssh ${_NOSTRICT} root@${IP} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1" &> /dev/null
       sleep 5
-      ssh root@${IP} "service mysql start" &> /dev/null
+      ssh ${_NOSTRICT} root@${IP} "service mysql start" &> /dev/null
       sleep 55
-      ssh root@${IP} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep%';\""
+      ssh ${_NOSTRICT} root@${IP} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep%';\""
     fi
   done
   echo "All DB nodes restarted!"
