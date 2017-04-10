@@ -600,7 +600,7 @@ install_db_cluster() {
   	vserver ${idn} exec apt-get update -qq &> /dev/null
   	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57 &> /dev/null
   	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24 &> /dev/null
-  	vserver ${idn} exec mysql -u root -e "INSTALL SONAME 'ha_archive';"
+  	vserver ${idn} exec mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
     echo "[client]" > /vservers/${idn}/root/.my.cnf
     echo "user=root" >> /vservers/${idn}/root/.my.cnf
     echo "password=${_ROOT_SQL_PASWD}" >> /vservers/${idn}/root/.my.cnf
@@ -661,11 +661,13 @@ query_cache_size=0
 query_cache_type=0
 binlog_row_image=minimal
 bind-address=0.0.0.0
+wsrep_slave_threads=8
+wsrep_log_conflicts
 pxc_strict_mode=ENFORCING
 ### pxc_strict_mode=PERMISSIVE
 
 # Galera Provider Configuration
-wsrep_provider=/usr/lib/galera/libgalera_smm.so
+wsrep_provider=/usr/lib/galera3/libgalera_smm.so
 #wsrep_provider_options=\"gcache.size=32G;socket.checksum=1\"
 
 # Galera Cluster Configuration
