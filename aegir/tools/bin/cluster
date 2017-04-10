@@ -301,10 +301,10 @@ install_vps() {
   echo "Installing vps ${idn}..."
 
   if [ "${osx}" = "jessie" ]; then
-    incl="sysvinit-core,sysvinit,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude"
+    incl="sysvinit-core,sysvinit,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales"
     excl="systemd,udev,makedev,fuse"
   else
-    incl="sysvinit,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude"
+    incl="sysvinit,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales"
     excl="udev,makedev,fuse"
   fi
 
@@ -312,11 +312,16 @@ install_vps() {
     --hostname ${hst} \
     --interface eth0:${vip}/32 \
     -- -d ${osx} -- --arch=amd64 --include=${incl} \
-    --exclude=${excl};
+    --exclude=${excl}; &> /dev/null
 
   echo "Starting vps ${idn}..."
   vserver-autostart ${idn} &> /dev/null
   vserver ${idn} start
+
+  echo "en_US.UTF-8 UTF-8" >> /vservers/${idn}/etc/locale.gen
+  sed -i "/^$/d" /vservers/${idn}/etc/locale.gen
+  vserver ${idn} exec locale-gen en_US.UTF-8 &> /dev/null
+  vserver ${idn} exec locale
 
   echo "Syncing timezone for vps ${idn}..."
   cp -af /etc/timezone /vservers/${idn}/etc/
@@ -382,6 +387,11 @@ install_vps() {
   echo "Testing vservers status..."
   vserver-stat
   echo
+
+  echo "en_US.UTF-8 UTF-8" >> /vservers/${idn}/etc/locale.gen
+  sed -i "/^$/d" /vservers/${idn}/etc/locale.gen
+  vserver ${idn} exec locale-gen en_US.UTF-8 &> /dev/null
+  vserver ${idn} exec locale
 
   if [ -d "/vservers/${idn}/root" ] \
     && [ -e "/root/.ssh/id_rsa.pub" ] \
