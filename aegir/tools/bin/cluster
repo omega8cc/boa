@@ -301,10 +301,10 @@ install_vps() {
   echo "Installing vps ${idn}..."
 
   if [ "${osx}" = "jessie" ]; then
-    incl="sysvinit-core,sysvinit,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales"
+    incl="sysvinit-core,sysvinit,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen"
     excl="systemd,udev,makedev,fuse"
   else
-    incl="sysvinit,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales"
+    incl="sysvinit,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen"
     excl="udev,makedev,fuse"
   fi
 
