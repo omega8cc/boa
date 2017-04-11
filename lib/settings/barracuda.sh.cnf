@@ -734,8 +734,8 @@ _MODULES_SKIP=""
 
 ###
 ### Control if boost caches should be deleted
-### by BOA. By default they are cleared daily. 
-### Change to NO if you prefer to never clear 
+### by BOA. By default they are cleared daily.
+### Change to NO if you prefer to never clear
 ### the boost cache files.
 ###
 ### If you choose NO make sure that boost cron
@@ -958,7 +958,7 @@ _PHP_IONCUBE=NO
 
 ###
 ### Change to YES to always compile in
-### MongoDB driver. 
+### MongoDB driver.
 ### mongo.so for PHP < 7.0
 ### mongodb.so for PHP 7.0
 ###
