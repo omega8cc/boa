@@ -419,7 +419,7 @@ install_proxysql() {
     ###fi
 
     echo "Running default auto-configuration of ProxySQL..."
-    vserver ${idn} exec proxysql-admin --write-node=${_DB_NODE_IP[1]}:3600 --enable
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --write-node=${_DB_NODE_IP[1]}:3600 --enable"
     sleep 10
 
     echo "Checking runtime_scheduler entries in ProxySQL..."
