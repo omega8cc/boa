@@ -397,17 +397,17 @@ install_proxysql() {
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'monitor'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_MONITOR_PASSWORD}';\""
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\""
 
-      echo "Adding proxysql_user to ProxySQL..."
-      pxyCmd="INSERT INTO mysql_users (username,password) VALUES ('proxysql_user','${_CLUSTER_APP_PASSWORD}');"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
-      sleep 1
-
-      echo "Adding grants for ProxySQL proxysql_user on Percona Cluster..."
-      for IP in "${_DB_NODE_IP[@]}"; do
-        ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'proxysql_user'@'${IP}' IDENTIFIED BY '${_CLUSTER_APP_PASSWORD}';\""
-      done
-      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'proxysql_user'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_CLUSTER_APP_PASSWORD}';\""
-      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\""
+      # echo "Adding proxysql_user to ProxySQL..."
+      # pxyCmd="INSERT INTO mysql_users (username,password) VALUES ('proxysql_user','${_CLUSTER_APP_PASSWORD}');"
+      # ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      # sleep 1
+      #
+      # echo "Adding grants for ProxySQL proxysql_user on Percona Cluster..."
+      # for IP in "${_DB_NODE_IP[@]}"; do
+      #   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'proxysql_user'@'${IP}' IDENTIFIED BY '${_CLUSTER_APP_PASSWORD}';\""
+      # done
+      # ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'proxysql_user'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_CLUSTER_APP_PASSWORD}';\""
+      # ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\""
 
       echo "Load ProxySQL users to runtime and save to disk..."
       pxyCmd="LOAD MYSQL USERS TO RUNTIME;"
