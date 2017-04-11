@@ -901,6 +901,14 @@ _CPU_CRIT_RATIO=9
 _NGINX_DOS_LIMIT=300
 
 ###
+### Nginx Headers More support is available
+### via third-party Nginx module. To enable
+### change this option to _NGINX_HEADERS=YES
+### below or in the /root/.barracuda.cnf file.
+###
+_NGINX_HEADERS=NO
+
+###
 ### Experimental LDAP support is available
 ### via third-party Nginx module. To enable
 ### change this option to _NGINX_LDAP=YES

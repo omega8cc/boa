@@ -270,6 +270,13 @@ install_upgrade_nginx() {
         msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
         msg "INFO: Nginx forced rebuild to include latest OpenSSL version"
       fi
+      if [ "${_NGINX_HEADERS}" = "YES" ]; then
+        if [[ ! "${_NGINX_V_ITD}" =~ "nginx-headers-more" ]]; then
+          _NGINX_INSTALL_REQUIRED=YES
+          msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
+          msg "INFO: Nginx forced rebuild to include Headers More support"
+        fi
+      fi
       if [ "${_NGINX_LDAP}" = "YES" ]; then
         if [[ ! "${_NGINX_V_ITD}" =~ "nginx-auth-ldap" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
@@ -335,6 +342,14 @@ install_upgrade_nginx() {
     fi
     if [ -e "/var/opt/nginx-upload-progress-module" ]; then
       _NGINX_EXTRA="--add-module=/var/opt/nginx-upload-progress-module/ ${_NGINX_EXTRA}"
+    fi
+    if [ "${_NGINX_HEADERS}" = "YES" ]; then
+      cd /var/opt
+      rm -rf /var/opt/nginx-headers-more*
+      get_dev_src "nginx-headers-more.tar.gz"
+      if [ -e "/var/opt/nginx-headers-more" ]; then
+        _NGINX_EXTRA="--add-module=/var/opt/nginx-headers-more/ ${_NGINX_EXTRA}"
+      fi
     fi
     if [ "${_NGINX_LDAP}" = "YES" ]; then
       cd /var/opt

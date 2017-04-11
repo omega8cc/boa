@@ -817,6 +817,7 @@ barracuda_cnf() {
     echo "_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}"               >> ${barCnf}
     echo "_NGINX_EXTRA_CONF=\"${_NGINX_EXTRA_CONF}\""         >> ${barCnf}
     echo "_NGINX_FORWARD_SECRECY=${_NGINX_FORWARD_SECRECY}"   >> ${barCnf}
+    echo "_NGINX_HEADERS=${_NGINX_HEADERS}"                   >> ${barCnf}
     echo "_NGINX_LDAP=${_NGINX_LDAP}"                         >> ${barCnf}
     echo "_NGINX_NAXSI=${_NGINX_NAXSI}"                       >> ${barCnf}
     echo "_NGINX_SPDY=${_NGINX_SPDY}"                         >> ${barCnf}
@@ -1213,6 +1214,11 @@ barracuda_cnf() {
     _REDIS_LISTEN_MODE_TEST=$(grep _REDIS_LISTEN_MODE ${barCnf} 2>&1)
     if [[ ! "${_REDIS_LISTEN_MODE_TEST}" =~ "_REDIS_LISTEN_MODE" ]]; then
       echo "_REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE}" >> ${barCnf}
+    fi
+
+    _NGINX_HEADERS_TEST=$(grep _NGINX_HEADERS ${barCnf} 2>&1)
+    if [[ ! "${_NGINX_HEADERS_TEST}" =~ "_NGINX_HEADERS" ]]; then
+      echo "_NGINX_HEADERS=${_NGINX_HEADERS}" >> ${barCnf}
     fi
 
     _NGINX_LDAP_TEST=$(grep _NGINX_LDAP ${barCnf} 2>&1)
