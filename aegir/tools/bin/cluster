@@ -369,11 +369,8 @@ install_proxysql() {
     ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
     sleep 1
 
-    echo "Running default auto-configuration of ProxySQL..."
-    vserver ${idn} exec proxysql-admin --write-node=${_DB_NODE_IP[1]}:3600 --enable
-    sleep 60
 
-    if [ "${_CLUSTER_XCHECK}" = "YES" ]; then
+    ###if [ "${_CLUSTER_XCHECK}" = "YES" ]; then
       echo "Adding monitor user to ProxySQL..."
       pxyCmd="INSERT INTO mysql_users (username,password) VALUES ('monitor','${_MONITOR_PASSWORD}');"
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
@@ -419,11 +416,11 @@ install_proxysql() {
       pxyCmd="SAVE MYSQL USERS TO DISK;"
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
       sleep 1
+    ###fi
 
-      # echo "Running default auto-configuration of ProxySQL..."
-      # vserver ${idn} exec proxysql-admin --write-node=${_DB_NODE_IP[1]}:3600 --enable
-      # sleep 60
-    fi
+    echo "Running default auto-configuration of ProxySQL..."
+    vserver ${idn} exec proxysql-admin --write-node=${_DB_NODE_IP[1]}:3600 --enable
+    sleep 10
 
     echo "Checking runtime_scheduler entries in ProxySQL..."
     ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"SELECT * FROM runtime_scheduler\\G\""
