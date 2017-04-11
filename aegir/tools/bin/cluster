@@ -323,6 +323,15 @@ install_proxysql() {
       done
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"DROP USER 'monitor'@'${_WEB_NODE_IP}';\""
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"DROP USER 'proxysql_user'@'${_WEB_NODE_IP}';\""
+      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"DROP USER 'monitor'@'%';\""
+      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"DROP USER 'proxysql_user'@'%';\""
+
+      _S_N=${_WEB_NODE_IP}
+      _S_T=${_S_N#*.*}
+      _S_Q=${_S_N%%${_S_T}}
+
+      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"DROP USER 'monitor'@'${_S_Q}%';\""
+      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"DROP USER 'proxysql_user'@'${_S_Q}%';\""
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\""
     fi
 
