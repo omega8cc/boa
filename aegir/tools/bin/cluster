@@ -372,10 +372,13 @@ install_proxysql() {
     sed -i "s/PROXYSQL_HOSTNAME=.*/PROXYSQL_HOSTNAME=\"127.0.0.1\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
     wait
 
-    sed -i "s/WRITE_HOSTGROUP_ID=.*/WRITE_HOSTGROUP_ID=\"500\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
-    wait
-    sed -i "s/READ_HOSTGROUP_ID=.*/READ_HOSTGROUP_ID=\"501\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
-    wait
+    if [ "${_CLUSTER_XCHECK}" = "YES" ]; then
+      sed -i "s/WRITE_HOSTGROUP_ID=.*/WRITE_HOSTGROUP_ID=\"500\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+      wait
+      sed -i "s/READ_HOSTGROUP_ID=.*/READ_HOSTGROUP_ID=\"501\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+      wait
+    fi
+
     sed -i "s/MODE=.*/MODE=\"loadbal\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
     wait
     sleep 1
