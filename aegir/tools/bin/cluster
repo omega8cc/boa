@@ -388,7 +388,7 @@ install_proxysql() {
     sleep 5
 
     echo "Adding root user to ProxySQL..."
-    pxyCmd="INSERT INTO mysql_users (username,password) VALUES ('root','${_ROOT_SQL_PASWD}');"
+    pxyCmd="INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('root','${_ROOT_SQL_PASWD}','10');"
     ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
     sleep 1
 
