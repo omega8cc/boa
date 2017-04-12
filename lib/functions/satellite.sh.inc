@@ -2088,7 +2088,7 @@ provision_backend_dbpass_generate() {
     || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
     || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
     if [ "${_STATUS}" = "INIT" ]; then
-      [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+      [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL14 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
       mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
@@ -2100,7 +2100,7 @@ EOFMYSQL
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-        [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+        [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL15 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
         mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
 DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
@@ -2137,7 +2137,7 @@ provision_backend_dbpass_sync() {
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
     _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
       | cut -d: -f2 | awk '{ print $1}' 2>&1)"
-    [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+    [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL16 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
 DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
@@ -2213,7 +2213,7 @@ hostmaster_frontend_dbpass_sync() {
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
     _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
       | cut -d: -f2 | awk '{ print $1}' 2>&1)"
-    [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+    [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL17 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
 DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';

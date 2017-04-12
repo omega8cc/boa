@@ -328,7 +328,7 @@ migrate_sites() {
         if [ ! -z "${_DBN}" ] && [ ! -z "${_DBP}" ]; then
           if [ ! -d "/var/lib/mysql/${_DBN}" ]; then
             mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
-            [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+            [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL3 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
             mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 CREATE DATABASE ${_DBN} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 GRANT ALL PRIVILEGES ON ${_DBN}.* TO '${_DBN}'@'127.0.0.1' IDENTIFIED BY '${_DBP}';
@@ -340,7 +340,7 @@ EOFMYSQL
             echo "ALRT: site ${Dom} db ${_DBN} already exists!"
           fi
           if [ -e "${_USR}/src/${_DBN}.sql" ]; then
-            [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
+            [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL4 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
             mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_DBN} < ${_USR}/src/${_DBN}.sql
             echo "INFO: site ${Dom} db import on ${oct} complete"
             ###
@@ -560,13 +560,13 @@ migrate_prepare() {
     && [ ! -e "${_USR}/log/imported.pid" ]; then
     if [ ! -z "${dst}" ]; then
       if [ "${oct}" = "${dst}" ]; then
-        [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
+        [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
         mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
         run_drush8_hmr_cmd "vset --always-set site_frontpage 'hosting/sites'"
         touch ${_USR}/log/imported.pid
       fi
     else
-      [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
+      [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL6 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
       mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
       run_drush8_hmr_cmd "vset --always-set site_frontpage 'hosting/sites'"
       touch ${_USR}/log/imported.pid
