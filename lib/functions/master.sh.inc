@@ -99,7 +99,7 @@ provision_backend_dbpass_generate() {
     clean_pid_exit
   fi
 
-  _ESC="\`%\`.*"
+  _ESC="*.*"
   mysqladmin -P ${_THIS_DB_PORT} flush-privileges &> /dev/null
 
   if [ "${_STATUS}" = "INIT" ]; then
@@ -166,7 +166,7 @@ provision_backend_dbpass_sync() {
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
       _SQL_CONNECT=127.0.0.1
     fi
-    _ESC="\`%\`.*"
+    _ESC="*.*"
     _USE_DB_USER="${_ADBU}"
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
     _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
@@ -242,7 +242,7 @@ hostmaster_frontend_dbpass_sync() {
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
       _SQL_CONNECT=127.0.0.1
     fi
-    _ESC="\`%\`.*"
+    _ESC="*.*"
     _USE_DB_USER="${_THIS_HM_DBUR}"
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
     _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
@@ -659,7 +659,7 @@ install_upgrade_aegir_master() {
       fi
     fi
 
-    _ESC="\`%\`.*"
+    _ESC="*.*"
     mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
   GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'${_AEGIR_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
   GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'${_AEGIR_HOST_IP}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;

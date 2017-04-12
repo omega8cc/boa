@@ -80,7 +80,7 @@ do_syncpass() {
           sqlq \"UPDATE hosting_db_server \
           SET db_passwd='${_ESC_APASS}' \
           WHERE db_user='aegir_root'\"" &> /dev/null
-        _ESC="\`%\`.*"
+        _ESC="*.*"
         _USE_DB_USER="aegir_root"
         _USE_AEGIR_HOST="$(uname -n 2>&1)"
         _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
@@ -124,7 +124,7 @@ EOFMYSQL
           su -s /bin/bash - ${uname} -c "drush @hostmaster \
             sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_APASS}' \
             WHERE db_user='${uname}'\"" &> /dev/null
-          _ESC="\`%\`.*"
+          _ESC="*.*"
           _USE_DB_USER="${uname}"
           _USE_AEGIR_HOST="$(uname -n 2>&1)"
           _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \

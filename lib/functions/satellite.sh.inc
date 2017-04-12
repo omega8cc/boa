@@ -2052,7 +2052,7 @@ provision_backend_dbpass_generate() {
   chown ${_USER}:${_USRG} ${_ROOT}/.${_USER}.pass.txt
   chmod 0600 ${_ROOT}/.${_USER}.pass.txt
 
-  _ESC="\`%\`.*"
+  _ESC="*.*"
   mysqladmin -P ${_THIS_DB_PORT} flush-privileges &> /dev/null
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -2130,7 +2130,7 @@ provision_backend_dbpass_sync() {
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
       WHERE db_user='${_USER}'\"" &> /dev/null
-    _ESC="\`%\`.*"
+    _ESC="*.*"
     _USE_DB_USER="${_USER}"
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
     _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
@@ -2205,7 +2205,7 @@ hostmaster_frontend_dbpass_sync() {
   if [ -e "$_THIS_HM_SPTH" ] \
     && [ ! -z "$_THIS_HM_DBUR" ] \
     && [ ! -z "$_THIS_HM_DBPD" ]; then
-    _ESC="\`%\`.*"
+    _ESC="*.*"
     _USE_DB_USER="${_THIS_HM_DBUR}"
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
     _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \

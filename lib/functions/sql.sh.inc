@@ -873,7 +873,7 @@ finalize_sql_initial_setup() {
           wait
         fi
         if [ -e "/root/.remote.IP.list" ]; then
-          _ESC="\`%\`.*"
+          _ESC="*.*"
           for _IP in `cat /root/.remote.IP.list \
             | cut -d '#' -f1 \
             | sort \
@@ -931,7 +931,7 @@ finalize_sql_initial_setup() {
       PXSWD=$(cat /root/.my.pass.txt 2>&1)
       PASWD=$(echo -n $PXSWD | tr -d "\n" 2>&1)
       if [ -e "/root/.remote.IP.list" ]; then
-        _ESC="\`%\`.*"
+        _ESC="*.*"
         for _IP in `cat /root/.remote.IP.list \
           | cut -d '#' -f1 \
           | sort \
