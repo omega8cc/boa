@@ -489,7 +489,7 @@ install_proxysql() {
       echo "Adding custom runtime_scheduler entry in ProxySQL..."
       rplSchdrA="DELETE FROM scheduler where id=10;"
       # rplSchdrB="DELETE FROM scheduler where id=11;"
-      rplSchdrC="INSERT INTO scheduler (id,active,interval_ms,filename,arg1) values (10,1,2000,\"/var/lib/proxysql/galera_check.pl\",\"-u=admin -p=${_PROXYSQL_PASSWORD} -h=127.0.0.1 -H=10:W,11:R -P=6032 --execution_time=1 --retry_down=2 --retry_up=1 --main_segment=1 --debug=0 --active_failover --log=/var/log/proxysql/galera_check.log\");"
+      rplSchdrC="INSERT INTO scheduler (id,active,interval_ms,filename,arg1) values (10,1,2000,'/var/lib/proxysql/galera_check.pl','-u=admin -p=${_PROXYSQL_PASSWORD} -h=127.0.0.1 -H=10:W,11:R -P=6032 --execution_time=1 --retry_down=2 --retry_up=1 --main_segment=1 --debug=0 --active_failover --log=/var/log/proxysql/galera_check.log');"
       rplSchdrD="LOAD SCHEDULER TO RUNTIME;"
       rplSchdrE="SAVE SCHEDULER TO DISK;"
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${rplSchdrA}\""
@@ -498,7 +498,7 @@ install_proxysql() {
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${rplSchdrD}\""
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${rplSchdrE}\""
       echo "Checking modified runtime_scheduler in ProxySQL..."
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"SELECT * FROM runtime_scheduler\G\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"SELECT * FROM runtime_scheduler\\G\""
     fi
   fi
 
