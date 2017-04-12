@@ -1130,6 +1130,9 @@ check_root() {
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         _SQL_CONNECT=localhost
+      elif [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+        || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
+        _SQL_CONNECT=127.0.0.1
       else
         _SQL_CONNECT="${_THIS_DB_HOST}"
       fi

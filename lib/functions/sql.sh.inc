@@ -747,6 +747,8 @@ install_mariadb_server() {
 check_update_sql_credentials() {
   if [ ! -e "/root/.my.pass.txt" ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       msg "INFO: Generating random password for ${_DB_SERVER}"
     else
@@ -755,6 +757,8 @@ check_update_sql_credentials() {
     touch /root/.my.pass.txt
     chmod 0600 /root/.my.pass.txt &> /dev/null
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       _ESC_PASS=""
       _LEN_PASS=0
@@ -847,6 +851,8 @@ finalize_sql_initial_setup() {
       mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$PASWD') \
         WHERE User='root';" &> /dev/null
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
+        || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+        || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         _DO_NOTHING=YES
       else
@@ -894,7 +900,9 @@ finalize_sql_initial_setup() {
     chmod 0600 /root/.my.cnf
     echo "db=mysql" > /root/.mytop
     chmod 0600 /root/.mytop
-    if [ "${_THIS_DB_HOST}" = "localhost" ]; then
+    if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
       echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
     elif [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -943,6 +951,8 @@ finalize_sql_initial_setup() {
       touch ${pthLog}/fixed-cluster-ip-grants.log
     fi
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ ! -e "/root/.mysql.no.new.password.cnf" ]; then
         if [ -e "/root/.mysql.yes.new.password.cnf" ]; then

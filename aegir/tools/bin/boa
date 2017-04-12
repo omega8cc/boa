@@ -424,11 +424,15 @@ octopus_install() {
       fi
       sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                   ${vBs}/${octName}
       wait
-      if [ ! -z "${pxyc}" ]; then
+      if [ ! -z "${pxyc}" ] && [ ! -z "${pxyi}" ]; then
         sed -i "s/^_THIS_DB_PORT=.*/_THIS_DB_PORT=${pxyc}/g"   ${vBs}/${octName}
+        wait
+        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${pxyi}/g"   ${vBs}/${octName}
         wait
         if [ -e "${vBs}/${filIncO}" ]; then
           sed -i "s/^_THIS_DB_PORT=.*/_THIS_DB_PORT=${pxyc}/g" ${vBs}/${filIncO}
+          wait
+          sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${pxyi}/g" ${vBs}/${filIncO}
           wait
         fi
       fi
@@ -602,7 +606,7 @@ octopus_install() {
 
     bash ${vBs}/${octName}
 
-    if [ ! -z "${pxyc}" ]; then
+    if [ ! -z "${pxyc}" ] && [ ! -z "${pxyi}" ]; then
       if [ -e "/data/disk/${user}/log/octopus_log.txt" ]; then
         echo "ProxySQL" > /data/disk/${user}/log/use_proxysql.txt
         echo "ProxySQL" > /data/conf/clstr.cnf
@@ -1698,6 +1702,7 @@ case "$1" in
              csub="$6"
              ccor="$7"
              pxyc="6033"
+             pxyi="127.0.0.1"
              check_root
              check_root_keys_pwd
              check_virt

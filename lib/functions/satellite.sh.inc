@@ -2015,6 +2015,8 @@ provision_backend_dbpass_generate() {
   if [ "${_STRONG_PASSWORDS}" = "YES" ] \
     || [ "${_PWD_CHARS}" -gt "8" ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
     else
@@ -2030,6 +2032,8 @@ provision_backend_dbpass_generate() {
   fi
   if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       _ESC_PASS=$(pwgen -v -s -1 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
@@ -2052,9 +2056,15 @@ provision_backend_dbpass_generate() {
   mysqladmin -P ${_THIS_DB_PORT} flush-privileges &> /dev/null
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
+    || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+    || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
     || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
     _USE_AEGIR_HOST=$(uname -n 2>&1)
     _SQL_CONNECT=localhost
+    if [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
+      _SQL_CONNECT=127.0.0.1
+    fi
     _USE_DB_USER="${_USER}"
   else
     _USE_AEGIR_HOST=$(uname -n 2>&1)
@@ -2074,25 +2084,32 @@ provision_backend_dbpass_generate() {
     exit 1
   fi
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
+    || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+    || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
     || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
     if [ "${_STATUS}" = "INIT" ]; then
       mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 EOFMYSQL
     else
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
+        || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+        || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
 DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
 DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
 DROP USER '${_USE_DB_USER}'@'localhost';
+DROP USER '${_USE_DB_USER}'@'127.0.0.1';
 EOFMYSQL
         mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 EOFMYSQL
       fi
     fi
@@ -2122,11 +2139,13 @@ provision_backend_dbpass_sync() {
 DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
 DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
 DROP USER '${_USE_DB_USER}'@'localhost';
+DROP USER '${_USE_DB_USER}'@'127.0.0.1';
 EOFMYSQL
     mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
 EOFMYSQL
     sed -i \
       "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
@@ -2195,11 +2214,13 @@ hostmaster_frontend_dbpass_sync() {
 DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
 DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
 DROP USER '${_USE_DB_USER}'@'localhost';
+DROP USER '${_USE_DB_USER}'@'127.0.0.1';
 EOFMYSQL
     mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 EOFMYSQL
   fi
   mysqladmin -P ${_THIS_DB_PORT} flush-privileges &> /dev/null
@@ -4599,9 +4620,15 @@ satellite_child_b_aegir_build() {
     _AGRPASWD=$(echo -n $_AGRPXSWD | tr -d "\n" 2>&1)
 
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         _THIS_DB_HOST=$(uname -n 2>&1)
+      elif [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+        || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
+        _SQL_CONNECT=127.0.0.1
+        _THIS_DB_HOST=127.0.0.1
       else
         _THIS_DB_HOST=localhost
       fi
@@ -5176,7 +5203,9 @@ satellite_child_b_aegir_ui_enhance() {
         SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
       cp -af /opt/tmp/boa/aegir/helpers/make_client.php.txt ./
       mv -f make_client.php.txt make_client.php &> /dev/null
-      if [ "${_THIS_DB_HOST}" = "localhost" ]; then
+      if [ "${_THIS_DB_HOST}" = "localhost" ] \
+        || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+        || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
           SET status=-1 WHERE nid=7" &> /dev/null
       else
