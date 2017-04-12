@@ -4,13 +4,6 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 pthVhstd="/var/aegir/config/server_master/nginx/vhost.d"
 
-if [ -e "/root/.cluster.cnf" ]; then
-  if [ ! -e "/data/conf/.cluster.cnf" ]; then
-    echo "CLUSTER" > /data/conf/.cluster.cnf
-    chmod 644 /data/conf/.cluster.cnf
-  fi
-fi
-
 if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi

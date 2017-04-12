@@ -424,7 +424,7 @@ octopus_install() {
       fi
       sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                   ${vBs}/${octName}
       wait
-      if [ ! -z "${pxyc}" ] && [ -e "/root/.cluster.cnf" ]; then
+      if [ ! -z "${pxyc}" ]; then
         sed -i "s/^_THIS_DB_PORT=.*/_THIS_DB_PORT=${pxyc}/g"   ${vBs}/${octName}
         wait
         if [ -e "${vBs}/${filIncO}" ]; then
@@ -602,7 +602,7 @@ octopus_install() {
 
     bash ${vBs}/${octName}
 
-    if [ ! -z "${pxyc}" ] && [ -e "/root/.cluster.cnf" ]; then
+    if [ ! -z "${pxyc}" ]; then
       if [ -e "/data/disk/${user}/log/octopus_log.txt" ]; then
         echo "ProxySQL" > /data/disk/${user}/log/use_proxysql.txt
         echo "ProxySQL" > /data/conf/clstr.cnf
