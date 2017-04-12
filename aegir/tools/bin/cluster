@@ -318,6 +318,7 @@ install_proxysql() {
     if [ ${cmd} = "in-pxy" ] && [ -e "/vservers/${idn}/usr/bin/proxysql" ]; then
       mkdir -p /vservers/${idn}/var/backups/old-proxysql/
       cp -af /vservers/${idn}/var/lib/proxysql/* /vservers/${idn}/var/backups/old-proxysql/
+      vserver ${idn} exec service proxysql stop
       vserver ${idn} exec apt-get purge -y -qq proxysql &> /dev/null
       rm -f -r /vservers/${idn}/var/lib/proxysql
       rm -f -r /vservers/${idn}/var/log/proxysql
