@@ -197,6 +197,10 @@ check_config_cluster() {
     _CLUSTER_OS="jessie"
   fi
 
+  if [ -z "${_CLUSTER_XCHECK}" ]; then
+    _CLUSTER_XCHECK="YES"
+  fi
+
   if [ -z "${_CLUSTER_EMAIL}" ] \
      || [ -z "${_CLUSTER_PREFIX}" ] \
      || [ -z "${_CLUSTER_SUFFIX}" ] \
@@ -230,7 +234,7 @@ check_config_cluster() {
       _CLUSTER_SUFFIX=    ### [O] For DB nodes FQDN hostnames: example.com
       _CLUSTER_OS=jessie  ### [O] Debian version: jessie
        #
-      _CLUSTER_XCHECK=NO  ### [O] Experimental galera_check script if YES
+      _CLUSTER_XCHECK=YES ### [O] Standard galera_check script if NO
        #
 
 "
@@ -348,16 +352,31 @@ install_proxysql() {
     vserver ${idn} exec usermod -aG users proxysql
 
     sed -i "s/admin:admin/admin:${_E_PROXYSQL_PASSWORD}/g" /vservers/${idn}/etc/proxysql.cnf
+    wait
     sed -i "s/localhost/127.0.0.1/g" /vservers/${idn}/etc/proxysql.cnf
 
     sed -i "s/PROXYSQL_PASSWORD=.*/PROXYSQL_PASSWORD=\"${_E_PROXYSQL_PASSWORD}\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+    wait
     sed -i "s/MONITOR_PASSWORD=.*/MONITOR_PASSWORD=\"${_E_MONITOR_PASSWORD}\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+    wait
     sed -i "s/CLUSTER_APP_PASSWORD=.*/CLUSTER_APP_PASSWORD=\"${_E_CLUSTER_APP_PASSWORD}\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+    wait
 
     sed -i "s/CLUSTER_USERNAME=.*/CLUSTER_USERNAME=\"root\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+    wait
     sed -i "s/CLUSTER_PASSWORD=.*/CLUSTER_PASSWORD=\"${_E_ROOT_SQL_PASWD}\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+    wait
     sed -i "s/CLUSTER_HOSTNAME=.*/CLUSTER_HOSTNAME=\"${_DB_NODE_IP[1]}\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+    wait
     sed -i "s/PROXYSQL_HOSTNAME=.*/PROXYSQL_HOSTNAME=\"127.0.0.1\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+    wait
+
+    sed -i "s/WRITE_HOSTGROUP_ID=.*/WRITE_HOSTGROUP_ID=\"500\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+    wait
+    sed -i "s/READ_HOSTGROUP_ID=.*/READ_HOSTGROUP_ID=\"501\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+    wait
+    sed -i "s/MODE=.*/MODE=\"loadbal\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+    wait
     sleep 1
 
     echo "Starting ProxySQL..."
@@ -369,58 +388,77 @@ install_proxysql() {
     ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
     sleep 1
 
+    echo "Adding monitor user to ProxySQL..."
+    pxyCmd="INSERT INTO mysql_users (username,password) VALUES ('monitor','${_MONITOR_PASSWORD}');"
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    sleep 1
+    pxyCmd="UPDATE global_variables SET variable_value='monitor' WHERE variable_name='mysql-monitor_username';"
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    sleep 1
+    pxyCmd="UPDATE global_variables SET variable_value='${_MONITOR_PASSWORD}' WHERE variable_name='mysql-monitor_password';"
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    sleep 1
 
-    ###if [ "${_CLUSTER_XCHECK}" = "YES" ]; then
-      echo "Adding monitor user to ProxySQL..."
-      pxyCmd="INSERT INTO mysql_users (username,password) VALUES ('monitor','${_MONITOR_PASSWORD}');"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
-      sleep 1
-      pxyCmd="UPDATE global_variables SET variable_value='monitor' WHERE variable_name='mysql-monitor_username';"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
-      sleep 1
-      pxyCmd="UPDATE global_variables SET variable_value='${_MONITOR_PASSWORD}' WHERE variable_name='mysql-monitor_password';"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
-      sleep 1
+    echo "Load ProxySQL variables to runtime and save to disk..."
+    pxyCmd="LOAD MYSQL VARIABLES TO RUNTIME;"
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    sleep 1
+    pxyCmd="SAVE MYSQL VARIABLES TO DISK;"
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    sleep 1
 
-      echo "Load ProxySQL variables to runtime and save to disk..."
-      pxyCmd="LOAD MYSQL VARIABLES TO RUNTIME;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
-      sleep 1
-      pxyCmd="SAVE MYSQL VARIABLES TO DISK;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
-      sleep 1
+    echo "Adding grants for ProxySQL monitor user on Percona Cluster..."
+    for IP in "${_DB_NODE_IP[@]}"; do
+      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'monitor'@'${IP}' IDENTIFIED BY '${_MONITOR_PASSWORD}';\""
+    done
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'monitor'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_MONITOR_PASSWORD}';\""
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\""
 
-      echo "Adding grants for ProxySQL monitor user on Percona Cluster..."
-      for IP in "${_DB_NODE_IP[@]}"; do
-        ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'monitor'@'${IP}' IDENTIFIED BY '${_MONITOR_PASSWORD}';\""
-      done
-      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'monitor'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_MONITOR_PASSWORD}';\""
-      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\""
+    echo "Adding proxysql_user to ProxySQL..."
+    pxyCmd="INSERT INTO mysql_users (username,password) VALUES ('proxysql_user','${_CLUSTER_APP_PASSWORD}');"
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    sleep 1
 
-      # echo "Adding proxysql_user to ProxySQL..."
-      # pxyCmd="INSERT INTO mysql_users (username,password) VALUES ('proxysql_user','${_CLUSTER_APP_PASSWORD}');"
-      # ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
-      # sleep 1
-      #
-      # echo "Adding grants for ProxySQL proxysql_user on Percona Cluster..."
-      # for IP in "${_DB_NODE_IP[@]}"; do
-      #   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'proxysql_user'@'${IP}' IDENTIFIED BY '${_CLUSTER_APP_PASSWORD}';\""
-      # done
-      # ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'proxysql_user'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_CLUSTER_APP_PASSWORD}';\""
-      # ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\""
+    echo "Adding grants for ProxySQL proxysql_user on Percona Cluster..."
+    for IP in "${_DB_NODE_IP[@]}"; do
+      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'proxysql_user'@'${IP}' IDENTIFIED BY '${_CLUSTER_APP_PASSWORD}';\""
+    done
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'proxysql_user'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_CLUSTER_APP_PASSWORD}';\""
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\""
 
-      echo "Load ProxySQL users to runtime and save to disk..."
-      pxyCmd="LOAD MYSQL USERS TO RUNTIME;"
+    echo "Load ProxySQL users to runtime and save to disk..."
+    pxyCmd="LOAD MYSQL USERS TO RUNTIME;"
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    sleep 1
+    pxyCmd="SAVE MYSQL USERS TO DISK;"
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    sleep 1
+
+    # echo "Running default auto-configuration of ProxySQL..."
+    # ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --write-node=${_DB_NODE_IP[1]}:3600 --enable"
+    # sleep 10
+
+    echo "Adding mysql_servers in ProxySQL..."
+    pxyCmd="DELETE FROM mysql_replication_hostgroups where writer_hostgroup=500;"
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    pxyCmd="DELETE FROM mysql_servers where hostgroup_id in (500,501);"
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    cNt="100"
+    for IP in "${_DB_NODE_IP[@]}"; do
+      pxyCmd="INSERT INTO mysql_servers (hostname,hostgroup_id,port,weight) VALUES ('${IP}',500,3306,${cNt});"
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
-      sleep 1
-      pxyCmd="SAVE MYSQL USERS TO DISK;"
+      cNt=$(( 10000 * cNt ))
+    done
+    cNt="1000000000"
+    for IP in "${_DB_NODE_IP[@]}"; do
+      cNt=$(( cNt / 100 ))
+      pxyCmd="INSERT INTO mysql_servers (hostname,hostgroup_id,port,weight) VALUES ('${IP}',501,3306,${cNt});"
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
-      sleep 1
-    ###fi
-
-    echo "Running default auto-configuration of ProxySQL..."
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --write-node=${_DB_NODE_IP[1]}:3600 --enable"
-    sleep 10
+    done
+    pxyCmd="LOAD MYSQL SERVERS TO RUNTIME;"
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    pxyCmd="SAVE MYSQL SERVERS TO DISK;"
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
 
     echo "Checking runtime_scheduler entries in ProxySQL..."
     ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"SELECT * FROM runtime_scheduler\\G\""
@@ -449,12 +487,12 @@ install_proxysql() {
     if [ -e "/vservers/${idn}/var/lib/proxysql/galera_check.pl" ]; then
       echo "Adding custom runtime_scheduler entry in ProxySQL..."
       rplSchdrA="DELETE FROM scheduler where id=10;"
-      rplSchdrB="DELETE FROM scheduler where id=11;"
+      # rplSchdrB="DELETE FROM scheduler where id=11;"
       rplSchdrC="INSERT INTO scheduler (id,active,interval_ms,filename,arg1) values (10,1,2000,\"/var/lib/proxysql/galera_check.pl\",\"-u=admin -p=${_PROXYSQL_PASSWORD} -h=127.0.0.1 -H=10:W,11:R -P=6032 --execution_time=1 --retry_down=2 --retry_up=1 --main_segment=1 --debug=0 --active_failover --log=/var/log/proxysql/galera_check.log\");"
       rplSchdrD="LOAD SCHEDULER TO RUNTIME;"
       rplSchdrE="SAVE SCHEDULER TO DISK;"
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${rplSchdrA}\""
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${rplSchdrB}\""
+      # ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${rplSchdrB}\""
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${rplSchdrC}\""
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${rplSchdrD}\""
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${rplSchdrE}\""
