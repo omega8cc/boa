@@ -524,6 +524,11 @@ forced_mysql_root_password_update() {
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
   fi
+  if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+    _ROOT_SQL_PASWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
+    _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d "\n" 2>&1)
+    _ESC_PASS="${_ROOT_SQL_PASWD}"
+  fi
   if [ ! -z "${_ESC_PASS}" ]; then
     cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_VERSION}-${_NOW}
     cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_X_VERSION}-${_NOW}
@@ -955,7 +960,8 @@ finalize_sql_initial_setup() {
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ ! -e "/root/.mysql.no.new.password.cnf" ]; then
-        if [ -e "/root/.mysql.yes.new.password.cnf" ]; then
+        if [ -e "/root/.mysql.yes.new.password.cnf" ] \
+          || [ -e "/root/.my.cluster_root_pwd.txt" ]; then
           forced_mysql_root_password_update
         fi
       fi
