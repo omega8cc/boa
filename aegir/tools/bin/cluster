@@ -387,6 +387,11 @@ install_proxysql() {
     vserver ${idn} exec service proxysql start
     sleep 5
 
+    echo "Running default auto-configuration of ProxySQL..."
+    # ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --write-node=${_DB_NODE_IP[1]}:3600 --enable"
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --enable"
+    sleep 10
+
     echo "Adding root user to mysql_users in ProxySQL..."
     pxyCmd="INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('root','${_ROOT_SQL_PASWD}','10');"
     ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
@@ -398,9 +403,9 @@ install_proxysql() {
     ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
 
     echo "Adding root user to mysql_query_rules in ProxySQL..."
-    pxyCmd="INSERT INTO mysql_query_rules (username,destination_hostgroup,active) values ('root',10,1);"
+    pxyCmd="INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('root',10,1);"
     ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
-    pxyCmd="INSERT INTO mysql_query_rules (username,destination_hostgroup,active) values ('root',11,1);"
+    pxyCmd="INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('root',11,1);"
     ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
     pxyCmd="LOAD MYSQL QUERY RULES TO RUNTIME;"
     ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
@@ -457,11 +462,6 @@ install_proxysql() {
       sleep 1
     fi
 
-    echo "Running default auto-configuration of ProxySQL..."
-    # ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --write-node=${_DB_NODE_IP[1]}:3600 --enable"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --enable"
-    sleep 10
-
     if [ "${_CLUSTER_XCHECK}" = "YES" ]; then
       echo "Adding mysql_servers in ProxySQL..."
       pxyCmd="DELETE FROM mysql_replication_hostgroups where writer_hostgroup=500;"
@@ -514,7 +514,7 @@ install_proxysql() {
       echo "Adding custom runtime_scheduler entry in ProxySQL..."
       rplSchdrA="DELETE FROM scheduler where id=10;"
       # rplSchdrB="DELETE FROM scheduler where id=11;"
-      rplSchdrC="INSERT INTO scheduler (id,active,interval_ms,filename,arg1) values (10,1,2000,'/var/lib/proxysql/galera_check.pl','-u=admin -p=${_PROXYSQL_PASSWORD} -h=127.0.0.1 -H=10:W,11:R -P=6032 --execution_time=1 --retry_down=2 --retry_up=1 --main_segment=1 --debug=0 --active_failover --log=/var/log/proxysql/galera_check.log');"
+      rplSchdrC="INSERT INTO scheduler (id,active,interval_ms,filename,arg1) VALUES (10,1,2000,'/var/lib/proxysql/galera_check.pl','-u=admin -p=${_PROXYSQL_PASSWORD} -h=127.0.0.1 -H=10:W,11:R -P=6032 --execution_time=1 --retry_down=2 --retry_up=1 --main_segment=1 --debug=0 --active_failover --log=/var/log/proxysql/galera_check.log');"
       rplSchdrD="LOAD SCHEDULER TO RUNTIME;"
       rplSchdrE="SAVE SCHEDULER TO DISK;"
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${rplSchdrA}\""
