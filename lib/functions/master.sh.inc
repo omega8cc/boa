@@ -424,7 +424,7 @@ upgrade_aegir_master() {
     echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${vBs}/${filIncB}
     echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${vBs}/${filIncB}
 
-    mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
+    [ ! -e "/root/.my.cluster_root_pwd.txt" ] && mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
     _RST=$(syncpass fix aegir 2>&1)
     provision_backend_dbpass_sync
     hostmaster_frontend_dbpass_sync

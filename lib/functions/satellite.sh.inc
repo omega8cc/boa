@@ -2232,7 +2232,7 @@ EOFMYSQL
 
 satellite_run_pre_install() {
   if [ "${_STATUS}" = "INIT" ]; then
-    mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
+    [ ! -e "/root/.my.cluster_root_pwd.txt" ] && mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
     provision_backend_dbpass_generate
     echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
@@ -2253,7 +2253,7 @@ satellite_run_pre_install() {
         chmod 0440 /etc/sudoers.d/${SCRIPT}
       fi
     done
-    mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
+    [ ! -e "/root/.my.cluster_root_pwd.txt" ] && mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
     _RST=$(syncpass fix ${_USER} 2>&1)
     provision_backend_dbpass_sync
   fi
