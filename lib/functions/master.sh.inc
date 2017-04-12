@@ -104,6 +104,22 @@ provision_backend_dbpass_generate() {
 
   if [ "${_STATUS}" = "INIT" ]; then
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL7 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+    if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
+      _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+DELETE FROM mysql_users WHERE username=${_ADBU};
+DELETE FROM mysql_query_rules WHERE username=${_ADBU};
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_APASS}','10');
+LOAD MYSQL USERS TO RUNTIME;
+SAVE MYSQL USERS FROM RUNTIME;
+SAVE MYSQL USERS TO DISK;
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_ADBU}',10,1);
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_ADBU}',11,1);
+LOAD MYSQL QUERY RULES TO RUNTIME;
+SAVE MYSQL QUERY RULES TO DISK;
+PROXYSQL
+    fi
     mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'${_AEGIR_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_RESOLVEIP' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
@@ -116,6 +132,22 @@ EOFMYSQL
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL8 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+      if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+        _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
+        _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+        mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+DELETE FROM mysql_users WHERE username=${_ADBU};
+DELETE FROM mysql_query_rules WHERE username=${_ADBU};
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_APASS}','10');
+LOAD MYSQL USERS TO RUNTIME;
+SAVE MYSQL USERS FROM RUNTIME;
+SAVE MYSQL USERS TO DISK;
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_ADBU}',10,1);
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_ADBU}',11,1);
+LOAD MYSQL QUERY RULES TO RUNTIME;
+SAVE MYSQL QUERY RULES TO DISK;
+PROXYSQL
+      fi
       mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 DROP USER '$_ADBU'@'${_AEGIR_HOST}';
 DROP USER '$_ADBU'@'$_RESOLVEIP';
@@ -140,6 +172,22 @@ EOFMYSQL
     _LOCAL_HOST=$(uname -n 2>&1)
     _LOCAL_IP=$(echo $(getent ahostsv4 $_LOCAL_HOST) | cut -d: -f2 | awk '{ print $1}' 2>&1)
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL9 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+    if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
+      _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+DELETE FROM mysql_users WHERE username=${_ADBU};
+DELETE FROM mysql_query_rules WHERE username=${_ADBU};
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_APASS}','10');
+LOAD MYSQL USERS TO RUNTIME;
+SAVE MYSQL USERS FROM RUNTIME;
+SAVE MYSQL USERS TO DISK;
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_ADBU}',10,1);
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_ADBU}',11,1);
+LOAD MYSQL QUERY RULES TO RUNTIME;
+SAVE MYSQL QUERY RULES TO DISK;
+PROXYSQL
+    fi
     mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'${_THIS_DB_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_LOCAL_HOST' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
@@ -175,6 +223,22 @@ provision_backend_dbpass_sync() {
     _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
       | cut -d: -f2 | awk '{ print $1}' 2>&1)"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL10 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+    if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
+      _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+DELETE FROM mysql_users WHERE username=${_USE_DB_USER};
+DELETE FROM mysql_query_rules WHERE username=${_USE_DB_USER};
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_APASS}','10');
+LOAD MYSQL USERS TO RUNTIME;
+SAVE MYSQL USERS FROM RUNTIME;
+SAVE MYSQL USERS TO DISK;
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',10,1);
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',11,1);
+LOAD MYSQL QUERY RULES TO RUNTIME;
+SAVE MYSQL QUERY RULES TO DISK;
+PROXYSQL
+    fi
     mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
 DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
@@ -252,6 +316,22 @@ hostmaster_frontend_dbpass_sync() {
     _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
       | cut -d: -f2 | awk '{ print $1}' 2>&1)"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL11 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+    if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
+      _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+DELETE FROM mysql_users WHERE username=${_USE_DB_USER};
+DELETE FROM mysql_query_rules WHERE username=${_USE_DB_USER};
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_THIS_HM_DBPD}','10');
+LOAD MYSQL USERS TO RUNTIME;
+SAVE MYSQL USERS FROM RUNTIME;
+SAVE MYSQL USERS TO DISK;
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',10,1);
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',11,1);
+LOAD MYSQL QUERY RULES TO RUNTIME;
+SAVE MYSQL QUERY RULES TO DISK;
+PROXYSQL
+    fi
     mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
 DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
@@ -666,6 +746,22 @@ install_upgrade_aegir_master() {
 
     _ESC="*.*"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL12 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+    if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
+      _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+DELETE FROM mysql_users WHERE username=${_AEGIR_DB_USER};
+DELETE FROM mysql_query_rules WHERE username=${_AEGIR_DB_USER};
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_AEGIR_DB_USER}','${_ESC_APASS}','10');
+LOAD MYSQL USERS TO RUNTIME;
+SAVE MYSQL USERS FROM RUNTIME;
+SAVE MYSQL USERS TO DISK;
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_AEGIR_DB_USER}',10,1);
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_AEGIR_DB_USER}',11,1);
+LOAD MYSQL QUERY RULES TO RUNTIME;
+SAVE MYSQL QUERY RULES TO DISK;
+PROXYSQL
+    fi
     mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
   GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'${_AEGIR_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
   GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'${_AEGIR_HOST_IP}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
@@ -682,6 +778,22 @@ EOFMYSQL
       _LOCAL_HOST=$(uname -n 2>&1)
       _LOCAL_IP=$(echo $(getent ahostsv4 $_LOCAL_HOST) | cut -d: -f2 | awk '{ print $1}' 2>&1)
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL13 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+      if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+        _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
+        _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+        mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+DELETE FROM mysql_users WHERE username=${_AEGIR_DB_USER};
+DELETE FROM mysql_query_rules WHERE username=${_AEGIR_DB_USER};
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_AEGIR_DB_USER}','${_ESC_APASS}','10');
+LOAD MYSQL USERS TO RUNTIME;
+SAVE MYSQL USERS FROM RUNTIME;
+SAVE MYSQL USERS TO DISK;
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_AEGIR_DB_USER}',10,1);
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_AEGIR_DB_USER}',11,1);
+LOAD MYSQL QUERY RULES TO RUNTIME;
+SAVE MYSQL QUERY RULES TO DISK;
+PROXYSQL
+      fi
       mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
   GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'${_THIS_DB_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
   GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'$_LOCAL_HOST' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;

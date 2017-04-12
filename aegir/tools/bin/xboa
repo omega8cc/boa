@@ -329,6 +329,22 @@ migrate_sites() {
           if [ ! -d "/var/lib/mysql/${_DBN}" ]; then
             mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL3 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+            if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+              _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
+              _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+              mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+DELETE FROM mysql_users WHERE username=${_DBN};
+DELETE FROM mysql_query_rules WHERE username=${_DBN};
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_DBN}','${_DBP}','10');
+LOAD MYSQL USERS TO RUNTIME;
+SAVE MYSQL USERS FROM RUNTIME;
+SAVE MYSQL USERS TO DISK;
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_DBN}',10,1);
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_DBN}',11,1);
+LOAD MYSQL QUERY RULES TO RUNTIME;
+SAVE MYSQL QUERY RULES TO DISK;
+PROXYSQL
+            fi
             mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 CREATE DATABASE ${_DBN} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 GRANT ALL PRIVILEGES ON ${_DBN}.* TO '${_DBN}'@'127.0.0.1' IDENTIFIED BY '${_DBP}';
