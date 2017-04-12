@@ -2053,7 +2053,7 @@ provision_backend_dbpass_generate() {
   chmod 0600 ${_ROOT}/.${_USER}.pass.txt
 
   _ESC="*.*"
-  mysqladmin -P ${_THIS_DB_PORT} flush-privileges &> /dev/null
+  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
     || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -2088,7 +2088,8 @@ provision_backend_dbpass_generate() {
     || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
     || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
     if [ "${_STATUS}" = "INIT" ]; then
-      mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
+      [ -e "/root/.my.cluster_root_pwd.txt" ] && h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+      mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
@@ -2099,13 +2100,14 @@ EOFMYSQL
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-        mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
+        [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+        mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
 DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
 DROP USER '${_USE_DB_USER}'@'localhost';
 DROP USER '${_USE_DB_USER}'@'127.0.0.1';
 EOFMYSQL
-        mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
+        mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
@@ -2114,7 +2116,7 @@ EOFMYSQL
       fi
     fi
   fi
-  mysqladmin -P ${_THIS_DB_PORT} flush-privileges &> /dev/null
+  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
 }
 
 #
@@ -2135,13 +2137,14 @@ provision_backend_dbpass_sync() {
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
     _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
       | cut -d: -f2 | awk '{ print $1}' 2>&1)"
-    mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
+    [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+    mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
 DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
 DROP USER '${_USE_DB_USER}'@'localhost';
 DROP USER '${_USE_DB_USER}'@'127.0.0.1';
 EOFMYSQL
-    mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
+    mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
@@ -2152,7 +2155,7 @@ EOFMYSQL
       ${_ROOT}/.drush/server_*.alias.drushrc.php &> /dev/null
     wait
   fi
-  mysqladmin -P ${_THIS_DB_PORT} flush-privileges &> /dev/null
+  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush" &> /dev/null
   rm -rf ${_ROOT}/.tmp/cache
   if [ -e "${_ROOT}/.drush/server_localhost.alias.drushrc.php" ]; then
@@ -2210,25 +2213,26 @@ hostmaster_frontend_dbpass_sync() {
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
     _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
       | cut -d: -f2 | awk '{ print $1}' 2>&1)"
-    mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
+    [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+    mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
 DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
 DROP USER '${_USE_DB_USER}'@'localhost';
 DROP USER '${_USE_DB_USER}'@'127.0.0.1';
 EOFMYSQL
-    mysql -h${_SQL_CONNECT} -P ${_THIS_DB_PORT} -uroot mysql<<EOFMYSQL
+    mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 EOFMYSQL
   fi
-  mysqladmin -P ${_THIS_DB_PORT} flush-privileges &> /dev/null
+  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
 }
 
 satellite_run_pre_install() {
   if [ "${_STATUS}" = "INIT" ]; then
-    mysqladmin -P ${_THIS_DB_PORT} flush-hosts &> /dev/null
+    mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
     provision_backend_dbpass_generate
     echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
@@ -2249,7 +2253,7 @@ satellite_run_pre_install() {
         chmod 0440 /etc/sudoers.d/${SCRIPT}
       fi
     done
-    mysqladmin -P ${_THIS_DB_PORT} flush-hosts &> /dev/null
+    mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
     _RST=$(syncpass fix ${_USER} 2>&1)
     provision_backend_dbpass_sync
   fi

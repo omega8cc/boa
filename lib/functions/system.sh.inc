@@ -5012,7 +5012,7 @@ update_initd() {
           msg "INFO: ${_DB_SERVER} restart after upgrade forced"
         fi
       fi
-      myUptime=$(mysqladmin -P ${_THIS_DB_PORT} version | grep -i uptime 2>&1)
+      myUptime=$(mysqladmin -P${_THIS_DB_PORT} --protocol=tcp version | grep -i uptime 2>&1)
       myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
       msg "INFO: ${_DB_SERVER} ${myUptime}"
       if [ "${myRstrd}" = "YES" ]; then
