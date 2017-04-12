@@ -653,6 +653,17 @@ install_vps() {
   else
     echo "Running post-install Barracuda upgrade..."
     sleep 8
+    if [ -z "${_ROOT_SQL_PASWD}" ]; then
+      vidn="${_CLUSTER_PREFIX}db0"
+      if [ -e "/vservers/${vidn}/root/.my.cluster_root_pwd.txt" ]; then
+        _ROOT_SQL_PASWD=$(cat /vservers/${vidn}/root/.my.cluster_root_pwd.txt 2>&1)
+        _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d "\n" 2>&1)
+        _E_ROOT_SQL_PASWD="${_ROOT_SQL_PASWD//\//\\\/}"
+      fi
+    fi
+    if [ ! -z "${_ROOT_SQL_PASWD}" ]; then
+      echo "${_ROOT_SQL_PASWD}" > /vservers/${idn}/root/.my.cluster_root_pwd.txt
+    fi
     vserver ${idn} exec which barracuda
     vserver ${idn} exec /opt/local/bin/barracuda up-${ver}
     echo
