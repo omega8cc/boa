@@ -333,8 +333,8 @@ migrate_sites() {
               _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
               _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
               mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
-DELETE FROM mysql_users WHERE username=${_DBN};
-DELETE FROM mysql_query_rules WHERE username=${_DBN};
+DELETE FROM mysql_users WHERE username='${_DBN}';
+DELETE FROM mysql_query_rules WHERE username='${_DBN}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_DBN}','${_DBP}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;

@@ -2093,8 +2093,8 @@ provision_backend_dbpass_generate() {
         _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
         _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
         mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
-DELETE FROM mysql_users WHERE username=${_USE_DB_USER};
-DELETE FROM mysql_query_rules WHERE username=${_USE_DB_USER};
+DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
+DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
@@ -2121,8 +2121,8 @@ EOFMYSQL
           _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
           _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
           mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
-DELETE FROM mysql_users WHERE username=${_USE_DB_USER};
-DELETE FROM mysql_query_rules WHERE username=${_USE_DB_USER};
+DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
+DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
@@ -2174,8 +2174,8 @@ provision_backend_dbpass_sync() {
       _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
       _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
       mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
-DELETE FROM mysql_users WHERE username=${_USE_DB_USER};
-DELETE FROM mysql_query_rules WHERE username=${_USE_DB_USER};
+DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
+DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ENC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
@@ -2266,8 +2266,8 @@ hostmaster_frontend_dbpass_sync() {
       _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
       _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
       mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
-DELETE FROM mysql_users WHERE username=${_USE_DB_USER};
-DELETE FROM mysql_query_rules WHERE username=${_USE_DB_USER};
+DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
+DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
 INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_THIS_HM_DBPD}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
