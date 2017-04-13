@@ -2112,6 +2112,12 @@ PROXYSQL
         _ROOT_SQL_PASWD=$(cat /root/.my.pass.tx 2>&1)
         _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d "\n" 2>&1)
       fi
+      if [ -e "/root/.my.cluster_write_node.txt" ]; then
+        _CL_WR_NODE=$(cat /root/.my.cluster_write_node.txt 2>&1)
+        _CL_WR_NODE=$(echo -n ${_CL_WR_NODE} | tr -d "\n" 2>&1)
+        _SQL_CONNECT="${_CL_WR_NODE}"
+        _THIS_DB_PORT="3306"
+      fi
       mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot -p${_ROOT_SQL_PASWD} mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
