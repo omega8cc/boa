@@ -2125,7 +2125,9 @@ PROXYSQL
       # fi
       ### -p${_ROOT_SQL_PASWD}
       [ -e "/root/.my.cluster_root_pwd.txt" ] && mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL ON *.* TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
+FLUSH PRIVILEGES;
 EOFMYSQL
       # [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL14CR -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
       mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
@@ -2133,6 +2135,7 @@ GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTI
 GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
 EOFMYSQL
     else
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
