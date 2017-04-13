@@ -1702,7 +1702,7 @@ case "$1" in
              csub="$6"
              ccor="$7"
              pxyc="6033"
-             pxyi="127.0.0.1"
+             pxyi="FQDN"
              check_root
              check_root_keys_pwd
              check_virt
