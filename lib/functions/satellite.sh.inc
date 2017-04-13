@@ -2053,7 +2053,7 @@ provision_backend_dbpass_generate() {
   chmod 0600 ${_ROOT}/.${_USER}.pass.txt
 
   _ESC="*.*"
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
+  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
     || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -2169,7 +2169,7 @@ EOFMYSQL
       fi
     fi
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
+  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
 }
 
 #
@@ -2227,7 +2227,7 @@ EOFMYSQL
       ${_ROOT}/.drush/server_*.alias.drushrc.php &> /dev/null
     wait
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
+  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush" &> /dev/null
   rm -rf ${_ROOT}/.tmp/cache
   if [ -e "${_ROOT}/.drush/server_localhost.alias.drushrc.php" ]; then
@@ -2318,12 +2318,12 @@ GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '
 GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 EOFMYSQL
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
+  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
 }
 
 satellite_run_pre_install() {
   if [ "${_STATUS}" = "INIT" ]; then
-    [ ! -e "/root/.my.cluster_root_pwd.txt" ] && mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
+    mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
     provision_backend_dbpass_generate
     echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
@@ -2344,7 +2344,7 @@ satellite_run_pre_install() {
         chmod 0440 /etc/sudoers.d/${SCRIPT}
       fi
     done
-    [ ! -e "/root/.my.cluster_root_pwd.txt" ] && mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
+    mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
     _RST=$(syncpass fix ${_USER} 2>&1)
     provision_backend_dbpass_sync
   fi

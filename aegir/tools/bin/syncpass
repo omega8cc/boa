@@ -75,7 +75,7 @@ do_syncpass() {
       check_generate
       chown ${uname}:${uname} ${_L_SYS} &> /dev/null
       if [ ! -z "${_ESC_APASS}" ] && [ ! -z "${_ENC_APASS}" ]; then
-        [ ! -e "/root/.my.cluster_root_pwd.txt" ] && mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
+        mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
         su -s /bin/bash - ${uname} -c "drush @hostmaster \
           sqlq \"UPDATE hosting_db_server \
           SET db_passwd='${_ESC_APASS}' \
@@ -121,7 +121,7 @@ EOFMYSQL
           "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
           ${prH}/server_*.alias.drushrc.php &> /dev/null
         wait
-        mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
+        mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
       else
         echo "ERROR: Auto-generated password for aegir_root system user"
         echo "ERROR: did not work as expected, please try again"
@@ -140,7 +140,7 @@ EOFMYSQL
         check_generate
         chown ${uname}:users ${_L_SYS} &> /dev/null
         if [ ! -z "${_ESC_APASS}" ] && [ ! -z "${_ENC_APASS}" ]; then
-          [ ! -e "/root/.my.cluster_root_pwd.txt" ] && mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
+          mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
           su -s /bin/bash - ${uname} -c "drush @hostmaster \
             sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_APASS}' \
             WHERE db_user='${uname}'\"" &> /dev/null
@@ -188,7 +188,7 @@ EOFMYSQL
             "s/mysql:\/\/${uname}:.*/mysql:\/\/${uname}:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
             /data/disk/${uname}/.drush/server_*.alias.drushrc.php &> /dev/null
           wait
-          mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
+          mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
         else
           echo "ERROR: Auto-generated password for ${uname} system user"
           echo "ERROR: did not work as expected, please try again"

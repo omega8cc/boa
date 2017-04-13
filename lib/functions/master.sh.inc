@@ -100,7 +100,7 @@ provision_backend_dbpass_generate() {
   fi
 
   _ESC="*.*"
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
+  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
 
   if [ "${_STATUS}" = "INIT" ]; then
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL7 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
@@ -205,7 +205,7 @@ GRANT ALL PRIVILEGES ON ${_ESC} TO '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_
 GRANT ALL PRIVILEGES ON ${_ESC} TO '${_ADBU}'@'127.0.0.1' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
 EOFMYSQL
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
+  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
 }
 
 #
@@ -268,7 +268,7 @@ EOFMYSQL
       /var/aegir/.drush/server_*.alias.drushrc.php &> /dev/null
     wait
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
+  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
   su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
   rm -rf /var/aegir/.tmp/cache
   if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ]; then
@@ -361,7 +361,7 @@ GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '
 GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 EOFMYSQL
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
+  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
 }
 
 #
@@ -520,7 +520,7 @@ upgrade_aegir_master() {
     echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${vBs}/${filIncB}
     echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${vBs}/${filIncB}
 
-    [ ! -e "/root/.my.cluster_root_pwd.txt" ] && mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
+    mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
     _RST=$(syncpass fix aegir 2>&1)
     provision_backend_dbpass_sync
     hostmaster_frontend_dbpass_sync
