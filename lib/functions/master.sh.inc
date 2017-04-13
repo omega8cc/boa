@@ -26,7 +26,11 @@ provision_backend_dbpass_generate() {
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      _ESC_APASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+      if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+        _ESC_APASS="$(openssl rand -base64 32 2>&1)"
+      else
+        _ESC_APASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+      fi
     else
       if [ -e "/root/.my.pass.txt" ]; then
         _ESC_APASS=$(cat /root/.my.pass.txt 2>&1)
@@ -731,7 +735,11 @@ install_upgrade_aegir_master() {
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-        _ESC_APASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+        if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+          _ESC_APASS="$(openssl rand -base64 32 2>&1)"
+        else
+          _ESC_APASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+        fi
       else
         if [ -e "/root/.my.pass.txt" ]; then
           _ESC_APASS=$(cat /root/.my.pass.txt 2>&1)
