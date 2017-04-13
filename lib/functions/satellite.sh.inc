@@ -2105,24 +2105,28 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
       fi
-      if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-        _ROOT_SQL_PASWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
-        _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d "\n" 2>&1)
-      elif [ -e "/root/.my.pass.txt" ]; then
-        _ROOT_SQL_PASWD=$(cat /root/.my.pass.tx 2>&1)
-        _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d "\n" 2>&1)
-      fi
-      if [ -e "/root/.my.cluster_write_node.txt" ]; then
-        _CL_WR_NODE=$(cat /root/.my.cluster_write_node.txt 2>&1)
-        _CL_WR_NODE=$(echo -n ${_CL_WR_NODE} | tr -d "\n" 2>&1)
-        _SQL_CONNECT="${_CL_WR_NODE}"
-        _THIS_DB_PORT="3306"
-      fi
+      # if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+      #   _ROOT_SQL_PASWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
+      #   _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d "\n" 2>&1)
+      # elif [ -e "/root/.my.pass.txt" ]; then
+      #   _ROOT_SQL_PASWD=$(cat /root/.my.pass.tx 2>&1)
+      #   _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d "\n" 2>&1)
+      # fi
+      # if [ -e "/root/.my.cluster_write_node.txt" ]; then
+      #   _CL_WR_NODE=$(cat /root/.my.cluster_write_node.txt 2>&1)
+      #   _CL_WR_NODE=$(echo -n ${_CL_WR_NODE} | tr -d "\n" 2>&1)
+      #   _SQL_CONNECT="${_CL_WR_NODE}"
+      #   _THIS_DB_PORT="3306"
+      # fi
+      [ -e "/root/.my.cluster_root_pwd.txt" ] && mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+GRANT ALL ON *.* TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
+EOFMYSQL
+      # [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL14CR -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
       mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot -p${_ROOT_SQL_PASWD} mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 EOFMYSQL
     else
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -2152,11 +2156,14 @@ DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
 DROP USER '${_USE_DB_USER}'@'localhost';
 DROP USER '${_USE_DB_USER}'@'127.0.0.1';
 EOFMYSQL
+        [ -e "/root/.my.cluster_root_pwd.txt" ] && mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+GRANT ALL ON *.* TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
+EOFMYSQL
         mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 EOFMYSQL
       fi
     fi
@@ -2205,11 +2212,14 @@ DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
 DROP USER '${_USE_DB_USER}'@'localhost';
 DROP USER '${_USE_DB_USER}'@'127.0.0.1';
 EOFMYSQL
+    [ -e "/root/.my.cluster_root_pwd.txt" ] && mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+GRANT ALL ON *.* TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
+EOFMYSQL
     mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_ENC_PASS}' WITH GRANT OPTION;
 EOFMYSQL
     sed -i \
       "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
@@ -2297,11 +2307,14 @@ DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
 DROP USER '${_USE_DB_USER}'@'localhost';
 DROP USER '${_USE_DB_USER}'@'127.0.0.1';
 EOFMYSQL
+    [ -e "/root/.my.cluster_root_pwd.txt" ] && mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+GRANT ALL ON *.* TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
+EOFMYSQL
     mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 EOFMYSQL
   fi
   mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null

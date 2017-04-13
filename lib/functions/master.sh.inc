@@ -92,7 +92,7 @@ provision_backend_dbpass_generate() {
     | cut -d: -f2 \
     | awk '{ print $1}' 2>&1)
 
-  if [ -z "$_RESOLVEIP" ]; then
+  if [ -z "${_RESOLVEIP}" ]; then
     msg "FATAL ERROR:: DNS looks broken for server ${_AEGIR_HOST}"
     msg "FATAL ERROR:: Aborting Barracuda installer NOW!"
     touch /opt/tmp/status-Barracuda-FAIL
@@ -120,11 +120,14 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
+    [ -e "/root/.my.cluster_root_pwd.txt" ] && mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+GRANT ALL ON *.* TO '${_ADBU}'@'${_RESOLVEIP}';
+EOFMYSQL
     mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'${_AEGIR_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_RESOLVEIP' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'127.0.0.1' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_ADBU}'@'${_AEGIR_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_ADBU}'@'${_RESOLVEIP}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_ADBU}'@'127.0.0.1' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
 EOFMYSQL
   else
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -149,16 +152,19 @@ SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
       fi
       mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-DROP USER '$_ADBU'@'${_AEGIR_HOST}';
-DROP USER '$_ADBU'@'$_RESOLVEIP';
-DROP USER '$_ADBU'@'localhost';
-DROP USER '$_ADBU'@'127.0.0.1';
+DROP USER '${_ADBU}'@'${_AEGIR_HOST}';
+DROP USER '${_ADBU}'@'${_RESOLVEIP}';
+DROP USER '${_ADBU}'@'localhost';
+DROP USER '${_ADBU}'@'127.0.0.1';
+EOFMYSQL
+      [ -e "/root/.my.cluster_root_pwd.txt" ] && mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+GRANT ALL ON *.* TO '${_ADBU}'@'${_RESOLVEIP}';
 EOFMYSQL
       mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'${_AEGIR_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_RESOLVEIP' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'127.0.0.1' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_ADBU}'@'${_AEGIR_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_ADBU}'@'${_RESOLVEIP}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_ADBU}'@'127.0.0.1' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
 EOFMYSQL
     fi
   fi
@@ -170,7 +176,7 @@ EOFMYSQL
     _EXTRA_GRANTS=NO
   else
     _LOCAL_HOST=$(uname -n 2>&1)
-    _LOCAL_IP=$(echo $(getent ahostsv4 $_LOCAL_HOST) | cut -d: -f2 | awk '{ print $1}' 2>&1)
+    _LOCAL_IP=$(echo $(getent ahostsv4 ${_LOCAL_HOST}) | cut -d: -f2 | awk '{ print $1}' 2>&1)
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL9 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
       _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -188,11 +194,15 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
+    [ -e "/root/.my.cluster_root_pwd.txt" ] && mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+GRANT ALL ON *.* TO '${_ADBU}'@'${_LOCAL_IP}';
+EOFMYSQL
     mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'${_THIS_DB_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_LOCAL_HOST' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_LOCAL_IP' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'127.0.0.1' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_ADBU}'@'${_THIS_DB_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_ADBU}'@'${_LOCAL_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_ADBU}'@'${_LOCAL_IP}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_ADBU}'@'127.0.0.1' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
 EOFMYSQL
   fi
   mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
@@ -205,13 +215,13 @@ provision_backend_dbpass_sync() {
     msg "INFO: Syncing provision backend db_passwd..."
   fi
   _ADBU=aegir_root
-  _L_SYS="/var/aegir/backups/system/.$_ADBU.pass.txt"
+  _L_SYS="/var/aegir/backups/system/.${_ADBU}.pass.txt"
   mv -f ${_L_SYS} ${_L_SYS}-pre-${_X_VERSION}-${_NOW} &> /dev/null
   provision_backend_dbpass_generate
   if [ ! -z "${_ESC_APASS}" ] && [ ! -z "${_ENC_APASS}" ]; then
     su -s /bin/bash - aegir -c "drush @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_APASS}' \
-      WHERE db_user='$_ADBU'\"" &> /dev/null
+      WHERE db_user='${_ADBU}'\"" &> /dev/null
     _SQL_CONNECT=localhost
     if [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
@@ -245,13 +255,16 @@ DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
 DROP USER '${_USE_DB_USER}'@'localhost';
 DROP USER '${_USE_DB_USER}'@'127.0.0.1';
 EOFMYSQL
-    mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+    [ -e "/root/.my.cluster_root_pwd.txt" ] && mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+GRANT ALL ON *.* TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
 EOFMYSQL
-    sed -i "s/mysql:\/\/$_ADBU:.*/mysql:\/\/$_ADBU:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
+    mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+EOFMYSQL
+    sed -i "s/mysql:\/\/${_ADBU}:.*/mysql:\/\/${_ADBU}:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
       /var/aegir/.drush/server_*.alias.drushrc.php &> /dev/null
     wait
   fi
@@ -338,11 +351,14 @@ DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
 DROP USER '${_USE_DB_USER}'@'localhost';
 DROP USER '${_USE_DB_USER}'@'127.0.0.1';
 EOFMYSQL
+    [ -e "/root/.my.cluster_root_pwd.txt" ] && mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+GRANT ALL ON *.* TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
+EOFMYSQL
     mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 EOFMYSQL
   fi
   mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
@@ -672,11 +688,11 @@ install_upgrade_aegir_master() {
     _RESOLVEIP=$(echo $(getent ahostsv4 ${_AEGIR_HOST}) \
       | cut -d: -f2 \
       | awk '{ print $1}' 2>&1)
-    if [ -z "$_RESOLVEIP" ]; then
+    if [ -z "${_RESOLVEIP}" ]; then
       msg "FATAL ERROR: DNS looks broken for server ${_AEGIR_HOST}"
       clean_pid_exit
     else
-      _AEGIR_HOST_IP="$_RESOLVEIP"
+      _AEGIR_HOST_IP="${_RESOLVEIP}"
     fi
 
     if [ "${_VMFAMILY}" != "AWS" ]; then
@@ -762,11 +778,14 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
+    [ -e "/root/.my.cluster_root_pwd.txt" ] && mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+GRANT ALL ON *.* TO '${_AEGIR_DB_USER}'@'${_AEGIR_HOST_IP}';
+EOFMYSQL
     mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-  GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'${_AEGIR_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-  GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'${_AEGIR_HOST_IP}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-  GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-  GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_AEGIR_DB_USER}'@'${_AEGIR_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_AEGIR_DB_USER}'@'${_AEGIR_HOST_IP}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_AEGIR_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_AEGIR_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
 EOFMYSQL
 
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -776,7 +795,7 @@ EOFMYSQL
       _EXTRA_GRANTS=NO
     else
       _LOCAL_HOST=$(uname -n 2>&1)
-      _LOCAL_IP=$(echo $(getent ahostsv4 $_LOCAL_HOST) | cut -d: -f2 | awk '{ print $1}' 2>&1)
+      _LOCAL_IP=$(echo $(getent ahostsv4 ${_LOCAL_HOST}) | cut -d: -f2 | awk '{ print $1}' 2>&1)
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL13 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
       if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
         _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -794,11 +813,15 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
       fi
+      [ -e "/root/.my.cluster_root_pwd.txt" ] && mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+GRANT ALL ON *.* TO '${_AEGIR_DB_USER}'@'${_LOCAL_IP}';
+EOFMYSQL
       mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-  GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'${_THIS_DB_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-  GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'$_LOCAL_HOST' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-  GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'$_LOCAL_IP' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-  GRANT ALL PRIVILEGES ON $_ESC TO '${_AEGIR_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_AEGIR_DB_USER}'@'${_THIS_DB_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_AEGIR_DB_USER}'@'${_LOCAL_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_AEGIR_DB_USER}'@'${_LOCAL_IP}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_AEGIR_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON ${_ESC} TO '${_AEGIR_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
 EOFMYSQL
     fi
 

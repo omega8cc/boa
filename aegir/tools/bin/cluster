@@ -1026,6 +1026,8 @@ interactive-timeout
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'localhost' IDENTIFIED BY '${_ROOT_SQL_PASWD}';\""
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'127.0.0.1' IDENTIFIED BY '${_ROOT_SQL_PASWD}';\""
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_ROOT_SQL_PASWD}';\""
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}';\""
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL PRIVILEGES ON *.* TO 'root'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_ROOT_SQL_PASWD}' WITH GRANT OPTION;\""
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\""
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep_%';\""
 
