@@ -889,7 +889,7 @@ finalize_sql_initial_setup() {
             | sort \
             | uniq \
             | tr -d "\s"`; do
-            mysql -u root -e "GRANT ALL PRIVILEGES ON ${_ESC} \
+            mysql -u root -e "GRANT ALL ON ${_ESC} \
             TO 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
             WITH GRANT OPTION;" &> /dev/null
           done

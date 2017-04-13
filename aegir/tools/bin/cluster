@@ -337,7 +337,6 @@ install_proxysql() {
 
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"DROP USER 'monitor'@'${_S_Q}%';\""
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"DROP USER 'proxysql_user'@'${_S_Q}%';\""
-      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\""
     fi
 
     echo "${_ROOT_SQL_PASWD}" > /vservers/${idn}/root/.my.cluster_root_pwd.txt
@@ -441,7 +440,6 @@ install_proxysql() {
         ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'monitor'@'${IP}' IDENTIFIED BY '${_MONITOR_PASSWORD}';\""
       done
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'monitor'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_MONITOR_PASSWORD}';\""
-      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\""
 
       echo "Adding proxysql_user to ProxySQL..."
       pxyCmd="INSERT INTO mysql_users (username,password) VALUES ('proxysql_user','${_CLUSTER_APP_PASSWORD}');"
@@ -453,7 +451,6 @@ install_proxysql() {
         ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'proxysql_user'@'${IP}' IDENTIFIED BY '${_CLUSTER_APP_PASSWORD}';\""
       done
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'proxysql_user'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_CLUSTER_APP_PASSWORD}';\""
-      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\""
 
       echo "Load ProxySQL users to runtime and save to disk..."
       pxyCmd="LOAD MYSQL USERS TO RUNTIME;"
@@ -820,7 +817,7 @@ install_db_cluster() {
     ##if [ -e "/vservers/${idn}/etc/mysql/debian.cnf" ]; then
     ##  sed -i "s/^password =.*/password = ${_MAINT_USER_PWD}/g" /vservers/${idn}/etc/mysql/debian.cnf
     ##fi
-    vserver ${idn} exec mysql -u root -e "FLUSH PRIVILEGES;"
+    ##vserver ${idn} exec mysql -u root -e "FLUSH PRIVILEGES;"
 
   	ssh ${_NOSTRICT} root@${IP} "echo '
 [client]
@@ -1028,8 +1025,7 @@ interactive-timeout
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'127.0.0.1' IDENTIFIED BY '${_ROOT_SQL_PASWD}';\""
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_ROOT_SQL_PASWD}';\""
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}';\""
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL PRIVILEGES ON *.* TO 'root'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_ROOT_SQL_PASWD}' WITH GRANT OPTION;\""
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"FLUSH PRIVILEGES;\""
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_ROOT_SQL_PASWD}' WITH GRANT OPTION;\""
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep_%';\""
 
   for IP in "${_DB_NODE_IP[@]}"; do
