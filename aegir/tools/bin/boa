@@ -604,6 +604,12 @@ octopus_install() {
       fi
     fi
 
+    if [ ! -z "${pxyc}" ] && [ ! -z "${pxyi}" ]; then
+      if [ -e "/data/conf/global.inc" ]; then
+        echo "ProxySQL" > /data/conf/${user}_use_proxysql.txt
+      fi
+    fi
+
     bash ${vBs}/${octName}
 
     if [ ! -z "${pxyc}" ] && [ ! -z "${pxyi}" ]; then
