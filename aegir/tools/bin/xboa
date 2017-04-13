@@ -347,8 +347,8 @@ PROXYSQL
             fi
             mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 CREATE DATABASE ${_DBN} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'127.0.0.1' IDENTIFIED BY '${_DBP}';
 GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'localhost' IDENTIFIED BY '${_DBP}';
+GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'%' IDENTIFIED BY '${_DBP}';
 EOFMYSQL
             mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
             echo "INFO: site ${Dom} db setup on ${oct} complete"

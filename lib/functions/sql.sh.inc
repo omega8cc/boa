@@ -890,8 +890,8 @@ finalize_sql_initial_setup() {
             | uniq \
             | tr -d "\s"`; do
             mysql -u root -e "GRANT ALL ON ${_ESC} \
-            TO 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
-            WITH GRANT OPTION;" &> /dev/null
+              TO 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
+              WITH GRANT OPTION;" &> /dev/null
           done
         fi
         if [ -e "/root/.cluster.IP.list" ]; then
@@ -900,10 +900,12 @@ finalize_sql_initial_setup() {
             | sort \
             | uniq \
             | tr -d "\s"`; do
-            mysql -u root -e "GRANT ALL ON *.* TO 'root'@'${_IP}';" &> /dev/null
+            mysql -u root -e "GRANT ALL ON ${_ESC} \
+              TO 'root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
+              WITH GRANT OPTION;" &> /dev/null
           done
-          mysql -u root -e "GRANT ALL ON *.* TO 'wsrep'@'%' \
-            IDENTIFIED BY '${PASWD}';" &> /dev/null
+          mysql -u root -e "GRANT ALL ON ${_ESC} \
+            TO 'wsrep'@'%' IDENTIFIED BY '${PASWD}';" &> /dev/null
         fi
         touch ${pthLog}/fixed-cluster-ip-grants.log
       fi
@@ -911,7 +913,7 @@ finalize_sql_initial_setup() {
     fi
     echo "[client]" > /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
-    echo "password=$PASWD" >> /root/.my.cnf
+    echo "password=${PASWD}" >> /root/.my.cnf
     chmod 0600 /root/.my.cnf
     echo "db=mysql" > /root/.mytop
     chmod 0600 /root/.mytop
@@ -947,9 +949,9 @@ finalize_sql_initial_setup() {
           | sort \
           | uniq \
           | tr -d "\s"`; do
-          mysql -u root -e "GRANT ALL PRIVILEGES \
-            ON ${_ESC} TO 'aegir_root'@'${_IP}' \
-            IDENTIFIED BY '${PASWD}' WITH GRANT OPTION;" &> /dev/null
+          mysql -u root -e "GRANT ALL ON ${_ESC} \
+            TO 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
+            WITH GRANT OPTION;" &> /dev/null
         done
       fi
       if [ -e "/root/.cluster.IP.list" ]; then
@@ -958,10 +960,12 @@ finalize_sql_initial_setup() {
           | sort \
           | uniq \
           | tr -d "\s"`; do
-          mysql -u root -e "GRANT ALL ON *.* TO 'root'@'${_IP}';" &> /dev/null
+          mysql -u root -e "GRANT ALL ON ${_ESC} \
+            TO 'root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
+            WITH GRANT OPTION;" &> /dev/null
         done
-        mysql -u root -e "GRANT ALL ON *.* TO 'wsrep'@'%' \
-          IDENTIFIED BY '${PASWD}';" &> /dev/null
+        mysql -u root -e "GRANT ALL ON ${_ESC} \
+          TO 'wsrep'@'%' IDENTIFIED BY '${PASWD}';" &> /dev/null
       fi
       touch ${pthLog}/fixed-cluster-ip-grants.log
     fi
