@@ -342,9 +342,9 @@ install_proxysql() {
     echo "${_ROOT_SQL_PASWD}" > /vservers/${idn}/root/.my.cluster_root_pwd.txt
     echo "${_PROXYSQL_PASSWORD}" > /vservers/${idn}/root/.my.proxysql_adm_pwd.txt
     echo "${_DB_NODE_IP[1]}" > /vservers/${idn}/root/.my.cluster_write_node.txt
-    echo "<?php" > /vservers/${idn}/data/conf/proxysql_adm_pwd.inc
-    echo "\$prxy_adm_paswd = \"${_PROXYSQL_PASSWORD}\";" >> /vservers/${idn}/data/conf/proxysql_adm_pwd.inc
-    echo "\$writer_node_ip = \"${_DB_NODE_IP[1]}\";"     >> /vservers/${idn}/data/conf/proxysql_adm_pwd.inc
+    echo "<?php" > /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
+    echo "\$prxy_adm_paswd = \"${_PROXYSQL_PASSWORD}\";" >> /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
+    echo "\$writer_node_ip = \"${_DB_NODE_IP[1]}\";"     >> /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
     echo "ProxySQL" > /vservers/${idn}/data/conf/clstr.cnf
     vserver ${idn} exec ${_INSTAPP} proxysql &> /dev/null
     vserver ${idn} exec ${_INSTAPP} sysbench &> /dev/null
