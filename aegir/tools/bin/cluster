@@ -864,7 +864,7 @@ binlog_row_image=minimal
 #wsrep_slave_threads=8
 #wsrep_log_conflicts
 #pxc_strict_mode=ENFORCING
-### pxc_strict_mode=PERMISSIVE
+pxc_strict_mode=PERMISSIVE
 
 # Galera Provider Configuration
 wsrep_provider=/usr/lib/galera3/libgalera_smm.so
