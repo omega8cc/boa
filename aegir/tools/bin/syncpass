@@ -37,8 +37,7 @@ check_generate() {
       || [ "${_PWD_CHARS}" -gt "8" ]; then
       echo "INFO: We will generate new random strong password (${_PWD_CHARS})"
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-        # _ESC_APASS="$(openssl rand -base64 32 2>&1)"
-        _ESC_APASS=$(pwgen -v -s -1 2>&1)
+        _ESC_APASS="$(openssl rand -base64 32 2>&1)"
       else
         _ESC_APASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
       fi

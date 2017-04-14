@@ -2019,8 +2019,7 @@ provision_backend_dbpass_generate() {
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-        # _ESC_PASS="$(openssl rand -base64 32 2>&1)"
-        _ESC_PASS=$(pwgen -v -s -1 2>&1)
+        _ESC_PASS="$(openssl rand -base64 32 2>&1)"
       else
         _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
       fi
