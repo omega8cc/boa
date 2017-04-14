@@ -3113,7 +3113,7 @@ action() {
           if [ -e "${User}/log/hosting_cron_use_backend.txt" ]; then
             run_drush8_hmr_cmd "${vSet} hosting_cron_use_backend 1"
           else
-             run_drush8_hmr_cmd "${vSet} hosting_cron_use_backend 0"
+            run_drush8_hmr_cmd "${vSet} hosting_cron_use_backend 0"
           fi
           run_drush8_hmr_cmd "${vSet} hosting_ignore_default_profiles 0"
           run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_items 1"
