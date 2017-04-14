@@ -790,7 +790,7 @@ check_update_sql_credentials() {
         fi
       fi
       if [ "${_STRONG_PASSWORDS}" = "YES" ] \
-        || [ "${_PWD_CHARS}" -gt "8" ]; then)
+        || [ "${_PWD_CHARS}" -gt "8" ]; then
         if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
           # _ESC_PASS="$(openssl rand -base64 32 2>&1)"
           _ESC_PASS=$(pwgen -v -s -1 2>&1)
