@@ -415,6 +415,17 @@ install_proxysql() {
 
     sleep 1
 
+    if [ "${_CLUSTER_XCHECK}" != "YES" ]; then
+      for IP in "${_DB_NODE_IP[@]}"; do
+        pxyCmd="INSERT INTO mysql_servers (hostname,hostgroup_id,port,weight,comment) VALUES ('${IP}',11,3306,1000,'READWRITE');"
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      done
+      pxyCmd="LOAD MYSQL SERVERS TO RUNTIME;"
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      pxyCmd="SAVE MYSQL SERVERS TO DISK;"
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    fi
+
     if [ "${_CLUSTER_XCHECK}" = "YES" ]; then
       echo "Adding monitor user to ProxySQL..."
       pxyCmd="INSERT INTO mysql_users (username,password) VALUES ('monitor','${_MONITOR_PASSWORD}');"
