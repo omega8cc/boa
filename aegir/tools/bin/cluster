@@ -29,7 +29,7 @@ fi
 
 clean_pid_exit() {
   rm -f /var/run/cluster_run.pid
-  service cron start &> /dev/null
+  service cron start
   exit 1
 }
 
@@ -66,9 +66,9 @@ check_root() {
       echo "## DEBIAN PROPOSED UPDATES"                                                >> /etc/apt/sources.list
       echo "deb http://http.debian.net/debian/ ${_OSR}-proposed-updates main"          >> /etc/apt/sources.list
       echo
-      apt-get clean ${_NOISE} &> /dev/null
-      apt-get update ${_NOISE} &> /dev/null
-      apt-get install lsb-release ${forCer} ${_NOISE} &> /dev/null
+      apt-get clean ${_NOISE}
+      apt-get update ${_NOISE}
+      apt-get install lsb-release ${forCer} ${_NOISE}
     fi
     _OSV=$(lsb_release -si 2>&1)
     _OSR=$(lsb_release -sc 2>&1)
@@ -266,13 +266,13 @@ if_firewall_update() {
     chmod 700 /opt/water.sh
     chmod 700 /opt/fire.sh
     chmod 600 /etc/csf/csf.conf
-    sed -i "s/.*fire.sh.*//gi"  /etc/crontab &> /dev/null
+    sed -i "s/.*fire.sh.*//gi"  /etc/crontab
     wait
-    sed -i "s/.*water.sh.*//gi" /etc/crontab &> /dev/null
+    sed -i "s/.*water.sh.*//gi" /etc/crontab
     if [ -e "/opt/fire.sh" ] && [ -e "/opt/water.sh" ]; then
       echo "*  *    * * *   root    bash /opt/fire.sh >/dev/null 2>&1" >> /etc/crontab
       echo "29 *    * * *   root    bash /opt/water.sh >/dev/null 2>&1" >> /etc/crontab
-      sed -i "/^$/d" /etc/crontab &> /dev/null
+      sed -i "/^$/d" /etc/crontab
     fi
     echo kernel.vshelper = /sbin/vshelper >> /etc/sysctl.conf
     if [ -e "/etc/security/limits.conf" ]; then
@@ -284,7 +284,7 @@ if_firewall_update() {
         echo "root      soft    nofile      1048576" >> /etc/security/limits.conf
       fi
     fi
-    sysctl -p /etc/sysctl.conf &> /dev/null
+    sysctl -p /etc/sysctl.conf
     cd
     service lfd stop
     sleep 3
@@ -320,7 +320,7 @@ install_proxysql() {
       mkdir -p /vservers/${idn}/var/backups/old-proxysql/
       cp -af /vservers/${idn}/var/lib/proxysql/* /vservers/${idn}/var/backups/old-proxysql/
       vserver ${idn} exec service proxysql stop
-      vserver ${idn} exec apt-get purge -y ${_NOISE} proxysql &> /dev/null
+      vserver ${idn} exec apt-get purge -y ${_NOISE} proxysql
       rm -f -r /vservers/${idn}/var/lib/proxysql
       rm -f -r /vservers/${idn}/var/log/proxysql
       for IP in "${_DB_NODE_IP[@]}"; do
@@ -347,8 +347,8 @@ install_proxysql() {
     echo "\$prxy_adm_paswd = \"${_PROXYSQL_PASSWORD}\";" >> /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
     echo "\$writer_node_ip = \"${_DB_NODE_IP[1]}\";"     >> /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
     echo "ProxySQL" > /vservers/${idn}/data/conf/clstr.cnf
-    vserver ${idn} exec ${_INSTAPP} proxysql &> /dev/null
-    vserver ${idn} exec ${_INSTAPP} sysbench &> /dev/null
+    vserver ${idn} exec ${_INSTAPP} proxysql
+    vserver ${idn} exec ${_INSTAPP} sysbench
     vserver ${idn} exec mkdir -p /var/log/proxysql
     vserver ${idn} exec chown -R proxysql:proxysql /var/log/proxysql
     vserver ${idn} exec chmod 700 /var/log/proxysql
@@ -569,25 +569,25 @@ install_vps() {
     --hostname ${hst} \
     --interface eth0:${vip}/32 \
     -- -d ${osx} -- --arch=amd64 --include=${incl} \
-    --exclude=${excl}; &> /dev/null
+    --exclude=${excl};
 
   echo "Starting vps ${idn}..."
-  vserver-autostart ${idn} &> /dev/null
+  vserver-autostart ${idn}
   vserver ${idn} start
 
   echo "en_US.UTF-8 UTF-8" >> /vservers/${idn}/etc/locale.gen
   sed -i "/^$/d" /vservers/${idn}/etc/locale.gen
-  vserver ${idn} exec locale-gen en_US.UTF-8 &> /dev/null
+  vserver ${idn} exec locale-gen en_US.UTF-8
   vserver ${idn} exec locale
 
   echo "Syncing timezone for vps ${idn}..."
   cp -af /etc/timezone /vservers/${idn}/etc/
-  vserver ${idn} exec dpkg-reconfigure -f noninteractive tzdata &> /dev/null
+  vserver ${idn} exec dpkg-reconfigure -f noninteractive tzdata
 
   echo "Syncing resolv.conf for vps ${idn}..."
   rm -f /vservers/${idn}/etc/resolv.conf
   cp -af /etc/resolv.conf /vservers/${idn}/etc/
-  vserver ${idn} exec dig aegirproject.org &> /dev/null
+  vserver ${idn} exec dig aegirproject.org
 
   if [ ${ver} != "galera" ]; then
     echo "Installing BOA ${ver} in vps ${idn}..."
@@ -628,7 +628,7 @@ install_vps() {
                    vnstat"
     for link in ${_REMOVE_LINKS}; do
       if [ -e "/vservers/${idn}/etc/init.d/${link}" ]; then
-        vserver ${idn} exec update-rc.d -f ${link} remove &> /dev/null
+        vserver ${idn} exec update-rc.d -f ${link} remove
       fi
     done
   fi
@@ -647,14 +647,14 @@ install_vps() {
 
   echo "en_US.UTF-8 UTF-8" >> /vservers/${idn}/etc/locale.gen
   sed -i "/^$/d" /vservers/${idn}/etc/locale.gen
-  vserver ${idn} exec locale-gen en_US.UTF-8 &> /dev/null
+  vserver ${idn} exec locale-gen en_US.UTF-8
   vserver ${idn} exec locale
 
   if [ -d "/vservers/${idn}/root" ] \
     && [ -e "/root/.ssh/id_rsa.pub" ] \
     && [ ! -e "/vservers/${idn}/root/.ssh/id_rsa" ]; then
     vserver ${idn} exec mkdir -p ~/.ssh
-    vserver ${idn} exec ssh-keygen -b 4096 -t rsa -N "" -f ~/.ssh/id_rsa &> /dev/null
+    vserver ${idn} exec ssh-keygen -b 4096 -t rsa -N "" -f ~/.ssh/id_rsa
     echo "Host *" >> /vservers/${idn}/root/.ssh/config
     echo "   StrictHostKeyChecking no" >> /vservers/${idn}/root/.ssh/config
     echo "   UserKnownHostsFile=/dev/null" >> /vservers/${idn}/root/.ssh/config
@@ -667,16 +667,16 @@ install_vps() {
     echo "Running post-install Galera VPS upgrade..."
     if [ "${osx}" = "jessie" ] || [ -x "/vservers/${idn}/lib/systemd/systemd" ]; then
       echo "Removing systemd on ${osx}..."
-      vserver ${idn} exec ${_INSTAPP} sysvinit-core &> /dev/null
-      vserver ${idn} exec ${_INSTAPP} sysvinit-utils &> /dev/null
+      vserver ${idn} exec ${_INSTAPP} sysvinit-core
+      vserver ${idn} exec ${_INSTAPP} sysvinit-utils
       if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
         cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
       fi
-      vserver ${idn} exec apt-get remove systemd -y --force-yes ${_NOISE} --purge --auto-remove &> /dev/null
+      vserver ${idn} exec apt-get remove systemd -y --force-yes ${_NOISE} --purge --auto-remove
       echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /vservers/${idn}/etc/apt/preferences.d/systemd
       echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /vservers/${idn}/etc/apt/preferences.d/systemd
-      vserver ${idn} exec ${_INSTAPP} sysvinit-core &> /dev/null
-      vserver ${idn} exec ${_INSTAPP} sysvinit-utils &> /dev/null
+      vserver ${idn} exec ${_INSTAPP} sysvinit-core
+      vserver ${idn} exec ${_INSTAPP} sysvinit-utils
     fi
   else
     echo "Running post-install Barracuda upgrade..."
@@ -798,19 +798,19 @@ install_db_cluster() {
     inc=$((inc+1))
     echo "${_MAINT_USER_PWD}" > /vservers/${idn}/root/.my.cluster_maint_pwd.txt
     echo "${_ROOT_SQL_PASWD}" > /vservers/${idn}/root/.my.cluster_root_pwd.txt
-  	vserver ${idn} exec apt-get update ${_NOISE} &> /dev/null
-    vserver ${idn} exec ${_INSTAPP} debian-keyring &> /dev/null
-    vserver ${idn} exec ${_INSTAPP} debian-archive-keyring &> /dev/null
-  	vserver ${idn} exec apt-get upgrade -y ${_NOISE} &> /dev/null
-  	vserver ${idn} exec apt-get remove apparmor -y ${_NOISE} &> /dev/null
-  	vserver ${idn} exec ${_INSTAPP} software-properties-common &> /dev/null
+  	vserver ${idn} exec apt-get update ${_NOISE}
+    vserver ${idn} exec ${_INSTAPP} debian-keyring
+    vserver ${idn} exec ${_INSTAPP} debian-archive-keyring
+  	vserver ${idn} exec apt-get upgrade -y ${_NOISE}
+  	vserver ${idn} exec apt-get remove apparmor -y ${_NOISE}
+  	vserver ${idn} exec ${_INSTAPP} software-properties-common
     echo "## Percona Cluster APT Repository" > /vservers/${idn}${xtraList}
     echo "deb http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
     echo "deb-src http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
-    vserver ${idn} exec apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5 &> /dev/null
-  	vserver ${idn} exec apt-get update ${_NOISE} &> /dev/null
-  	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57 &> /dev/null
-  	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24 &> /dev/null
+    vserver ${idn} exec apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5
+  	vserver ${idn} exec apt-get update ${_NOISE}
+  	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
+  	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24
     echo "[client]" > /vservers/${idn}/root/.my.cnf
     echo "user=root" >> /vservers/${idn}/root/.my.cnf
     echo "password=${_ROOT_SQL_PASWD}" >> /vservers/${idn}/root/.my.cnf
@@ -819,11 +819,11 @@ install_db_cluster() {
     vserver ${idn} exec chmod 0600 /root/.mytop
 
     ##echo "Running mysql_secure_installation procedure on ${IP} DB node..."
-    ##vserver ${idn} exec mysql -u root -e "FLUSH HOSTS;" &> /dev/null
-    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='';" &> /dev/null
-    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
-    ##vserver ${idn} exec mysql -u root -e "DROP DATABASE test;" &> /dev/null
-    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" &> /dev/null
+    ##vserver ${idn} exec mysql -u root -e "FLUSH HOSTS;"
+    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='';"
+    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
+    ##vserver ${idn} exec mysql -u root -e "DROP DATABASE test;"
+    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
     ##vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ROOT_SQL_PASWD}') WHERE User='root';"
     ##vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_MAINT_USER_PWD}') WHERE User='debian-sys-maint';"
     ##if [ -e "/vservers/${idn}/etc/mysql/debian.cnf" ]; then
@@ -1016,10 +1016,10 @@ interactive-timeout
   done
 
   echo "Waiting ~5 minutes for ${_DB_NODE_IP[1]} DB node bootstrap-pxc..."
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "service mysql stop" &> /dev/null
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "service mysql stop"
   sleep 25
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1" &> /dev/null
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0"
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1"
   sleep 25
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "service mysql bootstrap-pxc"
   sleep 180
@@ -1041,10 +1041,10 @@ interactive-timeout
   for IP in "${_DB_NODE_IP[@]}"; do
     if [ "${IP}" != "${_DB_NODE_IP[1]}" ]; then
       echo "Waiting ~5 minutes for ${IP} DB node restart..."
-      ssh ${_NOSTRICT} root@${IP} "service mysql stop" &> /dev/null
+      ssh ${_NOSTRICT} root@${IP} "service mysql stop"
       sleep 25
-      ssh ${_NOSTRICT} root@${IP} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0" &> /dev/null
-      ssh ${_NOSTRICT} root@${IP} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1" &> /dev/null
+      ssh ${_NOSTRICT} root@${IP} "mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-ib_logfile0"
+      ssh ${_NOSTRICT} root@${IP} "mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-ib_logfile1"
       sleep 25
       ssh ${_NOSTRICT} root@${IP} "service mysql start"
       sleep 180
@@ -1073,7 +1073,7 @@ install_host() {
     echo
   fi
 
-  ${_INSTAPP} wget &> /dev/null
+  ${_INSTAPP} wget
 
   echo "Configuring /etc/apt/sources.list"
 
@@ -1097,23 +1097,23 @@ install_host() {
   cat /etc/apt/sources.list
 
   echo "Installing basic tools..."
-  apt-get update ${_NOISE} &> /dev/null
-  apt-get upgrade -y ${_NOISE} &> /dev/null
-  apt-get update ${_NOISE} &> /dev/null
-  ${_INSTAPP} locales &> /dev/null
-  ${_INSTAPP} lsb-release &> /dev/null
-  ${_INSTAPP} dnsutils &> /dev/null
-  ${_INSTAPP} netcat &> /dev/null
-  ${_INSTAPP} curl &> /dev/null
-  ${_INSTAPP} wget &> /dev/null
-  ${_INSTAPP} libwww-perl &> /dev/null
-  ${_INSTAPP} mc &> /dev/null
-  ${_INSTAPP} screen &> /dev/null
-  ${_INSTAPP} hdparm &> /dev/null
-  ${_INSTAPP} iotop &> /dev/null
-  ${_INSTAPP} ntpdate &> /dev/null
-  ${_INSTAPP} parted &> /dev/null
-  ${_INSTAPP} build-essential &> /dev/null
+  apt-get update ${_NOISE}
+  apt-get upgrade -y ${_NOISE}
+  apt-get update ${_NOISE}
+  ${_INSTAPP} locales
+  ${_INSTAPP} lsb-release
+  ${_INSTAPP} dnsutils
+  ${_INSTAPP} netcat
+  ${_INSTAPP} curl
+  ${_INSTAPP} wget
+  ${_INSTAPP} libwww-perl
+  ${_INSTAPP} mc
+  ${_INSTAPP} screen
+  ${_INSTAPP} hdparm
+  ${_INSTAPP} iotop
+  ${_INSTAPP} ntpdate
+  ${_INSTAPP} parted
+  ${_INSTAPP} build-essential
 
   echo "Setting hostname to ${hst}"
   echo ${hst} > /etc/hostname
@@ -1124,25 +1124,25 @@ install_host() {
   wget -q -U iCab http://files.aegir.cc/dev/src/csf-${_CSF_VRN}.tgz
   tar -xzf csf-${_CSF_VRN}.tgz
   cd csf
-  sh install.sh &> /dev/null
+  sh install.sh
   cd /etc/csf
   mv -f csf.conf csf.conf-pre
   wget -q -U iCab http://files.aegir.cc/cluster/csf.conf
-  chmod 600 /etc/csf/csf.conf &> /dev/null
+  chmod 600 /etc/csf/csf.conf
   sed -i "s/^Port.*/Port 24/g" /etc/ssh/sshd_config
   echo "UseDNS no" >> /etc/ssh/sshd_config
-  /etc/init.d/ssh restart &> /dev/null
+  /etc/init.d/ssh restart
   chmod 700 /root
   cd /
-  chmod 711 bin boot data dev emul etc home lib media mnt opt sbin selinux srv sys usr var &> /dev/null
+  chmod 711 bin boot data dev emul etc home lib media mnt opt sbin selinux srv sys usr var
 
   echo "Updating init scripts..."
-  update-rc.d cron defaults &> /dev/null
-  update-rc.d lfd defaults  &> /dev/null
-  update-rc.d csf defaults  &> /dev/null
-  invoke-rc.d cron restart  &> /dev/null
-  invoke-rc.d lfd start     &> /dev/null
-  invoke-rc.d csf start     &> /dev/null
+  update-rc.d cron defaults
+  update-rc.d lfd defaults
+  update-rc.d csf defaults
+  invoke-rc.d cron restart
+  invoke-rc.d lfd start
+  invoke-rc.d csf start
   rm -f -r /var/opt/csf*
 
   if_firewall_update
@@ -1161,7 +1161,7 @@ install_host() {
   echo "ClientAliveCountMax 3" >> /etc/ssh/sshd_config
 
   echo "Restarting sshd..."
-  service ssh restart &> /dev/null
+  service ssh restart
 
   echo "Checking if sshd listens on expected port..."
   _TEST_SSHD=$(netstat -l -n | grep 24 2>&1)
@@ -1174,7 +1174,7 @@ install_host() {
 
   if [ ! -e "/root/.ssh/id_rsa.pub" ]; then
     echo "Generating SSH (RSA) keys for root..."
-    ssh-keygen -b 4096 -t rsa -N "" -f ~/.ssh/id_rsa &> /dev/null
+    ssh-keygen -b 4096 -t rsa -N "" -f ~/.ssh/id_rsa
     echo
     cat /root/.ssh/id_rsa.pub
     echo
@@ -1183,26 +1183,26 @@ install_host() {
   if [ ! -e "/boot/vmlinuz-${_BNG_VERSION}-beng" ]; then
     echo "Installing beng vserver kernel..."
     echo "deb http://repo.psand.net/ ${_OSR} main" > /etc/apt/sources.list.d/vserver.list
-    wget -q -O - http://repo.psand.net/pubkey.txt | apt-key add - &> /dev/null
-    apt-get update ${_NOISE} &> /dev/null
-    ${_INSTAPP} build-essential &> /dev/null
-    ${_INSTAPP} linux-headers-vserver-${_BENG_SERIES}-beng &> /dev/null
-    ${_INSTAPP} linux-image-vserver-${_BENG_SERIES}-beng &> /dev/null
-    ${_INSTAPP} linux-source-vserver-${_BENG_SERIES}-beng &> /dev/null
+    wget -q -O - http://repo.psand.net/pubkey.txt | apt-key add -
+    apt-get update ${_NOISE}
+    ${_INSTAPP} build-essential
+    ${_INSTAPP} linux-headers-vserver-${_BENG_SERIES}-beng
+    ${_INSTAPP} linux-image-vserver-${_BENG_SERIES}-beng
+    ${_INSTAPP} linux-source-vserver-${_BENG_SERIES}-beng
     ls -la /boot
   fi
 
   if [ "${_OSR}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
     echo "Installing sysvinit on ${_OSV} ${_OSR}..."
-    ${_INSTAPP} sysvinit-core &> /dev/null
-    ${_INSTAPP} sysvinit-utils &> /dev/null
+    ${_INSTAPP} sysvinit-core
+    ${_INSTAPP} sysvinit-utils
     if [ -e "/usr/share/sysvinit/inittab" ]; then
       cp -af /usr/share/sysvinit/inittab /etc/inittab
     fi
     echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
     echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-    ${_INSTAPP} sysvinit-core &> /dev/null
-    ${_INSTAPP} sysvinit-utils &> /dev/null
+    ${_INSTAPP} sysvinit-core
+    ${_INSTAPP} sysvinit-utils
     echo
     echo "NOTE: Please reboot and then run 'cluster up-host'"
     echo "NOTE: once cluster script completes initial installation"
@@ -1233,50 +1233,50 @@ upgrade_host() {
 
   if [ "${_OSR}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
     echo "Removing systemd on ${_OSV} ${_OSR}..."
-    ${_INSTAPP} sysvinit-core &> /dev/null
-    ${_INSTAPP} sysvinit-utils &> /dev/null
+    ${_INSTAPP} sysvinit-core
+    ${_INSTAPP} sysvinit-utils
     if [ -e "/usr/share/sysvinit/inittab" ]; then
       cp -af /usr/share/sysvinit/inittab /etc/inittab
     fi
-    apt-get remove systemd -y --force-yes ${_NOISE} --purge --auto-remove &> /dev/null
+    apt-get remove systemd -y --force-yes ${_NOISE} --purge --auto-remove
     echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
     echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-    ${_INSTAPP} sysvinit-core &> /dev/null
-    ${_INSTAPP} sysvinit-utils &> /dev/null
+    ${_INSTAPP} sysvinit-core
+    ${_INSTAPP} sysvinit-utils
   fi
 
   echo "Installing vserver tools dependencies..."
-  apt-get update ${_NOISE} &> /dev/null
-  ${_INSTAPP} vlan &> /dev/null
-  ${_INSTAPP} e2fslibs-dev &> /dev/null
-  ${_INSTAPP} libnss3-dev &> /dev/null
-  ${_INSTAPP} libvserver0-dev &> /dev/null
-  ${_INSTAPP} libvserver0 &> /dev/null
-  ${_INSTAPP} debootstrap &> /dev/null
+  apt-get update ${_NOISE}
+  ${_INSTAPP} vlan
+  ${_INSTAPP} e2fslibs-dev
+  ${_INSTAPP} libnss3-dev
+  ${_INSTAPP} libvserver0-dev
+  ${_INSTAPP} libvserver0
+  ${_INSTAPP} debootstrap
   if [ -e "/etc/cron.daily/mlocate" ]; then
     mv -f /etc/cron.daily/mlocate /var/backups/
   fi
 
   echo "Installing otherwise uninstalled stuff..."
-  ${_INSTAPP} irqbalance &> /dev/null
-  ${_INSTAPP} libuuid-perl &> /dev/null
-  ${_INSTAPP} linux-base &> /dev/null
+  ${_INSTAPP} irqbalance
+  ${_INSTAPP} libuuid-perl
+  ${_INSTAPP} linux-base
   echo "OPTIONS=\"--hintpolicy=ignore\"" >> /etc/default/irqbalance
-  service irqbalance stop &> /dev/null
-  service irqbalance start &> /dev/null
+  service irqbalance stop
+  service irqbalance start
 
   echo "Installing vserver tools..."
-  apt-get remove util-vserver -y ${_NOISE} &> /dev/null
-  apt-get autoremove -y ${_NOISE} &> /dev/null
+  apt-get remove util-vserver -y ${_NOISE}
+  apt-get autoremove -y ${_NOISE}
   cd /var/opt
   rm -f -r util-vserver*
   wget -q -U iCab http://files.aegir.cc/dev/src/util-vserver-${_UTIL_VRN}.tar.gz
   tar -xzf util-vserver-${_UTIL_VRN}.tar.gz
   cd util-vserver-${_UTIL_VRN}
-  ./configure --prefix=/usr &> /dev/null
-  make --quiet &> /dev/null
-  make --quiet install &> /dev/null
-  make --quiet install-distribution &> /dev/null
+  ./configure --prefix=/usr
+  make --quiet
+  make --quiet install
+  make --quiet install-distribution
   cd
   vserver --version
 
@@ -1290,20 +1290,20 @@ upgrade_host() {
   cp -af sysctl.conf /etc/sysctl.conf
   echo "kernel.vshelper = /sbin/vshelper" >> /etc/sysctl.conf
   rm -f sysctl.conf*
-  sysctl -p &> /dev/null
-  swapoff -a &> /dev/null
-  swapon -a &> /dev/null
+  sysctl -p
+  swapoff -a
+  swapon -a
 
   echo "Installing vserver initd scripts..."
   cp -af /usr/etc/init.d/vservers-default /etc/init.d/
   cp -af /usr/etc/init.d/vprocunhide /etc/init.d/
   cp -af /usr/etc/init.d/util-vserver /etc/init.d/
-  update-rc.d util-vserver defaults &> /dev/null
-  update-rc.d vprocunhide defaults &> /dev/null
-  update-rc.d vservers-default defaults &> /dev/null
-  service vprocunhide start &> /dev/null
-  service util-vserver start &> /dev/null
-  service vservers-default start &> /dev/null
+  update-rc.d util-vserver defaults
+  update-rc.d vprocunhide defaults
+  update-rc.d vservers-default defaults
+  service vprocunhide start
+  service util-vserver start
+  service vservers-default start
 
   echo "Updating vserver defaults..."
   echo "none  /proc     proc    defaults        0 0" >/usr/share/util-vserver/defaults/fstab
@@ -1320,24 +1320,24 @@ upgrade_host() {
   wget -q -U iCab http://files.aegir.cc/dev/src/vnstat-${_VNSTAT_VRN}.tar.gz
   tar -xzf vnstat-${_VNSTAT_VRN}.tar.gz
   cd vnstat-${_VNSTAT_VRN}
-  sh ./configure --prefix=/usr &> /dev/null
-  make --quiet &> /dev/null
-  make --quiet install &> /dev/null
+  sh ./configure --prefix=/usr
+  make --quiet
+  make --quiet install
   for INF in `vnstat --iflist \
     | sed "s/Available interfaces//g; s/(1000 Mbit)//g; s/(100 Mbit)//g; s/ lo//g;" \
-    | cut -d: -f2` ;do vnstat -u -i ${IP}NF &> /dev/null;done
+    | cut -d: -f2` ;do vnstat -u -i ${IP}NF;done
   cp -af /var/opt/vnstat-${_VNSTAT_VRN}/examples/init.d/debian/vnstat /etc/init.d/vnstat
-  chmod 755 /etc/init.d/vnstat &> /dev/null
-  update-rc.d vnstat defaults &> /dev/null
+  chmod 755 /etc/init.d/vnstat
+  update-rc.d vnstat defaults
   if [ -e "/usr/etc/vnstat.conf" ]; then
     sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /usr/etc/vnstat.conf
   fi
   if [ -e "/etc/vnstat.conf" ]; then
     sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /etc/vnstat.conf
   fi
-  service vnstat start &> /dev/null
-  killall vnstatd &> /dev/null
-  service vnstat restart &> /dev/null
+  service vnstat start
+  killall vnstatd
+  service vnstat restart
 
   echo "Installing vserver-autostart..."
   cd /usr/local/sbin/
@@ -1351,19 +1351,19 @@ upgrade_host() {
   chmod 755 /vservers
 
   echo "Installing Postfix locally..."
-  ${_INSTAPP} postfix &> /dev/null
+  ${_INSTAPP} postfix
   lSmtp="localhost:25      inet  n       -       -       -       -       smtpd"
   sed -i "s/^smtp.*inet.*n.*smtpd/${lSmtp}/g" /etc/postfix/master.cf
-  apt-get remove exim -y &> /dev/null
-  apt-get purge exim -y &> /dev/null
-  apt-get autoremove -y &> /dev/null
-  service postfix restart &> /dev/null
+  apt-get remove exim -y
+  apt-get purge exim -y
+  apt-get autoremove -y
+  service postfix restart
 
   echo "Updating packages on this system..."
-  apt-get update -y ${_NOISE} &> /dev/null \
-    && apt-get upgrade -y ${_NOISE} &> /dev/null \
-    && apt-get dist-upgrade -y ${_NOISE} &> /dev/null \
-    && ${_INSTAPP} rkhunter &> /dev/null
+  apt-get update -y ${_NOISE} \
+    && apt-get upgrade -y ${_NOISE} \
+    && apt-get dist-upgrade -y ${_NOISE} \
+    && ${_INSTAPP} rkhunter
 
   if_firewall_update
 
