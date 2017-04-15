@@ -4,7 +4,7 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 _WEBG=www-data
 _THIS_DB_PORT=3306
-ieni="--ignore-errors --numeric-ids"
+ieni="--ignore-errors"
 
 ###
 ### Avoid too many questions
