@@ -8,7 +8,7 @@
   It will archive all directories required to restore your data (sites files,
   databases archives, Nginx configuration and more) on a freshly installed BOA:
 
-    /etc /var/aegir /var/www /home /data
+    /etc /var/aegir /var/www /home /data  /data/disk/arch/sql
 
   It will start to run nightly at 0:15 AM (server time) only once you will add
   all required _AWS_* variables in the /root/.barracuda.cnf file and run the
