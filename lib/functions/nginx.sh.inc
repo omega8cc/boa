@@ -107,7 +107,7 @@ force_advanced_nginx_config() {
   if [ "${_PFS_READY}" = "YES" ] \
     && [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
     _ALLOW_NGINX_FORWARD_SECRECY=YES
-    _SSL_PROTOCOLS="TLSv1.1 TLSv1.2;"
+    _SSL_PROTOCOLS="TLSv1.1 TLSv1.2 TLSv1.3;"
     _SSL_CIPHERS="ECDHE-RSA-AES128-GCM-SHA256:  \
       ECDHE-ECDSA-AES128-GCM-SHA256:  \
       ECDHE-RSA-AES256-GCM-SHA384:    \
@@ -572,11 +572,11 @@ fix_update_nginx_config() {
       wait
       sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
       wait
-      sed -i "s/SSLv3 TLSv1;/TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf             &> /dev/null
+      sed -i "s/SSLv3 TLSv1;/TLSv1.1 TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf             &> /dev/null
       wait
-      sed -i "s/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/SSLv3 TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.1 TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
       wait
-      sed -i "s/TLSv1 TLSv1.1 TLSv1.2;/TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf   &> /dev/null
+      sed -i "s/TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.1 TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf   &> /dev/null
       wait
       sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                           &> /dev/null
       wait
@@ -665,7 +665,7 @@ fix_update_nginx_config() {
     if [ "${_PFS_READY}" = "YES" ] \
       && [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
       _ALLOW_NGINX_FORWARD_SECRECY=YES
-      _SSL_PROTOCOLS="TLSv1.1 TLSv1.2;"
+      _SSL_PROTOCOLS="TLSv1.1 TLSv1.2 TLSv1.3;"
       _SSL_CIPHERS="ECDHE-RSA-AES128-GCM-SHA256:  \
         ECDHE-ECDSA-AES128-GCM-SHA256:  \
         ECDHE-RSA-AES256-GCM-SHA384:    \
