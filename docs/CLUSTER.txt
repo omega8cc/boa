@@ -118,4 +118,6 @@ http://galeracluster.com/documentation-webpages/arbitrator.html
    Usage: cluster {in-vps} {id} {fqdn} {ip} {os} {stable|head|galera} {email}
    Usage: cluster {in-all} {stable|head}
    Usage: cluster {up-all} {stable|head}
-   Usage: cluster {in-octopus} {email} {o2} {mini|max|none} {stable|head}
+   Usage: cluster {in-oct} {email} {o2} {mini|max|none} {stable|head}
+   Usage: cluster {in-pxy} {id} {ip}
+
