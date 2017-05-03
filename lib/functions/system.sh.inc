@@ -1751,7 +1751,7 @@ check_apt_updates() {
 # Install wkhtmltopdf and wkhtmltoimage.
 install_wkhtmltopdf_wkhtmltoimage() {
   ###--------------------###
-  if [ ! -e "${pthLog}/wkhtmltox-0.12.3" ] \
+  if [ ! -e "${pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}" ] \
     || [ ! -x "/usr/bin/wkhtmltopdf" ] \
     || [ ! -x "/usr/bin/wkhtmltoimage" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
@@ -1761,15 +1761,15 @@ install_wkhtmltopdf_wkhtmltoimage() {
       msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
       cd /var/opt
       rm -rf wkhtmltox*
-      get_dev_arch "wkhtmltox-0.12.3_linux-generic-amd64.tar.gz"
-      cd wkhtmltox-0.12.3_linux-generic-amd64
+      get_dev_arch "wkhtmltox-${_WKHTMLTOX_VRN}_linux-generic-amd64.tar.xz"
+      cd wkhtmltox-${_WKHTMLTOX_VRN}_linux-generic-amd64/bin/
     else
       SYSTEMARCH="x86"
       msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
       cd /var/opt
       rm -rf wkhtmltox*
-      get_dev_arch "wkhtmltox-0.12.3_linux-generic-i386.tar.gz"
-      cd wkhtmltox-0.12.3_linux-generic-i386
+      get_dev_arch "wkhtmltox-${_WKHTMLTOX_VRN}_linux-generic-i386.tar.xz"
+      cd wkhtmltox-${_WKHTMLTOX_VRN}_linux-generic-i386/bin/
     fi
     cp -af wkhtmltopdf /usr/bin/wkhtmltopdf
     cp -af wkhtmltoimage /usr/bin/wkhtmltoimage
@@ -1777,7 +1777,7 @@ install_wkhtmltopdf_wkhtmltoimage() {
     chown root:root /usr/bin/wkhtmltoimage
     chmod 755 /usr/bin/wkhtmltopdf
     chmod 755 /usr/bin/wkhtmltoimage
-    touch ${pthLog}/wkhtmltox-0.12.3
+    touch ${pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}
     cd /var/opt
   fi
 }
