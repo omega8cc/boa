@@ -179,6 +179,11 @@ if [ -e "/data/disk/arch" ]; then
     sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" ${barCnf}
     wait
   fi
+  if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+    _AUTO_UP_WEEKLY=
+    _AUTO_UP_MONTH=
+    _AUTO_UP_DAY=
+  fi
   if [ ! -z "${_AUTO_UP_WEEKLY}" ] \
     && [ ! -z "${_AUTO_UP_MONTH}" ] \
     && [ ! -z "${_AUTO_UP_DAY}" ]; then

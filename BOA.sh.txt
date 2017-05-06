@@ -263,6 +263,7 @@ update_agents() {
     rm -f /root/.giant_traffic.cnf
     rm -f /root/.default.cnf
     rm -f /root/.debug.cnf
+    rm -f /root/.debug-boa-installer.cnf
     # if [ ! -e "/data/conf/override.global.inc" ]; then
     #   echo "<?php" > /data/conf/override.global.inc.tmp
     #   echo "" >> /data/conf/override.global.inc.tmp
