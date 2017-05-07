@@ -1751,7 +1751,7 @@ check_apt_updates() {
 # Install wkhtmltopdf and wkhtmltoimage.
 install_wkhtmltopdf_wkhtmltoimage() {
   ###--------------------###
-  if [ ! -e "${pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}" ] \
+  if [ ! -e "${pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}-fix.log" ] \
     || [ ! -x "/usr/bin/wkhtmltopdf" ] \
     || [ ! -x "/usr/bin/wkhtmltoimage" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
@@ -1777,7 +1777,7 @@ install_wkhtmltopdf_wkhtmltoimage() {
     chown root:root /usr/bin/wkhtmltoimage
     chmod 755 /usr/bin/wkhtmltopdf
     chmod 755 /usr/bin/wkhtmltoimage
-    touch ${pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}
+    touch ${pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}-fix.log
     cd /var/opt
   fi
 }
