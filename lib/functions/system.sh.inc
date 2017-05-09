@@ -1761,14 +1761,14 @@ install_wkhtmltopdf_wkhtmltoimage() {
       msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
       cd /var/opt
       rm -rf wkhtmltox*
-      get_dev_arch "wkhtmltox-${_WKHTMLTOX_VRN}_linux-generic-amd64.tar.xz"
+      get_dev_arch "wkhtmltox-${_WKHTMLTOX_VRN}_linux-generic-amd64.tar.xz" &> /dev/null
       cd wkhtmltox/bin/
     else
       SYSTEMARCH="x86"
       msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
       cd /var/opt
       rm -rf wkhtmltox*
-      get_dev_arch "wkhtmltox-${_WKHTMLTOX_VRN}_linux-generic-i386.tar.xz"
+      get_dev_arch "wkhtmltox-${_WKHTMLTOX_VRN}_linux-generic-i386.tar.xz" &> /dev/null
       cd wkhtmltox/bin/
     fi
     cp -af wkhtmltopdf /usr/bin/wkhtmltopdf
