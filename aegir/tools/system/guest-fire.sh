@@ -13,10 +13,10 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
         echo "${_IP} already denied or allowed on port 22"
       else
         echo "Deny ${_IP} on ports 21,22,443,80 in the next 1h"
-        csf -td ${_IP} 3600 -p 21
-        csf -td ${_IP} 3600 -p 22
-        csf -td ${_IP} 3600 -p 443
-        csf -td ${_IP} 3600 -p 80
+        csf -td ${_IP} 900 -p 21
+        csf -td ${_IP} 900 -p 22
+        csf -td ${_IP} 900 -p 443
+        csf -td ${_IP} 900 -p 80
       fi
     done
   fi
@@ -27,10 +27,10 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
         echo "${_IP} already denied or allowed on port 80"
       else
         echo "Deny ${_IP} on ports 21,22,443,80 in the next 1h"
-        csf -td ${_IP} 3600 -p 21
-        csf -td ${_IP} 3600 -p 22
-        csf -td ${_IP} 3600 -p 443
-        csf -td ${_IP} 3600 -p 80
+        csf -td ${_IP} 900 -p 21
+        csf -td ${_IP} 900 -p 22
+        csf -td ${_IP} 900 -p 443
+        csf -td ${_IP} 900 -p 80
       fi
     done
   fi
@@ -41,10 +41,10 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
         echo "${_IP} already denied or allowed on port 21"
       else
         echo "Deny ${_IP} on ports 21,22,443,80 in the next 1h"
-        csf -td ${_IP} 3600 -p 21
-        csf -td ${_IP} 3600 -p 22
-        csf -td ${_IP} 3600 -p 443
-        csf -td ${_IP} 3600 -p 80
+        csf -td ${_IP} 900 -p 21
+        csf -td ${_IP} 900 -p 22
+        csf -td ${_IP} 900 -p 443
+        csf -td ${_IP} 900 -p 80
       fi
     done
   fi
@@ -52,28 +52,16 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
 fi
 }
 
-if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
-  guest_guard
-  sleep 5
-  guest_guard
-  sleep 5
-  guest_guard
-  sleep 5
-  guest_guard
-  sleep 5
-  guest_guard
-  sleep 5
-  guest_guard
-  sleep 5
-  guest_guard
-  sleep 5
-  guest_guard
-  sleep 5
-  guest_guard
-  sleep 5
-  guest_guard
-  sleep 5
-  guest_guard
+if [ -e "/etc/csf/csf.deny" ] \
+  && [ ! -e "/var/run/water.pid" ] \
+  && [ -e "/usr/sbin/csf" ]; then
+  [ ! -e "/var/run/water.pid" ] && guest_guard
+  sleep 15
+  [ ! -e "/var/run/water.pid" ] && guest_guard
+  sleep 15
+  [ ! -e "/var/run/water.pid" ] && guest_guard
+  sleep 15
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   rm -f /var/run/fire.pid
 fi
 exit 0

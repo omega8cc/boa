@@ -57,7 +57,7 @@ guard_stats() {
     if [ -e "/root/.local.IP.list" ]; then
       cp -af /root/.local.IP.list $i/root/.local.IP.list
     fi
-    if [ -e "$i/${_HA}" ]; then
+    if [ -e "$i/${_HA}" ] && [ -e "/usr/var/run${i}" ]; then
       for _IP in `cat $i/${_HA} | cut -d '#' -f1 | sort | uniq`; do
         _NR_TEST="0"
         _NR_TEST=$(tr -s ' ' '\n' < $i/${_HA} | grep -c ${_IP} 2>&1)
@@ -73,13 +73,13 @@ guard_stats() {
             echo "${_IP} is a local IP address, ignoring $i/${_HA}"
           fi
         fi
-        if [ ! -z ${_NR_TEST} ] && [ ${_NR_TEST} -ge "24" ]; then
+        if [ ! -z ${_NR_TEST} ] && [ ${_NR_TEST} -ge "48" ]; then
           echo ${_IP} ${_NR_TEST}
           _FW_TEST=$(csf -g ${_IP} 2>&1)
           if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
             echo "${_IP} already denied or allowed on port 22"
           else
-            if [ ${_NR_TEST} -ge "64" ]; then
+            if [ ${_NR_TEST} -ge "96" ]; then
               echo "Deny ${_IP} permanently ${_NR_TEST}"
               csf -d ${_IP} do not delete Brute force SSH Server ${_NR_TEST} attacks
             else
@@ -90,7 +90,7 @@ guard_stats() {
         fi
       done
     fi
-    if [ -e "$i/${_WA}" ]; then
+    if [ -e "$i/${_WA}" ] && [ -e "/usr/var/run${i}" ]; then
       for _IP in `cat $i/${_WA} | cut -d '#' -f1 | sort | uniq`; do
         _NR_TEST="0"
         _NR_TEST=$(tr -s ' ' '\n' < $i/${_WA} | grep -c ${_IP} 2>&1)
@@ -118,13 +118,13 @@ guard_stats() {
             echo "${_IP} is a local IP address, ignoring $i/${_WA}"
           fi
         fi
-        if [ ! -z ${_NR_TEST} ] && [ ${_NR_TEST} -ge "24" ]; then
+        if [ ! -z ${_NR_TEST} ] && [ ${_NR_TEST} -ge "48" ]; then
           echo ${_IP} ${_NR_TEST}
           _FW_TEST=$(csf -g ${_IP} 2>&1)
           if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
             echo "${_IP} already denied or allowed on port 80"
           else
-            if [ ${_NR_TEST} -ge "64" ]; then
+            if [ ${_NR_TEST} -ge "96" ]; then
               echo "Deny ${_IP} permanently ${_NR_TEST}"
               csf -d ${_IP} do not delete Brute force Web Server ${_NR_TEST} attacks
             else
@@ -135,7 +135,7 @@ guard_stats() {
         fi
       done
     fi
-    if [ -e "$i/$_FA" ]; then
+    if [ -e "$i/$_FA" ] && [ -e "/usr/var/run${i}" ]; then
       for _IP in `cat $i/$_FA | cut -d '#' -f1 | sort | uniq`; do
         _NR_TEST="0"
         _NR_TEST=$(tr -s ' ' '\n' < $i/$_FA | grep -c ${_IP} 2>&1)
@@ -151,13 +151,13 @@ guard_stats() {
             echo "${_IP} is a local IP address, ignoring $i/$_FA"
           fi
         fi
-        if [ ! -z ${_NR_TEST} ] && [ ${_NR_TEST} -ge "24" ]; then
+        if [ ! -z ${_NR_TEST} ] && [ ${_NR_TEST} -ge "48" ]; then
           echo ${_IP} ${_NR_TEST}
           _FW_TEST=$(csf -g ${_IP} 2>&1)
           if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
             echo "${_IP} already denied or allowed on port 21"
           else
-            if [ ${_NR_TEST} -ge "64" ]; then
+            if [ ${_NR_TEST} -ge "96" ]; then
               echo "Deny ${_IP} permanently ${_NR_TEST}"
               csf -d ${_IP} do not delete Brute force FTP Server ${_NR_TEST} attacks
             else
