@@ -13,7 +13,7 @@ local_ip_rg() {
         | uniq \
         | tr -d "\s" \
         | grep ${_IP} 2>&1)
-      if [ -z ${_IP_CHECK} ]; then
+      if [ -z "${_IP_CHECK}" ]; then
         echo "${_IP} not yet listed in /root/.local.IP.list"
         echo "${_IP} # local IP address" >> /root/.local.IP.list
       else
@@ -68,18 +68,18 @@ guard_stats() {
             | uniq \
             | tr -d "\s" \
             | grep ${_IP} 2>&1)
-          if [ ! -z ${_IP_CHECK} ]; then
+          if [ ! -z "${_IP_CHECK}" ]; then
             _NR_TEST="0"
             echo "${_IP} is a local IP address, ignoring $i/${_HA}"
           fi
         fi
-        if [ ! -z ${_NR_TEST} ] && [ ${_NR_TEST} -ge "48" ]; then
+        if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "10" ]; then
           echo ${_IP} ${_NR_TEST}
           _FW_TEST=$(csf -g ${_IP} 2>&1)
           if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
             echo "${_IP} already denied or allowed on port 22"
           else
-            if [ ${_NR_TEST} -ge "96" ]; then
+            if [ "${_NR_TEST}" -ge "50" ]; then
               echo "Deny ${_IP} permanently ${_NR_TEST}"
               csf -d ${_IP} do not delete Brute force SSH Server ${_NR_TEST} attacks
             else
@@ -89,6 +89,9 @@ guard_stats() {
           fi
         fi
       done
+      if [ ! -e "$i/${_HX}" ]; then
+        mv -f $i/${_HA} $i/${_HX}
+      fi
     fi
     if [ -e "$i/${_WA}" ] && [ -e "/usr/var/run${i}" ]; then
       for _IP in `cat $i/${_WA} | cut -d '#' -f1 | sort | uniq`; do
@@ -113,18 +116,18 @@ guard_stats() {
             | uniq \
             | tr -d "\s" \
             | grep ${_IP} 2>&1)
-          if [ ! -z ${_IP_CHECK} ]; then
+          if [ ! -z "${_IP_CHECK}" ]; then
             _NR_TEST="0"
             echo "${_IP} is a local IP address, ignoring $i/${_WA}"
           fi
         fi
-        if [ ! -z ${_NR_TEST} ] && [ ${_NR_TEST} -ge "48" ]; then
+        if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "10" ]; then
           echo ${_IP} ${_NR_TEST}
           _FW_TEST=$(csf -g ${_IP} 2>&1)
           if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
             echo "${_IP} already denied or allowed on port 80"
           else
-            if [ ${_NR_TEST} -ge "96" ]; then
+            if [ "${_NR_TEST}" -ge "50" ]; then
               echo "Deny ${_IP} permanently ${_NR_TEST}"
               csf -d ${_IP} do not delete Brute force Web Server ${_NR_TEST} attacks
             else
@@ -134,6 +137,9 @@ guard_stats() {
           fi
         fi
       done
+      if [ ! -e "$i/${_WX}" ]; then
+        mv -f $i/${_WA} $i/${_WX}
+      fi
     fi
     if [ -e "$i/$_FA" ] && [ -e "/usr/var/run${i}" ]; then
       for _IP in `cat $i/$_FA | cut -d '#' -f1 | sort | uniq`; do
@@ -146,18 +152,18 @@ guard_stats() {
             | uniq \
             | tr -d "\s" \
             | grep ${_IP} 2>&1)
-          if [ ! -z ${_IP_CHECK} ]; then
+          if [ ! -z "${_IP_CHECK}" ]; then
             _NR_TEST="0"
             echo "${_IP} is a local IP address, ignoring $i/$_FA"
           fi
         fi
-        if [ ! -z ${_NR_TEST} ] && [ ${_NR_TEST} -ge "48" ]; then
+        if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "10" ]; then
           echo ${_IP} ${_NR_TEST}
           _FW_TEST=$(csf -g ${_IP} 2>&1)
           if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
             echo "${_IP} already denied or allowed on port 21"
           else
-            if [ ${_NR_TEST} -ge "96" ]; then
+            if [ "${_NR_TEST}" -ge "50" ]; then
               echo "Deny ${_IP} permanently ${_NR_TEST}"
               csf -d ${_IP} do not delete Brute force FTP Server ${_NR_TEST} attacks
             else
@@ -167,6 +173,9 @@ guard_stats() {
           fi
         fi
       done
+      if [ ! -e "$i/${_FX}" ]; then
+        mv -f $i/${_FA} $i/${_FX}
+      fi
     fi
   done
 }
@@ -175,6 +184,7 @@ if [ -e "/vservers" ] \
   && [ -e "/etc/csf/csf.deny" ] \
   && [ -e "/usr/sbin/csf" ]; then
   if [ -e "/root/.local.IP.list" ]; then
+    echo local dr/tr start `date`
     for _IP in `cat /root/.local.IP.list \
       | cut -d '#' -f1 \
       | sort \
@@ -193,10 +203,15 @@ if [ -e "/vservers" ] \
   rm -f /etc/csf/csf.error
   csf -q
   sleep 10
+  echo local start `date`
   local_ip_rg
   _HA=var/xdrago/monitor/hackcheck.archive.log
+  _HX=var/xdrago/monitor/hackcheck.archive.x.log
   _WA=var/xdrago/monitor/scan_nginx.archive.log
+  _WX=var/xdrago/monitor/scan_nginx.archive.x.log
   _FA=var/xdrago/monitor/hackftp.archive.log
+  _FX=var/xdrago/monitor/hackftp.archive.x.log
+  echo guard start `date`
   guard_stats
   rm -f /vservers/*/var/xdrago/monitor/ssh.log
   rm -f /vservers/*/var/xdrago/monitor/web.log
@@ -206,6 +221,7 @@ if [ -e "/vservers" ] \
   sleep 3
   service lfd start &> /dev/null
   rm -f /var/run/water.pid
+  echo guard fin `date`
 fi
 ntpdate pool.ntp.org
 _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')

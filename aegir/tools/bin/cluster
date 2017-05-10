@@ -273,8 +273,7 @@ if_firewall_update() {
     sed -i "s/.*csf -q.*//gi" /etc/crontab
     wait
     if [ -e "/opt/fire.sh" ] && [ -e "/opt/water.sh" ]; then
-      echo "*  *    * * *   root    test -e /etc/csf/csf.error && ( rm -f /etc/csf/csf.error && csf -q && csf -df && csf -tf && csf -q && echo WTF \`date\` >> /var/log/csf_wtf.log )" >> /etc/crontab
-      echo "15 6    * * *   root    test -x /usr/sbin/csf && ( csf -df && csf -tf && csf -q )" >> /etc/crontab
+      echo "*  *    * * *   root    test -e /etc/csf/csf.error && ( rm -f /etc/csf/csf.error && csf -q && echo WTF \`date\` >> /var/log/csf_wtf.log )" >> /etc/crontab
       echo "*  *    * * *   root    bash /opt/fire.sh >/dev/null 2>&1" >> /etc/crontab
       echo "29 *    * * *   root    bash /opt/water.sh >/dev/null 2>&1" >> /etc/crontab
       sed -i "/^$/d" /etc/crontab

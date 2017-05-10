@@ -6,6 +6,7 @@ SHELL=/bin/bash
 guest_guard() {
 if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
   touch /var/run/fire.pid
+  echo start `date`
   for i in `dir -d /vservers/*`; do
     if [ -e "$i/var/xdrago/monitor/ssh.log" ] && [ -e "/usr/var/run${i}" ]; then
       for _IP in `cat $i/var/xdrago/monitor/ssh.log | cut -d '#' -f1 | sort`; do
@@ -49,8 +50,9 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
         fi
       done
     fi
-    echo Completed for $i
+    echo Completed for $i `date`
   done
+  echo fin `date`
   rm -f /var/run/fire.pid
 fi
 }
