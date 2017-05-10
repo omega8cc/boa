@@ -34,8 +34,8 @@
 ### Default values for main variables
 ###
 _USER=o1
-_MY_EMAIL="noc@omega8.cc"
-_CLIENT_EMAIL="notify@omega8.cc"
+_MY_EMAIL="agiza@viewsation.com"
+_CLIENT_EMAIL="agiza@viewsation.com"
 _CLIENT_OPTION=SSD
 _CLIENT_SUBSCR=Y
 _CLIENT_CORES=8
