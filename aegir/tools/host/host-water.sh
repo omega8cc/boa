@@ -202,6 +202,8 @@ if [ -e "/vservers" ] \
   sleep 3
   rm -f /etc/csf/csf.error
   csf -q
+  csf -tf
+  csf -q
   sleep 10
   echo local start `date`
   local_ip_rg

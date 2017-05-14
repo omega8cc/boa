@@ -4,7 +4,7 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 guest_guard() {
-if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
+if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ] && [ ! -e "/var/run/fwclean.pid" ]; then
   touch /var/run/fire.pid
   if [ -e "/var/xdrago/monitor/ssh.log" ]; then
     for _IP in `cat /var/xdrago/monitor/ssh.log | cut -d '#' -f1 | sort`; do
