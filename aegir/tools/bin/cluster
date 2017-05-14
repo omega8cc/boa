@@ -280,7 +280,7 @@ if_firewall_update() {
       _FWQ="csf -q"
     fi
     if [ -e "/opt/fire.sh" ] && [ -e "/opt/water.sh" ]; then
-      echo "*  *    * * *   root    test -e /etc/csf/csf.error && ( rm -f /etc/csf/csf.error && service lfd restart && csf -q && echo WTF `date` >> /var/log/csf_wtf.log )" >> /etc/crontab
+      echo "*  *    * * *   root    test -e /etc/csf/csf.error && ( rm -f /etc/csf/csf.error && service lfd restart && csf -q && echo WTF \`date\` >> /var/log/csf_wtf.log )" >> /etc/crontab
       echo "*/5 *   * * *   root    touch /var/run/fwclean.pid && sleep 60 && service lfd restart && ${_FWQ} && rm -f /var/run/fwclean.pid && echo CLEAN \`date\` >> /var/log/csf_clean.log" >> /etc/crontab
       echo "*/2  *  * * *   root    test ! -e /var/run/fwclean.pid && bash /opt/fire.sh >/dev/null 2>&1" >> /etc/crontab
       echo "29 *    * * *   root    bash /opt/water.sh >/dev/null 2>&1" >> /etc/crontab
