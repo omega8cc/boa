@@ -168,15 +168,15 @@ system_check_clean() {
 
 check_root_direct() {
   _U_TEST=DENY
-  [ ${SUDO_USER} ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
+  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
   _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
   _U_TEST_LNE=$(logname 2>&1)
-  if [ ${_U_TEST_SDO} = "root" ] || [ ${_U_TEST_LNE} = "root" ]; then
+  if [ "${_U_TEST_SDO}" = "root" ] || [ "${_U_TEST_LNE}" = "root" ]; then
     if [ -z "${_U_TEST_WHO}" ]; then
       _U_TEST=ALLOW
       ### normal for root scripts running from cron
     else
-      if [ ${_U_TEST_WHO} = "root" ]; then
+      if [ "${_U_TEST_WHO}" = "root" ]; then
         _U_TEST=ALLOW
       fi
     fi

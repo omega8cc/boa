@@ -94,15 +94,15 @@ check_root() {
 
 check_root_direct() {
   _U_TEST=DENY
-  [ ${SUDO_USER} ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
+  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
   _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
   _U_TEST_LNE=$(logname 2>&1)
-  if [ ${_U_TEST_SDO} = "root" ] || [ ${_U_TEST_LNE} = "root" ]; then
+  if [ "${_U_TEST_SDO}" = "root" ] || [ "${_U_TEST_LNE}" = "root" ]; then
     if [ -z "${_U_TEST_WHO}" ]; then
       _U_TEST=ALLOW
       ### normal for root scripts running from cron
     else
-      if [ ${_U_TEST_WHO} = "root" ]; then
+      if [ "${_U_TEST_WHO}" = "root" ]; then
         _U_TEST=ALLOW
       fi
     fi
@@ -329,7 +329,7 @@ install_proxysql() {
   echo "Installing ProxySQL on the web cluster node..."
   if [ ! -z "${_E_PROXYSQL_PASSWORD}" ] && [ ! -z "${_E_ROOT_SQL_PASWD}" ]; then
 
-    if [ ${cmd} = "in-pxy" ] && [ -e "/vservers/${idn}/usr/bin/proxysql" ]; then
+    if [ "${cmd}" = "in-pxy" ] && [ -e "/vservers/${idn}/usr/bin/proxysql" ]; then
       mkdir -p /vservers/${idn}/var/backups/old-proxysql/
       cp -af /vservers/${idn}/var/lib/proxysql/* /vservers/${idn}/var/backups/old-proxysql/
       vserver ${idn} exec service proxysql stop
@@ -602,7 +602,7 @@ install_vps() {
   cp -af /etc/resolv.conf /vservers/${idn}/etc/
   vserver ${idn} exec dig aegirproject.org
 
-  if [ ${ver} != "galera" ]; then
+  if [ "${ver}" != "galera" ]; then
     echo "Installing BOA ${ver} in vps ${idn}..."
     rm -f BOA.sh.txt*
     wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
@@ -676,7 +676,7 @@ install_vps() {
     vserver ${idn} exec chmod 700 ~/.ssh/
   fi
 
-  if [ ${ver} = "galera" ]; then
+  if [ "${ver}" = "galera" ]; then
     echo "Running post-install Galera VPS upgrade..."
     if [ "${osx}" = "jessie" ] || [ -x "/vservers/${idn}/lib/systemd/systemd" ]; then
       echo "Removing systemd on ${osx}..."
@@ -710,7 +710,7 @@ install_vps() {
     echo
   fi
 
-  if [ ${cmd} = "in-all" ] && [ ${ver} != "galera" ]; then
+  if [ "${cmd}" = "in-all" ] && [ "${ver}" != "galera" ]; then
     install_proxysql
   fi
 
@@ -751,7 +751,7 @@ install_web_node() {
   hst="${_WEB_FQDN}"
   vip="${_WEB_NODE_IP}"
   osx="${_CLUSTER_OS}"
-  if [ ${cmd} = "in-all" ]; then
+  if [ "${cmd}" = "in-all" ]; then
     ver="${xer}"
   fi
   eml="${_CLUSTER_EMAIL}"
@@ -785,7 +785,7 @@ install_db_cluster() {
     echo "${IP} # Cluster Galera Node" >> /etc/csf/csf.allow
     echo "${IP} # Cluster Galera Node" >> /etc/csf/csf.ignore
   done
-  if [ ! -z ${_WEB_NODE_IP} ]; then
+  if [ ! -z "${_WEB_NODE_IP}" ]; then
     echo "${_WEB_NODE_IP} # Web Cluster Node" >> /etc/csf/csf.allow
     echo "${_WEB_NODE_IP} # Web Cluster Node" >> /etc/csf/csf.ignore
   fi
