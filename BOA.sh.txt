@@ -483,11 +483,9 @@ update_agents() {
       sed -i "s/.*sucuri.*//g"  /etc/csf/csf.ignore
       echo "tcp|in|d=80|s=192.88.134.0/23 # sucuri ips" >> /etc/csf/csf.allow
       echo "tcp|in|d=80|s=185.93.228.0/22 # sucuri ips" >> /etc/csf/csf.allow
-      echo "tcp|in|d=80|s=192.124.249.0/24 # sucuri ips" >> /etc/csf/csf.allow
       echo "tcp|in|d=80|s=66.248.200.0/22 # sucuri ips" >> /etc/csf/csf.allow
       echo "tcp|in|d=443|s=192.88.134.0/23 # sucuri ips" >> /etc/csf/csf.allow
       echo "tcp|in|d=443|s=185.93.228.0/22 # sucuri ips" >> /etc/csf/csf.allow
-      echo "tcp|in|d=443|s=192.124.249.0/24 # sucuri ips" >> /etc/csf/csf.allow
       echo "tcp|in|d=443|s=66.248.200.0/22 # sucuri ips" >> /etc/csf/csf.allow
       sed -i "s/.*googlebot.*//g"  /etc/csf/csf.allow
       sed -i "s/.*googlebot.*//g"  /etc/csf/csf.ignore
