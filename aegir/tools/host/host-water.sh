@@ -269,18 +269,6 @@ guard_stats() {
       for _IP in `cat $i/${_WA} | cut -d '#' -f1 | sort | uniq`; do
         _NR_TEST="0"
         _NR_TEST=$(tr -s ' ' '\n' < $i/${_WA} | grep -c ${_IP} 2>&1)
-        # _CF_TEST=
-        # _CF_TEST=$(whois ${_IP} | grep cloudflare.com 2>&1)
-        # if [[ "${_CF_TEST}" =~ "cloudflare" ]]; then
-        #   _NR_TEST="0"
-        #   echo "${_IP} is a cloudflare IP address, ignoring ${_HA}"
-        # fi
-        # _SC_TEST=
-        # _SC_TEST=$(whois ${_IP} | grep sucuri.net 2>&1)
-        # if [[ "${_SC_TEST}" =~ "sucuri" ]]; then
-        #   _NR_TEST="0"
-        #   echo "${_IP} is a sucuri IP address, ignoring ${_HA}"
-        # fi
         if [ -e "/root/.local.IP.list" ]; then
           _IP_CHECK=$(cat /root/.local.IP.list \
             | cut -d '#' -f1 \
@@ -367,7 +355,7 @@ if [ -e "/vservers" ] \
     done
   fi
 
-  n=$((RANDOM%180+80))
+  n=$((RANDOM%120+30))
   echo Waiting $n seconds...
   sleep $n
   touch /var/run/water.pid

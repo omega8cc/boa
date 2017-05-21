@@ -13,10 +13,10 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ] && [ ! -e "/var
         echo "${_IP} already denied or allowed on port 22"
       else
         echo "Deny ${_IP} on ports 21,22,443,80 in the next 1h"
-        csf -td ${_IP} 900 -p 21
-        csf -td ${_IP} 900 -p 22
-        csf -td ${_IP} 900 -p 443
-        csf -td ${_IP} 900 -p 80
+        csf -td ${_IP} 3600 -p 21
+        csf -td ${_IP} 3600 -p 22
+        csf -td ${_IP} 3600 -p 443
+        csf -td ${_IP} 3600 -p 80
       fi
     done
   fi
@@ -27,10 +27,10 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ] && [ ! -e "/var
         echo "${_IP} already denied or allowed on port 80"
       else
         echo "Deny ${_IP} on ports 21,22,443,80 in the next 1h"
-        csf -td ${_IP} 900 -p 21
-        csf -td ${_IP} 900 -p 22
-        csf -td ${_IP} 900 -p 443
-        csf -td ${_IP} 900 -p 80
+        csf -td ${_IP} 3600 -p 21
+        csf -td ${_IP} 3600 -p 22
+        csf -td ${_IP} 3600 -p 443
+        csf -td ${_IP} 3600 -p 80
       fi
     done
   fi
@@ -41,10 +41,10 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ] && [ ! -e "/var
         echo "${_IP} already denied or allowed on port 21"
       else
         echo "Deny ${_IP} on ports 21,22,443,80 in the next 1h"
-        csf -td ${_IP} 900 -p 21
-        csf -td ${_IP} 900 -p 22
-        csf -td ${_IP} 900 -p 443
-        csf -td ${_IP} 900 -p 80
+        csf -td ${_IP} 3600 -p 21
+        csf -td ${_IP} 3600 -p 22
+        csf -td ${_IP} 3600 -p 443
+        csf -td ${_IP} 3600 -p 80
       fi
     done
   fi
