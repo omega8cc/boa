@@ -78,7 +78,7 @@ check_root() {
     fi
     if [ "${_OSR}" = "jessie" ]; then
       _BENG_SERIES="4.1"
-      _BNG_VERSION="4.1.35-vs2.3.8.5.2"
+      _BNG_VERSION="4.1.39-vs2.3.8.5.2"
     elif [ "${_OSR}" = "wheezy" ]; then
       _BENG_SERIES="3.18"
       _BNG_VERSION="3.18.44-vs2.3.7.5"
