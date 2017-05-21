@@ -4,7 +4,7 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 guest_guard() {
-if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ] && [ ! -e "/var/run/fwclean.pid" ]; then
+if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
   touch /var/run/fire.pid
   echo start `date`
   for i in `dir -d /vservers/*`; do
@@ -62,11 +62,27 @@ if [ -e "/vservers" ] \
   && [ ! -e "/var/run/water.pid" ] \
   && [ -e "/usr/sbin/csf" ]; then
   [ ! -e "/var/run/water.pid" ] && guest_guard
-  sleep 15
+  sleep 5
   [ ! -e "/var/run/water.pid" ] && guest_guard
-  sleep 15
+  sleep 5
   [ ! -e "/var/run/water.pid" ] && guest_guard
-  sleep 15
+  sleep 5
+  [ ! -e "/var/run/water.pid" ] && guest_guard
+  sleep 5
+  [ ! -e "/var/run/water.pid" ] && guest_guard
+  sleep 5
+  [ ! -e "/var/run/water.pid" ] && guest_guard
+  sleep 5
+  [ ! -e "/var/run/water.pid" ] && guest_guard
+  sleep 5
+  [ ! -e "/var/run/water.pid" ] && guest_guard
+  sleep 5
+  [ ! -e "/var/run/water.pid" ] && guest_guard
+  sleep 5
+  [ ! -e "/var/run/water.pid" ] && guest_guard
+  sleep 5
+  [ ! -e "/var/run/water.pid" ] && guest_guard
+  sleep 5
   [ ! -e "/var/run/water.pid" ] && guest_guard
   rm -f /var/run/fire.pid
 fi
