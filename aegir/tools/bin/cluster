@@ -1187,7 +1187,16 @@ install_host() {
   if [ ! -e "/boot/vmlinuz-${_BNG_VERSION}-beng" ]; then
     echo "Installing beng vserver kernel..."
     echo "deb http://repo.psand.net/ ${_OSR} main" > /etc/apt/sources.list.d/vserver.list
-    wget -q -O - http://repo.psand.net/pubkey.txt | apt-key add -
+    cd /var/backups
+    _KEYS_SERVER_TEST=FALSE
+    until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
+      rm -f pubkey.txt*
+      wget -q -U iCab http://repo.psand.net/pubkey.txt
+      _KEYS_SERVER_TEST=$(grep GnuPG pubkey.txt 2>&1)
+      sleep 2
+    done
+    cat pubkey.txt | apt-key add - &> /dev/null
+    rm -f pubkey.txt*
     apt-get update ${_NOISE}
     ${_INSTAPP} build-essential
     ${_INSTAPP} linux-headers-vserver-${_BENG_SERIES}-beng
