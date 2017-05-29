@@ -345,7 +345,7 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
             fi
-            mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+            mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 CREATE DATABASE ${_DBN} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'localhost' IDENTIFIED BY '${_DBP}';
 GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'%' IDENTIFIED BY '${_DBP}';
@@ -357,7 +357,7 @@ EOFMYSQL
           fi
           if [ -e "${_USR}/src/${_DBN}.sql" ]; then
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL4 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
-            mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_DBN} < ${_USR}/src/${_DBN}.sql
+            mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_DBN} < ${_USR}/src/${_DBN}.sql
             echo "INFO: site ${Dom} db import on ${oct} complete"
             ###
             ### Activate readonly on source via global.inc and not via drush
@@ -577,13 +577,13 @@ migrate_prepare() {
     if [ ! -z "${dst}" ]; then
       if [ "${oct}" = "${dst}" ]; then
         [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
-        mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
+        mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
         run_drush8_hmr_cmd "vset --always-set site_frontpage 'hosting/sites'"
         touch ${_USR}/log/imported.pid
       fi
     else
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL6 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
-      mysql -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
+      mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
       run_drush8_hmr_cmd "vset --always-set site_frontpage 'hosting/sites'"
       touch ${_USR}/log/imported.pid
     fi
