@@ -292,12 +292,12 @@ else
 fi
 
 USER_INCLUDE=""
-if [ -f "/root/.backboa.include"]; then
+if [ -f "/root/.backboa.include" ]; then
   USER_INCLUDE="--include-filelist /root/.backboa.include"
 fi
 
 USER_EXCLUDE=""
-if [ -f "/root/.backboa.exclude"]; then
+if [ -f "/root/.backboa.exclude" ]; then
   USER_EXCLUDE="--exclude-filelist /root/.backboa.exclude"
 fi
 

@@ -127,10 +127,10 @@
   #3    You can use a file that lists folders and files that should be included
         or excluded from the backups.
         
-        * If /root/.backboa.exclude exists it will as the value to be passed to
-        the --exclude-filist paramater to duplicity
-        * If /root/.backboa.include exists it will as the value to be passed to
-        the --include-filist paramater to duplicity
+        * If /root/.backboa.exclude exists it will be passed as the 
+        --exclude-filelist parameter of duplicity
+        * If /root/.backboa.include exists it will be passed as the 
+        --include-filelist parameter of duplicity
        
         The format of both files should be as described in the documentation of
         duplicity:
