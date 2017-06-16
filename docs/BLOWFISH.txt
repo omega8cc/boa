@@ -18,9 +18,9 @@ BOA-2.0.8 Edition, and will use SHA512 by default starting with BOA-2.0.9
 ----------
 WARNING!
 ----------
-1. Make sure you have working SSH keys for direct root access without sudo.
-2. Make sure you have working SSH keys for direct root access without sudo.
-3. Make sure you have working SSH keys for direct root access without sudo.
+1. Make sure you have working SSH (RSA) keys for direct root access without sudo.
+2. Make sure you have working SSH (RSA) keys for direct root access without sudo.
+3. Make sure you have working SSH (RSA) keys for direct root access without sudo.
 
 REALLY. Don't even read anything below, if you didn't set this up yet!
         You could lock yourself out of your server forever (almost),

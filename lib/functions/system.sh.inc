@@ -34,13 +34,30 @@ if_running_as_root_barracuda() {
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
       _VMFAMILY="VS"
       touch /var/run/cloud_vhost.pid
+      if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
+        apt-get update -qq &> /dev/null
+      fi
+      if [ ! -e "/etc/apt/preferences.d/udev" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
+        apt-get update -qq &> /dev/null
+      fi
+      if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
+        apt-get update -qq &> /dev/null
+      fi
+      apt-get remove fuse -y --force-yes -qq &> /dev/null
+      apt-get purge fuse -y --force-yes -qq &> /dev/null
+      apt-get remove udev -y --force-yes -qq &> /dev/null
+      apt-get purge udev -y --force-yes -qq &> /dev/null
+      apt-get remove makedev -y --force-yes -qq &> /dev/null
+      apt-get purge makedev -y --force-yes -qq &> /dev/null
       if [ -e "/sbin/hdparm" ]; then
         mrun "apt-get remove hdparm -y --force-yes -qq" &> /dev/null
         mrun "apt-get purge hdparm -y --force-yes -qq" &> /dev/null
-      fi
-      if [ -e "/sbin/udevd" ]; then
-        mrun "apt-get remove udev -y --force-yes -qq" &> /dev/null
-        mrun "apt-get purge udev -y --force-yes -qq" &> /dev/null
       fi
       if [ -e "/sbin/auditd" ]; then
         mrun "apt-get remove auditd -y --force-yes -qq" &> /dev/null
@@ -800,6 +817,7 @@ barracuda_cnf() {
     echo "_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}"               >> ${barCnf}
     echo "_NGINX_EXTRA_CONF=\"${_NGINX_EXTRA_CONF}\""         >> ${barCnf}
     echo "_NGINX_FORWARD_SECRECY=${_NGINX_FORWARD_SECRECY}"   >> ${barCnf}
+    echo "_NGINX_HEADERS=${_NGINX_HEADERS}"                   >> ${barCnf}
     echo "_NGINX_LDAP=${_NGINX_LDAP}"                         >> ${barCnf}
     echo "_NGINX_NAXSI=${_NGINX_NAXSI}"                       >> ${barCnf}
     echo "_NGINX_SPDY=${_NGINX_SPDY}"                         >> ${barCnf}
@@ -1196,6 +1214,11 @@ barracuda_cnf() {
     _REDIS_LISTEN_MODE_TEST=$(grep _REDIS_LISTEN_MODE ${barCnf} 2>&1)
     if [[ ! "${_REDIS_LISTEN_MODE_TEST}" =~ "_REDIS_LISTEN_MODE" ]]; then
       echo "_REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE}" >> ${barCnf}
+    fi
+
+    _NGINX_HEADERS_TEST=$(grep _NGINX_HEADERS ${barCnf} 2>&1)
+    if [[ ! "${_NGINX_HEADERS_TEST}" =~ "_NGINX_HEADERS" ]]; then
+      echo "_NGINX_HEADERS=${_NGINX_HEADERS}" >> ${barCnf}
     fi
 
     _NGINX_LDAP_TEST=$(grep _NGINX_LDAP ${barCnf} 2>&1)
@@ -1728,7 +1751,7 @@ check_apt_updates() {
 # Install wkhtmltopdf and wkhtmltoimage.
 install_wkhtmltopdf_wkhtmltoimage() {
   ###--------------------###
-  if [ ! -e "${pthLog}/wkhtmltox-0.12.3" ] \
+  if [ ! -e "${pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}-fix.log" ] \
     || [ ! -x "/usr/bin/wkhtmltopdf" ] \
     || [ ! -x "/usr/bin/wkhtmltoimage" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
@@ -1738,15 +1761,15 @@ install_wkhtmltopdf_wkhtmltoimage() {
       msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
       cd /var/opt
       rm -rf wkhtmltox*
-      get_dev_arch "wkhtmltox-0.12.3_linux-generic-amd64.tar.gz"
-      cd wkhtmltox-0.12.3_linux-generic-amd64
+      get_dev_arch "wkhtmltox-${_WKHTMLTOX_VRN}_linux-generic-amd64.tar.xz" &> /dev/null
+      cd wkhtmltox/bin/
     else
       SYSTEMARCH="x86"
       msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
       cd /var/opt
       rm -rf wkhtmltox*
-      get_dev_arch "wkhtmltox-0.12.3_linux-generic-i386.tar.gz"
-      cd wkhtmltox-0.12.3_linux-generic-i386
+      get_dev_arch "wkhtmltox-${_WKHTMLTOX_VRN}_linux-generic-i386.tar.xz" &> /dev/null
+      cd wkhtmltox/bin/
     fi
     cp -af wkhtmltopdf /usr/bin/wkhtmltopdf
     cp -af wkhtmltoimage /usr/bin/wkhtmltoimage
@@ -1754,7 +1777,7 @@ install_wkhtmltopdf_wkhtmltoimage() {
     chown root:root /usr/bin/wkhtmltoimage
     chmod 755 /usr/bin/wkhtmltopdf
     chmod 755 /usr/bin/wkhtmltoimage
-    touch ${pthLog}/wkhtmltox-0.12.3
+    touch ${pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}-fix.log
     cd /var/opt
   fi
 }
@@ -3894,7 +3917,7 @@ sys_packages_install() {
               ntpdate \
               p7zip-full \
               pdftk \
-              percona-xtrabackup \
+              percona-xtrabackup-24 \
               postfix \
               postfix-pcre \
               pwgen \
@@ -3982,7 +4005,7 @@ fix_libs_php() {
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
-    if [ ! -L "/usr/lib/libXpm.so" ] \
+    if [ ! -L "/usr/lib/librtmp.so" ] \
       || [ ! -e "/usr/lib/libgmp.so.3" ] \
       || [ ! -e "/usr/include/gmp.h" ]; then
       msg "INFO: Fix #1 for libs in ${_THIS_OS} ${_OSV}"
@@ -3995,9 +4018,15 @@ fix_libs_php() {
         ln -sf /usr/lib/x86_64-linux-gnu/libldap.so /usr/lib/libldap.so
         ln -sf /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
         ln -sf /usr/lib/x86_64-linux-gnu/libXpm.so  /usr/lib/libXpm.so
+        ln -sf /usr/lib/x86_64-linux-gnu/librtmp.so /usr/lib/librtmp.so
         if [ ! -e "/usr/include/gmp.h" ] \
           && [ -e "/usr/include/x86_64-linux-gnu/gmp.h" ]; then
           ln -sf /usr/include/x86_64-linux-gnu/gmp.h  /usr/include/gmp.h
+        fi
+        if [ ! -e "/usr/lib/x86_64-linux-gnu/librtmp.so.0" ] \
+          && [ -e "/usr/lib/x86_64-linux-gnu/librtmp.so.1" ]; then
+          cd /usr/lib/x86_64-linux-gnu
+          ln -sf librtmp.so.1 librtmp.so.0
         fi
       else
         ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so
@@ -4007,9 +4036,15 @@ fix_libs_php() {
         ln -sf /usr/lib/i386-linux-gnu/libldap.so /usr/lib/libldap.so
         ln -sf /usr/lib/i386-linux-gnu/libpng.so  /usr/lib/libpng.so
         ln -sf /usr/lib/i386-linux-gnu/libXpm.so  /usr/lib/libXpm.so
+        ln -sf /usr/lib/i386-linux-gnu/librtmp.so /usr/lib/librtmp.so
         if [ ! -e "/usr/include/gmp.h" ] \
           && [ -e "/usr/include/i386-linux-gnu/gmp.h" ]; then
           ln -sf /usr/include/i386-linux-gnu/gmp.h  /usr/include/gmp.h
+        fi
+        if [ ! -e "/usr/lib/i386-linux-gnu/librtmp.so.0" ] \
+          && [ -e "/usr/lib/i386-linux-gnu/librtmp.so.1" ]; then
+          cd /usr/lib/i386-linux-gnu
+          ln -sf librtmp.so.1 librtmp.so.0
         fi
       fi
     fi
@@ -4977,7 +5012,7 @@ update_initd() {
           msg "INFO: ${_DB_SERVER} restart after upgrade forced"
         fi
       fi
-      myUptime=$(mysqladmin version | grep -i uptime 2>&1)
+      myUptime=$(mysqladmin -P${_THIS_DB_PORT} --protocol=tcp version | grep -i uptime 2>&1)
       myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
       msg "INFO: ${_DB_SERVER} ${myUptime}"
       if [ "${myRstrd}" = "YES" ]; then

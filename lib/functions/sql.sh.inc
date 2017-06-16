@@ -433,7 +433,7 @@ install_mariadb_sql() {
   SQLADD="libmariadbclient-dev \
           libmysqlclient18.1 \
           libdbd-mysql-perl \
-          percona-xtrabackup \
+          percona-xtrabackup-24 \
           python-mysqldb \
           libdbi-perl"
 }
@@ -515,7 +515,11 @@ forced_mysql_root_password_update() {
   fi
   if [ "${_STRONG_PASSWORDS}" = "YES" ] \
     || [ "${_PWD_CHARS}" -gt "8" ]; then
-    _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+    if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+      _ESC_PASS="$(openssl rand -base64 32 2>&1)"
+    else
+      _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+    fi
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
@@ -523,6 +527,11 @@ forced_mysql_root_password_update() {
     _ESC_PASS=$(pwgen -v -s -1 2>&1)
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+  fi
+  if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+    _ROOT_SQL_PASWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
+    _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d "\n" 2>&1)
+    _ESC_PASS="${_ROOT_SQL_PASWD}"
   fi
   if [ ! -z "${_ESC_PASS}" ]; then
     cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_VERSION}-${_NOW}
@@ -725,7 +734,7 @@ install_mariadb_server() {
           msg "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
         fi
       fi
-      myUptime=$(mysqladmin version | grep -i uptime 2>&1)
+      myUptime=$(mysqladmin -P${_THIS_DB_PORT} --protocol=tcp version | grep -i uptime 2>&1)
       myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
       msg "INFO: ${_DB_SERVER} ${myUptime}"
       if [ "${myCnfUpdate}" = "YES" ]; then
@@ -747,6 +756,8 @@ install_mariadb_server() {
 check_update_sql_credentials() {
   if [ ! -e "/root/.my.pass.txt" ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       msg "INFO: Generating random password for ${_DB_SERVER}"
     else
@@ -755,6 +766,8 @@ check_update_sql_credentials() {
     touch /root/.my.pass.txt
     chmod 0600 /root/.my.pass.txt &> /dev/null
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       _ESC_PASS=""
       _LEN_PASS=0
@@ -777,7 +790,11 @@ check_update_sql_credentials() {
       fi
       if [ "${_STRONG_PASSWORDS}" = "YES" ] \
         || [ "${_PWD_CHARS}" -gt "8" ]; then
-        _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+        if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+          _ESC_PASS="$(openssl rand -base64 32 2>&1)"
+        else
+          _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+        fi
         _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
         _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
       fi
@@ -847,6 +864,8 @@ finalize_sql_initial_setup() {
       mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$PASWD') \
         WHERE User='root';" &> /dev/null
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
+        || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+        || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         _DO_NOTHING=YES
       else
@@ -862,15 +881,15 @@ finalize_sql_initial_setup() {
           wait
         fi
         if [ -e "/root/.remote.IP.list" ]; then
-          _ESC="\`%\`.*"
+          _ESC="*.*"
           for _IP in `cat /root/.remote.IP.list \
             | cut -d '#' -f1 \
             | sort \
             | uniq \
             | tr -d "\s"`; do
-            mysql -u root -e "GRANT ALL PRIVILEGES ON $_ESC \
-            TO 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
-            WITH GRANT OPTION;" &> /dev/null
+            mysql -u root -e "GRANT ALL ON ${_ESC} \
+              TO 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
+              WITH GRANT OPTION;" &> /dev/null
           done
         fi
         if [ -e "/root/.cluster.IP.list" ]; then
@@ -879,10 +898,12 @@ finalize_sql_initial_setup() {
             | sort \
             | uniq \
             | tr -d "\s"`; do
-            mysql -u root -e "GRANT ALL ON *.* TO 'root'@'${_IP}';" &> /dev/null
+            mysql -u root -e "GRANT ALL ON ${_ESC} \
+              TO 'root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
+              WITH GRANT OPTION;" &> /dev/null
           done
-          mysql -u root -e "GRANT ALL ON *.* TO 'wsrep'@'%' \
-            IDENTIFIED BY '${PASWD}';" &> /dev/null
+          mysql -u root -e "GRANT ALL ON ${_ESC} \
+            TO 'wsrep'@'%' IDENTIFIED BY '${PASWD}';" &> /dev/null
         fi
         touch ${pthLog}/fixed-cluster-ip-grants.log
       fi
@@ -890,11 +911,13 @@ finalize_sql_initial_setup() {
     fi
     echo "[client]" > /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
-    echo "password=$PASWD" >> /root/.my.cnf
+    echo "password=${PASWD}" >> /root/.my.cnf
     chmod 0600 /root/.my.cnf
     echo "db=mysql" > /root/.mytop
     chmod 0600 /root/.mytop
-    if [ "${_THIS_DB_HOST}" = "localhost" ]; then
+    if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
       echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
     elif [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -918,15 +941,15 @@ finalize_sql_initial_setup() {
       PXSWD=$(cat /root/.my.pass.txt 2>&1)
       PASWD=$(echo -n $PXSWD | tr -d "\n" 2>&1)
       if [ -e "/root/.remote.IP.list" ]; then
-        _ESC="\`%\`.*"
+        _ESC="*.*"
         for _IP in `cat /root/.remote.IP.list \
           | cut -d '#' -f1 \
           | sort \
           | uniq \
           | tr -d "\s"`; do
-          mysql -u root -e "GRANT ALL PRIVILEGES \
-            ON $_ESC TO 'aegir_root'@'${_IP}' \
-            IDENTIFIED BY '${PASWD}' WITH GRANT OPTION;" &> /dev/null
+          mysql -u root -e "GRANT ALL ON ${_ESC} \
+            TO 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
+            WITH GRANT OPTION;" &> /dev/null
         done
       fi
       if [ -e "/root/.cluster.IP.list" ]; then
@@ -935,17 +958,22 @@ finalize_sql_initial_setup() {
           | sort \
           | uniq \
           | tr -d "\s"`; do
-          mysql -u root -e "GRANT ALL ON *.* TO 'root'@'${_IP}';" &> /dev/null
+          mysql -u root -e "GRANT ALL ON ${_ESC} \
+            TO 'root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
+            WITH GRANT OPTION;" &> /dev/null
         done
-        mysql -u root -e "GRANT ALL ON *.* TO 'wsrep'@'%' \
-          IDENTIFIED BY '${PASWD}';" &> /dev/null
+        mysql -u root -e "GRANT ALL ON ${_ESC} \
+          TO 'wsrep'@'%' IDENTIFIED BY '${PASWD}';" &> /dev/null
       fi
       touch ${pthLog}/fixed-cluster-ip-grants.log
     fi
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ ! -e "/root/.mysql.no.new.password.cnf" ]; then
-        if [ -e "/root/.mysql.yes.new.password.cnf" ]; then
+        if [ -e "/root/.mysql.yes.new.password.cnf" ] \
+          || [ -e "/root/.my.cluster_root_pwd.txt" ]; then
           forced_mysql_root_password_update
         fi
       fi

@@ -92,6 +92,7 @@ extract_archive() {
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
       *.tar.gz)    tar xzf $1    ;;
+      *.tar.xz)    tar xvf $1    ;;
       *.bz2)       bunzip2 $1    ;;
       *.rar)       unrar x $1    ;;
       *.gz)        gunzip -q $1  ;;
@@ -3113,7 +3114,7 @@ action() {
           if [ -e "${User}/log/hosting_cron_use_backend.txt" ]; then
             run_drush8_hmr_cmd "${vSet} hosting_cron_use_backend 1"
           else
-             run_drush8_hmr_cmd "${vSet} hosting_cron_use_backend 0"
+            run_drush8_hmr_cmd "${vSet} hosting_cron_use_backend 0"
           fi
           run_drush8_hmr_cmd "${vSet} hosting_ignore_default_profiles 0"
           run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_items 1"

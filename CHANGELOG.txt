@@ -1286,14 +1286,14 @@
       based site on PHP 5.6 for many months with zero issues). For more details
       please check: https://github.com/omega8cc/boa/issues/824
 
-  @=> SSH keys for root are required by newer OpenSSH versions used in BOA
+  @=> SSH (RSA) keys for root are required by newer OpenSSH versions used in BOA
 
       BOA installs SSH from sources by default (Debian only). This means that
       password based access for root will not work once BOA is installed or
       upgraded to current stable version. It is a result of OpenSSH changes
       in recent releases and not BOA specific change. BOA will deny the initial
       install and Barracuda will refuse to run upgrade if it detects that system
-      root has no SSH keys added and only password based access is available.
+      root has no SSH (RSA) keys added and only password based access is available.
       You can still modify this behaviour in /usr/etc/sshd_config but future
       OpenSSH versions may still revert such changes, so it is not recommended.
 
@@ -1305,7 +1305,7 @@
   * Disable page caching on the fly where needed
   * Disable temporarily support for broken Restaurant distro
   * Do not rebuild features and entities on cache clear
-  * Document new requirement: SSH keys for root -- fixes #786 #833
+  * Document new requirement: SSH (RSA) keys for root -- fixes #786 #833
   * Make ioncube_loader optional and disable by default with _PHP_IONCUBE=NO
   * Nginx SSL: enable OCSP stapling by default
   * Nginx SSL: enable OCSP stapling for existing HTTPS vhosts

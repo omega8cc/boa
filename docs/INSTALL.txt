@@ -10,7 +10,7 @@
   The only acceptable exceptions are: sshd and mail servers.
 
 * Don't run any installer via sudo.
-  You must be logged in as root or `sudo -i` first.
+  You must be logged in as root directly.
 
 * Don't run any system updates before running Barracuda installer.
   You should use vanilla system.
@@ -137,4 +137,3 @@ forcing Barracuda upgrade, plus optionally with no platforms added by default:
    $ boa {in-octopus} {email} {o2} {mini|max|none} {stable|head|2.4}
 
 If {stable|head|2.4} is not specified, it will use current stable.
-
