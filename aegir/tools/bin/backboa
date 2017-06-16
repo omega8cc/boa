@@ -15,8 +15,8 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-_DUPLICITY_VRN="0.7.12"
-_BOTO_VRN="2.46.1"
+_DUPLICITY_VRN="0.7.11"
+_BOTO_VRN="2.39.0-fix-python-2.7.9"
 _LOGPTH="/var/xdrago/log"
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
@@ -291,6 +291,16 @@ else
   EXCLUDE="--exclude /data/conf/arch"
 fi
 
+USER_INCLUDE=""
+if [ -f "/root/.backboa.include" ]; then
+  USER_INCLUDE="--include-filelist /root/.backboa.include"
+fi
+
+USER_EXCLUDE=""
+if [ -f "/root/.backboa.exclude" ]; then
+  USER_EXCLUDE="--exclude-filelist /root/.backboa.exclude"
+fi
+
 _AWS_PRG=${_AWS_PRG//[^A-Z]/}
 _AWS_OPX="--s3-use-new-style"
 
@@ -404,7 +414,7 @@ run_backup() {
     --allow-source-mismatch \
     --full-if-older-than ${_AWS_FLC} \
     --asynchronous-upload ${_AWS_OPX} \
-    ${INCLUDE} ${EXCLUDE} --exclude '**' / ${TARGET} >> ${LOGFILE}
+    ${INCLUDE} ${EXCLUDE} ${USER_INCLUDE} ${USER_EXCLUDE} --exclude '**' / ${TARGET} >> ${LOGFILE}
 }
 
 remove_older_than() {

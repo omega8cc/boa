@@ -207,6 +207,7 @@ extract_archive() {
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
       *.tar.gz)    tar xzf $1    ;;
+      *.tar.xz)    tar xvf $1    ;;
       *.bz2)       bunzip2 $1    ;;
       *.rar)       unrar x $1    ;;
       *.gz)        gunzip -q $1  ;;
@@ -242,7 +243,6 @@ update_agents() {
     fi
     echo ${InTest} > /root/.high_traffic.cnf
     echo ${InTest} > /root/.my.optimize.cnf
-    echo ${InTest} > /root/.my.batch_innodb.cnf
     # if [[ "${_CHECK_HOST}" =~ ".va." ]]; then
     #   rm -f /root/.fast.cron.cnf
     # else
@@ -255,6 +255,7 @@ update_agents() {
       rm -f /root/.randomize_duplicity_full_backup_day.cnf
       rm -f /root/.skip_duplicity_monthly_cleanup.cnf
     fi
+    rm -f /root/.my.batch_innodb.cnf
     rm -f /root/.fast.cron.cnf
     rm -f /root/.batch_innodb.cnf
     rm -f /root/.force.drupalgeddon.cnf
@@ -262,6 +263,7 @@ update_agents() {
     rm -f /root/.giant_traffic.cnf
     rm -f /root/.default.cnf
     rm -f /root/.debug.cnf
+    rm -f /root/.debug-boa-installer.cnf
     # if [ ! -e "/data/conf/override.global.inc" ]; then
     #   echo "<?php" > /data/conf/override.global.inc.tmp
     #   echo "" >> /data/conf/override.global.inc.tmp
@@ -481,11 +483,9 @@ update_agents() {
       sed -i "s/.*sucuri.*//g"  /etc/csf/csf.ignore
       echo "tcp|in|d=80|s=192.88.134.0/23 # sucuri ips" >> /etc/csf/csf.allow
       echo "tcp|in|d=80|s=185.93.228.0/22 # sucuri ips" >> /etc/csf/csf.allow
-      echo "tcp|in|d=80|s=192.124.249.0/24 # sucuri ips" >> /etc/csf/csf.allow
       echo "tcp|in|d=80|s=66.248.200.0/22 # sucuri ips" >> /etc/csf/csf.allow
       echo "tcp|in|d=443|s=192.88.134.0/23 # sucuri ips" >> /etc/csf/csf.allow
       echo "tcp|in|d=443|s=185.93.228.0/22 # sucuri ips" >> /etc/csf/csf.allow
-      echo "tcp|in|d=443|s=192.124.249.0/24 # sucuri ips" >> /etc/csf/csf.allow
       echo "tcp|in|d=443|s=66.248.200.0/22 # sucuri ips" >> /etc/csf/csf.allow
       sed -i "s/.*googlebot.*//g"  /etc/csf/csf.allow
       sed -i "s/.*googlebot.*//g"  /etc/csf/csf.ignore
@@ -1171,9 +1171,11 @@ setup() {
     curl ${crlGet} "${urlHmr}/${tBn}/backboa"      -o ${optBin}/backboa
     curl ${crlGet} "${urlHmr}/${tBn}/duobackboa"   -o ${optBin}/duobackboa
     chmod 700 ${optBin}/{backboa,duobackboa}
-    if [ "${_BENG_VS}" = "YES" ] \
+    if [ ! -e "${pthLog}/duplicity.ctrl.320stableQ10.pid" ] \
+      && [ -x "/usr/local/bin/duplicity" ] \
       && [ -e "/var/xdrago" ]; then
       backboa install
+      touch ${pthLog}/duplicity.ctrl.320stableQ10.pid
     fi
   fi
   chmod 700 ${optBin}/{autoupboa,backboa,barracuda,boa,duobackboa}

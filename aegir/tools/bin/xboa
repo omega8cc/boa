@@ -3,8 +3,8 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 _WEBG=www-data
-
-ieni="--ignore-errors --numeric-ids"
+_THIS_DB_PORT=3306
+ieni="--ignore-errors"
 
 ###
 ### Avoid too many questions
@@ -32,7 +32,7 @@ migration process to the new facility has been completed.
   * All cron tasks are paused during this migration and in the next 1-3 hours
   * The old Aegir control panel has been disabled to protect proxy vhosts
   * The main SSH account home directory contents has not been migrated
-  * SSH keys have been transferred, but only for the main SSH account
+  * SSH (RSA) keys have been transferred, but only for the main SSH account
   * SSH sub-accounts (Clients), if used, will be recreated from scratch
   * The Aegir backend USER.id_rsa.pub public SSH key has changed
 
@@ -76,7 +76,7 @@ migration process to the new facility has been completed.
   * All cron tasks are paused during this migration and in the next 1-3 hours
   * The old Aegir control panel has been disabled to protect proxy vhosts
   * The main SSH account home directory contents has not been migrated
-  * SSH keys have been transferred, but only for the main SSH account
+  * SSH (RSA) keys have been transferred, but only for the main SSH account
   * SSH sub-accounts (Clients), if used, will be recreated from scratch
   * The Aegir backend USER.id_rsa.pub public SSH key has changed
 
@@ -120,7 +120,7 @@ migration process to the new facility has been completed.
   * All cron tasks are paused during this migration and in the next 1-3 hours
   * The old Aegir control panel has been disabled to protect proxy vhosts
   * The main SSH account home directory contents has not been migrated
-  * SSH keys have been transferred, but only for the main SSH account
+  * SSH (RSA) keys have been transferred, but only for the main SSH account
   * SSH sub-accounts (Clients), if used, will be recreated from scratch
   * The Aegir backend USER.id_rsa.pub public SSH key has changed
 
@@ -327,19 +327,37 @@ migrate_sites() {
         echo "INFO: site ${Dom} db_host on ${_TGT_HM_USER} fixed"
         if [ ! -z "${_DBN}" ] && [ ! -z "${_DBP}" ]; then
           if [ ! -d "/var/lib/mysql/${_DBN}" ]; then
-            mysqladmin flush-privileges
-            mysql -uroot mysql<<EOFMYSQL
+            mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+            [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL3 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+            if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+              _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
+              _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+              mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+DELETE FROM mysql_users WHERE username='${_DBN}';
+DELETE FROM mysql_query_rules WHERE username='${_DBN}';
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_DBN}','${_DBP}','10');
+LOAD MYSQL USERS TO RUNTIME;
+SAVE MYSQL USERS FROM RUNTIME;
+SAVE MYSQL USERS TO DISK;
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_DBN}',10,1);
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_DBN}',11,1);
+LOAD MYSQL QUERY RULES TO RUNTIME;
+SAVE MYSQL QUERY RULES TO DISK;
+PROXYSQL
+            fi
+            mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 CREATE DATABASE ${_DBN} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-GRANT ALL PRIVILEGES ON ${_DBN}.* TO '${_DBN}'@'127.0.0.1' IDENTIFIED BY '${_DBP}';
-GRANT ALL PRIVILEGES ON ${_DBN}.* TO '${_DBN}'@'localhost' IDENTIFIED BY '${_DBP}';
+GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'localhost' IDENTIFIED BY '${_DBP}';
+GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'%' IDENTIFIED BY '${_DBP}';
 EOFMYSQL
-            mysqladmin flush-privileges
+            mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
             echo "INFO: site ${Dom} db setup on ${oct} complete"
           else
             echo "ALRT: site ${Dom} db ${_DBN} already exists!"
           fi
           if [ -e "${_USR}/src/${_DBN}.sql" ]; then
-            mysql ${_DBN} < ${_USR}/src/${_DBN}.sql
+            [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL4 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
+            mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_DBN} < ${_USR}/src/${_DBN}.sql
             echo "INFO: site ${Dom} db import on ${oct} complete"
             ###
             ### Activate readonly on source via global.inc and not via drush
@@ -368,7 +386,7 @@ EOFMYSQL
         ### run_drush8_nosilent_cmd "vset --always-set site_readonly 1"
         ###
         echo "INFO: site ${Dom} readonlymode module on ${oct} enabled"
-        mysqldump \
+        mysqldump -P${_THIS_DB_PORT} --protocol=tcp \
           --single-transaction \
           --quick \
           --no-autocommit \
@@ -454,6 +472,7 @@ migrate_prepare() {
     _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   fi
 
+  [ -z "${_THIS_DB_PORT}" ] && _THIS_DB_PORT=3306
   [ -z "${_CLIENT_OPTION}" ] && _CLIENT_OPTION=EDGE
   [ -z "${_CLIENT_SUBSCR}" ] && _CLIENT_SUBSCR=M
   [ -z "${_CLIENT_CORES}" ]  && _CLIENT_CORES=1
@@ -497,7 +516,7 @@ migrate_prepare() {
     && [ ! -z "${_HDB}" ] \
     && [ ! -e "${_USR}/src/prev_hostmaster.sql" ] \
     && [ ! -e "${_USR}/log/exported.pid" ]; then
-      mysqldump \
+      mysqldump -P${_THIS_DB_PORT} --protocol=tcp \
         --single-transaction \
         --quick \
         --no-autocommit \
@@ -557,12 +576,14 @@ migrate_prepare() {
     && [ ! -e "${_USR}/log/imported.pid" ]; then
     if [ ! -z "${dst}" ]; then
       if [ "${oct}" = "${dst}" ]; then
-        mysql ${_HDB} < ${_USR}/src/prev_hostmaster.sql
+        [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
+        mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
         run_drush8_hmr_cmd "vset --always-set site_frontpage 'hosting/sites'"
         touch ${_USR}/log/imported.pid
       fi
     else
-      mysql ${_HDB} < ${_USR}/src/prev_hostmaster.sql
+      [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL6 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
+      mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
       run_drush8_hmr_cmd "vset --always-set site_frontpage 'hosting/sites'"
       touch ${_USR}/log/imported.pid
     fi
@@ -730,6 +751,9 @@ migrate_init() {
     echo "Bye."
     echo
     exit 1
+  fi
+  if [ -e "${_USR}/log/use_proxysql.txt" ]; then
+    _THIS_DB_PORT=6033
   fi
   rm -f /root/scentral_migration_notice.sh.txt
   if [ "${oct}" = "xusage" ]; then
@@ -1123,6 +1147,18 @@ check_root() {
       source /root/.barracuda.cnf
       _ADM_EMAIL=${_MY_EMAIL//\\\@/\@}
       _BCC_EMAIL=${_MY_EMAIL//\\\@/\@}
+      if [ "${_THIS_DB_HOST}" = "localhost" ] \
+        || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+        _SQL_CONNECT=localhost
+      elif [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+        || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
+        _SQL_CONNECT=127.0.0.1
+      else
+        _SQL_CONNECT="${_THIS_DB_HOST}"
+      fi
+      if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
+        _SQL_CONNECT=localhost
+      fi
     fi
   else
     echo "ERROR: This script should be ran as a root user"

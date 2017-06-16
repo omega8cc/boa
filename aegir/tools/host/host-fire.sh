@@ -6,8 +6,9 @@ SHELL=/bin/bash
 guest_guard() {
 if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
   touch /var/run/fire.pid
+  echo start `date`
   for i in `dir -d /vservers/*`; do
-    if [ -e "$i/var/xdrago/monitor/ssh.log" ]; then
+    if [ -e "$i/var/xdrago/monitor/ssh.log" ] && [ -e "/usr/var/run${i}" ]; then
       for _IP in `cat $i/var/xdrago/monitor/ssh.log | cut -d '#' -f1 | sort`; do
         _FW_TEST=$(csf -g ${_IP} 2>&1)
         if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
@@ -21,7 +22,7 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
         fi
       done
     fi
-    if [ -e "$i/var/xdrago/monitor/web.log" ]; then
+    if [ -e "$i/var/xdrago/monitor/web.log" ] && [ -e "/usr/var/run${i}" ]; then
       for _IP in `cat $i/var/xdrago/monitor/web.log | cut -d '#' -f1 | sort`; do
         _FW_TEST=$(csf -g ${_IP} 2>&1)
         if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
@@ -35,7 +36,7 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
         fi
       done
     fi
-    if [ -e "$i/var/xdrago/monitor/ftp.log" ]; then
+    if [ -e "$i/var/xdrago/monitor/ftp.log" ] && [ -e "/usr/var/run${i}" ]; then
       for _IP in `cat $i/var/xdrago/monitor/ftp.log | cut -d '#' -f1 | sort`; do
         _FW_TEST=$(csf -g ${_IP} 2>&1)
         if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
@@ -49,36 +50,40 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
         fi
       done
     fi
-    echo Completed for $i
+    echo Completed for $i `date`
   done
+  echo fin `date`
   rm -f /var/run/fire.pid
 fi
 }
 
 if [ -e "/vservers" ] \
   && [ -e "/etc/csf/csf.deny" ] \
+  && [ ! -e "/var/run/water.pid" ] \
   && [ -e "/usr/sbin/csf" ]; then
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
+  sleep 5
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   rm -f /var/run/fire.pid
 fi
 exit 0

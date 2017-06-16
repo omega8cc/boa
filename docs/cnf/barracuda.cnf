@@ -53,6 +53,7 @@ _MAGICK_FROM_SOURCES=NO #------- Builds ImageMagick from sources when YES
 _NGINX_DOS_LIMIT=300 #---------- Allows to override default 250/300 limit
 _NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
 _NGINX_FORWARD_SECRECY=YES #---- Installs PFS Nginx support when YES (default)
+_NGINX_HEADERS=NO #------------- Installs Nginx Headers More support when YES
 _NGINX_LDAP=NO #---------------- Installs LDAP Nginx support when YES
 _NGINX_NAXSI=NO #--------------- Installs NAXSI WAF when YES - experimental
 _NGINX_SPDY=YES #--------------- Installs SPDY Nginx support when YES (default)
