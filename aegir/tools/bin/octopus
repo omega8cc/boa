@@ -184,6 +184,7 @@ extract_archive() {
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
       *.tar.gz)    tar xzf $1    ;;
+      *.tar.xz)    tar xvf $1    ;;
       *.bz2)       bunzip2 $1    ;;
       *.rar)       unrar x $1    ;;
       *.gz)        gunzip -q $1  ;;
@@ -1073,15 +1074,15 @@ check_dns_curl() {
 
 check_root_direct() {
   _U_TEST=DENY
-  [ ${SUDO_USER} ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
+  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
   _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
   _U_TEST_LNE=$(logname 2>&1)
-  if [ ${_U_TEST_SDO} = "root" ] || [ ${_U_TEST_LNE} = "root" ]; then
+  if [ "${_U_TEST_SDO}" = "root" ] || [ "${_U_TEST_LNE}" = "root" ]; then
     if [ -z "${_U_TEST_WHO}" ]; then
       _U_TEST=ALLOW
       ### normal for root scripts running from cron
     else
-      if [ ${_U_TEST_WHO} = "root" ]; then
+      if [ "${_U_TEST_WHO}" = "root" ]; then
         _U_TEST=ALLOW
       fi
     fi
@@ -1090,11 +1091,11 @@ check_root_direct() {
     echo
     echo "ERROR: This script must be run as root directly,"
     echo "ERROR: without sudo/su switch from regular system user"
-    echo "ERROR: Please add and test your SSH keys for root account"
+    echo "ERROR: Please add and test your SSH (RSA) keys for root account"
     echo "ERROR: with direct access before trying again"
     echo
     echo "HINT:  You can always restrict access later, or"
-    echo "       allow only SSH keys for root with directive"
+    echo "       allow only SSH (RSA) keys for root with directive"
     echo "         PermitRootLogin prohibit-password"
     echo "       in the /usr/etc/sshd_config file"
     echo "Bye"
@@ -1110,10 +1111,20 @@ check_root_keys_pwd() {
   fi
   if [[ ! "${_S_TEST}" =~ "root:" ]] \
     && [[ ! "${_R_TEST}" =~ "ssh-rsa" ]]; then
-    echo "ERROR: BOA requires working SSH keys for system root present"
-    echo "ERROR: Please add and test your SSH keys for root account"
+    echo
+    echo "ERROR: BOA requires working SSH (RSA) keys for system root present"
+    echo "ERROR: Please add and test your SSH (RSA) keys for root account"
     echo "ERROR: before trying again"
+    echo
+    echo "HINTS: Run this command on your local PC machine:"
+    echo "HINTS:   ssh-keygen -b 4096 -t rsa -N '' -f ~/.ssh/id_rsa"
+    echo "HINTS: Then copy the ~/.ssh/id_rsa.pub file from your PC"
+    echo "HINTS: to ~/.ssh/authorized_keys file on the server"
+    echo "HINTS: Make sure the key is not split into more than 1 line"
+    echo "HINTS: Remember to run: chmod 600 ~/.ssh/authorized_keys"
+    echo
     echo "Bye"
+    echo
     clean_pid_exit
   fi
 }

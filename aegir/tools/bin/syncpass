@@ -4,6 +4,7 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 vBs="/var/backups"
+_THIS_DB_PORT=3306
 
 # Remove dangerous stuff from the string.
 sanitize_string() {
@@ -35,7 +36,11 @@ check_generate() {
     if [ "${_STRONG_PASSWORDS}" = "YES" ] \
       || [ "${_PWD_CHARS}" -gt "8" ]; then
       echo "INFO: We will generate new random strong password (${_PWD_CHARS})"
-      _ESC_APASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+      if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+        _ESC_APASS="$(openssl rand -base64 32 2>&1)"
+      else
+        _ESC_APASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+      fi
       _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
       _ENC_APASS=$(python -c "import urllib; print urllib.quote('''${_ESC_APASS}''')")
       echo "${_ESC_APASS}" > ${_L_SYS}
@@ -74,31 +79,49 @@ do_syncpass() {
       check_generate
       chown ${uname}:${uname} ${_L_SYS} &> /dev/null
       if [ ! -z "${_ESC_APASS}" ] && [ ! -z "${_ENC_APASS}" ]; then
-        mysqladmin flush-hosts &> /dev/null
+        mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
         su -s /bin/bash - ${uname} -c "drush @hostmaster \
           sqlq \"UPDATE hosting_db_server \
           SET db_passwd='${_ESC_APASS}' \
           WHERE db_user='aegir_root'\"" &> /dev/null
-        _ESC="\`%\`.*"
+        _ESC="*.*"
         _USE_DB_USER="aegir_root"
         _USE_AEGIR_HOST="$(uname -n 2>&1)"
         _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
           | cut -d: -f2 | awk '{ print $1}' 2>&1)"
-        mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+        [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL1 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+        if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+          _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
+          _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+          mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
+DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_APASS}','10');
+LOAD MYSQL USERS TO RUNTIME;
+SAVE MYSQL USERS FROM RUNTIME;
+SAVE MYSQL USERS TO DISK;
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',10,1);
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',11,1);
+LOAD MYSQL QUERY RULES TO RUNTIME;
+SAVE MYSQL QUERY RULES TO DISK;
+PROXYSQL
+        fi
+        mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
 DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
 DROP USER '${_USE_DB_USER}'@'localhost';
+DROP USER '${_USE_DB_USER}'@'127.0.0.1';
+DROP USER '${_USE_DB_USER}'@'%';
 EOFMYSQL
-        mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+        mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
 EOFMYSQL
         sed -i \
           "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
           ${prH}/server_*.alias.drushrc.php &> /dev/null
         wait
-        mysqladmin flush-privileges &> /dev/null
+        mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
       else
         echo "ERROR: Auto-generated password for aegir_root system user"
         echo "ERROR: did not work as expected, please try again"
@@ -117,30 +140,51 @@ EOFMYSQL
         check_generate
         chown ${uname}:users ${_L_SYS} &> /dev/null
         if [ ! -z "${_ESC_APASS}" ] && [ ! -z "${_ENC_APASS}" ]; then
-          mysqladmin flush-hosts &> /dev/null
+          mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
           su -s /bin/bash - ${uname} -c "drush @hostmaster \
             sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_APASS}' \
             WHERE db_user='${uname}'\"" &> /dev/null
-          _ESC="\`%\`.*"
+          _ESC="*.*"
           _USE_DB_USER="${uname}"
           _USE_AEGIR_HOST="$(uname -n 2>&1)"
           _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
             | cut -d: -f2 | awk '{ print $1}' 2>&1)"
-          mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
+          if [ -e "/data/disk/${uname}/log/use_proxysql.txt" ]; then
+            _THIS_DB_PORT=6033
+          fi
+          [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL2 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+          if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+            _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
+            _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+            mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
+DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_APASS}','10');
+LOAD MYSQL USERS TO RUNTIME;
+SAVE MYSQL USERS FROM RUNTIME;
+SAVE MYSQL USERS TO DISK;
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',10,1);
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',11,1);
+LOAD MYSQL QUERY RULES TO RUNTIME;
+SAVE MYSQL QUERY RULES TO DISK;
+PROXYSQL
+          fi
+          mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
 DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
 DROP USER '${_USE_DB_USER}'@'localhost';
+DROP USER '${_USE_DB_USER}'@'127.0.0.1';
+DROP USER '${_USE_DB_USER}'@'%';
 EOFMYSQL
-          mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+          mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
 EOFMYSQL
           sed -i \
             "s/mysql:\/\/${uname}:.*/mysql:\/\/${uname}:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
             /data/disk/${uname}/.drush/server_*.alias.drushrc.php &> /dev/null
           wait
-          mysqladmin flush-privileges &> /dev/null
+          mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
         else
           echo "ERROR: Auto-generated password for ${uname} system user"
           echo "ERROR: did not work as expected, please try again"
@@ -199,6 +243,9 @@ check_root() {
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         _SQL_CONNECT=localhost
+      elif [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+        || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
+        _SQL_CONNECT=127.0.0.1
       else
         _SQL_CONNECT="${_THIS_DB_HOST}"
       fi

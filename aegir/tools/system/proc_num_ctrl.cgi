@@ -182,7 +182,7 @@ if (-f "/usr/local/sbin/pure-config.pl") {
   }
 }
 
-if ($mysqlsumar > 0) {
+if ($mysqlsumar > 0 ) {
  `mysqladmin flush-hosts &> /dev/null`;
   print "\n MySQL hosts flushed...\n";
 }

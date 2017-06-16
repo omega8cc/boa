@@ -118,7 +118,7 @@ if [ ! -e "${xtraList}" ] \
     service lfd start &> /dev/null
   fi
   apt-get update -qq
-  apt-get install percona-xtrabackup -y
+  apt-get install percona-xtrabackup-24 -y
 fi
 
 n=$((RANDOM%900+8))

@@ -52,28 +52,32 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
 fi
 }
 
-if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
-  guest_guard
+if [ -e "/etc/csf/csf.deny" ] \
+  && [ ! -e "/var/run/water.pid" ] \
+  && [ -e "/usr/sbin/csf" ]; then
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
-  guest_guard
+  [ ! -e "/var/run/water.pid" ] && guest_guard
+  sleep 5
+  [ ! -e "/var/run/water.pid" ] && guest_guard
   rm -f /var/run/fire.pid
 fi
 exit 0

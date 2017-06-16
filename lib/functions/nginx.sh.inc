@@ -107,7 +107,7 @@ force_advanced_nginx_config() {
   if [ "${_PFS_READY}" = "YES" ] \
     && [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
     _ALLOW_NGINX_FORWARD_SECRECY=YES
-    _SSL_PROTOCOLS="TLSv1.1 TLSv1.2;"
+    _SSL_PROTOCOLS="TLSv1.1 TLSv1.2 TLSv1.3;"
     _SSL_CIPHERS="ECDHE-RSA-AES128-GCM-SHA256:  \
       ECDHE-ECDSA-AES128-GCM-SHA256:  \
       ECDHE-RSA-AES256-GCM-SHA384:    \
@@ -270,6 +270,13 @@ install_upgrade_nginx() {
         msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
         msg "INFO: Nginx forced rebuild to include latest OpenSSL version"
       fi
+      if [ "${_NGINX_HEADERS}" = "YES" ]; then
+        if [[ ! "${_NGINX_V_ITD}" =~ "nginx-headers-more" ]]; then
+          _NGINX_INSTALL_REQUIRED=YES
+          msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
+          msg "INFO: Nginx forced rebuild to include Headers More support"
+        fi
+      fi
       if [ "${_NGINX_LDAP}" = "YES" ]; then
         if [[ ! "${_NGINX_V_ITD}" =~ "nginx-auth-ldap" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
@@ -335,6 +342,14 @@ install_upgrade_nginx() {
     fi
     if [ -e "/var/opt/nginx-upload-progress-module" ]; then
       _NGINX_EXTRA="--add-module=/var/opt/nginx-upload-progress-module/ ${_NGINX_EXTRA}"
+    fi
+    if [ "${_NGINX_HEADERS}" = "YES" ]; then
+      cd /var/opt
+      rm -rf /var/opt/nginx-headers-more*
+      get_dev_src "nginx-headers-more.tar.gz"
+      if [ -e "/var/opt/nginx-headers-more" ]; then
+        _NGINX_EXTRA="--add-module=/var/opt/nginx-headers-more/ ${_NGINX_EXTRA}"
+      fi
     fi
     if [ "${_NGINX_LDAP}" = "YES" ]; then
       cd /var/opt
@@ -557,11 +572,11 @@ fix_update_nginx_config() {
       wait
       sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
       wait
-      sed -i "s/SSLv3 TLSv1;/TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf             &> /dev/null
+      sed -i "s/SSLv3 TLSv1;/TLSv1.1 TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf             &> /dev/null
       wait
-      sed -i "s/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/SSLv3 TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.1 TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
       wait
-      sed -i "s/TLSv1 TLSv1.1 TLSv1.2;/TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf   &> /dev/null
+      sed -i "s/TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.1 TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf   &> /dev/null
       wait
       sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                           &> /dev/null
       wait
@@ -650,7 +665,7 @@ fix_update_nginx_config() {
     if [ "${_PFS_READY}" = "YES" ] \
       && [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
       _ALLOW_NGINX_FORWARD_SECRECY=YES
-      _SSL_PROTOCOLS="TLSv1.1 TLSv1.2;"
+      _SSL_PROTOCOLS="TLSv1.1 TLSv1.2 TLSv1.3;"
       _SSL_CIPHERS="ECDHE-RSA-AES128-GCM-SHA256:  \
         ECDHE-ECDSA-AES128-GCM-SHA256:  \
         ECDHE-RSA-AES256-GCM-SHA384:    \
@@ -735,9 +750,6 @@ fix_update_nginx_config() {
         /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
       wait
       sed -i "s/.*listen .*:443/  listen        \*:443/g" \
-        /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
-      wait
-      sed -i "s/param db_port.*/param db_port   3306;/g" \
         /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
       wait
     fi
