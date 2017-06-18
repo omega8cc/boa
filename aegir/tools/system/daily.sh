@@ -2485,7 +2485,9 @@ cleanup_ghost_vhosts() {
         | cut -d: -f2 \
         | awk '{ print $2}' \
         | sed "s/[\;]//g" 2>&1)
-      if [[ "$Plx" =~ "aegir/distro" ]] || [[ "${Dom}" =~ "--CDN"($) ]]; then
+      if [[ "$Plx" =~ "aegir/distro" ]] \
+        || [[ "${Dom}" =~ (^)"https." ]] \
+        || [[ "${Dom}" =~ "--CDN"($) ]]; then
         _SKIP_VHOST=YES
       else
         if [ ! -e "${User}/.drush/${Dom}.alias.drushrc.php" ]; then
