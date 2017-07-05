@@ -414,7 +414,7 @@ run_backup() {
     --allow-source-mismatch \
     --full-if-older-than ${_AWS_FLC} \
     --asynchronous-upload ${_AWS_OPX} \
-    ${INCLUDE} ${EXCLUDE} ${USER_INCLUDE} ${USER_EXCLUDE} --exclude '**' / ${TARGET} >> ${LOGFILE}
+    ${EXCLUDE} ${USER_EXCLUDE} ${INCLUDE} ${USER_INCLUDE} --exclude '**' / ${TARGET} >> ${LOGFILE}
 }
 
 remove_older_than() {
