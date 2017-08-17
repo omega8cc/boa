@@ -1118,6 +1118,8 @@ install_host() {
   ${_INSTAPP} ntpdate
   ${_INSTAPP} parted
   ${_INSTAPP} build-essential
+  ${_INSTAPP} iptables
+  ${_INSTAPP} ipset
 
   echo "Setting hostname to ${hst}"
   echo ${hst} > /etc/hostname
