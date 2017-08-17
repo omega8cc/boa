@@ -398,7 +398,7 @@ master_download_for_local_build() {
     get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
     get_dev_stc "r4032login-7.x-1.8.tar.gz"
     get_dev_stc "views_bulk_operations-7.x-3.4.tar.gz"
-    get_dev_stc "views-7.x-3.15.tar.gz"
+    get_dev_stc "views-7.x-3.17.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
     get_dev_stc "features-7.x-2.10.tar.gz"
