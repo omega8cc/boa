@@ -1849,6 +1849,8 @@ manage_user() {
         -type d -exec chmod 0700 {} \; &> /dev/null
       find ${dscUsr}/config/server_master \
         -type f -exec chmod 0600 {} \; &> /dev/null
+      chmod +rx ${dscUsr}/config{,/server_master{,/nginx{,/passwords.d}}} &> /dev/null
+      chmod +r ${dscUsr}/config/server_master/nginx/passwords.d/* &> /dev/null
       if [ ! -e "${dscUsr}/.tmp/.ctrl.320stableQ11.pid" ]; then
         rm -rf ${dscUsr}/.drush/cache
         mkdir -p ${dscUsr}/.tmp
