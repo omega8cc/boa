@@ -104,7 +104,7 @@ vBs="/var/backups"
 ###
 ### Distributions
 ###
-_AGOV=3.6
+_AGOV=3.8
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
 _COD=1.0-alpha5
