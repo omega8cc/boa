@@ -991,6 +991,21 @@ update_wrappers() {
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${forCer} &> /dev/null
   fi
+  _IPSET_TEST=$(which ipset 2> /dev/null)
+  if [ ! -x "${_IPSET_TEST}" ]; then
+    apt-get clean -qq &> /dev/null
+    apt-get update -qq &> /dev/null
+    apt-get install ipset ${forCer} &> /dev/null
+  fi
+  if [ -x "/sbin/ipset" ] && [ ! -L "/usr/sbin/ipset" ]; then
+    rm -f /usr/sbin/ipset
+    ln -sf /sbin/ipset /usr/sbin/ipset
+    _CSF_TEST=$(which csf 2> /dev/null)
+    if [ -x "${_CSF_TEST}" ]; then
+      csf -uf
+      csf -q
+    fi
+  fi
   mkdir -p ${usrBin}
   if [ ! -e "${pthLog}/fixPSop.ctrl.320stableQ11.pid" ]; then
     fxPp="fix-drupal-platform-permissions.sh"

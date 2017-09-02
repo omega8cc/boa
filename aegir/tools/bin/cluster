@@ -1126,6 +1126,11 @@ install_host() {
   ${_INSTAPP} iptables
   ${_INSTAPP} ipset
 
+  if [ -x "/sbin/ipset" ] && [ ! -L "/usr/sbin/ipset" ]; then
+    rm -f /usr/sbin/ipset
+    ln -sf /sbin/ipset /usr/sbin/ipset
+  fi
+
   echo "Setting hostname to ${hst}"
   echo ${hst} > /etc/hostname
   hostname -b ${hst}
