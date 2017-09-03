@@ -62,7 +62,7 @@ csf_install() {
   cd /var/opt
   rm -f ${pthLog}/lastFire
   ### from https://download.configserver.com/csf.tgz
-  get_dev_arch "csf-${_CSF_VRN}.tgz"
+  get_dev_src "csf-${_CSF_VRN}.tgz"
   cd csf
   mrun "sh install.sh" 2> /dev/null
   cd /var/opt
