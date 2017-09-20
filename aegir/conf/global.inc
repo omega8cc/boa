@@ -829,8 +829,11 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     header("X-Site-Subdir: " . $site_subdir);
   }
 
-  if ($all_ini['server_name_cookie_domain'] || $site_subdir) {
+  if ($all_ini['server_name_cookie_domain']) {
     $domain = '.' . preg_replace('`^www\.`', '', $_SERVER['SERVER_NAME']);
+  }
+  elseif ($site_subdir && isset($_SERVER['RAW_HOST'])) {
+    $domain = '.' . preg_replace('`^www\.`', '', $_SERVER['RAW_HOST']);
   }
   else {
     $domain = '.' . preg_replace('`^www\.`', '', $_SERVER['HTTP_HOST']);
