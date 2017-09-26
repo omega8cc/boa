@@ -78,13 +78,13 @@ touch /var/run/boa_sql_backup.pid
 
 create_locks() {
   echo "Creating locks.."
-  touch /var/run/boa_wait.pid
+  #touch /var/run/boa_wait.pid
   touch /var/run/mysql_backup_running.pid
 }
 
 remove_locks() {
   echo "Removing locks.."
-  rm -f /var/run/boa_wait.pid
+  #rm -f /var/run/boa_wait.pid
   rm -f /var/run/mysql_backup_running.pid
 }
 
