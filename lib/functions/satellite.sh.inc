@@ -2155,13 +2155,12 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
         fi
-        mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
-DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
-DROP USER '${_USE_DB_USER}'@'localhost';
-DROP USER '${_USE_DB_USER}'@'127.0.0.1';
-DROP USER '${_USE_DB_USER}'@'%';
-EOFMYSQL
+        _C_SQL="mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot --database=mysql -e"
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
         mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
@@ -2207,13 +2206,12 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
-    mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
-DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
-DROP USER '${_USE_DB_USER}'@'localhost';
-DROP USER '${_USE_DB_USER}'@'127.0.0.1';
-DROP USER '${_USE_DB_USER}'@'%';
-EOFMYSQL
+    _C_SQL="mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot --database=mysql -e"
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
@@ -2298,13 +2296,12 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
-    mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
-DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
-DROP USER '${_USE_DB_USER}'@'localhost';
-DROP USER '${_USE_DB_USER}'@'127.0.0.1';
-DROP USER '${_USE_DB_USER}'@'%';
-EOFMYSQL
+    _C_SQL="mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot --database=mysql -e"
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
