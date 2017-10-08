@@ -4,6 +4,10 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 pthVhstd="/var/aegir/config/server_master/nginx/vhost.d"
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 hold() {
   service nginx stop &> /dev/null
   killall -9 nginx &> /dev/null
@@ -236,7 +240,7 @@ manage_ip_auth_access() {
       update_ip_auth_access
     else
       if [ -e "/var/backups/.auth.IP.list.tmp" ]; then
-        diffTestIf=$(diff /var/backups/.auth.IP.list.tmp \
+        diffTestIf=$(diff -w -B /var/backups/.auth.IP.list.tmp \
           /var/backups/.auth.IP.list 2>&1)
         if [ ! -z "${diffTestIf}" ]; then
           update_ip_auth_access
@@ -250,7 +254,7 @@ manage_ip_auth_access() {
       chmod 700 /var/backups/.vhost.d.wbhd
       cp -af /var/backups/.vhost.d.mstr/* /var/backups/.vhost.d.wbhd/
     fi
-    diffClstrTest=$(diff /var/backups/.vhost.d.wbhd \
+    diffClstrTest=$(diff -w -B /var/backups/.vhost.d.wbhd \
       /var/backups/.vhost.d.mstr 2>&1)
     if [ ! -z "${diffClstrTest}" ]; then
       service nginx reload &> /dev/null

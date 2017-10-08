@@ -97,7 +97,7 @@ if (-e "/usr/sbin/pdnsd" && (!$pdnsdsumar || !-e "/etc/resolvconf/run/interface/
   system("pdnsd-ctl empty-cache");
 }
 
-if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid" && !-f "/root/.remote.db.cnf") {
+if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/var/run/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid" && !-f "/root/.remote.db.cnf") {
   system("bash /var/xdrago/move_sql.sh");
 }
 
@@ -182,7 +182,7 @@ if (-f "/usr/local/sbin/pure-config.pl") {
   }
 }
 
-if ($mysqlsumar > 0) {
+if ($mysqlsumar > 0 ) {
  `mysqladmin flush-hosts &> /dev/null`;
   print "\n MySQL hosts flushed...\n";
 }
@@ -248,7 +248,7 @@ sub global_action
         chomp($timedate);
         if ($CPU > $MAXSQLCPU && $HOUR > 1 && ($STAT =~ /R/ || $STAT =~ /Z/))
         {
-          if (!-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid" && !-e "/root/.no.sql.cpu.limit.cnf") {
+          if (!-f "/var/run/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid" && !-e "/root/.no.sql.cpu.limit.cnf") {
             system("bash /var/xdrago/move_sql.sh");
             $timedate=`date +%y%m%d-%H%M%S`;
             chomp($timedate);

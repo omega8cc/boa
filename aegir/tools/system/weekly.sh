@@ -31,6 +31,10 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 ###-------------SYSTEM-----------------###
 fix_clear_cache() {
   if [ -e "${Plr}/profiles/hostmaster" ]; then
@@ -44,6 +48,7 @@ read_account_data() {
   _ENGINE_NR=
   _CLIENT_EMAIL=
   _CLIENT_OPTION=
+  _DSK_CLU_LIMIT=
   if [ -e "/data/disk/${_THIS_U}/log/email.txt" ]; then
     _CLIENT_EMAIL=$(cat /data/disk/${_THIS_U}/log/email.txt 2>&1)
     _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
@@ -54,6 +59,10 @@ read_account_data() {
   if [ -e "/data/disk/${_THIS_U}/log/cores.txt" ]; then
     _CLIENT_CORES=$(cat /data/disk/${_THIS_U}/log/cores.txt 2>&1)
     _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
+  fi
+  if [ -e "/data/disk/${_THIS_U}/log/diskspace.txt" ]; then
+    _DSK_CLU_LIMIT=$(cat /data/disk/${_THIS_U}/log/diskspace.txt 2>&1)
+    _DSK_CLU_LIMIT=$(echo -n ${_DSK_CLU_LIMIT} | tr -d "\n" 2>&1)
   fi
   if [ "${_CLIENT_CORES}" -gt "1" ]; then
     _ENGINE_NR="Engines"
@@ -462,6 +471,8 @@ by having in its main name a special keyword with two dots on both sides:
   .temporary.
   .test.
   .testing.
+  .stage.
+  .staging.
 
 For example, a site with main name: abc.test.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes),
@@ -504,6 +515,8 @@ by having in its main name a special keyword with two dots on both sides:
   .temporary.
   .test.
   .testing.
+  .stage.
+  .staging.
 
 For example, a site with main name: abc.test.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes),
@@ -546,6 +559,8 @@ by having in its main name a special keyword with two dots on both sides:
   .temporary.
   .test.
   .testing.
+  .stage.
+  .staging.
 
 For example, a site with main name: abc.test.foo.com is by default excluded
 from your allocated resources limits (not counted for billing purposes),
@@ -660,8 +675,23 @@ check_limits() {
   _SQL_DEV_LIMIT=0
   _DSK_MIN_LIMIT=0
   _DSK_MAX_LIMIT=0
+  _DSK_CLU_LIMIT=1
   read_account_data
-  if [ "${_CLIENT_OPTION}" = "POWER" ]; then
+  if [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
+    _SQL_MIN_LIMIT=51200
+    _DSK_MIN_LIMIT=102400
+    _DSK_MAX_LIMIT=107520
+    _SQL_DEV_EXTRA=2
+    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 1024 ))
+    _DSK_MIN_LIMIT=$(( _DSK_MIN_LIMIT *= _DSK_CLU_LIMIT ))
+    _DSK_MAX_LIMIT=$(( _DSK_MAX_LIMIT *= _DSK_CLU_LIMIT ))
+  elif [ "${_CLIENT_OPTION}" = "LITE" ]; then
+    _SQL_MIN_LIMIT=5120
+    _DSK_MIN_LIMIT=51200
+    _SQL_DEV_EXTRA=3
+    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 1024 ))
+    _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 2560 ))
+  elif [ "${_CLIENT_OPTION}" = "POWER" ]; then
     _SQL_MIN_LIMIT=5120
     _DSK_MIN_LIMIT=51200
     _SQL_DEV_EXTRA=3
@@ -906,7 +936,8 @@ _NOW=${_NOW//[^0-9-]/}
 _DATE=$(date 2>&1)
 _CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \

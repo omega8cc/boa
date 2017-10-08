@@ -31,6 +31,10 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 touch /var/run/boa_wait.pid
 sleep 8
 dir=/var/xdrago/log/mysql_optimize

@@ -60,9 +60,19 @@ csf_install() {
     msg "INFO: Upgrading csf/lfd firewall..."
   fi
   cd /var/opt
+  _IPSET_TEST=$(which ipset 2> /dev/null)
+  if [ ! -x "${_IPSET_TEST}" ]; then
+    apt-get clean -qq &> /dev/null
+    apt-get update -qq &> /dev/null
+    apt-get install ipset ${forCer} &> /dev/null
+  fi
+  if [ -x "/sbin/ipset" ] && [ ! -L "/usr/sbin/ipset" ]; then
+    rm -f /usr/sbin/ipset
+    ln -sf /sbin/ipset /usr/sbin/ipset
+  fi
   rm -f ${pthLog}/lastFire
   ### from https://download.configserver.com/csf.tgz
-  get_dev_arch "csf-${_CSF_VRN}.tgz"
+  get_dev_src "csf-${_CSF_VRN}.tgz"
   cd csf
   mrun "sh install.sh" 2> /dev/null
   cd /var/opt
@@ -128,6 +138,16 @@ csf_install() {
 }
 
 install_upgrade_csf_lfd() {
+  _IPSET_TEST=$(which ipset 2> /dev/null)
+  if [ ! -x "${_IPSET_TEST}" ]; then
+    apt-get clean -qq &> /dev/null
+    apt-get update -qq &> /dev/null
+    apt-get install ipset ${forCer} &> /dev/null
+  fi
+  if [ -x "/sbin/ipset" ] && [ ! -L "/usr/sbin/ipset" ]; then
+    rm -f /usr/sbin/ipset
+    ln -sf /sbin/ipset /usr/sbin/ipset
+  fi
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
@@ -165,6 +185,9 @@ install_upgrade_csf_lfd() {
       _REMOVE_CSF=YES
     fi
     if [ "$_REMOVE_CSF" = "YES" ]; then
+      service lfd stop &> /dev/null
+      sleep 3
+      rm -f /etc/csf/csf.error
       csf -x &> /dev/null
       update-rc.d -f csf remove &> /dev/null
       update-rc.d -f lfd remove &> /dev/null
@@ -198,9 +221,14 @@ install_upgrade_csf_lfd() {
       fi
       if [ -e "${pthLog}/lastFire" ]; then
         rm -f ${pthLog}/lastFire
+        service lfd stop &> /dev/null
+        sleep 3
+        rm -f /etc/csf/csf.error
         mrun "csf -x" &> /dev/null
         mrun "csf -e" &> /dev/null
         mrun "csf -q" &> /dev/null
+        sleep 3
+        service lfd start &> /dev/null
       fi
     fi
   fi

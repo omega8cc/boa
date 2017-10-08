@@ -63,7 +63,8 @@ check_vps() {
   _BENG_VS=NO
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -187,7 +188,7 @@ if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
 
   CONFIGURATION REQUIRED!
 
-  Add listed below eight (8) lines to your /root/.duobackboa.cnf file.
+  Add listed below four (4) required lines to your /root/.duobackboa.cnf file.
   Required lines are marked with [R] and optional with [O]:
 
     _AWS_KEY='Your AWS Access Key ID'     ### [R] From your AWS S3 settings

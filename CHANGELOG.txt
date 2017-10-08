@@ -1,4 +1,107 @@
 
+### Stable BOA-3.2.1 Release - Full Edition
+### Date: Sat Oct  7 19:58:53 PDT 2017
+### Milestone URL: https://github.com/omega8cc/boa/milestones/3.2.1
+
+# Release Notes:
+
+  This BOA release provides system security upgrades, many bug fixes,
+  latest Aegir version, plus all supported Drupal distributions updated
+  to latest versions, and supplied with latest Drupal 7 core, if possible.
+  Thanks to Drush 8.1.15-dev we support also the newest Drupal 8.4 core.
+
+@=> Important changes planned in the next BOA release
+
+  BOA-3.2.1 is the last release still supporting PHP 5.3, 5.4 and 5.5 versions.
+  These versions will be *removed* in the next release, and instead
+  there will be support for PHP 7.1 and 7.2 added.
+
+  Future releases will no longer include Pressflow 6 platforms, but Pressflow 6
+
+@=> Drupal 6 vanilla core is deprecated starting with BOA-3.2.1
+
+  Drupal 6 vanilla core is no longer supported. It was never really supported,
+  but could still work. Those running Drupal 6 instead of supported Pressflow 6
+  will notice that their site displays only the homepage and all links/menus
+  no longer display expected content. This change is a result of new rewrite
+  in the Nginx configuration, required to properly support both Drupal 8 and
+  Drupal 7. Time to migrate to latest, included in this release, Pressflow 6!
+
+  # Changes:
+
+    * Add chained commands to forbidden list in lshell
+    * Add Nginx Headers More module support
+    * Add support for --include/exclude-filelist for duplicity -- #1158
+    * Add support for upcoming MariaDB 10.2
+    * Auto-update duplicity if installed
+    * Deny bots on non-prod domains, not only on aliases -- #1178
+    * Do not pause the tasks queue during mysql backup
+    * Do not truncate queue and accesslog tables by default
+    * Enable New Relic integration for PHP 7.0
+    * Install ipset to improve CSF performance
+    * mongodb.so for D8.2 and PHP7.0 -- #1128
+    * Run 3 queue tasks in parallel by default
+    * Use redis_scan_enable = FALSE by default
+
+  # System upgrades:
+
+    * CSF 10.22
+    * Drush micro-8-07-10-2017
+    * Galera 10.0.32
+    * MariaDB 10.1.28
+    * MariaDB 10.2.9
+    * MariaDB 5.5.57
+    * Nginx 1.13.5
+    * Node 6.x version bump -- #1129
+    * OpenSSH 7.6p1
+    * OpenSSL 1.0.2l (used only in Nginx)
+    * PHP 5.6.31
+    * PHP 7.0.24
+    * PHP extension for Redis 3.1.4
+    * Pure-FTPd 1.0.46
+    * Redis Server 4.0.2
+    * Update Redis module for Drupal 8
+    * Upgrade drush to support Drupal 8.4 -- #1206
+    * Upgrade wkhtmltopdf and wkhtmltoimage to 0.12.4
+
+  # Fixes:
+
+    * Add SSH (RSA) keys how-to
+    * Add support for tar.xz archives
+    * Add symlink suggested in #999
+    * Allow a bit higher load limits for queue runner
+    * Barracuda is not installing ipset so csf doesn't work -- #1203
+    * Deprecate no longer working distros
+    * Disable innodb_corrupt_table_action in 10.2
+    * Do not enable entitycache in the Commons distro
+    * Exclude special https.* proxy vhosts from daily cleanup
+    * Fix permissions on password files for HTTP Basic Auth -- #1187
+    * Fix syntax and race conditions in fire/water
+    * Galera compatibility: do not edit mysql.user directly
+    * Improve CSF race conditions protection
+    * Improve default system cron queue
+    * Improve repo.psand.net/pubkey update
+    * Improved PHP OPCache default configuration
+    * Linux kernel CVE-2017-2636 hotfix
+    * Linux kernel CVE-2017-6074 hotfix
+    * Make sure that not supported tools are not re-installed on VServer
+    * Move excludes first as they are more specific than includes -- #1168
+    * PHP not installed after Wheezy to Jessie upgrade -- #999
+    * Redirect module breaks Drupal 8 sites in BOA if present -- #1061
+    * Remove --numeric-ids option from xboa -- #1146
+    * Restart DB server on upgrade only if config has changed
+    * Run fast enough fire.sh again
+    * Silence mysql cleanup output -- #1180
+    * Site in subdirectory cookie is not set correctly -- #1211
+    * Sync PHP disable_functions across all versions
+    * Update default robots.txt -- #1172
+    * Use --skip-add-locks — Galera Cluster compatibility
+    * Use absolutely graceful MySQLD restart procedure
+    * VServer 4.1.42-vs2.3.8.6-beng compatibility
+    * Wait for MySQLD availability before running DB backup
+    * Whitelist known search engines bots IPs
+
+
 ### Stable BOA-3.2.0 Release - Full Edition
 ### Date: Sun Feb 26 09:11:39 PST 2017
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.2.0
@@ -1286,14 +1389,14 @@
       based site on PHP 5.6 for many months with zero issues). For more details
       please check: https://github.com/omega8cc/boa/issues/824
 
-  @=> SSH keys for root are required by newer OpenSSH versions used in BOA
+  @=> SSH (RSA) keys for root are required by newer OpenSSH versions used in BOA
 
       BOA installs SSH from sources by default (Debian only). This means that
       password based access for root will not work once BOA is installed or
       upgraded to current stable version. It is a result of OpenSSH changes
       in recent releases and not BOA specific change. BOA will deny the initial
       install and Barracuda will refuse to run upgrade if it detects that system
-      root has no SSH keys added and only password based access is available.
+      root has no SSH (RSA) keys added and only password based access is available.
       You can still modify this behaviour in /usr/etc/sshd_config but future
       OpenSSH versions may still revert such changes, so it is not recommended.
 
@@ -1305,7 +1408,7 @@
   * Disable page caching on the fly where needed
   * Disable temporarily support for broken Restaurant distro
   * Do not rebuild features and entities on cache clear
-  * Document new requirement: SSH keys for root -- fixes #786 #833
+  * Document new requirement: SSH (RSA) keys for root -- fixes #786 #833
   * Make ioncube_loader optional and disable by default with _PHP_IONCUBE=NO
   * Nginx SSL: enable OCSP stapling by default
   * Nginx SSL: enable OCSP stapling for existing HTTPS vhosts

@@ -26,7 +26,8 @@ if_running_as_root_barracuda() {
       _VMFAMILY="AWS"
     fi
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -34,13 +35,30 @@ if_running_as_root_barracuda() {
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
       _VMFAMILY="VS"
       touch /var/run/cloud_vhost.pid
+      if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
+        apt-get update -qq &> /dev/null
+      fi
+      if [ ! -e "/etc/apt/preferences.d/udev" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
+        apt-get update -qq &> /dev/null
+      fi
+      if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
+        apt-get update -qq &> /dev/null
+      fi
+      apt-get remove fuse -y --force-yes -qq &> /dev/null
+      apt-get purge fuse -y --force-yes -qq &> /dev/null
+      apt-get remove udev -y --force-yes -qq &> /dev/null
+      apt-get purge udev -y --force-yes -qq &> /dev/null
+      apt-get remove makedev -y --force-yes -qq &> /dev/null
+      apt-get purge makedev -y --force-yes -qq &> /dev/null
       if [ -e "/sbin/hdparm" ]; then
         mrun "apt-get remove hdparm -y --force-yes -qq" &> /dev/null
         mrun "apt-get purge hdparm -y --force-yes -qq" &> /dev/null
-      fi
-      if [ -e "/sbin/udevd" ]; then
-        mrun "apt-get remove udev -y --force-yes -qq" &> /dev/null
-        mrun "apt-get purge udev -y --force-yes -qq" &> /dev/null
       fi
       if [ -e "/sbin/auditd" ]; then
         mrun "apt-get remove auditd -y --force-yes -qq" &> /dev/null
@@ -82,7 +100,8 @@ set_xterm() {
 # Kill nash-hotplug.
 kill_nash() {
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -247,7 +266,8 @@ tune_memory_limits() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -519,8 +539,8 @@ tune_memory_limits() {
     wait
     sed -i "s/^max_heap_table_size.*/max_heap_table_size     = ${_TMP_SQL}/g"     /etc/mysql/my.cnf
     wait
-    sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = ${_SRT_SQL}/g" /etc/mysql/my.cnf
-    wait
+    # sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = ${_SRT_SQL}/g" /etc/mysql/my.cnf
+    # wait
     sed -i "s/^query_cache_size.*/query_cache_size        = ${_QCE_SQL}/g"        /etc/mysql/my.cnf
     wait
     sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = ${_RND_SQL}/g"    /etc/mysql/my.cnf
@@ -729,13 +749,20 @@ barracuda_cnf() {
         clean_pid_exit
       fi
     fi
-    if [ "${_DB_SERIES}" = "10.1" ] || [ "${_DB_SERIES}" = "10.0" ]; then
+    if [ "${_DB_SERIES}" = "10.2" ] \
+      || [ "${_DB_SERIES}" = "10.1" ] \
+      || [ "${_DB_SERIES}" = "10.0" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
         _MARIADB_VRN="${_GALERA_10_VRN}"
       else
-        _MARIADB_VRN="${_MARIADB_10_VRN}"
+        if [ "${_DB_SERIES}" = "10.2" ]; then
+          _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+        else
+          _DB_SERIES=10.1
+          _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+        fi
       fi
     else
       _DB_SERIES=5.5
@@ -793,6 +820,7 @@ barracuda_cnf() {
     echo "_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}"               >> ${barCnf}
     echo "_NGINX_EXTRA_CONF=\"${_NGINX_EXTRA_CONF}\""         >> ${barCnf}
     echo "_NGINX_FORWARD_SECRECY=${_NGINX_FORWARD_SECRECY}"   >> ${barCnf}
+    echo "_NGINX_HEADERS=${_NGINX_HEADERS}"                   >> ${barCnf}
     echo "_NGINX_LDAP=${_NGINX_LDAP}"                         >> ${barCnf}
     echo "_NGINX_NAXSI=${_NGINX_NAXSI}"                       >> ${barCnf}
     echo "_NGINX_SPDY=${_NGINX_SPDY}"                         >> ${barCnf}
@@ -985,7 +1013,8 @@ barracuda_cnf() {
     _CHECK_HOST=$(uname -n 2>&1)
     _VMFAMILY=XEN
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -1189,6 +1218,11 @@ barracuda_cnf() {
     _REDIS_LISTEN_MODE_TEST=$(grep _REDIS_LISTEN_MODE ${barCnf} 2>&1)
     if [[ ! "${_REDIS_LISTEN_MODE_TEST}" =~ "_REDIS_LISTEN_MODE" ]]; then
       echo "_REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE}" >> ${barCnf}
+    fi
+
+    _NGINX_HEADERS_TEST=$(grep _NGINX_HEADERS ${barCnf} 2>&1)
+    if [[ ! "${_NGINX_HEADERS_TEST}" =~ "_NGINX_HEADERS" ]]; then
+      echo "_NGINX_HEADERS=${_NGINX_HEADERS}" >> ${barCnf}
     fi
 
     _NGINX_LDAP_TEST=$(grep _NGINX_LDAP ${barCnf} 2>&1)
@@ -1446,13 +1480,20 @@ barracuda_cnf() {
       sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=httpredir.debian.org/g"     ${barCnf}
       wait
     fi
-    if [ "${_DB_SERIES}" = "10.1" ] || [ "${_DB_SERIES}" = "10.0" ]; then
+    if [ "${_DB_SERIES}" = "10.2" ] \
+      || [ "${_DB_SERIES}" = "10.1" ] \
+      || [ "${_DB_SERIES}" = "10.0" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
         _MARIADB_VRN="${_GALERA_10_VRN}"
       else
-        _MARIADB_VRN="${_MARIADB_10_VRN}"
+        if [ "${_DB_SERIES}" = "10.2" ]; then
+          _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+        else
+          _DB_SERIES=10.1
+          _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+        fi
       fi
     else
       _DB_SERIES=5.5
@@ -1695,23 +1736,26 @@ check_apt_updates() {
     -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`; do
     case "${Update}" in
       *libcurl*)    _UP_PHP=YES ;;
-      *libmysql*)   _UP_PHP=YES ;;
+      *libmysql*)   _UP_SQL=YES ;;
       *libssl*)     _UP_PHP=YES ;;
       *linux-*)     _UP_LNX=YES ;;
-      *mariadb*)    _UP_PHP=YES ;;
+      *mariadb*)    _UP_SQL=YES ;;
       *newrelic*)   _UP_NRC=YES ;;
       *openjdk*)    _UP_JDK=YES ;;
       *openssl*)    _UP_PHP=YES ;;
       *)  ;;
     esac
   done
+  if [ "${_UP_SQL}" = "YES" ]; then
+    _UP_PHP=YES
+  fi
 }
 
 #
 # Install wkhtmltopdf and wkhtmltoimage.
 install_wkhtmltopdf_wkhtmltoimage() {
   ###--------------------###
-  if [ ! -e "${pthLog}/wkhtmltox-0.12.3" ] \
+  if [ ! -e "${pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}-fix.log" ] \
     || [ ! -x "/usr/bin/wkhtmltopdf" ] \
     || [ ! -x "/usr/bin/wkhtmltoimage" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
@@ -1721,15 +1765,15 @@ install_wkhtmltopdf_wkhtmltoimage() {
       msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
       cd /var/opt
       rm -rf wkhtmltox*
-      get_dev_arch "wkhtmltox-0.12.3_linux-generic-amd64.tar.gz"
-      cd wkhtmltox-0.12.3_linux-generic-amd64
+      get_dev_arch "wkhtmltox-${_WKHTMLTOX_VRN}_linux-generic-amd64.tar.xz" &> /dev/null
+      cd wkhtmltox/bin/
     else
       SYSTEMARCH="x86"
       msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
       cd /var/opt
       rm -rf wkhtmltox*
-      get_dev_arch "wkhtmltox-0.12.3_linux-generic-i386.tar.gz"
-      cd wkhtmltox-0.12.3_linux-generic-i386
+      get_dev_arch "wkhtmltox-${_WKHTMLTOX_VRN}_linux-generic-i386.tar.xz" &> /dev/null
+      cd wkhtmltox/bin/
     fi
     cp -af wkhtmltopdf /usr/bin/wkhtmltopdf
     cp -af wkhtmltoimage /usr/bin/wkhtmltoimage
@@ -1737,7 +1781,7 @@ install_wkhtmltopdf_wkhtmltoimage() {
     chown root:root /usr/bin/wkhtmltoimage
     chmod 755 /usr/bin/wkhtmltopdf
     chmod 755 /usr/bin/wkhtmltoimage
-    touch ${pthLog}/wkhtmltox-0.12.3
+    touch ${pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}-fix.log
     cd /var/opt
   fi
 }
@@ -2785,10 +2829,15 @@ finale() {
     service cron start     &> /dev/null
   fi
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+    service lfd stop &> /dev/null
+    sleep 3
+    rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
     csf -uf &> /dev/null
     csf -e  &> /dev/null
     csf -q  &> /dev/null
+    sleep 3
+    service lfd start &> /dev/null
   fi
   cd /
   chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt opt \
@@ -3117,7 +3166,8 @@ if_wheezy_to_jessie() {
       ${_INSTALL} sysvinit-utils &> /dev/null
     fi
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -3391,7 +3441,8 @@ if_squeeze_to_wheezy() {
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -3585,13 +3636,22 @@ sys_packages_update() {
       fi
     fi
     rm -f /var/lib/mysql/debian-*.flag &> /dev/null
-    _KEYS_SERVER_TEST=FALSE
     if [ ! -e "/root/.upstart.cnf" ]; then
       service cron stop &> /dev/null
     fi
     if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+      service lfd stop &> /dev/null
+      sleep 3
+      rm -f /etc/csf/csf.error
       csf -x &> /dev/null
     fi
+    _KEYS_SERVER_TEST=FALSE
+    until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
+      _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
+        --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 2>&1)
+      sleep 2
+    done
+    _KEYS_SERVER_TEST=FALSE
     until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
       _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
         --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
@@ -3806,6 +3866,7 @@ sys_packages_install() {
               htop \
               ifstat \
               iptables \
+              ipset \
               ldap-utils \
               lemon \
               lftp \
@@ -3863,7 +3924,7 @@ sys_packages_install() {
               ntpdate \
               p7zip-full \
               pdftk \
-              percona-xtrabackup \
+              percona-xtrabackup-24 \
               postfix \
               postfix-pcre \
               pwgen \
@@ -3951,7 +4012,7 @@ fix_libs_php() {
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
-    if [ ! -L "/usr/lib/libXpm.so" ] \
+    if [ ! -L "/usr/lib/librtmp.so" ] \
       || [ ! -e "/usr/lib/libgmp.so.3" ] \
       || [ ! -e "/usr/include/gmp.h" ]; then
       msg "INFO: Fix #1 for libs in ${_THIS_OS} ${_OSV}"
@@ -3964,9 +4025,15 @@ fix_libs_php() {
         ln -sf /usr/lib/x86_64-linux-gnu/libldap.so /usr/lib/libldap.so
         ln -sf /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
         ln -sf /usr/lib/x86_64-linux-gnu/libXpm.so  /usr/lib/libXpm.so
+        ln -sf /usr/lib/x86_64-linux-gnu/librtmp.so /usr/lib/librtmp.so
         if [ ! -e "/usr/include/gmp.h" ] \
           && [ -e "/usr/include/x86_64-linux-gnu/gmp.h" ]; then
           ln -sf /usr/include/x86_64-linux-gnu/gmp.h  /usr/include/gmp.h
+        fi
+        if [ ! -e "/usr/lib/x86_64-linux-gnu/librtmp.so.0" ] \
+          && [ -e "/usr/lib/x86_64-linux-gnu/librtmp.so.1" ]; then
+          cd /usr/lib/x86_64-linux-gnu
+          ln -sf librtmp.so.1 librtmp.so.0
         fi
       else
         ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so
@@ -3976,9 +4043,15 @@ fix_libs_php() {
         ln -sf /usr/lib/i386-linux-gnu/libldap.so /usr/lib/libldap.so
         ln -sf /usr/lib/i386-linux-gnu/libpng.so  /usr/lib/libpng.so
         ln -sf /usr/lib/i386-linux-gnu/libXpm.so  /usr/lib/libXpm.so
+        ln -sf /usr/lib/i386-linux-gnu/librtmp.so /usr/lib/librtmp.so
         if [ ! -e "/usr/include/gmp.h" ] \
           && [ -e "/usr/include/i386-linux-gnu/gmp.h" ]; then
           ln -sf /usr/include/i386-linux-gnu/gmp.h  /usr/include/gmp.h
+        fi
+        if [ ! -e "/usr/lib/i386-linux-gnu/librtmp.so.0" ] \
+          && [ -e "/usr/lib/i386-linux-gnu/librtmp.so.1" ]; then
+          cd /usr/lib/i386-linux-gnu
+          ln -sf librtmp.so.1 librtmp.so.0
         fi
       fi
     fi
@@ -4870,7 +4943,8 @@ update_initd() {
       msg "INFO: Restarting Jetty 7"
       mrun "service jetty7 start" &> /dev/null
     fi
-    if [ ! -e "/var/run/aegir_upgrade.pid" ]; then
+    if [ ! -e "/var/run/aegir_upgrade.pid" ] \
+      && [ ! -e "/root/.proxy.cnf" ]; then
       msg "INFO: Restarting Redis, PHP-FPM and Nginx..."
       mrun "service redis-server restart" &> /dev/null
       mrun "update-rc.d -f php5-fpm remove" &> /dev/null
@@ -4905,9 +4979,59 @@ update_initd() {
       elif [ -x "/usr/bin/mysql_upgrade" ]; then
         mrun "mysql_upgrade --force" &> /dev/null
       fi
-      msg "INFO: Restarting ${_DB_SERVER} server..."
-      mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
-      mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+      myCnf="/etc/mysql/my.cnf"
+      preCnf="${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}"
+      if [ -f "${myCnf}" ]; then
+        myCnfUpdate=NO
+        if [ ! -f "${preCnf}" ]; then
+          mkdir -p ${vBs}/dragon/t/
+          cp -af ${myCnf} ${preCnf}
+        fi
+        diffMyTest=$(diff -w -B \
+          -I innodb_buffer_pool_size \
+          -I innodb_buffer_pool_instances \
+          -I tmp_table_size \
+          -I max_heap_table_size \
+          -I myisam_sort_buffer_size \
+          -I key_buffer_size ${myCnf} ${preCnf} 2>&1)
+        if [ -z "${diffMyTest}" ]; then
+          myCnfUpdate=NO
+          msg "INFO: ${_DB_SERVER} diff0 empty"
+        else
+          myCnfUpdate=YES
+          # diffMyTest=$(echo -n ${diffMyTest} | fmt -su -w 2500 2>&1)
+          msg "INFO: ${_DB_SERVER} diff1 ${diffMyTest}"
+        fi
+        if [[ "${diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
+          myCnfUpdate=NO
+          msg "INFO: ${_DB_SERVER} diff2 ${diffMyTest}"
+        fi
+        if [[ "${diffMyTest}" =~ "No such file or directory" ]]; then
+          myCnfUpdate=NO
+          msg "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
+        fi
+      fi
+      if [ "${_UP_SQL}" = "YES" ]; then
+        myVnTest=$(mysql -V 2>&1)
+        if [[ "${myVnTest}" =~ "${_MARIADB_VRN}" ]]; then
+          msg "INFO: ${_DB_SERVER} ${_MARIADB_VRN} already up to date"
+          myCnfUpdate=YES
+          msg "INFO: ${_DB_SERVER} restart after upgrade forced"
+        fi
+      fi
+      myUptime=$(mysqladmin -P${_THIS_DB_PORT} --protocol=tcp version | grep -i uptime 2>&1)
+      myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
+      msg "INFO: ${_DB_SERVER} ${myUptime}"
+      if [ "${myRstrd}" = "YES" ]; then
+        myCnfUpdate=NO
+        msg "INFO: ${_DB_SERVER} already restarted!"
+      fi
+      if [ "${myCnfUpdate}" = "YES" ]; then
+        msg "INFO: Restarting ${_DB_SERVER} server..."
+        mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
+        mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+        msg "INFO: ${_DB_SERVER} server restart completed"
+      fi
       if [ -e "/etc/init.d/php70-fpm" ]; then
         mrun "service php70-fpm start" &> /dev/null
       fi

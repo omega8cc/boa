@@ -30,8 +30,12 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 _WEBG=www-data
-_X_SE="3.2.0-stable"
+_X_SE="3.2.1-stable"
 _OSV=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
@@ -88,6 +92,7 @@ extract_archive() {
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
       *.tar.gz)    tar xzf $1    ;;
+      *.tar.xz)    tar xvf $1    ;;
       *.bz2)       bunzip2 $1    ;;
       *.rar)       unrar x $1    ;;
       *.gz)        gunzip -q $1  ;;
@@ -729,7 +734,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.2.0. As a bonus, you will be able to speed up your sites
+by BOA-3.2.1. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -783,7 +788,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.2.0. As a bonus, you will be able to speed up your sites
+by BOA-3.2.1. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -837,7 +842,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.2.0. As a bonus, you will be able to speed up your sites
+by BOA-3.2.1. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -928,7 +933,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.2.0. As a bonus, you will be able to speed up your sites
+by BOA-3.2.1. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -994,7 +999,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.2.0. As a bonus, you will be able to speed up your sites
+by BOA-3.2.1. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -1060,7 +1065,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.2.0. As a bonus, you will be able to speed up your sites
+by BOA-3.2.1. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -1769,7 +1774,7 @@ fix_modules() {
     if [[ "${_VAR_IF_PRESENT}" =~ "redis_scan_enable" ]]; then
       _DO_NOTHING=YES
     else
-      echo ";redis_scan_enable = TRUE" >> ${_PLR_CTRL_F}
+      echo ";redis_scan_enable = FALSE" >> ${_PLR_CTRL_F}
     fi
     _VAR_IF_PRESENT=$(grep "redis_exclude_bins" ${_PLR_CTRL_F} 2>&1)
     if [[ "${_VAR_IF_PRESENT}" =~ "redis_exclude_bins" ]]; then
@@ -1855,7 +1860,7 @@ fix_modules() {
     if [[ "${_VAR_IF_PRESENT}" =~ "redis_scan_enable" ]]; then
       _DO_NOTHING=YES
     else
-      echo ";redis_scan_enable = TRUE" >> ${_DIR_CTRL_F}
+      echo ";redis_scan_enable = FALSE" >> ${_DIR_CTRL_F}
     fi
     _VAR_IF_PRESENT=$(grep "redis_exclude_bins" ${_DIR_CTRL_F} 2>&1)
     if [[ "${_VAR_IF_PRESENT}" =~ "redis_exclude_bins" ]]; then
@@ -1886,7 +1891,8 @@ fix_modules() {
   if [ -e "${_PLR_CTRL_F}" ]; then
     _EC_DE_T=$(grep "^entitycache_dont_enable = TRUE" \
       ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_EC_DE_T}" =~ "entitycache_dont_enable = TRUE" ]]; then
+    if [[ "${_EC_DE_T}" =~ "entitycache_dont_enable = TRUE" ]] \
+      || [ -e "${Plr}/profiles/commons" ]; then
       _ENTITYCACHE_DONT_ENABLE=YES
     else
       _ENTITYCACHE_DONT_ENABLE=NO
@@ -2480,7 +2486,9 @@ cleanup_ghost_vhosts() {
         | cut -d: -f2 \
         | awk '{ print $2}' \
         | sed "s/[\;]//g" 2>&1)
-      if [[ "$Plx" =~ "aegir/distro" ]] || [[ "${Dom}" =~ "--CDN"($) ]]; then
+      if [[ "$Plx" =~ "aegir/distro" ]] \
+        || [[ "${Dom}" =~ (^)"https." ]] \
+        || [[ "${Dom}" =~ "--CDN"($) ]]; then
         _SKIP_VHOST=YES
       else
         if [ ! -e "${User}/.drush/${Dom}.alias.drushrc.php" ]; then
@@ -2680,6 +2688,8 @@ process() {
             _STATUS=OK
             if [ ! -f "${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info" ]; then
               run_drush8_hmr_cmd "dis update syslog dblog -y"
+              run_drush8_hmr_cmd "cron"
+              run_drush8_hmr_cmd "cc all"
               touch ${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
             fi
           else
@@ -3107,10 +3117,10 @@ action() {
           if [ -e "${User}/log/hosting_cron_use_backend.txt" ]; then
             run_drush8_hmr_cmd "${vSet} hosting_cron_use_backend 1"
           else
-             run_drush8_hmr_cmd "${vSet} hosting_cron_use_backend 0"
+            run_drush8_hmr_cmd "${vSet} hosting_cron_use_backend 0"
           fi
           run_drush8_hmr_cmd "${vSet} hosting_ignore_default_profiles 0"
-          run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_items 1"
+          run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_items 3"
           run_drush8_hmr_cmd "${vSet} aegir_backup_export_path ${User}/backup-exports"
           run_drush8_hmr_cmd "fr hosting_custom_settings -y"
           run_drush8_hmr_cmd "cc all"
@@ -3167,6 +3177,10 @@ action() {
 
 ###--------------------###
 echo "INFO: Daily maintenance start"
+until [ ! -e "/var/run/boa_wait.pid" ]; do
+  echo "Waiting for BOA queue availability.."
+  sleep 5
+done
 #
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
@@ -3174,7 +3188,8 @@ _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -3252,11 +3267,7 @@ fi
 #
 find_fast_mirror
 #
-if [ -e "/var/run/boa_wait.pid" ] \
-  && [ ! -e "/var/run/boa_system_wait.pid" ]; then
-  touch /var/xdrago/log/wait-for-boa
-  exit 1
-elif [ -e "/var/run/daily-fix.pid" ]; then
+if [ -e "/var/run/daily-fix.pid" ]; then
   touch /var/xdrago/log/wait-for-daily
   exit 1
 elif [ -e "/root/.wbhd.clstr.cnf" ]; then
@@ -3305,12 +3316,16 @@ else
     fi
   fi
 
+  su -s /bin/bash - aegir -c "drush @hostmaster dis update syslog dblog -y" &> /dev/null
+  su -s /bin/bash - aegir -c "drush @hostmaster cron" &> /dev/null
+  su -s /bin/bash - aegir -c "drush @hostmaster cc all" &> /dev/null
+
   action >/var/xdrago/log/daily/daily-${_NOW}.log 2>&1
 
   dhpWildPath="/etc/ssl/private/nginx-wild-ssl.dhp"
   if [ -e "/etc/ssl/private/4096.dhp" ]; then
     dhpPath="/etc/ssl/private/4096.dhp"
-    _DIFF_T=$(diff ${dhpPath} ${dhpWildPath} 2>&1)
+    _DIFF_T=$(diff -w -B ${dhpPath} ${dhpWildPath} 2>&1)
     if [ ! -z "${_DIFF_T}" ]; then
       cp -af ${dhpPath} ${dhpWildPath}
     fi

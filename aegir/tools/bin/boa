@@ -4,14 +4,14 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 branch="3.x.x-dev"
-cluster="BOA-3.2.0"
+cluster="BOA-3.2.1"
 hd="HEAD"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
 master="master"
 nextv="BOA-3.3.0-dev"
-stbl="BOA-3.2.0"
+stbl="BOA-3.2.1"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -31,7 +31,8 @@ _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _VMFAMILY=XEN
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -168,15 +169,15 @@ system_check_clean() {
 
 check_root_direct() {
   _U_TEST=DENY
-  [ ${SUDO_USER} ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
+  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
   _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
   _U_TEST_LNE=$(logname 2>&1)
-  if [ ${_U_TEST_SDO} = "root" ] || [ ${_U_TEST_LNE} = "root" ]; then
+  if [ "${_U_TEST_SDO}" = "root" ] || [ "${_U_TEST_LNE}" = "root" ]; then
     if [ -z "${_U_TEST_WHO}" ]; then
       _U_TEST=ALLOW
       ### normal for root scripts running from cron
     else
-      if [ ${_U_TEST_WHO} = "root" ]; then
+      if [ "${_U_TEST_WHO}" = "root" ]; then
         _U_TEST=ALLOW
       fi
     fi
@@ -185,11 +186,11 @@ check_root_direct() {
     echo
     echo "ERROR: This script must be run as root directly,"
     echo "ERROR: without sudo/su switch from regular system user"
-    echo "ERROR: Please add and test your SSH keys for root account"
+    echo "ERROR: Please add and test your SSH (RSA) keys for root account"
     echo "ERROR: with direct access before trying again"
     echo
     echo "HINT:  You can always restrict access later, or"
-    echo "       allow only SSH keys for root with directive"
+    echo "       allow only SSH (RSA) keys for root with directive"
     echo "         PermitRootLogin prohibit-password"
     echo "       in the /usr/etc/sshd_config file"
     echo "Bye"
@@ -205,10 +206,20 @@ check_root_keys_pwd() {
   fi
   if [[ ! "${_S_TEST}" =~ "root:" ]] \
     && [[ ! "${_R_TEST}" =~ "ssh-rsa" ]]; then
-    echo "ERROR: BOA requires working SSH keys for system root present"
-    echo "ERROR: Please add and test your SSH keys for root account"
+    echo
+    echo "ERROR: BOA requires working SSH (RSA) keys for system root present"
+    echo "ERROR: Please add and test your SSH (RSA) keys for root account"
     echo "ERROR: before trying again"
+    echo
+    echo "HINTS: Run this command on your local PC machine:"
+    echo "HINTS:   ssh-keygen -b 4096 -t rsa -N '' -f ~/.ssh/id_rsa"
+    echo "HINTS: Then copy the ~/.ssh/id_rsa.pub file from your PC"
+    echo "HINTS: to ~/.ssh/authorized_keys file on the server"
+    echo "HINTS: Make sure the key is not split into more than 1 line"
+    echo "HINTS: Remember to run: chmod 600 ~/.ssh/authorized_keys"
+    echo
     echo "Bye"
+    echo
     clean_pid_exit
   fi
 }
@@ -387,7 +398,7 @@ octopus_install() {
     fi
     _CHECK_HOST=$(uname -n 2>&1)
 
-    if [ "${cmmand}" = "in-octopus" ]; then
+    if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -414,6 +425,18 @@ octopus_install() {
       fi
       sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                   ${vBs}/${octName}
       wait
+      if [ ! -z "${pxyc}" ] && [ ! -z "${pxyi}" ]; then
+        sed -i "s/^_THIS_DB_PORT=.*/_THIS_DB_PORT=${pxyc}/g"   ${vBs}/${octName}
+        wait
+        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${pxyi}/g"   ${vBs}/${octName}
+        wait
+        if [ -e "${vBs}/${filIncO}" ]; then
+          sed -i "s/^_THIS_DB_PORT=.*/_THIS_DB_PORT=${pxyc}/g" ${vBs}/${filIncO}
+          wait
+          sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${pxyi}/g" ${vBs}/${filIncO}
+          wait
+        fi
+      fi
       if [ ! -z "${copt}" ]; then
         sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=${copt}/g" ${vBs}/${octName}
         wait
@@ -582,7 +605,21 @@ octopus_install() {
       fi
     fi
 
+    if [ ! -z "${pxyc}" ] && [ ! -z "${pxyi}" ]; then
+      if [ -e "/data/conf/global.inc" ]; then
+        echo "ProxySQL" > /data/conf/${user}_use_proxysql.txt
+      fi
+    fi
+
     bash ${vBs}/${octName}
+
+    if [ ! -z "${pxyc}" ] && [ ! -z "${pxyi}" ]; then
+      if [ -e "/data/disk/${user}/log/octopus_log.txt" ]; then
+        echo "ProxySQL" > /data/disk/${user}/log/use_proxysql.txt
+        echo "ProxySQL" > /data/conf/clstr.cnf
+      fi
+    fi
+
     sed -i "s/^127.0.1.1.*//g" /etc/hosts
     wait
     sed -i "/^$/d" /etc/hosts
@@ -1122,7 +1159,8 @@ init_setup() {
     curl ${crlGet} "${rgUrl}/${stbl}/${octName}"    -o ${vBs}/${octName}
     curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
     curl ${crlGet} "${rgUrl}/${stbl}/${pthIncO}"    -o ${vBs}/${filIncO}
-  elif [ "${cmmand}" = "in-octopus" ]; then
+  elif [ "${cmmand}" = "in-octopus" ] \
+    || [ "${cmmand}" = "in-oct" ]; then
     if [ "${copt}" = "head" ]; then
       octb="${master}"
     elif [ "${copt}" = "2.4" ]; then
@@ -1150,7 +1188,7 @@ init_setup() {
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncB}
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncO}
   fi
-  if [ "${cmmand}" = "in-octopus" ]; then
+  if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
     _OCTOPUS_ONLY=YES
   else
     barracuda_install
@@ -1245,9 +1283,14 @@ check_fix_csf() {
     csf -a 50.31.233.231 nl.files.aegir.cc   &> /dev/null
     csf -a 134.19.164.236 uk.files.aegir.cc  &> /dev/null
     csf -a 104.245.208.226 us.files.aegir.cc &> /dev/null
+    service lfd stop &> /dev/null
+    sleep 3
+    rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
     csf -uf &> /dev/null
     csf -e  &> /dev/null
+    sleep 3
+    service lfd start &> /dev/null
   fi
 }
 
@@ -1261,7 +1304,7 @@ check_root() {
       _B_NICE=10
     fi
     renice ${_B_NICE} -p $$ &> /dev/null
-    if [ "${cmmand}" = "in-octopus" ]; then
+    if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
       system_check_ready
     else
       if [ ! -e "/root/.force.reinstall.cnf" ]; then
@@ -1311,13 +1354,30 @@ check_root() {
     clean_pid_exit
   fi
   if [ "${_VMFAMILY}" = "VS" ]; then
+    if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
+      mkdir -p /etc/apt/preferences.d/
+      echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
+      apt-get update -qq &> /dev/null
+    fi
+    if [ ! -e "/etc/apt/preferences.d/udev" ]; then
+      mkdir -p /etc/apt/preferences.d/
+      echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
+      apt-get update -qq &> /dev/null
+    fi
+    if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
+      mkdir -p /etc/apt/preferences.d/
+      echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
+      apt-get update -qq &> /dev/null
+    fi
+    apt-get remove fuse -y --force-yes -qq &> /dev/null
+    apt-get purge fuse -y --force-yes -qq &> /dev/null
+    apt-get remove udev -y --force-yes -qq &> /dev/null
+    apt-get purge udev -y --force-yes -qq &> /dev/null
+    apt-get remove makedev -y --force-yes -qq &> /dev/null
+    apt-get purge makedev -y --force-yes -qq &> /dev/null
     if [ -e "/sbin/hdparm" ]; then
       apt-get remove hdparm -y --force-yes -qq &> /dev/null
       apt-get purge hdparm -y --force-yes -qq &> /dev/null
-    fi
-    if [ -e "/sbin/udevd" ]; then
-      apt-get remove udev -y --force-yes -qq &> /dev/null
-      apt-get purge udev -y --force-yes -qq &> /dev/null
     fi
     if [ -e "/sbin/auditd" ]; then
       apt-get remove auditd -y --force-yes -qq &> /dev/null
@@ -1635,6 +1695,21 @@ case "$1" in
              copt="$5"
              csub="$6"
              ccor="$7"
+             check_root
+             check_root_keys_pwd
+             check_virt
+             check_dns_curl
+             init_setup
+  ;;
+  in-oct)    cmmand="$1"
+             email="$2"
+             user="$3"
+             mode="$4"
+             copt="$5"
+             csub="$6"
+             ccor="$7"
+             pxyc="6033"
+             pxyi="127.0.0.1"
              check_root
              check_root_keys_pwd
              check_virt

@@ -4,14 +4,14 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 branch="3.x.x-dev"
-cluster="BOA-3.2.0"
+cluster="BOA-3.2.1"
 hd="HEAD"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
 master="master"
 nextv="BOA-3.3.0-dev"
-stbl="BOA-3.2.0"
+stbl="BOA-3.2.1"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -35,7 +35,8 @@ _LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
 _VMFAMILY=XEN
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -55,15 +56,15 @@ clean_pid_exit() {
 
 check_root_direct() {
   _U_TEST=DENY
-  [ ${SUDO_USER} ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
+  [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
   _U_TEST_WHO=$(who am i | awk '{print $1}' 2>&1)
   _U_TEST_LNE=$(logname 2>&1)
-  if [ ${_U_TEST_SDO} = "root" ] || [ ${_U_TEST_LNE} = "root" ]; then
+  if [ "${_U_TEST_SDO}" = "root" ] || [ "${_U_TEST_LNE}" = "root" ]; then
     if [ -z "${_U_TEST_WHO}" ]; then
       _U_TEST=ALLOW
       ### normal for root scripts running from cron
     else
-      if [ ${_U_TEST_WHO} = "root" ]; then
+      if [ "${_U_TEST_WHO}" = "root" ]; then
         _U_TEST=ALLOW
       fi
     fi
@@ -72,11 +73,11 @@ check_root_direct() {
     echo
     echo "ERROR: This script must be run as root directly,"
     echo "ERROR: without sudo/su switch from regular system user"
-    echo "ERROR: Please add and test your SSH keys for root account"
+    echo "ERROR: Please add and test your SSH (RSA) keys for root account"
     echo "ERROR: with direct access before trying again"
     echo
     echo "HINT:  You can always restrict access later, or"
-    echo "       allow only SSH keys for root with directive"
+    echo "       allow only SSH (RSA) keys for root with directive"
     echo "         PermitRootLogin prohibit-password"
     echo "       in the /usr/etc/sshd_config file"
     echo "Bye"
@@ -92,10 +93,20 @@ check_root_keys_pwd() {
   fi
   if [[ ! "${_S_TEST}" =~ "root:" ]] \
     && [[ ! "${_R_TEST}" =~ "ssh-rsa" ]]; then
-    echo "ERROR: BOA requires working SSH keys for system root present"
-    echo "ERROR: Please add and test your SSH keys for root account"
+    echo
+    echo "ERROR: BOA requires working SSH (RSA) keys for system root present"
+    echo "ERROR: Please add and test your SSH (RSA) keys for root account"
     echo "ERROR: before trying again"
+    echo
+    echo "HINTS: Run this command on your local PC machine:"
+    echo "HINTS:   ssh-keygen -b 4096 -t rsa -N '' -f ~/.ssh/id_rsa"
+    echo "HINTS: Then copy the ~/.ssh/id_rsa.pub file from your PC"
+    echo "HINTS: to ~/.ssh/authorized_keys file on the server"
+    echo "HINTS: Make sure the key is not split into more than 1 line"
+    echo "HINTS: Remember to run: chmod 600 ~/.ssh/authorized_keys"
+    echo
     echo "Bye"
+    echo
     clean_pid_exit
   fi
 }
@@ -914,10 +925,15 @@ up_finish() {
   fi
   rm -rf /opt/tmp/*
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+    service lfd stop &> /dev/null
+    sleep 3
+    rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
     csf -uf &> /dev/null
     csf -e  &> /dev/null
     csf -q  &> /dev/null
+    sleep 3
+    service lfd start &> /dev/null
   fi
   if [ -e "/etc/init.d/postfix" ]; then
     service postfix restart &> /dev/null
@@ -1037,9 +1053,14 @@ check_fix_csf() {
     csf -a 50.31.233.231 nl.files.aegir.cc   &> /dev/null
     csf -a 134.19.164.236 uk.files.aegir.cc  &> /dev/null
     csf -a 104.245.208.226 us.files.aegir.cc &> /dev/null
+    service lfd stop &> /dev/null
+    sleep 3
+    rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
     csf -uf &> /dev/null
     csf -e  &> /dev/null
+    sleep 3
+    service lfd start &> /dev/null
   fi
 }
 
@@ -1062,14 +1083,31 @@ check_root() {
       fi
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
+      if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
+        apt-get update -qq &> /dev/null
+      fi
+      if [ ! -e "/etc/apt/preferences.d/udev" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
+        apt-get update -qq &> /dev/null
+      fi
+      if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
+        apt-get update -qq &> /dev/null
+      fi
+      apt-get remove fuse -y --force-yes -qq &> /dev/null
+      apt-get purge fuse -y --force-yes -qq &> /dev/null
+      apt-get remove udev -y --force-yes -qq &> /dev/null
+      apt-get purge udev -y --force-yes -qq &> /dev/null
+      apt-get remove makedev -y --force-yes -qq &> /dev/null
+      apt-get purge makedev -y --force-yes -qq &> /dev/null
       _PTMX=OK
       if [ -e "/sbin/hdparm" ]; then
         apt-get remove hdparm -y --force-yes -qq &> /dev/null
         apt-get purge hdparm -y --force-yes -qq &> /dev/null
-      fi
-      if [ -e "/sbin/udevd" ]; then
-        apt-get remove udev -y --force-yes -qq &> /dev/null
-        apt-get purge udev -y --force-yes -qq &> /dev/null
       fi
       if [ -e "/sbin/auditd" ]; then
         apt-get remove auditd -y --force-yes -qq &> /dev/null

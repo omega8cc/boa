@@ -11,7 +11,8 @@ satellite_tune_fpm_workers() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -494,6 +495,7 @@ satellite_cnf() {
     echo "_MY_OWNIP=${_MY_OWNIP}"                               >> ${octCnf}
     echo "_FORCE_GIT_MIRROR=\"${_FORCE_GIT_MIRROR}\""           >> ${octCnf}
     echo "_THIS_DB_HOST=${_THIS_DB_HOST}"                       >> ${octCnf}
+    echo "_THIS_DB_PORT=${_THIS_DB_PORT}"                       >> ${octCnf}
     echo "_DNS_SETUP_TEST=${_DNS_SETUP_TEST}"                   >> ${octCnf}
     echo "_HOT_SAUCE=${_HOT_SAUCE}"                             >> ${octCnf}
     echo "_USE_CURRENT=${_USE_CURRENT}"                         >> ${octCnf}
@@ -1175,7 +1177,7 @@ satellite_child_b_update_ini_php_cli() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.320stableQ1.pid" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.321stableQ1.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1235,7 +1237,7 @@ satellite_child_b_update_ini_php_cli() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
-      echo > ${_U_HD}/.ctrl.320stableQ1.pid
+      echo > ${_U_HD}/.ctrl.321stableQ1.pid
     fi
   fi
 }
@@ -1320,7 +1322,7 @@ satellite_o_contrib_update_global() {
       done
       cd ${_D}/$i/o_contrib
       if [ ! -d "${_D}/$i/o_contrib/advagg" ]; then
-        get_dev_contrib "advagg-6.x-1.10.tar.gz"
+        get_dev_contrib "advagg-6.x-1.11.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib/boost" ]; then
         get_dev_contrib "boost-6.x-1.22.tar.gz"
@@ -1457,13 +1459,13 @@ satellite_o_contrib_seven_update_global() {
         # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_D}/$i/o_contrib_seven/adminer/adminer/plugins/frames.php"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/advagg" ]; then
-        get_dev_contrib "advagg-7.x-2.20.tar.gz"
+        get_dev_contrib "advagg-7.x-2.27.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/boost" ]; then
-        get_dev_contrib "boost-7.x-1.1.tar.gz"
+        get_dev_contrib "boost-7.x-1.2.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/cdn" ]; then
-        get_dev_contrib "cdn-7.x-2.8.tar.gz"
+        get_dev_contrib "cdn-7.x-2.10.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/display_cache" ]; then
         get_dev_contrib "display_cache-7.x-1.3.tar.gz"
@@ -1475,7 +1477,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/force_password_change" ]; then
-        get_dev_contrib "force_password_change-7.x-1.0.tar.gz"
+        get_dev_contrib "force_password_change-7.x-2.2.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/fpa" ]; then
         get_dev_contrib "fpa-7.x-2.6.tar.gz"
@@ -1484,7 +1486,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "httprl-7.x-1.14.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/js" ]; then
-        get_dev_contrib "js-7.x-2.1.tar.gz"
+        get_dev_contrib "js-7.x-2.4.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/panels_content_cache" ]; then
         get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
@@ -1496,7 +1498,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/speedy" ]; then
-        get_dev_contrib "speedy-7.x-1.28.tar.gz"
+        get_dev_contrib "speedy-7.x-1.30.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/taxonomy_edge" ]; then
         get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
@@ -1595,9 +1597,9 @@ satellite_download_o_contrib_eight() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_eight modules..."
   fi
-  get_dev_contrib "advagg-8.x-2.0.tar.gz"
-  get_dev_contrib "cdn-8.x-3.0.tar.gz"
-  get_dev_contrib "robotstxt-8.x-1.0.tar.gz"
+  get_dev_contrib "advagg-8.x-3.2.tar.gz"
+  get_dev_contrib "cdn-8.x-3.1.tar.gz"
+  get_dev_contrib "robotstxt-8.x-1.1.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_E_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -1628,10 +1630,10 @@ satellite_download_o_contrib_seven() {
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/edit-textarea.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/edit-textarea.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/frames.php"
-  get_dev_contrib "advagg-7.x-2.20.tar.gz"
+  get_dev_contrib "advagg-7.x-2.27.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.1.tar.gz"
-  get_dev_contrib "boost-7.x-1.1.tar.gz"
-  get_dev_contrib "cdn-7.x-2.8.tar.gz"
+  get_dev_contrib "boost-7.x-1.2.tar.gz"
+  get_dev_contrib "cdn-7.x-2.10.tar.gz"
   get_dev_contrib "config_perms-7.x-2.1.tar.gz"
   get_dev_contrib "css_emimage-7.x-1.x-dev.tar.gz"
   get_dev_contrib "display_cache-7.x-1.3.tar.gz"
@@ -1639,21 +1641,21 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "esi-7.x-3.x-dev.tar.gz"
   get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
   get_dev_contrib "flood_control-7.x-1.x-dev.tar.gz"
-  get_dev_contrib "force_password_change-7.x-1.0.tar.gz"
+  get_dev_contrib "force_password_change-7.x-2.2.tar.gz"
   get_dev_contrib "fpa-7.x-2.6.tar.gz"
   get_dev_contrib "httprl-7.x-1.14.tar.gz"
-  get_dev_contrib "js-7.x-2.1.tar.gz"
+  get_dev_contrib "js-7.x-2.4.tar.gz"
   get_dev_contrib "login_security-7.x-1.9.tar.gz"
-  get_dev_contrib "nocurrent_pass-7.x-1.0.tar.gz"
+  get_dev_contrib "nocurrent_pass-7.x-1.1.tar.gz"
   get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
   get_dev_contrib "print-7.x-2.0.tar.gz"
   get_dev_contrib "readonlymode-7.x-1.2.tar.gz"
   get_dev_contrib "reroute_email-7.x-1.2.tar.gz"
-  get_dev_contrib "robotstxt-7.x-1.3.tar.gz"
+  get_dev_contrib "robotstxt-7.x-1.4.tar.gz"
   get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
-  get_dev_contrib "site_verify-7.x-1.1.tar.gz"
-  get_dev_contrib "speedy-7.x-1.28.tar.gz"
+  get_dev_contrib "site_verify-7.x-1.2.tar.gz"
+  get_dev_contrib "speedy-7.x-1.30.tar.gz"
   get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
   get_dev_contrib "views_accelerator-7.x-1.0-beta1.tar.gz"
@@ -1707,7 +1709,7 @@ satellite_download_o_contrib_six() {
     msg "${_STATUS} A: Downloading o_contrib modules..."
   fi
   get_dev_contrib "admin-6.x-2.0.tar.gz"
-  get_dev_contrib "advagg-6.x-1.10.tar.gz"
+  get_dev_contrib "advagg-6.x-1.11.tar.gz"
   get_dev_contrib "blockcache_alter-6.x-1.6.tar.gz"
   get_dev_contrib "boost-6.x-1.22.tar.gz"
   get_dev_contrib "cdn-6.x-2.7.tar.gz"
@@ -2014,8 +2016,14 @@ provision_backend_dbpass_generate() {
   if [ "${_STRONG_PASSWORDS}" = "YES" ] \
     || [ "${_PWD_CHARS}" -gt "8" ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+      if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+        _ESC_PASS="$(openssl rand -base64 32 2>&1)"
+      else
+        _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+      fi
     else
       if [ -e "/root/.my.pass.txt" ]; then
         _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
@@ -2029,6 +2037,8 @@ provision_backend_dbpass_generate() {
   fi
   if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       _ESC_PASS=$(pwgen -v -s -1 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
@@ -2047,13 +2057,19 @@ provision_backend_dbpass_generate() {
   chown ${_USER}:${_USRG} ${_ROOT}/.${_USER}.pass.txt
   chmod 0600 ${_ROOT}/.${_USER}.pass.txt
 
-  _ESC="\`%\`.*"
-  mysqladmin flush-privileges &> /dev/null
+  _ESC="*.*"
+  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
+    || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+    || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
     || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
     _USE_AEGIR_HOST=$(uname -n 2>&1)
     _SQL_CONNECT=localhost
+    if [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
+      _SQL_CONNECT=127.0.0.1
+    fi
     _USE_DB_USER="${_USER}"
   else
     _USE_AEGIR_HOST=$(uname -n 2>&1)
@@ -2073,30 +2089,86 @@ provision_backend_dbpass_generate() {
     exit 1
   fi
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
+    || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+    || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
     || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
     if [ "${_STATUS}" = "INIT" ]; then
-      mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+      [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL14 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+      if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+        _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
+        _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+        mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
+DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
+LOAD MYSQL USERS TO RUNTIME;
+SAVE MYSQL USERS FROM RUNTIME;
+SAVE MYSQL USERS TO DISK;
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',10,1);
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',11,1);
+LOAD MYSQL QUERY RULES TO RUNTIME;
+SAVE MYSQL QUERY RULES TO DISK;
+PROXYSQL
+      fi
+      ###
+      ###
+      # if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+      #   _ROOT_SQL_PASWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
+      #   _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d "\n" 2>&1)
+      # elif [ -e "/root/.my.pass.txt" ]; then
+      #   _ROOT_SQL_PASWD=$(cat /root/.my.pass.tx 2>&1)
+      #   _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d "\n" 2>&1)
+      # fi
+      # if [ -e "/root/.my.cluster_write_node.txt" ]; then
+      #   _CL_WR_NODE=$(cat /root/.my.cluster_write_node.txt 2>&1)
+      #   _CL_WR_NODE=$(echo -n ${_CL_WR_NODE} | tr -d "\n" 2>&1)
+      #   _SQL_CONNECT="${_CL_WR_NODE}"
+      #   _THIS_DB_PORT="3306"
+      # fi
+      ### -p${_ROOT_SQL_PASWD}
+      ### [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL14CR -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+      ###
+      ###
+      mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 EOFMYSQL
     else
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
+        || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+        || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-        mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
-DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
-DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
-DROP USER '${_USE_DB_USER}'@'localhost';
-EOFMYSQL
-        mysql -h${_SQL_CONNECT} -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON $_ESC TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+        [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL15 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+        if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+          _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
+          _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+          mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
+DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
+LOAD MYSQL USERS TO RUNTIME;
+SAVE MYSQL USERS FROM RUNTIME;
+SAVE MYSQL USERS TO DISK;
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',10,1);
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',11,1);
+LOAD MYSQL QUERY RULES TO RUNTIME;
+SAVE MYSQL QUERY RULES TO DISK;
+PROXYSQL
+        fi
+        _C_SQL="mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot --database=mysql -e"
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
+        mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 EOFMYSQL
       fi
     fi
   fi
-  mysqladmin flush-privileges &> /dev/null
+  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
 }
 
 #
@@ -2112,14 +2184,44 @@ provision_backend_dbpass_sync() {
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
       WHERE db_user='${_USER}'\"" &> /dev/null
-    mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ESC_PASS}') \
-      WHERE User='${_USER}';" &> /dev/null
+    _ESC="*.*"
+    _USE_DB_USER="${_USER}"
+    _USE_AEGIR_HOST="$(uname -n 2>&1)"
+    _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
+      | cut -d: -f2 | awk '{ print $1}' 2>&1)"
+    [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL16 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+    if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
+      _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
+DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
+LOAD MYSQL USERS TO RUNTIME;
+SAVE MYSQL USERS FROM RUNTIME;
+SAVE MYSQL USERS TO DISK;
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',10,1);
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',11,1);
+LOAD MYSQL QUERY RULES TO RUNTIME;
+SAVE MYSQL QUERY RULES TO DISK;
+PROXYSQL
+    fi
+    _C_SQL="mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot --database=mysql -e"
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
+    mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+EOFMYSQL
     sed -i \
       "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
       ${_ROOT}/.drush/server_*.alias.drushrc.php &> /dev/null
     wait
   fi
-  mysqladmin flush-privileges &> /dev/null
+  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush" &> /dev/null
   rm -rf ${_ROOT}/.tmp/cache
   if [ -e "${_ROOT}/.drush/server_localhost.alias.drushrc.php" ]; then
@@ -2172,16 +2274,45 @@ hostmaster_frontend_dbpass_sync() {
   if [ -e "$_THIS_HM_SPTH" ] \
     && [ ! -z "$_THIS_HM_DBUR" ] \
     && [ ! -z "$_THIS_HM_DBPD" ]; then
-    mysql -u root -e "UPDATE mysql.user SET \
-      Password=PASSWORD('$_THIS_HM_DBPD') \
-      WHERE User='$_THIS_HM_DBUR';" &> /dev/null
+    _ESC="*.*"
+    _USE_DB_USER="${_THIS_HM_DBUR}"
+    _USE_AEGIR_HOST="$(uname -n 2>&1)"
+    _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
+      | cut -d: -f2 | awk '{ print $1}' 2>&1)"
+    [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL17 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+    if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+      _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
+      _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+      mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
+DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_THIS_HM_DBPD}','10');
+LOAD MYSQL USERS TO RUNTIME;
+SAVE MYSQL USERS FROM RUNTIME;
+SAVE MYSQL USERS TO DISK;
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',10,1);
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_USE_DB_USER}',11,1);
+LOAD MYSQL QUERY RULES TO RUNTIME;
+SAVE MYSQL QUERY RULES TO DISK;
+PROXYSQL
+    fi
+    _C_SQL="mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot --database=mysql -e"
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
+    mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+EOFMYSQL
   fi
-  mysqladmin flush-privileges &> /dev/null
+  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
 }
 
 satellite_run_pre_install() {
   if [ "${_STATUS}" = "INIT" ]; then
-    mysqladmin flush-hosts &> /dev/null
+    mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
     provision_backend_dbpass_generate
     echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
@@ -2202,7 +2333,7 @@ satellite_run_pre_install() {
         chmod 0440 /etc/sudoers.d/${SCRIPT}
       fi
     done
-    mysqladmin flush-hosts &> /dev/null
+    mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
     _RST=$(syncpass fix ${_USER} 2>&1)
     provision_backend_dbpass_sync
   fi
@@ -2261,13 +2392,13 @@ satellite_download_for_local_build() {
     get_dev_stc "openidadmin-7.x-1.0.tar.gz"
     get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
     get_dev_stc "r4032login-7.x-1.8.tar.gz"
-    get_dev_stc "views_bulk_operations-7.x-3.3.tar.gz"
-    get_dev_stc "views-7.x-3.15.tar.gz"
+    get_dev_stc "views_bulk_operations-7.x-3.4.tar.gz"
+    get_dev_stc "views-7.x-3.18.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
     get_dev_stc "features-7.x-2.10.tar.gz"
     get_dev_stc "idna_convert-7.x-1.0.tar.gz"
-    get_dev_stc "revision_deletion-7.x-1.x-dev.tar.gz"
+    get_dev_stc "revision_deletion-7.x-1.0.tar.gz"
     get_dev_stc "strongarm-7.x-2.0.tar.gz"
     get_dev_stc "userprotect-7.x-1.2.tar.gz"
   fi
@@ -3447,6 +3578,7 @@ satellite_make() {
   echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${writeTo}
   echo "_T_BUILD=\"${_T_BUILD}\""                     >> ${writeTo}
   echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${writeTo}
+  echo "_THIS_DB_PORT=\"${_THIS_DB_PORT}\""           >> ${writeTo}
   echo "_THIS_OS=\"${_THIS_OS}\""                     >> ${writeTo}
   echo "_THISHTIP=\"${_THISHTIP}\""                   >> ${writeTo}
   echo "_TODAY=\"${_TODAY}\""                         >> ${writeTo}
@@ -3524,7 +3656,7 @@ satellite_make() {
     echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
   fi
 
-  if [ ! -e "${_ROOT}/static/control/.ctrl.320stableQ1.pid" ] \
+  if [ ! -e "${_ROOT}/static/control/.ctrl.321stableQ1.pid" ] \
     || [ ! -e "${_ROOT}/static/control/README.txt" ]; then
     mkdir -p ${_ROOT}/static/control
     chmod 755 ${_ROOT}/static/control
@@ -3536,7 +3668,7 @@ satellite_make() {
     chown -R ${_USER}.ftp:${_USRG} \
       ${_ROOT}/static/control &> /dev/null
     rm -f ${_ROOT}/static/control/.ctrl.*
-    echo OK > ${_ROOT}/static/control/.ctrl.320stableQ1.pid
+    echo OK > ${_ROOT}/static/control/.ctrl.321stableQ1.pid
   fi
 
   if [ -d "/data/all/000" ]; then
@@ -3690,7 +3822,8 @@ satellite_detect_vm_family() {
     _IFCONFIG="eth0"
   fi
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -4188,7 +4321,7 @@ satellite_letsencrypt_vhost_setup() {
           dhpWildPath="/etc/ssl/private/nginx-wild-ssl.dhp"
           if [ -e "/etc/ssl/private/4096.dhp" ]; then
             dhpPath="/etc/ssl/private/4096.dhp"
-            _DIFF_T=$(diff ${dhpPath} ${dhpWildPath} 2>&1)
+            _DIFF_T=$(diff -w -B ${dhpPath} ${dhpWildPath} 2>&1)
             if [ ! -z "${_DIFF_T}" ]; then
               cp -af ${dhpPath} ${dhpWildPath}
             fi
@@ -4572,9 +4705,15 @@ satellite_child_b_aegir_build() {
     _AGRPASWD=$(echo -n $_AGRPXSWD | tr -d "\n" 2>&1)
 
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         _THIS_DB_HOST=$(uname -n 2>&1)
+      elif [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+        || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
+        _SQL_CONNECT=127.0.0.1
+        _THIS_DB_HOST=127.0.0.1
       else
         _THIS_DB_HOST=localhost
       fi
@@ -4595,6 +4734,7 @@ satellite_child_b_aegir_build() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} hostmaster-install ${_DOMAIN} \
         --aegir_db_host=${_THIS_DB_HOST} \
+        --aegir_db_port=${_THIS_DB_PORT} \
         --aegir_db_pass=${_AGRPASWD} \
         --aegir_db_user=${_USE_DB_USER} \
         --aegir_host=${_USE_AEGIR_HOST} \
@@ -4608,6 +4748,7 @@ satellite_child_b_aegir_build() {
     else
       ${_DRUSHCMD} hostmaster-install ${_DOMAIN} \
         --aegir_db_host=${_THIS_DB_HOST} \
+        --aegir_db_port=${_THIS_DB_PORT} \
         --aegir_db_pass=${_AGRPASWD} \
         --aegir_db_user=${_USE_DB_USER} \
         --aegir_host=${_USE_AEGIR_HOST} \
@@ -5067,7 +5208,8 @@ satellite_child_b_aegir_ui_enhance() {
   cd ${_HM_ROOT}/sites/${_DOMAIN}
   if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -5115,7 +5257,7 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_queue_tasks_frequency 5 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_queue_tasks_items 1 &> /dev/null
+      hosting_queue_tasks_items 3 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_alias_automatic_no_www 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
@@ -5147,7 +5289,9 @@ satellite_child_b_aegir_ui_enhance() {
         SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
       cp -af /opt/tmp/boa/aegir/helpers/make_client.php.txt ./
       mv -f make_client.php.txt make_client.php &> /dev/null
-      if [ "${_THIS_DB_HOST}" = "localhost" ]; then
+      if [ "${_THIS_DB_HOST}" = "localhost" ] \
+        || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+        || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
           SET status=-1 WHERE nid=7" &> /dev/null
       else
@@ -5246,13 +5390,17 @@ satellite_child_b_vhosts_hotfix() {
   ###---### Make sure there are no ghost or disabled vhost which still listen on IP.
   #
   rPth="${_ROOT}/config/server"
-  sed -i "s/.*listen .*127.0.0.1:80;.*//g"           ${rPth}_*/nginx.conf
+  sed -i "s/.*listen .*127.0.0.1:80;.*//g"             ${rPth}_*/nginx.conf
   wait
-  sed -i "s/listen .*:80;/listen        \*:80;/g"    ${rPth}_*/nginx.conf
+  sed -i "s/listen .*:80;/listen        \*:80;/g"      ${rPth}_*/nginx.conf
   wait
-  sed -i "s/param db_port.*/param db_port   3306;/g" ${rPth}_*/nginx/vhost.d/*
+  if [ -e "${_ROOT}/log/use_proxysql.txt" ]; then
+    sed -i "s/param db_port.*/param db_port   6033;/g" ${rPth}_*/nginx/vhost.d/*
+  else
+    sed -i "s/param db_port.*/param db_port   3306;/g" ${rPth}_*/nginx/vhost.d/*
+  fi
   wait
-  sed -i "s/listen .*:80;/listen        \*:80;/g"    ${rPth}_*/nginx/vhost.d/*
+  sed -i "s/listen .*:80;/listen        \*:80;/g"      ${rPth}_*/nginx/vhost.d/*
   wait
 }
 

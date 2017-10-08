@@ -18,15 +18,16 @@ character_set_server    = utf8
 collation_server        = utf8_general_ci
 skip-external-locking
 skip-name-resolve
+symbolic-links          = 0
 connect_timeout         = 60
 join_buffer_size        = 1M
-key_buffer_size         = 181M
+key_buffer_size         = 64M
 log_warnings            = 2
 max_allowed_packet      = 32M
 max_connect_errors      = 191
 max_connections         = 292
 max_user_connections    = 191
-myisam_sort_buffer_size = 1024K
+myisam_sort_buffer_size = 128K
 query_cache_limit       = 128K
 query_cache_size        = 64M
 query_cache_type        = 1
@@ -80,7 +81,7 @@ innodb_flush_log_at_trx_commit = 2
 innodb_thread_concurrency = 0
 innodb_lazy_drop_table  = 1
 innodb_lock_wait_timeout = 120
-innodb_corrupt_table_action = warn
+innodb_corrupt_table_action = salvage
 innodb_buffer_pool_dump_at_shutdown = 1
 innodb_buffer_pool_load_at_startup = 1
 innodb_buffer_pool_dump_pct = 100

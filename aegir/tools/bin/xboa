@@ -3,6 +3,8 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 _WEBG=www-data
+_THIS_DB_PORT=3306
+ieni="--ignore-errors"
 
 ###
 ### Avoid too many questions
@@ -30,7 +32,7 @@ migration process to the new facility has been completed.
   * All cron tasks are paused during this migration and in the next 1-3 hours
   * The old Aegir control panel has been disabled to protect proxy vhosts
   * The main SSH account home directory contents has not been migrated
-  * SSH keys have been transferred, but only for the main SSH account
+  * SSH (RSA) keys have been transferred, but only for the main SSH account
   * SSH sub-accounts (Clients), if used, will be recreated from scratch
   * The Aegir backend USER.id_rsa.pub public SSH key has changed
 
@@ -74,7 +76,7 @@ migration process to the new facility has been completed.
   * All cron tasks are paused during this migration and in the next 1-3 hours
   * The old Aegir control panel has been disabled to protect proxy vhosts
   * The main SSH account home directory contents has not been migrated
-  * SSH keys have been transferred, but only for the main SSH account
+  * SSH (RSA) keys have been transferred, but only for the main SSH account
   * SSH sub-accounts (Clients), if used, will be recreated from scratch
   * The Aegir backend USER.id_rsa.pub public SSH key has changed
 
@@ -118,7 +120,7 @@ migration process to the new facility has been completed.
   * All cron tasks are paused during this migration and in the next 1-3 hours
   * The old Aegir control panel has been disabled to protect proxy vhosts
   * The main SSH account home directory contents has not been migrated
-  * SSH keys have been transferred, but only for the main SSH account
+  * SSH (RSA) keys have been transferred, but only for the main SSH account
   * SSH sub-accounts (Clients), if used, will be recreated from scratch
   * The Aegir backend USER.id_rsa.pub public SSH key has changed
 
@@ -325,19 +327,37 @@ migrate_sites() {
         echo "INFO: site ${Dom} db_host on ${_TGT_HM_USER} fixed"
         if [ ! -z "${_DBN}" ] && [ ! -z "${_DBP}" ]; then
           if [ ! -d "/var/lib/mysql/${_DBN}" ]; then
-            mysqladmin flush-privileges
-            mysql -uroot mysql<<EOFMYSQL
+            mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+            [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL3 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
+            if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+              _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
+              _PROXYSQL_PASSWORD=$(echo -n ${_PROXYSQL_PASSWORD} | tr -d "\n" 2>&1)
+              mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
+DELETE FROM mysql_users WHERE username='${_DBN}';
+DELETE FROM mysql_query_rules WHERE username='${_DBN}';
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_DBN}','${_DBP}','10');
+LOAD MYSQL USERS TO RUNTIME;
+SAVE MYSQL USERS FROM RUNTIME;
+SAVE MYSQL USERS TO DISK;
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_DBN}',10,1);
+INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('${_DBN}',11,1);
+LOAD MYSQL QUERY RULES TO RUNTIME;
+SAVE MYSQL QUERY RULES TO DISK;
+PROXYSQL
+            fi
+            mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 CREATE DATABASE ${_DBN} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-GRANT ALL PRIVILEGES ON ${_DBN}.* TO '${_DBN}'@'127.0.0.1' IDENTIFIED BY '${_DBP}';
-GRANT ALL PRIVILEGES ON ${_DBN}.* TO '${_DBN}'@'localhost' IDENTIFIED BY '${_DBP}';
+GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'localhost' IDENTIFIED BY '${_DBP}';
+GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'%' IDENTIFIED BY '${_DBP}';
 EOFMYSQL
-            mysqladmin flush-privileges
+            mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
             echo "INFO: site ${Dom} db setup on ${oct} complete"
           else
             echo "ALRT: site ${Dom} db ${_DBN} already exists!"
           fi
           if [ -e "${_USR}/src/${_DBN}.sql" ]; then
-            mysql ${_DBN} < ${_USR}/src/${_DBN}.sql
+            [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL4 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
+            mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_DBN} < ${_USR}/src/${_DBN}.sql
             echo "INFO: site ${Dom} db import on ${oct} complete"
             ###
             ### Activate readonly on source via global.inc and not via drush
@@ -366,10 +386,11 @@ EOFMYSQL
         ### run_drush8_nosilent_cmd "vset --always-set site_readonly 1"
         ###
         echo "INFO: site ${Dom} readonlymode module on ${oct} enabled"
-        mysqldump \
+        mysqldump -P${_THIS_DB_PORT} --protocol=tcp \
           --single-transaction \
           --quick \
           --no-autocommit \
+          --skip-add-locks \
           --hex-blob ${_DBN} > ${_USR}/src/${_DBN}.sql
         echo "INFO: site ${Dom} db export on ${oct} complete"
       elif [ "${cmd}" = "proxy" ]; then
@@ -451,6 +472,7 @@ migrate_prepare() {
     _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   fi
 
+  [ -z "${_THIS_DB_PORT}" ] && _THIS_DB_PORT=3306
   [ -z "${_CLIENT_OPTION}" ] && _CLIENT_OPTION=EDGE
   [ -z "${_CLIENT_SUBSCR}" ] && _CLIENT_SUBSCR=M
   [ -z "${_CLIENT_CORES}" ]  && _CLIENT_CORES=1
@@ -494,10 +516,11 @@ migrate_prepare() {
     && [ ! -z "${_HDB}" ] \
     && [ ! -e "${_USR}/src/prev_hostmaster.sql" ] \
     && [ ! -e "${_USR}/log/exported.pid" ]; then
-      mysqldump \
+      mysqldump -P${_THIS_DB_PORT} --protocol=tcp \
         --single-transaction \
         --quick \
         --no-autocommit \
+        --skip-add-locks \
         --hex-blob ${_HDB} \
         field_data_body \
         field_data_comment_body \
@@ -553,12 +576,14 @@ migrate_prepare() {
     && [ ! -e "${_USR}/log/imported.pid" ]; then
     if [ ! -z "${dst}" ]; then
       if [ "${oct}" = "${dst}" ]; then
-        mysql ${_HDB} < ${_USR}/src/prev_hostmaster.sql
+        [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
+        mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
         run_drush8_hmr_cmd "vset --always-set site_frontpage 'hosting/sites'"
         touch ${_USR}/log/imported.pid
       fi
     else
-      mysql ${_HDB} < ${_USR}/src/prev_hostmaster.sql
+      [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL6 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
+      mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
       run_drush8_hmr_cmd "vset --always-set site_frontpage 'hosting/sites'"
       touch ${_USR}/log/imported.pid
     fi
@@ -721,53 +746,56 @@ migrate_init() {
   _USR=/data/disk/${oct}
   if [ ! -e "${_USR}/tools/le/letsencrypt.sh" ] && [ "${oct}" != "shared" ]; then
     echo
-    echo "ERROR: This version of xboa migration tool supports only BOA-3.2.0 or newer"
+    echo "ERROR: This version of xboa migration tool supports only BOA-3.2.1 or newer"
     echo "ERROR: Please upgrade ${oct} instance to current BOA stable before trying again"
     echo "Bye."
     echo
     exit 1
   fi
+  if [ -e "${_USR}/log/use_proxysql.txt" ]; then
+    _THIS_DB_PORT=6033
+  fi
   rm -f /root/scentral_migration_notice.sh.txt
   if [ "${oct}" = "xusage" ]; then
     echo "INFO: ${cmd} for ${oct} to ${tgt} start"
     if [ -e "/var/xdrago/log/usage" ]; then
-      rsync -aAXq  --ignore-errors -e ssh /var/xdrago/log/usage/* root@${tgt}:/var/xdrago/log/usage/
+      rsync -aEAXq ${ieni} -e ssh /var/xdrago/log/usage/* root@${tgt}:/var/xdrago/log/usage/
       echo "INFO: ${cmd} for ${oct} /var/xdrago/log/usage complete"
     fi
     echo "INFO: ${cmd} for ${oct} to ${tgt} complete"
   elif [ "${oct}" = "shared" ]; then
     echo "INFO: ${cmd} for ${oct} to ${tgt} start"
     if [ -d "/data/all" ] && [ ! -L "/data/all" ]; then
-      rsync -aAXqu --ignore-errors -e ssh /data/all  root@${tgt}:/data/
+      rsync -aEAXqu ${ieni} -e ssh /data/all  root@${tgt}:/data/
       echo "INFO: ${cmd} for ${oct} /data/all complete"
     fi
     if [ -d "/data/disk/all" ]; then
-      rsync -aAXqu --ignore-errors -e ssh /data/disk/all  root@${tgt}:/data/
+      rsync -aEAXqu ${ieni} -e ssh /data/disk/all  root@${tgt}:/data/
       echo "INFO: ${cmd} for ${oct} /data/disk/all complete"
     fi
     if [ -e "/data/disk/arch" ]; then
-      rsync -aAXqu --ignore-errors -e ssh /data/disk/arch  root@${tgt}:/data/disk/
+      rsync -aEAXqu ${ieni} -e ssh /data/disk/arch  root@${tgt}:/data/disk/
       echo "INFO: ${cmd} for ${oct} /data/disk/arch complete"
     fi
     if [ -e "/opt/solr4" ]; then
-      rsync -aAXq  --ignore-errors -e ssh /opt/solr4 root@${tgt}:/opt/
+      rsync -aEAXq ${ieni} -e ssh /opt/solr4 root@${tgt}:/opt/
       echo "INFO: ${cmd} for ${oct} /opt/solr4 complete"
     fi
     if [ -e "/var/www/static" ]; then
-      rsync -aAXq  --ignore-errors -e ssh /var/www/static root@${tgt}:/var/www/
+      rsync -aEAXq ${ieni} -e ssh /var/www/static root@${tgt}:/var/www/
       echo "INFO: ${cmd} for ${oct} /var/www/static complete"
     fi
     if [ -e "/etc/bind" ]; then
-      rsync -aAXq  --ignore-errors -e ssh /etc/bind root@${tgt}:/etc/
+      rsync -aEAXq ${ieni} -e ssh /etc/bind root@${tgt}:/etc/
       echo "INFO: ${cmd} for ${oct} /etc/bind complete"
     fi
     if [ -e "/var/xdrago/log/usage" ]; then
-      rsync -aAXq  --ignore-errors -e ssh /var/xdrago/log/usage root@${tgt}:/var/xdrago/log/
+      rsync -aEAXq ${ieni} -e ssh /var/xdrago/log/usage root@${tgt}:/var/xdrago/log/
       echo "INFO: ${cmd} for ${oct} /var/xdrago/log/usage complete"
     fi
     if [ -e "/data/disk/legacy" ]; then
       echo "INFO: ${cmd} for ${oct} /data/disk/legacy start"
-      rsync -aAXq  --ignore-errors -e ssh /data/disk/legacy root@${tgt}:/data/disk/
+      rsync -aEAXq ${ieni} -e ssh /data/disk/legacy root@${tgt}:/data/disk/
       echo "INFO: ${cmd} for ${oct} /data/disk/legacy complete"
     fi
     echo "INFO: ${cmd} for ${oct} to ${tgt} complete"
@@ -830,68 +858,68 @@ migrate_init() {
           _DST=/data/disk/${oct}
         fi
         if [ -e "${_USR}" ]; then
-          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/distro/*         root@${tgt}:${_DST}/distro/
-          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/src/*            root@${tgt}:${_DST}/src/
-          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/static/*         root@${tgt}:${_DST}/static/
+          rsync -aEAXqu ${ieni} -e ssh ${_USR}/distro/*         root@${tgt}:${_DST}/distro/
+          rsync -aEAXqu ${ieni} -e ssh ${_USR}/src/*            root@${tgt}:${_DST}/src/
+          rsync -aEAXqu ${ieni} -e ssh ${_USR}/static/*         root@${tgt}:${_DST}/static/
           #
-          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/clients/*        root@${tgt}:${_DST}/clients/        &> /dev/null
-          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/log/*            root@${tgt}:${_DST}/log/
-          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/static/control/* root@${tgt}:${_DST}/static/control/ &> /dev/null
+          rsync -aEAXqu ${ieni} -e ssh ${_USR}/clients/*        root@${tgt}:${_DST}/clients/        &> /dev/null
+          rsync -aEAXqu ${ieni} -e ssh ${_USR}/log/*            root@${tgt}:${_DST}/log/
+          rsync -aEAXqu ${ieni} -e ssh ${_USR}/static/control/* root@${tgt}:${_DST}/static/control/ &> /dev/null
           #
-          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/backups/*        root@${tgt}:${_DST}/backups/        &> /dev/null
-          rsync -aAXqu  --ignore-errors -e ssh ${_USR}/undo/*           root@${tgt}:${_DST}/undo/           &> /dev/null
+          rsync -aEAXqu ${ieni} -e ssh ${_USR}/backups/*        root@${tgt}:${_DST}/backups/        &> /dev/null
+          rsync -aEAXqu ${ieni} -e ssh ${_USR}/undo/*           root@${tgt}:${_DST}/undo/           &> /dev/null
           if [ ! -z "${dst}" ]; then
-            rsync -aAXqu  --ignore-errors -e ssh /home/${oct}.ftp/.ssh  root@${tgt}:/home/${dst}.ftp/
+            rsync -aEAXqu ${ieni} -e ssh /home/${oct}.ftp/.ssh  root@${tgt}:/home/${dst}.ftp/
           else
-            rsync -aAXqu  --ignore-errors -e ssh /home/${oct}.ftp/.ssh  root@${tgt}:/home/${oct}.ftp/
+            rsync -aEAXqu ${ieni} -e ssh /home/${oct}.ftp/.ssh  root@${tgt}:/home/${oct}.ftp/
           fi
 
-          rsync -aAXqu \
-            --ignore-errors \
+          rsync -aEAXqu \
+            ${ieni} \
             --exclude=server_ \
             --exclude=hostmaster \
             -e ssh ${_USR}/.drush/*.alias.drushrc.php \
             root@${tgt}:${_DST}/.drush/
 
-          rsync -aAXqu \
-            --ignore-errors \
+          rsync -aEAXqu \
+            ${ieni} \
             --exclude=host8.biz \
             --exclude=boa.io \
             -e ssh ${_USR}/config/server_master/nginx/vhost.d/* \
             root@${tgt}:${_DST}/config/server_master/nginx/vhost.d/
 
-          rsync -aAXqu \
-            --ignore-errors \
+          rsync -aEAXqu \
+            ${ieni} \
             -e ssh ${_USR}/config/server_master/nginx/pre.d/* \
             root@${tgt}:${_DST}/config/server_master/nginx/pre.d/ &> /dev/null
 
-          rsync -aAXqu \
-            --ignore-errors \
+          rsync -aEAXqu \
+            ${ieni} \
             -e ssh ${_USR}/config/server_master/nginx/post.d/* \
             root@${tgt}:${_DST}/config/server_master/nginx/post.d/ &> /dev/null
 
-          rsync -aAXqu \
-            --ignore-errors \
+          rsync -aEAXqu \
+            ${ieni} \
             -e ssh ${_USR}/config/server_master/nginx/subdir.d/* \
             root@${tgt}:${_DST}/config/server_master/nginx/subdir.d/ &> /dev/null
 
-          rsync -aAXqu \
-            --ignore-errors \
+          rsync -aEAXqu \
+            ${ieni} \
             -e ssh ${_USR}/config/server_master/nginx/platform.d/* \
             root@${tgt}:${_DST}/config/server_master/nginx/platform.d/ &> /dev/null
 
-          rsync -aAXqu \
-            --ignore-errors \
+          rsync -aEAXqu \
+            ${ieni} \
             -e ssh ${_USR}/config/ssl.d/* \
             root@${tgt}:${_DST}/config/ssl.d/ &> /dev/null
 
-          rsync -aAXqu \
-            --ignore-errors \
+          rsync -aEAXqu \
+            ${ieni} \
             -e ssh ${_USR}/config/server_master/ssl.d/* \
             root@${tgt}:${_DST}/config/server_master/ssl.d/ &> /dev/null
 
-          rsync -aAXqu \
-            --ignore-errors \
+          rsync -aEAXqu \
+            ${ieni} \
             -e ssh ${_USR}/tools/le \
             root@${tgt}:${_DST}/tools/ &> /dev/null
 
@@ -1119,6 +1147,18 @@ check_root() {
       source /root/.barracuda.cnf
       _ADM_EMAIL=${_MY_EMAIL//\\\@/\@}
       _BCC_EMAIL=${_MY_EMAIL//\\\@/\@}
+      if [ "${_THIS_DB_HOST}" = "localhost" ] \
+        || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+        _SQL_CONNECT=localhost
+      elif [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+        || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
+        _SQL_CONNECT=127.0.0.1
+      else
+        _SQL_CONNECT="${_THIS_DB_HOST}"
+      fi
+      if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
+        _SQL_CONNECT=localhost
+      fi
     fi
   else
     echo "ERROR: This script should be ran as a root user"

@@ -50,7 +50,10 @@ function hosting_le_vhost_provision_nginx_vhost_config($uri, $data) {
       $is_boa = TRUE;
     }
 
-    $real_name = substr(d()->name, 1);
+    $main_name = $real_name = substr(d()->name, 1);
+    if ($real_name == 'hostmaster') {
+      $real_name = $main_name = d()->uri;
+    }
 
     if (d()->redirection) {
       $main_name = d()->redirection;
@@ -62,7 +65,6 @@ function hosting_le_vhost_provision_nginx_vhost_config($uri, $data) {
       }
     }
     else {
-      $main_name = substr(d()->name, 1);
       $cert_dir = $le_cert . "/" . $main_name;
     }
 

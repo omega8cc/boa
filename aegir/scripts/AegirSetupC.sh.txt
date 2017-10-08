@@ -678,7 +678,8 @@ if [ "${_CLIENT_CORES}" -lt "1" ]; then
   _ALLOW_ALL=NO
   _D_8_ALLOW=NO
 fi
-if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -2171,7 +2172,7 @@ ubercart7_install() {
               get_dev_contrib "rules-7.x-2.9.tar.gz"
               get_dev_contrib "token-7.x-1.6.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
-              get_dev_contrib "views-7.x-3.15.tar.gz"
+              get_dev_contrib "views-7.x-3.18.tar.gz"
               cd ${_SHRD_PRPATH}/modules/views
               # https://drupal.org/node/1766338#comment-6445882
               patch -p1 < \
@@ -2241,7 +2242,7 @@ ubercart7_testing_install() {
               get_dev_contrib "rules-7.x-2.9.tar.gz"
               get_dev_contrib "token-7.x-1.6.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
-              get_dev_contrib "views-7.x-3.15.tar.gz"
+              get_dev_contrib "views-7.x-3.18.tar.gz"
               cd ${_SHRD_PRPATH}/modules/views
               # https://drupal.org/node/1766338#comment-6445882
               patch -p1 < \
@@ -2584,7 +2585,7 @@ _USE_DISTRO_CORE=YES
 openatrium7_install
 _USE_DISTRO_CORE=NO
 
-openchurch2_install
+### openchurch2_install -- broken profile
 openlucius_install
 openoutreach_install
 openpublic_install

@@ -136,9 +136,9 @@ _TUNE_PHP_CLI_TIMEOUT=7200
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_AEGIR_VERSION="BOA-3.2.0"
+_AEGIR_VERSION="BOA-3.2.1"
 _BRANCH_BOA="3.x.x-dev"
-_X_VERSION="BOA-3.2.0"
+_X_VERSION="BOA-3.2.1"
 _MYSQLTUNER_VRN=1.7.0
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
@@ -158,9 +158,9 @@ _PHP54_VRN=5.4.45
 _PHP55_API=20121212
 _PHP55_VRN=5.5.38
 _PHP56_API=20131226
-_PHP56_VRN=5.6.30
+_PHP56_VRN=5.6.31
 _PHP70_API=20151012
-_PHP70_VRN=7.0.16
+_PHP70_VRN=7.0.24
 
 ###
 ### Helper variables
@@ -386,7 +386,7 @@ fix_php_ini_newrelic_all() {
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
       _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
     fi
-    _PHP_V="56 55 54 53"
+    _PHP_V="70 56 55 54 53"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       fix_php_ini_newrelic
@@ -495,8 +495,8 @@ fix_php_ini_geos_all() {
 # Fix php.ini file to add mongo.so
 fix_php_ini_mongo() {
   if [ -e "${_THIS_FILE}" ]; then
-    _MONGODB_INI_TEST=$(grep "^extension=mongo.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_MONGODB_INI_TEST" =~ "extension=mongo.so" ]]; then
+    _MONGO_INI_TEST=$(grep "^extension=mongo.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_MONGO_INI_TEST" =~ "extension=mongo.so" ]]; then
       _DO_NOTHING=YES
     else
       echo "extension=mongo.so" >> ${_THIS_FILE}
@@ -504,7 +504,19 @@ fix_php_ini_mongo() {
   fi
 }
 #
-# Fix all php.ini files to add mongo.so
+# Fix php.ini file to add mongodb.so
+fix_php_ini_mongodb() {
+  if [ -e "${_THIS_FILE}" ]; then
+    _MONGODB_INI_TEST=$(grep "^extension=mongodb.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_MONGODB_INI_TEST" =~ "extension=mongodb.so" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=mongodb.so" >> ${_THIS_FILE}
+    fi
+  fi
+}
+#
+# Fix all php.ini files to add mongo.so or mongodb.so
 fix_php_ini_mongo_all() {
   if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
     _PHP_V="56 55 54 53"
@@ -513,6 +525,13 @@ fix_php_ini_mongo_all() {
       fix_php_ini_mongo
       _THIS_FILE=/opt/php${e}/lib/php.ini
       fix_php_ini_mongo
+    done
+    _PHP_V="70"
+    for e in ${_PHP_V}; do
+      _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+      fix_php_ini_mongodb
+      _THIS_FILE=/opt/php${e}/lib/php.ini
+      fix_php_ini_mongodb
     done
   fi
 }
@@ -642,7 +661,8 @@ tune_php() {
 # Update innodb_log_file_size.
 update_innodb_log_file_size() {
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
-  if [ "${_DB_SERIES}" = "10.1" ]; then
+  if [ "${_DB_SERIES}" = "10.2" ] \
+    || [ "${_DB_SERIES}" = "10.1" ]; then
     mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
@@ -947,14 +967,14 @@ tune_sql_memory_limits() {
         _USE_MYISAM_MEM="${_USE_SQL}"
       fi
       _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
-      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
+      # sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
       wait
     else
       _USE_MYISAM_MEM="${_USE_SQL}M"
       if [ "$_MYSQLTUNER_TEST_RESULT" = "FAIL" ]; then
         msg "ALRT! _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
       fi
-      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
+      # sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
       wait
     fi
     ###--------------------###
@@ -1015,7 +1035,8 @@ tune_memory_limits() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -1287,8 +1308,8 @@ tune_memory_limits() {
     wait
     sed -i "s/^max_heap_table_size.*/max_heap_table_size     = ${_TMP_SQL}/g"     /etc/mysql/my.cnf
     wait
-    sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = ${_SRT_SQL}/g" /etc/mysql/my.cnf
-    wait
+    # sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = ${_SRT_SQL}/g" /etc/mysql/my.cnf
+    # wait
     sed -i "s/^query_cache_size.*/query_cache_size        = ${_QCE_SQL}/g"        /etc/mysql/my.cnf
     wait
     sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = ${_RND_SQL}/g"    /etc/mysql/my.cnf

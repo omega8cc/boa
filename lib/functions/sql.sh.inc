@@ -2,44 +2,32 @@
 # Update innodb_log_file_size.
 update_innodb_log_file_size() {
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
-  if [ "${_DB_SERIES}" = "10.1" ]; then
-    mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-  fi
-  mrun "service mysql stop" &> /dev/null
-  mrun "sleep 60"
-  if [ ! -e "/var/run/mysqld/mysqld.sock" ] \
-    && [ ! -e "/var/run/mysqld/mysqld.pid" ]; then
+  mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
+  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+  if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
     mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
-    mrun "sleep 10"
+    mrun "sleep 1"
     mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
     wait
-    mrun "sleep 10"
-    if [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
-      service mysql start &> /dev/null
-    fi
+    mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
   else
-    msg "INFO: Waiting for ${_DB_SERVER} clean shutdown..."
+    msg "INFO: Waiting 180s for ${_DB_SERVER} clean shutdown..."
+    mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
     mrun "sleep 180"
-    if [ ! -e "/var/run/mysqld/mysqld.sock" ] \
-      && [ ! -e "/var/run/mysqld/mysqld.pid" ]; then
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
-      mrun "sleep 10"
+      mrun "sleep 1"
       mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
       wait
-      mrun "sleep 10"
-      if [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
-        service mysql start &> /dev/null
-      fi
+      mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
     else
       msg "WARN: ${_DB_SERVER} refused to stop, InnoDB log file size not updated"
-      mrun "sleep 10"
+      mrun "sleep 5"
     fi
   fi
 }
@@ -51,7 +39,12 @@ update_sql_conf() {
   #   sed -i "s/.*innodb-defragment/innodb-defragment/g" /etc/mysql/my.cnf
   #   wait
   # fi
-  if [ "${_DB_SERIES}" != "10.1" ]; then
+  if [ "${_DB_SERIES}" = "10.2" ]; then
+    sed -i "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" /etc/mysql/my.cnf
+    wait
+  fi
+  if [ "${_DB_SERIES}" != "10.2" ] \
+    && [ "${_DB_SERIES}" != "10.1" ]; then
     sed -i "s/.*innodb_buffer_pool_dump_at_shutdown/#innodb_buffer_pool_dump_at_shutdown/g" /etc/mysql/my.cnf
     wait
     sed -i "s/.*innodb_buffer_pool_load_at_startup/#innodb_buffer_pool_load_at_startup/g" /etc/mysql/my.cnf
@@ -147,10 +140,13 @@ update_sql_conf() {
 tune_sql_memory_limits() {
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
   wait
+  if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}" ]; then
+    mkdir -p ${vBs}/dragon/t/
+    cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}
+  fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
     _DO_NOTHING=YES
   else
-    cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}
     cp -af ${locCnf}/my.cnf.txt /etc/mysql/my.cnf
   fi
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
@@ -216,14 +212,14 @@ tune_sql_memory_limits() {
         _USE_MYISAM_MEM="${_USE_SQL}"
       fi
       _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
-      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
+      # sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
       wait
     else
       _USE_MYISAM_MEM="${_USE_SQL}M"
       if [ "$_MYSQLTUNER_TEST_RESULT" = "FAIL" ]; then
         msg "ALRT! _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
       fi
-      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
+      # sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
       wait
     fi
     ###--------------------###
@@ -337,6 +333,12 @@ install_mariadb_sql() {
   _KEYS_SERVER_TEST=FALSE
   until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
     _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
+      --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 2>&1)
+    sleep 2
+  done
+  _KEYS_SERVER_TEST=FALSE
+  until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
+    _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
       --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
     sleep 2
   done
@@ -357,28 +359,33 @@ install_mariadb_sql() {
   fi
   if [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "jessie" ]; then
-    _DB_SERIES=10.1
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
       _MARIADB_VRN="${_GALERA_10_VRN}"
     else
-      _MARIADB_VRN="${_MARIADB_10_VRN}"
+      if [ "${_DB_SERIES}" = "10.2" ]; then
+        _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+      else
+        _DB_SERIES=10.1
+        _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+      fi
     fi
     msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
   else
-    if [ "${_DB_SERIES}" = "10.1" ] \
+    if [ "${_DB_SERIES}" = "10.2" ] \
+      || [ "${_DB_SERIES}" = "10.1" ] \
       || [ "${_DB_SERIES}" = "10.0" ] \
       || [ "${_DB_SERIES}" = "5.5" ]; then
       _DO_NOTHING=YES
     else
       _DB_SERIES=10.1
-      _MARIADB_VRN="${_MARIADB_10_VRN}"
+      _MARIADB_VRN="${_MARIADB_10_1_VRN}"
       msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
     fi
     if [ -z "${_DB_SERIES}" ]; then
       _DB_SERIES=10.1
-      _MARIADB_VRN="${_MARIADB_10_VRN}"
+      _MARIADB_VRN="${_MARIADB_10_1_VRN}"
       msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
     fi
   fi
@@ -424,10 +431,9 @@ install_mariadb_sql() {
             mariadb-common"
   fi
   SQLADD="libmariadbclient-dev \
-          libmariadbclient16 \
-          libmariadbd-dev \
+          libmysqlclient18.1 \
           libdbd-mysql-perl \
-          percona-xtrabackup \
+          percona-xtrabackup-24 \
           python-mysqldb \
           libdbi-perl"
 }
@@ -509,7 +515,11 @@ forced_mysql_root_password_update() {
   fi
   if [ "${_STRONG_PASSWORDS}" = "YES" ] \
     || [ "${_PWD_CHARS}" -gt "8" ]; then
-    _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+    if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+      _ESC_PASS="$(openssl rand -base64 32 2>&1)"
+    else
+      _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+    fi
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
@@ -517,6 +527,11 @@ forced_mysql_root_password_update() {
     _ESC_PASS=$(pwgen -v -s -1 2>&1)
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+  fi
+  if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+    _ROOT_SQL_PASWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
+    _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d "\n" 2>&1)
+    _ESC_PASS="${_ROOT_SQL_PASWD}"
   fi
   if [ ! -z "${_ESC_PASS}" ]; then
     cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_VERSION}-${_NOW}
@@ -554,6 +569,9 @@ install_mariadb_server() {
     service cron stop &> /dev/null
     if [ -e "/usr/sbin/csf" ] \
       && [ -e "/etc/csf/csf.deny" ]; then
+      service lfd stop &> /dev/null
+      sleep 3
+      rm -f /etc/csf/csf.error
       csf -x &> /dev/null
     fi
     install_with_aptitude_sql
@@ -588,6 +606,10 @@ install_mariadb_server() {
       elif [ "${_DB_SERIES}" = "10.1" ] \
         || [ "${_DB_SERIES}" = "10.0" ]; then
         if [[ ! "${_DB_SERVER_TEST}" =~ "10.1." ]]; then
+          _SQL_UPGRADE=YES
+        fi
+      elif [ "${_DB_SERIES}" = "10.2" ]; then
+        if [[ ! "${_DB_SERVER_TEST}" =~ "10.2." ]]; then
           _SQL_UPGRADE=YES
         fi
       fi
@@ -627,13 +649,24 @@ install_mariadb_server() {
       service cron stop &> /dev/null
       if [ -e "/usr/sbin/csf" ] \
         && [ -e "/etc/csf/csf.deny" ]; then
+        service lfd stop &> /dev/null
+        sleep 3
+        rm -f /etc/csf/csf.error
         csf -x &> /dev/null
       fi
       msg "INFO: Running ${_DB_SERVER} upgrade and then PHP forced rebuild..."
-      mrun "sleep 120"
-      mrun "service nginx stop" &> /dev/null
+      if [ ! -e "/root/.proxy.cnf" ]; then
+        mrun "sleep 120"
+        mrun "service nginx stop" &> /dev/null
+      fi
       rm -f ${aptLiSys}.d/percona.list
       rm -f ${aptLiSys}.d/ourdelta.list
+      _KEYS_SERVER_TEST=FALSE
+      until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
+        _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
+          --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 2>&1)
+        sleep 2
+      done
       _KEYS_SERVER_TEST=FALSE
       until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
         _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
@@ -667,15 +700,55 @@ install_mariadb_server() {
       elif [ -x "/usr/bin/mysql_upgrade" ]; then
         mrun "mysql_upgrade --force" &> /dev/null
       fi
-      msg "INFO: Restarting ${_DB_SERVER} server..."
       tune_memory_limits
-      mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
-      mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
-      mrun "service nginx start" &> /dev/null
+      myCnf="/etc/mysql/my.cnf"
+      preCnf="${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}"
+      if [ -f "${myCnf}" ]; then
+        myCnfUpdate=NO
+        myRstrd=NO
+        if [ ! -f "${preCnf}" ]; then
+          mkdir -p ${vBs}/dragon/t/
+          cp -af ${myCnf} ${preCnf}
+        fi
+        diffMyTest=$(diff -w -B \
+          -I innodb_buffer_pool_size \
+          -I innodb_buffer_pool_instances \
+          -I tmp_table_size \
+          -I max_heap_table_size \
+          -I myisam_sort_buffer_size \
+          -I key_buffer_size ${myCnf} ${preCnf} 2>&1)
+        if [ -z "${diffMyTest}" ]; then
+          myCnfUpdate=NO
+          msg "INFO: ${_DB_SERVER} diff0 empty"
+        else
+          myCnfUpdate=YES
+          # diffMyTest=$(echo -n ${diffMyTest} | fmt -su -w 2500 2>&1)
+          msg "INFO: ${_DB_SERVER} diff1 ${diffMyTest}"
+        fi
+        if [[ "${diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
+          myCnfUpdate=NO
+          msg "INFO: ${_DB_SERVER} diff2 ${diffMyTest}"
+        fi
+        if [[ "${diffMyTest}" =~ "No such file or directory" ]]; then
+          myCnfUpdate=NO
+          msg "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
+        fi
+      fi
+      myUptime=$(mysqladmin -P${_THIS_DB_PORT} --protocol=tcp version | grep -i uptime 2>&1)
+      myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
+      msg "INFO: ${_DB_SERVER} ${myUptime}"
+      if [ "${myCnfUpdate}" = "YES" ]; then
+        msg "INFO: Restarting ${_DB_SERVER} server..."
+        mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
+        mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+        msg "INFO: ${_DB_SERVER} server restart completed"
+        myRstrd=YES
+      fi
       if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
         mrun "csf -e" &> /dev/null
+        sleep 3
+        service lfd start &> /dev/null
       fi
-      msg "INFO: ${_DB_SERVER} server restart completed"
     fi
   fi
 }
@@ -683,6 +756,8 @@ install_mariadb_server() {
 check_update_sql_credentials() {
   if [ ! -e "/root/.my.pass.txt" ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       msg "INFO: Generating random password for ${_DB_SERVER}"
     else
@@ -691,6 +766,8 @@ check_update_sql_credentials() {
     touch /root/.my.pass.txt
     chmod 0600 /root/.my.pass.txt &> /dev/null
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       _ESC_PASS=""
       _LEN_PASS=0
@@ -713,7 +790,11 @@ check_update_sql_credentials() {
       fi
       if [ "${_STRONG_PASSWORDS}" = "YES" ] \
         || [ "${_PWD_CHARS}" -gt "8" ]; then
-        _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+        if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+          _ESC_PASS="$(openssl rand -base64 32 2>&1)"
+        else
+          _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+        fi
         _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
         _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
       fi
@@ -783,6 +864,8 @@ finalize_sql_initial_setup() {
       mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$PASWD') \
         WHERE User='root';" &> /dev/null
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
+        || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+        || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         _DO_NOTHING=YES
       else
@@ -798,15 +881,15 @@ finalize_sql_initial_setup() {
           wait
         fi
         if [ -e "/root/.remote.IP.list" ]; then
-          _ESC="\`%\`.*"
+          _ESC="*.*"
           for _IP in `cat /root/.remote.IP.list \
             | cut -d '#' -f1 \
             | sort \
             | uniq \
             | tr -d "\s"`; do
-            mysql -u root -e "GRANT ALL PRIVILEGES ON $_ESC \
-            TO 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
-            WITH GRANT OPTION;" &> /dev/null
+            mysql -u root -e "GRANT ALL ON ${_ESC} \
+              TO 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
+              WITH GRANT OPTION;" &> /dev/null
           done
         fi
         if [ -e "/root/.cluster.IP.list" ]; then
@@ -815,10 +898,12 @@ finalize_sql_initial_setup() {
             | sort \
             | uniq \
             | tr -d "\s"`; do
-            mysql -u root -e "GRANT ALL ON *.* TO 'root'@'${_IP}';" &> /dev/null
+            mysql -u root -e "GRANT ALL ON ${_ESC} \
+              TO 'root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
+              WITH GRANT OPTION;" &> /dev/null
           done
-          mysql -u root -e "GRANT ALL ON *.* TO 'wsrep'@'%' \
-            IDENTIFIED BY '${PASWD}';" &> /dev/null
+          mysql -u root -e "GRANT ALL ON ${_ESC} \
+            TO 'wsrep'@'%' IDENTIFIED BY '${PASWD}';" &> /dev/null
         fi
         touch ${pthLog}/fixed-cluster-ip-grants.log
       fi
@@ -826,11 +911,13 @@ finalize_sql_initial_setup() {
     fi
     echo "[client]" > /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
-    echo "password=$PASWD" >> /root/.my.cnf
+    echo "password=${PASWD}" >> /root/.my.cnf
     chmod 0600 /root/.my.cnf
     echo "db=mysql" > /root/.mytop
     chmod 0600 /root/.mytop
-    if [ "${_THIS_DB_HOST}" = "localhost" ]; then
+    if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
       echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
     elif [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -843,6 +930,7 @@ finalize_sql_initial_setup() {
     sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
       /etc/mysql/debian-start &> /dev/null
     wait
+    msg "INFO: Restarting ${_DB_SERVER} server..."
     mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
     mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
     msg "INFO: ${_DB_SERVER} setup completed"
@@ -853,15 +941,15 @@ finalize_sql_initial_setup() {
       PXSWD=$(cat /root/.my.pass.txt 2>&1)
       PASWD=$(echo -n $PXSWD | tr -d "\n" 2>&1)
       if [ -e "/root/.remote.IP.list" ]; then
-        _ESC="\`%\`.*"
+        _ESC="*.*"
         for _IP in `cat /root/.remote.IP.list \
           | cut -d '#' -f1 \
           | sort \
           | uniq \
           | tr -d "\s"`; do
-          mysql -u root -e "GRANT ALL PRIVILEGES \
-            ON $_ESC TO 'aegir_root'@'${_IP}' \
-            IDENTIFIED BY '${PASWD}' WITH GRANT OPTION;" &> /dev/null
+          mysql -u root -e "GRANT ALL ON ${_ESC} \
+            TO 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
+            WITH GRANT OPTION;" &> /dev/null
         done
       fi
       if [ -e "/root/.cluster.IP.list" ]; then
@@ -870,17 +958,22 @@ finalize_sql_initial_setup() {
           | sort \
           | uniq \
           | tr -d "\s"`; do
-          mysql -u root -e "GRANT ALL ON *.* TO 'root'@'${_IP}';" &> /dev/null
+          mysql -u root -e "GRANT ALL ON ${_ESC} \
+            TO 'root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
+            WITH GRANT OPTION;" &> /dev/null
         done
-        mysql -u root -e "GRANT ALL ON *.* TO 'wsrep'@'%' \
-          IDENTIFIED BY '${PASWD}';" &> /dev/null
+        mysql -u root -e "GRANT ALL ON ${_ESC} \
+          TO 'wsrep'@'%' IDENTIFIED BY '${PASWD}';" &> /dev/null
       fi
       touch ${pthLog}/fixed-cluster-ip-grants.log
     fi
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
+      || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
+      || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ ! -e "/root/.mysql.no.new.password.cnf" ]; then
-        if [ -e "/root/.mysql.yes.new.password.cnf" ]; then
+        if [ -e "/root/.mysql.yes.new.password.cnf" ] \
+          || [ -e "/root/.my.cluster_root_pwd.txt" ]; then
           forced_mysql_root_password_update
         fi
       fi

@@ -96,7 +96,7 @@ production settings.
 
 ### OTHER REQUIREMENTS
 
-* SSH keys for root are required by newer OpenSSH versions used in BOA.
+* SSH (RSA) keys for root are required by newer OpenSSH versions used in BOA.
 * Wget must be installed.
 * The outgoing TCP connections via ports: 25, 53, 80 and 443 must be open.
 * Minimum 1 GB of RAM (at least 2GB of RAM + at least 2 CPU recommended)
@@ -169,22 +169,21 @@ Octopus can install and/or support the platforms listed below:
 
  See also: https://omega8.cc/how-to-add-custom-platform-properly-140
 
- @ Drupal 7.54.2
+ @ Drupal 7.56.1
 
- aGov 3.5 --------------------- https://drupal.org/project/agov
- Commerce 1.46 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.45 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.42 ----------------- https://drupal.org/project/commons
- Drupal 7.54.2 ---------------- https://drupal.org/project/drupal/releases/7.54
- Guardr 2.36 ------------------ https://drupal.org/project/guardr
+ aGov 3.8 --------------------- https://drupal.org/project/agov
+ Commerce 1.49 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 2.49 ---------------- https://drupal.org/project/commerce_kickstart
+ Commons 3.46 ----------------- https://drupal.org/project/commons
+ Drupal 7.56.1 ---------------- https://drupal.org/project/drupal/releases/7.56
+ Guardr 2.39 ------------------ https://drupal.org/project/guardr
  OpenAid 2.8 ------------------ https://drupal.org/project/openaid
- OpenAtrium 2.614 ------------- https://drupal.org/project/openatrium
- OpenChurch 2.2 --------------- https://drupal.org/project/openchurch
+ OpenAtrium 2.618 ------------- https://drupal.org/project/openatrium
  OpenLucius 1.7 --------------- https://drupal.org/project/openlucius
- OpenOutreach 1.36 ------------ https://drupal.org/project/openoutreach
- OpenPublic 1.10 -------------- https://drupal.org/project/openpublic
- Opigno LMS 1.25 -------------- https://drupal.org/project/opigno_lms
- Panopoly 1.43 ---------------- https://drupal.org/project/panopoly
+ OpenOutreach 1.43 ------------ https://drupal.org/project/openoutreach
+ OpenPublic 1.14 -------------- https://drupal.org/project/openpublic
+ Opigno LMS 1.27 -------------- https://drupal.org/project/opigno_lms
+ Panopoly 1.47 ---------------- https://drupal.org/project/panopoly
  Restaurant 1.15 -------------- https://drupal.org/project/restaurant
  Ubercart 3.10 ---------------- https://drupal.org/project/ubercart
 
@@ -194,7 +193,7 @@ Octopus can install and/or support the platforms listed below:
  Pressflow 6.38.2 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.54.2 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.56.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
 * All D6 platforms have been enhanced using Pressflow 6.38.2 +Extra core:

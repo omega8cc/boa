@@ -29,6 +29,10 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
 truncate_watchdog_tables() {
   _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^watchdog$ 2>&1)
   for A in ${_TABLES}; do
@@ -58,7 +62,8 @@ _SAVELOCATION=${_BACKUPDIR}/${_CHECK_HOST}-${_DATE}
 _VM_TEST=$(uname -a 2>&1)
 _LOGDIR="/var/xdrago/log/hourly"
 _OSV=$(lsb_release -sc 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -96,6 +101,9 @@ if [ ! -e "${xtraList}" ] \
   echo "deb-src http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
   if [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
+    service lfd stop &> /dev/null
+    sleep 3
+    rm -f /etc/csf/csf.error
     csf -x &> /dev/null
   fi
   _KEYS_SERVER_TEST=FALSE
@@ -107,9 +115,11 @@ if [ ! -e "${xtraList}" ] \
   if [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
     csf -e &> /dev/null
+    sleep 3
+    service lfd start &> /dev/null
   fi
   apt-get update -qq
-  apt-get install percona-xtrabackup -y
+  apt-get install percona-xtrabackup-24 -y
 fi
 
 n=$((RANDOM%900+8))
