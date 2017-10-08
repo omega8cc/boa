@@ -1322,7 +1322,7 @@ satellite_o_contrib_update_global() {
       done
       cd ${_D}/$i/o_contrib
       if [ ! -d "${_D}/$i/o_contrib/advagg" ]; then
-        get_dev_contrib "advagg-6.x-1.10.tar.gz"
+        get_dev_contrib "advagg-6.x-1.11.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib/boost" ]; then
         get_dev_contrib "boost-6.x-1.22.tar.gz"
@@ -1459,13 +1459,13 @@ satellite_o_contrib_seven_update_global() {
         # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_D}/$i/o_contrib_seven/adminer/adminer/plugins/frames.php"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/advagg" ]; then
-        get_dev_contrib "advagg-7.x-2.20.tar.gz"
+        get_dev_contrib "advagg-7.x-2.27.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/boost" ]; then
-        get_dev_contrib "boost-7.x-1.1.tar.gz"
+        get_dev_contrib "boost-7.x-1.2.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/cdn" ]; then
-        get_dev_contrib "cdn-7.x-2.8.tar.gz"
+        get_dev_contrib "cdn-7.x-2.10.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/display_cache" ]; then
         get_dev_contrib "display_cache-7.x-1.3.tar.gz"
@@ -1477,7 +1477,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/force_password_change" ]; then
-        get_dev_contrib "force_password_change-7.x-1.0.tar.gz"
+        get_dev_contrib "force_password_change-7.x-2.2.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/fpa" ]; then
         get_dev_contrib "fpa-7.x-2.6.tar.gz"
@@ -1486,7 +1486,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "httprl-7.x-1.14.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/js" ]; then
-        get_dev_contrib "js-7.x-2.1.tar.gz"
+        get_dev_contrib "js-7.x-2.4.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/panels_content_cache" ]; then
         get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
@@ -1498,7 +1498,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/speedy" ]; then
-        get_dev_contrib "speedy-7.x-1.28.tar.gz"
+        get_dev_contrib "speedy-7.x-1.30.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/taxonomy_edge" ]; then
         get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
@@ -1597,9 +1597,9 @@ satellite_download_o_contrib_eight() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_eight modules..."
   fi
-  get_dev_contrib "advagg-8.x-2.0.tar.gz"
-  get_dev_contrib "cdn-8.x-3.0.tar.gz"
-  get_dev_contrib "robotstxt-8.x-1.0.tar.gz"
+  get_dev_contrib "advagg-8.x-3.2.tar.gz"
+  get_dev_contrib "cdn-8.x-3.1.tar.gz"
+  get_dev_contrib "robotstxt-8.x-1.1.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_E_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -1630,10 +1630,10 @@ satellite_download_o_contrib_seven() {
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/edit-textarea.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/edit-textarea.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/frames.php"
-  get_dev_contrib "advagg-7.x-2.20.tar.gz"
+  get_dev_contrib "advagg-7.x-2.27.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.1.tar.gz"
-  get_dev_contrib "boost-7.x-1.1.tar.gz"
-  get_dev_contrib "cdn-7.x-2.8.tar.gz"
+  get_dev_contrib "boost-7.x-1.2.tar.gz"
+  get_dev_contrib "cdn-7.x-2.10.tar.gz"
   get_dev_contrib "config_perms-7.x-2.1.tar.gz"
   get_dev_contrib "css_emimage-7.x-1.x-dev.tar.gz"
   get_dev_contrib "display_cache-7.x-1.3.tar.gz"
@@ -1641,21 +1641,21 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "esi-7.x-3.x-dev.tar.gz"
   get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
   get_dev_contrib "flood_control-7.x-1.x-dev.tar.gz"
-  get_dev_contrib "force_password_change-7.x-1.0.tar.gz"
+  get_dev_contrib "force_password_change-7.x-2.2.tar.gz"
   get_dev_contrib "fpa-7.x-2.6.tar.gz"
   get_dev_contrib "httprl-7.x-1.14.tar.gz"
-  get_dev_contrib "js-7.x-2.1.tar.gz"
+  get_dev_contrib "js-7.x-2.4.tar.gz"
   get_dev_contrib "login_security-7.x-1.9.tar.gz"
-  get_dev_contrib "nocurrent_pass-7.x-1.0.tar.gz"
+  get_dev_contrib "nocurrent_pass-7.x-1.1.tar.gz"
   get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
   get_dev_contrib "print-7.x-2.0.tar.gz"
   get_dev_contrib "readonlymode-7.x-1.2.tar.gz"
   get_dev_contrib "reroute_email-7.x-1.2.tar.gz"
-  get_dev_contrib "robotstxt-7.x-1.3.tar.gz"
+  get_dev_contrib "robotstxt-7.x-1.4.tar.gz"
   get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
-  get_dev_contrib "site_verify-7.x-1.1.tar.gz"
-  get_dev_contrib "speedy-7.x-1.28.tar.gz"
+  get_dev_contrib "site_verify-7.x-1.2.tar.gz"
+  get_dev_contrib "speedy-7.x-1.30.tar.gz"
   get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
   get_dev_contrib "views_accelerator-7.x-1.0-beta1.tar.gz"
@@ -1709,7 +1709,7 @@ satellite_download_o_contrib_six() {
     msg "${_STATUS} A: Downloading o_contrib modules..."
   fi
   get_dev_contrib "admin-6.x-2.0.tar.gz"
-  get_dev_contrib "advagg-6.x-1.10.tar.gz"
+  get_dev_contrib "advagg-6.x-1.11.tar.gz"
   get_dev_contrib "blockcache_alter-6.x-1.6.tar.gz"
   get_dev_contrib "boost-6.x-1.22.tar.gz"
   get_dev_contrib "cdn-6.x-2.7.tar.gz"
