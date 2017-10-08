@@ -1891,7 +1891,8 @@ fix_modules() {
   if [ -e "${_PLR_CTRL_F}" ]; then
     _EC_DE_T=$(grep "^entitycache_dont_enable = TRUE" \
       ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_EC_DE_T}" =~ "entitycache_dont_enable = TRUE" ]]; then
+    if [[ "${_EC_DE_T}" =~ "entitycache_dont_enable = TRUE" ]] \
+      || [ -e "${Plr}/profiles/commons" ]; then
       _ENTITYCACHE_DONT_ENABLE=YES
     else
       _ENTITYCACHE_DONT_ENABLE=NO
