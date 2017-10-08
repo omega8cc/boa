@@ -136,9 +136,9 @@ _TUNE_PHP_CLI_TIMEOUT=7200
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_AEGIR_VERSION="BOA-3.2.0"
+_AEGIR_VERSION="BOA-3.2.1"
 _BRANCH_BOA="3.x.x-dev"
-_X_VERSION="BOA-3.2.0"
+_X_VERSION="BOA-3.2.1"
 _MYSQLTUNER_VRN=1.7.0
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)

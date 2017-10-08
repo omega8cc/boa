@@ -35,7 +35,7 @@ if [ -e "/root/.proxy.cnf" ]; then
 fi
 
 _WEBG=www-data
-_X_SE="3.2.0-stable"
+_X_SE="3.2.1-stable"
 _OSV=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
@@ -734,7 +734,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.2.0. As a bonus, you will be able to speed up your sites
+by BOA-3.2.1. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -788,7 +788,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.2.0. As a bonus, you will be able to speed up your sites
+by BOA-3.2.1. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -842,7 +842,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.2.0. As a bonus, you will be able to speed up your sites
+by BOA-3.2.1. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -933,7 +933,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.2.0. As a bonus, you will be able to speed up your sites
+by BOA-3.2.1. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -999,7 +999,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.2.0. As a bonus, you will be able to speed up your sites
+by BOA-3.2.1. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -1065,7 +1065,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.2.0. As a bonus, you will be able to speed up your sites
+by BOA-3.2.1. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
