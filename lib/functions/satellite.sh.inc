@@ -5257,7 +5257,7 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_queue_tasks_frequency 5 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_queue_tasks_items 3 &> /dev/null
+      hosting_queue_tasks_items 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_alias_automatic_no_www 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
