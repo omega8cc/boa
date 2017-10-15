@@ -3267,6 +3267,50 @@ fi
 #
 find_fast_mirror
 #
+###--------------------###
+if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ]; then
+  echo "INFO: Checking BARRACUDA version"
+  rm -f /opt/tmp/barracuda-version.txt*
+  curl -L -k -s \
+    --max-redirs 10 \
+    --retry 3 \
+    --retry-delay 15 -A iCab \
+    "${urlHmr}/conf/barracuda-version.txt" \
+    -o /opt/tmp/barracuda-version.txt
+else
+  rm -f /opt/tmp/barracuda-version.txt*
+fi
+if [ -e "/opt/tmp/barracuda-version.txt" ]; then
+  _X_VERSION=$(cat /opt/tmp/barracuda-version.txt 2>&1)
+  _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+  if [ ! -z "${_X_VERSION}" ]; then
+    _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+    if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
+      _MY_EMAIL="notify@omega8.cc"
+    fi
+    if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
+      _VERSIONS_TEST_RESULT=OK
+      echo "INFO: Version test result: OK"
+    else
+      sT="Stable Edition available"
+      cat <<EOF | mail -e -s "New ${_X_VERSION} ${sT}" ${_MY_EMAIL}
+
+ There is new ${_X_VERSION} Stable Edition available.
+
+ Please review the changelog and upgrade as soon as possible
+ to receive all security updates and new features.
+
+ Changelog: http://bit.ly/boa-changes
+
+ --
+ This email has been sent by your Barracuda server upgrade monitor.
+
+EOF
+    echo "INFO: Update notice sent: OK"
+    fi
+  fi
+fi
+#
 if [ -e "/var/run/daily-fix.pid" ]; then
   touch /var/xdrago/log/wait-for-daily
   exit 1
@@ -3406,46 +3450,6 @@ else
   fi
 fi
 
-###--------------------###
-if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ]; then
-  echo "INFO: Checking BARRACUDA version"
-  rm -f /opt/tmp/barracuda-version.txt*
-  curl -L -k -s \
-    --max-redirs 10 \
-    --retry 3 \
-    --retry-delay 15 -A iCab \
-    "${urlHmr}/conf/barracuda-version.txt" \
-    -o /opt/tmp/barracuda-version.txt
-else
-  rm -f /opt/tmp/barracuda-version.txt*
-fi
-if [ -e "/opt/tmp/barracuda-version.txt" ]; then
-  _X_VERSION=$(cat /opt/tmp/barracuda-version.txt 2>&1)
-  _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-  if [ ! -z "${_X_VERSION}" ]; then
-    if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
-      _VERSIONS_TEST_RESULT=OK
-      echo "INFO: Version test result: OK"
-    else
-      sT="Stable Edition available"
-      cat <<EOF | mail -e -s "New ${_X_VERSION} ${sT}" notify\@omega8.cc
-
- There is new ${_X_VERSION} Stable Edition available.
-
- Please review the changelog and upgrade as soon as possible
- to receive all security updates and new features.
-
- Changelog: http://bit.ly/boa-changes
-
- --
- This email has been sent by your Barracuda server upgrade monitor.
-
-EOF
-    echo "INFO: Update notice sent: OK"
-    fi
-  fi
-fi
-#
 if [ "${_PERMISSIONS_FIX}" = "YES" ] \
   && [ ! -z "${_X_VERSION}" ] \
   && [ -e "/opt/tmp/barracuda-version.txt" ] \
