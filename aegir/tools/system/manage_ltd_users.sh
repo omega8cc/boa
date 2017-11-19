@@ -328,7 +328,7 @@ enable_chattr() {
         su -s /bin/bash - ${UQ} -c "${_GPG} --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3"
         su -s /bin/bash - ${UQ} -c "${_GPG} --keyserver hkp://keys.gnupg.net --recv-keys 7D2BAF1CF37B13E2069D6956105BD0E739499BDB"
         su -s /bin/bash - ${UQ} -c "\curl -sSL https://rvm.io/mpapis.asc | ${_GPG} --import"
-        su -s /bin/bash   ${UQ} -c "\curl -sSL https://get.rvm.io | bash -s stable"
+        su -s /bin/bash   ${UQ} -c "\curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable"
         su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles"
         su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
         rm -f /var/run/manage_rvm_users.pid
