@@ -380,6 +380,7 @@ enable_chattr() {
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.0.3 eventmachine"  &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative ffi"            &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.9.3 ffi"           &> /dev/null
+        su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.9.18 ffi"          &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative hitimes"        &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative http_parser.rb" &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative oily_png"       &> /dev/null
