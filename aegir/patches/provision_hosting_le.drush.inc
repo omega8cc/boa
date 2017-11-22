@@ -253,9 +253,9 @@ function drush_provision_hosting_le_post_provision_verify() {
       drush_log("[hosting_le] You could then replace existing cert with any other cert since it will be left here as-is forever.", 'info');
       drush_log("[hosting_le] NOTE: On hosted Aegir service you need to contact your host support for further assistance.", 'info');
       $output = '';
-      $le_options = '--cron';
+      $le_options = '--cron --ipv4';
       if ($on_remote_server) {
-        $le_options .= ' --hook ' . $le_hook;
+        $le_options .= ' --ipv4 --hook ' . $le_hook;
       }
       if ($force_renew) {
         if ($no_alt_names || empty($alt_names)) {
