@@ -1124,6 +1124,7 @@ install_host() {
   ${_INSTAPP} parted
   ${_INSTAPP} build-essential
   ${_INSTAPP} iptables
+  ${_INSTAPP} ip6tables
   ${_INSTAPP} ipset
 
   if [ -x "/sbin/ipset" ] && [ ! -L "/usr/sbin/ipset" ]; then

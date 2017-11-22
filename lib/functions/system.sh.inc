@@ -3866,6 +3866,7 @@ sys_packages_install() {
               htop \
               ifstat \
               iptables \
+              ip6tables \
               ipset \
               ldap-utils \
               lemon \
