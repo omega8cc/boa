@@ -2621,6 +2621,19 @@ strict_bin_permissions() {
                   jpegtran \
                   logger \
                   magick \
+                  mongo \
+                  mongod \
+                  mongodump \
+                  mongoexport \
+                  mongofiles \
+                  mongoimport \
+                  mongooplog \
+                  mongoperf \
+                  mongorestore \
+                  mongos \
+                  mongosniff \
+                  mongostat \
+                  mongotop \
                   newrelic-daemon \
                   node \
                   npm \
