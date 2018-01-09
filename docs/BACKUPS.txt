@@ -26,10 +26,15 @@
 
   Add listed below four (4) required lines to your /root/.barracuda.cnf file.
   Required lines are marked with [R] and optional with [O]:
+  
+  You need to create a user in AWS IAM Service in order to get the
+  AWS Access Key ID and the AWS Secret Access Key. Then, give the right
+  permissions to the user attaching the "AmazonS3FullAccess" policy
+  listed in the templates.
 
-    _AWS_KEY='Your AWS Access Key ID'     ### [R] From your AWS S3 settings
-    _AWS_SEC='Your AWS Secret Access Key' ### [R] From your AWS S3 settings
-    _AWS_PWD='Your Secret Password'       ### [R] Generate with 'openssl rand -base64 32'
+    _AWS_KEY='Your AWS Access Key ID'     ### [R] From your AWS IAM settings
+    _AWS_SEC='Your AWS Secret Access Key' ### [R] From your AWS IAM settings
+    _AWS_PWD='Your Secret Password'       ### [R] Generate it with 'openssl rand -base64 32' or set a custom one in AWS IAM
     _AWS_REG='Your AWS Region ID'         ### [R] By default 'us-east-1'
     _AWS_TTL='Your Backup Rotation'       ### [O] By default '30D'
     _AWS_FLC='Your Backup Full Cycle'     ### [O] By default '7D'
