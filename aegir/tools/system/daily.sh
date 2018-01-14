@@ -2786,6 +2786,7 @@ check_old_empty_platforms() {
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ]; then
     if [[ "${_CHECK_HOST}" =~ "demo.aegir.cc" ]] \
+      || [ -e "${User}/static/control/platforms.info" ] \
       || [ -e "/root/.debug.cnf" ]; then
       _DO_NOTHING=YES
     else
