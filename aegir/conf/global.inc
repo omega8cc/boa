@@ -64,7 +64,7 @@ if (function_exists('drush_get_command')) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.13.5';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.13.8';
   }
 }
 
@@ -164,7 +164,9 @@ if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
  */
 if (file_exists('web.config')) {
   if (file_exists('core')) {
-    if (file_exists('vendor/symfony') || file_exists('core/vendor/symfony')) {
+    if (file_exists('vendor/symfony') ||
+      file_exists('core/vendor/symfony') ||
+      file_exists('autoload.php')) {
       $drupal_eight = TRUE;
       $use_redis = TRUE;
       if ($is_dev && !$is_backend) {

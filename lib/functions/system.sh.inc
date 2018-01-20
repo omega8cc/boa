@@ -2621,6 +2621,19 @@ strict_bin_permissions() {
                   jpegtran \
                   logger \
                   magick \
+                  mongo \
+                  mongod \
+                  mongodump \
+                  mongoexport \
+                  mongofiles \
+                  mongoimport \
+                  mongooplog \
+                  mongoperf \
+                  mongorestore \
+                  mongos \
+                  mongosniff \
+                  mongostat \
+                  mongotop \
                   newrelic-daemon \
                   node \
                   npm \
@@ -4683,10 +4696,10 @@ sshd_armour() {
       elif [[ "${_SSH_MACS_TEST}" =~ "MACs" ]]; then
         sed -i "s/.*MACs.*//g" /usr/etc/sshd_config &> /dev/null
         wait
-        echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-ripemd160-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-ripemd160,umac-128@openssh.com" >> /usr/etc/sshd_config
+        echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /usr/etc/sshd_config
       else
         echo >> /usr/etc/sshd_config
-        echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-ripemd160-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-ripemd160,umac-128@openssh.com" >> /usr/etc/sshd_config
+        echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /usr/etc/sshd_config
       fi
       _SSH_HKEY_TEST=$(grep "HostKey" /usr/etc/sshd_config 2>&1)
       if [[ "${_SSH_HKEY_TEST}" =~ (^)"HostKey" ]] \
@@ -4753,7 +4766,7 @@ sshd_armour() {
         echo "  Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /usr/etc/ssh_config
         echo "  HostKeyAlgorithms ssh-ed25519-cert-v01@openssh.com,ssh-rsa-cert-v01@openssh.com,ssh-ed25519,ssh-rsa" >> /usr/etc/ssh_config
         echo "  KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /usr/etc/ssh_config
-        echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-ripemd160-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-ripemd160,umac-128@openssh.com" >> /usr/etc/ssh_config
+        echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /usr/etc/ssh_config
       else
         echo >> /usr/etc/ssh_config
         echo "Host *" >> /usr/etc/ssh_config
@@ -4762,7 +4775,7 @@ sshd_armour() {
         echo "  Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /usr/etc/ssh_config
         echo "  HostKeyAlgorithms ssh-ed25519-cert-v01@openssh.com,ssh-rsa-cert-v01@openssh.com,ssh-ed25519,ssh-rsa" >> /usr/etc/ssh_config
         echo "  KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /usr/etc/ssh_config
-        echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-ripemd160-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-ripemd160,umac-128@openssh.com" >> /usr/etc/ssh_config
+        echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /usr/etc/ssh_config
       fi
     fi
     sed -i "/^$/d" /usr/etc/sshd_config &> /dev/nul

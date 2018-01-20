@@ -1177,7 +1177,7 @@ satellite_child_b_update_ini_php_cli() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.321stableQ1.pid" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.322stableQ1.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1237,7 +1237,7 @@ satellite_child_b_update_ini_php_cli() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
-      echo > ${_U_HD}/.ctrl.321stableQ1.pid
+      echo > ${_U_HD}/.ctrl.322stableQ1.pid
     fi
   fi
 }
@@ -1447,19 +1447,12 @@ satellite_o_contrib_seven_update_global() {
         fi
       done
       cd ${_D}/$i/o_contrib_seven
-      if [ ! -d "${_D}/$i/o_contrib_seven/adminer" ]; then
-        get_dev_contrib "adminer_bundle-7.x-1.x-dev.tar.gz"
-        # get_dev_contrib "adminer-7.x-1.1.tar.gz"
-        # curl ${crlGet} "https://www.adminer.org/static/download/${_ADMINER_VRN}/adminer-${_ADMINER_VRN}.php" -o "${_D}/$i/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}.php"
-        # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/designs/nette/adminer.css" -o "${_D}/$i/o_contrib_seven/adminer/adminer/styles/adminer.css"
-        # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/plugin.php" -o "${_D}/$i/o_contrib_seven/adminer/adminer/plugins/plugin.php"
-        # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/enum-option.php" -o "${_D}/$i/o_contrib_seven/adminer/adminer/plugins/enum-option.php"
-        # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/edit-textarea.php" -o "${_D}/$i/o_contrib_seven/adminer/adminer/plugins/edit-textarea.php"
-        # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_D}/$i/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
-        # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_D}/$i/o_contrib_seven/adminer/adminer/plugins/frames.php"
+      if [ ! -d "${_D}/$i/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php" ]; then
+        rm -rf ${_D}/$i/o_contrib_seven/adminer
+        get_dev_contrib "adminer_bundle-7.x-1.2.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/advagg" ]; then
-        get_dev_contrib "advagg-7.x-2.27.tar.gz"
+        get_dev_contrib "advagg-7.x-2.30.tar.gz"
       fi
       if [ ! -d "${_D}/$i/o_contrib_seven/boost" ]; then
         get_dev_contrib "boost-7.x-1.2.tar.gz"
@@ -1621,16 +1614,16 @@ satellite_download_o_contrib_seven() {
     msg "${_STATUS} A: Downloading o_contrib_seven modules..."
   fi
   get_dev_contrib "admin-7.x-2.0-beta3.tar.gz"
-  get_dev_contrib "adminer_bundle-7.x-1.x-dev.tar.gz"
-  # get_dev_contrib "adminer-7.x-1.1.tar.gz"
-  # curl ${crlGet} "https://www.adminer.org/static/download/${_ADMINER_VRN}/adminer-${_ADMINER_VRN}.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}.php"
+  get_dev_contrib "adminer_bundle-7.x-1.2.tar.gz"
+  # get_dev_contrib "adminer-7.x-1.2.tar.gz"
+  # curl ${crlGet} "https://github.com/vrana/adminer/releases/download/v${_ADMINER_VRN}/adminer-${_ADMINER_VRN}-mysql.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/designs/nette/adminer.css" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/styles/adminer.css"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/plugin.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/plugin.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/enum-option.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/enum-option.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/edit-textarea.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/edit-textarea.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/frames.php"
-  get_dev_contrib "advagg-7.x-2.27.tar.gz"
+  get_dev_contrib "advagg-7.x-2.30.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.1.tar.gz"
   get_dev_contrib "boost-7.x-1.2.tar.gz"
   get_dev_contrib "cdn-7.x-2.10.tar.gz"
@@ -1650,7 +1643,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
   get_dev_contrib "print-7.x-2.0.tar.gz"
   get_dev_contrib "readonlymode-7.x-1.2.tar.gz"
-  get_dev_contrib "reroute_email-7.x-1.2.tar.gz"
+  get_dev_contrib "reroute_email-7.x-1.3.tar.gz"
   get_dev_contrib "robotstxt-7.x-1.4.tar.gz"
   get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
@@ -3656,7 +3649,7 @@ satellite_make() {
     echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
   fi
 
-  if [ ! -e "${_ROOT}/static/control/.ctrl.321stableQ1.pid" ] \
+  if [ ! -e "${_ROOT}/static/control/.ctrl.322stableQ1.pid" ] \
     || [ ! -e "${_ROOT}/static/control/README.txt" ]; then
     mkdir -p ${_ROOT}/static/control
     chmod 755 ${_ROOT}/static/control
@@ -3668,7 +3661,7 @@ satellite_make() {
     chown -R ${_USER}.ftp:${_USRG} \
       ${_ROOT}/static/control &> /dev/null
     rm -f ${_ROOT}/static/control/.ctrl.*
-    echo OK > ${_ROOT}/static/control/.ctrl.321stableQ1.pid
+    echo OK > ${_ROOT}/static/control/.ctrl.322stableQ1.pid
   fi
 
   if [ -d "/data/all/000" ]; then
@@ -5257,7 +5250,7 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_queue_tasks_frequency 5 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_queue_tasks_items 3 &> /dev/null
+      hosting_queue_tasks_items 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_alias_automatic_no_www 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
