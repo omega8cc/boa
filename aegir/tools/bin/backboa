@@ -15,8 +15,8 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-_DUPLICITY_VRN="0.7.11"
-_BOTO_VRN="2.39.0-fix-python-2.7.9"
+_DUPLICITY_VRN="0.7.14"
+_BOTO_VRN="2.48.0"
 _LOGPTH="/var/xdrago/log"
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
@@ -26,7 +26,7 @@ _DOM=$(date +%e 2>&1)
 _DOM=${_DOM//[^0-9]/}
 _HST=$(uname -n 2>&1)
 _HST=${_HST//[^a-zA-Z0-9-.]/}
-_HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
+_HST=$(echo -n ${_HST} | tr A-Z a-z | tr . - 2>&1)
 
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 forCer="-fuy --force-yes --reinstall"
@@ -224,7 +224,7 @@ if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
     (before attempting to run initial backup!) to create S3 bucket in the
     desired region with correct name as shown below:
 
-      daily.boa.${_HST}
+      daily-boa-${_HST}
 
     While duplicity should be able to create new bucket on demand, in practice
     it almost never works due to typical delays between various AWS regions.
@@ -310,7 +310,7 @@ export AWS_SECRET_ACCESS_KEY="${_AWS_SEC}"
 export PASSPHRASE="${_AWS_PWD}"
 
 SOURCE="/etc /var/aegir /var/www /home /data"
-BUCKET="daily.boa.${_HST}"
+BUCKET="daily-boa-${_HST}"
 TARGET="s3://${_AWS_URL}/${BUCKET}"
 LOGFILE="${_LOGPTH}/${BUCKET}.log"
 
@@ -461,7 +461,7 @@ backup() {
 
 conn_test() {
   if [ $# = 1 ]; then
-    BUCKET="daily.boa.$1"
+    BUCKET="daily-boa-$1"
     TARGET="s3://${_AWS_URL}/${BUCKET}"
   fi
   echo "Running AWS connection test, please wait..."
@@ -508,11 +508,11 @@ restore() {
 
 retrieve() {
   if [ $# = 3 ]; then
-    BUCKET="daily.boa.$3"
+    BUCKET="daily-boa-$3"
     TARGET="s3://${_AWS_URL}/${BUCKET}"
     duplicity restore --file-to-restore $1 ${_AWS_OPX} ${TARGET} $2
   elif [ $# = 4 ]; then
-    BUCKET="daily.boa.$4"
+    BUCKET="daily-boa-$4"
     TARGET="s3://${_AWS_URL}/${BUCKET}"
     duplicity restore --file-to-restore $1 --time $2 ${_AWS_OPX} ${TARGET} $3
   fi
