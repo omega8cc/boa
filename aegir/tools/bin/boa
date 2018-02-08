@@ -1579,9 +1579,9 @@ display_info() {
     echo
     if [ -e "/var/log/barracuda_log.txt" ]; then
       if [ "${kind}" = "more" ]; then
-        cat /var/log/barracuda_log.txt | grep 2017
+        cat /var/log/barracuda_log.txt | grep 2015
       fi
-      cat /var/log/barracuda_log.txt | grep 2018
+      cat /var/log/barracuda_log.txt | grep 2016
     fi
     echo
     echo "Please link this information in your submission,"
