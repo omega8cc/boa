@@ -752,7 +752,7 @@ update_php_extensions() {
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
-  else [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log" ]; then
+  else [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_LEGACY_VRN}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing JSMin for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf pecl-jsmin*
