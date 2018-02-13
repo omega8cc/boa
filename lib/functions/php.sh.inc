@@ -584,27 +584,25 @@ install_php_extensions() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != "70" ]; then
-    msg "INFO: Installing Imagick for PHP ${_T_PHP_VRN}..."
-    if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
-      mrun "apt-get install libmagickwand-dev ${forCer}" 2> /dev/null
-      touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
-    fi
-    cd /var/opt
-    rm -rf imagick*
-    if [ "$1" = "53" ]; then
-      get_dev_src "imagick-${_IMAGICK_OLD_VRN}.tgz"
-      cd /var/opt/imagick-${_IMAGICK_OLD_VRN}
-    else
-      get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
-      cd /var/opt/imagick-${_IMAGICK_VRN}
-    fi
-    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    mrun "make --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
-    touch ${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
+  msg "INFO: Installing Imagick for PHP ${_T_PHP_VRN}..."
+  if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
+    mrun "apt-get install libmagickwand-dev ${forCer}" 2> /dev/null
+    touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
   fi
+  cd /var/opt
+  rm -rf imagick*
+  if [ "$1" = "53" ]; then
+    get_dev_src "imagick-${_IMAGICK_OLD_VRN}.tgz"
+    cd /var/opt/imagick-${_IMAGICK_OLD_VRN}
+  else
+    get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
+    cd /var/opt/imagick-${_IMAGICK_VRN}
+  fi
+  mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+  mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+  mrun "make --quiet" 2> /dev/null
+  mrun "make --quiet install" 2> /dev/null
+  touch ${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
   ###--------------------###
   if [ "$1" != "70" ]; then
     msg "INFO: Installing MailParse for PHP ${_T_PHP_VRN}..."
@@ -818,28 +816,26 @@ update_php_extensions() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != "70" ]; then
-    if [ ! -e "${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing Imagick upgrade for PHP ${_T_PHP_VRN}..."
-      if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
-        mrun "apt-get install libmagickwand-dev ${forCer}" 2> /dev/null
-        touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
-      fi
-      cd /var/opt
-      rm -rf imagick*
-      if [ "$1" = "53" ]; then
-        get_dev_src "imagick-${_IMAGICK_OLD_VRN}.tgz"
-        cd /var/opt/imagick-${_IMAGICK_OLD_VRN}
-      else
-        get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
-        cd /var/opt/imagick-${_IMAGICK_VRN}
-      fi
-      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      mrun "make --quiet" 2> /dev/null
-      mrun "make --quiet install" 2> /dev/null
-      touch ${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
+  if [ ! -e "${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
+    msg "INFO: Installing Imagick upgrade for PHP ${_T_PHP_VRN}..."
+    if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
+      mrun "apt-get install libmagickwand-dev ${forCer}" 2> /dev/null
+      touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
     fi
+    cd /var/opt
+    rm -rf imagick*
+    if [ "$1" = "53" ]; then
+      get_dev_src "imagick-${_IMAGICK_OLD_VRN}.tgz"
+      cd /var/opt/imagick-${_IMAGICK_OLD_VRN}
+    else
+      get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
+      cd /var/opt/imagick-${_IMAGICK_VRN}
+    fi
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    touch ${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
   if [ "$1" != "70" ]; then
