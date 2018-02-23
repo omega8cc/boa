@@ -573,20 +573,20 @@ update_php_conf() {
     cp -af ${locCnf}/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     if [ "${e}" != "70" ]; then
-      fix_php_ini_jsmin
       fix_php_ini_mailparse
       fix_php_ini_twig
     fi
+    fix_php_ini_jsmin
     fix_php_ini_redis
     fix_php_ini_ioncube
     fix_php_ini_suhosin
     fix_php_ini_yaml
     _THIS_FILE=/opt/php${e}/lib/php.ini
     if [ "${e}" != "70" ]; then
-      fix_php_ini_jsmin
       fix_php_ini_mailparse
       fix_php_ini_twig
     fi
+    fix_php_ini_jsmin
     fix_php_ini_redis
     fix_php_ini_ioncube
     fix_php_ini_suhosin

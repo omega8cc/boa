@@ -323,20 +323,20 @@ update_php_conf() {
     cp -af ${locCnf}/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     if [ "${e}" != "70" ]; then
-      fix_php_ini_jsmin
       fix_php_ini_mailparse
       fix_php_ini_twig
     fi
+    fix_php_ini_jsmin
     fix_php_ini_redis
     fix_php_ini_ioncube
     fix_php_ini_suhosin
     fix_php_ini_yaml
     _THIS_FILE=/opt/php${e}/lib/php.ini
     if [ "${e}" != "70" ]; then
-      fix_php_ini_jsmin
       fix_php_ini_mailparse
       fix_php_ini_twig
     fi
+    fix_php_ini_jsmin
     fix_php_ini_redis
     fix_php_ini_ioncube
     fix_php_ini_suhosin
@@ -498,22 +498,29 @@ install_php_extensions() {
     touch ${pthLog}/uploadprogress-${_UPROGRESS_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
-  if [ "$1" != "70" ]; then
-    msg "INFO: Installing JSMin for PHP ${_T_PHP_VRN}..."
-    cd /var/opt
-    rm -rf pecl-jsmin*
-    if [ "$1" = "56" ] || [ "$1" = "55" ]; then
-      get_dev_src "pecl-jsmin-${_JSMIN_VRN}.tar.gz"
-      cd /var/opt/pecl-jsmin-${_JSMIN_VRN}
-    else
-      get_dev_src "pecl-jsmin-${_JSMIN_LEGACY_VRN}.tar.gz"
-      cd /var/opt/pecl-jsmin-${_JSMIN_LEGACY_VRN}
-    fi
-    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    mrun "make --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
+  msg "INFO: Installing JSMin for PHP ${_T_PHP_VRN}..."
+  cd /var/opt
+  rm -rf pecl-jsmin*
+  if [ "$1" = "70" ]; then
+    get_dev_src "pecl-jsmin-${_JSMIN_PHP7_VRN}.tar.gz"
+    cd /var/opt/pecl-jsmin-${_JSMIN_PHP7_VRN}
+  elif [ "$1" = "56" ] || [ "$1" = "55" ]; then
+    get_dev_src "pecl-jsmin-${_JSMIN_VRN}.tar.gz"
+    cd /var/opt/pecl-jsmin-${_JSMIN_VRN}
+  else
+    get_dev_src "pecl-jsmin-${_JSMIN_LEGACY_VRN}.tar.gz"
+    cd /var/opt/pecl-jsmin-${_JSMIN_LEGACY_VRN}
+  fi
+  mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+  mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+  mrun "make --quiet" 2> /dev/null
+  mrun "make --quiet install" 2> /dev/null
+  if [ "$1" = "70" ]; then
+    touch ${pthLog}/php-pecl-jsmin-${_JSMIN_PHP7_VRN}-${_T_PHP_VRN}.log
+  elif [ "$1" = "56" ] || [ "$1" = "55" ]; then
     touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
+  else
+    touch ${pthLog}/php-pecl-jsmin-${_JSMIN_LEGACY_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
   if [ "$1" != "70" ]; then
@@ -723,24 +730,39 @@ update_php_extensions() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != "70" ]; then
-    if [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing JSMin upgrade for PHP ${_T_PHP_VRN}..."
-      cd /var/opt
-      rm -rf pecl-jsmin*
-      if [ "$1" = "56" ] || [ "$1" = "55" ]; then
-        get_dev_src "pecl-jsmin-${_JSMIN_VRN}.tar.gz"
-        cd /var/opt/pecl-jsmin-${_JSMIN_VRN}
-      else
-        get_dev_src "pecl-jsmin-${_JSMIN_LEGACY_VRN}.tar.gz"
-        cd /var/opt/pecl-jsmin-${_JSMIN_LEGACY_VRN}
-      fi
-      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      mrun "make --quiet" 2> /dev/null
-      mrun "make --quiet install" 2> /dev/null
-      touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
-    fi
+  if [ "$1" = "70" ] && [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_PHP7_VRN}-${_T_PHP_VRN}.log" ]; then
+    msg "INFO: Installing JSMin for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -rf pecl-jsmin*
+    get_dev_src "pecl-jsmin-${_JSMIN_PHP7_VRN}.tar.gz"
+    cd /var/opt/pecl-jsmin-${_JSMIN_PHP7_VRN}
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    touch ${pthLog}/php-pecl-jsmin-${_JSMIN_PHP7_VRN}-${_T_PHP_VRN}.log
+  elif ([ "$1" = "56" ] || [ "$1" = "55" ]) && [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log" ]; then
+    msg "INFO: Installing JSMin for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -rf pecl-jsmin*
+    get_dev_src "pecl-jsmin-${_JSMIN_VRN}.tar.gz"
+    cd /var/opt/pecl-jsmin-${_JSMIN_VRN}
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
+  else [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_LEGACY_VRN}-${_T_PHP_VRN}.log" ]; then
+    msg "INFO: Installing JSMin for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -rf pecl-jsmin*
+    get_dev_src "pecl-jsmin-${_JSMIN_LEGACY_VRN}.tar.gz"
+    cd /var/opt/pecl-jsmin-${_JSMIN_LEGACY_VRN}
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    touch ${pthLog}/php-pecl-jsmin-${_JSMIN_LEGACY_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
   if [ "$1" != "70" ]; then
