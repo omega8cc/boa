@@ -169,23 +169,23 @@ Octopus can install and/or support the platforms listed below:
 
  See also: https://omega8.cc/how-to-add-custom-platform-properly-140
 
- @ Drupal 7.56.1
+ @ Drupal 7.57.1
 
  aGov 3.8 --------------------- https://drupal.org/project/agov
- Commerce 1.49 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.51 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.46 ----------------- https://drupal.org/project/commons
- Drupal 7.56.1 ---------------- https://drupal.org/project/drupal/releases/7.56
- Guardr 2.40 ------------------ https://drupal.org/project/guardr
+ Commerce 1.50 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 2.52 ---------------- https://drupal.org/project/commerce_kickstart
+ Commons 3.47 ----------------- https://drupal.org/project/commons
+ Drupal 7.57.1 ---------------- https://drupal.org/project/drupal/releases/7.57
+ Guardr 2.41 ------------------ https://drupal.org/project/guardr
  OpenAid 2.8 ------------------ https://drupal.org/project/openaid
- OpenAtrium 2.624 ------------- https://drupal.org/project/openatrium
+ OpenAtrium 2.626 ------------- https://drupal.org/project/openatrium
  OpenLucius 1.7 --------------- https://drupal.org/project/openlucius
- OpenOutreach 1.43 ------------ https://drupal.org/project/openoutreach
- OpenPublic 1.14 -------------- https://drupal.org/project/openpublic
- Opigno LMS 1.28 -------------- https://drupal.org/project/opigno_lms
- Panopoly 1.49 ---------------- https://drupal.org/project/panopoly
+ OpenOutreach 1.45 ------------ https://drupal.org/project/openoutreach
+ OpenPublic 1.17 -------------- https://drupal.org/project/openpublic
+ Opigno LMS 1.29 -------------- https://drupal.org/project/opigno_lms
+ Panopoly 1.51 ---------------- https://drupal.org/project/panopoly
  Restaurant 1.15 -------------- https://drupal.org/project/restaurant
- Ubercart 3.10 ---------------- https://drupal.org/project/ubercart
+ Ubercart 3.11 ---------------- https://drupal.org/project/ubercart
 
  @ Pressflow 6.38.2
 
@@ -193,7 +193,7 @@ Octopus can install and/or support the platforms listed below:
  Pressflow 6.38.2 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.56.1 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.57.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
 * All D6 platforms have been enhanced using Pressflow 6.38.2 +Extra core:
