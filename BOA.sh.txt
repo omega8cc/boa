@@ -49,10 +49,20 @@ _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
 _X_VERSION="BOA-3.2.2"
 #
-saCoreN="SA-CORE-2014-005"
+saCoreN="SA-CORE-2018-001"
 saCoreS="${saCoreN}-D7"
 saIncDb="includes/database/database.inc"
 saPatch="/var/xdrago/conf/${saCoreS}.patch"
+#
+saQCoreN="${saCoreN}"
+saQCoreS="${saQCoreN}-D8"
+saQIncDb="core/includes/database.inc"
+saQPatch="/var/xdrago/conf/${saQCoreS}.patch"
+#
+saXCoreN="${saCoreN}"
+saXCoreS="${saXCoreN}-D6"
+saXIncDb="includes/database.inc"
+saXPatch="/var/xdrago/conf/${saXCoreS}.patch"
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
@@ -643,13 +653,82 @@ update_agents() {
 }
 
 fix_core_dgd() {
-  # https://www.drupal.org/SA-CORE-2014-005
-  ### sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf
+  sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf
+
+  # https://www.drupal.org/SA-CORE-2018-001 D8 patch
+  if [ -e "/var/xdrago" ] \
+    && [ ! -e "${saQPatch}" ]; then
+    mkdir -p /var/xdrago/conf
+    curl ${crlGet} "${urlHmr}/patches/8-core/${saQCoreS}.patch" -o ${saQPatch}
+  fi
+
+  # https://www.drupal.org/SA-CORE-2018-001 D7 patch
   if [ -e "/var/xdrago" ] \
     && [ ! -e "${saPatch}" ]; then
     mkdir -p /var/xdrago/conf
     curl ${crlGet} "${urlHmr}/patches/7-core/${saCoreS}.patch" -o ${saPatch}
   fi
+
+  # https://www.drupal.org/SA-CORE-2018-001 D6 patch
+  if [ -e "/var/xdrago" ] \
+    && [ ! -e "${saXPatch}" ]; then
+    mkdir -p /var/xdrago/conf
+    curl ${crlGet} "${urlHmr}/patches/6-core/${saXCoreS}.patch" -o ${saXPatch}
+  fi
+
+  # https://www.drupal.org/SA-CORE-2018-001 for Octopus hostmaster platforms
+  if [ -e "/var/xdrago" ] \
+    && [ -e "${saPatch}" ]; then
+    if [ -d "/data/all" ] \
+      && [ ! -e "${pthLog}/hostmaster-octopus-${saCoreN}-fixed-d7.log" ]; then
+      for File in `find /data/disk/*/aegir/distro/*/${saIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
+          cd ${Core}
+          patch -p1 < ${saPatch} &> /dev/null
+        fi
+      done
+      touch ${pthLog}/hostmaster-octopus-${saCoreN}-fixed-d7.log
+    fi
+    cd
+  fi
+
+  # https://www.drupal.org/SA-CORE-2018-001 for Barracuda hostmaster platforms
+  if [ -e "/var/xdrago" ] \
+    && [ -e "${saPatch}" ]; then
+    if [ -d "/data/all" ] \
+      && [ ! -e "${pthLog}/hostmaster-barracuda-${saCoreN}-fixed-d7.log" ]; then
+      for File in `find /var/aegir/host_master/*/${saIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
+          cd ${Core}
+          patch -p1 < ${saPatch} &> /dev/null
+        fi
+      done
+
+      for File in `find /var/aegir/hostmaster*/${saIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
+          cd ${Core}
+          patch -p1 < ${saPatch} &> /dev/null
+        fi
+      done
+
+      touch ${pthLog}/hostmaster-barracuda-${saCoreN}-fixed-d7.log
+    fi
+    cd
+  fi
+
+  # https://www.drupal.org/SA-CORE-2018-001 for built-in D7 platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "${saPatch}" ] \
     && [ ! -e "${pthLog}/${saCoreN}-fixed-d7.log" ]; then
@@ -669,7 +748,8 @@ fix_core_dgd() {
     touch ${pthLog}/${saCoreN}-fixed-d7.log
     cd
   fi
-  # https://www.drupal.org/SA-CORE-2014-005 for ancient platforms
+
+  # https://www.drupal.org/SA-CORE-2018-001 for ancient D7 platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "${saPatch}" ]; then
     if [ -d "/data/all" ] \
@@ -701,7 +781,8 @@ fix_core_dgd() {
     fi
     cd
   fi
-  # https://www.drupal.org/SA-CORE-2014-005 for custom platforms
+
+  # https://www.drupal.org/SA-CORE-2018-001 for custom D7 platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "${saPatch}" ]; then
     if [ -d "/data/disk" ] \
@@ -774,6 +855,210 @@ fix_core_dgd() {
     fi
     cd
     touch ${pthLog}/batch-custom-${saCoreN}-fixed-d7.log
+  fi
+
+  # https://www.drupal.org/SA-CORE-2018-001 for D8 platforms in ~/static
+  if [ -e "/var/xdrago" ] \
+    && [ -e "${saQPatch}" ]; then
+    if [ -d "/data/disk" ] \
+      && [ ! -e "${pthLog}/batch-custom-${saQCoreN}-fixed-d8.log" ]; then
+      for File in `find /data/disk/*/static/*/${saQIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/core.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] \
+          && [ -e "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/${saQCoreS}-fix.info" ]; then
+          cd ${Core}
+          patch -p1 < ${saQPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saQCoreS}-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/${saQIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/core.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] \
+          && [ -e "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/${saQCoreS}-fix.info" ]; then
+          cd ${Core}
+          patch -p1 < ${saQPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saQCoreS}-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/*/${saQIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/core.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] \
+          && [ -e "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/${saQCoreS}-fix.info" ]; then
+          cd ${Core}
+          patch -p1 < ${saQPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saQCoreS}-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/*/*/${saQIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/core.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] \
+          && [ -e "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/${saQCoreS}-fix.info" ]; then
+          cd ${Core}
+          patch -p1 < ${saQPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saQCoreS}-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/*/*/*/${saQIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/core.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] \
+          && [ -e "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/${saQCoreS}-fix.info" ]; then
+          cd ${Core}
+          patch -p1 < ${saQPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saQCoreS}-fix.info
+        fi
+      done
+    fi
+    cd
+    touch ${pthLog}/batch-custom-${saQCoreN}-fixed-d8.log
+  fi
+
+  # https://www.drupal.org/SA-CORE-2018-001 for built-in D6 platforms
+  if [ -e "/var/xdrago" ] \
+    && [ -e "${saXPatch}" ] \
+    && [ ! -e "${pthLog}/${saXCoreN}-fixed-d6.log" ]; then
+    if [ -d "/data/all/000/core" ]; then
+      for Core in `find /data/all/000/core/pressflow-6* \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        cd ${Core}
+        patch -p1 < ${saXPatch} &> /dev/null
+      done
+    elif [ -d "/data/disk/all/000/core" ]; then
+      for Core in `find /data/disk/all/000/core/pressflow-6* \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        cd ${Core}
+        patch -p1 < ${saXPatch} &> /dev/null
+      done
+    fi
+    touch ${pthLog}/${saXCoreN}-fixed-d6.log
+    cd
+  fi
+
+  # https://www.drupal.org/SA-CORE-2018-001 for ancient D6 platforms
+  if [ -e "/var/xdrago" ] \
+    && [ -e "${saXPatch}" ]; then
+    if [ -d "/data/all" ] \
+      && [ ! -e "${pthLog}/legacy-${saXCoreN}-fixed-d6.log" ]; then
+      for File in `find /data/all/*/*/${saXIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
+          cd ${Core}
+          patch -p1 < ${saXPatch} &> /dev/null
+        fi
+      done
+      touch ${pthLog}/legacy-${saXCoreN}-fixed-d6.log
+    elif [ -d "/data/disk/all" ] \
+      && [ ! -e "${pthLog}/legacy-${saXCoreN}-fixed-d6eee.log" ]; then
+      for File in `find /data/disk/all/*/*/${saXIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
+          cd ${Core}
+          patch -p1 < ${saXPatch} &> /dev/null
+        fi
+      done
+      touch ${pthLog}/legacy-${saXCoreN}-fixed-d6eee.log
+    fi
+    cd
+  fi
+
+  # https://www.drupal.org/SA-CORE-2018-001 for custom D6 platforms
+  if [ -e "/var/xdrago" ] \
+    && [ -e "${saXPatch}" ]; then
+    if [ -d "/data/disk" ] \
+      && [ ! -e "${pthLog}/batch-custom-${saXCoreN}-fixed-d6.log" ]; then
+      for File in `find /data/disk/*/static/*/${saXIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] \
+          && [ ! -e "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/${saXCoreS}-fix.info" ]; then
+          cd ${Core}
+          patch -p1 < ${saXPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saXCoreS}-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/${saXIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] \
+          && [ ! -e "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/${saXCoreS}-fix.info" ]; then
+          cd ${Core}
+          patch -p1 < ${saXPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saXCoreS}-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/*/${saXIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] \
+          && [ ! -e "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/${saXCoreS}-fix.info" ]; then
+          cd ${Core}
+          patch -p1 < ${saXPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saXCoreS}-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/*/*/${saXIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] \
+          && [ ! -e "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/${saXCoreS}-fix.info" ]; then
+          cd ${Core}
+          patch -p1 < ${saXPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saXCoreS}-fix.info
+        fi
+      done
+      for File in `find /data/disk/*/static/*/*/*/*/*/${saXIncDb} \
+        -maxdepth 0 -mindepth 0 | sort`; do
+        Core=$(echo $File \
+          | sed 's/\/includes.*//g' \
+          | awk '{print $1}' 2> /dev/null)
+        if [ -d "${Core}" ] \
+          && [ ! -e "${Core}/core" ] \
+          && [ ! -e "${Core}/profiles/${saXCoreS}-fix.info" ]; then
+          cd ${Core}
+          patch -p1 < ${saXPatch} &> /dev/null
+          echo fixed > ${Core}/profiles/${saXCoreS}-fix.info
+        fi
+      done
+    fi
+    cd
+    touch ${pthLog}/batch-custom-${saXCoreN}-fixed-d6.log
   fi
 }
 
@@ -1309,6 +1594,7 @@ if [ `whoami` = "root" ]; then
   fix_pure_ftpd
   fix_hosting_le
   if [ -e "/var/log/barracuda_log.txt" ]; then
+    fix_core_dgd
     _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
       _VERSIONS_TEST_RESULT=OK
@@ -1328,7 +1614,7 @@ if [ `whoami` = "root" ]; then
         || [[ "${_VERSIONS_TEST}" =~ "BOA-2.3.8" ]]; then
         _DO_NOTHING=YES
       else
-        fix_core_dgd
+        _DO_NOTHING=YES
       fi
     fi
   fi
