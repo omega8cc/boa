@@ -670,6 +670,7 @@ fix_core_dgd() {
   fi
 
   # https://www.drupal.org/SA-CORE-2018-002 D6 patch
+  rm -f ${saXPatch}
   if [ -e "/var/xdrago" ] \
     && [ ! -e "${saXPatch}" ]; then
     mkdir -p /var/xdrago/conf
@@ -935,7 +936,7 @@ fix_core_dgd() {
   # https://www.drupal.org/SA-CORE-2018-002 for built-in D6 platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "${saXPatch}" ] \
-    && [ ! -e "${pthLog}/${saXCoreN}-fixed-d6.log" ]; then
+    && [ ! -e "${pthLog}/${saXCoreN}-really-fixed-d6.log" ]; then
     if [ -d "/data/all/000/core" ]; then
       for Core in `find /data/all/000/core/pressflow-6* \
         -maxdepth 0 -mindepth 0 | sort`; do
@@ -949,7 +950,7 @@ fix_core_dgd() {
         patch -p1 < ${saXPatch} &> /dev/null
       done
     fi
-    touch ${pthLog}/${saXCoreN}-fixed-d6.log
+    touch ${pthLog}/${saXCoreN}-really-fixed-d6.log
     cd
   fi
 
@@ -957,7 +958,7 @@ fix_core_dgd() {
   if [ -e "/var/xdrago" ] \
     && [ -e "${saXPatch}" ]; then
     if [ -d "/data/all" ] \
-      && [ ! -e "${pthLog}/legacy-${saXCoreN}-fixed-d6.log" ]; then
+      && [ ! -e "${pthLog}/legacy-${saXCoreN}-really-fixed-d6.log" ]; then
       for File in `find /data/all/*/*/${saXIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File \
@@ -968,9 +969,9 @@ fix_core_dgd() {
           patch -p1 < ${saXPatch} &> /dev/null
         fi
       done
-      touch ${pthLog}/legacy-${saXCoreN}-fixed-d6.log
+      touch ${pthLog}/legacy-${saXCoreN}-really-fixed-d6.log
     elif [ -d "/data/disk/all" ] \
-      && [ ! -e "${pthLog}/legacy-${saXCoreN}-fixed-d6eee.log" ]; then
+      && [ ! -e "${pthLog}/legacy-${saXCoreN}-really-fixed-d6eee.log" ]; then
       for File in `find /data/disk/all/*/*/${saXIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File \
@@ -981,7 +982,7 @@ fix_core_dgd() {
           patch -p1 < ${saXPatch} &> /dev/null
         fi
       done
-      touch ${pthLog}/legacy-${saXCoreN}-fixed-d6eee.log
+      touch ${pthLog}/legacy-${saXCoreN}-really-fixed-d6eee.log
     fi
     cd
   fi
@@ -990,7 +991,7 @@ fix_core_dgd() {
   if [ -e "/var/xdrago" ] \
     && [ -e "${saXPatch}" ]; then
     if [ -d "/data/disk" ] \
-      && [ ! -e "${pthLog}/batch-custom-${saXCoreN}-fixed-d6.log" ]; then
+      && [ ! -e "${pthLog}/batch-custom-${saXCoreN}-really-fixed-d6.log" ]; then
       for File in `find /data/disk/*/static/*/${saXIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
         Core=$(echo $File \
@@ -1058,7 +1059,7 @@ fix_core_dgd() {
       done
     fi
     cd
-    touch ${pthLog}/batch-custom-${saXCoreN}-fixed-d6.log
+    touch ${pthLog}/batch-custom-${saXCoreN}-really-fixed-d6.log
   fi
 }
 
