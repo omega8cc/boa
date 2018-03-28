@@ -1,16 +1,26 @@
+From 2d234e178e17f3db557a0919eec303917ece09b0 Mon Sep 17 00:00:00 2001
+From: David Snopek <dsnopek@gmail.com>
+Date: Wed, 28 Mar 2018 14:53:39 -0500
+Subject: [PATCH] Backport of fixes from SA-CORE-2018-002 (#116)
+
+---
+ includes/bootstrap.inc       | 55 ++++++++++++++++++++++++++++++++++++++++++++
+ modules/system/system.module |  2 +-
+ 2 files changed, 56 insertions(+), 1 deletion(-)
+
 diff --git a/includes/bootstrap.inc b/includes/bootstrap.inc
-index 23179ca98d..bfbbb81876 100644
+index acc055e745..afed7408e4 100644
 --- a/includes/bootstrap.inc
 +++ b/includes/bootstrap.inc
-@@ -1142,6 +1142,7 @@ function _drupal_bootstrap($phase) {
+@@ -1483,6 +1483,7 @@ function _drupal_bootstrap($phase) {
        timer_start('page');
        // Initialize the configuration
        conf_init();
 +      _drupal_bootstrap_sanitize_request();
        break;
-
+ 
      case DRUPAL_BOOTSTRAP_EARLY_PAGE_CACHE:
-@@ -1603,3 +1604,57 @@ function filter_xss_bad_protocol($string, $decode = TRUE) {
+@@ -2207,3 +2208,57 @@ function filter_xss_bad_protocol($string, $decode = TRUE) {
    } while ($before != $string);
    return check_plain($string);
  }
@@ -68,3 +78,19 @@ index 23179ca98d..bfbbb81876 100644
 +
 +  return $sanitized_keys;
 +}
+diff --git a/modules/system/system.module b/modules/system/system.module
+index 93962ac5b5..ed372b8052 100644
+--- a/modules/system/system.module
++++ b/modules/system/system.module
+@@ -8,7 +8,7 @@
+ /**
+  * The current system version.
+  */
+-define('VERSION', '6.39');
++define('VERSION', '6.40');
+ 
+ /**
+  * Core API compatibility.
+-- 
+2.14.3 (Apple Git-98)
+
