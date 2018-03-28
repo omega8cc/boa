@@ -49,7 +49,7 @@ _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
 _X_VERSION="BOA-3.2.2"
 #
-saCoreN="SA-CORE-2018-001"
+saCoreN="SA-CORE-2018-002"
 saCoreS="${saCoreN}-D7"
 saIncDb="includes/database/database.inc"
 saPatch="/var/xdrago/conf/${saCoreS}.patch"
@@ -655,28 +655,28 @@ update_agents() {
 fix_core_dgd() {
   sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf
 
-  # https://www.drupal.org/SA-CORE-2018-001 D8 patch
+  # https://www.drupal.org/SA-CORE-2018-002 D8 patch
   if [ -e "/var/xdrago" ] \
     && [ ! -e "${saQPatch}" ]; then
     mkdir -p /var/xdrago/conf
     curl ${crlGet} "${urlHmr}/patches/8-core/${saQCoreS}.patch" -o ${saQPatch}
   fi
 
-  # https://www.drupal.org/SA-CORE-2018-001 D7 patch
+  # https://www.drupal.org/SA-CORE-2018-002 D7 patch
   if [ -e "/var/xdrago" ] \
     && [ ! -e "${saPatch}" ]; then
     mkdir -p /var/xdrago/conf
     curl ${crlGet} "${urlHmr}/patches/7-core/${saCoreS}.patch" -o ${saPatch}
   fi
 
-  # https://www.drupal.org/SA-CORE-2018-001 D6 patch
+  # https://www.drupal.org/SA-CORE-2018-002 D6 patch
   if [ -e "/var/xdrago" ] \
     && [ ! -e "${saXPatch}" ]; then
     mkdir -p /var/xdrago/conf
     curl ${crlGet} "${urlHmr}/patches/6-core/${saXCoreS}.patch" -o ${saXPatch}
   fi
 
-  # https://www.drupal.org/SA-CORE-2018-001 for Octopus hostmaster platforms
+  # https://www.drupal.org/SA-CORE-2018-002 for Octopus hostmaster platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "${saPatch}" ]; then
     if [ -d "/data/all" ] \
@@ -696,7 +696,7 @@ fix_core_dgd() {
     cd
   fi
 
-  # https://www.drupal.org/SA-CORE-2018-001 for Barracuda hostmaster platforms
+  # https://www.drupal.org/SA-CORE-2018-002 for Barracuda hostmaster platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "${saPatch}" ]; then
     if [ -d "/data/all" ] \
@@ -728,7 +728,7 @@ fix_core_dgd() {
     cd
   fi
 
-  # https://www.drupal.org/SA-CORE-2018-001 for built-in D7 platforms
+  # https://www.drupal.org/SA-CORE-2018-002 for built-in D7 platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "${saPatch}" ] \
     && [ ! -e "${pthLog}/${saCoreN}-fixed-d7.log" ]; then
@@ -749,7 +749,7 @@ fix_core_dgd() {
     cd
   fi
 
-  # https://www.drupal.org/SA-CORE-2018-001 for ancient D7 platforms
+  # https://www.drupal.org/SA-CORE-2018-002 for ancient D7 platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "${saPatch}" ]; then
     if [ -d "/data/all" ] \
@@ -782,7 +782,7 @@ fix_core_dgd() {
     cd
   fi
 
-  # https://www.drupal.org/SA-CORE-2018-001 for custom D7 platforms
+  # https://www.drupal.org/SA-CORE-2018-002 for custom D7 platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "${saPatch}" ]; then
     if [ -d "/data/disk" ] \
@@ -857,7 +857,7 @@ fix_core_dgd() {
     touch ${pthLog}/batch-custom-${saCoreN}-fixed-d7.log
   fi
 
-  # https://www.drupal.org/SA-CORE-2018-001 for D8 platforms in ~/static
+  # https://www.drupal.org/SA-CORE-2018-002 for D8 platforms in ~/static
   if [ -e "/var/xdrago" ] \
     && [ -e "${saQPatch}" ]; then
     if [ -d "/data/disk" ] \
@@ -932,7 +932,7 @@ fix_core_dgd() {
     touch ${pthLog}/batch-custom-${saQCoreN}-fixed-d8.log
   fi
 
-  # https://www.drupal.org/SA-CORE-2018-001 for built-in D6 platforms
+  # https://www.drupal.org/SA-CORE-2018-002 for built-in D6 platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "${saXPatch}" ] \
     && [ ! -e "${pthLog}/${saXCoreN}-fixed-d6.log" ]; then
@@ -953,7 +953,7 @@ fix_core_dgd() {
     cd
   fi
 
-  # https://www.drupal.org/SA-CORE-2018-001 for ancient D6 platforms
+  # https://www.drupal.org/SA-CORE-2018-002 for ancient D6 platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "${saXPatch}" ]; then
     if [ -d "/data/all" ] \
@@ -986,7 +986,7 @@ fix_core_dgd() {
     cd
   fi
 
-  # https://www.drupal.org/SA-CORE-2018-001 for custom D6 platforms
+  # https://www.drupal.org/SA-CORE-2018-002 for custom D6 platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "${saXPatch}" ]; then
     if [ -d "/data/disk" ] \
