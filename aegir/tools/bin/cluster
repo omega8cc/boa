@@ -909,7 +909,7 @@ wsrep_node_name=\"'${IP}'\"
 [client]
 port                    = 3306
 socket                  = /var/run/mysqld/mysqld.sock
-default-character-set   = utf8
+default-character-set   = utf8mb4
 
 [mysqld]
 user                    = mysql
@@ -922,8 +922,8 @@ tmpdir                  = /tmp
 default_storage_engine  = InnoDB
 lc_messages_dir         = /usr/share/mysql
 lc_messages             = en_US
-character_set_server    = utf8
-collation_server        = utf8_general_ci
+character_set_server    = utf8mb4
+collation_server        = utf8mb4_general_ci
 skip-external-locking
 skip-name-resolve
 connect_timeout         = 60
