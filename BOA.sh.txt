@@ -670,7 +670,6 @@ fix_core_dgd() {
   fi
 
   # https://www.drupal.org/SA-CORE-2018-002 D6 patch
-  rm -f ${saXPatch}
   if [ -e "/var/xdrago" ] \
     && [ ! -e "${saXPatch}" ]; then
     mkdir -p /var/xdrago/conf
