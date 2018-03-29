@@ -1595,7 +1595,7 @@ if [ `whoami` = "root" ]; then
   fix_pure_ftpd
   fix_hosting_le
   if [ -e "/var/log/barracuda_log.txt" ]; then
-    fix_core_dgd
+    ###fix_core_dgd
     _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
       _VERSIONS_TEST_RESULT=OK
