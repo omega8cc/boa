@@ -349,11 +349,13 @@ install_proxysql() {
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"DROP USER 'proxysql_user'@'${_S_Q}%';\""
     fi
 
+    _PROXYSQL_ADMIN_PWD="admin"
+
     echo "${_ROOT_SQL_PASWD}" > /vservers/${idn}/root/.my.cluster_root_pwd.txt
     echo "${_PROXYSQL_PASSWORD}" > /vservers/${idn}/root/.my.proxysql_adm_pwd.txt
     echo "${_DB_NODE_IP[1]}" > /vservers/${idn}/root/.my.cluster_write_node.txt
     echo "<?php" > /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
-    echo "\$prxy_adm_paswd = \"${_PROXYSQL_PASSWORD}\";" >> /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
+    echo "\$prxy_adm_paswd = \"${_PROXYSQL_ADMIN_PWD}\";" >> /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
     echo "\$writer_node_ip = \"${_DB_NODE_IP[1]}\";"     >> /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
     echo "ProxySQL" > /vservers/${idn}/data/conf/clstr.cnf
     vserver ${idn} exec ${_INSTAPP} proxysql
@@ -363,8 +365,8 @@ install_proxysql() {
     vserver ${idn} exec chmod 700 /var/log/proxysql
     vserver ${idn} exec usermod -aG users proxysql
 
-    sed -i "s/admin:admin/admin:${_E_PROXYSQL_PASSWORD}/g" /vservers/${idn}/etc/proxysql.cnf
-    wait
+    ### sed -i "s/admin:admin/admin:${_E_PROXYSQL_PASSWORD}/g" /vservers/${idn}/etc/proxysql.cnf
+    ### wait
     sed -i "s/localhost/127.0.0.1/g" /vservers/${idn}/etc/proxysql.cnf
 
     ### sed -i "s/PROXYSQL_PASSWORD=.*/PROXYSQL_PASSWORD=\"${_E_PROXYSQL_PASSWORD}\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
@@ -402,8 +404,6 @@ install_proxysql() {
     # ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --write-node=${_DB_NODE_IP[1]}:3600 --enable"
     ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --enable"
     sleep 10
-
-    _PROXYSQL_ADMIN_PWD="admin"
 
     echo "Adding root user to mysql_users in ProxySQL..."
     pxyCmd="INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('root','${_ROOT_SQL_PASWD}','10');"
