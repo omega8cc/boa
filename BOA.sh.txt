@@ -677,13 +677,7 @@ fix_mitigate_sacore() {
   if [ ! -e "${pthLog}/provision-barracuda-${saCoreN}-mit2-fixed.log" ]; then
     su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
     rm -rf /var/aegir/.tmp/cache
-    if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ]; then
-      su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_localhost \
-        verify --force" &> /dev/null
-    else
-      su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_master \
-        verify --force" &> /dev/null
-    fi
+    su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_master verify --force" &> /dev/null
     su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
     touch ${pthLog}/provision-barracuda-${saCoreN}-mit2-fixed.log
   fi
