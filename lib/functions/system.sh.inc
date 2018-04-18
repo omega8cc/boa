@@ -3860,6 +3860,8 @@ sys_packages_install() {
               build-essential \
               catdoc \
               clamav \
+              clamav-daemon \
+              clamdscan \
               cron \
               curl \
               cvs \
