@@ -989,6 +989,7 @@ innodb_buffer_pool_dump_at_shutdown = 1
 innodb_buffer_pool_load_at_startup = 1
 innodb_buffer_pool_dump_pct = 100
 innodb_stats_on_metadata = OFF
+innodb_adaptive_hash_index = 0
 
 [mysqld_safe]
 socket                  = /var/run/mysqld/mysqld.sock
