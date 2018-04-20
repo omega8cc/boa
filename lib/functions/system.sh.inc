@@ -2600,7 +2600,13 @@ strict_bin_permissions() {
                   advpng \
                   avconv \
                   bash \
+                  clambc \
+                  clamconf \
+                  clamd \
+                  clamdscan \
+                  clamdtop \
                   clamscan \
+                  clamsubmit \
                   compass \
                   convert \
                   curl \
