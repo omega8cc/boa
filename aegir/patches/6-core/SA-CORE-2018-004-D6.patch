@@ -1,0 +1,117 @@
+From f7876dcf6428b934c928aa76dbbaacf2c6e49875 Mon Sep 17 00:00:00 2001
+From: David Snopek <dsnopek@gmail.com>
+Date: Wed, 25 Apr 2018 11:12:44 -0500
+Subject: [PATCH] Backport of fixes from SA-CORE-2018-004
+
+---
+ includes/bootstrap.inc | 93 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 93 insertions(+)
+
+diff --git a/includes/bootstrap.inc b/includes/bootstrap.inc
+index 5654ddec8b..72343aac79 100644
+--- a/includes/bootstrap.inc
++++ b/includes/bootstrap.inc
+@@ -1202,6 +1202,10 @@ function _drupal_bootstrap($phase) {
+           unset($_GET['destination']);
+           unset($_REQUEST['destination']);
+         }
++        // Ensure that the destination's query parameters are not dangerous.
++        if (isset($_GET['destination'])) {
++          _drupal_bootstrap_clean_destination();
++        }
+         // If there's still something in $_REQUEST['destination'] that didn't
+         // come from $_GET, check it too.
+         if (isset($_REQUEST['destination']) && (!isset($_GET['destination']) || $_REQUEST['destination'] != $_GET['destination']) && menu_path_is_external($_REQUEST['destination'])) {
+@@ -1660,3 +1664,92 @@ function _drupal_bootstrap_sanitize_input(&$input, $whitelist = array()) {
+ 
+   return $sanitized_keys;
+ }
++
++/**
++ * Removes the destination if it is dangerous.
++ *
++ * Note this can only be called after common.inc has been included.
++ *
++ * @return bool
++ *   TRUE if the destination has been removed from $_GET, FALSE if not.
++ */
++function _drupal_bootstrap_clean_destination() {
++  $dangerous_keys = array();
++
++  $log_sanitized_keys = variable_get('sanitize_input_logging', FALSE);
++
++  $parts = _drupal_parse_url($_GET['destination']);
++  if (!empty($parts['query'])) {
++    $whitelist = variable_get('sanitize_input_whitelist', array());
++    $log_sanitized_keys = variable_get('sanitize_input_logging', FALSE);
++
++    $dangerous_keys = _drupal_bootstrap_sanitize_input($parts['query'], $whitelist);
++    if (!empty($dangerous_keys)) {
++      // The destination is removed rather than sanitized to mirror the
++      // handling of external destinations.
++      unset($_GET['destination']);
++      unset($_REQUEST['destination']);
++      if ($log_sanitized_keys) {
++        trigger_error(sprintf('Potentially unsafe destination removed from query string parameters (GET) because it contained the following keys: %s', implode(', ', $dangerous_keys)));
++      }
++      return TRUE;
++    }
++  }
++  return FALSE;
++}
++
++/**
++ * Backport of drupal_parse_url() from Drupal 7.
++ */
++function _drupal_parse_url($url) {
++  $options = array(
++    'path' => NULL,
++    'query' => array(),
++    'fragment' => '',
++  );
++
++  // External URLs: not using parse_url() here, so we do not have to rebuild
++  // the scheme, host, and path without having any use for it.
++  if (strpos($url, '://') !== FALSE) {
++
++    // Split off everything before the query string into 'path'.
++    $parts = explode('?', $url);
++    $options['path'] = $parts[0];
++
++    // If there is a query string, transform it into keyed query parameters.
++    if (isset($parts[1])) {
++      $query_parts = explode('#', $parts[1]);
++      parse_str($query_parts[0], $options['query']);
++
++      // Take over the fragment, if there is any.
++      if (isset($query_parts[1])) {
++        $options['fragment'] = $query_parts[1];
++      }
++    }
++  }
++  else {
++
++    // parse_url() does not support relative URLs, so make it absolute. E.g. the
++    // relative URL "foo/bar:1" isn't properly parsed.
++    $parts = parse_url('http://example.com/' . $url);
++
++    // Strip the leading slash that was just added.
++    $options['path'] = substr($parts['path'], 1);
++    if (isset($parts['query'])) {
++      parse_str($parts['query'], $options['query']);
++    }
++    if (isset($parts['fragment'])) {
++      $options['fragment'] = $parts['fragment'];
++    }
++  }
++
++  // The 'q' parameter contains the path of the current page if clean URLs are
++  // disabled. It overrides the 'path' of the URL when present, even if clean
++  // URLs are enabled, due to how Apache rewriting rules work. The path
++  // parameter must be a string.
++  if (isset($options['query']['q']) && is_string($options['query']['q'])) {
++    $options['path'] = $options['query']['q'];
++    unset($options['query']['q']);
++  }
++  return $options;
++}
