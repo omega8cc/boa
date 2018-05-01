@@ -182,7 +182,7 @@ Octopus can install and/or support the platforms listed below:
  OpenLucius 1.7 --------------- https://drupal.org/project/openlucius
  OpenOutreach 1.46 ------------ https://drupal.org/project/openoutreach
  OpenPublic 1.19 -------------- https://drupal.org/project/openpublic
- Opigno LMS 1.29 -------------- https://drupal.org/project/opigno_lms
+ Opigno LMS 1.31 -------------- https://drupal.org/project/opigno_lms
  Panopoly 1.51 ---------------- https://drupal.org/project/panopoly
  Restaurant 1.15 -------------- https://drupal.org/project/restaurant
  Ubercart 3.11 ---------------- https://drupal.org/project/ubercart
