@@ -176,7 +176,7 @@ Octopus can install and/or support the platforms listed below:
  Commerce 2.54 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.49 ----------------- https://drupal.org/project/commons
  Drupal 7.59.1 ---------------- https://drupal.org/project/drupal/releases/7.59
- Guardr 2.41 ------------------ https://drupal.org/project/guardr
+ Guardr 2.44 ------------------ https://drupal.org/project/guardr
  OpenAid 2.8 ------------------ https://drupal.org/project/openaid
  OpenAtrium 2.626 ------------- https://drupal.org/project/openatrium
  OpenLucius 1.7 --------------- https://drupal.org/project/openlucius
