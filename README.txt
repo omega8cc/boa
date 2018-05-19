@@ -226,6 +226,6 @@ by Omega8.cc exists only thanks to Aegir project continued development.
 
 Please choose either PayPal or Gratipay option at:
 
-  http://www.aegirproject.org/donate
+  https://www.aegirproject.org/#donate
 
 Thank you!
