@@ -224,7 +224,7 @@ to the Universe, please donate to the Aegir project. BOA devs participate
 in Aegir core development for years, and BOA project, which is maintained
 by Omega8.cc exists only thanks to Aegir project continued development.
 
-Please choose either PayPal or Gratipay option at:
+You can donate using PayPal, Liberapay, Bitcoin or trough Open Collective at:
 
   https://www.aegirproject.org/#donate
 
