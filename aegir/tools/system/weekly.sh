@@ -700,7 +700,7 @@ security protections are put in place to protect the personal data they process.
 We have taken steps to ensure that we will be compliant with the GDPR
 by May 25, 2018.
 
-Please red all details on our website at:
+Please read all details on our website at:
 
 https://omega8.cc/gdpr
 https://omega8.cc/gdpr-faq
@@ -740,7 +740,7 @@ security protections are put in place to protect the personal data they process.
 We have taken steps to ensure that we will be compliant with the GDPR
 by May 25, 2018.
 
-Please red all details on our website at:
+Please read all details on our website at:
 
 https://omega8.cc/gdpr
 https://omega8.cc/gdpr-faq
@@ -780,7 +780,7 @@ security protections are put in place to protect the personal data they process.
 We have taken steps to ensure that we will be compliant with the GDPR
 by May 25, 2018.
 
-Please red all details on our website at:
+Please read all details on our website at:
 
 https://omega8.cc/gdpr
 https://omega8.cc/gdpr-faq
