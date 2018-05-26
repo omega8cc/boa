@@ -78,7 +78,7 @@ check_root() {
     fi
     if [ "${_OSR}" = "jessie" ]; then
       _BENG_SERIES="4.1"
-      _BNG_VERSION="4.1.48-vs2.3.8.6"
+      _BNG_VERSION="4.1.50-vs2.3.8.6"
     elif [ "${_OSR}" = "wheezy" ]; then
       _BENG_SERIES="3.18"
       _BNG_VERSION="3.18.44-vs2.3.7.5"
@@ -629,6 +629,7 @@ install_vps() {
                    mtab.sh \
                    networking \
                    reboot \
+                   sendsigs \
                    setserial \
                    svscan \
                    sysstat \
@@ -642,6 +643,10 @@ install_vps() {
         vserver ${idn} exec update-rc.d -f ${link} remove
       fi
     done
+    for s in cron dbus ssh; do
+      sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/$s > /etc/insserv/overrides/$s
+    done
+    /sbin/insserv -v -d &> /dev/null
   fi
 
   echo "Stopping vps ${idn}..."

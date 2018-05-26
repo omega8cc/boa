@@ -3213,6 +3213,7 @@ if_wheezy_to_jessie() {
                      mtab.sh \
                      networking \
                      reboot \
+                     sendsigs \
                      setserial \
                      svscan \
                      sysstat \
@@ -3226,6 +3227,10 @@ if_wheezy_to_jessie() {
           update-rc.d -f ${link} remove &> /dev/null
         fi
       done
+      for s in cron dbus ssh; do
+        sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/$s > /etc/insserv/overrides/$s
+      done
+      /sbin/insserv -v -d &> /dev/null
     else
       _PTMX=CHECK
     fi
@@ -3488,6 +3493,7 @@ if_squeeze_to_wheezy() {
                      mtab.sh \
                      networking \
                      reboot \
+                     sendsigs \
                      setserial \
                      svscan \
                      sysstat \
@@ -3501,6 +3507,10 @@ if_squeeze_to_wheezy() {
           update-rc.d -f ${link} remove &> /dev/null
         fi
       done
+      for s in cron dbus ssh; do
+        sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/$s > /etc/insserv/overrides/$s
+      done
+      /sbin/insserv -v -d &> /dev/null
     else
       _PTMX=CHECK
     fi
