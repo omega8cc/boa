@@ -3093,6 +3093,8 @@ if_wheezy_to_jessie() {
     mrun "apt-get install git ${forCer}"            2> /dev/null
     mrun "apt-get install git-core ${forCer}"       2> /dev/null
     mrun "apt-get install git-man ${forCer}"        2> /dev/null
+    sed -i "s/^PermitRootLogin.*/#PermitRootLogin yes/g" \
+      /etc/ssh/sshd_config &> /dev/null
     mrun "apt-get install openssh-client ${forCer}" 2> /dev/null
     mrun "apt-get install openssh-server ${forCer}" 2> /dev/null
     mrun "apt-get install ssh ${forCer}"            2> /dev/null
@@ -3388,6 +3390,8 @@ if_squeeze_to_wheezy() {
     mrun "apt-get install git ${forCer}"            2> /dev/null
     mrun "apt-get install git-core ${forCer}"       2> /dev/null
     mrun "apt-get install git-man ${forCer}"        2> /dev/null
+    sed -i "s/^PermitRootLogin.*/#PermitRootLogin yes/g" \
+      /etc/ssh/sshd_config &> /dev/null
     mrun "apt-get install openssh-client ${forCer}" 2> /dev/null
     mrun "apt-get install openssh-server ${forCer}" 2> /dev/null
     mrun "apt-get install ssh ${forCer}"            2> /dev/null
