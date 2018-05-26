@@ -2957,8 +2957,8 @@ purge_cruft_machine() {
 
   for i in ${_REVISIONS}; do
     if [ -d "${User}/distro/$i" ]; then
-      if [ ! -d "${User}/distro/$i/keys" ]; then
-        mkdir -p ${User}/distro/$i/keys
+      if [ ! -d "${User}/distro/${i}/keys" ]; then
+        mkdir -p ${User}/distro/${i}/keys
       fi
       RevisionTest=$(ls ${User}/distro/$i | wc -l | tr -d "\n" 2>&1)
       if [ "${RevisionTest}" -lt "2" ] && [ ! -z "${RevisionTest}" ]; then
@@ -2977,11 +2977,11 @@ purge_cruft_machine() {
         chattr -i /home/${_HM_U}.ftp/platforms/*
       fi
       mkdir -p /home/${_HM_U}.ftp/platforms/$i
-      mkdir -p ${User}/distro/$i/keys
-      chown ${_HM_U}.ftp:${_WEBG} ${User}/distro/$i/keys &> /dev/null
-      chmod 02775 ${User}/distro/$i/keys &> /dev/null
-      ln -sf ${User}/distro/$i/keys /home/${_HM_U}.ftp/platforms/$i/keys
-      for Codebase in `find ${User}/distro/$i/* \
+      mkdir -p ${User}/distro/${i}/keys
+      chown ${_HM_U}.ftp:${_WEBG} ${User}/distro/${i}/keys &> /dev/null
+      chmod 02775 ${User}/distro/${i}/keys &> /dev/null
+      ln -sf ${User}/distro/${i}/keys /home/${_HM_U}.ftp/platforms/${i}/keys
+      for Codebase in `find ${User}/distro/${i}/* \
         -maxdepth 1 \
         -mindepth 1 \
         -type d \
@@ -2989,7 +2989,7 @@ purge_cruft_machine() {
         CodebaseName=$(echo ${Codebase} \
           | cut -d'/' -f7 \
           | awk '{ print $1}' 2> /dev/null)
-        ln -sf ${Codebase} /home/${_HM_U}.ftp/platforms/$i/${CodebaseName}
+        ln -sf ${Codebase} /home/${_HM_U}.ftp/platforms/${i}/${CodebaseName}
         echo "Fixed symlink to ${Codebase} for ${_HM_U}.ftp"
       done
     fi
@@ -3042,8 +3042,8 @@ shared_codebases_cleanup() {
     016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
     034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
   for i in ${_REVISIONS}; do
-    if [ -d "/data/all/$i/o_contrib" ]; then
-      for Codebase in `find /data/all/$i/* -maxdepth 1 -mindepth 1 -type d \
+    if [ -d "/data/all/${i}/o_contrib" ]; then
+      for Codebase in `find /data/all/${i}/* -maxdepth 1 -mindepth 1 -type d \
         | grep "/profiles$" 2>&1`; do
         CodebaseDir=$(echo ${Codebase} \
           | sed 's/\/profiles//g' \
@@ -3053,8 +3053,8 @@ shared_codebases_cleanup() {
         if [[ "${CodebaseTest}" =~ "No such file or directory" ]] \
           || [ -z "${CodebaseTest}" ]; then
           mkdir -p ${_CLD}/$i
-          echo "Moving no longer used ${CodebaseDir} to ${_CLD}/$i/"
-          mv -f ${CodebaseDir} ${_CLD}/$i/
+          echo "Moving no longer used ${CodebaseDir} to ${_CLD}/${i}/"
+          mv -f ${CodebaseDir} ${_CLD}/${i}/
           sleep 1
         fi
       done
