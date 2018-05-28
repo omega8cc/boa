@@ -115,7 +115,13 @@ update_sql_conf() {
       sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf
       wait
     fi
-    if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
+    _LEGACY_CLSTR=NO
+    if [ ! -f "/root/.mstr.clstr.cnf" ] \
+      && [ ! -f "/root/.wbhd.clstr.cnf" ] \
+      && [ ! -f "/root/.dbhd.clstr.cnf" ]; then
+      _LEGACY_CLSTR=YES
+    fi
+    if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ] && [ "${_LEGACY_CLSTR}" = "NO" ]; then
       if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
         _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
         _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
@@ -127,11 +133,7 @@ update_sql_conf() {
             sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
             wait
           else
-            if [ ! -f "/root/.mstr.clstr.cnf" ] \
-              && [ ! -f "/root/.wbhd.clstr.cnf" ] \
-              && [ ! -f "/root/.dbhd.clstr.cnf" ]; then
-              update_innodb_log_file_size
-            fi
+            update_innodb_log_file_size
           fi
         fi
       fi
