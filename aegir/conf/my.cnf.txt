@@ -1,7 +1,7 @@
 [client]
 port                    = 3306
 socket                  = /var/run/mysqld/mysqld.sock
-default-character-set   = utf8
+default-character-set   = utf8mb4
 
 [mysqld]
 user                    = mysql
@@ -14,8 +14,8 @@ tmpdir                  = /tmp
 default_storage_engine  = InnoDB
 lc_messages_dir         = /usr/share/mysql
 lc_messages             = en_US
-character_set_server    = utf8
-collation_server        = utf8_general_ci
+character_set_server    = utf8mb4
+collation_server        = utf8mb4_general_ci
 skip-external-locking
 skip-name-resolve
 symbolic-links          = 0
@@ -86,6 +86,7 @@ innodb_buffer_pool_dump_at_shutdown = 1
 innodb_buffer_pool_load_at_startup = 1
 innodb_buffer_pool_dump_pct = 100
 innodb_stats_on_metadata = OFF
+innodb_adaptive_hash_index = 0
 
 
 [mysqld_safe]

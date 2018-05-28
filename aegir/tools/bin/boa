@@ -4,14 +4,14 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 branch="3.x.x-dev"
-cluster="BOA-3.2.0"
+cluster="BOA-3.2.2"
 hd="HEAD"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
 master="master"
 nextv="BOA-3.3.0-dev"
-stbl="BOA-3.2.0"
+stbl="BOA-3.2.2"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -31,7 +31,8 @@ _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _VMFAMILY=XEN
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -1402,6 +1403,7 @@ check_root() {
                    mtab.sh \
                    networking \
                    reboot \
+                   sendsigs \
                    setserial \
                    svscan \
                    sysstat \
@@ -1415,6 +1417,10 @@ check_root() {
         update-rc.d -f ${link} remove &> /dev/null
       fi
     done
+    for s in cron dbus ssh; do
+      sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/$s > /etc/insserv/overrides/$s
+    done
+    /sbin/insserv -v -d &> /dev/null
   fi
 }
 
@@ -1578,9 +1584,9 @@ display_info() {
     echo
     if [ -e "/var/log/barracuda_log.txt" ]; then
       if [ "${kind}" = "more" ]; then
-        cat /var/log/barracuda_log.txt | grep 2015
+        cat /var/log/barracuda_log.txt | grep $(date +'%Y' -d 'last year')
       fi
-      cat /var/log/barracuda_log.txt | grep 2016
+      cat /var/log/barracuda_log.txt | grep $(date +%Y)
     fi
     echo
     echo "Please link this information in your submission,"

@@ -146,12 +146,10 @@
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
 ### AGV ----------- aGov
-### CH2 ----------- OpenChurch 2
 ### CME ----------- Commerce v.2
 ### CS7 ----------- Commons 7
 ### DCE ----------- Commerce v.1
 ### DCS ----------- Commons 6
-### ERP ----------- ERPAL
 ### GDR ----------- Guardr
 ### OA7 ----------- OpenAtrium D7
 ### OAD ----------- OpenAid
@@ -159,9 +157,7 @@
 ### OOH ----------- OpenOutreach
 ### OPC ----------- OpenPublic
 ### OPO ----------- Opigno LMS
-### OSR ----------- OpenScholar
 ### PPY ----------- Panopoly
-### RER ----------- Recruiter
 ### RST ----------- Restaurant
 ### UC7 ----------- Ubercart D7
 ### UCT ----------- Ubercart D6

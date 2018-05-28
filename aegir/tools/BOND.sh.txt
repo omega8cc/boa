@@ -136,9 +136,9 @@ _TUNE_PHP_CLI_TIMEOUT=7200
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_AEGIR_VERSION="BOA-3.2.0"
+_AEGIR_VERSION="BOA-3.2.2"
 _BRANCH_BOA="3.x.x-dev"
-_X_VERSION="BOA-3.2.0"
+_X_VERSION="BOA-3.2.2"
 _MYSQLTUNER_VRN=1.7.0
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
@@ -158,9 +158,9 @@ _PHP54_VRN=5.4.45
 _PHP55_API=20121212
 _PHP55_VRN=5.5.38
 _PHP56_API=20131226
-_PHP56_VRN=5.6.30
+_PHP56_VRN=5.6.36
 _PHP70_API=20151012
-_PHP70_VRN=7.0.19
+_PHP70_VRN=7.0.30
 
 ###
 ### Helper variables
@@ -573,20 +573,20 @@ update_php_conf() {
     cp -af ${locCnf}/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     if [ "${e}" != "70" ]; then
-      fix_php_ini_jsmin
       fix_php_ini_mailparse
       fix_php_ini_twig
     fi
+    fix_php_ini_jsmin
     fix_php_ini_redis
     fix_php_ini_ioncube
     fix_php_ini_suhosin
     fix_php_ini_yaml
     _THIS_FILE=/opt/php${e}/lib/php.ini
     if [ "${e}" != "70" ]; then
-      fix_php_ini_jsmin
       fix_php_ini_mailparse
       fix_php_ini_twig
     fi
+    fix_php_ini_jsmin
     fix_php_ini_redis
     fix_php_ini_ioncube
     fix_php_ini_suhosin
@@ -1035,7 +1035,8 @@ tune_memory_limits() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \

@@ -135,3 +135,5 @@ location ^~ /sites/default/files {
     try_files $uri =404;
   }
 }
+# fix common problems with old paths after importing from standalone to Aegir multisite
+rewrite ^/sites/(.*)/files/sites/default/files/(.*)$ /sites/$main_site_name/files/$2 last;

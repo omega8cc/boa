@@ -63,7 +63,8 @@ check_vps() {
   _BENG_VS=NO
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -414,7 +415,7 @@ run_backup() {
     --allow-source-mismatch \
     --full-if-older-than ${_AWS_FLC} \
     --asynchronous-upload ${_AWS_OPX} \
-    ${INCLUDE} ${EXCLUDE} ${USER_INCLUDE} ${USER_EXCLUDE} --exclude '**' / ${TARGET} >> ${LOGFILE}
+    ${EXCLUDE} ${USER_EXCLUDE} ${INCLUDE} ${USER_INCLUDE} --exclude '**' / ${TARGET} >> ${LOGFILE}
 }
 
 remove_older_than() {

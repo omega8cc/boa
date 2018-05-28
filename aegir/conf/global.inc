@@ -64,7 +64,7 @@ if (function_exists('drush_get_command')) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.13.1';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.14.0';
   }
 }
 
@@ -95,20 +95,39 @@ if (!isset($_SERVER['MAIN_SITE_NAME']) && isset($_SERVER['SERVER_NAME'])) {
 
 
 /**
- * Site mode detection and cron protection - cron works only for live sites
+ * Site mode detection - works also for aliases
  */
-if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) ||
-    preg_match("/^\/cron\//", $_SERVER['REQUEST_URI'])) {
-  if (isset($_SERVER['HTTP_HOST']) &&
-      (preg_match("/(?:^dev\.|\.dev\.)/i", $_SERVER['HTTP_HOST']) ||
-       preg_match("/(?:^devel\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) ||
-       preg_match("/(?:^tmp\.|\.tmp\.)/i", $_SERVER['HTTP_HOST']) ||
-       preg_match("/(?:^temp\.|\.temp\.)/i", $_SERVER['HTTP_HOST']) ||
-       preg_match("/(?:^temporary\.|\.temporary\.)/i", $_SERVER['HTTP_HOST']) ||
-       preg_match("/(?:^test\.|\.test\.)/i", $_SERVER['HTTP_HOST']) ||
-       preg_match("/(?:^testing\.|\.testing\.)/i", $_SERVER['HTTP_HOST']))) {
-    $is_tmp = TRUE;
-    // Ignore cron requests
+if (isset($_SERVER['HTTP_HOST']) &&
+    (preg_match("/(?:^dev\.|\.dev\.)/i", $_SERVER['HTTP_HOST']) ||
+     preg_match("/(?:^devel\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) ||
+     preg_match("/(?:^tmp\.|\.tmp\.)/i", $_SERVER['HTTP_HOST']) ||
+     preg_match("/(?:^temp\.|\.temp\.)/i", $_SERVER['HTTP_HOST']) ||
+     preg_match("/(?:^temporary\.|\.temporary\.)/i", $_SERVER['HTTP_HOST']) ||
+     preg_match("/(?:^test\.|\.test\.)/i", $_SERVER['HTTP_HOST']) ||
+     preg_match("/(?:^testing\.|\.testing\.)/i", $_SERVER['HTTP_HOST']))) {
+  $is_tmp = TRUE;
+}
+
+
+/**
+ * Dev mode detection - works only for aliases
+ */
+if (isset($_SERVER['HTTP_HOST']) &&
+    isset($_SERVER['MAIN_SITE_NAME']) &&
+    preg_match("/(?:^dev\.|^devel\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) &&
+    $_SERVER['HTTP_HOST'] != $_SERVER['MAIN_SITE_NAME'] &&
+    $_SERVER['HTTP_HOST'] != $_SERVER['SERVER_NAME'] &&
+    !$is_backend) {
+  $is_dev = TRUE;
+}
+
+
+/**
+ * Bots protection for all tmp/dev sites - works also for aliases
+ */
+if ($is_bot) {
+  if ($is_tmp) {
+    // Ignore known bots
     header('X-Accel-Expires: 300');
     header('HTTP/1.0 404 Not Found');
     header("Connection: close");
@@ -118,20 +137,14 @@ if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) ||
 
 
 /**
- * Dev mode detection and URLs protection - works only for aliases
+ * Site cron protection - cron works only for live sites
  */
-if (isset($_SERVER['HTTP_HOST']) &&
-    isset($_SERVER['MAIN_SITE_NAME']) &&
-    preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) &&
-    $_SERVER['HTTP_HOST'] != $_SERVER['MAIN_SITE_NAME'] &&
-    $_SERVER['HTTP_HOST'] != $_SERVER['SERVER_NAME'] &&
-    !$is_backend) {
-  $is_dev = TRUE;
-  if ($is_bot) {
-    // Deny known search bots on ^(dev|foo.(dev|devel)).domain subdomains
-    header('X-Accel-Expires: 60');
-    header("HTTP/1.1 301 Moved Permanently");
-    header("Location: http://www.aegirproject.org/");
+if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) ||
+    preg_match("/^\/cron\//", $_SERVER['REQUEST_URI'])) {
+  if ($is_tmp) {
+    // Ignore cron requests
+    header('X-Accel-Expires: 300');
+    header('HTTP/1.0 404 Not Found');
     header("Connection: close");
     exit;
   }
@@ -151,7 +164,9 @@ if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
  */
 if (file_exists('web.config')) {
   if (file_exists('core')) {
-    if (file_exists('vendor/symfony') || file_exists('core/vendor/symfony')) {
+    if (file_exists('vendor/symfony') ||
+      file_exists('core/vendor/symfony') ||
+      file_exists('autoload.php')) {
       $drupal_eight = TRUE;
       $use_redis = TRUE;
       if ($is_dev && !$is_backend) {
@@ -816,8 +831,11 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     header("X-Site-Subdir: " . $site_subdir);
   }
 
-  if ($all_ini['server_name_cookie_domain'] || $site_subdir) {
+  if ($all_ini['server_name_cookie_domain']) {
     $domain = '.' . preg_replace('`^www\.`', '', $_SERVER['SERVER_NAME']);
+  }
+  elseif ($site_subdir && isset($_SERVER['RAW_HOST'])) {
+    $domain = '.' . preg_replace('`^www\.`', '', $_SERVER['RAW_HOST']);
   }
   else {
     $domain = '.' . preg_replace('`^www\.`', '', $_SERVER['HTTP_HOST']);
