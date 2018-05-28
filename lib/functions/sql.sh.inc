@@ -127,7 +127,11 @@ update_sql_conf() {
             sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
             wait
           else
-            update_innodb_log_file_size
+            if [ ! -f "/root/.mstr.clstr.cnf" ] \
+              && [ ! -f "/root/.wbhd.clstr.cnf" ] \
+              && [ ! -f "/root/.dbhd.clstr.cnf" ]; then
+              update_innodb_log_file_size
+            fi
           fi
         fi
       fi
