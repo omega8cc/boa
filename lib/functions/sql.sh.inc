@@ -116,9 +116,9 @@ update_sql_conf() {
       wait
     fi
     _LEGACY_CLSTR=NO
-    if [ ! -f "/root/.mstr.clstr.cnf" ] \
-      && [ ! -f "/root/.wbhd.clstr.cnf" ] \
-      && [ ! -f "/root/.dbhd.clstr.cnf" ]; then
+    if [ -f "/root/.mstr.clstr.cnf" ] \
+      || [ -f "/root/.wbhd.clstr.cnf" ] \
+      || [ -f "/root/.dbhd.clstr.cnf" ]; then
       _LEGACY_CLSTR=YES
     fi
     if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ] && [ "${_LEGACY_CLSTR}" = "NO" ]; then
