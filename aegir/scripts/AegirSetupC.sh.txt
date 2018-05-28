@@ -678,7 +678,8 @@ if [ "${_CLIENT_CORES}" -lt "1" ]; then
   _ALLOW_ALL=NO
   _D_8_ALLOW=NO
 fi
-if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -1237,7 +1238,7 @@ fserver_install() {
             echo "core = 6.x" >> fserver.make
             echo "projects[pressflow][type] = \"core\"" >> fserver.make
             echo "projects[pressflow][download][type] = \"get\"" >> fserver.make
-            echo "projects[pressflow][download][url] = \"http://${_USE_MIR}/core/pressflow-6.38.2.tar.gz\"" >> fserver.make
+            echo "projects[pressflow][download][url] = \"http://${_USE_MIR}/core/pressflow-6.44.1.tar.gz\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][type] = \"profile\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][download][type] = \"git\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][download][url] = \"https://github.com/omega8cc/${_REAL_PRNAME}.git\"" >> fserver.make
@@ -2163,15 +2164,15 @@ ubercart7_install() {
               mkdir -p ${_SHRD_PRPATH}/modules
               cd ${_SHRD_PRPATH}/modules
               get_dev_contrib "colorbox-7.x-2.12.tar.gz"
-              get_dev_contrib "ctools-7.x-1.12.tar.gz"
-              get_dev_contrib "entity-7.x-1.8.tar.gz"
+              get_dev_contrib "ctools-7.x-1.14.tar.gz"
+              get_dev_contrib "entity-7.x-1.9.tar.gz"
               get_dev_contrib "google_analytics-7.x-2.3.tar.gz"
               get_dev_contrib "libraries-7.x-2.3.tar.gz"
               get_dev_contrib "pathauto-7.x-1.3.tar.gz"
               get_dev_contrib "rules-7.x-2.9.tar.gz"
               get_dev_contrib "token-7.x-1.6.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
-              get_dev_contrib "views-7.x-3.15.tar.gz"
+              get_dev_contrib "views-7.x-3.20.tar.gz"
               cd ${_SHRD_PRPATH}/modules/views
               # https://drupal.org/node/1766338#comment-6445882
               patch -p1 < \
@@ -2233,15 +2234,15 @@ ubercart7_testing_install() {
               mkdir -p ${_SHRD_PRPATH}/modules
               cd ${_SHRD_PRPATH}/modules
               get_dev_contrib "colorbox-7.x-2.12.tar.gz"
-              get_dev_contrib "ctools-7.x-1.12.tar.gz"
-              get_dev_contrib "entity-7.x-1.8.tar.gz"
+              get_dev_contrib "ctools-7.x-1.14.tar.gz"
+              get_dev_contrib "entity-7.x-1.9.tar.gz"
               get_dev_contrib "google_analytics-7.x-2.3.tar.gz"
               get_dev_contrib "libraries-7.x-2.3.tar.gz"
               get_dev_contrib "pathauto-7.x-1.3.tar.gz"
               get_dev_contrib "rules-7.x-2.9.tar.gz"
               get_dev_contrib "token-7.x-1.6.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
-              get_dev_contrib "views-7.x-3.15.tar.gz"
+              get_dev_contrib "views-7.x-3.20.tar.gz"
               cd ${_SHRD_PRPATH}/modules/views
               # https://drupal.org/node/1766338#comment-6445882
               patch -p1 < \
@@ -2584,7 +2585,7 @@ _USE_DISTRO_CORE=YES
 openatrium7_install
 _USE_DISTRO_CORE=NO
 
-openchurch2_install
+### openchurch2_install -- broken profile
 openlucius_install
 openoutreach_install
 openpublic_install

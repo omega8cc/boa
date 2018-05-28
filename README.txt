@@ -169,35 +169,34 @@ Octopus can install and/or support the platforms listed below:
 
  See also: https://omega8.cc/how-to-add-custom-platform-properly-140
 
- @ Drupal 7.55.1
+ @ Drupal 7.59.1
 
- aGov 3.5 --------------------- https://drupal.org/project/agov
- Commerce 1.47 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.45 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.44 ----------------- https://drupal.org/project/commons
- Drupal 7.55.1 ---------------- https://drupal.org/project/drupal/releases/7.55
- Guardr 2.36 ------------------ https://drupal.org/project/guardr
+ aGov 3.10 -------------------- https://drupal.org/project/agov
+ Commerce 1.52 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 2.54 ---------------- https://drupal.org/project/commerce_kickstart
+ Commons 3.49 ----------------- https://drupal.org/project/commons
+ Drupal 7.59.1 ---------------- https://drupal.org/project/drupal/releases/7.59
+ Guardr 2.44 ------------------ https://drupal.org/project/guardr
  OpenAid 2.8 ------------------ https://drupal.org/project/openaid
- OpenAtrium 2.616 ------------- https://drupal.org/project/openatrium
- OpenChurch 2.2 --------------- https://drupal.org/project/openchurch
+ OpenAtrium 2.628 ------------- https://drupal.org/project/openatrium
  OpenLucius 1.7 --------------- https://drupal.org/project/openlucius
- OpenOutreach 1.39 ------------ https://drupal.org/project/openoutreach
- OpenPublic 1.11 -------------- https://drupal.org/project/openpublic
- Opigno LMS 1.25 -------------- https://drupal.org/project/opigno_lms
- Panopoly 1.45 ---------------- https://drupal.org/project/panopoly
+ OpenOutreach 1.46 ------------ https://drupal.org/project/openoutreach
+ OpenPublic 1.19 -------------- https://drupal.org/project/openpublic
+ Opigno LMS 1.31 -------------- https://drupal.org/project/opigno_lms
+ Panopoly 1.53 ---------------- https://drupal.org/project/panopoly
  Restaurant 1.15 -------------- https://drupal.org/project/restaurant
- Ubercart 3.10 ---------------- https://drupal.org/project/ubercart
+ Ubercart 3.11 ---------------- https://drupal.org/project/ubercart
 
- @ Pressflow 6.38.2
+ @ Pressflow 6.44.1
 
  Commons 2.27 ----------------- https://drupal.org/project/commons
- Pressflow 6.38.2 ------------- http://pressflow.org
+ Pressflow 6.44.1 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.55.1 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.59.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
-* All D6 platforms have been enhanced using Pressflow 6.38.2 +Extra core:
+* All D6 platforms have been enhanced using Pressflow 6.44.1 +Extra core:
   https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 * All D6 and D7 platforms include some useful and/all performance related

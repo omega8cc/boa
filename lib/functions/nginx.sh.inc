@@ -1,15 +1,18 @@
 #
 # Update Nginx Config.
 update_nginx_conf() {
-  if [ ! -e "${pthLog}/nginx-config-fixed-${_X_VERSION}" ] \
+  if [ ! -e "${pthLog}/nginx-config-params-fixed-${_X_VERSION}" ] \
     && [ -d "/var/aegir" ]; then
     if [ -e "${locCnf}/nginx.conf" ] \
       && [ -e "/etc/nginx/nginx.conf" ]; then
       mv -f /etc/nginx/nginx.conf-* ${vBs}/dragon/t/ &> /dev/null
       mv -f /etc/nginx/mime.types-pre-* ${vBs}/dragon/t/ &> /dev/null
+      mv -f /etc/nginx/fastcgi_params-pre-* ${vBs}/dragon/t/ &> /dev/null
       mv -f /etc/nginx/nginx.conf ${vBs}/dragon/t/nginx.conf-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      mv -f /etc/nginx/fastcgi_params ${vBs}/dragon/t/fastcgi_params-pre-${_X_VERSION}-${_NOW} &> /dev/null
       cp -af ${locCnf}/nginx.conf /etc/nginx/nginx.conf
-      touch ${pthLog}/nginx-config-fixed-${_X_VERSION}
+      cp -af ${locCnf}/fastcgi_params.txt /etc/nginx/fastcgi_params
+      touch ${pthLog}/nginx-config-params-fixed-${_X_VERSION}
     fi
   fi
   if [ -e "${mtrNgx}/pre.d" ] \

@@ -1,0 +1,146 @@
+From 5ac8738fa69df34a0635f0907d661b509ff9a28f Mon Sep 17 00:00:00 2001
+From: Lee Rowlands <lee.rowlands@previousnext.com.au>
+Date: Tue, 27 Mar 2018 19:58:42 +1000
+Subject: [PATCH] SA-CORE-2018-002 by Jasu_M, samuel.mortenson,
+ David_Rothstein, xjm, mlhess, larowlan, pwolanin, alexpott, dsnopek, Pere
+ Orga, cashwilliams, dawehner, tim.plunkett, drumm
+
+---
+ core/lib/Drupal/Core/DrupalKernel.php              |  7 ++
+ core/lib/Drupal/Core/Security/RequestSanitizer.php | 99 ++++++++++++++++++++++
+ 2 files changed, 106 insertions(+)
+ create mode 100644 core/lib/Drupal/Core/Security/RequestSanitizer.php
+
+diff --git a/core/lib/Drupal/Core/DrupalKernel.php b/core/lib/Drupal/Core/DrupalKernel.php
+index 37ed0e97a6..fec1be9ad3 100644
+--- a/core/lib/Drupal/Core/DrupalKernel.php
++++ b/core/lib/Drupal/Core/DrupalKernel.php
+@@ -20,6 +20,7 @@
+ use Drupal\Core\Http\TrustedHostsRequestFactory;
+ use Drupal\Core\Installer\InstallerRedirectTrait;
+ use Drupal\Core\Language\Language;
++use Drupal\Core\Security\RequestSanitizer;
+ use Drupal\Core\Site\Settings;
+ use Drupal\Core\Test\TestDatabase;
+ use Symfony\Cmf\Component\Routing\RouteObjectInterface;
+@@ -542,6 +543,12 @@ public function loadLegacyIncludes() {
+    * {@inheritdoc}
+    */
+   public function preHandle(Request $request) {
++    // Sanitize the request.
++    $request = RequestSanitizer::sanitize(
++      $request,
++      (array) Settings::get(RequestSanitizer::SANITIZE_WHITELIST, []),
++      (bool) Settings::get(RequestSanitizer::SANITIZE_LOG, FALSE)
++    );
+ 
+     $this->loadLegacyIncludes();
+ 
+diff --git a/core/lib/Drupal/Core/Security/RequestSanitizer.php b/core/lib/Drupal/Core/Security/RequestSanitizer.php
+new file mode 100644
+index 0000000000..8ba17b95cf
+--- /dev/null
++++ b/core/lib/Drupal/Core/Security/RequestSanitizer.php
+@@ -0,0 +1,99 @@
++<?php
++
++namespace Drupal\Core\Security;
++
++use Symfony\Component\HttpFoundation\Request;
++
++/**
++ * Sanitizes user input.
++ */
++class RequestSanitizer {
++
++  /**
++   * Request attribute to mark the request as sanitized.
++   */
++  const SANITIZED = '_drupal_request_sanitized';
++
++  /**
++   * The name of the setting that configures the whitelist.
++   */
++  const SANITIZE_WHITELIST = 'sanitize_input_whitelist';
++
++  /**
++   * The name of the setting that determines if sanitized keys are logged.
++   */
++  const SANITIZE_LOG = 'sanitize_input_logging';
++
++  /**
++   * Strips dangerous keys from user input.
++   *
++   * @param \Symfony\Component\HttpFoundation\Request $request
++   *   The incoming request to sanitize.
++   * @param string[] $whitelist
++   *   An array of keys to whitelist as safe. See default.settings.php.
++   * @param bool $log_sanitized_keys
++   *   (optional) Set to TRUE to log an keys that are sanitized.
++   *
++   * @return \Symfony\Component\HttpFoundation\Request
++   *   The sanitized request.
++   */
++  public static function sanitize(Request $request, $whitelist, $log_sanitized_keys = FALSE) {
++    if (!$request->attributes->get(self::SANITIZED, FALSE)) {
++      // Process query string parameters.
++      $get_sanitized_keys = [];
++      $request->query->replace(static::stripDangerousValues($request->query->all(), $whitelist, $get_sanitized_keys));
++      if ($log_sanitized_keys && !empty($get_sanitized_keys)) {
++        trigger_error(sprintf('Potentially unsafe keys removed from query string parameters (GET): %s', implode(', ', $get_sanitized_keys)));
++      }
++
++      // Request body parameters.
++      $post_sanitized_keys = [];
++      $request->request->replace(static::stripDangerousValues($request->request->all(), $whitelist, $post_sanitized_keys));
++      if ($log_sanitized_keys && !empty($post_sanitized_keys)) {
++        trigger_error(sprintf('Potentially unsafe keys removed from request body parameters (POST): %s', implode(', ', $post_sanitized_keys)));
++      }
++
++      // Cookie parameters.
++      $cookie_sanitized_keys = [];
++      $request->cookies->replace(static::stripDangerousValues($request->cookies->all(), $whitelist, $cookie_sanitized_keys));
++      if ($log_sanitized_keys && !empty($cookie_sanitized_keys)) {
++        trigger_error(sprintf('Potentially unsafe keys removed from cookie parameters: %s', implode(', ', $cookie_sanitized_keys)));
++      }
++
++      if (!empty($get_sanitized_keys) || !empty($post_sanitized_keys) || !empty($cookie_sanitized_keys)) {
++        $request->overrideGlobals();
++      }
++      $request->attributes->set(self::SANITIZED, TRUE);
++    }
++    return $request;
++  }
++
++  /**
++   * Strips dangerous keys from $input.
++   *
++   * @param mixed $input
++   *   The input to sanitize.
++   * @param string[] $whitelist
++   *   An array of keys to whitelist as safe.
++   * @param string[] $sanitized_keys
++   *   An array of keys that have been removed.
++   *
++   * @return mixed
++   *   The sanitized input.
++   */
++  protected static function stripDangerousValues($input, array $whitelist, array &$sanitized_keys) {
++    if (is_array($input)) {
++      foreach ($input as $key => $value) {
++        if ($key !== '' && $key[0] === '#' && !in_array($key, $whitelist, TRUE)) {
++          unset($input[$key]);
++          $sanitized_keys[] = $key;
++        }
++        else {
++          $input[$key] = static::stripDangerousValues($input[$key], $whitelist, $sanitized_keys);
++        }
++      }
++    }
++    return $input;
++  }
++
++}
+-- 
+2.14.3 (Apple Git-98)
+

@@ -150,13 +150,12 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
       fi
-      mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-DROP USER '${_ADBU}'@'${_AEGIR_HOST}';
-DROP USER '${_ADBU}'@'${_RESOLVEIP}';
-DROP USER '${_ADBU}'@'localhost';
-DROP USER '${_ADBU}'@'127.0.0.1';
-DROP USER '${_ADBU}'@'%';
-EOFMYSQL
+      _C_SQL="mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot --database=mysql -e"
+      ${_C_SQL} "DROP USER '${_ADBU}'@'${_AEGIR_HOST}';" &> /dev/null
+      ${_C_SQL} "DROP USER '${_ADBU}'@'${_RESOLVEIP}';" &> /dev/null
+      ${_C_SQL} "DROP USER '${_ADBU}'@'localhost';" &> /dev/null
+      ${_C_SQL} "DROP USER '${_ADBU}'@'127.0.0.1';" &> /dev/null
+      ${_C_SQL} "DROP USER '${_ADBU}'@'%';" &> /dev/null
       mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 GRANT ALL ON ${_ESC} TO '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
 GRANT ALL ON ${_ESC} TO '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
@@ -238,13 +237,12 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
-    mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
-DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
-DROP USER '${_USE_DB_USER}'@'localhost';
-DROP USER '${_USE_DB_USER}'@'127.0.0.1';
-DROP USER '${_USE_DB_USER}'@'%';
-EOFMYSQL
+    _C_SQL="mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot --database=mysql -e"
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
@@ -330,13 +328,12 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
-    mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
-DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
-DROP USER '${_USE_DB_USER}'@'localhost';
-DROP USER '${_USE_DB_USER}'@'127.0.0.1';
-DROP USER '${_USE_DB_USER}'@'%';
-EOFMYSQL
+    _C_SQL="mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot --database=mysql -e"
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
@@ -392,13 +389,18 @@ master_download_for_local_build() {
     ### Aegir Drupal Contrib
     get_dev_stc "admin_menu-7.x-3.0-rc5.tar.gz"
     get_dev_stc "betterlogin-7.x-1.4.tar.gz"
-    get_dev_stc "ctools-7.x-1.12.tar.gz"
-    get_dev_stc "entity-7.x-1.8.tar.gz"
+    get_dev_stc "ctools-7.x-1.14.tar.gz"
+    get_dev_stc "entity-7.x-1.9.tar.gz"
+    get_dev_stc "libraries-7.x-2.3.tar.gz"
+    get_dev_stc "module_filter-7.x-2.1.tar.gz"
     get_dev_stc "openidadmin-7.x-1.0.tar.gz"
     get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
     get_dev_stc "r4032login-7.x-1.8.tar.gz"
-    get_dev_stc "views_bulk_operations-7.x-3.4.tar.gz"
-    get_dev_stc "views-7.x-3.15.tar.gz"
+    get_dev_stc "tfa_basic-7.x-1.0.tar.gz"
+    get_dev_stc "tfa-7.x-2.0.tar.gz"
+    get_dev_stc "timeago-7.x-2.3.tar.gz"
+    get_dev_stc "views_bulk_operations-7.x-3.5.tar.gz"
+    get_dev_stc "views-7.x-3.20.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
     get_dev_stc "features-7.x-2.10.tar.gz"
@@ -1047,7 +1049,7 @@ update_php_cli_local_ini() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.320stableQ10.pid" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.322stableQ34.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1108,7 +1110,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
-      echo > ${_U_HD}/.ctrl.320stableQ10.pid
+      echo > ${_U_HD}/.ctrl.322stableQ34.pid
     fi
   fi
 }

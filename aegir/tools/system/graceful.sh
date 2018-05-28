@@ -75,22 +75,23 @@ action() {
   ionice -c2 -n2 -p $$
   renice ${_B_NICE} -p $$ &> /dev/null
   service nginx reload
-  kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
-  rm -rf /tmp/{drush*,pear,jetty*}
-  rm -f /var/log/jetty{7,8,9}/*
-  if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
-    service jetty9 start
-  fi
-  if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
-    service jetty8 start
-  fi
-  if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
-    service jetty7 start
-  fi
-  if [ ! -e "/root/.giant_traffic.cnf" ]; then
-    echo "INFO: Redis server will be restarted in 60 seconds"
+  if [ ! -e "/root/.giant_traffic.cnf" ] \
+    && [ ! -e "/root/.high_traffic.cnf" ]; then
+    echo "INFO: Redis and Jetty servers will be restarted in 60 seconds"
     touch /var/run/boa_wait.pid
     sleep 60
+    kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
+    rm -rf /tmp/{drush*,pear,jetty*}
+    rm -f /var/log/jetty{7,8,9}/*
+    if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
+      service jetty9 start
+    fi
+    if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
+      service jetty8 start
+    fi
+    if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
+      service jetty7 start
+    fi
     service redis-server stop
     killall -9 redis-server
     rm -f /var/run/redis.pid
@@ -98,7 +99,7 @@ action() {
     rm -f /var/log/redis/redis-server.log
     service redis-server start
     rm -f /var/run/boa_wait.pid
-    echo "INFO: Redis server restarted OK"
+    echo "INFO: Redis and Jetty servers restarted OK"
   fi
   _IF_BCP=$(ps aux | grep '[d]uplicity' | awk '{print $2}')
   if [ -z "${_IF_BCP}" ] \
@@ -122,7 +123,8 @@ _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \

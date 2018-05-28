@@ -27,7 +27,7 @@ crontab_update() {
       echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
-      echo "08 8    * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "44 22    * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     echo "*/8 *    * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     sed -i "/^$/d"                /etc/crontab &> /dev/null
@@ -92,7 +92,7 @@ crontab_clean() {
       echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
-      echo "08 8    * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "44 22    * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     echo "*/8 *    * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     sed -i "/^$/d"                /etc/crontab &> /dev/null
@@ -107,16 +107,18 @@ if [ -e "/data/disk/arch" ]; then
   [ -z "${_AUTO_VER}" ] && _AUTO_VER="stable"
   if [[ "${_VM_TEST}" =~ "beng" ]]; then
     _VMFAMILY="VS"
-    _VM_VERSION_T_A=$(uname -a | grep "3.8.5.2-beng" 2>&1)
-    _VM_VERSION_T_B=$(uname -a | grep "3.8.4-beng" 2>&1)
-    _VM_VERSION_T_C=$(uname -a | grep "3.7.5-beng" 2>&1)
-    _VM_VERSION_T_D=$(uname -a | grep "3.7.4-beng" 2>&1)
-    _VM_VERSION_T_E=$(uname -a | grep "3.6.15-beng" 2>&1)
-    if [[ "${_VM_VERSION_T_A}" =~ "3.8.5.2-beng" ]] \
-      || [[ "${_VM_VERSION_T_B}" =~ "3.8.4-beng" ]] \
-      || [[ "${_VM_VERSION_T_C}" =~ "3.7.5-beng" ]] \
-      || [[ "${_VM_VERSION_T_D}" =~ "3.7.4-beng" ]] \
-      || [[ "${_VM_VERSION_T_E}" =~ "3.6.15-beng" ]]; then
+    _VM_VERSION_T_A=$(uname -a | grep "3.8.6-beng" 2>&1)
+    _VM_VERSION_T_B=$(uname -a | grep "3.8.5.2-beng" 2>&1)
+    _VM_VERSION_T_C=$(uname -a | grep "3.8.4-beng" 2>&1)
+    _VM_VERSION_T_D=$(uname -a | grep "3.7.5-beng" 2>&1)
+    _VM_VERSION_T_E=$(uname -a | grep "3.7.4-beng" 2>&1)
+    _VM_VERSION_T_F=$(uname -a | grep "3.6.15-beng" 2>&1)
+    if [[ "${_VM_VERSION_T_A}" =~ "3.8.6-beng" ]] \
+      || [[ "${_VM_VERSION_T_B}" =~ "3.8.5.2-beng" ]] \
+      || [[ "${_VM_VERSION_T_C}" =~ "3.8.4-beng" ]] \
+      || [[ "${_VM_VERSION_T_D}" =~ "3.7.5-beng" ]] \
+      || [[ "${_VM_VERSION_T_E}" =~ "3.7.4-beng" ]] \
+      || [[ "${_VM_VERSION_T_F}" =~ "3.6.15-beng" ]]; then
       _VM_VERSION="MODERN"
     else
       _VM_VERSION="LEGACY"
