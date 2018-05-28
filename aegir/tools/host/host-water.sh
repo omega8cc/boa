@@ -227,12 +227,12 @@ local_ip_rg() {
 guard_stats() {
   for i in `dir -d /vservers/*`; do
     if [ -e "/root/.local.IP.list" ]; then
-      cp -af /root/.local.IP.list $i/root/.local.IP.list
+      cp -af /root/.local.IP.list ${i}/root/.local.IP.list
     fi
-    if [ -e "$i/${_HA}" ] && [ -e "/usr/var/run${i}" ]; then
-      for _IP in `cat $i/${_HA} | cut -d '#' -f1 | sort | uniq`; do
+    if [ -e "${i}/${_HA}" ] && [ -e "/usr/var/run${i}" ]; then
+      for _IP in `cat ${i}/${_HA} | cut -d '#' -f1 | sort | uniq`; do
         _NR_TEST="0"
-        _NR_TEST=$(tr -s ' ' '\n' < $i/${_HA} | grep -c ${_IP} 2>&1)
+        _NR_TEST=$(tr -s ' ' '\n' < ${i}/${_HA} | grep -c ${_IP} 2>&1)
         if [ -e "/root/.local.IP.list" ]; then
           _IP_CHECK=$(cat /root/.local.IP.list \
             | cut -d '#' -f1 \
@@ -242,7 +242,7 @@ guard_stats() {
             | grep ${_IP} 2>&1)
           if [ ! -z "${_IP_CHECK}" ]; then
             _NR_TEST="0"
-            echo "${_IP} is a local IP address, ignoring $i/${_HA}"
+            echo "${_IP} is a local IP address, ignoring ${i}/${_HA}"
           fi
         fi
         if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
@@ -261,14 +261,14 @@ guard_stats() {
           fi
         fi
       done
-      if [ ! -e "$i/${_HX}" ]; then
-        mv -f $i/${_HA} $i/${_HX}
+      if [ ! -e "${i}/${_HX}" ]; then
+        mv -f ${i}/${_HA} ${i}/${_HX}
       fi
     fi
-    if [ -e "$i/${_WA}" ] && [ -e "/usr/var/run${i}" ]; then
-      for _IP in `cat $i/${_WA} | cut -d '#' -f1 | sort | uniq`; do
+    if [ -e "${i}/${_WA}" ] && [ -e "/usr/var/run${i}" ]; then
+      for _IP in `cat ${i}/${_WA} | cut -d '#' -f1 | sort | uniq`; do
         _NR_TEST="0"
-        _NR_TEST=$(tr -s ' ' '\n' < $i/${_WA} | grep -c ${_IP} 2>&1)
+        _NR_TEST=$(tr -s ' ' '\n' < ${i}/${_WA} | grep -c ${_IP} 2>&1)
         if [ -e "/root/.local.IP.list" ]; then
           _IP_CHECK=$(cat /root/.local.IP.list \
             | cut -d '#' -f1 \
@@ -278,7 +278,7 @@ guard_stats() {
             | grep ${_IP} 2>&1)
           if [ ! -z "${_IP_CHECK}" ]; then
             _NR_TEST="0"
-            echo "${_IP} is a local IP address, ignoring $i/${_WA}"
+            echo "${_IP} is a local IP address, ignoring ${i}/${_WA}"
           fi
         fi
         if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
@@ -297,14 +297,14 @@ guard_stats() {
           fi
         fi
       done
-      if [ ! -e "$i/${_WX}" ]; then
-        mv -f $i/${_WA} $i/${_WX}
+      if [ ! -e "${i}/${_WX}" ]; then
+        mv -f ${i}/${_WA} ${i}/${_WX}
       fi
     fi
-    if [ -e "$i/$_FA" ] && [ -e "/usr/var/run${i}" ]; then
-      for _IP in `cat $i/$_FA | cut -d '#' -f1 | sort | uniq`; do
+    if [ -e "${i}/$_FA" ] && [ -e "/usr/var/run${i}" ]; then
+      for _IP in `cat ${i}/$_FA | cut -d '#' -f1 | sort | uniq`; do
         _NR_TEST="0"
-        _NR_TEST=$(tr -s ' ' '\n' < $i/$_FA | grep -c ${_IP} 2>&1)
+        _NR_TEST=$(tr -s ' ' '\n' < ${i}/$_FA | grep -c ${_IP} 2>&1)
         if [ -e "/root/.local.IP.list" ]; then
           _IP_CHECK=$(cat /root/.local.IP.list \
             | cut -d '#' -f1 \
@@ -314,7 +314,7 @@ guard_stats() {
             | grep ${_IP} 2>&1)
           if [ ! -z "${_IP_CHECK}" ]; then
             _NR_TEST="0"
-            echo "${_IP} is a local IP address, ignoring $i/$_FA"
+            echo "${_IP} is a local IP address, ignoring ${i}/$_FA"
           fi
         fi
         if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
@@ -333,8 +333,8 @@ guard_stats() {
           fi
         fi
       done
-      if [ ! -e "$i/${_FX}" ]; then
-        mv -f $i/${_FA} $i/${_FX}
+      if [ ! -e "${i}/${_FX}" ]; then
+        mv -f ${i}/${_FA} ${i}/${_FX}
       fi
     fi
   done

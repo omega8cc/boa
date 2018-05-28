@@ -48,6 +48,7 @@ read_account_data() {
   _ENGINE_NR=
   _CLIENT_EMAIL=
   _CLIENT_OPTION=
+  _DSK_CLU_LIMIT=
   if [ -e "/data/disk/${_THIS_U}/log/email.txt" ]; then
     _CLIENT_EMAIL=$(cat /data/disk/${_THIS_U}/log/email.txt 2>&1)
     _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
@@ -58,6 +59,10 @@ read_account_data() {
   if [ -e "/data/disk/${_THIS_U}/log/cores.txt" ]; then
     _CLIENT_CORES=$(cat /data/disk/${_THIS_U}/log/cores.txt 2>&1)
     _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
+  fi
+  if [ -e "/data/disk/${_THIS_U}/log/diskspace.txt" ]; then
+    _DSK_CLU_LIMIT=$(cat /data/disk/${_THIS_U}/log/diskspace.txt 2>&1)
+    _DSK_CLU_LIMIT=$(echo -n ${_DSK_CLU_LIMIT} | tr -d "\n" 2>&1)
   fi
   if [ "${_CLIENT_CORES}" -gt "1" ]; then
     _ENGINE_NR="Engines"
@@ -664,14 +669,159 @@ EOF
   echo "INFO: Notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
 }
 
+
+send_notice_gprd() {
+  _MY_EMAIL="support@omega8.cc"
+  _BCC_EMAIL="omega8cc@gmail.com"
+  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _MAILX_TEST=$(mail -V 2>&1)
+  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
+  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
+    -s "GDPR compliance for your Aegir account" ${_CLIENT_EMAIL}
+Hello,
+
+Yes, yet another GDPR email, but it's important that you read and understand
+how this new law affects your hosting with us.
+
+The General Data Protection Regulation (GDPR) is a new European privacy law
+that goes into effect on May 25, 2018.
+
+The GDPR will replace the EU Data Protection Directive, also known as
+Directive 95/46/EC, and will apply a single data protection law
+throughout the EU.
+
+Data protection laws govern the way that businesses collect, use, and share
+personal data about individuals. Among other things, they require businesses
+to process an individual’s personal data fairly and lawfully, allow individuals
+to exercise legal rights in respect of their personal data (for example,
+to access, correct or delete their personal data), and ensure appropriate
+security protections are put in place to protect the personal data they process.
+
+We have taken steps to ensure that we will be compliant with the GDPR
+by May 25, 2018.
+
+Please read all details on our website at:
+
+https://omega8.cc/gdpr
+https://omega8.cc/gdpr-faq
+https://omega8.cc/gdpr-dpa
+https://omega8.cc/gdpr-portability
+
+Please contact us if you have any questions: https://omega8.cc/contact
+
+Thank you for your attention.
+
+---
+Omega8.cc
+
+EOF
+  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
+  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
+    -s "GDPR compliance for your Aegir account" ${_CLIENT_EMAIL}
+Hello,
+
+Yes, yet another GDPR email, but it's important that you read and understand
+how this new law affects your hosting with us.
+
+The General Data Protection Regulation (GDPR) is a new European privacy law
+that goes into effect on May 25, 2018.
+
+The GDPR will replace the EU Data Protection Directive, also known as
+Directive 95/46/EC, and will apply a single data protection law
+throughout the EU.
+
+Data protection laws govern the way that businesses collect, use, and share
+personal data about individuals. Among other things, they require businesses
+to process an individual’s personal data fairly and lawfully, allow individuals
+to exercise legal rights in respect of their personal data (for example,
+to access, correct or delete their personal data), and ensure appropriate
+security protections are put in place to protect the personal data they process.
+
+We have taken steps to ensure that we will be compliant with the GDPR
+by May 25, 2018.
+
+Please read all details on our website at:
+
+https://omega8.cc/gdpr
+https://omega8.cc/gdpr-faq
+https://omega8.cc/gdpr-dpa
+https://omega8.cc/gdpr-portability
+
+Please contact us if you have any questions: https://omega8.cc/contact
+
+Thank you for your attention.
+
+---
+Omega8.cc
+
+EOF
+  else
+  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+    -s "GDPR compliance for your Aegir account" ${_CLIENT_EMAIL}
+Hello,
+
+Yes, yet another GDPR email, but it's important that you read and understand
+how this new law affects your hosting with us.
+
+The General Data Protection Regulation (GDPR) is a new European privacy law
+that goes into effect on May 25, 2018.
+
+The GDPR will replace the EU Data Protection Directive, also known as
+Directive 95/46/EC, and will apply a single data protection law
+throughout the EU.
+
+Data protection laws govern the way that businesses collect, use, and share
+personal data about individuals. Among other things, they require businesses
+to process an individual’s personal data fairly and lawfully, allow individuals
+to exercise legal rights in respect of their personal data (for example,
+to access, correct or delete their personal data), and ensure appropriate
+security protections are put in place to protect the personal data they process.
+
+We have taken steps to ensure that we will be compliant with the GDPR
+by May 25, 2018.
+
+Please read all details on our website at:
+
+https://omega8.cc/gdpr
+https://omega8.cc/gdpr-faq
+https://omega8.cc/gdpr-dpa
+https://omega8.cc/gdpr-portability
+
+Please contact us if you have any questions: https://omega8.cc/contact
+
+Thank you for your attention.
+
+---
+Omega8.cc
+
+EOF
+  fi
+  echo "INFO: GDPR notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
+}
+
 check_limits() {
   _SQL_MIN_LIMIT=0
   _SQL_MAX_LIMIT=0
   _SQL_DEV_LIMIT=0
   _DSK_MIN_LIMIT=0
   _DSK_MAX_LIMIT=0
+  _DSK_CLU_LIMIT=1
   read_account_data
-  if [ "${_CLIENT_OPTION}" = "POWER" ]; then
+  if [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
+    _SQL_MIN_LIMIT=51200
+    _DSK_MIN_LIMIT=102400
+    _DSK_MAX_LIMIT=107520
+    _SQL_DEV_EXTRA=2
+    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 1024 ))
+    _DSK_MIN_LIMIT=$(( _DSK_MIN_LIMIT *= _DSK_CLU_LIMIT ))
+    _DSK_MAX_LIMIT=$(( _DSK_MAX_LIMIT *= _DSK_CLU_LIMIT ))
+  elif [ "${_CLIENT_OPTION}" = "LITE" ]; then
+    _SQL_MIN_LIMIT=5120
+    _DSK_MIN_LIMIT=51200
+    _SQL_DEV_EXTRA=3
+    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 1024 ))
+    _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 2560 ))
+  elif [ "${_CLIENT_OPTION}" = "POWER" ]; then
     _SQL_MIN_LIMIT=5120
     _DSK_MIN_LIMIT=51200
     _SQL_DEV_EXTRA=3
@@ -742,6 +892,13 @@ check_limits() {
     echo Disk Usage for ${_THIS_U} above limits
   else
     echo Disk Usage for ${_THIS_U} below limits
+  fi
+  if [ ! -e "${User}/log/GDPRsent.log" ]; then
+    if [ ! -e "${User}/log/CANCELLED" ]; then
+      send_notice_gprd
+      touch ${User}/log/GDPRsent.log
+      echo GDPR info for ${_THIS_U} sent
+    fi
   fi
 }
 
@@ -916,7 +1073,8 @@ _NOW=${_NOW//[^0-9-]/}
 _DATE=$(date 2>&1)
 _CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \

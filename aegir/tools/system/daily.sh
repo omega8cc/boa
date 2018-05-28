@@ -35,7 +35,7 @@ if [ -e "/root/.proxy.cnf" ]; then
 fi
 
 _WEBG=www-data
-_X_SE="3.2.0-stable"
+_X_SE="3.2.2-stable"
 _OSV=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
@@ -734,7 +734,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.2.0. As a bonus, you will be able to speed up your sites
+by BOA-3.2.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -788,7 +788,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.2.0. As a bonus, you will be able to speed up your sites
+by BOA-3.2.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -842,7 +842,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.2.0. As a bonus, you will be able to speed up your sites
+by BOA-3.2.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -933,7 +933,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.2.0. As a bonus, you will be able to speed up your sites
+by BOA-3.2.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -999,7 +999,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.2.0. As a bonus, you will be able to speed up your sites
+by BOA-3.2.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -1065,7 +1065,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-3.2.0. As a bonus, you will be able to speed up your sites
+by BOA-3.2.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -1891,7 +1891,8 @@ fix_modules() {
   if [ -e "${_PLR_CTRL_F}" ]; then
     _EC_DE_T=$(grep "^entitycache_dont_enable = TRUE" \
       ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_EC_DE_T}" =~ "entitycache_dont_enable = TRUE" ]]; then
+    if [[ "${_EC_DE_T}" =~ "entitycache_dont_enable = TRUE" ]] \
+      || [ -e "${Plr}/profiles/commons" ]; then
       _ENTITYCACHE_DONT_ENABLE=YES
     else
       _ENTITYCACHE_DONT_ENABLE=NO
@@ -2485,7 +2486,9 @@ cleanup_ghost_vhosts() {
         | cut -d: -f2 \
         | awk '{ print $2}' \
         | sed "s/[\;]//g" 2>&1)
-      if [[ "$Plx" =~ "aegir/distro" ]] || [[ "${Dom}" =~ "--CDN"($) ]]; then
+      if [[ "$Plx" =~ "aegir/distro" ]] \
+        || [[ "${Dom}" =~ (^)"https." ]] \
+        || [[ "${Dom}" =~ "--CDN"($) ]]; then
         _SKIP_VHOST=YES
       else
         if [ ! -e "${User}/.drush/${Dom}.alias.drushrc.php" ]; then
@@ -2783,6 +2786,7 @@ check_old_empty_platforms() {
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ]; then
     if [[ "${_CHECK_HOST}" =~ "demo.aegir.cc" ]] \
+      || [ -e "${User}/static/control/platforms.info" ] \
       || [ -e "/root/.debug.cnf" ]; then
       _DO_NOTHING=YES
     else
@@ -2953,8 +2957,8 @@ purge_cruft_machine() {
 
   for i in ${_REVISIONS}; do
     if [ -d "${User}/distro/$i" ]; then
-      if [ ! -d "${User}/distro/$i/keys" ]; then
-        mkdir -p ${User}/distro/$i/keys
+      if [ ! -d "${User}/distro/${i}/keys" ]; then
+        mkdir -p ${User}/distro/${i}/keys
       fi
       RevisionTest=$(ls ${User}/distro/$i | wc -l | tr -d "\n" 2>&1)
       if [ "${RevisionTest}" -lt "2" ] && [ ! -z "${RevisionTest}" ]; then
@@ -2973,11 +2977,11 @@ purge_cruft_machine() {
         chattr -i /home/${_HM_U}.ftp/platforms/*
       fi
       mkdir -p /home/${_HM_U}.ftp/platforms/$i
-      mkdir -p ${User}/distro/$i/keys
-      chown ${_HM_U}.ftp:${_WEBG} ${User}/distro/$i/keys &> /dev/null
-      chmod 02775 ${User}/distro/$i/keys &> /dev/null
-      ln -sf ${User}/distro/$i/keys /home/${_HM_U}.ftp/platforms/$i/keys
-      for Codebase in `find ${User}/distro/$i/* \
+      mkdir -p ${User}/distro/${i}/keys
+      chown ${_HM_U}.ftp:${_WEBG} ${User}/distro/${i}/keys &> /dev/null
+      chmod 02775 ${User}/distro/${i}/keys &> /dev/null
+      ln -sf ${User}/distro/${i}/keys /home/${_HM_U}.ftp/platforms/${i}/keys
+      for Codebase in `find ${User}/distro/${i}/* \
         -maxdepth 1 \
         -mindepth 1 \
         -type d \
@@ -2985,7 +2989,7 @@ purge_cruft_machine() {
         CodebaseName=$(echo ${Codebase} \
           | cut -d'/' -f7 \
           | awk '{ print $1}' 2> /dev/null)
-        ln -sf ${Codebase} /home/${_HM_U}.ftp/platforms/$i/${CodebaseName}
+        ln -sf ${Codebase} /home/${_HM_U}.ftp/platforms/${i}/${CodebaseName}
         echo "Fixed symlink to ${Codebase} for ${_HM_U}.ftp"
       done
     fi
@@ -3038,8 +3042,8 @@ shared_codebases_cleanup() {
     016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
     034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
   for i in ${_REVISIONS}; do
-    if [ -d "/data/all/$i/o_contrib" ]; then
-      for Codebase in `find /data/all/$i/* -maxdepth 1 -mindepth 1 -type d \
+    if [ -d "/data/all/${i}/o_contrib" ]; then
+      for Codebase in `find /data/all/${i}/* -maxdepth 1 -mindepth 1 -type d \
         | grep "/profiles$" 2>&1`; do
         CodebaseDir=$(echo ${Codebase} \
           | sed 's/\/profiles//g' \
@@ -3049,8 +3053,8 @@ shared_codebases_cleanup() {
         if [[ "${CodebaseTest}" =~ "No such file or directory" ]] \
           || [ -z "${CodebaseTest}" ]; then
           mkdir -p ${_CLD}/$i
-          echo "Moving no longer used ${CodebaseDir} to ${_CLD}/$i/"
-          mv -f ${CodebaseDir} ${_CLD}/$i/
+          echo "Moving no longer used ${CodebaseDir} to ${_CLD}/${i}/"
+          mv -f ${CodebaseDir} ${_CLD}/${i}/
           sleep 1
         fi
       done
@@ -3185,7 +3189,8 @@ _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -3262,6 +3267,50 @@ if [ -e "/root/.barracuda.cnf" ]; then
 fi
 #
 find_fast_mirror
+#
+###--------------------###
+if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ]; then
+  echo "INFO: Checking BARRACUDA version"
+  rm -f /opt/tmp/barracuda-version.txt*
+  curl -L -k -s \
+    --max-redirs 10 \
+    --retry 3 \
+    --retry-delay 15 -A iCab \
+    "${urlHmr}/conf/barracuda-version.txt" \
+    -o /opt/tmp/barracuda-version.txt
+else
+  rm -f /opt/tmp/barracuda-version.txt*
+fi
+if [ -e "/opt/tmp/barracuda-version.txt" ]; then
+  _X_VERSION=$(cat /opt/tmp/barracuda-version.txt 2>&1)
+  _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+  if [ ! -z "${_X_VERSION}" ]; then
+    _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
+    if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
+      _MY_EMAIL="notify@omega8.cc"
+    fi
+    if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
+      _VERSIONS_TEST_RESULT=OK
+      echo "INFO: Version test result: OK"
+    else
+      sT="Stable Edition available"
+      cat <<EOF | mail -e -s "New ${_X_VERSION} ${sT}" ${_MY_EMAIL}
+
+ There is new ${_X_VERSION} Stable Edition available.
+
+ Please review the changelog and upgrade as soon as possible
+ to receive all security updates and new features.
+
+ Changelog: http://bit.ly/boa-changes
+
+ --
+ This email has been sent by your Barracuda server upgrade monitor.
+
+EOF
+    echo "INFO: Update notice sent: OK"
+    fi
+  fi
+fi
 #
 if [ -e "/var/run/daily-fix.pid" ]; then
   touch /var/xdrago/log/wait-for-daily
@@ -3402,46 +3451,6 @@ else
   fi
 fi
 
-###--------------------###
-if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ]; then
-  echo "INFO: Checking BARRACUDA version"
-  rm -f /opt/tmp/barracuda-version.txt*
-  curl -L -k -s \
-    --max-redirs 10 \
-    --retry 3 \
-    --retry-delay 15 -A iCab \
-    "${urlHmr}/conf/barracuda-version.txt" \
-    -o /opt/tmp/barracuda-version.txt
-else
-  rm -f /opt/tmp/barracuda-version.txt*
-fi
-if [ -e "/opt/tmp/barracuda-version.txt" ]; then
-  _X_VERSION=$(cat /opt/tmp/barracuda-version.txt 2>&1)
-  _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-  if [ ! -z "${_X_VERSION}" ]; then
-    if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
-      _VERSIONS_TEST_RESULT=OK
-      echo "INFO: Version test result: OK"
-    else
-      sT="Stable Edition available"
-      cat <<EOF | mail -e -s "New ${_X_VERSION} ${sT}" notify\@omega8.cc
-
- There is new ${_X_VERSION} Stable Edition available.
-
- Please review the changelog and upgrade as soon as possible
- to receive all security updates and new features.
-
- Changelog: http://bit.ly/boa-changes
-
- --
- This email has been sent by your Barracuda server upgrade monitor.
-
-EOF
-    echo "INFO: Update notice sent: OK"
-    fi
-  fi
-fi
-#
 if [ "${_PERMISSIONS_FIX}" = "YES" ] \
   && [ ! -z "${_X_VERSION}" ] \
   && [ -e "/opt/tmp/barracuda-version.txt" ] \

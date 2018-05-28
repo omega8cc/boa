@@ -26,7 +26,8 @@ if_running_as_root_barracuda() {
       _VMFAMILY="AWS"
     fi
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -99,7 +100,8 @@ set_xterm() {
 # Kill nash-hotplug.
 kill_nash() {
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -264,7 +266,8 @@ tune_memory_limits() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -1010,7 +1013,8 @@ barracuda_cnf() {
     _CHECK_HOST=$(uname -n 2>&1)
     _VMFAMILY=XEN
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -2596,7 +2600,13 @@ strict_bin_permissions() {
                   advpng \
                   avconv \
                   bash \
+                  clambc \
+                  clamconf \
+                  clamd \
+                  clamdscan \
+                  clamdtop \
                   clamscan \
+                  clamsubmit \
                   compass \
                   convert \
                   curl \
@@ -2617,6 +2627,19 @@ strict_bin_permissions() {
                   jpegtran \
                   logger \
                   magick \
+                  mongo \
+                  mongod \
+                  mongodump \
+                  mongoexport \
+                  mongofiles \
+                  mongoimport \
+                  mongooplog \
+                  mongoperf \
+                  mongorestore \
+                  mongos \
+                  mongosniff \
+                  mongostat \
+                  mongotop \
                   newrelic-daemon \
                   node \
                   npm \
@@ -3070,6 +3093,8 @@ if_wheezy_to_jessie() {
     mrun "apt-get install git ${forCer}"            2> /dev/null
     mrun "apt-get install git-core ${forCer}"       2> /dev/null
     mrun "apt-get install git-man ${forCer}"        2> /dev/null
+    sed -i "s/^PermitRootLogin.*/#PermitRootLogin yes/g" \
+      /etc/ssh/sshd_config &> /dev/null
     mrun "apt-get install openssh-client ${forCer}" 2> /dev/null
     mrun "apt-get install openssh-server ${forCer}" 2> /dev/null
     mrun "apt-get install ssh ${forCer}"            2> /dev/null
@@ -3162,7 +3187,8 @@ if_wheezy_to_jessie() {
       ${_INSTALL} sysvinit-utils &> /dev/null
     fi
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -3189,6 +3215,7 @@ if_wheezy_to_jessie() {
                      mtab.sh \
                      networking \
                      reboot \
+                     sendsigs \
                      setserial \
                      svscan \
                      sysstat \
@@ -3202,6 +3229,10 @@ if_wheezy_to_jessie() {
           update-rc.d -f ${link} remove &> /dev/null
         fi
       done
+      for s in cron dbus ssh; do
+        sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/$s > /etc/insserv/overrides/$s
+      done
+      /sbin/insserv -v -d &> /dev/null
     else
       _PTMX=CHECK
     fi
@@ -3359,6 +3390,8 @@ if_squeeze_to_wheezy() {
     mrun "apt-get install git ${forCer}"            2> /dev/null
     mrun "apt-get install git-core ${forCer}"       2> /dev/null
     mrun "apt-get install git-man ${forCer}"        2> /dev/null
+    sed -i "s/^PermitRootLogin.*/#PermitRootLogin yes/g" \
+      /etc/ssh/sshd_config &> /dev/null
     mrun "apt-get install openssh-client ${forCer}" 2> /dev/null
     mrun "apt-get install openssh-server ${forCer}" 2> /dev/null
     mrun "apt-get install ssh ${forCer}"            2> /dev/null
@@ -3436,7 +3469,8 @@ if_squeeze_to_wheezy() {
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -3463,6 +3497,7 @@ if_squeeze_to_wheezy() {
                      mtab.sh \
                      networking \
                      reboot \
+                     sendsigs \
                      setserial \
                      svscan \
                      sysstat \
@@ -3476,6 +3511,10 @@ if_squeeze_to_wheezy() {
           update-rc.d -f ${link} remove &> /dev/null
         fi
       done
+      for s in cron dbus ssh; do
+        sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/$s > /etc/insserv/overrides/$s
+      done
+      /sbin/insserv -v -d &> /dev/null
     else
       _PTMX=CHECK
     fi
@@ -3841,6 +3880,8 @@ sys_packages_install() {
               build-essential \
               catdoc \
               clamav \
+              clamav-daemon \
+              clamdscan \
               cron \
               curl \
               cvs \
@@ -3860,6 +3901,7 @@ sys_packages_install() {
               htop \
               ifstat \
               iptables \
+              ipset \
               ldap-utils \
               lemon \
               lftp \
@@ -4676,10 +4718,10 @@ sshd_armour() {
       elif [[ "${_SSH_MACS_TEST}" =~ "MACs" ]]; then
         sed -i "s/.*MACs.*//g" /usr/etc/sshd_config &> /dev/null
         wait
-        echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-ripemd160-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-ripemd160,umac-128@openssh.com" >> /usr/etc/sshd_config
+        echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /usr/etc/sshd_config
       else
         echo >> /usr/etc/sshd_config
-        echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-ripemd160-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-ripemd160,umac-128@openssh.com" >> /usr/etc/sshd_config
+        echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /usr/etc/sshd_config
       fi
       _SSH_HKEY_TEST=$(grep "HostKey" /usr/etc/sshd_config 2>&1)
       if [[ "${_SSH_HKEY_TEST}" =~ (^)"HostKey" ]] \
@@ -4746,7 +4788,7 @@ sshd_armour() {
         echo "  Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /usr/etc/ssh_config
         echo "  HostKeyAlgorithms ssh-ed25519-cert-v01@openssh.com,ssh-rsa-cert-v01@openssh.com,ssh-ed25519,ssh-rsa" >> /usr/etc/ssh_config
         echo "  KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /usr/etc/ssh_config
-        echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-ripemd160-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-ripemd160,umac-128@openssh.com" >> /usr/etc/ssh_config
+        echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /usr/etc/ssh_config
       else
         echo >> /usr/etc/ssh_config
         echo "Host *" >> /usr/etc/ssh_config
@@ -4755,7 +4797,7 @@ sshd_armour() {
         echo "  Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /usr/etc/ssh_config
         echo "  HostKeyAlgorithms ssh-ed25519-cert-v01@openssh.com,ssh-rsa-cert-v01@openssh.com,ssh-ed25519,ssh-rsa" >> /usr/etc/ssh_config
         echo "  KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /usr/etc/ssh_config
-        echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-ripemd160-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,hmac-ripemd160,umac-128@openssh.com" >> /usr/etc/ssh_config
+        echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /usr/etc/ssh_config
       fi
     fi
     sed -i "/^$/d" /usr/etc/sshd_config &> /dev/nul

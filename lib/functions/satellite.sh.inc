@@ -11,7 +11,8 @@ satellite_tune_fpm_workers() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -1176,7 +1177,7 @@ satellite_child_b_update_ini_php_cli() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.320stableQ10.pid" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.322stableQ34.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1236,7 +1237,7 @@ satellite_child_b_update_ini_php_cli() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
-      echo > ${_U_HD}/.ctrl.320stableQ10.pid
+      echo > ${_U_HD}/.ctrl.322stableQ34.pid
     fi
   fi
 }
@@ -1295,111 +1296,111 @@ satellite_o_contrib_update_global() {
     cookie_cache_bypass_adv module_supports imageinfo_cache"
 
   for i in ${_REVISIONS}; do
-    if [ -e "${_D}/$i/o_contrib" ] \
-      && [ ! -e "${_D}/$i/o_contrib/update-${_X_VERSION}.info" ]; then
+    if [ -e "${_D}/${i}/o_contrib" ] \
+      && [ ! -e "${_D}/${i}/o_contrib/update-${_X_VERSION}.info" ]; then
       _FORCE_UP_SIX=YES
-    elif [ -e "${_D}/$i/o_contrib" ] \
+    elif [ -e "${_D}/${i}/o_contrib" ] \
       && [ ! -e "${_D}/000/modules/redis_edge" ]; then
       _FORCE_UP_SIX=YES
-    elif [ -e "${_D}/$i/o_contrib" ] \
-      && [ ! -L "${_D}/$i/o_contrib/redis_edge" ]; then
+    elif [ -e "${_D}/${i}/o_contrib" ] \
+      && [ ! -L "${_D}/${i}/o_contrib/redis_edge" ]; then
       _FORCE_UP_SIX=YES
-    elif [ -e "${_D}/$i/o_contrib" ] \
-      && [ ! -L "${_D}/$i/o_contrib/redis" ]; then
+    elif [ -e "${_D}/${i}/o_contrib" ] \
+      && [ ! -L "${_D}/${i}/o_contrib/redis" ]; then
       _FORCE_UP_SIX=YES
-    elif [ -e "${_D}/$i/o_contrib" ] \
-      && [ ! -d "${_D}/$i/o_contrib/mydropwizard" ]; then
+    elif [ -e "${_D}/${i}/o_contrib" ] \
+      && [ ! -d "${_D}/${i}/o_contrib/mydropwizard" ]; then
       _FORCE_UP_SIX=YES
     else
       _FORCE_UP_SIX=NO
     fi
-    if [ "${_FORCE_UP_SIX}" = "YES" ] && [ -e "${_D}/$i/o_contrib" ]; then
+    if [ "${_FORCE_UP_SIX}" = "YES" ] && [ -e "${_D}/${i}/o_contrib" ]; then
       for m in ${_RMMODULES}; do
-        if [ -d "${_D}/$i/o_contrib/$m" ]; then
-          rm -rf ${_D}/$i/o_contrib/$m
+        if [ -d "${_D}/${i}/o_contrib/$m" ]; then
+          rm -rf ${_D}/${i}/o_contrib/$m
         fi
       done
-      cd ${_D}/$i/o_contrib
-      if [ ! -d "${_D}/$i/o_contrib/advagg" ]; then
-        get_dev_contrib "advagg-6.x-1.10.tar.gz"
+      cd ${_D}/${i}/o_contrib
+      if [ ! -d "${_D}/${i}/o_contrib/advagg" ]; then
+        get_dev_contrib "advagg-6.x-1.11.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/boost" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/boost" ]; then
         get_dev_contrib "boost-6.x-1.22.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/cdn" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/cdn" ]; then
         get_dev_contrib "cdn-6.x-2.7.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/force_password_change" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/force_password_change" ]; then
         get_dev_contrib "force_password_change-6.x-3.4.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/fpa" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/fpa" ]; then
         get_dev_contrib "fpa-6.x-2.5.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/httprl" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/httprl" ]; then
         get_dev_contrib "httprl-6.x-1.14.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/js" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/js" ]; then
         get_dev_contrib "js-6.x-1.3.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/mydropwizard" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/mydropwizard" ]; then
         get_dev_contrib "mydropwizard-6.x-1.6.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/panels_content_cache" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/panels_content_cache" ]; then
         get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/phpass" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/phpass" ]; then
         get_dev_contrib "phpass-6.x-2.1.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/print" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/print" ]; then
         get_dev_contrib "print-6.x-1.19.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/session_expire" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/session_expire" ]; then
         get_dev_contrib "session_expire-6.x-1.x-dev.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/taxonomy_edge" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/taxonomy_edge" ]; then
         get_dev_contrib "taxonomy_edge-6.x-1.7.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/views_cache_bully" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/views_cache_bully" ]; then
         get_dev_contrib "views_cache_bully-6.x-3.1.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/views_content_cache" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/views_content_cache" ]; then
         get_dev_contrib "views_content_cache-6.x-2.x-dev.tar.gz"
       fi
       if [ "${_PURGE_MODE}" = "ON" ]; then
-        if [ ! -d "${_D}/$i/o_contrib/expire" ]; then
+        if [ ! -d "${_D}/${i}/o_contrib/expire" ]; then
           get_dev_contrib "expire-6.x-1.x-dev.tar.gz"
         fi
-        if [ ! -d "${_D}/$i/o_contrib/purge" ]; then
+        if [ ! -d "${_D}/${i}/o_contrib/purge" ]; then
           get_dev_contrib "purge-6.x-1.7.tar.gz"
         fi
       fi
-      if [ -d "${_D}/$i/o_contrib/cache_backport" ]; then
-        rm -rf ${_D}/$i/o_contrib/cache_backport
+      if [ -d "${_D}/${i}/o_contrib/cache_backport" ]; then
+        rm -rf ${_D}/${i}/o_contrib/cache_backport
       fi
-      if [ -d "${_D}/$i/o_contrib/redis" ]; then
-        rm -rf ${_D}/$i/o_contrib/redis
+      if [ -d "${_D}/${i}/o_contrib/redis" ]; then
+        rm -rf ${_D}/${i}/o_contrib/redis
       fi
-      if [ -d "${_D}/$i/o_contrib/redis_edge" ]; then
-        rm -rf ${_D}/$i/o_contrib/redis_edge
+      if [ -d "${_D}/${i}/o_contrib/redis_edge" ]; then
+        rm -rf ${_D}/${i}/o_contrib/redis_edge
       fi
       if [ -e "${_D}/000/modules/cache_backport" ] \
-        && [ ! -L "${_D}/$i/o_contrib/cache_backport" ]; then
-        ln -sf ${_D}/000/modules/cache_backport ${_D}/$i/o_contrib/cache_backport
+        && [ ! -L "${_D}/${i}/o_contrib/cache_backport" ]; then
+        ln -sf ${_D}/000/modules/cache_backport ${_D}/${i}/o_contrib/cache_backport
       fi
       if [ -e "${_D}/000/modules/redis" ] \
-        && [ ! -L "${_D}/$i/o_contrib/redis" ]; then
-        ln -sf ${_D}/000/modules/redis ${_D}/$i/o_contrib/redis
+        && [ ! -L "${_D}/${i}/o_contrib/redis" ]; then
+        ln -sf ${_D}/000/modules/redis ${_D}/${i}/o_contrib/redis
       fi
       if [ -e "${_D}/000/modules/redis_edge" ] \
-        && [ ! -L "${_D}/$i/o_contrib/redis_edge" ]; then
-        ln -sf ${_D}/000/modules/redis_edge ${_D}/$i/o_contrib/redis_edge
+        && [ ! -L "${_D}/${i}/o_contrib/redis_edge" ]; then
+        ln -sf ${_D}/000/modules/redis_edge ${_D}/${i}/o_contrib/redis_edge
       fi
-      touch ${_D}/$i/o_contrib/update-${_X_VERSION}.info
-      find ${_D}/$i/o_contrib -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_D}/$i/o_contrib -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${_D}/${i}/o_contrib/update-${_X_VERSION}.info
+      find ${_D}/${i}/o_contrib -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${_D}/${i}/o_contrib -type f -exec chmod 0644 {} \; &> /dev/null
     fi
     if [ -d "${_D}/$i" ]; then
-      for p in `find ${_D}/$i/ -maxdepth 1 -mindepth 1 -type d | sort`; do
+      for p in `find ${_D}/${i}/ -maxdepth 1 -mindepth 1 -type d | sort`; do
         if [ -d "$p/modules/cookie_cache_bypass" ]; then
           rm -rf $p/modules/cookie_cache_bypass
         fi
@@ -1420,123 +1421,116 @@ satellite_o_contrib_seven_update_global() {
   _RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy"
 
   for i in ${_REVISIONS}; do
-    if [ -e "${_D}/$i/o_contrib_seven" ] \
-      && [ ! -e "${_D}/$i/o_contrib_seven/update-${_X_VERSION}.info" ]; then
+    if [ -e "${_D}/${i}/o_contrib_seven" ] \
+      && [ ! -e "${_D}/${i}/o_contrib_seven/update-${_X_VERSION}.info" ]; then
       _FORCE_UP_SEVEN=YES
-    elif [ -e "${_D}/$i/o_contrib_seven" ] \
-      && [ ! -e "${_D}/$i/o_contrib_seven/views_accelerator" ]; then
+    elif [ -e "${_D}/${i}/o_contrib_seven" ] \
+      && [ ! -e "${_D}/${i}/o_contrib_seven/views_accelerator" ]; then
       _FORCE_UP_SEVEN=YES
-    elif [ -e "${_D}/$i/o_contrib_seven" ] \
+    elif [ -e "${_D}/${i}/o_contrib_seven" ] \
       && [ ! -e "${_D}/000/modules/redis_edge" ]; then
       _FORCE_UP_SEVEN=YES
-    elif [ -e "${_D}/$i/o_contrib_seven" ] \
-      && [ ! -L "${_D}/$i/o_contrib_seven/redis_edge" ]; then
+    elif [ -e "${_D}/${i}/o_contrib_seven" ] \
+      && [ ! -L "${_D}/${i}/o_contrib_seven/redis_edge" ]; then
       _FORCE_UP_SEVEN=YES
-    elif [ -e "${_D}/$i/o_contrib_seven" ] \
-      && [ ! -L "${_D}/$i/o_contrib_seven/redis" ]; then
+    elif [ -e "${_D}/${i}/o_contrib_seven" ] \
+      && [ ! -L "${_D}/${i}/o_contrib_seven/redis" ]; then
       _FORCE_UP_SEVEN=YES
     else
       _FORCE_UP_SEVEN=NO
     fi
     if [ "${_FORCE_UP_SEVEN}" = "YES" ] \
-      && [ -e "${_D}/$i/o_contrib_seven" ]; then
+      && [ -e "${_D}/${i}/o_contrib_seven" ]; then
       for m in ${_RMMODULES}; do
-        if [ -d "${_D}/$i/o_contrib_seven/$m" ]; then
-          rm -rf ${_D}/$i/o_contrib_seven/$m
+        if [ -d "${_D}/${i}/o_contrib_seven/$m" ]; then
+          rm -rf ${_D}/${i}/o_contrib_seven/$m
         fi
       done
-      cd ${_D}/$i/o_contrib_seven
-      if [ ! -d "${_D}/$i/o_contrib_seven/adminer" ]; then
-        get_dev_contrib "adminer_bundle-7.x-1.x-dev.tar.gz"
-        # get_dev_contrib "adminer-7.x-1.1.tar.gz"
-        # curl ${crlGet} "https://www.adminer.org/static/download/${_ADMINER_VRN}/adminer-${_ADMINER_VRN}.php" -o "${_D}/$i/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}.php"
-        # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/designs/nette/adminer.css" -o "${_D}/$i/o_contrib_seven/adminer/adminer/styles/adminer.css"
-        # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/plugin.php" -o "${_D}/$i/o_contrib_seven/adminer/adminer/plugins/plugin.php"
-        # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/enum-option.php" -o "${_D}/$i/o_contrib_seven/adminer/adminer/plugins/enum-option.php"
-        # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/edit-textarea.php" -o "${_D}/$i/o_contrib_seven/adminer/adminer/plugins/edit-textarea.php"
-        # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_D}/$i/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
-        # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_D}/$i/o_contrib_seven/adminer/adminer/plugins/frames.php"
+      cd ${_D}/${i}/o_contrib_seven
+      if [ ! -d "${_D}/${i}/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php" ]; then
+        rm -rf ${_D}/${i}/o_contrib_seven/adminer
+        get_dev_contrib "adminer_bundle-7.x-1.2.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/advagg" ]; then
-        get_dev_contrib "advagg-7.x-2.20.tar.gz"
+      if [ ! -d "${_D}/${i}/o_contrib_seven/advagg" ]; then
+        get_dev_contrib "advagg-7.x-2.30.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/boost" ]; then
-        get_dev_contrib "boost-7.x-1.1.tar.gz"
+      if [ ! -d "${_D}/${i}/o_contrib_seven/boost" ]; then
+        get_dev_contrib "boost-7.x-1.2.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/cdn" ]; then
-        get_dev_contrib "cdn-7.x-2.8.tar.gz"
+      if [ ! -d "${_D}/${i}/o_contrib_seven/cdn" ]; then
+        get_dev_contrib "cdn-7.x-2.10.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/display_cache" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/display_cache" ]; then
         get_dev_contrib "display_cache-7.x-1.3.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/entitycache" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/entitycache" ]; then
         get_dev_contrib "entitycache-7.x-1.5.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/filefield_nginx_progress" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/filefield_nginx_progress" ]; then
         get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/force_password_change" ]; then
-        get_dev_contrib "force_password_change-7.x-1.0.tar.gz"
+      if [ ! -d "${_D}/${i}/o_contrib_seven/force_password_change" ]; then
+        get_dev_contrib "force_password_change-7.x-2.2.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/fpa" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/fpa" ]; then
         get_dev_contrib "fpa-7.x-2.6.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/httprl" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/httprl" ]; then
         get_dev_contrib "httprl-7.x-1.14.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/js" ]; then
-        get_dev_contrib "js-7.x-2.1.tar.gz"
+      if [ ! -d "${_D}/${i}/o_contrib_seven/js" ]; then
+        get_dev_contrib "js-7.x-2.4.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/panels_content_cache" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/panels_content_cache" ]; then
         get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/print" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/print" ]; then
         get_dev_contrib "print-7.x-2.0.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/session_expire" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/session_expire" ]; then
         get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/speedy" ]; then
-        get_dev_contrib "speedy-7.x-1.28.tar.gz"
+      if [ ! -d "${_D}/${i}/o_contrib_seven/speedy" ]; then
+        get_dev_contrib "speedy-7.x-1.30.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/taxonomy_edge" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/taxonomy_edge" ]; then
         get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/views_accelerator" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/views_accelerator" ]; then
         get_dev_contrib "views_accelerator-7.x-1.0-beta1.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/views_cache_bully" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/views_cache_bully" ]; then
         get_dev_contrib "views_cache_bully-7.x-3.1.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/views_content_cache" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/views_content_cache" ]; then
         get_dev_contrib "views_content_cache-7.x-3.0-alpha3.tar.gz"
       fi
       if [ "${_PURGE_MODE}" = "ON" ] && [ "${_PURGE_FOR_SEVEN}" = "YES" ]; then
-        cd ${_D}/$i/o_contrib_seven
-        if [ ! -d "${_D}/$i/o_contrib_seven/expire" ]; then
+        cd ${_D}/${i}/o_contrib_seven
+        if [ ! -d "${_D}/${i}/o_contrib_seven/expire" ]; then
           get_dev_contrib "expire-7.x-2.0-rc4.tar.gz"
         fi
-        if [ ! -d "${_D}/$i/o_contrib_seven/purge" ]; then
+        if [ ! -d "${_D}/${i}/o_contrib_seven/purge" ]; then
           get_dev_contrib "purge-7.x-1.7.tar.gz"
         fi
       fi
-      if [ -d "${_D}/$i/o_contrib_seven/redis" ]; then
-        rm -rf ${_D}/$i/o_contrib_seven/redis
+      if [ -d "${_D}/${i}/o_contrib_seven/redis" ]; then
+        rm -rf ${_D}/${i}/o_contrib_seven/redis
       fi
-      if [ -d "${_D}/$i/o_contrib_seven/redis_edge" ]; then
-        rm -rf ${_D}/$i/o_contrib_seven/redis_edge
+      if [ -d "${_D}/${i}/o_contrib_seven/redis_edge" ]; then
+        rm -rf ${_D}/${i}/o_contrib_seven/redis_edge
       fi
       if [ -e "${_D}/000/modules/redis" ] \
-        && [ ! -L "${_D}/$i/o_contrib_seven/redis" ]; then
-        ln -sf ${_D}/000/modules/redis ${_D}/$i/o_contrib_seven/redis
+        && [ ! -L "${_D}/${i}/o_contrib_seven/redis" ]; then
+        ln -sf ${_D}/000/modules/redis ${_D}/${i}/o_contrib_seven/redis
       fi
       if [ -e "${_D}/000/modules/redis_edge" ] \
-        && [ ! -L "${_D}/$i/o_contrib_seven/redis_edge" ]; then
-        ln -sf ${_D}/000/modules/redis_edge ${_D}/$i/o_contrib_seven/redis_edge
+        && [ ! -L "${_D}/${i}/o_contrib_seven/redis_edge" ]; then
+        ln -sf ${_D}/000/modules/redis_edge ${_D}/${i}/o_contrib_seven/redis_edge
       fi
-      find ${_D}/$i/o_contrib_seven -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_D}/$i/o_contrib_seven -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${_D}/$i/o_contrib_seven/update-${_X_VERSION}.info
+      find ${_D}/${i}/o_contrib_seven -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${_D}/${i}/o_contrib_seven -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${_D}/${i}/o_contrib_seven/update-${_X_VERSION}.info
     fi
   done
   cd
@@ -1553,36 +1547,36 @@ satellite_o_contrib_eight_update_global() {
   _RMMODULES="some_foo_bar"
 
   for i in ${_REVISIONS}; do
-    if [ -e "${_D}/$i/o_contrib_eight" ] \
-      && [ ! -e "${_D}/$i/o_contrib_eight/update-${_X_VERSION}.info" ]; then
+    if [ -e "${_D}/${i}/o_contrib_eight" ] \
+      && [ ! -e "${_D}/${i}/o_contrib_eight/update-${_X_VERSION}.info" ]; then
       _FORCE_UP_EIGHT=YES
-    elif [ -e "${_D}/$i/o_contrib_eight" ] \
+    elif [ -e "${_D}/${i}/o_contrib_eight" ] \
       && [ ! -e "${_D}/000/modules/redis_eight" ]; then
       _FORCE_UP_EIGHT=YES
-    elif [ -e "${_D}/$i/o_contrib_eight" ] \
-      && [ ! -L "${_D}/$i/o_contrib_eight/redis_eight" ]; then
+    elif [ -e "${_D}/${i}/o_contrib_eight" ] \
+      && [ ! -L "${_D}/${i}/o_contrib_eight/redis_eight" ]; then
       _FORCE_UP_EIGHT=YES
     else
       _FORCE_UP_EIGHT=NO
     fi
     if [ "${_FORCE_UP_EIGHT}" = "YES" ] \
-      && [ -e "${_D}/$i/o_contrib_eight" ]; then
+      && [ -e "${_D}/${i}/o_contrib_eight" ]; then
       for m in ${_RMMODULES}; do
-        if [ -d "${_D}/$i/o_contrib_eight/$m" ]; then
-          rm -rf ${_D}/$i/o_contrib_eight/$m
+        if [ -d "${_D}/${i}/o_contrib_eight/$m" ]; then
+          rm -rf ${_D}/${i}/o_contrib_eight/$m
         fi
       done
-      cd ${_D}/$i/o_contrib_eight
-      if [ -d "${_D}/$i/o_contrib_eight/redis_eight" ]; then
-        rm -rf ${_D}/$i/o_contrib_eight/redis_eight
+      cd ${_D}/${i}/o_contrib_eight
+      if [ -d "${_D}/${i}/o_contrib_eight/redis_eight" ]; then
+        rm -rf ${_D}/${i}/o_contrib_eight/redis_eight
       fi
       if [ -e "${_D}/000/modules/redis_eight" ] \
-        && [ ! -L "${_D}/$i/o_contrib_eight/redis_eight" ]; then
-        ln -sf ${_D}/000/modules/redis_eight ${_D}/$i/o_contrib_eight/redis_eight
+        && [ ! -L "${_D}/${i}/o_contrib_eight/redis_eight" ]; then
+        ln -sf ${_D}/000/modules/redis_eight ${_D}/${i}/o_contrib_eight/redis_eight
       fi
-      find ${_D}/$i/o_contrib_eight -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_D}/$i/o_contrib_eight -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${_D}/$i/o_contrib_eight/update-${_X_VERSION}.info
+      find ${_D}/${i}/o_contrib_eight -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${_D}/${i}/o_contrib_eight -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${_D}/${i}/o_contrib_eight/update-${_X_VERSION}.info
     fi
   done
   cd
@@ -1596,9 +1590,9 @@ satellite_download_o_contrib_eight() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_eight modules..."
   fi
-  get_dev_contrib "advagg-8.x-2.0.tar.gz"
-  get_dev_contrib "cdn-8.x-3.0.tar.gz"
-  get_dev_contrib "robotstxt-8.x-1.0.tar.gz"
+  get_dev_contrib "advagg-8.x-3.5.tar.gz"
+  get_dev_contrib "cdn-8.x-3.2.tar.gz"
+  get_dev_contrib "robotstxt-8.x-1.1.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_E_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -1620,19 +1614,19 @@ satellite_download_o_contrib_seven() {
     msg "${_STATUS} A: Downloading o_contrib_seven modules..."
   fi
   get_dev_contrib "admin-7.x-2.0-beta3.tar.gz"
-  get_dev_contrib "adminer_bundle-7.x-1.x-dev.tar.gz"
-  # get_dev_contrib "adminer-7.x-1.1.tar.gz"
-  # curl ${crlGet} "https://www.adminer.org/static/download/${_ADMINER_VRN}/adminer-${_ADMINER_VRN}.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}.php"
-  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/designs/nette/adminer.css" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/styles/adminer.css"
-  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/plugin.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/plugin.php"
-  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/enum-option.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/enum-option.php"
-  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/edit-textarea.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/edit-textarea.php"
-  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
-  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/frames.php"
-  get_dev_contrib "advagg-7.x-2.20.tar.gz"
+  get_dev_contrib "adminer_bundle-7.x-1.2.tar.gz"
+  # get_dev_contrib "adminer-7.x-1.2.tar.gz"
+  # curl ${crlGet} "https://github.com/vrana/adminer/releases/download/v${_ADMINER_VRN}/adminer-${_ADMINER_VRN}-mysql.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php"
+  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/designs/nette/adminer.css" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/styles/adminer.css"
+  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/plugin.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/plugin.php"
+  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/enum-option.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/enum-option.php"
+  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/edit-textarea.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/edit-textarea.php"
+  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
+  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/frames.php"
+  get_dev_contrib "advagg-7.x-2.30.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.1.tar.gz"
-  get_dev_contrib "boost-7.x-1.1.tar.gz"
-  get_dev_contrib "cdn-7.x-2.8.tar.gz"
+  get_dev_contrib "boost-7.x-1.2.tar.gz"
+  get_dev_contrib "cdn-7.x-2.10.tar.gz"
   get_dev_contrib "config_perms-7.x-2.1.tar.gz"
   get_dev_contrib "css_emimage-7.x-1.x-dev.tar.gz"
   get_dev_contrib "display_cache-7.x-1.3.tar.gz"
@@ -1640,21 +1634,21 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "esi-7.x-3.x-dev.tar.gz"
   get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
   get_dev_contrib "flood_control-7.x-1.x-dev.tar.gz"
-  get_dev_contrib "force_password_change-7.x-1.0.tar.gz"
+  get_dev_contrib "force_password_change-7.x-2.2.tar.gz"
   get_dev_contrib "fpa-7.x-2.6.tar.gz"
   get_dev_contrib "httprl-7.x-1.14.tar.gz"
-  get_dev_contrib "js-7.x-2.1.tar.gz"
+  get_dev_contrib "js-7.x-2.4.tar.gz"
   get_dev_contrib "login_security-7.x-1.9.tar.gz"
-  get_dev_contrib "nocurrent_pass-7.x-1.0.tar.gz"
+  get_dev_contrib "nocurrent_pass-7.x-1.1.tar.gz"
   get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
   get_dev_contrib "print-7.x-2.0.tar.gz"
   get_dev_contrib "readonlymode-7.x-1.2.tar.gz"
-  get_dev_contrib "reroute_email-7.x-1.2.tar.gz"
-  get_dev_contrib "robotstxt-7.x-1.3.tar.gz"
+  get_dev_contrib "reroute_email-7.x-1.3.tar.gz"
+  get_dev_contrib "robotstxt-7.x-1.4.tar.gz"
   get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
-  get_dev_contrib "site_verify-7.x-1.1.tar.gz"
-  get_dev_contrib "speedy-7.x-1.28.tar.gz"
+  get_dev_contrib "site_verify-7.x-1.2.tar.gz"
+  get_dev_contrib "speedy-7.x-1.30.tar.gz"
   get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
   get_dev_contrib "views_accelerator-7.x-1.0-beta1.tar.gz"
@@ -1708,7 +1702,7 @@ satellite_download_o_contrib_six() {
     msg "${_STATUS} A: Downloading o_contrib modules..."
   fi
   get_dev_contrib "admin-6.x-2.0.tar.gz"
-  get_dev_contrib "advagg-6.x-1.10.tar.gz"
+  get_dev_contrib "advagg-6.x-1.11.tar.gz"
   get_dev_contrib "blockcache_alter-6.x-1.6.tar.gz"
   get_dev_contrib "boost-6.x-1.22.tar.gz"
   get_dev_contrib "cdn-6.x-2.7.tar.gz"
@@ -2154,13 +2148,12 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
         fi
-        mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
-DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
-DROP USER '${_USE_DB_USER}'@'localhost';
-DROP USER '${_USE_DB_USER}'@'127.0.0.1';
-DROP USER '${_USE_DB_USER}'@'%';
-EOFMYSQL
+        _C_SQL="mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot --database=mysql -e"
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
         mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
@@ -2206,13 +2199,12 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
-    mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
-DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
-DROP USER '${_USE_DB_USER}'@'localhost';
-DROP USER '${_USE_DB_USER}'@'127.0.0.1';
-DROP USER '${_USE_DB_USER}'@'%';
-EOFMYSQL
+    _C_SQL="mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot --database=mysql -e"
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
@@ -2297,13 +2289,12 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
-    mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';
-DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';
-DROP USER '${_USE_DB_USER}'@'localhost';
-DROP USER '${_USE_DB_USER}'@'127.0.0.1';
-DROP USER '${_USE_DB_USER}'@'%';
-EOFMYSQL
+    _C_SQL="mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot --database=mysql -e"
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
@@ -2389,13 +2380,18 @@ satellite_download_for_local_build() {
     ### Aegir Drupal Contrib
     get_dev_stc "admin_menu-7.x-3.0-rc5.tar.gz"
     get_dev_stc "betterlogin-7.x-1.4.tar.gz"
-    get_dev_stc "ctools-7.x-1.12.tar.gz"
-    get_dev_stc "entity-7.x-1.8.tar.gz"
+    get_dev_stc "ctools-7.x-1.14.tar.gz"
+    get_dev_stc "entity-7.x-1.9.tar.gz"
+    get_dev_stc "libraries-7.x-2.3.tar.gz"
+    get_dev_stc "module_filter-7.x-2.1.tar.gz"
     get_dev_stc "openidadmin-7.x-1.0.tar.gz"
     get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
     get_dev_stc "r4032login-7.x-1.8.tar.gz"
-    get_dev_stc "views_bulk_operations-7.x-3.4.tar.gz"
-    get_dev_stc "views-7.x-3.15.tar.gz"
+    get_dev_stc "tfa_basic-7.x-1.0.tar.gz"
+    get_dev_stc "tfa-7.x-2.0.tar.gz"
+    get_dev_stc "timeago-7.x-2.3.tar.gz"
+    get_dev_stc "views_bulk_operations-7.x-3.5.tar.gz"
+    get_dev_stc "views-7.x-3.20.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
     get_dev_stc "features-7.x-2.10.tar.gz"
@@ -3658,7 +3654,7 @@ satellite_make() {
     echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
   fi
 
-  if [ ! -e "${_ROOT}/static/control/.ctrl.320stableQ10.pid" ] \
+  if [ ! -e "${_ROOT}/static/control/.ctrl.322stableQ34.pid" ] \
     || [ ! -e "${_ROOT}/static/control/README.txt" ]; then
     mkdir -p ${_ROOT}/static/control
     chmod 755 ${_ROOT}/static/control
@@ -3670,7 +3666,7 @@ satellite_make() {
     chown -R ${_USER}.ftp:${_USRG} \
       ${_ROOT}/static/control &> /dev/null
     rm -f ${_ROOT}/static/control/.ctrl.*
-    echo OK > ${_ROOT}/static/control/.ctrl.320stableQ10.pid
+    echo OK > ${_ROOT}/static/control/.ctrl.322stableQ34.pid
   fi
 
   if [ -d "/data/all/000" ]; then
@@ -3824,7 +3820,8 @@ satellite_detect_vm_family() {
     _IFCONFIG="eth0"
   fi
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -5209,7 +5206,8 @@ satellite_child_b_aegir_ui_enhance() {
   cd ${_HM_ROOT}/sites/${_DOMAIN}
   if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+    if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \

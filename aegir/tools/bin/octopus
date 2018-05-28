@@ -4,14 +4,14 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 branch="3.x.x-dev"
-cluster="BOA-3.2.0"
+cluster="BOA-3.2.2"
 hd="HEAD"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
 master="master"
 nextv="BOA-3.3.0-dev"
-stbl="BOA-3.2.0"
+stbl="BOA-3.2.2"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -35,7 +35,8 @@ _CHECK_HOST=$(uname -n 2>&1)
 _LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _VMFAMILY=XEN
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \

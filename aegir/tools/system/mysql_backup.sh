@@ -63,7 +63,8 @@ else
   _OPTIM=NO
 fi
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
@@ -77,13 +78,13 @@ touch /var/run/boa_sql_backup.pid
 
 create_locks() {
   echo "Creating locks.."
-  touch /var/run/boa_wait.pid
+  #touch /var/run/boa_wait.pid
   touch /var/run/mysql_backup_running.pid
 }
 
 remove_locks() {
   echo "Removing locks.."
-  rm -f /var/run/boa_wait.pid
+  #rm -f /var/run/boa_wait.pid
   rm -f /var/run/mysql_backup_running.pid
 }
 
