@@ -1452,7 +1452,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "adminer_bundle-7.x-1.2.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/advagg" ]; then
-        get_dev_contrib "advagg-7.x-2.30.tar.gz"
+        get_dev_contrib "advagg-7.x-2.33.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/boost" ]; then
         get_dev_contrib "boost-7.x-1.2.tar.gz"
@@ -1491,7 +1491,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/speedy" ]; then
-        get_dev_contrib "speedy-7.x-1.30.tar.gz"
+        get_dev_contrib "speedy-7.x-1.33.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/taxonomy_edge" ]; then
         get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
@@ -1623,7 +1623,7 @@ satellite_download_o_contrib_seven() {
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/edit-textarea.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/edit-textarea.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/frames.php"
-  get_dev_contrib "advagg-7.x-2.30.tar.gz"
+  get_dev_contrib "advagg-7.x-2.33.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.1.tar.gz"
   get_dev_contrib "boost-7.x-1.2.tar.gz"
   get_dev_contrib "cdn-7.x-2.10.tar.gz"
@@ -1648,7 +1648,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
   get_dev_contrib "site_verify-7.x-1.2.tar.gz"
-  get_dev_contrib "speedy-7.x-1.30.tar.gz"
+  get_dev_contrib "speedy-7.x-1.33.tar.gz"
   get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
   get_dev_contrib "views_accelerator-7.x-1.0-beta1.tar.gz"
