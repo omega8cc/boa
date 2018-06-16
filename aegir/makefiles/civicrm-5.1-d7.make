@@ -1,4 +1,4 @@
-; CiviCRM 4.4-d7 master makefile
+; CiviCRM 5.1-d7 master makefile
 ;
 
 api = 2
@@ -11,13 +11,13 @@ projects[drupal][download][url] = "http://files.aegir.cc/core/drupal-7.59.1.tar.
 projects[civicrm][type] = "module"
 projects[civicrm][directory_name] = "civicrm"
 projects[civicrm][download][type] = "get"
-projects[civicrm][download][url] = "http://sourceforge.net/projects/civicrm/files/civicrm-stable/4.4.7/civicrm-4.4.7-drupal.tar.gz/download?use_mirror=autoselect"
+projects[civicrm][download][url] = "http://sourceforge.net/projects/civicrm/files/civicrm-stable/5.1.2/civicrm-5.1.2-drupal.tar.gz/download?use_mirror=autoselect"
 
 projects[civicrml10n][type] = "module"
 projects[civicrml10n][subdir] = "civicrm"
 projects[civicrml10n][download][type] = "get"
-projects[civicrml10n][download][url] = "http://sourceforge.net/projects/civicrm/files/civicrm-stable/4.4.7/civicrm-4.4.7-l10n.tar.gz/download?use_mirror=autoselect"
+projects[civicrml10n][download][url] = "http://sourceforge.net/projects/civicrm/files/civicrm-stable/5.1.2/civicrm-5.1.2-l10n.tar.gz/download?use_mirror=autoselect"
 
 projects[admin_menu][type] = "module"
 projects[admin_menu][subdir] = "contrib"
-projects[admin_menu][version] = "3.0-rc3"
+projects[admin_menu][version] = "3.0-rc5"
