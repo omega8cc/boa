@@ -420,6 +420,11 @@ if [ -z "${_B_NICE}" ]; then
   _B_NICE=10
 fi
 
+if [ ! -e "/var/tmp/fpm" ]; then
+  mkdir -p /var/tmp/fpm
+  chmod 777 /var/tmp/fpm
+fi
+
 count_cpu
 load_control
 sleep 3

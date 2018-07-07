@@ -323,7 +323,7 @@ if (!$is_backend) {
     error_reporting(E_ALL & ~E_NOTICE);
     ini_set('display_errors', TRUE);
     ini_set('display_startup_errors', TRUE);
-    ini_set('opcache.revalidate_freq', '1');
+    ini_set('opcache.revalidate_freq', '0');
     if ($drupal_eight) {
       unset($config['system.logging']['error_level']);            // Stop hardcoding no errors on screen
       unset($config['system.performance']['cache.page.max_age']); // Stop hardcoding internal page cache
