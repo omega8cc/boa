@@ -1469,7 +1469,10 @@ setup() {
   echo "### ${_TODAY} ###" >> ${optBin}/octopus
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
     echo "The duplicity backup is running!"
-  else
+  elif [ ! -e "/root/.backboa.autoupdate" ]; then
+    echo "The duplicity auto-update is disabled temporarily."
+    echo "To enable, create /root/.backboa.autoupdate file."
+  elif [ -e "/root/.backboa.autoupdate" ]; then
     rm -f ${optBin}/{backboa,duobackboa}
     curl ${crlGet} "${urlHmr}/${tBn}/backboa"      -o ${optBin}/backboa
     curl ${crlGet} "${urlHmr}/${tBn}/duobackboa"   -o ${optBin}/duobackboa
