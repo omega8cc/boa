@@ -396,7 +396,7 @@ master_download_for_local_build() {
     get_dev_stc "openidadmin-7.x-1.0.tar.gz"
     get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
     get_dev_stc "r4032login-7.x-1.8.tar.gz"
-    get_dev_stc "tfa_basic-7.x-1.0.tar.gz"
+    get_dev_stc "tfa_basic-7.x-1.1.tar.gz"
     get_dev_stc "tfa-7.x-2.0.tar.gz"
     get_dev_stc "timeago-7.x-2.3.tar.gz"
     get_dev_stc "views_bulk_operations-7.x-3.5.tar.gz"
