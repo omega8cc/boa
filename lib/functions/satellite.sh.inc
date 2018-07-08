@@ -5243,6 +5243,8 @@ satellite_child_b_aegir_ui_enhance() {
       hosting_cron_default_interval 86400 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_queue_cron_frequency 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${vSet} \
+      hosting_civicrm_cron_queue_frequency 60 &> /dev/null
     if [ -e "${_ROOT}/log/hosting_cron_use_backend.txt" ]; then
       ${_DRUSHCMD} @hostmaster ${vSet} \
         hosting_cron_use_backend 1 &> /dev/null
