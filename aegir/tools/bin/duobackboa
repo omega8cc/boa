@@ -317,7 +317,7 @@ TARGET="s3://${_AWS_URL}/${BUCKET}"
 LOGFILE="${_LOGPTH}/${BUCKET}.log"
 _NAME="--name=daily-remote"
 
-if [ -e "${_LOGPTH}/${BUCKET_DOT}.archive.log" ]
+if [ -e "${_LOGPTH}/${BUCKET_DOT}.archive.log" ]; then
   cat ${_LOGPTH}/${BUCKET_DOT}.archive.log >> ${_LOGPTH}/${BUCKET}.archive.log
   mv ${_LOGPTH}/${BUCKET_DOT}.archive.log /var/backups/${BUCKET_DOT}.archive.log
   cat ${_LOGPTH}/${BUCKET_DOT}.randomize.cleanup.log >> ${_LOGPTH}/${BUCKET}.randomize.cleanup.log
