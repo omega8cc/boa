@@ -526,11 +526,13 @@ restore() {
 
 retrieve() {
   if [ $# = 3 ]; then
-    BUCKET="daily-remote-$3"
+    _HST_DASH=$(echo -n $3 | tr . - 2>&1)
+    BUCKET="daily-remote-${_HST_DASH}"
     TARGET="s3://${_AWS_URL}/${BUCKET}"
     duplicity restore --file-to-restore $1 ${_AWS_OPX} ${_NAME} ${TARGET} $2
   elif [ $# = 4 ]; then
-    BUCKET="daily-remote-$4"
+    _HST_DASH=$(echo -n $4 | tr . - 2>&1)
+    BUCKET="daily-remote-${_HST_DASH}"
     TARGET="s3://${_AWS_URL}/${BUCKET}"
     duplicity restore --file-to-restore $1 --time $2 ${_AWS_OPX} ${_NAME} ${TARGET} $3
   fi
