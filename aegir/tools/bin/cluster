@@ -890,7 +890,7 @@ query_cache_type=0
 binlog_row_image=minimal
 #bind-address=0.0.0.0
 #wsrep_slave_threads=8
-#wsrep_log_conflicts
+wsrep_log_conflicts=ON
 #pxc_strict_mode=ENFORCING
 pxc_strict_mode=PERMISSIVE
 
@@ -906,6 +906,11 @@ wsrep_cluster_address=\"'${_CLUSTER_STRING}',...?pc.wait_prim=no\"
 wsrep_sst_method=rsync
 #wsrep_sst_method=xtrabackup-v2
 wsrep_sst_auth=sstuser:'${_MAINT_USER_PWD}'
+
+# Galera extra tuning
+wsrep_debug=OFF
+wsrep_retry_autocommit=8
+wsrep_sync_wait=7
 
 # Galera Node Configuration
 wsrep_node_address=\"'${IP}'\"
