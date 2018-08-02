@@ -352,7 +352,7 @@ install_proxysql() {
     _PROXYSQL_ADMIN_PWD="admin"
 
     echo "${_ROOT_SQL_PASWD}" > /vservers/${idn}/root/.my.cluster_root_pwd.txt
-    echo "${_PROXYSQL_PASSWORD}" > /vservers/${idn}/root/.my.proxysql_adm_pwd.txt
+    echo "${_PROXYSQL_ADMIN_PWD}" > /vservers/${idn}/root/.my.proxysql_adm_pwd.txt
     echo "${_DB_NODE_IP[1]}" > /vservers/${idn}/root/.my.cluster_write_node.txt
     echo "<?php" > /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
     echo "\$prxy_adm_paswd = \"${_PROXYSQL_ADMIN_PWD}\";" >> /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
