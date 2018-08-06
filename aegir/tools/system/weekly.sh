@@ -48,7 +48,7 @@ read_account_data() {
   _ENGINE_NR=
   _CLIENT_EMAIL=
   _CLIENT_OPTION=
-  _DSK_CLU_LIMIT=
+  _DSK_CLU_LIMIT=1
   if [ -e "/data/disk/${_THIS_U}/log/email.txt" ]; then
     _CLIENT_EMAIL=$(cat /data/disk/${_THIS_U}/log/email.txt 2>&1)
     _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
@@ -808,6 +808,9 @@ check_limits() {
   _DSK_CLU_LIMIT=1
   read_account_data
   if [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
+    if [ -z "${_DSK_CLU_LIMIT}" ]; then
+      _DSK_CLU_LIMIT=1
+    fi
     _SQL_MIN_LIMIT=51200
     _DSK_MIN_LIMIT=102400
     _DSK_MAX_LIMIT=107520
