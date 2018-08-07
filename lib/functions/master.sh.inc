@@ -396,7 +396,7 @@ master_download_for_local_build() {
     get_dev_stc "openidadmin-7.x-1.0.tar.gz"
     get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
     get_dev_stc "r4032login-7.x-1.8.tar.gz"
-    get_dev_stc "tfa_basic-7.x-1.0.tar.gz"
+    get_dev_stc "tfa_basic-7.x-1.1.tar.gz"
     get_dev_stc "tfa-7.x-2.0.tar.gz"
     get_dev_stc "timeago-7.x-2.3.tar.gz"
     get_dev_stc "views_bulk_operations-7.x-3.5.tar.gz"
@@ -1049,7 +1049,7 @@ update_php_cli_local_ini() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.322stableQ34.pid" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.322stableQ6.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1110,7 +1110,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
-      echo > ${_U_HD}/.ctrl.322stableQ34.pid
+      echo > ${_U_HD}/.ctrl.322stableQ6.pid
     fi
   fi
 }

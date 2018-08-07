@@ -62,10 +62,11 @@
     (before attempting to run initial backup!) to create S3 bucket in the
     desired region with correct name as shown below.
 
-    Replace only the srv.foo.bar part after daily.boa. static prefix with
+    Replace only the srv-foo-bar part after daily-boa- static prefix with
     your system hostname, typically displayed when you type 'uname -n'
+    where all dots are replaced with dashes, for compatibility reasons:
 
-      daily.boa.srv.foo.bar
+      daily-boa-srv-foo-bar
 
     While duplicity should be able to create new bucket on demand, in practice
     it almost never works due to typical delays between various AWS regions.
@@ -117,7 +118,7 @@
 
         * The extra script filename and command: 'duobackboa'
         * Separate configuration file: /root/.duobackboa.cnf
-        * S3 bucket naming convention: daily.remote.srv.foo.bar
+        * S3 bucket naming convention: daily-remote-srv-foo-bar
         * Cron entry set to start at 5:15 AM (server time)
         * Full backups are scheduled on Saturday
 
@@ -126,13 +127,20 @@
 
   #3    You can use a file that lists folders and files that should be included
         or excluded from the backups.
-        
-        * If /root/.backboa.exclude exists it will be passed as the 
-        --exclude-filelist parameter of duplicity
-        * If /root/.backboa.include exists it will be passed as the 
-        --include-filelist parameter of duplicity
-       
+
+        * If /root/.backboa.exclude exists it will be passed as the
+          --exclude-filelist parameter of duplicity
+        * If /root/.backboa.include exists it will be passed as the
+          --include-filelist parameter of duplicity
+
+        Note: for duobackboa the optional files should use these filenames:
+
+        * If /root/.duobackboa.exclude exists it will be passed as the
+          --exclude-filelist parameter of duplicity
+        * If /root/.duobackboa.include exists it will be passed as the
+          --include-filelist parameter of duplicity
+
         The format of both files should be as described in the documentation of
         duplicity:
-        
+
         See: http://duplicity.nongnu.org/duplicity.1.html#sect9
