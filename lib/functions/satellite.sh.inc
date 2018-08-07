@@ -1177,7 +1177,7 @@ satellite_child_b_update_ini_php_cli() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.322stableQ34.pid" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.322stableQ6.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1237,7 +1237,7 @@ satellite_child_b_update_ini_php_cli() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
-      echo > ${_U_HD}/.ctrl.322stableQ34.pid
+      echo > ${_U_HD}/.ctrl.322stableQ6.pid
     fi
   fi
 }
@@ -2387,7 +2387,7 @@ satellite_download_for_local_build() {
     get_dev_stc "openidadmin-7.x-1.0.tar.gz"
     get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
     get_dev_stc "r4032login-7.x-1.8.tar.gz"
-    get_dev_stc "tfa_basic-7.x-1.0.tar.gz"
+    get_dev_stc "tfa_basic-7.x-1.1.tar.gz"
     get_dev_stc "tfa-7.x-2.0.tar.gz"
     get_dev_stc "timeago-7.x-2.3.tar.gz"
     get_dev_stc "views_bulk_operations-7.x-3.5.tar.gz"
@@ -3654,7 +3654,7 @@ satellite_make() {
     echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
   fi
 
-  if [ ! -e "${_ROOT}/static/control/.ctrl.322stableQ34.pid" ] \
+  if [ ! -e "${_ROOT}/static/control/.ctrl.322stableQ6.pid" ] \
     || [ ! -e "${_ROOT}/static/control/README.txt" ]; then
     mkdir -p ${_ROOT}/static/control
     chmod 755 ${_ROOT}/static/control
@@ -3666,7 +3666,7 @@ satellite_make() {
     chown -R ${_USER}.ftp:${_USRG} \
       ${_ROOT}/static/control &> /dev/null
     rm -f ${_ROOT}/static/control/.ctrl.*
-    echo OK > ${_ROOT}/static/control/.ctrl.322stableQ34.pid
+    echo OK > ${_ROOT}/static/control/.ctrl.322stableQ6.pid
   fi
 
   if [ -d "/data/all/000" ]; then
@@ -5243,6 +5243,8 @@ satellite_child_b_aegir_ui_enhance() {
       hosting_cron_default_interval 86400 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_queue_cron_frequency 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${vSet} \
+      hosting_civicrm_cron_queue_frequency 60 &> /dev/null
     if [ -e "${_ROOT}/log/hosting_cron_use_backend.txt" ]; then
       ${_DRUSHCMD} @hostmaster ${vSet} \
         hosting_cron_use_backend 1 &> /dev/null
