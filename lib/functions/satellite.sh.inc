@@ -84,7 +84,7 @@ satellite_update_web_user() {
     _T_TP="/home/${_WEB}/.tmp"
     _T_TS="/home/${_WEB}/.aws"
     _T_II="${_T_HD}/php.ini"
-    ### msg "DEBUG: ${_WEB} in satellite_update_web_user A"
+    msg "DEBUG: ${_WEB} in satellite_update_web_user A"
     if [ -d "/home/${_WEB}/" ] && [ ! -e "/home/${_WEB}/.lock" ]; then
       if [ -d "/home/${_WEB}/" ]; then
         chattr -i -R /home/${_WEB}/ &> /dev/null
@@ -97,8 +97,8 @@ satellite_update_web_user() {
       fi
       mkdir -p /home/${_WEB}/.{tmp,drush,aws}
       touch /home/${_WEB}/.lock
-      ### msg "DEBUG: ${_WEB} in satellite_update_web_user B"
-      ### msg "DEBUG: ARG1 is $1 in satellite_update_web_user B"
+      msg "DEBUG: ${_WEB} in satellite_update_web_user B"
+      msg "DEBUG: ARG1 is $1 in satellite_update_web_user B"
       isTest="$1"
       isTest=${isTest//[^a-z0-9]/}
       if [ ! -z "${isTest}" ]; then
@@ -110,12 +110,12 @@ satellite_update_web_user() {
           fi
         else
           _T_PV=$1
-          ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_update_web_user C"
+          msg "DEBUG: _T_PV is ${_T_PV} in satellite_update_web_user C"
         fi
       fi
       if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
         cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
-        ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_update_web_user D"
+        msg "DEBUG: _T_PV is ${_T_PV} in satellite_update_web_user D"
       else
         if [ -e "/opt/php70/etc/php70.ini" ]; then
           cp -af /opt/php70/etc/php70.ini ${_T_II}
@@ -219,10 +219,10 @@ satellite_create_web_user() {
   _T_II="${_T_HD}/php.ini"
   _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
   if [ ! -z "${_T_ID_EXISTS}" ] && [ -e "${_T_II}" ]; then
-    ### msg "DEBUG: ARG1 is $1 in satellite_create_web_user B"
+    msg "DEBUG: ARG1 is $1 in satellite_create_web_user B"
     satellite_update_web_user "$1"
   elif [ -z "${_T_ID_EXISTS}" ] || [ ! -e "${_T_II}" ]; then
-    ### msg "DEBUG: ARG1 is $1 in satellite_create_web_user C"
+    msg "DEBUG: ARG1 is $1 in satellite_create_web_user C"
     satellite_remove_web_user "clean"
     adduser --force-badname --system --ingroup www-data ${_WEB} &> /dev/null
     satellite_update_web_user "$1"
@@ -326,7 +326,7 @@ satellite_tune_fpm_config() {
           fi
         done
       else
-        ### msg "DEBUG: _PHP_SV is ${_PHP_SV} in satellite_create_web_user A"
+        msg "DEBUG: _PHP_SV is ${_PHP_SV} in satellite_create_web_user A"
         satellite_create_web_user "${_PHP_SV}"
       fi
       ### create or update special system user if needed
@@ -2980,9 +2980,9 @@ satellite_if_add_update_user_platforms_symlinks() {
 
     if [ ! -d "${_QH}" ]; then
       mkdir -p ${_QH}
-      ### msg "DEBUG: _QH is $_QH in action symlinks 1"
+      msg "DEBUG: _QH is $_QH in action symlinks 1"
     fi
-    ### msg "DEBUG: _QH is $_QH in action symlinks 2"
+    msg "DEBUG: _QH is $_QH in action symlinks 2"
     chown -R ${_USER}:${_USRG} /home/${_USERFTP}/platforms &> /dev/null
     chmod 700 /home/${_USERFTP} &> /dev/null
     rm -f ${_QH}/{cod,commerce,commons,openatrium,openscholar,drupal6,drupal7}
