@@ -1,4 +1,4 @@
-; CiviCRM 4.4-d6 master makefile
+; CiviCRM 5.0-d6 master makefile
 ;
 
 api = 2
@@ -11,12 +11,12 @@ projects[pressflow][download][url] = "http://files.aegir.cc/core/pressflow-6.44.
 projects[civicrm][type] = "module"
 projects[civicrm][directory_name] = "civicrm"
 projects[civicrm][download][type] = "get"
-projects[civicrm][download][url] = "http://sourceforge.net/projects/civicrm/files/civicrm-stable/4.4.7/civicrm-4.4.7-drupal6.tar.gz/download?use_mirror=autoselect"
+projects[civicrm][download][url] = "http://sourceforge.net/projects/civicrm/files/civicrm-stable/5.0.2/civicrm-5.0.2-drupal6.tar.gz/download?use_mirror=autoselect"
 
 projects[civicrm_l10n][type] = "module"
 projects[civicrm_l10n][subdir] = "civicrm"
 projects[civicrm_l10n][download][type] = "get"
-projects[civicrm_l10n][download][url] = "http://sourceforge.net/projects/civicrm/files/civicrm-stable/4.4.7/civicrm-4.4.7-l10n.tar.gz/download?use_mirror=autoselect"
+projects[civicrm_l10n][download][url] = "http://sourceforge.net/projects/civicrm/files/civicrm-stable/5.0.2/civicrm-5.0.2-l10n.tar.gz/download?use_mirror=autoselect"
 projects[civicrm_l10n][overwrite] = TRUE
 
 projects[civicrm_theme][type] = "theme"
