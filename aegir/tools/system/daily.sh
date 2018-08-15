@@ -2592,33 +2592,14 @@ check_update_le_hm_ssl() {
     && [ -e "${User}/tools/le/certs/${hmFront}/fullchain.pem" ]; then
     echo "Running LE cert check directly for hostmaster ${_HM_U}"
     su -s /bin/bash - ${_HM_U} -c "${exeLe} -c -d ${hmFront}"
-    sleep 5
   fi
 }
 
 check_update_le_ssl() {
-  if [[ "${Dom}" =~ ^(a|b|c|d|e) ]]; then
-    runDay="1"
-  elif [[ "${Dom}" =~ ^(f|g|h|i) ]]; then
-    runDay="2"
-  elif [[ "${Dom}" =~ ^(j|k|l|m) ]]; then
-    runDay="3"
-  elif [[ "${Dom}" =~ ^(n|o|p|q) ]]; then
-    runDay="4"
-  elif [[ "${Dom}" =~ ^(r|s|t|u) ]]; then
-    runDay="5"
-  elif [[ "${Dom}" =~ ^(v|w|x|y) ]]; then
-    runDay="6"
-  else
-    runDay="7"
-  fi
-  if [ "${_DOW}" = "${runDay}" ]; then
-    if [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
-      echo "Running LE cert check via Verify task for ${Dom}"
-      run_drush8_hmr_cmd "hosting-task @${Dom} verify --force"
-      echo ${_MOMENT} >> /var/xdrago/log/le/${Dom}
-      sleep 5
-    fi
+  if [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
+    echo "Running LE cert check via Verify task for ${Dom}"
+    run_drush8_hmr_cmd "hosting-task @${Dom} verify --force"
+    echo ${_MOMENT} >> /var/xdrago/log/le/${Dom}
   fi
 }
 
