@@ -2596,10 +2596,12 @@ check_update_le_hm_ssl() {
 }
 
 check_update_le_ssl() {
-  if [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
-    echo "Running LE cert check via Verify task for ${Dom}"
-    run_drush8_hmr_cmd "hosting-task @${Dom} verify --force"
-    echo ${_MOMENT} >> /var/xdrago/log/le/${Dom}
+  if [ ! -e "${User}/static/control/noverify.info" ]; then
+    if [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
+      echo "Running LE cert check via Verify task for ${Dom}"
+      run_drush8_hmr_cmd "hosting-task @${Dom} verify --force"
+      echo ${_MOMENT} >> /var/xdrago/log/le/${Dom}
+    fi
   fi
 }
 
