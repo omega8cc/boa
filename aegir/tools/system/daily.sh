@@ -2592,6 +2592,7 @@ check_update_le_hm_ssl() {
     && [ -e "${User}/tools/le/certs/${hmFront}/fullchain.pem" ]; then
     echo "Running LE cert check directly for hostmaster ${_HM_U}"
     su -s /bin/bash - ${_HM_U} -c "${exeLe} -c -d ${hmFront}"
+    sleep 3
   fi
 }
 
@@ -2601,6 +2602,7 @@ check_update_le_ssl() {
       echo "Running LE cert check via Verify task for ${Dom}"
       run_drush8_hmr_cmd "hosting-task @${Dom} verify --force"
       echo ${_MOMENT} >> /var/xdrago/log/le/${Dom}
+      sleep 3
     fi
   fi
 }
