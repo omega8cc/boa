@@ -5,7 +5,7 @@
 ###
 ###  BOA Meta Installer
 ###
-###  Copyright (C) 2010-2017 Omega8.cc
+###  Copyright (C) 2010-2018 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -229,9 +229,12 @@ update_agents() {
 
   if [ "${_BENG_VS}" = "YES" ] \
     && [ -e "/var/xdrago" ]; then
-    PrTest=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+    PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+    PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
     InTest=$(ls /data/disk/ | wc -l 2>&1)
-    if [ "${InTest}" -gt "14" ] || [[ "${PrTest}" =~ "POWER" ]]; then
+    if [ "${InTest}" -gt "14" ] \
+      || [[ "${PrTestPower}" =~ "POWER" ]] \
+      || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
       echo ${InTest} > /root/.tg.cnf
     else
       rm -f /root/.tg.cnf
@@ -282,6 +285,20 @@ update_agents() {
       touch ${pthLog}/mysql_backup.ctrl.322stableQ9.pid
     else
       mv -f /var/xdrago/mysql_backup.sh.old /var/xdrago/mysql_backup.sh
+    fi
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/mysql_cluster_backup.ctrl.322stableQ9.pid" ]; then
+    mv -f /var/xdrago/mysql_cluster_backup.sh /var/xdrago/mysql_cluster_backup.sh.old
+    curl ${crlGet} "${urlHmr}/tools/system/mysql_cluster_backup.sh" -o /var/xdrago/mysql_cluster_backup.sh
+    if [ -e "/var/xdrago/mysql_cluster_backup.sh" ]; then
+      chmod 700 /var/xdrago/mysql_cluster_backup.sh
+      chown root:root /var/xdrago/mysql_cluster_backup.sh
+      touch ${pthLog}/mysql_cluster_backup.ctrl.322stableQ9.pid
+    else
+      mv -f /var/xdrago/mysql_cluster_backup.sh.old /var/xdrago/mysql_cluster_backup.sh
     fi
   fi
 

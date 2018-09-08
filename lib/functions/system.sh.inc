@@ -307,8 +307,10 @@ tune_memory_limits() {
   if [ "${_CPU_VS}" -lt "2" ]; then
     _CPU_VS=2
   fi
-  PrTest=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
-  if [[ "${PrTest}" =~ "POWER" ]]; then
+  PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+  if [[ "${PrTestPower}" =~ "POWER" ]] \
+    || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
     if [ "${_CPU_VS}" -lt "8" ]; then
       _CPU_VS=8
     fi
@@ -526,7 +528,8 @@ tune_memory_limits() {
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits
     update_sql_conf
-    if [[ "${PrTest}" =~ "POWER" ]]; then
+    if [[ "${PrTestPower}" =~ "POWER" ]] \
+      || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
       _UXC_SQL="${_MXC_SQL}"
     else
       _UXC_SQL=$(( _MXC_SQL / 2 ))
