@@ -33,15 +33,23 @@ check_root
 [ ! -e "/root/.my.cluster_write_node.txt" ] && exit 0
 [ ! -e "/root/.my.cluster_root_pwd.txt" ] && exit 0
 
-if [ -e "/root/.my.cluster_write_node.txt" ]; then
-  _SQL_HOST=$(cat /root/.my.cluster_write_node.txt 2>&1)
-  _SQL_HOST=$(echo -n ${_SQL_HOST} | tr -d "\n" 2>&1)
-fi
 if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
   _SQL_PSWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
 fi
-_SQL_PORT="3306"
+
+if [ -e "/root/.my.cluster_backup_proxysql.txt" ]; then
+  _SQL_PORT="6033"
+  _SQL_HOST="127.0.0.1"
+else
+  _SQL_PORT="3306"
+if [ -e "/root/.my.cluster_write_node.txt" ]; then
+  _SQL_HOST=$(cat /root/.my.cluster_write_node.txt 2>&1)
+  _SQL_HOST=$(echo -n ${_SQL_HOST} | tr -d "\n" 2>&1)
+fi
+  [ -z ${_SQL_HOST} ] && _SQL_HOST="127.0.0.1" && _SQL_PORT="3306"
+fi
+
 _C_SQL="mysql --user=root --password=${_SQL_PSWD} --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp"
 
 echo "SQL --host=${_SQL_HOST} --port=${_SQL_PORT}"
