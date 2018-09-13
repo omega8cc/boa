@@ -6,7 +6,7 @@ core = 7.x
 
 projects[drupal][type] = "core"
 projects[drupal][download][type] = "get"
-projects[drupal][download][url] = "http://files.aegir.cc/core/drupal-7.59.2.tar.gz"
+projects[drupal][download][url] = "http://files.aegir.cc/core/drupal-7.59.3.tar.gz"
 
 projects[civicrm][type] = "module"
 projects[civicrm][directory_name] = "civicrm"
