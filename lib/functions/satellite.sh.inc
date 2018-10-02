@@ -3302,6 +3302,7 @@ satellite_if_add_update_backend_user_dirs_files_clean() {
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H git.drupal.org >> ~/.ssh/known_hosts" &> /dev/null
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H github.com >> ~/.ssh/known_hosts" &> /dev/null
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H gitlab.org >> ~/.ssh/known_hosts" &> /dev/null
+    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H gitlab.com >> ~/.ssh/known_hosts" &> /dev/null
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H unfuddle.com >> ~/.ssh/known_hosts" &> /dev/null
     cp -af ${_ROOT}/.ssh/id_rsa.pub ${_ROOT}/static/${_USER}.id_rsa.pub
     chmod 644 ${_ROOT}/static/${_USER}.id_rsa.pub
