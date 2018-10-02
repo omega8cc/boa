@@ -610,6 +610,7 @@ install_vps() {
     vserver ${idn} exec /opt/local/bin/boa in-${ver} public ${hst} ${eml} o8 mini
   else
     _REMOVE_LINKS="buagent \
+                   checkroot.sh \
                    fancontrol \
                    halt \
                    hwclock.sh \
@@ -628,6 +629,7 @@ install_vps() {
                    mountvirtfs \
                    mtab.sh \
                    networking \
+                   procps \
                    reboot \
                    sendsigs \
                    setserial \
@@ -641,6 +643,7 @@ install_vps() {
     for link in ${_REMOVE_LINKS}; do
       if [ -e "/vservers/${idn}/etc/init.d/${link}" ]; then
         vserver ${idn} exec update-rc.d -f ${link} remove
+        mv -f /etc/init.d/${link} /var/backups/init.d.${link}
       fi
     done
     for s in cron dbus ssh; do

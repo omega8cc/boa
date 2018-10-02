@@ -3199,6 +3199,7 @@ if_wheezy_to_jessie() {
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
       _PTMX=OK
       _REMOVE_LINKS="buagent \
+                     checkroot.sh \
                      fancontrol \
                      halt \
                      hwclock.sh \
@@ -3217,6 +3218,7 @@ if_wheezy_to_jessie() {
                      mountvirtfs \
                      mtab.sh \
                      networking \
+                     procps \
                      reboot \
                      sendsigs \
                      setserial \
@@ -3230,6 +3232,7 @@ if_wheezy_to_jessie() {
       for link in ${_REMOVE_LINKS}; do
         if [ -e "/etc/init.d/${link}" ]; then
           update-rc.d -f ${link} remove &> /dev/null
+          mv -f /etc/init.d/${link} /var/backups/init.d.${link}
         fi
       done
       for s in cron dbus ssh; do
@@ -3481,6 +3484,7 @@ if_squeeze_to_wheezy() {
       || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
       _PTMX=OK
       _REMOVE_LINKS="buagent \
+                     checkroot.sh \
                      fancontrol \
                      halt \
                      hwclock.sh \
@@ -3499,6 +3503,7 @@ if_squeeze_to_wheezy() {
                      mountvirtfs \
                      mtab.sh \
                      networking \
+                     procps \
                      reboot \
                      sendsigs \
                      setserial \
@@ -3512,6 +3517,7 @@ if_squeeze_to_wheezy() {
       for link in ${_REMOVE_LINKS}; do
         if [ -e "/etc/init.d/${link}" ]; then
           update-rc.d -f ${link} remove &> /dev/null
+          mv -f /etc/init.d/${link} /var/backups/init.d.${link}
         fi
       done
       for s in cron dbus ssh; do
