@@ -235,27 +235,27 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
       # truncate_queue_tables &> /dev/null
       # echo "Truncated queue table in ${_DB}"
       _CACHE_CLEANUP=NONE
-      if [ "${_DOW}" = "6" ] && [ -e "/root/.my.batch_innodb.cnf" ]; then
-        repair_this_database &> /dev/null
-        echo "Repair task for ${_DB} completed"
-        truncate_cache_tables &> /dev/null
-        echo "All cache tables in ${_DB} truncated"
-        convert_to_innodb &> /dev/null
-        echo "InnoDB conversion task for ${_DB} completed"
-        _CACHE_CLEANUP=DONE
-      fi
-      if [ "${_OPTIM}" = "YES" ] \
-        && [ "${_DOW}" = "7" ] \
-        && [ "${_DOM}" -ge "24" ] \
-        && [ "${_DOM}" -lt "31" ]; then
-        repair_this_database &> /dev/null
-        echo "Repair task for ${_DB} completed"
-        truncate_cache_tables &> /dev/null
-        echo "All cache tables in ${_DB} truncated"
-        optimize_this_database &> /dev/null
-        echo "Optimize task for ${_DB} completed"
-        _CACHE_CLEANUP=DONE
-      fi
+      # if [ "${_DOW}" = "6" ] && [ -e "/root/.my.batch_innodb.cnf" ]; then
+      #   repair_this_database &> /dev/null
+      #   echo "Repair task for ${_DB} completed"
+      #   truncate_cache_tables &> /dev/null
+      #   echo "All cache tables in ${_DB} truncated"
+      #   convert_to_innodb &> /dev/null
+      #   echo "InnoDB conversion task for ${_DB} completed"
+      #   _CACHE_CLEANUP=DONE
+      # fi
+      # if [ "${_OPTIM}" = "YES" ] \
+      #   && [ "${_DOW}" = "7" ] \
+      #   && [ "${_DOM}" -ge "24" ] \
+      #   && [ "${_DOM}" -lt "31" ]; then
+      #   repair_this_database &> /dev/null
+      #   echo "Repair task for ${_DB} completed"
+      #   truncate_cache_tables &> /dev/null
+      #   echo "All cache tables in ${_DB} truncated"
+      #   optimize_this_database &> /dev/null
+      #   echo "Optimize task for ${_DB} completed"
+      #   _CACHE_CLEANUP=DONE
+      # fi
       if [ "${_CACHE_CLEANUP}" != "DONE" ]; then
         truncate_cache_tables &> /dev/null
         echo "All cache tables in ${_DB} truncated"
