@@ -1485,7 +1485,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/print" ]; then
-        get_dev_contrib "print-7.x-2.0.tar.gz"
+        get_dev_contrib "print-7.x-2.1.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/session_expire" ]; then
         get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
@@ -1641,7 +1641,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "login_security-7.x-1.9.tar.gz"
   get_dev_contrib "nocurrent_pass-7.x-1.1.tar.gz"
   get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
-  get_dev_contrib "print-7.x-2.0.tar.gz"
+  get_dev_contrib "print-7.x-2.1.tar.gz"
   get_dev_contrib "readonlymode-7.x-1.2.tar.gz"
   get_dev_contrib "reroute_email-7.x-1.3.tar.gz"
   get_dev_contrib "robotstxt-7.x-1.4.tar.gz"
