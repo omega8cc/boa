@@ -3083,7 +3083,6 @@ if_wheezy_to_jessie() {
     echo "openssh-client install" | dpkg --set-selections
     echo "openssh-server install" | dpkg --set-selections
     echo "openssl install"        | dpkg --set-selections
-    echo "ssh install"            | dpkg --set-selections
     echo "zlib1g install"         | dpkg --set-selections
     echo "zlib1g-dev install"     | dpkg --set-selections
     echo "zlibc install"          | dpkg --set-selections
@@ -3383,7 +3382,6 @@ if_squeeze_to_wheezy() {
     echo "openssh-client install" | dpkg --set-selections
     echo "openssh-server install" | dpkg --set-selections
     echo "openssl install"        | dpkg --set-selections
-    echo "ssh install"            | dpkg --set-selections
     echo "zlib1g install"         | dpkg --set-selections
     echo "zlib1g-dev install"     | dpkg --set-selections
     echo "zlibc install"          | dpkg --set-selections
