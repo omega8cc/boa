@@ -689,11 +689,11 @@ fix_core_dgd() {
   fi
 
   # SA-CORE D6 patch
-  if [ -e "/var/xdrago" ] \
-    && [ ! -e "${saXPatch}" ]; then
-    mkdir -p /var/xdrago/conf
-    curl ${crlGet} "${urlHmr}/patches/6-core/${saXCoreS}.patch" -o ${saXPatch}
-  fi
+#   if [ -e "/var/xdrago" ] \
+# 	&& [ ! -e "${saXPatch}" ]; then
+# 	mkdir -p /var/xdrago/conf
+# 	curl ${crlGet} "${urlHmr}/patches/6-core/${saXCoreS}.patch" -o ${saXPatch}
+#   fi
 
   # SA-CORE for Octopus hostmaster platforms
   if [ -e "/var/xdrago" ] \
