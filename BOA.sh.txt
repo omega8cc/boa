@@ -1622,6 +1622,8 @@ if [ `whoami` = "root" ]; then
     saCoreN="SA-CORE-2018-004"
     fix_core_dgd
     sleep 3
+    saCoreN="SA-CORE-2018-006"
+    fix_core_dgd
     _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
       _VERSIONS_TEST_RESULT=OK
