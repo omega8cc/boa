@@ -169,13 +169,13 @@ Octopus can install and/or support the platforms listed below:
 
  See also: https://omega8.cc/how-to-add-custom-platform-properly-140
 
- @ Drupal 7.59.3
+ @ Drupal 7.60.1
 
  aGov 3.10 -------------------- https://drupal.org/project/agov
  Commerce 1.52 ---------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.54 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.50 ----------------- https://drupal.org/project/commons
- Drupal 7.59.3 ---------------- https://drupal.org/project/drupal/releases/7.59
+ Drupal 7.60.1 ---------------- https://drupal.org/project/drupal/releases/7.60
  Guardr 2.44 ------------------ https://drupal.org/project/guardr
  OpenAid 2.8 ------------------ https://drupal.org/project/openaid
  OpenAtrium 2.629 ------------- https://drupal.org/project/openatrium
@@ -193,7 +193,7 @@ Octopus can install and/or support the platforms listed below:
  Pressflow 6.44.1 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.59.3 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.60.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
 * All D6 platforms have been enhanced using Pressflow 6.44.1 +Extra core:
