@@ -3966,8 +3966,6 @@ sys_packages_install() {
               ncurses-term \
               netcat \
               ntpdate \
-              openssh-client \
-              openssh-server \
               p7zip-full \
               pdftk \
               percona-xtrabackup-24 \
@@ -3983,6 +3981,7 @@ sys_packages_install() {
               s3cmd \
               shtool \
               sipcalc \
+              ssh \
               ssl-cert \
               subversion \
               sudo \
