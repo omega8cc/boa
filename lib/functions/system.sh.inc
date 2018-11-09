@@ -3082,6 +3082,7 @@ if_wheezy_to_jessie() {
     echo "libssl-dev install"     | dpkg --set-selections
     echo "openssh-client install" | dpkg --set-selections
     echo "openssh-server install" | dpkg --set-selections
+    echo "openssh-sftp-server install" | dpkg --set-selections
     echo "openssl install"        | dpkg --set-selections
     echo "ssh install"            | dpkg --set-selections
     echo "zlib1g install"         | dpkg --set-selections
@@ -3382,6 +3383,7 @@ if_squeeze_to_wheezy() {
     echo "libssl-dev install"     | dpkg --set-selections
     echo "openssh-client install" | dpkg --set-selections
     echo "openssh-server install" | dpkg --set-selections
+    echo "openssh-sftp-server install" | dpkg --set-selections
     echo "openssl install"        | dpkg --set-selections
     echo "ssh install"            | dpkg --set-selections
     echo "zlib1g install"         | dpkg --set-selections
@@ -3610,6 +3612,19 @@ update_webmin_apt() {
 
 sys_packages_update() {
   msg "INFO: Running system packages update..."
+  echo "curl install"           | dpkg --set-selections
+  echo "git install"            | dpkg --set-selections
+  echo "git-core install"       | dpkg --set-selections
+  echo "git-man install"        | dpkg --set-selections
+  echo "libssl-dev install"     | dpkg --set-selections
+  echo "openssh-client install" | dpkg --set-selections
+  echo "openssh-server install" | dpkg --set-selections
+  echo "openssh-sftp-server install" | dpkg --set-selections
+  echo "openssl install"        | dpkg --set-selections
+  echo "ssh install"            | dpkg --set-selections
+  echo "zlib1g install"         | dpkg --set-selections
+  echo "zlib1g-dev install"     | dpkg --set-selections
+  echo "zlibc install"          | dpkg --set-selections
   update_webmin_apt
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
   rm -f /etc/apt/sources.list.d/openssl.list
