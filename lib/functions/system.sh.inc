@@ -4930,7 +4930,7 @@ update_initd() {
       wait
       sed -i "s/^PasswordAuthentication.*//g" /etc/ssh/sshd_config &> /dev/null
       wait
-      sed -i "s/^PermitRootLogin.*/PermitRootLogin prohibit-password/g" \
+      sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" \
         /etc/ssh/sshd_config &> /dev/null
       wait
       echo >> /etc/ssh/sshd_config
@@ -4955,10 +4955,10 @@ update_initd() {
         wait
         sed -i "s/^PasswordAuthentication.*//g" /usr/etc/sshd_config &> /dev/null
         wait
-        sed -i "s/^#PermitRootLogin.*/PermitRootLogin prohibit-password/g" \
+        sed -i "s/^#PermitRootLogin.*/PermitRootLogin without-password/g" \
           /usr/etc/sshd_config &> /dev/null
         wait
-        sed -i "s/^PermitRootLogin.*/PermitRootLogin prohibit-password/g" \
+        sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" \
           /usr/etc/sshd_config &> /dev/null
         wait
         echo >> /usr/etc/sshd_config
