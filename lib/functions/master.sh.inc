@@ -388,10 +388,10 @@ master_download_for_local_build() {
     fi
     ### Aegir Drupal Contrib
     get_dev_stc "admin_menu-7.x-3.0-rc5.tar.gz"
-    get_dev_stc "betterlogin-7.x-1.4.tar.gz"
+    get_dev_stc "betterlogin-7.x-1.5.tar.gz"
     get_dev_stc "ctools-7.x-1.14.tar.gz"
     get_dev_stc "entity-7.x-1.9.tar.gz"
-    get_dev_stc "libraries-7.x-2.3.tar.gz"
+    get_dev_stc "libraries-7.x-2.5.tar.gz"
     get_dev_stc "module_filter-7.x-2.1.tar.gz"
     get_dev_stc "openidadmin-7.x-1.0.tar.gz"
     get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
