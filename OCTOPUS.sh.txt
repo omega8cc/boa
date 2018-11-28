@@ -51,7 +51,7 @@ export _USER="${_USER}"
 ###
 ### Variables
 ###
-_DRUSH_VERSION=micro-8-07-07-2018
+_DRUSH_VERSION=8.1.18.1
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _PLATFORMS_ONLY=NO
