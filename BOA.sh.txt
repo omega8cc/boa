@@ -432,6 +432,28 @@ update_agents() {
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/fast_shutdown.ctrl.322stableQ11.pid" ]; then
+    sed -i "s/.*opcache.fast_shutdown.*//g" /opt/etc/fpm/fpm-pool-common.conf
+    if [ -e "/etc/init.d/php70-fpm" ]; then
+      service php70-fpm reload &> /dev/null
+    fi
+    if [ -e "/etc/init.d/php56-fpm" ]; then
+      service php56-fpm reload &> /dev/null
+    fi
+    if [ -e "/etc/init.d/php55-fpm" ]; then
+      service php55-fpm reload &> /dev/null
+    fi
+    if [ -e "/etc/init.d/php54-fpm" ]; then
+      service php54-fpm reload &> /dev/null
+    fi
+    if [ -e "/etc/init.d/php53-fpm" ]; then
+      service php53-fpm reload &> /dev/null
+    fi
+    touch ${pthLog}/fast_shutdown.ctrl.322stableQ11.pid
+  fi
+
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
     && [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
     && [ ! -e "${pthLog}/guest-fire-sh2.ctrl.322stableQ11.pid" ]; then
