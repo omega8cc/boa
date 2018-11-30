@@ -1177,7 +1177,7 @@ satellite_child_b_update_ini_php_cli() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.322stableQ6.pid" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.322stableQ11.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1237,7 +1237,7 @@ satellite_child_b_update_ini_php_cli() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
-      echo > ${_U_HD}/.ctrl.322stableQ6.pid
+      echo > ${_U_HD}/.ctrl.322stableQ11.pid
     fi
   fi
 }
@@ -1485,7 +1485,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/print" ]; then
-        get_dev_contrib "print-7.x-2.0.tar.gz"
+        get_dev_contrib "print-7.x-2.1.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/session_expire" ]; then
         get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
@@ -1641,7 +1641,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "login_security-7.x-1.9.tar.gz"
   get_dev_contrib "nocurrent_pass-7.x-1.1.tar.gz"
   get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
-  get_dev_contrib "print-7.x-2.0.tar.gz"
+  get_dev_contrib "print-7.x-2.1.tar.gz"
   get_dev_contrib "readonlymode-7.x-1.2.tar.gz"
   get_dev_contrib "reroute_email-7.x-1.3.tar.gz"
   get_dev_contrib "robotstxt-7.x-1.4.tar.gz"
@@ -2379,10 +2379,10 @@ satellite_download_for_local_build() {
     fi
     ### Aegir Drupal Contrib
     get_dev_stc "admin_menu-7.x-3.0-rc5.tar.gz"
-    get_dev_stc "betterlogin-7.x-1.4.tar.gz"
+    get_dev_stc "betterlogin-7.x-1.5.tar.gz"
     get_dev_stc "ctools-7.x-1.14.tar.gz"
     get_dev_stc "entity-7.x-1.9.tar.gz"
-    get_dev_stc "libraries-7.x-2.3.tar.gz"
+    get_dev_stc "libraries-7.x-2.5.tar.gz"
     get_dev_stc "module_filter-7.x-2.1.tar.gz"
     get_dev_stc "openidadmin-7.x-1.0.tar.gz"
     get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
@@ -3302,6 +3302,7 @@ satellite_if_add_update_backend_user_dirs_files_clean() {
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H git.drupal.org >> ~/.ssh/known_hosts" &> /dev/null
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H github.com >> ~/.ssh/known_hosts" &> /dev/null
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H gitlab.org >> ~/.ssh/known_hosts" &> /dev/null
+    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H gitlab.com >> ~/.ssh/known_hosts" &> /dev/null
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H unfuddle.com >> ~/.ssh/known_hosts" &> /dev/null
     cp -af ${_ROOT}/.ssh/id_rsa.pub ${_ROOT}/static/${_USER}.id_rsa.pub
     chmod 644 ${_ROOT}/static/${_USER}.id_rsa.pub
@@ -3654,7 +3655,7 @@ satellite_make() {
     echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
   fi
 
-  if [ ! -e "${_ROOT}/static/control/.ctrl.322stableQ6.pid" ] \
+  if [ ! -e "${_ROOT}/static/control/.ctrl.322stableQ11.pid" ] \
     || [ ! -e "${_ROOT}/static/control/README.txt" ]; then
     mkdir -p ${_ROOT}/static/control
     chmod 755 ${_ROOT}/static/control
@@ -3666,7 +3667,7 @@ satellite_make() {
     chown -R ${_USER}.ftp:${_USRG} \
       ${_ROOT}/static/control &> /dev/null
     rm -f ${_ROOT}/static/control/.ctrl.*
-    echo OK > ${_ROOT}/static/control/.ctrl.322stableQ6.pid
+    echo OK > ${_ROOT}/static/control/.ctrl.322stableQ11.pid
   fi
 
   if [ -d "/data/all/000" ]; then

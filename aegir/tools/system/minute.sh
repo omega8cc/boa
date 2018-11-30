@@ -356,4 +356,4 @@ fi
 perl /var/xdrago/monitor/check/sqlcheck
 echo DONE!
 exit 0
-###EOF2017###
+###EOF2018###

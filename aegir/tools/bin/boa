@@ -191,7 +191,7 @@ check_root_direct() {
     echo
     echo "HINT:  You can always restrict access later, or"
     echo "       allow only SSH (RSA) keys for root with directive"
-    echo "         PermitRootLogin prohibit-password"
+    echo "         PermitRootLogin without-password"
     echo "       in the /usr/etc/sshd_config file"
     echo "Bye"
     clean_pid_exit
@@ -1384,6 +1384,7 @@ check_root() {
       apt-get purge auditd -y --force-yes -qq &> /dev/null
     fi
     _REMOVE_LINKS="buagent \
+                   checkroot.sh \
                    fancontrol \
                    halt \
                    hwclock.sh \
@@ -1402,6 +1403,7 @@ check_root() {
                    mountvirtfs \
                    mtab.sh \
                    networking \
+                   procps \
                    reboot \
                    sendsigs \
                    setserial \
@@ -1415,6 +1417,7 @@ check_root() {
     for link in ${_REMOVE_LINKS}; do
       if [ -e "/etc/init.d/${link}" ]; then
         update-rc.d -f ${link} remove &> /dev/null
+        mv -f /etc/init.d/${link} /var/backups/init.d.${link}
       fi
     done
     for s in cron dbus ssh; do

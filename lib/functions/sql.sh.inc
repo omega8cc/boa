@@ -631,10 +631,13 @@ install_mariadb_server() {
       && [ "${_LOC_OSV}" = "squeeze" ]; then
       _SQL_UPGRADE=NO
     fi
-    _SQL_DEB_SRC_TEST=$(grep ${_DB_SRC} \
+    _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
       ${aptLiSys}.d/mariadb.list 2>&1)
-    if [[ "$_SQL_DEB_SRC_TEST" =~ "${_DB_SRC}" ]] \
-      && [ -e "${pthLog}/mariadb-apt-fixed-${_X_VERSION}.log" ]; then
+    _SQL_DEB_SRC_TEST_B=$(grep ${_OSV} \
+      ${aptLiSys}.d/mariadb.list 2>&1)
+    if [[ "$_SQL_DEB_SRC_TEST_A" =~ "${_DB_SRC}" ]] \
+      && [[ "$_SQL_DEB_SRC_TEST_B" =~ "${_OSV}" ]] \
+      && [ -e "${pthLog}/mariadb-apt-fixed-${_OSV}-${_X_VERSION}.log" ]; then
       _SQL_DEB_SRC_UPDATE=NO
     else
       if [ "${_THIS_OS}" = "Debian" ]; then
@@ -649,7 +652,7 @@ install_mariadb_server() {
       echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
       rm -f /etc/apt/sources.list.d/openssl.list
       st_runner "apt-get update -qq" &> /dev/null
-      touch ${pthLog}/mariadb-apt-fixed-${_X_VERSION}.log
+      touch ${pthLog}/mariadb-apt-fixed-${_OSV}-${_X_VERSION}.log
     fi
     if [ "$_SQL_UPGRADE" = "YES" ]; then
       service cron stop &> /dev/null
