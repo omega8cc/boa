@@ -87,4 +87,4 @@ if [ -e "/vservers" ] \
   rm -f /var/run/fire.pid
 fi
 exit 0
-###EOF2017###
+###EOF2018###

@@ -47,4 +47,4 @@ local(@MYARR)=`grep mysql /var/log/syslog | tail --lines=999 2>&1`;
     }
   }
 }
-###EOF2017###
+###EOF2018###
