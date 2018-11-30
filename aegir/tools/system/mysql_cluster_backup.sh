@@ -3,10 +3,6 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-_SQL_HOST="127.0.0.1"
-_SQL_PORT="6033"
-_C_SQL="mysql --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp --user=root"
-
 check_root() {
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
@@ -33,19 +29,32 @@ check_root() {
 }
 check_root
 
-if [ -e "/root/.proxy.cnf" ]; then
-  exit 0
+[ -e "/root/.proxy.cnf" ] && exit 0
+[ ! -e "/root/.my.cluster_write_node.txt" ] && exit 0
+[ ! -e "/root/.my.cluster_root_pwd.txt" ] && exit 0
+
+if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+  _SQL_PSWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
+  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
 fi
 
-if [ ! -e "/root/.my.cluster_root_pwd.txt" ]; then
-  exit 0
+if [ -e "/root/.my.cluster_backup_proxysql.txt" ]; then
+  _SQL_PORT="6033"
+  _SQL_HOST="127.0.0.1"
+else
+  _SQL_PORT="3306"
+if [ -e "/root/.my.cluster_write_node.txt" ]; then
+  _SQL_HOST=$(cat /root/.my.cluster_write_node.txt 2>&1)
+  _SQL_HOST=$(echo -n ${_SQL_HOST} | tr -d "\n" 2>&1)
+fi
+  [ -z ${_SQL_HOST} ] && _SQL_HOST="127.0.0.1" && _SQL_PORT="3306"
 fi
 
+_C_SQL="mysql --user=root --password=${_SQL_PSWD} --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp"
+
+echo "SQL --host=${_SQL_HOST} --port=${_SQL_PORT}"
 n=$((RANDOM%3600+8))
-echo "Waiting $n seconds 1/2 on `date` before running backup..."
-sleep $n
-n=$((RANDOM%1800+8))
-echo "Waiting $n seconds 2/2 on `date` before running backup..."
+echo "Waiting $n seconds on `date` before running backup..."
 sleep $n
 echo "Starting backup on `date`"
 
@@ -180,9 +189,11 @@ backup_this_database() {
   sleep ${n}
   check_running
   mysqldump \
+    --user=root \
+    --password=${_SQL_PSWD} \
     --host=${_SQL_HOST} \
     --port=${_SQL_PORT} \
-    --protocol=tcp
+    --protocol=tcp \
     --single-transaction \
     --quick \
     --no-autocommit \
@@ -213,36 +224,38 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
 'Table Size (MB)' FROM information_schema.TABLES WHERE table_schema = '${_DB}' AND table_name ='watchdog';" | cut -d'/' -f1 | awk '{ print $2}' | sed "s/[\/\s+]//g" | bc 2>&1)
       _IS_GB=${_IS_GB//[^0-9]/}
       _SQL_MAX_LIMIT="1024"
-      if [ "${_IS_GB}" -gt "${_SQL_MAX_LIMIT}" ]; then
-        truncate_watchdog_tables &> /dev/null
-        echo "Truncated giant ${_IS_GB} watchdog in ${_DB}"
+      if [ ! -z "${_IS_GB}" ]; then
+        if [ "${_IS_GB}" -gt "${_SQL_MAX_LIMIT}" ]; then
+          truncate_watchdog_tables &> /dev/null
+          echo "Truncated giant ${_IS_GB} watchdog in ${_DB}"
+        fi
       fi
       # truncate_accesslog_tables &> /dev/null
       # echo "Truncated not used accesslog in ${_DB}"
       # truncate_queue_tables &> /dev/null
       # echo "Truncated queue table in ${_DB}"
       _CACHE_CLEANUP=NONE
-      if [ "${_DOW}" = "6" ] && [ -e "/root/.my.batch_innodb.cnf" ]; then
-        repair_this_database &> /dev/null
-        echo "Repair task for ${_DB} completed"
-        truncate_cache_tables &> /dev/null
-        echo "All cache tables in ${_DB} truncated"
-        convert_to_innodb &> /dev/null
-        echo "InnoDB conversion task for ${_DB} completed"
-        _CACHE_CLEANUP=DONE
-      fi
-      if [ "${_OPTIM}" = "YES" ] \
-        && [ "${_DOW}" = "7" ] \
-        && [ "${_DOM}" -ge "24" ] \
-        && [ "${_DOM}" -lt "31" ]; then
-        repair_this_database &> /dev/null
-        echo "Repair task for ${_DB} completed"
-        truncate_cache_tables &> /dev/null
-        echo "All cache tables in ${_DB} truncated"
-        optimize_this_database &> /dev/null
-        echo "Optimize task for ${_DB} completed"
-        _CACHE_CLEANUP=DONE
-      fi
+      # if [ "${_DOW}" = "6" ] && [ -e "/root/.my.batch_innodb.cnf" ]; then
+      #   repair_this_database &> /dev/null
+      #   echo "Repair task for ${_DB} completed"
+      #   truncate_cache_tables &> /dev/null
+      #   echo "All cache tables in ${_DB} truncated"
+      #   convert_to_innodb &> /dev/null
+      #   echo "InnoDB conversion task for ${_DB} completed"
+      #   _CACHE_CLEANUP=DONE
+      # fi
+      # if [ "${_OPTIM}" = "YES" ] \
+      #   && [ "${_DOW}" = "7" ] \
+      #   && [ "${_DOM}" -ge "24" ] \
+      #   && [ "${_DOM}" -lt "31" ]; then
+      #   repair_this_database &> /dev/null
+      #   echo "Repair task for ${_DB} completed"
+      #   truncate_cache_tables &> /dev/null
+      #   echo "All cache tables in ${_DB} truncated"
+      #   optimize_this_database &> /dev/null
+      #   echo "Optimize task for ${_DB} completed"
+      #   _CACHE_CLEANUP=DONE
+      # fi
       if [ "${_CACHE_CLEANUP}" != "DONE" ]; then
         truncate_cache_tables &> /dev/null
         echo "All cache tables in ${_DB} truncated"
