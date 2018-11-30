@@ -3,7 +3,7 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-_CSF_VRN="12.04"
+_CSF_VRN="12.08"
 _PROXYSQL_VRN="1.3.5-debian8_amd64"
 _UTIL_VRN="0.30.216-pre3126"
 _VNSTAT_VRN="1.15"
@@ -116,7 +116,7 @@ check_root_direct() {
     echo
     echo "HINT:  You can always restrict access later, or"
     echo "       allow only SSH (RSA) keys for root with directive"
-    echo "         PermitRootLogin prohibit-password"
+    echo "         PermitRootLogin without-password"
     echo "       in the /usr/etc/sshd_config file"
     echo "Bye"
     clean_pid_exit
@@ -326,8 +326,10 @@ install_proxysql() {
   if [ ! -z "${_E_PROXYSQL_PASSWORD}" ] && [ ! -z "${_E_ROOT_SQL_PASWD}" ]; then
 
     if [ "${cmd}" = "in-pxy" ] && [ -e "/vservers/${idn}/usr/bin/proxysql" ]; then
-      mkdir -p /vservers/${idn}/var/backups/old-proxysql/
-      cp -af /vservers/${idn}/var/lib/proxysql/* /vservers/${idn}/var/backups/old-proxysql/
+      _ATMIS=`date +%y%m%d-%H%M`
+      _XPSQL="/vservers/${idn}/var/backups/xpySQL/${_ATMIS}"
+      mkdir -p ${_XPSQL}
+      cp -af /vservers/${idn}/var/lib/proxysql/* ${_XPSQL}/
       vserver ${idn} exec service proxysql stop
       vserver ${idn} exec apt-get purge -y ${_NOISE} proxysql
       rm -f -r /vservers/${idn}/var/lib/proxysql
@@ -349,8 +351,6 @@ install_proxysql() {
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"DROP USER 'proxysql_user'@'${_S_Q}%';\""
     fi
 
-    _PROXYSQL_ADMIN_PWD="admin"
-
     echo "${_ROOT_SQL_PASWD}" > /vservers/${idn}/root/.my.cluster_root_pwd.txt
     echo "${_PROXYSQL_ADMIN_PWD}" > /vservers/${idn}/root/.my.proxysql_adm_pwd.txt
     echo "${_DB_NODE_IP[1]}" > /vservers/${idn}/root/.my.cluster_write_node.txt
@@ -365,12 +365,12 @@ install_proxysql() {
     vserver ${idn} exec chmod 700 /var/log/proxysql
     vserver ${idn} exec usermod -aG users proxysql
 
-    ### sed -i "s/admin:admin/admin:${_E_PROXYSQL_PASSWORD}/g" /vservers/${idn}/etc/proxysql.cnf
-    ### wait
+    sed -i "s/admin:admin/admin:${_E_PROXYSQL_PASSWORD}/g" /vservers/${idn}/etc/proxysql.cnf
+    wait
     sed -i "s/localhost/127.0.0.1/g" /vservers/${idn}/etc/proxysql.cnf
 
-    ### sed -i "s/PROXYSQL_PASSWORD=.*/PROXYSQL_PASSWORD=\"${_E_PROXYSQL_PASSWORD}\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
-    ### wait
+    sed -i "s/PROXYSQL_PASSWORD=.*/PROXYSQL_PASSWORD=\"${_E_PROXYSQL_PASSWORD}\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+    wait
     sed -i "s/MONITOR_PASSWORD=.*/MONITOR_PASSWORD=\"${_E_MONITOR_PASSWORD}\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
     wait
     sed -i "s/CLUSTER_APP_PASSWORD=.*/CLUSTER_APP_PASSWORD=\"${_E_CLUSTER_APP_PASSWORD}\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
@@ -402,7 +402,7 @@ install_proxysql() {
 
     echo "Running default auto-configuration of ProxySQL..."
     # ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --write-node=${_DB_NODE_IP[1]}:3600 --enable"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --enable"
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --config-file=/etc/proxysql-admin.cnf --proxysql-password=${_PROXYSQL_PASSWORD} --cluster-password=${_CLUSTER_APP_PASSWORD} --monitor-password=${_MONITOR_PASSWORD} --mode=loadbal --enable"
     sleep 10
 
     echo "Adding root user to mysql_users in ProxySQL..."
@@ -610,6 +610,7 @@ install_vps() {
     vserver ${idn} exec /opt/local/bin/boa in-${ver} public ${hst} ${eml} o8 mini
   else
     _REMOVE_LINKS="buagent \
+                   checkroot.sh \
                    fancontrol \
                    halt \
                    hwclock.sh \
@@ -628,6 +629,7 @@ install_vps() {
                    mountvirtfs \
                    mtab.sh \
                    networking \
+                   procps \
                    reboot \
                    sendsigs \
                    setserial \
@@ -641,6 +643,7 @@ install_vps() {
     for link in ${_REMOVE_LINKS}; do
       if [ -e "/vservers/${idn}/etc/init.d/${link}" ]; then
         vserver ${idn} exec update-rc.d -f ${link} remove
+        mv -f /etc/init.d/${link} /var/backups/init.d.${link}
       fi
     done
     for s in cron dbus ssh; do
