@@ -3,6 +3,7 @@ if_install_jetty() {
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
     && [ "${_LOC_OSV}" = "jessie" ]; then
     _DO_FIX=YES
+  fi
   if [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "stretch" ] \
     || [ "${_DO_FIX}" = "YES" ] \
