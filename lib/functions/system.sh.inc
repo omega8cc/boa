@@ -2840,8 +2840,7 @@ basic_packages_install_on_init() {
     ${_INITINS} curl &> /dev/null
     ${_INITINS} wget &> /dev/null
     if [ "${_OSV}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
-      msg "INFO: Installing sysvinit on ${_THIS_OS} ${_OSV}..."
-      ${_INITINS} sysvinit &> /dev/null
+      msg "INFO: Installing sysvinit-core on ${_THIS_OS} ${_OSV}..."
       ${_INITINS} sysvinit-core &> /dev/null
       ${_INITINS} sysvinit-utils &> /dev/null
       if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -2864,8 +2863,7 @@ basic_packages_install_on_init() {
     fi
   else
     if [ "${_OSV}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
-      msg "INFO: Installing sysvinit on ${_THIS_OS} ${_OSV}..."
-      ${_INITINS} sysvinit &> /dev/null
+      msg "INFO: Installing sysvinit-core on ${_THIS_OS} ${_OSV}..."
       ${_INITINS} sysvinit-core &> /dev/null
       ${_INITINS} sysvinit-utils &> /dev/null
       if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -3097,7 +3095,6 @@ if_jessie_to_stretch() {
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     if [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Removing systemd on ${_THIS_OS} stretch..."
-      ${_INSTALL} sysvinit &> /dev/null
       ${_INSTALL} sysvinit-core &> /dev/null
       ${_INSTALL} sysvinit-utils &> /dev/null
       if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -3106,7 +3103,6 @@ if_jessie_to_stretch() {
       mrun "apt-get remove systemd -y --force-yes -qq --purge --auto-remove" 2> /dev/null
       echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
       echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-      ${_INSTALL} sysvinit &> /dev/null
       ${_INSTALL} sysvinit-core &> /dev/null
       ${_INSTALL} sysvinit-utils &> /dev/null
     fi
@@ -3626,7 +3622,6 @@ sys_packages_install() {
               sudo \
               symlinks \
               sysstat \
-              sysvinit \
               sysvinit-core \
               sysvinit-utils \
               t1lib-bin \

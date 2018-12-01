@@ -573,7 +573,7 @@ install_vps() {
   echo "Installing vps ${idn}..."
 
   if [ "${osx}" = "jessie" ] || [ "${osx}" = "stretch" ]; then
-    incl="sysvinit-core,sysvinit,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen"
+    incl="sysvinit-core,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen"
     excl="systemd,udev,makedev,fuse"
   else
     incl="sysvinit,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen"
@@ -1238,7 +1238,7 @@ install_host() {
   fi
 
   if [ -x "/lib/systemd/systemd" ]; then
-    echo "Installing sysvinit on ${_OSV} ${_OSR}..."
+    echo "Installing sysvinit-core on ${_OSV} ${_OSR}..."
     ${_INSTAPP} sysvinit-core
     ${_INSTAPP} sysvinit-utils
     if [ -e "/usr/share/sysvinit/inittab" ]; then
