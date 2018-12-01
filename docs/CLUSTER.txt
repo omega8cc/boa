@@ -60,7 +60,7 @@ http://galeracluster.com/documentation-webpages/arbitrator.html
 
 * Dedicated, single bare-metal machine (RAID & 32GB+ RAM recommended)
 * Five+ IPs assigned (1 public host, 1 public web + 3 private or public for db)
-* Debian Jessie minimal OS on the host machine
+* Debian Stretch minimal OS on the host machine
 * SSH (RSA) keys for root with direct access (not via sudo etc.)
 
 

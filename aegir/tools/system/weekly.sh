@@ -95,7 +95,7 @@ and no longer supported PHP version: $1
 
 We have provided over a year of extended support for
 this PHP version, but now we can't extend it any further,
-because your system has to be upgraded to Debian Jessie,
+because your system has to be upgraded to Debian Stretch,
 which doesn't support deprecated PHP versions.
 
 The upgrade will happen in the first week of December, 2016,
@@ -130,7 +130,7 @@ and no longer supported PHP version: $1
 
 We have provided over a year of extended support for
 this PHP version, but now we can't extend it any further,
-because your system has to be upgraded to Debian Jessie,
+because your system has to be upgraded to Debian Stretch,
 which doesn't support deprecated PHP versions.
 
 The upgrade will happen in the first week of December, 2016,
@@ -165,7 +165,7 @@ and no longer supported PHP version: $1
 
 We have provided over a year of extended support for
 this PHP version, but now we can't extend it any further,
-because your system has to be upgraded to Debian Jessie,
+because your system has to be upgraded to Debian Stretch,
 which doesn't support deprecated PHP versions.
 
 The upgrade will happen in the first week of December, 2016,

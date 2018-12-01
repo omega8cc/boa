@@ -2839,7 +2839,7 @@ basic_packages_install_on_init() {
     ${_INITINS} netcat &> /dev/null
     ${_INITINS} curl &> /dev/null
     ${_INITINS} wget &> /dev/null
-    if [ "${_OSV}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
+    if [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Installing sysvinit-core on ${_THIS_OS} ${_OSV}..."
       ${_INITINS} sysvinit-core &> /dev/null
       ${_INITINS} sysvinit-utils &> /dev/null
@@ -2862,7 +2862,7 @@ basic_packages_install_on_init() {
       mrun "sleep 8"
     fi
   else
-    if [ "${_OSV}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
+    if [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Installing sysvinit-core on ${_THIS_OS} ${_OSV}..."
       ${_INITINS} sysvinit-core &> /dev/null
       ${_INITINS} sysvinit-utils &> /dev/null
