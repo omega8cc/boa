@@ -128,21 +128,18 @@ _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
 _D="/data/all"
 _SRCDIR="/opt/tmp/files"
 _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
-if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+if [ "${_PHP_CLI_VERSION}" = "7.2" ] \
+  && [ -x "/opt/php72/bin/php" ]; then
+  _T_CLI=/opt/php72/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.1" ] \
+  && [ -x "/opt/php71/bin/php" ]; then
+  _T_CLI=/opt/php71/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.0" ] \
   && [ -x "/opt/php70/bin/php" ]; then
   _T_CLI=/opt/php70/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
   && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-  && [ -x "/opt/php55/bin/php" ]; then
-  _T_CLI=/opt/php55/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
-  && [ -x "/opt/php54/bin/php" ]; then
-  _T_CLI=/opt/php54/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.3" ] \
-  && [ -x "/opt/php53/bin/php" ]; then
-  _T_CLI=/opt/php53/bin
 fi
 if [ -e "/opt/tools/d7.ini" ] \
   && [ -e "/opt/tools/drush/7/drush/drush.php" ]; then

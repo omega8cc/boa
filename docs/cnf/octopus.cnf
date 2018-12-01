@@ -72,11 +72,10 @@ _CLIENT_CORES="8" #------------- Currently not used
 ###
 ### Supported values for single PHP-FPM mode which can be written in this file:
 ###
+### 7.2
+### 7.1
 ### 7.0
 ### 5.6
-### 5.5
-### 5.4
-### 5.3
 ###
 ### NOTE: There must be only one line and one value in this control file.
 ### Otherwise it will be ignored.
@@ -88,13 +87,13 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### /data/disk/${_USER}/static/control/multi-fpm.info
 ###
 ### This file, if exists, will switch all hosted sites to highest
-### available PHP-FPM version within the 5.3-5.6 range, with ability
+### available PHP-FPM version within the 5.6-7.2 range, with ability
 ### to override PHP-FPM version per site, if the site's name is listed
 ### in this additional control file, as shown below:
 ###
-### foo.com 7.0
-### bar.com 5.5
-### old.com 5.3
+### foo.com 7.2
+### bar.com 7.1
+### old.com 5.6
 ###
 ### NOTE: Each line in the multi-fpm.info file must start with main site name,
 ### followed by single space, and then the PHP-FPM version to use.
@@ -111,19 +110,18 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### there to avoid doing it over and over again every 5 minutes.
 ###
 ### NOTE: While current Aegir version 3.x included in BOA works fine with
-### latest PHP 7.0, many hosted sites, especially using Drupal 6 core or
+### latest PHP 7.2, many hosted sites, especially using Drupal 6 core or
 ### older Drupal 7 core without required patch we have included since 7.43.2,
 ### will not work properly and Aegir tasks run against those sites may fail,
 ### so it is recommended to use PHP-CLI 5.6, unless you have verified that all
-### sites on the instance support PHP 7.0 without issues.
+### sites on the instance support PHP 7.2 without issues.
 ###
 ### Supported values which can be written in this file:
 ###
+### 7.2
+### 7.1
 ### 7.0
 ### 5.6
-### 5.5
-### 5.4
-### 5.3
 ###
 ### There must be only one line and one value in this control file.
 ### Otherwise it will be ignored.

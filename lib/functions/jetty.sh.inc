@@ -1,14 +1,10 @@
 
 if_install_jetty() {
-  if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "wheezy" ]; then
+  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "jessie" ]; then
     _DO_FIX=YES
-  elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "squeeze" ]; then
-    _DO_FIX=YES
-  fi
   if [ "${_OSV}" = "jessie" ] \
-    || [ "${_OSV}" = "wheezy" ] \
+    || [ "${_OSV}" = "stretch" ] \
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
@@ -34,7 +30,7 @@ if_install_jetty() {
       && [ ! -e "/root/.wbhd.clstr.cnf" ] \
       && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
       if [ "${_OSV}" = "jessie" ] \
-        || [ "${_OSV}" = "wheezy" ] \
+        || [ "${_OSV}" = "stretch" ] \
         || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
@@ -55,7 +51,7 @@ if_install_jetty() {
         rm -rf /opt/jetty9
         rm -f /etc/jetty.conf
         if [ "${_OSV}" = "jessie" ] \
-          || [ "${_OSV}" = "wheezy" ] \
+          || [ "${_OSV}" = "stretch" ] \
           || [ "${_DO_FIX}" = "YES" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
@@ -128,7 +124,7 @@ if_install_jetty() {
         chown -R jetty9:jetty9 /opt/jetty9
         chown -R jetty9:jetty9 /var/log/jetty9
         if [ "${_OSV}" = "jessie" ] \
-          || [ "${_OSV}" = "wheezy" ] \
+          || [ "${_OSV}" = "stretch" ] \
           || [ "${_DO_FIX}" = "YES" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
@@ -152,7 +148,7 @@ if_install_jetty() {
           -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" \
           # Options" | fmt -su -w 2500 >> /etc/default/jetty9
         if [ "${_OSV}" = "jessie" ] \
-          || [ "${_OSV}" = "wheezy" ] \
+          || [ "${_OSV}" = "stretch" ] \
           || [ "${_DO_FIX}" = "YES" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
@@ -191,7 +187,7 @@ if_install_jetty() {
   fi
   if [ -e "/opt/jetty9/VERSION.txt" ]; then
     if [ "${_OSV}" = "jessie" ] \
-      || [ "${_OSV}" = "wheezy" ] \
+      || [ "${_OSV}" = "stretch" ] \
       || [ "${_DO_FIX}" = "YES" ] \
       || [ "${_OSV}" = "trusty" ] \
       || [ "${_OSV}" = "precise" ]; then
@@ -229,7 +225,7 @@ if_install_jetty() {
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
       mv -f /opt/jetty9 ${vBs}/jetty9-${_X_VERSION}-${_NOW}
       if [ "${_OSV}" = "jessie" ] \
-        || [ "${_OSV}" = "wheezy" ] \
+        || [ "${_OSV}" = "stretch" ] \
         || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then

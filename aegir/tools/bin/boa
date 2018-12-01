@@ -9,6 +9,7 @@ hd="HEAD"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
+lgcD="BOA-3.2.2"
 master="master"
 nextv="BOA-3.3.0-dev"
 stbl="BOA-3.2.2"
@@ -566,6 +567,13 @@ octopus_install() {
         wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${filIncO}
         wait
+      elif [ "${cmmand}" = "in-3.2" ] || [ "${copt}" = "3.2" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcD}/g" ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcD}/g" ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcD}/g"         ${vBs}/${filIncO}
+        wait
       else
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncO}
         wait
@@ -765,7 +773,33 @@ barracuda_install() {
     if [ ! -z "${rkey}" ] \
       && [ -e "${vBs}/${filIncB}" ] \
       && [ -e "${vBs}/${filIncO}" ]; then
-      if [ "${rkey}" = "php-70" ] || [ "${rkey}" = "php-7.0" ]; then
+      if [ "${rkey}" = "php-72" ] || [ "${rkey}" = "php-7.2" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.2/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.2/g"   ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.2/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.2/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.2/g" ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.2/g" ${vBs}/${filIncO}
+        wait
+      elif [ "${rkey}" = "php-71" ] || [ "${rkey}" = "php-7.1" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.1/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.1/g"   ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.1/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.1/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.1/g" ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.1/g" ${vBs}/${filIncO}
+        wait
+      elif [ "${rkey}" = "php-70" ] || [ "${rkey}" = "php-7.0" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.0/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.0/g"   ${vBs}/${filIncB}
@@ -791,57 +825,18 @@ barracuda_install() {
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${filIncO}
         wait
-      elif [ "${rkey}" = "php-55" ] || [ "${rkey}" = "php-5.5" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.5/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.5/g"   ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${filIncO}
-        wait
-      elif [ "${rkey}" = "php-54" ] || [ "${rkey}" = "php-5.4" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.4/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.4/g"   ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g" ${vBs}/${filIncO}
-        wait
-      elif [ "${rkey}" = "php-53" ] || [ "${rkey}" = "php-5.3" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.3/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.3/g"   ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" ${vBs}/${filIncO}
-        wait
       elif [ "${rkey}" = "php-all" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${filIncB}
-        pA="7.0 5.6 5.5 5.4 5.3"
+        pA="7.2 7.1 7.0 5.6"
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.2/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.2/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${filIncO}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.2/g" ${vBs}/${filIncO}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${filIncO}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.2/g" ${vBs}/${filIncO}
         wait
       elif [ "${rkey}" = "nodns" ]; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${filIncB}
@@ -860,7 +855,25 @@ barracuda_install() {
       && [ -e "${vBs}/${barName}" ] \
       && [ -e "${vBs}/${octName}" ]; then
       ### Legacy method
-      if [ "${rkey}" = "php-70" ] || [ "${rkey}" = "php-7.0" ]; then
+      if [ "${rkey}" = "php-72" ] || [ "${rkey}" = "php-7.2" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.2/g" ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.2/g"   ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.2/g" ${vBs}/${octName}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.2/g" ${vBs}/${octName}
+        wait
+      elif [ "${rkey}" = "php-71" ] || [ "${rkey}" = "php-7.1" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.1/g" ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.1/g"   ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.1/g" ${vBs}/${octName}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.1/g" ${vBs}/${octName}
+        wait
+      elif [ "${rkey}" = "php-70" ] || [ "${rkey}" = "php-7.0" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.0/g" ${vBs}/${barName}
         wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.0/g"   ${vBs}/${barName}
@@ -878,45 +891,18 @@ barracuda_install() {
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${octName}
         wait
-      elif [ "${rkey}" = "php-55" ] || [ "${rkey}" = "php-5.5" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.5/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.5/g"   ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${octName}
-        wait
-      elif [ "${rkey}" = "php-54" ] || [ "${rkey}" = "php-5.4" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.4/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.4/g"   ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g" ${vBs}/${octName}
-        wait
-      elif [ "${rkey}" = "php-53" ] || [ "${rkey}" = "php-5.3" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.3/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.3/g"   ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" ${vBs}/${octName}
-        wait
       elif [ "${rkey}" = "php-all" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${barName}
-        pA="7.0 5.6 5.5 5.4 5.3"
+        pA="7.2 7.1 7.0 5.6"
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${barName}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${barName}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.2/g" ${vBs}/${barName}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${barName}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.2/g" ${vBs}/${barName}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${octName}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.2/g" ${vBs}/${octName}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${octName}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.2/g" ${vBs}/${octName}
         wait
       elif [ "${rkey}" = "nodns" ]; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${barName}
@@ -976,6 +962,13 @@ barracuda_install() {
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${filIncB}
+        wait
+      elif [ "${cmmand}" = "in-3.2" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcD}/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcD}/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcD}/g"         ${vBs}/${filIncB}
         wait
       else
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncB}
@@ -1045,19 +1038,12 @@ set_pin_priority() {
       _THIS_OS=Ubuntu
     fi
     if [ "${_THIS_OS}" = "Debian" ]; then
-      _THIS_RV=$(grep "6.0" /etc/issue.net 2>&1)
-      if [[ "${_THIS_RV}" =~ "6.0" ]]; then
-        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
-          -o /etc/apt/preferences
-      else
-        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" \
-          -o /etc/apt/preferences
-      fi
+      curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-debian.txt" \
+        -o /etc/apt/preferences
     elif [ "${_THIS_OS}" = "Ubuntu" ]; then
       curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
         -o /etc/apt/preferences
     fi
-    rm -f ${vBs}/etc-apt-preferences-*
   fi
 }
 
@@ -1132,6 +1118,11 @@ init_setup() {
       branch="2.2.x-legacy"
     fi
   fi
+  if [[ "${cmmand}" =~ "in-3." ]] || [ "${copt}" = "3.2" ]; then
+    if [ "${cmmand}" = "in-3.2" ] || [ "${copt}" = "3.2" ]; then
+      branch="3.2.x-dev"
+    fi
+  fi
   brnch=${branch//\//\\\/}
   mstr=${master//\//\\\/}
 
@@ -1163,6 +1154,8 @@ init_setup() {
     || [ "${cmmand}" = "in-oct" ]; then
     if [ "${copt}" = "head" ]; then
       octb="${master}"
+    elif [ "${copt}" = "3.2" ]; then
+      octb="${lgcD}"
     elif [ "${copt}" = "2.4" ]; then
       octb="${lgcC}"
     else
@@ -1172,6 +1165,11 @@ init_setup() {
     curl ${crlGet} "${rgUrl}/${octb}/${octName}"    -o ${vBs}/${octName}
     curl ${crlGet} "${rgUrl}/${octb}/${pthIncB}"    -o ${vBs}/${filIncB}
     curl ${crlGet} "${rgUrl}/${octb}/${pthIncO}"    -o ${vBs}/${filIncO}
+  elif [ "${cmmand}" = "in-3.2" ]; then
+    curl ${crlGet} "${rgUrl}/${lgcD}/${barName}"    -o ${vBs}/${barName}
+    curl ${crlGet} "${rgUrl}/${lgcD}/${octName}"    -o ${vBs}/${octName}
+    curl ${crlGet} "${rgUrl}/${lgcD}/${pthIncB}"    -o ${vBs}/${filIncB}
+    curl ${crlGet} "${rgUrl}/${lgcD}/${pthIncO}"    -o ${vBs}/${filIncO}
   elif [ "${cmmand}" = "in-2.4" ]; then
     curl ${crlGet} "${rgUrl}/${lgcC}/${barName}"    -o ${vBs}/${barName}
     curl ${crlGet} "${rgUrl}/${lgcC}/${octName}"    -o ${vBs}/${octName}
@@ -1657,6 +1655,19 @@ case "$1" in
              check_dns_curl
              init_setup
   ;;
+  in-3.2)    cmmand="$1"
+             kind="$2"
+             fqdn="$3"
+             email="$4"
+             user="$5"
+             mode="$6"
+             rkey="$7"
+             check_root
+             check_root_keys_pwd
+             check_virt
+             check_dns_curl
+             init_setup
+  ;;
   in-2.4)    cmmand="$1"
              kind="$2"
              fqdn="$3"
@@ -1734,10 +1745,11 @@ case "$1" in
   {version}
       in-stable <---- install current BOA stable release
       in-head <------ install BOA HEAD for testing
+      in-3.2 <------- install old stable 3.2 (for testing only)
       in-2.4 <------- install old stable 2.4 (for testing only)
       in-2.3 <------- install old stable 2.3 (for testing only)
       in-2.2 <------- install old stable 2.2 (for testing only)
-      in-octopus <--- install extra Octopus instance (stable: ${stbl}, head or legacy 2.4)
+      in-octopus <--- install extra Octopus instance (stable: ${stbl}, head or legacy 3.2)
 
   {mode}
       public <------- recommended for general use
@@ -1760,10 +1772,11 @@ case "$1" in
 
   {extra}
       license <------ valid new relic license key
+      php-7.2 <------ single PHP version to install and use
+      php-7.1 <------ single PHP version to install and use
       php-7.0 <------ single PHP version to install and use
       php-5.6 <------ single PHP version to install and use
-      php-5.5 <------ single PHP version to install and use
-      php-all <------ all PHP versions to install, use 5.6 by default
+      php-all <------ all PHP versions to install, use 7.2 by default
       nodns <-------- disable DNS checks on the fly
 
   See docs/INSTALL.txt for more details.

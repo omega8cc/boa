@@ -87,7 +87,7 @@ not_supported_os() {
   echo
   echo "It is not any supported Debian or Ubuntu version."
   echo
-  echo "You need Debian Jessie (recommended) or Wheezy."
+  echo "You need Debian Stretch (recommended) or Jessie."
   echo
   echo "Also Ubuntu (Trusty or Precise) should work fine,"
   echo "although BOA developers use and test only Debian."
@@ -486,17 +486,11 @@ os_detection() {
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=NO
-      if [ -e "/root/.mstr.clstr.cnf" ] \
-        || [ -e "/root/.wbhd.clstr.cnf" ] \
-        || [ -e "/root/.dbhd.clstr.cnf" ]; then
-        _MARIADB_VRN="${_GALERA_10_VRN}"
+      if [ "${_DB_SERIES}" = "10.2" ]; then
+        _MARIADB_VRN="${_MARIADB_10_2_VRN}"
       else
-        if [ "${_DB_SERIES}" = "10.2" ]; then
-          _MARIADB_VRN="${_MARIADB_10_2_VRN}"
-        else
-          _DB_SERIES=10.1
-          _MARIADB_VRN="${_MARIADB_10_1_VRN}"
-        fi
+        _DB_SERIES=10.1
+        _MARIADB_VRN="${_MARIADB_10_1_VRN}"
       fi
     elif [ "${_THIS_RV}" = "precise" ]; then
       _OSV="precise"
@@ -507,39 +501,24 @@ os_detection() {
       not_supported_os
     fi
   elif [ "${_THIS_OS}" = "Debian" ]; then
-    if [ "${_THIS_RV}" = "jessie" ]; then
+    if [ "${_THIS_RV}" = "stretch" ]; then
+      _OSV="stretch"
+    elif [ "${_THIS_RV}" = "jessie" ]; then
       _OSV="jessie"
-      _NGINX_FORWARD_SECRECY=YES
-      _NGINX_SPDY=YES
-      _SSH_FROM_SOURCES=YES
-      if [ -e "/root/.mstr.clstr.cnf" ] \
-        || [ -e "/root/.wbhd.clstr.cnf" ] \
-        || [ -e "/root/.dbhd.clstr.cnf" ]; then
-        _MARIADB_VRN="${_GALERA_10_VRN}"
-      else
-        if [ "${_DB_SERIES}" = "10.2" ]; then
-          _MARIADB_VRN="${_MARIADB_10_2_VRN}"
-        else
-          _DB_SERIES=10.1
-          _MARIADB_VRN="${_MARIADB_10_1_VRN}"
-        fi
-      fi
-      _SPINNER=NO
-      _SKIP_LEGACY_PHP=YES
-    elif [ "${_THIS_RV}" = "wheezy" ]; then
-      _OSV="wheezy"
-      _NGINX_FORWARD_SECRECY=YES
-      _NGINX_SPDY=YES
-      _SSH_FROM_SOURCES=YES
-    elif [ "${_THIS_RV}" = "squeeze" ]; then
-      _OSV="squeeze"
-      _OPENSSL_VRN=1.0.1p
-      _NGINX_FORWARD_SECRECY=YES
-      _NGINX_SPDY=YES
-      _SSH_FROM_SOURCES=YES
     else
       not_supported_os
     fi
+    _NGINX_FORWARD_SECRECY=YES
+    _NGINX_SPDY=YES
+    _SSH_FROM_SOURCES=YES
+    if [ "${_DB_SERIES}" = "10.2" ]; then
+      _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+    else
+      _DB_SERIES=10.1
+      _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+    fi
+    _SPINNER=NO
+    _SKIP_LEGACY_PHP=YES
   else
     not_supported_os
   fi
@@ -551,23 +530,25 @@ os_detection() {
 }
 
 check_boa_php_compatibility() {
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.0" ]] \
-    || [[ "${_PHP_MULTI_INSTALL}" =~ "5.6" ]] \
-    || [[ "${_PHP_MULTI_INSTALL}" =~ "5.5" ]]; then
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.2" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "7.1" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "7.0" ]]; then
     _DO_NOTHING=YES
   else
-    msg "ERROR: This BOA version depends on PHP 5.5 or newer"
-    msg "Please add 5.6 or 7.0 to _PHP_MULTI_INSTALL"
+    msg "ERROR: This BOA version depends on PHP 7.1 or newer"
+    msg "Please add 7.1 and/or 7.2 to _PHP_MULTI_INSTALL"
     msg "in /root/.barracuda.cnf before trying again"
     msg "Bye"
     clean_pid_exit
   fi
   if [ "${_PHP_FPM_VERSION}" = "5.3" ] \
-    || [ "${_PHP_CLI_VERSION}" = "5.3" ] \
     || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
-    || [ "${_PHP_CLI_VERSION}" = "5.4" ]; then
-    msg "ERROR: This BOA version depends on PHP 5.5 or newer"
-    msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 5.6 or 7.0"
+    || [ "${_PHP_FPM_VERSION}" = "5.5" ] \
+    || [ "${_PHP_CLI_VERSION}" = "5.3" ] \
+    || [ "${_PHP_CLI_VERSION}" = "5.4" ] \
+    || [ "${_PHP_CLI_VERSION}" = "5.5" ]; then
+    msg "ERROR: This BOA version depends on PHP 7.1 or newer"
+    msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 7.1 or 7.2"
     msg "in /root/.barracuda.cnf before trying again"
     msg "Bye"
     clean_pid_exit

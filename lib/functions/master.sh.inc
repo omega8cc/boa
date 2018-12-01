@@ -583,20 +583,17 @@ update_php_cli_cron() {
   if [ -e "/var/spool/cron/crontabs/aegir" ]; then
     sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" \
       /var/spool/cron/crontabs/aegir &> /dev/null
-    if [ "${_PHP_CLI_VERSION}" = "7.0" ] && [ -x "/opt/php70/bin/php" ]; then
+    if [ "${_PHP_CLI_VERSION}" = "7.2" ] && [ -x "/opt/php72/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php72\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "7.1" ] && [ -x "/opt/php71/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php71\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "7.0" ] && [ -x "/opt/php70/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php70\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
         /var/spool/cron/crontabs/aegir &> /dev/null
     elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php56\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-        /var/spool/cron/crontabs/aegir &> /dev/null
-    elif [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
-      sed -i "s/^PATH=.*/PATH=\/opt\/php55\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-        /var/spool/cron/crontabs/aegir &> /dev/null
-    elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
-      sed -i "s/^PATH=.*/PATH=\/opt\/php54\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-        /var/spool/cron/crontabs/aegir &> /dev/null
-    elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
-      sed -i "s/^PATH=.*/PATH=\/opt\/php53\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
         /var/spool/cron/crontabs/aegir &> /dev/null
     fi
     chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
@@ -940,16 +937,8 @@ EOFMYSQL
     msg "INFO: Aegir Master Instance installed"
   else
     echo " "
-    if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "wheezy" ]; then
-      msg "INFO: Aegir Master Instance upgrade skipped!"
-      echo " "
-      msg "NOTE! You must reboot the server and run barracuda upgrade"
-      msg "NOTE! again to complete all system upgrades and upgrade also"
-      msg "NOTE! Aegir Master Instance."
-      echo " "
-    elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "squeeze" ]; then
+    if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
+      && [ "${_LOC_OSV}" = "jessie" ]; then
       msg "INFO: Aegir Master Instance upgrade skipped!"
       echo " "
       msg "NOTE! You must reboot the server and run barracuda upgrade"
@@ -1039,7 +1028,7 @@ update_php_cli_local_ini() {
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="70 56 55 54 53"
+  _PHP_V="72 71 70 56"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.pid" ]; then
@@ -1057,32 +1046,28 @@ update_php_cli_local_ini() {
     mkdir -p ${_U_HD}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php70" ]]; then
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php72" ]]; then
+      cp -af /opt/php72/lib/php.ini ${_U_II}
+      _U_INI=72
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php71" ]]; then
+      cp -af /opt/php71/lib/php.ini ${_U_II}
+      _U_INI=71
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php70" ]]; then
       cp -af /opt/php70/lib/php.ini ${_U_II}
       _U_INI=70
     elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php56" ]]; then
       cp -af /opt/php56/lib/php.ini ${_U_II}
       _U_INI=56
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php55" ]]; then
-      cp -af /opt/php55/lib/php.ini ${_U_II}
-      _U_INI=55
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php54" ]]; then
-      cp -af /opt/php54/lib/php.ini ${_U_II}
-      _U_INI=54
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php53" ]]; then
-      cp -af /opt/php53/lib/php.ini ${_U_II}
-      _U_INI=53
     fi
     if [ -e "${_U_II}" ]; then
       _INI="open_basedir = \".: \
         /data/all:           \
         /data/conf:          \
         /data/disk/all:      \
-        /opt/php53:          \
-        /opt/php54:          \
-        /opt/php55:          \
         /opt/php56:          \
         /opt/php70:          \
+        /opt/php71:          \
+        /opt/php72:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \

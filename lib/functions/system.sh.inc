@@ -405,11 +405,10 @@ tune_memory_limits() {
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
+        sed -i "s/64000/128000/g"  /opt/php72/etc/php72.ini &> /dev/null
+        sed -i "s/64000/128000/g"  /opt/php71/etc/php71.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php70/etc/php70.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini &> /dev/null
-        sed -i "s/64000/128000/g"  /opt/php55/etc/php55.ini &> /dev/null
-        sed -i "s/64000/128000/g"  /opt/php54/etc/php54.ini &> /dev/null
-        sed -i "s/64000/128000/g"  /opt/php53/etc/php53.ini &> /dev/null
       else
         _USE_PHP=1024
         _USE_OPC=1024
@@ -495,6 +494,18 @@ tune_memory_limits() {
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   fi
+  if [ -e "/opt/php72/etc/php72.ini" ]; then
+    sed -i "s/256/${_USE_FPM}/g" /opt/php72/etc/php72.ini &> /dev/null
+    wait
+    sed -i "s/181/${_USE_OPC}/g" /opt/php72/etc/php72.ini &> /dev/null
+    sed -i "s/256/${_USE_PHP}/g" /opt/php72/lib/php.ini   &> /dev/null
+  fi
+  if [ -e "/opt/php71/etc/php71.ini" ]; then
+    sed -i "s/256/${_USE_FPM}/g" /opt/php71/etc/php71.ini &> /dev/null
+    wait
+    sed -i "s/181/${_USE_OPC}/g" /opt/php71/etc/php71.ini &> /dev/null
+    sed -i "s/256/${_USE_PHP}/g" /opt/php71/lib/php.ini   &> /dev/null
+  fi
   if [ -e "/opt/php70/etc/php70.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php70/etc/php70.ini &> /dev/null
     wait
@@ -506,24 +517,6 @@ tune_memory_limits() {
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php56/etc/php56.ini &> /dev/null
     sed -i "s/256/${_USE_PHP}/g" /opt/php56/lib/php.ini   &> /dev/null
-  fi
-  if [ -e "/opt/php55/etc/php55.ini" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/php55/etc/php55.ini &> /dev/null
-    wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php55/etc/php55.ini &> /dev/null
-    sed -i "s/256/${_USE_PHP}/g" /opt/php55/lib/php.ini   &> /dev/null
-  fi
-  if [ -e "/opt/php54/etc/php54.ini" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/php54/etc/php54.ini &> /dev/null
-    wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php54/etc/php54.ini &> /dev/null
-    sed -i "s/256/${_USE_PHP}/g" /opt/php54/lib/php.ini   &> /dev/null
-  fi
-  if [ -e "/opt/php53/etc/php53.ini" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/php53/etc/php53.ini &> /dev/null
-    wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php53/etc/php53.ini &> /dev/null
-    sed -i "s/256/${_USE_PHP}/g" /opt/php53/lib/php.ini   &> /dev/null
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits
@@ -700,7 +693,7 @@ EOF
       LC_ALL= &> /dev/null
     # Define locale settings required for consistency also on the fly
     if [ "${_STATUS}" != "INIT" ]; then
-      # On initial install it causes warning on Wheezy:
+      # On initial install it usually causes a warning:
       # setlocale: LC_CTYPE: cannot change locale (en_US.UTF-8):
       # No such file or directory
       export LC_CTYPE=en_US.UTF-8
@@ -1038,7 +1031,7 @@ barracuda_cnf() {
           | awk '{ print $1}' \
           | sed "s/[\"]//g" 2>&1)
         _CLSTR_PHP_MULTI_INSTALL="${_PHP_OVERRIDE}"
-        _CLSTR_PHP_MULTI_INSTALL="5.6 5.5 5.3"
+        _CLSTR_PHP_MULTI_INSTALL="7.2 7.1 5.6"
       fi
       if [ ! -e "/root/.debug.cnf" ] || [ -e "/root/.default.cnf" ]; then
         sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
@@ -1064,32 +1057,30 @@ barracuda_cnf() {
           if [ ! -z "${_CLSTR_PHP_MULTI_INSTALL}" ]; then
             _PHP_MULTI_INSTALL="${_CLSTR_PHP_MULTI_INSTALL}"
           else
-            _PHP_MULTI_INSTALL="5.6"
+            _PHP_MULTI_INSTALL="7.2"
           fi
         else
           if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-            if [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
-              || [ "${_PHP_SINGLE_INSTALL}" = "5.6" ] \
-              || [ "${_PHP_SINGLE_INSTALL}" = "5.5" ] \
-              || [ "${_PHP_SINGLE_INSTALL}" = "5.4" ] \
-              || [ "${_PHP_SINGLE_INSTALL}" = "5.3" ]; then
+            if [ "${_PHP_SINGLE_INSTALL}" = "7.2" ] \
+              || [ "${_PHP_SINGLE_INSTALL}" = "7.1" ] \
+              || [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
+              || [ "${_PHP_SINGLE_INSTALL}" = "5.6" ]; then
               _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
               _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
               _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
             fi
           else
             if [ ! -e "/root/.debug.cnf" ] || [ -e "/root/.default.cnf" ]; then
-              _PHP_MULTI_INSTALL="7.0 5.6 5.5 5.4 5.3"
+              _PHP_MULTI_INSTALL="7.2 7.1 7.0 5.6"
             fi
           fi
         fi
       fi
       if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-        if [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
-          || [ "${_PHP_SINGLE_INSTALL}" = "5.6" ] \
-          || [ "${_PHP_SINGLE_INSTALL}" = "5.5" ] \
-          || [ "${_PHP_SINGLE_INSTALL}" = "5.4" ] \
-          || [ "${_PHP_SINGLE_INSTALL}" = "5.3" ]; then
+        if [ "${_PHP_SINGLE_INSTALL}" = "7.2" ] \
+          || [ "${_PHP_SINGLE_INSTALL}" = "7.1" ] \
+          || [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
+          || [ "${_PHP_SINGLE_INSTALL}" = "5.6" ]; then
           _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
           _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
           _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
@@ -1523,11 +1514,10 @@ barracuda_cnf() {
 
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-      if [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "5.6" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "5.5" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "5.4" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "5.3" ]; then
+      if [ "${_PHP_SINGLE_INSTALL}" = "7.2" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "7.1" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "5.6" ]; then
         _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
         _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
         _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
@@ -1606,6 +1596,11 @@ barracuda_cnf() {
         sed -i "s/^_TOMCAT_TO_JETTY.*//g" ${barCnf}
         wait
       fi
+    fi
+    _JESSIE_TO_STRETCH_TEST=$(grep _JESSIE_TO_STRETCH ${barCnf} 2>&1)
+    if [[ "${_JESSIE_TO_STRETCH_TEST}" =~ "_JESSIE_TO_STRETCH" ]]; then
+      sed -i "s/^_JESSIE_TO_STRETCH.*//g" ${barCnf}
+      wait
     fi
     _WHEEZY_TO_JESSIE_TEST=$(grep _WHEEZY_TO_JESSIE ${barCnf} 2>&1)
     if [[ "${_WHEEZY_TO_JESSIE_TEST}" =~ "_WHEEZY_TO_JESSIE" ]]; then
@@ -1866,32 +1861,6 @@ update_sources_list() {
     if [ ! -z "${_LOCAL_UBUNTU_MIRROR}" ]; then
       _APT_SOURCES_REWRITE=YES
     fi
-    if [ "${_OSV}" = "squeeze" ]; then
-      _LTS_TEST=$(grep "DEBIAN LTS UPDATES" ${aptLiSys} 2>&1)
-      if [[ "${_LTS_TEST}" =~ "DEBIAN LTS UPDATES" ]]; then
-        _DO_NOTHING=YES
-      else
-        _APT_SOURCES_REWRITE=YES
-      fi
-      _PROPOSED_TEST=$(grep "DEBIAN PROPOSED UPDATES" ${aptLiSys} 2>&1)
-      if [[ "${_PROPOSED_TEST}" =~ "DEBIAN PROPOSED UPDATES" ]]; then
-        _DO_NOTHING=YES
-      else
-        _APT_SOURCES_REWRITE=YES
-      fi
-      _VOLATILE_TEST=$(grep "MAJOR BUG FIX UPDATES" ${aptLiSys} 2>&1)
-      if [[ "${_VOLATILE_TEST}" =~ "MAJOR BUG FIX UPDATES" ]]; then
-        _DO_NOTHING=YES
-      else
-        _APT_SOURCES_REWRITE=YES
-      fi
-      if [ ! -e "${aptLiSys}.d/mariadb.list" ]; then
-        _APT_SOURCES_REWRITE=YES
-      fi
-      if [ ! -e "${aptLiSys}.d/xtrabackup.list" ]; then
-        _APT_SOURCES_REWRITE=YES
-      fi
-    fi
   else
     _APT_SOURCES_REWRITE=YES
   fi
@@ -2042,39 +2011,11 @@ update_sources_list() {
         echo "## DEBIAN PROPOSED UPDATES" >> ${aptLiSys}
         echo "deb http://${_MIRROR}/debian/ ${_OSV}-proposed-updates main \
           contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-        if [ "${_OSV}" = "jessie" ]; then
-          if [ -e "${locCnf}/etc-apt-preferences-jessie.txt" ]; then
-            cp -af ${locCnf}/etc-apt-preferences-jessie.txt /etc/apt/preferences
-          else
-            curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-jessie.txt" \
-              -o /etc/apt/preferences
-          fi
-        elif [ "${_OSV}" = "wheezy" ]; then
-          if [ -e "${locCnf}/etc-apt-preferences-wheezy.txt" ]; then
-            cp -af ${locCnf}/etc-apt-preferences-wheezy.txt /etc/apt/preferences
-          else
-            curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" \
-              -o /etc/apt/preferences
-          fi
-        fi
-        if [ "${_OSV}" = "squeeze" ]; then
-          echo "" >> ${aptLiSys}
-          echo "## DEBIAN LTS UPDATES" >> ${aptLiSys}
-          echo "deb http://${_MIRROR}/debian/ ${_OSV}-lts main \
-            contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-          echo "deb-src http://${_MIRROR}/debian/ ${_OSV}-lts main \
-            contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-          if [ -e "/etc/apt/apt.conf" ]; then
-            sed -i "s/APT::Default-Release \"squeeze\";/APT::Default-Release \"squeeze-lts\";/g" \
-              /etc/apt/apt.conf &> /dev/null
-            wait
-          fi
-          if [ -e "${locCnf}/etc-apt-preferences-squeeze.txt" ]; then
-            cp -af ${locCnf}/etc-apt-preferences-squeeze.txt /etc/apt/preferences
-          else
-            curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
-              -o /etc/apt/preferences
-          fi
+        if [ -e "${locCnf}/etc-apt-preferences-debian.txt" ]; then
+          cp -af ${locCnf}/etc-apt-preferences-debian.txt /etc/apt/preferences
+        else
+          curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-debian.txt" \
+            -o /etc/apt/preferences
         fi
       fi
     fi
@@ -2091,27 +2032,11 @@ update_sources_list() {
           -o /etc/apt/preferences
       fi
     else
-      if [ "${_OSV}" = "jessie" ]; then
-        if [ -e "${locCnf}/etc-apt-preferences-jessie.txt" ]; then
-          cp -af ${locCnf}/etc-apt-preferences-jessie.txt /etc/apt/preferences
-        else
-          curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-jessie.txt" \
-            -o /etc/apt/preferences
-        fi
-      elif [ "${_OSV}" = "wheezy" ]; then
-        if [ -e "${locCnf}/etc-apt-preferences-wheezy.txt" ]; then
-          cp -af ${locCnf}/etc-apt-preferences-wheezy.txt /etc/apt/preferences
-        else
-          curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" \
-            -o /etc/apt/preferences
-        fi
+      if [ -e "${locCnf}/etc-apt-preferences-debian.txt" ]; then
+        cp -af ${locCnf}/etc-apt-preferences-debian.txt /etc/apt/preferences
       else
-        if [ -e "${locCnf}/etc-apt-preferences-squeeze.txt" ]; then
-          cp -af ${locCnf}/etc-apt-preferences-squeeze.txt /etc/apt/preferences
-        else
-          curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
-            -o /etc/apt/preferences
-        fi
+        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-debian.txt" \
+          -o /etc/apt/preferences
       fi
     fi
   fi
@@ -2424,11 +2349,10 @@ switch_to_dash() {
                   /etc/network/if-up.d \
                   /etc/resolvconf \
                   /etc/webmin \
-                  /opt/php53/bin \
-                  /opt/php54/bin \
-                  /opt/php55/bin \
                   /opt/php56/bin \
                   /opt/php70/bin \
+                  /opt/php71/bin \
+                  /opt/php72/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -2480,11 +2404,10 @@ switch_to_bash() {
                   /etc/network/if-up.d \
                   /etc/resolvconf \
                   /etc/webmin \
-                  /opt/php53/bin \
-                  /opt/php54/bin \
-                  /opt/php55/bin \
                   /opt/php56/bin \
                   /opt/php70/bin \
+                  /opt/php71/bin \
+                  /opt/php72/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -2525,11 +2448,10 @@ strict_bin_permissions() {
 
   _BIN_PATHS="/bin \
               /etc/alternatives \
-              /opt/php53/bin \
-              /opt/php54/bin \
-              /opt/php55/bin \
               /opt/php56/bin \
               /opt/php70/bin \
+              /opt/php71/bin \
+              /opt/php72/bin \
               /sbin \
               /usr/bin \
               /usr/local/bin \
@@ -2846,6 +2768,7 @@ finale() {
     chmod 0750 /sbin/audispd &> /dev/null
     service auditd restart   &> /dev/null
   fi
+  php_deprecated_cleanup
   php_single_initd_cleanup
   if [ ! -e "/root/.upstart.cnf" ]; then
     service cron start     &> /dev/null
@@ -2869,11 +2792,8 @@ finale() {
 }
 
 install_with_aptitude_deps() {
-  if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "wheezy" ]; then
-    _DO_FIX=YES
-  elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "squeeze" ]; then
+  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "jessie" ]; then
     _DO_FIX=YES
   fi
   st_runner "${_INSTAPP} ${_DEBDEPS}" 2> /dev/null
@@ -3000,14 +2920,14 @@ more_packages_install_on_init() {
   fi
 }
 
-if_wheezy_to_jessie() {
-  if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
-    && [ "${_OSV}" = "wheezy" ]; then
-    _LOC_OSV=wheezy
+if_jessie_to_stretch() {
+  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
+    && [ "${_OSV}" = "jessie" ]; then
+    _LOC_OSV=jessie
   fi
-  if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "wheezy" ]; then
-    msg "WARN: Wheezy to Jessie upgrade will start in 60 seconds..."
+  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "jessie" ]; then
+    msg "WARN: Jessie to Stretch upgrade will start in 60 seconds..."
     msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
     if [ ! -e "/root/.upstart.cnf" ]; then
       service cron stop &> /dev/null
@@ -3027,7 +2947,7 @@ if_wheezy_to_jessie() {
     fi
     rm -f ${pthLog}/ruby-root-clean-reload.log
     mv -f /var/xdrago /var/xdrago_wait &> /dev/null
-    msg "WARN: Too late! Wheezy to Jessie upgrade in progress..."
+    msg "WARN: Too late! Jessie to Stretch upgrade in progress..."
     msg "HINT: Run tail -f ${_LOG}"
     msg "HINT: in another terminal window to watch details"
     _FULL_FORCE_REINSTALL=YES
@@ -3132,25 +3052,25 @@ if_wheezy_to_jessie() {
     ### Switching gears on the fly
     sed -i "s/.*DEBIAN LTS.*//g" /etc/apt/sources.list
     wait
-    sed -i "s/.*wheezy-lts.*//g" /etc/apt/sources.list
+    sed -i "s/.*jessie-lts.*//g" /etc/apt/sources.list
     wait
     sed -i "s/.*PROPOSED.*//g"   /etc/apt/sources.list
     wait
     sed -i "s/.*proposed.*//g"   /etc/apt/sources.list
     wait
-    sed -i "s/wheezy/jessie/g"   /etc/apt/sources.list
+    sed -i "s/jessie/stretch/g"   /etc/apt/sources.list
     wait
-    sed -i "s/wheezy/jessie/g"   /etc/apt/sources.list.d/*
+    sed -i "s/jessie/stretch/g"   /etc/apt/sources.list.d/*
     wait
     if [ -e "/etc/apt/apt.conf" ]; then
-      sed -i "s/APT::Default-Release.*/APT::Default-Release \"jessie\";/g" \
+      sed -i "s/APT::Default-Release.*/APT::Default-Release \"stretch\";/g" \
         /etc/apt/apt.conf &> /dev/null
       wait
     fi
     rm -f /etc/apt/sources.list.d/openssl.list
     mrun "apt-get update -qq" 2> /dev/null
     ### Two step upgrade with apt-get only
-    mrun "apt-get install apt -t jessie ${dstUpArg}" 2> /dev/null
+    mrun "apt-get install apt -t stretch ${dstUpArg}" 2> /dev/null
     mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
     mrun "apt-get install apt dpkg aptitude util-linux ${dstUpArg}" 2> /dev/null
     mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
@@ -3176,7 +3096,7 @@ if_wheezy_to_jessie() {
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     if [ -x "/lib/systemd/systemd" ]; then
-      msg "INFO: Removing systemd on ${_THIS_OS} jessie..."
+      msg "INFO: Removing systemd on ${_THIS_OS} stretch..."
       ${_INSTALL} sysvinit &> /dev/null
       ${_INSTALL} sysvinit-core &> /dev/null
       ${_INSTALL} sysvinit-utils &> /dev/null
@@ -3295,293 +3215,7 @@ if_wheezy_to_jessie() {
     rm -f /var/xdrago/log/*.log
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null
     echo " "
-    msg "INFO: No errors? Then Wheezy to Jessie upgrade was successful :)"
-    msg "INFO: REBOOT your system once Barracuda will complete all upgrades!"
-    echo " "
-  fi
-}
-
-if_squeeze_to_wheezy() {
-  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-    && [ "${_OSV}" = "squeeze" ]; then
-    _LOC_OSV=squeeze
-  fi
-  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "squeeze" ]; then
-    msg "WARN: Squeeze to Wheezy upgrade will start in 60 seconds..."
-    msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
-    if [ ! -e "/root/.upstart.cnf" ]; then
-      service cron stop &> /dev/null
-      mrun "sleep 60"
-    fi
-    check_dns_settings
-    if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
-      if [ -e "/etc/resolv.conf" ]; then
-        mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
-      fi
-      rm -f /etc/resolv.conf
-      echo "nameserver 8.8.8.8" >/etc/resolv.conf
-      echo "nameserver 8.8.4.4" >>/etc/resolv.conf
-      if [ -e "/etc/resolv.conf.pre-dist-upgrade" ]; then
-        cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
-      fi
-    fi
-    rm -f ${pthLog}/ruby-root-clean-reload.log
-    mv -f /var/xdrago /var/xdrago_wait &> /dev/null
-    msg "WARN: Too late! Squeeze to Wheezy upgrade in progress..."
-    msg "HINT: Run tail -f ${_LOG}"
-    msg "HINT: in another terminal window to watch details"
-    _FULL_FORCE_REINSTALL=YES
-    _PURGE_MODE=OFF
-    rm -f ${mtrNgx}/pre.d/nginx_speed_purge.conf
-    if [ -e "/etc/init.d/bind" ]; then
-      rm -f /etc/init.d/bind
-    fi
-    if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ]; then
-      service tomcat stop &> /dev/null
-      mv /etc/init.d/tomcat /etc/init.d/offtomcat
-      kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
-    fi
-    mrun "apt-get update -qq" 2> /dev/null
-    mrun "apt-get remove collectd      -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove libc-client2007b-dev -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove nginx-extras  -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove nginx         -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove nginx-common  -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove nginx-full    -y --force-yes -qq" 2> /dev/null
-    if [ -e "/etc/php5/conf.d" ]; then
-      touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
-      touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
-    fi
-    mrun "apt-get remove php5 \
-                         php5-cgi \
-                         php5-curl \
-                         php5-fpm \
-                         php5-gd \
-                         php5-geoip \
-                         php5-gmp \
-                         php5-imagick \
-                         php5-imap \
-                         php5-ldap \
-                         php5-mcrypt \
-                         php5-memcache \
-                         php5-mysql \
-                         php5-sqlite \
-                         php5-xmlrpc \
-                         php5-xsl      -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove phpunit       -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove php-pear      -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove php-benchmark -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove php5-cli      -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove php5-common   -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove php5-apc      -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove php-apc       -y --force-yes -qq" 2> /dev/null
-    echo "curl install"           | dpkg --set-selections
-    echo "git install"            | dpkg --set-selections
-    echo "git-core install"       | dpkg --set-selections
-    echo "git-man install"        | dpkg --set-selections
-    echo "libssl-dev install"     | dpkg --set-selections
-    echo "openssh-client install" | dpkg --set-selections
-    echo "openssh-server install" | dpkg --set-selections
-    echo "openssh-sftp-server install" | dpkg --set-selections
-    echo "openssl install"        | dpkg --set-selections
-    echo "ssh install"            | dpkg --set-selections
-    echo "zlib1g install"         | dpkg --set-selections
-    echo "zlib1g-dev install"     | dpkg --set-selections
-    echo "zlibc install"          | dpkg --set-selections
-    mrun "${_INSTALL} zlib1g"     2> /dev/null
-    mrun "${_INSTALL} zlib1g-dev" 2> /dev/null
-    mrun "${_INSTALL} zlibc"      2> /dev/null
-    mrun "${_INSTALL} openssl"    2> /dev/null
-    mrun "${_INSTALL} libssl-dev" 2> /dev/null
-    mrun "apt-get install curl ${forCer}"           2> /dev/null
-    mrun "apt-get install git ${forCer}"            2> /dev/null
-    mrun "apt-get install git-core ${forCer}"       2> /dev/null
-    mrun "apt-get install git-man ${forCer}"        2> /dev/null
-    sed -i "s/^PermitRootLogin.*/#PermitRootLogin yes/g" \
-      /etc/ssh/sshd_config &> /dev/null
-    mrun "apt-get install openssh-client ${forCer}" 2> /dev/null
-    mrun "apt-get install openssh-server ${forCer}" 2> /dev/null
-    mrun "apt-get install ssh ${forCer}"            2> /dev/null
-    if [ -e "/usr/bin/java" ] || [ -e "/usr/bin/java7" ]; then
-      mrun "apt-get install default-jre ${forCer}"  2> /dev/null
-    fi
-    mrun "apt-get upgrade ${nrmUpArg}"              2> /dev/null
-    mrun "apt-get dist-upgrade ${nrmUpArg}"         2> /dev/null
-    ### Check if we can continue
-    _AUDIT_DPKG=$(dpkg --audit 2>&1)
-    if [ ! -z "${_AUDIT_DPKG}" ]; then
-      msg "ALRT! I can not continue until dpkg --audit is clean"
-      msg "ALRT! ${_AUDIT_DPKG}"
-      msg "ALRT! Aborting installer NOW!"
-      clean_pid_exit
-    fi
-    _HOLD_TEST_DPKG=$(dpkg --get-selections | grep 'hold$' 2>&1)
-    if [ ! -z "${_HOLD_TEST_DPKG}" ]; then
-      msg "ALRT! I can not continue until these packages are un-hold"
-      msg "ALRT! ${_HOLD_TEST_DPKG}"
-      msg "ALRT! Aborting installer NOW!"
-      clean_pid_exit
-    fi
-    _HOLD_TEST_ATE=$(aptitude search "~ahold" 2>&1)
-    if [ ! -z "${_HOLD_TEST_ATE}" ]; then
-      msg "ALRT! I can not continue until these packages are un-hold"
-      msg "ALRT! ${_HOLD_TEST_ATE}"
-      msg "ALRT! Aborting installer NOW!"
-      clean_pid_exit
-    fi
-    ### Switching gears on the fly
-    sed -i "s/.*DEBIAN LTS.*//g"  /etc/apt/sources.list
-    wait
-    sed -i "s/.*squeeze-lts.*//g" /etc/apt/sources.list
-    wait
-    sed -i "s/.*PROPOSED.*//g"    /etc/apt/sources.list
-    wait
-    sed -i "s/.*proposed.*//g"    /etc/apt/sources.list
-    wait
-    sed -i "s/squeeze/wheezy/g"   /etc/apt/sources.list
-    wait
-    sed -i "s/squeeze/wheezy/g"   /etc/apt/sources.list.d/*
-    wait
-    if [ -e "/etc/apt/apt.conf" ]; then
-      sed -i "s/APT::Default-Release.*/APT::Default-Release \"wheezy\";/g" \
-        /etc/apt/apt.conf &> /dev/null
-      wait
-    fi
-    rm -f /etc/apt/sources.list.d/openssl.list
-    mrun "apt-get update -qq" 2> /dev/null
-    ### Two step upgrade with apt-get only
-    mrun "apt-get install apt -t wheezy ${dstUpArg}" 2> /dev/null
-    mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
-    mrun "apt-get install apt dpkg aptitude util-linux ${dstUpArg}" 2> /dev/null
-    mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
-    mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
-    touch ${mtrNgx}/pre.d/nginx_speed_purge.conf
-    install_upgrade_nginx
-    if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
-      ln -sf /etc/init.d/bind9 /etc/init.d/bind
-    fi
-    if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
-      if [ -e "/root/.debug.cnf" ]; then
-        mv -f /etc/init.d/networking /etc/init.d/networking.bak
-        cp -af /etc/init.d/networking.dpkg-dist /etc/init.d/networking
-        chmod 755 /etc/init.d/networking
-      fi
-    fi
-    if [ -d "/var/www/cgp" ]; then
-      mrun "apt-get install collectd ${dstUpArg}" 2> /dev/null
-    fi
-    if [ "${_VMFAMILY}" != "VS" ]; then
-      mrun "apt-get install udev ${dstUpArg}" 2> /dev/null
-    fi
-    mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
-    mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
-    _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
-      _PTMX=OK
-      _REMOVE_LINKS="buagent \
-                     checkroot.sh \
-                     fancontrol \
-                     halt \
-                     hwclock.sh \
-                     hwclockfirst.sh \
-                     ifupdown \
-                     ifupdown-clean \
-                     kerneloops \
-                     klogd \
-                     mountall-bootclean.sh \
-                     mountall.sh \
-                     mountdevsubfs.sh \
-                     mountkernfs.sh \
-                     mountnfs-bootclean.sh \
-                     mountnfs.sh \
-                     mountoverflowtmp \
-                     mountvirtfs \
-                     mtab.sh \
-                     networking \
-                     procps \
-                     reboot \
-                     sendsigs \
-                     setserial \
-                     svscan \
-                     sysstat \
-                     umountfs \
-                     umountnfs.sh \
-                     umountroot \
-                     urandom \
-                     vnstat"
-      for link in ${_REMOVE_LINKS}; do
-        if [ -e "/etc/init.d/${link}" ]; then
-          update-rc.d -f ${link} remove &> /dev/null
-          mv -f /etc/init.d/${link} /var/backups/init.d.${link}
-        fi
-      done
-      for s in cron dbus ssh; do
-        sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/$s > /etc/insserv/overrides/$s
-      done
-      /sbin/insserv -v -d &> /dev/null
-    else
-      _PTMX=CHECK
-    fi
-    if [ -e "/root/.debug.cnf" ]; then
-      _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
-      if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then
-        _PTS=FIX
-      else
-        _PTS=OK
-      fi
-      if [ "${_PTMX}" = "CHECK" ] && [ "${_PTS}" = "FIX" ]; then
-        msg "WARN: Required /dev/pts/ptmx does not exist! We will fix this now..."
-        mkdir -p /dev/pts
-        rm -rf /dev/pts/*
-        rm -f /etc/apt/sources.list.d/openssl.list
-        apt-get update -qq &> /dev/null
-        apt-get install udev -y --force-yes &> /dev/null
-        echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
-        mount -t devpts devpts /dev/pts &> /dev/null
-      fi
-    fi
-    _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD" /etc/sudoers 2>&1)
-    if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
-      echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
-    fi
-    SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
-    for SCRIPT in ${SCRIPTS[@]}; do
-      _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
-      if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
-        echo "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
-        chmod 0440 /etc/sudoers.d/${SCRIPT}
-      fi
-    done
-    for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
-      if [ -e "${User}/config/server_master/nginx/vhost.d" ] \
-        && [ ! -e "${User}/log/CANCELLED" ]; then
-        _HM_U=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-        _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD" /etc/sudoers 2>&1)
-        if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
-          echo "${_HM_U} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
-        fi
-		SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
-		for SCRIPT in ${SCRIPTS[@]}; do
-		  _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
-		  if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
-			echo "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
-			chmod 0440 /etc/sudoers.d/${SCRIPT}
-		  fi
-		done
-      fi
-    done
-    echo rotate > /var/log/syslog
-    rm -f /var/xdrago/log/*.log
-    mv -f /var/xdrago_wait /var/xdrago &> /dev/null
-    echo " "
-    msg "INFO: No errors? Then Squeeze to Wheezy upgrade was successful :)"
+    msg "INFO: No errors? Then Jessie to Stretch upgrade was successful :)"
     msg "INFO: REBOOT your system once Barracuda will complete all upgrades!"
     echo " "
   fi
@@ -3683,15 +3317,6 @@ sys_packages_update() {
       rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       rm -f /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
-    if [ "${_OSV}" = "squeeze" ]; then
-      if [ -e "${aptLiSys}.d/dotdeb.list" ]; then
-        rm -f ${aptLiSys}.d/dotdeb.list
-        rm -f /etc/apt/sources.list.d/openssl.list
-        mrun "aptitude autoclean -y" &> /dev/null
-        mrun "apt-get clean -qq" &> /dev/null
-        mrun "apt-get update -qq" &> /dev/null
-      fi
-    fi
     rm -f /var/lib/mysql/debian-*.flag &> /dev/null
     if [ ! -e "/root/.upstart.cnf" ]; then
       service cron stop &> /dev/null
@@ -3736,8 +3361,8 @@ sys_packages_update() {
 }
 
 sys_packages_install() {
-  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "squeeze" ]; then
+  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "jessie" ]; then
     _DO_FIX=YES
   fi
   if [ "${_STATUS}" = "INIT" ]; then
@@ -3755,7 +3380,7 @@ sys_packages_install() {
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
       if [ "${_OSV}" = "jessie" ] \
-        || [ "${_OSV}" = "wheezy" ] \
+        || [ "${_OSV}" = "stretch" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
         _APT_XTRA="openjdk-7-jre-headless openjdk-6-jre-headless nginx"
@@ -3783,7 +3408,7 @@ sys_packages_install() {
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
       if [ "${_OSV}" = "jessie" ] \
-        || [ "${_OSV}" = "wheezy" ] \
+        || [ "${_OSV}" = "stretch" ] \
         || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
@@ -3885,8 +3510,7 @@ sys_packages_install() {
   fi
 
   if [ "${_OSV}" = "jessie" ] \
-    || [ "${_OSV}" = "wheezy" ] \
-    || [ "${_OSV}" = "squeeze" ] \
+    || [ "${_OSV}" = "stretch" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     _DEBDEPS="apticron \
@@ -4062,12 +3686,12 @@ fix_postfix() {
 }
 
 fix_libs_php() {
-  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "squeeze" ]; then
+  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "jessie" ]; then
     _DO_FIX=YES
   fi
   if [ "${_OSV}" = "jessie" ] \
-    || [ "${_OSV}" = "wheezy" ] \
+    || [ "${_OSV}" = "stretch" ] \
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
@@ -4118,12 +3742,12 @@ fix_libs_php() {
 }
 
 fix_libssl() {
-  if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "squeeze" ]; then
+  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "jessie" ]; then
     _DO_FIX=YES
   fi
   if [ "${_OSV}" = "jessie" ] \
-    || [ "${_OSV}" = "wheezy" ] \
+    || [ "${_OSV}" = "stretch" ] \
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
@@ -4131,7 +3755,7 @@ fix_libssl() {
     if [ "${_NGINX_SPDY}" = "YES" ] \
       || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
       if [ "${_OSV}" = "jessie" ] \
-        || [ "${_OSV}" = "wheezy" ] \
+        || [ "${_OSV}" = "stretch" ] \
         || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
@@ -4891,6 +4515,14 @@ update_initd() {
       killall -9 nginx php-cgi php-fpm &> /dev/null
       mrun "update-rc.d -f php5-fpm remove" &> /dev/null
       mrun "update-rc.d cron defaults" &> /dev/null
+      if [ -e "/etc/init.d/php72-fpm" ]; then
+        mrun "update-rc.d php72-fpm defaults" &> /dev/null
+        mrun "service php72-fpm start" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php71-fpm" ]; then
+        mrun "update-rc.d php71-fpm defaults" &> /dev/null
+        mrun "service php71-fpm start" &> /dev/null
+      fi
       if [ -e "/etc/init.d/php70-fpm" ]; then
         mrun "update-rc.d php70-fpm defaults" &> /dev/null
         mrun "service php70-fpm start" &> /dev/null
@@ -4898,18 +4530,6 @@ update_initd() {
       if [ -e "/etc/init.d/php56-fpm" ]; then
         mrun "update-rc.d php56-fpm defaults" &> /dev/null
         mrun "service php56-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php55-fpm" ]; then
-        mrun "update-rc.d php55-fpm defaults" &> /dev/null
-        mrun "service php55-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php54-fpm" ]; then
-        mrun "update-rc.d php54-fpm defaults" &> /dev/null
-        mrun "service php54-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php53-fpm" ]; then
-        mrun "update-rc.d php53-fpm defaults" &> /dev/null
-        mrun "service php53-fpm start" &> /dev/null
       fi
       mrun "update-rc.d nginx defaults" &> /dev/null
       mrun "service nginx start" &> /dev/null
@@ -5008,6 +4628,14 @@ update_initd() {
       mrun "service redis-server restart" &> /dev/null
       mrun "update-rc.d -f php5-fpm remove" &> /dev/null
       mrun "service nginx stop" &> /dev/null
+      if [ -e "/etc/init.d/php72-fpm" ]; then
+        mrun "update-rc.d php72-fpm defaults" &> /dev/null
+        mrun "service php72-fpm stop" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php71-fpm" ]; then
+        mrun "update-rc.d php71-fpm defaults" &> /dev/null
+        mrun "service php71-fpm stop" &> /dev/null
+      fi
       if [ -e "/etc/init.d/php70-fpm" ]; then
         mrun "update-rc.d php70-fpm defaults" &> /dev/null
         mrun "service php70-fpm stop" &> /dev/null
@@ -5015,18 +4643,6 @@ update_initd() {
       if [ -e "/etc/init.d/php56-fpm" ]; then
         mrun "update-rc.d php56-fpm defaults" &> /dev/null
         mrun "service php56-fpm stop" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php55-fpm" ]; then
-        mrun "update-rc.d php55-fpm defaults" &> /dev/null
-        mrun "service php55-fpm stop" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php54-fpm" ]; then
-        mrun "update-rc.d php54-fpm defaults" &> /dev/null
-        mrun "service php54-fpm stop" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php53-fpm" ]; then
-        mrun "update-rc.d php53-fpm defaults" &> /dev/null
-        mrun "service php53-fpm stop" &> /dev/null
       fi
       killall -9 php-fpm &> /dev/null
       killall -9 php-cgi &> /dev/null
@@ -5091,20 +4707,17 @@ update_initd() {
         mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
         msg "INFO: ${_DB_SERVER} server restart completed"
       fi
+      if [ -e "/etc/init.d/php72-fpm" ]; then
+        mrun "service php72-fpm start" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php71-fpm" ]; then
+        mrun "service php71-fpm start" &> /dev/null
+      fi
       if [ -e "/etc/init.d/php70-fpm" ]; then
         mrun "service php70-fpm start" &> /dev/null
       fi
       if [ -e "/etc/init.d/php56-fpm" ]; then
         mrun "service php56-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php55-fpm" ]; then
-        mrun "service php55-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php54-fpm" ]; then
-        mrun "service php54-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php53-fpm" ]; then
-        mrun "service php53-fpm start" &> /dev/null
       fi
       mrun "service nginx start" &> /dev/null
     fi

@@ -9,6 +9,7 @@ hd="HEAD"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
+lgcD="BOA-3.2.2"
 master="master"
 nextv="BOA-3.3.0-dev"
 stbl="BOA-3.2.2"
@@ -371,15 +372,11 @@ satellite_check_up_php() {
         if [ "${_PHP_FPM_LEGACY_FREE}" = "NO" ]; then
           if [ -x "/opt/php56/bin/php" ]; then
             echo 5.6 > ${User}/static/control/fpm.info
-          elif [ -x "/opt/php55/bin/php" ]; then
-            echo 5.5 > ${User}/static/control/fpm.info
           fi
         fi
         if [ "${_PHP_CLI_LEGACY_FREE}" = "NO" ]; then
           if [ -x "/opt/php56/bin/php" ]; then
             echo 5.6 > ${User}/static/control/cli.info
-          elif [ -x "/opt/php55/bin/php" ]; then
-            echo 5.5 > ${User}/static/control/cli.info
           fi
         fi
       fi
@@ -426,14 +423,14 @@ satellite_check_switch_php() {
           fi
         fi
       else
-        if [[ ! "${_SERIES_TEST}" =~ "${lgcC}" ]]; then
-          cmmand="up-2.4"
+        if [[ ! "${_SERIES_TEST}" =~ "${lgcD}" ]]; then
+          cmmand="up-3.2"
           mcmode="${orgMcmode}"
           echo
           echo "This Aegir Instance ${octUsr} can not be upgraded"
           echo "via '$(basename "$0") ${orgCmmand}' mode"
-          echo "We will run legacy upgrade to ${lgcC} instead"
-          echo "Once the upgrade to ${lgcC} is complete, you will be able"
+          echo "We will run legacy upgrade to ${lgcD} instead"
+          echo "Once the upgrade to ${lgcD} is complete, you will be able"
           echo "to use the '$(basename "$0") ${orgCmmand}' upgrade mode"
           echo "Please wait..."
           echo
@@ -445,9 +442,10 @@ satellite_check_switch_php() {
       _T_FPM_VRN=$(cat ${User}/static/control/fpm.info 2>&1)
       _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
       _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-      if [ "${_T_FPM_VRN}" = "7.0" ] \
-        || [ "${_T_FPM_VRN}" = "5.6" ] \
-        || [ "${_T_FPM_VRN}" = "5.5" ]; then
+      if [ "${_T_FPM_VRN}" = "7.2" ] \
+        || [ "${_T_FPM_VRN}" = "7.1" ] \
+        || [ "${_T_FPM_VRN}" = "7.0" ] \
+        || [ "${_T_FPM_VRN}" = "5.6" ]; then
         _PHP_FPM_LEGACY_FREE=YES
       else
         _PHP_FPM_LEGACY_FREE=NO
@@ -459,9 +457,10 @@ satellite_check_switch_php() {
       _T_CLI_VRN=$(cat ${User}/static/control/cli.info 2>&1)
       _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
       _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-      if [ "${_T_CLI_VRN}" = "7.0" ] \
-        || [ "${_T_CLI_VRN}" = "5.6" ] \
-        || [ "${_T_CLI_VRN}" = "5.5" ]; then
+      if [ "${_T_CLI_VRN}" = "7.2" ] \
+        || [ "${_T_CLI_VRN}" = "7.1" ] \
+        || [ "${_T_CLI_VRN}" = "7.0" ] \
+        || [ "${_T_CLI_VRN}" = "5.6" ]; then
         _PHP_CLI_LEGACY_FREE=YES
       else
         _PHP_CLI_LEGACY_FREE=NO
@@ -477,27 +476,24 @@ satellite_check_switch_php() {
     fi
     if [ "${_PHP_LEGACY_FREE}" = "NO" ] \
       && [ -z "${_SERIES_TEST_RESULT}" ]; then
-      cmmand="up-2.4"
+      cmmand="up-3.2"
       switchFPMback="${_T_FPM_VRN}"
       if [ -z "${switchFPMback}" ]; then
-        switchFPMback="5.3"
+        switchFPMback="5.6"
       fi
       switchCLIback="${_T_CLI_VRN}"
       if [ -z "${switchCLIback}" ]; then
-        switchCLIback="5.3"
+        switchCLIback="5.6"
       fi
       if [ -x "/opt/php56/bin/php" ]; then
         echo 5.6 > ${User}/static/control/fpm.info
         echo 5.6 > ${User}/static/control/cli.info
-      elif [ -x "/opt/php55/bin/php" ]; then
-        echo 5.5 > ${User}/static/control/fpm.info
-        echo 5.5 > ${User}/static/control/cli.info
       fi
       echo
       echo "This instance ${octUsr} still depends on the old PHP version"
       echo "FPM.${_T_FPM_VRN} CLI.${_T_CLI_VRN}"
-      echo "We will switch FPM and CLI on ${octUsr} to PHP 5.5 temporarily"
-      echo "Then we will run legacy upgrade to ${lgcC}"
+      echo "We will switch FPM and CLI on ${octUsr} to PHP 5.6 temporarily"
+      echo "Then we will run legacy upgrade to ${lgcD}"
       echo "Please wait..."
       echo
       sleep 5
@@ -562,6 +558,13 @@ up_one() {
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${tocIncO}
         wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${tocIncO}
+        wait
+      elif [ "${cmmand}" = "up-3.2" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcD}/g" ${vBs}/${tocIncO}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcD}/g" ${vBs}/${tocIncO}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcD}/g"         ${vBs}/${tocIncO}
         wait
       else
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${tocIncO}
@@ -931,7 +934,7 @@ up_head() {
     || [ "${silent}" = "cluster" ] \
     || [ "${silent}" = "drush" ] \
     || [ "${silent}" = "gravcms" ] \
-    || [ "${silent}" = "jessie" ]; then
+    || [ "${silent}" = "stretch" ]; then
     echo "FEATURE MODE: ${silent}"
     master="feature/${silent}"
     branch="feature/${silent}"
@@ -975,7 +978,11 @@ up_stable() {
 
 up_legacy() {
   up_start
-  if [ "${cmmand}" = "up-2.4" ]; then
+  if [ "${cmmand}" = "up-3.2" ]; then
+    branch="3.2.x-dev"
+    curl ${crlGet} "${rgUrl}/${lgcD}/${octName}"  -o ${vBs}/${octName}
+    curl ${crlGet} "${rgUrl}/${lgcD}/${pthIncO}"  -o ${vBs}/${filIncO}
+  elif [ "${cmmand}" = "up-2.4" ]; then
     branch="2.4.x-dev"
     curl ${crlGet} "${rgUrl}/${lgcC}/${octName}"  -o ${vBs}/${octName}
     curl ${crlGet} "${rgUrl}/${lgcC}/${pthIncO}"  -o ${vBs}/${filIncO}
@@ -1211,6 +1218,12 @@ case "$1" in
              silent="$4"
              up_stable
   ;;
+  up-3.2)    cmmand="$1"
+             second="$2"
+             cmmode="$3"
+             silent="$4"
+             up_legacy "3.2"
+  ;;
   up-2.4)    cmmand="$1"
              second="$2"
              cmmode="$3"
@@ -1230,7 +1243,7 @@ case "$1" in
              up_legacy "2.2"
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {up-stable|up-head|up-2.4|up-2.3|up-2.2} {all|o1} {aegir|platforms|both|force}"
+             echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy|up-2.4|up-2.3|up-2.2} {all|o1} {aegir|platforms|both|force}"
              echo
              clean_pid_exit
   ;;

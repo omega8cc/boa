@@ -330,19 +330,19 @@ update_agents() {
     fi
   fi
 
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/minute.ctrl.322stableQ11.pid" ]; then
-    mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
-    if [ -e "/var/xdrago/minute.sh" ]; then
-      chmod 700 /var/xdrago/minute.sh
-      chown root:root /var/xdrago/minute.sh
-      touch ${pthLog}/minute.ctrl.322stableQ11.pid
-    else
-      mv -f /var/xdrago/minute.sh.old /var/xdrago/minute.sh
-    fi
-  fi
+  # if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+  #   && [ -e "/var/xdrago" ] \
+  #   && [ ! -e "${pthLog}/minute.ctrl.322stableQ11.pid" ]; then
+  #   mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
+  #   curl ${crlGet} "${urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
+  #   if [ -e "/var/xdrago/minute.sh" ]; then
+  #     chmod 700 /var/xdrago/minute.sh
+  #     chown root:root /var/xdrago/minute.sh
+  #     touch ${pthLog}/minute.ctrl.322stableQ11.pid
+  #   else
+  #     mv -f /var/xdrago/minute.sh.old /var/xdrago/minute.sh
+  #   fi
+  # fi
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
@@ -358,99 +358,99 @@ update_agents() {
     fi
   fi
 
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/daily.ctrl.322stableQ11.pid" ]; then
-    mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
-    if [ -e "/var/xdrago/daily.sh" ]; then
-      chmod 700 /var/xdrago/daily.sh
-      chown root:root /var/xdrago/daily.sh
-      touch ${pthLog}/daily.ctrl.322stableQ11.pid
-    else
-      mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
-    fi
-  fi
+  # if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+  #   && [ -e "/var/xdrago" ] \
+  #   && [ ! -e "${pthLog}/daily.ctrl.322stableQ11.pid" ]; then
+  #   mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
+  #   curl ${crlGet} "${urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
+  #   if [ -e "/var/xdrago/daily.sh" ]; then
+  #     chmod 700 /var/xdrago/daily.sh
+  #     chown root:root /var/xdrago/daily.sh
+  #     touch ${pthLog}/daily.ctrl.322stableQ11.pid
+  #   else
+  #     mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
+  #   fi
+  # fi
 
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/graceful.ctrl.322stableQ11.pid" ]; then
-    mv -f /var/xdrago/graceful.sh /var/xdrago/graceful.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/graceful.sh" -o /var/xdrago/graceful.sh
-    if [ -e "/var/xdrago/graceful.sh" ]; then
-      chmod 700 /var/xdrago/graceful.sh
-      chown root:root /var/xdrago/graceful.sh
-      touch ${pthLog}/graceful.ctrl.322stableQ11.pid
-    else
-      mv -f /var/xdrago/graceful.sh.old /var/xdrago/graceful.sh
-    fi
-  fi
+  # if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+  #   && [ -e "/var/xdrago" ] \
+  #   && [ ! -e "${pthLog}/graceful.ctrl.322stableQ11.pid" ]; then
+  #   mv -f /var/xdrago/graceful.sh /var/xdrago/graceful.sh.old
+  #   curl ${crlGet} "${urlHmr}/tools/system/graceful.sh" -o /var/xdrago/graceful.sh
+  #   if [ -e "/var/xdrago/graceful.sh" ]; then
+  #     chmod 700 /var/xdrago/graceful.sh
+  #     chown root:root /var/xdrago/graceful.sh
+  #     touch ${pthLog}/graceful.ctrl.322stableQ11.pid
+  #   else
+  #     mv -f /var/xdrago/graceful.sh.old /var/xdrago/graceful.sh
+  #   fi
+  # fi
 
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/weekly.ctrl.322stableQ11.pid" ]; then
-    mv -f /var/xdrago/weekly.sh /var/xdrago/weekly.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/weekly.sh" -o /var/xdrago/weekly.sh
-    if [ -e "/var/xdrago/weekly.sh" ]; then
-      chmod 700 /var/xdrago/weekly.sh
-      chown root:root /var/xdrago/weekly.sh
-      touch ${pthLog}/weekly.ctrl.322stableQ11.pid
-    else
-      mv -f /var/xdrago/weekly.sh.old /var/xdrago/weekly.sh
-    fi
-  fi
+  # if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+  #   && [ -e "/var/xdrago" ] \
+  #   && [ ! -e "${pthLog}/weekly.ctrl.322stableQ11.pid" ]; then
+  #   mv -f /var/xdrago/weekly.sh /var/xdrago/weekly.sh.old
+  #   curl ${crlGet} "${urlHmr}/tools/system/weekly.sh" -o /var/xdrago/weekly.sh
+  #   if [ -e "/var/xdrago/weekly.sh" ]; then
+  #     chmod 700 /var/xdrago/weekly.sh
+  #     chown root:root /var/xdrago/weekly.sh
+  #     touch ${pthLog}/weekly.ctrl.322stableQ11.pid
+  #   else
+  #     mv -f /var/xdrago/weekly.sh.old /var/xdrago/weekly.sh
+  #   fi
+  # fi
 
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/manage_ltd_users.ctrl.322stableQ11.pid" ]; then
-    mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/manage_ltd_users.sh" \
-      -o /var/xdrago/manage_ltd_users.sh
-    if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
-      chmod 700 /var/xdrago/manage_ltd_users.sh
-      chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${pthLog}/manage_ltd_users.ctrl.322stableQ11.pid
-    else
-      mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
-    fi
-  fi
+  # if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+  #   && [ -e "/var/xdrago" ] \
+  #   && [ ! -e "${pthLog}/manage_ltd_users.ctrl.322stableQ11.pid" ]; then
+  #   mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
+  #   curl ${crlGet} "${urlHmr}/tools/system/manage_ltd_users.sh" \
+  #     -o /var/xdrago/manage_ltd_users.sh
+  #   if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
+  #     chmod 700 /var/xdrago/manage_ltd_users.sh
+  #     chown root:root /var/xdrago/manage_ltd_users.sh
+  #     touch ${pthLog}/manage_ltd_users.ctrl.322stableQ11.pid
+  #   else
+  #     mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
+  #   fi
+  # fi
 
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/proc_num_ctrl.ctrl.322stableQ11.pid" ]; then
-    mv -f /var/xdrago/proc_num_ctrl.cgi /var/xdrago/proc_num_ctrl.cgi.old
-    curl ${crlGet} "${urlHmr}/tools/system/proc_num_ctrl.cgi" \
-      -o /var/xdrago/proc_num_ctrl.cgi
-    if [ -e "/var/xdrago/proc_num_ctrl.cgi" ]; then
-      chmod 700 /var/xdrago/proc_num_ctrl.cgi
-      chown root:root /var/xdrago/proc_num_ctrl.cgi
-      touch ${pthLog}/proc_num_ctrl.ctrl.322stableQ11.pid
-    else
-      mv -f /var/xdrago/proc_num_ctrl.cgi.old /var/xdrago/proc_num_ctrl.cgi
-    fi
-  fi
+  # if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+  #   && [ -e "/var/xdrago" ] \
+  #   && [ ! -e "${pthLog}/proc_num_ctrl.ctrl.322stableQ11.pid" ]; then
+  #   mv -f /var/xdrago/proc_num_ctrl.cgi /var/xdrago/proc_num_ctrl.cgi.old
+  #   curl ${crlGet} "${urlHmr}/tools/system/proc_num_ctrl.cgi" \
+  #     -o /var/xdrago/proc_num_ctrl.cgi
+  #   if [ -e "/var/xdrago/proc_num_ctrl.cgi" ]; then
+  #     chmod 700 /var/xdrago/proc_num_ctrl.cgi
+  #     chown root:root /var/xdrago/proc_num_ctrl.cgi
+  #     touch ${pthLog}/proc_num_ctrl.ctrl.322stableQ11.pid
+  #   else
+  #     mv -f /var/xdrago/proc_num_ctrl.cgi.old /var/xdrago/proc_num_ctrl.cgi
+  #   fi
+  # fi
 
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/fast_shutdown.ctrl.322stableQ11.pid" ]; then
-    sed -i "s/.*opcache.fast_shutdown.*//g" /opt/etc/fpm/fpm-pool-common.conf
-    if [ -e "/etc/init.d/php70-fpm" ]; then
-      service php70-fpm reload &> /dev/null
-    fi
-    if [ -e "/etc/init.d/php56-fpm" ]; then
-      service php56-fpm reload &> /dev/null
-    fi
-    if [ -e "/etc/init.d/php55-fpm" ]; then
-      service php55-fpm reload &> /dev/null
-    fi
-    if [ -e "/etc/init.d/php54-fpm" ]; then
-      service php54-fpm reload &> /dev/null
-    fi
-    if [ -e "/etc/init.d/php53-fpm" ]; then
-      service php53-fpm reload &> /dev/null
-    fi
-    touch ${pthLog}/fast_shutdown.ctrl.322stableQ11.pid
-  fi
+  # if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+  #   && [ -e "/var/xdrago" ] \
+  #   && [ ! -e "${pthLog}/fast_shutdown.ctrl.322stableQ11.pid" ]; then
+  #   sed -i "s/.*opcache.fast_shutdown.*//g" /opt/etc/fpm/fpm-pool-common.conf
+  #   if [ -e "/etc/init.d/php70-fpm" ]; then
+  #     service php70-fpm reload &> /dev/null
+  #   fi
+  #   if [ -e "/etc/init.d/php56-fpm" ]; then
+  #     service php56-fpm reload &> /dev/null
+  #   fi
+  #   if [ -e "/etc/init.d/php55-fpm" ]; then
+  #     service php55-fpm reload &> /dev/null
+  #   fi
+  #   if [ -e "/etc/init.d/php54-fpm" ]; then
+  #     service php54-fpm reload &> /dev/null
+  #   fi
+  #   if [ -e "/etc/init.d/php53-fpm" ]; then
+  #     service php53-fpm reload &> /dev/null
+  #   fi
+  #   touch ${pthLog}/fast_shutdown.ctrl.322stableQ11.pid
+  # fi
 
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ] \
@@ -661,19 +661,19 @@ update_agents() {
     touch ${pthLog}/hosting_le_vt.ctrl.322stableQ11.pid
   fi
 
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/websh.ctrl.322stableQ11.pid" ]; then
-    mv -f /bin/websh /var/xdrago/websh.sh.old
-    curl ${crlGet} "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh
-    if [ -e "/bin/websh" ]; then
-      chmod 755 /bin/websh
-      chown root:root /bin/websh
-      touch ${pthLog}/websh.ctrl.322stableQ11.pid
-    else
-      mv -f /var/xdrago/websh.sh.old /bin/websh
-    fi
-  fi
+  # if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+  #   && [ -e "/var/xdrago" ] \
+  #   && [ ! -e "${pthLog}/websh.ctrl.322stableQ11.pid" ]; then
+  #   mv -f /bin/websh /var/xdrago/websh.sh.old
+  #   curl ${crlGet} "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh
+  #   if [ -e "/bin/websh" ]; then
+  #     chmod 755 /bin/websh
+  #     chown root:root /bin/websh
+  #     touch ${pthLog}/websh.ctrl.322stableQ11.pid
+  #   else
+  #     mv -f /var/xdrago/websh.sh.old /bin/websh
+  #   fi
+  # fi
 }
 
 fix_core_dgd() {
@@ -711,11 +711,11 @@ fix_core_dgd() {
   fi
 
   # SA-CORE D6 patch
-#   if [ -e "/var/xdrago" ] \
-# 	&& [ ! -e "${saXPatch}" ]; then
-# 	mkdir -p /var/xdrago/conf
-# 	curl ${crlGet} "${urlHmr}/patches/6-core/${saXCoreS}.patch" -o ${saXPatch}
-#   fi
+  # if [ -e "/var/xdrago" ] \
+	#   && [ ! -e "${saXPatch}" ]; then
+	#   mkdir -p /var/xdrago/conf
+	#   curl ${crlGet} "${urlHmr}/patches/6-core/${saXCoreS}.patch" -o ${saXPatch}
+  # fi
 
   # SA-CORE for Octopus hostmaster platforms
   if [ -e "/var/xdrago" ] \
@@ -1683,6 +1683,7 @@ if [ `whoami` = "root" ]; then
   fi
   if [ "${_SCREEN_INIT}" = "YES" ]; then
     apt-get install screen ${forCer} &> /dev/null
+    touch /root/.backboa.autoupdate
     sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
     clear
     echo

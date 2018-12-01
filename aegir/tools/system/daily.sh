@@ -1274,7 +1274,7 @@ add_solr() {
       rkey=32
       if [ "${_NEW_SSL}" = "YES" ] \
         || [ "${_OSV}" = "jessie" ] \
-        || [ "${_OSV}" = "wheezy" ] \
+        || [ "${_OSV}" = "stretch" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
         _MD5H=$(cat /dev/urandom \
@@ -2653,7 +2653,7 @@ process() {
       if [ -e "${Plr}" ]; then
         if [ "${_NEW_SSL}" = "YES" ] \
           || [ "${_OSV}" = "jessie" ] \
-          || [ "${_OSV}" = "wheezy" ] \
+          || [ "${_OSV}" = "stretch" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
           PlrID=$(echo ${Plr} \

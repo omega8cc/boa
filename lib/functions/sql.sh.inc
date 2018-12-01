@@ -445,7 +445,7 @@ install_mariadb_sql() {
 }
 
 install_with_aptitude_sql() {
-  if [ "${_OSV}" = "squeeze" ] \
+  if [ "${_OSV}" = "stretch" ] \
     || [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
@@ -595,11 +595,6 @@ install_mariadb_server() {
       && [ "${_DB_SERVER}" = "MariaDB" ]; then
       _SQL_UPGRADE=YES
     fi
-    if [ "${_OSV}" = "squeeze" ] \
-      && [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]] \
-      && [[ "${_DB_SERVER_TEST}" =~ " 5.3." ]]; then
-      _SQL_UPGRADE=YES
-    fi
     if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
       if [[ "${_DB_SERVER_TEST}" =~ " 5.1." ]] \
         || [[ "${_DB_SERVER_TEST}" =~ " 5.2." ]]; then
@@ -624,11 +619,8 @@ install_mariadb_server() {
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       _SQL_UPGRADE=YES
     fi
-    if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "wheezy" ]; then
-      _SQL_UPGRADE=NO
-    elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "squeeze" ]; then
+    if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
+      && [ "${_LOC_OSV}" = "jessie" ]; then
       _SQL_UPGRADE=NO
     fi
     _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \

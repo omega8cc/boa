@@ -82,21 +82,18 @@ done
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
   _THIS_DB_HOST=$(uname -n 2>&1)
 fi
-if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+if [ "${_PHP_CLI_VERSION}" = "7.2" ] \
+  && [ -x "/opt/php72/bin/php" ]; then
+  _T_CLI=/opt/php72/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.1" ] \
+  && [ -x "/opt/php71/bin/php" ]; then
+  _T_CLI=/opt/php71/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.0" ] \
   && [ -x "/opt/php70/bin/php" ]; then
   _T_CLI=/opt/php70/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
   && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-  && [ -x "/opt/php55/bin/php" ]; then
-  _T_CLI=/opt/php55/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
-  && [ -x "/opt/php54/bin/php" ]; then
-  _T_CLI=/opt/php54/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.3" ] \
-  && [ -x "/opt/php53/bin/php" ]; then
-  _T_CLI=/opt/php53/bin
 fi
 _OSV=$(lsb_release -sc 2>&1)
 _ROOT="${HOME}"
@@ -130,25 +127,21 @@ fi
 # Update php-cli for Drush.
 update_php_cli_drush() {
   _DRUSH_FILE="${_ROOT}/drush/drush.php"
-  if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+  if [ "${_PHP_CLI_VERSION}" = "7.2" ] \
+    && [ -x "/opt/php72/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php72\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "7.1" ] \
+    && [ -x "/opt/php71/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php71\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "7.0" ] \
     && [ -x "/opt/php70/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php70\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
     && [ -x "/opt/php56/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-    && [ -x "/opt/php55/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
-    && [ -x "/opt/php54/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php54\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.3" ] \
-    && [ -x "/opt/php53/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php53\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
   else
     msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported versions"

@@ -43,7 +43,7 @@
 4. Install Barracuda and Octopus.
 
    You must specify the kind of install with {in-stable|in-head} or for
-   legacy versions with {in-2.4|in-2.3|in-2.2}, location with {local|public},
+   legacy versions with {in-3.2|in-2.4}, location with {local|public},
    your hostname and email address, as shown further below.
 
    Specifying Octopus username is optional. It will use "o1" if empty.
@@ -77,7 +77,7 @@
    replace "in-stable" with "in-head"
 
    To install Legacy version instead of Stable, use the same commands, but
-   replace "in-stable" with "in-2.4", "in-2.3" or "in-2.2".
+   replace "in-stable" with "in-3.2" or "in-2.4".
 
    Note that once you will install current Stable or HEAD, you can't
    downgrade back to Legacy version!
@@ -121,7 +121,7 @@
    replace "in-stable" with "in-head"
 
    To install Legacy version instead of Stable, use the same commands, but
-   replace "in-stable" with "in-2.4", "in-2.3" or "in-2.2".
+   replace "in-stable" with "in-3.2" or "in-2.4".
 
    The oldest Legacy version (in-2.2) is the last Edition in the 2.2.x series
    which still supported Drupal 5 and used Drush 4 along with old Aegir version.

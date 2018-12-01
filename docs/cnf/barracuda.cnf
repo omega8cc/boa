@@ -59,16 +59,16 @@ _NGINX_NAXSI=NO #--------------- Installs NAXSI WAF when YES - experimental
 _NGINX_SPDY=YES #--------------- Installs SPDY Nginx support when YES (default)
 _NGINX_WORKERS=AUTO #----------- Allows to override AUTO with a valid integer
 ###
-_PHP_CLI_VERSION=5.6 #---------- PHP-CLI for Master Instance: 7.0 5.{6,5,4,3}
+_PHP_CLI_VERSION=7.2 #---------- PHP-CLI for Master Instance: 7.2 7.1 7.0 5.6
 _PHP_EXTRA_CONF="" #------------ Allows to add custom options to PHP build
 _PHP_FPM_DENY="" #-------------- Modify disable_functions -- see info below
-_PHP_FPM_VERSION=5.6 #---------- PHP-FPM for Master Instance: 7.0 5.{6,5,4,3}
+_PHP_FPM_VERSION=7.2 #---------- PHP-FPM for Master Instance: 7.2 7.1 7.0 5.6
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_IONCUBE=NO #--------------- Installs ionCube for all PHP versions when YES
 _PHP_GEOS=NO #------------------ Installs GEOS for all PHP versions when YES
 _PHP_MONGODB=NO #--------------- Installs MONGODB for all PHP versions when YES
-_PHP_MULTI_INSTALL="5.6" #------ PHP versions to install: 7.0 5.6 5.5 5.4 5.3
-_PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 5.6
+_PHP_MULTI_INSTALL="7.2 5.6" #-- PHP versions to install: 7.2 7.1 7.0 5.6
+_PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 7.1
 ###
 _REDIS_LISTEN_MODE=SOCKET #----- Redis listen mode: SOCKET (recommended) or PORT
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
@@ -200,15 +200,9 @@ _FULL_FORCE_REINSTALL=NO
 
 ###
 ### Use YES to run major system upgrade
-### from Debian Wheezy to Debian Jessie.
+### from Debian Jessie to Debian Stretch.
 ###
-_WHEEZY_TO_JESSIE=NO
-
-###
-### Use YES to run major system upgrade
-### from Debian Squeeze to Debian Wheezy.
-###
-_SQUEEZE_TO_WHEEZY=NO
+_JESSIE_TO_STRETCH=NO
 
 ###
 ### Use YES to run migration from Tomcat 6
