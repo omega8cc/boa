@@ -572,7 +572,7 @@ install_vps() {
 
   echo "Installing vps ${idn}..."
 
-  if [ "${osx}" = "jessie" ]; then
+  if [ "${osx}" = "jessie" ] || [ "${osx}" = "stretch" ]; then
     incl="sysvinit-core,sysvinit,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen"
     excl="systemd,udev,makedev,fuse"
   else
@@ -688,7 +688,7 @@ install_vps() {
 
   if [ "${ver}" = "galera" ]; then
     echo "Running post-install Galera VPS upgrade..."
-    if [ "${osx}" = "jessie" ] || [ -x "/vservers/${idn}/lib/systemd/systemd" ]; then
+    if [ -x "/vservers/${idn}/lib/systemd/systemd" ]; then
       echo "Removing systemd on ${osx}..."
       vserver ${idn} exec ${_INSTAPP} sysvinit-core
       vserver ${idn} exec ${_INSTAPP} sysvinit-utils
@@ -1237,7 +1237,7 @@ install_host() {
     ls -la /boot
   fi
 
-  if [ "${_OSR}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
+  if [ -x "/lib/systemd/systemd" ]; then
     echo "Installing sysvinit on ${_OSV} ${_OSR}..."
     ${_INSTAPP} sysvinit-core
     ${_INSTAPP} sysvinit-utils
@@ -1276,7 +1276,7 @@ EOF
 
 upgrade_host() {
 
-  if [ "${_OSR}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
+  if [ -x "/lib/systemd/systemd" ]; then
     echo "Removing systemd on ${_OSV} ${_OSR}..."
     ${_INSTAPP} sysvinit-core
     ${_INSTAPP} sysvinit-utils
