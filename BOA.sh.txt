@@ -1685,6 +1685,8 @@ if [ `whoami` = "root" ]; then
     apt-get install screen ${forCer} &> /dev/null
     apt-get install net-tools ${forCer} &> /dev/null
     apt-get install hostname ${forCer} &> /dev/null
+    apt-get install dirmngr ${forCer} &> /dev/null
+    apt-get install build-essential ${forCer} &> /dev/null
     touch /root/.backboa.autoupdate
     sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
     clear
