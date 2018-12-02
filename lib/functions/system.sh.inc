@@ -2915,7 +2915,9 @@ more_packages_install_on_init() {
     ${_INITINS} git-man &> /dev/null
     ${_INITINS} aptitude &> /dev/null
     ${_INITINS} axel &> /dev/null
+    ${_INITINS} hostname &> /dev/null
     ${_INITINS} net-tools &> /dev/null
+    ${_INITINS} dirmngr &> /dev/null
   fi
 }
 
