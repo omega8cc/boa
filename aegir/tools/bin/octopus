@@ -1058,7 +1058,7 @@ check_dns_curl() {
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
-    echo "curl install" | dpkg --set-selections
+    echo "curl install" | dpkg --set-selections &> /dev/null
     apt-get clean -qq &> /dev/null
     apt-get update -qq &> /dev/null
     apt-get install curl ${forCer} &> /dev/null
@@ -1071,7 +1071,7 @@ check_dns_curl() {
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
-      echo "curl install" | dpkg --set-selections
+      echo "curl install" | dpkg --set-selections &> /dev/null
       apt-get install curl ${forCer} &> /dev/null
       touch /root/.use.curl.from.packages.cnf
     fi

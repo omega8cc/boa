@@ -90,7 +90,7 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
     isCurl=$(curl --version 2>&1)
     if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
       rm -f /etc/apt/sources.list.d/openssl.list
-      echo "curl install" | dpkg --set-selections
+      echo "curl install" | dpkg --set-selections &> /dev/null
       apt-get clean -qq &> /dev/null
       apt-get update -qq &> /dev/null
       apt-get install curl ${forCer} &> /dev/null

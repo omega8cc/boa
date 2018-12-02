@@ -1696,9 +1696,9 @@ do_install_latest_git() {
     ln -sf /usr/local/bin/git /usr/bin/git
     cd /var/opt
     touch ${pthLog}/git-${_GIT_VRN}-${_X_VERSION}-${_NOW}.log
-    echo "git hold" | dpkg --set-selections
-    echo "git-core hold" | dpkg --set-selections
-    echo "git-man hold" | dpkg --set-selections
+    echo "git hold" | dpkg --set-selections &> /dev/null
+    echo "git-core hold" | dpkg --set-selections &> /dev/null
+    echo "git-man hold" | dpkg --set-selections &> /dev/null
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Git ${_GIT_VRN} already installed from sources, OK"
@@ -2087,11 +2087,11 @@ install_ssh_src() {
       ### aptitude hold openssh-server &> /dev/null
       ### aptitude hold openssh-client &> /dev/null
       ### aptitude hold ssh &> /dev/null
-      echo "openssh-client hold" | dpkg --set-selections
-      echo "openssh-server hold" | dpkg --set-selections
-      echo "ssh hold" | dpkg --set-selections
+      echo "openssh-client hold" | dpkg --set-selections &> /dev/null
+      echo "openssh-server hold" | dpkg --set-selections &> /dev/null
+      echo "ssh hold" | dpkg --set-selections &> /dev/null
       if [ "${_OSV}" = "jessie" ]; then
-        echo "openssh-sftp-server hold" | dpkg --set-selections
+        echo "openssh-sftp-server hold" | dpkg --set-selections &> /dev/null
       fi
     fi
   else
@@ -2099,11 +2099,11 @@ install_ssh_src() {
       ### aptitude hold openssh-server &> /dev/null
       ### aptitude hold openssh-client &> /dev/null
       ### aptitude hold ssh &> /dev/null
-      echo "openssh-client hold" | dpkg --set-selections
-      echo "openssh-server hold" | dpkg --set-selections
-      echo "ssh hold" | dpkg --set-selections
+      echo "openssh-client hold" | dpkg --set-selections &> /dev/null
+      echo "openssh-server hold" | dpkg --set-selections &> /dev/null
+      echo "ssh hold" | dpkg --set-selections &> /dev/null
       if [ "${_OSV}" = "jessie" ]; then
-        echo "openssh-sftp-server hold" | dpkg --set-selections
+        echo "openssh-sftp-server hold" | dpkg --set-selections &> /dev/null
       fi
     fi
   fi
@@ -2194,11 +2194,11 @@ install_curl_src() {
     ###--------------------###
     if [ -e "/root/.use.curl.from.packages.cnf" ]; then
       if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
-        echo "curl install" | dpkg --set-selections
+        echo "curl install" | dpkg --set-selections &> /dev/null
         if [ -z "${_CURL_ALREADY_REBUILT}" ]; then
-          echo "libcurl3 install" | dpkg --set-selections
-          echo "libcurl3-gnutls install" | dpkg --set-selections
-          echo "libcurl4-openssl-dev install" | dpkg --set-selections
+          echo "libcurl3 install" | dpkg --set-selections &> /dev/null
+          echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
+          echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
           mrun "apt-get clean -qq" 2> /dev/null
           mrun "apt-get update -qq" 2> /dev/null
           mrun "apt-get install libcurl3 ${forCer}" 2> /dev/null
@@ -2209,7 +2209,7 @@ install_curl_src() {
       fi
     else
       if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
-        echo "curl hold" | dpkg --set-selections
+        echo "curl hold" | dpkg --set-selections &> /dev/null
       fi
       msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
       cd /var/opt
@@ -2303,12 +2303,12 @@ install_ssl_src() {
       | grep zlibc \
       | grep 'hold$' 2>&1)
     if [[ ! "${_SSL_GET_DPKG}" =~ "hold" ]]; then
-      echo "openssl hold" | dpkg --set-selections
+      echo "openssl hold" | dpkg --set-selections &> /dev/null
     fi
     if [[ ! "${_ZLB_GET_DPKG}" =~ "hold" ]]; then
-      echo "zlibc hold" | dpkg --set-selections
-      echo "zlib1g hold" | dpkg --set-selections
-      echo "zlib1g-dev hold" | dpkg --set-selections
+      echo "zlibc hold" | dpkg --set-selections &> /dev/null
+      echo "zlib1g hold" | dpkg --set-selections &> /dev/null
+      echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
     fi
   fi
   fix_libssl
@@ -2993,19 +2993,19 @@ if_jessie_to_stretch() {
     mrun "apt-get remove php5-common   -y --force-yes -qq" 2> /dev/null
     mrun "apt-get remove php5-apc      -y --force-yes -qq" 2> /dev/null
     mrun "apt-get remove php-apc       -y --force-yes -qq" 2> /dev/null
-    echo "curl install"           | dpkg --set-selections
-    echo "git install"            | dpkg --set-selections
-    echo "git-core install"       | dpkg --set-selections
-    echo "git-man install"        | dpkg --set-selections
-    echo "libssl-dev install"     | dpkg --set-selections
-    echo "openssh-client install" | dpkg --set-selections
-    echo "openssh-server install" | dpkg --set-selections
-    echo "openssh-sftp-server install" | dpkg --set-selections
-    echo "openssl install"        | dpkg --set-selections
-    echo "ssh install"            | dpkg --set-selections
-    echo "zlib1g install"         | dpkg --set-selections
-    echo "zlib1g-dev install"     | dpkg --set-selections
-    echo "zlibc install"          | dpkg --set-selections
+    echo "curl install"           | dpkg --set-selections &> /dev/null
+    echo "git install"            | dpkg --set-selections &> /dev/null
+    echo "git-core install"       | dpkg --set-selections &> /dev/null
+    echo "git-man install"        | dpkg --set-selections &> /dev/null
+    echo "libssl-dev install"     | dpkg --set-selections &> /dev/null
+    echo "openssh-client install" | dpkg --set-selections &> /dev/null
+    echo "openssh-server install" | dpkg --set-selections &> /dev/null
+    echo "openssh-sftp-server install" | dpkg --set-selections &> /dev/null
+    echo "openssl install"        | dpkg --set-selections &> /dev/null
+    echo "ssh install"            | dpkg --set-selections &> /dev/null
+    echo "zlib1g install"         | dpkg --set-selections &> /dev/null
+    echo "zlib1g-dev install"     | dpkg --set-selections &> /dev/null
+    echo "zlibc install"          | dpkg --set-selections &> /dev/null
     mrun "${_INSTALL} zlib1g"     2> /dev/null
     mrun "${_INSTALL} zlib1g-dev" 2> /dev/null
     mrun "${_INSTALL} zlibc"      2> /dev/null
@@ -3283,7 +3283,7 @@ sys_packages_update() {
       -o Dpkg::Options::=--force-confold" 2> /dev/null
     st_runner "aptitude autoclean -y" &> /dev/null
   else
-    echo "gnupg-curl install" | dpkg --set-selections
+    echo "gnupg-curl install" | dpkg --set-selections &> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
