@@ -572,13 +572,8 @@ install_vps() {
 
   echo "Installing vps ${idn}..."
 
-  if [ "${osx}" = "jessie" ] || [ "${osx}" = "stretch" ]; then
-    incl="sysvinit-core,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen"
-    excl="systemd,udev,makedev,fuse"
-  else
-    incl="sysvinit,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen"
-    excl="udev,makedev,fuse"
-  fi
+  incl="sysvinit-core,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen"
+  excl="systemd,systemd-sysv,libsystemd0,udev,makedev,fuse"
 
   vserver ${idn} build -n ${idn} -m debootstrap --i-know-its-there \
     --hostname ${hst} \
