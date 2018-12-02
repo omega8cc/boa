@@ -3470,8 +3470,9 @@ sys_packages_install() {
   else
     _SYSLOGD=rsyslog
   fi
-  if [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "jessie" ]; then
+  if [ "${_OSV}" = "stretch" ] \
+    || [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "trusty" ]; then
     _EXTRA_PACKAGES="libgd2-noxpm-dev \
                      libgd2-xpm-dev \
                      libgd2-dev \

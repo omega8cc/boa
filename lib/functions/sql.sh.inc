@@ -354,8 +354,9 @@ install_mariadb_sql() {
       --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5 2>&1)
     sleep 2
   done
-  if [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "jessie" ]; then
+  if [ "${_OSV}" = "stretch" ] \
+    || [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "trusty" ]; then
     st_runner "${_INSTAPP} software-properties-common" 2> /dev/null
   fi
   if [ "${_THIS_OS}" = "Debian" ]; then
@@ -363,8 +364,9 @@ install_mariadb_sql() {
   elif [ "${_THIS_OS}" = "Ubuntu" ]; then
     _OSN=ubuntu
   fi
-  if [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "jessie" ]; then
+  if [ "${_OSV}" = "stretch" ] \
+    || [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "trusty" ]; then
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
