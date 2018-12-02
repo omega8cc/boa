@@ -3523,6 +3523,7 @@ sys_packages_install() {
               ${_SYSLOGD} \
               aptitude \
               autoconf2.13 \
+              autoconf \
               automake \
               automake1.4 \
               autotools-dev \
