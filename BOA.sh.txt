@@ -1683,6 +1683,8 @@ if [ `whoami` = "root" ]; then
   fi
   if [ "${_SCREEN_INIT}" = "YES" ]; then
     apt-get install screen ${forCer} &> /dev/null
+    apt-get install net-tools ${forCer} &> /dev/null
+    apt-get install hostname ${forCer} &> /dev/null
     touch /root/.backboa.autoupdate
     sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
     clear
