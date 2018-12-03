@@ -2046,7 +2046,7 @@ update_sources_list() {
 #
 # Install OpenSSH from sources.
 install_ssh_src() {
-  if [ "${_OSV}" = "jessie" ]; then
+  if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
     _SSH_GET_DPKG=$(dpkg --get-selections | grep openssh-sftp-server | grep 'hold$' 2>&1)
   else
     _SSH_GET_DPKG=$(dpkg --get-selections | grep ssh | grep 'hold$' 2>&1)
@@ -2087,7 +2087,7 @@ install_ssh_src() {
       echo "openssh-client hold" | dpkg --set-selections &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections &> /dev/null
       echo "ssh hold" | dpkg --set-selections &> /dev/null
-      if [ "${_OSV}" = "jessie" ]; then
+      if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
         echo "openssh-sftp-server hold" | dpkg --set-selections &> /dev/null
       fi
     fi
@@ -2099,7 +2099,7 @@ install_ssh_src() {
       echo "openssh-client hold" | dpkg --set-selections &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections &> /dev/null
       echo "ssh hold" | dpkg --set-selections &> /dev/null
-      if [ "${_OSV}" = "jessie" ]; then
+      if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
         echo "openssh-sftp-server hold" | dpkg --set-selections &> /dev/null
       fi
     fi
@@ -2808,7 +2808,7 @@ install_with_aptitude_deps() {
 }
 
 basic_packages_install_on_init() {
-  if [ "${_OSV}" = "jessie" ]; then
+  if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
     _GRUB_TEST=$(grep systemd /etc/default/grub 2>&1)
     if [[ "${_GRUB_TEST}" =~ "systemd" ]]; then
       _GRUB_FIX=YES
@@ -3530,10 +3530,6 @@ sys_packages_install() {
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     _DEBDEPS="apticron \
-              ${_APT_XTRA} \
-              ${_EXTRA_LIB_APT} \
-              ${_EXTRA_PACKAGES} \
-              ${_SYSLOGD} \
               aptitude \
               autoconf \
               automake \
@@ -3656,7 +3652,11 @@ sys_packages_install() {
               xpdf \
               zip \
               zlib1g-dev \
-              zlibc"
+              zlibc \
+              ${_APT_XTRA} \
+              ${_EXTRA_LIB_APT} \
+              ${_EXTRA_PACKAGES} \
+              ${_SYSLOGD}"
   fi
 }
 
