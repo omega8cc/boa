@@ -275,6 +275,7 @@ sys_packages_install
 fix_postfix
 install_with_aptitude_deps
 fix_locales
+install_with_aptitude_deps
 
 
 ###

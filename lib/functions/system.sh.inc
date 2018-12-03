@@ -2800,7 +2800,6 @@ install_with_aptitude_deps() {
     st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
   fi
   st_runner "${_INSTAPP} ${_DEBDEPS}" 2> /dev/null
-  st_runner "${_INSTAPP} ${_DEBDEPS}" 2> /dev/null
   if [ -x "/usr/bin/gpg2" ]; then
     _GPG=gpg2
   else
