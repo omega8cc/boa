@@ -3761,9 +3761,10 @@ satellite_check_php_compatibility() {
     _T_FPM_VRN=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
     _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
     _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-    if [ "${_T_FPM_VRN}" = "7.0" ] \
-      || [ "${_T_FPM_VRN}" = "5.6" ] \
-      || [ "${_T_FPM_VRN}" = "5.5" ]; then
+    if [ "${_T_FPM_VRN}" = "7.2" ] \
+      || [ "${_T_FPM_VRN}" = "7.1" ] \
+      || [ "${_T_FPM_VRN}" = "7.0" ] \
+      || [ "${_T_FPM_VRN}" = "5.6" ]; then
       _PHP_FPM_LEGACY_FREE=YES
     else
       _PHP_FPM_LEGACY_FREE=NO
@@ -3775,9 +3776,10 @@ satellite_check_php_compatibility() {
     _T_CLI_VRN=$(cat ${_ROOT}/static/control/cli.info 2>&1)
     _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
     _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-    if [ "${_T_CLI_VRN}" = "7.0" ] \
-      || [ "${_T_CLI_VRN}" = "5.6" ] \
-      || [ "${_T_CLI_VRN}" = "5.5" ]; then
+    if [ "${_T_CLI_VRN}" = "7.2" ] \
+      || [ "${_T_CLI_VRN}" = "7.1" ] \
+      || [ "${_T_CLI_VRN}" = "7.0" ] \
+      || [ "${_T_CLI_VRN}" = "5.6" ]; then
       _PHP_CLI_LEGACY_FREE=YES
     else
       _PHP_CLI_LEGACY_FREE=NO
@@ -3795,7 +3797,7 @@ satellite_check_php_compatibility() {
     msg "ERROR: This instance ${_USER} still depends on the old PHP version"
     msg "FPM.${_T_FPM_VRN} CLI.${_T_CLI_VRN}"
     msg "It is not possible to upgrade it to ${_X_VERSION}"
-    msg "Please switch FPM and CLI on ${_USER} to PHP 5.5 or newer"
+    msg "Please switch FPM and CLI on ${_USER} to PHP 5.6 or newer"
     msg "Then please run the octopus upgrade again"
     msg "Bye"
     clean_pid_exit

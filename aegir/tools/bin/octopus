@@ -347,7 +347,9 @@ satellite_check_up_php() {
           _T_FPM_VRN=$(cat ${User}/static/control/fpm.info 2>&1)
           _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
           _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-          if [ "${_T_FPM_VRN}" = "7.0" ] \
+          if [ "${_T_FPM_VRN}" = "7.2" ] \
+            || [ "${_T_FPM_VRN}" = "7.1" ] \
+            || [ "${_T_FPM_VRN}" = "7.0" ] \
             || [ "${_T_FPM_VRN}" = "5.6" ]; then
             _PHP_FPM_LEGACY_FREE=YES
           else
@@ -360,7 +362,9 @@ satellite_check_up_php() {
           _T_CLI_VRN=$(cat ${User}/static/control/cli.info 2>&1)
           _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
           _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-          if [ "${_T_CLI_VRN}" = "7.0" ] \
+          if [ "${_T_CLI_VRN}" = "7.2" ] \
+            || [ "${_T_CLI_VRN}" = "7.1" ] \
+            || [ "${_T_CLI_VRN}" = "7.0" ] \
             || [ "${_T_CLI_VRN}" = "5.6" ]; then
             _PHP_CLI_LEGACY_FREE=YES
           else
