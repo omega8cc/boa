@@ -2793,6 +2793,13 @@ install_with_aptitude_deps() {
     && [ "${_LOC_OSV}" = "jessie" ]; then
     _DO_FIX=YES
   fi
+  if [ "${_THIS_OS}" = "Debian" ]; then
+    st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
+    st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
+  else
+    st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
+  fi
+  st_runner "${_INSTAPP} ${_DEBDEPS}" 2> /dev/null
   st_runner "${_INSTAPP} ${_DEBDEPS}" 2> /dev/null
   if [ -x "/usr/bin/gpg2" ]; then
     _GPG=gpg2
@@ -3531,6 +3538,7 @@ sys_packages_install() {
     || [ "${_OSV}" = "precise" ]; then
     _DEBDEPS="apticron \
               aptitude \
+              m4 \
               autoconf \
               automake \
               autotools-dev \
@@ -3605,7 +3613,6 @@ sys_packages_install() {
               libxslt1-dbg \
               libxslt1-dev \
               libxslt1.1 \
-              m4 \
               makepasswd \
               mc \
               mcrypt \
