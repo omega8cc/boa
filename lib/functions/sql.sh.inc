@@ -337,6 +337,11 @@ tune_sql_memory_limits() {
 install_mariadb_sql() {
   cd /var/opt
   _KEYS_SERVER_TEST=FALSE
+  if [ "${_OSV}" = "stretch" ] \
+    || [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "trusty" ]; then
+    st_runner "${_INSTAPP} software-properties-common dirmngr" 2> /dev/null
+  fi
   until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
     _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
       --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 2>&1)
@@ -354,11 +359,6 @@ install_mariadb_sql() {
       --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5 2>&1)
     sleep 2
   done
-  if [ "${_OSV}" = "stretch" ] \
-    || [ "${_OSV}" = "jessie" ] \
-    || [ "${_OSV}" = "trusty" ]; then
-    st_runner "${_INSTAPP} software-properties-common" 2> /dev/null
-  fi
   if [ "${_THIS_OS}" = "Debian" ]; then
     _OSN=debian
   elif [ "${_THIS_OS}" = "Ubuntu" ]; then
