@@ -257,11 +257,8 @@ fix_on_upgrade() {
 #
 # Tune memory limits for PHP, Nginx and MariaDB.
 tune_memory_limits() {
-  _ETH_TEST=$(ifconfig 2>&1)
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
-    _VMFAMILY="VZ"
-  elif [ -e "/proc/bean_counters" ]; then
+  if [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
   else
     _VMFAMILY="XEN"
@@ -3449,8 +3446,7 @@ sys_packages_install() {
   else
     _EXTRA_PACKAGES="screen"
   fi
-  _ETH_TEST=$(ifconfig 2>&1)
-  if [[ "${_ETH_TEST}" =~ "venet0" ]] || [ -e "/proc/bean_counters" ]; then
+  if [ -e "/proc/bean_counters" ]; then
     _IS_VZ=YES
   else
     _IS_VZ=NO

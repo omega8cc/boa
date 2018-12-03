@@ -918,12 +918,10 @@ update_php_cli_drush() {
 #
 # Tune FPM workers.
 satellite_tune_fpm_workers() {
-  _ETH_TEST=$(ifconfig 2>&1)
+  _VM_TEST=$(uname -a 2>&1)
   _AWS_TEST_A=$(dmidecode -s bios-version 2>&1)
   _AWS_TEST_B=$(head -c 3 /sys/hypervisor/uuid 2>&1)
-  if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
-    _VMFAMILY="VZ"
-  elif [ -e "/proc/bean_counters" ]; then
+  if [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
   else
     _VMFAMILY="XEN"

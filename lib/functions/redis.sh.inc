@@ -102,9 +102,9 @@ fix_redis_mode() {
     else
       _REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE//[^0-9.]/}
       if [ ! -z "${_REDIS_LISTEN_MODE}" ]; then
-        _LOCAL_REDIS_PORT_TEST=$(ifconfig \
-          | grep "inet addr:${_REDIS_LISTEN_MODE} " 2>&1)
-        if [[ "${_LOCAL_REDIS_PORT_TEST}" =~ "inet addr:${_REDIS_LISTEN_MODE}" ]]; then
+        find_correct_ip
+        _LOCAL_REDIS_PORT_TEST="${_LOC_IP}"
+        if [ "${_LOCAL_REDIS_PORT_TEST}" = "${_REDIS_LISTEN_MODE}" ]; then
           _REDIS_HOST=LOCAL
         else
           _REDIS_HOST=REMOTE

@@ -201,9 +201,17 @@ EOF
 #
 # Find correct IP.
 find_correct_ip() {
-  _LOC_IP=$(echo $(getent ahostsv4 $_LOC_DOM) \
-    | cut -d: -f2 \
-    | awk '{ print $1}' 2>&1)
+  _LOC_IP=$(curl ${crlGet} https://api.ipify.org \
+    | sed 's/[^0-9\.]//g' 2>&1)
+  if [ -z "${_LOC_IP}" ]; then
+    _LOC_IP=$(curl ${crlGet} http://ip4.icanhazip.com \
+      | sed 's/[^0-9\.]//g' 2>&1)
+  fi
+  if [ -z "${_LOC_IP}" ]; then
+    _LOC_IP=$(echo $(getent ahostsv4 $_LOC_DOM) \
+      | cut -d: -f2 \
+      | awk '{ print $1}' 2>&1)
+  fi
 }
 
 #
@@ -229,26 +237,10 @@ validate_public_ip() {
       _THISHTIP="${_LOCAL_NETWORK_IP}"
     fi
   else
-    _ETH_TEST=$(ifconfig 2>&1)
-    if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
-      _IFCONFIG="venet0"
-    elif [ -e "/proc/bean_counters" ]; then
-      _IFCONFIG="venet0"
-    else
-      _IFCONFIG="eth0"
-    fi
     if [ "${_DNS_SETUP_TEST}" = "YES" ]; then
       if [ -z "${_MY_OWNIP}" ]; then
-        _THISHTIP=$(ifconfig ${_IFCONFIG} \
-          | grep 'inet addr:' \
-          | cut -d: -f2 \
-          | awk '{ print $1}' 2>&1)
-        if [[ "${_THISHTIP}" =~ "127.0.0." ]]; then
-          _THISHTIP=$(ifconfig ${_IFCONFIG}:0 \
-            | grep 'inet addr:' \
-            | cut -d: -f2 \
-            | awk '{ print $1}' 2>&1)
-        fi
+        find_correct_ip
+        _THISHTIP="${_LOC_IP}"
       else
         _THISHTIP="${_MY_OWNIP}"
       fi
@@ -285,26 +277,10 @@ validate_purge_ip() {
   if [ "${_PURGE_ALL_THISHTIP}" = "YES" ]; then
     _PURGE_THISHTIP="0.0.0.0/0"
   else
-    _ETH_TEST=$(ifconfig 2>&1)
-    if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
-      _IFCONFIG="venet0"
-    elif [ -e "/proc/bean_counters" ]; then
-      _IFCONFIG="venet0"
-    else
-      _IFCONFIG="eth0"
-    fi
     if [ "${_DNS_SETUP_TEST}" = "YES" ]; then
       if [ -z "${_MY_OWNIP}" ]; then
-        _PURGE_THISHTIP=$(ifconfig ${_IFCONFIG} \
-          | grep 'inet addr:' \
-          | cut -d: -f2 \
-          | awk '{ print $1}' 2>&1)
-        if [[ "${_PURGE_THISHTIP}" =~ "127.0.0." ]]; then
-          _PURGE_THISHTIP=$(ifconfig ${_IFCONFIG}:0 \
-            | grep 'inet addr:' \
-            | cut -d: -f2 \
-            | awk '{ print $1}' 2>&1)
-        fi
+        find_correct_ip
+        _PURGE_THISHTIP="${_LOC_IP}"
       else
         _PURGE_THISHTIP="${_MY_OWNIP}"
       fi
@@ -538,14 +514,6 @@ check_ip_hostname() {
         _LOC_IP="${_MY_OWNIP}"
       fi
     fi
-    _ETH_TEST=$(ifconfig 2>&1)
-    if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
-      _IFCONFIG="venet0"
-    elif [ -e "/proc/bean_counters" ]; then
-      _IFCONFIG="venet0"
-    else
-      _IFCONFIG="eth0"
-    fi
     if [ ! -z "${_MY_OWNIP}" ]; then
       if [ ! -z "${_MY_HOSTN}" ]; then
         _S_N=${_MY_HOSTN}
@@ -592,16 +560,8 @@ check_ip_hostname() {
         _FQDNTEST="FALSE"
       fi
     else
-      _THISHTIP=$(ifconfig ${_IFCONFIG} \
-        | grep 'inet addr:' \
-        | cut -d: -f2 \
-        | awk '{ print $1}' 2>&1)
-      if [[ "${_THISHTIP}" =~ "127.0.0." ]]; then
-        _THISHTIP=$(ifconfig ${_IFCONFIG}:0 \
-          | grep 'inet addr:' \
-          | cut -d: -f2 \
-          | awk '{ print $1}' 2>&1)
-      fi
+      find_correct_ip
+      _THISHTIP="${_LOC_IP}"
       _FQDNPROB=$(uname -n 2>&1)
       _FQDNTEST="FALSE"
       _THISHOST=$(uname -n 2>&1)

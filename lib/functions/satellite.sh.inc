@@ -2,11 +2,8 @@
 #
 # Tune FPM workers.
 satellite_tune_fpm_workers() {
-  _ETH_TEST=$(ifconfig 2>&1)
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
-    _VMFAMILY="VZ"
-  elif [ -e "/proc/bean_counters" ]; then
+  if [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
   else
     _VMFAMILY="XEN"
@@ -3729,14 +3726,6 @@ satellite_check_sanitize_domain_name() {
 }
 
 satellite_detect_vm_family() {
-  _ETH_TEST=$(ifconfig 2>&1)
-  if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
-    _IFCONFIG="venet0"
-  elif [ -e "/proc/bean_counters" ]; then
-    _IFCONFIG="venet0"
-  else
-    _IFCONFIG="eth0"
-  fi
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
@@ -4020,16 +4009,8 @@ satellite_if_check_dns() {
       fi
     fi
     if [ -z "${_MY_OWNIP}" ]; then
-      _THISHTIP=$(ifconfig ${_IFCONFIG} \
-        | grep 'inet addr:' \
-        | cut -d: -f2 \
-        | awk '{ print $1}' 2>&1)
-      if [[ "${_THISHTIP}" =~ "127.0.0." ]]; then
-        _THISHTIP=$(ifconfig ${_IFCONFIG}:0 \
-          | grep 'inet addr:' \
-          | cut -d: -f2 \
-          | awk '{ print $1}' 2>&1)
-      fi
+      find_correct_ip
+      _THISHTIP="${_LOC_IP}"
     else
       _THISHTIP="${_MY_OWNIP}"
     fi

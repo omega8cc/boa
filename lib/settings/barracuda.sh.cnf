@@ -463,7 +463,7 @@ _MY_FRONT=""
 ### because of some custom local setup
 ### you know is correct (like DynDNS)
 ### but the script can't validate it with its
-### standard ifconfig tests, set this to:
+### standard remote tests, set this to:
 ###
 ### _DNS_SETUP_TEST=NO
 ###
