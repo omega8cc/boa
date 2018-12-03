@@ -1506,6 +1506,7 @@ setup() {
   echo "### ${_TODAY} ###" >> ${optBin}/boa
   echo "### ${_TODAY} ###" >> ${optBin}/barracuda
   echo "### ${_TODAY} ###" >> ${optBin}/octopus
+  touch /root/.backboa.autoupdate
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
     echo "The duplicity backup is running!"
   elif [ ! -e "/root/.backboa.autoupdate" ]; then
@@ -1688,7 +1689,6 @@ if [ `whoami` = "root" ]; then
     apt-get install hostname ${forCer} &> /dev/null
     apt-get install dirmngr ${forCer} &> /dev/null
     apt-get install build-essential ${forCer} &> /dev/null
-    touch /root/.backboa.autoupdate
     sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
     clear
     echo
