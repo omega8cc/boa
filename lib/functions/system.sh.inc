@@ -3466,6 +3466,23 @@ sys_packages_install() {
   else
     _SYSLOGD=rsyslog
   fi
+
+  if [ "${_OSV}" = "stretch" ]; then
+    _EXTRA_PACKAGES="autoconf2.59 \
+                     libpcre2-dev \
+                     libpcre3 \
+                     libpcre3-dev \
+                     libpcre2-posix0 \
+                     automake1.11 \
+                     ${_EXTRA_PACKAGES}"
+  else
+    _EXTRA_PACKAGES="autoconf2.13 \
+                     automake1.4 \
+                     libpcre3 \
+                     libpcre3-dev \
+                     ${_EXTRA_PACKAGES}"
+  fi
+
   if [ "${_OSV}" = "stretch" ] \
     || [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "trusty" ]; then
@@ -3518,10 +3535,8 @@ sys_packages_install() {
               ${_EXTRA_PACKAGES} \
               ${_SYSLOGD} \
               aptitude \
-              autoconf2.13 \
               autoconf \
               automake \
-              automake1.4 \
               autotools-dev \
               bc \
               bison \
@@ -3576,8 +3591,6 @@ sys_packages_install() {
               libnet-daemon-perl \
               libpam-umask \
               libpam-unix2 \
-              libpcre3 \
-              libpcre3-dev \
               libpng12-0 \
               libpng12-dev \
               libpq5 \
