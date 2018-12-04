@@ -1333,7 +1333,7 @@ update_wrappers() {
     fi
   fi
   mkdir -p ${usrBin}
-  if [ ! -e "${pthLog}/fixPSop.ctrl.322stableQ11.pid" ]; then
+  if [ -e "${pthLog}" ] && [ ! -e "${pthLog}/fixPSop.ctrl.322stableQ11.pid" ]; then
     fxPp="fix-drupal-platform-permissions.sh"
     fxSp="fix-drupal-site-permissions.sh"
     fxPo="fix-drupal-platform-ownership.sh"
