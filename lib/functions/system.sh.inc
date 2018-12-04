@@ -3385,10 +3385,11 @@ sys_packages_install() {
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
       if [ "${_OSV}" = "jessie" ] \
-        || [ "${_OSV}" = "stretch" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
         _APT_XTRA="openjdk-7-jre-headless openjdk-6-jre-headless nginx"
+      elif [ "${_OSV}" = "stretch" ]; then
+        _APT_XTRA="openjdk-8-jre-headless nginx"
       else
         _APT_XTRA="openjdk-6-jre-headless nginx"
       fi
@@ -3478,6 +3479,9 @@ sys_packages_install() {
                      libpcre2-dev \
                      libpcre3 \
                      libpcre3-dev \
+                     libpng-dev \
+                     libpng16-16 \
+                     software-properties-common \
                      libpcre2-posix0 \
                      automake1.11 \
                      ${_EXTRA_PACKAGES}"
@@ -3485,6 +3489,15 @@ sys_packages_install() {
     _EXTRA_PACKAGES="autoconf2.13 \
                      automake1.4 \
                      libpcre3 \
+                     t1lib-bin \
+                     gnupg-curl \
+                     libt1-5 \
+                     libpng12-0 \
+                     libpng12-dev \
+                     libt1-dev \
+                     defoma \
+                     libpam-unix2 \
+                     python-software-properties \
                      libpcre3-dev \
                      ${_EXTRA_PACKAGES}"
   fi
@@ -3552,7 +3565,6 @@ sys_packages_install() {
               curl \
               cvs \
               cython \
-              defoma \
               devscripts \
               dnsutils \
               dstat \
@@ -3562,7 +3574,6 @@ sys_packages_install() {
               gettext \
               ghostscript \
               gnupg \
-              gnupg-curl \
               gnupg2 \
               htop \
               ifstat \
@@ -3593,14 +3604,9 @@ sys_packages_install() {
               libmagickwand-dev \
               libnet-daemon-perl \
               libpam-umask \
-              libpam-unix2 \
-              libpng12-0 \
-              libpng12-dev \
               libpq5 \
               libsasl2-modules \
               libssl-dev \
-              libt1-5 \
-              libt1-dev \
               libterm-readkey-perl \
               libtext-template-perl \
               libtool \
@@ -3627,7 +3633,6 @@ sys_packages_install() {
               postfix-pcre \
               pwgen \
               python-dev \
-              python-software-properties \
               re2c \
               rkhunter \
               rrdtool \
@@ -3643,7 +3648,6 @@ sys_packages_install() {
               sysstat \
               sysvinit-core \
               sysvinit-utils \
-              t1lib-bin \
               telnet \
               time \
               ttf-dejavu \
