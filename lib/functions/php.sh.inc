@@ -944,7 +944,9 @@ install_php_multi() {
                 --with-zlib \
                 ${_PHP_EXTRA}" 2> /dev/null
   msg "INFO: Building PHP ${_PHP_VERSION} part 3/3"
-  sed -i "s/^EXTRA_LIBS = -lcrypt/EXTRA_LIBS = -llber -lcrypt/g" Makefile
+  if [ -f "/var/opt/php-${_PHP_VERSION}/Makefile" ]; then
+    sed -i "s/^EXTRA_LIBS = -lcrypt/EXTRA_LIBS = -llber -lcrypt/g" /var/opt/php-${_PHP_VERSION}/Makefile
+  fi
   mrun "make --quiet" 2> /dev/null
   mrun "make --quiet install" 2> /dev/null
   if [ -x "/opt/php$1/bin/php" ]; then
