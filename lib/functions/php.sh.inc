@@ -946,54 +946,97 @@ install_php_multi() {
   msg "INFO: Building PHP ${_PHP_VERSION} part 3/3"
   if [ -f "/var/opt/php-${_PHP_VERSION}/Makefile" ]; then
     sed -i "s/^EXTRA_LIBS = -lcrypt/EXTRA_LIBS = -llber -lcrypt/g" /var/opt/php-${_PHP_VERSION}/Makefile
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+  else
+    msg "INFO: Building PHP ${_PHP_VERSION} part 2/3 (again)"
+    mrun "make --quiet clean" 2> /dev/null
+    mrun "sh ./configure \
+                --quiet \
+                --prefix=/opt/php$1 \
+                --enable-fpm \
+                --enable-bcmath \
+                --enable-calendar \
+                --enable-exif \
+                --enable-ftp \
+                --enable-gd-native-ttf \
+                --enable-mbstring \
+                --enable-pcntl \
+                --enable-soap \
+                --enable-zip \
+                --with-curl=/usr/local \
+                --with-fpm-group=www-data \
+                --with-fpm-user=www-data \
+                --with-freetype-dir=/usr \
+                --with-gd \
+                --with-imap \
+                --with-imap-ssl \
+                --with-jpeg-dir=/usr \
+                --with-kerberos \
+                --with-mcrypt \
+                --with-mysql-sock=/var/run/mysqld/mysqld.sock \
+                --with-mysql=/usr \
+                --with-mysqli=/usr/bin/mysql_config \
+                --with-openssl \
+                --with-pdo-mysql=/usr \
+                --with-pear \
+                --with-png-dir=/usr \
+                --with-xmlrpc \
+                --with-xsl \
+                --with-zlib \
+                ${_PHP_EXTRA}" 2> /dev/null
+    sed -i "s/^EXTRA_LIBS = -lcrypt/EXTRA_LIBS = -llber -lcrypt/g" /var/opt/php-${_PHP_VERSION}/Makefile
+    msg "INFO: Building PHP ${_PHP_VERSION} part 3/3 (again)"
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
   fi
-  mrun "make --quiet" 2> /dev/null
-  mrun "make --quiet install" 2> /dev/null
   if [ -x "/opt/php$1/bin/php" ]; then
     rm -f /usr/bin/php
     rm -f /usr/bin/php-cli
     ln -s /opt/php$1/bin/php /usr/bin/php
     ln -s /opt/php$1/bin/php /usr/bin/php-cli
-  fi
-  if [ -x "/opt/php$1/bin/phpize" ]; then
-    rm -f /usr/bin/phpize
-    ln -s /opt/php$1/bin/phpize /usr/bin/phpize
-  fi
-  if [ -x "/opt/php$1/bin/php-config" ]; then
-    rm -f /usr/bin/php-config
-    ln -s /opt/php$1/bin/php-config /usr/bin/php-config
-  fi
-  _T_PHP_VRN="${_PHP_VERSION}"
-  _T_PHP_PTH="/opt/php$1/bin"
-  _T_PHP_CFG="/opt/php$1/bin/php-config"
-  install_php_extensions "$1"
-  if [ -e "/root/.mstr.clstr.cnf" ] \
-    || [ -e "/root/.wbhd.clstr.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    _T_MARIADB_VRN="${_GALERA_10_VRN}"
-  else
-    if [ "${_DB_SERIES}" = "10.0" ]; then
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.1/g" ${barCnf}
-      _DB_SERIES=10.1
+    if [ -x "/opt/php$1/bin/phpize" ]; then
+      rm -f /usr/bin/phpize
+      ln -s /opt/php$1/bin/phpize /usr/bin/phpize
     fi
-    if [ "${_DB_SERIES}" = "10.2" ] \
-      || [ "${_DB_SERIES}" = "10.1" ] \
-      || [ "${_DB_SERIES}" = "10.0" ]; then
-      if [ "${_DB_SERIES}" = "10.2" ]; then
-        _MARIADB_VRN="${_MARIADB_10_2_VRN}"
-      else
-        _DB_SERIES=10.1
-        _MARIADB_VRN="${_MARIADB_10_1_VRN}"
-      fi
+    if [ -x "/opt/php$1/bin/php-config" ]; then
+      rm -f /usr/bin/php-config
+      ln -s /opt/php$1/bin/php-config /usr/bin/php-config
+    fi
+    _T_PHP_VRN="${_PHP_VERSION}"
+    _T_PHP_PTH="/opt/php$1/bin"
+    _T_PHP_CFG="/opt/php$1/bin/php-config"
+    install_php_extensions "$1"
+    if [ -e "/root/.mstr.clstr.cnf" ] \
+      || [ -e "/root/.wbhd.clstr.cnf" ] \
+      || [ -e "/root/.dbhd.clstr.cnf" ]; then
+      _T_MARIADB_VRN="${_GALERA_10_VRN}"
     else
-      _T_MARIADB_VRN="${_MARIADB_VRN}"
+      if [ "${_DB_SERIES}" = "10.0" ]; then
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.1/g" ${barCnf}
+        _DB_SERIES=10.1
+      fi
+      if [ "${_DB_SERIES}" = "10.2" ] \
+        || [ "${_DB_SERIES}" = "10.1" ] \
+        || [ "${_DB_SERIES}" = "10.0" ]; then
+        if [ "${_DB_SERIES}" = "10.2" ]; then
+          _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+        else
+          _DB_SERIES=10.1
+          _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+        fi
+      else
+        _T_MARIADB_VRN="${_MARIADB_VRN}"
+      fi
     fi
+    touch ${pthLog}/installed-${_PHP_VERSION}-${_T_MARIADB_VRN}-MariaDB.log
+    rm -f /etc/init.d/php$1-fpm*
+    cp -af ${locCnf}/php$1-fpm /etc/init.d/php$1-fpm
+    chmod 755 /etc/init.d/php$1-fpm
+    mrun "update-rc.d php$1-fpm defaults" &> /dev/null
+  else
+    msg "WARN: Building PHP ${_PHP_VERSION} failed!"
   fi
-  touch ${pthLog}/installed-${_PHP_VERSION}-${_T_MARIADB_VRN}-MariaDB.log
-  rm -f /etc/init.d/php$1-fpm*
-  cp -af ${locCnf}/php$1-fpm /etc/init.d/php$1-fpm
-  chmod 755 /etc/init.d/php$1-fpm
-  mrun "update-rc.d php$1-fpm defaults" &> /dev/null
 }
 
 #
