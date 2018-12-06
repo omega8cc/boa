@@ -1620,6 +1620,27 @@ php_upgrade_all() {
   fi
 }
 
+get_php_conf_extra() {
+  _PHP_EXTRA=""
+  if [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "stretch" ] \
+    || [ "${_DO_FIX}" = "YES" ] \
+    || [ "${_OSV}" = "trusty" ] \
+    || [ "${_OSV}" = "precise" ]; then
+    _PHP_EXTRA="--with-ldap --with-gmp --with-xpm-dir=/usr"
+  else
+    _PHP_EXTRA="--with-ldap --with-gmp"
+  fi
+  if [ ! -z "${_PHP_EXTRA_CONF}" ]; then
+    _PHP_EXTRA="${_PHP_EXTRA} ${_PHP_EXTRA_CONF}"
+  fi
+  if [ ! -z "${_PHP_EXTRA}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: THIS PHP EXTRA is ${_PHP_EXTRA}"
+    fi
+  fi
+}
+
 install_update_php() {
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
     && [ "${_LOC_OSV}" = "jessie" ]; then
@@ -1637,23 +1658,6 @@ install_update_php() {
     st_runner "aptitude remove php5-sasl php5-suhosin -y" &> /dev/null
     st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
   fi
-  if [ "${_OSV}" = "jessie" ] \
-    || [ "${_OSV}" = "stretch" ] \
-    || [ "${_DO_FIX}" = "YES" ] \
-    || [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "precise" ]; then
-    _PHP_EXTRA="--with-ldap --with-gmp --with-xpm-dir=/usr"
-  else
-    _PHP_EXTRA="--with-ldap --with-gmp"
-  fi
-  if [ ! -z "${_PHP_EXTRA_CONF}" ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} ${_PHP_EXTRA_CONF}"
-  fi
-  if [ ! -z "${_PHP_EXTRA}" ]; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: PHP EXTRA is ${_PHP_EXTRA}"
-    fi
-  fi
   if [ "${_OSV}" = "stretch" ] \
     || [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "trusty" ]; then
@@ -1663,6 +1667,7 @@ install_update_php() {
     && [ ! -x "/opt/php56/bin/php" ]; then
     _PHP_VERSION="${_PHP56_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+    get_php_conf_extra
     install_php_multi "56"
     switch_php_cli "56"
     _PHP_VERSION=""
@@ -1674,6 +1679,7 @@ install_update_php() {
     && [ ! -x "/opt/php70/bin/php" ]; then
     _PHP_VERSION="${_PHP70_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+    get_php_conf_extra
     install_php_multi "70"
     switch_php_cli "70"
     _PHP_VERSION=""
@@ -1685,6 +1691,7 @@ install_update_php() {
     && [ ! -x "/opt/php71/bin/php" ]; then
     _PHP_VERSION="${_PHP71_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+    get_php_conf_extra
     install_php_multi "71"
     switch_php_cli "71"
     _PHP_VERSION=""
@@ -1696,6 +1703,7 @@ install_update_php() {
     && [ ! -x "/opt/php72/bin/php" ]; then
     _PHP_VERSION="${_PHP72_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+    get_php_conf_extra
     install_php_multi "72"
     switch_php_cli "72"
     _PHP_VERSION=""
