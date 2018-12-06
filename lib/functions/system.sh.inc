@@ -3481,6 +3481,7 @@ sys_packages_install() {
                      libpcre3-dev \
                      libpng-dev \
                      libpng16-16 \
+                     gnupg1-curl \
                      software-properties-common \
                      libpcre2-posix0 \
                      automake1.11 \

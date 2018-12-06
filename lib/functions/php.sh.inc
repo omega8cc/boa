@@ -908,6 +908,15 @@ install_php_multi() {
   ### patch -p1 < ${bldPth}/aegir/patches/fpm_main.c.patch &> /dev/null
   ### cd /var/opt/php-${_PHP_VERSION}
   msg "INFO: Building PHP ${_PHP_VERSION} part 2/3"
+  if [ "$1" = "72" ]; then
+    _PHP_EXTRA="${_PHP_EXTRA}"
+  elif [ "$1" = "71" ]; then
+    _PHP_EXTRA="${_PHP_EXTRA} --enable-gd-native-ttf --with-mcrypt"
+  elif [ "$1" = "70" ]; then
+    _PHP_EXTRA="${_PHP_EXTRA} --enable-gd-native-ttf --with-mcrypt"
+  elif [ "$1" = "56" ]; then
+    _PHP_EXTRA="${_PHP_EXTRA} --enable-gd-native-ttf --with-mcrypt --with-mysql=/usr"
+  fi
   _PHP_EXTRA="${_PHP_EXTRA} --enable-opcache"
   mrun "sh ./configure \
                 --quiet \
@@ -917,12 +926,12 @@ install_php_multi() {
                 --enable-calendar \
                 --enable-exif \
                 --enable-ftp \
-                --enable-gd-native-ttf \
                 --enable-mbstring \
+                --enable-opcache \
                 --enable-pcntl \
                 --enable-soap \
                 --enable-zip \
-                --with-curl=/usr/local \
+                --with-curl \
                 --with-fpm-group=www-data \
                 --with-fpm-user=www-data \
                 --with-freetype-dir=/usr \
@@ -931,9 +940,7 @@ install_php_multi() {
                 --with-imap-ssl \
                 --with-jpeg-dir=/usr \
                 --with-kerberos \
-                --with-mcrypt \
                 --with-mysql-sock=/var/run/mysqld/mysqld.sock \
-                --with-mysql=/usr \
                 --with-mysqli=/usr/bin/mysql_config \
                 --with-openssl \
                 --with-pdo-mysql=/usr \
@@ -959,12 +966,12 @@ install_php_multi() {
                 --enable-calendar \
                 --enable-exif \
                 --enable-ftp \
-                --enable-gd-native-ttf \
                 --enable-mbstring \
+                --enable-opcache \
                 --enable-pcntl \
                 --enable-soap \
                 --enable-zip \
-                --with-curl=/usr/local \
+                --with-curl \
                 --with-fpm-group=www-data \
                 --with-fpm-user=www-data \
                 --with-freetype-dir=/usr \
