@@ -3606,6 +3606,8 @@ sys_packages_install() {
               libpam-umask \
               libpq5 \
               libsasl2-modules \
+              libsqlite3-dev \
+              sqlite3 \
               libssl-dev \
               libterm-readkey-perl \
               libtext-template-perl \
