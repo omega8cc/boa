@@ -1537,7 +1537,7 @@ display_info() {
       | tr -d "," \
       | cut -d"_" -f2 \
       | awk '{ print $1}' 2>&1)
-    _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
+    _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
     _XTR=$(grep _XTRAS_LIST /root/.barracuda.cnf 2>&1)
     _MFX=$(grep _MODULES_FIX /root/.barracuda.cnf 2>&1)
     _PFX=$(grep _PERMISSIONS_FIX /root/.barracuda.cnf 2>&1)

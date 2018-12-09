@@ -312,7 +312,7 @@ tune_memory_limits() {
       _CPU_VS=8
     fi
   fi
-  _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
+  _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
   if [ "${_RESERVED_RAM}" -gt "0" ]; then
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi

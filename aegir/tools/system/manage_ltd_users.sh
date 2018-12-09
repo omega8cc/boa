@@ -939,7 +939,7 @@ satellite_tune_fpm_workers() {
     || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
     _VMFAMILY="AWS"
   fi
-  _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
+  _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
   if [ "${_RESERVED_RAM}" -gt "0" ]; then
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi

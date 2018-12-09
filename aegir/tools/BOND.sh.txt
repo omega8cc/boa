@@ -143,7 +143,7 @@ _MYSQLTUNER_VRN=1.7.13
 
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
-_RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
+_RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
 _THISHOST=$(uname -n 2>&1)
 _SPINNER=YES
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
@@ -1071,7 +1071,7 @@ tune_memory_limits() {
       _CPU_VS=8
     fi
   fi
-  _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
+  _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
   if [ "${_RESERVED_RAM}" -gt "0" ]; then
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
