@@ -374,10 +374,24 @@ install_pdnsd_cache() {
     echo "nameserver 8.8.8.8" > /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   fi
-  st_runner "${_INSTALL} resolvconf" &> /dev/null
-  st_runner "${_INSTALL} pdnsd" &> /dev/null
-  st_runner "${_INSTALL} resolvconf" &> /dev/null
-  st_runner "${_INSTALL} pdnsd" &> /dev/null
+  if [ "${_OSV}" = "stretch" ]; then
+    adduser --system --group --home /var/cache/pdnsd pdnsd &> /dev/null
+    usermod -aG users pdnsd &> /dev/null
+    st_runner "${_INSTALL} resolvconf" &> /dev/null
+    msg "INFO: Building pdnsd ${_PDNSD_VRN} from sources, please wait..."
+    cd /var/opt
+    rm -rf pdnsd*
+    get_dev_src "pdnsd-${_PDNSD_VRN}.tar.gz"
+    cd /var/opt/pdnsd-${_PDNSD_VRN}
+    st_runner "./configure --prefix=/usr" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+  else
+    st_runner "${_INSTALL} resolvconf" &> /dev/null
+    st_runner "${_INSTALL} pdnsd" &> /dev/null
+    st_runner "${_INSTALL} resolvconf" &> /dev/null
+    st_runner "${_INSTALL} pdnsd" &> /dev/null
+  fi
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
   cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
   check_dns_settings
@@ -722,7 +736,7 @@ install_upgrade_pdnsd() {
     wait
   fi
   check_dns_settings
-  if [ ! -e "/usr/sbin/pdnsd" ]; then
+  if [ ! -x "/usr/sbin/pdnsd" ]; then
     install_pdnsd_cache
   else
     if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
