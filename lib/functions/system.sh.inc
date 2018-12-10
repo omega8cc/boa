@@ -2844,18 +2844,28 @@ basic_packages_install_on_init() {
     ${_INITINS} wget &> /dev/null
     if [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Installing sysvinit-core on ${_THIS_OS} ${_OSV}..."
-      ${_INITINS} sysvinit-core &> /dev/null
-      ${_INITINS} sysvinit-utils &> /dev/null
-      if [ -e "/usr/share/sysvinit/inittab" ]; then
-        cp -af /usr/share/sysvinit/inittab /etc/inittab
-      fi
-      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-      if [ "${_GRUB_FIX}" = "YES" ] \
-        && [ -x "/lib/sysvinit/init" ] \
-        && [ -e "/etc/default/grub" ]; then
-        sed -i "s/init=\/bin\/systemd/init=\/lib\/sysvinit\/init/g" /etc/default/grub
-        update-grub &> /dev/null
+      if [ "${_OSV}" = "jessie" ]; then
+        ${_INITINS} sysvinit-core &> /dev/null
+        ${_INITINS} sysvinit-utils &> /dev/null
+        if [ -e "/usr/share/sysvinit/inittab" ]; then
+          cp -af /usr/share/sysvinit/inittab /etc/inittab
+        fi
+        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+        ${_INITINS} sysvinit-core &> /dev/null
+        ${_INITINS} sysvinit-utils &> /dev/null
+      else
+        echo -e 'deb http://angband.pl/debian/ nosystemd-stretch main' > /etc/apt/sources.list.d/nosystemd.list
+        echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
+        echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
+        echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /etc/apt/preferences.d/nosystemd
+        wget -qO - http://angband.pl/deb/archive.html | apt-key add -
+        ${_INITINS} kilobyte-archive-keyring &> /dev/null
+        ${_INITINS} sysvinit-core &> /dev/null
+        ${_INITINS} sysvinit-utils &> /dev/null
+        if [ -e "/usr/share/sysvinit/inittab" ]; then
+          cp -af /usr/share/sysvinit/inittab /etc/inittab
+        fi
       fi
       echo
       msg "NOTE: Please reboot and run barracuda upgrade"
@@ -2866,29 +2876,32 @@ basic_packages_install_on_init() {
     fi
   else
     if [ -x "/lib/systemd/systemd" ]; then
-      msg "INFO: Installing sysvinit-core on ${_THIS_OS} ${_OSV}..."
-      ${_INITINS} sysvinit-core &> /dev/null
-      ${_INITINS} sysvinit-utils &> /dev/null
-      if [ -e "/usr/share/sysvinit/inittab" ]; then
-        cp -af /usr/share/sysvinit/inittab /etc/inittab
-      fi
-      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-      if [ "${_GRUB_FIX}" = "YES" ]; then
-        if [ -x "/lib/sysvinit/init" ] \
-          && [ -e "/etc/default/grub" ]; then
-          sed -i "s/init=\/bin\/systemd/init=\/lib\/sysvinit\/init/g" /etc/default/grub
-          update-grub &> /dev/null
-          echo
-          msg "NOTE: Please reboot and run barracuda upgrade again"
-          msg "NOTE: to cleanly remove not used systemd packages!"
-          echo
-          mrun "sleep 8"
+      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
+      if [ "${_OSV}" = "jessie" ]; then
+        ${_INITINS} sysvinit-core &> /dev/null
+        ${_INITINS} sysvinit-utils &> /dev/null
+        if [ -e "/usr/share/sysvinit/inittab" ]; then
+          cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
+        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+        ${_INITINS} sysvinit-core &> /dev/null
+        ${_INITINS} sysvinit-utils &> /dev/null
       else
-        msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
-        apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
+        echo -e 'deb http://angband.pl/debian/ nosystemd-stretch main' > /etc/apt/sources.list.d/nosystemd.list
+        echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
+        echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
+        echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /etc/apt/preferences.d/nosystemd
+        wget -qO - http://angband.pl/deb/archive.html | apt-key add -
+        ${_INITINS} kilobyte-archive-keyring &> /dev/null
+        ${_INITINS} sysvinit-core &> /dev/null
+        ${_INITINS} sysvinit-utils &> /dev/null
+        if [ -e "/usr/share/sysvinit/inittab" ]; then
+          cp -af /usr/share/sysvinit/inittab /etc/inittab
+        fi
       fi
+      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
+      apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
     fi
   fi
 }
@@ -3100,6 +3113,36 @@ if_jessie_to_stretch() {
     fi
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
+    if [ -x "/lib/systemd/systemd" ]; then
+      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
+      if [ "${_OSV}" = "jessie" ]; then
+        ${_INITINS} sysvinit-core &> /dev/null
+        ${_INITINS} sysvinit-utils &> /dev/null
+        if [ -e "/usr/share/sysvinit/inittab" ]; then
+          cp -af /usr/share/sysvinit/inittab /etc/inittab
+        fi
+        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+        ${_INITINS} sysvinit-core &> /dev/null
+        ${_INITINS} sysvinit-utils &> /dev/null
+      else
+        echo -e 'deb http://angband.pl/debian/ nosystemd-stretch main' > /etc/apt/sources.list.d/nosystemd.list
+        echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
+        echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
+        echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /etc/apt/preferences.d/nosystemd
+        wget -qO - http://angband.pl/deb/archive.html | apt-key add -
+        ${_INITINS} kilobyte-archive-keyring &> /dev/null
+        ${_INITINS} sysvinit-core &> /dev/null
+        ${_INITINS} sysvinit-utils &> /dev/null
+        if [ -e "/usr/share/sysvinit/inittab" ]; then
+          cp -af /usr/share/sysvinit/inittab /etc/inittab
+        fi
+      fi
+      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
+      apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
+    fi
+
+
     if [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Removing systemd on ${_THIS_OS} stretch..."
       ${_INSTALL} sysvinit-core &> /dev/null
