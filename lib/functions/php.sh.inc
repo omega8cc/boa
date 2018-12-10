@@ -916,6 +916,10 @@ install_php_multi() {
     _PHP_EXTRA="${_PHP_EXTRA} --enable-gd-native-ttf --with-mcrypt"
   elif [ "$1" = "56" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --enable-gd-native-ttf --with-mcrypt --with-mysql=/usr"
+    if [ "${_OSV}" = "stretch" ]; then
+      patchFile="PHP-5.6.31-OpenSSL-1.1.0-compatibility-20170801.patch"
+      patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
+    fi
   fi
   _PHP_EXTRA="${_PHP_EXTRA} --enable-opcache"
   mrun "sh ./configure \
