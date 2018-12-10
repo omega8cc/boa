@@ -401,6 +401,14 @@ install_pdnsd_cache() {
     sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
     cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
   fi
+  if [ -x "/usr/sbin/pdnsd" ] \
+    && [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+    mkdir -p /etc/resolvconf/run/interface
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
+    resolvconf -u         &> /dev/null
+    service pdnsd restart &> /dev/null
+    pdnsd-ctl empty-cache &> /dev/null
+  fi
   check_dns_settings
   if [ ! -L "/etc/resolvconf/run" ] \
     || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] \
@@ -417,6 +425,14 @@ install_pdnsd_cache() {
     touch /lib/init/rw/resolvconf/enable-updates
     rm -f /etc/resolvconf/resolv.conf.d/tail
     touch /etc/resolvconf/resolv.conf.d/tail
+  fi
+  if [ -x "/usr/sbin/pdnsd" ] \
+    && [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+    mkdir -p /etc/resolvconf/run/interface
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
+    resolvconf -u         &> /dev/null
+    service pdnsd restart &> /dev/null
+    pdnsd-ctl empty-cache &> /dev/null
   fi
   if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
     && [ -e "${vBs}/resolv.conf.vanilla" ]; then

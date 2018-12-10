@@ -12,6 +12,14 @@ if [ -z "${_B_NICE}" ]; then
 fi
 
 check_pdnsd() {
+  if [ -x "/usr/sbin/pdnsd" ] \
+    && [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+    mkdir -p /etc/resolvconf/run/interface
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
+    resolvconf -u         &> /dev/null
+    service pdnsd restart &> /dev/null
+    pdnsd-ctl empty-cache &> /dev/null
+  fi
   if [ -e "/etc/resolv.conf" ]; then
     _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
     if [[ "$_RESOLV_TEST" =~ "nameserver 127.0.0.1" ]]; then
