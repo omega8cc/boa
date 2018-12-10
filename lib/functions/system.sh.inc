@@ -3800,47 +3800,47 @@ fix_libssl() {
         _SSL_FIX_REQUIRED=NO
       fi
     fi
-    if [ ! -e "/usr/lib/libssl.so.1.0.0" ] \
+    if [ ! -e "/usr/lib/libssl.so" ] \
       && [ "${_SSL_FIX_REQUIRED}" = "YES" ]; then
       msg "INFO: Fix #2 for libs in ${_THIS_OS} ${_OSV}"
       _X86_64_TEST=$(uname -m 2>&1)
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
-        if [ -e "/usr/lib/x86_64-linux-gnu/libssl.so.1.0.0" ] \
-          && [ ! -e "/usr/lib/libssl.so.1.0.0" ]; then
-          ln -s /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0  \
-            /usr/lib/libssl.so.1.0.0
-        elif [ -e "/lib/x86_64-linux-gnu/libssl.so.1.0.0" ] \
-          && [ ! -e "/usr/lib/libssl.so.1.0.0" ]; then
-          ln -s /lib/x86_64-linux-gnu/libssl.so.1.0.0  \
-            /usr/lib/libssl.so.1.0.0
+        if [ -e "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
+          && [ ! -e "/usr/lib/libssl.so" ]; then
+          ln -s /usr/lib/x86_64-linux-gnu/libssl.so  \
+            /usr/lib/libssl.so
+        elif [ -e "/lib/x86_64-linux-gnu/libssl.so" ] \
+          && [ ! -e "/usr/lib/libssl.so" ]; then
+          ln -s /lib/x86_64-linux-gnu/libssl.so  \
+            /usr/lib/libssl.so
         fi
-        if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0" ] \
-          && [ ! -e "/usr/lib/libcrypto.so.1.0.0" ]; then
-          ln -s /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0 \
-            /usr/lib/libcrypto.so.1.0.0
-        elif [ -e "/lib/x86_64-linux-gnu/libcrypto.so.1.0.0" ] \
-          && [ ! -e "/usr/lib/libcrypto.so.1.0.0" ]; then
-          ln -s /lib/x86_64-linux-gnu/libcrypto.so.1.0.0 \
-            /usr/lib/libcrypto.so.1.0.0
+        if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
+          && [ ! -e "/usr/lib/libcrypto.so" ]; then
+          ln -s /usr/lib/x86_64-linux-gnu/libcrypto.so \
+            /usr/lib/libcrypto.so
+        elif [ -e "/lib/x86_64-linux-gnu/libcrypto.so" ] \
+          && [ ! -e "/usr/lib/libcrypto.so" ]; then
+          ln -s /lib/x86_64-linux-gnu/libcrypto.so \
+            /usr/lib/libcrypto.so
         fi
       else
-        if [ -e "/usr/lib/i386-linux-gnu/libssl.so.1.0.0" ] \
-          && [ ! -e "/usr/lib/libssl.so.1.0.0" ]; then
-          ln -s /usr/lib/i386-linux-gnu/libssl.so.1.0.0  \
-            /usr/lib/libssl.so.1.0.0
-        elif [ -e "/lib/i386-linux-gnu/libssl.so.1.0.0" ] \
-          && [ ! -e "/usr/lib/libssl.so.1.0.0" ]; then
-          ln -s /lib/i386-linux-gnu/libssl.so.1.0.0  \
-            /usr/lib/libssl.so.1.0.0
+        if [ -e "/usr/lib/i386-linux-gnu/libssl.so" ] \
+          && [ ! -e "/usr/lib/libssl.so" ]; then
+          ln -s /usr/lib/i386-linux-gnu/libssl.so  \
+            /usr/lib/libssl.so
+        elif [ -e "/lib/i386-linux-gnu/libssl.so" ] \
+          && [ ! -e "/usr/lib/libssl.so" ]; then
+          ln -s /lib/i386-linux-gnu/libssl.so  \
+            /usr/lib/libssl.so
         fi
-        if [ -e "/usr/lib/i386-linux-gnu/libcrypto.so.1.0.0" ] \
-          && [ ! -e "/usr/lib/libcrypto.so.1.0.0" ]; then
-          ln -s /usr/lib/i386-linux-gnu/libcrypto.so.1.0.0 \
-            /usr/lib/libcrypto.so.1.0.0
-        elif [ -e "/lib/i386-linux-gnu/libcrypto.so.1.0.0" ] \
-          && [ ! -e "/usr/lib/libcrypto.so.1.0.0" ]; then
-          ln -s /lib/i386-linux-gnu/libcrypto.so.1.0.0 \
-            /usr/lib/libcrypto.so.1.0.0
+        if [ -e "/usr/lib/i386-linux-gnu/libcrypto.so" ] \
+          && [ ! -e "/usr/lib/libcrypto.so" ]; then
+          ln -s /usr/lib/i386-linux-gnu/libcrypto.so \
+            /usr/lib/libcrypto.so
+        elif [ -e "/lib/i386-linux-gnu/libcrypto.so" ] \
+          && [ ! -e "/usr/lib/libcrypto.so" ]; then
+          ln -s /lib/i386-linux-gnu/libcrypto.so \
+            /usr/lib/libcrypto.so
         fi
       fi
     fi
