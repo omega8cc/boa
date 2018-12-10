@@ -1141,7 +1141,7 @@ fix_lshell() {
 fix_tcp() {
   _TCP_FIX=$(grep "tcp_challenge_ack_limit" /etc/sysctl.conf 2>&1)
   if [ -z "${_TCP_FIX}" ]; then
-    sysctl net.ipv4.tcp_challenge_ack_limit=1073741823;
+    sysctl net.ipv4.tcp_challenge_ack_limit=1073741823; &> /dev/null
     echo "net.ipv4.tcp_challenge_ack_limit = 1073741823" >> /etc/sysctl.conf
   fi
 }
