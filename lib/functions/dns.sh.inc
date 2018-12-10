@@ -375,8 +375,6 @@ install_pdnsd_cache() {
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   fi
   if [ "${_OSV}" = "stretch" ]; then
-    adduser --system --group --home /var/cache/pdnsd pdnsd &> /dev/null
-    usermod -aG users pdnsd &> /dev/null
     st_runner "${_INSTALL} resolvconf" &> /dev/null
     msg "INFO: Building pdnsd ${_PDNSD_VRN} from sources, please wait..."
     cd /var/opt
@@ -386,14 +384,23 @@ install_pdnsd_cache() {
     st_runner "./configure --prefix=/usr" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
+    echo "START_DAEMON=yes" > /etc/default/pdnsd
+    adduser --system --ingroup proxy --home /var/cache/pdnsd pdnsd &> /dev/null
+    usermod -aG proxy pdnsd &> /dev/null
+    cp -af ${locCnf}/pdnsd /etc/init.d/pdnsd
+    cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
+    ln -sf /etc/pdnsd.conf /usr/etc/pdnsd.conf
+    chmod 755 /etc/init.d/pdnsd
+    mrun "update-rc.d jetty9 pdnsd" &> /dev/null
+    mrun "service pdnsd start" &> /dev/null
   else
     st_runner "${_INSTALL} resolvconf" &> /dev/null
     st_runner "${_INSTALL} pdnsd" &> /dev/null
     st_runner "${_INSTALL} resolvconf" &> /dev/null
     st_runner "${_INSTALL} pdnsd" &> /dev/null
+    sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
+    cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
   fi
-  sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
-  cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
   check_dns_settings
   if [ ! -L "/etc/resolvconf/run" ] \
     || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] \
