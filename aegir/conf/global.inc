@@ -252,7 +252,6 @@ if ($drupal_eight) {
   $config['system.performance']['css']['preprocess'] = TRUE;       // Enable hardcoded CSS aggregation
   $config['system.performance']['js']['preprocess'] = TRUE;        // Enable hardcoded JS aggregation
   $config['system.performance']['response.gzip'] = FALSE;          // Nginx already compresses everything
-  $config['composer_manager.settings']['vendor_dir'] = 'sites/' . $_SERVER['SERVER_NAME'] . '/vendor'; // Support for composer_manager
 }
 else {
   if ($backdropcms) {
@@ -645,8 +644,15 @@ if ($all_ini['auto_detect_domain_access_integration']) {
   }
 }
 
+/**
+ * Use site specific composer_manager dir
+ */
 if ($all_ini['set_composer_manager_vendor_dir'] && !$is_install) {
-  $conf['composer_manager_vendor_dir'] = 'sites/' . $_SERVER['SERVER_NAME'] . '/vendor'; // Use site specific composer_manager dir
+  if ($drupal_eight) {
+    $config['composer_manager.settings']['vendor_dir'] = 'sites/' . $_SERVER['SERVER_NAME'] . '/vendor';
+  else {
+    $conf['composer_manager_vendor_dir'] = 'sites/' . $_SERVER['SERVER_NAME'] . '/vendor';
+  }
 }
 
 if ($is_install) {
