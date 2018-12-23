@@ -20,4 +20,4 @@ projects[civicrml10n][download][url] = "http://sourceforge.net/projects/civicrm/
 
 projects[admin_menu][type] = "module"
 projects[admin_menu][subdir] = "contrib"
-projects[admin_menu][version] = "3.0-rc5"
+projects[admin_menu][version] = "3.0-rc6"

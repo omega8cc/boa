@@ -9,6 +9,7 @@ hd="HEAD"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
+lgcD="BOA-3.2.2"
 master="master"
 nextv="BOA-3.3.0-dev"
 stbl="BOA-3.2.2"
@@ -342,36 +343,39 @@ check_report() {
 check_php_cli() {
   _PHP_CHECK=$(readlink -n /usr/bin/php 2>&1)
   if [ ! -x "$_PHP_CHECK" ]; then
-    if [ "${_PHP_CLI_VERSION}" = "7.0" ]; then
+    if [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
+      _PHP_CLI_PATH="/opt/php73/bin/php"
+    elif [ "${_PHP_CLI_VERSION}" = "7.2" ]; then
+      _PHP_CLI_PATH="/opt/php72/bin/php"
+    elif [ "${_PHP_CLI_VERSION}" = "7.1" ]; then
+      _PHP_CLI_PATH="/opt/php71/bin/php"
+    elif [ "${_PHP_CLI_VERSION}" = "7.0" ]; then
       _PHP_CLI_PATH="/opt/php70/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
       _PHP_CLI_PATH="/opt/php56/bin/php"
-    elif [ "${_PHP_CLI_VERSION}" = "5.5" ]; then
-      _PHP_CLI_PATH="/opt/php55/bin/php"
-    elif [ "${_PHP_CLI_VERSION}" = "5.4" ]; then
-      _PHP_CLI_PATH="/opt/php54/bin/php"
-    elif [ "${_PHP_CLI_VERSION}" = "5.3" ]; then
-      _PHP_CLI_PATH="/opt/php53/bin/php"
     else
       _PHP_CLI_PATH=""
     fi
-    if [ -x "$_PHP_CLI_PATH" ]; then
-      _USE_PHP_CLI_PATH=$_PHP_CLI_PATH
+    if [ -x "${_PHP_CLI_PATH}" ]; then
+      _USE_PHP_CLI_PATH="${_PHP_CLI_PATH}"
     else
-      if  [ -x "/opt/php56/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php56/bin/php
-      elif  [ -x "/opt/php55/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php55/bin/php
-      elif  [ -x "/opt/php54/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php54/bin/php
-      elif [ -x "/opt/php53/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php53/bin/php
+      if  [ -x "/opt/php73/bin/php" ]; then
+        _USE_PHP_CLI_PATH=/opt/php73/bin/php
+      elif  [ -x "/opt/php72/bin/php" ]; then
+        _USE_PHP_CLI_PATH=/opt/php72/bin/php
+      elif  [ -x "/opt/php71/bin/php" ]; then
+        _USE_PHP_CLI_PATH=/opt/php71/bin/php
       elif  [ -x "/opt/php70/bin/php" ]; then
         _USE_PHP_CLI_PATH=/opt/php70/bin/php
+      elif [ -x "/opt/php56/bin/php" ]; then
+        _USE_PHP_CLI_PATH=/opt/php56/bin/php
       fi
     fi
     if [ -x "${_USE_PHP_CLI_PATH}" ]; then
+      rm -f /usr/bin/php
+      rm -f /usr/bin/php-cli
       ln -sf ${_USE_PHP_CLI_PATH} /usr/bin/php
+      ln -sf ${_USE_PHP_CLI_PATH} /usr/bin/php-cli
     else
       echo "ERROR: I can not find PHP-CLI anywhere!"
       clean_pid_exit
@@ -382,16 +386,16 @@ check_php_cli() {
 up_action() {
   if [ -e "${vBs}/${barName}" ] && [ -e "${barCnf}" ]; then
     if [ ! -z "${rkey}" ]; then
-      if [ "${rkey}" = "php-70" ] || [ "${rkey}" = "php-7.0" ]; then
+      if [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
+        phpS=7.3
+      elif [ "${rkey}" = "php-72" ] || [ "${rkey}" = "php-7.2" ]; then
+        phpS=7.2
+      elif [ "${rkey}" = "php-71" ] || [ "${rkey}" = "php-7.1" ]; then
+        phpS=7.1
+      elif [ "${rkey}" = "php-70" ] || [ "${rkey}" = "php-7.0" ]; then
         phpS=7.0
       elif [ "${rkey}" = "php-56" ] || [ "${rkey}" = "php-5.6" ]; then
         phpS=5.6
-      elif [ "${rkey}" = "php-55" ] || [ "${rkey}" = "php-5.5" ]; then
-        phpS=5.5
-      elif [ "${rkey}" = "php-54" ] || [ "${rkey}" = "php-5.4" ]; then
-        phpS=5.4
-      elif [ "${rkey}" = "php-53" ] || [ "${rkey}" = "php-5.3" ]; then
-        phpS=5.3
       elif [ "${rkey}" = "php-all" ]; then
         phpS=ALL
       elif [ "${rkey}" = "nodns" ]; then
@@ -423,11 +427,11 @@ up_action() {
 
     fi
     ### Make sure that _PHP_SINGLE_INSTALL is set in ${barCnf}
-    if [ "${phpS}" = "7.0" ] \
-      || [ "${phpS}" = "5.6" ] \
-      || [ "${phpS}" = "5.5" ] \
-      || [ "${phpS}" = "5.4" ] \
-      || [ "${phpS}" = "5.3" ]; then
+    if [ "${phpS}" = "7.3" ] \
+      || [ "${phpS}" = "7.2" ] \
+      || [ "${phpS}" = "7.1" ] \
+      || [ "${phpS}" = "7.0" ] \
+      || [ "${phpS}" = "5.6" ]; then
       _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL ${barCnf} 2>&1)
       if [[ "${_PHP_SINGLE_INSTALL_TEST}" =~ "_PHP_SINGLE_INSTALL" ]]; then
         sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=${phpS}/g" ${barCnf}
@@ -438,11 +442,11 @@ up_action() {
     fi
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${phpS}" ]; then
-      if [ "${phpS}" = "7.0" ] \
-        || [ "${phpS}" = "5.6" ] \
-        || [ "${phpS}" = "5.5" ] \
-        || [ "${phpS}" = "5.4" ] \
-        || [ "${phpS}" = "5.3" ]; then
+      if [ "${phpS}" = "7.3" ] \
+        || [ "${phpS}" = "7.2" ] \
+        || [ "${phpS}" = "7.1" ] \
+        || [ "${phpS}" = "7.0" ] \
+        || [ "${phpS}" = "5.6" ]; then
 
         ### Debugging
         if [ "$debug" = "debug" ]; then
@@ -508,8 +512,8 @@ up_action() {
           done
         fi
       elif [ "${phpS}" = "ALL" ]; then
-        phpM="7.0 5.6 5.5 5.4 5.3"
-        phpS=5.6
+        phpM="7.3 7.2 7.1 7.0 5.6"
+        phpS=7.2
 
         ### Debugging
         if [ "$debug" = "debug" ]; then
@@ -634,6 +638,13 @@ up_action() {
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${filIncB}
+        wait
+      elif [ "${cmmand}" = "up-3.2" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcD}/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcD}/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcD}/g"         ${vBs}/${filIncB}
         wait
       else
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncB}
@@ -954,14 +965,8 @@ set_pin_priority() {
       _THIS_OS=Ubuntu
     fi
     if [ "${_THIS_OS}" = "Debian" ]; then
-      _THIS_RV=$(grep "6.0" /etc/issue.net 2>&1)
-      if [[ "${_THIS_RV}" =~ "6.0" ]]; then
-        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
-          -o /etc/apt/preferences
-      else
-        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" \
-          -o /etc/apt/preferences
-      fi
+      curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-debian.txt" \
+        -o /etc/apt/preferences
     elif [ "${_THIS_OS}" = "Ubuntu" ]; then
       curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
         -o /etc/apt/preferences
@@ -1025,7 +1030,7 @@ check_dns_curl() {
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
-    echo "curl install" | dpkg --set-selections
+    echo "curl install" | dpkg --set-selections &> /dev/null
     apt-get clean -qq &> /dev/null
     apt-get update -qq &> /dev/null
     apt-get install curl ${forCer} &> /dev/null
@@ -1038,7 +1043,7 @@ check_dns_curl() {
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
-      echo "curl install" | dpkg --set-selections
+      echo "curl install" | dpkg --set-selections &> /dev/null
       apt-get install curl ${forCer} &> /dev/null
       touch /root/.use.curl.from.packages.cnf
     fi
@@ -1244,6 +1249,10 @@ proceed() {
   elif [ "${cmmand}" = "up-stable" ]; then
     _SCRIPT_URL="$rgUrl/${stbl}/${barName}"
     curl ${crlGet} "${rgUrl}/${stbl}/${pthIncB}"    -o ${vBs}/${filIncB}
+  elif [ "${cmmand}" = "up-3.2" ]; then
+    branch="3.2.x-dev"
+    _SCRIPT_URL="$rgUrl/${lgcD}/${barName}"
+    curl ${crlGet} "${rgUrl}/${lgcD}/${pthIncB}"    -o ${vBs}/${filIncB}
   elif [ "${cmmand}" = "up-2.4" ]; then
     branch="2.4.x-dev"
     _SCRIPT_URL="$rgUrl/${lgcC}/${barName}"
@@ -1256,7 +1265,7 @@ proceed() {
     _SCRIPT_URL="$rgUrl/${lgcA}/${barName}"
   else
     echo
-    echo "Usage: $(basename "$0") {up-stable|up-head|up-2.4|up-2.3|up-2.2} {system|log} {newrelickey|php-7.0|php-5.6|php-5.5|php-all|nodns}"
+    echo "Usage: $(basename "$0") {up-stable|up-head|up-2.4|up-2.3|up-2.2} {system|log} {newrelickey|php-7.3|php-7.2|php-7.1|php-7.0|php-5.6|php-all|nodns}"
     echo
     echo "  Silent Mode Option: system == OS only upgrade"
     echo "  Silent Mode Option: log ===== OS and Aegir Master Instance upgrade"
@@ -1286,7 +1295,7 @@ if [ ! -z "${silent}" ]; then
     || [ "${silent}" = "cluster" ] \
     || [ "${silent}" = "drush" ] \
     || [ "${silent}" = "gravcms" ] \
-    || [ "${silent}" = "jessie" ] \
+    || [ "${silent}" = "stretch" ] \
     || [ "${silent}" = "system" ]; then
     silent="$2"
   else

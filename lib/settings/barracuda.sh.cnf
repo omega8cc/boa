@@ -60,9 +60,9 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### Instance with variables: _PHP_FPM_VERSION
 ### and _PHP_CLI_VERSION.
 ###
-### Available options: 7.0, 5.6, 5.5, 5.4, 5.3
+### Available options: 7.3, 7.2, 7.1, 7.0, 5.6
 ###
-### Example: _PHP_MULTI_INSTALL="5.6 5.5"
+### Example: _PHP_MULTI_INSTALL="7.2 7.1"
 ###
 ### Note that removing any version from this
 ### list once it is already installed, will
@@ -73,7 +73,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### which are used to define version to be
 ### used by Master or Satellite Instance.
 ###
-_PHP_MULTI_INSTALL="5.6"
+_PHP_MULTI_INSTALL="7.2"
 
 
 ###----------------------------------------###
@@ -87,9 +87,9 @@ _PHP_MULTI_INSTALL="5.6"
 ### _PHP_CLI_VERSION
 ### _PHP_MULTI_INSTALL
 ###
-### Available options: 7.0, 5.6, 5.5, 5.4, 5.3
+### Available options: 7.3, 7.2, 7.1, 7.0, 5.6
 ###
-### Example: _PHP_SINGLE_INSTALL=5.6
+### Example: _PHP_SINGLE_INSTALL=7.2
 ###
 _PHP_SINGLE_INSTALL=
 
@@ -103,18 +103,13 @@ _PHP_SINGLE_INSTALL=
 ### install and upgrade.
 ###
 ### Available options (if installed):
+### 7.3, 7.2, 7.1, 7.0, 5.6
 ###
-### _PHP_FPM_VERSION=7.0
-### _PHP_FPM_VERSION=5.6
-### _PHP_FPM_VERSION=5.5
-### _PHP_FPM_VERSION=5.4
-### _PHP_FPM_VERSION=5.3
-###
-### Note that 5.6 will be set automatically
+### Note that 7.2 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_FPM_VERSION=5.6
+_PHP_FPM_VERSION=7.2
 
 
 ###----------------------------------------###
@@ -126,18 +121,13 @@ _PHP_FPM_VERSION=5.6
 ### install and upgrade.
 ###
 ### Available options (if installed):
+### 7.3, 7.2, 7.1, 7.0, 5.6
 ###
-### _PHP_CLI_VERSION=7.0
-### _PHP_CLI_VERSION=5.6
-### _PHP_CLI_VERSION=5.5
-### _PHP_CLI_VERSION=5.4
-### _PHP_CLI_VERSION=5.3
-###
-### Note that 5.6 will be set automatically
+### Note that 7.2 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_CLI_VERSION=5.6
+_PHP_CLI_VERSION=7.2
 
 
 ###----------------------------------------###
@@ -262,15 +252,9 @@ _FULL_FORCE_REINSTALL=NO
 
 ###
 ### Use YES to run major system upgrade
-### from Debian Wheezy to Debian Jessie.
+### from Debian Jessie to Debian Stretch.
 ###
-_WHEEZY_TO_JESSIE=NO
-
-###
-### Use YES to run major system upgrade
-### from Debian Squeeze to Debian Wheezy.
-###
-_SQUEEZE_TO_WHEEZY=NO
+_JESSIE_TO_STRETCH=NO
 
 ###
 ### Use YES to run migration from Tomcat 6
@@ -479,7 +463,7 @@ _MY_FRONT=""
 ### because of some custom local setup
 ### you know is correct (like DynDNS)
 ### but the script can't validate it with its
-### standard ifconfig tests, set this to:
+### standard remote tests, set this to:
 ###
 ### _DNS_SETUP_TEST=NO
 ###
