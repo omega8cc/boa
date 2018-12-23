@@ -3683,6 +3683,7 @@ sys_packages_install() {
               libxslt1-dbg \
               libxslt1-dev \
               libxslt1.1 \
+              libzip-dev \
               makepasswd \
               mc \
               mcrypt \
