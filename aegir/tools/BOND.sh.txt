@@ -159,6 +159,8 @@ _PHP71_API=20160303
 _PHP71_VRN=7.1.25
 _PHP72_API=20170718
 _PHP72_VRN=7.2.12
+_PHP73_API=20180731
+_PHP73_VRN=7.3.0
 
 ###
 ### Helper variables
@@ -392,7 +394,7 @@ fix_php_ini_newrelic_all() {
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
       _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
     fi
-    _PHP_V="72 71 70 56"
+    _PHP_V="73 72 71 70 56"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       fix_php_ini_newrelic
@@ -422,7 +424,7 @@ fix_php_ini_opcache() {
 #
 # Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all() {
-  _PHP_V="72 71 70 56"
+  _PHP_V="73 72 71 70 56"
   for e in ${_PHP_V}; do
     case "${e}" in
       72) _P_API="${_PHP72_API}" ;;
@@ -549,7 +551,7 @@ update_php_conf() {
   wait
   sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
   wait
-  _PHP_V="72 71 70 56"
+  _PHP_V="73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
       adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
@@ -857,7 +859,7 @@ tune_web_server_config() {
       _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
     fi
   fi
-  _PHP_V="72 71 70 56"
+  _PHP_V="73 72 71 70 56"
   for e in ${_PHP_V}; do
     sed -i "s/process.max =.*/process.max = ${_PROCESS_MAX_FPM}/g" \
       /opt/php${e}/etc/php${e}-fpm.conf &> /dev/null

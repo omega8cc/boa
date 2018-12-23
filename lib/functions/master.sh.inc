@@ -583,7 +583,10 @@ update_php_cli_cron() {
   if [ -e "/var/spool/cron/crontabs/aegir" ]; then
     sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" \
       /var/spool/cron/crontabs/aegir &> /dev/null
-    if [ "${_PHP_CLI_VERSION}" = "7.2" ] && [ -x "/opt/php72/bin/php" ]; then
+    if [ "${_PHP_CLI_VERSION}" = "7.3" ] && [ -x "/opt/php73/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php73\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "7.2" ] && [ -x "/opt/php72/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php72\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
         /var/spool/cron/crontabs/aegir &> /dev/null
     elif [ "${_PHP_CLI_VERSION}" = "7.1" ] && [ -x "/opt/php71/bin/php" ]; then
@@ -1028,7 +1031,7 @@ update_php_cli_local_ini() {
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="72 71 70 56"
+  _PHP_V="73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.pid" ]; then

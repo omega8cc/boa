@@ -115,7 +115,7 @@ production settings.
 * HTTPS access with self-signed certificate for all hosted sites.
 * HTTP/2 or SPDY Nginx support.
 * PFS (Perfect Forward Secrecy) support in Nginx.
-* PHP-FPM 7.2, 7.1, 7.0, 5.6 multi-install mode, configurable per site.
+* PHP-FPM 7.3, 7.2, 7.1, 7.0, 5.6 multi-install mode, configurable per site.
 * PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse and ionCube.
 * Fast Redis Cache with DB auto-failover for all Drupal core versions.
 * Fast Redis Lock support with DB auto-failover.

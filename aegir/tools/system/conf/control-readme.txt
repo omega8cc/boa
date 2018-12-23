@@ -13,6 +13,7 @@
 ###
 ### Supported values for single PHP-FPM mode which can be written in this file:
 ###
+### 7.3 (experimental)
 ### 7.2
 ### 7.1
 ### 7.0
@@ -28,7 +29,7 @@
 ### ~/static/control/multi-fpm.info
 ###
 ### This file, if exists, will switch all hosted sites to highest
-### available PHP-FPM version within the 5.6-7.2 range, with ability
+### available PHP-FPM version within the 5.6-7.3 range, with ability
 ### to override PHP-FPM version per site, if the site's name is listed
 ### in this additional control file, as shown below:
 ###
@@ -60,6 +61,7 @@
 ###
 ### Supported values which can be written in this file:
 ###
+### 7.3 (experimental)
 ### 7.2
 ### 7.1
 ### 7.0

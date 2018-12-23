@@ -157,7 +157,9 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             _PHP_DEFAULT=$(/usr/bin/php-cli -v | grep 'PHP 5' \
               | cut -d: -f1 | awk '{ print $2}' 2>&1)
           fi
-          if [[ "${_PHP_DEFAULT}" =~ "7.2." ]]; then
+          if [[ "${_PHP_DEFAULT}" =~ "7.3." ]]; then
+            PHP_INI="/opt/php73/lib/php.ini"
+          elif [[ "${_PHP_DEFAULT}" =~ "7.2." ]]; then
             PHP_INI="/opt/php72/lib/php.ini"
           elif [[ "${_PHP_DEFAULT}" =~ "7.1." ]]; then
             PHP_INI="/opt/php71/lib/php.ini"

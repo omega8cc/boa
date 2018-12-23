@@ -530,7 +530,8 @@ os_detection() {
 }
 
 check_boa_php_compatibility() {
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.2" ]] \
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.3" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "7.2" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "7.1" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "7.0" ]]; then
     _DO_NOTHING=YES
