@@ -1274,7 +1274,7 @@ add_solr() {
       rkey=32
       if [ "${_NEW_SSL}" = "YES" ] \
         || [ "${_OSV}" = "jessie" ] \
-        || [ "${_OSV}" = "wheezy" ] \
+        || [ "${_OSV}" = "stretch" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
         _MD5H=$(cat /dev/urandom \
@@ -1818,6 +1818,12 @@ fix_modules() {
     else
       echo ";views_content_cache_dont_enable = FALSE" >> ${_PLR_CTRL_F}
     fi
+    _VAR_IF_PRESENT=$(grep "set_composer_manager_vendor_dir" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "set_composer_manager_vendor_dir" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";set_composer_manager_vendor_dir = FALSE" >> ${_PLR_CTRL_F}
+    fi
   fi
   if [ -e "${_DIR_CTRL_F}" ]; then
      _VAR_IF_PRESENT=$(grep "session_cookie_ttl" ${_DIR_CTRL_F} 2>&1)
@@ -1885,6 +1891,12 @@ fix_modules() {
       _DO_NOTHING=YES
     else
       echo ";allow_private_file_downloads = FALSE" >> ${_DIR_CTRL_F}
+    fi
+     _VAR_IF_PRESENT=$(grep "set_composer_manager_vendor_dir" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "set_composer_manager_vendor_dir" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";set_composer_manager_vendor_dir = FALSE" >> ${_DIR_CTRL_F}
     fi
   fi
 
@@ -2653,7 +2665,7 @@ process() {
       if [ -e "${Plr}" ]; then
         if [ "${_NEW_SSL}" = "YES" ] \
           || [ "${_OSV}" = "jessie" ] \
-          || [ "${_OSV}" = "wheezy" ] \
+          || [ "${_OSV}" = "stretch" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
           PlrID=$(echo ${Plr} \

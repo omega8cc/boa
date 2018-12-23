@@ -337,6 +337,11 @@ tune_sql_memory_limits() {
 install_mariadb_sql() {
   cd /var/opt
   _KEYS_SERVER_TEST=FALSE
+  if [ "${_OSV}" = "stretch" ] \
+    || [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "trusty" ]; then
+    st_runner "${_INSTAPP} software-properties-common dirmngr" 2> /dev/null
+  fi
   until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
     _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
       --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 2>&1)
@@ -354,17 +359,14 @@ install_mariadb_sql() {
       --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5 2>&1)
     sleep 2
   done
-  if [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "jessie" ]; then
-    st_runner "${_INSTAPP} software-properties-common" 2> /dev/null
-  fi
   if [ "${_THIS_OS}" = "Debian" ]; then
     _OSN=debian
   elif [ "${_THIS_OS}" = "Ubuntu" ]; then
     _OSN=ubuntu
   fi
-  if [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "jessie" ]; then
+  if [ "${_OSV}" = "stretch" ] \
+    || [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "trusty" ]; then
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
@@ -445,7 +447,7 @@ install_mariadb_sql() {
 }
 
 install_with_aptitude_sql() {
-  if [ "${_OSV}" = "squeeze" ] \
+  if [ "${_OSV}" = "stretch" ] \
     || [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
@@ -595,11 +597,6 @@ install_mariadb_server() {
       && [ "${_DB_SERVER}" = "MariaDB" ]; then
       _SQL_UPGRADE=YES
     fi
-    if [ "${_OSV}" = "squeeze" ] \
-      && [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]] \
-      && [[ "${_DB_SERVER_TEST}" =~ " 5.3." ]]; then
-      _SQL_UPGRADE=YES
-    fi
     if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
       if [[ "${_DB_SERVER_TEST}" =~ " 5.1." ]] \
         || [[ "${_DB_SERVER_TEST}" =~ " 5.2." ]]; then
@@ -624,11 +621,8 @@ install_mariadb_server() {
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       _SQL_UPGRADE=YES
     fi
-    if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "wheezy" ]; then
-      _SQL_UPGRADE=NO
-    elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "squeeze" ]; then
+    if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
+      && [ "${_LOC_OSV}" = "jessie" ]; then
       _SQL_UPGRADE=NO
     fi
     _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \

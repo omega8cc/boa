@@ -95,7 +95,7 @@ and no longer supported PHP version: $1
 
 We have provided over a year of extended support for
 this PHP version, but now we can't extend it any further,
-because your system has to be upgraded to Debian Jessie,
+because your system has to be upgraded to Debian Stretch,
 which doesn't support deprecated PHP versions.
 
 The upgrade will happen in the first week of December, 2016,
@@ -130,7 +130,7 @@ and no longer supported PHP version: $1
 
 We have provided over a year of extended support for
 this PHP version, but now we can't extend it any further,
-because your system has to be upgraded to Debian Jessie,
+because your system has to be upgraded to Debian Stretch,
 which doesn't support deprecated PHP versions.
 
 The upgrade will happen in the first week of December, 2016,
@@ -165,7 +165,7 @@ and no longer supported PHP version: $1
 
 We have provided over a year of extended support for
 this PHP version, but now we can't extend it any further,
-because your system has to be upgraded to Debian Jessie,
+because your system has to be upgraded to Debian Stretch,
 which doesn't support deprecated PHP versions.
 
 The upgrade will happen in the first week of December, 2016,
@@ -200,7 +200,8 @@ detect_deprecated_php() {
     && [ ! -e "${User}/log/CANCELLED" ]; then
     _PHP_FPM_VERSION=$(cat ${User}/static/control/fpm.info 2>&1)
     _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
-    if [ "${_PHP_FPM_VERSION}" = "5.4" ] \
+    if [ "${_PHP_FPM_VERSION}" = "5.5" ] \
+      || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
       || [ "${_PHP_FPM_VERSION}" = "5.3" ]; then
       echo Deprecated PHP-FPM ${_PHP_FPM_VERSION} detected in ${_THIS_U}
       read_account_data

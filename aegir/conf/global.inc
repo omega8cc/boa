@@ -252,7 +252,6 @@ if ($drupal_eight) {
   $config['system.performance']['css']['preprocess'] = TRUE;       // Enable hardcoded CSS aggregation
   $config['system.performance']['js']['preprocess'] = TRUE;        // Enable hardcoded JS aggregation
   $config['system.performance']['response.gzip'] = FALSE;          // Nginx already compresses everything
-  $config['composer_manager.settings']['vendor_dir'] = 'sites/' . $_SERVER['SERVER_NAME'] . '/vendor'; // Support for composer_manager
 }
 else {
   if ($backdropcms) {
@@ -284,7 +283,6 @@ else {
   $conf['image_allow_insecure_derivatives'] = TRUE; // Enable to avoid known issues: https://drupal.org/drupal-7.20-release-notes
   $conf['theme_cloudy_settings']['omega_rebuild_aggregates'] = FALSE;     // Do not allow to turn it on by default
   $conf['theme_cloudy_settings']['omega_rebuild_theme_registry'] = FALSE; // Do not allow to turn it on by default
-  $conf['composer_manager_vendor_dir'] = 'sites/' . $_SERVER['SERVER_NAME'] . '/vendor'; // Support for composer_manager
   $update_free_access = FALSE;
   $conf['webform_table'] = TRUE; // Workaround for SA-CONTRIB-2015-063 https://www.drupal.org/node/2445935
   $conf['features_rebuild_on_flush'] = FALSE; // https://michaelshadle.com/2015/04/21/speeding-up-drupal-cache-flushing
@@ -410,7 +408,8 @@ $boa_ini = array(
   'auto_detect_domain_access_integration' => TRUE, // For backward compatibility until next release, then FALSE
   'advagg_auto_configuration' => FALSE,            // Will be set to TRUE in boa_site_control.ini if the module is enabled
   'purge_expire_auto_configuration' => FALSE,      // Will be set to TRUE in boa_site_control.ini if the module is enabled
-  'disable_drupal_page_cache' => FALSE,            // It is set to FALSE for backward compatibility and max performance
+  'disable_drupal_page_cache' => FALSE,            // FALSE for backward compatibility and max performance
+  'set_composer_manager_vendor_dir' => FALSE,      // FALSE by default to not break site installation depending on custom value
 );
 
 
@@ -482,6 +481,7 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Session-Cookie-Ttl: " . $all_ini['session_cookie_ttl']);
   header("X-Ini-Session-Gc-Eol: " . $all_ini['session_gc_eol']);
   header("X-Ini-Disable-Drupal-Page-Cache: " . $all_ini['disable_drupal_page_cache']);
+  header("X-Ini-Set-Composer-Manager-Vendor-Dir: " . $all_ini['set_composer_manager_vendor_dir']);
 }
 
 
@@ -641,6 +641,17 @@ if ($all_ini['auto_detect_domain_access_integration']) {
   }
   elseif (is_readable('profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc')) {
     $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc';
+  }
+}
+
+/**
+ * Use site specific composer_manager dir
+ */
+if ($all_ini['set_composer_manager_vendor_dir'] && !$is_install) {
+  if ($drupal_eight) {
+    $config['composer_manager.settings']['vendor_dir'] = 'sites/' . $_SERVER['SERVER_NAME'] . '/vendor';
+  else {
+    $conf['composer_manager_vendor_dir'] = 'sites/' . $_SERVER['SERVER_NAME'] . '/vendor';
   }
 }
 

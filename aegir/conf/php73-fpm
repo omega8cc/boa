@@ -1,21 +1,21 @@
 #!/bin/bash
 
 ### BEGIN INIT INFO
-# Provides:          php54-fpm
+# Provides:          php73-fpm
 # Required-Start:    $remote_fs $network
 # Required-Stop:     $remote_fs $network
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: starts php54-fpm
+# Short-Description: starts php73-fpm
 # Description:       starts the PHP FastCGI Process Manager daemon
 ### END INIT INFO
 
-prefix=/opt/php54
+prefix=/opt/php73
 exec_prefix=${prefix}
-php_fpm_BIN=/opt/php54/sbin/php-fpm
-php_fpm_CONF=/opt/php54/etc/php54-fpm.conf
-php_fpm_PID=/var/run/php54-fpm.pid
-php_opts="--fpm-config $php_fpm_CONF --pid $php_fpm_PID -c /opt/php54/etc/php54.ini"
+php_fpm_BIN=/opt/php73/sbin/php-fpm
+php_fpm_CONF=/opt/php73/etc/php73-fpm.conf
+php_fpm_PID=/var/run/php73-fpm.pid
+php_opts="--fpm-config $php_fpm_CONF --pid $php_fpm_PID -c /opt/php73/etc/php73.ini"
 
 wait_for_pid() {
 	try=0
@@ -48,7 +48,7 @@ wait_for_pid() {
 
 case "$1" in
 	start)
-		echo -n "Starting php54-fpm.."
+		echo -n "Starting php73-fpm.."
 
 		$php_fpm_BIN --daemonize $php_opts
 
@@ -68,10 +68,10 @@ case "$1" in
 	;;
 
 	stop)
-		echo -n "Gracefully shutting down php54-fpm.."
+		echo -n "Gracefully shutting down php73-fpm.."
 
 		if [ ! -r $php_fpm_PID ]; then
-			echo "warning, no pid file found - php54-fpm is not running ?"
+			echo "warning, no pid file found - php73-fpm is not running ?"
 			exit 1
 		fi
 
@@ -89,23 +89,23 @@ case "$1" in
 
 	status)
 		if [ ! -r $php_fpm_PID ]; then
-			echo "php54-fpm is stopped"
+			echo "php73-fpm is stopped"
 			exit 0
 		fi
 
 		PID=`cat $php_fpm_PID`
 		if ps -p $PID | grep -q $PID; then
-			echo "php54-fpm (pid $PID) is running..."
+			echo "php73-fpm (pid $PID) is running..."
 		else
-			echo "php54-fpm dead but pid file exists"
+			echo "php73-fpm dead but pid file exists"
 		fi
 	;;
 
 	force-quit)
-		echo -n "Terminating php54-fpm.."
+		echo -n "Terminating php73-fpm.."
 
 		if [ ! -r $php_fpm_PID ]; then
-			echo "warning, no pid file found - php54-fpm is not running ?"
+			echo "warning, no pid file found - php73-fpm is not running ?"
 			exit 1
 		fi
 
@@ -128,10 +128,10 @@ case "$1" in
 
 	reload)
 
-		echo -n "Reloading service php54-fpm.."
+		echo -n "Reloading service php73-fpm.."
 
 		if [ ! -r $php_fpm_PID ]; then
-			echo "warning, no pid file found - php54-fpm is not running ?"
+			echo "warning, no pid file found - php73-fpm is not running ?"
 			exit 1
 		fi
 
@@ -140,8 +140,12 @@ case "$1" in
 		echo " done"
 	;;
 
+	configtest)
+		$php_fpm_BIN -t
+	;;
+
 	*)
-		echo "Usage: $0 {start|stop|force-quit|restart|reload|status}"
+		echo "Usage: $0 {start|stop|force-quit|restart|reload|status|configtest}"
 		exit 1
 	;;
 
