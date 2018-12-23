@@ -3372,7 +3372,7 @@ sys_packages_update() {
     mrun "aptitude remove php5-apc -y" &> /dev/null
     mrun "aptitude remove php-apc -y" &> /dev/null
     mrun "aptitude remove apache2.2-common -y" &> /dev/null
-    mrun "aptitude remove apache2-utils apache2.2-bin -y" &> /dev/null
+    mrun "aptitude remove apache2.2-bin -y" &> /dev/null
     mrun "aptitude install lsof -y" &> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
