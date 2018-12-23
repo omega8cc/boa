@@ -51,7 +51,7 @@
 
 @=> Caveats and some good-to-know details
 
-  * BOA supports HHVM only on Debian Wheezy and Ubuntu Trusty.
+  * BOA supports HHVM only on Debian Jessie/Stretch and Ubuntu Trusty.
 
   * There is no phpinfo() available, but you can emulate it with bundled file:
     https://github.com/omega8cc/boa/blob/master/aegir/conf/hhvm/view/hhvminfo.php

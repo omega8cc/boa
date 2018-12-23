@@ -201,9 +201,17 @@ EOF
 #
 # Find correct IP.
 find_correct_ip() {
-  _LOC_IP=$(echo $(getent ahostsv4 $_LOC_DOM) \
-    | cut -d: -f2 \
-    | awk '{ print $1}' 2>&1)
+  _LOC_IP=$(curl ${crlGet} https://api.ipify.org \
+    | sed 's/[^0-9\.]//g' 2>&1)
+  if [ -z "${_LOC_IP}" ]; then
+    _LOC_IP=$(curl ${crlGet} http://ip4.icanhazip.com \
+      | sed 's/[^0-9\.]//g' 2>&1)
+  fi
+  if [ -z "${_LOC_IP}" ]; then
+    _LOC_IP=$(echo $(getent ahostsv4 $_LOC_DOM) \
+      | cut -d: -f2 \
+      | awk '{ print $1}' 2>&1)
+  fi
 }
 
 #
@@ -229,26 +237,10 @@ validate_public_ip() {
       _THISHTIP="${_LOCAL_NETWORK_IP}"
     fi
   else
-    _ETH_TEST=$(ifconfig 2>&1)
-    if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
-      _IFCONFIG="venet0"
-    elif [ -e "/proc/bean_counters" ]; then
-      _IFCONFIG="venet0"
-    else
-      _IFCONFIG="eth0"
-    fi
     if [ "${_DNS_SETUP_TEST}" = "YES" ]; then
       if [ -z "${_MY_OWNIP}" ]; then
-        _THISHTIP=$(ifconfig ${_IFCONFIG} \
-          | grep 'inet addr:' \
-          | cut -d: -f2 \
-          | awk '{ print $1}' 2>&1)
-        if [[ "${_THISHTIP}" =~ "127.0.0." ]]; then
-          _THISHTIP=$(ifconfig ${_IFCONFIG}:0 \
-            | grep 'inet addr:' \
-            | cut -d: -f2 \
-            | awk '{ print $1}' 2>&1)
-        fi
+        find_correct_ip
+        _THISHTIP="${_LOC_IP}"
       else
         _THISHTIP="${_MY_OWNIP}"
       fi
@@ -285,26 +277,10 @@ validate_purge_ip() {
   if [ "${_PURGE_ALL_THISHTIP}" = "YES" ]; then
     _PURGE_THISHTIP="0.0.0.0/0"
   else
-    _ETH_TEST=$(ifconfig 2>&1)
-    if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
-      _IFCONFIG="venet0"
-    elif [ -e "/proc/bean_counters" ]; then
-      _IFCONFIG="venet0"
-    else
-      _IFCONFIG="eth0"
-    fi
     if [ "${_DNS_SETUP_TEST}" = "YES" ]; then
       if [ -z "${_MY_OWNIP}" ]; then
-        _PURGE_THISHTIP=$(ifconfig ${_IFCONFIG} \
-          | grep 'inet addr:' \
-          | cut -d: -f2 \
-          | awk '{ print $1}' 2>&1)
-        if [[ "${_PURGE_THISHTIP}" =~ "127.0.0." ]]; then
-          _PURGE_THISHTIP=$(ifconfig ${_IFCONFIG}:0 \
-            | grep 'inet addr:' \
-            | cut -d: -f2 \
-            | awk '{ print $1}' 2>&1)
-        fi
+        find_correct_ip
+        _PURGE_THISHTIP="${_LOC_IP}"
       else
         _PURGE_THISHTIP="${_MY_OWNIP}"
       fi
@@ -398,12 +374,41 @@ install_pdnsd_cache() {
     echo "nameserver 8.8.8.8" > /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   fi
-  st_runner "${_INSTALL} resolvconf" &> /dev/null
-  st_runner "${_INSTALL} pdnsd" &> /dev/null
-  st_runner "${_INSTALL} resolvconf" &> /dev/null
-  st_runner "${_INSTALL} pdnsd" &> /dev/null
-  sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
-  cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
+  if [ "${_OSV}" = "stretch" ]; then
+    st_runner "${_INSTALL} resolvconf" &> /dev/null
+    msg "INFO: Building pdnsd ${_PDNSD_VRN} from sources, please wait..."
+    cd /var/opt
+    rm -rf pdnsd*
+    get_dev_src "pdnsd-${_PDNSD_VRN}.tar.gz"
+    cd /var/opt/pdnsd-${_PDNSD_VRN}
+    st_runner "./configure --prefix=/usr" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    echo "START_DAEMON=yes" > /etc/default/pdnsd
+    adduser --system --ingroup proxy --home /var/cache/pdnsd pdnsd &> /dev/null
+    usermod -aG proxy pdnsd &> /dev/null
+    cp -af ${locCnf}/pdnsd /etc/init.d/pdnsd
+    cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
+    ln -sf /etc/pdnsd.conf /usr/etc/pdnsd.conf
+    chmod 755 /etc/init.d/pdnsd
+    mrun "update-rc.d jetty9 pdnsd" &> /dev/null
+    mrun "service pdnsd start" &> /dev/null
+  else
+    st_runner "${_INSTALL} resolvconf" &> /dev/null
+    st_runner "${_INSTALL} pdnsd" &> /dev/null
+    st_runner "${_INSTALL} resolvconf" &> /dev/null
+    st_runner "${_INSTALL} pdnsd" &> /dev/null
+    sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
+    cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
+  fi
+  if [ -x "/usr/sbin/pdnsd" ] \
+    && [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+    mkdir -p /etc/resolvconf/run/interface
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
+    resolvconf -u         &> /dev/null
+    service pdnsd restart &> /dev/null
+    pdnsd-ctl empty-cache &> /dev/null
+  fi
   check_dns_settings
   if [ ! -L "/etc/resolvconf/run" ] \
     || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] \
@@ -420,6 +425,14 @@ install_pdnsd_cache() {
     touch /lib/init/rw/resolvconf/enable-updates
     rm -f /etc/resolvconf/resolv.conf.d/tail
     touch /etc/resolvconf/resolv.conf.d/tail
+  fi
+  if [ -x "/usr/sbin/pdnsd" ] \
+    && [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+    mkdir -p /etc/resolvconf/run/interface
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
+    resolvconf -u         &> /dev/null
+    service pdnsd restart &> /dev/null
+    pdnsd-ctl empty-cache &> /dev/null
   fi
   if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
     && [ -e "${vBs}/resolv.conf.vanilla" ]; then
@@ -538,14 +551,6 @@ check_ip_hostname() {
         _LOC_IP="${_MY_OWNIP}"
       fi
     fi
-    _ETH_TEST=$(ifconfig 2>&1)
-    if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
-      _IFCONFIG="venet0"
-    elif [ -e "/proc/bean_counters" ]; then
-      _IFCONFIG="venet0"
-    else
-      _IFCONFIG="eth0"
-    fi
     if [ ! -z "${_MY_OWNIP}" ]; then
       if [ ! -z "${_MY_HOSTN}" ]; then
         _S_N=${_MY_HOSTN}
@@ -592,16 +597,8 @@ check_ip_hostname() {
         _FQDNTEST="FALSE"
       fi
     else
-      _THISHTIP=$(ifconfig ${_IFCONFIG} \
-        | grep 'inet addr:' \
-        | cut -d: -f2 \
-        | awk '{ print $1}' 2>&1)
-      if [[ "${_THISHTIP}" =~ "127.0.0." ]]; then
-        _THISHTIP=$(ifconfig ${_IFCONFIG}:0 \
-          | grep 'inet addr:' \
-          | cut -d: -f2 \
-          | awk '{ print $1}' 2>&1)
-      fi
+      find_correct_ip
+      _THISHTIP="${_LOC_IP}"
       _FQDNPROB=$(uname -n 2>&1)
       _FQDNTEST="FALSE"
       _THISHOST=$(uname -n 2>&1)
@@ -762,7 +759,7 @@ install_upgrade_pdnsd() {
     wait
   fi
   check_dns_settings
-  if [ ! -e "/usr/sbin/pdnsd" ]; then
+  if [ ! -x "/usr/sbin/pdnsd" ]; then
     install_pdnsd_cache
   else
     if [ "${_USE_PROVIDER_DNS}" = "YES" ] \

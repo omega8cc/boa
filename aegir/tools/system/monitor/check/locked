@@ -12,6 +12,15 @@ chomp($now_is);
 &javacheck;
 if ($fpm_status ne "CLEAN") {
   `kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')`;
+  if (-f "/etc/init.d/php73-fpm") {
+    `service php73-fpm restart`;
+  }
+  if (-f "/etc/init.d/php72-fpm") {
+    `service php72-fpm restart`;
+  }
+  if (-f "/etc/init.d/php71-fpm") {
+    `service php71-fpm restart`;
+  }
   if (-f "/etc/init.d/php70-fpm") {
     `service php70-fpm restart`;
   }
@@ -19,13 +28,13 @@ if ($fpm_status ne "CLEAN") {
     `service php56-fpm restart`;
   }
   if (-f "/etc/init.d/php55-fpm") {
-    `service php55-fpm restart`;
+    `service php55-fpm stop`;
   }
   if (-f "/etc/init.d/php54-fpm") {
-    `service php54-fpm restart`;
+    `service php54-fpm stop`;
   }
   if (-f "/etc/init.d/php53-fpm") {
-    `service php53-fpm restart`;
+    `service php53-fpm stop`;
   }
   sleep(2);
 }

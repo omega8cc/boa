@@ -33,8 +33,8 @@ randpass() {
   elif [ "${kind}" = "hash" ]; then
     CHAR="[:alnum:]"
     if [ "${_NEW_SSL}" = "YES" ] \
+      || [ "${_OSV}" = "stretch" ] \
       || [ "${_OSV}" = "jessie" ] \
-      || [ "${_OSV}" = "wheezy" ] \
       || [ "${_OSV}" = "trusty" ] \
       || [ "${_OSV}" = "precise" ]; then
       cat /dev/urandom \

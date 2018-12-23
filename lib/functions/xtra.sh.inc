@@ -266,16 +266,13 @@ if_install_collectd() {
 }
 
 if_install_hhvm() {
-  if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "wheezy" ]; then
-    _DO_FIX=YES
-  elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "squeeze" ]; then
+  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "jessie" ]; then
     _DO_FIX=YES
   fi
   if [[ "${_XTRAS_LIST}" =~ "HVM" ]]; then
     if [ "${_OSV}" = "jessie" ] \
-      || [ "${_OSV}" = "wheezy" ] \
+      || [ "${_OSV}" = "stretch" ] \
       || [ "${_OSV}" = "trusty" ] \
       || [ "${_DO_FIX}" = "YES" ]; then
       if [ ! -x "/usr/bin/hhvm" ]; then
@@ -288,8 +285,8 @@ if_install_hhvm() {
           if [ "${_OSV}" = "jessie" ]; then
             echo "deb http://dl.hhvm.com/debian jessie main" >> \
               ${aptLiSys}.d/hhvm.list
-          elif [ "${_OSV}" = "wheezy" ] || [ "${_DO_FIX}" = "YES" ]; then
-            echo "deb http://dl.hhvm.com/debian wheezy main" >> \
+          elif [ "${_OSV}" = "stretch" ] || [ "${_DO_FIX}" = "YES" ]; then
+            echo "deb http://dl.hhvm.com/debian stretch main" >> \
               ${aptLiSys}.d/hhvm.list
           elif [ "${_OSV}" = "trusty" ]; then
             echo "deb http://dl.hhvm.com/ubuntu trusty main" >> \
@@ -515,20 +512,20 @@ if_install_ffmpeg() {
         true
         msg "INFO: Installing FFmpeg..."
         cd /var/opt
-        if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "wheezy" ]; then
+        if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
           echo "## deb-multimedia APT Repository for FFmpeg" > ${aptLiSys}.d/ffmpeg.list
           if [ "${_OSV}" = "jessie" ]; then
             echo "deb http://www.deb-multimedia.org jessie main non-free" >> ${aptLiSys}.d/ffmpeg.list
             echo "deb http://www.deb-multimedia.org jessie-backports main" >> ${aptLiSys}.d/ffmpeg.list
-          elif [ "${_OSV}" = "wheezy" ]; then
-            echo "deb http://www.deb-multimedia.org wheezy main non-free" >> ${aptLiSys}.d/ffmpeg.list
-            echo "deb http://www.deb-multimedia.org wheezy-backports main" >> ${aptLiSys}.d/ffmpeg.list
+          elif [ "${_OSV}" = "stretch" ]; then
+            echo "deb http://www.deb-multimedia.org stretch main non-free" >> ${aptLiSys}.d/ffmpeg.list
+            echo "deb http://www.deb-multimedia.org stretch-backports main" >> ${aptLiSys}.d/ffmpeg.list
           fi
           st_runner "apt-get update -qq" &> /dev/null
           st_runner "apt-get install deb-multimedia-keyring ${forCer}" 2> /dev/null
           st_runner "apt-get update -qq" &> /dev/null
           st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
-        elif [ "${_OSV}" = "squeeze" ] || [ "${_OSV}" = "trusty" ] || [ "${_OSV}" = "precise" ]; then
+        elif [ "${_OSV}" = "trusty" ] || [ "${_OSV}" = "precise" ]; then
           _X86_64_TEST=$(uname -m 2>&1)
           rm -rf ffmpeg*
           if [ "${_X86_64_TEST}" = "x86_64" ]; then
