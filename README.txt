@@ -87,9 +87,8 @@ production settings.
 
 ### SUPPORTED LTS OS {c} please read also: docs/CAVEATS.txt
 
-* Debian 8 Jessie (recommended)
-* Debian 7 Wheezy (upgrade to Jessie with _WHEEZY_TO_JESSIE=YES)
-* Debian 6 Squeeze (limited to upgrade to Wheezy with _SQUEEZE_TO_WHEEZY=YES)
+* Debian 9 Stretch (recommended)
+* Debian 8 Jessie (upgrade to Stretch with _JESSIE_TO_STRETCH=YES)
 * Ubuntu Trusty 14.04 (limited support)
 * Ubuntu Precise 12.04 (limited support)
 
@@ -116,7 +115,7 @@ production settings.
 * HTTPS access with self-signed certificate for all hosted sites.
 * HTTP/2 or SPDY Nginx support.
 * PFS (Perfect Forward Secrecy) support in Nginx.
-* PHP-FPM 7.0, 5.6, 5.5, 5.4, 5.3 multi-install mode, configurable per site.
+* PHP-FPM 7.3, 7.2, 7.1, 7.0, 5.6 multi-install mode, configurable per site.
 * PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse and ionCube.
 * Fast Redis Cache with DB auto-failover for all Drupal core versions.
 * Fast Redis Lock support with DB auto-failover.
@@ -187,16 +186,16 @@ Octopus can install and/or support the platforms listed below:
  Restaurant 1.15 -------------- https://drupal.org/project/restaurant
  Ubercart 3.11 ---------------- https://drupal.org/project/ubercart
 
- @ Pressflow 6.44.1
+ @ Pressflow 6.46.2
 
  Commons 2.27 ----------------- https://drupal.org/project/commons
- Pressflow 6.44.1 ------------- http://pressflow.org
+ Pressflow 6.46.2 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
 * All D7 platforms have been enhanced using Drupal 7.61.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
-* All D6 platforms have been enhanced using Pressflow 6.44.1 +Extra core:
+* All D6 platforms have been enhanced using Pressflow 6.46.2 +Extra core:
   https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 * All D6 and D7 platforms include some useful and/all performance related

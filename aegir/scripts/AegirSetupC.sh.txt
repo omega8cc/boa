@@ -129,21 +129,21 @@ _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
 _D="/data/all"
 _SRCDIR="/opt/tmp/files"
 _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
-if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+  && [ -x "/opt/php73/bin/php" ]; then
+  _T_CLI=/opt/php73/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.2" ] \
+  && [ -x "/opt/php72/bin/php" ]; then
+  _T_CLI=/opt/php72/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.1" ] \
+  && [ -x "/opt/php71/bin/php" ]; then
+  _T_CLI=/opt/php71/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.0" ] \
   && [ -x "/opt/php70/bin/php" ]; then
   _T_CLI=/opt/php70/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
   && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-  && [ -x "/opt/php55/bin/php" ]; then
-  _T_CLI=/opt/php55/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
-  && [ -x "/opt/php54/bin/php" ]; then
-  _T_CLI=/opt/php54/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.3" ] \
-  && [ -x "/opt/php53/bin/php" ]; then
-  _T_CLI=/opt/php53/bin
 fi
 if [ -e "/opt/tools/d7.ini" ] \
   && [ -e "/opt/tools/drush/7/drush/drush.php" ]; then
@@ -152,14 +152,20 @@ else
   _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
 fi
 #
-if [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+if [ "${_PHP_FPM_VERSION}" = "7.3" ] \
+  && [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
+  _D_8_ALLOW=YES
+elif [ "${_PHP_FPM_VERSION}" = "7.2" ] \
+  && [ "${_PHP_CLI_VERSION}" = "7.2" ]; then
+  _D_8_ALLOW=YES
+elif [ "${_PHP_FPM_VERSION}" = "7.1" ] \
+  && [ "${_PHP_CLI_VERSION}" = "7.1" ]; then
+  _D_8_ALLOW=YES
+elif [ "${_PHP_FPM_VERSION}" = "7.0" ] \
   && [ "${_PHP_CLI_VERSION}" = "7.0" ]; then
   _D_8_ALLOW=YES
 elif [ "${_PHP_FPM_VERSION}" = "5.6" ] \
   && [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
-  _D_8_ALLOW=YES
-elif [ "${_PHP_FPM_VERSION}" = "5.5" ] \
-  && [ "${_PHP_CLI_VERSION}" = "5.5" ]; then
   _D_8_ALLOW=YES
 else
   _D_8_ALLOW=NO
@@ -1238,7 +1244,7 @@ fserver_install() {
             echo "core = 6.x" >> fserver.make
             echo "projects[pressflow][type] = \"core\"" >> fserver.make
             echo "projects[pressflow][download][type] = \"get\"" >> fserver.make
-            echo "projects[pressflow][download][url] = \"http://${_USE_MIR}/core/pressflow-6.44.1.tar.gz\"" >> fserver.make
+            echo "projects[pressflow][download][url] = \"http://${_USE_MIR}/core/pressflow-6.46.2.tar.gz\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][type] = \"profile\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][download][type] = \"git\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][download][url] = \"https://github.com/omega8cc/${_REAL_PRNAME}.git\"" >> fserver.make

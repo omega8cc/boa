@@ -16,7 +16,7 @@
     ### Xtras which need to be listed explicitly:
     ###
     ### HVM --- HHVM Engine -- once installed, use ~/static/control/hhvm.info
-    ###         to enable per Octopus instance. Available on Wheezy and Trusty.
+    ###         to enable per Octopus instance. Available on Debian and Ubuntu.
     ###
     ### BDD --- SQL Buddy DB Manager
     ### BND --- Bind9 DNS Server (available on Debian only)

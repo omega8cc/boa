@@ -6,7 +6,7 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _CSF_VRN="12.08"
 _PROXYSQL_VRN="1.3.5-debian8_amd64"
 _UTIL_VRN="0.30.216-pre3126"
-_VNSTAT_VRN="1.15"
+_VNSTAT_VRN="2.0"
 
 _NOISE="-q"
 _INST="/usr/bin/apt-get -y --force-yes ${_NOISE} install"
@@ -45,10 +45,14 @@ check_root() {
     forCer="-fuy --force-yes --reinstall"
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ ! -x "${_LSB_TEST}" ]; then
-      if [ -x "/lib/systemd/systemd" ]; then
-        _OSR=jessie
-      else
-        _OSR=wheezy
+      apt-get clean ${_NOISE}
+      apt-get update ${_NOISE}
+      apt-get install lsb-release ${forCer} ${_NOISE}
+      _OSV=$(lsb_release -si 2>&1)
+      _OSR=$(lsb_release -sc 2>&1)
+      if [ "${_OSV}" != "Debian" ]; then
+        echo "ERROR: Not supported OS detected: ${_OSV}/${_OSR}"
+        exit 1
       fi
       echo
       echo "## MAIN REPOSITORIES"                                                       > /etc/apt/sources.list
@@ -79,9 +83,9 @@ check_root() {
     if [ "${_OSR}" = "jessie" ]; then
       _BENG_SERIES="4.1"
       _BNG_VERSION="4.1.50-vs2.3.8.6"
-    elif [ "${_OSR}" = "wheezy" ]; then
-      _BENG_SERIES="3.18"
-      _BNG_VERSION="3.18.44-vs2.3.7.5"
+    elif [ "${_OSR}" = "stretch" ]; then
+      _BENG_SERIES="4.1"
+      _BNG_VERSION="4.1.50-vs2.3.8.6"
     else
       echo "ERROR: Not supported OS detected: ${_OSV}/${_OSR}"
       exit 1
@@ -568,13 +572,8 @@ install_vps() {
 
   echo "Installing vps ${idn}..."
 
-  if [ "${osx}" = "jessie" ]; then
-    incl="sysvinit-core,sysvinit,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen"
-    excl="systemd,udev,makedev,fuse"
-  else
-    incl="sysvinit,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen"
-    excl="udev,makedev,fuse"
-  fi
+  incl="sysvinit-core,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen"
+  excl="systemd,systemd-sysv,libsystemd0,udev,makedev,fuse"
 
   vserver ${idn} build -n ${idn} -m debootstrap --i-know-its-there \
     --hostname ${hst} \
@@ -684,18 +683,33 @@ install_vps() {
 
   if [ "${ver}" = "galera" ]; then
     echo "Running post-install Galera VPS upgrade..."
-    if [ "${osx}" = "jessie" ] || [ -x "/vservers/${idn}/lib/systemd/systemd" ]; then
+    if [ -x "/vservers/${idn}/lib/systemd/systemd" ]; then
       echo "Removing systemd on ${osx}..."
-      vserver ${idn} exec ${_INSTAPP} sysvinit-core
-      vserver ${idn} exec ${_INSTAPP} sysvinit-utils
-      if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
-        cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
+      if [ "${osx}" = "jessie" ]; then
+        vserver ${idn} exec ${_INSTAPP} sysvinit-core
+        vserver ${idn} exec ${_INSTAPP} sysvinit-utils
+        if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
+          cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
+        fi
+        vserver ${idn} exec apt-get remove systemd -y --force-yes ${_NOISE} --purge --auto-remove
+        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /vservers/${idn}/etc/apt/preferences.d/systemd
+        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /vservers/${idn}/etc/apt/preferences.d/systemd
+        vserver ${idn} exec ${_INSTAPP} sysvinit-core
+        vserver ${idn} exec ${_INSTAPP} sysvinit-utils
+      else
+        echo -e 'deb http://angband.pl/debian/ nosystemd-stretch main' > /vservers/${idn}/etc/apt/sources.list.d/nosystemd.list
+        echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /vservers/${idn}/etc/apt/preferences.d/nosystemd
+        echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /vservers/${idn}/etc/apt/preferences.d/nosystemd
+        echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /vservers/${idn}/etc/apt/preferences.d/nosystemd
+        vserver ${idn} exec wget -qO - http://angband.pl/deb/archive.html | apt-key add -
+        vserver ${idn} exec ${_INSTAPP} kilobyte-archive-keyring
+        vserver ${idn} exec ${_INSTAPP} sysvinit-core
+        vserver ${idn} exec ${_INSTAPP} sysvinit-utils
+        if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
+          cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
+        fi
+        vserver ${idn} exec apt-get remove systemd -y --force-yes ${_NOISE} --purge --auto-remove
       fi
-      vserver ${idn} exec apt-get remove systemd -y --force-yes ${_NOISE} --purge --auto-remove
-      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /vservers/${idn}/etc/apt/preferences.d/systemd
-      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /vservers/${idn}/etc/apt/preferences.d/systemd
-      vserver ${idn} exec ${_INSTAPP} sysvinit-core
-      vserver ${idn} exec ${_INSTAPP} sysvinit-utils
     fi
   else
     echo "Running post-install Barracuda upgrade..."
@@ -822,7 +836,7 @@ install_db_cluster() {
     vserver ${idn} exec ${_INSTAPP} debian-archive-keyring
   	vserver ${idn} exec apt-get upgrade -y ${_NOISE}
   	vserver ${idn} exec apt-get remove apparmor -y ${_NOISE}
-  	vserver ${idn} exec ${_INSTAPP} software-properties-common
+  	vserver ${idn} exec ${_INSTAPP} software-properties-common dirmngr
     echo "## Percona Cluster APT Repository" > /vservers/${idn}${xtraList}
     echo "deb http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
     echo "deb-src http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
@@ -1233,17 +1247,31 @@ install_host() {
     ls -la /boot
   fi
 
-  if [ "${_OSR}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
-    echo "Installing sysvinit on ${_OSV} ${_OSR}..."
-    ${_INSTAPP} sysvinit-core
-    ${_INSTAPP} sysvinit-utils
-    if [ -e "/usr/share/sysvinit/inittab" ]; then
-      cp -af /usr/share/sysvinit/inittab /etc/inittab
+  if [ -x "/lib/systemd/systemd" ]; then
+    echo "Installing sysvinit-core on ${_OSV} ${_OSR}..."
+    if [ "${osx}" = "jessie" ]; then
+      ${_INSTAPP} sysvinit-core
+      ${_INSTAPP} sysvinit-utils
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
+      fi
+      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+      ${_INSTAPP} sysvinit-core
+      ${_INSTAPP} sysvinit-utils
+    else
+      echo -e 'deb http://angband.pl/debian/ nosystemd-stretch main' > /etc/apt/sources.list.d/nosystemd.list
+      echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
+      echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
+      echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /etc/apt/preferences.d/nosystemd
+      wget -qO - http://angband.pl/deb/archive.html | apt-key add -
+      ${_INSTAPP} kilobyte-archive-keyring
+      ${_INSTAPP} sysvinit-core
+      ${_INSTAPP} sysvinit-utils
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
+      fi
     fi
-    echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-    echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-    ${_INSTAPP} sysvinit-core
-    ${_INSTAPP} sysvinit-utils
     echo
     echo "NOTE: Please reboot and then run 'cluster up-host'"
     echo "NOTE: once cluster script completes initial installation"
@@ -1272,18 +1300,32 @@ EOF
 
 upgrade_host() {
 
-  if [ "${_OSR}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
+  if [ -x "/lib/systemd/systemd" ]; then
     echo "Removing systemd on ${_OSV} ${_OSR}..."
-    ${_INSTAPP} sysvinit-core
-    ${_INSTAPP} sysvinit-utils
-    if [ -e "/usr/share/sysvinit/inittab" ]; then
-      cp -af /usr/share/sysvinit/inittab /etc/inittab
+    if [ "${osx}" = "jessie" ]; then
+      ${_INSTAPP} sysvinit-core
+      ${_INSTAPP} sysvinit-utils
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
+      fi
+      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+      ${_INSTAPP} sysvinit-core
+      ${_INSTAPP} sysvinit-utils
+    else
+      echo -e 'deb http://angband.pl/debian/ nosystemd-stretch main' > /etc/apt/sources.list.d/nosystemd.list
+      echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
+      echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
+      echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /etc/apt/preferences.d/nosystemd
+      wget -qO - http://angband.pl/deb/archive.html | apt-key add -
+      ${_INSTAPP} kilobyte-archive-keyring
+      ${_INSTAPP} sysvinit-core
+      ${_INSTAPP} sysvinit-utils
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
+      fi
     fi
     apt-get remove systemd -y --force-yes ${_NOISE} --purge --auto-remove
-    echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-    echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-    ${_INSTAPP} sysvinit-core
-    ${_INSTAPP} sysvinit-utils
   fi
 
   echo "Installing vserver tools dependencies..."
