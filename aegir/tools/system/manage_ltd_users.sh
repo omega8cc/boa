@@ -278,6 +278,7 @@ enable_chattr() {
           /opt/php70:       \
           /opt/php71:       \
           /opt/php72:       \
+          /opt/php73:       \
           /opt/tika:        \
           /opt/tika7:       \
           /opt/tika8:       \
@@ -830,7 +831,10 @@ update_php_cli_local_ini() {
     chattr -i ${_U_II}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php72" ]]; then
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
+      cp -af /opt/php73/lib/php.ini ${_U_II}
+      _U_INI=73
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php72" ]]; then
       cp -af /opt/php72/lib/php.ini ${_U_II}
       _U_INI=72
     elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php71" ]]; then
@@ -852,6 +856,7 @@ update_php_cli_local_ini() {
         /opt/php70:          \
         /opt/php71:          \
         /opt/php72:          \
+        /opt/php73:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \
@@ -1100,7 +1105,10 @@ satellite_update_web_user() {
       if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
         cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
       else
-        if [ -e "/opt/php72/etc/php72.ini" ]; then
+        if [ -e "/opt/php73/etc/php73.ini" ]; then
+          cp -af /opt/php73/etc/php73.ini ${_T_II}
+          _T_PV=73
+        elif [ -e "/opt/php72/etc/php72.ini" ]; then
           cp -af /opt/php72/etc/php72.ini ${_T_II}
           _T_PV=72
         elif [ -e "/opt/php71/etc/php71.ini" ]; then
@@ -1124,6 +1132,7 @@ satellite_update_web_user() {
           /opt/php70:     \
           /opt/php71:     \
           /opt/php72:     \
+          /opt/php73:     \
           /opt/tika:      \
           /opt/tika7:     \
           /opt/tika8:     \

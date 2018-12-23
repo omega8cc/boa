@@ -114,7 +114,10 @@ satellite_update_web_user() {
         cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
         ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_update_web_user D"
       else
-        if [ -e "/opt/php72/etc/php72.ini" ]; then
+        if [ -e "/opt/php73/etc/php73.ini" ]; then
+          cp -af /opt/php73/etc/php73.ini ${_T_II}
+          _T_PV=73
+        elif [ -e "/opt/php72/etc/php72.ini" ]; then
           cp -af /opt/php72/etc/php72.ini ${_T_II}
           _T_PV=72
         elif [ -e "/opt/php71/etc/php71.ini" ]; then
@@ -138,6 +141,7 @@ satellite_update_web_user() {
           /opt/php70:     \
           /opt/php71:     \
           /opt/php72:     \
+          /opt/php73:     \
           /opt/tika:      \
           /opt/tika7:     \
           /opt/tika8:     \
@@ -274,7 +278,9 @@ satellite_tune_fpm_config() {
   if [ -z "${_PHP_SV}" ]; then
     _PHP_SV=72
   fi
-  if [ -e "/opt/php72/etc/pool.d/${_USER}.conf" ]; then
+  if [ -e "/opt/php73/etc/pool.d/${_USER}.conf" ]; then
+    _PHP_OLD_SV=73
+  elif [ -e "/opt/php72/etc/pool.d/${_USER}.conf" ]; then
     _PHP_OLD_SV=72
   elif [ -e "/opt/php71/etc/pool.d/${_USER}.conf" ]; then
     _PHP_OLD_SV=71
@@ -1220,7 +1226,10 @@ satellite_child_b_update_ini_php_cli() {
     mkdir -p ${_U_HD}/{sys,xts,usr}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php72" ]]; then
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
+      cp -af /opt/php73/lib/php.ini ${_U_II}
+      _U_INI=73
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php72" ]]; then
       cp -af /opt/php72/lib/php.ini ${_U_II}
       _U_INI=72
     elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php71" ]]; then
@@ -1242,6 +1251,7 @@ satellite_child_b_update_ini_php_cli() {
         /opt/php70:          \
         /opt/php71:          \
         /opt/php72:          \
+        /opt/php73:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \

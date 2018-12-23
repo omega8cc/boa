@@ -42,6 +42,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /sshd/) {$sshdlives = "YES"; $sshdsumar = $li_cnt{$COMMAND};}
 }
 foreach $X (sort keys %li_cnt) {
+  if ($X =~ /php73/) {$php73lives = "YES";}
   if ($X =~ /php72/) {$php72lives = "YES";}
   if ($X =~ /php71/) {$php71lives = "YES";}
   if ($X =~ /php70/) {$php70lives = "YES";}
@@ -60,6 +61,7 @@ print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
 print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
 print "\n $dhcpcdsumar dhcpcd procs\t\tGLOBAL" if ($dhcpcdlives);
 print "\n $fpmsumar FPM procs\t\tGLOBAL" if ($fpmlives);
+print "\n 1 FPM73 procs\t\tGLOBAL" if ($php73lives);
 print "\n 1 FPM72 procs\t\tGLOBAL" if ($php72lives);
 print "\n 1 FPM71 procs\t\tGLOBAL" if ($php71lives);
 print "\n 1 FPM70 procs\t\tGLOBAL" if ($php70lives);
@@ -146,7 +148,7 @@ if ($nginxsumar) {
 }
 
 if (-f "/root/.dbhd.clstr.cnf") {
-  if ($php72lives || $php71lives || $php70lives || $php56lives) {
+  if ($php73lives || $php72lives || $php71lives || $php70lives || $php56lives) {
     system("killall -9 php-fpm");
   }
   if ($redislives) {
@@ -154,6 +156,7 @@ if (-f "/root/.dbhd.clstr.cnf") {
   }
 }
 else {
+  system("service php73-fpm restart") if ((!$php73lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php73-fpm.pid") && -f "/etc/init.d/php73-fpm" && !-f "/var/run/boa_run.pid");
   system("service php72-fpm restart") if ((!$php72lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php72-fpm.pid") && -f "/etc/init.d/php72-fpm" && !-f "/var/run/boa_run.pid");
   system("service php71-fpm restart") if ((!$php71lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm" && !-f "/var/run/boa_run.pid");
   system("service php70-fpm restart") if ((!$php70lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm" && !-f "/var/run/boa_run.pid");

@@ -402,6 +402,7 @@ tune_memory_limits() {
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
+        sed -i "s/64000/128000/g"  /opt/php73/etc/php73.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php72/etc/php72.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php71/etc/php71.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php70/etc/php70.ini &> /dev/null
@@ -490,6 +491,12 @@ tune_memory_limits() {
   chmod 644 /data/conf/hhvm_intercept.php
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
+  fi
+  if [ -e "/opt/php73/etc/php73.ini" ]; then
+    sed -i "s/256/${_USE_FPM}/g" /opt/php73/etc/php73.ini &> /dev/null
+    wait
+    sed -i "s/181/${_USE_OPC}/g" /opt/php73/etc/php73.ini &> /dev/null
+    sed -i "s/256/${_USE_PHP}/g" /opt/php73/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php72/etc/php72.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php72/etc/php72.ini &> /dev/null
@@ -2353,6 +2360,7 @@ switch_to_dash() {
                   /opt/php70/bin \
                   /opt/php71/bin \
                   /opt/php72/bin \
+                  /opt/php73/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -2408,6 +2416,7 @@ switch_to_bash() {
                   /opt/php70/bin \
                   /opt/php71/bin \
                   /opt/php72/bin \
+                  /opt/php73/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -2452,6 +2461,7 @@ strict_bin_permissions() {
               /opt/php70/bin \
               /opt/php71/bin \
               /opt/php72/bin \
+              /opt/php73/bin \
               /sbin \
               /usr/bin \
               /usr/local/bin \
@@ -4597,6 +4607,10 @@ update_initd() {
       killall -9 nginx php-cgi php-fpm &> /dev/null
       mrun "update-rc.d -f php5-fpm remove" &> /dev/null
       mrun "update-rc.d cron defaults" &> /dev/null
+      if [ -e "/etc/init.d/php73-fpm" ]; then
+        mrun "update-rc.d php73-fpm defaults" &> /dev/null
+        mrun "service php73-fpm start" &> /dev/null
+      fi
       if [ -e "/etc/init.d/php72-fpm" ]; then
         mrun "update-rc.d php72-fpm defaults" &> /dev/null
         mrun "service php72-fpm start" &> /dev/null
@@ -4710,6 +4724,10 @@ update_initd() {
       mrun "service redis-server restart" &> /dev/null
       mrun "update-rc.d -f php5-fpm remove" &> /dev/null
       mrun "service nginx stop" &> /dev/null
+      if [ -e "/etc/init.d/php73-fpm" ]; then
+        mrun "update-rc.d php73-fpm defaults" &> /dev/null
+        mrun "service php73-fpm stop" &> /dev/null
+      fi
       if [ -e "/etc/init.d/php72-fpm" ]; then
         mrun "update-rc.d php72-fpm defaults" &> /dev/null
         mrun "service php72-fpm stop" &> /dev/null
@@ -4788,6 +4806,9 @@ update_initd() {
         mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
         mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
         msg "INFO: ${_DB_SERVER} server restart completed"
+      fi
+      if [ -e "/etc/init.d/php73-fpm" ]; then
+        mrun "service php73-fpm start" &> /dev/null
       fi
       if [ -e "/etc/init.d/php72-fpm" ]; then
         mrun "service php72-fpm start" &> /dev/null

@@ -1049,7 +1049,10 @@ update_php_cli_local_ini() {
     mkdir -p ${_U_HD}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php72" ]]; then
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
+      cp -af /opt/php73/lib/php.ini ${_U_II}
+      _U_INI=73
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php72" ]]; then
       cp -af /opt/php72/lib/php.ini ${_U_II}
       _U_INI=72
     elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php71" ]]; then
@@ -1071,6 +1074,7 @@ update_php_cli_local_ini() {
         /opt/php70:          \
         /opt/php71:          \
         /opt/php72:          \
+        /opt/php73:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \

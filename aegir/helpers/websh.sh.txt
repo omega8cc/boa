@@ -113,7 +113,10 @@ check_php_cli_version() {
       _PHP_CLI=$(grep "/opt/php" /data/disk/${_Y_USR}/tools/drush/drush.php 2>&1)
     fi
   fi
-  if [[ "${_PHP_CLI}" =~ "php72" ]]; then
+  if [[ "${_PHP_CLI}" =~ "php73" ]]; then
+    DRUSH_PHP="/opt/php73/bin/php"
+    PHP_INI="/opt/php73/lib/php.ini"
+  elif [[ "${_PHP_CLI}" =~ "php72" ]]; then
     DRUSH_PHP="/opt/php72/bin/php"
     PHP_INI="/opt/php72/lib/php.ini"
   elif [[ "${_PHP_CLI}" =~ "php71" ]]; then
