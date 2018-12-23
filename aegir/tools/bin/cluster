@@ -685,7 +685,7 @@ install_vps() {
     echo "Running post-install Galera VPS upgrade..."
     if [ -x "/vservers/${idn}/lib/systemd/systemd" ]; then
       echo "Removing systemd on ${osx}..."
-      if [ "${osx}" = "jessie" ]; then
+      if [ "${osx}" = "jessie" ] || [ "${osx}" = "stretch" ]; then
         vserver ${idn} exec ${_INSTAPP} sysvinit-core
         vserver ${idn} exec ${_INSTAPP} sysvinit-utils
         if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
@@ -696,7 +696,9 @@ install_vps() {
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /vservers/${idn}/etc/apt/preferences.d/systemd
         vserver ${idn} exec ${_INSTAPP} sysvinit-core
         vserver ${idn} exec ${_INSTAPP} sysvinit-utils
-      else
+        rm -f /vservers/${idn}/etc/apt/sources.list.d/nosystemd.list
+        rm -f /vservers/${idn}/etc/apt/preferences.d/nosystemd
+      elif [ "${altnos}" = "angband" ]; then
         echo -e 'deb http://angband.pl/debian/ nosystemd-stretch main' > /vservers/${idn}/etc/apt/sources.list.d/nosystemd.list
         echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /vservers/${idn}/etc/apt/preferences.d/nosystemd
         echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /vservers/${idn}/etc/apt/preferences.d/nosystemd
@@ -1249,7 +1251,7 @@ install_host() {
 
   if [ -x "/lib/systemd/systemd" ]; then
     echo "Installing sysvinit-core on ${_OSV} ${_OSR}..."
-    if [ "${osx}" = "jessie" ]; then
+    if [ "${osx}" = "jessie" ] || [ "${osx}" = "stretch" ]; then
       ${_INSTAPP} sysvinit-core
       ${_INSTAPP} sysvinit-utils
       if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -1259,7 +1261,9 @@ install_host() {
       echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
       ${_INSTAPP} sysvinit-core
       ${_INSTAPP} sysvinit-utils
-    else
+      rm -f /etc/apt/sources.list.d/nosystemd.list
+      rm -f /etc/apt/preferences.d/nosystemd
+    elif [ "${altnos}" = "angband" ]; then
       echo -e 'deb http://angband.pl/debian/ nosystemd-stretch main' > /etc/apt/sources.list.d/nosystemd.list
       echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
       echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
@@ -1302,7 +1306,7 @@ upgrade_host() {
 
   if [ -x "/lib/systemd/systemd" ]; then
     echo "Removing systemd on ${_OSV} ${_OSR}..."
-    if [ "${osx}" = "jessie" ]; then
+    if [ "${osx}" = "jessie" ] || [ "${osx}" = "stretch" ]; then
       ${_INSTAPP} sysvinit-core
       ${_INSTAPP} sysvinit-utils
       if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -1312,7 +1316,9 @@ upgrade_host() {
       echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
       ${_INSTAPP} sysvinit-core
       ${_INSTAPP} sysvinit-utils
-    else
+      rm -f /etc/apt/sources.list.d/nosystemd.list
+      rm -f /etc/apt/preferences.d/nosystemd
+    elif [ "${altnos}" = "angband" ]; then
       echo -e 'deb http://angband.pl/debian/ nosystemd-stretch main' > /etc/apt/sources.list.d/nosystemd.list
       echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
       echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
