@@ -4548,11 +4548,11 @@ satellite_child_b_prepare_dirs_permissions() {
   mkdir -p ${_ROOT}/distro/${_DISTRO}
   mkdir -p ${_ROOT}/src/${_DISTRO}
   mkdir -p ${_ROOT}/src/{modules,themes}
-  mkdir -p ${_ROOT}/{tools,log,u,backups,clients}
+  mkdir -p ${_ROOT}/{tools,log,u,backups,platforms,clients}
   chmod 0700 ${_ROOT}/{log,src,u} &> /dev/null
   chmod 0700 ${_ROOT}/src/${_DISTRO} &> /dev/null
   chmod 0700 ${_ROOT}/src/{modules,themes} &> /dev/null
-  chmod 0711 ${_ROOT}/{aegir,aegir/distro,distro,tools} &> /dev/null
+  chmod 0711 ${_ROOT}/{aegir,aegir/distro,distro,platforms,tools} &> /dev/null
   chmod 0711 ${_ROOT}/distro/${_DISTRO} &> /dev/null
   chmod 0750 ${_ROOT}/{backups,clients} &> /dev/null
 
