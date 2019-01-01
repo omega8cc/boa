@@ -275,4 +275,4 @@ rm -f /var/run/boa_sql_backup.pid
 touch /var/xdrago/log/last-run-backup
 echo "ALL TASKS COMPLETED"
 exit 0
-###EOF2018###
+###EOF2019###

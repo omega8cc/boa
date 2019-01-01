@@ -2435,7 +2435,7 @@ satellite_download_for_local_build() {
     get_dev_stc "views-7.x-3.20.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
-    get_dev_stc "features-7.x-2.10.tar.gz"
+    get_dev_stc "features-7.x-2.11.tar.gz"
     get_dev_stc "idna_convert-7.x-1.0.tar.gz"
     get_dev_stc "revision_deletion-7.x-1.x-dev.tar.gz"
     get_dev_stc "strongarm-7.x-2.0.tar.gz"
