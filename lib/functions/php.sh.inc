@@ -987,9 +987,7 @@ install_php_multi() {
                 --with-imap-ssl \
                 --with-jpeg-dir=/usr \
                 --with-kerberos \
-                --with-mcrypt \
                 --with-mysql-sock=/var/run/mysqld/mysqld.sock \
-                --with-mysql=/usr \
                 --with-mysqli=/usr/bin/mysql_config \
                 --with-openssl \
                 --with-pdo-mysql=/usr \
