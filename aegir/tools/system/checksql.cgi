@@ -95,4 +95,4 @@ sub repair_this_action
   system("echo \"/usr/bin/mysqlcheck -a $FIXTABLE\" >> $fixfile");
   system("echo \" \" >> $fixfile");
 }
-###EOF2018###
+###EOF2019###

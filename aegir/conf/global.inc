@@ -650,6 +650,7 @@ if ($all_ini['auto_detect_domain_access_integration']) {
 if ($all_ini['set_composer_manager_vendor_dir'] && !$is_install) {
   if ($drupal_eight) {
     $config['composer_manager.settings']['vendor_dir'] = 'sites/' . $_SERVER['SERVER_NAME'] . '/vendor';
+  }
   else {
     $conf['composer_manager_vendor_dir'] = 'sites/' . $_SERVER['SERVER_NAME'] . '/vendor';
   }

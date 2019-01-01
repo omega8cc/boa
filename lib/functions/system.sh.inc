@@ -2857,7 +2857,7 @@ basic_packages_install_on_init() {
     ${_INITINS} wget &> /dev/null
     if [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Installing sysvinit-core on ${_THIS_OS} ${_OSV}..."
-      if [ "${_OSV}" = "jessie" ]; then
+      if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
         ${_INITINS} sysvinit-core &> /dev/null
         ${_INITINS} sysvinit-utils &> /dev/null
         if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -2867,7 +2867,9 @@ basic_packages_install_on_init() {
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
         ${_INITINS} sysvinit-core &> /dev/null
         ${_INITINS} sysvinit-utils &> /dev/null
-      else
+        rm -f /etc/apt/sources.list.d/nosystemd.list
+        rm -f /etc/apt/preferences.d/nosystemd
+      elif [ "${altnos}" = "angband" ]; then
         echo -e 'deb http://angband.pl/debian/ nosystemd-stretch main' > /etc/apt/sources.list.d/nosystemd.list
         echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
         echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
@@ -2890,7 +2892,7 @@ basic_packages_install_on_init() {
   else
     if [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
-      if [ "${_OSV}" = "jessie" ]; then
+      if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
         ${_INITINS} sysvinit-core &> /dev/null
         ${_INITINS} sysvinit-utils &> /dev/null
         if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -2900,7 +2902,9 @@ basic_packages_install_on_init() {
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
         ${_INITINS} sysvinit-core &> /dev/null
         ${_INITINS} sysvinit-utils &> /dev/null
-      else
+        rm -f /etc/apt/sources.list.d/nosystemd.list
+        rm -f /etc/apt/preferences.d/nosystemd
+      elif [ "${altnos}" = "angband" ]; then
         echo -e 'deb http://angband.pl/debian/ nosystemd-stretch main' > /etc/apt/sources.list.d/nosystemd.list
         echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
         echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
@@ -3128,7 +3132,7 @@ if_jessie_to_stretch() {
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     if [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
-      if [ "${_OSV}" = "jessie" ]; then
+      if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
         ${_INITINS} sysvinit-core &> /dev/null
         ${_INITINS} sysvinit-utils &> /dev/null
         if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -3138,7 +3142,9 @@ if_jessie_to_stretch() {
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
         ${_INITINS} sysvinit-core &> /dev/null
         ${_INITINS} sysvinit-utils &> /dev/null
-      else
+        rm -f /etc/apt/sources.list.d/nosystemd.list
+        rm -f /etc/apt/preferences.d/nosystemd
+      elif [ "${altnos}" = "angband" ]; then
         echo -e 'deb http://angband.pl/debian/ nosystemd-stretch main' > /etc/apt/sources.list.d/nosystemd.list
         echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
         echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
@@ -3372,7 +3378,7 @@ sys_packages_update() {
     mrun "aptitude remove php5-apc -y" &> /dev/null
     mrun "aptitude remove php-apc -y" &> /dev/null
     mrun "aptitude remove apache2.2-common -y" &> /dev/null
-    mrun "aptitude remove apache2-utils apache2.2-bin -y" &> /dev/null
+    mrun "aptitude remove apache2.2-bin -y" &> /dev/null
     mrun "aptitude install lsof -y" &> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
@@ -3677,6 +3683,7 @@ sys_packages_install() {
               libxslt1-dbg \
               libxslt1-dev \
               libxslt1.1 \
+              libzip-dev \
               makepasswd \
               mc \
               mcrypt \
