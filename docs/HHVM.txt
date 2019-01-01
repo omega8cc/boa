@@ -42,7 +42,7 @@
   To disable HHVM on the Octopus Satellite Instance, follow these steps:
 
     1. Delete existing '~/static/control/hhvm.info' control file
-    2. Create non-empty control file: 'echo 5.5 > ~/static/control/fpm.info'
+    2. Create non-empty control file: 'echo 7.2 > ~/static/control/fpm.info'
     3. Wait 2-3 minutes
     4. Done! This particular Octopus instance is now powered by PHP-FPM
 

@@ -103,11 +103,11 @@ and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
 will stop working if not switched to one of currently
-supported versions: 5.6, 7.0 or 5.5
+supported versions: 7.3, 7.2, 7.1, 7.0 or 5.6
 
 To switch PHP-FPM version on command line, please type:
 
-  echo 5.6 > ~/static/control/fpm.info
+  echo 7.2 > ~/static/control/fpm.info
 
 You can find more details at: https://learn.omega8.cc/node/330
 
@@ -138,11 +138,11 @@ and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
 will stop working if not switched to one of currently
-supported versions: 5.6, 7.0 or 5.5
+supported versions: 7.3, 7.2, 7.1, 7.0 or 5.6
 
 To switch PHP-FPM version on command line, please type:
 
-  echo 5.6 > ~/static/control/fpm.info
+  echo 7.2 > ~/static/control/fpm.info
 
 You can find more details at: https://learn.omega8.cc/node/330
 
@@ -173,11 +173,11 @@ and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
 will stop working if not switched to one of currently
-supported versions: 5.6, 7.0 or 5.5
+supported versions: 7.3, 7.2, 7.1, 7.0 or 5.6
 
 To switch PHP-FPM version on command line, please type:
 
-  echo 5.6 > ~/static/control/fpm.info
+  echo 7.2 > ~/static/control/fpm.info
 
 You can find more details at: https://learn.omega8.cc/node/330
 

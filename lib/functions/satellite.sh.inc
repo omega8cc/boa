@@ -276,7 +276,7 @@ satellite_tune_fpm_config() {
   fi
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "${_PHP_SV}" ]; then
-    _PHP_SV=72
+    _PHP_SV=56
   fi
   if [ -e "/opt/php73/etc/pool.d/${_USER}.conf" ]; then
     _PHP_OLD_SV=73

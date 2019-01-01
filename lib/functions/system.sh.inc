@@ -987,10 +987,109 @@ barracuda_cnf() {
       fi
     fi
 
+    _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.3" /data/disk/*/log/cli.txt 3>&1)
+    _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.3" /data/disk/*/static/control/cli.info 3>&1)
+    _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.3" /root/.*.octopus.cnf 3>&1)
+    if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.3" ]] \
+      || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.3" ]] \
+      || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.3" ]]; then
+      if [ -e "/opt/php53/bin/php" ] || [ -e "/etc/init.d/php53-fpm" ]; then
+        echo " "
+        msg "Legacy PHP-CLI 5.3 is used on this system but will be removed"
+      fi
+    fi
+
+    _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.3" /data/disk/*/log/fpm.txt 3>&1)
+    _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.3" /data/disk/*/static/control/fpm.info 3>&1)
+    _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.3" /root/.*.octopus.cnf 3>&1)
+    if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.3" ]] \
+      || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.3" ]] \
+      || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.3" ]]; then
+      if [ -e "/opt/php53/bin/php" ] || [ -e "/etc/init.d/php53-fpm" ]; then
+        msg "Legacy PHP-FPM 5.3 is used on this system but will be removed"
+        echo " "
+      fi
+    fi
+
+    _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.4" /data/disk/*/log/cli.txt 4>&1)
+    _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.4" /data/disk/*/static/control/cli.info 4>&1)
+    _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.4" /root/.*.octopus.cnf 4>&1)
+    if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.4" ]] \
+      || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.4" ]] \
+      || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.4" ]]; then
+      if [ -e "/opt/php54/bin/php" ] || [ -e "/etc/init.d/php54-fpm" ]; then
+        echo " "
+        msg "Legacy PHP-CLI 5.4 is used on this system but will be removed"
+      fi
+    fi
+
+    _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.4" /data/disk/*/log/fpm.txt 4>&1)
+    _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.4" /data/disk/*/static/control/fpm.info 4>&1)
+    _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.4" /root/.*.octopus.cnf 4>&1)
+    if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.4" ]] \
+      || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.4" ]] \
+      || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.4" ]]; then
+      if [ -e "/opt/php54/bin/php" ] || [ -e "/etc/init.d/php54-fpm" ]; then
+        msg "Legacy PHP-FPM 5.4 is used on this system but will be removed"
+        echo " "
+      fi
+    fi
+
+    _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.5" /data/disk/*/log/cli.txt 5>&1)
+    _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.5" /data/disk/*/static/control/cli.info 5>&1)
+    _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.5" /root/.*.octopus.cnf 5>&1)
+    if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.5" ]] \
+      || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.5" ]] \
+      || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.5" ]]; then
+      if [ -e "/opt/php55/bin/php" ] || [ -e "/etc/init.d/php55-fpm" ]; then
+        echo " "
+        msg "Legacy PHP-CLI 5.5 is used on this system but will be removed"
+      fi
+    fi
+
+    _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.5" /data/disk/*/log/fpm.txt 5>&1)
+    _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.5" /data/disk/*/static/control/fpm.info 5>&1)
+    _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.5" /root/.*.octopus.cnf 5>&1)
+    if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.5" ]] \
+      || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.5" ]] \
+      || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.5" ]]; then
+      if [ -e "/opt/php55/bin/php" ] || [ -e "/etc/init.d/php55-fpm" ]; then
+        msg "Legacy PHP-FPM 5.5 is used on this system but will be removed"
+        echo " "
+      fi
+    fi
+
     _PHP_MULTI_INSTALL_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
 
     if [[ "${_PHP_MULTI_INSTALL_TEST}" =~ "5.2" ]]; then
       _R_M=5.2
+      _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
+      sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
+      wait
+      sed -i "/^$/d" ${barCnf}
+      wait
+    fi
+
+    if [[ "${_PHP_MULTI_INSTALL_TEST}" =~ "5.3" ]]; then
+      _R_M=5.3
+      _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
+      sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
+      wait
+      sed -i "/^$/d" ${barCnf}
+      wait
+    fi
+
+    if [[ "${_PHP_MULTI_INSTALL_TEST}" =~ "5.4" ]]; then
+      _R_M=5.4
+      _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
+      sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
+      wait
+      sed -i "/^$/d" ${barCnf}
+      wait
+    fi
+
+    if [[ "${_PHP_MULTI_INSTALL_TEST}" =~ "5.5" ]]; then
+      _R_M=5.5
       _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
       sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
       wait
@@ -1009,6 +1108,21 @@ barracuda_cnf() {
       rm -f /etc/init.d/php52-fpm
     fi
     killall -9 php-cgi &> /dev/null
+    if [ -e "/etc/init.d/php53-fpm" ]; then
+      mrun "service php53-fpm stop" &> /dev/null
+      update-rc.d -f php53-fpm remove &> /dev/null
+      rm -f /etc/init.d/php53-fpm
+    fi
+    if [ -e "/etc/init.d/php54-fpm" ]; then
+      mrun "service php54-fpm stop" &> /dev/null
+      update-rc.d -f php54-fpm remove &> /dev/null
+      rm -f /etc/init.d/php54-fpm
+    fi
+    if [ -e "/etc/init.d/php55-fpm" ]; then
+      mrun "service php55-fpm stop" &> /dev/null
+      update-rc.d -f php55-fpm remove &> /dev/null
+      rm -f /etc/init.d/php55-fpm
+    fi
 
     _CHECK_HOST=$(uname -n 2>&1)
     _VMFAMILY=XEN
