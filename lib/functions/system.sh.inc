@@ -987,9 +987,9 @@ barracuda_cnf() {
       fi
     fi
 
-    _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.3" /data/disk/*/log/cli.txt 3>&1)
-    _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.3" /data/disk/*/static/control/cli.info 3>&1)
-    _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.3" /root/.*.octopus.cnf 3>&1)
+    _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.3" /data/disk/*/log/cli.txt 2>&1)
+    _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.3" /data/disk/*/static/control/cli.info 2>&1)
+    _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.3" /root/.*.octopus.cnf 2>&1)
     if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.3" ]] \
       || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.3" ]] \
       || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.3" ]]; then
@@ -999,9 +999,9 @@ barracuda_cnf() {
       fi
     fi
 
-    _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.3" /data/disk/*/log/fpm.txt 3>&1)
-    _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.3" /data/disk/*/static/control/fpm.info 3>&1)
-    _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.3" /root/.*.octopus.cnf 3>&1)
+    _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.3" /data/disk/*/log/fpm.txt 2>&1)
+    _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.3" /data/disk/*/static/control/fpm.info 2>&1)
+    _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.3" /root/.*.octopus.cnf 2>&1)
     if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.3" ]] \
       || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.3" ]] \
       || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.3" ]]; then
@@ -1011,9 +1011,9 @@ barracuda_cnf() {
       fi
     fi
 
-    _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.4" /data/disk/*/log/cli.txt 4>&1)
-    _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.4" /data/disk/*/static/control/cli.info 4>&1)
-    _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.4" /root/.*.octopus.cnf 4>&1)
+    _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.4" /data/disk/*/log/cli.txt 2>&1)
+    _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.4" /data/disk/*/static/control/cli.info 2>&1)
+    _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.4" /root/.*.octopus.cnf 2>&1)
     if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.4" ]] \
       || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.4" ]] \
       || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.4" ]]; then
@@ -1023,9 +1023,9 @@ barracuda_cnf() {
       fi
     fi
 
-    _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.4" /data/disk/*/log/fpm.txt 4>&1)
-    _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.4" /data/disk/*/static/control/fpm.info 4>&1)
-    _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.4" /root/.*.octopus.cnf 4>&1)
+    _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.4" /data/disk/*/log/fpm.txt 2>&1)
+    _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.4" /data/disk/*/static/control/fpm.info 2>&1)
+    _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.4" /root/.*.octopus.cnf 2>&1)
     if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.4" ]] \
       || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.4" ]] \
       || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.4" ]]; then
@@ -1035,9 +1035,9 @@ barracuda_cnf() {
       fi
     fi
 
-    _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.5" /data/disk/*/log/cli.txt 5>&1)
-    _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.5" /data/disk/*/static/control/cli.info 5>&1)
-    _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.5" /root/.*.octopus.cnf 5>&1)
+    _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.5" /data/disk/*/log/cli.txt 2>&1)
+    _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.5" /data/disk/*/static/control/cli.info 2>&1)
+    _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.5" /root/.*.octopus.cnf 2>&1)
     if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.5" ]] \
       || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.5" ]] \
       || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.5" ]]; then
@@ -1047,9 +1047,9 @@ barracuda_cnf() {
       fi
     fi
 
-    _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.5" /data/disk/*/log/fpm.txt 5>&1)
-    _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.5" /data/disk/*/static/control/fpm.info 5>&1)
-    _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.5" /root/.*.octopus.cnf 5>&1)
+    _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.5" /data/disk/*/log/fpm.txt 2>&1)
+    _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.5" /data/disk/*/static/control/fpm.info 2>&1)
+    _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.5" /root/.*.octopus.cnf 2>&1)
     if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.5" ]] \
       || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.5" ]] \
       || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.5" ]]; then
