@@ -359,10 +359,10 @@ check_php_cli() {
     if [ -x "${_PHP_CLI_PATH}" ]; then
       _USE_PHP_CLI_PATH="${_PHP_CLI_PATH}"
     else
-      if  [ -x "/opt/php73/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php73/bin/php
-      elif  [ -x "/opt/php72/bin/php" ]; then
+      if  [ -x "/opt/php72/bin/php" ]; then
         _USE_PHP_CLI_PATH=/opt/php72/bin/php
+      elif  [ -x "/opt/php73/bin/php" ]; then
+        _USE_PHP_CLI_PATH=/opt/php73/bin/php
       elif  [ -x "/opt/php71/bin/php" ]; then
         _USE_PHP_CLI_PATH=/opt/php71/bin/php
       elif  [ -x "/opt/php70/bin/php" ]; then
