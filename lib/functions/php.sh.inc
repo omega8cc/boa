@@ -1309,7 +1309,7 @@ check_php_rebuild() {
     fi
   fi
   if [ -x "/opt/php$1/bin/php" ]; then
-    _PHP_DRIVERS=$(/opt/php$1/bin/php -i | grep "with-mysql=/usr" 2>&1)
+    _PHP_DRIVERS=$(/opt/php$1/bin/php -i | grep "with-mysql-sock" 2>&1)
     if [ -z "${_PHP_DRIVERS}" ]; then
       _PHP_DRIVERS_BUILD=NO
     else
