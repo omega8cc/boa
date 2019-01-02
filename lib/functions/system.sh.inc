@@ -913,6 +913,12 @@ barracuda_cnf() {
           sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"            ${barCnf}
           wait
         fi
+        if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
+          sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=7.2/g"                  ${barCnf}
+          wait
+          sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=7.2/g"                  ${barCnf}
+          wait
+        fi
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
           || [ "${_VMFAMILY}" = "VS" ]; then
@@ -922,12 +928,6 @@ barracuda_cnf() {
             sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                       ${barCnf}
             wait
             sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
-            wait
-          fi
-          if [ -x "/opt/php56/bin/php" ] && [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g"                 ${barCnf}
-            wait
-            sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g"                 ${barCnf}
             wait
           fi
         fi
@@ -1556,6 +1556,12 @@ barracuda_cnf() {
           sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"            ${barCnf}
           wait
         fi
+        if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
+          sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=7.2/g"                  ${barCnf}
+          wait
+          sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=7.2/g"                  ${barCnf}
+          wait
+        fi
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
           || [ "${_VMFAMILY}" = "VS" ]; then
@@ -1565,12 +1571,6 @@ barracuda_cnf() {
             sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                       ${barCnf}
             wait
             sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
-            wait
-          fi
-          if [ -x "/opt/php56/bin/php" ] && [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g"                 ${barCnf}
-            wait
-            sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g"                 ${barCnf}
             wait
           fi
         fi

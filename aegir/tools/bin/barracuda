@@ -360,15 +360,15 @@ check_php_cli() {
       _USE_PHP_CLI_PATH="${_PHP_CLI_PATH}"
     else
       if  [ -x "/opt/php72/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php72/bin/php
+        _USE_PHP_CLI_PATH="/opt/php72/bin/php"
       elif  [ -x "/opt/php73/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php73/bin/php
+        _USE_PHP_CLI_PATH="/opt/php73/bin/php"
       elif  [ -x "/opt/php71/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php71/bin/php
+        _USE_PHP_CLI_PATH="/opt/php71/bin/php"
       elif  [ -x "/opt/php70/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php70/bin/php
+        _USE_PHP_CLI_PATH="/opt/php70/bin/php"
       elif [ -x "/opt/php56/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php56/bin/php
+        _USE_PHP_CLI_PATH="/opt/php56/bin/php"
       fi
     fi
     if [ -x "${_USE_PHP_CLI_PATH}" ]; then
@@ -387,17 +387,17 @@ up_action() {
   if [ -e "${vBs}/${barName}" ] && [ -e "${barCnf}" ]; then
     if [ ! -z "${rkey}" ]; then
       if [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
-        phpS=7.3
+        phpS="7.3"
       elif [ "${rkey}" = "php-72" ] || [ "${rkey}" = "php-7.2" ]; then
-        phpS=7.2
+        phpS="7.2"
       elif [ "${rkey}" = "php-71" ] || [ "${rkey}" = "php-7.1" ]; then
-        phpS=7.1
+        phpS="7.1"
       elif [ "${rkey}" = "php-70" ] || [ "${rkey}" = "php-7.0" ]; then
-        phpS=7.0
+        phpS="7.0"
       elif [ "${rkey}" = "php-56" ] || [ "${rkey}" = "php-5.6" ]; then
-        phpS=5.6
+        phpS="5.6"
       elif [ "${rkey}" = "php-all" ]; then
-        phpS=ALL
+        phpS="ALL"
       elif [ "${rkey}" = "nodns" ]; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${barName}
         wait
@@ -513,7 +513,7 @@ up_action() {
         fi
       elif [ "${phpS}" = "ALL" ]; then
         phpM="7.3 7.2 7.1 7.0 5.6"
-        phpS=7.2
+        phpS="7.2"
 
         ### Debugging
         if [ "$debug" = "debug" ]; then
@@ -738,13 +738,6 @@ up_action() {
               sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"      ${barCnf}
             fi
             wait
-            if [ -x "/opt/php56/bin/php" ] \
-              && [ -z "${phpS}" ]; then
-              sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g"   ${barCnf}
-              wait
-              sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g"   ${barCnf}
-              wait
-            fi
           fi
         fi
       fi

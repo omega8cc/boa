@@ -1591,8 +1591,8 @@ php_single_initd_cleanup() {
 #
 # Fix path to PHP-CLI if needed.
 check_php_cli() {
-  _PHP_CHECK=$(readlink -n /usr/bin/php 2>&1)
-  if [ ! -x "$_PHP_CHECK" ]; then
+  # _PHP_CHECK=$(readlink -n /usr/bin/php 2>&1)
+  # if [ ! -x "$_PHP_CHECK" ]; then
     if [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
       _PHP_CLI_PATH="/opt/php73/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "7.2" ]; then
@@ -1610,15 +1610,15 @@ check_php_cli() {
       _USE_PHP_CLI_PATH=$_PHP_CLI_PATH
     else
       if  [ -x "/opt/php72/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php72/bin/php
+        _USE_PHP_CLI_PATH="/opt/php72/bin/php"
       elif  [ -x "/opt/php73/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php73/bin/php
+        _USE_PHP_CLI_PATH="/opt/php73/bin/php"
       elif  [ -x "/opt/php71/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php71/bin/php
+        _USE_PHP_CLI_PATH="/opt/php71/bin/php"
       elif  [ -x "/opt/php70/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php70/bin/php
+        _USE_PHP_CLI_PATH="/opt/php70/bin/php"
       elif [ -x "/opt/php56/bin/php" ]; then
-        _USE_PHP_CLI_PATH=/opt/php56/bin/php
+        _USE_PHP_CLI_PATH="/opt/php56/bin/php"
       fi
     fi
     if [ -x "${_USE_PHP_CLI_PATH}" ]; then
@@ -1629,7 +1629,7 @@ check_php_cli() {
     else
       msg "WAIT: I can not find PHP-CLI anywhere!"
     fi
-  fi
+  # fi
 }
 
 switch_php_cli() {
@@ -1832,6 +1832,7 @@ install_update_php() {
 }
 
 check_fix_php() {
+  check_php_cli
   if [ -x "/opt/php56/bin/php" ]; then
     _CURLWRAPPERS_TEST=$(/opt/php56/bin/php -i | grep "with-curlwrappers" 2>&1)
     if [[ "$_CURLWRAPPERS_TEST" =~ "with-curlwrappers" ]]; then
