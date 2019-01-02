@@ -1696,20 +1696,6 @@ php_upgrade_all() {
     _T_PHP_VRN=""
     _T_PHP_PTH=""
   fi
-  if [ -x "/opt/php72/bin/php" ] \
-    && [ -z "$_FRESH_PHP72_BUILD" ]; then
-    _PHP_VERSION="${_PHP72_VRN}"
-    _PHP_BIN_BROKEN=NO
-    _BROKEN_LIBCURL_TEST=""
-    switch_php_cli "72"
-    check_php_broken "72"
-    check_php_rebuild "72"
-    update_php_multi "72"
-    mrun "service php72-fpm restart" &> /dev/null
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-  fi
   if [ -x "/opt/php73/bin/php" ] \
     && [ -z "$_FRESH_PHP73_BUILD" ]; then
     _PHP_VERSION="${_PHP73_VRN}"
@@ -1720,6 +1706,20 @@ php_upgrade_all() {
     check_php_rebuild "73"
     update_php_multi "73"
     mrun "service php73-fpm restart" &> /dev/null
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+  fi
+  if [ -x "/opt/php72/bin/php" ] \
+    && [ -z "$_FRESH_PHP72_BUILD" ]; then
+    _PHP_VERSION="${_PHP72_VRN}"
+    _PHP_BIN_BROKEN=NO
+    _BROKEN_LIBCURL_TEST=""
+    switch_php_cli "72"
+    check_php_broken "72"
+    check_php_rebuild "72"
+    update_php_multi "72"
+    mrun "service php72-fpm restart" &> /dev/null
     _PHP_VERSION=""
     _T_PHP_VRN=""
     _T_PHP_PTH=""
@@ -1805,18 +1805,6 @@ install_update_php() {
     _T_PHP_PTH=""
     _FRESH_PHP71_BUILD=71
   fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.2" ]] \
-    && [ ! -x "/opt/php72/bin/php" ]; then
-    _PHP_VERSION="${_PHP72_VRN}"
-    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    get_php_conf_extra
-    install_php_multi "72"
-    switch_php_cli "72"
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-    _FRESH_PHP72_BUILD=72
-  fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "7.3" ]] \
     && [ ! -x "/opt/php73/bin/php" ]; then
     _PHP_VERSION="${_PHP73_VRN}"
@@ -1828,6 +1816,18 @@ install_update_php() {
     _T_PHP_VRN=""
     _T_PHP_PTH=""
     _FRESH_PHP73_BUILD=73
+  fi
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.2" ]] \
+    && [ ! -x "/opt/php72/bin/php" ]; then
+    _PHP_VERSION="${_PHP72_VRN}"
+    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+    get_php_conf_extra
+    install_php_multi "72"
+    switch_php_cli "72"
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+    _FRESH_PHP72_BUILD=72
   fi
 }
 
