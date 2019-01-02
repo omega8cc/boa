@@ -388,7 +388,7 @@ mode_detection() {
   if [ -z "${_PHP_SV}" ] \
     || [ "${_PHP_SV}" = "55" ] \
     || [ "${_PHP_SV}" = "54" ] \
-    || [ "${_PHP_SV}" = "53" ]
+    || [ "${_PHP_SV}" = "53" ] \
     || [ "${_PHP_SV}" = "52" ]; then
     _PHP_SV=56
   fi
