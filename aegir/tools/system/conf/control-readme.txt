@@ -13,13 +13,13 @@
 ###
 ### Supported values for single PHP-FPM mode which can be written in this file:
 ###
-### 7.3 (experimental)
+### 7.3
 ### 7.2
 ### 7.1
 ### 7.0
 ### 5.6
 ###
-### NOTE: There must be only one line and one value (like: 7.0) in this file.
+### NOTE: There must be only one line and one value (like: 7.3) in this file.
 ### Otherwise it will be ignored.
 ###
 ### It is now possible to make all installed PHP-FPM versions available
@@ -33,8 +33,8 @@
 ### to override PHP-FPM version per site, if the site's name is listed
 ### in this additional control file, as shown below:
 ###
-### foo.com 7.2
-### bar.com 7.1
+### foo.com 7.3
+### bar.com 7.2
 ### old.com 5.6
 ###
 ### NOTE: Each line in the multi-fpm.info file must start with main site name,
@@ -52,16 +52,9 @@
 ### it will do this for all hosted sites. There is no option to switch this
 ### or override per site hosted.
 ###
-### NOTE: While current Aegir version 3.x included in BOA works fine with
-### latest PHP 7.0, many hosted sites, especially using Pressflow 6 core or
-### older Drupal 7 core without required patch we have included since 7.43.2,
-### will not work properly and Aegir tasks run against those sites may fail,
-### so it's recommended to use PHP-CLI 5.6, unless you have verified that all
-### sites on the instance support PHP 7.0 without issues.
-###
 ### Supported values which can be written in this file:
 ###
-### 7.3 (experimental)
+### 7.3
 ### 7.2
 ### 7.1
 ### 7.0
