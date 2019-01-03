@@ -10,30 +10,16 @@
   Drupal distributions updated to latest versions, and supplied with latest
   Drupal 7 core, if possible.
 
-@=> Drupal 8 platforms
-
-  While Drupal 8 platforms are not included by default, because Drupal 8
-  doesn't support symlinked and shared codebase structure like all previous
-  Drupal versions, it's fully supported as your custom platform you can install
-  in the standard ~/static directory tree.
-
-  Please check for more information:
-    https://learn.omega8.cc/how-to-add-custom-platform-properly-140
-    https://learn.omega8.cc/platforms
-
 @=> Important PHP versions availability changes
 
-  BOA-4.0.0 release removes PHP 5.3, 5.4 and 5.5 versions, if installed.
+  Still on PHP 5.6? You should switch to PHP 7.3 — It’s twice as fast as 5.6!
+
+  Note: BOA-4.0.0 release removes PHP 5.3, 5.4 and 5.5 versions, if installed.
   In addition to still supported, even if officially deprecated 5.6 and 7.0
   versions, this release adds support for PHP 7.3, 7.2 and 7.1
 
   Please check the PHP officially supported versions list at:
     http://php.net/supported-versions.php
-
-  Please note that even if 7.0 is now fully deprecated, the website says:
-  "PHP 7.0.33 is the last scheduled release of PHP 7.0 branch. There may be
-  additional release if we discover important security issues that warrant it,
-  otherwise this release will be the final one in the PHP 7.0 branch."
 
   In our limited testing Drupal 7 core version included in this release works
   without noticeable issues with both PHP 7.2 and 7.3, although many contrib
@@ -52,6 +38,17 @@
 
   If you still have a reason to use Drupal 6 core, we recommend to use
   our version: https://github.com/omega8cc/pressflow6/tree/pressflow-plus
+
+@=> Drupal 8 platforms
+
+  While Drupal 8 platforms are not included by default, because Drupal 8
+  doesn't support symlinked and shared codebase structure like all previous
+  Drupal versions, it's fully supported as your custom platform you can install
+  in the standard ~/static directory tree.
+
+  Please check for more information:
+    https://learn.omega8.cc/how-to-add-custom-platform-properly-140
+    https://learn.omega8.cc/platforms
 
 @=> BOA release policy changes
 
