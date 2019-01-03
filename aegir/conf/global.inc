@@ -245,15 +245,13 @@ if ($drupal_eight) {
   // will accept on/off changes on form submit, while being silently
   // overriden here.
   //
-  $config['image.settings']['allow_insecure_derivatives'] = TRUE;   // Not sure if it's a good idea in D8
-  $config['image.settings']['suppress_itok_output'] = TRUE;         // Not sure if it's a good idea in D8
-  $config['system.cron']['threshold.autorun'] = FALSE;              // Disable poormanscron
-  $config['system.logging']['error_level'] = 'hide';                // Disable errors on screen
-  $config['system.performance']['css']['preprocess'] = TRUE;        // Enable hardcoded CSS aggregation
-  $config['system.performance']['js']['preprocess'] = TRUE;         // Enable hardcoded JS aggregation
-  $config['system.performance']['response.gzip'] = FALSE;           // Nginx already compresses everything
-  $config['redirect.settings']['route_normalizer_enabled'] = FALSE; // Disable default Redirect module behaviour
-  $config['redirect.settings']['ignore_admin_path'] = TRUE;         // Disable default Redirect module behaviour
+  $config['image.settings']['allow_insecure_derivatives'] = TRUE;  // Not sure if it's a good idea in D8
+  $config['image.settings']['suppress_itok_output'] = TRUE;        // Not sure if it's a good idea in D8
+  $config['system.cron']['threshold.autorun'] = FALSE;             // Disable poormanscron
+  $config['system.logging']['error_level'] = 'hide';               // Disable errors on screen
+  $config['system.performance']['css']['preprocess'] = TRUE;       // Enable hardcoded CSS aggregation
+  $config['system.performance']['js']['preprocess'] = TRUE;        // Enable hardcoded JS aggregation
+  $config['system.performance']['response.gzip'] = FALSE;          // Nginx already compresses everything
 }
 else {
   if ($backdropcms) {
