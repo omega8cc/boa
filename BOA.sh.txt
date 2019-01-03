@@ -677,7 +677,7 @@ update_agents() {
 }
 
 fix_core_dgd() {
-  sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf
+  # sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf
 
   saCoreS="${saCoreN}-D7"
   saIncDb="includes/database/database.inc"
