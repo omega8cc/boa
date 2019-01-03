@@ -429,7 +429,7 @@ run_backup() {
     sleep $n
   fi
   echo "Running ${_MODE} backup on `date`" >> ${LOGFILE}
-  duplicity ${_MODE} -v ${_AWS_VLV} --volsize 100 \
+  duplicity ${_MODE} -v ${_AWS_VLV} --volsize 300 \
     --allow-source-mismatch \
     --full-if-older-than ${_AWS_FLC} \
     --asynchronous-upload ${_AWS_OPX} ${_NAME} \
