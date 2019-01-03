@@ -1098,25 +1098,6 @@ satellite_cnf() {
 }
 
 #
-# Fix broken Entity module if needed.
-satellite_fix_broken_entity_module() {
-  if [ -e "${_ROOT}/.drush/hostmaster.alias.drushrc.php" ]; then
-    _THIS_HM_ROOT=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
-      | grep "root'" \
-      | cut -d: -f2 \
-      | awk '{ print $3}' \
-      | sed "s/[\,']//g" 2>&1)
-    pthA="profiles/hostmaster/modules/contrib/entity"
-    pthB="module_filter.module"
-    if [ -e "${_THIS_HM_ROOT}/${pthA}/${pthB}" ]; then
-      rm -f -r ${_THIS_HM_ROOT}/${pthA}
-      cd ${_THIS_HM_ROOT}/profiles/hostmaster/modules/contrib
-      get_dev_stc "entity-7.x-1.9.tar.gz"
-    fi
-  fi
-}
-
-#
 # Fix advanced cron IP for cURL requests.
 satellite_fix_cron_curl() {
   if [ -e "${_ROOT}/.drush/hostmaster.alias.drushrc.php" ]; then
@@ -3686,10 +3667,6 @@ satellite_make() {
   chmod 700 ${bldPth}/aegir/scripts/* &> /dev/null
 
   ###
-  satellite_fix_broken_entity_module
-  ###
-
-  ###
   AegirSetupA="${bldPth}/aegir/scripts/AegirSetupA.sh.txt"
   bash ${AegirSetupA} ${_USER}
   ###
@@ -4934,6 +4911,19 @@ satellite_child_b_aegir_build() {
     export DEBIAN_FRONTEND=noninteractive
     if [ -z "${TERM+x}" ]; then
       export TERM=vt100
+    fi
+
+    #
+    # Fix broken Entity module if needed.
+    #
+    pthA="profiles/hostmaster/modules/contrib/entity"
+    pthB="module_filter.module"
+    #
+    if [ -e "${_PREV_HM_ROOT}/${pthA}/${pthB}" ]; then
+      rm -f -r ${_PREV_HM_ROOT}/${pthA}
+      cd ${_PREV_HM_ROOT}/profiles/hostmaster/modules/contrib
+      get_dev_stc "entity-7.x-1.9.tar.gz"
+      ${_DRUSHCMD} @hostmaster en entity -y
     fi
 
     if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
