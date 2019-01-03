@@ -4920,10 +4920,16 @@ satellite_child_b_aegir_build() {
     pthB="module_filter.module"
     #
     if [ -e "${_PREV_HM_ROOT}/${pthA}/${pthB}" ]; then
+      msg "${_STATUS} B: Fixing broken Entity module..."
       rm -f -r ${_PREV_HM_ROOT}/${pthA}
       cd ${_PREV_HM_ROOT}/profiles/hostmaster/modules/contrib
       get_dev_stc "entity-7.x-1.9.tar.gz"
       ${_DRUSHCMD} @hostmaster en entity -y
+      ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_service WHERE service LIKE 'http'"
+      ${_DRUSHCMD} @hostmaster sqlq "INSERT INTO hosting_service (nid, vid, service, type, restart_cmd, port, available) VALUES ('2', '2', 'http', 'nginx_ssl', 'sudo /etc/init.d/nginx reload', '80', '1')"
+      ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
+      ${_DRUSHCMD} @hostmaster hosting-dispatch
+      sleep 15
     fi
 
     if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
