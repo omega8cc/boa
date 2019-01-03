@@ -15,8 +15,9 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-_DUPLICITY_VRN="0.7.12"
-_BOTO_VRN="2.48.0"
+_DUPLICITY_VRN="0.7.18.2"
+_BOTO_VRN="2.49.0"
+_FASTENERS_VRN="0.14.1"
 _LOGPTH="/var/xdrago/log"
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
@@ -135,6 +136,8 @@ install() {
     apt-get clean -qq                    &> /dev/null
     apt-get update -qq                   &> /dev/null
     aptitude purge duplicity -y          &> /dev/null
+    rm -rf /usr/local/lib/python2.7/dist-packages/fasteners*
+    rm -rf /usr/local/lib/python2.6/dist-packages/fasteners*
     rm -rf /usr/local/lib/python2.7/dist-packages/boto*
     rm -rf /usr/local/lib/python2.6/dist-packages/boto*
     rm -rf /usr/local/lib/python2.7/dist-packages/duplicity*
@@ -145,12 +148,21 @@ install() {
     apt-get install python-setuptools -y &> /dev/null
     apt-get install s3cmd -y             &> /dev/null
     mkdir -p /var/opt
-    rm -rf /var/opt/{boto*,duplicity*}
+    rm -rf /var/opt/{fasteners*,boto*,duplicity*}
+    cd /var/opt
+    fe="fasteners-${_FASTENERS_VRN}.tar.gz"
+    curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
+    tar xzf ${fe} &> /dev/null
+    cd /var/opt/fasteners-${_FASTENERS_VRN}
+    python setup.py build &> /dev/null
+    python setup.py install &> /dev/null
+    echo ${_FASTENERS_VRN} > ${_LOGPTH}/fasteners-${_FASTENERS_VRN}.log
     cd /var/opt
     fe="boto-${_BOTO_VRN}.tar.gz"
     curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
     tar xzf ${fe} &> /dev/null
     cd /var/opt/boto-${_BOTO_VRN}
+    python setup.py build &> /dev/null
     python setup.py install &> /dev/null
     echo ${_BOTO_VRN} > ${_LOGPTH}/boto-${_BOTO_VRN}.log
     echo "Building duplicity version ${_DUPLICITY_VRN} from sources..."
