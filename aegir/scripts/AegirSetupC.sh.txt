@@ -568,6 +568,15 @@ upgrade_contrib_less() {
     fi
     cd ${_CORE}
   fi
+  if [ -e "${_SHRD_PRPATH}/modules/rules" ]; then
+    rm -rf ${_SHRD_PRPATH}/modules/rules
+    cd ${_SHRD_PRPATH}/modules
+    get_dev_contrib "rules-7.x-2.11.tar.gz"
+    if [ ! -e "${_SHRD_PRPATH}/modules/rules" ]; then
+      get_dev_contrib "rules-7.x-2.11.tar.gz"
+    fi
+    cd ${_CORE}
+  fi
 }
 #
 # Create D7 basic platform.
