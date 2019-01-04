@@ -559,6 +559,15 @@ upgrade_contrib_less() {
     fi
     cd ${_CORE}
   fi
+  if [ -e "${_SHRD_PRPATH}/modules/contrib/rules" ]; then
+    rm -rf ${_SHRD_PRPATH}/modules/contrib/rules
+    cd ${_SHRD_PRPATH}/modules/contrib
+    get_dev_contrib "rules-7.x-2.11.tar.gz"
+    if [ ! -e "${_SHRD_PRPATH}/modules/contrib/rules" ]; then
+      get_dev_contrib "rules-7.x-2.11.tar.gz"
+    fi
+    cd ${_CORE}
+  fi
 }
 #
 # Create D7 basic platform.
@@ -789,6 +798,7 @@ commerce_7_1_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
+              upgrade_contrib_less
               if [ "${_COMMERCE1}" = "1.32" ]; then
                 cd ${_SHRD_PRPATH}/modules/
                 rm -rf commerce
@@ -843,6 +853,7 @@ commerce_7_2_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
+              upgrade_contrib_less
               if [ "${_COMMERCE2}" = "2.22" ]; then
                 cd ${_SHRD_PLPATH}
                 patch -p1 < ${pthPch}/${_REAL_PRNAME}.patch &> /dev/null
