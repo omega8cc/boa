@@ -2050,7 +2050,7 @@ else
   _THISHTIP=$(echo $(getent ahostsv4 ${_THISHTNM}) \
     | cut -d: -f2 \
     | awk '{ print $1}' 2>&1)
-  sed -i "s/8.8.8.8/${_THISHTIP}/g" ${_THIS_LTD_CONF}
+  sed -i "s/1.1.1.1/${_THISHTIP}/g" ${_THIS_LTD_CONF}
   wait
   if [ ! -e "/root/.allow.mc.cnf" ]; then
     sed -i "s/'mc', //g" ${_THIS_LTD_CONF}
