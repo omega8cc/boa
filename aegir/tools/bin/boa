@@ -281,8 +281,8 @@ fix_dns_settings() {
     fi
   fi
   if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
-    echo "nameserver 8.8.8.8" >${vBs}/resolv.conf.tmp
-    echo "nameserver 8.8.4.4" >>${vBs}/resolv.conf.tmp
+    echo "nameserver 1.1.1.1" >${vBs}/resolv.conf.tmp
+    echo "nameserver 1.0.0.1" >>${vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
     for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
@@ -320,18 +320,18 @@ fix_dns_settings() {
       wait
       _BROKEN_DNS_TEST_X=$(grep "\." ${dnsLi} 2>&1)
       if [ -z "${_BROKEN_DNS_TEST_X}" ]; then
-        echo "        label = \"google-servers\";" > ${dnsLi}
-        echo "        ip=8.8.8.8;" >> ${dnsLi}
-        echo "        ip=8.8.4.4;" >> ${dnsLi}
+        echo "        label = \"cloudflare-servers\";" > ${dnsLi}
+        echo "        ip=1.1.1.1;" >> ${dnsLi}
+        echo "        ip=1.0.0.1;" >> ${dnsLi}
       fi
     fi
-    _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
+    _CUSTOM_DNS_TEST=$(grep 1.1.1.1 /etc/pdnsd.conf 2>&1)
     _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
-    if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
+    if [[ "${_CUSTOM_DNS_TEST}" =~ "1.1.1.1" ]] \
       || [ -e "/root/.use.default.nameservers.cnf" ] \
       || [ -e "/root/.use.local.nameservers.cnf" ] \
       || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]]; then
-      echo "        label = \"google-servers\";" > ${dnsLi}
+      echo "        label = \"cloudflare-servers\";" > ${dnsLi}
       for _IP in `cat /etc/resolv.conf \
         | sed 's/.*127.0.0.1.*//g; s/.*search.*//g; s/.*Dynamic.*//g' \
         | cut -d ' ' -f2 \
@@ -346,15 +346,15 @@ fix_dns_settings() {
       wait
       _BROKEN_DNS_TEST_Y=$(grep "\." ${dnsLi} 2>&1)
       if [ -z "${_BROKEN_DNS_TEST_Y}" ]; then
-         echo "        ip=8.8.8.8;" >> ${dnsLi}
-         echo "        ip=8.8.4.4;" >> ${dnsLi}
+         echo "        ip=1.1.1.1;" >> ${dnsLi}
+         echo "        ip=1.0.0.1;" >> ${dnsLi}
       fi
       ### echo debug dns A
-      _DNS_TPL_TEST=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
-      _DNS_RGX_TEST=$(grep "google-servers" /root/.local.dns.IP.list 2>&1)
-      if [[ "${_DNS_TPL_TEST}" =~ "google-servers" ]] \
-        && [[ "${_DNS_RGX_TEST}" =~ "google-servers" ]]; then
-        sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+      _DNS_TPL_TEST=$(grep "clouflare-servers" /etc/pdnsd.conf 2>&1)
+      _DNS_RGX_TEST=$(grep "cloudflare-servers" /root/.local.dns.IP.list 2>&1)
+      if [[ "${_DNS_TPL_TEST}" =~ "cloudflare-servers" ]] \
+        && [[ "${_DNS_RGX_TEST}" =~ "cloudflare-servers" ]]; then
+        sed -i '/        label = \"cloudflare-servers\";/ {r /root/.local.dns.IP.list
 d;};' /etc/pdnsd.conf
         wait
       fi
@@ -373,7 +373,7 @@ check_dns_settings() {
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
   else
-    _REMOTE_DNS_TEST=$(host -a files.aegir.cc 8.8.8.8 -w 10 2>&1)
+    _REMOTE_DNS_TEST=$(host -a files.aegir.cc 1.1.1.1 -w 10 2>&1)
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
     || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
@@ -1261,8 +1261,8 @@ check_dns_curl() {
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then
       cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
     fi
-    echo "nameserver 8.8.8.8" >>/etc/resolv.conf
-    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    echo "nameserver 1.1.1.1" >>/etc/resolv.conf
+    echo "nameserver 1.0.0.1" >>/etc/resolv.conf
     check_dns_settings
   else
     check_dns_settings

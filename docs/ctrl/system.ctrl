@@ -83,7 +83,7 @@ by the BOA install and upgrade tools exclusively.
 
   This file, if exists, allows to use original (or custom) nameservers
   provided on the system install by your hosting provider. It will automatically
-  configure pdnsd server to use these IPs instead of public Google DNS servers.
+  configure pdnsd server to use these IPs instead of public Cloudflare DNS servers.
 
   It depends on existence of another file with custom name servers to use
   listed, one per line: /var/backups/resolv.conf.vanilla -- for example:
@@ -96,7 +96,7 @@ by the BOA install and upgrade tools exclusively.
  @=> /root/.use.default.nameservers.cnf
 
   This file, if exists, allows to revert pdnsd cache server configuration
-  to use Google DNS again (which is BOA default).
+  to use Cloudflare DNS again (which is BOA default).
 
   Note that to restore default DNS cache configuration on barracuda upgrade,
   you must delete the /root/.use.local.nameservers.cnf file, if still exists.
