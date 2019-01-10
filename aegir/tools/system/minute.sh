@@ -184,8 +184,11 @@ jetty_restart() {
   touch /var/run/boa_run.pid
   sleep 5
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
-  rm -f /var/log/jetty{7,8,9}/*
+  rm -f /var/log/jetty{7,8,9,97}/*
   renice ${_B_NICE} -p $$ &> /dev/null
+  if [ -e "/etc/default/jetty97" ] && [ -e "/etc/init.d/jetty97" ]; then
+    service jetty97 start
+  fi
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
     service jetty9 start
   fi
@@ -198,6 +201,15 @@ jetty_restart() {
   sleep 5
   rm -f /var/run/boa_run.pid
 }
+
+if [ -e "/var/log/jetty97" ]; then
+  if [ `tail --lines=500 /var/log/jetty97/*stderrout.log \
+    | grep --count "Address already in use"` -gt "0" ]; then
+    jetty_restart "zombie"
+    echo "$(date 2>&1) Address already in use for jetty97" >> \
+      /var/xdrago/log/jetty.zombie.incident.log
+  fi
+fi
 
 if [ -e "/var/log/jetty9" ]; then
   if [ `tail --lines=500 /var/log/jetty9/*stderrout.log \

@@ -556,6 +556,9 @@ tune_memory_limits() {
   _MAX_MEM_REDIS="${_MAX_MEM_REDIS}MB"
   sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" \
     /etc/redis/redis.conf &> /dev/null
+  if [ -e "/etc/default/jetty97" ] && [ -e "/opt/solr7" ]; then
+    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty97
+  fi
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9
   fi
@@ -4494,14 +4497,6 @@ check_fix_newrelic() {
 }
 
 check_fix_java() {
-  if [ ! -e "/usr/lib/jvm/java-6-openjdk" ] \
-    && [ -d "/usr/lib/jvm/java-6-openjdk-amd64" ]; then
-    ln -sf /usr/lib/jvm/java-6-openjdk-amd64 /usr/lib/jvm/java-6-openjdk
-  fi
-  if [ ! -e "/usr/lib/jvm/java-6-openjdk" ] \
-    && [ -d "/usr/lib/jvm/java-6-openjdk-i386" ]; then
-    ln -sf /usr/lib/jvm/java-6-openjdk-i386 /usr/lib/jvm/java-6-openjdk
-  fi
   if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] \
     && [ -d "/usr/lib/jvm/java-7-openjdk-amd64" ]; then
     ln -sf /usr/lib/jvm/java-7-openjdk-amd64 /usr/lib/jvm/java-7-openjdk
@@ -4517,6 +4512,22 @@ check_fix_java() {
   if [ ! -e "/usr/bin/java7" ] \
     && [ -e "/usr/lib/jvm/java-7-openjdk-i386/jre/bin/java" ]; then
     ln -sf /usr/lib/jvm/java-7-openjdk-i386/jre/bin/java /usr/bin/java7
+  fi
+  if [ ! -e "/usr/lib/jvm/java-8-openjdk" ] \
+    && [ -d "/usr/lib/jvm/java-8-openjdk-amd64" ]; then
+    ln -sf /usr/lib/jvm/java-8-openjdk-amd64 /usr/lib/jvm/java-8-openjdk
+  fi
+  if [ ! -e "/usr/lib/jvm/java-8-openjdk" ] \
+    && [ -d "/usr/lib/jvm/java-8-openjdk-i386" ]; then
+    ln -sf /usr/lib/jvm/java-8-openjdk-i386 /usr/lib/jvm/java-8-openjdk
+  fi
+  if [ ! -e "/usr/bin/java8" ] \
+    && [ -e "/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java /usr/bin/java8
+  fi
+  if [ ! -e "/usr/bin/java8" ] \
+    && [ -e "/usr/lib/jvm/java-8-openjdk-i386/jre/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-8-openjdk-i386/jre/bin/java /usr/bin/java8
   fi
 }
 
@@ -4707,6 +4718,11 @@ update_initd() {
     fi
     mrun "service ssh reload" &> /dev/null
     tune_memory_limits
+    if [ -e "/etc/default/jetty97" ] && [ -e "/etc/init.d/jetty97" ]; then
+      msg "INFO: Restarting Jetty 97"
+      kill -9 $(ps aux | grep '[j]etty97' | awk '{print $2}') &> /dev/null
+      mrun "service jetty97 start" &> /dev/null
+    fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       msg "INFO: Restarting Jetty 9"
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
@@ -4827,6 +4843,10 @@ update_initd() {
     fix_on_upgrade
     tune_memory_limits
     kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
+    if [ -e "/etc/default/jetty97" ] && [ -e "/etc/init.d/jetty97" ]; then
+      msg "INFO: Restarting Jetty 97"
+      mrun "service jetty97 start" &> /dev/null
+    fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       msg "INFO: Restarting Jetty 9"
       mrun "service jetty9 start" &> /dev/null

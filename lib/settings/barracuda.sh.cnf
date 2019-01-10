@@ -163,15 +163,16 @@ _PHP_CLI_VERSION=7.2
 ### FMG --- FFmpeg support
 ### GIT --- Latest Git from sources
 ### IMG --- Image Optimize binaries
-### SR1 --- Apache Solr 1 with Jetty 7
-### SR3 --- Apache Solr 3 with Jetty 8
-### SR4 --- Apache Solr 4 with Jetty 8 or 9
+### SR1 --- Apache Solr 1 with Jetty 7 (deprecated)
+### SR3 --- Apache Solr 3 with Jetty 8 (deprecated)
+### SR4 --- Apache Solr 4 with Jetty 9
+### SR7 --- Apache Solr 7 with Jetty 9
 ###
 ### Examples:
 ###
 ### _XTRAS_LIST=""
 ### _XTRAS_LIST="ALL"
-### _XTRAS_LIST="ALL GIT SR3"
+### _XTRAS_LIST="ALL GIT SR7"
 ### _XTRAS_LIST="ADM CSF CGP CHV FTP"
 ###
 ### Note that removing any item from this

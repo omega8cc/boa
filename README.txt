@@ -126,7 +126,7 @@ production settings.
 * Drush access on command line in all shell accounts.
 * Drush Make access on command line for main shell account only.
 * Support for New Relic monitoring with per Octopus instance license key.
-* Solr 4 cores can be added/updated/deleted via site level INI settings.
+* Solr cores can be added/updated/deleted via site level INI settings.
 * Magic Speed Booster cache, working like a Boost + AuthCache, but per user.
 * Entry level XSS built-in protection on the Nginx level.
 * Firewall csf/lfd integrated with Nginx abuse guard.
@@ -141,7 +141,7 @@ production settings.
 
 * RVM, Compass Tools, and NPM - see docs/RVM.txt for details.
 * HHVM support - see docs/HHVM.txt for details.
-* MultiCore Apache Solr 4.9.1 with Jetty 9 - see docs/SOLR.txt for details.
+* MultiCore Apache Solr.9.1 with Jetty 9 - see docs/SOLR.txt for details.
 * New Relic Apps Monitor with per Octopus license and per Site reporting.
 * Image Optimize toolkit binaries.
 * FFmpeg support.

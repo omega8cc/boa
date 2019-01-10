@@ -1322,6 +1322,10 @@ tune_memory_limits() {
   sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" \
     /etc/redis/redis.conf &> /dev/null
   wait
+  if [ -e "/etc/default/jetty97" ] && [ -e "/opt/solr7" ]; then
+    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr7 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty97
+    wait
+  fi
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9
     wait
