@@ -213,7 +213,7 @@ fix_php_ini_geos() {
 # Fix all php.ini files to add geos.so
 fix_php_ini_geos_all() {
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-    _PHP_V="56 55 54 53"
+    _PHP_V="56"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       fix_php_ini_geos
@@ -253,7 +253,7 @@ fix_php_ini_mongodb() {
 # Fix all php.ini files to add mongo.so or mongodb.so
 fix_php_ini_mongo_all() {
   if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
-    _PHP_V="56 55 54 53"
+    _PHP_V="56"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       fix_php_ini_mongo
