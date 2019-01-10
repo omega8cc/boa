@@ -5278,6 +5278,7 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster en hosting_cron -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_site_backup_manager -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_tasks_extra -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en libraries -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en overlay -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en overlay_paths -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en revision_deletion -y &> /dev/null
