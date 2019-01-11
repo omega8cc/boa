@@ -75,8 +75,9 @@ write_solr_config() {
   # ${2} is a path to solr.php
   # ${3} is Jetty/Solr version
   if [ ! -z "${1}" ] \
-    && [ ! -z ${2} ] \
-    && [ ! -z "${_MD5H}" ] \
+    && [ ! -z "${2}" ] \
+    && [ ! -z "${3}" ] \
+    && [ ! -z "${SolrCoreID}" ] \
     && [ -e "${Dir}" ]; then
     if [ "${3}" = "solr7" ]; then
       _PRT="9077"
@@ -230,41 +231,21 @@ add_solr() {
   fi
   if [ ! -z "${1}" ] && [ ! -z "${2}" ] && [ -e "/data/conf/solr" ]; then
     if [ ! -e "${2}" ]; then
-      rm -rf ${_SOLR_BASE}/core0/data/*
-      cp -a ${_SOLR_BASE}/core0 ${2}
-      CHAR="[:alnum:]"
-      rkey="32"
-      if [ "${_NEW_SSL}" = "YES" ] \
-        || [ "${_OSV}" = "jessie" ] \
-        || [ "${_OSV}" = "stretch" ] \
-        || [ "${_OSV}" = "trusty" ] \
-        || [ "${_OSV}" = "precise" ]; then
-        _MD5H=$(cat /dev/urandom \
-          | tr -cd "$CHAR" \
-          | head -c ${1:-$rkey} \
-          | openssl md5 \
-          | awk '{ print $2}' \
-          | tr -d "\n" 2>&1)
-      else
-        _MD5H=$(cat /dev/urandom \
-          | tr -cd "$CHAR" \
-          | head -c ${1:-$rkey} \
-          | openssl md5 \
-          | tr -d "\n" 2>&1)
-      fi
       if [ "${_SOLR_BASE}" = "/var/solr7/data" ] \
         && [ -x "/opt/solr7/bin/solr" ] \
         && [ -e "/var/solr7/data/solr.xml" ]; then
         su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr create_core -p 9077 -c ${SolrCoreID} -d /data/conf/solr/search_api_solr/7"
       else
+        rm -rf ${_SOLR_BASE}/core0/data/*
+        cp -a ${_SOLR_BASE}/core0 ${2}
         sed -i "s/.*<core name=\"core0\" instanceDir=\"core0\" \/>.*/<core name=\"core0\" instanceDir=\"core0\" \/>\n<core name=\"${SolrCoreID}\" instanceDir=\"${SolrCoreID}\" \/>\n/g" ${_SOLR_BASE}/solr.xml
         wait
         sed -i "/^$/d" ${_SOLR_BASE}/solr.xml &> /dev/null
         wait
       fi
-      update_solr "${1}" "${2}"
       echo "New Solr with ${1} for ${2} added"
     fi
+    update_solr "${1}" "${2}"
   fi
 }
 
