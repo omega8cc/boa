@@ -78,7 +78,7 @@ write_solr_config() {
     && [ ! -z ${2} ] \
     && [ ! -z "${_MD5H}" ] \
     && [ -e "${Dir}" ]; then
-    if [ "${3}" = "jetty97" ]; then
+    if [ "${3}" = "solr7" ]; then
       _PRT="9077"
       _VRS="7.6.0"
     else
@@ -110,9 +110,9 @@ update_solr() {
   if [ ! -z "${1}" ] \
     && [ -e "/var/xdrago/conf/solr" ]; then
     _SOLR_DIR=""
-    _JTTY_FAM=""
+    _SERV=""
     if [ "${1}" = "apachesolr" ]; then
-      _JTTY_FAM="etty9"
+      _SERV="etty9"
       if [ -e "${Plr}/modules/o_contrib_seven" ]; then
         _SOLR_DIR="/opt/solr4/${_HM_U}.${Dom}"
         if [ ! -e "${_SOLR_DIR}/conf/.protected.conf" ] && [ -e "${_SOLR_DIR}/conf" ]; then
@@ -146,8 +146,8 @@ update_solr() {
       fi
     elif [ "${1}" = "search_api_solr" ] \
       && [ -e "${Plr}/modules/o_contrib_seven" ]; then
-      _JTTY_FAM="etty97"
-      _SOLR_DIR="/opt/solr7/${_HM_U}.${Dom}"
+      _SERV="olr7"
+      _SOLR_DIR="/var/solr7/data/${_HM_U}.${Dom}"
       if [ ! -e "${_SOLR_DIR}/conf/.protected.conf" ] && [ -e "${_SOLR_DIR}/conf" ]; then
         myCnfUpdate=""
         check_config_diff "/var/xdrago/conf/solr/apachesolr/7/schema.xml" "${_SOLR_DIR}/conf/schema.xml"
@@ -165,8 +165,8 @@ update_solr() {
       && [ -e "${Plr}/sites/${Dom}/files/solr/schema.xml" ] \
       && [ -e "${Plr}/sites/${Dom}/files/solr/solrconfig.xml" ] \
       && [ -e "${Plr}/modules/o_contrib_eight" ]; then
-      _JTTY_FAM="etty97"
-      _SOLR_DIR="/opt/solr7/${_HM_U}.${Dom}"
+      _SERV="olr7"
+      _SOLR_DIR="/var/solr7/data/${_HM_U}.${Dom}"
       if [ ! -e "${_SOLR_DIR}/conf/.protected.conf" ] && [ -e "${_SOLR_DIR}/conf" ]; then
         myCnfUpdate=""
         check_config_diff "${Plr}/sites/${Dom}/files/solr/schema.xml" "${_SOLR_DIR}/conf/schema.xml"
@@ -184,8 +184,8 @@ update_solr() {
     elif [ "${1}" = "search_api_solr" ] \
       && [ ! -e "${Plr}/sites/${Dom}/files/solr/schema.xml" ] \
       && [ -e "${Plr}/modules/o_contrib_eight" ]; then
-      _JTTY_FAM="etty97"
-      _SOLR_DIR="/opt/solr7/${_HM_U}.${Dom}"
+      _SERV="olr7"
+      _SOLR_DIR="/var/solr7/data/${_HM_U}.${Dom}"
       if [ ! -e "${_SOLR_DIR}/conf/.protected.conf" ] && [ -e "${_SOLR_DIR}/conf" ]; then
         myCnfUpdate=""
         check_config_diff "/var/xdrago/conf/solr/apachesolr/8/schema.xml" "${_SOLR_DIR}/conf/schema.xml"
@@ -201,13 +201,21 @@ update_solr() {
       fi
     fi
     if [ -e "${_SOLR_DIR}/conf/yes-update.txt" ]; then
-      if [ -e "/etc/default/j${_JTTY_FAM}" ] && [ -e "/etc/init.d/j${_JTTY_FAM}" ]; then
+      if [ -e "/etc/default/j${_SERV}" ] && [ -e "/etc/init.d/j${_SERV}" ]; then
         fiLe="${Dir}/solr.php"
-        write_solr_config "${1}" "${fiLe}" "j${_JTTY_FAM}"
+        write_solr_config "${1}" "${fiLe}" "j${_SERV}"
         echo "Updated Solr with ${1} for ${_SOLR_DIR}"
         touch ${_SOLR_DIR}/conf/${_X_SE}.conf
-        kill -9 $(ps aux | grep '[j]${_JTTY_FAM}' | awk '{print $2}') &> /dev/null
-        service j${_JTTY_FAM} start &> /dev/null
+        kill -9 $(ps aux | grep '[j]${_SERV}' | awk '{print $2}') &> /dev/null
+        service j${_SERV} start &> /dev/null
+      fi
+      if [ -e "/var/s${_SERV}" ] && [ -e "/etc/init.d/s${_SERV}" ]; then
+        fiLe="${Dir}/solr.php"
+        write_solr_config "${1}" "${fiLe}" "s${_SERV}"
+        echo "Updated Solr with ${1} for ${_SOLR_DIR}"
+        touch ${_SOLR_DIR}/conf/${_X_SE}.conf
+      # kill -9 $(ps aux | grep '[s]${_SERV}' | awk '{print $2}') &> /dev/null
+      # service s${_SERV} start &> /dev/null
       fi
     fi
   fi
@@ -220,10 +228,10 @@ add_solr() {
     _SOLR_BASE="/opt/solr4"
   elif [ "${1}" = "search_api_solr" ] \
     && [ -e "${Plr}/modules/o_contrib_seven" ]; then
-    _SOLR_BASE="/opt/solr7"
+    _SOLR_BASE="/var/solr7/data"
   elif [ "${1}" = "search_api_solr" ] \
     && [ -e "${Plr}/modules/o_contrib_eight" ]; then
-    _SOLR_BASE="/opt/solr7"
+    _SOLR_BASE="/var/solr7/data"
   fi
   if [ ! -z "${1}" ] && [ ! -z "${2}" ] && [ -e "/var/xdrago/conf/solr" ]; then
     if [ ! -e "${2}" ]; then
@@ -263,11 +271,11 @@ delete_solr() {
   # ${1} is solr base dir
   # ${2} is solr core path
   if [ "${1}" = "/opt/solr4" ]; then
-    _JTTY_FAM="etty9"
+    _SERV="etty9"
     _SOLR_BASE="/opt/solr4"
-  elif [ "${1}" = "/opt/solr7" ]; then
-    _JTTY_FAM="etty97"
-    _SOLR_BASE="/opt/solr7"
+  elif [ "${1}" = "/var/solr7/data" ]; then
+    _SERV="olr7"
+    _SOLR_BASE="/var/solr7/data"
   fi
   if [ ! -z "${2}" ] \
     && [ -e "/var/xdrago/conf/solr" ] \
@@ -278,10 +286,14 @@ delete_solr() {
     wait
     rm -rf ${2}
     rm -f ${Dir}/solr.php
-    if [ -e "/etc/default/j${_JTTY_FAM}" ] && [ -e "/etc/init.d/j${_JTTY_FAM}" ]; then
-      kill -9 $(ps aux | grep '[j]${_JTTY_FAM}' | awk '{print $2}') &> /dev/null
-      service j${_JTTY_FAM} start &> /dev/null
+    if [ -e "/etc/default/j${_SERV}" ] && [ -e "/etc/init.d/j${_SERV}" ]; then
+      kill -9 $(ps aux | grep '[j]${_SERV}' | awk '{print $2}') &> /dev/null
+      service j${_SERV} start &> /dev/null
     fi
+    #if [ -e "/var/s${_SERV}" ] && [ -e "/etc/init.d/s${_SERV}" ]; then
+    #  kill -9 $(ps aux | grep '[s]${_SERV}' | awk '{print $2}') &> /dev/null
+    #  service s${_SERV} start &> /dev/null
+    #fi
     echo "Deleted Solr core in ${2}"
   fi
 }
@@ -305,10 +317,10 @@ setup_solr() {
     _SOLR_BASE="/opt/solr4"
     _SOLR_DIR="${_SOLR_BASE}/${_HM_U}.${Dom}"
   elif [ -e "${Plr}/modules/o_contrib_seven" ]; then
-    _SOLR_BASE="/opt/solr7"
+    _SOLR_BASE="/var/solr7/data"
     _SOLR_DIR="${_SOLR_BASE}/${_HM_U}.${Dom}"
   elif [ -e "${Plr}/modules/o_contrib_eight" ]; then
-    _SOLR_BASE="/opt/solr7"
+    _SOLR_BASE="/var/solr7/data"
     _SOLR_DIR="${_SOLR_BASE}/${_HM_U}.${Dom}"
   fi
 

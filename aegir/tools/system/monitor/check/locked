@@ -41,9 +41,6 @@ if ($fpm_status ne "CLEAN") {
 if ($java_status ne "CLEAN") {
   `kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')`;
   sleep(2);
-  if (-f "/etc/default/jetty97" && -f "/etc/init.d/jetty97") {
-    `service jetty97 start`;
-  }
   if (-f "/etc/default/jetty9" && -f "/etc/init.d/jetty9") {
     `service jetty9 start`;
   }

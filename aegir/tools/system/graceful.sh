@@ -82,10 +82,7 @@ action() {
     sleep 60
     kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
     rm -rf /tmp/{drush*,pear,jetty*}
-    rm -f /var/log/jetty{7,8,9,97}/*
-    if [ -e "/etc/default/jetty97" ] && [ -e "/etc/init.d/jetty97" ]; then
-      service jetty97 start
-    fi
+    rm -f /var/log/jetty{7,8,9}/*
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       service jetty9 start
     fi

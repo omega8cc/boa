@@ -19,7 +19,7 @@ foreach $USER (sort keys %li_cnt) {
   if ($USER eq "jetty7") {$jetty7lives = "YES"; $jetty7sumar = $li_cnt{$USER};}
   if ($USER eq "jetty8") {$jetty8lives = "YES"; $jetty8sumar = $li_cnt{$USER};}
   if ($USER eq "jetty9") {$jetty9lives = "YES"; $jetty9sumar = $li_cnt{$USER};}
-  if ($USER eq "jetty97") {$jetty97lives = "YES"; $jetty97sumar = $li_cnt{$USER};}
+  if ($USER eq "solr7") {$solr7lives = "YES"; $solr7sumar = $li_cnt{$USER};}
 }
 foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /named/) {$namedlives = "YES"; $namedsumar = $li_cnt{$COMMAND};}
@@ -79,7 +79,7 @@ print "\n $newrelicsysmondsumar New Relic Server\tGLOBAL" if ($newrelicsysmondli
 print "\n $jetty7sumar Jetty7 procs\t\tGLOBAL" if ($jetty7lives);
 print "\n $jetty8sumar Jetty8 procs\t\tGLOBAL" if ($jetty8lives);
 print "\n $jetty9sumar Jetty9 procs\t\tGLOBAL" if ($jetty9lives);
-print "\n $jetty97sumar Jetty97 procs\t\tGLOBAL" if ($jetty97lives);
+print "\n $solr7sumar Solr7 procs\t\tGLOBAL" if ($solr7lives);
 print "\n $rsyslogdsumar Syslog procs\t\tGLOBAL" if ($rsyslogdlives);
 print "\n $sysklogdsumar Syslog procs\t\tGLOBAL" if ($sysklogdlives);
 print "\n $syslogdsumar Syslog procs\t\tGLOBAL" if ($syslogdlives);
@@ -168,7 +168,7 @@ else {
 system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7" && !-f "/var/run/boa_run.pid");
 system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8" && !-f "/var/run/boa_run.pid");
 system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9" && !-f "/var/run/boa_run.pid");
-system("service jetty97 start") if (!$jetty97sumar && -f "/etc/init.d/jetty97" && !-f "/var/run/boa_run.pid");
+system("service solr7 start") if (!$solr7sumar && -f "/etc/init.d/solr7" && !-f "/var/run/boa_run.pid");
 system("service collectd start") if (!$collectdsumar && -f "/etc/init.d/collectd" && !-f "/var/run/boa_run.pid");
 system("service xinetd start") if (!$xinetdsumar && -f "/etc/init.d/xinetd" && !-f "/var/run/boa_run.pid");
 system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd" && !-f "/var/run/boa_run.pid");

@@ -166,7 +166,7 @@ _PHP_CLI_VERSION=7.2
 ### SR1 --- Apache Solr 1 with Jetty 7 (deprecated)
 ### SR3 --- Apache Solr 3 with Jetty 8 (deprecated)
 ### SR4 --- Apache Solr 4 with Jetty 9
-### SR7 --- Apache Solr 7 with Jetty 9
+### SR7 --- Apache Solr 7
 ###
 ### Examples:
 ###
