@@ -90,7 +90,7 @@ write_solr_config() {
     echo "  Solr version .....: ${_VRS}"                                 >> ${2}
     echo "  Solr host ........: 127.0.0.1"                               >> ${2}
     echo "  Solr port ........: ${_PRT}"                                 >> ${2}
-    echo "  Solr path ........: /solr/${_MD5H}.${Dom}.${_HM_U}"          >> ${2}
+    echo "  Solr path ........: /solr/${SolrCoreID}"                     >> ${2}
     echo                                                                 >> ${2}
     echo "It has been auto-configured to work with latest version"       >> ${2}
     echo "of ${1} module, but you need to add the module to"             >> ${2}
@@ -107,37 +107,34 @@ write_solr_config() {
 update_solr() {
   # ${1} is module
   # ${2} is solr core path (auto) == _SOLR_DIR
-  if [ ! -z "${1}" ] \
-    && [ -e "/var/xdrago/conf/solr" ]; then
+  if [ ! -z "${1}" ] && [ -e "/data/conf/solr" ]; then
     _SOLR_DIR=""
     _SERV=""
     if [ "${1}" = "apachesolr" ]; then
       _SERV="etty9"
       if [ -e "${Plr}/modules/o_contrib_seven" ]; then
-        _SOLR_DIR="/opt/solr4/${_HM_U}.${Dom}"
+        _SOLR_DIR="/opt/solr4/${SolrCoreID}"
         if [ ! -e "${_SOLR_DIR}/conf/.protected.conf" ] && [ -e "${_SOLR_DIR}/conf" ]; then
           myCnfUpdate=""
-          check_config_diff "/var/xdrago/conf/solr/apachesolr/7/schema.xml" "${_SOLR_DIR}/conf/schema.xml"
+          check_config_diff "/data/conf/solr/apachesolr/7/schema.xml" "${_SOLR_DIR}/conf/schema.xml"
           if [ ! -z "${myCnfUpdate}" ]; then
-            cp -af /var/xdrago/conf/solr/apachesolr/7/schema.xml ${_SOLR_DIR}/conf/
-            cp -af /var/xdrago/conf/solr/apachesolr/7/solrconfig.xml ${_SOLR_DIR}/conf/
-            cp -af /var/xdrago/conf/solr/apachesolr/7/solrcore.properties ${_SOLR_DIR}/conf/
+            cp -af /data/conf/solr/apachesolr/7/* ${_SOLR_DIR}/conf/
             chmod 644 ${_SOLR_DIR}/conf/*
+            chown jetty9:jetty9 ${_SOLR_DIR}/conf/*
             touch ${_SOLR_DIR}/conf/yes-update.txt
           else
             rm -f ${_SOLR_DIR}/conf/yes-update.txt
           fi
         fi
       else
-        _SOLR_DIR="/opt/solr4/${_HM_U}.${Dom}"
+        _SOLR_DIR="/opt/solr4/${SolrCoreID}"
         if [ ! -e "${_SOLR_DIR}/conf/.protected.conf" ] && [ -e "${_SOLR_DIR}/conf" ]; then
           myCnfUpdate=""
-          check_config_diff "/var/xdrago/conf/solr/apachesolr/6/schema.xml" "${_SOLR_DIR}/conf/schema.xml"
+          check_config_diff "/data/conf/solr/apachesolr/6/schema.xml" "${_SOLR_DIR}/conf/schema.xml"
           if [ ! -z "${myCnfUpdate}" ]; then
-            cp -af /var/xdrago/conf/solr/apachesolr/6/schema.xml ${_SOLR_DIR}/conf/
-            cp -af /var/xdrago/conf/solr/apachesolr/6/solrconfig.xml ${_SOLR_DIR}/conf/
-            cp -af /var/xdrago/conf/solr/apachesolr/6/solrcore.properties ${_SOLR_DIR}/conf/
+            cp -af /data/conf/solr/apachesolr/6/* ${_SOLR_DIR}/conf/
             chmod 644 ${_SOLR_DIR}/conf/*
+            chown jetty9:jetty9 ${_SOLR_DIR}/conf/*
             touch ${_SOLR_DIR}/conf/yes-update.txt
           else
             rm -f ${_SOLR_DIR}/conf/yes-update.txt
@@ -147,15 +144,14 @@ update_solr() {
     elif [ "${1}" = "search_api_solr" ] \
       && [ -e "${Plr}/modules/o_contrib_seven" ]; then
       _SERV="olr7"
-      _SOLR_DIR="/var/solr7/data/${_HM_U}.${Dom}"
+      _SOLR_DIR="/var/solr7/data/${SolrCoreID}"
       if [ ! -e "${_SOLR_DIR}/conf/.protected.conf" ] && [ -e "${_SOLR_DIR}/conf" ]; then
         myCnfUpdate=""
-        check_config_diff "/var/xdrago/conf/solr/apachesolr/7/schema.xml" "${_SOLR_DIR}/conf/schema.xml"
+        check_config_diff "/data/conf/solr/apachesolr/7/schema.xml" "${_SOLR_DIR}/conf/schema.xml"
         if [ ! -z "${myCnfUpdate}" ]; then
-          cp -af /var/xdrago/conf/solr/search_api_solr/7/schema.xml ${_SOLR_DIR}/conf/
-          cp -af /var/xdrago/conf/solr/search_api_solr/7/solrconfig.xml ${_SOLR_DIR}/conf/
-          cp -af /var/xdrago/conf/solr/search_api_solr/7/solrcore.properties ${_SOLR_DIR}/conf/
+          cp -af /data/conf/solr/search_api_solr/7/* ${_SOLR_DIR}/conf/
           chmod 644 ${_SOLR_DIR}/conf/*
+          chown solr7:solr7 ${_SOLR_DIR}/conf/*
           touch ${_SOLR_DIR}/conf/yes-update.txt
         else
           rm -f ${_SOLR_DIR}/conf/yes-update.txt
@@ -166,16 +162,16 @@ update_solr() {
       && [ -e "${Plr}/sites/${Dom}/files/solr/solrconfig.xml" ] \
       && [ -e "${Plr}/modules/o_contrib_eight" ]; then
       _SERV="olr7"
-      _SOLR_DIR="/var/solr7/data/${_HM_U}.${Dom}"
+      _SOLR_DIR="/var/solr7/data/${SolrCoreID}"
       if [ ! -e "${_SOLR_DIR}/conf/.protected.conf" ] && [ -e "${_SOLR_DIR}/conf" ]; then
         myCnfUpdate=""
         check_config_diff "${Plr}/sites/${Dom}/files/solr/schema.xml" "${_SOLR_DIR}/conf/schema.xml"
         if [ ! -z "${myCnfUpdate}" ]; then
-          mv -f ${Plr}/sites/${Dom}/files/solr/schema.xml ${_SOLR_DIR}/conf/
-          mv -f ${Plr}/sites/${Dom}/files/solr/solrconfig.xml ${_SOLR_DIR}/conf/
-          rm -f ${Plr}/sites/${Dom}/files/solr/*
-          cp -af /var/xdrago/conf/solr/search_api_solr/8/solrcore.properties ${_SOLR_DIR}/conf/
+          cp -af ${Plr}/sites/${Dom}/files/solr/* ${_SOLR_DIR}/conf/
+          cp -af /data/conf/solr/search_api_solr/8/solrcore.properties ${_SOLR_DIR}/conf/
           chmod 644 ${_SOLR_DIR}/conf/*
+          chown solr7:solr7 ${_SOLR_DIR}/conf/*
+          rm -f ${Plr}/sites/${Dom}/files/solr/*
           touch ${_SOLR_DIR}/conf/yes-update.txt
         else
           rm -f ${_SOLR_DIR}/conf/yes-update.txt
@@ -185,15 +181,14 @@ update_solr() {
       && [ ! -e "${Plr}/sites/${Dom}/files/solr/schema.xml" ] \
       && [ -e "${Plr}/modules/o_contrib_eight" ]; then
       _SERV="olr7"
-      _SOLR_DIR="/var/solr7/data/${_HM_U}.${Dom}"
+      _SOLR_DIR="/var/solr7/data/${SolrCoreID}"
       if [ ! -e "${_SOLR_DIR}/conf/.protected.conf" ] && [ -e "${_SOLR_DIR}/conf" ]; then
         myCnfUpdate=""
-        check_config_diff "/var/xdrago/conf/solr/apachesolr/8/schema.xml" "${_SOLR_DIR}/conf/schema.xml"
+        check_config_diff "/data/conf/solr/apachesolr/8/schema.xml" "${_SOLR_DIR}/conf/schema.xml"
         if [ ! -z "${myCnfUpdate}" ]; then
-          cp -af /var/xdrago/conf/solr/search_api_solr/8/schema.xml ${_SOLR_DIR}/conf/
-          cp -af /var/xdrago/conf/solr/search_api_solr/8/solrconfig.xml ${_SOLR_DIR}/conf/
-          cp -af /var/xdrago/conf/solr/search_api_solr/8/solrcore.properties ${_SOLR_DIR}/conf/
+          cp -af /data/conf/solr/search_api_solr/8/* ${_SOLR_DIR}/conf/
           chmod 644 ${_SOLR_DIR}/conf/*
+          chown solr7:solr7 ${_SOLR_DIR}/conf/*
           touch ${_SOLR_DIR}/conf/yes-update.txt
         else
           rm -f ${_SOLR_DIR}/conf/yes-update.txt
@@ -233,7 +228,7 @@ add_solr() {
     && [ -e "${Plr}/modules/o_contrib_eight" ]; then
     _SOLR_BASE="/var/solr7/data"
   fi
-  if [ ! -z "${1}" ] && [ ! -z "${2}" ] && [ -e "/var/xdrago/conf/solr" ]; then
+  if [ ! -z "${1}" ] && [ ! -z "${2}" ] && [ -e "/data/conf/solr" ]; then
     if [ ! -e "${2}" ]; then
       rm -rf ${_SOLR_BASE}/core0/data/*
       cp -a ${_SOLR_BASE}/core0 ${2}
@@ -257,10 +252,16 @@ add_solr() {
           | openssl md5 \
           | tr -d "\n" 2>&1)
       fi
-      sed -i "s/.*<core name=\"core0\" instanceDir=\"core0\" \/>.*/<core name=\"core0\" instanceDir=\"core0\" \/>\n<core name=\"${_MD5H}.${Dom}.${_HM_U}\" instanceDir=\"${_HM_U}.${Dom}\" \/>\n/g" ${_SOLR_BASE}/solr.xml
-      wait
-      sed -i "/^$/d" ${_SOLR_BASE}/solr.xml &> /dev/null
-      wait
+      if [ "${_SOLR_BASE}" = "/var/solr7/data" ] \
+        && [ -x "/opt/solr7/bin/solr" ] \
+        && [ -e "/var/solr7/data/solr.xml" ]; then
+        su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr create_core -p 9077 -c ${SolrCoreID} -d /data/conf/solr/search_api_solr/7"
+      else
+        sed -i "s/.*<core name=\"core0\" instanceDir=\"core0\" \/>.*/<core name=\"core0\" instanceDir=\"core0\" \/>\n<core name=\"${SolrCoreID}\" instanceDir=\"${SolrCoreID}\" \/>\n/g" ${_SOLR_BASE}/solr.xml
+        wait
+        sed -i "/^$/d" ${_SOLR_BASE}/solr.xml &> /dev/null
+        wait
+      fi
       update_solr "${1}" "${2}"
       echo "New Solr with ${1} for ${2} added"
     fi
@@ -277,23 +278,23 @@ delete_solr() {
     _SERV="olr7"
     _SOLR_BASE="/var/solr7/data"
   fi
-  if [ ! -z "${2}" ] \
-    && [ -e "/var/xdrago/conf/solr" ] \
-    && [ -e "${2}/conf" ]; then
-    sed -i "s/.*instanceDir=\"${_HM_U}.${Dom}\".*//g" ${_SOLR_BASE}/solr.xml
-    wait
-    sed -i "/^$/d" ${_SOLR_BASE}/solr.xml &> /dev/null
-    wait
-    rm -rf ${2}
-    rm -f ${Dir}/solr.php
-    if [ -e "/etc/default/j${_SERV}" ] && [ -e "/etc/init.d/j${_SERV}" ]; then
-      kill -9 $(ps aux | grep '[j]${_SERV}' | awk '{print $2}') &> /dev/null
-      service j${_SERV} start &> /dev/null
+  if [ ! -z "${2}" ] && [ -e "/data/conf/solr" ] && [ -e "${2}/conf" ]; then
+    if [ "${_SOLR_BASE}" = "/var/solr7/data" ] \
+      && [ -x "/opt/solr7/bin/solr" ] \
+      && [ -e "/var/solr7/data/solr.xml" ]; then
+      su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${SolrCoreID}"
+    else
+      sed -i "s/.*instanceDir=\"${SolrCoreID}\".*//g" ${_SOLR_BASE}/solr.xml
+      wait
+      sed -i "/^$/d" ${_SOLR_BASE}/solr.xml &> /dev/null
+      wait
+      rm -rf ${2}
+      rm -f ${Dir}/solr.php
+      if [ -e "/etc/default/j${_SERV}" ] && [ -e "/etc/init.d/j${_SERV}" ]; then
+        kill -9 $(ps aux | grep '[j]${_SERV}' | awk '{print $2}') &> /dev/null
+        service j${_SERV} start &> /dev/null
+      fi
     fi
-    #if [ -e "/var/s${_SERV}" ] && [ -e "/etc/init.d/s${_SERV}" ]; then
-    #  kill -9 $(ps aux | grep '[s]${_SERV}' | awk '{print $2}') &> /dev/null
-    #  service s${_SERV} start &> /dev/null
-    #fi
     echo "Deleted Solr core in ${2}"
   fi
 }
@@ -301,7 +302,7 @@ delete_solr() {
 check_solr() {
   # ${1} is module
   # ${2} is solr core path
-  if [ ! -z "${1}" ] && [ ! -z "${2}" ] && [ -e "/var/xdrago/conf/solr" ]; then
+  if [ ! -z "${1}" ] && [ ! -z "${2}" ] && [ -e "/data/conf/solr" ]; then
     echo "Checking Solr with ${1} for ${2}"
     if [ ! -e "${2}" ]; then
       add_solr "${1}" "${2}"
@@ -315,13 +316,13 @@ setup_solr() {
 
   if [ -e "${Plr}/modules/o_contrib" ]; then
     _SOLR_BASE="/opt/solr4"
-    _SOLR_DIR="${_SOLR_BASE}/${_HM_U}.${Dom}"
+    _SOLR_DIR="${_SOLR_BASE}/${SolrCoreID}"
   elif [ -e "${Plr}/modules/o_contrib_seven" ]; then
     _SOLR_BASE="/var/solr7/data"
-    _SOLR_DIR="${_SOLR_BASE}/${_HM_U}.${Dom}"
+    _SOLR_DIR="${_SOLR_BASE}/${SolrCoreID}"
   elif [ -e "${Plr}/modules/o_contrib_eight" ]; then
     _SOLR_BASE="/var/solr7/data"
-    _SOLR_DIR="${_SOLR_BASE}/${_HM_U}.${Dom}"
+    _SOLR_DIR="${_SOLR_BASE}/${SolrCoreID}"
   fi
 
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
@@ -408,6 +409,13 @@ setup_solr() {
 proceed_solr() {
   if [ ! -z "${Dan}" ] \
     && [ "${Dan}" != "hostmaster" ]; then
+    SolrCoreID=""
+    CoreID="${Dan}.${_HM_U}"
+    CoreHS=$(echo ${CoreID} \
+            | openssl md5 \
+            | awk '{ print $2}' \
+            | tr -d "\n" 2>&1)
+    SolrCoreID="${_HM_U}-${Dan}-${CoreHS}"
     setup_solr
   fi
 }
@@ -498,6 +506,11 @@ load_control() {
 }
 
 start_up() {
+  if [ -d "/var/xdrago/conf/solr" ] \
+    && [ ! -e "/data/conf/solr/.ctrl.${_X_SE}.pid" ]; then
+    cp -af /var/xdrago/conf/solr /data/conf/
+    touch /data/conf/solr/.ctrl.${_X_SE}.pid
+  fi
   for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     count_cpu
     load_control
