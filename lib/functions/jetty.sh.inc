@@ -41,28 +41,6 @@ if_install_jetty() {
         usermod -aG users ${_N_SOLR} &> /dev/null
         tar xzf solr-${_SOLR_7_VRN}.tgz solr-${_SOLR_7_VRN}/bin/install_solr_service.sh --strip-components=2
         bash ./install_solr_service.sh solr-${_SOLR_7_VRN}.tgz -f -i /opt -d /var/${_N_SOLR} -u ${_N_SOLR} -s ${_N_SOLR} -p 9077 &> /dev/null
-        mkdir -p ${_SOLR_VPATH}/core{0,1,2,3,4,5,6,7,8,9}/conf
-        mkdir -p ${_SOLR_VPATH}/core{0,1,2,3,4,5,6,7,8,9}/data
-        for Dir in `find ${_SOLR_VPATH}/core{0,1,2,3,4,5,6,7,8,9}/ \
-          -maxdepth 1 -mindepth 1 -type d | grep conf`; do
-          if [[ "${Dir}" =~ "${_SOLR_VPATH}/core" ]]; then
-            rm -rf $Dir/*
-          fi
-          cp -af /var/opt/solr-${_SOLR_7_VRN}/example/solr/collection1/conf/* \
-            $Dir/ &> /dev/null
-        done
-        if [ ! -e "${_SOLR_VPATH}/search_api_solr-7.x-1.14.log" ]; then
-          cd /var/opt
-          rm -rf search_api_solr*
-          get_dev_contrib "search_api_solr-7.x-1.14.tar.gz"
-          for Dir in `find ${_SOLR_VPATH}/core{0,1,2,3,4,5,6,7,8,9}/ \
-            -maxdepth 1 -mindepth 1 -type d | grep conf`; do
-            cp -af /var/opt/search_api_solr/solr-conf/7.x/* $Dir/ &> /dev/null
-          done
-          sed -i "s/8983/9077/g" \
-            ${_SOLR_VPATH}/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
-          touch ${_SOLR_VPATH}/search_api_solr-7.x-1.14.log
-        fi
         cp -af ${bldPth}/docs/SOLR.txt ${_SOLR_VPATH}/README.txt &> /dev/null
         echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
         cd /var/opt
