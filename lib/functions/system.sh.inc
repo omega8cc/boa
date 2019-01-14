@@ -3031,7 +3031,6 @@ basic_packages_install_on_init() {
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
       fi
-      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
       apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
     fi
   fi
@@ -3273,23 +3272,7 @@ if_jessie_to_stretch() {
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
       fi
-      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
       apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
-    fi
-
-
-    if [ -x "/lib/systemd/systemd" ]; then
-      msg "INFO: Removing systemd on ${_THIS_OS} stretch..."
-      ${_INSTALL} sysvinit-core &> /dev/null
-      ${_INSTALL} sysvinit-utils &> /dev/null
-      if [ -e "/usr/share/sysvinit/inittab" ]; then
-        cp -af /usr/share/sysvinit/inittab /etc/inittab
-      fi
-      mrun "apt-get remove systemd -y --force-yes -qq --purge --auto-remove" 2> /dev/null
-      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-      ${_INSTALL} sysvinit-core &> /dev/null
-      ${_INSTALL} sysvinit-utils &> /dev/null
     fi
     _VM_TEST=$(uname -a 2>&1)
     if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
