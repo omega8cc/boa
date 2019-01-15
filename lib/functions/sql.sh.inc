@@ -441,12 +441,22 @@ install_mariadb_sql() {
             mariadb-client-${_DB_SERIES} \
             mariadb-common"
   fi
-  SQLADD="libmariadbclient-dev \
-          libmysqlclient18.1 \
-          libdbd-mysql-perl \
-          percona-xtrabackup-24 \
-          python-mysqldb \
-          libdbi-perl"
+  if [ "${_DB_SERIES}" = "10.2" ] \
+    || [ "${_DB_SERIES}" = "10.3" ]; then
+    SQLADD="libmariadb-dev \ \
+      libmysqlclient18 \
+      libdbd-mysql-perl \
+      percona-xtrabackup-24 \
+      python-mysqldb \
+      libdbi-perl"
+  else
+    SQLADD="libmariadbclient-dev \
+      libmysqlclient18.1 \
+      libdbd-mysql-perl \
+      percona-xtrabackup-24 \
+      python-mysqldb \
+      libdbi-perl"
+  fi
 }
 
 install_with_aptitude_sql() {
