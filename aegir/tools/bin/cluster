@@ -9,7 +9,7 @@ _UTIL_VRN="0.30.216-pre3126"
 _VNSTAT_VRN="2.0"
 
 _NOISE="-q"
-_INST="/usr/bin/apt-get -y --force-yes ${_NOISE} install"
+_INST="/usr/bin/apt-get -y --allow-unauthenticated ${_NOISE} install"
 
 _INSTAPP="/usr/bin/aptitude -f -y -q \
   -o Dpkg::Options::=--force-confdef \
@@ -42,7 +42,7 @@ check_root() {
         ln -s /proc/self/fd /dev/fd
       fi
     fi
-    forCer="-fuy --force-yes --reinstall"
+    forCer="-fuy --allow-unauthenticated --reinstall"
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ ! -x "${_LSB_TEST}" ]; then
       apt-get clean ${_NOISE}

@@ -46,7 +46,7 @@ if [[ "${_SSL_ITD}" =~ "1.0.1" ]] \
   _NEW_SSL=YES
 fi
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-forCer="-fuy --force-yes --reinstall"
+forCer="-fuy --allow-unauthenticated --reinstall"
 vSet="vset --always-set"
 
 ###-------------SYSTEM-----------------###
