@@ -96,6 +96,10 @@
 
     *
 
+  # Known issues:
+
+    *
+
 
 ### Stable BOA-3.2.2 Release - Full Edition
 ### Date: Sat Jan 20 11:03:34 PST 2018
