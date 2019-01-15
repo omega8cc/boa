@@ -3718,6 +3718,8 @@ sys_packages_install() {
     _DEBDEPS="apticron \
               aptitude \
               m4 \
+              apt-listchanges \
+              at \
               autoconf \
               automake \
               autotools-dev \
@@ -3726,6 +3728,7 @@ sys_packages_install() {
               build-essential \
               catdoc \
               clamav \
+              clamav-base \
               clamav-daemon \
               clamdscan \
               cron \
@@ -3744,8 +3747,8 @@ sys_packages_install() {
               gnupg2 \
               htop \
               ifstat \
-              iptables \
               ipset \
+              iptables \
               ldap-utils \
               lemon \
               lftp \
@@ -3774,7 +3777,6 @@ sys_packages_install() {
               libpq5 \
               libsasl2-modules \
               libsqlite3-dev \
-              sqlite3 \
               libssl-dev \
               libterm-readkey-perl \
               libtext-template-perl \
@@ -3789,6 +3791,7 @@ sys_packages_install() {
               libxslt1.1 \
               libzip-dev \
               makepasswd \
+              man-db \
               mc \
               mcrypt \
               nano \
@@ -3797,12 +3800,16 @@ sys_packages_install() {
               netcat \
               ntpdate \
               p7zip-full \
+              patchutils \
               pdftk \
               percona-xtrabackup-24 \
               postfix \
               postfix-pcre \
               pwgen \
               python-dev \
+              python-dev \
+              python3-debian \
+              python3-magic \
               re2c \
               rkhunter \
               rrdtool \
@@ -3810,8 +3817,10 @@ sys_packages_install() {
               s3cmd \
               shtool \
               sipcalc \
+              sqlite3 \
               ssh \
               ssl-cert \
+              strace \
               subversion \
               sudo \
               symlinks \
@@ -3825,7 +3834,9 @@ sys_packages_install() {
               ttf-dejavu-extra \
               unrtf \
               unzip \
+              unzip \
               vim \
+              wdiff \
               whois \
               xml-core \
               xml2 \
