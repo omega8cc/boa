@@ -1774,17 +1774,17 @@ barracuda_cnf() {
 run_aptitude_full_upgrade() {
   msg "INFO: Running aptitude full-upgrade..."
   rm -f /etc/apt/sources.list.d/openssl.list
-  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
-    || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
-    msg "WARN: Installed keyring is broken, forced reinstall required"
-    if [ "${_THIS_OS}" = "Debian" ]; then
-      st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
-      st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
-    else
-      st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
-    fi
-  fi
+  # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+  # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
+  #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
+  #   msg "WARN: Installed keyring is broken, forced reinstall required"
+  #   if [ "${_THIS_OS}" = "Debian" ]; then
+  #     st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
+  #     st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
+  #   else
+  #     st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
+  #   fi
+  # fi
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
   st_runner "apt-get update -qq" &> /dev/null
   _THIS_DB_SERVER_TEST=$(mysql -V 2>&1)
@@ -2927,12 +2927,12 @@ install_with_aptitude_deps() {
     && [ "${_LOC_OSV}" = "jessie" ]; then
     _DO_FIX=YES
   fi
-  if [ "${_THIS_OS}" = "Debian" ]; then
-    st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
-    st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
-  else
-    st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
-  fi
+  # if [ "${_THIS_OS}" = "Debian" ]; then
+  #   st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
+  #   st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
+  # else
+  #   st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
+  # fi
   st_runner "${_INSTAPP} ${_DEBDEPS}" 2> /dev/null
   if [ -x "/usr/bin/gpg2" ]; then
     _GPG=gpg2
@@ -2957,17 +2957,17 @@ basic_packages_install_on_init() {
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Installing some basic tools now, please wait..."
     rm -f /etc/apt/sources.list.d/openssl.list
-    _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-    if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
-      || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
-      msg "WARN: Installed keyring is broken, forced reinstall required"
-      if [ "${_THIS_OS}" = "Debian" ]; then
-        apt-get install debian-keyring ${forCer} &> /dev/null
-        apt-get install debian-archive-keyring ${forCer} &> /dev/null
-      else
-        apt-get install ubuntu-keyring ${forCer} &> /dev/null
-      fi
-    fi
+    # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+    # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
+    #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
+    #   msg "WARN: Installed keyring is broken, forced reinstall required"
+    #   if [ "${_THIS_OS}" = "Debian" ]; then
+    #     apt-get install debian-keyring ${forCer} &> /dev/null
+    #     apt-get install debian-archive-keyring ${forCer} &> /dev/null
+    #   else
+    #     apt-get install ubuntu-keyring ${forCer} &> /dev/null
+    #   fi
+    # fi
     apt-get update -qq &> /dev/null
     ${_INITINS} locales &> /dev/null
     fix_locales
@@ -3435,17 +3435,17 @@ sys_packages_update() {
   update_webmin_apt
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
   rm -f /etc/apt/sources.list.d/openssl.list
-  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
-    || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
-    msg "WARN: Installed keyring is broken, forced reinstall required"
-    if [ "${_THIS_OS}" = "Debian" ]; then
-      st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
-      st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
-    else
-      st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
-    fi
-  fi
+  # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+  # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
+  #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
+  #   msg "WARN: Installed keyring is broken, forced reinstall required"
+  #   if [ "${_THIS_OS}" = "Debian" ]; then
+  #     st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
+  #     st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
+  #   else
+  #     st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
+  #   fi
+  # fi
   st_runner "apt-get update -qq" &> /dev/null
   _DB_SERVER_TEST=$(mysql -V 2>&1)
   if [ "${_STATUS}" = "INIT" ]; then
@@ -3593,17 +3593,17 @@ sys_packages_install() {
     fi
     _APT_ELSE="netcat"
     rm -f /etc/apt/sources.list.d/openssl.list
-    _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-    if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
-      || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
-      msg "WARN: Installed keyring is broken, forced reinstall required"
-      if [ "${_THIS_OS}" = "Debian" ]; then
-        st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
-        st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
-      else
-        st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
-      fi
-    fi
+    # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+    # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
+    #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
+    #   msg "WARN: Installed keyring is broken, forced reinstall required"
+    #   if [ "${_THIS_OS}" = "Debian" ]; then
+    #     st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
+    #     st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
+    #   else
+    #     st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
+    #   fi
+    # fi
     mrun "apt-get -f install -qq"                         &> /dev/null
     mrun "service nginx start"                            &> /dev/null
     mrun "apt-get remove nginx-extras -y --force-yes -qq" &> /dev/null
@@ -3864,17 +3864,17 @@ fix_postfix() {
     _POSTFIX_TEST=$(grep "fatal: open lock file" /var/log/mail.log 2>&1)
     if [[ "${_POSTFIX_TEST}" =~ "fatal: open lock file" ]]; then
       rm -f /etc/apt/sources.list.d/openssl.list
-      _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-      if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
-        || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
-        msg "WARN: Installed keyring is broken, forced reinstall required"
-        if [ "${_THIS_OS}" = "Debian" ]; then
-          mrun "apt-get install debian-keyring ${forCer}" 2> /dev/null
-          mrun "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
-        else
-          mrun "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
-        fi
-      fi
+      # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+      # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
+      #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
+      #   msg "WARN: Installed keyring is broken, forced reinstall required"
+      #   if [ "${_THIS_OS}" = "Debian" ]; then
+      #     mrun "apt-get install debian-keyring ${forCer}" 2> /dev/null
+      #     mrun "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
+      #   else
+      #     mrun "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
+      #   fi
+      # fi
       mrun "dpkg --configure -a"      &> /dev/null
       mrun "apt-get clean -qq"        &> /dev/null
       mrun "apt-get update -qq"       &> /dev/null

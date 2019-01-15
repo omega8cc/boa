@@ -411,17 +411,17 @@ install_mariadb_sql() {
   echo "## Percona XtraBackup APT Repository" > ${xtraList}
   echo "deb http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
   echo "deb-src http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
-  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
-    || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
-    msg "WARN: Installed keyring is broken, forced reinstall required"
-    if [ "${_THIS_OS}" = "Debian" ]; then
-      st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
-      st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
-    else
-      st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
-    fi
-  fi
+  # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+  # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
+  #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
+  #   msg "WARN: Installed keyring is broken, forced reinstall required"
+  #   if [ "${_THIS_OS}" = "Debian" ]; then
+  #     st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
+  #     st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
+  #   else
+  #     st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
+  #   fi
+  # fi
   st_runner "aptitude remove mytop -y" &> /dev/null
   st_runner "apt-get purge mytop -y" &> /dev/null
   rm -f /usr/bin/mytop

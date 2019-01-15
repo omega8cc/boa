@@ -834,8 +834,8 @@ install_db_cluster() {
     echo "${_MAINT_USER_PWD}" > /vservers/${idn}/root/.my.cluster_maint_pwd.txt
     echo "${_ROOT_SQL_PASWD}" > /vservers/${idn}/root/.my.cluster_root_pwd.txt
   	vserver ${idn} exec apt-get update ${_NOISE}
-    vserver ${idn} exec ${_INSTAPP} debian-keyring
-    vserver ${idn} exec ${_INSTAPP} debian-archive-keyring
+    # vserver ${idn} exec ${_INSTAPP} debian-keyring
+    # vserver ${idn} exec ${_INSTAPP} debian-archive-keyring
   	vserver ${idn} exec apt-get upgrade -y ${_NOISE}
   	vserver ${idn} exec apt-get remove apparmor -y ${_NOISE}
   	vserver ${idn} exec ${_INSTAPP} software-properties-common dirmngr
