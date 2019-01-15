@@ -710,8 +710,8 @@ up_action() {
           wait
           sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"       ${barCnf}
           wait
-          # sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.1/g"                  ${barCnf}
-          # wait
+          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g"                  ${barCnf}
+          wait
           if [ -e "/root/.mstr.clstr.cnf" ] \
             || [ -e "/root/.wbhd.clstr.cnf" ] \
             || [ -e "/root/.dbhd.clstr.cnf" ] \

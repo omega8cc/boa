@@ -490,7 +490,9 @@ os_detection() {
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=NO
-      if [ "${_DB_SERIES}" = "10.2" ]; then
+      if [ "${_DB_SERIES}" = "10.3" ]; then
+        _MARIADB_VRN="${_MARIADB_10_3_VRN}"
+      elif [ "${_DB_SERIES}" = "10.2" ]; then
         _MARIADB_VRN="${_MARIADB_10_2_VRN}"
       else
         _DB_SERIES=10.1
@@ -515,7 +517,9 @@ os_detection() {
     _NGINX_FORWARD_SECRECY=YES
     _NGINX_SPDY=YES
     _SSH_FROM_SOURCES=YES
-    if [ "${_DB_SERIES}" = "10.2" ]; then
+    if [ "${_DB_SERIES}" = "10.3" ]; then
+      _MARIADB_VRN="${_MARIADB_10_3_VRN}"
+    elif [ "${_DB_SERIES}" = "10.2" ]; then
       _MARIADB_VRN="${_MARIADB_10_2_VRN}"
     else
       _DB_SERIES=10.1

@@ -749,7 +749,8 @@ barracuda_cnf() {
         clean_pid_exit
       fi
     fi
-    if [ "${_DB_SERIES}" = "10.2" ] \
+    if [ "${_DB_SERIES}" = "10.3" ] \
+      || [ "${_DB_SERIES}" = "10.2" ] \
       || [ "${_DB_SERIES}" = "10.1" ] \
       || [ "${_DB_SERIES}" = "10.0" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
@@ -757,7 +758,9 @@ barracuda_cnf() {
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
         _MARIADB_VRN="${_GALERA_10_VRN}"
       else
-        if [ "${_DB_SERIES}" = "10.2" ]; then
+        if [ "${_DB_SERIES}" = "10.3" ]; then
+          _MARIADB_VRN="${_MARIADB_10_3_VRN}"
+        elif [ "${_DB_SERIES}" = "10.2" ]; then
           _MARIADB_VRN="${_MARIADB_10_2_VRN}"
         else
           _DB_SERIES=10.1
@@ -1594,7 +1597,8 @@ barracuda_cnf() {
       sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=httpredir.debian.org/g"     ${barCnf}
       wait
     fi
-    if [ "${_DB_SERIES}" = "10.2" ] \
+    if [ "${_DB_SERIES}" = "10.3" ] \
+      || [ "${_DB_SERIES}" = "10.2" ] \
       || [ "${_DB_SERIES}" = "10.1" ] \
       || [ "${_DB_SERIES}" = "10.0" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
@@ -1602,7 +1606,9 @@ barracuda_cnf() {
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
         _MARIADB_VRN="${_GALERA_10_VRN}"
       else
-        if [ "${_DB_SERIES}" = "10.2" ]; then
+        if [ "${_DB_SERIES}" = "10.3" ]; then
+          _MARIADB_VRN="${_MARIADB_10_3_VRN}"
+        elif [ "${_DB_SERIES}" = "10.2" ]; then
           _MARIADB_VRN="${_MARIADB_10_2_VRN}"
         else
           _DB_SERIES=10.1

@@ -372,7 +372,9 @@ install_mariadb_sql() {
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
       _MARIADB_VRN="${_GALERA_10_VRN}"
     else
-      if [ "${_DB_SERIES}" = "10.2" ]; then
+      if [ "${_DB_SERIES}" = "10.3" ]; then
+        _MARIADB_VRN="${_MARIADB_10_3_VRN}"
+      elif [ "${_DB_SERIES}" = "10.2" ]; then
         _MARIADB_VRN="${_MARIADB_10_2_VRN}"
       else
         _DB_SERIES=10.1
@@ -381,7 +383,8 @@ install_mariadb_sql() {
     fi
     msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
   else
-    if [ "${_DB_SERIES}" = "10.2" ] \
+    if [ "${_DB_SERIES}" = "10.3" ] \
+      || [ "${_DB_SERIES}" = "10.2" ] \
       || [ "${_DB_SERIES}" = "10.1" ] \
       || [ "${_DB_SERIES}" = "10.0" ] \
       || [ "${_DB_SERIES}" = "5.5" ]; then
@@ -392,8 +395,8 @@ install_mariadb_sql() {
       msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
     fi
     if [ -z "${_DB_SERIES}" ]; then
-      _DB_SERIES=10.1
-      _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+      _DB_SERIES=10.2
+      _MARIADB_VRN="${_MARIADB_10_2_VRN}"
       msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
     fi
   fi

@@ -296,9 +296,9 @@ _DB_SERVER=MariaDB
 ### You can choose MariaDB 5.5 or new 10.1
 ###
 ### Note that on Ubuntu 14.04 LTS Trusty we
-### force the only available 10.1 version.
+### force the only available 10.2 version.
 ###
-_DB_SERIES=10.1
+_DB_SERIES=10.2
 
 
 ###----------------------------------------###

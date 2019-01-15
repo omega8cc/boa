@@ -1024,14 +1024,17 @@ install_php_multi() {
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
       _T_MARIADB_VRN="${_GALERA_10_VRN}"
     else
-      if [ "${_DB_SERIES}" = "10.0" ]; then
-        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.1/g" ${barCnf}
-        _DB_SERIES=10.1
+      if [ "${_DB_SERIES}" = "10.0" ] || [ "${_DB_SERIES}" = "10.1" ]; then
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g" ${barCnf}
+        _DB_SERIES=10.2
       fi
-      if [ "${_DB_SERIES}" = "10.2" ] \
+      if [ "${_DB_SERIES}" = "10.3" ] \
+        || [ "${_DB_SERIES}" = "10.2" ] \
         || [ "${_DB_SERIES}" = "10.1" ] \
         || [ "${_DB_SERIES}" = "10.0" ]; then
-        if [ "${_DB_SERIES}" = "10.2" ]; then
+        if [ "${_DB_SERIES}" = "10.3" ]; then
+          _MARIADB_VRN="${_MARIADB_10_3_VRN}"
+        elif [ "${_DB_SERIES}" = "10.2" ]; then
           _MARIADB_VRN="${_MARIADB_10_2_VRN}"
         else
           _DB_SERIES=10.1
@@ -1349,10 +1352,13 @@ check_php_rebuild() {
       install_php_multi "$1"
     fi
   fi
-  if [ "${_DB_SERIES}" = "10.2" ] \
+  if [ "${_DB_SERIES}" = "10.3" ] \
+    || [ "${_DB_SERIES}" = "10.2" ] \
     || [ "${_DB_SERIES}" = "10.1" ] \
     || [ "${_DB_SERIES}" = "10.0" ]; then
-    if [ "${_DB_SERIES}" = "10.2" ]; then
+    if [ "${_DB_SERIES}" = "10.3" ]; then
+      _MARIADB_VRN="${_MARIADB_10_3_VRN}"
+    elif [ "${_DB_SERIES}" = "10.2" ]; then
       _MARIADB_VRN="${_MARIADB_10_2_VRN}"
     else
       _DB_SERIES=10.1
