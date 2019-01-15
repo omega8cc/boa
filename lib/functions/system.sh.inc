@@ -2927,12 +2927,11 @@ install_with_aptitude_deps() {
     && [ "${_LOC_OSV}" = "jessie" ]; then
     _DO_FIX=YES
   fi
-  # if [ "${_THIS_OS}" = "Debian" ]; then
-  #   st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
-  #   st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
-  # else
-  #   st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
-  # fi
+  if [ "${_THIS_OS}" = "Debian" ]; then
+    ${_INITINS} debian-archive-keyring &> /dev/null
+  else
+    ${_INITINS} ubuntu-keyring &> /dev/null
+  fi
   st_runner "${_INSTAPP} ${_DEBDEPS}" 2> /dev/null
   if [ -x "/usr/bin/gpg2" ]; then
     _GPG=gpg2
