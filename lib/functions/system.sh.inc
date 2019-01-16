@@ -880,7 +880,7 @@ barracuda_cnf() {
     echo "_SYSTEM_UPGRADE_ONLY=${_SYSTEM_UPGRADE_ONLY}"       >> ${barCnf}
     echo "###"                                                >> ${barCnf}
     _CHECK_HOST=$(uname -n 2>&1)
-    # sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"               ${barCnf}
+    # sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"               ${barCnf}
     # wait
     ### Force HTTP/2 or SPDY plus PFS on supported systems
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
@@ -901,7 +901,7 @@ barracuda_cnf() {
         debM="httpredir.debian.org"
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
         wait
-        # sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"                             ${barCnf}
+        # sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                             ${barCnf}
         # wait
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                ${barCnf}
         wait
@@ -1523,7 +1523,7 @@ barracuda_cnf() {
 
     sleep 1
     _CHECK_HOST=$(uname -n 2>&1)
-    # sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"               ${barCnf}
+    # sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"               ${barCnf}
     # wait
     ### Force HTTP/2 or SPDY plus PFS on supported systems
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
@@ -1544,7 +1544,7 @@ barracuda_cnf() {
         debM="httpredir.debian.org"
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
         wait
-        # sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"                             ${barCnf}
+        # sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                             ${barCnf}
         # wait
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                ${barCnf}
         wait
