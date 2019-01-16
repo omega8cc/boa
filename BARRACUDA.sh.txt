@@ -320,7 +320,7 @@ fi
 
 
 ###
-### Install DB server
+### Install MariaDB server
 ###
 install_db_server
 
@@ -404,7 +404,7 @@ sshd_armour
 
 
 ###
-### Finalize initial DB server setup
+### Finalize initial MariaDB server setup
 ###
 finalize_sql_initial_setup
 
