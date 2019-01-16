@@ -1078,11 +1078,12 @@ install_php_multi() {
           _DB_SERIES=10.1
           _DBS_VRN="${_MARIADB_10_1_VRN}"
         fi
+        _T_DBS_VRN="${_DBS_VRN}"
       else
         _T_DBS_VRN="${_DBS_VRN}"
       fi
     fi
-    touch ${pthLog}/installed-${_PHP_VERSION}-${_T_DBS_VRN}-MariaDB.log
+    touch ${pthLog}/installed-${_PHP_VERSION}-${_T_DBS_VRN}-${_DB_SERVER}.log
     rm -f /etc/init.d/php$1-fpm*
     cp -af ${locCnf}/php$1-fpm /etc/init.d/php$1-fpm
     chmod 755 /etc/init.d/php$1-fpm
@@ -1416,13 +1417,14 @@ check_php_rebuild() {
       _DB_SERIES=10.1
       _DBS_VRN="${_MARIADB_10_1_VRN}"
     fi
+    _T_DBS_VRN="${_DBS_VRN}"
   else
     _T_DBS_VRN="${_DBS_VRN}"
   fi
-  if [ ! -e "${pthLog}/installed-${_PHP_VERSION}-${_T_DBS_VRN}-${_DB_SERVER}.log" ]; then
-    msg "INFO: PHP ${_PHP_VERSION} rebuild required for ${_DB_SERVER} ${_T_DBS_VRN}"
-    install_php_multi "$1"
-  fi
+  # if [ ! -e "${pthLog}/installed-${_PHP_VERSION}-${_T_DBS_VRN}-${_DB_SERVER}.log" ]; then
+  #   msg "INFO: PHP ${_PHP_VERSION} rebuild required for ${_DB_SERVER} ${_T_DBS_VRN}"
+  #   install_php_multi "$1"
+  # fi
 }
 
 #
