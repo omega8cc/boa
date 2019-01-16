@@ -120,6 +120,10 @@ fix_php_ini_newrelic_all() {
       _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
     fi
     _PHP_V="73 72 71 70 56"
+    if [ "${_DB_SERIES}" = "10.3" ] \
+      || [ "${_DB_SERIES}" = "10.2" ]; then
+      _PHP_V="70 56"
+    fi
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       fix_php_ini_newrelic
@@ -152,6 +156,10 @@ fix_php_ini_opcache() {
 # Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all() {
   _PHP_V="73 72 71 70 56"
+  if [ "${_DB_SERIES}" = "10.3" ] \
+    || [ "${_DB_SERIES}" = "10.2" ]; then
+    _PHP_V="70 56"
+  fi
   for e in ${_PHP_V}; do
     case "${e}" in
       73) _P_API="${_PHP73_API}" ;;
@@ -295,6 +303,10 @@ update_php_conf() {
   sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
   wait
   _PHP_V="73 72 71 70 56"
+  if [ "${_DB_SERIES}" = "10.3" ] \
+    || [ "${_DB_SERIES}" = "10.2" ]; then
+    _PHP_V="70 56"
+  fi
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
       adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
@@ -377,6 +389,10 @@ tune_web_server_config() {
     fi
   fi
   _PHP_V="73 72 71 70 56"
+  if [ "${_DB_SERIES}" = "10.3" ] \
+    || [ "${_DB_SERIES}" = "10.2" ]; then
+    _PHP_V="70 56"
+  fi
   for e in ${_PHP_V}; do
     sed -i "s/process.max =.*/process.max = ${_PROCESS_MAX_FPM}/g" \
       /opt/php${e}/etc/php${e}-fpm.conf &> /dev/null
@@ -520,6 +536,10 @@ install_php_extensions() {
       get_dev_src "geos-${_GEOS_VRN}.tar.bz2"
       cd geos-${_GEOS_VRN}
       _PHP_V="73 72 71 70 56"
+      if [ "${_DB_SERIES}" = "10.3" ] \
+        || [ "${_DB_SERIES}" = "10.2" ]; then
+        _PHP_V="70 56"
+      fi
       for e in ${_PHP_V}; do
         if [ "$1" = "${e}" ]; then
           find . -type f -print0 \
@@ -731,6 +751,10 @@ update_php_extensions() {
       get_dev_src "geos-${_GEOS_VRN}.tar.bz2"
       cd geos-${_GEOS_VRN}
       _PHP_V="73 72 71 70 56"
+      if [ "${_DB_SERIES}" = "10.3" ] \
+        || [ "${_DB_SERIES}" = "10.2" ]; then
+        _PHP_V="70 56"
+      fi
       for e in ${_PHP_V}; do
         if [ "$1" = "${e}" ]; then
           find . -type f -print0 \

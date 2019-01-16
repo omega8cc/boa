@@ -249,7 +249,7 @@ more_packages_install_on_init
 check_boa_php_compatibility
 check_boa_version
 check_github_for_aegir_head_mode
-check_mariadb_src
+check_db_src
 check_git_repos
 check_ip_hostname
 check_prepare_dirs_permissions
@@ -322,7 +322,7 @@ fi
 ###
 ### Install MariaDB server
 ###
-install_mariadb_server
+install_db_server
 
 
 ###

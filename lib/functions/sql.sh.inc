@@ -334,7 +334,7 @@ tune_sql_memory_limits() {
   fi
 }
 
-install_mariadb_sql() {
+install_db_sql() {
   cd /var/opt
   _KEYS_SERVER_TEST=FALSE
   if [ "${_OSV}" = "stretch" ] \
@@ -515,7 +515,7 @@ install_with_aptitude_sql() {
       msg "INFO: Installing ${_DB_SERVER}..."
     fi
   fi
-  install_mariadb_sql
+  install_db_sql
   st_runner "${_INSTAPP} mytop" 2> /dev/null
   if [ -e "${pthLog}" ]; then
     touch ${pthLog}/fixed-mytop-mariadb.log
@@ -612,7 +612,7 @@ forced_mysql_root_password_update() {
   fi
 }
 
-install_mariadb_server() {
+install_db_server() {
   if [ "${_STATUS}" = "INIT" ]; then
     service cron stop &> /dev/null
     if [ -e "/usr/sbin/csf" ] \

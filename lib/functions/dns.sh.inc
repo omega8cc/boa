@@ -516,7 +516,7 @@ check_github_for_aegir_head_mode() {
   fi
 }
 
-check_mariadb_src() {
+check_db_src() {
   if ! netcat -w 14 -z ${_DB_SRC} 80 ; then
     echo " "
     msg "EXIT on error due to ${_DB_SRC} downtime"
