@@ -458,7 +458,8 @@ install_db_sql() {
     || [ -e "/root/.wbhd.clstr.cnf" ]; then
     SQLDEB="mariadb-galera-server"
   elif [ "${_DB_SERIES}" = "5.7" ]; then
-    SQLDEB="percona-server-server-${_DB_SERIES}"
+    SQLDEB="percona-server-server-${_DB_SERIES} \
+            default-libmysqlclient-dev"
   else
     SQLDEB="mariadb-server-${_DB_SERIES} \
             mariadb-client-${_DB_SERIES} \
