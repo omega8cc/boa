@@ -628,22 +628,26 @@ install_db_server() {
       update_newrelic
     fi
     _SQL_UPGRADE=NO
-    if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
+    if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERVER}" ]]; then
       _SQL_TEST_UPGRADE=NO
     else
       _SQL_TEST_UPGRADE=YES
     fi
-    if [ "$_SQL_TEST_UPGRADE" = "YES" ] \
-      && [ "${_DB_SERVER}" = "MariaDB" ]; then
+    if [ "${_SQL_TEST_UPGRADE}" = "YES" ]; then
       _SQL_UPGRADE=YES
     fi
-    if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
+    if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]] \
+      || [[ "${_DB_SERVER_TEST}" =~ "Percona" ]]; then
       if [[ "${_DB_SERVER_TEST}" =~ " 5.1." ]] \
         || [[ "${_DB_SERVER_TEST}" =~ " 5.2." ]]; then
         _SQL_UPGRADE=YES
       fi
       if [ "${_DB_SERIES}" = "5.5" ]; then
         if [[ ! "${_DB_SERVER_TEST}" =~ "5.5." ]]; then
+          _SQL_UPGRADE=YES
+        fi
+      elif [ "${_DB_SERIES}" = "5.7" ]; then
+        if [[ ! "${_DB_SERVER_TEST}" =~ "5.7" ]]; then
           _SQL_UPGRADE=YES
         fi
       elif [ "${_DB_SERIES}" = "10.1" ] \
@@ -656,6 +660,11 @@ install_db_server() {
           _SQL_UPGRADE=YES
         fi
       fi
+      elif [ "${_DB_SERIES}" = "10.3" ]; then
+        if [[ ! "${_DB_SERVER_TEST}" =~ "10.3." ]]; then
+          _SQL_UPGRADE=YES
+        fi
+      fi
     fi
     if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
@@ -665,13 +674,20 @@ install_db_server() {
       && [ "${_LOC_OSV}" = "jessie" ]; then
       _SQL_UPGRADE=NO
     fi
-    _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
-      ${aptLiSys}.d/mariadb.list 2>&1)
-    _SQL_DEB_SRC_TEST_B=$(grep ${_OSV} \
-      ${aptLiSys}.d/mariadb.list 2>&1)
+    if [ "${_DB_SERVER}" = "MariaDB" ]; then
+      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
+        ${aptLiSys}.d/mariadb.list 2>&1)
+      _SQL_DEB_SRC_TEST_B=$(grep ${_OSV} \
+        ${aptLiSys}.d/mariadb.list 2>&1)
+    else
+      _DB_SRC="percona"
+      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
+        ${aptLiSys}.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_B=$(grep ${_OSV} \
+        ${aptLiSys}.d/percona-release.list 2>&1)
+    fi
     if [[ "$_SQL_DEB_SRC_TEST_A" =~ "${_DB_SRC}" ]] \
-      && [[ "$_SQL_DEB_SRC_TEST_B" =~ "${_OSV}" ]] \
-      && [ -e "${pthLog}/mariadb-apt-fixed-${_OSV}-${_X_VERSION}.log" ]; then
+      && [[ "$_SQL_DEB_SRC_TEST_B" =~ "${_OSV}" ]]; then
       _SQL_DEB_SRC_UPDATE=NO
     else
       if [ "${_THIS_OS}" = "Debian" ]; then
@@ -691,12 +707,17 @@ install_db_server() {
         echo "## Percona XtraBackup APT Repository" > ${xtraList}
         echo "deb http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
         echo "deb-src http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
+        cd /var/opt
+        rm -rf /var/opt/percona*
+        wget -q -U iCab \
+          https://repo.percona.com/apt/percona-release_latest.$(lsb_release -sc)_all.deb &> /dev/null
+        dpkg -i percona-release_latest.$(lsb_release -sc)_all.deb &> /dev/null
       fi
       rm -f /etc/apt/sources.list.d/openssl.list
       st_runner "apt-get update -qq" &> /dev/null
       touch ${pthLog}/mariadb-apt-fixed-${_OSV}-${_X_VERSION}.log
     fi
-    if [ "$_SQL_UPGRADE" = "YES" ]; then
+    if [ "${_SQL_UPGRADE}" = "YES" ]; then
       service cron stop &> /dev/null
       if [ -e "/usr/sbin/csf" ] \
         && [ -e "/etc/csf/csf.deny" ]; then
