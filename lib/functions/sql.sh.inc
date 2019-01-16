@@ -389,6 +389,8 @@ install_db_sql() {
         wget -q -U iCab \
           https://repo.percona.com/apt/percona-release_latest.$(lsb_release -sc)_all.deb &> /dev/null
         dpkg -i percona-release_latest.$(lsb_release -sc)_all.deb &> /dev/null
+        rm -f /etc/apt/sources.list.d/mariadb.*
+        echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
       elif [ "${_DB_SERIES}" = "5.5" ]; then
         _DB_SERVER=MariaDB
         _DBS_VRN="${_MARIADB_5_VRN}"
@@ -699,6 +701,8 @@ install_db_server() {
         echo "## MariaDB APT Repository" > ${aptLiDb}
         echo "deb http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
         echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+        rm -f /etc/apt/sources.list.d/percona-release.*
+        rm -f /etc/apt/preferences.d/00percona.pref
       else
         xtraRepo="repo.percona.com/apt"
         xtraList="${aptLiSys}.d/xtrabackup.list"
@@ -710,10 +714,11 @@ install_db_server() {
         wget -q -U iCab \
           https://repo.percona.com/apt/percona-release_latest.$(lsb_release -sc)_all.deb &> /dev/null
         dpkg -i percona-release_latest.$(lsb_release -sc)_all.deb &> /dev/null
+        rm -f /etc/apt/sources.list.d/mariadb.*
+        echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
       fi
       rm -f /etc/apt/sources.list.d/openssl.list
       st_runner "apt-get update -qq" &> /dev/null
-      touch ${pthLog}/mariadb-apt-fixed-${_OSV}-${_X_VERSION}.log
     fi
     if [ "${_SQL_UPGRADE}" = "YES" ]; then
       service cron stop &> /dev/null
