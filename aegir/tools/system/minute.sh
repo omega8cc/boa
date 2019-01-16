@@ -180,6 +180,20 @@ if [ ! -z "${_RAM_PCT_FREE}" ] && [ "${_RAM_PCT_FREE}" -lt "10" ]; then
   oom_restart "ram"
 fi
 
+redis_oom_check() {
+  if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
+    _REDIS_TEST=$(su -s /bin/bash - aegir -c "drush8 @hostmaster status" 2>&1)
+    if [[ "${_REDIS_TEST}" =~ "RedisException" ]]; then
+      service redis-server restart
+      echo "RedisException OOM detected"
+      echo "RedisException OOM detected" >> /var/xdrago/log/redis.watch.log
+    else
+      echo "Redis is fine"
+    fi
+  fi
+}
+redis_oom_check
+
 jetty_restart() {
   touch /var/run/boa_run.pid
   sleep 5
