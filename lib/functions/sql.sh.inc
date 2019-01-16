@@ -624,7 +624,7 @@ install_db_server() {
     fi
     install_with_aptitude_sql
   else
-    if [ "$_UP_NRC" = "YES" ]; then
+    if [ "${_UP_NRC}" = "YES" ]; then
       update_newrelic
     fi
     _SQL_UPGRADE=NO
@@ -641,8 +641,7 @@ install_db_server() {
       if [[ "${_DB_SERVER_TEST}" =~ " 5.1." ]] \
         || [[ "${_DB_SERVER_TEST}" =~ " 5.2." ]]; then
         _SQL_UPGRADE=YES
-      fi
-      if [ "${_DB_SERIES}" = "5.5" ]; then
+      elif [ "${_DB_SERIES}" = "5.5" ]; then
         if [[ ! "${_DB_SERVER_TEST}" =~ "5.5." ]]; then
           _SQL_UPGRADE=YES
         fi
@@ -659,7 +658,6 @@ install_db_server() {
         if [[ ! "${_DB_SERVER_TEST}" =~ "10.2." ]]; then
           _SQL_UPGRADE=YES
         fi
-      fi
       elif [ "${_DB_SERIES}" = "10.3" ]; then
         if [[ ! "${_DB_SERVER_TEST}" =~ "10.3." ]]; then
           _SQL_UPGRADE=YES
