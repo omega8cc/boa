@@ -1567,8 +1567,24 @@ count_cpu() {
   chmod 644 /data/all/cpuinfo
 }
 
+check_redis_oom() {
+  if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
+    _REDIS_TEST=$(su -s /bin/bash - aegir -c "drush8 @hostmaster status" 2>&1)
+    if [[ "${_REDIS_TEST}" =~ "RedisException" ]]; then
+      service redis-server restart
+      echo "RedisException OOM detected"
+      echo "RedisException OOM detected" >> /var/xdrago/log/redis.watch.log
+    else
+      echo "Redis is fine"
+    fi
+  fi
+}
+
 ###--------------------###
 if [ `whoami` = "root" ]; then
+
+  ### Redis OOM detection hotfix
+  check_redis_oom
 
   ### Linux kernel CVE-2017-2636 hotfix
   if [ -e "/etc/modprobe.d" ] \
