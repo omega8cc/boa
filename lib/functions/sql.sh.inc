@@ -446,8 +446,6 @@ install_db_sql() {
   st_runner "aptitude remove mytop -y" &> /dev/null
   st_runner "apt-get purge mytop -y" &> /dev/null
   rm -f /usr/bin/mytop
-  st_runner "aptitude remove mysql-common -y" &> /dev/null
-  st_runner "apt-get purge mysql-common -y" &> /dev/null
   st_runner "apt-get update -qq" &> /dev/null
   if [ "${_EASY_SETUP}" = "MSTR" ] \
     || [ "${_EASY_SETUP}" = "DBHD" ] \
@@ -458,9 +456,19 @@ install_db_sql() {
     || [ -e "/root/.wbhd.clstr.cnf" ]; then
     SQLDEB="mariadb-galera-server"
   elif [ "${_DB_SERIES}" = "5.7" ]; then
-    SQLDEB="percona-server-server-${_DB_SERIES} \
-            default-libmysqlclient-dev"
+    st_runner "aptitude remove mariadb-server-5.5 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-client-5.5 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-server-10.1 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-client-10.1 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-server-10.2 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-client-10.2 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-server-10.3 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-client-10.3 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-server mariadb-common -y" &> /dev/null
+    SQLDEB="percona-server-server-${_DB_SERIES}"
   else
+    st_runner "aptitude remove mysql-common -y" &> /dev/null
+    st_runner "apt-get purge mysql-common -y" &> /dev/null
     SQLDEB="mariadb-server-${_DB_SERIES} \
             mariadb-client-${_DB_SERIES} \
             mariadb-common"
@@ -483,7 +491,8 @@ install_db_sql() {
             python-mysqldb \
             libdbi-perl"
   elif [ "${_DB_SERIES}" = "5.7" ]; then
-    SQLADD="percona-xtrabackup-24 \
+    SQLADD="default-libmysqlclient-dev \
+            percona-xtrabackup-24 \
             python-mysqldb \
             libdbi-perl"
   fi

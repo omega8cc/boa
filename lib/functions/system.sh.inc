@@ -2965,7 +2965,7 @@ install_with_aptitude_deps() {
     _DO_FIX=YES
   fi
   if [ "${_THIS_OS}" = "Debian" ]; then
-    ${_INITINS} debian-archive-keyring &> /dev/null
+    ${_INITINS} debian-keyring debian-archive-keyring &> /dev/null
   else
     ${_INITINS} ubuntu-keyring &> /dev/null
   fi
