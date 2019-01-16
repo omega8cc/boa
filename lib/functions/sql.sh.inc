@@ -443,7 +443,8 @@ install_mariadb_sql() {
   fi
   if [ "${_DB_SERIES}" = "10.2" ] \
     || [ "${_DB_SERIES}" = "10.3" ]; then
-    SQLADD="libmariadb-dev \ \
+    SQLADD="libmariadb-dev \
+      libmariadbd-dev \
       libmysqlclient18 \
       libdbd-mysql-perl \
       percona-xtrabackup-24 \
