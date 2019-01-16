@@ -5,7 +5,7 @@ BOA is an acronym of high performance Barracuda, Octopus and Aegir LEMP stack.
 
 Includes all-in-one bash scripts (see docs/INSTALL.txt for details) to install
 and upgrade high performance Aegir Hosting Systems for Drupal, with Nginx,
-PHP-FPM, Zend OPcache, MariaDB and Redis.
+PHP-FPM, Zend OPcache, Percona and Redis.
 
 
 ###--------------------------------------------------------------------------###
@@ -109,7 +109,7 @@ production settings.
 === Included/enabled by default - see docs/NOTES.txt for details
 
 * All libraries & tools required to install and run Nginx based Aegir system.
-* Latest release of MariaDB 5.5 or 10.1 database server with Adminer manager.
+* Latest release of Percona 5.7 or MariaDB 10.1 server with Adminer manager.
 * Latest version of Nginx web server.
 * Letsencrypt.org SSL support - see docs/SSL.txt for details.
 * HTTPS access with self-signed certificate for all hosted sites.
