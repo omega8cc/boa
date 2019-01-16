@@ -1694,11 +1694,9 @@ if [ `whoami` = "root" ]; then
   fi
   if [ "${_SCREEN_INIT}" = "YES" ]; then
     apt-get update -qq &> /dev/null
-    apt-get install screen ${forCer} &> /dev/null
-    apt-get install net-tools ${forCer} &> /dev/null
-    apt-get install hostname ${forCer} &> /dev/null
-    apt-get install dirmngr ${forCer} &> /dev/null
-    apt-get install build-essential ${forCer} &> /dev/null
+    apt-get install screen -y &> /dev/null
+    apt-get install net-tools -y &> /dev/null
+    apt-get install hostname -y &> /dev/null
     sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
     clear
     echo

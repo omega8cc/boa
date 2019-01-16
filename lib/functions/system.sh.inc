@@ -3106,7 +3106,6 @@ more_packages_install_on_init() {
     ${_INITINS} axel &> /dev/null
     ${_INITINS} hostname &> /dev/null
     ${_INITINS} net-tools &> /dev/null
-    ${_INITINS} dirmngr &> /dev/null
     ${_INITINS} build-essential &> /dev/null
   fi
 }
