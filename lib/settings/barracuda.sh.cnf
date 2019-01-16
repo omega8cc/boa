@@ -297,7 +297,7 @@ _DB_SERVER=MariaDB
 ### are fixed:
 ### https://jira.mariadb.org/browse/MDEV-14555
 ###
-_DB_SERIES=10.1
+_DB_SERIES=5.7
 
 
 ###----------------------------------------###
