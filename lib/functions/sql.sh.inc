@@ -370,18 +370,35 @@ install_mariadb_sql() {
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
-      _MARIADB_VRN="${_GALERA_10_VRN}"
+      _DBS_VRN="${_GALERA_10_VRN}"
     else
       if [ "${_DB_SERIES}" = "10.3" ]; then
-        _MARIADB_VRN="${_MARIADB_10_3_VRN}"
+        _DB_SERVER=MariaDB
+        _DBS_VRN="${_MARIADB_10_3_VRN}"
       elif [ "${_DB_SERIES}" = "10.2" ]; then
-        _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+        _DB_SERVER=MariaDB
+        _DBS_VRN="${_MARIADB_10_2_VRN}"
+      elif [ "${_DB_SERIES}" = "10.1" ]; then
+        _DB_SERVER=MariaDB
+        _DBS_VRN="${_MARIADB_10_1_VRN}"
+      elif [ "${_DB_SERIES}" = "5.7" ]; then
+        _DB_SERVER=Percona
+        _DBS_VRN="${_PERCONA_5_7_VRN}"
+        cd /var/opt
+        rm -rf /var/opt/percona*
+        wget -q -U iCab \
+          https://repo.percona.com/apt/percona-release_latest.$(lsb_release -sc)_all.deb &> /dev/null
+        dpkg -i percona-release_latest.$(lsb_release -sc)_all.deb &> /dev/null
+      elif [ "${_DB_SERIES}" = "5.5" ]; then
+        _DB_SERVER=MariaDB
+        _DBS_VRN="${_MARIADB_5_VRN}"
       else
+        _DB_SERVER=MariaDB
         _DB_SERIES=10.1
-        _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+        _DBS_VRN="${_MARIADB_10_1_VRN}"
       fi
     fi
-    msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
+    msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSV}"
   else
     if [ "${_DB_SERIES}" = "10.3" ] \
       || [ "${_DB_SERIES}" = "10.2" ] \
@@ -391,21 +408,23 @@ install_mariadb_sql() {
       _DO_NOTHING=YES
     else
       _DB_SERIES=10.1
-      _MARIADB_VRN="${_MARIADB_10_1_VRN}"
-      msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
+      _DBS_VRN="${_MARIADB_10_1_VRN}"
+      msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSV}"
     fi
     if [ -z "${_DB_SERIES}" ]; then
-      _DB_SERIES=10.2
-      _MARIADB_VRN="${_MARIADB_10_2_VRN}"
-      msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
+      _DB_SERIES=10.1
+      _DBS_VRN="${_MARIADB_10_1_VRN}"
+      msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSV}"
     fi
   fi
   rm -f /etc/apt/sources.list.d/openssl.list
-  aptRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
-  aptLiDb="${aptLiSys}.d/mariadb.list"
-  echo "## MariaDB APT Repository" > ${aptLiDb}
-  echo "deb http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
-  echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+  if [ "${_DB_SERVER}" = "MariaDB" ]; then
+    aptRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
+    aptLiDb="${aptLiSys}.d/mariadb.list"
+    echo "## MariaDB APT Repository" > ${aptLiDb}
+    echo "deb http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+    echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+  fi
   xtraRepo="repo.percona.com/apt"
   xtraList="${aptLiSys}.d/xtrabackup.list"
   echo "## Percona XtraBackup APT Repository" > ${xtraList}
@@ -436,27 +455,34 @@ install_mariadb_sql() {
     || [ -e "/root/.dbhd.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ]; then
     SQLDEB="mariadb-galera-server"
+  elif [ "${_DB_SERIES}" = "5.7" ]; then
+    SQLDEB="percona-server-server-${_DB_SERIES}"
   else
     SQLDEB="mariadb-server-${_DB_SERIES} \
             mariadb-client-${_DB_SERIES} \
             mariadb-common"
   fi
-  if [ "${_DB_SERIES}" = "10.2" ] \
-    || [ "${_DB_SERIES}" = "10.3" ]; then
+  if [ "${_DB_SERIES}" = "10.3" ] \
+    || [ "${_DB_SERIES}" = "10.2" ]; then
     SQLADD="libmariadb-dev \
-      libmariadbd-dev \
-      libmysqlclient18 \
-      libdbd-mysql-perl \
-      percona-xtrabackup-24 \
-      python-mysqldb \
-      libdbi-perl"
-  else
+            libmariadbd-dev \
+            libmysqlclient18 \
+            libdbd-mysql-perl \
+            percona-xtrabackup-24 \
+            python-mysqldb \
+            libdbi-perl"
+  elif [ "${_DB_SERIES}" = "10.1" ] \
+    || [ "${_DB_SERIES}" = "5.5" ]; then
     SQLADD="libmariadbclient-dev \
-      libmysqlclient18.1 \
-      libdbd-mysql-perl \
-      percona-xtrabackup-24 \
-      python-mysqldb \
-      libdbi-perl"
+            libmysqlclient18.1 \
+            libdbd-mysql-perl \
+            percona-xtrabackup-24 \
+            python-mysqldb \
+            libdbi-perl"
+  elif [ "${_DB_SERIES}" = "5.7" ]; then
+    SQLADD="percona-xtrabackup-24 \
+            python-mysqldb \
+            libdbi-perl"
   fi
 }
 
@@ -472,9 +498,9 @@ install_with_aptitude_sql() {
       || [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ]; then
-      msg "INFO: Installing MariaDB Galera Cluster..."
+      msg "INFO: Installing ${_DB_SERVER} Galera Cluster..."
     else
-      msg "INFO: Installing MariaDB..."
+      msg "INFO: Installing ${_DB_SERVER}..."
     fi
   else
     if [ "${_EASY_SETUP}" = "MSTR" ] \
@@ -484,9 +510,9 @@ install_with_aptitude_sql() {
       || [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ]; then
-      msg "INFO: Installing MariaDB Galera Cluster..."
+      msg "INFO: Installing ${_DB_SERVER} Galera Cluster..."
     else
-      msg "INFO: Installing MariaDB..."
+      msg "INFO: Installing ${_DB_SERVER}..."
     fi
   fi
   install_mariadb_sql
@@ -653,11 +679,19 @@ install_mariadb_server() {
       elif [ "${_THIS_OS}" = "Ubuntu" ]; then
         _OSN=ubuntu
       fi
-      aptRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
-      aptLiDb="${aptLiSys}.d/mariadb.list"
-      echo "## MariaDB APT Repository" > ${aptLiDb}
-      echo "deb http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
-      echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+      if [ "${_DB_SERVER}" = "MariaDB" ]; then
+        aptRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
+        aptLiDb="${aptLiSys}.d/mariadb.list"
+        echo "## MariaDB APT Repository" > ${aptLiDb}
+        echo "deb http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+        echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+      else
+        xtraRepo="repo.percona.com/apt"
+        xtraList="${aptLiSys}.d/xtrabackup.list"
+        echo "## Percona XtraBackup APT Repository" > ${xtraList}
+        echo "deb http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
+        echo "deb-src http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
+      fi
       rm -f /etc/apt/sources.list.d/openssl.list
       st_runner "apt-get update -qq" &> /dev/null
       touch ${pthLog}/mariadb-apt-fixed-${_OSV}-${_X_VERSION}.log
@@ -676,7 +710,6 @@ install_mariadb_server() {
         mrun "sleep 120"
         mrun "service nginx stop" &> /dev/null
       fi
-      rm -f ${aptLiSys}.d/percona.list
       rm -f ${aptLiSys}.d/ourdelta.list
       _KEYS_SERVER_TEST=FALSE
       until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
@@ -690,11 +723,24 @@ install_mariadb_server() {
           --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
         sleep 2
       done
+      _KEYS_SERVER_TEST=FALSE
+      until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
+        _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
+          --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5 2>&1)
+        sleep 2
+      done
+      if [ "${_THIS_OS}" = "Debian" ]; then
+        _OSN=debian
+      elif [ "${_THIS_OS}" = "Ubuntu" ]; then
+        _OSN=ubuntu
+      fi
       rm -f /etc/apt/sources.list.d/openssl.list
       st_runner "aptitude autoclean -y" &> /dev/null
       st_runner "apt-get clean -qq" &> /dev/null
       st_runner "apt-get update -qq" &> /dev/null
-      cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
+      if [ "$_DB_SERVER" = "MariaDB" ]; then
+        cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
+      fi
       sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
       wait
       sed -i "s/.*language/#language/g" /etc/mysql/my.cnf

@@ -36,8 +36,8 @@ _CPU_MAX_RATIO=6 #-------------- Max load per CPU core before disabling Nginx
 _CPU_SPIDER_RATIO=3 #----------- Max load per CPU core before blocking spiders
 ###
 _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
-_DB_SERIES=10.2 #--------------- Allows to install old MariaDB version when 5.5
-_DB_SERVER=MariaDB #------------ Allows to install only MariaDB DB server
+_DB_SERIES=10.1 #--------------- Supported production values: 10.1 or 5.7
+_DB_SERVER=MariaDB #------------ Allows to install MariaDB or Percona server
 _USE_MYSQLTUNER=YES #----------- Use MySQLTuner to configure SQL limits when YES
 ###
 _DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO

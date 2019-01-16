@@ -491,12 +491,24 @@ os_detection() {
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=NO
       if [ "${_DB_SERIES}" = "10.3" ]; then
-        _MARIADB_VRN="${_MARIADB_10_3_VRN}"
+        _DB_SERVER=MariaDB
+        _DBS_VRN="${_MARIADB_10_3_VRN}"
       elif [ "${_DB_SERIES}" = "10.2" ]; then
-        _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+        _DB_SERVER=MariaDB
+        _DBS_VRN="${_MARIADB_10_2_VRN}"
+      elif [ "${_DB_SERIES}" = "10.1" ]; then
+        _DB_SERVER=MariaDB
+        _DBS_VRN="${_MARIADB_10_1_VRN}"
+      elif [ "${_DB_SERIES}" = "5.7" ]; then
+        _DB_SERVER=Percona
+        _DBS_VRN="${_PERCONA_5_7_VRN}"
+      elif [ "${_DB_SERIES}" = "5.5" ]; then
+        _DB_SERVER=MariaDB
+        _DBS_VRN="${_MARIADB_5_VRN}"
       else
+        _DB_SERVER=MariaDB
         _DB_SERIES=10.1
-        _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+        _DBS_VRN="${_MARIADB_10_1_VRN}"
       fi
     elif [ "${_THIS_RV}" = "precise" ]; then
       _OSV="precise"
@@ -518,12 +530,24 @@ os_detection() {
     _NGINX_SPDY=YES
     _SSH_FROM_SOURCES=YES
     if [ "${_DB_SERIES}" = "10.3" ]; then
-      _MARIADB_VRN="${_MARIADB_10_3_VRN}"
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_10_3_VRN}"
     elif [ "${_DB_SERIES}" = "10.2" ]; then
-      _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_10_2_VRN}"
+    elif [ "${_DB_SERIES}" = "10.1" ]; then
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_10_1_VRN}"
+    elif [ "${_DB_SERIES}" = "5.7" ]; then
+      _DB_SERVER=Percona
+      _DBS_VRN="${_PERCONA_5_7_VRN}"
+    elif [ "${_DB_SERIES}" = "5.5" ]; then
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_5_VRN}"
     else
+      _DB_SERVER=MariaDB
       _DB_SERIES=10.1
-      _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+      _DBS_VRN="${_MARIADB_10_1_VRN}"
     fi
     _SPINNER=NO
     _SKIP_LEGACY_PHP=YES

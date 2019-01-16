@@ -255,7 +255,7 @@ fix_on_upgrade() {
 }
 
 #
-# Tune memory limits for PHP, Nginx and MariaDB.
+# Tune memory limits for PHP, Nginx and MariaDB or Percona.
 tune_memory_limits() {
   _VM_TEST=$(uname -a 2>&1)
   if [ -e "/proc/bean_counters" ]; then
@@ -741,7 +741,7 @@ barracuda_cnf() {
         if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
           _DO_NOTHING=YES
         else
-          _DB_SERVER=MariaDB
+          _DO_NOTHING=YES
         fi
       else
         msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
@@ -752,24 +752,42 @@ barracuda_cnf() {
     if [ "${_DB_SERIES}" = "10.3" ] \
       || [ "${_DB_SERIES}" = "10.2" ] \
       || [ "${_DB_SERIES}" = "10.1" ] \
-      || [ "${_DB_SERIES}" = "10.0" ]; then
+      || [ "${_DB_SERIES}" = "10.0" ] \
+      || [ "${_DB_SERIES}" = "5.7" ] \
+      || [ "${_DB_SERIES}" = "5.5" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
-        _MARIADB_VRN="${_GALERA_10_VRN}"
+        _DBS_VRN="${_GALERA_10_VRN}"
       else
-        if [ "${_DB_SERIES}" = "10.3" ]; then
-          _MARIADB_VRN="${_MARIADB_10_3_VRN}"
-        elif [ "${_DB_SERIES}" = "10.2" ]; then
-          _MARIADB_VRN="${_MARIADB_10_2_VRN}"
-        else
+        if [ "${_DB_SERIES}" = "10.0" ]; then
+          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.1/g" ${barCnf}
           _DB_SERIES=10.1
-          _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+        fi
+        if [ "${_DB_SERIES}" = "10.3" ]; then
+          _DB_SERVER=MariaDB
+          _DBS_VRN="${_MARIADB_10_3_VRN}"
+        elif [ "${_DB_SERIES}" = "10.2" ]; then
+          _DB_SERVER=MariaDB
+          _DBS_VRN="${_MARIADB_10_2_VRN}"
+        elif [ "${_DB_SERIES}" = "10.1" ]; then
+          _DB_SERVER=MariaDB
+          _DBS_VRN="${_MARIADB_10_1_VRN}"
+        elif [ "${_DB_SERIES}" = "5.7" ]; then
+          _DB_SERVER=Percona
+          _DBS_VRN="${_PERCONA_5_7_VRN}"
+        elif [ "${_DB_SERIES}" = "5.5" ]; then
+          _DB_SERVER=MariaDB
+          _DBS_VRN="${_MARIADB_5_VRN}"
+        else
+          _DB_SERVER=MariaDB
+          _DB_SERIES=10.1
+          _DBS_VRN="${_MARIADB_10_1_VRN}"
         fi
       fi
     else
       _DB_SERIES=5.5
-      _MARIADB_VRN="${_MARIADB_5_VRN}"
+      _DBS_VRN="${_MARIADB_5_VRN}"
     fi
     msg "INFO: Creating your ${barCnf} config file"
     sleep 1
@@ -862,8 +880,8 @@ barracuda_cnf() {
     echo "_SYSTEM_UPGRADE_ONLY=${_SYSTEM_UPGRADE_ONLY}"       >> ${barCnf}
     echo "###"                                                >> ${barCnf}
     _CHECK_HOST=$(uname -n 2>&1)
-    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"               ${barCnf}
-    wait
+    # sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"               ${barCnf}
+    # wait
     ### Force HTTP/2 or SPDY plus PFS on supported systems
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
     wait
@@ -883,8 +901,8 @@ barracuda_cnf() {
         debM="httpredir.debian.org"
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
         wait
-        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                             ${barCnf}
-        wait
+        # sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                             ${barCnf}
+        # wait
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                ${barCnf}
         wait
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
@@ -1505,8 +1523,8 @@ barracuda_cnf() {
 
     sleep 1
     _CHECK_HOST=$(uname -n 2>&1)
-    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"               ${barCnf}
-    wait
+    # sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"               ${barCnf}
+    # wait
     ### Force HTTP/2 or SPDY plus PFS on supported systems
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                 ${barCnf}
     wait
@@ -1526,8 +1544,8 @@ barracuda_cnf() {
         debM="httpredir.debian.org"
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
         wait
-        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                             ${barCnf}
-        wait
+        # sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                             ${barCnf}
+        # wait
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                ${barCnf}
         wait
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
@@ -1600,24 +1618,43 @@ barracuda_cnf() {
     if [ "${_DB_SERIES}" = "10.3" ] \
       || [ "${_DB_SERIES}" = "10.2" ] \
       || [ "${_DB_SERIES}" = "10.1" ] \
-      || [ "${_DB_SERIES}" = "10.0" ]; then
+      || [ "${_DB_SERIES}" = "10.0" ] \
+      || [ "${_DB_SERIES}" = "5.7" ] \
+      || [ "${_DB_SERIES}" = "5.5" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
-        _MARIADB_VRN="${_GALERA_10_VRN}"
+        _DBS_VRN="${_GALERA_10_VRN}"
       else
-        if [ "${_DB_SERIES}" = "10.3" ]; then
-          _MARIADB_VRN="${_MARIADB_10_3_VRN}"
-        elif [ "${_DB_SERIES}" = "10.2" ]; then
-          _MARIADB_VRN="${_MARIADB_10_2_VRN}"
-        else
+        if [ "${_DB_SERIES}" = "10.0" ]; then
+          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.1/g" ${barCnf}
           _DB_SERIES=10.1
-          _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+        fi
+        if [ "${_DB_SERIES}" = "10.3" ]; then
+          _DB_SERVER=MariaDB
+          _DBS_VRN="${_MARIADB_10_3_VRN}"
+        elif [ "${_DB_SERIES}" = "10.2" ]; then
+          _DB_SERVER=MariaDB
+          _DBS_VRN="${_MARIADB_10_2_VRN}"
+        elif [ "${_DB_SERIES}" = "10.1" ]; then
+          _DB_SERVER=MariaDB
+          _DBS_VRN="${_MARIADB_10_1_VRN}"
+        elif [ "${_DB_SERIES}" = "5.7" ]; then
+          _DB_SERVER=Percona
+          _DBS_VRN="${_PERCONA_5_7_VRN}"
+        elif [ "${_DB_SERIES}" = "5.5" ]; then
+          _DB_SERVER=MariaDB
+          _DBS_VRN="${_MARIADB_5_VRN}"
+        else
+          _DB_SERVER=MariaDB
+          _DB_SERIES=10.1
+          _DBS_VRN="${_MARIADB_10_1_VRN}"
         fi
       fi
     else
+      _DB_SERVER=MariaDB
       _DB_SERIES=5.5
-      _MARIADB_VRN="${_MARIADB_5_VRN}"
+      _DBS_VRN="${_MARIADB_5_VRN}"
     fi
     _CHECK_HOST=$(uname -n 2>&1)
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
@@ -1629,7 +1666,7 @@ barracuda_cnf() {
         if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
           _DO_NOTHING=YES
         else
-          _DB_SERVER=MariaDB
+          _DO_NOTHING=YES
         fi
       else
         msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
@@ -4949,8 +4986,8 @@ update_initd() {
       fi
       if [ "${_UP_SQL}" = "YES" ]; then
         myVnTest=$(mysql -V 2>&1)
-        if [[ "${myVnTest}" =~ "${_MARIADB_VRN}" ]]; then
-          msg "INFO: ${_DB_SERVER} ${_MARIADB_VRN} already up to date"
+        if [[ "${myVnTest}" =~ "${_DBS_VRN}" ]]; then
+          msg "INFO: ${_DB_SERVER} ${_DBS_VRN} already up to date"
           myCnfUpdate=YES
           msg "INFO: ${_DB_SERVER} restart after upgrade forced"
         fi

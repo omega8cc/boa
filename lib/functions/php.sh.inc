@@ -1022,29 +1022,43 @@ install_php_multi() {
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
-      _T_MARIADB_VRN="${_GALERA_10_VRN}"
+      _T_DBS_VRN="${_GALERA_10_VRN}"
     else
-      if [ "${_DB_SERIES}" = "10.0" ] || [ "${_DB_SERIES}" = "10.1" ]; then
-        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g" ${barCnf}
-        _DB_SERIES=10.2
+      if [ "${_DB_SERIES}" = "10.0" ]; then
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.1/g" ${barCnf}
+        _DB_SERIES=10.1
       fi
       if [ "${_DB_SERIES}" = "10.3" ] \
         || [ "${_DB_SERIES}" = "10.2" ] \
         || [ "${_DB_SERIES}" = "10.1" ] \
-        || [ "${_DB_SERIES}" = "10.0" ]; then
+        || [ "${_DB_SERIES}" = "10.0" ] \
+        || [ "${_DB_SERIES}" = "5.7" ] \
+        || [ "${_DB_SERIES}" = "5.5" ]; then
         if [ "${_DB_SERIES}" = "10.3" ]; then
-          _MARIADB_VRN="${_MARIADB_10_3_VRN}"
+          _DB_SERVER=MariaDB
+          _DBS_VRN="${_MARIADB_10_3_VRN}"
         elif [ "${_DB_SERIES}" = "10.2" ]; then
-          _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+          _DB_SERVER=MariaDB
+          _DBS_VRN="${_MARIADB_10_2_VRN}"
+        elif [ "${_DB_SERIES}" = "10.1" ]; then
+          _DB_SERVER=MariaDB
+          _DBS_VRN="${_MARIADB_10_1_VRN}"
+        elif [ "${_DB_SERIES}" = "5.7" ]; then
+          _DB_SERVER=Percona
+          _DBS_VRN="${_PERCONA_5_7_VRN}"
+        elif [ "${_DB_SERIES}" = "5.5" ]; then
+          _DB_SERVER=MariaDB
+          _DBS_VRN="${_MARIADB_5_VRN}"
         else
+          _DB_SERVER=MariaDB
           _DB_SERIES=10.1
-          _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+          _DBS_VRN="${_MARIADB_10_1_VRN}"
         fi
       else
-        _T_MARIADB_VRN="${_MARIADB_VRN}"
+        _T_DBS_VRN="${_DBS_VRN}"
       fi
     fi
-    touch ${pthLog}/installed-${_PHP_VERSION}-${_T_MARIADB_VRN}-MariaDB.log
+    touch ${pthLog}/installed-${_PHP_VERSION}-${_T_DBS_VRN}-MariaDB.log
     rm -f /etc/init.d/php$1-fpm*
     cp -af ${locCnf}/php$1-fpm /etc/init.d/php$1-fpm
     chmod 755 /etc/init.d/php$1-fpm
@@ -1355,20 +1369,34 @@ check_php_rebuild() {
   if [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ] \
     || [ "${_DB_SERIES}" = "10.1" ] \
-    || [ "${_DB_SERIES}" = "10.0" ]; then
+    || [ "${_DB_SERIES}" = "10.0" ] \
+    || [ "${_DB_SERIES}" = "5.7" ] \
+    || [ "${_DB_SERIES}" = "5.5" ]; then
     if [ "${_DB_SERIES}" = "10.3" ]; then
-      _MARIADB_VRN="${_MARIADB_10_3_VRN}"
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_10_3_VRN}"
     elif [ "${_DB_SERIES}" = "10.2" ]; then
-      _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_10_2_VRN}"
+    elif [ "${_DB_SERIES}" = "10.1" ]; then
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_10_1_VRN}"
+    elif [ "${_DB_SERIES}" = "5.7" ]; then
+      _DB_SERVER=Percona
+      _DBS_VRN="${_PERCONA_5_7_VRN}"
+    elif [ "${_DB_SERIES}" = "5.5" ]; then
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_5_VRN}"
     else
+      _DB_SERVER=MariaDB
       _DB_SERIES=10.1
-      _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+      _DBS_VRN="${_MARIADB_10_1_VRN}"
     fi
   else
-    _T_MARIADB_VRN="${_MARIADB_VRN}"
+    _T_DBS_VRN="${_DBS_VRN}"
   fi
-  if [ ! -e "${pthLog}/installed-${_PHP_VERSION}-${_T_MARIADB_VRN}-MariaDB.log" ]; then
-    msg "INFO: PHP ${_PHP_VERSION} rebuild required for MariaDB ${_T_MARIADB_VRN}"
+  if [ ! -e "${pthLog}/installed-${_PHP_VERSION}-${_T_DBS_VRN}-${_DB_SERVER}.log" ]; then
+    msg "INFO: PHP ${_PHP_VERSION} rebuild required for ${_DB_SERVER} ${_T_DBS_VRN}"
     install_php_multi "$1"
   fi
 }

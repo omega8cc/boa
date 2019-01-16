@@ -2142,8 +2142,10 @@ else
         service cron stop &> /dev/null
         sleep 180
         touch /root/.remote.db.cnf
-        if [ "${_DB_SERIES}" = "10.2" ] \
-          || [ "${_DB_SERIES}" = "10.1" ]; then
+        if [ "${_DB_SERIES}" = "10.3" ] \
+          || [ "${_DB_SERIES}" = "10.2" ] \
+          || [ "${_DB_SERIES}" = "10.1" ] \
+          || [ "${_DB_SERIES}" = "5.7" ]; then
           mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null

@@ -182,8 +182,10 @@ backup_this_database() {
 
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
-if [ "${_DB_SERIES}" = "10.2" ] \
-  || [ "${_DB_SERIES}" = "10.1" ]; then
+if [ "${_DB_SERIES}" = "10.3" ] \
+  || [ "${_DB_SERIES}" = "10.2" ] \
+  || [ "${_DB_SERIES}" = "10.1" ] \
+  || [ "${_DB_SERIES}" = "5.7" ]; then
   check_running
   mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
   mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
@@ -250,8 +252,10 @@ if [ "${_OPTIM}" = "YES" ] \
   && [ -e "/root/.my.restart_after_optimize.cnf" ] \
   && [ ! -e "/var/run/boa_run.pid" ]; then
   ionice -c2 -n2 -p $$
-  if [ "${_DB_SERIES}" = "10.2" ] \
-    || [ "${_DB_SERIES}" = "10.1" ]; then
+  if [ "${_DB_SERIES}" = "10.3" ] \
+    || [ "${_DB_SERIES}" = "10.2" ] \
+    || [ "${_DB_SERIES}" = "10.1" ] \
+    || [ "${_DB_SERIES}" = "5.7" ]; then
     check_running
     mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
