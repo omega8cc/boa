@@ -465,12 +465,18 @@ install_db_sql() {
     st_runner "aptitude remove mariadb-server-10.3 -y" &> /dev/null
     st_runner "aptitude remove mariadb-client-10.3 -y" &> /dev/null
     st_runner "aptitude remove mariadb-server mariadb-common -y" &> /dev/null
+    st_runner "aptitude remove libmysqlclient18.1 -y" &> /dev/null
+    st_runner "aptitude remove libmariadbclient-dev -y" &> /dev/null
+    st_runner "aptitude remove libmariadb-dev -y" &> /dev/null
+    st_runner "aptitude remove libmariadbd-dev -y" &> /dev/null
+    st_runner "aptitude remove libmysqlclient18 -y" &> /dev/null
     SQLDEB="percona-server-server-${_DB_SERIES}"
   else
     st_runner "aptitude remove mysql-common -y" &> /dev/null
     st_runner "apt-get purge mysql-common -y" &> /dev/null
     SQLDEB="mariadb-server-${_DB_SERIES} \
             mariadb-client-${_DB_SERIES} \
+            mariadb-server \
             mariadb-common"
   fi
   if [ "${_DB_SERIES}" = "10.3" ] \
