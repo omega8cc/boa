@@ -185,8 +185,8 @@ redis_oom_check() {
     _REDIS_TEST=$(su -s /bin/bash - aegir -c "drush8 @hostmaster status" 2>&1)
     if [[ "${_REDIS_TEST}" =~ "RedisException" ]]; then
       service redis-server restart
-      echo "RedisException OOM detected"
-      echo "RedisException OOM detected" >> /var/xdrago/log/redis.watch.log
+      echo "$(date 2>&1) RedisException OOM detected"
+      echo "$(date 2>&1) RedisException OOM detected" >> /var/xdrago/log/redis.watch.log
     else
       echo "Redis is fine"
     fi
