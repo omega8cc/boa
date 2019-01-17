@@ -765,6 +765,7 @@ barracuda_cnf() {
           sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.1/g" ${barCnf}
           _DB_SERIES=10.1
         fi
+        sed -i "s/^_DB_SERIES=5.5/_DB_SERIES=10.1/g"  ${barCnf}
         if [ "${_DB_SERIES}" = "10.3" ]; then
           _DB_SERVER=MariaDB
           _DBS_VRN="${_MARIADB_10_3_VRN}"
@@ -1629,6 +1630,7 @@ barracuda_cnf() {
           sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.1/g" ${barCnf}
           _DB_SERIES=10.1
         fi
+        sed -i "s/^_DB_SERIES=5.5/_DB_SERIES=10.1/g"  ${barCnf}
         if [ "${_DB_SERIES}" = "10.3" ]; then
           _DB_SERVER=MariaDB
           _DBS_VRN="${_MARIADB_10_3_VRN}"
