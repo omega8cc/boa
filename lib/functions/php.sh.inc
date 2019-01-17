@@ -480,13 +480,24 @@ install_php_extensions() {
     msg "INFO: Installing UploadProgress for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf uploadprogress*
-    get_dev_src "uploadprogress-${_UPROGRESS_VRN}.tgz"
-    cd /var/opt/uploadprogress-${_UPROGRESS_VRN}
+    get_dev_src "uploadprogress-${_UPROGRESS_LEGACY_VRN}.tgz"
+    cd /var/opt/uploadprogress-${_UPROGRESS_LEGACY_VRN}
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    touch ${pthLog}/uploadprogress-${_UPROGRESS_VRN}-${_T_PHP_VRN}.log
+    touch ${pthLog}/uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
+  else
+    msg "INFO: Installing UploadProgress for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -rf uploadprogress*
+    get_dev_src "uploadprogress-${_UPROGRESS_SEVEN_VRN}.tar.gz"
+    cd /var/opt/uploadprogress-${_UPROGRESS_SEVEN_VRN}
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    touch ${pthLog}/uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
   msg "INFO: Installing JSMin for PHP ${_T_PHP_VRN}..."
@@ -679,17 +690,30 @@ update_php_extensions() {
   fi
   ###--------------------###
   if [ "$1" = "56" ]; then
-    if [ ! -e "${pthLog}/uploadprogress-${_UPROGRESS_VRN}-${_T_PHP_VRN}.log" ]; then
+    if [ ! -e "${pthLog}/uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing UploadProgress upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf uploadprogress*
-      get_dev_src "uploadprogress-${_UPROGRESS_VRN}.tgz"
-      cd /var/opt/uploadprogress-${_UPROGRESS_VRN}
+      get_dev_src "uploadprogress-${_UPROGRESS_LEGACY_VRN}.tgz"
+      cd /var/opt/uploadprogress-${_UPROGRESS_LEGACY_VRN}
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
-      touch ${pthLog}/uploadprogress-${_UPROGRESS_VRN}-${_T_PHP_VRN}.log
+      touch ${pthLog}/uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
+    fi
+  else
+    if [ ! -e "${pthLog}/uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log" ]; then
+      msg "INFO: Installing UploadProgress upgrade for PHP ${_T_PHP_VRN}..."
+      cd /var/opt
+      rm -rf uploadprogress*
+      get_dev_src "uploadprogress-${_UPROGRESS_SEVEN_VRN}.tar.gz"
+      cd /var/opt/uploadprogress-${_UPROGRESS_SEVEN_VRN}
+      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
+      touch ${pthLog}/uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log
     fi
   fi
   ###--------------------###
