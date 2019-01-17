@@ -221,7 +221,11 @@ extract_archive() {
 get_dev_src() {
   if [ ! -z "$1" ]; then
     curl ${crlGet} "${urlDev}/src/$1" -o "$1"
-    extract_archive "$1"
+    if [ -e "$1" ]; then
+      extract_archive "$1"
+    else
+      echo "OOPS: $1 failed download from ${urlDev}/src/$1"
+    fi
   fi
 }
 
@@ -255,7 +259,6 @@ update_agents() {
       rm -f /root/.skip_duplicity_monthly_cleanup.cnf
     fi
     rm -f /root/.my.batch_innodb.cnf
-    rm -f /root/.fast.cron.cnf
     rm -f /root/.batch_innodb.cnf
     rm -f /root/.force.drupalgeddon.cnf
     rm -f /root/.skip_cleanup.cnf

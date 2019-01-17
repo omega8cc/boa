@@ -2379,7 +2379,11 @@ install_curl_src() {
       cd /var/opt
       rm -rf curl*
       wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
-      extract_archive "curl-${_CURL_VRN}.tar.gz"
+      if [ -e "curl-${_CURL_VRN}.tar.gz" ]; then
+        extract_archive "curl-${_CURL_VRN}.tar.gz"
+      else
+        msg "OOPS: curl-${_CURL_VRN}.tar.gz failed download from ${urlDev}/src/curl-${_CURL_VRN}.tar.gz"
+      fi
       cd /var/opt/curl-${_CURL_VRN}
       mrun "sh ./configure \
         --with-ssl \

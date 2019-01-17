@@ -188,7 +188,11 @@ yOk="installation in progress..."
 get_distro_ext() {
   if [ ! -z "$1" ]; then
     curl ${crlGet} "http://${_USE_MIR}/distro/$1" -o "$1"
-    extract_archive "$1"
+    if [ -e "$1" ]; then
+      extract_archive "$1"
+    else
+      msg "OOPS: $1 failed download from http://${_USE_MIR}/distro/$1"
+    fi
   fi
 }
 #

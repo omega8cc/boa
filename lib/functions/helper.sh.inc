@@ -176,7 +176,11 @@ extract_archive() {
 get_dev_arch() {
   if [ ! -z "$1" ]; then
     curl ${crlGet} "${urlDev}/$1" -o "$1"
-    extract_archive "$1"
+    if [ -e "$1" ]; then
+      extract_archive "$1"
+    else
+      msg "OOPS: $1 failed download from ${urlDev}/$1"
+    fi
   fi
 }
 
@@ -185,7 +189,11 @@ get_dev_arch() {
 get_dev_ext() {
   if [ ! -z "$1" ]; then
     curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/$1" -o "$1"
-    extract_archive "$1"
+    if [ -e "$1" ]; then
+      extract_archive "$1"
+    else
+      msg "OOPS: $1 failed download from ${urlDev}/${_AEGIR_XTS_VRN}/$1"
+    fi
   fi
 }
 
@@ -194,7 +202,11 @@ get_dev_ext() {
 get_dev_stc() {
   if [ ! -z "$1" ]; then
     curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/static/$1" -o "$1"
-    extract_archive "$1"
+    if [ -e "$1" ]; then
+      extract_archive "$1"
+    else
+      msg "OOPS: $1 failed download from ${urlDev}/${_AEGIR_XTS_VRN}/static/$1"
+    fi
   fi
 }
 
@@ -203,7 +215,11 @@ get_dev_stc() {
 get_dev_contrib() {
   if [ ! -z "$1" ]; then
     curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/contrib/$1" -o "$1"
-    extract_archive "$1"
+    if [ -e "$1" ]; then
+      extract_archive "$1"
+    else
+      msg "OOPS: $1 failed download from ${urlDev}/${_AEGIR_XTS_VRN}/contrib/$1"
+    fi
   fi
 }
 
@@ -212,7 +228,11 @@ get_dev_contrib() {
 get_dev_src() {
   if [ ! -z "$1" ]; then
     curl ${crlGet} "${urlDev}/src/$1" -o "$1"
-    extract_archive "$1"
+    if [ -e "$1" ]; then
+      extract_archive "$1"
+    else
+      msg "OOPS: $1 failed download from ${urlDev}/src/$1"
+    fi
   fi
 }
 
