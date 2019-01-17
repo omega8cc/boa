@@ -777,9 +777,6 @@ barracuda_cnf() {
         elif [ "${_DB_SERIES}" = "5.7" ]; then
           _DB_SERVER=Percona
           _DBS_VRN="${_PERCONA_5_7_VRN}"
-        elif [ "${_DB_SERIES}" = "5.5" ]; then
-          _DB_SERVER=MariaDB
-          _DBS_VRN="${_MARIADB_5_VRN}"
         else
           _DB_SERVER=MariaDB
           _DB_SERIES=10.1
@@ -787,8 +784,9 @@ barracuda_cnf() {
         fi
       fi
     else
-      _DB_SERIES=5.5
-      _DBS_VRN="${_MARIADB_5_VRN}"
+      _DB_SERVER=MariaDB
+      _DB_SERIES=10.1
+      _DBS_VRN="${_MARIADB_10_1_VRN}"
     fi
     msg "INFO: Creating your ${barCnf} config file"
     sleep 1
@@ -1643,9 +1641,6 @@ barracuda_cnf() {
         elif [ "${_DB_SERIES}" = "5.7" ]; then
           _DB_SERVER=Percona
           _DBS_VRN="${_PERCONA_5_7_VRN}"
-        elif [ "${_DB_SERIES}" = "5.5" ]; then
-          _DB_SERVER=MariaDB
-          _DBS_VRN="${_MARIADB_5_VRN}"
         else
           _DB_SERVER=MariaDB
           _DB_SERIES=10.1
@@ -1654,8 +1649,8 @@ barracuda_cnf() {
       fi
     else
       _DB_SERVER=MariaDB
-      _DB_SERIES=5.5
-      _DBS_VRN="${_MARIADB_5_VRN}"
+      _DB_SERIES=10.1
+      _DBS_VRN="${_MARIADB_10_1_VRN}"
     fi
     _CHECK_HOST=$(uname -n 2>&1)
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then

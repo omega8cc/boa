@@ -391,9 +391,6 @@ install_db_sql() {
         dpkg -i percona-release_latest.$(lsb_release -sc)_all.deb &> /dev/null
         rm -f /etc/apt/sources.list.d/mariadb.*
         echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
-      elif [ "${_DB_SERIES}" = "5.5" ]; then
-        _DB_SERVER=MariaDB
-        _DBS_VRN="${_MARIADB_5_VRN}"
       else
         _DB_SERVER=MariaDB
         _DB_SERIES=10.1
