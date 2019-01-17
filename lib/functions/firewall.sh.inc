@@ -63,6 +63,7 @@ csf_install() {
   _IPSET_TEST=$(which ipset 2> /dev/null)
   if [ ! -x "${_IPSET_TEST}" ]; then
     apt-get clean -qq &> /dev/null
+    rm -f -r /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     apt-get install ipset ${forCer} &> /dev/null
   fi
@@ -141,6 +142,7 @@ install_upgrade_csf_lfd() {
   _IPSET_TEST=$(which ipset 2> /dev/null)
   if [ ! -x "${_IPSET_TEST}" ]; then
     apt-get clean -qq &> /dev/null
+    rm -f -r /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     apt-get install ipset ${forCer} &> /dev/null
   fi

@@ -782,6 +782,7 @@ install_db_server() {
       rm -f /etc/apt/sources.list.d/openssl.list
       st_runner "aptitude autoclean -y" &> /dev/null
       st_runner "apt-get clean -qq" &> /dev/null
+      rm -f -r /var/lib/apt/lists/*
       st_runner "apt-get update -qq" &> /dev/null
       if [ "$_DB_SERVER" = "MariaDB" ]; then
         cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null

@@ -3,7 +3,7 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-forCer="-fuy --allow-unauthenticated --reinstall"
+forCer="-fuy --allow-unauthenticated --allow-insecure-repositories --reinstall"
 
 check_root() {
   if [ `whoami` = "root" ]; then
@@ -92,6 +92,7 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
       rm -f /etc/apt/sources.list.d/openssl.list
       echo "curl install" | dpkg --set-selections &> /dev/null
       apt-get clean -qq &> /dev/null
+      rm -f -r /var/lib/apt/lists/*
       apt-get update -qq &> /dev/null
       apt-get install curl ${forCer} &> /dev/null
       touch /root/.use.curl.from.packages.cnf

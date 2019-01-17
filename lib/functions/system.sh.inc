@@ -68,6 +68,7 @@ if_running_as_root_barracuda() {
         rm -f /etc/apt/sources.list.d/openssl.list
         mrun "dpkg --configure -a" &> /dev/null
         mrun "apt-get clean -qq"   &> /dev/null
+        rm -f -r /var/lib/apt/lists/*
         mrun "apt-get update -qq"  &> /dev/null
         mrun "apt-get remove webmin -y -qq" &> /dev/null
         mrun "apt-get purge webmin -y -qq"  &> /dev/null
@@ -1835,6 +1836,7 @@ run_aptitude_full_upgrade() {
     fi
   fi
   st_runner "aptitude full-upgrade -f -y -q \
+    --allow-untrusted \
     -o Dpkg::Options::=--force-confdef \
     -o Dpkg::Options::=--force-confold" 2> /dev/null
   if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]] \
@@ -1894,7 +1896,7 @@ check_install_latest_git() {
 #
 # Check apt updates.
 check_apt_updates() {
-  for Update in `/usr/bin/apt-get -q -y --allow-unauthenticated \
+  for Update in `/usr/bin/apt-get -q -y --allow-unauthenticated --allow-insecure-repositories \
     -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`; do
     case "${Update}" in
       *libcurl*)    _UP_PHP=YES ;;
@@ -2015,6 +2017,7 @@ update_sources_list() {
   ###--------------------###
   aptitude autoclean -y &> /dev/null
   apt-get clean -qq &> /dev/null
+  rm -f -r /var/lib/apt/lists/*
   ###--------------------###
   if [ -e "${pthLog}/apt-fast-install-log.txt" ] \
     || [ -e "/var/log/apt-fast-install-log.txt" ]; then
@@ -2364,6 +2367,7 @@ install_curl_src() {
           echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
           echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
           mrun "apt-get clean -qq" 2> /dev/null
+          rm -f -r /var/lib/apt/lists/*
           mrun "apt-get update -qq" 2> /dev/null
           mrun "apt-get install libcurl3 ${forCer}" 2> /dev/null
           mrun "apt-get install libcurl3-gnutls ${forCer}" 2> /dev/null
@@ -2858,6 +2862,7 @@ finale() {
   echo >> /etc/motd.tail
   aptitude autoclean -y &> /dev/null
   apt-get clean -qq &> /dev/null
+  rm -f -r /var/lib/apt/lists/*
   mkdir -p /data/conf/arch
   mv -f /data/conf/global.inc-pre* /data/conf/arch/     &> /dev/null
   mv -f /data/conf/global.inc-before* /data/conf/arch/  &> /dev/null
@@ -2988,6 +2993,12 @@ install_with_aptitude_deps() {
 }
 
 basic_packages_install_on_init() {
+  if [ ! -e "/etc/apt/apt.conf.d/99ignorestrict" ] \
+    && [ -e "/etc/apt/apt.conf.d" ]; then
+    echo "APT::Get::AllowInsecureRepositories \"true\";" > /etc/apt/apt.conf.d/99ignorestrict
+    echo "APT::Get::AllowUnauthenticated \"true\";"     >> /etc/apt/apt.conf.d/99ignorestrict
+    echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
+  fi
   if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
     _GRUB_TEST=$(grep systemd /etc/default/grub 2>&1)
     if [[ "${_GRUB_TEST}" =~ "systemd" ]]; then
@@ -3008,6 +3019,8 @@ basic_packages_install_on_init() {
     #     apt-get install ubuntu-keyring ${forCer} &> /dev/null
     #   fi
     # fi
+    apt-get clean -qq &> /dev/null
+    rm -f -r /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     ${_INITINS} locales &> /dev/null
     fix_locales
@@ -3386,7 +3399,7 @@ if_jessie_to_stretch() {
         rm -rf /dev/pts/*
         rm -f /etc/apt/sources.list.d/openssl.list
         apt-get update -qq &> /dev/null
-        apt-get install udev -y --allow-unauthenticated &> /dev/null
+        apt-get install udev -y --allow-unauthenticated --allow-insecure-repositories &> /dev/null
         echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
         mount -t devpts devpts /dev/pts &> /dev/null
       fi
@@ -3489,10 +3502,12 @@ sys_packages_update() {
   _DB_SERVER_TEST=$(mysql -V 2>&1)
   if [ "${_STATUS}" = "INIT" ]; then
     st_runner "aptitude full-upgrade -f -y -q \
+      --allow-untrusted \
       -o Dpkg::Options::=--force-confdef \
       -o Dpkg::Options::=--force-confold" 2> /dev/null
     st_runner "apt-get update -qq" &> /dev/null
     st_runner "aptitude full-upgrade -f -y -q \
+      --allow-untrusted \
       -o Dpkg::Options::=--force-confdef \
       -o Dpkg::Options::=--force-confold" 2> /dev/null
     st_runner "aptitude autoclean -y" &> /dev/null
@@ -3524,7 +3539,7 @@ sys_packages_update() {
     mrun "aptitude remove php-apc -y" &> /dev/null
     mrun "aptitude remove apache2.2-common -y" &> /dev/null
     mrun "aptitude remove apache2.2-bin -y" &> /dev/null
-    mrun "aptitude install lsof -y" &> /dev/null
+    mrun "aptitude install lsof -y --allow-untrusted" &> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       rm -f /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
@@ -3732,6 +3747,7 @@ sys_packages_install() {
     _DEBDEPS="apticron \
               aptitude \
               m4 \
+              apt-forktracer \
               apt-listchanges \
               at \
               autoconf \
@@ -3846,6 +3862,7 @@ sys_packages_install() {
               ttf-dejavu \
               ttf-dejavu-core \
               ttf-dejavu-extra \
+              unattended-upgrades \
               unrtf \
               unzip \
               unzip \
@@ -3891,6 +3908,7 @@ fix_postfix() {
       # fi
       mrun "dpkg --configure -a"      &> /dev/null
       mrun "apt-get clean -qq"        &> /dev/null
+      rm -f -r /var/lib/apt/lists/*
       mrun "apt-get update -qq"       &> /dev/null
       mrun "apt-get purge postfix -y" &> /dev/null
       echo > /var/log/mail.log

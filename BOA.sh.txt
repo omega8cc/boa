@@ -51,7 +51,7 @@ _X_VERSION="BOA-3.2.2"
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-forCer="-fuy --allow-unauthenticated --reinstall"
+forCer="-fuy --allow-unauthenticated --allow-insecure-repositories --reinstall"
 optBin="/opt/local/bin"
 usrBin="/usr/local/bin"
 pthLog="/var/xdrago/log"
@@ -1301,6 +1301,7 @@ update_wrappers() {
     rm -f /etc/apt/sources.list.d/openssl.list
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt-get clean -qq &> /dev/null
+    rm -f -r /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     apt-get install curl ${forCer} &> /dev/null
     touch /root/.use.curl.from.packages.cnf
@@ -1325,12 +1326,14 @@ update_wrappers() {
   if [ ! -x "${_LSB_TEST}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
     apt-get clean -qq &> /dev/null
+    rm -f -r /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${forCer} &> /dev/null
   fi
   _IPSET_TEST=$(which ipset 2> /dev/null)
   if [ ! -x "${_IPSET_TEST}" ]; then
     apt-get clean -qq &> /dev/null
+    rm -f -r /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     apt-get install ipset ${forCer} &> /dev/null
   fi
@@ -1444,6 +1447,7 @@ setup() {
     rm -f /etc/apt/sources.list.d/openssl.list
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt-get clean -qq &> /dev/null
+    rm -f -r /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     apt-get install curl ${forCer} &> /dev/null
     touch /root/.use.curl.from.packages.cnf
@@ -1467,6 +1471,7 @@ setup() {
   _VIRT_TEST=$(which virt-what 2> /dev/null)
   if [ ! -x "${_VIRT_TEST}" ]; then
     apt-get clean -qq &> /dev/null
+    rm -f -r /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     apt-get install virt-what ${forCer} &> /dev/null
   fi
@@ -1474,6 +1479,7 @@ setup() {
   if [ ! -x "${_LSB_TEST}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
     apt-get clean -qq &> /dev/null
+    rm -f -r /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     apt-get install lsb-release ${forCer} &> /dev/null
   fi
@@ -1712,6 +1718,14 @@ if [ `whoami` = "root" ]; then
     service cron reload &> /dev/null
   fi
   if [ "${_SCREEN_INIT}" = "YES" ]; then
+    if [ ! -e "/etc/apt/apt.conf.d/99ignorestrict" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Get::AllowInsecureRepositories \"true\";" > /etc/apt/apt.conf.d/99ignorestrict
+      echo "APT::Get::AllowUnauthenticated \"true\";"     >> /etc/apt/apt.conf.d/99ignorestrict
+      echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
+    fi
+    apt-get clean -qq &> /dev/null
+    rm -f -r /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     apt-get install screen -y &> /dev/null
     apt-get install net-tools -y &> /dev/null

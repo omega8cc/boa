@@ -380,11 +380,13 @@ mode_detection() {
         -o Dpkg::Options::=--force-confold install"
     else
       _INSTAPP="/usr/bin/aptitude -f -y -q \
+        --allow-untrusted \
         -o Dpkg::Options::=--force-confdef \
         -o Dpkg::Options::=--force-confold install"
     fi
   else
     _INSTAPP="/usr/bin/aptitude -f -y -q \
+      --allow-untrusted \
       -o Dpkg::Options::=--force-confdef \
       -o Dpkg::Options::=--force-confold install"
   fi

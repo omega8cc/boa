@@ -31,7 +31,7 @@ _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
 _HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
 
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-forCer="-fuy --allow-unauthenticated --reinstall"
+forCer="-fuy --allow-unauthenticated --allow-insecure-repositories --reinstall"
 
 check_root() {
   if [ `whoami` = "root" ]; then
@@ -134,6 +134,7 @@ install() {
     find_fast_mirror
     rm -f /etc/apt/sources.list.d/openssl.list
     apt-get clean -qq                    &> /dev/null
+    rm -f -r /var/lib/apt/lists/*
     apt-get update -qq                   &> /dev/null
     aptitude purge duplicity -y          &> /dev/null
     rm -rf /usr/local/lib/python2.7/dist-packages/fasteners*
@@ -337,6 +338,7 @@ if [ -e "${_LOGPTH}/${BUCKET_DOT}.archive.log" ]; then
   cat ${_LOGPTH}/${BUCKET_DOT}.randomize.cleanup.log >> ${_LOGPTH}/${BUCKET}.randomize.cleanup.log
   mv ${_LOGPTH}/${BUCKET_DOT}.randomize.cleanup.log /var/backups/${BUCKET_DOT}.randomize.cleanup.log
   apt-get clean -qq                    &> /dev/null
+  rm -f -r /var/lib/apt/lists/*
   apt-get update -qq                   &> /dev/null
   apt-get install python-pip -y        &> /dev/null
   pip install awscli                   &> /dev/null

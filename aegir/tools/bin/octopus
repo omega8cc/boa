@@ -18,7 +18,7 @@ barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
 bldPth="/opt/tmp/boa"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-forCer="-fuy --allow-unauthenticated --reinstall"
+forCer="-fuy --allow-unauthenticated --allow-insecure-repositories --reinstall"
 filIncB="barracuda.sh.cnf"
 filIncO="octopus.sh.cnf"
 gCb="git clone --branch"
@@ -1072,6 +1072,7 @@ check_dns_curl() {
     rm -f /etc/apt/sources.list.d/openssl.list
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt-get clean -qq &> /dev/null
+    rm -f -r /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     apt-get install curl ${forCer} &> /dev/null
     touch /root/.use.curl.from.packages.cnf

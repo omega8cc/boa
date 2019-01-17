@@ -9,9 +9,10 @@ _UTIL_VRN="0.30.216-pre3126"
 _VNSTAT_VRN="2.0"
 
 _NOISE="-q"
-_INST="/usr/bin/apt-get -y --allow-unauthenticated ${_NOISE} install"
+_INST="/usr/bin/apt-get -y --allow-unauthenticated --allow-insecure-repositories ${_NOISE} install"
 
 _INSTAPP="/usr/bin/aptitude -f -y -q \
+  --allow-untrusted \
   -o Dpkg::Options::=--force-confdef \
   -o Dpkg::Options::=--force-confold install"
 
@@ -42,10 +43,11 @@ check_root() {
         ln -s /proc/self/fd /dev/fd
       fi
     fi
-    forCer="-fuy --allow-unauthenticated --reinstall"
+    forCer="-fuy --allow-unauthenticated --allow-insecure-repositories --reinstall"
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ ! -x "${_LSB_TEST}" ]; then
       apt-get clean ${_NOISE}
+      rm -f -r /var/lib/apt/lists/*
       apt-get update ${_NOISE}
       apt-get install lsb-release ${forCer} ${_NOISE}
       _OSV=$(lsb_release -si 2>&1)
@@ -71,6 +73,7 @@ check_root() {
       echo "deb http://http.debian.net/debian/ ${_OSR}-proposed-updates main"          >> /etc/apt/sources.list
       echo
       apt-get clean ${_NOISE}
+      rm -f -r /var/lib/apt/lists/*
       apt-get update ${_NOISE}
       apt-get install lsb-release ${forCer} ${_NOISE}
     fi
