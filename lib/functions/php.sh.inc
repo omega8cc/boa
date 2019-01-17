@@ -921,9 +921,9 @@ install_php_multi() {
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
     && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
     if [ -e "/usr/lib/libtidy.so" ]; then
-      mrun "apt-get remove libtidy-dev -y --force-yes -qq" &> /dev/null
-      mrun "apt-get remove libtidy-0.99-0 -y --force-yes -qq" &> /dev/null
-      mrun "apt-get remove tidy -y --force-yes -qq" &> /dev/null
+      mrun "apt-get remove libtidy-dev -y -qq" &> /dev/null
+      mrun "apt-get remove libtidy-0.99-0 -y -qq" &> /dev/null
+      mrun "apt-get remove tidy -y -qq" &> /dev/null
     fi
     cd /var/opt
     rm -rf tidy*
@@ -1932,9 +1932,9 @@ check_fix_php() {
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
     && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
     if [ -e "/usr/lib/libtidy.so" ]; then
-      mrun "apt-get remove libtidy-dev -y --force-yes -qq" &> /dev/null
-      mrun "apt-get remove libtidy-0.99-0 -y --force-yes -qq" &> /dev/null
-      mrun "apt-get remove tidy -y --force-yes -qq" &> /dev/null
+      mrun "apt-get remove libtidy-dev -y -qq" &> /dev/null
+      mrun "apt-get remove libtidy-0.99-0 -y -qq" &> /dev/null
+      mrun "apt-get remove tidy -y -qq" &> /dev/null
     fi
     cd /var/opt
     rm -rf tidy*

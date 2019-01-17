@@ -691,7 +691,7 @@ install_vps() {
         if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
           cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
         fi
-        vserver ${idn} exec apt-get remove systemd -y --force-yes ${_NOISE} --purge --auto-remove
+        vserver ${idn} exec apt-get remove systemd -y ${_NOISE} --purge --auto-remove
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /vservers/${idn}/etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /vservers/${idn}/etc/apt/preferences.d/systemd
         vserver ${idn} exec ${_INSTAPP} sysvinit-core
@@ -710,7 +710,7 @@ install_vps() {
         if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
           cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
         fi
-        vserver ${idn} exec apt-get remove systemd -y --force-yes ${_NOISE} --purge --auto-remove
+        vserver ${idn} exec apt-get remove systemd -y ${_NOISE} --purge --auto-remove
       fi
     fi
   else
@@ -1331,7 +1331,7 @@ upgrade_host() {
         cp -af /usr/share/sysvinit/inittab /etc/inittab
       fi
     fi
-    apt-get remove systemd -y --force-yes ${_NOISE} --purge --auto-remove
+    apt-get remove systemd -y ${_NOISE} --purge --auto-remove
   fi
 
   echo "Installing vserver tools dependencies..."

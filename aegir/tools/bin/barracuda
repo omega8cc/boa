@@ -1096,20 +1096,20 @@ check_root() {
         echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
         apt-get update -qq &> /dev/null
       fi
-      apt-get remove fuse -y --force-yes -qq &> /dev/null
-      apt-get purge fuse -y --force-yes -qq &> /dev/null
-      apt-get remove udev -y --force-yes -qq &> /dev/null
-      apt-get purge udev -y --force-yes -qq &> /dev/null
-      apt-get remove makedev -y --force-yes -qq &> /dev/null
-      apt-get purge makedev -y --force-yes -qq &> /dev/null
+      apt-get remove fuse -y -qq &> /dev/null
+      apt-get purge fuse -y -qq &> /dev/null
+      apt-get remove udev -y -qq &> /dev/null
+      apt-get purge udev -y -qq &> /dev/null
+      apt-get remove makedev -y -qq &> /dev/null
+      apt-get purge makedev -y -qq &> /dev/null
       _PTMX=OK
       if [ -e "/sbin/hdparm" ]; then
-        apt-get remove hdparm -y --force-yes -qq &> /dev/null
-        apt-get purge hdparm -y --force-yes -qq &> /dev/null
+        apt-get remove hdparm -y -qq &> /dev/null
+        apt-get purge hdparm -y -qq &> /dev/null
       fi
       if [ -e "/sbin/auditd" ]; then
-        apt-get remove auditd -y --force-yes -qq &> /dev/null
-        apt-get purge auditd -y --force-yes -qq &> /dev/null
+        apt-get remove auditd -y -qq &> /dev/null
+        apt-get purge auditd -y -qq &> /dev/null
       fi
       _REMOVE_LINKS="buagent \
                      checkroot.sh \

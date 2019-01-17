@@ -50,27 +50,27 @@ if_running_as_root_barracuda() {
         echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
         apt-get update -qq &> /dev/null
       fi
-      apt-get remove fuse -y --force-yes -qq &> /dev/null
-      apt-get purge fuse -y --force-yes -qq &> /dev/null
-      apt-get remove udev -y --force-yes -qq &> /dev/null
-      apt-get purge udev -y --force-yes -qq &> /dev/null
-      apt-get remove makedev -y --force-yes -qq &> /dev/null
-      apt-get purge makedev -y --force-yes -qq &> /dev/null
+      apt-get remove fuse -y -qq &> /dev/null
+      apt-get purge fuse -y -qq &> /dev/null
+      apt-get remove udev -y -qq &> /dev/null
+      apt-get purge udev -y -qq &> /dev/null
+      apt-get remove makedev -y -qq &> /dev/null
+      apt-get purge makedev -y -qq &> /dev/null
       if [ -e "/sbin/hdparm" ]; then
-        mrun "apt-get remove hdparm -y --force-yes -qq" &> /dev/null
-        mrun "apt-get purge hdparm -y --force-yes -qq" &> /dev/null
+        mrun "apt-get remove hdparm -y -qq" &> /dev/null
+        mrun "apt-get purge hdparm -y -qq" &> /dev/null
       fi
       if [ -e "/sbin/auditd" ]; then
-        mrun "apt-get remove auditd -y --force-yes -qq" &> /dev/null
-        mrun "apt-get purge auditd -y --force-yes -qq" &> /dev/null
+        mrun "apt-get remove auditd -y -qq" &> /dev/null
+        mrun "apt-get purge auditd -y -qq" &> /dev/null
       fi
       if [ -d "/etc/webmin" ]; then
         rm -f /etc/apt/sources.list.d/openssl.list
         mrun "dpkg --configure -a" &> /dev/null
         mrun "apt-get clean -qq"   &> /dev/null
         mrun "apt-get update -qq"  &> /dev/null
-        mrun "apt-get remove webmin -y --force-yes -qq" &> /dev/null
-        mrun "apt-get purge webmin -y --force-yes -qq"  &> /dev/null
+        mrun "apt-get remove webmin -y -qq" &> /dev/null
+        mrun "apt-get purge webmin -y -qq"  &> /dev/null
         rm -rf /usr/share/webmin
       fi
       rm -f ${aptLiSys}.d/ksplice.list
@@ -1828,7 +1828,7 @@ run_aptitude_full_upgrade() {
   if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]] \
     && [ ! -e "${pthLog}/fixed-mytop-mariadb.log" ]; then
     st_runner "aptitude remove mytop -y" &> /dev/null
-    st_runner "apt-get purge mytop -y --force-yes -qq" &> /dev/null
+    st_runner "apt-get purge mytop -y -qq" &> /dev/null
     rm -f /usr/bin/mytop
     if [ -e "${pthLog}" ]; then
       touch ${pthLog}/fixed-mytop-mariadb.log
@@ -3078,7 +3078,7 @@ basic_packages_install_on_init() {
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
       fi
-      apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
+      apt-get remove systemd -y -qq --purge --auto-remove &> /dev/null
     fi
   fi
 }
@@ -3156,12 +3156,12 @@ if_jessie_to_stretch() {
       kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
     fi
     mrun "apt-get update -qq" 2> /dev/null
-    mrun "apt-get remove collectd      -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove libc-client2007b-dev -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove nginx-extras  -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove nginx         -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove nginx-common  -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove nginx-full    -y --force-yes -qq" 2> /dev/null
+    mrun "apt-get remove collectd      -y -qq" 2> /dev/null
+    mrun "apt-get remove libc-client2007b-dev -y -qq" 2> /dev/null
+    mrun "apt-get remove nginx-extras  -y -qq" 2> /dev/null
+    mrun "apt-get remove nginx         -y -qq" 2> /dev/null
+    mrun "apt-get remove nginx-common  -y -qq" 2> /dev/null
+    mrun "apt-get remove nginx-full    -y -qq" 2> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
@@ -3181,14 +3181,14 @@ if_jessie_to_stretch() {
                          php5-mysql \
                          php5-sqlite \
                          php5-xmlrpc \
-                         php5-xsl      -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove phpunit       -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove php-pear      -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove php-benchmark -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove php5-cli      -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove php5-common   -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove php5-apc      -y --force-yes -qq" 2> /dev/null
-    mrun "apt-get remove php-apc       -y --force-yes -qq" 2> /dev/null
+                         php5-xsl      -y -qq" 2> /dev/null
+    mrun "apt-get remove phpunit       -y -qq" 2> /dev/null
+    mrun "apt-get remove php-pear      -y -qq" 2> /dev/null
+    mrun "apt-get remove php-benchmark -y -qq" 2> /dev/null
+    mrun "apt-get remove php5-cli      -y -qq" 2> /dev/null
+    mrun "apt-get remove php5-common   -y -qq" 2> /dev/null
+    mrun "apt-get remove php5-apc      -y -qq" 2> /dev/null
+    mrun "apt-get remove php-apc       -y -qq" 2> /dev/null
     echo "curl install"           | dpkg --set-selections &> /dev/null
     echo "git install"            | dpkg --set-selections &> /dev/null
     echo "git-core install"       | dpkg --set-selections &> /dev/null
@@ -3318,7 +3318,7 @@ if_jessie_to_stretch() {
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
       fi
-      apt-get remove systemd -y --force-yes -qq --purge --auto-remove &> /dev/null
+      apt-get remove systemd -y -qq --purge --auto-remove &> /dev/null
     fi
     _VM_TEST=$(uname -a 2>&1)
     if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
@@ -3539,31 +3539,6 @@ sys_packages_update() {
       rm -f /etc/csf/csf.error
       csf -x &> /dev/null
     fi
-    _KEYS_SERVER_TEST=FALSE
-    until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
-      _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
-        --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 2>&1)
-      sleep 2
-    done
-    _KEYS_SERVER_TEST=FALSE
-    until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
-      _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
-        --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
-      sleep 2
-    done
-    _KEYS_SERVER_TEST=FALSE
-    until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
-      _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
-        --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5 2>&1)
-      sleep 2
-    done
-    if [ ! -e "${aptLiSys}.d/xtrabackup.list" ]; then
-      xtraRepo="repo.percona.com/apt"
-      xtraList="${aptLiSys}.d/xtrabackup.list"
-      echo "## Percona XtraBackup APT Repository" > ${xtraList}
-      echo "deb http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
-      echo "deb-src http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
-    fi
     _UP_JDK=NO
     _UP_LNX=NO
     _UP_NRC=NO
@@ -3606,13 +3581,13 @@ sys_packages_install() {
   else
     _APT_ITEM=$(dpkg --get-selections | grep openjdk-6-jdk | grep install 2>&1)
     if [[ "${_APT_ITEM}" =~ "install" ]]; then
-      mrun "apt-get remove openjdk-6-jdk -y --force-yes -qq" &> /dev/null
-      mrun "apt-get purge openjdk-6-jdk -y --force-yes -qq" &> /dev/null
+      mrun "apt-get remove openjdk-6-jdk -y -qq" &> /dev/null
+      mrun "apt-get purge openjdk-6-jdk -y -qq" &> /dev/null
     fi
     _APT_ITEM=$(dpkg --get-selections | grep openjdk-7-jdk | grep install 2>&1)
     if [[ "${_APT_ITEM}" =~ "install" ]]; then
-      mrun "apt-get remove openjdk-7-jdk -y --force-yes -qq" &> /dev/null
-      mrun "apt-get purge openjdk-7-jdk -y --force-yes -qq" &> /dev/null
+      mrun "apt-get remove openjdk-7-jdk -y -qq" &> /dev/null
+      mrun "apt-get purge openjdk-7-jdk -y -qq" &> /dev/null
     fi
     if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
       || [[ "${_THISHOST}" =~ ".host8." ]] \
@@ -3645,11 +3620,11 @@ sys_packages_install() {
     # fi
     mrun "apt-get -f install -qq"                         &> /dev/null
     mrun "service nginx start"                            &> /dev/null
-    mrun "apt-get remove nginx-extras -y --force-yes -qq" &> /dev/null
-    mrun "apt-get remove nginx -y --force-yes -qq"        &> /dev/null
-    mrun "apt-get remove nginx-common -y --force-yes -qq" &> /dev/null
-    mrun "apt-get remove nginx-full -y --force-yes -qq"   &> /dev/null
-    mrun "apt-get remove redis-server -y --force-yes -qq" &> /dev/null
+    mrun "apt-get remove nginx-extras -y -qq" &> /dev/null
+    mrun "apt-get remove nginx -y -qq"        &> /dev/null
+    mrun "apt-get remove nginx-common -y -qq" &> /dev/null
+    mrun "apt-get remove nginx-full -y -qq"   &> /dev/null
+    mrun "apt-get remove redis-server -y -qq" &> /dev/null
     st_runner "apt-get update -qq"                        &> /dev/null
   fi
   _EXTRA_LIB_APT="libmcrypt-dev"
@@ -5089,8 +5064,8 @@ update_apticron() {
           /etc/apticron/apticron.conf
         wait
       else
-        mrun "apt-get remove apticron -y --force-yes -qq" &> /dev/null
-        mrun "apt-get purge apticron -y --force-yes -qq"  &> /dev/null
+        mrun "apt-get remove apticron -y -qq" &> /dev/null
+        mrun "apt-get purge apticron -y -qq"  &> /dev/null
         mrun "apt-get install apticron -y"                &> /dev/null
         sed -i "s/^# NOTIFY_HOLDS=\"0\"/NOTIFY_HOLDS=\"0\"/g" \
           /etc/apticron/apticron.conf

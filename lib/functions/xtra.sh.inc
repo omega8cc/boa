@@ -244,8 +244,8 @@ if_install_collectd() {
     && [ ! -e "/boot/grub/grub.cfg" ] \
     && [ ! -e "/boot/grub/menu.lst" ]; then
     rm -f ${mtrNgx}/vhost.d/cgp*
-    mrun "apt-get remove collectd -y --force-yes -qq" &> /dev/null
-    mrun "apt-get purge collectd -y --force-yes -qq" &> /dev/null
+    mrun "apt-get remove collectd -y -qq" &> /dev/null
+    mrun "apt-get purge collectd -y -qq" &> /dev/null
     rm -rf /var/www/cgp
   fi
   if [ -d "/var/www/cgp" ]; then
@@ -434,7 +434,7 @@ if_install_rvm() {
                                ruby1.9.1-dev \
                                libruby1.9.1 \
                                ruby1.9.1 \
-                               -y --force-yes -qq" &> /dev/null
+                               -y -qq" &> /dev/null
           mrun "rvm install ${_RUBY_VRN}" &> /dev/null
           mrun "rvm use ${_RUBY_VRN} --default" &> /dev/null
           mrun "rvm get stable" 2> /dev/null
