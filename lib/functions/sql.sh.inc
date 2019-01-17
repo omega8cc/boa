@@ -470,6 +470,11 @@ install_db_sql() {
     st_runner "aptitude remove libmariadb-dev -y" &> /dev/null
     st_runner "aptitude remove libmariadbd-dev -y" &> /dev/null
     st_runner "aptitude remove libmysqlclient18 -y" &> /dev/null
+    st_runner "apt-get purge libmysqlclient18.1 -y" &> /dev/null
+    st_runner "apt-get purge libmariadbclient-dev -y" &> /dev/null
+    st_runner "apt-get purge libmariadb-dev -y" &> /dev/null
+    st_runner "apt-get purge libmariadbd-dev -y" &> /dev/null
+    st_runner "apt-get purge libmysqlclient18 -y" &> /dev/null
     SQLDEB="percona-server-server-${_DB_SERIES}"
   else
     st_runner "aptitude remove mysql-common -y" &> /dev/null
