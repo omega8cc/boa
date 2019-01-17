@@ -1896,7 +1896,7 @@ check_install_latest_git() {
 #
 # Check apt updates.
 check_apt_updates() {
-  for Update in `/usr/bin/apt-get -q -y --allow-unauthenticated --allow-insecure-repositories \
+  for Update in `/usr/bin/apt-get -q -y --allow-unauthenticated \
     -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`; do
     case "${Update}" in
       *libcurl*)    _UP_PHP=YES ;;
@@ -3399,7 +3399,7 @@ if_jessie_to_stretch() {
         rm -rf /dev/pts/*
         rm -f /etc/apt/sources.list.d/openssl.list
         apt-get update -qq &> /dev/null
-        apt-get install udev -y --allow-unauthenticated --allow-insecure-repositories &> /dev/null
+        apt-get install udev -y --allow-unauthenticated &> /dev/null
         echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
         mount -t devpts devpts /dev/pts &> /dev/null
       fi

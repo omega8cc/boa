@@ -3,7 +3,7 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-forCer="-fuy --allow-unauthenticated --allow-insecure-repositories --reinstall"
+forCer="-fuy --allow-unauthenticated --reinstall"
 
 check_root() {
   if [ `whoami` = "root" ]; then
