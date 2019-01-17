@@ -174,7 +174,7 @@ enable_chattr() {
         rm -f ${_U_HD}/{drupalgeddon,drush_ecl,make_local,safe_cache_form*}
         rm -f ${_U_HD}/usr/{drush_make,registry_rebuild,clean_missing_modules}
         rm -f ${_U_HD}/usr/{drupalgeddon,drush_ecl,make_local,safe_cache_form*}
-        rm -f ${_U_HD}/usr/{mydropwizard}
+        rm -f ${_U_HD}/usr/{mydropwizard,utf8mb4_convert}
         rm -f ${_U_HD}/.ctrl*
         rm -rf ${_U_HD}/{cache,drush.ini,*drushrc*,*.inc}
       fi
@@ -215,6 +215,11 @@ enable_chattr() {
         && [ -e "${dscUsr}/.drush/usr/mydropwizard" ]; then
         ln -sf ${dscUsr}/.drush/usr/mydropwizard \
           ${_U_HD}/usr/mydropwizard
+      fi
+      if [ ! -L "${_U_HD}/usr/utf8mb4_convert" ] \
+        && [ -e "${dscUsr}/.drush/usr/utf8mb4_convert" ]; then
+        ln -sf ${dscUsr}/.drush/usr/utf8mb4_convert \
+          ${_U_HD}/usr/utf8mb4_convert
       fi
     fi
 

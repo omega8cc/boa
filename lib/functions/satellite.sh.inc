@@ -2818,6 +2818,9 @@ satellite_if_add_update_user_symlinks() {
   if [ -e "${_USER_DS}/mydropwizard" ]; then
     rm -f ${_USER_DS}/mydropwizard
   fi
+  if [ -e "${_USER_DS}/utf8mb4_convert" ]; then
+    rm -f ${_USER_DS}/utf8mb4_convert
+  fi
 
   ###---### Add symlink to the system registry_rebuild.
   #
@@ -2895,6 +2898,19 @@ satellite_if_add_update_user_symlinks() {
     chmod 700 ${_USER_DS}
     ln -sf ${_ROOT}/.drush/usr/mydropwizard \
       ${_USER_DS}/usr/mydropwizard
+  fi
+
+  ###---### Add symlink to the system utf8mb4_convert.
+  #
+  if [ ! -L "${_USER_DS}/usr/utf8mb4_convert" ] \
+    && [ -e "${_ROOT}/.drush/usr/utf8mb4_convert" ]; then
+    msg "${_STATUS} A: Adding symlink to the system utf8mb4_convert"
+    mkdir -p ${_USER_DS}/usr
+    chown ${_USERFTP}:${_USRG} ${_USER_DS}
+    chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
+    chmod 700 ${_USER_DS}
+    ln -sf ${_ROOT}/.drush/usr/utf8mb4_convert \
+      ${_USER_DS}/usr/utf8mb4_convert
   fi
 
   ###---### Add symlink to the clients directory.
@@ -4632,7 +4648,8 @@ satellite_child_b_drush_xts_cleanup() {
     _B_EXT="provision clean_missing_modules drupalgeddon drush_ecl make_local \
       provision_boost provision_cdn provision_civicrm provision_platform_git \
       provision_site_backup provision_tasks_extra remote_import mydropwizard \
-      registry_rebuild safe_cache_form_clear security_check security_review"
+      registry_rebuild safe_cache_form_clear security_check security_review \
+      utf8mb4_convert"
     for e in ${_B_EXT}; do
       if [ -e "${_ROOT}/.drush/$e" ]; then
         mv -f ${_ROOT}/.drush/$e \
@@ -4686,7 +4703,8 @@ satellite_child_b_drush_xts_install() {
     rm -rf ${rD}/*/*/.git
     cd ${rD}/usr
     get_dev_ext "clean_missing_modules.tar.gz"
-    get_dev_contrib "mydropwizard-6.x-1.7.tar.gz"
+    get_dev_ext "mydropwizard-6.x-1.7.tar.gz"
+    get_dev_ext "utf8mb4_convert-7.x-1.0.tar.gz"
   else
     msg "${_STATUS} B: Downloading Drush and Provision extensions..."
     cd ${_ROOT}/.drush/sys
@@ -4697,7 +4715,8 @@ satellite_child_b_drush_xts_install() {
     get_dev_ext "drush_ecl.tar.gz"
     get_dev_ext "registry_rebuild.tar.gz"
     get_dev_ext "safe_cache_form_clear.tar.gz"
-    get_dev_contrib "mydropwizard-6.x-1.7.tar.gz"
+    get_dev_ext "mydropwizard-6.x-1.7.tar.gz"
+    get_dev_ext "utf8mb4_convert-7.x-1.0.tar.gz"
     cd ${_ROOT}/.drush/xts
     get_dev_ext "provision_boost.tar.gz"
     get_dev_ext "security_review.tar.gz"

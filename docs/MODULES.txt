@@ -154,6 +154,7 @@ Drush [E]xtensions [M]aster [S]atellite:
  registry_rebuild ----------- [D6,D7] --- [S] [B] [EM,ES]
  safe_cache_form_clear ------ [D7] ------ [S] [B] [EM,ES]
  security_review ------------ [D6,D7] --- [S] [B] [EM,ES]
+ utf8mb4_convert ------------ [D7] ------ [S] [B] [EM,ES]
 
 Provision [E]xtensions [M]aster [S]atellite:
 
