@@ -125,6 +125,8 @@ csf_install() {
       wait
       sed -i "s/^#Port.*/Port ${_SSH_PORT}/g" /usr/etc/sshd_config
       wait
+      sed -i "s/^UsePrivilegeSeparation.*//g" /usr/etc/sshd_config
+      wait
     fi
     mrun "service ssh restart" &> /dev/null
     if [ "$_CSF_MODE" = "install" ]; then
