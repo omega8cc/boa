@@ -60,6 +60,7 @@ _PHP_CLI_VERSION=7.2
 ### DCE ----------- Commerce v.1
 ### DCS ----------- Commons 6
 ### GDR ----------- Guardr
+### LHG ----------- Lightning
 ### OA7 ----------- OpenAtrium D7
 ### OAD ----------- OpenAid
 ### OLS ----------- OpenLucius
@@ -70,6 +71,7 @@ _PHP_CLI_VERSION=7.2
 ### RST ----------- Restaurant
 ### UC7 ----------- Ubercart D7
 ### UCT ----------- Ubercart D6
+### VBE ----------- Varbase
 ###
 ### Examples:
 ###

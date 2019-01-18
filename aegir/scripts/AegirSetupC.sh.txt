@@ -683,6 +683,7 @@ _F_DRUPAL8="Drupal ${_SMALLCORE8} [${_THIS_CORE}]"
 _F_ERPAL="ERPAL ${_ERPAL} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_FSERVER="Feature Server 1.3 ${_SMALLCORE6} [${_THIS_CORE}]"
 _F_GUARDR="Guardr ${_GUARDR} ${_SMALLCORE7} [${_THIS_CORE}]"
+_F_LIGHTNING="Lightning ${_LIGHTNING} ${_SMALLCORE8} [${_THIS_CORE}]"
 _F_OPENACADEMY="OpenAcademy ${_OPENACADEMY} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENAID="OpenAid ${_OPENAID} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENATRIUM7="OpenAtrium ${_OPENATRIUM7} ${_SMALLCORE7} [${_THIS_CORE}]"
@@ -702,6 +703,7 @@ _F_RESTAURANT="Restaurant ${_RESTAURANT} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_UBER_CART_T="Ubercart ${_UBERCART7} [ud2] ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_UBERCART6="Ubercart ${_UBERCART6} ${_SMALLCORE6} [${_THIS_CORE}]"
 _F_UBERCART7="Ubercart ${_UBERCART7} [aq3] ${_SMALLCORE7} [${_THIS_CORE}]"
+_F_VARBASE="Varbase ${_VARBASE} ${_SMALLCORE8} [${_THIS_CORE}]"
 #
 _F_DRUPAL6_D="Drupal ${_SMALLCORE6} D.${_THIS_CORE}"
 _F_DRUPAL6_S="Drupal ${_SMALLCORE6} S.${_THIS_CORE}"
@@ -1357,6 +1359,41 @@ guardr_install() {
           _RUN_VERIFY=YES
         else
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_GUARDR ${noT}"
+        fi
+      fi
+    fi
+  fi
+}
+
+
+lightning_install() {
+###---### Lightning
+#
+  _REAL_PRNAME="lightning"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_LIGHTNING}-${_SMALLCORE8}"
+  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
+  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/contrib/${_REAL_PRNAME}"
+  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
+  if [ "${_ALLOW_ALL}" = "YES" ]; then
+    if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+      || [[ "${_PLATFORMS_LIST}" =~ "LHG" ]]; then
+      if [ ! -d "${_OCTO_PLPATH}" ]; then
+        if prompt_yes_no "$_F_LIGHTNING - ${urlPrt}/lightning" ; then
+          true
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_LIGHTNING ${yOk}"
+          if [ ! -d "${_SHRD_PLPATH}" ]; then
+            cd ${_CORE}
+            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+              && [ "${_T_BUILD}" = "HEAD" ]; then
+              get_distro_ext "${_SHRD_PLNAME}.tar.gz"
+            else
+              get_distro_ext "${_SHRD_PLNAME}.tar.gz"
+            fi
+          fi
+          msg "DISTRO: $_F_LIGHTNING installed"
+          _RUN_VERIFY=YES
+        else
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_LIGHTNING ${noT}"
         fi
       fi
     fi
@@ -2313,6 +2350,39 @@ ubercart7_testing_install() {
   fi
 }
 
+varbase_install() {
+###---### Varbase
+#
+  _REAL_PRNAME="varbase"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_VARBASE}-${_SMALLCORE8}"
+  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
+  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
+  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
+  if [ "${_ALLOW_ALL}" = "YES" ]; then
+    if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+      || [[ "${_PLATFORMS_LIST}" =~ "VBE" ]]; then
+      if [ ! -d "${_OCTO_PLPATH}" ]; then
+        if prompt_yes_no "$_F_VARBASE - ${urlPrt}/varbase" ; then
+          true
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_VARBASE ${yOk}"
+          if [ ! -d "${_SHRD_PLPATH}" ]; then
+            cd ${_CORE}
+            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+              && [ "${_T_BUILD}" = "HEAD" ]; then
+              get_distro_ext "${_SHRD_PLNAME}.tar.gz"
+            else
+              get_distro_ext "${_SHRD_PLNAME}.tar.gz"
+            fi
+          fi
+          msg "DISTRO: $_F_VARBASE installed"
+          _RUN_VERIFY=YES
+        else
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_VARBASE ${noT}"
+        fi
+      fi
+    fi
+  fi
+}
 
 ###---### Save & verify platforms.
 #
@@ -2450,6 +2520,12 @@ save_verify_platforms() {
         ${pthDst}/guardr-${_GUARDR}-${_SMALLCORE7} &> /dev/null
     fi
   fi
+  if [ -d "${pthDst}/lightning-${_LIGHTNING}-${_SMALLCORE8}/docroot" ]; then
+    if [ ! -e "${pthDst}/lightning-${_LIGHTNING}-${_SMALLCORE8}/docroot/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "$_F_LIGHTNING" lightning \
+        ${pthDst}/lightning-${_LIGHTNING}-${_SMALLCORE8}/docroot &> /dev/null
+    fi
+  fi
   if [ -d "${pthDst}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}" ]; then
     if [ ! -e "${pthDst}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPENACADEMY" openacademy \
@@ -2564,6 +2640,12 @@ save_verify_platforms() {
         ${pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7} &> /dev/null
     fi
   fi
+  if [ -d "${pthDst}/varbase-${_VARBASE}-${_SMALLCORE8}/docroot" ]; then
+    if [ ! -e "${pthDst}/varbase-${_VARBASE}-${_SMALLCORE8}/docroot/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "$_F_VARBASE" varbase \
+        ${pthDst}/varbase-${_VARBASE}-${_SMALLCORE8}/docroot &> /dev/null
+    fi
+  fi
   if [ -d "${pthDst}/pressflow-${_SMALLCORE6}-dev" ]; then
     if [ ! -e "${pthDst}/pressflow-${_SMALLCORE6}-dev/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL6_D" default \
@@ -2627,6 +2709,7 @@ commons_7_install
 ### TMP OFF -- doesn't work with latest core and comes with too old core version
 
 guardr_install
+lightning_install
 openaid_install
 
 _USE_DISTRO_CORE=YES
@@ -2653,6 +2736,7 @@ restaurant_install
 ubercart6_install
 ubercart7_install
 ubercart7_testing_install
+varbase_install
 
 ### openacademy_install
 ### openblog_install

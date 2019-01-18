@@ -3195,6 +3195,13 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
+    if [ -d "${_QR}/lightning-${_LIGHTNING}-${_SMALLCORE8}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/lightning-${_LIGHTNING}-${_SMALLCORE8}" ]; then
+        _A="${_QR}/lightning-${_LIGHTNING}-${_SMALLCORE8}/docroot/sites"
+        _B="${_QH}/lightning-${_LIGHTNING}-${_SMALLCORE8}"
+        ln -sf ${_A} ${_B}
+      fi
+    fi
     if [ -d "${_QR}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}" ]; then
         _A="${_QR}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}/sites"
@@ -3325,6 +3332,13 @@ satellite_if_add_update_user_platforms_symlinks() {
       if [ ! -L "${_QH}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}" ]; then
         _A="${_QR}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}/sites"
         _B="${_QH}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}"
+        ln -sf ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/varbase-${_VARBASE}-${_SMALLCORE8}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/varbase-${_VARBASE}-${_SMALLCORE8}" ]; then
+        _A="${_QR}/varbase-${_VARBASE}-${_SMALLCORE8}/docroot/sites"
+        _B="${_QH}/varbase-${_VARBASE}-${_SMALLCORE8}"
         ln -sf ${_A} ${_B}
       fi
     fi
@@ -3603,6 +3617,7 @@ satellite_make() {
   echo "_LAST_ALL=\"${_LAST_ALL}\""                   >> ${writeTo}
   echo "_LAST_HMR=\"${_LAST_HMR}\""                   >> ${writeTo}
   echo "_LASTNUM=\"${_LASTNUM}\""                     >> ${writeTo}
+  echo "_LIGHTNING=\"${_LIGHTNING}\""                 >> ${writeTo}
   echo "_MY_EMAIL=\"${_MY_EMAIL}\""                   >> ${writeTo}
   echo "_MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${writeTo}
   echo "_NOW=\"${_NOW}\""                             >> ${writeTo}
@@ -3649,6 +3664,7 @@ satellite_make() {
   echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${writeTo}
   echo "_USER=\"${_USER}\""                           >> ${writeTo}
   echo "_USRG=\"${_USRG}\""                           >> ${writeTo}
+  echo "_VARBASE=\"${_VARBASE}\""                     >> ${writeTo}
   echo "_WEBG=\"${_WEBG}\""                           >> ${writeTo}
   echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${writeTo}
 

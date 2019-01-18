@@ -144,6 +144,7 @@
 ### DCE ----------- Commerce v.1
 ### DCS ----------- Commons 6
 ### GDR ----------- Guardr
+### LHG ----------- Lightning
 ### OA7 ----------- OpenAtrium D7
 ### OAD ----------- OpenAid
 ### OLS ----------- OpenLucius
@@ -154,6 +155,7 @@
 ### RST ----------- Restaurant
 ### UC7 ----------- Ubercart D7
 ### UCT ----------- Ubercart D6
+### VBE ----------- Varbase
 ###
 ### You can also use special keyword 'ALL' instead of any other symbols to have
 ### all available platforms installed, including newly added in all future BOA
