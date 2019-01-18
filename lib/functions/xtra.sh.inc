@@ -390,6 +390,11 @@ if_install_bind() {
 }
 
 if_install_rvm() {
+  if [ -x "/usr/bin/gpg2" ]; then
+    _GPG=gpg2
+  else
+    _GPG=gpg
+  fi
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "CSS" ]] \
     || [ ! -z "${_SCOUT_KEY}" ] \
@@ -412,9 +417,35 @@ if_install_rvm() {
           rm -rf /usr/local/rvm
           touch ${pthLog}/ruby-root-clean-reload.log
         fi
-        ${_GPG} --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3 &> /dev/null
-        ${_GPG} --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 &> /dev/null
-        ${_GPG} --keyserver hkp://keys.gnupg.net --recv-keys 7D2BAF1CF37B13E2069D6956105BD0E739499BDB &> /dev/null
+        _KEYS_SIG="D39DC0E3"
+        _KEYS_SERVER_TEST=FALSE
+        until [[ "${_KEYS_SERVER_TEST}" =~ "${_KEYS_SIG}" ]]; do
+          echo "Retrieving ${_KEYS_SIG} key.."
+          ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+          ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+          _KEYS_SERVER_TEST=$(apt-key list | grep "${_KEYS_SIG}" 2>&1)
+          sleep 2
+        done
+        _KEYS_SIG="409B6B1796C275462A1703113804BB82D39DC0E3"
+        _KEYS_SERVER_TEST=FALSE
+        until [[ "${_KEYS_SERVER_TEST}" =~ "${_KEYS_SIG}" ]]; do
+          echo "Retrieving ${_KEYS_SIG} key.."
+          ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+          ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+          _KEYS_SERVER_TEST=$(apt-key list | grep "${_KEYS_SIG}" 2>&1)
+          sleep 2
+        done
+        _KEYS_SIG="7D2BAF1CF37B13E2069D6956105BD0E739499BDB"
+        _KEYS_SERVER_TEST=FALSE
+        until [[ "${_KEYS_SERVER_TEST}" =~ "${_KEYS_SIG}" ]]; do
+          echo "Retrieving ${_KEYS_SIG} key.."
+          ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+          ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+          _KEYS_SERVER_TEST=$(apt-key list | grep "${_KEYS_SIG}" 2>&1)
+          sleep 2
+        done
+        _KEYS_SIG=""
+        _KEYS_SERVER_TEST=FALSE
         curl -sSL https://rvm.io/mpapis.asc | ${_GPG} --import - &> /dev/null
         curl -sSL https://get.rvm.io | bash -s stable &> /dev/null
         echo rvm_autoupdate_flag=0 > ~/.rvmrc

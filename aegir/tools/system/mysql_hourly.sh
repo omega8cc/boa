@@ -33,6 +33,12 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
+if [ -x "/usr/bin/gpg2" ]; then
+  _GPG=gpg2
+else
+  _GPG=gpg
+fi
+
 truncate_watchdog_tables() {
   _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^watchdog$ 2>&1)
   for A in ${_TABLES}; do
@@ -110,8 +116,8 @@ if [ ! -e "${xtraList}" ] \
   _KEYS_SERVER_TEST=FALSE
   until [[ "${_KEYS_SERVER_TEST}" =~ "${_KEYS_SIG}" ]]; do
     echo "Retrieving ${_KEYS_SIG} key.."
-    gpg --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-    gpg --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+    ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+    ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
     _KEYS_SERVER_TEST=$(apt-key list | grep "${_KEYS_SIG}" 2>&1)
     sleep 2
   done
