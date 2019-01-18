@@ -339,9 +339,9 @@ tune_memory_limits() {
   _TMP_SQL="${_USE_SQL}M"
   _SRT_SQL=$(( _USE_SQL * 2 ))
   _SRT_SQL="${_SRT_SQL}K"
-  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "1024" ]; then
-    _USE_PHP=1024
-    _USE_OPC=1024
+  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
+    _USE_PHP=2048
+    _USE_OPC=2048
     _QCE_SQL=64M
     _RND_SQL=8M
     _JBF_SQL=4M
@@ -359,10 +359,10 @@ tune_memory_limits() {
     else
       _L_NGX_WRKS=${_NGINX_WORKERS}
     fi
-  elif [ "${_USE}" -ge "1024" ]; then
+  elif [ "${_USE}" -ge "2048" ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
-      _USE_PHP=1024
-      _USE_OPC=1024
+      _USE_PHP=2048
+      _USE_OPC=2048
       _QCE_SQL=64M
       _RND_SQL=8M
       _JBF_SQL=4M
@@ -384,7 +384,7 @@ tune_memory_limits() {
       if [ -e "/boot/grub/grub.cfg" ] \
         || [ -e "/boot/grub/menu.lst" ] \
         || [ -e "/root/.tg.cnf" ]; then
-        _USE_PHP=2048
+        _USE_PHP=4096
         _USE_OPC=4096
         _QCE_SQL=64M
         _RND_SQL=8M
@@ -409,8 +409,8 @@ tune_memory_limits() {
         sed -i "s/64000/128000/g"  /opt/php70/etc/php70.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini &> /dev/null
       else
-        _USE_PHP=1024
-        _USE_OPC=1024
+        _USE_PHP=2048
+        _USE_OPC=2048
         _QCE_SQL=64M
         _RND_SQL=2M
         _JBF_SQL=2M
@@ -430,8 +430,8 @@ tune_memory_limits() {
         fi
       fi
     else
-      _USE_PHP=1024
-      _USE_OPC=1024
+      _USE_PHP=2048
+      _USE_OPC=2048
       _QCE_SQL=32M
       _RND_SQL=2M
       _JBF_SQL=2M
@@ -476,8 +476,8 @@ tune_memory_limits() {
   if [ "${_USE_FPM}" -lt "256" ]; then
     _USE_FPM=256
   fi
-  if [ "${_USE_PHP}" -lt "1024" ]; then
-    _USE_PHP=1024
+  if [ "${_USE_PHP}" -lt "2048" ]; then
+    _USE_PHP=2048
   fi
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
     mkdir -p /var/xdrago/conf

@@ -966,13 +966,13 @@ satellite_tune_fpm_workers() {
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   _USE=$(( _RAM / 4 ))
-  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "1024" ]; then
+  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
       _L_PHP_FPM_WORKERS=24
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
-  elif [ "${_USE}" -ge "1024" ]; then
+  elif [ "${_USE}" -ge "2048" ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _L_PHP_FPM_WORKERS=48

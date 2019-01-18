@@ -98,7 +98,7 @@ production settings.
 * SSH (RSA) keys for root are required by newer OpenSSH versions used in BOA.
 * Wget must be installed.
 * The outgoing TCP connections via ports: 25, 53, 80 and 443 must be open.
-* Minimum 1 GB of RAM (at least 2GB of RAM + at least 2 CPU recommended)
+* Minimum 4 GB RAM and 2 CPU (with Solr minimum 8 GB RAM and 4+ CPU recommended)
 * Locales with UTF-8 support, otherwise en_US.UTF-8 (default) is forced.
 * Basic sysadmin skills and experience.
 * Willingness to accept BOA PI (paranoid idiosyncrasies).
