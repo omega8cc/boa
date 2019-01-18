@@ -341,24 +341,26 @@ install_db_sql() {
     || [ "${_OSV}" = "trusty" ]; then
     st_runner "${_INSTAPP} software-properties-common dirmngr" 2> /dev/null
   fi
-  _KEYS_SIG="0xF1656F24C74CD1D8"
+  _KEYS_SIG="C74CD1D8"
   _KEYS_SERVER_TEST=FALSE
   until [[ "${_KEYS_SERVER_TEST}" =~ "${_KEYS_SIG}" ]]; do
-    gpg --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys ${_KEYS_SIG}
-    gpg --export ${_KEYS_SIG} > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg
-    _KEYS_SERVER_TEST=$(apt-key list | grep ${_KEYS_SIG} 2>&1)
     msg "INFO: Retrieving ${_KEYS_SIG} key.."
+    gpg --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+    gpg --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+    _KEYS_SERVER_TEST=$(apt-key list | grep "${_KEYS_SIG}" 2>&1)
     sleep 2
   done
   _KEYS_SIG="8507EFA5"
   _KEYS_SERVER_TEST=FALSE
   until [[ "${_KEYS_SERVER_TEST}" =~ "${_KEYS_SIG}" ]]; do
-    gpg --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys ${_KEYS_SIG}
-    gpg --export ${_KEYS_SIG} > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg
-    _KEYS_SERVER_TEST=$(apt-key list | grep ${_KEYS_SIG} 2>&1)
     msg "INFO: Retrieving ${_KEYS_SIG} key.."
+    gpg --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+    gpg --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+    _KEYS_SERVER_TEST=$(apt-key list | grep "${_KEYS_SIG}" 2>&1)
     sleep 2
   done
+  _KEYS_SIG=""
+  _KEYS_SERVER_TEST=FALSE
   if [ "${_THIS_OS}" = "Debian" ]; then
     _OSN=debian
   elif [ "${_THIS_OS}" = "Ubuntu" ]; then
@@ -753,24 +755,26 @@ install_db_server() {
         mrun "service nginx stop" &> /dev/null
       fi
       rm -f ${aptLiSys}.d/ourdelta.list
-      _KEYS_SIG="0xF1656F24C74CD1D8"
+      _KEYS_SIG="C74CD1D8"
       _KEYS_SERVER_TEST=FALSE
       until [[ "${_KEYS_SERVER_TEST}" =~ "${_KEYS_SIG}" ]]; do
-        gpg --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys ${_KEYS_SIG}
-        gpg --export ${_KEYS_SIG} > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg
-        _KEYS_SERVER_TEST=$(apt-key list | grep ${_KEYS_SIG} 2>&1)
         msg "INFO: Retrieving ${_KEYS_SIG} key.."
+        gpg --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+        gpg --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+        _KEYS_SERVER_TEST=$(apt-key list | grep "${_KEYS_SIG}" 2>&1)
         sleep 2
       done
       _KEYS_SIG="8507EFA5"
       _KEYS_SERVER_TEST=FALSE
       until [[ "${_KEYS_SERVER_TEST}" =~ "${_KEYS_SIG}" ]]; do
-        gpg --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys ${_KEYS_SIG}
-        gpg --export ${_KEYS_SIG} > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg
-        _KEYS_SERVER_TEST=$(apt-key list | grep ${_KEYS_SIG} 2>&1)
         msg "INFO: Retrieving ${_KEYS_SIG} key.."
+        gpg --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+        gpg --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+        _KEYS_SERVER_TEST=$(apt-key list | grep "${_KEYS_SIG}" 2>&1)
         sleep 2
       done
+      _KEYS_SIG=""
+      _KEYS_SERVER_TEST=FALSE
       if [ "${_THIS_OS}" = "Debian" ]; then
         _OSN=debian
       elif [ "${_THIS_OS}" = "Ubuntu" ]; then

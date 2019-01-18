@@ -109,10 +109,10 @@ if [ ! -e "${xtraList}" ] \
   _KEYS_SIG="8507EFA5"
   _KEYS_SERVER_TEST=FALSE
   until [[ "${_KEYS_SERVER_TEST}" =~ "${_KEYS_SIG}" ]]; do
-    gpg --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys ${_KEYS_SIG}
-    gpg --export ${_KEYS_SIG} > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg
-    _KEYS_SERVER_TEST=$(apt-key list | grep ${_KEYS_SIG} 2>&1)
     echo "Retrieving ${_KEYS_SIG} key.."
+    gpg --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+    gpg --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+    _KEYS_SERVER_TEST=$(apt-key list | grep "${_KEYS_SIG}" 2>&1)
     sleep 2
   done
   if [ -e "/usr/sbin/csf" ] \
