@@ -333,8 +333,8 @@ tune_memory_limits() {
   else
     _USE_SQL=$(( _RAM / 8 ))
   fi
-  if [ "${_USE_SQL}" -lt "256" ]; then
-    _USE_SQL=256
+  if [ "${_USE_SQL}" -lt "1024" ]; then
+    _USE_SQL=1024
   fi
   _TMP_SQL="${_USE_SQL}M"
   _SRT_SQL=$(( _USE_SQL * 2 ))
