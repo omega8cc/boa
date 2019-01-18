@@ -220,11 +220,11 @@ install_redis_src() {
   chmod 755 /etc/init.d/redis-server &> /dev/null
   mrun "update-rc.d redis-server defaults" &> /dev/null
   mkdir -p /var/run/redis
-  chown redis:redis /var/run/redis
+  chown -R redis:redis /var/run/redis
   mkdir -p /var/log/redis
-  chown redis:redis /var/log/redis
+  chown -R redis:redis /var/log/redis
   mkdir -p /var/lib/redis
-  chown redis:redis /var/lib/redis
+  chown -R redis:redis /var/lib/redis
   rm -f /var/lib/redis/*
   mkdir -p /etc/redis
   if [ -e "/etc/redis/redis.conf" ] && [ "${_STATUS}" = "UPGRADE" ]; then
@@ -249,6 +249,15 @@ install_redis_src() {
 }
 
 install_update_redis() {
+  if [ ! -e "/var/lib/redis" ]; then
+    mrun "adduser --system --group redis" 2> /dev/null
+  fi
+  mkdir -p /var/run/redis
+  chown -R redis:redis /var/run/redis
+  mkdir -p /var/log/redis
+  chown -R redis:redis /var/log/redis
+  mkdir -p /var/lib/redis
+  chown -R redis:redis /var/lib/redis
   if [ "${_STATUS}" = "UPGRADE" ]; then
     _REDIS_V_ITD=$(redis-server -v 2>&1 \
       | tr -d "\n" \
