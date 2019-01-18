@@ -340,8 +340,8 @@ tune_memory_limits() {
   _SRT_SQL=$(( _USE_SQL * 2 ))
   _SRT_SQL="${_SRT_SQL}K"
   if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "1024" ]; then
-    _USE_PHP=512
-    _USE_OPC=512
+    _USE_PHP=1024
+    _USE_OPC=1024
     _QCE_SQL=64M
     _RND_SQL=8M
     _JBF_SQL=4M
@@ -430,8 +430,8 @@ tune_memory_limits() {
         fi
       fi
     else
-      _USE_PHP=256
-      _USE_OPC=256
+      _USE_PHP=1024
+      _USE_OPC=1024
       _QCE_SQL=32M
       _RND_SQL=2M
       _JBF_SQL=2M
@@ -473,11 +473,11 @@ tune_memory_limits() {
     _USE_OPC=64
   fi
   _USE_FPM=$(( _USE_PHP / 2 ))
-  if [ "${_USE_FPM}" -lt "196" ]; then
-    _USE_FPM=196
+  if [ "${_USE_FPM}" -lt "256" ]; then
+    _USE_FPM=256
   fi
-  if [ "${_USE_PHP}" -lt "196" ]; then
-    _USE_PHP=196
+  if [ "${_USE_PHP}" -lt "1024" ]; then
+    _USE_PHP=1024
   fi
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
     mkdir -p /var/xdrago/conf
@@ -549,8 +549,8 @@ tune_memory_limits() {
     sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf
     wait
   fi
-  if [ "${_USE_OPC}" -gt "2048" ]; then
-    _MAX_MEM_REDIS=2048
+  if [ "${_USE_OPC}" -gt "4096" ]; then
+    _MAX_MEM_REDIS=4096
   else
     _MAX_MEM_REDIS="${_USE_OPC}"
   fi
