@@ -1373,7 +1373,7 @@ lightning_install() {
   _SHRD_PLNAME="${_REAL_PRNAME}-${_LIGHTNING}-${_SMALLCORE8}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/contrib/${_REAL_PRNAME}"
-  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
+  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/docroot"
   if [ "${_ALLOW_ALL}" = "YES" ]; then
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "LHG" ]]; then
@@ -1381,17 +1381,14 @@ lightning_install() {
         if prompt_yes_no "$_F_LIGHTNING - ${urlPrt}/lightning" ; then
           true
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_LIGHTNING ${yOk}"
-          if [ ! -d "${_SHRD_PLPATH}" ]; then
-            cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
-              && [ "${_T_BUILD}" = "HEAD" ]; then
-              get_distro_ext "${_SHRD_PLNAME}.tar.gz"
-            else
-              get_distro_ext "${_SHRD_PLNAME}.tar.gz"
-            fi
+          if [ ! -d "${_OCTO_PLPATH}" ]; then
+            cd ${_ROOT}/distro/${_THIS_CORE}
+            get_distro_ext "${_SHRD_PLNAME}.tar.gz"
           fi
-          msg "DISTRO: $_F_LIGHTNING installed"
-          _RUN_VERIFY=YES
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            msg "DISTRO: $_F_LIGHTNING installed"
+            _RUN_VERIFY=YES
+          fi
         else
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_LIGHTNING ${noT}"
         fi
@@ -2357,7 +2354,7 @@ varbase_install() {
   _SHRD_PLNAME="${_REAL_PRNAME}-${_VARBASE}-${_SMALLCORE8}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
-  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
+  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/docroot"
   if [ "${_ALLOW_ALL}" = "YES" ]; then
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "VBE" ]]; then
@@ -2365,17 +2362,14 @@ varbase_install() {
         if prompt_yes_no "$_F_VARBASE - ${urlPrt}/varbase" ; then
           true
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_VARBASE ${yOk}"
-          if [ ! -d "${_SHRD_PLPATH}" ]; then
-            cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
-              && [ "${_T_BUILD}" = "HEAD" ]; then
-              get_distro_ext "${_SHRD_PLNAME}.tar.gz"
-            else
-              get_distro_ext "${_SHRD_PLNAME}.tar.gz"
-            fi
+          if [ ! -d "${_OCTO_PLPATH}" ]; then
+            cd ${_ROOT}/distro/${_THIS_CORE}
+            get_distro_ext "${_SHRD_PLNAME}.tar.gz"
           fi
-          msg "DISTRO: $_F_VARBASE installed"
-          _RUN_VERIFY=YES
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            msg "DISTRO: $_F_VARBASE installed"
+            _RUN_VERIFY=YES
+          fi
         else
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_VARBASE ${noT}"
         fi
