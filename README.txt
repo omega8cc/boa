@@ -162,7 +162,7 @@ Octopus can install and/or support the platforms listed below:
  @ Drupal 8.6.7
 
  Lightning 3.2.4 -------------- https://drupal.org/project/lightning
- Varbase 6.3 ------------------ https://drupal.org/project/varbase
+ Varbase 8.6.3 ---------------- https://drupal.org/project/varbase
 
  Drupal 8 support for custom platforms in the ~/static directory tree
  has been added already along with Drush 8 in the BOA-3.0.0 release.
