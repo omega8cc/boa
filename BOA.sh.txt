@@ -1046,7 +1046,7 @@ fix_core_dgd() {
 }
 
 fix_lshell() {
-  _LSHELL_VRN=0.9.18.8
+  _LSHELL_VRN=0.9.18.9
   _PATH_LSHELL="${usrBin}/lshell"
   if [ -e "${_PATH_LSHELL}" ] \
     && [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}-hotfix4" ]; then
