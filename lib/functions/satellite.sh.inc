@@ -5331,7 +5331,7 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_send_welcome 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} hosting_feature_client 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_cron_default_interval 86400 &> /dev/null
+      hosting_cron_default_interval 3600 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_queue_cron_frequency 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \

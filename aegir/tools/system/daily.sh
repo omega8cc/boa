@@ -2898,7 +2898,7 @@ action() {
           cd ${_THIS_HM_SITE}
           su -s /bin/bash ${_HM_U} -c "drush8 cc drush" &> /dev/null
           rm -rf ${User}/.tmp/cache
-          run_drush8_hmr_cmd "${vSet} hosting_cron_default_interval 86400"
+          run_drush8_hmr_cmd "${vSet} hosting_cron_default_interval 3600"
           run_drush8_hmr_cmd "${vSet} hosting_queue_cron_frequency 1"
           run_drush8_hmr_cmd "${vSet} hosting_civicrm_cron_queue_frequency 60"
           if [ -e "${User}/log/hosting_cron_use_backend.txt" ]; then
