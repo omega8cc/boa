@@ -27,6 +27,8 @@ $redis_lock   = FALSE;
 $redis_path   = FALSE;
 $redis_up     = FALSE;
 $site_subdir  = FALSE;
+$use_auto_se  = FALSE;
+$use_cache_ct = FALSE;
 $use_redis    = FALSE;
 $usr_loc_ini  = FALSE;
 $usr_plr_ini  = FALSE;
@@ -398,6 +400,8 @@ $boa_ini = array(
   'redis_path_enable' => TRUE,
   'redis_scan_enable' => FALSE,
   'redis_cache_disable' => FALSE,
+  'autoslave_enable' => FALSE,
+  'cache_consistent_enable' => FALSE,
   'redis_exclude_bins' => FALSE,
   'speed_booster_anon_cache_ttl' => FALSE,
   'allow_anon_node_add' => FALSE,
@@ -482,6 +486,8 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Session-Gc-Eol: " . $all_ini['session_gc_eol']);
   header("X-Ini-Disable-Drupal-Page-Cache: " . $all_ini['disable_drupal_page_cache']);
   header("X-Ini-Set-Composer-Manager-Vendor-Dir: " . $all_ini['set_composer_manager_vendor_dir']);
+  header("X-Ini-AutoSlave-Enable: " . $all_ini['autoslave_enable']);
+  header("X-Ini-CacheConsistent-Enable: " . $all_ini['cache_consistent_enable']);
 }
 
 
@@ -1059,6 +1065,29 @@ if ($redis_up && $use_redis && !$custom_cache) {
         header("X-Redis-Autoload-Is-Readable: " . $cache_redis_path);
       }
     }
+    if ($all_ini['autoslave_enable']) {
+      if (is_readable('modules/o_contrib_seven/autoslave/autoslave.cache.inc') &&
+        is_readable('includes/database/autoslave/database.inc')) {
+        $use_auto_se = TRUE;
+        $gzip_mode = FALSE;
+        $cache_backport = FALSE;
+        $auto_se_path = 'modules/o_contrib_seven/autoslave/autoslave.cache.inc';
+        if ($is_dev && !$is_backend) {
+          header("X-AutoSlave-Cache-Is-Readable: " . $auto_se_path);
+        }
+      }
+    }
+    if ($all_ini['cache_consistent_enable']) {
+      if (is_readable('modules/o_contrib_seven/cache_consistent/cache_consistent.inc')) {
+        $use_cache_ct = TRUE;
+        $gzip_mode = FALSE;
+        $cache_backport = FALSE;
+        $cache_ct_path = 'modules/o_contrib_seven/cache_consistent/cache_consistent.inc';
+        if ($is_dev && !$is_backend) {
+          header("X-CacheConsistent-Is-Readable: " . $cache_ct_path);
+        }
+      }
+    }
   }
   elseif ($drupal_six) {
     if (is_readable('modules/o_contrib/cache_backport/cache.inc')) {
@@ -1131,7 +1160,28 @@ if ($redis_up && $use_redis && !$custom_cache) {
           $gzip_mode = FALSE;
         }
       }
+      if ($gzip_mode) {
+        $conf['cache_default_class']            = 'Redis_CacheCompressed';
+      }
+      else {
+        $conf['cache_default_class']            = 'Redis_Cache';
+      }
       $conf['cache_backends'][]                 = $cache_redis_path;
+      if ($use_auto_se) {
+        $conf['cache_backends'][]               = $auto_se_path;
+        $conf['cache_default_class']            = 'AutoslaveCache';
+        $conf['autoslave_cache_default_class']  = 'Redis_Cache';
+      }
+      if ($use_cache_ct) {
+        $conf['cache_backends'][]               = $cache_ct_path;
+        $conf['cache_default_class']            = 'ConsistentCache';
+        $conf['cache_class_cache_form']         = 'DrupalDatabaseCache';
+        $conf['consistent_cache_default_class'] = 'Redis_Cache';
+        $conf['consistent_cache_default_safe']  = TRUE;
+        $conf['consistent_cache_buffer_mechanism'] = 'ConsistentCacheBuffer';
+        $conf['consistent_cache_default_strict'] = FALSE;
+        $conf['consistent_cache_strict_cache_bootstrap'] = TRUE;
+      }
       $conf['redis_client_interface']           = 'PhpRedis';
       $conf['redis_client_host']                = '127.0.0.1';
       $conf['redis_client_port']                = '6379';
@@ -1144,12 +1194,6 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $conf['page_cache_max_age']               = 0;     // D6 == max-age in the Cache-Control header (ignored by Speed Booster)
       $conf['cache_lifetime']                   = 0;     // D7 == BOA uses Speed Booster / Nginx micro-caching instead
       $conf['page_cache_lifetime']              = 0;     // D6 == BOA uses Speed Booster / Nginx micro-caching instead
-      if ($gzip_mode) {
-        $conf['cache_default_class']            = 'Redis_CacheCompressed';
-      }
-      else {
-        $conf['cache_default_class']            = 'Redis_Cache';
-      }
     }
     if ($all_ini['redis_exclude_bins']) {
       $excludes = array();

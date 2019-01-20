@@ -1496,8 +1496,14 @@ satellite_o_contrib_seven_update_global() {
       if [ ! -d "${_D}/${i}/o_contrib_seven/advagg" ]; then
         get_dev_contrib "advagg-7.x-2.33.tar.gz"
       fi
+      if [ ! -d "${_D}/${i}/o_contrib_seven/autoslave" ]; then
+        get_dev_contrib "autoslave-7.x-1.x-dev.tar.gz"
+      fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/boost" ]; then
         get_dev_contrib "boost-7.x-1.2.tar.gz"
+      fi
+      if [ ! -d "${_D}/${i}/o_contrib_seven/cache_consistent" ]; then
+        get_dev_contrib "cache_consistent-7.x-2.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/cdn" ]; then
         get_dev_contrib "cdn-7.x-2.10.tar.gz"
@@ -1669,8 +1675,10 @@ satellite_download_o_contrib_seven() {
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/frames.php"
   get_dev_contrib "advagg-7.x-2.33.tar.gz"
+  get_dev_contrib "autoslave-7.x-1.x-dev.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.1.tar.gz"
   get_dev_contrib "boost-7.x-1.2.tar.gz"
+  get_dev_contrib "cache_consistent-7.x-2.x-dev.tar.gz"
   get_dev_contrib "cdn-7.x-2.10.tar.gz"
   get_dev_contrib "config_perms-7.x-2.1.tar.gz"
   get_dev_contrib "css_emimage-7.x-1.x-dev.tar.gz"

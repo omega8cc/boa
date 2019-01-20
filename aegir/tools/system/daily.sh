@@ -2933,7 +2933,9 @@ action() {
           WHERE task_type='delete' AND task_status='-1'\""
         run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task \
           WHERE task_type='delete' AND task_status='0' AND executed='0'\""
+        run_drush8_hmr_cmd "${vSet} hosting_delete_force 1"
         check_old_empty_platforms
+        run_drush8_hmr_cmd "${vSet} hosting_delete_force 0"
         purge_cruft_machine
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
