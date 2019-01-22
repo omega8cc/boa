@@ -265,9 +265,14 @@ if [ "${_OPTIM}" = "YES" ] \
   bash /var/xdrago/move_sql.sh
 fi
 
+_DB_BACKUPS_TTL=${_DB_BACKUPS_TTL//[^0-9]/}
+if [ -z "${_DB_BACKUPS_TTL}" ]; then
+  _DB_BACKUPS_TTL="7"
+fi
+
 ionice -c2 -n7 -p $$
-find ${_BACKUPDIR} -mtime +6 -type d -exec rm -rf {} \;
-echo "Backups older than 7 days deleted"
+find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
+echo "Backups older than ${_DB_BACKUPS_TTL} days deleted"
 
 chmod 600 ${_BACKUPDIR}/*/*
 chmod 700 ${_BACKUPDIR}/*
