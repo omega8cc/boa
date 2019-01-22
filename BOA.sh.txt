@@ -266,6 +266,8 @@ update_agents() {
     rm -f /root/.default.cnf
     rm -f /root/.debug.cnf
     rm -f /root/.debug-boa-installer.cnf
+    rm -f /root/.mysqladmin.monitor.cnf
+    rm -f /var/xdrago/log/mysqladmin.monitor.log
     # if [ ! -e "/data/conf/override.global.inc" ]; then
     #   echo "<?php" > /data/conf/override.global.inc.tmp
     #   echo "" >> /data/conf/override.global.inc.tmp
