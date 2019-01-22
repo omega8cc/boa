@@ -270,8 +270,8 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
 done
 
 ionice -c2 -n7 -p $$
-find ${_BACKUPDIR} -mtime +30 -type d -exec rm -rf {} \;
-echo "Backups older than 31 days deleted"
+find ${_BACKUPDIR} -mtime +90 -type d -exec rm -rf {} \;
+echo "Backups older than 91 days deleted"
 
 chmod 600 ${_BACKUPDIR}/*/*
 chmod 700 ${_BACKUPDIR}/*
