@@ -2483,7 +2483,6 @@ process() {
           if [ "${_STATUS}" = "OK" ] \
             && [ ! -z "${Dan}" ] \
             && [ "${Dan}" != "hostmaster" ]; then
-            setup_solr
             if_site_db_conversion
             searchStringB=".dev."
             searchStringC=".devel."
