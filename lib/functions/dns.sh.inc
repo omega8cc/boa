@@ -62,10 +62,13 @@ fix_dns_settings() {
     fi
     _CUSTOM_DNS_TEST=$(grep 1.1.1.1 /etc/pdnsd.conf 2>&1)
     _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
+    _MISSING_DNS_TEST=$(grep "ip=" /etc/pdnsd.conf 2>&1)
     if [[ "${_CUSTOM_DNS_TEST}" =~ "1.1.1.1" ]] \
+      || [ ! -e "${dnsLi}" ] \
       || [ -e "/root/.use.default.nameservers.cnf" ] \
       || [ -e "/root/.use.local.nameservers.cnf" ] \
-      || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]]; then
+      || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]] \
+      || [[ -z "${_MISSING_DNS_TEST}" ]]; then
       echo "        label = \"cloudflare-servers\";" > ${dnsLi}
       for _IP in `cat /etc/resolv.conf \
         | sed 's/.*127.0.0.1.*//g; s/.*search.*//g; s/.*Dynamic.*//g' \
@@ -85,19 +88,20 @@ fix_dns_settings() {
          echo "        ip=1.0.0.1;" >> ${dnsLi}
       fi
       ### echo debug dns A
-      _DNS_TPL_TEST=$(grep "cloudflare-servers" /etc/pdnsd.conf 2>&1)
+      _DNS_TPL_TEST_GE=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
+      _DNS_TPL_TEST_CF=$(grep "cloudflare-servers" /etc/pdnsd.conf 2>&1)
       _DNS_RGX_TEST=$(grep "cloudflare-servers" /root/.local.dns.IP.list 2>&1)
-      if [[ "${_DNS_TPL_TEST}" =~ "cloudflare-servers" ]] \
+      if [[ "${_DNS_TPL_TEST_CF}" =~ "cloudflare-servers" ]] \
         && [[ "${_DNS_RGX_TEST}" =~ "cloudflare-servers" ]]; then
         sed -i '/        label = \"cloudflare-servers\";/ {r /root/.local.dns.IP.list
 d;};' /etc/pdnsd.conf
         wait
-      else
-        if [ -e "${locCnf}/pdnsd.conf" ]; then
-          cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
-        fi
-        cp -af /root/.local.dns.IP.list /root/.broken.local.dns.IP.list
-        cp -af /etc/pdnsd.conf /root/.broken.etc.pdnsd.conf
+      fi
+      if [[ "${_DNS_TPL_TEST_GE}" =~ "google-servers" ]] \
+        && [[ "${_DNS_RGX_TEST}" =~ "cloudflare-servers" ]]; then
+        sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+d;};' /etc/pdnsd.conf
+        wait
       fi
       resolvconf -u         &> /dev/null
       service pdnsd restart &> /dev/null
@@ -119,12 +123,14 @@ check_dns_settings() {
     _REMOTE_DNS_TEST=$(host -a files.aegir.cc 1.1.1.1 -w 10 2>&1)
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
+    || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
     || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
     _CTRL_DNS_TEST=$(host -a files.aegir.cc 2>&1)
     if [[ ! "${_CTRL_DNS_TEST}" =~ "104.245.208.226" ]] \
       || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
-      || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
+      || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
+      || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
       fix_dns_settings
       if [ -e "/etc/init.d/postfix" ]; then
         service postfix restart &> /dev/null
