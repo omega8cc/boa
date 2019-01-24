@@ -847,9 +847,7 @@ install_db_cluster() {
     vserver ${idn} exec ${_INSTAPP} debian-archive-keyring
   	vserver ${idn} exec apt-get upgrade -y ${_NOISE}
   	vserver ${idn} exec apt-get remove apparmor -y ${_NOISE}
-  	vserver ${idn} exec ${_INSTAPP} software-properties-common
-  	vserver ${idn} exec apt-get remove dirmngr -y ${_NOISE}
-    vserver ${idn} exec apt-get purge dirmngr -y ${_NOISE}
+  	vserver ${idn} exec ${_INSTAPP} software-properties-common dirmngr
     echo "## Percona Cluster APT Repository" > /vservers/${idn}${xtraList}
     echo "deb http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
     echo "deb-src http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
