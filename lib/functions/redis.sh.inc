@@ -246,6 +246,9 @@ install_redis_src() {
   fi
   update_redis_password
   touch ${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log
+  mrun "service redis-server start" &> /dev/null
+  sleep 3
+  mrun "service redis-server restart" &> /dev/null
 }
 
 install_update_redis() {
