@@ -3747,7 +3747,6 @@ sys_packages_install() {
     _DEBDEPS="apticron \
               aptitude \
               m4 \
-              apt-forktracer \
               apt-listchanges \
               at \
               autoconf \
