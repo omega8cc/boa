@@ -346,7 +346,8 @@ satellite_check_up_php() {
     mcmode="${orgMcmode}"
     if [ -e "${User}/log/octopus_log.txt" ]; then
       _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
-      if [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
+      if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
+        || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
         if [ -e "${User}/static/control/fpm.info" ]; then
           _T_FPM_VRN=$(cat ${User}/static/control/fpm.info 2>&1)
           _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}

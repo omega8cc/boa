@@ -2839,7 +2839,8 @@ finale() {
   msg "Final post-${_L_ST} cleaning, one moment..."
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _T_SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-    if [[ "${_T_SERIES_TEST}" =~ "BOA-3." ]] \
+    if [[ "${_T_SERIES_TEST}" =~ "BOA-4." ]] \
+      || [[ "${_T_SERIES_TEST}" =~ "BOA-3." ]] \
       || [[ "${_T_SERIES_TEST}" =~ "BOA-2.4." ]] \
       || [[ "${_T_SERIES_TEST}" =~ "BOA-2.3.8" ]]; then
       _DO_NOTHING=YES

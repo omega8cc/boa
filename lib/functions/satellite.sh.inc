@@ -3999,18 +3999,17 @@ satellite_check_octopus_versus_barracuda_version() {
   fi
   if [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
-    if [[ "${_SERIES_TEST}" =~ "BOA-2.4.9" ]] \
+    if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
       _VERSIONS_TEST_RESULT=OK
     else
       msg "ERROR: This octopus installer can be used only when the instance"
-      msg "has been already upgraded to previous stable BOA-2.4.9 version"
-      msg "Please run 'octopus up-2.4 ${_USER} aegir' legacy upgrade first"
+      msg "has been already upgraded to previous stable BOA-3.2.2 version"
+      msg "Please run 'octopus up-3.2 ${_USER} aegir' upgrade first"
       msg "Bye"
       clean_pid_exit
     fi
-    if [[ "${_SERIES_TEST}" =~ "BOA-2.3." ]] \
-      || [[ "${_SERIES_TEST}" =~ "BOA-2.4." ]] \
+    if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
       _SERIES_RESULT=OK
     fi
@@ -4163,12 +4162,16 @@ satellite_if_major_upgrade() {
   if [ "${_CLIENT_OPTION}" = "POWER" ] \
     && [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
-    if [[ ! "${_SERIES_TEST}" =~ "BOA-3." ]] \
-      && [ ! -e "${_ROOT}/log/satellite_major_upgrade_ok.txt" ]; then
-      msg "ERROR: Major version upgrade requires control file:"
-      msg "${_ROOT}/log/satellite_major_upgrade_ok.txt"
-      msg "Bye"
-      clean_pid_exit
+    if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
+      || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
+      _IT_IS_OK=YES
+    else
+      if [ ! -e "${_ROOT}/log/satellite_major_upgrade_ok.txt" ]; then
+        msg "ERROR: Major version upgrade requires control file:"
+        msg "${_ROOT}/log/satellite_major_upgrade_ok.txt"
+        msg "Bye"
+        clean_pid_exit
+      fi
     fi
   fi
 }
