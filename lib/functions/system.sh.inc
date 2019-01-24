@@ -5136,6 +5136,7 @@ complete() {
     fi
     strict_bin_permissions
   fi
-  check_php_cli
+  re_set_default_php_cli
+  install_update_composer
   finale
 }

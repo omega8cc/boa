@@ -348,7 +348,6 @@ install_curl_src
 install_update_php
 php_upgrade_all
 check_fix_php
-install_update_composer
 check_fix_avatars
 check_fix_umask
 check_fix_bin_extra
