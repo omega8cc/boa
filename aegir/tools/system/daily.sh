@@ -186,6 +186,10 @@ run_drush8_hmr_cmd() {
   su -s /bin/bash - ${_HM_U} -c "drush8 @hostmaster $1" &> /dev/null
 }
 
+run_drush8_hmr_master_cmd() {
+  su -s /bin/bash - aegir -c "drush8 @hostmaster $1" &> /dev/null
+}
+
 run_drush8_nosilent_cmd() {
   su -s /bin/bash - ${_HM_U}.ftp -c "drush8 @${Dom} $1"
 }
@@ -2559,6 +2563,60 @@ process() {
   done
 }
 
+delete_this_empty_hostmaster_platform() {
+  run_drush8_hmr_master_cmd "hosting-task @platform_${_T_PFM_NAME} delete --force"
+  echo "Old empty platform_${_T_PFM_NAME} will be deleted"
+}
+
+check_old_empty_hostmaster_platforms() {
+  if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ] \
+	&& [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
+	_DO_NOTHING=YES
+  else
+	if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+	  || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+	  || [ "${_VMFAMILY}" = "VS" ]; then
+	  _DEL_OLD_EMPTY_PLATFORMS="7"
+	else
+	  _DEL_OLD_EMPTY_PLATFORMS="30"
+	fi
+  fi
+  if [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
+    if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ]; then
+      echo "_DEL_OLD_EMPTY_PLATFORMS is set to \
+        ${_DEL_OLD_EMPTY_PLATFORMS} days on /var/aegir instance"
+      for Platform in `find /var/aegir/.drush/platform_* -maxdepth 1 -mtime \
+        +${_DEL_OLD_EMPTY_PLATFORMS} -type f | sort`; do
+        _T_PFM_NAME=$(echo "${Platform}" \
+          | sed "s/.*platform_//g; s/.alias.drushrc.php//g" \
+          | awk '{ print $1}' 2>&1)
+        _T_PFM_ROOT=$(cat ${Platform} \
+          | grep "root'" \
+          | cut -d: -f2 \
+          | awk '{ print $3}' \
+          | sed "s/[\,']//g" 2>&1)
+        _T_PFM_SITE=$(grep "${_T_PFM_ROOT}/sites/" \
+          /var/aegir/.drush/*.drushrc.php \
+          | grep site_path 2>&1)
+        if [ ! -e "${_T_PFM_ROOT}/sites/all" ] \
+          || [ ! -e "${_T_PFM_ROOT}/index.php" ]; then
+          mkdir -p /var/aegir/undo
+          mv -f /var/aegir/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php \
+            /var/aegir/undo/ &> /dev/null
+          echo "GHOST platform ${_T_PFM_ROOT} detected and moved to /var/aegir/undo/"
+        fi
+        if [[ "${_T_PFM_SITE}" =~ ".restore" ]]; then
+          echo "WARNING: ghost site leftover found: ${_T_PFM_SITE}"
+        fi
+        if [ -z "${_T_PFM_SITE}" ] \
+          && [ -e "${_T_PFM_ROOT}/sites/all" ]; then
+          delete_this_empty_hostmaster_platform
+        fi
+      done
+    fi
+  fi
+}
+
 delete_this_platform() {
   run_drush8_hmr_cmd "hosting-task @platform_${_T_PFM_NAME} delete --force"
   echo "Old empty platform_${_T_PFM_NAME} will be deleted"
@@ -2966,6 +3024,7 @@ action() {
     fi
   done
   shared_codebases_cleanup
+  check_old_empty_hostmaster_platforms
 }
 
 ###--------------------###
