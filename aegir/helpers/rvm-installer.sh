@@ -415,7 +415,7 @@ Assuming you trust Michal Papis import the mpapis public key (downloading the si
 
 GPG signature verification failed for '$1' - '$3'! Try to install GPG v2 and then fetch the public key:
 
-    ${SUDO_USER:+sudo }gpg2 --recv-keys 3804BB82D39DC0E3
+    ${SUDO_USER:+sudo }gpg2 --recv-keys D39DC0E3
 
 or if it fails:
 

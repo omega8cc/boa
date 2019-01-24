@@ -436,16 +436,7 @@ if_install_rvm() {
           _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
           sleep 2
         done
-        _KEYS_SIG="3804BB82D39DC0E3"
-        _KEYS_SERVER_TEST=FALSE
-        until [[ "${_KEYS_SERVER_TEST}" =~ "${_KEYS_SIG}" ]]; do
-          echo "Retrieving ${_KEYS_SIG} key.."
-          ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-          ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
-          _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
-          sleep 2
-        done
-        _KEYS_SIG="105BD0E739499BDB"
+        _KEYS_SIG="39499BDB"
         _KEYS_SERVER_TEST=FALSE
         until [[ "${_KEYS_SERVER_TEST}" =~ "${_KEYS_SIG}" ]]; do
           echo "Retrieving ${_KEYS_SIG} key.."
