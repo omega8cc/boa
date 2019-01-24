@@ -853,7 +853,7 @@ install_db_cluster() {
     echo "## Percona Cluster APT Repository" > /vservers/${idn}${xtraList}
     echo "deb http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
     echo "deb-src http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
-    _KEYS_SIG="8507EFA5"
+    _KEYS_SIG="9334A25F8507EFA5"
     vserver ${idn} exec ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
     vserver ${idn} exec ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
   	vserver ${idn} exec apt-get update ${_NOISE}

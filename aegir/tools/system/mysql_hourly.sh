@@ -112,9 +112,9 @@ if [ ! -e "${xtraList}" ] \
     rm -f /etc/csf/csf.error
     csf -x &> /dev/null
   fi
-  _KEYS_SIG="8507EFA5"
+  _KEYS_SIG="9334A25F8507EFA5"
   _KEYS_SERVER_TEST=FALSE
-  until [[ "${_KEYS_SERVER_TEST}" =~ "${_KEYS_SIG}" ]]; do
+  until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
     echo "Retrieving ${_KEYS_SIG} key.."
     ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
     ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null

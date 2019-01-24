@@ -348,18 +348,18 @@ install_db_sql() {
     st_runner "apt-get remove dirmngr -y" &> /dev/null
     st_runner "apt-get purge dirmngr -y" &> /dev/null
   fi
-  _KEYS_SIG="C74CD1D8"
+  _KEYS_SIG="F1656F24C74CD1D8"
   _KEYS_SERVER_TEST=FALSE
-  until [[ "${_KEYS_SERVER_TEST}" =~ "${_KEYS_SIG}" ]]; do
+  until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
     msg "INFO: Retrieving ${_KEYS_SIG} key.."
     ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
     ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
     _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
     sleep 2
   done
-  _KEYS_SIG="8507EFA5"
+  _KEYS_SIG="9334A25F8507EFA5"
   _KEYS_SERVER_TEST=FALSE
-  until [[ "${_KEYS_SERVER_TEST}" =~ "${_KEYS_SIG}" ]]; do
+  until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
     msg "INFO: Retrieving ${_KEYS_SIG} key.."
     ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
     ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
@@ -767,18 +767,18 @@ install_db_server() {
         mrun "service nginx stop" &> /dev/null
       fi
       rm -f ${aptLiSys}.d/ourdelta.list
-      _KEYS_SIG="C74CD1D8"
+      _KEYS_SIG="F1656F24C74CD1D8"
       _KEYS_SERVER_TEST=FALSE
-      until [[ "${_KEYS_SERVER_TEST}" =~ "${_KEYS_SIG}" ]]; do
+      until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
         msg "INFO: Retrieving ${_KEYS_SIG} key.."
         ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
         ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
         _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
         sleep 2
       done
-      _KEYS_SIG="8507EFA5"
+      _KEYS_SIG="9334A25F8507EFA5"
       _KEYS_SERVER_TEST=FALSE
-      until [[ "${_KEYS_SERVER_TEST}" =~ "${_KEYS_SIG}" ]]; do
+      until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
         msg "INFO: Retrieving ${_KEYS_SIG} key.."
         ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
         ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null

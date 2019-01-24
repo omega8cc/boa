@@ -333,10 +333,10 @@ enable_chattr() {
       fi
       if [ ! -x "/home/${UQ}/.rvm/bin/rvm" ]; then
         touch /var/run/manage_rvm_users.pid
-        su -s /bin/bash - ${UQ} -c "${_GPG} --keyserver hkp://keys.gnupg.net:80 --recv-keys D39DC0E3"
-        su -s /bin/bash - ${UQ} -c "${_GPG} --keyserver hkp://keys.gnupg.net:80 --recv-keys D39DC0E3"
-        su -s /bin/bash - ${UQ} -c "${_GPG} --keyserver hkp://keys.gnupg.net:80 --recv-keys 39499BDB"
-        su -s /bin/bash - ${UQ} -c "${_GPG} --keyserver hkp://keys.gnupg.net:80 --recv-keys 39499BDB"
+        su -s /bin/bash - ${UQ} -c "${_GPG} --keyserver hkp://keys.gnupg.net:80 --recv-keys 3804BB82D39DC0E3"
+        su -s /bin/bash - ${UQ} -c "${_GPG} --keyserver hkp://keys.gnupg.net:80 --recv-keys 3804BB82D39DC0E3"
+        su -s /bin/bash - ${UQ} -c "${_GPG} --keyserver hkp://keys.gnupg.net:80 --recv-keys 105BD0E739499BDB"
+        su -s /bin/bash - ${UQ} -c "${_GPG} --keyserver hkp://keys.gnupg.net:80 --recv-keys 105BD0E739499BDB"
         su -s /bin/bash - ${UQ} -c "\curl -sSL https://rvm.io/mpapis.asc | ${_GPG} --import"
         su -s /bin/bash   ${UQ} -c "\curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable"
         su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles"
