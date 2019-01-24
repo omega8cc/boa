@@ -2900,6 +2900,7 @@ action() {
           run_drush8_hmr_cmd "${vSet} hosting_cron_default_interval 3600"
           run_drush8_hmr_cmd "${vSet} hosting_queue_cron_frequency 1"
           run_drush8_hmr_cmd "${vSet} hosting_civicrm_cron_queue_frequency 60"
+          run_drush8_hmr_cmd "${vSet} hosting_queue_task_gc_frequency 300"
           if [ -e "${User}/log/hosting_cron_use_backend.txt" ]; then
             run_drush8_hmr_cmd "${vSet} hosting_cron_use_backend 1"
           else
