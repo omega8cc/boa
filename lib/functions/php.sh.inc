@@ -1129,6 +1129,11 @@ update_php_multi() {
 update_newrelic() {
   ###--------------------###
   if [ ! -z "${_NEWRELIC_KEY}" ]; then
+    if [ -x "/usr/bin/gpg2" ]; then
+      _GPG=gpg2
+    else
+      _GPG=gpg
+    fi
     if [ -e "/etc/newrelic/newrelic.cfg" ] \
       || [ -e "${aptLiSys}.d/newrelic.list" ]; then
       msg "INFO: Uninstalling previous version of New Relic Apps Monitor..."
@@ -1140,7 +1145,7 @@ update_newrelic() {
         _KEYS_SERVER_TEST=$(grep GnuPG 548C16BF.gpg 2>&1)
         sleep 2
       done
-      cat 548C16BF.gpg | apt-key add - &> /dev/null
+      cat 548C16BF.gpg | ${_GPG} --import &> /dev/null
       rm -f 548C16BF.gpg*
       st_runner "aptitude remove newrelic-php5 \
                                  newrelic-php5-common \
@@ -1228,6 +1233,11 @@ update_newrelic() {
 install_newrelic() {
   ###--------------------###
   if [ ! -z "${_NEWRELIC_KEY}" ]; then
+    if [ -x "/usr/bin/gpg2" ]; then
+      _GPG=gpg2
+    else
+      _GPG=gpg
+    fi
     _MULTI_NR=NO
     _PHP_EXT_DIR_73="/opt/php73/lib/php/extensions/no-debug-non-zts-${_PHP73_API}"
     _PHP_EXT_DIR_72="/opt/php72/lib/php/extensions/no-debug-non-zts-${_PHP72_API}"
@@ -1268,7 +1278,7 @@ install_newrelic() {
         _KEYS_SERVER_TEST=$(grep GnuPG 548C16BF.gpg 2>&1)
         sleep 2
       done
-      cat 548C16BF.gpg | apt-key add - &> /dev/null
+      cat 548C16BF.gpg | ${_GPG} --import &> /dev/null
       rm -f 548C16BF.gpg*
       echo "## New Relic APT Repository" > \
         ${aptLiSys}.d/newrelic.list

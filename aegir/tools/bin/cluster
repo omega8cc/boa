@@ -684,6 +684,12 @@ install_vps() {
     vserver ${idn} exec chmod 700 ~/.ssh/
   fi
 
+  if [ -x "/vservers/${idn}/usr/bin/gpg2" ]; then
+    _GPG=gpg2
+  else
+    _GPG=gpg
+  fi
+
   if [ "${ver}" = "galera" ]; then
     echo "Running post-install Galera VPS upgrade..."
     if [ -x "/vservers/${idn}/lib/systemd/systemd" ]; then
@@ -706,7 +712,7 @@ install_vps() {
         echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /vservers/${idn}/etc/apt/preferences.d/nosystemd
         echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /vservers/${idn}/etc/apt/preferences.d/nosystemd
         echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /vservers/${idn}/etc/apt/preferences.d/nosystemd
-        vserver ${idn} exec wget -qO - http://angband.pl/deb/archive.html | apt-key add -
+        vserver ${idn} exec wget -qO - http://angband.pl/deb/archive.html | ${_GPG} --import
         vserver ${idn} exec ${_INSTAPP} kilobyte-archive-keyring
         vserver ${idn} exec ${_INSTAPP} sysvinit-core
         vserver ${idn} exec ${_INSTAPP} sysvinit-utils
@@ -841,11 +847,15 @@ install_db_cluster() {
     vserver ${idn} exec ${_INSTAPP} debian-archive-keyring
   	vserver ${idn} exec apt-get upgrade -y ${_NOISE}
   	vserver ${idn} exec apt-get remove apparmor -y ${_NOISE}
-  	vserver ${idn} exec ${_INSTAPP} software-properties-common dirmngr
+  	vserver ${idn} exec ${_INSTAPP} software-properties-common
+  	vserver ${idn} exec apt-get remove dirmngr -y ${_NOISE}
+    vserver ${idn} exec apt-get purge dirmngr -y ${_NOISE}
     echo "## Percona Cluster APT Repository" > /vservers/${idn}${xtraList}
     echo "deb http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
     echo "deb-src http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
-    vserver ${idn} exec apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5
+    _KEYS_SIG="8507EFA5"
+    vserver ${idn} exec ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+    vserver ${idn} exec ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
   	vserver ${idn} exec apt-get update ${_NOISE}
   	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
   	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24
@@ -1231,6 +1241,12 @@ install_host() {
     echo
   fi
 
+  if [ -x "/usr/bin/gpg2" ]; then
+    _GPG=gpg2
+  else
+    _GPG=gpg
+  fi
+
   if [ ! -e "/boot/vmlinuz-${_BNG_VERSION}-beng" ]; then
     echo "Installing beng vserver kernel..."
     echo "deb http://repo.psand.net/ ${_OSR} main" > /etc/apt/sources.list.d/vserver.list
@@ -1242,7 +1258,7 @@ install_host() {
       _KEYS_SERVER_TEST=$(grep GnuPG pubkey.txt 2>&1)
       sleep 2
     done
-    cat pubkey.txt | apt-key add - &> /dev/null
+    cat pubkey.txt | ${_GPG} --import &> /dev/null
     rm -f pubkey.txt*
     apt-get update ${_NOISE}
     ${_INSTAPP} build-essential
@@ -1271,7 +1287,7 @@ install_host() {
       echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
       echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
       echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /etc/apt/preferences.d/nosystemd
-      wget -qO - http://angband.pl/deb/archive.html | apt-key add -
+      wget -qO - http://angband.pl/deb/archive.html | ${_GPG} --import
       ${_INSTAPP} kilobyte-archive-keyring
       ${_INSTAPP} sysvinit-core
       ${_INSTAPP} sysvinit-utils
@@ -1326,7 +1342,7 @@ upgrade_host() {
       echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
       echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
       echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /etc/apt/preferences.d/nosystemd
-      wget -qO - http://angband.pl/deb/archive.html | apt-key add -
+      wget -qO - http://angband.pl/deb/archive.html | ${_GPG} --import
       ${_INSTAPP} kilobyte-archive-keyring
       ${_INSTAPP} sysvinit-core
       ${_INSTAPP} sysvinit-utils

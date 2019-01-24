@@ -271,6 +271,11 @@ if_install_hhvm() {
     _DO_FIX=YES
   fi
   if [[ "${_XTRAS_LIST}" =~ "HVM" ]]; then
+    if [ -x "/usr/bin/gpg2" ]; then
+      _GPG=gpg2
+    else
+      _GPG=gpg
+    fi
     if [ "${_OSV}" = "jessie" ] \
       || [ "${_OSV}" = "stretch" ] \
       || [ "${_OSV}" = "trusty" ] \
@@ -300,7 +305,7 @@ if_install_hhvm() {
             _KEYS_SERVER_TEST=$(grep GnuPG /var/opt/hhvm.gpg.key 2>&1)
             sleep 2
           done
-          cat /var/opt/hhvm.gpg.key | apt-key add - &> /dev/null
+          cat /var/opt/hhvm.gpg.key | ${_GPG} --import &> /dev/null
           rm -f /etc/apt/sources.list.d/openssl.list
           st_runner "apt-get update -qq" &> /dev/null
           st_runner "apt-get install hhvm ${forCer}" 2> /dev/null
@@ -316,6 +321,11 @@ if_install_hhvm() {
 if_install_webmin() {
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] || [[ "${_XTRAS_LIST}" =~ "WMN" ]]; then
     if [ ! -d "/etc/webmin" ] && [ ! -e "/var/run/cloud_vhost.pid" ]; then
+      if [ -x "/usr/bin/gpg2" ]; then
+        _GPG=gpg2
+      else
+        _GPG=gpg
+      fi
       echo " "
       if prompt_yes_no "Do you want to install Webmin Control Panel?" ; then
         true
@@ -333,7 +343,7 @@ if_install_webmin() {
           _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.gpg 2>&1)
           sleep 2
         done
-        cat jcameron-key.gpg | apt-key add - &> /dev/null
+        cat jcameron-key.gpg | ${_GPG} --import &> /dev/null
         rm -f jcameron-key.gpg*
         touch ${pthLog}/webmin_update_apt_src.log
         rm -f /etc/apt/sources.list.d/openssl.list
@@ -423,25 +433,25 @@ if_install_rvm() {
           echo "Retrieving ${_KEYS_SIG} key.."
           ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
           ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
-          _KEYS_SERVER_TEST=$(apt-key list | grep "${_KEYS_SIG}" 2>&1)
+          _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
           sleep 2
         done
-        _KEYS_SIG="409B6B1796C275462A1703113804BB82D39DC0E3"
+        _KEYS_SIG="3804BB82D39DC0E3"
         _KEYS_SERVER_TEST=FALSE
         until [[ "${_KEYS_SERVER_TEST}" =~ "${_KEYS_SIG}" ]]; do
           echo "Retrieving ${_KEYS_SIG} key.."
           ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
           ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
-          _KEYS_SERVER_TEST=$(apt-key list | grep "${_KEYS_SIG}" 2>&1)
+          _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
           sleep 2
         done
-        _KEYS_SIG="7D2BAF1CF37B13E2069D6956105BD0E739499BDB"
+        _KEYS_SIG="105BD0E739499BDB"
         _KEYS_SERVER_TEST=FALSE
         until [[ "${_KEYS_SERVER_TEST}" =~ "${_KEYS_SIG}" ]]; do
           echo "Retrieving ${_KEYS_SIG} key.."
           ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
           ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
-          _KEYS_SERVER_TEST=$(apt-key list | grep "${_KEYS_SIG}" 2>&1)
+          _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
           sleep 2
         done
         _KEYS_SIG=""

@@ -118,7 +118,7 @@ if [ ! -e "${xtraList}" ] \
     echo "Retrieving ${_KEYS_SIG} key.."
     ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
     ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
-    _KEYS_SERVER_TEST=$(apt-key list | grep "${_KEYS_SIG}" 2>&1)
+    _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
     sleep 2
   done
   if [ -e "/usr/sbin/csf" ] \

@@ -344,7 +344,9 @@ install_db_sql() {
   if [ "${_OSV}" = "stretch" ] \
     || [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "trusty" ]; then
-    st_runner "${_INSTAPP} software-properties-common dirmngr" 2> /dev/null
+    st_runner "${_INSTAPP} software-properties-common" 2> /dev/null
+    st_runner "apt-get remove dirmngr -y" &> /dev/null
+    st_runner "apt-get purge dirmngr -y" &> /dev/null
   fi
   _KEYS_SIG="C74CD1D8"
   _KEYS_SERVER_TEST=FALSE
@@ -352,7 +354,7 @@ install_db_sql() {
     msg "INFO: Retrieving ${_KEYS_SIG} key.."
     ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
     ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
-    _KEYS_SERVER_TEST=$(apt-key list | grep "${_KEYS_SIG}" 2>&1)
+    _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
     sleep 2
   done
   _KEYS_SIG="8507EFA5"
@@ -361,7 +363,7 @@ install_db_sql() {
     msg "INFO: Retrieving ${_KEYS_SIG} key.."
     ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
     ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
-    _KEYS_SERVER_TEST=$(apt-key list | grep "${_KEYS_SIG}" 2>&1)
+    _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
     sleep 2
   done
   _KEYS_SIG=""
@@ -771,7 +773,7 @@ install_db_server() {
         msg "INFO: Retrieving ${_KEYS_SIG} key.."
         ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
         ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
-        _KEYS_SERVER_TEST=$(apt-key list | grep "${_KEYS_SIG}" 2>&1)
+        _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
         sleep 2
       done
       _KEYS_SIG="8507EFA5"
@@ -780,7 +782,7 @@ install_db_server() {
         msg "INFO: Retrieving ${_KEYS_SIG} key.."
         ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
         ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
-        _KEYS_SERVER_TEST=$(apt-key list | grep "${_KEYS_SIG}" 2>&1)
+        _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
         sleep 2
       done
       _KEYS_SIG=""

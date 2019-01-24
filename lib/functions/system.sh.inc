@@ -3046,7 +3046,7 @@ basic_packages_install_on_init() {
         echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
         echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
         echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /etc/apt/preferences.d/nosystemd
-        wget -qO - http://angband.pl/deb/archive.html | apt-key add -
+        wget -qO - http://angband.pl/deb/archive.html | ${_GPG} --import
         ${_INITINS} kilobyte-archive-keyring &> /dev/null
         ${_INITINS} sysvinit-core &> /dev/null
         ${_INITINS} sysvinit-utils &> /dev/null
@@ -3081,7 +3081,7 @@ basic_packages_install_on_init() {
         echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
         echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
         echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /etc/apt/preferences.d/nosystemd
-        wget -qO - http://angband.pl/deb/archive.html | apt-key add -
+        wget -qO - http://angband.pl/deb/archive.html | ${_GPG} --import
         ${_INITINS} kilobyte-archive-keyring &> /dev/null
         ${_INITINS} sysvinit-core &> /dev/null
         ${_INITINS} sysvinit-utils &> /dev/null
@@ -3321,7 +3321,7 @@ if_jessie_to_stretch() {
         echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
         echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
         echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /etc/apt/preferences.d/nosystemd
-        wget -qO - http://angband.pl/deb/archive.html | apt-key add -
+        wget -qO - http://angband.pl/deb/archive.html | ${_GPG} --import
         ${_INITINS} kilobyte-archive-keyring &> /dev/null
         ${_INITINS} sysvinit-core &> /dev/null
         ${_INITINS} sysvinit-utils &> /dev/null
@@ -3458,7 +3458,7 @@ update_webmin_apt() {
         _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.gpg 2>&1)
         sleep 2
       done
-      cat jcameron-key.gpg | apt-key add - &> /dev/null
+      cat jcameron-key.gpg | ${_GPG} --import &> /dev/null
       rm -f jcameron-key.gpg*
       touch ${pthLog}/webmin_update_apt_src.log
     fi
