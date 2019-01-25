@@ -269,7 +269,7 @@ mysql_proc_control() {
     echo "$(date 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
     echo "$(mysqladmin proc 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
   fi
-  limit=3600
+  limit=9999
   xkill=null
   for each in `mysqladmin proc \
     | awk '{print $2, $4, $8, $12}' \
@@ -297,7 +297,7 @@ mysql_proc_control() {
           limit=60
           mysql_proc_kill
         else
-          limit=3600
+          limit=9999
           mysql_proc_kill
         fi
       fi

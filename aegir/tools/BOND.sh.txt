@@ -87,7 +87,7 @@ _TUNE_NGINX_CONNECT=OFF
 ###       for the server and all existing
 ###       Aegir Satellite Instances.
 ###
-_TUNE_NGINX_TIMEOUT=3600
+_TUNE_NGINX_TIMEOUT=9999
 
 
 ###----------------------------------------###
@@ -115,21 +115,21 @@ _TUNE_NGINX_FIREWALL=300
 
 
 ###----------------------------------------###
-### Database server timeout - default 3600
+### Database server timeout - default 9999
 ###
-_TUNE_SQL_TIMEOUT=3600
+_TUNE_SQL_TIMEOUT=9999
 
 
 ###----------------------------------------###
 ### PHP-FPM server timeout - default 180
 ###
-_TUNE_PHP_FPM_TIMEOUT=3600
+_TUNE_PHP_FPM_TIMEOUT=9999
 
 
 ###----------------------------------------###
-### PHP-CLI server timeout - default 3600
+### PHP-CLI server timeout - default 9999
 ###
-_TUNE_PHP_CLI_TIMEOUT=7200
+_TUNE_PHP_CLI_TIMEOUT=9999
 
 
 ###----------------------------------------###
@@ -779,9 +779,9 @@ restore_default_sql() {
 #
 tune_sql() {
   msg "INFO: Tuning SQL configuration"
-  sed -i "s/3600/${_TUNE_SQL_TIMEOUT}/g" /etc/mysql/my.cnf     &> /dev/null
+  sed -i "s/9999/${_TUNE_SQL_TIMEOUT}/g" /etc/mysql/my.cnf     &> /dev/null
   wait
-  sed -i "s/3600/${_TUNE_SQL_TIMEOUT}/g" /var/xdrago/minute.sh &> /dev/null
+  sed -i "s/9999/${_TUNE_SQL_TIMEOUT}/g" /var/xdrago/minute.sh &> /dev/null
   wait
 }
 #
@@ -888,14 +888,14 @@ tune_web_server_config() {
   sed -i "s/^max_input_time =.*/max_input_time = 180/g" /opt/php*/etc/php*.ini                 &> /dev/null
   wait
   # PHP-CLI INI
-  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 3600/g" /opt/php*/lib/php.ini &> /dev/null
+  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 9999/g" /opt/php*/lib/php.ini &> /dev/null
   wait
-  sed -i "s/^max_execution_time =.*/max_execution_time = 3600/g" /opt/php*/lib/php.ini         &> /dev/null
+  sed -i "s/^max_execution_time =.*/max_execution_time = 9999/g" /opt/php*/lib/php.ini         &> /dev/null
   wait
-  sed -i "s/^max_input_time =.*/max_input_time = 3600/g" /opt/php*/lib/php.ini                 &> /dev/null
+  sed -i "s/^max_input_time =.*/max_input_time = 9999/g" /opt/php*/lib/php.ini                 &> /dev/null
   wait
   # Redis config should sync with PHP-CLI
-  sed -i "s/^timeout .*/timeout 3600/g" /etc/redis/redis.conf                                  &> /dev/null
+  sed -i "s/^timeout .*/timeout 9999/g" /etc/redis/redis.conf                                  &> /dev/null
   wait
   if [ ! -z "${_L_NGX_WRKS}" ]; then
     sed -i "s/worker_processes.*/worker_processes  ${_L_NGX_WRKS};/g" /etc/nginx/nginx.conf    &> /dev/null
