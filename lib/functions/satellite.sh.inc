@@ -3322,6 +3322,13 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
+    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE8}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE8}" ]; then
+        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE8}/docroot/sites"
+        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE8}"
+        ln -sf ${_A} ${_B}
+      fi
+    fi
     if [ -d "${_QR}/ubercart-${_UBERCART6}-${_SMALLCORE6}/sites" ]; then
       if [ ! -L "${_QH}/ubercart-${_UBERCART6}-${_SMALLCORE6}" ]; then
         _A="${_QR}/ubercart-${_UBERCART6}-${_SMALLCORE6}/sites"
@@ -3654,6 +3661,7 @@ satellite_make() {
   echo "_REDIS_E_VERSION=\"${_REDIS_E_VERSION}\""     >> ${writeTo}
   echo "_REDIS_M_VERSION=\"${_REDIS_M_VERSION}\""     >> ${writeTo}
   echo "_RESTAURANT=\"${_RESTAURANT}\""               >> ${writeTo}
+  echo "_THUNDER=\"${_THUNDER}\""                     >> ${writeTo}
   echo "_SERIES_RESULT=\"${_SERIES_RESULT}\""         >> ${writeTo}
   echo "_SMALLCORE6=\"${_SMALLCORE6}\""               >> ${writeTo}
   echo "_SMALLCORE7=\"${_SMALLCORE7}\""               >> ${writeTo}
