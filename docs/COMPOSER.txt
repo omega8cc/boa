@@ -30,7 +30,7 @@ Aegir runs composer install if a composer.json file is found." doesn't apply
 to BOA. We have disabled this. There are several reasons, most importantly:
 
 a/ having this feature enabled is actually against the codebase management
-workflow in Aegir, because it may modify codebase on a live sites,
+workflow in Aegir, because it may modify codebase on a live site,
 
 b/ some tasks launch verify many times during clone and migrate, which
 results with giant overhead and conflicts if we allowed it to run composer
@@ -55,6 +55,9 @@ possible with Drush makefiles, although it will be included soon:
      https://www.drupal.org/project/hosting_deploy
 
 Example: https://github.com/yaazkal/BOA-drupal-project/commit/691822e7c1d792e3ba28c6a1cdb283e30364e28a
+
+Update: Since BOA-4.0.0-dev our modified Aegir backend will automatically
+check and remove drush from the vendor directory if found, on every Verify.
 
 You can modify the default path to configuration files in the site's
 local.settings.php file. We are looking into making it easier to configure,
