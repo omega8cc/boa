@@ -350,7 +350,7 @@ install_db_sql() {
   _KEYS_SERVER_TEST=FALSE
   until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
     msg "INFO: Retrieving ${_KEYS_SIG} key.."
-    ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+    ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
     ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
     _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
     sleep 2
@@ -359,7 +359,7 @@ install_db_sql() {
   _KEYS_SERVER_TEST=FALSE
   until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
     msg "INFO: Retrieving ${_KEYS_SIG} key.."
-    ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+    ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
     ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
     _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
     sleep 2
@@ -769,7 +769,7 @@ install_db_server() {
       _KEYS_SERVER_TEST=FALSE
       until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
         msg "INFO: Retrieving ${_KEYS_SIG} key.."
-        ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+        ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
         ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
         _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
         sleep 2
@@ -778,7 +778,7 @@ install_db_server() {
       _KEYS_SERVER_TEST=FALSE
       until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
         msg "INFO: Retrieving ${_KEYS_SIG} key.."
-        ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+        ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
         ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
         _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
         sleep 2

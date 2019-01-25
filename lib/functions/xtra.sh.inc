@@ -431,7 +431,7 @@ if_install_rvm() {
         _KEYS_SERVER_TEST=FALSE
         until [[ "${_KEYS_SERVER_TEST}" =~ "Michal Papis" ]]; do
           echo "Retrieving ${_KEYS_SIG} key.."
-          ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+          ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
           ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
           _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
           sleep 2
@@ -440,7 +440,7 @@ if_install_rvm() {
         _KEYS_SERVER_TEST=FALSE
         until [[ "${_KEYS_SERVER_TEST}" =~ "Piotr Kuczynski" ]]; do
           echo "Retrieving ${_KEYS_SIG} key.."
-          ${_GPG} --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+          ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
           ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
           _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
           sleep 2
