@@ -63,6 +63,7 @@ fi
 cd ${drupal_root}
 
 printf "Setting ownership of "${drupal_root}" to: user => "${script_user}" group => "users"\n"
+chown ${script_user}:users ${drupal_root}
 mkdir -p ${drupal_root}/sites/all/{modules,themes,libraries,drush}
 chown -R ${script_user}:users \
   ${drupal_root}/sites/all/{modules,themes,libraries,includes,misc,profiles,core,vendor}/*
