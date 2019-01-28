@@ -1635,7 +1635,7 @@ switch_php() {
           if [ "${_PHP_FPM_MULTI}" = "YES" ] \
             && [ -d "${dscUsr}/tools/le" ]; then
             _PHP_M_V="73 72 71 70 56"
-            _D_POOL="${_USE R}.${_PHP_SV}"
+            _D_POOL="${_USER}.${_PHP_SV}"
             if [ ! -e "${_FMP_D_INC}" ]; then
               echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
               touch ${dscUsr}/static/control/.multi-fpm.pid
