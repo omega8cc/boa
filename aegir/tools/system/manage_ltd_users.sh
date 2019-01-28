@@ -1639,6 +1639,15 @@ switch_php() {
             if [ ! -e "${_FMP_D_INC}" ]; then
               echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
               touch ${dscUsr}/static/control/.multi-fpm.pid
+            else
+              _CHECK_FMP_D=$(grep "${_D_POOL}" ${_FMP_D_INC} 2>&1)
+              if [[ "${_CHECK_FMP_D}" =~ "${_D_POOL}" ]]; then
+                echo "${_D_POOL} already set in ${_FMP_D_INC}"
+              else
+                echo "${_D_POOL} must be updated in ${_FMP_D_INC}"
+                echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
+                touch ${dscUsr}/static/control/.multi-fpm.pid
+              fi
             fi
           else
             _PHP_M_V="${_PHP_SV}"
