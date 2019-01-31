@@ -252,15 +252,16 @@ if [ ! -e "/root/.high_traffic.cnf" ] \
 fi
 
 mysql_proc_kill() {
-  if [ "$xtime" != "Time" ] \
-    && [ "$xuser" != "root" ] \
-    && [ "$xuser" != "system" ] \
-    && [ "$xtime" != "|" ] \
-    && [[ "$xtime" -gt "$limit" ]]; then
-    xkill=$(mysqladmin kill $each 2>&1)
-    times=$(date 2>&1)
-    echo $times $each $xuser $xtime $xkill
-    echo "$times $each $xuser $xtime $xkill" >> /var/xdrago/log/sql_watch.log
+  xtime=${xtime//[^0-9]/}
+  echo "proc nr to monitor is $each by $xuser runnning for $xtime seconds"
+  if [ ! -z "$xtime" ]; then
+    if [ $xtime -gt $limit ]; then
+      echo "proc to kill is $each by $xuser after $xtime"
+      xkill=$(mysqladmin kill $each 2>&1)
+      times=$(date 2>&1)
+      echo $times $each $xuser $xtime $xkill
+      echo "$times $each $xuser $xtime $xkill" >> /var/xdrago/log/sql_watch.log
+    fi
   fi
 }
 
@@ -274,27 +275,23 @@ mysql_proc_control() {
   for each in `mysqladmin proc \
     | awk '{print $2, $4, $8, $12}' \
     | awk '{print $1}'`; do
+    each=${each//[^0-9]/}
     if [ "$each" != "1" ] \
       && [ "$each" != "2" ] \
-      && [ "$each" != "Id" ] \
       && [ ! -z "$each" ]; then
       xtime=$(mysqladmin proc \
         | awk '{print $2, $4, $8, $12}' \
         | grep $each \
         | awk '{print $4}' 2>&1)
-      if [ "$xtime" = "|" ]; then
-        xtime=$(mysqladmin proc \
-          | awk '{print $2, $4, $8, $11}' \
-          | grep $each \
-          | awk '{print $4}' 2>&1)
-      fi
+      xtime=${xtime//[^0-9]/}
       xuser=$(mysqladmin proc \
         | awk '{print $2, $4, $8, $12}' \
         | grep $each \
         | awk '{print $2}' 2>&1)
-      if [ "$xtime" != "Time" ]; then
+      xuser=${xuser//[^0-9a-z_]/}
+      if [ ! -z "$xtime" ]; then
         if [ "$xuser" = "xabuse" ]; then
-          limit=60
+          limit=5
           mysql_proc_kill
         else
           limit=9999
