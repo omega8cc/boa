@@ -367,12 +367,6 @@
     <!-- A specialized field for geospatial search. If indexed, this fieldType must not be multivalued. -->
     <fieldType name="location" class="solr.LatLonType" subFieldType="tdouble"/>
 
-    <!-- A specialized field for geospatial search. If indexed, this fieldType can be multivalued. -->
-    <fieldType name="location_rpt" class="solr.SpatialRecursivePrefixTreeFieldType"
-           distErrPct="0.025"
-           maxDistErr="0.000009"
-           units="degrees" />
-
     <!-- A Geohash is a compact representation of a latitude longitude pair in a single field.
          See http://wiki.apache.org/solr/SpatialSearch
      -->
@@ -557,7 +551,7 @@
     <dynamicField name="points_*" type="point" indexed="true"  stored="true" multiValued="false"/>
     <dynamicField name="pointm_*" type="point" indexed="true"  stored="true" multiValued="true"/>
     <dynamicField name="locs_*" type="location" indexed="true"  stored="true" multiValued="false"/>
-    <dynamicField name="locm_*" type="location_rpt" indexed="true"  stored="true" multiValued="true"/>
+    <dynamicField name="locm_*" type="location" indexed="true"  stored="true" multiValued="true"/>
     <dynamicField name="geos_*" type="geohash" indexed="true"  stored="true" multiValued="false"/>
     <dynamicField name="geom_*" type="geohash" indexed="true"  stored="true" multiValued="true"/>
 

@@ -3,21 +3,22 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-branch="3.x.x-dev"
+branch="4.x"
 cluster="BOA-3.2.2"
 hd="HEAD"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
+lgcD="BOA-3.2.2"
 master="master"
-nextv="BOA-3.3.0-dev"
+nextv="BOA-4.0.0-dev"
 stbl="BOA-3.2.2"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
 bldPth="/opt/tmp/boa"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-forCer="-fuy --force-yes --reinstall"
+forCer="-fuy --allow-unauthenticated --reinstall"
 filIncB="barracuda.sh.cnf"
 filIncO="octopus.sh.cnf"
 gCb="git clone --branch"
@@ -70,8 +71,8 @@ fix_dns_settings() {
     fi
   fi
   if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
-    echo "nameserver 8.8.8.8" >${vBs}/resolv.conf.tmp
-    echo "nameserver 8.8.4.4" >>${vBs}/resolv.conf.tmp
+    echo "nameserver 1.1.1.1" >${vBs}/resolv.conf.tmp
+    echo "nameserver 1.0.0.1" >>${vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
     for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
@@ -109,18 +110,21 @@ fix_dns_settings() {
       wait
       _BROKEN_DNS_TEST_X=$(grep "\." ${dnsLi} 2>&1)
       if [ -z "${_BROKEN_DNS_TEST_X}" ]; then
-        echo "        label = \"google-servers\";" > ${dnsLi}
-        echo "        ip=8.8.8.8;" >> ${dnsLi}
-        echo "        ip=8.8.4.4;" >> ${dnsLi}
+        echo "        label = \"cloudflare-servers\";" > ${dnsLi}
+        echo "        ip=1.1.1.1;" >> ${dnsLi}
+        echo "        ip=1.0.0.1;" >> ${dnsLi}
       fi
     fi
-    _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
+    _CUSTOM_DNS_TEST=$(grep 1.1.1.1 /etc/pdnsd.conf 2>&1)
     _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
-    if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
+    _MISSING_DNS_TEST=$(grep "ip=" /etc/pdnsd.conf 2>&1)
+    if [[ "${_CUSTOM_DNS_TEST}" =~ "1.1.1.1" ]] \
+      || [ ! -e "${dnsLi}" ] \
       || [ -e "/root/.use.default.nameservers.cnf" ] \
       || [ -e "/root/.use.local.nameservers.cnf" ] \
-      || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]]; then
-      echo "        label = \"google-servers\";" > ${dnsLi}
+      || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]] \
+      || [[ -z "${_MISSING_DNS_TEST}" ]]; then
+      echo "        label = \"cloudflare-servers\";" > ${dnsLi}
       for _IP in `cat /etc/resolv.conf \
         | sed 's/.*127.0.0.1.*//g; s/.*search.*//g; s/.*Dynamic.*//g' \
         | cut -d ' ' -f2 \
@@ -135,14 +139,21 @@ fix_dns_settings() {
       wait
       _BROKEN_DNS_TEST_Y=$(grep "\." ${dnsLi} 2>&1)
       if [ -z "${_BROKEN_DNS_TEST_Y}" ]; then
-         echo "        ip=8.8.8.8;" >> ${dnsLi}
-         echo "        ip=8.8.4.4;" >> ${dnsLi}
+         echo "        ip=1.1.1.1;" >> ${dnsLi}
+         echo "        ip=1.0.0.1;" >> ${dnsLi}
       fi
       ### echo debug dns A
-      _DNS_TPL_TEST=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
-      _DNS_RGX_TEST=$(grep "google-servers" /root/.local.dns.IP.list 2>&1)
-      if [[ "${_DNS_TPL_TEST}" =~ "google-servers" ]] \
-        && [[ "${_DNS_RGX_TEST}" =~ "google-servers" ]]; then
+      _DNS_TPL_TEST_GE=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
+      _DNS_TPL_TEST_CF=$(grep "cloudflare-servers" /etc/pdnsd.conf 2>&1)
+      _DNS_RGX_TEST=$(grep "cloudflare-servers" /root/.local.dns.IP.list 2>&1)
+      if [[ "${_DNS_TPL_TEST_CF}" =~ "cloudflare-servers" ]] \
+        && [[ "${_DNS_RGX_TEST}" =~ "cloudflare-servers" ]]; then
+        sed -i '/        label = \"cloudflare-servers\";/ {r /root/.local.dns.IP.list
+d;};' /etc/pdnsd.conf
+        wait
+      fi
+      if [[ "${_DNS_TPL_TEST_GE}" =~ "google-servers" ]] \
+        && [[ "${_DNS_RGX_TEST}" =~ "cloudflare-servers" ]]; then
         sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
 d;};' /etc/pdnsd.conf
         wait
@@ -162,9 +173,10 @@ check_dns_settings() {
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
   else
-    _REMOTE_DNS_TEST=$(host -a files.aegir.cc 8.8.8.8 -w 10 2>&1)
+    _REMOTE_DNS_TEST=$(host -a files.aegir.cc 1.1.1.1 -w 10 2>&1)
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
+    || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
     || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
     _CTRL_DNS_TEST=$(host -a files.aegir.cc 2>&1)
@@ -204,7 +216,11 @@ extract_archive() {
 get_dev_ext() {
   if [ ! -z "$1" ]; then
     curl ${crlGet} "${urlDev}/HEAD/$1" -o "$1"
-    extract_archive "$1"
+    if [ -e "$1" ]; then
+      extract_archive "$1"
+    else
+      echo "OOPS: $1 failed download from ${urlDev}/HEAD/$1"
+    fi
   fi
 }
 
@@ -341,12 +357,16 @@ satellite_check_up_php() {
     mcmode="${orgMcmode}"
     if [ -e "${User}/log/octopus_log.txt" ]; then
       _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
-      if [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
+      if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
+        || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
         if [ -e "${User}/static/control/fpm.info" ]; then
           _T_FPM_VRN=$(cat ${User}/static/control/fpm.info 2>&1)
           _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
           _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-          if [ "${_T_FPM_VRN}" = "7.0" ] \
+          if [ "${_T_FPM_VRN}" = "7.3" ] \
+            || [ "${_T_FPM_VRN}" = "7.2" ] \
+             || [ "${_T_FPM_VRN}" = "7.1" ] \
+            || [ "${_T_FPM_VRN}" = "7.0" ] \
             || [ "${_T_FPM_VRN}" = "5.6" ]; then
             _PHP_FPM_LEGACY_FREE=YES
           else
@@ -359,7 +379,10 @@ satellite_check_up_php() {
           _T_CLI_VRN=$(cat ${User}/static/control/cli.info 2>&1)
           _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
           _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-          if [ "${_T_CLI_VRN}" = "7.0" ] \
+          if [ "${_T_CLI_VRN}" = "7.3" ] \
+            || [ "${_T_CLI_VRN}" = "7.2" ] \
+            || [ "${_T_CLI_VRN}" = "7.1" ] \
+            || [ "${_T_CLI_VRN}" = "7.0" ] \
             || [ "${_T_CLI_VRN}" = "5.6" ]; then
             _PHP_CLI_LEGACY_FREE=YES
           else
@@ -371,15 +394,11 @@ satellite_check_up_php() {
         if [ "${_PHP_FPM_LEGACY_FREE}" = "NO" ]; then
           if [ -x "/opt/php56/bin/php" ]; then
             echo 5.6 > ${User}/static/control/fpm.info
-          elif [ -x "/opt/php55/bin/php" ]; then
-            echo 5.5 > ${User}/static/control/fpm.info
           fi
         fi
         if [ "${_PHP_CLI_LEGACY_FREE}" = "NO" ]; then
           if [ -x "/opt/php56/bin/php" ]; then
             echo 5.6 > ${User}/static/control/cli.info
-          elif [ -x "/opt/php55/bin/php" ]; then
-            echo 5.5 > ${User}/static/control/cli.info
           fi
         fi
       fi
@@ -426,14 +445,14 @@ satellite_check_switch_php() {
           fi
         fi
       else
-        if [[ ! "${_SERIES_TEST}" =~ "${lgcC}" ]]; then
-          cmmand="up-2.4"
+        if [[ ! "${_SERIES_TEST}" =~ "${lgcD}" ]]; then
+          cmmand="up-3.2"
           mcmode="${orgMcmode}"
           echo
           echo "This Aegir Instance ${octUsr} can not be upgraded"
           echo "via '$(basename "$0") ${orgCmmand}' mode"
-          echo "We will run legacy upgrade to ${lgcC} instead"
-          echo "Once the upgrade to ${lgcC} is complete, you will be able"
+          echo "We will run legacy upgrade to ${lgcD} instead"
+          echo "Once the upgrade to ${lgcD} is complete, you will be able"
           echo "to use the '$(basename "$0") ${orgCmmand}' upgrade mode"
           echo "Please wait..."
           echo
@@ -445,9 +464,11 @@ satellite_check_switch_php() {
       _T_FPM_VRN=$(cat ${User}/static/control/fpm.info 2>&1)
       _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
       _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-      if [ "${_T_FPM_VRN}" = "7.0" ] \
-        || [ "${_T_FPM_VRN}" = "5.6" ] \
-        || [ "${_T_FPM_VRN}" = "5.5" ]; then
+      if [ "${_T_FPM_VRN}" = "7.3" ] \
+        || [ "${_T_FPM_VRN}" = "7.2" ] \
+        || [ "${_T_FPM_VRN}" = "7.1" ] \
+        || [ "${_T_FPM_VRN}" = "7.0" ] \
+        || [ "${_T_FPM_VRN}" = "5.6" ]; then
         _PHP_FPM_LEGACY_FREE=YES
       else
         _PHP_FPM_LEGACY_FREE=NO
@@ -459,9 +480,11 @@ satellite_check_switch_php() {
       _T_CLI_VRN=$(cat ${User}/static/control/cli.info 2>&1)
       _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
       _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-      if [ "${_T_CLI_VRN}" = "7.0" ] \
-        || [ "${_T_CLI_VRN}" = "5.6" ] \
-        || [ "${_T_CLI_VRN}" = "5.5" ]; then
+      if [ "${_T_CLI_VRN}" = "7.3" ] \
+        || [ "${_T_CLI_VRN}" = "7.2" ] \
+        || [ "${_T_CLI_VRN}" = "7.1" ] \
+        || [ "${_T_CLI_VRN}" = "7.0" ] \
+        || [ "${_T_CLI_VRN}" = "5.6" ]; then
         _PHP_CLI_LEGACY_FREE=YES
       else
         _PHP_CLI_LEGACY_FREE=NO
@@ -477,27 +500,24 @@ satellite_check_switch_php() {
     fi
     if [ "${_PHP_LEGACY_FREE}" = "NO" ] \
       && [ -z "${_SERIES_TEST_RESULT}" ]; then
-      cmmand="up-2.4"
+      cmmand="up-3.2"
       switchFPMback="${_T_FPM_VRN}"
       if [ -z "${switchFPMback}" ]; then
-        switchFPMback="5.3"
+        switchFPMback="5.6"
       fi
       switchCLIback="${_T_CLI_VRN}"
       if [ -z "${switchCLIback}" ]; then
-        switchCLIback="5.3"
+        switchCLIback="5.6"
       fi
       if [ -x "/opt/php56/bin/php" ]; then
         echo 5.6 > ${User}/static/control/fpm.info
         echo 5.6 > ${User}/static/control/cli.info
-      elif [ -x "/opt/php55/bin/php" ]; then
-        echo 5.5 > ${User}/static/control/fpm.info
-        echo 5.5 > ${User}/static/control/cli.info
       fi
       echo
       echo "This instance ${octUsr} still depends on the old PHP version"
       echo "FPM.${_T_FPM_VRN} CLI.${_T_CLI_VRN}"
-      echo "We will switch FPM and CLI on ${octUsr} to PHP 5.5 temporarily"
-      echo "Then we will run legacy upgrade to ${lgcC}"
+      echo "We will switch FPM and CLI on ${octUsr} to PHP 5.6 temporarily"
+      echo "Then we will run legacy upgrade to ${lgcD}"
       echo "Please wait..."
       echo
       sleep 5
@@ -562,6 +582,13 @@ up_one() {
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${tocIncO}
         wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${tocIncO}
+        wait
+      elif [ "${cmmand}" = "up-3.2" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcD}/g" ${vBs}/${tocIncO}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcD}/g" ${vBs}/${tocIncO}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcD}/g"         ${vBs}/${tocIncO}
         wait
       else
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${tocIncO}
@@ -931,7 +958,7 @@ up_head() {
     || [ "${silent}" = "cluster" ] \
     || [ "${silent}" = "drush" ] \
     || [ "${silent}" = "gravcms" ] \
-    || [ "${silent}" = "jessie" ]; then
+    || [ "${silent}" = "stretch" ]; then
     echo "FEATURE MODE: ${silent}"
     master="feature/${silent}"
     branch="feature/${silent}"
@@ -975,7 +1002,11 @@ up_stable() {
 
 up_legacy() {
   up_start
-  if [ "${cmmand}" = "up-2.4" ]; then
+  if [ "${cmmand}" = "up-3.2" ]; then
+    branch="3.2.x-dev"
+    curl ${crlGet} "${rgUrl}/${lgcD}/${octName}"  -o ${vBs}/${octName}
+    curl ${crlGet} "${rgUrl}/${lgcD}/${pthIncO}"  -o ${vBs}/${filIncO}
+  elif [ "${cmmand}" = "up-2.4" ]; then
     branch="2.4.x-dev"
     curl ${crlGet} "${rgUrl}/${lgcC}/${octName}"  -o ${vBs}/${octName}
     curl ${crlGet} "${rgUrl}/${lgcC}/${pthIncO}"  -o ${vBs}/${filIncO}
@@ -1025,7 +1056,7 @@ find_fast_mirror() {
   fi
   if ! netcat -w 10 -z "${_USE_MIR}" 80; then
     echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
-    _USE_MIR="files.aegir.cc"
+    _USE_MIR="104.245.208.226"
   fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
@@ -1037,8 +1068,8 @@ check_dns_curl() {
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then
       cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
     fi
-    echo "nameserver 8.8.8.8" >>/etc/resolv.conf
-    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    echo "nameserver 1.1.1.1" >>/etc/resolv.conf
+    echo "nameserver 1.0.0.1" >>/etc/resolv.conf
     check_dns_settings
   else
     check_dns_settings
@@ -1051,8 +1082,9 @@ check_dns_curl() {
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
-    echo "curl install" | dpkg --set-selections
+    echo "curl install" | dpkg --set-selections &> /dev/null
     apt-get clean -qq &> /dev/null
+    rm -f -r /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     apt-get install curl ${forCer} &> /dev/null
     touch /root/.use.curl.from.packages.cnf
@@ -1064,7 +1096,7 @@ check_dns_curl() {
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
-      echo "curl install" | dpkg --set-selections
+      echo "curl install" | dpkg --set-selections &> /dev/null
       apt-get install curl ${forCer} &> /dev/null
       touch /root/.use.curl.from.packages.cnf
     fi
@@ -1097,7 +1129,7 @@ check_root_direct() {
     echo
     echo "HINT:  You can always restrict access later, or"
     echo "       allow only SSH (RSA) keys for root with directive"
-    echo "         PermitRootLogin prohibit-password"
+    echo "         PermitRootLogin without-password"
     echo "       in the /usr/etc/sshd_config file"
     echo "Bye"
     clean_pid_exit
@@ -1211,6 +1243,12 @@ case "$1" in
              silent="$4"
              up_stable
   ;;
+  up-3.2)    cmmand="$1"
+             second="$2"
+             cmmode="$3"
+             silent="$4"
+             up_legacy "3.2"
+  ;;
   up-2.4)    cmmand="$1"
              second="$2"
              cmmode="$3"
@@ -1230,7 +1268,7 @@ case "$1" in
              up_legacy "2.2"
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {up-stable|up-head|up-2.4|up-2.3|up-2.2} {all|o1} {aegir|platforms|both|force}"
+             echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy|up-2.4|up-2.3|up-2.2} {all|o1} {aegir|platforms|both|force}"
              echo
              clean_pid_exit
   ;;

@@ -5,7 +5,7 @@
 ###
 ###  Octopus Aegir Installer
 ###
-###  Copyright (C) 2010-2017 Omega8.cc
+###  Copyright (C) 2010-2019 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -129,21 +129,21 @@ _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
 _D="/data/all"
 _SRCDIR="/opt/tmp/files"
 _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
-if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+  && [ -x "/opt/php73/bin/php" ]; then
+  _T_CLI=/opt/php73/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.2" ] \
+  && [ -x "/opt/php72/bin/php" ]; then
+  _T_CLI=/opt/php72/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.1" ] \
+  && [ -x "/opt/php71/bin/php" ]; then
+  _T_CLI=/opt/php71/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.0" ] \
   && [ -x "/opt/php70/bin/php" ]; then
   _T_CLI=/opt/php70/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
   && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-  && [ -x "/opt/php55/bin/php" ]; then
-  _T_CLI=/opt/php55/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
-  && [ -x "/opt/php54/bin/php" ]; then
-  _T_CLI=/opt/php54/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.3" ] \
-  && [ -x "/opt/php53/bin/php" ]; then
-  _T_CLI=/opt/php53/bin
 fi
 if [ -e "/opt/tools/d7.ini" ] \
   && [ -e "/opt/tools/drush/7/drush/drush.php" ]; then
@@ -152,14 +152,20 @@ else
   _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
 fi
 #
-if [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+if [ "${_PHP_FPM_VERSION}" = "7.3" ] \
+  && [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
+  _D_8_ALLOW=YES
+elif [ "${_PHP_FPM_VERSION}" = "7.2" ] \
+  && [ "${_PHP_CLI_VERSION}" = "7.2" ]; then
+  _D_8_ALLOW=YES
+elif [ "${_PHP_FPM_VERSION}" = "7.1" ] \
+  && [ "${_PHP_CLI_VERSION}" = "7.1" ]; then
+  _D_8_ALLOW=YES
+elif [ "${_PHP_FPM_VERSION}" = "7.0" ] \
   && [ "${_PHP_CLI_VERSION}" = "7.0" ]; then
   _D_8_ALLOW=YES
 elif [ "${_PHP_FPM_VERSION}" = "5.6" ] \
   && [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
-  _D_8_ALLOW=YES
-elif [ "${_PHP_FPM_VERSION}" = "5.5" ] \
-  && [ "${_PHP_CLI_VERSION}" = "5.5" ]; then
   _D_8_ALLOW=YES
 else
   _D_8_ALLOW=NO
@@ -182,7 +188,11 @@ yOk="installation in progress..."
 get_distro_ext() {
   if [ ! -z "$1" ]; then
     curl ${crlGet} "http://${_USE_MIR}/distro/$1" -o "$1"
-    extract_archive "$1"
+    if [ -e "$1" ]; then
+      extract_archive "$1"
+    else
+      msg "OOPS: $1 failed download from http://${_USE_MIR}/distro/$1"
+    fi
   fi
 }
 #
@@ -544,12 +554,48 @@ init_this_distro_root() {
 #
 # Upgrade contrib less.
 upgrade_contrib_less() {
+  if [ -e "${_SHRD_PRPATH}/modules/contrib/rules_conditional" ]; then
+    rm -rf ${_SHRD_PRPATH}/modules/contrib/rules_conditional
+    cd ${_SHRD_PRPATH}/modules/contrib
+    get_dev_contrib "rules_conditional-7.x-1.x-dev.tar.gz"
+    if [ ! -e "${_SHRD_PRPATH}/modules/contrib/rules_conditional" ]; then
+      get_dev_contrib "rules_conditional-7.x-1.x-dev.tar.gz"
+    fi
+    cd ${_CORE}
+  fi
+  if [ -e "${_SHRD_PRPATH}/modules/contrib/webform" ]; then
+    rm -rf ${_SHRD_PRPATH}/modules/contrib/webform
+    cd ${_SHRD_PRPATH}/modules/contrib
+    get_dev_contrib "webform-7.x-4.18.tar.gz"
+    if [ ! -e "${_SHRD_PRPATH}/modules/contrib/webform" ]; then
+      get_dev_contrib "webform-7.x-4.18.tar.gz"
+    fi
+    cd ${_CORE}
+  fi
   if [ -e "${_SHRD_PRPATH}/modules/contrib/panels" ]; then
     rm -rf ${_SHRD_PRPATH}/modules/contrib/panels
     cd ${_SHRD_PRPATH}/modules/contrib
     get_dev_contrib "panels-7.x-3.8.tar.gz"
     if [ ! -e "${_SHRD_PRPATH}/modules/contrib/panels" ]; then
       get_dev_contrib "panels-7.x-3.8.tar.gz"
+    fi
+    cd ${_CORE}
+  fi
+  if [ -e "${_SHRD_PRPATH}/modules/contrib/rules" ]; then
+    rm -rf ${_SHRD_PRPATH}/modules/contrib/rules
+    cd ${_SHRD_PRPATH}/modules/contrib
+    get_dev_contrib "rules-7.x-2.11.tar.gz"
+    if [ ! -e "${_SHRD_PRPATH}/modules/contrib/rules" ]; then
+      get_dev_contrib "rules-7.x-2.11.tar.gz"
+    fi
+    cd ${_CORE}
+  fi
+  if [ -e "${_SHRD_PRPATH}/modules/rules" ]; then
+    rm -rf ${_SHRD_PRPATH}/modules/rules
+    cd ${_SHRD_PRPATH}/modules
+    get_dev_contrib "rules-7.x-2.11.tar.gz"
+    if [ ! -e "${_SHRD_PRPATH}/modules/rules" ]; then
+      get_dev_contrib "rules-7.x-2.11.tar.gz"
     fi
     cd ${_CORE}
   fi
@@ -637,6 +683,7 @@ _F_DRUPAL8="Drupal ${_SMALLCORE8} [${_THIS_CORE}]"
 _F_ERPAL="ERPAL ${_ERPAL} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_FSERVER="Feature Server 1.3 ${_SMALLCORE6} [${_THIS_CORE}]"
 _F_GUARDR="Guardr ${_GUARDR} ${_SMALLCORE7} [${_THIS_CORE}]"
+_F_LIGHTNING="Lightning ${_LIGHTNING} ${_SMALLCORE8} [${_THIS_CORE}]"
 _F_OPENACADEMY="OpenAcademy ${_OPENACADEMY} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENAID="OpenAid ${_OPENAID} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENATRIUM7="OpenAtrium ${_OPENATRIUM7} ${_SMALLCORE7} [${_THIS_CORE}]"
@@ -653,9 +700,11 @@ _F_OPIGNOLMS="Opigno LMS ${_OPIGNOLMS} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_PANOPOLY="Panopoly ${_PANOPOLY} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_RECRUITER="Recruiter ${_RECRUITER} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_RESTAURANT="Restaurant ${_RESTAURANT} ${_SMALLCORE7} [${_THIS_CORE}]"
+_F_THUNDER="Thunder ${_THUNDER} ${_SMALLCORE8} [${_THIS_CORE}]"
 _F_UBER_CART_T="Ubercart ${_UBERCART7} [ud2] ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_UBERCART6="Ubercart ${_UBERCART6} ${_SMALLCORE6} [${_THIS_CORE}]"
 _F_UBERCART7="Ubercart ${_UBERCART7} [aq3] ${_SMALLCORE7} [${_THIS_CORE}]"
+_F_VARBASE="Varbase ${_VARBASE} ${_SMALLCORE8} [${_THIS_CORE}]"
 #
 _F_DRUPAL6_D="Drupal ${_SMALLCORE6} D.${_THIS_CORE}"
 _F_DRUPAL6_S="Drupal ${_SMALLCORE6} S.${_THIS_CORE}"
@@ -783,6 +832,7 @@ commerce_7_1_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
+              upgrade_contrib_less
               if [ "${_COMMERCE1}" = "1.32" ]; then
                 cd ${_SHRD_PRPATH}/modules/
                 rm -rf commerce
@@ -837,6 +887,7 @@ commerce_7_2_install() {
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
+              upgrade_contrib_less
               if [ "${_COMMERCE2}" = "2.22" ]; then
                 cd ${_SHRD_PLPATH}
                 patch -p1 < ${pthPch}/${_REAL_PRNAME}.patch &> /dev/null
@@ -1238,7 +1289,7 @@ fserver_install() {
             echo "core = 6.x" >> fserver.make
             echo "projects[pressflow][type] = \"core\"" >> fserver.make
             echo "projects[pressflow][download][type] = \"get\"" >> fserver.make
-            echo "projects[pressflow][download][url] = \"http://${_USE_MIR}/core/pressflow-6.38.2.tar.gz\"" >> fserver.make
+            echo "projects[pressflow][download][url] = \"http://${_USE_MIR}/core/pressflow-6.46.2.tar.gz\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][type] = \"profile\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][download][type] = \"git\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][download][url] = \"https://github.com/omega8cc/${_REAL_PRNAME}.git\"" >> fserver.make
@@ -1309,6 +1360,38 @@ guardr_install() {
           _RUN_VERIFY=YES
         else
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_GUARDR ${noT}"
+        fi
+      fi
+    fi
+  fi
+}
+
+
+lightning_install() {
+###---### Lightning
+#
+  _REAL_PRNAME="lightning"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_LIGHTNING}-${_SMALLCORE8}"
+  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
+  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/contrib/${_REAL_PRNAME}"
+  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/docroot"
+  if [ "${_ALLOW_ALL}" = "YES" ]; then
+    if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+      || [[ "${_PLATFORMS_LIST}" =~ "LHG" ]]; then
+      if [ ! -d "${_OCTO_PLPATH}" ]; then
+        if prompt_yes_no "$_F_LIGHTNING - ${urlPrt}/lightning" ; then
+          true
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_LIGHTNING ${yOk}"
+          if [ ! -d "${_OCTO_PLPATH}" ]; then
+            cd ${_ROOT}/distro/${_THIS_CORE}
+            get_distro_ext "${_SHRD_PLNAME}.tar.gz"
+          fi
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            msg "DISTRO: $_F_LIGHTNING installed"
+            _RUN_VERIFY=YES
+          fi
+        else
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_LIGHTNING ${noT}"
         fi
       fi
     fi
@@ -2051,6 +2134,38 @@ restaurant_install() {
 }
 
 
+thunder_install() {
+###---### Thunder
+#
+  _REAL_PRNAME="thunder"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_THUNDER}-${_SMALLCORE8}"
+  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
+  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/contrib/${_REAL_PRNAME}"
+  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/docroot"
+  if [ "${_ALLOW_ALL}" = "YES" ]; then
+    if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+      || [[ "${_PLATFORMS_LIST}" =~ "THR" ]]; then
+      if [ ! -d "${_OCTO_PLPATH}" ]; then
+        if prompt_yes_no "$_F_THUNDER - ${urlPrt}/thunder" ; then
+          true
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_THUNDER ${yOk}"
+          if [ ! -d "${_OCTO_PLPATH}" ]; then
+            cd ${_ROOT}/distro/${_THIS_CORE}
+            get_distro_ext "${_SHRD_PLNAME}.tar.gz"
+          fi
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            msg "DISTRO: $_F_THUNDER installed"
+            _RUN_VERIFY=YES
+          fi
+        else
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_THUNDER ${noT}"
+        fi
+      fi
+    fi
+  fi
+}
+
+
 ubercart6_install() {
 ###---### Ubercart 2
 #
@@ -2163,16 +2278,16 @@ ubercart7_install() {
               fi
               mkdir -p ${_SHRD_PRPATH}/modules
               cd ${_SHRD_PRPATH}/modules
-              get_dev_contrib "colorbox-7.x-2.12.tar.gz"
-              get_dev_contrib "ctools-7.x-1.12.tar.gz"
-              get_dev_contrib "entity-7.x-1.8.tar.gz"
-              get_dev_contrib "google_analytics-7.x-2.3.tar.gz"
-              get_dev_contrib "libraries-7.x-2.3.tar.gz"
+              get_dev_contrib "colorbox-7.x-2.13.tar.gz"
+              get_dev_contrib "ctools-7.x-1.14.tar.gz"
+              get_dev_contrib "entity-7.x-1.9.tar.gz"
+              get_dev_contrib "google_analytics-7.x-2.5.tar.gz"
+              get_dev_contrib "libraries-7.x-2.5.tar.gz"
               get_dev_contrib "pathauto-7.x-1.3.tar.gz"
-              get_dev_contrib "rules-7.x-2.9.tar.gz"
-              get_dev_contrib "token-7.x-1.6.tar.gz"
+              get_dev_contrib "rules-7.x-2.11.tar.gz"
+              get_dev_contrib "token-7.x-1.7.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
-              get_dev_contrib "views-7.x-3.18.tar.gz"
+              get_dev_contrib "views-7.x-3.20.tar.gz"
               cd ${_SHRD_PRPATH}/modules/views
               # https://drupal.org/node/1766338#comment-6445882
               patch -p1 < \
@@ -2233,16 +2348,16 @@ ubercart7_testing_install() {
               fi
               mkdir -p ${_SHRD_PRPATH}/modules
               cd ${_SHRD_PRPATH}/modules
-              get_dev_contrib "colorbox-7.x-2.12.tar.gz"
-              get_dev_contrib "ctools-7.x-1.12.tar.gz"
-              get_dev_contrib "entity-7.x-1.8.tar.gz"
-              get_dev_contrib "google_analytics-7.x-2.3.tar.gz"
-              get_dev_contrib "libraries-7.x-2.3.tar.gz"
+              get_dev_contrib "colorbox-7.x-2.13.tar.gz"
+              get_dev_contrib "ctools-7.x-1.14.tar.gz"
+              get_dev_contrib "entity-7.x-1.9.tar.gz"
+              get_dev_contrib "google_analytics-7.x-2.5.tar.gz"
+              get_dev_contrib "libraries-7.x-2.5.tar.gz"
               get_dev_contrib "pathauto-7.x-1.3.tar.gz"
-              get_dev_contrib "rules-7.x-2.9.tar.gz"
-              get_dev_contrib "token-7.x-1.6.tar.gz"
+              get_dev_contrib "rules-7.x-2.11.tar.gz"
+              get_dev_contrib "token-7.x-1.7.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
-              get_dev_contrib "views-7.x-3.18.tar.gz"
+              get_dev_contrib "views-7.x-3.20.tar.gz"
               cd ${_SHRD_PRPATH}/modules/views
               # https://drupal.org/node/1766338#comment-6445882
               patch -p1 < \
@@ -2265,6 +2380,36 @@ ubercart7_testing_install() {
   fi
 }
 
+varbase_install() {
+###---### Varbase
+#
+  _REAL_PRNAME="varbase"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_VARBASE}-${_SMALLCORE8}"
+  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
+  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
+  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/docroot"
+  if [ "${_ALLOW_ALL}" = "YES" ]; then
+    if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+      || [[ "${_PLATFORMS_LIST}" =~ "VBE" ]]; then
+      if [ ! -d "${_OCTO_PLPATH}" ]; then
+        if prompt_yes_no "$_F_VARBASE - ${urlPrt}/varbase" ; then
+          true
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_VARBASE ${yOk}"
+          if [ ! -d "${_OCTO_PLPATH}" ]; then
+            cd ${_ROOT}/distro/${_THIS_CORE}
+            get_distro_ext "${_SHRD_PLNAME}.tar.gz"
+          fi
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            msg "DISTRO: $_F_VARBASE installed"
+            _RUN_VERIFY=YES
+          fi
+        else
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_VARBASE ${noT}"
+        fi
+      fi
+    fi
+  fi
+}
 
 ###---### Save & verify platforms.
 #
@@ -2402,6 +2547,12 @@ save_verify_platforms() {
         ${pthDst}/guardr-${_GUARDR}-${_SMALLCORE7} &> /dev/null
     fi
   fi
+  if [ -d "${pthDst}/lightning-${_LIGHTNING}-${_SMALLCORE8}/docroot" ]; then
+    if [ ! -e "${pthDst}/lightning-${_LIGHTNING}-${_SMALLCORE8}/docroot/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "$_F_LIGHTNING" lightning \
+        ${pthDst}/lightning-${_LIGHTNING}-${_SMALLCORE8}/docroot &> /dev/null
+    fi
+  fi
   if [ -d "${pthDst}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}" ]; then
     if [ ! -e "${pthDst}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPENACADEMY" openacademy \
@@ -2498,6 +2649,12 @@ save_verify_platforms() {
         ${pthDst}/restaurant-${_RESTAURANT}-${_SMALLCORE7} &> /dev/null
     fi
   fi
+  if [ -d "${pthDst}/thunder-${_THUNDER}-${_SMALLCORE8}/docroot" ]; then
+    if [ ! -e "${pthDst}/thunder-${_THUNDER}-${_SMALLCORE8}/docroot/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "$_F_THUNDER" thunder \
+        ${pthDst}/thunder-${_THUNDER}-${_SMALLCORE8}/docroot &> /dev/null
+    fi
+  fi
   if [ -d "${pthDst}/ubercart-${_UBERCART6}-${_SMALLCORE6}" ]; then
     if [ ! -e "${pthDst}/ubercart-${_UBERCART6}-${_SMALLCORE6}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_UBERCART6" uberdrupal \
@@ -2514,6 +2671,12 @@ save_verify_platforms() {
     if [ ! -e "${pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_UBER_CART_T" testing \
         ${pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7} &> /dev/null
+    fi
+  fi
+  if [ -d "${pthDst}/varbase-${_VARBASE}-${_SMALLCORE8}/docroot" ]; then
+    if [ ! -e "${pthDst}/varbase-${_VARBASE}-${_SMALLCORE8}/docroot/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "$_F_VARBASE" varbase \
+        ${pthDst}/varbase-${_VARBASE}-${_SMALLCORE8}/docroot &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/pressflow-${_SMALLCORE6}-dev" ]; then
@@ -2579,6 +2742,7 @@ commons_7_install
 ### TMP OFF -- doesn't work with latest core and comes with too old core version
 
 guardr_install
+lightning_install
 openaid_install
 
 _USE_DISTRO_CORE=YES
@@ -2602,9 +2766,11 @@ restaurant_install
 ### recruiter_install
 ### TMP OFF -- version 1.7 has critical bugs and doesn't work properly
 
+thunder_install
 ubercart6_install
 ubercart7_install
 ubercart7_testing_install
+varbase_install
 
 ### openacademy_install
 ### openblog_install
@@ -2642,7 +2808,7 @@ touch /opt/tmp/status-AegirSetupC-OK
 ###----------------------------------------###
 ###
 ###  Octopus Aegir Installer
-###  Copyright (C) 2010-2017 Omega8.cc
+###  Copyright (C) 2010-2019 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

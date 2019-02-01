@@ -2,11 +2,8 @@
 #
 # Tune FPM workers.
 satellite_tune_fpm_workers() {
-  _ETH_TEST=$(ifconfig 2>&1)
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
-    _VMFAMILY="VZ"
-  elif [ -e "/proc/bean_counters" ]; then
+  if [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
   else
     _VMFAMILY="XEN"
@@ -24,7 +21,7 @@ satellite_tune_fpm_workers() {
     || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
     _VMFAMILY="AWS"
   fi
-  _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
+  _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
   if [ "${_RESERVED_RAM}" -gt "0" ]; then
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
@@ -117,21 +114,21 @@ satellite_update_web_user() {
         cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
         ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_update_web_user D"
       else
-        if [ -e "/opt/php70/etc/php70.ini" ]; then
+        if [ -e "/opt/php73/etc/php73.ini" ]; then
+          cp -af /opt/php73/etc/php73.ini ${_T_II}
+          _T_PV=73
+        elif [ -e "/opt/php72/etc/php72.ini" ]; then
+          cp -af /opt/php72/etc/php72.ini ${_T_II}
+          _T_PV=72
+        elif [ -e "/opt/php71/etc/php71.ini" ]; then
+          cp -af /opt/php71/etc/php71.ini ${_T_II}
+          _T_PV=71
+        elif [ -e "/opt/php70/etc/php70.ini" ]; then
           cp -af /opt/php70/etc/php70.ini ${_T_II}
           _T_PV=70
         elif [ -e "/opt/php56/etc/php56.ini" ]; then
           cp -af /opt/php56/etc/php56.ini ${_T_II}
           _T_PV=56
-        elif [ -e "/opt/php55/etc/php55.ini" ]; then
-          cp -af /opt/php55/etc/php55.ini ${_T_II}
-          _T_PV=55
-        elif [ -e "/opt/php54/etc/php54.ini" ]; then
-          cp -af /opt/php54/etc/php54.ini ${_T_II}
-          _T_PV=54
-        elif [ -e "/opt/php53/etc/php53.ini" ]; then
-          cp -af /opt/php53/etc/php53.ini ${_T_II}
-          _T_PV=53
         fi
       fi
       if [ -e "${_T_II}" ]; then
@@ -140,11 +137,11 @@ satellite_update_web_user() {
           /data/conf:     \
           /data/disk/all: \
           /mnt:           \
-          /opt/php53:     \
-          /opt/php54:     \
-          /opt/php55:     \
           /opt/php56:     \
           /opt/php70:     \
+          /opt/php71:     \
+          /opt/php72:     \
+          /opt/php73:     \
           /opt/tika:      \
           /opt/tika7:     \
           /opt/tika8:     \
@@ -281,16 +278,16 @@ satellite_tune_fpm_config() {
   if [ -z "${_PHP_SV}" ]; then
     _PHP_SV=56
   fi
-  if [ -e "/opt/php70/etc/pool.d/${_USER}.conf" ]; then
+  if [ -e "/opt/php73/etc/pool.d/${_USER}.conf" ]; then
+    _PHP_OLD_SV=73
+  elif [ -e "/opt/php72/etc/pool.d/${_USER}.conf" ]; then
+    _PHP_OLD_SV=72
+  elif [ -e "/opt/php71/etc/pool.d/${_USER}.conf" ]; then
+    _PHP_OLD_SV=71
+  elif [ -e "/opt/php70/etc/pool.d/${_USER}.conf" ]; then
     _PHP_OLD_SV=70
   elif [ -e "/opt/php56/etc/pool.d/${_USER}.conf" ]; then
     _PHP_OLD_SV=56
-  elif [ -e "/opt/php55/etc/pool.d/${_USER}.conf" ]; then
-    _PHP_OLD_SV=55
-  elif [ -e "/opt/php54/etc/pool.d/${_USER}.conf" ]; then
-    _PHP_OLD_SV=54
-  elif [ -e "/opt/php53/etc/pool.d/${_USER}.conf" ]; then
-    _PHP_OLD_SV=53
   else
     _PHP_OLD_SV=""
   fi
@@ -316,7 +313,7 @@ satellite_tune_fpm_config() {
       ### create or update special system user if needed
       if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
         _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
-        _PHP_V="70 56 55 54 53"
+        _PHP_V="73 72 71 70 56"
         for e in ${_PHP_V}; do
           if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
             if [ "${e}" != "${_PHP_SV}" ] \
@@ -570,57 +567,65 @@ satellite_cnf() {
     if [ -e "${_ROOT}/static/control/fpm.info" ]; then
       _PHP_FPM_VERSION=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
       _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
-      if [ "${_PHP_FPM_VERSION}" = "7.0" ] \
-        || [ "${_PHP_FPM_VERSION}" = "5.6" ] \
-        || [ "${_PHP_FPM_VERSION}" = "5.5" ] \
-        || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
-        || [ "${_PHP_FPM_VERSION}" = "5.3" ]; then
-        if [ "${_PHP_FPM_VERSION}" = "7.0" ] \
-          && [ ! -x "/opt/php70/bin/php" ]; then
-          if [ -x "/opt/php56/bin/php" ]; then
+      if [ "${_PHP_FPM_VERSION}" = "7.3" ] \
+        || [ "${_PHP_FPM_VERSION}" = "7.2" ] \
+        || [ "${_PHP_FPM_VERSION}" = "7.1" ] \
+        || [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+        || [ "${_PHP_FPM_VERSION}" = "5.6" ]; then
+        if [ "${_PHP_FPM_VERSION}" = "7.3" ] \
+          && [ ! -x "/opt/php73/bin/php" ]; then
+          if [ -x "/opt/php72/bin/php" ]; then
+            _PHP_FPM_VERSION=7.2
+          elif [ -x "/opt/php71/bin/php" ]; then
+            _PHP_FPM_VERSION=7.1
+          elif [ -x "/opt/php70/bin/php" ]; then
+            _PHP_FPM_VERSION=7.0
+          elif [ -x "/opt/php56/bin/php" ]; then
             _PHP_FPM_VERSION=5.6
-          elif [ -x "/opt/php55/bin/php" ]; then
-            _PHP_FPM_VERSION=5.5
-          elif [ -x "/opt/php54/bin/php" ]; then
-            _PHP_FPM_VERSION=5.4
-          elif [ -x "/opt/php53/bin/php" ]; then
-            _PHP_FPM_VERSION=5.3
+          fi
+        elif [ "${_PHP_FPM_VERSION}" = "7.2" ] \
+          && [ ! -x "/opt/php72/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _PHP_FPM_VERSION=7.3
+          elif [ -x "/opt/php71/bin/php" ]; then
+            _PHP_FPM_VERSION=7.1
+          elif [ -x "/opt/php70/bin/php" ]; then
+            _PHP_FPM_VERSION=7.0
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _PHP_FPM_VERSION=5.6
+          fi
+        elif [ "${_PHP_FPM_VERSION}" = "7.1" ] \
+          && [ ! -x "/opt/php71/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _PHP_FPM_VERSION=7.3
+          elif [ -x "/opt/php72/bin/php" ]; then
+            _PHP_FPM_VERSION=7.2
+          elif [ -x "/opt/php70/bin/php" ]; then
+            _PHP_FPM_VERSION=7.0
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _PHP_FPM_VERSION=5.6
+          fi
+        elif [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+          && [ ! -x "/opt/php70/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _PHP_FPM_VERSION=7.3
+          elif [ -x "/opt/php72/bin/php" ]; then
+            _PHP_FPM_VERSION=7.2
+          elif [ -x "/opt/php71/bin/php" ]; then
+            _PHP_FPM_VERSION=7.1
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _PHP_FPM_VERSION=5.6
           fi
         elif [ "${_PHP_FPM_VERSION}" = "5.6" ] \
           && [ ! -x "/opt/php56/bin/php" ]; then
-          if [ -x "/opt/php55/bin/php" ]; then
-            _PHP_FPM_VERSION=5.5
-          elif [ -x "/opt/php54/bin/php" ]; then
-            _PHP_FPM_VERSION=5.4
-          elif [ -x "/opt/php53/bin/php" ]; then
-            _PHP_FPM_VERSION=5.3
-          fi
-        elif [ "${_PHP_FPM_VERSION}" = "5.5" ] \
-          && [ ! -x "/opt/php55/bin/php" ]; then
-          if [ -x "/opt/php56/bin/php" ]; then
-            _PHP_FPM_VERSION=5.6
-          elif [ -x "/opt/php54/bin/php" ]; then
-            _PHP_FPM_VERSION=5.4
-          elif [ -x "/opt/php53/bin/php" ]; then
-            _PHP_FPM_VERSION=5.3
-          fi
-        elif [ "${_PHP_FPM_VERSION}" = "5.4" ] \
-          && [ ! -x "/opt/php54/bin/php" ]; then
-          if [ -x "/opt/php55/bin/php" ]; then
-            _PHP_FPM_VERSION=5.5
-          elif [ -x "/opt/php56/bin/php" ]; then
-            _PHP_FPM_VERSION=5.6
-          elif [ -x "/opt/php53/bin/php" ]; then
-            _PHP_FPM_VERSION=5.3
-          fi
-        elif [ "${_PHP_FPM_VERSION}" = "5.3" ] \
-          && [ ! -x "/opt/php53/bin/php" ]; then
-          if [ -x "/opt/php55/bin/php" ]; then
-            _PHP_FPM_VERSION=5.5
-          elif [ -x "/opt/php56/bin/php" ]; then
-            _PHP_FPM_VERSION=5.6
-          elif [ -x "/opt/php54/bin/php" ]; then
-            _PHP_FPM_VERSION=5.4
+          if [ -x "/opt/php73/bin/php" ]; then
+            _PHP_FPM_VERSION=7.3
+          elif [ -x "/opt/php72/bin/php" ]; then
+            _PHP_FPM_VERSION=7.2
+          elif [ -x "/opt/php71/bin/php" ]; then
+            _PHP_FPM_VERSION=7.1
+          elif [ -x "/opt/php70/bin/php" ]; then
+            _PHP_FPM_VERSION=7.0
           fi
         fi
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_FPM_VERSION}/g" \
@@ -635,57 +640,65 @@ satellite_cnf() {
         && [ "${_LD_DOM}" = "YES" ]; then
         _PHP_FPM_VERSION=$(cat ${_ROOT}/log/fpm.txt 2>&1)
         _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
-        if [ "${_PHP_FPM_VERSION}" = "7.0" ] \
-          || [ "${_PHP_FPM_VERSION}" = "5.6" ] \
-          || [ "${_PHP_FPM_VERSION}" = "5.5" ] \
-          || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
-          || [ "${_PHP_FPM_VERSION}" = "5.3" ]; then
-          if [ "${_PHP_FPM_VERSION}" = "7.0" ] \
-            && [ ! -x "/opt/php70/bin/php" ]; then
-            if [ -x "/opt/php56/bin/php" ]; then
+        if [ "${_PHP_FPM_VERSION}" = "7.3" ] \
+          || [ "${_PHP_FPM_VERSION}" = "7.2" ] \
+          || [ "${_PHP_FPM_VERSION}" = "7.1" ] \
+          || [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+          || [ "${_PHP_FPM_VERSION}" = "5.6" ]; then
+          if [ "${_PHP_FPM_VERSION}" = "7.3" ] \
+            && [ ! -x "/opt/php73/bin/php" ]; then
+            if [ -x "/opt/php72/bin/php" ]; then
+              _PHP_FPM_VERSION=7.2
+            elif [ -x "/opt/php71/bin/php" ]; then
+              _PHP_FPM_VERSION=7.1
+            elif [ -x "/opt/php70/bin/php" ]; then
+              _PHP_FPM_VERSION=7.0
+            elif [ -x "/opt/php56/bin/php" ]; then
               _PHP_FPM_VERSION=5.6
-            elif [ -x "/opt/php55/bin/php" ]; then
-              _PHP_FPM_VERSION=5.5
-            elif [ -x "/opt/php54/bin/php" ]; then
-              _PHP_FPM_VERSION=5.4
-            elif [ -x "/opt/php53/bin/php" ]; then
-              _PHP_FPM_VERSION=5.3
+            fi
+          elif [ "${_PHP_FPM_VERSION}" = "7.2" ] \
+            && [ ! -x "/opt/php72/bin/php" ]; then
+            if [ -x "/opt/php73/bin/php" ]; then
+              _PHP_FPM_VERSION=7.3
+            elif [ -x "/opt/php71/bin/php" ]; then
+              _PHP_FPM_VERSION=7.1
+            elif [ -x "/opt/php70/bin/php" ]; then
+              _PHP_FPM_VERSION=7.0
+            elif [ -x "/opt/php56/bin/php" ]; then
+              _PHP_FPM_VERSION=5.6
+            fi
+          elif [ "${_PHP_FPM_VERSION}" = "7.1" ] \
+            && [ ! -x "/opt/php71/bin/php" ]; then
+            if [ -x "/opt/php73/bin/php" ]; then
+              _PHP_FPM_VERSION=7.3
+            elif [ -x "/opt/php72/bin/php" ]; then
+              _PHP_FPM_VERSION=7.2
+            elif [ -x "/opt/php70/bin/php" ]; then
+              _PHP_FPM_VERSION=7.0
+            elif [ -x "/opt/php56/bin/php" ]; then
+              _PHP_FPM_VERSION=5.6
+            fi
+          elif [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+            && [ ! -x "/opt/php70/bin/php" ]; then
+            if [ -x "/opt/php73/bin/php" ]; then
+              _PHP_FPM_VERSION=7.3
+            elif [ -x "/opt/php72/bin/php" ]; then
+              _PHP_FPM_VERSION=7.2
+            elif [ -x "/opt/php71/bin/php" ]; then
+              _PHP_FPM_VERSION=7.1
+            elif [ -x "/opt/php56/bin/php" ]; then
+              _PHP_FPM_VERSION=5.6
             fi
           elif [ "${_PHP_FPM_VERSION}" = "5.6" ] \
             && [ ! -x "/opt/php56/bin/php" ]; then
-            if [ -x "/opt/php55/bin/php" ]; then
-              _PHP_FPM_VERSION=5.5
-            elif [ -x "/opt/php54/bin/php" ]; then
-              _PHP_FPM_VERSION=5.4
-            elif [ -x "/opt/php53/bin/php" ]; then
-              _PHP_FPM_VERSION=5.3
-            fi
-          elif [ "${_PHP_FPM_VERSION}" = "5.5" ] \
-            && [ ! -x "/opt/php55/bin/php" ]; then
-            if [ -x "/opt/php56/bin/php" ]; then
-              _PHP_FPM_VERSION=5.6
-            elif [ -x "/opt/php54/bin/php" ]; then
-              _PHP_FPM_VERSION=5.4
-            elif [ -x "/opt/php53/bin/php" ]; then
-              _PHP_FPM_VERSION=5.3
-            fi
-          elif [ "${_PHP_FPM_VERSION}" = "5.4" ] \
-            && [ ! -x "/opt/php54/bin/php" ]; then
-            if [ -x "/opt/php55/bin/php" ]; then
-              _PHP_FPM_VERSION=5.5
-            elif [ -x "/opt/php56/bin/php" ]; then
-              _PHP_FPM_VERSION=5.6
-            elif [ -x "/opt/php53/bin/php" ]; then
-              _PHP_FPM_VERSION=5.3
-            fi
-          elif [ "${_PHP_FPM_VERSION}" = "5.3" ] \
-            && [ ! -x "/opt/php53/bin/php" ]; then
-            if [ -x "/opt/php55/bin/php" ]; then
-              _PHP_FPM_VERSION=5.5
-            elif [ -x "/opt/php56/bin/php" ]; then
-              _PHP_FPM_VERSION=5.6
-            elif [ -x "/opt/php54/bin/php" ]; then
-              _PHP_FPM_VERSION=5.4
+            if [ -x "/opt/php73/bin/php" ]; then
+              _PHP_FPM_VERSION=7.3
+            elif [ -x "/opt/php72/bin/php" ]; then
+              _PHP_FPM_VERSION=7.2
+            elif [ -x "/opt/php71/bin/php" ]; then
+              _PHP_FPM_VERSION=7.1
+            elif [ -x "/opt/php70/bin/php" ]; then
+              _PHP_FPM_VERSION=7.0
             fi
           fi
           sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_FPM_VERSION}/g" \
@@ -697,57 +710,65 @@ satellite_cnf() {
     if [ -e "${_ROOT}/static/control/cli.info" ]; then
       _PHP_CLI_VERSION=$(cat ${_ROOT}/static/control/cli.info 2>&1)
       _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
-      if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
-        || [ "${_PHP_CLI_VERSION}" = "5.6" ] \
-        || [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-        || [ "${_PHP_CLI_VERSION}" = "5.4" ] \
-        || [ "${_PHP_CLI_VERSION}" = "5.3" ]; then
-        if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
-          && [ ! -x "/opt/php70/bin/php" ]; then
-          if [ -x "/opt/php56/bin/php" ]; then
+      if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+        || [ "${_PHP_CLI_VERSION}" = "7.2" ] \
+        || [ "${_PHP_CLI_VERSION}" = "7.1" ] \
+        || [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+        || [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
+        if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+          && [ ! -x "/opt/php73/bin/php" ]; then
+          if [ -x "/opt/php72/bin/php" ]; then
+            _PHP_CLI_VERSION=7.2
+          elif [ -x "/opt/php71/bin/php" ]; then
+            _PHP_CLI_VERSION=7.1
+          elif [ -x "/opt/php70/bin/php" ]; then
+            _PHP_CLI_VERSION=7.0
+          elif [ -x "/opt/php56/bin/php" ]; then
             _PHP_CLI_VERSION=5.6
-          elif [ -x "/opt/php55/bin/php" ]; then
-            _PHP_CLI_VERSION=5.5
-          elif [ -x "/opt/php54/bin/php" ]; then
-            _PHP_CLI_VERSION=5.4
-          elif [ -x "/opt/php53/bin/php" ]; then
-            _PHP_CLI_VERSION=5.3
+          fi
+        elif [ "${_PHP_CLI_VERSION}" = "7.2" ] \
+          && [ ! -x "/opt/php72/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _PHP_CLI_VERSION=7.3
+          elif [ -x "/opt/php71/bin/php" ]; then
+            _PHP_CLI_VERSION=7.1
+          elif [ -x "/opt/php70/bin/php" ]; then
+            _PHP_CLI_VERSION=7.0
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _PHP_CLI_VERSION=5.6
+          fi
+        elif [ "${_PHP_CLI_VERSION}" = "7.1" ] \
+          && [ ! -x "/opt/php71/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _PHP_CLI_VERSION=7.3
+          elif [ -x "/opt/php72/bin/php" ]; then
+            _PHP_CLI_VERSION=7.2
+          elif [ -x "/opt/php70/bin/php" ]; then
+            _PHP_CLI_VERSION=7.0
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _PHP_CLI_VERSION=5.6
+          fi
+        elif [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+          && [ ! -x "/opt/php70/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _PHP_CLI_VERSION=7.3
+          elif [ -x "/opt/php72/bin/php" ]; then
+            _PHP_CLI_VERSION=7.2
+          elif [ -x "/opt/php71/bin/php" ]; then
+            _PHP_CLI_VERSION=7.1
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _PHP_CLI_VERSION=5.6
           fi
         elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
           && [ ! -x "/opt/php56/bin/php" ]; then
-          if [ -x "/opt/php55/bin/php" ]; then
-            _PHP_CLI_VERSION=5.5
-          elif [ -x "/opt/php54/bin/php" ]; then
-            _PHP_CLI_VERSION=5.4
-          elif [ -x "/opt/php53/bin/php" ]; then
-            _PHP_CLI_VERSION=5.3
-          fi
-        elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-          && [ ! -x "/opt/php55/bin/php" ]; then
-          if [ -x "/opt/php56/bin/php" ]; then
-            _PHP_CLI_VERSION=5.6
-          elif [ -x "/opt/php54/bin/php" ]; then
-            _PHP_CLI_VERSION=5.4
-          elif [ -x "/opt/php53/bin/php" ]; then
-            _PHP_CLI_VERSION=5.3
-          fi
-        elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
-          && [ ! -x "/opt/php54/bin/php" ]; then
-          if [ -x "/opt/php55/bin/php" ]; then
-            _PHP_CLI_VERSION=5.5
-          elif [ -x "/opt/php56/bin/php" ]; then
-            _PHP_CLI_VERSION=5.6
-          elif [ -x "/opt/php53/bin/php" ]; then
-            _PHP_CLI_VERSION=5.3
-          fi
-        elif [ "${_PHP_CLI_VERSION}" = "5.3" ] \
-          && [ ! -x "/opt/php53/bin/php" ]; then
-          if [ -x "/opt/php55/bin/php" ]; then
-            _PHP_CLI_VERSION=5.5
-          elif [ -x "/opt/php56/bin/php" ]; then
-            _PHP_CLI_VERSION=5.6
-          elif [ -x "/opt/php54/bin/php" ]; then
-            _PHP_CLI_VERSION=5.4
+          if [ -x "/opt/php73/bin/php" ]; then
+            _PHP_CLI_VERSION=7.3
+          elif [ -x "/opt/php72/bin/php" ]; then
+            _PHP_CLI_VERSION=7.2
+          elif [ -x "/opt/php71/bin/php" ]; then
+            _PHP_CLI_VERSION=7.1
+          elif [ -x "/opt/php70/bin/php" ]; then
+            _PHP_CLI_VERSION=7.0
           fi
         fi
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_CLI_VERSION}/g" \
@@ -762,57 +783,65 @@ satellite_cnf() {
         && [ "${_LD_DOM}" = "YES" ]; then
         _PHP_CLI_VERSION=$(cat ${_ROOT}/log/cli.txt 2>&1)
         _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
-        if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
-          || [ "${_PHP_CLI_VERSION}" = "5.6" ] \
-          || [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-          || [ "${_PHP_CLI_VERSION}" = "5.4" ] \
-          || [ "${_PHP_CLI_VERSION}" = "5.3" ]; then
-          if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
-            && [ ! -x "/opt/php70/bin/php" ]; then
-            if [ -x "/opt/php56/bin/php" ]; then
+        if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+          || [ "${_PHP_CLI_VERSION}" = "7.2" ] \
+          || [ "${_PHP_CLI_VERSION}" = "7.1" ] \
+          || [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+          || [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
+          if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+            && [ ! -x "/opt/php73/bin/php" ]; then
+            if [ -x "/opt/php72/bin/php" ]; then
+              _PHP_CLI_VERSION=7.2
+            elif [ -x "/opt/php71/bin/php" ]; then
+              _PHP_CLI_VERSION=7.1
+            elif [ -x "/opt/php70/bin/php" ]; then
+              _PHP_CLI_VERSION=7.0
+            elif [ -x "/opt/php56/bin/php" ]; then
               _PHP_CLI_VERSION=5.6
-            elif [ -x "/opt/php55/bin/php" ]; then
-              _PHP_CLI_VERSION=5.5
-            elif [ -x "/opt/php54/bin/php" ]; then
-              _PHP_CLI_VERSION=5.4
-            elif [ -x "/opt/php53/bin/php" ]; then
-              _PHP_CLI_VERSION=5.3
+            fi
+          elif [ "${_PHP_CLI_VERSION}" = "7.2" ] \
+            && [ ! -x "/opt/php72/bin/php" ]; then
+            if [ -x "/opt/php73/bin/php" ]; then
+              _PHP_CLI_VERSION=7.3
+            elif [ -x "/opt/php71/bin/php" ]; then
+              _PHP_CLI_VERSION=7.1
+            elif [ -x "/opt/php70/bin/php" ]; then
+              _PHP_CLI_VERSION=7.0
+            elif [ -x "/opt/php56/bin/php" ]; then
+              _PHP_CLI_VERSION=5.6
+            fi
+          elif [ "${_PHP_CLI_VERSION}" = "7.1" ] \
+            && [ ! -x "/opt/php71/bin/php" ]; then
+            if [ -x "/opt/php73/bin/php" ]; then
+              _PHP_CLI_VERSION=7.3
+            elif [ -x "/opt/php72/bin/php" ]; then
+              _PHP_CLI_VERSION=7.2
+            elif [ -x "/opt/php70/bin/php" ]; then
+              _PHP_CLI_VERSION=7.0
+            elif [ -x "/opt/php56/bin/php" ]; then
+              _PHP_CLI_VERSION=5.6
+            fi
+          elif [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+            && [ ! -x "/opt/php70/bin/php" ]; then
+            if [ -x "/opt/php73/bin/php" ]; then
+              _PHP_CLI_VERSION=7.3
+            elif [ -x "/opt/php72/bin/php" ]; then
+              _PHP_CLI_VERSION=7.2
+            elif [ -x "/opt/php71/bin/php" ]; then
+              _PHP_CLI_VERSION=7.1
+            elif [ -x "/opt/php56/bin/php" ]; then
+              _PHP_CLI_VERSION=5.6
             fi
           elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
             && [ ! -x "/opt/php56/bin/php" ]; then
-            if [ -x "/opt/php55/bin/php" ]; then
-              _PHP_CLI_VERSION=5.5
-            elif [ -x "/opt/php54/bin/php" ]; then
-              _PHP_CLI_VERSION=5.4
-            elif [ -x "/opt/php53/bin/php" ]; then
-              _PHP_CLI_VERSION=5.3
-            fi
-          elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-            && [ ! -x "/opt/php55/bin/php" ]; then
-            if [ -x "/opt/php56/bin/php" ]; then
-              _PHP_CLI_VERSION=5.6
-            elif [ -x "/opt/php54/bin/php" ]; then
-              _PHP_CLI_VERSION=5.4
-            elif [ -x "/opt/php53/bin/php" ]; then
-              _PHP_CLI_VERSION=5.3
-            fi
-          elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
-            && [ ! -x "/opt/php54/bin/php" ]; then
-            if [ -x "/opt/php55/bin/php" ]; then
-              _PHP_CLI_VERSION=5.5
-            elif [ -x "/opt/php56/bin/php" ]; then
-              _PHP_CLI_VERSION=5.6
-            elif [ -x "/opt/php53/bin/php" ]; then
-              _PHP_CLI_VERSION=5.3
-            fi
-          elif [ "${_PHP_CLI_VERSION}" = "5.3" ] \
-            && [ ! -x "/opt/php53/bin/php" ]; then
-            if [ -x "/opt/php55/bin/php" ]; then
-              _PHP_CLI_VERSION=5.5
-            elif [ -x "/opt/php56/bin/php" ]; then
-              _PHP_CLI_VERSION=5.6
-            elif [ -x "/opt/php54/bin/php" ]; then
-              _PHP_CLI_VERSION=5.4
+            if [ -x "/opt/php73/bin/php" ]; then
+              _PHP_CLI_VERSION=7.3
+            elif [ -x "/opt/php72/bin/php" ]; then
+              _PHP_CLI_VERSION=7.2
+            elif [ -x "/opt/php71/bin/php" ]; then
+              _PHP_CLI_VERSION=7.1
+            elif [ -x "/opt/php70/bin/php" ]; then
+              _PHP_CLI_VERSION=7.0
             fi
           fi
           sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_CLI_VERSION}/g" \
@@ -929,21 +958,81 @@ satellite_cnf() {
         clean_pid_exit
       fi
     fi
-    if [ "${_PHP_FPM_VERSION}" = "7.0" ] \
-      || [ "${_PHP_CLI_VERSION}" = "7.0" ]; then
-      if [ ! -x "/opt/php70/bin/php" ]; then
-        if [ -x "/opt/php56/bin/php" ]; then
+    if [ "${_PHP_FPM_VERSION}" = "7.3" ] \
+      || [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
+      if [ ! -x "/opt/php73/bin/php" ]; then
+        if [ -x "/opt/php72/bin/php" ]; then
+          _PHP_FPM_VERSION=7.2
+          _PHP_CLI_VERSION=7.2
+        elif [ -x "/opt/php71/bin/php" ]; then
+          _PHP_FPM_VERSION=7.1
+          _PHP_CLI_VERSION=7.1
+        elif [ -x "/opt/php70/bin/php" ]; then
+          _PHP_FPM_VERSION=7.0
+          _PHP_CLI_VERSION=7.0
+        elif [ -x "/opt/php56/bin/php" ]; then
           _PHP_FPM_VERSION=5.6
           _PHP_CLI_VERSION=5.6
-        elif [ -x "/opt/php55/bin/php" ]; then
-          _PHP_FPM_VERSION=5.5
-          _PHP_CLI_VERSION=5.5
-        elif [ -x "/opt/php54/bin/php" ]; then
-          _PHP_FPM_VERSION=5.4
-          _PHP_CLI_VERSION=5.4
-        elif [ -x "/opt/php53/bin/php" ]; then
-          _PHP_FPM_VERSION=5.3
-          _PHP_CLI_VERSION=5.3
+        else
+          _PHP_FPM_VERSION=
+          _PHP_CLI_VERSION=
+        fi
+      fi
+    elif [ "${_PHP_FPM_VERSION}" = "7.2" ] \
+      || [ "${_PHP_CLI_VERSION}" = "7.2" ]; then
+      if [ ! -x "/opt/php72/bin/php" ]; then
+        if [ -x "/opt/php73/bin/php" ]; then
+          _PHP_FPM_VERSION=7.3
+          _PHP_CLI_VERSION=7.3
+        elif [ -x "/opt/php71/bin/php" ]; then
+          _PHP_FPM_VERSION=7.1
+          _PHP_CLI_VERSION=7.1
+        elif [ -x "/opt/php70/bin/php" ]; then
+          _PHP_FPM_VERSION=7.0
+          _PHP_CLI_VERSION=7.0
+        elif [ -x "/opt/php56/bin/php" ]; then
+          _PHP_FPM_VERSION=5.6
+          _PHP_CLI_VERSION=5.6
+        else
+          _PHP_FPM_VERSION=
+          _PHP_CLI_VERSION=
+        fi
+      fi
+    elif [ "${_PHP_FPM_VERSION}" = "7.1" ] \
+      || [ "${_PHP_CLI_VERSION}" = "7.1" ]; then
+      if [ ! -x "/opt/php71/bin/php" ]; then
+        if [ -x "/opt/php73/bin/php" ]; then
+          _PHP_FPM_VERSION=7.3
+          _PHP_CLI_VERSION=7.3
+        elif [ -x "/opt/php72/bin/php" ]; then
+          _PHP_FPM_VERSION=7.2
+          _PHP_CLI_VERSION=7.2
+        elif [ -x "/opt/php70/bin/php" ]; then
+          _PHP_FPM_VERSION=7.0
+          _PHP_CLI_VERSION=7.0
+        elif [ -x "/opt/php56/bin/php" ]; then
+          _PHP_FPM_VERSION=5.6
+          _PHP_CLI_VERSION=5.6
+        else
+          _PHP_FPM_VERSION=
+          _PHP_CLI_VERSION=
+        fi
+      fi
+    elif [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+      || [ "${_PHP_CLI_VERSION}" = "7.0" ]; then
+      if [ ! -x "/opt/php70/bin/php" ]; then
+        if [ -x "/opt/php73/bin/php" ]; then
+          _PHP_FPM_VERSION=7.3
+          _PHP_CLI_VERSION=7.3
+        elif [ -x "/opt/php72/bin/php" ]; then
+          _PHP_FPM_VERSION=7.2
+          _PHP_CLI_VERSION=7.2
+        elif [ -x "/opt/php71/bin/php" ]; then
+          _PHP_FPM_VERSION=7.1
+          _PHP_CLI_VERSION=7.1
+        elif [ -x "/opt/php56/bin/php" ]; then
+          _PHP_FPM_VERSION=5.6
+          _PHP_CLI_VERSION=5.6
         else
           _PHP_FPM_VERSION=
           _PHP_CLI_VERSION=
@@ -952,66 +1041,18 @@ satellite_cnf() {
     elif [ "${_PHP_FPM_VERSION}" = "5.6" ] \
       || [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
       if [ ! -x "/opt/php56/bin/php" ]; then
-        if [ -x "/opt/php55/bin/php" ]; then
-          _PHP_FPM_VERSION=5.5
-          _PHP_CLI_VERSION=5.5
-        elif [ -x "/opt/php54/bin/php" ]; then
-          _PHP_FPM_VERSION=5.4
-          _PHP_CLI_VERSION=5.4
-        elif [ -x "/opt/php53/bin/php" ]; then
-          _PHP_FPM_VERSION=5.3
-          _PHP_CLI_VERSION=5.3
-        else
-          _PHP_FPM_VERSION=
-          _PHP_CLI_VERSION=
-        fi
-      fi
-    elif [ "${_PHP_FPM_VERSION}" = "5.5" ] \
-      || [ "${_PHP_CLI_VERSION}" = "5.5" ]; then
-      if [ ! -x "/opt/php55/bin/php" ]; then
-        if [ -x "/opt/php56/bin/php" ]; then
-          _PHP_FPM_VERSION=5.6
-          _PHP_CLI_VERSION=5.6
-        elif [ -x "/opt/php54/bin/php" ]; then
-          _PHP_FPM_VERSION=5.4
-          _PHP_CLI_VERSION=5.4
-        elif [ -x "/opt/php53/bin/php" ]; then
-          _PHP_FPM_VERSION=5.3
-          _PHP_CLI_VERSION=5.3
-        else
-          _PHP_FPM_VERSION=
-          _PHP_CLI_VERSION=
-        fi
-      fi
-    elif [ "${_PHP_FPM_VERSION}" = "5.4" ] \
-      || [ "${_PHP_CLI_VERSION}" = "5.4" ]; then
-      if [ ! -x "/opt/php54/bin/php" ]; then
-        if [ -x "/opt/php55/bin/php" ]; then
-          _PHP_FPM_VERSION=5.5
-          _PHP_CLI_VERSION=5.5
-        elif [ -x "/opt/php56/bin/php" ]; then
-          _PHP_FPM_VERSION=5.6
-          _PHP_CLI_VERSION=5.6
-        elif [ -x "/opt/php53/bin/php" ]; then
-          _PHP_FPM_VERSION=5.3
-          _PHP_CLI_VERSION=5.3
-        else
-          _PHP_FPM_VERSION=
-          _PHP_CLI_VERSION=
-        fi
-      fi
-    elif [ "${_PHP_FPM_VERSION}" = "5.3" ] \
-      || [ "${_PHP_CLI_VERSION}" = "5.3" ]; then
-      if [ ! -x "/opt/php53/bin/php" ]; then
-        if [ -x "/opt/php55/bin/php" ]; then
-          _PHP_FPM_VERSION=5.5
-          _PHP_CLI_VERSION=5.5
-        elif [ -x "/opt/php56/bin/php" ]; then
-          _PHP_FPM_VERSION=5.6
-          _PHP_CLI_VERSION=5.6
-        elif [ -x "/opt/php54/bin/php" ]; then
-          _PHP_FPM_VERSION=5.4
-          _PHP_CLI_VERSION=5.4
+        if [ -x "/opt/php73/bin/php" ]; then
+          _PHP_FPM_VERSION=7.3
+          _PHP_CLI_VERSION=7.3
+        elif [ -x "/opt/php72/bin/php" ]; then
+          _PHP_FPM_VERSION=7.2
+          _PHP_CLI_VERSION=7.2
+        elif [ -x "/opt/php71/bin/php" ]; then
+          _PHP_FPM_VERSION=7.1
+          _PHP_CLI_VERSION=7.1
+        elif [ -x "/opt/php70/bin/php" ]; then
+          _PHP_FPM_VERSION=7.0
+          _PHP_CLI_VERSION=7.0
         else
           _PHP_FPM_VERSION=
           _PHP_CLI_VERSION=
@@ -1019,21 +1060,21 @@ satellite_cnf() {
       fi
     elif [ "${_PHP_FPM_VERSION}" = "5.2" ] \
       || [ "${_PHP_CLI_VERSION}" = "5.2" ]; then
-      if [ -x "/opt/php70/bin/php" ]; then
+      if [ -x "/opt/php72/bin/php" ]; then
+        _PHP_FPM_VERSION=7.2
+        _PHP_CLI_VERSION=7.2
+      elif [ -x "/opt/php73/bin/php" ]; then
+        _PHP_FPM_VERSION=7.3
+        _PHP_CLI_VERSION=7.3
+      elif [ -x "/opt/php71/bin/php" ]; then
+        _PHP_FPM_VERSION=7.1
+        _PHP_CLI_VERSION=7.1
+      elif [ -x "/opt/php70/bin/php" ]; then
         _PHP_FPM_VERSION=7.0
         _PHP_CLI_VERSION=7.0
       elif [ -x "/opt/php56/bin/php" ]; then
         _PHP_FPM_VERSION=5.6
         _PHP_CLI_VERSION=5.6
-      elif [ -x "/opt/php55/bin/php" ]; then
-        _PHP_FPM_VERSION=5.5
-        _PHP_CLI_VERSION=5.5
-      elif [ -x "/opt/php54/bin/php" ]; then
-        _PHP_FPM_VERSION=5.4
-        _PHP_CLI_VERSION=5.4
-      elif [ -x "/opt/php53/bin/php" ]; then
-        _PHP_FPM_VERSION=5.3
-        _PHP_CLI_VERSION=5.3
       else
         _PHP_FPM_VERSION=
         _PHP_CLI_VERSION=
@@ -1167,7 +1208,7 @@ satellite_child_b_update_ini_php_cli() {
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="70 56 55 54 53"
+  _PHP_V="73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.pid" ]; then
@@ -1177,7 +1218,7 @@ satellite_child_b_update_ini_php_cli() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.322stableQ1.pid" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.322stableQ15.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1185,32 +1226,32 @@ satellite_child_b_update_ini_php_cli() {
     mkdir -p ${_U_HD}/{sys,xts,usr}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php70" ]]; then
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
+      cp -af /opt/php73/lib/php.ini ${_U_II}
+      _U_INI=73
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php72" ]]; then
+      cp -af /opt/php72/lib/php.ini ${_U_II}
+      _U_INI=72
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php71" ]]; then
+      cp -af /opt/php71/lib/php.ini ${_U_II}
+      _U_INI=71
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php70" ]]; then
       cp -af /opt/php70/lib/php.ini ${_U_II}
       _U_INI=70
     elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php56" ]]; then
       cp -af /opt/php56/lib/php.ini ${_U_II}
       _U_INI=56
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php55" ]]; then
-      cp -af /opt/php55/lib/php.ini ${_U_II}
-      _U_INI=55
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php54" ]]; then
-      cp -af /opt/php54/lib/php.ini ${_U_II}
-      _U_INI=54
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php53" ]]; then
-      cp -af /opt/php53/lib/php.ini ${_U_II}
-      _U_INI=53
     fi
     if [ -e "${_U_II}" ]; then
       _INI="open_basedir = \".: \
         /data/all:           \
         /data/conf:          \
         /data/disk/all:      \
-        /opt/php53:          \
-        /opt/php54:          \
-        /opt/php55:          \
         /opt/php56:          \
         /opt/php70:          \
+        /opt/php71:          \
+        /opt/php72:          \
+        /opt/php73:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \
@@ -1237,7 +1278,7 @@ satellite_child_b_update_ini_php_cli() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
-      echo > ${_U_HD}/.ctrl.322stableQ1.pid
+      echo > ${_U_HD}/.ctrl.322stableQ15.pid
     fi
   fi
 }
@@ -1246,16 +1287,16 @@ satellite_child_b_update_ini_php_cli() {
 # Update php-cli for Drush.
 satellite_child_b_update_php_cli() {
   _DRUSH_FILE="${_ROOT}/tools/drush/drush.php"
-  if [ "${_PHP_CLI_VERSION}" = "7.0" ] && [ -x "/opt/php70/bin/php" ]; then
+  if [ "${_PHP_CLI_VERSION}" = "7.3" ] && [ -x "/opt/php73/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php73\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "7.2" ] && [ -x "/opt/php72/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php72\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "7.1" ] && [ -x "/opt/php71/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php71\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "7.0" ] && [ -x "/opt/php70/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php70\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php54\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php53\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   else
     msg "${_STATUS} B: FATAL ERROR: _PHP_CLI_VERSION is not set correctly"
     msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
@@ -1296,111 +1337,111 @@ satellite_o_contrib_update_global() {
     cookie_cache_bypass_adv module_supports imageinfo_cache"
 
   for i in ${_REVISIONS}; do
-    if [ -e "${_D}/$i/o_contrib" ] \
-      && [ ! -e "${_D}/$i/o_contrib/update-${_X_VERSION}.info" ]; then
+    if [ -e "${_D}/${i}/o_contrib" ] \
+      && [ ! -e "${_D}/${i}/o_contrib/update-${_X_VERSION}.info" ]; then
       _FORCE_UP_SIX=YES
-    elif [ -e "${_D}/$i/o_contrib" ] \
+    elif [ -e "${_D}/${i}/o_contrib" ] \
       && [ ! -e "${_D}/000/modules/redis_edge" ]; then
       _FORCE_UP_SIX=YES
-    elif [ -e "${_D}/$i/o_contrib" ] \
-      && [ ! -L "${_D}/$i/o_contrib/redis_edge" ]; then
+    elif [ -e "${_D}/${i}/o_contrib" ] \
+      && [ ! -L "${_D}/${i}/o_contrib/redis_edge" ]; then
       _FORCE_UP_SIX=YES
-    elif [ -e "${_D}/$i/o_contrib" ] \
-      && [ ! -L "${_D}/$i/o_contrib/redis" ]; then
+    elif [ -e "${_D}/${i}/o_contrib" ] \
+      && [ ! -L "${_D}/${i}/o_contrib/redis" ]; then
       _FORCE_UP_SIX=YES
-    elif [ -e "${_D}/$i/o_contrib" ] \
-      && [ ! -d "${_D}/$i/o_contrib/mydropwizard" ]; then
+    elif [ -e "${_D}/${i}/o_contrib" ] \
+      && [ ! -d "${_D}/${i}/o_contrib/mydropwizard" ]; then
       _FORCE_UP_SIX=YES
     else
       _FORCE_UP_SIX=NO
     fi
-    if [ "${_FORCE_UP_SIX}" = "YES" ] && [ -e "${_D}/$i/o_contrib" ]; then
+    if [ "${_FORCE_UP_SIX}" = "YES" ] && [ -e "${_D}/${i}/o_contrib" ]; then
       for m in ${_RMMODULES}; do
-        if [ -d "${_D}/$i/o_contrib/$m" ]; then
-          rm -rf ${_D}/$i/o_contrib/$m
+        if [ -d "${_D}/${i}/o_contrib/$m" ]; then
+          rm -rf ${_D}/${i}/o_contrib/$m
         fi
       done
-      cd ${_D}/$i/o_contrib
-      if [ ! -d "${_D}/$i/o_contrib/advagg" ]; then
+      cd ${_D}/${i}/o_contrib
+      if [ ! -d "${_D}/${i}/o_contrib/advagg" ]; then
         get_dev_contrib "advagg-6.x-1.11.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/boost" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/boost" ]; then
         get_dev_contrib "boost-6.x-1.22.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/cdn" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/cdn" ]; then
         get_dev_contrib "cdn-6.x-2.7.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/force_password_change" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/force_password_change" ]; then
         get_dev_contrib "force_password_change-6.x-3.4.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/fpa" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/fpa" ]; then
         get_dev_contrib "fpa-6.x-2.5.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/httprl" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/httprl" ]; then
         get_dev_contrib "httprl-6.x-1.14.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/js" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/js" ]; then
         get_dev_contrib "js-6.x-1.3.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/mydropwizard" ]; then
-        get_dev_contrib "mydropwizard-6.x-1.6.tar.gz"
+      if [ ! -d "${_D}/${i}/o_contrib/mydropwizard" ]; then
+        get_dev_contrib "mydropwizard-6.x-1.7.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/panels_content_cache" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/panels_content_cache" ]; then
         get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/phpass" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/phpass" ]; then
         get_dev_contrib "phpass-6.x-2.1.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/print" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/print" ]; then
         get_dev_contrib "print-6.x-1.19.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/session_expire" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/session_expire" ]; then
         get_dev_contrib "session_expire-6.x-1.x-dev.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/taxonomy_edge" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/taxonomy_edge" ]; then
         get_dev_contrib "taxonomy_edge-6.x-1.7.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/views_cache_bully" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/views_cache_bully" ]; then
         get_dev_contrib "views_cache_bully-6.x-3.1.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib/views_content_cache" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib/views_content_cache" ]; then
         get_dev_contrib "views_content_cache-6.x-2.x-dev.tar.gz"
       fi
       if [ "${_PURGE_MODE}" = "ON" ]; then
-        if [ ! -d "${_D}/$i/o_contrib/expire" ]; then
+        if [ ! -d "${_D}/${i}/o_contrib/expire" ]; then
           get_dev_contrib "expire-6.x-1.x-dev.tar.gz"
         fi
-        if [ ! -d "${_D}/$i/o_contrib/purge" ]; then
+        if [ ! -d "${_D}/${i}/o_contrib/purge" ]; then
           get_dev_contrib "purge-6.x-1.7.tar.gz"
         fi
       fi
-      if [ -d "${_D}/$i/o_contrib/cache_backport" ]; then
-        rm -rf ${_D}/$i/o_contrib/cache_backport
+      if [ -d "${_D}/${i}/o_contrib/cache_backport" ]; then
+        rm -rf ${_D}/${i}/o_contrib/cache_backport
       fi
-      if [ -d "${_D}/$i/o_contrib/redis" ]; then
-        rm -rf ${_D}/$i/o_contrib/redis
+      if [ -d "${_D}/${i}/o_contrib/redis" ]; then
+        rm -rf ${_D}/${i}/o_contrib/redis
       fi
-      if [ -d "${_D}/$i/o_contrib/redis_edge" ]; then
-        rm -rf ${_D}/$i/o_contrib/redis_edge
+      if [ -d "${_D}/${i}/o_contrib/redis_edge" ]; then
+        rm -rf ${_D}/${i}/o_contrib/redis_edge
       fi
       if [ -e "${_D}/000/modules/cache_backport" ] \
-        && [ ! -L "${_D}/$i/o_contrib/cache_backport" ]; then
-        ln -sf ${_D}/000/modules/cache_backport ${_D}/$i/o_contrib/cache_backport
+        && [ ! -L "${_D}/${i}/o_contrib/cache_backport" ]; then
+        ln -sf ${_D}/000/modules/cache_backport ${_D}/${i}/o_contrib/cache_backport
       fi
       if [ -e "${_D}/000/modules/redis" ] \
-        && [ ! -L "${_D}/$i/o_contrib/redis" ]; then
-        ln -sf ${_D}/000/modules/redis ${_D}/$i/o_contrib/redis
+        && [ ! -L "${_D}/${i}/o_contrib/redis" ]; then
+        ln -sf ${_D}/000/modules/redis ${_D}/${i}/o_contrib/redis
       fi
       if [ -e "${_D}/000/modules/redis_edge" ] \
-        && [ ! -L "${_D}/$i/o_contrib/redis_edge" ]; then
-        ln -sf ${_D}/000/modules/redis_edge ${_D}/$i/o_contrib/redis_edge
+        && [ ! -L "${_D}/${i}/o_contrib/redis_edge" ]; then
+        ln -sf ${_D}/000/modules/redis_edge ${_D}/${i}/o_contrib/redis_edge
       fi
-      touch ${_D}/$i/o_contrib/update-${_X_VERSION}.info
-      find ${_D}/$i/o_contrib -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_D}/$i/o_contrib -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${_D}/${i}/o_contrib/update-${_X_VERSION}.info
+      find ${_D}/${i}/o_contrib -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${_D}/${i}/o_contrib -type f -exec chmod 0644 {} \; &> /dev/null
     fi
     if [ -d "${_D}/$i" ]; then
-      for p in `find ${_D}/$i/ -maxdepth 1 -mindepth 1 -type d | sort`; do
+      for p in `find ${_D}/${i}/ -maxdepth 1 -mindepth 1 -type d | sort`; do
         if [ -d "$p/modules/cookie_cache_bypass" ]; then
           rm -rf $p/modules/cookie_cache_bypass
         fi
@@ -1421,116 +1462,126 @@ satellite_o_contrib_seven_update_global() {
   _RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy"
 
   for i in ${_REVISIONS}; do
-    if [ -e "${_D}/$i/o_contrib_seven" ] \
-      && [ ! -e "${_D}/$i/o_contrib_seven/update-${_X_VERSION}.info" ]; then
+    if [ -e "${_D}/${i}/o_contrib_seven" ] \
+      && [ ! -e "${_D}/${i}/o_contrib_seven/update-${_X_VERSION}.info" ]; then
       _FORCE_UP_SEVEN=YES
-    elif [ -e "${_D}/$i/o_contrib_seven" ] \
-      && [ ! -e "${_D}/$i/o_contrib_seven/views_accelerator" ]; then
+    elif [ -e "${_D}/${i}/o_contrib_seven" ] \
+      && [ ! -e "${_D}/${i}/o_contrib_seven/views_accelerator" ]; then
       _FORCE_UP_SEVEN=YES
-    elif [ -e "${_D}/$i/o_contrib_seven" ] \
+    elif [ -e "${_D}/${i}/o_contrib_seven" ] \
       && [ ! -e "${_D}/000/modules/redis_edge" ]; then
       _FORCE_UP_SEVEN=YES
-    elif [ -e "${_D}/$i/o_contrib_seven" ] \
-      && [ ! -L "${_D}/$i/o_contrib_seven/redis_edge" ]; then
+    elif [ -e "${_D}/${i}/o_contrib_seven" ] \
+      && [ ! -L "${_D}/${i}/o_contrib_seven/redis_edge" ]; then
       _FORCE_UP_SEVEN=YES
-    elif [ -e "${_D}/$i/o_contrib_seven" ] \
-      && [ ! -L "${_D}/$i/o_contrib_seven/redis" ]; then
+    elif [ -e "${_D}/${i}/o_contrib_seven" ] \
+      && [ ! -L "${_D}/${i}/o_contrib_seven/redis" ]; then
       _FORCE_UP_SEVEN=YES
     else
       _FORCE_UP_SEVEN=NO
     fi
     if [ "${_FORCE_UP_SEVEN}" = "YES" ] \
-      && [ -e "${_D}/$i/o_contrib_seven" ]; then
+      && [ -e "${_D}/${i}/o_contrib_seven" ]; then
       for m in ${_RMMODULES}; do
-        if [ -d "${_D}/$i/o_contrib_seven/$m" ]; then
-          rm -rf ${_D}/$i/o_contrib_seven/$m
+        if [ -d "${_D}/${i}/o_contrib_seven/$m" ]; then
+          rm -rf ${_D}/${i}/o_contrib_seven/$m
         fi
       done
-      cd ${_D}/$i/o_contrib_seven
-      if [ ! -d "${_D}/$i/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php" ]; then
-        rm -rf ${_D}/$i/o_contrib_seven/adminer
+      _ADMINER_VRN=4.7.0
+      cd ${_D}/${i}/o_contrib_seven
+      if [ ! -d "${_D}/${i}/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php" ]; then
+        rm -rf ${_D}/${i}/o_contrib_seven/adminer
         get_dev_contrib "adminer_bundle-7.x-1.2.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/advagg" ]; then
-        get_dev_contrib "advagg-7.x-2.30.tar.gz"
+      if [ ! -d "${_D}/${i}/o_contrib_seven/advagg" ]; then
+        get_dev_contrib "advagg-7.x-2.33.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/boost" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/autoslave" ]; then
+        get_dev_contrib "autoslave-7.x-1.x-dev.tar.gz"
+      fi
+      if [ ! -d "${_D}/${i}/o_contrib_seven/boost" ]; then
         get_dev_contrib "boost-7.x-1.2.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/cdn" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/cache_consistent" ]; then
+        get_dev_contrib "cache_consistent-7.x-2.x-dev.tar.gz"
+      fi
+      if [ ! -d "${_D}/${i}/o_contrib_seven/cdn" ]; then
         get_dev_contrib "cdn-7.x-2.10.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/display_cache" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/display_cache" ]; then
         get_dev_contrib "display_cache-7.x-1.3.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/entitycache" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/entitycache" ]; then
         get_dev_contrib "entitycache-7.x-1.5.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/filefield_nginx_progress" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/filefield_nginx_progress" ]; then
         get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/force_password_change" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/file_resup" ]; then
+        get_dev_contrib "file_resup-7.x-1.5.tar.gz"
+      fi
+      if [ ! -d "${_D}/${i}/o_contrib_seven/force_password_change" ]; then
         get_dev_contrib "force_password_change-7.x-2.2.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/fpa" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/fpa" ]; then
         get_dev_contrib "fpa-7.x-2.6.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/httprl" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/httprl" ]; then
         get_dev_contrib "httprl-7.x-1.14.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/js" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/js" ]; then
         get_dev_contrib "js-7.x-2.4.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/panels_content_cache" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/panels_content_cache" ]; then
         get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/print" ]; then
-        get_dev_contrib "print-7.x-2.0.tar.gz"
+      if [ ! -d "${_D}/${i}/o_contrib_seven/print" ]; then
+        get_dev_contrib "print-7.x-2.2.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/session_expire" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/session_expire" ]; then
         get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/speedy" ]; then
-        get_dev_contrib "speedy-7.x-1.30.tar.gz"
+      if [ ! -d "${_D}/${i}/o_contrib_seven/speedy" ]; then
+        get_dev_contrib "speedy-7.x-1.34.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/taxonomy_edge" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/taxonomy_edge" ]; then
         get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/views_accelerator" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/views_accelerator" ]; then
         get_dev_contrib "views_accelerator-7.x-1.0-beta1.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/views_cache_bully" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/views_cache_bully" ]; then
         get_dev_contrib "views_cache_bully-7.x-3.1.tar.gz"
       fi
-      if [ ! -d "${_D}/$i/o_contrib_seven/views_content_cache" ]; then
+      if [ ! -d "${_D}/${i}/o_contrib_seven/views_content_cache" ]; then
         get_dev_contrib "views_content_cache-7.x-3.0-alpha3.tar.gz"
       fi
       if [ "${_PURGE_MODE}" = "ON" ] && [ "${_PURGE_FOR_SEVEN}" = "YES" ]; then
-        cd ${_D}/$i/o_contrib_seven
-        if [ ! -d "${_D}/$i/o_contrib_seven/expire" ]; then
+        cd ${_D}/${i}/o_contrib_seven
+        if [ ! -d "${_D}/${i}/o_contrib_seven/expire" ]; then
           get_dev_contrib "expire-7.x-2.0-rc4.tar.gz"
         fi
-        if [ ! -d "${_D}/$i/o_contrib_seven/purge" ]; then
+        if [ ! -d "${_D}/${i}/o_contrib_seven/purge" ]; then
           get_dev_contrib "purge-7.x-1.7.tar.gz"
         fi
       fi
-      if [ -d "${_D}/$i/o_contrib_seven/redis" ]; then
-        rm -rf ${_D}/$i/o_contrib_seven/redis
+      if [ -d "${_D}/${i}/o_contrib_seven/redis" ]; then
+        rm -rf ${_D}/${i}/o_contrib_seven/redis
       fi
-      if [ -d "${_D}/$i/o_contrib_seven/redis_edge" ]; then
-        rm -rf ${_D}/$i/o_contrib_seven/redis_edge
+      if [ -d "${_D}/${i}/o_contrib_seven/redis_edge" ]; then
+        rm -rf ${_D}/${i}/o_contrib_seven/redis_edge
       fi
       if [ -e "${_D}/000/modules/redis" ] \
-        && [ ! -L "${_D}/$i/o_contrib_seven/redis" ]; then
-        ln -sf ${_D}/000/modules/redis ${_D}/$i/o_contrib_seven/redis
+        && [ ! -L "${_D}/${i}/o_contrib_seven/redis" ]; then
+        ln -sf ${_D}/000/modules/redis ${_D}/${i}/o_contrib_seven/redis
       fi
       if [ -e "${_D}/000/modules/redis_edge" ] \
-        && [ ! -L "${_D}/$i/o_contrib_seven/redis_edge" ]; then
-        ln -sf ${_D}/000/modules/redis_edge ${_D}/$i/o_contrib_seven/redis_edge
+        && [ ! -L "${_D}/${i}/o_contrib_seven/redis_edge" ]; then
+        ln -sf ${_D}/000/modules/redis_edge ${_D}/${i}/o_contrib_seven/redis_edge
       fi
-      find ${_D}/$i/o_contrib_seven -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_D}/$i/o_contrib_seven -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${_D}/$i/o_contrib_seven/update-${_X_VERSION}.info
+      find ${_D}/${i}/o_contrib_seven -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${_D}/${i}/o_contrib_seven -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${_D}/${i}/o_contrib_seven/update-${_X_VERSION}.info
     fi
   done
   cd
@@ -1547,36 +1598,36 @@ satellite_o_contrib_eight_update_global() {
   _RMMODULES="some_foo_bar"
 
   for i in ${_REVISIONS}; do
-    if [ -e "${_D}/$i/o_contrib_eight" ] \
-      && [ ! -e "${_D}/$i/o_contrib_eight/update-${_X_VERSION}.info" ]; then
+    if [ -e "${_D}/${i}/o_contrib_eight" ] \
+      && [ ! -e "${_D}/${i}/o_contrib_eight/update-${_X_VERSION}.info" ]; then
       _FORCE_UP_EIGHT=YES
-    elif [ -e "${_D}/$i/o_contrib_eight" ] \
+    elif [ -e "${_D}/${i}/o_contrib_eight" ] \
       && [ ! -e "${_D}/000/modules/redis_eight" ]; then
       _FORCE_UP_EIGHT=YES
-    elif [ -e "${_D}/$i/o_contrib_eight" ] \
-      && [ ! -L "${_D}/$i/o_contrib_eight/redis_eight" ]; then
+    elif [ -e "${_D}/${i}/o_contrib_eight" ] \
+      && [ ! -L "${_D}/${i}/o_contrib_eight/redis_eight" ]; then
       _FORCE_UP_EIGHT=YES
     else
       _FORCE_UP_EIGHT=NO
     fi
     if [ "${_FORCE_UP_EIGHT}" = "YES" ] \
-      && [ -e "${_D}/$i/o_contrib_eight" ]; then
+      && [ -e "${_D}/${i}/o_contrib_eight" ]; then
       for m in ${_RMMODULES}; do
-        if [ -d "${_D}/$i/o_contrib_eight/$m" ]; then
-          rm -rf ${_D}/$i/o_contrib_eight/$m
+        if [ -d "${_D}/${i}/o_contrib_eight/$m" ]; then
+          rm -rf ${_D}/${i}/o_contrib_eight/$m
         fi
       done
-      cd ${_D}/$i/o_contrib_eight
-      if [ -d "${_D}/$i/o_contrib_eight/redis_eight" ]; then
-        rm -rf ${_D}/$i/o_contrib_eight/redis_eight
+      cd ${_D}/${i}/o_contrib_eight
+      if [ -d "${_D}/${i}/o_contrib_eight/redis_eight" ]; then
+        rm -rf ${_D}/${i}/o_contrib_eight/redis_eight
       fi
       if [ -e "${_D}/000/modules/redis_eight" ] \
-        && [ ! -L "${_D}/$i/o_contrib_eight/redis_eight" ]; then
-        ln -sf ${_D}/000/modules/redis_eight ${_D}/$i/o_contrib_eight/redis_eight
+        && [ ! -L "${_D}/${i}/o_contrib_eight/redis_eight" ]; then
+        ln -sf ${_D}/000/modules/redis_eight ${_D}/${i}/o_contrib_eight/redis_eight
       fi
-      find ${_D}/$i/o_contrib_eight -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_D}/$i/o_contrib_eight -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${_D}/$i/o_contrib_eight/update-${_X_VERSION}.info
+      find ${_D}/${i}/o_contrib_eight -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${_D}/${i}/o_contrib_eight -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${_D}/${i}/o_contrib_eight/update-${_X_VERSION}.info
     fi
   done
   cd
@@ -1590,9 +1641,9 @@ satellite_download_o_contrib_eight() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_eight modules..."
   fi
-  get_dev_contrib "advagg-8.x-3.2.tar.gz"
-  get_dev_contrib "cdn-8.x-3.1.tar.gz"
-  get_dev_contrib "robotstxt-8.x-1.1.tar.gz"
+  get_dev_contrib "advagg-8.x-3.5.tar.gz"
+  get_dev_contrib "cdn-8.x-3.2.tar.gz"
+  get_dev_contrib "robotstxt-8.x-1.2.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_E_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -1616,16 +1667,18 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "admin-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "adminer_bundle-7.x-1.2.tar.gz"
   # get_dev_contrib "adminer-7.x-1.2.tar.gz"
-  # curl ${crlGet} "https://github.com/vrana/adminer/releases/download/v${_ADMINER_VRN}/adminer-${_ADMINER_VRN}-mysql.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php"
-  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/designs/nette/adminer.css" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/styles/adminer.css"
-  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/plugin.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/plugin.php"
-  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/enum-option.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/enum-option.php"
-  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/edit-textarea.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/edit-textarea.php"
-  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
-  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_CORE}/$i/o_contrib_seven/adminer/adminer/plugins/frames.php"
-  get_dev_contrib "advagg-7.x-2.30.tar.gz"
+  # curl ${crlGet} "https://github.com/vrana/adminer/releases/download/v${_ADMINER_VRN}/adminer-${_ADMINER_VRN}-mysql.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php"
+  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/designs/nette/adminer.css" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/styles/adminer.css"
+  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/plugin.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/plugin.php"
+  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/enum-option.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/enum-option.php"
+  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/edit-textarea.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/edit-textarea.php"
+  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
+  # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/frames.php"
+  get_dev_contrib "advagg-7.x-2.33.tar.gz"
+  get_dev_contrib "autoslave-7.x-1.x-dev.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.1.tar.gz"
   get_dev_contrib "boost-7.x-1.2.tar.gz"
+  get_dev_contrib "cache_consistent-7.x-2.x-dev.tar.gz"
   get_dev_contrib "cdn-7.x-2.10.tar.gz"
   get_dev_contrib "config_perms-7.x-2.1.tar.gz"
   get_dev_contrib "css_emimage-7.x-1.x-dev.tar.gz"
@@ -1633,6 +1686,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "entitycache-7.x-1.5.tar.gz"
   get_dev_contrib "esi-7.x-3.x-dev.tar.gz"
   get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
+  get_dev_contrib "file_resup-7.x-1.5.tar.gz"
   get_dev_contrib "flood_control-7.x-1.x-dev.tar.gz"
   get_dev_contrib "force_password_change-7.x-2.2.tar.gz"
   get_dev_contrib "fpa-7.x-2.6.tar.gz"
@@ -1641,14 +1695,14 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "login_security-7.x-1.9.tar.gz"
   get_dev_contrib "nocurrent_pass-7.x-1.1.tar.gz"
   get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
-  get_dev_contrib "print-7.x-2.0.tar.gz"
+  get_dev_contrib "print-7.x-2.2.tar.gz"
   get_dev_contrib "readonlymode-7.x-1.2.tar.gz"
   get_dev_contrib "reroute_email-7.x-1.3.tar.gz"
   get_dev_contrib "robotstxt-7.x-1.4.tar.gz"
   get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
   get_dev_contrib "site_verify-7.x-1.2.tar.gz"
-  get_dev_contrib "speedy-7.x-1.30.tar.gz"
+  get_dev_contrib "speedy-7.x-1.34.tar.gz"
   get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
   get_dev_contrib "views_accelerator-7.x-1.0-beta1.tar.gz"
@@ -1717,7 +1771,7 @@ satellite_download_o_contrib_six() {
   get_dev_contrib "image-6.x-1.2.tar.gz"
   get_dev_contrib "js-6.x-1.3.tar.gz"
   get_dev_contrib "login_security-6.x-1.4.tar.gz"
-  get_dev_contrib "mydropwizard-6.x-1.6.tar.gz"
+  get_dev_contrib "mydropwizard-6.x-1.7.tar.gz"
   get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
   get_dev_contrib "phpass-6.x-2.1.tar.gz"
   get_dev_contrib "print-6.x-1.19.tar.gz"
@@ -2378,18 +2432,23 @@ satellite_download_for_local_build() {
       get_dev_ext "hosting_tasks_extra.tar.gz"
     fi
     ### Aegir Drupal Contrib
-    get_dev_stc "admin_menu-7.x-3.0-rc5.tar.gz"
-    get_dev_stc "betterlogin-7.x-1.4.tar.gz"
-    get_dev_stc "ctools-7.x-1.12.tar.gz"
-    get_dev_stc "entity-7.x-1.8.tar.gz"
+    get_dev_stc "admin_menu-7.x-3.0-rc6.tar.gz"
+    get_dev_stc "betterlogin-7.x-1.5.tar.gz"
+    get_dev_stc "ctools-7.x-1.14.tar.gz"
+    get_dev_stc "entity-7.x-1.9.tar.gz"
+    get_dev_stc "libraries-7.x-2.5.tar.gz"
+    get_dev_stc "module_filter-7.x-2.1.tar.gz"
     get_dev_stc "openidadmin-7.x-1.0.tar.gz"
     get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
     get_dev_stc "r4032login-7.x-1.8.tar.gz"
-    get_dev_stc "views_bulk_operations-7.x-3.4.tar.gz"
-    get_dev_stc "views-7.x-3.18.tar.gz"
+    get_dev_stc "tfa_basic-7.x-1.1.tar.gz"
+    get_dev_stc "tfa-7.x-2.0.tar.gz"
+    get_dev_stc "timeago-7.x-2.3.tar.gz"
+    get_dev_stc "views_bulk_operations-7.x-3.5.tar.gz"
+    get_dev_stc "views-7.x-3.20.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
-    get_dev_stc "features-7.x-2.10.tar.gz"
+    get_dev_stc "features-7.x-2.11.tar.gz"
     get_dev_stc "idna_convert-7.x-1.0.tar.gz"
     get_dev_stc "revision_deletion-7.x-1.x-dev.tar.gz"
     get_dev_stc "strongarm-7.x-2.0.tar.gz"
@@ -2771,6 +2830,9 @@ satellite_if_add_update_user_symlinks() {
   if [ -e "${_USER_DS}/mydropwizard" ]; then
     rm -f ${_USER_DS}/mydropwizard
   fi
+  if [ -e "${_USER_DS}/utf8mb4_convert" ]; then
+    rm -f ${_USER_DS}/utf8mb4_convert
+  fi
 
   ###---### Add symlink to the system registry_rebuild.
   #
@@ -2848,6 +2910,19 @@ satellite_if_add_update_user_symlinks() {
     chmod 700 ${_USER_DS}
     ln -sf ${_ROOT}/.drush/usr/mydropwizard \
       ${_USER_DS}/usr/mydropwizard
+  fi
+
+  ###---### Add symlink to the system utf8mb4_convert.
+  #
+  if [ ! -L "${_USER_DS}/usr/utf8mb4_convert" ] \
+    && [ -e "${_ROOT}/.drush/usr/utf8mb4_convert" ]; then
+    msg "${_STATUS} A: Adding symlink to the system utf8mb4_convert"
+    mkdir -p ${_USER_DS}/usr
+    chown ${_USERFTP}:${_USRG} ${_USER_DS}
+    chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
+    chmod 700 ${_USER_DS}
+    ln -sf ${_ROOT}/.drush/usr/utf8mb4_convert \
+      ${_USER_DS}/usr/utf8mb4_convert
   fi
 
   ###---### Add symlink to the clients directory.
@@ -3128,6 +3203,13 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
+    if [ -d "${_QR}/lightning-${_LIGHTNING}-${_SMALLCORE8}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/lightning-${_LIGHTNING}-${_SMALLCORE8}" ]; then
+        _A="${_QR}/lightning-${_LIGHTNING}-${_SMALLCORE8}/docroot/sites"
+        _B="${_QH}/lightning-${_LIGHTNING}-${_SMALLCORE8}"
+        ln -sf ${_A} ${_B}
+      fi
+    fi
     if [ -d "${_QR}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}" ]; then
         _A="${_QR}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}/sites"
@@ -3240,6 +3322,13 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
+    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE8}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE8}" ]; then
+        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE8}/docroot/sites"
+        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE8}"
+        ln -sf ${_A} ${_B}
+      fi
+    fi
     if [ -d "${_QR}/ubercart-${_UBERCART6}-${_SMALLCORE6}/sites" ]; then
       if [ ! -L "${_QH}/ubercart-${_UBERCART6}-${_SMALLCORE6}" ]; then
         _A="${_QR}/ubercart-${_UBERCART6}-${_SMALLCORE6}/sites"
@@ -3258,6 +3347,13 @@ satellite_if_add_update_user_platforms_symlinks() {
       if [ ! -L "${_QH}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}" ]; then
         _A="${_QR}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}/sites"
         _B="${_QH}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}"
+        ln -sf ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/varbase-${_VARBASE}-${_SMALLCORE8}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/varbase-${_VARBASE}-${_SMALLCORE8}" ]; then
+        _A="${_QR}/varbase-${_VARBASE}-${_SMALLCORE8}/docroot/sites"
+        _B="${_QH}/varbase-${_VARBASE}-${_SMALLCORE8}"
         ln -sf ${_A} ${_B}
       fi
     fi
@@ -3297,6 +3393,7 @@ satellite_if_add_update_backend_user_dirs_files_clean() {
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H git.drupal.org >> ~/.ssh/known_hosts" &> /dev/null
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H github.com >> ~/.ssh/known_hosts" &> /dev/null
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H gitlab.org >> ~/.ssh/known_hosts" &> /dev/null
+    su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H gitlab.com >> ~/.ssh/known_hosts" &> /dev/null
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H unfuddle.com >> ~/.ssh/known_hosts" &> /dev/null
     cp -af ${_ROOT}/.ssh/id_rsa.pub ${_ROOT}/static/${_USER}.id_rsa.pub
     chmod 644 ${_ROOT}/static/${_USER}.id_rsa.pub
@@ -3535,6 +3632,7 @@ satellite_make() {
   echo "_LAST_ALL=\"${_LAST_ALL}\""                   >> ${writeTo}
   echo "_LAST_HMR=\"${_LAST_HMR}\""                   >> ${writeTo}
   echo "_LASTNUM=\"${_LASTNUM}\""                     >> ${writeTo}
+  echo "_LIGHTNING=\"${_LIGHTNING}\""                 >> ${writeTo}
   echo "_MY_EMAIL=\"${_MY_EMAIL}\""                   >> ${writeTo}
   echo "_MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${writeTo}
   echo "_NOW=\"${_NOW}\""                             >> ${writeTo}
@@ -3563,6 +3661,7 @@ satellite_make() {
   echo "_REDIS_E_VERSION=\"${_REDIS_E_VERSION}\""     >> ${writeTo}
   echo "_REDIS_M_VERSION=\"${_REDIS_M_VERSION}\""     >> ${writeTo}
   echo "_RESTAURANT=\"${_RESTAURANT}\""               >> ${writeTo}
+  echo "_THUNDER=\"${_THUNDER}\""                     >> ${writeTo}
   echo "_SERIES_RESULT=\"${_SERIES_RESULT}\""         >> ${writeTo}
   echo "_SMALLCORE6=\"${_SMALLCORE6}\""               >> ${writeTo}
   echo "_SMALLCORE7=\"${_SMALLCORE7}\""               >> ${writeTo}
@@ -3581,6 +3680,7 @@ satellite_make() {
   echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${writeTo}
   echo "_USER=\"${_USER}\""                           >> ${writeTo}
   echo "_USRG=\"${_USRG}\""                           >> ${writeTo}
+  echo "_VARBASE=\"${_VARBASE}\""                     >> ${writeTo}
   echo "_WEBG=\"${_WEBG}\""                           >> ${writeTo}
   echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${writeTo}
 
@@ -3649,7 +3749,7 @@ satellite_make() {
     echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
   fi
 
-  if [ ! -e "${_ROOT}/static/control/.ctrl.322stableQ1.pid" ] \
+  if [ ! -e "${_ROOT}/static/control/.ctrl.322stableQ15.pid" ] \
     || [ ! -e "${_ROOT}/static/control/README.txt" ]; then
     mkdir -p ${_ROOT}/static/control
     chmod 755 ${_ROOT}/static/control
@@ -3661,7 +3761,7 @@ satellite_make() {
     chown -R ${_USER}.ftp:${_USRG} \
       ${_ROOT}/static/control &> /dev/null
     rm -f ${_ROOT}/static/control/.ctrl.*
-    echo OK > ${_ROOT}/static/control/.ctrl.322stableQ1.pid
+    echo OK > ${_ROOT}/static/control/.ctrl.322stableQ15.pid
   fi
 
   if [ -d "/data/all/000" ]; then
@@ -3806,14 +3906,6 @@ satellite_check_sanitize_domain_name() {
 }
 
 satellite_detect_vm_family() {
-  _ETH_TEST=$(ifconfig 2>&1)
-  if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
-    _IFCONFIG="venet0"
-  elif [ -e "/proc/bean_counters" ]; then
-    _IFCONFIG="venet0"
-  else
-    _IFCONFIG="eth0"
-  fi
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
@@ -3849,9 +3941,11 @@ satellite_check_php_compatibility() {
     _T_FPM_VRN=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
     _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
     _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-    if [ "${_T_FPM_VRN}" = "7.0" ] \
-      || [ "${_T_FPM_VRN}" = "5.6" ] \
-      || [ "${_T_FPM_VRN}" = "5.5" ]; then
+    if [ "${_T_FPM_VRN}" = "7.3" ] \
+      || [ "${_T_FPM_VRN}" = "7.2" ] \
+       || [ "${_T_FPM_VRN}" = "7.1" ] \
+      || [ "${_T_FPM_VRN}" = "7.0" ] \
+      || [ "${_T_FPM_VRN}" = "5.6" ]; then
       _PHP_FPM_LEGACY_FREE=YES
     else
       _PHP_FPM_LEGACY_FREE=NO
@@ -3863,9 +3957,11 @@ satellite_check_php_compatibility() {
     _T_CLI_VRN=$(cat ${_ROOT}/static/control/cli.info 2>&1)
     _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
     _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-    if [ "${_T_CLI_VRN}" = "7.0" ] \
-      || [ "${_T_CLI_VRN}" = "5.6" ] \
-      || [ "${_T_CLI_VRN}" = "5.5" ]; then
+    if [ "${_T_CLI_VRN}" = "7.3" ] \
+      || [ "${_T_CLI_VRN}" = "7.2" ] \
+      || [ "${_T_CLI_VRN}" = "7.1" ] \
+      || [ "${_T_CLI_VRN}" = "7.0" ] \
+      || [ "${_T_CLI_VRN}" = "5.6" ]; then
       _PHP_CLI_LEGACY_FREE=YES
     else
       _PHP_CLI_LEGACY_FREE=NO
@@ -3883,7 +3979,7 @@ satellite_check_php_compatibility() {
     msg "ERROR: This instance ${_USER} still depends on the old PHP version"
     msg "FPM.${_T_FPM_VRN} CLI.${_T_CLI_VRN}"
     msg "It is not possible to upgrade it to ${_X_VERSION}"
-    msg "Please switch FPM and CLI on ${_USER} to PHP 5.5 or newer"
+    msg "Please switch FPM and CLI on ${_USER} to PHP 5.6 or newer"
     msg "Then please run the octopus upgrade again"
     msg "Bye"
     clean_pid_exit
@@ -3911,18 +4007,17 @@ satellite_check_octopus_versus_barracuda_version() {
   fi
   if [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
-    if [[ "${_SERIES_TEST}" =~ "BOA-2.4.9" ]] \
+    if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
       _VERSIONS_TEST_RESULT=OK
     else
       msg "ERROR: This octopus installer can be used only when the instance"
-      msg "has been already upgraded to previous stable BOA-2.4.9 version"
-      msg "Please run 'octopus up-2.4 ${_USER} aegir' legacy upgrade first"
+      msg "has been already upgraded to previous stable BOA-3.2.2 version"
+      msg "Please run 'octopus up-3.2 ${_USER} aegir' upgrade first"
       msg "Bye"
       clean_pid_exit
     fi
-    if [[ "${_SERIES_TEST}" =~ "BOA-2.3." ]] \
-      || [[ "${_SERIES_TEST}" =~ "BOA-2.4." ]] \
+    if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
       _SERIES_RESULT=OK
     fi
@@ -4075,12 +4170,16 @@ satellite_if_major_upgrade() {
   if [ "${_CLIENT_OPTION}" = "POWER" ] \
     && [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
-    if [[ ! "${_SERIES_TEST}" =~ "BOA-3." ]] \
-      && [ ! -e "${_ROOT}/log/satellite_major_upgrade_ok.txt" ]; then
-      msg "ERROR: Major version upgrade requires control file:"
-      msg "${_ROOT}/log/satellite_major_upgrade_ok.txt"
-      msg "Bye"
-      clean_pid_exit
+    if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
+      || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
+      _IT_IS_OK=YES
+    else
+      if [ ! -e "${_ROOT}/log/satellite_major_upgrade_ok.txt" ]; then
+        msg "ERROR: Major version upgrade requires control file:"
+        msg "${_ROOT}/log/satellite_major_upgrade_ok.txt"
+        msg "Bye"
+        clean_pid_exit
+      fi
     fi
   fi
 }
@@ -4097,16 +4196,8 @@ satellite_if_check_dns() {
       fi
     fi
     if [ -z "${_MY_OWNIP}" ]; then
-      _THISHTIP=$(ifconfig ${_IFCONFIG} \
-        | grep 'inet addr:' \
-        | cut -d: -f2 \
-        | awk '{ print $1}' 2>&1)
-      if [[ "${_THISHTIP}" =~ "127.0.0." ]]; then
-        _THISHTIP=$(ifconfig ${_IFCONFIG}:0 \
-          | grep 'inet addr:' \
-          | cut -d: -f2 \
-          | awk '{ print $1}' 2>&1)
-      fi
+      find_correct_ip
+      _THISHTIP="${_LOC_IP}"
     else
       _THISHTIP="${_MY_OWNIP}"
     fi
@@ -4596,7 +4687,8 @@ satellite_child_b_drush_xts_cleanup() {
     _B_EXT="provision clean_missing_modules drupalgeddon drush_ecl make_local \
       provision_boost provision_cdn provision_civicrm provision_platform_git \
       provision_site_backup provision_tasks_extra remote_import mydropwizard \
-      registry_rebuild safe_cache_form_clear security_check security_review"
+      registry_rebuild safe_cache_form_clear security_check security_review \
+      utf8mb4_convert"
     for e in ${_B_EXT}; do
       if [ -e "${_ROOT}/.drush/$e" ]; then
         mv -f ${_ROOT}/.drush/$e \
@@ -4650,7 +4742,8 @@ satellite_child_b_drush_xts_install() {
     rm -rf ${rD}/*/*/.git
     cd ${rD}/usr
     get_dev_ext "clean_missing_modules.tar.gz"
-    get_dev_contrib "mydropwizard-6.x-1.6.tar.gz"
+    get_dev_ext "mydropwizard-6.x-1.7.tar.gz"
+    get_dev_ext "utf8mb4_convert-7.x-1.0.tar.gz"
   else
     msg "${_STATUS} B: Downloading Drush and Provision extensions..."
     cd ${_ROOT}/.drush/sys
@@ -4661,7 +4754,8 @@ satellite_child_b_drush_xts_install() {
     get_dev_ext "drush_ecl.tar.gz"
     get_dev_ext "registry_rebuild.tar.gz"
     get_dev_ext "safe_cache_form_clear.tar.gz"
-    get_dev_contrib "mydropwizard-6.x-1.6.tar.gz"
+    get_dev_ext "mydropwizard-6.x-1.7.tar.gz"
+    get_dev_ext "utf8mb4_convert-7.x-1.0.tar.gz"
     cd ${_ROOT}/.drush/xts
     get_dev_ext "provision_boost.tar.gz"
     get_dev_ext "security_review.tar.gz"
@@ -4875,6 +4969,25 @@ satellite_child_b_aegir_build() {
     export DEBIAN_FRONTEND=noninteractive
     if [ -z "${TERM+x}" ]; then
       export TERM=vt100
+    fi
+
+    #
+    # Fix broken Entity module if needed.
+    #
+    pthA="profiles/hostmaster/modules/contrib/entity"
+    pthB="module_filter.module"
+    #
+    if [ -e "${_PREV_HM_ROOT}/${pthA}/${pthB}" ]; then
+      msg "${_STATUS} B: Fixing broken Entity module..."
+      rm -f -r ${_PREV_HM_ROOT}/${pthA}
+      cd ${_PREV_HM_ROOT}/profiles/hostmaster/modules/contrib
+      get_dev_stc "entity-7.x-1.9.tar.gz"
+      ${_DRUSHCMD} @hostmaster en entity -y
+      ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_service WHERE service LIKE 'http'"
+      ${_DRUSHCMD} @hostmaster sqlq "INSERT INTO hosting_service (nid, vid, service, type, restart_cmd, port, available) VALUES ('2', '2', 'http', 'nginx_ssl', 'sudo /etc/init.d/nginx reload', '80', '1')"
+      ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
+      ${_DRUSHCMD} @hostmaster hosting-dispatch
+      sleep 15
     fi
 
     if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
@@ -5223,9 +5336,11 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster en hosting_cron -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_site_backup_manager -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_tasks_extra -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en libraries -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en overlay -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en overlay_paths -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en revision_deletion -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en timeago -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en userprotect -y &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} client 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} clone 1 &> /dev/null
@@ -5235,9 +5350,13 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_send_welcome 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} hosting_feature_client 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_cron_default_interval 86400 &> /dev/null
+      hosting_cron_default_interval 3600 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_queue_cron_frequency 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${vSet} \
+      hosting_civicrm_cron_queue_frequency 60 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${vSet} \
+      hosting_queue_task_gc_frequency 300 &> /dev/null
     if [ -e "${_ROOT}/log/hosting_cron_use_backend.txt" ]; then
       ${_DRUSHCMD} @hostmaster ${vSet} \
         hosting_cron_use_backend 1 &> /dev/null
@@ -5312,8 +5431,6 @@ satellite_child_b_aegir_ui_enhance() {
         SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
     fi
 
-    ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-      SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "UPDATE menu_links \
       SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'" &> /dev/null
 

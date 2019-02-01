@@ -8,18 +8,13 @@
 ### upgrade.
 ###
 ### Available options (if installed):
+### 7.3, 7.2, 7.1, 7.0, 5.6
 ###
-### _PHP_FPM_VERSION=7.0
-### _PHP_FPM_VERSION=5.6
-### _PHP_FPM_VERSION=5.5
-### _PHP_FPM_VERSION=5.4
-### _PHP_FPM_VERSION=5.3
-###
-### Note that 5.6 will be set automatically
+### Note that 7.2 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_FPM_VERSION=5.6
+_PHP_FPM_VERSION=7.2
 
 
 ###----------------------------------------###
@@ -31,18 +26,13 @@ _PHP_FPM_VERSION=5.6
 ### upgrade.
 ###
 ### Available options (if installed):
+### 7.3, 7.2, 7.1, 7.0, 5.6
 ###
-### _PHP_CLI_VERSION=7.0
-### _PHP_CLI_VERSION=5.6
-### _PHP_CLI_VERSION=5.5
-### _PHP_CLI_VERSION=5.4
-### _PHP_CLI_VERSION=5.3
-###
-### Note that 5.6 will be set automatically
+### Note that 7.2 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_CLI_VERSION=5.6
+_PHP_CLI_VERSION=7.2
 
 
 ###----------------------------------------###
@@ -61,16 +51,21 @@ _PHP_CLI_VERSION=5.6
 ### control which platforms will be installed,
 ### using the symbols listed below.
 ###
-### D8R ----------- Drupal 8 (inactive)
+### Drupal 8 based
+###
+### LHG ----------- Lightning
+### THR ----------- Thunder
+### VBE ----------- Varbase
+###
+### Drupal 7 based
+###
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
-### D6P D6S D6D --- Pressflow 6 p/s/d
 ### AGV ----------- aGov
 ### CME ----------- Commerce v.2
-### CS7 ----------- Commons 7
+### CS7 ----------- Commons
 ### DCE ----------- Commerce v.1
-### DCS ----------- Commons 6
 ### GDR ----------- Guardr
-### OA7 ----------- OpenAtrium D7
+### OA7 ----------- OpenAtrium
 ### OAD ----------- OpenAid
 ### OLS ----------- OpenLucius
 ### OOH ----------- OpenOutreach
@@ -78,16 +73,20 @@ _PHP_CLI_VERSION=5.6
 ### OPO ----------- Opigno LMS
 ### PPY ----------- Panopoly
 ### RST ----------- Restaurant
-### UC7 ----------- Ubercart D7
-### UCT ----------- Ubercart D6
+### UC7 ----------- Ubercart
+###
+### Drupal 6 based
+###
+### D6P D6S D6D --- Pressflow prod/stage/dev
+### DCS ----------- Commons
+### UCT ----------- Ubercart
 ###
 ### Examples:
 ###
 ### _PLATFORMS_LIST=ALL
-### _PLATFORMS_LIST="ALL D8R"
-### _PLATFORMS_LIST="D7P D6P PPY RST OOH"
+### _PLATFORMS_LIST="LHG VBE D7P D7S D7D"
 ###
-_PLATFORMS_LIST="D7P D7S D7D D6P D6S D6D"
+_PLATFORMS_LIST="LHG VBE D7P D7S D7D"
 
 
 ###----------------------------------------###
@@ -173,7 +172,7 @@ _FORCE_GIT_MIRROR=""
 ### because of some custom local setup
 ### you know is correct (like DynDNS)
 ### but the script can't validate it with its
-### standard ifconfig tests, set this to:
+### standard remote tests, set this to:
 ###
 ### _DNS_SETUP_TEST=NO
 ###
@@ -603,7 +602,7 @@ _BRANCH_PRN="AUTO"
 _X_VERSION="AUTO"
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${gitHub}"
-forCer="-fuy --force-yes --reinstall"
+forCer="-fuy --allow-unauthenticated --reinstall"
 
 ###
 ### Find the fastest mirror to use for downloads
@@ -642,7 +641,7 @@ find_fast_mirror() {
   fi
   if ! netcat -w 10 -z "${_USE_MIR}" 80; then
     echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
-    _USE_MIR="files.aegir.cc"
+    _USE_MIR="104.245.208.226"
   fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
@@ -662,9 +661,9 @@ download_helpers_libs() {
     if [ ! -x "${isGit}" ] || [ -z "${isGit}" ]; then
       rm -f /etc/apt/sources.list.d/openssl.list
       apt-get update -qq &> /dev/null
-      apt-get install git -fuy --force-yes --reinstall &> /dev/null
-      apt-get install git-core -fuy --force-yes --reinstall &> /dev/null
-      apt-get install git-man -fuy --force-yes --reinstall &> /dev/null
+      apt-get install git -fuy --allow-unauthenticated --reinstall &> /dev/null
+      apt-get install git-core -fuy --allow-unauthenticated --reinstall &> /dev/null
+      apt-get install git-man -fuy --allow-unauthenticated --reinstall &> /dev/null
       sleep 3
     fi
     ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git \
@@ -717,4 +716,3 @@ download_helpers_libs() {
     cd /opt/tmp
   fi
 }
-

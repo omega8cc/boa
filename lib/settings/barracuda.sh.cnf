@@ -60,9 +60,9 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### Instance with variables: _PHP_FPM_VERSION
 ### and _PHP_CLI_VERSION.
 ###
-### Available options: 7.0, 5.6, 5.5, 5.4, 5.3
+### Available options: 7.3, 7.2, 7.1, 7.0, 5.6
 ###
-### Example: _PHP_MULTI_INSTALL="5.6 5.5"
+### Example: _PHP_MULTI_INSTALL="7.2 7.1"
 ###
 ### Note that removing any version from this
 ### list once it is already installed, will
@@ -73,7 +73,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### which are used to define version to be
 ### used by Master or Satellite Instance.
 ###
-_PHP_MULTI_INSTALL="5.6"
+_PHP_MULTI_INSTALL="7.2"
 
 
 ###----------------------------------------###
@@ -87,9 +87,9 @@ _PHP_MULTI_INSTALL="5.6"
 ### _PHP_CLI_VERSION
 ### _PHP_MULTI_INSTALL
 ###
-### Available options: 7.0, 5.6, 5.5, 5.4, 5.3
+### Available options: 7.3, 7.2, 7.1, 7.0, 5.6
 ###
-### Example: _PHP_SINGLE_INSTALL=5.6
+### Example: _PHP_SINGLE_INSTALL=7.2
 ###
 _PHP_SINGLE_INSTALL=
 
@@ -103,18 +103,13 @@ _PHP_SINGLE_INSTALL=
 ### install and upgrade.
 ###
 ### Available options (if installed):
+### 7.3, 7.2, 7.1, 7.0, 5.6
 ###
-### _PHP_FPM_VERSION=7.0
-### _PHP_FPM_VERSION=5.6
-### _PHP_FPM_VERSION=5.5
-### _PHP_FPM_VERSION=5.4
-### _PHP_FPM_VERSION=5.3
-###
-### Note that 5.6 will be set automatically
+### Note that 7.2 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_FPM_VERSION=5.6
+_PHP_FPM_VERSION=7.2
 
 
 ###----------------------------------------###
@@ -126,18 +121,13 @@ _PHP_FPM_VERSION=5.6
 ### install and upgrade.
 ###
 ### Available options (if installed):
+### 7.3, 7.2, 7.1, 7.0, 5.6
 ###
-### _PHP_CLI_VERSION=7.0
-### _PHP_CLI_VERSION=5.6
-### _PHP_CLI_VERSION=5.5
-### _PHP_CLI_VERSION=5.4
-### _PHP_CLI_VERSION=5.3
-###
-### Note that 5.6 will be set automatically
+### Note that 7.2 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_CLI_VERSION=5.6
+_PHP_CLI_VERSION=7.2
 
 
 ###----------------------------------------###
@@ -173,15 +163,16 @@ _PHP_CLI_VERSION=5.6
 ### FMG --- FFmpeg support
 ### GIT --- Latest Git from sources
 ### IMG --- Image Optimize binaries
-### SR1 --- Apache Solr 1 with Jetty 7
-### SR3 --- Apache Solr 3 with Jetty 8
-### SR4 --- Apache Solr 4 with Jetty 8 or 9
+### SR1 --- Apache Solr 1 with Jetty 7 (deprecated)
+### SR3 --- Apache Solr 3 with Jetty 8 (deprecated)
+### SR4 --- Apache Solr 4 with Jetty 9
+### SR7 --- Apache Solr 7
 ###
 ### Examples:
 ###
 ### _XTRAS_LIST=""
 ### _XTRAS_LIST="ALL"
-### _XTRAS_LIST="ALL GIT SR3"
+### _XTRAS_LIST="ALL GIT SR7"
 ### _XTRAS_LIST="ADM CSF CGP CHV FTP"
 ###
 ### Note that removing any item from this
@@ -262,15 +253,9 @@ _FULL_FORCE_REINSTALL=NO
 
 ###
 ### Use YES to run major system upgrade
-### from Debian Wheezy to Debian Jessie.
+### from Debian Jessie to Debian Stretch.
 ###
-_WHEEZY_TO_JESSIE=NO
-
-###
-### Use YES to run major system upgrade
-### from Debian Squeeze to Debian Wheezy.
-###
-_SQUEEZE_TO_WHEEZY=NO
+_JESSIE_TO_STRETCH=NO
 
 ###
 ### Use YES to run migration from Tomcat 6
@@ -296,10 +281,7 @@ _DEBUG_MODE=NO
 ### DB SERVER                              ###
 ###----------------------------------------###
 ###
-### Barracuda no longer supports Percona since
-### 2.2.0 release. If you have used Percona
-### before, Barracuda will force upgrade to
-### MariaDB and PHP rebuild, automatically.
+### MariaDB or Percona.
 ###
 _DB_SERVER=MariaDB
 
@@ -308,10 +290,12 @@ _DB_SERVER=MariaDB
 ### DB SERIES                              ###
 ###----------------------------------------###
 ###
-### You can choose MariaDB 5.5 or new 10.1
+### You should choose 5.7 or 10.1
 ###
-### Note that on Ubuntu 14.04 LTS Trusty we
-### force the only available 10.1 version.
+### MariaDB 10.2 and 10.3 will be supported
+### once compatibility issues with PHP 7.1+
+### are fixed:
+### https://jira.mariadb.org/browse/MDEV-14555
 ###
 _DB_SERIES=10.1
 
@@ -479,7 +463,7 @@ _MY_FRONT=""
 ### because of some custom local setup
 ### you know is correct (like DynDNS)
 ### but the script can't validate it with its
-### standard ifconfig tests, set this to:
+### standard remote tests, set this to:
 ###
 ### _DNS_SETUP_TEST=NO
 ###
@@ -1025,11 +1009,11 @@ _BOA_REPO_GIT_URL="${gitHub}"
 ### Commands shortcuts
 ###
 gCb="git clone --branch"
-dstUpArg="-fuy --force-yes -q --config-file /opt/tmp/apt.conf.noi.dist"
-nrmUpArg="-fuy --force-yes -q --config-file /opt/tmp/apt.conf.noi.nrml"
-_INITINS="/usr/bin/apt-get -y --force-yes install"
+dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.dist"
+nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.nrml"
+_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
 _INSTALL="/usr/bin/apt-get ${nrmUpArg} install"
-forCer="-fuy --force-yes --reinstall"
+forCer="-fuy --allow-unauthenticated --reinstall"
 
 
 ###
@@ -1069,7 +1053,7 @@ find_fast_mirror() {
   fi
   if ! netcat -w 10 -z "${_USE_MIR}" 80; then
     echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
-    _USE_MIR="files.aegir.cc"
+    _USE_MIR="104.245.208.226"
   fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
@@ -1089,9 +1073,9 @@ download_helpers_libs() {
     if [ ! -x "${isGit}" ] || [ -z "${isGit}" ]; then
       rm -f /etc/apt/sources.list.d/openssl.list
       apt-get update -qq &> /dev/null
-      apt-get install git -fuy --force-yes --reinstall &> /dev/null
-      apt-get install git-core -fuy --force-yes --reinstall &> /dev/null
-      apt-get install git-man -fuy --force-yes --reinstall &> /dev/null
+      apt-get install git -fuy --allow-unauthenticated --reinstall &> /dev/null
+      apt-get install git-core -fuy --allow-unauthenticated --reinstall &> /dev/null
+      apt-get install git-man -fuy --allow-unauthenticated --reinstall &> /dev/null
       sleep 3
     fi
     ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git \

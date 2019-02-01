@@ -182,8 +182,10 @@ backup_this_database() {
 
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
-if [ "${_DB_SERIES}" = "10.2" ] \
-  || [ "${_DB_SERIES}" = "10.1" ]; then
+if [ "${_DB_SERIES}" = "10.3" ] \
+  || [ "${_DB_SERIES}" = "10.2" ] \
+  || [ "${_DB_SERIES}" = "10.1" ] \
+  || [ "${_DB_SERIES}" = "5.7" ]; then
   check_running
   mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
   mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
@@ -250,8 +252,10 @@ if [ "${_OPTIM}" = "YES" ] \
   && [ -e "/root/.my.restart_after_optimize.cnf" ] \
   && [ ! -e "/var/run/boa_run.pid" ]; then
   ionice -c2 -n2 -p $$
-  if [ "${_DB_SERIES}" = "10.2" ] \
-    || [ "${_DB_SERIES}" = "10.1" ]; then
+  if [ "${_DB_SERIES}" = "10.3" ] \
+    || [ "${_DB_SERIES}" = "10.2" ] \
+    || [ "${_DB_SERIES}" = "10.1" ] \
+    || [ "${_DB_SERIES}" = "5.7" ]; then
     check_running
     mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
@@ -261,9 +265,14 @@ if [ "${_OPTIM}" = "YES" ] \
   bash /var/xdrago/move_sql.sh
 fi
 
+_DB_BACKUPS_TTL=${_DB_BACKUPS_TTL//[^0-9]/}
+if [ -z "${_DB_BACKUPS_TTL}" ]; then
+  _DB_BACKUPS_TTL="7"
+fi
+
 ionice -c2 -n7 -p $$
-find ${_BACKUPDIR} -mtime +6 -type d -exec rm -rf {} \;
-echo "Backups older than 7 days deleted"
+find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
+echo "Backups older than ${_DB_BACKUPS_TTL} days deleted"
 
 chmod 600 ${_BACKUPDIR}/*/*
 chmod 700 ${_BACKUPDIR}/*
@@ -275,4 +284,4 @@ rm -f /var/run/boa_sql_backup.pid
 touch /var/xdrago/log/last-run-backup
 echo "ALL TASKS COMPLETED"
 exit 0
-###EOF2017###
+###EOF2019###

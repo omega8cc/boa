@@ -58,5 +58,7 @@ chmod 02775 ${site_path}/files &> /dev/null
 ### private - site level
 find ${site_path}/private/ -type d -exec chmod 02775 {} \; &> /dev/null
 find ${site_path}/private/ -type f -exec chmod 0664 {} \; &> /dev/null
+### known exceptions
+chmod 0644 ${site_path}/files/.htaccess
 
 echo "Done setting proper permissions on site files and directories."

@@ -15,8 +15,9 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-_DUPLICITY_VRN="0.7.11"
-_BOTO_VRN="2.39.0-fix-python-2.7.9"
+_DUPLICITY_VRN="0.7.18.2"
+_BOTO_VRN="2.49.0"
+_FASTENERS_VRN="0.14.1"
 _LOGPTH="/var/xdrago/log"
 _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
@@ -27,9 +28,10 @@ _DOM=${_DOM//[^0-9]/}
 _HST=$(uname -n 2>&1)
 _HST=${_HST//[^a-zA-Z0-9-.]/}
 _HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
+_HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
 
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-forCer="-fuy --force-yes --reinstall"
+forCer="-fuy --allow-unauthenticated --reinstall"
 
 check_root() {
   if [ `whoami` = "root" ]; then
@@ -112,7 +114,7 @@ find_fast_mirror() {
   fi
   if ! netcat -w 10 -z "${_USE_MIR}" 80; then
     echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
-    _USE_MIR="files.aegir.cc"
+    _USE_MIR="104.245.208.226"
   fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
@@ -132,8 +134,11 @@ install() {
     find_fast_mirror
     rm -f /etc/apt/sources.list.d/openssl.list
     apt-get clean -qq                    &> /dev/null
+    rm -f -r /var/lib/apt/lists/*
     apt-get update -qq                   &> /dev/null
     aptitude purge duplicity -y          &> /dev/null
+    rm -rf /usr/local/lib/python2.7/dist-packages/fasteners*
+    rm -rf /usr/local/lib/python2.6/dist-packages/fasteners*
     rm -rf /usr/local/lib/python2.7/dist-packages/boto*
     rm -rf /usr/local/lib/python2.6/dist-packages/boto*
     rm -rf /usr/local/lib/python2.7/dist-packages/duplicity*
@@ -144,12 +149,21 @@ install() {
     apt-get install python-setuptools -y &> /dev/null
     apt-get install s3cmd -y             &> /dev/null
     mkdir -p /var/opt
-    rm -rf /var/opt/{boto*,duplicity*}
+    rm -rf /var/opt/{fasteners*,boto*,duplicity*}
+    cd /var/opt
+    fe="fasteners-${_FASTENERS_VRN}.tar.gz"
+    curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
+    tar xzf ${fe} &> /dev/null
+    cd /var/opt/fasteners-${_FASTENERS_VRN}
+    python setup.py build &> /dev/null
+    python setup.py install &> /dev/null
+    echo ${_FASTENERS_VRN} > ${_LOGPTH}/fasteners-${_FASTENERS_VRN}.log
     cd /var/opt
     fe="boto-${_BOTO_VRN}.tar.gz"
     curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
     tar xzf ${fe} &> /dev/null
     cd /var/opt/boto-${_BOTO_VRN}
+    python setup.py build &> /dev/null
     python setup.py install &> /dev/null
     echo ${_BOTO_VRN} > ${_LOGPTH}/boto-${_BOTO_VRN}.log
     echo "Building duplicity version ${_DUPLICITY_VRN} from sources..."
@@ -157,6 +171,8 @@ install() {
     fe="duplicity-${_DUPLICITY_VRN}.tar.gz"
     curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
     tar xzf ${fe} &> /dev/null
+    rm -rf /usr/local/lib/python2.6/dist-packages/duplicity*
+    rm -rf /usr/local/lib/python2.7/dist-packages/duplicity*
     cd /var/opt/duplicity-${_DUPLICITY_VRN}
     python setup.py build &> /dev/null
     python setup.py install &> /dev/null
@@ -224,7 +240,7 @@ if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
     (before attempting to run initial backup!) to create S3 bucket in the
     desired region with correct name as shown below:
 
-      daily.remote.${_HST}
+      daily-remote-${_HST_DASH}
 
     While duplicity should be able to create new bucket on demand, in practice
     it almost never works due to typical delays between various AWS regions.
@@ -292,6 +308,16 @@ else
   EXCLUDE="--exclude /data/conf/arch"
 fi
 
+USER_INCLUDE=""
+if [ -f "/root/.duobackboa.include" ]; then
+  USER_INCLUDE="--include-filelist /root/.duobackboa.include"
+fi
+
+USER_EXCLUDE=""
+if [ -f "/root/.duobackboa.exclude" ]; then
+  USER_EXCLUDE="--exclude-filelist /root/.duobackboa.exclude"
+fi
+
 _AWS_PRG=${_AWS_PRG//[^A-Z]/}
 _AWS_OPX="--s3-use-new-style"
 
@@ -300,9 +326,25 @@ export AWS_SECRET_ACCESS_KEY="${_AWS_SEC}"
 export PASSPHRASE="${_AWS_PWD}"
 
 SOURCE="/etc /var/aegir /var/www /home /data"
-BUCKET="daily.remote.${_HST}"
+BUCKET="daily-remote-${_HST_DASH}"
+BUCKET_DOT="daily.remote.${_HST}"
 TARGET="s3://${_AWS_URL}/${BUCKET}"
 LOGFILE="${_LOGPTH}/${BUCKET}.log"
+_NAME="--name=daily-remote"
+
+if [ -e "${_LOGPTH}/${BUCKET_DOT}.archive.log" ]; then
+  cat ${_LOGPTH}/${BUCKET_DOT}.archive.log >> ${_LOGPTH}/${BUCKET}.archive.log
+  mv ${_LOGPTH}/${BUCKET_DOT}.archive.log /var/backups/${BUCKET_DOT}.archive.log
+  cat ${_LOGPTH}/${BUCKET_DOT}.randomize.cleanup.log >> ${_LOGPTH}/${BUCKET}.randomize.cleanup.log
+  mv ${_LOGPTH}/${BUCKET_DOT}.randomize.cleanup.log /var/backups/${BUCKET_DOT}.randomize.cleanup.log
+  apt-get clean -qq                    &> /dev/null
+  rm -f -r /var/lib/apt/lists/*
+  apt-get update -qq                   &> /dev/null
+  apt-get install python-pip -y        &> /dev/null
+  pip install awscli                   &> /dev/null
+  aws s3 mb s3://${BUCKET} --region ${_AWS_REG}
+  aws s3 sync s3://${BUCKET_DOT} s3://${BUCKET}
+fi
 
 backup_prepare() {
   if [ ! -z "${_AWS_PRG}" ] && [ "${_AWS_PRG}" = "YES" ]; then
@@ -348,7 +390,7 @@ monthly_cleanup() {
       sleep $n
     fi
     echo "Running cleanup --force on `date`" >> ${LOGFILE}
-    duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
+    duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${_NAME} ${TARGET}
     rm -f ${_LOGPTH}/${BUCKET}.randomize.full.log
     rm -f ${_LOGPTH}/${BUCKET}.randomize.cleanup.log
   fi
@@ -401,11 +443,11 @@ run_backup() {
     sleep $n
   fi
   echo "Running ${_MODE} backup on `date`" >> ${LOGFILE}
-  duplicity ${_MODE} -v ${_AWS_VLV} --volsize 100 \
+  duplicity ${_MODE} -v ${_AWS_VLV} --volsize 300 \
     --allow-source-mismatch \
     --full-if-older-than ${_AWS_FLC} \
-    --asynchronous-upload ${_AWS_OPX} \
-    ${INCLUDE} ${EXCLUDE} --exclude '**' / ${TARGET} >> ${LOGFILE}
+    --asynchronous-upload ${_AWS_OPX} ${_NAME} \
+    ${EXCLUDE} ${USER_EXCLUDE} ${INCLUDE} ${USER_INCLUDE} --exclude '**' / ${TARGET} >> ${LOGFILE}
 }
 
 remove_older_than() {
@@ -416,7 +458,7 @@ remove_older_than() {
   fi
   echo "Running remove-older-than on `date`" >> ${LOGFILE}
   duplicity -v ${_AWS_VLV} remove-older-than ${_AWS_TTL} \
-    --force ${_AWS_OPX} ${TARGET} >> ${LOGFILE}
+    --force ${_AWS_OPX} ${_NAME} ${TARGET} >> ${LOGFILE}
 }
 
 collection_status() {
@@ -426,7 +468,7 @@ collection_status() {
     sleep $n
   fi
   echo "Running collection-status on `date`" >> ${LOGFILE}
-  duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET} >> ${LOGFILE}
+  duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${_NAME} ${TARGET} >> ${LOGFILE}
 }
 
 backup() {
@@ -451,12 +493,12 @@ backup() {
 
 conn_test() {
   if [ $# = 1 ]; then
-    BUCKET="daily.remote.$1"
+    BUCKET="daily-remote-$1"
     TARGET="s3://${_AWS_URL}/${BUCKET}"
   fi
   echo "Running AWS connection test, please wait..."
   ConnTest=$(duplicity -v 2 cleanup --dry-run \
-    --timeout 1 ${_AWS_OPX} ${TARGET} 2>&1)
+    --timeout 1 ${_AWS_OPX} ${_NAME} ${TARGET} 2>&1)
   ### echo ConnTest is STR ${ConnTest} END
   if [[ "${ConnTest}" =~ "No connection to backend" ]] \
     || [[ "${ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
@@ -474,37 +516,39 @@ conn_test() {
 }
 
 status() {
-  duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET}
+  duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${_NAME} ${TARGET}
 }
 
 cleanup() {
-  duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${TARGET}
-  duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${TARGET}
+  duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${_NAME} ${TARGET}
+  duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${_NAME} ${TARGET}
 }
 
 list() {
-  duplicity -v ${_AWS_VLV} list-current-files ${_AWS_OPX} ${TARGET}
+  duplicity -v ${_AWS_VLV} list-current-files ${_AWS_OPX} ${_NAME} ${TARGET}
 }
 
 restore() {
   if [ $# = 2 ]; then
     duplicity -v ${_AWS_VLV} restore \
-      --file-to-restore $1 ${_AWS_OPX} ${TARGET} $2
+      --file-to-restore $1 ${_AWS_OPX} ${_NAME} ${TARGET} $2
   else
     duplicity -v ${_AWS_VLV} restore \
-      --file-to-restore $1 --time $2 ${_AWS_OPX} ${TARGET} $3
+      --file-to-restore $1 --time $2 ${_AWS_OPX} ${_NAME} ${TARGET} $3
   fi
 }
 
 retrieve() {
   if [ $# = 3 ]; then
-    BUCKET="daily.remote.$3"
+    _HST_DASH=$(echo -n $3 | tr . - 2>&1)
+    BUCKET="daily-remote-${_HST_DASH}"
     TARGET="s3://${_AWS_URL}/${BUCKET}"
-    duplicity restore --file-to-restore $1 ${_AWS_OPX} ${TARGET} $2
+    duplicity restore --file-to-restore $1 ${_AWS_OPX} ${_NAME} ${TARGET} $2
   elif [ $# = 4 ]; then
-    BUCKET="daily.remote.$4"
+    _HST_DASH=$(echo -n $4 | tr . - 2>&1)
+    BUCKET="daily-remote-${_HST_DASH}"
     TARGET="s3://${_AWS_URL}/${BUCKET}"
-    duplicity restore --file-to-restore $1 --time $2 ${_AWS_OPX} ${TARGET} $3
+    duplicity restore --file-to-restore $1 --time $2 ${_AWS_OPX} ${_NAME} ${TARGET} $3
   fi
 }
 

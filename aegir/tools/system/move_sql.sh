@@ -79,6 +79,15 @@ stop_sql() {
   echo "Nginx stopped"
 
   echo "Stopping all PHP-FPM instances now.."
+  if [ -e "/etc/init.d/php73-fpm" ]; then
+    service php73-fpm stop &> /dev/null
+  fi
+  if [ -e "/etc/init.d/php72-fpm" ]; then
+    service php72-fpm stop &> /dev/null
+  fi
+  if [ -e "/etc/init.d/php71-fpm" ]; then
+    service php71-fpm stop &> /dev/null
+  fi
   if [ -e "/etc/init.d/php70-fpm" ]; then
     service php70-fpm stop &> /dev/null
   fi
@@ -104,8 +113,10 @@ stop_sql() {
 
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
-    if [ "${_DB_SERIES}" = "10.2" ] \
-      || [ "${_DB_SERIES}" = "10.1" ]; then
+    if [ "${_DB_SERIES}" = "10.3" ] \
+      || [ "${_DB_SERIES}" = "10.2" ] \
+      || [ "${_DB_SERIES}" = "10.1" ] \
+      || [ "${_DB_SERIES}" = "5.7" ]; then
       echo "Preparing MySQLD for quick shutdown.."
       mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
@@ -148,4 +159,4 @@ case "$1" in
   ;;
 esac
 
-###EOF2017###
+###EOF2019###

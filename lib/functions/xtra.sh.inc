@@ -244,8 +244,8 @@ if_install_collectd() {
     && [ ! -e "/boot/grub/grub.cfg" ] \
     && [ ! -e "/boot/grub/menu.lst" ]; then
     rm -f ${mtrNgx}/vhost.d/cgp*
-    mrun "apt-get remove collectd -y --force-yes -qq" &> /dev/null
-    mrun "apt-get purge collectd -y --force-yes -qq" &> /dev/null
+    mrun "apt-get remove collectd -y -qq" &> /dev/null
+    mrun "apt-get purge collectd -y -qq" &> /dev/null
     rm -rf /var/www/cgp
   fi
   if [ -d "/var/www/cgp" ]; then
@@ -266,16 +266,18 @@ if_install_collectd() {
 }
 
 if_install_hhvm() {
-  if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "wheezy" ]; then
-    _DO_FIX=YES
-  elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "squeeze" ]; then
+  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "jessie" ]; then
     _DO_FIX=YES
   fi
   if [[ "${_XTRAS_LIST}" =~ "HVM" ]]; then
+    if [ -x "/usr/bin/gpg2" ]; then
+      _GPG=gpg2
+    else
+      _GPG=gpg
+    fi
     if [ "${_OSV}" = "jessie" ] \
-      || [ "${_OSV}" = "wheezy" ] \
+      || [ "${_OSV}" = "stretch" ] \
       || [ "${_OSV}" = "trusty" ] \
       || [ "${_DO_FIX}" = "YES" ]; then
       if [ ! -x "/usr/bin/hhvm" ]; then
@@ -288,8 +290,8 @@ if_install_hhvm() {
           if [ "${_OSV}" = "jessie" ]; then
             echo "deb http://dl.hhvm.com/debian jessie main" >> \
               ${aptLiSys}.d/hhvm.list
-          elif [ "${_OSV}" = "wheezy" ] || [ "${_DO_FIX}" = "YES" ]; then
-            echo "deb http://dl.hhvm.com/debian wheezy main" >> \
+          elif [ "${_OSV}" = "stretch" ] || [ "${_DO_FIX}" = "YES" ]; then
+            echo "deb http://dl.hhvm.com/debian stretch main" >> \
               ${aptLiSys}.d/hhvm.list
           elif [ "${_OSV}" = "trusty" ]; then
             echo "deb http://dl.hhvm.com/ubuntu trusty main" >> \
@@ -303,7 +305,7 @@ if_install_hhvm() {
             _KEYS_SERVER_TEST=$(grep GnuPG /var/opt/hhvm.gpg.key 2>&1)
             sleep 2
           done
-          cat /var/opt/hhvm.gpg.key | apt-key add - &> /dev/null
+          cat /var/opt/hhvm.gpg.key | ${_GPG} --import &> /dev/null
           rm -f /etc/apt/sources.list.d/openssl.list
           st_runner "apt-get update -qq" &> /dev/null
           st_runner "apt-get install hhvm ${forCer}" 2> /dev/null
@@ -319,6 +321,11 @@ if_install_hhvm() {
 if_install_webmin() {
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] || [[ "${_XTRAS_LIST}" =~ "WMN" ]]; then
     if [ ! -d "/etc/webmin" ] && [ ! -e "/var/run/cloud_vhost.pid" ]; then
+      if [ -x "/usr/bin/gpg2" ]; then
+        _GPG=gpg2
+      else
+        _GPG=gpg
+      fi
       echo " "
       if prompt_yes_no "Do you want to install Webmin Control Panel?" ; then
         true
@@ -336,7 +343,7 @@ if_install_webmin() {
           _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.gpg 2>&1)
           sleep 2
         done
-        cat jcameron-key.gpg | apt-key add - &> /dev/null
+        cat jcameron-key.gpg | ${_GPG} --import &> /dev/null
         rm -f jcameron-key.gpg*
         touch ${pthLog}/webmin_update_apt_src.log
         rm -f /etc/apt/sources.list.d/openssl.list
@@ -393,6 +400,11 @@ if_install_bind() {
 }
 
 if_install_rvm() {
+  if [ -x "/usr/bin/gpg2" ]; then
+    _GPG=gpg2
+  else
+    _GPG=gpg
+  fi
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "CSS" ]] \
     || [ ! -z "${_SCOUT_KEY}" ] \
@@ -415,10 +427,28 @@ if_install_rvm() {
           rm -rf /usr/local/rvm
           touch ${pthLog}/ruby-root-clean-reload.log
         fi
-        ${_GPG} --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3 &> /dev/null
-        ${_GPG} --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 &> /dev/null
-        ${_GPG} --keyserver hkp://keys.gnupg.net --recv-keys 7D2BAF1CF37B13E2069D6956105BD0E739499BDB &> /dev/null
+        _KEYS_SIG="409B6B1796C275462A1703113804BB82D39DC0E3"
+        _KEYS_SERVER_TEST=FALSE
+        until [[ "${_KEYS_SERVER_TEST}" =~ "Michal Papis" ]]; do
+          echo "Retrieving ${_KEYS_SIG} key.."
+          ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+          ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+          _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
+          sleep 2
+        done
+        _KEYS_SIG="7D2BAF1CF37B13E2069D6956105BD0E739499BDB"
+        _KEYS_SERVER_TEST=FALSE
+        until [[ "${_KEYS_SERVER_TEST}" =~ "Piotr Kuczynski" ]]; do
+          echo "Retrieving ${_KEYS_SIG} key.."
+          ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+          ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+          _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
+          sleep 2
+        done
+        _KEYS_SIG=""
+        _KEYS_SERVER_TEST=FALSE
         curl -sSL https://rvm.io/mpapis.asc | ${_GPG} --import - &> /dev/null
+        curl -sSL https://rvm.io/pkuczynski.asc | ${_GPG} --import - &> /dev/null
         curl -sSL https://get.rvm.io | bash -s stable &> /dev/null
         echo rvm_autoupdate_flag=0 > ~/.rvmrc
         echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc
@@ -437,7 +467,7 @@ if_install_rvm() {
                                ruby1.9.1-dev \
                                libruby1.9.1 \
                                ruby1.9.1 \
-                               -y --force-yes -qq" &> /dev/null
+                               -y -qq" &> /dev/null
           mrun "rvm install ${_RUBY_VRN}" &> /dev/null
           mrun "rvm use ${_RUBY_VRN} --default" &> /dev/null
           mrun "rvm get stable" 2> /dev/null
@@ -515,20 +545,20 @@ if_install_ffmpeg() {
         true
         msg "INFO: Installing FFmpeg..."
         cd /var/opt
-        if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "wheezy" ]; then
+        if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
           echo "## deb-multimedia APT Repository for FFmpeg" > ${aptLiSys}.d/ffmpeg.list
           if [ "${_OSV}" = "jessie" ]; then
             echo "deb http://www.deb-multimedia.org jessie main non-free" >> ${aptLiSys}.d/ffmpeg.list
             echo "deb http://www.deb-multimedia.org jessie-backports main" >> ${aptLiSys}.d/ffmpeg.list
-          elif [ "${_OSV}" = "wheezy" ]; then
-            echo "deb http://www.deb-multimedia.org wheezy main non-free" >> ${aptLiSys}.d/ffmpeg.list
-            echo "deb http://www.deb-multimedia.org wheezy-backports main" >> ${aptLiSys}.d/ffmpeg.list
+          elif [ "${_OSV}" = "stretch" ]; then
+            echo "deb http://www.deb-multimedia.org stretch main non-free" >> ${aptLiSys}.d/ffmpeg.list
+            echo "deb http://www.deb-multimedia.org stretch-backports main" >> ${aptLiSys}.d/ffmpeg.list
           fi
           st_runner "apt-get update -qq" &> /dev/null
           st_runner "apt-get install deb-multimedia-keyring ${forCer}" 2> /dev/null
           st_runner "apt-get update -qq" &> /dev/null
           st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
-        elif [ "${_OSV}" = "squeeze" ] || [ "${_OSV}" = "trusty" ] || [ "${_OSV}" = "precise" ]; then
+        elif [ "${_OSV}" = "trusty" ] || [ "${_OSV}" = "precise" ]; then
           _X86_64_TEST=$(uname -m 2>&1)
           rm -rf ffmpeg*
           if [ "${_X86_64_TEST}" = "x86_64" ]; then

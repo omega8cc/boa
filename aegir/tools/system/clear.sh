@@ -3,7 +3,7 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-forCer="-fuy --force-yes --reinstall"
+forCer="-fuy --allow-unauthenticated --reinstall"
 
 check_root() {
   if [ `whoami` = "root" ]; then
@@ -78,7 +78,7 @@ find_fast_mirror() {
   fi
   if ! netcat -w 10 -z "${_USE_MIR}" 80; then
     echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
-    _USE_MIR="files.aegir.cc"
+    _USE_MIR="104.245.208.226"
   fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
@@ -90,8 +90,9 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
     isCurl=$(curl --version 2>&1)
     if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
       rm -f /etc/apt/sources.list.d/openssl.list
-      echo "curl install" | dpkg --set-selections
+      echo "curl install" | dpkg --set-selections &> /dev/null
       apt-get clean -qq &> /dev/null
+      rm -f -r /var/lib/apt/lists/*
       apt-get update -qq &> /dev/null
       apt-get install curl ${forCer} &> /dev/null
       touch /root/.use.curl.from.packages.cnf
@@ -162,4 +163,4 @@ renice ${_B_NICE} -p $$ &> /dev/null
 service ssh restart &> /dev/null
 touch /var/xdrago/log/clear.done
 exit 0
-###EOF2017###
+###EOF2019###

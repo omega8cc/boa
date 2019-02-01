@@ -2,7 +2,7 @@
 # Fix for SA-CORE-2014-005
 fix_core_dgd() {
   # https://www.drupal.org/SA-CORE-2014-005
-  ### sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf
+  # sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf
   if [ -e "/var/xdrago" ] \
     && [ ! -e "${saPatch}" ]; then
     mkdir -p /var/xdrago/conf
@@ -155,4 +155,3 @@ fix_cnf_postfix() {
     postfix reload &> /dev/null
   fi
 }
-

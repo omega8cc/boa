@@ -4,6 +4,7 @@
   $types = node_types_rebuild();
   $node = new stdClass();
   $node->type = 'book';
+  variable_set('comment_book', '0');
   $node->title = 'Welcome to the World of Aegir';
   $node->language = LANGUAGE_NONE;
   $path = 'welcome';

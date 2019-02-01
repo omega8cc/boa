@@ -387,18 +387,23 @@ master_download_for_local_build() {
       get_dev_ext "hosting_tasks_extra.tar.gz"
     fi
     ### Aegir Drupal Contrib
-    get_dev_stc "admin_menu-7.x-3.0-rc5.tar.gz"
-    get_dev_stc "betterlogin-7.x-1.4.tar.gz"
-    get_dev_stc "ctools-7.x-1.12.tar.gz"
-    get_dev_stc "entity-7.x-1.8.tar.gz"
+    get_dev_stc "admin_menu-7.x-3.0-rc6.tar.gz"
+    get_dev_stc "betterlogin-7.x-1.5.tar.gz"
+    get_dev_stc "ctools-7.x-1.14.tar.gz"
+    get_dev_stc "entity-7.x-1.9.tar.gz"
+    get_dev_stc "libraries-7.x-2.5.tar.gz"
+    get_dev_stc "module_filter-7.x-2.1.tar.gz"
     get_dev_stc "openidadmin-7.x-1.0.tar.gz"
     get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
     get_dev_stc "r4032login-7.x-1.8.tar.gz"
-    get_dev_stc "views_bulk_operations-7.x-3.4.tar.gz"
-    get_dev_stc "views-7.x-3.18.tar.gz"
+    get_dev_stc "tfa_basic-7.x-1.1.tar.gz"
+    get_dev_stc "tfa-7.x-2.0.tar.gz"
+    get_dev_stc "timeago-7.x-2.3.tar.gz"
+    get_dev_stc "views_bulk_operations-7.x-3.5.tar.gz"
+    get_dev_stc "views-7.x-3.20.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
-    get_dev_stc "features-7.x-2.10.tar.gz"
+    get_dev_stc "features-7.x-2.11.tar.gz"
     get_dev_stc "idna_convert-7.x-1.0.tar.gz"
     get_dev_stc "revision_deletion-7.x-1.x-dev.tar.gz"
     get_dev_stc "strongarm-7.x-2.0.tar.gz"
@@ -578,20 +583,20 @@ update_php_cli_cron() {
   if [ -e "/var/spool/cron/crontabs/aegir" ]; then
     sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" \
       /var/spool/cron/crontabs/aegir &> /dev/null
-    if [ "${_PHP_CLI_VERSION}" = "7.0" ] && [ -x "/opt/php70/bin/php" ]; then
+    if [ "${_PHP_CLI_VERSION}" = "7.3" ] && [ -x "/opt/php73/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php73\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "7.2" ] && [ -x "/opt/php72/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php72\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "7.1" ] && [ -x "/opt/php71/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php71\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "7.0" ] && [ -x "/opt/php70/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php70\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
         /var/spool/cron/crontabs/aegir &> /dev/null
     elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php56\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-        /var/spool/cron/crontabs/aegir &> /dev/null
-    elif [ "${_PHP_CLI_VERSION}" = "5.5" ] && [ -x "/opt/php55/bin/php" ]; then
-      sed -i "s/^PATH=.*/PATH=\/opt\/php55\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-        /var/spool/cron/crontabs/aegir &> /dev/null
-    elif [ "${_PHP_CLI_VERSION}" = "5.4" ] && [ -x "/opt/php54/bin/php" ]; then
-      sed -i "s/^PATH=.*/PATH=\/opt\/php54\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-        /var/spool/cron/crontabs/aegir &> /dev/null
-    elif [ "${_PHP_CLI_VERSION}" = "5.3" ] && [ -x "/opt/php53/bin/php" ]; then
-      sed -i "s/^PATH=.*/PATH=\/opt\/php53\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
         /var/spool/cron/crontabs/aegir &> /dev/null
     fi
     chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
@@ -935,16 +940,8 @@ EOFMYSQL
     msg "INFO: Aegir Master Instance installed"
   else
     echo " "
-    if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "wheezy" ]; then
-      msg "INFO: Aegir Master Instance upgrade skipped!"
-      echo " "
-      msg "NOTE! You must reboot the server and run barracuda upgrade"
-      msg "NOTE! again to complete all system upgrades and upgrade also"
-      msg "NOTE! Aegir Master Instance."
-      echo " "
-    elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "squeeze" ]; then
+    if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
+      && [ "${_LOC_OSV}" = "jessie" ]; then
       msg "INFO: Aegir Master Instance upgrade skipped!"
       echo " "
       msg "NOTE! You must reboot the server and run barracuda upgrade"
@@ -1034,7 +1031,7 @@ update_php_cli_local_ini() {
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="70 56 55 54 53"
+  _PHP_V="73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.pid" ]; then
@@ -1044,7 +1041,7 @@ update_php_cli_local_ini() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.322stableQ1.pid" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.322stableQ15.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1052,32 +1049,32 @@ update_php_cli_local_ini() {
     mkdir -p ${_U_HD}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php70" ]]; then
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
+      cp -af /opt/php73/lib/php.ini ${_U_II}
+      _U_INI=73
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php72" ]]; then
+      cp -af /opt/php72/lib/php.ini ${_U_II}
+      _U_INI=72
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php71" ]]; then
+      cp -af /opt/php71/lib/php.ini ${_U_II}
+      _U_INI=71
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php70" ]]; then
       cp -af /opt/php70/lib/php.ini ${_U_II}
       _U_INI=70
     elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php56" ]]; then
       cp -af /opt/php56/lib/php.ini ${_U_II}
       _U_INI=56
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php55" ]]; then
-      cp -af /opt/php55/lib/php.ini ${_U_II}
-      _U_INI=55
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php54" ]]; then
-      cp -af /opt/php54/lib/php.ini ${_U_II}
-      _U_INI=54
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php53" ]]; then
-      cp -af /opt/php53/lib/php.ini ${_U_II}
-      _U_INI=53
     fi
     if [ -e "${_U_II}" ]; then
       _INI="open_basedir = \".: \
         /data/all:           \
         /data/conf:          \
         /data/disk/all:      \
-        /opt/php53:          \
-        /opt/php54:          \
-        /opt/php55:          \
         /opt/php56:          \
         /opt/php70:          \
+        /opt/php71:          \
+        /opt/php72:          \
+        /opt/php73:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \
@@ -1105,7 +1102,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
-      echo > ${_U_HD}/.ctrl.322stableQ1.pid
+      echo > ${_U_HD}/.ctrl.322stableQ15.pid
     fi
   fi
 }

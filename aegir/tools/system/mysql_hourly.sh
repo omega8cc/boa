@@ -33,6 +33,12 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
+if [ -x "/usr/bin/gpg2" ]; then
+  _GPG=gpg2
+else
+  _GPG=gpg
+fi
+
 truncate_watchdog_tables() {
   _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^watchdog$ 2>&1)
   for A in ${_TABLES}; do
@@ -106,10 +112,13 @@ if [ ! -e "${xtraList}" ] \
     rm -f /etc/csf/csf.error
     csf -x &> /dev/null
   fi
+  _KEYS_SIG="9334A25F8507EFA5"
   _KEYS_SERVER_TEST=FALSE
   until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
-    _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
-      --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5 2>&1)
+    echo "Retrieving ${_KEYS_SIG} key.."
+    ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+    ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+    _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
     sleep 2
   done
   if [ -e "/usr/sbin/csf" ] \
@@ -197,4 +206,4 @@ rm -f /var/run/boa_live_sql_backup.pid
 touch /var/xdrago/log/last-run-live-mysql-backup
 echo "ALL TASKS COMPLETED"
 exit 0
-###EOF2017###
+###EOF2019###

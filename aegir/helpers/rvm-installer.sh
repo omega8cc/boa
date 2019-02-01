@@ -408,28 +408,22 @@ verify_package_pgp()
   then
     log "GPG verified '$1'"
   else
-    typeset _ret=$?
-    log "\
-Warning, RVM 1.26.0 introduces signed releases and automated check of signatures when GPG software found. \
-Assuming you trust Michal Papis import the mpapis public key (downloading the signatures).
+    typeset _return=$?
 
+    log "\
 GPG signature verification failed for '$1' - '$3'! Try to install GPG v2 and then fetch the public key:
 
-    ${SUDO_USER:+sudo }gpg2 --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3
+    ${SUDO_USER:+sudo }${rvm_gpg_command##*/} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB
 
 or if it fails:
 
     command curl -sSL https://rvm.io/mpapis.asc | ${SUDO_USER:+sudo }${rvm_gpg_command##*/} --import -
+    command curl -sSL https://rvm.io/pkuczynski.asc | ${SUDO_USER:+sudo }${rvm_gpg_command##*/} --import -
 
-the key can be compared with:
-
-    https://rvm.io/mpapis.asc
-    https://keybase.io/mpapis
-
-NOTE: GPG version 2.1.17 have a bug which cause failures during fetching keys from remote server. Please downgrade \
-or upgrade to newer version (if available) or use the second method described above.
+In case of further problems with validation please refer to https://rvm.io/rvm/security
 "
-    exit $_ret
+
+    exit ${_return}
   fi
 }
 
@@ -475,7 +469,17 @@ get_and_unpack()
     return $_return
   }
 
-  rm -rf ${rvm_src_path}/rvm/*
+  # Remove existing installation
+  typeset _cleanup_cmd
+  _cleanup_cmd="rm -rf ${rvm_src_path}/rvm/{,.[!.],..?}*"
+
+  $_cleanup_cmd || {
+    _return=$?
+      log "Could not remove old RVM sources. Try:\n\n\tsudo $_cleanup_cmd\n\nThen retry your task again."
+      return $_return
+  }
+
+  # Unpack sources
   __rvm_debug_command $rvm_tar_command xzf ${rvm_archives_path}/${_file} ${rvm_tar_options:-} --strip-components 1 ||
   {
     _return=$?
@@ -527,7 +531,7 @@ rvm_install_default_settings()
     [[ -z "${rvm_path:-}" ]]
   then
     if
-      (( UID == 9 ))
+      (( UID == 0 ))
     then
       rvm_user_install_flag=0
       rvm_prefix="/usr/local"

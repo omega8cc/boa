@@ -3,20 +3,21 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-branch="3.x.x-dev"
+branch="4.x"
 cluster="BOA-3.2.2"
 hd="HEAD"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
+lgcD="BOA-3.2.2"
 master="master"
-nextv="BOA-3.3.0-dev"
+nextv="BOA-4.0.0-dev"
 stbl="BOA-3.2.2"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-forCer="-fuy --force-yes --reinstall"
+forCer="-fuy --allow-unauthenticated --reinstall"
 filIncB="barracuda.sh.cnf"
 filIncO="octopus.sh.cnf"
 octName="OCTOPUS.sh.txt"
@@ -191,7 +192,7 @@ check_root_direct() {
     echo
     echo "HINT:  You can always restrict access later, or"
     echo "       allow only SSH (RSA) keys for root with directive"
-    echo "         PermitRootLogin prohibit-password"
+    echo "         PermitRootLogin without-password"
     echo "       in the /usr/etc/sshd_config file"
     echo "Bye"
     clean_pid_exit
@@ -280,8 +281,8 @@ fix_dns_settings() {
     fi
   fi
   if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
-    echo "nameserver 8.8.8.8" >${vBs}/resolv.conf.tmp
-    echo "nameserver 8.8.4.4" >>${vBs}/resolv.conf.tmp
+    echo "nameserver 1.1.1.1" >${vBs}/resolv.conf.tmp
+    echo "nameserver 1.0.0.1" >>${vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
     for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
@@ -319,18 +320,21 @@ fix_dns_settings() {
       wait
       _BROKEN_DNS_TEST_X=$(grep "\." ${dnsLi} 2>&1)
       if [ -z "${_BROKEN_DNS_TEST_X}" ]; then
-        echo "        label = \"google-servers\";" > ${dnsLi}
-        echo "        ip=8.8.8.8;" >> ${dnsLi}
-        echo "        ip=8.8.4.4;" >> ${dnsLi}
+        echo "        label = \"cloudflare-servers\";" > ${dnsLi}
+        echo "        ip=1.1.1.1;" >> ${dnsLi}
+        echo "        ip=1.0.0.1;" >> ${dnsLi}
       fi
     fi
-    _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
+    _CUSTOM_DNS_TEST=$(grep 1.1.1.1 /etc/pdnsd.conf 2>&1)
     _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
-    if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
+    _MISSING_DNS_TEST=$(grep "ip=" /etc/pdnsd.conf 2>&1)
+    if [[ "${_CUSTOM_DNS_TEST}" =~ "1.1.1.1" ]] \
+      || [ ! -e "${dnsLi}" ] \
       || [ -e "/root/.use.default.nameservers.cnf" ] \
       || [ -e "/root/.use.local.nameservers.cnf" ] \
-      || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]]; then
-      echo "        label = \"google-servers\";" > ${dnsLi}
+      || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]] \
+      || [[ -z "${_MISSING_DNS_TEST}" ]]; then
+      echo "        label = \"cloudflare-servers\";" > ${dnsLi}
       for _IP in `cat /etc/resolv.conf \
         | sed 's/.*127.0.0.1.*//g; s/.*search.*//g; s/.*Dynamic.*//g' \
         | cut -d ' ' -f2 \
@@ -345,14 +349,21 @@ fix_dns_settings() {
       wait
       _BROKEN_DNS_TEST_Y=$(grep "\." ${dnsLi} 2>&1)
       if [ -z "${_BROKEN_DNS_TEST_Y}" ]; then
-         echo "        ip=8.8.8.8;" >> ${dnsLi}
-         echo "        ip=8.8.4.4;" >> ${dnsLi}
+         echo "        ip=1.1.1.1;" >> ${dnsLi}
+         echo "        ip=1.0.0.1;" >> ${dnsLi}
       fi
       ### echo debug dns A
-      _DNS_TPL_TEST=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
-      _DNS_RGX_TEST=$(grep "google-servers" /root/.local.dns.IP.list 2>&1)
-      if [[ "${_DNS_TPL_TEST}" =~ "google-servers" ]] \
-        && [[ "${_DNS_RGX_TEST}" =~ "google-servers" ]]; then
+      _DNS_TPL_TEST_GE=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
+      _DNS_TPL_TEST_CF=$(grep "cloudflare-servers" /etc/pdnsd.conf 2>&1)
+      _DNS_RGX_TEST=$(grep "cloudflare-servers" /root/.local.dns.IP.list 2>&1)
+      if [[ "${_DNS_TPL_TEST_CF}" =~ "cloudflare-servers" ]] \
+        && [[ "${_DNS_RGX_TEST}" =~ "cloudflare-servers" ]]; then
+        sed -i '/        label = \"cloudflare-servers\";/ {r /root/.local.dns.IP.list
+d;};' /etc/pdnsd.conf
+        wait
+      fi
+      if [[ "${_DNS_TPL_TEST_GE}" =~ "google-servers" ]] \
+        && [[ "${_DNS_RGX_TEST}" =~ "cloudflare-servers" ]]; then
         sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
 d;};' /etc/pdnsd.conf
         wait
@@ -372,9 +383,10 @@ check_dns_settings() {
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
   else
-    _REMOTE_DNS_TEST=$(host -a files.aegir.cc 8.8.8.8 -w 10 2>&1)
+    _REMOTE_DNS_TEST=$(host -a files.aegir.cc 1.1.1.1 -w 10 2>&1)
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
+    || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
     || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
     _CTRL_DNS_TEST=$(host -a files.aegir.cc 2>&1)
@@ -565,6 +577,13 @@ octopus_install() {
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${filIncO}
         wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${filIncO}
+        wait
+      elif [ "${cmmand}" = "in-3.2" ] || [ "${copt}" = "3.2" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcD}/g" ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcD}/g" ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcD}/g"         ${vBs}/${filIncO}
         wait
       else
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncO}
@@ -765,7 +784,46 @@ barracuda_install() {
     if [ ! -z "${rkey}" ] \
       && [ -e "${vBs}/${filIncB}" ] \
       && [ -e "${vBs}/${filIncO}" ]; then
-      if [ "${rkey}" = "php-70" ] || [ "${rkey}" = "php-7.0" ]; then
+      if [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.3/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.3/g"   ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.3/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.3/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.3/g" ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.3/g" ${vBs}/${filIncO}
+        wait
+      elif [ "${rkey}" = "php-72" ] || [ "${rkey}" = "php-7.2" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.2/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.2/g"   ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.2/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.2/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.2/g" ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.2/g" ${vBs}/${filIncO}
+        wait
+      elif [ "${rkey}" = "php-71" ] || [ "${rkey}" = "php-7.1" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.1/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.1/g"   ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.1/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.1/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.1/g" ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.1/g" ${vBs}/${filIncO}
+        wait
+      elif [ "${rkey}" = "php-70" ] || [ "${rkey}" = "php-7.0" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.0/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.0/g"   ${vBs}/${filIncB}
@@ -791,57 +849,18 @@ barracuda_install() {
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${filIncO}
         wait
-      elif [ "${rkey}" = "php-55" ] || [ "${rkey}" = "php-5.5" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.5/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.5/g"   ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${filIncO}
-        wait
-      elif [ "${rkey}" = "php-54" ] || [ "${rkey}" = "php-5.4" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.4/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.4/g"   ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g" ${vBs}/${filIncO}
-        wait
-      elif [ "${rkey}" = "php-53" ] || [ "${rkey}" = "php-5.3" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.3/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.3/g"   ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" ${vBs}/${filIncO}
-        wait
       elif [ "${rkey}" = "php-all" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${filIncB}
-        pA="7.0 5.6 5.5 5.4 5.3"
+        pA="7.3 7.2 7.1 7.0 5.6"
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.2/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.2/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${filIncO}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.2/g" ${vBs}/${filIncO}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${filIncO}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.2/g" ${vBs}/${filIncO}
         wait
       elif [ "${rkey}" = "nodns" ]; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${filIncB}
@@ -860,7 +879,34 @@ barracuda_install() {
       && [ -e "${vBs}/${barName}" ] \
       && [ -e "${vBs}/${octName}" ]; then
       ### Legacy method
-      if [ "${rkey}" = "php-70" ] || [ "${rkey}" = "php-7.0" ]; then
+      if [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.3/g" ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.3/g"   ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.3/g" ${vBs}/${octName}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.3/g" ${vBs}/${octName}
+        wait
+      elif [ "${rkey}" = "php-72" ] || [ "${rkey}" = "php-7.2" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.2/g" ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.2/g"   ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.2/g" ${vBs}/${octName}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.2/g" ${vBs}/${octName}
+        wait
+      elif [ "${rkey}" = "php-71" ] || [ "${rkey}" = "php-7.1" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.1/g" ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.1/g"   ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.1/g" ${vBs}/${octName}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.1/g" ${vBs}/${octName}
+        wait
+      elif [ "${rkey}" = "php-70" ] || [ "${rkey}" = "php-7.0" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.0/g" ${vBs}/${barName}
         wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.0/g"   ${vBs}/${barName}
@@ -878,45 +924,18 @@ barracuda_install() {
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${octName}
         wait
-      elif [ "${rkey}" = "php-55" ] || [ "${rkey}" = "php-5.5" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.5/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.5/g"   ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g" ${vBs}/${octName}
-        wait
-      elif [ "${rkey}" = "php-54" ] || [ "${rkey}" = "php-5.4" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.4/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.4/g"   ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.4/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.4/g" ${vBs}/${octName}
-        wait
-      elif [ "${rkey}" = "php-53" ] || [ "${rkey}" = "php-5.3" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=5.3/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=5.3/g"   ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g" ${vBs}/${octName}
-        wait
       elif [ "${rkey}" = "php-all" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${barName}
-        pA="7.0 5.6 5.5 5.4 5.3"
+        pA="7.3 7.2 7.1 7.0 5.6"
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${barName}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${barName}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.2/g" ${vBs}/${barName}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${barName}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.2/g" ${vBs}/${barName}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.6/g" ${vBs}/${octName}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.2/g" ${vBs}/${octName}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.6/g" ${vBs}/${octName}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.2/g" ${vBs}/${octName}
         wait
       elif [ "${rkey}" = "nodns" ]; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${barName}
@@ -976,6 +995,13 @@ barracuda_install() {
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${filIncB}
+        wait
+      elif [ "${cmmand}" = "in-3.2" ]; then
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcD}/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcD}/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcD}/g"         ${vBs}/${filIncB}
         wait
       else
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncB}
@@ -1045,19 +1071,12 @@ set_pin_priority() {
       _THIS_OS=Ubuntu
     fi
     if [ "${_THIS_OS}" = "Debian" ]; then
-      _THIS_RV=$(grep "6.0" /etc/issue.net 2>&1)
-      if [[ "${_THIS_RV}" =~ "6.0" ]]; then
-        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-squeeze.txt" \
-          -o /etc/apt/preferences
-      else
-        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-wheezy.txt" \
-          -o /etc/apt/preferences
-      fi
+      curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-debian.txt" \
+        -o /etc/apt/preferences
     elif [ "${_THIS_OS}" = "Ubuntu" ]; then
       curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
         -o /etc/apt/preferences
     fi
-    rm -f ${vBs}/etc-apt-preferences-*
   fi
 }
 
@@ -1132,6 +1151,11 @@ init_setup() {
       branch="2.2.x-legacy"
     fi
   fi
+  if [[ "${cmmand}" =~ "in-3." ]] || [ "${copt}" = "3.2" ]; then
+    if [ "${cmmand}" = "in-3.2" ] || [ "${copt}" = "3.2" ]; then
+      branch="3.2.x-dev"
+    fi
+  fi
   brnch=${branch//\//\\\/}
   mstr=${master//\//\\\/}
 
@@ -1163,6 +1187,8 @@ init_setup() {
     || [ "${cmmand}" = "in-oct" ]; then
     if [ "${copt}" = "head" ]; then
       octb="${master}"
+    elif [ "${copt}" = "3.2" ]; then
+      octb="${lgcD}"
     elif [ "${copt}" = "2.4" ]; then
       octb="${lgcC}"
     else
@@ -1172,6 +1198,11 @@ init_setup() {
     curl ${crlGet} "${rgUrl}/${octb}/${octName}"    -o ${vBs}/${octName}
     curl ${crlGet} "${rgUrl}/${octb}/${pthIncB}"    -o ${vBs}/${filIncB}
     curl ${crlGet} "${rgUrl}/${octb}/${pthIncO}"    -o ${vBs}/${filIncO}
+  elif [ "${cmmand}" = "in-3.2" ]; then
+    curl ${crlGet} "${rgUrl}/${lgcD}/${barName}"    -o ${vBs}/${barName}
+    curl ${crlGet} "${rgUrl}/${lgcD}/${octName}"    -o ${vBs}/${octName}
+    curl ${crlGet} "${rgUrl}/${lgcD}/${pthIncB}"    -o ${vBs}/${filIncB}
+    curl ${crlGet} "${rgUrl}/${lgcD}/${pthIncO}"    -o ${vBs}/${filIncO}
   elif [ "${cmmand}" = "in-2.4" ]; then
     curl ${crlGet} "${rgUrl}/${lgcC}/${barName}"    -o ${vBs}/${barName}
     curl ${crlGet} "${rgUrl}/${lgcC}/${octName}"    -o ${vBs}/${octName}
@@ -1229,7 +1260,7 @@ find_fast_mirror() {
   fi
   if ! netcat -w 10 -z "${_USE_MIR}" 80; then
     echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
-    _USE_MIR="files.aegir.cc"
+    _USE_MIR="104.245.208.226"
   fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
@@ -1241,8 +1272,8 @@ check_dns_curl() {
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then
       cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
     fi
-    echo "nameserver 8.8.8.8" >>/etc/resolv.conf
-    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    echo "nameserver 1.1.1.1" >>/etc/resolv.conf
+    echo "nameserver 1.0.0.1" >>/etc/resolv.conf
     check_dns_settings
   else
     check_dns_settings
@@ -1255,8 +1286,9 @@ check_dns_curl() {
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
-    echo "curl install" | dpkg --set-selections
+    echo "curl install" | dpkg --set-selections &> /dev/null
     apt-get clean -qq &> /dev/null
+    rm -f -r /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     apt-get install curl ${forCer} &> /dev/null
     touch /root/.use.curl.from.packages.cnf
@@ -1268,7 +1300,7 @@ check_dns_curl() {
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
-      echo "curl install" | dpkg --set-selections
+      echo "curl install" | dpkg --set-selections &> /dev/null
       apt-get install curl ${forCer} &> /dev/null
       touch /root/.use.curl.from.packages.cnf
     fi
@@ -1369,21 +1401,22 @@ check_root() {
       echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
       apt-get update -qq &> /dev/null
     fi
-    apt-get remove fuse -y --force-yes -qq &> /dev/null
-    apt-get purge fuse -y --force-yes -qq &> /dev/null
-    apt-get remove udev -y --force-yes -qq &> /dev/null
-    apt-get purge udev -y --force-yes -qq &> /dev/null
-    apt-get remove makedev -y --force-yes -qq &> /dev/null
-    apt-get purge makedev -y --force-yes -qq &> /dev/null
+    apt-get remove fuse -y -qq &> /dev/null
+    apt-get purge fuse -y -qq &> /dev/null
+    apt-get remove udev -y -qq &> /dev/null
+    apt-get purge udev -y -qq &> /dev/null
+    apt-get remove makedev -y -qq &> /dev/null
+    apt-get purge makedev -y -qq &> /dev/null
     if [ -e "/sbin/hdparm" ]; then
-      apt-get remove hdparm -y --force-yes -qq &> /dev/null
-      apt-get purge hdparm -y --force-yes -qq &> /dev/null
+      apt-get remove hdparm -y -qq &> /dev/null
+      apt-get purge hdparm -y -qq &> /dev/null
     fi
     if [ -e "/sbin/auditd" ]; then
-      apt-get remove auditd -y --force-yes -qq &> /dev/null
-      apt-get purge auditd -y --force-yes -qq &> /dev/null
+      apt-get remove auditd -y -qq &> /dev/null
+      apt-get purge auditd -y -qq &> /dev/null
     fi
     _REMOVE_LINKS="buagent \
+                   checkroot.sh \
                    fancontrol \
                    halt \
                    hwclock.sh \
@@ -1402,7 +1435,9 @@ check_root() {
                    mountvirtfs \
                    mtab.sh \
                    networking \
+                   procps \
                    reboot \
+                   sendsigs \
                    setserial \
                    svscan \
                    sysstat \
@@ -1414,8 +1449,13 @@ check_root() {
     for link in ${_REMOVE_LINKS}; do
       if [ -e "/etc/init.d/${link}" ]; then
         update-rc.d -f ${link} remove &> /dev/null
+        mv -f /etc/init.d/${link} /var/backups/init.d.${link}
       fi
     done
+    for s in cron dbus ssh; do
+      sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/$s > /etc/insserv/overrides/$s
+    done
+    /sbin/insserv -v -d &> /dev/null
   fi
 }
 
@@ -1531,7 +1571,7 @@ display_info() {
       | tr -d "," \
       | cut -d"_" -f2 \
       | awk '{ print $1}' 2>&1)
-    _RAM=$(free -mto | grep Mem: | awk '{ print $2 }' 2>&1)
+    _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
     _XTR=$(grep _XTRAS_LIST /root/.barracuda.cnf 2>&1)
     _MFX=$(grep _MODULES_FIX /root/.barracuda.cnf 2>&1)
     _PFX=$(grep _PERMISSIONS_FIX /root/.barracuda.cnf 2>&1)
@@ -1579,9 +1619,9 @@ display_info() {
     echo
     if [ -e "/var/log/barracuda_log.txt" ]; then
       if [ "${kind}" = "more" ]; then
-        cat /var/log/barracuda_log.txt | grep 2015
+        cat /var/log/barracuda_log.txt | grep $(date +'%Y' -d 'last year')
       fi
-      cat /var/log/barracuda_log.txt | grep 2016
+      cat /var/log/barracuda_log.txt | grep $(date +%Y)
     fi
     echo
     echo "Please link this information in your submission,"
@@ -1637,6 +1677,19 @@ case "$1" in
              init_setup
   ;;
   in-stable) cmmand="$1"
+             kind="$2"
+             fqdn="$3"
+             email="$4"
+             user="$5"
+             mode="$6"
+             rkey="$7"
+             check_root
+             check_root_keys_pwd
+             check_virt
+             check_dns_curl
+             init_setup
+  ;;
+  in-3.2)    cmmand="$1"
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -1726,10 +1779,11 @@ case "$1" in
   {version}
       in-stable <---- install current BOA stable release
       in-head <------ install BOA HEAD for testing
+      in-3.2 <------- install old stable 3.2 (for testing only)
       in-2.4 <------- install old stable 2.4 (for testing only)
       in-2.3 <------- install old stable 2.3 (for testing only)
       in-2.2 <------- install old stable 2.2 (for testing only)
-      in-octopus <--- install extra Octopus instance (stable: ${stbl}, head or legacy 2.4)
+      in-octopus <--- install extra Octopus instance (stable: ${stbl}, head or legacy 3.2)
 
   {mode}
       public <------- recommended for general use
@@ -1752,10 +1806,12 @@ case "$1" in
 
   {extra}
       license <------ valid new relic license key
+      php-7.3 <------ single PHP version to install and use
+      php-7.2 <------ single PHP version to install and use
+      php-7.1 <------ single PHP version to install and use
       php-7.0 <------ single PHP version to install and use
       php-5.6 <------ single PHP version to install and use
-      php-5.5 <------ single PHP version to install and use
-      php-all <------ all PHP versions to install, use 5.6 by default
+      php-all <------ all PHP versions to install, use 7.2 by default
       nodns <-------- disable DNS checks on the fly
 
   See docs/INSTALL.txt for more details.

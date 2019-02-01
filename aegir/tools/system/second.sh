@@ -13,6 +13,15 @@ hold() {
   killall -9 nginx &> /dev/null
   sleep 1
   killall -9 nginx &> /dev/null
+  if [ -e "/etc/init.d/php73-fpm" ]; then
+    service php73-fpm stop &> /dev/null
+  fi
+  if [ -e "/etc/init.d/php72-fpm" ]; then
+    service php72-fpm stop &> /dev/null
+  fi
+  if [ -e "/etc/init.d/php71-fpm" ]; then
+    service php71-fpm stop &> /dev/null
+  fi
   if [ -e "/etc/init.d/php70-fpm" ]; then
     service php70-fpm stop &> /dev/null
   fi
@@ -420,6 +429,11 @@ if [ -z "${_B_NICE}" ]; then
   _B_NICE=10
 fi
 
+if [ ! -e "/var/tmp/fpm" ]; then
+  mkdir -p /var/tmp/fpm
+  chmod 777 /var/tmp/fpm
+fi
+
 count_cpu
 load_control
 sleep 3
@@ -463,4 +477,4 @@ load_control
 manage_ip_auth_access
 echo Done !
 exit 0
-###EOF2017###
+###EOF2019###

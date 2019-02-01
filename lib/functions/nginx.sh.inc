@@ -411,11 +411,8 @@ install_upgrade_nginx() {
       --with-debug ${_NGINX_EXTRA}" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "wheezy" ]; then
-      _DO_NOTHING=YES
-    elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "squeeze" ]; then
+    if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
+      && [ "${_LOC_OSV}" = "jessie" ]; then
       _DO_NOTHING=YES
     else
       mrun "service nginx stop" &> /dev/null
@@ -565,6 +562,16 @@ fix_update_nginx_config() {
     mrun "service nginx restart" &> /dev/null
   else
     if [ -e "/var/aegir/config" ]; then
+      sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/*          &> /dev/null
+      wait
+      sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/adminer.*  &> /dev/null
+      wait
+      sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
+      wait
+      sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/chive.*    &> /dev/null
+      wait
+      sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
+      wait
       sed -i "s/.*listen .*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/*          &> /dev/null
       wait
       sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/adminer.*  &> /dev/null
@@ -580,6 +587,8 @@ fix_update_nginx_config() {
       sed -i "s/SSLv3 TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.1 TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
       wait
       sed -i "s/TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.1 TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf   &> /dev/null
+      wait
+      sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                              &> /dev/null
       wait
       sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                           &> /dev/null
       wait
@@ -617,7 +626,7 @@ fix_update_nginx_config() {
       wait
       sed -i "s/.*resolver_timeout .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf           &> /dev/null
       wait
-      sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n  resolver 8.8.8.8 8.8.4.4 valid=300s;\n  resolver_timeout 5s;/g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
+      sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n  resolver 1.1.1.1 1.0.0.1 valid=300s;\n  resolver_timeout 5s;/g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
       wait
       sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*.conf                               &> /dev/null
       wait
@@ -753,6 +762,9 @@ fix_update_nginx_config() {
         /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
       wait
       sed -i "s/.*listen .*:443/  listen        \*:443/g" \
+        /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
+      wait
+      sed -i "s/.*ssl .*on;//g" \
         /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
       wait
     fi

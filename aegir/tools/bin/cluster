@@ -3,15 +3,16 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-_CSF_VRN="10.22"
+_CSF_VRN="12.09"
 _PROXYSQL_VRN="1.3.5-debian8_amd64"
 _UTIL_VRN="0.30.216-pre3126"
-_VNSTAT_VRN="1.15"
+_VNSTAT_VRN="2.0"
 
 _NOISE="-q"
-_INST="/usr/bin/apt-get -y --force-yes ${_NOISE} install"
+_INST="/usr/bin/apt-get -y --allow-unauthenticated ${_NOISE} install"
 
 _INSTAPP="/usr/bin/aptitude -f -y -q \
+  --allow-untrusted \
   -o Dpkg::Options::=--force-confdef \
   -o Dpkg::Options::=--force-confold install"
 
@@ -42,13 +43,18 @@ check_root() {
         ln -s /proc/self/fd /dev/fd
       fi
     fi
-    forCer="-fuy --force-yes --reinstall"
+    forCer="-fuy --allow-unauthenticated --reinstall"
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ ! -x "${_LSB_TEST}" ]; then
-      if [ -x "/lib/systemd/systemd" ]; then
-        _OSR=jessie
-      else
-        _OSR=wheezy
+      apt-get clean ${_NOISE}
+      rm -f -r /var/lib/apt/lists/*
+      apt-get update ${_NOISE}
+      apt-get install lsb-release ${forCer} ${_NOISE}
+      _OSV=$(lsb_release -si 2>&1)
+      _OSR=$(lsb_release -sc 2>&1)
+      if [ "${_OSV}" != "Debian" ]; then
+        echo "ERROR: Not supported OS detected: ${_OSV}/${_OSR}"
+        exit 1
       fi
       echo
       echo "## MAIN REPOSITORIES"                                                       > /etc/apt/sources.list
@@ -67,6 +73,7 @@ check_root() {
       echo "deb http://http.debian.net/debian/ ${_OSR}-proposed-updates main"          >> /etc/apt/sources.list
       echo
       apt-get clean ${_NOISE}
+      rm -f -r /var/lib/apt/lists/*
       apt-get update ${_NOISE}
       apt-get install lsb-release ${forCer} ${_NOISE}
     fi
@@ -78,10 +85,10 @@ check_root() {
     fi
     if [ "${_OSR}" = "jessie" ]; then
       _BENG_SERIES="4.1"
-      _BNG_VERSION="4.1.42-vs2.3.8.6"
-    elif [ "${_OSR}" = "wheezy" ]; then
-      _BENG_SERIES="3.18"
-      _BNG_VERSION="3.18.44-vs2.3.7.5"
+      _BNG_VERSION="4.1.50-vs2.3.8.6"
+    elif [ "${_OSR}" = "stretch" ]; then
+      _BENG_SERIES="4.1"
+      _BNG_VERSION="4.1.50-vs2.3.8.6"
     else
       echo "ERROR: Not supported OS detected: ${_OSV}/${_OSR}"
       exit 1
@@ -116,7 +123,7 @@ check_root_direct() {
     echo
     echo "HINT:  You can always restrict access later, or"
     echo "       allow only SSH (RSA) keys for root with directive"
-    echo "         PermitRootLogin prohibit-password"
+    echo "         PermitRootLogin without-password"
     echo "       in the /usr/etc/sshd_config file"
     echo "Bye"
     clean_pid_exit
@@ -326,8 +333,10 @@ install_proxysql() {
   if [ ! -z "${_E_PROXYSQL_PASSWORD}" ] && [ ! -z "${_E_ROOT_SQL_PASWD}" ]; then
 
     if [ "${cmd}" = "in-pxy" ] && [ -e "/vservers/${idn}/usr/bin/proxysql" ]; then
-      mkdir -p /vservers/${idn}/var/backups/old-proxysql/
-      cp -af /vservers/${idn}/var/lib/proxysql/* /vservers/${idn}/var/backups/old-proxysql/
+      _ATMIS=`date +%y%m%d-%H%M`
+      _XPSQL="/vservers/${idn}/var/backups/xpySQL/${_ATMIS}"
+      mkdir -p ${_XPSQL}
+      cp -af /vservers/${idn}/var/lib/proxysql/* ${_XPSQL}/
       vserver ${idn} exec service proxysql stop
       vserver ${idn} exec apt-get purge -y ${_NOISE} proxysql
       rm -f -r /vservers/${idn}/var/lib/proxysql
@@ -350,10 +359,10 @@ install_proxysql() {
     fi
 
     echo "${_ROOT_SQL_PASWD}" > /vservers/${idn}/root/.my.cluster_root_pwd.txt
-    echo "${_PROXYSQL_PASSWORD}" > /vservers/${idn}/root/.my.proxysql_adm_pwd.txt
+    echo "${_PROXYSQL_ADMIN_PWD}" > /vservers/${idn}/root/.my.proxysql_adm_pwd.txt
     echo "${_DB_NODE_IP[1]}" > /vservers/${idn}/root/.my.cluster_write_node.txt
     echo "<?php" > /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
-    echo "\$prxy_adm_paswd = \"${_PROXYSQL_PASSWORD}\";" >> /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
+    echo "\$prxy_adm_paswd = \"${_PROXYSQL_ADMIN_PWD}\";" >> /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
     echo "\$writer_node_ip = \"${_DB_NODE_IP[1]}\";"     >> /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
     echo "ProxySQL" > /vservers/${idn}/data/conf/clstr.cnf
     vserver ${idn} exec ${_INSTAPP} proxysql
@@ -400,60 +409,60 @@ install_proxysql() {
 
     echo "Running default auto-configuration of ProxySQL..."
     # ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --write-node=${_DB_NODE_IP[1]}:3600 --enable"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --enable"
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --config-file=/etc/proxysql-admin.cnf --proxysql-password=${_PROXYSQL_PASSWORD} --cluster-password=${_CLUSTER_APP_PASSWORD} --monitor-password=${_MONITOR_PASSWORD} --mode=loadbal --enable"
     sleep 10
 
     echo "Adding root user to mysql_users in ProxySQL..."
     pxyCmd="INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('root','${_ROOT_SQL_PASWD}','10');"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
     pxyCmd="LOAD MYSQL USERS TO RUNTIME;"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
     pxyCmd="SAVE MYSQL USERS FROM RUNTIME;"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
     pxyCmd="SAVE MYSQL USERS TO DISK;"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
 
     echo "Adding root user to mysql_query_rules in ProxySQL..."
     pxyCmd="INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('root',10,1);"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
     pxyCmd="INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('root',11,1);"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
     pxyCmd="LOAD MYSQL QUERY RULES TO RUNTIME;"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
     pxyCmd="SAVE MYSQL QUERY RULES TO DISK;"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
 
     sleep 1
 
     if [ "${_CLUSTER_XCHECK}" != "YES" ]; then
       for IP in "${_DB_NODE_IP[@]}"; do
         pxyCmd="INSERT INTO mysql_servers (hostname,hostgroup_id,port,weight,comment) VALUES ('${IP}',11,3306,1000,'READWRITE');"
-        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
       done
       pxyCmd="LOAD MYSQL SERVERS TO RUNTIME;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
       pxyCmd="SAVE MYSQL SERVERS TO DISK;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
     fi
 
     if [ "${_CLUSTER_XCHECK}" = "YES" ]; then
       echo "Adding monitor user to ProxySQL..."
       pxyCmd="INSERT INTO mysql_users (username,password) VALUES ('monitor','${_MONITOR_PASSWORD}');"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
       sleep 1
       pxyCmd="UPDATE global_variables SET variable_value='monitor' WHERE variable_name='mysql-monitor_username';"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
       sleep 1
       pxyCmd="UPDATE global_variables SET variable_value='${_MONITOR_PASSWORD}' WHERE variable_name='mysql-monitor_password';"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
       sleep 1
 
       echo "Load ProxySQL variables to runtime and save to disk..."
       pxyCmd="LOAD MYSQL VARIABLES TO RUNTIME;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
       sleep 1
       pxyCmd="SAVE MYSQL VARIABLES TO DISK;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
       sleep 1
 
       echo "Adding grants for ProxySQL monitor user on Percona Cluster..."
@@ -464,7 +473,7 @@ install_proxysql() {
 
       echo "Adding proxysql_user to ProxySQL..."
       pxyCmd="INSERT INTO mysql_users (username,password) VALUES ('proxysql_user','${_CLUSTER_APP_PASSWORD}');"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
       sleep 1
 
       echo "Adding grants for ProxySQL proxysql_user on Percona Cluster..."
@@ -475,44 +484,44 @@ install_proxysql() {
 
       echo "Load ProxySQL users to runtime and save to disk..."
       pxyCmd="LOAD MYSQL USERS TO RUNTIME;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
       sleep 1
       pxyCmd="SAVE MYSQL USERS TO DISK;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
       sleep 1
     fi
 
     if [ "${_CLUSTER_XCHECK}" = "YES" ]; then
       echo "Adding mysql_servers in ProxySQL..."
       pxyCmd="DELETE FROM mysql_replication_hostgroups where writer_hostgroup=500;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
       pxyCmd="DELETE FROM mysql_servers where hostgroup_id in (500,501);"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
       cNt="100"
       for IP in "${_DB_NODE_IP[@]}"; do
         pxyCmd="INSERT INTO mysql_servers (hostname,hostgroup_id,port,weight) VALUES ('${IP}',500,3306,${cNt});"
-        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
         cNt=$(( 10000 * cNt ))
       done
       cNt="1000000000"
       for IP in "${_DB_NODE_IP[@]}"; do
         cNt=$(( cNt / 100 ))
         pxyCmd="INSERT INTO mysql_servers (hostname,hostgroup_id,port,weight) VALUES ('${IP}',501,3306,${cNt});"
-        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
       done
       pxyCmd="LOAD MYSQL SERVERS TO RUNTIME;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
       pxyCmd="SAVE MYSQL SERVERS TO DISK;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
     fi
 
     echo "Checking runtime_scheduler entries in ProxySQL..."
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"SELECT * FROM runtime_scheduler\\G\""
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"SELECT * FROM runtime_scheduler\\G\""
 
     echo "Checking mysql_servers status in ProxySQL..."
     sleep 10
     pxyCmd="SELECT hostgroup_id,hostname,port,status,weight FROM mysql_servers;"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
   else
     echo "Can't install ProxySQL because _E_PROXYSQL_PASSWORD or _E_ROOT_SQL_PASWD is empty"
   fi
@@ -537,19 +546,19 @@ install_proxysql() {
       rplSchdrC="INSERT INTO scheduler (id,active,interval_ms,filename,arg1) VALUES (10,1,2000,'/var/lib/proxysql/galera_check.pl','-u=admin -p=${_PROXYSQL_PASSWORD} -h=127.0.0.1 -H=10:W,11:R -P=6032 --execution_time=1 --retry_down=2 --retry_up=1 --main_segment=1 --debug=0 --active_failover --log=/var/log/proxysql/galera_check.log');"
       rplSchdrD="LOAD SCHEDULER TO RUNTIME;"
       rplSchdrE="SAVE SCHEDULER TO DISK;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${rplSchdrA}\""
-      # ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${rplSchdrB}\""
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${rplSchdrC}\""
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${rplSchdrD}\""
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${rplSchdrE}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${rplSchdrA}\""
+      # ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${rplSchdrB}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${rplSchdrC}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${rplSchdrD}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${rplSchdrE}\""
       echo "Checking modified runtime_scheduler in ProxySQL..."
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"SELECT * FROM runtime_scheduler\\G\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"SELECT * FROM runtime_scheduler\\G\""
     fi
 
     echo "Checking mysql_servers status in ProxySQL..."
     sleep 10
     pxyCmd="SELECT hostgroup_id,hostname,port,status,weight FROM mysql_servers;"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
 
   fi
 }
@@ -566,13 +575,8 @@ install_vps() {
 
   echo "Installing vps ${idn}..."
 
-  if [ "${osx}" = "jessie" ]; then
-    incl="sysvinit-core,sysvinit,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen"
-    excl="systemd,udev,makedev,fuse"
-  else
-    incl="sysvinit,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen"
-    excl="udev,makedev,fuse"
-  fi
+  incl="sysvinit-core,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen"
+  excl="systemd,systemd-sysv,libsystemd0,udev,makedev,fuse"
 
   vserver ${idn} build -n ${idn} -m debootstrap --i-know-its-there \
     --hostname ${hst} \
@@ -608,6 +612,7 @@ install_vps() {
     vserver ${idn} exec /opt/local/bin/boa in-${ver} public ${hst} ${eml} o8 mini
   else
     _REMOVE_LINKS="buagent \
+                   checkroot.sh \
                    fancontrol \
                    halt \
                    hwclock.sh \
@@ -626,7 +631,9 @@ install_vps() {
                    mountvirtfs \
                    mtab.sh \
                    networking \
+                   procps \
                    reboot \
+                   sendsigs \
                    setserial \
                    svscan \
                    sysstat \
@@ -638,8 +645,13 @@ install_vps() {
     for link in ${_REMOVE_LINKS}; do
       if [ -e "/vservers/${idn}/etc/init.d/${link}" ]; then
         vserver ${idn} exec update-rc.d -f ${link} remove
+        mv -f /etc/init.d/${link} /var/backups/init.d.${link}
       fi
     done
+    for s in cron dbus ssh; do
+      sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/$s > /etc/insserv/overrides/$s
+    done
+    /sbin/insserv -v -d &> /dev/null
   fi
 
   echo "Stopping vps ${idn}..."
@@ -672,20 +684,43 @@ install_vps() {
     vserver ${idn} exec chmod 700 ~/.ssh/
   fi
 
+  if [ -x "/vservers/${idn}/usr/bin/gpg2" ]; then
+    _GPG=gpg2
+  else
+    _GPG=gpg
+  fi
+
   if [ "${ver}" = "galera" ]; then
     echo "Running post-install Galera VPS upgrade..."
-    if [ "${osx}" = "jessie" ] || [ -x "/vservers/${idn}/lib/systemd/systemd" ]; then
+    if [ -x "/vservers/${idn}/lib/systemd/systemd" ]; then
       echo "Removing systemd on ${osx}..."
-      vserver ${idn} exec ${_INSTAPP} sysvinit-core
-      vserver ${idn} exec ${_INSTAPP} sysvinit-utils
-      if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
-        cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
+      if [ "${osx}" = "jessie" ] || [ "${osx}" = "stretch" ]; then
+        vserver ${idn} exec ${_INSTAPP} sysvinit-core
+        vserver ${idn} exec ${_INSTAPP} sysvinit-utils
+        if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
+          cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
+        fi
+        vserver ${idn} exec apt-get remove systemd -y ${_NOISE} --purge --auto-remove
+        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /vservers/${idn}/etc/apt/preferences.d/systemd
+        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /vservers/${idn}/etc/apt/preferences.d/systemd
+        vserver ${idn} exec ${_INSTAPP} sysvinit-core
+        vserver ${idn} exec ${_INSTAPP} sysvinit-utils
+        rm -f /vservers/${idn}/etc/apt/sources.list.d/nosystemd.list
+        rm -f /vservers/${idn}/etc/apt/preferences.d/nosystemd
+      elif [ "${altnos}" = "angband" ]; then
+        echo -e 'deb http://angband.pl/debian/ nosystemd-stretch main' > /vservers/${idn}/etc/apt/sources.list.d/nosystemd.list
+        echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /vservers/${idn}/etc/apt/preferences.d/nosystemd
+        echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /vservers/${idn}/etc/apt/preferences.d/nosystemd
+        echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /vservers/${idn}/etc/apt/preferences.d/nosystemd
+        vserver ${idn} exec wget -qO - http://angband.pl/deb/archive.html | ${_GPG} --import
+        vserver ${idn} exec ${_INSTAPP} kilobyte-archive-keyring
+        vserver ${idn} exec ${_INSTAPP} sysvinit-core
+        vserver ${idn} exec ${_INSTAPP} sysvinit-utils
+        if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
+          cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
+        fi
+        vserver ${idn} exec apt-get remove systemd -y ${_NOISE} --purge --auto-remove
       fi
-      vserver ${idn} exec apt-get remove systemd -y --force-yes ${_NOISE} --purge --auto-remove
-      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /vservers/${idn}/etc/apt/preferences.d/systemd
-      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /vservers/${idn}/etc/apt/preferences.d/systemd
-      vserver ${idn} exec ${_INSTAPP} sysvinit-core
-      vserver ${idn} exec ${_INSTAPP} sysvinit-utils
     fi
   else
     echo "Running post-install Barracuda upgrade..."
@@ -812,11 +847,13 @@ install_db_cluster() {
     vserver ${idn} exec ${_INSTAPP} debian-archive-keyring
   	vserver ${idn} exec apt-get upgrade -y ${_NOISE}
   	vserver ${idn} exec apt-get remove apparmor -y ${_NOISE}
-  	vserver ${idn} exec ${_INSTAPP} software-properties-common
+  	vserver ${idn} exec ${_INSTAPP} software-properties-common dirmngr
     echo "## Percona Cluster APT Repository" > /vservers/${idn}${xtraList}
     echo "deb http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
     echo "deb-src http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
-    vserver ${idn} exec apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5
+    _KEYS_SIG="9334A25F8507EFA5"
+    vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+    vserver ${idn} exec ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
   	vserver ${idn} exec apt-get update ${_NOISE}
   	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
   	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24
@@ -883,7 +920,7 @@ query_cache_type=0
 binlog_row_image=minimal
 #bind-address=0.0.0.0
 #wsrep_slave_threads=8
-#wsrep_log_conflicts
+wsrep_log_conflicts=ON
 #pxc_strict_mode=ENFORCING
 pxc_strict_mode=PERMISSIVE
 
@@ -900,6 +937,11 @@ wsrep_sst_method=rsync
 #wsrep_sst_method=xtrabackup-v2
 wsrep_sst_auth=sstuser:'${_MAINT_USER_PWD}'
 
+# Galera extra tuning
+wsrep_debug=OFF
+wsrep_retry_autocommit=8
+wsrep_sync_wait=7
+
 # Galera Node Configuration
 wsrep_node_address=\"'${IP}'\"
 wsrep_node_name=\"'${IP}'\"
@@ -909,7 +951,7 @@ wsrep_node_name=\"'${IP}'\"
 [client]
 port                    = 3306
 socket                  = /var/run/mysqld/mysqld.sock
-default-character-set   = utf8
+default-character-set   = utf8mb4
 
 [mysqld]
 user                    = mysql
@@ -922,8 +964,8 @@ tmpdir                  = /tmp
 default_storage_engine  = InnoDB
 lc_messages_dir         = /usr/share/mysql
 lc_messages             = en_US
-character_set_server    = utf8
-collation_server        = utf8_general_ci
+character_set_server    = utf8mb4
+collation_server        = utf8mb4_general_ci
 skip-external-locking
 skip-name-resolve
 connect_timeout         = 60
@@ -946,7 +988,7 @@ table_open_cache        = 256
 table_definition_cache  = 512
 thread_stack            = 256K
 thread_cache_size       = 128
-wait_timeout            = 3600
+wait_timeout            = 9999
 tmp_table_size          = 1024M
 max_heap_table_size     = 1024M
 low_priority_updates    = 1
@@ -987,6 +1029,7 @@ innodb_buffer_pool_dump_at_shutdown = 1
 innodb_buffer_pool_load_at_startup = 1
 innodb_buffer_pool_dump_pct = 100
 innodb_stats_on_metadata = OFF
+innodb_adaptive_hash_index = 0
 
 [mysqld_safe]
 socket                  = /var/run/mysqld/mysqld.sock
@@ -1071,12 +1114,12 @@ upgrade_db_cluster() {
 
 install_host() {
 
-  _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/resolv.conf 2>&1)
-  if [[ ! "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]]; then
+  _CUSTOM_DNS_TEST=$(grep 1.1.1.1 /etc/resolv.conf 2>&1)
+  if [[ ! "${_CUSTOM_DNS_TEST}" =~ "1.1.1.1" ]]; then
     echo "Fixing resolver..."
     cp -af /etc/resolv.conf /etc/resolv.conf.prev
-    echo "nameserver 8.8.8.8" >/etc/resolv.conf
-    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    echo "nameserver 1.1.1.1" >/etc/resolv.conf
+    echo "nameserver 1.0.0.1" >>/etc/resolv.conf
     cat /etc/resolv.conf.prev >>/etc/resolv.conf
     cat /etc/resolv.conf
     echo
@@ -1196,6 +1239,12 @@ install_host() {
     echo
   fi
 
+  if [ -x "/usr/bin/gpg2" ]; then
+    _GPG=gpg2
+  else
+    _GPG=gpg
+  fi
+
   if [ ! -e "/boot/vmlinuz-${_BNG_VERSION}-beng" ]; then
     echo "Installing beng vserver kernel..."
     echo "deb http://repo.psand.net/ ${_OSR} main" > /etc/apt/sources.list.d/vserver.list
@@ -1207,7 +1256,7 @@ install_host() {
       _KEYS_SERVER_TEST=$(grep GnuPG pubkey.txt 2>&1)
       sleep 2
     done
-    cat pubkey.txt | apt-key add - &> /dev/null
+    cat pubkey.txt | ${_GPG} --import &> /dev/null
     rm -f pubkey.txt*
     apt-get update ${_NOISE}
     ${_INSTAPP} build-essential
@@ -1217,17 +1266,33 @@ install_host() {
     ls -la /boot
   fi
 
-  if [ "${_OSR}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
-    echo "Installing sysvinit on ${_OSV} ${_OSR}..."
-    ${_INSTAPP} sysvinit-core
-    ${_INSTAPP} sysvinit-utils
-    if [ -e "/usr/share/sysvinit/inittab" ]; then
-      cp -af /usr/share/sysvinit/inittab /etc/inittab
+  if [ -x "/lib/systemd/systemd" ]; then
+    echo "Installing sysvinit-core on ${_OSV} ${_OSR}..."
+    if [ "${osx}" = "jessie" ] || [ "${osx}" = "stretch" ]; then
+      ${_INSTAPP} sysvinit-core
+      ${_INSTAPP} sysvinit-utils
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
+      fi
+      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+      ${_INSTAPP} sysvinit-core
+      ${_INSTAPP} sysvinit-utils
+      rm -f /etc/apt/sources.list.d/nosystemd.list
+      rm -f /etc/apt/preferences.d/nosystemd
+    elif [ "${altnos}" = "angband" ]; then
+      echo -e 'deb http://angband.pl/debian/ nosystemd-stretch main' > /etc/apt/sources.list.d/nosystemd.list
+      echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
+      echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
+      echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /etc/apt/preferences.d/nosystemd
+      wget -qO - http://angband.pl/deb/archive.html | ${_GPG} --import
+      ${_INSTAPP} kilobyte-archive-keyring
+      ${_INSTAPP} sysvinit-core
+      ${_INSTAPP} sysvinit-utils
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
+      fi
     fi
-    echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-    echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-    ${_INSTAPP} sysvinit-core
-    ${_INSTAPP} sysvinit-utils
     echo
     echo "NOTE: Please reboot and then run 'cluster up-host'"
     echo "NOTE: once cluster script completes initial installation"
@@ -1256,18 +1321,34 @@ EOF
 
 upgrade_host() {
 
-  if [ "${_OSR}" = "jessie" ] && [ -x "/lib/systemd/systemd" ]; then
+  if [ -x "/lib/systemd/systemd" ]; then
     echo "Removing systemd on ${_OSV} ${_OSR}..."
-    ${_INSTAPP} sysvinit-core
-    ${_INSTAPP} sysvinit-utils
-    if [ -e "/usr/share/sysvinit/inittab" ]; then
-      cp -af /usr/share/sysvinit/inittab /etc/inittab
+    if [ "${osx}" = "jessie" ] || [ "${osx}" = "stretch" ]; then
+      ${_INSTAPP} sysvinit-core
+      ${_INSTAPP} sysvinit-utils
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
+      fi
+      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+      ${_INSTAPP} sysvinit-core
+      ${_INSTAPP} sysvinit-utils
+      rm -f /etc/apt/sources.list.d/nosystemd.list
+      rm -f /etc/apt/preferences.d/nosystemd
+    elif [ "${altnos}" = "angband" ]; then
+      echo -e 'deb http://angband.pl/debian/ nosystemd-stretch main' > /etc/apt/sources.list.d/nosystemd.list
+      echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
+      echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
+      echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /etc/apt/preferences.d/nosystemd
+      wget -qO - http://angband.pl/deb/archive.html | ${_GPG} --import
+      ${_INSTAPP} kilobyte-archive-keyring
+      ${_INSTAPP} sysvinit-core
+      ${_INSTAPP} sysvinit-utils
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
+      fi
     fi
-    apt-get remove systemd -y --force-yes ${_NOISE} --purge --auto-remove
-    echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-    echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-    ${_INSTAPP} sysvinit-core
-    ${_INSTAPP} sysvinit-utils
+    apt-get remove systemd -y ${_NOISE} --purge --auto-remove
   fi
 
   echo "Installing vserver tools dependencies..."

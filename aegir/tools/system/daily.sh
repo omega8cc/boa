@@ -46,7 +46,7 @@ if [[ "${_SSL_ITD}" =~ "1.0.1" ]] \
   _NEW_SSL=YES
 fi
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-forCer="-fuy --force-yes --reinstall"
+forCer="-fuy --allow-unauthenticated --reinstall"
 vSet="vset --always-set"
 
 ###-------------SYSTEM-----------------###
@@ -81,7 +81,7 @@ find_fast_mirror() {
   fi
   if ! netcat -w 10 -z "${_USE_MIR}" 80; then
     echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
-    _USE_MIR="files.aegir.cc"
+    _USE_MIR="104.245.208.226"
   fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
@@ -111,7 +111,11 @@ extract_archive() {
 get_dev_ext() {
   if [ ! -z "$1" ]; then
     curl ${crlGet} "${urlDev}/HEAD/$1" -o "$1"
-    extract_archive "$1"
+    if [ -e "$1" ]; then
+      extract_archive "$1"
+    else
+      echo "OOPS: $1 failed download from ${urlDev}/HEAD/$1"
+    fi
   fi
 }
 
@@ -180,6 +184,10 @@ run_drush8_cmd() {
 
 run_drush8_hmr_cmd() {
   su -s /bin/bash - ${_HM_U} -c "drush8 @hostmaster $1" &> /dev/null
+}
+
+run_drush8_hmr_master_cmd() {
+  su -s /bin/bash - aegir -c "drush8 @hostmaster $1" &> /dev/null
 }
 
 run_drush8_nosilent_cmd() {
@@ -1199,222 +1207,6 @@ check_file_with_wildcard_path() {
   fi
 }
 
-write_solr_config() {
-  # $1 is module
-  # $2 is a path to solr.php
-  if [ ! -z "$1" ] \
-    && [ ! -z $2 ] \
-    && [ ! -z "${_MD5H}" ] \
-    && [ -e "${Dir}" ]; then
-    echo "Your SOLR core access details for ${Dom} site are as follows:"  > $2
-    echo                                                                 >> $2
-    echo "  Solr host ........: 127.0.0.1"                               >> $2
-    echo "  Solr port ........: 8099"                                    >> $2
-    echo "  Solr path ........: /solr/${_MD5H}.${Dom}.${_HM_U}"  >> $2
-    echo                                                                 >> $2
-    echo "It has been auto-configured to work with latest version"       >> $2
-    echo "of $1 module, but you need to add the module to"               >> $2
-    echo "your site codebase before you will be able to use Solr."       >> $2
-    echo                                                                 >> $2
-    echo "To learn more please make sure to check the module docs at:"   >> $2
-    echo                                                                 >> $2
-    echo "https://drupal.org/project/$1"                                 >> $2
-    chown ${_HM_U}:users $2 &> /dev/null
-    chmod 440 $2 &> /dev/null
-  fi
-}
-
-update_solr() {
-  # $1 is module
-  # $2 is solr core path
-  if [ ! -z "$1" ] \
-    && [ ! -e "$2/conf/.protected.conf" ] \
-    && [ ! -e "$2/conf/${_X_SE}.conf" ] \
-    && [ -e "/var/xdrago/conf/solr" ] \
-    && [ -e "$2/conf" ]; then
-    if [ "$1" = "apachesolr" ]; then
-      if [ -e "${Plr}/modules/o_contrib_seven" ]; then
-        cp -af /var/xdrago/conf/solr/apachesolr/7/schema.xml $2/conf/
-        cp -af /var/xdrago/conf/solr/apachesolr/7/solrconfig.xml $2/conf/
-        cp -af /var/xdrago/conf/solr/apachesolr/7/solrcore.properties $2/conf/
-        touch $2/conf/update-ok.txt
-      else
-        cp -af /var/xdrago/conf/solr/apachesolr/6/schema.xml $2/conf/
-        cp -af /var/xdrago/conf/solr/apachesolr/6/solrconfig.xml $2/conf/
-        cp -af /var/xdrago/conf/solr/apachesolr/6/solrcore.properties $2/conf/
-        touch $2/conf/update-ok.txt
-      fi
-    elif [ "$1" = "search_api_solr" ] \
-      && [ -e "${Plr}/modules/o_contrib_seven" ]; then
-      cp -af /var/xdrago/conf/solr/search_api_solr/7/schema.xml $2/conf/
-      cp -af /var/xdrago/conf/solr/search_api_solr/7/solrconfig.xml $2/conf/
-      cp -af /var/xdrago/conf/solr/search_api_solr/7/solrcore.properties $2/conf/
-      touch $2/conf/update-ok.txt
-    fi
-    if [ -e "$2/conf/update-ok.txt" ]; then
-      write_solr_config $1 ${Dir}/solr.php
-      echo "Updated Solr with $1 for $2"
-      touch $2/conf/${_X_SE}.conf
-      if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
-        kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
-        service jetty9 start &> /dev/null
-      fi
-    fi
-  fi
-}
-
-add_solr() {
-  # $1 is module
-  # $2 is solr core path
-  if [ ! -z "$1" ] && [ ! -z $2 ] && [ -e "/var/xdrago/conf/solr" ]; then
-    if [ ! -e "$2" ]; then
-      rm -rf /opt/solr4/core0/data/*
-      cp -a /opt/solr4/core0 $2
-      CHAR="[:alnum:]"
-      rkey=32
-      if [ "${_NEW_SSL}" = "YES" ] \
-        || [ "${_OSV}" = "jessie" ] \
-        || [ "${_OSV}" = "wheezy" ] \
-        || [ "${_OSV}" = "trusty" ] \
-        || [ "${_OSV}" = "precise" ]; then
-        _MD5H=$(cat /dev/urandom \
-          | tr -cd "$CHAR" \
-          | head -c ${1:-$rkey} \
-          | openssl md5 \
-          | awk '{ print $2}' \
-          | tr -d "\n" 2>&1)
-      else
-        _MD5H=$(cat /dev/urandom \
-          | tr -cd "$CHAR" \
-          | head -c ${1:-$rkey} \
-          | openssl md5 \
-          | tr -d "\n" 2>&1)
-      fi
-      sed -i "s/.*<core name=\"core0\" instanceDir=\"core0\" \/>.*/<core name=\"core0\" instanceDir=\"core0\" \/>\n<core name=\"${_MD5H}.${Dom}.${_HM_U}\" instanceDir=\"${_HM_U}.${Dom}\" \/>\n/g" /opt/solr4/solr.xml
-      wait
-      update_solr $1 $2
-      echo "New Solr with $1 for $2 added"
-    fi
-  fi
-}
-
-delete_solr() {
-  # $1 is solr core path
-  if [ ! -z "$1" ] \
-    && [[ "$1" =~ "/opt/solr4/" ]] \
-    && [ -e "/var/xdrago/conf/solr" ] \
-    && [ -e "$1/conf" ]; then
-    sed -i "s/.*instanceDir=\"${_HM_U}.${Dom}\".*//g" /opt/solr4/solr.xml
-    wait
-    sed -i "/^$/d" /opt/solr4/solr.xml &> /dev/null
-    wait
-    rm -rf $1
-    rm -f ${Dir}/solr.php
-    if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
-      kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
-      service jetty9 start &> /dev/null
-    fi
-    echo "Deleted Solr for $1"
-  fi
-}
-
-check_solr() {
-  # $1 is module
-  # $2 is solr core path
-  if [ ! -z "$1" ] && [ ! -z $2 ] && [ -e "/var/xdrago/conf/solr" ]; then
-    echo "Checking Solr with $1 for $2"
-    if [ ! -e "$2" ]; then
-      add_solr $1 $2
-    else
-      update_solr $1 $2
-    fi
-  fi
-}
-
-setup_solr() {
-
-  _SOLR_DIR="/opt/solr4/${_HM_U}.${Dom}"
-  if [ -e "/data/conf/default.boa_site_control.ini" ] \
-    && [ ! -e "${_DIR_CTRL_F}" ]; then
-    cp -af /data/conf/default.boa_site_control.ini ${_DIR_CTRL_F} &> /dev/null
-    chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
-    chmod 0664 ${_DIR_CTRL_F} &> /dev/null
-  fi
-
-  ###
-  ### Support for solr_custom_config directive
-  ###
-  if [ -e "${_DIR_CTRL_F}" ]; then
-    _SLR_CM_CFG_P=$(grep "solr_custom_config" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_SLR_CM_CFG_P}" =~ "solr_custom_config" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";solr_custom_config = NO" >> ${_DIR_CTRL_F}
-    fi
-    _SLR_CM_CFG_RT=NO
-    _SOLR_PROTECT_CTRL="${_SOLR_DIR}/conf/.protected.conf"
-    _SLR_CM_CFG_T=$(grep "^solr_custom_config = YES" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_SLR_CM_CFG_T}" =~ "solr_custom_config = YES" ]]; then
-      _SLR_CM_CFG_RT=YES
-      if [ ! -e "${_SOLR_PROTECT_CTRL}" ]; then
-        touch ${_SOLR_PROTECT_CTRL}
-      fi
-      echo "Solr config for ${_SOLR_DIR} is protected"
-    else
-      if [ -e "${_SOLR_PROTECT_CTRL}" ]; then
-        rm -f ${_SOLR_PROTECT_CTRL}
-      fi
-    fi
-  fi
-  ###
-  ### Support for solr_integration_module directive
-  ###
-  if [ -e "${_DIR_CTRL_F}" ]; then
-    _SOLR_MODULE=""
-    _SOLR_IM_PT=$(grep "solr_integration_module" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_SOLR_IM_PT}" =~ "solr_integration_module" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";solr_integration_module = your_module_name_here" >> ${_DIR_CTRL_F}
-    fi
-    _ASOLR_T=$(grep "^solr_integration_module = apachesolr" \
-      ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_ASOLR_T}" =~ "apachesolr" ]]; then
-      _SOLR_MODULE=apachesolr
-    fi
-    _SAPI_SOLR_T=$(grep "^solr_integration_module = search_api_solr" \
-      ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_SAPI_SOLR_T}" =~ "search_api_solr" ]]; then
-      _SOLR_MODULE=search_api_solr
-    fi
-    if [ ! -z "${_SOLR_MODULE}" ]; then
-      check_solr ${_SOLR_MODULE} ${_SOLR_DIR}
-    else
-      delete_solr ${_SOLR_DIR}
-    fi
-  fi
-  ###
-  ### Support for solr_update_config directive
-  ###
-  if [ -e "${_DIR_CTRL_F}" ]; then
-    _SOLR_UP_CFG_PT=$(grep "solr_update_config" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_SOLR_UP_CFG_PT}" =~ "solr_update_config" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";solr_update_config = NO" >> ${_DIR_CTRL_F}
-    fi
-    _SOLR_UP_CFG_TT=$(grep "^solr_update_config = YES" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_SOLR_UP_CFG_TT}" =~ "solr_update_config = YES" ]]; then
-      if [ ! -e "${_SOLR_DIR}/conf/${_X_SE}.conf" ]; then
-        if [ "${_SLR_CM_CFG_RT}" = "NO" ] \
-          && [ ! -e "${_SOLR_PROTECT_CTRL}" ]; then
-          update_solr ${_SOLR_MODULE} ${_SOLR_DIR}
-        fi
-      fi
-    fi
-  fi
-}
-
 fix_modules() {
   _AUTO_CONFIG_ADVAGG=NO
   if [ -e "${Plr}/sites/all/modules/advagg" ] \
@@ -1818,6 +1610,12 @@ fix_modules() {
     else
       echo ";views_content_cache_dont_enable = FALSE" >> ${_PLR_CTRL_F}
     fi
+    _VAR_IF_PRESENT=$(grep "set_composer_manager_vendor_dir" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "set_composer_manager_vendor_dir" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";set_composer_manager_vendor_dir = FALSE" >> ${_PLR_CTRL_F}
+    fi
   fi
   if [ -e "${_DIR_CTRL_F}" ]; then
      _VAR_IF_PRESENT=$(grep "session_cookie_ttl" ${_DIR_CTRL_F} 2>&1)
@@ -1885,6 +1683,12 @@ fix_modules() {
       _DO_NOTHING=YES
     else
       echo ";allow_private_file_downloads = FALSE" >> ${_DIR_CTRL_F}
+    fi
+     _VAR_IF_PRESENT=$(grep "set_composer_manager_vendor_dir" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "set_composer_manager_vendor_dir" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";set_composer_manager_vendor_dir = FALSE" >> ${_DIR_CTRL_F}
     fi
   fi
 
@@ -2592,32 +2396,17 @@ check_update_le_hm_ssl() {
     && [ -e "${User}/tools/le/certs/${hmFront}/fullchain.pem" ]; then
     echo "Running LE cert check directly for hostmaster ${_HM_U}"
     su -s /bin/bash - ${_HM_U} -c "${exeLe} -c -d ${hmFront}"
-    sleep 5
+    sleep 3
   fi
 }
 
 check_update_le_ssl() {
-  if [[ "${Dom}" =~ ^(a|b|c|d|e) ]]; then
-    runDay="1"
-  elif [[ "${Dom}" =~ ^(f|g|h|i) ]]; then
-    runDay="2"
-  elif [[ "${Dom}" =~ ^(j|k|l|m) ]]; then
-    runDay="3"
-  elif [[ "${Dom}" =~ ^(n|o|p|q) ]]; then
-    runDay="4"
-  elif [[ "${Dom}" =~ ^(r|s|t|u) ]]; then
-    runDay="5"
-  elif [[ "${Dom}" =~ ^(v|w|x|y) ]]; then
-    runDay="6"
-  else
-    runDay="7"
-  fi
-  if [ "${_DOW}" = "${runDay}" ]; then
+  if [ ! -e "${User}/static/control/noverify.info" ]; then
     if [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
       echo "Running LE cert check via Verify task for ${Dom}"
       run_drush8_hmr_cmd "hosting-task @${Dom} verify --force"
       echo ${_MOMENT} >> /var/xdrago/log/le/${Dom}
-      sleep 5
+      sleep 3
     fi
   fi
 }
@@ -2668,7 +2457,7 @@ process() {
       if [ -e "${Plr}" ]; then
         if [ "${_NEW_SSL}" = "YES" ] \
           || [ "${_OSV}" = "jessie" ] \
-          || [ "${_OSV}" = "wheezy" ] \
+          || [ "${_OSV}" = "stretch" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
           PlrID=$(echo ${Plr} \
@@ -2698,7 +2487,6 @@ process() {
           if [ "${_STATUS}" = "OK" ] \
             && [ ! -z "${Dan}" ] \
             && [ "${Dan}" != "hostmaster" ]; then
-            setup_solr
             if_site_db_conversion
             searchStringB=".dev."
             searchStringC=".devel."
@@ -2773,6 +2561,60 @@ process() {
      echo ${_MOMENT} End Counting Site $Site
     fi
   done
+}
+
+delete_this_empty_hostmaster_platform() {
+  run_drush8_hmr_master_cmd "hosting-task @platform_${_T_PFM_NAME} delete --force"
+  echo "Old empty platform_${_T_PFM_NAME} will be deleted"
+}
+
+check_old_empty_hostmaster_platforms() {
+  if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ] \
+	&& [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
+	_DO_NOTHING=YES
+  else
+	if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+	  || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+	  || [ "${_VMFAMILY}" = "VS" ]; then
+	  _DEL_OLD_EMPTY_PLATFORMS="7"
+	else
+	  _DEL_OLD_EMPTY_PLATFORMS="30"
+	fi
+  fi
+  if [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
+    if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt "0" ]; then
+      echo "_DEL_OLD_EMPTY_PLATFORMS is set to \
+        ${_DEL_OLD_EMPTY_PLATFORMS} days on /var/aegir instance"
+      for Platform in `find /var/aegir/.drush/platform_* -maxdepth 1 -mtime \
+        +${_DEL_OLD_EMPTY_PLATFORMS} -type f | sort`; do
+        _T_PFM_NAME=$(echo "${Platform}" \
+          | sed "s/.*platform_//g; s/.alias.drushrc.php//g" \
+          | awk '{ print $1}' 2>&1)
+        _T_PFM_ROOT=$(cat ${Platform} \
+          | grep "root'" \
+          | cut -d: -f2 \
+          | awk '{ print $3}' \
+          | sed "s/[\,']//g" 2>&1)
+        _T_PFM_SITE=$(grep "${_T_PFM_ROOT}/sites/" \
+          /var/aegir/.drush/*.drushrc.php \
+          | grep site_path 2>&1)
+        if [ ! -e "${_T_PFM_ROOT}/sites/all" ] \
+          || [ ! -e "${_T_PFM_ROOT}/index.php" ]; then
+          mkdir -p /var/aegir/undo
+          mv -f /var/aegir/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php \
+            /var/aegir/undo/ &> /dev/null
+          echo "GHOST platform ${_T_PFM_ROOT} detected and moved to /var/aegir/undo/"
+        fi
+        if [[ "${_T_PFM_SITE}" =~ ".restore" ]]; then
+          echo "WARNING: ghost site leftover found: ${_T_PFM_SITE}"
+        fi
+        if [ -z "${_T_PFM_SITE}" ] \
+          && [ -e "${_T_PFM_ROOT}/sites/all" ]; then
+          delete_this_empty_hostmaster_platform
+        fi
+      done
+    fi
+  fi
 }
 
 delete_this_platform() {
@@ -2957,8 +2799,8 @@ purge_cruft_machine() {
 
   for i in ${_REVISIONS}; do
     if [ -d "${User}/distro/$i" ]; then
-      if [ ! -d "${User}/distro/$i/keys" ]; then
-        mkdir -p ${User}/distro/$i/keys
+      if [ ! -d "${User}/distro/${i}/keys" ]; then
+        mkdir -p ${User}/distro/${i}/keys
       fi
       RevisionTest=$(ls ${User}/distro/$i | wc -l | tr -d "\n" 2>&1)
       if [ "${RevisionTest}" -lt "2" ] && [ ! -z "${RevisionTest}" ]; then
@@ -2977,11 +2819,11 @@ purge_cruft_machine() {
         chattr -i /home/${_HM_U}.ftp/platforms/*
       fi
       mkdir -p /home/${_HM_U}.ftp/platforms/$i
-      mkdir -p ${User}/distro/$i/keys
-      chown ${_HM_U}.ftp:${_WEBG} ${User}/distro/$i/keys &> /dev/null
-      chmod 02775 ${User}/distro/$i/keys &> /dev/null
-      ln -sf ${User}/distro/$i/keys /home/${_HM_U}.ftp/platforms/$i/keys
-      for Codebase in `find ${User}/distro/$i/* \
+      mkdir -p ${User}/distro/${i}/keys
+      chown ${_HM_U}.ftp:${_WEBG} ${User}/distro/${i}/keys &> /dev/null
+      chmod 02775 ${User}/distro/${i}/keys &> /dev/null
+      ln -sf ${User}/distro/${i}/keys /home/${_HM_U}.ftp/platforms/${i}/keys
+      for Codebase in `find ${User}/distro/${i}/* \
         -maxdepth 1 \
         -mindepth 1 \
         -type d \
@@ -2989,7 +2831,7 @@ purge_cruft_machine() {
         CodebaseName=$(echo ${Codebase} \
           | cut -d'/' -f7 \
           | awk '{ print $1}' 2> /dev/null)
-        ln -sf ${Codebase} /home/${_HM_U}.ftp/platforms/$i/${CodebaseName}
+        ln -sf ${Codebase} /home/${_HM_U}.ftp/platforms/${i}/${CodebaseName}
         echo "Fixed symlink to ${Codebase} for ${_HM_U}.ftp"
       done
     fi
@@ -3042,8 +2884,8 @@ shared_codebases_cleanup() {
     016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
     034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
   for i in ${_REVISIONS}; do
-    if [ -d "/data/all/$i/o_contrib" ]; then
-      for Codebase in `find /data/all/$i/* -maxdepth 1 -mindepth 1 -type d \
+    if [ -d "/data/all/${i}/o_contrib" ]; then
+      for Codebase in `find /data/all/${i}/* -maxdepth 1 -mindepth 1 -type d \
         | grep "/profiles$" 2>&1`; do
         CodebaseDir=$(echo ${Codebase} \
           | sed 's/\/profiles//g' \
@@ -3053,8 +2895,8 @@ shared_codebases_cleanup() {
         if [[ "${CodebaseTest}" =~ "No such file or directory" ]] \
           || [ -z "${CodebaseTest}" ]; then
           mkdir -p ${_CLD}/$i
-          echo "Moving no longer used ${CodebaseDir} to ${_CLD}/$i/"
-          mv -f ${CodebaseDir} ${_CLD}/$i/
+          echo "Moving no longer used ${CodebaseDir} to ${_CLD}/${i}/"
+          mv -f ${CodebaseDir} ${_CLD}/${i}/
           sleep 1
         fi
       done
@@ -3113,8 +2955,10 @@ action() {
           cd ${_THIS_HM_SITE}
           su -s /bin/bash ${_HM_U} -c "drush8 cc drush" &> /dev/null
           rm -rf ${User}/.tmp/cache
-          run_drush8_hmr_cmd "${vSet} hosting_cron_default_interval 86400"
+          run_drush8_hmr_cmd "${vSet} hosting_cron_default_interval 3600"
           run_drush8_hmr_cmd "${vSet} hosting_queue_cron_frequency 1"
+          run_drush8_hmr_cmd "${vSet} hosting_civicrm_cron_queue_frequency 60"
+          run_drush8_hmr_cmd "${vSet} hosting_queue_task_gc_frequency 300"
           if [ -e "${User}/log/hosting_cron_use_backend.txt" ]; then
             run_drush8_hmr_cmd "${vSet} hosting_cron_use_backend 1"
           else
@@ -3147,7 +2991,13 @@ action() {
           WHERE task_type='delete' AND task_status='-1'\""
         run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task \
           WHERE task_type='delete' AND task_status='0' AND executed='0'\""
+        run_drush8_hmr_cmd "${vSet} hosting_delete_force 1"
+        run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
+          SET status=1 WHERE publish_path LIKE '%/aegir/distro/%'\""
         check_old_empty_platforms
+        run_drush8_hmr_cmd "${vSet} hosting_delete_force 0"
+        run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
+          SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'\""
         purge_cruft_machine
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
@@ -3174,6 +3024,7 @@ action() {
     fi
   done
   shared_codebases_cleanup
+  check_old_empty_hostmaster_platforms
 }
 
 ###--------------------###
@@ -3207,9 +3058,9 @@ else
 fi
 #
 if [ "${_VMFAMILY}" = "VS" ]; then
-  _MODULES_FORCE="background_process coder cookie_cache_bypass css_gzip hacked \
+  _MODULES_FORCE="coder cookie_cache_bypass css_gzip hacked \
     javascript_aggregator memcache memcache_admin poormanscron search_krumo \
-    security_review site_audit stage_file_proxy syslog supercron ultimate_cron \
+    security_review site_audit stage_file_proxy syslog supercron \
     varnish watchdog_live xhprof automated_cron"
 fi
 #
@@ -3218,14 +3069,14 @@ if [ "${_DOW}" = "7" ]; then
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
   _MODULES_OFF_EIGHT="automated_cron dblog syslog simpletest update"
-  _MODULES_OFF_SEVEN="background_process coder dblog devel hacked l10n_update \
+  _MODULES_OFF_SEVEN="coder dblog devel hacked l10n_update \
    linkchecker memcache memcache_admin performance search_krumo \
-   security_review site_audit stage_file_proxy syslog ultimate_cron update \
+   security_review site_audit stage_file_proxy syslog update \
    varnish watchdog_live xhprof"
-  _MODULES_OFF_SIX="background_process coder cookie_cache_bypass css_gzip \
+  _MODULES_OFF_SIX="coder cookie_cache_bypass css_gzip \
     dblog devel hacked javascript_aggregator linkchecker l10n_update memcache \
     memcache_admin performance poormanscron search_krumo security_review \
-    stage_file_proxy supercron syslog ultimate_cron update varnish \
+    stage_file_proxy supercron syslog update varnish \
     watchdog_live xhprof"
 else
   _MODULES_ON_EIGHT="robotstxt"
@@ -3443,7 +3294,7 @@ else
     wait
     sed -i "s/.*resolver_timeout .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf           &> /dev/null
     wait
-    sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n  resolver 8.8.8.8 8.8.4.4 valid=300s;\n  resolver_timeout 5s;/g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
+    sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n  resolver 1.1.1.1 1.0.0.1 valid=300s;\n  resolver_timeout 5s;/g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
     wait
     sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                      &> /dev/null
     wait
@@ -3512,4 +3363,4 @@ find /var/run/*_backup.pid -mtime +1 -exec rm -rf {} \; &> /dev/null
 rm -f /var/run/daily-fix.pid
 echo "INFO: Daily maintenance complete"
 exit 0
-###EOF2017###
+###EOF2019###

@@ -87,7 +87,7 @@ not_supported_os() {
   echo
   echo "It is not any supported Debian or Ubuntu version."
   echo
-  echo "You need Debian Jessie (recommended) or Wheezy."
+  echo "You need Debian Stretch (recommended) or Jessie."
   echo
   echo "Also Ubuntu (Trusty or Precise) should work fine,"
   echo "although BOA developers use and test only Debian."
@@ -176,7 +176,11 @@ extract_archive() {
 get_dev_arch() {
   if [ ! -z "$1" ]; then
     curl ${crlGet} "${urlDev}/$1" -o "$1"
-    extract_archive "$1"
+    if [ -e "$1" ]; then
+      extract_archive "$1"
+    else
+      msg "OOPS: $1 failed download from ${urlDev}/$1"
+    fi
   fi
 }
 
@@ -185,7 +189,11 @@ get_dev_arch() {
 get_dev_ext() {
   if [ ! -z "$1" ]; then
     curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/$1" -o "$1"
-    extract_archive "$1"
+    if [ -e "$1" ]; then
+      extract_archive "$1"
+    else
+      msg "OOPS: $1 failed download from ${urlDev}/${_AEGIR_XTS_VRN}/$1"
+    fi
   fi
 }
 
@@ -194,7 +202,11 @@ get_dev_ext() {
 get_dev_stc() {
   if [ ! -z "$1" ]; then
     curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/static/$1" -o "$1"
-    extract_archive "$1"
+    if [ -e "$1" ]; then
+      extract_archive "$1"
+    else
+      msg "OOPS: $1 failed download from ${urlDev}/${_AEGIR_XTS_VRN}/static/$1"
+    fi
   fi
 }
 
@@ -203,7 +215,11 @@ get_dev_stc() {
 get_dev_contrib() {
   if [ ! -z "$1" ]; then
     curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/contrib/$1" -o "$1"
-    extract_archive "$1"
+    if [ -e "$1" ]; then
+      extract_archive "$1"
+    else
+      msg "OOPS: $1 failed download from ${urlDev}/${_AEGIR_XTS_VRN}/contrib/$1"
+    fi
   fi
 }
 
@@ -212,7 +228,11 @@ get_dev_contrib() {
 get_dev_src() {
   if [ ! -z "$1" ]; then
     curl ${crlGet} "${urlDev}/src/$1" -o "$1"
-    extract_archive "$1"
+    if [ -e "$1" ]; then
+      extract_archive "$1"
+    else
+      msg "OOPS: $1 failed download from ${urlDev}/src/$1"
+    fi
   fi
 }
 
@@ -360,11 +380,13 @@ mode_detection() {
         -o Dpkg::Options::=--force-confold install"
     else
       _INSTAPP="/usr/bin/aptitude -f -y -q \
+        --allow-untrusted \
         -o Dpkg::Options::=--force-confdef \
         -o Dpkg::Options::=--force-confold install"
     fi
   else
     _INSTAPP="/usr/bin/aptitude -f -y -q \
+      --allow-untrusted \
       -o Dpkg::Options::=--force-confdef \
       -o Dpkg::Options::=--force-confold install"
   fi
@@ -385,7 +407,11 @@ mode_detection() {
     fi
   fi
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
-  if [ -z "${_PHP_SV}" ] || [ "${_PHP_SV}" = "52" ]; then
+  if [ -z "${_PHP_SV}" ] \
+    || [ "${_PHP_SV}" = "55" ] \
+    || [ "${_PHP_SV}" = "54" ] \
+    || [ "${_PHP_SV}" = "53" ] \
+    || [ "${_PHP_SV}" = "52" ]; then
     _PHP_SV=56
   fi
   _PHP_CN="www${_PHP_SV}"
@@ -486,17 +512,22 @@ os_detection() {
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=NO
-      if [ -e "/root/.mstr.clstr.cnf" ] \
-        || [ -e "/root/.wbhd.clstr.cnf" ] \
-        || [ -e "/root/.dbhd.clstr.cnf" ]; then
-        _MARIADB_VRN="${_GALERA_10_VRN}"
+      if [ "${_DB_SERIES}" = "10.3" ]; then
+        _DB_SERVER=MariaDB
+        _DBS_VRN="${_MARIADB_10_3_VRN}"
+      elif [ "${_DB_SERIES}" = "10.2" ]; then
+        _DB_SERVER=MariaDB
+        _DBS_VRN="${_MARIADB_10_2_VRN}"
+      elif [ "${_DB_SERIES}" = "10.1" ]; then
+        _DB_SERVER=MariaDB
+        _DBS_VRN="${_MARIADB_10_1_VRN}"
+      elif [ "${_DB_SERIES}" = "5.7" ]; then
+        _DB_SERVER=Percona
+        _DBS_VRN="${_PERCONA_5_7_VRN}"
       else
-        if [ "${_DB_SERIES}" = "10.2" ]; then
-          _MARIADB_VRN="${_MARIADB_10_2_VRN}"
-        else
-          _DB_SERIES=10.1
-          _MARIADB_VRN="${_MARIADB_10_1_VRN}"
-        fi
+        _DB_SERVER=MariaDB
+        _DB_SERIES=10.1
+        _DBS_VRN="${_MARIADB_10_1_VRN}"
       fi
     elif [ "${_THIS_RV}" = "precise" ]; then
       _OSV="precise"
@@ -507,39 +538,35 @@ os_detection() {
       not_supported_os
     fi
   elif [ "${_THIS_OS}" = "Debian" ]; then
-    if [ "${_THIS_RV}" = "jessie" ]; then
+    if [ "${_THIS_RV}" = "stretch" ]; then
+      _OSV="stretch"
+    elif [ "${_THIS_RV}" = "jessie" ]; then
       _OSV="jessie"
-      _NGINX_FORWARD_SECRECY=YES
-      _NGINX_SPDY=YES
-      _SSH_FROM_SOURCES=YES
-      if [ -e "/root/.mstr.clstr.cnf" ] \
-        || [ -e "/root/.wbhd.clstr.cnf" ] \
-        || [ -e "/root/.dbhd.clstr.cnf" ]; then
-        _MARIADB_VRN="${_GALERA_10_VRN}"
-      else
-        if [ "${_DB_SERIES}" = "10.2" ]; then
-          _MARIADB_VRN="${_MARIADB_10_2_VRN}"
-        else
-          _DB_SERIES=10.1
-          _MARIADB_VRN="${_MARIADB_10_1_VRN}"
-        fi
-      fi
-      _SPINNER=NO
-      _SKIP_LEGACY_PHP=YES
-    elif [ "${_THIS_RV}" = "wheezy" ]; then
-      _OSV="wheezy"
-      _NGINX_FORWARD_SECRECY=YES
-      _NGINX_SPDY=YES
-      _SSH_FROM_SOURCES=YES
-    elif [ "${_THIS_RV}" = "squeeze" ]; then
-      _OSV="squeeze"
-      _OPENSSL_VRN=1.0.1p
-      _NGINX_FORWARD_SECRECY=YES
-      _NGINX_SPDY=YES
-      _SSH_FROM_SOURCES=YES
     else
       not_supported_os
     fi
+    _NGINX_FORWARD_SECRECY=YES
+    _NGINX_SPDY=YES
+    _SSH_FROM_SOURCES=YES
+    if [ "${_DB_SERIES}" = "10.3" ]; then
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_10_3_VRN}"
+    elif [ "${_DB_SERIES}" = "10.2" ]; then
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_10_2_VRN}"
+    elif [ "${_DB_SERIES}" = "10.1" ]; then
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_10_1_VRN}"
+    elif [ "${_DB_SERIES}" = "5.7" ]; then
+      _DB_SERVER=Percona
+      _DBS_VRN="${_PERCONA_5_7_VRN}"
+    else
+      _DB_SERVER=MariaDB
+      _DB_SERIES=10.1
+      _DBS_VRN="${_MARIADB_10_1_VRN}"
+    fi
+    _SPINNER=NO
+    _SKIP_LEGACY_PHP=YES
   else
     not_supported_os
   fi
@@ -551,23 +578,26 @@ os_detection() {
 }
 
 check_boa_php_compatibility() {
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.0" ]] \
-    || [[ "${_PHP_MULTI_INSTALL}" =~ "5.6" ]] \
-    || [[ "${_PHP_MULTI_INSTALL}" =~ "5.5" ]]; then
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.3" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "7.2" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "7.1" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "7.0" ]]; then
     _DO_NOTHING=YES
   else
-    msg "ERROR: This BOA version depends on PHP 5.5 or newer"
-    msg "Please add 5.6 or 7.0 to _PHP_MULTI_INSTALL"
+    msg "ERROR: This BOA version depends on PHP 7.1 or newer"
+    msg "Please add 7.1 and/or 7.2 to _PHP_MULTI_INSTALL"
     msg "in /root/.barracuda.cnf before trying again"
     msg "Bye"
     clean_pid_exit
   fi
   if [ "${_PHP_FPM_VERSION}" = "5.3" ] \
-    || [ "${_PHP_CLI_VERSION}" = "5.3" ] \
     || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
-    || [ "${_PHP_CLI_VERSION}" = "5.4" ]; then
-    msg "ERROR: This BOA version depends on PHP 5.5 or newer"
-    msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 5.6 or 7.0"
+    || [ "${_PHP_FPM_VERSION}" = "5.5" ] \
+    || [ "${_PHP_CLI_VERSION}" = "5.3" ] \
+    || [ "${_PHP_CLI_VERSION}" = "5.4" ] \
+    || [ "${_PHP_CLI_VERSION}" = "5.5" ]; then
+    msg "ERROR: This BOA version depends on PHP 7.1 or newer"
+    msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 7.1 or 7.2"
     msg "in /root/.barracuda.cnf before trying again"
     msg "Bye"
     clean_pid_exit
@@ -614,21 +644,21 @@ check_boa_version() {
   fi
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-    if [[ "${_SERIES_TEST}" =~ "BOA-2.4.9" ]] \
+    if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
       _VERSIONS_TEST_RESULT=OK
     else
       msg "ERROR: This barracuda installer can be used only when the instance"
-      msg "has been already upgraded to previous stable BOA-2.4.9 version"
-      msg "Please run 'barracuda up-2.4' full legacy upgrade first"
+      msg "has been already upgraded to previous stable BOA-3.2.2 version"
+      msg "Please run 'barracuda up-3.2' full upgrade first"
       msg "Bye"
       clean_pid_exit
     fi
-    if [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
-      if [[ ! "${_X_VERSION}" =~ "BOA-3." ]]; then
-        msg "ERROR: Your system has been already upgraded to BOA-3.x.x series"
+    if [[ "${_SERIES_TEST}" =~ "BOA-4." ]]; then
+      if [[ ! "${_X_VERSION}" =~ "BOA-4." ]] ; then
+        msg "ERROR: Your system has been already upgraded to BOA-4.x.x series"
         msg "You can not downgrade back to legacy or previous stable version"
-        msg "Please use 'barracuda up-stable' to upgrade this system"
+        msg "Please use 'barracuda up-head' to upgrade this system"
         msg "Bye"
         clean_pid_exit
       fi

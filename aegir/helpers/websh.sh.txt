@@ -113,21 +113,21 @@ check_php_cli_version() {
       _PHP_CLI=$(grep "/opt/php" /data/disk/${_Y_USR}/tools/drush/drush.php 2>&1)
     fi
   fi
-  if [[ "${_PHP_CLI}" =~ "php70" ]]; then
+  if [[ "${_PHP_CLI}" =~ "php73" ]]; then
+    DRUSH_PHP="/opt/php73/bin/php"
+    PHP_INI="/opt/php73/lib/php.ini"
+  elif [[ "${_PHP_CLI}" =~ "php72" ]]; then
+    DRUSH_PHP="/opt/php72/bin/php"
+    PHP_INI="/opt/php72/lib/php.ini"
+  elif [[ "${_PHP_CLI}" =~ "php71" ]]; then
+    DRUSH_PHP="/opt/php71/bin/php"
+    PHP_INI="/opt/php71/lib/php.ini"
+  elif [[ "${_PHP_CLI}" =~ "php70" ]]; then
     DRUSH_PHP="/opt/php70/bin/php"
     PHP_INI="/opt/php70/lib/php.ini"
   elif [[ "${_PHP_CLI}" =~ "php56" ]]; then
     DRUSH_PHP="/opt/php56/bin/php"
     PHP_INI="/opt/php56/lib/php.ini"
-  elif [[ "${_PHP_CLI}" =~ "php55" ]]; then
-    DRUSH_PHP="/opt/php55/bin/php"
-    PHP_INI="/opt/php55/lib/php.ini"
-  elif [[ "${_PHP_CLI}" =~ "php54" ]]; then
-    DRUSH_PHP="/opt/php54/bin/php"
-    PHP_INI="/opt/php54/lib/php.ini"
-  elif [[ "${_PHP_CLI}" =~ "php53" ]]; then
-    DRUSH_PHP="/opt/php53/bin/php"
-    PHP_INI="/opt/php53/lib/php.ini"
   else
     DRUSH_PHP=""
     PHP_INI=""
@@ -154,22 +154,22 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         check_php_cli_version
         if [[ "$2" =~ "pm-update" ]]; then
           DRUSH_PHP=""
-          _PHP_DEFAULT=$(/usr/bin/php-cli -v | grep 'PHP 5' \
+          _PHP_DEFAULT=$(/usr/bin/php-cli -v | grep 'PHP 7' \
             | cut -d: -f1 | awk '{ print $2}' 2>&1)
           if [ -z "${_PHP_DEFAULT}" ]; then
-            _PHP_DEFAULT=$(/usr/bin/php-cli -v | grep 'PHP 7' \
+            _PHP_DEFAULT=$(/usr/bin/php-cli -v | grep 'PHP 5' \
               | cut -d: -f1 | awk '{ print $2}' 2>&1)
           fi
-          if [[ "${_PHP_DEFAULT}" =~ "7.0." ]]; then
+          if [[ "${_PHP_DEFAULT}" =~ "7.3." ]]; then
+            PHP_INI="/opt/php73/lib/php.ini"
+          elif [[ "${_PHP_DEFAULT}" =~ "7.2." ]]; then
+            PHP_INI="/opt/php72/lib/php.ini"
+          elif [[ "${_PHP_DEFAULT}" =~ "7.1." ]]; then
+            PHP_INI="/opt/php71/lib/php.ini"
+          elif [[ "${_PHP_DEFAULT}" =~ "7.0." ]]; then
             PHP_INI="/opt/php70/lib/php.ini"
           elif [[ "${_PHP_DEFAULT}" =~ "5.6." ]]; then
             PHP_INI="/opt/php56/lib/php.ini"
-          elif [[ "${_PHP_DEFAULT}" =~ "5.5." ]]; then
-            PHP_INI="/opt/php55/lib/php.ini"
-          elif [[ "${_PHP_DEFAULT}" =~ "5.4." ]]; then
-            PHP_INI="/opt/php54/lib/php.ini"
-          elif [[ "${_PHP_DEFAULT}" =~ "5.3." ]]; then
-            PHP_INI="/opt/php53/lib/php.ini"
           fi
         else
           if [ -f "${HOME}/.drush/php.ini" ]; then
@@ -481,8 +481,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     fi
     if [ "${_RUBY_ALLOW}" = "YES" ]; then
       _THIS_RV=$(lsb_release -sc 2>&1)
-      if [ "${_THIS_RV}" = "jessie" ] \
-        || [ "${_THIS_RV}" = "wheezy" ] \
+      if [ "${_THIS_RV}" = "stretch" ] \
+        || [ "${_THIS_RV}" = "jessie" ] \
         || [ "${_THIS_RV}" = "trusty" ] \
         || [ "${_THIS_RV}" = "precise" ]; then
         _DETECTED_RUBY_VP=$(grep 'RUBY_VERSION' \
@@ -495,7 +495,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ]; then
           _RUBY_VP="${_DETECTED_RUBY_VP}"
         else
-          _RUBY_VP=2.4.2
+          _RUBY_VP=2.6.0
         fi
       else
         _DETECTED_RUBY_VP=$(grep 'RUBY_VERSION' \

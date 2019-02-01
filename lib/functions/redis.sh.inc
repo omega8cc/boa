@@ -102,9 +102,9 @@ fix_redis_mode() {
     else
       _REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE//[^0-9.]/}
       if [ ! -z "${_REDIS_LISTEN_MODE}" ]; then
-        _LOCAL_REDIS_PORT_TEST=$(ifconfig \
-          | grep "inet addr:${_REDIS_LISTEN_MODE} " 2>&1)
-        if [[ "${_LOCAL_REDIS_PORT_TEST}" =~ "inet addr:${_REDIS_LISTEN_MODE}" ]]; then
+        find_correct_ip
+        _LOCAL_REDIS_PORT_TEST="${_LOC_IP}"
+        if [ "${_LOCAL_REDIS_PORT_TEST}" = "${_REDIS_LISTEN_MODE}" ]; then
           _REDIS_HOST=LOCAL
         else
           _REDIS_HOST=REMOTE
@@ -220,11 +220,11 @@ install_redis_src() {
   chmod 755 /etc/init.d/redis-server &> /dev/null
   mrun "update-rc.d redis-server defaults" &> /dev/null
   mkdir -p /var/run/redis
-  chown redis:redis /var/run/redis
+  chown -R redis:redis /var/run/redis
   mkdir -p /var/log/redis
-  chown redis:redis /var/log/redis
+  chown -R redis:redis /var/log/redis
   mkdir -p /var/lib/redis
-  chown redis:redis /var/lib/redis
+  chown -R redis:redis /var/lib/redis
   rm -f /var/lib/redis/*
   mkdir -p /etc/redis
   if [ -e "/etc/redis/redis.conf" ] && [ "${_STATUS}" = "UPGRADE" ]; then
@@ -246,9 +246,21 @@ install_redis_src() {
   fi
   update_redis_password
   touch ${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log
+  mrun "service redis-server start" &> /dev/null
+  sleep 3
+  mrun "service redis-server restart" &> /dev/null
 }
 
 install_update_redis() {
+  if [ ! -e "/var/lib/redis" ]; then
+    mrun "adduser --system --group redis" 2> /dev/null
+  fi
+  mkdir -p /var/run/redis
+  chown -R redis:redis /var/run/redis
+  mkdir -p /var/log/redis
+  chown -R redis:redis /var/log/redis
+  mkdir -p /var/lib/redis
+  chown -R redis:redis /var/lib/redis
   if [ "${_STATUS}" = "UPGRADE" ]; then
     _REDIS_V_ITD=$(redis-server -v 2>&1 \
       | tr -d "\n" \

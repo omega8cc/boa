@@ -115,7 +115,13 @@ update_sql_conf() {
       sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf
       wait
     fi
-    if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
+    _LEGACY_CLSTR=NO
+    if [ -f "/root/.mstr.clstr.cnf" ] \
+      || [ -f "/root/.wbhd.clstr.cnf" ] \
+      || [ -f "/root/.dbhd.clstr.cnf" ]; then
+      _LEGACY_CLSTR=YES
+    fi
+    if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ] && [ "${_LEGACY_CLSTR}" = "NO" ]; then
       if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
         _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
         _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
@@ -328,94 +334,122 @@ tune_sql_memory_limits() {
   fi
 }
 
-install_mariadb_sql() {
+install_db_sql() {
+  if [ -x "/usr/bin/gpg2" ]; then
+    _GPG=gpg2
+  else
+    _GPG=gpg
+  fi
   cd /var/opt
+  if [ "${_OSV}" = "stretch" ] \
+    || [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "trusty" ]; then
+    st_runner "${_INSTAPP} software-properties-common dirmngr" 2> /dev/null
+  fi
+  _KEYS_SIG="F1656F24C74CD1D8"
   _KEYS_SERVER_TEST=FALSE
   until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
-    _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
-      --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 2>&1)
+    msg "INFO: Retrieving ${_KEYS_SIG} key.."
+    ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+    ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+    _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
     sleep 2
   done
-  _KEYS_SERVER_TEST=FALSE
-  until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
-    _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
-      --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
-    sleep 2
-  done
+  _KEYS_SIG="9334A25F8507EFA5"
   _KEYS_SERVER_TEST=FALSE
   until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
-    _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
-      --keyserver hkp://keyserver.ubuntu.com:80 8507EFA5 2>&1)
+    msg "INFO: Retrieving ${_KEYS_SIG} key.."
+    ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+    ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+    _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
     sleep 2
   done
-  if [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "jessie" ]; then
-    st_runner "${_INSTAPP} software-properties-common" 2> /dev/null
-  fi
+  _KEYS_SIG=""
+  _KEYS_SERVER_TEST=FALSE
   if [ "${_THIS_OS}" = "Debian" ]; then
     _OSN=debian
   elif [ "${_THIS_OS}" = "Ubuntu" ]; then
     _OSN=ubuntu
   fi
-  if [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "jessie" ]; then
+  if [ "${_OSV}" = "stretch" ] \
+    || [ "${_OSV}" = "jessie" ] \
+    || [ "${_OSV}" = "trusty" ]; then
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
-      _MARIADB_VRN="${_GALERA_10_VRN}"
+      _DBS_VRN="${_GALERA_10_VRN}"
     else
-      if [ "${_DB_SERIES}" = "10.2" ]; then
-        _MARIADB_VRN="${_MARIADB_10_2_VRN}"
+      if [ "${_DB_SERIES}" = "10.3" ]; then
+        _DB_SERVER=MariaDB
+        _DBS_VRN="${_MARIADB_10_3_VRN}"
+      elif [ "${_DB_SERIES}" = "10.2" ]; then
+        _DB_SERVER=MariaDB
+        _DBS_VRN="${_MARIADB_10_2_VRN}"
+      elif [ "${_DB_SERIES}" = "10.1" ]; then
+        _DB_SERVER=MariaDB
+        _DBS_VRN="${_MARIADB_10_1_VRN}"
+      elif [ "${_DB_SERIES}" = "5.7" ]; then
+        _DB_SERVER=Percona
+        _DBS_VRN="${_PERCONA_5_7_VRN}"
+        cd /var/opt
+        rm -rf /var/opt/percona*
+        wget -q -U iCab \
+          https://repo.percona.com/apt/percona-release_latest.$(lsb_release -sc)_all.deb &> /dev/null
+        dpkg -i percona-release_latest.$(lsb_release -sc)_all.deb &> /dev/null
+        rm -f /etc/apt/sources.list.d/mariadb.*
+        echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
       else
+        _DB_SERVER=MariaDB
         _DB_SERIES=10.1
-        _MARIADB_VRN="${_MARIADB_10_1_VRN}"
+        _DBS_VRN="${_MARIADB_10_1_VRN}"
       fi
     fi
-    msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
+    msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSV}"
   else
-    if [ "${_DB_SERIES}" = "10.2" ] \
+    if [ "${_DB_SERIES}" = "10.3" ] \
+      || [ "${_DB_SERIES}" = "10.2" ] \
       || [ "${_DB_SERIES}" = "10.1" ] \
       || [ "${_DB_SERIES}" = "10.0" ] \
       || [ "${_DB_SERIES}" = "5.5" ]; then
       _DO_NOTHING=YES
     else
       _DB_SERIES=10.1
-      _MARIADB_VRN="${_MARIADB_10_1_VRN}"
-      msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
+      _DBS_VRN="${_MARIADB_10_1_VRN}"
+      msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSV}"
     fi
     if [ -z "${_DB_SERIES}" ]; then
       _DB_SERIES=10.1
-      _MARIADB_VRN="${_MARIADB_10_1_VRN}"
-      msg "INFO: Forced MariaDB ${_MARIADB_VRN} in ${_THIS_OS}/${_OSV}"
+      _DBS_VRN="${_MARIADB_10_1_VRN}"
+      msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSV}"
     fi
   fi
   rm -f /etc/apt/sources.list.d/openssl.list
-  aptRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
-  aptLiDb="${aptLiSys}.d/mariadb.list"
-  echo "## MariaDB APT Repository" > ${aptLiDb}
-  echo "deb http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
-  echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+  if [ "${_DB_SERVER}" = "MariaDB" ]; then
+    aptRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
+    aptLiDb="${aptLiSys}.d/mariadb.list"
+    echo "## MariaDB APT Repository" > ${aptLiDb}
+    echo "deb http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+    echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+  fi
   xtraRepo="repo.percona.com/apt"
   xtraList="${aptLiSys}.d/xtrabackup.list"
   echo "## Percona XtraBackup APT Repository" > ${xtraList}
   echo "deb http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
   echo "deb-src http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
-  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
-    || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
-    msg "WARN: Installed keyring is broken, forced reinstall required"
-    if [ "${_THIS_OS}" = "Debian" ]; then
-      st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
-      st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
-    else
-      st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
-    fi
-  fi
+  # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+  # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
+  #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
+  #   msg "WARN: Installed keyring is broken, forced reinstall required"
+  #   if [ "${_THIS_OS}" = "Debian" ]; then
+  #     st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
+  #     st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
+  #   else
+  #     st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
+  #   fi
+  # fi
   st_runner "aptitude remove mytop -y" &> /dev/null
   st_runner "apt-get purge mytop -y" &> /dev/null
   rm -f /usr/bin/mytop
-  st_runner "aptitude remove mysql-common -y" &> /dev/null
-  st_runner "apt-get purge mysql-common -y" &> /dev/null
   st_runner "apt-get update -qq" &> /dev/null
   if [ "${_EASY_SETUP}" = "MSTR" ] \
     || [ "${_EASY_SETUP}" = "DBHD" ] \
@@ -425,21 +459,62 @@ install_mariadb_sql() {
     || [ -e "/root/.dbhd.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ]; then
     SQLDEB="mariadb-galera-server"
+  elif [ "${_DB_SERIES}" = "5.7" ]; then
+    st_runner "aptitude remove mariadb-server-5.5 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-client-5.5 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-server-10.1 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-client-10.1 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-server-10.2 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-client-10.2 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-server-10.3 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-client-10.3 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-server mariadb-common -y" &> /dev/null
+    st_runner "aptitude remove libmysqlclient18.1 -y" &> /dev/null
+    st_runner "aptitude remove libmariadbclient-dev -y" &> /dev/null
+    st_runner "aptitude remove libmariadb-dev -y" &> /dev/null
+    st_runner "aptitude remove libmariadbd-dev -y" &> /dev/null
+    st_runner "aptitude remove libmysqlclient18 -y" &> /dev/null
+    st_runner "apt-get purge libmysqlclient18.1 -y" &> /dev/null
+    st_runner "apt-get purge libmariadbclient-dev -y" &> /dev/null
+    st_runner "apt-get purge libmariadb-dev -y" &> /dev/null
+    st_runner "apt-get purge libmariadbd-dev -y" &> /dev/null
+    st_runner "apt-get purge libmysqlclient18 -y" &> /dev/null
+    SQLDEB="percona-server-server-${_DB_SERIES}"
   else
+    st_runner "aptitude remove mysql-common -y" &> /dev/null
+    st_runner "apt-get purge mysql-common -y" &> /dev/null
     SQLDEB="mariadb-server-${_DB_SERIES} \
             mariadb-client-${_DB_SERIES} \
+            mariadb-server \
             mariadb-common"
   fi
-  SQLADD="libmariadbclient-dev \
-          libmysqlclient18.1 \
-          libdbd-mysql-perl \
-          percona-xtrabackup-24 \
-          python-mysqldb \
-          libdbi-perl"
+  if [ "${_DB_SERIES}" = "10.3" ] \
+    || [ "${_DB_SERIES}" = "10.2" ]; then
+    SQLADD="libmariadb-dev \
+            libmariadbd-dev \
+            libmysqlclient18 \
+            libdbd-mysql-perl \
+            percona-xtrabackup-24 \
+            python-mysqldb \
+            libdbi-perl"
+  elif [ "${_DB_SERIES}" = "10.1" ] \
+    || [ "${_DB_SERIES}" = "5.5" ]; then
+    SQLADD="libmariadbclient-dev \
+            libmysqlclient18.1 \
+            libdbd-mysql-perl \
+            percona-xtrabackup-24 \
+            python-mysqldb \
+            libdbi-perl"
+  elif [ "${_DB_SERIES}" = "5.7" ]; then
+    SQLADD="default-libmysqlclient-dev \
+            percona-xtrabackup-24 \
+            python-mysqldb \
+            libdbi-perl"
+  fi
 }
 
 install_with_aptitude_sql() {
-  if [ "${_OSV}" = "squeeze" ] \
+  if [ "${_OSV}" = "stretch" ] \
     || [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
@@ -450,9 +525,9 @@ install_with_aptitude_sql() {
       || [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ]; then
-      msg "INFO: Installing MariaDB Galera Cluster..."
+      msg "INFO: Installing ${_DB_SERVER} Galera Cluster..."
     else
-      msg "INFO: Installing MariaDB..."
+      msg "INFO: Installing ${_DB_SERVER}..."
     fi
   else
     if [ "${_EASY_SETUP}" = "MSTR" ] \
@@ -462,12 +537,12 @@ install_with_aptitude_sql() {
       || [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ]; then
-      msg "INFO: Installing MariaDB Galera Cluster..."
+      msg "INFO: Installing ${_DB_SERVER} Galera Cluster..."
     else
-      msg "INFO: Installing MariaDB..."
+      msg "INFO: Installing ${_DB_SERVER}..."
     fi
   fi
-  install_mariadb_sql
+  install_db_sql
   st_runner "${_INSTAPP} mytop" 2> /dev/null
   if [ -e "${pthLog}" ]; then
     touch ${pthLog}/fixed-mytop-mariadb.log
@@ -564,7 +639,12 @@ forced_mysql_root_password_update() {
   fi
 }
 
-install_mariadb_server() {
+install_db_server() {
+  if [ -x "/usr/bin/gpg2" ]; then
+    _GPG=gpg2
+  else
+    _GPG=gpg
+  fi
   if [ "${_STATUS}" = "INIT" ]; then
     service cron stop &> /dev/null
     if [ -e "/usr/sbin/csf" ] \
@@ -576,31 +656,29 @@ install_mariadb_server() {
     fi
     install_with_aptitude_sql
   else
-    if [ "$_UP_NRC" = "YES" ]; then
+    if [ "${_UP_NRC}" = "YES" ]; then
       update_newrelic
     fi
     _SQL_UPGRADE=NO
-    if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
+    if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERVER}" ]]; then
       _SQL_TEST_UPGRADE=NO
     else
       _SQL_TEST_UPGRADE=YES
     fi
-    if [ "$_SQL_TEST_UPGRADE" = "YES" ] \
-      && [ "${_DB_SERVER}" = "MariaDB" ]; then
+    if [ "${_SQL_TEST_UPGRADE}" = "YES" ]; then
       _SQL_UPGRADE=YES
     fi
-    if [ "${_OSV}" = "squeeze" ] \
-      && [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]] \
-      && [[ "${_DB_SERVER_TEST}" =~ " 5.3." ]]; then
-      _SQL_UPGRADE=YES
-    fi
-    if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
+    if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]] \
+      || [[ "${_DB_SERVER_TEST}" =~ "Percona" ]]; then
       if [[ "${_DB_SERVER_TEST}" =~ " 5.1." ]] \
         || [[ "${_DB_SERVER_TEST}" =~ " 5.2." ]]; then
         _SQL_UPGRADE=YES
-      fi
-      if [ "${_DB_SERIES}" = "5.5" ]; then
+      elif [ "${_DB_SERIES}" = "5.5" ]; then
         if [[ ! "${_DB_SERVER_TEST}" =~ "5.5." ]]; then
+          _SQL_UPGRADE=YES
+        fi
+      elif [ "${_DB_SERIES}" = "5.7" ]; then
+        if [[ ! "${_DB_SERVER_TEST}" =~ "5.7" ]]; then
           _SQL_UPGRADE=YES
         fi
       elif [ "${_DB_SERIES}" = "10.1" ] \
@@ -612,23 +690,34 @@ install_mariadb_server() {
         if [[ ! "${_DB_SERVER_TEST}" =~ "10.2." ]]; then
           _SQL_UPGRADE=YES
         fi
+      elif [ "${_DB_SERIES}" = "10.3" ]; then
+        if [[ ! "${_DB_SERVER_TEST}" =~ "10.3." ]]; then
+          _SQL_UPGRADE=YES
+        fi
       fi
     fi
     if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       _SQL_UPGRADE=YES
     fi
-    if [ "${_WHEEZY_TO_JESSIE}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "wheezy" ]; then
-      _SQL_UPGRADE=NO
-    elif [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "squeeze" ]; then
+    if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
+      && [ "${_LOC_OSV}" = "jessie" ]; then
       _SQL_UPGRADE=NO
     fi
-    _SQL_DEB_SRC_TEST=$(grep ${_DB_SRC} \
-      ${aptLiSys}.d/mariadb.list 2>&1)
-    if [[ "$_SQL_DEB_SRC_TEST" =~ "${_DB_SRC}" ]] \
-      && [ -e "${pthLog}/mariadb-apt-fixed-${_X_VERSION}.log" ]; then
+    if [ "${_DB_SERVER}" = "MariaDB" ]; then
+      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
+        ${aptLiSys}.d/mariadb.list 2>&1)
+      _SQL_DEB_SRC_TEST_B=$(grep ${_OSV} \
+        ${aptLiSys}.d/mariadb.list 2>&1)
+    else
+      _DB_SRC="percona"
+      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
+        ${aptLiSys}.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_B=$(grep ${_OSV} \
+        ${aptLiSys}.d/percona-release.list 2>&1)
+    fi
+    if [[ "$_SQL_DEB_SRC_TEST_A" =~ "${_DB_SRC}" ]] \
+      && [[ "$_SQL_DEB_SRC_TEST_B" =~ "${_OSV}" ]]; then
       _SQL_DEB_SRC_UPDATE=NO
     else
       if [ "${_THIS_OS}" = "Debian" ]; then
@@ -636,16 +725,32 @@ install_mariadb_server() {
       elif [ "${_THIS_OS}" = "Ubuntu" ]; then
         _OSN=ubuntu
       fi
-      aptRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
-      aptLiDb="${aptLiSys}.d/mariadb.list"
-      echo "## MariaDB APT Repository" > ${aptLiDb}
-      echo "deb http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
-      echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+      if [ "${_DB_SERVER}" = "MariaDB" ]; then
+        aptRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
+        aptLiDb="${aptLiSys}.d/mariadb.list"
+        echo "## MariaDB APT Repository" > ${aptLiDb}
+        echo "deb http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+        echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+        rm -f /etc/apt/sources.list.d/percona-release.*
+        rm -f /etc/apt/preferences.d/00percona.pref
+      else
+        xtraRepo="repo.percona.com/apt"
+        xtraList="${aptLiSys}.d/xtrabackup.list"
+        echo "## Percona XtraBackup APT Repository" > ${xtraList}
+        echo "deb http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
+        echo "deb-src http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
+        cd /var/opt
+        rm -rf /var/opt/percona*
+        wget -q -U iCab \
+          https://repo.percona.com/apt/percona-release_latest.$(lsb_release -sc)_all.deb &> /dev/null
+        dpkg -i percona-release_latest.$(lsb_release -sc)_all.deb &> /dev/null
+        rm -f /etc/apt/sources.list.d/mariadb.*
+        echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
+      fi
       rm -f /etc/apt/sources.list.d/openssl.list
       st_runner "apt-get update -qq" &> /dev/null
-      touch ${pthLog}/mariadb-apt-fixed-${_X_VERSION}.log
     fi
-    if [ "$_SQL_UPGRADE" = "YES" ]; then
+    if [ "${_SQL_UPGRADE}" = "YES" ]; then
       service cron stop &> /dev/null
       if [ -e "/usr/sbin/csf" ] \
         && [ -e "/etc/csf/csf.deny" ]; then
@@ -659,25 +764,40 @@ install_mariadb_server() {
         mrun "sleep 120"
         mrun "service nginx stop" &> /dev/null
       fi
-      rm -f ${aptLiSys}.d/percona.list
       rm -f ${aptLiSys}.d/ourdelta.list
+      _KEYS_SIG="F1656F24C74CD1D8"
       _KEYS_SERVER_TEST=FALSE
       until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
-        _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
-          --keyserver hkp://keyserver.ubuntu.com:80 0xF1656F24C74CD1D8 2>&1)
+        msg "INFO: Retrieving ${_KEYS_SIG} key.."
+        ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+        ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+        _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
         sleep 2
       done
+      _KEYS_SIG="9334A25F8507EFA5"
       _KEYS_SERVER_TEST=FALSE
-      until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
-        _KEYS_SERVER_TEST=$(apt-key adv --recv-keys \
-          --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1)
+      until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
+        msg "INFO: Retrieving ${_KEYS_SIG} key.."
+        ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+        ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+        _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
         sleep 2
       done
+      _KEYS_SIG=""
+      _KEYS_SERVER_TEST=FALSE
+      if [ "${_THIS_OS}" = "Debian" ]; then
+        _OSN=debian
+      elif [ "${_THIS_OS}" = "Ubuntu" ]; then
+        _OSN=ubuntu
+      fi
       rm -f /etc/apt/sources.list.d/openssl.list
       st_runner "aptitude autoclean -y" &> /dev/null
       st_runner "apt-get clean -qq" &> /dev/null
+      rm -f -r /var/lib/apt/lists/*
       st_runner "apt-get update -qq" &> /dev/null
-      cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
+      if [ "$_DB_SERVER" = "MariaDB" ]; then
+        cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
+      fi
       sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
       wait
       sed -i "s/.*language/#language/g" /etc/mysql/my.cnf

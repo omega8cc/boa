@@ -27,7 +27,7 @@ crontab_update() {
       echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
-      echo "08 8    * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "44 22    * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     echo "*/8 *    * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     sed -i "/^$/d"                /etc/crontab &> /dev/null
@@ -92,7 +92,7 @@ crontab_clean() {
       echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
-      echo "08 8    * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "44 22    * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     echo "*/8 *    * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     sed -i "/^$/d"                /etc/crontab &> /dev/null
@@ -173,7 +173,7 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP_DAY=
     _AUTO_PHP=
     _AUTO_VER="stable"
-    sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"5.6 5.5 5.3\"/g" ${barCnf}
+    sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"7.2 5.6\"/g" ${barCnf}
     wait
     sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" ${barCnf}
     wait
@@ -191,4 +191,4 @@ if [ -e "/data/disk/arch" ]; then
     crontab_clean
   fi
 fi
-###EOF2017###
+###EOF2019###

@@ -5,7 +5,7 @@
 ###
 ###  Barracuda Aegir Installer
 ###
-###  Copyright (C) 2010-2017 Omega8.cc
+###  Copyright (C) 2010-2019 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -33,69 +33,73 @@
 ###
 ### Software versions
 ###
-_ADMINER_VRN=4.3.1
+_ADMINER_VRN=4.7.0
 _BZR_VRN=2.6.0
 _CGP_VRN=master-30-03-2014
 _CHIVE_VRN=1.3
-_CSF_VRN=10.22
+_CSF_VRN=12.09
 _CURL_VRN=7.50.1
 _DB_SRC=ftp.osuosl.org
 _DRUSH7_VRN=mini-7-30-06-2015
-_DRUSH8_VRN=micro-8-07-10-2017
-_GALERA_10_VRN=10.0.33
+_DRUSH8_VRN=8.1.18.2
+_GALERA_10_VRN=10.0.37
 _GEOS_VRN=3.5.0
-_GIT_VRN=2.7.0
+_GIT_VRN=2.20.1
 _IMAGE_MAGICK_VRN=7.0.4-6
 _IMAGICK_OLD_VRN=3.1.2
-_IMAGICK_VRN=3.3.0
-_IONCUBE_VRN=5.1.1
+_IMAGICK_VRN=3.4.3
+_IONCUBE_VRN=10.2.7
 _JETTY_7_VRN=7.6.17.v20150415
 _JETTY_8_VRN=8.1.17.v20150415
 _JETTY_9_VRN=9.2.16.v20160414
 _JSMIN_LEGACY_VRN=1.1.0
+_JSMIN_PHP7_VRN=3.0.0
 _JSMIN_VRN=2.0.0
 _LIB_TIDY_VRN=5.2.0
 _LIB_YAML_VRN=0.1.6
 _LOGJ4_VRN=1.2.17
-_LSHELL_VRN=0.9.18.8
+_LSHELL_VRN=0.9.18.9
 _MAILPARSE_VRN=2.1.6
-_MARIADB_10_1_VRN=10.1.30
-_MARIADB_10_2_VRN=10.2.12
-_MARIADB_5_VRN=5.5.59
+_MARIADB_10_1_VRN=10.1.37
+_MARIADB_10_2_VRN=10.2.21
+_MARIADB_10_3_VRN=10.3.12
 _MONGO_VRN=1.6.14
 _MONGODB_VRN=1.2.5
-_MSS_VRN=master-20-03-2015
-_MYSQLTUNER_VRN=1.7.0
-_NGINX_VRN=1.13.8
+_MSS_VRN=master-23-12-2018
+_MYSQLTUNER_VRN=1.7.13
+_NGINX_VRN=1.15.8
 _OPCACHE_VRN=7.0.5
-_OPENSSH_VRN=7.6p1
-_OPENSSL_NGX_VRN=1.0.2n
-_OPENSSL_VRN=1.0.2n
-_PHP53_API=20090626
-_PHP53_VRN=5.3.29
-_PHP54_API=20100525
-_PHP54_VRN=5.4.45
-_PHP55_API=20121212
-_PHP55_VRN=5.5.38
+_OPENSSH_VRN=7.9p1
+_OPENSSL_NGX_VRN=1.0.2q
+_OPENSSL_VRN=1.0.2q
+_PDNSD_VRN=1.2.9a
+_PERCONA_5_7_VRN=5.7
 _PHP56_API=20131226
-_PHP56_VRN=5.6.33
+_PHP56_VRN=5.6.40
 _PHP70_API=20151012
-_PHP70_VRN=7.0.27
-_PHPREDIS_PHP7_VRN=3.1.6
-_PHPREDIS_VRN=3.1.6
+_PHP70_VRN=7.0.33
+_PHP71_API=20160303
+_PHP71_VRN=7.1.26
+_PHP72_API=20170718
+_PHP72_VRN=7.2.14
+_PHP73_API=20180731
+_PHP73_VRN=7.3.1
+_PHPREDIS_VRN=4.2.0
 _PURE_FTPD_VRN=1.0.47
-_REDIS_VRN=4.0.6
-_RUBY_VRN=2.4.2
+_REDIS_VRN=4.0.12
+_RUBY_VRN=2.6.0
 _SLF4J_VRN=1.7.21
 _SOLR_1_VRN=1.4.1
 _SOLR_3_VRN=3.6.2
 _SOLR_4_VRN=4.9.1
+_SOLR_7_VRN=7.6.0
 _TWIGC_VRN=1.24.0
-_UPROGRESS_VRN=1.0.3.1
-_VNSTAT_VRN=1.15
+_UPROGRESS_LEGACY_VRN=1.0.3.1
+_UPROGRESS_SEVEN_VRN=2.0.1.6
+_VNSTAT_VRN=2.0
 _WKHTMLTOX_VRN=0.12.4
-_YAML_PHP7_VRN=2.0.0RC7
-_YAML_VRN=1.2.0
+_YAML_PHP7_VRN=2.0.4
+_YAML_VRN=1.3.2
 _ZLIB_VRN=1.2.8
 
 
@@ -110,7 +114,7 @@ _NOW=$(date +%y%m%d-%H%M 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _PURGE_ALL_THISHTIP=NO
 _PURGE_MODE=ON
-_SMALLCORE7=7.56.1
+_SMALLCORE7=7.63.5
 _SPINNER=YES
 _THIS_DB_PORT=3306
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
@@ -127,7 +131,7 @@ aptLiSys="/etc/apt/sources.list"
 barCnf="/root/.barracuda.cnf"
 bldPth="/opt/tmp/boa"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-forCer="-fuy --force-yes --reinstall"
+forCer="-fuy --allow-unauthenticated --reinstall"
 filIncB="barracuda.sh.cnf"
 gitHub="https://github.com/omega8cc"
 gitLab="https://gitlab.com/omega8cc"
@@ -245,7 +249,7 @@ more_packages_install_on_init
 check_boa_php_compatibility
 check_boa_version
 check_github_for_aegir_head_mode
-check_mariadb_src
+check_db_src
 check_git_repos
 check_ip_hostname
 check_prepare_dirs_permissions
@@ -254,8 +258,7 @@ check_prepare_dirs_permissions
 ###
 ### Optional major system upgrades
 ###
-if_wheezy_to_jessie
-if_squeeze_to_wheezy
+if_jessie_to_stretch
 
 
 ###
@@ -278,6 +281,7 @@ sys_packages_install
 fix_postfix
 install_with_aptitude_deps
 fix_locales
+install_with_aptitude_deps
 
 
 ###
@@ -297,14 +301,6 @@ if [ "${_NGINX_SPDY}" = "YES" ] \
     || [ "${_OSV}" = "wily" ]; then
     _DO_NOTHING=YES
   else
-    if [ "${_OSV}" = "squeeze" ]; then
-      if [ "${_SQUEEZE_TO_WHEEZY}" = "YES" ] \
-        && [ "${_LOC_OSV}" = "squeeze" ]; then
-        _DO_NOTHING=YES
-      else
-        install_ssl_src
-      fi
-    fi
     if [ "${_THIS_OS}" = "Debian" ]; then
       install_ssh_src
     fi
@@ -326,7 +322,7 @@ fi
 ###
 ### Install MariaDB server
 ###
-install_mariadb_server
+install_db_server
 
 
 ###
@@ -352,7 +348,6 @@ install_curl_src
 install_update_php
 php_upgrade_all
 check_fix_php
-install_update_composer
 check_fix_avatars
 check_fix_umask
 check_fix_bin_extra
@@ -445,7 +440,7 @@ exit 0
 ###----------------------------------------###
 ###
 ###  Barracuda Aegir Installer
-###  Copyright (C) 2010-2017 Omega8.cc
+###  Copyright (C) 2010-2019 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

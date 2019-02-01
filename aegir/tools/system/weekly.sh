@@ -48,7 +48,7 @@ read_account_data() {
   _ENGINE_NR=
   _CLIENT_EMAIL=
   _CLIENT_OPTION=
-  _DSK_CLU_LIMIT=
+  _DSK_CLU_LIMIT=1
   if [ -e "/data/disk/${_THIS_U}/log/email.txt" ]; then
     _CLIENT_EMAIL=$(cat /data/disk/${_THIS_U}/log/email.txt 2>&1)
     _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
@@ -95,7 +95,7 @@ and no longer supported PHP version: $1
 
 We have provided over a year of extended support for
 this PHP version, but now we can't extend it any further,
-because your system has to be upgraded to Debian Jessie,
+because your system has to be upgraded to Debian Stretch,
 which doesn't support deprecated PHP versions.
 
 The upgrade will happen in the first week of December, 2016,
@@ -103,11 +103,11 @@ and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
 will stop working if not switched to one of currently
-supported versions: 5.6, 7.0 or 5.5
+supported versions: 7.3, 7.2, 7.1, 7.0 or 5.6
 
 To switch PHP-FPM version on command line, please type:
 
-  echo 5.6 > ~/static/control/fpm.info
+  echo 7.2 > ~/static/control/fpm.info
 
 You can find more details at: https://learn.omega8.cc/node/330
 
@@ -130,7 +130,7 @@ and no longer supported PHP version: $1
 
 We have provided over a year of extended support for
 this PHP version, but now we can't extend it any further,
-because your system has to be upgraded to Debian Jessie,
+because your system has to be upgraded to Debian Stretch,
 which doesn't support deprecated PHP versions.
 
 The upgrade will happen in the first week of December, 2016,
@@ -138,11 +138,11 @@ and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
 will stop working if not switched to one of currently
-supported versions: 5.6, 7.0 or 5.5
+supported versions: 7.3, 7.2, 7.1, 7.0 or 5.6
 
 To switch PHP-FPM version on command line, please type:
 
-  echo 5.6 > ~/static/control/fpm.info
+  echo 7.2 > ~/static/control/fpm.info
 
 You can find more details at: https://learn.omega8.cc/node/330
 
@@ -165,7 +165,7 @@ and no longer supported PHP version: $1
 
 We have provided over a year of extended support for
 this PHP version, but now we can't extend it any further,
-because your system has to be upgraded to Debian Jessie,
+because your system has to be upgraded to Debian Stretch,
 which doesn't support deprecated PHP versions.
 
 The upgrade will happen in the first week of December, 2016,
@@ -173,11 +173,11 @@ and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
 will stop working if not switched to one of currently
-supported versions: 5.6, 7.0 or 5.5
+supported versions: 7.3, 7.2, 7.1, 7.0 or 5.6
 
 To switch PHP-FPM version on command line, please type:
 
-  echo 5.6 > ~/static/control/fpm.info
+  echo 7.2 > ~/static/control/fpm.info
 
 You can find more details at: https://learn.omega8.cc/node/330
 
@@ -200,7 +200,8 @@ detect_deprecated_php() {
     && [ ! -e "${User}/log/CANCELLED" ]; then
     _PHP_FPM_VERSION=$(cat ${User}/static/control/fpm.info 2>&1)
     _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
-    if [ "${_PHP_FPM_VERSION}" = "5.4" ] \
+    if [ "${_PHP_FPM_VERSION}" = "5.5" ] \
+      || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
       || [ "${_PHP_FPM_VERSION}" = "5.3" ]; then
       echo Deprecated PHP-FPM ${_PHP_FPM_VERSION} detected in ${_THIS_U}
       read_account_data
@@ -669,6 +670,136 @@ EOF
   echo "INFO: Notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
 }
 
+
+send_notice_gprd() {
+  _MY_EMAIL="support@omega8.cc"
+  _BCC_EMAIL="omega8cc@gmail.com"
+  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _MAILX_TEST=$(mail -V 2>&1)
+  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
+  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
+    -s "GDPR compliance for your Aegir account" ${_CLIENT_EMAIL}
+Hello,
+
+Yes, yet another GDPR email, but it's important that you read and understand
+how this new law affects your hosting with us.
+
+The General Data Protection Regulation (GDPR) is a new European privacy law
+that goes into effect on May 25, 2018.
+
+The GDPR will replace the EU Data Protection Directive, also known as
+Directive 95/46/EC, and will apply a single data protection law
+throughout the EU.
+
+Data protection laws govern the way that businesses collect, use, and share
+personal data about individuals. Among other things, they require businesses
+to process an individual’s personal data fairly and lawfully, allow individuals
+to exercise legal rights in respect of their personal data (for example,
+to access, correct or delete their personal data), and ensure appropriate
+security protections are put in place to protect the personal data they process.
+
+We have taken steps to ensure that we will be compliant with the GDPR
+by May 25, 2018.
+
+Please read all details on our website at:
+
+https://omega8.cc/gdpr
+https://omega8.cc/gdpr-faq
+https://omega8.cc/gdpr-dpa
+https://omega8.cc/gdpr-portability
+
+Please contact us if you have any questions: https://omega8.cc/contact
+
+Thank you for your attention.
+
+---
+Omega8.cc
+
+EOF
+  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
+  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
+    -s "GDPR compliance for your Aegir account" ${_CLIENT_EMAIL}
+Hello,
+
+Yes, yet another GDPR email, but it's important that you read and understand
+how this new law affects your hosting with us.
+
+The General Data Protection Regulation (GDPR) is a new European privacy law
+that goes into effect on May 25, 2018.
+
+The GDPR will replace the EU Data Protection Directive, also known as
+Directive 95/46/EC, and will apply a single data protection law
+throughout the EU.
+
+Data protection laws govern the way that businesses collect, use, and share
+personal data about individuals. Among other things, they require businesses
+to process an individual’s personal data fairly and lawfully, allow individuals
+to exercise legal rights in respect of their personal data (for example,
+to access, correct or delete their personal data), and ensure appropriate
+security protections are put in place to protect the personal data they process.
+
+We have taken steps to ensure that we will be compliant with the GDPR
+by May 25, 2018.
+
+Please read all details on our website at:
+
+https://omega8.cc/gdpr
+https://omega8.cc/gdpr-faq
+https://omega8.cc/gdpr-dpa
+https://omega8.cc/gdpr-portability
+
+Please contact us if you have any questions: https://omega8.cc/contact
+
+Thank you for your attention.
+
+---
+Omega8.cc
+
+EOF
+  else
+  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+    -s "GDPR compliance for your Aegir account" ${_CLIENT_EMAIL}
+Hello,
+
+Yes, yet another GDPR email, but it's important that you read and understand
+how this new law affects your hosting with us.
+
+The General Data Protection Regulation (GDPR) is a new European privacy law
+that goes into effect on May 25, 2018.
+
+The GDPR will replace the EU Data Protection Directive, also known as
+Directive 95/46/EC, and will apply a single data protection law
+throughout the EU.
+
+Data protection laws govern the way that businesses collect, use, and share
+personal data about individuals. Among other things, they require businesses
+to process an individual’s personal data fairly and lawfully, allow individuals
+to exercise legal rights in respect of their personal data (for example,
+to access, correct or delete their personal data), and ensure appropriate
+security protections are put in place to protect the personal data they process.
+
+We have taken steps to ensure that we will be compliant with the GDPR
+by May 25, 2018.
+
+Please read all details on our website at:
+
+https://omega8.cc/gdpr
+https://omega8.cc/gdpr-faq
+https://omega8.cc/gdpr-dpa
+https://omega8.cc/gdpr-portability
+
+Please contact us if you have any questions: https://omega8.cc/contact
+
+Thank you for your attention.
+
+---
+Omega8.cc
+
+EOF
+  fi
+  echo "INFO: GDPR notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
+}
+
 check_limits() {
   _SQL_MIN_LIMIT=0
   _SQL_MAX_LIMIT=0
@@ -678,6 +809,9 @@ check_limits() {
   _DSK_CLU_LIMIT=1
   read_account_data
   if [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
+    if [ -z "${_DSK_CLU_LIMIT}" ]; then
+      _DSK_CLU_LIMIT=1
+    fi
     _SQL_MIN_LIMIT=51200
     _DSK_MIN_LIMIT=102400
     _DSK_MAX_LIMIT=107520
@@ -762,6 +896,13 @@ check_limits() {
     echo Disk Usage for ${_THIS_U} above limits
   else
     echo Disk Usage for ${_THIS_U} below limits
+  fi
+  if [ ! -e "${User}/log/GDPRsent.log" ]; then
+    if [ ! -e "${User}/log/CANCELLED" ]; then
+      send_notice_gprd
+      touch ${User}/log/GDPRsent.log
+      echo GDPR info for ${_THIS_U} sent
+    fi
   fi
 }
 
@@ -951,4 +1092,4 @@ mkdir -p /var/xdrago/log/usage
 action >/var/xdrago/log/usage/usage-${_NOW}.log 2>&1
 echo "INFO: Daily maintenance complete"
 exit 0
-###EOF2017###
+###EOF2019###

@@ -87,9 +87,8 @@ production settings.
 
 ### SUPPORTED LTS OS {c} please read also: docs/CAVEATS.txt
 
-* Debian 8 Jessie (recommended)
-* Debian 7 Wheezy (upgrade to Jessie with _WHEEZY_TO_JESSIE=YES)
-* Debian 6 Squeeze (limited to upgrade to Wheezy with _SQUEEZE_TO_WHEEZY=YES)
+* Debian 9 Stretch (recommended)
+* Debian 8 Jessie (upgrade to Stretch with _JESSIE_TO_STRETCH=YES)
 * Ubuntu Trusty 14.04 (limited support)
 * Ubuntu Precise 12.04 (limited support)
 
@@ -99,7 +98,7 @@ production settings.
 * SSH (RSA) keys for root are required by newer OpenSSH versions used in BOA.
 * Wget must be installed.
 * The outgoing TCP connections via ports: 25, 53, 80 and 443 must be open.
-* Minimum 1 GB of RAM (at least 2GB of RAM + at least 2 CPU recommended)
+* Minimum 4 GB RAM and 2 CPU (with Solr minimum 8 GB RAM and 4+ CPU recommended)
 * Locales with UTF-8 support, otherwise en_US.UTF-8 (default) is forced.
 * Basic sysadmin skills and experience.
 * Willingness to accept BOA PI (paranoid idiosyncrasies).
@@ -116,7 +115,7 @@ production settings.
 * HTTPS access with self-signed certificate for all hosted sites.
 * HTTP/2 or SPDY Nginx support.
 * PFS (Perfect Forward Secrecy) support in Nginx.
-* PHP-FPM 7.0, 5.6, 5.5, 5.4, 5.3 multi-install mode, configurable per site.
+* PHP-FPM 7.3, 7.2, 7.1, 7.0, 5.6 multi-install mode, configurable per site.
 * PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse and ionCube.
 * Fast Redis Cache with DB auto-failover for all Drupal core versions.
 * Fast Redis Lock support with DB auto-failover.
@@ -127,7 +126,7 @@ production settings.
 * Drush access on command line in all shell accounts.
 * Drush Make access on command line for main shell account only.
 * Support for New Relic monitoring with per Octopus instance license key.
-* Solr 4 cores can be added/updated/deleted via site level INI settings.
+* Solr cores can be added/updated/deleted via site level INI settings.
 * Magic Speed Booster cache, working like a Boost + AuthCache, but per user.
 * Entry level XSS built-in protection on the Nginx level.
 * Firewall csf/lfd integrated with Nginx abuse guard.
@@ -142,7 +141,7 @@ production settings.
 
 * RVM, Compass Tools, and NPM - see docs/RVM.txt for details.
 * HHVM support - see docs/HHVM.txt for details.
-* MultiCore Apache Solr 4.9.1 with Jetty 9 - see docs/SOLR.txt for details.
+* MultiCore Apache Solr 7 and Solr 4 - see docs/SOLR.txt for details.
 * New Relic Apps Monitor with per Octopus license and per Site reporting.
 * Image Optimize toolkit binaries.
 * FFmpeg support.
@@ -160,43 +159,47 @@ production settings.
 
 Octopus can install and/or support the platforms listed below:
 
- @ Drupal 8
+ @ Drupal 8.6.7
+
+ Lightning 3.2.4 -------------- https://drupal.org/project/lightning
+ Thunder 8.2.33 --------------- https://drupal.org/project/thunder
+ Varbase 8.6.4 ---------------- https://drupal.org/project/varbase
 
  Drupal 8 support for custom platforms in the ~/static directory tree
- has been added, along with Drush 8, in the BOA-3.0.0 release.
- Note: BOA will not include built-in Drupal 8 platforms until Drupal 8
- will support symlinks in the codebase, like all previous core versions.
+ has been added already along with Drush 8 in the BOA-3.0.0 release.
+ Note: BOA may include selected Drupal 8 platforms even if Drupal 8
+ doesn't support symlinks in the codebase, like all previous core versions.
 
  See also: https://omega8.cc/how-to-add-custom-platform-properly-140
 
- @ Drupal 7.56.1
+ @ Drupal 7.63.5
 
- aGov 3.8 --------------------- https://drupal.org/project/agov
- Commerce 1.49 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.51 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.46 ----------------- https://drupal.org/project/commons
- Drupal 7.56.1 ---------------- https://drupal.org/project/drupal/releases/7.56
- Guardr 2.40 ------------------ https://drupal.org/project/guardr
+ aGov 3.12 -------------------- https://drupal.org/project/agov
+ Commerce 1.54 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 2.56 ---------------- https://drupal.org/project/commerce_kickstart
+ Commons 3.50 ----------------- https://drupal.org/project/commons
+ Drupal 7.63.5 ---------------- https://drupal.org/project/drupal/releases/7.63
+ Guardr 2.49 ------------------ https://drupal.org/project/guardr
  OpenAid 2.8 ------------------ https://drupal.org/project/openaid
- OpenAtrium 2.624 ------------- https://drupal.org/project/openatrium
+ OpenAtrium 2.635 ------------- https://drupal.org/project/openatrium
  OpenLucius 1.7 --------------- https://drupal.org/project/openlucius
- OpenOutreach 1.43 ------------ https://drupal.org/project/openoutreach
- OpenPublic 1.14 -------------- https://drupal.org/project/openpublic
- Opigno LMS 1.27 -------------- https://drupal.org/project/opigno_lms
- Panopoly 1.49 ---------------- https://drupal.org/project/panopoly
+ OpenOutreach 1.50 ------------ https://drupal.org/project/openoutreach
+ OpenPublic 1.23 -------------- https://drupal.org/project/openpublic
+ Opigno LMS 1.35 -------------- https://drupal.org/project/opigno_lms
+ Panopoly 1.60 ---------------- https://drupal.org/project/panopoly
  Restaurant 1.15 -------------- https://drupal.org/project/restaurant
- Ubercart 3.10 ---------------- https://drupal.org/project/ubercart
+ Ubercart 3.11 ---------------- https://drupal.org/project/ubercart
 
- @ Pressflow 6.38.2
+ @ Pressflow 6.46.2
 
  Commons 2.27 ----------------- https://drupal.org/project/commons
- Pressflow 6.38.2 ------------- http://pressflow.org
+ Pressflow 6.46.2 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.56.1 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.63.5 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
-* All D6 platforms have been enhanced using Pressflow 6.38.2 +Extra core:
+* All D6 platforms have been enhanced using Pressflow 6.46.2 +Extra core:
   https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 * All D6 and D7 platforms include some useful and/all performance related
@@ -224,8 +227,8 @@ to the Universe, please donate to the Aegir project. BOA devs participate
 in Aegir core development for years, and BOA project, which is maintained
 by Omega8.cc exists only thanks to Aegir project continued development.
 
-Please choose either PayPal or Gratipay option at:
+You can donate using PayPal, Liberapay, Bitcoin or trough Open Collective at:
 
-  http://www.aegirproject.org/donate
+  https://www.aegirproject.org/#donate
 
 Thank you!

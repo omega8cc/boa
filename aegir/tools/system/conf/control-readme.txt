@@ -13,13 +13,13 @@
 ###
 ### Supported values for single PHP-FPM mode which can be written in this file:
 ###
+### 7.3
+### 7.2
+### 7.1
 ### 7.0
 ### 5.6
-### 5.5
-### 5.4
-### 5.3
 ###
-### NOTE: There must be only one line and one value (like: 7.0) in this file.
+### NOTE: There must be only one line and one value (like: 7.3) in this file.
 ### Otherwise it will be ignored.
 ###
 ### It is now possible to make all installed PHP-FPM versions available
@@ -28,14 +28,14 @@
 ###
 ### ~/static/control/multi-fpm.info
 ###
-### This file, if exists, will switch all hosted sites to highest
-### available PHP-FPM version within the 5.3-5.6 range, with ability
-### to override PHP-FPM version per site, if the site's name is listed
-### in this additional control file, as shown below:
+### This file, if exists, will switch all sites listed in it to their
+### respective PHP-FPM versions as shown in the example below, while all
+### other sites not listed in multi-fpm.info will continue to use PHP-FPM
+### version defined in fpm.info instead, which can be modified independently.
 ###
-### foo.com 7.0
-### bar.com 5.5
-### old.com 5.3
+### foo.com 7.3
+### bar.com 7.2
+### old.com 5.6
 ###
 ### NOTE: Each line in the multi-fpm.info file must start with main site name,
 ### followed by single space, and then the PHP-FPM version to use.
@@ -52,22 +52,15 @@
 ### it will do this for all hosted sites. There is no option to switch this
 ### or override per site hosted.
 ###
-### NOTE: While current Aegir version 3.x included in BOA works fine with
-### latest PHP 7.0, many hosted sites, especially using Pressflow 6 core or
-### older Drupal 7 core without required patch we have included since 7.43.2,
-### will not work properly and Aegir tasks run against those sites may fail,
-### so it's recommended to use PHP-CLI 5.6, unless you have verified that all
-### sites on the instance support PHP 7.0 without issues.
-###
 ### Supported values which can be written in this file:
 ###
+### 7.3
+### 7.2
+### 7.1
 ### 7.0
 ### 5.6
-### 5.5
-### 5.4
-### 5.3
 ###
-### There must be only one line and one value (like: 5.6) in this control file.
+### There must be only one line and one value (like: 7.2) in this control file.
 ### Otherwise it will be ignored.
 ###
 
@@ -142,16 +135,21 @@
 ### Supported values which can be written in this file, listed in a single line
 ### or one per line:
 ###
-### D8R ----------- Drupal 8 (inactive)
+### Drupal 8 based
+###
+### LHG ----------- Lightning
+### THR ----------- Thunder
+### VBE ----------- Varbase
+###
+### Drupal 7 based
+###
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
-### D6P D6S D6D --- Pressflow 6 p/s/d
 ### AGV ----------- aGov
 ### CME ----------- Commerce v.2
-### CS7 ----------- Commons 7
+### CS7 ----------- Commons
 ### DCE ----------- Commerce v.1
-### DCS ----------- Commons 6
 ### GDR ----------- Guardr
-### OA7 ----------- OpenAtrium D7
+### OA7 ----------- OpenAtrium
 ### OAD ----------- OpenAid
 ### OLS ----------- OpenLucius
 ### OOH ----------- OpenOutreach
@@ -159,20 +157,22 @@
 ### OPO ----------- Opigno LMS
 ### PPY ----------- Panopoly
 ### RST ----------- Restaurant
-### UC7 ----------- Ubercart D7
-### UCT ----------- Ubercart D6
+### UC7 ----------- Ubercart
+###
+### Drupal 6 based
+###
+### D6P D6S D6D --- Pressflow prod/stage/dev
+### DCS ----------- Commons
+### UCT ----------- Ubercart
 ###
 ### You can also use special keyword 'ALL' instead of any other symbols to have
 ### all available platforms installed, including newly added in all future BOA
-### system releases, but excluding Drupal 8 platforms, which can be installed
-### only if respective keywords are explicitly listed and Octopus instance PHP
-### version is already set to 5.4 or newer - both for CLI and FPM.
+### system releases.
 ###
 ### Examples:
 ###
 ### ALL
-### ALL D8R
-### D7P D6P OAM MNS OOH RST
+### LHG VBE D7P D7S D7D
 ###
 
 ###
@@ -196,62 +196,4 @@
 ### so BOA will enable the 'update' module temporarily while running this
 ### check, which in turn will result with even more emails notices sent
 ### to the site admin email, if these notices are enabled.
-###
-
-###
-### Support for locking/unlocking web server write access in all codebases
-###
-### ~/static/control/unlock.info
-###
-### This new, auto-enabled by default protection will enhance your system
-### security, especially for sites in custom platforms you maintain
-### in the ~/static directory tree.
-###
-### It is important to understand that your web server / PHP-FPM runs as your
-### shell/ftps user, although with a different group. This allows to maintain
-### virtual chroot for Octopus instances, which significantly improves security.
-###
-### However, it had a serious drawback: the web server had write access in all
-### your platforms codebases located in the ~/static directory tree, because
-### all files you have uploaded there have the same owner.
-###
-### While it allows you to use code management which requires web hooks, it also
-### opens a door for possible attack vectors, like for the infamous #drupageddon
-### disaster, where Drupal allowed attackers to create .php files intended
-### to be used as backdoors in future attacks - inside your codebase.
-###
-### Even if it could affect only custom platforms you maintain in the ~/static
-### directory tree, since all built-in Octopus platforms always had Drupal core
-### completely write-protected, plus, even if created by attacking bot, these
-### extra .php files are completely useless for attackers, because BOA default
-### restricted configuration doesn't allow to execute not whitelisted, unknown
-### .php files, having codebase writable by your web server is still dangerous,
-### because at least theoretically it may open a possibility to overwrite valid
-### .php files, so they could be used as an entry point in a future attack.
-###
-### BOA now protects all your codebases by reverting (daily) ownership on all
-### files and directories in your codebase (modules and themes) so they are
-### owned by the Aegir backend user and not your shell/ftps user.
-###
-### While this new default procedure protects all your codebases in the ~/static
-### directory tree, and even in the sites/all directory tree, and even in the
-### sites/foo.com/modules|themes tree in all your built-in Octopus platforms,
-### you can still manage the code and themes with your main and extra shell
-### accounts as usual, because your codebase is still group writable, and your
-### shell accounts are members of the group not available for the web server.
-###
-### You can easily disable this default daily procedure with a single switch:
-###
-### ~/static/control/unlock.info
-###
-### You can also exclude any custom platform you maintain in the ~/static
-### directory tree from this global procedure by adding an empty skip.info
-### control file in the given platform root directory, so all other platforms
-### are still protected, and only excluded platform is open for write access
-### also for the web server. But normally you should never need this unlock!
-###
-### Please note that this procedure will not affect any platform if you have
-### the non-default _PERMISSIONS_FIX=NO setting in your /root/.barracuda.cnf
-### file. It will also skip any platform with fix_files_permissions_daily
-### variable set to FALSE in the given platform active INI file.
 ###

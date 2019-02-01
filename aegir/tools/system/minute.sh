@@ -12,6 +12,14 @@ if [ -z "${_B_NICE}" ]; then
 fi
 
 check_pdnsd() {
+  if [ -x "/usr/sbin/pdnsd" ] \
+    && [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+    mkdir -p /etc/resolvconf/run/interface
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
+    resolvconf -u         &> /dev/null
+    service pdnsd restart &> /dev/null
+    pdnsd-ctl empty-cache &> /dev/null
+  fi
   if [ -e "/etc/resolv.conf" ]; then
     _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
     if [[ "$_RESOLV_TEST" =~ "nameserver 127.0.0.1" ]]; then
@@ -39,20 +47,20 @@ if [ -e "/var/log/php" ]; then
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
     rm -f /var/run/*.fpm.socket
     renice ${_B_NICE} -p $$ &> /dev/null
+    if [ -e "/etc/init.d/php73-fpm" ]; then
+      service php73-fpm start
+    fi
+    if [ -e "/etc/init.d/php72-fpm" ]; then
+      service php72-fpm start
+    fi
+    if [ -e "/etc/init.d/php71-fpm" ]; then
+      service php71-fpm start
+    fi
     if [ -e "/etc/init.d/php70-fpm" ]; then
       service php70-fpm start
     fi
     if [ -e "/etc/init.d/php56-fpm" ]; then
       service php56-fpm start
-    fi
-    if [ -e "/etc/init.d/php55-fpm" ]; then
-      service php55-fpm start
-    fi
-    if [ -e "/etc/init.d/php54-fpm" ]; then
-      service php54-fpm start
-    fi
-    if [ -e "/etc/init.d/php53-fpm" ]; then
-      service php53-fpm start
     fi
     sleep 8
     rm -f /var/run/fmp_wait.pid
@@ -66,20 +74,20 @@ if [ -e "/var/log/php" ]; then
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
     rm -f /var/log/php/*
     renice ${_B_NICE} -p $$ &> /dev/null
+    if [ -e "/etc/init.d/php73-fpm" ]; then
+      service php73-fpm start
+    fi
+    if [ -e "/etc/init.d/php72-fpm" ]; then
+      service php72-fpm start
+    fi
+    if [ -e "/etc/init.d/php71-fpm" ]; then
+      service php71-fpm start
+    fi
     if [ -e "/etc/init.d/php70-fpm" ]; then
       service php70-fpm start
     fi
     if [ -e "/etc/init.d/php56-fpm" ]; then
       service php56-fpm start
-    fi
-    if [ -e "/etc/init.d/php55-fpm" ]; then
-      service php55-fpm start
-    fi
-    if [ -e "/etc/init.d/php54-fpm" ]; then
-      service php54-fpm start
-    fi
-    if [ -e "/etc/init.d/php53-fpm" ]; then
-      service php53-fpm start
     fi
     sleep 8
     rm -f /var/run/fmp_wait.pid
@@ -94,6 +102,15 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]]; then
   touch /var/run/fmp_wait.pid
   rm -f /var/log/php/*
   renice ${_B_NICE} -p $$ &> /dev/null
+  if [ -e "/etc/init.d/php73-fpm" ]; then
+    service php73-fpm reload
+  fi
+  if [ -e "/etc/init.d/php72-fpm" ]; then
+    service php72-fpm reload
+  fi
+  if [ -e "/etc/init.d/php71-fpm" ]; then
+    service php71-fpm reload
+  fi
   if [ -e "/etc/init.d/php70-fpm" ]; then
     service php70-fpm reload
   fi
@@ -101,13 +118,13 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]]; then
     service php56-fpm reload
   fi
   if [ -e "/etc/init.d/php55-fpm" ]; then
-    service php55-fpm reload
+    service php55-fpm stop
   fi
   if [ -e "/etc/init.d/php54-fpm" ]; then
-    service php54-fpm reload
+    service php54-fpm stop
   fi
   if [ -e "/etc/init.d/php53-fpm" ]; then
-    service php53-fpm reload
+    service php53-fpm stop
   fi
   sleep 8
   rm -f /var/run/fmp_wait.pid
@@ -149,14 +166,33 @@ if [ -e "/var/log/nginx/error.log" ]; then
   fi
 fi
 
-_RAM_TOTAL=$(free -m | grep Mem: | cut -d: -f2 | awk '{ print $1}' 2>&1)
-_RAM_FREE=$(free -m | grep /+ | cut -d: -f2 | awk '{ print $2}' 2>&1)
+_RAM_TOTAL=$(free -mt | grep Mem: | cut -d: -f2 | awk '{ print $1}' 2>&1)
+_RAM_FREE_TEST=$(free -mt 2>&1)
+if [[ "$_RAM_FREE_TEST" =~ "buffers/cache:" ]]; then
+  _RAM_FREE=$(free -mt | grep /+ | cut -d: -f2 | awk '{ print $2}' 2>&1)
+else
+  _RAM_FREE=$(free -mt | grep Mem: | cut -d: -f2 | awk '{ print $6}' 2>&1)
+fi
 _RAM_PCT_FREE=$(echo "scale=0; $(bc -l <<< "${_RAM_FREE} / ${_RAM_TOTAL} * 100")/1" | bc 2>&1)
 _RAM_PCT_FREE=${_RAM_PCT_FREE//[^0-9]/}
 
 if [ ! -z "${_RAM_PCT_FREE}" ] && [ "${_RAM_PCT_FREE}" -lt "10" ]; then
   oom_restart "ram"
 fi
+
+redis_oom_check() {
+  if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
+    _REDIS_TEST=$(su -s /bin/bash - aegir -c "drush8 @hostmaster status" 2>&1)
+    if [[ "${_REDIS_TEST}" =~ "RedisException" ]]; then
+      service redis-server restart
+      echo "$(date 2>&1) RedisException OOM detected"
+      echo "$(date 2>&1) RedisException OOM detected" >> /var/xdrago/log/redis.watch.log
+    else
+      echo "Redis is fine"
+    fi
+  fi
+}
+redis_oom_check
 
 jetty_restart() {
   touch /var/run/boa_run.pid
@@ -216,15 +252,16 @@ if [ ! -e "/root/.high_traffic.cnf" ] \
 fi
 
 mysql_proc_kill() {
-  if [ "$xtime" != "Time" ] \
-    && [ "$xuser" != "root" ] \
-    && [ "$xuser" != "system" ] \
-    && [ "$xtime" != "|" ] \
-    && [[ "$xtime" -gt "$limit" ]]; then
-    xkill=$(mysqladmin kill $each 2>&1)
-    times=$(date 2>&1)
-    echo $times $each $xuser $xtime $xkill
-    echo "$times $each $xuser $xtime $xkill" >> /var/xdrago/log/sql_watch.log
+  xtime=${xtime//[^0-9]/}
+  echo "proc nr to monitor is $each by $xuser runnning for $xtime seconds"
+  if [ ! -z "$xtime" ]; then
+    if [ $xtime -gt $limit ]; then
+      echo "proc to kill is $each by $xuser after $xtime"
+      xkill=$(mysqladmin kill $each 2>&1)
+      times=$(date 2>&1)
+      echo $times $each $xuser $xtime $xkill
+      echo "$times $each $xuser $xtime $xkill" >> /var/xdrago/log/sql_watch.log
+    fi
   fi
 }
 
@@ -233,35 +270,31 @@ mysql_proc_control() {
     echo "$(date 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
     echo "$(mysqladmin proc 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
   fi
-  limit=3600
+  limit=9999
   xkill=null
   for each in `mysqladmin proc \
     | awk '{print $2, $4, $8, $12}' \
     | awk '{print $1}'`; do
+    each=${each//[^0-9]/}
     if [ "$each" != "1" ] \
       && [ "$each" != "2" ] \
-      && [ "$each" != "Id" ] \
       && [ ! -z "$each" ]; then
       xtime=$(mysqladmin proc \
         | awk '{print $2, $4, $8, $12}' \
         | grep $each \
         | awk '{print $4}' 2>&1)
-      if [ "$xtime" = "|" ]; then
-        xtime=$(mysqladmin proc \
-          | awk '{print $2, $4, $8, $11}' \
-          | grep $each \
-          | awk '{print $4}' 2>&1)
-      fi
+      xtime=${xtime//[^0-9]/}
       xuser=$(mysqladmin proc \
         | awk '{print $2, $4, $8, $12}' \
         | grep $each \
         | awk '{print $2}' 2>&1)
-      if [ "$xtime" != "Time" ]; then
+      xuser=${xuser//[^0-9a-z_]/}
+      if [ ! -z "$xtime" ]; then
         if [ "$xuser" = "xabuse" ]; then
-          limit=60
+          limit=5
           mysql_proc_kill
         else
-          limit=3600
+          limit=9999
           mysql_proc_kill
         fi
       fi
@@ -356,4 +389,4 @@ fi
 perl /var/xdrago/monitor/check/sqlcheck
 echo DONE!
 exit 0
-###EOF2017###
+###EOF2019###

@@ -57,9 +57,11 @@ Contrib [S]upported:
 Contrib [S]upported and [B]undled:
 
  adminer -------------------- [D7] --------- [S] [B]
+ autoslave ------------------ [D7] --------- [S] [B]
  advagg --------------------- [D6,D7,D8] --- [S] [B]
  blockcache_alter ----------- [D6,D7] ------ [S] [B]
  boost ---------------------- [D6,D7] ------ [S] [B]
+ cache_consistent ----------- [D7] --------- [S] [B]
  cdn ------------------------ [D6,D7,D8] --- [S] [B]
  config_perms --------------- [D6,D7] ------ [S] [B]
  css_emimage ---------------- [D6,D7] ------ [S] [B]
@@ -68,6 +70,7 @@ Contrib [S]upported and [B]undled:
  esi ------------------------ [D6,D7] ------ [S] [B]
  expire --------------------- [D6,D7] ------ [S] [B]
  filefield_nginx_progress --- [D6,D7] ------ [S] [B]
+ file_resup ----------------- [D7] --------- [S] [B]
  flood_control -------------- [D7] --------- [S] [B]
  force_password_change ------ [D6,D7] ------ [S] [B]
  fpa ------------------------ [D6,D7] ------ [S] [B]
@@ -102,7 +105,6 @@ Contrib [F]orce[E]nabled
 
 Contrib [F]orce[D]isabled
 
- background_process --------- [D6,D7] ----------- [FD]
  coder ---------------------- [D6,D7] ----------- [FD]
  css_gzip ------------------- [D6] -------------- [FD]
  devel ---------------------- [D6,D7] ----------- [FD]
@@ -119,7 +121,6 @@ Contrib [F]orce[D]isabled
  site_audit ----------------- [D7] -------------- [FD]
  stage_file_proxy ----------- [D6,D7] ----------- [FD]
  supercron ------------------ [D6] -------------- [FD]
- ultimate_cron -------------- [D6,D7] ----------- [FD]
  varnish -------------------- [D6,D7] ----------- [FD]
  watchdog_live -------------- [D6,D7] ----------- [FD]
  xhprof --------------------- [D6,D7] ----------- [FD]
@@ -154,6 +155,7 @@ Drush [E]xtensions [M]aster [S]atellite:
  registry_rebuild ----------- [D6,D7] --- [S] [B] [EM,ES]
  safe_cache_form_clear ------ [D7] ------ [S] [B] [EM,ES]
  security_review ------------ [D6,D7] --- [S] [B] [EM,ES]
+ utf8mb4_convert ------------ [D7] ------ [S] [B] [EM,ES]
 
 Provision [E]xtensions [M]aster [S]atellite:
 

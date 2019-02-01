@@ -16,8 +16,8 @@ fix_dns_settings() {
     fi
   fi
   if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
-    echo "nameserver 8.8.8.8" >${vBs}/resolv.conf.tmp
-    echo "nameserver 8.8.4.4" >>${vBs}/resolv.conf.tmp
+    echo "nameserver 1.1.1.1" >${vBs}/resolv.conf.tmp
+    echo "nameserver 1.0.0.1" >>${vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
     for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
@@ -55,18 +55,21 @@ fix_dns_settings() {
       wait
       _BROKEN_DNS_TEST_X=$(grep "\." ${dnsLi} 2>&1)
       if [ -z "${_BROKEN_DNS_TEST_X}" ]; then
-        echo "        label = \"google-servers\";" > ${dnsLi}
-        echo "        ip=8.8.8.8;" >> ${dnsLi}
-        echo "        ip=8.8.4.4;" >> ${dnsLi}
+        echo "        label = \"cloudflare-servers\";" > ${dnsLi}
+        echo "        ip=1.1.1.1;" >> ${dnsLi}
+        echo "        ip=1.0.0.1;" >> ${dnsLi}
       fi
     fi
-    _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
+    _CUSTOM_DNS_TEST=$(grep 1.1.1.1 /etc/pdnsd.conf 2>&1)
     _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
-    if [[ "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]] \
+    _MISSING_DNS_TEST=$(grep "ip=" /etc/pdnsd.conf 2>&1)
+    if [[ "${_CUSTOM_DNS_TEST}" =~ "1.1.1.1" ]] \
+      || [ ! -e "${dnsLi}" ] \
       || [ -e "/root/.use.default.nameservers.cnf" ] \
       || [ -e "/root/.use.local.nameservers.cnf" ] \
-      || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]]; then
-      echo "        label = \"google-servers\";" > ${dnsLi}
+      || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]] \
+      || [[ -z "${_MISSING_DNS_TEST}" ]]; then
+      echo "        label = \"cloudflare-servers\";" > ${dnsLi}
       for _IP in `cat /etc/resolv.conf \
         | sed 's/.*127.0.0.1.*//g; s/.*search.*//g; s/.*Dynamic.*//g' \
         | cut -d ' ' -f2 \
@@ -81,23 +84,24 @@ fix_dns_settings() {
       wait
       _BROKEN_DNS_TEST_Y=$(grep "\." ${dnsLi} 2>&1)
       if [ -z "${_BROKEN_DNS_TEST_Y}" ]; then
-         echo "        ip=8.8.8.8;" >> ${dnsLi}
-         echo "        ip=8.8.4.4;" >> ${dnsLi}
+         echo "        ip=1.1.1.1;" >> ${dnsLi}
+         echo "        ip=1.0.0.1;" >> ${dnsLi}
       fi
       ### echo debug dns A
-      _DNS_TPL_TEST=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
-      _DNS_RGX_TEST=$(grep "google-servers" /root/.local.dns.IP.list 2>&1)
-      if [[ "${_DNS_TPL_TEST}" =~ "google-servers" ]] \
-        && [[ "${_DNS_RGX_TEST}" =~ "google-servers" ]]; then
+      _DNS_TPL_TEST_GE=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
+      _DNS_TPL_TEST_CF=$(grep "cloudflare-servers" /etc/pdnsd.conf 2>&1)
+      _DNS_RGX_TEST=$(grep "cloudflare-servers" /root/.local.dns.IP.list 2>&1)
+      if [[ "${_DNS_TPL_TEST_CF}" =~ "cloudflare-servers" ]] \
+        && [[ "${_DNS_RGX_TEST}" =~ "cloudflare-servers" ]]; then
+        sed -i '/        label = \"cloudflare-servers\";/ {r /root/.local.dns.IP.list
+d;};' /etc/pdnsd.conf
+        wait
+      fi
+      if [[ "${_DNS_TPL_TEST_GE}" =~ "google-servers" ]] \
+        && [[ "${_DNS_RGX_TEST}" =~ "cloudflare-servers" ]]; then
         sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
 d;};' /etc/pdnsd.conf
         wait
-      else
-        if [ -e "${locCnf}/pdnsd.conf" ]; then
-          cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
-        fi
-        cp -af /root/.local.dns.IP.list /root/.broken.local.dns.IP.list
-        cp -af /etc/pdnsd.conf /root/.broken.etc.pdnsd.conf
       fi
       resolvconf -u         &> /dev/null
       service pdnsd restart &> /dev/null
@@ -116,15 +120,17 @@ check_dns_settings() {
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
   else
-    _REMOTE_DNS_TEST=$(host -a files.aegir.cc 8.8.8.8 -w 10 2>&1)
+    _REMOTE_DNS_TEST=$(host -a files.aegir.cc 1.1.1.1 -w 10 2>&1)
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
+    || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
     || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
     _CTRL_DNS_TEST=$(host -a files.aegir.cc 2>&1)
     if [[ ! "${_CTRL_DNS_TEST}" =~ "104.245.208.226" ]] \
       || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
-      || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
+      || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
+      || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
       fix_dns_settings
       if [ -e "/etc/init.d/postfix" ]; then
         service postfix restart &> /dev/null
@@ -201,9 +207,17 @@ EOF
 #
 # Find correct IP.
 find_correct_ip() {
-  _LOC_IP=$(echo $(getent ahostsv4 $_LOC_DOM) \
-    | cut -d: -f2 \
-    | awk '{ print $1}' 2>&1)
+  _LOC_IP=$(curl ${crlGet} https://api.ipify.org \
+    | sed 's/[^0-9\.]//g' 2>&1)
+  if [ -z "${_LOC_IP}" ]; then
+    _LOC_IP=$(curl ${crlGet} http://ip4.icanhazip.com \
+      | sed 's/[^0-9\.]//g' 2>&1)
+  fi
+  if [ -z "${_LOC_IP}" ]; then
+    _LOC_IP=$(echo $(getent ahostsv4 $_LOC_DOM) \
+      | cut -d: -f2 \
+      | awk '{ print $1}' 2>&1)
+  fi
 }
 
 #
@@ -229,26 +243,10 @@ validate_public_ip() {
       _THISHTIP="${_LOCAL_NETWORK_IP}"
     fi
   else
-    _ETH_TEST=$(ifconfig 2>&1)
-    if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
-      _IFCONFIG="venet0"
-    elif [ -e "/proc/bean_counters" ]; then
-      _IFCONFIG="venet0"
-    else
-      _IFCONFIG="eth0"
-    fi
     if [ "${_DNS_SETUP_TEST}" = "YES" ]; then
       if [ -z "${_MY_OWNIP}" ]; then
-        _THISHTIP=$(ifconfig ${_IFCONFIG} \
-          | grep 'inet addr:' \
-          | cut -d: -f2 \
-          | awk '{ print $1}' 2>&1)
-        if [[ "${_THISHTIP}" =~ "127.0.0." ]]; then
-          _THISHTIP=$(ifconfig ${_IFCONFIG}:0 \
-            | grep 'inet addr:' \
-            | cut -d: -f2 \
-            | awk '{ print $1}' 2>&1)
-        fi
+        find_correct_ip
+        _THISHTIP="${_LOC_IP}"
       else
         _THISHTIP="${_MY_OWNIP}"
       fi
@@ -285,26 +283,10 @@ validate_purge_ip() {
   if [ "${_PURGE_ALL_THISHTIP}" = "YES" ]; then
     _PURGE_THISHTIP="0.0.0.0/0"
   else
-    _ETH_TEST=$(ifconfig 2>&1)
-    if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
-      _IFCONFIG="venet0"
-    elif [ -e "/proc/bean_counters" ]; then
-      _IFCONFIG="venet0"
-    else
-      _IFCONFIG="eth0"
-    fi
     if [ "${_DNS_SETUP_TEST}" = "YES" ]; then
       if [ -z "${_MY_OWNIP}" ]; then
-        _PURGE_THISHTIP=$(ifconfig ${_IFCONFIG} \
-          | grep 'inet addr:' \
-          | cut -d: -f2 \
-          | awk '{ print $1}' 2>&1)
-        if [[ "${_PURGE_THISHTIP}" =~ "127.0.0." ]]; then
-          _PURGE_THISHTIP=$(ifconfig ${_IFCONFIG}:0 \
-            | grep 'inet addr:' \
-            | cut -d: -f2 \
-            | awk '{ print $1}' 2>&1)
-        fi
+        find_correct_ip
+        _PURGE_THISHTIP="${_LOC_IP}"
       else
         _PURGE_THISHTIP="${_MY_OWNIP}"
       fi
@@ -382,8 +364,8 @@ install_pdnsd_cache() {
   cp -af /etc/resolv.conf ${vBs}/resolv.conf.pre-${_X_VERSION}-${_NOW}
   if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
     rm -f /etc/resolv.conf
-    echo "nameserver 8.8.8.8" > /etc/resolv.conf
-    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+    echo "nameserver 1.1.1.1" > /etc/resolv.conf
+    echo "nameserver 1.0.0.1" >> /etc/resolv.conf
   fi
   rm -f /etc/apt/sources.list.d/openssl.list
   st_runner "apt-get update -qq" &> /dev/null
@@ -395,15 +377,44 @@ install_pdnsd_cache() {
   st_runner "aptitude purge resolvconf -y" &> /dev/null
   if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
     rm -f /etc/resolv.conf
-    echo "nameserver 8.8.8.8" > /etc/resolv.conf
-    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+    echo "nameserver 1.1.1.1" > /etc/resolv.conf
+    echo "nameserver 1.0.0.1" >> /etc/resolv.conf
   fi
-  st_runner "${_INSTALL} resolvconf" &> /dev/null
-  st_runner "${_INSTALL} pdnsd" &> /dev/null
-  st_runner "${_INSTALL} resolvconf" &> /dev/null
-  st_runner "${_INSTALL} pdnsd" &> /dev/null
-  sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
-  cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
+  if [ "${_OSV}" = "stretch" ]; then
+    st_runner "${_INSTALL} resolvconf" &> /dev/null
+    msg "INFO: Building pdnsd ${_PDNSD_VRN} from sources, please wait..."
+    cd /var/opt
+    rm -rf pdnsd*
+    get_dev_src "pdnsd-${_PDNSD_VRN}.tar.gz"
+    cd /var/opt/pdnsd-${_PDNSD_VRN}
+    st_runner "./configure --prefix=/usr" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    echo "START_DAEMON=yes" > /etc/default/pdnsd
+    adduser --system --ingroup proxy --home /var/cache/pdnsd pdnsd &> /dev/null
+    usermod -aG proxy pdnsd &> /dev/null
+    cp -af ${locCnf}/pdnsd /etc/init.d/pdnsd
+    cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
+    ln -sf /etc/pdnsd.conf /usr/etc/pdnsd.conf
+    chmod 755 /etc/init.d/pdnsd
+    mrun "update-rc.d pdnsd defaults" &> /dev/null
+    mrun "service pdnsd start" &> /dev/null
+  else
+    st_runner "${_INSTALL} resolvconf" &> /dev/null
+    st_runner "${_INSTALL} pdnsd" &> /dev/null
+    st_runner "${_INSTALL} resolvconf" &> /dev/null
+    st_runner "${_INSTALL} pdnsd" &> /dev/null
+    sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
+    cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
+  fi
+  if [ -x "/usr/sbin/pdnsd" ] \
+    && [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+    mkdir -p /etc/resolvconf/run/interface
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
+    resolvconf -u         &> /dev/null
+    service pdnsd restart &> /dev/null
+    pdnsd-ctl empty-cache &> /dev/null
+  fi
   check_dns_settings
   if [ ! -L "/etc/resolvconf/run" ] \
     || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] \
@@ -420,6 +431,14 @@ install_pdnsd_cache() {
     touch /lib/init/rw/resolvconf/enable-updates
     rm -f /etc/resolvconf/resolv.conf.d/tail
     touch /etc/resolvconf/resolv.conf.d/tail
+  fi
+  if [ -x "/usr/sbin/pdnsd" ] \
+    && [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+    mkdir -p /etc/resolvconf/run/interface
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
+    resolvconf -u         &> /dev/null
+    service pdnsd restart &> /dev/null
+    pdnsd-ctl empty-cache &> /dev/null
   fi
   if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
     && [ -e "${vBs}/resolv.conf.vanilla" ]; then
@@ -444,8 +463,8 @@ install_pdnsd_cache() {
       cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
     fi
     echo "nameserver 127.0.0.1" >> /etc/resolv.conf
-    echo "nameserver 8.8.8.8" >>/etc/resolv.conf
-    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    echo "nameserver 1.1.1.1" >>/etc/resolv.conf
+    echo "nameserver 1.0.0.1" >>/etc/resolv.conf
   fi
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ]; then
     sed -i "s/^dns=.*/dns=pdnsd/g" \
@@ -503,7 +522,7 @@ check_github_for_aegir_head_mode() {
   fi
 }
 
-check_mariadb_src() {
+check_db_src() {
   if ! netcat -w 14 -z ${_DB_SRC} 80 ; then
     echo " "
     msg "EXIT on error due to ${_DB_SRC} downtime"
@@ -537,14 +556,6 @@ check_ip_hostname() {
       else
         _LOC_IP="${_MY_OWNIP}"
       fi
-    fi
-    _ETH_TEST=$(ifconfig 2>&1)
-    if [[ "${_ETH_TEST}" =~ "venet0" ]]; then
-      _IFCONFIG="venet0"
-    elif [ -e "/proc/bean_counters" ]; then
-      _IFCONFIG="venet0"
-    else
-      _IFCONFIG="eth0"
     fi
     if [ ! -z "${_MY_OWNIP}" ]; then
       if [ ! -z "${_MY_HOSTN}" ]; then
@@ -592,16 +603,8 @@ check_ip_hostname() {
         _FQDNTEST="FALSE"
       fi
     else
-      _THISHTIP=$(ifconfig ${_IFCONFIG} \
-        | grep 'inet addr:' \
-        | cut -d: -f2 \
-        | awk '{ print $1}' 2>&1)
-      if [[ "${_THISHTIP}" =~ "127.0.0." ]]; then
-        _THISHTIP=$(ifconfig ${_IFCONFIG}:0 \
-          | grep 'inet addr:' \
-          | cut -d: -f2 \
-          | awk '{ print $1}' 2>&1)
-      fi
+      find_correct_ip
+      _THISHTIP="${_LOC_IP}"
       _FQDNPROB=$(uname -n 2>&1)
       _FQDNTEST="FALSE"
       _THISHOST=$(uname -n 2>&1)
@@ -762,7 +765,7 @@ install_upgrade_pdnsd() {
     wait
   fi
   check_dns_settings
-  if [ ! -e "/usr/sbin/pdnsd" ]; then
+  if [ ! -x "/usr/sbin/pdnsd" ]; then
     install_pdnsd_cache
   else
     if [ "${_USE_PROVIDER_DNS}" = "YES" ] \

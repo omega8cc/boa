@@ -5,7 +5,7 @@
 ###
 ###  Barracuda Aegir Installer
 ###
-###  Copyright (C) 2010-2017 Omega8.cc
+###  Copyright (C) 2010-2019 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -82,21 +82,21 @@ done
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
   _THIS_DB_HOST=$(uname -n 2>&1)
 fi
-if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+  && [ -x "/opt/php73/bin/php" ]; then
+  _T_CLI=/opt/php73/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.2" ] \
+  && [ -x "/opt/php72/bin/php" ]; then
+  _T_CLI=/opt/php72/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.1" ] \
+  && [ -x "/opt/php71/bin/php" ]; then
+  _T_CLI=/opt/php71/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.0" ] \
   && [ -x "/opt/php70/bin/php" ]; then
   _T_CLI=/opt/php70/bin
 elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
   && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-  && [ -x "/opt/php55/bin/php" ]; then
-  _T_CLI=/opt/php55/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
-  && [ -x "/opt/php54/bin/php" ]; then
-  _T_CLI=/opt/php54/bin
-elif [ "${_PHP_CLI_VERSION}" = "5.3" ] \
-  && [ -x "/opt/php53/bin/php" ]; then
-  _T_CLI=/opt/php53/bin
 fi
 _OSV=$(lsb_release -sc 2>&1)
 _ROOT="${HOME}"
@@ -130,25 +130,25 @@ fi
 # Update php-cli for Drush.
 update_php_cli_drush() {
   _DRUSH_FILE="${_ROOT}/drush/drush.php"
-  if [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+  if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+    && [ -x "/opt/php73/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php73\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "7.2" ] \
+    && [ -x "/opt/php72/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php72\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "7.1" ] \
+    && [ -x "/opt/php71/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php71\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "7.0" ] \
     && [ -x "/opt/php70/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php70\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
     && [ -x "/opt/php56/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.5" ] \
-    && [ -x "/opt/php55/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.4" ] \
-    && [ -x "/opt/php54/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php54\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.3" ] \
-    && [ -x "/opt/php53/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php53\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
   else
     msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported versions"
@@ -169,7 +169,7 @@ hostmaster_mv_up() {
   _D_EXT="provision clean_missing_modules drupalgeddon drush_ecl make_local \
     provision_boost provision_cdn provision_civicrm provision_site_backup \
     provision_tasks_extra registry_rebuild remote_import \
-    safe_cache_form_clear security_check security_review"
+    safe_cache_form_clear security_check security_review utf8mb4_convert"
   for e in ${_D_EXT}; do
     if [ -e "${_ROOT}/.drush/$e" ]; then
       mv -f ${_ROOT}/.drush/$e \
@@ -249,7 +249,8 @@ hostmaster_go_up() {
     rm -rf ${rD}/*/*/.git
     cd ${rD}/usr
     get_dev_ext "clean_missing_modules.tar.gz"
-    get_dev_contrib "mydropwizard-6.x-1.6.tar.gz"
+    get_dev_ext "mydropwizard-6.x-1.7.tar.gz"
+    get_dev_ext "utf8mb4_convert-7.x-1.0.tar.gz"
   else
     msg "INFO: Downloading Drush and Provision extensions..."
     cd ${_ROOT}/.drush/sys
@@ -260,15 +261,14 @@ hostmaster_go_up() {
     get_dev_ext "drush_ecl.tar.gz"
     get_dev_ext "registry_rebuild.tar.gz"
     get_dev_ext "safe_cache_form_clear.tar.gz"
-    get_dev_contrib "mydropwizard-6.x-1.6.tar.gz"
+    get_dev_ext "mydropwizard-6.x-1.7.tar.gz"
+    get_dev_ext "utf8mb4_convert-7.x-1.0.tar.gz"
     cd ${_ROOT}/.drush/xts
     get_dev_ext "provision_boost.tar.gz"
     get_dev_ext "security_review.tar.gz"
   fi
   rm -rf ${_ROOT}/.drush/*/.git
   rm -rf ${_ROOT}/.drush/*/*/.git
-  cd ${_ROOT}/.drush/usr
-  get_dev_ext "clean_missing_modules.tar.gz"
   sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
     ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
   cd ${_PREV_HM_ROOT}
@@ -296,6 +296,26 @@ hostmaster_mi_up() {
   if [ -z "${TERM+x}" ]; then
     export TERM=vt100
   fi
+
+  #
+  # Fix broken Entity module if needed.
+  #
+  pthA="profiles/hostmaster/modules/contrib/entity"
+  pthB="module_filter.module"
+  #
+  if [ -e "${_PREV_HM_ROOT}/${pthA}/${pthB}" ]; then
+    msg "${_STATUS} B: Fixing broken Entity module..."
+    rm -f -r ${_PREV_HM_ROOT}/${pthA}
+    cd ${_PREV_HM_ROOT}/profiles/hostmaster/modules/contrib
+    get_dev_stc "entity-7.x-1.9.tar.gz"
+    ${_DRUSHCMD} @hostmaster en entity -y
+    ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_service WHERE service LIKE 'http'"
+    ${_DRUSHCMD} @hostmaster sqlq "INSERT INTO hosting_service (nid, vid, service, type, restart_cmd, port, available) VALUES ('2', '2', 'http', 'nginx', 'sudo /etc/init.d/nginx reload', '80', '1')"
+    ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
+    ${_DRUSHCMD} @hostmaster hosting-dispatch
+    sleep 15
+  fi
+
   if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster dis aegir_custom_settings -y
@@ -486,7 +506,7 @@ fi
 ###----------------------------------------###
 ###
 ###  Barracuda Aegir Installer
-###  Copyright (C) 2010-2017 Omega8.cc
+###  Copyright (C) 2010-2019 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

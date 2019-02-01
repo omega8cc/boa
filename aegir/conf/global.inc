@@ -27,6 +27,8 @@ $redis_lock   = FALSE;
 $redis_path   = FALSE;
 $redis_up     = FALSE;
 $site_subdir  = FALSE;
+$use_auto_se  = FALSE;
+$use_cache_ct = FALSE;
 $use_redis    = FALSE;
 $usr_loc_ini  = FALSE;
 $usr_plr_ini  = FALSE;
@@ -64,7 +66,7 @@ if (function_exists('drush_get_command')) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.13.8';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.15.8';
   }
 }
 
@@ -252,7 +254,6 @@ if ($drupal_eight) {
   $config['system.performance']['css']['preprocess'] = TRUE;       // Enable hardcoded CSS aggregation
   $config['system.performance']['js']['preprocess'] = TRUE;        // Enable hardcoded JS aggregation
   $config['system.performance']['response.gzip'] = FALSE;          // Nginx already compresses everything
-  $config['composer_manager.settings']['vendor_dir'] = 'sites/' . $_SERVER['SERVER_NAME'] . '/vendor'; // Support for composer_manager
 }
 else {
   if ($backdropcms) {
@@ -284,7 +285,6 @@ else {
   $conf['image_allow_insecure_derivatives'] = TRUE; // Enable to avoid known issues: https://drupal.org/drupal-7.20-release-notes
   $conf['theme_cloudy_settings']['omega_rebuild_aggregates'] = FALSE;     // Do not allow to turn it on by default
   $conf['theme_cloudy_settings']['omega_rebuild_theme_registry'] = FALSE; // Do not allow to turn it on by default
-  $conf['composer_manager_vendor_dir'] = 'sites/' . $_SERVER['SERVER_NAME'] . '/vendor'; // Support for composer_manager
   $update_free_access = FALSE;
   $conf['webform_table'] = TRUE; // Workaround for SA-CONTRIB-2015-063 https://www.drupal.org/node/2445935
   $conf['features_rebuild_on_flush'] = FALSE; // https://michaelshadle.com/2015/04/21/speeding-up-drupal-cache-flushing
@@ -323,7 +323,7 @@ if (!$is_backend) {
     error_reporting(E_ALL & ~E_NOTICE);
     ini_set('display_errors', TRUE);
     ini_set('display_startup_errors', TRUE);
-    ini_set('opcache.revalidate_freq', '1');
+    ini_set('opcache.revalidate_freq', '0');
     if ($drupal_eight) {
       unset($config['system.logging']['error_level']);            // Stop hardcoding no errors on screen
       unset($config['system.performance']['cache.page.max_age']); // Stop hardcoding internal page cache
@@ -400,6 +400,8 @@ $boa_ini = array(
   'redis_path_enable' => TRUE,
   'redis_scan_enable' => FALSE,
   'redis_cache_disable' => FALSE,
+  'autoslave_enable' => FALSE,
+  'cache_consistent_enable' => FALSE,
   'redis_exclude_bins' => FALSE,
   'speed_booster_anon_cache_ttl' => FALSE,
   'allow_anon_node_add' => FALSE,
@@ -410,7 +412,8 @@ $boa_ini = array(
   'auto_detect_domain_access_integration' => TRUE, // For backward compatibility until next release, then FALSE
   'advagg_auto_configuration' => FALSE,            // Will be set to TRUE in boa_site_control.ini if the module is enabled
   'purge_expire_auto_configuration' => FALSE,      // Will be set to TRUE in boa_site_control.ini if the module is enabled
-  'disable_drupal_page_cache' => FALSE,            // It is set to FALSE for backward compatibility and max performance
+  'disable_drupal_page_cache' => FALSE,            // FALSE for backward compatibility and max performance
+  'set_composer_manager_vendor_dir' => FALSE,      // FALSE by default to not break site installation depending on custom value
 );
 
 
@@ -482,6 +485,9 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Session-Cookie-Ttl: " . $all_ini['session_cookie_ttl']);
   header("X-Ini-Session-Gc-Eol: " . $all_ini['session_gc_eol']);
   header("X-Ini-Disable-Drupal-Page-Cache: " . $all_ini['disable_drupal_page_cache']);
+  header("X-Ini-Set-Composer-Manager-Vendor-Dir: " . $all_ini['set_composer_manager_vendor_dir']);
+  header("X-Ini-AutoSlave-Enable: " . $all_ini['autoslave_enable']);
+  header("X-Ini-CacheConsistent-Enable: " . $all_ini['cache_consistent_enable']);
 }
 
 
@@ -549,6 +555,7 @@ ini_set('session.gc_maxlifetime', $all_ini['session_gc_eol']);
  */
 if ($conf['install_profile'] == 'hostmaster') {
   $conf['hosting_require_disable_before_delete'] = 0;
+  $conf['hosting_task_refresh_timeout'] = 5555;
   $conf['theme_link'] = FALSE;
   $conf['cache'] = 0;
   if (!$is_backend && isset($_SERVER['HTTP_USER_AGENT'])) {
@@ -641,6 +648,18 @@ if ($all_ini['auto_detect_domain_access_integration']) {
   }
   elseif (is_readable('profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc')) {
     $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc';
+  }
+}
+
+/**
+ * Use site specific composer_manager dir
+ */
+if ($all_ini['set_composer_manager_vendor_dir'] && !$is_install) {
+  if ($drupal_eight) {
+    $config['composer_manager.settings']['vendor_dir'] = 'sites/' . $_SERVER['SERVER_NAME'] . '/vendor';
+  }
+  else {
+    $conf['composer_manager_vendor_dir'] = 'sites/' . $_SERVER['SERVER_NAME'] . '/vendor';
   }
 }
 
@@ -1046,6 +1065,29 @@ if ($redis_up && $use_redis && !$custom_cache) {
         header("X-Redis-Autoload-Is-Readable: " . $cache_redis_path);
       }
     }
+    if ($all_ini['autoslave_enable']) {
+      if (is_readable('modules/o_contrib_seven/autoslave/autoslave.cache.inc') &&
+        is_readable('includes/database/autoslave/database.inc')) {
+        $use_auto_se = TRUE;
+        $gzip_mode = FALSE;
+        $cache_backport = FALSE;
+        $auto_se_path = 'modules/o_contrib_seven/autoslave/autoslave.cache.inc';
+        if ($is_dev && !$is_backend) {
+          header("X-AutoSlave-Cache-Is-Readable: " . $auto_se_path);
+        }
+      }
+    }
+    if ($all_ini['cache_consistent_enable']) {
+      if (is_readable('modules/o_contrib_seven/cache_consistent/cache_consistent.inc')) {
+        $use_cache_ct = TRUE;
+        $gzip_mode = FALSE;
+        $cache_backport = FALSE;
+        $cache_ct_path = 'modules/o_contrib_seven/cache_consistent/cache_consistent.inc';
+        if ($is_dev && !$is_backend) {
+          header("X-CacheConsistent-Is-Readable: " . $cache_ct_path);
+        }
+      }
+    }
   }
   elseif ($drupal_six) {
     if (is_readable('modules/o_contrib/cache_backport/cache.inc')) {
@@ -1118,7 +1160,28 @@ if ($redis_up && $use_redis && !$custom_cache) {
           $gzip_mode = FALSE;
         }
       }
+      if ($gzip_mode) {
+        $conf['cache_default_class']            = 'Redis_CacheCompressed';
+      }
+      else {
+        $conf['cache_default_class']            = 'Redis_Cache';
+      }
       $conf['cache_backends'][]                 = $cache_redis_path;
+      if ($use_auto_se) {
+        $conf['cache_backends'][]               = $auto_se_path;
+        $conf['cache_default_class']            = 'AutoslaveCache';
+        $conf['autoslave_cache_default_class']  = 'Redis_Cache';
+      }
+      if ($use_cache_ct) {
+        $conf['cache_backends'][]               = $cache_ct_path;
+        $conf['cache_default_class']            = 'ConsistentCache';
+        $conf['cache_class_cache_form']         = 'DrupalDatabaseCache';
+        $conf['consistent_cache_default_class'] = 'Redis_Cache';
+        $conf['consistent_cache_default_safe']  = TRUE;
+        $conf['consistent_cache_buffer_mechanism'] = 'ConsistentCacheBuffer';
+        $conf['consistent_cache_default_strict'] = FALSE;
+        $conf['consistent_cache_strict_cache_bootstrap'] = TRUE;
+      }
       $conf['redis_client_interface']           = 'PhpRedis';
       $conf['redis_client_host']                = '127.0.0.1';
       $conf['redis_client_port']                = '6379';
@@ -1131,12 +1194,6 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $conf['page_cache_max_age']               = 0;     // D6 == max-age in the Cache-Control header (ignored by Speed Booster)
       $conf['cache_lifetime']                   = 0;     // D7 == BOA uses Speed Booster / Nginx micro-caching instead
       $conf['page_cache_lifetime']              = 0;     // D6 == BOA uses Speed Booster / Nginx micro-caching instead
-      if ($gzip_mode) {
-        $conf['cache_default_class']            = 'Redis_CacheCompressed';
-      }
-      else {
-        $conf['cache_default_class']            = 'Redis_Cache';
-      }
     }
     if ($all_ini['redis_exclude_bins']) {
       $excludes = array();

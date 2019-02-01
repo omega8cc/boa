@@ -1,4 +1,106 @@
 
+### Stable BOA-4.0.0 Release - Full Edition
+### Date: TBD
+### Milestone URL: https://github.com/omega8cc/boa/milestones/4.0.0
+
+# Release Notes:
+
+  This BOA release provides three new PHP versions, system updates, including
+  security fixes, many bug fixes, latest Aegir version, plus all included
+  Drupal distributions updated to latest versions, and supplied with latest
+  Drupal 7 core, if possible.
+
+@=> Important PHP versions availability changes
+
+  Still on PHP 5.6? You should switch to PHP 7.3 — It’s twice as fast as 5.6!
+
+  Note: BOA-4.0.0 release removes PHP 5.3, 5.4 and 5.5 versions, if installed.
+  In addition to still supported, even if officially deprecated 5.6 and 7.0
+  versions, this release adds support for PHP 7.3, 7.2 and 7.1
+
+  Please check the PHP officially supported versions list at:
+    http://php.net/supported-versions.php
+
+  In our limited testing Drupal 7 core version included in this release works
+  without noticeable issues with both PHP 7.2 and 7.3, although many contrib
+  modules may not be ready to switch your instance to 7.3 or 7.2 just yet,
+  especially if you have not used PHP 7.0 already.
+
+  We recommend to test your sites clones with newer PHP versions using BOA
+  multi-PHP-version support via ~/static/control/multi-fpm.info before
+  switching your instance to use 7.3 or 7.2 by default.
+
+  Please check for more information:
+    https://learn.omega8.cc/how-to-quickly-switch-php-to-newer-version-330
+
+  We still include Pressflow 6 platforms, because in the meantime the LTS
+  community support made the latest Pressflow 6 version compatible with PHP 7.2
+
+  If you still have a reason to use Drupal 6 core, we recommend to use
+  our version: https://github.com/omega8cc/pressflow6/tree/pressflow-plus
+
+@=> Drupal 8 platforms
+
+  While Drupal 8 platforms are not included by default, because Drupal 8
+  doesn't support symlinked and shared codebase structure like all previous
+  Drupal versions, it's fully supported as your custom platform you can install
+  in the standard ~/static directory tree.
+
+  Please check for more information:
+    https://learn.omega8.cc/how-to-add-custom-platform-properly-140
+    https://learn.omega8.cc/platforms
+
+@=> BOA release policy changes
+
+  In the last 12 months since BOA-3.2.2 release we have tested a more agile
+  approach with Rolling Release policy for BOA system part known as Barracuda.
+
+  We have implemented many changes and updates only in BOA HEAD and used
+  carefully tested HEAD in production. This worked flawlessly and allowed us
+  to keep all BOA hosted and maintained systems continuosly updated without
+  waiting for stable release.
+
+  BOA project is very complex, build atop of many packages and individually
+  built from sources components, plus other projects like Aegir, Drush and
+  Drupal core and distributions -- each of them with their own release policy.
+
+  After years of efforts to keep healthy balance between providing necessary
+  upgrades and avoiding BOA users maintenance fatigue due to frequent releases,
+  which usually results with skipping releases which has many adverse effects,
+  including requirement to keep new versions backward compatible with 2-3 years
+  old releases, we have decided that it's time to introduce Rolling Release
+  policy for Barracuda while still using standard point releases policy for
+  Octopus installer, which covers Aegir, Drush and Drupal platforms updates.
+
+  We will still use point releases for Barracuda when there will be major
+  changes introduced, like deprecating old PHP versions or changing components
+  like Let's Encrypt integration agents or methods.
+
+  BOA project docs will be updated to reflect these changes once another
+  standard point release is made either for Octopus, Barracuda or both.
+  The docs will explain how to run Barracuda system continuous updates properly.
+
+  # New features:
+
+    *
+
+  # Changes:
+
+    *
+
+  # System upgrades:
+
+    *
+
+  # Fixes:
+
+    *
+
+  # Known issues:
+
+    *
+
+
 ### Stable BOA-3.2.2 Release - Full Edition
 ### Date: Sat Jan 20 11:03:34 PST 2018
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/3.2.2
