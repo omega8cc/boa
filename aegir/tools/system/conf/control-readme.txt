@@ -135,17 +135,21 @@
 ### Supported values which can be written in this file, listed in a single line
 ### or one per line:
 ###
-### D8R ----------- Drupal 8 (inactive)
+### Drupal 8 based
+###
+### LHG ----------- Lightning
+### THR ----------- Thunder
+### VBE ----------- Varbase
+###
+### Drupal 7 based
+###
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
-### D6P D6S D6D --- Pressflow 6 p/s/d
 ### AGV ----------- aGov
 ### CME ----------- Commerce v.2
-### CS7 ----------- Commons 7
+### CS7 ----------- Commons
 ### DCE ----------- Commerce v.1
-### DCS ----------- Commons 6
 ### GDR ----------- Guardr
-### LHG ----------- Lightning
-### OA7 ----------- OpenAtrium D7
+### OA7 ----------- OpenAtrium
 ### OAD ----------- OpenAid
 ### OLS ----------- OpenLucius
 ### OOH ----------- OpenOutreach
@@ -153,22 +157,22 @@
 ### OPO ----------- Opigno LMS
 ### PPY ----------- Panopoly
 ### RST ----------- Restaurant
-### THR ----------- Thunder
-### UC7 ----------- Ubercart D7
-### UCT ----------- Ubercart D6
-### VBE ----------- Varbase
+### UC7 ----------- Ubercart
+###
+### Drupal 6 based
+###
+### D6P D6S D6D --- Pressflow prod/stage/dev
+### DCS ----------- Commons
+### UCT ----------- Ubercart
 ###
 ### You can also use special keyword 'ALL' instead of any other symbols to have
 ### all available platforms installed, including newly added in all future BOA
-### system releases, but excluding Drupal 8 platforms, which can be installed
-### only if respective keywords are explicitly listed and Octopus instance PHP
-### version is already set to 5.4 or newer - both for CLI and FPM.
+### system releases.
 ###
 ### Examples:
 ###
 ### ALL
-### ALL D8R
-### D7P D6P OAM MNS OOH RST
+### LHG VBE D7P D7S D7D
 ###
 
 ###

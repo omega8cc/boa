@@ -51,17 +51,21 @@ _PHP_CLI_VERSION=7.2
 ### control which platforms will be installed,
 ### using the symbols listed below.
 ###
-### D8R ----------- Drupal 8 (inactive)
+### Drupal 8 based
+###
+### LHG ----------- Lightning
+### THR ----------- Thunder
+### VBE ----------- Varbase
+###
+### Drupal 7 based
+###
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
-### D6P D6S D6D --- Pressflow 6 p/s/d
 ### AGV ----------- aGov
 ### CME ----------- Commerce v.2
-### CS7 ----------- Commons 7
+### CS7 ----------- Commons
 ### DCE ----------- Commerce v.1
-### DCS ----------- Commons 6
 ### GDR ----------- Guardr
-### LHG ----------- Lightning
-### OA7 ----------- OpenAtrium D7
+### OA7 ----------- OpenAtrium
 ### OAD ----------- OpenAid
 ### OLS ----------- OpenLucius
 ### OOH ----------- OpenOutreach
@@ -69,18 +73,20 @@ _PHP_CLI_VERSION=7.2
 ### OPO ----------- Opigno LMS
 ### PPY ----------- Panopoly
 ### RST ----------- Restaurant
-### THR ----------- Thunder
-### UC7 ----------- Ubercart D7
-### UCT ----------- Ubercart D6
-### VBE ----------- Varbase
+### UC7 ----------- Ubercart
+###
+### Drupal 6 based
+###
+### D6P D6S D6D --- Pressflow prod/stage/dev
+### DCS ----------- Commons
+### UCT ----------- Ubercart
 ###
 ### Examples:
 ###
 ### _PLATFORMS_LIST=ALL
-### _PLATFORMS_LIST="ALL D8R"
-### _PLATFORMS_LIST="D7P D6P PPY RST OOH"
+### _PLATFORMS_LIST="LHG VBE D7P D7S D7D"
 ###
-_PLATFORMS_LIST="D7P D7S D7D D6P D6S D6D"
+_PLATFORMS_LIST="LHG VBE D7P D7S D7D"
 
 
 ###----------------------------------------###
