@@ -1948,7 +1948,8 @@ satellite_version_check() {
   fi
   if [ -e "/opt/tmp/boa/aegir/conf/${_FILE_VERSION}" ]; then
     _VERSIONS_TEST=$(cat /opt/tmp/boa/aegir/conf/${_FILE_VERSION} 2>&1)
-    if [[ "${_VERSIONS_TEST}" =~ "-dev" ]]; then
+    if [[ "${_VERSIONS_TEST}" =~ "-dev" ]] \
+      || [[ "${_VERSIONS_TEST}" =~ "-prod" ]]; then
       if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
         && [ "${_AEGIR_VERSION}" = "HEAD" ]; then
         _VERSIONS_TEST_RESULT=OK
