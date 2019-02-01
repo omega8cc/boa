@@ -9,7 +9,7 @@ Drupal 7 core, if possible.
 
 Still on PHP 5.6? You should switch to PHP 7.3 — It’s twice as fast as 5.6!
 
-Note: BOA-4.0.0-prod release removes PHP 5.3, 5.4 and 5.5 versions, if installed.
+Note: BOA-4.0.0-prod release removes PHP 5.3, 5.4 and 5.5, if installed.
 In addition to still supported, even if officially deprecated 5.6 and 7.0
 versions, this release adds support for PHP 7.3, 7.2 and 7.1
 
