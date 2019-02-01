@@ -1569,6 +1569,38 @@ switch_php() {
           _NEW_FPM_SETUP=YES
           _FORCE_FPM_SETUP=NO
         fi
+        ### update fpm_include_default.inc if needed
+        _PHP_SV=${_T_FPM_VRN//[^0-9]/}
+        if [ -z "${_PHP_SV}" ]; then
+          _PHP_SV=56
+          _T_FPM_VRN=56
+        fi
+        _FMP_D_INC="${dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
+        if [ "${_PHP_FPM_MULTI}" = "YES" ] \
+          && [ -d "${dscUsr}/tools/le" ]; then
+          _PHP_M_V="73 72 71 70 56"
+          _D_POOL="${_USER}.${_PHP_SV}"
+          if [ ! -e "${_FMP_D_INC}" ]; then
+            echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
+            touch ${dscUsr}/static/control/.multi-fpm.pid
+            _NEW_FPM_SETUP=YES
+          else
+            _CHECK_FMP_D=$(grep "${_D_POOL}" ${_FMP_D_INC} 2>&1)
+            if [[ "${_CHECK_FMP_D}" =~ "${_D_POOL}" ]]; then
+              echo "${_D_POOL} already set in ${_FMP_D_INC}"
+            else
+              echo "${_D_POOL} must be updated in ${_FMP_D_INC}"
+              echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
+              touch ${dscUsr}/static/control/.multi-fpm.pid
+              _NEW_FPM_SETUP=YES
+            fi
+          fi
+        else
+          _PHP_M_V="${_PHP_SV}"
+          _T_FPM_VRN="${_PHP_SV}"
+          rm -f ${dscUsr}/static/control/.multi-fpm.pid
+          rm -f ${_FMP_D_INC}
+        fi
         if [ ! -z "${_T_FPM_VRN}" ] \
           && [ "${_NEW_FPM_SETUP}" = "YES" ]; then
           _NEW_FPM_SETUP=NO
