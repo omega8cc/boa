@@ -1,5 +1,41 @@
 Hello,
 
+This BOA release provides three new PHP versions, system updates, including
+security fixes, many bug fixes, latest Aegir version, plus all included
+Drupal distributions updated to latest versions, and supplied with latest
+Drupal 7 core, if possible.
+
+@=> Important PHP versions availability changes
+
+Still on PHP 5.6? You should switch to PHP 7.3 — It’s twice as fast as 5.6!
+
+Note: BOA-4.0.0 release removes PHP 5.3, 5.4 and 5.5 versions, if installed.
+In addition to still supported, even if officially deprecated 5.6 and 7.0
+versions, this release adds support for PHP 7.3, 7.2 and 7.1
+
+Please check the PHP officially supported versions list at:
+  http://php.net/supported-versions.php
+
+In our limited testing Drupal 7 core version included in this release works
+without noticeable issues with both PHP 7.2 and 7.3, although many contrib
+modules may not be ready to switch your instance to 7.3 or 7.2 just yet,
+especially if you have not used PHP 7.0 already.
+
+We recommend to test your sites clones with newer PHP versions using BOA
+multi-PHP-version support via ~/static/control/multi-fpm.info before
+switching your instance to use 7.3 or 7.2 by default.
+
+Please check for more information:
+  https://learn.omega8.cc/how-to-quickly-switch-php-to-newer-version-330
+
+We still include Pressflow 6 platforms, because in the meantime the LTS
+community support made the latest Pressflow 6 version compatible with PHP 7.2
+
+If you still have a reason to use Drupal 6 core, we recommend to use
+our version: https://github.com/omega8cc/pressflow6/tree/pressflow-plus
+
+@=> Let's Encrypt certificates
+
 If you are still running any Drupal site without Let’s Encrypt Free SSL
 enabled in your Aegir control panel, you may want to read two articles:
 

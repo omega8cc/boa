@@ -165,13 +165,6 @@ Octopus can install and/or support the platforms listed below:
  Thunder 8.2.33 --------------- https://drupal.org/project/thunder
  Varbase 8.6.4 ---------------- https://drupal.org/project/varbase
 
- Drupal 8 support for custom platforms in the ~/static directory tree
- has been added already along with Drush 8 in the BOA-3.0.0 release.
- Note: BOA may include selected Drupal 8 platforms even if Drupal 8
- doesn't support symlinks in the codebase, like all previous core versions.
-
- See also: https://omega8.cc/how-to-add-custom-platform-properly-140
-
  @ Drupal 7.63.5
 
  aGov 3.12 -------------------- https://drupal.org/project/agov

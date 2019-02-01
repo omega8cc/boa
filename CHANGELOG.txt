@@ -41,14 +41,11 @@
 
 @=> Drupal 8 platforms
 
-  While Drupal 8 platforms are not included by default, because Drupal 8
-  doesn't support symlinked and shared codebase structure like all previous
-  Drupal versions, it's fully supported as your custom platform you can install
-  in the standard ~/static directory tree.
+  Since BOA-4.0.0 three new Drupal 8 based platforms are included
 
-  Please check for more information:
-    https://learn.omega8.cc/how-to-add-custom-platform-properly-140
-    https://learn.omega8.cc/platforms
+  Lightning 3.2.4 -------------- https://drupal.org/project/lightning
+  Thunder 8.2.33 --------------- https://drupal.org/project/thunder
+  Varbase 8.6.4 ---------------- https://drupal.org/project/varbase
 
 @=> BOA release policy changes
 
