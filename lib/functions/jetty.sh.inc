@@ -19,6 +19,7 @@ if_install_jetty() {
       fi
       st_runner "apt-get update -qq" &> /dev/null
       st_runner "${_INSTAPP} -t jessie-backports openjdk-8-jre-headless ca-certificates-java" 2> /dev/null
+      check_fix_java
     fi
   fi
   if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \
