@@ -28,10 +28,10 @@
 ###
 ### ~/static/control/multi-fpm.info
 ###
-### This file, if exists, will switch all hosted sites to the *lowest*
-### available PHP-FPM version within the 5.6-7.3 range, with ability
-### to override PHP-FPM version per site, if the site's name is listed
-### in this additional control file, as shown below:
+### This file, if exists, will switch all sites listed in it to their
+### respective PHP-FPM versions as shown in the example below, while all
+### other sites not listed in multi-fpm.info will continue to use PHP-FPM
+### version defined in fpm.info instead, which can be modified independently.
 ###
 ### foo.com 7.3
 ### bar.com 7.2
