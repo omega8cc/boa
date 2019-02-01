@@ -137,7 +137,7 @@ _TUNE_PHP_CLI_TIMEOUT=9999
 ###----------------------------------------###
 
 _AEGIR_VERSION="BOA-3.2.2"
-_BRANCH_BOA="3.x.x-dev"
+_BRANCH_BOA="4.x"
 _X_VERSION="BOA-3.2.2"
 _MYSQLTUNER_VRN=1.7.13
 
