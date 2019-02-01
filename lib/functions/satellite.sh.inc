@@ -3944,7 +3944,7 @@ satellite_check_php_compatibility() {
     _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
     if [ "${_T_FPM_VRN}" = "7.3" ] \
       || [ "${_T_FPM_VRN}" = "7.2" ] \
-       || [ "${_T_FPM_VRN}" = "7.1" ] \
+      || [ "${_T_FPM_VRN}" = "7.1" ] \
       || [ "${_T_FPM_VRN}" = "7.0" ] \
       || [ "${_T_FPM_VRN}" = "5.6" ]; then
       _PHP_FPM_LEGACY_FREE=YES
