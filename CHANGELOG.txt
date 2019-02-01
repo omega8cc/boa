@@ -14,7 +14,7 @@
 
   Still on PHP 5.6? You should switch to PHP 7.3 — It’s twice as fast as 5.6!
 
-  Note: BOA-4.0.0-prod release removes PHP 5.3, 5.4 and 5.5 versions, if installed.
+  Note: BOA-4.0.0-prod release removes PHP 5.3, 5.4 and 5.5, if installed.
   In addition to still supported, even if officially deprecated 5.6 and 7.0
   versions, this release adds support for PHP 7.3, 7.2 and 7.1
 
@@ -79,23 +79,114 @@
 
   # New features:
 
-    *
+    * Add UTF8MB4 Convert Drush extension #1047
+    * Update Solr with BOA #1305
+    * PHP 7.3, 7.2 and 7.1 Support #1126
+    * Debian Stretch support #1176
+    * Add jsmin support for PHP7 #1250
+    * Add support for include/exclude filelist for duplicity. #1159
+    * Add mongodb extension for PHP 7 and Drupal 8.2.x support #1127
+    * Automatically check and remove drush from codebase
+    * Add auto-cleanup for empty old platforms in /var/aegir
+    * Use _DB_BACKUPS_TTL variable for local and cluster db backups rotation
+    * Add experimental support for autoslave and cache_consistent
+    * Run manage_solr_config.sh every 5 minutes
+    * Add redis_oom_check() to monitoring
+    * Add support for Percona 5.7 and use MariaDB 10.1 by default
+    * Add initial Composer docs
+    * Add set_composer_manager_vendor_dir INI variable
+    * Do not run Verify daily if ~/static/control/noverify.info exists
+    * Install ClamAV daemon by default
 
   # Changes:
 
-    *
+    * Replace Google DNS servers for Cloudflare DNS servers #1317
+    * Remove deprecated PHP versions #801
+    * Upgrade imagick to 3.4.3 for PHP7 support #1253
+    * Force Composer to use PHP 7.2 if available #1213
+    * Replace the complex public IP detection with an external API #1089
+    * Advanced Nginx microcaching to improve cache HITs #1271
+    * Change to dashes in bucket names and upgrade boto/duplicity #1247
+    * Increase default TTLs to make BOA more friendly for big sites
+    * Remove ultimate_cron and background_process from the blacklist
+    * Minimum 4 GB RAM and 2 CPU (with Solr minimum 8 GB RAM and 4+ CPU rec.)
+    * Higher PHP CLI limits to make Composer happy
+    * Deprecate MariaDB 5.5 and force 10.1 instead
+    * Enable uploadprogress.so for testing on PHP 7+
+    * Refresh the tasks list more frequently
+    * Use /root/.backboa.autoupdate by default
+    * Remove problematic opcache.fast_shutdown
+    * Re-verify LE enabled sites daily
+    * SQL: disable innodb_adaptive_hash_index by default
+    * Use utf8mb4/utf8mb4_general_ci by default
 
   # System upgrades:
 
-    *
+    * Drush 8.1.18.2
+    * Ruby 2.6.0
+    * Lshell 0.9.18.9
+    * PHP 7.3.1, 7.2.14, 7.1.26, 5.6.40
+    * PHP 7.0.33
+    * OpenSSL 1.0.2q for Nginx
+    * Use latest Duplicity and dependencies
+    * Adminer 4.7.0
+    * Redis 4.0.12
+    * Nginx 1.15.8
+    * Redis 8.x mod-23-12-2018
+    * MySecureShell master-23-12-2018
+    * MariaDB 10.2.19, Galera 10.0.37
+    * PHP Redis extension 4.2.0
+    * CSF/LFD 12.09
+    * MySQLTuner 1.7.13
+    * MariaDB Server 10.1.37
+    * OpenSSH Server 7.9p1
 
   # Fixes:
 
-    *
+    * Infinite loop on INFO: Retrieving F1656F24C74CD1D8 key.. #1323
+    * Switching out DNS servers caused breakage #1318
+    * Errors using site with CiviCRM #1304
+    * Known issues with contrib module Redirect in Drupal 8 and BOA #1239
+    * PSA-2018-003: Drupal core security release #1283
+    * Cannot switch php-cli, cannot create varbase composer project. #1308
+    * No Web Server is added when BOA is installed locally #1306
+    * Backboa not installed #1310
+    * _PERMISSIONS_FIX var gets overriden to YES daily basis #1311
+    * Does not receive live certificates from Let's Encrypt #1255
+    * Backboa: Certificate error #1141
+    * Backboa AWS S3 backup integration no longer working #1138
+    * CiviCRM 4.7 not working under BOA #1223
+    * Update boa info [more] for current years #1248
+    * Updated default robots.txt #1172
+    * Fix for incomplete logic in multi-fpm mode
+    * Extra cleanup for any codebase level drush copy
+    * Make sure redis-server is up immediately after upgrade
+    * Add re_set_default_php_cli() procedure
+    * Fix for empty old hostmaster platforms cleanup
+    * Use gpg2 directly instead of deprecated apt-key
+    * Use IP directly as a last fallback
+    * Sync permissions fix on platform verify for D8, D7, D6
+    * Make sure to fix Redis permissions
+    * Improve gpg keys handling
+    * Remove deprecated option UsePrivilegeSeparation if exists
+    * Restore Jessie default apt mode on Stretch+
+    * Avoid potentialy problematic --force-yes for apt-get
+    * Add procedure satellite_fix_broken_entity_module()
+    * Add libzip-dev to satisfy PHP 7.3 requirements
+    * Fix the site specific composer_manager dir also for D8
+    * Improve pdnsd self-repair procedures
+    * SSHD - use without-password for backward compatibility
+    * Fix SA-CORE-2018-006 for D8 and D7
+    * Fix to include gitlab.com in ~/.ssh/known_hosts
+    * Nginx: the "ssl" directive is deprecated since 1.15.0
+    * Update, sync and de-duplicate Zend OPcache config directives
+    * Update lshell.config to not break valid D8 specific Drush commands
+    * Add patches for CORE-2018-004 and SA-CORE-2018-002
+    * Add nginx config to mitigate SA-CORE-2018-002
 
   # Known issues:
 
-    *
+    * Ignore PHP 7.1+ on MariaDB 10.2+ until compatibility is fixed
 
 
 ### Stable BOA-3.2.2 Release - Full Edition
