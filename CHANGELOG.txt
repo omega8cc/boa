@@ -1,5 +1,5 @@
 
-### Stable BOA-4.0.0 Release - Full Edition
+### Stable BOA-4.0.0-prod Release - Full Edition
 ### Date: TBD
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/4.0.0
 
@@ -14,7 +14,7 @@
 
   Still on PHP 5.6? You should switch to PHP 7.3 — It’s twice as fast as 5.6!
 
-  Note: BOA-4.0.0 release removes PHP 5.3, 5.4 and 5.5 versions, if installed.
+  Note: BOA-4.0.0-prod release removes PHP 5.3, 5.4 and 5.5 versions, if installed.
   In addition to still supported, even if officially deprecated 5.6 and 7.0
   versions, this release adds support for PHP 7.3, 7.2 and 7.1
 
@@ -41,14 +41,11 @@
 
 @=> Drupal 8 platforms
 
-  While Drupal 8 platforms are not included by default, because Drupal 8
-  doesn't support symlinked and shared codebase structure like all previous
-  Drupal versions, it's fully supported as your custom platform you can install
-  in the standard ~/static directory tree.
+  Since BOA-4.0.0-prod three new Drupal 8 based platforms are included:
 
-  Please check for more information:
-    https://learn.omega8.cc/how-to-add-custom-platform-properly-140
-    https://learn.omega8.cc/platforms
+  Lightning 3.2.4 -------------- https://drupal.org/project/lightning
+  Thunder 8.2.33 --------------- https://drupal.org/project/thunder
+  Varbase 8.6.4 ---------------- https://drupal.org/project/varbase
 
 @=> BOA release policy changes
 

@@ -56,7 +56,7 @@ possible with Drush makefiles, although it will be included soon:
 
 Example: https://github.com/yaazkal/BOA-drupal-project/commit/691822e7c1d792e3ba28c6a1cdb283e30364e28a
 
-Update: Since BOA-4.0.0-dev our modified Aegir backend will automatically
+Update: Since BOA-4.0.0-prod our modified Aegir backend will automatically
 check and remove drush from the vendor directory if found, on every Verify.
 
 You can modify the default path to configuration files in the site's

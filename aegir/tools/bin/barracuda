@@ -11,7 +11,7 @@ lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
 lgcD="BOA-3.2.2"
 master="master"
-nextv="BOA-4.0.0-dev"
+nextv="BOA-4.0.0-prod"
 stbl="BOA-3.2.2"
 
 barCnf="/root/.barracuda.cnf"
