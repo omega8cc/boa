@@ -3,13 +3,59 @@ Hello,
 This BOA release provides three new PHP versions, system updates, including
 security fixes, many bug fixes, latest Aegir version, plus all included
 Drupal distributions updated to latest versions, and supplied with latest
-Drupal 7 core, if possible.
+Drupal 7 or Drupal 8 core, if possible. Yes, BOA still supports Pressflow 6.
+Yes, we have added Solr 7 support and every 5 minutes updates!
+
+Three Drupal 8 based popular distributions have been included by default,
+plus much improved Composer support and automatic permissions-fix-magic
+on Platform and Site Verify tasks. No more manual fixes!
+
+By the way, Composer will now use PHP 7.2 by default, and you can find
+many useful hints at:
+  https://github.com/omega8cc/boa/blob/master/docs/COMPOSER.txt
+
+@=> Solr 7 and Solr 4 support changes and improvements
+
+Big improvements and changes are coming to (auto)managing Solr cores too!
+Solr cores are are now created every 5 minutes if needed, instead of during
+the nightly procedure only, and Solr 7 is used by default. Existing Solr 4
+cores will continue to work as before, but the system will create new Solr 7
+cores for all compatible sites, and will update the sites/foo.com/solr.php
+accordingly.
+
+Both Solr 7 and Solr 4 powered by Jetty 9 server are available. Supported
+integration modules are limited to latest versions of either search_api_solr
+(D8/Solr7 and D7/Solr7 ) or apachesolr (D7/Solr4 and D6/Solr4).
+
+Please read for more details:
+  https://github.com/omega8cc/boa/blob/master/docs/SOLR.txt
+  https://github.com/omega8cc/boa/blob/master/CHANGELOG.txt
+
+@=> Drupal 8 platforms and Composer support
+
+Since BOA-4.0.0-prod three new Drupal 8 based platforms are included:
+
+Lightning 3.2.4 -------------- https://drupal.org/project/lightning
+Thunder 8.2.33 --------------- https://drupal.org/project/thunder
+Varbase 8.6.4 ---------------- https://drupal.org/project/varbase
+
+BOA supports Drupal 8 codebases both with classic directory structure like
+in Drupal 7 and also Drupal 8 distros you can download from Drupal.org, but
+if you use Composer based codebase with different structure, the platform path
+is not the codebase root directory, but the subdirectory where you see the
+Drupal own index.php and "core" subdirectory. It can be platform-name/web or
+platform-name/docroot or something similar depending on the distro design.
+
+Please read for more details:
+  https://github.com/omega8cc/boa/blob/master/CHANGELOG.txt
 
 @=> Important PHP versions availability changes
 
 Still on PHP 5.6? You should switch to PHP 7.3 — It’s twice as fast as 5.6!
+But don't switch blindly -- even sites already running on PHP 7.0 before
+are most probabaly not ready for PHP 7.2 or 7.3 without proper fixes.
 
-Note: BOA-4.0.0-prod release removes PHP 5.3, 5.4 and 5.5 versions, if installed.
+Note: BOA-4.0.0-prod release removes PHP 5.3, 5.4 and 5.5, if installed.
 In addition to still supported, even if officially deprecated 5.6 and 7.0
 versions, this release adds support for PHP 7.3, 7.2 and 7.1
 
@@ -33,6 +79,9 @@ community support made the latest Pressflow 6 version compatible with PHP 7.2
 
 If you still have a reason to use Drupal 6 core, we recommend to use
 our version: https://github.com/omega8cc/pressflow6/tree/pressflow-plus
+
+Please read for more details:
+  https://github.com/omega8cc/boa/blob/master/CHANGELOG.txt
 
 @=> Let's Encrypt certificates
 
@@ -71,6 +120,23 @@ Also, your Aegir instance has been upgraded to version boa.version
 Please read about all improvements and changes at:
 
   https://github.com/omega8cc/boa/blob/master/CHANGELOG.txt
+
+Known issues -- affects WinSCP/Putty users
+
+  The "Error decoding SFTP packet" -- affects WinSCP/Putty
+  We recommend to use CybderDuck for reliable SFTP access.
+  For known fix please check https://bit.ly/2HMGd6u -- quote below:
+  >>>>>
+    Basically we need to set the ‘Preferred SFTP protocol version’ to 3.
+    How to do this:
+      Edit the connection in WinSCP
+      Open the Advanced menu
+      Choose Advanced
+      This will bring up a new popup.
+      Under Environment click on SFTP
+      Change ‘Preferred SFTP protocol version’ to 3
+      Save the changes.
+  >>>>>
 
 Questions? Comments? Join us on Gitter and GitHub:
 

@@ -278,6 +278,7 @@ if_upgrade_only_aegir_master
 ###
 sys_packages_update
 sys_packages_install
+check_fix_java
 fix_postfix
 install_with_aptitude_deps
 fix_locales

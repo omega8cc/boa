@@ -495,6 +495,9 @@ start_up() {
   done
 }
 
-start_up
+_NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=${_NOW//[^0-9-]/}
+mkdir -p /var/backups/solr/log
+find /var/backups/solr/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
+start_up >/var/backups/solr/log/solr-${_NOW}.log 2>&1
 exit 0
-

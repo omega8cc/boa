@@ -3339,6 +3339,7 @@ if [ ! -e "/var/backups/fix-sites-all-permsissions-${_X_SE}.txt" ]; then
 fi
 find /var/backups/old-sql* -mtime +1 -exec rm -rf {} \; &> /dev/null
 find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
+find /var/backups/solr/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 find /var/backups/jetty* -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/backups/dragon/* -mtime +7 -exec rm -rf {} \; &> /dev/null
 if [[ "${_CHECK_HOST}" =~ ".host8." ]] \

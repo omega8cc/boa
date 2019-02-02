@@ -4534,8 +4534,7 @@ check_fix_java() {
     && [ -d "/usr/lib/jvm/java-7-openjdk-i386" ]; then
     ln -sf /usr/lib/jvm/java-7-openjdk-i386 /usr/lib/jvm/java-7-openjdk
   fi
-  if [ -e "/usr/lib/jvm/default-java" ] \
-    && [ -e "/usr/lib/jvm/java-1.7.0-openjdk-i386" ]; then
+  if [ -e "/usr/lib/jvm/java-1.7.0-openjdk-i386" ]; then
     rm -f /usr/lib/jvm/default-java
     ln -s /usr/lib/jvm/java-1.7.0-openjdk-i386 /usr/lib/jvm/default-java
   fi
@@ -4547,8 +4546,7 @@ check_fix_java() {
     && [ -e "/usr/lib/jvm/java-7-openjdk-i386/jre/bin/java" ]; then
     ln -sf /usr/lib/jvm/java-7-openjdk-i386/jre/bin/java /usr/bin/java7
   fi
-  if [ -e "/usr/lib/jvm/default-java" ] \
-    && [ -e "/usr/lib/jvm/java-1.7.0-openjdk-amd64" ]; then
+  if [ -e "/usr/lib/jvm/java-1.7.0-openjdk-amd64" ]; then
     rm -f /usr/lib/jvm/default-java
     ln -sf /usr/lib/jvm/java-1.7.0-openjdk-amd64 /usr/lib/jvm/default-java
   fi
@@ -4560,8 +4558,7 @@ check_fix_java() {
     && [ -d "/usr/lib/jvm/java-8-openjdk-i386" ]; then
     ln -sf /usr/lib/jvm/java-8-openjdk-i386 /usr/lib/jvm/java-8-openjdk
   fi
-  if [ -e "/usr/lib/jvm/default-java" ] \
-    && [ -e "/usr/lib/jvm/java-1.8.0-openjdk-i386" ]; then
+  if [ -e "/usr/lib/jvm/java-1.8.0-openjdk-i386" ]; then
     rm -f /usr/lib/jvm/default-java
     ln -sf /usr/lib/jvm/java-1.8.0-openjdk-i386 /usr/lib/jvm/default-java
   fi
@@ -4573,22 +4570,17 @@ check_fix_java() {
     && [ -e "/usr/lib/jvm/java-8-openjdk-i386/jre/bin/java" ]; then
     ln -sf /usr/lib/jvm/java-8-openjdk-i386/jre/bin/java /usr/bin/java8
   fi
-  if [ -e "/usr/lib/jvm/default-java" ] \
-    && [ -e "/usr/lib/jvm/java-1.8.0-openjdk-amd64" ]; then
+  if [ -e "/usr/lib/jvm/java-1.8.0-openjdk-amd64" ]; then
     rm -f /usr/lib/jvm/default-java
     ln -sf /usr/lib/jvm/java-1.8.0-openjdk-amd64 /usr/lib/jvm/default-java
   fi
   if [ -x "/usr/lib/jvm/java-7-openjdk/jre/bin/java" ]; then
-    if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
-      ln -sf /usr/lib/jvm/java-7-openjdk/jre/bin/java /etc/alternatives/java
-      ln -sf /etc/alternatives/java /usr/bin/java
-    fi
+    ln -sf /usr/lib/jvm/java-7-openjdk/jre/bin/java /etc/alternatives/java
+    ln -sf /etc/alternatives/java /usr/bin/java
   fi
   if [ -x "/usr/lib/jvm/java-8-openjdk/jre/bin/java" ]; then
-    if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
-      ln -sf /usr/lib/jvm/java-8-openjdk/jre/bin/java /etc/alternatives/java
-      ln -sf /etc/alternatives/java /usr/bin/java
-    fi
+    ln -sf /usr/lib/jvm/java-8-openjdk/jre/bin/java /etc/alternatives/java
+    ln -sf /etc/alternatives/java /usr/bin/java
   fi
 }
 
