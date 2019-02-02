@@ -159,7 +159,8 @@ if [ -e "/data/disk/arch" ]; then
   if [[ "${_VM_VERSION}" =~ "LEGACY" ]] \
     || [ ! -e "/etc/init.d/ssh" ] \
     || [ ! -e "/etc/init.d/redis-server" ] \
-    || [[ "${_CHECK_HOST}" =~ "v5.s8." ]]; then
+    || [[ "${_CHECK_HOST}" =~ "v5.s8.lon." ]] \
+    || [[ "${_CHECK_HOST}" =~ "v3.s5.ams." ]]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
