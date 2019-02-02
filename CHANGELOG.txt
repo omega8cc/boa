@@ -8,11 +8,115 @@
   This BOA release provides three new PHP versions, system updates, including
   security fixes, many bug fixes, latest Aegir version, plus all included
   Drupal distributions updated to latest versions, and supplied with latest
-  Drupal 7 core, if possible.
+  Drupal 7 or Drupal 8 core, if possible. Yes, BOA still supports Pressflow 6.
+  Yes, Debian Stretch is supported. No newer Ubuntu releases are supported yet.
+  Yes, we have added Solr 7 support and every 5 minutes updates!
+
+  Three Drupal 8 based popular distributions have been included by default,
+  plus much improved Composer support and automatic permissions-fix-magic
+  on Platform and Site Verify tasks. No more manual fixes!
+
+  By the way, Composer will now use PHP 7.2 by default, and you can find
+  many useful hints at:
+    https://github.com/omega8cc/boa/blob/master/docs/COMPOSER.txt
+
+  Big improvements and changes are coming to (auto)managing Solr cores too!
+  Solr cores are are now created every 5 minutes if needed, instead of during
+  the nightly procedure only, and Solr 7 is used by default. Existing Solr 4
+  cores will continue to work as before, but the system will create new Solr 7
+  cores for all compatible sites, and will update the sites/foo.com/solr.php
+  accordingly.
+
+  Note: If you are using WinSCP and/or Putty on Windows, please check the
+  Known Issues section at the bottom of BOA-4.0.0-prod release notes.
+
+@=> Solr 7 and Solr 4 support changes and improvements
+
+  Both Solr 7 and Solr 4 powered by Jetty 9 server are available. Supported
+  integration modules are limited to latest versions of either search_api_solr
+  (D8/Solr7 and D7/Solr7 ) or apachesolr (D7/Solr4 and D6/Solr4).
+
+  Currently supported versions are listed below:
+
+    https://ftp.drupal.org/files/projects/search_api_solr-8.x-2.4.tar.gz
+    https://ftp.drupal.org/files/projects/search_api_solr-7.x-1.14.tar.gz
+    https://ftp.drupal.org/files/projects/apachesolr-7.x-1.11.tar.gz
+    https://ftp.drupal.org/files/projects/apachesolr-6.x-3.1.tar.gz
+
+  Note that you still need to add preferred integration module along with
+  any its dependencies in your codebase since this feature doesn't modify
+  your platform or site - it only creates Solr core with configuration
+  files provided by integration module: schema.xml and solrconfig.xml etc.
+
+  Important: search_api_solr-8.x-2.x is different from all previous versions,
+  as it requires Composer to install the module and its dependencies, then
+  you will need to configure it, and only then you will be able to generate
+  customized Solr core config files, which you should upload in the path:
+  sites/foo.com/files/solr/ and wait 5-10 minutes to have them activated
+  on the Solr 7 core the system will create for you.
+
+  This will affect the running every 5 minutes auto-installer, hence
+  no need to wait until next morning to be able to use new Solr core. Win!
+
+  Once the Solr core is ready to use, you will find a special file in your
+  site directory: sites/foo.com/solr.php with details on how to access
+  your new Solr core with correct credentials.
+
+  Side note: the sites/foo.com/solr.php will be automatically deleted on every
+  site Verify task in Aegir, to prevent copying it across with incorrect
+  access credentials when you clone the site. As soon as the site is verified,
+  its sites/foo.com/solr.php will get re-created automatically within 5-10 min.
+  and the cloned site will also get its own Solr core created.
+
+  For more details please check the docs at:
+    https://github.com/omega8cc/boa/blob/master/docs/SOLR.txt
+
+@=> Drupal 8 platforms and Composer support
+
+  Since BOA-4.0.0-prod three new Drupal 8 based platforms are included:
+
+  Lightning 3.2.4 -------------- https://drupal.org/project/lightning
+  Thunder 8.2.33 --------------- https://drupal.org/project/thunder
+  Varbase 8.6.4 ---------------- https://drupal.org/project/varbase
+
+  BOA supports Drupal 8 codebases both with classic directory structure like
+  in Drupal 7 and also Drupal 8 distros you can download from Drupal.org, but
+  if you use Composer based codebase with different structure, the platform path
+  is not the codebase root directory, but the subdirectory where you see the
+  Drupal own index.php and "core" subdirectory. It can be platform-name/web or
+  platform-name/docroot or something similar depending on the distro design.
+
+  As you have discovered if you have already tried, the path you should use
+  in Aegir when adding Composer based codebase as a platform is the directory
+  where index.php resides, so effectively anything above that directory is not
+  available for web requests and thus safely protected.
+
+  The information from Aegir project docs saying "When verifying a platform,
+  Aegir runs composer install if a composer.json file is found." doesn't apply
+  to BOA. We have disabled this. There are several reasons, most importantly:
+
+  a/ having this feature enabled is actually against the codebase management
+  workflow in Aegir, because it may modify codebase on a live site,
+
+  b/ some tasks launch verify many times during clone and migrate, which
+  results with giant overhead and conflicts if we allowed it to run composer
+  install many times in parallel,
+
+  c/ from our experience, having this poorly implemented feature enabled breaks
+  clone and migration tasks between platforms when both have the composer.json
+  file. It just doesn't make any sense in our opinion. The implementation
+  should be improved to make it actually work similarly to Drush Makefiles.
+
+  You should think about Composer like it was Drush Make replacement, and you
+  should not re-build nor upgrade the codebase on a platform with sites already
+  hosted. Just use it to build new codebases and then add them as platforms
+  when the build works without errors.
 
 @=> Important PHP versions availability changes
 
   Still on PHP 5.6? You should switch to PHP 7.3 — It’s twice as fast as 5.6!
+  But don't switch blindly -- even sites already running on PHP 7.0 before
+  are most probabaly not ready for PHP 7.2 or 7.3 without proper fixes.
 
   Note: BOA-4.0.0-prod release removes PHP 5.3, 5.4 and 5.5, if installed.
   In addition to still supported, even if officially deprecated 5.6 and 7.0
@@ -38,14 +142,6 @@
 
   If you still have a reason to use Drupal 6 core, we recommend to use
   our version: https://github.com/omega8cc/pressflow6/tree/pressflow-plus
-
-@=> Drupal 8 platforms
-
-  Since BOA-4.0.0-prod three new Drupal 8 based platforms are included:
-
-  Lightning 3.2.4 -------------- https://drupal.org/project/lightning
-  Thunder 8.2.33 --------------- https://drupal.org/project/thunder
-  Varbase 8.6.4 ---------------- https://drupal.org/project/varbase
 
 @=> BOA release policy changes
 
@@ -79,114 +175,128 @@
 
   # New features:
 
-    * Add UTF8MB4 Convert Drush extension #1047
-    * Update Solr with BOA #1305
-    * PHP 7.3, 7.2 and 7.1 Support #1126
-    * Debian Stretch support #1176
-    * Add jsmin support for PHP7 #1250
-    * Add support for include/exclude filelist for duplicity. #1159
-    * Add mongodb extension for PHP 7 and Drupal 8.2.x support #1127
-    * Automatically check and remove drush from codebase
     * Add auto-cleanup for empty old platforms in /var/aegir
-    * Use _DB_BACKUPS_TTL variable for local and cluster db backups rotation
     * Add experimental support for autoslave and cache_consistent
-    * Run manage_solr_config.sh every 5 minutes
-    * Add redis_oom_check() to monitoring
-    * Add support for Percona 5.7 and use MariaDB 10.1 by default
     * Add initial Composer docs
+    * Add jsmin support for PHP7 #1250
+    * Add mongodb extension for PHP 7 and Drupal 8.2.x support #1127
+    * Add redis_oom_check() to monitoring
     * Add set_composer_manager_vendor_dir INI variable
+    * Add support for include/exclude filelist for duplicity. #1159
+    * Add support for Percona 5.7 and use MariaDB 10.1 by default
+    * Add UTF8MB4 Convert Drush extension #1047
+    * Automatically check and remove drush from codebase
+    * Debian Stretch support #1176
     * Do not run Verify daily if ~/static/control/noverify.info exists
     * Install ClamAV daemon by default
+    * PHP 7.3, 7.2 and 7.1 Support #1126
+    * Run manage_solr_config.sh every 5 minutes
+    * Update Solr with BOA #1305
+    * Use _DB_BACKUPS_TTL variable for local and cluster db backups rotation
 
   # Changes:
 
-    * Replace Google DNS servers for Cloudflare DNS servers #1317
-    * Remove deprecated PHP versions #801
-    * Upgrade imagick to 3.4.3 for PHP7 support #1253
-    * Force Composer to use PHP 7.2 if available #1213
-    * Replace the complex public IP detection with an external API #1089
     * Advanced Nginx microcaching to improve cache HITs #1271
     * Change to dashes in bucket names and upgrade boto/duplicity #1247
-    * Increase default TTLs to make BOA more friendly for big sites
-    * Remove ultimate_cron and background_process from the blacklist
-    * Minimum 4 GB RAM and 2 CPU (with Solr minimum 8 GB RAM and 4+ CPU rec.)
-    * Higher PHP CLI limits to make Composer happy
     * Deprecate MariaDB 5.5 and force 10.1 instead
     * Enable uploadprogress.so for testing on PHP 7+
-    * Refresh the tasks list more frequently
-    * Use /root/.backboa.autoupdate by default
-    * Remove problematic opcache.fast_shutdown
+    * Force Composer to use PHP 7.2 if available #1213
+    * Higher PHP CLI limits to make Composer happy
+    * Increase default TTLs to make BOA more friendly for big sites
+    * Minimum 4 GB RAM and 2 CPU (with Solr minimum 8 GB RAM and 4+ CPU rec.)
     * Re-verify LE enabled sites daily
+    * Refresh the tasks list more frequently
+    * Remove deprecated PHP versions #801
+    * Remove problematic opcache.fast_shutdown
+    * Remove ultimate_cron and background_process from the blacklist
+    * Replace Google DNS servers for Cloudflare DNS servers #1317
+    * Replace the complex public IP detection with an external API #1089
     * SQL: disable innodb_adaptive_hash_index by default
+    * Upgrade imagick to 3.4.3 for PHP7 support #1253
+    * Use /root/.backboa.autoupdate by default
     * Use utf8mb4/utf8mb4_general_ci by default
 
   # System upgrades:
 
-    * Drush 8.1.18.2
-    * Ruby 2.6.0
-    * Lshell 0.9.18.9
-    * PHP 7.3.1, 7.2.14, 7.1.26, 5.6.40
-    * PHP 7.0.33
-    * OpenSSL 1.0.2q for Nginx
-    * Use latest Duplicity and dependencies
     * Adminer 4.7.0
-    * Redis 4.0.12
-    * Nginx 1.15.8
-    * Redis 8.x mod-23-12-2018
-    * MySecureShell master-23-12-2018
-    * MariaDB 10.2.19, Galera 10.0.37
-    * PHP Redis extension 4.2.0
     * CSF/LFD 12.09
-    * MySQLTuner 1.7.13
+    * Drush 8.1.18.2
+    * Lshell 0.9.18.9
+    * MariaDB 10.2.19, Galera 10.0.37
     * MariaDB Server 10.1.37
+    * MySecureShell master-23-12-2018
+    * MySQLTuner 1.7.13
+    * Nginx 1.15.8
     * OpenSSH Server 7.9p1
+    * OpenSSL 1.0.2q for Nginx
+    * PHP 7.3.1, 7.2.14, 7.1.26, 7.0.33, 5.6.40
+    * PHP Redis extension 4.2.0
+    * Redis Server 4.0.12
+    * Redis Module 8.x mod-23-12-2018
+    * Ruby 2.6.0
+    * Use latest Duplicity and dependencies
 
   # Fixes:
 
-    * Infinite loop on INFO: Retrieving F1656F24C74CD1D8 key.. #1323
-    * Switching out DNS servers caused breakage #1318
-    * Errors using site with CiviCRM #1304
-    * Known issues with contrib module Redirect in Drupal 8 and BOA #1239
-    * PSA-2018-003: Drupal core security release #1283
-    * Cannot switch php-cli, cannot create varbase composer project. #1308
-    * No Web Server is added when BOA is installed locally #1306
-    * Backboa not installed #1310
-    * _PERMISSIONS_FIX var gets overriden to YES daily basis #1311
-    * Does not receive live certificates from Let's Encrypt #1255
-    * Backboa: Certificate error #1141
-    * Backboa AWS S3 backup integration no longer working #1138
-    * CiviCRM 4.7 not working under BOA #1223
-    * Update boa info [more] for current years #1248
-    * Updated default robots.txt #1172
-    * Fix for incomplete logic in multi-fpm mode
-    * Extra cleanup for any codebase level drush copy
-    * Make sure redis-server is up immediately after upgrade
+    * Add libzip-dev to satisfy PHP 7.3 requirements
+    * Add nginx config to mitigate SA-CORE-2018-002
+    * Add patches for CORE-2018-004 and SA-CORE-2018-002
+    * Add procedure satellite_fix_broken_entity_module()
     * Add re_set_default_php_cli() procedure
+    * Avoid potentialy problematic --force-yes for apt-get
+    * Backboa AWS S3 backup integration no longer working #1138
+    * Backboa not installed #1310
+    * Backboa: Certificate error #1141
+    * Cannot switch php-cli, cannot create varbase composer project. #1308
+    * CiviCRM 4.7 not working under BOA #1223
+    * Errors using site with CiviCRM #1304
+    * Extra cleanup for any codebase level drush copy
     * Fix for empty old hostmaster platforms cleanup
-    * Use gpg2 directly instead of deprecated apt-key
-    * Use IP directly as a last fallback
-    * Sync permissions fix on platform verify for D8, D7, D6
-    * Make sure to fix Redis permissions
+    * Fix for incomplete logic in multi-fpm mode
+    * Fix SA-CORE-2018-006 for D8 and D7
+    * Fix the site specific composer_manager dir also for D8
+    * Fix to include gitlab.com in ~/.ssh/known_hosts
     * Improve gpg keys handling
+    * Improve pdnsd self-repair procedures
+    * Infinite loop on INFO: Retrieving F1656F24C74CD1D8 key.. #1323
+    * Known issues with contrib module Redirect in Drupal 8 and BOA #1239
+    * Make sure redis-server is up immediately after upgrade
+    * Make sure to fix Redis permissions
+    * Nginx: the "ssl" directive is deprecated since 1.15.0
+    * No live certificates from Let's Encrypt #1255
+    * No Web Server is added when BOA is installed locally #1306
+    * PSA-2018-003: Drupal core security release #1283
     * Remove deprecated option UsePrivilegeSeparation if exists
     * Restore Jessie default apt mode on Stretch+
-    * Avoid potentialy problematic --force-yes for apt-get
-    * Add procedure satellite_fix_broken_entity_module()
-    * Add libzip-dev to satisfy PHP 7.3 requirements
-    * Fix the site specific composer_manager dir also for D8
-    * Improve pdnsd self-repair procedures
     * SSHD - use without-password for backward compatibility
-    * Fix SA-CORE-2018-006 for D8 and D7
-    * Fix to include gitlab.com in ~/.ssh/known_hosts
-    * Nginx: the "ssl" directive is deprecated since 1.15.0
-    * Update, sync and de-duplicate Zend OPcache config directives
+    * Switching out DNS servers caused breakage #1318
+    * Sync permissions fix on platform verify for D8, D7, D6
+    * The _PERMISSIONS_FIX var gets overriden to YES daily basis #1311
+    * Update boa info [more] for current years #1248
     * Update lshell.config to not break valid D8 specific Drush commands
-    * Add patches for CORE-2018-004 and SA-CORE-2018-002
-    * Add nginx config to mitigate SA-CORE-2018-002
+    * Update, sync and de-duplicate Zend OPcache config directives
+    * Updated default robots.txt #1172
+    * Use gpg2 directly instead of deprecated apt-key
+    * Use IP directly as a last fallback
 
   # Known issues:
 
-    * Ignore PHP 7.1+ on MariaDB 10.2+ until compatibility is fixed
+    * PHP 7.1+ can't be installed w/ MariaDB 10.2+ until compatibility is fixed
+
+    * Error decoding SFTP packet -- affects WinSCP/Putty
+      We recommend to use CybderDuck for reliable SFTP access.
+      For known fix please check https://bit.ly/2HMGd6u -- quote below:
+      >>>>>
+        Basically we need to set the ‘Preferred SFTP protocol version’ to 3.
+        How to do this:
+          Edit the connection in WinSCP
+          Open the Advanced menu
+          Choose Advanced
+          This will bring up a new popup.
+          Under Environment click on SFTP
+          Change ‘Preferred SFTP protocol version’ to 3
+          Save the changes.
+      >>>>>
 
 
 ### Stable BOA-3.2.2 Release - Full Edition
