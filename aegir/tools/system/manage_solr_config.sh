@@ -225,6 +225,8 @@ add_solr() {
       else
         rm -rf ${_SOLR_BASE}/core0/data/*
         cp -a ${_SOLR_BASE}/core0 ${2}
+        sed -i "s/.*name=\"${LegacySolrCoreID}\".*//g" ${_SOLR_BASE}/solr.xml
+        wait
         sed -i "s/.*<core name=\"core0\" instanceDir=\"core0\" \/>.*/<core name=\"core0\" instanceDir=\"core0\" \/>\n<core name=\"${SolrCoreID}\" instanceDir=\"${SolrCoreID}\" \/>\n/g" ${_SOLR_BASE}/solr.xml
         wait
         sed -i "/^$/d" ${_SOLR_BASE}/solr.xml &> /dev/null
@@ -251,6 +253,8 @@ delete_solr() {
       su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${SolrCoreID}"
     else
       sed -i "s/.*instanceDir=\"${SolrCoreID}\".*//g" ${_SOLR_BASE}/solr.xml
+      wait
+      sed -i "s/.*name=\"${LegacySolrCoreID}\".*//g" ${_SOLR_BASE}/solr.xml
       wait
       sed -i "/^$/d" ${_SOLR_BASE}/solr.xml &> /dev/null
       wait
@@ -379,7 +383,8 @@ proceed_solr() {
             | awk '{ print $2}' \
             | tr -d "\n" 2>&1)
     #SolrCoreID="${_HM_U}-${Dan}-${CoreHS}"
-    SolrCoreID="${_HM_U}.${Dan}"
+    LegacySolrCoreID="${_HM_U}.${Dan}"
+    SolrCoreID="solr.${_HM_U}.${Dan}"
     setup_solr
   fi
 }

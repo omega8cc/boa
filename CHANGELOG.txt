@@ -25,7 +25,9 @@
   the nightly procedure only, and Solr 7 is used by default. Existing Solr 4
   cores will continue to work as before, but the system will create new Solr 7
   cores for all compatible sites, and will update the sites/foo.com/solr.php
-  accordingly.
+  accordingly. For existing Solr 4 cores there can be namespace conflicts,
+  so please make sure to check the updated sites/foo.com/solr.php file and
+  adjust your site configuration if needed.
 
   Note: If you are using WinSCP and/or Putty on Windows, please check the
   Known Issues section at the bottom of BOA-4.0.0-prod release notes.
@@ -282,6 +284,10 @@
   # Known issues:
 
     * PHP 7.1+ can't be installed w/ MariaDB 10.2+ until compatibility is fixed
+
+    * Existing Solr 4 cores may experience namespace conflicts.
+      Please make sure to check the updated sites/foo.com/solr.php file
+      and adjust your site configuration if needed.
 
     * Error decoding SFTP packet -- affects WinSCP/Putty
       We recommend to use CybderDuck for reliable SFTP access.
