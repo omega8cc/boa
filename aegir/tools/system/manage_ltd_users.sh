@@ -1490,6 +1490,19 @@ switch_php() {
       _T_FPM_VRN=$(cat ${dscUsr}/static/control/fpm.info 2>&1)
       _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
       _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
+      if [ "${_T_FPM_VRN}" = "73" ]; then
+        _T_FPM_VRN=7.3
+      elif [ "${_T_FPM_VRN}" = "72" ]; then
+        _T_FPM_VRN=7.2
+      elif [ "${_T_FPM_VRN}" = "71" ]; then
+        _T_FPM_VRN=7.1
+      elif [ "${_T_FPM_VRN}" = "70" ]; then
+        _T_FPM_VRN=7.0
+      elif [ "${_T_FPM_VRN}" = "56" ]; then
+        _T_FPM_VRN=5.6
+      elif [ "${_T_FPM_VRN}" = "52" ]; then
+        _T_FPM_VRN=5.2
+      fi
       if [ "${_T_FPM_VRN}" = "7.3" ] \
         || [ "${_T_FPM_VRN}" = "7.2" ] \
         || [ "${_T_FPM_VRN}" = "7.1" ] \
@@ -1573,7 +1586,6 @@ switch_php() {
         _PHP_SV=${_T_FPM_VRN//[^0-9]/}
         if [ -z "${_PHP_SV}" ]; then
           _PHP_SV=56
-          _T_FPM_VRN=56
         fi
         _FMP_D_INC="${dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
         if [ "${_PHP_FPM_MULTI}" = "YES" ] \
@@ -1597,7 +1609,6 @@ switch_php() {
           fi
         else
           _PHP_M_V="${_PHP_SV}"
-          _T_FPM_VRN="${_PHP_SV}"
           rm -f ${dscUsr}/static/control/.multi-fpm.pid
           rm -f ${_FMP_D_INC}
         fi
