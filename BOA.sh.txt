@@ -432,6 +432,22 @@ update_agents() {
   #   fi
   # fi
 
+  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/manage_solr_config.ctrl.322stableQ15.pid" ]; then
+    mv -f /var/xdrago/manage_solr_config.sh /var/xdrago/manage_solr_config.sh.old
+    curl ${crlGet} "${urlHmr}/tools/system/manage_solr_config.sh" \
+      -o /var/xdrago/manage_solr_config.sh
+    if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
+      chmod 700 /var/xdrago/manage_solr_config.sh
+      chown root:root /var/xdrago/manage_solr_config.sh
+      touch ${pthLog}/manage_solr_config.ctrl.322stableQ15.pid
+      rm -f /var/run/manage_solr_config.pid
+    else
+      mv -f /var/xdrago/manage_solr_config.sh.old /var/xdrago/manage_solr_config.sh
+    fi
+  fi
+
   # if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
   #   && [ -e "/var/xdrago" ] \
   #   && [ ! -e "${pthLog}/proc_num_ctrl.ctrl.322stableQ15.pid" ]; then
