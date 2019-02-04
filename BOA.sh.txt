@@ -606,6 +606,7 @@ update_agents() {
         tUsr=
         tUsr=$(echo ${pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         dscUsr="/data/disk/${tUsr}"
+        sed -i "s/args.*q=/args ~* \"foobaroff=/g" ${dscUsr}/config/includes/nginx_vhost_common.conf
         if [ ! -e "${dscUsr}/static/control/fpm.info" ]; then
           echo 5.6 > ${dscUsr}/static/control/fpm.info
           chown ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control/fpm.info
@@ -619,6 +620,7 @@ update_agents() {
       fi
     done
     touch ${pthLog}/fpm-cli.ctrl.400stableQ1.pid
+    service nginx reload
   fi
 
   if [ -e "/opt/tools/drush/8/drush/drush" ] \
