@@ -598,6 +598,29 @@ update_agents() {
     touch ${pthLog}/dispatch.ctrl.400stableQ1.pid
   fi
 
+  if [ -e "/var/xdrago/manage_solr_config.sh" ] \
+    && [ ! -e "${pthLog}/fpm-cli.ctrl.400stableQ1.pid" ]; then
+    usrGroup=users
+    for pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+      if [ ! -e "${pthSysUsr}/log/CANCELLED" ]; then
+        tUsr=
+        tUsr=$(echo ${pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+        dscUsr="/data/disk/${tUsr}"
+        if [ ! -e "${dscUsr}/static/control/fpm.info" ]; then
+          echo 5.6 > ${dscUsr}/static/control/fpm.info
+          chown ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control/fpm.info
+          chmod 0644 ${dscUsr}/static/control/fpm.info
+        fi
+        if [ ! -e "${dscUsr}/static/control/cli.info" ]; then
+          echo 5.6 > ${dscUsr}/static/control/cli.info
+          chown ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control/cli.info
+          chmod 0644 ${dscUsr}/static/control/cli.info
+        fi
+      fi
+    done
+    touch ${pthLog}/fpm-cli.ctrl.400stableQ1.pid
+  fi
+
   if [ -e "/opt/tools/drush/8/drush/drush" ] \
     && [ -e "${hLeP}" ] \
     && [ -e "${hLeVtP}" ] \
