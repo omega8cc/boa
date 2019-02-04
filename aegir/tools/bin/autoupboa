@@ -160,6 +160,7 @@ if [ -e "/data/disk/arch" ]; then
     || [ ! -e "/etc/init.d/ssh" ] \
     || [ ! -e "/etc/init.d/redis-server" ] \
     || [[ "${_CHECK_HOST}" =~ "v5.s8.lon." ]] \
+    || [[ "${_CHECK_HOST}" =~ "v8.s4.ams." ]] \
     || [[ "${_CHECK_HOST}" =~ "v3.s5.ams." ]]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
