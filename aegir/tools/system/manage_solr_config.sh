@@ -225,6 +225,10 @@ add_solr() {
       else
         rm -rf ${_SOLR_BASE}/core0/data/*
         cp -a ${_SOLR_BASE}/core0 ${2}
+        sed -i "s/.*name=\"${LegacySolrCoreID}\".*//g" ${_SOLR_BASE}/solr.xml
+        wait
+        sed -i "s/.*name=\"${OldSolrCoreID}\".*//g" ${_SOLR_BASE}/solr.xml
+        wait
         sed -i "s/.*<core name=\"core0\" instanceDir=\"core0\" \/>.*/<core name=\"core0\" instanceDir=\"core0\" \/>\n<core name=\"${SolrCoreID}\" instanceDir=\"${SolrCoreID}\" \/>\n/g" ${_SOLR_BASE}/solr.xml
         wait
         sed -i "/^$/d" ${_SOLR_BASE}/solr.xml &> /dev/null
@@ -232,36 +236,41 @@ add_solr() {
       fi
       echo "New Solr with ${1} for ${2} added"
     fi
-    update_solr ${1} ${2}
+    update_solr "${1}" "${2}"
   fi
 }
 
 delete_solr() {
-  # ${1} is solr base dir
-  # ${2} is solr core path
-  if [ "${1}" = "/opt/solr4" ]; then
+  # ${1} is solr core path
+  if [[ "${1}" =~ "solr4" ]]; then
     _SOLR_BASE="/opt/solr4"
-  elif [ "${1}" = "/var/solr7/data" ]; then
+  elif [[ "${1}" =~ "solr7" ]]; then
     _SOLR_BASE="/var/solr7/data"
   fi
-  if [ ! -z "${2}" ] && [ -e "/data/conf/solr" ] && [ -e "${2}/conf" ]; then
+  if [ ! -z "${1}" ] && [ -e "/data/conf/solr" ] && [ -e "${1}/conf" ]; then
     if [ "${_SOLR_BASE}" = "/var/solr7/data" ] \
       && [ -x "/opt/solr7/bin/solr" ] \
       && [ -e "/var/solr7/data/solr.xml" ]; then
       su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${SolrCoreID}"
+      su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${OldSolrCoreID}"
+      su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${LegacySolrCoreID}"
     else
       sed -i "s/.*instanceDir=\"${SolrCoreID}\".*//g" ${_SOLR_BASE}/solr.xml
       wait
+      sed -i "s/.*name=\"${LegacySolrCoreID}\".*//g"  ${_SOLR_BASE}/solr.xml
+      wait
+      sed -i "s/.*name=\"${OldSolrCoreID}\".*//g"     ${_SOLR_BASE}/solr.xml
+      wait
       sed -i "/^$/d" ${_SOLR_BASE}/solr.xml &> /dev/null
       wait
-      rm -rf ${2}
+      rm -rf ${1}
       rm -f ${Dir}/solr.php
-      if [[ "${_SOLR_DIR}" =~ "/opt/solr4" ]]; then
+      if [[ "${_SOLR_BASE}" =~ "/opt/solr4" ]]; then
         kill -9 $(ps aux | grep '[j]${etty9}' | awk '{print $2}') &> /dev/null
         service jetty9 start &> /dev/null
       fi
     fi
-    echo "Deleted Solr core in ${2}"
+    echo "Deleted Solr core in ${1}"
   fi
 }
 
@@ -271,31 +280,20 @@ check_solr() {
   if [ ! -z "${1}" ] && [ ! -z "${2}" ] && [ -e "/data/conf/solr" ]; then
     echo "Checking Solr with ${1} for ${2}"
     if [ ! -e "${2}" ]; then
-      add_solr ${1} ${2}
+      add_solr "${1}" "${2}"
     else
-      update_solr ${1} ${2}
+      update_solr "${1}" "${2}"
     fi
   fi
 }
 
 setup_solr() {
-
-  if [ -e "${Plr}/modules/o_contrib" ]; then
-    _SOLR_BASE="/opt/solr4"
-  elif [ -e "${Plr}/modules/o_contrib_seven" ]; then
-    _SOLR_BASE="/var/solr7/data"
-  elif [ -e "${Plr}/modules/o_contrib_eight" ]; then
-    _SOLR_BASE="/var/solr7/data"
-  fi
-  _SOLR_DIR="${_SOLR_BASE}/${SolrCoreID}"
-
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
     cp -af /data/conf/default.boa_site_control.ini ${_DIR_CTRL_F} &> /dev/null
     chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
     chmod 0664 ${_DIR_CTRL_F} &> /dev/null
   fi
-
   ###
   ### Support for solr_custom_config directive
   ###
@@ -342,12 +340,31 @@ setup_solr() {
     if [[ "${_SAPI_SOLR_T}" =~ "search_api_solr" ]]; then
       _SOLR_MODULE="search_api_solr"
     fi
+    if [ "${_SOLR_MODULE}" = "apachesolr" ]; then
+      _SOLR_BASE="/opt/solr4"
+    elif [ "${_SOLR_MODULE}" = "search_api_solr" ] \
+      && [ -e "${Plr}/modules/o_contrib_seven" ]; then
+      _SOLR_BASE="/var/solr7/data"
+    elif [ "${_SOLR_MODULE}" = "search_api_solr" ] \
+      && [ -e "${Plr}/modules/o_contrib_eight" ]; then
+      _SOLR_BASE="/var/solr7/data"
+    fi
+    _SOLR_DIR="${_SOLR_BASE}/${SolrCoreID}"
     if [ "${_SOLR_MODULE}" = "search_api_solr" ] || [ "${_SOLR_MODULE}" = "apachesolr" ]; then
       check_solr "${_SOLR_MODULE}" "${_SOLR_DIR}"
     else
-      if [ -e "${_SOLR_DIR}" ]; then
-        delete_solr ${_SOLR_BASE} ${_SOLR_DIR}
-      fi
+      _SOLR_DIR_DEL="/opt/solr4/${SolrCoreID}"
+      delete_solr "${_SOLR_DIR_DEL}"
+      _SOLR_DIR_DEL="/var/solr7/data/${SolrCoreID}"
+      delete_solr "${_SOLR_DIR_DEL}"
+      _SOLR_DIR_DEL="/opt/solr4/${LegacySolrCoreID}"
+      delete_solr "${_SOLR_DIR_DEL}"
+      _SOLR_DIR_DEL="/var/solr7/data/${LegacySolrCoreID}"
+      delete_solr "${_SOLR_DIR_DEL}"
+      _SOLR_DIR_DEL="/opt/solr4/${OldSolrCoreID}"
+      delete_solr "${_SOLR_DIR_DEL}"
+      _SOLR_DIR_DEL="/var/solr7/data/${OldSolrCoreID}"
+      delete_solr "${_SOLR_DIR_DEL}"
     fi
   fi
   ###
@@ -364,7 +381,7 @@ setup_solr() {
     if [[ "${_SOLR_UP_CFG_TT}" =~ "solr_update_config = YES" ]]; then
       if [ "${_SLR_CM_CFG_RT}" = "NO" ] \
         && [ ! -e "${_SOLR_PROTECT_CTRL}" ]; then
-        update_solr ${_SOLR_MODULE} ${_SOLR_DIR}
+        update_solr "${_SOLR_MODULE}" "${_SOLR_DIR}"
       fi
     fi
   fi
@@ -379,7 +396,9 @@ proceed_solr() {
             | awk '{ print $2}' \
             | tr -d "\n" 2>&1)
     #SolrCoreID="${_HM_U}-${Dan}-${CoreHS}"
-    SolrCoreID="${_HM_U}.${Dan}"
+    LegacySolrCoreID="${_HM_U}.${Dan}"
+    OldSolrCoreID="solr.${_HM_U}.${Dan}"
+    SolrCoreID="oct.${_HM_U}.${Dan}"
     setup_solr
   fi
 }

@@ -2221,7 +2221,7 @@ install_ssh_src() {
     _SSH_GET_DPKG=$(dpkg --get-selections | grep ssh | grep 'hold$' 2>&1)
   fi
   _SSH_INSTALL_REQUIRED=NO
-  _SSH_ITD=$(ssh -V 2>&1 \
+  _SSH_ITD=$(sshd -V 2>&1 \
     | tr -d "\n" \
     | tr -d "," \
     | cut -d"_" -f2 \

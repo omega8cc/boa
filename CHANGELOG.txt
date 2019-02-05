@@ -25,7 +25,9 @@
   the nightly procedure only, and Solr 7 is used by default. Existing Solr 4
   cores will continue to work as before, but the system will create new Solr 7
   cores for all compatible sites, and will update the sites/foo.com/solr.php
-  accordingly.
+  accordingly. For existing Solr 4 cores there can be namespace conflicts,
+  so please make sure to check the updated sites/foo.com/solr.php file and
+  adjust your site configuration if needed.
 
   Note: If you are using WinSCP and/or Putty on Windows, please check the
   Known Issues section at the bottom of BOA-4.0.0-prod release notes.
@@ -227,12 +229,13 @@
     * MySecureShell master-23-12-2018
     * MySQLTuner 1.7.13
     * Nginx 1.15.8
+    * Node.js v10.x LTS
     * OpenSSH Server 7.9p1
     * OpenSSL 1.0.2q for Nginx
     * PHP 7.3.1, 7.2.14, 7.1.26, 7.0.33, 5.6.40
     * PHP Redis extension 4.2.0
-    * Redis Server 4.0.12
     * Redis Module 8.x mod-23-12-2018
+    * Redis Server 4.0.12
     * Ruby 2.6.0
     * Use latest Duplicity and dependencies
 
@@ -283,6 +286,10 @@
 
     * PHP 7.1+ can't be installed w/ MariaDB 10.2+ until compatibility is fixed
 
+    * Existing Solr 4 cores may experience namespace conflicts.
+      Please make sure to check the updated sites/foo.com/solr.php file
+      and adjust your site configuration if needed.
+
     * Error decoding SFTP packet -- affects WinSCP/Putty
       We recommend to use CybderDuck for reliable SFTP access.
       For known fix please check https://bit.ly/2HMGd6u -- quote below:
@@ -297,6 +304,17 @@
           Change ‘Preferred SFTP protocol version’ to 3
           Save the changes.
       >>>>>
+
+      * SFTP connection doesn't work with Transmit nor Coda by Panic software.
+        We have not figured out the workaround yet, so we recommend using
+        working alternatives on a Mac, like Cyberduck or ForkLift.
+
+      * The filefield_nginx_progress module, which is deprecated for years,
+        no longer works and breaks upload fields. The module has been removed
+        from the supported modules list, and will be automatically disabled
+        if active in any D7 site daily, so we recommend to use the current
+        similar alternative (even if not so fancy) included now by default:
+          https://www.drupal.org/project/file_resup
 
 
 ### Stable BOA-3.2.2 Release - Full Edition

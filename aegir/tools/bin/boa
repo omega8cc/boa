@@ -1566,7 +1566,7 @@ display_info() {
       | tr -d "\n" \
       | cut -d" " -f2 \
       | awk '{ print $1}' 2>&1)
-    _SSH=$(ssh -V 2>&1 \
+    _SSH=$(sshd -V 2>&1 \
       | tr -d "\n" \
       | tr -d "," \
       | cut -d"_" -f2 \

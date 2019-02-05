@@ -3058,26 +3058,74 @@ else
 fi
 #
 if [ "${_VMFAMILY}" = "VS" ]; then
-  _MODULES_FORCE="coder cookie_cache_bypass css_gzip hacked \
-    javascript_aggregator memcache memcache_admin poormanscron search_krumo \
-    security_review site_audit stage_file_proxy syslog supercron \
-    varnish watchdog_live xhprof automated_cron"
+  _MODULES_FORCE="automated_cron \
+    coder \
+    cookie_cache_bypass \
+    css_gzip hacked \
+    javascript_aggregator \
+    memcache \
+    memcache_admin \
+    poormanscron \
+    search_krumo \
+    security_review \
+    site_audit \
+    stage_file_proxy \
+    syslog supercron \
+    varnish \
+    watchdog_live \
+    xhprof"
 fi
 #
 if [ "${_DOW}" = "7" ]; then
   _MODULES_ON_EIGHT="robotstxt"
   _MODULES_ON_SEVEN="robotstxt"
-  _MODULES_ON_SIX="path_alias_cache robotstxt"
-  _MODULES_OFF_EIGHT="automated_cron dblog syslog simpletest update"
-  _MODULES_OFF_SEVEN="coder dblog devel hacked l10n_update \
-   linkchecker memcache memcache_admin performance search_krumo \
-   security_review site_audit stage_file_proxy syslog update \
-   varnish watchdog_live xhprof"
-  _MODULES_OFF_SIX="coder cookie_cache_bypass css_gzip \
-    dblog devel hacked javascript_aggregator linkchecker l10n_update memcache \
-    memcache_admin performance poormanscron search_krumo security_review \
-    stage_file_proxy supercron syslog update varnish \
-    watchdog_live xhprof"
+  _MODULES_ON_SIX="path_alias_cache \
+    robotstxt"
+  _MODULES_OFF_EIGHT="automated_cron \
+    dblog \
+    syslog \
+    simpletest \
+    update"
+  _MODULES_OFF_SEVEN="coder \
+    dblog \
+    devel \
+    filefield_nginx_progress \
+    hacked \
+    l10n_update \
+    linkchecker \
+    memcache \
+    memcache_admin \
+    performance \
+    search_krumo \
+    security_review \
+    site_audit \
+    stage_file_proxy \
+    syslog update \
+    varnish \
+    watchdog_live \
+    xhprof"
+  _MODULES_OFF_SIX="coder \
+    cookie_cache_bypass \
+    css_gzip \
+    dblog \
+    devel \
+    hacked \
+    javascript_aggregator \
+    l10n_update \
+    linkchecker \
+    memcache \
+    memcache_admin \
+    performance \
+    poormanscron \
+    search_krumo \
+    security_review \
+    stage_file_proxy \
+    supercron \
+    syslog \
+    update \
+    varnish \
+    watchdog_live \
+    xhprof"
 else
   _MODULES_ON_EIGHT="robotstxt"
   _MODULES_ON_SEVEN="robotstxt"
