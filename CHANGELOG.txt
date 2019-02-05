@@ -29,8 +29,9 @@
   so please make sure to check the updated sites/foo.com/solr.php file and
   adjust your site configuration if needed.
 
-  Note: If you are using WinSCP and/or Putty on Windows, please check the
-  Known Issues section at the bottom of BOA-4.0.0-prod release notes.
+  Note: If you are using WinSCP and/or Putty on Windows, or Transmit/Coda
+  by Panic on a Mac, please check the Known Issues section at the bottom of this
+  BOA-4.0.0-prod release notes.
 
 @=> Solr 7 and Solr 4 support changes and improvements
 
