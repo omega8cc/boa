@@ -305,6 +305,17 @@
           Save the changes.
       >>>>>
 
+      * SFTP connection doesn't work with Transmit nor Coda by Panic software.
+        We have not figured out the workaround yet, so we recommend using
+        working alternatives on a Mac, like Cyberduck or ForkLift.
+
+      * The filefield_nginx_progress module, which is deprecated for years,
+        no longer works and breaks upload fields. The module has been removed
+        from the supported modules list, and will be automatically disabled
+        if active in any D7 site daily, so we recommend to use the current
+        similar alternative (even if not so fancy) included now by default:
+          https://www.drupal.org/project/file_resup
+
 
 ### Stable BOA-3.2.2 Release - Full Edition
 ### Date: Sat Jan 20 11:03:34 PST 2018
