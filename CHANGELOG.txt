@@ -286,7 +286,7 @@
 
     * SSH/SFTP WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!
       In short, nothing to worry about, but please read on how to fix this:
-        https://learn.omega8.cc/2018-remote-host-identification-ssh-388
+        https://learn.omega8.cc/2019-remote-host-identification-ssh-388
 
     * PHP 7.1+ can't be installed w/ MariaDB 10.2+ until compatibility is fixed
 
