@@ -245,7 +245,7 @@ if ($drupal_eight) {
   // to force settings listed below, they will not be shown in the
   // site admin area. For example, CSS/JS aggregation checkboxes
   // will accept on/off changes on form submit, while being silently
-  // overriden here.
+  // overridden here.
   //
   $config['image.settings']['allow_insecure_derivatives'] = TRUE;  // Not sure if it's a good idea in D8
   $config['image.settings']['suppress_itok_output'] = TRUE;        // Not sure if it's a good idea in D8

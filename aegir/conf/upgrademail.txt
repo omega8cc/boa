@@ -53,7 +53,7 @@ Please read for more details:
 
 Still on PHP 5.6? You should switch to PHP 7.3 — It’s twice as fast as 5.6!
 But don't switch blindly -- even sites already running on PHP 7.0 before
-are most probabaly not ready for PHP 7.2 or 7.3 without proper fixes.
+are most probably not ready for PHP 7.2 or 7.3 without proper fixes.
 
 Note: BOA-4.0.0-prod release removes PHP 5.3, 5.4 and 5.5, if installed.
 In addition to still supported, even if officially deprecated 5.6 and 7.0
