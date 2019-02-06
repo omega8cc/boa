@@ -599,6 +599,20 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
+    && [ -e "/var/xdrago/conf/control-readme.txt" ] \
+    && [ ! -e "${pthLog}/control-readme.txt.ctrl.400stableQ3.pid" ]; then
+    mv -f /var/xdrago/conf/control-readme.txt /var/xdrago/conf/control-readme.txt.old
+    curl ${crlGet} "${urlHmr}/tools/system/conf/control-readme.txt" -o /var/xdrago/conf/control-readme.txt
+    if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
+      chmod 644 /var/xdrago/conf/control-readme.txt
+      chown root:root /var/xdrago/conf/control-readme.txt
+      touch ${pthLog}/control-readme.txt.ctrl.400stableQ3.pid
+    else
+      mv -f /var/xdrago/conf/control-readme.txt.old /var/xdrago/conf/control-readme.txt
+    fi
+  fi
+
+  if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ ! -e "${pthLog}/fpm-cli.ctrl.400stableQ3.pid" ]; then
     usrGroup=users
     for pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
@@ -606,16 +620,40 @@ update_agents() {
         tUsr=
         tUsr=$(echo ${pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         dscUsr="/data/disk/${tUsr}"
-        sed -i "s/args.*q=/args ~* \"foobaroff=/g" ${dscUsr}/config/includes/nginx_vhost_common.conf
+        ngxCnf="${dscUsr}/config/includes/nginx_vhost_common.conf"
+        _NGINX_CNF_TEST=$(grep "foobaroff" ${ngxCnf} 2>&1)
+        if [[ "${_NGINX_CNF_TEST}" =~ "foobaroff" ]]; then
+          _DO_NOTHING=YES
+        else
+          sed -i "s/args.*q=/args ~* \"foobaroff=/g" ${ngxCnf}
+        fi
         if [ ! -e "${dscUsr}/static/control/fpm.info" ]; then
           echo 5.6 > ${dscUsr}/static/control/fpm.info
           chown ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control/fpm.info
           chmod 0644 ${dscUsr}/static/control/fpm.info
         fi
         if [ ! -e "${dscUsr}/static/control/cli.info" ]; then
-          echo 5.6 > ${dscUsr}/static/control/cli.info
-          chown ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control/cli.info
-          chmod 0644 ${dscUsr}/static/control/cli.info
+          if [ -e "${dscUsr}/static/control/fpm.info" ]; then
+            cp -af ${dscUsr}/static/control/fpm.info ${dscUsr}/static/control/cli.info
+          else
+            echo 5.6 > ${dscUsr}/static/control/cli.info
+            chown ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control/cli.info
+            chmod 0644 ${dscUsr}/static/control/cli.info
+          fi
+        fi
+        if [ ! -e "${dscUsr}/static/control/.ctrl.400stableQ3.pid" ] \
+          || [ ! -e "${dscUsr}/static/control/README.txt" ]; then
+          mkdir -p ${dscUsr}/static/control
+          chmod 755 ${dscUsr}/static/control
+          if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
+            cp -af /var/xdrago/conf/control-readme.txt \
+              ${dscUsr}/static/control/README.txt &> /dev/null
+            chmod 0644 ${dscUsr}/static/control/README.txt
+          fi
+          chown -R ${tUsr}.ftp:${usrGroup} \
+            ${dscUsr}/static/control &> /dev/null
+          rm -f ${dscUsr}/static/control/.ctrl.*
+          echo OK > ${dscUsr}/static/control/.ctrl.400stableQ3.pid
         fi
       fi
     done
