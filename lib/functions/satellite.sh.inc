@@ -3749,6 +3749,15 @@ satellite_make() {
   if [ ! -e "${_ROOT}/log/cli.txt" ]; then
     echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
   fi
+  if [ ! -e "${_ROOT}/static/control" ]; then
+    mkdir -p ${_ROOT}/static/control
+  fi
+  if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
+    echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
+  fi
+  if [ ! -e "${_ROOT}/static/control/cli.info" ]; then
+    echo ${_PHP_CLI_VERSION} > ${_ROOT}/static/control/cli.info
+  fi
 
   if [ ! -e "${_ROOT}/static/control/.ctrl.400stableQ3.pid" ] \
     || [ ! -e "${_ROOT}/static/control/README.txt" ]; then
