@@ -78,6 +78,14 @@ read_account_data() {
     _EXTRA_ENGINE=$(echo -n ${_EXTRA_ENGINE} | tr -d "\n" 2>&1)
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x EDGE"
   fi
+  if [ -e "/data/disk/${_THIS_U}/static/control/cli.info" ]; then
+    _CLIENT_CLI=$(cat //data/disk/${_THIS_U}/static/control/cli.info 2>&1)
+    _CLIENT_CLI=$(echo -n ${_CLIENT_CLI} | tr -d "\n" 2>&1)
+  fi
+  if [ -e "/data/disk/${_THIS_U}/static/control/fpm.info" ]; then
+    _CLIENT_FPM=$(cat //data/disk/${_THIS_U}/static/control/fpm.info 2>&1)
+    _CLIENT_FPM=$(echo -n ${_CLIENT_FPM} | tr -d "\n" 2>&1)
+  fi
 }
 
 send_notice_php() {
@@ -1028,13 +1036,14 @@ action() {
           check_limits
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} -c "drush @hostmaster \
-              vset --always-set site_footer 'Daily Usage Monitor \
-              | ${_DATE} \
+              vset --always-set site_footer 'System Check on ${_DATE} \
               | ALL Files <strong>${HomSizH}</strong> MB \
               | LIVE Dbs <strong>${SumDatH}</strong> MB \
               | DEV Dbs <strong>${SkipDtH}</strong> MB \
               | <strong>${_CLIENT_CORES}</strong> \
-              Aegir ${_CLIENT_OPTION} ${_ENGINE_NR}'" &> /dev/null
+              Aegir ${_CLIENT_OPTION} ${_ENGINE_NR} \
+              | CLI <strong>${_CLIENT_CLI}</strong> \
+              | FPM <strong>${_CLIENT_FPM}</strong>'" &> /dev/null
             TmDir="${_THIS_HM_PLR}/profiles/hostmaster/themes/aegir/eldir"
             PgTpl="${TmDir}/page.tpl.php"
             EldirF="0001-Print-site_footer-if-defined.patch"
