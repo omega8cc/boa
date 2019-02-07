@@ -1,5 +1,9 @@
 Hello,
 
+This email is unsually long this time, but it's very important that you read it
+and also check the links for more information, both to benefit from all new
+features and also to avoid known issues. Enjoy!
+
 This BOA release provides three new PHP versions, system updates, including
 security fixes, many bug fixes, latest Aegir version, plus all included
 Drupal distributions updated to latest versions, and supplied with latest
@@ -38,6 +42,17 @@ Since BOA-4.0.0-prod three new Drupal 8 based platforms are included:
 Lightning 3.2.5 -------------- https://drupal.org/project/lightning
 Thunder 8.2.33 --------------- https://drupal.org/project/thunder
 Varbase 8.6.4 ---------------- https://drupal.org/project/varbase
+
+IMPORTANT: You must switch your ~/static/control/cli.info to 7.1 or newer
+PHP version (BOA hosted on Omega8.cc comes with 7,1, 7.2 and 7.3), because
+D8 based distros require at least PHP 7.1 -- this also means that to run
+the sites installed after switching cli.info to 7.1 or newer, you will also
+need to either switch your ~/static/control/fpm.info to 7.1 or newer, or
+more probably, to not break any existing sites not compatible with PHP 7.1+
+you will need to list these D8 sites names in ~/static/control/multi-fpm.info
+
+Please check for more information:
+  https://learn.omega8.cc/how-to-quickly-switch-php-to-newer-version-330
 
 BOA supports Drupal 8 codebases both with classic directory structure like
 in Drupal 7 and also Drupal 8 distros you can download from Drupal.org, but
