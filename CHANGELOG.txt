@@ -226,7 +226,7 @@
     * Drush 8.1.18.2
     * Lshell 0.9.18.9
     * MariaDB 10.2.19, Galera 10.0.37
-    * MariaDB Server 10.1.37
+    * MariaDB Server 10.1.38
     * MySecureShell master-23-12-2018
     * MySQLTuner 1.7.13
     * Nginx 1.15.8
