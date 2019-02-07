@@ -78,7 +78,7 @@
 
   Since BOA-4.0.0-prod three new Drupal 8 based platforms are included:
 
-  Lightning 3.2.4 -------------- https://drupal.org/project/lightning
+  Lightning 3.2.5 -------------- https://drupal.org/project/lightning
   Thunder 8.2.33 --------------- https://drupal.org/project/thunder
   Varbase 8.6.4 ---------------- https://drupal.org/project/varbase
 
