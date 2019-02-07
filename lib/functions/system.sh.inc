@@ -3861,7 +3861,6 @@ sys_packages_install() {
               ttf-dejavu \
               ttf-dejavu-core \
               ttf-dejavu-extra \
-              unattended-upgrades \
               unrtf \
               unzip \
               unzip \
