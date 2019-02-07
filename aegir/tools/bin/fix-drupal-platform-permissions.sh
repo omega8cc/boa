@@ -52,6 +52,7 @@ chmod 0751 ${drupal_root}/sites
 chmod 0755 ${drupal_root}/sites/*
 chmod 0644 ${drupal_root}/sites/*.php
 chmod 0644 ${drupal_root}/sites/*.txt
+chmod 0644 ${drupal_root}/sites/*.yml
 chmod 0755 ${drupal_root}/sites/all/drush
 
 printf "Setting permissions of all codebase directories inside "${drupal_root}/sites/all"...\n"
