@@ -4,7 +4,7 @@ This email is unsually long this time, but it's very important that you read it
 and also check the links for more information, both to benefit from all new
 features and also to avoid known issues. Enjoy!
 
-This BOA release provides three new PHP versions, system updates, including
+New BOA release provides three new PHP versions, system updates, including
 security fixes, many bug fixes, latest Aegir version, plus all included
 Drupal distributions updated to latest versions, and supplied with latest
 Drupal 7 or Drupal 8 core, if possible. Yes, BOA still supports Pressflow 6.
