@@ -2435,7 +2435,7 @@ satellite_download_for_local_build() {
     ### Aegir Drupal Contrib
     get_dev_stc "admin_menu-7.x-3.0-rc6.tar.gz"
     get_dev_stc "betterlogin-7.x-1.5.tar.gz"
-    get_dev_stc "ctools-7.x-1.14.tar.gz"
+    get_dev_stc "ctools-7.x-1.15.tar.gz"
     get_dev_stc "entity-7.x-1.9.tar.gz"
     get_dev_stc "libraries-7.x-2.5.tar.gz"
     get_dev_stc "module_filter-7.x-2.1.tar.gz"
