@@ -89,11 +89,8 @@ update_sql_conf() {
   wait
   sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
   wait
-  _THIS_DB_SERVER_TEST=$(mysql -V 2>&1)
-  if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
-    sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf
-    wait
-  fi
+  sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf
+  wait
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
       bash /var/xdrago/purge_binlogs.sh &> /dev/null
@@ -805,12 +802,8 @@ install_db_server() {
       rm -f /var/lib/mysql/debian-*.flag &> /dev/null
       rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
       install_with_aptitude_sql
-      _THIS_DB_SERVER_TEST=$(mysql -V 2>&1)
-      if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
-        sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" \
-          /etc/mysql/my.cnf
-        wait
-      fi
+      sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf
+      wait
       _PHP_FORCE_REINSTALL=YES
       _CUSTOM_CONFIG_SQL=NO
       mrun "sleep 8"
