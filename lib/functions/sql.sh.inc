@@ -163,7 +163,7 @@ tune_sql_memory_limits() {
   if [ ! -e "${outTun}" ] \
     && [ "${_USE_MYSQLTUNER}" != "NO" ] \
     && [ "${_STATUS}" = "UPGRADE" ] \
-    && [ -z "$_GALERA_COMP" ]; then
+    && [ -z "${_GALERA_COMP}" ]; then
     msg "INFO: Running MySQLTuner check on all databases..."
     msg "NOTE! This step may take a LONG time, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
@@ -190,25 +190,26 @@ tune_sql_memory_limits() {
       | awk '{ print $1}' 2>&1)
     _MYSQLTUNER_TEST=$(cat ${outTun} 2>&1)
     cp -a ${outTun} ${pthLog}/
-    if [ -z "$_REC_INNODB_MEM" ] \
-      || [[ "$_MYSQLTUNER_TEST" =~ "Cannot calculate MyISAM index" ]] \
-      || [[ "$_MYSQLTUNER_TEST" =~ "InnoDB is enabled but isn" ]]; then
+    if [ -z "${_REC_INNODB_MEM}" ] \
+      || [[ "${_MYSQLTUNER_TEST}" =~ "Cannot calculate MyISAM index" ]] \
+      || [[ "${_MYSQLTUNER_TEST}" =~ "InnoDB is enabled but isn" ]]; then
       _MYSQLTUNER_TEST_RESULT=FAIL
       msg "ALRT! The MySQLTuner test failed!"
       msg "ALRT! Please review ${outTun}"
       msg "ALRT! We will use some sane SQL defaults instead, do not worry!"
     fi
     ###--------------------###
-    if [ ! -z "$_REC_MYISAM_MEM" ] \
-      && [ "$_MYSQLTUNER_TEST_RESULT" = "OK" ]; then
-      _RAW_MYISAM_MEM=$(echo $_REC_MYISAM_MEM | sed "s/[A-Z]//g" 2>&1)
-      if [[ "$_REC_MYISAM_MEM" =~ "G" ]]; then
-        _RAW_MYISAM_MEM=$(( _RAW_MYISAM_MEM * 1024 ))
+    if [ ! -z "${_REC_MYISAM_MEM}" ] \
+      && [ "${_MYSQLTUNER_TEST_RESULT}" = "OK" ]; then
+      _RAW_MYISAM_MEM=$(echo ${_REC_MYISAM_MEM} | sed "s/[A-Z]//g" 2>&1)
+      if [[ "${_REC_MYISAM_MEM}" =~ "G" ]]; then
+        _RAW_MYISAM_MEM=$(echo "${_RAW_MYISAM_MEM} | awk '{print int($1+0.6)}'" 2>&1)
+        _RAW_MYISAM_MEM=$(echo "${_RAW_MYISAM_MEM} * 1024" | bc -l 2>&1)
       fi
-      if [ "$_RAW_MYISAM_MEM" -gt "${_USE_SQL}" ]; then
+      if [ "${_RAW_MYISAM_MEM}" -gt "${_USE_SQL}" ]; then
         _USE_MYISAM_MEM="${_USE_SQL}"
       else
-        _USE_MYISAM_MEM="$_RAW_MYISAM_MEM"
+        _USE_MYISAM_MEM="${_RAW_MYISAM_MEM}"
       fi
       if [ "${_USE_MYISAM_MEM}" -lt "256" ] \
         || [ -z "${_USE_MYISAM_MEM}" ]; then
@@ -219,31 +220,32 @@ tune_sql_memory_limits() {
       wait
     else
       _USE_MYISAM_MEM="${_USE_SQL}M"
-      if [ "$_MYSQLTUNER_TEST_RESULT" = "FAIL" ]; then
+      if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ]; then
         msg "ALRT! _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
       fi
       # sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
       wait
     fi
     ###--------------------###
-    if [ ! -z "$_REC_INNODB_MEM" ] \
-      && [ "$_MYSQLTUNER_TEST_RESULT" = "OK" ]; then
-      _RAW_INNODB_MEM=$(echo $_REC_INNODB_MEM | sed "s/[A-Z]//g" 2>&1)
-      if [[ "$_REC_INNODB_MEM" =~ "G" ]]; then
-        _RAW_INNODB_MEM=$(echo "$_RAW_INNODB_MEM * 1024" | bc -l 2>&1)
+    if [ ! -z "${_REC_INNODB_MEM}" ] \
+      && [ "${_MYSQLTUNER_TEST_RESULT}" = "OK" ]; then
+      _RAW_INNODB_MEM=$(echo ${_REC_INNODB_MEM} | sed "s/[A-Z]//g" 2>&1)
+      if [[ "${_REC_INNODB_MEM}" =~ "G" ]]; then
+        _RAW_INNODB_MEM=$(echo "${_RAW_INNODB_MEM} | awk '{print int($1+0.6)}'" 2>&1)
+        _RAW_INNODB_MEM=$(echo "${_RAW_INNODB_MEM} * 1024" | bc -l 2>&1)
       fi
-      _RAW_INNODB_MEM=$(echo "($_RAW_INNODB_MEM+0.5)/1" | bc 2>&1)
-      if [ "$_RAW_INNODB_MEM" -gt "${_USE_SQL}" ]; then
+      _RAW_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
+      if [ "${_RAW_INNODB_MEM}" -gt "${_USE_SQL}" ]; then
         _USE_INNODB_MEM="${_USE_SQL}"
       else
-        _RAW_INNODB_MEM=$(echo "scale=2; ($_RAW_INNODB_MEM * 1.1)" | bc 2>&1)
-        _USE_INNODB_MEM=$(echo "($_RAW_INNODB_MEM+0.5)/1" | bc 2>&1)
+        _RAW_INNODB_MEM=$(echo "scale=2; (${_RAW_INNODB_MEM} * 1.1)" | bc 2>&1)
+        _USE_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
       fi
       _INNODB_BPI=$(echo "scale=0; ${_USE_INNODB_MEM}/1024" | bc 2>&1)
-      if [ "$_INNODB_BPI" -lt "1" ] || [ -z "$_INNODB_BPI" ]; then
+      if [ "${_INNODB_BPI}" -lt "1" ] || [ -z "${_INNODB_BPI}" ]; then
         _INNODB_BPI="1"
       fi
-      sed -i "s/innodb_file_per_table   = 1/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = $_INNODB_BPI/g" /etc/mysql/my.cnf
+      sed -i "s/innodb_file_per_table   = 1/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
       wait
       if [ "${_USE_INNODB_MEM}" -lt "256" ] \
         || [ -z "${_USE_INNODB_MEM}" ]; then
@@ -300,11 +302,11 @@ tune_sql_memory_limits() {
     fi
   else
     _THIS_USE_MEM="${_USE_SQL}M"
-    if [ "$_MYSQLTUNER_TEST_RESULT" = "FAIL" ] \
+    if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ] \
       && [ "${_STATUS}" = "UPGRADE" ] \
-      && [ -z "$_GALERA_COMP" ]; then
-      msg "ALRT! _USE_MYISAM_MEM is $_THIS_USE_MEM because _REC_MYISAM_MEM was empty!"
-      msg "ALRT! _USE_INNODB_MEM is $_THIS_USE_MEM because _REC_INNODB_MEM was empty!"
+      && [ -z "${_GALERA_COMP}" ]; then
+      msg "ALRT! _USE_MYISAM_MEM is ${_THIS_USE_MEM} because _REC_MYISAM_MEM was empty!"
+      msg "ALRT! _USE_INNODB_MEM is ${_THIS_USE_MEM} because _REC_INNODB_MEM was empty!"
     fi
     _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
     _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
@@ -713,8 +715,8 @@ install_db_server() {
       _SQL_DEB_SRC_TEST_B=$(grep ${_OSV} \
         ${aptLiSys}.d/percona-release.list 2>&1)
     fi
-    if [[ "$_SQL_DEB_SRC_TEST_A" =~ "${_DB_SRC}" ]] \
-      && [[ "$_SQL_DEB_SRC_TEST_B" =~ "${_OSV}" ]]; then
+    if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
+      && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_OSV}" ]]; then
       _SQL_DEB_SRC_UPDATE=NO
     else
       if [ "${_THIS_OS}" = "Debian" ]; then
@@ -792,7 +794,7 @@ install_db_server() {
       st_runner "apt-get clean -qq" &> /dev/null
       rm -f -r /var/lib/apt/lists/*
       st_runner "apt-get update -qq" &> /dev/null
-      if [ "$_DB_SERVER" = "MariaDB" ]; then
+      if [ "${_DB_SERVER}" = "MariaDB" ]; then
         cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
       fi
       sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf

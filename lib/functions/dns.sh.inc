@@ -580,7 +580,7 @@ check_ip_hostname() {
       _LOC_DOM="${_THISHOST}"
       find_correct_ip
       _THISRDIP="${_LOC_IP}"
-      if [ "$_THISRDIP" = "${_THISHTIP}" ]; then
+      if [ "${_THISRDIP}" = "${_THISHTIP}" ]; then
         _FQDNTEST="TRUE"
         _LOC_DOM="${_MY_FRONT}"
         find_correct_ip
@@ -615,7 +615,7 @@ check_ip_hostname() {
         _LOC_DOM="${_THISHOST}"
         find_correct_ip
         _THISRDIP="${_LOC_IP}"
-        if [ "$_THISRDIP" = "${_THISHTIP}" ]; then
+        if [ "${_THISRDIP}" = "${_THISHTIP}" ]; then
           _FQDNTEST="TRUE"
           hostname -b ${_THISHOST}
         else

@@ -2463,7 +2463,7 @@ satellite_download_for_local_build() {
 #
 # Run child B.
 satellite_run_child_b() {
-  if [ "$_LOCAL_STATUS" = "INIT" ]; then
+  if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} A: Switching user and running AegirSetupB..."
     fi
@@ -2576,7 +2576,7 @@ satellite_run_post_install() {
   if [ -e "/var/run/aegir_upgrade.pid" ]; then
     _LOCAL_STATUS=INIT
   fi
-  if [ "$_LOCAL_STATUS" = "INIT" ]; then
+  if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     if [ ! -e "${_ROOT}/config/${_USER}.nginx.conf" ]; then
       rm -f /var/aegir/config/server_master/nginx/platform.d/${_USER}.conf
       echo "include ${_ROOT}/config/server_master/nginx/vhost.d/*;" > \
@@ -2637,7 +2637,7 @@ satellite_run_child_c() {
   if [ -e "/var/run/aegir_upgrade.pid" ]; then
     _LOCAL_STATUS=INIT
   fi
-  if [ "$_LOCAL_STATUS" = "INIT" ]; then
+  if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     _DIST_INSTALL=YES
     rm -f /opt/tmp/testecho*
     satellite_create_shared_dirs
@@ -2731,7 +2731,7 @@ satellite_child_scripts_cleanup() {
 }
 
 satellite_if_add_ftps_lshell_access() {
-  if [ "$_LOCAL_STATUS" = "INIT" ]; then
+  if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     _USERFTP="${_USER}.ftp"
     _USERFTP_ROOT="/home/${_USERFTP}"
     if [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
@@ -3051,9 +3051,9 @@ satellite_if_add_update_user_platforms_symlinks() {
 
     if [ ! -d "${_QH}" ]; then
       mkdir -p ${_QH}
-      ### msg "DEBUG: _QH is $_QH in action symlinks 1"
+      ### msg "DEBUG: _QH is ${_QH} in action symlinks 1"
     fi
-    ### msg "DEBUG: _QH is $_QH in action symlinks 2"
+    ### msg "DEBUG: _QH is ${_QH} in action symlinks 2"
     chown -R ${_USER}:${_USRG} /home/${_USERFTP}/platforms &> /dev/null
     chmod 700 /home/${_USERFTP} &> /dev/null
     rm -f ${_QH}/{cod,commerce,commons,openatrium,openscholar,drupal6,drupal7}
@@ -3404,15 +3404,15 @@ satellite_if_add_update_backend_user_dirs_files_clean() {
   #
   _SYSTEM_USER_BZR="${_ROOT}/.bazaar"
   if [ -x "/usr/local/bin/bzr" ]; then
-    if [ ! -e "$_SYSTEM_USER_BZR/bazaar.conf" ]; then
-      mkdir -p $_SYSTEM_USER_BZR
-      echo ignore_missing_extensions=True > $_SYSTEM_USER_BZR/bazaar.conf
-      chown -R ${_USER}:${_USRG} $_SYSTEM_USER_BZR
-      chmod 700 $_SYSTEM_USER_BZR
+    if [ ! -e "${_SYSTEM_USER_BZR}/bazaar.conf" ]; then
+      mkdir -p ${_SYSTEM_USER_BZR}
+      echo ignore_missing_extensions=True > ${_SYSTEM_USER_BZR}/bazaar.conf
+      chown -R ${_USER}:${_USRG} ${_SYSTEM_USER_BZR}
+      chmod 700 ${_SYSTEM_USER_BZR}
     fi
   else
-    if [ -d "$_SYSTEM_USER_BZR" ]; then
-      rm -rf $_SYSTEM_USER_BZR
+    if [ -d "${_SYSTEM_USER_BZR}" ]; then
+      rm -rf ${_SYSTEM_USER_BZR}
     fi
   fi
 
@@ -3517,16 +3517,16 @@ satellite_send_welcome_email() {
       if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
         cat ${_ROOT}/log/setupmail.txt \
           | sed "s/[\~]//g" \
-          | mail -a "From: $_MY_EMAIL" \
-          -a "Bcc: $_MY_EMAIL" -e -s "$_Q" $_AT_CLIENT_EMAIL
+          | mail -a "From: ${_MY_EMAIL}" \
+          -a "Bcc: ${_MY_EMAIL}" -e -s "$_Q" ${_AT_CLIENT_EMAIL}
       elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
         cat ${_ROOT}/log/setupmail.txt \
-          | mail -a "From: $_MY_EMAIL" \
-          -e -b $_MY_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
+          | mail -a "From: ${_MY_EMAIL}" \
+          -e -b ${_MY_EMAIL} -s "$_Q" ${_AT_CLIENT_EMAIL}
       else
         cat ${_ROOT}/log/setupmail.txt \
-          | mail -r $_MY_EMAIL \
-          -e -b $_MY_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
+          | mail -r ${_MY_EMAIL} \
+          -e -b ${_MY_EMAIL} -s "$_Q" ${_AT_CLIENT_EMAIL}
       fi
     fi
   else
@@ -3541,31 +3541,31 @@ satellite_send_welcome_email() {
         if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
           cat ${_ROOT}/log/upgrademail.txt \
             | sed "s/[\~]//g" \
-            | mail -a "From: $_MY_EMAIL" \
-            -a "Bcc: $_MY_EMAIL" -e -s "$_Q" $_AT_CLIENT_EMAIL
+            | mail -a "From: ${_MY_EMAIL}" \
+            -a "Bcc: ${_MY_EMAIL}" -e -s "$_Q" ${_AT_CLIENT_EMAIL}
         elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
           cat ${_ROOT}/log/upgrademail.txt \
-            | mail -a "From: $_MY_EMAIL" \
-            -e -b $_MY_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
+            | mail -a "From: ${_MY_EMAIL}" \
+            -e -b ${_MY_EMAIL} -s "$_Q" ${_AT_CLIENT_EMAIL}
         else
           cat ${_ROOT}/log/upgrademail.txt \
-            | mail -r $_MY_EMAIL \
-            -e -b $_MY_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
+            | mail -r ${_MY_EMAIL} \
+            -e -b ${_MY_EMAIL} -s "$_Q" ${_AT_CLIENT_EMAIL}
         fi
       else
         if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
           cat ${_ROOT}/log/setupmail.txt \
             | sed "s/[\~]//g" \
-            | mail -a "From: $_MY_EMAIL" \
-            -a "Bcc: $_MY_EMAIL" -e -s "$_Q" $_AT_CLIENT_EMAIL
+            | mail -a "From: ${_MY_EMAIL}" \
+            -a "Bcc: ${_MY_EMAIL}" -e -s "$_Q" ${_AT_CLIENT_EMAIL}
         elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
           cat ${_ROOT}/log/setupmail.txt \
-            | mail -a "From: $_MY_EMAIL" \
-            -e -b $_MY_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
+            | mail -a "From: ${_MY_EMAIL}" \
+            -e -b ${_MY_EMAIL} -s "$_Q" ${_AT_CLIENT_EMAIL}
         else
           cat ${_ROOT}/log/setupmail.txt \
-            | mail -r $_MY_EMAIL \
-            -e -b $_MY_EMAIL -s "$_Q" $_AT_CLIENT_EMAIL
+            | mail -r ${_MY_EMAIL} \
+            -e -b ${_MY_EMAIL} -s "$_Q" ${_AT_CLIENT_EMAIL}
         fi
       fi
     else
@@ -4219,7 +4219,7 @@ satellite_if_check_dns() {
     _LOC_DOM="${_DOMAIN}"
     find_correct_ip
     _THISRDIP="${_LOC_IP}"
-    if [ "$_THISRDIP" = "${_THISHTIP}" ]; then
+    if [ "${_THISRDIP}" = "${_THISHTIP}" ]; then
       _DO_NOTHING=YES
     else
       msg "ERROR: ${_DOMAIN} doesn't point to your IP: ${_THISHTIP}"
@@ -4568,12 +4568,12 @@ satellite_display_url_finalize() {
       _DO_NOTHING=YES
     else
       _AEGIR_LOGIN_URL=$(grep --text "^http://${_DOMAIN}" ${_ROOT}/log/install.log 2>&1)
-      if [ ! -z "$_AEGIR_LOGIN_URL" ]; then
+      if [ ! -z "${_AEGIR_LOGIN_URL}" ]; then
         echo " "
         msg "INFO: Congratulations, Aegir have been installed successfully!"
         msg "NOTE! Please wait 2 min before visiting Aegir at:"
         echo " "
-        msg "LINK: $_AEGIR_LOGIN_URL"
+        msg "LINK: ${_AEGIR_LOGIN_URL}"
         echo " "
       else
         msg "ALRT! Something went wrong"
@@ -4801,10 +4801,10 @@ satellite_child_b_aegir_build() {
   if [ -e "/var/run/aegir_upgrade.pid" ]; then
     _LOCAL_STATUS=INIT
   fi
-  if [ "$_LOCAL_STATUS" = "INIT" ]; then
+  if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     cd ${_ROOT}
     _AGRPXSWD=$(cat ${_ROOT}/.${_USER}.pass.txt 2>&1)
-    _AGRPASWD=$(echo -n $_AGRPXSWD | tr -d "\n" 2>&1)
+    _AGRPASWD=$(echo -n ${_AGRPXSWD} | tr -d "\n" 2>&1)
 
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -4949,15 +4949,15 @@ satellite_child_b_aegir_build() {
       nextnum=00$((10#${last%%[^0-9]*} + 1))
       nextnum=${nextnum: -3}
       _L_HM_DISTRO=${nextnum}
-      _HM_ROOT="${_ROOT}/aegir/distro/$_L_HM_DISTRO"
-      _PREV_HM_ROOT="${_ROOT}/aegir/distro/$_L_LAST_HMR"
+      _HM_ROOT="${_ROOT}/aegir/distro/${_L_HM_DISTRO}"
+      _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_L_LAST_HMR}"
       msg "${_STATUS} B: Testing previous install again after removing zombie..."
       if [ ! -e "${_PREV_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
         _DEBUG_MODE=YES
         msg "${_STATUS} B: Testing previous install again..."
         msg "${_STATUS} B: OPS, another zombie found, moving it to backups..."
         mv -f ${_PREV_HM_ROOT} \
-          ${_ROOT}/backups/system/empty-host-master-$_L_HM_DISTRO-${_NOW}-sec
+          ${_ROOT}/backups/system/empty-host-master-${_L_HM_DISTRO}-${_NOW}-sec
         cd ${_ROOT}/aegir/distro
         list=([0-9]*)
         last=${list[@]: -1}
@@ -4965,8 +4965,8 @@ satellite_child_b_aegir_build() {
         nextnum=00$((10#${last%%[^0-9]*} + 1))
         nextnum=${nextnum: -3}
         _L_HM_DISTRO=${nextnum}
-        _HM_ROOT="${_ROOT}/aegir/distro/$_L_HM_DISTRO"
-        _PREV_HM_ROOT="${_ROOT}/aegir/distro/$_L_LAST_HMR"
+        _HM_ROOT="${_ROOT}/aegir/distro/${_L_HM_DISTRO}"
+        _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_L_LAST_HMR}"
         msg "${_STATUS} B: Let's hope there are no more zombies left..."
       fi
     fi
@@ -5210,7 +5210,7 @@ satellite_child_b_aegir_build() {
 
 satellite_child_b_aegir_health_check() {
   ###--------------------###
-  if [ "$_LOCAL_STATUS" = "INIT" ]; then
+  if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     _MSG_STATUS="install"
   else
     _MSG_STATUS="upgrade"
@@ -5404,7 +5404,7 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \
       WHERE link_path='hosting/sites'" &> /dev/null
 
-    if [ "$_LOCAL_STATUS" = "INIT" ]; then
+    if [ "${_LOCAL_STATUS}" = "INIT" ]; then
       pBy="Octopus System powered by Barracuda"
       ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
       ${_DRUSHCMD} @hostmaster ${vSet} site_mail "${_MY_EMAIL}" &> /dev/null
@@ -5471,7 +5471,7 @@ satellite_child_b_aegir_ui_enhance() {
       ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
     fi
 
-    if [ "$_LOCAL_STATUS" = "INIT" ]; then
+    if [ "${_LOCAL_STATUS}" = "INIT" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         ${_DRUSHCMD} @hostmaster \
           urol "admin" --mail=${_CLIENT_EMAIL}

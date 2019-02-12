@@ -1005,12 +1005,12 @@ if_display_login_link() {
     else
       _AEGIR_LOGIN_URL=$(grep --text "^http://${_THIS_FRONT}" \
         /var/aegir/install.log 2>&1)
-      if [ ! -z "$_AEGIR_LOGIN_URL" ]; then
+      if [ ! -z "${_AEGIR_LOGIN_URL}" ]; then
         echo " "
         msg "INFO: Congratulations, Aegir have been installed successfully!"
         msg "NOTE! Please wait 2 min before visiting Aegir at:"
         echo " "
-        msg "LINK: $_AEGIR_LOGIN_URL"
+        msg "LINK: ${_AEGIR_LOGIN_URL}"
       else
         msg "ALRT! Something went wrong"
         msg "ALRT! Please check the install log for details:"

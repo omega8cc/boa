@@ -2418,7 +2418,7 @@ save_verify_platforms() {
   if [ -e "/var/run/aegir_upgrade.pid" ]; then
     _LOCAL_STATUS=INIT
   fi
-  if [ "$_LOCAL_STATUS" = "INIT" ]; then
+  if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     _THIS_HM="${_HM_ROOT}/sites/${_DOMAIN}"
   else
     if [ -e "${_ROOT}/.drush/hostmaster.alias.drushrc.php" ]; then
