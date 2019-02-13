@@ -36,10 +36,10 @@ level via INI files, check our docs at https://omega8.cc/node/293
 ;;  as it requires Composer to install the module and its dependencies, then
 ;;  you will need to configure it, and only then you will be able to generate
 ;;  customized Solr core config files, which you should upload in the path:
-;;  sites/foo.com/files/solr/ and wait 10-15 minutes to have them activated
+;;  sites/foo.com/files/solr/ and wait 5-10 minutes to have them activated
 ;;  on the Solr 7 core the system will create for you.
 ;;
-;;  This setting affects the running every 10-15 minutes auto-installer, hence
+;;  This setting affects the running every 5-10 minutes auto-installer, hence
 ;;  no need to wait until next morning to be able to use new Solr core. Win!
 ;;
 ;;  Once the Solr core is ready to use, you will find a special file in your
