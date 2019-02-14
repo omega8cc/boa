@@ -1630,6 +1630,13 @@ check_redis_oom() {
 ###--------------------###
 if [ `whoami` = "root" ]; then
 
+  ### Block known attackers IPs
+  _CSF_TEST=$(which csf 2> /dev/null)
+  if [ -x "${_CSF_TEST}" ]; then
+    csf -d 185.206.225.30 Flooding user/password
+    csf -d 185.253.97.238 Flooding user/password
+  fi
+
   ### Redis OOM detection hotfix
   check_redis_oom
 
