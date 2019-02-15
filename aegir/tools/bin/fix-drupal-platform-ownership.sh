@@ -68,6 +68,7 @@ mkdir -p ${drupal_root}/sites/all/{modules,themes,libraries,drush}
 rm -f ${drupal_root}/../vendor/bin/drush*
 rm -f ${drupal_root}/vendor/bin/drush*
 rm -f ${drupal_root}/../drush/*
+rm -f ${drupal_root}/sites/development.services.yml
 chown -R ${script_user}:users \
   ${drupal_root}/sites/all/{modules,themes,libraries,includes,misc,profiles,core,vendor,drush}/*
 chown -R ${script_user}:users ${drupal_root}/../vendor/*
