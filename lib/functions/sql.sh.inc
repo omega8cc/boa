@@ -203,7 +203,7 @@ tune_sql_memory_limits() {
       && [ "${_MYSQLTUNER_TEST_RESULT}" = "OK" ]; then
       _RAW_MYISAM_MEM=$(echo ${_REC_MYISAM_MEM} | sed "s/[A-Z]//g" 2>&1)
       if [[ "${_REC_MYISAM_MEM}" =~ "G" ]]; then
-        _RAW_MYISAM_MEM=$(echo "${_RAW_MYISAM_MEM} | awk '{print int($1+0.6)}'" 2>&1)
+        _RAW_MYISAM_MEM=$(echo ${_RAW_MYISAM_MEM} | awk '{print int($1+0.6)}' 2>&1)
         _RAW_MYISAM_MEM=$(echo "${_RAW_MYISAM_MEM} * 1024" | bc -l 2>&1)
       fi
       if [ "${_RAW_MYISAM_MEM}" -gt "${_USE_SQL}" ]; then
@@ -231,7 +231,7 @@ tune_sql_memory_limits() {
       && [ "${_MYSQLTUNER_TEST_RESULT}" = "OK" ]; then
       _RAW_INNODB_MEM=$(echo ${_REC_INNODB_MEM} | sed "s/[A-Z]//g" 2>&1)
       if [[ "${_REC_INNODB_MEM}" =~ "G" ]]; then
-        _RAW_INNODB_MEM=$(echo "${_RAW_INNODB_MEM} | awk '{print int($1+0.6)}'" 2>&1)
+        _RAW_INNODB_MEM=$(echo ${_RAW_INNODB_MEM} | awk '{print int($1+0.6)}' 2>&1)
         _RAW_INNODB_MEM=$(echo "${_RAW_INNODB_MEM} * 1024" | bc -l 2>&1)
       fi
       _RAW_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
