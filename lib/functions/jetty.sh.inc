@@ -161,7 +161,7 @@ if_install_jetty() {
           ln -sf /opt/jetty9/lib /opt/tika
           cd /opt/tika9
           rm -f tika-app*
-          _TIKA_V="1.10 1.11 1.12 1.13 1.20"
+          _TIKA_V="1.8 1.9 1.10 1.11 1.12 1.13 1.20"
           for e in ${_TIKA_V}; do
             wget -q -U iCab ${urlDev}/tika-app-${e}.jar
           done
@@ -300,7 +300,7 @@ if_install_jetty() {
     if [ ! -e "$_PORT_CTRL" ] \
       || [ ! -e "/opt/jetty9/lib/ext/slf4j-api-${_SLF4J_VRN}.jar" ] \
       || [ ! -e "/opt/jetty9/.fixed.start.ini.txt" ] \
-      || [ ! -e "/opt/jetty9/lib/tika-app-1.20.jar" ] \
+      || [ ! -e "/opt/jetty9/lib/tika-app-1.8.jar" ] \
       || [ ! -e "/opt/jetty9/lib/ext/log4j-1.2.17.jar" ] \
       || [ ! -e "${_JETTY_CTRL}" ] \
       || [ ! -e "${_SOLR_CTRL}" ]; then
@@ -341,7 +341,7 @@ if_install_jetty() {
       rm -rf /opt/jetty9/solr
       cd /opt/jetty9/lib/
       rm -f tika-app*
-      _TIKA_V="1.10 1.11 1.12 1.13 1.20"
+      _TIKA_V="1.8 1.9 1.10 1.11 1.12 1.13 1.20"
       for e in ${_TIKA_V}; do
         wget -q -U iCab ${urlDev}/tika-app-${e}.jar
       done
@@ -400,7 +400,7 @@ if_install_jetty() {
           ln -sf /opt/jetty8/lib /opt/tika8
           cd /opt/tika8
           rm -f tika-app*
-          _TIKA_V="1.10 1.11 1.12 1.13 1.20"
+          _TIKA_V="1.8 1.9 1.10 1.11 1.12 1.13 1.20"
           for e in ${_TIKA_V}; do
             wget -q -U iCab ${urlDev}/tika-app-${e}.jar
           done
@@ -479,7 +479,7 @@ if_install_jetty() {
       rm -rf /opt/jetty8/solr
       cd /opt/jetty8/lib/
       rm -f tika-app*
-      _TIKA_V="1.10 1.11 1.12 1.13 1.20"
+      _TIKA_V="1.8 1.9 1.10 1.11 1.12 1.13 1.20"
       for e in ${_TIKA_V}; do
         wget -q -U iCab ${urlDev}/tika-app-${e}.jar
       done
@@ -529,7 +529,7 @@ if_install_jetty() {
           ln -sf /opt/jetty7/lib /opt/tika7
           cd /opt/tika7
           rm -f tika-app*
-          _TIKA_V="1.10 1.11 1.12 1.13 1.20"
+          _TIKA_V="1.8 1.9 1.10 1.11 1.12 1.13 1.20"
           for e in ${_TIKA_V}; do
             wget -q -U iCab ${urlDev}/tika-app-${e}.jar
           done
@@ -640,7 +640,7 @@ if_install_jetty() {
       rm -rf /opt/jetty7/solr
       cd /opt/jetty7/lib/
       rm -f tika-app*
-      _TIKA_V="1.10 1.11 1.12 1.13 1.20"
+      _TIKA_V="1.8 1.9 1.10 1.11 1.12 1.13 1.20"
       for e in ${_TIKA_V}; do
         wget -q -U iCab ${urlDev}/tika-app-${e}.jar
       done
