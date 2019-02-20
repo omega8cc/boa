@@ -184,7 +184,7 @@ function drush_provision_hosting_le_post_provision_verify() {
     else {
       $no_alt_names = FALSE;
       if ($is_boa) {
-        if (sizeof(d()->aliases)) {
+        if (!empty(d()->aliases)) {
           foreach (d()->aliases as $alias) {
             if (!preg_match("/\.(?:host8|boa)\.(?:biz|io)$/", $alias)) {
               $alt_names .= ' --domain ' . str_replace('/', '.', $alias);
@@ -193,7 +193,7 @@ function drush_provision_hosting_le_post_provision_verify() {
         }
       }
       else {
-        if (sizeof(d()->aliases)) {
+        if (!empty(d()->aliases)) {
           $alt_names = implode(' --domain ', str_replace('/', '.', d()->aliases));
           $alt_names = ' --domain ' . $alt_names;
         }
