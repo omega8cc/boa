@@ -95,6 +95,7 @@ action() {
     service redis-server stop
     killall -9 redis-server
     rm -f /var/run/redis.pid
+    rm -f /var/run/redis/redis.pid
     rm -f /var/lib/redis/*
     rm -f /var/log/redis/redis-server.log
     service redis-server start
