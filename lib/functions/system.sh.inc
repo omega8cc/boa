@@ -2722,6 +2722,7 @@ strict_bin_permissions() {
                   java \
                   java6 \
                   java7 \
+                  java8 \
                   jpegoptim \
                   jpegtran \
                   logger \
@@ -5118,9 +5119,10 @@ complete() {
   fix_lfd_uidignore
   fix_cnf_postfix
   if [ "${_STRICT_BIN_PERMISSIONS}" = "YES" ]; then
-    usermod -aG users aegir &> /dev/null
-    usermod -aG users man &> /dev/null
-    usermod -aG users mysql &> /dev/null
+    usermod -aG users aegir  &> /dev/null
+    usermod -aG users man    &> /dev/null
+    usermod -aG users mysql  &> /dev/null
+    usermod -aG users _apt   &> /dev/null
     if [ -x "/bin/bash" ]; then
       switch_to_bash
     elif [ -x "/bin/dash" ]; then
