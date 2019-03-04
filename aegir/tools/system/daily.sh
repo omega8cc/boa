@@ -3000,8 +3000,8 @@ action() {
           SET status=1 WHERE publish_path LIKE '%/aegir/distro/%'\""
         check_old_empty_platforms
         run_drush8_hmr_cmd "${vSet} hosting_delete_force 0"
-        run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
-          SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'\""
+        #run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
+        #  SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'\""
         purge_cruft_machine
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
