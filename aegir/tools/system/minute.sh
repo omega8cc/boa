@@ -146,6 +146,8 @@ oom_restart() {
   echo "$(date 2>&1) OOM php-fpm stopped"                           >> ${pthOml}
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')
   echo "$(date 2>&1) OOM jetty stopped"                             >> ${pthOml}
+  kill -9 $(ps aux | grep '[j]ava-8-openjdk' | awk '{print $2}')
+  echo "$(date 2>&1) OOM solr stopped"                              >> ${pthOml}
   kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}')
   echo "$(date 2>&1) OOM newrelic-daemon stopped"                   >> ${pthOml}
   kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}')

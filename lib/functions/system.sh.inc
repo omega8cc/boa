@@ -566,6 +566,17 @@ tune_memory_limits() {
   if [ -e "/etc/default/jetty7" ] && [ -e "/opt/solr1" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr1 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty7
   fi
+  if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
+    sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" \
+      /etc/default/solr7.in.sh &> /dev/null
+    wait
+    sed -i "s/^#SOLR_JAVA_MEM/SOLR_JAVA_MEM/g" \
+      /etc/default/solr7.in.sh &> /dev/null
+    wait
+    sed -i "s/^SOLR_JAVA_MEM=.*/SOLR_JAVA_MEM=\"-Xms8m -Xmx${_USE_OPC}m\"/g" \
+      /etc/default/solr7.in.sh
+    wait
+  fi
   tune_web_server_config
 }
 
@@ -4771,6 +4782,12 @@ update_initd() {
     fi
     mrun "service ssh reload" &> /dev/null
     tune_memory_limits
+    if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
+      msg "INFO: Restarting Solr 7"
+      mrun "service solr7 stop" &> /dev/null
+      #kill -9 $(ps aux | grep '[j]ava-8-openjdk' | awk '{print $2}') &> /dev/null
+      mrun "service solr7 start" &> /dev/null
+    fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       msg "INFO: Restarting Jetty 9"
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
@@ -4890,6 +4907,12 @@ update_initd() {
     fi
     fix_on_upgrade
     tune_memory_limits
+    if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
+      msg "INFO: Restarting Solr 7"
+      mrun "service solr7 stop" &> /dev/null
+      #kill -9 $(ps aux | grep '[j]ava-8-openjdk' | awk '{print $2}') &> /dev/null
+      mrun "service solr7 start" &> /dev/null
+    fi
     kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       msg "INFO: Restarting Jetty 9"
