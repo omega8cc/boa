@@ -2287,7 +2287,7 @@ ubercart7_install() {
               get_dev_contrib "rules-7.x-2.11.tar.gz"
               get_dev_contrib "token-7.x-1.7.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
-              get_dev_contrib "views-7.x-3.20.tar.gz"
+              get_dev_contrib "views-7.x-3.21.tar.gz"
               cd ${_SHRD_PRPATH}/modules/views
               # https://drupal.org/node/1766338#comment-6445882
               patch -p1 < \
@@ -2357,7 +2357,7 @@ ubercart7_testing_install() {
               get_dev_contrib "rules-7.x-2.11.tar.gz"
               get_dev_contrib "token-7.x-1.7.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
-              get_dev_contrib "views-7.x-3.20.tar.gz"
+              get_dev_contrib "views-7.x-3.21.tar.gz"
               cd ${_SHRD_PRPATH}/modules/views
               # https://drupal.org/node/1766338#comment-6445882
               patch -p1 < \
