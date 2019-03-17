@@ -240,7 +240,7 @@
     * MariaDB Server 10.1.38
     * MySecureShell master-23-12-2018
     * MySQLTuner 1.7.13
-    * Nginx 1.15.8
+    * Nginx 1.15.9
     * Node.js v10.x LTS
     * OpenSSH Server 7.9p1
     * OpenSSL 1.0.2r for Nginx
