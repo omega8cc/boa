@@ -72,7 +72,11 @@ if [ -e "/var/log/php" ]; then
     touch /var/run/fmp_wait.pid
     sleep 8
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
-    rm -f /var/log/php/*
+    _NOW=$(date +%y%m%d-%H%M 2>&1)
+    _NOW=${_NOW//[^0-9-]/}
+    mkdir -p /var/backups/php-logs/${_NOW}/
+    mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
+    rm -f /var/run/*.fpm.socket
     renice ${_B_NICE} -p $$ &> /dev/null
     if [ -e "/etc/init.d/php73-fpm" ]; then
       service php73-fpm start
