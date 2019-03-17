@@ -2718,6 +2718,7 @@ strict_bin_permissions() {
                   clamscan \
                   clamsubmit \
                   compass \
+                  composer \
                   convert \
                   curl \
                   dash \
@@ -5141,6 +5142,8 @@ complete() {
   fix_lfd_whitelist
   fix_lfd_uidignore
   fix_cnf_postfix
+  re_set_default_php_cli
+  install_update_composer
   if [ "${_STRICT_BIN_PERMISSIONS}" = "YES" ]; then
     usermod -aG users aegir  &> /dev/null
     usermod -aG users man    &> /dev/null
@@ -5153,7 +5156,5 @@ complete() {
     fi
     strict_bin_permissions
   fi
-  re_set_default_php_cli
-  install_update_composer
   finale
 }
