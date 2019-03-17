@@ -200,6 +200,40 @@ redis_oom_check() {
 }
 redis_oom_check
 
+redis_slow_check() {
+  if [ `tail --lines=500 /var/log/php/fpm-*-slow.log \
+    | grep --count "PhpRedis.php"` -gt "0" ]; then
+    touch /var/run/fmp_wait.pid
+    sleep 8
+    service redis-server restart
+    _NOW=$(date +%y%m%d-%H%M 2>&1)
+    _NOW=${_NOW//[^0-9-]/}
+    mkdir -p /var/backups/php-logs/${_NOW}/
+    mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
+    renice ${_B_NICE} -p $$ &> /dev/null
+    if [ -e "/etc/init.d/php73-fpm" ]; then
+      service php73-fpm reload
+    fi
+    if [ -e "/etc/init.d/php72-fpm" ]; then
+      service php72-fpm reload
+    fi
+    if [ -e "/etc/init.d/php71-fpm" ]; then
+      service php71-fpm reload
+    fi
+    if [ -e "/etc/init.d/php70-fpm" ]; then
+      service php70-fpm reload
+    fi
+    if [ -e "/etc/init.d/php56-fpm" ]; then
+      service php56-fpm reload
+    fi
+    sleep 8
+    rm -f /var/run/fmp_wait.pid
+    echo "$(date 2>&1) Slow PhpRedis detected" >> \
+      /var/xdrago/log/redis.slow.incident.log
+  fi
+}
+redis_slow_check
+
 jetty_restart() {
   touch /var/run/boa_run.pid
   sleep 5
