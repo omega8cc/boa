@@ -243,7 +243,7 @@
     * Nginx 1.15.8
     * Node.js v10.x LTS
     * OpenSSH Server 7.9p1
-    * OpenSSL 1.0.2q for Nginx
+    * OpenSSL 1.0.2r for Nginx
     * PHP 7.3.3, 7.2.16, 7.1.27, 7.0.33, 5.6.40
     * PHP Redis extension 4.2.0
     * Redis Module 8.x mod-05-02-2019
