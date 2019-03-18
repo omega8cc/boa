@@ -206,10 +206,12 @@ tune_sql_memory_limits() {
         _RAW_MYISAM_MEM=$(echo ${_RAW_MYISAM_MEM} | awk '{print int($1+0.6)}' 2>&1)
         _RAW_MYISAM_MEM=$(echo "${_RAW_MYISAM_MEM} * 1024" | bc -l 2>&1)
       fi
+      _RAW_MYISAM_MEM=$(echo "(${_RAW_MYISAM_MEM}+0.5)/1" | bc 2>&1)
       if [ "${_RAW_MYISAM_MEM}" -gt "${_USE_SQL}" ]; then
         _USE_MYISAM_MEM="${_USE_SQL}"
       else
-        _USE_MYISAM_MEM="${_RAW_MYISAM_MEM}"
+        _RAW_MYISAM_MEM=$(echo "scale=2; (${_RAW_MYISAM_MEM} * 1.1)" | bc 2>&1)
+        _USE_MYISAM_MEM=$(echo "(${_RAW_MYISAM_MEM}+0.5)/1" | bc 2>&1)
       fi
       if [ "${_USE_MYISAM_MEM}" -lt "256" ] \
         || [ -z "${_USE_MYISAM_MEM}" ]; then
