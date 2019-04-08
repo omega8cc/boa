@@ -14,8 +14,11 @@ if_install_jetty() {
     _SOLR_VPATH="/var/${_N_SOLR}/data"
     _SOLR_CTRL="/var/${_N_SOLR}/solr-${_SOLR_7_VRN}-version.txt"
     if [ "${_OSV}" = "jessie" ]; then
-      if [ ! -e "/etc/apt/sources.list.d/java8.list" ]; then
-        echo "deb http://http.debian.net/debian jessie-backports main" > /etc/apt/sources.list.d/java8.list
+      if [ -e "/etc/apt/sources.list.d/java8.list" ]; then
+        rm -f /etc/apt/sources.list.d/java8.list
+      fi
+      if [ ! -e "/etc/apt/sources.list.d/backports.list" ]; then
+        echo "deb [check-valid-until=no] http://archive.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d/backports.list
       fi
       st_runner "apt-get update -qq" &> /dev/null
       st_runner "${_INSTAPP} -t jessie-backports openjdk-8-jre-headless ca-certificates-java" 2> /dev/null
