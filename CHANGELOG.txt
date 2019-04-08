@@ -234,7 +234,7 @@
 
     * Adminer 4.7.0
     * CSF/LFD 12.09
-    * Drush 8.1.18.2
+    * Drush 8.2.3.1
     * Lshell 0.9.18.9
     * MariaDB 10.2.19, Galera 10.0.37
     * MariaDB Server 10.1.38
