@@ -2816,6 +2816,14 @@ strict_bin_permissions() {
   chown root:root /usr/bin/mysecureshell &> /dev/null
   chmod 4755 /usr/bin/mysecureshell &> /dev/null
 
+  if [ -e "/bin/ping" ]; then
+    _PING_TEST=$(ls -la /bin/ping | grep rwsr-xr-x 2>&1)
+    if [ -z "${_PING_TEST}" ]; then
+      chown root:root /bin/ping
+      chmod 4755 /bin/ping
+    fi
+  fi
+
   cp -af ${bldPth}/aegir/helpers/websh.sh.txt /bin/websh
   chmod 755 /bin/websh
   chown root:root /bin/websh

@@ -1146,6 +1146,16 @@ fix_core_dgd() {
   fi
 }
 
+fix_ping_perms() {
+  if [ -e "/bin/ping" ]; then
+    _PING_TEST=$(ls -la /bin/ping | grep rwsr-xr-x 2>&1)
+    if [ -z "${_PING_TEST}" ]; then
+      chown root:root /bin/ping
+      chmod 4755 /bin/ping
+    fi
+  fi
+}
+
 fix_lshell() {
   _LSHELL_VRN=0.9.18.9
   _PATH_LSHELL="${usrBin}/lshell"
@@ -1712,6 +1722,7 @@ if [ `whoami` = "root" ]; then
     fi
   fi
   setup
+  fix_ping_perms
   fix_lshell
   fix_tcp
   fix_alt
